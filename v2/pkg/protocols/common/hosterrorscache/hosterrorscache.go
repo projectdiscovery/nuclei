@@ -5,9 +5,10 @@ import (
 	"net/url"
 	"regexp"
 	"strings"
+	"sync"
+	"sync/atomic"
 
 	"github.com/bluele/gcache"
-
 	"github.com/projectdiscovery/gologger"
 )
 
@@ -29,6 +30,11 @@ type Cache struct {
 	MaxHostError  int
 	verbose       bool
 	failedTargets gcache.Cache
+}
+
+type cacheItem struct {
+	errors atomic.Int32
+	sync.Once
 }
 
 const DefaultMaxHostsCount = 10000
@@ -87,20 +93,16 @@ func (c *Cache) Check(value string) bool {
 		return false
 	}
 
-	numberOfErrors, err := c.failedTargets.GetIFPresent(finalValue)
+	existingCacheItem, err := c.failedTargets.GetIFPresent(finalValue)
 	if err != nil {
 		return false
 	}
-	numberOfErrorsValue := numberOfErrors.(int)
+	existingCacheItemValue := existingCacheItem.(*cacheItem)
 
-	if numberOfErrors == -1 {
-		return true
-	}
-	if numberOfErrorsValue >= c.MaxHostError {
-		_ = c.failedTargets.Set(finalValue, -1)
-		if c.verbose {
-			gologger.Verbose().Msgf("Skipping %s as previously unresponsive %d times", finalValue, numberOfErrorsValue)
-		}
+	if existingCacheItemValue.errors.Load() >= int32(c.MaxHostError) {
+		existingCacheItemValue.Do(func() {
+			gologger.Info().Msgf("Skipped %s from target list as found unresponsive %d times", finalValue, existingCacheItemValue.errors.Load())
+		})
 		return true
 	}
 	return false
@@ -112,26 +114,23 @@ func (c *Cache) MarkFailed(value string, err error) {
 		return
 	}
 	finalValue := c.normalizeCacheValue(value)
-	if !c.failedTargets.Has(finalValue) {
-		_ = c.failedTargets.Set(finalValue, 1)
+	existingCacheItem, err := c.failedTargets.GetIFPresent(finalValue)
+	if err != nil || existingCacheItem == nil {
+		newItem := &cacheItem{errors: atomic.Int32{}}
+		newItem.errors.Store(1)
+		_ = c.failedTargets.Set(finalValue, newItem)
 		return
 	}
-
-	numberOfErrors, err := c.failedTargets.GetIFPresent(finalValue)
-	if err != nil || numberOfErrors == nil {
-		_ = c.failedTargets.Set(finalValue, 1)
-		return
-	}
-	numberOfErrorsValue := numberOfErrors.(int)
-
-	_ = c.failedTargets.Set(finalValue, numberOfErrorsValue+1)
+	existingCacheItemValue := existingCacheItem.(*cacheItem)
+	existingCacheItemValue.errors.Add(1)
+	_ = c.failedTargets.Set(finalValue, existingCacheItemValue)
 }
 
-var checkErrorRegexp = regexp.MustCompile(`(no address found for host|Client\.Timeout exceeded while awaiting headers|could not resolve host|connection refused)`)
+var reCheckError = regexp.MustCompile(`(no address found for host|Client\.Timeout exceeded while awaiting headers|could not resolve host|connection refused)`)
 
 // checkError checks if an error represents a type that should be
 // added to the host skipping table.
 func (c *Cache) checkError(err error) bool {
 	errString := err.Error()
-	return checkErrorRegexp.MatchString(errString)
+	return reCheckError.MatchString(errString)
 }

@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/http/httputil"
 	"net/url"
+	"path"
 	"strings"
 	"sync"
 	"time"
@@ -60,7 +61,7 @@ func (request *Request) executeRaceRequest(input *contextargs.Context, previous 
 		return nil
 	}
 	ctx := request.newContext(input)
-	requestForDump, err := generator.Make(ctx, reqURL, inputData, payloads, nil)
+	requestForDump, err := generator.Make(ctx, input, inputData, payloads, nil)
 	if err != nil {
 		return err
 	}
@@ -89,7 +90,7 @@ func (request *Request) executeRaceRequest(input *contextargs.Context, previous 
 			break
 		}
 		ctx := request.newContext(input)
-		generatedRequest, err := generator.Make(ctx, reqURL, inputData, payloads, nil)
+		generatedRequest, err := generator.Make(ctx, input, inputData, payloads, nil)
 		if err != nil {
 			return err
 		}
@@ -133,7 +134,7 @@ func (request *Request) executeParallelHTTP(input *contextargs.Context, dynamicV
 			break
 		}
 		ctx := request.newContext(input)
-		generatedHttpRequest, err := generator.Make(ctx, input.MetaInput.Input, inputData, payloads, dynamicValues)
+		generatedHttpRequest, err := generator.Make(ctx, input, inputData, payloads, dynamicValues)
 		if err != nil {
 			if err == io.EOF {
 				break
@@ -201,7 +202,7 @@ func (request *Request) executeTurboHTTP(input *contextargs.Context, dynamicValu
 			break
 		}
 		ctx := request.newContext(input)
-		generatedHttpRequest, err := generator.Make(ctx, input.MetaInput.Input, inputData, payloads, dynamicValues)
+		generatedHttpRequest, err := generator.Make(ctx, input, inputData, payloads, dynamicValues)
 		if err != nil {
 			request.options.Progress.IncrementFailedRequestsBy(int64(generator.Total()))
 			return err
@@ -289,7 +290,7 @@ func (request *Request) executeFuzzingRule(input *contextargs.Context, previous 
 		if !result {
 			break
 		}
-		generated, err := generator.Make(context.Background(), input.MetaInput.Input, value, payloads, nil)
+		generated, err := generator.Make(context.Background(), input, value, payloads, nil)
 		if err != nil {
 			continue
 		}
@@ -354,7 +355,7 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 			ctxWithTimeout, cancel := context.WithTimeout(ctx, time.Duration(request.options.Options.Timeout)*time.Second)
 			defer cancel()
 
-			generatedHttpRequest, err := generator.Make(ctxWithTimeout, input.MetaInput.Input, data, payloads, dynamicValue)
+			generatedHttpRequest, err := generator.Make(ctxWithTimeout, input, data, payloads, dynamicValue)
 			if err != nil {
 				if err == io.EOF {
 					return true, nil
@@ -454,6 +455,12 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 
 	// Try to evaluate any payloads before replacement
 	finalMap := generators.MergeMaps(generatedRequest.dynamicValues, generatedRequest.meta)
+
+	// add known variables from metainput
+	if _, ok := finalMap["ip"]; !ok && input.MetaInput.CustomIP != "" {
+		finalMap["ip"] = input.MetaInput.CustomIP
+	}
+
 	for payloadName, payloadValue := range generatedRequest.dynamicValues {
 		if data, err := expressions.Evaluate(types.ToString(payloadValue), finalMap); err == nil {
 			generatedRequest.dynamicValues[payloadName] = data
@@ -512,9 +519,12 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 		formedURL = generatedRequest.rawRequest.FullURL
 		// use request url as matched url if empty
 		if formedURL == "" {
-			formedURL = input.MetaInput.Input
-			if generatedRequest.rawRequest.Path != "" {
+			urlx, err := url.Parse(input.MetaInput.Input)
+			if err != nil {
 				formedURL = fmt.Sprintf("%s%s", formedURL, generatedRequest.rawRequest.Path)
+			} else {
+				urlx.Path = generatedRequest.rawRequest.Path
+				formedURL = fmt.Sprintf("%v://%v", urlx.Scheme, path.Join(urlx.Host, generatedRequest.rawRequest.Path))
 			}
 		}
 		if parsed, parseErr := url.Parse(formedURL); parseErr == nil {
@@ -683,8 +693,12 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 			continue // Skip nil responses
 		}
 		matchedURL := input.MetaInput.Input
-		if generatedRequest.rawRequest != nil && generatedRequest.rawRequest.FullURL != "" {
-			matchedURL = generatedRequest.rawRequest.FullURL
+		if generatedRequest.rawRequest != nil {
+			if generatedRequest.rawRequest.FullURL != "" {
+				matchedURL = generatedRequest.rawRequest.FullURL
+			} else {
+				matchedURL = formedURL
+			}
 		}
 		if generatedRequest.request != nil {
 			matchedURL = generatedRequest.request.URL.String()

@@ -17,6 +17,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/reporting/exporters/es"
 	"github.com/projectdiscovery/nuclei/v2/pkg/reporting/exporters/markdown"
 	"github.com/projectdiscovery/nuclei/v2/pkg/reporting/exporters/sarif"
+	"github.com/projectdiscovery/nuclei/v2/pkg/reporting/exporters/splunk"
 	"github.com/projectdiscovery/nuclei/v2/pkg/reporting/trackers/github"
 	"github.com/projectdiscovery/nuclei/v2/pkg/reporting/trackers/gitlab"
 	"github.com/projectdiscovery/nuclei/v2/pkg/reporting/trackers/jira"
@@ -42,6 +43,8 @@ type Options struct {
 	SarifExporter *sarif.Options `yaml:"sarif"`
 	// ElasticsearchExporter contains configuration options for Elasticsearch Exporter Module
 	ElasticsearchExporter *es.Options `yaml:"elasticsearch"`
+	// SplunkExporter contains configuration options for splunkhec Exporter Module
+	SplunkExporter *splunk.Options `yaml:"splunkhec"`
 
 	HttpClient *retryablehttp.Client `yaml:"-"`
 }
@@ -167,6 +170,14 @@ func New(options *Options, db string) (*Client, error) {
 		}
 		client.exporters = append(client.exporters, exporter)
 	}
+	if options.SplunkExporter != nil {
+		options.SplunkExporter.HttpClient = options.HttpClient
+		exporter, err := splunk.New(options.SplunkExporter)
+		if err != nil {
+			return nil, errors.Wrap(err, exportClientCreationErrorMessage)
+		}
+		client.exporters = append(client.exporters, exporter)
+	}
 
 	storage, err := dedupe.New(db)
 	if err != nil {
@@ -198,6 +209,7 @@ func CreateConfigIfNotExists() error {
 		MarkdownExporter:      &markdown.Options{},
 		SarifExporter:         &sarif.Options{},
 		ElasticsearchExporter: &es.Options{},
+		SplunkExporter:        &splunk.Options{},
 	}
 	reportingFile, err := os.Create(reportingConfig)
 	if err != nil {
@@ -259,4 +271,8 @@ func stringSliceContains(slice []string, item string) bool {
 		}
 	}
 	return false
+}
+
+func (c *Client) GetReportingOptions() *Options {
+	return c.options
 }

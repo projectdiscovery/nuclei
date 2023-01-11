@@ -29,17 +29,18 @@ Host: {{Hostname}}`, "https://example.com:8080/test", false)
 		request, err := Parse(`GET ?username=test&password=test HTTP/1.1
 Host: {{Hostname}}:123`, "https://example.com:8080/test", false)
 		require.Nil(t, err, "could not parse GET request")
-		require.Equal(t, "https://example.com:8080/test?username=test&password=test", request.FullURL, "Could not parse request url correctly")
+		// url.values are sorted to avoid randomness of using maps
+		require.Equal(t, "https://example.com:8080/test?password=test&username=test", request.FullURL, "Could not parse request url correctly")
 
 		request, err = Parse(`GET ?username=test&password=test HTTP/1.1
 Host: {{Hostname}}:123`, "https://example.com:8080/test/", false)
 		require.Nil(t, err, "could not parse GET request")
-		require.Equal(t, "https://example.com:8080/test/?username=test&password=test", request.FullURL, "Could not parse request url correctly")
+		require.Equal(t, "https://example.com:8080/test/?password=test&username=test", request.FullURL, "Could not parse request url correctly")
 
 		request, err = Parse(`GET /?username=test&password=test HTTP/1.1
 		Host: {{Hostname}}:123`, "https://example.com:8080/test/", false)
 		require.Nil(t, err, "could not parse GET request")
-		require.Equal(t, "https://example.com:8080/test/?username=test&password=test", request.FullURL, "Could not parse request url correctly")
+		require.Equal(t, "https://example.com:8080/test/?password=test&username=test", request.FullURL, "Could not parse request url correctly")
 	})
 }
 

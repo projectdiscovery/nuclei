@@ -1,15 +1,21 @@
 package filter
 
 import (
+	"bufio"
 	"errors"
+	"io"
+	"net/http"
 	"strings"
 
 	"github.com/Knetic/govaluate"
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v2/pkg/model/types/severity"
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators/common/dsl"
+	"github.com/projectdiscovery/nuclei/v2/pkg/operators/extractors"
+	"github.com/projectdiscovery/nuclei/v2/pkg/operators/matchers"
 	"github.com/projectdiscovery/nuclei/v2/pkg/templates"
 	"github.com/projectdiscovery/nuclei/v2/pkg/templates/types"
+	sliceutil "github.com/projectdiscovery/utils/slice"
 )
 
 // TagFilter is used to filter nuclei templates for tag based execution
@@ -177,24 +183,129 @@ func isIdMatch(tagFilter *TagFilter, templateId string) bool {
 	return included && !excluded
 }
 
+func tryCollectConditionsMatchinfo(template *templates.Template) map[string]interface{} {
+	// attempts to unwrap fields to their basic types
+	// mapping must be manual because of various abstraction layers, custom marshaling and forceful validation
+	parameters := map[string]interface{}{
+		"id":          strings.ToLower(template.ID),
+		"name":        strings.ToLower(template.Info.Name),
+		"description": strings.ToLower(template.Info.Description),
+		"tags":        template.Info.Tags.ToSlice(),
+		"authors":     template.Info.Authors.ToSlice(),
+		"severity":    template.Info.SeverityHolder.Severity.String(),
+		"protocol":    template.Type().String(),
+	}
+
+	for k, v := range template.Info.Metadata {
+		parameters[k] = v
+	}
+
+	if template.Type() == types.HTTPProtocol {
+		var httpMethods, bodies []string
+		// TODO: convert bodies to a unique string (most common operations are len and contains)
+		for _, req := range template.RequestsHTTP {
+			// standard verb
+			httpMethods = append(httpMethods, req.Method.String())
+			bodies = append(bodies, req.Body)
+			// rfc raw requests
+			for _, rawHttp := range req.Raw {
+				if rawHttpReq, err := http.ReadRequest(bufio.NewReader(strings.NewReader(rawHttp))); err == nil && rawHttpReq != nil {
+					httpMethods = append(httpMethods, rawHttpReq.Method)
+					body, _ := io.ReadAll(rawHttpReq.Body)
+					bodies = append(bodies, string(body))
+				}
+			}
+		}
+		httpMethods = sliceutil.Dedupe(sliceutil.PruneEmptyStrings(httpMethods))
+		parameters["http_method"] = httpMethods
+		bodies = sliceutil.Dedupe(sliceutil.PruneEmptyStrings(bodies))
+		parameters["body"] = strings.ToLower(strings.Join(bodies, "\n"))
+	}
+
+	// collect matchers types
+	var matcherTypes []string
+	for _, req := range template.RequestsDNS {
+		matcherTypes = append(matcherTypes, collectMatcherTypes(req.Matchers)...)
+	}
+	for _, req := range template.RequestsFile {
+		matcherTypes = append(matcherTypes, collectMatcherTypes(req.Matchers)...)
+	}
+	for _, req := range template.RequestsHTTP {
+		matcherTypes = append(matcherTypes, collectMatcherTypes(req.Matchers)...)
+	}
+	for _, req := range template.RequestsHeadless {
+		matcherTypes = append(matcherTypes, collectMatcherTypes(req.Matchers)...)
+	}
+	for _, req := range template.RequestsNetwork {
+		matcherTypes = append(matcherTypes, collectMatcherTypes(req.Matchers)...)
+	}
+	for _, req := range template.RequestsSSL {
+		matcherTypes = append(matcherTypes, collectMatcherTypes(req.Matchers)...)
+	}
+	for _, req := range template.RequestsWHOIS {
+		matcherTypes = append(matcherTypes, collectMatcherTypes(req.Matchers)...)
+	}
+	for _, req := range template.RequestsWebsocket {
+		matcherTypes = append(matcherTypes, collectMatcherTypes(req.Matchers)...)
+	}
+	matcherTypes = sliceutil.Dedupe(sliceutil.PruneEmptyStrings(matcherTypes))
+	parameters["matcher_type"] = matcherTypes
+
+	// collect extractors types
+	var extractorTypes []string
+	for _, req := range template.RequestsDNS {
+		extractorTypes = append(extractorTypes, collectExtractorTypes(req.Extractors)...)
+	}
+	for _, req := range template.RequestsFile {
+		extractorTypes = append(extractorTypes, collectExtractorTypes(req.Extractors)...)
+	}
+	for _, req := range template.RequestsHTTP {
+		extractorTypes = append(extractorTypes, collectExtractorTypes(req.Extractors)...)
+	}
+	for _, req := range template.RequestsHeadless {
+		extractorTypes = append(extractorTypes, collectExtractorTypes(req.Extractors)...)
+	}
+	for _, req := range template.RequestsNetwork {
+		extractorTypes = append(extractorTypes, collectExtractorTypes(req.Extractors)...)
+	}
+	for _, req := range template.RequestsSSL {
+		extractorTypes = append(extractorTypes, collectExtractorTypes(req.Extractors)...)
+	}
+	for _, req := range template.RequestsWHOIS {
+		extractorTypes = append(extractorTypes, collectExtractorTypes(req.Extractors)...)
+	}
+	for _, req := range template.RequestsWebsocket {
+		extractorTypes = append(extractorTypes, collectExtractorTypes(req.Extractors)...)
+	}
+	extractorTypes = sliceutil.Dedupe(sliceutil.PruneEmptyStrings(extractorTypes))
+	parameters["extractor_type"] = extractorTypes
+
+	return parameters
+}
+
+func collectMatcherTypes(matchers []*matchers.Matcher) []string {
+	var matcherTypes []string
+	for _, matcher := range matchers {
+		matcherTypes = append(matcherTypes, matcher.Type.String())
+	}
+	return matcherTypes
+}
+
+func collectExtractorTypes(extractors []*extractors.Extractor) []string {
+	var extractorTypes []string
+	for _, extractor := range extractors {
+		extractorTypes = append(extractorTypes, extractor.GetType().String())
+	}
+	return extractorTypes
+}
+
 func isConditionMatch(tagFilter *TagFilter, template *templates.Template) bool {
 	if len(tagFilter.includeConditions) == 0 {
 		return true
 	}
 
-	// attempts to unwrap fields to their basic types
-	// mapping must be manual because of various abstraction layers, custom marshaling and forceful validation
-	parameters := map[string]interface{}{
-		"id":          template.ID,
-		"name":        template.Info.Name,
-		"description": template.Info.Description,
-		"tags":        template.Info.Tags.ToSlice(),
-		"authors":     template.Info.Authors.ToSlice(),
-		"severity":    template.Info.SeverityHolder.Severity.String(),
-	}
-	for k, v := range template.Info.Metadata {
-		parameters[k] = v
-	}
+	parameters := tryCollectConditionsMatchinfo(template)
+
 	for _, expr := range tagFilter.includeConditions {
 		result, err := expr.Evaluate(parameters)
 		// in case of errors  => skip

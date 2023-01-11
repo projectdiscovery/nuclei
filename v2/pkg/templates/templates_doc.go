@@ -1230,6 +1230,7 @@ func init() {
 		"TXT",
 		"AAAA",
 		"CAA",
+		"TLSA",
 	}
 
 	FILERequestDoc.Type = "file.Request"
@@ -1542,7 +1543,7 @@ func init() {
 			Value: "Headless response received from client (default)",
 		},
 	}
-	HEADLESSRequestDoc.Fields = make([]encoder.Doc, 9)
+	HEADLESSRequestDoc.Fields = make([]encoder.Doc, 10)
 	HEADLESSRequestDoc.Fields[0].Name = "id"
 	HEADLESSRequestDoc.Fields[0].Type = "string"
 	HEADLESSRequestDoc.Fields[0].Note = ""
@@ -1573,22 +1574,27 @@ func init() {
 	HEADLESSRequestDoc.Fields[5].Note = ""
 	HEADLESSRequestDoc.Fields[5].Description = "description: |\n 	 If UserAgent is set to custom, customUserAgent is the custom user-agent to use for the request."
 	HEADLESSRequestDoc.Fields[5].Comments[encoder.LineComment] = " description: |"
-	HEADLESSRequestDoc.Fields[6].Name = "matchers"
-	HEADLESSRequestDoc.Fields[6].Type = "[]matchers.Matcher"
+	HEADLESSRequestDoc.Fields[6].Name = "stop-at-first-match"
+	HEADLESSRequestDoc.Fields[6].Type = "bool"
 	HEADLESSRequestDoc.Fields[6].Note = ""
-	HEADLESSRequestDoc.Fields[6].Description = "Matchers contains the detection mechanism for the request to identify\nwhether the request was successful by doing pattern matching\non request/responses.\n\nMultiple matchers can be combined with `matcher-condition` flag\nwhich accepts either `and` or `or` as argument."
-	HEADLESSRequestDoc.Fields[6].Comments[encoder.LineComment] = "Matchers contains the detection mechanism for the request to identify"
-	HEADLESSRequestDoc.Fields[7].Name = "extractors"
-	HEADLESSRequestDoc.Fields[7].Type = "[]extractors.Extractor"
+	HEADLESSRequestDoc.Fields[6].Description = "StopAtFirstMatch stops the execution of the requests and template as soon as a match is found."
+	HEADLESSRequestDoc.Fields[6].Comments[encoder.LineComment] = "StopAtFirstMatch stops the execution of the requests and template as soon as a match is found."
+	HEADLESSRequestDoc.Fields[7].Name = "matchers"
+	HEADLESSRequestDoc.Fields[7].Type = "[]matchers.Matcher"
 	HEADLESSRequestDoc.Fields[7].Note = ""
-	HEADLESSRequestDoc.Fields[7].Description = "Extractors contains the extraction mechanism for the request to identify\nand extract parts of the response."
-	HEADLESSRequestDoc.Fields[7].Comments[encoder.LineComment] = "Extractors contains the extraction mechanism for the request to identify"
-	HEADLESSRequestDoc.Fields[8].Name = "matchers-condition"
-	HEADLESSRequestDoc.Fields[8].Type = "string"
+	HEADLESSRequestDoc.Fields[7].Description = "Matchers contains the detection mechanism for the request to identify\nwhether the request was successful by doing pattern matching\non request/responses.\n\nMultiple matchers can be combined with `matcher-condition` flag\nwhich accepts either `and` or `or` as argument."
+	HEADLESSRequestDoc.Fields[7].Comments[encoder.LineComment] = "Matchers contains the detection mechanism for the request to identify"
+	HEADLESSRequestDoc.Fields[8].Name = "extractors"
+	HEADLESSRequestDoc.Fields[8].Type = "[]extractors.Extractor"
 	HEADLESSRequestDoc.Fields[8].Note = ""
-	HEADLESSRequestDoc.Fields[8].Description = "MatchersCondition is the condition between the matchers. Default is OR."
-	HEADLESSRequestDoc.Fields[8].Comments[encoder.LineComment] = "MatchersCondition is the condition between the matchers. Default is OR."
-	HEADLESSRequestDoc.Fields[8].Values = []string{
+	HEADLESSRequestDoc.Fields[8].Description = "Extractors contains the extraction mechanism for the request to identify\nand extract parts of the response."
+	HEADLESSRequestDoc.Fields[8].Comments[encoder.LineComment] = "Extractors contains the extraction mechanism for the request to identify"
+	HEADLESSRequestDoc.Fields[9].Name = "matchers-condition"
+	HEADLESSRequestDoc.Fields[9].Type = "string"
+	HEADLESSRequestDoc.Fields[9].Note = ""
+	HEADLESSRequestDoc.Fields[9].Description = "MatchersCondition is the condition between the matchers. Default is OR."
+	HEADLESSRequestDoc.Fields[9].Comments[encoder.LineComment] = "MatchersCondition is the condition between the matchers. Default is OR."
+	HEADLESSRequestDoc.Fields[9].Values = []string{
 		"and",
 		"or",
 	}

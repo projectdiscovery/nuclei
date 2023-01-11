@@ -53,11 +53,28 @@ We have a [dedicated repository](https://github.com/projectdiscovery/nuclei-temp
 
 # Install Nuclei
 
-Nuclei requires **go1.18** to install successfully. Run the following command to install the latest version -
+Nuclei requires **go1.19** to install successfully. Run the following command to install the latest version -
 
 ```sh
 go install -v github.com/projectdiscovery/nuclei/v2/cmd/nuclei@latest
 ```
+
+<details>
+  <summary>Brew</summary>
+  
+  ```sh
+  brew install nuclei
+  ```
+  
+</details>
+<details>
+  <summary>Docker</summary>
+  
+  ```sh
+  docker pull projectdiscovery/nuclei:latest
+  ```
+  
+</details>
 
 **More installation [methods can be found here](https://nuclei.projectdiscovery.io/nuclei/get-started/).**
 
@@ -98,7 +115,7 @@ TARGET:
    -u, -target string[]       target URLs/hosts to scan
    -l, -list string           path to file containing a list of target URLs/hosts to scan (one per line)
    -resume string             resume scan using resume.cfg (clustering will be disabled)
-   -sa, -scan-all-ips         scan all the IPs associated with dns record
+   -sa, -scan-all-ips         scan all the IP's associated with dns record
    -iv, -ip-version string[]  IP version to scan of hostname (4,6) - (default 4)
 
 TEMPLATES:
@@ -126,8 +143,8 @@ FILTERING:
    -em, -exclude-matchers string[]    template matchers to exclude in result
    -s, -severity value[]              templates to run based on severity. Possible values: info, low, medium, high, critical, unknown
    -es, -exclude-severity value[]     templates to exclude based on severity. Possible values: info, low, medium, high, critical, unknown
-   -pt, -type value[]                 templates to run based on protocol type. Possible values: dns, file, http, , headless, network, workflow, ssl, websocket, whois
-   -ept, -exclude-type value[]        templates to exclude based on protocol type. Possible values: dns, file, http, , headless, network, workflow, ssl, websocket, whois
+   -pt, -type value[]                 templates to run based on protocol type. Possible values: dns, file, http, headless, network, workflow, ssl, websocket, whois
+   -ept, -exclude-type value[]        templates to exclude based on protocol type. Possible values: dns, file, http, headless, network, workflow, ssl, websocket, whois
    -tc, -template-condition string[]  templates to run based on expression condition
 
 OUTPUT:
@@ -139,7 +156,7 @@ OUTPUT:
    -json                         write output in JSONL(ines) format
    -irr, -include-rr             include request/response pairs in the JSONL output (for findings only)
    -nm, -no-meta                 disable printing result metadata in cli output
-   -ts, -timestamp               enable printing timestamp in cli output
+   -ts, -timestamp               enables printing timestamp in cli output
    -rdb, -report-db string       nuclei reporting database (always use this to persist report data)
    -ms, -matcher-status          display match failure status
    -me, -markdown-export string  directory to export results in markdown format
@@ -156,6 +173,7 @@ CONFIGURATIONS:
    -V, -var value                 custom vars in key=value format
    -r, -resolvers string          file containing resolver list for nuclei
    -sr, -system-resolvers         use system DNS resolving as error fallback
+   -dc, -disable-clustering       disable clustering of requests
    -passive                       enable passive HTTP response processing mode
    -fh2, -force-http2             force http2 connection on requests
    -ev, -env-vars                 enable environment variables to be used in template
@@ -171,7 +189,7 @@ CONFIGURATIONS:
    -sip, -source-ip string        source ip address to use for network scan
    -config-directory string       override the default config path ($home/.config)
    -rsr, -response-size-read int  max response size to read in bytes (default 10485760)
-   -rss, -response-size-save int  max response size to save in bytes (default 10485760)
+   -rss, -response-size-save int  max response size to save in bytes (default 1048576)
 
 INTERACTSH:
    -iserver, -interactsh-server string  interactsh server url for self-hosted instance (default: oast.pro,oast.live,oast.site,oast.online,oast.fun,oast.me)
@@ -238,10 +256,10 @@ DEBUG:
    -hc, -health-check        run diagnostic check up
 
 UPDATE:
-   -un, -update                      update nuclei engine to the latest released version
-   -ut, -update-templates            update nuclei-templates to latest released version
-   -ud, -update-template-dir string  custom directory to install / update nuclei-templates
-   -duc, -disable-update-check       disable automatic nuclei/templates update check
+   -un, -update                          update nuclei engine to the latest released version
+   -ut, -update-templates                update nuclei-templates to latest released version
+   -ud, -update-template-dir string      custom directory to install / update nuclei-templates
+   -duc, -disable-update-check           disable automatic nuclei/templates update check
 
 STATISTICS:
    -stats                    display statistics about the running scan
@@ -368,6 +386,7 @@ import (
    "github.com/projectdiscovery/nuclei/v2/pkg/output"
    "github.com/projectdiscovery/nuclei/v2/pkg/parsers"
    "github.com/projectdiscovery/nuclei/v2/pkg/protocols"
+   "github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/contextargs"
    "github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/hosterrorscache"
    "github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/interactsh"
    "github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/protocolinit"
@@ -438,7 +457,13 @@ func main() {
    }
    store.Load()
 
-   input := &inputs.SimpleInputProvider{Inputs: []string{"docs.hackerone.com"}}
+   inputArgs := []*contextargs.MetaInput{
+      &contextargs.MetaInput{
+         Input: "docs.hackerone.com",
+      },
+   }
+
+   input := &inputs.SimpleInputProvider{Inputs: inputArgs}
    _ = engine.Execute(store.Templates(), input)
    engine.WorkPool().Wait() // Wait for the scan to finish
 }
