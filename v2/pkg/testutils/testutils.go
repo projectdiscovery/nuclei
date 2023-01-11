@@ -159,6 +159,9 @@ func (m *MockProgressClient) AddToTotal(delta int64) {}
 // IncrementRequests increments the requests counter by 1.
 func (m *MockProgressClient) IncrementRequests() {}
 
+// SetRequests sets the counter by incrementing it with a delta
+func (m *MockProgressClient) SetRequests(count uint64) {}
+
 // IncrementMatched increments the matched counter by 1.
 func (m *MockProgressClient) IncrementMatched() {}
 
