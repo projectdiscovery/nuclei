@@ -17,9 +17,9 @@ jobs:
 
       - uses: actions/setup-go@v3
         with: 
-          go-version: 1.18
+          go-version: 1.19
 
-      - uses: goreleaser/goreleaser-action@v3
+      - uses: goreleaser/goreleaser-action@v4
         with: 
           args: "release --rm-dist"
           version: latest
@@ -27,3 +27,5 @@ jobs:
         env: 
           GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
           SLACK_WEBHOOK: "${{ secrets.RELEASE_SLACK_WEBHOOK }}"
+          DISCORD_WEBHOOK_ID: "${{ secrets.DISCORD_WEBHOOK_ID }}"
+          DISCORD_WEBHOOK_TOKEN: "${{ secrets.DISCORD_WEBHOOK_TOKEN }}"

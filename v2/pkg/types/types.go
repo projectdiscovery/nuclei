@@ -97,10 +97,34 @@ type Options struct {
 	CloudAPIKey string
 	// Scanlist feature to get all the scan ids for a user
 	ScanList bool
+	// ListDatasources enables listing of datasources for user
+	ListDatasources bool
+	// ListTargets enables listing of targets for user
+	ListTargets bool
+	// ListTemplates enables listing of templates for user
+	ListTemplates bool
+	// Limit the number of items at a time
+	OutputLimit int
 	// Nostore
 	NoStore bool
 	// Delete scan
 	DeleteScan string
+	// AddDatasource adds a datasource to cloud storage
+	AddDatasource string
+	// RemoveDatasource deletes a datasource from cloud storage
+	RemoveDatasource string
+	// AddTemplate adds a list of templates to custom datasource
+	AddTemplate string
+	// AddTarget adds a list of targets to custom datasource
+	AddTarget string
+	// GetTemplate gets a template by id
+	GetTemplate string
+	// GetTarget gets a target by id
+	GetTarget string
+	// RemoveTemplate removes a list of templates
+	RemoveTemplate string
+	// RemoveTarget removes a list of targets
+	RemoveTarget string
 	// Get issues for a scan
 	ScanOutput string
 	// ResolversFile is a file containing resolvers for nuclei.
@@ -157,6 +181,10 @@ type Options struct {
 	Headless bool
 	// ShowBrowser specifies whether the show the browser in headless mode
 	ShowBrowser bool
+	// NoTables disables pretty printing of cloud results in tables
+	NoTables bool
+	// DisableClustering disables clustering of templates
+	DisableClustering bool
 	// UseInstalledChrome skips chrome install and use local instance
 	UseInstalledChrome bool
 	// SystemResolvers enables override of nuclei's DNS client opting to use system resolver stack.
@@ -308,6 +336,8 @@ type Options struct {
 	AwsBucketName string
 	// AWS Region name where aws s3 bucket is located
 	AwsRegion string
+	// Scan Strategy (auto,hosts-spray,templates-spray)
+	ScanStrategy string
 }
 
 func (options *Options) AddVarPayload(key string, value interface{}) {
@@ -349,4 +379,9 @@ func DefaultOptions() *Options {
 		Retries:                 1,
 		MaxHostError:            30,
 	}
+}
+
+// HasCloudOptions returns true if cloud options have been specified
+func (options *Options) HasCloudOptions() bool {
+	return options.ScanList || options.DeleteScan != "" || options.ScanOutput != "" || options.ListDatasources || options.ListTargets || options.ListTemplates || options.RemoveDatasource != "" || options.AddTarget != "" || options.AddTemplate != "" || options.RemoveTarget != "" || options.RemoveTemplate != "" || options.GetTarget != "" || options.GetTemplate != ""
 }

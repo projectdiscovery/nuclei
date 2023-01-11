@@ -537,3 +537,18 @@ func testHeadless(t *testing.T, actions []*Action, timeout time.Duration, handle
 		page.Close()
 	}
 }
+
+func TestContainsAnyModificationActionType(t *testing.T) {
+	if containsAnyModificationActionType() {
+		t.Error("Expected false, got true")
+	}
+	if containsAnyModificationActionType(ActionClick) {
+		t.Error("Expected false, got true")
+	}
+	if !containsAnyModificationActionType(ActionSetMethod, ActionAddHeader, ActionExtract) {
+		t.Error("Expected true, got false")
+	}
+	if !containsAnyModificationActionType(ActionSetMethod, ActionAddHeader, ActionSetHeader, ActionDeleteHeader, ActionSetBody) {
+		t.Error("Expected true, got false")
+	}
+}

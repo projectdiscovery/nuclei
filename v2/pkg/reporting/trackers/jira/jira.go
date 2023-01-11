@@ -25,26 +25,28 @@ type Integration struct {
 // Options contains the configuration options for jira client
 type Options struct {
 	// Cloud value (optional) is set to true when Jira cloud is used
-	Cloud bool `yaml:"cloud"`
+	Cloud bool `yaml:"cloud" json:"cloud"`
 	// UpdateExisting value (optional) if true, the existing opened issue is updated
-	UpdateExisting bool `yaml:"update-existing"`
+	UpdateExisting bool `yaml:"update-existing" json:"update_existing"`
 	// URL is the URL of the jira server
-	URL string `yaml:"url" validate:"required"`
+	URL string `yaml:"url" json:"url" validate:"required"`
 	// AccountID is the accountID of the jira user.
-	AccountID string `yaml:"account-id" validate:"required"`
+	AccountID string `yaml:"account-id" json:"account_id" validate:"required"`
 	// Email is the email of the user for jira instance
-	Email string `yaml:"email" validate:"required,email"`
+	Email string `yaml:"email" json:"email" validate:"required,email"`
 	// Token is the token for jira instance.
-	Token string `yaml:"token" validate:"required"`
+	Token string `yaml:"token" json:"token" validate:"required"`
 	// ProjectName is the name of the project.
-	ProjectName string `yaml:"project-name" validate:"required"`
+	ProjectName string `yaml:"project-name" json:"project_name" validate:"required"`
 	// IssueType (optional) is the name of the created issue type
-	IssueType string `yaml:"issue-type"`
+	IssueType string `yaml:"issue-type" json:"issue_type"`
 	// SeverityAsLabel (optional) sends the severity as the label of the created
 	// issue.
-	SeverityAsLabel bool `yaml:"severity-as-label"`
+	SeverityAsLabel bool `yaml:"severity-as-label" json:"severity_as_label"`
+	// Severity (optional) is the severity of the issue.
+	Severity []string `yaml:"severity" json:"severity"`
 
-	HttpClient *retryablehttp.Client `yaml:"-"`
+	HttpClient *retryablehttp.Client `yaml:"-" json:"-"`
 }
 
 // New creates a new issue tracker integration client based on options.
