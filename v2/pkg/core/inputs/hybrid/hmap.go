@@ -170,6 +170,13 @@ func (i *Input) Set(value string) {
 	if URL == "" {
 		return
 	}
+	// Check if input is ip or hostname
+	if iputil.IsIP(value) {
+		metaInput := &contextargs.MetaInput{Input: URL}
+		i.setItem(metaInput)
+		return
+	}
+
 	// parse hostname if url is given
 	host := utils.ParseHostname(value)
 	if host == "" {
