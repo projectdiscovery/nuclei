@@ -37,7 +37,7 @@ const (
 // HTTPErrorRetryPolicy is to retry for HTTPCodes >= 500.
 func HTTPErrorRetryPolicy() func(ctx context.Context, resp *http.Response, err error) (bool, error) {
 	return func(ctx context.Context, resp *http.Response, err error) (bool, error) {
-		if resp.StatusCode >= http.StatusInternalServerError {
+		if resp != nil && resp.StatusCode >= http.StatusInternalServerError {
 			return true, errors.New(resp.Status)
 		}
 		return retryablehttp.CheckRecoverableErrors(ctx, resp, err)
@@ -581,4 +581,27 @@ func (c *Client) sendRequest(req *retryablehttp.Request) (*http.Response, error)
 		return nil, fmt.Errorf("unknown error, status code: %d=%s", resp.StatusCode, string(data))
 	}
 	return resp, nil
+}
+
+// AddReportingSource adds a new data source
+func (c *Client) AddReportingSource(req AddReportingSourceRequest) (*AddReportingSourceResponse, error) {
+	var buf bytes.Buffer
+	if err := jsoniter.NewEncoder(&buf).Encode(req); err != nil {
+		return nil, errors.Wrap(err, "could not encode request")
+	}
+	httpReq, err := retryablehttp.NewRequest(http.MethodPost, fmt.Sprintf("%s/reporting/add-source", c.baseURL), bytes.NewReader(buf.Bytes()))
+	if err != nil {
+		return nil, errors.Wrap(err, "could not make request")
+	}
+	resp, err := c.sendRequest(httpReq)
+	if err != nil {
+		return nil, errors.Wrap(err, "could not do request")
+	}
+	defer resp.Body.Close()
+
+	var data AddReportingSourceResponse
+	if err := jsoniter.NewDecoder(resp.Body).Decode(&data); err != nil {
+		return nil, errors.Wrap(err, "could not decode resp")
+	}
+	return &data, nil
 }
