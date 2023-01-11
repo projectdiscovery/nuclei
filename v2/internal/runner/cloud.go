@@ -245,7 +245,7 @@ func (r *Runner) addTarget(location string) error {
 		if d.IsDir() || !strings.EqualFold(filepath.Ext(path), ".txt") {
 			return nil
 		}
-		base := filepath.Base(location)
+		base := filepath.Base(path)
 		reference, targetErr := r.cloudClient.AddTarget(base, location)
 		if targetErr != nil {
 			gologger.Error().Msgf("Could not upload %s: %s", location, targetErr)
