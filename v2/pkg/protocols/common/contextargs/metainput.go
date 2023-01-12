@@ -11,9 +11,9 @@ import (
 // MetaInput represents a target with metadata (TODO: replace with https://github.com/projectdiscovery/metainput)
 type MetaInput struct {
 	// Input represent the target
-	Input string
+	Input string `json:"input,omitempty"`
 	// CustomIP to use for connection
-	CustomIP string
+	CustomIP string `json:"customIP,omitempty"`
 }
 
 func (metaInput *MetaInput) marshalToBuffer() (bytes.Buffer, error) {
