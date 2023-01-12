@@ -11,6 +11,7 @@ import (
 	_ "net/http/pprof"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strconv"
 	"strings"
 	"sync/atomic"
@@ -311,6 +312,9 @@ func createReportingOptions(options *types.Options) (*reporting.Options, error) 
 			return nil, errors.Wrap(err, "could not parse reporting config file")
 		}
 		file.Close()
+
+		val := reflect.ValueOf(*reportingOptions)
+		assgnEnvVarToReportingOpt(val)
 	}
 	if options.MarkdownExportDirectory != "" {
 		if reportingOptions != nil {
@@ -797,4 +801,25 @@ func (r *Runner) SaveResumeConfig(path string) error {
 	data, _ := json.MarshalIndent(resumeCfgClone, "", "\t")
 
 	return os.WriteFile(path, data, os.ModePerm)
+}
+
+// replace $VAR_EXAMPLE with the correct variable in os ENV
+func assgnEnvVarToReportingOpt(val reflect.Value) {
+	for i := 0; i < val.NumField(); i++ {
+		field := val.Field(i)
+		if field.Kind() == reflect.Ptr {
+			if field.IsNil() {
+				continue
+			}
+			field = field.Elem()
+		}
+		if field.Kind() == reflect.Struct {
+			assgnEnvVarToReportingOpt(field)
+		} else {
+			valueStr := fmt.Sprintf("%v", field.Interface())
+			if valueStr[0] == '$' {
+				field.SetString(os.Getenv(valueStr[1:]))
+			}
+		}
+	}
 }
