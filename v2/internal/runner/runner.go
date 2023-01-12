@@ -817,7 +817,7 @@ func assgnEnvVarToReportingOpt(val reflect.Value) {
 			assgnEnvVarToReportingOpt(field)
 		} else {
 			valueStr := fmt.Sprintf("%v", field.Interface())
-			if valueStr[0] == '$' {
+			if strings.HasPrefix(valueStr, "$") {
 				field.SetString(os.Getenv(valueStr[1:]))
 			}
 		}
