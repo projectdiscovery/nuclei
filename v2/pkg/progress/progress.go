@@ -123,7 +123,7 @@ func (p *StatsTicker) IncrementRequests() {
 func (p *StatsTicker) SetRequests(count uint64) {
 	value, _ := p.stats.GetCounter("requests")
 	delta := count - value
-	p.stats.AddCounter("requests", delta)
+	p.stats.IncrementCounter("requests", int(delta))
 }
 
 // IncrementMatched increments the matched counter by 1.
