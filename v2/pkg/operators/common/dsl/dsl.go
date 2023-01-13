@@ -1235,9 +1235,5 @@ func (a *algNONE) Verify(key jwt.PublicKey, headerAndPayload []byte, signature [
 
 func checkNoneAlgorithm(alg string) bool {
 	alg = strings.TrimSpace(alg)
-	alg = strings.ToLower(alg)
-	if alg == "none" {
-		return true
-	}
-	return false
+	return alg == strings.ToLower(alg)
 }
