@@ -222,23 +222,22 @@ func New(options *types.Options) (*Runner, error) {
 		options.EnableProgressBar = true
 	}
 	// Creates the progress tracking object
-	var progressErr error
 	statsInterval := options.StatsInterval
 	if options.Cloud && !options.EnableProgressBar {
 		statsInterval = -1
 		options.EnableProgressBar = true
 	}
-	runner.progress, progressErr = progress.NewStatsTicker(statsInterval, options.EnableProgressBar, options.StatsJSON, options.Metrics, options.Cloud, options.MetricsPort)
-	if progressErr != nil {
-		return nil, progressErr
+	runner.progress, err = progress.NewStatsTicker(statsInterval, options.EnableProgressBar, options.StatsJSON, options.Metrics, options.Cloud, options.MetricsPort)
+	if err != nil {
+		return nil, err
 	}
 
 	// create project file if requested or load the existing one
 	if options.Project {
-		var projectFileErr error
-		runner.projectFile, projectFileErr = projectfile.New(&projectfile.Options{Path: options.ProjectPath, Cleanup: utils.IsBlank(options.ProjectPath)})
-		if projectFileErr != nil {
-			return nil, projectFileErr
+		var err error
+		runner.projectFile, err = projectfile.New(&projectfile.Options{Path: options.ProjectPath, Cleanup: utils.IsBlank(options.ProjectPath)})
+		if err != nil {
+			return nil, err
 		}
 	}
 

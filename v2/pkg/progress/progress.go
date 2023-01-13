@@ -98,16 +98,16 @@ func (p *StatsTicker) Init(hostCount int64, rulesCount int, requestCount int64) 
 	p.stats.AddCounter("matched", uint64(0))
 	p.stats.AddCounter("total", uint64(requestCount))
 
+	var printCallbackFunc clistats.PrintCallback
 	if p.active {
-		var printCallbackFunc clistats.PrintCallback
 		if p.outputJSON {
 			printCallbackFunc = printCallbackJSON
 		} else {
 			printCallbackFunc = p.makePrintCallback()
 		}
-		if err := p.stats.Start(printCallbackFunc, p.tickDuration); err != nil {
-			gologger.Warning().Msgf("Couldn't start statistics: %s", err)
-		}
+	}
+	if err := p.stats.Start(printCallbackFunc, p.tickDuration); err != nil {
+		gologger.Warning().Msgf("Couldn't start statistics: %s", err)
 	}
 }
 
@@ -275,9 +275,9 @@ func (p *StatsTicker) Stop() {
 		} else {
 			p.makePrintCallback()(p.stats)
 		}
-		if err := p.stats.Stop(); err != nil {
-			gologger.Warning().Msgf("Couldn't stop statistics: %s", err)
-		}
+	}
+	if err := p.stats.Stop(); err != nil {
+		gologger.Warning().Msgf("Couldn't stop statistics: %s", err)
 	}
 	if p.server != nil {
 		_ = p.server.Shutdown(context.Background())
