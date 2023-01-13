@@ -118,7 +118,7 @@ func (c *Client) GetResults(ID int64, checkProgress bool, limit int, callback fu
 			callback(&result)
 		}
 
-		//This is checked during scan is added else if no item found break out of loop.
+		// This is checked during scan is added else if no item found break out of loop.
 		if checkProgress {
 			if items.Finished && len(items.Items) == 0 {
 				break
@@ -142,6 +142,25 @@ func (c *Client) GetScans(limit int, from string) ([]GetScanRequest, error) {
 	resp, err := c.sendRequest(httpReq)
 	if err != nil {
 		return nil, errors.Wrap(err, "could not do request")
+	}
+	defer resp.Body.Close()
+
+	if err := jsoniter.NewDecoder(resp.Body).Decode(&items); err != nil {
+		return items, errors.Wrap(err, "could not decode results")
+	}
+	return items, nil
+}
+
+func (c *Client) GetScan(id int64) (GetScanRequest, error) {
+	var items GetScanRequest
+	httpReq, err := retryablehttp.NewRequest(http.MethodGet, fmt.Sprintf("%s/scan/%d", c.baseURL, id), nil)
+	if err != nil {
+		return items, errors.Wrap(err, "could not make request")
+	}
+
+	resp, err := c.sendRequest(httpReq)
+	if err != nil {
+		return items, errors.Wrap(err, "could not do request")
 	}
 	defer resp.Body.Close()
 
