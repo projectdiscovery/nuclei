@@ -870,9 +870,8 @@ func init() {
 						algorithm = jwt.EdDSA
 					}
 
-					if checkNoneAlgorithm(alg) {
-						NoneAlgValue = alg
-						algorithm = &algNONE{}
+					if isjwtAlgorithmNone(alg) {
+						algorithm = &algNONE{algValue: alg}
 					}
 					if algorithm == nil {
 						return nil, fmt.Errorf("invalid algorithm: %s", optionalAlgorithm)
@@ -1213,12 +1212,12 @@ func (e *CompilationError) Unwrap() error {
 	return e.WrappedError
 }
 
-var NoneAlgValue string = "NONE"
-
-type algNONE struct{}
+type algNONE struct {
+	algValue string
+}
 
 func (a *algNONE) Name() string {
-	return NoneAlgValue
+	return a.algValue
 }
 
 func (a *algNONE) Sign(key jwt.PrivateKey, headerAndPayload []byte) ([]byte, error) {
@@ -1233,7 +1232,7 @@ func (a *algNONE) Verify(key jwt.PublicKey, headerAndPayload []byte, signature [
 	return nil
 }
 
-func checkNoneAlgorithm(alg string) bool {
+func isjwtAlgorithmNone(alg string) bool {
 	alg = strings.TrimSpace(alg)
-	return alg == strings.ToLower(alg)
+	return strings.ToLower(alg) == "none"
 }
