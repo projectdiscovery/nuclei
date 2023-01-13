@@ -86,11 +86,11 @@ func (c *Client) AddScan(req *AddScanRequest) (int64, error) {
 
 // GetResults gets results from nuclei server for an ID
 // until there are no more results left to retrieve.
-func (c *Client) GetResults(ID int64, checkProgress bool, limit int, callback func(*output.ResultEvent)) error {
+func (c *Client) GetResults(ID int64, checkProgress bool, callback func(*output.ResultEvent)) error {
 	lastID := int64(0)
 
 	for {
-		uri := fmt.Sprintf("%s/results?id=%d&from=%d&size=%d", c.baseURL, ID, lastID, limit)
+		uri := fmt.Sprintf("%s/results?id=%d&from=%d&size=%d", c.baseURL, ID, lastID, paginationSize)
 		httpReq, err := retryablehttp.NewRequest(http.MethodGet, uri, nil)
 		if err != nil {
 			return errors.Wrap(err, "could not make request")
@@ -132,9 +132,11 @@ func (c *Client) GetResults(ID int64, checkProgress bool, limit int, callback fu
 	return nil
 }
 
-func (c *Client) GetScans(limit int, from string) ([]GetScanRequest, error) {
+const paginationSize = 100
+
+func (c *Client) GetScans(from string) ([]GetScanRequest, error) {
 	var items []GetScanRequest
-	httpReq, err := retryablehttp.NewRequest(http.MethodGet, fmt.Sprintf("%s/scan?from=%s&size=%d", c.baseURL, url.QueryEscape(from), limit), nil)
+	httpReq, err := retryablehttp.NewRequest(http.MethodGet, fmt.Sprintf("%s/scan?from=%s&size=%d", c.baseURL, url.QueryEscape(from), paginationSize), nil)
 	if err != nil {
 		return items, errors.Wrap(err, "could not make request")
 	}

@@ -27,7 +27,7 @@ func (r *Runner) getScanList(limit int) error {
 		count  int
 	)
 	for {
-		items, err := r.cloudClient.GetScans(limit, lastTime)
+		items, err := r.cloudClient.GetScans(lastTime)
 		if err != nil {
 			return err
 		}
@@ -46,6 +46,9 @@ func (r *Runner) getScanList(limit int) error {
 				gologger.Silent().Msgf("%d. [%s] [TARGETS: %d] [TEMPLATES: %d] [MATCHED: %d] [DURATION: %s] [STATUS: %s]\n", res.ScanID, res.Timestamp, res.Target, res.Template, res.ScanResult, res.ScanTime, strings.ToUpper(res.ScanStatus))
 
 			}
+		}
+		if limit > 0 && count >= limit {
+			break
 		}
 	}
 	if count == 0 {
@@ -161,9 +164,15 @@ func (r *Runner) deleteScan(id string) error {
 
 func (r *Runner) getResults(id string, limit int) error {
 	ID, _ := strconv.ParseInt(id, 10, 64)
-	err := r.cloudClient.GetResults(ID, false, limit, func(re *output.ResultEvent) {
+
+	count := 0
+	err := r.cloudClient.GetResults(ID, false, func(re *output.ResultEvent) {
+		count++
 		if outputErr := r.output.Write(re); outputErr != nil {
 			gologger.Warning().Msgf("Could not write output: %s", outputErr)
+		}
+		if limit > 0 && count >= limit {
+			return
 		}
 	})
 	return err
