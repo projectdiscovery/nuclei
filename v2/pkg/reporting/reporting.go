@@ -1,8 +1,10 @@
 package reporting
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
 
 	"github.com/pkg/errors"
@@ -47,6 +49,47 @@ type Options struct {
 	SplunkExporter *splunk.Options `yaml:"splunkhec"`
 
 	HttpClient *retryablehttp.Client `yaml:"-"`
+}
+
+func checkForText(v interface{}) {
+	val := reflect.ValueOf(v)
+	if val.Kind() == reflect.Ptr {
+		if val.IsValid() && !val.IsNil() {
+			val = val.Elem()
+		} else {
+			return
+		}
+	}
+	if val.Kind() == reflect.Struct {
+		for i := 0; i < val.NumField(); i++ {
+			field := val.Type().Field(i)
+			if field.Tag.Get("yaml") != "" {
+				fieldVal := val.Field(i)
+				if fieldVal.Kind() == reflect.Ptr && fieldVal.IsNil() {
+					continue
+				}
+				checkForText(fieldVal.Interface())
+			}
+		}
+	} else if val.Kind() == reflect.String {
+		valueStr := val.String()
+		if len(valueStr) > 0 && valueStr[0] == '$' {
+			fmt.Println(val, valueStr)
+		}
+	}
+}
+
+func (options *Options) UnmarshalYAML(unmarshal func(interface{}) error) error {
+	type optionsAlias Options
+	opts := optionsAlias{}
+
+	if err := unmarshal(&opts); err != nil {
+		return err
+	}
+	*options = Options(opts)
+
+	checkForText(opts)
+	return nil
 }
 
 // Filter filters the received event and decides whether to perform
