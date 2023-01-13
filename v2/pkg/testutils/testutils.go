@@ -79,7 +79,7 @@ type TemplateInfo struct {
 
 // NewMockExecuterOptions creates a new mock executeroptions struct
 func NewMockExecuterOptions(options *types.Options, info *TemplateInfo) *protocols.ExecuterOptions {
-	progressImpl, _ := progress.NewStatsTicker(0, false, false, false, 0)
+	progressImpl, _ := progress.NewStatsTicker(0, false, false, false, false, 0)
 	executerOpts := &protocols.ExecuterOptions{
 		TemplateID:   info.ID,
 		TemplateInfo: info.Info,
@@ -158,6 +158,9 @@ func (m *MockProgressClient) AddToTotal(delta int64) {}
 
 // IncrementRequests increments the requests counter by 1.
 func (m *MockProgressClient) IncrementRequests() {}
+
+// SetRequests sets the counter by incrementing it with a delta
+func (m *MockProgressClient) SetRequests(count uint64) {}
 
 // IncrementMatched increments the matched counter by 1.
 func (m *MockProgressClient) IncrementMatched() {}
