@@ -836,10 +836,11 @@ func init() {
 				var algorithm jwt.Alg
 
 				if argSize > 1 {
-					optionalAlgorithm = strings.ToUpper(args[1].(string))
+					alg := args[1].(string)
+					optionalAlgorithm = strings.ToUpper(alg)
 
 					switch optionalAlgorithm {
-					case "NONE", "":
+					case "":
 						algorithm = jwt.NONE
 					case "HS256":
 						algorithm = jwt.HS256
@@ -869,6 +870,10 @@ func init() {
 						algorithm = jwt.EdDSA
 					}
 
+					if checkNoneAlgorithm(alg) {
+						NoneAlgValue = alg
+						algorithm = &algNONE{}
+					}
 					if algorithm == nil {
 						return nil, fmt.Errorf("invalid algorithm: %s", optionalAlgorithm)
 					}
@@ -1206,4 +1211,33 @@ func (e *CompilationError) Error() string {
 
 func (e *CompilationError) Unwrap() error {
 	return e.WrappedError
+}
+
+var NoneAlgValue string = "NONE"
+
+type algNONE struct{}
+
+func (a *algNONE) Name() string {
+	return NoneAlgValue
+}
+
+func (a *algNONE) Sign(key jwt.PrivateKey, headerAndPayload []byte) ([]byte, error) {
+	return nil, nil
+}
+
+func (a *algNONE) Verify(key jwt.PublicKey, headerAndPayload []byte, signature []byte) error {
+	if !bytes.Equal(signature, []byte{}) {
+		return jwt.ErrTokenSignature
+	}
+
+	return nil
+}
+
+func checkNoneAlgorithm(alg string) bool {
+	alg = strings.TrimSpace(alg)
+	alg = strings.ToLower(alg)
+	if alg == "none" {
+		return true
+	}
+	return false
 }
