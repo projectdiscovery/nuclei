@@ -170,7 +170,7 @@ func (p *StatsTicker) makePrintCallback() func(stats clistats.StatisticsClient) 
 		requests, okRequests := stats.GetCounter("requests")
 		total, okTotal := stats.GetCounter("total")
 
-		if okRequests && okTotal && duration > 0 {
+		if okRequests && okTotal && duration > 0 && !p.cloud {
 			builder.WriteString(" | RPS: ")
 			builder.WriteString(clistats.String(uint64(float64(requests) / duration.Seconds())))
 		}
@@ -180,14 +180,14 @@ func (p *StatsTicker) makePrintCallback() func(stats clistats.StatisticsClient) 
 			builder.WriteString(clistats.String(matched))
 		}
 
-		if errors, ok := stats.GetCounter("errors"); ok {
+		if errors, ok := stats.GetCounter("errors"); ok && !p.cloud {
 			builder.WriteString(" | Errors: ")
 			builder.WriteString(clistats.String(errors))
 		}
 
 		if okRequests && okTotal {
 			if p.cloud {
-				builder.WriteString(" | Inputs: ")
+				builder.WriteString(" | Task: ")
 			} else {
 				builder.WriteString(" | Requests: ")
 			}
