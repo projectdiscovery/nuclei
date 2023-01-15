@@ -223,7 +223,12 @@ func New(options *types.Options) (*Runner, error) {
 	}
 	// Creates the progress tracking object
 	var progressErr error
-	runner.progress, progressErr = progress.NewStatsTicker(options.StatsInterval, options.EnableProgressBar, options.StatsJSON, options.Metrics, options.MetricsPort)
+	statsInterval := options.StatsInterval
+	if options.Cloud && !options.EnableProgressBar {
+		statsInterval = -1
+		options.EnableProgressBar = true
+	}
+	runner.progress, progressErr = progress.NewStatsTicker(statsInterval, options.EnableProgressBar, options.StatsJSON, options.Metrics, options.Cloud, options.MetricsPort)
 	if progressErr != nil {
 		return nil, progressErr
 	}
@@ -500,10 +505,16 @@ func (r *Runner) RunEnumeration() error {
 			err = r.listTargets()
 		} else if r.options.ListTemplates {
 			err = r.listTemplates()
+		} else if r.options.ListReportingSources {
+			err = r.listReportingSources()
 		} else if r.options.AddDatasource != "" {
 			err = r.addCloudDataSource(r.options.AddDatasource)
 		} else if r.options.RemoveDatasource != "" {
 			err = r.removeDatasource(r.options.RemoveDatasource)
+		} else if r.options.DisableReportingSource != "" {
+			err = r.toggleReportingSource(r.options.DisableReportingSource, false)
+		} else if r.options.EnableReportingSource != "" {
+			err = r.toggleReportingSource(r.options.EnableReportingSource, true)
 		} else if r.options.AddTarget != "" {
 			err = r.addTarget(r.options.AddTarget)
 		} else if r.options.AddTemplate != "" {
@@ -516,6 +527,8 @@ func (r *Runner) RunEnumeration() error {
 			err = r.removeTarget(r.options.RemoveTarget)
 		} else if r.options.RemoveTemplate != "" {
 			err = r.removeTemplate(r.options.RemoveTemplate)
+		} else if r.options.ReportingConfig != "" {
+			err = r.addCloudReportingSource()
 		} else {
 			if len(store.Templates())+len(store.Workflows())+len(cloudTemplates) == 0 {
 				return errors.New("no templates provided for scan")

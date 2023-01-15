@@ -118,7 +118,7 @@ func (c *Client) GetResults(ID int64, checkProgress bool, limit int, callback fu
 			callback(&result)
 		}
 
-		//This is checked during scan is added else if no item found break out of loop.
+		// This is checked during scan is added else if no item found break out of loop.
 		if checkProgress {
 			if items.Finished && len(items.Items) == 0 {
 				break
@@ -142,6 +142,25 @@ func (c *Client) GetScans(limit int, from string) ([]GetScanRequest, error) {
 	resp, err := c.sendRequest(httpReq)
 	if err != nil {
 		return nil, errors.Wrap(err, "could not do request")
+	}
+	defer resp.Body.Close()
+
+	if err := jsoniter.NewDecoder(resp.Body).Decode(&items); err != nil {
+		return items, errors.Wrap(err, "could not decode results")
+	}
+	return items, nil
+}
+
+func (c *Client) GetScan(id int64) (GetScanRequest, error) {
+	var items GetScanRequest
+	httpReq, err := retryablehttp.NewRequest(http.MethodGet, fmt.Sprintf("%s/scan/%d", c.baseURL, id), nil)
+	if err != nil {
+		return items, errors.Wrap(err, "could not make request")
+	}
+
+	resp, err := c.sendRequest(httpReq)
+	if err != nil {
+		return items, errors.Wrap(err, "could not do request")
 	}
 	defer resp.Body.Close()
 
@@ -271,6 +290,46 @@ func (c *Client) ListDatasources() ([]GetDataSourceResponse, error) {
 		return items, errors.Wrap(err, "could not decode results")
 	}
 	return items, nil
+}
+
+func (c *Client) ListReportingSources() ([]GetReportingSourceResponse, error) {
+	var items []GetReportingSourceResponse
+	httpReq, err := retryablehttp.NewRequest(http.MethodGet, fmt.Sprintf("%s/reporting", c.baseURL), nil)
+	if err != nil {
+		return items, errors.Wrap(err, "could not make request")
+	}
+
+	resp, err := c.sendRequest(httpReq)
+	if err != nil {
+		return nil, errors.Wrap(err, "could not do request")
+	}
+	defer resp.Body.Close()
+
+	if err := jsoniter.NewDecoder(resp.Body).Decode(&items); err != nil {
+		return items, errors.Wrap(err, "could not decode results")
+	}
+	return items, nil
+}
+
+func (c *Client) ToggleReportingSource(ID int64, status bool) error {
+	r := ReportingSourceStatus{Enabled: status}
+
+	var buf bytes.Buffer
+	if err := jsoniter.NewEncoder(&buf).Encode(r); err != nil {
+		return errors.Wrap(err, "could not encode request")
+	}
+	httpReq, err := retryablehttp.NewRequest(http.MethodPut, fmt.Sprintf("%s/reporting/%d", c.baseURL, ID), bytes.NewReader(buf.Bytes()))
+	if err != nil {
+		return errors.Wrap(err, "could not make request")
+	}
+
+	resp, err := c.sendRequest(httpReq)
+	if err != nil {
+		return errors.Wrap(err, "could not do request")
+	}
+	defer resp.Body.Close()
+	_, _ = io.Copy(io.Discard, resp.Body)
+	return nil
 }
 
 func (c *Client) ListTargets(query string) ([]GetTargetResponse, error) {
@@ -581,4 +640,27 @@ func (c *Client) sendRequest(req *retryablehttp.Request) (*http.Response, error)
 		return nil, fmt.Errorf("unknown error, status code: %d=%s", resp.StatusCode, string(data))
 	}
 	return resp, nil
+}
+
+// AddReportingSource adds a new data source
+func (c *Client) AddReportingSource(req AddReportingSourceRequest) (*AddReportingSourceResponse, error) {
+	var buf bytes.Buffer
+	if err := jsoniter.NewEncoder(&buf).Encode(req); err != nil {
+		return nil, errors.Wrap(err, "could not encode request")
+	}
+	httpReq, err := retryablehttp.NewRequest(http.MethodPost, fmt.Sprintf("%s/reporting/add-source", c.baseURL), bytes.NewReader(buf.Bytes()))
+	if err != nil {
+		return nil, errors.Wrap(err, "could not make request")
+	}
+	resp, err := c.sendRequest(httpReq)
+	if err != nil {
+		return nil, errors.Wrap(err, "could not do request")
+	}
+	defer resp.Body.Close()
+
+	var data AddReportingSourceResponse
+	if err := jsoniter.NewDecoder(resp.Body).Decode(&data); err != nil {
+		return nil, errors.Wrap(err, "could not decode resp")
+	}
+	return &data, nil
 }
