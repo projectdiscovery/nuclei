@@ -135,6 +135,18 @@ type GetTemplatesResponse struct {
 	Type       string `json:"type,omitempty"`
 }
 
+type GetReportingSourceResponse struct {
+	ID          int64     `json:"id"`
+	Type        string    `json:"type"`
+	ProjectName string    `json:"project_name"`
+	Enabled     bool      `json:"enabled"`
+	Updatedat   time.Time `json:"updated_at"`
+}
+
+type ReportingSourceStatus struct {
+	Enabled bool `json:"enabled"`
+}
+
 // AddItemResponse is the response to add item request
 type AddItemResponse struct {
 	Ok string `json:"ok"`
