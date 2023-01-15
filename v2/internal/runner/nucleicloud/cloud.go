@@ -292,6 +292,46 @@ func (c *Client) ListDatasources() ([]GetDataSourceResponse, error) {
 	return items, nil
 }
 
+func (c *Client) ListReportingSources() ([]GetReportingSourceResponse, error) {
+	var items []GetReportingSourceResponse
+	httpReq, err := retryablehttp.NewRequest(http.MethodGet, fmt.Sprintf("%s/reporting", c.baseURL), nil)
+	if err != nil {
+		return items, errors.Wrap(err, "could not make request")
+	}
+
+	resp, err := c.sendRequest(httpReq)
+	if err != nil {
+		return nil, errors.Wrap(err, "could not do request")
+	}
+	defer resp.Body.Close()
+
+	if err := jsoniter.NewDecoder(resp.Body).Decode(&items); err != nil {
+		return items, errors.Wrap(err, "could not decode results")
+	}
+	return items, nil
+}
+
+func (c *Client) ToggleReportingSource(ID int64, status bool) error {
+	r := ReportingSourceStatus{Enabled: status}
+
+	var buf bytes.Buffer
+	if err := jsoniter.NewEncoder(&buf).Encode(r); err != nil {
+		return errors.Wrap(err, "could not encode request")
+	}
+	httpReq, err := retryablehttp.NewRequest(http.MethodPut, fmt.Sprintf("%s/reporting/%d", c.baseURL, ID), bytes.NewReader(buf.Bytes()))
+	if err != nil {
+		return errors.Wrap(err, "could not make request")
+	}
+
+	resp, err := c.sendRequest(httpReq)
+	if err != nil {
+		return errors.Wrap(err, "could not do request")
+	}
+	defer resp.Body.Close()
+	_, _ = io.Copy(io.Discard, resp.Body)
+	return nil
+}
+
 func (c *Client) ListTargets(query string) ([]GetTargetResponse, error) {
 	var builder strings.Builder
 	_, _ = builder.WriteString(c.baseURL)
