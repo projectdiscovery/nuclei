@@ -272,3 +272,7 @@ func stringSliceContains(slice []string, item string) bool {
 	}
 	return false
 }
+
+func (c *Client) GetReportingOptions() *Options {
+	return c.options
+}

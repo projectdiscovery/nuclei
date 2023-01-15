@@ -1,6 +1,7 @@
 package nucleicloud
 
 import (
+	"encoding/json"
 	"time"
 
 	"github.com/projectdiscovery/nuclei/v2/pkg/model/types/severity"
@@ -134,6 +135,18 @@ type GetTemplatesResponse struct {
 	Type       string `json:"type,omitempty"`
 }
 
+type GetReportingSourceResponse struct {
+	ID          int64     `json:"id"`
+	Type        string    `json:"type"`
+	ProjectName string    `json:"project_name"`
+	Enabled     bool      `json:"enabled"`
+	Updatedat   time.Time `json:"updated_at"`
+}
+
+type ReportingSourceStatus struct {
+	Enabled bool `json:"enabled"`
+}
+
 // AddItemResponse is the response to add item request
 type AddItemResponse struct {
 	Ok string `json:"ok"`
@@ -151,4 +164,15 @@ type ListScanOutput struct {
 
 type ExistsInputResponse struct {
 	Reference string `json:"reference"`
+}
+
+// AddReportingSourceRequest is a add reporting source request item.
+type AddReportingSourceRequest struct {
+	Type    string          `json:"type"`
+	Payload json.RawMessage `json:"payload"`
+}
+
+// AddReportingSourceResponse is a add reporting source response item.
+type AddReportingSourceResponse struct {
+	Ok string `json:"ok"`
 }
