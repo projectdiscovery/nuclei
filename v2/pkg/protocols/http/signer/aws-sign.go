@@ -113,10 +113,6 @@ var AwsSkipList = map[string]interface{}{
 	"region": struct{}{},
 }
 
-var AwsDefaultVars = map[string]interface{}{
-	"region": "us-east-2",
-}
-
 var AwsInternalOnlyVars = map[string]interface{}{
 	"aws-id":     struct{}{},
 	"aws-secret": struct{}{},
