@@ -16,9 +16,8 @@ import (
 )
 
 /*
-Below Options specify some options on how to execute
-execute takes compiled templates/workflows and runs them on targets
-Below are all options to execute
+Below Options specify some options on how to execute templates on targets
+- Execute takes compiled templates/workflows and runs them on targets
 */
 
 // Executes nuclei with default configuration
@@ -28,7 +27,7 @@ func (e *Engine) Execute(templates []*templates.Template, target InputProvider) 
 
 // ExecuteScanWithOpts executes scan with given scanStatergy
 func (e *Engine) ExecuteScanWithOpts(templatesList []*templates.Template, target InputProvider, noCluster bool) *atomic.Bool {
-	var results *atomic.Bool
+	results := &atomic.Bool{}
 	selfcontainedWg := &sync.WaitGroup{}
 
 	var finalTemplates []*templates.Template
