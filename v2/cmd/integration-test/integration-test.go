@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"os"
 	"strings"
@@ -35,9 +36,23 @@ var (
 		"offlineHttp":     offlineHttpTestcases,
 		"customConfigDir": customConfigDirTestCases,
 	}
+
+	// For debug purposes
+	runProtocol = ""
+	runTemplate = ""
 )
 
 func main() {
+	flag.StringVar(&runProtocol, "protocol", "", "run integration tests of given protocol")
+	flag.StringVar(&runTemplate, "template", "", "run integration test of given template")
+	flag.Parse()
+
+	if runProtocol != "" {
+		debug = true
+		debugTests()
+		os.Exit(1)
+	}
+
 	failedTestTemplatePaths := runTests(toMap(toSlice(customTests)))
 
 	if len(failedTestTemplatePaths) > 0 {
@@ -49,6 +64,18 @@ func main() {
 		}
 
 		os.Exit(1)
+	}
+}
+
+func debugTests() {
+	for tpath, testcase := range protocolTests[runProtocol] {
+		if runTemplate != "" && !strings.Contains(tpath, runTemplate) {
+			continue
+		} else {
+			if err := testcase.Execute(tpath); err != nil {
+				panic(err)
+			}
+		}
 	}
 }
 
@@ -84,7 +111,7 @@ func execute(testCase testutils.TestCase, templatePath string) (string, error) {
 
 func expectResultsCount(results []string, expectedNumber int) error {
 	if len(results) != expectedNumber {
-		return fmt.Errorf("incorrect number of results: %d (actual) vs %d (expected) \nResults:\n\t%s\n", len(results), expectedNumber, strings.Join(results, "\n\t"))
+		return fmt.Errorf("incorrect number of results: %d (actual) vs %d (expected) \nResults:\n\t%s", len(results), expectedNumber, strings.Join(results, "\n\t"))
 	}
 	return nil
 }

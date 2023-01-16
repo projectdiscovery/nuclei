@@ -7,7 +7,6 @@ import (
 	"go.uber.org/atomic"
 
 	"github.com/projectdiscovery/gologger"
-	"github.com/projectdiscovery/nuclei/v2/pkg/core/inputs"
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/contextargs"
 	"github.com/projectdiscovery/nuclei/v2/pkg/templates"
@@ -95,7 +94,6 @@ func (e *Engine) ExecuteWithResults(templatesList []*templates.Template, target 
 func (e *Engine) executeTemplateSpray(templatesList []*templates.Template, target InputProvider) *atomic.Bool {
 	results := &atomic.Bool{}
 
-	templateswg := sizedwaitgroup.New(e.options.TemplateThreads + e.options.HeadlessTemplateThreads)
 	// Max concurrent execution of headless templates on targets
 	headlesswg := sizedwaitgroup.New(e.options.HeadlessTemplateThreads)
 	// Max concurrent execution of templates other than headless
@@ -110,24 +108,19 @@ func (e *Engine) executeTemplateSpray(templatesList []*templates.Template, targe
 		}
 	}
 
-	for _, template := range templatesList {
-		templateswg.Add()
-		go func(tpl *templates.Template) {
-			defer templateswg.Done()
-			wp := getWorkpool(tpl.Type())
-			e.executeTemplateWithManyTargets(tpl, target, wp, results)
-		}(template)
+	for _, tpl := range templatesList {
+		wp := getWorkpool(tpl.Type())
+		e.executeTemplateWithManyTargets(tpl, target, wp, results)
 	}
 	headlesswg.Wait()
 	otherwg.Wait()
-	templateswg.Wait()
 	return results
 }
 
 // executeHostSpray executes scan using host spray strategy where templates are iterated over each target
 func (e *Engine) executeHostSpray(templatesList []*templates.Template, target InputProvider) *atomic.Bool {
 	results := &atomic.Bool{}
-	hostwg := sizedwaitgroup.New(e.options.BulkSize + e.options.HeadlessBulkSize)
+
 	// Max concurrent headless templates
 	headlesswg := sizedwaitgroup.New(e.options.HeadlessTemplateThreads)
 	// Max concurrent templates other than headless
@@ -141,32 +134,19 @@ func (e *Engine) executeHostSpray(templatesList []*templates.Template, target In
 			return &otherwg
 		}
 	}
-
+	// iterate over all targets
 	target.Scan(func(value *contextargs.MetaInput) bool {
-		host := inputs.SimpleInputProvider{
-			Inputs: []*contextargs.MetaInput{
-				value,
-			},
+		// Now iterate and run all templates
+		for _, tpl := range templatesList {
+			wp := getWorkpool(tpl.Type())
+			wp.Add()
+			go e.executeTemplateWithOneTarget(tpl, value, wp, results)
 		}
-		// Goroutine for each host
-		hostwg.Add()
-		go func(inputtarget InputProvider) {
-			defer hostwg.Done()
-
-			// Now iterate and run all templates
-			for _, tpl := range templatesList {
-				wp := getWorkpool(tpl.Type())
-				wp.Add()
-				go e.executeTemplateWithOneTarget(tpl, value, wp, results)
-			}
-
-		}(&host)
 		return true
 	})
 
 	headlesswg.Wait()
 	otherwg.Wait()
-	hostwg.Wait()
 	return results
 }
 
