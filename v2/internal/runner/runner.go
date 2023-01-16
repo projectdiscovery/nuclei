@@ -188,6 +188,9 @@ func New(options *types.Options) (*Runner, error) {
 	hmapInput, err := hybrid.New(&hybrid.Options{
 		Options: options,
 		NotFoundCallback: func(target string) bool {
+			if !options.Cloud {
+				return false
+			}
 			parsed, parseErr := strconv.ParseInt(target, 10, 64)
 			if parseErr != nil {
 				if err := runner.cloudClient.ExistsDataSourceItem(nucleicloud.ExistsDataSourceItemRequest{Contents: target, Type: "targets"}); err == nil {
