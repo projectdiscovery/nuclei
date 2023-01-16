@@ -28,8 +28,8 @@ require (
 	github.com/projectdiscovery/hmap v0.0.6
 	github.com/projectdiscovery/interactsh v1.0.6-0.20220827132222-460cc6270053
 	github.com/projectdiscovery/rawhttp v0.1.4
-	github.com/projectdiscovery/retryabledns v1.0.17
-	github.com/projectdiscovery/retryablehttp-go v1.0.7
+	github.com/projectdiscovery/retryabledns v1.0.20
+	github.com/projectdiscovery/retryablehttp-go v1.0.8
 	github.com/projectdiscovery/stringsutil v0.0.2
 	github.com/projectdiscovery/yamldoc-go v1.0.3-0.20211126104922-00d2c6bb43b6
 	github.com/remeh/sizedwaitgroup v1.0.0
@@ -106,7 +106,6 @@ require (
 	github.com/nxadm/tail v1.4.8 // indirect
 	github.com/pjbgf/sha1cd v0.2.3 // indirect
 	github.com/projectdiscovery/asnmap v0.0.1 // indirect
-	github.com/projectdiscovery/sliceutil v0.0.1 // indirect
 	github.com/prometheus/client_golang v1.14.0 // indirect
 	github.com/prometheus/client_model v0.3.0 // indirect
 	github.com/prometheus/common v0.39.0 // indirect
