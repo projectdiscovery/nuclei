@@ -12,9 +12,16 @@ func (request *Request) CanCluster(other *Request) bool {
 	if request.Name != other.Name ||
 		request.class != other.class ||
 		request.Retries != other.Retries ||
-		request.question != other.question ||
-		*request.Recursion != *other.Recursion {
+		request.question != other.question {
 		return false
+	}
+	if request.Recursion != nil {
+		if other.Recursion == nil {
+			return false
+		}
+		if *request.Recursion != *other.Recursion {
+			return false
+		}
 	}
 	return true
 }
