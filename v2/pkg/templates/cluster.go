@@ -23,7 +23,7 @@ import (
 // request which saves time and network resources during execution.
 //
 // The clusterer goes through all the templates, looking for templates with a single
-// HTTP/DNS request to an endpoint (multiple requests aren't clustered as of now).
+// HTTP/DNS/TLS request to an endpoint (multiple requests aren't clustered as of now).
 //
 // All the templates are iterated and any templates with request that is identical
 // to the first individual request is compared for equality.
@@ -35,6 +35,7 @@ import (
 //   - If request paths aren't identical.
 //   - If request headers aren't identical
 //   - Similarly for DNS, only identical DNS requests are clustered to a target.
+//   - Similarly for TLS, only identical TLS requests are clustered to a target.
 //
 // If multiple requests are identified as identical, they are appended to a slice.
 // Finally, the engine creates a single executer with a clusteredexecuter for all templates
@@ -46,33 +47,46 @@ func Cluster(list map[string]*Template) [][]*Template {
 	for key, template := range list {
 		// We only cluster http and dns requests as of now.
 		// Take care of requests that can't be clustered first.
-		if len(template.RequestsHTTP) == 0 && len(template.RequestsDNS) == 0 {
+		if len(template.RequestsHTTP) == 0 && len(template.RequestsDNS) == 0 && len(template.RequestsSSL) == 0 {
 			delete(list, key)
 			final = append(final, []*Template{template})
 			continue
 		}
 		delete(list, key) // delete element first so it's not found later.
 
+		var templateType types.ProtocolType
+		switch {
+		case len(template.RequestsDNS) == 1:
+			templateType = types.DNSProtocol
+		case len(template.RequestsHTTP) == 1:
+			templateType = types.HTTPProtocol
+		case len(template.RequestsSSL) == 1:
+			templateType = types.SSLProtocol
+		}
+
 		// Find any/all similar matching request that is identical to
 		// this one and cluster them together for http protocol only.
 		cluster := []*Template{}
-		if len(template.RequestsDNS) == 1 {
-			for otherKey, other := range list {
+		for otherKey, other := range list {
+			switch templateType {
+			case types.DNSProtocol:
 				if len(other.RequestsDNS) == 0 || len(other.RequestsDNS) > 1 {
 					continue
-				}
-				if template.RequestsDNS[0].CanCluster(other.RequestsDNS[0]) {
+				} else if template.RequestsDNS[0].CanCluster(other.RequestsDNS[0]) {
 					delete(list, otherKey)
 					cluster = append(cluster, other)
 				}
-			}
-		}
-		if len(template.RequestsHTTP) == 1 {
-			for otherKey, other := range list {
+			case types.HTTPProtocol:
 				if len(other.RequestsHTTP) == 0 || len(other.RequestsHTTP) > 1 {
 					continue
+				} else if template.RequestsHTTP[0].CanCluster(other.RequestsHTTP[0]) {
+					delete(list, otherKey)
+					cluster = append(cluster, other)
 				}
-				if template.RequestsHTTP[0].CanCluster(other.RequestsHTTP[0]) {
+			case types.SSLProtocol:
+				if len(other.RequestsSSL) == 0 || len(other.RequestsSSL) > 1 {
+					continue
+				} else if template.RequestsSSL[0].CanCluster(other.RequestsSSL[0]) {
 					delete(list, otherKey)
 					cluster = append(cluster, other)
 				}
@@ -123,11 +137,15 @@ func ClusterTemplates(templatesList []*Template, options protocols.ExecuterOptio
 			for _, req := range cluster[0].RequestsHTTP {
 				req.Options().TemplateID = clusterID
 			}
+			for _, req := range cluster[0].RequestsSSL {
+				req.Options().TemplateID = clusterID
+			}
 			executerOpts.TemplateID = clusterID
 			finalTemplatesList = append(finalTemplatesList, &Template{
 				ID:            clusterID,
 				RequestsDNS:   cluster[0].RequestsDNS,
 				RequestsHTTP:  cluster[0].RequestsHTTP,
+				RequestsSSL:   cluster[0].RequestsSSL,
 				Executer:      NewClusterExecuter(cluster, &executerOpts),
 				TotalRequests: len(cluster[0].RequestsHTTP) + len(cluster[0].RequestsDNS),
 			})
@@ -167,6 +185,9 @@ func NewClusterExecuter(requests []*Template, options *protocols.ExecuterOptions
 	} else if len(requests[0].RequestsHTTP) == 1 {
 		executer.templateType = types.HTTPProtocol
 		executer.requests = requests[0].RequestsHTTP[0]
+	} else if len(requests[0].RequestsSSL) == 1 {
+		executer.templateType = types.SSLProtocol
+		executer.requests = requests[0].RequestsSSL[0]
 	}
 	appendOperator := func(req *Template, operator *operators.Operators) {
 		operator.TemplateID = req.ID
@@ -187,6 +208,10 @@ func NewClusterExecuter(requests []*Template, options *protocols.ExecuterOptions
 		} else if executer.templateType == types.HTTPProtocol {
 			if req.RequestsHTTP[0].CompiledOperators != nil {
 				appendOperator(req, req.RequestsHTTP[0].CompiledOperators)
+			}
+		} else if executer.templateType == types.SSLProtocol {
+			if req.RequestsSSL[0].CompiledOperators != nil {
+				appendOperator(req, req.RequestsSSL[0].CompiledOperators)
 			}
 		}
 	}
