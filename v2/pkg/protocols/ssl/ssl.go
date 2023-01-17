@@ -13,6 +13,7 @@ import (
 
 	"github.com/projectdiscovery/fastdialer/fastdialer"
 	"github.com/projectdiscovery/gologger"
+	"github.com/projectdiscovery/nuclei/v2/pkg/model"
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators"
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators/extractors"
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators/matchers"
@@ -333,7 +334,7 @@ func (request *Request) MakeResultEventItem(wrapped *output.InternalWrappedEvent
 	data := &output.ResultEvent{
 		TemplateID:       types.ToString(wrapped.InternalEvent["template-id"]),
 		TemplatePath:     types.ToString(wrapped.InternalEvent["template-path"]),
-		Info:             request.options.TemplateInfo,
+		Info:             wrapped.InternalEvent["template-info"].(model.Info),
 		Type:             types.ToString(wrapped.InternalEvent["type"]),
 		Host:             types.ToString(wrapped.InternalEvent["host"]),
 		Matched:          types.ToString(wrapped.InternalEvent["host"]),
