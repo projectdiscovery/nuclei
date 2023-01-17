@@ -5,9 +5,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"net"
-	"net/http"
-	"net/url"
 	"regexp"
 	"strings"
 	"time"
@@ -27,6 +24,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 	"github.com/projectdiscovery/rawhttp"
 	"github.com/projectdiscovery/retryablehttp-go"
+	readerutil "github.com/projectdiscovery/utils/reader"
 	stringsutil "github.com/projectdiscovery/utils/strings"
 	urlutil "github.com/projectdiscovery/utils/url"
 )
@@ -76,13 +74,20 @@ func (r *requestGenerator) Make(ctx context.Context, input *contextargs.Context,
 		}
 	}
 
-	parsed, err := url.Parse(input.MetaInput.Input)
+	parsed, err := urlutil.Parse(input.MetaInput.Input)
 	if err != nil {
 		return nil, err
 	}
 
 	isRawRequest := len(r.request.Raw) > 0
-	data, parsed = baseURLWithTemplatePrefs(data, parsed, isRawRequest)
+
+	// if path contains port ex: {{BaseURL}}:8080 use port
+	parsed, data = useportfrompayload(parsed, data)
+
+	// If not raw request process input values
+	if !isRawRequest {
+		data, parsed = addParamstoBaseURL(data, parsed)
+	}
 
 	// If the request is not a raw request, and the URL input path is suffixed with
 	// a trailing slash, and our Input URL is also suffixed with a trailing slash,
@@ -157,7 +162,7 @@ func (r *requestGenerator) makeSelfContainedRequest(ctx context.Context, data st
 			return nil, err
 		}
 
-		parsed, err := url.Parse(parts[1])
+		parsed, err := urlutil.ParseURL(parts[1], true)
 		if err != nil {
 			return nil, fmt.Errorf("could not parse request URL: %w", err)
 		}
@@ -183,65 +188,6 @@ func (r *requestGenerator) Total() int {
 	return len(r.request.Path)
 }
 
-// baseURLWithTemplatePrefs returns the url for BaseURL keeping
-// the template port along with any query parameters over the user provided one.
-func baseURLWithTemplatePrefs(data string, parsed *url.URL, isRaw bool) (string, *url.URL) {
-	// template port preference over input URL port if template has a port
-	matches := urlWithPortRegex.FindAllStringSubmatch(data, -1)
-	if len(matches) > 0 {
-		port := matches[0][1]
-		parsed.Host = net.JoinHostPort(parsed.Hostname(), port)
-		data = strings.ReplaceAll(data, ":"+port, "")
-		if parsed.Path == "" {
-			parsed.Path = "/"
-		}
-	}
-
-	if isRaw {
-		// do not swap parameters from parsedURL to base
-		return data, parsed
-	}
-
-	// transfer any parmas from URL to data( i.e {{BaseURL}} )
-	params := urlutil.GetParams(parsed.Query())
-	if len(params) == 0 {
-		return data, parsed
-	}
-	// remove any existing params from parsedInput (tracked using params)
-	// parsed.RawQuery = ""
-
-	// ex: {{BaseURL}}/metrics?user=xxx
-	dataURLrelpath := strings.TrimLeft(data, "{{BaseURL}}") //nolint:all
-
-	if dataURLrelpath == "" || dataURLrelpath == "/" {
-		// just attach raw query to data
-		dataURLrelpath += "?" + params.Encode()
-	} else {
-		// /?action=x or /metrics/ parse it
-		payloadpath, err := url.Parse(dataURLrelpath)
-		if err != nil {
-			// payload not possible to parse (edgecase)
-			dataURLrelpath += "?" + params.Encode()
-		} else {
-			payloadparams := urlutil.GetParams(payloadpath.Query())
-			if len(payloadparams) != 0 {
-				// ex: /?action=x
-				for k := range payloadparams {
-					params.Add(k, payloadparams.Get(k))
-				}
-			}
-			//ex: /?admin=user&action=x
-			payloadpath.RawQuery = params.Encode()
-			dataURLrelpath = payloadpath.String()
-		}
-
-	}
-
-	data = "{{BaseURL}}" + dataURLrelpath
-	parsed.RawQuery = ""
-	return data, parsed
-}
-
 // MakeHTTPRequestFromModel creates a *http.Request from a request template
 func (r *requestGenerator) makeHTTPRequestFromModel(ctx context.Context, data string, values, generatorValues map[string]interface{}) (*generatedRequest, error) {
 	if r.options.Interactsh != nil {
@@ -265,7 +211,7 @@ func (r *requestGenerator) makeHTTPRequestFromModel(ctx context.Context, data st
 	}
 
 	// Build a request on the specified URL
-	req, err := http.NewRequestWithContext(ctx, method, data, nil)
+	req, err := retryablehttp.NewRequestWithContext(ctx, method, data, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -311,7 +257,6 @@ func (r *requestGenerator) handleRawWithPayloads(ctx context.Context, rawRequest
 		return unsafeReq, nil
 	}
 
-	// retryablehttp
 	var body io.ReadCloser
 	body = io.NopCloser(strings.NewReader(rawRequestData.Data))
 	if r.request.Race {
@@ -320,7 +265,7 @@ func (r *requestGenerator) handleRawWithPayloads(ctx context.Context, rawRequest
 		body = race.NewOpenGateWithTimeout(body, time.Duration(2)*time.Second)
 	}
 
-	req, err := http.NewRequestWithContext(ctx, rawRequestData.Method, rawRequestData.FullURL, body)
+	req, err := retryablehttp.NewRequestWithContext(ctx, rawRequestData.Method, rawRequestData.FullURL, body)
 	if err != nil {
 		return nil, err
 	}
@@ -347,7 +292,7 @@ func (r *requestGenerator) handleRawWithPayloads(ctx context.Context, rawRequest
 	}
 
 	if reqWithAnnotations, cancelFunc, hasAnnotations := r.request.parseAnnotations(rawRequest, req); hasAnnotations {
-		generatedRequest.request.Request = reqWithAnnotations
+		generatedRequest.request = reqWithAnnotations
 		generatedRequest.customCancelFunction = cancelFunc
 	}
 
@@ -355,7 +300,7 @@ func (r *requestGenerator) handleRawWithPayloads(ctx context.Context, rawRequest
 }
 
 // fillRequest fills various headers in the request with values
-func (r *requestGenerator) fillRequest(req *http.Request, values map[string]interface{}) (*retryablehttp.Request, error) {
+func (r *requestGenerator) fillRequest(req *retryablehttp.Request, values map[string]interface{}) (*retryablehttp.Request, error) {
 	// Set the header values requested
 	for header, value := range r.request.Headers {
 		if r.options.Interactsh != nil {
@@ -386,7 +331,11 @@ func (r *requestGenerator) fillRequest(req *http.Request, values map[string]inte
 		if err != nil {
 			return nil, errors.Wrap(err, evaluateHelperExpressionErrorMessage)
 		}
-		req.Body = io.NopCloser(strings.NewReader(body))
+		bodyreader, err := readerutil.NewReusableReadCloser([]byte(body))
+		if err != nil {
+			return nil, errors.Wrap(err, "failed to create reusable reader for request body")
+		}
+		req.Body = bodyreader
 	}
 	if !r.request.Unsafe {
 		setHeader(req, "User-Agent", uarand.GetRandom())
@@ -407,28 +356,67 @@ func (r *requestGenerator) fillRequest(req *http.Request, values map[string]inte
 		}
 	}
 
-	filledRequest, err := retryablehttp.FromRequest(req)
-	if err != nil {
-		return nil, err
-	}
-
 	if r.request.DigestAuthUsername != "" {
-		filledRequest.Auth = &retryablehttp.Auth{
+		req.Auth = &retryablehttp.Auth{
 			Type:     retryablehttp.DigestAuth,
 			Username: r.request.DigestAuthUsername,
 			Password: r.request.DigestAuthPassword,
 		}
 	}
 
-	return filledRequest, nil
+	return req, nil
 }
 
 // setHeader sets some headers only if the header wasn't supplied by the user
-func setHeader(req *http.Request, name, value string) {
+func setHeader(req *retryablehttp.Request, name, value string) {
 	if _, ok := req.Header[name]; !ok {
 		req.Header.Set(name, value)
 	}
 	if name == "Host" {
 		req.Host = value
 	}
+}
+
+// useportfrompayload overrides input port if specified in payload(ex: {{BaseURL}}:8080)
+func useportfrompayload(parsed *urlutil.URL, data string) (*urlutil.URL, string) {
+	matches := urlWithPortRegex.FindAllStringSubmatch(data, -1)
+	if len(matches) > 0 {
+		port := matches[0][1]
+		parsed.UpdatePort(port)
+		// remove it from dsl
+		data = strings.Replace(data, ":"+port, "", 1)
+	}
+	return parsed, data
+}
+
+// If input/target contains any parameters add them to payload preserving the order
+func addParamstoBaseURL(data string, parsed *urlutil.URL) (string, *urlutil.URL) {
+	// preprocess
+	payloadPath := strings.TrimPrefix(data, "{{BaseURL}}")
+	if strings.HasSuffix(parsed.Path, "/") && strings.HasPrefix(payloadPath, "/") {
+		// keeping payload intact trim extra slash from input
+		parsed.Path = strings.TrimSuffix(parsed.Path, "/")
+	}
+
+	if payloadPath == "" {
+		return data, parsed
+	}
+	if strings.HasPrefix(payloadPath, "?") {
+		// does not contain path only params
+		payloadPath = strings.TrimPrefix(payloadPath, "?")
+		payloadParams := make(urlutil.Params)
+		payloadParams.Decode(payloadPath)
+		payloadParams.Merge(parsed.Params)
+		return "{{BaseURL}}?" + payloadParams.Encode(), parsed
+	}
+
+	// If payload has path parse it add automerge parameters with proper preference
+	payloadURL, err := urlutil.ParseURL(payloadPath, true)
+	if err != nil {
+		gologger.Debug().Msgf("failed to parse payload %v and %v.skipping param merge", data, parsed.String())
+		return data, parsed
+	}
+	payloadURL.Params.Merge(parsed.Params)
+	payloadPath = "{{BaseURL}}" + payloadURL.GetRelativePath()
+	return payloadPath, parsed
 }

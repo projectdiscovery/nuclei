@@ -8,7 +8,6 @@ import (
 	"io"
 	"net/http"
 	"net/http/httputil"
-	"net/url"
 	"path"
 	"strings"
 	"sync"
@@ -38,6 +37,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 	"github.com/projectdiscovery/rawhttp"
 	stringsutil "github.com/projectdiscovery/utils/strings"
+	urlutil "github.com/projectdiscovery/utils/url"
 )
 
 const defaultMaxWorkers = 150
@@ -170,7 +170,7 @@ func (request *Request) executeTurboHTTP(input *contextargs.Context, dynamicValu
 	generator := request.newGenerator(false)
 
 	// need to extract the target from the url
-	URL, err := url.Parse(input.MetaInput.Input)
+	URL, err := urlutil.Parse(input.MetaInput.Input)
 	if err != nil {
 		return err
 	}
@@ -230,7 +230,7 @@ func (request *Request) executeTurboHTTP(input *contextargs.Context, dynamicValu
 
 // executeFuzzingRule executes fuzzing request for a URL
 func (request *Request) executeFuzzingRule(input *contextargs.Context, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
-	parsed, err := url.Parse(input.MetaInput.Input)
+	parsed, err := urlutil.Parse(input.MetaInput.Input)
 	if err != nil {
 		return errors.Wrap(err, "could not parse url")
 	}
@@ -508,7 +508,7 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 	if generatedRequest.original.Pipeline {
 		if generatedRequest.rawRequest != nil {
 			formedURL = generatedRequest.rawRequest.FullURL
-			if parsed, parseErr := url.Parse(formedURL); parseErr == nil {
+			if parsed, parseErr := urlutil.ParseURL(formedURL, true); parseErr == nil {
 				hostname = parsed.Host
 			}
 			resp, err = generatedRequest.pipelinedClient.DoRaw(generatedRequest.rawRequest.Method, input.MetaInput.Input, generatedRequest.rawRequest.Path, generators.ExpandMapValues(generatedRequest.rawRequest.Headers), io.NopCloser(strings.NewReader(generatedRequest.rawRequest.Data)))
@@ -519,7 +519,7 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 		formedURL = generatedRequest.rawRequest.FullURL
 		// use request url as matched url if empty
 		if formedURL == "" {
-			urlx, err := url.Parse(input.MetaInput.Input)
+			urlx, err := urlutil.Parse(input.MetaInput.Input)
 			if err != nil {
 				formedURL = fmt.Sprintf("%s%s", formedURL, generatedRequest.rawRequest.Path)
 			} else {
@@ -527,7 +527,7 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 				formedURL = fmt.Sprintf("%v://%v", urlx.Scheme, path.Join(urlx.Host, generatedRequest.rawRequest.Path))
 			}
 		}
-		if parsed, parseErr := url.Parse(formedURL); parseErr == nil {
+		if parsed, parseErr := urlutil.ParseURL(formedURL, true); parseErr == nil {
 			hostname = parsed.Host
 		}
 		options := *generatedRequest.original.rawhttpClient.Options

@@ -4,7 +4,6 @@ import (
 	"context"
 	"io"
 	"net/http"
-	"net/url"
 	"strings"
 
 	"github.com/corpix/uarand"
@@ -60,25 +59,24 @@ func (rule *Rule) executeQueryPartRule(input *ExecuteRuleInput, payload string) 
 }
 
 // buildQueryInput returns created request for a Query Input
-func (rule *Rule) buildQueryInput(input *ExecuteRuleInput, parsed url.URL, interactURLs []string) error {
-	var req *http.Request
+func (rule *Rule) buildQueryInput(input *ExecuteRuleInput, parsed urlutil.URL, interactURLs []string) error {
+	var req *retryablehttp.Request
 	var err error
 	if input.BaseRequest == nil {
-		req, err = http.NewRequest(http.MethodGet, parsed.String(), nil)
+		req, err = retryablehttp.NewRequest(http.MethodGet, parsed.String(), nil)
 		if err != nil {
 			return err
 		}
 		req.Header.Set("User-Agent", uarand.GetRandom())
 	} else {
-		req = input.BaseRequest.Clone(context.Background())
+		req = input.BaseRequest.Clone(context.TODO())
+		//TODO: abstract below 3 lines with `req.UpdateURL(xx *urlutil.URL)`
 		req.URL = &parsed
-	}
-	httpreq, err := retryablehttp.FromRequest(req)
-	if err != nil {
-		return err
+		req.Request.URL = parsed.URL
+		req.Update()
 	}
 	request := GeneratedRequest{
-		Request:       httpreq,
+		Request:       req,
 		InteractURLs:  interactURLs,
 		DynamicValues: input.Values,
 	}

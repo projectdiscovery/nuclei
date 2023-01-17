@@ -171,7 +171,7 @@ func (i *Input) Set(value string) {
 		return
 	}
 	// parse hostname if url is given
-	urlx, err := urlutil.ParseWithScheme(URL)
+	urlx, err := urlutil.Parse(URL)
 	if err != nil || urlx != nil && urlx.Host == "" {
 		gologger.Debug().Label("url").MsgFunc(func() string {
 			if err != nil {
@@ -185,7 +185,7 @@ func (i *Input) Set(value string) {
 	}
 
 	// Check if input is ip or hostname
-	if iputil.IsIP(urlx.Host) {
+	if iputil.IsIP(urlx.Hostname()) {
 		metaInput := &contextargs.MetaInput{Input: URL}
 		i.setItem(metaInput)
 		return
@@ -193,7 +193,7 @@ func (i *Input) Set(value string) {
 
 	if i.ipOptions.ScanAllIPs {
 		// scan all ips
-		dnsData, err := protocolstate.Dialer.GetDNSData(urlx.Host)
+		dnsData, err := protocolstate.Dialer.GetDNSData(urlx.Hostname())
 		if err == nil {
 			if (len(dnsData.A) + len(dnsData.AAAA)) > 0 {
 				var ips []string
@@ -223,7 +223,7 @@ func (i *Input) Set(value string) {
 	ips := []string{}
 	// only scan the target but ipv6 if it has one
 	if i.ipOptions.IPV6 {
-		dnsData, err := protocolstate.Dialer.GetDNSData(urlx.Host)
+		dnsData, err := protocolstate.Dialer.GetDNSData(urlx.Hostname())
 		if err == nil && len(dnsData.AAAA) > 0 {
 			// pick/ prefer 1st
 			ips = append(ips, dnsData.AAAA[0])

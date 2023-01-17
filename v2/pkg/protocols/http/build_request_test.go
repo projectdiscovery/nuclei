@@ -2,7 +2,6 @@ package http
 
 import (
 	"context"
-	"net/url"
 	"testing"
 	"time"
 
@@ -14,14 +13,15 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/generators"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/interactsh"
 	"github.com/projectdiscovery/nuclei/v2/pkg/testutils"
+	urlutil "github.com/projectdiscovery/utils/url"
 )
 
 func TestBaseURLWithTemplatePrefs(t *testing.T) {
 	baseURL := "http://localhost:53/test"
-	parsed, _ := url.Parse(baseURL)
+	parsed, _ := urlutil.Parse(baseURL)
 
 	data := "{{BaseURL}}:8000/newpath"
-	data, parsed = baseURLWithTemplatePrefs(data, parsed, false)
+	parsed, data = useportfrompayload(parsed, data)
 	require.Equal(t, "http://localhost:8000/test", parsed.String(), "could not get correct value")
 	require.Equal(t, "{{BaseURL}}/newpath", data, "could not get correct data")
 }
@@ -53,7 +53,9 @@ func TestMakeRequestFromModal(t *testing.T) {
 	inputData, payloads, _ := generator.nextValue()
 	req, err := generator.Make(context.Background(), contextargs.NewWithInput("https://example.com"), inputData, payloads, map[string]interface{}{})
 	require.Nil(t, err, "could not make http request")
-
+	if req.request.URL == nil {
+		t.Fatalf("url is nil in generator make")
+	}
 	bodyBytes, _ := req.request.BodyBytes()
 	require.Equal(t, "/login.php", req.request.URL.Path, "could not get correct request path")
 	require.Equal(t, "username=test&password=pass", string(bodyBytes), "could not get correct request body")
