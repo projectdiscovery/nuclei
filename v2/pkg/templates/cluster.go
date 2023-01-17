@@ -54,37 +54,39 @@ func Cluster(list map[string]*Template) [][]*Template {
 		}
 		delete(list, key) // delete element first so it's not found later.
 
+		var templateType types.ProtocolType
+		switch {
+		case len(template.RequestsDNS) == 1:
+			templateType = types.DNSProtocol
+		case len(template.RequestsHTTP) == 1:
+			templateType = types.HTTPProtocol
+		case len(template.RequestsSSL) == 1:
+			templateType = types.SSLProtocol
+		}
+
 		// Find any/all similar matching request that is identical to
 		// this one and cluster them together for http protocol only.
 		cluster := []*Template{}
-		if len(template.RequestsDNS) == 1 {
-			for otherKey, other := range list {
+		for otherKey, other := range list {
+			switch templateType {
+			case types.DNSProtocol:
 				if len(other.RequestsDNS) == 0 || len(other.RequestsDNS) > 1 {
 					continue
-				}
-				if template.RequestsDNS[0].CanCluster(other.RequestsDNS[0]) {
+				} else if template.RequestsDNS[0].CanCluster(other.RequestsDNS[0]) {
 					delete(list, otherKey)
 					cluster = append(cluster, other)
 				}
-			}
-		}
-		if len(template.RequestsHTTP) == 1 {
-			for otherKey, other := range list {
+			case types.HTTPProtocol:
 				if len(other.RequestsHTTP) == 0 || len(other.RequestsHTTP) > 1 {
 					continue
-				}
-				if template.RequestsHTTP[0].CanCluster(other.RequestsHTTP[0]) {
+				} else if template.RequestsHTTP[0].CanCluster(other.RequestsHTTP[0]) {
 					delete(list, otherKey)
 					cluster = append(cluster, other)
 				}
-			}
-		}
-		if len(template.RequestsSSL) == 1 {
-			for otherKey, other := range list {
+			case types.SSLProtocol:
 				if len(other.RequestsSSL) == 0 || len(other.RequestsSSL) > 1 {
 					continue
-				}
-				if template.RequestsSSL[0].CanCluster(other.RequestsSSL[0]) {
+				} else if template.RequestsSSL[0].CanCluster(other.RequestsSSL[0]) {
 					delete(list, otherKey)
 					cluster = append(cluster, other)
 				}
