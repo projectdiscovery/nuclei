@@ -24,7 +24,7 @@ require (
 	github.com/olekukonko/tablewriter v0.0.5
 	github.com/pkg/errors v0.9.1
 	github.com/projectdiscovery/clistats v0.0.9
-	github.com/projectdiscovery/fastdialer v0.0.20
+	github.com/projectdiscovery/fastdialer v0.0.21
 	github.com/projectdiscovery/hmap v0.0.6
 	github.com/projectdiscovery/interactsh v1.0.6-0.20220827132222-460cc6270053
 	github.com/projectdiscovery/rawhttp v0.1.4
@@ -78,7 +78,7 @@ require (
 	github.com/projectdiscovery/ratelimit v0.0.4
 	github.com/projectdiscovery/rdap v0.9.1-0.20221108103045-9865884d1917
 	github.com/projectdiscovery/sarif v0.0.1
-	github.com/projectdiscovery/tlsx v1.0.5-0.20230119134042-a33751cb3d78
+	github.com/projectdiscovery/tlsx v1.0.4-0.20230119140242-74f2ccf7ae22
 	github.com/projectdiscovery/uncover v1.0.2
 	github.com/projectdiscovery/utils v0.0.4-0.20230104145529-50cace956b0a
 	github.com/projectdiscovery/wappalyzergo v0.0.77

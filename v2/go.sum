@@ -555,8 +555,8 @@ github.com/projectdiscovery/blackrock v0.0.0-20220628111055-35616c71b2dc h1:jqZK
 github.com/projectdiscovery/blackrock v0.0.0-20220628111055-35616c71b2dc/go.mod h1:5tNGQP9kOfW+X5+40pZP8aqPYLHs45nJkFaSHLxdeH8=
 github.com/projectdiscovery/clistats v0.0.9 h1:8sA17+2qP+cTnY7LaaGURJW5stSM8UwQiygwHQjxHx4=
 github.com/projectdiscovery/clistats v0.0.9/go.mod h1:7F1RdeGAoLf05rhsZesL0+qoXJpOA/vxuRj2JRIAzU4=
-github.com/projectdiscovery/fastdialer v0.0.20 h1:OWwAX5TdTTJs2W961nBj2D2tOa9AdcAdQeHGGXmLmKs=
-github.com/projectdiscovery/fastdialer v0.0.20/go.mod h1:+oUmNczJ912XkF6ckZi7W2fUS/7bvB8+0nHZzbIGEMw=
+github.com/projectdiscovery/fastdialer v0.0.21 h1:KMUNcGtncvgaChm+YkcTzuQEId3OBAVOviwHofNZCXU=
+github.com/projectdiscovery/fastdialer v0.0.21/go.mod h1:RqBOi1z+HlU+U+6Tqqh/SNFNl3/ue0sVmVlWiLA8gN0=
 github.com/projectdiscovery/fasttemplate v0.0.2 h1:h2cISk5xDhlJEinlBQS6RRx0vOlOirB2y3Yu4PJzpiA=
 github.com/projectdiscovery/fasttemplate v0.0.2/go.mod h1:XYWWVMxnItd+r0GbjA1GCsUopMw1/XusuQxdyAIHMCw=
 github.com/projectdiscovery/fileutil v0.0.3 h1:GSsoey4p8ZHIRxWF2VXh4mhLr+wfEkpJwvF0Dxpn/gg=
@@ -592,8 +592,8 @@ github.com/projectdiscovery/sarif v0.0.1/go.mod h1:cEYlDu8amcPf6b9dSakcz2nNnJsoz
 github.com/projectdiscovery/sliceutil v0.0.1 h1:YoCqCMcdwz+gqNfW5hFY8UvNHoA6SfyBSNkVahatleg=
 github.com/projectdiscovery/stringsutil v0.0.2 h1:uzmw3IVLJSMW1kEg8eCStG/cGbYYZAja8BH3LqqJXMA=
 github.com/projectdiscovery/stringsutil v0.0.2/go.mod h1:EJ3w6bC5fBYjVou6ryzodQq37D5c6qbAYQpGmAy+DC0=
-github.com/projectdiscovery/tlsx v1.0.5-0.20230119134042-a33751cb3d78 h1:AK9D30YOBpjvVzmRXHZxSNB3bfpF5C0j98wfx8cqWms=
-github.com/projectdiscovery/tlsx v1.0.5-0.20230119134042-a33751cb3d78/go.mod h1:YcwPZ7di+nx1UJczln1X2C+Oe1UvQL1ZD7fROuZHRdg=
+github.com/projectdiscovery/tlsx v1.0.4-0.20230119140242-74f2ccf7ae22 h1:0h0d0nSSb8Vq9/dzjjtbIzeNXCgcU94IOAMkyCQS1x8=
+github.com/projectdiscovery/tlsx v1.0.4-0.20230119140242-74f2ccf7ae22/go.mod h1:di4MWkcn7cWJNkJNQAfJjJEx9h/ZVsOfgoNvY4bjsuA=
 github.com/projectdiscovery/uncover v1.0.2 h1:mRFzflYyvwKkHd3XKufMlDRrb6p1mjFZTSHoNAUpFwo=
 github.com/projectdiscovery/uncover v1.0.2/go.mod h1:lz4QYfArSA6jJkXyB71kN2/Pc7IW7nJB8c95n7xtwqY=
 github.com/projectdiscovery/utils v0.0.4-0.20230104145529-50cace956b0a h1:fHztw99lR4QO931no6Zsj8/RYGA4otFQH5BF8OqfTss=
