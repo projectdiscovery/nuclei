@@ -148,9 +148,8 @@ func (e *Engine) executeTemplateWithTargets(template *templates.Template, target
 
 // executeTemplatesOnTarget execute given templates on given single target
 func (e *Engine) executeTemplatesOnTarget(alltemplates []*templates.Template, target *contextargs.MetaInput, results *atomic.Bool) {
-	/*
-		all templates are executed on single target
-	*/
+	// all templates are executed on single target
+
 	// wp is workpool that contains different waitgroups for
 	// headless and non-headless templates
 	// global waitgroup should not be used here
