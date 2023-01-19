@@ -188,6 +188,9 @@ func New(options *types.Options) (*Runner, error) {
 	hmapInput, err := hybrid.New(&hybrid.Options{
 		Options: options,
 		NotFoundCallback: func(target string) bool {
+			if !options.Cloud {
+				return false
+			}
 			parsed, parseErr := strconv.ParseInt(target, 10, 64)
 			if parseErr != nil {
 				if err := runner.cloudClient.ExistsDataSourceItem(nucleicloud.ExistsDataSourceItemRequest{Contents: target, Type: "targets"}); err == nil {
@@ -504,10 +507,16 @@ func (r *Runner) RunEnumeration() error {
 			err = r.listTargets()
 		} else if r.options.ListTemplates {
 			err = r.listTemplates()
+		} else if r.options.ListReportingSources {
+			err = r.listReportingSources()
 		} else if r.options.AddDatasource != "" {
 			err = r.addCloudDataSource(r.options.AddDatasource)
 		} else if r.options.RemoveDatasource != "" {
 			err = r.removeDatasource(r.options.RemoveDatasource)
+		} else if r.options.DisableReportingSource != "" {
+			err = r.toggleReportingSource(r.options.DisableReportingSource, false)
+		} else if r.options.EnableReportingSource != "" {
+			err = r.toggleReportingSource(r.options.EnableReportingSource, true)
 		} else if r.options.AddTarget != "" {
 			err = r.addTarget(r.options.AddTarget)
 		} else if r.options.AddTemplate != "" {
@@ -627,7 +636,7 @@ func (r *Runner) executeTemplatesInput(store *loader.Store, engine *core.Engine)
 		totalRequests += int64(t.Executer.Requests()) * r.hmapInputProvider.Count()
 	}
 	if totalRequests < unclusteredRequests {
-		gologger.Info().Msgf("Templates clustered: %d (Reduced %d HTTP Requests)", clusterCount, unclusteredRequests-totalRequests)
+		gologger.Info().Msgf("Templates clustered: %d (Reduced %d Requests)", clusterCount, unclusteredRequests-totalRequests)
 	}
 	workflowCount := len(store.Workflows())
 	templateCount := originalTemplatesCount + workflowCount
