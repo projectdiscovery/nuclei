@@ -214,8 +214,7 @@ STATISTICS:
    -stats                    실행 중인 스캔에 대한 통계 표시
    -sj, -stats-json          JSONL(ines) 형식으로 출력 파일에 통계 데이터 쓰기
    -si, -stats-interval int  통계 업데이트를 표시할 때까지 대기하는 시간(초) (기본 5)
-   -m, -metrics              expose nuclei metrics on a port
-   -mp, -metrics-port int    port to expose nuclei metrics on (기본 9092)
+   -mp, -metrics-port int    port to expose nuclei metrics on (기본 63636)
 ```
 
 ### Nuclei 실행

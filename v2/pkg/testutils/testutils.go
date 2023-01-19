@@ -26,7 +26,6 @@ func Init(options *types.Options) {
 
 // DefaultOptions is the default options structure for nuclei during mocking.
 var DefaultOptions = &types.Options{
-	Metrics:                    false,
 	Debug:                      false,
 	DebugRequests:              false,
 	DebugResponse:              false,
@@ -79,7 +78,7 @@ type TemplateInfo struct {
 
 // NewMockExecuterOptions creates a new mock executeroptions struct
 func NewMockExecuterOptions(options *types.Options, info *TemplateInfo) *protocols.ExecuterOptions {
-	progressImpl, _ := progress.NewStatsTicker(0, false, false, false, false, 0)
+	progressImpl, _ := progress.NewStatsTicker(0, false, false, false, 0)
 	executerOpts := &protocols.ExecuterOptions{
 		TemplateID:   info.ID,
 		TemplateInfo: info.Info,

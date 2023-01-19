@@ -191,8 +191,6 @@ type Options struct {
 	SystemResolvers bool
 	// ShowActions displays a list of all headless actions
 	ShowActions bool
-	// Metrics enables display of metrics via an http endpoint
-	Metrics bool
 	// Debug mode allows debugging request/responses for the engine
 	Debug bool
 	// DebugRequests mode allows debugging request for the engine

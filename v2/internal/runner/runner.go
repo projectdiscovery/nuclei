@@ -227,7 +227,7 @@ func New(options *types.Options) (*Runner, error) {
 		statsInterval = -1
 		options.EnableProgressBar = true
 	}
-	runner.progress, err = progress.NewStatsTicker(statsInterval, options.EnableProgressBar, options.StatsJSON, options.Metrics, options.Cloud, options.MetricsPort)
+	runner.progress, err = progress.NewStatsTicker(statsInterval, options.EnableProgressBar, options.StatsJSON, options.Cloud, options.MetricsPort)
 	if err != nil {
 		return nil, err
 	}

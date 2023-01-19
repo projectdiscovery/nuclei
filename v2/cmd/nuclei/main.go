@@ -296,8 +296,7 @@ on extensive configurability, massive extensibility and ease of use.`)
 		flagSet.BoolVar(&options.EnableProgressBar, "stats", false, "display statistics about the running scan"),
 		flagSet.BoolVarP(&options.StatsJSON, "stats-json", "sj", false, "write statistics data to an output file in JSONL(ines) format"),
 		flagSet.IntVarP(&options.StatsInterval, "stats-interval", "si", 5, "number of seconds to wait between showing a statistics update"),
-		flagSet.BoolVarP(&options.Metrics, "metrics", "m", false, "expose nuclei metrics on a port"),
-		flagSet.IntVarP(&options.MetricsPort, "metrics-port", "mp", 9092, "port to expose nuclei metrics on"),
+		flagSet.IntVarP(&options.MetricsPort, "metrics-port", "mp", 63636, "port to expose nuclei metrics on"),
 	)
 
 	flagSet.CreateGroup("cloud", "Cloud",
