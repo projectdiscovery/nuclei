@@ -89,9 +89,6 @@ func (c *Cache) normalizeCacheValue(value string) string {
 //   - host type
 func (c *Cache) Check(value string) bool {
 	finalValue := c.normalizeCacheValue(value)
-	if !c.failedTargets.Has(finalValue) {
-		return false
-	}
 
 	existingCacheItem, err := c.failedTargets.GetIFPresent(finalValue)
 	if err != nil {
