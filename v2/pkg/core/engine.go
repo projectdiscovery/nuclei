@@ -1,6 +1,7 @@
 package core
 
 import (
+	"github.com/projectdiscovery/nuclei/v2/pkg/output"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/contextargs"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
@@ -18,6 +19,7 @@ type Engine struct {
 	workPool     *WorkPool
 	options      *types.Options
 	executerOpts protocols.ExecuterOptions
+	Callback     func(*output.ResultEvent) // Executed on results
 }
 
 // InputProvider is an input providing interface for the nuclei execution
@@ -37,17 +39,21 @@ type InputProvider interface {
 
 // New returns a new Engine instance
 func New(options *types.Options) *Engine {
-	workPool := NewWorkPool(WorkPoolConfig{
-		InputConcurrency:         options.BulkSize,
-		TypeConcurrency:          options.TemplateThreads,
-		HeadlessInputConcurrency: options.HeadlessBulkSize,
-		HeadlessTypeConcurrency:  options.HeadlessTemplateThreads,
-	})
 	engine := &Engine{
-		options:  options,
-		workPool: workPool,
+		options: options,
 	}
+	engine.workPool = engine.GetWorkPool()
 	return engine
+}
+
+// GetWorkPool returns a workpool from options
+func (e *Engine) GetWorkPool() *WorkPool {
+	return NewWorkPool(WorkPoolConfig{
+		InputConcurrency:         e.options.BulkSize,
+		TypeConcurrency:          e.options.TemplateThreads,
+		HeadlessInputConcurrency: e.options.HeadlessBulkSize,
+		HeadlessTypeConcurrency:  e.options.HeadlessTemplateThreads,
+	})
 }
 
 // SetExecuterOptions sets the executer options for the engine. This is required
