@@ -11,6 +11,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/klauspost/compress/zlib"
@@ -68,27 +69,65 @@ func (r *Runner) runCloudEnumeration(store *loader.Store, cloudTemplates, cloudT
 		}
 	}
 
+	input := &runCloudEnumerationInput{
+		store:            store,
+		nostore:          nostore,
+		limit:            limit,
+		targets:          targets,
+		templates:        templates,
+		cloudTargets:     cloudTargets,
+		cloudTemplates:   cloudTemplates,
+		privateTemplates: privateTemplates,
+		results:          results,
+		count:            count,
+	}
+	// Run fast positive negative scanning if dash option specified
+	if r.options.Dash {
+		dashErr := r.runCloudEnumerationScanDash(input)
+		return input.results, dashErr
+	}
+	if err := r.runCloudEnumerationScan(input); err != nil {
+		return input.results, err
+	}
+	return input.results, nil
+}
+
+type runCloudEnumerationInput struct {
+	store            *loader.Store
+	nostore          bool
+	limit            int
+	targets          []string
+	templates        []string
+	cloudTargets     []string
+	cloudTemplates   []string
+	privateTemplates map[string]string
+	results          *atomic.Bool
+	count            *atomic.Int64
+}
+
+// runCloudEnumerationScan runs cloud enumeration scan
+func (r *Runner) runCloudEnumerationScan(input *runCloudEnumerationInput) error {
 	taskID, err := r.cloudClient.AddScan(&nucleicloud.AddScanRequest{
-		RawTargets:       targets,
-		PublicTemplates:  templates,
-		CloudTargets:     cloudTargets,
-		CloudTemplates:   cloudTemplates,
-		PrivateTemplates: privateTemplates,
-		IsTemporary:      nostore,
+		RawTargets:       input.targets,
+		PublicTemplates:  input.templates,
+		CloudTargets:     input.cloudTargets,
+		CloudTemplates:   input.cloudTemplates,
+		PrivateTemplates: input.privateTemplates,
+		IsTemporary:      input.nostore,
 		Filtering:        getCloudFilteringFromOptions(r.options),
 	})
 	if err != nil {
-		return results, err
+		return err
 	}
 	gologger.Info().Msgf("Created task with ID: %d", taskID)
-	if nostore {
+	if input.nostore {
 		gologger.Info().Msgf("Cloud scan storage: disabled")
 	}
 	time.Sleep(3 * time.Second)
 
 	scanResponse, err := r.cloudClient.GetScan(taskID)
 	if err != nil {
-		return results, errors.Wrap(err, "could not get scan status")
+		return errors.Wrap(err, "could not get scan status")
 	}
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -112,10 +151,10 @@ func (r *Runner) runCloudEnumeration(store *loader.Store, cloudTemplates, cloudT
 		}()
 	}
 
-	err = r.cloudClient.GetResults(taskID, true, limit, func(re *output.ResultEvent) {
+	err = r.cloudClient.GetResults(taskID, true, input.limit, func(re *output.ResultEvent) {
 		r.progress.IncrementMatched()
-		results.CompareAndSwap(false, true)
-		_ = count.Inc()
+		input.results.CompareAndSwap(false, true)
+		_ = input.count.Inc()
 
 		if outputErr := r.output.Write(re); outputErr != nil {
 			gologger.Warning().Msgf("Could not write output: %s", err)
@@ -126,7 +165,7 @@ func (r *Runner) runCloudEnumeration(store *loader.Store, cloudTemplates, cloudT
 			}
 		}
 	})
-	return results, err
+	return err
 }
 
 func getTemplateRelativePath(templatePath string) string {
@@ -163,4 +202,56 @@ func getCloudFilteringFromOptions(options *types.Options) *nucleicloud.AddScanRe
 		ExcludeProtocols:  options.ExcludeProtocols,
 		IncludeConditions: options.IncludeConditions,
 	}
+}
+
+type dashScanInput struct {
+	target       string
+	template     string
+	templateType string
+}
+
+// runCloudEnumerationScanDash runs cloud enumeration scan using dash service
+// for positive/negative output testing.
+func (r *Runner) runCloudEnumerationScanDash(enumInput *runCloudEnumerationInput) error {
+	concurrency := r.options.BulkSize * r.options.TemplateThreads
+	dashScanInputChan := make(chan dashScanInput, concurrency)
+
+	gologger.Info().Msgf("Running scan using dash API with concurrency %d", concurrency)
+	wg := &sync.WaitGroup{}
+	wg.Add(concurrency)
+	for i := 0; i < concurrency; i++ {
+		go func() {
+			for input := range dashScanInputChan {
+				resp, err := r.cloudClient.RunDashGetTemplate(input.target, input.template, input.templateType)
+				if err != nil {
+					gologger.Warning().Msgf("Could not run template %s on %s: %s", input.template, input.target, err)
+					continue
+				}
+				if resp.Status == "matched" {
+					enumInput.results.CompareAndSwap(false, true)
+					if err := r.output.Write(&output.ResultEvent{
+						Matched:          resp.Target,
+						TemplateID:       resp.Template,
+						ExtractedResults: []string{resp.Status},
+					}); err != nil {
+						gologger.Warning().Msgf("Could not write output: %s", input.target, err)
+					}
+				}
+			}
+			wg.Done()
+		}()
+	}
+	for _, template := range enumInput.templates {
+		for _, target := range enumInput.targets {
+			dashScanInputChan <- dashScanInput{target: target, template: template, templateType: "public"}
+		}
+	}
+	for _, template := range enumInput.cloudTemplates {
+		for _, target := range enumInput.targets {
+			dashScanInputChan <- dashScanInput{target: target, template: template, templateType: "cloud"}
+		}
+	}
+	close(dashScanInputChan)
+	wg.Wait()
+	return nil
 }

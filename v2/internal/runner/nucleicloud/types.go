@@ -176,3 +176,12 @@ type AddReportingSourceRequest struct {
 type AddReportingSourceResponse struct {
 	Ok string `json:"ok"`
 }
+
+// RunDashGetTemplateResponse is the response for a run dash request
+type RunDashGetTemplateResponse struct {
+	ScanID    string `json:"scan_id"`
+	Status    string `json:"status"`
+	Target    string `json:"target"`
+	Template  string `json:"template"`
+	ScannedAt string `json:"scanned_at"`
+}

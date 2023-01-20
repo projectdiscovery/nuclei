@@ -320,6 +320,7 @@ on extensive configurability, massive extensibility and ease of use.`)
 		flagSet.StringVarP(&options.GetTarget, "get-target", "gtr", "", "get target content by id"),
 		flagSet.StringVarP(&options.GetTemplate, "get-template", "gtm", "", "get template content by id"),
 		flagSet.BoolVarP(&options.NoStore, "no-store", "nos", false, "disable scan/output storage on cloud"),
+		flagSet.BoolVar(&options.Dash, "dash", false, "run nuclei dash scan (fast scan with binary output)"),
 		flagSet.BoolVar(&options.NoTables, "no-tables", false, "do not display pretty-printed tables"),
 		flagSet.IntVar(&options.OutputLimit, "limit", 100, "limit the number of output to display"),
 	)

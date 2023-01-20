@@ -189,6 +189,8 @@ type Options struct {
 	ShowBrowser bool
 	// NoTables disables pretty printing of cloud results in tables
 	NoTables bool
+	// Dash uses dash service for fast positive/negative templaate testing
+	Dash bool
 	// DisableClustering disables clustering of templates
 	DisableClustering bool
 	// UseInstalledChrome skips chrome install and use local instance

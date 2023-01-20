@@ -617,6 +617,26 @@ func (c *Client) ExistsTemplate(id int64) (ExistsInputResponse, error) {
 	return item, nil
 }
 
+func (c *Client) RunDashGetTemplate(target, template, templateType string) (RunDashGetTemplateResponse, error) {
+	var item RunDashGetTemplateResponse
+	httpReq, err := retryablehttp.NewRequest(http.MethodGet, fmt.Sprintf("%s/run?target=%s&template=%s&templateType=%s", c.baseURL, url.QueryEscape(target), url.QueryEscape(template), url.QueryEscape(templateType)), nil)
+	if err != nil {
+		return item, errors.Wrap(err, "could not make request")
+	}
+	httpReq.Header.Set("dash", "1")
+
+	resp, err := c.sendRequest(httpReq)
+	if err != nil {
+		return item, errors.Wrap(err, "could not do request")
+	}
+	defer resp.Body.Close()
+
+	if err := jsoniter.NewDecoder(resp.Body).Decode(&item); err != nil {
+		return item, errors.Wrap(err, "could not decode results")
+	}
+	return item, nil
+}
+
 const apiKeyParameter = "X-API-Key"
 
 type errorResponse struct {
