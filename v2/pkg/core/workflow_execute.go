@@ -3,9 +3,9 @@ package core
 import (
 	"fmt"
 	"net/http/cookiejar"
+	"sync/atomic"
 
 	"github.com/remeh/sizedwaitgroup"
-	"go.uber.org/atomic"
 
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
