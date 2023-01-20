@@ -172,7 +172,7 @@ func (i *Input) Set(value string) {
 	}
 	// parse hostname if url is given
 	urlx, err := urlutil.Parse(URL)
-	if err != nil || urlx != nil && urlx.Host == "" {
+	if err != nil || (urlx != nil && urlx.Host == "") {
 		gologger.Debug().Label("url").MsgFunc(func() string {
 			if err != nil {
 				return fmt.Sprintf("failed to parse url %v got %v skipping ip selection", URL, err)

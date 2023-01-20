@@ -121,7 +121,6 @@ func (request *Request) executeRaceRequest(input *contextargs.Context, previous 
 // executeRaceRequest executes parallel requests for a template
 func (request *Request) executeParallelHTTP(input *contextargs.Context, dynamicValues output.InternalEvent, callback protocols.OutputEventCallback) error {
 	generator := request.newGenerator(false)
-
 	// Workers that keeps enqueuing new requests
 	maxWorkers := request.Threads
 	swg := sizedwaitgroup.New(maxWorkers)

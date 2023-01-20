@@ -73,20 +73,18 @@ func (r *requestGenerator) Make(ctx context.Context, input *contextargs.Context,
 			payloads[payloadName] = types.ToString(payloadValue)
 		}
 	}
-
 	parsed, err := urlutil.Parse(input.MetaInput.Input)
 	if err != nil {
 		return nil, err
 	}
-
 	isRawRequest := len(r.request.Raw) > 0
 
 	// if path contains port ex: {{BaseURL}}:8080 use port
-	parsed, data = useportfrompayload(parsed, data)
+	parsed, data = UsePortFromPayload(parsed, data)
 
 	// If not raw request process input values
 	if !isRawRequest {
-		data, parsed = addParamstoBaseURL(data, parsed)
+		data, parsed = addParamsToBaseURL(data, parsed)
 	}
 
 	// If the request is not a raw request, and the URL input path is suffixed with
@@ -377,8 +375,8 @@ func setHeader(req *retryablehttp.Request, name, value string) {
 	}
 }
 
-// useportfrompayload overrides input port if specified in payload(ex: {{BaseURL}}:8080)
-func useportfrompayload(parsed *urlutil.URL, data string) (*urlutil.URL, string) {
+// UsePortFromPayload overrides input port if specified in payload(ex: {{BaseURL}}:8080)
+func UsePortFromPayload(parsed *urlutil.URL, data string) (*urlutil.URL, string) {
 	matches := urlWithPortRegex.FindAllStringSubmatch(data, -1)
 	if len(matches) > 0 {
 		port := matches[0][1]
@@ -390,7 +388,7 @@ func useportfrompayload(parsed *urlutil.URL, data string) (*urlutil.URL, string)
 }
 
 // If input/target contains any parameters add them to payload preserving the order
-func addParamstoBaseURL(data string, parsed *urlutil.URL) (string, *urlutil.URL) {
+func addParamsToBaseURL(data string, parsed *urlutil.URL) (string, *urlutil.URL) {
 	// preprocess
 	payloadPath := strings.TrimPrefix(data, "{{BaseURL}}")
 	if strings.HasSuffix(parsed.Path, "/") && strings.HasPrefix(payloadPath, "/") {

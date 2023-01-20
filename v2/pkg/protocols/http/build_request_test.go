@@ -21,7 +21,7 @@ func TestBaseURLWithTemplatePrefs(t *testing.T) {
 	parsed, _ := urlutil.Parse(baseURL)
 
 	data := "{{BaseURL}}:8000/newpath"
-	parsed, data = useportfrompayload(parsed, data)
+	parsed, data = UsePortFromPayload(parsed, data)
 	require.Equal(t, "http://localhost:8000/test", parsed.String(), "could not get correct value")
 	require.Equal(t, "{{BaseURL}}/newpath", data, "could not get correct data")
 }

@@ -71,10 +71,9 @@ func debugTests() {
 	for tpath, testcase := range protocolTests[runProtocol] {
 		if runTemplate != "" && !strings.Contains(tpath, runTemplate) {
 			continue
-		} else {
-			if err := testcase.Execute(tpath); err != nil {
-				panic(err)
-			}
+		}
+		if err := testcase.Execute(tpath); err != nil {
+			panic(err)
 		}
 	}
 }

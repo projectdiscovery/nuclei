@@ -30,7 +30,7 @@ func Parse(request, baseURL string, unsafe bool) (*Request, error) {
 	// parse Input URL
 	inputURL, err := urlutil.ParseURL(baseURL, unsafe)
 	if err != nil {
-		return nil, fmt.Errorf("could not parse request URL: %w", err)
+		return nil, errorutil.NewWithErr(err).Msgf("could not parse request URL").WithTag("raw")
 	}
 	rawrequest, err := readRawRequest(request, unsafe)
 	if err != nil {
