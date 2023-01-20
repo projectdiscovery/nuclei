@@ -816,15 +816,15 @@ func assignEnvVarToReportingOpt(val reflect.Value) {
 		if field.Kind() == reflect.Struct {
 			assignEnvVarToReportingOpt(field)
 		} else {
-			if field.CanAddr() {
-				fieldType := val.Type().Field(i)
-				if fieldType.Tag.Get("yaml") != "" {
-					if field.Kind() == reflect.String {
-						valueStr := fmt.Sprintf("%v", field.Interface())
-						if strings.HasPrefix(valueStr, "$") {
-							field.SetString(os.Getenv(valueStr[1:]))
-						}
+			fieldType := val.Type().Field(i)
+			if field.CanAddr() && fieldType.Tag.Get("yaml") != "" && field.Kind() == reflect.String {
+				valueStr := fmt.Sprintf("%v", field.Interface())
+				if strings.HasPrefix(valueStr, "$") {
+					envVar := valueStr[1:]
+					if envValue, exists := os.LookupEnv(envVar); exists {
+						field.SetString(envValue)
 					}
+
 				}
 			}
 		}
