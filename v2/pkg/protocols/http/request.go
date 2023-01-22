@@ -769,20 +769,15 @@ func (request *Request) handleSignature(generatedRequest *generatedRequest) erro
 	case AWSSignature:
 		var awsSigner signer.Signer
 		allvars := generators.MergeMaps(request.options.Options.Vars.AsMap(), generatedRequest.dynamicValues)
-		// adds default values to variables if missing
-		signer.AddDefaults(allvars)
 		awsopts := signer.AWSOptions{
 			AwsID:          types.ToString(allvars["aws-id"]),
 			AwsSecretToken: types.ToString(allvars["aws-secret"]),
 		}
-		// type ctxkey string
-		ctx := context.WithValue(context.Background(), signer.SignerArg("service"), allvars["service"])
-		ctx = context.WithValue(ctx, signer.SignerArg("region"), allvars["region"])
-
 		awsSigner, err := signerpool.Get(request.options.Options, &signerpool.Configuration{SignerArgs: &awsopts})
 		if err != nil {
 			return err
 		}
+		ctx := signer.GetCtxWithArgs(allvars, signer.AwsDefaultVars)
 		err = awsSigner.SignHTTP(ctx, generatedRequest.request.Request)
 		if err != nil {
 			return err
