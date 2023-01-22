@@ -9,6 +9,9 @@ type Templates struct {
 	items *sync.Map
 }
 
+// DisableCaching disables caching of templates globally
+var DisableCaching = false
+
 // New returns a new templates cache
 func New() *Templates {
 	return &Templates{items: &sync.Map{}}
@@ -22,6 +25,9 @@ type parsedTemplateErrHolder struct {
 // Has returns true if the cache has a template. The template
 // is returned along with any errors if found.
 func (t *Templates) Has(template string) (interface{}, error) {
+	if DisableCaching {
+		return nil, nil
+	}
 	value, ok := t.items.Load(template)
 	if !ok || value == nil {
 		return nil, nil
@@ -35,5 +41,8 @@ func (t *Templates) Has(template string) (interface{}, error) {
 
 // Store stores a template with data and error
 func (t *Templates) Store(template string, data interface{}, err error) {
+	if DisableCaching {
+		return
+	}
 	t.items.Store(template, parsedTemplateErrHolder{template: data, err: err})
 }
