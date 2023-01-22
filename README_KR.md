@@ -178,6 +178,7 @@ OPTIMIZATIONS:
    -retries int                실패한 요청을 재시도하는 횟수 (기본 1)
    -ldp, -leave-default-ports  leave default HTTP/HTTPS ports (eg. host:80,host:443
    -mhe, -max-host-error int   스캔을 건너뛰기 전에 호스트에 대한 최대 오류 수 (기본 30)
+   -nmhe, -no-mhe                      disable skipping host from scan based on errors
    -project                    프로젝트 폴더를 사용하여 동일한 요청을 여러 번 보내지 않음
    -project-path string        특정 프로젝트 경로 설정
    -spm, -stop-at-first-match  첫 번째 일치 후 HTTP 요청 처리 중지 (template/workflow 로직이 중단될 수 있음)
