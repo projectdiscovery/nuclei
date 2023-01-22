@@ -769,6 +769,8 @@ func (request *Request) handleSignature(generatedRequest *generatedRequest) erro
 	case AWSSignature:
 		var awsSigner signer.Signer
 		allvars := generators.MergeMaps(request.options.Options.Vars.AsMap(), generatedRequest.dynamicValues)
+		// adds default values to variables if missing
+		signer.AddDefaults(allvars)
 		awsopts := signer.AWSOptions{
 			AwsID:          types.ToString(allvars["aws-id"]),
 			AwsSecretToken: types.ToString(allvars["aws-secret"]),

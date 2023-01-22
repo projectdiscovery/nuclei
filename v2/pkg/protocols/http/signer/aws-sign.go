@@ -117,3 +117,13 @@ var AwsInternalOnlyVars = map[string]interface{}{
 	"aws-id":     struct{}{},
 	"aws-secret": struct{}{},
 }
+
+// AddDefaults adds default values required by signer if missing
+func AddDefaults(x map[string]interface{}) {
+	if _, ok := x["region"]; !ok {
+		x["region"] = "us-east-2"
+	}
+	if _, ok := x["service"]; !ok {
+		x["service"] = "sts"
+	}
+}
