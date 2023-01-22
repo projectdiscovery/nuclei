@@ -392,12 +392,6 @@ func (r *Runner) RunEnumeration() error {
 		r.options.ExcludeTags = append(r.options.ExcludeTags, ignoreFile.Tags...)
 		r.options.ExcludedTemplates = append(r.options.ExcludedTemplates, ignoreFile.Files...)
 	}
-	var cache *hosterrorscache.Cache
-	if r.options.MaxHostError > 0 {
-		cache = hosterrorscache.New(r.options.MaxHostError, hosterrorscache.DefaultMaxHostsCount)
-		cache.SetVerbose(r.options.Verbose)
-	}
-	r.hostErrors = cache
 
 	// Create the executer options which will be used throughout the execution
 	// stage by the nuclei engine modules.
@@ -411,12 +405,19 @@ func (r *Runner) RunEnumeration() error {
 		Interactsh:      r.interactsh,
 		ProjectFile:     r.projectFile,
 		Browser:         r.browser,
-		HostErrorsCache: cache,
 		Colorizer:       r.colorizer,
 		ResumeCfg:       r.resumeCfg,
 		ExcludeMatchers: excludematchers.New(r.options.ExcludeMatchers),
 		InputHelper:     input.NewHelper(),
 	}
+
+	if r.options.ShouldUseHostError() {
+		cache := hosterrorscache.New(r.options.MaxHostError, hosterrorscache.DefaultMaxHostsCount)
+		cache.SetVerbose(r.options.Verbose)
+		r.hostErrors = cache
+		executerOpts.HostErrorsCache = cache
+	}
+
 	engine := core.New(r.options)
 	engine.SetExecuterOptions(executerOpts)
 
