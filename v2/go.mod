@@ -23,7 +23,7 @@ require (
 	github.com/miekg/dns v1.1.50
 	github.com/olekukonko/tablewriter v0.0.5
 	github.com/pkg/errors v0.9.1
-	github.com/projectdiscovery/clistats v0.0.9
+	github.com/projectdiscovery/clistats v0.0.11
 	github.com/projectdiscovery/fastdialer v0.0.21
 	github.com/projectdiscovery/hmap v0.0.6
 	github.com/projectdiscovery/interactsh v1.0.6-0.20220827132222-460cc6270053
@@ -105,6 +105,7 @@ require (
 	github.com/nxadm/tail v1.4.8 // indirect
 	github.com/pjbgf/sha1cd v0.2.3 // indirect
 	github.com/projectdiscovery/asnmap v0.0.1 // indirect
+	github.com/projectdiscovery/freeport v0.0.4 // indirect
 	github.com/prometheus/client_golang v1.14.0 // indirect
 	github.com/prometheus/client_model v0.3.0 // indirect
 	github.com/prometheus/common v0.39.0 // indirect
