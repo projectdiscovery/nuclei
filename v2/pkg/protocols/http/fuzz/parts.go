@@ -24,10 +24,13 @@ func (rule *Rule) executePartRule(input *ExecuteRuleInput, payload string) error
 
 // executeQueryPartRule executes query part rules
 func (rule *Rule) executeQueryPartRule(input *ExecuteRuleInput, payload string) error {
-	requestURL := *input.URL
-	temp := urlutil.NewParams()
+	requestURL := input.URL.Clone()
+	temp := urlutil.Params{}
 	for k, v := range input.URL.Query() {
-		temp[k] = v
+		// this has to be a deep copy
+		x := []string{}
+		x = append(x, v...)
+		temp[k] = x
 	}
 
 	for key, values := range input.URL.Query() {
@@ -40,7 +43,7 @@ func (rule *Rule) executeQueryPartRule(input *ExecuteRuleInput, payload string) 
 			temp[key][i] = evaluated
 
 			if rule.modeType == singleModeType {
-				requestURL.RawQuery = temp.Encode()
+				requestURL.Params = temp
 				if err := rule.buildQueryInput(input, requestURL, input.InteractURLs); err != nil {
 					return err
 				}
@@ -50,7 +53,7 @@ func (rule *Rule) executeQueryPartRule(input *ExecuteRuleInput, payload string) 
 	}
 
 	if rule.modeType == multipleModeType {
-		requestURL.RawQuery = temp.Encode()
+		requestURL.Params = temp
 		if err := rule.buildQueryInput(input, requestURL, input.InteractURLs); err != nil {
 			return err
 		}
@@ -59,7 +62,7 @@ func (rule *Rule) executeQueryPartRule(input *ExecuteRuleInput, payload string) 
 }
 
 // buildQueryInput returns created request for a Query Input
-func (rule *Rule) buildQueryInput(input *ExecuteRuleInput, parsed urlutil.URL, interactURLs []string) error {
+func (rule *Rule) buildQueryInput(input *ExecuteRuleInput, parsed *urlutil.URL, interactURLs []string) error {
 	var req *retryablehttp.Request
 	var err error
 	if input.BaseRequest == nil {
@@ -71,7 +74,7 @@ func (rule *Rule) buildQueryInput(input *ExecuteRuleInput, parsed urlutil.URL, i
 	} else {
 		req = input.BaseRequest.Clone(context.TODO())
 		//TODO: abstract below 3 lines with `req.UpdateURL(xx *urlutil.URL)`
-		req.URL = &parsed
+		req.URL = parsed
 		req.Request.URL = parsed.URL
 		req.Update()
 	}
