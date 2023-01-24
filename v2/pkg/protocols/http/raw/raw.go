@@ -6,11 +6,10 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"net/url"
 	"strings"
 
-	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/http/utils"
 	"github.com/projectdiscovery/rawhttp/client"
+	errorutil "github.com/projectdiscovery/utils/errors"
 	stringsutil "github.com/projectdiscovery/utils/strings"
 	urlutil "github.com/projectdiscovery/utils/url"
 )
@@ -29,35 +28,10 @@ type Request struct {
 // Parse parses the raw request as supplied by the user
 func Parse(request, baseURL string, unsafe bool) (*Request, error) {
 	// parse Input URL
-	inputURL, err := url.Parse(baseURL)
+	inputURL, err := urlutil.ParseURL(baseURL, unsafe)
 	if err != nil {
-		return nil, fmt.Errorf("could not parse request URL: %w", err)
+		return nil, errorutil.NewWithErr(err).Msgf("could not parse request URL").WithTag("raw")
 	}
-	inputParams := urlutil.GetParams(inputURL.Query())
-
-	// Joins input url and new url preserving query parameters
-	joinPath := func(relpath string) (string, error) {
-		newpath := ""
-		// Join path with input along with parameters
-		relUrl, relerr := url.Parse(relpath)
-		if relUrl == nil {
-			// special case when url.Parse fails
-			newpath = utils.JoinURLPath(inputURL.Path, relpath)
-		} else {
-			newpath = utils.JoinURLPath(inputURL.Path, relUrl.Path)
-			if len(relUrl.Query()) > 0 {
-				relParam := urlutil.GetParams(relUrl.Query())
-				for k := range relParam {
-					inputParams.Add(k, relParam.Get(k))
-				}
-			}
-		}
-		if len(inputParams) > 0 {
-			newpath += "?" + inputParams.Encode()
-		}
-		return newpath, relerr
-	}
-
 	rawrequest, err := readRawRequest(request, unsafe)
 	if err != nil {
 		return nil, err
@@ -67,25 +41,39 @@ func Parse(request, baseURL string, unsafe bool) (*Request, error) {
 	// If path is empty do not tamper input url (see doc)
 	// can be omitted but makes things clear
 	case rawrequest.Path == "":
-		rawrequest.Path, _ = joinPath("")
+		rawrequest.Path = inputURL.GetRelativePath()
 
 	// full url provided instead of rel path
 	case strings.HasPrefix(rawrequest.Path, "http") && !unsafe:
-		var parseErr error
-		rawrequest.Path, parseErr = joinPath(rawrequest.Path)
-		if parseErr != nil {
-			return nil, fmt.Errorf("could not parse url:%w", parseErr)
+		urlx, err := urlutil.ParseURL(rawrequest.Path, true)
+		if err != nil {
+			return nil, errorutil.NewWithErr(err).WithTag("raw").Msgf("failed to parse url %v from template", rawrequest.Path)
 		}
+		cloned := inputURL.Clone()
+		parseErr := cloned.MergePath(urlx.GetRelativePath(), true)
+		if parseErr != nil {
+			return nil, errorutil.NewWithTag("raw", "could not automergepath for template path %v", urlx.GetRelativePath()).Wrap(parseErr)
+		}
+		rawrequest.Path = cloned.GetRelativePath()
 	// If unsafe changes must be made in raw request string iteself
 	case unsafe:
 		prevPath := rawrequest.Path
-		unsafeRelativePath, _ := joinPath(rawrequest.Path)
+		cloned := inputURL.Clone()
+		err := cloned.MergePath(rawrequest.Path, true)
+		unsafeRelativePath := cloned.GetRelativePath()
+		if err != nil {
+			return nil, errorutil.NewWithErr(err).WithTag("raw").Msgf("failed to automerge %v from unsafe template", rawrequest.Path)
+		}
 		// replace itself
 		rawrequest.UnsafeRawBytes = bytes.Replace(rawrequest.UnsafeRawBytes, []byte(prevPath), []byte(unsafeRelativePath), 1)
 
 	default:
-		rawrequest.Path, _ = joinPath(rawrequest.Path)
-
+		cloned := inputURL.Clone()
+		parseErr := cloned.MergePath(rawrequest.Path, true)
+		if parseErr != nil {
+			return nil, errorutil.NewWithTag("raw", "could not automergepath for template path %v", rawrequest.Path).Wrap(parseErr)
+		}
+		rawrequest.Path = cloned.GetRelativePath()
 	}
 
 	if !unsafe {
@@ -96,7 +84,6 @@ func Parse(request, baseURL string, unsafe bool) (*Request, error) {
 	}
 
 	return rawrequest, nil
-
 }
 
 // reads raw request line by line following convention

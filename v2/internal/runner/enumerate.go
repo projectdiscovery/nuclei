@@ -11,6 +11,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"github.com/klauspost/compress/zlib"
@@ -23,7 +24,6 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/contextargs"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
-	"go.uber.org/atomic"
 )
 
 // runStandardEnumeration runs standard enumeration
@@ -115,7 +115,7 @@ func (r *Runner) runCloudEnumeration(store *loader.Store, cloudTemplates, cloudT
 	err = r.cloudClient.GetResults(taskID, true, limit, func(re *output.ResultEvent) {
 		r.progress.IncrementMatched()
 		results.CompareAndSwap(false, true)
-		_ = count.Inc()
+		_ = count.Add(1)
 
 		if outputErr := r.output.Write(re); outputErr != nil {
 			gologger.Warning().Msgf("Could not write output: %s", err)

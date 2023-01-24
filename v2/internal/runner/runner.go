@@ -13,6 +13,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"github.com/projectdiscovery/nuclei/v2/internal/runner/nucleicloud"
@@ -21,7 +22,6 @@ import (
 	"github.com/logrusorgru/aurora"
 	"github.com/pkg/errors"
 	"github.com/projectdiscovery/ratelimit"
-	"go.uber.org/atomic"
 
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v2/internal/colorizer"
@@ -188,6 +188,9 @@ func New(options *types.Options) (*Runner, error) {
 	hmapInput, err := hybrid.New(&hybrid.Options{
 		Options: options,
 		NotFoundCallback: func(target string) bool {
+			if !options.Cloud {
+				return false
+			}
 			parsed, parseErr := strconv.ParseInt(target, 10, 64)
 			if parseErr != nil {
 				if err := runner.cloudClient.ExistsDataSourceItem(nucleicloud.ExistsDataSourceItemRequest{Contents: target, Type: "targets"}); err == nil {
@@ -389,12 +392,6 @@ func (r *Runner) RunEnumeration() error {
 		r.options.ExcludeTags = append(r.options.ExcludeTags, ignoreFile.Tags...)
 		r.options.ExcludedTemplates = append(r.options.ExcludedTemplates, ignoreFile.Files...)
 	}
-	var cache *hosterrorscache.Cache
-	if r.options.MaxHostError > 0 {
-		cache = hosterrorscache.New(r.options.MaxHostError, hosterrorscache.DefaultMaxHostsCount)
-		cache.SetVerbose(r.options.Verbose)
-	}
-	r.hostErrors = cache
 
 	// Create the executer options which will be used throughout the execution
 	// stage by the nuclei engine modules.
@@ -408,12 +405,19 @@ func (r *Runner) RunEnumeration() error {
 		Interactsh:      r.interactsh,
 		ProjectFile:     r.projectFile,
 		Browser:         r.browser,
-		HostErrorsCache: cache,
 		Colorizer:       r.colorizer,
 		ResumeCfg:       r.resumeCfg,
 		ExcludeMatchers: excludematchers.New(r.options.ExcludeMatchers),
 		InputHelper:     input.NewHelper(),
 	}
+
+	if r.options.ShouldUseHostError() {
+		cache := hosterrorscache.New(r.options.MaxHostError, hosterrorscache.DefaultMaxHostsCount)
+		cache.SetVerbose(r.options.Verbose)
+		r.hostErrors = cache
+		executerOpts.HostErrorsCache = cache
+	}
+
 	engine := core.New(r.options)
 	engine.SetExecuterOptions(executerOpts)
 
@@ -634,7 +638,7 @@ func (r *Runner) executeTemplatesInput(store *loader.Store, engine *core.Engine)
 		totalRequests += int64(t.Executer.Requests()) * r.hmapInputProvider.Count()
 	}
 	if totalRequests < unclusteredRequests {
-		gologger.Info().Msgf("Templates clustered: %d (Reduced %d HTTP Requests)", clusterCount, unclusteredRequests-totalRequests)
+		gologger.Info().Msgf("Templates clustered: %d (Reduced %d Requests)", clusterCount, unclusteredRequests-totalRequests)
 	}
 	workflowCount := len(store.Workflows())
 	templateCount := originalTemplatesCount + workflowCount
