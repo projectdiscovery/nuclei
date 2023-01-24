@@ -2,18 +2,18 @@ package utils
 
 import (
 	"fmt"
-	"net/url"
 	"path"
 	"strings"
 
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/contextargs"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/generators"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/dns"
+	urlutil "github.com/projectdiscovery/utils/url"
 )
 
 // GenerateVariables will create default variables with context args
 func GenerateVariablesWithContextArgs(input *contextargs.Context, trailingSlash bool) map[string]interface{} {
-	parsed, err := url.Parse(input.MetaInput.Input)
+	parsed, err := urlutil.Parse(input.MetaInput.Input)
 	if err != nil {
 		return nil
 	}
@@ -21,7 +21,7 @@ func GenerateVariablesWithContextArgs(input *contextargs.Context, trailingSlash 
 }
 
 // GenerateVariables will create default variables after parsing a url with additional variables
-func GenerateVariablesWithURL(parsed *url.URL, trailingSlash bool, additionalVars map[string]interface{}) map[string]interface{} {
+func GenerateVariablesWithURL(parsed *urlutil.URL, trailingSlash bool, additionalVars map[string]interface{}) map[string]interface{} {
 	domain := parsed.Host
 	if strings.Contains(parsed.Host, ":") {
 		domain = strings.Split(parsed.Host, ":")[0]
