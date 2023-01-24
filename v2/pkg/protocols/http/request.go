@@ -768,19 +768,16 @@ func (request *Request) handleSignature(generatedRequest *generatedRequest) erro
 	switch request.Signature.Value {
 	case AWSSignature:
 		var awsSigner signer.Signer
-		vars := request.options.Options.Vars.AsMap()
+		allvars := generators.MergeMaps(request.options.Options.Vars.AsMap(), generatedRequest.dynamicValues)
 		awsopts := signer.AWSOptions{
-			AwsID:          types.ToString(vars["aws-id"]),
-			AwsSecretToken: types.ToString(vars["aws-secret"]),
+			AwsID:          types.ToString(allvars["aws-id"]),
+			AwsSecretToken: types.ToString(allvars["aws-secret"]),
 		}
-		// type ctxkey string
-		ctx := context.WithValue(context.Background(), signer.SignerArg("service"), generatedRequest.dynamicValues["service"])
-		ctx = context.WithValue(ctx, signer.SignerArg("region"), generatedRequest.dynamicValues["region"])
-
 		awsSigner, err := signerpool.Get(request.options.Options, &signerpool.Configuration{SignerArgs: &awsopts})
 		if err != nil {
 			return err
 		}
+		ctx := signer.GetCtxWithArgs(allvars, signer.AwsDefaultVars)
 		err = awsSigner.SignHTTP(ctx, generatedRequest.request.Request)
 		if err != nil {
 			return err
