@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/http/httpclientpool"
+	"github.com/projectdiscovery/retryablehttp-go"
 	"github.com/stretchr/testify/require"
 )
 
@@ -18,7 +19,7 @@ func TestRequestParseAnnotationsTimeout(t *testing.T) {
 		GET / HTTP/1.1
 		Host: {{Hostname}}`
 
-		httpReq, err := http.NewRequest(http.MethodGet, "https://example.com", nil)
+		httpReq, err := retryablehttp.NewRequest(http.MethodGet, "https://example.com", nil)
 		require.Nil(t, err, "could not create http request")
 
 		newRequest, cancelFunc, modified := request.parseAnnotations(rawRequest, httpReq)
@@ -35,7 +36,7 @@ func TestRequestParseAnnotationsTimeout(t *testing.T) {
 		rawRequest := `GET / HTTP/1.1
 		Host: {{Hostname}}`
 
-		httpReq, err := http.NewRequestWithContext(context.Background(), http.MethodGet, "https://example.com", nil)
+		httpReq, err := retryablehttp.NewRequestWithContext(context.Background(), http.MethodGet, "https://example.com", nil)
 		require.Nil(t, err, "could not create http request")
 
 		newRequest, cancelFunc, modified := request.parseAnnotations(rawRequest, httpReq)
