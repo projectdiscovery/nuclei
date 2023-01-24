@@ -141,11 +141,6 @@ func (r *requestGenerator) makeSelfContainedRequest(ctx context.Context, data st
 			generators.BuildPayloadFromOptions(r.request.options.Options),
 		)
 
-		// in case cases (eg requests signing, some variables uses default values if missing)
-		if defaultList := GetVariablesDefault(r.request.Signature.Value); defaultList != nil {
-			values = generators.MergeMaps(defaultList, values)
-		}
-
 		parts[1] = replacer.Replace(parts[1], values)
 		if len(dynamicValues) > 0 {
 			parts[1] = replacer.Replace(parts[1], dynamicValues)
