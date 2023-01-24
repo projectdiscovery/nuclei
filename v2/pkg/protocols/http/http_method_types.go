@@ -15,7 +15,7 @@ type HTTPMethodType int
 const (
 	// name:GET
 	HTTPGet HTTPMethodType = iota + 1
-	// name:GET
+	// name:HEAD
 	HTTPHead
 	// name:POST
 	HTTPPost
