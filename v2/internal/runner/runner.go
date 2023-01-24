@@ -313,8 +313,7 @@ func createReportingOptions(options *types.Options) (*reporting.Options, error) 
 		}
 		file.Close()
 
-		val := reflect.ValueOf(*reportingOptions)
-		assignEnvVarToReportingOpt(val)
+		assignEnvVarToReportingOpt(reportingOptions)
 	}
 	if options.MarkdownExportDirectory != "" {
 		if reportingOptions != nil {
@@ -804,29 +803,59 @@ func (r *Runner) SaveResumeConfig(path string) error {
 }
 
 // replace $VAR_EXAMPLE with the correct variable in os ENV
-func assignEnvVarToReportingOpt(val reflect.Value) {
-	for i := 0; i < val.NumField(); i++ {
-		field := val.Field(i)
-		if field.Kind() == reflect.Ptr {
-			if field.IsNil() {
-				continue
-			}
-			field = field.Elem()
-		}
-		if field.Kind() == reflect.Struct {
-			assignEnvVarToReportingOpt(field)
-		} else {
-			fieldType := val.Type().Field(i)
-			if field.CanAddr() && fieldType.Tag.Get("yaml") != "" && field.Kind() == reflect.String {
-				valueStr := fmt.Sprintf("%v", field.Interface())
-				if strings.HasPrefix(valueStr, "$") {
-					envVar := valueStr[1:]
-					if envValue, exists := os.LookupEnv(envVar); exists {
-						field.SetString(envValue)
-					}
+// func assignEnvVarToReportingOpt(val reflect.Value) {
+// 	for i := 0; i < val.NumField(); i++ {
+// 		field := val.Field(i)
+// 		if field.Kind() == reflect.Ptr {
+// 			if field.IsNil() {
+// 				continue
+// 			}
+// 			field = field.Elem()
+// 		}
+// 		if field.Kind() == reflect.Struct {
+// 			assignEnvVarToReportingOpt(field)
+// 		} else {
+// 			fieldType := val.Type().Field(i)
+// 			if field.CanAddr() && fieldType.Tag.Get("yaml") != "" && field.Kind() == reflect.String {
+// 				valueStr := fmt.Sprintf("%v", field.Interface())
+// 				if strings.HasPrefix(valueStr, "$") {
+// 					envVar := valueStr[1:]
+// 					if envValue, exists := os.LookupEnv(envVar); exists {
+// 						field.SetString(envValue)
+// 					}
 
+// 				}
+// 			}
+// 		}
+// 	}
+// }
+
+func assignEnvVarToReportingOpt(s interface{}) {
+	v := reflect.ValueOf(s)
+	if v.Kind() == reflect.Ptr {
+		v = v.Elem()
+	}
+	if v.Kind() != reflect.Struct {
+		return
+	}
+	for i := 0; i < v.NumField(); i++ {
+		f := v.Field(i)
+		fieldType := v.Type().Field(i)
+		if _, ok := fieldType.Tag.Lookup("yaml"); ok {
+			if f.Kind() == reflect.String {
+				str := f.String()
+				if strings.HasPrefix(str, "$") {
+					env := strings.TrimPrefix(str, "$")
+					f.SetString(getEnv(env))
 				}
+			} else if f.Kind() == reflect.Struct || f.Kind() == reflect.Ptr {
+				assignEnvVarToReportingOpt(f.Interface())
 			}
 		}
 	}
+}
+
+func getEnv(env string) string {
+	res := os.Getenv(env)
+	return res
 }

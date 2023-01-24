@@ -1,10 +1,8 @@
 package runner
 
 import (
-	"log"
 	"net/http"
 	"os"
-	"reflect"
 	"strings"
 	"testing"
 
@@ -61,9 +59,7 @@ github:
 
 	os.Setenv("GITHUB_USER", "testuser")
 
-	log.Printf("%#v\n", reportingOptions.GitHub)
-	val := reflect.ValueOf(*reportingOptions)
-	assignEnvVarToReportingOpt(val)
+	assignEnvVarToReportingOpt(reportingOptions)
 	assert.Equal(t, "testuser", reportingOptions.GitHub.Username)
 }
 
@@ -96,9 +92,7 @@ github:
 	os.Setenv("GITHUB_TOKEN", "tokentesthere")
 	os.Setenv("GITHUB_PROJECT", "testproject")
 
-	log.Printf("%#v\n", reportingOptions.GitHub)
-	val := reflect.ValueOf(*reportingOptions)
-	assignEnvVarToReportingOpt(val)
+	assignEnvVarToReportingOpt(reportingOptions)
 	assert.Equal(t, "testuser", reportingOptions.GitHub.Username)
 	assert.Equal(t, "tokentesthere", reportingOptions.GitHub.Token)
 	assert.Equal(t, "testproject", reportingOptions.GitHub.ProjectName)
@@ -157,9 +151,7 @@ github:
 
 	os.Setenv("GITHUB_USER", "testuser")
 
-	log.Printf("%#v\n", reportingOptions.GitHub)
-	val := reflect.ValueOf(*reportingOptions)
-	assignEnvVarToReportingOpt(val)
+	assignEnvVarToReportingOpt(reportingOptions)
 	assert.NotEqual(t, "$GITHUB_USER", reportingOptions.GitHub.Username)
 }
 
@@ -191,9 +183,33 @@ github:
 	os.Setenv("GITHUB_USER", "testuser")
 	os.Setenv("GITHUB_PROJECT", "testproject")
 
-	log.Printf("%#v\n", reportingOptions.GitHub)
-	val := reflect.ValueOf(*reportingOptions)
-	assignEnvVarToReportingOpt(val)
+	assignEnvVarToReportingOpt(reportingOptions)
 	assert.Equal(t, "testuser", reportingOptions.GitHub.Username)
 	assert.NotEqual(t, "$GITHUB_PROJECT", reportingOptions.GitHub.Username)
+}
+
+type TestStruct1 struct {
+	A      string       `yaml:"a"`
+	Struct *TestStruct2 `yaml:"b"`
+}
+
+type TestStruct2 struct {
+	B string `yaml:"b"`
+}
+
+func Test_assignEnvVarToReportingOptFailedMultiple1(t *testing.T) {
+	test := &TestStruct1{
+		A: "$AAAA",
+		Struct: &TestStruct2{
+			B: "$test2",
+		},
+	}
+
+	os.Setenv("AAAA", "testaaaa")
+	os.Setenv("test2", "testtest")
+
+	assignEnvVarToReportingOpt(test)
+	assert.Equal(t, "testaaaa", test.A)
+
+	assert.Equal(t, test.Struct.B, "testtest")
 }
