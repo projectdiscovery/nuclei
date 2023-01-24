@@ -587,8 +587,8 @@ github.com/projectdiscovery/rdap v0.9.1-0.20221108103045-9865884d1917 h1:m03X4gB
 github.com/projectdiscovery/rdap v0.9.1-0.20221108103045-9865884d1917/go.mod h1:JxXtZC9e195awe7EynrcnBJmFoad/BNDzW9mzFkK8Sg=
 github.com/projectdiscovery/retryabledns v1.0.20 h1:grRyh4EzuyqsaK07iNkJKgrGLu/qDJwfDJ+83SBo6yo=
 github.com/projectdiscovery/retryabledns v1.0.20/go.mod h1:97Et22Kw2iPyvz/Vn41/i3dSbhLMHfeWP/S7EaLgmtg=
-github.com/projectdiscovery/retryablehttp-go v1.0.9-0.20230117140046-2816bacff2bc h1:8RLPaqm3AwC9S6qOlsyrg4j1m9aueHqwl+FqvJ4ei1E=
-github.com/projectdiscovery/retryablehttp-go v1.0.9-0.20230117140046-2816bacff2bc/go.mod h1:a5bmSbaxgHvC0P80csOymMOwKaJirMnsS6otRUH/vcU=
+github.com/projectdiscovery/retryablehttp-go v1.0.10-0.20230123170312-75b58f90739a h1:KUHx4Yxx7S+qX94TtCegLj/01obmohdVDeiG86FCHjM=
+github.com/projectdiscovery/retryablehttp-go v1.0.10-0.20230123170312-75b58f90739a/go.mod h1:a5bmSbaxgHvC0P80csOymMOwKaJirMnsS6otRUH/vcU=
 github.com/projectdiscovery/sarif v0.0.1 h1:C2Tyj0SGOKbCLgHrx83vaE6YkzXEVrMXYRGLkKCr/us=
 github.com/projectdiscovery/sarif v0.0.1/go.mod h1:cEYlDu8amcPf6b9dSakcz2nNnJsoz4aR6peERwV+wuQ=
 github.com/projectdiscovery/sliceutil v0.0.1 h1:YoCqCMcdwz+gqNfW5hFY8UvNHoA6SfyBSNkVahatleg=
@@ -598,8 +598,6 @@ github.com/projectdiscovery/tlsx v1.0.1 h1:rpWDka7yGYV8LFLMCdPMkXmvqN8RJMqbE6pJA
 github.com/projectdiscovery/tlsx v1.0.1/go.mod h1:WW+PdBImrqnMl18v4Brp3OsbnO4A1tqYPUcfiVtjNLM=
 github.com/projectdiscovery/uncover v1.0.2 h1:mRFzflYyvwKkHd3XKufMlDRrb6p1mjFZTSHoNAUpFwo=
 github.com/projectdiscovery/uncover v1.0.2/go.mod h1:lz4QYfArSA6jJkXyB71kN2/Pc7IW7nJB8c95n7xtwqY=
-github.com/projectdiscovery/utils v0.0.4-0.20230120120546-d507430a7c95 h1:L3PHBnBJJOfK0XcL00G+DegfE+ZT+H9rUibHkpHC/Uw=
-github.com/projectdiscovery/utils v0.0.4-0.20230120120546-d507430a7c95/go.mod h1:PCwA5YuCYWPgHaGiZmr53/SA9iGQmAnw7DSHuhr8VPQ=
 github.com/projectdiscovery/utils v0.0.6-0.20230123093357-4dd69195db7e h1:t+e8/DKf/cPZRtS8Com52fIwjwAMqrYp2JTOR384bGI=
 github.com/projectdiscovery/utils v0.0.6-0.20230123093357-4dd69195db7e/go.mod h1:PCwA5YuCYWPgHaGiZmr53/SA9iGQmAnw7DSHuhr8VPQ=
 github.com/projectdiscovery/wappalyzergo v0.0.79 h1:hWMxNysxC/P6fxnu6c+opqf5L27hHQ9wD1QzPRCb+I8=
