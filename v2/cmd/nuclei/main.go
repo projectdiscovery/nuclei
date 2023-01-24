@@ -24,6 +24,7 @@ import (
 	templateTypes "github.com/projectdiscovery/nuclei/v2/pkg/templates/types"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 	"github.com/projectdiscovery/nuclei/v2/pkg/utils/monitor"
+	errorutil "github.com/projectdiscovery/utils/errors"
 	fileutil "github.com/projectdiscovery/utils/file"
 )
 
@@ -378,4 +379,11 @@ func cleanupOldResumeFiles() {
 		Prefix:    "resume-",
 	}
 	_ = fileutil.DeleteFilesOlderThan(root, filter)
+}
+
+func init() {
+	// print stacktrace of errors in debug mode
+	if os.Getenv("DEBUG") != "" {
+		errorutil.ShowStackTrace = true
+	}
 }
