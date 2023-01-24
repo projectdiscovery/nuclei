@@ -803,33 +803,6 @@ func (r *Runner) SaveResumeConfig(path string) error {
 }
 
 // replace $VAR_EXAMPLE with the correct variable in os ENV
-// func assignEnvVarToReportingOpt(val reflect.Value) {
-// 	for i := 0; i < val.NumField(); i++ {
-// 		field := val.Field(i)
-// 		if field.Kind() == reflect.Ptr {
-// 			if field.IsNil() {
-// 				continue
-// 			}
-// 			field = field.Elem()
-// 		}
-// 		if field.Kind() == reflect.Struct {
-// 			assignEnvVarToReportingOpt(field)
-// 		} else {
-// 			fieldType := val.Type().Field(i)
-// 			if field.CanAddr() && fieldType.Tag.Get("yaml") != "" && field.Kind() == reflect.String {
-// 				valueStr := fmt.Sprintf("%v", field.Interface())
-// 				if strings.HasPrefix(valueStr, "$") {
-// 					envVar := valueStr[1:]
-// 					if envValue, exists := os.LookupEnv(envVar); exists {
-// 						field.SetString(envValue)
-// 					}
-
-// 				}
-// 			}
-// 		}
-// 	}
-// }
-
 func assignEnvVarToReportingOpt(s interface{}) {
 	v := reflect.ValueOf(s)
 	if v.Kind() == reflect.Ptr {
@@ -846,16 +819,14 @@ func assignEnvVarToReportingOpt(s interface{}) {
 				str := f.String()
 				if strings.HasPrefix(str, "$") {
 					env := strings.TrimPrefix(str, "$")
-					f.SetString(getEnv(env))
+					retrievedEnv := os.Getenv(env)
+					if retrievedEnv != "" {
+						f.SetString(os.Getenv(env))
+					}
 				}
 			} else if f.Kind() == reflect.Struct || f.Kind() == reflect.Ptr {
 				assignEnvVarToReportingOpt(f.Interface())
 			}
 		}
 	}
-}
-
-func getEnv(env string) string {
-	res := os.Getenv(env)
-	return res
 }

@@ -185,7 +185,7 @@ github:
 
 	assignEnvVarToReportingOpt(reportingOptions)
 	assert.Equal(t, "testuser", reportingOptions.GitHub.Username)
-	assert.NotEqual(t, "$GITHUB_PROJECT", reportingOptions.GitHub.Username)
+	assert.NotEqual(t, "$GITHUB_PROJECT", reportingOptions.GitHub.ProjectName)
 }
 
 type TestStruct1 struct {
