@@ -1,16 +1,16 @@
 package fuzz
 
 import (
-	"net/url"
 	"testing"
 
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/interactsh"
+	urlutil "github.com/projectdiscovery/utils/url"
 	"github.com/stretchr/testify/require"
 )
 
 func TestExecuteQueryPartRule(t *testing.T) {
-	parsed, _ := url.Parse("http://localhost:8080/?url=localhost&mode=multiple&file=passwdfile")
+	parsed, _ := urlutil.Parse("http://localhost:8080/?url=localhost&mode=multiple&file=passwdfile")
 	options := &protocols.ExecuterOptions{
 		Interactsh: &interactsh.Client{},
 	}

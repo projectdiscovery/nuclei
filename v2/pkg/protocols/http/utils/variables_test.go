@@ -1,16 +1,16 @@
 package utils
 
 import (
-	"net/url"
 	"testing"
 
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/contextargs"
+	urlutil "github.com/projectdiscovery/utils/url"
 	"github.com/stretchr/testify/require"
 )
 
 func TestVariables(t *testing.T) {
 	baseURL := "http://localhost:9001/test/123"
-	parsed, _ := url.Parse(baseURL)
+	parsed, _ := urlutil.Parse(baseURL)
 	values := GenerateVariablesWithURL(parsed, true, nil)
 
 	require.Equal(t, values["BaseURL"], parsed.String(), "incorrect baseurl")
@@ -23,7 +23,7 @@ func TestVariables(t *testing.T) {
 	require.Equal(t, values["Hostname"], "localhost:9001", "incorrect hostname")
 
 	baseURL = "https://example.com"
-	parsed, _ = url.Parse(baseURL)
+	parsed, _ = urlutil.Parse(baseURL)
 	values = GenerateVariablesWithURL(parsed, false, nil)
 
 	require.Equal(t, values["BaseURL"], parsed.String(), "incorrect baseurl")
@@ -35,7 +35,7 @@ func TestVariables(t *testing.T) {
 	require.Equal(t, values["Hostname"], "example.com", "incorrect hostname")
 
 	baseURL = "ftp://foobar.com/"
-	parsed, _ = url.Parse(baseURL)
+	parsed, _ = urlutil.Parse(baseURL)
 	values = GenerateVariablesWithURL(parsed, true, nil)
 
 	require.Equal(t, values["BaseURL"], parsed.String(), "incorrect baseurl")

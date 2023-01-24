@@ -3,15 +3,14 @@ package http
 import (
 	"context"
 	"net"
-	"net/http"
 	"regexp"
 	"strings"
 	"time"
 
 	"github.com/projectdiscovery/fastdialer/fastdialer"
+	"github.com/projectdiscovery/retryablehttp-go"
 	iputil "github.com/projectdiscovery/utils/ip"
 	stringsutil "github.com/projectdiscovery/utils/strings"
-	urlutil "github.com/projectdiscovery/utils/url"
 )
 
 var (
@@ -49,7 +48,7 @@ func parseFlowAnnotations(rawRequest string) (flowMark, bool) {
 }
 
 // parseAnnotations and override requests settings
-func (r *Request) parseAnnotations(rawRequest string, request *http.Request) (*http.Request, context.CancelFunc, bool) {
+func (r *Request) parseAnnotations(rawRequest string, request *retryablehttp.Request) (*retryablehttp.Request, context.CancelFunc, bool) {
 	var (
 		modified   bool
 		cancelFunc context.CancelFunc
@@ -62,9 +61,9 @@ func (r *Request) parseAnnotations(rawRequest string, request *http.Request) (*h
 		// handle scheme
 		switch {
 		case stringsutil.HasPrefixI(value, "http://"):
-			request.URL.Scheme = urlutil.HTTP
+			request.URL.Scheme = "http"
 		case stringsutil.HasPrefixI(value, "https://"):
-			request.URL.Scheme = urlutil.HTTPS
+			request.URL.Scheme = "https"
 		}
 
 		value = stringsutil.TrimPrefixAny(value, "http://", "https://")
@@ -116,7 +115,6 @@ func (r *Request) parseAnnotations(rawRequest string, request *http.Request) (*h
 			request = request.Clone(ctx)
 		}
 	}
-
 	return request, cancelFunc, modified
 }
 
