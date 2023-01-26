@@ -96,13 +96,3 @@ func GetVariablesNamesSkipList(signature SignatureType) map[string]interface{} {
 		return nil
 	}
 }
-
-// GetVariablesNamesSkipList depending on the signature type
-func GetVariablesDefault(signature SignatureType) map[string]interface{} {
-	switch signature {
-	case AWSSignature:
-		return signer.AwsDefaultVars
-	default:
-		return nil
-	}
-}

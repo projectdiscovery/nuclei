@@ -24,12 +24,12 @@ require (
 	github.com/olekukonko/tablewriter v0.0.5
 	github.com/pkg/errors v0.9.1
 	github.com/projectdiscovery/clistats v0.0.11
-	github.com/projectdiscovery/fastdialer v0.0.19
+	github.com/projectdiscovery/fastdialer v0.0.21
 	github.com/projectdiscovery/hmap v0.0.6
 	github.com/projectdiscovery/interactsh v1.0.6-0.20220827132222-460cc6270053
-	github.com/projectdiscovery/rawhttp v0.1.4
+	github.com/projectdiscovery/rawhttp v0.1.7
 	github.com/projectdiscovery/retryabledns v1.0.20
-	github.com/projectdiscovery/retryablehttp-go v1.0.8
+	github.com/projectdiscovery/retryablehttp-go v1.0.10-0.20230123170312-75b58f90739a
 	github.com/projectdiscovery/stringsutil v0.0.2
 	github.com/projectdiscovery/yamldoc-go v1.0.3-0.20211126104922-00d2c6bb43b6
 	github.com/remeh/sizedwaitgroup v1.0.0
@@ -42,8 +42,7 @@ require (
 	github.com/tj/go-update v2.2.5-0.20200519121640-62b4b798fd68+incompatible
 	github.com/valyala/fasttemplate v1.2.2
 	github.com/weppos/publicsuffix-go v0.15.1-0.20220724114530-e087fba66a37
-	github.com/xanzy/go-gitlab v0.77.0
-	go.uber.org/atomic v1.10.0
+	github.com/xanzy/go-gitlab v0.78.0
 	go.uber.org/multierr v1.9.0
 	golang.org/x/net v0.5.0
 	golang.org/x/oauth2 v0.4.0
@@ -80,8 +79,8 @@ require (
 	github.com/projectdiscovery/sarif v0.0.1
 	github.com/projectdiscovery/tlsx v1.0.1
 	github.com/projectdiscovery/uncover v1.0.2
-	github.com/projectdiscovery/utils v0.0.4-0.20230104145529-50cace956b0a
-	github.com/projectdiscovery/wappalyzergo v0.0.77
+	github.com/projectdiscovery/utils v0.0.6-0.20230123093357-4dd69195db7e
+	github.com/projectdiscovery/wappalyzergo v0.0.79
 	github.com/stretchr/testify v1.8.1
 	gopkg.in/src-d/go-git.v4 v4.13.1
 	gopkg.in/yaml.v3 v3.0.1
@@ -123,6 +122,7 @@ require (
 	github.com/tidwall/rtred v0.1.2 // indirect
 	github.com/tidwall/tinyqueue v0.1.1 // indirect
 	github.com/zmap/zcertificate v0.0.0-20180516150559-0e3d58b1bac4 // indirect
+	go.uber.org/atomic v1.10.0 // indirect
 	gopkg.in/djherbis/times.v1 v1.3.0 // indirect
 )
 
@@ -191,7 +191,7 @@ require (
 	github.com/projectdiscovery/networkpolicy v0.0.3
 	github.com/rivo/uniseg v0.2.0 // indirect
 	github.com/rogpeppe/go-internal v1.9.0 // indirect
-	github.com/saintfish/chardet v0.0.0-20120816061221-3af4cd4741ca // indirect
+	github.com/saintfish/chardet v0.0.0-20230101081208-5e3ef4b5456d // indirect
 	github.com/tklauser/go-sysconf v0.3.11 // indirect
 	github.com/tklauser/numcpus v0.6.0 // indirect
 	github.com/trivago/tgo v1.0.7 // indirect
@@ -212,7 +212,7 @@ require (
 	golang.org/x/exp v0.0.0-20221230185412-738e83a70c30
 	golang.org/x/mod v0.6.0 // indirect
 	golang.org/x/sys v0.4.0 // indirect
-	golang.org/x/time v0.2.0 // indirect
+	golang.org/x/time v0.3.0 // indirect
 	golang.org/x/tools v0.2.0 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
 	google.golang.org/protobuf v1.28.1 // indirect

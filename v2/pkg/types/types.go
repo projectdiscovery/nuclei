@@ -141,6 +141,8 @@ type Options struct {
 	MetricsPort int
 	// MaxHostError is the maximum number of errors allowed for a host
 	MaxHostError int
+	// NoHostErrors disables host skipping after maximum number of errors
+	NoHostErrors bool
 	// BulkSize is the of targets analyzed in parallel for each template
 	BulkSize int
 	// TemplateThreads is the number of templates executed in parallel
@@ -387,5 +389,21 @@ func DefaultOptions() *Options {
 
 // HasCloudOptions returns true if cloud options have been specified
 func (options *Options) HasCloudOptions() bool {
-	return options.ScanList || options.DeleteScan != "" || options.ScanOutput != "" || options.ListDatasources || options.ListTargets || options.ListTemplates || options.RemoveDatasource != "" || options.AddTarget != "" || options.AddTemplate != "" || options.RemoveTarget != "" || options.RemoveTemplate != "" || options.GetTarget != "" || options.GetTemplate != ""
+	return options.ScanList ||
+		options.DeleteScan != "" ||
+		options.ScanOutput != "" ||
+		options.ListDatasources ||
+		options.ListTargets ||
+		options.ListTemplates ||
+		options.RemoveDatasource != "" ||
+		options.AddTarget != "" ||
+		options.AddTemplate != "" ||
+		options.RemoveTarget != "" ||
+		options.RemoveTemplate != "" ||
+		options.GetTarget != "" ||
+		options.GetTemplate != ""
+}
+
+func (options *Options) ShouldUseHostError() bool {
+	return options.MaxHostError > 0 && !options.NoHostErrors
 }

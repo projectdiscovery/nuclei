@@ -499,7 +499,8 @@ func TestActionWaitVisible(t *testing.T) {
 	})
 
 	t.Run("timeout because of element not visible", func(t *testing.T) {
-		testHeadlessSimpleResponse(t, response, actions, time.Second/2, func(page *Page, err error, out map[string]string) {
+		// increased timeout from time.Second/2 to time.Second due to random fails (probably due to overhead and system)
+		testHeadlessSimpleResponse(t, response, actions, time.Second, func(page *Page, err error, out map[string]string) {
 			require.Error(t, err)
 			require.Contains(t, err.Error(), "Element did not appear in the given amount of time")
 		})
