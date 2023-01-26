@@ -2,6 +2,12 @@ before:
   hooks:
     - go mod tidy
 
+# release options (https://goreleaser.com/customization/release/)
+
+release:
+  draft: true
+  prerelease: auto
+
 builds:
 
 - main: cmd/nuclei/main.go

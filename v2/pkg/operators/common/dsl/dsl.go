@@ -14,6 +14,7 @@ import (
 	"crypto/sha512"
 	"encoding/base64"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"hash"
 	"html"
@@ -32,6 +33,7 @@ import (
 	"github.com/Knetic/govaluate"
 	"github.com/asaskevich/govalidator"
 	"github.com/hashicorp/go-version"
+	"github.com/kataras/jwt"
 	"github.com/logrusorgru/aurora"
 	"github.com/spaolacci/murmur3"
 
@@ -807,6 +809,118 @@ func init() {
 			data := gcm.Seal(nonce, nonce, []byte(value), nil)
 			return data, nil
 		}),
+		"generate_jwt": makeDslWithOptionalArgsFunction(
+			"(jsonString, optionalAlgorithm, optionalSignature string, optionalMaxAgeUnix interface{}) string",
+			func(args ...interface{}) (interface{}, error) {
+				var optionalAlgorithm string
+				var optionalSignature []byte
+				var optionalMaxAgeUnix time.Time
+
+				var signOpts []jwt.SignOption
+				var jsonData jwt.Map
+
+				argSize := len(args)
+
+				if argSize < 1 || argSize > 4 {
+					return nil, invalidDslFunctionError
+				}
+				jsonString := args[0].(string)
+
+				err := json.Unmarshal([]byte(jsonString), &jsonData)
+				if err != nil {
+					return nil, err
+				}
+
+				var algorithm jwt.Alg
+
+				if argSize > 1 {
+					alg := args[1].(string)
+					optionalAlgorithm = strings.ToUpper(alg)
+
+					switch optionalAlgorithm {
+					case "":
+						algorithm = jwt.NONE
+					case "HS256":
+						algorithm = jwt.HS256
+					case "HS384":
+						algorithm = jwt.HS384
+					case "HS512":
+						algorithm = jwt.HS512
+					case "RS256":
+						algorithm = jwt.RS256
+					case "RS384":
+						algorithm = jwt.RS384
+					case "RS512":
+						algorithm = jwt.RS512
+					case "PS256":
+						algorithm = jwt.PS256
+					case "PS384":
+						algorithm = jwt.PS384
+					case "PS512":
+						algorithm = jwt.PS512
+					case "ES256":
+						algorithm = jwt.ES256
+					case "ES384":
+						algorithm = jwt.ES384
+					case "ES512":
+						algorithm = jwt.ES512
+					case "EDDSA":
+						algorithm = jwt.EdDSA
+					}
+
+					if isjwtAlgorithmNone(alg) {
+						algorithm = &algNONE{algValue: alg}
+					}
+					if algorithm == nil {
+						return nil, fmt.Errorf("invalid algorithm: %s", optionalAlgorithm)
+					}
+				}
+
+				if argSize > 2 {
+					optionalSignature = []byte(args[2].(string))
+				}
+
+				if argSize > 3 {
+					times := make([]interface{}, 2)
+					times[0] = nil
+					times[1] = args[3]
+
+					optionalMaxAgeUnix, err = getCurrentTimeFromUserInput(times)
+					if err != nil {
+						return nil, err
+					}
+
+					duration := time.Until(optionalMaxAgeUnix)
+					signOpts = append(signOpts, jwt.MaxAge(duration))
+				}
+
+				return jwt.Sign(algorithm, optionalSignature, jsonData, signOpts...)
+			}),
+		"json_minify": makeDslFunction(1, func(args ...interface{}) (interface{}, error) {
+			var data map[string]interface{}
+
+			err := json.Unmarshal([]byte(args[0].(string)), &data)
+			if err != nil {
+				return nil, err
+			}
+
+			minified, err := json.Marshal(data)
+			if err != nil {
+				return nil, err
+			}
+
+			return string(minified), nil
+		}),
+		"json_prettify": makeDslFunction(1, func(args ...interface{}) (interface{}, error) {
+			var buf bytes.Buffer
+
+			err := json.Indent(&buf, []byte(args[0].(string)), "", "    ")
+			if err != nil {
+				return nil, err
+			}
+
+			return buf.String(), nil
+		}),
 	}
 
 	dslFunctions = make(map[string]dslFunction, len(tempDslFunctions))
@@ -1090,4 +1204,29 @@ func (e *CompilationError) Error() string {
 
 func (e *CompilationError) Unwrap() error {
 	return e.WrappedError
+}
+
+type algNONE struct {
+	algValue string
+}
+
+func (a *algNONE) Name() string {
+	return a.algValue
+}
+
+func (a *algNONE) Sign(key jwt.PrivateKey, headerAndPayload []byte) ([]byte, error) {
+	return nil, nil
+}
+
+func (a *algNONE) Verify(key jwt.PublicKey, headerAndPayload []byte, signature []byte) error {
+	if !bytes.Equal(signature, []byte{}) {
+		return jwt.ErrTokenSignature
+	}
+
+	return nil
+}
+
+func isjwtAlgorithmNone(alg string) bool {
+	alg = strings.TrimSpace(alg)
+	return strings.ToLower(alg) == "none"
 }

@@ -83,6 +83,33 @@ func (r *Runner) listDatasources() error {
 	return nil
 }
 
+func (r *Runner) listReportingSources() error {
+	items, err := r.cloudClient.ListReportingSources()
+	if err != nil {
+		return err
+	}
+	if len(items) == 0 {
+		return errors.New("no reporting source found")
+	}
+
+	header := []string{"ID", "Type", "ProjectName", "Enabled"}
+	var values [][]string
+	for _, source := range items {
+		if r.options.JSON {
+			_ = jsoniter.NewEncoder(os.Stdout).Encode(source)
+		} else if !r.options.NoTables {
+			values = append(values, []string{strconv.FormatInt(source.ID, 10), source.Type, source.ProjectName, strconv.FormatBool(source.Enabled)})
+		} else {
+			gologger.Silent().Msgf("%d. [%s] [%s] [%t]", source.ID, source.Type, source.ProjectName, source.Enabled)
+		}
+	}
+
+	if !r.options.NoTables {
+		r.prettyPrintTable(header, values)
+	}
+	return nil
+}
+
 func (r *Runner) listTargets() error {
 	items, err := r.cloudClient.ListTargets("")
 	if err != nil {
@@ -217,6 +244,23 @@ func (r *Runner) removeDatasource(datasource string) error {
 	return err
 }
 
+func (r *Runner) toggleReportingSource(source string, status bool) error {
+	ID, parseErr := strconv.ParseInt(source, 10, 64)
+	if parseErr != nil {
+		return errors.Wrap(parseErr, "could not parse reporting source id")
+	}
+
+	err := r.cloudClient.ToggleReportingSource(ID, status)
+	if err == nil {
+		t := "enabled"
+		if !status {
+			t = "disabled"
+		}
+		gologger.Info().Msgf("Reporting source %s %s", t, source)
+	}
+	return err
+}
+
 func (r *Runner) addTemplate(location string) error {
 	walkErr := filepath.WalkDir(location, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
@@ -245,8 +289,8 @@ func (r *Runner) addTarget(location string) error {
 		if d.IsDir() || !strings.EqualFold(filepath.Ext(path), ".txt") {
 			return nil
 		}
-		base := filepath.Base(location)
-		reference, targetErr := r.cloudClient.AddTarget(base, location)
+		base := filepath.Base(path)
+		reference, targetErr := r.cloudClient.AddTarget(base, path)
 		if targetErr != nil {
 			gologger.Error().Msgf("Could not upload %s: %s", location, targetErr)
 		} else if reference != "" {

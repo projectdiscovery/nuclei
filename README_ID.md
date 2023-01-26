@@ -188,6 +188,7 @@ OPTIMIZATIONS:
    -retries int                        number of times to retry a failed request (default 1)
    -ldp, -leave-default-ports          leave default HTTP/HTTPS ports (eg. host:80,host:443
    -mhe, -max-host-error int           max errors for a host before skipping from scan (default 30)
+   -nmhe, -no-mhe                      disable skipping host from scan based on errors
    -project                            use a project folder to avoid sending same request multiple times
    -project-path string                set a specific project path
    -spm, -stop-at-first-path           stop processing HTTP requests after the first match (may break template/workflow logic)
