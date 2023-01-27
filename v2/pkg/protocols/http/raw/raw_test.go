@@ -3,6 +3,7 @@ package raw
 import (
 	"testing"
 
+	urlutil "github.com/projectdiscovery/utils/url"
 	"github.com/stretchr/testify/require"
 )
 
@@ -13,32 +14,32 @@ Origin: {{BaseURL}}
 Connection: close
 User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_4) AppleWebKit/537.36 (KHTML, like Gecko)
 Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8
-Accept-Language: en-US,en;q=0.9`, "https://example.com:8080", false)
+Accept-Language: en-US,en;q=0.9`, parseurl(t, "https://example.com:8080"), false)
 	require.Nil(t, err, "could not parse GET request")
 	require.Equal(t, "https://example.com:8080/gg/phpinfo.php", request.FullURL, "Could not parse request url correctly")
 	require.Equal(t, "/gg/phpinfo.php", request.Path, "Could not parse request path correctly")
 
 	t.Run("path-suffix", func(t *testing.T) {
 		request, err := Parse(`GET /hello HTTP/1.1
-Host: {{Hostname}}`, "https://example.com:8080/test", false)
+Host: {{Hostname}}`, parseurl(t, "https://example.com:8080/test"), false)
 		require.Nil(t, err, "could not parse GET request")
 		require.Equal(t, "https://example.com:8080/test/hello", request.FullURL, "Could not parse request url correctly")
 	})
 
 	t.Run("query-values", func(t *testing.T) {
 		request, err := Parse(`GET ?username=test&password=test HTTP/1.1
-Host: {{Hostname}}:123`, "https://example.com:8080/test", false)
+Host: {{Hostname}}:123`, parseurl(t, "https://example.com:8080/test"), false)
 		require.Nil(t, err, "could not parse GET request")
 		// url.values are sorted to avoid randomness of using maps
 		require.Equal(t, "https://example.com:8080/test?password=test&username=test", request.FullURL, "Could not parse request url correctly")
 
 		request, err = Parse(`GET ?username=test&password=test HTTP/1.1
-Host: {{Hostname}}:123`, "https://example.com:8080/test/", false)
+Host: {{Hostname}}:123`, parseurl(t, "https://example.com:8080/test/"), false)
 		require.Nil(t, err, "could not parse GET request")
 		require.Equal(t, "https://example.com:8080/test/?password=test&username=test", request.FullURL, "Could not parse request url correctly")
 
 		request, err = Parse(`GET /?username=test&password=test HTTP/1.1
-		Host: {{Hostname}}:123`, "https://example.com:8080/test/", false)
+		Host: {{Hostname}}:123`, parseurl(t, "https://example.com:8080/test/"), false)
 		require.Nil(t, err, "could not parse GET request")
 		require.Equal(t, "https://example.com:8080/test/?password=test&username=test", request.FullURL, "Could not parse request url correctly")
 	})
@@ -50,7 +51,7 @@ Host: {{Hostname}}
 Authorization: Basic {{base64('username:password')}}
 User-Agent: Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/55.0
 Accept-Language: en-US,en;q=0.9
-Connection: close`, "https://test.com", false)
+Connection: close`, parseurl(t, "https://test.com"), false)
 	require.Nil(t, err, "could not parse GET request")
 	require.Equal(t, "GET", request.Method, "Could not parse GET method request correctly")
 	require.Equal(t, "/manager/html", request.Path, "Could not parse request path correctly")
@@ -60,7 +61,7 @@ Host: {{Hostname}}
 Content-Type: application/x-www-form-urlencoded
 Connection: close
 
-username=admin&password=login`, "https://test.com", false)
+username=admin&password=login`, parseurl(t, "https://test.com"), false)
 	require.Nil(t, err, "could not parse POST request")
 	require.Equal(t, "POST", request.Method, "Could not parse POST method request correctly")
 	require.Equal(t, "username=admin&password=login", request.Data, "Could not parse request data correctly")
@@ -72,13 +73,13 @@ Host: {{Hostname}}
 Authorization: Basic {{base64('username:password')}}
 User-Agent: Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/55.0
 Accept-Language: en-US,en;q=0.9
-Connection: close`, "https://test.com/test/", true)
+Connection: close`, parseurl(t, "https://test.com/test/"), true)
 	require.Nil(t, err, "could not parse unsafe request")
 	require.Contains(t, string(request.UnsafeRawBytes), "GET /test/manager/html", "Could not parse unsafe method request path correctly")
 
 	request, err = Parse(`GET ?a=b HTTP/1.1
 	Host: {{Hostname}}
-	Origin: {{BaseURL}}`, "https://test.com/test.js", true)
+	Origin: {{BaseURL}}`, parseurl(t, "https://test.com/test.js"), true)
 	require.Nil(t, err, "could not parse unsafe request")
 	require.Contains(t, string(request.UnsafeRawBytes), "GET /test.js?a=b", "Could not parse unsafe method request path correctly")
 }
@@ -86,9 +87,17 @@ Connection: close`, "https://test.com/test/", true)
 func TestTryFillCustomHeaders(t *testing.T) {
 	testValue := "GET /manager/html HTTP/1.1\r\nHost: Test\r\n"
 	expected := "GET /test/manager/html HTTP/1.1\r\nHost: Test\r\ntest: test\r\n"
-	request, err := Parse(testValue, "https://test.com/test/", true)
+	request, err := Parse(testValue, parseurl(t, "https://test.com/test/"), true)
 	require.Nil(t, err, "could not parse unsafe request")
 	err = request.TryFillCustomHeaders([]string{"test: test"})
 	require.Nil(t, err, "could not add custom headers")
 	require.Equal(t, expected, string(request.UnsafeRawBytes), "actual value and expected value are different")
+}
+
+func parseurl(t *testing.T, inputurl string) *urlutil.URL {
+	urlx, err := urlutil.Parse(inputurl)
+	if err != nil {
+		t.Fatalf("failed to parse url %v", urlx)
+	}
+	return urlx
 }
