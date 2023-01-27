@@ -11,7 +11,8 @@ import (
 func TestVariables(t *testing.T) {
 	baseURL := "http://localhost:9001/test/123"
 	parsed, _ := urlutil.Parse(baseURL)
-	values := GenerateVariablesWithURL(parsed, true, nil)
+	// trailingslash is only true when both target/inputURL and payload {{BaseURL}}/xyz both have slash
+	values := GenerateVariablesWithURL(parsed, false, nil)
 
 	require.Equal(t, values["BaseURL"], parsed.String(), "incorrect baseurl")
 	require.Equal(t, values["RootURL"], "http://localhost:9001", "incorrect rootURL")
@@ -36,12 +37,12 @@ func TestVariables(t *testing.T) {
 
 	baseURL = "ftp://foobar.com/"
 	parsed, _ = urlutil.Parse(baseURL)
-	values = GenerateVariablesWithURL(parsed, true, nil)
+	values = GenerateVariablesWithURL(parsed, false, nil)
 
 	require.Equal(t, values["BaseURL"], parsed.String(), "incorrect baseurl")
 	require.Equal(t, values["Host"], "foobar.com", "incorrect domain name")
 	require.Equal(t, values["RootURL"], "ftp://foobar.com", "incorrect rootURL")
-	require.Equal(t, values["Path"], "", "incorrect path")
+	require.Equal(t, values["Path"], "/", "incorrect path")
 	require.Equal(t, values["Port"], "", "incorrect port number") // Unsupported protocol results in a blank port
 	require.Equal(t, values["Scheme"], "ftp", "incorrect scheme")
 	require.Equal(t, values["Hostname"], "foobar.com", "incorrect hostname")
