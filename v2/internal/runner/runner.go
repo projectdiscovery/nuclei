@@ -313,7 +313,8 @@ func createReportingOptions(options *types.Options) (*reporting.Options, error) 
 		}
 		file.Close()
 
-		assignEnvVarToReportingOpt(reportingOptions)
+		// assignEnvVarToReportingOpt(reportingOptions)
+		Walk(reportingOptions, "yaml", assignEnvVarToReportingOpt)
 	}
 	if options.MarkdownExportDirectory != "" {
 		if reportingOptions != nil {
@@ -802,9 +803,13 @@ func (r *Runner) SaveResumeConfig(path string) error {
 	return os.WriteFile(path, data, os.ModePerm)
 }
 
+func Walk(s interface{}, tag string, callback func(v reflect.Value, tag string)) {
+	structReflectValue := reflect.ValueOf(s)
+	callback(structReflectValue, tag)
+}
+
 // replace $VAR_EXAMPLE with the correct variable in os ENV
-func assignEnvVarToReportingOpt(s interface{}) {
-	v := reflect.ValueOf(s)
+func assignEnvVarToReportingOpt(v reflect.Value, tag string) {
 	if v.Kind() == reflect.Ptr {
 		v = v.Elem()
 	}
@@ -813,8 +818,11 @@ func assignEnvVarToReportingOpt(s interface{}) {
 	}
 	for i := 0; i < v.NumField(); i++ {
 		f := v.Field(i)
+		if f.Kind() == reflect.Ptr {
+			f = f.Elem()
+		}
 		fieldType := v.Type().Field(i)
-		if _, ok := fieldType.Tag.Lookup("yaml"); ok {
+		if _, ok := fieldType.Tag.Lookup(tag); ok {
 			if f.Kind() == reflect.String {
 				str := f.String()
 				if strings.HasPrefix(str, "$") {
@@ -825,7 +833,7 @@ func assignEnvVarToReportingOpt(s interface{}) {
 					}
 				}
 			} else if f.Kind() == reflect.Struct || f.Kind() == reflect.Ptr {
-				assignEnvVarToReportingOpt(f.Interface())
+				assignEnvVarToReportingOpt(f, tag)
 			}
 		}
 	}

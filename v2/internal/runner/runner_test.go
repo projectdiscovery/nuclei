@@ -59,7 +59,7 @@ github:
 
 	os.Setenv("GITHUB_USER", "testuser")
 
-	assignEnvVarToReportingOpt(reportingOptions)
+	Walk(reportingOptions, "yaml", assignEnvVarToReportingOpt)
 	assert.Equal(t, "testuser", reportingOptions.GitHub.Username)
 }
 
@@ -92,7 +92,7 @@ github:
 	os.Setenv("GITHUB_TOKEN", "tokentesthere")
 	os.Setenv("GITHUB_PROJECT", "testproject")
 
-	assignEnvVarToReportingOpt(reportingOptions)
+	Walk(reportingOptions, "yaml", assignEnvVarToReportingOpt)
 	assert.Equal(t, "testuser", reportingOptions.GitHub.Username)
 	assert.Equal(t, "tokentesthere", reportingOptions.GitHub.Token)
 	assert.Equal(t, "testproject", reportingOptions.GitHub.ProjectName)
@@ -124,70 +124,6 @@ github:
 	require.NotNil(t, err)
 }
 
-func Test_assignEnvVarToReportingOptFailed(t *testing.T) {
-	data := `
-github:
-  username: $GITHUB_USER
-  owner: $GITHUB_OWNER
-  token: $GITHUB_TOKEN
-  project-name: $GITHUB_PROJECT
-  issue-label: $ISSUE_LABEL
-  severity-as-label: false`
-
-	header := http.Header{}
-	header.Add("test", "test")
-
-	reportingOptions := &reporting.Options{
-		HttpClient: &retryablehttp.Client{
-			HTTPClient: &http.Client{
-				Transport: &http.Transport{
-					ProxyConnectHeader: header,
-				},
-			},
-		},
-	}
-	err := yamlwrapper.DecodeAndValidate(strings.NewReader(data), reportingOptions)
-	require.Nil(t, err)
-
-	os.Setenv("GITHUB_USER", "testuser")
-
-	assignEnvVarToReportingOpt(reportingOptions)
-	assert.NotEqual(t, "$GITHUB_USER", reportingOptions.GitHub.Username)
-}
-
-func Test_assignEnvVarToReportingOptFailedMultiple(t *testing.T) {
-	data := `
-github:
-  username: $GITHUB_USER
-  owner: $GITHUB_OWNER
-  token: $GITHUB_TOKEN
-  project-name: $GITHUB_PROJECT
-  issue-label: $ISSUE_LABEL
-  severity-as-label: false`
-
-	header := http.Header{}
-	header.Add("test", "test")
-
-	reportingOptions := &reporting.Options{
-		HttpClient: &retryablehttp.Client{
-			HTTPClient: &http.Client{
-				Transport: &http.Transport{
-					ProxyConnectHeader: header,
-				},
-			},
-		},
-	}
-	err := yamlwrapper.DecodeAndValidate(strings.NewReader(data), reportingOptions)
-	require.Nil(t, err)
-
-	os.Setenv("GITHUB_USER", "testuser")
-	os.Setenv("GITHUB_PROJECT", "testproject")
-
-	assignEnvVarToReportingOpt(reportingOptions)
-	assert.Equal(t, "testuser", reportingOptions.GitHub.Username)
-	assert.NotEqual(t, "$GITHUB_PROJECT", reportingOptions.GitHub.ProjectName)
-}
-
 type TestStruct1 struct {
 	A      string       `yaml:"a"`
 	Struct *TestStruct2 `yaml:"b"`
@@ -197,19 +133,70 @@ type TestStruct2 struct {
 	B string `yaml:"b"`
 }
 
-func Test_assignEnvVarToReportingOptFailedMultiple1(t *testing.T) {
-	test := &TestStruct1{
-		A: "$AAAA",
+type TestStruct3 struct {
+	A string `yaml:"a"`
+	B string `yaml:"b"`
+	C string `yaml:"c"`
+}
+
+type TestStruct4 struct {
+	A      string       `yaml:"a"`
+	Struct *TestStruct3 `yaml:"b"`
+}
+
+type TestStruct5 struct {
+	A []string  `yaml:"a"`
+	B [2]string `yaml:"b"`
+}
+
+func TestWalkReflectStructAssignsEnvVars(t *testing.T) {
+	testStruct := &TestStruct1{
+		A: "$VAR_EXAMPLE",
 		Struct: &TestStruct2{
-			B: "$test2",
+			B: "$VAR_TWO",
 		},
 	}
+	os.Setenv("VAR_EXAMPLE", "value")
+	os.Setenv("VAR_TWO", "value2")
 
-	os.Setenv("AAAA", "testaaaa")
-	os.Setenv("test2", "testtest")
+	Walk(testStruct, "yaml", assignEnvVarToReportingOpt)
 
-	assignEnvVarToReportingOpt(test)
-	assert.Equal(t, "testaaaa", test.A)
+	assert.Equal(t, "value", testStruct.A)
+	assert.Equal(t, "value2", testStruct.Struct.B)
+}
 
-	assert.Equal(t, test.Struct.B, "testtest")
+func TestWalkReflectStructHandlesDifferentTypes(t *testing.T) {
+	testStruct := &TestStruct3{
+		A: "$VAR_EXAMPLE",
+		B: "$VAR_TWO",
+		C: "$VAR_THREE",
+	}
+	os.Setenv("VAR_EXAMPLE", "value")
+	os.Setenv("VAR_TWO", "2")
+	os.Setenv("VAR_THREE", "true")
+
+	Walk(testStruct, "yaml", assignEnvVarToReportingOpt)
+
+	assert.Equal(t, "value", testStruct.A)
+	assert.Equal(t, "2", testStruct.B)
+	assert.Equal(t, "true", testStruct.C)
+}
+
+func TestWalkReflectStructHandlesNestedStructs(t *testing.T) {
+	testStruct := &TestStruct4{
+		A: "$VAR_EXAMPLE",
+		Struct: &TestStruct3{
+			B: "$VAR_TWO",
+			C: "$VAR_THREE",
+		},
+	}
+	os.Setenv("VAR_EXAMPLE", "value")
+	os.Setenv("VAR_TWO", "2")
+	os.Setenv("VAR_THREE", "true")
+
+	Walk(testStruct, "yaml", assignEnvVarToReportingOpt)
+
+	assert.Equal(t, "value", testStruct.A)
+	assert.Equal(t, "2", testStruct.Struct.B)
+	assert.Equal(t, "true", testStruct.Struct.C)
 }
