@@ -59,7 +59,7 @@ github:
 
 	os.Setenv("GITHUB_USER", "testuser")
 
-	Walk(reportingOptions, "yaml", assignEnvVarToReportingOpt)
+	Walk(reportingOptions, "yaml", AssignEnvVarsToFields)
 	assert.Equal(t, "testuser", reportingOptions.GitHub.Username)
 }
 
@@ -92,7 +92,7 @@ github:
 	os.Setenv("GITHUB_TOKEN", "tokentesthere")
 	os.Setenv("GITHUB_PROJECT", "testproject")
 
-	Walk(reportingOptions, "yaml", assignEnvVarToReportingOpt)
+	Walk(reportingOptions, "yaml", AssignEnvVarsToFields)
 	assert.Equal(t, "testuser", reportingOptions.GitHub.Username)
 	assert.Equal(t, "tokentesthere", reportingOptions.GitHub.Token)
 	assert.Equal(t, "testproject", reportingOptions.GitHub.ProjectName)
@@ -159,7 +159,7 @@ func TestWalkReflectStructAssignsEnvVars(t *testing.T) {
 	os.Setenv("VAR_EXAMPLE", "value")
 	os.Setenv("VAR_TWO", "value2")
 
-	Walk(testStruct, "yaml", assignEnvVarToReportingOpt)
+	Walk(testStruct, "yaml", AssignEnvVarsToFields)
 
 	assert.Equal(t, "value", testStruct.A)
 	assert.Equal(t, "value2", testStruct.Struct.B)
@@ -175,7 +175,7 @@ func TestWalkReflectStructHandlesDifferentTypes(t *testing.T) {
 	os.Setenv("VAR_TWO", "2")
 	os.Setenv("VAR_THREE", "true")
 
-	Walk(testStruct, "yaml", assignEnvVarToReportingOpt)
+	Walk(testStruct, "yaml", AssignEnvVarsToFields)
 
 	assert.Equal(t, "value", testStruct.A)
 	assert.Equal(t, "2", testStruct.B)
@@ -194,7 +194,7 @@ func TestWalkReflectStructHandlesNestedStructs(t *testing.T) {
 	os.Setenv("VAR_TWO", "2")
 	os.Setenv("VAR_THREE", "true")
 
-	Walk(testStruct, "yaml", assignEnvVarToReportingOpt)
+	Walk(testStruct, "yaml", AssignEnvVarsToFields)
 
 	assert.Equal(t, "value", testStruct.A)
 	assert.Equal(t, "2", testStruct.Struct.B)

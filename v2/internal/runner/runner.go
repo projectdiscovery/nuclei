@@ -313,8 +313,7 @@ func createReportingOptions(options *types.Options) (*reporting.Options, error) 
 		}
 		file.Close()
 
-		// assignEnvVarToReportingOpt(reportingOptions)
-		Walk(reportingOptions, "yaml", assignEnvVarToReportingOpt)
+		Walk(reportingOptions, "yaml", AssignEnvVarsToFields)
 	}
 	if options.MarkdownExportDirectory != "" {
 		if reportingOptions != nil {
@@ -803,13 +802,20 @@ func (r *Runner) SaveResumeConfig(path string) error {
 	return os.WriteFile(path, data, os.ModePerm)
 }
 
+// Walk iterates through a struct and its fields, calling the specified callback function for each value.
 func Walk(s interface{}, tag string, callback func(v reflect.Value, tag string)) {
 	structReflectValue := reflect.ValueOf(s)
 	callback(structReflectValue, tag)
 }
 
-// replace $VAR_EXAMPLE with the correct variable in os ENV
-func assignEnvVarToReportingOpt(v reflect.Value, tag string) {
+// AssignEnvVarsToFields is a function used to assign environment variables to
+// fields of a given structure. This is done by looping through the fields of
+// a given structure and checking if they have a specific tag  associated with them.
+// If they do, the function checks if the field is a string and if so, checks if it begins with '$'.
+// If it does, the function will retrieve the environment variable associated with
+// the field and assign it to the field. If the field is a structure or a pointer,
+// the function is called recursively to assign the environment variables to the fields of the sub-structure.
+func AssignEnvVarsToFields(v reflect.Value, tag string) {
 	if v.Kind() == reflect.Ptr {
 		v = v.Elem()
 	}
@@ -833,7 +839,7 @@ func assignEnvVarToReportingOpt(v reflect.Value, tag string) {
 					}
 				}
 			} else if f.Kind() == reflect.Struct || f.Kind() == reflect.Ptr {
-				assignEnvVarToReportingOpt(f, tag)
+				AssignEnvVarsToFields(f, tag)
 			}
 		}
 	}
