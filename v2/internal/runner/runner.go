@@ -56,7 +56,6 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/utils"
 	"github.com/projectdiscovery/nuclei/v2/pkg/utils/stats"
 	"github.com/projectdiscovery/nuclei/v2/pkg/utils/yaml"
-	yamlwrapper "github.com/projectdiscovery/nuclei/v2/pkg/utils/yaml"
 	"github.com/projectdiscovery/retryablehttp-go"
 	stringsutil "github.com/projectdiscovery/utils/strings"
 )
@@ -307,10 +306,6 @@ func createReportingOptions(options *types.Options) (*reporting.Options, error) 
 		}
 
 		reportingOptions = &reporting.Options{}
-		if err := yamlwrapper.DecodeAndValidate(file, reportingOptions); err != nil {
-			file.Close()
-			return nil, errors.Wrap(err, "could not parse reporting config file")
-		}
 		file.Close()
 
 		Walk(reportingOptions, "yaml", AssignEnvVarsToFields)
@@ -802,45 +797,45 @@ func (r *Runner) SaveResumeConfig(path string) error {
 	return os.WriteFile(path, data, os.ModePerm)
 }
 
-// Walk iterates through a struct and its fields, calling the specified callback function for each value.
-func Walk(s interface{}, tag string, callback func(v reflect.Value, tag string)) {
+// // Walk iterates through a struct and its fields, calling the specified callback function for each value.
+func Walk(s interface{}, tag string, callback func(f reflect.Value, tag string)) {
 	structReflectValue := reflect.ValueOf(s)
-	callback(structReflectValue, tag)
-}
-
-// AssignEnvVarsToFields is a function used to assign environment variables to
-// fields of a given structure. This is done by looping through the fields of
-// a given structure and checking if they have a specific tag  associated with them.
-// If they do, the function checks if the field is a string and if so, checks if it begins with '$'.
-// If it does, the function will retrieve the environment variable associated with
-// the field and assign it to the field. If the field is a structure or a pointer,
-// the function is called recursively to assign the environment variables to the fields of the sub-structure.
-func AssignEnvVarsToFields(v reflect.Value, tag string) {
-	if v.Kind() == reflect.Ptr {
-		v = v.Elem()
+	if structReflectValue.Kind() == reflect.Ptr {
+		structReflectValue = structReflectValue.Elem()
 	}
-	if v.Kind() != reflect.Struct {
+	if structReflectValue.Kind() != reflect.Struct {
 		return
 	}
-	for i := 0; i < v.NumField(); i++ {
-		f := v.Field(i)
+	for i := 0; i < structReflectValue.NumField(); i++ {
+		f := structReflectValue.Field(i)
 		if f.Kind() == reflect.Ptr {
 			f = f.Elem()
 		}
-		fieldType := v.Type().Field(i)
+		fieldType := structReflectValue.Type().Field(i)
 		if _, ok := fieldType.Tag.Lookup(tag); ok {
-			if f.Kind() == reflect.String {
-				str := f.String()
-				if strings.HasPrefix(str, "$") {
-					env := strings.TrimPrefix(str, "$")
-					retrievedEnv := os.Getenv(env)
-					if retrievedEnv != "" {
-						f.SetString(os.Getenv(env))
-					}
-				}
-			} else if f.Kind() == reflect.Struct || f.Kind() == reflect.Ptr {
-				AssignEnvVarsToFields(f, tag)
+			callback(f, tag)
+		}
+	}
+}
+
+// // AssignEnvVarsToFields is a function used to assign environment variables to
+// // fields of a given structure. This is done by looping through the fields of
+// // a given structure and checking if they have a specific tag  associated with them.
+// // If they do, the function checks if the field is a string and if so, checks if it begins with '$'.
+// // If it does, the function will retrieve the environment variable associated with
+// // the field and assign it to the field. If the field is a structure or a pointer,
+// // the function is called recursively to assign the environment variables to the fields of the sub-structure.
+func AssignEnvVarsToFields(f reflect.Value, tag string) {
+	if f.Kind() == reflect.String {
+		str := f.String()
+		if strings.HasPrefix(str, "$") {
+			env := strings.TrimPrefix(str, "$")
+			retrievedEnv := os.Getenv(env)
+			if retrievedEnv != "" {
+				f.SetString(os.Getenv(env))
 			}
 		}
+	} else if f.Kind() == reflect.Struct || f.Kind() == reflect.Ptr {
+		Walk(f.Addr().Interface(), tag, AssignEnvVarsToFields)
 	}
 }
