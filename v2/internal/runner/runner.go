@@ -311,7 +311,7 @@ func createReportingOptions(options *types.Options) (*reporting.Options, error) 
 
 		file.Close()
 
-		Walk(reportingOptions, "yaml", AssignEnvVarsToFields)
+		Walk(reportingOptions, expandEndVars)
 	}
 	if options.MarkdownExportDirectory != "" {
 		if reportingOptions != nil {
@@ -800,35 +800,36 @@ func (r *Runner) SaveResumeConfig(path string) error {
 	return os.WriteFile(path, data, os.ModePerm)
 }
 
-// // Walk iterates through a struct and its fields, calling the specified callback function for each value.
-func Walk(s interface{}, tag string, callback func(f reflect.Value, tag string)) {
-	structReflectValue := reflect.ValueOf(s)
-	if structReflectValue.Kind() == reflect.Ptr {
-		structReflectValue = structReflectValue.Elem()
+type WalkFunc func(reflect.Value, reflect.StructField)
+
+func Walk(s interface{}, callback WalkFunc) {
+	structValue := reflect.ValueOf(s)
+	if structValue.Kind() == reflect.Ptr {
+		structValue = structValue.Elem()
 	}
-	if structReflectValue.Kind() != reflect.Struct {
+	if structValue.Kind() != reflect.Struct {
 		return
 	}
-	for i := 0; i < structReflectValue.NumField(); i++ {
-		f := structReflectValue.Field(i)
-		if f.Kind() == reflect.Ptr {
-			f = f.Elem()
+	for i := 0; i < structValue.NumField(); i++ {
+		field := structValue.Field(i)
+		fieldType := structValue.Type().Field(i)
+		if !fieldType.IsExported() {
+			continue
 		}
-		fieldType := structReflectValue.Type().Field(i)
-		if _, ok := fieldType.Tag.Lookup(tag); ok {
-			callback(f, tag)
+		if field.Kind() == reflect.Struct {
+			Walk(field.Addr().Interface(), callback)
+		} else if field.Kind() == reflect.Ptr && field.Elem().Kind() == reflect.Struct {
+			Walk(field.Interface(), callback)
+		} else {
+			callback(field, fieldType)
 		}
 	}
 }
 
-// // AssignEnvVarsToFields is a function used to assign environment variables to
-// // fields of a given structure. This is done by looping through the fields of
-// // a given structure and checking if they have a specific tag  associated with them.
-// // If they do, the function checks if the field is a string and if so, checks if it begins with '$'.
-// // If it does, the function will retrieve the environment variable associated with
-// // the field and assign it to the field. If the field is a structure or a pointer,
-// // the function is called recursively to assign the environment variables to the fields of the sub-structure.
-func AssignEnvVarsToFields(f reflect.Value, tag string) {
+func expandEndVars(f reflect.Value, fieldType reflect.StructField) {
+	if _, ok := fieldType.Tag.Lookup("yaml"); !ok {
+		return
+	}
 	if f.Kind() == reflect.String {
 		str := f.String()
 		if strings.HasPrefix(str, "$") {
@@ -838,7 +839,5 @@ func AssignEnvVarsToFields(f reflect.Value, tag string) {
 				f.SetString(os.Getenv(env))
 			}
 		}
-	} else if f.Kind() == reflect.Struct || f.Kind() == reflect.Ptr {
-		Walk(f.Addr().Interface(), tag, AssignEnvVarsToFields)
 	}
 }
