@@ -25,6 +25,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/protocolinit"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/protocolstate"
 	"github.com/projectdiscovery/nuclei/v2/pkg/reporting"
+	templatesCache "github.com/projectdiscovery/nuclei/v2/pkg/templates/cache"
 	"github.com/projectdiscovery/nuclei/v2/pkg/testutils"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 	"github.com/projectdiscovery/ratelimit"
@@ -56,6 +57,9 @@ func main() {
 		log.Fatalf("Could not create interact client: %s\n", err)
 	}
 	defer interactClient.Close()
+	// we need to empty the global cache of compiled templates
+	// retaining a pointer to potentially dismissed interactsh-client
+	defer templatesCache.Clear()
 
 	home, _ := os.UserHomeDir()
 	catalog := disk.NewCatalog(path.Join(home, "nuclei-templates"))

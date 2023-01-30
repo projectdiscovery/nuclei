@@ -12,12 +12,13 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/model"
 	"github.com/projectdiscovery/nuclei/v2/pkg/model/types/stringslice"
 	"github.com/projectdiscovery/nuclei/v2/pkg/templates"
+	templatesCache "github.com/projectdiscovery/nuclei/v2/pkg/templates/cache"
 )
 
 func TestLoadTemplate(t *testing.T) {
 	catalog := disk.NewCatalog("")
-	origTemplatesCache := parsedTemplatesCache
-	defer func() { parsedTemplatesCache = origTemplatesCache }()
+	origTemplatesCache := templatesCache.Unmarshaled
+	defer func() { templatesCache.Unmarshaled = origTemplatesCache }()
 
 	tt := []struct {
 		name        string
@@ -55,7 +56,7 @@ func TestLoadTemplate(t *testing.T) {
 
 	for _, tc := range tt {
 		t.Run(tc.name, func(t *testing.T) {
-			parsedTemplatesCache.Store(tc.name, tc.template, tc.templateErr)
+			templatesCache.Unmarshaled.Store(tc.name, tc.template, tc.templateErr)
 
 			tagFilter, err := filter.New(&filter.Config{})
 			require.Nil(t, err)
@@ -97,7 +98,7 @@ func TestLoadTemplate(t *testing.T) {
 						Authors: stringslice.StringSlice{Value: "Author"},
 					},
 				}
-				parsedTemplatesCache.Store(name, template, nil)
+				templatesCache.Unmarshaled.Store(name, template, nil)
 
 				tagFilter, err := filter.New(&filter.Config{})
 				require.Nil(t, err)

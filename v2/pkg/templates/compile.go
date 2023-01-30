@@ -22,18 +22,12 @@ var (
 	ErrCreateTemplateExecutor = errors.New("cannot create template executer")
 )
 
-var parsedTemplatesCache *cache.Templates
-
-func init() {
-	parsedTemplatesCache = cache.New()
-}
-
 // Parse parses a yaml request template file
 // TODO make sure reading from the disk the template parsing happens once: see parsers.ParseTemplate vs templates.Parse
 //
 //nolint:gocritic // this cannot be passed by pointer
 func Parse(filePath string, preprocessor Preprocessor, options protocols.ExecuterOptions) (*Template, error) {
-	if value, err := parsedTemplatesCache.Has(filePath); value != nil {
+	if value, err := cache.Compiled.Has(filePath); value != nil {
 		return value.(*Template), err
 	}
 
@@ -66,7 +60,7 @@ func Parse(filePath string, preprocessor Preprocessor, options protocols.Execute
 		template.CompiledWorkflow.Options = &options
 	}
 	template.Path = filePath
-	parsedTemplatesCache.Store(filePath, template, err)
+	cache.Compiled.Store(filePath, template, err)
 	return template, nil
 }
 

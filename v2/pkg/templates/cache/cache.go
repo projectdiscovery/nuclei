@@ -37,3 +37,11 @@ func (t *Templates) Has(template string) (interface{}, error) {
 func (t *Templates) Store(template string, data interface{}, err error) {
 	t.items.Store(template, parsedTemplateErrHolder{template: data, err: err})
 }
+
+// Clear the cache
+func (t *Templates) Clear() {
+	t.items.Range(func(key interface{}, value interface{}) bool {
+		t.items.Delete(key)
+		return true
+	})
+}

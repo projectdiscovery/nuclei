@@ -49,7 +49,7 @@ const (
 )
 
 var invalidDslFunctionError = errors.New("invalid DSL function signature")
-var invalidDslFunctionMessageTemplate = "%w. correct method signature %q"
+var invalidDslFunctionMessage = "%w. correct method signature %q"
 
 var dslFunctions map[string]dslFunction
 
@@ -961,7 +961,7 @@ func makeDslFunction(numberOfParameters int, dslFunctionLogic govaluate.Expressi
 			[]string{signature},
 			func(args ...interface{}) (interface{}, error) {
 				if len(args) != numberOfParameters {
-					return nil, fmt.Errorf(invalidDslFunctionMessageTemplate, invalidDslFunctionError, signature)
+					return nil, fmt.Errorf(invalidDslFunctionMessage, invalidDslFunctionError, signature)
 				}
 				return dslFunctionLogic(args...)
 			},

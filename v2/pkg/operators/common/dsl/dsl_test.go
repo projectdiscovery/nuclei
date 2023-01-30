@@ -53,7 +53,7 @@ func TestDSLGzipSerialize(t *testing.T) {
 
 func TestDslFunctionSignatures(t *testing.T) {
 	createSignatureError := func(signature string) string {
-		return fmt.Errorf(invalidDslFunctionMessageTemplate, invalidDslFunctionError, signature).Error()
+		return fmt.Errorf(invalidDslFunctionMessage, invalidDslFunctionError, signature).Error()
 	}
 
 	toUpperSignatureError := createSignatureError("to_upper(arg1 interface{}) interface{}")
