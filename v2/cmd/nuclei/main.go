@@ -108,7 +108,6 @@ func main() {
 			gologger.Fatal().Msgf("Could not run nuclei: %s\n", err)
 		}
 	}
-	nucleiRunner.Close()
 	// on successful execution remove the resume file in case it exists
 	if fileutil.FileExists(resumeFileName) {
 		os.Remove(resumeFileName)
