@@ -55,9 +55,9 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 	"github.com/projectdiscovery/nuclei/v2/pkg/utils"
 	"github.com/projectdiscovery/nuclei/v2/pkg/utils/stats"
-	"github.com/projectdiscovery/nuclei/v2/pkg/utils/yaml"
 	"github.com/projectdiscovery/retryablehttp-go"
 	stringsutil "github.com/projectdiscovery/utils/strings"
+	"gopkg.in/yaml.v2"
 )
 
 // Runner is a client for running the enumeration process.
@@ -113,8 +113,6 @@ func New(options *types.Options) (*Runner, error) {
 
 	// TODO: refactor to pass options reference globally without cycles
 	parsers.NoStrictSyntax = options.NoStrictSyntax
-	yaml.StrictSyntax = !options.NoStrictSyntax
-
 	// parse the runner.options.GithubTemplateRepo and store the valid repos in runner.customTemplateRepos
 	runner.customTemplates = customtemplates.ParseCustomTemplates(runner.options)
 
@@ -306,6 +304,11 @@ func createReportingOptions(options *types.Options) (*reporting.Options, error) 
 		}
 
 		reportingOptions = &reporting.Options{}
+
+		if err := yaml.NewDecoder(file).Decode(reportingOptions); err != nil {
+			return nil, errors.Wrap(err, "could not parse reporting config file")
+		}
+
 		file.Close()
 
 		Walk(reportingOptions, "yaml", AssignEnvVarsToFields)
