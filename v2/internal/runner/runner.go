@@ -802,6 +802,10 @@ func (r *Runner) SaveResumeConfig(path string) error {
 
 type WalkFunc func(reflect.Value, reflect.StructField)
 
+// Walk traverses a struct and executes a callback function on each value in the struct.
+// The interface{} passed to the function should be a pointer to a struct or a struct.
+// WalkFunc is the callback function used for each value in the struct. It is passed the
+// reflect.Value and reflect.Type of the value in the struct.
 func Walk(s interface{}, callback WalkFunc) {
 	structValue := reflect.ValueOf(s)
 	if structValue.Kind() == reflect.Ptr {
@@ -826,6 +830,9 @@ func Walk(s interface{}, callback WalkFunc) {
 	}
 }
 
+// expandEndVars looks for values in a struct tagged with "yaml" and checks if they are prefixed with '$'.
+// If they are, it will try to retrieve the value from the environment and if it exists, it will set the
+// value of the field to that of the environment variable.
 func expandEndVars(f reflect.Value, fieldType reflect.StructField) {
 	if _, ok := fieldType.Tag.Lookup("yaml"); !ok {
 		return
