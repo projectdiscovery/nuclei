@@ -56,7 +56,6 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/utils"
 	"github.com/projectdiscovery/nuclei/v2/pkg/utils/stats"
 	"github.com/projectdiscovery/nuclei/v2/pkg/utils/yaml"
-	yamlwrapper "github.com/projectdiscovery/nuclei/v2/pkg/utils/yaml"
 	"github.com/projectdiscovery/retryablehttp-go"
 	stringsutil "github.com/projectdiscovery/utils/strings"
 )
@@ -306,7 +305,7 @@ func createReportingOptions(options *types.Options) (*reporting.Options, error) 
 		}
 
 		reportingOptions = &reporting.Options{}
-		if err := yamlwrapper.DecodeAndValidate(file, reportingOptions); err != nil {
+		if err := yaml.DecodeAndValidate(file, reportingOptions); err != nil {
 			file.Close()
 			return nil, errors.Wrap(err, "could not parse reporting config file")
 		}
