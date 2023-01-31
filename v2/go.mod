@@ -42,7 +42,7 @@ require (
 	github.com/tj/go-update v2.2.5-0.20200519121640-62b4b798fd68+incompatible
 	github.com/valyala/fasttemplate v1.2.2
 	github.com/weppos/publicsuffix-go v0.15.1-0.20220724114530-e087fba66a37
-	github.com/xanzy/go-gitlab v0.78.0
+	github.com/xanzy/go-gitlab v0.79.0
 	go.uber.org/multierr v1.9.0
 	golang.org/x/net v0.5.0
 	golang.org/x/oauth2 v0.4.0
@@ -66,7 +66,7 @@ require (
 	github.com/h2non/filetype v1.1.3
 	github.com/hashicorp/go-version v1.6.0
 	github.com/kataras/jwt v0.1.8
-	github.com/klauspost/compress v1.15.13
+	github.com/klauspost/compress v1.15.15
 	github.com/labstack/echo/v4 v4.10.0
 	github.com/mholt/archiver v3.1.1+incompatible
 	github.com/mitchellh/go-homedir v1.1.0
@@ -74,12 +74,12 @@ require (
 	github.com/projectdiscovery/goflags v0.1.6
 	github.com/projectdiscovery/gologger v1.1.6-0.20230104075207-1c357ca8209b
 	github.com/projectdiscovery/nvd v1.0.9
-	github.com/projectdiscovery/ratelimit v0.0.4
+	github.com/projectdiscovery/ratelimit v0.0.6
 	github.com/projectdiscovery/rdap v0.9.1-0.20221108103045-9865884d1917
 	github.com/projectdiscovery/sarif v0.0.1
 	github.com/projectdiscovery/tlsx v1.0.1
 	github.com/projectdiscovery/uncover v1.0.2
-	github.com/projectdiscovery/utils v0.0.6-0.20230123093357-4dd69195db7e
+	github.com/projectdiscovery/utils v0.0.6
 	github.com/projectdiscovery/wappalyzergo v0.0.79
 	github.com/stretchr/testify v1.8.1
 	gopkg.in/src-d/go-git.v4 v4.13.1
