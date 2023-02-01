@@ -2,18 +2,17 @@ package runner
 
 import (
 	"fmt"
-	"io"
 	"net/http"
 	"strings"
 	"sync/atomic"
+	"time"
 
 	"github.com/corpix/uarand"
 	"github.com/pkg/errors"
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/hmap/store/hybrid"
+	"github.com/projectdiscovery/httpx/common/httpx"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/contextargs"
-	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/http/httpclientpool"
-	"github.com/projectdiscovery/retryablehttp-go"
 	"github.com/remeh/sizedwaitgroup"
 )
 
@@ -27,16 +26,21 @@ func (r *Runner) initializeTemplatesHTTPInput() (*hybrid.HybridMap, error) {
 		return nil, errors.Wrap(err, "could not create temporary input file")
 	}
 
-	httpclient, err := httpclientpool.Get(r.options, &httpclientpool.Configuration{})
-	if err != nil {
-		return nil, errors.Wrap(err, "could not get http client")
-	}
 	gologger.Info().Msgf("Running httpx on input host")
 
 	var bulkSize = probeBulkSize
 	if r.options.BulkSize > probeBulkSize {
 		bulkSize = r.options.BulkSize
 	}
+
+	httpxOptions := httpx.DefaultOptions
+	httpxOptions.RetryMax = r.options.Retries
+	httpxOptions.Timeout = time.Duration(r.options.Timeout) * time.Second
+	httpxClient, err := httpx.New(&httpxOptions)
+	if err != nil {
+		return nil, errors.Wrap(err, "could not create httpx client")
+	}
+
 	// Probe the non-standard URLs and store them in cache
 	swg := sizedwaitgroup.New(bulkSize)
 	count := int32(0)
@@ -49,7 +53,7 @@ func (r *Runner) initializeTemplatesHTTPInput() (*hybrid.HybridMap, error) {
 		go func(input *contextargs.MetaInput) {
 			defer swg.Done()
 
-			if result := probeURL(input.Input, httpclient); result != "" {
+			if result := probeURL(input.Input, httpxClient); result != "" {
 				atomic.AddInt32(&count, 1)
 				_ = hm.Set(input.Input, []byte(result))
 			}
@@ -63,28 +67,22 @@ func (r *Runner) initializeTemplatesHTTPInput() (*hybrid.HybridMap, error) {
 }
 
 var (
-	drainReqSize = int64(8 * 1024)
-	httpSchemes  = []string{"https", "http"}
+	httpSchemes = []string{"https", "http"}
 )
 
 // probeURL probes the scheme for a URL. first HTTPS is tried
 // and if any errors occur http is tried. If none succeeds, probing
 // is abandoned for such URLs.
-func probeURL(input string, httpclient *retryablehttp.Client) string {
+func probeURL(input string, httpxclient *httpx.HTTPX) string {
 	for _, scheme := range httpSchemes {
 		formedURL := fmt.Sprintf("%s://%s", scheme, input)
-		req, err := retryablehttp.NewRequest(http.MethodGet, formedURL, nil)
+		req, err := httpxclient.NewRequest(http.MethodGet, formedURL)
 		if err != nil {
 			continue
 		}
 		req.Header.Set("User-Agent", uarand.GetRandom())
 
-		resp, err := httpclient.Do(req)
-		if resp != nil {
-			_, _ = io.CopyN(io.Discard, resp.Body, drainReqSize)
-			resp.Body.Close()
-		}
-		if err != nil {
+		if _, err = httpxclient.Do(req, httpx.UnsafeOptions{}); err != nil {
 			continue
 		}
 		return formedURL
