@@ -26,12 +26,7 @@ type Request struct {
 }
 
 // Parse parses the raw request as supplied by the user
-func Parse(request, baseURL string, unsafe bool) (*Request, error) {
-	// parse Input URL
-	inputURL, err := urlutil.ParseURL(baseURL, unsafe)
-	if err != nil {
-		return nil, errorutil.NewWithErr(err).Msgf("could not parse request URL").WithTag("raw")
-	}
+func Parse(request string, inputURL *urlutil.URL, unsafe bool) (*Request, error) {
 	rawrequest, err := readRawRequest(request, unsafe)
 	if err != nil {
 		return nil, err
