@@ -16,6 +16,9 @@ import (
 	"github.com/julienschmidt/httprouter"
 )
 
+// ExtraArgs
+var ExtraDebugArgs = []string{}
+
 // RunNucleiTemplateAndGetResults returns a list of results for a template
 func RunNucleiTemplateAndGetResults(template, url string, debug bool, extra ...string) ([]string, error) {
 	return RunNucleiAndGetResults(true, template, url, debug, extra...)
@@ -44,6 +47,7 @@ func RunNucleiAndGetResults(isTemplate bool, template, url string, debug bool, e
 
 func RunNucleiBareArgsAndGetResults(debug bool, extra ...string) ([]string, error) {
 	cmd := exec.Command("./nuclei")
+	extra = append(extra, ExtraDebugArgs...)
 	cmd.Args = append(cmd.Args, extra...)
 	cmd.Args = append(cmd.Args, "-duc") // disable auto updates
 	if debug {

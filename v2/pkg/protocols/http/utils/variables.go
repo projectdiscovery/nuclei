@@ -21,7 +21,10 @@ func GenerateVariablesWithContextArgs(input *contextargs.Context, trailingSlash 
 }
 
 // GenerateVariables will create default variables after parsing a url with additional variables
-func GenerateVariablesWithURL(parsed *urlutil.URL, trailingSlash bool, additionalVars map[string]interface{}) map[string]interface{} {
+func GenerateVariablesWithURL(inputURL *urlutil.URL, trailingSlash bool, additionalVars map[string]interface{}) map[string]interface{} {
+	parsed := inputURL.Clone()
+	// Query parameter merging is handled elsewhere and should not be included in {{BaseURL}} or other httpVariables
+	parsed.Params = make(urlutil.Params)
 	domain := parsed.Host
 	if strings.Contains(parsed.Host, ":") {
 		domain = strings.Split(parsed.Host, ":")[0]
