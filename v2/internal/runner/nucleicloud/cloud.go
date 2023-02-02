@@ -112,7 +112,7 @@ func (c *Client) GetResults(ID int64, checkProgress bool, limit int, callback fu
 			lastID = item.ID
 
 			var result output.ResultEvent
-			if err := jsoniter.NewDecoder(strings.NewReader(item.Raw)).Decode(&result); err != nil {
+			if err := jsoniter.NewDecoder(strings.NewReader(string(item.Output))).Decode(&result); err != nil {
 				return errors.Wrap(err, "could not decode result item")
 			}
 			callback(&result)
