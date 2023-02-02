@@ -46,7 +46,7 @@ func GetSupportedSeverities() Severities {
 	return result
 }
 
-func toSeverity(valueToMap string) (Severity, error) {
+func ToSeverity(valueToMap string) (Severity, error) {
 	normalizedValue := normalizeValue(valueToMap)
 	for key, currentValue := range severityMappings {
 		if normalizedValue == currentValue {
@@ -89,7 +89,7 @@ func (severityHolder *Holder) UnmarshalYAML(unmarshal func(interface{}) error) e
 		return err
 	}
 
-	computedSeverity, err := toSeverity(marshalledSeverity)
+	computedSeverity, err := ToSeverity(marshalledSeverity)
 	if err != nil {
 		return err
 	}
@@ -104,7 +104,7 @@ func (severityHolder *Holder) UnmarshalJSON(data []byte) error {
 		return err
 	}
 
-	computedSeverity, err := toSeverity(marshalledSeverity)
+	computedSeverity, err := ToSeverity(marshalledSeverity)
 	if err != nil {
 		return err
 	}

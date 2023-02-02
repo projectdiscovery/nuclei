@@ -116,7 +116,7 @@ func (r *Runner) runCloudEnumeration(store *loader.Store, cloudTemplates, cloudT
 		results.CompareAndSwap(false, true)
 		_ = count.Add(1)
 
-		_, _ = os.Stdout.Write([]byte(output))
+		_, _ = os.Stdout.Write([]byte(formatCloudOutput(output)))
 		_, _ = os.Stdout.Write([]byte("\n"))
 	})
 	return results, err

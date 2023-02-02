@@ -1,6 +1,7 @@
 package runner
 
 import (
+	"bytes"
 	"io"
 	"io/fs"
 	"os"
@@ -10,10 +11,13 @@ import (
 	"strings"
 
 	jsoniter "github.com/json-iterator/go"
+	"github.com/logrusorgru/aurora"
 	"github.com/olekukonko/tablewriter"
 	"github.com/pkg/errors"
 	"github.com/projectdiscovery/gologger"
+	"github.com/projectdiscovery/nuclei/v2/internal/colorizer"
 	"github.com/projectdiscovery/nuclei/v2/internal/runner/nucleicloud"
+	"github.com/projectdiscovery/nuclei/v2/pkg/model/types/severity"
 )
 
 // Get all the scan lists for a user/apikey.
@@ -188,7 +192,7 @@ func (r *Runner) deleteScan(id string) error {
 func (r *Runner) getResults(id string, limit int) error {
 	ID, _ := strconv.ParseInt(id, 10, 64)
 	err := r.cloudClient.GetResults(ID, false, limit, func(output string) {
-		_, _ = os.Stdout.Write([]byte(output))
+		_, _ = os.Stdout.Write([]byte(formatCloudOutput(output)))
 		_, _ = os.Stdout.Write([]byte("\n"))
 	})
 	return err
@@ -432,4 +436,76 @@ func (r *Runner) addCloudReportingSource() error {
 		gologger.Info().Msgf("Reporting source and webhook added for %s: %s", "jira", r.options.CloudURL)
 	}
 	return nil
+}
+
+func formatCloudOutput(output string) string {
+	l := strings.Split(output, "|")
+	aurora := aurora.NewAurora(true)
+
+	if len(l) != 7 {
+		return ""
+	}
+
+	builder := &bytes.Buffer{}
+	builder.WriteRune('[')
+	builder.WriteString(aurora.BrightGreen(l[0]).String())
+	builder.WriteString("]")
+
+	builder.WriteString(" [")
+	builder.WriteString(aurora.BrightBlue(l[1]).String())
+	builder.WriteString("] [")
+
+	severity, _ := severity.ToSeverity(l[2])
+	builder.WriteString(colorizer.GetColor(aurora, severity))
+	builder.WriteString("] ")
+
+	// matched or host
+	if len(l[3]) > 0 {
+		builder.WriteString(l[3])
+	}
+	// ExtractedResults
+	if len(l[4]) > 0 {
+		r := strings.Split(l[4], ",")
+		builder.WriteString(" [")
+		for i, item := range r {
+			builder.WriteString(aurora.BrightCyan(item).String())
+			if i != len(r)-1 {
+				builder.WriteRune(',')
+			}
+		}
+		builder.WriteString("]")
+	}
+	// Lines
+	if len(l[5]) > 0 {
+		r := strings.Split(l[5], ",")
+		ints := make([]int, len(r))
+
+		builder.WriteString(" [LN: ")
+		for i, line := range ints {
+			builder.WriteString(strconv.Itoa(line))
+
+			if i != len(r)-1 {
+				builder.WriteString(",")
+			}
+		}
+		builder.WriteString("]")
+	}
+	// metadata
+	if len(l[6]) > 0 {
+		entries := strings.Split(l[6], ",")
+		first := true
+		for _, entry := range entries {
+			if !first {
+				builder.WriteRune(',')
+			}
+			first = false
+
+			keyValue := strings.Split(entry, "=")
+			builder.WriteString(aurora.BrightYellow(keyValue[0]).String())
+			builder.WriteRune('=')
+			builder.WriteString(aurora.BrightYellow(strconv.QuoteToASCII(keyValue[1])).String())
+		}
+		builder.WriteString("]")
+	}
+	return string(builder.Bytes())
 }

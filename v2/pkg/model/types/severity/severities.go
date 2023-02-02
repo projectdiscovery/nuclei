@@ -77,7 +77,7 @@ func (severities Severities) MarshalJSON() ([]byte, error) {
 }
 
 func setSeverity(severities *Severities, value string) error {
-	computedSeverity, err := toSeverity(value)
+	computedSeverity, err := ToSeverity(value)
 	if err != nil {
 		return fmt.Errorf("'%s' is not a valid severity", value)
 	}
