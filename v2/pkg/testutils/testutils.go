@@ -16,6 +16,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/progress"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/protocolinit"
+	"github.com/projectdiscovery/nuclei/v2/pkg/templates/cache"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 )
 
@@ -81,17 +82,19 @@ type TemplateInfo struct {
 func NewMockExecuterOptions(options *types.Options, info *TemplateInfo) *protocols.ExecuterOptions {
 	progressImpl, _ := progress.NewStatsTicker(0, false, false, false, false, 0)
 	executerOpts := &protocols.ExecuterOptions{
-		TemplateID:   info.ID,
-		TemplateInfo: info.Info,
-		TemplatePath: info.Path,
-		Output:       NewMockOutputWriter(),
-		Options:      options,
-		Progress:     progressImpl,
-		ProjectFile:  nil,
-		IssuesClient: nil,
-		Browser:      nil,
-		Catalog:      disk.NewCatalog(options.TemplatesDirectory),
-		RateLimiter:  ratelimit.New(context.Background(), uint(options.RateLimit), time.Second),
+		TemplateID:                info.ID,
+		TemplateInfo:              info.Info,
+		TemplatePath:              info.Path,
+		Output:                    NewMockOutputWriter(),
+		Options:                   options,
+		Progress:                  progressImpl,
+		ProjectFile:               nil,
+		IssuesClient:              nil,
+		Browser:                   nil,
+		Catalog:                   disk.NewCatalog(options.TemplatesDirectory),
+		RateLimiter:               ratelimit.New(context.Background(), uint(options.RateLimit), time.Second),
+		CompiledTemplatesCache:    cache.New(),
+		UnmarshaledTemplatesCache: cache.New(),
 	}
 	return executerOpts
 }

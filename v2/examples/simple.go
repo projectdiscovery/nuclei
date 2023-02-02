@@ -58,9 +58,6 @@ func main() {
 	}
 	defer interactClient.Close()
 
-	CompiledTemplatesCache := templatesCache.New()
-	unmarshaledTemplatesCache := templatesCache.New()
-
 	home, _ := os.UserHomeDir()
 	catalog := disk.NewCatalog(path.Join(home, "nuclei-templates"))
 	executerOpts := &protocols.ExecuterOptions{
@@ -74,8 +71,8 @@ func main() {
 		HostErrorsCache:           cache,
 		Colorizer:                 aurora.NewAurora(true),
 		ResumeCfg:                 types.NewResumeCfg(),
-		CompiledTemplatesCache:    CompiledTemplatesCache,
-		UnmarshaledTemplatesCache: unmarshaledTemplatesCache,
+		CompiledTemplatesCache:    templatesCache.New(),
+		UnmarshaledTemplatesCache: templatesCache.New(),
 	}
 	engine := core.New(defaultOpts)
 	engine.SetExecuterOptions(executerOpts)
