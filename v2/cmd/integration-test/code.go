@@ -29,6 +29,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/protocolinit"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/protocolstate"
 	"github.com/projectdiscovery/nuclei/v2/pkg/reporting"
+	templatesCache "github.com/projectdiscovery/nuclei/v2/pkg/templates/cache"
 	"github.com/projectdiscovery/nuclei/v2/pkg/testutils"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 	"github.com/projectdiscovery/ratelimit"
@@ -96,16 +97,18 @@ func executeNucleiAsCode(templatePath, templateURL string) ([]string, error) {
 	ratelimiter := ratelimit.New(context.Background(), 150, time.Second)
 	defer ratelimiter.Stop()
 	executerOpts := &protocols.ExecuterOptions{
-		Output:          outputWriter,
-		Options:         defaultOpts,
-		Progress:        mockProgress,
-		Catalog:         catalog,
-		IssuesClient:    reportingClient,
-		RateLimiter:     ratelimiter,
-		Interactsh:      interactClient,
-		HostErrorsCache: cache,
-		Colorizer:       aurora.NewAurora(true),
-		ResumeCfg:       types.NewResumeCfg(),
+		Output:                    outputWriter,
+		Options:                   defaultOpts,
+		Progress:                  mockProgress,
+		Catalog:                   catalog,
+		IssuesClient:              reportingClient,
+		RateLimiter:               ratelimiter,
+		Interactsh:                interactClient,
+		HostErrorsCache:           cache,
+		Colorizer:                 aurora.NewAurora(true),
+		ResumeCfg:                 types.NewResumeCfg(),
+		CompiledTemplatesCache:    templatesCache.New(),
+		UnmarshaledTemplatesCache: templatesCache.New(),
 	}
 	engine := core.New(defaultOpts)
 	engine.SetExecuterOptions(executerOpts)
