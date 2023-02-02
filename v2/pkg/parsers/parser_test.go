@@ -11,14 +11,17 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/loader/filter"
 	"github.com/projectdiscovery/nuclei/v2/pkg/model"
 	"github.com/projectdiscovery/nuclei/v2/pkg/model/types/stringslice"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v2/pkg/templates"
 	templatesCache "github.com/projectdiscovery/nuclei/v2/pkg/templates/cache"
 )
 
 func TestLoadTemplate(t *testing.T) {
-	catalog := disk.NewCatalog("")
-	origTemplatesCache := templatesCache.Unmarshaled
-	defer func() { templatesCache.Unmarshaled = origTemplatesCache }()
+	templatesCache := templatesCache.New()
+	opts := &protocols.ExecuterOptions{
+		Catalog:                   disk.NewCatalog(""),
+		UnmarshaledTemplatesCache: templatesCache,
+	}
 
 	tt := []struct {
 		name        string
@@ -56,11 +59,11 @@ func TestLoadTemplate(t *testing.T) {
 
 	for _, tc := range tt {
 		t.Run(tc.name, func(t *testing.T) {
-			templatesCache.Unmarshaled.Store(tc.name, tc.template, tc.templateErr)
+			templatesCache.Store(tc.name, tc.template, tc.templateErr)
 
 			tagFilter, err := filter.New(&filter.Config{})
 			require.Nil(t, err)
-			success, err := LoadTemplate(tc.name, tagFilter, nil, catalog)
+			success, err := LoadTemplate(tc.name, tagFilter, nil, opts)
 			if tc.expectedErr == nil {
 				require.NoError(t, err)
 				require.True(t, success)
@@ -98,11 +101,11 @@ func TestLoadTemplate(t *testing.T) {
 						Authors: stringslice.StringSlice{Value: "Author"},
 					},
 				}
-				templatesCache.Unmarshaled.Store(name, template, nil)
+				opts.UnmarshaledTemplatesCache.Store(name, template, nil)
 
 				tagFilter, err := filter.New(&filter.Config{})
 				require.Nil(t, err)
-				success, err := LoadTemplate(name, tagFilter, nil, catalog)
+				success, err := LoadTemplate(name, tagFilter, nil, opts)
 				if tc.success {
 					require.NoError(t, err)
 					require.True(t, success)

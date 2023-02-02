@@ -21,6 +21,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/variables"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/headless/engine"
 	"github.com/projectdiscovery/nuclei/v2/pkg/reporting"
+	"github.com/projectdiscovery/nuclei/v2/pkg/templates/cache"
 	templateTypes "github.com/projectdiscovery/nuclei/v2/pkg/templates/types"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 )
@@ -77,15 +78,17 @@ type ExecuterOptions struct {
 
 	Operators []*operators.Operators // only used by offlinehttp module
 
-	Colorizer      aurora.Aurora
-	WorkflowLoader model.WorkflowLoader
-	ResumeCfg      *types.ResumeCfg
+	Colorizer                 aurora.Aurora
+	WorkflowLoader            model.WorkflowLoader
+	ResumeCfg                 *types.ResumeCfg
+	CompiledTemplatesCache    *cache.Templates
+	UnmarshaledTemplatesCache *cache.Templates
 }
 
 // Copy returns a copy of the executeroptions structure
-func (e ExecuterOptions) Copy() ExecuterOptions {
-	copy := e
-	return copy
+func (e *ExecuterOptions) Copy() *ExecuterOptions {
+	copy := *e
+	return &copy
 }
 
 // Request is an interface implemented any protocol based request generator.

@@ -95,7 +95,7 @@ func executeNucleiAsCode(templatePath, templateURL string) ([]string, error) {
 	catalog := disk.NewCatalog(path.Join(home, "nuclei-templates"))
 	ratelimiter := ratelimit.New(context.Background(), 150, time.Second)
 	defer ratelimiter.Stop()
-	executerOpts := protocols.ExecuterOptions{
+	executerOpts := &protocols.ExecuterOptions{
 		Output:          outputWriter,
 		Options:         defaultOpts,
 		Progress:        mockProgress,
@@ -110,7 +110,7 @@ func executeNucleiAsCode(templatePath, templateURL string) ([]string, error) {
 	engine := core.New(defaultOpts)
 	engine.SetExecuterOptions(executerOpts)
 
-	workflowLoader, err := parsers.NewLoader(&executerOpts)
+	workflowLoader, err := parsers.NewLoader(executerOpts)
 	if err != nil {
 		log.Fatalf("Could not create workflow loader: %s\n", err)
 	}

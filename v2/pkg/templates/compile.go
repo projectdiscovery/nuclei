@@ -13,7 +13,6 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/executer"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/offlinehttp"
-	"github.com/projectdiscovery/nuclei/v2/pkg/templates/cache"
 	"github.com/projectdiscovery/nuclei/v2/pkg/utils"
 	stringsutil "github.com/projectdiscovery/utils/strings"
 )
@@ -26,8 +25,8 @@ var (
 // TODO make sure reading from the disk the template parsing happens once: see parsers.ParseTemplate vs templates.Parse
 //
 //nolint:gocritic // this cannot be passed by pointer
-func Parse(filePath string, preprocessor Preprocessor, options protocols.ExecuterOptions) (*Template, error) {
-	if value, err := cache.Compiled.Has(filePath); value != nil {
+func Parse(filePath string, preprocessor Preprocessor, options *protocols.ExecuterOptions) (*Template, error) {
+	if value, err := options.CompiledTemplatesCache.Has(filePath); value != nil {
 		return value.(*Template), err
 	}
 
@@ -55,12 +54,12 @@ func Parse(filePath string, preprocessor Preprocessor, options protocols.Execute
 	if len(template.Workflows) > 0 {
 		compiled := &template.Workflow
 
-		compileWorkflow(filePath, preprocessor, &options, compiled, options.WorkflowLoader)
+		compileWorkflow(filePath, preprocessor, options, compiled, options.WorkflowLoader)
 		template.CompiledWorkflow = compiled
-		template.CompiledWorkflow.Options = &options
+		template.CompiledWorkflow.Options = options
 	}
 	template.Path = filePath
-	cache.Compiled.Store(filePath, template, err)
+	options.CompiledTemplatesCache.Store(filePath, template, err)
 	return template, nil
 }
 
@@ -96,7 +95,7 @@ func (template *Template) Requests() int {
 }
 
 // compileProtocolRequests compiles all the protocol requests for the template
-func (template *Template) compileProtocolRequests(options protocols.ExecuterOptions) error {
+func (template *Template) compileProtocolRequests(options *protocols.ExecuterOptions) error {
 	templateRequests := template.Requests()
 
 	if templateRequests == 0 {
@@ -134,7 +133,7 @@ func (template *Template) compileProtocolRequests(options protocols.ExecuterOpti
 	if len(template.RequestsWHOIS) > 0 {
 		requests = append(requests, template.convertRequestToProtocolsRequest(template.RequestsWHOIS)...)
 	}
-	template.Executer = executer.NewExecuter(requests, &options)
+	template.Executer = executer.NewExecuter(requests, options)
 	return nil
 }
 
@@ -160,7 +159,7 @@ func (template *Template) convertRequestToProtocolsRequest(requests interface{})
 // compileOfflineHTTPRequest iterates all requests if offline http mode is
 // specified and collects all matchers for all the base request templates
 // (those with URL {{BaseURL}} and it's slash variation.)
-func (template *Template) compileOfflineHTTPRequest(options protocols.ExecuterOptions) {
+func (template *Template) compileOfflineHTTPRequest(options *protocols.ExecuterOptions) {
 	operatorsList := []*operators.Operators{}
 
 mainLoop:
@@ -179,13 +178,13 @@ mainLoop:
 	}
 	if len(operatorsList) > 0 {
 		options.Operators = operatorsList
-		template.Executer = executer.NewExecuter([]protocols.Request{&offlinehttp.Request{}}, &options)
+		template.Executer = executer.NewExecuter([]protocols.Request{&offlinehttp.Request{}}, options)
 	}
 }
 
 // ParseTemplateFromReader reads the template from reader
 // returns the parsed template
-func ParseTemplateFromReader(reader io.Reader, preprocessor Preprocessor, options protocols.ExecuterOptions) (*Template, error) {
+func ParseTemplateFromReader(reader io.Reader, preprocessor Preprocessor, options *protocols.ExecuterOptions) (*Template, error) {
 	template := &Template{}
 	data, err := io.ReadAll(reader)
 	if err != nil {

@@ -27,14 +27,14 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-var executerOpts protocols.ExecuterOptions
+var executerOpts *protocols.ExecuterOptions
 
 func setup() {
 	options := testutils.DefaultOptions
 	testutils.Init(options)
 	progressImpl, _ := progress.NewStatsTicker(0, false, false, false, false, 0)
 
-	executerOpts = protocols.ExecuterOptions{
+	executerOpts = &protocols.ExecuterOptions{
 		Output:       testutils.NewMockOutputWriter(),
 		Options:      options,
 		Progress:     progressImpl,
@@ -44,7 +44,7 @@ func setup() {
 		Catalog:      disk.NewCatalog(options.TemplatesDirectory),
 		RateLimiter:  ratelimit.New(context.Background(), uint(options.RateLimit), time.Second),
 	}
-	workflowLoader, err := parsers.NewLoader(&executerOpts)
+	workflowLoader, err := parsers.NewLoader(executerOpts)
 	if err != nil {
 		log.Fatalf("Could not create workflow loader: %s\n", err)
 	}

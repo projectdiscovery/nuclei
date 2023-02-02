@@ -18,7 +18,7 @@ import (
 
 // log available templates for verbose (-vv)
 func (r *Runner) logAvailableTemplate(tplPath string) {
-	t, err := parsers.ParseTemplate(tplPath, r.catalog)
+	t, err := parsers.ParseTemplate(tplPath, r.executerOptions)
 	if err != nil {
 		gologger.Error().Msgf("Could not parse file '%s': %s\n", tplPath, err)
 	} else {

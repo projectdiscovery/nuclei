@@ -57,28 +57,30 @@ func main() {
 		log.Fatalf("Could not create interact client: %s\n", err)
 	}
 	defer interactClient.Close()
-	// we need to empty the global cache of compiled templates
-	// retaining a pointer to potentially dismissed interactsh-client
-	defer templatesCache.Clear()
+
+	CompiledTemplatesCache := templatesCache.New()
+	unmarshaledTemplatesCache := templatesCache.New()
 
 	home, _ := os.UserHomeDir()
 	catalog := disk.NewCatalog(path.Join(home, "nuclei-templates"))
-	executerOpts := protocols.ExecuterOptions{
-		Output:          outputWriter,
-		Options:         defaultOpts,
-		Progress:        mockProgress,
-		Catalog:         catalog,
-		IssuesClient:    reportingClient,
-		RateLimiter:     ratelimit.New(context.Background(), 150, time.Second),
-		Interactsh:      interactClient,
-		HostErrorsCache: cache,
-		Colorizer:       aurora.NewAurora(true),
-		ResumeCfg:       types.NewResumeCfg(),
+	executerOpts := &protocols.ExecuterOptions{
+		Output:                    outputWriter,
+		Options:                   defaultOpts,
+		Progress:                  mockProgress,
+		Catalog:                   catalog,
+		IssuesClient:              reportingClient,
+		RateLimiter:               ratelimit.New(context.Background(), 150, time.Second),
+		Interactsh:                interactClient,
+		HostErrorsCache:           cache,
+		Colorizer:                 aurora.NewAurora(true),
+		ResumeCfg:                 types.NewResumeCfg(),
+		CompiledTemplatesCache:    CompiledTemplatesCache,
+		UnmarshaledTemplatesCache: unmarshaledTemplatesCache,
 	}
 	engine := core.New(defaultOpts)
 	engine.SetExecuterOptions(executerOpts)
 
-	workflowLoader, err := parsers.NewLoader(&executerOpts)
+	workflowLoader, err := parsers.NewLoader(executerOpts)
 	if err != nil {
 		log.Fatalf("Could not create workflow loader: %s\n", err)
 	}

@@ -5,10 +5,9 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/projectdiscovery/nuclei/v2/pkg/catalog"
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/loader/filter"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v2/pkg/templates"
-	"github.com/projectdiscovery/nuclei/v2/pkg/templates/cache"
 	"github.com/projectdiscovery/nuclei/v2/pkg/utils"
 	"github.com/projectdiscovery/nuclei/v2/pkg/utils/stats"
 	"gopkg.in/yaml.v2"
@@ -20,8 +19,8 @@ const (
 )
 
 // LoadTemplate returns true if the template is valid and matches the filtering criteria.
-func LoadTemplate(templatePath string, tagFilter *filter.TagFilter, extraTags []string, catalog catalog.Catalog) (bool, error) {
-	template, err := ParseTemplate(templatePath, catalog)
+func LoadTemplate(templatePath string, tagFilter *filter.TagFilter, extraTags []string, options *protocols.ExecuterOptions) (bool, error) {
+	template, err := ParseTemplate(templatePath, options)
 	if err != nil {
 		return false, err
 	}
@@ -39,8 +38,8 @@ func LoadTemplate(templatePath string, tagFilter *filter.TagFilter, extraTags []
 }
 
 // LoadWorkflow returns true if the workflow is valid and matches the filtering criteria.
-func LoadWorkflow(templatePath string, catalog catalog.Catalog) (bool, error) {
-	template, err := ParseTemplate(templatePath, catalog)
+func LoadWorkflow(templatePath string, options *protocols.ExecuterOptions) (bool, error) {
+	template, err := ParseTemplate(templatePath, options)
 	if err != nil {
 		return false, err
 	}
@@ -110,11 +109,11 @@ func init() {
 }
 
 // ParseTemplate parses a template and returns a *templates.Template structure
-func ParseTemplate(templatePath string, catalog catalog.Catalog) (*templates.Template, error) {
-	if value, err := cache.Unmarshaled.Has(templatePath); value != nil {
+func ParseTemplate(templatePath string, options *protocols.ExecuterOptions) (*templates.Template, error) {
+	if value, err := options.UnmarshaledTemplatesCache.Has(templatePath); value != nil {
 		return value.(*templates.Template), err
 	}
-	data, err := utils.ReadFromPathOrURL(templatePath, catalog)
+	data, err := utils.ReadFromPathOrURL(templatePath, options.Catalog)
 	if err != nil {
 		return nil, err
 	}
@@ -129,6 +128,6 @@ func ParseTemplate(templatePath string, catalog catalog.Catalog) (*templates.Tem
 		stats.Increment(SyntaxErrorStats)
 		return nil, err
 	}
-	cache.Unmarshaled.Store(templatePath, template, nil)
+	options.UnmarshaledTemplatesCache.Store(templatePath, template, nil)
 	return template, nil
 }

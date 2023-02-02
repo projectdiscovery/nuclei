@@ -42,7 +42,7 @@ type Config struct {
 	IncludeConditions []string
 
 	Catalog            catalog.Catalog
-	ExecutorOptions    protocols.ExecuterOptions
+	ExecutorOptions    *protocols.ExecuterOptions
 	TemplatesDirectory string
 }
 
@@ -65,7 +65,7 @@ type Store struct {
 }
 
 // NewConfig returns a new loader config
-func NewConfig(options *types.Options, templateConfig *config.Config, catalog catalog.Catalog, executerOpts protocols.ExecuterOptions) *Config {
+func NewConfig(options *types.Options, templateConfig *config.Config, catalog catalog.Catalog, executerOpts *protocols.ExecuterOptions) *Config {
 	loaderConfig := Config{
 		Templates:                options.Templates,
 		Workflows:                options.Workflows,
@@ -194,13 +194,13 @@ func (store *Store) ValidateTemplates() error {
 
 func areWorkflowsValid(store *Store, filteredWorkflowPaths map[string]struct{}) bool {
 	return areWorkflowOrTemplatesValid(store, filteredWorkflowPaths, true, func(templatePath string, tagFilter *filter.TagFilter) (bool, error) {
-		return parsers.LoadWorkflow(templatePath, store.config.Catalog)
+		return parsers.LoadWorkflow(templatePath, store.config.ExecutorOptions)
 	})
 }
 
 func areTemplatesValid(store *Store, filteredTemplatePaths map[string]struct{}) bool {
 	return areWorkflowOrTemplatesValid(store, filteredTemplatePaths, false, func(templatePath string, tagFilter *filter.TagFilter) (bool, error) {
-		return parsers.LoadTemplate(templatePath, store.tagFilter, nil, store.config.Catalog)
+		return parsers.LoadTemplate(templatePath, store.tagFilter, nil, store.config.ExecutorOptions)
 	})
 }
 
@@ -275,7 +275,7 @@ func (store *Store) LoadTemplates(templatesList []string) []*templates.Template 
 
 	loadedTemplates := make([]*templates.Template, 0, len(templatePathMap))
 	for templatePath := range templatePathMap {
-		loaded, err := parsers.LoadTemplate(templatePath, store.tagFilter, nil, store.config.Catalog)
+		loaded, err := parsers.LoadTemplate(templatePath, store.tagFilter, nil, store.config.ExecutorOptions)
 		if loaded || store.pathFilter.MatchIncluded(templatePath) {
 			parsed, err := templates.Parse(templatePath, store.preprocessor, store.config.ExecutorOptions)
 			if err != nil {
@@ -308,7 +308,7 @@ func (store *Store) LoadWorkflows(workflowsList []string) []*templates.Template 
 
 	loadedWorkflows := make([]*templates.Template, 0, len(workflowPathMap))
 	for workflowPath := range workflowPathMap {
-		loaded, err := parsers.LoadWorkflow(workflowPath, store.config.Catalog)
+		loaded, err := parsers.LoadWorkflow(workflowPath, store.config.ExecutorOptions)
 		if err != nil {
 			gologger.Warning().Msgf("Could not load workflow %s: %s\n", workflowPath, err)
 		}
@@ -333,7 +333,7 @@ func (store *Store) LoadTemplatesWithTags(templatesList, tags []string) []*templ
 
 	loadedTemplates := make([]*templates.Template, 0, len(templatePathMap))
 	for templatePath := range templatePathMap {
-		loaded, err := parsers.LoadTemplate(templatePath, store.tagFilter, tags, store.config.Catalog)
+		loaded, err := parsers.LoadTemplate(templatePath, store.tagFilter, tags, store.config.ExecutorOptions)
 		if loaded || store.pathFilter.MatchIncluded(templatePath) {
 			parsed, err := templates.Parse(templatePath, store.preprocessor, store.config.ExecutorOptions)
 			if err != nil {

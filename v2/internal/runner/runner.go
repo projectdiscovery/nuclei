@@ -51,6 +51,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/reporting/exporters/markdown"
 	"github.com/projectdiscovery/nuclei/v2/pkg/reporting/exporters/sarif"
 	"github.com/projectdiscovery/nuclei/v2/pkg/templates"
+	"github.com/projectdiscovery/nuclei/v2/pkg/templates/cache"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 	"github.com/projectdiscovery/nuclei/v2/pkg/utils"
 	"github.com/projectdiscovery/nuclei/v2/pkg/utils/stats"
@@ -80,6 +81,7 @@ type Runner struct {
 	customTemplates   []customtemplates.Provider
 	cloudClient       *nucleicloud.Client
 	cloudTargets      []string
+	executerOptions   *protocols.ExecuterOptions
 }
 
 const pprofServerAddress = "127.0.0.1:8086"
@@ -347,6 +349,9 @@ func (r *Runner) Close() {
 	if r.ratelimiter != nil {
 		r.ratelimiter.Stop()
 	}
+	if r.executerOptions != nil {
+		r.executerOptions = nil
+	}
 }
 
 // RunEnumeration sets up the input layer for giving input nuclei.
@@ -395,21 +400,25 @@ func (r *Runner) RunEnumeration() error {
 
 	// Create the executer options which will be used throughout the execution
 	// stage by the nuclei engine modules.
-	executerOpts := protocols.ExecuterOptions{
-		Output:          r.output,
-		Options:         r.options,
-		Progress:        r.progress,
-		Catalog:         r.catalog,
-		IssuesClient:    r.issuesClient,
-		RateLimiter:     r.ratelimiter,
-		Interactsh:      r.interactsh,
-		ProjectFile:     r.projectFile,
-		Browser:         r.browser,
-		Colorizer:       r.colorizer,
-		ResumeCfg:       r.resumeCfg,
-		ExcludeMatchers: excludematchers.New(r.options.ExcludeMatchers),
-		InputHelper:     input.NewHelper(),
+	executerOpts := &protocols.ExecuterOptions{
+		Output:                    r.output,
+		Options:                   r.options,
+		Progress:                  r.progress,
+		Catalog:                   r.catalog,
+		IssuesClient:              r.issuesClient,
+		RateLimiter:               r.ratelimiter,
+		Interactsh:                r.interactsh,
+		ProjectFile:               r.projectFile,
+		Browser:                   r.browser,
+		Colorizer:                 r.colorizer,
+		ResumeCfg:                 r.resumeCfg,
+		ExcludeMatchers:           excludematchers.New(r.options.ExcludeMatchers),
+		InputHelper:               input.NewHelper(),
+		CompiledTemplatesCache:    cache.New(),
+		UnmarshaledTemplatesCache: cache.New(),
 	}
+
+	r.executerOptions = executerOpts
 
 	if r.options.ShouldUseHostError() {
 		cache := hosterrorscache.New(r.options.MaxHostError, hosterrorscache.DefaultMaxHostsCount)
@@ -421,7 +430,7 @@ func (r *Runner) RunEnumeration() error {
 	engine := core.New(r.options)
 	engine.SetExecuterOptions(executerOpts)
 
-	workflowLoader, err := parsers.NewLoader(&executerOpts)
+	workflowLoader, err := parsers.NewLoader(executerOpts)
 	if err != nil {
 		return errors.Wrap(err, "Could not create loader.")
 	}
@@ -586,7 +595,7 @@ func (r *Runner) isInputNonHTTP() bool {
 	return nonURLInput
 }
 
-func (r *Runner) executeSmartWorkflowInput(executerOpts protocols.ExecuterOptions, store *loader.Store, engine *core.Engine) (*atomic.Bool, error) {
+func (r *Runner) executeSmartWorkflowInput(executerOpts *protocols.ExecuterOptions, store *loader.Store, engine *core.Engine) (*atomic.Bool, error) {
 	r.progress.Init(r.hmapInputProvider.Count(), 0, 0)
 
 	service, err := automaticscan.New(automaticscan.Options{
