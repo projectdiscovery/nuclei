@@ -21,6 +21,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/http"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/ssl"
 	"github.com/projectdiscovery/nuclei/v2/pkg/templates"
+	"github.com/projectdiscovery/nuclei/v2/pkg/templates/cache"
 	"github.com/projectdiscovery/nuclei/v2/pkg/testutils"
 	"github.com/projectdiscovery/nuclei/v2/pkg/workflows"
 	"github.com/projectdiscovery/ratelimit"
@@ -35,14 +36,16 @@ func setup() {
 	progressImpl, _ := progress.NewStatsTicker(0, false, false, false, false, 0)
 
 	executerOpts = &protocols.ExecuterOptions{
-		Output:       testutils.NewMockOutputWriter(),
-		Options:      options,
-		Progress:     progressImpl,
-		ProjectFile:  nil,
-		IssuesClient: nil,
-		Browser:      nil,
-		Catalog:      disk.NewCatalog(options.TemplatesDirectory),
-		RateLimiter:  ratelimit.New(context.Background(), uint(options.RateLimit), time.Second),
+		Output:                    testutils.NewMockOutputWriter(),
+		Options:                   options,
+		Progress:                  progressImpl,
+		ProjectFile:               nil,
+		IssuesClient:              nil,
+		Browser:                   nil,
+		Catalog:                   disk.NewCatalog(options.TemplatesDirectory),
+		RateLimiter:               ratelimit.New(context.Background(), uint(options.RateLimit), time.Second),
+		CompiledTemplatesCache:    cache.New(),
+		UnmarshaledTemplatesCache: cache.New(),
 	}
 	workflowLoader, err := parsers.NewLoader(executerOpts)
 	if err != nil {
