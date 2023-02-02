@@ -20,7 +20,6 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/internal/runner/nucleicloud"
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/loader"
 	"github.com/projectdiscovery/nuclei/v2/pkg/core"
-	"github.com/projectdiscovery/nuclei/v2/pkg/output"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/contextargs"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
@@ -112,19 +111,13 @@ func (r *Runner) runCloudEnumeration(store *loader.Store, cloudTemplates, cloudT
 		}()
 	}
 
-	err = r.cloudClient.GetResults(taskID, true, limit, func(re *output.ResultEvent) {
+	err = r.cloudClient.GetResults(taskID, true, limit, func(output string) {
 		r.progress.IncrementMatched()
 		results.CompareAndSwap(false, true)
 		_ = count.Add(1)
 
-		if outputErr := r.output.Write(re); outputErr != nil {
-			gologger.Warning().Msgf("Could not write output: %s", err)
-		}
-		if r.issuesClient != nil {
-			if err := r.issuesClient.CreateIssue(re); err != nil {
-				gologger.Warning().Msgf("Could not create issue on tracker: %s", err)
-			}
-		}
+		_, _ = os.Stdout.Write([]byte(output))
+		_, _ = os.Stdout.Write([]byte("\n"))
 	})
 	return results, err
 }

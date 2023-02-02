@@ -17,7 +17,6 @@ import (
 
 	jsoniter "github.com/json-iterator/go"
 	"github.com/pkg/errors"
-	"github.com/projectdiscovery/nuclei/v2/pkg/output"
 	"github.com/projectdiscovery/retryablehttp-go"
 )
 
@@ -86,7 +85,7 @@ func (c *Client) AddScan(req *AddScanRequest) (int64, error) {
 
 // GetResults gets results from nuclei server for an ID
 // until there are no more results left to retrieve.
-func (c *Client) GetResults(ID int64, checkProgress bool, limit int, callback func(*output.ResultEvent)) error {
+func (c *Client) GetResults(ID int64, checkProgress bool, limit int, callback func(string)) error {
 	lastID := int64(0)
 
 	for {
@@ -110,12 +109,7 @@ func (c *Client) GetResults(ID int64, checkProgress bool, limit int, callback fu
 
 		for _, item := range items.Items {
 			lastID = item.ID
-
-			var result output.ResultEvent
-			if err := jsoniter.NewDecoder(strings.NewReader(string(item.Output))).Decode(&result); err != nil {
-				return errors.Wrap(err, "could not decode result item")
-			}
-			callback(&result)
+			callback(item.Output)
 		}
 
 		// This is checked during scan is added else if no item found break out of loop.

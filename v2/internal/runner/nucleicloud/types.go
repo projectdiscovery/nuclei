@@ -70,8 +70,8 @@ type AddDataSourceResponse struct {
 }
 
 type GetResultsResponseItem struct {
-	ID     int64           `json:"id"`
-	Output json.RawMessage `json:"output"`
+	ID     int64  `json:"id"`
+	Output string `json:"output"`
 }
 
 type DeleteScanResults struct {
