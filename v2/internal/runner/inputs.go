@@ -76,7 +76,7 @@ var (
 func probeURL(input string, httpxclient *httpx.HTTPX) string {
 	for _, scheme := range httpSchemes {
 		formedURL := fmt.Sprintf("%s://%s", scheme, input)
-		req, err := httpxclient.NewRequest(http.MethodGet, formedURL)
+		req, err := httpxclient.NewRequest(http.MethodHead, formedURL)
 		if err != nil {
 			continue
 		}
