@@ -239,17 +239,17 @@ func (c *Client) processInteractionForRequest(interaction *server.Interaction, d
 }
 
 // URL returns a new URL that can be interacted with
-func (c *Client) URL() string {
+func (c *Client) URL() (string, error) {
 	c.firstTimeGroup.Do(func() {
 		if err := c.firstTimeInitializeClient(); err != nil {
 			gologger.Error().Msgf("Could not initialize interactsh client: %s", err)
 		}
 	})
 	if c.interactsh == nil {
-		return ""
+		return "", errors.New("interactsh client not initialized")
 	}
 	atomic.CompareAndSwapUint32(&c.generated, 0, 1)
-	return c.interactsh.URL()
+	return c.interactsh.URL(), nil
 }
 
 // Close closes the interactsh clients after waiting for cooldown period.
@@ -276,26 +276,36 @@ func (c *Client) Close() bool {
 	return c.matched
 }
 
-// ReplaceMarkers replaces the {{interactsh-url}} placeholders to actual
-// URLs pointing to interactsh-server.
-//
-// It accepts data to replace as well as the URL to replace placeholders
-// with generated uniquely for each request.
-func (c *Client) ReplaceMarkers(data string, interactshURLs []string) (string, []string) {
-	for interactshURLMarkerRegex.Match([]byte(data)) {
-		url := c.URL()
-		interactshURLs = append(interactshURLs, url)
-		interactshURLMarker := interactshURLMarkerRegex.FindString(data)
-		if interactshURLMarker != "" {
+// ReplaceMarkers replaces the default {{interactsh-url}} placeholders with interactsh urls
+func (c *Client) Replace(data string, interactshURLs []string) (string, []string) {
+	return c.ReplaceWithMarker(data, interactshURLMarkerRegex, interactshURLs)
+}
+
+// ReplaceMarkers replaces the placeholders with interactsh urls and appends them to interactshURLs
+func (c *Client) ReplaceWithMarker(data string, regex *regexp.Regexp, interactshURLs []string) (string, []string) {
+	for _, interactshURLMarker := range regex.FindAllString(data, -1) {
+		if url, err := c.NewURLWithData(interactshURLMarker); err == nil {
+			interactshURLs = append(interactshURLs, url)
 			data = strings.Replace(data, interactshURLMarker, url, 1)
-			urlIndex := strings.Index(url, ".")
-			if urlIndex == -1 {
-				continue
-			}
-			c.interactshURLs.Set(url, interactshURLMarker, defaultInteractionDuration)
 		}
 	}
 	return data, interactshURLs
+}
+
+func (c *Client) NewURL() (string, error) {
+	return c.NewURLWithData("")
+}
+
+func (c *Client) NewURLWithData(data string) (string, error) {
+	url, err := c.URL()
+	if err != nil {
+		return "", err
+	}
+	if url == "" {
+		return "", errors.New("empty interactsh url")
+	}
+	c.interactshURLs.Set(url, data, defaultInteractionDuration)
+	return url, nil
 }
 
 // MakePlaceholders does placeholders for interact URLs and other data to a map

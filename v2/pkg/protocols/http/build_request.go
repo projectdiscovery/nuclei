@@ -74,9 +74,9 @@ func (r *requestGenerator) Make(ctx context.Context, input *contextargs.Context,
 	isRawRequest := len(r.request.Raw) > 0
 	// replace interactsh variables with actual interactsh urls
 	if r.options.Interactsh != nil {
-		reqData, r.interactshURLs = r.options.Interactsh.ReplaceMarkers(reqData, []string{})
+		reqData, r.interactshURLs = r.options.Interactsh.Replace(reqData, []string{})
 		for payloadName, payloadValue := range payloads {
-			payloads[payloadName], r.interactshURLs = r.options.Interactsh.ReplaceMarkers(types.ToString(payloadValue), r.interactshURLs)
+			payloads[payloadName], r.interactshURLs = r.options.Interactsh.Replace(types.ToString(payloadValue), r.interactshURLs)
 		}
 	} else {
 		for payloadName, payloadValue := range payloads {
@@ -281,9 +281,10 @@ func (r *requestGenerator) generateRawRequest(ctx context.Context, rawRequest st
 		interactshURLs: r.interactshURLs,
 	}
 
-	if reqWithAnnotations, cancelFunc, hasAnnotations := r.request.parseAnnotations(rawRequest, req); hasAnnotations {
-		generatedRequest.request = reqWithAnnotations
-		generatedRequest.customCancelFunction = cancelFunc
+	if reqWithOverrides, hasAnnotations := r.request.parseAnnotations(rawRequest, req); hasAnnotations {
+		generatedRequest.request = reqWithOverrides.request
+		generatedRequest.customCancelFunction = reqWithOverrides.cancelFunc
+		generatedRequest.interactshURLs = append(generatedRequest.interactshURLs, reqWithOverrides.interactshURLs...)
 	}
 
 	return generatedRequest, nil
@@ -294,7 +295,7 @@ func (r *requestGenerator) fillRequest(req *retryablehttp.Request, values map[st
 	// Set the header values requested
 	for header, value := range r.request.Headers {
 		if r.options.Interactsh != nil {
-			value, r.interactshURLs = r.options.Interactsh.ReplaceMarkers(value, r.interactshURLs)
+			value, r.interactshURLs = r.options.Interactsh.Replace(value, r.interactshURLs)
 		}
 		value, err := expressions.Evaluate(value, values)
 		if err != nil {
@@ -315,7 +316,7 @@ func (r *requestGenerator) fillRequest(req *retryablehttp.Request, values map[st
 	if r.request.Body != "" {
 		body := r.request.Body
 		if r.options.Interactsh != nil {
-			body, r.interactshURLs = r.options.Interactsh.ReplaceMarkers(r.request.Body, r.interactshURLs)
+			body, r.interactshURLs = r.options.Interactsh.Replace(r.request.Body, r.interactshURLs)
 		}
 		body, err := expressions.Evaluate(body, values)
 		if err != nil {

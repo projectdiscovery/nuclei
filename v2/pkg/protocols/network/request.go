@@ -154,7 +154,7 @@ func (request *Request) executeRequestWithPayloads(variables map[string]interfac
 
 		if request.options.Interactsh != nil {
 			var transformedData string
-			transformedData, interactshURLs = request.options.Interactsh.ReplaceMarkers(string(data), []string{})
+			transformedData, interactshURLs = request.options.Interactsh.Replace(string(data), []string{})
 			data = []byte(transformedData)
 		}
 

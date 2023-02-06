@@ -98,7 +98,7 @@ func (rule *Rule) executeEvaluate(input *ExecuteRuleInput, key, value, payload s
 		"value": value,
 	})
 	firstpass, _ := expressions.Evaluate(payload, values)
-	interactData, interactshURLs := rule.options.Interactsh.ReplaceMarkers(firstpass, interactshURLs)
+	interactData, interactshURLs := rule.options.Interactsh.Replace(firstpass, interactshURLs)
 	evaluated, _ := expressions.Evaluate(interactData, values)
 	replaced := rule.executeReplaceRule(input, value, evaluated)
 	return replaced, interactshURLs
