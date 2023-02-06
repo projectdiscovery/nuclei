@@ -2268,7 +2268,7 @@ Enum Values:
 
   - <code>GET</code>
 
-  - <code>GET</code>
+  - <code>HEAD</code>
 
   - <code>POST</code>
 
