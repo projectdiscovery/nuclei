@@ -965,7 +965,7 @@ func init() {
 	HTTPMethodTypeHolderDoc.Fields[0].Comments[encoder.LineComment] = ""
 	HTTPMethodTypeHolderDoc.Fields[0].EnumFields = []string{
 		"GET",
-		"GET",
+		"HEAD",
 		"POST",
 		"PUT",
 		"DELETE",
