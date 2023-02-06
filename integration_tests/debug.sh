@@ -12,15 +12,16 @@ if [ $1 = "-h" ]; then
  exit 0
 fi
 
+# Stop execution if race condition is found
+export GORACE="halt_on_error=1"
 
 echo "::group::Build nuclei"
 rm nuclei 2>/dev/null
 cd ../v2/cmd/nuclei
-go build .
+go build -race .
 mv nuclei ../../../integration_tests/nuclei 
 echo -e "::endgroup::\n"
 cd ../../../integration_tests
-
 cmdstring=""
 
 if [ -n "$1" ]; then
