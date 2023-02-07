@@ -21,6 +21,11 @@ func main() {
 	if err != nil {
 		log.Fatalf("Could not encode docs: %s\n", err)
 	}
+
+	if len(os.Args) < 3 {
+		log.Fatalf("syntax: %s md-docs-file jsonschema-file\n", os.Args[0])
+	}
+
 	err = os.WriteFile(os.Args[1], data, 0644)
 	if err != nil {
 		log.Fatalf("Could not write docs: %s\n", err)

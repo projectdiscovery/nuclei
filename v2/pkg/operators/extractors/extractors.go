@@ -90,7 +90,7 @@ type Extractor struct {
 
 	// description: |
 	//   Extracts using DSL expressions.
-	DSL         []string
+	DSL         []string `yaml:"dsl,omitempty" jsonschema:"title=dsl expressions to extract,description=Optional attribute to extract from response dsl"`
 	dslCompiled []*govaluate.EvaluableExpression
 
 	// description: |
