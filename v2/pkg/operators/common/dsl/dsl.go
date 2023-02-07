@@ -186,6 +186,13 @@ func init() {
 		"base64": makeDslFunction(1, func(args ...interface{}) (interface{}, error) {
 			return base64.StdEncoding.EncodeToString([]byte(types.ToString(args[0]))), nil
 		}),
+		"base64_urlsafe": makeDslFunction(1, func(args ...interface{}) (interface{}, error) {
+			bytearr := base64.StdEncoding.EncodeToString([]byte(types.ToString(args[0])))
+			safeurl := strings.Replace(string(bytearr), "/", "_", -1)
+			safeurl = strings.Replace(safeurl, "+", "-", -1)
+			safeurl = strings.Replace(safeurl, "=", "", -1)
+			return safeurl, nil
+		}),
 		"gzip": makeDslFunction(1, func(args ...interface{}) (interface{}, error) {
 			buffer := &bytes.Buffer{}
 			writer := gzip.NewWriter(buffer)
@@ -271,6 +278,17 @@ func init() {
 		}),
 		"url_decode": makeDslFunction(1, func(args ...interface{}) (interface{}, error) {
 			return url.QueryUnescape(types.ToString(args[0]))
+		}),
+		"byte_decode": makeDslFunction(1, func(args ...interface{}) (interface{}, error) {
+			var items []byte
+			for _, item := range strings.Split(strings.Trim(types.ToString(args[0]), "{} "), ",") {
+				if parsedInt, err := strconv.ParseInt(strings.Trim(item, " "), 10, 8); err != nil {
+					return nil, err
+				} else {
+					items = append(items, byte(parsedInt))
+				}
+			}
+			return items, nil
 		}),
 		"hex_encode": makeDslFunction(1, func(args ...interface{}) (interface{}, error) {
 			return hex.EncodeToString([]byte(types.ToString(args[0]))), nil
@@ -773,23 +791,34 @@ func init() {
 				return argStr[start:end], nil
 			},
 		),
-		"aes_cbc": makeDslFunction(2, func(args ...interface{}) (interface{}, error) {
+		"aes_cbc": makeDslFunction(3, func(args ...interface{}) (interface{}, error) {
 			key := []byte(types.ToString(args[0]))
 			cleartext := []byte(types.ToString(args[1]))
-			block, _ := aes.NewCipher(key)
-			blockSize := block.BlockSize()
-			n := blockSize - len(cleartext)%blockSize
-			temp := bytes.Repeat([]byte{byte(n)}, n)
-			cleartext = append(cleartext, temp...)
+
 			iv := make([]byte, 16)
-			if _, err := crand.Read(iv); err != nil {
+			if len(args) == 3 {
+				iv = []byte(types.ToString(args[2]))
+			} else {
+				if _, err := crand.Read(iv); err != nil {
+					return nil, err
+				}
+			}
+
+			block, err := aes.NewCipher(key)
+			if err != nil {
 				return nil, err
 			}
-			blockMode := cipher.NewCBCEncrypter(block, iv)
-			ciphertext := make([]byte, len(cleartext))
-			blockMode.CryptBlocks(ciphertext, cleartext)
-			ciphertext = append(iv, ciphertext...)
-			return ciphertext, nil
+			ecb := cipher.NewCBCEncrypter(block, []byte(iv))
+			content := []byte(cleartext)
+
+			padding := block.BlockSize() - len(content)%block.BlockSize()
+			padtext := bytes.Repeat([]byte{byte(padding)}, padding)
+			content = append(content, padtext...)
+
+			crypted := make([]byte, len(content))
+			ecb.CryptBlocks(crypted, content)
+
+			return crypted, nil
 		}),
 		"aes_gcm": makeDslFunction(2, func(args ...interface{}) (interface{}, error) {
 			key := args[0].(string)
