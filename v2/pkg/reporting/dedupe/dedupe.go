@@ -59,7 +59,7 @@ func (s *Storage) Clear() {
 	}
 	iter.Release()
 	for _, key := range keys {
-		s.storage.Delete(key, nil)
+		_ = s.storage.Delete(key, nil)
 	}
 }
 
