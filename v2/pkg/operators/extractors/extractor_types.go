@@ -99,6 +99,16 @@ func (holder *ExtractorTypeHolder) UnmarshalYAML(unmarshal func(interface{}) err
 	return nil
 }
 
+func (holder *ExtractorTypeHolder) UnmarshalJSON(data []byte) error {
+	computedType, err := toExtractorTypes(strings.Trim(string(data), "\""))
+	if err != nil {
+		return err
+	}
+
+	holder.ExtractorType = computedType
+	return nil
+}
+
 func (holder *ExtractorTypeHolder) MarshalJSON() ([]byte, error) {
 	return json.Marshal(holder.ExtractorType.String())
 }

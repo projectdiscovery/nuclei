@@ -116,6 +116,16 @@ func (holder *HTTPMethodTypeHolder) UnmarshalYAML(unmarshal func(interface{}) er
 	return nil
 }
 
+func (holder *HTTPMethodTypeHolder) UnmarshalJSON(data []byte) error {
+	computedType, err := toHTTPMethodTypes(strings.Trim(string(data), "\""))
+	if err != nil {
+		return err
+	}
+
+	holder.MethodType = computedType
+	return nil
+}
+
 func (holder *HTTPMethodTypeHolder) MarshalJSON() ([]byte, error) {
 	return json.Marshal(holder.MethodType.String())
 }

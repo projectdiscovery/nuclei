@@ -86,6 +86,16 @@ func (userAgentHolder *UserAgentHolder) UnmarshalYAML(unmarshal func(interface{}
 	return nil
 }
 
+func (userAgentHolder *UserAgentHolder) UnmarshalJSON(data []byte) error {
+	computedUserAgent, err := toUserAgent(strings.Trim(string(data), `"`))
+	if err != nil {
+		return err
+	}
+
+	userAgentHolder.Value = computedUserAgent
+	return nil
+}
+
 func (userAgentHolder *UserAgentHolder) MarshalJSON() ([]byte, error) {
 	return json.Marshal(userAgentHolder.Value.String())
 }
