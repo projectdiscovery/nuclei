@@ -5,6 +5,7 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/pkg/errors"
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalog"
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/loader/filter"
 	"github.com/projectdiscovery/nuclei/v2/pkg/templates"
@@ -58,7 +59,7 @@ func LoadWorkflow(templatePath string, catalog catalog.Catalog) (bool, error) {
 func isTemplateInfoMetadataMatch(tagFilter *filter.TagFilter, template *templates.Template, extraTags []string) (bool, error) {
 	match, err := tagFilter.Match(template, extraTags)
 
-	if err == filter.ErrExcluded {
+	if errors.Is(err, filter.ErrExcluded) {
 		return false, filter.ErrExcluded
 	}
 

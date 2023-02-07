@@ -44,7 +44,7 @@ var ErrExcluded = errors.New("the template was excluded")
 func (tagFilter *TagFilter) Match(template *templates.Template, extraTags []string) (bool, error) {
 	templateTags := template.Info.Tags.ToSlice()
 	for _, templateTag := range templateTags {
-		_, blocked := tagFilter.block[templateTag]
+		blocked := tagFilter.IsBlocked(templateTag)
 		_, allowed := tagFilter.matchAllows[templateTag]
 
 		if blocked && !allowed { // the whitelist has precedence over the blacklist
@@ -81,6 +81,11 @@ func (tagFilter *TagFilter) Match(template *templates.Template, extraTags []stri
 	}
 
 	return true, nil
+}
+
+func (tagFilter *TagFilter) IsBlocked(value string) bool {
+	_, blocked := tagFilter.block[value]
+	return blocked
 }
 
 func isSeverityMatch(tagFilter *TagFilter, templateSeverity severity.Severity) bool {
@@ -361,66 +366,48 @@ func New(config *Config) (*TagFilter, error) {
 	}
 	for _, tag := range config.ExcludeTags {
 		for _, val := range splitCommaTrim(tag) {
-			if _, ok := filter.block[val]; !ok {
-				filter.block[val] = struct{}{}
-			}
+			filter.block[val] = struct{}{}
 		}
 	}
 	for _, tag := range config.Severities {
-		if _, ok := filter.severities[tag]; !ok {
-			filter.severities[tag] = struct{}{}
-		}
+		filter.severities[tag] = struct{}{}
 	}
 	for _, tag := range config.ExcludeSeverities {
-		if _, ok := filter.excludeSeverities[tag]; !ok {
-			filter.excludeSeverities[tag] = struct{}{}
-		}
+		filter.excludeSeverities[tag] = struct{}{}
 	}
 	for _, tag := range config.Authors {
 		for _, val := range splitCommaTrim(tag) {
-			if _, ok := filter.authors[val]; !ok {
-				filter.authors[val] = struct{}{}
-			}
+			filter.authors[val] = struct{}{}
 		}
 	}
 	for _, tag := range config.Tags {
 		for _, val := range splitCommaTrim(tag) {
-			if _, ok := filter.allowedTags[val]; !ok {
-				filter.allowedTags[val] = struct{}{}
-			}
+			filter.allowedTags[val] = struct{}{}
 			delete(filter.block, val)
 		}
 	}
 	for _, tag := range config.IncludeTags {
 		for _, val := range splitCommaTrim(tag) {
-			if _, ok := filter.matchAllows[val]; !ok {
-				filter.matchAllows[val] = struct{}{}
-			}
+			filter.matchAllows[val] = struct{}{}
 			delete(filter.block, val)
 		}
 	}
 	for _, tag := range config.Protocols {
-		if _, ok := filter.types[tag]; !ok {
-			filter.types[tag] = struct{}{}
-		}
+		filter.types[tag] = struct{}{}
 	}
 	for _, tag := range config.ExcludeProtocols {
-		if _, ok := filter.excludeTypes[tag]; !ok {
-			filter.excludeTypes[tag] = struct{}{}
-		}
+		filter.excludeTypes[tag] = struct{}{}
 	}
 	for _, id := range config.ExcludeIds {
 		for _, val := range splitCommaTrim(id) {
-			if _, ok := filter.block[val]; !ok {
+			if !filter.IsBlocked(val) {
 				filter.excludeIds[val] = struct{}{}
 			}
 		}
 	}
 	for _, id := range config.IncludeIds {
 		for _, val := range splitCommaTrim(id) {
-			if _, ok := filter.allowedIds[val]; !ok {
-				filter.allowedIds[val] = struct{}{}
-			}
+			filter.allowedIds[val] = struct{}{}
 			delete(filter.excludeIds, val)
 		}
 	}

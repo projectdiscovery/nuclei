@@ -39,26 +39,16 @@ func NewLoader(options *protocols.ExecuterOptions) (model.WorkflowLoader, error)
 	return &workflowLoader{pathFilter: pathFilter, tagFilter: tagFilter, options: options}, nil
 }
 
-func (w *workflowLoader) GetTemplatePathsByTags(templateTags []string) []string {
-	includedTemplates, errs := w.options.Catalog.GetTemplatesPath([]string{w.options.Options.TemplatesDirectory})
-	for template, err := range errs {
-		gologger.Error().Msgf("Could not find template '%s': %s", template, err)
-	}
-	templatePathMap := w.pathFilter.Match(includedTemplates)
-
-	loadedTemplates := make([]string, 0, len(templatePathMap))
-	for templatePath := range templatePathMap {
-		loaded, err := LoadTemplate(templatePath, w.tagFilter, templateTags, w.options.Catalog)
-		if err != nil {
-			gologger.Warning().Msgf("Could not load template %s: %s\n", templatePath, err)
-		} else if loaded {
-			loadedTemplates = append(loadedTemplates, templatePath)
-		}
-	}
-	return loadedTemplates
+func (w *workflowLoader) GetTemplatePathsByTags(tags []string) []string {
+	templatesList := []string{w.options.Options.TemplatesDirectory}
+	return w.getTemplatePaths(tags, templatesList, false)
 }
 
 func (w *workflowLoader) GetTemplatePaths(templatesList []string, noValidate bool) []string {
+	return w.getTemplatePaths(nil, templatesList, noValidate)
+}
+
+func (w *workflowLoader) getTemplatePaths(tags, templatesList []string, noValidate bool) []string {
 	includedTemplates, errs := w.options.Catalog.GetTemplatesPath(templatesList)
 	for template, err := range errs {
 		gologger.Error().Msgf("Could not find template '%s': %s", template, err)
@@ -67,10 +57,10 @@ func (w *workflowLoader) GetTemplatePaths(templatesList []string, noValidate boo
 
 	loadedTemplates := make([]string, 0, len(templatesPathMap))
 	for templatePath := range templatesPathMap {
-		matched, err := LoadTemplate(templatePath, w.tagFilter, nil, w.options.Catalog)
+		loaded, err := LoadTemplate(templatePath, w.tagFilter, tags, w.options.Catalog)
 		if err != nil {
 			gologger.Warning().Msgf("Could not load template %s: %s\n", templatePath, err)
-		} else if matched || noValidate {
+		} else if loaded || noValidate {
 			loadedTemplates = append(loadedTemplates, templatePath)
 		}
 	}

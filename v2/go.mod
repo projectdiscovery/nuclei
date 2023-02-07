@@ -30,7 +30,7 @@ require (
 	github.com/projectdiscovery/rawhttp v0.1.7
 	github.com/projectdiscovery/retryabledns v1.0.20
 	github.com/projectdiscovery/retryablehttp-go v1.0.10-0.20230123170312-75b58f90739a
-	github.com/projectdiscovery/stringsutil v0.0.2
+	github.com/projectdiscovery/stringsutil v0.0.2 // indirect
 	github.com/projectdiscovery/yamldoc-go v1.0.3-0.20211126104922-00d2c6bb43b6
 	github.com/remeh/sizedwaitgroup v1.0.0
 	github.com/rs/xid v1.4.0
@@ -80,7 +80,7 @@ require (
 	github.com/projectdiscovery/sarif v0.0.1
 	github.com/projectdiscovery/tlsx v1.0.2
 	github.com/projectdiscovery/uncover v1.0.2
-	github.com/projectdiscovery/utils v0.0.6
+	github.com/projectdiscovery/utils v0.0.7
 	github.com/projectdiscovery/wappalyzergo v0.0.79
 	github.com/stretchr/testify v1.8.1
 	gopkg.in/src-d/go-git.v4 v4.13.1

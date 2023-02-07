@@ -20,9 +20,9 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/utils/vardump"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/headless/engine"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
-	"github.com/projectdiscovery/stringsutil"
 	fileutil "github.com/projectdiscovery/utils/file"
 	logutil "github.com/projectdiscovery/utils/log"
+	stringsutil "github.com/projectdiscovery/utils/strings"
 )
 
 func ConfigureOptions() error {
