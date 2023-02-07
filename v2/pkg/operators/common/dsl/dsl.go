@@ -38,9 +38,11 @@ import (
 	"github.com/spaolacci/murmur3"
 
 	"github.com/projectdiscovery/gologger"
+	"github.com/projectdiscovery/mapcidr"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/helpers/deserialization"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/randomip"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
+	sliceutil "github.com/projectdiscovery/utils/slice"
 )
 
 const (
@@ -922,6 +924,17 @@ func init() {
 			}
 
 			return buf.String(), nil
+		}),
+		"ip_format": makeDslFunction(2, func(args ...interface{}) (interface{}, error) {
+			_, err := strconv.ParseInt(types.ToString(args[1]), 10, 64)
+			if err != nil {
+				return nil, err
+			}
+			choice := []string{types.ToString(args[1])}
+			if sliceutil.Contains(choice, "0") {
+				choice = []string{"1", "2", "3", "4", "5", "6", "7", "8", "9", "10"}
+			}
+			return mapcidr.AlterIP(types.ToString(args[0]), choice, 3, false), nil
 		}),
 	}
 
