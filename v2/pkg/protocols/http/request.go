@@ -13,9 +13,9 @@ import (
 	"sync"
 	"time"
 
-	"errors"
-
+	"github.com/pkg/errors"
 	"github.com/remeh/sizedwaitgroup"
+	"go.uber.org/multierr"
 	"moul.io/http2curl"
 
 	"github.com/projectdiscovery/gologger"
@@ -36,7 +36,6 @@ import (
 	templateTypes "github.com/projectdiscovery/nuclei/v2/pkg/templates/types"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 	"github.com/projectdiscovery/rawhttp"
-	errorutil "github.com/projectdiscovery/utils/errors"
 	stringsutil "github.com/projectdiscovery/utils/strings"
 	urlutil "github.com/projectdiscovery/utils/url"
 )
@@ -108,7 +107,7 @@ func (request *Request) executeRaceRequest(input *contextargs.Context, previous 
 			err := request.executeRequest(input, httpRequest, previous, false, callback, 0)
 			mutex.Lock()
 			if err != nil {
-				requestErr = errors.Join(requestErr, err)
+				requestErr = multierr.Append(requestErr, err)
 			}
 			mutex.Unlock()
 		}(generatedRequests[i])
@@ -155,7 +154,7 @@ func (request *Request) executeParallelHTTP(input *contextargs.Context, dynamicV
 			err := request.executeRequest(input, httpRequest, previous, false, callback, 0)
 			mutex.Lock()
 			if err != nil {
-				requestErr = errors.Join(requestErr, err)
+				requestErr = multierr.Append(requestErr, err)
 			}
 			mutex.Unlock()
 		}(generatedHttpRequest)
@@ -218,7 +217,7 @@ func (request *Request) executeTurboHTTP(input *contextargs.Context, dynamicValu
 			err := request.executeRequest(input, httpRequest, previous, false, callback, 0)
 			mutex.Lock()
 			if err != nil {
-				requestErr = errors.Join(requestErr, err)
+				requestErr = multierr.Append(requestErr, err)
 			}
 			mutex.Unlock()
 		}(generatedHttpRequest)
@@ -232,7 +231,7 @@ func (request *Request) executeTurboHTTP(input *contextargs.Context, dynamicValu
 func (request *Request) executeFuzzingRule(input *contextargs.Context, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
 	parsed, err := urlutil.Parse(input.MetaInput.Input)
 	if err != nil {
-		return errorutil.NewWithErr(err).Msgf("could not parse url")
+		return errors.Wrap(err, "could not parse url")
 	}
 	fuzzRequestCallback := func(gr fuzz.GeneratedRequest) bool {
 		hasInteractMatchers := interactsh.HasMatchers(request.CompiledOperators)
@@ -305,7 +304,7 @@ func (request *Request) executeFuzzingRule(input *contextargs.Context, previous 
 				return nil
 			}
 			if err != nil {
-				return errorutil.NewWithErr(err).Msgf("could not execute rule")
+				return errors.Wrap(err, "could not execute rule")
 			}
 		}
 	}
@@ -559,7 +558,7 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 				connConfiguration.Connection.Cookiejar = input.CookieJar
 				client, err := httpclientpool.Get(request.options.Options, connConfiguration)
 				if err != nil {
-					return errorutil.NewWithErr(err).Msgf("could not get http client")
+					return errors.Wrap(err, "could not get http client")
 				}
 				httpclient = client
 			}
@@ -646,7 +645,7 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 
 	dumpedResponseHeaders, err := httputil.DumpResponse(resp, false)
 	if err != nil {
-		return errorutil.NewWithErr(err).Msgf("could not dump http response")
+		return errors.Wrap(err, "could not dump http response")
 	}
 
 	var dumpedResponse []redirectedResponse
@@ -667,7 +666,7 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 			if stringsutil.ContainsAny(err.Error(), "gzip: invalid header") {
 				gologger.Warning().Msgf("[%s] Server sent an invalid gzip header and it was not possible to read the uncompressed body for %s: %s", request.options.TemplateID, formedURL, err.Error())
 			} else if !stringsutil.ContainsAny(err.Error(), "unexpected EOF", "user canceled") { // ignore EOF and random error
-				return errorutil.NewWithErr(err).Msgf("could not read http body")
+				return errors.Wrap(err, "could not read http body")
 			}
 		}
 		gotData = data
@@ -675,7 +674,7 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 
 		dumpedResponse, err = dumpResponseWithRedirectChain(resp, data)
 		if err != nil {
-			return errorutil.NewWithErr(err).Msgf("could not read http response with redirect chain")
+			return errors.Wrap(err, "could not read http response with redirect chain")
 		}
 	} else {
 		dumpedResponse = []redirectedResponse{{resp: resp, fullResponse: dumpedResponseHeaders, headers: dumpedResponseHeaders}}
@@ -684,7 +683,7 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 	// if nuclei-project is enabled store the response if not previously done
 	if request.options.ProjectFile != nil && !fromCache {
 		if err := request.options.ProjectFile.Set(dumpedRequest, resp, gotData); err != nil {
-			return errorutil.NewWithErr(err).Msgf("could not store in project file")
+			return errors.Wrap(err, "could not store in project file")
 		}
 	}
 

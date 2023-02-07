@@ -3,7 +3,6 @@ package templates
 
 import (
 	"encoding/json"
-	"errors"
 
 	validate "github.com/go-playground/validator/v10"
 	"github.com/projectdiscovery/nuclei/v2/pkg/model"
@@ -19,6 +18,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/whois"
 	"github.com/projectdiscovery/nuclei/v2/pkg/templates/types"
 	"github.com/projectdiscovery/nuclei/v2/pkg/workflows"
+	"go.uber.org/multierr"
 	"gopkg.in/yaml.v2"
 )
 
@@ -154,7 +154,7 @@ func (template *Template) Type() types.ProtocolType {
 func (template *Template) MarshalYAML() ([]byte, error) {
 	out, marshalErr := yaml.Marshal(template)
 	errValidate := validate.New().Struct(template)
-	return out, errors.Join(marshalErr, errValidate)
+	return out, multierr.Append(marshalErr, errValidate)
 }
 
 // MarshalYAML forces recursive struct validation after unmarshal operation
@@ -173,7 +173,7 @@ func (template *Template) UnmarshalYAML(unmarshal func(interface{}) error) error
 func (template *Template) MarshalJSON() ([]byte, error) {
 	out, marshalErr := json.Marshal(template)
 	errValidate := validate.New().Struct(template)
-	return out, errors.Join(marshalErr, errValidate)
+	return out, multierr.Append(marshalErr, errValidate)
 }
 
 // UnmarshalJSON forces recursive struct validation after unmarshal operation
