@@ -792,33 +792,14 @@ func init() {
 			},
 		),
 		"aes_cbc": makeDslFunction(3, func(args ...interface{}) (interface{}, error) {
-			key := []byte(types.ToString(args[0]))
-			cleartext := []byte(types.ToString(args[1]))
-
-			iv := make([]byte, 16)
-			if len(args) == 3 {
-				iv = []byte(types.ToString(args[2]))
-			} else {
-				if _, err := crand.Read(iv); err != nil {
-					return nil, err
-				}
-			}
-
-			block, err := aes.NewCipher(key)
-			if err != nil {
-				return nil, err
-			}
-			ecb := cipher.NewCBCEncrypter(block, []byte(iv))
-			content := []byte(cleartext)
-
-			padding := block.BlockSize() - len(content)%block.BlockSize()
-			padtext := bytes.Repeat([]byte{byte(padding)}, padding)
-			content = append(content, padtext...)
-
-			crypted := make([]byte, len(content))
-			ecb.CryptBlocks(crypted, content)
-
-			return crypted, nil
+			bKey := []byte(args[1].(string))
+			bIV := []byte(args[2].(string))
+			bPlaintext := pkcs5padding([]byte(args[0].(string)), aes.BlockSize, len(args[0].(string)))
+			block, _ := aes.NewCipher(bKey)
+			ciphertext := make([]byte, len(bPlaintext))
+			mode := cipher.NewCBCEncrypter(block, bIV)
+			mode.CryptBlocks(ciphertext, bPlaintext)
+			return ciphertext, nil
 		}),
 		"aes_gcm": makeDslFunction(2, func(args ...interface{}) (interface{}, error) {
 			key := args[0].(string)
@@ -1226,6 +1207,12 @@ func toChunks(input string, chunkSize int) []string {
 	}
 	chunks = append(chunks, input[currentStart:])
 	return chunks
+}
+
+func pkcs5padding(ciphertext []byte, blockSize int, after int) []byte {
+	padding := (blockSize - len(ciphertext)%blockSize)
+	padtext := bytes.Repeat([]byte{byte(padding)}, padding)
+	return append(ciphertext, padtext...)
 }
 
 type CompilationError struct {
