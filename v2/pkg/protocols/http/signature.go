@@ -2,6 +2,7 @@ package http
 
 import (
 	"encoding/json"
+	"strings"
 
 	"github.com/alecthomas/jsonschema"
 	"github.com/pkg/errors"
@@ -69,6 +70,16 @@ func (holder *SignatureTypeHolder) UnmarshalYAML(unmarshal func(interface{}) err
 	}
 
 	computedType, err := toSignatureType(marshalledTypes)
+	if err != nil {
+		return err
+	}
+
+	holder.Value = computedType
+	return nil
+}
+
+func (holder *SignatureTypeHolder) UnmarshalJSON(data []byte) error {
+	computedType, err := toSignatureType(strings.Trim(string(data), "\""))
 	if err != nil {
 		return err
 	}

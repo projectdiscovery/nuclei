@@ -198,6 +198,16 @@ func (holder *ActionTypeHolder) UnmarshalYAML(unmarshal func(interface{}) error)
 	return nil
 }
 
+func (holder *ActionTypeHolder) UnmarshalJSON(data []byte) error {
+	computedType, err := toActionTypes(strings.Trim(string(data), `"`))
+	if err != nil {
+		return err
+	}
+
+	holder.ActionType = computedType
+	return nil
+}
+
 func (holder *ActionTypeHolder) MarshalJSON() ([]byte, error) {
 	return json.Marshal(holder.ActionType.String())
 }
