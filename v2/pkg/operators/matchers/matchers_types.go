@@ -106,6 +106,16 @@ func (holder *MatcherTypeHolder) UnmarshalYAML(unmarshal func(interface{}) error
 	return nil
 }
 
+func (holder *MatcherTypeHolder) UnmarshalJSON(data []byte) error {
+	computedType, err := toMatcherTypes(strings.Trim(string(data), "\""))
+	if err != nil {
+		return err
+	}
+
+	holder.MatcherType = computedType
+	return nil
+}
+
 func (holder MatcherTypeHolder) MarshalJSON() ([]byte, error) {
 	return json.Marshal(holder.MatcherType.String())
 }

@@ -28,19 +28,19 @@ import (
 // Request is a request for the WHOIS protocol
 type Request struct {
 	// Operators for the current request go here.
-	operators.Operators `yaml:",inline,omitempty"`
-	CompiledOperators   *operators.Operators `yaml:"-"`
+	operators.Operators `yaml:",inline,omitempty" json:",inline,omitempty"`
+	CompiledOperators   *operators.Operators `yaml:"-" json:"-"`
 
 	// description: |
 	//   Query contains query for the request
-	Query string `yaml:"query,omitempty" jsonschema:"title=query for the WHOIS request,description=Query contains query for the request"`
+	Query string `yaml:"query,omitempty" json:"query,omitempty" jsonschema:"title=query for the WHOIS request,description=Query contains query for the request"`
 
 	// description: |
 	// 	 Optional WHOIS server URL.
 	//
 	// 	 If present, specifies the WHOIS server to execute the Request on.
 	//   Otherwise, nil enables bootstrapping
-	Server string `yaml:"server,omitempty" jsonschema:"title=server url to execute the WHOIS request on,description=Server contains the server url to execute the WHOIS request on"`
+	Server string `yaml:"server,omitempty" json:"server,omitempty" jsonschema:"title=server url to execute the WHOIS request on,description=Server contains the server url to execute the WHOIS request on"`
 	// cache any variables that may be needed for operation.
 	client          *rdap.Client
 	options         *protocols.ExecuterOptions
