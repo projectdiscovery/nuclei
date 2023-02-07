@@ -4,6 +4,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"go.uber.org/multierr"
 	"gopkg.in/yaml.v2"
 
 	"errors"
@@ -98,7 +99,7 @@ func New(options *Options, db string) (Client, error) {
 		options.GitHub.HttpClient = options.HttpClient
 		tracker, err := github.New(options.GitHub)
 		if err != nil {
-			return nil, errors.Join(err, ErrReportingClientCreation)
+			return nil, errorutil.NewWithErr(err).Wrap(ErrReportingClientCreation)
 		}
 		client.trackers = append(client.trackers, tracker)
 	}
@@ -106,7 +107,7 @@ func New(options *Options, db string) (Client, error) {
 		options.GitLab.HttpClient = options.HttpClient
 		tracker, err := gitlab.New(options.GitLab)
 		if err != nil {
-			return nil, errors.Join(err, ErrReportingClientCreation)
+			return nil, errorutil.NewWithErr(err).Wrap(ErrReportingClientCreation)
 		}
 		client.trackers = append(client.trackers, tracker)
 	}
@@ -114,21 +115,21 @@ func New(options *Options, db string) (Client, error) {
 		options.Jira.HttpClient = options.HttpClient
 		tracker, err := jira.New(options.Jira)
 		if err != nil {
-			return nil, errors.Join(err, ErrReportingClientCreation)
+			return nil, errorutil.NewWithErr(err).Wrap(ErrReportingClientCreation)
 		}
 		client.trackers = append(client.trackers, tracker)
 	}
 	if options.MarkdownExporter != nil {
 		exporter, err := markdown.New(options.MarkdownExporter)
 		if err != nil {
-			return nil, errors.Join(err, ErrExportClientCreation)
+			return nil, errorutil.NewWithErr(err).Wrap(ErrExportClientCreation)
 		}
 		client.exporters = append(client.exporters, exporter)
 	}
 	if options.SarifExporter != nil {
 		exporter, err := sarif.New(options.SarifExporter)
 		if err != nil {
-			return nil, errors.Join(err, ErrExportClientCreation)
+			return nil, errorutil.NewWithErr(err).Wrap(ErrExportClientCreation)
 		}
 		client.exporters = append(client.exporters, exporter)
 	}
@@ -136,7 +137,7 @@ func New(options *Options, db string) (Client, error) {
 		options.ElasticsearchExporter.HttpClient = options.HttpClient
 		exporter, err := es.New(options.ElasticsearchExporter)
 		if err != nil {
-			return nil, errors.Join(err, ErrExportClientCreation)
+			return nil, errorutil.NewWithErr(err).Wrap(ErrExportClientCreation)
 		}
 		client.exporters = append(client.exporters, exporter)
 	}
@@ -144,7 +145,7 @@ func New(options *Options, db string) (Client, error) {
 		options.SplunkExporter.HttpClient = options.HttpClient
 		exporter, err := splunk.New(options.SplunkExporter)
 		if err != nil {
-			return nil, errors.Join(err, ErrExportClientCreation)
+			return nil, errorutil.NewWithErr(err).Wrap(ErrExportClientCreation)
 		}
 		client.exporters = append(client.exporters, exporter)
 	}
@@ -222,12 +223,12 @@ func (c *ReportingClient) CreateIssue(event *output.ResultEvent) error {
 	if unique {
 		for _, tracker := range c.trackers {
 			if trackerErr := tracker.CreateIssue(event); trackerErr != nil {
-				err = errors.Join(err, trackerErr)
+				err = multierr.Append(err, trackerErr)
 			}
 		}
 		for _, exporter := range c.exporters {
 			if exportErr := exporter.Export(event); exportErr != nil {
-				err = errors.Join(err, exportErr)
+				err = multierr.Append(err, exportErr)
 			}
 		}
 	}
