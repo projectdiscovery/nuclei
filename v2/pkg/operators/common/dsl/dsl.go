@@ -186,13 +186,6 @@ func init() {
 		"base64": makeDslFunction(1, func(args ...interface{}) (interface{}, error) {
 			return base64.StdEncoding.EncodeToString([]byte(types.ToString(args[0]))), nil
 		}),
-		"base64_urlsafe": makeDslFunction(1, func(args ...interface{}) (interface{}, error) {
-			bytearr := base64.StdEncoding.EncodeToString([]byte(types.ToString(args[0])))
-			safeurl := strings.Replace(string(bytearr), "/", "_", -1)
-			safeurl = strings.Replace(safeurl, "+", "-", -1)
-			safeurl = strings.Replace(safeurl, "=", "", -1)
-			return safeurl, nil
-		}),
 		"gzip": makeDslFunction(1, func(args ...interface{}) (interface{}, error) {
 			buffer := &bytes.Buffer{}
 			writer := gzip.NewWriter(buffer)
@@ -278,17 +271,6 @@ func init() {
 		}),
 		"url_decode": makeDslFunction(1, func(args ...interface{}) (interface{}, error) {
 			return url.QueryUnescape(types.ToString(args[0]))
-		}),
-		"byte_decode": makeDslFunction(1, func(args ...interface{}) (interface{}, error) {
-			var items []byte
-			for _, item := range strings.Split(strings.Trim(types.ToString(args[0]), "{} "), ",") {
-				if parsedInt, err := strconv.ParseInt(strings.Trim(item, " "), 10, 8); err != nil {
-					return nil, err
-				} else {
-					items = append(items, byte(parsedInt))
-				}
-			}
-			return items, nil
 		}),
 		"hex_encode": makeDslFunction(1, func(args ...interface{}) (interface{}, error) {
 			return hex.EncodeToString([]byte(types.ToString(args[0]))), nil
