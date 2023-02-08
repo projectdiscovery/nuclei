@@ -795,6 +795,8 @@ func init() {
 			bKey := []byte(args[1].(string))
 			bIV := []byte(args[2].(string))
 			bPlaintext := pkcs5padding([]byte(args[0].(string)), aes.BlockSize, len(args[0].(string)))
+			fmt.Printf("key: %v iv: %v plaintext: %v\n", string(bKey), string(bIV), string(bPlaintext))
+
 			block, _ := aes.NewCipher(bKey)
 			ciphertext := make([]byte, len(bPlaintext))
 			mode := cipher.NewCBCEncrypter(block, bIV)
