@@ -642,6 +642,7 @@ func init() {
 			gadget := args[0].(string)
 			cmd := args[1].(string)
 			encoding := args[2].(string)
+			fmt.Printf("gadget: %v cmd: %v encoding: %v\n", gadget, cmd, encoding)
 			data := deserialization.GenerateJavaGadget(gadget, cmd, encoding)
 			return data, nil
 		}),
@@ -796,7 +797,6 @@ func init() {
 			bIV := []byte(args[2].(string))
 			bPlaintext := pkcs5padding([]byte(args[0].(string)), aes.BlockSize, len(args[0].(string)))
 			fmt.Printf("key: %v iv: %v plaintext: %v\n", string(bKey), string(bIV), string(bPlaintext))
-
 			block, _ := aes.NewCipher(bKey)
 			ciphertext := make([]byte, len(bPlaintext))
 			mode := cipher.NewCBCEncrypter(block, bIV)
