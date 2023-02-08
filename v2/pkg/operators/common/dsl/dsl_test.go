@@ -93,7 +93,7 @@ func TestDslFunctionSignatures(t *testing.T) {
 }
 
 func TestGetPrintableDslFunctionSignatures(t *testing.T) {
-	expected := `	aes_cbc(arg1, arg2 interface{}) interface{}
+	expected := `	aes_cbc(arg1, arg2, arg3 interface{}) interface{}
 	aes_gcm(arg1, arg2 interface{}) interface{}
 	base64(arg1 interface{}) interface{}
 	base64_decode(arg1 interface{}) interface{}
