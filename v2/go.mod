@@ -80,7 +80,7 @@ require (
 	github.com/projectdiscovery/sarif v0.0.1
 	github.com/projectdiscovery/tlsx v1.0.2
 	github.com/projectdiscovery/uncover v1.0.2
-	github.com/projectdiscovery/utils v0.0.8
+	github.com/projectdiscovery/utils v0.0.9-0.20230209185915-234ad5ea272b
 	github.com/projectdiscovery/wappalyzergo v0.0.79
 	github.com/stretchr/testify v1.8.1
 	gopkg.in/src-d/go-git.v4 v4.13.1

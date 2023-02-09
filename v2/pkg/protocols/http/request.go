@@ -573,6 +573,9 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 		formedURL = input.MetaInput.Input
 	}
 
+	// converts whitespace and other chars that cannot be printed to url encoded values
+	formedURL = urlutil.URLEncodeWithEscapes(formedURL)
+
 	// Dump the requests containing all headers
 	if !generatedRequest.original.Race {
 		var dumpError error
