@@ -2,6 +2,7 @@ package templates_test
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"testing"
 	"time"
@@ -80,7 +81,7 @@ func Test_ParseFromURL(t *testing.T) {
 	}
 	setup()
 	got, err := templates.Parse(filePath, nil, executerOpts)
-	require.Nilf(t, err, "could not parse template (%s)", err.Error())
+	require.Nilf(t, err, "could not parse template (%s)", fmt.Sprint(err))
 	require.Equal(t, expectedTemplate.ID, got.ID)
 	require.Equal(t, expectedTemplate.Info, got.Info)
 	require.Equal(t, expectedTemplate.TotalRequests, got.TotalRequests)
