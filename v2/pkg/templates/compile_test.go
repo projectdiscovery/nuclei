@@ -80,7 +80,7 @@ func Test_ParseFromURL(t *testing.T) {
 	}
 	setup()
 	got, err := templates.Parse(filePath, nil, executerOpts)
-	require.Nil(t, err, "could not parse template")
+	require.Nilf(t, err, "could not parse template (%s)", err.Error())
 	require.Equal(t, expectedTemplate.ID, got.ID)
 	require.Equal(t, expectedTemplate.Info, got.Info)
 	require.Equal(t, expectedTemplate.TotalRequests, got.TotalRequests)
