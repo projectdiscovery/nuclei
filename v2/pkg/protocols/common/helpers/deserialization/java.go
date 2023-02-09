@@ -135,7 +135,7 @@ func generateDNSPayload(URL string) []byte {
 	buffer.WriteString(string(rune(len(hostname))))
 	buffer.WriteString(hostname)
 
-	middle, _ := hex.DecodeString("74000071007E0005740005")
+	middle, _ := hex.DecodeString("74000071007E0005740004")
 	buffer.Write(middle)
 	buffer.WriteString(parsed.Scheme)
 
