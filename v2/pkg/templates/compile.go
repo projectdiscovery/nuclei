@@ -3,7 +3,6 @@ package templates
 import (
 	"fmt"
 	"io"
-	"net/http"
 	"reflect"
 
 	"github.com/pkg/errors"
@@ -15,6 +14,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/offlinehttp"
 	"github.com/projectdiscovery/nuclei/v2/pkg/templates/cache"
 	"github.com/projectdiscovery/nuclei/v2/pkg/utils"
+	"github.com/projectdiscovery/retryablehttp-go"
 	stringsutil "github.com/projectdiscovery/utils/strings"
 )
 
@@ -40,7 +40,9 @@ func Parse(filePath string, preprocessor Preprocessor, options protocols.Execute
 
 	var reader io.ReadCloser
 	if utils.IsURL(filePath) {
-		resp, err := http.Get(filePath)
+		//todo:instead of creating a new client each time, a default one should be reused (same as the standard library)
+		// use retryablehttp (tls verification is enabled by default in the standard library)
+		resp, err := retryablehttp.DefaultClient().Get(filePath)
 		if err != nil {
 			return nil, err
 		}
