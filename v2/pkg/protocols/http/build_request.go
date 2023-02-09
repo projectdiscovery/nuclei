@@ -99,11 +99,6 @@ func (r *requestGenerator) Make(ctx context.Context, input *contextargs.Context,
 		hasTrailingSlash = utils.HasTrailingSlash(reqData)
 	}
 
-	// If both target and payload does not have a slash add one
-	if !hasTrailingSlash && !strings.HasSuffix(parsed.Path, "/") {
-		parsed.Path += "/"
-	}
-
 	// defaultreqvars are vars generated from request/input ex: {{baseURL}}, {{Host}} etc
 	// contextargs generate extra vars that may/may not be available always (ex: "ip")
 	defaultReqVars := utils.GenerateVariablesWithURL(parsed, hasTrailingSlash, contextargs.GenerateVariables(input))
