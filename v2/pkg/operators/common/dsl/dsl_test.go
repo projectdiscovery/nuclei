@@ -274,6 +274,7 @@ func TestDslExpressions(t *testing.T) {
 		`ip_format('127.0.0.1', '1')`:                                          "127.0.0.1",
 		`ip_format('127.0.0.1', '3')`:                                          "0177.0.0.01",
 		`ip_format('127.0.0.1', '5')`:                                          "281472812449793",
+		`ip_format('127.0.1.0', '11')`:                                         "127.0.256",
 	}
 
 	testDslExpressionScenarios(t, dslExpressions)

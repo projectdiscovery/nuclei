@@ -929,7 +929,7 @@ func init() {
 			if err != nil {
 				return nil, err
 			}
-			if ipFormat <= 0 || ipFormat >= 11 {
+			if ipFormat <= 0 || ipFormat > 11 {
 				return nil, fmt.Errorf("invalid format, format must be in range 1-11")
 			}
 			formattedIps := mapcidr.AlterIP(types.ToString(args[0]), []string{types.ToString(args[1])}, 3, false)
