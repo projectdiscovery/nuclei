@@ -406,7 +406,18 @@ Examples of using Nuclei From Go Code to run templates on targets are provided i
 
 ### Credits
 
-Thanks to all the amazing community [contributors for sending PRs](https://github.com/projectdiscovery/nuclei/graphs/contributors). Do also check out the below similar open-source projects that may fit in your workflow:
+Thanks to all the amazing [community contributors for sending PRs](https://github.com/projectdiscovery/nuclei/graphs/contributors) and keeping this project updated. :heart:
+
+If you have an idea or some kind of improvement, you are welcome to contribute and participate in the Project, feel free to send your PR.
+
+<p align="center">
+<a href="https://github.com/projectdiscovery/nuclei/graphs/contributors">
+  <img src="https://contrib.rocks/image?repo=projectdiscovery/nuclei&max=500">
+</a>
+</p>
+
+
+Do also check out the below similar open-source projects that may fit in your workflow:
 
 [FFuF](https://github.com/ffuf/ffuf), [Qsfuzz](https://github.com/ameenmaali/qsfuzz), [Inception](https://github.com/proabiral/inception), [Snallygaster](https://github.com/hannob/snallygaster), [Gofingerprint](https://github.com/Static-Flow/gofingerprint), [Sn1per](https://github.com/1N3/Sn1per/tree/master/templates), [Google tsunami](https://github.com/google/tsunami-security-scanner), [Jaeles](https://github.com/jaeles-project/jaeles), [ChopChop](https://github.com/michelin/ChopChop)
 
