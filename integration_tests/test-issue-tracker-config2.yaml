@@ -6,7 +6,7 @@ deny-list:
   severity: low
 
 # GitHub contains configuration options for GitHub issue tracker
-GitHub:
+gitHub:
   # base-url is the optional self-hosted GitHub application url
   base-url: https://localhost:8443/GitHub
   # username is the username of the GitHub user
@@ -21,7 +21,7 @@ GitHub:
   issue-label: bug
 
 # GitLab contains configuration options for GitLab issue tracker
-GitLab:
+gitLab:
   # base-url is the optional self-hosted GitLab application url
   base-url: https://localhost:8443/GitLab
   # username is the username of the GitLab user
@@ -34,7 +34,7 @@ GitLab:
   issue-label: bug
 
 # Jira contains configuration options for Jira issue tracker
-Jira:
+jira:
   # cloud is the boolean which tells if Jira instance is running in the cloud or on-prem version is used
   cloud: true
   # update-existing is the boolean which tells if the existing, opened issue should be updated or new one should be created
