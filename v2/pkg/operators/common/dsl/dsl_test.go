@@ -117,6 +117,7 @@ func TestGetPrintableDslFunctionSignatures(t *testing.T) {
 	hmac(arg1, arg2, arg3 interface{}) interface{}
 	html_escape(arg1 interface{}) interface{}
 	html_unescape(arg1 interface{}) interface{}
+	ip_format(arg1, arg2 interface{}) interface{}
 	join(separator string, elements ...interface{}) string
 	join(separator string, elements []interface{}) string
 	json_minify(arg1 interface{}) interface{}
@@ -270,9 +271,9 @@ func TestDslExpressions(t *testing.T) {
 		`join(", ", split(hex_encode("abcdefg"), 2))`:             "61, 62, 63, 64, 65, 66, 67",
 		`json_minify("{  \"name\":  \"John Doe\",   \"foo\":  \"bar\"     }")`: "{\"foo\":\"bar\",\"name\":\"John Doe\"}",
 		`json_prettify("{\"foo\":\"bar\",\"name\":\"John Doe\"}")`:             "{\n    \"foo\": \"bar\",\n    \"name\": \"John Doe\"\n}",
-		`ip_format('127.0.0.1', '1')`:                                          []string{"127.0.0.1"},
-		`ip_format('127.0.0.1', '3')`:                                          []string{"0177.0.0.01"},
-		`ip_format('127.0.1.1', '5')`:                                          []string{"281472812450049"},
+		`ip_format('127.0.0.1', '1')`:                                          "127.0.0.1",
+		`ip_format('127.0.0.1', '3')`:                                          "0177.0.0.01",
+		`ip_format('127.0.0.1', '5')`:                                          "281472812449793",
 	}
 
 	testDslExpressionScenarios(t, dslExpressions)
