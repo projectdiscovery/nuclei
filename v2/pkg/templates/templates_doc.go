@@ -811,7 +811,7 @@ func init() {
 			FieldName: "extractors",
 		},
 	}
-	EXTRACTORSExtractorDoc.Fields = make([]encoder.Doc, 11)
+	EXTRACTORSExtractorDoc.Fields = make([]encoder.Doc, 12)
 	EXTRACTORSExtractorDoc.Fields[0].Name = "name"
 	EXTRACTORSExtractorDoc.Fields[0].Type = "string"
 	EXTRACTORSExtractorDoc.Fields[0].Note = ""
@@ -868,26 +868,31 @@ func init() {
 	EXTRACTORSExtractorDoc.Fields[7].Comments[encoder.LineComment] = "Attribute is an optional attribute to extract from response XPath."
 
 	EXTRACTORSExtractorDoc.Fields[7].AddExample("", "href")
-	EXTRACTORSExtractorDoc.Fields[8].Name = "part"
-	EXTRACTORSExtractorDoc.Fields[8].Type = "string"
+	EXTRACTORSExtractorDoc.Fields[8].Name = "dsl"
+	EXTRACTORSExtractorDoc.Fields[8].Type = "[]string"
 	EXTRACTORSExtractorDoc.Fields[8].Note = ""
-	EXTRACTORSExtractorDoc.Fields[8].Description = "Part is the part of the request response to extract data from.\n\nEach protocol exposes a lot of different parts which are well\ndocumented in docs for each request type."
-	EXTRACTORSExtractorDoc.Fields[8].Comments[encoder.LineComment] = "Part is the part of the request response to extract data from."
-
-	EXTRACTORSExtractorDoc.Fields[8].AddExample("", "body")
-
-	EXTRACTORSExtractorDoc.Fields[8].AddExample("", "raw")
-	EXTRACTORSExtractorDoc.Fields[9].Name = "internal"
-	EXTRACTORSExtractorDoc.Fields[9].Type = "bool"
+	EXTRACTORSExtractorDoc.Fields[8].Description = "Extracts using DSL expressions."
+	EXTRACTORSExtractorDoc.Fields[8].Comments[encoder.LineComment] = "Extracts using DSL expressions."
+	EXTRACTORSExtractorDoc.Fields[9].Name = "part"
+	EXTRACTORSExtractorDoc.Fields[9].Type = "string"
 	EXTRACTORSExtractorDoc.Fields[9].Note = ""
-	EXTRACTORSExtractorDoc.Fields[9].Description = "Internal, when set to true will allow using the value extracted\nin the next request for some protocols (like HTTP)."
-	EXTRACTORSExtractorDoc.Fields[9].Comments[encoder.LineComment] = "Internal, when set to true will allow using the value extracted"
-	EXTRACTORSExtractorDoc.Fields[10].Name = "case-insensitive"
+	EXTRACTORSExtractorDoc.Fields[9].Description = "Part is the part of the request response to extract data from.\n\nEach protocol exposes a lot of different parts which are well\ndocumented in docs for each request type."
+	EXTRACTORSExtractorDoc.Fields[9].Comments[encoder.LineComment] = "Part is the part of the request response to extract data from."
+
+	EXTRACTORSExtractorDoc.Fields[9].AddExample("", "body")
+
+	EXTRACTORSExtractorDoc.Fields[9].AddExample("", "raw")
+	EXTRACTORSExtractorDoc.Fields[10].Name = "internal"
 	EXTRACTORSExtractorDoc.Fields[10].Type = "bool"
 	EXTRACTORSExtractorDoc.Fields[10].Note = ""
-	EXTRACTORSExtractorDoc.Fields[10].Description = "CaseInsensitive enables case-insensitive extractions. Default is false."
-	EXTRACTORSExtractorDoc.Fields[10].Comments[encoder.LineComment] = "CaseInsensitive enables case-insensitive extractions. Default is false."
-	EXTRACTORSExtractorDoc.Fields[10].Values = []string{
+	EXTRACTORSExtractorDoc.Fields[10].Description = "Internal, when set to true will allow using the value extracted\nin the next request for some protocols (like HTTP)."
+	EXTRACTORSExtractorDoc.Fields[10].Comments[encoder.LineComment] = "Internal, when set to true will allow using the value extracted"
+	EXTRACTORSExtractorDoc.Fields[11].Name = "case-insensitive"
+	EXTRACTORSExtractorDoc.Fields[11].Type = "bool"
+	EXTRACTORSExtractorDoc.Fields[11].Note = ""
+	EXTRACTORSExtractorDoc.Fields[11].Description = "CaseInsensitive enables case-insensitive extractions. Default is false."
+	EXTRACTORSExtractorDoc.Fields[11].Comments[encoder.LineComment] = "CaseInsensitive enables case-insensitive extractions. Default is false."
+	EXTRACTORSExtractorDoc.Fields[11].Values = []string{
 		"false",
 		"true",
 	}
@@ -965,7 +970,7 @@ func init() {
 	HTTPMethodTypeHolderDoc.Fields[0].Comments[encoder.LineComment] = ""
 	HTTPMethodTypeHolderDoc.Fields[0].EnumFields = []string{
 		"GET",
-		"GET",
+		"HEAD",
 		"POST",
 		"PUT",
 		"DELETE",

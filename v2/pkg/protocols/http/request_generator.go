@@ -69,10 +69,14 @@ func (r *requestGenerator) nextValue() (value string, payloads map[string]interf
 		r.currentIndex = nextIndex + 1
 		request = nextRequest
 		shouldContinue = true
-	} else if nextRequest, nextIndex, found := r.findNextIteration(sequence, 0); found && hasPayloadIterator {
-		r.currentIndex = nextIndex + 1
-		request = nextRequest
-		shouldContinue = true
+	} else {
+		// if found is false which happens at end of iteration of reqData(path or raw request)
+		// try again from start with index 0
+		if nextRequest, nextIndex, found := r.findNextIteration(sequence, 0); found && hasPayloadIterator {
+			r.currentIndex = nextIndex + 1
+			request = nextRequest
+			shouldContinue = true
+		}
 	}
 
 	if shouldContinue {
@@ -80,28 +84,34 @@ func (r *requestGenerator) nextValue() (value string, payloads map[string]interf
 			r.applyMark(request, Once)
 		}
 		if hasPayloadIterator {
-			return request, r.currentPayloads, r.okCurrentPayload
+			return request, generators.MergeMaps(r.currentPayloads), r.okCurrentPayload
 		}
-		return request, r.currentPayloads, true
+		// next should return a copy of payloads and not pointer to payload to avoid data race
+		return request, generators.MergeMaps(r.currentPayloads), true
 	} else {
 		return "", nil, false
 	}
 }
 
+// findNextIteration iterates and returns next Request(path or raw request)
+// at end of each iteration payload is incremented
 func (r *requestGenerator) findNextIteration(sequence []string, index int) (string, int, bool) {
 	for i, request := range sequence[index:] {
-		if !r.wasMarked(request, Once) {
-			return request, index + i, true
+		if r.wasMarked(request, Once) {
+			// if request contains flowmark i.e `@once` and is marked skip it
+			continue
 		}
-	}
+		return request, index + i, true
 
+	}
+	// move on to next payload if current payload is applied/returned for all Requests(path or raw request)
 	if r.payloadIterator != nil {
 		r.currentPayloads, r.okCurrentPayload = r.payloadIterator.Value()
 	}
-
 	return "", 0, false
 }
 
+// applyMark marks given request i.e blacklist request
 func (r *requestGenerator) applyMark(request string, mark flowMark) {
 	switch mark {
 	case Once:
@@ -110,6 +120,7 @@ func (r *requestGenerator) applyMark(request string, mark flowMark) {
 
 }
 
+// wasMarked checks if request is marked using request blacklist
 func (r *requestGenerator) wasMarked(request string, mark flowMark) bool {
 	switch mark {
 	case Once:
@@ -119,6 +130,7 @@ func (r *requestGenerator) wasMarked(request string, mark flowMark) bool {
 	return false
 }
 
+// hasMarker returns true if request has a marker (ex: @once which means request should only be executed once)
 func (r *requestGenerator) hasMarker(request string, mark flowMark) bool {
 	fo, hasOverrides := parseFlowAnnotations(request)
 	return hasOverrides && fo == mark
