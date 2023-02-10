@@ -512,6 +512,8 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 			}
 			resp, err = generatedRequest.pipelinedClient.DoRaw(generatedRequest.rawRequest.Method, input.MetaInput.Input, generatedRequest.rawRequest.Path, generators.ExpandMapValues(generatedRequest.rawRequest.Headers), io.NopCloser(strings.NewReader(generatedRequest.rawRequest.Data)))
 		} else if generatedRequest.request != nil {
+			// hot fix to avoid double url encoding (should only be called once)
+			generatedRequest.request.Prepare()
 			resp, err = generatedRequest.pipelinedClient.Dor(generatedRequest.request)
 		}
 	} else if generatedRequest.original.Unsafe && generatedRequest.rawRequest != nil {
@@ -562,6 +564,7 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 				}
 				httpclient = client
 			}
+			generatedRequest.request.Prepare()
 			resp, err = httpclient.Do(generatedRequest.request)
 		}
 	}
@@ -569,6 +572,9 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 	if formedURL == "" {
 		formedURL = input.MetaInput.Input
 	}
+
+	// converts whitespace and other chars that cannot be printed to url encoded values
+	formedURL = urlutil.URLEncodeWithEscapes(formedURL)
 
 	// Dump the requests containing all headers
 	if !generatedRequest.original.Race {

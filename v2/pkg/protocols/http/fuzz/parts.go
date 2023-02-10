@@ -66,7 +66,7 @@ func (rule *Rule) buildQueryInput(input *ExecuteRuleInput, parsed *urlutil.URL, 
 	var req *retryablehttp.Request
 	var err error
 	if input.BaseRequest == nil {
-		req, err = retryablehttp.NewRequest(http.MethodGet, parsed.String(), nil)
+		req, err = retryablehttp.NewRequestFromURL(http.MethodGet, parsed, nil)
 		if err != nil {
 			return err
 		}
