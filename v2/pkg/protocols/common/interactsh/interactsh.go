@@ -172,7 +172,6 @@ func (c *Client) firstTimeInitializeClient() error {
 
 	interactsh.StartPolling(c.pollDuration, func(interaction *server.Interaction) {
 		item := c.requests.Get(interaction.UniqueID)
-
 		if item == nil {
 			// If we don't have any request for this ID, add it to temporary
 			// lru cache, so we can correlate when we get an add request.
@@ -264,8 +263,8 @@ func (c *Client) Close() bool {
 
 	closeCache := func(cc *ccache.Cache) {
 		if cc != nil {
-			cc.Clear()
 			cc.Stop()
+			cc.Clear()
 		}
 	}
 	closeCache(c.requests)
