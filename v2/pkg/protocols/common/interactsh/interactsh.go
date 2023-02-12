@@ -51,7 +51,7 @@ type Client struct {
 
 	firstTimeGroup sync.Once
 	generated      uint32 // decide to wait if we have a generated url
-	matched        bool
+	matched        atomic.Bool
 }
 
 var (
@@ -229,7 +229,7 @@ func (c *Client) processInteractionForRequest(interaction *server.Interaction, d
 	}
 
 	if writer.WriteResult(data.Event, c.options.Output, c.options.Progress, c.options.IssuesClient) {
-		c.matched = true
+		c.matched.Store(true)
 		if _, ok := data.Event.InternalEvent[stopAtFirstMatchAttribute]; ok || c.options.StopAtFirstMatch {
 			c.matchedTemplates.Set(hash(data.Event.InternalEvent[templateIdAttribute].(string), data.Event.InternalEvent["host"].(string)), true, defaultInteractionDuration)
 		}
@@ -272,7 +272,7 @@ func (c *Client) Close() bool {
 	closeCache(c.matchedTemplates)
 	closeCache(c.interactshURLs)
 
-	return c.matched
+	return c.matched.Load()
 }
 
 // ReplaceMarkers replaces the default {{interactsh-url}} placeholders with interactsh urls
