@@ -37,6 +37,8 @@ import (
 	"github.com/logrusorgru/aurora"
 	"github.com/spaolacci/murmur3"
 
+	"github.com/miekg/dns"
+	"github.com/projectdiscovery/dnsx/libs/dnsx"
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/helpers/deserialization"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/randomip"
@@ -914,6 +916,38 @@ func init() {
 			}
 
 			return buf.String(), nil
+		}),
+		"resolve": makeDslFunction(2, func(args ...interface{}) (interface{}, error) {
+			ipVersion, err := strconv.ParseInt(types.ToString(args[1]), 10, 64)
+			if err != nil {
+				return nil, err
+			}
+			if ipVersion == 1 {
+				ipVersion = 4
+			}
+			if ipVersion != 4 && ipVersion != 6 {
+				return nil, fmt.Errorf("invalid ip version, must be 4 or 6")
+			}
+			// create DNS Resolver with default options
+			dnsx.DefaultOptions.QuestionTypes = []uint16{dns.TypeA, dns.TypeAAAA}
+			dnsClient, err := dnsx.New(dnsx.DefaultOptions)
+			if err != nil {
+				fmt.Printf("err: %v\n", err)
+				return nil, err
+			}
+
+			// query
+			rawResp, err := dnsClient.QueryMultiple(types.ToString(args[0]))
+			if err != nil {
+				return nil, err
+			}
+			if len(rawResp.A) > 0 && ipVersion == 4 {
+				return rawResp.A[0], nil
+			}
+			if len(rawResp.AAAA) > 0 && ipVersion == 6 {
+				return rawResp.AAAA[0], nil
+			}
+			return "", nil
 		}),
 	}
 
