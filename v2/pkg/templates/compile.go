@@ -34,8 +34,10 @@ func init() {
 //
 //nolint:gocritic // this cannot be passed by pointer
 func Parse(filePath string, preprocessor Preprocessor, options protocols.ExecuterOptions) (*Template, error) {
-	if value, err := parsedTemplatesCache.Has(filePath); value != nil {
-		return value.(*Template), err
+	if !options.DoNotCache {
+		if value, err := parsedTemplatesCache.Has(filePath); value != nil {
+			return value.(*Template), err
+		}
 	}
 
 	var reader io.ReadCloser
@@ -69,7 +71,9 @@ func Parse(filePath string, preprocessor Preprocessor, options protocols.Execute
 		template.CompiledWorkflow.Options = &options
 	}
 	template.Path = filePath
-	parsedTemplatesCache.Store(filePath, template, err)
+	if !options.DoNotCache {
+		parsedTemplatesCache.Store(filePath, template, err)
+	}
 	return template, nil
 }
 
