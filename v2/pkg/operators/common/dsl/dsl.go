@@ -917,22 +917,22 @@ func init() {
 
 			return buf.String(), nil
 		}),
-		"resolve": makeDslFunction(2, func(args ...interface{}) (interface{}, error) {
-			ipVersion, err := strconv.ParseInt(types.ToString(args[1]), 10, 64)
-			if err != nil {
-				return nil, err
-			}
-			if ipVersion == 1 {
-				ipVersion = 4
+		"resolve": makeDslWithOptionalArgsFunction("(host string, format string)", func(args ...interface{}) (interface{}, error) {
+			var ipVersion int64 = 4
+			if len(args) > 1 {
+				var err error
+				ipVersion, err = strconv.ParseInt(types.ToString(args[1]), 10, 64)
+				if err != nil {
+					return nil, err
+				}
 			}
 			if ipVersion != 4 && ipVersion != 6 {
 				return nil, fmt.Errorf("invalid ip version, must be 4 or 6")
 			}
-			// create DNS Resolver with default options
+			// create DNS Resolver with default options and A/AAAA question types
 			dnsx.DefaultOptions.QuestionTypes = []uint16{dns.TypeA, dns.TypeAAAA}
 			dnsClient, err := dnsx.New(dnsx.DefaultOptions)
 			if err != nil {
-				fmt.Printf("err: %v\n", err)
 				return nil, err
 			}
 
