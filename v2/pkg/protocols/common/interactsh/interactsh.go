@@ -53,7 +53,6 @@ type Client struct {
 	firstTimeGroup sync.Once
 	generated      uint32 // decide to wait if we have a generated url
 	matched        atomic.Bool
-	closed         atomic.Bool
 }
 
 var (
