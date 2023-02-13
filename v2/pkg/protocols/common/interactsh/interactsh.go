@@ -24,6 +24,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/helpers/responsehighlighter"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/helpers/writer"
 	"github.com/projectdiscovery/nuclei/v2/pkg/reporting"
+	"github.com/projectdiscovery/nuclei/v2/pkg/utils/atomcache"
 	"github.com/projectdiscovery/retryablehttp-go"
 )
 
@@ -32,13 +33,13 @@ type Client struct {
 	// interactsh is a client for interactsh server.
 	interactsh *client.Client
 	// requests is a stored cache for interactsh-url->request-event data.
-	requests *ccache.Cache
+	requests *atomcache.Cache
 	// interactions is a stored cache for interactsh-interaction->interactsh-url data
-	interactions *ccache.Cache
+	interactions *atomcache.Cache
 	// matchedTemplates is a stored cache to track matched templates
-	matchedTemplates *ccache.Cache
+	matchedTemplates *atomcache.Cache
 	// interactshURLs is a stored cache to track track multiple interactsh markers
-	interactshURLs *ccache.Cache
+	interactshURLs *atomcache.Cache
 
 	options          *Options
 	eviction         time.Duration
@@ -52,6 +53,7 @@ type Client struct {
 	firstTimeGroup sync.Once
 	generated      uint32 // decide to wait if we have a generated url
 	matched        atomic.Bool
+	closed         atomic.Bool
 }
 
 var (
@@ -108,14 +110,14 @@ const defaultMaxInteractionsCount = 5000
 func New(options *Options) (*Client, error) {
 	configure := ccache.Configure()
 	configure = configure.MaxSize(options.CacheSize)
-	cache := ccache.New(configure)
+	cache := atomcache.NewWithCache(ccache.New(configure))
 
 	interactionsCfg := ccache.Configure()
 	interactionsCfg = interactionsCfg.MaxSize(defaultMaxInteractionsCount)
-	interactionsCache := ccache.New(interactionsCfg)
+	interactionsCache := atomcache.NewWithCache(ccache.New(interactionsCfg))
 
-	matchedTemplateCache := ccache.New(ccache.Configure().MaxSize(defaultMaxInteractionsCount))
-	interactshURLCache := ccache.New(ccache.Configure().MaxSize(defaultMaxInteractionsCount))
+	matchedTemplateCache := atomcache.NewWithCache(ccache.New(ccache.Configure().MaxSize(defaultMaxInteractionsCount)))
+	interactshURLCache := atomcache.NewWithCache(ccache.New(ccache.Configure().MaxSize(defaultMaxInteractionsCount)))
 
 	interactClient := &Client{
 		eviction:         options.Eviction,
@@ -261,10 +263,9 @@ func (c *Client) Close() bool {
 		c.interactsh.Close()
 	}
 
-	closeCache := func(cc *ccache.Cache) {
+	closeCache := func(cc *atomcache.Cache) {
 		if cc != nil {
 			cc.Stop()
-			cc.Clear()
 		}
 	}
 	closeCache(c.requests)
