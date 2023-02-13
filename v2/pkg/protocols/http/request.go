@@ -557,7 +557,7 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 			httpclient := request.httpClient
 			if input.CookieJar != nil {
 				connConfiguration := request.connConfiguration
-				connConfiguration.Connection.Cookiejar = input.CookieJar
+				connConfiguration.Connection.SetCookieJar(input.CookieJar)
 				client, err := httpclientpool.Get(request.options.Options, connConfiguration)
 				if err != nil {
 					return errors.Wrap(err, "could not get http client")
