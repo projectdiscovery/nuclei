@@ -59,7 +59,29 @@ func Init(options *types.Options) error {
 type ConnectionConfiguration struct {
 	// DisableKeepAlive of the connection
 	DisableKeepAlive bool
-	Cookiejar        *cookiejar.Jar
+	cookiejar        *cookiejar.Jar
+	mu               sync.RWMutex
+}
+
+func (cc *ConnectionConfiguration) SetCookieJar(cookiejar *cookiejar.Jar) {
+	cc.mu.Lock()
+	defer cc.mu.Unlock()
+
+	cc.cookiejar = cookiejar
+}
+
+func (cc *ConnectionConfiguration) GetCookieJar() *cookiejar.Jar {
+	cc.mu.RLock()
+	defer cc.mu.RUnlock()
+
+	return cc.cookiejar
+}
+
+func (cc *ConnectionConfiguration) HasCookieJar() bool {
+	cc.mu.RLock()
+	defer cc.mu.RUnlock()
+
+	return cc.cookiejar != nil
 }
 
 // Configuration contains the custom configuration options for a client
@@ -244,8 +266,8 @@ func wrappedGet(options *types.Options, configuration *Configuration) (*retryabl
 	}
 
 	var jar *cookiejar.Jar
-	if configuration.Connection != nil && configuration.Connection.Cookiejar != nil {
-		jar = configuration.Connection.Cookiejar
+	if configuration.Connection != nil && configuration.Connection.HasCookieJar() {
+		jar = configuration.Connection.GetCookieJar()
 	} else if configuration.CookieReuse {
 		if jar, err = cookiejar.New(&cookiejar.Options{PublicSuffixList: publicsuffix.List}); err != nil {
 			return nil, errors.Wrap(err, "could not create cookiejar")
