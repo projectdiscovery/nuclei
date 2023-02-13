@@ -140,6 +140,7 @@ func TestGetPrintableDslFunctionSignatures(t *testing.T) {
 	repeat(arg1, arg2 interface{}) interface{}
 	replace(arg1, arg2, arg3 interface{}) interface{}
 	replace_regex(arg1, arg2, arg3 interface{}) interface{}
+	resolve(host string, format string) string
 	reverse(arg1 interface{}) interface{}
 	sha1(arg1 interface{}) interface{}
 	sha256(arg1 interface{}) interface{}
@@ -270,6 +271,10 @@ func TestDslExpressions(t *testing.T) {
 		`join(", ", split(hex_encode("abcdefg"), 2))`:             "61, 62, 63, 64, 65, 66, 67",
 		`json_minify("{  \"name\":  \"John Doe\",   \"foo\":  \"bar\"     }")`: "{\"foo\":\"bar\",\"name\":\"John Doe\"}",
 		`json_prettify("{\"foo\":\"bar\",\"name\":\"John Doe\"}")`:             "{\n    \"foo\": \"bar\",\n    \"name\": \"John Doe\"\n}",
+		`resolve("localhost")`:   "127.0.0.1",
+		`resolve("localhost",6)`: "::1",
+		`resolve("scanme.sh")`:   "128.199.158.128",
+		`resolve("scanme.sh",6)`: "2400:6180:0:d0::91:1001",
 	}
 
 	testDslExpressionScenarios(t, dslExpressions)

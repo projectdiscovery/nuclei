@@ -917,7 +917,7 @@ func init() {
 
 			return buf.String(), nil
 		}),
-		"resolve": makeDslWithOptionalArgsFunction("(host string, format string)", func(args ...interface{}) (interface{}, error) {
+		"resolve": makeDslWithOptionalArgsFunction("(host string, format string) string", func(args ...interface{}) (interface{}, error) {
 			var ipVersion int64 = 4
 			if len(args) > 1 {
 				var err error
