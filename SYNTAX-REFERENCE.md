@@ -132,7 +132,6 @@ dns:
           regex:
             - ec2-[-\d]+\.compute[-\d]*\.amazonaws\.com
             - ec2-[-\d]+\.[\w\d\-]+\.compute[-\d]*\.amazonaws\.com
-          dsl: []
     name: '{{FQDN}}'
     type: CNAME
     class: inet
@@ -165,7 +164,6 @@ file:
         - type: regex
           regex:
             - amzn\.mws\.[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}
-          dsl: []
     extensions:
         - all
     archive: false
@@ -2083,6 +2081,19 @@ attribute: href
 
 <div class="dd">
 
+<code>dsl</code>  <i>[]string</i>
+
+</div>
+<div class="dt">
+
+Extracts using DSL expressions.
+
+</div>
+
+<hr />
+
+<div class="dd">
+
 <code>part</code>  <i>string</i>
 
 </div>
@@ -2515,7 +2526,6 @@ extractors:
       regex:
         - ec2-[-\d]+\.compute[-\d]*\.amazonaws\.com
         - ec2-[-\d]+\.[\w\d\-]+\.compute[-\d]*\.amazonaws\.com
-      dsl: []
 name: '{{FQDN}}'
 type: CNAME
 class: inet
@@ -2837,7 +2847,6 @@ extractors:
     - type: regex
       regex:
         - amzn\.mws\.[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}
-      dsl: []
 extensions:
     - all
 archive: false

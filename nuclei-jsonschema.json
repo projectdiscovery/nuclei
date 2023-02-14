@@ -132,8 +132,7 @@
     },
     "extractors.Extractor": {
       "required": [
-        "type",
-        "DSL"
+        "type"
       ],
       "properties": {
         "name": {
@@ -187,11 +186,13 @@
           "title": "optional attribute to extract from xpath",
           "description": "Optional attribute to extract from response XPath"
         },
-        "DSL": {
+        "dsl": {
           "items": {
             "type": "string"
           },
-          "type": "array"
+          "type": "array",
+          "title": "dsl expressions to extract",
+          "description": "Optional attribute to extract from response dsl"
         },
         "part": {
           "type": "string",

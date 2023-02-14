@@ -77,6 +77,9 @@ type ExecuterOptions struct {
 
 	Operators []*operators.Operators // only used by offlinehttp module
 
+	// DoNotCache bool disables optional caching of the templates structure
+	DoNotCache bool
+
 	Colorizer      aurora.Aurora
 	WorkflowLoader model.WorkflowLoader
 	ResumeCfg      *types.ResumeCfg
