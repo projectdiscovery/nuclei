@@ -38,6 +38,7 @@ import (
 	"github.com/spaolacci/murmur3"
 
 	"github.com/projectdiscovery/gologger"
+	"github.com/projectdiscovery/mapcidr"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/helpers/deserialization"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/randomip"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
@@ -914,6 +915,20 @@ func init() {
 			}
 
 			return buf.String(), nil
+		}),
+		"ip_format": makeDslFunction(2, func(args ...interface{}) (interface{}, error) {
+			ipFormat, err := strconv.ParseInt(types.ToString(args[1]), 10, 64)
+			if err != nil {
+				return nil, err
+			}
+			if ipFormat <= 0 || ipFormat > 11 {
+				return nil, fmt.Errorf("invalid format, format must be in range 1-11")
+			}
+			formattedIps := mapcidr.AlterIP(types.ToString(args[0]), []string{types.ToString(args[1])}, 3, false)
+			if len(formattedIps) == 0 {
+				return nil, fmt.Errorf("no formatted IP returned")
+			}
+			return formattedIps[0], nil
 		}),
 	}
 
