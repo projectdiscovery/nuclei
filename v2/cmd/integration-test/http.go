@@ -297,7 +297,7 @@ func (h *httpDSLFunctions) Execute(filePath string) error {
 	resultPart = stringsutil.TrimPrefixAny(resultPart, "/", " ", "[")
 
 	extracted := strings.Split(resultPart, ",")
-	numberOfDslFunctions := 85
+	numberOfDslFunctions := 87
 	if len(extracted) != numberOfDslFunctions {
 		return errors.New("incorrect number of results")
 	}
