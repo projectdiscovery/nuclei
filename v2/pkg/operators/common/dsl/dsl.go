@@ -814,7 +814,7 @@ func init() {
 				argSize := len(args)
 
 				if argSize < 1 || argSize > 4 {
-					return nil, invalidDslFunctionError
+					return nil, ErrinvalidDslFunction
 				}
 				jsonString := args[0].(string)
 
