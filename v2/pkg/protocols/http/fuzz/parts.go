@@ -4,7 +4,6 @@ import (
 	"context"
 	"io"
 	"net/http"
-	"net/url"
 	"strings"
 
 	"github.com/corpix/uarand"
@@ -25,10 +24,13 @@ func (rule *Rule) executePartRule(input *ExecuteRuleInput, payload string) error
 
 // executeQueryPartRule executes query part rules
 func (rule *Rule) executeQueryPartRule(input *ExecuteRuleInput, payload string) error {
-	requestURL := *input.URL
-	temp := urlutil.NewParams()
+	requestURL := input.URL.Clone()
+	temp := urlutil.Params{}
 	for k, v := range input.URL.Query() {
-		temp[k] = v
+		// this has to be a deep copy
+		x := []string{}
+		x = append(x, v...)
+		temp[k] = x
 	}
 
 	for key, values := range input.URL.Query() {
@@ -41,7 +43,7 @@ func (rule *Rule) executeQueryPartRule(input *ExecuteRuleInput, payload string) 
 			temp[key][i] = evaluated
 
 			if rule.modeType == singleModeType {
-				requestURL.RawQuery = temp.Encode()
+				requestURL.Params = temp
 				if err := rule.buildQueryInput(input, requestURL, input.InteractURLs); err != nil {
 					return err
 				}
@@ -51,7 +53,7 @@ func (rule *Rule) executeQueryPartRule(input *ExecuteRuleInput, payload string) 
 	}
 
 	if rule.modeType == multipleModeType {
-		requestURL.RawQuery = temp.Encode()
+		requestURL.Params = temp
 		if err := rule.buildQueryInput(input, requestURL, input.InteractURLs); err != nil {
 			return err
 		}
@@ -60,25 +62,24 @@ func (rule *Rule) executeQueryPartRule(input *ExecuteRuleInput, payload string) 
 }
 
 // buildQueryInput returns created request for a Query Input
-func (rule *Rule) buildQueryInput(input *ExecuteRuleInput, parsed url.URL, interactURLs []string) error {
-	var req *http.Request
+func (rule *Rule) buildQueryInput(input *ExecuteRuleInput, parsed *urlutil.URL, interactURLs []string) error {
+	var req *retryablehttp.Request
 	var err error
 	if input.BaseRequest == nil {
-		req, err = http.NewRequest(http.MethodGet, parsed.String(), nil)
+		req, err = retryablehttp.NewRequestFromURL(http.MethodGet, parsed, nil)
 		if err != nil {
 			return err
 		}
 		req.Header.Set("User-Agent", uarand.GetRandom())
 	} else {
-		req = input.BaseRequest.Clone(context.Background())
-		req.URL = &parsed
-	}
-	httpreq, err := retryablehttp.FromRequest(req)
-	if err != nil {
-		return err
+		req = input.BaseRequest.Clone(context.TODO())
+		//TODO: abstract below 3 lines with `req.UpdateURL(xx *urlutil.URL)`
+		req.URL = parsed
+		req.Request.URL = parsed.URL
+		req.Update()
 	}
 	request := GeneratedRequest{
-		Request:       httpreq,
+		Request:       req,
 		InteractURLs:  interactURLs,
 		DynamicValues: input.Values,
 	}
@@ -97,7 +98,7 @@ func (rule *Rule) executeEvaluate(input *ExecuteRuleInput, key, value, payload s
 		"value": value,
 	})
 	firstpass, _ := expressions.Evaluate(payload, values)
-	interactData, interactshURLs := rule.options.Interactsh.ReplaceMarkers(firstpass, interactshURLs)
+	interactData, interactshURLs := rule.options.Interactsh.Replace(firstpass, interactshURLs)
 	evaluated, _ := expressions.Evaluate(interactData, values)
 	replaced := rule.executeReplaceRule(input, value, evaluated)
 	return replaced, interactshURLs

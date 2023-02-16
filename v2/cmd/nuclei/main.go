@@ -24,6 +24,7 @@ import (
 	templateTypes "github.com/projectdiscovery/nuclei/v2/pkg/templates/types"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 	"github.com/projectdiscovery/nuclei/v2/pkg/utils/monitor"
+	errorutil "github.com/projectdiscovery/utils/errors"
 	fileutil "github.com/projectdiscovery/utils/file"
 )
 
@@ -243,6 +244,7 @@ on extensive configurability, massive extensibility and ease of use.`)
 		flagSet.IntVar(&options.Retries, "retries", 1, "number of times to retry a failed request"),
 		flagSet.BoolVarP(&options.LeaveDefaultPorts, "leave-default-ports", "ldp", false, "leave default HTTP/HTTPS ports (eg. host:80,host:443)"),
 		flagSet.IntVarP(&options.MaxHostError, "max-host-error", "mhe", 30, "max errors for a host before skipping from scan"),
+		flagSet.BoolVarP(&options.NoHostErrors, "no-mhe", "nmhe", false, "disable skipping host from scan based on errors"),
 		flagSet.BoolVar(&options.Project, "project", false, "use a project folder to avoid sending same request multiple times"),
 		flagSet.StringVar(&options.ProjectPath, "project-path", os.TempDir(), "set a specific project path"),
 		flagSet.BoolVarP(&options.StopAtFirstMatch, "stop-at-first-match", "spm", false, "stop processing HTTP requests after the first match (may break template/workflow logic)"),
@@ -306,17 +308,20 @@ on extensive configurability, massive extensibility and ease of use.`)
 		flagSet.StringVarP(&options.AddTarget, "add-target", "atr", "", "add target(s) to cloud"),
 		flagSet.StringVarP(&options.AddTemplate, "add-template", "atm", "", "add template(s) to cloud"),
 		flagSet.BoolVarP(&options.ScanList, "list-scan", "lsn", false, "list previous cloud scans"),
+		flagSet.StringVarP(&options.ScanOutput, "list-output", "lso", "", "list scan output by scan id"),
 		flagSet.BoolVarP(&options.ListTargets, "list-target", "ltr", false, "list cloud target by id"),
 		flagSet.BoolVarP(&options.ListTemplates, "list-template", "ltm", false, "list cloud template by id"),
 		flagSet.BoolVarP(&options.ListDatasources, "list-datasource", "lds", false, "list cloud datasource by id"),
+		flagSet.BoolVarP(&options.ListReportingSources, "list-reportsource", "lrs", false, "list reporting sources"),
 		flagSet.StringVarP(&options.DeleteScan, "delete-scan", "dsn", "", "delete cloud scan by id"),
 		flagSet.StringVarP(&options.RemoveTarget, "delete-target", "dtr", "", "delete target(s) from cloud"),
 		flagSet.StringVarP(&options.RemoveTemplate, "delete-template", "dtm", "", "delete template(s) from cloud"),
 		flagSet.StringVarP(&options.RemoveDatasource, "delete-datasource", "dds", "", "delete specified data source"),
+		flagSet.StringVarP(&options.DisableReportingSource, "disable-reportsource", "drs", "", "disable specified reporting source"),
+		flagSet.StringVarP(&options.EnableReportingSource, "enable-reportsource", "ers", "", "enable specified reporting source"),
 		flagSet.StringVarP(&options.GetTarget, "get-target", "gtr", "", "get target content by id"),
 		flagSet.StringVarP(&options.GetTemplate, "get-template", "gtm", "", "get template content by id"),
 		flagSet.BoolVarP(&options.NoStore, "no-store", "nos", false, "disable scan/output storage on cloud"),
-		flagSet.StringVarP(&options.ScanOutput, "scan-output", "sno", "", "display scan output by scan id"),
 		flagSet.BoolVar(&options.NoTables, "no-tables", false, "do not display pretty-printed tables"),
 		flagSet.IntVar(&options.OutputLimit, "limit", 100, "limit the number of output to display"),
 	)
@@ -374,4 +379,11 @@ func cleanupOldResumeFiles() {
 		Prefix:    "resume-",
 	}
 	_ = fileutil.DeleteFilesOlderThan(root, filter)
+}
+
+func init() {
+	// print stacktrace of errors in debug mode
+	if os.Getenv("DEBUG") != "" {
+		errorutil.ShowStackTrace = true
+	}
 }

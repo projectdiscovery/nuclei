@@ -2,6 +2,7 @@ package templates_test
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"testing"
 	"time"
@@ -32,7 +33,7 @@ var executerOpts protocols.ExecuterOptions
 func setup() {
 	options := testutils.DefaultOptions
 	testutils.Init(options)
-	progressImpl, _ := progress.NewStatsTicker(0, false, false, false, 0)
+	progressImpl, _ := progress.NewStatsTicker(0, false, false, false, false, 0)
 
 	executerOpts = protocols.ExecuterOptions{
 		Output:       testutils.NewMockOutputWriter(),
@@ -80,7 +81,7 @@ func Test_ParseFromURL(t *testing.T) {
 	}
 	setup()
 	got, err := templates.Parse(filePath, nil, executerOpts)
-	require.Nil(t, err, "could not parse template")
+	require.Nilf(t, err, "could not parse template (%s)", fmt.Sprint(err))
 	require.Equal(t, expectedTemplate.ID, got.ID)
 	require.Equal(t, expectedTemplate.Info, got.Info)
 	require.Equal(t, expectedTemplate.TotalRequests, got.TotalRequests)

@@ -21,7 +21,7 @@
   <a href="#how-it-works">How</a> •
   <a href="#install-nuclei">Install</a> •
   <a href="#for-security-engineers">For Security Engineers</a> •
-  <a href="#for-developers-and-organisations">For Developers</a> •
+  <a href="#for-developers-and-organizations">For Developers</a> •
   <a href="https://nuclei.projectdiscovery.io/nuclei/get-started/">Documentation</a> •
   <a href="#credits">Credits</a> •
   <a href="https://nuclei.projectdiscovery.io/faq/nuclei/">FAQs</a> •
@@ -189,7 +189,7 @@ CONFIGURATIONS:
    -sip, -source-ip string        source ip address to use for network scan
    -config-directory string       override the default config path ($home/.config)
    -rsr, -response-size-read int  max response size to read in bytes (default 10485760)
-   -rss, -response-size-save int  max response size to save in bytes (default 1048576)
+   -rss, -response-size-save int  max response size to read in bytes (default 1048576)
 
 INTERACTSH:
    -iserver, -interactsh-server string  interactsh server url for self-hosted instance (default: oast.pro,oast.live,oast.site,oast.online,oast.fun,oast.me)
@@ -221,10 +221,12 @@ OPTIMIZATIONS:
    -retries int                        number of times to retry a failed request (default 1)
    -ldp, -leave-default-ports          leave default HTTP/HTTPS ports (eg. host:80,host:443)
    -mhe, -max-host-error int           max errors for a host before skipping from scan (default 30)
+   -nmhe, -no-mhe                      disable skipping host from scan based on errors
    -project                            use a project folder to avoid sending same request multiple times
-   -project-path string                set a specific project path
+   -project-path string                set a specific project path (default "/tmp")
    -spm, -stop-at-first-match          stop processing HTTP requests after the first match (may break template/workflow logic)
    -stream                             stream mode - start elaborating without sorting the input
+   -ss, -scan-strategy value           strategy to use while scanning(auto/host-spray/template-spray) (default 0)
    -irt, -input-read-timeout duration  timeout on input read (default 3m0s)
    -nh, -no-httpx                      disable httpx probing for non-url input
    -no-stdin                           disable stdin processing
@@ -256,10 +258,10 @@ DEBUG:
    -hc, -health-check        run diagnostic check up
 
 UPDATE:
-   -un, -update                          update nuclei engine to the latest released version
-   -ut, -update-templates                update nuclei-templates to latest released version
-   -ud, -update-template-dir string      custom directory to install / update nuclei-templates
-   -duc, -disable-update-check           disable automatic nuclei/templates update check
+   -un, -update                      update nuclei engine to the latest released version
+   -ut, -update-templates            update nuclei-templates to latest released version
+   -ud, -update-template-dir string  custom directory to install / update nuclei-templates
+   -duc, -disable-update-check       disable automatic nuclei/templates update check
 
 STATISTICS:
    -stats                    display statistics about the running scan
@@ -267,6 +269,29 @@ STATISTICS:
    -si, -stats-interval int  number of seconds to wait between showing a statistics update (default 5)
    -m, -metrics              expose nuclei metrics on a port
    -mp, -metrics-port int    port to expose nuclei metrics on (default 9092)
+
+CLOUD:
+   -cloud                              run scan on nuclei cloud
+   -ads, -add-datasource string        add specified data source (s3,github)
+   -atr, -add-target string            add target(s) to cloud
+   -atm, -add-template string          add template(s) to cloud
+   -lsn, -list-scan                    list previous cloud scans
+   -lso, -list-output string           list scan output by scan id
+   -ltr, -list-target                  list cloud target by id
+   -ltm, -list-template                list cloud template by id
+   -lds, -list-datasource              list cloud datasource by id
+   -lrs, -list-reportsource            list reporting sources
+   -dsn, -delete-scan string           delete cloud scan by id
+   -dtr, -delete-target string         delete target(s) from cloud
+   -dtm, -delete-template string       delete template(s) from cloud
+   -dds, -delete-datasource string     delete specified data source
+   -drs, -disable-reportsource string  disable specified reporting source
+   -ers, -enable-reportsource string   enable specified reporting source
+   -gtr, -get-target string            get target content by id
+   -gtm, -get-template string          get template content by id
+   -nos, -no-store                     disable scan/output storage on cloud
+   -no-tables                          do not display pretty-printed tables
+   -limit int                          limit the number of output to display (default 100)
 ```
 
 ### Running Nuclei
@@ -296,7 +321,7 @@ http://uat.example.com
 
 # For Security Engineers
 
-Nuclei offers great number of features that are helpful for security engineers to customise workflow in their organisation. With the varieties of scan capabilities (like DNS, HTTP, TCP), security engineers can easily create their suite of custom checks with Nuclei.
+Nuclei offers great number of features that are helpful for security engineers to customise workflow in their organization. With the varieties of scan capabilities (like DNS, HTTP, TCP), security engineers can easily create their suite of custom checks with Nuclei.
 
 - Varieties of protocols supported: TCP, DNS, HTTP, File, etc
 - Achieve complex vulnerability steps with workflows and [dynamic requests.](https://blog.projectdiscovery.io/nuclei-unleashed-quickly-write-complex-exploits/)
@@ -343,14 +368,14 @@ Pen-testers get the full power of our public templates and customization capabil
 </table>
 
 
-# For Developers and Organisations
+# For Developers and Organizations
 
 Nuclei is built with simplicity in mind, with the community backed templates by hundreds of security researchers, it allows you to stay updated with the latest security threats using continuous Nuclei scanning on the hosts. It is designed to be easily integrated into regression tests cycle, to verify the fixes and eliminate vulnerabilities from occurring in the future.
 
 - **CI/CD:** Engineers are already utilising Nuclei within their CI/CD pipeline, it allows them to constantly monitor their staging and production environments with customised templates.
 - **Continuous Regression Cycle:** With Nuclei, you can create your custom template on every new identified vulnerability and put into Nuclei engine to eliminate in the continuous regression cycle.
 
-We have [a discussion thread around this](https://github.com/projectdiscovery/nuclei-templates/discussions/693), there are already some bug bounty programs giving incentives to hackers on writing nuclei templates with every submission, that helps them to eliminate the vulnerability across all their assets, as well as to eliminate future risk in reappearing on productions. If you're interested in implementing it in your organisation, feel free to [reach out to us](mailto:contact@projectdiscovery.io). We will be more than happy to help you in the getting started process, or you can also post into the [discussion thread for any help](https://github.com/projectdiscovery/nuclei-templates/discussions/693).
+We have [a discussion thread around this](https://github.com/projectdiscovery/nuclei-templates/discussions/693), there are already some bug bounty programs giving incentives to hackers on writing nuclei templates with every submission, that helps them to eliminate the vulnerability across all their assets, as well as to eliminate future risk in reappearing on productions. If you're interested in implementing it in your organization, feel free to [reach out to us](mailto:contact@projectdiscovery.io). We will be more than happy to help you in the getting started process, or you can also post into the [discussion thread for any help](https://github.com/projectdiscovery/nuclei-templates/discussions/693).
 
 <h3 align="center">
   <img src="static/regression-with-nuclei.jpg" alt="regression-cycle-with-nuclei" width="1100px"></a>
@@ -362,112 +387,7 @@ We have [a discussion thread around this](https://github.com/projectdiscovery/nu
 
 ### Using Nuclei From Go Code
 
-An example of using Nuclei From Go Code to run templates on targets is provided below.
-
-```go
-package main
-
-import (
-   "context"
-   "fmt"
-   "log"
-   "os"
-   "path"
-   "time"
-
-   "github.com/logrusorgru/aurora"
-
-   "github.com/projectdiscovery/goflags"
-   "github.com/projectdiscovery/nuclei/v2/pkg/catalog/config"
-   "github.com/projectdiscovery/nuclei/v2/pkg/catalog/disk"
-   "github.com/projectdiscovery/nuclei/v2/pkg/catalog/loader"
-   "github.com/projectdiscovery/nuclei/v2/pkg/core"
-   "github.com/projectdiscovery/nuclei/v2/pkg/core/inputs"
-   "github.com/projectdiscovery/nuclei/v2/pkg/output"
-   "github.com/projectdiscovery/nuclei/v2/pkg/parsers"
-   "github.com/projectdiscovery/nuclei/v2/pkg/protocols"
-   "github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/contextargs"
-   "github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/hosterrorscache"
-   "github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/interactsh"
-   "github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/protocolinit"
-   "github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/protocolstate"
-   "github.com/projectdiscovery/nuclei/v2/pkg/reporting"
-   "github.com/projectdiscovery/nuclei/v2/pkg/testutils"
-   "github.com/projectdiscovery/nuclei/v2/pkg/types"
-   "github.com/projectdiscovery/ratelimit"
-)
-
-func main() {
-   cache := hosterrorscache.New(30, hosterrorscache.DefaultMaxHostsCount)
-   defer cache.Close()
-
-   mockProgress := &testutils.MockProgressClient{}
-   reportingClient, _ := reporting.New(&reporting.Options{}, "")
-   defer reportingClient.Close()
-
-   outputWriter := testutils.NewMockOutputWriter()
-   outputWriter.WriteCallback = func(event *output.ResultEvent) {
-      fmt.Printf("Got Result: %v\n", event)
-   }
-
-   defaultOpts := types.DefaultOptions()
-   protocolstate.Init(defaultOpts)
-   protocolinit.Init(defaultOpts)
-
-   defaultOpts.Templates = goflags.StringSlice{"dns/cname-service.yaml"}
-   defaultOpts.ExcludeTags = config.ReadIgnoreFile().Tags
-
-   interactOpts := interactsh.NewDefaultOptions(outputWriter, reportingClient, mockProgress)
-   interactClient, err := interactsh.New(interactOpts)
-   if err != nil {
-      log.Fatalf("Could not create interact client: %s\n", err)
-   }
-   defer interactClient.Close()
-
-   home, _ := os.UserHomeDir()
-   catalog := disk.NewCatalog(path.Join(home, "nuclei-templates"))
-   executerOpts := protocols.ExecuterOptions{
-      Output:          outputWriter,
-      Options:         defaultOpts,
-      Progress:        mockProgress,
-      Catalog:         catalog,
-      IssuesClient:    reportingClient,
-      RateLimiter:     ratelimit.New(context.Background(), 150, time.Second),
-      Interactsh:      interactClient,
-      HostErrorsCache: cache,
-      Colorizer:       aurora.NewAurora(true),
-      ResumeCfg:       types.NewResumeCfg(),
-   }
-   engine := core.New(defaultOpts)
-   engine.SetExecuterOptions(executerOpts)
-
-   workflowLoader, err := parsers.NewLoader(&executerOpts)
-   if err != nil {
-      log.Fatalf("Could not create workflow loader: %s\n", err)
-   }
-   executerOpts.WorkflowLoader = workflowLoader
-
-   configObject, err := config.ReadConfiguration()
-   if err != nil {
-      log.Fatalf("Could not read config: %s\n", err)
-   }
-   store, err := loader.New(loader.NewConfig(defaultOpts, configObject, catalog, executerOpts))
-   if err != nil {
-      log.Fatalf("Could not create loader client: %s\n", err)
-   }
-   store.Load()
-
-   inputArgs := []*contextargs.MetaInput{
-      &contextargs.MetaInput{
-         Input: "docs.hackerone.com",
-      },
-   }
-
-   input := &inputs.SimpleInputProvider{Inputs: inputArgs}
-   _ = engine.Execute(store.Templates(), input)
-   engine.WorkPool().Wait() // Wait for the scan to finish
-}
-```
+Examples of using Nuclei From Go Code to run templates on targets are provided in the [examples](v2/examples/) folder.
 
 
 ### Resources
@@ -486,7 +406,18 @@ func main() {
 
 ### Credits
 
-Thanks to all the amazing community [contributors for sending PRs](https://github.com/projectdiscovery/nuclei/graphs/contributors). Do also check out the below similar open-source projects that may fit in your workflow:
+Thanks to all the amazing [community contributors for sending PRs](https://github.com/projectdiscovery/nuclei/graphs/contributors) and keeping this project updated. :heart:
+
+If you have an idea or some kind of improvement, you are welcome to contribute and participate in the Project, feel free to send your PR.
+
+<p align="center">
+<a href="https://github.com/projectdiscovery/nuclei/graphs/contributors">
+  <img src="https://contrib.rocks/image?repo=projectdiscovery/nuclei&max=500">
+</a>
+</p>
+
+
+Do also check out the below similar open-source projects that may fit in your workflow:
 
 [FFuF](https://github.com/ffuf/ffuf), [Qsfuzz](https://github.com/ameenmaali/qsfuzz), [Inception](https://github.com/proabiral/inception), [Snallygaster](https://github.com/hannob/snallygaster), [Gofingerprint](https://github.com/Static-Flow/gofingerprint), [Sn1per](https://github.com/1N3/Sn1per/tree/master/templates), [Google tsunami](https://github.com/google/tsunami-security-scanner), [Jaeles](https://github.com/jaeles-project/jaeles), [ChopChop](https://github.com/michelin/ChopChop)
 

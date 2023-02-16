@@ -3,7 +3,6 @@ package templates
 import (
 	"fmt"
 	"io"
-	"net/http"
 	"reflect"
 
 	"github.com/pkg/errors"
@@ -15,11 +14,13 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/offlinehttp"
 	"github.com/projectdiscovery/nuclei/v2/pkg/templates/cache"
 	"github.com/projectdiscovery/nuclei/v2/pkg/utils"
+	"github.com/projectdiscovery/retryablehttp-go"
 	stringsutil "github.com/projectdiscovery/utils/strings"
 )
 
 var (
-	ErrCreateTemplateExecutor = errors.New("cannot create template executer")
+	ErrCreateTemplateExecutor          = errors.New("cannot create template executer")
+	ErrIncompatibleWithOfflineMatching = errors.New("template can't be used for offline matching")
 )
 
 var parsedTemplatesCache *cache.Templates
@@ -33,13 +34,17 @@ func init() {
 //
 //nolint:gocritic // this cannot be passed by pointer
 func Parse(filePath string, preprocessor Preprocessor, options protocols.ExecuterOptions) (*Template, error) {
-	if value, err := parsedTemplatesCache.Has(filePath); value != nil {
-		return value.(*Template), err
+	if !options.DoNotCache {
+		if value, err := parsedTemplatesCache.Has(filePath); value != nil {
+			return value.(*Template), err
+		}
 	}
 
 	var reader io.ReadCloser
 	if utils.IsURL(filePath) {
-		resp, err := http.Get(filePath)
+		//todo:instead of creating a new client each time, a default one should be reused (same as the standard library)
+		// use retryablehttp (tls verification is enabled by default in the standard library)
+		resp, err := retryablehttp.DefaultClient().Get(filePath)
 		if err != nil {
 			return nil, err
 		}
@@ -66,7 +71,9 @@ func Parse(filePath string, preprocessor Preprocessor, options protocols.Execute
 		template.CompiledWorkflow.Options = &options
 	}
 	template.Path = filePath
-	parsedTemplatesCache.Store(filePath, template, err)
+	if !options.DoNotCache {
+		parsedTemplatesCache.Store(filePath, template, err)
+	}
 	return template, nil
 }
 
@@ -110,8 +117,7 @@ func (template *Template) compileProtocolRequests(options protocols.ExecuterOpti
 	}
 
 	if options.Options.OfflineHTTP {
-		template.compileOfflineHTTPRequest(options)
-		return nil
+		return template.compileOfflineHTTPRequest(options)
 	}
 
 	var requests []protocols.Request
@@ -166,7 +172,7 @@ func (template *Template) convertRequestToProtocolsRequest(requests interface{})
 // compileOfflineHTTPRequest iterates all requests if offline http mode is
 // specified and collects all matchers for all the base request templates
 // (those with URL {{BaseURL}} and it's slash variation.)
-func (template *Template) compileOfflineHTTPRequest(options protocols.ExecuterOptions) {
+func (template *Template) compileOfflineHTTPRequest(options protocols.ExecuterOptions) error {
 	operatorsList := []*operators.Operators{}
 
 mainLoop:
@@ -186,7 +192,10 @@ mainLoop:
 	if len(operatorsList) > 0 {
 		options.Operators = operatorsList
 		template.Executer = executer.NewExecuter([]protocols.Request{&offlinehttp.Request{}}, &options)
+		return nil
 	}
+
+	return ErrIncompatibleWithOfflineMatching
 }
 
 // ParseTemplateFromReader reads the template from reader

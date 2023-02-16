@@ -114,7 +114,8 @@ var AwsSkipList = map[string]interface{}{
 }
 
 var AwsDefaultVars = map[string]interface{}{
-	"region": "us-east-2",
+	"region":  "us-east-2",
+	"service": "sts",
 }
 
 var AwsInternalOnlyVars = map[string]interface{}{

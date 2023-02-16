@@ -11,8 +11,10 @@ import (
 	_ "net/http/pprof"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strconv"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"github.com/projectdiscovery/nuclei/v2/internal/runner/nucleicloud"
@@ -21,7 +23,6 @@ import (
 	"github.com/logrusorgru/aurora"
 	"github.com/pkg/errors"
 	"github.com/projectdiscovery/ratelimit"
-	"go.uber.org/atomic"
 
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v2/internal/colorizer"
@@ -55,7 +56,6 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/utils"
 	"github.com/projectdiscovery/nuclei/v2/pkg/utils/stats"
 	"github.com/projectdiscovery/nuclei/v2/pkg/utils/yaml"
-	yamlwrapper "github.com/projectdiscovery/nuclei/v2/pkg/utils/yaml"
 	"github.com/projectdiscovery/retryablehttp-go"
 	stringsutil "github.com/projectdiscovery/utils/strings"
 )
@@ -114,7 +114,6 @@ func New(options *types.Options) (*Runner, error) {
 	// TODO: refactor to pass options reference globally without cycles
 	parsers.NoStrictSyntax = options.NoStrictSyntax
 	yaml.StrictSyntax = !options.NoStrictSyntax
-
 	// parse the runner.options.GithubTemplateRepo and store the valid repos in runner.customTemplateRepos
 	runner.customTemplates = customtemplates.ParseCustomTemplates(runner.options)
 
@@ -188,6 +187,9 @@ func New(options *types.Options) (*Runner, error) {
 	hmapInput, err := hybrid.New(&hybrid.Options{
 		Options: options,
 		NotFoundCallback: func(target string) bool {
+			if !options.Cloud {
+				return false
+			}
 			parsed, parseErr := strconv.ParseInt(target, 10, 64)
 			if parseErr != nil {
 				if err := runner.cloudClient.ExistsDataSourceItem(nucleicloud.ExistsDataSourceItemRequest{Contents: target, Type: "targets"}); err == nil {
@@ -223,7 +225,12 @@ func New(options *types.Options) (*Runner, error) {
 	}
 	// Creates the progress tracking object
 	var progressErr error
-	runner.progress, progressErr = progress.NewStatsTicker(options.StatsInterval, options.EnableProgressBar, options.StatsJSON, options.Metrics, options.MetricsPort)
+	statsInterval := options.StatsInterval
+	if options.Cloud && !options.EnableProgressBar {
+		statsInterval = -1
+		options.EnableProgressBar = true
+	}
+	runner.progress, progressErr = progress.NewStatsTicker(statsInterval, options.EnableProgressBar, options.StatsJSON, options.Metrics, options.Cloud, options.MetricsPort)
 	if progressErr != nil {
 		return nil, progressErr
 	}
@@ -298,11 +305,13 @@ func createReportingOptions(options *types.Options) (*reporting.Options, error) 
 		}
 
 		reportingOptions = &reporting.Options{}
-		if err := yamlwrapper.DecodeAndValidate(file, reportingOptions); err != nil {
+		if err := yaml.DecodeAndValidate(file, reportingOptions); err != nil {
 			file.Close()
 			return nil, errors.Wrap(err, "could not parse reporting config file")
 		}
 		file.Close()
+
+		Walk(reportingOptions, expandEndVars)
 	}
 	if options.MarkdownExportDirectory != "" {
 		if reportingOptions != nil {
@@ -344,8 +353,6 @@ func (r *Runner) Close() {
 // RunEnumeration sets up the input layer for giving input nuclei.
 // binary and runs the actual enumeration
 func (r *Runner) RunEnumeration() error {
-	defer r.Close()
-
 	// If user asked for new templates to be executed, collect the list from the templates' directory.
 	if r.options.NewTemplates {
 		templatesLoaded, err := r.readNewTemplatesFile()
@@ -384,12 +391,6 @@ func (r *Runner) RunEnumeration() error {
 		r.options.ExcludeTags = append(r.options.ExcludeTags, ignoreFile.Tags...)
 		r.options.ExcludedTemplates = append(r.options.ExcludedTemplates, ignoreFile.Files...)
 	}
-	var cache *hosterrorscache.Cache
-	if r.options.MaxHostError > 0 {
-		cache = hosterrorscache.New(r.options.MaxHostError, hosterrorscache.DefaultMaxHostsCount)
-		cache.SetVerbose(r.options.Verbose)
-	}
-	r.hostErrors = cache
 
 	// Create the executer options which will be used throughout the execution
 	// stage by the nuclei engine modules.
@@ -403,12 +404,19 @@ func (r *Runner) RunEnumeration() error {
 		Interactsh:      r.interactsh,
 		ProjectFile:     r.projectFile,
 		Browser:         r.browser,
-		HostErrorsCache: cache,
 		Colorizer:       r.colorizer,
 		ResumeCfg:       r.resumeCfg,
 		ExcludeMatchers: excludematchers.New(r.options.ExcludeMatchers),
 		InputHelper:     input.NewHelper(),
 	}
+
+	if r.options.ShouldUseHostError() {
+		cache := hosterrorscache.New(r.options.MaxHostError, hosterrorscache.DefaultMaxHostsCount)
+		cache.SetVerbose(r.options.Verbose)
+		r.hostErrors = cache
+		executerOpts.HostErrorsCache = cache
+	}
+
 	engine := core.New(r.options)
 	engine.SetExecuterOptions(executerOpts)
 
@@ -500,10 +508,16 @@ func (r *Runner) RunEnumeration() error {
 			err = r.listTargets()
 		} else if r.options.ListTemplates {
 			err = r.listTemplates()
+		} else if r.options.ListReportingSources {
+			err = r.listReportingSources()
 		} else if r.options.AddDatasource != "" {
 			err = r.addCloudDataSource(r.options.AddDatasource)
 		} else if r.options.RemoveDatasource != "" {
 			err = r.removeDatasource(r.options.RemoveDatasource)
+		} else if r.options.DisableReportingSource != "" {
+			err = r.toggleReportingSource(r.options.DisableReportingSource, false)
+		} else if r.options.EnableReportingSource != "" {
+			err = r.toggleReportingSource(r.options.EnableReportingSource, true)
 		} else if r.options.AddTarget != "" {
 			err = r.addTarget(r.options.AddTarget)
 		} else if r.options.AddTemplate != "" {
@@ -556,6 +570,11 @@ func (r *Runner) RunEnumeration() error {
 	if r.browser != nil {
 		r.browser.Close()
 	}
+	// check if passive scan was requested but no target was provided
+	if r.options.OfflineHTTP && len(r.options.Targets) == 0 && r.options.TargetsFilePath == "" {
+		return errors.Wrap(err, "missing required input (http response) to run passive templates")
+	}
+
 	return err
 }
 
@@ -623,7 +642,7 @@ func (r *Runner) executeTemplatesInput(store *loader.Store, engine *core.Engine)
 		totalRequests += int64(t.Executer.Requests()) * r.hmapInputProvider.Count()
 	}
 	if totalRequests < unclusteredRequests {
-		gologger.Info().Msgf("Templates clustered: %d (Reduced %d HTTP Requests)", clusterCount, unclusteredRequests-totalRequests)
+		gologger.Info().Msgf("Templates clustered: %d (Reduced %d Requests)", clusterCount, unclusteredRequests-totalRequests)
 	}
 	workflowCount := len(store.Workflows())
 	templateCount := originalTemplatesCount + workflowCount
@@ -784,4 +803,53 @@ func (r *Runner) SaveResumeConfig(path string) error {
 	data, _ := json.MarshalIndent(resumeCfgClone, "", "\t")
 
 	return os.WriteFile(path, data, os.ModePerm)
+}
+
+type WalkFunc func(reflect.Value, reflect.StructField)
+
+// Walk traverses a struct and executes a callback function on each value in the struct.
+// The interface{} passed to the function should be a pointer to a struct or a struct.
+// WalkFunc is the callback function used for each value in the struct. It is passed the
+// reflect.Value and reflect.Type of the value in the struct.
+func Walk(s interface{}, callback WalkFunc) {
+	structValue := reflect.ValueOf(s)
+	if structValue.Kind() == reflect.Ptr {
+		structValue = structValue.Elem()
+	}
+	if structValue.Kind() != reflect.Struct {
+		return
+	}
+	for i := 0; i < structValue.NumField(); i++ {
+		field := structValue.Field(i)
+		fieldType := structValue.Type().Field(i)
+		if !fieldType.IsExported() {
+			continue
+		}
+		if field.Kind() == reflect.Struct {
+			Walk(field.Addr().Interface(), callback)
+		} else if field.Kind() == reflect.Ptr && field.Elem().Kind() == reflect.Struct {
+			Walk(field.Interface(), callback)
+		} else {
+			callback(field, fieldType)
+		}
+	}
+}
+
+// expandEndVars looks for values in a struct tagged with "yaml" and checks if they are prefixed with '$'.
+// If they are, it will try to retrieve the value from the environment and if it exists, it will set the
+// value of the field to that of the environment variable.
+func expandEndVars(f reflect.Value, fieldType reflect.StructField) {
+	if _, ok := fieldType.Tag.Lookup("yaml"); !ok {
+		return
+	}
+	if f.Kind() == reflect.String {
+		str := f.String()
+		if strings.HasPrefix(str, "$") {
+			env := strings.TrimPrefix(str, "$")
+			retrievedEnv := os.Getenv(env)
+			if retrievedEnv != "" {
+				f.SetString(os.Getenv(env))
+			}
+		}
+	}
 }

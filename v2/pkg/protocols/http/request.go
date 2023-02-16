@@ -8,7 +8,6 @@ import (
 	"io"
 	"net/http"
 	"net/http/httputil"
-	"net/url"
 	"path"
 	"strings"
 	"sync"
@@ -38,6 +37,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 	"github.com/projectdiscovery/rawhttp"
 	stringsutil "github.com/projectdiscovery/utils/strings"
+	urlutil "github.com/projectdiscovery/utils/url"
 )
 
 const defaultMaxWorkers = 150
@@ -121,7 +121,6 @@ func (request *Request) executeRaceRequest(input *contextargs.Context, previous 
 // executeRaceRequest executes parallel requests for a template
 func (request *Request) executeParallelHTTP(input *contextargs.Context, dynamicValues output.InternalEvent, callback protocols.OutputEventCallback) error {
 	generator := request.newGenerator(false)
-
 	// Workers that keeps enqueuing new requests
 	maxWorkers := request.Threads
 	swg := sizedwaitgroup.New(maxWorkers)
@@ -170,7 +169,7 @@ func (request *Request) executeTurboHTTP(input *contextargs.Context, dynamicValu
 	generator := request.newGenerator(false)
 
 	// need to extract the target from the url
-	URL, err := url.Parse(input.MetaInput.Input)
+	URL, err := urlutil.Parse(input.MetaInput.Input)
 	if err != nil {
 		return err
 	}
@@ -230,7 +229,7 @@ func (request *Request) executeTurboHTTP(input *contextargs.Context, dynamicValu
 
 // executeFuzzingRule executes fuzzing request for a URL
 func (request *Request) executeFuzzingRule(input *contextargs.Context, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
-	parsed, err := url.Parse(input.MetaInput.Input)
+	parsed, err := urlutil.Parse(input.MetaInput.Input)
 	if err != nil {
 		return errors.Wrap(err, "could not parse url")
 	}
@@ -508,18 +507,20 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 	if generatedRequest.original.Pipeline {
 		if generatedRequest.rawRequest != nil {
 			formedURL = generatedRequest.rawRequest.FullURL
-			if parsed, parseErr := url.Parse(formedURL); parseErr == nil {
+			if parsed, parseErr := urlutil.ParseURL(formedURL, true); parseErr == nil {
 				hostname = parsed.Host
 			}
 			resp, err = generatedRequest.pipelinedClient.DoRaw(generatedRequest.rawRequest.Method, input.MetaInput.Input, generatedRequest.rawRequest.Path, generators.ExpandMapValues(generatedRequest.rawRequest.Headers), io.NopCloser(strings.NewReader(generatedRequest.rawRequest.Data)))
 		} else if generatedRequest.request != nil {
+			// hot fix to avoid double url encoding (should only be called once)
+			generatedRequest.request.Prepare()
 			resp, err = generatedRequest.pipelinedClient.Dor(generatedRequest.request)
 		}
 	} else if generatedRequest.original.Unsafe && generatedRequest.rawRequest != nil {
 		formedURL = generatedRequest.rawRequest.FullURL
 		// use request url as matched url if empty
 		if formedURL == "" {
-			urlx, err := url.Parse(input.MetaInput.Input)
+			urlx, err := urlutil.Parse(input.MetaInput.Input)
 			if err != nil {
 				formedURL = fmt.Sprintf("%s%s", formedURL, generatedRequest.rawRequest.Path)
 			} else {
@@ -527,7 +528,7 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 				formedURL = fmt.Sprintf("%v://%v", urlx.Scheme, path.Join(urlx.Host, generatedRequest.rawRequest.Path))
 			}
 		}
-		if parsed, parseErr := url.Parse(formedURL); parseErr == nil {
+		if parsed, parseErr := urlutil.ParseURL(formedURL, true); parseErr == nil {
 			hostname = parsed.Host
 		}
 		options := *generatedRequest.original.rawhttpClient.Options
@@ -556,13 +557,14 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 			httpclient := request.httpClient
 			if input.CookieJar != nil {
 				connConfiguration := request.connConfiguration
-				connConfiguration.Connection.Cookiejar = input.CookieJar
+				connConfiguration.Connection.SetCookieJar(input.CookieJar)
 				client, err := httpclientpool.Get(request.options.Options, connConfiguration)
 				if err != nil {
 					return errors.Wrap(err, "could not get http client")
 				}
 				httpclient = client
 			}
+			generatedRequest.request.Prepare()
 			resp, err = httpclient.Do(generatedRequest.request)
 		}
 	}
@@ -570,6 +572,9 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 	if formedURL == "" {
 		formedURL = input.MetaInput.Input
 	}
+
+	// converts whitespace and other chars that cannot be printed to url encoded values
+	formedURL = urlutil.URLEncodeWithEscapes(formedURL)
 
 	// Dump the requests containing all headers
 	if !generatedRequest.original.Race {
@@ -768,19 +773,16 @@ func (request *Request) handleSignature(generatedRequest *generatedRequest) erro
 	switch request.Signature.Value {
 	case AWSSignature:
 		var awsSigner signer.Signer
-		vars := request.options.Options.Vars.AsMap()
+		allvars := generators.MergeMaps(request.options.Options.Vars.AsMap(), generatedRequest.dynamicValues)
 		awsopts := signer.AWSOptions{
-			AwsID:          types.ToString(vars["aws-id"]),
-			AwsSecretToken: types.ToString(vars["aws-secret"]),
+			AwsID:          types.ToString(allvars["aws-id"]),
+			AwsSecretToken: types.ToString(allvars["aws-secret"]),
 		}
-		// type ctxkey string
-		ctx := context.WithValue(context.Background(), signer.SignerArg("service"), generatedRequest.dynamicValues["service"])
-		ctx = context.WithValue(ctx, signer.SignerArg("region"), generatedRequest.dynamicValues["region"])
-
 		awsSigner, err := signerpool.Get(request.options.Options, &signerpool.Configuration{SignerArgs: &awsopts})
 		if err != nil {
 			return err
 		}
+		ctx := signer.GetCtxWithArgs(allvars, signer.AwsDefaultVars)
 		err = awsSigner.SignHTTP(ctx, generatedRequest.request.Request)
 		if err != nil {
 			return err

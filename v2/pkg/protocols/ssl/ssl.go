@@ -13,6 +13,7 @@ import (
 
 	"github.com/projectdiscovery/fastdialer/fastdialer"
 	"github.com/projectdiscovery/gologger"
+	"github.com/projectdiscovery/nuclei/v2/pkg/model"
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators"
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators/extractors"
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators/matchers"
@@ -77,6 +78,17 @@ type Request struct {
 	options *protocols.ExecuterOptions
 }
 
+// CanCluster returns true if the request can be clustered.
+func (request *Request) CanCluster(other *Request) bool {
+	if len(request.CiperSuites) > 0 || request.MinVersion != "" || request.MaxVersion != "" {
+		return false
+	}
+	if request.Address != other.Address || request.ScanMode != other.ScanMode {
+		return false
+	}
+	return true
+}
+
 // Compile compiles the request generators preparing any requests possible.
 func (request *Request) Compile(options *protocols.ExecuterOptions) error {
 	request.options = options
@@ -124,6 +136,11 @@ func (request *Request) Compile(options *protocols.ExecuterOptions) error {
 		request.CompiledOperators = compiled
 	}
 	return nil
+}
+
+// Options returns executer options for http request
+func (r *Request) Options() *protocols.ExecuterOptions {
+	return r.options
 }
 
 // Requests returns the total number of requests the rule will perform
@@ -315,9 +332,9 @@ func (request *Request) Type() templateTypes.ProtocolType {
 
 func (request *Request) MakeResultEventItem(wrapped *output.InternalWrappedEvent) *output.ResultEvent {
 	data := &output.ResultEvent{
-		TemplateID:       types.ToString(request.options.TemplateID),
-		TemplatePath:     types.ToString(request.options.TemplatePath),
-		Info:             request.options.TemplateInfo,
+		TemplateID:       types.ToString(wrapped.InternalEvent["template-id"]),
+		TemplatePath:     types.ToString(wrapped.InternalEvent["template-path"]),
+		Info:             wrapped.InternalEvent["template-info"].(model.Info),
 		Type:             types.ToString(wrapped.InternalEvent["type"]),
 		Host:             types.ToString(wrapped.InternalEvent["host"]),
 		Matched:          types.ToString(wrapped.InternalEvent["host"]),
