@@ -29,8 +29,11 @@ cloud.google.com/go/bigquery v1.4.0/go.mod h1:S8dzgnTigyfTmLBfrtrhyYhwRxG72rYxvf
 cloud.google.com/go/bigquery v1.5.0/go.mod h1:snEHRnqQbz117VIFhE8bmtwIDY80NLUZUMb4Nv6dBIg=
 cloud.google.com/go/bigquery v1.7.0/go.mod h1://okPTzCYNXSlb24MZs83e2Do+h+VXtc4gLoIoXIAPc=
 cloud.google.com/go/bigquery v1.8.0/go.mod h1:J5hqkt3O0uAFnINi6JXValWIb1v0goeZM77hZzJN/fQ=
+cloud.google.com/go/compute v1.9.0 h1:ED/FP4xv8GJw63v556/ASNc1CeeLUO2Bs8nzaHchkHg=
+cloud.google.com/go/compute v1.9.0/go.mod h1:lWv1h/zUWTm/LozzfTJhBSkd6ShQq8la8VeeuOEGxfY=
 cloud.google.com/go/compute v1.18.0 h1:FEigFqoDbys2cvFkZ9Fjq4gnHBP55anJ0yQyau2f9oY=
 cloud.google.com/go/compute v1.18.0/go.mod h1:1X7yHxec2Ga+Ss6jPyjxRxpu2uu7PLgsOVXvgU0yacs=
+cloud.google.com/go/compute/metadata v0.2.0/go.mod h1:zFmK7XCadkQkj6TtorcaGlCW1hT1fIilQDwofLpJ20k=
 cloud.google.com/go/compute/metadata v0.2.3 h1:mg4jlk7mCAj6xXp9UJ4fjI9VUI5rubuGBW5aJ7UnBMY=
 cloud.google.com/go/compute/metadata v0.2.3/go.mod h1:VAV5nSsACxMJvgaAuX6Pk2AawlZn8kiOGuCv6gTkwuA=
 cloud.google.com/go/datastore v1.0.0/go.mod h1:LXYbyblFSglQ5pkeyhO+Qmw7ukd3C+pD7TKLgZqpHYE=
@@ -986,6 +989,8 @@ github.com/projectdiscovery/retryabledns v1.0.21 h1:vOpPQR1q8Z824uoA8JXCI/RyvDAs
 github.com/projectdiscovery/retryabledns v1.0.21/go.mod h1:6oTPKMRlKZ7lIIEzTH723K6RvNRjmm6fe9br4Dom3UI=
 github.com/projectdiscovery/retryablehttp-go v1.0.11 h1:dxJy/qR+4uOQ7th4rq8nIrW7EegvkB8JfaoKCyoz6zo=
 github.com/projectdiscovery/retryablehttp-go v1.0.11/go.mod h1:RWViUDjf9NTx1j8HatkstoSj2hE4xrrDIum1SsQqZfE=
+github.com/projectdiscovery/retryablehttp-go v1.0.12-0.20230217193636-92cb1a7b9695 h1:O/kh5ISISQkilrCg/HoJ+yaxyfqKI5/mAevLC4HN5EI=
+github.com/projectdiscovery/retryablehttp-go v1.0.12-0.20230217193636-92cb1a7b9695/go.mod h1:dnJK347etdVKz7ljhemUhBK6EpDnVf0U1O8dGj7MM+0=
 github.com/projectdiscovery/sarif v0.0.1 h1:C2Tyj0SGOKbCLgHrx83vaE6YkzXEVrMXYRGLkKCr/us=
 github.com/projectdiscovery/sarif v0.0.1/go.mod h1:cEYlDu8amcPf6b9dSakcz2nNnJsoz4aR6peERwV+wuQ=
 github.com/projectdiscovery/sliceutil v0.0.1 h1:YoCqCMcdwz+gqNfW5hFY8UvNHoA6SfyBSNkVahatleg=
@@ -997,6 +1002,8 @@ github.com/projectdiscovery/uncover v1.0.2 h1:mRFzflYyvwKkHd3XKufMlDRrb6p1mjFZTS
 github.com/projectdiscovery/uncover v1.0.2/go.mod h1:lz4QYfArSA6jJkXyB71kN2/Pc7IW7nJB8c95n7xtwqY=
 github.com/projectdiscovery/utils v0.0.9 h1:+bmjtRU1IWt5dKg9+9TbIaRkw/kN05myCXDOhCQRX7g=
 github.com/projectdiscovery/utils v0.0.9/go.mod h1:dZqlayNwgCGn2HgYfKrI71RjBEyKsEPovrU+UDfpQWw=
+github.com/projectdiscovery/utils v0.0.10-0.20230217185600-008d111dd1c1 h1:ZxRylh56CH9MwmhrF4sLenwqpmhu+Gxwl3o4x+wlTVY=
+github.com/projectdiscovery/utils v0.0.10-0.20230217185600-008d111dd1c1/go.mod h1:dZqlayNwgCGn2HgYfKrI71RjBEyKsEPovrU+UDfpQWw=
 github.com/projectdiscovery/wappalyzergo v0.0.81 h1:i7WYrH+O2EoHbY1g/WnrxO4YF/0OkA/G1bw6z8WKcjA=
 github.com/projectdiscovery/wappalyzergo v0.0.81/go.mod h1:HvYuW0Be4JCjVds/+XAEaMSqRG9yrI97UmZq0TPk6A0=
 github.com/projectdiscovery/yamldoc-go v1.0.3-0.20211126104922-00d2c6bb43b6 h1:DvWRQpw7Ib2CRL3ogYm/BWM+X0UGPfz1n9Ix9YKgFM8=
@@ -1481,6 +1488,8 @@ golang.org/x/net v0.2.0/go.mod h1:KqCZLdyyvdV855qA2rE3GC2aiw5xGR5TEjj8smXukLY=
 golang.org/x/net v0.5.0/go.mod h1:DivGGAXEgPSlEBzxGzZI+ZLohi+xUj054jfeKui00ws=
 golang.org/x/net v0.6.0 h1:L4ZwwTvKW9gr0ZMS1yrHD9GZhIuVjOBBnaKH+SPQK0Q=
 golang.org/x/net v0.6.0/go.mod h1:2Tu9+aMcznHK/AK1HMvgo6xiTLG5rD5rZLDS+rp2Bjs=
+golang.org/x/net v0.7.0 h1:rJrUqqhjsgNp7KqAIc25s9pZnjU7TUcSY7HcVZjdn1g=
+golang.org/x/net v0.7.0/go.mod h1:2Tu9+aMcznHK/AK1HMvgo6xiTLG5rD5rZLDS+rp2Bjs=
 golang.org/x/oauth2 v0.0.0-20180821212333-d2e6202438be/go.mod h1:N/0e6XlmueqKjAGxoOufVs8QHGRruUQn6yWY3a++T0U=
 golang.org/x/oauth2 v0.0.0-20181106182150-f42d05182288/go.mod h1:N/0e6XlmueqKjAGxoOufVs8QHGRruUQn6yWY3a++T0U=
 golang.org/x/oauth2 v0.0.0-20190226205417-e64efc72b421/go.mod h1:gOpvHmFTYa4IltrdGE7lF6nIHvwfUNPOp7c8zoXwtLw=
@@ -1803,6 +1812,7 @@ google.golang.org/genproto v0.0.0-20210402141018-6c239bbf2bb1/go.mod h1:9lPAdzaE
 google.golang.org/genproto v0.0.0-20210413151531-c14fb6ef47c3/go.mod h1:P3QM42oQyzQSnHPnZ/vqoCdDmzH28fzWByN9asMeM8A=
 google.golang.org/genproto v0.0.0-20210510173355-fb37daa5cd7a/go.mod h1:P3QM42oQyzQSnHPnZ/vqoCdDmzH28fzWByN9asMeM8A=
 google.golang.org/genproto v0.0.0-20210624195500-8bfb893ecb84/go.mod h1:SzzZ/N+nwJDaO1kznhnlzqS8ocJICar6hYhVyhi++24=
+google.golang.org/genproto v0.0.0-20220804142021-4e6b2dfa6612 h1:NX3L5YesD5qgxxrPHdKqHH38Ao0AG6poRXG+JljPsGU=
 google.golang.org/genproto v0.0.0-20230124163310-31e0e69b6fc2 h1:O97sLx/Xmb/KIZHB/2/BzofxBs5QmmR0LcihPtllmbc=
 google.golang.org/genproto v0.0.0-20230124163310-31e0e69b6fc2/go.mod h1:RGgjbofJ8xD9Sq1VVhDM1Vok1vRONV+rg+CjzG4SZKM=
 google.golang.org/grpc v1.8.0/go.mod h1:yo6s7OP7yaDglbqo1J04qKzAhqBH6lvTonzMVmEdcZw=

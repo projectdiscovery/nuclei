@@ -41,6 +41,7 @@ var httpTestcases = map[string]testutils.TestCase{
 	"http/raw-payload.yaml":                         &httpRawPayload{},
 	"http/raw-post-body.yaml":                       &httpRawPostBody{},
 	"http/raw-unsafe-path.yaml":                     &httpRawUnsafePath{},
+	"http/http-paths.yaml":                          &httpPaths{},
 	"http/request-condition.yaml":                   &httpRequestCondition{},
 	"http/request-condition-new.yaml":               &httpRequestCondition{},
 	"http/interactsh.yaml":                          &httpInteractshRequest{},
@@ -597,6 +598,54 @@ func (h *httpRawUnsafePath) Execute(filepath string) error {
 	// testing unsafe paths using router feedback is not possible cause they are `unsafe urls`
 	// hence it is done by parsing and matching paths from nuclei output with `-debug-req` flag
 	// read template files
+	bin, err := os.ReadFile(filepath)
+	if err != nil {
+		return err
+	}
+
+	// Instead of storing expected `paths` in code it is stored in
+	// `reference` section of template
+	type template struct {
+		Info struct {
+			Reference []string `yaml:"reference"`
+		}
+	}
+	var tpl template
+	if err = yaml.Unmarshal(bin, &tpl); err != nil {
+		return err
+	}
+	// expected relative paths
+	expected := []string{}
+	expected = append(expected, tpl.Info.Reference...)
+	if len(expected) == 0 {
+		return fmt.Errorf("something went wrong with %v template", filepath)
+	}
+
+	results, err := testutils.RunNucleiBinaryAndGetCombinedOutput(debug, []string{"-t", filepath, "-u", "scanme.sh", "-debug-req"})
+	if err != nil {
+		return err
+	}
+
+	actual := []string{}
+	for _, v := range strings.Split(results, "\n") {
+		if strings.Contains(v, "GET") {
+			parts := strings.Fields(v)
+			if len(parts) == 3 {
+				actual = append(actual, parts[1])
+			}
+		}
+	}
+
+	if !reflect.DeepEqual(expected, actual) {
+		return fmt.Errorf("%8v: %v\n%-8v: %v", "expected", expected, "actual", actual)
+	}
+	return nil
+}
+
+type httpPaths struct{}
+
+func (h *httpPaths) Execute(filepath string) error {
+	// covers testcases similar to httpRawUnsafePath but when `unsafe:false`
 	bin, err := os.ReadFile(filepath)
 	if err != nil {
 		return err

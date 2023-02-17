@@ -15,6 +15,7 @@ info:
     - "/%20test%0a"
     - "/text4shell/attack?search=$%7bscript:javascript:java.lang.Runtime.getRuntime().exec('nslookup%20{}.getparam')%7d"
     - "/test/..;/..;/"
+    - "/xyz/%u2s/%invalid"
 
 
 # Test all unsafe URL Handling Edgecases
@@ -45,6 +46,10 @@ requests:
         GET /test/..;/..;/ HTTP/1.1
         Host: scanme.sh
         Origin: {{BaseURL}}
+    # test relative path with invalid/corrupted characters
+      - |+
+        GET /xyz/%u2s/%invalid HTTP/1.1
+        Host: scanme.sh
 
     unsafe: true
     matchers:
