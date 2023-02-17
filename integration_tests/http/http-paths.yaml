@@ -1,7 +1,7 @@
-id: raw-unsafe-path
+id: http-paths
 
 info:
-  name: Test RAW Unsafe Paths
+  name: Test Http Path Edgecases
   author: pd-team
   severity: info
   description: >
