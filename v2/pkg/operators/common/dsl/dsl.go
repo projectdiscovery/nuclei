@@ -920,7 +920,7 @@ func init() {
 		}),
 		"resolve": makeDslWithOptionalArgsFunction("(host string, format string) string", func(args ...interface{}) (interface{}, error) {
 			format := "4"
-			dnsType := dns.TypeA
+			var dnsType uint16
 			if len(args) > 1 {
 				format = strings.ToLower(types.ToString(args[1]))
 			}
