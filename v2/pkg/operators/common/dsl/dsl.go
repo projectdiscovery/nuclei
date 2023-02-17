@@ -38,10 +38,10 @@ import (
 	"github.com/spaolacci/murmur3"
 
 	"github.com/miekg/dns"
-	"github.com/projectdiscovery/dnsx/libs/dnsx"
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/helpers/deserialization"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/randomip"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/dns/dnsclientpool"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 )
 
@@ -945,16 +945,17 @@ func init() {
 				dnsType = dns.TypeSOA
 			case "caa":
 				dnsType = dns.TypeCAA
+			default:
+				return nil, fmt.Errorf("invalid dns type")
 			}
 
-			dnsx.DefaultOptions.QuestionTypes = []uint16{dnsType}
-			dnsClient, err := dnsx.New(dnsx.DefaultOptions)
+			dnsClient, err := dnsclientpool.Get(types.DefaultOptions(), &dnsclientpool.Configuration{})
 			if err != nil {
 				return nil, err
 			}
 
 			// query
-			rawResp, err := dnsClient.QueryOne(types.ToString(args[0]))
+			rawResp, err := dnsClient.Query(types.ToString(args[0]), dnsType)
 			if err != nil {
 				return nil, err
 			}
