@@ -27,7 +27,7 @@ func (severities *Severities) Set(values string) error {
 }
 
 func (severities *Severities) UnmarshalYAML(unmarshal func(interface{}) error) error {
-	var stringSliceValue stringslice.StringSlice
+	var stringSliceValue stringslice.NormalizedStringSlice
 	if err := unmarshal(&stringSliceValue); err != nil {
 		return err
 	}
@@ -44,7 +44,7 @@ func (severities *Severities) UnmarshalYAML(unmarshal func(interface{}) error) e
 }
 
 func (severities *Severities) UnmarshalJSON(data []byte) error {
-	var stringSliceValue stringslice.StringSlice
+	var stringSliceValue stringslice.NormalizedStringSlice
 	if err := json.Unmarshal(data, &stringSliceValue); err != nil {
 		return err
 	}

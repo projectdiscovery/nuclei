@@ -5,13 +5,12 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/stretchr/testify/require"
-
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/disk"
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/loader/filter"
 	"github.com/projectdiscovery/nuclei/v2/pkg/model"
 	"github.com/projectdiscovery/nuclei/v2/pkg/model/types/stringslice"
 	"github.com/projectdiscovery/nuclei/v2/pkg/templates"
+	"github.com/stretchr/testify/require"
 )
 
 func TestLoadTemplate(t *testing.T) {
@@ -32,7 +31,7 @@ func TestLoadTemplate(t *testing.T) {
 				ID: "CVE-2021-27330",
 				Info: model.Info{
 					Name:    "Valid template",
-					Authors: stringslice.StringSlice{Value: "Author"},
+					Authors: stringslice.NormalizedStringSlice{Value: "Author"},
 				},
 			},
 		},
@@ -46,7 +45,7 @@ func TestLoadTemplate(t *testing.T) {
 			template: &templates.Template{
 				ID: "invalid id",
 				Info: model.Info{
-					Authors: stringslice.StringSlice{Value: "Author"},
+					Authors: stringslice.NormalizedStringSlice{Value: "Author"},
 				},
 			},
 			expectedErr: errors.New("mandatory 'name' field is missing, invalid field format for 'id' (allowed format is ^([a-zA-Z0-9]+[-_])*[a-zA-Z0-9]+$)"),
@@ -94,7 +93,7 @@ func TestLoadTemplate(t *testing.T) {
 					ID: tc.id,
 					Info: model.Info{
 						Name:    "Valid template",
-						Authors: stringslice.StringSlice{Value: "Author"},
+						Authors: stringslice.NormalizedStringSlice{Value: "Author"},
 					},
 				}
 				parsedTemplatesCache.Store(name, template, nil)
