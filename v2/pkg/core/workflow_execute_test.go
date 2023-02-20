@@ -3,8 +3,6 @@ package core
 import (
 	"testing"
 
-	"github.com/stretchr/testify/require"
-
 	"github.com/projectdiscovery/nuclei/v2/pkg/model/types/stringslice"
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators"
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
@@ -13,6 +11,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/contextargs"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 	"github.com/projectdiscovery/nuclei/v2/pkg/workflows"
+	"github.com/stretchr/testify/require"
 )
 
 func TestWorkflowsSimple(t *testing.T) {
@@ -118,7 +117,7 @@ func TestWorkflowsSubtemplatesWithMatcher(t *testing.T) {
 					Extracts: map[string][]string{},
 				}},
 			}}, Options: &protocols.ExecuterOptions{Progress: progressBar}},
-		}, Matchers: []*workflows.Matcher{{Name: stringslice.StringSlice{Value: "tomcat"}, Subtemplates: []*workflows.WorkflowTemplate{{Executers: []*workflows.ProtocolExecuterPair{{
+		}, Matchers: []*workflows.Matcher{{Name: stringslice.NormalizedStringSlice{Value: "tomcat"}, Subtemplates: []*workflows.WorkflowTemplate{{Executers: []*workflows.ProtocolExecuterPair{{
 			Executer: &mockExecuter{result: true, executeHook: func(input *contextargs.MetaInput) {
 				secondInput = input.Input
 			}}, Options: &protocols.ExecuterOptions{Progress: progressBar}},
@@ -147,7 +146,7 @@ func TestWorkflowsSubtemplatesWithMatcherNoMatch(t *testing.T) {
 					Extracts: map[string][]string{},
 				}},
 			}}, Options: &protocols.ExecuterOptions{Progress: progressBar}},
-		}, Matchers: []*workflows.Matcher{{Name: stringslice.StringSlice{Value: "apache"}, Subtemplates: []*workflows.WorkflowTemplate{{Executers: []*workflows.ProtocolExecuterPair{{
+		}, Matchers: []*workflows.Matcher{{Name: stringslice.NormalizedStringSlice{Value: "apache"}, Subtemplates: []*workflows.WorkflowTemplate{{Executers: []*workflows.ProtocolExecuterPair{{
 			Executer: &mockExecuter{result: true, executeHook: func(input *contextargs.MetaInput) {
 				secondInput = input.Input
 			}}, Options: &protocols.ExecuterOptions{Progress: progressBar}},
