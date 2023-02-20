@@ -7,7 +7,6 @@ import (
 
 	"github.com/alecthomas/jsonschema"
 	"github.com/pkg/errors"
-
 	"github.com/projectdiscovery/goflags"
 	"github.com/projectdiscovery/nuclei/v2/pkg/model/types/stringslice"
 )
@@ -138,7 +137,7 @@ func (protocolTypes *ProtocolTypes) Set(values string) error {
 }
 
 func (protocolTypes *ProtocolTypes) UnmarshalYAML(unmarshal func(interface{}) error) error {
-	var stringSliceValue stringslice.StringSlice
+	var stringSliceValue stringslice.NormalizedStringSlice
 	if err := unmarshal(&stringSliceValue); err != nil {
 		return err
 	}

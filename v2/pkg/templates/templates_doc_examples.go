@@ -18,10 +18,10 @@ import (
 var (
 	exampleInfoStructure = model.Info{
 		Name:           "Argument Injection in Ruby Dragonfly",
-		Authors:        stringslice.StringSlice{Value: "0xspara"},
+		Authors:        stringslice.NormalizedStringSlice{Value: "0xspara"},
 		SeverityHolder: severity.Holder{Severity: severity.High},
-		Reference:      stringslice.StringSlice{Value: "https://zxsecurity.co.nz/research/argunment-injection-ruby-dragonfly/"},
-		Tags:           stringslice.StringSlice{Value: "cve,cve2021,rce,ruby"},
+		Reference:      stringslice.RawStringSlice{Value: "https://zxsecurity.co.nz/research/argunment-injection-ruby-dragonfly/"},
+		Tags:           stringslice.NormalizedStringSlice{Value: "cve,cve2021,rce,ruby"},
 	}
 	exampleNormalHTTPRequest = &http.Request{
 		Method: http.HTTPMethodTypeHolder{MethodType: http.HTTPGet},

@@ -14,11 +14,11 @@ import (
 func TestToMarkdownTableString(t *testing.T) {
 	info := model.Info{
 		Name:           "Test Template Name",
-		Authors:        stringslice.StringSlice{Value: []string{"forgedhallpass", "ice3man"}},
+		Authors:        stringslice.NormalizedStringSlice{Value: []string{"forgedhallpass", "ice3man"}},
 		Description:    "Test description",
 		SeverityHolder: severity.Holder{Severity: severity.High},
-		Tags:           stringslice.StringSlice{Value: []string{"cve", "misc"}},
-		Reference:      stringslice.StringSlice{Value: "reference1"},
+		Tags:           stringslice.NormalizedStringSlice{Value: []string{"cve", "misc"}},
+		Reference:      stringslice.RawStringSlice{Value: "reference1"},
 		Metadata: map[string]interface{}{
 			"customDynamicKey1": "customDynamicValue1",
 			"customDynamicKey2": "customDynamicValue2",

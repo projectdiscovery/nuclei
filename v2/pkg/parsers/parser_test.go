@@ -32,7 +32,7 @@ func TestLoadTemplate(t *testing.T) {
 				ID: "CVE-2021-27330",
 				Info: model.Info{
 					Name:    "Valid template",
-					Authors: stringslice.StringSlice{Value: "Author"},
+					Authors: stringslice.NormalizedStringSlice{Value: "Author"},
 				},
 			},
 		},
@@ -46,7 +46,7 @@ func TestLoadTemplate(t *testing.T) {
 			template: &templates.Template{
 				ID: "invalid id",
 				Info: model.Info{
-					Authors: stringslice.StringSlice{Value: "Author"},
+					Authors: stringslice.NormalizedStringSlice{Value: "Author"},
 				},
 			},
 			expectedErr: errors.New("mandatory 'name' field is missing, invalid field format for 'id' (allowed format is ^([a-zA-Z0-9]+[-_])*[a-zA-Z0-9]+$)"),
@@ -94,7 +94,7 @@ func TestLoadTemplate(t *testing.T) {
 					ID: tc.id,
 					Info: model.Info{
 						Name:    "Valid template",
-						Authors: stringslice.StringSlice{Value: "Author"},
+						Authors: stringslice.NormalizedStringSlice{Value: "Author"},
 					},
 				}
 				parsedTemplatesCache.Store(name, template, nil)

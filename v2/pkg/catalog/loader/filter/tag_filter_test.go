@@ -3,15 +3,13 @@ package filter
 import (
 	"testing"
 
-	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/dns"
-	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/http"
-
-	"github.com/stretchr/testify/require"
-
 	"github.com/projectdiscovery/nuclei/v2/pkg/model/types/severity"
 	"github.com/projectdiscovery/nuclei/v2/pkg/model/types/stringslice"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/dns"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/http"
 	"github.com/projectdiscovery/nuclei/v2/pkg/templates"
 	"github.com/projectdiscovery/nuclei/v2/pkg/templates/types"
+	"github.com/stretchr/testify/require"
 )
 
 func TestTagBasedFilter(t *testing.T) {
@@ -21,10 +19,10 @@ func TestTagBasedFilter(t *testing.T) {
 			dummyTemplate.ID = id
 		}
 		if len(tags) > 0 {
-			dummyTemplate.Info.Tags = stringslice.StringSlice{Value: tags}
+			dummyTemplate.Info.Tags = stringslice.NormalizedStringSlice{Value: tags}
 		}
 		if len(authors) > 0 {
-			dummyTemplate.Info.Authors = stringslice.StringSlice{Value: authors}
+			dummyTemplate.Info.Authors = stringslice.NormalizedStringSlice{Value: authors}
 		}
 		dummyTemplate.Info.SeverityHolder = severity.Holder{Severity: severityValue}
 		switch protocolType {
