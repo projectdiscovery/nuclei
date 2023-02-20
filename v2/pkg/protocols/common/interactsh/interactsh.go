@@ -24,6 +24,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/helpers/responsehighlighter"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/helpers/writer"
 	"github.com/projectdiscovery/nuclei/v2/pkg/reporting"
+	"github.com/projectdiscovery/nuclei/v2/pkg/utils/atomcache"
 	"github.com/projectdiscovery/retryablehttp-go"
 )
 
@@ -32,13 +33,13 @@ type Client struct {
 	// interactsh is a client for interactsh server.
 	interactsh *client.Client
 	// requests is a stored cache for interactsh-url->request-event data.
-	requests *ccache.Cache
+	requests *atomcache.Cache
 	// interactions is a stored cache for interactsh-interaction->interactsh-url data
-	interactions *ccache.Cache
+	interactions *atomcache.Cache
 	// matchedTemplates is a stored cache to track matched templates
-	matchedTemplates *ccache.Cache
+	matchedTemplates *atomcache.Cache
 	// interactshURLs is a stored cache to track track multiple interactsh markers
-	interactshURLs *ccache.Cache
+	interactshURLs *atomcache.Cache
 
 	options          *Options
 	eviction         time.Duration
@@ -51,7 +52,7 @@ type Client struct {
 
 	firstTimeGroup sync.Once
 	generated      uint32 // decide to wait if we have a generated url
-	matched        bool
+	matched        atomic.Bool
 }
 
 var (
@@ -108,14 +109,14 @@ const defaultMaxInteractionsCount = 5000
 func New(options *Options) (*Client, error) {
 	configure := ccache.Configure()
 	configure = configure.MaxSize(options.CacheSize)
-	cache := ccache.New(configure)
+	cache := atomcache.NewWithCache(ccache.New(configure))
 
 	interactionsCfg := ccache.Configure()
 	interactionsCfg = interactionsCfg.MaxSize(defaultMaxInteractionsCount)
-	interactionsCache := ccache.New(interactionsCfg)
+	interactionsCache := atomcache.NewWithCache(ccache.New(interactionsCfg))
 
-	matchedTemplateCache := ccache.New(ccache.Configure().MaxSize(defaultMaxInteractionsCount))
-	interactshURLCache := ccache.New(ccache.Configure().MaxSize(defaultMaxInteractionsCount))
+	matchedTemplateCache := atomcache.NewWithCache(ccache.New(ccache.Configure().MaxSize(defaultMaxInteractionsCount)))
+	interactshURLCache := atomcache.NewWithCache(ccache.New(ccache.Configure().MaxSize(defaultMaxInteractionsCount)))
 
 	interactClient := &Client{
 		eviction:         options.Eviction,
@@ -172,7 +173,6 @@ func (c *Client) firstTimeInitializeClient() error {
 
 	interactsh.StartPolling(c.pollDuration, func(interaction *server.Interaction) {
 		item := c.requests.Get(interaction.UniqueID)
-
 		if item == nil {
 			// If we don't have any request for this ID, add it to temporary
 			// lru cache, so we can correlate when we get an add request.
@@ -230,7 +230,7 @@ func (c *Client) processInteractionForRequest(interaction *server.Interaction, d
 	}
 
 	if writer.WriteResult(data.Event, c.options.Output, c.options.Progress, c.options.IssuesClient) {
-		c.matched = true
+		c.matched.Store(true)
 		if _, ok := data.Event.InternalEvent[stopAtFirstMatchAttribute]; ok || c.options.StopAtFirstMatch {
 			c.matchedTemplates.Set(hash(data.Event.InternalEvent[templateIdAttribute].(string), data.Event.InternalEvent["host"].(string)), true, defaultInteractionDuration)
 		}
@@ -239,17 +239,17 @@ func (c *Client) processInteractionForRequest(interaction *server.Interaction, d
 }
 
 // URL returns a new URL that can be interacted with
-func (c *Client) URL() string {
+func (c *Client) URL() (string, error) {
 	c.firstTimeGroup.Do(func() {
 		if err := c.firstTimeInitializeClient(); err != nil {
 			gologger.Error().Msgf("Could not initialize interactsh client: %s", err)
 		}
 	})
 	if c.interactsh == nil {
-		return ""
+		return "", errors.New("interactsh client not initialized")
 	}
 	atomic.CompareAndSwapUint32(&c.generated, 0, 1)
-	return c.interactsh.URL()
+	return c.interactsh.URL(), nil
 }
 
 // Close closes the interactsh clients after waiting for cooldown period.
@@ -262,9 +262,8 @@ func (c *Client) Close() bool {
 		c.interactsh.Close()
 	}
 
-	closeCache := func(cc *ccache.Cache) {
+	closeCache := func(cc *atomcache.Cache) {
 		if cc != nil {
-			cc.Clear()
 			cc.Stop()
 		}
 	}
@@ -273,29 +272,39 @@ func (c *Client) Close() bool {
 	closeCache(c.matchedTemplates)
 	closeCache(c.interactshURLs)
 
-	return c.matched
+	return c.matched.Load()
 }
 
-// ReplaceMarkers replaces the {{interactsh-url}} placeholders to actual
-// URLs pointing to interactsh-server.
-//
-// It accepts data to replace as well as the URL to replace placeholders
-// with generated uniquely for each request.
-func (c *Client) ReplaceMarkers(data string, interactshURLs []string) (string, []string) {
-	for interactshURLMarkerRegex.Match([]byte(data)) {
-		url := c.URL()
-		interactshURLs = append(interactshURLs, url)
-		interactshURLMarker := interactshURLMarkerRegex.FindString(data)
-		if interactshURLMarker != "" {
+// ReplaceMarkers replaces the default {{interactsh-url}} placeholders with interactsh urls
+func (c *Client) Replace(data string, interactshURLs []string) (string, []string) {
+	return c.ReplaceWithMarker(data, interactshURLMarkerRegex, interactshURLs)
+}
+
+// ReplaceMarkers replaces the placeholders with interactsh urls and appends them to interactshURLs
+func (c *Client) ReplaceWithMarker(data string, regex *regexp.Regexp, interactshURLs []string) (string, []string) {
+	for _, interactshURLMarker := range regex.FindAllString(data, -1) {
+		if url, err := c.NewURLWithData(interactshURLMarker); err == nil {
+			interactshURLs = append(interactshURLs, url)
 			data = strings.Replace(data, interactshURLMarker, url, 1)
-			urlIndex := strings.Index(url, ".")
-			if urlIndex == -1 {
-				continue
-			}
-			c.interactshURLs.Set(url, interactshURLMarker, defaultInteractionDuration)
 		}
 	}
 	return data, interactshURLs
+}
+
+func (c *Client) NewURL() (string, error) {
+	return c.NewURLWithData("")
+}
+
+func (c *Client) NewURLWithData(data string) (string, error) {
+	url, err := c.URL()
+	if err != nil {
+		return "", err
+	}
+	if url == "" {
+		return "", errors.New("empty interactsh url")
+	}
+	c.interactshURLs.Set(url, data, defaultInteractionDuration)
+	return url, nil
 }
 
 // MakePlaceholders does placeholders for interact URLs and other data to a map

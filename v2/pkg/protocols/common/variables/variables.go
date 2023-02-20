@@ -56,7 +56,7 @@ func (variables *Variable) EvaluateWithInteractsh(values map[string]interface{},
 	variables.ForEach(func(key string, value interface{}) {
 		valueString := types.ToString(value)
 		if strings.Contains(valueString, "interactsh-url") {
-			valueString, interactURLs = interact.ReplaceMarkers(valueString, interactURLs)
+			valueString, interactURLs = interact.Replace(valueString, interactURLs)
 		}
 		result[key] = evaluateVariableValue(valueString, generators.MergeMaps(values, result), result)
 	})
