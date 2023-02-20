@@ -115,6 +115,9 @@ func (r *requestGenerator) Make(ctx context.Context, input *contextargs.Context,
 		gologger.Debug().Msgf("Final Protocol request variables: \n%s\n", vardump.DumpVariables(finalVars))
 	}
 
+	// Note: If possible any changes to current logic (i.e evaluate -> then parse URL)
+	// should be avoided since it is dependent on `urlutil` core logic
+
 	// Evaluate (replace) variable with final values
 	reqData, err = expressions.Evaluate(reqData, finalVars)
 	if err != nil {
