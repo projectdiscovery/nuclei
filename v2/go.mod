@@ -29,7 +29,7 @@ require (
 	github.com/projectdiscovery/interactsh v1.0.6-0.20220827132222-460cc6270053
 	github.com/projectdiscovery/rawhttp v0.1.9
 	github.com/projectdiscovery/retryabledns v1.0.21
-	github.com/projectdiscovery/retryablehttp-go v1.0.12-0.20230217193636-92cb1a7b9695
+	github.com/projectdiscovery/retryablehttp-go v1.0.12-0.20230220094538-f406add578ab
 	github.com/projectdiscovery/stringsutil v0.0.2
 	github.com/projectdiscovery/yamldoc-go v1.0.3-0.20211126104922-00d2c6bb43b6
 	github.com/remeh/sizedwaitgroup v1.0.0
@@ -42,7 +42,7 @@ require (
 	github.com/tj/go-update v2.2.5-0.20200519121640-62b4b798fd68+incompatible
 	github.com/valyala/fasttemplate v1.2.2
 	github.com/weppos/publicsuffix-go v0.20.0
-	github.com/xanzy/go-gitlab v0.79.0
+	github.com/xanzy/go-gitlab v0.80.2
 	go.uber.org/multierr v1.9.0
 	golang.org/x/net v0.7.0
 	golang.org/x/oauth2 v0.4.0
@@ -59,7 +59,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/config v1.18.12
 	github.com/aws/aws-sdk-go-v2/credentials v1.13.12
 	github.com/aws/aws-sdk-go-v2/feature/s3/manager v1.11.51
-	github.com/aws/aws-sdk-go-v2/service/s3 v1.30.2
+	github.com/aws/aws-sdk-go-v2/service/s3 v1.30.3
 	github.com/docker/go-units v0.5.0
 	github.com/fatih/structs v1.1.0
 	github.com/go-git/go-git/v5 v5.5.2
@@ -72,7 +72,7 @@ require (
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/projectdiscovery/fasttemplate v0.0.2
 	github.com/projectdiscovery/goflags v0.1.6
-	github.com/projectdiscovery/gologger v1.1.7
+	github.com/projectdiscovery/gologger v1.1.8
 	github.com/projectdiscovery/httpx v1.2.7
 	github.com/projectdiscovery/nvd v1.0.9
 	github.com/projectdiscovery/ratelimit v0.0.6
@@ -89,7 +89,7 @@ require (
 
 require (
 	github.com/aws/aws-sdk-go-v2/aws/protocol/eventstream v1.4.10 // indirect
-	github.com/aws/aws-sdk-go-v2/internal/v4a v1.0.19 // indirect
+	github.com/aws/aws-sdk-go-v2/internal/v4a v1.0.20 // indirect
 	github.com/aws/aws-sdk-go-v2/service/internal/accept-encoding v1.9.11 // indirect
 	github.com/aws/aws-sdk-go-v2/service/internal/checksum v1.1.23 // indirect
 	github.com/aws/aws-sdk-go-v2/service/internal/s3shared v1.13.22 // indirect
@@ -189,7 +189,7 @@ require (
 	github.com/power-devops/perfstat v0.0.0-20210106213030-5aafc221ea8c // indirect
 	github.com/projectdiscovery/blackrock v0.0.0-20220628111055-35616c71b2dc // indirect
 	github.com/projectdiscovery/mapcidr v1.0.3
-	github.com/projectdiscovery/networkpolicy v0.0.3
+	github.com/projectdiscovery/networkpolicy v0.0.4
 	github.com/rivo/uniseg v0.2.0 // indirect
 	github.com/rogpeppe/go-internal v1.9.0 // indirect
 	github.com/saintfish/chardet v0.0.0-20230101081208-5e3ef4b5456d // indirect
