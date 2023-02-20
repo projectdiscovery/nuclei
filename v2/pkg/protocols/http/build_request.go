@@ -74,9 +74,9 @@ func (r *requestGenerator) Make(ctx context.Context, input *contextargs.Context,
 	isRawRequest := len(r.request.Raw) > 0
 	// replace interactsh variables with actual interactsh urls
 	if r.options.Interactsh != nil {
-		reqData, r.interactshURLs = r.options.Interactsh.ReplaceMarkers(reqData, []string{})
+		reqData, r.interactshURLs = r.options.Interactsh.Replace(reqData, []string{})
 		for payloadName, payloadValue := range payloads {
-			payloads[payloadName], r.interactshURLs = r.options.Interactsh.ReplaceMarkers(types.ToString(payloadValue), r.interactshURLs)
+			payloads[payloadName], r.interactshURLs = r.options.Interactsh.Replace(types.ToString(payloadValue), r.interactshURLs)
 		}
 	} else {
 		for payloadName, payloadValue := range payloads {
@@ -133,8 +133,7 @@ func (r *requestGenerator) Make(ctx context.Context, input *contextargs.Context,
 	finalparams := parsed.Params
 	finalparams.Merge(reqURL.Params)
 	reqURL.Params = finalparams
-
-	return r.generateHttpRequest(ctx, reqURL.String(), finalVars, payloads)
+	return r.generateHttpRequest(ctx, reqURL, finalVars, payloads)
 }
 
 // selfContained templates do not need/use target data and all values i.e {{Hostname}} , {{BaseURL}} etc are already available
@@ -205,19 +204,23 @@ func (r *requestGenerator) makeSelfContainedRequest(ctx context.Context, data st
 	if err != nil {
 		return nil, ErrEvalExpression.Wrap(err).WithTag("self-contained")
 	}
-	return r.generateHttpRequest(ctx, data, values, payloads)
+	urlx, err := urlutil.ParseURL(data, true)
+	if err != nil {
+		return nil, errorutil.NewWithErr(err).Msgf("failed to parse %v in self contained request", data).WithTag("self-contained")
+	}
+	return r.generateHttpRequest(ctx, urlx, values, payloads)
 }
 
 // generateHttpRequest generates http request from request data from template and variables
 // finalVars = contains all variables including generator and protocol specific variables
 // generatorValues = contains variables used in fuzzing or other generator specific values
-func (r *requestGenerator) generateHttpRequest(ctx context.Context, data string, finalVars, generatorValues map[string]interface{}) (*generatedRequest, error) {
+func (r *requestGenerator) generateHttpRequest(ctx context.Context, urlx *urlutil.URL, finalVars, generatorValues map[string]interface{}) (*generatedRequest, error) {
 	method, err := expressions.Evaluate(r.request.Method.String(), finalVars)
 	if err != nil {
 		return nil, ErrEvalExpression.Wrap(err).Msgf("failed to evaluate while generating http request")
 	}
 	// Build a request on the specified URL
-	req, err := retryablehttp.NewRequestWithContext(ctx, method, data, nil)
+	req, err := retryablehttp.NewRequestFromURLWithContext(ctx, method, urlx, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -254,8 +257,11 @@ func (r *requestGenerator) generateRawRequest(ctx context.Context, rawRequest st
 		// Todo: sync internally upon writing latest request byte
 		body = race.NewOpenGateWithTimeout(body, time.Duration(2)*time.Second)
 	}
-
-	req, err := retryablehttp.NewRequestWithContext(ctx, rawRequestData.Method, rawRequestData.FullURL, body)
+	urlx, err := urlutil.ParseURL(rawRequestData.FullURL, true)
+	if err != nil {
+		return nil, errorutil.NewWithErr(err).Msgf("failed to create request with url %v got %v", rawRequestData.FullURL, err).WithTag("raw")
+	}
+	req, err := retryablehttp.NewRequestFromURLWithContext(ctx, rawRequestData.Method, urlx, body)
 	if err != nil {
 		return nil, err
 	}
@@ -281,9 +287,10 @@ func (r *requestGenerator) generateRawRequest(ctx context.Context, rawRequest st
 		interactshURLs: r.interactshURLs,
 	}
 
-	if reqWithAnnotations, cancelFunc, hasAnnotations := r.request.parseAnnotations(rawRequest, req); hasAnnotations {
-		generatedRequest.request = reqWithAnnotations
-		generatedRequest.customCancelFunction = cancelFunc
+	if reqWithOverrides, hasAnnotations := r.request.parseAnnotations(rawRequest, req); hasAnnotations {
+		generatedRequest.request = reqWithOverrides.request
+		generatedRequest.customCancelFunction = reqWithOverrides.cancelFunc
+		generatedRequest.interactshURLs = append(generatedRequest.interactshURLs, reqWithOverrides.interactshURLs...)
 	}
 
 	return generatedRequest, nil
@@ -294,7 +301,7 @@ func (r *requestGenerator) fillRequest(req *retryablehttp.Request, values map[st
 	// Set the header values requested
 	for header, value := range r.request.Headers {
 		if r.options.Interactsh != nil {
-			value, r.interactshURLs = r.options.Interactsh.ReplaceMarkers(value, r.interactshURLs)
+			value, r.interactshURLs = r.options.Interactsh.Replace(value, r.interactshURLs)
 		}
 		value, err := expressions.Evaluate(value, values)
 		if err != nil {
@@ -315,7 +322,7 @@ func (r *requestGenerator) fillRequest(req *retryablehttp.Request, values map[st
 	if r.request.Body != "" {
 		body := r.request.Body
 		if r.options.Interactsh != nil {
-			body, r.interactshURLs = r.options.Interactsh.ReplaceMarkers(r.request.Body, r.interactshURLs)
+			body, r.interactshURLs = r.options.Interactsh.Replace(r.request.Body, r.interactshURLs)
 		}
 		body, err := expressions.Evaluate(body, values)
 		if err != nil {

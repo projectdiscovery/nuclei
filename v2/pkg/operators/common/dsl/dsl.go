@@ -38,6 +38,7 @@ import (
 	"github.com/spaolacci/murmur3"
 
 	"github.com/projectdiscovery/gologger"
+	"github.com/projectdiscovery/mapcidr"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/helpers/deserialization"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/randomip"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
@@ -773,22 +774,14 @@ func init() {
 				return argStr[start:end], nil
 			},
 		),
-		"aes_cbc": makeDslFunction(2, func(args ...interface{}) (interface{}, error) {
-			key := []byte(types.ToString(args[0]))
-			cleartext := []byte(types.ToString(args[1]))
-			block, _ := aes.NewCipher(key)
-			blockSize := block.BlockSize()
-			n := blockSize - len(cleartext)%blockSize
-			temp := bytes.Repeat([]byte{byte(n)}, n)
-			cleartext = append(cleartext, temp...)
-			iv := make([]byte, 16)
-			if _, err := crand.Read(iv); err != nil {
-				return nil, err
-			}
-			blockMode := cipher.NewCBCEncrypter(block, iv)
-			ciphertext := make([]byte, len(cleartext))
-			blockMode.CryptBlocks(ciphertext, cleartext)
-			ciphertext = append(iv, ciphertext...)
+		"aes_cbc": makeDslFunction(3, func(args ...interface{}) (interface{}, error) {
+			bKey := []byte(args[1].(string))
+			bIV := []byte(args[2].(string))
+			bPlaintext := pkcs5padding([]byte(args[0].(string)), aes.BlockSize, len(args[0].(string)))
+			block, _ := aes.NewCipher(bKey)
+			ciphertext := make([]byte, len(bPlaintext))
+			mode := cipher.NewCBCEncrypter(block, bIV)
+			mode.CryptBlocks(ciphertext, bPlaintext)
 			return ciphertext, nil
 		}),
 		"aes_gcm": makeDslFunction(2, func(args ...interface{}) (interface{}, error) {
@@ -922,6 +915,20 @@ func init() {
 			}
 
 			return buf.String(), nil
+		}),
+		"ip_format": makeDslFunction(2, func(args ...interface{}) (interface{}, error) {
+			ipFormat, err := strconv.ParseInt(types.ToString(args[1]), 10, 64)
+			if err != nil {
+				return nil, err
+			}
+			if ipFormat <= 0 || ipFormat > 11 {
+				return nil, fmt.Errorf("invalid format, format must be in range 1-11")
+			}
+			formattedIps := mapcidr.AlterIP(types.ToString(args[0]), []string{types.ToString(args[1])}, 3, false)
+			if len(formattedIps) == 0 {
+				return nil, fmt.Errorf("no formatted IP returned")
+			}
+			return formattedIps[0], nil
 		}),
 	}
 
@@ -1197,6 +1204,12 @@ func toChunks(input string, chunkSize int) []string {
 	}
 	chunks = append(chunks, input[currentStart:])
 	return chunks
+}
+
+func pkcs5padding(ciphertext []byte, blockSize int, after int) []byte {
+	padding := (blockSize - len(ciphertext)%blockSize)
+	padtext := bytes.Repeat([]byte{byte(padding)}, padding)
+	return append(ciphertext, padtext...)
 }
 
 type CompilationError struct {

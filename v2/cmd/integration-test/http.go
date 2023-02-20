@@ -19,7 +19,7 @@ import (
 )
 
 var httpTestcases = map[string]testutils.TestCase{
-	//"http/raw-unsafe-request.yaml":                  &httpRawUnsafeRequest{},
+	// "http/raw-unsafe-request.yaml":                  &httpRawUnsafeRequest{},
 	"http/get-headers.yaml":                         &httpGetHeaders{},
 	"http/get-query-string.yaml":                    &httpGetQueryString{},
 	"http/get-redirects.yaml":                       &httpGetRedirects{},
@@ -297,7 +297,7 @@ func (h *httpDSLFunctions) Execute(filePath string) error {
 	resultPart = stringsutil.TrimPrefixAny(resultPart, "/", " ", "[")
 
 	extracted := strings.Split(resultPart, ",")
-	numberOfDslFunctions := 85
+	numberOfDslFunctions := 87
 	if len(extracted) != numberOfDslFunctions {
 		return errors.New("incorrect number of results")
 	}
