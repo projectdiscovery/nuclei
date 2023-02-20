@@ -241,7 +241,7 @@ func loadKeys(engine string, options *ucRunner.Options) error {
 		}
 	case "criminalip":
 		if key, exists := os.LookupEnv("CRIMINALIP_API_KEY"); exists {
-			options.Provider.Criminalip = append(options.Provider.Criminalip, key)
+			options.Provider.CriminalIP = append(options.Provider.CriminalIP, key)
 		} else {
 			return errors.Errorf("CRIMINALIP_API_KEY env variable is not configured")
 		}
