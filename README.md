@@ -203,7 +203,7 @@ INTERACTSH:
 UNCOVER:
    -uc, -uncover                  enable uncover engine
    -uq, -uncover-query string[]   uncover search query
-   -ue, -uncover-engine string[]  uncover search engine (shodan,shodan-idb,fofa,censys,quake,hunter,zoomeye,netlas) (default shodan)
+   -ue, -uncover-engine string[]  uncover search engine (shodan,shodan-idb,fofa,censys,quake,hunter,zoomeye,netlas,criminalip) (default shodan)
    -uf, -uncover-field string     uncover fields to return (ip,port,host) (default "ip:port")
    -ul, -uncover-limit int        uncover results to return (default 100)
    -ucd, -uncover-delay int       delay between uncover query requests in seconds (0 to disable) (default 1)
