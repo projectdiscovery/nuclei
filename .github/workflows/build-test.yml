@@ -46,7 +46,7 @@ jobs:
           GH_ACTION: true
           GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
         run: bash build.sh retry 3 make integration 
-        working-directory: integration_tests/
+        working-directory: v2/
 
       - name: Race Condition Tests
         if: ${{ matrix.os != 'windows-latest' }} # known issue: https://github.com/golang/go/issues/46099
