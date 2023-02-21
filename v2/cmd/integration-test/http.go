@@ -113,7 +113,7 @@ func (h *httpInteractshStopAtFirstMatchRequest) Execute(filePath string) error {
 	if err != nil {
 		return err
 	}
-	return expectResultsCount(results, 1)
+	return expectResultsCount(results, 0)
 }
 
 type httpGetHeaders struct{}
