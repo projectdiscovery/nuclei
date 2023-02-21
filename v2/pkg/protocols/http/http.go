@@ -22,7 +22,7 @@ import (
 // Request contains a http request to be made from a template
 type Request struct {
 	// Operators for the current request go here.
-	operators.Operators `yaml:",inline"`
+	operators.Operators `yaml:",inline" json:",inline"`
 	// description: |
 	//   Path contains the path/s for the HTTP requests. It supports variables
 	//   as placeholders.
