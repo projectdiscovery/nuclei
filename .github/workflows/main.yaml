@@ -1,0 +1,17 @@
+dynamic_security_testing:
+    runs-on: ubuntu-latest
+    name: Scan live web app for security flaws
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Start containers
+        run: docker-compose -f "docker-compose.yml" up -d --build
+
+      - name: Dynamic Security Testing
+        uses: projectdiscovery/nuclei-action@main
+        with:
+          target: https://www.225035.cc
+
+      - name: Stop containers
+        if: always()
+        run: docker-compose -f "docker-compose.yml" down
