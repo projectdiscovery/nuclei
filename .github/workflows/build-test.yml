@@ -32,22 +32,20 @@ jobs:
         working-directory: v2/
 
       - name: Build
-        run: go build .
-        working-directory: v2/cmd/nuclei/
+        run: bash build.sh retry 3 make build
+        working-directory: v2/
 
       - name: Test
         env:
           GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
-        run: go test ./...
+        run: bash build.sh retry 3 make test
         working-directory: v2/
 
       - name: Integration Tests
         env:
           GH_ACTION: true
           GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
-        run: |
-          chmod +x run.sh
-          bash run.sh ${{ matrix.os }}
+        run: bash build.sh retry 3 make integration 
         working-directory: integration_tests/
 
       - name: Race Condition Tests
