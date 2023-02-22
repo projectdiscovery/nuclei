@@ -225,6 +225,7 @@ on extensive configurability, massive extensibility and ease of use.`)
 		flagSet.StringVarP(&options.FuzzingType, "fuzzing-type", "ft", "", "overrides fuzzing type set in template (replace, prefix, postfix, infix)"),
 		flagSet.StringVarP(&options.FuzzingMode, "fuzzing-mode", "fm", "", "overrides fuzzing mode set in template (multiple, single)"),
 	)
+
 	flagSet.CreateGroup("uncover", "Uncover",
 		flagSet.BoolVarP(&options.Uncover, "uncover", "uc", false, "enable uncover engine"),
 		flagSet.StringSliceVarP(&options.UncoverQuery, "uncover-query", "uq", nil, "uncover search query", goflags.FileStringSliceOptions),

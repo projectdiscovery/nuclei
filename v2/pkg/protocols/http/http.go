@@ -363,6 +363,12 @@ func (request *Request) Compile(options *protocols.ExecuterOptions) error {
 			return errors.New("cannot use unsafe with http fuzzing templates")
 		}
 		for _, rule := range request.Fuzzing {
+			if fuzzingMode := options.Options.FuzzingMode; fuzzingMode != "" {
+				rule.Mode = fuzzingMode
+			}
+			if fuzzingType := options.Options.FuzzingType; fuzzingType != "" {
+				rule.Type = fuzzingType
+			}
 			if err := rule.Compile(request.generator, request.options); err != nil {
 				return errors.Wrap(err, "could not compile fuzzing rule")
 			}
