@@ -14,11 +14,11 @@ import (
 func TestInfoJsonMarshal(t *testing.T) {
 	info := Info{
 		Name:           "Test Template Name",
-		Authors:        stringslice.NormalizedStringSlice{Value: []string{"forgedhallpass", "ice3man"}},
+		Authors:        stringslice.StringSlice{Value: []string{"forgedhallpass", "ice3man"}},
 		Description:    "Test description",
 		SeverityHolder: severity.Holder{Severity: severity.High},
-		Tags:           stringslice.NormalizedStringSlice{Value: []string{"cve", "misc"}},
-		Reference:      stringslice.RawStringSlice{Value: "Reference1"},
+		Tags:           stringslice.StringSlice{Value: []string{"cve", "misc"}},
+		Reference:      stringslice.NewRaw("Reference1"),
 		Metadata: map[string]interface{}{
 			"string_key": "string_value",
 			"array_key":  []string{"array_value1", "array_value2"},
@@ -38,11 +38,11 @@ func TestInfoJsonMarshal(t *testing.T) {
 func TestInfoYamlMarshal(t *testing.T) {
 	info := Info{
 		Name:           "Test Template Name",
-		Authors:        stringslice.NormalizedStringSlice{Value: []string{"forgedhallpass", "ice3man"}},
+		Authors:        stringslice.StringSlice{Value: []string{"forgedhallpass", "ice3man"}},
 		Description:    "Test description",
 		SeverityHolder: severity.Holder{Severity: severity.High},
-		Tags:           stringslice.NormalizedStringSlice{Value: []string{"cve", "misc"}},
-		Reference:      stringslice.RawStringSlice{Value: "Reference1"},
+		Tags:           stringslice.StringSlice{Value: []string{"cve", "misc"}},
+		Reference:      stringslice.NewRaw("Reference1"),
 		Metadata: map[string]interface{}{
 			"string_key": "string_value",
 			"array_key":  []string{"array_value1", "array_value2"},

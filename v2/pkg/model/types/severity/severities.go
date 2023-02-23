@@ -13,7 +13,7 @@ import (
 type Severities []Severity
 
 func (severities *Severities) Set(values string) error {
-	inputSeverities, err := goflags.ToStringSlice(values, goflags.FileNormalizedStringSliceOptions)
+	inputSeverities, err := goflags.ToStringSlice(values, goflags.FileStringSliceOptions)
 	if err != nil {
 		return err
 	}
@@ -27,7 +27,7 @@ func (severities *Severities) Set(values string) error {
 }
 
 func (severities *Severities) UnmarshalYAML(unmarshal func(interface{}) error) error {
-	var stringSliceValue stringslice.NormalizedStringSlice
+	var stringSliceValue stringslice.StringSlice
 	if err := unmarshal(&stringSliceValue); err != nil {
 		return err
 	}
@@ -44,7 +44,7 @@ func (severities *Severities) UnmarshalYAML(unmarshal func(interface{}) error) e
 }
 
 func (severities *Severities) UnmarshalJSON(data []byte) error {
-	var stringSliceValue stringslice.NormalizedStringSlice
+	var stringSliceValue stringslice.StringSlice
 	if err := json.Unmarshal(data, &stringSliceValue); err != nil {
 		return err
 	}

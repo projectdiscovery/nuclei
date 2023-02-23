@@ -19,10 +19,10 @@ func TestTagBasedFilter(t *testing.T) {
 			dummyTemplate.ID = id
 		}
 		if len(tags) > 0 {
-			dummyTemplate.Info.Tags = stringslice.NormalizedStringSlice{Value: tags}
+			dummyTemplate.Info.Tags = stringslice.StringSlice{Value: tags}
 		}
 		if len(authors) > 0 {
-			dummyTemplate.Info.Authors = stringslice.NormalizedStringSlice{Value: authors}
+			dummyTemplate.Info.Authors = stringslice.StringSlice{Value: authors}
 		}
 		dummyTemplate.Info.SeverityHolder = severity.Holder{Severity: severityValue}
 		switch protocolType {

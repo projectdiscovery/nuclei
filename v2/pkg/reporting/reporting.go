@@ -52,8 +52,8 @@ type Options struct {
 // Filter filters the received event and decides whether to perform
 // reporting for it or not.
 type Filter struct {
-	Severities severity.Severities               `yaml:"severity"`
-	Tags       stringslice.NormalizedStringSlice `yaml:"tags"`
+	Severities severity.Severities     `yaml:"severity"`
+	Tags       stringslice.StringSlice `yaml:"tags"`
 }
 
 const (
@@ -198,7 +198,7 @@ func CreateConfigIfNotExists() error {
 	if fileutil.FileExists(reportingConfig) {
 		return nil
 	}
-	values := stringslice.NormalizedStringSlice{Value: []string{}}
+	values := stringslice.StringSlice{Value: []string{}}
 
 	options := &Options{
 		AllowList:             &Filter{Tags: values},

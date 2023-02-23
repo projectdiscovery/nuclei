@@ -123,7 +123,7 @@ func (holder TypeHolder) MarshalYAML() (interface{}, error) {
 type ProtocolTypes []ProtocolType
 
 func (protocolTypes *ProtocolTypes) Set(values string) error {
-	inputTypes, err := goflags.ToStringSlice(values, goflags.FileNormalizedStringSliceOptions)
+	inputTypes, err := goflags.ToStringSlice(values, goflags.FileStringSliceOptions)
 	if err != nil {
 		return err
 	}
@@ -137,7 +137,7 @@ func (protocolTypes *ProtocolTypes) Set(values string) error {
 }
 
 func (protocolTypes *ProtocolTypes) UnmarshalYAML(unmarshal func(interface{}) error) error {
-	var stringSliceValue stringslice.NormalizedStringSlice
+	var stringSliceValue stringslice.StringSlice
 	if err := unmarshal(&stringSliceValue); err != nil {
 		return err
 	}

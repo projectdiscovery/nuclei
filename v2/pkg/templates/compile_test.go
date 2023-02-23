@@ -58,10 +58,10 @@ func Test_ParseFromURL(t *testing.T) {
 	expectedTemplate := &templates.Template{
 		ID: "tls-version",
 		Info: model.Info{
-			Authors:        stringslice.NormalizedStringSlice{Value: []string{"pdteam"}},
+			Authors:        stringslice.StringSlice{Value: []string{"pdteam"}},
 			SeverityHolder: severity.Holder{Severity: severity.Info},
 			Name:           "TLS Version",
-			Tags:           stringslice.NormalizedStringSlice{Value: []string{"ssl"}},
+			Tags:           stringslice.StringSlice{Value: []string{"ssl"}},
 		},
 		RequestsSSL: []*ssl.Request{
 			{
@@ -98,7 +98,7 @@ func Test_ParseFromFile(t *testing.T) {
 		ID: "basic-get",
 		Info: model.Info{
 			Name:           "Basic GET Request",
-			Authors:        stringslice.NormalizedStringSlice{Value: []string{"pdteam"}},
+			Authors:        stringslice.StringSlice{Value: []string{"pdteam"}},
 			SeverityHolder: severity.Holder{Severity: severity.Info},
 		},
 		RequestsHTTP: []*http.Request{{
@@ -143,7 +143,7 @@ func Test_ParseWorkflow(t *testing.T) {
 		ID: "workflow-example",
 		Info: model.Info{
 			Name:           "Test Workflow Template",
-			Authors:        stringslice.NormalizedStringSlice{Value: []string{"pdteam"}},
+			Authors:        stringslice.StringSlice{Value: []string{"pdteam"}},
 			SeverityHolder: severity.Holder{Severity: severity.Info},
 		},
 		Workflow: workflows.Workflow{

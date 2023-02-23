@@ -20,7 +20,7 @@ type Info struct {
 	//   Multiple values can also be specified separated by commas.
 	// examples:
 	//   - value: "\"<username>\""
-	Authors stringslice.NormalizedStringSlice `json:"author,omitempty" yaml:"author,omitempty" jsonschema:"title=author of the template,description=Author is the author of the template,example=username"`
+	Authors stringslice.StringSlice `json:"author,omitempty" yaml:"author,omitempty" jsonschema:"title=author of the template,description=Author is the author of the template,example=username"`
 	// description: |
 	//   Any tags for the template.
 	//
@@ -29,7 +29,7 @@ type Info struct {
 	// examples:
 	//   - name: Example tags
 	//     value: "\"cve,cve2019,grafana,auth-bypass,dos\""
-	Tags stringslice.NormalizedStringSlice `json:"tags,omitempty" yaml:"tags,omitempty" jsonschema:"title=tags of the template,description=Any tags for the template"`
+	Tags stringslice.StringSlice `json:"tags,omitempty" yaml:"tags,omitempty" jsonschema:"title=tags of the template,description=Any tags for the template"`
 	// description: |
 	//   Description of the template.
 	//
@@ -79,12 +79,12 @@ type Classification struct {
 	//   CVE ID for the template
 	// examples:
 	//   - value: "\"CVE-2020-14420\""
-	CVEID stringslice.NormalizedStringSlice `json:"cve-id,omitempty" yaml:"cve-id,omitempty" jsonschema:"title=cve ids for the template,description=CVE IDs for the template,example=CVE-2020-14420"`
+	CVEID stringslice.StringSlice `json:"cve-id,omitempty" yaml:"cve-id,omitempty" jsonschema:"title=cve ids for the template,description=CVE IDs for the template,example=CVE-2020-14420"`
 	// description: |
 	//   CWE ID for the template.
 	// examples:
 	//   - value: "\"CWE-22\""
-	CWEID stringslice.NormalizedStringSlice `json:"cwe-id,omitempty" yaml:"cwe-id,omitempty" jsonschema:"title=cwe ids for the template,description=CWE IDs for the template,example=CWE-22"`
+	CWEID stringslice.StringSlice `json:"cwe-id,omitempty" yaml:"cwe-id,omitempty" jsonschema:"title=cwe ids for the template,description=CWE IDs for the template,example=CWE-22"`
 	// description: |
 	//   CVSS Metrics for the template.
 	// examples:
