@@ -13,7 +13,7 @@ import (
 type Severities []Severity
 
 func (severities *Severities) Set(values string) error {
-	inputSeverities, err := goflags.ToStringSlice(values, goflags.FileStringSliceOptions)
+	inputSeverities, err := goflags.ToStringSlice(values, goflags.FileNormalizedStringSliceOptions)
 	if err != nil {
 		return err
 	}
