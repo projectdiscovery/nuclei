@@ -141,7 +141,8 @@ func TestGetPrintableDslFunctionSignatures(t *testing.T) {
 	repeat(arg1, arg2 interface{}) interface{}
 	replace(arg1, arg2, arg3 interface{}) interface{}
 	replace_regex(arg1, arg2, arg3 interface{}) interface{}
-	resolve(host string, format string) string
+	resolve(format string) string
+	resolve(host string) string
 	reverse(arg1 interface{}) interface{}
 	sha1(arg1 interface{}) interface{}
 	sha256(arg1 interface{}) interface{}

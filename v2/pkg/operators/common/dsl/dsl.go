@@ -918,77 +918,80 @@ func init() {
 
 			return buf.String(), nil
 		}),
-		"resolve": makeDslWithOptionalArgsFunction("(host string, format string) string", func(args ...interface{}) (interface{}, error) {
-			format := "4"
-			var dnsType uint16
-			if len(args) > 1 {
-				format = strings.ToLower(types.ToString(args[1]))
-			}
+		"resolve": makeMultiSignatureDslFunction([]string{
+			"(host string) string",
+			"(format string) string"},
+			func(args ...interface{}) (interface{}, error) {
+				format := "4"
+				var dnsType uint16
+				if len(args) > 1 {
+					format = strings.ToLower(types.ToString(args[1]))
+				}
 
-			switch format {
-			case "4", "a":
-				dnsType = dns.TypeA
-			case "6", "aaaa":
-				dnsType = dns.TypeAAAA
-			case "cname":
-				dnsType = dns.TypeCNAME
-			case "ns":
-				dnsType = dns.TypeNS
-			case "txt":
-				dnsType = dns.TypeTXT
-			case "srv":
-				dnsType = dns.TypeSRV
-			case "ptr":
-				dnsType = dns.TypePTR
-			case "mx":
-				dnsType = dns.TypeMX
-			case "soa":
-				dnsType = dns.TypeSOA
-			case "caa":
-				dnsType = dns.TypeCAA
-			default:
-				return nil, fmt.Errorf("invalid dns type")
-			}
+				switch format {
+				case "4", "a":
+					dnsType = dns.TypeA
+				case "6", "aaaa":
+					dnsType = dns.TypeAAAA
+				case "cname":
+					dnsType = dns.TypeCNAME
+				case "ns":
+					dnsType = dns.TypeNS
+				case "txt":
+					dnsType = dns.TypeTXT
+				case "srv":
+					dnsType = dns.TypeSRV
+				case "ptr":
+					dnsType = dns.TypePTR
+				case "mx":
+					dnsType = dns.TypeMX
+				case "soa":
+					dnsType = dns.TypeSOA
+				case "caa":
+					dnsType = dns.TypeCAA
+				default:
+					return nil, fmt.Errorf("invalid dns type")
+				}
 
-			err := dnsclientpool.Init(&types.Options{})
-			if err != nil {
-				return nil, err
-			}
-			dnsClient, err := dnsclientpool.Get(nil, &dnsclientpool.Configuration{})
-			if err != nil {
-				return nil, err
-			}
+				err := dnsclientpool.Init(&types.Options{})
+				if err != nil {
+					return nil, err
+				}
+				dnsClient, err := dnsclientpool.Get(nil, &dnsclientpool.Configuration{})
+				if err != nil {
+					return nil, err
+				}
 
-			// query
-			rawResp, err := dnsClient.Query(types.ToString(args[0]), dnsType)
-			if err != nil {
-				return nil, err
-			}
+				// query
+				rawResp, err := dnsClient.Query(types.ToString(args[0]), dnsType)
+				if err != nil {
+					return nil, err
+				}
 
-			// manage response
-			switch {
-			case len(rawResp.A) > 0 && (dnsType == dns.TypeA || dnsType == dns.TypeMX):
-				return rawResp.A[0], nil
-			case len(rawResp.AAAA) > 0 && (dnsType == dns.TypeAAAA || dnsType == dns.TypeMX):
-				return rawResp.AAAA[0], nil
-			case len(rawResp.CNAME) > 0 && dnsType == dns.TypeCNAME:
-				return rawResp.CNAME[0], nil
-			case len(rawResp.NS) > 0 && dnsType == dns.TypeNS:
-				return rawResp.NS[0], nil
-			case len(rawResp.TXT) > 0 && dnsType == dns.TypeTXT:
-				return rawResp.TXT[0], nil
-			case len(rawResp.SRV) > 0 && dnsType == dns.TypeSRV:
-				return rawResp.SRV[0], nil
-			case len(rawResp.PTR) > 0 && dnsType == dns.TypePTR:
-				return rawResp.PTR[0], nil
-			case len(rawResp.SOA) > 0 && dnsType == dns.TypeSOA:
-				return rawResp.SOA[0], nil
-			case len(rawResp.CAA) > 0 && dnsType == dns.TypeCAA:
-				return rawResp.CAA[0], nil
-			default:
-				return "", nil
-			}
-		}),
+				// manage response
+				switch {
+				case len(rawResp.A) > 0 && (dnsType == dns.TypeA || dnsType == dns.TypeMX):
+					return rawResp.A[0], nil
+				case len(rawResp.AAAA) > 0 && (dnsType == dns.TypeAAAA || dnsType == dns.TypeMX):
+					return rawResp.AAAA[0], nil
+				case len(rawResp.CNAME) > 0 && dnsType == dns.TypeCNAME:
+					return rawResp.CNAME[0], nil
+				case len(rawResp.NS) > 0 && dnsType == dns.TypeNS:
+					return rawResp.NS[0], nil
+				case len(rawResp.TXT) > 0 && dnsType == dns.TypeTXT:
+					return rawResp.TXT[0], nil
+				case len(rawResp.SRV) > 0 && dnsType == dns.TypeSRV:
+					return rawResp.SRV[0], nil
+				case len(rawResp.PTR) > 0 && dnsType == dns.TypePTR:
+					return rawResp.PTR[0], nil
+				case len(rawResp.SOA) > 0 && dnsType == dns.TypeSOA:
+					return rawResp.SOA[0], nil
+				case len(rawResp.CAA) > 0 && dnsType == dns.TypeCAA:
+					return rawResp.CAA[0], nil
+				default:
+					return "", nil
+				}
+			}),
 		"ip_format": makeDslFunction(2, func(args ...interface{}) (interface{}, error) {
 			ipFormat, err := strconv.ParseInt(types.ToString(args[1]), 10, 64)
 			if err != nil {
