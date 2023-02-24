@@ -44,6 +44,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/randomip"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/dns/dnsclientpool"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
+	sliceutil "github.com/projectdiscovery/utils/slice"
 )
 
 const (
@@ -972,31 +973,27 @@ func init() {
 					return nil, err
 				}
 
-				// manage response
-				switch {
-				case len(rawResp.A) > 0 && dnsType == dns.TypeA:
-					return rawResp.A[0], nil
-				case len(rawResp.AAAA) > 0 && dnsType == dns.TypeAAAA:
-					return rawResp.AAAA[0], nil
-				case len(rawResp.CNAME) > 0 && dnsType == dns.TypeCNAME:
-					return rawResp.CNAME[0], nil
-				case len(rawResp.NS) > 0 && dnsType == dns.TypeNS:
-					return rawResp.NS[0], nil
-				case len(rawResp.TXT) > 0 && dnsType == dns.TypeTXT:
-					return rawResp.TXT[0], nil
-				case len(rawResp.SRV) > 0 && dnsType == dns.TypeSRV:
-					return rawResp.SRV[0], nil
-				case len(rawResp.PTR) > 0 && dnsType == dns.TypePTR:
-					return rawResp.PTR[0], nil
-				case len(rawResp.MX) > 0 && dnsType == dns.TypeMX:
-					return rawResp.MX[0], nil
-				case len(rawResp.SOA) > 0 && dnsType == dns.TypeSOA:
-					return rawResp.SOA[0], nil
-				case len(rawResp.CAA) > 0 && dnsType == dns.TypeCAA:
-					return rawResp.CAA[0], nil
-				default:
-					return "", nil
+				dnsValues := map[uint16][]string{
+					dns.TypeA:     rawResp.A,
+					dns.TypeAAAA:  rawResp.AAAA,
+					dns.TypeCNAME: rawResp.CNAME,
+					dns.TypeNS:    rawResp.NS,
+					dns.TypeTXT:   rawResp.TXT,
+					dns.TypeSRV:   rawResp.SRV,
+					dns.TypePTR:   rawResp.PTR,
+					dns.TypeMX:    rawResp.MX,
+					dns.TypeSOA:   rawResp.SOA,
+					dns.TypeCAA:   rawResp.CAA,
 				}
+
+				if values, ok := dnsValues[dnsType]; ok {
+					firstFound, found := sliceutil.FirstNonZero(values)
+					if found {
+						return firstFound, nil
+					}
+				}
+
+				return "", nil
 			}),
 		"ip_format": makeDslFunction(2, func(args ...interface{}) (interface{}, error) {
 			ipFormat, err := strconv.ParseInt(types.ToString(args[1]), 10, 64)
