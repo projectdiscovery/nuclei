@@ -988,7 +988,7 @@ func init() {
 					return rawResp.SRV[0], nil
 				case len(rawResp.PTR) > 0 && dnsType == dns.TypePTR:
 					return rawResp.PTR[0], nil
-				case len(rawResp.SRV) > 0 && dnsType == dns.TypeMX:
+				case len(rawResp.MX) > 0 && dnsType == dns.TypeMX:
 					return rawResp.MX[0], nil
 				case len(rawResp.SOA) > 0 && dnsType == dns.TypeSOA:
 					return rawResp.SOA[0], nil
