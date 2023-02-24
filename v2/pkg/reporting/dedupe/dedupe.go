@@ -51,6 +51,18 @@ func New(dbPath string) (*Storage, error) {
 	return storage, nil
 }
 
+func (s *Storage) Clear() {
+	var keys [][]byte
+	iter := s.storage.NewIterator(nil, nil)
+	for iter.Next() {
+		keys = append(keys, iter.Key())
+	}
+	iter.Release()
+	for _, key := range keys {
+		_ = s.storage.Delete(key, nil)
+	}
+}
+
 // Close closes the storage for further operations
 func (s *Storage) Close() {
 	s.storage.Close()
