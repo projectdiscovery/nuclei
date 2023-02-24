@@ -974,9 +974,9 @@ func init() {
 
 				// manage response
 				switch {
-				case len(rawResp.A) > 0 && (dnsType == dns.TypeA || dnsType == dns.TypeMX):
+				case len(rawResp.A) > 0 && dnsType == dns.TypeA:
 					return rawResp.A[0], nil
-				case len(rawResp.AAAA) > 0 && (dnsType == dns.TypeAAAA || dnsType == dns.TypeMX):
+				case len(rawResp.AAAA) > 0 && dnsType == dns.TypeAAAA:
 					return rawResp.AAAA[0], nil
 				case len(rawResp.CNAME) > 0 && dnsType == dns.TypeCNAME:
 					return rawResp.CNAME[0], nil
@@ -988,6 +988,8 @@ func init() {
 					return rawResp.SRV[0], nil
 				case len(rawResp.PTR) > 0 && dnsType == dns.TypePTR:
 					return rawResp.PTR[0], nil
+				case len(rawResp.SRV) > 0 && dnsType == dns.TypeMX:
+					return rawResp.MX[0], nil
 				case len(rawResp.SOA) > 0 && dnsType == dns.TypeSOA:
 					return rawResp.SOA[0], nil
 				case len(rawResp.CAA) > 0 && dnsType == dns.TypeCAA:
