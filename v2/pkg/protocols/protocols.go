@@ -50,7 +50,7 @@ type ExecuterOptions struct {
 	// Options contains configuration options for the executer.
 	Options *types.Options
 	// IssuesClient is a client for nuclei issue tracker reporting
-	IssuesClient *reporting.Client
+	IssuesClient reporting.Client
 	// Progress is a progress client for scan reporting
 	Progress progress.Progress
 	// RateLimiter is a rate-limiter for limiting sent number of requests.

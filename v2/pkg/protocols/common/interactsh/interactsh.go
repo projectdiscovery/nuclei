@@ -85,7 +85,7 @@ type Options struct {
 	// Output is the output writer for nuclei
 	Output output.Writer
 	// IssuesClient is a client for issue exporting
-	IssuesClient *reporting.Client
+	IssuesClient reporting.Client
 	// Progress is the nuclei progress bar implementation.
 	Progress progress.Progress
 	// Debug specifies whether debugging output should be shown for interactsh-client
@@ -133,7 +133,7 @@ func New(options *Options) (*Client, error) {
 }
 
 // NewDefaultOptions returns the default options for interactsh client
-func NewDefaultOptions(output output.Writer, reporting *reporting.Client, progress progress.Progress) *Options {
+func NewDefaultOptions(output output.Writer, reporting reporting.Client, progress progress.Progress) *Options {
 	return &Options{
 		ServerURL:           client.DefaultOptions.ServerURL,
 		CacheSize:           5000,
