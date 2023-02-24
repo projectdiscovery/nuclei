@@ -993,7 +993,7 @@ func init() {
 					}
 				}
 
-				return "", nil
+				return "", fmt.Errorf("no records found")
 			}),
 		"ip_format": makeDslFunction(2, func(args ...interface{}) (interface{}, error) {
 			ipFormat, err := strconv.ParseInt(types.ToString(args[1]), 10, 64)
