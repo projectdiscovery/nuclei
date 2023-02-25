@@ -3,7 +3,7 @@
 echo "::group::Build nuclei"
 rm integration-test nuclei 2>/dev/null
 cd ../v2/cmd/nuclei
-go build
+go build -race .
 mv nuclei ../../../integration_tests/nuclei 
 echo "::endgroup::"
 
