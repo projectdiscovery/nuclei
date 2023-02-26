@@ -109,6 +109,9 @@ type Template struct {
 	Executer protocols.Executer `yaml:"-" json:"-"`
 
 	Path string `yaml:"-" json:"-"`
+
+	// Verified defines if the template signature is digitally verified
+	Verified bool `yaml:"-" json:"-"`
 }
 
 // TemplateProtocols is a list of accepted template protocols

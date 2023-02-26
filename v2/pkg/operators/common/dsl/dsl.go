@@ -52,20 +52,18 @@ const (
 	letters = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
 )
 
-var invalidDslFunctionError = errors.New("invalid DSL function signature")
-var invalidDslFunctionMessageTemplate = "%w. correct method signature %q"
-
-var dslFunctions map[string]dslFunction
-
 var (
+	ErrinvalidDslFunction = errors.New("invalid DSL function signature")
+	dslFunctions          map[string]dslFunction
+
 	// FunctionNames is a list of function names for expression evaluation usages
 	FunctionNames []string
 	// HelperFunctions is a pre-compiled list of govaluate DSL functions
 	HelperFunctions map[string]govaluate.ExpressionFunction
-)
 
-var functionSignaturePattern = regexp.MustCompile(`(\w+)\s*\((?:([\w\d,\s]+)\s+([.\w\d{}&*]+))?\)([\s.\w\d{}&*]+)?`)
-var dateFormatRegex = regexp.MustCompile("%([A-Za-z])")
+	functionSignaturePattern = regexp.MustCompile(`(\w+)\s*\((?:([\w\d,\s]+)\s+([.\w\d{}&*]+))?\)([\s.\w\d{}&*]+)?`)
+	dateFormatRegex          = regexp.MustCompile("%([A-Za-z])")
+)
 
 type dslFunction struct {
 	signatures  []string
@@ -101,7 +99,7 @@ func init() {
 			func(args ...interface{}) (interface{}, error) {
 				argCount := len(args)
 				if argCount == 0 {
-					return nil, invalidDslFunctionError
+					return nil, ErrinvalidDslFunction
 				} else if argCount == 1 {
 					runes := []rune(types.ToString(args[0]))
 					sort.Slice(runes, func(i int, j int) bool {
@@ -125,7 +123,7 @@ func init() {
 			func(args ...interface{}) (interface{}, error) {
 				argCount := len(args)
 				if argCount == 0 {
-					return nil, invalidDslFunctionError
+					return nil, ErrinvalidDslFunction
 				} else if argCount == 1 {
 					builder := &strings.Builder{}
 					visited := make(map[rune]struct{})
@@ -152,7 +150,7 @@ func init() {
 		"repeat": makeDslFunction(2, func(args ...interface{}) (interface{}, error) {
 			count, err := strconv.Atoi(types.ToString(args[1]))
 			if err != nil {
-				return nil, invalidDslFunctionError
+				return nil, ErrinvalidDslFunction
 			}
 			return strings.Repeat(types.ToString(args[0]), count), nil
 		}),
@@ -246,7 +244,7 @@ func init() {
 
 				argumentsSize := len(arguments)
 				if argumentsSize < 1 && argumentsSize > 2 {
-					return nil, invalidDslFunctionError
+					return nil, ErrinvalidDslFunction
 				}
 
 				currentTime, err := getCurrentTimeFromUserInput(arguments)
@@ -356,7 +354,7 @@ func init() {
 			"(str string, prefix ...string) bool",
 			func(args ...interface{}) (interface{}, error) {
 				if len(args) < 2 {
-					return nil, invalidDslFunctionError
+					return nil, ErrinvalidDslFunction
 				}
 				for _, prefix := range args[1:] {
 					if strings.HasPrefix(types.ToString(args[0]), types.ToString(prefix)) {
@@ -369,7 +367,7 @@ func init() {
 		"line_starts_with": makeDslWithOptionalArgsFunction(
 			"(str string, prefix ...string) bool", func(args ...interface{}) (interface{}, error) {
 				if len(args) < 2 {
-					return nil, invalidDslFunctionError
+					return nil, ErrinvalidDslFunction
 				}
 				for _, line := range strings.Split(types.ToString(args[0]), "\n") {
 					for _, prefix := range args[1:] {
@@ -385,7 +383,7 @@ func init() {
 			"(str string, suffix ...string) bool",
 			func(args ...interface{}) (interface{}, error) {
 				if len(args) < 2 {
-					return nil, invalidDslFunctionError
+					return nil, ErrinvalidDslFunction
 				}
 				for _, suffix := range args[1:] {
 					if strings.HasSuffix(types.ToString(args[0]), types.ToString(suffix)) {
@@ -398,7 +396,7 @@ func init() {
 		"line_ends_with": makeDslWithOptionalArgsFunction(
 			"(str string, suffix ...string) bool", func(args ...interface{}) (interface{}, error) {
 				if len(args) < 2 {
-					return nil, invalidDslFunctionError
+					return nil, ErrinvalidDslFunction
 				}
 				for _, line := range strings.Split(types.ToString(args[0]), "\n") {
 					for _, suffix := range args[1:] {
@@ -439,11 +437,11 @@ func init() {
 					separator := types.ToString(arguments[1])
 					count, err := strconv.Atoi(types.ToString(arguments[2]))
 					if err != nil {
-						return nil, invalidDslFunctionError
+						return nil, ErrinvalidDslFunction
 					}
 					return strings.SplitN(input, separator, count), nil
 				} else {
-					return nil, invalidDslFunctionError
+					return nil, ErrinvalidDslFunction
 				}
 			},
 		),
@@ -453,7 +451,7 @@ func init() {
 			func(arguments ...interface{}) (interface{}, error) {
 				argumentsSize := len(arguments)
 				if argumentsSize < 2 {
-					return nil, invalidDslFunctionError
+					return nil, ErrinvalidDslFunction
 				} else if argumentsSize == 2 {
 					separator := types.ToString(arguments[0])
 					elements, ok := arguments[1].([]string)
@@ -498,7 +496,7 @@ func init() {
 
 				argSize := len(args)
 				if argSize != 0 && argSize != 1 {
-					return nil, invalidDslFunctionError
+					return nil, ErrinvalidDslFunction
 				}
 
 				if argSize >= 1 {
@@ -519,7 +517,7 @@ func init() {
 
 				argSize := len(args)
 				if argSize < 1 || argSize > 3 {
-					return nil, invalidDslFunctionError
+					return nil, ErrinvalidDslFunction
 				}
 
 				length = int(args[0].(float64))
@@ -541,7 +539,7 @@ func init() {
 
 				argSize := len(args)
 				if argSize != 1 && argSize != 2 {
-					return nil, invalidDslFunctionError
+					return nil, ErrinvalidDslFunction
 				}
 
 				length = int(args[0].(float64))
@@ -561,7 +559,7 @@ func init() {
 
 				argSize := len(args)
 				if argSize != 1 && argSize != 2 {
-					return nil, invalidDslFunctionError
+					return nil, ErrinvalidDslFunction
 				}
 
 				length = int(args[0].(float64))
@@ -578,7 +576,7 @@ func init() {
 			func(args ...interface{}) (interface{}, error) {
 				argSize := len(args)
 				if argSize != 1 && argSize != 2 {
-					return nil, invalidDslFunctionError
+					return nil, ErrinvalidDslFunction
 				}
 
 				length := int(args[0].(float64))
@@ -597,7 +595,7 @@ func init() {
 			func(args ...interface{}) (interface{}, error) {
 				argSize := len(args)
 				if argSize > 2 {
-					return nil, invalidDslFunctionError
+					return nil, ErrinvalidDslFunction
 				}
 
 				min := 0
@@ -616,7 +614,7 @@ func init() {
 			"(cidr ...string) string",
 			func(args ...interface{}) (interface{}, error) {
 				if len(args) == 0 {
-					return nil, invalidDslFunctionError
+					return nil, ErrinvalidDslFunction
 				}
 				var cidrs []string
 				for _, arg := range args {
@@ -638,7 +636,7 @@ func init() {
 
 				argSize := len(args)
 				if argSize != 0 && argSize != 1 {
-					return nil, invalidDslFunctionError
+					return nil, ErrinvalidDslFunction
 				} else if argSize == 1 {
 					seconds = int(args[0].(float64))
 				}
@@ -673,7 +671,7 @@ func init() {
 					}
 					return parsedTime.Unix(), err
 				} else {
-					return nil, invalidDslFunctionError
+					return nil, ErrinvalidDslFunction
 				}
 			},
 		),
@@ -681,7 +679,7 @@ func init() {
 			"(seconds uint)",
 			func(args ...interface{}) (interface{}, error) {
 				if len(args) != 1 {
-					return nil, invalidDslFunctionError
+					return nil, ErrinvalidDslFunction
 				}
 				seconds := args[0].(float64)
 				time.Sleep(time.Duration(seconds) * time.Second)
@@ -692,7 +690,7 @@ func init() {
 			"(firstVersion, constraints ...string) bool",
 			func(args ...interface{}) (interface{}, error) {
 				if len(args) < 2 {
-					return nil, invalidDslFunctionError
+					return nil, ErrinvalidDslFunction
 				}
 
 				firstParsed, parseErr := version.NewVersion(types.ToString(args[0]))
@@ -716,7 +714,7 @@ func init() {
 			"(args ...interface{})",
 			func(args ...interface{}) (interface{}, error) {
 				if len(args) < 1 {
-					return nil, invalidDslFunctionError
+					return nil, ErrinvalidDslFunction
 				}
 				gologger.Info().Msgf("print_debug value: %s", fmt.Sprint(args))
 				return true, nil
@@ -756,7 +754,7 @@ func init() {
 			"(str string, start int, optionalEnd int)",
 			func(args ...interface{}) (interface{}, error) {
 				if len(args) < 2 {
-					return nil, invalidDslFunctionError
+					return nil, ErrinvalidDslFunction
 				}
 				argStr := types.ToString(args[0])
 				start, err := strconv.Atoi(types.ToString(args[1]))
@@ -820,7 +818,7 @@ func init() {
 				argSize := len(args)
 
 				if argSize < 1 || argSize > 4 {
-					return nil, invalidDslFunctionError
+					return nil, ErrinvalidDslFunction
 				}
 				jsonString := args[0].(string)
 
@@ -1047,7 +1045,7 @@ func makeDslFunction(numberOfParameters int, dslFunctionLogic govaluate.Expressi
 			[]string{signature},
 			func(args ...interface{}) (interface{}, error) {
 				if len(args) != numberOfParameters {
-					return nil, fmt.Errorf(invalidDslFunctionMessageTemplate, invalidDslFunctionError, signature)
+					return nil, fmt.Errorf("%w. correct method signature %q", ErrinvalidDslFunction, signature)
 				}
 				return dslFunctionLogic(args...)
 			},
