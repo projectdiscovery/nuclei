@@ -107,7 +107,11 @@ func (holder *MatcherTypeHolder) UnmarshalYAML(unmarshal func(interface{}) error
 }
 
 func (holder *MatcherTypeHolder) UnmarshalJSON(data []byte) error {
-	computedType, err := toMatcherTypes(strings.Trim(string(data), "\""))
+	s := strings.Trim(string(data), `"`)
+	if s == "" {
+		return nil
+	}
+	computedType, err := toMatcherTypes(s)
 	if err != nil {
 		return err
 	}

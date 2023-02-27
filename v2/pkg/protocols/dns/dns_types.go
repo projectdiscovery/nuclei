@@ -117,7 +117,11 @@ func (holder *DNSRequestTypeHolder) UnmarshalYAML(unmarshal func(interface{}) er
 }
 
 func (holder *DNSRequestTypeHolder) UnmarshalJSON(data []byte) error {
-	computedType, err := toDNSRequestTypes(strings.Trim(string(data), "\""))
+	s := strings.Trim(string(data), `"`)
+	if s == "" {
+		return nil
+	}
+	computedType, err := toDNSRequestTypes(s)
 	if err != nil {
 		return err
 	}
