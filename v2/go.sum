@@ -519,10 +519,10 @@ github.com/pmezard/go-difflib v1.0.0 h1:4DBwDE0NGyQoBHbLQYPwSUPoCMWR5BEzIk/f1lZb
 github.com/pmezard/go-difflib v1.0.0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
 github.com/power-devops/perfstat v0.0.0-20210106213030-5aafc221ea8c h1:ncq/mPwQF4JjgDlrVEn3C11VoGHZN7m8qihwgMEtzYw=
 github.com/power-devops/perfstat v0.0.0-20210106213030-5aafc221ea8c/go.mod h1:OmDBASR4679mdNQnz2pUhc2G8CO2JrUAVFDRBDP/hJE=
-github.com/projectdiscovery/asnmap v0.0.1 h1:n4YCz1ljUaDA3dOUCkjI/bUOtiS7ge1KJ39qpURCd/o=
-github.com/projectdiscovery/asnmap v0.0.1/go.mod h1:CjCVDhQPVtmlE247L6YFeIVX9c4m8pOX8V8BmB0JkX8=
-github.com/projectdiscovery/blackrock v0.0.0-20220628111055-35616c71b2dc h1:jqZK68yPOnNNRmwuXqytl+T9EbwneEUCvMDRjLe0J04=
-github.com/projectdiscovery/blackrock v0.0.0-20220628111055-35616c71b2dc/go.mod h1:5tNGQP9kOfW+X5+40pZP8aqPYLHs45nJkFaSHLxdeH8=
+github.com/projectdiscovery/asnmap v1.0.0 h1:h9aUEHT3gEWgeTxDCd0UMxBw1yPthDwL1ogqUWnkBXo=
+github.com/projectdiscovery/asnmap v1.0.0/go.mod h1:m+qedSAZERz7Ds942hWANjU9kg4ADAikFHfwSXN1Ey8=
+github.com/projectdiscovery/blackrock v0.0.0-20221025011524-9e4efe804fb4 h1:EsrQ/zkotVodSJLOch3pV/UYt1vQcwyIs5HX0sm1ljE=
+github.com/projectdiscovery/blackrock v0.0.0-20221025011524-9e4efe804fb4/go.mod h1:5tNGQP9kOfW+X5+40pZP8aqPYLHs45nJkFaSHLxdeH8=
 github.com/projectdiscovery/cdncheck v0.0.4-0.20220413175814-b47bc2d578b1 h1:QtTPPx0uu42AsQJiXT86/wqdHS7/iVcgz1VM38tjv20=
 github.com/projectdiscovery/cdncheck v0.0.4-0.20220413175814-b47bc2d578b1/go.mod h1:EevMeCG1ogBoUJYaa0Mv9R1VUboDm/DiynId7DboKy0=
 github.com/projectdiscovery/clistats v0.0.12 h1:KLYJxpiwEFidduU4PbcwEcCQ2L7c5wrf7DI5IN5fZ+8=
@@ -547,8 +547,8 @@ github.com/projectdiscovery/interactsh v1.0.6-0.20220827132222-460cc6270053 h1:8
 github.com/projectdiscovery/interactsh v1.0.6-0.20220827132222-460cc6270053/go.mod h1:7lLz3Rt+Lxt8xhK0EUYkgxoa9RXRL3honxHeAu+ivuk=
 github.com/projectdiscovery/iputil v0.0.2 h1:f6IGnZF4RImJLysPSPG3D84jyTH34q3lihCFeP+eZzI=
 github.com/projectdiscovery/iputil v0.0.2/go.mod h1:J3Pcz1q51pi4/JL871mQztg0KOzyWDPxnPLOYJm2pVQ=
-github.com/projectdiscovery/mapcidr v1.0.3 h1:SGtOOEz0AxthVO7ZonMvhrJ/AQkHIXCVgyZqJdY0cAY=
-github.com/projectdiscovery/mapcidr v1.0.3/go.mod h1:/0lEXlu/q0t5u34vIVF6odHR+JCdD3CIHNsMXo7nwrU=
+github.com/projectdiscovery/mapcidr v1.1.0 h1:Yeb+CGVsRYvHmZ9YSHb9iy4tzY9YuOm3oTFX/xzGhVU=
+github.com/projectdiscovery/mapcidr v1.1.0/go.mod h1:hck0bWXka5ZkUaBG+TWt99bzLy+4hAg9oANhEmm3GNs=
 github.com/projectdiscovery/networkpolicy v0.0.4 h1:zcGjEqZbyECZEdyCy1jVuwOS7Ww1mzgCefQU75XqdJA=
 github.com/projectdiscovery/networkpolicy v0.0.4/go.mod h1:DIXwKs3sQyfCoWHKRLQiRrEorSQW4Zrh4ftu7oDVK6w=
 github.com/projectdiscovery/nvd v1.0.9 h1:2DdMm7lu3GnCQsyYDEQiQ/LRYDmpEm654kvGQS6jzjE=
@@ -565,7 +565,6 @@ github.com/projectdiscovery/retryablehttp-go v1.0.12-0.20230220094538-f406add578
 github.com/projectdiscovery/retryablehttp-go v1.0.12-0.20230220094538-f406add578ab/go.mod h1:dnJK347etdVKz7ljhemUhBK6EpDnVf0U1O8dGj7MM+0=
 github.com/projectdiscovery/sarif v0.0.1 h1:C2Tyj0SGOKbCLgHrx83vaE6YkzXEVrMXYRGLkKCr/us=
 github.com/projectdiscovery/sarif v0.0.1/go.mod h1:cEYlDu8amcPf6b9dSakcz2nNnJsoz4aR6peERwV+wuQ=
-github.com/projectdiscovery/sliceutil v0.0.1 h1:YoCqCMcdwz+gqNfW5hFY8UvNHoA6SfyBSNkVahatleg=
 github.com/projectdiscovery/stringsutil v0.0.2 h1:uzmw3IVLJSMW1kEg8eCStG/cGbYYZAja8BH3LqqJXMA=
 github.com/projectdiscovery/stringsutil v0.0.2/go.mod h1:EJ3w6bC5fBYjVou6ryzodQq37D5c6qbAYQpGmAy+DC0=
 github.com/projectdiscovery/tlsx v1.0.5 h1:ZDMcwqjwXB0x2XBzvdra7HYiN8yLGBhHc5qE2mjJchM=
