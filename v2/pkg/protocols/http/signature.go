@@ -79,7 +79,11 @@ func (holder *SignatureTypeHolder) UnmarshalYAML(unmarshal func(interface{}) err
 }
 
 func (holder *SignatureTypeHolder) UnmarshalJSON(data []byte) error {
-	computedType, err := toSignatureType(strings.Trim(string(data), "\""))
+	s := strings.Trim(string(data), `"`)
+	if s == "" {
+		return nil
+	}
+	computedType, err := toSignatureType(s)
 	if err != nil {
 		return err
 	}
@@ -88,7 +92,7 @@ func (holder *SignatureTypeHolder) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-func (holder *SignatureTypeHolder) MarshalJSON() ([]byte, error) {
+func (holder SignatureTypeHolder) MarshalJSON() ([]byte, error) {
 	return json.Marshal(holder.Value.String())
 }
 

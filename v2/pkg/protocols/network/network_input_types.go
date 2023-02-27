@@ -94,7 +94,11 @@ func (holder *NetworkInputTypeHolder) UnmarshalYAML(unmarshal func(interface{}) 
 }
 
 func (holder *NetworkInputTypeHolder) UnmarshalJSON(data []byte) error {
-	computedType, err := toNetworkInputTypes(strings.Trim(string(data), `"`))
+	s := strings.Trim(string(data), `"`)
+	if s == "" {
+		return nil
+	}
+	computedType, err := toNetworkInputTypes(s)
 	if err != nil {
 		return err
 	}

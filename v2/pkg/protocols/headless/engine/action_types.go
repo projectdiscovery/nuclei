@@ -199,7 +199,11 @@ func (holder *ActionTypeHolder) UnmarshalYAML(unmarshal func(interface{}) error)
 }
 
 func (holder *ActionTypeHolder) UnmarshalJSON(data []byte) error {
-	computedType, err := toActionTypes(strings.Trim(string(data), `"`))
+	s := strings.Trim(string(data), `"`)
+	if s == "" {
+		return nil
+	}
+	computedType, err := toActionTypes(s)
 	if err != nil {
 		return err
 	}

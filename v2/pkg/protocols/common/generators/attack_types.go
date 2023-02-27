@@ -89,7 +89,11 @@ func (holder *AttackTypeHolder) UnmarshalYAML(unmarshal func(interface{}) error)
 }
 
 func (holder *AttackTypeHolder) UnmarshalJSON(data []byte) error {
-	computedType, err := toAttackType(strings.Trim(string(data), "\""))
+	s := strings.Trim(string(data), `"`)
+	if s == "" {
+		return nil
+	}
+	computedType, err := toAttackType(s)
 	if err != nil {
 		return err
 	}
