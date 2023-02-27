@@ -87,7 +87,11 @@ func (userAgentHolder *UserAgentHolder) UnmarshalYAML(unmarshal func(interface{}
 }
 
 func (userAgentHolder *UserAgentHolder) UnmarshalJSON(data []byte) error {
-	computedUserAgent, err := toUserAgent(strings.Trim(string(data), `"`))
+	s := strings.Trim(string(data), `"`)
+	if s == "" {
+		return nil
+	}
+	computedUserAgent, err := toUserAgent(s)
 	if err != nil {
 		return err
 	}
