@@ -36,7 +36,6 @@ var DefaultOptions = &types.Options{
 	UpdateTemplates:            false,
 	JSON:                       false,
 	JSONRequests:               false,
-	EnableProgressBar:          false,
 	TemplatesVersion:           false,
 	TemplateList:               false,
 	Stdin:                      false,
@@ -78,7 +77,7 @@ type TemplateInfo struct {
 
 // NewMockExecuterOptions creates a new mock executeroptions struct
 func NewMockExecuterOptions(options *types.Options, info *TemplateInfo) *protocols.ExecuterOptions {
-	progressImpl, _ := progress.NewStatsTicker(0, false, false, false, 0)
+	progressImpl, _ := progress.NewStats(false, 0)
 	executerOpts := &protocols.ExecuterOptions{
 		TemplateID:   info.ID,
 		TemplateInfo: info.Info,

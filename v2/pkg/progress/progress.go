@@ -2,10 +2,6 @@ package progress
 
 import (
 	"context"
-	"encoding/json"
-	"fmt"
-	"os"
-	"strings"
 	"time"
 
 	"github.com/projectdiscovery/clistats"
@@ -34,27 +30,17 @@ type Progress interface {
 	IncrementFailedRequestsBy(count int64)
 }
 
-var _ Progress = &StatsTicker{}
+var _ Progress = &Stats{}
 
-// StatsTicker is a progress instance for showing program stats
-type StatsTicker struct {
-	cloud        bool
-	active       bool
-	outputJSON   bool
-	stats        clistats.StatisticsClient
-	tickDuration time.Duration
+// Stats is a progress instance for showing program stats
+type Stats struct {
+	cloud bool
+	stats clistats.StatisticsClient
 }
 
-// NewStatsTicker creates and returns a new progress tracking object.
-func NewStatsTicker(duration int, active, outputJSON, cloud bool, port int) (Progress, error) {
-	var tickDuration time.Duration
-	if active && duration != -1 {
-		tickDuration = time.Duration(duration) * time.Second
-	} else {
-		tickDuration = -1
-	}
-
-	progress := &StatsTicker{}
+// NewStats creates and returns a new progress tracking object.
+func NewStats(cloud bool, port int) (Progress, error) {
+	progress := &Stats{}
 
 	options := clistats.DefaultOptions
 	if port > 0 {
@@ -65,16 +51,13 @@ func NewStatsTicker(duration int, active, outputJSON, cloud bool, port int) (Pro
 		return nil, err
 	}
 	progress.cloud = cloud
-	progress.active = active
 	progress.stats = stats
-	progress.tickDuration = tickDuration
-	progress.outputJSON = outputJSON
 
 	return progress, nil
 }
 
 // Init initializes the progress display mechanism by setting counters, etc.
-func (p *StatsTicker) Init(hostCount int64, rulesCount int, requestCount int64) {
+func (p *Stats) Init(hostCount int64, rulesCount int, requestCount int64) {
 	p.stats.AddStatic("templates", rulesCount)
 	p.stats.AddStatic("hosts", hostCount)
 	p.stats.AddStatic("startedAt", time.Now())
@@ -83,179 +66,47 @@ func (p *StatsTicker) Init(hostCount int64, rulesCount int, requestCount int64) 
 	p.stats.AddCounter("matched", uint64(0))
 	p.stats.AddCounter("total", uint64(requestCount))
 
-	var printCallbackFunc clistats.PrintCallback
-	if p.active {
-		if p.outputJSON {
-			printCallbackFunc = printCallbackJSON
-		} else {
-			printCallbackFunc = p.makePrintCallback()
-		}
-	}
-	if err := p.stats.Start(printCallbackFunc, p.tickDuration); err != nil {
+	if err := p.stats.Start(); err != nil {
 		gologger.Warning().Msgf("Couldn't start statistics: %s", err)
 	}
 }
 
 // AddToTotal adds a value to the total request count
-func (p *StatsTicker) AddToTotal(delta int64) {
+func (p *Stats) AddToTotal(delta int64) {
 	p.stats.IncrementCounter("total", int(delta))
 }
 
 // IncrementRequests increments the requests counter by 1.
-func (p *StatsTicker) IncrementRequests() {
+func (p *Stats) IncrementRequests() {
 	p.stats.IncrementCounter("requests", 1)
 }
 
 // SetRequests sets the counter by incrementing it with a delta
-func (p *StatsTicker) SetRequests(count uint64) {
+func (p *Stats) SetRequests(count uint64) {
 	value, _ := p.stats.GetCounter("requests")
 	delta := count - value
 	p.stats.IncrementCounter("requests", int(delta))
 }
 
 // IncrementMatched increments the matched counter by 1.
-func (p *StatsTicker) IncrementMatched() {
+func (p *Stats) IncrementMatched() {
 	p.stats.IncrementCounter("matched", 1)
 }
 
 // IncrementErrorsBy increments the error counter by count.
-func (p *StatsTicker) IncrementErrorsBy(count int64) {
+func (p *Stats) IncrementErrorsBy(count int64) {
 	p.stats.IncrementCounter("errors", int(count))
 }
 
 // IncrementFailedRequestsBy increments the number of requests counter by count along with errors.
-func (p *StatsTicker) IncrementFailedRequestsBy(count int64) {
+func (p *Stats) IncrementFailedRequestsBy(count int64) {
 	// mimic dropping by incrementing the completed requests
 	p.stats.IncrementCounter("requests", int(count))
 	p.stats.IncrementCounter("errors", int(count))
 }
 
-func (p *StatsTicker) makePrintCallback() func(stats clistats.StatisticsClient) {
-	return func(stats clistats.StatisticsClient) {
-		builder := &strings.Builder{}
-
-		var duration time.Duration
-		if startedAt, ok := stats.GetStatic("startedAt"); ok {
-			if startedAtTime, ok := startedAt.(time.Time); ok {
-				duration = time.Since(startedAtTime)
-				builder.WriteString(fmt.Sprintf("[%s]", fmtDuration(duration)))
-			}
-		}
-
-		if templates, ok := stats.GetStatic("templates"); ok {
-			builder.WriteString(" | Templates: ")
-			builder.WriteString(clistats.String(templates))
-		}
-
-		if hosts, ok := stats.GetStatic("hosts"); ok {
-			builder.WriteString(" | Hosts: ")
-			builder.WriteString(clistats.String(hosts))
-		}
-
-		requests, okRequests := stats.GetCounter("requests")
-		total, okTotal := stats.GetCounter("total")
-
-		if okRequests && okTotal && duration > 0 && !p.cloud {
-			builder.WriteString(" | RPS: ")
-			builder.WriteString(clistats.String(uint64(float64(requests) / duration.Seconds())))
-		}
-
-		if matched, ok := stats.GetCounter("matched"); ok {
-			builder.WriteString(" | Matched: ")
-			builder.WriteString(clistats.String(matched))
-		}
-
-		if errors, ok := stats.GetCounter("errors"); ok && !p.cloud {
-			builder.WriteString(" | Errors: ")
-			builder.WriteString(clistats.String(errors))
-		}
-
-		if okRequests && okTotal {
-			if p.cloud {
-				builder.WriteString(" | Task: ")
-			} else {
-				builder.WriteString(" | Requests: ")
-			}
-			builder.WriteString(clistats.String(requests))
-			builder.WriteRune('/')
-			builder.WriteString(clistats.String(total))
-			builder.WriteRune(' ')
-			builder.WriteRune('(')
-			//nolint:gomnd // this is not a magic number
-			builder.WriteString(clistats.String(uint64(float64(requests) / float64(total) * 100.0)))
-			builder.WriteRune('%')
-			builder.WriteRune(')')
-			builder.WriteRune('\n')
-		}
-
-		fmt.Fprintf(os.Stderr, "%s", builder.String())
-	}
-}
-
-func printCallbackJSON(stats clistats.StatisticsClient) {
-	builder := &strings.Builder{}
-	if err := json.NewEncoder(builder).Encode(metricsMap(stats)); err == nil {
-		fmt.Fprintf(os.Stderr, "%s", builder.String())
-	}
-}
-
-func metricsMap(stats clistats.StatisticsClient) map[string]interface{} {
-	results := make(map[string]interface{})
-
-	var (
-		startedAt time.Time
-		duration  time.Duration
-	)
-
-	if stAt, ok := stats.GetStatic("startedAt"); ok {
-		startedAt = stAt.(time.Time)
-		duration = time.Since(startedAt)
-	}
-
-	results["startedAt"] = startedAt
-	results["duration"] = fmtDuration(duration)
-	templates, _ := stats.GetStatic("templates")
-	results["templates"] = clistats.String(templates)
-	hosts, _ := stats.GetStatic("hosts")
-	results["hosts"] = clistats.String(hosts)
-	matched, _ := stats.GetCounter("matched")
-	results["matched"] = clistats.String(matched)
-	requests, _ := stats.GetCounter("requests")
-	results["requests"] = clistats.String(requests)
-	total, _ := stats.GetCounter("total")
-	results["total"] = clistats.String(total)
-	results["rps"] = clistats.String(uint64(float64(requests) / duration.Seconds()))
-	errors, _ := stats.GetCounter("errors")
-	results["errors"] = clistats.String(errors)
-
-	// nolint:gomnd // this is not a magic number
-	percentData := (float64(requests) * float64(100)) / float64(total)
-	percent := clistats.String(uint64(percentData))
-	results["percent"] = percent
-	return results
-}
-
-// fmtDuration formats the duration for the time elapsed
-func fmtDuration(d time.Duration) string {
-	d = d.Round(time.Second)
-	h := d / time.Hour
-	d -= h * time.Hour
-	m := d / time.Minute
-	d -= m * time.Minute
-	s := d / time.Second
-	return fmt.Sprintf("%d:%02d:%02d", h, m, s)
-}
-
 // Stop stops the progress bar execution
-func (p *StatsTicker) Stop() {
-	if p.active {
-		// Print one final summary
-		if p.outputJSON {
-			printCallbackJSON(p.stats)
-		} else {
-			p.makePrintCallback()(p.stats)
-		}
-	}
+func (p *Stats) Stop() {
 	if err := p.stats.Stop(); err != nil {
 		gologger.Warning().Msgf("Couldn't stop statistics: %s", err)
 	}

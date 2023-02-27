@@ -217,19 +217,9 @@ func New(options *types.Options) (*Runner, error) {
 	}
 	runner.output = outputWriter
 
-	if options.JSON && options.EnableProgressBar {
-		options.StatsJSON = true
-	}
-	if options.StatsJSON {
-		options.EnableProgressBar = true
-	}
 	// Creates the progress tracking object
-	statsInterval := options.StatsInterval
-	if options.Cloud && !options.EnableProgressBar {
-		statsInterval = -1
-		options.EnableProgressBar = true
-	}
-	runner.progress, err = progress.NewStatsTicker(statsInterval, options.EnableProgressBar, options.StatsJSON, options.Cloud, options.MetricsPort)
+	//todo: needes for cloud?
+	runner.progress, err = progress.NewStats(options.Cloud, options.MetricsPort)
 	if err != nil {
 		return nil, err
 	}
@@ -709,6 +699,7 @@ func (r *Runner) displayExecutionInfo(store *loader.Store) {
 	if r.hmapInputProvider.Count() > 0 {
 		gologger.Info().Msgf("Targets loaded for scan: %d", r.hmapInputProvider.Count())
 	}
+	gologger.Info().Msgf("Scan metrics endpoint: http://127.0.0.1:%d", r.options.MetricsPort)
 }
 
 func (r *Runner) readNewTemplatesWithVersionFile(version string) ([]string, error) {

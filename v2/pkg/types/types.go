@@ -136,6 +136,7 @@ type Options struct {
 	// ResolversFile is a file containing resolvers for nuclei.
 	ResolversFile string
 	// StatsInterval is the number of seconds to display stats after
+	// Deprecated: stats are automatically available through local endpoint (maybe used on cloud?)
 	StatsInterval int
 	// MetricsPort is the port to show metrics on
 	MetricsPort int
@@ -184,6 +185,7 @@ type Options struct {
 	// Force HTTP2 requests
 	ForceAttemptHTTP2 bool
 	// StatsJSON writes stats output in JSON format
+	// Deprecated: stats are automatically available through local endpoint in json format
 	StatsJSON bool
 	// Headless specifies whether to allow headless mode templates
 	Headless bool
@@ -235,6 +237,7 @@ type Options struct {
 	// Cloud enables nuclei cloud scan execution
 	Cloud bool
 	// EnableProgressBar enables progress bar
+	// Deprecated: stats are automatically available through local endpoint
 	EnableProgressBar bool
 	// TemplatesVersion shows the templates installed version
 	TemplatesVersion bool

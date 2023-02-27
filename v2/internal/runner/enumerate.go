@@ -95,8 +95,10 @@ func (r *Runner) runCloudEnumeration(store *loader.Store, cloudTemplates, cloudT
 
 	// Start progress logging for the created scan
 	if r.progress != nil {
+		//todo: needes for cloud?
 		ticker := time.NewTicker(time.Duration(r.options.StatsInterval) * time.Second)
 		r.progress.Init(r.hmapInputProvider.Count(), int(scanResponse.Templates), int64(scanResponse.Total))
+		//todo: needes for cloud?
 		go func() {
 			defer ticker.Stop()
 			for {
