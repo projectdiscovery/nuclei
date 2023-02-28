@@ -20,7 +20,7 @@ type Rule struct {
 	//   - "prefix"
 	//   - "postfix"
 	//   - "infix"
-	Type     string `yaml:"type,omitempty" jsonschema:"title=type of rule,description=Type of fuzzing rule to perform,enum=replace,enum=prefix,enum=postfix,enum=infix"`
+	Type     string `yaml:"type,omitempty" json:"type,omitempty" jsonschema:"title=type of rule,description=Type of fuzzing rule to perform,enum=replace,enum=prefix,enum=postfix,enum=infix"`
 	ruleType ruleType
 	// description: |
 	//   Part is the part of request to fuzz.
@@ -28,7 +28,7 @@ type Rule struct {
 	//   query fuzzes the query part of url. More parts will be added later.
 	// values:
 	//   - "query"
-	Part     string `yaml:"part,omitempty" jsonschema:"title=part of rule,description=Part of request rule to fuzz,enum=query"`
+	Part     string `yaml:"part,omitempty" json:"part,omitempty" jsonschema:"title=part of rule,description=Part of request rule to fuzz,enum=query"`
 	partType partType
 	// description: |
 	//   Mode is the mode of fuzzing to perform.
@@ -37,7 +37,7 @@ type Rule struct {
 	// values:
 	//   - "single"
 	//   - "multiple"
-	Mode     string `yaml:"mode,omitempty" jsonschema:"title=mode of rule,description=Mode of request rule to fuzz,enum=single,enum=multiple"`
+	Mode     string `yaml:"mode,omitempty" json:"mode,omitempty" jsonschema:"title=mode of rule,description=Mode of request rule to fuzz,enum=single,enum=multiple"`
 	modeType modeType
 
 	// description: |
@@ -46,7 +46,7 @@ type Rule struct {
 	//   - name: Examples of keys
 	//     value: >
 	//       []string{"url", "file", "host"}
-	Keys    []string `yaml:"keys,omitempty" jsonschema:"title=keys of parameters to fuzz,description=Keys of parameters to fuzz"`
+	Keys    []string `yaml:"keys,omitempty" json:"keys,omitempty" jsonschema:"title=keys of parameters to fuzz,description=Keys of parameters to fuzz"`
 	keysMap map[string]struct{}
 	// description: |
 	//   KeysRegex is the optional list of regex key parameters to fuzz.
@@ -54,7 +54,7 @@ type Rule struct {
 	//   - name: Examples of key regex
 	//     value: >
 	//       []string{"url.*"}
-	KeysRegex []string `yaml:"keys-regex,omitempty" jsonschema:"title=keys regex to fuzz,description=Regex of parameter keys to fuzz"`
+	KeysRegex []string `yaml:"keys-regex,omitempty" json:"keys-regex,omitempty" jsonschema:"title=keys regex to fuzz,description=Regex of parameter keys to fuzz"`
 	keysRegex []*regexp.Regexp
 	// description: |
 	//   Values is the optional list of regex value parameters to fuzz.
@@ -62,7 +62,7 @@ type Rule struct {
 	//   - name: Examples of value regex
 	//     value: >
 	//       []string{"https?://.*"}
-	ValuesRegex []string `yaml:"values,omitempty" jsonschema:"title=values regex to fuzz,description=Regex of parameter values to fuzz"`
+	ValuesRegex []string `yaml:"values,omitempty" json:"values,omitempty" jsonschema:"title=values regex to fuzz,description=Regex of parameter values to fuzz"`
 	valuesRegex []*regexp.Regexp
 
 	// description: |
@@ -71,7 +71,7 @@ type Rule struct {
 	//   - name: Examples of fuzz
 	//     value: >
 	//       []string{"{{ssrf}}", "{{interactsh-url}}", "example-value"}
-	Fuzz []string `yaml:"fuzz,omitempty" jsonschema:"title=payloads of fuzz rule,description=Payloads to perform fuzzing substitutions with"`
+	Fuzz []string `yaml:"fuzz,omitempty" json:"fuzz,omitempty" jsonschema:"title=payloads of fuzz rule,description=Payloads to perform fuzzing substitutions with"`
 
 	options   *protocols.ExecuterOptions
 	generator *generators.PayloadGenerator

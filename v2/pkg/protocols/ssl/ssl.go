@@ -37,12 +37,12 @@ import (
 // Request is a request for the SSL protocol
 type Request struct {
 	// Operators for the current request go here.
-	operators.Operators `yaml:",inline,omitempty"`
-	CompiledOperators   *operators.Operators `yaml:"-"`
+	operators.Operators `yaml:",inline,omitempty" json:",inline,omitempty"`
+	CompiledOperators   *operators.Operators `yaml:"-" json:"-"`
 
 	// description: |
 	//   Address contains address for the request
-	Address string `yaml:"address,omitempty" jsonschema:"title=address for the ssl request,description=Address contains address for the request"`
+	Address string `yaml:"address,omitempty" json:"address,omitempty" jsonschema:"title=address for the ssl request,description=Address contains address for the request"`
 	// description: |
 	//   Minimum tls version - auto if not specified.
 	// values:
@@ -51,7 +51,7 @@ type Request struct {
 	//   - "tls11"
 	//   - "tls12"
 	//   - "tls13"
-	MinVersion string `yaml:"min_version,omitempty" jsonschema:"title=Min. TLS version,description=Minimum tls version - automatic if not specified.,enum=sslv3,enum=tls10,enum=tls11,enum=tls12,enum=tls13"`
+	MinVersion string `yaml:"min_version,omitempty" json:"min_version,omitempty" jsonschema:"title=Min. TLS version,description=Minimum tls version - automatic if not specified.,enum=sslv3,enum=tls10,enum=tls11,enum=tls12,enum=tls13"`
 	// description: |
 	//   Max tls version - auto if not specified.
 	// values:
@@ -60,17 +60,17 @@ type Request struct {
 	//   - "tls11"
 	//   - "tls12"
 	//   - "tls13"
-	MaxVersion string `yaml:"max_version,omitempty" jsonschema:"title=Max. TLS version,description=Max tls version - automatic if not specified.,enum=sslv3,enum=tls10,enum=tls11,enum=tls12,enum=tls13"`
+	MaxVersion string `yaml:"max_version,omitempty" json:"max_version,omitempty" jsonschema:"title=Max. TLS version,description=Max tls version - automatic if not specified.,enum=sslv3,enum=tls10,enum=tls11,enum=tls12,enum=tls13"`
 	// description: |
 	//   Client Cipher Suites  - auto if not specified.
-	CiperSuites []string `yaml:"cipher_suites,omitempty"`
+	CiperSuites []string `yaml:"cipher_suites,omitempty" json:"cipher_suites,omitempty"`
 	// description: |
 	//   Tls Scan Mode - auto if not specified
 	// values:
 	//   - "ctls"
 	//   - "ztls"
 	//   - "auto"
-	ScanMode string `yaml:"scan_mode,omitempty" jsonschema:"title=Scan Mode,description=Scan Mode - auto if not specified.,enum=ctls,enum=ztls,enum=auto"`
+	ScanMode string `yaml:"scan_mode,omitempty" json:"scan_mode,omitempty" jsonschema:"title=Scan Mode,description=Scan Mode - auto if not specified.,enum=ctls,enum=ztls,enum=auto"`
 
 	// cache any variables that may be needed for operation.
 	dialer  *fastdialer.Dialer
