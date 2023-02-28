@@ -62,6 +62,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.30.3
 	github.com/docker/go-units v0.5.0
 	github.com/fatih/structs v1.1.0
+	github.com/go-faker/faker/v4 v4.0.0
 	github.com/go-git/go-git/v5 v5.5.2
 	github.com/h2non/filetype v1.1.3
 	github.com/hashicorp/go-version v1.6.0
