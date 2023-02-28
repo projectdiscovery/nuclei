@@ -84,7 +84,7 @@ require (
 	github.com/projectdiscovery/uncover v1.0.2
 	github.com/projectdiscovery/utils v0.0.10-0.20230217185600-008d111dd1c1
 	github.com/projectdiscovery/wappalyzergo v0.0.81
-	github.com/stretchr/testify v1.8.1
+	github.com/stretchr/testify v1.8.2
 	gopkg.in/src-d/go-git.v4 v4.13.1
 	gopkg.in/yaml.v3 v3.0.1
 )
