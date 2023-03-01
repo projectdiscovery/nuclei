@@ -90,7 +90,6 @@ func (r *Runner) updateTemplates() error { // TODO this method does more than ju
 		return nil
 	}
 
-	client.InitNucleiVersion(config.Version)
 	r.fetchLatestVersionsFromGithub(configDir) // also fetch the latest versions
 
 	ctx := context.Background()
