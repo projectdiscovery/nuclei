@@ -2,7 +2,6 @@ package input
 
 import (
 	"net"
-	"net/url"
 	"path/filepath"
 	"strings"
 
@@ -11,6 +10,7 @@ import (
 	fileutil "github.com/projectdiscovery/utils/file"
 	"github.com/projectdiscovery/utils/ports"
 	stringsutil "github.com/projectdiscovery/utils/strings"
+	urlutil "github.com/projectdiscovery/utils/url"
 )
 
 // Helper is a structure for helping with input transformation
@@ -45,8 +45,6 @@ func (h *Helper) Transform(input string, protocol templateTypes.ProtocolType) st
 		return h.convertInputToType(input, typeURL, "")
 	case templateTypes.NetworkProtocol:
 		return h.convertInputToType(input, typeHostWithOptionalPort, "")
-	case templateTypes.SSLProtocol:
-		return h.convertInputToType(input, typeHostWithPort, "443")
 	case templateTypes.WebsocketProtocol:
 		return h.convertInputToType(input, typeWebsocket, "")
 	}
@@ -68,7 +66,7 @@ const (
 // Various formats are supported for inputs and their transformation
 func (h *Helper) convertInputToType(input string, inputType inputType, defaultPort string) string {
 	isURL := strings.Contains(input, "://")
-	uri, _ := url.Parse(input)
+	uri, _ := urlutil.Parse(input)
 
 	var host, port string
 	if isURL && uri != nil {

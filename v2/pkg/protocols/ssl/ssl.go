@@ -3,8 +3,6 @@ package ssl
 import (
 	"fmt"
 	"net"
-	"net/url"
-	"strings"
 	"time"
 
 	"github.com/fatih/structs"
@@ -32,6 +30,10 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 	"github.com/projectdiscovery/tlsx/pkg/tlsx"
 	"github.com/projectdiscovery/tlsx/pkg/tlsx/clients"
+	"github.com/projectdiscovery/tlsx/pkg/tlsx/openssl"
+	errorutil "github.com/projectdiscovery/utils/errors"
+	stringsutil "github.com/projectdiscovery/utils/strings"
+	urlutil "github.com/projectdiscovery/utils/url"
 )
 
 // Request is a request for the SSL protocol
@@ -70,6 +72,7 @@ type Request struct {
 	//   - "ctls"
 	//   - "ztls"
 	//   - "auto"
+	//	 - "openssl" # reverts to "auto" is openssl is not installed
 	ScanMode string `yaml:"scan_mode,omitempty" jsonschema:"title=Scan Mode,description=Scan Mode - auto if not specified.,enum=ctls,enum=ztls,enum=auto"`
 
 	// cache any variables that may be needed for operation.
@@ -95,15 +98,32 @@ func (request *Request) Compile(options *protocols.ExecuterOptions) error {
 
 	client, err := networkclientpool.Get(options.Options, &networkclientpool.Configuration{})
 	if err != nil {
-		return errors.Wrap(err, "could not get network client")
+		return errorutil.New("ssl", "could not get network client").Wrap(err)
 	}
 	request.dialer = client
+	switch {
+	//validate scanmode
+	case request.ScanMode == "":
+		request.ScanMode = "auto"
+
+	case !stringsutil.EqualFoldAny(request.ScanMode, "auto", "openssl", "ztls", "ctls"):
+		return errorutil.NewWithTag(request.TemplateID, "template %v does not contain valid scan-mode", request.TemplateID)
+
+	case request.ScanMode == "openssl" && !openssl.IsAvailable():
+		// if openssl is not installed instead of failing "auto" scanmode is used
+		request.ScanMode = "auto"
+
+	case options.Options.ZTLS && request.ScanMode == "ctls":
+		// only override if scanmode in template is "ctls" since auto internally uses ztls as fallback
+		request.ScanMode = "ztls"
+	}
 
 	tlsxOptions := &clients.Options{
 		AllCiphers:        true,
-		ScanMode:          "auto",
+		ScanMode:          request.ScanMode,
 		Expired:           true,
 		SelfSigned:        true,
+		Revoked:           true,
 		MisMatched:        true,
 		MinVersion:        request.MinVersion,
 		MaxVersion:        request.MaxVersion,
@@ -115,14 +135,10 @@ func (request *Request) Compile(options *protocols.ExecuterOptions) error {
 		ClientHello:       true,
 		ServerHello:       true,
 	}
-	if options.Options.ZTLS {
-		tlsxOptions.ScanMode = "ztls"
-	} else if request.ScanMode != "" {
-		tlsxOptions.ScanMode = request.ScanMode
-	}
+
 	tlsxService, err := tlsx.New(tlsxOptions)
 	if err != nil {
-		return errors.Wrap(err, "could not create tlsx service")
+		return errorutil.NewWithTag(request.TemplateID, "could not create tlsx service")
 	}
 	request.tlsx = tlsxService
 
@@ -131,7 +147,7 @@ func (request *Request) Compile(options *protocols.ExecuterOptions) error {
 		compiled.ExcludeMatchers = options.ExcludeMatchers
 		compiled.TemplateID = options.TemplateID
 		if err := compiled.Compile(); err != nil {
-			return errors.Wrap(err, "could not compile operators")
+			return errorutil.NewWithTag(request.TemplateID, "could not compile operators got %v", err)
 		}
 		request.CompiledOperators = compiled
 	}
@@ -157,7 +173,7 @@ func (request *Request) GetID() string {
 func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicValues, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
 	hostPort, err := getAddress(input.MetaInput.Input)
 	if err != nil {
-		return nil
+		return err
 	}
 	hostname, port, _ := net.SplitHostPort(hostPort)
 
@@ -189,7 +205,7 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 	addressToDial := string(finalAddress)
 	host, port, err := net.SplitHostPort(addressToDial)
 	if err != nil {
-		return errors.Wrap(err, "could not split input host port")
+		return errorutil.NewWithErr(err).Msgf("could not split input host port")
 	}
 
 	var hostIp string
@@ -203,7 +219,7 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 	if err != nil {
 		requestOptions.Output.Request(requestOptions.TemplateID, input.MetaInput.Input, request.Type().String(), err)
 		requestOptions.Progress.IncrementFailedRequestsBy(1)
-		return errors.Wrap(err, "could not connect to server")
+		return errorutil.NewWithTag(request.TemplateID, "could not connect to server").Wrap(err)
 	}
 
 	requestOptions.Output.Request(requestOptions.TemplateID, hostPort, request.Type().String(), err)
@@ -223,10 +239,12 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 	jsonDataString := string(jsonData)
 
 	data := make(map[string]interface{})
-
+	for k, v := range payloadValues {
+		data[k] = v
+	}
 	data["type"] = request.Type().String()
 	data["response"] = jsonDataString
-	data["host"] = input
+	data["host"] = input.MetaInput.Input
 	data["matched"] = addressToDial
 	if input.MetaInput.CustomIP != "" {
 		data["ip"] = hostIp
@@ -236,9 +254,6 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 	data["template-path"] = requestOptions.TemplatePath
 	data["template-id"] = requestOptions.TemplateID
 	data["template-info"] = requestOptions.TemplateInfo
-	for k, v := range payloadValues {
-		data[k] = v
-	}
 
 	// Convert response to key value pairs and first cert chain item as well
 	responseParsed := structs.New(response)
@@ -286,21 +301,15 @@ var RequestPartDefinitions = map[string]string{
 
 // getAddress returns the address of the host to make request to
 func getAddress(toTest string) (string, error) {
-	if strings.Contains(toTest, "://") {
-		parsed, err := url.Parse(toTest)
-		if err != nil {
-			return "", err
-		}
-		_, port, _ := net.SplitHostPort(parsed.Host)
-
-		if strings.ToLower(parsed.Scheme) == "https" && port == "" {
-			toTest = net.JoinHostPort(parsed.Host, "443")
-		} else {
-			toTest = parsed.Host
-		}
+	urlx, err := urlutil.Parse(toTest)
+	if err != nil {
+		// use given input instead of url parsing failure
 		return toTest, nil
 	}
-	return toTest, nil
+	if urlx.Port() == "" {
+		urlx.UpdatePort("443")
+	}
+	return urlx.Host, nil
 }
 
 // Match performs matching operation for a matcher on model and returns:
@@ -337,7 +346,7 @@ func (request *Request) MakeResultEventItem(wrapped *output.InternalWrappedEvent
 		Info:             wrapped.InternalEvent["template-info"].(model.Info),
 		Type:             types.ToString(wrapped.InternalEvent["type"]),
 		Host:             types.ToString(wrapped.InternalEvent["host"]),
-		Matched:          types.ToString(wrapped.InternalEvent["host"]),
+		Matched:          types.ToString(wrapped.InternalEvent["matched"]),
 		Metadata:         wrapped.OperatorsResult.PayloadValues,
 		ExtractedResults: wrapped.OperatorsResult.OutputExtracts,
 		Timestamp:        time.Now(),
