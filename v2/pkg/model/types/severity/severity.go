@@ -113,7 +113,7 @@ func (severityHolder *Holder) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-func (severityHolder *Holder) MarshalJSON() ([]byte, error) {
+func (severityHolder Holder) MarshalJSON() ([]byte, error) {
 	return json.Marshal(severityHolder.Severity.String())
 }
 

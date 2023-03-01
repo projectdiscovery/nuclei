@@ -36,6 +36,7 @@ import (
 
 var codeTestcases = map[string]testutils.TestCase{
 	"code/test.yaml": &goIntegrationTest{},
+	"code/test.json": &goIntegrationTest{},
 }
 
 type goIntegrationTest struct{}
