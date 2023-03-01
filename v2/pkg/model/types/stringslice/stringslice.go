@@ -16,6 +16,10 @@ type StringSlice struct {
 	Value interface{}
 }
 
+func New(value interface{}) StringSlice {
+	return StringSlice{Value: value}
+}
+
 func (stringSlice StringSlice) JSONSchemaType() *jsonschema.Type {
 	gotType := &jsonschema.Type{
 		OneOf: []*jsonschema.Type{{Type: "string"}, {Type: "array"}},
@@ -52,13 +56,13 @@ func (stringSlice *StringSlice) UnmarshalYAML(unmarshal func(interface{}) error)
 
 	result := make([]string, 0, len(marshalledSlice))
 	for _, value := range marshalledSlice {
-		result = append(result, stringSlice.normalize(value))
+		result = append(result, stringSlice.Normalize(value))
 	}
 	stringSlice.Value = result
 	return nil
 }
 
-func (stringSlice StringSlice) normalize(value string) string {
+func (stringSlice StringSlice) Normalize(value string) string {
 	return strings.ToLower(strings.TrimSpace(value))
 }
 
@@ -94,7 +98,7 @@ func (stringSlice *StringSlice) UnmarshalJSON(data []byte) error {
 
 	values := make([]string, 0, len(result))
 	for _, value := range result {
-		values = append(values, stringSlice.normalize(value))
+		values = append(values, stringSlice.Normalize(value))
 	}
 	stringSlice.Value = values
 	return nil
