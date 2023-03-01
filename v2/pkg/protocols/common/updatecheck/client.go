@@ -13,17 +13,11 @@ const (
 	IgnoreCall     = "ignore"
 )
 
-var nucleiVersion string
-
 // LatestVersion is the latest version info for nuclei and templates repos
 type LatestVersion struct {
 	Nuclei     string
 	Templates  string
 	IgnoreHash string
-}
-
-func InitNucleiVersion(version string) {
-	nucleiVersion = version
 }
 
 // GetLatestNucleiTemplatesVersion returns the latest version info for nuclei and templates repos
