@@ -70,7 +70,7 @@ type Runner struct {
 	catalog           catalog.Catalog
 	progress          progress.Progress
 	colorizer         aurora.Aurora
-	issuesClient      *reporting.Client
+	issuesClient      reporting.Client
 	hmapInputProvider *hybrid.Input
 	browser           *engine.Browser
 	ratelimiter       *ratelimit.Limiter

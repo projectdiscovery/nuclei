@@ -7,10 +7,8 @@ import (
 
 	"github.com/projectdiscovery/nuclei/v2/pkg/model/types/severity"
 	"github.com/projectdiscovery/nuclei/v2/pkg/model/types/stringslice"
-
-	"gopkg.in/yaml.v2"
-
 	"github.com/stretchr/testify/assert"
+	"gopkg.in/yaml.v2"
 )
 
 func TestInfoJsonMarshal(t *testing.T) {
@@ -20,7 +18,7 @@ func TestInfoJsonMarshal(t *testing.T) {
 		Description:    "Test description",
 		SeverityHolder: severity.Holder{Severity: severity.High},
 		Tags:           stringslice.StringSlice{Value: []string{"cve", "misc"}},
-		Reference:      stringslice.StringSlice{Value: "reference1"},
+		Reference:      stringslice.NewRaw("Reference1"),
 		Metadata: map[string]interface{}{
 			"string_key": "string_value",
 			"array_key":  []string{"array_value1", "array_value2"},
@@ -33,7 +31,7 @@ func TestInfoJsonMarshal(t *testing.T) {
 	result, err := json.Marshal(&info)
 	assert.Nil(t, err)
 
-	expected := `{"name":"Test Template Name","author":["forgedhallpass","ice3man"],"tags":["cve","misc"],"description":"Test description","reference":"reference1","severity":"high","metadata":{"array_key":["array_value1","array_value2"],"map_key":{"key1":"val1"},"string_key":"string_value"}}`
+	expected := `{"name":"Test Template Name","author":["forgedhallpass","ice3man"],"tags":["cve","misc"],"description":"Test description","reference":"Reference1","severity":"high","metadata":{"array_key":["array_value1","array_value2"],"map_key":{"key1":"val1"},"string_key":"string_value"}}`
 	assert.Equal(t, expected, string(result))
 }
 
@@ -44,7 +42,7 @@ func TestInfoYamlMarshal(t *testing.T) {
 		Description:    "Test description",
 		SeverityHolder: severity.Holder{Severity: severity.High},
 		Tags:           stringslice.StringSlice{Value: []string{"cve", "misc"}},
-		Reference:      stringslice.StringSlice{Value: "reference1"},
+		Reference:      stringslice.NewRaw("Reference1"),
 		Metadata: map[string]interface{}{
 			"string_key": "string_value",
 			"array_key":  []string{"array_value1", "array_value2"},
@@ -65,7 +63,7 @@ tags:
 - cve
 - misc
 description: Test description
-reference: reference1
+reference: Reference1
 severity: high
 metadata:
   array_key:
