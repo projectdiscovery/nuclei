@@ -44,7 +44,6 @@ jobs:
       - name: Integration Tests
         env:
           GH_ACTION: true
-          GH_ACTION_RETRIES: "3"
           GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
         run: |
           chmod +x run.sh
