@@ -17,7 +17,7 @@ import (
 	"github.com/projectdiscovery/hmap/filekv"
 	"github.com/projectdiscovery/hmap/store/hybrid"
 	"github.com/projectdiscovery/mapcidr"
-	asn "github.com/projectdiscovery/mapcidr/asn"
+	"github.com/projectdiscovery/mapcidr/asn"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/contextargs"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/protocolstate"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/uncover"
@@ -330,8 +330,7 @@ func (i *Input) expandCIDRInputValue(value string) {
 
 // expandASNInputValue expands CIDRs for given ASN and stores expanded IPs
 func (i *Input) expandASNInputValue(value string) {
-	asnClient := asn.New()
-	cidrs, _ := asnClient.GetCIDRsForASNNum(value)
+	cidrs, _ := asn.GetCIDRsForASNNum(value)
 	for _, cidr := range cidrs {
 		i.expandCIDRInputValue(cidr.String())
 	}
