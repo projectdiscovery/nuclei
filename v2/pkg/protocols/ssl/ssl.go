@@ -98,7 +98,7 @@ func (request *Request) Compile(options *protocols.ExecuterOptions) error {
 
 	client, err := networkclientpool.Get(options.Options, &networkclientpool.Configuration{})
 	if err != nil {
-		return errorutil.New("ssl", "could not get network client").Wrap(err)
+		return errorutil.NewWithTag("ssl", "could not get network client").Wrap(err)
 	}
 	request.dialer = client
 	switch {

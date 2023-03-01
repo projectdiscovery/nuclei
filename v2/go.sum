@@ -210,8 +210,6 @@ github.com/gliderlabs/ssh v0.3.5/go.mod h1:8XB4KraRrX39qHhT6yxPsHedjA08I/uBVwj4x
 github.com/go-check/check v0.0.0-20180628173108-788fd7840127/go.mod h1:9ES+weclKsC9YodN5RgxqK/VD9HM9JsCSh7rNhMZE98=
 github.com/go-errors/errors v1.0.1/go.mod h1:f4zRHt4oKfwPJE5k8C9vpYG+aDHdBFUsgrm6/TyX73Q=
 github.com/go-errors/errors v1.4.2 h1:J6MZopCL4uSllY1OfXM374weqZFFItUbrImctkmUxIA=
-github.com/go-faker/faker/v4 v4.0.0 h1:tfgFaeizVlYGOS1tVo/vcWcKhkNgG1NWm8ibRG0f+aQ=
-github.com/go-faker/faker/v4 v4.0.0/go.mod h1:uuNc0PSRxF8nMgjGrrrU4Nw5cF30Jc6Kd0/FUTTYbhg=
 github.com/go-git/gcfg v1.5.0 h1:Q5ViNfGF8zFgyJWPqYwA7qGFoMTEiBmdlkcfRmpIMa4=
 github.com/go-git/gcfg v1.5.0/go.mod h1:5m20vg6GwYabIxaOonVkTdrILxQMpEShl1xiMF4ua+E=
 github.com/go-git/go-billy/v5 v5.3.1/go.mod h1:pmpqyWchKfYfrkb/UVH4otLvyi/5gJlGI4Hb3ZqZ3W0=
@@ -573,8 +571,8 @@ github.com/projectdiscovery/tlsx v1.0.5 h1:ZDMcwqjwXB0x2XBzvdra7HYiN8yLGBhHc5qE2
 github.com/projectdiscovery/tlsx v1.0.5/go.mod h1:4/jsS5OIawsJ11sWWLpBHJV3vTZltB8otwxfi56hROM=
 github.com/projectdiscovery/uncover v1.0.2 h1:mRFzflYyvwKkHd3XKufMlDRrb6p1mjFZTSHoNAUpFwo=
 github.com/projectdiscovery/uncover v1.0.2/go.mod h1:lz4QYfArSA6jJkXyB71kN2/Pc7IW7nJB8c95n7xtwqY=
-github.com/projectdiscovery/utils v0.0.10-0.20230217185600-008d111dd1c1 h1:ZxRylh56CH9MwmhrF4sLenwqpmhu+Gxwl3o4x+wlTVY=
-github.com/projectdiscovery/utils v0.0.10-0.20230217185600-008d111dd1c1/go.mod h1:dZqlayNwgCGn2HgYfKrI71RjBEyKsEPovrU+UDfpQWw=
+github.com/projectdiscovery/utils v0.0.13 h1:Bvguo7avXN+Zs9tHL+8+Qld65nwIE8Kr9qddErDDqmw=
+github.com/projectdiscovery/utils v0.0.13/go.mod h1:2CyxZXcx62NUiGJZZam23CpphqXy3kaomE9uvgHgkEo=
 github.com/projectdiscovery/wappalyzergo v0.0.81 h1:i7WYrH+O2EoHbY1g/WnrxO4YF/0OkA/G1bw6z8WKcjA=
 github.com/projectdiscovery/wappalyzergo v0.0.81/go.mod h1:HvYuW0Be4JCjVds/+XAEaMSqRG9yrI97UmZq0TPk6A0=
 github.com/projectdiscovery/yamldoc-go v1.0.3-0.20211126104922-00d2c6bb43b6 h1:DvWRQpw7Ib2CRL3ogYm/BWM+X0UGPfz1n9Ix9YKgFM8=

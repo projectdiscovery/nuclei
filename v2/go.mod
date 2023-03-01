@@ -62,7 +62,6 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.30.3
 	github.com/docker/go-units v0.5.0
 	github.com/fatih/structs v1.1.0
-	github.com/go-faker/faker/v4 v4.0.0
 	github.com/go-git/go-git/v5 v5.5.2
 	github.com/h2non/filetype v1.1.3
 	github.com/hashicorp/go-version v1.6.0
@@ -82,7 +81,7 @@ require (
 	github.com/projectdiscovery/sarif v0.0.1
 	github.com/projectdiscovery/tlsx v1.0.5
 	github.com/projectdiscovery/uncover v1.0.2
-	github.com/projectdiscovery/utils v0.0.10-0.20230217185600-008d111dd1c1
+	github.com/projectdiscovery/utils v0.0.13
 	github.com/projectdiscovery/wappalyzergo v0.0.81
 	github.com/stretchr/testify v1.8.2
 	gopkg.in/src-d/go-git.v4 v4.13.1
