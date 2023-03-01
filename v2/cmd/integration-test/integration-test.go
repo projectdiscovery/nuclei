@@ -4,7 +4,6 @@ import (
 	"flag"
 	"fmt"
 	"os"
-	"strconv"
 	"strings"
 
 	"github.com/logrusorgru/aurora"
@@ -13,10 +12,9 @@ import (
 )
 
 var (
-	debug               = os.Getenv("DEBUG") == "true"
-	githubAction        = os.Getenv("GH_ACTION") == "true"
-	githubActionRetries = os.Getenv("GH_ACTION_RETRIES")
-	customTests         = os.Getenv("TESTS")
+	debug        = os.Getenv("DEBUG") == "true"
+	githubAction = os.Getenv("GH_ACTION") == "true"
+	customTests  = os.Getenv("TESTS")
 
 	success = aurora.Green("[✓]").String()
 	failed  = aurora.Red("[✘]").String()
@@ -63,13 +61,16 @@ func main() {
 		os.Exit(1)
 	}
 
-	failedTestCases := runTests(toMap(toSlice(customTests)))
+	failedTestTemplatePaths := runTests(toMap(toSlice(customTests)))
 
-	if githubAction {
-		if retryOnFailure(failedTestCases) {
-			os.Exit(1)
+	if len(failedTestTemplatePaths) > 0 {
+		if githubAction {
+			debug = true
+			fmt.Println("::group::Failed integration tests in debug mode")
+			_ = runTests(failedTestTemplatePaths)
+			fmt.Println("::endgroup::")
 		}
-	} else if len(failedTestCases) > 0 {
+
 		os.Exit(1)
 	}
 }
@@ -85,8 +86,8 @@ func debugTests() {
 	}
 }
 
-func runTests(customTemplatePaths map[string]struct{}) map[string]testutils.TestCase {
-	failedTestCase := map[string]testutils.TestCase{}
+func runTests(customTemplatePaths map[string]struct{}) map[string]struct{} {
+	failedTestTemplatePaths := map[string]struct{}{}
 
 	for proto, testCases := range protocolTests {
 		if len(customTemplatePaths) == 0 {
@@ -95,14 +96,14 @@ func runTests(customTemplatePaths map[string]struct{}) map[string]testutils.Test
 
 		for templatePath, testCase := range testCases {
 			if len(customTemplatePaths) == 0 || contains(customTemplatePaths, templatePath) {
-				if _, err := execute(testCase, templatePath); err != nil {
-					failedTestCase[templatePath] = testCase
+				if failedTemplatePath, err := execute(testCase, templatePath); err != nil {
+					failedTestTemplatePaths[failedTemplatePath] = struct{}{}
 				}
 			}
 		}
 	}
 
-	return failedTestCase
+	return failedTestTemplatePaths
 }
 
 func execute(testCase testutils.TestCase, templatePath string) (string, error) {
@@ -143,30 +144,4 @@ func toMap(slice []string) map[string]struct{} {
 func contains(input map[string]struct{}, value string) bool {
 	_, ok := input[value]
 	return ok
-}
-
-// retries failed test cases and run the last retry in debug mode
-// if any case failed in retry retrun true
-func retryOnFailure(failedTestCases map[string]testutils.TestCase) bool {
-	retries, _ := strconv.Atoi(githubActionRetries)
-	var failed bool
-	for templatePath, testCase := range failedTestCases {
-		var err error
-		debug = false
-		fmt.Println("::group::Failed integration test", templatePath)
-		for i := 0; i < retries; i++ {
-			if (retries - i) == 1 {
-				debug = true
-			}
-			_, err = execute(testCase, templatePath)
-			if err == nil {
-				break
-			}
-		}
-		fmt.Println("::endgroup::")
-		if err != nil {
-			failed = true
-		}
-	}
-	return failed
 }
