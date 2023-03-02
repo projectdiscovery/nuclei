@@ -36,7 +36,7 @@ func GetLatestNucleiTemplatesVersion() (*LatestVersion, error) {
 
 // GetLatestIgnoreFile returns the latest version of nuclei ignore
 func GetLatestIgnoreFile() ([]byte, error) {
-	resp, err := retryablehttp.DefaultClient().Get(RegisterServer + VersionsCall)
+	resp, err := retryablehttp.DefaultClient().Get(RegisterServer + IgnoreCall)
 	if err != nil {
 		return nil, err
 	}
