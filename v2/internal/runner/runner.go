@@ -713,7 +713,7 @@ func (r *Runner) displayExecutionInfo(store *loader.Store) {
 }
 
 func (r *Runner) readNewTemplatesWithVersionFile(version string) ([]string, error) {
-	resp, err := http.DefaultClient.Get(fmt.Sprintf("https://raw.githubusercontent.com/projectdiscovery/nuclei-templates/%s/.new-additions", version))
+	resp, err := retryablehttp.DefaultClient().Get(fmt.Sprintf("https://raw.githubusercontent.com/projectdiscovery/nuclei-templates/%s/.new-additions", version))
 	if err != nil {
 		return nil, err
 	}
