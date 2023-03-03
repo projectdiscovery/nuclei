@@ -85,7 +85,7 @@ func (request *Request) GetID() string {
 func (request *Request) Compile(options *protocols.ExecuterOptions) error {
 	// TODO: logic similar to network + http => probably can be refactored
 	// Resolve payload paths from vars if they exists
-	for name, payload := range options.Options.VarsPayload() {
+	for name, payload := range options.Options.Vars.AsMap() {
 		payloadStr, ok := payload.(string)
 		// check if inputs contains the payload
 		if ok && fileutil.FileExists(payloadStr) {

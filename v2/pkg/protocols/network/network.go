@@ -162,7 +162,7 @@ func (request *Request) Compile(options *protocols.ExecuterOptions) error {
 	}
 
 	// Resolve payload paths from vars if they exists
-	for name, payload := range request.options.Options.VarsPayload() {
+	for name, payload := range request.options.Options.Vars.AsMap() {
 		payloadStr, ok := payload.(string)
 		// check if inputs contains the payload
 		var hasPayloadName bool

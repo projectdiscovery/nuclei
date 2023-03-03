@@ -449,6 +449,11 @@ func writeUnZippedTemplateFile(templateAbsolutePath string, zipTemplateFile *zip
 func calculateTemplateAbsolutePath(zipFilePath, configuredTemplateDirectory string) (string, bool, error) {
 	directory, fileName := filepath.Split(zipFilePath)
 
+	// overwrite .nuclei-ignore everytime nuclei-templates are downloaded
+	if fileName == ".nuclei-ignore" {
+		return config.GetIgnoreFilePath(), false, nil
+	}
+
 	if !strings.EqualFold(fileName, ".new-additions") {
 		if strings.TrimSpace(fileName) == "" || strings.HasPrefix(fileName, ".") || strings.EqualFold(fileName, "README.md") {
 			return "", true, nil

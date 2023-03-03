@@ -93,14 +93,6 @@ func ParseOptions(options *types.Options) {
 	// Load the resolvers if user asked for them
 	loadResolvers(options)
 
-	// removes all cli variables containing payloads and add them to the internal struct
-	for key, value := range options.Vars.AsMap() {
-		if fileutil.FileExists(value.(string)) {
-			_ = options.Vars.Del(key)
-			options.AddVarPayload(key, value)
-		}
-	}
-
 	err := protocolinit.Init(options)
 	if err != nil {
 		gologger.Fatal().Msgf("Could not initialize protocols: %s\n", err)
