@@ -835,7 +835,10 @@ func (h *httpRequestSelfContainedFileInput) Execute(filePath string) error {
 
 	// create temp file
 	FileLoc := filepath.Join(os.TempDir(), "httpselfcontained.yaml")
-	os.WriteFile(FileLoc, []byte("one\ntwo\n"), 0600)
+	err := os.WriteFile(FileLoc, []byte("one\ntwo\n"), 0600)
+	if err != nil {
+		return errorutil.NewWithErr(err).Msgf("failed to create temporary file").WithTag(filePath)
+	}
 
 	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, "", debug, "-V", "test="+FileLoc)
 	if err != nil {
