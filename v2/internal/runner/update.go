@@ -29,6 +29,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/external/customtemplates"
 	client "github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/updatecheck"
 	"github.com/projectdiscovery/nuclei/v2/pkg/utils"
+	"github.com/projectdiscovery/retryablehttp-go"
 	fileutil "github.com/projectdiscovery/utils/file"
 	folderutil "github.com/projectdiscovery/utils/folder"
 
@@ -308,7 +309,7 @@ func (r *Runner) downloadReleaseAndUnzip(ctx context.Context, version, downloadU
 		return nil, fmt.Errorf("failed to create HTTP request to %s: %w", downloadURL, err)
 	}
 
-	res, err := http.DefaultClient.Do(req)
+	res, err := retryablehttp.DefaultClient().Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("failed to download a release file from %s: %w", downloadURL, err)
 	}
