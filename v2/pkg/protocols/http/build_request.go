@@ -108,7 +108,7 @@ func (r *requestGenerator) Make(ctx context.Context, input *contextargs.Context,
 	allVars := generators.MergeMaps(dynamicValues, defaultReqVars, optionVars)
 
 	// finalVars contains allVars and any generator/fuzzing specific payloads
-	// TODO: Review Override preference of below maps (before it was generator.MergeMaps(payloads,allVars))
+	// payloads used in generator should be given the most preference
 	finalVars := generators.MergeMaps(allVars, payloads)
 
 	if vardump.EnableVarDump {
@@ -164,9 +164,11 @@ func (r *requestGenerator) makeSelfContainedRequest(ctx context.Context, data st
 			return nil, fmt.Errorf("malformed request supplied")
 		}
 
+		// Note: Here the order of payloads matter since payloads passed through file ex: -V "test=numbers.txt"
+		// are stored in payloads and options vars should not override payloads in any case
 		values := generators.MergeMaps(
-			payloads,
 			generators.BuildPayloadFromOptions(r.request.options.Options),
+			payloads,
 		)
 
 		parts[1] = replacer.Replace(parts[1], values)
@@ -199,8 +201,9 @@ func (r *requestGenerator) makeSelfContainedRequest(ctx context.Context, data st
 		return r.generateRawRequest(ctx, data, parsed, values, payloads)
 	}
 	values := generators.MergeMaps(
-		dynamicValues,
 		generators.BuildPayloadFromOptions(r.request.options.Options),
+		dynamicValues,
+		payloads, // payloads should override other variables in case of duplicate vars
 	)
 	// Evaluate (replace) variable with final values
 	data, err := expressions.Evaluate(data, values)

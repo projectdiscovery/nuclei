@@ -1,0 +1,25 @@
+id: self-contained-file-input
+
+info:
+  name: Test Self Contained Template With File Input
+  author: pdteam
+  severity: info
+
+self-contained: true
+requests:
+  - method: GET
+    path:
+      - "http://127.0.0.1:5431/{{test}}"
+    matchers:
+      - type: word
+        words:
+          - This is self-contained response
+      
+  - raw:
+      - |
+        GET http://127.0.0.1:5431/{{test}} HTTP/1.1
+        Host: {{Hostname}}
+    matchers:
+      - type: word
+        words:
+          - This is self-contained response
