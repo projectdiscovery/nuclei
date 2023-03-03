@@ -18,6 +18,7 @@ import (
 	"gopkg.in/yaml.v2"
 
 	"github.com/projectdiscovery/nuclei/v2/pkg/testutils"
+	"github.com/projectdiscovery/retryablehttp-go"
 	errorutil "github.com/projectdiscovery/utils/errors"
 	logutil "github.com/projectdiscovery/utils/log"
 	sliceutil "github.com/projectdiscovery/utils/slice"
@@ -81,7 +82,7 @@ func (h *httpInteractshRequest) Execute(filePath string) error {
 	router.GET("/", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 		value := r.Header.Get("url")
 		if value != "" {
-			if resp, _ := http.DefaultClient.Get(value); resp != nil {
+			if resp, _ := retryablehttp.DefaultClient().Get(value); resp != nil {
 				resp.Body.Close()
 			}
 		}
@@ -105,7 +106,7 @@ func (h *httpInteractshStopAtFirstMatchRequest) Execute(filePath string) error {
 	router.GET("/", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 		value := r.Header.Get("url")
 		if value != "" {
-			if resp, _ := http.DefaultClient.Get(value); resp != nil {
+			if resp, _ := retryablehttp.DefaultClient().Get(value); resp != nil {
 				resp.Body.Close()
 			}
 		}
