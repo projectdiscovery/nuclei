@@ -37,11 +37,14 @@ import (
 	"github.com/logrusorgru/aurora"
 	"github.com/spaolacci/murmur3"
 
+	"github.com/miekg/dns"
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/mapcidr"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/helpers/deserialization"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/randomip"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/dns/dnsclientpool"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
+	sliceutil "github.com/projectdiscovery/utils/slice"
 )
 
 const (
@@ -914,6 +917,82 @@ func init() {
 
 			return buf.String(), nil
 		}),
+		"resolve": makeMultiSignatureDslFunction([]string{
+			"(host string) string",
+			"(format string) string"},
+			func(args ...interface{}) (interface{}, error) {
+				argCount := len(args)
+				if argCount == 0 || argCount > 2 {
+					return nil, ErrinvalidDslFunction
+				}
+				format := "4"
+				var dnsType uint16
+				if len(args) > 1 {
+					format = strings.ToLower(types.ToString(args[1]))
+				}
+
+				switch format {
+				case "4", "a":
+					dnsType = dns.TypeA
+				case "6", "aaaa":
+					dnsType = dns.TypeAAAA
+				case "cname":
+					dnsType = dns.TypeCNAME
+				case "ns":
+					dnsType = dns.TypeNS
+				case "txt":
+					dnsType = dns.TypeTXT
+				case "srv":
+					dnsType = dns.TypeSRV
+				case "ptr":
+					dnsType = dns.TypePTR
+				case "mx":
+					dnsType = dns.TypeMX
+				case "soa":
+					dnsType = dns.TypeSOA
+				case "caa":
+					dnsType = dns.TypeCAA
+				default:
+					return nil, fmt.Errorf("invalid dns type")
+				}
+
+				err := dnsclientpool.Init(&types.Options{})
+				if err != nil {
+					return nil, err
+				}
+				dnsClient, err := dnsclientpool.Get(nil, &dnsclientpool.Configuration{})
+				if err != nil {
+					return nil, err
+				}
+
+				// query
+				rawResp, err := dnsClient.Query(types.ToString(args[0]), dnsType)
+				if err != nil {
+					return nil, err
+				}
+
+				dnsValues := map[uint16][]string{
+					dns.TypeA:     rawResp.A,
+					dns.TypeAAAA:  rawResp.AAAA,
+					dns.TypeCNAME: rawResp.CNAME,
+					dns.TypeNS:    rawResp.NS,
+					dns.TypeTXT:   rawResp.TXT,
+					dns.TypeSRV:   rawResp.SRV,
+					dns.TypePTR:   rawResp.PTR,
+					dns.TypeMX:    rawResp.MX,
+					dns.TypeSOA:   rawResp.SOA,
+					dns.TypeCAA:   rawResp.CAA,
+				}
+
+				if values, ok := dnsValues[dnsType]; ok {
+					firstFound, found := sliceutil.FirstNonZero(values)
+					if found {
+						return firstFound, nil
+					}
+				}
+
+				return "", fmt.Errorf("no records found")
+			}),
 		"ip_format": makeDslFunction(2, func(args ...interface{}) (interface{}, error) {
 			ipFormat, err := strconv.ParseInt(types.ToString(args[1]), 10, 64)
 			if err != nil {
