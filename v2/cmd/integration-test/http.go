@@ -8,6 +8,7 @@ import (
 	"net/http/httptest"
 	"net/http/httputil"
 	"os"
+	"path/filepath"
 	"reflect"
 	"strconv"
 	"strings"
@@ -18,7 +19,9 @@ import (
 
 	"github.com/projectdiscovery/nuclei/v2/pkg/testutils"
 	"github.com/projectdiscovery/retryablehttp-go"
+	errorutil "github.com/projectdiscovery/utils/errors"
 	logutil "github.com/projectdiscovery/utils/log"
+	sliceutil "github.com/projectdiscovery/utils/slice"
 	stringsutil "github.com/projectdiscovery/utils/strings"
 )
 
@@ -47,7 +50,8 @@ var httpTestcases = map[string]testutils.TestCase{
 	"http/request-condition-new.yaml":               &httpRequestCondition{},
 	"http/interactsh.yaml":                          &httpInteractshRequest{},
 	"http/interactsh-stop-at-first-match.yaml":      &httpInteractshStopAtFirstMatchRequest{},
-	"http/self-contained.yaml":                      &httpRequestSelContained{},
+	"http/self-contained.yaml":                      &httpRequestSelfContained{},
+	"http/self-contained-file-input.yaml":           &httpRequestSelfContainedFileInput{},
 	"http/get-case-insensitive.yaml":                &httpGetCaseInsensitive{},
 	"http/get.yaml,http/get-case-insensitive.yaml":  &httpGetCaseInsensitiveCluster{},
 	"http/get-redirects-chain-headers.yaml":         &httpGetRedirectsChainHeaders{},
@@ -782,10 +786,10 @@ func (h *httpRequestCondition) Execute(filePath string) error {
 	return expectResultsCount(results, 1)
 }
 
-type httpRequestSelContained struct{}
+type httpRequestSelfContained struct{}
 
 // Execute executes a test case and returns an error if occurred
-func (h *httpRequestSelContained) Execute(filePath string) error {
+func (h *httpRequestSelfContained) Execute(filePath string) error {
 	router := httprouter.New()
 	router.GET("/", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 		_, _ = w.Write([]byte("This is self-contained response"))
@@ -805,6 +809,50 @@ func (h *httpRequestSelContained) Execute(filePath string) error {
 	}
 
 	return expectResultsCount(results, 1)
+}
+
+type httpRequestSelfContainedFileInput struct{}
+
+func (h *httpRequestSelfContainedFileInput) Execute(filePath string) error {
+	router := httprouter.New()
+	gotReqToEndpoints := []string{}
+	router.GET("/one", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+		gotReqToEndpoints = append(gotReqToEndpoints, "/one")
+		_, _ = w.Write([]byte("This is self-contained response"))
+	})
+	router.GET("/two", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+		gotReqToEndpoints = append(gotReqToEndpoints, "/two")
+		_, _ = w.Write([]byte("This is self-contained response"))
+	})
+	server := &http.Server{
+		Addr:    fmt.Sprintf("localhost:%d", defaultStaticPort),
+		Handler: router,
+	}
+	go func() {
+		_ = server.ListenAndServe()
+	}()
+	defer server.Close()
+
+	// create temp file
+	FileLoc := filepath.Join(os.TempDir(), "httpselfcontained.yaml")
+	err := os.WriteFile(FileLoc, []byte("one\ntwo\n"), 0600)
+	if err != nil {
+		return errorutil.NewWithErr(err).Msgf("failed to create temporary file").WithTag(filePath)
+	}
+
+	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, "", debug, "-V", "test="+FileLoc)
+	if err != nil {
+		return err
+	}
+
+	if err := expectResultsCount(results, 4); err != nil {
+		return err
+	}
+
+	if !sliceutil.ElementsMatch(gotReqToEndpoints, []string{"/one", "/two", "/one", "/two"}) {
+		return errorutil.NewWithTag(filePath, "expected requests to be sent to `/one` and `/two` endpoints but were sent to `%v`", gotReqToEndpoints)
+	}
+	return nil
 }
 
 type httpGetCaseInsensitive struct{}
