@@ -148,7 +148,6 @@ func (p *Page) hasModificationRules() bool {
 		if containsAnyModificationActionType(rule.Action) {
 			return true
 		}
-
 	}
 	return false
 }
