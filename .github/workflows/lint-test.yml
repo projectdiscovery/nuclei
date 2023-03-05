@@ -2,6 +2,9 @@ name: 🙏🏻 Lint Test
 
 on:
   pull_request:
+    paths:
+      - '**.go'
+      - '**.mod'
   workflow_dispatch:
 
 jobs:
