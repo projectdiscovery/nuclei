@@ -107,16 +107,17 @@ func (rule *Rule) Compile(generator *generators.PayloadGenerator, options *proto
 	}
 	if rule.Part != "" {
 		if valueType, ok := stringToPartType[rule.Part]; !ok {
-			return errors.Errorf("invalid part value specified: %s", rule.Mode)
+			return errors.Errorf("invalid part value specified: %s", rule.Part)
 		} else {
 			rule.partType = valueType
 		}
 	} else {
 		rule.partType = queryPartType
 	}
+
 	if rule.Type != "" {
 		if valueType, ok := stringToRuleType[rule.Type]; !ok {
-			return errors.Errorf("invalid type value specified: %s", rule.Mode)
+			return errors.Errorf("invalid type value specified: %s", rule.Type)
 		} else {
 			rule.ruleType = valueType
 		}
