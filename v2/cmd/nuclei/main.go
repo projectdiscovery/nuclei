@@ -328,7 +328,7 @@ on extensive configurability, massive extensibility and ease of use.`)
 	_ = flagSet.Parse()
 
 	gologger.DefaultLogger.SetTimestamp(options.Timestamp, levels.LevelDebug)
-
+	
 	if options.LeaveDefaultPorts {
 		http.LeaveDefaultPorts = true
 	}
@@ -338,7 +338,9 @@ on extensive configurability, massive extensibility and ease of use.`)
 		configPath := filepath.Join(options.CustomConfigDir, "config.yaml")
 		ignoreFile := filepath.Join(options.CustomConfigDir, ".nuclei-ignore")
 		if !fileutil.FileExists(ignoreFile) {
-			_ = fileutil.CopyFile(originalIgnorePath, ignoreFile)
+			if err := fileutil.CopyFile(originalIgnorePath, ignoreFile); err != nil {
+				gologger.Error().Msgf("failed to copy .nuclei-ignore file in custom config directory got %v", err)
+			}
 		}
 		readConfigFile := func() error {
 			if err := flagSet.MergeConfigFile(configPath); err != nil && !errors.Is(err, io.EOF) {
