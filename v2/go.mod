@@ -25,7 +25,7 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/projectdiscovery/clistats v0.0.12
 	github.com/projectdiscovery/fastdialer v0.0.22
-	github.com/projectdiscovery/hmap v0.0.7
+	github.com/projectdiscovery/hmap v0.0.8
 	github.com/projectdiscovery/interactsh v1.0.6-0.20220827132222-460cc6270053
 	github.com/projectdiscovery/rawhttp v0.1.9
 	github.com/projectdiscovery/retryabledns v1.0.21
@@ -55,9 +55,9 @@ require (
 	github.com/DataDog/gostackparse v0.6.0
 	github.com/antchfx/xmlquery v1.3.15
 	github.com/asaskevich/govalidator v0.0.0-20210307081110-f21760c49a8d
-	github.com/aws/aws-sdk-go-v2 v1.17.4
+	github.com/aws/aws-sdk-go-v2 v1.17.5
 	github.com/aws/aws-sdk-go-v2/config v1.18.12
-	github.com/aws/aws-sdk-go-v2/credentials v1.13.12
+	github.com/aws/aws-sdk-go-v2/credentials v1.13.15
 	github.com/aws/aws-sdk-go-v2/feature/s3/manager v1.11.51
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.30.3
 	github.com/docker/go-units v0.5.0
@@ -66,23 +66,24 @@ require (
 	github.com/h2non/filetype v1.1.3
 	github.com/hashicorp/go-version v1.6.0
 	github.com/kataras/jwt v0.1.8
-	github.com/klauspost/compress v1.15.15
-	github.com/labstack/echo/v4 v4.10.0
+	github.com/klauspost/compress v1.16.0
+	github.com/labstack/echo/v4 v4.10.2
 	github.com/mholt/archiver v3.1.1+incompatible
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/projectdiscovery/fasttemplate v0.0.2
-	github.com/projectdiscovery/goflags v0.1.6
+	github.com/projectdiscovery/goflags v0.1.7
 	github.com/projectdiscovery/gologger v1.1.8
 	github.com/projectdiscovery/httpx v1.2.7
+	github.com/projectdiscovery/mapcidr v1.1.0
 	github.com/projectdiscovery/nvd v1.0.9
 	github.com/projectdiscovery/ratelimit v0.0.6
 	github.com/projectdiscovery/rdap v0.9.1-0.20221108103045-9865884d1917
 	github.com/projectdiscovery/sarif v0.0.1
 	github.com/projectdiscovery/tlsx v1.0.5
 	github.com/projectdiscovery/uncover v1.0.2
-	github.com/projectdiscovery/utils v0.0.10-0.20230217185600-008d111dd1c1
+	github.com/projectdiscovery/utils v0.0.13
 	github.com/projectdiscovery/wappalyzergo v0.0.81
-	github.com/stretchr/testify v1.8.1
+	github.com/stretchr/testify v1.8.2
 	gopkg.in/src-d/go-git.v4 v4.13.1
 	gopkg.in/yaml.v3 v3.0.1
 )
@@ -107,7 +108,7 @@ require (
 	github.com/karlseguin/expect v1.0.8 // indirect
 	github.com/matttproud/golang_protobuf_extensions v1.0.4 // indirect
 	github.com/pjbgf/sha1cd v0.2.3 // indirect
-	github.com/projectdiscovery/asnmap v0.0.1 // indirect
+	github.com/projectdiscovery/asnmap v1.0.1 // indirect
 	github.com/projectdiscovery/cdncheck v0.0.4-0.20220413175814-b47bc2d578b1 // indirect
 	github.com/projectdiscovery/freeport v0.0.4 // indirect
 	github.com/prometheus/client_golang v1.14.0 // indirect
@@ -124,6 +125,9 @@ require (
 	github.com/tidwall/rtred v0.1.2 // indirect
 	github.com/tidwall/tinyqueue v0.1.1 // indirect
 	go.uber.org/atomic v1.10.0 // indirect
+	google.golang.org/genproto v0.0.0-20220804142021-4e6b2dfa6612 // indirect
+	google.golang.org/grpc v1.51.0 // indirect
+	gopkg.in/cheggaaa/pb.v1 v1.0.28 // indirect
 	gopkg.in/djherbis/times.v1 v1.3.0 // indirect
 )
 
@@ -179,7 +183,7 @@ require (
 	github.com/libdns/libdns v0.2.1 // indirect
 	github.com/lor00x/goldap v0.0.0-20180618054307-a546dffdd1a3 // indirect
 	github.com/lufia/plan9stats v0.0.0-20211012122336-39d0f177ccd0 // indirect
-	github.com/mattn/go-isatty v0.0.16 // indirect
+	github.com/mattn/go-isatty v0.0.17 // indirect
 	github.com/mattn/go-runewidth v0.0.14 // indirect
 	github.com/mholt/acmez v1.0.4 // indirect
 	github.com/microcosm-cc/bluemonday v1.0.22 // indirect
@@ -187,8 +191,7 @@ require (
 	github.com/modern-go/reflect2 v1.0.2 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/power-devops/perfstat v0.0.0-20210106213030-5aafc221ea8c // indirect
-	github.com/projectdiscovery/blackrock v0.0.0-20220628111055-35616c71b2dc // indirect
-	github.com/projectdiscovery/mapcidr v1.0.3
+	github.com/projectdiscovery/blackrock v0.0.0-20221025011524-9e4efe804fb4 // indirect
 	github.com/projectdiscovery/networkpolicy v0.0.4
 	github.com/rivo/uniseg v0.2.0 // indirect
 	github.com/rogpeppe/go-internal v1.9.0 // indirect
@@ -209,7 +212,7 @@ require (
 	go.etcd.io/bbolt v1.3.7 // indirect
 	go.uber.org/zap v1.23.0 // indirect
 	goftp.io/server/v2 v2.0.0 // indirect
-	golang.org/x/crypto v0.5.0 // indirect
+	golang.org/x/crypto v0.6.0
 	golang.org/x/exp v0.0.0-20230206171751-46f607a40771
 	golang.org/x/mod v0.8.0 // indirect
 	golang.org/x/sys v0.5.0 // indirect
@@ -226,14 +229,14 @@ require (
 	github.com/ProtonMail/go-crypto v0.0.0-20221026131551-cf6655e29de4 // indirect
 	github.com/acomagu/bufpipe v1.0.3 // indirect
 	github.com/alecthomas/chroma v0.10.0
-	github.com/aws/aws-sdk-go-v2/feature/ec2/imds v1.12.22 // indirect
-	github.com/aws/aws-sdk-go-v2/internal/configsources v1.1.28 // indirect
-	github.com/aws/aws-sdk-go-v2/internal/endpoints/v2 v2.4.22 // indirect
+	github.com/aws/aws-sdk-go-v2/feature/ec2/imds v1.12.23 // indirect
+	github.com/aws/aws-sdk-go-v2/internal/configsources v1.1.29 // indirect
+	github.com/aws/aws-sdk-go-v2/internal/endpoints/v2 v2.4.23 // indirect
 	github.com/aws/aws-sdk-go-v2/internal/ini v1.3.29 // indirect
-	github.com/aws/aws-sdk-go-v2/service/internal/presigned-url v1.9.22 // indirect
-	github.com/aws/aws-sdk-go-v2/service/sso v1.12.1 // indirect
-	github.com/aws/aws-sdk-go-v2/service/ssooidc v1.14.1 // indirect
-	github.com/aws/aws-sdk-go-v2/service/sts v1.18.3 // indirect
+	github.com/aws/aws-sdk-go-v2/service/internal/presigned-url v1.9.23 // indirect
+	github.com/aws/aws-sdk-go-v2/service/sso v1.12.4 // indirect
+	github.com/aws/aws-sdk-go-v2/service/ssooidc v1.14.4 // indirect
+	github.com/aws/aws-sdk-go-v2/service/sts v1.18.5 // indirect
 	github.com/aws/smithy-go v1.13.5 // indirect
 	github.com/emirpasic/gods v1.18.1 // indirect
 	github.com/go-git/gcfg v1.5.0 // indirect

@@ -2,12 +2,15 @@ name: 🙏🏻 Lint Test
 
 on:
   pull_request:
+    paths:
+      - '**.go'
+      - '**.mod'
   workflow_dispatch:
 
 jobs:
   lint:
     name: Lint Test
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-latest-16-cores
     steps:
       - name: Set up Go
         uses: actions/setup-go@v3

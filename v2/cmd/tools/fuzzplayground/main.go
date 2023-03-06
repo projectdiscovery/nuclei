@@ -3,13 +3,13 @@ package main
 import (
 	"fmt"
 	"io"
-	"net/http"
 	"os/exec"
 	"strconv"
 	"strings"
 
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
+	"github.com/projectdiscovery/retryablehttp-go"
 )
 
 func main() {
@@ -60,7 +60,7 @@ func redirectHandler(ctx echo.Context) error {
 
 func requestHandler(ctx echo.Context) error {
 	url := ctx.QueryParam("url")
-	data, err := http.Get(url)
+	data, err := retryablehttp.DefaultClient().Get(url)
 	if err != nil {
 		return ctx.HTML(500, err.Error())
 	}

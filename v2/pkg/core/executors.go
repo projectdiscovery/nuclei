@@ -13,9 +13,7 @@ import (
 	"github.com/remeh/sizedwaitgroup"
 )
 
-/*
-Executors are low level executors that deals with template execution on a target
-*/
+// Executors are low level executors that deals with template execution on a target
 
 // executeAllSelfContained executes all self contained templates that do not use `target`
 func (e *Engine) executeAllSelfContained(alltemplates []*templates.Template, results *atomic.Bool, sg *sync.WaitGroup) {

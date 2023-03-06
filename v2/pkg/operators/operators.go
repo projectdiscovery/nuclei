@@ -23,17 +23,17 @@ type Operators struct {
 	//
 	//   Multiple matchers can be combined with `matcher-condition` flag
 	//   which accepts either `and` or `or` as argument.
-	Matchers []*matchers.Matcher `yaml:"matchers,omitempty" jsonschema:"title=matchers to run on response,description=Detection mechanism to identify whether the request was successful by doing pattern matching"`
+	Matchers []*matchers.Matcher `yaml:"matchers,omitempty" json:"matchers,omitempty" jsonschema:"title=matchers to run on response,description=Detection mechanism to identify whether the request was successful by doing pattern matching"`
 	// description: |
 	//   Extractors contains the extraction mechanism for the request to identify
 	//   and extract parts of the response.
-	Extractors []*extractors.Extractor `yaml:"extractors,omitempty" jsonschema:"title=extractors to run on response,description=Extractors contains the extraction mechanism for the request to identify and extract parts of the response"`
+	Extractors []*extractors.Extractor `yaml:"extractors,omitempty" json:"extractors,omitempty" jsonschema:"title=extractors to run on response,description=Extractors contains the extraction mechanism for the request to identify and extract parts of the response"`
 	// description: |
 	//   MatchersCondition is the condition between the matchers. Default is OR.
 	// values:
 	//   - "and"
 	//   - "or"
-	MatchersCondition string `yaml:"matchers-condition,omitempty" jsonschema:"title=condition between the matchers,description=Conditions between the matchers,enum=and,enum=or"`
+	MatchersCondition string `yaml:"matchers-condition,omitempty" json:"matchers-condition,omitempty" jsonschema:"title=condition between the matchers,description=Conditions between the matchers,enum=and,enum=or"`
 	// cached variables that may be used along with request.
 	matchersCondition matchers.ConditionType
 

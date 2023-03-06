@@ -15,41 +15,41 @@ import (
 // Request contains a Headless protocol request to be made from a template
 type Request struct {
 	// ID is the optional id of the request
-	ID string `yaml:"id,omitempty" jsonschema:"title=id of the request,description=Optional ID of the headless request"`
+	ID string `yaml:"id,omitempty" json:"id,omitempty" jsonschema:"title=id of the request,description=Optional ID of the headless request"`
 
 	// description: |
 	//   Attack is the type of payload combinations to perform.
 	//
 	//   Batteringram is inserts the same payload into all defined payload positions at once, pitchfork combines multiple payload sets and clusterbomb generates
 	//   permutations and combinations for all payloads.
-	AttackType generators.AttackTypeHolder `yaml:"attack,omitempty" jsonschema:"title=attack is the payload combination,description=Attack is the type of payload combinations to perform,enum=batteringram,enum=pitchfork,enum=clusterbomb"`
+	AttackType generators.AttackTypeHolder `yaml:"attack,omitempty" json:"attack,omitempty" jsonschema:"title=attack is the payload combination,description=Attack is the type of payload combinations to perform,enum=batteringram,enum=pitchfork,enum=clusterbomb"`
 	// description: |
 	//   Payloads contains any payloads for the current request.
 	//
 	//   Payloads support both key-values combinations where a list
 	//   of payloads is provided, or optionally a single file can also
 	//   be provided as payload which will be read on run-time.
-	Payloads map[string]interface{} `yaml:"payloads,omitempty" jsonschema:"title=payloads for the headless request,description=Payloads contains any payloads for the current request"`
+	Payloads map[string]interface{} `yaml:"payloads,omitempty" json:"payloads,omitempty" jsonschema:"title=payloads for the headless request,description=Payloads contains any payloads for the current request"`
 
 	// description: |
 	//   Steps is the list of actions to run for headless request
-	Steps []*engine.Action `yaml:"steps,omitempty" jsonschema:"title=list of actions for headless request,description=List of actions to run for headless request"`
+	Steps []*engine.Action `yaml:"steps,omitempty" json:"steps,omitempty" jsonschema:"title=list of actions for headless request,description=List of actions to run for headless request"`
 
 	// descriptions: |
 	// 	 User-Agent is the type of user-agent to use for the request.
-	UserAgent useragent.UserAgentHolder `yaml:"user_agent,omitempty" jsonschema:"title=user agent for the headless request,description=User agent for the headless request"`
+	UserAgent useragent.UserAgentHolder `yaml:"user_agent,omitempty" json:"user_agent,omitempty" jsonschema:"title=user agent for the headless request,description=User agent for the headless request"`
 
 	// description: |
 	// 	 If UserAgent is set to custom, customUserAgent is the custom user-agent to use for the request.
-	CustomUserAgent   string `yaml:"custom_user_agent,omitempty" jsonschema:"title=custom user agent for the headless request,description=Custom user agent for the headless request"`
+	CustomUserAgent   string `yaml:"custom_user_agent,omitempty" json:"custom_user_agent,omitempty" jsonschema:"title=custom user agent for the headless request,description=Custom user agent for the headless request"`
 	compiledUserAgent string
 	// description: |
 	//   StopAtFirstMatch stops the execution of the requests and template as soon as a match is found.
-	StopAtFirstMatch bool `yaml:"stop-at-first-match,omitempty" jsonschema:"title=stop at first match,description=Stop the execution after a match is found"`
+	StopAtFirstMatch bool `yaml:"stop-at-first-match,omitempty" json:"stop-at-first-match,omitempty" jsonschema:"title=stop at first match,description=Stop the execution after a match is found"`
 
 	// Operators for the current request go here.
-	operators.Operators `yaml:",inline,omitempty"`
-	CompiledOperators   *operators.Operators `yaml:"-"`
+	operators.Operators `yaml:",inline,omitempty" json:",inline,omitempty"`
+	CompiledOperators   *operators.Operators `yaml:"-" json:"-"`
 
 	// cache any variables that may be needed for operation.
 	options   *protocols.ExecuterOptions
@@ -85,7 +85,7 @@ func (request *Request) GetID() string {
 func (request *Request) Compile(options *protocols.ExecuterOptions) error {
 	// TODO: logic similar to network + http => probably can be refactored
 	// Resolve payload paths from vars if they exists
-	for name, payload := range options.Options.VarsPayload() {
+	for name, payload := range options.Options.Vars.AsMap() {
 		payloadStr, ok := payload.(string)
 		// check if inputs contains the payload
 		if ok && fileutil.FileExists(payloadStr) {

@@ -353,7 +353,6 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 			ctx := request.newContext(input)
 			ctxWithTimeout, cancel := context.WithTimeout(ctx, time.Duration(request.options.Options.Timeout)*time.Second)
 			defer cancel()
-
 			generatedHttpRequest, err := generator.Make(ctxWithTimeout, input, data, payloads, dynamicValue)
 			if err != nil {
 				if err == io.EOF {
