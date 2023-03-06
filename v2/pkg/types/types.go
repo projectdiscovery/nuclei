@@ -344,6 +344,10 @@ type Options struct {
 	AwsRegion string
 	// Scan Strategy (auto,hosts-spray,templates-spray)
 	ScanStrategy string
+	// Fuzzing Type overrides template level fuzzing-type configuration
+	FuzzingType string
+	// Fuzzing Mode overrides template level fuzzing-mode configuration
+	FuzzingMode string
 }
 
 // ShouldLoadResume resume file
