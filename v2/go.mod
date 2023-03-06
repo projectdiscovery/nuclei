@@ -81,7 +81,7 @@ require (
 	github.com/projectdiscovery/sarif v0.0.1
 	github.com/projectdiscovery/tlsx v1.0.5
 	github.com/projectdiscovery/uncover v1.0.2
-	github.com/projectdiscovery/utils v0.0.13
+	github.com/projectdiscovery/utils v0.0.14
 	github.com/projectdiscovery/wappalyzergo v0.0.81
 	github.com/stretchr/testify v1.8.2
 	gopkg.in/src-d/go-git.v4 v4.13.1
@@ -125,9 +125,6 @@ require (
 	github.com/tidwall/rtred v0.1.2 // indirect
 	github.com/tidwall/tinyqueue v0.1.1 // indirect
 	go.uber.org/atomic v1.10.0 // indirect
-	google.golang.org/genproto v0.0.0-20220804142021-4e6b2dfa6612 // indirect
-	google.golang.org/grpc v1.51.0 // indirect
-	gopkg.in/cheggaaa/pb.v1 v1.0.28 // indirect
 	gopkg.in/djherbis/times.v1 v1.3.0 // indirect
 )
 
