@@ -189,6 +189,7 @@ Nuclei是一款注重于可配置性、可扩展性和易用性的基于模板�
    -retries int                          重试次数（默认：1）
    -ldp, -leave-default-ports            指定HTTP/HTTPS默认端口（例如：host:80，host:443）
    -mhe, -max-host-error int             某主机扫描失败次数，跳过该主机（默认：30）
+   -te, -track-error                     额外的错误消息计入`-max-host-error`的值
    -nmhe, -no-mhe                        disable skipping host from scan based on errors
    -project                              使用项目文件夹避免多次发送同一请求
    -project-path string                  设置特定的项目文件夹
