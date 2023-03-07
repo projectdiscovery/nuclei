@@ -1,6 +1,7 @@
 package hosterrorscache
 
 import (
+	"github.com/projectdiscovery/goflags"
 	"net"
 	"net/url"
 	"regexp"
@@ -30,6 +31,7 @@ type Cache struct {
 	MaxHostError  int
 	verbose       bool
 	failedTargets gcache.Cache
+	TrackError    []string
 }
 
 type cacheItem struct {
@@ -40,11 +42,11 @@ type cacheItem struct {
 const DefaultMaxHostsCount = 10000
 
 // New returns a new host max errors cache
-func New(maxHostError, maxHostsCount int) *Cache {
+func New(maxHostError, maxHostsCount int, trackError goflags.StringSlice) *Cache {
 	gc := gcache.New(maxHostsCount).
 		ARC().
 		Build()
-	return &Cache{failedTargets: gc, MaxHostError: maxHostError}
+	return &Cache{failedTargets: gc, MaxHostError: maxHostError, TrackError: trackError}
 }
 
 // SetVerbose sets the cache to log at verbose level
@@ -124,15 +126,15 @@ func (c *Cache) MarkFailed(value string, err error) {
 }
 
 var reCheckError = regexp.MustCompile(`(no address found for host|Client\.Timeout exceeded while awaiting headers|could not resolve host|connection refused)`)
-var contextDeadlineExceeded = regexp.MustCompile("context deadline exceeded")
 
 // checkError checks if an error represents a type that should be
 // added to the host skipping table.
 func (c *Cache) checkError(err error) bool {
 	errString := err.Error()
-	// TODO: Figure out how to incorporate this logic.
-	if CountDeadlineExceeded && reCheckError.MatchString(errString) {
-		return true
+	for _, msg := range c.TrackError {
+		if strings.Contains(errString, msg) {
+			return true
+		}
 	}
 	return reCheckError.MatchString(errString)
 }

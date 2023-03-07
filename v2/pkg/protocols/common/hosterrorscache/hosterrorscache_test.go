@@ -10,7 +10,7 @@ import (
 )
 
 func TestCacheCheck(t *testing.T) {
-	cache := New(3, DefaultMaxHostsCount)
+	cache := New(3, DefaultMaxHostsCount, nil)
 
 	for i := 0; i < 100; i++ {
 		cache.MarkFailed("test", fmt.Errorf("could not resolve host"))
@@ -51,7 +51,7 @@ func TestCacheItemDo(t *testing.T) {
 }
 
 func TestCacheMarkFailed(t *testing.T) {
-	cache := New(3, DefaultMaxHostsCount)
+	cache := New(3, DefaultMaxHostsCount, nil)
 
 	tests := []struct {
 		host     string
@@ -76,7 +76,7 @@ func TestCacheMarkFailed(t *testing.T) {
 }
 
 func TestCacheMarkFailedConcurrent(t *testing.T) {
-	cache := New(3, DefaultMaxHostsCount)
+	cache := New(3, DefaultMaxHostsCount, nil)
 
 	tests := []struct {
 		host     string

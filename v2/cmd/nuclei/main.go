@@ -249,7 +249,7 @@ on extensive configurability, massive extensibility and ease of use.`)
 		flagSet.IntVar(&options.Retries, "retries", 1, "number of times to retry a failed request"),
 		flagSet.BoolVarP(&options.LeaveDefaultPorts, "leave-default-ports", "ldp", false, "leave default HTTP/HTTPS ports (eg. host:80,host:443)"),
 		flagSet.IntVarP(&options.MaxHostError, "max-host-error", "mhe", 30, "max errors for a host before skipping from scan"),
-		flagSet.BoolVar(&options.CountDeadlineExceeded, "count-deadline-exceeded", false, "count 'context deadline exceeded' errors towards the maximum error count"),
+		flagSet.StringSliceVarP(&options.TrackError, "track-error", "te", nil, "count 'context deadline exceeded' errors towards the maximum error count", goflags.StringSliceOptions),
 		flagSet.BoolVarP(&options.NoHostErrors, "no-mhe", "nmhe", false, "disable skipping host from scan based on errors"),
 		flagSet.BoolVar(&options.Project, "project", false, "use a project folder to avoid sending same request multiple times"),
 		flagSet.StringVar(&options.ProjectPath, "project-path", os.TempDir(), "set a specific project path"),
@@ -335,7 +335,7 @@ on extensive configurability, massive extensibility and ease of use.`)
 	_ = flagSet.Parse()
 
 	gologger.DefaultLogger.SetTimestamp(options.Timestamp, levels.LevelDebug)
-	
+
 	if options.LeaveDefaultPorts {
 		http.LeaveDefaultPorts = true
 	}
