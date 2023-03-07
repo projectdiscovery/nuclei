@@ -124,10 +124,15 @@ func (c *Cache) MarkFailed(value string, err error) {
 }
 
 var reCheckError = regexp.MustCompile(`(no address found for host|Client\.Timeout exceeded while awaiting headers|could not resolve host|connection refused)`)
+var contextDeadlineExceeded = regexp.MustCompile("context deadline exceeded")
 
 // checkError checks if an error represents a type that should be
 // added to the host skipping table.
 func (c *Cache) checkError(err error) bool {
 	errString := err.Error()
+	// TODO: Figure out how to incorporate this logic.
+	if CountDeadlineExceeded && reCheckError.MatchString(errString) {
+		return true
+	}
 	return reCheckError.MatchString(errString)
 }

@@ -139,6 +139,8 @@ type Options struct {
 	MetricsPort int
 	// MaxHostError is the maximum number of errors allowed for a host
 	MaxHostError int
+	// CountDeadlineExceeded counts 'context deadline exceeded' errors towards the maximum error count
+	CountDeadlineExceeded bool
 	// NoHostErrors disables host skipping after maximum number of errors
 	NoHostErrors bool
 	// BulkSize is the of targets analyzed in parallel for each template
