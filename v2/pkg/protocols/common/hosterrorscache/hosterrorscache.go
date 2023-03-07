@@ -1,7 +1,6 @@
 package hosterrorscache
 
 import (
-	"github.com/projectdiscovery/goflags"
 	"net"
 	"net/url"
 	"regexp"
@@ -10,6 +9,7 @@ import (
 	"sync/atomic"
 
 	"github.com/bluele/gcache"
+	"github.com/projectdiscovery/goflags"
 	"github.com/projectdiscovery/gologger"
 )
 
