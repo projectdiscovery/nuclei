@@ -72,6 +72,7 @@ var httpTestcases = map[string]testutils.TestCase{
 	"http/get-without-scheme.yaml":                  &httpGetWithoutScheme{},
 	"http/cl-body-without-header.yaml":              &httpCLBodyWithoutHeader{},
 	"http/cl-body-with-header.yaml":                 &httpCLBodyWithHeader{},
+	"http/default-matcher-condition.yaml":           &defaultMathcerCondition{},
 }
 
 type httpInteractshRequest struct{}
@@ -81,6 +82,30 @@ func (h *httpInteractshRequest) Execute(filePath string) error {
 	router := httprouter.New()
 	router.GET("/", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 		value := r.Header.Get("url")
+		if value != "" {
+			if resp, _ := retryablehttp.DefaultClient().Get(value); resp != nil {
+				resp.Body.Close()
+			}
+		}
+	})
+	ts := httptest.NewServer(router)
+	defer ts.Close()
+
+	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, ts.URL, debug)
+	if err != nil {
+		return err
+	}
+
+	return expectResultsCount(results, 1)
+}
+
+type defaultMathcerCondition struct{}
+
+// Execute executes a test case and returns an error if occurred
+func (d *defaultMathcerCondition) Execute(filePath string) error {
+	router := httprouter.New()
+	router.GET("/", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+		value := r.URL.Query().Get("url")
 		if value != "" {
 			if resp, _ := retryablehttp.DefaultClient().Get(value); resp != nil {
 				resp.Body.Close()

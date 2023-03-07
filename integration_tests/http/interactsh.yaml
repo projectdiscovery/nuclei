@@ -6,17 +6,14 @@ info:
   severity: info
 
 requests:
-  - raw:
-      - |
-        GET /?action=curltest&url={{interactsh-url}} HTTP/1.1
-        Host: {{Hostname}}
+  - method: GET
+    path:
+      - "{{BaseURL}}"
+    headers:
+      url: 'http://{{interactsh-url}}'
 
     matchers:
       - type: word
         part: interactsh_protocol # Confirms the HTTP Interaction
         words:
           - "http"
-
-      - type: status
-        status:
-          - 200
