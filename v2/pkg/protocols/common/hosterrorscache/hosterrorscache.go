@@ -9,7 +9,6 @@ import (
 	"sync/atomic"
 
 	"github.com/bluele/gcache"
-	"github.com/projectdiscovery/goflags"
 	"github.com/projectdiscovery/gologger"
 )
 
@@ -42,7 +41,7 @@ type cacheItem struct {
 const DefaultMaxHostsCount = 10000
 
 // New returns a new host max errors cache
-func New(maxHostError, maxHostsCount int, trackError goflags.StringSlice) *Cache {
+func New(maxHostError, maxHostsCount int, trackError []string) *Cache {
 	gc := gcache.New(maxHostsCount).
 		ARC().
 		Build()
@@ -130,6 +129,9 @@ var reCheckError = regexp.MustCompile(`(no address found for host|Client\.Timeou
 // checkError checks if an error represents a type that should be
 // added to the host skipping table.
 func (c *Cache) checkError(err error) bool {
+	if err == nil {
+		return false
+	}
 	errString := err.Error()
 	for _, msg := range c.TrackError {
 		if strings.Contains(errString, msg) {
