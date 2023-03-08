@@ -17,7 +17,7 @@ func DoHealthCheck(options *types.Options) string {
 	// RW permissions on config file
 	var test strings.Builder
 	test.WriteString(fmt.Sprintf("Version: %s\n", config.Version))
-	test.WriteString(fmt.Sprintf("Operative System: %s\n", runtime.GOOS))
+	test.WriteString(fmt.Sprintf("Operating System: %s\n", runtime.GOOS))
 	test.WriteString(fmt.Sprintf("Architecture: %s\n", runtime.GOARCH))
 	test.WriteString(fmt.Sprintf("Go Version: %s\n", runtime.Version()))
 	test.WriteString(fmt.Sprintf("Compiler: %s\n", runtime.Compiler))
