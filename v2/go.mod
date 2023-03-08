@@ -26,7 +26,7 @@ require (
 	github.com/projectdiscovery/clistats v0.0.12
 	github.com/projectdiscovery/fastdialer v0.0.22
 	github.com/projectdiscovery/hmap v0.0.8
-	github.com/projectdiscovery/interactsh v1.0.6-0.20220827132222-460cc6270053
+	github.com/projectdiscovery/interactsh v1.1.0
 	github.com/projectdiscovery/rawhttp v0.1.9
 	github.com/projectdiscovery/retryabledns v1.0.21
 	github.com/projectdiscovery/retryablehttp-go v1.0.12-0.20230220094538-f406add578ab
@@ -106,6 +106,7 @@ require (
 	github.com/hbakhtiyor/strsim v0.0.0-20190107154042-4d2bbb273edf // indirect
 	github.com/jmespath/go-jmespath v0.4.0 // indirect
 	github.com/karlseguin/expect v1.0.8 // indirect
+	github.com/mackerelio/go-osstat v0.2.3 // indirect
 	github.com/matttproud/golang_protobuf_extensions v1.0.4 // indirect
 	github.com/pjbgf/sha1cd v0.2.3 // indirect
 	github.com/projectdiscovery/asnmap v1.0.1 // indirect
@@ -141,7 +142,7 @@ require (
 	github.com/antchfx/xpath v1.2.3 // indirect
 	github.com/aymerick/douceur v0.2.0 // indirect
 	github.com/c4milo/unpackit v0.1.0 // indirect
-	github.com/caddyserver/certmagic v0.16.3 // indirect
+	github.com/caddyserver/certmagic v0.17.2 // indirect
 	github.com/cespare/xxhash/v2 v2.2.0 // indirect
 	github.com/cnf/structhash v0.0.0-20201127153200-e1b16c1ebc08 // indirect
 	github.com/cockroachdb/errors v1.9.1 // indirect
@@ -172,7 +173,7 @@ require (
 	github.com/hdm/jarm-go v0.0.7 // indirect
 	github.com/iancoleman/orderedmap v0.0.0-20190318233801-ac98e3ecb4b0 // indirect
 	github.com/itchyny/timefmt-go v0.1.5 // indirect
-	github.com/klauspost/cpuid/v2 v2.1.0 // indirect
+	github.com/klauspost/cpuid/v2 v2.1.1 // indirect
 	github.com/klauspost/pgzip v1.2.5 // indirect
 	github.com/kr/pretty v0.3.1 // indirect
 	github.com/kr/text v0.2.0 // indirect
@@ -207,7 +208,7 @@ require (
 	github.com/zmap/rc2 v0.0.0-20190804163417-abaa70531248 // indirect
 	github.com/zmap/zcrypto v0.0.0-20230205235340-d51ce4775101 // indirect
 	go.etcd.io/bbolt v1.3.7 // indirect
-	go.uber.org/zap v1.23.0 // indirect
+	go.uber.org/zap v1.24.0 // indirect
 	goftp.io/server/v2 v2.0.0 // indirect
 	golang.org/x/crypto v0.6.0
 	golang.org/x/exp v0.0.0-20230206171751-46f607a40771

@@ -72,7 +72,7 @@ var httpTestcases = map[string]testutils.TestCase{
 	"http/get-without-scheme.yaml":                  &httpGetWithoutScheme{},
 	"http/cl-body-without-header.yaml":              &httpCLBodyWithoutHeader{},
 	"http/cl-body-with-header.yaml":                 &httpCLBodyWithHeader{},
-	"http/default-matcher-condition.yaml":           &defaultMathcerCondition{},
+	"http/default-matcher-condition.yaml":           &httpDefaultMatcherCondition{},
 }
 
 type httpInteractshRequest struct{}
@@ -99,27 +99,46 @@ func (h *httpInteractshRequest) Execute(filePath string) error {
 	return expectResultsCount(results, 1)
 }
 
-type defaultMathcerCondition struct{}
+type httpDefaultMatcherCondition struct{}
 
 // Execute executes a test case and returns an error if occurred
-func (d *defaultMathcerCondition) Execute(filePath string) error {
+func (d *httpDefaultMatcherCondition) Execute(filePath string) error {
+	// to simulate matcher-condition `or`
+	// - template should be run twice and vulnerable server should send response that fits for that specific run
 	router := httprouter.New()
-	router.GET("/", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+	var routerErr error
+	// Server endpoint where only interactsh matcher is successful and status code is not 200
+	router.GET("/interactsh/", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 		value := r.URL.Query().Get("url")
 		if value != "" {
-			if resp, _ := retryablehttp.DefaultClient().Get(value); resp != nil {
-				resp.Body.Close()
+			if _, err := retryablehttp.DefaultClient().Get("https://" + value); err != nil {
+				routerErr = err
 			}
 		}
+		w.WriteHeader(http.StatusNotFound)
+	})
+	// Server endpoint where url is not probed but sends a 200 status code
+	router.GET("/status/", func(w http.ResponseWriter, r *http.Request, p httprouter.Params) {
+		w.WriteHeader(http.StatusOK)
 	})
 	ts := httptest.NewServer(router)
 	defer ts.Close()
 
-	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, ts.URL, debug)
+	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, ts.URL+"/interactsh", debug)
 	if err != nil {
 		return err
 	}
+	if routerErr != nil {
+		return errorutil.NewWithErr(routerErr).Msgf("failed to send http request to interactsh server")
+	}
+	if err := expectResultsCount(results, 1); err != nil {
+		return err
+	}
 
+	results, err = testutils.RunNucleiTemplateAndGetResults(filePath, ts.URL+"/status", debug)
+	if err != nil {
+		return err
+	}
 	return expectResultsCount(results, 1)
 }
 
