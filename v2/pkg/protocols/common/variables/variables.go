@@ -1,6 +1,7 @@
 package variables
 
 import (
+	"encoding/json"
 	"strings"
 
 	"github.com/alecthomas/jsonschema"
@@ -39,6 +40,19 @@ func (variables *Variables) UnmarshalYAML(unmarshal func(interface{}) error) err
 		return nil
 	}
 
+	evaluated := variables.Evaluate(map[string]interface{}{})
+
+	for k, v := range evaluated {
+		variables.Set(k, v)
+	}
+	return nil
+}
+
+func (variables *Variable) UnmarshalJSON(data []byte) error {
+	variables.InsertionOrderedStringMap = utils.InsertionOrderedStringMap{}
+	if err := json.Unmarshal(data, &variables.InsertionOrderedStringMap); err != nil {
+		return err
+	}
 	evaluated := variables.Evaluate(map[string]interface{}{})
 
 	for k, v := range evaluated {

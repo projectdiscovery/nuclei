@@ -353,7 +353,6 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 			ctx := request.newContext(input)
 			ctxWithTimeout, cancel := context.WithTimeout(ctx, time.Duration(request.options.Options.Timeout)*time.Second)
 			defer cancel()
-
 			generatedHttpRequest, err := generator.Make(ctxWithTimeout, input, data, payloads, dynamicValue)
 			if err != nil {
 				if err == io.EOF {
@@ -555,7 +554,7 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 			httpclient := request.httpClient
 			if input.CookieJar != nil {
 				connConfiguration := request.connConfiguration
-				connConfiguration.Connection.Cookiejar = input.CookieJar
+				connConfiguration.Connection.SetCookieJar(input.CookieJar)
 				client, err := httpclientpool.Get(request.options.Options, connConfiguration)
 				if err != nil {
 					return errors.Wrap(err, "could not get http client")
@@ -569,6 +568,9 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 	if formedURL == "" {
 		formedURL = input.MetaInput.Input
 	}
+
+	// converts whitespace and other chars that cannot be printed to url encoded values
+	formedURL = urlutil.URLEncodeWithEscapes(formedURL)
 
 	// Dump the requests containing all headers
 	if !generatedRequest.original.Race {

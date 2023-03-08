@@ -35,17 +35,26 @@ var (
 		"file":            fileTestcases,
 		"offlineHttp":     offlineHttpTestcases,
 		"customConfigDir": customConfigDirTestCases,
+		"fuzzing":         fuzzingTestCases,
 	}
 
 	// For debug purposes
 	runProtocol = ""
 	runTemplate = ""
+	extraArgs   = []string{}
 )
 
 func main() {
 	flag.StringVar(&runProtocol, "protocol", "", "run integration tests of given protocol")
 	flag.StringVar(&runTemplate, "template", "", "run integration test of given template")
 	flag.Parse()
+
+	// allows passing extra args to nuclei
+	eargs := os.Getenv("DebugExtraArgs")
+	if eargs != "" {
+		extraArgs = strings.Split(eargs, " ")
+		testutils.ExtraDebugArgs = extraArgs
+	}
 
 	if runProtocol != "" {
 		debug = true
@@ -73,7 +82,7 @@ func debugTests() {
 			continue
 		}
 		if err := testcase.Execute(tpath); err != nil {
-			panic(err)
+			fmt.Printf("\n%v", err.Error())
 		}
 	}
 }

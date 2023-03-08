@@ -47,12 +47,14 @@ func parseFlowAnnotations(rawRequest string) (flowMark, bool) {
 	return fm, hasFlowOveride
 }
 
+type annotationOverrides struct {
+	request        *retryablehttp.Request
+	cancelFunc     context.CancelFunc
+	interactshURLs []string
+}
+
 // parseAnnotations and override requests settings
-func (r *Request) parseAnnotations(rawRequest string, request *retryablehttp.Request) (*retryablehttp.Request, context.CancelFunc, bool) {
-	var (
-		modified   bool
-		cancelFunc context.CancelFunc
-	)
+func (r *Request) parseAnnotations(rawRequest string, request *retryablehttp.Request) (overrides annotationOverrides, modified bool) {
 	// parse request for known ovverride annotations
 
 	// @Host:target
@@ -89,8 +91,14 @@ func (r *Request) parseAnnotations(rawRequest string, request *retryablehttp.Req
 			value = value[:idxForwardSlash]
 		}
 
-		if stringsutil.EqualFoldAny(value, "request.host") {
+		switch value {
+		case "request.host":
 			value = request.Host
+		case "interactsh-url":
+			if interactshURL, err := r.options.Interactsh.NewURLWithData("interactsh-url"); err == nil {
+				value = interactshURL
+			}
+			overrides.interactshURLs = append(overrides.interactshURLs, value)
 		}
 		ctx := context.WithValue(request.Context(), fastdialer.SniName, value)
 		request = request.Clone(ctx)
@@ -106,16 +114,19 @@ func (r *Request) parseAnnotations(rawRequest string, request *retryablehttp.Req
 			value := strings.TrimSpace(duration[1])
 			if parsed, err := time.ParseDuration(value); err == nil {
 				//nolint:govet // cancelled automatically by withTimeout
-				ctx, cancelFunc = context.WithTimeout(context.Background(), parsed)
+				ctx, overrides.cancelFunc = context.WithTimeout(context.Background(), parsed)
 				request = request.Clone(ctx)
 			}
 		} else {
 			//nolint:govet // cancelled automatically by withTimeout
-			ctx, cancelFunc = context.WithTimeout(context.Background(), time.Duration(r.options.Options.Timeout)*time.Second)
+			ctx, overrides.cancelFunc = context.WithTimeout(context.Background(), time.Duration(r.options.Options.Timeout)*time.Second)
 			request = request.Clone(ctx)
 		}
 	}
-	return request, cancelFunc, modified
+
+	overrides.request = request
+
+	return
 }
 
 func isHostPort(value string) bool {

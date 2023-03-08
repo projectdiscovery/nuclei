@@ -222,6 +222,11 @@ on extensive configurability, massive extensibility and ease of use.`)
 		flagSet.BoolVarP(&options.NoInteractsh, "no-interactsh", "ni", false, "disable interactsh server for OAST testing, exclude OAST based templates"),
 	)
 
+	flagSet.CreateGroup("fuzzing", "Fuzzing",
+		flagSet.StringVarP(&options.FuzzingType, "fuzzing-type", "ft", "", "overrides fuzzing type set in template (replace, prefix, postfix, infix)"),
+		flagSet.StringVarP(&options.FuzzingMode, "fuzzing-mode", "fm", "", "overrides fuzzing mode set in template (multiple, single)"),
+	)
+
 	flagSet.CreateGroup("uncover", "Uncover",
 		flagSet.BoolVarP(&options.Uncover, "uncover", "uc", false, "enable uncover engine"),
 		flagSet.StringSliceVarP(&options.UncoverQuery, "uncover-query", "uq", nil, "uncover search query", goflags.FileStringSliceOptions),
@@ -330,7 +335,7 @@ on extensive configurability, massive extensibility and ease of use.`)
 	_ = flagSet.Parse()
 
 	gologger.DefaultLogger.SetTimestamp(options.Timestamp, levels.LevelDebug)
-
+	
 	if options.LeaveDefaultPorts {
 		http.LeaveDefaultPorts = true
 	}
@@ -340,7 +345,9 @@ on extensive configurability, massive extensibility and ease of use.`)
 		configPath := filepath.Join(options.CustomConfigDir, "config.yaml")
 		ignoreFile := filepath.Join(options.CustomConfigDir, ".nuclei-ignore")
 		if !fileutil.FileExists(ignoreFile) {
-			_ = fileutil.CopyFile(originalIgnorePath, ignoreFile)
+			if err := fileutil.CopyFile(originalIgnorePath, ignoreFile); err != nil {
+				gologger.Error().Msgf("failed to copy .nuclei-ignore file in custom config directory got %v", err)
+			}
 		}
 		readConfigFile := func() error {
 			if err := flagSet.MergeConfigFile(configPath); err != nil && !errors.Is(err, io.EOF) {

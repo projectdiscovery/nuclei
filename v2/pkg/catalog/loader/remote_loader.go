@@ -3,13 +3,13 @@ package loader
 import (
 	"bufio"
 	"fmt"
-	"net/http"
 	"net/url"
 	"strings"
 
 	"github.com/pkg/errors"
 
 	"github.com/projectdiscovery/nuclei/v2/pkg/utils"
+	"github.com/projectdiscovery/retryablehttp-go"
 )
 
 type ContentType string
@@ -72,7 +72,7 @@ func getRemoteContent(URL string, remoteTemplateDomainList []string, remoteConte
 		}
 		return
 	}
-	response, err := http.Get(URL)
+	response, err := retryablehttp.DefaultClient().Get(URL)
 	if err != nil {
 		remoteContentChannel <- RemoteContent{
 			Error: err,

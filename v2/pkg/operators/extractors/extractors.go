@@ -14,10 +14,10 @@ type Extractor struct {
 	//   spaces or underscores (_).
 	// examples:
 	//   - value: "\"cookie-extractor\""
-	Name string `yaml:"name,omitempty" jsonschema:"title=name of the extractor,description=Name of the extractor"`
+	Name string `yaml:"name,omitempty" json:"name,omitempty" jsonschema:"title=name of the extractor,description=Name of the extractor"`
 	// description: |
 	//   Type is the type of the extractor.
-	Type ExtractorTypeHolder `json:"name,omitempty" yaml:"type"`
+	Type ExtractorTypeHolder `json:"type" yaml:"type"`
 	// extractorType is the internal type of the extractor
 	extractorType ExtractorType
 
@@ -33,13 +33,13 @@ type Extractor struct {
 	//   - name: Wordpress Author Extraction regex
 	//     value: >
 	//       []string{"Author:(?:[A-Za-z0-9 -\\_=\"]+)?<span(?:[A-Za-z0-9 -\\_=\"]+)?>([A-Za-z0-9]+)<\\/span>"}
-	Regex []string `yaml:"regex,omitempty" jsonschema:"title=regex to extract from part,description=Regex to extract from part"`
+	Regex []string `yaml:"regex,omitempty" json:"regex,omitempty" jsonschema:"title=regex to extract from part,description=Regex to extract from part"`
 	// description: |
 	//   Group specifies a numbered group to extract from the regex.
 	// examples:
 	//   - name: Example Regex Group
 	//     value: "1"
-	RegexGroup int `yaml:"group,omitempty" jsonschema:"title=group to extract from regex,description=Group to extract from regex"`
+	RegexGroup int `yaml:"group,omitempty" json:"group,omitempty" jsonschema:"title=group to extract from regex,description=Group to extract from regex"`
 	// regexCompiled is the compiled variant
 	regexCompiled []*regexp.Regexp
 
@@ -60,7 +60,7 @@ type Extractor struct {
 	//   - name: Extracting value of Content-Type Cookie
 	//     value: >
 	//       []string{"content_type"}
-	KVal []string `yaml:"kval,omitempty" jsonschema:"title=kval pairs to extract from response,description=Kval pairs to extract from response"`
+	KVal []string `yaml:"kval,omitempty" json:"kval,omitempty" jsonschema:"title=kval pairs to extract from response,description=Kval pairs to extract from response"`
 
 	// description: |
 	//   JSON allows using jq-style syntax to extract items from json response
@@ -70,27 +70,27 @@ type Extractor struct {
 	//       []string{".[] | .id"}
 	//   - value: >
 	//       []string{".batters | .batter | .[] | .id"}
-	JSON []string `yaml:"json,omitempty" jsonschema:"title=json jq expressions to extract data,description=JSON JQ expressions to evaluate from response part"`
+	JSON []string `yaml:"json,omitempty" json:"json,omitempty" jsonschema:"title=json jq expressions to extract data,description=JSON JQ expressions to evaluate from response part"`
 	// description: |
 	//   XPath allows using xpath expressions to extract items from html response
 	//
 	// examples:
 	//   - value: >
 	//       []string{"/html/body/div/p[2]/a"}
-	XPath []string `yaml:"xpath,omitempty" jsonschema:"title=html xpath expressions to extract data,description=XPath allows using xpath expressions to extract items from html response"`
+	XPath []string `yaml:"xpath,omitempty" json:"xpath,omitempty" jsonschema:"title=html xpath expressions to extract data,description=XPath allows using xpath expressions to extract items from html response"`
 	// description: |
 	//   Attribute is an optional attribute to extract from response XPath.
 	//
 	// examples:
 	//   - value: "\"href\""
-	Attribute string `yaml:"attribute,omitempty" jsonschema:"title=optional attribute to extract from xpath,description=Optional attribute to extract from response XPath"`
+	Attribute string `yaml:"attribute,omitempty" json:"attribute,omitempty" jsonschema:"title=optional attribute to extract from xpath,description=Optional attribute to extract from response XPath"`
 
 	// jsonCompiled is the compiled variant
 	jsonCompiled []*gojq.Code
 
 	// description: |
 	//   Extracts using DSL expressions.
-	DSL         []string
+	DSL         []string `yaml:"dsl,omitempty" json:"dsl,omitempty" jsonschema:"title=dsl expressions to extract,description=Optional attribute to extract from response dsl"`
 	dslCompiled []*govaluate.EvaluableExpression
 
 	// description: |
@@ -101,16 +101,16 @@ type Extractor struct {
 	// examples:
 	//   - value: "\"body\""
 	//   - value: "\"raw\""
-	Part string `yaml:"part,omitempty" jsonschema:"title=part of response to extract data from,description=Part of the request response to extract data from"`
+	Part string `yaml:"part,omitempty" json:"part,omitempty" jsonschema:"title=part of response to extract data from,description=Part of the request response to extract data from"`
 	// description: |
 	//   Internal, when set to true will allow using the value extracted
 	//   in the next request for some protocols (like HTTP).
-	Internal bool `yaml:"internal,omitempty" jsonschema:"title=mark extracted value for internal variable use,description=Internal when set to true will allow using the value extracted in the next request for some protocols"`
+	Internal bool `yaml:"internal,omitempty" json:"internal,omitempty" jsonschema:"title=mark extracted value for internal variable use,description=Internal when set to true will allow using the value extracted in the next request for some protocols"`
 
 	// description: |
 	//   CaseInsensitive enables case-insensitive extractions. Default is false.
 	// values:
 	//   - false
 	//   - true
-	CaseInsensitive bool `yaml:"case-insensitive,omitempty" jsonschema:"title=use case insensitive extract,description=use case insensitive extract"`
+	CaseInsensitive bool `yaml:"case-insensitive,omitempty" json:"case-insensitive,omitempty" jsonschema:"title=use case insensitive extract,description=use case insensitive extract"`
 }

@@ -8,6 +8,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/go-rod/rod"
@@ -92,6 +93,7 @@ func (p *Page) ExecuteActions(baseURL *url.URL, actions []*Action) (map[string]s
 }
 
 type rule struct {
+	*sync.Once
 	Action ActionType
 	Part   string
 	Args   map[string]string
@@ -215,12 +217,12 @@ func (p *Page) ActionSetBody(act *Action, out map[string]string /*TODO review un
 }
 
 // ActionSetMethod executes an SetMethod action.
-func (p *Page) ActionSetMethod(act *Action, out map[string]string /*TODO review unused parameter*/) error {
+func (p *Page) ActionSetMethod(act *Action, out map[string]string) error {
 	in := p.getActionArgWithDefaultValues(act, "part")
 
 	args := make(map[string]string)
 	args["method"] = p.getActionArgWithDefaultValues(act, "method")
-	p.rules = append(p.rules, rule{Action: ActionSetMethod, Part: in, Args: args})
+	p.rules = append(p.rules, rule{Action: ActionSetMethod, Part: in, Args: args, Once: &sync.Once{}})
 	return nil
 }
 
@@ -613,7 +615,7 @@ func (p *Page) getActionArgWithValues(action *Action, arg string, values map[str
 	argValue = replaceWithValues(argValue, values)
 	if p.instance.interactsh != nil {
 		var interactshURLs []string
-		argValue, interactshURLs = p.instance.interactsh.ReplaceMarkers(argValue, p.InteractshURLs)
+		argValue, interactshURLs = p.instance.interactsh.Replace(argValue, p.InteractshURLs)
 		p.addInteractshURL(interactshURLs...)
 	}
 	return argValue

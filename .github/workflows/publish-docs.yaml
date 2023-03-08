@@ -8,12 +8,13 @@ on:
 
 jobs:
   docs:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-latest-16-cores
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
         with: 
           fetch-depth: 0
+          ref: ${{ github.head_ref }}
 
       - name: "Set up Go"
         uses: actions/setup-go@v3
@@ -46,3 +47,4 @@ jobs:
         uses: ad-m/github-push-action@master
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
+          branch: ${{ github.ref }}

@@ -11,6 +11,7 @@ import (
 	_ "net/http/pprof"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strconv"
 	"strings"
 	"sync/atomic"
@@ -56,7 +57,6 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/utils"
 	"github.com/projectdiscovery/nuclei/v2/pkg/utils/stats"
 	"github.com/projectdiscovery/nuclei/v2/pkg/utils/yaml"
-	yamlwrapper "github.com/projectdiscovery/nuclei/v2/pkg/utils/yaml"
 	"github.com/projectdiscovery/retryablehttp-go"
 	stringsutil "github.com/projectdiscovery/utils/strings"
 )
@@ -71,7 +71,7 @@ type Runner struct {
 	catalog           catalog.Catalog
 	progress          progress.Progress
 	colorizer         aurora.Aurora
-	issuesClient      *reporting.Client
+	issuesClient      reporting.Client
 	hmapInputProvider *hybrid.Input
 	browser           *engine.Browser
 	ratelimiter       *ratelimit.Limiter
@@ -309,11 +309,13 @@ func createReportingOptions(options *types.Options) (*reporting.Options, error) 
 		}
 
 		reportingOptions = &reporting.Options{}
-		if err := yamlwrapper.DecodeAndValidate(file, reportingOptions); err != nil {
+		if err := yaml.DecodeAndValidate(file, reportingOptions); err != nil {
 			file.Close()
 			return nil, errors.Wrap(err, "could not parse reporting config file")
 		}
 		file.Close()
+
+		Walk(reportingOptions, expandEndVars)
 	}
 	if options.MarkdownExportDirectory != "" {
 		if reportingOptions != nil {
@@ -355,8 +357,6 @@ func (r *Runner) Close() {
 // RunEnumeration sets up the input layer for giving input nuclei.
 // binary and runs the actual enumeration
 func (r *Runner) RunEnumeration() error {
-	defer r.Close()
-
 	// If user asked for new templates to be executed, collect the list from the templates' directory.
 	if r.options.NewTemplates {
 		templatesLoaded, err := r.readNewTemplatesFile()
@@ -574,6 +574,11 @@ func (r *Runner) RunEnumeration() error {
 	if r.browser != nil {
 		r.browser.Close()
 	}
+	// check if passive scan was requested but no target was provided
+	if r.options.OfflineHTTP && len(r.options.Targets) == 0 && r.options.TargetsFilePath == "" {
+		return errors.Wrap(err, "missing required input (http response) to run passive templates")
+	}
+
 	return err
 }
 
@@ -712,7 +717,7 @@ func (r *Runner) displayExecutionInfo(store *loader.Store) {
 }
 
 func (r *Runner) readNewTemplatesWithVersionFile(version string) ([]string, error) {
-	resp, err := http.DefaultClient.Get(fmt.Sprintf("https://raw.githubusercontent.com/projectdiscovery/nuclei-templates/%s/.new-additions", version))
+	resp, err := retryablehttp.DefaultClient().Get(fmt.Sprintf("https://raw.githubusercontent.com/projectdiscovery/nuclei-templates/%s/.new-additions", version))
 	if err != nil {
 		return nil, err
 	}
@@ -802,4 +807,53 @@ func (r *Runner) SaveResumeConfig(path string) error {
 	data, _ := json.MarshalIndent(resumeCfgClone, "", "\t")
 
 	return os.WriteFile(path, data, os.ModePerm)
+}
+
+type WalkFunc func(reflect.Value, reflect.StructField)
+
+// Walk traverses a struct and executes a callback function on each value in the struct.
+// The interface{} passed to the function should be a pointer to a struct or a struct.
+// WalkFunc is the callback function used for each value in the struct. It is passed the
+// reflect.Value and reflect.Type of the value in the struct.
+func Walk(s interface{}, callback WalkFunc) {
+	structValue := reflect.ValueOf(s)
+	if structValue.Kind() == reflect.Ptr {
+		structValue = structValue.Elem()
+	}
+	if structValue.Kind() != reflect.Struct {
+		return
+	}
+	for i := 0; i < structValue.NumField(); i++ {
+		field := structValue.Field(i)
+		fieldType := structValue.Type().Field(i)
+		if !fieldType.IsExported() {
+			continue
+		}
+		if field.Kind() == reflect.Struct {
+			Walk(field.Addr().Interface(), callback)
+		} else if field.Kind() == reflect.Ptr && field.Elem().Kind() == reflect.Struct {
+			Walk(field.Interface(), callback)
+		} else {
+			callback(field, fieldType)
+		}
+	}
+}
+
+// expandEndVars looks for values in a struct tagged with "yaml" and checks if they are prefixed with '$'.
+// If they are, it will try to retrieve the value from the environment and if it exists, it will set the
+// value of the field to that of the environment variable.
+func expandEndVars(f reflect.Value, fieldType reflect.StructField) {
+	if _, ok := fieldType.Tag.Lookup("yaml"); !ok {
+		return
+	}
+	if f.Kind() == reflect.String {
+		str := f.String()
+		if strings.HasPrefix(str, "$") {
+			env := strings.TrimPrefix(str, "$")
+			retrievedEnv := os.Getenv(env)
+			if retrievedEnv != "" {
+				f.SetString(os.Getenv(env))
+			}
+		}
+	}
 }

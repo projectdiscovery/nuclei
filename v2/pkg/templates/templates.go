@@ -42,12 +42,12 @@ type Template struct {
 	// examples:
 	//   - name: ID Example
 	//     value: "\"CVE-2021-19520\""
-	ID string `yaml:"id" jsonschema:"title=id of the template,description=The Unique ID for the template,example=cve-2021-19520,pattern=^([a-zA-Z0-9]+[-_])*[a-zA-Z0-9]+$"`
+	ID string `yaml:"id" json:"id" jsonschema:"title=id of the template,description=The Unique ID for the template,example=cve-2021-19520,pattern=^([a-zA-Z0-9]+[-_])*[a-zA-Z0-9]+$"`
 	// description: |
 	//   Info contains metadata information about the template.
 	// examples:
 	//   - value: exampleInfoStructure
-	Info model.Info `yaml:"info" jsonschema:"title=info for the template,description=Info contains metadata for the template"`
+	Info model.Info `yaml:"info" json:"info" jsonschema:"title=info for the template,description=Info contains metadata for the template"`
 	// description: |
 	//   Requests contains the http request to make in the template.
 	// examples:
@@ -88,20 +88,20 @@ type Template struct {
 
 	// description: |
 	//   Self Contained marks Requests for the template as self-contained
-	SelfContained bool `yaml:"self-contained,omitempty" jsonschema:"title=mark requests as self-contained,description=Mark Requests for the template as self-contained"`
+	SelfContained bool `yaml:"self-contained,omitempty" json:"self-contained,omitempty" jsonschema:"title=mark requests as self-contained,description=Mark Requests for the template as self-contained"`
 	// description: |
 	//  Stop execution once first match is found
-	StopAtFirstMatch bool `yaml:"stop-at-first-match,omitempty" jsonschema:"title=stop at first match,description=Stop at first match for the template"`
+	StopAtFirstMatch bool `yaml:"stop-at-first-match,omitempty" json:"stop-at-first-match,omitempty" jsonschema:"title=stop at first match,description=Stop at first match for the template"`
 
 	// description: |
 	//   Signature is the request signature method
 	// values:
 	//   - "AWS"
-	Signature http.SignatureTypeHolder `yaml:"signature,omitempty" jsonschema:"title=signature is the http request signature method,description=Signature is the HTTP Request signature Method,enum=AWS"`
+	Signature http.SignatureTypeHolder `yaml:"signature,omitempty" json:"signature,omitempty" jsonschema:"title=signature is the http request signature method,description=Signature is the HTTP Request signature Method,enum=AWS"`
 
 	// description: |
 	//   Variables contains any variables for the current request.
-	Variables variables.Variables `yaml:"variables,omitempty" jsonschema:"title=variables for the http request,description=Variables contains any variables for the current request"`
+	Variables variables.Variable `yaml:"variables,omitempty" json:"variables,omitempty" jsonschema:"title=variables for the http request,description=Variables contains any variables for the current request"`
 
 	// TotalRequests is the total number of requests for the template.
 	TotalRequests int `yaml:"-" json:"-"`
@@ -109,6 +109,9 @@ type Template struct {
 	Executer protocols.Executer `yaml:"-" json:"-"`
 
 	Path string `yaml:"-" json:"-"`
+
+	// Verified defines if the template signature is digitally verified
+	Verified bool `yaml:"-" json:"-"`
 }
 
 // TemplateProtocols is a list of accepted template protocols
