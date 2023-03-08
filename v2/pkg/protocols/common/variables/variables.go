@@ -48,7 +48,7 @@ func (variables *Variables) UnmarshalYAML(unmarshal func(interface{}) error) err
 	return nil
 }
 
-func (variables *Variable) UnmarshalJSON(data []byte) error {
+func (variables *Variables) UnmarshalJSON(data []byte) error {
 	variables.InsertionOrderedStringMap = utils.InsertionOrderedStringMap{}
 	if err := json.Unmarshal(data, &variables.InsertionOrderedStringMap); err != nil {
 		return err
@@ -77,8 +77,8 @@ func (variables *Variables) EvaluateWithInteractsh(values map[string]interface{}
 	var interactURLs []string
 	variables.ForEach(func(key string, value interface{}) {
 		valueString := types.ToString(value)
-		if strings.Contains(valueString, expressions.ExpMarkerParenthesis.String("interactsh-url")) {
-			valueString, interactURLs = interact.ReplaceMarkers(valueString, interactURLs)
+		if strings.Contains(valueString, "interactsh-url") {
+			valueString, interactURLs = interact.Replace(valueString, interactURLs)
 		}
 		result[key] = evaluateVariableValue(valueString, values, result)
 	})

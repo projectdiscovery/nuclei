@@ -32,7 +32,7 @@ a6: "123456"`
   "a5": "{{reverse(hostname)}}",
   "a6": "123456"
 }`
-	variables = Variable{}
+	variables = Variables{}
 	err = json.Unmarshal([]byte(data), &variables)
 	require.NoError(t, err, "could not unmarshal json variables")
 

@@ -154,7 +154,7 @@ func Test_ParseWorkflow(t *testing.T) {
 		SelfContained:    false,
 		StopAtFirstMatch: false,
 		Signature:        http.SignatureTypeHolder{},
-		Variables:        variables.Variable{},
+		Variables:        variables.Variables{},
 		TotalRequests:    0,
 		Executer:         nil,
 		Path:             "tests/workflow.yaml",
