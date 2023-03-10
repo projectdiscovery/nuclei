@@ -66,6 +66,9 @@ func (e *Engine) ExecuteScanWithOpts(templatesList []*templates.Template, target
 		strategyResult = e.executeTemplateSpray(filtered, target)
 	case "host-spray":
 		strategyResult = e.executeHostSpray(filtered, target)
+	default:
+		// current default is template-spray if not given
+		strategyResult = e.executeTemplateSpray(filtered, target)
 	}
 
 	results.CompareAndSwap(false, strategyResult.Load())
