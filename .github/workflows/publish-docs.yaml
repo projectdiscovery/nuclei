@@ -26,7 +26,7 @@ jobs:
         run: |
           if ! which dstdocgen > /dev/null; then
             echo -e "Command dstdocgen not found! Installing\c"
-            go install github.com/projectdiscovery/yamldoc-go/cmd/docgen/dstdocgen@main
+            go install github.com/projectdiscovery/yamldoc-go/cmd/docgen/dstdocgen@9267fe5
           fi
           go generate pkg/templates/templates.go
           go build -o "cmd/docgen/docgen" cmd/docgen/docgen.go 
