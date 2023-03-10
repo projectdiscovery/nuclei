@@ -50,8 +50,23 @@
 #  # issue-type is the name of the created issue type (case sensitive)
 #  issue-type: Bug
 #  # SeverityAsLabel (optional) sends the severity as the label of the created issue
+#  # User custom fields for Jira Cloud instead
 #  severity-as-label: true
-#
+#  # Whatever your final status is that you want to use as a closed ticket - Closed, Done, Remediated, etc
+#  # When checking for duplicates, the JQL query will filter out status's that match this.
+#  # If it finds a match _and_ the ticket does have this status, a new one will be created.
+# status-not: Closed
+#  # Customfield supports name, id and freeform. name and id are to be used when the custom field is a dropdown.
+#  # freeform can be used if the custom field is just a text entry
+#  # Variables can be used to pull various pieces of data from the finding itself. 
+#  # Supported variables: $CVSSMetrics, $CVEID, $CWEID, $Host, $Severity, $CVSSScore, $Name
+# custom_fields:
+#  customfield_00001: 
+#    name: "Nuclei"
+#  customfield_00002:
+#    freeform: $CVSSMetrics
+#  customfield_00003:
+#    freeform: $CVSSScore
 # elasticsearch contains configuration options for elasticsearch exporter
 #elasticsearch:
 #  # IP for elasticsearch instance
