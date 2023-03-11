@@ -8,7 +8,6 @@ import (
 	"net/http/httptest"
 	"net/http/httputil"
 	"os"
-	"path/filepath"
 	"reflect"
 	"strconv"
 	"strings"
@@ -842,7 +841,7 @@ func (h *httpRequestSelfContainedFileInput) Execute(filePath string) error {
 	}
 	defer FileLoc.Close()
 
-	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, "", debug, "-V", "test="+filepath.Join(os.TempDir(), FileLoc.Name()))
+	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, "", debug, "-V", "test="+FileLoc.Name())
 	if err != nil {
 		return err
 	}
