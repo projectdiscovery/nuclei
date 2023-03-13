@@ -31,7 +31,7 @@ require (
 	github.com/projectdiscovery/retryabledns v1.0.21
 	github.com/projectdiscovery/retryablehttp-go v1.0.12-0.20230220094538-f406add578ab
 	github.com/projectdiscovery/stringsutil v0.0.2
-	github.com/projectdiscovery/yamldoc-go v1.0.3-0.20211126104922-00d2c6bb43b6
+	github.com/projectdiscovery/yamldoc-go v1.0.4
 	github.com/remeh/sizedwaitgroup v1.0.0
 	github.com/rs/xid v1.4.0
 	github.com/segmentio/ksuid v1.0.4
@@ -44,9 +44,9 @@ require (
 	github.com/weppos/publicsuffix-go v0.20.0
 	github.com/xanzy/go-gitlab v0.80.2
 	go.uber.org/multierr v1.9.0
-	golang.org/x/net v0.7.0
+	golang.org/x/net v0.8.0
 	golang.org/x/oauth2 v0.4.0
-	golang.org/x/text v0.7.0
+	golang.org/x/text v0.8.0
 	gopkg.in/yaml.v2 v2.4.0
 	moul.io/http2curl v1.0.0
 )
@@ -212,10 +212,10 @@ require (
 	goftp.io/server/v2 v2.0.0 // indirect
 	golang.org/x/crypto v0.6.0
 	golang.org/x/exp v0.0.0-20230206171751-46f607a40771
-	golang.org/x/mod v0.8.0 // indirect
-	golang.org/x/sys v0.5.0 // indirect
+	golang.org/x/mod v0.9.0 // indirect
+	golang.org/x/sys v0.6.0 // indirect
 	golang.org/x/time v0.3.0 // indirect
-	golang.org/x/tools v0.5.0 // indirect
+	golang.org/x/tools v0.7.0 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
 	google.golang.org/protobuf v1.28.1 // indirect
 	gopkg.in/alecthomas/kingpin.v2 v2.2.6 // indirect
