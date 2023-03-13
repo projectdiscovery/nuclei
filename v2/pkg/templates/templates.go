@@ -52,7 +52,8 @@ type Template struct {
 	//   Requests contains the http request to make in the template.
 	// examples:
 	//   - value: exampleNormalHTTPRequest
-	RequestsHTTP []*http.Request `yaml:"requests,omitempty" json:"requests,omitempty" jsonschema:"title=http requests to make,description=HTTP requests to make for the template"`
+	RequestsHTTP     []*http.Request `yaml:"requests,omitempty" json:"requests,omitempty" jsonschema:"title=http requests to make,description=HTTP requests to make for the template"`
+	RequestsWithHTTP []*http.Request `yaml:"http,omitempty" json:"http,omitempty" jsonschema:"title=http requests to make,description=HTTP requests to make for the template"`
 	// description: |
 	//   DNS contains the dns request to make in the template
 	// examples:
@@ -68,6 +69,7 @@ type Template struct {
 	// examples:
 	//   - value: exampleNormalNetworkRequest
 	RequestsNetwork []*network.Request `yaml:"network,omitempty" json:"network,omitempty" jsonschema:"title=network requests to make,description=Network requests to make for the template"`
+	RequestsWithTCP []*network.Request `yaml:"tcp,omitempty" json:"tcp,omitempty" jsonschema:"title=network(tcp) requests to make,description=Network requests to make for the template"`
 	// description: |
 	//   Headless contains the headless request to make in the template.
 	RequestsHeadless []*headless.Request `yaml:"headless,omitempty" json:"headless,omitempty" jsonschema:"title=headless requests to make,description=Headless requests to make for the template"`
@@ -169,6 +171,14 @@ func (template *Template) UnmarshalYAML(unmarshal func(interface{}) error) error
 		return err
 	}
 	*template = Template(*alias)
+	// "WARNING: 'requests' is deprecated and will be removed in a future release. Please use 'http' instead.",
+	if len(alias.RequestsWithHTTP) > 0 {
+		template.RequestsHTTP = alias.RequestsWithHTTP
+	}
+	// "WARNING: 'network' is deprecated and will be removed in a future release. Please use 'tcp' instead.",
+	if len(alias.RequestsWithTCP) > 0 {
+		template.RequestsNetwork = alias.RequestsWithTCP
+	}
 	return validate.New().Struct(template)
 }
 
