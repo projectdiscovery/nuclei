@@ -60,12 +60,15 @@ func (e *Engine) ExecuteScanWithOpts(templatesList []*templates.Template, target
 	// Execute All SelfContained in parallel
 	e.executeAllSelfContained(selfContained, results, selfcontainedWg)
 
+	var strategyResult *atomic.Bool
 	switch e.options.ScanStrategy {
 	case "template-spray":
-		results = e.executeTemplateSpray(filtered, target)
+		strategyResult = e.executeTemplateSpray(filtered, target)
 	case "host-spray":
-		results = e.executeHostSpray(filtered, target)
+		strategyResult = e.executeHostSpray(filtered, target)
 	}
+
+	results.CompareAndSwap(false, strategyResult.Load())
 
 	selfcontainedWg.Wait()
 	return results
