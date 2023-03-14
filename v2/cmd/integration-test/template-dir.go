@@ -7,11 +7,6 @@ import (
 	errorutil "github.com/projectdiscovery/utils/errors"
 )
 
-func getTemplatesDir() string {
-	temp := os.TempDir()
-	return temp
-}
-
 var templatesDirTestCases = map[string]testutils.TestCase{
 	"dns/cname-fingerprint.yaml": &templateDirWithTargetTest{},
 }
