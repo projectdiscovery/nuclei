@@ -793,7 +793,7 @@ func (r *Runner) countNewTemplates() int {
 }
 
 func isTemplate(filename string) bool {
-	return stringsutil.EqualFoldAny(filepath.Ext(filename), templates.TemplateExtension)
+	return stringsutil.EqualFoldAny(filepath.Ext(filename), templates.TemplateExtensions...)
 }
 
 // SaveResumeConfig to file
