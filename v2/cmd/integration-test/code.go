@@ -69,7 +69,10 @@ func executeNucleiAsCode(templatePath, templateURL string) ([]string, error) {
 	defer cache.Close()
 
 	mockProgress := &testutils.MockProgressClient{}
-	reportingClient, _ := reporting.New(&reporting.Options{}, "")
+	reportingClient, err := reporting.New(&reporting.Options{}, "")
+	if err != nil {
+		return nil, err
+	}
 	defer reportingClient.Close()
 
 	outputWriter := testutils.NewMockOutputWriter()
