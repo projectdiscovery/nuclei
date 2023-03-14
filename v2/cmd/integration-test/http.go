@@ -8,7 +8,6 @@ import (
 	"net/http/httptest"
 	"net/http/httputil"
 	"os"
-	"path/filepath"
 	"reflect"
 	"strconv"
 	"strings"
@@ -877,13 +876,16 @@ func (h *httpRequestSelfContainedFileInput) Execute(filePath string) error {
 	defer server.Close()
 
 	// create temp file
-	FileLoc := filepath.Join(os.TempDir(), "httpselfcontained.yaml")
-	err := os.WriteFile(FileLoc, []byte("one\ntwo\n"), 0600)
+	FileLoc, err := os.CreateTemp("", "self-contained-payload-*.txt")
 	if err != nil {
-		return errorutil.NewWithErr(err).Msgf("failed to create temporary file").WithTag(filePath)
+		return errorutil.NewWithErr(err).Msgf("failed to create temp file")
 	}
+	if _, err := FileLoc.Write([]byte("one\ntwo\n")); err != nil {
+		return errorutil.NewWithErr(err).Msgf("failed to write payload to temp file")
+	}
+	defer FileLoc.Close()
 
-	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, "", debug, "-V", "test="+FileLoc)
+	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, "", debug, "-V", "test="+FileLoc.Name())
 	if err != nil {
 		return err
 	}
