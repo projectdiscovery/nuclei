@@ -48,7 +48,6 @@ func (c *DiskCatalog) GetTemplatePath(target string) ([]string, error) {
 	processed := make(map[string]struct{})
 	absPath, err := c.convertPathToAbsolute(target)
 	if err != nil {
-		panic(target)
 		return nil, errors.Wrapf(err, "could not find template file")
 	}
 
