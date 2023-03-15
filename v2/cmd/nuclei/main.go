@@ -333,8 +333,10 @@ on extensive configurability, massive extensibility and ease of use.`)
 
 	_ = flagSet.Parse()
 
+	fmt.Printf("value of templates or -t  is  %v\n", options.Templates)
+
 	gologger.DefaultLogger.SetTimestamp(options.Timestamp, levels.LevelDebug)
-	
+
 	if options.LeaveDefaultPorts {
 		http.LeaveDefaultPorts = true
 	}

@@ -1,11 +1,13 @@
 package parsers
 
 import (
+	"encoding/json"
 	"fmt"
 	"regexp"
 	"strings"
 
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalog"
+	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/config"
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/loader/filter"
 	"github.com/projectdiscovery/nuclei/v2/pkg/templates"
 	"github.com/projectdiscovery/nuclei/v2/pkg/templates/cache"
@@ -130,10 +132,17 @@ func ParseTemplate(templatePath string, catalog catalog.Catalog) (*templates.Tem
 		template.Verified, _ = signer.Verify(signer.DefaultVerifier, data)
 	}
 
-	if NoStrictSyntax {
-		err = yaml.Unmarshal(data, template)
-	} else {
-		err = yaml.UnmarshalStrict(data, template)
+	switch config.GetTemplateFormatFromExt(templatePath) {
+	case config.JSON:
+		err = json.Unmarshal(data, template)
+	case config.YAML:
+		if NoStrictSyntax {
+			err = yaml.Unmarshal(data, template)
+		} else {
+			err = yaml.UnmarshalStrict(data, template)
+		}
+	default:
+		err = fmt.Errorf("failed to identify template format expected JSON or YAML but got %v", templatePath)
 	}
 	if err != nil {
 		stats.Increment(SyntaxErrorStats)

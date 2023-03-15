@@ -1,6 +1,7 @@
 package loader
 
 import (
+	"fmt"
 	"os"
 	"sort"
 
@@ -375,6 +376,7 @@ func workflowContainsProtocol(workflow []*workflows.WorkflowTemplate) bool {
 func (s *Store) logErroredTemplates(erred map[string]error) {
 	for template, err := range erred {
 		if s.NotFoundCallback == nil || !s.NotFoundCallback(template) {
+			fmt.Println("Store.logErroredTemplates")
 			gologger.Error().Msgf("Could not find template '%s': %s", template, err)
 		}
 	}
