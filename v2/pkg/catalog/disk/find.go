@@ -1,6 +1,7 @@
 package disk
 
 import (
+	"fmt"
 	"io/fs"
 	"log"
 	"os"
@@ -8,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
+	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/config"
 	stringsutil "github.com/projectdiscovery/utils/strings"
 )
 
@@ -20,7 +22,7 @@ func (c *DiskCatalog) GetTemplatesPath(definitions []string) ([]string, map[stri
 
 	log.Println(definitions)
 	for _, t := range definitions {
-		if stringsutil.HasPrefixAny(t, "http") && stringsutil.HasSuffixAny(t, ".yaml", ".yml", ".json") {
+		if strings.HasPrefix(t, "http") && stringsutil.ContainsAny(t, config.GetSupportTemplateFileExtensions()...) {
 			if _, ok := processed[t]; !ok {
 				processed[t] = true
 				allTemplates = append(allTemplates, t)
@@ -48,6 +50,7 @@ func (c *DiskCatalog) GetTemplatePath(target string) ([]string, error) {
 	processed := make(map[string]struct{})
 	absPath, err := c.convertPathToAbsolute(target)
 	if err != nil {
+		fmt.Println("DiskCatalog.GetTemplatePath")
 		return nil, errors.Wrapf(err, "could not find template file")
 	}
 
@@ -144,7 +147,7 @@ func (c *DiskCatalog) findDirectoryMatches(absPath string, processed map[string]
 			if err != nil {
 				return nil
 			}
-			if !d.IsDir() && stringsutil.HasSuffixAny(".yaml") {
+			if !d.IsDir() && config.GetTemplateFormatFromExt(path) != config.Unknown {
 				if _, ok := processed[path]; !ok {
 					results = append(results, path)
 					processed[path] = struct{}{}

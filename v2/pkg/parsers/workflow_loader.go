@@ -1,6 +1,8 @@
 package parsers
 
 import (
+	"fmt"
+
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/loader/filter"
 	"github.com/projectdiscovery/nuclei/v2/pkg/model"
@@ -42,6 +44,7 @@ func NewLoader(options *protocols.ExecuterOptions) (model.WorkflowLoader, error)
 func (w *workflowLoader) GetTemplatePathsByTags(templateTags []string) []string {
 	includedTemplates, errs := w.options.Catalog.GetTemplatesPath([]string{w.options.Options.TemplatesDirectory})
 	for template, err := range errs {
+		fmt.Println("Workflow Loader.GettemplatePathsByTags")
 		gologger.Error().Msgf("Could not find template '%s': %s", template, err)
 	}
 	templatePathMap := w.pathFilter.Match(includedTemplates)
@@ -61,6 +64,7 @@ func (w *workflowLoader) GetTemplatePathsByTags(templateTags []string) []string 
 func (w *workflowLoader) GetTemplatePaths(templatesList []string, noValidate bool) []string {
 	includedTemplates, errs := w.options.Catalog.GetTemplatesPath(templatesList)
 	for template, err := range errs {
+		fmt.Println("workflowLoader.GetTemplatePaths")
 		gologger.Error().Msgf("Could not find template '%s': %s", template, err)
 	}
 	templatesPathMap := w.pathFilter.Match(includedTemplates)
