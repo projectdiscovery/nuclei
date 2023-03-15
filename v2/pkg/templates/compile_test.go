@@ -60,9 +60,9 @@ func Test_ParseFromURL(t *testing.T) {
 	router.GET("/match-1.yaml", func(w netHttp.ResponseWriter, r *netHttp.Request, _ httprouter.Params) {
 		b, err := os.ReadFile("tests/match-1.yaml")
 		if err != nil {
-			w.Write([]byte(err.Error()))
+			w.Write([]byte(err.Error())) // nolint: errcheck
 		}
-		w.Write(b)
+		w.Write(b) // nolint: errcheck
 	})
 	ts := httptest.NewServer(router)
 	defer ts.Close()
