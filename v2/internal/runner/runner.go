@@ -792,8 +792,10 @@ func (r *Runner) countNewTemplates() int {
 	return count
 }
 
+// isTemplate is a callback function used by goflags to decide if given file should be read
+// if it is not a nuclei-template file only then file is read
 func isTemplate(filename string) bool {
-	return stringsutil.EqualFoldAny(filepath.Ext(filename), templates.TemplateExtensions...)
+	return stringsutil.EqualFoldAny(filepath.Ext(filename), config.GetSupportTemplateFileExtensions()...)
 }
 
 // SaveResumeConfig to file

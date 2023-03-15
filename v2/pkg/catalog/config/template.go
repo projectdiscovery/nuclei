@@ -16,7 +16,7 @@ func GetTemplateFormatFromExt(filePath string) TemplateFormat {
 	if strings.HasSuffix(filePath, ".json") {
 		return JSON
 	}
-	if strings.HasSuffix(filePath, ".yml") || strings.HasSuffix(filePath, ".yaml") {
+	if strings.HasSuffix(filePath, ".yaml") {
 		return YAML
 	}
 	return Unknown
@@ -24,5 +24,5 @@ func GetTemplateFormatFromExt(filePath string) TemplateFormat {
 
 // GetSupportedTemplateFileExtensions returns all supported template file extensions
 func GetSupportTemplateFileExtensions() []string {
-	return []string{".yaml", ".yml", ".json"}
+	return []string{".yaml", ".json"}
 }

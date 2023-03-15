@@ -22,11 +22,6 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
-var (
-	// TemplateExtension defines the template default file extension
-	TemplateExtensions = []string{".yaml", ".json"}
-)
-
 // Template is a YAML input file which defines all the requests and
 // other metadata for a template.
 type Template struct {
