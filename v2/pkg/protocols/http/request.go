@@ -393,9 +393,8 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 						MatchFunc:      request.Match,
 						ExtractFunc:    request.Extract,
 					})
-				} else {
-					callback(event)
 				}
+				callback(event)
 			}, generator.currentIndex)
 
 			// If a variable is unresolved, skip all further requests
