@@ -1,7 +1,6 @@
 package disk
 
 import (
-	"fmt"
 	"io/fs"
 	"log"
 	"os"
@@ -22,6 +21,11 @@ func (c *DiskCatalog) GetTemplatesPath(definitions []string) ([]string, map[stri
 
 	log.Println(definitions)
 	for _, t := range definitions {
+		if stringsutil.ContainsAny(t, "cves.json", "contributors.json", "TEMPLATES-STATS.json") {
+			// TODO: this is a temporary fix to avoid treating these files as templates
+			// this should be replaced with more appropriate and robust logic
+			continue
+		}
 		if strings.HasPrefix(t, "http") && stringsutil.ContainsAny(t, config.GetSupportTemplateFileExtensions()...) {
 			if _, ok := processed[t]; !ok {
 				processed[t] = true
@@ -40,7 +44,17 @@ func (c *DiskCatalog) GetTemplatesPath(definitions []string) ([]string, map[stri
 			}
 		}
 	}
-	return allTemplates, erred
+	// purge all falsepositivies
+	filteredTemplates := []string{}
+	for _, v := range allTemplates {
+		// TODO: this is a temporary fix to avoid treating these files as templates
+		// this should be replaced with more appropriate and robust logic
+		if !stringsutil.ContainsAny(v, "cves.json", "contributors.json", "TEMPLATES-STATS.json") {
+			filteredTemplates = append(filteredTemplates, v)
+		}
+	}
+
+	return filteredTemplates, erred
 }
 
 // GetTemplatePath parses the specified input template path and returns a compiled
@@ -50,7 +64,6 @@ func (c *DiskCatalog) GetTemplatePath(target string) ([]string, error) {
 	processed := make(map[string]struct{})
 	absPath, err := c.convertPathToAbsolute(target)
 	if err != nil {
-		fmt.Println("DiskCatalog.GetTemplatePath")
 		return nil, errors.Wrapf(err, "could not find template file")
 	}
 
