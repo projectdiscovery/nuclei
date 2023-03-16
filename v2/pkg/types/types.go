@@ -35,8 +35,6 @@ type Options struct {
 	CustomHeaders goflags.StringSlice
 	// Vars is the list of custom global vars
 	Vars goflags.RuntimeMap
-	// vars to use as iterative payload
-	varsPayload map[string]interface{}
 	// Severities filters templates based on their severity and only run the matching ones.
 	Severities severity.Severities
 	// ExcludeSeverities specifies severities to exclude
@@ -141,6 +139,8 @@ type Options struct {
 	MetricsPort int
 	// MaxHostError is the maximum number of errors allowed for a host
 	MaxHostError int
+	// TrackError contains additional error messages that count towards the maximum number of errors allowed for a host
+	TrackError goflags.StringSlice
 	// NoHostErrors disables host skipping after maximum number of errors
 	NoHostErrors bool
 	// BulkSize is the of targets analyzed in parallel for each template
@@ -346,18 +346,10 @@ type Options struct {
 	AwsRegion string
 	// Scan Strategy (auto,hosts-spray,templates-spray)
 	ScanStrategy string
-}
-
-func (options *Options) AddVarPayload(key string, value interface{}) {
-	if options.varsPayload == nil {
-		options.varsPayload = make(map[string]interface{})
-	}
-
-	options.varsPayload[key] = value
-}
-
-func (options *Options) VarsPayload() map[string]interface{} {
-	return options.varsPayload
+	// Fuzzing Type overrides template level fuzzing-type configuration
+	FuzzingType string
+	// Fuzzing Mode overrides template level fuzzing-mode configuration
+	FuzzingMode string
 }
 
 // ShouldLoadResume resume file

@@ -10,6 +10,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/contextargs"
 	"github.com/projectdiscovery/nuclei/v2/pkg/templates"
 	"github.com/projectdiscovery/nuclei/v2/pkg/templates/types"
+	"github.com/projectdiscovery/nuclei/v2/pkg/types/scanstrategy"
 	stringsutil "github.com/projectdiscovery/utils/strings"
 )
 
@@ -40,10 +41,10 @@ func (e *Engine) ExecuteScanWithOpts(templatesList []*templates.Template, target
 		finalTemplates = templatesList
 	}
 
-	if stringsutil.EqualFoldAny(e.options.ScanStrategy, "auto", "") {
+	if stringsutil.EqualFoldAny(e.options.ScanStrategy, scanstrategy.Auto.String(), "") {
 		// TODO: this is only a placeholder, auto scan strategy should choose scan strategy
 		// based on no of hosts , templates , stream and other optimization parameters
-		e.options.ScanStrategy = "template-spray"
+		e.options.ScanStrategy = scanstrategy.TemplateSpray.String()
 	}
 
 	filtered := []*templates.Template{}
@@ -60,12 +61,15 @@ func (e *Engine) ExecuteScanWithOpts(templatesList []*templates.Template, target
 	// Execute All SelfContained in parallel
 	e.executeAllSelfContained(selfContained, results, selfcontainedWg)
 
+	strategyResult := &atomic.Bool{}
 	switch e.options.ScanStrategy {
-	case "template-spray":
-		results = e.executeTemplateSpray(filtered, target)
-	case "host-spray":
-		results = e.executeHostSpray(filtered, target)
+	case scanstrategy.TemplateSpray.String():
+		strategyResult = e.executeTemplateSpray(filtered, target)
+	case scanstrategy.TemplateSpray.String():
+		strategyResult = e.executeHostSpray(filtered, target)
 	}
+
+	results.CompareAndSwap(false, strategyResult.Load())
 
 	selfcontainedWg.Wait()
 	return results

@@ -24,6 +24,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/helpers/responsehighlighter"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/helpers/writer"
 	"github.com/projectdiscovery/nuclei/v2/pkg/reporting"
+	"github.com/projectdiscovery/nuclei/v2/pkg/utils/atomcache"
 	"github.com/projectdiscovery/retryablehttp-go"
 )
 
@@ -32,13 +33,13 @@ type Client struct {
 	// interactsh is a client for interactsh server.
 	interactsh *client.Client
 	// requests is a stored cache for interactsh-url->request-event data.
-	requests *ccache.Cache
+	requests *atomcache.Cache
 	// interactions is a stored cache for interactsh-interaction->interactsh-url data
-	interactions *ccache.Cache
+	interactions *atomcache.Cache
 	// matchedTemplates is a stored cache to track matched templates
-	matchedTemplates *ccache.Cache
+	matchedTemplates *atomcache.Cache
 	// interactshURLs is a stored cache to track track multiple interactsh markers
-	interactshURLs *ccache.Cache
+	interactshURLs *atomcache.Cache
 
 	options          *Options
 	eviction         time.Duration
@@ -51,7 +52,7 @@ type Client struct {
 
 	firstTimeGroup sync.Once
 	generated      uint32 // decide to wait if we have a generated url
-	matched        bool
+	matched        atomic.Bool
 }
 
 var (
@@ -84,7 +85,7 @@ type Options struct {
 	// Output is the output writer for nuclei
 	Output output.Writer
 	// IssuesClient is a client for issue exporting
-	IssuesClient *reporting.Client
+	IssuesClient reporting.Client
 	// Progress is the nuclei progress bar implementation.
 	Progress progress.Progress
 	// Debug specifies whether debugging output should be shown for interactsh-client
@@ -108,14 +109,14 @@ const defaultMaxInteractionsCount = 5000
 func New(options *Options) (*Client, error) {
 	configure := ccache.Configure()
 	configure = configure.MaxSize(options.CacheSize)
-	cache := ccache.New(configure)
+	cache := atomcache.NewWithCache(ccache.New(configure))
 
 	interactionsCfg := ccache.Configure()
 	interactionsCfg = interactionsCfg.MaxSize(defaultMaxInteractionsCount)
-	interactionsCache := ccache.New(interactionsCfg)
+	interactionsCache := atomcache.NewWithCache(ccache.New(interactionsCfg))
 
-	matchedTemplateCache := ccache.New(ccache.Configure().MaxSize(defaultMaxInteractionsCount))
-	interactshURLCache := ccache.New(ccache.Configure().MaxSize(defaultMaxInteractionsCount))
+	matchedTemplateCache := atomcache.NewWithCache(ccache.New(ccache.Configure().MaxSize(defaultMaxInteractionsCount)))
+	interactshURLCache := atomcache.NewWithCache(ccache.New(ccache.Configure().MaxSize(defaultMaxInteractionsCount)))
 
 	interactClient := &Client{
 		eviction:         options.Eviction,
@@ -132,7 +133,7 @@ func New(options *Options) (*Client, error) {
 }
 
 // NewDefaultOptions returns the default options for interactsh client
-func NewDefaultOptions(output output.Writer, reporting *reporting.Client, progress progress.Progress) *Options {
+func NewDefaultOptions(output output.Writer, reporting reporting.Client, progress progress.Progress) *Options {
 	return &Options{
 		ServerURL:           client.DefaultOptions.ServerURL,
 		CacheSize:           5000,
@@ -170,9 +171,8 @@ func (c *Client) firstTimeInitializeClient() error {
 	c.hostname = interactDomain
 	c.dataMutex.Unlock()
 
-	interactsh.StartPolling(c.pollDuration, func(interaction *server.Interaction) {
+	err = interactsh.StartPolling(c.pollDuration, func(interaction *server.Interaction) {
 		item := c.requests.Get(interaction.UniqueID)
-
 		if item == nil {
 			// If we don't have any request for this ID, add it to temporary
 			// lru cache, so we can correlate when we get an add request.
@@ -199,6 +199,10 @@ func (c *Client) firstTimeInitializeClient() error {
 
 		_ = c.processInteractionForRequest(interaction, request)
 	})
+
+	if err != nil {
+		return errors.Wrap(err, "could not perform instactsh polling")
+	}
 	return nil
 }
 
@@ -230,7 +234,7 @@ func (c *Client) processInteractionForRequest(interaction *server.Interaction, d
 	}
 
 	if writer.WriteResult(data.Event, c.options.Output, c.options.Progress, c.options.IssuesClient) {
-		c.matched = true
+		c.matched.Store(true)
 		if _, ok := data.Event.InternalEvent[stopAtFirstMatchAttribute]; ok || c.options.StopAtFirstMatch {
 			c.matchedTemplates.Set(hash(data.Event.InternalEvent[templateIdAttribute].(string), data.Event.InternalEvent["host"].(string)), true, defaultInteractionDuration)
 		}
@@ -258,13 +262,12 @@ func (c *Client) Close() bool {
 		time.Sleep(c.cooldownDuration)
 	}
 	if c.interactsh != nil {
-		c.interactsh.StopPolling()
+		_ = c.interactsh.StopPolling()
 		c.interactsh.Close()
 	}
 
-	closeCache := func(cc *ccache.Cache) {
+	closeCache := func(cc *atomcache.Cache) {
 		if cc != nil {
-			cc.Clear()
 			cc.Stop()
 		}
 	}
@@ -273,7 +276,7 @@ func (c *Client) Close() bool {
 	closeCache(c.matchedTemplates)
 	closeCache(c.interactshURLs)
 
-	return c.matched
+	return c.matched.Load()
 }
 
 // ReplaceMarkers replaces the default {{interactsh-url}} placeholders with interactsh urls
@@ -348,6 +351,8 @@ type RequestData struct {
 
 // RequestEvent is the event for a network request sent by nuclei.
 func (c *Client) RequestEvent(interactshURLs []string, data *RequestData) {
+	data.Event.Mutex.Lock()
+	defer data.Event.Mutex.Unlock()
 	for _, interactshURL := range interactshURLs {
 		id := strings.TrimRight(strings.TrimSuffix(interactshURL, c.hostname), ".")
 

@@ -96,7 +96,8 @@ requests:
         83: {{join(" ", uniq("ab", "cd", "12", "34", "12", "cd"))}}
         84: {{split("ab,cd,efg", ",")}}
         85: {{split("ab,cd,efg", ",", 2)}}
-
+        86: {{ip_format('127.0.0.1', 3)}}
+        87: {{ip_format('127.0.1.0', 11)}}
     extractors:
       - type: regex
         name: results

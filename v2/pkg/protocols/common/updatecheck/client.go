@@ -9,6 +9,7 @@ import (
 
 	jsoniter "github.com/json-iterator/go"
 	"github.com/pkg/errors"
+	"github.com/projectdiscovery/retryablehttp-go"
 )
 
 const (
@@ -74,7 +75,7 @@ func callRegisterServer(call string) (io.ReadCloser, error) {
 		query.Set("v", nucleiVersion)
 		req.URL.RawQuery = query.Encode()
 	}
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := retryablehttp.DefaultClient().Do(req)
 	if err != nil {
 		return nil, errors.Wrap(err, "could not do request")
 	}

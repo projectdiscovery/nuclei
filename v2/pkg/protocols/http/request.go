@@ -353,7 +353,6 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 			ctx := request.newContext(input)
 			ctxWithTimeout, cancel := context.WithTimeout(ctx, time.Duration(request.options.Options.Timeout)*time.Second)
 			defer cancel()
-
 			generatedHttpRequest, err := generator.Make(ctxWithTimeout, input, data, payloads, dynamicValue)
 			if err != nil {
 				if err == io.EOF {
@@ -394,9 +393,15 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 						MatchFunc:      request.Match,
 						ExtractFunc:    request.Extract,
 					})
-				} else {
-					callback(event)
 				}
+				// Note: This is a race condition prone zone i.e when request has interactsh_matchers
+				// Interactsh.RequestEvent tries to access/update output.InternalWrappedEvent depending on logic
+				// to avoid conflicts with `callback` mutex is used here and in Interactsh.RequestEvent
+				// Note: this only happens if requests > 1 and interactsh matcher is used
+				// TODO: interactsh logic in nuclei needs to be refactored to avoid such situations
+				event.Mutex.Lock()
+				callback(event)
+				event.Mutex.Unlock()
 			}, generator.currentIndex)
 
 			// If a variable is unresolved, skip all further requests
@@ -512,8 +517,6 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 			}
 			resp, err = generatedRequest.pipelinedClient.DoRaw(generatedRequest.rawRequest.Method, input.MetaInput.Input, generatedRequest.rawRequest.Path, generators.ExpandMapValues(generatedRequest.rawRequest.Headers), io.NopCloser(strings.NewReader(generatedRequest.rawRequest.Data)))
 		} else if generatedRequest.request != nil {
-			// hot fix to avoid double url encoding (should only be called once)
-			generatedRequest.request.Prepare()
 			resp, err = generatedRequest.pipelinedClient.Dor(generatedRequest.request)
 		}
 	} else if generatedRequest.original.Unsafe && generatedRequest.rawRequest != nil {
@@ -557,14 +560,13 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 			httpclient := request.httpClient
 			if input.CookieJar != nil {
 				connConfiguration := request.connConfiguration
-				connConfiguration.Connection.Cookiejar = input.CookieJar
+				connConfiguration.Connection.SetCookieJar(input.CookieJar)
 				client, err := httpclientpool.Get(request.options.Options, connConfiguration)
 				if err != nil {
 					return errors.Wrap(err, "could not get http client")
 				}
 				httpclient = client
 			}
-			generatedRequest.request.Prepare()
 			resp, err = httpclient.Do(generatedRequest.request)
 		}
 	}

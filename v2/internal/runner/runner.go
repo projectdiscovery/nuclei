@@ -70,7 +70,7 @@ type Runner struct {
 	catalog           catalog.Catalog
 	progress          progress.Progress
 	colorizer         aurora.Aurora
-	issuesClient      *reporting.Client
+	issuesClient      reporting.Client
 	hmapInputProvider *hybrid.Input
 	browser           *engine.Browser
 	ratelimiter       *ratelimit.Limiter
@@ -411,7 +411,7 @@ func (r *Runner) RunEnumeration() error {
 	}
 
 	if r.options.ShouldUseHostError() {
-		cache := hosterrorscache.New(r.options.MaxHostError, hosterrorscache.DefaultMaxHostsCount)
+		cache := hosterrorscache.New(r.options.MaxHostError, hosterrorscache.DefaultMaxHostsCount, r.options.TrackError)
 		cache.SetVerbose(r.options.Verbose)
 		r.hostErrors = cache
 		executerOpts.HostErrorsCache = cache
@@ -713,7 +713,7 @@ func (r *Runner) displayExecutionInfo(store *loader.Store) {
 }
 
 func (r *Runner) readNewTemplatesWithVersionFile(version string) ([]string, error) {
-	resp, err := http.DefaultClient.Get(fmt.Sprintf("https://raw.githubusercontent.com/projectdiscovery/nuclei-templates/%s/.new-additions", version))
+	resp, err := retryablehttp.DefaultClient().Get(fmt.Sprintf("https://raw.githubusercontent.com/projectdiscovery/nuclei-templates/%s/.new-additions", version))
 	if err != nil {
 		return nil, err
 	}
@@ -792,8 +792,10 @@ func (r *Runner) countNewTemplates() int {
 	return count
 }
 
+// isTemplate is a callback function used by goflags to decide if given file should be read
+// if it is not a nuclei-template file only then file is read
 func isTemplate(filename string) bool {
-	return stringsutil.EqualFoldAny(filepath.Ext(filename), templates.TemplateExtension)
+	return stringsutil.EqualFoldAny(filepath.Ext(filename), config.GetSupportTemplateFileExtensions()...)
 }
 
 // SaveResumeConfig to file

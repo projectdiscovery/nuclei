@@ -22,7 +22,6 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 	"github.com/projectdiscovery/stringsutil"
 	fileutil "github.com/projectdiscovery/utils/file"
-	logutil "github.com/projectdiscovery/utils/log"
 )
 
 func ConfigureOptions() error {
@@ -92,14 +91,6 @@ func ParseOptions(options *types.Options) {
 
 	// Load the resolvers if user asked for them
 	loadResolvers(options)
-
-	// removes all cli variables containing payloads and add them to the internal struct
-	for key, value := range options.Vars.AsMap() {
-		if fileutil.FileExists(value.(string)) {
-			_ = options.Vars.Del(key)
-			options.AddVarPayload(key, value)
-		}
-	}
 
 	err := protocolinit.Init(options)
 	if err != nil {
@@ -259,7 +250,7 @@ func configureOutput(options *types.Options) {
 	}
 
 	// disable standard logger (ref: https://github.com/golang/go/issues/19895)
-	logutil.DisableDefaultLogger()
+	// logutil.DisableDefaultLogger()
 }
 
 // loadResolvers loads resolvers from both user provided flag and file
