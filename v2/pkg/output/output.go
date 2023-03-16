@@ -70,6 +70,10 @@ type InternalWrappedEvent struct {
 	Results         []*ResultEvent
 	OperatorsResult *operators.Result
 	UsesInteractsh  bool
+	// Mutex is internal field which is implicitly used
+	// to synchronize callback(event) and interactsh polling updates
+	// Refer protocols/http.Request.ExecuteWithResults for more details
+	Mutex sync.Mutex
 }
 
 // ResultEvent is a wrapped result event for a single nuclei output.
