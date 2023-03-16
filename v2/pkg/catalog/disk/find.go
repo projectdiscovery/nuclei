@@ -2,7 +2,6 @@ package disk
 
 import (
 	"io/fs"
-	"log"
 	"os"
 	"path/filepath"
 	"strings"
@@ -19,7 +18,6 @@ func (c *DiskCatalog) GetTemplatesPath(definitions []string) ([]string, map[stri
 	allTemplates := []string{}
 	erred := make(map[string]error)
 
-	log.Println(definitions)
 	for _, t := range definitions {
 		if stringsutil.ContainsAny(t, knownConfigFiles...) {
 			// TODO: this is a temporary fix to avoid treating these files as templates
