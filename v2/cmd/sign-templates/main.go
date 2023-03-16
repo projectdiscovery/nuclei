@@ -8,6 +8,7 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/projectdiscovery/goflags"
+	"github.com/projectdiscovery/nuclei/v2/pkg/templates/extensions"
 	"github.com/projectdiscovery/nuclei/v2/pkg/templates/signer"
 	stringsutil "github.com/projectdiscovery/utils/strings"
 )
@@ -90,7 +91,7 @@ func processItem(sign *signer.Signer, item string) error {
 
 func processFile(sign *signer.Signer, filePath string) error {
 	ext := filepath.Ext(filePath)
-	if !stringsutil.EqualFoldAny(ext, ".yaml") {
+	if !stringsutil.EqualFoldAny(ext, extensions.YAML) {
 		return nil
 	}
 	err := signTemplate(sign, filePath)

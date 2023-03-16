@@ -21,7 +21,7 @@ func (c *DiskCatalog) GetTemplatesPath(definitions []string) ([]string, map[stri
 
 	log.Println(definitions)
 	for _, t := range definitions {
-		if stringsutil.ContainsAny(t, "cves.json", "contributors.json", "TEMPLATES-STATS.json") {
+		if stringsutil.ContainsAny(t, knownConfigFiles...) {
 			// TODO: this is a temporary fix to avoid treating these files as templates
 			// this should be replaced with more appropriate and robust logic
 			continue
@@ -49,7 +49,7 @@ func (c *DiskCatalog) GetTemplatesPath(definitions []string) ([]string, map[stri
 	for _, v := range allTemplates {
 		// TODO: this is a temporary fix to avoid treating these files as templates
 		// this should be replaced with more appropriate and robust logic
-		if !stringsutil.ContainsAny(v, "cves.json", "contributors.json", "TEMPLATES-STATS.json") {
+		if !stringsutil.ContainsAny(v, knownConfigFiles...) {
 			filteredTemplates = append(filteredTemplates, v)
 		}
 	}
