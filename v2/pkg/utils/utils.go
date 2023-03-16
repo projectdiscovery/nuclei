@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalog"
+	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/config"
 	"github.com/projectdiscovery/nuclei/v2/pkg/utils/yaml"
 	"github.com/projectdiscovery/retryablehttp-go"
 	fileutil "github.com/projectdiscovery/utils/file"
@@ -58,7 +59,7 @@ func ReadFromPathOrURL(templatePath string, catalog catalog.Catalog) (data []byt
 	}
 
 	// pre-process directives only for local files
-	if fileutil.FileExists(templatePath) {
+	if fileutil.FileExists(templatePath) && config.GetTemplateFormatFromExt(templatePath) == config.YAML {
 		data, err = yaml.PreProcess(data)
 		if err != nil {
 			return nil, err
