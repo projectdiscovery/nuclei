@@ -4,7 +4,7 @@ on:
   pull_request:
     paths:
       - '**.go'
-      - 'v2/'
+      - '**.mod'
   workflow_dispatch:
 
 jobs:
@@ -13,7 +13,7 @@ jobs:
     strategy:
       matrix:
         go-version: [1.19.x]
-        os: [ubuntu-latest, windows-latest, macOS-12]
+        os: [ubuntu-latest-16-cores, windows-latest-8-cores, macOS-12]
 
     runs-on: ${{ matrix.os }}
     steps:

@@ -3,13 +3,15 @@ package loader
 import (
 	"bufio"
 	"fmt"
-	"net/http"
 	"net/url"
 	"strings"
 
 	"github.com/pkg/errors"
 
+	"github.com/projectdiscovery/nuclei/v2/pkg/templates/extensions"
 	"github.com/projectdiscovery/nuclei/v2/pkg/utils"
+	"github.com/projectdiscovery/retryablehttp-go"
+	stringsutil "github.com/projectdiscovery/utils/strings"
 )
 
 type ContentType string
@@ -65,14 +67,14 @@ func getRemoteContent(URL string, remoteTemplateDomainList []string, remoteConte
 		}
 		return
 	}
-	if strings.HasPrefix(URL, "http") && (strings.HasSuffix(URL, ".yaml") || strings.HasSuffix(URL, ".yml")) {
+	if strings.HasPrefix(URL, "http") && stringsutil.HasSuffixAny(URL, extensions.YAML, extensions.YML) {
 		remoteContentChannel <- RemoteContent{
 			Content: []string{URL},
 			Type:    contentType,
 		}
 		return
 	}
-	response, err := http.Get(URL)
+	response, err := retryablehttp.DefaultClient().Get(URL)
 	if err != nil {
 		remoteContentChannel <- RemoteContent{
 			Error: err,
