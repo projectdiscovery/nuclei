@@ -54,6 +54,7 @@ type Template struct {
 	//   HTTP contains the http request to make in the template.
 	// examples:
 	//   - value: exampleNormalHTTPRequest
+	// RequestsWithHTTP is placeholder(internal) only, and should not be used instead use RequestsHTTP
 	RequestsWithHTTP []*http.Request `yaml:"http,omitempty" json:"http,omitempty" jsonschema:"title=http requests to make,description=HTTP requests to make for the template"`
 	// description: |
 	//   DNS contains the dns request to make in the template
@@ -75,6 +76,7 @@ type Template struct {
 	//   TCP contains the network request to make in the template
 	// examples:
 	//   - value: exampleNormalNetworkRequest
+	// RequestsWithTCP is placeholder(internal) only, and should not be used instead use RequestsNetwork
 	RequestsWithTCP []*network.Request `yaml:"tcp,omitempty" json:"tcp,omitempty" jsonschema:"title=network(tcp) requests to make,description=Network requests to make for the template"`
 	// description: |
 	//   Headless contains the headless request to make in the template.
