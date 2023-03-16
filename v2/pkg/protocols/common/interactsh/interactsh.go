@@ -262,7 +262,7 @@ func (c *Client) Close() bool {
 		time.Sleep(c.cooldownDuration)
 	}
 	if c.interactsh != nil {
-	    _ = c.interactsh.StopPolling()
+		_ = c.interactsh.StopPolling()
 		c.interactsh.Close()
 	}
 
@@ -351,6 +351,8 @@ type RequestData struct {
 
 // RequestEvent is the event for a network request sent by nuclei.
 func (c *Client) RequestEvent(interactshURLs []string, data *RequestData) {
+	data.Event.Mutex.Lock()
+	defer data.Event.Mutex.Unlock()
 	for _, interactshURL := range interactshURLs {
 		id := strings.TrimRight(strings.TrimSuffix(interactshURL, c.hostname), ".")
 
