@@ -3,7 +3,7 @@
 # reading os type from arguments
 CURRENT_OS=$1
 
-if [ "${CURRENT_OS}" == "windows-latest" ];then
+if [ "${CURRENT_OS}" == "windows-latest-8-cores" ];then
     extension=.exe
 fi
 
