@@ -50,6 +50,8 @@ func RunNucleiBareArgsAndGetResults(debug bool, extra ...string) ([]string, erro
 	extra = append(extra, ExtraDebugArgs...)
 	cmd.Args = append(cmd.Args, extra...)
 	cmd.Args = append(cmd.Args, "-duc") // disable auto updates
+	cmd.Args = append(cmd.Args, "-interactions-poll-duration", "1")
+	cmd.Args = append(cmd.Args, "-interactions-cooldown-period", "10")
 	if debug {
 		cmd.Args = append(cmd.Args, "-debug")
 		cmd.Stderr = os.Stderr
@@ -98,6 +100,7 @@ func RunNucleiBinaryAndGetLoadedTemplates(nucleiBinary string, debug bool, args 
 	return matches[0][1], nil
 }
 func RunNucleiBinaryAndGetCombinedOutput(debug bool, args []string) (string, error) {
+	args = append(args, "-interactions-cooldown-period", "10", "-interactions-poll-duration", "1")
 	cmd := exec.Command("./nuclei", args...)
 	if debug {
 		cmd.Args = append(cmd.Args, "-debug")

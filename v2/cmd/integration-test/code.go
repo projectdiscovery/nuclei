@@ -65,11 +65,14 @@ func (h *goIntegrationTest) Execute(templatePath string) error {
 
 // executeNucleiAsCode contains an example
 func executeNucleiAsCode(templatePath, templateURL string) ([]string, error) {
-	cache := hosterrorscache.New(30, hosterrorscache.DefaultMaxHostsCount)
+	cache := hosterrorscache.New(30, hosterrorscache.DefaultMaxHostsCount, nil)
 	defer cache.Close()
 
 	mockProgress := &testutils.MockProgressClient{}
-	reportingClient, _ := reporting.New(&reporting.Options{}, "")
+	reportingClient, err := reporting.New(&reporting.Options{}, "")
+	if err != nil {
+		return nil, err
+	}
 	defer reportingClient.Close()
 
 	outputWriter := testutils.NewMockOutputWriter()

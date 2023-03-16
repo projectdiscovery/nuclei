@@ -31,7 +31,7 @@ import (
 )
 
 func main() {
-	cache := hosterrorscache.New(30, hosterrorscache.DefaultMaxHostsCount)
+	cache := hosterrorscache.New(30, hosterrorscache.DefaultMaxHostsCount, nil)
 	defer cache.Close()
 
 	mockProgress := &testutils.MockProgressClient{}
