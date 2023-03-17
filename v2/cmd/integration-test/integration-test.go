@@ -14,9 +14,10 @@ import (
 )
 
 var (
-	debug        = os.Getenv("DEBUG") == "true"
-	githubAction = os.Getenv("GH_ACTION") == "true"
-	customTests  = os.Getenv("TESTS")
+	debug           = os.Getenv("DEBUG") == "true"
+	githubAction    = os.Getenv("GH_ACTION") == "true"
+	interactshFatal = os.Getenv("INTERACTSH_FATAL") == "true"
+	customTests     = os.Getenv("TESTS")
 
 	success = aurora.Green("[✓]").String()
 	failed  = aurora.Red("[✘]").String()
@@ -71,11 +72,21 @@ func main() {
 
 	failedTestTemplatePaths := runTests(customTestsList)
 
+	var filteredTemplates []string
+
+	for _, failedTestTemplatePath := range failedTestTemplatePaths {
+		templateData, err := os.ReadFile(failedTestTemplatePath)
+		if !interactshFatal && err == nil && stringsutil.ContainsAny(string(templateData), "interactsh") {
+			continue
+		}
+		filteredTemplates = append(filteredTemplates, failedTestTemplatePath)
+	}
+
 	if len(failedTestTemplatePaths) > 0 {
 		if githubAction {
 			debug = true
 			fmt.Println("::group::Failed integration tests in debug mode")
-			_ = runTests(failedTestTemplatePaths)
+			_ = runTests(filteredTemplates)
 			fmt.Println("::endgroup::")
 		}
 
