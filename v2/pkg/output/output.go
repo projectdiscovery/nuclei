@@ -66,14 +66,29 @@ type InternalEvent map[string]interface{}
 
 // InternalWrappedEvent is a wrapped event with operators result added to it.
 type InternalWrappedEvent struct {
+	// Mutex is internal field which is implicitly used
+	// to synchronize callback(event) and interactsh polling updates
+	// Refer protocols/http.Request.ExecuteWithResults for more details
+	sync.RWMutex
+
 	InternalEvent   InternalEvent
 	Results         []*ResultEvent
 	OperatorsResult *operators.Result
 	UsesInteractsh  bool
-	// Mutex is internal field which is implicitly used
-	// to synchronize callback(event) and interactsh polling updates
-	// Refer protocols/http.Request.ExecuteWithResults for more details
-	Mutex sync.Mutex
+}
+
+func (iwe *InternalWrappedEvent) HasOperatorResult() bool {
+	iwe.RLock()
+	defer iwe.RUnlock()
+
+	return iwe.OperatorsResult != nil
+}
+
+func (iwe *InternalWrappedEvent) SetOperatorResult(operatorResult *operators.Result) {
+	iwe.Lock()
+	defer iwe.Unlock()
+
+	iwe.OperatorsResult = operatorResult
 }
 
 // ResultEvent is a wrapped result event for a single nuclei output.
