@@ -8,7 +8,6 @@ import (
 	"net/http/httptest"
 	"net/http/httputil"
 	"os"
-	"path/filepath"
 	"reflect"
 	"strconv"
 	"strings"
@@ -33,7 +32,6 @@ var httpTestcases = map[string]testutils.TestCase{
 	"http/get-host-redirects.yaml":                  &httpGetHostRedirects{},
 	"http/disable-redirects.yaml":                   &httpDisableRedirects{},
 	"http/get.yaml":                                 &httpGet{},
-	"http/fuzz-query.yaml":                          &httpFuzzQuery{},
 	"http/post-body.yaml":                           &httpPostBody{},
 	"http/post-json-body.yaml":                      &httpPostJSONBody{},
 	"http/post-multipart-body.yaml":                 &httpPostMultipartBody{},
@@ -72,6 +70,7 @@ var httpTestcases = map[string]testutils.TestCase{
 	"http/get-without-scheme.yaml":                  &httpGetWithoutScheme{},
 	"http/cl-body-without-header.yaml":              &httpCLBodyWithoutHeader{},
 	"http/cl-body-with-header.yaml":                 &httpCLBodyWithHeader{},
+	"http/default-matcher-condition.yaml":           &httpDefaultMatcherCondition{},
 }
 
 type httpInteractshRequest struct{}
@@ -95,6 +94,49 @@ func (h *httpInteractshRequest) Execute(filePath string) error {
 		return err
 	}
 
+	return expectResultsCount(results, 1)
+}
+
+type httpDefaultMatcherCondition struct{}
+
+// Execute executes a test case and returns an error if occurred
+func (d *httpDefaultMatcherCondition) Execute(filePath string) error {
+	// to simulate matcher-condition `or`
+	// - template should be run twice and vulnerable server should send response that fits for that specific run
+	router := httprouter.New()
+	var routerErr error
+	// Server endpoint where only interactsh matcher is successful and status code is not 200
+	router.GET("/interactsh/", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+		value := r.URL.Query().Get("url")
+		if value != "" {
+			if _, err := retryablehttp.DefaultClient().Get("https://" + value); err != nil {
+				routerErr = err
+			}
+		}
+		w.WriteHeader(http.StatusNotFound)
+	})
+	// Server endpoint where url is not probed but sends a 200 status code
+	router.GET("/status/", func(w http.ResponseWriter, r *http.Request, p httprouter.Params) {
+		w.WriteHeader(http.StatusOK)
+	})
+	ts := httptest.NewServer(router)
+	defer ts.Close()
+
+	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, ts.URL+"/interactsh", debug)
+	if err != nil {
+		return err
+	}
+	if routerErr != nil {
+		return errorutil.NewWithErr(routerErr).Msgf("failed to send http request to interactsh server")
+	}
+	if err := expectResultsCount(results, 1); err != nil {
+		return err
+	}
+
+	results, err = testutils.RunNucleiTemplateAndGetResults(filePath, ts.URL+"/status", debug)
+	if err != nil {
+		return err
+	}
 	return expectResultsCount(results, 1)
 }
 
@@ -834,13 +876,16 @@ func (h *httpRequestSelfContainedFileInput) Execute(filePath string) error {
 	defer server.Close()
 
 	// create temp file
-	FileLoc := filepath.Join(os.TempDir(), "httpselfcontained.yaml")
-	err := os.WriteFile(FileLoc, []byte("one\ntwo\n"), 0600)
+	FileLoc, err := os.CreateTemp("", "self-contained-payload-*.txt")
 	if err != nil {
-		return errorutil.NewWithErr(err).Msgf("failed to create temporary file").WithTag(filePath)
+		return errorutil.NewWithErr(err).Msgf("failed to create temp file")
 	}
+	if _, err := FileLoc.Write([]byte("one\ntwo\n")); err != nil {
+		return errorutil.NewWithErr(err).Msgf("failed to write payload to temp file")
+	}
+	defer FileLoc.Close()
 
-	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, "", debug, "-V", "test="+FileLoc)
+	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, "", debug, "-V", "test="+FileLoc.Name())
 	if err != nil {
 		return err
 	}
@@ -1122,26 +1167,6 @@ func (h *annotationTimeout) Execute(filePath string) error {
 	defer ts.Close()
 
 	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, ts.URL, debug, "-timeout", "1")
-	if err != nil {
-		return err
-	}
-	return expectResultsCount(results, 1)
-}
-
-type httpFuzzQuery struct{}
-
-// Execute executes a test case and returns an error if occurred
-func (h *httpFuzzQuery) Execute(filePath string) error {
-	router := httprouter.New()
-	router.GET("/", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-		w.Header().Set("Content-Type", "text/html")
-		value := r.URL.Query().Get("id")
-		fmt.Fprintf(w, "This is test matcher text: %v", value)
-	})
-	ts := httptest.NewTLSServer(router)
-	defer ts.Close()
-
-	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, ts.URL+"/?id=example", debug)
 	if err != nil {
 		return err
 	}

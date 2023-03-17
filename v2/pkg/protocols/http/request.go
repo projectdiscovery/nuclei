@@ -393,9 +393,15 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 						MatchFunc:      request.Match,
 						ExtractFunc:    request.Extract,
 					})
-				} else {
-					callback(event)
 				}
+				// Note: This is a race condition prone zone i.e when request has interactsh_matchers
+				// Interactsh.RequestEvent tries to access/update output.InternalWrappedEvent depending on logic
+				// to avoid conflicts with `callback` mutex is used here and in Interactsh.RequestEvent
+				// Note: this only happens if requests > 1 and interactsh matcher is used
+				// TODO: interactsh logic in nuclei needs to be refactored to avoid such situations
+				event.Mutex.Lock()
+				callback(event)
+				event.Mutex.Unlock()
 			}, generator.currentIndex)
 
 			// If a variable is unresolved, skip all further requests

@@ -400,7 +400,7 @@ func (r *Runner) RunEnumeration() error {
 	}
 
 	if r.options.ShouldUseHostError() {
-		cache := hosterrorscache.New(r.options.MaxHostError, hosterrorscache.DefaultMaxHostsCount)
+		cache := hosterrorscache.New(r.options.MaxHostError, hosterrorscache.DefaultMaxHostsCount, r.options.TrackError)
 		cache.SetVerbose(r.options.Verbose)
 		r.hostErrors = cache
 		executerOpts.HostErrorsCache = cache
@@ -782,8 +782,10 @@ func (r *Runner) countNewTemplates() int {
 	return count
 }
 
+// isTemplate is a callback function used by goflags to decide if given file should be read
+// if it is not a nuclei-template file only then file is read
 func isTemplate(filename string) bool {
-	return stringsutil.EqualFoldAny(filepath.Ext(filename), templates.TemplateExtension)
+	return stringsutil.EqualFoldAny(filepath.Ext(filename), config.GetSupportTemplateFileExtensions()...)
 }
 
 // SaveResumeConfig to file

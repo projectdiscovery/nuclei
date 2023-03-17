@@ -140,6 +140,8 @@ type Options struct {
 	MetricsPort int
 	// MaxHostError is the maximum number of errors allowed for a host
 	MaxHostError int
+	// TrackError contains additional error messages that count towards the maximum number of errors allowed for a host
+	TrackError goflags.StringSlice
 	// NoHostErrors disables host skipping after maximum number of errors
 	NoHostErrors bool
 	// BulkSize is the of targets analyzed in parallel for each template
@@ -345,6 +347,10 @@ type Options struct {
 	AwsRegion string
 	// Scan Strategy (auto,hosts-spray,templates-spray)
 	ScanStrategy string
+	// Fuzzing Type overrides template level fuzzing-type configuration
+	FuzzingType string
+	// Fuzzing Mode overrides template level fuzzing-mode configuration
+	FuzzingMode string
 }
 
 // ShouldLoadResume resume file
