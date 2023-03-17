@@ -77,7 +77,6 @@ func main() {
 	for _, failedTestTemplatePath := range failedTestTemplatePaths {
 		templateData, err := os.ReadFile(failedTestTemplatePath)
 		if !interactshFatal && err == nil && stringsutil.ContainsAny(string(templateData), "interactsh") {
-			fmt.Println("skipping fatal:", failedTestTemplatePath)
 			continue
 		}
 		filteredFailedTemplates = append(filteredFailedTemplates, failedTestTemplatePath)
