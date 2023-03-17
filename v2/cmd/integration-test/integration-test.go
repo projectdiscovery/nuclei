@@ -9,6 +9,7 @@ import (
 	"github.com/logrusorgru/aurora"
 
 	"github.com/projectdiscovery/nuclei/v2/pkg/testutils"
+	sliceutil "github.com/projectdiscovery/utils/slice"
 )
 
 var (
@@ -62,7 +63,8 @@ func main() {
 		os.Exit(1)
 	}
 
-	failedTestTemplatePaths := runTests(toMap(toSlice(customTests)))
+	customTestsList := strings.Split(strings.TrimSpace(customTests), ",")
+	failedTestTemplatePaths := runTests(customTestsList)
 
 	if len(failedTestTemplatePaths) > 0 {
 		if githubAction {
@@ -87,8 +89,8 @@ func debugTests() {
 	}
 }
 
-func runTests(customTemplatePaths map[string]struct{}) map[string]struct{} {
-	failedTestTemplatePaths := map[string]struct{}{}
+func runTests(customTemplatePaths []string) []string {
+	var failedTestTemplatePaths []string
 
 	for proto, testCases := range protocolTests {
 		if len(customTemplatePaths) == 0 {
@@ -96,9 +98,9 @@ func runTests(customTemplatePaths map[string]struct{}) map[string]struct{} {
 		}
 
 		for templatePath, testCase := range testCases {
-			if len(customTemplatePaths) == 0 || contains(customTemplatePaths, templatePath) {
+			if len(customTemplatePaths) == 0 || sliceutil.Contains(customTemplatePaths, templatePath) {
 				if failedTemplatePath, err := execute(testCase, templatePath); err != nil {
-					failedTestTemplatePaths[failedTemplatePath] = struct{}{}
+					failedTestTemplatePaths = append(failedTestTemplatePaths, failedTemplatePath)
 				}
 			}
 		}
@@ -122,27 +124,4 @@ func expectResultsCount(results []string, expectedNumber int) error {
 		return fmt.Errorf("incorrect number of results: %d (actual) vs %d (expected) \nResults:\n\t%s\n", len(results), expectedNumber, strings.Join(results, "\n\t"))
 	}
 	return nil
-}
-
-func toSlice(value string) []string {
-	if strings.TrimSpace(value) == "" {
-		return []string{}
-	}
-
-	return strings.Split(value, ",")
-}
-
-func toMap(slice []string) map[string]struct{} {
-	result := make(map[string]struct{}, len(slice))
-	for _, value := range slice {
-		if _, ok := result[value]; !ok {
-			result[value] = struct{}{}
-		}
-	}
-	return result
-}
-
-func contains(input map[string]struct{}, value string) bool {
-	_, ok := input[value]
-	return ok
 }
