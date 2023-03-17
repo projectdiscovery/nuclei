@@ -12,7 +12,7 @@ func WriteResult(data *output.InternalWrappedEvent, output output.Writer, progre
 	// Handle the case where no result found for the template.
 	// In this case, we just show misc information about the failed
 	// match for the template.
-	if data.OperatorsResult == nil {
+	if !data.HasOperatorResult() {
 		return false
 	}
 	var matched bool
