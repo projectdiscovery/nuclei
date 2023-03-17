@@ -20,22 +20,22 @@ var (
 	failed  = aurora.Red("[✘]").String()
 
 	protocolTests = map[string]map[string]testutils.TestCase{
-		"http": httpTestcases,
-		// "network":         networkTestcases,
-		// "dns":             dnsTestCases,
-		// "workflow":        workflowTestcases,
-		// "loader":          loaderTestcases,
-		// "websocket":       websocketTestCases,
-		// "headless":        headlessTestcases,
-		// "whois":           whoisTestCases,
-		// "ssl":             sslTestcases,
-		// "code":            codeTestcases,
-		// "templatesPath":   templatesPathTestCases,
-		// "templatesDir":    templatesDirTestCases,
-		// "file":            fileTestcases,
-		// "offlineHttp":     offlineHttpTestcases,
-		// "customConfigDir": customConfigDirTestCases,
-		// "fuzzing":         fuzzingTestCases,
+		"http":            httpTestcases,
+		"network":         networkTestcases,
+		"dns":             dnsTestCases,
+		"workflow":        workflowTestcases,
+		"loader":          loaderTestcases,
+		"websocket":       websocketTestCases,
+		"headless":        headlessTestcases,
+		"whois":           whoisTestCases,
+		"ssl":             sslTestcases,
+		"code":            codeTestcases,
+		"templatesPath":   templatesPathTestCases,
+		"templatesDir":    templatesDirTestCases,
+		"file":            fileTestcases,
+		"offlineHttp":     offlineHttpTestcases,
+		"customConfigDir": customConfigDirTestCases,
+		"fuzzing":         fuzzingTestCases,
 	}
 
 	// For debug purposes
@@ -118,7 +118,6 @@ func execute(testCase testutils.TestCase, templatePath string) (string, error) {
 }
 
 func expectResultsCount(results []string, expectedNumber int) error {
-	fmt.Println(results, len(results))
 	if len(results) != expectedNumber {
 		return fmt.Errorf("incorrect number of results: %d (actual) vs %d (expected) \nResults:\n\t%s\n", len(results), expectedNumber, strings.Join(results, "\n\t"))
 	}
