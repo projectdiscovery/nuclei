@@ -56,7 +56,7 @@ type Client struct {
 }
 
 var (
-	defaultInteractionDuration = 60 * time.Second
+	defaultInteractionDuration = 60 * time.Minute
 	interactshURLMarkerRegex   = regexp.MustCompile(`{{interactsh-url(?:_[0-9]+){0,3}}}`)
 )
 
