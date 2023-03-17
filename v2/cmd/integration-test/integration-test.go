@@ -10,6 +10,7 @@ import (
 
 	"github.com/projectdiscovery/nuclei/v2/pkg/testutils"
 	sliceutil "github.com/projectdiscovery/utils/slice"
+	stringsutil "github.com/projectdiscovery/utils/strings"
 )
 
 var (
@@ -63,7 +64,10 @@ func main() {
 		os.Exit(1)
 	}
 
-	customTestsList := strings.Split(strings.TrimSpace(customTests), ",")
+	var customTestsList []string
+	if stringsutil.ContainsAny(customTests, ",") {
+		customTestsList = strings.Split(strings.TrimSpace(customTests), ",")
+	}
 	failedTestTemplatePaths := runTests(customTestsList)
 
 	if len(failedTestTemplatePaths) > 0 {
