@@ -68,6 +68,7 @@ func main() {
 	if stringsutil.ContainsAny(customTests, ",") {
 		customTestsList = strings.Split(strings.TrimSpace(customTests), ",")
 	}
+
 	failedTestTemplatePaths := runTests(customTestsList)
 
 	if len(failedTestTemplatePaths) > 0 {
