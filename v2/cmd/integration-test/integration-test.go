@@ -72,21 +72,22 @@ func main() {
 
 	failedTestTemplatePaths := runTests(customTestsList)
 
-	var filteredTemplates []string
+	var filteredFailedTemplates []string
 
 	for _, failedTestTemplatePath := range failedTestTemplatePaths {
 		templateData, err := os.ReadFile(failedTestTemplatePath)
 		if !interactshFatal && err == nil && stringsutil.ContainsAny(string(templateData), "interactsh") {
+			fmt.Println("skipping fatal:", failedTestTemplatePath)
 			continue
 		}
-		filteredTemplates = append(filteredTemplates, failedTestTemplatePath)
+		filteredFailedTemplates = append(filteredFailedTemplates, failedTestTemplatePath)
 	}
 
 	if len(failedTestTemplatePaths) > 0 {
 		if githubAction {
 			debug = true
 			fmt.Println("::group::Failed integration tests in debug mode")
-			_ = runTests(filteredTemplates)
+			_ = runTests(filteredFailedTemplates)
 			fmt.Println("::endgroup::")
 		}
 
