@@ -60,7 +60,7 @@
 #  # freeform can be used if the custom field is just a text entry
 #  # Variables can be used to pull various pieces of data from the finding itself. 
 #  # Supported variables: $CVSSMetrics, $CVEID, $CWEID, $Host, $Severity, $CVSSScore, $Name
-# custom_fields:
+# custom-fields:
 #  customfield_00001: 
 #    name: "Nuclei"
 #  customfield_00002:
