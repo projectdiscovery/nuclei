@@ -171,7 +171,7 @@ func (c *Client) firstTimeInitializeClient() error {
 	c.hostname = interactDomain
 	c.dataMutex.Unlock()
 
-	interactsh.StartPolling(c.pollDuration, func(interaction *server.Interaction) {
+	err = interactsh.StartPolling(c.pollDuration, func(interaction *server.Interaction) {
 		item := c.requests.Get(interaction.UniqueID)
 		if item == nil {
 			// If we don't have any request for this ID, add it to temporary
@@ -199,6 +199,10 @@ func (c *Client) firstTimeInitializeClient() error {
 
 		_ = c.processInteractionForRequest(interaction, request)
 	})
+
+	if err != nil {
+		return errors.Wrap(err, "could not perform instactsh polling")
+	}
 	return nil
 }
 
@@ -218,8 +222,9 @@ func (c *Client) processInteractionForRequest(interaction *server.Interaction, d
 	if data.Event.OperatorsResult != nil {
 		data.Event.OperatorsResult.Merge(result)
 	} else {
-		data.Event.OperatorsResult = result
+		data.Event.SetOperatorResult(result)
 	}
+
 	data.Event.Results = data.MakeResultFunc(data.Event)
 	for _, event := range data.Event.Results {
 		event.Interaction = interaction
@@ -258,7 +263,7 @@ func (c *Client) Close() bool {
 		time.Sleep(c.cooldownDuration)
 	}
 	if c.interactsh != nil {
-		c.interactsh.StopPolling()
+		_ = c.interactsh.StopPolling()
 		c.interactsh.Close()
 	}
 
@@ -347,6 +352,9 @@ type RequestData struct {
 
 // RequestEvent is the event for a network request sent by nuclei.
 func (c *Client) RequestEvent(interactshURLs []string, data *RequestData) {
+	data.Event.Lock()
+	defer data.Event.Unlock()
+
 	for _, interactshURL := range interactshURLs {
 		id := strings.TrimRight(strings.TrimSuffix(interactshURL, c.hostname), ".")
 

@@ -30,6 +30,7 @@ type Cache struct {
 	MaxHostError  int
 	verbose       bool
 	failedTargets gcache.Cache
+	TrackError    []string
 }
 
 type cacheItem struct {
@@ -40,11 +41,11 @@ type cacheItem struct {
 const DefaultMaxHostsCount = 10000
 
 // New returns a new host max errors cache
-func New(maxHostError, maxHostsCount int) *Cache {
+func New(maxHostError, maxHostsCount int, trackError []string) *Cache {
 	gc := gcache.New(maxHostsCount).
 		ARC().
 		Build()
-	return &Cache{failedTargets: gc, MaxHostError: maxHostError}
+	return &Cache{failedTargets: gc, MaxHostError: maxHostError, TrackError: trackError}
 }
 
 // SetVerbose sets the cache to log at verbose level
@@ -128,6 +129,14 @@ var reCheckError = regexp.MustCompile(`(no address found for host|Client\.Timeou
 // checkError checks if an error represents a type that should be
 // added to the host skipping table.
 func (c *Cache) checkError(err error) bool {
+	if err == nil {
+		return false
+	}
 	errString := err.Error()
+	for _, msg := range c.TrackError {
+		if strings.Contains(errString, msg) {
+			return true
+		}
+	}
 	return reCheckError.MatchString(errString)
 }

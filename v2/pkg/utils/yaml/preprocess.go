@@ -7,6 +7,7 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/projectdiscovery/nuclei/v2/pkg/templates/extensions"
 	fileutil "github.com/projectdiscovery/utils/file"
 	stringsutil "github.com/projectdiscovery/utils/strings"
 )
@@ -52,7 +53,7 @@ func PreProcess(data []byte) ([]byte, error) {
 				return nil, err
 			}
 			// if it's yaml, tries to preprocess that too recursively
-			if stringsutil.HasSuffixAny(includeFileName, ".yaml") {
+			if stringsutil.HasSuffixAny(includeFileName, extensions.YAML) {
 				if subIncludedFileContent, err := PreProcess(includeFileContent); err == nil {
 					includeFileContent = subIncludedFileContent
 				} else {
