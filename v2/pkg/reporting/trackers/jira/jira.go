@@ -50,7 +50,7 @@ type Options struct {
 	// for each customfield specified in the configuration options
 	// we will create a map of customfield name to the value
 	// that will be used to create the issue
-	CustomFields map[string]interface{} `yaml:"custom_fields"`
+	CustomFields map[string]interface{} `yaml:"custom-fields" json:"custom_fields"`
 	StatusNot    string                 `yaml:"status-not" json:"status_not"`
 }
 
@@ -94,8 +94,12 @@ func (i *Integration) CreateNewIssue(event *output.ResultEvent) error {
 		if valueMap, ok := value.(map[interface{}]interface{}); ok {
 			// Iterate over nested map
 			for nestedName, nestedValue := range valueMap {
-				if strings.HasPrefix(nestedValue.(string), "$") {
-					nestedValue = strings.TrimPrefix(nestedValue.(string), "$")
+				fmtNestedValue, ok := nestedValue.(string)
+				if !ok {
+					return fmt.Errorf(`couldn't iterate on nested item "%s": %s`, nestedName, nestedValue)
+				}
+				if strings.HasPrefix(fmtNestedValue, "$") {
+					nestedValue = strings.TrimPrefix(fmtNestedValue, "$")
 					switch nestedValue {
 					case "CVSSMetrics":
 						nestedValue = event.Info.Classification.CVSSMetrics
