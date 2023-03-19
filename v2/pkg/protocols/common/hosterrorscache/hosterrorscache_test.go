@@ -10,7 +10,7 @@ import (
 )
 
 func TestCacheCheck(t *testing.T) {
-	cache := New(3, DefaultMaxHostsCount)
+	cache := New(3, DefaultMaxHostsCount, nil)
 
 	for i := 0; i < 100; i++ {
 		cache.MarkFailed("test", fmt.Errorf("could not resolve host"))
@@ -25,6 +25,24 @@ func TestCacheCheck(t *testing.T) {
 	}
 
 	value := cache.Check("test")
+	require.Equal(t, true, value, "could not get checked value")
+}
+
+func TestTrackErrors(t *testing.T) {
+	cache := New(3, DefaultMaxHostsCount, []string{"custom error"})
+
+	for i := 0; i < 100; i++ {
+		cache.MarkFailed("custom", fmt.Errorf("got: nested: custom error"))
+		got := cache.Check("custom")
+		if i < 2 {
+			// till 3 the host is not flagged to skip
+			require.False(t, got)
+		} else {
+			// above 3 it must remain flagged to skip
+			require.True(t, got)
+		}
+	}
+	value := cache.Check("custom")
 	require.Equal(t, true, value, "could not get checked value")
 }
 
@@ -51,7 +69,7 @@ func TestCacheItemDo(t *testing.T) {
 }
 
 func TestCacheMarkFailed(t *testing.T) {
-	cache := New(3, DefaultMaxHostsCount)
+	cache := New(3, DefaultMaxHostsCount, nil)
 
 	tests := []struct {
 		host     string
@@ -76,7 +94,7 @@ func TestCacheMarkFailed(t *testing.T) {
 }
 
 func TestCacheMarkFailedConcurrent(t *testing.T) {
-	cache := New(3, DefaultMaxHostsCount)
+	cache := New(3, DefaultMaxHostsCount, nil)
 
 	tests := []struct {
 		host     string
