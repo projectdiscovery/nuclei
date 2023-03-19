@@ -15,6 +15,7 @@ import (
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v2/internal/runner/nucleicloud"
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
+	"github.com/projectdiscovery/nuclei/v2/pkg/templates/extensions"
 )
 
 // Get all the scan lists for a user/apikey.
@@ -266,7 +267,7 @@ func (r *Runner) addTemplate(location string) error {
 		if err != nil {
 			return err
 		}
-		if d.IsDir() || !strings.EqualFold(filepath.Ext(path), ".yaml") {
+		if d.IsDir() || !strings.EqualFold(filepath.Ext(path), extensions.YAML) {
 			return nil
 		}
 		base := filepath.Base(path)
@@ -337,7 +338,7 @@ func (r *Runner) removeTemplate(item string) error {
 	var err error
 	if ID, parseErr := strconv.ParseInt(item, 10, 64); parseErr == nil {
 		err = r.cloudClient.RemoveTemplate(ID, "")
-	} else if strings.EqualFold(path.Ext(item), ".yaml") {
+	} else if strings.EqualFold(path.Ext(item), extensions.YAML) {
 		err = r.cloudClient.RemoveTemplate(0, item)
 	} else {
 		return r.removeTemplatePrefix(item)

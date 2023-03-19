@@ -61,7 +61,8 @@
           ]
         },
         "reference": {
-          "$ref": "#/definitions/stringslice.StringSlice",
+          "$schema": "http://json-schema.org/draft-04/schema#",
+          "$ref": "#/definitions/stringslice.RawStringSlice",
           "title": "references for the template",
           "description": "Links relevant to the template"
         },
@@ -109,6 +110,16 @@
       "type": "string",
       "title": "severity of the template",
       "description": "Seriousness of the implications of the template"
+    },
+    "stringslice.RawStringSlice": {
+      "oneOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "array"
+        }
+      ]
     },
     "stringslice.StringSlice": {
       "oneOf": [
