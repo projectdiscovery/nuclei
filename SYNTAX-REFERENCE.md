@@ -80,6 +80,7 @@ info:
 <div class="dt">
 
 Requests contains the http request to make in the template.
+WARNING: 'requests' will be deprecated and will be removed in a future release. Please use 'http' instead.
 
 
 
@@ -106,6 +107,23 @@ requests:
     method: GET
 ```
 
+
+</div>
+
+<hr />
+
+<div class="dd">
+
+<code>http</code>  <i>[]<a href="#httprequest">http.Request</a></i>
+
+</div>
+<div class="dt">
+
+description: |
+   HTTP contains the http request to make in the template.
+ examples:
+   - value: exampleNormalHTTPRequest
+ RequestsWithHTTP is placeholder(internal) only, and should not be used instead use RequestsHTTP
 
 </div>
 
@@ -183,6 +201,7 @@ file:
 <div class="dt">
 
 Network contains the network request to make in the template
+WARNING: 'network' will be deprecated and will be removed in a future release. Please use 'tcp' instead.
 
 
 
@@ -203,6 +222,23 @@ network:
             - zookeeper.version
 ```
 
+
+</div>
+
+<hr />
+
+<div class="dd">
+
+<code>tcp</code>  <i>[]<a href="#networkrequest">network.Request</a></i>
+
+</div>
+<div class="dt">
+
+description: |
+   TCP contains the network request to make in the template
+ examples:
+   - value: exampleNormalNetworkRequest
+ RequestsWithTCP is placeholder(internal) only, and should not be used instead use RequestsNetwork
 
 </div>
 
@@ -770,6 +806,8 @@ Appears in:
 
 
 - <code><a href="#template">Template</a>.requests</code>
+
+- <code><a href="#template">Template</a>.http</code>
 
 
 ```yaml
@@ -2107,6 +2145,8 @@ Appears in:
 
 
 - <code><a href="#template">Template</a>.network</code>
+
+- <code><a href="#template">Template</a>.tcp</code>
 
 
 ```yaml
