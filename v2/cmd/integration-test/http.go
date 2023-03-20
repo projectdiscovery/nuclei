@@ -25,6 +25,7 @@ import (
 )
 
 var httpTestcases = map[string]testutils.TestCase{
+	// TODO: excluded due to parsing errors with console
 	// "http/raw-unsafe-request.yaml":                  &httpRawUnsafeRequest{},
 	"http/get-headers.yaml":                         &httpGetHeaders{},
 	"http/get-query-string.yaml":                    &httpGetQueryString{},
@@ -122,7 +123,15 @@ func (d *httpDefaultMatcherCondition) Execute(filePath string) error {
 	ts := httptest.NewServer(router)
 	defer ts.Close()
 
-	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, ts.URL+"/interactsh", debug)
+	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, ts.URL+"/status", debug)
+	if err != nil {
+		return err
+	}
+	if err := expectResultsCount(results, 1); err != nil {
+		return err
+	}
+
+	results, err = testutils.RunNucleiTemplateAndGetResults(filePath, ts.URL+"/interactsh", debug)
 	if err != nil {
 		return err
 	}
@@ -132,12 +141,7 @@ func (d *httpDefaultMatcherCondition) Execute(filePath string) error {
 	if err := expectResultsCount(results, 1); err != nil {
 		return err
 	}
-
-	results, err = testutils.RunNucleiTemplateAndGetResults(filePath, ts.URL+"/status", debug)
-	if err != nil {
-		return err
-	}
-	return expectResultsCount(results, 1)
+	return nil
 }
 
 type httpInteractshStopAtFirstMatchRequest struct{}
