@@ -136,6 +136,9 @@ type Options struct {
 	// StatsInterval is the number of seconds to display stats after
 	// Deprecated: stats are automatically available through local endpoint (maybe used on cloud?)
 	StatsInterval int
+	// Metrics enables display of metrics via an http endpoint
+	// Deprecated: metrics are automatically enabled
+	Metrics bool
 	// MetricsPort is the port to show metrics on
 	MetricsPort int
 	// MaxHostError is the maximum number of errors allowed for a host

@@ -233,6 +233,7 @@ Nuclei是一款注重于可配置性、可扩展性和易用性的基于模板�
     -stats                               显示正在扫描的统计信息
     -sj, -stats-json                     将统计信息以JSONL格式输出到文件
     -si, -stats-inerval int              显示统计信息更新的间隔秒数（默认：5）
+    -m, -metrics                         显示Nuclei端口信息
     -mp, -metrics-port int               更改Nuclei默认端口（默认：63636）
 ```
 
