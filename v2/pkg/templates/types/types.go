@@ -47,7 +47,7 @@ var protocolMappings = map[ProtocolType]string{
 	FileProtocol:      "file",
 	HTTPProtocol:      "http",
 	HeadlessProtocol:  "headless",
-	NetworkProtocol:   "network",
+	NetworkProtocol:   "tcp",
 	WorkflowProtocol:  "workflow",
 	SSLProtocol:       "ssl",
 	WebsocketProtocol: "websocket",
