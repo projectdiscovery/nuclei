@@ -16,6 +16,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	ntlm_parser "github.com/wux1an/ntlm-parser"
 	"hash"
 	"html"
 	"io"
@@ -1006,6 +1007,25 @@ func init() {
 				return nil, fmt.Errorf("no formatted IP returned")
 			}
 			return formattedIps[0], nil
+		}),
+		"ntlm_parser": makeDslFunction(1, func(args ...interface{}) (interface{}, error) {
+			bas64str := strings.TrimPrefix(args[0].(string), "NTLM ")
+			message, err := ntlm_parser.FromBase64(bas64str)
+			if err != nil {
+				return nil, err
+			}
+
+			type2 := message.(*ntlm_parser.NTLMType2)
+			info := type2.TargetInfoWrapper()
+
+			builder := strings.Builder{}
+			builder.WriteString("DnsDomainName: " + info.DnsDomainName)
+			builder.WriteString(", DnsTreeName: " + info.DnsTreeName)
+			builder.WriteString(", NetBiosComputerName: " + info.NetBIOSComputerName)
+			builder.WriteString(", NetBiosDomainName: " + info.NetBIOSDomainName)
+			builder.WriteString(", OS Version: " + type2.OsVersionStructure.LongString())
+
+			return builder.String(), nil
 		}),
 	}
 
