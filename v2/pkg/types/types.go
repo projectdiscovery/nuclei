@@ -305,7 +305,7 @@ type Options struct {
 	// ResponseSaveSize is the maximum size of response to save
 	ResponseSaveSize int
 	// Health Check
-	HealthCheck bool
+	HealthCheck string
 	// Time to wait between each input read operation before closing the stream
 	InputReadTimeout time.Duration
 	// Disable stdin for input processing

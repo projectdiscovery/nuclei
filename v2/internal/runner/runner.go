@@ -90,7 +90,7 @@ func New(options *types.Options) (*Runner, error) {
 		options: options,
 	}
 
-	if options.HealthCheck {
+	if options.HealthCheck != "" {
 		gologger.Print().Msgf("%s\n", DoHealthCheck(options))
 		os.Exit(0)
 	}
