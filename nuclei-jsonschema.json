@@ -1331,6 +1331,14 @@
           "title": "http requests to make",
           "description": "HTTP requests to make for the template"
         },
+        "http": {
+          "items": {
+            "$ref": "#/definitions/http.Request"
+          },
+          "type": "array",
+          "title": "http requests to make",
+          "description": "HTTP requests to make for the template"
+        },
         "dns": {
           "items": {
             "$schema": "http://json-schema.org/draft-04/schema#",
@@ -1356,6 +1364,14 @@
           },
           "type": "array",
           "title": "network requests to make",
+          "description": "Network requests to make for the template"
+        },
+        "tcp": {
+          "items": {
+            "$ref": "#/definitions/network.Request"
+          },
+          "type": "array",
+          "title": "network(tcp) requests to make",
           "description": "Network requests to make for the template"
         },
         "headless": {
