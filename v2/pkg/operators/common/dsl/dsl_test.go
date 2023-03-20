@@ -282,6 +282,11 @@ func TestDslExpressions(t *testing.T) {
 		`ip_format('127.0.0.1', '3')`:  "0177.0.0.01",
 		`ip_format('127.0.0.1', '5')`:  "281472812449793",
 		`ip_format('127.0.1.0', '11')`: "127.0.256",
+		"ntlm_parser('" + "TlRMTVNTUAACAAAABgAGADgAAAA1goniaaCGDXCR" +
+			"RNUAAAAAAAAAAIIAggA+AAAACgC6RwAAAA9KAEwARwACAAYASgBMAE" +
+			"cAAQAQAEMASABPAFUAQwBIAE8AVQAEABIAagBsAGcALgBsAG8AYwBh" +
+			"AGwAAwAkAGMAaABvAHUAYwBoAG8AdQAuAGoAbABnAC4AbABvAGMAYQ" +
+			"BsAAUAEgBqAGwAZwAuAGwAbwBjAGEAbAAHAAgAQH6UJ9691gEAAAAA')": "DnsDomainName: jlg.local, DnsTreeName: jlg.local, NetBiosComputerName: CHOUCHOU, NetBiosDomainName: JLG, OS Version: Other (10.0.18362.15)",
 	}
 
 	testDslExpressionScenarios(t, dslExpressions)
