@@ -71,13 +71,14 @@ func DoHealthCheck(options *types.Options) string {
 	}
 
 	// Other Host information
-	// ulimit
-	// TODO: check how this operates on Windows
+	// LINUX/UNIX Systems:
+	//     ulimit
 	var limit syscall.Rlimit
 	syscall.Getrlimit(syscall.RLIMIT_NOFILE, &limit)
 	if (limit.Max - limit.Cur) <= 1000 {
 		data["os"].(map[string]interface{})["ulimit"] = fmt.Sprintf("You may need to increase your file descriptor limit. %v/%v used", limit.Cur, limit.Max)
 	}
+	// Windows Systems
 
 	// Internet connectivity
 	c4, err := net.Dial("tcp4", internetTarget+":80")
@@ -121,15 +122,15 @@ func DoHealthCheck(options *types.Options) string {
 		}
 		output = string(json)
 	} else if options.HealthCheck == "md" || options.HealthCheck == "txt" || options.HealthCheck == "text" {
-		output = mapToMarkdownTable(data)
+		output = mapToMarkdownTable(data, "Test", "Result")
 	}
 
 	return output
 }
 
-func mapToMarkdownTable(data map[string]interface{}) string {
+func mapToMarkdownTable(data map[string]interface{}, header1 string, header2 string) string {
 	var test strings.Builder
-	test.WriteString("| Test | Result | \n")
+	test.WriteString("| " + header1 + " | " + header2 + " | \n")
 	test.WriteString("| --- | --- | \n")
 	for key, value := range data {
 		test.WriteString("| " + strings.ToUpper(key) + " | | \n")
