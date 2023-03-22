@@ -5,6 +5,7 @@ import (
 	"net"
 	"net/url"
 	"os"
+	"path/filepath"
 	"regexp"
 	"strconv"
 	"strings"
@@ -16,7 +17,10 @@ import (
 	"github.com/go-rod/rod/lib/proto"
 	"github.com/go-rod/rod/lib/utils"
 	"github.com/pkg/errors"
+	"github.com/projectdiscovery/fileutil"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/generators"
+	errorutil "github.com/projectdiscovery/utils/errors"
+	folderutil "github.com/projectdiscovery/utils/folder"
 	"github.com/segmentio/ksuid"
 )
 
@@ -325,7 +329,23 @@ func (p *Page) Screenshot(act *Action, out map[string]string) error {
 	if err != nil {
 		return errors.Wrap(err, "could not take screenshot")
 	}
-	err = os.WriteFile(to+".png", data, 0540)
+	if p.getActionArgWithDefaultValues(act, "mkdir") == "true" && strings.Contains(to, folderutil.Separator) {
+		// creates new directory if needed based on path `to`
+		// TODO: replace all permission bits with fileutil constants (https://github.com/projectdiscovery/utils/issues/113)
+		if err := os.MkdirAll(filepath.Dir(to), 0700); err != nil {
+			return errorutil.NewWithErr(err).Msgf("failed to create directory while writing screenshot")
+		}
+	}
+	filePath := to
+	if !strings.HasSuffix(to, ".png") {
+		filePath += ".png"
+	}
+
+	if fileutil.FileExists(filePath) {
+		// return custom error as overwriting files is not supported
+		return errorutil.NewWithTag("screenshot", "failed to write screenshot, file %v already exists", filePath)
+	}
+	err = os.WriteFile(filePath, data, 0540)
 	if err != nil {
 		return errors.Wrap(err, "could not write screenshot")
 	}
