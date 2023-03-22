@@ -1,13 +1,16 @@
 package runner
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"net"
 	"path/filepath"
 	"runtime"
+	"strconv"
 	"strings"
 	"syscall"
+	"text/tabwriter"
 
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/config"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
@@ -16,7 +19,11 @@ import (
 
 // DoHealthCheck performs self-diagnostic checks
 func DoHealthCheck(options *types.Options) string {
+	// Statics
+	internetTarget := "scanme.sh"
+	ulimitdiff := 1000
 
+	// Data structures
 	data := map[string]interface{}{
 		"os": map[string]interface{}{
 			"name":      runtime.GOOS,
@@ -31,116 +38,140 @@ func DoHealthCheck(options *types.Options) string {
 		"internet": map[string]interface{}{},
 		"dns":      map[string]interface{}{},
 	}
-
-	//var test strings.Builder
-	var testResult string
-	var output string
-	internetTarget := "scanme.sh"
 	fileTests := data["files"].(map[string]interface{})
 	internetTests := data["internet"].(map[string]interface{})
 
-	// RW permissions on config file
-	nucleiIgnorePath := config.GetIgnoreFilePath()
+	// File permissions
+	for _, filename := range []string{options.ConfigPath, config.GetIgnoreFilePath(), getTemplateCsf()} {
+		fileTests["Read: "+filename] = checkFilePermissions(filename, "read")
+		fileTests["Write: "+filename] = checkFilePermissions(filename, "write")
+	}
+
+	// Other Host information
+	if runtime.GOOS != "windows" {
+		// LINUX/UNIX Systems
+		data["os"].(map[string]interface{})["ulimit"] = checkUlimit(data, ulimitdiff)
+	} else {
+		// Windows Systems
+	}
+
+	// Internet connectivity
+	internetTests["IPv4 ("+internetTarget+":80)"] = checkConnection(internetTarget, 80, "tcp4")
+	internetTests["IPv6 ("+internetTarget+":80)"] = checkConnection(internetTarget, 80, "tcp6")
+	internetTests["IPv4 UDP ("+internetTarget+":53)"] = checkConnection(internetTarget, 53, "udp4")
+
+	// Internet DNS
+
+	// send back formatted output
+	return getOutput(data, options.HealthCheck)
+
+}
+
+func getTemplateCsf() string {
 	cf, _ := config.ReadConfiguration()
 	templatePath := ""
 	if cf != nil {
 		templatePath = cf.TemplatesDirectory
 	}
-	nucleiTemplatePath := filepath.Join(templatePath, "/", ".checksum")
-	for _, filename := range []string{options.ConfigPath, nucleiIgnorePath, nucleiTemplatePath} {
-		ok, err := fileutil.IsReadable(filename)
-		if ok {
-			testResult = "Pass"
-		} else {
-			testResult = "Fail"
-		}
-		if err != nil {
-			testResult += fmt.Sprintf(" (%s)", err)
-		}
-		fileTests["Read: "+filename] = testResult
-		ok, err = fileutil.IsWriteable(filename)
-		if ok {
-			testResult = "Pass"
-		} else {
-			testResult = "Fail"
-		}
-		if err != nil {
-			testResult += fmt.Sprintf(" (%s)", err)
-		}
-		fileTests["Write: "+filename] = testResult
-	}
-
-	// Other Host information
-	// LINUX/UNIX Systems:
-	//     ulimit
-	var limit syscall.Rlimit
-	syscall.Getrlimit(syscall.RLIMIT_NOFILE, &limit)
-	if (limit.Max - limit.Cur) <= 1000 {
-		data["os"].(map[string]interface{})["ulimit"] = fmt.Sprintf("You may need to increase your file descriptor limit. %v/%v used", limit.Cur, limit.Max)
-	}
-	// Windows Systems
-
-	// Internet connectivity
-	c4, err := net.Dial("tcp4", internetTarget+":80")
-	if err == nil && c4 != nil {
-		c4.Close()
-	}
-	testResult = "Pass"
-	if err != nil {
-		testResult = fmt.Sprintf("Fail (%s)", err)
-	}
-	internetTests["IPv4 Port 80"] = testResult
-
-	c6, err := net.Dial("tcp6", internetTarget+":80")
-	if err == nil && c6 != nil {
-		c6.Close()
-	}
-	testResult = "Pass"
-	if err != nil {
-		testResult = fmt.Sprintf("Fail (%s)", err)
-	}
-	internetTests["IPv6 Port 80"] = testResult
-
-	u4, err := net.Dial("udp4", internetTarget+":53")
-	if err == nil && u4 != nil {
-		u4.Close()
-	}
-	testResult = "Pass"
-	if err != nil {
-		testResult = fmt.Sprintf("Fail (%s)", err)
-	}
-	internetTests["IPv4 UDP Port 53"] = testResult
-
-	// Internet DNS
-
-	// Output format options
-	// TODO: text table
-	if options.HealthCheck == "json" {
-		json, err := json.MarshalIndent(data, "", "  ")
-		if err != nil {
-			panic(err)
-		}
-		output = string(json)
-	} else if options.HealthCheck == "md" || options.HealthCheck == "txt" || options.HealthCheck == "text" {
-		output = mapToMarkdownTable(data, "Test", "Result")
-	}
-
-	return output
+	return filepath.Join(templatePath, "/", ".checksum")
 }
 
-func mapToMarkdownTable(data map[string]interface{}, header1 string, header2 string) string {
-	var test strings.Builder
-	test.WriteString("| " + header1 + " | " + header2 + " | \n")
-	test.WriteString("| --- | --- | \n")
+func checkFilePermissions(filename string, test string) string {
+	if test == "read" {
+		ok, err := fileutil.IsReadable(filename)
+		if err != nil {
+			return fmt.Sprintf(" (%s)", err)
+		} else if ok {
+			return "Pass"
+		} else {
+			return "Fail"
+		}
+
+	} else if test == "write" {
+		ok, err := fileutil.IsWriteable(filename)
+		if err != nil {
+			return fmt.Sprintf(" (%s)", err)
+		} else if ok {
+			return "Pass"
+		} else {
+			return "Fail"
+		}
+	}
+	return "INVALID TEST"
+}
+
+func checkConnection(host string, port int, protocol string) string {
+	conn, err := net.Dial(protocol, host+":"+strconv.Itoa(port))
+	if err == nil && conn != nil {
+		conn.Close()
+	}
+	if err != nil {
+		return fmt.Sprintf("Fail (%s)", err)
+	}
+	return "Pass"
+}
+
+func getOutput(data map[string]interface{}, format string) string {
+	// Output format options - text (default), json, markdown
+	if format == "json" {
+		return mapToJson(data)
+	} else if format == "md" {
+		return mapToMarkdownTable(data, "Test", "Result")
+	} else {
+		return mapToTextTable(data, "Test", "Result")
+	}
+}
+func checkUlimit(data map[string]interface{}, difflimit int) string {
+	var limit syscall.Rlimit
+	syscall.Getrlimit(syscall.RLIMIT_NOFILE, &limit)
+	if (limit.Max - limit.Cur) <= uint64(difflimit) {
+		return fmt.Sprintf("You may need to increase your file descriptor limit. %v/%v used", limit.Cur, limit.Max)
+	} else {
+		return "Pass"
+	}
+}
+
+func mapToJson(data map[string]interface{}) string {
+	json, err := json.MarshalIndent(data, "", "  ")
+	if err != nil {
+		panic(err)
+	}
+	return string(json)
+}
+
+func mapToTextTable(data map[string]interface{}, header1 string, header2 string) string {
+	var b bytes.Buffer
+	tw := tabwriter.NewWriter(&b, 0, 0, 1, ' ', tabwriter.Debug|tabwriter.DiscardEmptyColumns)
+	fmt.Fprintln(tw, header1+"\t"+header2)
+	fmt.Fprintln(tw, "------\t------")
+
 	for key, value := range data {
-		test.WriteString("| " + strings.ToUpper(key) + " | | \n")
+		fmt.Fprintln(tw, strings.ToUpper(key)+"\t")
 		subMap, ok := value.(map[string]interface{})
 		if !ok {
 			continue
 		}
 		for subKey, subValue := range subMap {
-			test.WriteString(("| " + subKey + "| " + fmt.Sprintf("%v", subValue) + " |\n"))
+			fmt.Fprintln(tw, subKey+"\t"+fmt.Sprintf("%v", subValue))
 		}
 	}
-	return test.String()
+	tw.Flush()
+	return b.String()
+}
+
+func mapToMarkdownTable(data map[string]interface{}, header1 string, header2 string) string {
+	var output strings.Builder
+	output.WriteString("| " + header1 + " | " + header2 + " | \n")
+	output.WriteString("| --- | --- | \n")
+	for key, value := range data {
+		output.WriteString("| " + strings.ToUpper(key) + " | | \n")
+		subMap, ok := value.(map[string]interface{})
+		if !ok {
+			continue
+		}
+		for subKey, subValue := range subMap {
+			output.WriteString(("| " + subKey + "| " + fmt.Sprintf("%v", subValue) + " |\n"))
+		}
+	}
+	return output.String()
 }
