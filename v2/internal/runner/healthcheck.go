@@ -21,7 +21,7 @@ import (
 func DoHealthCheck(options *types.Options) string {
 	// Statics
 	internetTarget := "scanme.sh"
-	ulimitdiff := 1000
+	ulimitmin := 1000 // Minimum free ulimit value
 
 	// Data structures
 	data := map[string]interface{}{
@@ -50,7 +50,7 @@ func DoHealthCheck(options *types.Options) string {
 	// Other Host information
 	if runtime.GOOS != "windows" {
 		// LINUX/UNIX Systems
-		data["os"].(map[string]interface{})["ulimit"] = checkUlimit(data, ulimitdiff)
+		data["os"].(map[string]interface{})["ulimit"] = checkUlimit(data, ulimitmin)
 	} else {
 		// Windows Systems
 	}
