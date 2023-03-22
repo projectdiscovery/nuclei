@@ -18,6 +18,7 @@ import (
 	"github.com/go-rod/rod/lib/utils"
 	"github.com/pkg/errors"
 	"github.com/projectdiscovery/fileutil"
+	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/generators"
 	errorutil "github.com/projectdiscovery/utils/errors"
 	folderutil "github.com/projectdiscovery/utils/folder"
@@ -349,6 +350,7 @@ func (p *Page) Screenshot(act *Action, out map[string]string) error {
 	if err != nil {
 		return errors.Wrap(err, "could not write screenshot")
 	}
+	gologger.Info().Msgf("Screenshot successfully saved at %v\n", filePath)
 	return nil
 }
 
