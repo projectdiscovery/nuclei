@@ -9,6 +9,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -220,7 +221,7 @@ func TestActionScreenshotToDir(t *testing.T) {
 			<body>Nuclei Test Page</body>
 		</html>`
 
-	filePath := fmt.Sprintf("%vscreenshot-%v/test.png", os.TempDir(), rand.Intn(1000))
+	filePath := filepath.Join(os.TempDir(), "screenshot-"+strconv.Itoa(rand.Intn(1000)), "test.png")
 
 	actions := []*Action{
 		{ActionType: ActionTypeHolder{ActionType: ActionNavigate}, Data: map[string]string{"url": "{{BaseURL}}"}},
