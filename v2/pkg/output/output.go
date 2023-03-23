@@ -24,6 +24,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 	"github.com/projectdiscovery/nuclei/v2/pkg/utils"
 	fileutil "github.com/projectdiscovery/utils/file"
+	osutils "github.com/projectdiscovery/utils/os"
 )
 
 // Writer is an interface which writes output to somewhere for nuclei events.
@@ -322,6 +323,9 @@ func sanitizeFileName(fileName string) string {
 	fileName = strings.ReplaceAll(fileName, "\\", "_")
 	fileName = strings.ReplaceAll(fileName, "-", "_")
 	fileName = strings.ReplaceAll(fileName, ".", "_")
+	if osutils.IsWindows() {
+		fileName = strings.ReplaceAll(fileName, ":", "_")
+	}
 	fileName = strings.TrimPrefix(fileName, "__")
 	return fileName
 }
