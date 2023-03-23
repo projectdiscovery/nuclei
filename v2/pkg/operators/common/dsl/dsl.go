@@ -18,7 +18,7 @@ var (
 )
 
 func init() {
-	dsl.AddMultiSignatureHelperFunction("resolve", []string{
+	_ = dsl.AddMultiSignatureHelperFunction("resolve", []string{
 		"(host string) string",
 		"(format string) string",
 	}, func(args ...interface{}) (interface{}, error) {
@@ -94,7 +94,7 @@ func init() {
 
 		return "", fmt.Errorf("no records found")
 	})
-	
+
 	HelperFunctions = dsl.HelperFunctions()
 	FunctionNames = dsl.GetFunctionNames(HelperFunctions)
 }
