@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net"
+	"net/url"
 	"path/filepath"
 	"runtime"
 	"strconv"
@@ -19,12 +20,20 @@ import (
 	fileutil "github.com/projectdiscovery/utils/file"
 )
 
-// DoHealthCheck performs self-diagnostic checks
+// DoHealthCheck performs network and self-diagnostic checks
 func DoHealthCheck(options *types.Options) string {
-	// Statics
-	internetTarget := "scanme.sh"
+	internetTarget := "scanme.sh:80"
 	dnsInternet := "8.8.8.8"
 	ulimitmin := 1000 // Minimum free ulimit value
+
+	if len(options.Targets) > 0 {
+		parsedURL, err := url.Parse(options.Targets[0])
+		if err == nil {
+			internetTarget = parsedURL.Host
+		}
+	}
+
+	fmt.Print("Using networking target: " + internetTarget + "\n\n")
 
 	// Data structures
 	data := map[string]interface{}{
@@ -43,6 +52,7 @@ func DoHealthCheck(options *types.Options) string {
 	}
 	fileTests := data["files"].(map[string]interface{})
 	internetTests := data["internet"].(map[string]interface{})
+	dnsTests := data["dns"].(map[string]interface{})
 
 	// File permissions
 	for _, filename := range []string{options.ConfigPath, config.GetIgnoreFilePath(), getTemplateCsf()} {
@@ -58,16 +68,30 @@ func DoHealthCheck(options *types.Options) string {
 		// Windows Systems
 	}
 
-	// Internet connectivity
-	internetTests["IPv4 ("+internetTarget+":80)"] = checkConnection(internetTarget, 80, "tcp4")
-	internetTests["IPv6 ("+internetTarget+":80)"] = checkConnection(internetTarget, 80, "tcp6")
-	internetTests["IPv4 UDP ("+internetTarget+":53)"] = checkConnection(internetTarget, 53, "udp4")
-
 	//  DNS
 	// - internetTarget
 	// 	- host/nuclei DNS
 	//  - internet DNS (fixed)
-	internetTests["Public DNS ("+dnsInternet+") for "+internetTarget] = resolveAddresses(internetTarget, dnsInternet)
+	ipv4addresses, ipv6addresses := resolveAddresses(internetTarget, dnsInternet)
+	if ipv4addresses != "" {
+		dnsTests["Public IPv4 DNS ("+dnsInternet+") for "+internetTarget] = ipv4addresses
+	} else {
+		dnsTests["Public IPv4 DNS ("+dnsInternet+") for "+internetTarget] = "FAIL (No IPv4 address)"
+	}
+	if ipv6addresses != "" {
+		dnsTests["Public IPv6 DNS ("+dnsInternet+") for "+internetTarget] = ipv6addresses
+	} else {
+		dnsTests["Public IPv6 DNS ("+dnsInternet+") for "+internetTarget] = "FAIL (No IPv6 address)"
+	}
+
+	// Internet connectivity
+	if ipv4addresses != "" {
+		internetTests["IPv4 ("+internetTarget+":80)"] = checkConnection(internetTarget, 80, "tcp4")
+		internetTests["IPv4 UDP ("+internetTarget+":53)"] = checkConnection(internetTarget, 53, "udp4")
+	}
+	if ipv6addresses != "" {
+		internetTests["IPv6 ("+internetTarget+":80)"] = checkConnection(internetTarget, 80, "tcp6")
+	}
 
 	// send back formatted output
 	return getOutput(data, options.HealthCheck)
@@ -183,9 +207,10 @@ func mapToMarkdownTable(data map[string]interface{}, header1 string, header2 str
 	return output.String()
 }
 
-func resolveAddresses(domain string, dnsServer string) string {
-	var ipv4Addrs []net.IP
-	var ipv6Addrs []net.IP
+func resolveAddresses(domain string, dnsServer string) (string, string) {
+	ipv4Addrs := []string{}
+	ipv6Addrs := []string{}
+
 	resolver := &net.Resolver{
 		PreferGo: true,
 		Dial: func(ctx context.Context, _, _ string) (net.Conn, error) {
@@ -201,21 +226,16 @@ func resolveAddresses(domain string, dnsServer string) string {
 
 	ips, err := resolver.LookupIPAddr(ctx, domain)
 	if err != nil {
-		return fmt.Sprintf("FAIL: %w", err)
+		return "FAIL", "FAIL"
 	}
 
 	for _, ip := range ips {
 		if ip.IP.To4() != nil {
-			ipv4Addrs = append(ipv4Addrs, ip.IP)
+			ipv4Addrs = append(ipv4Addrs, ip.IP.String())
 		} else {
-			ipv6Addrs = append(ipv6Addrs, ip.IP)
+			ipv6Addrs = append(ipv6Addrs, ip.IP.String())
 		}
 	}
-	combinedAddrs := append(ipv4Addrs, ipv6Addrs...)
-	var addrStrs []string
-	for _, addr := range combinedAddrs {
-		addrStrs = append(addrStrs, addr.String())
-	}
 
-	return strings.Join(addrStrs, ", ")
+	return strings.Join(ipv4Addrs, ", "), strings.Join(ipv6Addrs, ", ")
 }
