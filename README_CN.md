@@ -132,7 +132,7 @@ Nuclei是一款注重于可配置性、可扩展性和易用性的基于模板�
    -srd, -store-resp-dir string          将nuclei的所有请求和响应输出到指定目录（默认：output）
    -silent                               只显示结果
    -nc, -no-color                        禁用输出内容着色（ANSI转义码）
-   -json                                 输出为jsonL（ines）
+   -jsonl                                输出为jsonL（ines）
    -irr, -include-rr                     在JSONL中输出对应的请求和相应（仅结果）
    -nm, -no-meta                         不显示匹配的元数据
    -nts, -no-timestamp                   不在输出中显示时间戳

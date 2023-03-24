@@ -217,7 +217,7 @@ func New(options *types.Options) (*Runner, error) {
 	}
 	runner.output = outputWriter
 
-	if options.JSON && options.EnableProgressBar {
+	if options.JSONL && options.EnableProgressBar {
 		options.StatsJSON = true
 	}
 	if options.StatsJSON {
