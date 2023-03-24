@@ -13,8 +13,8 @@ import (
 	"strings"
 	"syscall"
 	"text/tabwriter"
-	"time"
 
+	"github.com/projectdiscovery/iputil"
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/config"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 	fileutil "github.com/projectdiscovery/utils/file"
@@ -31,7 +31,13 @@ func DoHealthCheck(options *types.Options) string {
 		if err == nil {
 			internetTarget = parsedURL.Host
 		}
+		if internetTarget == "" {
+			internetTarget = options.Targets[0]
+		}
 	}
+	// if internetTarget == "" {
+	// 	internetTarget = "scanme.sh:80"
+	// }
 
 	fmt.Print("Using networking target: " + internetTarget + "\n\n")
 
@@ -72,25 +78,42 @@ func DoHealthCheck(options *types.Options) string {
 	// - internetTarget
 	// 	- host/nuclei DNS
 	//  - internet DNS (fixed)
-	ipv4addresses, ipv6addresses := resolveAddresses(internetTarget, dnsInternet)
-	if ipv4addresses != "" {
-		dnsTests["Public IPv4 DNS ("+dnsInternet+") for "+internetTarget] = ipv4addresses
+	var ipv4addresses string
+	var ipv6addresses string
+
+	// IP or name?
+	if net.ParseIP(internetTarget) != nil {
+		dnsTests["Public DNS ("+dnsInternet+") for "+internetTarget] = reverseLookup(internetTarget, dnsInternet)
+		if iputil.IsIPv4(internetTarget) {
+			// internetTests["IPv4 Connect ("+internetTarget+":80)"] = checkConnection(internetTarget, 80, "tcp4")
+			ipv4addresses = internetTarget
+		} else if iputil.IsIPv6(internetTarget) {
+			// internetTests["IPv6 Connect ("+internetTarget+":80)"] = checkConnection(internetTarget, 80, "tcp6")
+			ipv6addresses = internetTarget
+		}
+
 	} else {
-		dnsTests["Public IPv4 DNS ("+dnsInternet+") for "+internetTarget] = "FAIL (No IPv4 address)"
-	}
-	if ipv6addresses != "" {
-		dnsTests["Public IPv6 DNS ("+dnsInternet+") for "+internetTarget] = ipv6addresses
-	} else {
-		dnsTests["Public IPv6 DNS ("+dnsInternet+") for "+internetTarget] = "FAIL (No IPv6 address)"
+		ipv4addresses, ipv6addresses = lookup(internetTarget, dnsInternet)
+
+		if ipv4addresses != "" {
+			dnsTests["Public IPv4 DNS ("+dnsInternet+") for "+internetTarget] = ipv4addresses
+		} else {
+			dnsTests["Public IPv4 DNS ("+dnsInternet+") for "+internetTarget] = "FAIL (No IPv4 address)"
+		}
+		if ipv6addresses != "" {
+			dnsTests["Public IPv6 DNS ("+dnsInternet+") for "+internetTarget] = ipv6addresses
+		} else {
+			dnsTests["Public IPv6 DNS ("+dnsInternet+") for "+internetTarget] = "FAIL (No IPv6 address)"
+		}
 	}
 
 	// Internet connectivity
 	if ipv4addresses != "" {
-		internetTests["IPv4 ("+internetTarget+":80)"] = checkConnection(internetTarget, 80, "tcp4")
-		internetTests["IPv4 UDP ("+internetTarget+":53)"] = checkConnection(internetTarget, 53, "udp4")
+		internetTests["IPv4 Connect ("+internetTarget+":80)"] = checkConnection(internetTarget, 80, "tcp4")
+		// internetTests["IPv4 UDP Connect ("+internetTarget+":53)"] = checkConnection(internetTarget, 53, "udp4")
 	}
 	if ipv6addresses != "" {
-		internetTests["IPv6 ("+internetTarget+":80)"] = checkConnection(internetTarget, 80, "tcp6")
+		internetTests["IPv6 Connect ("+internetTarget+":80)"] = checkConnection(internetTarget, 80, "tcp6")
 	}
 
 	// send back formatted output
@@ -207,35 +230,46 @@ func mapToMarkdownTable(data map[string]interface{}, header1 string, header2 str
 	return output.String()
 }
 
-func resolveAddresses(domain string, dnsServer string) (string, string) {
-	ipv4Addrs := []string{}
-	ipv6Addrs := []string{}
-
-	resolver := &net.Resolver{
+func reverseLookup(ipAddr, dnsServer string) string {
+	resolver := net.Resolver{
 		PreferGo: true,
-		Dial: func(ctx context.Context, _, _ string) (net.Conn, error) {
-			d := net.Dialer{
-				Timeout: time.Second * 5,
-			}
-			return d.DialContext(ctx, "udp", dnsServer+":53")
+		Dial: func(ctx context.Context, network, _ string) (net.Conn, error) {
+			d := net.Dialer{}
+			return d.DialContext(ctx, network, fmt.Sprintf("%s:53", dnsServer))
 		},
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
-	defer cancel()
+	names, _ := resolver.LookupAddr(context.Background(), ipAddr)
+	if len(names) > 0 {
+		return names[0]
+	}
+	return ""
+}
 
-	ips, err := resolver.LookupIPAddr(ctx, domain)
+func lookup(domain, dnsServer string) (string, string) {
+	var ipv4s []string
+	var ipv6s []string
+
+	resolver := net.Resolver{
+		PreferGo: true,
+		Dial: func(ctx context.Context, network, _ string) (net.Conn, error) {
+			d := net.Dialer{}
+			return d.DialContext(ctx, network, fmt.Sprintf("%s:53", dnsServer))
+		},
+	}
+
+	ips, err := resolver.LookupIPAddr(context.Background(), domain)
 	if err != nil {
-		return "FAIL", "FAIL"
+		return "", ""
 	}
 
 	for _, ip := range ips {
 		if ip.IP.To4() != nil {
-			ipv4Addrs = append(ipv4Addrs, ip.IP.String())
-		} else {
-			ipv6Addrs = append(ipv6Addrs, ip.IP.String())
+			ipv4s = append(ipv4s, ip.IP.String())
+		} else if ip.IP.To16() != nil {
+			ipv6s = append(ipv6s, ip.IP.String())
 		}
 	}
 
-	return strings.Join(ipv4Addrs, ", "), strings.Join(ipv6Addrs, ", ")
+	return strings.Join(ipv4s, ", "), strings.Join(ipv6s, ", ")
 }
