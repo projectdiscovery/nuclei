@@ -27,14 +27,19 @@ func DoHealthCheck(options *types.Options) string {
 	ulimitmin := 1000 // Minimum free ulimit value
 
 	if len(options.Targets) > 0 {
-		parsedURL, err := url.Parse(options.Targets[0])
-		if err == nil {
-			internetTarget = parsedURL.Host
-		}
-		if internetTarget == "" {
+		if iputil.IsIPv6(options.Targets[0]) {
 			internetTarget = options.Targets[0]
+		} else {
+			parsedURL, err := url.Parse(options.Targets[0])
+			if err == nil {
+				internetTarget = parsedURL.Host
+			}
+			if internetTarget == "" {
+				internetTarget = options.Targets[0]
+			}
 		}
 	}
+	fmt.Printf("Using networking target: " + internetTarget + "\n\n")
 	// if internetTarget == "" {
 	// 	internetTarget = "scanme.sh:80"
 	// }
@@ -85,10 +90,8 @@ func DoHealthCheck(options *types.Options) string {
 	if net.ParseIP(internetTarget) != nil {
 		dnsTests["Public DNS ("+dnsInternet+") for "+internetTarget] = reverseLookup(internetTarget, dnsInternet)
 		if iputil.IsIPv4(internetTarget) {
-			// internetTests["IPv4 Connect ("+internetTarget+":80)"] = checkConnection(internetTarget, 80, "tcp4")
 			ipv4addresses = internetTarget
 		} else if iputil.IsIPv6(internetTarget) {
-			// internetTests["IPv6 Connect ("+internetTarget+":80)"] = checkConnection(internetTarget, 80, "tcp6")
 			ipv6addresses = internetTarget
 		}
 
@@ -155,7 +158,8 @@ func checkFilePermissions(filename string, test string) string {
 }
 
 func checkConnection(host string, port int, protocol string) string {
-	conn, err := net.Dial(protocol, host+":"+strconv.Itoa(port))
+	address := net.JoinHostPort(host, strconv.Itoa(port))
+	conn, err := net.Dial(protocol, address)
 	if err == nil && conn != nil {
 		conn.Close()
 	}
