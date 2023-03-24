@@ -22,9 +22,11 @@ import (
 
 // DoHealthCheck performs network and self-diagnostic checks
 func DoHealthCheck(options *types.Options) string {
-	internetTarget := "scanme.sh:80"
-	dnsInternet := "8.8.8.8"
+	internetTarget := "scanme.sh"
+	dnsInternet := "1.1.1.1"
 	ulimitmin := 1000 // Minimum free ulimit value
+	var ipv4addresses string
+	var ipv6addresses string
 
 	if len(options.Targets) > 0 {
 		if iputil.IsIPv6(options.Targets[0]) {
@@ -39,12 +41,6 @@ func DoHealthCheck(options *types.Options) string {
 			}
 		}
 	}
-	fmt.Printf("Using networking target: " + internetTarget + "\n\n")
-	// if internetTarget == "" {
-	// 	internetTarget = "scanme.sh:80"
-	// }
-
-	fmt.Print("Using networking target: " + internetTarget + "\n\n")
 
 	// Data structures
 	data := map[string]interface{}{
@@ -83,9 +79,6 @@ func DoHealthCheck(options *types.Options) string {
 	// - internetTarget
 	// 	- host/nuclei DNS
 	//  - internet DNS (fixed)
-	var ipv4addresses string
-	var ipv6addresses string
-
 	// IP or name?
 	if net.ParseIP(internetTarget) != nil {
 		dnsTests["Public DNS ("+dnsInternet+") for "+internetTarget] = reverseLookup(internetTarget, dnsInternet)
@@ -96,6 +89,7 @@ func DoHealthCheck(options *types.Options) string {
 		}
 
 	} else {
+		fmt.Printf("Resolving %s", internetTarget)
 		ipv4addresses, ipv6addresses = lookup(internetTarget, dnsInternet)
 
 		if ipv4addresses != "" {
