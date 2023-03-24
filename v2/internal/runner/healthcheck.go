@@ -2,6 +2,7 @@ package runner
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"net"
@@ -11,6 +12,7 @@ import (
 	"strings"
 	"syscall"
 	"text/tabwriter"
+	"time"
 
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/config"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
@@ -21,6 +23,7 @@ import (
 func DoHealthCheck(options *types.Options) string {
 	// Statics
 	internetTarget := "scanme.sh"
+	dnsInternet := "8.8.8.8"
 	ulimitmin := 1000 // Minimum free ulimit value
 
 	// Data structures
@@ -60,7 +63,11 @@ func DoHealthCheck(options *types.Options) string {
 	internetTests["IPv6 ("+internetTarget+":80)"] = checkConnection(internetTarget, 80, "tcp6")
 	internetTests["IPv4 UDP ("+internetTarget+":53)"] = checkConnection(internetTarget, 53, "udp4")
 
-	// Internet DNS
+	//  DNS
+	// - internetTarget
+	// 	- host/nuclei DNS
+	//  - internet DNS (fixed)
+	internetTests["Public DNS ("+dnsInternet+") for "+internetTarget] = resolveAddresses(internetTarget, dnsInternet)
 
 	// send back formatted output
 	return getOutput(data, options.HealthCheck)
@@ -174,4 +181,41 @@ func mapToMarkdownTable(data map[string]interface{}, header1 string, header2 str
 		}
 	}
 	return output.String()
+}
+
+func resolveAddresses(domain string, dnsServer string) string {
+	var ipv4Addrs []net.IP
+	var ipv6Addrs []net.IP
+	resolver := &net.Resolver{
+		PreferGo: true,
+		Dial: func(ctx context.Context, _, _ string) (net.Conn, error) {
+			d := net.Dialer{
+				Timeout: time.Second * 5,
+			}
+			return d.DialContext(ctx, "udp", dnsServer+":53")
+		},
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
+	defer cancel()
+
+	ips, err := resolver.LookupIPAddr(ctx, domain)
+	if err != nil {
+		return fmt.Sprintf("FAIL: %w", err)
+	}
+
+	for _, ip := range ips {
+		if ip.IP.To4() != nil {
+			ipv4Addrs = append(ipv4Addrs, ip.IP)
+		} else {
+			ipv6Addrs = append(ipv6Addrs, ip.IP)
+		}
+	}
+	combinedAddrs := append(ipv4Addrs, ipv6Addrs...)
+	var addrStrs []string
+	for _, addr := range combinedAddrs {
+		addrStrs = append(addrStrs, addr.String())
+	}
+
+	return strings.Join(addrStrs, ", ")
 }
