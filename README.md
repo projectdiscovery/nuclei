@@ -161,6 +161,7 @@ OUTPUT:
    -ms, -matcher-status          display match failure status
    -me, -markdown-export string  directory to export results in markdown format
    -se, -sarif-export string     file to export results in SARIF format
+   -je, -json-export string      file to export results in JSON format as a JSON array. This can be memory intensive in larger scans.
 
 CONFIGURATIONS:
    -config string                 path to the nuclei configuration file
