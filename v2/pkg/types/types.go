@@ -234,6 +234,8 @@ type Options struct {
 	JSONL bool
 	// JSONRequests writes requests/responses for matches in JSON output
 	JSONRequests bool
+	// JSONExport is the file to export JSON output format to
+	JSONExport string
 	// Cloud enables nuclei cloud scan execution
 	Cloud bool
 	// EnableProgressBar enables progress bar

@@ -6,6 +6,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	json_exporter "github.com/projectdiscovery/nuclei/v2/pkg/reporting/exporters/json-exporter"
 	"io"
 	"net/http"
 	_ "net/http/pprof"
@@ -327,6 +328,14 @@ func createReportingOptions(options *types.Options) (*reporting.Options, error) 
 		} else {
 			reportingOptions = &reporting.Options{}
 			reportingOptions.SarifExporter = &sarif.Options{File: options.SarifExport}
+		}
+	}
+	if options.JSONExport != "" {
+		if reportingOptions != nil {
+			reportingOptions.JSONExporter = &json_exporter.Options{File: options.JSONExport}
+		} else {
+			reportingOptions = &reporting.Options{}
+			reportingOptions.JSONExporter = &json_exporter.Options{File: options.JSONExport}
 		}
 	}
 	return reportingOptions, nil
