@@ -51,7 +51,7 @@ func (exporter *Exporter) Close() error {
 	// Convert the rows to JSON byte array
 	obj, err := json.Marshal(exporter.rows)
 	if err != nil {
-		errors.Wrap(err, "failed to generate JSON report")
+		return errors.Wrap(err, "failed to generate JSON report")
 	}
 
 	// Attempt to write the JSON to file specified in options.JSONExport
