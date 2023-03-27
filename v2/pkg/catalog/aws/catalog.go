@@ -135,6 +135,7 @@ func (c Catalog) ResolvePath(templateName, second string) (string, error) {
 				return key, nil
 			}
 		}
+
 	}
 
 	// check if templateName is already an absolute path to c key
@@ -144,7 +145,7 @@ func (c Catalog) ResolvePath(templateName, second string) (string, error) {
 		}
 	}
 
-	return "", fmt.Errorf("no such path found: %s", templateName)
+	return "", fmt.Errorf("no such path found: %s%s for keys: %v", second, templateName, keys)
 }
 
 func (s *s3svc) getAllKeys() ([]string, error) {
