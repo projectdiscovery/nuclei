@@ -66,7 +66,6 @@ func DoHealthCheck(options *types.Options) string {
 		"net":      map[string]interface{}{},
 	}
 	fileTests := data["files"].(map[string]interface{})
-	internetTests := data["internet"].(map[string]interface{})
 	dnsTests := data["dns"].(map[string]interface{})
 	netTests := data["net"].(map[string]interface{})
 
@@ -114,16 +113,19 @@ func DoHealthCheck(options *types.Options) string {
 
 	// Internet connectivity
 	// Only do tracereoute if we have root permission
-	if iAmRoot() {
-		if ipv4addresses != "" {
-			internetTests["IPv4 Connect ("+internetTarget+":80)"] = checkConnection(internetTarget, 80, "tcp4")
+
+	if ipv4addresses != "" {
+		netTests["IPv4 Connect ("+internetTarget+":80)"] = checkConnection(internetTarget, 80, "tcp4")
+		if iAmRoot() {
 			addresses := strings.Split(ipv4addresses, ", ")
 			if len(addresses) > 0 {
 				netTests["IPv4 Traceroute ("+internetTarget+":80)"] = traceroute(addresses[0], "ipv4", options.HealthCheck)
 			}
 		}
-		if ipv6addresses != "" {
-			internetTests["IPv6 Connect ("+internetTarget+":80)"] = checkConnection(internetTarget, 80, "tcp6")
+	}
+	if ipv6addresses != "" {
+		netTests["IPv6 Connect ("+internetTarget+":80)"] = checkConnection(internetTarget, 80, "tcp6")
+		if iAmRoot() {
 			addresses := strings.Split(ipv6addresses, ", ")
 			if len(addresses) > 0 {
 				netTests["IPv6 Traceroute ("+internetTarget+":80)"] = traceroute(addresses[0], "ipv6", options.HealthCheck)
