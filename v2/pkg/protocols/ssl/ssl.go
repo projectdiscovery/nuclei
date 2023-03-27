@@ -65,7 +65,7 @@ type Request struct {
 	MaxVersion string `yaml:"max_version,omitempty" json:"max_version,omitempty" jsonschema:"title=Max. TLS version,description=Max tls version - automatic if not specified.,enum=sslv3,enum=tls10,enum=tls11,enum=tls12,enum=tls13"`
 	// description: |
 	//   Client Cipher Suites  - auto if not specified.
-	CiperSuites []string `yaml:"cipher_suites,omitempty" json:"cipher_suites,omitempty"`
+	CipherSuites []string `yaml:"cipher_suites,omitempty" json:"cipher_suites,omitempty"`
 	// description: |
 	//   Tls Scan Mode - auto if not specified
 	// values:
@@ -83,7 +83,7 @@ type Request struct {
 
 // CanCluster returns true if the request can be clustered.
 func (request *Request) CanCluster(other *Request) bool {
-	if len(request.CiperSuites) > 0 || request.MinVersion != "" || request.MaxVersion != "" {
+	if len(request.CipherSuites) > 0 || request.MinVersion != "" || request.MaxVersion != "" {
 		return false
 	}
 	if request.Address != other.Address || request.ScanMode != other.ScanMode {
@@ -127,7 +127,7 @@ func (request *Request) Compile(options *protocols.ExecuterOptions) error {
 		MisMatched:        true,
 		MinVersion:        request.MinVersion,
 		MaxVersion:        request.MaxVersion,
-		Ciphers:           request.CiperSuites,
+		Ciphers:           request.CipherSuites,
 		WildcardCertCheck: true,
 		Retries:           request.options.Options.Retries,
 		Timeout:           request.options.Options.Timeout,
