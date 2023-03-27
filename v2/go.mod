@@ -74,7 +74,7 @@ require (
 	github.com/projectdiscovery/goflags v0.1.8
 	github.com/projectdiscovery/gologger v1.1.8
 	github.com/projectdiscovery/httpx v1.2.7
-	github.com/projectdiscovery/mapcidr v1.1.0
+	github.com/projectdiscovery/mapcidr v1.1.1
 	github.com/projectdiscovery/nvd v1.0.9
 	github.com/projectdiscovery/ratelimit v0.0.6
 	github.com/projectdiscovery/rdap v0.9.1-0.20221108103045-9865884d1917
@@ -209,7 +209,7 @@ require (
 	go.uber.org/zap v1.24.0 // indirect
 	goftp.io/server/v2 v2.0.0 // indirect
 	golang.org/x/crypto v0.7.0
-	golang.org/x/exp v0.0.0-20230310171629-522b1b587ee0
+	golang.org/x/exp v0.0.0-20230315142452-642cacee5cc0
 	golang.org/x/mod v0.9.0 // indirect
 	golang.org/x/sys v0.6.0 // indirect
 	golang.org/x/time v0.3.0 // indirect
