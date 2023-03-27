@@ -112,25 +112,13 @@ func DoHealthCheck(options *types.Options) string {
 	}
 
 	// Internet connectivity
-	// Only do tracereoute if we have root permission
-
 	if ipv4addresses != "" {
 		netTests["IPv4 Connect ("+internetTarget+":80)"] = checkConnection(internetTarget, 80, "tcp4")
-		if iAmRoot() {
-			addresses := strings.Split(ipv4addresses, ", ")
-			if len(addresses) > 0 {
-				netTests["IPv4 Traceroute ("+internetTarget+":80)"] = traceroute(addresses[0], "ipv4", options.HealthCheck)
-			}
-		}
+		netTests["IPv4 Traceroute ("+internetTarget+":80)"] = traceroute(ipv4addresses, "ipv4", options.HealthCheck)
 	}
 	if ipv6addresses != "" {
 		netTests["IPv6 Connect ("+internetTarget+":80)"] = checkConnection(internetTarget, 80, "tcp6")
-		if iAmRoot() {
-			addresses := strings.Split(ipv6addresses, ", ")
-			if len(addresses) > 0 {
-				netTests["IPv6 Traceroute ("+internetTarget+":80)"] = traceroute(addresses[0], "ipv6", options.HealthCheck)
-			}
-		}
+		netTests["IPv6 Traceroute ("+internetTarget+":80)"] = traceroute(ipv6addresses, "ipv6", options.HealthCheck)
 	}
 
 	// send back formatted output
@@ -138,6 +126,7 @@ func DoHealthCheck(options *types.Options) string {
 
 }
 
+// getTemplateCsf returns the path to the checksum file
 func getTemplateCsf() string {
 	cf, _ := config.ReadConfiguration()
 	templatePath := ""
@@ -147,6 +136,7 @@ func getTemplateCsf() string {
 	return filepath.Join(templatePath, "/", ".checksum")
 }
 
+// checkFilePermissions checks if a file is readable or writeable
 func checkFilePermissions(filename string, test string) string {
 	if test == "read" {
 		ok, err := fileutil.IsReadable(filename)
@@ -171,6 +161,7 @@ func checkFilePermissions(filename string, test string) string {
 	return "INVALID TEST"
 }
 
+// checkConnection checks if a connection can be made to a host
 func checkConnection(host string, port int, protocol string) string {
 	address := net.JoinHostPort(host, strconv.Itoa(port))
 	conn, err := net.Dial(protocol, address)
@@ -183,6 +174,7 @@ func checkConnection(host string, port int, protocol string) string {
 	return "Pass"
 }
 
+// getOutput returns the output in the specified format
 func getOutput(data map[string]interface{}, format string) string {
 	// Output format options - text (default), json, markdown
 	if format == "json" {
@@ -193,6 +185,8 @@ func getOutput(data map[string]interface{}, format string) string {
 		return mapToTextTable(data, "Test", "Result")
 	}
 }
+
+// checkUlimit checks the ulimit of the current user
 func checkUlimit(data map[string]interface{}, difflimit int) string {
 	var limit syscall.Rlimit
 	syscall.Getrlimit(syscall.RLIMIT_NOFILE, &limit)
@@ -203,6 +197,7 @@ func checkUlimit(data map[string]interface{}, difflimit int) string {
 	}
 }
 
+// mapToJson converts a map to a json string
 func mapToJson(data map[string]interface{}) string {
 	json, err := json.MarshalIndent(data, "", "  ")
 	if err != nil {
@@ -211,6 +206,7 @@ func mapToJson(data map[string]interface{}) string {
 	return string(json)
 }
 
+// mapToTextTable converts a map to a text table
 func mapToTextTable(data map[string]interface{}, header1 string, header2 string) string {
 	var b bytes.Buffer
 	tw := tabwriter.NewWriter(&b, 0, 0, 1, ' ', tabwriter.Debug|tabwriter.DiscardEmptyColumns)
@@ -231,6 +227,7 @@ func mapToTextTable(data map[string]interface{}, header1 string, header2 string)
 	return b.String()
 }
 
+// mapToMarkdownTable converts a map to a markdown table
 func mapToMarkdownTable(data map[string]interface{}, header1 string, header2 string) string {
 	var output strings.Builder
 	output.WriteString("| " + header1 + " | " + header2 + " | \n")
@@ -248,6 +245,7 @@ func mapToMarkdownTable(data map[string]interface{}, header1 string, header2 str
 	return output.String()
 }
 
+// reverseLookup returns the reverse lookup of an IP address
 func reverseLookup(ipAddr, dnsServer string) string {
 	resolver := net.Resolver{
 		PreferGo: true,
@@ -264,7 +262,8 @@ func reverseLookup(ipAddr, dnsServer string) string {
 	return ""
 }
 
-func lookup(domain, dnsServer string) (string, string) {
+// lookup returns the IP addresses for a name
+func lookup(name, dnsServer string) (string, string) {
 	var ipv4s []string
 	var ipv6s []string
 
@@ -276,7 +275,7 @@ func lookup(domain, dnsServer string) (string, string) {
 		},
 	}
 
-	ips, err := resolver.LookupIPAddr(context.Background(), domain)
+	ips, err := resolver.LookupIPAddr(context.Background(), name)
 	if err != nil {
 		return "", ""
 	}
@@ -292,16 +291,25 @@ func lookup(domain, dnsServer string) (string, string) {
 	return strings.Join(ipv4s, ", "), strings.Join(ipv6s, ", ")
 }
 
-func traceroute(assetIP, networkType, format string) string {
+// traceroute returns the traceroute of an IP address, both IPv6 and IPv4
+// NOTE: Only works if we have root permission
+func traceroute(assetIPs, networkType, format string) string {
+	if !iAmRoot() {
+		return "Traceroute (" + networkType + ") to " + assetIPs + ": You must have root permissions to run traceroute"
+	}
+
 	maxHops := 20
 	timeout := time.Second
 	var results []string
-	ipaddr, _ := net.ResolveIPAddr("ip", assetIP)
-
 	proto := "ip4:icmp"
 	if networkType == "ipv6" {
 		proto = "ip6:58"
 	}
+
+	// Use first resolved IP
+	addresses := strings.Split(assetIPs, ", ")
+	assetIP := addresses[0]
+	ipaddr, _ := net.ResolveIPAddr("ip", assetIP)
 
 	listener, err := icmp.ListenPacket(proto, "::")
 	if err != nil {
@@ -389,6 +397,7 @@ func traceroute(assetIP, networkType, format string) string {
 	return strings.Join(results, joinchar)
 }
 
+// iAmRoot returns true if the current user is root
 func iAmRoot() bool {
 	currentUser, err := user.Current()
 	if err != nil {
