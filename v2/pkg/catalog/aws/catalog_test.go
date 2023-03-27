@@ -1,11 +1,12 @@
 package aws
 
 import (
-	"github.com/pkg/errors"
 	"io"
 	"reflect"
 	"strings"
 	"testing"
+
+	"github.com/pkg/errors"
 )
 
 func TestCatalog_GetTemplatePath(t *testing.T) {
