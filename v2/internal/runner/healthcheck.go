@@ -5,14 +5,21 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"math/rand"
 	"net"
 	"net/url"
+	"os/user"
 	"path/filepath"
 	"runtime"
 	"strconv"
 	"strings"
 	"syscall"
 	"text/tabwriter"
+	"time"
+
+	"golang.org/x/net/icmp"
+	"golang.org/x/net/ipv4"
+	"golang.org/x/net/ipv6"
 
 	"github.com/projectdiscovery/iputil"
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/config"
@@ -56,10 +63,12 @@ func DoHealthCheck(options *types.Options) string {
 		"files":    map[string]interface{}{},
 		"internet": map[string]interface{}{},
 		"dns":      map[string]interface{}{},
+		"net":      map[string]interface{}{},
 	}
 	fileTests := data["files"].(map[string]interface{})
 	internetTests := data["internet"].(map[string]interface{})
 	dnsTests := data["dns"].(map[string]interface{})
+	netTests := data["net"].(map[string]interface{})
 
 	// File permissions
 	for _, filename := range []string{options.ConfigPath, config.GetIgnoreFilePath(), getTemplateCsf()} {
@@ -89,7 +98,6 @@ func DoHealthCheck(options *types.Options) string {
 		}
 
 	} else {
-		fmt.Printf("Resolving %s", internetTarget)
 		ipv4addresses, ipv6addresses = lookup(internetTarget, dnsInternet)
 
 		if ipv4addresses != "" {
@@ -105,12 +113,22 @@ func DoHealthCheck(options *types.Options) string {
 	}
 
 	// Internet connectivity
-	if ipv4addresses != "" {
-		internetTests["IPv4 Connect ("+internetTarget+":80)"] = checkConnection(internetTarget, 80, "tcp4")
-		// internetTests["IPv4 UDP Connect ("+internetTarget+":53)"] = checkConnection(internetTarget, 53, "udp4")
-	}
-	if ipv6addresses != "" {
-		internetTests["IPv6 Connect ("+internetTarget+":80)"] = checkConnection(internetTarget, 80, "tcp6")
+	// Only do tracereoute if we have root permission
+	if iAmRoot() {
+		if ipv4addresses != "" {
+			internetTests["IPv4 Connect ("+internetTarget+":80)"] = checkConnection(internetTarget, 80, "tcp4")
+			addresses := strings.Split(ipv4addresses, ", ")
+			if len(addresses) > 0 {
+				netTests["IPv4 Traceroute ("+internetTarget+":80)"] = traceroute(addresses[0], "ipv4", options.HealthCheck)
+			}
+		}
+		if ipv6addresses != "" {
+			internetTests["IPv6 Connect ("+internetTarget+":80)"] = checkConnection(internetTarget, 80, "tcp6")
+			addresses := strings.Split(ipv6addresses, ", ")
+			if len(addresses) > 0 {
+				netTests["IPv6 Traceroute ("+internetTarget+":80)"] = traceroute(addresses[0], "ipv6", options.HealthCheck)
+			}
+		}
 	}
 
 	// send back formatted output
@@ -270,4 +288,109 @@ func lookup(domain, dnsServer string) (string, string) {
 	}
 
 	return strings.Join(ipv4s, ", "), strings.Join(ipv6s, ", ")
+}
+
+func traceroute(assetIP, networkType, format string) string {
+	maxHops := 20
+	timeout := time.Second
+	var results []string
+	ipaddr, _ := net.ResolveIPAddr("ip", assetIP)
+
+	proto := "ip4:icmp"
+	if networkType == "ipv6" {
+		proto = "ip6:58"
+	}
+
+	listener, err := icmp.ListenPacket(proto, "::")
+	if err != nil {
+		return "Traceroute (" + networkType + ") to " + assetIP + ":" + err.Error()
+	}
+	defer listener.Close()
+
+	for i := 1; i <= maxHops; i++ {
+		if networkType == "ipv4" {
+			listener.IPv4PacketConn().SetTTL(i)
+		} else {
+			listener.IPv6PacketConn().SetHopLimit(i)
+		}
+
+		var message icmp.Message
+		if networkType == "ipv4" {
+			message = icmp.Message{
+				Type: ipv4.ICMPTypeEcho,
+				Code: 0,
+				Body: &icmp.Echo{
+					ID:   rand.Intn(0xffff + 1),
+					Seq:  1,
+					Data: []byte(""),
+				},
+			}
+		} else {
+			message = icmp.Message{
+				Type: ipv6.ICMPTypeEchoRequest,
+				Code: 0,
+				Body: &icmp.Echo{
+					ID:   rand.Intn(0xffff + 1),
+					Seq:  1,
+					Data: []byte(""),
+				},
+			}
+		}
+
+		b, err := message.Marshal(nil)
+		if err != nil {
+			return "Traceroute (" + networkType + ") to " + assetIP + ":" + err.Error()
+		}
+		_, err = listener.WriteTo(b, ipaddr)
+		if err != nil {
+			return "Traceroute (" + networkType + ") to " + assetIP + ":" + err.Error()
+		}
+
+		reply := make([]byte, 1500)
+		err = listener.SetReadDeadline(time.Now().Add(timeout))
+		if err != nil {
+			return "Traceroute (" + networkType + ") to " + assetIP + ":" + err.Error()
+		}
+
+		n, peer, err := listener.ReadFrom(reply)
+		if err != nil {
+			results = append(results, fmt.Sprintf("%d. *", i))
+			continue
+		}
+
+		var rm *icmp.Message
+		if networkType == "ipv4" {
+			rm, err = icmp.ParseMessage(ipv4.ICMPTypeEchoReply.Protocol(), reply[:n])
+		} else {
+			rm, err = icmp.ParseMessage(ipv6.ICMPTypeEchoReply.Protocol(), reply[:n])
+		}
+		if err != nil {
+			return "Traceroute (" + networkType + ") to " + assetIP + ":" + err.Error()
+		}
+
+		switch rm.Type {
+		case ipv4.ICMPTypeTimeExceeded, ipv6.ICMPTypeTimeExceeded:
+			results = append(results, fmt.Sprintf("%d. %s", i, peer))
+		case ipv4.ICMPTypeEchoReply, ipv6.ICMPTypeEchoReply:
+			results = append(results, fmt.Sprintf("%d. %s", i, peer))
+		default:
+			msg := fmt.Sprintf("Traceroute rec'd unexpected ICMP message: %+v", rm)
+			results = append(results, msg)
+		}
+	}
+
+	joinchar := " -> "
+	if format == "json" {
+		joinchar = "\n"
+	}
+
+	return strings.Join(results, joinchar)
+}
+
+func iAmRoot() bool {
+	currentUser, err := user.Current()
+	if err != nil {
+		panic(err)
+	}
+	return currentUser.Username == "root"
 }
