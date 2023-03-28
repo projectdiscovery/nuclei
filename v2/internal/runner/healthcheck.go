@@ -269,23 +269,6 @@ func mapToMarkdownTable(data map[string]interface{}, header1 string, header2 str
 	return output.String()
 }
 
-// reverseLookup returns the reverse lookup of an IP address
-func reverseLookup(ipAddr, dnsServer string) string {
-	resolver := net.Resolver{
-		PreferGo: true,
-		Dial: func(ctx context.Context, network, _ string) (net.Conn, error) {
-			d := net.Dialer{}
-			return d.DialContext(ctx, network, fmt.Sprintf("%s:53", dnsServer))
-		},
-	}
-
-	names, _ := resolver.LookupAddr(context.Background(), ipAddr)
-	if len(names) > 0 {
-		return names[0]
-	}
-	return ""
-}
-
 // lookup returns the IP addresses for a name
 func lookup(name, dnsServer string) (string, string) {
 	var ipv4s []string
