@@ -6,7 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"path/filepath"
+	"path"
 	"strings"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -129,7 +129,9 @@ func (c Catalog) ResolvePath(templateName, second string) (string, error) {
 
 	// if c second path is given, it's c folder and we join the two and check against keys
 	if second != "" {
-		target := filepath.Join(filepath.Dir(second), templateName)
+		// Note: Do not replace `path` with `filepath` since filepath is aware of Os path seperator
+		// and we only see `/` in s3 paths changing it to filepath cause build fail and other errors
+		target := path.Join(path.Dir(second), templateName)
 		for _, key := range keys {
 			if key == target {
 				return key, nil
@@ -144,7 +146,7 @@ func (c Catalog) ResolvePath(templateName, second string) (string, error) {
 		}
 	}
 
-	return "", fmt.Errorf("no such path found: %s", templateName)
+	return "", fmt.Errorf("no such path found: %s%s for keys: %v", second, templateName, keys)
 }
 
 func (s *s3svc) getAllKeys() ([]string, error) {
