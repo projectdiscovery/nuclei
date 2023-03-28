@@ -25,15 +25,14 @@ import (
 	"github.com/projectdiscovery/iputil"
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/config"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
-	fileutil "github.com/projectdiscovery/utils/file"
 )
 
 // DoHealthCheck performs network and self-diagnostic checks
 func DoHealthCheck(options *types.Options) string {
-	defaultTarget := "scanme.sh"
+	const defaultTarget = "scanme.sh"
+	const dnsInternet = "1.1.1.1"
+	const ulimitmin = 1000 // Minimum free ulimit value
 	internetTarget := defaultTarget
-	dnsInternet := "1.1.1.1"
-	ulimitmin := 1000 // Minimum free ulimit value
 	var ipv4addresses string
 	var ipv6addresses string
 
@@ -91,33 +90,23 @@ func DoHealthCheck(options *types.Options) string {
 	// - internetTarget
 	// 	- host/nuclei DNS
 	//  - internet DNS (fixed)
-	// IP or name?
-	if net.ParseIP(internetTarget) != nil {
-		dnsTests["Public DNS ("+dnsInternet+") for "+internetTarget] = reverseLookup(internetTarget, dnsInternet)
-		if iputil.IsIPv4(internetTarget) {
-			ipv4addresses = internetTarget
-		} else if iputil.IsIPv6(internetTarget) {
-			ipv6addresses = internetTarget
-		}
-	} else {
-		ipv4addresses, ipv6addresses = lookup(internetTarget, dnsInternet)
-		if ipv4addresses != "" {
-			dnsTests["Public IPv4 DNS ("+dnsInternet+") for "+internetTarget] = ipv4addresses
-		} else {
-			dnsTests["Public IPv4 DNS ("+dnsInternet+") for "+internetTarget] = "FAIL (No IPv4 address)"
-		}
-		if ipv6addresses != "" {
-			dnsTests["Public IPv6 DNS ("+dnsInternet+") for "+internetTarget] = ipv6addresses
-		} else {
-			dnsTests["Public IPv6 DNS ("+dnsInternet+") for "+internetTarget] = "FAIL (No IPv6 address)"
-		}
 
-		// Default target internet tests
-		defaultv4, defaultv6 := lookup(internetTarget, dnsInternet)
-		dnsTests["Public IPv4 DNS ("+dnsInternet+") for "+defaultTarget] = "IPv4: " + defaultv4 + ", IPv6: " + defaultv6
-		netTests["IPv4 Ping ("+defaultTarget+")"] = ping(defaultTarget, "ipv4")
-
+	ipv4addresses, ipv6addresses = getAddresses(internetTarget, dnsInternet)
+	switch {
+	case ipv4addresses != "":
+		dnsTests["Public IPv4 DNS ("+dnsInternet+") for "+internetTarget] = ipv4addresses
+	case ipv4addresses == "":
+		dnsTests["Public IPv4 DNS ("+dnsInternet+") for "+internetTarget] = "FAIL (No IPv4 address)"
+	case ipv6addresses != "":
+		dnsTests["Public IPv6 DNS ("+dnsInternet+") for "+internetTarget] = ipv6addresses
+	case ipv6addresses == "":
+		dnsTests["Public IPv6 DNS ("+dnsInternet+") for "+internetTarget] = "FAIL (No IPv6 address)"
 	}
+
+	// Default target internet tests
+	defaultv4, defaultv6 := lookup(internetTarget, dnsInternet)
+	dnsTests["Public IPv4 DNS ("+dnsInternet+") for "+defaultTarget] = "IPv4: " + defaultv4 + ", IPv6: " + defaultv6
+	netTests["IPv4 Ping ("+defaultTarget+")"] = ping(defaultTarget, "ipv4")
 
 	// Internet connectivity
 	if ipv4addresses != "" {
@@ -136,6 +125,21 @@ func DoHealthCheck(options *types.Options) string {
 	return getOutput(data, options.HealthCheck)
 }
 
+func getAddresses(target, dnsServer string) (string, string) {
+	var ipv4addresses string
+	var ipv6addresses string
+	if net.ParseIP(target) != nil {
+		if iputil.IsIPv4(target) {
+			ipv4addresses = target
+		} else if iputil.IsIPv6(target) {
+			ipv6addresses = target
+		}
+	} else {
+		ipv4addresses, ipv6addresses = lookup(target, dnsServer)
+	}
+	return ipv4addresses, ipv6addresses
+}
+
 // getTemplateCsf returns the path to the checksum file
 func getTemplateCsf() string {
 	cf, _ := config.ReadConfiguration()
@@ -146,40 +150,50 @@ func getTemplateCsf() string {
 	return filepath.Join(templatePath, "/", ".checksum")
 }
 
-// checkFilePermissions checks if a file is readable or writeable
+// checkFilePermissions checks the permissions of a file
 func checkFilePermissions(filename string, test string) string {
-	if test == "read" {
-		ok, err := fileutil.IsReadable(filename)
-		if err != nil {
-			return fmt.Sprintf(" (%s)", err)
-		} else if ok {
-			return "Pass"
-		} else {
-			return "Fail"
-		}
+	// Determine permission to check based on test value
+	var perm os.FileMode
+	switch test {
+	case "read":
+		perm = 0400 // Read permission
+	case "write":
+		perm = 0200 // Write permission
+	default:
+		return fmt.Sprintf("Invalid test value: %s", test)
+	}
 
-	} else if test == "write" {
-		ok, err := fileutil.IsWriteable(filename)
-		if err != nil {
-			return fmt.Sprintf(" (%s)", err)
-		} else if ok {
-			return "Pass"
+	// Check if file exists
+	info, err := os.Stat(filename)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return fmt.Sprintf("File not found: %s", filename)
 		} else {
-			return "Fail"
+			return err.Error()
 		}
 	}
-	return "INVALID TEST"
+
+	// Check file permission
+	switch {
+	case info.Mode().IsDir():
+		return fmt.Sprintf("%s is a directory", filename)
+	case info.Mode().Perm()&perm == perm:
+		return "Pass"
+	default:
+		return "Fail"
+	}
 }
 
 // checkConnection checks if a connection can be made to a host
 func checkConnection(host string, port int, protocol string) string {
 	address := net.JoinHostPort(host, strconv.Itoa(port))
 	conn, err := net.Dial(protocol, address)
-	if err == nil && conn != nil {
-		conn.Close()
-	}
 	if err != nil {
 		return fmt.Sprintf("Fail (%s)", err)
+	}
+
+	if conn != nil {
+		conn.Close()
 	}
 	return "Pass"
 }
@@ -301,6 +315,14 @@ func lookup(name, dnsServer string) (string, string) {
 	return strings.Join(ipv4s, ", "), strings.Join(ipv6s, ", ")
 }
 
+// getFirstCsvEntry returns the first element of a comma separated string
+func getFirstCsvEntry(values string) string {
+	if values == "" {
+		return ""
+	}
+	return strings.Split(values, ", ")[0]
+}
+
 // traceroute returns the traceroute of an IP address, both IPv6 and IPv4
 // NOTE: Only works if we have root permission
 func traceroute(assetIPs, networkType, format string) string {
@@ -316,9 +338,7 @@ func traceroute(assetIPs, networkType, format string) string {
 		proto = "ip6:58"
 	}
 
-	// Use first resolved IP
-	addresses := strings.Split(assetIPs, ", ")
-	assetIP := addresses[0]
+	assetIP := getFirstCsvEntry(assetIPs)
 	ipaddr, _ := net.ResolveIPAddr("ip", assetIP)
 
 	listener, err := icmp.ListenPacket(proto, "::")
@@ -421,12 +441,7 @@ func ping(addresses, proto string) string {
 	if !iAmRoot() {
 		return "Ping: You must have root permissions to run this test"
 	}
-	// Use first resolved IP
-	assetIPs := strings.Split(addresses, ", ")
-	if len(assetIPs) < 1 {
-		return "No IP addresses found"
-	}
-	assetIP := assetIPs[0]
+	assetIP := getFirstCsvEntry(addresses)
 
 	var err error
 	var conn net.PacketConn
