@@ -68,7 +68,7 @@ require (
 	github.com/labstack/echo/v4 v4.10.2
 	github.com/mholt/archiver v3.1.1+incompatible
 	github.com/mitchellh/go-homedir v1.1.0
-	github.com/projectdiscovery/dsl v0.0.4-0.20230323102918-3b74cce2270d
+	github.com/projectdiscovery/dsl v0.0.5-0.20230328190851-15d12ab4c5e4
 	github.com/projectdiscovery/fasttemplate v0.0.2
 	github.com/projectdiscovery/goflags v0.1.8
 	github.com/projectdiscovery/gologger v1.1.8
@@ -80,7 +80,7 @@ require (
 	github.com/projectdiscovery/sarif v0.0.1
 	github.com/projectdiscovery/tlsx v1.0.6
 	github.com/projectdiscovery/uncover v1.0.2
-	github.com/projectdiscovery/utils v0.0.17
+	github.com/projectdiscovery/utils v0.0.18
 	github.com/projectdiscovery/wappalyzergo v0.0.81
 	github.com/stretchr/testify v1.8.2
 	gopkg.in/src-d/go-git.v4 v4.13.1
@@ -188,7 +188,7 @@ require (
 	github.com/modern-go/reflect2 v1.0.2 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/power-devops/perfstat v0.0.0-20210106213030-5aafc221ea8c // indirect
-	github.com/projectdiscovery/blackrock v0.0.0-20230214153956-7c44ceb134df // indirect
+	github.com/projectdiscovery/blackrock v0.0.0-20230328171319-f24b18d05b64 // indirect
 	github.com/projectdiscovery/networkpolicy v0.0.4
 	github.com/rivo/uniseg v0.4.4 // indirect
 	github.com/saintfish/chardet v0.0.0-20230101081208-5e3ef4b5456d // indirect
