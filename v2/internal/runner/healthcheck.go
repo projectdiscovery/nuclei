@@ -8,6 +8,7 @@ import (
 	"math/rand"
 	"net"
 	"net/url"
+	"os"
 	"os/user"
 	"path/filepath"
 	"runtime"
@@ -29,7 +30,8 @@ import (
 
 // DoHealthCheck performs network and self-diagnostic checks
 func DoHealthCheck(options *types.Options) string {
-	internetTarget := "scanme.sh"
+	defaultTarget := "scanme.sh"
+	internetTarget := defaultTarget
 	dnsInternet := "1.1.1.1"
 	ulimitmin := 1000 // Minimum free ulimit value
 	var ipv4addresses string
@@ -69,6 +71,8 @@ func DoHealthCheck(options *types.Options) string {
 	dnsTests := data["dns"].(map[string]interface{})
 	netTests := data["net"].(map[string]interface{})
 
+	// Begin tests
+
 	// File permissions
 	for _, filename := range []string{options.ConfigPath, config.GetIgnoreFilePath(), getTemplateCsf()} {
 		fileTests["Read: "+filename] = checkFilePermissions(filename, "read")
@@ -95,10 +99,8 @@ func DoHealthCheck(options *types.Options) string {
 		} else if iputil.IsIPv6(internetTarget) {
 			ipv6addresses = internetTarget
 		}
-
 	} else {
 		ipv4addresses, ipv6addresses = lookup(internetTarget, dnsInternet)
-
 		if ipv4addresses != "" {
 			dnsTests["Public IPv4 DNS ("+dnsInternet+") for "+internetTarget] = ipv4addresses
 		} else {
@@ -109,21 +111,29 @@ func DoHealthCheck(options *types.Options) string {
 		} else {
 			dnsTests["Public IPv6 DNS ("+dnsInternet+") for "+internetTarget] = "FAIL (No IPv6 address)"
 		}
+
+		// Default target internet tests
+		defaultv4, defaultv6 := lookup(internetTarget, dnsInternet)
+		dnsTests["Public IPv4 DNS ("+dnsInternet+") for "+defaultTarget] = "IPv4: " + defaultv4 + ", IPv6: " + defaultv6
+		netTests["IPv4 Ping ("+defaultTarget+")"] = ping(defaultTarget, "ipv4")
+
 	}
 
 	// Internet connectivity
 	if ipv4addresses != "" {
 		netTests["IPv4 Connect ("+internetTarget+":80)"] = checkConnection(internetTarget, 80, "tcp4")
 		netTests["IPv4 Traceroute ("+internetTarget+":80)"] = traceroute(ipv4addresses, "ipv4", options.HealthCheck)
+		netTests["IPv4 Ping ("+internetTarget+")"] = ping(ipv4addresses, "ipv4")
 	}
 	if ipv6addresses != "" {
 		netTests["IPv6 Connect ("+internetTarget+":80)"] = checkConnection(internetTarget, 80, "tcp6")
 		netTests["IPv6 Traceroute ("+internetTarget+":80)"] = traceroute(ipv6addresses, "ipv6", options.HealthCheck)
+		netTests["IPv6 Ping ("+internetTarget+")"] = ping(ipv6addresses, "ipv6")
+
 	}
 
 	// send back formatted output
 	return getOutput(data, options.HealthCheck)
-
 }
 
 // getTemplateCsf returns the path to the checksum file
@@ -295,7 +305,7 @@ func lookup(name, dnsServer string) (string, string) {
 // NOTE: Only works if we have root permission
 func traceroute(assetIPs, networkType, format string) string {
 	if !iAmRoot() {
-		return "Traceroute (" + networkType + ") to " + assetIPs + ": You must have root permissions to run traceroute"
+		return "Traceroute: You must have root permissions to run this test"
 	}
 
 	maxHops := 20
@@ -404,4 +414,82 @@ func iAmRoot() bool {
 		panic(err)
 	}
 	return currentUser.Username == "root"
+}
+
+// ping returns the ping of an IP address, both IPv6 and IPv4
+func ping(addresses, proto string) string {
+	if !iAmRoot() {
+		return "Ping: You must have root permissions to run this test"
+	}
+	// Use first resolved IP
+	assetIPs := strings.Split(addresses, ", ")
+	if len(assetIPs) < 1 {
+		return "No IP addresses found"
+	}
+	assetIP := assetIPs[0]
+
+	var err error
+	var conn net.PacketConn
+	var ipAddr *net.IPAddr
+	if proto == "ipv6" {
+		conn, err = net.ListenPacket("ip6:ipv6-icmp", "::")
+		if err != nil {
+			return "Ping to " + assetIP + ": " + err.Error()
+		}
+		ipAddr, err = net.ResolveIPAddr("ip6", assetIP)
+		if err != nil {
+			return "Ping to " + assetIP + ": " + err.Error()
+		}
+	} else if proto == "ipv4" {
+		conn, err = net.ListenPacket("ip4:icmp", "0.0.0.0")
+		if err != nil {
+			return "Ping to " + assetIP + ": " + err.Error()
+		}
+		ipAddr, err = net.ResolveIPAddr("ip4", assetIP)
+		if err != nil {
+			return "Ping to " + assetIP + ": " + err.Error()
+		}
+	}
+	defer conn.Close()
+
+	// Build ICMP message
+	echo := icmp.Echo{
+		ID:   os.Getpid() & 0xffff,
+		Seq:  1,
+		Data: []byte(""),
+	}
+	var msg icmp.Message
+	if proto == "ipv6" {
+
+		msg = icmp.Message{
+			Type: ipv6.ICMPTypeEchoRequest,
+			Code: 0,
+			Body: &echo,
+		}
+	} else if proto == "ipv4" {
+		msg = icmp.Message{
+			Type: ipv4.ICMPTypeEcho,
+			Code: 0,
+			Body: &echo,
+		}
+	}
+	msgBytes, err := msg.Marshal(nil)
+	if err != nil {
+		return "Ping to " + assetIP + ": " + err.Error()
+	}
+
+	start := time.Now()
+	_, err = conn.WriteTo(msgBytes, ipAddr)
+	if err != nil {
+		return "Ping to " + assetIP + ": " + err.Error()
+	}
+
+	reply := make([]byte, 56)
+	conn.SetReadDeadline(time.Now().Add(10 * time.Second))
+	_, _, err = conn.ReadFrom(reply)
+	if err != nil {
+		return "Ping to " + assetIP + ": " + err.Error()
+	}
+	duration := time.Since(start)
+	return fmt.Sprintf("Ping to %s: %s", assetIP, duration.String())
 }
