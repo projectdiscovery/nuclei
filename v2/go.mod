@@ -41,7 +41,7 @@ require (
 	github.com/syndtr/goleveldb v1.0.0
 	github.com/tj/go-update v2.2.5-0.20200519121640-62b4b798fd68+incompatible
 	github.com/valyala/fasttemplate v1.2.2
-	github.com/weppos/publicsuffix-go v0.20.0
+	github.com/weppos/publicsuffix-go v0.30.0
 	github.com/xanzy/go-gitlab v0.80.2
 	go.uber.org/multierr v1.10.0
 	golang.org/x/net v0.8.0
