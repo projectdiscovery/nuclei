@@ -132,7 +132,7 @@ OUTPUT:
    -srd, -store-resp-dir string  store all request/response passed through nuclei to custom directory (default "output")
    -silent                       display findings only
    -nc, -no-color                disable output content coloring (ANSI escape codes)
-   -jsonl                        write output in JSONL(ines) format
+   -j, -jsonl                    write output in JSONL(ines) format
    -irr, -include-rr             include request/response pairs in the JSONL output (for findings only)
    -nm, -no-meta                 disable printing result metadata in cli output
    -nts, -no-timestamp           disable printing timestamp in cli output
