@@ -440,8 +440,8 @@ github.com/projectdiscovery/gologger v1.1.8 h1:CFlCzGlqAhPqWIrAXBt1OVh5jkMs1qgoR
 github.com/projectdiscovery/gologger v1.1.8/go.mod h1:bNyVaC1U/NpJtFkJltcesn01NR3K8Hg6RsLVce6yvrw=
 github.com/projectdiscovery/hmap v0.0.10 h1:O6ALGW3BK+FmknLXW7ENwQevLs+faRJuoRbDtakZZus=
 github.com/projectdiscovery/hmap v0.0.10/go.mod h1:xdtyejCgl5LJW7yz7nf/ut32tWuV/l7FjUzItiCtJIg=
-github.com/projectdiscovery/httpx v1.2.7 h1:rDB+uKpWE/e6nuLDM341ZNzaaMgwcEcc+A9Q5R6RL3s=
-github.com/projectdiscovery/httpx v1.2.7/go.mod h1:QW8mKw6PzMBb62T5fT9w75hhVBcjoyyVTDJhefZcX50=
+github.com/projectdiscovery/httpx v1.2.9 h1:bSXXjPHIDywokASSXLaWScyIRTFT6Avr9JJS7lV96c0=
+github.com/projectdiscovery/httpx v1.2.9/go.mod h1:99+TTGdMDKQgWRLzzWj3zGffQ6f4NCAWQHqHWfPn0Uc=
 github.com/projectdiscovery/interactsh v1.1.2 h1:CtnVd8vgn6wRK1A2dD77XuGUOmsz5e/bEozzRme9oJs=
 github.com/projectdiscovery/interactsh v1.1.2/go.mod h1:aoNDXOSGlMTP0ce9sgiE2tEX3+P+iE9CPtzc2cYONl8=
 github.com/projectdiscovery/iputil v0.0.2 h1:f6IGnZF4RImJLysPSPG3D84jyTH34q3lihCFeP+eZzI=
@@ -454,8 +454,8 @@ github.com/projectdiscovery/nvd v1.0.9 h1:2DdMm7lu3GnCQsyYDEQiQ/LRYDmpEm654kvGQS
 github.com/projectdiscovery/nvd v1.0.9/go.mod h1:nGHAo7o6G4V4kscZlm488qKp/ZrZYiBoKqAQrn3X4Og=
 github.com/projectdiscovery/ratelimit v0.0.6 h1:SAD2ArdT9F8NmbkAIZpl7DjNnbiXdUQLnMZt5dbVmZ0=
 github.com/projectdiscovery/ratelimit v0.0.6/go.mod h1:WFL6gIggPLTwYwDbxqQODuWrz/lcMP2E5ofKSAz3YwI=
-github.com/projectdiscovery/rawhttp v0.1.9 h1:hMMKIwsOcbUcgnVnHfp4LhuJamAq/Dom1oIwO+RljBs=
-github.com/projectdiscovery/rawhttp v0.1.9/go.mod h1:KZ2dPwu38NE6T5RIfrqN9r4vxA2GmWW7+NSV/qC+jOw=
+github.com/projectdiscovery/rawhttp v0.1.10 h1:wkQk/lpMVzi4AAELRDaBQEgMqyerpkz3Kks7QgDF274=
+github.com/projectdiscovery/rawhttp v0.1.10/go.mod h1:cIlAWs3Nu8CTBArx/8GU1baimR5T1eO62TJFG2rAnSc=
 github.com/projectdiscovery/rdap v0.9.1-0.20221108103045-9865884d1917 h1:m03X4gBVSorSzvmm0bFa7gDV4QNSOWPL/fgZ4kTXBxk=
 github.com/projectdiscovery/rdap v0.9.1-0.20221108103045-9865884d1917/go.mod h1:JxXtZC9e195awe7EynrcnBJmFoad/BNDzW9mzFkK8Sg=
 github.com/projectdiscovery/retryabledns v1.0.21 h1:vOpPQR1q8Z824uoA8JXCI/RyvDAssPeD68Onz9hP/ds=
@@ -472,8 +472,8 @@ github.com/projectdiscovery/uncover v1.0.2 h1:mRFzflYyvwKkHd3XKufMlDRrb6p1mjFZTS
 github.com/projectdiscovery/uncover v1.0.2/go.mod h1:lz4QYfArSA6jJkXyB71kN2/Pc7IW7nJB8c95n7xtwqY=
 github.com/projectdiscovery/utils v0.0.18 h1:gyBMnA4y2ryui0G98iFqKAXuNdoSy6Z6K0/1KHB0czU=
 github.com/projectdiscovery/utils v0.0.18/go.mod h1:Cu216AlQ7rAYa8aDBqB2OgNfu5p24Uj+tG9RxV8Wbfs=
-github.com/projectdiscovery/wappalyzergo v0.0.81 h1:i7WYrH+O2EoHbY1g/WnrxO4YF/0OkA/G1bw6z8WKcjA=
-github.com/projectdiscovery/wappalyzergo v0.0.81/go.mod h1:HvYuW0Be4JCjVds/+XAEaMSqRG9yrI97UmZq0TPk6A0=
+github.com/projectdiscovery/wappalyzergo v0.0.86 h1:w4UP+F1emlhoDXRHZanSzWQNYm/tv/A0ocGOpeuParo=
+github.com/projectdiscovery/wappalyzergo v0.0.86/go.mod h1:HvYuW0Be4JCjVds/+XAEaMSqRG9yrI97UmZq0TPk6A0=
 github.com/projectdiscovery/yamldoc-go v1.0.4 h1:eZoESapnMw6WAHiVgRwNqvbJEfNHEH148uthhFbG5jE=
 github.com/projectdiscovery/yamldoc-go v1.0.4/go.mod h1:8PIPRcUD55UbtQdcfFR1hpIGRWG0P7alClXNGt1TBik=
 github.com/remeh/sizedwaitgroup v1.0.0 h1:VNGGFwNo/R5+MJBf6yrsr110p0m4/OX4S3DCy7Kyl5E=
@@ -584,9 +584,10 @@ github.com/valyala/fasttemplate v1.2.2 h1:lxLXG0uE3Qnshl9QyaK6XJxMXlQZELvChBOCmQ
 github.com/valyala/fasttemplate v1.2.2/go.mod h1:KHLXt3tVN2HBp8eijSv/kGJopbvo7S+qRAEEKiv+SiQ=
 github.com/weppos/publicsuffix-go v0.12.0/go.mod h1:z3LCPQ38eedDQSwmsSRW4Y7t2L8Ln16JPQ02lHAdn5k=
 github.com/weppos/publicsuffix-go v0.15.1-0.20220724114530-e087fba66a37/go.mod h1:5ZC/Uv3fIEUE0eP6o9+Yg4+5+W8V0/BieMi05feGXVA=
-github.com/weppos/publicsuffix-go v0.20.0 h1:59ypvSUbW3Dunc6zVm+v+MmXf2Q6cGiNDkxgRIzEnaA=
-github.com/weppos/publicsuffix-go v0.20.0/go.mod h1:5ZC/Uv3fIEUE0eP6o9+Yg4+5+W8V0/BieMi05feGXVA=
+github.com/weppos/publicsuffix-go v0.30.0 h1:QHPZ2GRu/YE7cvejH9iyavPOkVCB4dNxp2ZvtT+vQLY=
+github.com/weppos/publicsuffix-go v0.30.0/go.mod h1:kBi8zwYnR0zrbm8RcuN1o9Fzgpnnn+btVN8uWPMyXAY=
 github.com/weppos/publicsuffix-go/publicsuffix/generator v0.0.0-20220704091424-e0182326a282/go.mod h1:GHfoeIdZLdZmLjMlzBftbTDntahTttUMWjxZwQJhULE=
+github.com/weppos/publicsuffix-go/publicsuffix/generator v0.0.0-20220927085643-dc0d00c92642/go.mod h1:GHfoeIdZLdZmLjMlzBftbTDntahTttUMWjxZwQJhULE=
 github.com/wsxiaoys/terminal v0.0.0-20160513160801-0940f3fc43a0 h1:3UeQBvD0TFrlVjOeLOBz+CPAI8dnbqNSVwUwRrkp7vQ=
 github.com/wsxiaoys/terminal v0.0.0-20160513160801-0940f3fc43a0/go.mod h1:IXCdmsXIht47RaVFLEdVnh1t+pgYtTAhQGj73kz+2DM=
 github.com/xanzy/go-gitlab v0.80.2 h1:CH1Q7NDklqZllox4ICVF4PwlhQGfPtE+w08Jsb74ZX0=

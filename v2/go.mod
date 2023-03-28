@@ -27,7 +27,7 @@ require (
 	github.com/projectdiscovery/fastdialer v0.0.24
 	github.com/projectdiscovery/hmap v0.0.10
 	github.com/projectdiscovery/interactsh v1.1.2
-	github.com/projectdiscovery/rawhttp v0.1.9
+	github.com/projectdiscovery/rawhttp v0.1.10
 	github.com/projectdiscovery/retryabledns v1.0.21
 	github.com/projectdiscovery/retryablehttp-go v1.0.13
 	github.com/projectdiscovery/stringsutil v0.0.2 // indirect
@@ -41,7 +41,7 @@ require (
 	github.com/syndtr/goleveldb v1.0.0
 	github.com/tj/go-update v2.2.5-0.20200519121640-62b4b798fd68+incompatible
 	github.com/valyala/fasttemplate v1.2.2
-	github.com/weppos/publicsuffix-go v0.20.0
+	github.com/weppos/publicsuffix-go v0.30.0
 	github.com/xanzy/go-gitlab v0.80.2
 	go.uber.org/multierr v1.10.0
 	golang.org/x/net v0.8.0
@@ -72,7 +72,7 @@ require (
 	github.com/projectdiscovery/fasttemplate v0.0.2
 	github.com/projectdiscovery/goflags v0.1.8
 	github.com/projectdiscovery/gologger v1.1.8
-	github.com/projectdiscovery/httpx v1.2.7
+	github.com/projectdiscovery/httpx v1.2.9
 	github.com/projectdiscovery/mapcidr v1.1.1
 	github.com/projectdiscovery/nvd v1.0.9
 	github.com/projectdiscovery/ratelimit v0.0.6
@@ -81,7 +81,7 @@ require (
 	github.com/projectdiscovery/tlsx v1.0.6
 	github.com/projectdiscovery/uncover v1.0.2
 	github.com/projectdiscovery/utils v0.0.18
-	github.com/projectdiscovery/wappalyzergo v0.0.81
+	github.com/projectdiscovery/wappalyzergo v0.0.86
 	github.com/stretchr/testify v1.8.2
 	gopkg.in/src-d/go-git.v4 v4.13.1
 	gopkg.in/yaml.v3 v3.0.1
