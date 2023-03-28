@@ -25,7 +25,7 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/projectdiscovery/clistats v0.0.12
 	github.com/projectdiscovery/fastdialer v0.0.24
-	github.com/projectdiscovery/hmap v0.0.10
+	github.com/projectdiscovery/hmap v0.0.11
 	github.com/projectdiscovery/interactsh v1.1.2
 	github.com/projectdiscovery/rawhttp v0.1.10
 	github.com/projectdiscovery/retryabledns v1.0.21
@@ -81,7 +81,7 @@ require (
 	github.com/projectdiscovery/tlsx v1.0.6
 	github.com/projectdiscovery/uncover v1.0.2
 	github.com/projectdiscovery/utils v0.0.18
-	github.com/projectdiscovery/wappalyzergo v0.0.86
+	github.com/projectdiscovery/wappalyzergo v0.0.88
 	github.com/stretchr/testify v1.8.2
 	gopkg.in/src-d/go-git.v4 v4.13.1
 	gopkg.in/yaml.v3 v3.0.1

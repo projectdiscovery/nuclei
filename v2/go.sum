@@ -438,8 +438,8 @@ github.com/projectdiscovery/goflags v0.1.8 h1:Urhm2Isq2BdRt8h4h062lHKYXO65RHRjGT
 github.com/projectdiscovery/goflags v0.1.8/go.mod h1:Yxi9tclgwGczzDU65ntrwaIql5cXeTvW5j2WxFuF+Jk=
 github.com/projectdiscovery/gologger v1.1.8 h1:CFlCzGlqAhPqWIrAXBt1OVh5jkMs1qgoR/z4xhdzLNE=
 github.com/projectdiscovery/gologger v1.1.8/go.mod h1:bNyVaC1U/NpJtFkJltcesn01NR3K8Hg6RsLVce6yvrw=
-github.com/projectdiscovery/hmap v0.0.10 h1:O6ALGW3BK+FmknLXW7ENwQevLs+faRJuoRbDtakZZus=
-github.com/projectdiscovery/hmap v0.0.10/go.mod h1:xdtyejCgl5LJW7yz7nf/ut32tWuV/l7FjUzItiCtJIg=
+github.com/projectdiscovery/hmap v0.0.11 h1:nA3qCFzWPcOw27T8PII5IWI3ZP0ys7TGCi2nLSnHXVA=
+github.com/projectdiscovery/hmap v0.0.11/go.mod h1:5sbLn2OHexvpVupStNOhusWO9jLCyEm5jcHwWB2nOkI=
 github.com/projectdiscovery/httpx v1.2.9 h1:bSXXjPHIDywokASSXLaWScyIRTFT6Avr9JJS7lV96c0=
 github.com/projectdiscovery/httpx v1.2.9/go.mod h1:99+TTGdMDKQgWRLzzWj3zGffQ6f4NCAWQHqHWfPn0Uc=
 github.com/projectdiscovery/interactsh v1.1.2 h1:CtnVd8vgn6wRK1A2dD77XuGUOmsz5e/bEozzRme9oJs=
@@ -472,8 +472,8 @@ github.com/projectdiscovery/uncover v1.0.2 h1:mRFzflYyvwKkHd3XKufMlDRrb6p1mjFZTS
 github.com/projectdiscovery/uncover v1.0.2/go.mod h1:lz4QYfArSA6jJkXyB71kN2/Pc7IW7nJB8c95n7xtwqY=
 github.com/projectdiscovery/utils v0.0.18 h1:gyBMnA4y2ryui0G98iFqKAXuNdoSy6Z6K0/1KHB0czU=
 github.com/projectdiscovery/utils v0.0.18/go.mod h1:Cu216AlQ7rAYa8aDBqB2OgNfu5p24Uj+tG9RxV8Wbfs=
-github.com/projectdiscovery/wappalyzergo v0.0.86 h1:w4UP+F1emlhoDXRHZanSzWQNYm/tv/A0ocGOpeuParo=
-github.com/projectdiscovery/wappalyzergo v0.0.86/go.mod h1:HvYuW0Be4JCjVds/+XAEaMSqRG9yrI97UmZq0TPk6A0=
+github.com/projectdiscovery/wappalyzergo v0.0.88 h1:N/1vFlKmc3GJco9rANJdHrxg8jdav/xmnICo8rztmH8=
+github.com/projectdiscovery/wappalyzergo v0.0.88/go.mod h1:HvYuW0Be4JCjVds/+XAEaMSqRG9yrI97UmZq0TPk6A0=
 github.com/projectdiscovery/yamldoc-go v1.0.4 h1:eZoESapnMw6WAHiVgRwNqvbJEfNHEH148uthhFbG5jE=
 github.com/projectdiscovery/yamldoc-go v1.0.4/go.mod h1:8PIPRcUD55UbtQdcfFR1hpIGRWG0P7alClXNGt1TBik=
 github.com/remeh/sizedwaitgroup v1.0.0 h1:VNGGFwNo/R5+MJBf6yrsr110p0m4/OX4S3DCy7Kyl5E=
