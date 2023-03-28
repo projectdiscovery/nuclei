@@ -7,6 +7,7 @@ import (
 	"github.com/Knetic/govaluate"
 	"github.com/miekg/dns"
 	"github.com/projectdiscovery/dsl"
+	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/dns/dnsclientpool"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 	sliceutil "github.com/projectdiscovery/utils/slice"
@@ -94,6 +95,11 @@ func init() {
 
 		return "", fmt.Errorf("no records found")
 	})
+
+	dsl.PrintDebugCallback = func(args ...interface{}) error {
+		gologger.Info().Msgf("print_debug value: %s", fmt.Sprint(args))
+		return nil
+	}
 
 	HelperFunctions = dsl.HelperFunctions()
 	FunctionNames = dsl.GetFunctionNames(HelperFunctions)
