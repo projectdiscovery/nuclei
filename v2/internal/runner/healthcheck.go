@@ -525,32 +525,3 @@ func ping(addresses, proto string) string {
 	duration := time.Since(start)
 	return fmt.Sprintf("Ping to %s: %s", assetIP, duration.String())
 }
-
-// func lookup() {
-// 	rawResp, err := dnsClient.Query(types.ToString(args[0]), dnsType)
-// 	if err != nil {
-// 		return nil, err
-// 	}
-
-// 	dnsValues := map[uint16][]string{
-// 		dns.TypeA:     rawResp.A,
-// 		dns.TypeAAAA:  rawResp.AAAA,
-// 		dns.TypeCNAME: rawResp.CNAME,
-// 		dns.TypeNS:    rawResp.NS,
-// 		dns.TypeTXT:   rawResp.TXT,
-// 		dns.TypeSRV:   rawResp.SRV,
-// 		dns.TypePTR:   rawResp.PTR,
-// 		dns.TypeMX:    rawResp.MX,
-// 		dns.TypeSOA:   rawResp.SOA,
-// 		dns.TypeCAA:   rawResp.CAA,
-// 	}
-
-// 	if values, ok := dnsValues[dnsType]; ok {
-// 		firstFound, found := sliceutil.FirstNonZero(values)
-// 		if found {
-// 			return firstFound, nil
-// 		}
-// 	}
-
-// 	return "", fmt.Errorf("no records found")
-// }
