@@ -1,4 +1,4 @@
-package json_exporter
+package jsonexporter
 
 import (
 	"encoding/json"

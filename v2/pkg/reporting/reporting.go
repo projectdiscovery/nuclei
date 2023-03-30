@@ -1,7 +1,7 @@
 package reporting
 
 import (
-	json_exporter "github.com/projectdiscovery/nuclei/v2/pkg/reporting/exporters/json-exporter"
+	json_exporter "github.com/projectdiscovery/nuclei/v2/pkg/reporting/exporters/jsonexporter"
 	"os"
 	"path/filepath"
 

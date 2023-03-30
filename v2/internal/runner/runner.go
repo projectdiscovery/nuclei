@@ -6,7 +6,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	json_exporter "github.com/projectdiscovery/nuclei/v2/pkg/reporting/exporters/json-exporter"
+	json_exporter "github.com/projectdiscovery/nuclei/v2/pkg/reporting/exporters/jsonexporter"
 	"io"
 	"net/http"
 	_ "net/http/pprof"
