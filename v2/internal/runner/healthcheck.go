@@ -89,8 +89,6 @@ func DoHealthCheck(options *types.Options) string {
 	if runtime.GOOS != "windows" {
 		// LINUX/UNIX Systems
 		data["os"].(map[string]interface{})["ulimit"] = checkUlimit(data, ulimitmin)
-	} else {
-		// Windows Systems
 	}
 
 	// Test each DNS resolver set in config and the default resolver
@@ -110,7 +108,6 @@ func DoHealthCheck(options *types.Options) string {
 			} else {
 				dnsTests["Public IPv6 DNS ("+resolverCfg+") for "+host] = "FAIL (No IPv6 address)"
 			}
-
 		}
 	}
 	// Rather than the last resolver in the list, use the first one for final answer
@@ -136,6 +133,7 @@ func DoHealthCheck(options *types.Options) string {
 	return getOutput(data, options.HealthCheck)
 }
 
+// addIfNotExists adds an element to a slice if it doesn't already exist
 func addIfNotExists(slice []string, element string) []string {
 	for _, e := range slice {
 		if e == element {
@@ -147,6 +145,7 @@ func addIfNotExists(slice []string, element string) []string {
 	return append(slice, element)
 }
 
+// getAddresses returns the IPv4 and IPv6 addresses for a host
 func getAddresses(target, dnsServer string) (string, string) {
 	var ipv4addresses string
 	var ipv6addresses string
