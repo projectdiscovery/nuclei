@@ -343,6 +343,7 @@ func traceroute(assetIPs, networkType, format string) string {
 
 	maxHops := 15
 	timeout := time.Second
+	var prevHopIP net.IP
 	var results []string
 	proto := "ip4:icmp"
 	if networkType == "ipv6" {
@@ -408,6 +409,11 @@ func traceroute(assetIPs, networkType, format string) string {
 			results = append(results, fmt.Sprintf("%d. *", i))
 			continue
 		}
+
+		if prevHopIP != nil && prevHopIP.Equal(peer.(*net.IPAddr).IP) {
+			break
+		}
+		prevHopIP = peer.(*net.IPAddr).IP
 
 		var rm *icmp.Message
 		if networkType == "ipv4" {
