@@ -30,11 +30,18 @@ import (
 // DoHealthCheck performs network and self-diagnostic checks
 func DoHealthCheck(options *types.Options) string {
 	const defaultTarget = "scanme.sh"
-	const dnsInternet = "1.1.1.1"
+	const resolverPublic = "1.1.1.1"
 	const ulimitmin = 1000 // Minimum free ulimit value
 	internetTarget := defaultTarget
 	var ipv4addresses string
 	var ipv6addresses string
+
+	var resolvers []string
+	if options.ResolversFile != "" {
+		resolvers = options.InternalResolversList
+	} else {
+		resolvers = []string{resolverPublic}
+	}
 
 	if len(options.Targets) > 0 {
 		if iputil.IsIPv6(options.Targets[0]) {
@@ -86,29 +93,33 @@ func DoHealthCheck(options *types.Options) string {
 		// Windows Systems
 	}
 
-	//  DNS
-	// - internetTarget
-	// 	- host/nuclei DNS
-	//  - internet DNS (fixed)
+	// Test each DNS resolver set in config and the default resolver
+	resolvers = addIfNotExists(resolvers, resolverPublic)
+	for _, resolverCfg := range resolvers {
+		for _, host := range []string{internetTarget, defaultTarget} {
+			ipv4addresses, ipv6addresses = getAddresses(host, resolverCfg)
 
-	ipv4addresses, ipv6addresses = getAddresses(internetTarget, dnsInternet)
-	switch {
-	case ipv4addresses != "":
-		dnsTests["Public IPv4 DNS ("+dnsInternet+") for "+internetTarget] = ipv4addresses
-	case ipv4addresses == "":
-		dnsTests["Public IPv4 DNS ("+dnsInternet+") for "+internetTarget] = "FAIL (No IPv4 address)"
-	case ipv6addresses != "":
-		dnsTests["Public IPv6 DNS ("+dnsInternet+") for "+internetTarget] = ipv6addresses
-	case ipv6addresses == "":
-		dnsTests["Public IPv6 DNS ("+dnsInternet+") for "+internetTarget] = "FAIL (No IPv6 address)"
+			if ipv4addresses != "" {
+				dnsTests["Public IPv4 DNS ("+resolverCfg+") for "+host] = ipv4addresses
+			} else {
+				dnsTests["Public IPv4 DNS ("+resolverCfg+") for "+host] = "FAIL (No IPv4 address)"
+			}
+
+			if ipv6addresses != "" {
+				dnsTests["Public IPv6 DNS ("+resolverCfg+") for "+host] = ipv6addresses
+			} else {
+				dnsTests["Public IPv6 DNS ("+resolverCfg+") for "+host] = "FAIL (No IPv6 address)"
+			}
+
+		}
 	}
+	// Rather than the last resolver in the list, use the first one for final answer
+	ipv4addresses, ipv6addresses = getAddresses(internetTarget, resolvers[0])
 
 	// Default target internet tests
-	defaultv4, defaultv6 := lookup(internetTarget, dnsInternet)
-	dnsTests["Public IPv4 DNS ("+dnsInternet+") for "+defaultTarget] = "IPv4: " + defaultv4 + ", IPv6: " + defaultv6
 	netTests["IPv4 Ping ("+defaultTarget+")"] = ping(defaultTarget, "ipv4")
 
-	// Internet connectivity
+	// Network connectivity
 	if ipv4addresses != "" {
 		netTests["IPv4 Connect ("+internetTarget+":80)"] = checkConnection(internetTarget, 80, "tcp4")
 		netTests["IPv4 Traceroute ("+internetTarget+":80)"] = traceroute(ipv4addresses, "ipv4", options.HealthCheck)
@@ -123,6 +134,17 @@ func DoHealthCheck(options *types.Options) string {
 
 	// send back formatted output
 	return getOutput(data, options.HealthCheck)
+}
+
+func addIfNotExists(slice []string, element string) []string {
+	for _, e := range slice {
+		if e == element {
+			// Element already exists in slice, return original slice
+			return slice
+		}
+	}
+	// Element doesn't exist in slice, append to slice and return
+	return append(slice, element)
 }
 
 func getAddresses(target, dnsServer string) (string, string) {
@@ -274,11 +296,17 @@ func lookup(name, dnsServer string) (string, string) {
 	var ipv4s []string
 	var ipv6s []string
 
+	// resolvers from config can be in the form of ip:port
+	// if not, add port 53
+	if !strings.Contains(dnsServer, ":") {
+		dnsServer = dnsServer + ":53"
+	}
+
 	resolver := net.Resolver{
 		PreferGo: true,
 		Dial: func(ctx context.Context, network, _ string) (net.Conn, error) {
 			d := net.Dialer{}
-			return d.DialContext(ctx, network, fmt.Sprintf("%s:53", dnsServer))
+			return d.DialContext(ctx, network, dnsServer)
 		},
 	}
 
@@ -313,7 +341,7 @@ func traceroute(assetIPs, networkType, format string) string {
 		return "Traceroute: You must have root permissions to run this test"
 	}
 
-	maxHops := 20
+	maxHops := 15
 	timeout := time.Second
 	var results []string
 	proto := "ip4:icmp"
@@ -491,3 +519,32 @@ func ping(addresses, proto string) string {
 	duration := time.Since(start)
 	return fmt.Sprintf("Ping to %s: %s", assetIP, duration.String())
 }
+
+// func lookup() {
+// 	rawResp, err := dnsClient.Query(types.ToString(args[0]), dnsType)
+// 	if err != nil {
+// 		return nil, err
+// 	}
+
+// 	dnsValues := map[uint16][]string{
+// 		dns.TypeA:     rawResp.A,
+// 		dns.TypeAAAA:  rawResp.AAAA,
+// 		dns.TypeCNAME: rawResp.CNAME,
+// 		dns.TypeNS:    rawResp.NS,
+// 		dns.TypeTXT:   rawResp.TXT,
+// 		dns.TypeSRV:   rawResp.SRV,
+// 		dns.TypePTR:   rawResp.PTR,
+// 		dns.TypeMX:    rawResp.MX,
+// 		dns.TypeSOA:   rawResp.SOA,
+// 		dns.TypeCAA:   rawResp.CAA,
+// 	}
+
+// 	if values, ok := dnsValues[dnsType]; ok {
+// 		firstFound, found := sliceutil.FirstNonZero(values)
+// 		if found {
+// 			return firstFound, nil
+// 		}
+// 	}
+
+// 	return "", fmt.Errorf("no records found")
+// }
