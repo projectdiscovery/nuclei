@@ -5,6 +5,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"path"
 	"time"
 
 	jsoniter "github.com/json-iterator/go"
@@ -13,8 +14,8 @@ import (
 )
 
 const (
-	RegisterServer = "https://version-check.nuclei.sh/"
-	VersionsCall   = "versions"
+	RegisterServer = "https://armed-corporate-engaging-attachments.trycloudflare.com/api/v1/tools/"
+	ToolName       = "nuclei"
 	IgnoreCall     = "ignore"
 )
 
@@ -27,28 +28,45 @@ type LatestVersion struct {
 	IgnoreHash string
 }
 
+type NucleiApiResp struct {
+	IgnoreHash string  `json:"ignore-hash"`
+	Tools      []Tools `json:"tools"`
+}
+
+type Tools struct {
+	Name    string            `json:"name"`
+	Repo    string            `json:"repo"`
+	Version string            `json:"version"`
+	Assets  map[string]string `json:"assets"`
+}
+
 func InitNucleiVersion(version string) {
 	nucleiVersion = version
 }
 
 // GetLatestNucleiTemplatesVersion returns the latest version info for nuclei and templates repos
 func GetLatestNucleiTemplatesVersion() (*LatestVersion, error) {
-	body, err := callRegisterServer(VersionsCall)
+	body, err := callRegisterServer(ToolName)
 	if err != nil {
 		return nil, err
 	}
 	defer body.Close()
 
-	data := make(map[string]string)
+	data := NucleiApiResp{}
 	if err := jsoniter.NewDecoder(body).Decode(&data); err != nil {
 		return nil, err
 	}
-	return &LatestVersion{Nuclei: data["nuclei"], Templates: data["templates"], IgnoreHash: data["ignore-hash"]}, nil
+
+	return &LatestVersion{
+		Nuclei:     data.Tools[0].Version,
+		Templates:  data.Tools[1].Version,
+		IgnoreHash: data.IgnoreHash,
+	}, nil
 }
 
 // GetLatestIgnoreFile returns the latest version of nuclei ignore
 func GetLatestIgnoreFile() ([]byte, error) {
-	body, err := callRegisterServer(IgnoreCall)
+	body, err := callRegisterServer(path.Join(ToolName, IgnoreCall))
 	if err != nil {
 		return nil, err
 	}
