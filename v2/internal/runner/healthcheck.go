@@ -14,7 +14,8 @@ import (
 	"runtime"
 	"strconv"
 	"strings"
-	"syscall"
+
+	// "syscall"
 	"text/tabwriter"
 	"time"
 
@@ -31,7 +32,7 @@ import (
 func DoHealthCheck(options *types.Options) string {
 	const defaultTarget = "scanme.sh"
 	const resolverPublic = "1.1.1.1"
-	const ulimitmin = 1000 // Minimum free ulimit value
+	// const ulimitmin = 1000 // Minimum free ulimit value
 	internetTarget := defaultTarget
 	var ipv4addresses string
 	var ipv6addresses string
@@ -68,10 +69,11 @@ func DoHealthCheck(options *types.Options) string {
 		"program": map[string]interface{}{
 			"version": config.Version,
 		},
-		"files":    map[string]interface{}{},
-		"internet": map[string]interface{}{},
-		"dns":      map[string]interface{}{},
-		"net":      map[string]interface{}{},
+		"files": map[string]interface{}{},
+		// "internet": map[string]interface{}{},
+		"dns":   map[string]interface{}{},
+		"net":   map[string]interface{}{},
+		"asset": internetTarget,
 	}
 	fileTests := data["files"].(map[string]interface{})
 	dnsTests := data["dns"].(map[string]interface{})
@@ -86,10 +88,10 @@ func DoHealthCheck(options *types.Options) string {
 	}
 
 	// Other Host information
-	if runtime.GOOS != "windows" {
-		// LINUX/UNIX Systems
-		data["os"].(map[string]interface{})["ulimit"] = checkUlimit(data, ulimitmin)
-	}
+	// if runtime.GOOS != "windows" {
+	// 	// LINUX/UNIX Systems
+	// 	data["os"].(map[string]interface{})["ulimit"] = checkUlimit(data, ulimitmin)
+	// }
 
 	// Test each DNS resolver set in config and the default resolver
 	resolvers = addIfNotExists(resolvers, resolverPublic)
@@ -232,15 +234,15 @@ func getOutput(data map[string]interface{}, format string) string {
 }
 
 // checkUlimit checks the ulimit of the current user
-func checkUlimit(data map[string]interface{}, difflimit int) string {
-	var limit syscall.Rlimit
-	syscall.Getrlimit(syscall.RLIMIT_NOFILE, &limit)
-	if (limit.Max - limit.Cur) <= uint64(difflimit) {
-		return fmt.Sprintf("You may need to increase your file descriptor limit. %v/%v used", limit.Cur, limit.Max)
-	} else {
-		return "Pass"
-	}
-}
+// func checkUlimit(data map[string]interface{}, difflimit int) string {
+// 	var limit syscall.Rlimit
+// 	syscall.Getrlimit(syscall.RLIMIT_NOFILE, &limit)
+// 	if (limit.Max - limit.Cur) <= uint64(difflimit) {
+// 		return fmt.Sprintf("You may need to increase your file descriptor limit. %v/%v used", limit.Cur, limit.Max)
+// 	} else {
+// 		return "Pass"
+// 	}
+// }
 
 // mapToJson converts a map to a json string
 func mapToJson(data map[string]interface{}) string {
