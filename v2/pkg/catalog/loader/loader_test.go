@@ -64,13 +64,13 @@ func TestRemoteTemplates(t *testing.T) {
 			name: "remote-templates-positive",
 			args: args{
 				config: &Config{
-					TemplateURLs:             []string{"https://raw.githubusercontent.com/projectdiscovery/nuclei-templates/master/technologies/tech-detect.yaml"},
+					TemplateURLs:             []string{"https://raw.githubusercontent.com/projectdiscovery/nuclei-templates/main/technologies/tech-detect.yaml"},
 					RemoteTemplateDomainList: []string{"localhost", "raw.githubusercontent.com"},
 					Catalog:                  catalog,
 				},
 			},
 			want: &Store{
-				finalTemplates: []string{"https://raw.githubusercontent.com/projectdiscovery/nuclei-templates/master/technologies/tech-detect.yaml"},
+				finalTemplates: []string{"https://raw.githubusercontent.com/projectdiscovery/nuclei-templates/main/technologies/tech-detect.yaml"},
 			},
 			wantErr: false,
 		},
@@ -78,7 +78,7 @@ func TestRemoteTemplates(t *testing.T) {
 			name: "remote-templates-negative",
 			args: args{
 				config: &Config{
-					TemplateURLs:             []string{"https://raw.githubusercontent.com/projectdiscovery/nuclei-templates/master/technologies/tech-detect.yaml"},
+					TemplateURLs:             []string{"https://raw.githubusercontent.com/projectdiscovery/nuclei-templates/main/technologies/tech-detect.yaml"},
 					RemoteTemplateDomainList: []string{"localhost"},
 					Catalog:                  catalog,
 				},
