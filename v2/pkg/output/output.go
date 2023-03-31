@@ -181,7 +181,7 @@ func NewStandardWriter(options *types.Options) (*StandardWriter, error) {
 		}
 	}
 	writer := &StandardWriter{
-		json:             options.JSON,
+		json:             options.JSONL,
 		jsonReqResp:      options.JSONRequests,
 		noMetadata:       options.NoMeta,
 		matcherStatus:    options.MatcherStatus,
