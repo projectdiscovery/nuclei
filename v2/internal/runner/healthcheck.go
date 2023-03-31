@@ -36,6 +36,7 @@ func DoHealthCheck(options *types.Options) string {
 	internetTarget := defaultTarget
 	var ipv4addresses string
 	var ipv6addresses string
+	adminPriv := iAmRoot()
 
 	var resolvers []string
 	if options.ResolversFile != "" {
@@ -116,18 +117,18 @@ func DoHealthCheck(options *types.Options) string {
 	ipv4addresses, ipv6addresses = getAddresses(internetTarget, resolvers[0])
 
 	// Default target internet tests
-	netTests["IPv4 Ping ("+defaultTarget+")"] = ping(defaultTarget, "ipv4")
+	netTests["IPv4 Ping ("+defaultTarget+")"] = ping(defaultTarget, "ipv4", adminPriv)
 
 	// Network connectivity
 	if ipv4addresses != "" {
 		netTests["IPv4 Connect ("+internetTarget+":80)"] = checkConnection(internetTarget, 80, "tcp4")
-		netTests["IPv4 Traceroute ("+internetTarget+":80)"] = traceroute(ipv4addresses, "ipv4", options.HealthCheck)
-		netTests["IPv4 Ping ("+internetTarget+")"] = ping(ipv4addresses, "ipv4")
+		netTests["IPv4 Traceroute ("+internetTarget+":80)"] = traceroute(ipv4addresses, "ipv4", options.HealthCheck, adminPriv)
+		netTests["IPv4 Ping ("+internetTarget+")"] = ping(ipv4addresses, "ipv4", adminPriv)
 	}
 	if ipv6addresses != "" {
 		netTests["IPv6 Connect ("+internetTarget+":80)"] = checkConnection(internetTarget, 80, "tcp6")
-		netTests["IPv6 Traceroute ("+internetTarget+":80)"] = traceroute(ipv6addresses, "ipv6", options.HealthCheck)
-		netTests["IPv6 Ping ("+internetTarget+")"] = ping(ipv6addresses, "ipv6")
+		netTests["IPv6 Traceroute ("+internetTarget+":80)"] = traceroute(ipv6addresses, "ipv6", options.HealthCheck, adminPriv)
+		netTests["IPv6 Ping ("+internetTarget+")"] = ping(ipv6addresses, "ipv6", adminPriv)
 
 	}
 
@@ -337,8 +338,8 @@ func getFirstCsvEntry(values string) string {
 
 // traceroute returns the traceroute of an IP address, both IPv6 and IPv4
 // NOTE: Only works if we have root permission
-func traceroute(assetIPs, networkType, format string) string {
-	if !iAmRoot() {
+func traceroute(assetIPs, networkType, format string, adminPriv bool) string {
+	if !adminPriv {
 		return "Traceroute: You must have root permissions to run this test"
 	}
 
@@ -449,14 +450,23 @@ func traceroute(assetIPs, networkType, format string) string {
 func iAmRoot() bool {
 	currentUser, err := user.Current()
 	if err != nil {
-		panic(err)
+		return false
 	}
-	return currentUser.Username == "root"
+	if currentUser.Username == "root" {
+		return true
+	}
+
+	u := strings.Split(currentUser.Username, "\\")
+	if len(u) > 1 && u[1] == "Administrator" {
+		return true
+	}
+
+	return false
 }
 
 // ping returns the ping of an IP address, both IPv6 and IPv4
-func ping(addresses, proto string) string {
-	if !iAmRoot() {
+func ping(addresses, proto string, adminPriv bool) string {
+	if !adminPriv {
 		return "Ping: You must have root permissions to run this test"
 	}
 	assetIP := getFirstCsvEntry(addresses)
