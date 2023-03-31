@@ -189,7 +189,7 @@ Polling for interactions and server registration only starts when a template use
 
 Next we arrive in the `RunEnumeration` function of the runner.
 
-`HostErrorsCache` is initialised which is used throughout the run of Nuclei enumeration to keep track of errors per host and skip further requests if the errors are greater than the provided threshold. The functionality for the error tracking cache is defined in [hosterrorscache.go](https://github.com/projectdiscovery/nuclei/blob/master/v2/pkg/protocols/common/hosterrorscache/hosterrorscache.go) and is pretty simplistic in nature.
+`HostErrorsCache` is initialised which is used throughout the run of Nuclei enumeration to keep track of errors per host and skip further requests if the errors are greater than the provided threshold. The functionality for the error tracking cache is defined in [hosterrorscache.go](https://github.com/projectdiscovery/nuclei/blob/main/v2/pkg/protocols/common/hosterrorscache/hosterrorscache.go) and is pretty simplistic in nature.
 
 Next the `WorkflowLoader` is initialised which used to load workflows. It exists in `v2/pkg/parsers/workflow_loader.go`
 

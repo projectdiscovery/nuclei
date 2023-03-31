@@ -2647,7 +2647,7 @@ Name is the name assigned to the headless action.
 
 This can be used to execute code, for instance in browser
 DOM using script action, and get the result in a variable
-which can be matched upon by nuclei. An Example template [here](https://github.com/projectdiscovery/nuclei-templates/blob/master/headless/prototype-pollution-check.yaml).
+which can be matched upon by nuclei. An Example template [here](https://github.com/projectdiscovery/nuclei-templates/blob/main/headless/prototype-pollution-check.yaml).
 
 </div>
 
