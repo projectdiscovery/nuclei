@@ -1214,7 +1214,7 @@ func init() {
 	ENGINEActionDoc.Fields[1].Name = "name"
 	ENGINEActionDoc.Fields[1].Type = "string"
 	ENGINEActionDoc.Fields[1].Note = ""
-	ENGINEActionDoc.Fields[1].Description = "Name is the name assigned to the headless action.\n\nThis can be used to execute code, for instance in browser\nDOM using script action, and get the result in a variable\nwhich can be matched upon by nuclei. An Example template [here](https://github.com/projectdiscovery/nuclei-templates/blob/master/headless/prototype-pollution-check.yaml)."
+	ENGINEActionDoc.Fields[1].Description = "Name is the name assigned to the headless action.\n\nThis can be used to execute code, for instance in browser\nDOM using script action, and get the result in a variable\nwhich can be matched upon by nuclei. An Example template [here](https://github.com/projectdiscovery/nuclei-templates/blob/main/headless/prototype-pollution-check.yaml)."
 	ENGINEActionDoc.Fields[1].Comments[encoder.LineComment] = "Name is the name assigned to the headless action."
 	ENGINEActionDoc.Fields[2].Name = "description"
 	ENGINEActionDoc.Fields[2].Type = "string"

@@ -29,9 +29,9 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/projectdiscovery/nuclei/blob/master/README.md">English</a> •
-  <a href="https://github.com/projectdiscovery/nuclei/blob/master/README_CN.md">中文</a> •
-  <a href="https://github.com/projectdiscovery/nuclei/blob/master/README_KR.md">Korean</a>
+  <a href="https://github.com/projectdiscovery/nuclei/blob/main/README.md">English</a> •
+  <a href="https://github.com/projectdiscovery/nuclei/blob/main/README_CN.md">中文</a> •
+  <a href="https://github.com/projectdiscovery/nuclei/blob/main/README_KR.md">Korean</a>
 </p>
 
 ---
@@ -349,7 +349,7 @@ Nuclei构建很简单，通过数百名安全研究员的社区模板，Nuclei�
 
 ### 许可证
 
-Nuclei使用[MIT许可证](https://github.com/projectdiscovery/nuclei/blob/master/LICENSE.md)
+Nuclei使用[MIT许可证](https://github.com/projectdiscovery/nuclei/blob/main/LICENSE.md)
 
 <h1 align="left">
   <a href="https://discord.gg/projectdiscovery"><img src="static/Join-Discord.png" width="380" alt="Join Discord"></a> <a href="https://nuclei.projectdiscovery.io"><img src="static/check-nuclei-documentation.png" width="380" alt="Check Nuclei Documentation"></a>

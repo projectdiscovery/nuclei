@@ -29,10 +29,10 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/projectdiscovery/nuclei/blob/master/README.md">English</a> •
-  <a href="https://github.com/projectdiscovery/nuclei/blob/master/README_CN.md">中文</a> •
-  <a href="https://github.com/projectdiscovery/nuclei/blob/master/README_KR.md">Korean</a> •
-  <a href="https://github.com/projectdiscovery/nuclei/blob/master/README_ID.md">Indonesia</a>
+  <a href="https://github.com/projectdiscovery/nuclei/blob/main/README.md">English</a> •
+  <a href="https://github.com/projectdiscovery/nuclei/blob/main/README_CN.md">中文</a> •
+  <a href="https://github.com/projectdiscovery/nuclei/blob/main/README_KR.md">Korean</a> •
+  <a href="https://github.com/projectdiscovery/nuclei/blob/main/README_ID.md">Indonesia</a>
 </p>
 
 ---
@@ -350,7 +350,7 @@ Terima kasih kepada semua komunitas yang luar biasa yang [berkontribusi untuk me
 
 ### Lisensi
 
-Nuclei didistribusikan di bawah [Lisensi MIT](https://github.com/projectdiscovery/nuclei/blob/master/LICENSE.md)
+Nuclei didistribusikan di bawah [Lisensi MIT](https://github.com/projectdiscovery/nuclei/blob/main/LICENSE.md)
 
 <h1 align="left">
   <a href="https://discord.gg/projectdiscovery"><img src="static/Join-Discord.png" width="380" alt="Join Discord"></a> <a href="https://nuclei.projectdiscovery.io"><img src="static/check-nuclei-documentation.png" width="380" alt="Cek Dokumentasi Nuclei"></a>
