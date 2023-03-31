@@ -128,7 +128,7 @@ OUTPUT:
    -srd, -store-resp-dir string  nuclei을 통해 전달된 모든 요청/응답을 사용자 지정 디렉터리에 저장(기본 "output")
    -silent                       결과만 표시
    -nc, -no-color                출력 내용 색상 비활성화 (ANSI escape codes)
-   -json                         JSONL(ines) 형식으로 출력
+   -j, -jsonl                    JSONL(ines) 형식으로 출력
    -irr, -include-rr             JSONL 출력에 요청/응답 쌍 포함(결과만)
    -nm, -no-meta                 cli 출력에서 결과 메타데이터 출력 비활성화
    -nts, -no-timestamp           cli 출력에서 결과 타임스탬프 출력 비활성화
