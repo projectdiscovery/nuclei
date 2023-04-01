@@ -20,8 +20,9 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/utils/vardump"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/headless/engine"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
-	"github.com/projectdiscovery/stringsutil"
 	fileutil "github.com/projectdiscovery/utils/file"
+	logutil "github.com/projectdiscovery/utils/log"
+	stringsutil "github.com/projectdiscovery/utils/strings"
 )
 
 func ConfigureOptions() error {
@@ -250,7 +251,7 @@ func configureOutput(options *types.Options) {
 	}
 
 	// disable standard logger (ref: https://github.com/golang/go/issues/19895)
-	// logutil.DisableDefaultLogger()
+	logutil.DisableDefaultLogger()
 }
 
 // loadResolvers loads resolvers from both user provided flag and file

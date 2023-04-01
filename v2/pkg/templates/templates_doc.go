@@ -42,7 +42,7 @@ func init() {
 	TemplateDoc.Type = "Template"
 	TemplateDoc.Comments[encoder.LineComment] = " Template is a YAML input file which defines all the requests and"
 	TemplateDoc.Description = "Template is a YAML input file which defines all the requests and\n other metadata for a template."
-	TemplateDoc.Fields = make([]encoder.Doc, 14)
+	TemplateDoc.Fields = make([]encoder.Doc, 16)
 	TemplateDoc.Fields[0].Name = "id"
 	TemplateDoc.Fields[0].Type = "string"
 	TemplateDoc.Fields[0].Note = ""
@@ -60,74 +60,84 @@ func init() {
 	TemplateDoc.Fields[2].Name = "requests"
 	TemplateDoc.Fields[2].Type = "[]http.Request"
 	TemplateDoc.Fields[2].Note = ""
-	TemplateDoc.Fields[2].Description = "Requests contains the http request to make in the template."
+	TemplateDoc.Fields[2].Description = "Requests contains the http request to make in the template.\nWARNING: 'requests' will be deprecated and will be removed in a future release. Please use 'http' instead."
 	TemplateDoc.Fields[2].Comments[encoder.LineComment] = "Requests contains the http request to make in the template."
 
 	TemplateDoc.Fields[2].AddExample("", exampleNormalHTTPRequest)
-	TemplateDoc.Fields[3].Name = "dns"
-	TemplateDoc.Fields[3].Type = "[]dns.Request"
+	TemplateDoc.Fields[3].Name = "http"
+	TemplateDoc.Fields[3].Type = "[]http.Request"
 	TemplateDoc.Fields[3].Note = ""
-	TemplateDoc.Fields[3].Description = "DNS contains the dns request to make in the template"
-	TemplateDoc.Fields[3].Comments[encoder.LineComment] = "DNS contains the dns request to make in the template"
-
-	TemplateDoc.Fields[3].AddExample("", exampleNormalDNSRequest)
-	TemplateDoc.Fields[4].Name = "file"
-	TemplateDoc.Fields[4].Type = "[]file.Request"
+	TemplateDoc.Fields[3].Description = "description: |\n   HTTP contains the http request to make in the template.\n examples:\n   - value: exampleNormalHTTPRequest\n RequestsWithHTTP is placeholder(internal) only, and should not be used instead use RequestsHTTP"
+	TemplateDoc.Fields[3].Comments[encoder.LineComment] = " description: |"
+	TemplateDoc.Fields[4].Name = "dns"
+	TemplateDoc.Fields[4].Type = "[]dns.Request"
 	TemplateDoc.Fields[4].Note = ""
-	TemplateDoc.Fields[4].Description = "File contains the file request to make in the template"
-	TemplateDoc.Fields[4].Comments[encoder.LineComment] = "File contains the file request to make in the template"
+	TemplateDoc.Fields[4].Description = "DNS contains the dns request to make in the template"
+	TemplateDoc.Fields[4].Comments[encoder.LineComment] = "DNS contains the dns request to make in the template"
 
-	TemplateDoc.Fields[4].AddExample("", exampleNormalFileRequest)
-	TemplateDoc.Fields[5].Name = "network"
-	TemplateDoc.Fields[5].Type = "[]network.Request"
+	TemplateDoc.Fields[4].AddExample("", exampleNormalDNSRequest)
+	TemplateDoc.Fields[5].Name = "file"
+	TemplateDoc.Fields[5].Type = "[]file.Request"
 	TemplateDoc.Fields[5].Note = ""
-	TemplateDoc.Fields[5].Description = "Network contains the network request to make in the template"
-	TemplateDoc.Fields[5].Comments[encoder.LineComment] = "Network contains the network request to make in the template"
+	TemplateDoc.Fields[5].Description = "File contains the file request to make in the template"
+	TemplateDoc.Fields[5].Comments[encoder.LineComment] = "File contains the file request to make in the template"
 
-	TemplateDoc.Fields[5].AddExample("", exampleNormalNetworkRequest)
-	TemplateDoc.Fields[6].Name = "headless"
-	TemplateDoc.Fields[6].Type = "[]headless.Request"
+	TemplateDoc.Fields[5].AddExample("", exampleNormalFileRequest)
+	TemplateDoc.Fields[6].Name = "network"
+	TemplateDoc.Fields[6].Type = "[]network.Request"
 	TemplateDoc.Fields[6].Note = ""
-	TemplateDoc.Fields[6].Description = "Headless contains the headless request to make in the template."
-	TemplateDoc.Fields[6].Comments[encoder.LineComment] = "Headless contains the headless request to make in the template."
-	TemplateDoc.Fields[7].Name = "ssl"
-	TemplateDoc.Fields[7].Type = "[]ssl.Request"
+	TemplateDoc.Fields[6].Description = "Network contains the network request to make in the template\nWARNING: 'network' will be deprecated and will be removed in a future release. Please use 'tcp' instead."
+	TemplateDoc.Fields[6].Comments[encoder.LineComment] = "Network contains the network request to make in the template"
+
+	TemplateDoc.Fields[6].AddExample("", exampleNormalNetworkRequest)
+	TemplateDoc.Fields[7].Name = "tcp"
+	TemplateDoc.Fields[7].Type = "[]network.Request"
 	TemplateDoc.Fields[7].Note = ""
-	TemplateDoc.Fields[7].Description = "SSL contains the SSL request to make in the template."
-	TemplateDoc.Fields[7].Comments[encoder.LineComment] = "SSL contains the SSL request to make in the template."
-	TemplateDoc.Fields[8].Name = "websocket"
-	TemplateDoc.Fields[8].Type = "[]websocket.Request"
+	TemplateDoc.Fields[7].Description = "description: |\n   TCP contains the network request to make in the template\n examples:\n   - value: exampleNormalNetworkRequest\n RequestsWithTCP is placeholder(internal) only, and should not be used instead use RequestsNetwork"
+	TemplateDoc.Fields[7].Comments[encoder.LineComment] = " description: |"
+	TemplateDoc.Fields[8].Name = "headless"
+	TemplateDoc.Fields[8].Type = "[]headless.Request"
 	TemplateDoc.Fields[8].Note = ""
-	TemplateDoc.Fields[8].Description = "Websocket contains the Websocket request to make in the template."
-	TemplateDoc.Fields[8].Comments[encoder.LineComment] = "Websocket contains the Websocket request to make in the template."
-	TemplateDoc.Fields[9].Name = "whois"
-	TemplateDoc.Fields[9].Type = "[]whois.Request"
+	TemplateDoc.Fields[8].Description = "Headless contains the headless request to make in the template."
+	TemplateDoc.Fields[8].Comments[encoder.LineComment] = "Headless contains the headless request to make in the template."
+	TemplateDoc.Fields[9].Name = "ssl"
+	TemplateDoc.Fields[9].Type = "[]ssl.Request"
 	TemplateDoc.Fields[9].Note = ""
-	TemplateDoc.Fields[9].Description = "WHOIS contains the WHOIS request to make in the template."
-	TemplateDoc.Fields[9].Comments[encoder.LineComment] = "WHOIS contains the WHOIS request to make in the template."
-	TemplateDoc.Fields[10].Name = "self-contained"
-	TemplateDoc.Fields[10].Type = "bool"
+	TemplateDoc.Fields[9].Description = "SSL contains the SSL request to make in the template."
+	TemplateDoc.Fields[9].Comments[encoder.LineComment] = "SSL contains the SSL request to make in the template."
+	TemplateDoc.Fields[10].Name = "websocket"
+	TemplateDoc.Fields[10].Type = "[]websocket.Request"
 	TemplateDoc.Fields[10].Note = ""
-	TemplateDoc.Fields[10].Description = "Self Contained marks Requests for the template as self-contained"
-	TemplateDoc.Fields[10].Comments[encoder.LineComment] = "Self Contained marks Requests for the template as self-contained"
-	TemplateDoc.Fields[11].Name = "stop-at-first-match"
-	TemplateDoc.Fields[11].Type = "bool"
+	TemplateDoc.Fields[10].Description = "Websocket contains the Websocket request to make in the template."
+	TemplateDoc.Fields[10].Comments[encoder.LineComment] = "Websocket contains the Websocket request to make in the template."
+	TemplateDoc.Fields[11].Name = "whois"
+	TemplateDoc.Fields[11].Type = "[]whois.Request"
 	TemplateDoc.Fields[11].Note = ""
-	TemplateDoc.Fields[11].Description = "Stop execution once first match is found"
-	TemplateDoc.Fields[11].Comments[encoder.LineComment] = "Stop execution once first match is found"
-	TemplateDoc.Fields[12].Name = "signature"
-	TemplateDoc.Fields[12].Type = "http.SignatureTypeHolder"
+	TemplateDoc.Fields[11].Description = "WHOIS contains the WHOIS request to make in the template."
+	TemplateDoc.Fields[11].Comments[encoder.LineComment] = "WHOIS contains the WHOIS request to make in the template."
+	TemplateDoc.Fields[12].Name = "self-contained"
+	TemplateDoc.Fields[12].Type = "bool"
 	TemplateDoc.Fields[12].Note = ""
-	TemplateDoc.Fields[12].Description = "Signature is the request signature method"
-	TemplateDoc.Fields[12].Comments[encoder.LineComment] = "Signature is the request signature method"
-	TemplateDoc.Fields[12].Values = []string{
+	TemplateDoc.Fields[12].Description = "Self Contained marks Requests for the template as self-contained"
+	TemplateDoc.Fields[12].Comments[encoder.LineComment] = "Self Contained marks Requests for the template as self-contained"
+	TemplateDoc.Fields[13].Name = "stop-at-first-match"
+	TemplateDoc.Fields[13].Type = "bool"
+	TemplateDoc.Fields[13].Note = ""
+	TemplateDoc.Fields[13].Description = "Stop execution once first match is found"
+	TemplateDoc.Fields[13].Comments[encoder.LineComment] = "Stop execution once first match is found"
+	TemplateDoc.Fields[14].Name = "signature"
+	TemplateDoc.Fields[14].Type = "http.SignatureTypeHolder"
+	TemplateDoc.Fields[14].Note = ""
+	TemplateDoc.Fields[14].Description = "Signature is the request signature method"
+	TemplateDoc.Fields[14].Comments[encoder.LineComment] = "Signature is the request signature method"
+	TemplateDoc.Fields[14].Values = []string{
 		"AWS",
 	}
-	TemplateDoc.Fields[13].Name = "variables"
-	TemplateDoc.Fields[13].Type = "variables.Variable"
-	TemplateDoc.Fields[13].Note = ""
-	TemplateDoc.Fields[13].Description = "Variables contains any variables for the current request."
-	TemplateDoc.Fields[13].Comments[encoder.LineComment] = "Variables contains any variables for the current request."
+	TemplateDoc.Fields[15].Name = "variables"
+	TemplateDoc.Fields[15].Type = "variables.Variable"
+	TemplateDoc.Fields[15].Note = ""
+	TemplateDoc.Fields[15].Description = "Variables contains any variables for the current request."
+	TemplateDoc.Fields[15].Comments[encoder.LineComment] = "Variables contains any variables for the current request."
 
 	MODELInfoDoc.Type = "model.Info"
 	MODELInfoDoc.Comments[encoder.LineComment] = " Info contains metadata information about a template"
@@ -322,6 +332,10 @@ func init() {
 		{
 			TypeName:  "Template",
 			FieldName: "requests",
+		},
+		{
+			TypeName:  "Template",
+			FieldName: "http",
 		},
 	}
 	HTTPRequestDoc.PartDefinitions = []encoder.KeyValue{
@@ -953,6 +967,10 @@ func init() {
 			TypeName:  "Template",
 			FieldName: "network",
 		},
+		{
+			TypeName:  "Template",
+			FieldName: "tcp",
+		},
 	}
 	NETWORKRequestDoc.PartDefinitions = []encoder.KeyValue{
 		{
@@ -1196,7 +1214,7 @@ func init() {
 	ENGINEActionDoc.Fields[1].Name = "name"
 	ENGINEActionDoc.Fields[1].Type = "string"
 	ENGINEActionDoc.Fields[1].Note = ""
-	ENGINEActionDoc.Fields[1].Description = "Name is the name assigned to the headless action.\n\nThis can be used to execute code, for instance in browser\nDOM using script action, and get the result in a variable\nwhich can be matched upon by nuclei. An Example template [here](https://github.com/projectdiscovery/nuclei-templates/blob/master/headless/prototype-pollution-check.yaml)."
+	ENGINEActionDoc.Fields[1].Description = "Name is the name assigned to the headless action.\n\nThis can be used to execute code, for instance in browser\nDOM using script action, and get the result in a variable\nwhich can be matched upon by nuclei. An Example template [here](https://github.com/projectdiscovery/nuclei-templates/blob/main/headless/prototype-pollution-check.yaml)."
 	ENGINEActionDoc.Fields[1].Comments[encoder.LineComment] = "Name is the name assigned to the headless action."
 	ENGINEActionDoc.Fields[2].Name = "description"
 	ENGINEActionDoc.Fields[2].Type = "string"

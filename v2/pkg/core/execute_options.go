@@ -65,7 +65,7 @@ func (e *Engine) ExecuteScanWithOpts(templatesList []*templates.Template, target
 	switch e.options.ScanStrategy {
 	case scanstrategy.TemplateSpray.String():
 		strategyResult = e.executeTemplateSpray(filtered, target)
-	case scanstrategy.TemplateSpray.String():
+	case scanstrategy.HostSpray.String():
 		strategyResult = e.executeHostSpray(filtered, target)
 	}
 
