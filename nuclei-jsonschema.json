@@ -26,6 +26,19 @@
           "type": "number",
           "title": "cvss score for the template",
           "description": "CVSS Score for the template"
+        },
+        "epss-score": {
+          "type": "number",
+          "title": "epss score for the template",
+          "description": "EPSS Score for the template"
+        },
+        "cpe": {
+          "type": "string",
+          "title": "cpe for the template",
+          "description": "CPE for the template",
+          "examples": [
+            "cpe:/a:vendor:product:version"
+          ]
         }
       },
       "additionalProperties": false,
