@@ -96,6 +96,11 @@ type Classification struct {
 	//   - value: "\"9.8\""
 	CVSSScore float64 `json:"cvss-score,omitempty" yaml:"cvss-score,omitempty" jsonschema:"title=cvss score for the template,description=CVSS Score for the template,example=9.8"`
 	// description: |
+	//   EPSS Score for the template.
+	// examples:
+	//   - value: "\"0.42509\""
+	EPSSScore float64 `json:"epss-score,omitempty" yaml:"epss-score,omitempty" jsonschema:"title=epss score for the template,description=EPSS Score for the template,example=0.42509"`
+	// description: |
 	//   CPE for the template.
 	// examples:
 	//   - value: "\"cpe:/a:vendor:product:version\""
