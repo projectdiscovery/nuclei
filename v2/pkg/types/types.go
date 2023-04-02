@@ -230,10 +230,12 @@ type Options struct {
 	NoColor bool
 	// UpdateTemplates updates the templates installed at startup
 	UpdateTemplates bool
-	// JSON writes json output to files
-	JSON bool
+	// JSON writes json line output to files
+	JSONL bool
 	// JSONRequests writes requests/responses for matches in JSON output
 	JSONRequests bool
+	// JSONExport is the file to export JSON output format to
+	JSONExport string
 	// Cloud enables nuclei cloud scan execution
 	Cloud bool
 	// EnableProgressBar enables progress bar
