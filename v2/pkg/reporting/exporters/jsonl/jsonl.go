@@ -56,13 +56,16 @@ func (exporter *Exporter) Close() error {
 
 	// Loop through the rows and convert each to a JSON byte array and write to file
 	for _, row := range exporter.rows {
-		// Convert the row to JSON byte array
+		// Convert the row to JSON byte array and append a trailing newline. This is treated as a single line in JSONL
 		obj, err := json.Marshal(row)
 		if err != nil {
 			return errors.Wrap(err, "failed to generate row for JSONL report")
 		}
 
-		// Attempt to append the JSON line to file specified in options.JSONExport
+		// Add a trailing newline to the JSON byte array to confirm with the JSONL format
+		obj = append(obj, '\n')
+
+		// Attempt to append the JSON line to file specified in options.JSONLExport
 		if _, err = f.Write(obj); err != nil {
 			return errors.Wrap(err, "failed to append JSONL line")
 		}
