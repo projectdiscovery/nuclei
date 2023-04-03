@@ -3,6 +3,7 @@ package reporting
 import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/reporting/exporters/es"
 	"github.com/projectdiscovery/nuclei/v2/pkg/reporting/exporters/jsonexporter"
+	"github.com/projectdiscovery/nuclei/v2/pkg/reporting/exporters/jsonl"
 	"github.com/projectdiscovery/nuclei/v2/pkg/reporting/exporters/markdown"
 	"github.com/projectdiscovery/nuclei/v2/pkg/reporting/exporters/sarif"
 	"github.com/projectdiscovery/nuclei/v2/pkg/reporting/exporters/splunk"
@@ -34,6 +35,8 @@ type Options struct {
 	SplunkExporter *splunk.Options `yaml:"splunkhec"`
 	// JSONExporter contains configuration options for JSON Exporter Module
 	JSONExporter *jsonexporter.Options `yaml:"json"`
+	// JSONLExporter contains configuration options for JSONL Exporter Module
+	JSONLExporter *jsonl.Options `yaml:"jsonl"`
 
 	HttpClient *retryablehttp.Client `yaml:"-"`
 }

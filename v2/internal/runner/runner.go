@@ -6,7 +6,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	json_exporter "github.com/projectdiscovery/nuclei/v2/pkg/reporting/exporters/jsonexporter"
 	"io"
 	"net/http"
 	_ "net/http/pprof"
@@ -50,6 +49,8 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/headless/engine"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/http/httpclientpool"
 	"github.com/projectdiscovery/nuclei/v2/pkg/reporting"
+	json_exporter "github.com/projectdiscovery/nuclei/v2/pkg/reporting/exporters/jsonexporter"
+	"github.com/projectdiscovery/nuclei/v2/pkg/reporting/exporters/jsonl"
 	"github.com/projectdiscovery/nuclei/v2/pkg/reporting/exporters/markdown"
 	"github.com/projectdiscovery/nuclei/v2/pkg/reporting/exporters/sarif"
 	"github.com/projectdiscovery/nuclei/v2/pkg/templates"
@@ -338,6 +339,15 @@ func createReportingOptions(options *types.Options) (*reporting.Options, error) 
 			reportingOptions.JSONExporter = &json_exporter.Options{File: options.JSONExport}
 		}
 	}
+	if options.JSONLExport != "" {
+		if reportingOptions != nil {
+			reportingOptions.JSONLExporter = &jsonl.Options{File: options.JSONLExport}
+		} else {
+			reportingOptions = &reporting.Options{}
+			reportingOptions.JSONLExporter = &jsonl.Options{File: options.JSONLExport}
+		}
+	}
+
 	return reportingOptions, nil
 }
 

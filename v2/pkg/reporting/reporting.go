@@ -2,6 +2,7 @@ package reporting
 
 import (
 	json_exporter "github.com/projectdiscovery/nuclei/v2/pkg/reporting/exporters/jsonexporter"
+	"github.com/projectdiscovery/nuclei/v2/pkg/reporting/exporters/jsonl"
 	"os"
 	"path/filepath"
 
@@ -136,6 +137,13 @@ func New(options *Options, db string) (Client, error) {
 	}
 	if options.JSONExporter != nil {
 		exporter, err := json_exporter.New(options.JSONExporter)
+		if err != nil {
+			return nil, errorutil.NewWithErr(err).Wrap(ErrExportClientCreation)
+		}
+		client.exporters = append(client.exporters, exporter)
+	}
+	if options.JSONLExporter != nil {
+		exporter, err := jsonl.New(options.JSONLExporter)
 		if err != nil {
 			return nil, errorutil.NewWithErr(err).Wrap(ErrExportClientCreation)
 		}
