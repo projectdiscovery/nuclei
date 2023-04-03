@@ -62,7 +62,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.30.5
 	github.com/docker/go-units v0.5.0
 	github.com/fatih/structs v1.1.0
-	github.com/go-git/go-git/v5 v5.5.2
+	github.com/go-git/go-git/v5 v5.6.1
 	github.com/h2non/filetype v1.1.3
 	github.com/klauspost/compress v1.16.0
 	github.com/labstack/echo/v4 v4.10.2
@@ -118,7 +118,7 @@ require (
 	github.com/minio/selfupdate v0.6.0 // indirect
 	github.com/muesli/reflow v0.3.0 // indirect
 	github.com/muesli/termenv v0.15.1 // indirect
-	github.com/pjbgf/sha1cd v0.2.3 // indirect
+	github.com/pjbgf/sha1cd v0.3.0 // indirect
 	github.com/projectdiscovery/asnmap v1.0.2 // indirect
 	github.com/projectdiscovery/cdncheck v0.0.4-0.20220413175814-b47bc2d578b1 // indirect
 	github.com/projectdiscovery/freeport v0.0.4 // indirect
@@ -222,8 +222,8 @@ require (
 
 require (
 	github.com/Microsoft/go-winio v0.5.2 // indirect
-	github.com/ProtonMail/go-crypto v0.0.0-20221026131551-cf6655e29de4 // indirect
-	github.com/acomagu/bufpipe v1.0.3 // indirect
+	github.com/ProtonMail/go-crypto v0.0.0-20230217124315-7d5c6f04bbb8 // indirect
+	github.com/acomagu/bufpipe v1.0.4 // indirect
 	github.com/alecthomas/chroma v0.10.0
 	github.com/aws/aws-sdk-go-v2/feature/ec2/imds v1.13.0 // indirect
 	github.com/aws/aws-sdk-go-v2/internal/configsources v1.1.30 // indirect
@@ -236,7 +236,7 @@ require (
 	github.com/aws/smithy-go v1.13.5 // indirect
 	github.com/emirpasic/gods v1.18.1 // indirect
 	github.com/go-git/gcfg v1.5.0 // indirect
-	github.com/go-git/go-billy/v5 v5.4.0 // indirect
+	github.com/go-git/go-billy/v5 v5.4.1 // indirect
 	github.com/golang-jwt/jwt v3.2.2+incompatible // indirect
 	github.com/hashicorp/golang-lru v0.5.4 // indirect
 	github.com/imdario/mergo v0.3.13 // indirect
