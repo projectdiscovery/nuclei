@@ -107,6 +107,14 @@ func (r *requestGenerator) Make(ctx context.Context, input *contextargs.Context,
 	// allVars contains all variables from all sources
 	allVars := generators.MergeMaps(dynamicValues, defaultReqVars, optionVars)
 
+	// Evaluate payload variables
+	// eg: payload variables can be username: jon.doe@{{Hostname}}
+	for payloadName, payloadValue := range payloads {
+		payloads[payloadName], err = expressions.Evaluate(types.ToString(payloadValue), allVars)
+		if err != nil {
+			return nil, ErrEvalExpression.Wrap(err).WithTag("http")
+		}
+	}
 	// finalVars contains allVars and any generator/fuzzing specific payloads
 	// payloads used in generator should be given the most preference
 	finalVars := generators.MergeMaps(allVars, payloads)
