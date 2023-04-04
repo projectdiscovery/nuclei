@@ -128,5 +128,7 @@ func expectResultsCount(results []string, expectedNumber int) error {
 }
 
 func normalizeSplit(str string) []string {
-	return strings.Split(strings.TrimSpace(str), ",")
+	return strings.FieldsFunc(str, func(r rune) bool {
+		return r == ','
+	})
 }

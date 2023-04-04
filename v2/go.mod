@@ -20,16 +20,16 @@ require (
 	github.com/julienschmidt/httprouter v1.3.0
 	github.com/karlseguin/ccache v2.0.3+incompatible
 	github.com/logrusorgru/aurora v2.0.3+incompatible
-	github.com/miekg/dns v1.1.52
+	github.com/miekg/dns v1.1.53
 	github.com/olekukonko/tablewriter v0.0.5
 	github.com/pkg/errors v0.9.1
 	github.com/projectdiscovery/clistats v0.0.12
 	github.com/projectdiscovery/fastdialer v0.0.24
 	github.com/projectdiscovery/hmap v0.0.11
-	github.com/projectdiscovery/interactsh v1.1.2
+	github.com/projectdiscovery/interactsh v1.1.1-0.20230403200718-191eb81c4b0d
 	github.com/projectdiscovery/rawhttp v0.1.10
 	github.com/projectdiscovery/retryabledns v1.0.21
-	github.com/projectdiscovery/retryablehttp-go v1.0.13
+	github.com/projectdiscovery/retryablehttp-go v1.0.14
 	github.com/projectdiscovery/stringsutil v0.0.2 // indirect
 	github.com/projectdiscovery/yamldoc-go v1.0.4
 	github.com/remeh/sizedwaitgroup v1.0.0
@@ -43,7 +43,7 @@ require (
 	github.com/valyala/fasttemplate v1.2.2
 	github.com/weppos/publicsuffix-go v0.30.0
 	github.com/xanzy/go-gitlab v0.80.2
-	go.uber.org/multierr v1.10.0
+	go.uber.org/multierr v1.11.0
 	golang.org/x/net v0.8.0
 	golang.org/x/oauth2 v0.6.0
 	golang.org/x/text v0.8.0
