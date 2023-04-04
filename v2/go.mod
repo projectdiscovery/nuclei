@@ -42,7 +42,7 @@ require (
 	github.com/tj/go-update v2.2.5-0.20200519121640-62b4b798fd68+incompatible
 	github.com/valyala/fasttemplate v1.2.2
 	github.com/weppos/publicsuffix-go v0.30.0
-	github.com/xanzy/go-gitlab v0.80.2
+	github.com/xanzy/go-gitlab v0.81.0
 	go.uber.org/multierr v1.11.0
 	golang.org/x/net v0.8.0
 	golang.org/x/oauth2 v0.6.0
@@ -170,7 +170,7 @@ require (
 	github.com/gosuri/uilive v0.0.4 // indirect
 	github.com/gosuri/uiprogress v0.0.1 // indirect
 	github.com/hashicorp/go-cleanhttp v0.5.2 // indirect
-	github.com/hashicorp/go-retryablehttp v0.7.1 // indirect
+	github.com/hashicorp/go-retryablehttp v0.7.2 // indirect
 	github.com/hdm/jarm-go v0.0.7 // indirect
 	github.com/iancoleman/orderedmap v0.0.0-20190318233801-ac98e3ecb4b0 // indirect
 	github.com/itchyny/timefmt-go v0.1.5 // indirect
