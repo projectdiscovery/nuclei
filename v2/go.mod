@@ -68,7 +68,7 @@ require (
 	github.com/labstack/echo/v4 v4.10.2
 	github.com/mholt/archiver v3.1.1+incompatible
 	github.com/mitchellh/go-homedir v1.1.0
-	github.com/projectdiscovery/dsl v0.0.5-0.20230328190851-15d12ab4c5e4
+	github.com/projectdiscovery/dsl v0.0.5-0.20230404071417-b1505249a5d3
 	github.com/projectdiscovery/fasttemplate v0.0.2
 	github.com/projectdiscovery/goflags v0.1.8
 	github.com/projectdiscovery/gologger v1.1.8
@@ -122,6 +122,7 @@ require (
 	github.com/projectdiscovery/asnmap v1.0.2 // indirect
 	github.com/projectdiscovery/cdncheck v0.0.4-0.20220413175814-b47bc2d578b1 // indirect
 	github.com/projectdiscovery/freeport v0.0.4 // indirect
+	github.com/sashabaranov/go-openai v1.5.8 // indirect
 	github.com/skeema/knownhosts v1.1.0 // indirect
 	github.com/tidwall/btree v1.6.0 // indirect
 	github.com/tidwall/buntdb v1.2.10 // indirect
