@@ -1,7 +1,7 @@
-id: default-matcher-condition
+id: interactsh-matcher-or-condition
 
 info:
-  name: default-matcher-condition
+  name: interactsh-matcher-or-condition
   author: pdteam
   severity: info
 
@@ -11,6 +11,7 @@ requests:
         GET /?action=curltest&url={{interactsh-url}} HTTP/1.1
         Host: {{Hostname}}
 
+# By default matchers-condition is or so no need to specify
     matchers:
       - type: word
         part: interactsh_protocol

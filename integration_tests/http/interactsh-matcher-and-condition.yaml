@@ -1,0 +1,24 @@
+id: interactsh-matcher-and-condition
+
+info:
+  name: interactsh-matcher-and-condition
+  author: pdteam
+  severity: info
+
+requests:
+  - raw:
+      - |
+        GET /?action=curltest&url={{interactsh-url}} HTTP/1.1
+        Host: {{Hostname}}
+
+    matchers-condition: and
+    matchers:
+      - type: word
+        part: interactsh_protocol
+        words:
+          - "dns"
+        negative: true
+
+      - type: status
+        status:
+          - 200

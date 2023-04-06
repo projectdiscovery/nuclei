@@ -71,7 +71,8 @@ var httpTestcases = map[string]testutils.TestCase{
 	"http/get-without-scheme.yaml":                  &httpGetWithoutScheme{},
 	"http/cl-body-without-header.yaml":              &httpCLBodyWithoutHeader{},
 	"http/cl-body-with-header.yaml":                 &httpCLBodyWithHeader{},
-	"http/default-matcher-condition.yaml":           &httpDefaultMatcherCondition{},
+	"http/interactsh-matcher-or-condition.yaml":     &httpInteractshMatcherOrCondition{},
+	"http/interactsh-matcher-and-condition.yaml":    &httpInteractshMatcherAndCondition{},
 }
 
 type httpInteractshRequest struct{}
@@ -79,11 +80,12 @@ type httpInteractshRequest struct{}
 // Execute executes a test case and returns an error if occurred
 func (h *httpInteractshRequest) Execute(filePath string) error {
 	router := httprouter.New()
+	var routerErr error
 	router.GET("/", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 		value := r.Header.Get("url")
 		if value != "" {
-			if resp, _ := retryablehttp.DefaultClient().Get(value); resp != nil {
-				resp.Body.Close()
+			if _, err := retryablehttp.DefaultClient().Get(value); err != nil {
+				routerErr = err
 			}
 		}
 	})
@@ -94,14 +96,17 @@ func (h *httpInteractshRequest) Execute(filePath string) error {
 	if err != nil {
 		return err
 	}
+	if routerErr != nil {
+		return errorutil.NewWithTag("interactsh", "failed to probe interactsh payload").Wrap(err)
+	}
 
 	return expectResultsCount(results, 1)
 }
 
-type httpDefaultMatcherCondition struct{}
+type httpInteractshMatcherOrCondition struct{}
 
 // Execute executes a test case and returns an error if occurred
-func (d *httpDefaultMatcherCondition) Execute(filePath string) error {
+func (d *httpInteractshMatcherOrCondition) Execute(filePath string) error {
 	// to simulate matcher-condition `or`
 	// - template should be run twice and vulnerable server should send response that fits for that specific run
 	router := httprouter.New()
@@ -140,6 +145,38 @@ func (d *httpDefaultMatcherCondition) Execute(filePath string) error {
 	}
 	if err := expectResultsCount(results, 1); err != nil {
 		return err
+	}
+	return nil
+}
+
+type httpInteractshMatcherAndCondition struct{}
+
+// Execute executes a test case and returns an error if occurred
+func (d *httpInteractshMatcherAndCondition) Execute(filePath string) error {
+	router := httprouter.New()
+	var routerErr error
+	// test endpoint to match both matcher conditions
+	router.GET("/", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+		value := r.URL.Query().Get("url")
+		if value != "" {
+			if _, err := retryablehttp.DefaultClient().Get("https://" + value); err != nil {
+				routerErr = err
+			}
+		}
+		w.WriteHeader(http.StatusOK)
+	})
+	ts := httptest.NewServer(router)
+	defer ts.Close()
+
+	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, ts.URL, debug)
+	if err != nil {
+		return err
+	}
+	if err := expectResultsCount(results, 1); err != nil {
+		return err
+	}
+	if routerErr != nil {
+		return errorutil.NewWithErr(routerErr).Msgf("failed to send http request to interactsh server")
 	}
 	return nil
 }

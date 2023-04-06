@@ -58,7 +58,6 @@ func main() {
 	}
 
 	if runProtocol != "" {
-		debug = true
 		debugTests()
 		os.Exit(1)
 	}
@@ -84,7 +83,7 @@ func debugTests() {
 		if runTemplate != "" && !strings.Contains(tpath, runTemplate) {
 			continue
 		}
-		if err := testcase.Execute(tpath); err != nil {
+		if _, err := execute(testcase, tpath); err != nil {
 			fmt.Printf("\n%v", err.Error())
 		}
 	}
