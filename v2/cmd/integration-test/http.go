@@ -1050,7 +1050,7 @@ type httpVariables struct{}
 func (h *httpVariables) Execute(filePath string) error {
 	router := httprouter.New()
 	router.GET("/", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-		fmt.Fprintf(w, "%s\n%s", r.Header.Get("Test"), r.Header.Get("Another"))
+		fmt.Fprintf(w, "%s\n%s\n%s", r.Header.Get("Test"), r.Header.Get("Another"), r.Header.Get("Email"))
 	})
 	ts := httptest.NewServer(router)
 	defer ts.Close()
