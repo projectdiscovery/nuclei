@@ -10,7 +10,7 @@ import (
 
 const (
 	// TemplatesRepoURL is the URL for files in nuclei-templates repository
-	TemplatesRepoURL = "https://github.com/projectdiscovery/nuclei-templates/blob/master/"
+	TemplatesRepoURL = "https://github.com/projectdiscovery/nuclei-templates/blob/main/"
 )
 
 var configData *config.Config

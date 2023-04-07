@@ -35,7 +35,7 @@ var DefaultOptions = &types.Options{
 	Verbose:                    false,
 	NoColor:                    true,
 	UpdateTemplates:            false,
-	JSON:                       false,
+	JSONL:                      false,
 	JSONRequests:               false,
 	EnableProgressBar:          false,
 	TemplatesVersion:           false,

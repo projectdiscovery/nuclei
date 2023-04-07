@@ -795,6 +795,52 @@ cvss-score: "9.8"
 
 <hr />
 
+<div class="dd">
+
+<code>epss-score</code>  <i>float64</i>
+
+</div>
+<div class="dt">
+
+EPSS Score for the template.
+
+
+
+Examples:
+
+
+```yaml
+epss-score: "0.42509"
+```
+
+
+</div>
+
+<hr />
+
+<div class="dd">
+
+<code>cpe</code>  <i>string</i>
+
+</div>
+<div class="dt">
+
+CPE for the template.
+
+
+
+Examples:
+
+
+```yaml
+cpe: cpe:/a:vendor:product:version
+```
+
+
+</div>
+
+<hr />
+
 
 
 
@@ -2647,7 +2693,7 @@ Name is the name assigned to the headless action.
 
 This can be used to execute code, for instance in browser
 DOM using script action, and get the result in a variable
-which can be matched upon by nuclei. An Example template [here](https://github.com/projectdiscovery/nuclei-templates/blob/master/headless/prototype-pollution-check.yaml).
+which can be matched upon by nuclei. An Example template [here](https://github.com/projectdiscovery/nuclei-templates/blob/main/headless/prototype-pollution-check.yaml).
 
 </div>
 

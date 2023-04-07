@@ -293,7 +293,7 @@ func init() {
 			FieldName: "classification",
 		},
 	}
-	MODELClassificationDoc.Fields = make([]encoder.Doc, 4)
+	MODELClassificationDoc.Fields = make([]encoder.Doc, 6)
 	MODELClassificationDoc.Fields[0].Name = "cve-id"
 	MODELClassificationDoc.Fields[0].Type = "stringslice.StringSlice"
 	MODELClassificationDoc.Fields[0].Note = ""
@@ -322,6 +322,20 @@ func init() {
 	MODELClassificationDoc.Fields[3].Comments[encoder.LineComment] = "CVSS Score for the template."
 
 	MODELClassificationDoc.Fields[3].AddExample("", "9.8")
+	MODELClassificationDoc.Fields[4].Name = "epss-score"
+	MODELClassificationDoc.Fields[4].Type = "float64"
+	MODELClassificationDoc.Fields[4].Note = ""
+	MODELClassificationDoc.Fields[4].Description = "EPSS Score for the template."
+	MODELClassificationDoc.Fields[4].Comments[encoder.LineComment] = "EPSS Score for the template."
+
+	MODELClassificationDoc.Fields[4].AddExample("", "0.42509")
+	MODELClassificationDoc.Fields[5].Name = "cpe"
+	MODELClassificationDoc.Fields[5].Type = "string"
+	MODELClassificationDoc.Fields[5].Note = ""
+	MODELClassificationDoc.Fields[5].Description = "CPE for the template."
+	MODELClassificationDoc.Fields[5].Comments[encoder.LineComment] = "CPE for the template."
+
+	MODELClassificationDoc.Fields[5].AddExample("", "cpe:/a:vendor:product:version")
 
 	HTTPRequestDoc.Type = "http.Request"
 	HTTPRequestDoc.Comments[encoder.LineComment] = " Request contains a http request to be made from a template"
@@ -1214,7 +1228,7 @@ func init() {
 	ENGINEActionDoc.Fields[1].Name = "name"
 	ENGINEActionDoc.Fields[1].Type = "string"
 	ENGINEActionDoc.Fields[1].Note = ""
-	ENGINEActionDoc.Fields[1].Description = "Name is the name assigned to the headless action.\n\nThis can be used to execute code, for instance in browser\nDOM using script action, and get the result in a variable\nwhich can be matched upon by nuclei. An Example template [here](https://github.com/projectdiscovery/nuclei-templates/blob/master/headless/prototype-pollution-check.yaml)."
+	ENGINEActionDoc.Fields[1].Description = "Name is the name assigned to the headless action.\n\nThis can be used to execute code, for instance in browser\nDOM using script action, and get the result in a variable\nwhich can be matched upon by nuclei. An Example template [here](https://github.com/projectdiscovery/nuclei-templates/blob/main/headless/prototype-pollution-check.yaml)."
 	ENGINEActionDoc.Fields[1].Comments[encoder.LineComment] = "Name is the name assigned to the headless action."
 	ENGINEActionDoc.Fields[2].Name = "description"
 	ENGINEActionDoc.Fields[2].Type = "string"
