@@ -1,10 +1,11 @@
 package reporting
 
 import (
-	json_exporter "github.com/projectdiscovery/nuclei/v2/pkg/reporting/exporters/jsonexporter"
-	"github.com/projectdiscovery/nuclei/v2/pkg/reporting/exporters/jsonl"
 	"os"
 	"path/filepath"
+
+	json_exporter "github.com/projectdiscovery/nuclei/v2/pkg/reporting/exporters/jsonexporter"
+	"github.com/projectdiscovery/nuclei/v2/pkg/reporting/exporters/jsonl"
 
 	"go.uber.org/multierr"
 	"gopkg.in/yaml.v2"
@@ -197,6 +198,8 @@ func CreateConfigIfNotExists() error {
 		SarifExporter:         &sarif.Options{},
 		ElasticsearchExporter: &es.Options{},
 		SplunkExporter:        &splunk.Options{},
+		JSONExporter:          &json_exporter.Options{},
+		JSONLExporter:         &jsonl.Options{},
 	}
 	reportingFile, err := os.Create(reportingConfig)
 	if err != nil {
