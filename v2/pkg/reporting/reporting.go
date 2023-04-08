@@ -1,9 +1,11 @@
 package reporting
 
 import (
-	json_exporter "github.com/projectdiscovery/nuclei/v2/pkg/reporting/exporters/jsonexporter"
 	"os"
 	"path/filepath"
+
+	json_exporter "github.com/projectdiscovery/nuclei/v2/pkg/reporting/exporters/jsonexporter"
+	"github.com/projectdiscovery/nuclei/v2/pkg/reporting/exporters/jsonl"
 
 	"go.uber.org/multierr"
 	"gopkg.in/yaml.v2"
@@ -141,6 +143,13 @@ func New(options *Options, db string) (Client, error) {
 		}
 		client.exporters = append(client.exporters, exporter)
 	}
+	if options.JSONLExporter != nil {
+		exporter, err := jsonl.New(options.JSONLExporter)
+		if err != nil {
+			return nil, errorutil.NewWithErr(err).Wrap(ErrExportClientCreation)
+		}
+		client.exporters = append(client.exporters, exporter)
+	}
 	if options.ElasticsearchExporter != nil {
 		options.ElasticsearchExporter.HttpClient = options.HttpClient
 		exporter, err := es.New(options.ElasticsearchExporter)
@@ -189,6 +198,8 @@ func CreateConfigIfNotExists() error {
 		SarifExporter:         &sarif.Options{},
 		ElasticsearchExporter: &es.Options{},
 		SplunkExporter:        &splunk.Options{},
+		JSONExporter:          &json_exporter.Options{},
+		JSONLExporter:         &jsonl.Options{},
 	}
 	reportingFile, err := os.Create(reportingConfig)
 	if err != nil {

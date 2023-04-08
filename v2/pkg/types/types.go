@@ -236,6 +236,8 @@ type Options struct {
 	JSONRequests bool
 	// JSONExport is the file to export JSON output format to
 	JSONExport string
+	// JSONLExport is the file to export JSONL output format to
+	JSONLExport string
 	// Cloud enables nuclei cloud scan execution
 	Cloud bool
 	// EnableProgressBar enables progress bar
