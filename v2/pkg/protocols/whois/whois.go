@@ -16,6 +16,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/contextargs"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/generators"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/helpers/eventcreator"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/helpers/responsehighlighter"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/replacer"
@@ -23,6 +24,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/whois/rdapclientpool"
 	templateTypes "github.com/projectdiscovery/nuclei/v2/pkg/templates/types"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
+	urlutil "github.com/projectdiscovery/utils/url"
 )
 
 // Request is a request for the WHOIS protocol
@@ -85,7 +87,11 @@ func (request *Request) GetID() string {
 // ExecuteWithResults executes the protocol requests and returns results instead of writing them.
 func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicValues, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
 	// generate variables
-	variables := generateVariables(input.MetaInput.Input)
+	defaultVars := generateVariables(input.MetaInput.Input)
+	optionVars := generators.BuildPayloadFromOptions(request.options.Options)
+	vars := request.options.Variables.Evaluate(generators.MergeMaps(defaultVars, optionVars, dynamicValues))
+
+	variables := generators.MergeMaps(vars, defaultVars, optionVars, dynamicValues)
 
 	if vardump.EnableVarDump {
 		gologger.Debug().Msgf("Protocol request variables: \n%s\n", vardump.DumpVariables(variables))
@@ -183,7 +189,7 @@ func (request *Request) Type() templateTypes.ProtocolType {
 func generateVariables(input string) map[string]interface{} {
 	var domain string
 
-	parsed, err := url.Parse(input)
+	parsed, err := urlutil.Parse(input)
 	if err != nil {
 		return map[string]interface{}{"Input": input}
 	}
