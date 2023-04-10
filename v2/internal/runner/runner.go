@@ -269,7 +269,7 @@ func New(options *types.Options) (*Runner, error) {
 		opts.ServerURL = options.InteractshURL
 	}
 	opts.Authorization = options.InteractshToken
-	opts.CacheSize = int64(options.InteractionsCacheSize)
+	opts.CacheSize = options.InteractionsCacheSize
 	opts.Eviction = time.Duration(options.InteractionsEviction) * time.Second
 	opts.CooldownPeriod = time.Duration(options.InteractionsCoolDownPeriod) * time.Second
 	opts.PollDuration = time.Duration(options.InteractionsPollDuration) * time.Second

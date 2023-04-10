@@ -12,7 +12,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/karlseguin/ccache"
+	"github.com/Mzack9999/gcache"
 	"github.com/pkg/errors"
 
 	"github.com/projectdiscovery/gologger"
@@ -24,7 +24,6 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/helpers/responsehighlighter"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/helpers/writer"
 	"github.com/projectdiscovery/nuclei/v2/pkg/reporting"
-	"github.com/projectdiscovery/nuclei/v2/pkg/utils/atomcache"
 	"github.com/projectdiscovery/retryablehttp-go"
 )
 
@@ -33,13 +32,13 @@ type Client struct {
 	// interactsh is a client for interactsh server.
 	interactsh *client.Client
 	// requests is a stored cache for interactsh-url->request-event data.
-	requests *atomcache.Cache
+	requests gcache.Cache[string, *RequestData]
 	// interactions is a stored cache for interactsh-interaction->interactsh-url data
-	interactions *atomcache.Cache
+	interactions gcache.Cache[string, []*server.Interaction]
 	// matchedTemplates is a stored cache to track matched templates
-	matchedTemplates *atomcache.Cache
+	matchedTemplates gcache.Cache[string, bool]
 	// interactshURLs is a stored cache to track track multiple interactsh markers
-	interactshURLs *atomcache.Cache
+	interactshURLs gcache.Cache[string, string]
 
 	options          *Options
 	eviction         time.Duration
@@ -73,7 +72,7 @@ type Options struct {
 	Authorization string
 	// CacheSize is the numbers of requests to keep track of at a time.
 	// Older items are discarded in LRU manner in favor of new requests.
-	CacheSize int64
+	CacheSize int
 	// Eviction is the period of time after which to automatically discard
 	// interaction requests.
 	Eviction time.Duration
@@ -107,16 +106,10 @@ const defaultMaxInteractionsCount = 5000
 
 // New returns a new interactsh server client
 func New(options *Options) (*Client, error) {
-	configure := ccache.Configure()
-	configure = configure.MaxSize(options.CacheSize)
-	cache := atomcache.NewWithCache(ccache.New(configure))
-
-	interactionsCfg := ccache.Configure()
-	interactionsCfg = interactionsCfg.MaxSize(defaultMaxInteractionsCount)
-	interactionsCache := atomcache.NewWithCache(ccache.New(interactionsCfg))
-
-	matchedTemplateCache := atomcache.NewWithCache(ccache.New(ccache.Configure().MaxSize(defaultMaxInteractionsCount)))
-	interactshURLCache := atomcache.NewWithCache(ccache.New(ccache.Configure().MaxSize(defaultMaxInteractionsCount)))
+	requestsCache := gcache.New[string, *RequestData](options.CacheSize).LRU().Build()
+	interactionsCache := gcache.New[string, []*server.Interaction](defaultMaxInteractionsCount).LRU().Build()
+	matchedTemplateCache := gcache.New[string, bool](defaultMaxInteractionsCount).LRU().Build()
+	interactshURLCache := gcache.New[string, string](defaultMaxInteractionsCount).LRU().Build()
 
 	interactClient := &Client{
 		eviction:         options.Eviction,
@@ -124,7 +117,7 @@ func New(options *Options) (*Client, error) {
 		matchedTemplates: matchedTemplateCache,
 		interactshURLs:   interactshURLCache,
 		options:          options,
-		requests:         cache,
+		requests:         requestsCache,
 		pollDuration:     options.PollDuration,
 		cooldownDuration: options.CooldownPeriod,
 		dataMutex:        &sync.RWMutex{},
@@ -172,27 +165,24 @@ func (c *Client) firstTimeInitializeClient() error {
 	c.dataMutex.Unlock()
 
 	err = interactsh.StartPolling(c.pollDuration, func(interaction *server.Interaction) {
-		item := c.requests.Get(interaction.UniqueID)
-		if item == nil {
+		request, err := c.requests.Get(interaction.UniqueID)
+		if errors.Is(err, gcache.KeyNotFoundError) || request == nil {
 			// If we don't have any request for this ID, add it to temporary
 			// lru cache, so we can correlate when we get an add request.
-			gotItem := c.interactions.Get(interaction.UniqueID)
-			if gotItem == nil {
-				c.interactions.Set(interaction.UniqueID, []*server.Interaction{interaction}, defaultInteractionDuration)
-			} else if items, ok := gotItem.Value().([]*server.Interaction); ok {
+			items, err := c.interactions.Get(interaction.UniqueID)
+			if errors.Is(err, gcache.KeyNotFoundError) || items == nil {
+				c.interactions.SetWithExpire(interaction.UniqueID, []*server.Interaction{interaction}, defaultInteractionDuration)
+			} else {
 				items = append(items, interaction)
-				c.interactions.Set(interaction.UniqueID, items, defaultInteractionDuration)
+				c.interactions.SetWithExpire(interaction.UniqueID, items, defaultInteractionDuration)
 			}
-			return
-		}
-		request, ok := item.Value().(*RequestData)
-		if !ok {
 			return
 		}
 
 		if _, ok := request.Event.InternalEvent[stopAtFirstMatchAttribute]; ok || c.options.StopAtFirstMatch {
-			gotItem := c.matchedTemplates.Get(hash(request.Event.InternalEvent[templateIdAttribute].(string), request.Event.InternalEvent["host"].(string)))
-			if gotItem != nil {
+			templateId := request.Event.InternalEvent[templateIdAttribute].(string)
+			host := request.Event.InternalEvent["host"].(string)
+			if gotItem, err := c.matchedTemplates.Get(hash(templateId, host)); gotItem && errors.Is(err, nil) {
 				return
 			}
 		}
@@ -217,7 +207,7 @@ func (c *Client) processInteractionForRequest(interaction *server.Interaction, d
 	if !matched || result == nil {
 		return false // if we don't match, return
 	}
-	c.requests.Delete(interaction.UniqueID)
+	c.requests.Remove(interaction.UniqueID)
 
 	if data.Event.OperatorsResult != nil {
 		data.Event.OperatorsResult.Merge(result)
@@ -237,7 +227,9 @@ func (c *Client) processInteractionForRequest(interaction *server.Interaction, d
 	if writer.WriteResult(data.Event, c.options.Output, c.options.Progress, c.options.IssuesClient) {
 		c.matched.Store(true)
 		if _, ok := data.Event.InternalEvent[stopAtFirstMatchAttribute]; ok || c.options.StopAtFirstMatch {
-			c.matchedTemplates.Set(hash(data.Event.InternalEvent[templateIdAttribute].(string), data.Event.InternalEvent["host"].(string)), true, defaultInteractionDuration)
+			templateId := data.Event.InternalEvent[templateIdAttribute].(string)
+			host := data.Event.InternalEvent["host"].(string)
+			c.matchedTemplates.SetWithExpire(hash(templateId, host), true, defaultInteractionDuration)
 		}
 	}
 	return true
@@ -267,15 +259,10 @@ func (c *Client) Close() bool {
 		c.interactsh.Close()
 	}
 
-	closeCache := func(cc *atomcache.Cache) {
-		if cc != nil {
-			cc.Stop()
-		}
-	}
-	closeCache(c.requests)
-	closeCache(c.interactions)
-	closeCache(c.matchedTemplates)
-	closeCache(c.interactshURLs)
+	c.requests.Purge()
+	c.interactions.Purge()
+	c.matchedTemplates.Purge()
+	c.interactshURLs.Purge()
 
 	return c.matched.Load()
 }
@@ -308,7 +295,7 @@ func (c *Client) NewURLWithData(data string) (string, error) {
 	if url == "" {
 		return "", errors.New("empty interactsh url")
 	}
-	c.interactshURLs.Set(url, data, defaultInteractionDuration)
+	c.interactshURLs.SetWithExpire(url, data, defaultInteractionDuration)
 	return url, nil
 }
 
@@ -316,19 +303,17 @@ func (c *Client) NewURLWithData(data string) (string, error) {
 func (c *Client) MakePlaceholders(urls []string, data map[string]interface{}) {
 	data["interactsh-server"] = c.getInteractServerHostname()
 	for _, url := range urls {
-		if interactshURLMarker := c.interactshURLs.Get(url); interactshURLMarker != nil {
-			if interactshURLMarker, ok := interactshURLMarker.Value().(string); ok {
-				interactshMarker := strings.TrimSuffix(strings.TrimPrefix(interactshURLMarker, "{{"), "}}")
+		if interactshURLMarker, err := c.interactshURLs.Get(url); interactshURLMarker != "" && err == nil {
+			interactshMarker := strings.TrimSuffix(strings.TrimPrefix(interactshURLMarker, "{{"), "}}")
 
-				c.interactshURLs.Delete(url)
+			c.interactshURLs.Remove(url)
 
-				data[interactshMarker] = url
-				urlIndex := strings.Index(url, ".")
-				if urlIndex == -1 {
-					continue
-				}
-				data[strings.Replace(interactshMarker, "url", "id", 1)] = url[:urlIndex]
+			data[interactshMarker] = url
+			urlIndex := strings.Index(url, ".")
+			if urlIndex == -1 {
+				continue
 			}
+			data[strings.Replace(interactshMarker, "url", "id", 1)] = url[:urlIndex]
 		}
 	}
 }
@@ -359,28 +344,24 @@ func (c *Client) RequestEvent(interactshURLs []string, data *RequestData) {
 		id := strings.TrimRight(strings.TrimSuffix(interactshURL, c.hostname), ".")
 
 		if _, ok := data.Event.InternalEvent[stopAtFirstMatchAttribute]; ok || c.options.StopAtFirstMatch {
-			gotItem := c.matchedTemplates.Get(hash(data.Event.InternalEvent[templateIdAttribute].(string), data.Event.InternalEvent["host"].(string)))
-			if gotItem != nil {
+			templateId := data.Event.InternalEvent[templateIdAttribute].(string)
+			host := data.Event.InternalEvent["host"].(string)
+			gotItem, err := c.matchedTemplates.Get(hash(templateId, host))
+			if gotItem && err == nil {
 				break
 			}
 		}
 
-		interaction := c.interactions.Get(id)
-		if interaction != nil {
-			// If we have previous interactions, get them and process them.
-			interactions, ok := interaction.Value().([]*server.Interaction)
-			if !ok {
-				c.requests.Set(id, data, c.eviction)
-				return
-			}
+		interactions, err := c.interactions.Get(id)
+		if interactions != nil && err == nil {
 			for _, interaction := range interactions {
 				if c.processInteractionForRequest(interaction, data) {
-					c.interactions.Delete(id)
+					c.interactions.Remove(id)
 					break
 				}
 			}
 		} else {
-			c.requests.Set(id, data, c.eviction)
+			c.requests.SetWithExpire(id, data, c.eviction)
 		}
 	}
 }
