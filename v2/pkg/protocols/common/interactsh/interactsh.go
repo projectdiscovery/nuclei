@@ -171,10 +171,10 @@ func (c *Client) firstTimeInitializeClient() error {
 			// lru cache, so we can correlate when we get an add request.
 			items, err := c.interactions.Get(interaction.UniqueID)
 			if errors.Is(err, gcache.KeyNotFoundError) || items == nil {
-				c.interactions.SetWithExpire(interaction.UniqueID, []*server.Interaction{interaction}, defaultInteractionDuration)
+				_ = c.interactions.SetWithExpire(interaction.UniqueID, []*server.Interaction{interaction}, defaultInteractionDuration)
 			} else {
 				items = append(items, interaction)
-				c.interactions.SetWithExpire(interaction.UniqueID, items, defaultInteractionDuration)
+				_ = c.interactions.SetWithExpire(interaction.UniqueID, items, defaultInteractionDuration)
 			}
 			return
 		}
@@ -229,7 +229,7 @@ func (c *Client) processInteractionForRequest(interaction *server.Interaction, d
 		if _, ok := data.Event.InternalEvent[stopAtFirstMatchAttribute]; ok || c.options.StopAtFirstMatch {
 			templateId := data.Event.InternalEvent[templateIdAttribute].(string)
 			host := data.Event.InternalEvent["host"].(string)
-			c.matchedTemplates.SetWithExpire(hash(templateId, host), true, defaultInteractionDuration)
+			_ = c.matchedTemplates.SetWithExpire(hash(templateId, host), true, defaultInteractionDuration)
 		}
 	}
 	return true
@@ -295,7 +295,7 @@ func (c *Client) NewURLWithData(data string) (string, error) {
 	if url == "" {
 		return "", errors.New("empty interactsh url")
 	}
-	c.interactshURLs.SetWithExpire(url, data, defaultInteractionDuration)
+	_ = c.interactshURLs.SetWithExpire(url, data, defaultInteractionDuration)
 	return url, nil
 }
 
@@ -361,7 +361,7 @@ func (c *Client) RequestEvent(interactshURLs []string, data *RequestData) {
 				}
 			}
 		} else {
-			c.requests.SetWithExpire(id, data, c.eviction)
+			_ = c.requests.SetWithExpire(id, data, c.eviction)
 		}
 	}
 }
