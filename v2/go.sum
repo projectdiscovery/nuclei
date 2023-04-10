@@ -468,8 +468,8 @@ github.com/projectdiscovery/sarif v0.0.1 h1:C2Tyj0SGOKbCLgHrx83vaE6YkzXEVrMXYRGL
 github.com/projectdiscovery/sarif v0.0.1/go.mod h1:cEYlDu8amcPf6b9dSakcz2nNnJsoz4aR6peERwV+wuQ=
 github.com/projectdiscovery/stringsutil v0.0.2 h1:uzmw3IVLJSMW1kEg8eCStG/cGbYYZAja8BH3LqqJXMA=
 github.com/projectdiscovery/stringsutil v0.0.2/go.mod h1:EJ3w6bC5fBYjVou6ryzodQq37D5c6qbAYQpGmAy+DC0=
-github.com/projectdiscovery/tlsx v1.0.6-0.20230328111908-f4528797e948 h1:bAx0ittZ88QwV0ohxjz4fnhLvNYjYTgXcTlgQP+hzY4=
-github.com/projectdiscovery/tlsx v1.0.6-0.20230328111908-f4528797e948/go.mod h1:WVHBfdZ9x2zYxfDdmtr73W3soq/h2koI8eJ/ubroSnI=
+github.com/projectdiscovery/tlsx v1.0.6 h1:omMbtedk4BjXtauPpB9Y+FQml9cVthOnIxOMKHIrxm8=
+github.com/projectdiscovery/tlsx v1.0.6/go.mod h1:9PTwYVVbaLYpNIwZIvgVxJzctbiemM/pgukkOb3/4wY=
 github.com/projectdiscovery/uncover v1.0.2 h1:mRFzflYyvwKkHd3XKufMlDRrb6p1mjFZTSHoNAUpFwo=
 github.com/projectdiscovery/uncover v1.0.2/go.mod h1:lz4QYfArSA6jJkXyB71kN2/Pc7IW7nJB8c95n7xtwqY=
 github.com/projectdiscovery/utils v0.0.18 h1:gyBMnA4y2ryui0G98iFqKAXuNdoSy6Z6K0/1KHB0czU=
