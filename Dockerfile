@@ -1,5 +1,5 @@
 # Build
-FROM golang:1.20.2-alpine AS build-env
+FROM golang:1.20.3-alpine AS build-env
 RUN apk add build-base
 WORKDIR /app
 COPY . /app
