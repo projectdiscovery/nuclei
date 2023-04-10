@@ -120,9 +120,10 @@ func execute(testCase testutils.TestCase, templatePath string) (string, error) {
 	return "", nil
 }
 
-func expectResultsCount(results []string, expectedNumber int) error {
-	if len(results) != expectedNumber {
-		return fmt.Errorf("incorrect number of results: %d (actual) vs %d (expected) \nResults:\n\t%s\n", len(results), expectedNumber, strings.Join(results, "\n\t"))
+func expectResultsCount(results []string, expectedNumbers ...int) error {
+	match := sliceutil.Contains(expectedNumbers, len(results))
+	if !match {
+		return fmt.Errorf("incorrect number of results: %d (actual) vs %v (expected) \nResults:\n\t%s\n", len(results), expectedNumbers, strings.Join(results, "\n\t"))
 	}
 	return nil
 }

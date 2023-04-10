@@ -164,7 +164,8 @@ func (h *httpInteractshStopAtFirstMatchRequest) Execute(filePath string) error {
 	if err != nil {
 		return err
 	}
-	return expectResultsCount(results, 1)
+	// polling is asyncronous, so the interactions may be retrieved after the first request
+	return expectResultsCount(results, 1, 2)
 }
 
 type httpGetHeaders struct{}

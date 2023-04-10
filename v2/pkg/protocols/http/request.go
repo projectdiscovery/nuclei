@@ -761,7 +761,7 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 		callback(event)
 
 		// Skip further responses if we have stop-at-first-match and a match
-		if (request.options.Options.StopAtFirstMatch || request.options.StopAtFirstMatch || request.StopAtFirstMatch) && len(event.Results) > 0 {
+		if (request.options.Options.StopAtFirstMatch || request.options.StopAtFirstMatch || request.StopAtFirstMatch) && event.HasResults() {
 			return nil
 		}
 	}

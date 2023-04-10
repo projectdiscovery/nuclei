@@ -215,10 +215,12 @@ func (c *Client) processInteractionForRequest(interaction *server.Interaction, d
 		data.Event.SetOperatorResult(result)
 	}
 
+	data.Event.Lock()
 	data.Event.Results = data.MakeResultFunc(data.Event)
 	for _, event := range data.Event.Results {
 		event.Interaction = interaction
 	}
+	data.Event.Unlock()
 
 	if c.options.Debug || c.options.DebugRequest || c.options.DebugResponse {
 		c.debugPrintInteraction(interaction, data.Event.OperatorsResult)
