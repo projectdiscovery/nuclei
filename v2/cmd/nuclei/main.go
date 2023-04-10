@@ -290,7 +290,7 @@ on extensive configurability, massive extensibility and ease of use.`)
 		flagSet.BoolVarP(&options.ShowVarDump, "show-var-dump", "svd", false, "show variables dump for debugging"),
 		flagSet.BoolVarP(&options.EnablePprof, "enable-pprof", "ep", false, "enable pprof debugging server"),
 		flagSet.BoolVarP(&options.TemplatesVersion, "templates-version", "tv", false, "shows the version of the installed nuclei-templates"),
-		flagSet.StringVarP(&options.HealthCheck, "health-check", "hc", "text", "run diagnostic check up with output options: json, md, text"),
+		flagSet.StringVarP(&options.HealthCheck, "health-check", "hc", "", "run diagnostic check up with output options: json, md, text"),
 	)
 
 	flagSet.CreateGroup("update", "Update",
