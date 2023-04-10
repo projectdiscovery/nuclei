@@ -2,8 +2,6 @@ package interactsh
 
 import (
 	"bytes"
-	"crypto/sha1"
-	"encoding/hex"
 	"fmt"
 	"os"
 	"regexp"
@@ -12,8 +10,9 @@ import (
 	"sync/atomic"
 	"time"
 
+	"errors"
+
 	"github.com/Mzack9999/gcache"
-	"github.com/pkg/errors"
 
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/interactsh/pkg/client"
@@ -25,10 +24,13 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/helpers/writer"
 	"github.com/projectdiscovery/nuclei/v2/pkg/reporting"
 	"github.com/projectdiscovery/retryablehttp-go"
+	errorutil "github.com/projectdiscovery/utils/errors"
 )
 
 // Client is a wrapped client for interactsh server.
 type Client struct {
+	sync.RWMutex
+
 	// interactsh is a client for interactsh server.
 	interactsh *client.Client
 	// requests is a stored cache for interactsh-url->request-event data.
@@ -45,13 +47,12 @@ type Client struct {
 	pollDuration     time.Duration
 	cooldownDuration time.Duration
 
-	dataMutex *sync.RWMutex
-
 	hostname string
 
 	firstTimeGroup sync.Once
-	generated      uint32 // decide to wait if we have a generated url
-	matched        atomic.Bool
+
+	generated uint32 // decide to wait if we have a generated url
+	matched   atomic.Bool
 }
 
 var (
@@ -120,7 +121,6 @@ func New(options *Options) (*Client, error) {
 		requests:         requestsCache,
 		pollDuration:     options.PollDuration,
 		cooldownDuration: options.CooldownPeriod,
-		dataMutex:        &sync.RWMutex{},
 	}
 	return interactClient, nil
 }
@@ -152,7 +152,7 @@ func (c *Client) firstTimeInitializeClient() error {
 		HTTPClient:          c.options.HTTPClient,
 	})
 	if err != nil {
-		return errors.Wrap(err, "could not create client")
+		return errorutil.NewWithErr(err).Msgf("could not create client")
 	}
 	c.interactsh = interactsh
 
@@ -160,9 +160,9 @@ func (c *Client) firstTimeInitializeClient() error {
 	interactDomain := interactURL[strings.Index(interactURL, ".")+1:]
 	gologger.Info().Msgf("Using Interactsh Server: %s", interactDomain)
 
-	c.dataMutex.Lock()
+	c.Lock()
 	c.hostname = interactDomain
-	c.dataMutex.Unlock()
+	c.Unlock()
 
 	err = interactsh.StartPolling(c.pollDuration, func(interaction *server.Interaction) {
 		request, err := c.requests.Get(interaction.UniqueID)
@@ -170,7 +170,7 @@ func (c *Client) firstTimeInitializeClient() error {
 			// If we don't have any request for this ID, add it to temporary
 			// lru cache, so we can correlate when we get an add request.
 			items, err := c.interactions.Get(interaction.UniqueID)
-			if errors.Is(err, gcache.KeyNotFoundError) || items == nil {
+			if errorutil.IsAny(err, gcache.KeyNotFoundError) || items == nil {
 				_ = c.interactions.SetWithExpire(interaction.UniqueID, []*server.Interaction{interaction}, defaultInteractionDuration)
 			} else {
 				items = append(items, interaction)
@@ -182,7 +182,7 @@ func (c *Client) firstTimeInitializeClient() error {
 		if _, ok := request.Event.InternalEvent[stopAtFirstMatchAttribute]; ok || c.options.StopAtFirstMatch {
 			templateId := request.Event.InternalEvent[templateIdAttribute].(string)
 			host := request.Event.InternalEvent["host"].(string)
-			if gotItem, err := c.matchedTemplates.Get(hash(templateId, host)); gotItem && errors.Is(err, nil) {
+			if gotItem, err := c.matchedTemplates.Get(hash(templateId, host)); gotItem && errorutil.IsAny(err, nil) {
 				return
 			}
 		}
@@ -191,7 +191,7 @@ func (c *Client) firstTimeInitializeClient() error {
 	})
 
 	if err != nil {
-		return errors.Wrap(err, "could not perform instactsh polling")
+		return errorutil.NewWithErr(err).Msgf("could not perform instactsh polling")
 	}
 	return nil
 }
@@ -443,15 +443,12 @@ func formatInteractionMessage(key, value string, event *operators.Result, noColo
 }
 
 func hash(templateID, host string) string {
-	h := sha1.New()
-	h.Write([]byte(templateID))
-	h.Write([]byte(host))
-	return hex.EncodeToString(h.Sum(nil))
+	return fmt.Sprintf("%s:%s", templateID, host)
 }
 
 func (c *Client) getInteractServerHostname() string {
-	c.dataMutex.RLock()
-	defer c.dataMutex.RUnlock()
+	c.RLock()
+	defer c.RUnlock()
 
 	return c.hostname
 }
