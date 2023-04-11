@@ -248,20 +248,22 @@ func (request *Request) executeFuzzingRule(input *contextargs.Context, previous 
 		}
 		var gotMatches bool
 		requestErr := request.executeRequest(input, req, gr.DynamicValues, hasInteractMatchers, func(event *output.InternalWrappedEvent) {
-			// Add the extracts to the dynamic values if any.
-			if event.OperatorsResult != nil {
-				gotMatches = event.OperatorsResult.Matched
-			}
 			if hasInteractMarkers && hasInteractMatchers && request.options.Interactsh != nil {
-				request.options.Interactsh.RequestEvent(gr.InteractURLs, &interactsh.RequestData{
+				requestData := &interactsh.RequestData{
 					MakeResultFunc: request.MakeResultEvent,
 					Event:          event,
 					Operators:      request.CompiledOperators,
 					MatchFunc:      request.Match,
 					ExtractFunc:    request.Extract,
-				})
+				}
+				request.options.Interactsh.RequestEvent(gr.InteractURLs, requestData)
+				gotMatches = request.options.Interactsh.AlreadyMatched(requestData)
 			} else {
 				callback(event)
+			}
+			// Add the extracts to the dynamic values if any.
+			if event.OperatorsResult != nil {
+				gotMatches = event.OperatorsResult.Matched
 			}
 		}, 0)
 		// If a variable is unresolved, skip all further requests
@@ -276,7 +278,8 @@ func (request *Request) executeFuzzingRule(input *contextargs.Context, previous 
 		request.options.Progress.IncrementRequests()
 
 		// If this was a match, and we want to stop at first match, skip all further requests.
-		if (request.options.Options.StopAtFirstMatch || request.StopAtFirstMatch) && gotMatches {
+		shouldStopAtFirstMatch := request.options.Options.StopAtFirstMatch || request.StopAtFirstMatch
+		if shouldStopAtFirstMatch && gotMatches {
 			return false
 		}
 		return true
@@ -380,19 +383,21 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 			}
 			var gotMatches bool
 			err = request.executeRequest(input, generatedHttpRequest, previous, hasInteractMatchers, func(event *output.InternalWrappedEvent) {
-				// Add the extracts to the dynamic values if any.
-				if event.OperatorsResult != nil {
-					gotMatches = event.OperatorsResult.Matched
-					gotDynamicValues = generators.MergeMapsMany(event.OperatorsResult.DynamicValues, dynamicValues, gotDynamicValues)
-				}
 				if hasInteractMarkers && hasInteractMatchers && request.options.Interactsh != nil {
-					request.options.Interactsh.RequestEvent(generatedHttpRequest.interactshURLs, &interactsh.RequestData{
+					requestData := &interactsh.RequestData{
 						MakeResultFunc: request.MakeResultEvent,
 						Event:          event,
 						Operators:      request.CompiledOperators,
 						MatchFunc:      request.Match,
 						ExtractFunc:    request.Extract,
-					})
+					}
+					request.options.Interactsh.RequestEvent(generatedHttpRequest.interactshURLs, requestData)
+					gotMatches = request.options.Interactsh.AlreadyMatched(requestData)
+				}
+				// Add the extracts to the dynamic values if any.
+				if event.OperatorsResult != nil {
+					gotMatches = event.OperatorsResult.Matched
+					gotDynamicValues = generators.MergeMapsMany(event.OperatorsResult.DynamicValues, dynamicValues, gotDynamicValues)
 				}
 				// Note: This is a race condition prone zone i.e when request has interactsh_matchers
 				// Interactsh.RequestEvent tries to access/update output.InternalWrappedEvent depending on logic
@@ -415,8 +420,8 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 			request.options.Progress.IncrementRequests()
 
 			// If this was a match, and we want to stop at first match, skip all further requests.
-			// todo: stop-at-first-match doesn't really stop requests from being executed, but rather just stop the results from being printed to output
-			if (generatedHttpRequest.original.options.Options.StopAtFirstMatch || generatedHttpRequest.original.options.StopAtFirstMatch || request.StopAtFirstMatch) && gotMatches {
+			shouldStopAtFirstMatch := generatedHttpRequest.original.options.Options.StopAtFirstMatch || generatedHttpRequest.original.options.StopAtFirstMatch || request.StopAtFirstMatch
+			if shouldStopAtFirstMatch && gotMatches {
 				return true, nil
 			}
 			return false, nil

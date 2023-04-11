@@ -143,6 +143,7 @@ func (c *Client) processInteractionForRequest(interaction *server.Interaction, d
 	data.Event.InternalEvent["interactsh_ip"] = interaction.RemoteAddress
 
 	result, matched := data.Operators.Execute(data.Event.InternalEvent, data.MatchFunc, data.ExtractFunc, c.options.Debug || c.options.DebugRequest || c.options.DebugResponse)
+
 	// if we don't match, return
 	if !matched || result == nil {
 		return false
@@ -174,6 +175,10 @@ func (c *Client) processInteractionForRequest(interaction *server.Interaction, d
 	}
 
 	return true
+}
+
+func (c *Client) AlreadyMatched(data *RequestData) bool {
+	return c.matchedTemplates.Has(hash(data.Event.InternalEvent))
 }
 
 // URL returns a new URL that can be interacted with
