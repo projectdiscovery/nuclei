@@ -181,7 +181,7 @@ func (c *Client) firstTimeInitializeClient() error {
 			return
 		}
 
-		if _, ok := request.Event.InternalEvent[stopAtFirstMatchAttribute]; ok || c.options.StopAtFirstMatch {
+		if requestShouldStopAtFirstMatch(request) || c.options.StopAtFirstMatch {
 			if gotItem, err := c.matchedTemplates.Get(hash(request.Event.InternalEvent)); gotItem && err == nil {
 				return
 			}
@@ -194,6 +194,15 @@ func (c *Client) firstTimeInitializeClient() error {
 		return errorutil.NewWithErr(err).Msgf("could not perform instactsh polling")
 	}
 	return nil
+}
+
+func requestShouldStopAtFirstMatch(request *RequestData) bool {
+	if stop, ok := request.Event.InternalEvent[stopAtFirstMatchAttribute]; ok {
+		if v, ok := stop.(bool); ok {
+			return v
+		}
+	}
+	return false
 }
 
 // processInteractionForRequest processes an interaction for a request
@@ -229,10 +238,11 @@ func (c *Client) processInteractionForRequest(interaction *server.Interaction, d
 
 	if writer.WriteResult(data.Event, c.options.Output, c.options.Progress, c.options.IssuesClient) {
 		c.matched.Store(true)
-		if _, ok := data.Event.InternalEvent[stopAtFirstMatchAttribute]; ok || c.options.StopAtFirstMatch {
+		if requestShouldStopAtFirstMatch(data) || c.options.StopAtFirstMatch {
 			_ = c.matchedTemplates.SetWithExpire(hash(data.Event.InternalEvent), true, defaultInteractionDuration)
 		}
 	}
+
 	return true
 }
 
@@ -339,7 +349,7 @@ func (c *Client) RequestEvent(interactshURLs []string, data *RequestData) {
 	for _, interactshURL := range interactshURLs {
 		id := strings.TrimRight(strings.TrimSuffix(interactshURL, c.getHostname()), ".")
 
-		if _, ok := data.Event.InternalEvent[stopAtFirstMatchAttribute]; ok || c.options.StopAtFirstMatch {
+		if requestShouldStopAtFirstMatch(data) || c.options.StopAtFirstMatch {
 			gotItem, err := c.matchedTemplates.Get(hash(data.Event.InternalEvent))
 			if gotItem && err == nil {
 				break
