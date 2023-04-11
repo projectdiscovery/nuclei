@@ -25,6 +25,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/reporting"
 	"github.com/projectdiscovery/retryablehttp-go"
 	errorutil "github.com/projectdiscovery/utils/errors"
+	stringsutil "github.com/projectdiscovery/utils/strings"
 )
 
 // Client is a wrapped client for interactsh server.
@@ -51,7 +52,8 @@ type Client struct {
 
 	firstTimeGroup sync.Once
 
-	generated uint32 // decide to wait if we have a generated url
+	// determines if wait the cooldown period in case of generated URL
+	generated atomic.Bool
 	matched   atomic.Bool
 }
 
@@ -89,8 +91,10 @@ type Options struct {
 	// Progress is the nuclei progress bar implementation.
 	Progress progress.Progress
 	// Debug specifies whether debugging output should be shown for interactsh-client
-	Debug         bool
-	DebugRequest  bool
+	Debug bool
+	// DebugRequest outputs interaction request
+	DebugRequest bool
+	// DebugResponse outputs interaction response
 	DebugResponse bool
 	// DisableHttpFallback controls http retry in case of https failure for server url
 	DisableHttpFallback bool
@@ -247,13 +251,13 @@ func (c *Client) URL() (string, error) {
 	if c.interactsh == nil {
 		return "", errors.New("interactsh client not initialized")
 	}
-	atomic.CompareAndSwapUint32(&c.generated, 0, 1)
+	c.generated.Store(true)
 	return c.interactsh.URL(), nil
 }
 
-// Close closes the interactsh clients after waiting for cooldown period.
+// Close the interactsh clients after waiting for cooldown period.
 func (c *Client) Close() bool {
-	if c.cooldownDuration > 0 && atomic.LoadUint32(&c.generated) == 1 {
+	if c.cooldownDuration > 0 && c.generated.Load() {
 		time.Sleep(c.cooldownDuration)
 	}
 	if c.interactsh != nil {
@@ -320,11 +324,6 @@ func (c *Client) MakePlaceholders(urls []string, data map[string]interface{}) {
 	}
 }
 
-// SetStopAtFirstMatch sets StopAtFirstMatch true for interactsh client options
-func (c *Client) SetStopAtFirstMatch() {
-	c.options.StopAtFirstMatch = true
-}
-
 // MakeResultEventFunc is a result making function for nuclei
 type MakeResultEventFunc func(wrapped *output.InternalWrappedEvent) []*output.ResultEvent
 
@@ -380,16 +379,16 @@ func HasMatchers(op *operators.Operators) bool {
 
 	for _, matcher := range op.Matchers {
 		for _, dsl := range matcher.DSL {
-			if strings.Contains(dsl, "interactsh") {
+			if stringsutil.ContainsAnyI(dsl, "interactsh") {
 				return true
 			}
 		}
-		if strings.HasPrefix(matcher.Part, "interactsh") {
+		if stringsutil.HasPrefixI(matcher.Part, "interactsh") {
 			return true
 		}
 	}
 	for _, matcher := range op.Extractors {
-		if strings.HasPrefix(matcher.Part, "interactsh") {
+		if stringsutil.HasPrefixI(matcher.Part, "interactsh") {
 			return true
 		}
 	}
