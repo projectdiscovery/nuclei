@@ -168,22 +168,14 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 func (request *Request) executeRequestWithPayloads(input, hostname string, dynamicValues, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
 	header := http.Header{}
 
-	payloadValues := make(map[string]interface{})
-	for k, v := range dynamicValues {
-		payloadValues[k] = v
-	}
-	parsed, err := url.Parse(input)
+	parsed, err := urlutil.Parse(input)
 	if err != nil {
 		return errors.Wrap(err, parseUrlErrorMessage)
 	}
-	payloadValues["Hostname"] = parsed.Host
-	payloadValues["Host"] = parsed.Hostname()
-	payloadValues["Scheme"] = parsed.Scheme
-	requestPath := parsed.Path
-	if values := urlutil.GetParams(parsed.Query()); len(values) > 0 {
-		requestPath = requestPath + "?" + values.Encode()
-	}
-	payloadValues["Path"] = requestPath
+	defaultVars := getWebsocketVariables(parsed)
+	optionVars := generators.BuildPayloadFromOptions(request.options.Options)
+	variables := request.options.Variables.Evaluate(generators.MergeMaps(defaultVars, optionVars, dynamicValues))
+	payloadValues := generators.MergeMaps(variables, defaultVars, optionVars, dynamicValues)
 
 	requestOptions := request.options
 	for key, value := range request.Headers {
@@ -414,4 +406,18 @@ func (request *Request) MakeResultEventItem(wrapped *output.InternalWrappedEvent
 // Type returns the type of the protocol request
 func (request *Request) Type() templateTypes.ProtocolType {
 	return templateTypes.WebsocketProtocol
+}
+
+func getWebsocketVariables(input *urlutil.URL) map[string]interface{} {
+	websocketVariables := make(map[string]interface{})
+
+	websocketVariables["Hostname"] = input.Host
+	websocketVariables["Host"] = input.Hostname()
+	websocketVariables["Scheme"] = input.Scheme
+	requestPath := input.Path
+	if values := urlutil.GetParams(input.URL.Query()); len(values) > 0 {
+		requestPath = requestPath + "?" + values.Encode()
+	}
+	websocketVariables["Path"] = requestPath
+	return websocketVariables
 }
