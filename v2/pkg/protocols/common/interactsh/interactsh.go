@@ -164,9 +164,7 @@ func (c *Client) firstTimeInitializeClient() error {
 	interactDomain := interactURL[strings.Index(interactURL, ".")+1:]
 	gologger.Info().Msgf("Using Interactsh Server: %s", interactDomain)
 
-	c.Lock()
-	c.hostname = interactDomain
-	c.Unlock()
+	c.setHostname(interactDomain)
 
 	err = interactsh.StartPolling(c.pollDuration, func(interaction *server.Interaction) {
 		request, err := c.requests.Get(interaction.UniqueID)
@@ -184,7 +182,7 @@ func (c *Client) firstTimeInitializeClient() error {
 		}
 
 		if _, ok := request.Event.InternalEvent[stopAtFirstMatchAttribute]; ok || c.options.StopAtFirstMatch {
-			if gotItem, err := c.matchedTemplates.Get(hash(request.Event.InternalEvent)); gotItem && errorutil.IsAny(err, nil) {
+			if gotItem, err := c.matchedTemplates.Get(hash(request.Event.InternalEvent)); gotItem && err == nil {
 				return
 			}
 		}
@@ -206,8 +204,9 @@ func (c *Client) processInteractionForRequest(interaction *server.Interaction, d
 	data.Event.InternalEvent["interactsh_ip"] = interaction.RemoteAddress
 
 	result, matched := data.Operators.Execute(data.Event.InternalEvent, data.MatchFunc, data.ExtractFunc, c.options.Debug || c.options.DebugRequest || c.options.DebugResponse)
+	// if we don't match, return
 	if !matched || result == nil {
-		return false // if we don't match, return
+		return false
 	}
 	c.requests.Remove(interaction.UniqueID)
 
@@ -303,7 +302,7 @@ func (c *Client) NewURLWithData(data string) (string, error) {
 
 // MakePlaceholders does placeholders for interact URLs and other data to a map
 func (c *Client) MakePlaceholders(urls []string, data map[string]interface{}) {
-	data["interactsh-server"] = c.getInteractServerHostname()
+	data["interactsh-server"] = c.getHostname()
 	for _, url := range urls {
 		if interactshURLMarker, err := c.interactshURLs.Get(url); interactshURLMarker != "" && err == nil {
 			interactshMarker := strings.TrimSuffix(strings.TrimPrefix(interactshURLMarker, "{{"), "}}")
@@ -338,7 +337,7 @@ func (c *Client) RequestEvent(interactshURLs []string, data *RequestData) {
 	defer data.Event.Unlock()
 
 	for _, interactshURL := range interactshURLs {
-		id := strings.TrimRight(strings.TrimSuffix(interactshURL, c.hostname), ".")
+		id := strings.TrimRight(strings.TrimSuffix(interactshURL, c.getHostname()), ".")
 
 		if _, ok := data.Event.InternalEvent[stopAtFirstMatchAttribute]; ok || c.options.StopAtFirstMatch {
 			gotItem, err := c.matchedTemplates.Get(hash(data.Event.InternalEvent))
@@ -443,9 +442,16 @@ func hash(internalEvent output.InternalEvent) string {
 	return fmt.Sprintf("%s:%s", templateId, host)
 }
 
-func (c *Client) getInteractServerHostname() string {
+func (c *Client) getHostname() string {
 	c.RLock()
 	defer c.RUnlock()
 
 	return c.hostname
+}
+
+func (c *Client) setHostname(hostname string) {
+	c.Lock()
+	defer c.Unlock()
+
+	c.hostname = hostname
 }
