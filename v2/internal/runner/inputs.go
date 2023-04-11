@@ -52,10 +52,10 @@ func (r *Runner) initializeTemplatesHTTPInput() (*hybrid.HybridMap, error) {
 		swg.Add()
 		go func(input *contextargs.MetaInput) {
 			defer swg.Done()
-
-			if result := probeURL(input.Input, httpxClient); result != "" {
+			result := probeURL(input.Input, httpxClient)
+			for _, url := range result {
 				atomic.AddInt32(&count, 1)
-				_ = hm.Set(input.Input, []byte(result))
+				_ = hm.Set(input.Input, []byte(url))
 			}
 		}(value)
 		return true
@@ -73,7 +73,8 @@ var (
 // probeURL probes the scheme for a URL. first HTTPS is tried
 // and if any errors occur http is tried. If none succeeds, probing
 // is abandoned for such URLs.
-func probeURL(input string, httpxclient *httpx.HTTPX) string {
+func probeURL(input string, httpxclient *httpx.HTTPX) []string {
+	var probeURLS []string
 	for _, scheme := range httpSchemes {
 		formedURL := fmt.Sprintf("%s://%s", scheme, input)
 		req, err := httpxclient.NewRequest(http.MethodHead, formedURL)
@@ -85,7 +86,7 @@ func probeURL(input string, httpxclient *httpx.HTTPX) string {
 		if _, err = httpxclient.Do(req, httpx.UnsafeOptions{}); err != nil {
 			continue
 		}
-		return formedURL
+		probeURLS = append(probeURLS, formedURL)
 	}
-	return ""
+	return probeURLS
 }
