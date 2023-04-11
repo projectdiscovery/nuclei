@@ -265,7 +265,7 @@ func (request *Request) executeFuzzingRule(input *contextargs.Context, previous 
 			}
 		}, 0)
 		// If a variable is unresolved, skip all further requests
-		if requestErr == errStopExecution {
+		if errors.Is(requestErr, errStopExecution) {
 			return false
 		}
 		if requestErr != nil {
@@ -403,7 +403,7 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 			}, generator.currentIndex)
 
 			// If a variable is unresolved, skip all further requests
-			if err == errStopExecution {
+			if errors.Is(err, errStopExecution) {
 				return true, nil
 			}
 			if err != nil {
@@ -415,6 +415,7 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 			request.options.Progress.IncrementRequests()
 
 			// If this was a match, and we want to stop at first match, skip all further requests.
+			// todo: stop-at-first-match doesn't really stop requests from being executed, but rather just stop the results from being printed to output
 			if (generatedHttpRequest.original.options.Options.StopAtFirstMatch || generatedHttpRequest.original.options.StopAtFirstMatch || request.StopAtFirstMatch) && gotMatches {
 				return true, nil
 			}

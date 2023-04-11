@@ -121,7 +121,7 @@ func (c *Client) poll() error {
 	})
 
 	if err != nil {
-		return errorutil.NewWithErr(err).Msgf("could not perform instactsh polling")
+		return errorutil.NewWithErr(err).Msgf("could not perform interactsh polling")
 	}
 	return nil
 }
