@@ -19,18 +19,18 @@ import (
 	"github.com/projectdiscovery/interactsh/pkg/server"
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators"
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
-	"github.com/projectdiscovery/nuclei/v2/pkg/progress"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/helpers/responsehighlighter"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/helpers/writer"
-	"github.com/projectdiscovery/nuclei/v2/pkg/reporting"
-	"github.com/projectdiscovery/retryablehttp-go"
 	errorutil "github.com/projectdiscovery/utils/errors"
 	stringsutil "github.com/projectdiscovery/utils/strings"
 )
 
 // Client is a wrapped client for interactsh server.
 type Client struct {
+	sync.Once
 	sync.RWMutex
+
+	options *Options
 
 	// interactsh is a client for interactsh server.
 	interactsh *client.Client
@@ -40,74 +40,19 @@ type Client struct {
 	interactions gcache.Cache[string, []*server.Interaction]
 	// matchedTemplates is a stored cache to track matched templates
 	matchedTemplates gcache.Cache[string, bool]
-	// interactshURLs is a stored cache to track track multiple interactsh markers
+	// interactshURLs is a stored cache to track multiple interactsh markers
 	interactshURLs gcache.Cache[string, string]
 
-	options          *Options
 	eviction         time.Duration
 	pollDuration     time.Duration
 	cooldownDuration time.Duration
 
 	hostname string
 
-	firstTimeGroup sync.Once
-
 	// determines if wait the cooldown period in case of generated URL
 	generated atomic.Bool
 	matched   atomic.Bool
 }
-
-var (
-	defaultInteractionDuration = 60 * time.Second
-	interactshURLMarkerRegex   = regexp.MustCompile(`{{interactsh-url(?:_[0-9]+){0,3}}}`)
-)
-
-const (
-	stopAtFirstMatchAttribute = "stop-at-first-match"
-	templateIdAttribute       = "template-id"
-)
-
-// Options contains configuration options for interactsh nuclei integration.
-type Options struct {
-	// ServerURL is the URL of the interactsh server.
-	ServerURL string
-	// Authorization is the Authorization header value
-	Authorization string
-	// CacheSize is the numbers of requests to keep track of at a time.
-	// Older items are discarded in LRU manner in favor of new requests.
-	CacheSize int
-	// Eviction is the period of time after which to automatically discard
-	// interaction requests.
-	Eviction time.Duration
-	// CooldownPeriod is additional time to wait for interactions after closing
-	// of the poller.
-	CooldownPeriod time.Duration
-	// PollDuration is the time to wait before each poll to the server for interactions.
-	PollDuration time.Duration
-	// Output is the output writer for nuclei
-	Output output.Writer
-	// IssuesClient is a client for issue exporting
-	IssuesClient reporting.Client
-	// Progress is the nuclei progress bar implementation.
-	Progress progress.Progress
-	// Debug specifies whether debugging output should be shown for interactsh-client
-	Debug bool
-	// DebugRequest outputs interaction request
-	DebugRequest bool
-	// DebugResponse outputs interaction response
-	DebugResponse bool
-	// DisableHttpFallback controls http retry in case of https failure for server url
-	DisableHttpFallback bool
-	// NoInteractsh disables the engine
-	NoInteractsh bool
-	// NoColor dissbles printing colors for matches
-	NoColor bool
-
-	StopAtFirstMatch bool
-	HTTPClient       *retryablehttp.Client
-}
-
-const defaultMaxInteractionsCount = 5000
 
 // New returns a new interactsh server client
 func New(options *Options) (*Client, error) {
@@ -129,23 +74,7 @@ func New(options *Options) (*Client, error) {
 	return interactClient, nil
 }
 
-// NewDefaultOptions returns the default options for interactsh client
-func NewDefaultOptions(output output.Writer, reporting reporting.Client, progress progress.Progress) *Options {
-	return &Options{
-		ServerURL:           client.DefaultOptions.ServerURL,
-		CacheSize:           5000,
-		Eviction:            60 * time.Second,
-		CooldownPeriod:      5 * time.Second,
-		PollDuration:        5 * time.Second,
-		Output:              output,
-		IssuesClient:        reporting,
-		Progress:            progress,
-		DisableHttpFallback: true,
-		NoColor:             false,
-	}
-}
-
-func (c *Client) firstTimeInitializeClient() error {
+func (c *Client) poll() error {
 	if c.options.NoInteractsh {
 		return nil // do not init if disabled
 	}
@@ -158,6 +87,7 @@ func (c *Client) firstTimeInitializeClient() error {
 	if err != nil {
 		return errorutil.NewWithErr(err).Msgf("could not create client")
 	}
+
 	c.interactsh = interactsh
 
 	interactURL := interactsh.URL()
@@ -248,13 +178,14 @@ func (c *Client) processInteractionForRequest(interaction *server.Interaction, d
 
 // URL returns a new URL that can be interacted with
 func (c *Client) URL() (string, error) {
-	c.firstTimeGroup.Do(func() {
-		if err := c.firstTimeInitializeClient(); err != nil {
-			gologger.Error().Msgf("Could not initialize interactsh client: %s", err)
-		}
-	})
 	if c.interactsh == nil {
-		return "", errors.New("interactsh client not initialized")
+		var err error
+		c.Do(func() {
+			err = c.poll()
+		})
+		if err != nil {
+			return "", errorutil.NewWithErr(err).Msgf("interactsh client not initialized")
+		}
 	}
 	c.generated.Store(true)
 	return c.interactsh.URL(), nil
