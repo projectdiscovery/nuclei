@@ -184,9 +184,7 @@ func (c *Client) firstTimeInitializeClient() error {
 		}
 
 		if _, ok := request.Event.InternalEvent[stopAtFirstMatchAttribute]; ok || c.options.StopAtFirstMatch {
-			templateId := request.Event.InternalEvent[templateIdAttribute].(string)
-			host := request.Event.InternalEvent["host"].(string)
-			if gotItem, err := c.matchedTemplates.Get(hash(templateId, host)); gotItem && errorutil.IsAny(err, nil) {
+			if gotItem, err := c.matchedTemplates.Get(hash(request.Event.InternalEvent)); gotItem && errorutil.IsAny(err, nil) {
 				return
 			}
 		}
@@ -233,9 +231,7 @@ func (c *Client) processInteractionForRequest(interaction *server.Interaction, d
 	if writer.WriteResult(data.Event, c.options.Output, c.options.Progress, c.options.IssuesClient) {
 		c.matched.Store(true)
 		if _, ok := data.Event.InternalEvent[stopAtFirstMatchAttribute]; ok || c.options.StopAtFirstMatch {
-			templateId := data.Event.InternalEvent[templateIdAttribute].(string)
-			host := data.Event.InternalEvent["host"].(string)
-			_ = c.matchedTemplates.SetWithExpire(hash(templateId, host), true, defaultInteractionDuration)
+			_ = c.matchedTemplates.SetWithExpire(hash(data.Event.InternalEvent), true, defaultInteractionDuration)
 		}
 	}
 	return true
@@ -345,9 +341,7 @@ func (c *Client) RequestEvent(interactshURLs []string, data *RequestData) {
 		id := strings.TrimRight(strings.TrimSuffix(interactshURL, c.hostname), ".")
 
 		if _, ok := data.Event.InternalEvent[stopAtFirstMatchAttribute]; ok || c.options.StopAtFirstMatch {
-			templateId := data.Event.InternalEvent[templateIdAttribute].(string)
-			host := data.Event.InternalEvent["host"].(string)
-			gotItem, err := c.matchedTemplates.Get(hash(templateId, host))
+			gotItem, err := c.matchedTemplates.Get(hash(data.Event.InternalEvent))
 			if gotItem && err == nil {
 				break
 			}
@@ -443,8 +437,10 @@ func formatInteractionMessage(key, value string, event *operators.Result, noColo
 	return fmt.Sprintf("\n------------\n%s\n------------\n\n%s\n\n", key, value)
 }
 
-func hash(templateID, host string) string {
-	return fmt.Sprintf("%s:%s", templateID, host)
+func hash(internalEvent output.InternalEvent) string {
+	templateId := internalEvent[templateIdAttribute].(string)
+	host := internalEvent["host"].(string)
+	return fmt.Sprintf("%s:%s", templateId, host)
 }
 
 func (c *Client) getInteractServerHostname() string {
