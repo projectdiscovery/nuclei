@@ -239,7 +239,7 @@ func (request *Request) executeFuzzingRule(input *contextargs.Context, previous 
 		if request.options.HostErrorsCache != nil && request.options.HostErrorsCache.Check(input.MetaInput.Input) {
 			return false
 		}
-
+		request.options.RateLimiter.Take()
 		req := &generatedRequest{
 			request:        gr.Request,
 			dynamicValues:  gr.DynamicValues,
