@@ -127,6 +127,9 @@ func (c *Client) poll() error {
 }
 
 func requestShouldStopAtFirstMatch(request *RequestData) bool {
+	request.Event.RLock()
+	defer request.Event.RUnlock()
+
 	if stop, ok := request.Event.InternalEvent[stopAtFirstMatchAttribute]; ok {
 		if v, ok := stop.(bool); ok {
 			return v
@@ -137,10 +140,12 @@ func requestShouldStopAtFirstMatch(request *RequestData) bool {
 
 // processInteractionForRequest processes an interaction for a request
 func (c *Client) processInteractionForRequest(interaction *server.Interaction, data *RequestData) bool {
+	data.Event.Lock()
 	data.Event.InternalEvent["interactsh_protocol"] = interaction.Protocol
 	data.Event.InternalEvent["interactsh_request"] = interaction.RawRequest
 	data.Event.InternalEvent["interactsh_response"] = interaction.RawResponse
 	data.Event.InternalEvent["interactsh_ip"] = interaction.RemoteAddress
+	data.Event.Unlock()
 
 	result, matched := data.Operators.Execute(data.Event.InternalEvent, data.MatchFunc, data.ExtractFunc, c.options.Debug || c.options.DebugRequest || c.options.DebugResponse)
 
@@ -178,6 +183,9 @@ func (c *Client) processInteractionForRequest(interaction *server.Interaction, d
 }
 
 func (c *Client) AlreadyMatched(data *RequestData) bool {
+	data.Event.RLock()
+	defer data.Event.RUnlock()
+
 	return c.matchedTemplates.Has(hash(data.Event.InternalEvent))
 }
 
