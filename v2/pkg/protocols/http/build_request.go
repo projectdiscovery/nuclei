@@ -343,7 +343,6 @@ func (r *requestGenerator) fillRequest(req *retryablehttp.Request, values map[st
 
 	// Check if the user requested a request body
 	if r.request.Body != "" {
-		fmt.Println("request body: ", r.request.Body)
 		body := r.request.Body
 		if r.options.Interactsh != nil {
 			body, r.interactshURLs = r.options.Interactsh.Replace(r.request.Body, r.interactshURLs)
