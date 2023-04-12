@@ -104,9 +104,22 @@ func (r *requestGenerator) Make(ctx context.Context, input *contextargs.Context,
 	defaultReqVars := utils.GenerateVariablesWithURL(parsed, hasTrailingSlash, contextargs.GenerateVariables(input))
 	// optionvars are vars passed from CLI or env variables
 	optionVars := generators.BuildPayloadFromOptions(r.request.options.Options)
-	// allVars contains all variables from all sources
-	allVars := generators.MergeMaps(dynamicValues, defaultReqVars, optionVars)
 
+	variablesMap, interactURLs := r.options.Variables.EvaluateWithInteractsh(generators.MergeMaps(defaultReqVars, optionVars), r.options.Interactsh)
+	if len(interactURLs) > 0 {
+		r.interactshURLs = append(r.interactshURLs, interactURLs...)
+	}
+	// allVars contains all variables from all sources
+	allVars := generators.MergeMaps(dynamicValues, defaultReqVars, optionVars, variablesMap)
+
+	// Evaluate payload variables
+	// eg: payload variables can be username: jon.doe@{{Hostname}}
+	for payloadName, payloadValue := range payloads {
+		payloads[payloadName], err = expressions.Evaluate(types.ToString(payloadValue), allVars)
+		if err != nil {
+			return nil, ErrEvalExpression.Wrap(err).WithTag("http")
+		}
+	}
 	// finalVars contains allVars and any generator/fuzzing specific payloads
 	// payloads used in generator should be given the most preference
 	finalVars := generators.MergeMaps(allVars, payloads)

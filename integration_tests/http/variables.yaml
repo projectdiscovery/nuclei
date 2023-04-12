@@ -7,7 +7,7 @@ info:
 
 variables:
   a1: "value"
-  a2: "{{base64('hello')}}"
+  a2: "{{base64('{{Host}}')}}"
 
 requests:
   - raw:
@@ -16,11 +16,16 @@ requests:
         Host: {{FQDN}}
         Test: {{a1}}
         Another: {{a2}}
-
+        Email: {{ username }}
+    payloads:
+      username:
+        - jon.doe@{{ FQDN }}
     stop-at-first-match: true
     matchers-condition: or
     matchers:
       - type: word
+        condition: and
         words: 
           - "value"
-          - "aGVsbG8="
+          - "MTI3LjAuMC4x" # 127.0.0.1
+          - "jon.doe@127.0.0.1"
