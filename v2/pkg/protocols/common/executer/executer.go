@@ -77,7 +77,7 @@ func (e *Executer) Execute(input *contextargs.Context) (bool, error) {
 				return false, nil
 			}
 		}
-
+		fmt.Println("Inside execute function, executor.go 80")
 		err := req.ExecuteWithResults(inputItem, dynamicValues, previous, func(event *output.InternalWrappedEvent) {
 			ID := req.GetID()
 			if ID != "" {
@@ -141,7 +141,7 @@ func (e *Executer) ExecuteWithResults(input *contextargs.Context, callback proto
 				return nil
 			}
 		}
-
+		fmt.Println("inside execute with results, executer.go")
 		err := req.ExecuteWithResults(inputItem, dynamicValues, previous, func(event *output.InternalWrappedEvent) {
 			ID := req.GetID()
 			if ID != "" {

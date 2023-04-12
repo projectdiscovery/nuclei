@@ -276,14 +276,19 @@ func (r *requestGenerator) generateRawRequest(ctx context.Context, rawRequest st
 		// Todo: sync internally upon writing latest request byte
 		body = race.NewOpenGateWithTimeout(body, time.Duration(2)*time.Second)
 	}
+	// Problem lies here. from 279 to 288. Takes 2 seconds to execute
 	urlx, err := urlutil.ParseURL(rawRequestData.FullURL, true)
 	if err != nil {
 		return nil, errorutil.NewWithErr(err).Msgf("failed to create request with url %v got %v", rawRequestData.FullURL, err).WithTag("raw")
 	}
+	fmt.Println("Inside http build_request.go 279", time.Now())
 	req, err := retryablehttp.NewRequestFromURLWithContext(ctx, rawRequestData.Method, urlx, body)
 	if err != nil {
 		return nil, err
 	}
+	fmt.Println("Inside generateRawRequest inside race build_request.go 275", time.Now())
+	fmt.Println()
+	fmt.Println()
 	for key, value := range rawRequestData.Headers {
 		if key == "" {
 			continue
@@ -311,7 +316,6 @@ func (r *requestGenerator) generateRawRequest(ctx context.Context, rawRequest st
 		generatedRequest.customCancelFunction = reqWithOverrides.cancelFunc
 		generatedRequest.interactshURLs = append(generatedRequest.interactshURLs, reqWithOverrides.interactshURLs...)
 	}
-
 	return generatedRequest, nil
 }
 
