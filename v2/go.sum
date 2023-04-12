@@ -363,6 +363,7 @@ github.com/microcosm-cc/bluemonday v1.0.21/go.mod h1:ytNkv4RrDrLJ2pqlsSI46O6IVXm
 github.com/microcosm-cc/bluemonday v1.0.23 h1:SMZe2IGa0NuHvnVNAZ+6B38gsTbi5e4sViiWJyDDqFY=
 github.com/microcosm-cc/bluemonday v1.0.23/go.mod h1:mN70sk7UkkF8TUr2IGBpNN0jAgStuPzlK76QuruE/z4=
 github.com/miekg/dns v1.1.35/go.mod h1:KNUDUusw/aVsxyTYZM1oqvCicbwhgbNgztCETuNZ7xM=
+github.com/miekg/dns v1.1.50/go.mod h1:e3IlAVfNqAllflbibAZEWOXOQ+Ynzk/dDozDxY7XnME=
 github.com/miekg/dns v1.1.53 h1:ZBkuHr5dxHtB1caEOlZTLPo7D3L3TWckgUUs/RHfDxw=
 github.com/miekg/dns v1.1.53/go.mod h1:uInx36IzPl7FYnDcMeVWxj9byh7DutNykX4G9Sj60FY=
 github.com/minio/minio-go/v6 v6.0.46/go.mod h1:qD0lajrGW49lKZLtXKtCB4X/qkMf0a5tBvN2PaZg7Gg=
@@ -442,8 +443,6 @@ github.com/projectdiscovery/mapcidr v1.1.1 h1:68Xvw9cKugNeAVxHE3Nl1Ej26nm1taWq6e
 github.com/projectdiscovery/mapcidr v1.1.1/go.mod h1:yyp9ghqmmC0+r5DySgDBXE4cf2QW8SBloVESCteWiAg=
 github.com/projectdiscovery/networkpolicy v0.0.4 h1:zcGjEqZbyECZEdyCy1jVuwOS7Ww1mzgCefQU75XqdJA=
 github.com/projectdiscovery/networkpolicy v0.0.4/go.mod h1:DIXwKs3sQyfCoWHKRLQiRrEorSQW4Zrh4ftu7oDVK6w=
-github.com/projectdiscovery/nvd v1.0.9 h1:2DdMm7lu3GnCQsyYDEQiQ/LRYDmpEm654kvGQS6jzjE=
-github.com/projectdiscovery/nvd v1.0.9/go.mod h1:nGHAo7o6G4V4kscZlm488qKp/ZrZYiBoKqAQrn3X4Og=
 github.com/projectdiscovery/nvd v1.0.10-0.20230327073015-721181aba1e8 h1:aDq18tNWbnN5ZM0ADQb+8KB4DEPIGZMXdDmcXyFUoNg=
 github.com/projectdiscovery/nvd v1.0.10-0.20230327073015-721181aba1e8/go.mod h1:JiVXOIewstCBMPsO+ZnmI43UXMPJGEE1jwuFVz4ujKM=
 github.com/projectdiscovery/ratelimit v0.0.6 h1:SAD2ArdT9F8NmbkAIZpl7DjNnbiXdUQLnMZt5dbVmZ0=
@@ -464,8 +463,7 @@ github.com/projectdiscovery/tlsx v1.0.6 h1:omMbtedk4BjXtauPpB9Y+FQml9cVthOnIxOMK
 github.com/projectdiscovery/tlsx v1.0.6/go.mod h1:9PTwYVVbaLYpNIwZIvgVxJzctbiemM/pgukkOb3/4wY=
 github.com/projectdiscovery/uncover v1.0.2 h1:mRFzflYyvwKkHd3XKufMlDRrb6p1mjFZTSHoNAUpFwo=
 github.com/projectdiscovery/uncover v1.0.2/go.mod h1:lz4QYfArSA6jJkXyB71kN2/Pc7IW7nJB8c95n7xtwqY=
-github.com/projectdiscovery/utils v0.0.20-0.20230410124851-595261704707 h1:usIIWZ/didvXCAhJ39ruuUKH1po4gTV7O097B+YGXDM=
-github.com/projectdiscovery/utils v0.0.20-0.20230410124851-595261704707/go.mod h1:jOpbC9qq5sAjvxpdhubzNf61Kxx83pYFP+WMjOtUs/o=
+github.com/projectdiscovery/utils v0.0.3/go.mod h1:ne3eSlZlUKuhjHr8FfsfGcGteCzxcbJvFBx4VDBCxK0=
 github.com/projectdiscovery/utils v0.0.20-0.20230410133604-010edb62cb35 h1:UBOE9Eob1wj7YZ1MGBbtHvc3ptqBHvXxNKRVxTg21Rc=
 github.com/projectdiscovery/utils v0.0.20-0.20230410133604-010edb62cb35/go.mod h1:jOpbC9qq5sAjvxpdhubzNf61Kxx83pYFP+WMjOtUs/o=
 github.com/projectdiscovery/wappalyzergo v0.0.88 h1:N/1vFlKmc3GJco9rANJdHrxg8jdav/xmnICo8rztmH8=
@@ -630,6 +628,7 @@ go.uber.org/atomic v1.10.0/go.mod h1:LUxbIzbOniOlMKjJjyPfpl4v+PKK2cNJn91OQbhoJI0
 go.uber.org/goleak v1.1.11 h1:wy28qYRKZgnJTxGxvye5/wgWr1EKjmUDGYox5mGlRlI=
 go.uber.org/goleak v1.1.11/go.mod h1:cwTWslyiVhfpKIDGSZEM2HlOvcqm+tG4zioyIeLoqMQ=
 go.uber.org/multierr v1.6.0/go.mod h1:cdWPpRnG4AhwMwsgIHip0KRBQjJy5kYEpYjJxpXp9iU=
+go.uber.org/multierr v1.8.0/go.mod h1:7EAYxJLBy9rStEaz58O2t4Uvip6FSURkq8/ppBp95ak=
 go.uber.org/multierr v1.11.0 h1:blXXJkSxSSfBVBlC76pxqeO+LN3aDfLQo+309xJstO0=
 go.uber.org/multierr v1.11.0/go.mod h1:20+QtiLqy0Nd6FdQB9TLXag12DsQkrbs3htMFfDN80Y=
 go.uber.org/zap v1.21.0/go.mod h1:wjWOCqI0f2ZZrJF/UufIOkiC8ii6tm1iqIsLo76RfJw=
