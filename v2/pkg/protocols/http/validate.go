@@ -1,13 +1,8 @@
 package http
 
-import (
-	"fmt"
-
-	"github.com/pkg/errors"
-)
+import "github.com/pkg/errors"
 
 func (request *Request) validate() error {
-	fmt.Println("inside validate", request.Race)
 	if request.Race && request.NeedsRequestCondition() {
 		return errors.New("'race' and 'req-condition' can't be used together")
 	}

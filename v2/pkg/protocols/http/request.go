@@ -49,7 +49,6 @@ func (request *Request) Type() templateTypes.ProtocolType {
 
 // executeRaceRequest executes race condition request for a URL
 func (request *Request) executeRaceRequest(input *contextargs.Context, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
-	fmt.Println("Inside executeRaceRequest 52 http/request.go")
 	reqURL := input.MetaInput.Input
 	var generatedRequests []*generatedRequest
 
@@ -85,7 +84,6 @@ func (request *Request) executeRaceRequest(input *contextargs.Context, previous 
 
 	// Pre-Generate requests
 	for i := 0; i < request.RaceNumberRequests; i++ {
-		fmt.Println("Inside for loop 87 http/request.go")
 		generator := request.newGenerator(false)
 		inputData, payloads, ok := generator.nextValue()
 		if !ok {
@@ -128,41 +126,38 @@ func (request *Request) executeParallelHTTP(input *contextargs.Context, dynamicV
 	swg := sizedwaitgroup.New(maxWorkers)
 
 	var requestErr error
-	// mutex := &sync.Mutex{}
+	mutex := &sync.Mutex{}
 	for {
-		fmt.Println("Inside executeParallelHTTP 133 http/request.go", time.Now())
 		inputData, payloads, ok := generator.nextValue()
 		if !ok {
 			break
 		}
-
-		fmt.Println("inside go func 154 http/request.go", time.Now())
 		ctx := request.newContext(input)
-		_, _ = generator.Make(ctx, input, inputData, payloads, dynamicValues)
-		// if err != nil {
-		// 	if err == io.EOF {
-		// 		break
-		// 	}
-		// 	request.options.Progress.IncrementFailedRequestsBy(int64(generator.Total()))
-		// 	return err
-		// }
-		// if input.MetaInput.Input == "" {
-		// 	input.MetaInput.Input = generatedHttpRequest.URL()
-		// }
-		// swg.Add()
-		// go func(httpRequest *generatedRequest) {
-		// 	defer swg.Done()
-		// 	request.options.RateLimiter.Take()
+		generatedHttpRequest, err := generator.Make(ctx, input, inputData, payloads, dynamicValues)
+		if err != nil {
+			if err == io.EOF {
+				break
+			}
+			request.options.Progress.IncrementFailedRequestsBy(int64(generator.Total()))
+			return err
+		}
+		if input.MetaInput.Input == "" {
+			input.MetaInput.Input = generatedHttpRequest.URL()
+		}
+		swg.Add()
+		go func(httpRequest *generatedRequest) {
+			defer swg.Done()
 
-		// 	// previous := make(map[string]interface{})
-		// 	err = nil
-		// 	// err := request.executeRequest(input, httpRequest, previous, false, callback, 0)
-		// 	mutex.Lock()
-		// 	if err != nil {
-		// 		requestErr = multierr.Append(requestErr, err)
-		// 	}
-		// 	mutex.Unlock()
-		// }(generatedHttpRequest)
+			request.options.RateLimiter.Take()
+
+			previous := make(map[string]interface{})
+			err := request.executeRequest(input, httpRequest, previous, false, callback, 0)
+			mutex.Lock()
+			if err != nil {
+				requestErr = multierr.Append(requestErr, err)
+			}
+			mutex.Unlock()
+		}(generatedHttpRequest)
 		request.options.Progress.IncrementRequests()
 	}
 	swg.Wait()
@@ -318,7 +313,6 @@ func (request *Request) executeFuzzingRule(input *contextargs.Context, previous 
 
 // ExecuteWithResults executes the final request on a URL
 func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicValues, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
-	fmt.Println("Inside ExecuteWithResultsn, request.go line 318")
 	if request.Pipeline || request.Race && request.RaceNumberRequests > 0 || request.Threads > 0 {
 		variablesMap := request.options.Variables.Evaluate(generators.MergeMaps(dynamicValues, previous))
 		dynamicValues = generators.MergeMaps(variablesMap, dynamicValues)
@@ -328,10 +322,8 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 		return request.executeTurboHTTP(input, dynamicValues, previous, callback)
 	}
 
-	fmt.Println("Inside ExecuteWithResultsn, request.go line 328", request.Race, request.RaceNumberRequests)
 	// verify if a basic race condition was requested
 	if request.Race && request.RaceNumberRequests > 0 {
-		fmt.Println("Inside race condition")
 		return request.executeRaceRequest(input, dynamicValues, callback)
 	}
 

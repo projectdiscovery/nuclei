@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"context"
 	"fmt"
-	"io"
 	"strings"
 	"time"
 
@@ -269,26 +268,19 @@ func (r *requestGenerator) generateRawRequest(ctx context.Context, rawRequest st
 		return unsafeReq, nil
 	}
 
-	var body io.ReadCloser
-	body = io.NopCloser(strings.NewReader(rawRequestData.Data))
-	if r.request.Race {
-		// More or less this ensures that all requests hit the endpoint at the same approximated time
-		// Todo: sync internally upon writing latest request byte
-		body = race.NewOpenGateWithTimeout(body, time.Duration(2)*time.Second)
-	}
-	// Problem lies here. from 279 to 288. Takes 2 seconds to execute
 	urlx, err := urlutil.ParseURL(rawRequestData.FullURL, true)
 	if err != nil {
 		return nil, errorutil.NewWithErr(err).Msgf("failed to create request with url %v got %v", rawRequestData.FullURL, err).WithTag("raw")
 	}
-	fmt.Println("Inside http build_request.go 279", time.Now())
-	req, err := retryablehttp.NewRequestFromURLWithContext(ctx, rawRequestData.Method, urlx, body)
+	req, err := retryablehttp.NewRequestFromURLWithContext(ctx, rawRequestData.Method, urlx, rawRequestData.Data)
 	if err != nil {
 		return nil, err
 	}
-	fmt.Println("Inside generateRawRequest inside race build_request.go 275", time.Now())
-	fmt.Println()
-	fmt.Println()
+	if r.request.Race {
+		// More or less this ensures that all requests hit the endpoint at the same approximated time
+		// Todo: sync internally upon writing latest request byte
+		req.Body = race.NewOpenGateWithTimeout(req.Body, time.Duration(2)*time.Second)
+	}
 	for key, value := range rawRequestData.Headers {
 		if key == "" {
 			continue
@@ -316,6 +308,7 @@ func (r *requestGenerator) generateRawRequest(ctx context.Context, rawRequest st
 		generatedRequest.customCancelFunction = reqWithOverrides.cancelFunc
 		generatedRequest.interactshURLs = append(generatedRequest.interactshURLs, reqWithOverrides.interactshURLs...)
 	}
+
 	return generatedRequest, nil
 }
 
