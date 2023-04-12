@@ -9,7 +9,6 @@ import (
 	"net"
 	"net/url"
 	"os"
-	"os/user"
 	"path/filepath"
 	"runtime"
 	"strconv"
@@ -26,6 +25,8 @@ import (
 	"github.com/projectdiscovery/iputil"
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/config"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
+	file "github.com/projectdiscovery/utils/file"
+	permission "github.com/projectdiscovery/utils/permission"
 )
 
 // DoHealthCheck performs network and self-diagnostic checks
@@ -36,7 +37,7 @@ func DoHealthCheck(options *types.Options) string {
 	internetTarget := defaultTarget
 	var ipv4addresses string
 	var ipv6addresses string
-	adminPriv := iAmRoot()
+	adminPriv := permission.IsRoot
 
 	var resolvers []string
 	if options.ResolversFile != "" {
@@ -66,6 +67,7 @@ func DoHealthCheck(options *types.Options) string {
 			"arch":      runtime.GOARCH,
 			"goVersion": runtime.Version(),
 			"compiler":  runtime.Compiler,
+			"admin":     adminPriv,
 		},
 		"program": map[string]interface{}{
 			"version": config.Version,
@@ -84,8 +86,8 @@ func DoHealthCheck(options *types.Options) string {
 
 	// File permissions
 	for _, filename := range []string{options.ConfigPath, config.GetIgnoreFilePath(), getTemplateCsf()} {
-		fileTests["Read: "+filename] = checkFilePermissions(filename, "read")
-		fileTests["Write: "+filename] = checkFilePermissions(filename, "write")
+		fileTests["Read: "+filename], _ = file.IsReadable(filename)
+		fileTests["Write: "+filename], _ = file.IsWriteable(filename)
 	}
 
 	// Other Host information
@@ -444,24 +446,6 @@ func traceroute(assetIPs, networkType, format string, adminPriv bool) string {
 	}
 
 	return strings.Join(results, joinchar)
-}
-
-// iAmRoot returns true if the current user is root
-func iAmRoot() bool {
-	currentUser, err := user.Current()
-	if err != nil {
-		return false
-	}
-	if currentUser.Username == "root" {
-		return true
-	}
-
-	u := strings.Split(currentUser.Username, "\\")
-	if len(u) > 1 && u[1] == "Administrator" {
-		return true
-	}
-
-	return false
 }
 
 // ping returns the ping of an IP address, both IPv6 and IPv4
