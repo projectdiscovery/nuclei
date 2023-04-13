@@ -35,6 +35,9 @@ func getAzureBlobClient(tenantID string, clientID string, clientSecret string, s
 }
 
 func (bk *customTemplateAzureBlob) Download(location string, ctx context.Context) {
+	// Set an incrementer for the number of templates downloaded
+	var templatesDownloaded = 0
+
 	// Define the local path to which the templates will be downloaded
 	downloadPath := filepath.Join(location, CustomAzureTemplateDirectory, bk.containerName)
 
@@ -60,10 +63,16 @@ func (bk *customTemplateAzureBlob) Download(location string, ctx context.Context
 				err := downloadTemplate(bk.azureBlobClient, bk.containerName, *blob.Name, filepath.Join(downloadPath, *blob.Name), ctx)
 				if err != nil {
 					gologger.Error().Msgf("Error downloading template: %v", err)
+				} else {
+					// Increment the number of templates downloaded
+					templatesDownloaded++
 				}
 			}
 		}
 	}
+
+	// Log the number of templates downloaded
+	gologger.Info().Msgf("Downloaded %d templates from Azure Blob Storage container '%s'", templatesDownloaded, bk.containerName)
 }
 
 // Update updates the templates from the Azure Blob Storage container to the local filesystem. This is effectively a
@@ -95,6 +104,13 @@ func downloadTemplate(client *azblob.Client, containerName string, path string, 
 	err = retryReader.Close()
 	if err != nil {
 		gologger.Error().Msgf("Error closing template filestream: %v", err)
+		return err
+	}
+
+	// Ensure the directory exists
+	err = os.MkdirAll(filepath.Dir(outputPath), 0755)
+	if err != nil {
+		gologger.Error().Msgf("Error creating directory: %v", err)
 		return err
 	}
 
