@@ -171,38 +171,41 @@ func (c *Client) firstTimeInitializeClient() error {
 	c.hostname = interactDomain
 	c.dataMutex.Unlock()
 
-	err = interactsh.StartPolling(c.pollDuration, func(interaction *server.Interaction) {
-		item := c.requests.Get(interaction.UniqueID)
-		if item == nil {
-			// If we don't have any request for this ID, add it to temporary
-			// lru cache, so we can correlate when we get an add request.
-			gotItem := c.interactions.Get(interaction.UniqueID)
-			if gotItem == nil {
-				c.interactions.Set(interaction.UniqueID, []*server.Interaction{interaction}, defaultInteractionDuration)
-			} else if items, ok := gotItem.Value().([]*server.Interaction); ok {
-				items = append(items, interaction)
-				c.interactions.Set(interaction.UniqueID, items, defaultInteractionDuration)
-			}
-			return
-		}
-		request, ok := item.Value().(*RequestData)
-		if !ok {
-			return
-		}
-
-		if _, ok := request.Event.InternalEvent[stopAtFirstMatchAttribute]; ok || c.options.StopAtFirstMatch {
-			gotItem := c.matchedTemplates.Get(hash(request.Event.InternalEvent[templateIdAttribute].(string), request.Event.InternalEvent["host"].(string)))
-			if gotItem != nil {
+	go func() {
+		err = interactsh.StartPolling(c.pollDuration, func(interaction *server.Interaction) {
+			item := c.requests.Get(interaction.UniqueID)
+			if item == nil {
+				// If we don't have any request for this ID, add it to temporary
+				// lru cache, so we can correlate when we get an add request.
+				gotItem := c.interactions.Get(interaction.UniqueID)
+				if gotItem == nil {
+					c.interactions.Set(interaction.UniqueID, []*server.Interaction{interaction}, defaultInteractionDuration)
+				} else if items, ok := gotItem.Value().([]*server.Interaction); ok {
+					items = append(items, interaction)
+					c.interactions.Set(interaction.UniqueID, items, defaultInteractionDuration)
+				}
 				return
 			}
+			request, ok := item.Value().(*RequestData)
+			if !ok {
+				return
+			}
+
+			if _, ok := request.Event.InternalEvent[stopAtFirstMatchAttribute]; ok || c.options.StopAtFirstMatch {
+				gotItem := c.matchedTemplates.Get(hash(request.Event.InternalEvent[templateIdAttribute].(string), request.Event.InternalEvent["host"].(string)))
+				if gotItem != nil {
+					return
+				}
+			}
+
+			_ = c.processInteractionForRequest(interaction, request)
+		})
+
+		if err != nil {
+			gologger.Error().Msgf("could not perform instactsh polling: %s", err)
 		}
+	}()
 
-		_ = c.processInteractionForRequest(interaction, request)
-	})
-
-	if err != nil {
-		return errors.Wrap(err, "could not perform instactsh polling")
-	}
 	return nil
 }
 

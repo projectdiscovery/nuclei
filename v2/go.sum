@@ -435,8 +435,8 @@ github.com/projectdiscovery/hmap v0.0.11 h1:nA3qCFzWPcOw27T8PII5IWI3ZP0ys7TGCi2n
 github.com/projectdiscovery/hmap v0.0.11/go.mod h1:5sbLn2OHexvpVupStNOhusWO9jLCyEm5jcHwWB2nOkI=
 github.com/projectdiscovery/httpx v1.2.9 h1:bSXXjPHIDywokASSXLaWScyIRTFT6Avr9JJS7lV96c0=
 github.com/projectdiscovery/httpx v1.2.9/go.mod h1:99+TTGdMDKQgWRLzzWj3zGffQ6f4NCAWQHqHWfPn0Uc=
-github.com/projectdiscovery/interactsh v1.1.1-0.20230403200718-191eb81c4b0d h1:V/TpFiLbpSsgZgxBXSTXSgwGD8uKayImAwqz9etAzK8=
-github.com/projectdiscovery/interactsh v1.1.1-0.20230403200718-191eb81c4b0d/go.mod h1:6qYsmXQ//CPXib21ugKYXuLwr43zLPlO+UYyx+o+4Mw=
+github.com/projectdiscovery/interactsh v1.1.1-0.20230413151355-993747b96c47 h1:5IIj/K3P7IvpEmxyZximKeAAqtFwLPfG+u9pvEcC4fM=
+github.com/projectdiscovery/interactsh v1.1.1-0.20230413151355-993747b96c47/go.mod h1:LpyxkR49S0Qhsr3Z9+LhD3/hpPHQSIRfN64PXToM4So=
 github.com/projectdiscovery/iputil v0.0.2 h1:f6IGnZF4RImJLysPSPG3D84jyTH34q3lihCFeP+eZzI=
 github.com/projectdiscovery/iputil v0.0.2/go.mod h1:J3Pcz1q51pi4/JL871mQztg0KOzyWDPxnPLOYJm2pVQ=
 github.com/projectdiscovery/mapcidr v1.1.1 h1:68Xvw9cKugNeAVxHE3Nl1Ej26nm1taWq6e1WPXpluc0=
