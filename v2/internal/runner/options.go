@@ -323,8 +323,16 @@ func readEnvInputVars(options *types.Options) {
 	if repolist != "" {
 		options.GithubTemplateRepo = append(options.GithubTemplateRepo, stringsutil.SplitAny(repolist, ",")...)
 	}
+	// AWS options for downloading templates from an S3 bucket
 	options.AwsAccessKey = os.Getenv("AWS_ACCESS_KEY")
 	options.AwsSecretKey = os.Getenv("AWS_SECRET_KEY")
 	options.AwsBucketName = os.Getenv("AWS_TEMPLATE_BUCKET")
 	options.AwsRegion = os.Getenv("AWS_REGION")
+
+	// Azure options for downloading templates from an Azure Blob Storage container
+	options.AzureContainerName = os.Getenv("AZURE_CONTAINER_NAME")
+	options.AzureTenantID = os.Getenv("AZURE_TENANT_ID")
+	options.AzureClientID = os.Getenv("AZURE_CLIENT_ID")
+	options.AzureClientSecret = os.Getenv("AZURE_CLIENT_SECRET")
+	options.AzureServiceURL = os.Getenv("AZURE_SERVICE_URL")
 }
