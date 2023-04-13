@@ -8,6 +8,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/disk"
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/loader/filter"
 	"github.com/projectdiscovery/nuclei/v2/pkg/model"
+	"github.com/projectdiscovery/nuclei/v2/pkg/model/types/severity"
 	"github.com/projectdiscovery/nuclei/v2/pkg/model/types/stringslice"
 	"github.com/projectdiscovery/nuclei/v2/pkg/templates"
 	"github.com/stretchr/testify/require"
@@ -30,8 +31,9 @@ func TestLoadTemplate(t *testing.T) {
 			template: &templates.Template{
 				ID: "CVE-2021-27330",
 				Info: model.Info{
-					Name:    "Valid template",
-					Authors: stringslice.StringSlice{Value: "Author"},
+					Name:           "Valid template",
+					Authors:        stringslice.StringSlice{Value: "Author"},
+					SeverityHolder: severity.Holder{Severity: severity.Medium},
 				},
 			},
 		},
@@ -45,10 +47,22 @@ func TestLoadTemplate(t *testing.T) {
 			template: &templates.Template{
 				ID: "invalid id",
 				Info: model.Info{
+					Authors:        stringslice.StringSlice{Value: "Author"},
+					SeverityHolder: severity.Holder{Severity: severity.Medium},
+				},
+			},
+			expectedErr: errors.New("mandatory 'name' field is missing, invalid field format for 'id' (allowed format is ^([a-zA-Z0-9]+[-_])*[a-zA-Z0-9]+$)"),
+		},
+		{
+			name: "emptySeverity",
+			template: &templates.Template{
+				ID: "CVE-2021-27330",
+				Info: model.Info{
+					Name:    "Valid template",
 					Authors: stringslice.StringSlice{Value: "Author"},
 				},
 			},
-			expectedErr: errors.New("mandatory 'name' field is missing, invalid field format for 'id' (allowed format is ^([a-zA-Z0-9]+[-_])*[a-zA-Z0-9]+$), mandatory 'severity' field is missing"),
+			expectedErr: errors.New("mandatory 'severity' field is missing"),
 		},
 	}
 
@@ -92,8 +106,9 @@ func TestLoadTemplate(t *testing.T) {
 				template := &templates.Template{
 					ID: tc.id,
 					Info: model.Info{
-						Name:    "Valid template",
-						Authors: stringslice.StringSlice{Value: "Author"},
+						Name:           "Valid template",
+						Authors:        stringslice.StringSlice{Value: "Author"},
+						SeverityHolder: severity.Holder{Severity: severity.Medium},
 					},
 				}
 				parsedTemplatesCache.Store(name, template, nil)
@@ -105,7 +120,7 @@ func TestLoadTemplate(t *testing.T) {
 					require.NoError(t, err)
 					require.True(t, success)
 				} else {
-					require.Equal(t, errors.New("invalid field format for 'id' (allowed format is ^([a-zA-Z0-9]+[-_])*[a-zA-Z0-9]+$), mandatory 'severity' field is missing"), err)
+					require.Equal(t, errors.New("invalid field format for 'id' (allowed format is ^([a-zA-Z0-9]+[-_])*[a-zA-Z0-9]+$)"), err)
 					require.False(t, success)
 				}
 			})
