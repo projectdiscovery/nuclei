@@ -91,6 +91,9 @@ require (
 
 require (
 	aead.dev/minisign v0.2.0 // indirect
+	github.com/Azure/azure-sdk-for-go/sdk/azcore v1.4.0 // indirect
+	github.com/Azure/azure-sdk-for-go/sdk/internal v1.2.0 // indirect
+	github.com/AzureAD/microsoft-authentication-library-for-go v0.9.0 // indirect
 	github.com/Masterminds/semver/v3 v3.2.0 // indirect
 	github.com/VividCortex/ewma v1.2.0 // indirect
 	github.com/aws/aws-sdk-go-v2/aws/protocol/eventstream v1.4.10 // indirect
@@ -115,12 +118,14 @@ require (
 	github.com/jmespath/go-jmespath v0.4.0 // indirect
 	github.com/karlseguin/expect v1.0.8 // indirect
 	github.com/kataras/jwt v0.1.8 // indirect
+	github.com/kylelemons/godebug v1.1.0 // indirect
 	github.com/lucasb-eyer/go-colorful v1.2.0 // indirect
 	github.com/mackerelio/go-osstat v0.2.4 // indirect
 	github.com/minio/selfupdate v0.6.0 // indirect
 	github.com/muesli/reflow v0.3.0 // indirect
 	github.com/muesli/termenv v0.15.1 // indirect
 	github.com/pjbgf/sha1cd v0.3.0 // indirect
+	github.com/pkg/browser v0.0.0-20210911075715-681adbf594b8 // indirect
 	github.com/projectdiscovery/asnmap v1.0.2 // indirect
 	github.com/projectdiscovery/cdncheck v0.0.4-0.20220413175814-b47bc2d578b1 // indirect
 	github.com/projectdiscovery/freeport v0.0.4 // indirect
@@ -162,7 +167,7 @@ require (
 	github.com/goburrow/cache v0.1.4 // indirect
 	github.com/gobwas/httphead v0.1.0 // indirect
 	github.com/gobwas/pool v0.2.1 // indirect
-	github.com/golang-jwt/jwt/v4 v4.4.2 // indirect
+	github.com/golang-jwt/jwt/v4 v4.5.0 // indirect
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
 	github.com/golang/protobuf v1.5.3 // indirect
 	github.com/golang/snappy v0.0.4 // indirect
