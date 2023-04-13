@@ -239,7 +239,7 @@ func (request *Request) executeFuzzingRule(input *contextargs.Context, previous 
 		if request.options.HostErrorsCache != nil && request.options.HostErrorsCache.Check(input.MetaInput.Input) {
 			return false
 		}
-
+		request.options.RateLimiter.Take()
 		req := &generatedRequest{
 			request:        gr.Request,
 			dynamicValues:  gr.DynamicValues,
@@ -348,8 +348,6 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 		// returns two values, error and skip, which skips the execution for the request instance.
 		executeFunc := func(data string, payloads, dynamicValue map[string]interface{}) (bool, error) {
 			hasInteractMatchers := interactsh.HasMatchers(request.CompiledOperators)
-			variablesMap, interactURLs := request.options.Variables.EvaluateWithInteractsh(generators.MergeMaps(dynamicValues, payloads), request.options.Interactsh)
-			dynamicValue = generators.MergeMaps(variablesMap, dynamicValue)
 
 			request.options.RateLimiter.Take()
 
@@ -369,10 +367,6 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 				defer generatedHttpRequest.customCancelFunction()
 			}
 
-			// If the variables contain interactsh urls, use them
-			if len(interactURLs) > 0 {
-				generatedHttpRequest.interactshURLs = append(generatedHttpRequest.interactshURLs, interactURLs...)
-			}
 			hasInteractMarkers := interactsh.HasMarkers(data) || len(generatedHttpRequest.interactshURLs) > 0
 			if input.MetaInput.Input == "" {
 				input.MetaInput.Input = generatedHttpRequest.URL()
