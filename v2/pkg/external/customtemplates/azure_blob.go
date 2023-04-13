@@ -72,7 +72,7 @@ func (bk *customTemplateAzureBlob) Download(location string, ctx context.Context
 	}
 
 	// Log the number of templates downloaded
-	gologger.Info().Msgf("Downloaded %d templates from Azure Blob Storage container '%s'", templatesDownloaded, bk.containerName)
+	gologger.Info().Msgf("Downloaded %d templates from Azure Blob Storage container '%s' to: %s", templatesDownloaded, bk.containerName, downloadPath)
 }
 
 // Update updates the templates from the Azure Blob Storage container to the local filesystem. This is effectively a
