@@ -76,8 +76,8 @@ func downloadToFile(downloader *manager.Downloader, targetDirectory, bucket, key
 	return err
 }
 
-func getS3Client(ctx context.Context, acccessKey, secretKey, region string) (*s3.Client, error) {
-	cfg, err := config.LoadDefaultConfig(ctx, config.WithCredentialsProvider(credentials.NewStaticCredentialsProvider(acccessKey, secretKey, "")), config.WithRegion(region))
+func getS3Client(ctx context.Context, accessKey string, secretKey string, region string) (*s3.Client, error) {
+	cfg, err := config.LoadDefaultConfig(ctx, config.WithCredentialsProvider(credentials.NewStaticCredentialsProvider(accessKey, secretKey, "")), config.WithRegion(region))
 	if err != nil {
 		return nil, err
 	}
