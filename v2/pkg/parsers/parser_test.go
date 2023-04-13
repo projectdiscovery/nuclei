@@ -38,7 +38,7 @@ func TestLoadTemplate(t *testing.T) {
 		{
 			name:        "emptyTemplate",
 			template:    &templates.Template{},
-			expectedErr: errors.New("mandatory 'name' field is missing, mandatory 'author' field is missing, mandatory 'id' field is missing"),
+			expectedErr: errors.New("mandatory 'name' field is missing, mandatory 'author' field is missing, mandatory 'id' field is missing, mandatory 'severity' field is missing"),
 		},
 		{
 			name: "emptyNameWithInvalidID",
@@ -48,7 +48,7 @@ func TestLoadTemplate(t *testing.T) {
 					Authors: stringslice.StringSlice{Value: "Author"},
 				},
 			},
-			expectedErr: errors.New("mandatory 'name' field is missing, invalid field format for 'id' (allowed format is ^([a-zA-Z0-9]+[-_])*[a-zA-Z0-9]+$)"),
+			expectedErr: errors.New("mandatory 'name' field is missing, invalid field format for 'id' (allowed format is ^([a-zA-Z0-9]+[-_])*[a-zA-Z0-9]+$), mandatory 'severity' field is missing"),
 		},
 	}
 
@@ -105,7 +105,7 @@ func TestLoadTemplate(t *testing.T) {
 					require.NoError(t, err)
 					require.True(t, success)
 				} else {
-					require.Equal(t, errors.New("invalid field format for 'id' (allowed format is ^([a-zA-Z0-9]+[-_])*[a-zA-Z0-9]+$)"), err)
+					require.Equal(t, errors.New("invalid field format for 'id' (allowed format is ^([a-zA-Z0-9]+[-_])*[a-zA-Z0-9]+$), mandatory 'severity' field is missing"), err)
 					require.False(t, success)
 				}
 			})
