@@ -4,6 +4,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"sort"
 	"strings"
 
 	"github.com/logrusorgru/aurora"
@@ -58,7 +59,6 @@ func main() {
 	}
 
 	if runProtocol != "" {
-		debug = true
 		debugTests()
 		os.Exit(1)
 	}
@@ -80,11 +80,13 @@ func main() {
 }
 
 func debugTests() {
-	for tpath, testcase := range protocolTests[runProtocol] {
+	keys := getMapKeys(protocolTests[runProtocol])
+	for _, tpath := range keys {
+		testcase := protocolTests[runProtocol][tpath]
 		if runTemplate != "" && !strings.Contains(tpath, runTemplate) {
 			continue
 		}
-		if err := testcase.Execute(tpath); err != nil {
+		if _, err := execute(testcase, tpath); err != nil {
 			fmt.Printf("\n%v", err.Error())
 		}
 	}
@@ -97,8 +99,10 @@ func runTests(customTemplatePaths []string) []string {
 		if len(customTemplatePaths) == 0 {
 			fmt.Printf("Running test cases for %q protocol\n", aurora.Blue(proto))
 		}
+		keys := getMapKeys(testCases)
 
-		for templatePath, testCase := range testCases {
+		for _, templatePath := range keys {
+			testCase := testCases[templatePath]
 			if len(customTemplatePaths) == 0 || sliceutil.Contains(customTemplatePaths, templatePath) {
 				if failedTemplatePath, err := execute(testCase, templatePath); err != nil {
 					failedTestTemplatePaths = append(failedTestTemplatePaths, failedTemplatePath)
@@ -132,4 +136,13 @@ func normalizeSplit(str string) []string {
 	return strings.FieldsFunc(str, func(r rune) bool {
 		return r == ','
 	})
+}
+
+func getMapKeys[T any](testcases map[string]T) []string {
+	keys := make([]string, 0, len(testcases))
+	for k := range testcases {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	return keys
 }
