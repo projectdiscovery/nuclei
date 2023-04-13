@@ -111,7 +111,7 @@ func (c *Client) poll() error {
 			return
 		}
 
-		if requestShouldStopAtFirstMatch(request) || c.options.StopAtFirstMatch {
+		if requestShouldStopAtFirstMatch(request, true) || c.options.StopAtFirstMatch {
 			if gotItem, err := c.matchedTemplates.Get(hash(request.Event.InternalEvent)); gotItem && err == nil {
 				return
 			}
@@ -126,9 +126,16 @@ func (c *Client) poll() error {
 	return nil
 }
 
-func requestShouldStopAtFirstMatch(request *RequestData) bool {
-	request.Event.RLock()
-	defer request.Event.RUnlock()
+// requestShouldStopAtFirstmatch checks if furthur interactions should be stopped
+// note: extra care should be taken while using this function since internalEvent is
+// synchronized all the time and if caller functions has already acquired lock its best to explicitly specify that
+// we could use `TryLock()` but that may over complicate things and need to differentiate
+// situations whether to block or skip
+func requestShouldStopAtFirstMatch(request *RequestData, withLock bool) bool {
+	if withLock {
+		request.Event.RLock()
+		defer request.Event.RUnlock()
+	}
 
 	if stop, ok := request.Event.InternalEvent[stopAtFirstMatchAttribute]; ok {
 		if v, ok := stop.(bool); ok {
@@ -174,7 +181,7 @@ func (c *Client) processInteractionForRequest(interaction *server.Interaction, d
 
 	if writer.WriteResult(data.Event, c.options.Output, c.options.Progress, c.options.IssuesClient) {
 		c.matched.Store(true)
-		if requestShouldStopAtFirstMatch(data) || c.options.StopAtFirstMatch {
+		if requestShouldStopAtFirstMatch(data, true) || c.options.StopAtFirstMatch {
 			_ = c.matchedTemplates.SetWithExpire(hash(data.Event.InternalEvent), true, defaultInteractionDuration)
 		}
 	}
@@ -293,7 +300,7 @@ func (c *Client) RequestEvent(interactshURLs []string, data *RequestData) {
 	for _, interactshURL := range interactshURLs {
 		id := strings.TrimRight(strings.TrimSuffix(interactshURL, c.getHostname()), ".")
 
-		if requestShouldStopAtFirstMatch(data) || c.options.StopAtFirstMatch {
+		if requestShouldStopAtFirstMatch(data, false) || c.options.StopAtFirstMatch {
 			gotItem, err := c.matchedTemplates.Get(hash(data.Event.InternalEvent))
 			if gotItem && err == nil {
 				break
