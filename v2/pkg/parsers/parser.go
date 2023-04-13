@@ -12,6 +12,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/templates"
 	"github.com/projectdiscovery/nuclei/v2/pkg/templates/cache"
 	"github.com/projectdiscovery/nuclei/v2/pkg/templates/signer"
+	"github.com/projectdiscovery/nuclei/v2/pkg/templates/types"
 	"github.com/projectdiscovery/nuclei/v2/pkg/utils"
 	"github.com/projectdiscovery/nuclei/v2/pkg/utils/stats"
 	"gopkg.in/yaml.v2"
@@ -85,6 +86,10 @@ func validateTemplateFields(template *templates.Template) error {
 		errors = append(errors, fmt.Sprintf(errMandatoryFieldMissingFmt, "id"))
 	} else if !templateIDRegexp.MatchString(template.ID) {
 		errors = append(errors, fmt.Sprintf(errInvalidFieldFmt, "id", templateIDRegexp.String()))
+	}
+
+	if template.Type() != types.WorkflowProtocol && utils.IsBlank(info.SeverityHolder.Severity.String()) {
+		errors = append(errors, fmt.Sprintf(errMandatoryFieldMissingFmt, "severity"))
 	}
 
 	if len(errors) > 0 {
