@@ -57,8 +57,8 @@ func (bk *customTemplateAzureBlob) Download(location string, ctx context.Context
 		}
 
 		for _, blob := range resp.Segment.BlobItems {
-			// If the blob is a .yaml, .yml, or .json file, download the file to the local filesystem
-			if strings.HasSuffix(*blob.Name, ".yaml") || strings.HasSuffix(*blob.Name, ".yml") || strings.HasSuffix(*blob.Name, ".json") {
+			// If the blob is a .yaml download the file to the local filesystem
+			if strings.HasSuffix(*blob.Name, ".yaml") {
 				// Download the template to the local filesystem at the downloadPath
 				err := downloadTemplate(bk.azureBlobClient, bk.containerName, *blob.Name, filepath.Join(downloadPath, *blob.Name), ctx)
 				if err != nil {
