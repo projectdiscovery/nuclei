@@ -14,7 +14,6 @@ import (
 	"strconv"
 	"strings"
 
-	// "syscall"
 	"text/tabwriter"
 	"time"
 
@@ -33,7 +32,6 @@ import (
 func DoHealthCheck(options *types.Options) string {
 	const defaultTarget = "scanme.sh"
 	const resolverPublic = "1.1.1.1"
-	// const ulimitmin = 1000 // Minimum free ulimit value
 	internetTarget := defaultTarget
 	var ipv4addresses string
 	var ipv6addresses string
@@ -89,12 +87,6 @@ func DoHealthCheck(options *types.Options) string {
 		fileTests["Read: "+filename], _ = file.IsReadable(filename)
 		fileTests["Write: "+filename], _ = file.IsWriteable(filename)
 	}
-
-	// Other Host information
-	// if runtime.GOOS != "windows" {
-	// 	// LINUX/UNIX Systems
-	// 	data["os"].(map[string]interface{})["ulimit"] = checkUlimit(data, ulimitmin)
-	// }
 
 	// Test each DNS resolver set in config and the default resolver
 	resolvers = addIfNotExists(resolvers, resolverPublic)
@@ -176,40 +168,6 @@ func getTemplateCsf() string {
 	return filepath.Join(templatePath, "/", ".checksum")
 }
 
-// checkFilePermissions checks the permissions of a file
-func checkFilePermissions(filename string, test string) string {
-	// Determine permission to check based on test value
-	var perm os.FileMode
-	switch test {
-	case "read":
-		perm = 0400 // Read permission
-	case "write":
-		perm = 0200 // Write permission
-	default:
-		return fmt.Sprintf("Invalid test value: %s", test)
-	}
-
-	// Check if file exists
-	info, err := os.Stat(filename)
-	if err != nil {
-		if os.IsNotExist(err) {
-			return fmt.Sprintf("File not found: %s", filename)
-		} else {
-			return err.Error()
-		}
-	}
-
-	// Check file permission
-	switch {
-	case info.Mode().IsDir():
-		return fmt.Sprintf("%s is a directory", filename)
-	case info.Mode().Perm()&perm == perm:
-		return "Pass"
-	default:
-		return "Fail"
-	}
-}
-
 // checkConnection checks if a connection can be made to a host
 func checkConnection(host string, port int, protocol string) string {
 	address := net.JoinHostPort(host, strconv.Itoa(port))
@@ -235,17 +193,6 @@ func getOutput(data map[string]interface{}, format string) string {
 		return mapToTextTable(data, "Test", "Result")
 	}
 }
-
-// checkUlimit checks the ulimit of the current user
-// func checkUlimit(data map[string]interface{}, difflimit int) string {
-// 	var limit syscall.Rlimit
-// 	syscall.Getrlimit(syscall.RLIMIT_NOFILE, &limit)
-// 	if (limit.Max - limit.Cur) <= uint64(difflimit) {
-// 		return fmt.Sprintf("You may need to increase your file descriptor limit. %v/%v used", limit.Cur, limit.Max)
-// 	} else {
-// 		return "Pass"
-// 	}
-// }
 
 // mapToJson converts a map to a json string
 func mapToJson(data map[string]interface{}) string {
@@ -330,16 +277,9 @@ func lookup(name, dnsServer string) (string, string) {
 	return strings.Join(ipv4s, ", "), strings.Join(ipv6s, ", ")
 }
 
-// getFirstCsvEntry returns the first element of a comma separated string
-func getFirstCsvEntry(values string) string {
-	if values == "" {
-		return ""
-	}
-	return strings.Split(values, ", ")[0]
-}
-
 // traceroute returns the traceroute of an IP address, both IPv6 and IPv4
 // NOTE: Only works if we have root permission
+// TODO: Add support for Windows
 func traceroute(assetIPs, networkType, format string, adminPriv bool) string {
 	if !adminPriv {
 		return "Traceroute: You must have root permissions to run this test"
@@ -354,7 +294,7 @@ func traceroute(assetIPs, networkType, format string, adminPriv bool) string {
 		proto = "ip6:58"
 	}
 
-	assetIP := getFirstCsvEntry(assetIPs)
+	assetIP := strings.Split(assetIPs, ", ")[0]
 	ipaddr, _ := net.ResolveIPAddr("ip", assetIP)
 
 	listener, err := icmp.ListenPacket(proto, "::")
@@ -448,12 +388,12 @@ func traceroute(assetIPs, networkType, format string, adminPriv bool) string {
 	return strings.Join(results, joinchar)
 }
 
-// ping returns the ping of an IP address, both IPv6 and IPv4
+// ping performs a ping of an IP address, both IPv6 and IPv4 as requested
 func ping(addresses, proto string, adminPriv bool) string {
 	if !adminPriv {
 		return "Ping: You must have root permissions to run this test"
 	}
-	assetIP := getFirstCsvEntry(addresses)
+	assetIP := strings.Split(addresses, ", ")[0]
 
 	var err error
 	var conn net.PacketConn
