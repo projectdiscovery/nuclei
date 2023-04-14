@@ -160,7 +160,7 @@ func (request *Request) executeRequestWithPayloads(variables map[string]interfac
 		// }
 
 		if input.Type.GetType() == hexType {
-			_, err = hex.Decode(finalData, finalData)
+			finalData, err = hex.DecodeString(string(finalData))
 			if err != nil {
 				request.options.Output.Request(request.options.TemplatePath, address, request.Type().String(), err)
 				request.options.Progress.IncrementFailedRequestsBy(1)
