@@ -23,6 +23,7 @@ var (
 
 	protocolTests = map[string]map[string]testutils.TestCase{
 		"http":            httpTestcases,
+		"interactsh":      interactshTestCases,
 		"network":         networkTestcases,
 		"dns":             dnsTestCases,
 		"workflow":        workflowTestcases,
@@ -41,9 +42,10 @@ var (
 	}
 
 	// For debug purposes
-	runProtocol = ""
-	runTemplate = ""
-	extraArgs   = []string{}
+	runProtocol          = ""
+	runTemplate          = ""
+	extraArgs            = []string{}
+	interactshRetryCount = 3
 )
 
 func main() {
@@ -79,6 +81,21 @@ func main() {
 	}
 }
 
+// execute a testcase with retry and consider best of N
+// intended for flaky tests like interactsh
+func executeWithRetry(testCase testutils.TestCase, templatePath string, retryCount int) (string, error) {
+	var err error
+	for i := 0; i < retryCount; i++ {
+		err = testCase.Execute(templatePath)
+		if err == nil {
+			fmt.Printf("%s Test \"%s\" passed!\n", success, templatePath)
+			return "", nil
+		}
+	}
+	_, _ = fmt.Fprintf(os.Stderr, "%s Test \"%s\" failed after %v attempts : %s\n", failed, templatePath, retryCount, err)
+	return templatePath, err
+}
+
 func debugTests() {
 	keys := getMapKeys(protocolTests[runProtocol])
 	for _, tpath := range keys {
@@ -86,8 +103,14 @@ func debugTests() {
 		if runTemplate != "" && !strings.Contains(tpath, runTemplate) {
 			continue
 		}
-		if _, err := execute(testcase, tpath); err != nil {
-			fmt.Printf("\n%v", err.Error())
+		if runProtocol == "interactsh" {
+			if _, err := executeWithRetry(testcase, tpath, interactshRetryCount); err != nil {
+				fmt.Printf("\n%v", err.Error())
+			}
+		} else {
+			if _, err := execute(testcase, tpath); err != nil {
+				fmt.Printf("\n%v", err.Error())
+			}
 		}
 	}
 }
@@ -104,7 +127,14 @@ func runTests(customTemplatePaths []string) []string {
 		for _, templatePath := range keys {
 			testCase := testCases[templatePath]
 			if len(customTemplatePaths) == 0 || sliceutil.Contains(customTemplatePaths, templatePath) {
-				if failedTemplatePath, err := execute(testCase, templatePath); err != nil {
+				var failedTemplatePath string
+				var err error
+				if proto == "interactsh" {
+					failedTemplatePath, err = executeWithRetry(testCase, templatePath, interactshRetryCount)
+				} else {
+					failedTemplatePath, err = execute(testCase, templatePath)
+				}
+				if err != nil {
 					failedTestTemplatePaths = append(failedTestTemplatePaths, failedTemplatePath)
 				}
 			}

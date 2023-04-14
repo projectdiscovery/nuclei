@@ -47,8 +47,6 @@ var httpTestcases = map[string]testutils.TestCase{
 	"http/http-paths.yaml":                          &httpPaths{},
 	"http/request-condition.yaml":                   &httpRequestCondition{},
 	"http/request-condition-new.yaml":               &httpRequestCondition{},
-	"http/interactsh.yaml":                          &httpInteractshRequest{},
-	"http/interactsh-stop-at-first-match.yaml":      &httpInteractshStopAtFirstMatchRequest{},
 	"http/self-contained.yaml":                      &httpRequestSelfContained{},
 	"http/self-contained-file-input.yaml":           &httpRequestSelfContainedFileInput{},
 	"http/get-case-insensitive.yaml":                &httpGetCaseInsensitive{},
@@ -71,7 +69,6 @@ var httpTestcases = map[string]testutils.TestCase{
 	"http/get-without-scheme.yaml":                  &httpGetWithoutScheme{},
 	"http/cl-body-without-header.yaml":              &httpCLBodyWithoutHeader{},
 	"http/cl-body-with-header.yaml":                 &httpCLBodyWithHeader{},
-	"http/default-matcher-condition.yaml":           &httpDefaultMatcherCondition{},
 }
 
 type httpInteractshRequest struct{}
