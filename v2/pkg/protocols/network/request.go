@@ -126,8 +126,7 @@ func (request *Request) executeRequestWithPayloads(variables map[string]interfac
 
 	var interactshURLs []string
 
-	responseBuilder := &strings.Builder{}
-	reqBuilder := &strings.Builder{}
+	var responseBuilder, reqBuilder strings.Builder
 
 	interimValues := generators.MergeMaps(variables, payloads)
 
@@ -136,21 +135,9 @@ func (request *Request) executeRequestWithPayloads(variables map[string]interfac
 	}
 
 	inputEvents := make(map[string]interface{})
-	for _, input := range request.Inputs {
-		var data []byte
 
-		switch input.Type.GetType() {
-		case hexType:
-			data, err = hex.DecodeString(input.Data)
-		default:
-			data = []byte(input.Data)
-		}
-		if err != nil {
-			request.options.Output.Request(request.options.TemplatePath, address, request.Type().String(), err)
-			request.options.Progress.IncrementFailedRequestsBy(1)
-			return errors.Wrap(err, "could not write request to server")
-		}
-		reqBuilder.Grow(len(input.Data))
+	for _, input := range request.Inputs {
+		data := []byte(input.Data)
 
 		if request.options.Interactsh != nil {
 			var transformedData string
@@ -158,18 +145,29 @@ func (request *Request) executeRequestWithPayloads(variables map[string]interfac
 			data = []byte(transformedData)
 		}
 
-		finalData, dataErr := expressions.EvaluateByte(data, interimValues)
-		if dataErr != nil {
-			request.options.Output.Request(request.options.TemplatePath, address, request.Type().String(), dataErr)
+		finalData, err := expressions.EvaluateByte(data, interimValues)
+		if err != nil {
+			request.options.Output.Request(request.options.TemplatePath, address, request.Type().String(), err)
 			request.options.Progress.IncrementFailedRequestsBy(1)
-			return errors.Wrap(dataErr, "could not evaluate template expressions")
+			return errors.Wrap(err, "could not evaluate template expressions")
 		}
+
 		reqBuilder.Write(finalData)
 
-		if varErr := expressions.ContainsUnresolvedVariables(string(finalData)); varErr != nil {
-			gologger.Warning().Msgf("[%s] Could not make network request for %s: %v\n", request.options.TemplateID, actualAddress, varErr)
-			return nil
+		// if varErr := expressions.ContainsUnresolvedVariables(string(finalData)); varErr != nil {
+		// 	gologger.Warning().Msgf("[%s] Could not make network request for %s: %v\n", request.options.TemplateID, actualAddress, varErr)
+		// 	return nil
+		// }
+
+		if input.Type.GetType() == hexType {
+			_, err = hex.Decode(finalData, finalData)
+			if err != nil {
+				request.options.Output.Request(request.options.TemplatePath, address, request.Type().String(), err)
+				request.options.Progress.IncrementFailedRequestsBy(1)
+				return errors.Wrap(err, "could not write request to server")
+			}
 		}
+
 		if _, err := conn.Write(finalData); err != nil {
 			request.options.Output.Request(request.options.TemplatePath, address, request.Type().String(), err)
 			request.options.Progress.IncrementFailedRequestsBy(1)
@@ -179,11 +177,13 @@ func (request *Request) executeRequestWithPayloads(variables map[string]interfac
 		if input.Read > 0 {
 			buffer := make([]byte, input.Read)
 			n, _ := conn.Read(buffer)
+
 			responseBuilder.Write(buffer[:n])
 
 			bufferStr := string(buffer[:n])
 			if input.Name != "" {
 				inputEvents[input.Name] = bufferStr
+				interimValues[input.Name] = bufferStr
 			}
 
 			// Run any internal extractors for the request here and add found values to map.
