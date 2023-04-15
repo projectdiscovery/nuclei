@@ -2,6 +2,11 @@ module github.com/projectdiscovery/nuclei/v2
 
 go 1.19
 
+replace (
+	github.com/projectdiscovery/dsl => C:\\Users\\marco\\go\\src\\github.com\\projectdiscovery\\dsl
+	github.com/projectdiscovery/utils => C:\\Users\\marco\\go\\src\\github.com\\projectdiscovery\\utils
+)
+
 require (
 	github.com/Knetic/govaluate v3.0.1-0.20171022003610-9aa49832a739+incompatible
 	github.com/alecthomas/jsonschema v0.0.0-20211022214203-8b29eab41725
@@ -44,8 +49,8 @@ require (
 	github.com/weppos/publicsuffix-go v0.30.0
 	github.com/xanzy/go-gitlab v0.81.0
 	go.uber.org/multierr v1.11.0
-	golang.org/x/net v0.8.0
-	golang.org/x/oauth2 v0.6.0
+	golang.org/x/net v0.9.0
+	golang.org/x/oauth2 v0.7.0
 	golang.org/x/text v0.9.0
 	gopkg.in/yaml.v2 v2.4.0
 	moul.io/http2curl v1.0.0
@@ -80,7 +85,7 @@ require (
 	github.com/projectdiscovery/sarif v0.0.1
 	github.com/projectdiscovery/tlsx v1.0.6
 	github.com/projectdiscovery/uncover v1.0.2
-	github.com/projectdiscovery/utils v0.0.20-0.20230410133604-010edb62cb35
+	github.com/projectdiscovery/utils v0.0.20-0.20230411082412-f05b9808f98f
 	github.com/projectdiscovery/wappalyzergo v0.0.88
 	github.com/stretchr/testify v1.8.2
 	gopkg.in/src-d/go-git.v4 v4.13.1
@@ -89,7 +94,8 @@ require (
 
 require (
 	aead.dev/minisign v0.2.0 // indirect
-	github.com/Masterminds/semver/v3 v3.2.0 // indirect
+	github.com/Masterminds/semver/v3 v3.2.1 // indirect
+	github.com/Mzack9999/gostruct v0.0.0-20230415193108-30b70932da81 // indirect
 	github.com/VividCortex/ewma v1.2.0 // indirect
 	github.com/aws/aws-sdk-go-v2/aws/protocol/eventstream v1.4.10 // indirect
 	github.com/aws/aws-sdk-go-v2/internal/v4a v1.0.24 // indirect
@@ -122,6 +128,7 @@ require (
 	github.com/projectdiscovery/asnmap v1.0.2 // indirect
 	github.com/projectdiscovery/cdncheck v0.0.4-0.20220413175814-b47bc2d578b1 // indirect
 	github.com/projectdiscovery/freeport v0.0.4 // indirect
+	github.com/sashabaranov/go-openai v1.7.0 // indirect
 	github.com/skeema/knownhosts v1.1.0 // indirect
 	github.com/tidwall/btree v1.6.0 // indirect
 	github.com/tidwall/buntdb v1.2.10 // indirect
