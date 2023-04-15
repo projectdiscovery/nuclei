@@ -2,11 +2,6 @@ module github.com/projectdiscovery/nuclei/v2
 
 go 1.19
 
-replace (
-	github.com/projectdiscovery/dsl => C:\\Users\\marco\\go\\src\\github.com\\projectdiscovery\\dsl
-	github.com/projectdiscovery/utils => C:\\Users\\marco\\go\\src\\github.com\\projectdiscovery\\utils
-)
-
 require (
 	github.com/Knetic/govaluate v3.0.1-0.20171022003610-9aa49832a739+incompatible
 	github.com/alecthomas/jsonschema v0.0.0-20211022214203-8b29eab41725
@@ -73,7 +68,7 @@ require (
 	github.com/labstack/echo/v4 v4.10.2
 	github.com/mholt/archiver v3.1.1+incompatible
 	github.com/mitchellh/go-homedir v1.1.0
-	github.com/projectdiscovery/dsl v0.0.5-0.20230328190851-15d12ab4c5e4
+	github.com/projectdiscovery/dsl v0.0.6-0.20230415194237-c0a24b744cfb
 	github.com/projectdiscovery/fasttemplate v0.0.2
 	github.com/projectdiscovery/goflags v0.1.8
 	github.com/projectdiscovery/gologger v1.1.8
@@ -85,7 +80,7 @@ require (
 	github.com/projectdiscovery/sarif v0.0.1
 	github.com/projectdiscovery/tlsx v1.0.6
 	github.com/projectdiscovery/uncover v1.0.2
-	github.com/projectdiscovery/utils v0.0.20-0.20230411082412-f05b9808f98f
+	github.com/projectdiscovery/utils v0.0.20-0.20230411193518-3c7331d544ab
 	github.com/projectdiscovery/wappalyzergo v0.0.88
 	github.com/stretchr/testify v1.8.2
 	gopkg.in/src-d/go-git.v4 v4.13.1
