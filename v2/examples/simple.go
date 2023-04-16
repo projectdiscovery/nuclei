@@ -50,7 +50,7 @@ func main() {
 	defaultOpts.IncludeIds = goflags.StringSlice{"cname-service"}
 	defaultOpts.ExcludeTags = config.ReadIgnoreFile().Tags
 
-	interactOpts := interactsh.NewDefaultOptions(outputWriter, reportingClient, mockProgress)
+	interactOpts := interactsh.DefaultOptions(outputWriter, reportingClient, mockProgress)
 	interactClient, err := interactsh.New(interactOpts)
 	if err != nil {
 		log.Fatalf("Could not create interact client: %s\n", err)
