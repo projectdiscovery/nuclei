@@ -14,7 +14,7 @@ import (
 )
 
 const (
-	RegisterServer = "https://armed-corporate-engaging-attachments.trycloudflare.com/api/v1/tools/"
+	RegisterServer = "https://api.pdtm.sh/api/v1/tools/"
 	ToolName       = "nuclei"
 	IgnoreCall     = "ignore"
 )
