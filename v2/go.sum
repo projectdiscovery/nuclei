@@ -10,6 +10,8 @@ github.com/Masterminds/semver/v3 v3.2.0 h1:3MEsd0SM6jqZojhjLWWeBY+Kcjy9i6MQAeY7Y
 github.com/Masterminds/semver/v3 v3.2.0/go.mod h1:qvl/7zhW3nngYb5+80sSMF+FG2BjYrf8m9wsX0PNOMQ=
 github.com/Microsoft/go-winio v0.5.2 h1:a9IhgEQBCUEk6QCdml9CiJGhAws+YwffDHEMp1VMrpA=
 github.com/Microsoft/go-winio v0.5.2/go.mod h1:WpS1mjBmmwHBEWmogvA2mj8546UReBk4v8QkMxJ6pZY=
+github.com/Mzack9999/gcache v0.0.0-20230410081825-519e28eab057 h1:KFac3SiGbId8ub47e7kd2PLZeACxc1LkiiNoDOFRClE=
+github.com/Mzack9999/gcache v0.0.0-20230410081825-519e28eab057/go.mod h1:iLB2pivrPICvLOuROKmlqURtFIEsoJZaMidQfCG1+D4=
 github.com/Mzack9999/go-http-digest-auth-client v0.6.1-0.20220414142836-eb8883508809 h1:ZbFL+BDfBqegi+/Ssh7im5+aQfBRx6it+kHnC7jaDU8=
 github.com/Mzack9999/go-http-digest-auth-client v0.6.1-0.20220414142836-eb8883508809/go.mod h1:upgc3Zs45jBDnBT4tVRgRcgm26ABpaP7MoTSdgysca4=
 github.com/Mzack9999/ldapserver v1.0.2-0.20211229000134-b44a0d6ad0dd h1:RTWs+wEY9efxTKK5aFic5C5KybqQelGcX+JdM69KoTo=
@@ -290,11 +292,7 @@ github.com/jtolds/gls v4.20.0+incompatible h1:xdiiI2gbIgH/gLH7ADydsJ1uDOEzR8yvV7
 github.com/jtolds/gls v4.20.0+incompatible/go.mod h1:QJZ7F/aHp+rZTRtaJ1ow/lLfFfVYBRgL+9YlvaHOwJU=
 github.com/julienschmidt/httprouter v1.3.0 h1:U0609e9tgbseu3rBINet9P48AI/D3oJs4dN7jwJOQ1U=
 github.com/julienschmidt/httprouter v1.3.0/go.mod h1:JR6WtHb+2LUe8TCKY3cZOxFyyO8IZAc4RVcycCCAKdM=
-github.com/karlseguin/ccache v2.0.3+incompatible h1:j68C9tWOROiOLWTS/kCGg9IcJG+ACqn5+0+t8Oh83UU=
-github.com/karlseguin/ccache v2.0.3+incompatible/go.mod h1:CM9tNPzT6EdRh14+jiW8mEF9mkNZuuE51qmgGYUB93w=
 github.com/karlseguin/ccache/v2 v2.0.8 h1:lT38cE//uyf6KcFok0rlgXtGFBWxkI6h/qg4tbFyDnA=
-github.com/karlseguin/expect v1.0.8 h1:Bb0H6IgBWQpadY25UDNkYPDB9ITqK1xnSoZfAq362fw=
-github.com/karlseguin/expect v1.0.8/go.mod h1:lXdI8iGiQhmzpnnmU/EGA60vqKs8NbRNFnhhrJGoD5g=
 github.com/kataras/jwt v0.1.8 h1:u71baOsYD22HWeSOg32tCHbczPjdCk7V4MMeJqTtmGk=
 github.com/kataras/jwt v0.1.8/go.mod h1:Q5j2IkcIHnfwy+oNY3TVWuEBJNw0ADgCcXK9CaZwV4o=
 github.com/kevinburke/ssh_config v0.0.0-20190725054713-01f96b0aa0cd/go.mod h1:CT57kijsi8u/K/BOFA39wgDQJ9CxiF4nAY/ojJ6r6mM=
@@ -582,8 +580,6 @@ github.com/weppos/publicsuffix-go v0.30.0 h1:QHPZ2GRu/YE7cvejH9iyavPOkVCB4dNxp2Z
 github.com/weppos/publicsuffix-go v0.30.0/go.mod h1:kBi8zwYnR0zrbm8RcuN1o9Fzgpnnn+btVN8uWPMyXAY=
 github.com/weppos/publicsuffix-go/publicsuffix/generator v0.0.0-20220704091424-e0182326a282/go.mod h1:GHfoeIdZLdZmLjMlzBftbTDntahTttUMWjxZwQJhULE=
 github.com/weppos/publicsuffix-go/publicsuffix/generator v0.0.0-20220927085643-dc0d00c92642/go.mod h1:GHfoeIdZLdZmLjMlzBftbTDntahTttUMWjxZwQJhULE=
-github.com/wsxiaoys/terminal v0.0.0-20160513160801-0940f3fc43a0 h1:3UeQBvD0TFrlVjOeLOBz+CPAI8dnbqNSVwUwRrkp7vQ=
-github.com/wsxiaoys/terminal v0.0.0-20160513160801-0940f3fc43a0/go.mod h1:IXCdmsXIht47RaVFLEdVnh1t+pgYtTAhQGj73kz+2DM=
 github.com/xanzy/go-gitlab v0.81.0 h1:ofbhZ5ZY9AjHATWQie4qd2JfncdUmvcSA/zfQB767Dk=
 github.com/xanzy/go-gitlab v0.81.0/go.mod h1:VMbY3JIWdZ/ckvHbQqkyd3iYk2aViKrNIQ23IbFMQDo=
 github.com/xanzy/ssh-agent v0.2.1/go.mod h1:mLlQY/MoOhWBj+gOGMQkOeiEvkx+8pJSI+0Bx9h2kr4=
