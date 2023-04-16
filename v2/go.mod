@@ -68,7 +68,7 @@ require (
 	github.com/labstack/echo/v4 v4.10.2
 	github.com/mholt/archiver v3.1.1+incompatible
 	github.com/mitchellh/go-homedir v1.1.0
-	github.com/projectdiscovery/dsl v0.0.6-0.20230415194237-c0a24b744cfb
+	github.com/projectdiscovery/dsl v0.0.7-0.20230416172251-eef8b2b93bda
 	github.com/projectdiscovery/fasttemplate v0.0.2
 	github.com/projectdiscovery/goflags v0.1.8
 	github.com/projectdiscovery/gologger v1.1.8
