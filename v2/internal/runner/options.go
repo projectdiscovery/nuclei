@@ -157,6 +157,14 @@ func validateOptions(options *types.Options) error {
 		}
 	}
 
+	// Verify Azure connection configuration is passed if the Azure template bucket is passed
+	if options.AzureContainerName != "" && options.UpdateTemplates {
+		missing := validateMissingAzureOptions(options)
+		if missing != nil {
+			return fmt.Errorf("azure connection details are missing. Please provide %s", strings.Join(missing, ","))
+		}
+	}
+
 	// verify that a valid ip version type was selected (4, 6)
 	if len(options.IPVersion) == 0 {
 		// add ipv4 as default
@@ -198,6 +206,8 @@ func validateCloudOptions(options *types.Options) error {
 			missing = validateMissingS3Options(options)
 		case "github":
 			missing = validateMissingGithubOptions(options)
+		case "azure":
+			missing = validateMissingAzureOptions(options)
 		}
 		if len(missing) > 0 {
 			return fmt.Errorf("missing %v env variables", strings.Join(missing, ", "))
@@ -219,6 +229,26 @@ func validateMissingS3Options(options *types.Options) []string {
 	}
 	if options.AwsRegion == "" {
 		missing = append(missing, "AWS_REGION")
+	}
+	return missing
+}
+
+func validateMissingAzureOptions(options *types.Options) []string {
+	var missing []string
+	if options.AzureTenantID == "" {
+		missing = append(missing, "AZURE_TENANT_ID")
+	}
+	if options.AzureClientID == "" {
+		missing = append(missing, "AZURE_CLIENT_ID")
+	}
+	if options.AzureClientSecret == "" {
+		missing = append(missing, "AZURE_CLIENT_SECRET")
+	}
+	if options.AzureServiceURL == "" {
+		missing = append(missing, "AZURE_SERVICE_URL")
+	}
+	if options.AzureContainerName == "" {
+		missing = append(missing, "AZURE_CONTAINER_NAME")
 	}
 	return missing
 }
@@ -323,8 +353,16 @@ func readEnvInputVars(options *types.Options) {
 	if repolist != "" {
 		options.GithubTemplateRepo = append(options.GithubTemplateRepo, stringsutil.SplitAny(repolist, ",")...)
 	}
+	// AWS options for downloading templates from an S3 bucket
 	options.AwsAccessKey = os.Getenv("AWS_ACCESS_KEY")
 	options.AwsSecretKey = os.Getenv("AWS_SECRET_KEY")
 	options.AwsBucketName = os.Getenv("AWS_TEMPLATE_BUCKET")
 	options.AwsRegion = os.Getenv("AWS_REGION")
+
+	// Azure options for downloading templates from an Azure Blob Storage container
+	options.AzureContainerName = os.Getenv("AZURE_CONTAINER_NAME")
+	options.AzureTenantID = os.Getenv("AZURE_TENANT_ID")
+	options.AzureClientID = os.Getenv("AZURE_CLIENT_ID")
+	options.AzureClientSecret = os.Getenv("AZURE_CLIENT_SECRET")
+	options.AzureServiceURL = os.Getenv("AZURE_SERVICE_URL")
 }

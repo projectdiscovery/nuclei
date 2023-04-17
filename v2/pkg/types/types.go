@@ -348,6 +348,16 @@ type Options struct {
 	AwsBucketName string
 	// AWS Region name where aws s3 bucket is located
 	AwsRegion string
+	// AzureContainerName for downloading templates from Azure Blob Storage. Example: templates
+	AzureContainerName string
+	// AzureTenantID for downloading templates from Azure Blob Storage. Example: 00000000-0000-0000-0000-000000000000
+	AzureTenantID string
+	// AzureClientID for downloading templates from Azure Blob Storage. Example: 00000000-0000-0000-0000-000000000000
+	AzureClientID string
+	// AzureClientSecret for downloading templates from Azure Blob Storage. Example: 00000000-0000-0000-0000-000000000000
+	AzureClientSecret string
+	// AzureServiceURL for downloading templates from Azure Blob Storage. Example: https://XXXXXXXXXX.blob.core.windows.net/
+	AzureServiceURL string
 	// Scan Strategy (auto,hosts-spray,templates-spray)
 	ScanStrategy string
 	// Fuzzing Type overrides template level fuzzing-type configuration
