@@ -41,7 +41,7 @@ require (
 	github.com/tj/go-update v2.2.5-0.20200519121640-62b4b798fd68+incompatible
 	github.com/valyala/fasttemplate v1.2.2
 	github.com/weppos/publicsuffix-go v0.30.0
-	github.com/xanzy/go-gitlab v0.81.0
+	github.com/xanzy/go-gitlab v0.82.0
 	go.uber.org/multierr v1.11.0
 	golang.org/x/net v0.8.0
 	golang.org/x/oauth2 v0.6.0
