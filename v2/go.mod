@@ -64,7 +64,7 @@ require (
 	github.com/fatih/structs v1.1.0
 	github.com/go-git/go-git/v5 v5.6.1
 	github.com/h2non/filetype v1.1.3
-	github.com/klauspost/compress v1.16.0
+	github.com/klauspost/compress v1.16.4
 	github.com/labstack/echo/v4 v4.10.2
 	github.com/mholt/archiver v3.1.1+incompatible
 	github.com/mitchellh/go-homedir v1.1.0
