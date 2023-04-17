@@ -596,8 +596,8 @@ github.com/weppos/publicsuffix-go v0.30.0 h1:QHPZ2GRu/YE7cvejH9iyavPOkVCB4dNxp2Z
 github.com/weppos/publicsuffix-go v0.30.0/go.mod h1:kBi8zwYnR0zrbm8RcuN1o9Fzgpnnn+btVN8uWPMyXAY=
 github.com/weppos/publicsuffix-go/publicsuffix/generator v0.0.0-20220704091424-e0182326a282/go.mod h1:GHfoeIdZLdZmLjMlzBftbTDntahTttUMWjxZwQJhULE=
 github.com/weppos/publicsuffix-go/publicsuffix/generator v0.0.0-20220927085643-dc0d00c92642/go.mod h1:GHfoeIdZLdZmLjMlzBftbTDntahTttUMWjxZwQJhULE=
-github.com/xanzy/go-gitlab v0.81.0 h1:ofbhZ5ZY9AjHATWQie4qd2JfncdUmvcSA/zfQB767Dk=
-github.com/xanzy/go-gitlab v0.81.0/go.mod h1:VMbY3JIWdZ/ckvHbQqkyd3iYk2aViKrNIQ23IbFMQDo=
+github.com/xanzy/go-gitlab v0.82.0 h1:WUAqZqNj/VGsXvFM9mYC0MEpPpmK4sHoOAryRQJARp4=
+github.com/xanzy/go-gitlab v0.82.0/go.mod h1:5ryv+MnpZStBH8I/77HuQBsMbBGANtVpLWC15qOjWAw=
 github.com/xanzy/ssh-agent v0.2.1/go.mod h1:mLlQY/MoOhWBj+gOGMQkOeiEvkx+8pJSI+0Bx9h2kr4=
 github.com/xanzy/ssh-agent v0.3.3 h1:+/15pJfg/RsTxqYcX6fHqOXZwwMP+2VyYWJeWM2qQFM=
 github.com/xanzy/ssh-agent v0.3.3/go.mod h1:6dzNDKs0J9rVPHPhaGCukekBHKqfl+L3KghI1Bc68Uw=
