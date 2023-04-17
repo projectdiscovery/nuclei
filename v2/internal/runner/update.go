@@ -28,9 +28,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/config"
 	"github.com/projectdiscovery/nuclei/v2/pkg/external/customtemplates"
 	client "github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/updatecheck"
-	"github.com/projectdiscovery/nuclei/v2/pkg/utils"
 	"github.com/projectdiscovery/retryablehttp-go"
-	fileutil "github.com/projectdiscovery/utils/file"
 	folderutil "github.com/projectdiscovery/utils/folder"
 
 	"github.com/tj/go-update"
@@ -54,78 +52,78 @@ var reVersion = regexp.MustCompile(`\d+\.\d+\.\d+`)
 // If the path exists but does not contain the latest version of public templates,
 // the new version is downloaded from GitHub to the templates' directory, overwriting the old content.
 func (r *Runner) updateTemplates() error { // TODO this method does more than just update templates. Should be refactored.
-	configDir, err := config.GetConfigDir()
-	if err != nil {
-		return err
-	}
-	_ = os.MkdirAll(configDir, 0755)
+	// configDir, err := config.GetConfigDir()
+	// if err != nil {
+	// 	return err
+	// }
+	// _ = os.MkdirAll(configDir, 0755)
 
-	if err := r.readInternalConfigurationFile(configDir); err != nil {
-		return errors.Wrap(err, "could not read configuration file")
-	}
+	// if err := r.readInternalConfigurationFile(configDir); err != nil {
+	// 	return errors.Wrap(err, "could not read configuration file")
+	// }
 
-	// If the config doesn't exist, create it now.
-	defaultTemplatesDirectory, err := utils.GetDefaultTemplatePath()
-	if err != nil {
-		return err
-	}
-	err = r.createDefaultConfig(defaultTemplatesDirectory)
-	if err != nil {
-		return err
-	}
+	// // If the config doesn't exist, create it now.
+	// defaultTemplatesDirectory, err := utils.GetDefaultTemplatePath()
+	// if err != nil {
+	// 	return err
+	// }
+	// err = r.createDefaultConfig(defaultTemplatesDirectory)
+	// if err != nil {
+	// 	return err
+	// }
 
-	if r.options.TemplatesDirectory == "" {
-		// if no -tud flag passed then read from template config
-		if r.templatesConfig.TemplatesDirectory != "" {
-			r.options.TemplatesDirectory = r.templatesConfig.TemplatesDirectory
-		} else {
-			r.options.TemplatesDirectory = defaultTemplatesDirectory
-		}
-	} else if r.templatesConfig.TemplatesDirectory != r.options.TemplatesDirectory {
-		// if -tud pass then update the templateConfig & it is diff then template config
-		r.templatesConfig.TemplatesDirectory, _ = filepath.Abs(r.options.TemplatesDirectory)
-	}
+	// if r.options.TemplatesDirectory == "" {
+	// 	// if no -tud flag passed then read from template config
+	// 	if r.templatesConfig.TemplatesDirectory != "" {
+	// 		r.options.TemplatesDirectory = r.templatesConfig.TemplatesDirectory
+	// 	} else {
+	// 		r.options.TemplatesDirectory = defaultTemplatesDirectory
+	// 	}
+	// } else if r.templatesConfig.TemplatesDirectory != r.options.TemplatesDirectory {
+	// 	// if -tud pass then update the templateConfig & it is diff then template config
+	// 	r.templatesConfig.TemplatesDirectory, _ = filepath.Abs(r.options.TemplatesDirectory)
+	// }
 
-	// if disable update check flag is passed and no update template flag is passed
-	if (r.options.NoUpdateTemplates && !r.options.UpdateTemplates) || r.options.Cloud {
-		return nil
-	}
+	// // if disable update check flag is passed and no update template flag is passed
+	// if (r.options.NoUpdateTemplates && !r.options.UpdateTemplates) || r.options.Cloud {
+	// 	return nil
+	// }
 
-	client.InitNucleiVersion(config.Version)
-	r.fetchLatestVersionsFromGithub(configDir) // also fetch the latest versions
+	// client.InitNucleiVersion(config.Version)
+	// r.fetchLatestVersionsFromGithub(configDir) // also fetch the latest versions
 
-	ctx := context.Background()
+	// ctx := context.Background()
 
-	var noTemplatesFound bool
-	if !fileutil.FolderExists(r.templatesConfig.TemplatesDirectory) {
-		noTemplatesFound = true
-	}
-	if r.templatesConfig.TemplateVersion == "" || noTemplatesFound {
-		return r.freshTemplateInstallation(configDir, ctx)
-	}
+	// var noTemplatesFound bool
+	// if !fileutil.FolderExists(r.templatesConfig.TemplatesDirectory) {
+	// 	noTemplatesFound = true
+	// }
+	// if r.templatesConfig.TemplateVersion == "" || noTemplatesFound {
+	// 	return r.freshTemplateInstallation(configDir, ctx)
+	// }
 
-	// download | update the custom templates repos
-	if r.options.UpdateTemplates {
-		for _, ct := range r.customTemplates {
-			ct.Update(r.templatesConfig.TemplatesDirectory, ctx)
-		}
-	}
+	// // download | update the custom templates repos
+	// if r.options.UpdateTemplates {
+	// 	for _, ct := range r.customTemplates {
+	// 		ct.Update(r.templatesConfig.TemplatesDirectory, ctx)
+	// 	}
+	// }
 
-	latestVersion, currentVersion, err := getVersions(r)
-	if err != nil {
-		return err
-	}
+	// latestVersion, currentVersion, err := getVersions(r)
+	// if err != nil {
+	// 	return err
+	// }
 
-	if latestVersion.EQ(currentVersion) {
-		if r.options.UpdateTemplates {
-			gologger.Info().Msgf("No new updates found for nuclei templates")
-		}
-		return config.WriteConfiguration(r.templatesConfig)
-	}
+	// if latestVersion.EQ(currentVersion) {
+	// 	if r.options.UpdateTemplates {
+	// 		gologger.Info().Msgf("No new updates found for nuclei templates")
+	// 	}
+	// 	return config.WriteConfiguration(r.templatesConfig)
+	// }
 
-	if err := r.updateTemplatesWithVersion(latestVersion, currentVersion, r, ctx); err != nil {
-		return err
-	}
+	// if err := r.updateTemplatesWithVersion(latestVersion, currentVersion, r, ctx); err != nil {
+	// 	return err
+	// }
 	return nil
 }
 
@@ -140,9 +138,9 @@ func (r *Runner) createDefaultConfig(defaultTemplatesDirectory string) error {
 			CustomGithubTemplatesDirectory: filepath.Join(defaultTemplatesDirectory, customtemplates.CustomGithubTemplateDirectory),
 		}
 		r.templatesConfig = currentConfig
-		if writeErr := config.WriteConfiguration(currentConfig); writeErr != nil {
-			return errors.Wrap(writeErr, "could not write template configuration")
-		}
+		// if writeErr := config.WriteConfiguration(currentConfig); writeErr != nil {
+		// 	return errors.Wrap(writeErr, "could not write template configuration")
+		// }
 	}
 	return nil
 }
@@ -170,9 +168,9 @@ func (r *Runner) freshTemplateInstallation(configDir string, ctx context.Context
 	}
 	r.templatesConfig.TemplateVersion = version.String()
 
-	if err := config.WriteConfiguration(r.templatesConfig); err != nil {
-		return err
-	}
+	// if err := config.WriteConfiguration(r.templatesConfig); err != nil {
+	// 	return err
+	// }
 	gologger.Info().Msgf("Successfully downloaded nuclei-templates (v%s) to %s. GoodLuck!\n", version.String(), r.templatesConfig.TemplatesDirectory)
 
 	// case where -gtr flag is passed for the first time installation
@@ -201,9 +199,9 @@ func (r *Runner) updateTemplatesWithVersion(latestVersion semver.Version, curren
 		if _, err := runner.downloadReleaseAndUnzip(ctx, latestVersion.String(), asset.GetZipballURL()); err != nil {
 			return err
 		}
-		if err := config.WriteConfiguration(runner.templatesConfig); err != nil {
-			return err
-		}
+		// if err := config.WriteConfiguration(runner.templatesConfig); err != nil {
+		// 	return err
+		// }
 		gologger.Info().Msgf("Successfully updated nuclei-templates (v%s) to %s. GoodLuck!\n", latestVersion.String(), r.templatesConfig.TemplatesDirectory)
 	}
 	return nil
@@ -234,14 +232,6 @@ func getVersions(runner *Runner) (semver.Version, semver.Version, error) {
 
 // readInternalConfigurationFile reads the internal configuration file for nuclei
 func (r *Runner) readInternalConfigurationFile(configDir string) error {
-	templatesConfigFile := filepath.Join(configDir, nucleiConfigFilename)
-	if _, statErr := os.Stat(templatesConfigFile); !os.IsNotExist(statErr) {
-		configuration, readErr := config.ReadConfiguration()
-		if readErr != nil {
-			return readErr
-		}
-		r.templatesConfig = configuration
-	}
 	return nil
 }
 
@@ -255,9 +245,9 @@ func (r *Runner) checkNucleiIgnoreFileUpdates(configDir string) bool {
 		_ = os.WriteFile(filepath.Join(configDir, nucleiIgnoreFile), data, 0644)
 	}
 	if r.templatesConfig != nil {
-		if err := config.WriteConfiguration(r.templatesConfig); err != nil {
-			gologger.Warning().Msgf("Could not get ignore-file from server: %s", err)
-		}
+		// if err := config.WriteConfiguration(r.templatesConfig); err != nil {
+		// 	gologger.Warning().Msgf("Could not get ignore-file from server: %s", err)
+		// }
 	}
 	return true
 }
@@ -449,10 +439,10 @@ func writeUnZippedTemplateFile(templateAbsolutePath string, zipTemplateFile *zip
 func calculateTemplateAbsolutePath(zipFilePath, configuredTemplateDirectory string) (string, bool, error) {
 	directory, fileName := filepath.Split(zipFilePath)
 
-	// overwrite .nuclei-ignore everytime nuclei-templates are downloaded
-	if fileName == ".nuclei-ignore" {
-		return config.GetIgnoreFilePath(), false, nil
-	}
+	// // overwrite .nuclei-ignore everytime nuclei-templates are downloaded
+	// if fileName == ".nuclei-ignore" {
+	// 	return config.GetIgnoreFilePath(), false, nil
+	// }
 
 	if !strings.EqualFold(fileName, ".new-additions") {
 		if strings.TrimSpace(fileName) == "" || strings.HasPrefix(fileName, ".") || strings.EqualFold(fileName, "README.md") {

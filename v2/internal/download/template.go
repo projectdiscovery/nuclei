@@ -4,43 +4,113 @@ import (
 	"bytes"
 	"crypto/md5"
 	"fmt"
+	"io"
 	"io/fs"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/config"
+	errorutil "github.com/projectdiscovery/utils/errors"
 	fileutil "github.com/projectdiscovery/utils/file"
+	stringsutil "github.com/projectdiscovery/utils/strings"
+	updateutils "github.com/projectdiscovery/utils/update"
 )
 
 const (
 	checkSumFilePerm = 0644
 )
 
+var (
+	HideProgressBar  = false
+	HideReleaseNotes = false
+)
+
 // TemplateManager is a manager for templates.
 // It downloads / updates / installs templates.
-type TemplateManager struct {
-	config *config.Config
-}
-
-// NewTemplateManager creates a new TemplateManager.
-func NewTemplateManager(cfg *config.Config) *TemplateManager {
-	return &TemplateManager{config: cfg}
-}
+type TemplateManager struct{}
 
 // FreshInstallIfNotExists installs templates if they are not already installed
 // if templates directory already exists, it does nothing
 func (t *TemplateManager) FreshInstallIfNotExists() error {
-	if t.config.TemplateVersion != "" || fileutil.FolderExists(t.config.TemplatesDirectory) {
+	if fileutil.FolderExists(config.DefaultConfig.TemplatesDirectory) {
 		return nil
 	}
 	gologger.Info().Msgf("nuclei-templates are not installed, installing...")
-	return nil
+	return t.installTemplates(config.DefaultConfig.TemplatesDirectory)
 }
 
 // installTemplatesAt installs templates at given directory
-func (t *TemplateManager) installTemplatesAt(dir string) error {
+func (t *TemplateManager) installTemplates(dir string) error {
+	if !fileutil.FolderExists(dir) {
+		if err := fileutil.CreateFolder(dir); err != nil {
+			return errorutil.NewWithErr(err).Msgf("failed to create directory at %s", dir)
+		}
+	}
+	ghrd, err := updateutils.NewghReleaseDownloader(config.OfficialNucleiTeamplatesRepoName)
+	if err != nil {
+		return errorutil.NewWithErr(err).Msgf("failed to install templates at %s", dir)
+	}
 
+	callbackFunc := func(uri string, f fs.FileInfo, r io.Reader) error {
+		writePath := t.getAbsoluteFilePath(uri, f)
+		if writePath == "" {
+			// skip writing file
+			return nil
+		}
+		bin, err := io.ReadAll(r)
+		if err != nil {
+			// if error occurs, iteration also stops
+			return errorutil.NewWithErr(err).Msgf("failed to read file %s", uri)
+		}
+		os.WriteFile(writePath, bin, f.Mode())
+		return nil
+	}
+
+	return ghrd.DownloadSourceWithCallback(!HideProgressBar, callbackFunc)
+}
+
+// getAbsoluteFilePath returns absolute path where a file should be written based on given uri(i.e files in zip)
+// if returned path is empty, it means that file should not be written and skipped
+func (t *TemplateManager) getAbsoluteFilePath(uri string, f fs.FileInfo) string {
+	// overwrite .nuclei-ignore everytime nuclei-templates are downloaded
+	if f.Name() == config.NucleiIgnoreFileName {
+		return config.DefaultConfig.GetIgnoreFilePath()
+	}
+	// skip all meta files
+	if !strings.EqualFold(f.Name(), config.NewTemplateAdditionsFileName) {
+		if strings.TrimSpace(f.Name()) == "" || strings.HasPrefix(f.Name(), ".") || strings.EqualFold(f.Name(), "README.md") {
+			return ""
+		}
+	}
+
+	// get root or leftmost directory name from path
+	// this is in format `projectdiscovery-nuclei-templates-commithash`
+
+	index := strings.Index(uri, "/")
+	if index == -1 {
+		// zip files does not have directory at all , in this case log error but continue
+		gologger.Warning().Msgf("failed to get directory name from uri: %s", uri)
+		return filepath.Join(config.DefaultConfig.TemplatesDirectory, uri)
+	}
+	// seperator is also included in rootDir
+	rootDirectory := uri[:index+1]
+	relPath := strings.TrimPrefix(uri, rootDirectory)
+
+	// if it is a github meta directory skip it
+	if stringsutil.HasPrefixAny(relPath, ".github", ".git") {
+		return ""
+	}
+
+	if relPath != "" && f.IsDir() {
+		// if uri is a directory, create it
+		if err := fileutil.CreateFolder(filepath.Join(config.DefaultConfig.TemplatesDirectory, relPath)); err != nil {
+			gologger.Warning().Msgf("uri %v: got %s while installing templates", uri, err)
+		}
+		return ""
+	}
+	return filepath.Join(config.DefaultConfig.TemplatesDirectory, relPath)
 }
 
 // writeChecksumFileInDir creates checksums of all yaml files in given directory

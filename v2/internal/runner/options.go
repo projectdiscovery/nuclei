@@ -60,10 +60,7 @@ func ParseOptions(options *types.Options) {
 		vardump.EnableVarDump = true
 	}
 	if options.TemplatesVersion {
-		configuration, err := config.ReadConfiguration()
-		if err != nil {
-			gologger.Fatal().Msgf("Could not read template configuration: %s\n", err)
-		}
+		configuration := config.DefaultConfig
 		gologger.Info().Msgf("Public nuclei-templates version: %s (%s)\n", configuration.TemplateVersion, configuration.TemplatesDirectory)
 		if configuration.CustomS3TemplatesDirectory != "" {
 			gologger.Info().Msgf("Custom S3 templates location: %s\n", configuration.CustomS3TemplatesDirectory)

@@ -113,6 +113,9 @@ func New(options *types.Options) (*Runner, error) {
 		options.NoUpdateTemplates = true
 	}
 
+	// read nuclei version config and handle if doesn't exist
+	
+
 	// TODO: refactor to pass options reference globally without cycles
 	parsers.NoStrictSyntax = options.NoStrictSyntax
 	yaml.StrictSyntax = !options.NoStrictSyntax

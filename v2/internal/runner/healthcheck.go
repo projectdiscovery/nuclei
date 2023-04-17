@@ -24,8 +24,8 @@ func DoHealthCheck(options *types.Options) string {
 
 	var testResult string
 
-	nucleiIgnorePath := config.GetIgnoreFilePath()
-	cf, _ := config.ReadConfiguration()
+	nucleiIgnorePath := config.DefaultConfig.GetIgnoreFilePath()
+	cf := config.DefaultConfig
 	templatePath := ""
 	if cf != nil {
 		templatePath = cf.TemplatesDirectory

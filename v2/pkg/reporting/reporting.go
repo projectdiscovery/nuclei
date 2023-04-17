@@ -4,6 +4,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/config"
 	json_exporter "github.com/projectdiscovery/nuclei/v2/pkg/reporting/exporters/jsonexporter"
 	"github.com/projectdiscovery/nuclei/v2/pkg/reporting/exporters/jsonl"
 
@@ -12,7 +13,6 @@ import (
 
 	"errors"
 
-	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/config"
 	"github.com/projectdiscovery/nuclei/v2/pkg/model/types/severity"
 	"github.com/projectdiscovery/nuclei/v2/pkg/model/types/stringslice"
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
@@ -177,11 +177,7 @@ func New(options *Options, db string) (Client, error) {
 
 // CreateConfigIfNotExists creates report-config if it doesn't exists
 func CreateConfigIfNotExists() error {
-	config, err := config.GetConfigDir()
-	if err != nil {
-		return errorutil.NewWithErr(err).Msgf("could not get config directory")
-	}
-	reportingConfig := filepath.Join(config, "report-config.yaml")
+	reportingConfig := filepath.Join(config.DefaultConfig.GetConfigDir(), "report-config.yaml")
 
 	if fileutil.FileExists(reportingConfig) {
 		return nil

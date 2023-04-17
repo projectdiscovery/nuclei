@@ -342,7 +342,7 @@ on extensive configurability, massive extensibility and ease of use.`)
 		http.LeaveDefaultPorts = true
 	}
 	if options.CustomConfigDir != "" {
-		originalIgnorePath := config.GetIgnoreFilePath()
+		originalIgnorePath := config.DefaultConfig.NucleiIgnoreHash
 		config.SetCustomConfigDirectory(options.CustomConfigDir)
 		configPath := filepath.Join(options.CustomConfigDir, "config.yaml")
 		ignoreFile := filepath.Join(options.CustomConfigDir, ".nuclei-ignore")
@@ -384,10 +384,7 @@ func isNoColorEnabled() bool {
 }
 
 func cleanupOldResumeFiles() {
-	root, err := config.GetConfigDir()
-	if err != nil {
-		return
-	}
+	root := config.DefaultConfig.GetConfigDir()
 	filter := fileutil.FileFilters{
 		OlderThan: 24 * time.Hour * 10, // cleanup on the 10th day
 		Prefix:    "resume-",
