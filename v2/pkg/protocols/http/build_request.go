@@ -285,7 +285,8 @@ func (r *requestGenerator) generateRawRequest(ctx context.Context, rawRequest st
 		return nil, err
 	}
 	// override the body with a new one that will be used to read the request body in parallel threads
-	if r.request.Threads > 0 && !(r.request.Race && r.request.RaceNumberRequests > 0) {
+	// for race condition testing
+	if r.request.Threads > 0 && r.request.Race {
 		req.Body = race.NewOpenGateWithTimeout(req.Body, time.Duration(2)*time.Second)
 	}
 	for key, value := range rawRequestData.Headers {
