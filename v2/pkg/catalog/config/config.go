@@ -19,6 +19,7 @@ type Config struct {
 
 	CustomS3TemplatesDirectory     string `json:"custom-s3-templates-directory"`
 	CustomGithubTemplatesDirectory string `json:"custom-github-templates-directory"`
+	CustomAzureTemplatesDirectory  string `json:"custom-azure-templates-directory"`
 
 	TemplateVersion  string `json:"nuclei-templates-version,omitempty"`
 	NucleiVersion    string `json:"nuclei-version,omitempty"`
