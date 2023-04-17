@@ -149,11 +149,19 @@ func validateOptions(options *types.Options) error {
 		}
 		validateCertificatePaths([]string{options.ClientCertFile, options.ClientKeyFile, options.ClientCAFile})
 	}
-	// Verify aws secrets are passed if s3 template bucket passed
+	// Verify AWS secrets are passed if a S3 template bucket is passed
 	if options.AwsBucketName != "" && options.UpdateTemplates {
 		missing := validateMissingS3Options(options)
 		if missing != nil {
 			return fmt.Errorf("aws s3 bucket details are missing. Please provide %s", strings.Join(missing, ","))
+		}
+	}
+
+	// Verify that all GitLab options are provided if the GitLab server or token is provided
+	if (options.GitLabServer != "" || options.GitLabToken != "") && options.UpdateTemplates {
+		missing := validateMissingGitLabOptions(options)
+		if missing != nil {
+			return fmt.Errorf("gitlab server details are missing. Please provide %s", strings.Join(missing, ","))
 		}
 	}
 
@@ -198,6 +206,8 @@ func validateCloudOptions(options *types.Options) error {
 			missing = validateMissingS3Options(options)
 		case "github":
 			missing = validateMissingGithubOptions(options)
+		case "gitlab":
+			missing = validateMissingGitLabOptions(options)
 		}
 		if len(missing) > 0 {
 			return fmt.Errorf("missing %v env variables", strings.Join(missing, ", "))
@@ -231,6 +241,21 @@ func validateMissingGithubOptions(options *types.Options) []string {
 	if len(options.GithubTemplateRepo) == 0 {
 		missing = append(missing, "GITHUB_TEMPLATE_REPO")
 	}
+	return missing
+}
+
+func validateMissingGitLabOptions(options *types.Options) []string {
+	var missing []string
+	if options.GitLabToken == "" {
+		missing = append(missing, "GITLAB_TOKEN")
+	}
+	if options.GitLabServer == "" {
+		missing = append(missing, "GITLAB_SERVER")
+	}
+	if len(options.GitLabTemplateRepo) == 0 {
+		missing = append(missing, "GITLAB_TEMPLATE_REPO")
+	}
+
 	return missing
 }
 
@@ -327,4 +352,12 @@ func readEnvInputVars(options *types.Options) {
 	options.AwsSecretKey = os.Getenv("AWS_SECRET_KEY")
 	options.AwsBucketName = os.Getenv("AWS_TEMPLATE_BUCKET")
 	options.AwsRegion = os.Getenv("AWS_REGION")
+
+	// Options to download templates from a GitLab repository
+	options.GitLabServer = os.Getenv("GITLAB_SERVER")
+	options.GitLabToken = os.Getenv("GITLAB_TOKEN")
+	repolist = os.Getenv("GITLAB_TEMPLATE_REPO")
+	if repolist != "" {
+		options.GitLabTemplateRepo = append(options.GitLabTemplateRepo, stringsutil.SplitAny(repolist, ",")...)
+	}
 }

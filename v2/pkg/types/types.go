@@ -336,17 +336,23 @@ type Options struct {
 	ScanAllIPs bool
 	// IPVersion to scan (4,6)
 	IPVersion goflags.StringSlice
-	// Github token used to clone/pull from private repos for custom templates
+	// GitHub token used to clone/pull from private repos for custom templates
 	GithubToken string
-	// GithubTemplateRepo is the list of custom public/private templates github repos
+	// GithubTemplateRepo is the list of custom public/private templates GitHub repos
 	GithubTemplateRepo []string
-	// AWS access key for downloading templates from s3 bucket
+	// GitLabServer is the gitlab server to use for custom templates
+	GitLabServer string
+	// GitLabToken used to clone/pull from private repos for custom templates
+	GitLabToken string
+	// GitLabTemplateRepo is the list of custom public/private templates gitlab repos
+	GitLabTemplateRepo []string
+	// AWS access key for downloading templates from S3 bucket
 	AwsAccessKey string
-	// AWS secret key for downloading templates from s3 bucket
+	// AWS secret key for downloading templates from S3 bucket
 	AwsSecretKey string
-	// AWS bucket name for downloading templates from s3 bucket
+	// AWS bucket name for downloading templates from S3 bucket
 	AwsBucketName string
-	// AWS Region name where aws s3 bucket is located
+	// AWS Region name where AWS S3 bucket is located
 	AwsRegion string
 	// Scan Strategy (auto,hosts-spray,templates-spray)
 	ScanStrategy string
