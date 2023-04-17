@@ -11,6 +11,7 @@ import (
 const (
 	CustomGithubTemplateDirectory = "github"
 	CustomS3TemplateDirectory     = "s3"
+	CustomAzureTemplateDirectory  = "azure"
 )
 
 type Provider interface {
@@ -18,7 +19,7 @@ type Provider interface {
 	Update(location string, ctx context.Context)
 }
 
-// parseCustomTemplates function reads the options.GithubTemplateRepo list,
+// ParseCustomTemplates function reads the options.GithubTemplateRepo list,
 // Checks the given repos are valid or not and stores them into runner.CustomTemplates
 func ParseCustomTemplates(options *types.Options) []Provider {
 	if options.Cloud {
@@ -62,6 +63,23 @@ func ParseCustomTemplates(options *types.Options) []Provider {
 			ctBucket.prefix = bPath[1]
 		}
 		customTemplates = append(customTemplates, ctBucket)
+	}
+	if options.AzureContainerName != "" {
+		// Establish a connection to Azure and build a client object with which to download templates from Azure Blob Storage
+		azClient, err := getAzureBlobClient(options.AzureTenantID, options.AzureClientID, options.AzureClientSecret, options.AzureServiceURL)
+		if err != nil {
+			gologger.Error().Msgf("Error establishing Azure Blob client for %s %s", options.AzureContainerName, err)
+			return customTemplates
+		}
+
+		// Create a new Azure Blob Storage container object
+		azTemplateContainer := &customTemplateAzureBlob{
+			azureBlobClient: azClient,
+			containerName:   options.AzureContainerName,
+		}
+
+		// Add the Azure Blob Storage container object to the list of custom templates
+		customTemplates = append(customTemplates, azTemplateContainer)
 	}
 	return customTemplates
 }
