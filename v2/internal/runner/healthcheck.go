@@ -1,7 +1,6 @@
 package runner
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -14,7 +13,6 @@ import (
 	"strconv"
 	"strings"
 
-	"text/tabwriter"
 	"time"
 
 	"golang.org/x/net/icmp"
@@ -29,6 +27,7 @@ import (
 )
 
 // DoHealthCheck performs network and self-diagnostic checks
+// If a target is specified via -u, it will perform additional checks
 func DoHealthCheck(options *types.Options) string {
 	const defaultTarget = "scanme.sh"
 	const resolverPublic = "1.1.1.1"
@@ -74,11 +73,13 @@ func DoHealthCheck(options *types.Options) string {
 		// "internet": map[string]interface{}{},
 		"dns":   map[string]interface{}{},
 		"net":   map[string]interface{}{},
-		"asset": internetTarget,
+		"asset": map[string]interface{}{},
 	}
+	assetInfo := data["asset"].(map[string]interface{})
 	fileTests := data["files"].(map[string]interface{})
 	dnsTests := data["dns"].(map[string]interface{})
 	netTests := data["net"].(map[string]interface{})
+	assetInfo["target"] = internetTarget
 
 	// Begin tests
 
@@ -116,18 +117,18 @@ func DoHealthCheck(options *types.Options) string {
 	// Network connectivity
 	if ipv4addresses != "" {
 		netTests["IPv4 Connect ("+internetTarget+":80)"] = checkConnection(internetTarget, 80, "tcp4")
-		netTests["IPv4 Traceroute ("+internetTarget+":80)"] = traceroute(ipv4addresses, "ipv4", options.HealthCheck, adminPriv)
+		netTests["IPv4 Traceroute ("+internetTarget+":80)"] = traceroute(ipv4addresses, "ipv4", adminPriv)
 		netTests["IPv4 Ping ("+internetTarget+")"] = ping(ipv4addresses, "ipv4", adminPriv)
 	}
 	if ipv6addresses != "" {
 		netTests["IPv6 Connect ("+internetTarget+":80)"] = checkConnection(internetTarget, 80, "tcp6")
-		netTests["IPv6 Traceroute ("+internetTarget+":80)"] = traceroute(ipv6addresses, "ipv6", options.HealthCheck, adminPriv)
+		netTests["IPv6 Traceroute ("+internetTarget+":80)"] = traceroute(ipv6addresses, "ipv6", adminPriv)
 		netTests["IPv6 Ping ("+internetTarget+")"] = ping(ipv6addresses, "ipv6", adminPriv)
 
 	}
 
 	// send back formatted output
-	return getOutput(data, options.HealthCheck)
+	return mapToJson(data)
 }
 
 // addIfNotExists adds an element to a slice if it doesn't already exist
@@ -182,18 +183,6 @@ func checkConnection(host string, port int, protocol string) string {
 	return "Pass"
 }
 
-// getOutput returns the output in the specified format
-func getOutput(data map[string]interface{}, format string) string {
-	// Output format options - text (default), json, markdown
-	if format == "json" {
-		return mapToJson(data)
-	} else if format == "md" {
-		return mapToMarkdownTable(data, "Test", "Result")
-	} else {
-		return mapToTextTable(data, "Test", "Result")
-	}
-}
-
 // mapToJson converts a map to a json string
 func mapToJson(data map[string]interface{}) string {
 	json, err := json.MarshalIndent(data, "", "  ")
@@ -201,45 +190,6 @@ func mapToJson(data map[string]interface{}) string {
 		panic(err)
 	}
 	return string(json)
-}
-
-// mapToTextTable converts a map to a text table
-func mapToTextTable(data map[string]interface{}, header1 string, header2 string) string {
-	var b bytes.Buffer
-	tw := tabwriter.NewWriter(&b, 0, 0, 1, ' ', tabwriter.Debug|tabwriter.DiscardEmptyColumns)
-	fmt.Fprintln(tw, header1+"\t"+header2)
-	fmt.Fprintln(tw, "------\t------")
-
-	for key, value := range data {
-		fmt.Fprintln(tw, strings.ToUpper(key)+"\t")
-		subMap, ok := value.(map[string]interface{})
-		if !ok {
-			continue
-		}
-		for subKey, subValue := range subMap {
-			fmt.Fprintln(tw, subKey+"\t"+fmt.Sprintf("%v", subValue))
-		}
-	}
-	tw.Flush()
-	return b.String()
-}
-
-// mapToMarkdownTable converts a map to a markdown table
-func mapToMarkdownTable(data map[string]interface{}, header1 string, header2 string) string {
-	var output strings.Builder
-	output.WriteString("| " + header1 + " | " + header2 + " | \n")
-	output.WriteString("| --- | --- | \n")
-	for key, value := range data {
-		output.WriteString("| " + strings.ToUpper(key) + " | | \n")
-		subMap, ok := value.(map[string]interface{})
-		if !ok {
-			continue
-		}
-		for subKey, subValue := range subMap {
-			output.WriteString(("| " + subKey + "| " + fmt.Sprintf("%v", subValue) + " |\n"))
-		}
-	}
-	return output.String()
 }
 
 // lookup returns the IP addresses for a name
@@ -280,7 +230,7 @@ func lookup(name, dnsServer string) (string, string) {
 // traceroute returns the traceroute of an IP address, both IPv6 and IPv4
 // NOTE: Only works if we have root permission
 // TODO: Add support for Windows
-func traceroute(assetIPs, networkType, format string, adminPriv bool) string {
+func traceroute(assetIPs string, networkType string, adminPriv bool) string {
 	if !adminPriv {
 		return "Traceroute: You must have root permissions to run this test"
 	}
@@ -380,12 +330,7 @@ func traceroute(assetIPs, networkType, format string, adminPriv bool) string {
 		}
 	}
 
-	joinchar := " -> "
-	if format == "json" {
-		joinchar = "\n"
-	}
-
-	return strings.Join(results, joinchar)
+	return strings.Join(results, "\n")
 }
 
 // ping performs a ping of an IP address, both IPv6 and IPv4 as requested
