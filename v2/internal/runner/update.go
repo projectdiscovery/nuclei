@@ -26,7 +26,6 @@ import (
 
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/config"
-	"github.com/projectdiscovery/nuclei/v2/pkg/external/customtemplates"
 	client "github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/updatecheck"
 	"github.com/projectdiscovery/retryablehttp-go"
 	folderutil "github.com/projectdiscovery/utils/folder"
@@ -84,10 +83,10 @@ func (r *Runner) updateTemplates() error { // TODO this method does more than ju
 	// 	r.templatesConfig.TemplatesDirectory, _ = filepath.Abs(r.options.TemplatesDirectory)
 	// }
 
-	// // if disable update check flag is passed and no update template flag is passed
-	// if (r.options.NoUpdateTemplates && !r.options.UpdateTemplates) || r.options.Cloud {
-	// 	return nil
-	// }
+	// if disable update check flag is passed and no update template flag is passed
+	if (r.options.NoUpdateTemplates && !r.options.UpdateTemplates) || r.options.Cloud {
+		return nil
+	}
 
 	// client.InitNucleiVersion(config.Version)
 	// r.fetchLatestVersionsFromGithub(configDir) // also fetch the latest versions
@@ -127,37 +126,19 @@ func (r *Runner) updateTemplates() error { // TODO this method does more than ju
 	return nil
 }
 
-// createDefaultConfig create template config file is template config is not found
-func (r *Runner) createDefaultConfig(defaultTemplatesDirectory string) error {
-	// TODO remove customTemplate check in next version.
-	if r.templatesConfig == nil || r.templatesConfig.CustomGithubTemplatesDirectory == "" || r.templatesConfig.CustomS3TemplatesDirectory == "" {
-		currentConfig := &config.Config{
-			TemplatesDirectory:             defaultTemplatesDirectory,
-			NucleiVersion:                  config.Version,
-			CustomS3TemplatesDirectory:     filepath.Join(defaultTemplatesDirectory, customtemplates.CustomS3TemplateDirectory),
-			CustomGithubTemplatesDirectory: filepath.Join(defaultTemplatesDirectory, customtemplates.CustomGithubTemplateDirectory),
-		}
-		r.templatesConfig = currentConfig
-		// if writeErr := config.WriteConfiguration(currentConfig); writeErr != nil {
-		// 	return errors.Wrap(writeErr, "could not write template configuration")
-		// }
-	}
-	return nil
-}
-
 // freshTemplateInstallation downloads the nuclei template and custom templates if new directory passed
 func (r *Runner) freshTemplateInstallation(configDir string, ctx context.Context) error {
 	gologger.Info().Msgf("nuclei-templates are not installed, installing...\n")
 
 	r.fetchLatestVersionsFromGithub(configDir) // also fetch the latest versions
 
-	version, err := semver.Parse(r.templatesConfig.NucleiTemplatesLatestVersion)
+	version, err := semver.Parse(r.templatesConfig.LatestNucleiTemplatesVersion)
 	if err != nil {
 		return err
 	}
 
 	// Download the repository and write the revision to a HEAD file.
-	asset, getErr := r.getLatestReleaseFromGithub(r.templatesConfig.NucleiTemplatesLatestVersion)
+	asset, getErr := r.getLatestReleaseFromGithub(r.templatesConfig.LatestNucleiTemplatesVersion)
 	if getErr != nil {
 		return getErr
 	}
@@ -192,7 +173,7 @@ func (r *Runner) updateTemplatesWithVersion(latestVersion semver.Version, curren
 
 		gologger.Verbose().Msgf("Downloading nuclei-templates (v%s) to %s\n", latestVersion.String(), runner.templatesConfig.TemplatesDirectory)
 
-		asset, err := runner.getLatestReleaseFromGithub(runner.templatesConfig.NucleiTemplatesLatestVersion)
+		asset, err := runner.getLatestReleaseFromGithub(runner.templatesConfig.LatestNucleiTemplatesVersion)
 		if err != nil {
 			return err
 		}
@@ -223,7 +204,7 @@ func getVersions(runner *Runner) (semver.Version, semver.Version, error) {
 		return semver.Version{}, semver.Version{}, err
 	}
 
-	latestVersion, err := semver.Parse(runner.templatesConfig.NucleiTemplatesLatestVersion)
+	latestVersion, err := semver.Parse(runner.templatesConfig.LatestNucleiTemplatesVersion)
 	if err != nil {
 		return semver.Version{}, semver.Version{}, err
 	}
@@ -390,11 +371,7 @@ func (r *Runner) compareAndWriteTemplates(zipReader *zip.Reader) (*templateUpdat
 		results.totalCount++
 	}
 
-	var err error
-	results.additions, err = r.readNewTemplatesFile()
-	if err != nil {
-		results.additions = []string{}
-	}
+	results.additions = config.DefaultConfig.GetNewAdditions()
 
 	// If we don't find the previous file in the newly downloaded list,
 	// and it hasn't been changed on the disk, delete it.
@@ -572,8 +549,8 @@ func (r *Runner) fetchLatestVersionsFromGithub(configDir string) {
 		return
 	}
 	if r.templatesConfig != nil {
-		r.templatesConfig.NucleiLatestVersion = versions.Nuclei
-		r.templatesConfig.NucleiTemplatesLatestVersion = versions.Templates
+		r.templatesConfig.LatestNucleiVersion = versions.Nuclei
+		r.templatesConfig.LatestNucleiTemplatesVersion = versions.Templates
 
 		// If the fetch has resulted in new version of ignore file, update.
 		if r.templatesConfig.NucleiIgnoreHash == "" || r.templatesConfig.NucleiIgnoreHash != versions.IgnoreHash {

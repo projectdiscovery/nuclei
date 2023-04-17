@@ -2,11 +2,8 @@ package runner
 
 import (
 	"bufio"
-	"bytes"
 	"context"
 	"encoding/json"
-	"fmt"
-	"io"
 	"net/http"
 	_ "net/http/pprof"
 	"os"
@@ -17,9 +14,9 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/projectdiscovery/nuclei/v2/internal/installer"
 	"github.com/projectdiscovery/nuclei/v2/internal/runner/nucleicloud"
 
-	"github.com/blang/semver"
 	"github.com/logrusorgru/aurora"
 	"github.com/pkg/errors"
 	"github.com/projectdiscovery/ratelimit"
@@ -59,7 +56,6 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/utils/stats"
 	"github.com/projectdiscovery/nuclei/v2/pkg/utils/yaml"
 	"github.com/projectdiscovery/retryablehttp-go"
-	stringsutil "github.com/projectdiscovery/utils/strings"
 )
 
 // Runner is a client for running the enumeration process.
@@ -114,7 +110,6 @@ func New(options *types.Options) (*Runner, error) {
 	}
 
 	// read nuclei version config and handle if doesn't exist
-	
 
 	// TODO: refactor to pass options reference globally without cycles
 	parsers.NoStrictSyntax = options.NoStrictSyntax
@@ -377,34 +372,13 @@ func (r *Runner) Close() {
 func (r *Runner) RunEnumeration() error {
 	// If user asked for new templates to be executed, collect the list from the templates' directory.
 	if r.options.NewTemplates {
-		templatesLoaded, err := r.readNewTemplatesFile()
-		if err != nil {
-			return errors.Wrap(err, "could not get newly added templates")
+		if arr := config.DefaultConfig.GetNewAdditions(); len(arr) > 0 {
+			r.options.Templates = append(r.options.Templates, arr...)
 		}
-		r.options.Templates = append(r.options.Templates, templatesLoaded...)
 	}
 	if len(r.options.NewTemplatesWithVersion) > 0 {
-		minVersion, err := semver.Parse("8.8.4")
-		if err != nil {
-			return errors.Wrap(err, "could not parse minimum version")
-		}
-		latestVersion, err := semver.Parse(r.templatesConfig.NucleiTemplatesLatestVersion)
-		if err != nil {
-			return errors.Wrap(err, "could not get latest version")
-		}
-		for _, version := range r.options.NewTemplatesWithVersion {
-			current, err := semver.Parse(strings.Trim(version, "v"))
-			if err != nil {
-				return errors.Wrap(err, "could not parse current version")
-			}
-			if !(current.GT(minVersion) && current.LTE(latestVersion)) {
-				return fmt.Errorf("version should be greater than %s and less than %s", minVersion, latestVersion)
-			}
-			templatesLoaded, err := r.readNewTemplatesWithVersionFile(fmt.Sprintf("v%s", current))
-			if err != nil {
-				return errors.Wrap(err, "could not get newly added templates for "+current.String())
-			}
-			r.options.Templates = append(r.options.Templates, templatesLoaded...)
+		if arr := installer.GetNewTemplatesInVersions(r.options.NewTemplatesWithVersion...); len(arr) > 0 {
+			r.options.Templates = append(r.options.Templates, arr...)
 		}
 	}
 	// Exclude ignored file for validation
@@ -689,12 +663,12 @@ func (r *Runner) displayExecutionInfo(store *loader.Store) {
 	stats.Display(parsers.RuntimeWarningsStats)
 
 	builder := &strings.Builder{}
-	if r.templatesConfig != nil && r.templatesConfig.NucleiLatestVersion != "" {
+	if r.templatesConfig != nil && r.templatesConfig.LatestNucleiVersion != "" {
 		builder.WriteString(" (")
 
 		if strings.Contains(config.Version, "-dev") {
 			builder.WriteString(r.colorizer.Blue("development").String())
-		} else if config.Version == r.templatesConfig.NucleiLatestVersion {
+		} else if config.Version == r.templatesConfig.LatestNucleiVersion {
 			builder.WriteString(r.colorizer.Green("latest").String())
 		} else {
 			builder.WriteString(r.colorizer.Red("outdated").String())
@@ -706,10 +680,10 @@ func (r *Runner) displayExecutionInfo(store *loader.Store) {
 
 	gologger.Info().Msgf("Using Nuclei Engine %s%s", config.Version, messageStr)
 
-	if r.templatesConfig != nil && r.templatesConfig.NucleiTemplatesLatestVersion != "" { // TODO extract duplicated logic
+	if r.templatesConfig != nil && r.templatesConfig.LatestNucleiTemplatesVersion != "" { // TODO extract duplicated logic
 		builder.WriteString(" (")
 
-		if r.templatesConfig.TemplateVersion == r.templatesConfig.NucleiTemplatesLatestVersion {
+		if r.templatesConfig.TemplateVersion == r.templatesConfig.LatestNucleiTemplatesVersion {
 			builder.WriteString(r.colorizer.Green("latest").String())
 		} else {
 			builder.WriteString(r.colorizer.Red("outdated").String())
@@ -734,58 +708,6 @@ func (r *Runner) displayExecutionInfo(store *loader.Store) {
 	}
 }
 
-func (r *Runner) readNewTemplatesWithVersionFile(version string) ([]string, error) {
-	resp, err := retryablehttp.DefaultClient().Get(fmt.Sprintf("https://raw.githubusercontent.com/projectdiscovery/nuclei-templates/%s/.new-additions", version))
-	if err != nil {
-		return nil, err
-	}
-	if resp.StatusCode != http.StatusOK {
-		return nil, errors.New("version not found")
-	}
-	data, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, err
-	}
-	templatesList := []string{}
-	scanner := bufio.NewScanner(bytes.NewReader(data))
-	for scanner.Scan() {
-		text := scanner.Text()
-		if text == "" {
-			continue
-		}
-		if isTemplate(text) {
-			templatesList = append(templatesList, text)
-		}
-	}
-	return templatesList, nil
-}
-
-// readNewTemplatesFile reads newly added templates from directory if it exists
-func (r *Runner) readNewTemplatesFile() ([]string, error) {
-	if r.templatesConfig == nil {
-		return nil, nil
-	}
-	additionsFile := filepath.Join(r.templatesConfig.TemplatesDirectory, ".new-additions")
-	file, err := os.Open(additionsFile)
-	if err != nil {
-		return nil, err
-	}
-	defer file.Close()
-
-	templatesList := []string{}
-	scanner := bufio.NewScanner(file)
-	for scanner.Scan() {
-		text := scanner.Text()
-		if text == "" {
-			continue
-		}
-		if isTemplate(text) {
-			templatesList = append(templatesList, text)
-		}
-	}
-	return templatesList, nil
-}
-
 // countNewTemplates returns the number of newly added templates
 func (r *Runner) countNewTemplates() int {
 	if r.templatesConfig == nil {
@@ -806,18 +728,12 @@ func (r *Runner) countNewTemplates() int {
 			continue
 		}
 
-		if isTemplate(text) {
+		if config.IsTemplate(text) {
 			count++
 		}
 
 	}
 	return count
-}
-
-// isTemplate is a callback function used by goflags to decide if given file should be read
-// if it is not a nuclei-template file only then file is read
-func isTemplate(filename string) bool {
-	return stringsutil.EqualFoldAny(filepath.Ext(filename), config.GetSupportTemplateFileExtensions()...)
 }
 
 // SaveResumeConfig to file

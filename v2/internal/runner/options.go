@@ -27,7 +27,7 @@ import (
 
 func ConfigureOptions() error {
 	isFromFileFunc := func(s string) bool {
-		return !isTemplate(s)
+		return !config.IsTemplate(s)
 	}
 	goflags.FileNormalizedStringSliceOptions.IsFromFile = isFromFileFunc
 	goflags.FileStringSliceOptions.IsFromFile = isFromFileFunc

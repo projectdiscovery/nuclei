@@ -1,4 +1,4 @@
-package download
+package installer
 
 import (
 	"bytes"
@@ -38,11 +38,11 @@ func (t *TemplateManager) FreshInstallIfNotExists() error {
 		return nil
 	}
 	gologger.Info().Msgf("nuclei-templates are not installed, installing...")
-	return t.installTemplates(config.DefaultConfig.TemplatesDirectory)
+	return t.installTemplatesAt(config.DefaultConfig.TemplatesDirectory)
 }
 
 // installTemplatesAt installs templates at given directory
-func (t *TemplateManager) installTemplates(dir string) error {
+func (t *TemplateManager) installTemplatesAt(dir string) error {
 	if !fileutil.FolderExists(dir) {
 		if err := fileutil.CreateFolder(dir); err != nil {
 			return errorutil.NewWithErr(err).Msgf("failed to create directory at %s", dir)
@@ -54,7 +54,7 @@ func (t *TemplateManager) installTemplates(dir string) error {
 	}
 
 	callbackFunc := func(uri string, f fs.FileInfo, r io.Reader) error {
-		writePath := t.getAbsoluteFilePath(uri, f)
+		writePath := t.getAbsoluteFilePath(dir, uri, f)
 		if writePath == "" {
 			// skip writing file
 			return nil
@@ -67,13 +67,17 @@ func (t *TemplateManager) installTemplates(dir string) error {
 		os.WriteFile(writePath, bin, f.Mode())
 		return nil
 	}
-
-	return ghrd.DownloadSourceWithCallback(!HideProgressBar, callbackFunc)
+	err = ghrd.DownloadSourceWithCallback(!HideProgressBar, callbackFunc)
+	if err != nil {
+		return err
+	}
+	// after installation create and write checksums to .checksum file
+	return t.writeChecksumFileInDir(dir)
 }
 
 // getAbsoluteFilePath returns absolute path where a file should be written based on given uri(i.e files in zip)
 // if returned path is empty, it means that file should not be written and skipped
-func (t *TemplateManager) getAbsoluteFilePath(uri string, f fs.FileInfo) string {
+func (t *TemplateManager) getAbsoluteFilePath(templatedir, uri string, f fs.FileInfo) string {
 	// overwrite .nuclei-ignore everytime nuclei-templates are downloaded
 	if f.Name() == config.NucleiIgnoreFileName {
 		return config.DefaultConfig.GetIgnoreFilePath()
@@ -92,7 +96,7 @@ func (t *TemplateManager) getAbsoluteFilePath(uri string, f fs.FileInfo) string 
 	if index == -1 {
 		// zip files does not have directory at all , in this case log error but continue
 		gologger.Warning().Msgf("failed to get directory name from uri: %s", uri)
-		return filepath.Join(config.DefaultConfig.TemplatesDirectory, uri)
+		return filepath.Join(templatedir, uri)
 	}
 	// seperator is also included in rootDir
 	rootDirectory := uri[:index+1]
@@ -103,14 +107,21 @@ func (t *TemplateManager) getAbsoluteFilePath(uri string, f fs.FileInfo) string 
 		return ""
 	}
 
+	newPath := filepath.Clean(filepath.Join(templatedir, relPath))
+
+	if !strings.HasPrefix(newPath, templatedir) {
+		// we don't allow LFI
+		return ""
+	}
+
 	if relPath != "" && f.IsDir() {
 		// if uri is a directory, create it
-		if err := fileutil.CreateFolder(filepath.Join(config.DefaultConfig.TemplatesDirectory, relPath)); err != nil {
+		if err := fileutil.CreateFolder(newPath); err != nil {
 			gologger.Warning().Msgf("uri %v: got %s while installing templates", uri, err)
 		}
 		return ""
 	}
-	return filepath.Join(config.DefaultConfig.TemplatesDirectory, relPath)
+	return newPath
 }
 
 // writeChecksumFileInDir creates checksums of all yaml files in given directory

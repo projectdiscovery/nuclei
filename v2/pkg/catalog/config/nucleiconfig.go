@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/projectdiscovery/gologger"
 	errorutil "github.com/projectdiscovery/utils/errors"
@@ -13,9 +14,9 @@ import (
 
 // DefaultConfig is the default nuclei configuration
 // all config values and default are centralized here
-var DefaultConfig *NucleiConfig
+var DefaultConfig *Config
 
-type NucleiConfig struct {
+type Config struct {
 	homeDir            string `json:"-"` //  User Home Directory
 	configDir          string `json:"-"` //  Nuclei Global Config Directory
 	TemplatesDirectory string `json:"nuclei-templates-directory,omitempty"`
@@ -24,26 +25,67 @@ type NucleiConfig struct {
 	CustomGithubTemplatesDirectory string `json:"custom-github-templates-directory"`
 
 	TemplateVersion  string `json:"nuclei-templates-version,omitempty"`
-	NucleiVersion    string `json:"nuclei-version,omitempty"`
 	NucleiIgnoreHash string `json:"nuclei-ignore-hash,omitempty"`
 
-	NucleiLatestVersion          string `json:"nuclei-latest-version"`
-	NucleiTemplatesLatestVersion string `json:"nuclei-templates-latest-version"`
+	// Latest versions are not meant to be writable to config file and should only be written by updatecheck endpoint
+	LatestNucleiVersion          string `json:"-"`
+	LatestNucleiTemplatesVersion string `json:"-"`
+	LatestNucleiIgnoreHash       string `json:"-"`
+}
+
+// NeedsTemplateUpdate returns true if template installation/update is required
+func (c *Config) NeedsTemplateUpdate() bool {
+	return c.TemplateVersion == "" || IsOutdatedVersion(c.TemplateVersion, c.LatestNucleiTemplatesVersion)
+}
+
+// NeedsIngoreFileUpdate returns true if Ignore file hash is different (aka ignore file is outdated)
+func (c *Config) NeedsIgnoreFileUpdate() bool {
+	return c.NucleiIgnoreHash == "" || c.NucleiIgnoreHash != c.LatestNucleiIgnoreHash
+}
+
+// NeedsNucleiToolUpdate returns true if nuclei binary/tool is outdated
+func (c *Config) NeedsNucleiToolUpdate() bool {
+	return IsOutdatedVersion(Version, c.LatestNucleiVersion)
 }
 
 // GetConfigDir returns the nuclei configuration directory
-func (c *NucleiConfig) GetConfigDir() string {
+func (c *Config) GetConfigDir() string {
 	return c.configDir
 }
 
+// GetNucleiVersion returns Nuclei Binary/Tool Version
+func (c *Config) GetNucleiVersion() string {
+	return Version
+}
+
 // GetIgnoreFilePath returns the nuclei ignore file path
-func (c *NucleiConfig) GetIgnoreFilePath() string {
+func (c *Config) GetIgnoreFilePath() string {
 	return filepath.Join(c.configDir, NucleiIgnoreFileName)
+}
+
+// GetNewAdditions returns new template additions in current template release
+// if .new-additions file is not present empty slice is returned
+func (c *Config) GetNewAdditions() []string {
+	arr := []string{}
+	newAdditionsPath := filepath.Join(c.TemplatesDirectory, NewTemplateAdditionsFileName)
+	if !fileutil.FileExists(newAdditionsPath) {
+		return arr
+	}
+	bin, err := os.ReadFile(newAdditionsPath)
+	if err != nil {
+		return arr
+	}
+	for _, v := range strings.Fields(string(bin)) {
+		if IsTemplate(v) {
+			arr = append(arr, v)
+		}
+	}
+	return arr
 }
 
 // SetConfigDir sets the nuclei configuration directory
 // and appropriate changes are made to the config
-func (c *NucleiConfig) SetConfigDir(dir string) {
+func (c *Config) SetConfigDir(dir string) {
 	c.configDir = dir
 	if !fileutil.FolderExists(dir) {
 		if err := fileutil.CreateFolder(dir); err != nil {
@@ -62,7 +104,7 @@ func (c *NucleiConfig) SetConfigDir(dir string) {
 }
 
 // SetTemplatesDir sets the new nuclei templates directory
-func (c *NucleiConfig) SetTemplatesDir(dirPath string) {
+func (c *Config) SetTemplatesDir(dirPath string) {
 	c.TemplatesDirectory = dirPath
 	// Update the custom templates directory
 	c.CustomGithubTemplatesDirectory = filepath.Join(dirPath, CustomGithubTemplatesDirName)
@@ -70,11 +112,11 @@ func (c *NucleiConfig) SetTemplatesDir(dirPath string) {
 }
 
 // ReadTemplatesConfig reads the nuclei templates config file
-func (c *NucleiConfig) ReadTemplatesConfig() error {
+func (c *Config) ReadTemplatesConfig() error {
 	if !fileutil.FileExists(c.getTemplatesConfigFilePath()) {
 		return errorutil.NewWithTag("config", "nuclei config file at %s does not exist", c.getTemplatesConfigFilePath())
 	}
-	var cfg *NucleiConfig
+	var cfg *Config
 	bin, err := os.ReadFile(c.getTemplatesConfigFilePath())
 	if err != nil {
 		return errorutil.NewWithErr(err).Msgf("could not read nuclei config file at %s", c.getTemplatesConfigFilePath())
@@ -87,15 +129,12 @@ func (c *NucleiConfig) ReadTemplatesConfig() error {
 	c.CustomS3TemplatesDirectory = cfg.CustomS3TemplatesDirectory
 	c.TemplatesDirectory = cfg.TemplatesDirectory
 	c.TemplateVersion = cfg.TemplateVersion
-	// c.NucleiVersion = cfg.NucleiVersion  // I think this should not be read from file
 	c.NucleiIgnoreHash = cfg.NucleiIgnoreHash
-	c.NucleiLatestVersion = cfg.NucleiLatestVersion
-	c.NucleiTemplatesLatestVersion = cfg.NucleiTemplatesLatestVersion
 	return nil
 }
 
 // WriteTemplatesConfig writes the nuclei templates config file
-func (c *NucleiConfig) WriteTemplatesConfig() error {
+func (c *Config) WriteTemplatesConfig() error {
 	bin, err := json.Marshal(c)
 	if err != nil {
 		return errorutil.NewWithErr(err).Msgf("failed to marshal nuclei config")
@@ -107,7 +146,7 @@ func (c *NucleiConfig) WriteTemplatesConfig() error {
 }
 
 // getTemplatesConfigFilePath returns configDir/.templates-config.json file path
-func (c *NucleiConfig) getTemplatesConfigFilePath() string {
+func (c *Config) getTemplatesConfigFilePath() string {
 	return filepath.Join(c.configDir, TemplateConfigFileName)
 }
 
@@ -126,15 +165,15 @@ func init() {
 	}
 
 	// nuclei config directory
-	nucleiConfigDir := filepath.Join(userCfgDir, "nuclei")
-	if !fileutil.FolderExists(nucleiConfigDir) {
-		if err := fileutil.CreateFolder(nucleiConfigDir); err != nil {
-			gologger.Error().Msgf("failed to create config directory at %v got: %s", nucleiConfigDir, err)
+	ConfigDir := filepath.Join(userCfgDir, "nuclei")
+	if !fileutil.FolderExists(ConfigDir) {
+		if err := fileutil.CreateFolder(ConfigDir); err != nil {
+			gologger.Error().Msgf("failed to create config directory at %v got: %s", ConfigDir, err)
 		}
 	}
-	DefaultConfig = &NucleiConfig{
+	DefaultConfig = &Config{
 		homeDir:   homedir,
-		configDir: nucleiConfigDir,
+		configDir: ConfigDir,
 	}
 	// try to read config from file
 	if err := DefaultConfig.ReadTemplatesConfig(); err != nil {
@@ -149,7 +188,6 @@ func init() {
 
 // Add Default Config adds default when .templates-config.json file is not present
 func applyDefaultConfig() {
-	DefaultConfig.NucleiVersion = Version
 	DefaultConfig.TemplatesDirectory = filepath.Join(DefaultConfig.homeDir, NucleiTemplatesDirName)
 	DefaultConfig.CustomGithubTemplatesDirectory = filepath.Join(DefaultConfig.TemplatesDirectory, CustomGithubTemplatesDirName)
 	DefaultConfig.CustomS3TemplatesDirectory = filepath.Join(DefaultConfig.TemplatesDirectory, CustomGithubTemplatesDirName)
