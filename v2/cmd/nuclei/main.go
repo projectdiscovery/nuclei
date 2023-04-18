@@ -1,12 +1,9 @@
 package main
 
 import (
-	"errors"
 	"fmt"
-	"io"
 	"os"
 	"os/signal"
-	"path/filepath"
 	"runtime"
 	"runtime/pprof"
 	"time"
@@ -15,6 +12,7 @@ import (
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/gologger/levels"
 	"github.com/projectdiscovery/interactsh/pkg/client"
+	"github.com/projectdiscovery/nuclei/v2/internal/installer"
 	"github.com/projectdiscovery/nuclei/v2/internal/runner"
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/config"
 	"github.com/projectdiscovery/nuclei/v2/pkg/model/types/severity"
@@ -39,8 +37,7 @@ func main() {
 	if err := runner.ConfigureOptions(); err != nil {
 		gologger.Fatal().Msgf("Could not initialize options: %s\n", err)
 	}
-	flagSet := readConfig()
-	configPath, _ := flagSet.GetConfigFilePath()
+	_ = readConfig()
 
 	if options.ListDslSignatures {
 		gologger.Info().Msgf("The available custom DSL functions are:")
@@ -67,7 +64,6 @@ func main() {
 	}
 
 	runner.ParseOptions(options)
-	options.ConfigPath = configPath
 
 	if options.HangMonitor {
 		cancel := monitor.NewStackMonitor(10 * time.Second)
@@ -171,7 +167,7 @@ on extensive configurability, massive extensibility and ease of use.`)
 		flagSet.BoolVarP(&options.StoreResponse, "store-resp", "sresp", false, "store all request/response passed through nuclei to output directory"),
 		flagSet.StringVarP(&options.StoreResponseDir, "store-resp-dir", "srd", runner.DefaultDumpTrafficOutputFolder, "store all request/response passed through nuclei to custom directory"),
 		flagSet.BoolVar(&options.Silent, "silent", false, "display findings only"),
-		flagSet.BoolVarP(&options.NoColor, "no-color", "nc", isNoColorEnabled(), "disable output content coloring (ANSI escape codes)"),
+		flagSet.BoolVarP(&options.NoColor, "no-color", "nc", isColorNotAvailable(), "disable output content coloring (ANSI escape codes)"),
 		flagSet.BoolVarP(&options.JSONL, "jsonl", "j", false, "write output in JSONL(ines) format"),
 		flagSet.BoolVarP(&options.JSONRequests, "include-rr", "irr", false, "include request/response pairs in the JSONL output (for findings only)"),
 		flagSet.BoolVarP(&options.NoMeta, "no-meta", "nm", false, "disable printing result metadata in cli output"),
@@ -284,22 +280,22 @@ on extensive configurability, massive extensibility and ease of use.`)
 		flagSet.BoolVarP(&options.ListDslSignatures, "list-dsl-function", "ldf", false, "list all supported DSL function signatures"),
 		flagSet.StringVarP(&options.TraceLogFile, "trace-log", "tlog", "", "file to write sent requests trace log"),
 		flagSet.StringVarP(&options.ErrorLogFile, "error-log", "elog", "", "file to write sent requests error log"),
-		flagSet.BoolVar(&options.Version, "version", false, "show nuclei version"),
+		flagSet.CallbackVar(printVersion, "version", "show nuclei version"),
 		flagSet.BoolVarP(&options.HangMonitor, "hang-monitor", "hm", false, "enable nuclei hang monitoring"),
 		flagSet.BoolVarP(&options.Verbose, "verbose", "v", false, "show verbose output"),
 		flagSet.StringVar(&memProfile, "profile-mem", "", "optional nuclei memory profile dump file"),
 		flagSet.BoolVar(&options.VerboseVerbose, "vv", false, "display templates loaded for scan"),
 		flagSet.BoolVarP(&options.ShowVarDump, "show-var-dump", "svd", false, "show variables dump for debugging"),
 		flagSet.BoolVarP(&options.EnablePprof, "enable-pprof", "ep", false, "enable pprof debugging server"),
-		flagSet.BoolVarP(&options.TemplatesVersion, "templates-version", "tv", false, "shows the version of the installed nuclei-templates"),
+		flagSet.CallbackVarP(printTemplateVersion, "templates-version", "tv", "shows the version of the installed nuclei-templates"),
 		flagSet.BoolVarP(&options.HealthCheck, "health-check", "hc", false, "run diagnostic check up"),
 	)
 
 	flagSet.CreateGroup("update", "Update",
-		flagSet.BoolVarP(&options.UpdateNuclei, "update", "un", false, "update nuclei engine to the latest released version"),
+		flagSet.CallbackVarP(installer.NucleiToolUpdateCallback, "update", "un", "update nuclei engine to the latest released version"),
 		flagSet.BoolVarP(&options.UpdateTemplates, "update-templates", "ut", false, "update nuclei-templates to latest released version"),
 		flagSet.StringVarP(&options.TemplatesDirectory, "update-template-dir", "ud", "", "custom directory to install / update nuclei-templates"),
-		flagSet.BoolVarP(&options.NoUpdateTemplates, "disable-update-check", "duc", false, "disable automatic nuclei/templates update check"),
+		flagSet.CallbackVarP(disableUpdatesCallback, "disable-update-check", "duc", "disable automatic nuclei/templates update check"),
 	)
 
 	flagSet.CreateGroup("stats", "Statistics",
@@ -342,47 +338,28 @@ on extensive configurability, massive extensibility and ease of use.`)
 		http.LeaveDefaultPorts = true
 	}
 	if options.CustomConfigDir != "" {
-		originalIgnorePath := config.DefaultConfig.NucleiIgnoreHash
-		config.SetCustomConfigDirectory(options.CustomConfigDir)
-		configPath := filepath.Join(options.CustomConfigDir, "config.yaml")
-		ignoreFile := filepath.Join(options.CustomConfigDir, ".nuclei-ignore")
-		if !fileutil.FileExists(ignoreFile) {
-			if err := fileutil.CopyFile(originalIgnorePath, ignoreFile); err != nil {
-				gologger.Error().Msgf("failed to copy .nuclei-ignore file in custom config directory got %v", err)
-			}
-		}
-		readConfigFile := func() error {
-			if err := flagSet.MergeConfigFile(configPath); err != nil && !errors.Is(err, io.EOF) {
-				defaultConfigPath, _ := flagSet.GetConfigFilePath()
-				err = fileutil.CopyFile(defaultConfigPath, configPath)
-				if err != nil {
-					return err
-				}
-				return errors.New("reload the config file")
-			}
-			return nil
-		}
-		if err := readConfigFile(); err != nil {
-			_ = readConfigFile()
-		}
+		config.DefaultConfig.SetConfigDir(options.CustomConfigDir)
+		readFlagsConfig(flagSet)
 	}
 	if cfgFile != "" {
+		if !fileutil.FileExists(cfgFile) {
+			gologger.Fatal().Msgf("given config file '%s' does not exist", cfgFile)
+		}
+		// merge config file with flags
 		if err := flagSet.MergeConfigFile(cfgFile); err != nil {
 			gologger.Fatal().Msgf("Could not read config: %s\n", err)
-		}
-		cfgFileFolder := filepath.Dir(cfgFile)
-		if err := config.OverrideIgnoreFilePath(cfgFileFolder); err != nil {
-			gologger.Warning().Msgf("Could not read ignore file from custom path: %s\n", err)
 		}
 	}
 	cleanupOldResumeFiles()
 	return flagSet
 }
 
-func isNoColorEnabled() bool {
+// isColorNotAvailable returns true if ascii collored output is not available.
+func isColorNotAvailable() bool {
 	return runtime.GOOS == "windows"
 }
 
+// cleanupOldResumeFiles cleans up resume files older than 10 days.
 func cleanupOldResumeFiles() {
 	root := config.DefaultConfig.GetConfigDir()
 	filter := fileutil.FileFilters{
@@ -392,9 +369,62 @@ func cleanupOldResumeFiles() {
 	_ = fileutil.DeleteFilesOlderThan(root, filter)
 }
 
+// readFlagsConfig reads the config file from the default config dir and copies it to the current config dir.
+func readFlagsConfig(flagset *goflags.FlagSet) {
+	// check if config.yaml file exists
+	defaultCfgFile, err := flagset.GetConfigFilePath()
+	if err != nil {
+		// soemthing went wrong either dir is not readable or something else went wrong upstream in `goflags`
+		// warn and exit in this case
+		gologger.Warning().Msgf("Could not read config file: %s\n", err)
+		return
+	}
+	cfgFile := config.DefaultConfig.GetFlagsConfigFilePath()
+	if !fileutil.FileExists(cfgFile) {
+		if !fileutil.FileExists(defaultCfgFile) {
+			// if default config does not exist, warn and exit
+			gologger.Warning().Msgf("missing default config file : %s", defaultCfgFile)
+			return
+		}
+		// if does not exist copy it from the default config
+		if err = fileutil.CopyFile(defaultCfgFile, cfgFile); err != nil {
+			gologger.Warning().Msgf("Could not copy config file: %s\n", err)
+		}
+		return
+	}
+	// if config file exists, merge it with the default config
+	if err = flagset.MergeConfigFile(cfgFile); err != nil {
+		gologger.Warning().Msgf("failed to merge configfile with flags got: %s\n", err)
+	}
+}
+
+// disableUpdatesCallback disables the update check.
+func disableUpdatesCallback() {
+	config.DefaultConfig.DisableUpdateCheck()
+}
+
+// printVersion prints the nuclei version and exits.
+func printVersion() {
+	gologger.Info().Msgf("Nuclei Engine Version: %s", config.Version)
+	os.Exit(0)
+}
+
+// printTemplateVersion prints the nuclei template version and exits.
+func printTemplateVersion() {
+	cfg := config.DefaultConfig
+	gologger.Info().Msgf("Public nuclei-templates version: %s (%s)\n", cfg.TemplateVersion, cfg.TemplatesDirectory)
+	if cfg.CustomS3TemplatesDirectory != "" {
+		gologger.Info().Msgf("Custom S3 templates location: %s\n", cfg.CustomS3TemplatesDirectory)
+	}
+	if cfg.CustomGithubTemplatesDirectory != "" {
+		gologger.Info().Msgf("Custom Github templates location: %s ", cfg.CustomGithubTemplatesDirectory)
+	}
+	os.Exit(0)
+}
+
 func init() {
 	// print stacktrace of errors in debug mode
-	if os.Getenv("DEBUG") != "" {
+	if os.Getenv("DEBUG") == "True" || os.Getenv("DEBUG") == "true" {
 		errorutil.ShowStackTrace = true
 	}
 }

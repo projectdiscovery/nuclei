@@ -12,7 +12,7 @@ var banner = fmt.Sprintf(`
    ____  __  _______/ /__  (_)
   / __ \/ / / / ___/ / _ \/ /
  / / / / /_/ / /__/ /  __/ /
-/_/ /_/\__,_/\___/_/\___/_/   v%s
+/_/ /_/\__,_/\___/_/\___/_/   %s
 `, config.Version)
 
 // showBanner is used to show the banner to the user

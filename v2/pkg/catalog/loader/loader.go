@@ -8,6 +8,7 @@ import (
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalog"
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/config"
+	cfg "github.com/projectdiscovery/nuclei/v2/pkg/catalog/config"
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/loader/filter"
 	"github.com/projectdiscovery/nuclei/v2/pkg/model/types/severity"
 	"github.com/projectdiscovery/nuclei/v2/pkg/parsers"
@@ -41,9 +42,8 @@ type Config struct {
 	ExcludeIds        []string
 	IncludeConditions []string
 
-	Catalog            catalog.Catalog
-	ExecutorOptions    protocols.ExecuterOptions
-	TemplatesDirectory string
+	Catalog         catalog.Catalog
+	ExecutorOptions protocols.ExecuterOptions
 }
 
 // Store is a storage for loaded nuclei templates
@@ -82,7 +82,6 @@ func NewConfig(options *types.Options, templateConfig *config.Config, catalog ca
 		IncludeTags:              options.IncludeTags,
 		IncludeIds:               options.IncludeIds,
 		ExcludeIds:               options.ExcludeIds,
-		TemplatesDirectory:       templateConfig.TemplatesDirectory,
 		Protocols:                options.Protocols,
 		ExcludeProtocols:         options.ExcludeProtocols,
 		IncludeConditions:        options.IncludeConditions,
@@ -142,7 +141,7 @@ func New(config *Config) (*Store, error) {
 	}
 	// Handle a case with no templates or workflows, where we use base directory
 	if len(store.finalTemplates) == 0 && len(store.finalWorkflows) == 0 && !urlBasedTemplatesProvided {
-		store.finalTemplates = []string{config.TemplatesDirectory}
+		store.finalTemplates = []string{cfg.DefaultConfig.TemplatesDirectory}
 	}
 	return store, nil
 }

@@ -1,13 +1,11 @@
 package runner
 
 import (
-	"bufio"
 	"context"
 	"encoding/json"
 	"net/http"
 	_ "net/http/pprof"
 	"os"
-	"path/filepath"
 	"reflect"
 	"strconv"
 	"strings"
@@ -97,19 +95,30 @@ func New(options *types.Options) (*Runner, error) {
 		runner.cloudClient = nucleicloud.New(options.CloudURL, options.CloudAPIKey)
 	}
 
-	if options.UpdateNuclei {
-		if err := updateNucleiVersionToLatest(runner.options.Verbose); err != nil {
-			return nil, err
+	//  Version check by default
+	if config.DefaultConfig.CanCheckForUpdates() {
+		if err := installer.NucleiVersionCheck(); err != nil {
+			gologger.Warning().Msgf("Could not check for nuclei updates: %s\n", err)
 		}
-		return nil, nil
-	}
-	if options.Validate {
-		parsers.ShouldValidate = true
-		// Does not update the templates when validate flag is used
-		options.NoUpdateTemplates = true
+		// Check for template updates and update if available
+		tm := &installer.TemplateManager{}
+		if err := tm.FreshInstallIfNotExists(); err != nil {
+			gologger.Warning().Msgf("failed to install nuclei templates: %s\n", err)
+		}
+		if err := tm.UpdateIfOutdated(); err != nil {
+			gologger.Warning().Msgf("failed to update nuclei templates: %s\n", err)
+		}
+
+		if config.DefaultConfig.NeedsIgnoreFileUpdate() {
+			if err := installer.UpdateIgnoreFile(); err != nil {
+				gologger.Warning().Msgf("failed to update nuclei ignore file: %s\n", err)
+			}
+		}
 	}
 
-	// read nuclei version config and handle if doesn't exist
+	if options.Validate {
+		parsers.ShouldValidate = true
+	}
 
 	// TODO: refactor to pass options reference globally without cycles
 	parsers.NoStrictSyntax = options.NoStrictSyntax
@@ -117,9 +126,6 @@ func New(options *types.Options) (*Runner, error) {
 	// parse the runner.options.GithubTemplateRepo and store the valid repos in runner.customTemplateRepos
 	runner.customTemplates = customtemplates.ParseCustomTemplates(runner.options)
 
-	if err := runner.updateTemplates(); err != nil {
-		gologger.Error().Msgf("Could not update templates: %s\n", err)
-	}
 	if options.Headless {
 		if engine.MustDisableSandbox() {
 			gologger.Warning().Msgf("The current platform and privileged user will run the browser without sandbox\n")
@@ -697,7 +703,7 @@ func (r *Runner) displayExecutionInfo(store *loader.Store) {
 		gologger.Info().Msgf("Using Nuclei Templates %s%s", r.templatesConfig.TemplateVersion, messageStr)
 	}
 	if len(store.Templates()) > 0 {
-		gologger.Info().Msgf("Templates added in last update: %d", r.countNewTemplates())
+		gologger.Info().Msgf("Templates added in last update: %d", len(config.DefaultConfig.GetNewAdditions()))
 		gologger.Info().Msgf("Templates loaded for scan: %d", len(store.Templates()))
 	}
 	if len(store.Workflows()) > 0 {
@@ -706,34 +712,6 @@ func (r *Runner) displayExecutionInfo(store *loader.Store) {
 	if r.hmapInputProvider.Count() > 0 {
 		gologger.Info().Msgf("Targets loaded for scan: %d", r.hmapInputProvider.Count())
 	}
-}
-
-// countNewTemplates returns the number of newly added templates
-func (r *Runner) countNewTemplates() int {
-	if r.templatesConfig == nil {
-		return 0
-	}
-	additionsFile := filepath.Join(r.templatesConfig.TemplatesDirectory, ".new-additions")
-	file, err := os.Open(additionsFile)
-	if err != nil {
-		return 0
-	}
-	defer file.Close()
-
-	count := 0
-	scanner := bufio.NewScanner(file)
-	for scanner.Scan() {
-		text := scanner.Text()
-		if text == "" {
-			continue
-		}
-
-		if config.IsTemplate(text) {
-			count++
-		}
-
-	}
-	return count
 }
 
 // SaveResumeConfig to file

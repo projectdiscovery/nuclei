@@ -41,7 +41,7 @@ func (t *tempFileInfo) Sys() any {
 	return nil
 }
 
-func TestMaliciousZipOrTar(t *testing.T) {
+func TestZipSlip(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		t.Skip("Skipping Unix Zip LFI Check")
 	}

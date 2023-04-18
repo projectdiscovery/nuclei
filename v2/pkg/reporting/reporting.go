@@ -2,7 +2,6 @@ package reporting
 
 import (
 	"os"
-	"path/filepath"
 
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/config"
 	json_exporter "github.com/projectdiscovery/nuclei/v2/pkg/reporting/exporters/jsonexporter"
@@ -177,7 +176,7 @@ func New(options *Options, db string) (Client, error) {
 
 // CreateConfigIfNotExists creates report-config if it doesn't exists
 func CreateConfigIfNotExists() error {
-	reportingConfig := filepath.Join(config.DefaultConfig.GetConfigDir(), "report-config.yaml")
+	reportingConfig := config.DefaultConfig.GetReportingConfigFilePath()
 
 	if fileutil.FileExists(reportingConfig) {
 		return nil

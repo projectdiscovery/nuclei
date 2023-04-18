@@ -23,7 +23,7 @@ func GetNewTemplatesInVersions(versions ...string) []string {
 		}
 		_, err := semver.NewVersion(v)
 		if err != nil {
-			gologger.Error().Msgf("%v is not a valid semver version. skipping")
+			gologger.Error().Msgf("%v is not a valid semver version. skipping", v)
 			continue
 		}
 		if config.IsOutdatedVersion(v, "v8.8.4") {

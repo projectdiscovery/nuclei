@@ -215,8 +215,6 @@ type Options struct {
 	AutomaticScan bool
 	// Silent suppresses any extra text and only writes found URLs on screen.
 	Silent bool
-	// Version specifies if we should just show version and exit
-	Version bool
 	// Validate validates the templates passed to nuclei.
 	Validate bool
 	// NoStrictSyntax disables strict syntax check on nuclei templates (allows custom key-value pairs).
@@ -228,7 +226,7 @@ type Options struct {
 	ShowVarDump bool
 	// No-Color disables the colored output.
 	NoColor bool
-	// UpdateTemplates updates the templates installed at startup
+	// UpdateTemplates updates the templates installed at startup (also used by cloud to update datasources)
 	UpdateTemplates bool
 	// JSON writes json line output to files
 	JSONL bool
@@ -242,8 +240,6 @@ type Options struct {
 	Cloud bool
 	// EnableProgressBar enables progress bar
 	EnableProgressBar bool
-	// TemplatesVersion shows the templates installed version
-	TemplatesVersion bool
 	// TemplateDisplay displays the template contents
 	TemplateDisplay bool
 	// TemplateList lists available templates
@@ -268,10 +264,6 @@ type Options struct {
 	NewTemplatesWithVersion goflags.StringSlice
 	// NoInteractsh disables use of interactsh server for interaction polling
 	NoInteractsh bool
-	// UpdateNuclei checks for an update for the nuclei engine
-	UpdateNuclei bool
-	// NoUpdateTemplates disables checking for nuclei templates updates
-	NoUpdateTemplates bool
 	// EnvironmentVariables enables support for environment variables
 	EnvironmentVariables bool
 	// MatcherStatus displays optional status for the failed matches as well
@@ -330,8 +322,6 @@ type Options struct {
 	UncoverLimit int
 	// Uncover search delay
 	UncoverDelay int
-	// ConfigPath contains the config path (used by healthcheck)
-	ConfigPath string
 	// ScanAllIPs associated to a dns record
 	ScanAllIPs bool
 	// IPVersion to scan (4,6)

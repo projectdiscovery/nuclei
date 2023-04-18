@@ -26,6 +26,8 @@ import (
 )
 
 func ConfigureOptions() error {
+	// with FileStringSliceOptions, FileNormalizedStringSliceOptions, FileCommaSeparatedStringSliceOptions
+	// if file has extension `.yaml,.json` we consider those as strings and not files to be read
 	isFromFileFunc := func(s string) bool {
 		return !config.IsTemplate(s)
 	}
@@ -52,23 +54,8 @@ func ParseOptions(options *types.Options) {
 		cwd, _ := os.Getwd()
 		options.TemplatesDirectory = filepath.Join(cwd, options.TemplatesDirectory)
 	}
-	if options.Version {
-		gologger.Info().Msgf("Current Version: %s\n", config.Version)
-		os.Exit(0)
-	}
 	if options.ShowVarDump {
 		vardump.EnableVarDump = true
-	}
-	if options.TemplatesVersion {
-		configuration := config.DefaultConfig
-		gologger.Info().Msgf("Public nuclei-templates version: %s (%s)\n", configuration.TemplateVersion, configuration.TemplatesDirectory)
-		if configuration.CustomS3TemplatesDirectory != "" {
-			gologger.Info().Msgf("Custom S3 templates location: %s\n", configuration.CustomS3TemplatesDirectory)
-		}
-		if configuration.CustomGithubTemplatesDirectory != "" {
-			gologger.Info().Msgf("Custom Github templates location: %s ", configuration.CustomGithubTemplatesDirectory)
-		}
-		os.Exit(0)
 	}
 	if options.ShowActions {
 		gologger.Info().Msgf("Showing available headless actions: ")

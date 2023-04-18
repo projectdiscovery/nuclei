@@ -69,3 +69,4 @@ func UpdateIgnoreFile() error {
 	}
 	return os.WriteFile(config.DefaultConfig.GetIgnoreFilePath(), bin, 0644)
 }
+
