@@ -88,7 +88,7 @@ func executeNucleiAsCode(templatePath, templateURL string) ([]string, error) {
 	defaultOpts.Templates = goflags.StringSlice{templatePath}
 	defaultOpts.ExcludeTags = config.ReadIgnoreFile().Tags
 
-	interactOpts := interactsh.NewDefaultOptions(outputWriter, reportingClient, mockProgress)
+	interactOpts := interactsh.DefaultOptions(outputWriter, reportingClient, mockProgress)
 	interactClient, err := interactsh.New(interactOpts)
 	if err != nil {
 		return nil, errors.Wrap(err, "could not create interact client")
