@@ -10,6 +10,7 @@ import (
 
 const (
 	CustomGithubTemplateDirectory = "github"
+	CustomGitLabTemplateDirectory = "gitlab"
 	CustomS3TemplateDirectory     = "s3"
 	CustomAzureTemplateDirectory  = "azure"
 )
@@ -80,6 +81,24 @@ func ParseCustomTemplates(options *types.Options) []Provider {
 
 		// Add the Azure Blob Storage container object to the list of custom templates
 		customTemplates = append(customTemplates, azTemplateContainer)
+	}
+	if options.GitLabToken != "" {
+		// Establish a connection to GitLab and build a client object with which to download templates from GitLab
+		gitLabClient, err := getGitLabClient(options.GitLabServerURL, options.GitLabToken)
+		if err != nil {
+			gologger.Error().Msgf("Error establishing GitLab client for %s %s", options.GitLabServerURL, err)
+			return customTemplates
+		}
+
+		// Create a new GitLab service client
+		gitLabContainer := &customTemplateGitLabRepo{
+			gitLabClient: gitLabClient,
+			serverURL:    options.GitLabServerURL,
+			projectIDs:   options.GitLabTemplateRepositoryIDs,
+		}
+
+		// Add the GitLab service client to the list of custom templates
+		customTemplates = append(customTemplates, gitLabContainer)
 	}
 	return customTemplates
 }

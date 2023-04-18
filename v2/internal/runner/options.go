@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"github.com/pkg/errors"
@@ -166,7 +167,7 @@ func validateOptions(options *types.Options) error {
 	}
 
 	// Verify that all GitLab options are provided if the GitLab server or token is provided
-	if (options.GitLabServer != "" || options.GitLabToken != "") && options.UpdateTemplates {
+	if (options.GitLabServerURL != "" || options.GitLabToken != "") && options.UpdateTemplates {
 		missing := validateMissingGitLabOptions(options)
 		if missing != nil {
 			return fmt.Errorf("gitlab server details are missing. Please provide %s", strings.Join(missing, ","))
@@ -279,11 +280,11 @@ func validateMissingGitLabOptions(options *types.Options) []string {
 	if options.GitLabToken == "" {
 		missing = append(missing, "GITLAB_TOKEN")
 	}
-	if options.GitLabServer == "" {
-		missing = append(missing, "GITLAB_SERVER")
+	if options.GitLabServerURL == "" {
+		missing = append(missing, "GITLAB_SERVER_URL")
 	}
-	if len(options.GitLabTemplateRepo) == 0 {
-		missing = append(missing, "GITLAB_TEMPLATE_REPO")
+	if len(options.GitLabTemplateRepositoryIDs) == 0 {
+		missing = append(missing, "GITLAB_TEMPLATE_REPOSITORY_IDS")
 	}
 
 	return missing
@@ -380,11 +381,21 @@ func readEnvInputVars(options *types.Options) {
 	}
 
 	// GitLab options for downloading templates from a repository
-	options.GitLabServer = os.Getenv("GITLAB_SERVER")
+	options.GitLabServerURL = os.Getenv("GITLAB_SERVER_URL")
 	options.GitLabToken = os.Getenv("GITLAB_TOKEN")
-	repolist = os.Getenv("GITLAB_TEMPLATE_REPO")
+	repolist = os.Getenv("GITLAB_TEMPLATE_REPOSITORY_IDS")
 	if repolist != "" {
-		options.GitLabTemplateRepo = append(options.GitLabTemplateRepo, stringsutil.SplitAny(repolist, ",")...)
+		for _, repoID := range stringsutil.SplitAny(repolist, ",") {
+			// Attempt to convert the repo ID to an integer
+			repoIDInt, err := strconv.Atoi(repoID)
+			if err != nil {
+				gologger.Warning().Msgf("Invalid GitLab template repository ID: %s", repoID)
+				continue
+			}
+
+			// Add the int repository ID to the list
+			options.GitLabTemplateRepositoryIDs = append(options.GitLabTemplateRepositoryIDs, repoIDInt)
+		}
 	}
 
 	// AWS options for downloading templates from an S3 bucket

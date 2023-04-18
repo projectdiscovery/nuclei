@@ -340,12 +340,12 @@ type Options struct {
 	GithubToken string
 	// GithubTemplateRepo is the list of custom public/private templates GitHub repos
 	GithubTemplateRepo []string
-	// GitLabServer is the gitlab server to use for custom templates
-	GitLabServer string
+	// GitLabServerURL is the gitlab server to use for custom templates
+	GitLabServerURL string
 	// GitLabToken used to clone/pull from private repos for custom templates
 	GitLabToken string
-	// GitLabTemplateRepo is the list of custom public/private templates gitlab repos
-	GitLabTemplateRepo []string
+	// GitLabTemplateRepositoryIDs is the comma-separated list of custom gitlab repositories IDs
+	GitLabTemplateRepositoryIDs []int
 	// AWS access key for downloading templates from S3 bucket
 	AwsAccessKey string
 	// AWS secret key for downloading templates from S3 bucket
