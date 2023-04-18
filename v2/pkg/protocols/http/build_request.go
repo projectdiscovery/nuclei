@@ -268,14 +268,14 @@ func (r *requestGenerator) generateRawRequest(ctx context.Context, rawRequest st
 		unsafeReq := &generatedRequest{rawRequest: rawRequestData, meta: generatorValues, original: r.request, interactshURLs: r.interactshURLs}
 		return unsafeReq, nil
 	}
-
 	var body io.ReadCloser
 	body = io.NopCloser(strings.NewReader(rawRequestData.Data))
-	if r.request.Race {
+	if r.request.Race && r.request.RaceNumberRequests > 0 {
 		// More or less this ensures that all requests hit the endpoint at the same approximated time
 		// Todo: sync internally upon writing latest request byte
 		body = race.NewOpenGateWithTimeout(body, time.Duration(2)*time.Second)
 	}
+
 	urlx, err := urlutil.ParseURL(rawRequestData.FullURL, true)
 	if err != nil {
 		return nil, errorutil.NewWithErr(err).Msgf("failed to create request with url %v got %v", rawRequestData.FullURL, err).WithTag("raw")
@@ -283,6 +283,11 @@ func (r *requestGenerator) generateRawRequest(ctx context.Context, rawRequest st
 	req, err := retryablehttp.NewRequestFromURLWithContext(ctx, rawRequestData.Method, urlx, body)
 	if err != nil {
 		return nil, err
+	}
+	// override the body with a new one that will be used to read the request body in parallel threads
+	// for race condition testing
+	if r.request.Threads > 0 && r.request.Race {
+		req.Body = race.NewOpenGateWithTimeout(req.Body, time.Duration(2)*time.Second)
 	}
 	for key, value := range rawRequestData.Headers {
 		if key == "" {
