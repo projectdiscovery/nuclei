@@ -239,7 +239,7 @@ func (request *Request) executeFuzzingRule(input *contextargs.Context, previous 
 		if request.options.HostErrorsCache != nil && request.options.HostErrorsCache.Check(input.MetaInput.Input) {
 			return false
 		}
-
+		request.options.RateLimiter.Take()
 		req := &generatedRequest{
 			request:        gr.Request,
 			dynamicValues:  gr.DynamicValues,
@@ -248,24 +248,26 @@ func (request *Request) executeFuzzingRule(input *contextargs.Context, previous 
 		}
 		var gotMatches bool
 		requestErr := request.executeRequest(input, req, gr.DynamicValues, hasInteractMatchers, func(event *output.InternalWrappedEvent) {
-			// Add the extracts to the dynamic values if any.
-			if event.OperatorsResult != nil {
-				gotMatches = event.OperatorsResult.Matched
-			}
 			if hasInteractMarkers && hasInteractMatchers && request.options.Interactsh != nil {
-				request.options.Interactsh.RequestEvent(gr.InteractURLs, &interactsh.RequestData{
+				requestData := &interactsh.RequestData{
 					MakeResultFunc: request.MakeResultEvent,
 					Event:          event,
 					Operators:      request.CompiledOperators,
 					MatchFunc:      request.Match,
 					ExtractFunc:    request.Extract,
-				})
+				}
+				request.options.Interactsh.RequestEvent(gr.InteractURLs, requestData)
+				gotMatches = request.options.Interactsh.AlreadyMatched(requestData)
 			} else {
 				callback(event)
 			}
+			// Add the extracts to the dynamic values if any.
+			if event.OperatorsResult != nil {
+				gotMatches = event.OperatorsResult.Matched
+			}
 		}, 0)
 		// If a variable is unresolved, skip all further requests
-		if requestErr == errStopExecution {
+		if errors.Is(requestErr, errStopExecution) {
 			return false
 		}
 		if requestErr != nil {
@@ -276,7 +278,8 @@ func (request *Request) executeFuzzingRule(input *contextargs.Context, previous 
 		request.options.Progress.IncrementRequests()
 
 		// If this was a match, and we want to stop at first match, skip all further requests.
-		if (request.options.Options.StopAtFirstMatch || request.StopAtFirstMatch) && gotMatches {
+		shouldStopAtFirstMatch := request.options.Options.StopAtFirstMatch || request.StopAtFirstMatch
+		if shouldStopAtFirstMatch && gotMatches {
 			return false
 		}
 		return true
@@ -374,19 +377,21 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 			}
 			var gotMatches bool
 			err = request.executeRequest(input, generatedHttpRequest, previous, hasInteractMatchers, func(event *output.InternalWrappedEvent) {
-				// Add the extracts to the dynamic values if any.
-				if event.OperatorsResult != nil {
-					gotMatches = event.OperatorsResult.Matched
-					gotDynamicValues = generators.MergeMapsMany(event.OperatorsResult.DynamicValues, dynamicValues, gotDynamicValues)
-				}
 				if hasInteractMarkers && hasInteractMatchers && request.options.Interactsh != nil {
-					request.options.Interactsh.RequestEvent(generatedHttpRequest.interactshURLs, &interactsh.RequestData{
+					requestData := &interactsh.RequestData{
 						MakeResultFunc: request.MakeResultEvent,
 						Event:          event,
 						Operators:      request.CompiledOperators,
 						MatchFunc:      request.Match,
 						ExtractFunc:    request.Extract,
-					})
+					}
+					request.options.Interactsh.RequestEvent(generatedHttpRequest.interactshURLs, requestData)
+					gotMatches = request.options.Interactsh.AlreadyMatched(requestData)
+				}
+				// Add the extracts to the dynamic values if any.
+				if event.OperatorsResult != nil {
+					gotMatches = event.OperatorsResult.Matched
+					gotDynamicValues = generators.MergeMapsMany(event.OperatorsResult.DynamicValues, dynamicValues, gotDynamicValues)
 				}
 				// Note: This is a race condition prone zone i.e when request has interactsh_matchers
 				// Interactsh.RequestEvent tries to access/update output.InternalWrappedEvent depending on logic
@@ -397,7 +402,7 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 			}, generator.currentIndex)
 
 			// If a variable is unresolved, skip all further requests
-			if err == errStopExecution {
+			if errors.Is(err, errStopExecution) {
 				return true, nil
 			}
 			if err != nil {
@@ -409,7 +414,8 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 			request.options.Progress.IncrementRequests()
 
 			// If this was a match, and we want to stop at first match, skip all further requests.
-			if (generatedHttpRequest.original.options.Options.StopAtFirstMatch || generatedHttpRequest.original.options.StopAtFirstMatch || request.StopAtFirstMatch) && gotMatches {
+			shouldStopAtFirstMatch := generatedHttpRequest.original.options.Options.StopAtFirstMatch || generatedHttpRequest.original.options.StopAtFirstMatch || request.StopAtFirstMatch
+			if shouldStopAtFirstMatch && gotMatches {
 				return true, nil
 			}
 			return false, nil
@@ -755,7 +761,7 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 		callback(event)
 
 		// Skip further responses if we have stop-at-first-match and a match
-		if (request.options.Options.StopAtFirstMatch || request.options.StopAtFirstMatch || request.StopAtFirstMatch) && len(event.Results) > 0 {
+		if (request.options.Options.StopAtFirstMatch || request.options.StopAtFirstMatch || request.StopAtFirstMatch) && event.HasResults() {
 			return nil
 		}
 	}
