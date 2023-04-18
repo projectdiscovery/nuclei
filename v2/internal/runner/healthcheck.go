@@ -12,6 +12,7 @@ import (
 	"runtime"
 	"strconv"
 	"strings"
+	"syscall"
 
 	"time"
 
@@ -31,6 +32,7 @@ import (
 func DoHealthCheck(options *types.Options) string {
 	const defaultTarget = "scanme.sh"
 	const resolverPublic = "1.1.1.1"
+	const ulimitmin = 1000 // Minimum free ulimit value
 	internetTarget := defaultTarget
 	var ipv4addresses string
 	var ipv6addresses string
@@ -110,6 +112,12 @@ func DoHealthCheck(options *types.Options) string {
 	}
 	// Rather than the last resolver in the list, use the first one for final answer
 	ipv4addresses, ipv6addresses = getAddresses(internetTarget, resolvers[0])
+
+	// Other Host information
+	if runtime.GOOS != "windows" {
+		// LINUX/UNIX Systems
+		data["os"].(map[string]interface{})["ulimit"] = checkUlimit(data, ulimitmin)
+	}
 
 	// Default target internet tests
 	netTests["IPv4 Ping ("+defaultTarget+")"] = ping(defaultTarget, "ipv4", adminPriv)
@@ -404,4 +412,15 @@ func ping(addresses, proto string, adminPriv bool) string {
 	}
 	duration := time.Since(start)
 	return fmt.Sprintf("Ping to %s: %s", assetIP, duration.String())
+}
+
+// checkUlimit checks the ulimit of the current user
+func checkUlimit(data map[string]interface{}, difflimit int) string {
+	var limit syscall.Rlimit
+	syscall.Getrlimit(syscall.RLIMIT_NOFILE, &limit)
+	if (limit.Max - limit.Cur) <= uint64(difflimit) {
+		return fmt.Sprintf("You may need to increase your file descriptor limit. %v/%v used", limit.Cur, limit.Max)
+	} else {
+		return "Pass"
+	}
 }
