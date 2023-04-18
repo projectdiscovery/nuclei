@@ -9,6 +9,7 @@ import (
 	"github.com/logrusorgru/aurora"
 
 	"github.com/projectdiscovery/gologger/levels"
+	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/config"
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/disk"
 	"github.com/projectdiscovery/nuclei/v2/pkg/model"
 	"github.com/projectdiscovery/nuclei/v2/pkg/model/types/severity"
@@ -54,7 +55,6 @@ var DefaultOptions = &types.Options{
 	TargetsFilePath:            "",
 	Output:                     "",
 	Proxy:                      []string{},
-	TemplatesDirectory:         "",
 	TraceLogFile:               "",
 	Templates:                  []string{},
 	ExcludedTemplates:          []string{},
@@ -88,7 +88,7 @@ func NewMockExecuterOptions(options *types.Options, info *TemplateInfo) *protoco
 		ProjectFile:  nil,
 		IssuesClient: nil,
 		Browser:      nil,
-		Catalog:      disk.NewCatalog(options.TemplatesDirectory),
+		Catalog:      disk.NewCatalog(config.DefaultConfig.TemplatesDirectory),
 		RateLimiter:  ratelimit.New(context.Background(), uint(options.RateLimit), time.Second),
 	}
 	return executerOpts

@@ -113,7 +113,6 @@ func main() {
 }
 
 func readConfig() *goflags.FlagSet {
-
 	flagSet := goflags.NewFlagSet()
 	flagSet.SetDescription(`Nuclei is a fast, template based vulnerability scanner focusing
 on extensive configurability, massive extensibility and ease of use.`)
@@ -294,7 +293,7 @@ on extensive configurability, massive extensibility and ease of use.`)
 	flagSet.CreateGroup("update", "Update",
 		flagSet.CallbackVarP(installer.NucleiToolUpdateCallback, "update", "un", "update nuclei engine to the latest released version"),
 		flagSet.BoolVarP(&options.UpdateTemplates, "update-templates", "ut", false, "update nuclei-templates to latest released version"),
-		flagSet.StringVarP(&options.TemplatesDirectory, "update-template-dir", "ud", "", "custom directory to install / update nuclei-templates"),
+		flagSet.StringVarP(&options.NewTemplatesDirectory, "update-template-dir", "ud", "", "custom directory to install / update nuclei-templates"),
 		flagSet.CallbackVarP(disableUpdatesCallback, "disable-update-check", "duc", "disable automatic nuclei/templates update check"),
 	)
 
@@ -350,6 +349,10 @@ on extensive configurability, massive extensibility and ease of use.`)
 			gologger.Fatal().Msgf("Could not read config: %s\n", err)
 		}
 	}
+	if options.NewTemplatesDirectory != "" {
+		config.DefaultConfig.SetTemplatesDir(options.NewTemplatesDirectory)
+	}
+
 	cleanupOldResumeFiles()
 	return flagSet
 }

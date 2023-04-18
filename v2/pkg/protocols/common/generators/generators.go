@@ -6,6 +6,7 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalog"
+	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/config"
 )
 
 // PayloadGenerator is the generator struct for generating payloads
@@ -16,7 +17,7 @@ type PayloadGenerator struct {
 }
 
 // New creates a new generator structure for payload generation
-func New(payloads map[string]interface{}, attackType AttackType, templatePath, templateDirectory string, sandbox bool, catalog catalog.Catalog, customAttackType string) (*PayloadGenerator, error) {
+func New(payloads map[string]interface{}, attackType AttackType, templatePath string, sandbox bool, catalog catalog.Catalog, customAttackType string) (*PayloadGenerator, error) {
 	if attackType.String() == "" {
 		attackType = BatteringRamAttack
 	}
@@ -42,7 +43,7 @@ func New(payloads map[string]interface{}, attackType AttackType, templatePath, t
 		return nil, err
 	}
 
-	compiled, err := generator.loadPayloads(payloadsFinal, templatePath, templateDirectory, sandbox)
+	compiled, err := generator.loadPayloads(payloadsFinal, templatePath, config.DefaultConfig.TemplatesDirectory, sandbox)
 	if err != nil {
 		return nil, err
 	}

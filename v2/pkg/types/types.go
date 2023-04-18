@@ -76,7 +76,7 @@ type Options struct {
 	// List of HTTP(s)/SOCKS5 proxy to use (comma separated or file input)
 	Proxy goflags.StringSlice
 	// TemplatesDirectory is the directory to use for storing templates
-	TemplatesDirectory string
+	NewTemplatesDirectory string
 	// TraceLogFile specifies a file to write with the trace of all requests
 	TraceLogFile string
 	// ErrorLogFile specifies a file to write with the errors of all requests

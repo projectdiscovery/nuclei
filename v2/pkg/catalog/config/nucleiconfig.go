@@ -127,6 +127,10 @@ func (c *Config) SetConfigDir(dir string) {
 
 // SetTemplatesDir sets the new nuclei templates directory
 func (c *Config) SetTemplatesDir(dirPath string) {
+	if dirPath != "" && !filepath.IsAbs(dirPath) {
+		cwd, _ := os.Getwd()
+		dirPath = filepath.Join(cwd, dirPath)
+	}
 	c.TemplatesDirectory = dirPath
 	// Update the custom templates directory
 	c.CustomGithubTemplatesDirectory = filepath.Join(dirPath, CustomGithubTemplatesDirName)

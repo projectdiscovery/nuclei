@@ -50,10 +50,6 @@ func ParseOptions(options *types.Options) {
 	// Show the user the banner
 	showBanner()
 
-	if options.TemplatesDirectory != "" && !filepath.IsAbs(options.TemplatesDirectory) {
-		cwd, _ := os.Getwd()
-		options.TemplatesDirectory = filepath.Join(cwd, options.TemplatesDirectory)
-	}
 	if options.ShowVarDump {
 		vardump.EnableVarDump = true
 	}
@@ -123,7 +119,7 @@ func validateOptions(options *types.Options) error {
 		return err
 	}
 	if options.Validate {
-		validateTemplatePaths(options.TemplatesDirectory, options.Templates, options.Workflows)
+		validateTemplatePaths(config.DefaultConfig.TemplatesDirectory, options.Templates, options.Workflows)
 	}
 
 	// Verify if any of the client certificate options were set since it requires all three to work properly
