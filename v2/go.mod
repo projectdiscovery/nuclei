@@ -43,8 +43,8 @@ require (
 	github.com/weppos/publicsuffix-go v0.30.0
 	github.com/xanzy/go-gitlab v0.82.0
 	go.uber.org/multierr v1.11.0
-	golang.org/x/net v0.8.0
-	golang.org/x/oauth2 v0.6.0
+	golang.org/x/net v0.9.0
+	golang.org/x/oauth2 v0.7.0
 	golang.org/x/text v0.9.0
 	gopkg.in/yaml.v2 v2.4.0
 	moul.io/http2curl v1.0.0
