@@ -265,7 +265,7 @@ DEBUG:
    -hc, -health-check        run diagnostic check up
 
 UPDATE:
-   -un, -update                      update nuclei engine to the latest released version
+   -up, -update                      update nuclei engine to the latest released version
    -ut, -update-templates            update nuclei-templates to latest released version
    -ud, -update-template-dir string  custom directory to install / update nuclei-templates
    -duc, -disable-update-check       disable automatic nuclei/templates update check
