@@ -381,12 +381,8 @@ on extensive configurability, massive extensibility and ease of use.`)
 }
 
 func noColorDefaultValue() bool {
-	// disable colors on windows
-	if osutils.IsWindows() {
-		return true
-	}
-	// enable colors for all other OS
-	return false
+	// enable colors on all OSes except windows
+	return osutils.IsWindows()
 }
 
 func cleanupOldResumeFiles() {
