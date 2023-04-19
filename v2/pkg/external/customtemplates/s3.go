@@ -21,11 +21,11 @@ type customTemplateS3Bucket struct {
 	Location   string
 }
 
-// download custom templates from s3 bucket
+// Download retrieves all custom templates from s3 bucket
 func (bk *customTemplateS3Bucket) Download(location string, ctx context.Context) {
 	downloadPath := filepath.Join(location, CustomS3TemplateDirectory, bk.bucketName)
 
-	manager := manager.NewDownloader(bk.s3Client)
+	s3Manager := manager.NewDownloader(bk.s3Client)
 	paginator := s3.NewListObjectsV2Paginator(bk.s3Client, &s3.ListObjectsV2Input{
 		Bucket: &bk.bucketName,
 		Prefix: &bk.prefix,
@@ -38,16 +38,16 @@ func (bk *customTemplateS3Bucket) Download(location string, ctx context.Context)
 			return
 		}
 		for _, obj := range page.Contents {
-			if err := downloadToFile(manager, downloadPath, bk.bucketName, aws.ToString(obj.Key)); err != nil {
+			if err := downloadToFile(s3Manager, downloadPath, bk.bucketName, aws.ToString(obj.Key)); err != nil {
 				gologger.Error().Msgf("error downloading s3 bucket %s %s", bk.bucketName, err)
 				return
 			}
 		}
 	}
-	gologger.Info().Msgf("AWS bucket %s successfully cloned successfully at %s", bk.bucketName, downloadPath)
+	gologger.Info().Msgf("AWS bucket %s was cloned successfully at %s", bk.bucketName, downloadPath)
 }
 
-// download custom templates from s3 bucket
+// Update download custom templates from s3 bucket
 func (bk *customTemplateS3Bucket) Update(location string, ctx context.Context) {
 	bk.Download(location, ctx)
 }
