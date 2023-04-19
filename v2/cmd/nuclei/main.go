@@ -25,6 +25,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/utils/monitor"
 	errorutil "github.com/projectdiscovery/utils/errors"
 	fileutil "github.com/projectdiscovery/utils/file"
+	osutils "github.com/projectdiscovery/utils/os"
 )
 
 var (
@@ -357,9 +358,9 @@ on extensive configurability, massive extensibility and ease of use.`)
 	return flagSet
 }
 
-// isColorNotAvailable returns true if ascii collored output is not available.
+// isColorNotAvailable returns true if ascii colored output is not available.
 func isColorNotAvailable() bool {
-	return runtime.GOOS == "windows"
+	return osutils.IsWindows()
 }
 
 // cleanupOldResumeFiles cleans up resume files older than 10 days.

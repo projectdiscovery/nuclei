@@ -3,10 +3,10 @@ package generators
 import (
 	"os"
 	"path/filepath"
-	"runtime"
 	"testing"
 
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/disk"
+	osutils "github.com/projectdiscovery/utils/os"
 	"github.com/stretchr/testify/require"
 )
 
@@ -37,7 +37,7 @@ func TestLoadPayloads(t *testing.T) {
 		require.Equal(t, map[string][]string{"new": {"test", "another"}}, values, "could not get values")
 	})
 	t.Run("no-sandbox-unix", func(t *testing.T) {
-		if runtime.GOOS == "windows" {
+		if osutils.IsWindows() {
 			return
 		}
 		_, err := generator.loadPayloads(map[string]interface{}{
