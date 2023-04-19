@@ -3,11 +3,17 @@ package customtemplates
 import (
 	"context"
 	"encoding/base64"
-	"github.com/projectdiscovery/gologger"
-	"github.com/xanzy/go-gitlab"
 	"os"
 	"path/filepath"
+
+	"github.com/projectdiscovery/gologger"
+	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/config"
+	"github.com/projectdiscovery/nuclei/v2/pkg/types"
+	errorutil "github.com/projectdiscovery/utils/errors"
+	"github.com/xanzy/go-gitlab"
 )
+
+var _ Provider = &customTemplateGitLabRepo{}
 
 type customTemplateGitLabRepo struct {
 	gitLabClient *gitlab.Client
@@ -15,15 +21,38 @@ type customTemplateGitLabRepo struct {
 	projectIDs   []int
 }
 
+// NewGitlabProviders returns a new list of GitLab providers for downloading custom templates
+func NewGitlabProviders(options *types.Options) ([]*customTemplateGitLabRepo, error) {
+	providers := []*customTemplateGitLabRepo{}
+	if options.GitLabToken != "" {
+		// Establish a connection to GitLab and build a client object with which to download templates from GitLab
+		gitLabClient, err := getGitLabClient(options.GitLabServerURL, options.GitLabToken)
+		if err != nil {
+			return nil, errorutil.NewWithErr(err).Msgf("Error establishing GitLab client for %s %s", options.GitLabServerURL, err)
+		}
+
+		// Create a new GitLab service client
+		gitLabContainer := &customTemplateGitLabRepo{
+			gitLabClient: gitLabClient,
+			serverURL:    options.GitLabServerURL,
+			projectIDs:   options.GitLabTemplateRepositoryIDs,
+		}
+
+		// Add the GitLab service client to the list of custom templates
+		providers = append(providers, gitLabContainer)
+	}
+	return providers, nil
+}
+
 // Download downloads all .yaml files from a GitLab repository
-func (bk *customTemplateGitLabRepo) Download(location string, _ context.Context) {
+func (bk *customTemplateGitLabRepo) Download(_ context.Context) {
 
 	// Define the project and template count
 	var projectCount = 0
 	var templateCount = 0
 
 	// Append the GitLab directory to the location
-	location = filepath.Join(location, CustomGitLabTemplateDirectory)
+	location := config.DefaultConfig.CustomGitLabTemplatesDirectory
 
 	// Ensure the CustomGitLabTemplateDirectory directory exists or create it if it doesn't yet exist
 	err := os.MkdirAll(filepath.Dir(location), 0755)
@@ -104,8 +133,8 @@ func (bk *customTemplateGitLabRepo) Download(location string, _ context.Context)
 
 // Update is a wrapper around Download since it doesn't maintain a diff of the templates downloaded versus in the
 // repository for simplicity.
-func (bk *customTemplateGitLabRepo) Update(outputPath string, ctx context.Context) {
-	bk.Download(outputPath, ctx)
+func (bk *customTemplateGitLabRepo) Update(ctx context.Context) {
+	bk.Download(ctx)
 }
 
 // getGitLabClient returns a GitLab client for the given serverURL and token

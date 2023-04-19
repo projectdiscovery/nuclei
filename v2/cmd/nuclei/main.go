@@ -416,11 +416,19 @@ func printVersion() {
 func printTemplateVersion() {
 	cfg := config.DefaultConfig
 	gologger.Info().Msgf("Public nuclei-templates version: %s (%s)\n", cfg.TemplateVersion, cfg.TemplatesDirectory)
+
+	// Review: not sure if we should print locations even if there are no custom templates in them (installed)
 	if cfg.CustomS3TemplatesDirectory != "" {
 		gologger.Info().Msgf("Custom S3 templates location: %s\n", cfg.CustomS3TemplatesDirectory)
 	}
 	if cfg.CustomGithubTemplatesDirectory != "" {
 		gologger.Info().Msgf("Custom Github templates location: %s ", cfg.CustomGithubTemplatesDirectory)
+	}
+	if cfg.CustomGitLabTemplatesDirectory != "" {
+		gologger.Info().Msgf("Custom Gitlab templates location: %s ", cfg.CustomGitLabTemplatesDirectory)
+	}
+	if cfg.CustomAzureTemplatesDirectory != "" {
+		gologger.Info().Msgf("Custom Azure templates location: %s ", cfg.CustomAzureTemplatesDirectory)
 	}
 	os.Exit(0)
 }
