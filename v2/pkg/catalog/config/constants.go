@@ -9,8 +9,6 @@ import (
 const (
 	TemplateConfigFileName           = ".templates-config.json"
 	NucleiTemplatesDirName           = "nuclei-templates"
-	CustomS3TemplatesDirName         = "s3"
-	CustomGithubTemplatesDirName     = "github"
 	OfficialNucleiTeamplatesRepoName = "nuclei-templates"
 	NucleiIgnoreFileName             = ".nuclei-ignore"
 	NucleiTemplatesCheckSumFileName  = ".checksum"
@@ -19,6 +17,12 @@ const (
 	ReportingConfigFilename          = "reporting-config.yaml"
 	// Version is the current version of nuclei
 	Version = `v2.9.2-dev`
+
+	// Directory Names of custom templates
+	CustomS3TemplatesDirName     = "s3"
+	CustomGithubTemplatesDirName = "github"
+	CustomAzureTemplatesDirName  = "azure"
+	CustomGitLabTemplatesDirName = "gitlab"
 )
 
 // IsOutdatedVersion compares two versions and returns true
