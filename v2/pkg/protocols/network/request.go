@@ -51,11 +51,11 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, metadata 
 		request.options.Progress.IncrementFailedRequestsBy(1)
 		return errors.Wrap(err, "could not get address from url")
 	}
+	variables := generateNetworkVariables(address)
+	variablesMap := request.options.Variables.Evaluate(variables)
+	variables = generators.MergeMaps(variablesMap, variables)
 
 	for _, kv := range request.addresses {
-		variables := generateNetworkVariables(address)
-		variablesMap := request.options.Variables.Evaluate(generators.MergeMaps(variables, variables))
-		variables = generators.MergeMaps(variablesMap, variables)
 		actualAddress := replacer.Replace(kv.address, variables)
 
 		if err := request.executeAddress(variables, actualAddress, address, input.MetaInput.Input, kv.tls, previous, callback); err != nil {
