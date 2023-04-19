@@ -184,7 +184,7 @@ func (c *Config) SetTemplatesDir(dirPath string) {
 	c.TemplatesDirectory = dirPath
 	// Update the custom templates directory
 	c.CustomGithubTemplatesDirectory = filepath.Join(dirPath, CustomGithubTemplatesDirName)
-	c.CustomS3TemplatesDirectory = filepath.Join(dirPath, CustomGithubTemplatesDirName)
+	c.CustomS3TemplatesDirectory = filepath.Join(dirPath, CustomS3TemplatesDirName)
 	c.CustomGitLabTemplatesDirectory = filepath.Join(dirPath, CustomGitLabTemplatesDirName)
 	c.CustomAzureTemplatesDirectory = filepath.Join(dirPath, CustomAzureTemplatesDirName)
 }
@@ -213,8 +213,6 @@ func (c *Config) ReadTemplatesConfig() error {
 		return errorutil.NewWithErr(err).Msgf("could not unmarshal nuclei config file at %s", c.getTemplatesConfigFilePath())
 	}
 	// apply config
-	c.CustomGithubTemplatesDirectory = cfg.CustomGithubTemplatesDirectory
-	c.CustomS3TemplatesDirectory = cfg.CustomS3TemplatesDirectory
 	c.TemplatesDirectory = cfg.TemplatesDirectory
 	c.TemplateVersion = cfg.TemplateVersion
 	c.NucleiIgnoreHash = cfg.NucleiIgnoreHash
@@ -294,7 +292,7 @@ func init() {
 	// Note: custom templates paths should not be updated in config file
 	// and even if it is changed we don't follow it since it is not expected behavior
 	// If custom templates are in default locations only then they are loaded while running nuclei
-	DefaultConfig.SetConfigDir(DefaultConfig.TemplatesDirectory)
+	DefaultConfig.SetTemplatesDir(DefaultConfig.TemplatesDirectory)
 }
 
 func getDefaultConfigDir() string {
