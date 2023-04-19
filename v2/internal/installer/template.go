@@ -306,6 +306,11 @@ func (t *TemplateManager) calculateChecksumMap(dir string) (map[string]string, e
 		if err != nil {
 			return err
 		}
+		// skip checksums of custom templates i.e github and s3
+		if stringsutil.HasPrefixAny(path, config.DefaultConfig.CustomGithubTemplatesDirectory, config.DefaultConfig.CustomS3TemplatesDirectory) {
+			return nil
+		}
+
 		// current implementations calculates checksums of all files (including .yaml,.txt,.md,.json etc)
 		if !d.IsDir() {
 			checksum, err := getChecksum(path)

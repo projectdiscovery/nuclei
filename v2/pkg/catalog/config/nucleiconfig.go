@@ -148,10 +148,8 @@ func (c *Config) GetNewAdditions() []string {
 // and appropriate changes are made to the config
 func (c *Config) SetConfigDir(dir string) {
 	c.configDir = dir
-	if !fileutil.FolderExists(dir) {
-		if err := fileutil.CreateFolder(dir); err != nil {
-			gologger.Fatal().Msgf("Could not create nuclei config directory at %s: %s", dir, err)
-		}
+	if err := c.createConfigDirIfNotExists(); err != nil {
+		gologger.Fatal().Msgf("Could not create nuclei config directory at %s: %s", c.configDir, err)
 	}
 
 	// if folder already exists read config or create new
@@ -216,6 +214,10 @@ func (c *Config) ReadTemplatesConfig() error {
 
 // WriteTemplatesConfig writes the nuclei templates config file
 func (c *Config) WriteTemplatesConfig() error {
+	// check if config folder exists if not create one
+	if err := c.createConfigDirIfNotExists(); err != nil {
+		return err
+	}
 	bin, err := json.Marshal(c)
 	if err != nil {
 		return errorutil.NewWithErr(err).Msgf("failed to marshal nuclei config")
@@ -231,9 +233,23 @@ func (c *Config) getTemplatesConfigFilePath() string {
 	return filepath.Join(c.configDir, TemplateConfigFileName)
 }
 
+// createConfigDirIfNotExists creates the nuclei config directory if not exists
+func (c *Config) createConfigDirIfNotExists() error {
+	if !fileutil.FolderExists(c.configDir) {
+		if err := fileutil.CreateFolder(c.configDir); err != nil {
+			return errorutil.NewWithErr(err).Msgf("could not create nuclei config directory at %s", c.configDir)
+		}
+	}
+	return nil
+}
+
 // copyIgnoreFile copies the nuclei ignore file default config directory
 // to the current config directory
 func (c *Config) copyIgnoreFile() {
+	if err := c.createConfigDirIfNotExists(); err != nil {
+		gologger.Error().Msgf("Could not create nuclei config directory at %s: %s", c.configDir, err)
+		return
+	}
 	ignoreFilePath := c.GetIgnoreFilePath()
 	if !fileutil.FileExists(ignoreFilePath) {
 		// copy ignore file
