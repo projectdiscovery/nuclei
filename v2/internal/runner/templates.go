@@ -8,6 +8,7 @@ import (
 
 	"github.com/alecthomas/chroma/quick"
 	"github.com/logrusorgru/aurora"
+	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/config"
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/loader"
 
 	"github.com/projectdiscovery/gologger"
@@ -36,9 +37,9 @@ func (r *Runner) verboseTemplate(tpl *templates.Template) {
 
 func (r *Runner) listAvailableStoreTemplates(store *loader.Store) {
 	gologger.Print().Msgf(
-		"\nListing available v.%s nuclei templates for %s",
-		r.templatesConfig.TemplateVersion,
-		r.templatesConfig.TemplatesDirectory,
+		"\nListing available %v nuclei templates for %v",
+		config.DefaultConfig.TemplateVersion,
+		config.DefaultConfig.TemplatesDirectory,
 	)
 	for _, tpl := range store.Templates() {
 		if hasExtraFlags(r.options) {
@@ -63,7 +64,7 @@ func (r *Runner) listAvailableStoreTemplates(store *loader.Store) {
 				}
 				gologger.Silent().Msgf("Template: %s\n\n%s", path, tplBody)
 			} else {
-				gologger.Silent().Msgf("%s\n", strings.TrimPrefix(tpl.Path, r.templatesConfig.TemplatesDirectory+string(filepath.Separator)))
+				gologger.Silent().Msgf("%s\n", strings.TrimPrefix(tpl.Path, config.DefaultConfig.TemplatesDirectory+string(filepath.Separator)))
 			}
 		} else {
 			r.verboseTemplate(tpl)

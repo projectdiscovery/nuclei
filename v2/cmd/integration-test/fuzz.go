@@ -50,7 +50,7 @@ func (h *fuzzModeOverride) Execute(filePath string) error {
 	})
 	ts := httptest.NewTLSServer(router)
 	defer ts.Close()
-	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, ts.URL+"/?id=example&name=nuclei", false, "-fuzzing-mode", "single", "-json")
+	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, ts.URL+"/?id=example&name=nuclei", debug, "-fuzzing-mode", "single", "-jsonl")
 	if err != nil {
 		return err
 	}
@@ -95,7 +95,7 @@ func (h *fuzzTypeOverride) Execute(filePath string) error {
 	})
 	ts := httptest.NewTLSServer(router)
 	defer ts.Close()
-	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, ts.URL+"?id=example", false, "-fuzzing-type", "replace", "-json")
+	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, ts.URL+"?id=example", debug, "-fuzzing-type", "replace", "-jsonl")
 	if err != nil {
 		return err
 	}

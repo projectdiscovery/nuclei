@@ -10,10 +10,14 @@ import (
 	"github.com/google/go-github/github"
 	"github.com/pkg/errors"
 	"github.com/projectdiscovery/gologger"
+	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/config"
+	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 	fileutil "github.com/projectdiscovery/utils/file"
 	"golang.org/x/oauth2"
 	"gopkg.in/src-d/go-git.v4/plumbing/transport/http"
 )
+
+var _ Provider = &customTemplateGithubRepo{}
 
 type customTemplateGithubRepo struct {
 	owner       string
@@ -23,9 +27,8 @@ type customTemplateGithubRepo struct {
 }
 
 // This function download the custom github template repository
-func (customTemplate *customTemplateGithubRepo) Download(location string, ctx context.Context) {
-	downloadPath := filepath.Join(location, CustomGithubTemplateDirectory)
-	clonePath := customTemplate.getLocalRepoClonePath(downloadPath)
+func (customTemplate *customTemplateGithubRepo) Download(ctx context.Context) {
+	clonePath := customTemplate.getLocalRepoClonePath(config.DefaultConfig.CustomGithubTemplatesDirectory)
 
 	if !fileutil.FolderExists(clonePath) {
 		err := customTemplate.cloneRepo(clonePath, customTemplate.githubToken)
@@ -38,13 +41,13 @@ func (customTemplate *customTemplateGithubRepo) Download(location string, ctx co
 	}
 }
 
-func (customTemplate *customTemplateGithubRepo) Update(location string, ctx context.Context) {
-	downloadPath := filepath.Join(location, CustomGithubTemplateDirectory)
+func (customTemplate *customTemplateGithubRepo) Update(ctx context.Context) {
+	downloadPath := config.DefaultConfig.CustomGithubTemplatesDirectory
 	clonePath := customTemplate.getLocalRepoClonePath(downloadPath)
 
 	// If folder does not exits then clone/download the repo
 	if !fileutil.FolderExists(clonePath) {
-		customTemplate.Download(location, ctx)
+		customTemplate.Download(ctx)
 		return
 	}
 	err := customTemplate.pullChanges(clonePath, customTemplate.githubToken)
@@ -53,6 +56,33 @@ func (customTemplate *customTemplateGithubRepo) Update(location string, ctx cont
 	} else {
 		gologger.Info().Msgf("Repo %s/%s successfully pulled the changes.\n", customTemplate.owner, customTemplate.reponame)
 	}
+}
+
+// NewGithubProviders returns new instance of github providers for downloading custom templates
+func NewGithubProviders(options *types.Options) ([]*customTemplateGithubRepo, error) {
+	providers := []*customTemplateGithubRepo{}
+	gitHubClient := getGHClientIncognito()
+
+	for _, repoName := range options.GithubTemplateRepo {
+		owner, repo, err := getOwnerAndRepo(repoName)
+		if err != nil {
+			gologger.Error().Msgf("%s", err)
+			continue
+		}
+		githubRepo, err := getGithubRepo(gitHubClient, owner, repo, options.GithubToken)
+		if err != nil {
+			gologger.Error().Msgf("%s", err)
+			continue
+		}
+		customTemplateRepo := &customTemplateGithubRepo{
+			owner:       owner,
+			reponame:    repo,
+			gitCloneURL: githubRepo.GetCloneURL(),
+			githubToken: options.GithubToken,
+		}
+		providers = append(providers, customTemplateRepo)
+	}
+	return providers, nil
 }
 
 // getOwnerAndRepo returns the owner, repo, err from the given string

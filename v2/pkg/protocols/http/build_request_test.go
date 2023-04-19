@@ -186,7 +186,7 @@ func TestMakeRequestFromModelUniqueInteractsh(t *testing.T) {
 
 	generator.options.Interactsh, err = interactsh.New(&interactsh.Options{
 		ServerURL:           options.InteractshURL,
-		CacheSize:           int64(options.InteractionsCacheSize),
+		CacheSize:           options.InteractionsCacheSize,
 		Eviction:            time.Duration(options.InteractionsEviction) * time.Second,
 		CooldownPeriod:      time.Duration(options.InteractionsCoolDownPeriod) * time.Second,
 		PollDuration:        time.Duration(options.InteractionsPollDuration) * time.Second,

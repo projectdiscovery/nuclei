@@ -2,6 +2,7 @@ package parsers
 
 import (
 	"github.com/projectdiscovery/gologger"
+	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/config"
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/loader/filter"
 	"github.com/projectdiscovery/nuclei/v2/pkg/model"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
@@ -40,7 +41,7 @@ func NewLoader(options *protocols.ExecuterOptions) (model.WorkflowLoader, error)
 }
 
 func (w *workflowLoader) GetTemplatePathsByTags(templateTags []string) []string {
-	includedTemplates, errs := w.options.Catalog.GetTemplatesPath([]string{w.options.Options.TemplatesDirectory})
+	includedTemplates, errs := w.options.Catalog.GetTemplatesPath([]string{config.DefaultConfig.TemplatesDirectory})
 	for template, err := range errs {
 		gologger.Error().Msgf("Could not find template '%s': %s", template, err)
 	}
