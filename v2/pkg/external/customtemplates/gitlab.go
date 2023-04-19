@@ -70,7 +70,7 @@ func (bk *customTemplateGitLabRepo) Download(location string, _ context.Context)
 				}
 				f, _, err := bk.gitLabClient.RepositoryFiles.GetFile(projectID, file.Path, gf)
 				if err != nil {
-					gologger.Error().Msgf("error retrieving GitLab project file: %s %s", projectID, err)
+					gologger.Error().Msgf("error retrieving GitLab project file: %d %s", projectID, err)
 					return
 				}
 
