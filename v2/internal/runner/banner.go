@@ -5,6 +5,7 @@ import (
 
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/config"
+	updateutils "github.com/projectdiscovery/utils/update"
 )
 
 var banner = fmt.Sprintf(`
@@ -19,4 +20,10 @@ var banner = fmt.Sprintf(`
 func showBanner() {
 	gologger.Print().Msgf("%s\n", banner)
 	gologger.Print().Msgf("\t\tprojectdiscovery.io\n\n")
+}
+
+// NucleiToolUpdateCallback updates nuclei binary/tool to latest version
+func NucleiToolUpdateCallback() {
+	showBanner()
+	updateutils.GetUpdateToolCallback("nuclei", config.Version)()
 }

@@ -3,7 +3,9 @@ package installer
 import (
 	"encoding/json"
 	"io"
+	"net/url"
 	"os"
+	"runtime"
 
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/config"
 	"github.com/projectdiscovery/retryablehttp-go"
@@ -32,7 +34,7 @@ type PdtmAPIResponse struct {
 // and returns an error if it fails to check on success it returns nil and changes are
 // made to the default config in config.DefaultConfig
 func NucleiVersionCheck() error {
-	resp, err := retryableHttpClient.Get(pdtmNucleiVersionEndpoint)
+	resp, err := retryableHttpClient.Get(pdtmNucleiVersionEndpoint + "?" + getpdtmParams())
 	if err != nil {
 		return err
 	}
@@ -45,21 +47,36 @@ func NucleiVersionCheck() error {
 	if err := json.Unmarshal(bin, &pdtmResp); err != nil {
 		return err
 	}
+	var nucleiversion, templateversion string
 	for _, tool := range pdtmResp.Tools {
 		switch tool.Name {
 		case "nuclei":
-			config.DefaultConfig.LatestNucleiVersion = tool.Version
+			if tool.Version != "" {
+				nucleiversion = "v" + tool.Version
+			}
+
 		case "nuclei-templates":
-			config.DefaultConfig.LatestNucleiTemplatesVersion = tool.Version
+			if tool.Version != "" {
+				templateversion = "v" + tool.Version
+			}
 		}
 	}
-	config.DefaultConfig.LatestNucleiIgnoreHash = pdtmResp.IgnoreHash
-	return nil
+	return config.DefaultConfig.WriteVersionCheckData(pdtmResp.IgnoreHash, nucleiversion, templateversion)
+}
+
+// getpdtmParams returns encoded query parameters sent to update check endpoint
+func getpdtmParams() string {
+	params := &url.Values{}
+	params.Add("os", runtime.GOOS)
+	params.Add("arch", runtime.GOARCH)
+	params.Add("go_version", runtime.Version())
+	params.Add("v", config.Version)
+	return params.Encode()
 }
 
 // UpdateIgnoreFile updates default ignore file by downloading latest ignore file
 func UpdateIgnoreFile() error {
-	resp, err := retryableHttpClient.Get(pdtmNucleiIgnoreFileEndpoint)
+	resp, err := retryableHttpClient.Get(pdtmNucleiIgnoreFileEndpoint + "?" + getpdtmParams())
 	if err != nil {
 		return err
 	}
@@ -67,6 +84,8 @@ func UpdateIgnoreFile() error {
 	if err != nil {
 		return err
 	}
-	return os.WriteFile(config.DefaultConfig.GetIgnoreFilePath(), bin, 0644)
+	if err := os.WriteFile(config.DefaultConfig.GetIgnoreFilePath(), bin, 0644); err != nil {
+		return err
+	}
+	return config.DefaultConfig.UpdateNucleiIgnoreHash()
 }
-

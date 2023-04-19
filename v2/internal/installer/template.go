@@ -25,7 +25,7 @@ const (
 )
 
 var (
-	HideProgressBar        = false
+	HideProgressBar        = true
 	HideReleaseNotes       = false
 	HideUpdateChangesTable = false
 )
@@ -236,6 +236,16 @@ func (t *TemplateManager) writeTemplatestoDisk(ghrd *updateutils.GHReleaseDownlo
 	if err := config.DefaultConfig.WriteTemplatesConfig(); err != nil {
 		return err
 	}
+	// update ignore hash after writing new templates
+	if err := config.DefaultConfig.UpdateNucleiIgnoreHash(); err != nil {
+		return err
+	}
+
+	// update templates version in config file
+	if err := config.DefaultConfig.SetTemplatesVersion(ghrd.Latest.GetTagName()); err != nil {
+		return err
+	}
+
 	// after installation create and write checksums to .checksum file
 	return t.writeChecksumFileInDir(dir)
 }

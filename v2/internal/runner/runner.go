@@ -14,6 +14,7 @@ import (
 
 	"github.com/projectdiscovery/nuclei/v2/internal/installer"
 	"github.com/projectdiscovery/nuclei/v2/internal/runner/nucleicloud"
+	updateutils "github.com/projectdiscovery/utils/update"
 
 	"github.com/logrusorgru/aurora"
 	"github.com/pkg/errors"
@@ -60,7 +61,6 @@ import (
 type Runner struct {
 	output            output.Writer
 	interactsh        *interactsh.Client
-	templatesConfig   *config.Config
 	options           *types.Options
 	projectFile       *projectfile.ProjectFile
 	catalog           catalog.Catalog
@@ -98,7 +98,9 @@ func New(options *types.Options) (*Runner, error) {
 	//  Version check by default
 	if config.DefaultConfig.CanCheckForUpdates() {
 		if err := installer.NucleiVersionCheck(); err != nil {
-			gologger.Warning().Msgf("Could not check for nuclei updates: %s\n", err)
+			if options.Verbose || options.Debug {
+				gologger.Error().Msgf("nuclei version check failed got: %s\n", err)
+			}
 		}
 		// Check for template updates and update if available
 		tm := &installer.TemplateManager{}
@@ -428,12 +430,7 @@ func (r *Runner) RunEnumeration() error {
 	}
 	executerOpts.WorkflowLoader = workflowLoader
 
-	templateConfig := r.templatesConfig
-	if templateConfig == nil {
-		templateConfig = &config.Config{}
-	}
-
-	store, err := loader.New(loader.NewConfig(r.options, templateConfig, r.catalog, executerOpts))
+	store, err := loader.New(loader.NewConfig(r.options, config.DefaultConfig, r.catalog, executerOpts))
 	if err != nil {
 		return errors.Wrap(err, "could not load templates from config")
 	}
@@ -482,6 +479,8 @@ func (r *Runner) RunEnumeration() error {
 		r.listAvailableStoreTemplates(store)
 		os.Exit(0)
 	}
+
+	// display execution info like version , templates used etc
 	r.displayExecutionInfo(store)
 
 	// If not explicitly disabled, check if http based protocols
@@ -668,40 +667,11 @@ func (r *Runner) displayExecutionInfo(store *loader.Store) {
 	stats.Display(parsers.SyntaxErrorStats)
 	stats.Display(parsers.RuntimeWarningsStats)
 
-	builder := &strings.Builder{}
-	if r.templatesConfig != nil && r.templatesConfig.LatestNucleiVersion != "" {
-		builder.WriteString(" (")
+	cfg := config.DefaultConfig
 
-		if strings.Contains(config.Version, "-dev") {
-			builder.WriteString(r.colorizer.Blue("development").String())
-		} else if config.Version == r.templatesConfig.LatestNucleiVersion {
-			builder.WriteString(r.colorizer.Green("latest").String())
-		} else {
-			builder.WriteString(r.colorizer.Red("outdated").String())
-		}
-		builder.WriteString(")")
-	}
-	messageStr := builder.String()
-	builder.Reset()
+	gologger.Info().Msgf("Using Nuclei Engine %v %v", config.Version, updateutils.GetVersionDescription(config.Version, cfg.LatestNucleiVersion))
+	gologger.Info().Msgf("Using Nuclei Templates %v %v", cfg.TemplateVersion, updateutils.GetVersionDescription(cfg.TemplateVersion, cfg.LatestNucleiTemplatesVersion))
 
-	gologger.Info().Msgf("Using Nuclei Engine %s%s", config.Version, messageStr)
-
-	if r.templatesConfig != nil && r.templatesConfig.LatestNucleiTemplatesVersion != "" { // TODO extract duplicated logic
-		builder.WriteString(" (")
-
-		if r.templatesConfig.TemplateVersion == r.templatesConfig.LatestNucleiTemplatesVersion {
-			builder.WriteString(r.colorizer.Green("latest").String())
-		} else {
-			builder.WriteString(r.colorizer.Red("outdated").String())
-		}
-		builder.WriteString(")")
-	}
-	messageStr = builder.String()
-	builder.Reset()
-
-	if r.templatesConfig != nil {
-		gologger.Info().Msgf("Using Nuclei Templates %s%s", r.templatesConfig.TemplateVersion, messageStr)
-	}
 	if len(store.Templates()) > 0 {
 		gologger.Info().Msgf("Templates added in last update: %d", len(config.DefaultConfig.GetNewAdditions()))
 		gologger.Info().Msgf("Templates loaded for scan: %d", len(store.Templates()))

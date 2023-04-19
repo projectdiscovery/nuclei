@@ -1,7 +1,9 @@
 package config
 
 import (
+	"crypto/md5"
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -25,15 +27,40 @@ type Config struct {
 	TemplateVersion  string `json:"nuclei-templates-version,omitempty"`
 	NucleiIgnoreHash string `json:"nuclei-ignore-hash,omitempty"`
 
-	// Latest versions are not meant to be writable to config file and should only be written by updatecheck endpoint
-	LatestNucleiVersion          string `json:"-"`
-	LatestNucleiTemplatesVersion string `json:"-"`
-	LatestNucleiIgnoreHash       string `json:"-"`
+	// Latestxxx are not meant to be used directly and is used as
+	// local cache of nuclei version check endpoint
+	// these fields are only update during nuclei version check
+	// TODO: move these fields to a separate unexported struct as they are not meant to be used directly
+	LatestNucleiVersion          string `json:"nuclei-latest-version"`
+	LatestNucleiTemplatesVersion string `json:"nuclei-templates-latest-version"`
+	LatestNucleiIgnoreHash       string `json:"nuclei-latest-ignore-hash,omitempty"`
 
 	// internal / unexported fields
 	disableUpdates bool   `json:"-"` // disable updates both version check and template updates
 	homeDir        string `json:"-"` //  User Home Directory
 	configDir      string `json:"-"` //  Nuclei Global Config Directory
+}
+
+// WriteVersionCheckData writes version check data to config file
+func (c *Config) WriteVersionCheckData(ignorehash, nucleiVersion, templatesVersion string) error {
+	updated := false
+	if ignorehash != "" && c.LatestNucleiIgnoreHash != ignorehash {
+		c.LatestNucleiIgnoreHash = ignorehash
+		updated = true
+	}
+	if nucleiVersion != "" && c.LatestNucleiVersion != nucleiVersion {
+		c.LatestNucleiVersion = nucleiVersion
+		updated = true
+	}
+	if templatesVersion != "" && c.LatestNucleiTemplatesVersion != templatesVersion {
+		c.LatestNucleiTemplatesVersion = templatesVersion
+		updated = true
+	}
+	// write config to disk if any of the fields are updated
+	if updated {
+		return c.WriteTemplatesConfig()
+	}
+	return nil
 }
 
 // DisableUpdateCheck disables update check and template updates
@@ -54,6 +81,22 @@ func (c *Config) NeedsTemplateUpdate() bool {
 // NeedsIngoreFileUpdate returns true if Ignore file hash is different (aka ignore file is outdated)
 func (c *Config) NeedsIgnoreFileUpdate() bool {
 	return c.NucleiIgnoreHash == "" || c.NucleiIgnoreHash != c.LatestNucleiIgnoreHash
+}
+
+// UpdateNucleiIgnoreHash updates the nuclei ignore hash in config
+func (c *Config) UpdateNucleiIgnoreHash() error {
+	// calculate hash of ignore file and update config
+	ignoreFilePath := c.GetIgnoreFilePath()
+	if fileutil.FileExists(ignoreFilePath) {
+		bin, err := os.ReadFile(ignoreFilePath)
+		if err != nil {
+			return errorutil.NewWithErr(err).Msgf("could not read nuclei ignore file")
+		}
+		c.NucleiIgnoreHash = fmt.Sprintf("%x", md5.Sum(bin))
+		// write config to disk
+		return c.WriteTemplatesConfig()
+	}
+	return errorutil.NewWithTag("config", "ignore file not found: could not update nuclei ignore hash")
 }
 
 // GetConfigDir returns the nuclei configuration directory
@@ -137,6 +180,16 @@ func (c *Config) SetTemplatesDir(dirPath string) {
 	c.CustomS3TemplatesDirectory = filepath.Join(dirPath, CustomGithubTemplatesDirName)
 }
 
+// SetTemplatesVersion sets the new nuclei templates version
+func (c *Config) SetTemplatesVersion(version string) error {
+	c.TemplateVersion = version
+	// write config to disk
+	if err := c.WriteTemplatesConfig(); err != nil {
+		return errorutil.NewWithErr(err).Msgf("could not write nuclei config file at %s", c.getTemplatesConfigFilePath())
+	}
+	return nil
+}
+
 // ReadTemplatesConfig reads the nuclei templates config file
 func (c *Config) ReadTemplatesConfig() error {
 	if !fileutil.FileExists(c.getTemplatesConfigFilePath()) {
@@ -156,6 +209,8 @@ func (c *Config) ReadTemplatesConfig() error {
 	c.TemplatesDirectory = cfg.TemplatesDirectory
 	c.TemplateVersion = cfg.TemplateVersion
 	c.NucleiIgnoreHash = cfg.NucleiIgnoreHash
+	c.LatestNucleiIgnoreHash = cfg.LatestNucleiIgnoreHash
+	c.LatestNucleiTemplatesVersion = cfg.LatestNucleiTemplatesVersion
 	return nil
 }
 

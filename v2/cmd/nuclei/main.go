@@ -12,7 +12,6 @@ import (
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/gologger/levels"
 	"github.com/projectdiscovery/interactsh/pkg/client"
-	"github.com/projectdiscovery/nuclei/v2/internal/installer"
 	"github.com/projectdiscovery/nuclei/v2/internal/runner"
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/config"
 	"github.com/projectdiscovery/nuclei/v2/pkg/model/types/severity"
@@ -291,7 +290,7 @@ on extensive configurability, massive extensibility and ease of use.`)
 	)
 
 	flagSet.CreateGroup("update", "Update",
-		flagSet.CallbackVarP(installer.NucleiToolUpdateCallback, "update", "un", "update nuclei engine to the latest released version"),
+		flagSet.CallbackVarP(runner.NucleiToolUpdateCallback, "update", "un", "update nuclei engine to the latest released version"),
 		flagSet.BoolVarP(&options.UpdateTemplates, "update-templates", "ut", false, "update nuclei-templates to latest released version"),
 		flagSet.StringVarP(&options.NewTemplatesDirectory, "update-template-dir", "ud", "", "custom directory to install / update nuclei-templates"),
 		flagSet.CallbackVarP(disableUpdatesCallback, "disable-update-check", "duc", "disable automatic nuclei/templates update check"),
