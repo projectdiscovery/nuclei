@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"net/http"
 	"os"
-	"runtime"
 	"strings"
 
 	"github.com/go-rod/rod"
@@ -14,6 +13,7 @@ import (
 
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 	fileutil "github.com/projectdiscovery/utils/file"
+	osutils "github.com/projectdiscovery/utils/os"
 	reflectutil "github.com/projectdiscovery/utils/reflect"
 	stringsutil "github.com/projectdiscovery/utils/strings"
 )
@@ -123,7 +123,7 @@ func New(options *types.Options) (*Browser, error) {
 func MustDisableSandbox() bool {
 	// linux with root user needs "--no-sandbox" option
 	// https://github.com/chromium/chromium/blob/c4d3c31083a2e1481253ff2d24298a1dfe19c754/chrome/test/chromedriver/client/chromedriver.py#L209
-	return runtime.GOOS == "linux" && os.Geteuid() == 0
+	return osutils.IsWindows() && os.Geteuid() == 0
 }
 
 // SetUserAgent sets custom user agent to the browser

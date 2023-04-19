@@ -32,6 +32,7 @@ import (
 	"github.com/projectdiscovery/retryablehttp-go"
 	fileutil "github.com/projectdiscovery/utils/file"
 	folderutil "github.com/projectdiscovery/utils/folder"
+	osutils "github.com/projectdiscovery/utils/os"
 
 	"github.com/tj/go-update"
 	"github.com/tj/go-update/progress"
@@ -599,8 +600,8 @@ func updateNucleiVersionToLatest(verbose bool) error {
 		log.SetLevel(log.DebugLevel)
 	}
 	var command string
-	switch runtime.GOOS {
-	case "windows":
+	switch {
+	case osutils.IsWindows():
 		command = "nuclei.exe"
 	default:
 		command = "nuclei"
@@ -624,8 +625,8 @@ func updateNucleiVersionToLatest(verbose bool) error {
 
 	latest := releases[0]
 	var currentOS string
-	switch runtime.GOOS {
-	case "darwin":
+	switch {
+	case osutils.IsOSX():
 		currentOS = "macOS"
 	default:
 		currentOS = runtime.GOOS
