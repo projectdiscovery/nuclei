@@ -120,11 +120,7 @@ func executeNucleiAsCode(templatePath, templateURL string) ([]string, error) {
 	}
 	executerOpts.WorkflowLoader = workflowLoader
 
-	configObject, err := config.ReadConfiguration()
-	if err != nil {
-		return nil, errors.Wrap(err, "could not read configuration file")
-	}
-	store, err := loader.New(loader.NewConfig(defaultOpts, configObject, catalog, executerOpts))
+	store, err := loader.New(loader.NewConfig(defaultOpts, catalog, executerOpts))
 	if err != nil {
 		return nil, errors.Wrap(err, "could not create loader")
 	}
