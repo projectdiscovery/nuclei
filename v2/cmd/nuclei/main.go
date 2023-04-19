@@ -6,6 +6,7 @@ import (
 	"os/signal"
 	"runtime"
 	"runtime/pprof"
+	"strings"
 	"time"
 
 	"github.com/projectdiscovery/goflags"
@@ -426,7 +427,7 @@ func printTemplateVersion() {
 
 func init() {
 	// print stacktrace of errors in debug mode
-	if os.Getenv("DEBUG") == "True" || os.Getenv("DEBUG") == "true" {
+	if strings.EqualFold(os.Getenv("DEBUG"), "true") {
 		errorutil.ShowStackTrace = true
 	}
 }
