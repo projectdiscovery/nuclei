@@ -43,7 +43,7 @@ func TestLoadTemplate(t *testing.T) {
 			name:        "emptyTemplate",
 			template:    &templates.Template{},
 			isValid:     false,
-			expectedErr: errors.New("mandatory 'name' field is missing, mandatory 'author' field is missing, mandatory 'id' field is missing, with syntax warning: field 'severity' is missing\n"),
+			expectedErr: errors.New("mandatory 'name' field is missing, mandatory 'author' field is missing, mandatory 'id' field is missing, with syntax warning: field 'severity' is missing"),
 		},
 		{
 			name: "emptyNameWithInvalidID",
@@ -66,7 +66,7 @@ func TestLoadTemplate(t *testing.T) {
 				},
 			},
 			isValid:     true,
-			expectedErr: errors.New("field 'severity' is missing\n"),
+			expectedErr: errors.New("field 'severity' is missing"),
 		},
 	}
 
