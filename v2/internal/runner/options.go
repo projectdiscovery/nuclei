@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"github.com/pkg/errors"
@@ -129,7 +130,7 @@ func validateOptions(options *types.Options) error {
 		}
 		validateCertificatePaths([]string{options.ClientCertFile, options.ClientKeyFile, options.ClientCAFile})
 	}
-	// Verify aws secrets are passed if s3 template bucket passed
+	// Verify AWS secrets are passed if a S3 template bucket is passed
 	if options.AwsBucketName != "" && options.UpdateTemplates {
 		missing := validateMissingS3Options(options)
 		if missing != nil {
@@ -142,6 +143,14 @@ func validateOptions(options *types.Options) error {
 		missing := validateMissingAzureOptions(options)
 		if missing != nil {
 			return fmt.Errorf("azure connection details are missing. Please provide %s", strings.Join(missing, ","))
+		}
+	}
+
+	// Verify that all GitLab options are provided if the GitLab server or token is provided
+	if options.GitLabToken != "" && options.UpdateTemplates {
+		missing := validateMissingGitLabOptions(options)
+		if missing != nil {
+			return fmt.Errorf("gitlab server details are missing. Please provide %s", strings.Join(missing, ","))
 		}
 	}
 
@@ -186,6 +195,8 @@ func validateCloudOptions(options *types.Options) error {
 			missing = validateMissingS3Options(options)
 		case "github":
 			missing = validateMissingGithubOptions(options)
+		case "gitlab":
+			missing = validateMissingGitLabOptions(options)
 		case "azure":
 			missing = validateMissingAzureOptions(options)
 		}
@@ -241,6 +252,18 @@ func validateMissingGithubOptions(options *types.Options) []string {
 	if len(options.GithubTemplateRepo) == 0 {
 		missing = append(missing, "GITHUB_TEMPLATE_REPO")
 	}
+	return missing
+}
+
+func validateMissingGitLabOptions(options *types.Options) []string {
+	var missing []string
+	if options.GitLabToken == "" {
+		missing = append(missing, "GITLAB_TOKEN")
+	}
+	if len(options.GitLabTemplateRepositoryIDs) == 0 {
+		missing = append(missing, "GITLAB_REPOSITORY_IDS")
+	}
+
 	return missing
 }
 
@@ -333,6 +356,29 @@ func readEnvInputVars(options *types.Options) {
 	if repolist != "" {
 		options.GithubTemplateRepo = append(options.GithubTemplateRepo, stringsutil.SplitAny(repolist, ",")...)
 	}
+
+	// GitLab options for downloading templates from a repository
+	options.GitLabServerURL = os.Getenv("GITLAB_SERVER_URL")
+	if options.GitLabServerURL == "" {
+		options.GitLabServerURL = "https://gitlab.com"
+	}
+	options.GitLabToken = os.Getenv("GITLAB_TOKEN")
+	repolist = os.Getenv("GITLAB_REPOSITORY_IDS")
+	// Convert the comma separated list of repository IDs to a list of integers
+	if repolist != "" {
+		for _, repoID := range stringsutil.SplitAny(repolist, ",") {
+			// Attempt to convert the repo ID to an integer
+			repoIDInt, err := strconv.Atoi(repoID)
+			if err != nil {
+				gologger.Warning().Msgf("Invalid GitLab template repository ID: %s", repoID)
+				continue
+			}
+
+			// Add the int repository ID to the list
+			options.GitLabTemplateRepositoryIDs = append(options.GitLabTemplateRepositoryIDs, repoIDInt)
+		}
+	}
+
 	// AWS options for downloading templates from an S3 bucket
 	options.AwsAccessKey = os.Getenv("AWS_ACCESS_KEY")
 	options.AwsSecretKey = os.Getenv("AWS_SECRET_KEY")

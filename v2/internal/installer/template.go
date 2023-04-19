@@ -2,6 +2,7 @@ package installer
 
 import (
 	"bytes"
+	"context"
 	"crypto/md5"
 	"fmt"
 	"io"
@@ -14,6 +15,7 @@ import (
 	"github.com/olekukonko/tablewriter"
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/config"
+	"github.com/projectdiscovery/nuclei/v2/pkg/external/customtemplates"
 	errorutil "github.com/projectdiscovery/utils/errors"
 	fileutil "github.com/projectdiscovery/utils/file"
 	stringsutil "github.com/projectdiscovery/utils/strings"
@@ -54,7 +56,9 @@ func (t *templateUpdateResults) String() string {
 
 // TemplateManager is a manager for templates.
 // It downloads / updates / installs templates.
-type TemplateManager struct{}
+type TemplateManager struct {
+	CustomTemplates *customtemplates.CustomTemplatesManager // optional if given tries to download custom templates
+}
 
 // FreshInstallIfNotExists installs templates if they are not already installed
 // if templates directory already exists, it does nothing
@@ -63,7 +67,13 @@ func (t *TemplateManager) FreshInstallIfNotExists() error {
 		return nil
 	}
 	gologger.Info().Msgf("nuclei-templates are not installed, installing...")
-	return t.installTemplatesAt(config.DefaultConfig.TemplatesDirectory)
+	if err := t.installTemplatesAt(config.DefaultConfig.TemplatesDirectory); err != nil {
+		return errorutil.NewWithErr(err).Msgf("failed to install templates at %s", config.DefaultConfig.TemplatesDirectory)
+	}
+	if t.CustomTemplates != nil {
+		t.CustomTemplates.Download(context.TODO())
+	}
+	return nil
 }
 
 // UpdateIfOutdated updates templates if they are outdated
@@ -310,7 +320,7 @@ func (t *TemplateManager) calculateChecksumMap(dir string) (map[string]string, e
 			return err
 		}
 		// skip checksums of custom templates i.e github and s3
-		if stringsutil.HasPrefixAny(path, config.DefaultConfig.CustomGithubTemplatesDirectory, config.DefaultConfig.CustomS3TemplatesDirectory) {
+		if stringsutil.HasPrefixAny(path, config.DefaultConfig.GetAllCustomTemplateDirs()...) {
 			return nil
 		}
 

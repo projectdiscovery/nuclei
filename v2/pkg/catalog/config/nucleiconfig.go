@@ -21,8 +21,12 @@ var DefaultConfig *Config
 type Config struct {
 	TemplatesDirectory string `json:"nuclei-templates-directory,omitempty"`
 
+	// customtemplates exists in templates directory with the name of custom-templates provider
+	// below custom paths are absolute paths to respecitive custom-templates directories
 	CustomS3TemplatesDirectory     string `json:"custom-s3-templates-directory"`
 	CustomGithubTemplatesDirectory string `json:"custom-github-templates-directory"`
+	CustomGitLabTemplatesDirectory string `json:"custom-gitlab-templates-directory"`
+	CustomAzureTemplatesDirectory  string `json:"custom-azure-templates-directory"`
 
 	TemplateVersion  string `json:"nuclei-templates-version,omitempty"`
 	NucleiIgnoreHash string `json:"nuclei-ignore-hash,omitempty"`
@@ -104,6 +108,11 @@ func (c *Config) GetConfigDir() string {
 	return c.configDir
 }
 
+// GetAllCustomTemplateDirs returns all custom template directories
+func (c *Config) GetAllCustomTemplateDirs() []string {
+	return []string{c.CustomS3TemplatesDirectory, c.CustomGithubTemplatesDirectory, c.CustomGitLabTemplatesDirectory, c.CustomAzureTemplatesDirectory}
+}
+
 // GetReportingConfigFilePath returns the nuclei reporting config file path
 func (c *Config) GetReportingConfigFilePath() string {
 	return filepath.Join(c.configDir, ReportingConfigFilename)
@@ -175,7 +184,9 @@ func (c *Config) SetTemplatesDir(dirPath string) {
 	c.TemplatesDirectory = dirPath
 	// Update the custom templates directory
 	c.CustomGithubTemplatesDirectory = filepath.Join(dirPath, CustomGithubTemplatesDirName)
-	c.CustomS3TemplatesDirectory = filepath.Join(dirPath, CustomGithubTemplatesDirName)
+	c.CustomS3TemplatesDirectory = filepath.Join(dirPath, CustomS3TemplatesDirName)
+	c.CustomGitLabTemplatesDirectory = filepath.Join(dirPath, CustomGitLabTemplatesDirName)
+	c.CustomAzureTemplatesDirectory = filepath.Join(dirPath, CustomAzureTemplatesDirName)
 }
 
 // SetTemplatesVersion sets the new nuclei templates version
@@ -202,8 +213,6 @@ func (c *Config) ReadTemplatesConfig() error {
 		return errorutil.NewWithErr(err).Msgf("could not unmarshal nuclei config file at %s", c.getTemplatesConfigFilePath())
 	}
 	// apply config
-	c.CustomGithubTemplatesDirectory = cfg.CustomGithubTemplatesDirectory
-	c.CustomS3TemplatesDirectory = cfg.CustomS3TemplatesDirectory
 	c.TemplatesDirectory = cfg.TemplatesDirectory
 	c.TemplateVersion = cfg.TemplateVersion
 	c.NucleiIgnoreHash = cfg.NucleiIgnoreHash
@@ -279,6 +288,11 @@ func init() {
 			gologger.Error().Msgf("failed to write config file at %s got: %s", DefaultConfig.getTemplatesConfigFilePath(), err)
 		}
 	}
+	// Loads/updates paths of custom templates
+	// Note: custom templates paths should not be updated in config file
+	// and even if it is changed we don't follow it since it is not expected behavior
+	// If custom templates are in default locations only then they are loaded while running nuclei
+	DefaultConfig.SetTemplatesDir(DefaultConfig.TemplatesDirectory)
 }
 
 func getDefaultConfigDir() string {
@@ -297,6 +311,6 @@ func getDefaultConfigDir() string {
 // Add Default Config adds default when .templates-config.json file is not present
 func applyDefaultConfig() {
 	DefaultConfig.TemplatesDirectory = filepath.Join(DefaultConfig.homeDir, NucleiTemplatesDirName)
-	DefaultConfig.CustomGithubTemplatesDirectory = filepath.Join(DefaultConfig.TemplatesDirectory, CustomGithubTemplatesDirName)
-	DefaultConfig.CustomS3TemplatesDirectory = filepath.Join(DefaultConfig.TemplatesDirectory, CustomS3TemplatesDirName)
+	// updates all necessary paths
+	DefaultConfig.SetTemplatesDir(DefaultConfig.TemplatesDirectory)
 }

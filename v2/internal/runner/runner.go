@@ -73,7 +73,6 @@ type Runner struct {
 	hostErrors        hosterrorscache.CacheInterface
 	resumeCfg         *types.ResumeCfg
 	pprofServer       *http.Server
-	customTemplates   []customtemplates.Provider
 	cloudClient       *nucleicloud.Client
 	cloudTargets      []string
 }
@@ -102,8 +101,16 @@ func New(options *types.Options) (*Runner, error) {
 				gologger.Error().Msgf("nuclei version check failed got: %s\n", err)
 			}
 		}
+
+		// check for custom template updates and update if available
+		ctm, err := customtemplates.NewCustomTemplatesManager(options)
+		if err != nil {
+			gologger.Error().Label("custom-templates").Msgf("Failed to create custom templates manager: %s\n", err)
+		}
+
 		// Check for template updates and update if available
-		tm := &installer.TemplateManager{}
+		// if custom templates manager is not nil, we will install custom templates if there is fresh installation
+		tm := &installer.TemplateManager{CustomTemplates: ctm}
 		if err := tm.FreshInstallIfNotExists(); err != nil {
 			gologger.Warning().Msgf("failed to install nuclei templates: %s\n", err)
 		}
@@ -116,6 +123,18 @@ func New(options *types.Options) (*Runner, error) {
 				gologger.Warning().Msgf("failed to update nuclei ignore file: %s\n", err)
 			}
 		}
+
+		if options.UpdateTemplates {
+			// we automatically check for updates unless explicitly disabled
+			// this print statement is only to inform the user that there are no updates
+			if !config.DefaultConfig.NeedsTemplateUpdate() {
+				gologger.Info().Msgf("No new updates found for nuclei templates")
+			}
+			// manually trigger update of custom templates
+			if ctm != nil {
+				ctm.Update(context.TODO())
+			}
+		}
 	}
 
 	if options.Validate {
@@ -125,8 +144,6 @@ func New(options *types.Options) (*Runner, error) {
 	// TODO: refactor to pass options reference globally without cycles
 	parsers.NoStrictSyntax = options.NoStrictSyntax
 	yaml.StrictSyntax = !options.NoStrictSyntax
-	// parse the runner.options.GithubTemplateRepo and store the valid repos in runner.customTemplateRepos
-	runner.customTemplates = customtemplates.ParseCustomTemplates(runner.options)
 
 	if options.Headless {
 		if engine.MustDisableSandbox() {

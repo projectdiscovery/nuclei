@@ -3,17 +3,45 @@ package customtemplates
 import (
 	"bytes"
 	"context"
-	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
-	"github.com/Azure/azure-sdk-for-go/sdk/storage/azblob"
-	"github.com/projectdiscovery/gologger"
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
+	"github.com/Azure/azure-sdk-for-go/sdk/storage/azblob"
+	"github.com/projectdiscovery/gologger"
+	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/config"
+	"github.com/projectdiscovery/nuclei/v2/pkg/types"
+	errorutil "github.com/projectdiscovery/utils/errors"
 )
+
+var _ Provider = &customTemplateAzureBlob{}
 
 type customTemplateAzureBlob struct {
 	azureBlobClient *azblob.Client
 	containerName   string
+}
+
+// NewAzureProviders creates a new Azure Blob Storage provider for downloading custom templates
+func NewAzureProviders(options *types.Options) ([]*customTemplateAzureBlob, error) {
+	providers := []*customTemplateAzureBlob{}
+	if options.AzureContainerName != "" {
+		// Establish a connection to Azure and build a client object with which to download templates from Azure Blob Storage
+		azClient, err := getAzureBlobClient(options.AzureTenantID, options.AzureClientID, options.AzureClientSecret, options.AzureServiceURL)
+		if err != nil {
+			return nil, errorutil.NewWithErr(err).Msgf("Error establishing Azure Blob client for %s", options.AzureContainerName)
+		}
+
+		// Create a new Azure Blob Storage container object
+		azTemplateContainer := &customTemplateAzureBlob{
+			azureBlobClient: azClient,
+			containerName:   options.AzureContainerName,
+		}
+
+		// Add the Azure Blob Storage container object to the list of custom templates
+		providers = append(providers, azTemplateContainer)
+	}
+	return providers, nil
 }
 
 func getAzureBlobClient(tenantID string, clientID string, clientSecret string, serviceURL string) (*azblob.Client, error) {
@@ -34,12 +62,12 @@ func getAzureBlobClient(tenantID string, clientID string, clientSecret string, s
 	return client, nil
 }
 
-func (bk *customTemplateAzureBlob) Download(location string, ctx context.Context) {
+func (bk *customTemplateAzureBlob) Download(ctx context.Context) {
 	// Set an incrementer for the number of templates downloaded
 	var templatesDownloaded = 0
 
 	// Define the local path to which the templates will be downloaded
-	downloadPath := filepath.Join(location, CustomAzureTemplateDirectory, bk.containerName)
+	downloadPath := filepath.Join(config.DefaultConfig.CustomAzureTemplatesDirectory, bk.containerName)
 
 	// Get the list of all templates from the container
 	pager := bk.azureBlobClient.NewListBlobsFlatPager(bk.containerName, &azblob.ListBlobsFlatOptions{
@@ -78,9 +106,9 @@ func (bk *customTemplateAzureBlob) Download(location string, ctx context.Context
 // Update updates the templates from the Azure Blob Storage container to the local filesystem. This is effectively a
 // wrapper of the Download function which downloads of all templates from the container and doesn't manage a
 // differential update.
-func (bk *customTemplateAzureBlob) Update(location string, ctx context.Context) {
+func (bk *customTemplateAzureBlob) Update(ctx context.Context) {
 	// Treat the update as a download of all templates from the container
-	bk.Download(location, ctx)
+	bk.Download(ctx)
 }
 
 // downloadTemplate downloads a template from the Azure Blob Storage container to the local filesystem with the provided
