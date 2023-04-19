@@ -147,7 +147,7 @@ func validateOptions(options *types.Options) error {
 	}
 
 	// Verify that all GitLab options are provided if the GitLab server or token is provided
-	if (options.GitLabServerURL != "" || options.GitLabToken != "") && options.UpdateTemplates {
+	if options.GitLabToken != "" && options.UpdateTemplates {
 		missing := validateMissingGitLabOptions(options)
 		if missing != nil {
 			return fmt.Errorf("gitlab server details are missing. Please provide %s", strings.Join(missing, ","))
