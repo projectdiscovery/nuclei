@@ -226,8 +226,7 @@ func (t *TemplateManager) writeTemplatestoDisk(ghrd *updateutils.GHReleaseDownlo
 			// if error occurs, iteration also stops
 			return errorutil.NewWithErr(err).Msgf("failed to read file %s", uri)
 		}
-		os.WriteFile(writePath, bin, f.Mode())
-		return nil
+		return os.WriteFile(writePath, bin, f.Mode())
 	}
 	err := ghrd.DownloadSourceWithCallback(!HideProgressBar, callbackFunc)
 	if err != nil {
@@ -302,7 +301,7 @@ func (t *TemplateManager) calculateChecksumMap(dir string) (map[string]string, e
 		return fmt.Sprintf("%x", md5.Sum(bin)), nil
 	}
 
-	filepath.WalkDir(dir, func(path string, d fs.DirEntry, err error) error {
+	err := filepath.WalkDir(dir, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
@@ -321,5 +320,5 @@ func (t *TemplateManager) calculateChecksumMap(dir string) (map[string]string, e
 		}
 		return nil
 	})
-	return checksumMap, nil
+	return checksumMap, err
 }
