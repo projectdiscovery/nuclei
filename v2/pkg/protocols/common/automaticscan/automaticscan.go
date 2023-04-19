@@ -57,7 +57,7 @@ func New(opts Options) (*Service, error) {
 	}
 
 	var mappingData map[string]string
-	config, err := config.ReadConfiguration()
+	config := config.DefaultConfig
 	if err == nil {
 		mappingFile := filepath.Join(config.TemplatesDirectory, mappingFilename)
 		if file, err := os.Open(mappingFile); err == nil {
