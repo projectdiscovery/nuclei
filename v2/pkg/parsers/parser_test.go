@@ -25,6 +25,7 @@ func TestLoadTemplate(t *testing.T) {
 		templateErr error
 
 		expectedErr error
+		isValid     bool
 	}{
 		{
 			name: "valid",
@@ -36,11 +37,13 @@ func TestLoadTemplate(t *testing.T) {
 					SeverityHolder: severity.Holder{Severity: severity.Medium},
 				},
 			},
+			isValid: true,
 		},
 		{
 			name:        "emptyTemplate",
 			template:    &templates.Template{},
-			expectedErr: errors.New("mandatory 'name' field is missing, mandatory 'author' field is missing, mandatory 'id' field is missing, mandatory 'severity' field is missing"),
+			isValid:     false,
+			expectedErr: errors.New("mandatory 'name' field is missing, mandatory 'author' field is missing, mandatory 'id' field is missing, with syntax warning: field 'severity' is missing\n"),
 		},
 		{
 			name: "emptyNameWithInvalidID",
@@ -62,7 +65,8 @@ func TestLoadTemplate(t *testing.T) {
 					Authors: stringslice.StringSlice{Value: "Author"},
 				},
 			},
-			expectedErr: errors.New("mandatory 'severity' field is missing"),
+			isValid:     true,
+			expectedErr: errors.New("field 'severity' is missing\n"),
 		},
 	}
 
@@ -73,12 +77,11 @@ func TestLoadTemplate(t *testing.T) {
 			tagFilter, err := filter.New(&filter.Config{})
 			require.Nil(t, err)
 			success, err := LoadTemplate(tc.name, tagFilter, nil, catalog)
+			require.Equal(t, tc.isValid, success)
 			if tc.expectedErr == nil {
 				require.NoError(t, err)
-				require.True(t, success)
 			} else {
-				require.Equal(t, tc.expectedErr, err)
-				require.False(t, success)
+				require.ErrorContains(t, err, tc.expectedErr.Error())
 			}
 		})
 	}
@@ -120,7 +123,7 @@ func TestLoadTemplate(t *testing.T) {
 					require.NoError(t, err)
 					require.True(t, success)
 				} else {
-					require.Equal(t, errors.New("invalid field format for 'id' (allowed format is ^([a-zA-Z0-9]+[-_])*[a-zA-Z0-9]+$)"), err)
+					require.ErrorContains(t, err, "invalid field format for 'id' (allowed format is ^([a-zA-Z0-9]+[-_])*[a-zA-Z0-9]+$)")
 					require.False(t, success)
 				}
 			})
