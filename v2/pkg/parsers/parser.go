@@ -28,26 +28,26 @@ const (
 func LoadTemplate(templatePath string, tagFilter *filter.TagFilter, extraTags []string, catalog catalog.Catalog) (bool, error) {
 	template, templateParseError := ParseTemplate(templatePath, catalog)
 	if templateParseError != nil {
-		return false, fmt.Errorf("Could not load template %s: %s\n", templatePath, templateParseError)
+		return false, fmt.Errorf("Could not load template %s: %s", templatePath, templateParseError)
 	}
 
 	if len(template.Workflows) > 0 {
 		return false, nil
 	}
-
+	// fmt.Println(templatePath)
 	validationError, validationWarning := validateTemplateFields(template)
 	if validationError != nil {
 		stats.Increment(SyntaxErrorStats)
 		if validationWarning != nil {
-			return false, fmt.Errorf("Could not load template %s: %s, with syntax warning: %s\n", templatePath, validationError, validationWarning)
+			return false, fmt.Errorf("Could not load template %s: %s, with syntax warning: %s", templatePath, validationError, validationWarning)
 		} else {
-			return false, fmt.Errorf("Could not load template %s: %s\n", templatePath, validationError)
+			return false, fmt.Errorf("Could not load template %s: %s", templatePath, validationError)
 		}
 	}
 	// If we have warnings, we should still return true
 	if validationWarning != nil {
 		stats.Increment(SyntaxWarningStats)
-		return true, fmt.Errorf("Loaded template %s: with syntax warning : %s\n", templatePath, validationWarning)
+		return true, fmt.Errorf("Loaded template %s: with syntax warning : %s", templatePath, validationWarning)
 	}
 
 	return isTemplateInfoMetadataMatch(tagFilter, template, extraTags)
