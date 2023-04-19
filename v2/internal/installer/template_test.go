@@ -28,7 +28,7 @@ func TestTemplateInstallation(t *testing.T) {
 	config.DefaultConfig.SetConfigDir(cfgdir)
 	// set the templates directory to a temporary directory
 	templatesTempDir := filepath.Join(dir, "templates")
-	config.DefaultConfig.TemplatesDirectory = templatesTempDir
+	config.DefaultConfig.SetTemplatesDir(templatesTempDir)
 
 	err = tm.FreshInstallIfNotExists()
 	if err != nil {

@@ -92,7 +92,7 @@ func (t *TemplateManager) installTemplatesAt(dir string) error {
 	}
 	// write templates to disk
 	if err := t.writeTemplatestoDisk(ghrd, dir); err != nil {
-		return err
+		return errorutil.NewWithErr(err).Msgf("failed to write templates to disk at %s", dir)
 	}
 	gologger.Info().Msgf("Successfully installed nuclei-templates at %s", dir)
 	return nil
@@ -203,6 +203,11 @@ func (t *TemplateManager) getAbsoluteFilePath(templatedir, uri string, f fs.File
 		return ""
 	}
 
+	if newPath == templatedir || newPath == templatedir+string(os.PathSeparator) {
+		// skip writing the folder itself since it already exists
+		return ""
+	}
+
 	if relPath != "" && f.IsDir() {
 		// if uri is a directory, create it
 		if err := fileutil.CreateFolder(newPath); err != nil {
@@ -230,19 +235,19 @@ func (t *TemplateManager) writeTemplatestoDisk(ghrd *updateutils.GHReleaseDownlo
 	}
 	err := ghrd.DownloadSourceWithCallback(!HideProgressBar, callbackFunc)
 	if err != nil {
-		return err
+		return errorutil.NewWithErr(err).Msgf("failed to download templates")
 	}
 	if err := config.DefaultConfig.WriteTemplatesConfig(); err != nil {
-		return err
+		return errorutil.NewWithErr(err).Msgf("failed to write templates config")
 	}
 	// update ignore hash after writing new templates
 	if err := config.DefaultConfig.UpdateNucleiIgnoreHash(); err != nil {
-		return err
+		return errorutil.NewWithErr(err).Msgf("failed to update nuclei ignore hash")
 	}
 
 	// update templates version in config file
 	if err := config.DefaultConfig.SetTemplatesVersion(ghrd.Latest.GetTagName()); err != nil {
-		return err
+		return errorutil.NewWithErr(err).Msgf("failed to update templates version")
 	}
 
 	// after installation create and write checksums to .checksum file
@@ -320,5 +325,5 @@ func (t *TemplateManager) calculateChecksumMap(dir string) (map[string]string, e
 		}
 		return nil
 	})
-	return checksumMap, err
+	return checksumMap, errorutil.WrapfWithNil(err, "failed to calculate checksums of templates")
 }
