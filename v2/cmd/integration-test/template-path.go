@@ -4,13 +4,12 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/config"
 	"github.com/projectdiscovery/nuclei/v2/pkg/testutils"
-	"github.com/projectdiscovery/nuclei/v2/pkg/utils"
 )
 
 func getTemplatePath() string {
-	templatePath, _ := utils.GetDefaultTemplatePath()
-	return templatePath
+	return config.DefaultConfig.TemplatesDirectory
 }
 
 var templatesPathTestCases = map[string]testutils.TestCase{

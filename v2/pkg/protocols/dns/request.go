@@ -45,9 +45,12 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, metadata,
 	if err != nil {
 		return errors.Wrap(err, "could not build request")
 	}
+
 	vars := GenerateVariables(domain)
+	// optionvars are vars passed from CLI or env variables
+	optionVars := generators.BuildPayloadFromOptions(request.options.Options)
 	// merge with metadata (eg. from workflow context)
-	vars = generators.MergeMaps(vars, metadata)
+	vars = generators.MergeMaps(vars, metadata, optionVars)
 	variablesMap := request.options.Variables.Evaluate(vars)
 	vars = generators.MergeMaps(variablesMap, vars)
 

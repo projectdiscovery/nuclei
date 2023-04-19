@@ -8,6 +8,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/expressions"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/generators"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/interactsh"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/marker"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 	"github.com/projectdiscovery/nuclei/v2/pkg/utils"
 )
@@ -15,6 +16,7 @@ import (
 // Variable is a key-value pair of strings that can be used
 // throughout template.
 type Variable struct {
+	LazyEval                        bool `yaml:"-" json:"-"` // LazyEval is used to evaluate variables lazily if it using any expression or global variables
 	utils.InsertionOrderedStringMap `yaml:"-" json:"-"`
 }
 
@@ -32,6 +34,11 @@ func (variables *Variable) UnmarshalYAML(unmarshal func(interface{}) error) erro
 	if err := unmarshal(&variables.InsertionOrderedStringMap); err != nil {
 		return err
 	}
+
+	if variables.checkForLazyEval() {
+		return nil
+	}
+
 	evaluated := variables.Evaluate(map[string]interface{}{})
 
 	for k, v := range evaluated {
@@ -86,4 +93,17 @@ func evaluateVariableValue(expression string, values, processing map[string]inte
 	}
 
 	return result
+}
+
+// checkForLazyEval checks if the variables have any lazy evaluation i.e any dsl function
+// and sets the flag accordingly.
+func (variables *Variable) checkForLazyEval() bool {
+	variables.ForEach(func(key string, value interface{}) {
+		ret := expressions.FindExpressions(types.ToString(value), marker.ParenthesisOpen, marker.ParenthesisClose, nil)
+		if len(ret) > 0 {
+			variables.LazyEval = true
+			return
+		}
+	})
+	return variables.LazyEval
 }

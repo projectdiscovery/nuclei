@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/julienschmidt/httprouter"
+	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/config"
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/disk"
 	"github.com/projectdiscovery/nuclei/v2/pkg/model"
 	"github.com/projectdiscovery/nuclei/v2/pkg/model/types/severity"
@@ -44,7 +45,7 @@ func setup() {
 		ProjectFile:  nil,
 		IssuesClient: nil,
 		Browser:      nil,
-		Catalog:      disk.NewCatalog(options.TemplatesDirectory),
+		Catalog:      disk.NewCatalog(config.DefaultConfig.TemplatesDirectory),
 		RateLimiter:  ratelimit.New(context.Background(), uint(options.RateLimit), time.Second),
 	}
 	workflowLoader, err := parsers.NewLoader(&executerOpts)

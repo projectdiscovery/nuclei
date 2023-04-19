@@ -50,7 +50,7 @@ func main() {
 	defaultOpts.IncludeIds = goflags.StringSlice{"cname-service"}
 	defaultOpts.ExcludeTags = config.ReadIgnoreFile().Tags
 
-	interactOpts := interactsh.NewDefaultOptions(outputWriter, reportingClient, mockProgress)
+	interactOpts := interactsh.DefaultOptions(outputWriter, reportingClient, mockProgress)
 	interactClient, err := interactsh.New(interactOpts)
 	if err != nil {
 		log.Fatalf("Could not create interact client: %s\n", err)
@@ -80,11 +80,7 @@ func main() {
 	}
 	executerOpts.WorkflowLoader = workflowLoader
 
-	configObject, err := config.ReadConfiguration()
-	if err != nil {
-		log.Fatalf("Could not read config: %s\n", err)
-	}
-	store, err := loader.New(loader.NewConfig(defaultOpts, configObject, catalog, executerOpts))
+	store, err := loader.New(loader.NewConfig(defaultOpts, catalog, executerOpts))
 	if err != nil {
 		log.Fatalf("Could not create loader client: %s\n", err)
 	}
