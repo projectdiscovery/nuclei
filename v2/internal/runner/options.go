@@ -27,8 +27,10 @@ import (
 )
 
 func ConfigureOptions() error {
+	// with FileStringSliceOptions, FileNormalizedStringSliceOptions, FileCommaSeparatedStringSliceOptions
+	// if file has extension `.yaml,.json` we consider those as strings and not files to be read
 	isFromFileFunc := func(s string) bool {
-		return !isTemplate(s)
+		return !config.IsTemplate(s)
 	}
 	goflags.FileNormalizedStringSliceOptions.IsFromFile = isFromFileFunc
 	goflags.FileStringSliceOptions.IsFromFile = isFromFileFunc
@@ -49,30 +51,8 @@ func ParseOptions(options *types.Options) {
 	// Show the user the banner
 	showBanner()
 
-	if options.TemplatesDirectory != "" && !filepath.IsAbs(options.TemplatesDirectory) {
-		cwd, _ := os.Getwd()
-		options.TemplatesDirectory = filepath.Join(cwd, options.TemplatesDirectory)
-	}
-	if options.Version {
-		gologger.Info().Msgf("Current Version: %s\n", config.Version)
-		os.Exit(0)
-	}
 	if options.ShowVarDump {
 		vardump.EnableVarDump = true
-	}
-	if options.TemplatesVersion {
-		configuration, err := config.ReadConfiguration()
-		if err != nil {
-			gologger.Fatal().Msgf("Could not read template configuration: %s\n", err)
-		}
-		gologger.Info().Msgf("Public nuclei-templates version: %s (%s)\n", configuration.TemplateVersion, configuration.TemplatesDirectory)
-		if configuration.CustomS3TemplatesDirectory != "" {
-			gologger.Info().Msgf("Custom S3 templates location: %s\n", configuration.CustomS3TemplatesDirectory)
-		}
-		if configuration.CustomGithubTemplatesDirectory != "" {
-			gologger.Info().Msgf("Custom Github templates location: %s ", configuration.CustomGithubTemplatesDirectory)
-		}
-		os.Exit(0)
 	}
 	if options.ShowActions {
 		gologger.Info().Msgf("Showing available headless actions: ")
@@ -140,7 +120,7 @@ func validateOptions(options *types.Options) error {
 		return err
 	}
 	if options.Validate {
-		validateTemplatePaths(options.TemplatesDirectory, options.Templates, options.Workflows)
+		validateTemplatePaths(config.DefaultConfig.TemplatesDirectory, options.Templates, options.Workflows)
 	}
 
 	// Verify if any of the client certificate options were set since it requires all three to work properly
