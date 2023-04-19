@@ -284,7 +284,7 @@ func validateMissingGitLabOptions(options *types.Options) []string {
 		missing = append(missing, "GITLAB_SERVER_URL")
 	}
 	if len(options.GitLabTemplateRepositoryIDs) == 0 {
-		missing = append(missing, "GITLAB_TEMPLATE_REPOSITORY_IDS")
+		missing = append(missing, "GITLAB_REPOSITORY_IDS")
 	}
 
 	return missing
@@ -383,7 +383,8 @@ func readEnvInputVars(options *types.Options) {
 	// GitLab options for downloading templates from a repository
 	options.GitLabServerURL = os.Getenv("GITLAB_SERVER_URL")
 	options.GitLabToken = os.Getenv("GITLAB_TOKEN")
-	repolist = os.Getenv("GITLAB_TEMPLATE_REPOSITORY_IDS")
+	repolist = os.Getenv("GITLAB_REPOSITORY_IDS")
+	// Convert the comma separated list of repository IDs to a list of integers
 	if repolist != "" {
 		for _, repoID := range stringsutil.SplitAny(repolist, ",") {
 			// Attempt to convert the repo ID to an integer

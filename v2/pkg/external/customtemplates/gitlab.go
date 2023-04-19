@@ -2,11 +2,11 @@ package customtemplates
 
 import (
 	"context"
+	"encoding/base64"
 	"github.com/projectdiscovery/gologger"
 	"github.com/xanzy/go-gitlab"
 	"os"
 	"path/filepath"
-	"strconv"
 )
 
 type customTemplateGitLabRepo struct {
@@ -17,14 +17,15 @@ type customTemplateGitLabRepo struct {
 
 // Download downloads all .yaml files from a GitLab repository
 func (bk *customTemplateGitLabRepo) Download(location string, _ context.Context) {
-	// Append the GitLab directory to the location
-	location = filepath.Join(location, CustomGitLabTemplateDirectory)
 
 	// Define the project and template count
 	var projectCount = 0
 	var templateCount = 0
 
-	// Ensure the directory exists or create it if it doesn't yet exist
+	// Append the GitLab directory to the location
+	location = filepath.Join(location, CustomGitLabTemplateDirectory)
+
+	// Ensure the CustomGitLabTemplateDirectory directory exists or create it if it doesn't yet exist
 	err := os.MkdirAll(filepath.Dir(location), 0755)
 	if err != nil {
 		gologger.Error().Msgf("Error creating directory: %v", err)
@@ -42,10 +43,10 @@ func (bk *customTemplateGitLabRepo) Download(location string, _ context.Context)
 		}
 
 		// Add a subdirectory with the project ID as the subdirectory within the location
-		projectOutputPath := filepath.Join(location, strconv.Itoa(projectID))
+		projectOutputPath := filepath.Join(location, project.Path)
 
 		// Ensure the subdirectory exists or create it if it doesn't yet exist
-		err = os.MkdirAll(filepath.Dir(projectOutputPath), 0755)
+		err = os.MkdirAll(projectOutputPath, 0755)
 		if err != nil {
 			gologger.Error().Msgf("Error creating subdirectory: %v", err)
 			return
@@ -53,7 +54,8 @@ func (bk *customTemplateGitLabRepo) Download(location string, _ context.Context)
 
 		// Get the directory listing for the files in the project
 		tree, _, err := bk.gitLabClient.Repositories.ListTree(projectID, &gitlab.ListTreeOptions{
-			Ref: gitlab.String(project.DefaultBranch),
+			Ref:       gitlab.String(project.DefaultBranch),
+			Recursive: gitlab.Bool(true),
 		})
 		if err != nil {
 			gologger.Error().Msgf("error retrieving files from GitLab project: %s (%d) %s", project.Name, projectID, err)
@@ -69,19 +71,31 @@ func (bk *customTemplateGitLabRepo) Download(location string, _ context.Context)
 				f, _, err := bk.gitLabClient.RepositoryFiles.GetFile(projectID, file.Path, gf)
 				if err != nil {
 					gologger.Error().Msgf("error retrieving GitLab project file: %s %s", projectID, err)
+					return
+				}
+
+				// Decode the file content from base64 into bytes so that it can be written to the local filesystem
+				contents, err := base64.StdEncoding.DecodeString(f.Content)
+				if err != nil {
+					gologger.Error().Msgf("error decoding GitLab project (%s) file: %s %s", project.Name, f.FileName, err)
+					return
 				}
 
 				// Write the downloaded template to the local filesystem at the location with the filename of the blob name
-				err = os.WriteFile(projectOutputPath, []byte(f.Content), 0644)
-			}
+				err = os.WriteFile(filepath.Join(projectOutputPath, f.FileName), contents, 0644)
+				if err != nil {
+					gologger.Error().Msgf("error writing GitLab project (%s) file: %s %s", project.Name, f.FileName, err)
+					return
+				}
 
-			// Increment the number of templates downloaded
-			templateCount++
+				// Increment the number of templates downloaded
+				templateCount++
+			}
 		}
 
 		// Increment the number of projects downloaded
 		projectCount++
-		gologger.Info().Msgf("GitLab project %s (%d) successfully cloned successfully", project.Name, projectID)
+		gologger.Info().Msgf("GitLab project '%s' (%d) cloned successfully", project.Name, projectID)
 	}
 
 	// Print the number of projects and templates downloaded
