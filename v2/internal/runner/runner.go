@@ -430,7 +430,7 @@ func (r *Runner) RunEnumeration() error {
 	}
 	executerOpts.WorkflowLoader = workflowLoader
 
-	store, err := loader.New(loader.NewConfig(r.options, config.DefaultConfig, r.catalog, executerOpts))
+	store, err := loader.New(loader.NewConfig(r.options, r.catalog, executerOpts))
 	if err != nil {
 		return errors.Wrap(err, "could not load templates from config")
 	}

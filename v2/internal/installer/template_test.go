@@ -14,7 +14,6 @@ func TestTemplateInstallation(t *testing.T) {
 	// test that the templates are installed correctly
 	// along with necessary changes that are made
 	HideProgressBar = true
-	HideReleaseNotes = true
 
 	tm := &TemplateManager{}
 	dir, err := os.MkdirTemp("", "nuclei-templates-*")

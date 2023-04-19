@@ -376,7 +376,7 @@ func readFlagsConfig(flagset *goflags.FlagSet) {
 	// check if config.yaml file exists
 	defaultCfgFile, err := flagset.GetConfigFilePath()
 	if err != nil {
-		// soemthing went wrong either dir is not readable or something else went wrong upstream in `goflags`
+		// something went wrong either dir is not readable or something else went wrong upstream in `goflags`
 		// warn and exit in this case
 		gologger.Warning().Msgf("Could not read config file: %s\n", err)
 		return

@@ -80,8 +80,7 @@ func main() {
 	}
 	executerOpts.WorkflowLoader = workflowLoader
 
-	configObject := &config.Config{}
-	store, err := loader.New(loader.NewConfig(defaultOpts, configObject, catalog, executerOpts))
+	store, err := loader.New(loader.NewConfig(defaultOpts, catalog, executerOpts))
 	if err != nil {
 		log.Fatalf("Could not create loader client: %s\n", err)
 	}

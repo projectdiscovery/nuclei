@@ -26,7 +26,6 @@ const (
 
 var (
 	HideProgressBar        = true
-	HideReleaseNotes       = false
 	HideUpdateChangesTable = false
 )
 
