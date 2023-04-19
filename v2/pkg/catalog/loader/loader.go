@@ -321,8 +321,9 @@ func (store *Store) LoadTemplatesWithTags(templatesList, tags []string) []*templ
 					loadedTemplates = append(loadedTemplates, parsed)
 				}
 			}
-		} else if err != nil {
-			gologger.Warning().Msgf("Could not load template %s: %s\n", templatePath, err)
+		}
+		if err != nil {
+			gologger.Warning().Msg(err.Error())
 		}
 	}
 

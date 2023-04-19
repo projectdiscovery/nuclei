@@ -21,22 +21,33 @@ import (
 const (
 	errMandatoryFieldMissingFmt = "mandatory '%s' field is missing"
 	errInvalidFieldFmt          = "invalid field format for '%s' (allowed format is %s)"
+	warningFieldMissingFmt      = "field '%s' is missing"
 )
 
 // LoadTemplate returns true if the template is valid and matches the filtering criteria.
 func LoadTemplate(templatePath string, tagFilter *filter.TagFilter, extraTags []string, catalog catalog.Catalog) (bool, error) {
 	template, templateParseError := ParseTemplate(templatePath, catalog)
 	if templateParseError != nil {
-		return false, templateParseError
+		return false, fmt.Errorf("Could not load template %s: %s\n", templatePath, templateParseError)
 	}
 
 	if len(template.Workflows) > 0 {
 		return false, nil
 	}
 
-	if validationError := validateTemplateFields(template); validationError != nil {
+	validationError, validationWarning := validateTemplateFields(template)
+	if validationError != nil {
 		stats.Increment(SyntaxErrorStats)
-		return false, validationError
+		if validationWarning != nil {
+			return false, fmt.Errorf("Could not load template %s: %s, with syntax warning: %s\n", templatePath, validationError, validationWarning)
+		} else {
+			return false, fmt.Errorf("Could not load template %s: %s\n", templatePath, validationError)
+		}
+	}
+	// If we have warnings, we should still return true
+	if validationWarning != nil {
+		stats.Increment(SyntaxWarningStats)
+		return true, fmt.Errorf("Loaded template %s: with syntax warning : %s\n", templatePath, validationWarning)
 	}
 
 	return isTemplateInfoMetadataMatch(tagFilter, template, extraTags)
@@ -50,7 +61,8 @@ func LoadWorkflow(templatePath string, catalog catalog.Catalog) (bool, error) {
 	}
 
 	if len(template.Workflows) > 0 {
-		if validationError := validateTemplateFields(template); validationError != nil {
+		if validationError, _ := validateTemplateFields(template); validationError != nil {
+			stats.Increment(SyntaxErrorStats)
 			return false, validationError
 		}
 		return true, nil
@@ -69,10 +81,11 @@ func isTemplateInfoMetadataMatch(tagFilter *filter.TagFilter, template *template
 	return match, err
 }
 
-func validateTemplateFields(template *templates.Template) error {
+func validateTemplateFields(template *templates.Template) (err error, warning error) {
 	info := template.Info
 
 	var errors []string
+	var warnings []string
 
 	if utils.IsBlank(info.Name) {
 		errors = append(errors, fmt.Sprintf(errMandatoryFieldMissingFmt, "name"))
@@ -89,14 +102,16 @@ func validateTemplateFields(template *templates.Template) error {
 	}
 
 	if template.Type() != types.WorkflowProtocol && utils.IsBlank(info.SeverityHolder.Severity.String()) {
-		errors = append(errors, fmt.Sprintf(errMandatoryFieldMissingFmt, "severity"))
+		warnings = append(warnings, fmt.Sprintf(warningFieldMissingFmt, "severity"))
 	}
 
 	if len(errors) > 0 {
-		return fmt.Errorf(strings.Join(errors, ", "))
+		err = fmt.Errorf(strings.Join(errors, ", "))
 	}
-
-	return nil
+	if len(warnings) > 0 {
+		warning = fmt.Errorf(strings.Join(warnings, ", "))
+	}
+	return
 }
 
 var (
