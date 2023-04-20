@@ -91,6 +91,9 @@ func DoHealthCheck(options *types.Options) string {
 		fileTests["Write: "+filename], _ = file.IsWriteable(filename)
 	}
 
+	// Other Host information
+	data["os"].(map[string]interface{})["ulimit"] = checkUlimit(data, ulimitmin)
+
 	// Test each DNS resolver set in config and the default resolver
 	resolvers = addIfNotExists(resolvers, resolverPublic)
 	for _, resolverCfg := range resolvers {
@@ -112,12 +115,6 @@ func DoHealthCheck(options *types.Options) string {
 	}
 	// Rather than the last resolver in the list, use the first one for final answer
 	ipv4addresses, ipv6addresses = getAddresses(internetTarget, resolvers[0])
-
-	// Other Host information
-	if runtime.GOOS != "windows" {
-		// LINUX/UNIX Systems
-		data["os"].(map[string]interface{})["ulimit"] = checkUlimit(data, ulimitmin)
-	}
 
 	// Default target internet tests
 	netTests["IPv4 Ping ("+defaultTarget+")"] = ping(defaultTarget, "ipv4", adminPriv)
@@ -416,6 +413,10 @@ func ping(addresses, proto string, adminPriv bool) string {
 
 // checkUlimit checks the ulimit of the current user
 func checkUlimit(data map[string]interface{}, difflimit int) string {
+	if runtime.GOOS == "windows" {
+		return "N/A"
+	}
+
 	var limit syscall.Rlimit
 	syscall.Getrlimit(syscall.RLIMIT_NOFILE, &limit)
 	if (limit.Max - limit.Cur) <= uint64(difflimit) {
