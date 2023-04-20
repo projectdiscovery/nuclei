@@ -159,6 +159,10 @@ type Options struct {
 	RateLimit int
 	// Rate-Limit is the maximum number of requests per minute for specified target
 	RateLimitMinute int
+	// TODO: Is it okay to add fields in the middle of the struct?
+	// TODO: Is the comment desc the field okay?
+	// Rate-Limit-Host is the maximum number of requests per host per minute (only supported in host-spray scan strategy)
+	RateLimitHost int
 	// PageTimeout is the maximum time to wait for a page in seconds
 	PageTimeout int
 	// InteractionsCacheSize is the number of interaction-url->req to keep in cache at a time.
