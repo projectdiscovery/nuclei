@@ -24,6 +24,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 	"github.com/projectdiscovery/nuclei/v2/pkg/utils"
 	fileutil "github.com/projectdiscovery/utils/file"
+	osutils "github.com/projectdiscovery/utils/os"
 )
 
 // Writer is an interface which writes output to somewhere for nuclei events.
@@ -82,6 +83,13 @@ func (iwe *InternalWrappedEvent) HasOperatorResult() bool {
 	defer iwe.RUnlock()
 
 	return iwe.OperatorsResult != nil
+}
+
+func (iwe *InternalWrappedEvent) HasResults() bool {
+	iwe.RLock()
+	defer iwe.RUnlock()
+
+	return len(iwe.Results) > 0
 }
 
 func (iwe *InternalWrappedEvent) SetOperatorResult(operatorResult *operators.Result) {
@@ -180,7 +188,7 @@ func NewStandardWriter(options *types.Options) (*StandardWriter, error) {
 		}
 	}
 	writer := &StandardWriter{
-		json:             options.JSON,
+		json:             options.JSONL,
 		jsonReqResp:      options.JSONRequests,
 		noMetadata:       options.NoMeta,
 		matcherStatus:    options.MatcherStatus,
@@ -322,6 +330,9 @@ func sanitizeFileName(fileName string) string {
 	fileName = strings.ReplaceAll(fileName, "\\", "_")
 	fileName = strings.ReplaceAll(fileName, "-", "_")
 	fileName = strings.ReplaceAll(fileName, ".", "_")
+	if osutils.IsWindows() {
+		fileName = strings.ReplaceAll(fileName, ":", "_")
+	}
 	fileName = strings.TrimPrefix(fileName, "__")
 	return fileName
 }

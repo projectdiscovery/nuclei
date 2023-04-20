@@ -2,14 +2,16 @@ package reporting
 
 import (
 	"os"
-	"path/filepath"
+
+	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/config"
+	json_exporter "github.com/projectdiscovery/nuclei/v2/pkg/reporting/exporters/jsonexporter"
+	"github.com/projectdiscovery/nuclei/v2/pkg/reporting/exporters/jsonl"
 
 	"go.uber.org/multierr"
 	"gopkg.in/yaml.v2"
 
 	"errors"
 
-	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/config"
 	"github.com/projectdiscovery/nuclei/v2/pkg/model/types/severity"
 	"github.com/projectdiscovery/nuclei/v2/pkg/model/types/stringslice"
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
@@ -133,6 +135,20 @@ func New(options *Options, db string) (Client, error) {
 		}
 		client.exporters = append(client.exporters, exporter)
 	}
+	if options.JSONExporter != nil {
+		exporter, err := json_exporter.New(options.JSONExporter)
+		if err != nil {
+			return nil, errorutil.NewWithErr(err).Wrap(ErrExportClientCreation)
+		}
+		client.exporters = append(client.exporters, exporter)
+	}
+	if options.JSONLExporter != nil {
+		exporter, err := jsonl.New(options.JSONLExporter)
+		if err != nil {
+			return nil, errorutil.NewWithErr(err).Wrap(ErrExportClientCreation)
+		}
+		client.exporters = append(client.exporters, exporter)
+	}
 	if options.ElasticsearchExporter != nil {
 		options.ElasticsearchExporter.HttpClient = options.HttpClient
 		exporter, err := es.New(options.ElasticsearchExporter)
@@ -160,11 +176,7 @@ func New(options *Options, db string) (Client, error) {
 
 // CreateConfigIfNotExists creates report-config if it doesn't exists
 func CreateConfigIfNotExists() error {
-	config, err := config.GetConfigDir()
-	if err != nil {
-		return errorutil.NewWithErr(err).Msgf("could not get config directory")
-	}
-	reportingConfig := filepath.Join(config, "report-config.yaml")
+	reportingConfig := config.DefaultConfig.GetReportingConfigFilePath()
 
 	if fileutil.FileExists(reportingConfig) {
 		return nil
@@ -181,6 +193,8 @@ func CreateConfigIfNotExists() error {
 		SarifExporter:         &sarif.Options{},
 		ElasticsearchExporter: &es.Options{},
 		SplunkExporter:        &splunk.Options{},
+		JSONExporter:          &json_exporter.Options{},
+		JSONLExporter:         &jsonl.Options{},
 	}
 	reportingFile, err := os.Create(reportingConfig)
 	if err != nil {

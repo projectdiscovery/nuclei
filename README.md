@@ -29,10 +29,10 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/projectdiscovery/nuclei/blob/master/README.md">English</a> •
-  <a href="https://github.com/projectdiscovery/nuclei/blob/master/README_CN.md">中文</a> •
-  <a href="https://github.com/projectdiscovery/nuclei/blob/master/README_KR.md">Korean</a> •
-  <a href="https://github.com/projectdiscovery/nuclei/blob/master/README_ID.md">Indonesia</a>
+  <a href="https://github.com/projectdiscovery/nuclei/blob/main/README.md">English</a> •
+  <a href="https://github.com/projectdiscovery/nuclei/blob/main/README_CN.md">中文</a> •
+  <a href="https://github.com/projectdiscovery/nuclei/blob/main/README_KR.md">Korean</a> •
+  <a href="https://github.com/projectdiscovery/nuclei/blob/main/README_ID.md">Indonesia</a>
 </p>
 
 ---
@@ -153,7 +153,7 @@ OUTPUT:
    -srd, -store-resp-dir string  store all request/response passed through nuclei to custom directory (default "output")
    -silent                       display findings only
    -nc, -no-color                disable output content coloring (ANSI escape codes)
-   -json                         write output in JSONL(ines) format
+   -j -jsonl                     write output in JSONL(ines) format
    -irr, -include-rr             include request/response pairs in the JSONL output (for findings only)
    -nm, -no-meta                 disable printing result metadata in cli output
    -ts, -timestamp               enables printing timestamp in cli output
@@ -161,6 +161,8 @@ OUTPUT:
    -ms, -matcher-status          display match failure status
    -me, -markdown-export string  directory to export results in markdown format
    -se, -sarif-export string     file to export results in SARIF format
+   -je, -json-export string      file to export results in JSON format as a JSON array. This can be memory intensive in larger scans
+   -jle, -jsonl-export string    file to export results in JSONL(ine) format as a list of line-delimited JSON objects
 
 CONFIGURATIONS:
    -config string                 path to the nuclei configuration file
@@ -263,7 +265,7 @@ DEBUG:
    -hc, -health-check        run diagnostic check up
 
 UPDATE:
-   -un, -update                      update nuclei engine to the latest released version
+   -up, -update                      update nuclei engine to the latest released version
    -ut, -update-templates            update nuclei-templates to latest released version
    -ud, -update-template-dir string  custom directory to install / update nuclei-templates
    -duc, -disable-update-check       disable automatic nuclei/templates update check
@@ -428,7 +430,7 @@ Do also check out the below similar open-source projects that may fit in your wo
 
 ### License
 
-Nuclei is distributed under [MIT License](https://github.com/projectdiscovery/nuclei/blob/master/LICENSE.md)
+Nuclei is distributed under [MIT License](https://github.com/projectdiscovery/nuclei/blob/main/LICENSE.md)
 
 <h1 align="left">
   <a href="https://discord.gg/projectdiscovery"><img src="static/Join-Discord.png" width="380" alt="Join Discord"></a> <a href="https://nuclei.projectdiscovery.io"><img src="static/check-nuclei-documentation.png" width="380" alt="Check Nuclei Documentation"></a>
