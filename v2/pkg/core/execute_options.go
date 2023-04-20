@@ -1,8 +1,11 @@
 package core
 
 import (
+	"context"
+	"encoding/hex"
 	"sync"
 	"sync/atomic"
+	"time"
 
 	"github.com/remeh/sizedwaitgroup"
 
@@ -11,6 +14,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/templates"
 	"github.com/projectdiscovery/nuclei/v2/pkg/templates/types"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types/scanstrategy"
+	"github.com/projectdiscovery/ratelimit"
 	stringsutil "github.com/projectdiscovery/utils/strings"
 )
 
@@ -111,14 +115,33 @@ func (e *Engine) executeHostSpray(templatesList []*templates.Template, target In
 	results := &atomic.Bool{}
 	wp := sizedwaitgroup.New(e.options.BulkSize + e.options.HeadlessBulkSize)
 
+	var rateLimit *ratelimit.MultiLimiter
+	var err error
+	var key string
 	target.Scan(func(value *contextargs.MetaInput) bool {
+		key = hex.EncodeToString([]byte(value.Input + value.CustomIP))
+		// Limiter that will add to the tokenbucket every minute and set the max size to -rlh flag
+		rateLimit, err = ratelimit.NewMultiLimiter(context.Background(), &ratelimit.Options{
+			Key:         key,
+			IsUnlimited: false,
+			MaxCount:    uint(e.options.RateLimitHost),
+			Duration:    time.Minute,
+		})
+		if err != nil {
+			return false
+		}
 		wp.Add()
 		go func(targetval *contextargs.MetaInput) {
 			defer wp.Done()
+			err = rateLimit.Take(key)
+			if err != nil {
+				return
+			}
 			e.executeTemplatesOnTarget(templatesList, targetval, results)
 		}(value)
 		return true
 	})
 	wp.Wait()
+	rateLimit.Stop(key)
 	return results
 }
