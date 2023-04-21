@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"github.com/pkg/errors"
@@ -26,8 +27,10 @@ import (
 )
 
 func ConfigureOptions() error {
+	// with FileStringSliceOptions, FileNormalizedStringSliceOptions, FileCommaSeparatedStringSliceOptions
+	// if file has extension `.yaml,.json` we consider those as strings and not files to be read
 	isFromFileFunc := func(s string) bool {
-		return !isTemplate(s)
+		return !config.IsTemplate(s)
 	}
 	goflags.FileNormalizedStringSliceOptions.IsFromFile = isFromFileFunc
 	goflags.FileStringSliceOptions.IsFromFile = isFromFileFunc
@@ -48,30 +51,8 @@ func ParseOptions(options *types.Options) {
 	// Show the user the banner
 	showBanner()
 
-	if options.TemplatesDirectory != "" && !filepath.IsAbs(options.TemplatesDirectory) {
-		cwd, _ := os.Getwd()
-		options.TemplatesDirectory = filepath.Join(cwd, options.TemplatesDirectory)
-	}
-	if options.Version {
-		gologger.Info().Msgf("Current Version: %s\n", config.Version)
-		os.Exit(0)
-	}
 	if options.ShowVarDump {
 		vardump.EnableVarDump = true
-	}
-	if options.TemplatesVersion {
-		configuration, err := config.ReadConfiguration()
-		if err != nil {
-			gologger.Fatal().Msgf("Could not read template configuration: %s\n", err)
-		}
-		gologger.Info().Msgf("Public nuclei-templates version: %s (%s)\n", configuration.TemplateVersion, configuration.TemplatesDirectory)
-		if configuration.CustomS3TemplatesDirectory != "" {
-			gologger.Info().Msgf("Custom S3 templates location: %s\n", configuration.CustomS3TemplatesDirectory)
-		}
-		if configuration.CustomGithubTemplatesDirectory != "" {
-			gologger.Info().Msgf("Custom Github templates location: %s ", configuration.CustomGithubTemplatesDirectory)
-		}
-		os.Exit(0)
 	}
 	if options.ShowActions {
 		gologger.Info().Msgf("Showing available headless actions: ")
@@ -139,7 +120,7 @@ func validateOptions(options *types.Options) error {
 		return err
 	}
 	if options.Validate {
-		validateTemplatePaths(options.TemplatesDirectory, options.Templates, options.Workflows)
+		validateTemplatePaths(config.DefaultConfig.TemplatesDirectory, options.Templates, options.Workflows)
 	}
 
 	// Verify if any of the client certificate options were set since it requires all three to work properly
@@ -149,7 +130,7 @@ func validateOptions(options *types.Options) error {
 		}
 		validateCertificatePaths([]string{options.ClientCertFile, options.ClientKeyFile, options.ClientCAFile})
 	}
-	// Verify aws secrets are passed if s3 template bucket passed
+	// Verify AWS secrets are passed if a S3 template bucket is passed
 	if options.AwsBucketName != "" && options.UpdateTemplates {
 		missing := validateMissingS3Options(options)
 		if missing != nil {
@@ -162,6 +143,14 @@ func validateOptions(options *types.Options) error {
 		missing := validateMissingAzureOptions(options)
 		if missing != nil {
 			return fmt.Errorf("azure connection details are missing. Please provide %s", strings.Join(missing, ","))
+		}
+	}
+
+	// Verify that all GitLab options are provided if the GitLab server or token is provided
+	if options.GitLabToken != "" && options.UpdateTemplates {
+		missing := validateMissingGitLabOptions(options)
+		if missing != nil {
+			return fmt.Errorf("gitlab server details are missing. Please provide %s", strings.Join(missing, ","))
 		}
 	}
 
@@ -206,6 +195,8 @@ func validateCloudOptions(options *types.Options) error {
 			missing = validateMissingS3Options(options)
 		case "github":
 			missing = validateMissingGithubOptions(options)
+		case "gitlab":
+			missing = validateMissingGitLabOptions(options)
 		case "azure":
 			missing = validateMissingAzureOptions(options)
 		}
@@ -261,6 +252,18 @@ func validateMissingGithubOptions(options *types.Options) []string {
 	if len(options.GithubTemplateRepo) == 0 {
 		missing = append(missing, "GITHUB_TEMPLATE_REPO")
 	}
+	return missing
+}
+
+func validateMissingGitLabOptions(options *types.Options) []string {
+	var missing []string
+	if options.GitLabToken == "" {
+		missing = append(missing, "GITLAB_TOKEN")
+	}
+	if len(options.GitLabTemplateRepositoryIDs) == 0 {
+		missing = append(missing, "GITLAB_REPOSITORY_IDS")
+	}
+
 	return missing
 }
 
@@ -353,6 +356,29 @@ func readEnvInputVars(options *types.Options) {
 	if repolist != "" {
 		options.GithubTemplateRepo = append(options.GithubTemplateRepo, stringsutil.SplitAny(repolist, ",")...)
 	}
+
+	// GitLab options for downloading templates from a repository
+	options.GitLabServerURL = os.Getenv("GITLAB_SERVER_URL")
+	if options.GitLabServerURL == "" {
+		options.GitLabServerURL = "https://gitlab.com"
+	}
+	options.GitLabToken = os.Getenv("GITLAB_TOKEN")
+	repolist = os.Getenv("GITLAB_REPOSITORY_IDS")
+	// Convert the comma separated list of repository IDs to a list of integers
+	if repolist != "" {
+		for _, repoID := range stringsutil.SplitAny(repolist, ",") {
+			// Attempt to convert the repo ID to an integer
+			repoIDInt, err := strconv.Atoi(repoID)
+			if err != nil {
+				gologger.Warning().Msgf("Invalid GitLab template repository ID: %s", repoID)
+				continue
+			}
+
+			// Add the int repository ID to the list
+			options.GitLabTemplateRepositoryIDs = append(options.GitLabTemplateRepositoryIDs, repoIDInt)
+		}
+	}
+
 	// AWS options for downloading templates from an S3 bucket
 	options.AwsAccessKey = os.Getenv("AWS_ACCESS_KEY")
 	options.AwsSecretKey = os.Getenv("AWS_SECRET_KEY")
