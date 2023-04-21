@@ -130,6 +130,10 @@ type Input struct {
 	// examples:
 	//   - value: "\"prefix\""
 	Name string `yaml:"name,omitempty" json:"name,omitempty" jsonschema:"title=optional name for data read,description=Optional name of the data read to provide matching on"`
+	// Match contains the conditions to match to continue - DSL only
+	Match []string `yaml:"match,omitempty" json:"match,omitempty" jsonschema:"title=match,description=match"`
+	// Extract contains kv expressions to extract from read data - DSL only
+	Extract map[string]string `yaml:"extract,omitempty" json:"extract,omitempty" jsonschema:"title=extract,description=match"`
 }
 
 // GetID returns the unique ID of the request if any.

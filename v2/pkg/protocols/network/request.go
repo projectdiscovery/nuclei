@@ -11,11 +11,13 @@ import (
 	"strings"
 	"time"
 
+	"github.com/Knetic/govaluate"
 	"github.com/pkg/errors"
 	"golang.org/x/exp/maps"
 
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators"
+	"github.com/projectdiscovery/nuclei/v2/pkg/operators/common/dsl"
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/contextargs"
@@ -194,7 +196,28 @@ func (request *Request) executeRequestWithPayloads(variables map[string]interfac
 				}
 			}
 		}
+
+		//TODO: default matchers/extractors might be placed here
+		// in-step matchers
+		for _, match := range input.Match {
+			result, err := evaluate(match, interimValues)
+			if err != nil {
+				return errors.Wrap(err, "could not evaluate inline matcher")
+			}
+			if v, ok := result.(bool); !ok || !v {
+				return nil
+			}
+		}
+		// in-step extractors
+		for name, extract := range input.Extract {
+			result, err := evaluate(extract, interimValues)
+			if err != nil {
+				return errors.Wrap(err, "could not evaluate inline extractor")
+			}
+			interimValues[name] = result
+		}
 	}
+
 	request.options.Progress.IncrementRequests()
 
 	if request.options.Options.Debug || request.options.Options.DebugRequests || request.options.Options.StoreResponse {
@@ -362,4 +385,13 @@ func generateNetworkVariables(input string) map[string]interface{} {
 		"Port":     port,
 		"Hostname": input,
 	}
+}
+
+// Todo: temporarily skip expression engine due to forced string conversion
+func evaluate(expression string, values map[string]interface{}) (interface{}, error) {
+	compiled, err := govaluate.NewEvaluableExpressionWithFunctions(expression, dsl.HelperFunctions)
+	if err != nil {
+		return nil, err
+	}
+	return compiled.Evaluate(values)
 }
