@@ -138,6 +138,7 @@ func (request *Request) executeRequestWithPayloads(variables map[string]interfac
 
 	inputEvents := make(map[string]interface{})
 
+input_loop:
 	for _, input := range request.Inputs {
 		data := []byte(input.Data)
 
@@ -205,7 +206,7 @@ func (request *Request) executeRequestWithPayloads(variables map[string]interfac
 				return errors.Wrap(err, "could not evaluate inline matcher")
 			}
 			if v, ok := result.(bool); !ok || !v {
-				return nil
+				break input_loop
 			}
 		}
 		// in-step extractors
