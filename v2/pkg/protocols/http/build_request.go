@@ -157,6 +157,16 @@ func (r *requestGenerator) Make(ctx context.Context, input *contextargs.Context,
 func (r *requestGenerator) makeSelfContainedRequest(ctx context.Context, data string, payloads, dynamicValues map[string]interface{}) (*generatedRequest, error) {
 	isRawRequest := r.request.isRaw()
 
+	// evaluate with default signature vars
+	if defaultVars := GetDefaultSignerVars(r.request.Signature.Value); len(defaultVars) > 0 {
+		// evaluate with default signature vars
+		var err error
+		data, err = expressions.Evaluate(data, defaultVars)
+		if err != nil {
+			return nil, ErrEvalExpression.Wrap(err).WithTag("self-contained").Msgf("failed to add default vars for signer %v", r.request.Signature.Value)
+		}
+	}
+
 	// If the request is a raw request, get the URL from the request
 	// header and use it to make the request.
 	if isRawRequest {
