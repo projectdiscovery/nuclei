@@ -8,10 +8,12 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/expressions"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/generators"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/interactsh"
-	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/marker"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 	"github.com/projectdiscovery/nuclei/v2/pkg/utils"
+	"github.com/projectdiscovery/stringsutil"
 )
+
+var DefaultProtocolVariables = []string{"FQDN", "RDN", "DN", "TLD", "SD", "BaseURL", "RootURL", "Hostname", "Host", "Port", "Path", "File", "Scheme", "Input"}
 
 // Variable is a key-value pair of strings that can be used
 // throughout template.
@@ -35,7 +37,7 @@ func (variables *Variable) UnmarshalYAML(unmarshal func(interface{}) error) erro
 		return err
 	}
 
-	if variables.checkForLazyEval() {
+	if variables.LazyEval || variables.checkForLazyEval() {
 		return nil
 	}
 
@@ -108,8 +110,7 @@ func evaluateVariableValue(expression string, values, processing map[string]inte
 // and sets the flag accordingly.
 func (variables *Variable) checkForLazyEval() bool {
 	variables.ForEach(func(key string, value interface{}) {
-		ret := expressions.FindExpressions(types.ToString(value), marker.ParenthesisOpen, marker.ParenthesisClose, nil)
-		if len(ret) > 0 {
+		if stringsutil.ContainsAny(types.ToString(value), DefaultProtocolVariables...) {
 			variables.LazyEval = true
 			return
 		}
