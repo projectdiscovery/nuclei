@@ -64,7 +64,12 @@ func (variables *Variable) UnmarshalJSON(data []byte) error {
 func (variables *Variable) Evaluate(values map[string]interface{}) map[string]interface{} {
 	result := make(map[string]interface{}, variables.Len())
 	variables.ForEach(func(key string, value interface{}) {
-		result[key] = evaluateVariableValue(types.ToString(value), generators.MergeMaps(values, result), result)
+		valueString := types.ToString(value)
+		combined := generators.MergeMaps(values, result)
+		if value, ok := combined[key]; ok {
+			valueString = types.ToString(value)
+		}
+		result[key] = evaluateVariableValue(valueString, combined, result)
 	})
 	return result
 }
@@ -79,7 +84,11 @@ func (variables *Variable) EvaluateWithInteractsh(values map[string]interface{},
 		if strings.Contains(valueString, "interactsh-url") {
 			valueString, interactURLs = interact.Replace(valueString, interactURLs)
 		}
-		result[key] = evaluateVariableValue(valueString, generators.MergeMaps(values, result), result)
+		combined := generators.MergeMaps(values, result)
+		if value, ok := combined[key]; ok {
+			valueString = types.ToString(value)
+		}
+		result[key] = evaluateVariableValue(valueString, combined, result)
 	})
 	return result, interactURLs
 }
