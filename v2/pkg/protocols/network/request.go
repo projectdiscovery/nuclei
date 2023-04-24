@@ -11,13 +11,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Knetic/govaluate"
 	"github.com/pkg/errors"
 	"golang.org/x/exp/maps"
 
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators"
-	"github.com/projectdiscovery/nuclei/v2/pkg/operators/common/dsl"
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/contextargs"
@@ -39,7 +37,7 @@ func (request *Request) Type() templateTypes.ProtocolType {
 }
 
 // ExecuteWithResults executes the protocol requests and returns results instead of writing them.
-func (request *Request) ExecuteWithResults(input *contextargs.Context, metadata /*TODO review unused parameter*/, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
+func (request *Request) ExecuteWithResults(input *contextargs.Context, metadata, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
 	var address string
 	var err error
 
@@ -109,7 +107,7 @@ func (request *Request) executeRequestWithPayloads(variables map[string]interfac
 		err      error
 	)
 
-	if host, _, splitErr := net.SplitHostPort(actualAddress); splitErr == nil {
+	if host, _, err := net.SplitHostPort(actualAddress); err == nil {
 		hostname = host
 	}
 
@@ -121,7 +119,7 @@ func (request *Request) executeRequestWithPayloads(variables map[string]interfac
 	if err != nil {
 		request.options.Output.Request(request.options.TemplatePath, address, request.Type().String(), err)
 		request.options.Progress.IncrementFailedRequestsBy(1)
-		return errors.Wrap(err, "could not connect to server request")
+		return errors.Wrap(err, "could not connect to server")
 	}
 	defer conn.Close()
 	_ = conn.SetReadDeadline(time.Now().Add(time.Duration(request.options.Options.Timeout) * time.Second))
@@ -157,10 +155,10 @@ input_loop:
 
 		reqBuilder.Write(finalData)
 
-		// if varErr := expressions.ContainsUnresolvedVariables(string(finalData)); varErr != nil {
-		// 	gologger.Warning().Msgf("[%s] Could not make network request for %s: %v\n", request.options.TemplateID, actualAddress, varErr)
-		// 	return nil
-		// }
+		if err := expressions.ContainsUnresolvedVariables(string(finalData)); err != nil {
+			gologger.Warning().Msgf("[%s] Could not make network request for %s: %v\n", request.options.TemplateID, actualAddress, err)
+			return nil
+		}
 
 		if input.Type.GetType() == hexType {
 			finalData, err = hex.DecodeString(string(finalData))
@@ -198,10 +196,10 @@ input_loop:
 			}
 		}
 
-		//TODO: default matchers/extractors might be placed here
-		// in-step matchers
+		// global matchers can't be used with progressive steps as they are monolithic with output logic
+		// inline matchers
 		for _, match := range input.Match {
-			result, err := evaluate(match, interimValues)
+			result, err := expressions.Eval(match, interimValues)
 			if err != nil {
 				return errors.Wrap(err, "could not evaluate inline matcher")
 			}
@@ -209,9 +207,9 @@ input_loop:
 				break input_loop
 			}
 		}
-		// in-step extractors
+		// inline extractors
 		for name, extract := range input.Extract {
-			result, err := evaluate(extract, interimValues)
+			result, err := expressions.Eval(extract, interimValues)
 			if err != nil {
 				return errors.Wrap(err, "could not evaluate inline extractor")
 			}
@@ -386,13 +384,4 @@ func generateNetworkVariables(input string) map[string]interface{} {
 		"Port":     port,
 		"Hostname": input,
 	}
-}
-
-// Todo: temporarily skip expression engine due to forced string conversion
-func evaluate(expression string, values map[string]interface{}) (interface{}, error) {
-	compiled, err := govaluate.NewEvaluableExpressionWithFunctions(expression, dsl.HelperFunctions)
-	if err != nil {
-		return nil, err
-	}
-	return compiled.Evaluate(values)
 }

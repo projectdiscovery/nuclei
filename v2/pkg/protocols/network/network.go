@@ -130,10 +130,17 @@ type Input struct {
 	// examples:
 	//   - value: "\"prefix\""
 	Name string `yaml:"name,omitempty" json:"name,omitempty" jsonschema:"title=optional name for data read,description=Optional name of the data read to provide matching on"`
-	// Match contains the conditions to match to continue - DSL only
-	Match []string `yaml:"match,omitempty" json:"match,omitempty" jsonschema:"title=match,description=match"`
+	// description: |
+	//   Match defines mandatory conditions to continue to the next step (only DSL is supported)
+	// examples:
+	//   - value: len(data) > 0
+	Match []string `yaml:"match,omitempty" json:"match,omitempty" jsonschema:"title=match,description=inline matchers to continue to the next step"`
 	// Extract contains kv expressions to extract from read data - DSL only
-	Extract map[string]string `yaml:"extract,omitempty" json:"extract,omitempty" jsonschema:"title=extract,description=match"`
+	// description: |
+	//   Extract contains key:value expressions where key is assigned the resolved expression value
+	// examples:
+	//   - value: test: len(data)
+	Extract map[string]string `yaml:"extract,omitempty" json:"extract,omitempty" jsonschema:"title=extract,description=inline extractors to extract data from the response"`
 }
 
 // GetID returns the unique ID of the request if any.
