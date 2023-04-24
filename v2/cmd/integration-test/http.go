@@ -1057,8 +1057,18 @@ func (h *httpVariables) Execute(filePath string) error {
 	if err != nil {
 		return err
 	}
+	if err := expectResultsCount(results, 1); err != nil {
+		return err
+	}
 
-	return expectResultsCount(results, 1)
+	// variable override that does not have any match
+	// to make sure the variable override is working
+	results, err = testutils.RunNucleiTemplateAndGetResults(filePath, ts.URL, debug, "-var", "a1=failed")
+	if err != nil {
+		return err
+	}
+
+	return expectResultsCount(results, 0)
 }
 
 type customCLISNI struct{}
