@@ -1,7 +1,7 @@
-id: example-self-contained-input
+id: self-contained-with-params
 
 info:
-  name: example-self-contained
+  name: self contained with params
   author: pd-team
   severity: info
 
