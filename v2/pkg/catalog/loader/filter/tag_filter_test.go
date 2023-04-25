@@ -221,7 +221,9 @@ func TestTagBasedFilter(t *testing.T) {
 		dummyTemplate.Info.Metadata["bool_value"] = true
 		dummyTemplate.Info.Metadata["number_value"] = 1
 		testAdvancedFiltering(t, []string{"test_value == 'test' && bool_value && number_value>=1"}, dummyTemplate, false, true)
-
+		// some templates exist with hyphenated fields in the Metadata section.
+		dummyTemplate.Info.Metadata["tool-query"] = "test-toolkit"
+		testAdvancedFiltering(t, []string{"tool_query == 'test-toolkit'"}, dummyTemplate, false, true)
 	})
 	t.Run("advanced-filtering-negative", func(t *testing.T) {
 		dummyTemplate := newDummyTemplate("test", []string{"jira"}, []string{"test1", "test2"}, severity.High, types.HTTPProtocol)
