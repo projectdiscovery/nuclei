@@ -196,7 +196,8 @@ func tryCollectConditionsMatchinfo(template *templates.Template) map[string]inte
 		"protocol":    template.Type().String(),
 	}
 	for k, v := range template.Info.Metadata {
-		parameters[k] = v
+		// replace `-` in keys with `_` when ranging
+		parameters[strings.ReplaceAll(k, "-", "_")] = v
 	}
 
 	if template.Info.Classification != nil {
