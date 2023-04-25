@@ -129,7 +129,7 @@ func (e *Extractor) SaveToFile(data map[string]struct{}) {
 	}
 
 	if !fileutil.FileExists(e.ToFile) {
-		baseDir := filepath.Base(e.ToFile)
+		baseDir := filepath.Dir(e.ToFile)
 		if baseDir != "." && !fileutil.FolderExists(baseDir) {
 			if err := fileutil.CreateFolder(baseDir); err != nil {
 				gologger.Error().Msgf("extractor: could not create folder %s: %s\n", baseDir, err)
@@ -137,12 +137,16 @@ func (e *Extractor) SaveToFile(data map[string]struct{}) {
 			}
 		}
 	}
-	file, err := os.OpenFile(e.ToFile, os.O_APPEND|os.O_WRONLY, 0600)
+	file, err := os.OpenFile(e.ToFile, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0600)
 	if err != nil {
+		gologger.Error().Msgf("extractor: could not open file %s: %s\n", e.ToFile, err)
 		return
 	}
 	defer file.Close()
 	for k := range data {
-		_, _ = file.WriteString(k + "\n")
+		if _, err = file.WriteString(k + "\n"); err != nil {
+			gologger.Error().Msgf("extractor: could not write to file %s: %s\n", e.ToFile, err)
+			return
+		}
 	}
 }
