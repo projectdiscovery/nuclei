@@ -9,13 +9,12 @@ import (
 	"github.com/go-rod/rod"
 	"github.com/go-rod/rod/lib/launcher"
 	"github.com/pkg/errors"
-	ps "github.com/shirou/gopsutil/v3/process"
 
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 	fileutil "github.com/projectdiscovery/utils/file"
 	osutils "github.com/projectdiscovery/utils/os"
+	processutil "github.com/projectdiscovery/utils/process"
 	reflectutil "github.com/projectdiscovery/utils/reflect"
-	stringsutil "github.com/projectdiscovery/utils/strings"
 )
 
 // Browser is a browser structure for nuclei headless module
@@ -34,7 +33,7 @@ func New(options *types.Options) (*Browser, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "could not create temporary directory")
 	}
-	previousPIDs := findChromeProcesses()
+	previousPIDs := processutil.FindProcesses(processutil.IsChromeProcess)
 
 	chromeLauncher := launcher.New().
 		Leakless(false).
@@ -140,45 +139,5 @@ func (b *Browser) UserAgent() string {
 func (b *Browser) Close() {
 	b.engine.Close()
 	os.RemoveAll(b.tempDir)
-	b.killChromeProcesses()
-}
-
-// killChromeProcesses any and all new chrome processes started after
-// headless process launch.
-func (b *Browser) killChromeProcesses() {
-	processes, _ := ps.Processes()
-
-	for _, process := range processes {
-		// skip non-chrome processes
-		if !isChromeProcess(process) {
-			continue
-		}
-		// skip chrome processes that were already running
-		if _, ok := b.previousPIDs[process.Pid]; ok {
-			continue
-		}
-		_ = process.Kill()
-	}
-}
-
-// findChromeProcesses finds chrome process running on host
-func findChromeProcesses() map[int32]struct{} {
-	processes, _ := ps.Processes()
-	list := make(map[int32]struct{})
-	for _, process := range processes {
-		if isChromeProcess(process) {
-			list[process.Pid] = struct{}{}
-			if ppid, err := process.Ppid(); err == nil {
-				list[ppid] = struct{}{}
-			}
-		}
-	}
-	return list
-}
-
-// isChromeProcess checks if a process is chrome/chromium
-func isChromeProcess(process *ps.Process) bool {
-	name, _ := process.Name()
-	executable, _ := process.Exe()
-	return stringsutil.ContainsAny(name, "chrome", "chromium") || stringsutil.ContainsAny(executable, "chrome", "chromium")
+	processutil.CloseProcesses(processutil.IsChromeProcess, b.previousPIDs)
 }
