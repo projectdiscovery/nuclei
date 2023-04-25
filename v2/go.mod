@@ -69,6 +69,7 @@ require (
 	github.com/mholt/archiver v3.1.1+incompatible
 	github.com/projectdiscovery/dsl v0.0.5-0.20230328190851-15d12ab4c5e4
 	github.com/projectdiscovery/fasttemplate v0.0.2
+	github.com/projectdiscovery/fdmax v0.0.4
 	github.com/projectdiscovery/goflags v0.1.8
 	github.com/projectdiscovery/gologger v1.1.8
 	github.com/projectdiscovery/httpx v1.2.9
@@ -247,8 +248,7 @@ require (
 	github.com/mattn/go-colorable v0.1.13 // indirect
 	github.com/nwaples/rardecode v1.1.3 // indirect
 	github.com/pierrec/lz4 v2.6.1+incompatible // indirect
-	github.com/projectdiscovery/fileutil v0.0.3
-	github.com/projectdiscovery/iputil v0.0.2 // indirect
+	github.com/projectdiscovery/iputil v0.0.2
 	github.com/sergi/go-diff v1.2.0 // indirect
 	github.com/src-d/gcfg v1.4.0 // indirect
 	github.com/xanzy/ssh-agent v0.3.3 // indirect
