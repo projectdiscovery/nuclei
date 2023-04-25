@@ -8,11 +8,9 @@ import (
 	"net"
 	"net/url"
 	"os"
-	"path/filepath"
 	"runtime"
 	"strconv"
 	"strings"
-	"syscall"
 
 	"time"
 
@@ -20,6 +18,7 @@ import (
 	"golang.org/x/net/ipv4"
 	"golang.org/x/net/ipv6"
 
+	"github.com/projectdiscovery/fdmax"
 	"github.com/projectdiscovery/iputil"
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/config"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
@@ -86,7 +85,7 @@ func DoHealthCheck(options *types.Options) string {
 	// Begin tests
 
 	// File permissions
-	for _, filename := range []string{options.ConfigPath, config.GetIgnoreFilePath(), getTemplateCsf()} {
+	for _, filename := range []string{config.DefaultConfig.GetFlagsConfigFilePath(), config.DefaultConfig.GetIgnoreFilePath(), config.DefaultConfig.GetChecksumFilePath()} {
 		fileTests["Read: "+filename], _ = file.IsReadable(filename)
 		fileTests["Write: "+filename], _ = file.IsWriteable(filename)
 	}
@@ -162,16 +161,6 @@ func getAddresses(target, dnsServer string) (string, string) {
 		ipv4addresses, ipv6addresses = lookup(target, dnsServer)
 	}
 	return ipv4addresses, ipv6addresses
-}
-
-// getTemplateCsf returns the path to the checksum file
-func getTemplateCsf() string {
-	cf, _ := config.ReadConfiguration()
-	templatePath := ""
-	if cf != nil {
-		templatePath = cf.TemplatesDirectory
-	}
-	return filepath.Join(templatePath, "/", ".checksum")
 }
 
 // checkConnection checks if a connection can be made to a host
@@ -413,15 +402,12 @@ func ping(addresses, proto string, adminPriv bool) string {
 
 // checkUlimit checks the ulimit of the current user
 func checkUlimit(data map[string]interface{}, difflimit int) string {
-	if runtime.GOOS == "windows" {
+	limit, err := fdmax.Get()
+	if err != nil {
 		return "N/A"
 	}
-
-	var limit syscall.Rlimit
-	syscall.Getrlimit(syscall.RLIMIT_NOFILE, &limit)
-	if (limit.Max - limit.Cur) <= uint64(difflimit) {
-		return fmt.Sprintf("You may need to increase your file descriptor limit. %v/%v used", limit.Cur, limit.Max)
-	} else {
-		return "Pass"
+	if (limit.Max - limit.Current) <= uint64(difflimit) {
+		return fmt.Sprintf("You may need to increase your file descriptor limit. %v/%v used", limit.Current, limit.Max)
 	}
+	return "N/A"
 }
