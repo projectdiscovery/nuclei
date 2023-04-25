@@ -1323,7 +1323,9 @@ func (h *httpSaveExtractorValuesToFile) Execute(filePath string) error {
 	}
 
 	// remove output.txt file if exists
-	if fileutil.FileExists("output.txt") {
+	if !fileutil.FileExists("output.txt") {
+		return fmt.Errorf("extractor output file output.txt file does not exist")
+	} else {
 		_ = os.Remove("output.txt")
 	}
 	return expectResultsCount(results, 1)
