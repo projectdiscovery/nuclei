@@ -43,11 +43,12 @@ func TestResponseToDSLMap(t *testing.T) {
 
 	resp := new(dns.Msg)
 	resp.Rcode = dns.RcodeSuccess
-	resp.Answer = append(resp.Answer, &dns.A{A: net.ParseIP("1.1.1.1"), Hdr: dns.RR_Header{Name: "one.one.one.one."}})
+	resp.Answer = append(resp.Answer, &dns.A{A: net.ParseIP("1.1.1.1"), Hdr: dns.RR_Header{Name: "one.one.one.one.", Rrtype: dns.TypeA}})
 
 	event := request.responseToDSLMap(req, resp, "one.one.one.one", "one.one.one.one", nil)
-	require.Len(t, event, 14, "could not get correct number of items in dsl map")
+	require.Len(t, event, 15, "could not get correct number of items in dsl map")
 	require.Equal(t, dns.RcodeSuccess, event["rcode"], "could not get correct rcode")
+	require.Equal(t, net.ParseIP("1.1.1.1").String(), event["a"], "could not get correct rcode")
 }
 
 func TestDNSOperatorMatch(t *testing.T) {
