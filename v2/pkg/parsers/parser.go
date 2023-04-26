@@ -81,10 +81,17 @@ func isTemplateInfoMetadataMatch(tagFilter *filter.TagFilter, template *template
 }
 
 func validateTemplateFields(template *templates.Template) (err error, warning error) {
+	err = validateTemplateMandatoryFields(template)
+	warning = validateTemplateOptionalFields(template)
+	return
+}
+
+// validateTemplateMandatoryFields validates the mandatory fields of a template
+// return error from this function will cause hard fail and not proceed further
+func validateTemplateMandatoryFields(template *templates.Template) error {
 	info := template.Info
 
 	var errors []string
-	var warnings []string
 
 	if utils.IsBlank(info.Name) {
 		errors = append(errors, fmt.Sprintf(errMandatoryFieldMissingFmt, "name"))
@@ -100,17 +107,29 @@ func validateTemplateFields(template *templates.Template) (err error, warning er
 		errors = append(errors, fmt.Sprintf(errInvalidFieldFmt, "id", templateIDRegexp.String()))
 	}
 
+	if len(errors) > 0 {
+		return fmt.Errorf(strings.Join(errors, ", "))
+	}
+
+	return nil
+}
+
+// validateTemplateOptionalFields validates the optional fields of a template
+// return error from this function will throw a warning and proceed further
+func validateTemplateOptionalFields(template *templates.Template) error {
+	info := template.Info
+
+	var warnings []string
+
 	if template.Type() != types.WorkflowProtocol && utils.IsBlank(info.SeverityHolder.Severity.String()) {
 		warnings = append(warnings, fmt.Sprintf(warningFieldMissingFmt, "severity"))
 	}
 
-	if len(errors) > 0 {
-		err = fmt.Errorf(strings.Join(errors, ", "))
-	}
 	if len(warnings) > 0 {
-		warning = fmt.Errorf(strings.Join(warnings, ", "))
+		return fmt.Errorf(strings.Join(warnings, ", "))
 	}
-	return
+
+	return nil
 }
 
 var (
