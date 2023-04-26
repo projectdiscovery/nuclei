@@ -98,6 +98,31 @@ func Parse(request string, inputURL *urlutil.URL, unsafe bool) (*Request, error)
 	return rawrequest, nil
 }
 
+// ParseRawRequest parses the raw request as supplied by the user
+// this function should only be used for self-contained requests
+func ParseRawRequest(request string, unsafe bool) (*Request, error) {
+	req, err := readRawRequest(request, unsafe)
+	if err != nil {
+		return nil, err
+	}
+	if strings.HasPrefix(req.Path, "http") {
+		urlx, err := urlutil.Parse(req.Path)
+		if err != nil {
+			return nil, errorutil.NewWithErr(err).Msgf("failed to parse url %v", req.Path)
+		}
+		req.Path = urlx.GetRelativePath()
+		req.FullURL = urlx.String()
+	} else {
+		// given url is relative construct one using Host Header
+		if _, ok := req.Headers["Host"]; !ok {
+			return nil, errorutil.NewWithTag("self-contained-raw", "host header is required for relative path")
+		}
+		// Review: Current default scheme in self contained templates if relative path is provided is https
+		req.FullURL = fmt.Sprintf("%s://%s%s", urlutil.HTTPS, strings.TrimSpace(req.Headers["Host"]), req.Path)
+	}
+	return req, nil
+}
+
 // reads raw request line by line following convention
 func readRawRequest(request string, unsafe bool) (*Request, error) {
 	rawRequest := &Request{
@@ -121,7 +146,7 @@ read_line:
 		goto read_line
 	}
 
-	parts := strings.Split(s, " ")
+	parts := strings.Fields(s)
 	if len(parts) > 0 {
 		rawRequest.Method = parts[0]
 		if len(parts) == 2 && strings.Contains(parts[1], "HTTP") {

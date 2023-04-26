@@ -217,9 +217,6 @@ func (r *requestGenerator) makeSelfContainedRequest(ctx context.Context, data st
 		if err != nil {
 			return nil, ErrEvalExpression.Wrap(err).WithTag("self-contained", "raw")
 		}
-		// TODO: self-contained templates needs different logic for raw requests
-		// since `parsed` is actually extracted from raw request . automerging and other stuff
-		// is not needed and only causes more problems
 		return r.generateRawRequest(ctx, data, parsed, values, payloads)
 	}
 	if err := expressions.ContainsUnresolvedVariables(data); err != nil {
@@ -260,14 +257,17 @@ func (r *requestGenerator) generateHttpRequest(ctx context.Context, urlx *urluti
 // finalVars = contains all variables including generator and protocol specific variables
 // generatorValues = contains variables used in fuzzing or other generator specific values
 func (r *requestGenerator) generateRawRequest(ctx context.Context, rawRequest string, baseURL *urlutil.URL, finalVars, generatorValues map[string]interface{}) (*generatedRequest, error) {
-	// Unlike other requests parsedURL/ InputURL in self contained templates is extracted from raw request itself h
-	// and variables are supposed to be given from command line and not from inputURL
-	// ence this cause issues like duplicated params/paths.
-	// TODO: implement a generic raw request parser in rawhttp library (without variables and stuff)
-	baseURL.Params = nil // this fixes issue of duplicated params in self contained templates but not a appropriate fix
-	rawRequestData, err := raw.Parse(rawRequest, baseURL, r.request.Unsafe)
+
+	var rawRequestData *raw.Request
+	var err error
+	if r.request.SelfContained {
+		// in self contained requests baseURL is extracted from raw request itself
+		rawRequestData, err = raw.ParseRawRequest(rawRequest, r.request.Unsafe)
+	} else {
+		rawRequestData, err = raw.Parse(rawRequest, baseURL, r.request.Unsafe)
+	}
 	if err != nil {
-		return nil, err
+		return nil, errorutil.NewWithErr(err).Msgf("failed to parse raw request")
 	}
 
 	// Unsafe option uses rawhttp library
