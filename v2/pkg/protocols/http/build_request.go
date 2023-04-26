@@ -264,7 +264,6 @@ func (r *requestGenerator) generateRawRequest(ctx context.Context, rawRequest st
 	if err != nil {
 		return nil, err
 	}
-	gologger.Info().Msgf("Sending request tox %s", baseURL.String())
 
 	// Unsafe option uses rawhttp library
 	if r.request.Unsafe {
