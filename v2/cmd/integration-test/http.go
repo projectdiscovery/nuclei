@@ -59,6 +59,7 @@ var httpTestcases = map[string]testutils.TestCase{
 	"http/stop-at-first-match.yaml":                 &httpStopAtFirstMatch{},
 	"http/stop-at-first-match-with-extractors.yaml": &httpStopAtFirstMatchWithExtractors{},
 	"http/variables.yaml":                           &httpVariables{},
+	"http/variable-dsl-function.yaml":               &httpVariableDSLFunction{},
 	"http/get-override-sni.yaml":                    &httpSniAnnotation{},
 	"http/get-sni.yaml":                             &customCLISNI{},
 	"http/redirect-match-url.yaml":                  &httpRedirectMatchURL{},
@@ -1069,6 +1070,31 @@ func (h *httpVariables) Execute(filePath string) error {
 	}
 
 	return expectResultsCount(results, 0)
+}
+
+type httpVariableDSLFunction struct{}
+
+// Execute executes a test case and returns an error if occurred
+func (h *httpVariableDSLFunction) Execute(filePath string) error {
+	results, err := testutils.RunNucleiBinaryAndGetCombinedOutput(debug, []string{"-t", filePath, "-u", "https://scanme.sh", "-debug-req"})
+	if err != nil {
+		return err
+	}
+
+	actual := []string{}
+	for _, v := range strings.Split(results, "\n") {
+		if strings.Contains(v, "GET") {
+			parts := strings.Fields(v)
+			if len(parts) == 3 {
+				actual = append(actual, parts[1])
+			}
+		}
+	}
+	if len(actual) == 2 && actual[0] == actual[1] {
+		return nil
+	}
+
+	return fmt.Errorf("expected 2 requests with same URL, got %v", actual)
 }
 
 type customCLISNI struct{}
