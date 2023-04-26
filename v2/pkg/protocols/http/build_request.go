@@ -255,6 +255,11 @@ func (r *requestGenerator) generateHttpRequest(ctx context.Context, urlx *urluti
 // finalVars = contains all variables including generator and protocol specific variables
 // generatorValues = contains variables used in fuzzing or other generator specific values
 func (r *requestGenerator) generateRawRequest(ctx context.Context, rawRequest string, baseURL *urlutil.URL, finalVars, generatorValues map[string]interface{}) (*generatedRequest, error) {
+	// Unlike other requests parsedURL/ InputURL in self contained templates is extracted from raw request itself h
+	// and variables are supposed to be given from command line and not from inputURL
+	// ence this cause issues like duplicated params/paths.
+	// TODO: implement a generic raw request parser in rawhttp library (without variables and stuff)
+	baseURL.Params = nil // this fixes issue of duplicated params in self contained templates but not a appropriate fix
 	rawRequestData, err := raw.Parse(rawRequest, baseURL, r.request.Unsafe)
 	if err != nil {
 		return nil, err
