@@ -232,6 +232,11 @@
           "type": "boolean",
           "title": "use case insensitive extract",
           "description": "use case insensitive extract"
+        },
+        "to": {
+          "type": "string",
+          "title": "save extracted values to file",
+          "description": "save extracted values to file"
         }
       },
       "additionalProperties": false,
