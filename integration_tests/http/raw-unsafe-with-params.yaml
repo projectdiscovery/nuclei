@@ -9,10 +9,9 @@ info:
 
 requests:
   - raw:
-      - |
+      - |+
         GET /?key2=value2 HTTP/1.1
         Host: {{Hostname}}
-        Origin: {{BaseURL}}
 
     unsafe: true
     matchers:

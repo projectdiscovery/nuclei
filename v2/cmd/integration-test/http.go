@@ -588,7 +588,6 @@ func (h *httpRawWithParams) Execute(filePath string) error {
 	if errx != nil {
 		return err
 	}
-
 	return expectResultsCount(results, 1)
 }
 
