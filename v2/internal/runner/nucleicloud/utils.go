@@ -14,10 +14,7 @@ const DDMMYYYYhhmmss = "2006-01-02 15:04:05"
 
 // ReadCatalogChecksum reads catalog checksum from nuclei-templates repository
 func ReadCatalogChecksum() map[string]string {
-	config, _ := config.ReadConfiguration()
-	if config == nil {
-		return nil
-	}
+	config := config.DefaultConfig
 
 	checksumFile := filepath.Join(config.TemplatesDirectory, "templates-checksum.txt")
 	file, err := os.Open(checksumFile)

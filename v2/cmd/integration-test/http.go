@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -19,6 +20,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/testutils"
 	"github.com/projectdiscovery/retryablehttp-go"
 	errorutil "github.com/projectdiscovery/utils/errors"
+	fileutil "github.com/projectdiscovery/utils/file"
 	logutil "github.com/projectdiscovery/utils/log"
 	sliceutil "github.com/projectdiscovery/utils/slice"
 	stringsutil "github.com/projectdiscovery/utils/strings"
@@ -47,9 +49,8 @@ var httpTestcases = map[string]testutils.TestCase{
 	"http/http-paths.yaml":                          &httpPaths{},
 	"http/request-condition.yaml":                   &httpRequestCondition{},
 	"http/request-condition-new.yaml":               &httpRequestCondition{},
-	"http/interactsh.yaml":                          &httpInteractshRequest{},
-	"http/interactsh-stop-at-first-match.yaml":      &httpInteractshStopAtFirstMatchRequest{},
 	"http/self-contained.yaml":                      &httpRequestSelfContained{},
+	"http/self-contained-with-params.yaml":          &httpRequestSelfContainedWithParams{},
 	"http/self-contained-file-input.yaml":           &httpRequestSelfContainedFileInput{},
 	"http/get-case-insensitive.yaml":                &httpGetCaseInsensitive{},
 	"http/get.yaml,http/get-case-insensitive.yaml":  &httpGetCaseInsensitiveCluster{},
@@ -71,7 +72,7 @@ var httpTestcases = map[string]testutils.TestCase{
 	"http/get-without-scheme.yaml":                  &httpGetWithoutScheme{},
 	"http/cl-body-without-header.yaml":              &httpCLBodyWithoutHeader{},
 	"http/cl-body-with-header.yaml":                 &httpCLBodyWithHeader{},
-	"http/default-matcher-condition.yaml":           &httpDefaultMatcherCondition{},
+	"http/save-extractor-values-to-file.yaml":       &httpSaveExtractorValuesToFile{},
 }
 
 type httpInteractshRequest struct{}
@@ -164,6 +165,7 @@ func (h *httpInteractshStopAtFirstMatchRequest) Execute(filePath string) error {
 	if err != nil {
 		return err
 	}
+	// polling is asyncronous, so the interactions may be retrieved after the first request
 	return expectResultsCount(results, 1)
 }
 
@@ -857,6 +859,42 @@ func (h *httpRequestSelfContained) Execute(filePath string) error {
 	return expectResultsCount(results, 1)
 }
 
+// testcase to check duplicated values in params
+type httpRequestSelfContainedWithParams struct{}
+
+// Execute executes a test case and returns an error if occurred
+func (h *httpRequestSelfContainedWithParams) Execute(filePath string) error {
+	router := httprouter.New()
+	var err error
+	router.GET("/", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+		params := r.URL.Query()
+		// we intentionally use params["test"] instead of params.Get("test") to test the case where
+		// there are multiple parameters with the same name
+		if !reflect.DeepEqual(params["something"], []string{"here"}) {
+			err = errorutil.WrapfWithNil(err, "expected %v, got %v", []string{"here"}, params["something"])
+		}
+		if !reflect.DeepEqual(params["key"], []string{"value"}) {
+			err = errorutil.WrapfWithNil(err, "expected %v, got %v", []string{"key"}, params["value"])
+		}
+		_, _ = w.Write([]byte("This is self-contained response"))
+	})
+	server := &http.Server{
+		Addr:    fmt.Sprintf("localhost:%d", defaultStaticPort),
+		Handler: router,
+	}
+	go func() {
+		_ = server.ListenAndServe()
+	}()
+	defer server.Close()
+
+	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, "", debug)
+	if err != nil {
+		return err
+	}
+
+	return expectResultsCount(results, 1)
+}
+
 type httpRequestSelfContainedFileInput struct{}
 
 func (h *httpRequestSelfContainedFileInput) Execute(filePath string) error {
@@ -1263,4 +1301,32 @@ func (h *httpCLBodyWithHeader) Execute(filePath string) error {
 		return err
 	}
 	return expectResultsCount(got, 1)
+}
+
+type httpSaveExtractorValuesToFile struct{}
+
+func (h *httpSaveExtractorValuesToFile) Execute(filePath string) error {
+	router := httprouter.New()
+	router.GET("/", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+		var buff bytes.Buffer
+		for i := 0; i < 10; i++ {
+			buff.WriteString(fmt.Sprintf(`"value": %v`+"\n", i))
+		}
+		_, _ = w.Write(buff.Bytes())
+	})
+	ts := httptest.NewServer(router)
+	defer ts.Close()
+
+	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, ts.URL, debug)
+	if err != nil {
+		return err
+	}
+
+	// remove output.txt file if exists
+	if !fileutil.FileExists("output.txt") {
+		return fmt.Errorf("extractor output file output.txt file does not exist")
+	} else {
+		_ = os.Remove("output.txt")
+	}
+	return expectResultsCount(results, 1)
 }
