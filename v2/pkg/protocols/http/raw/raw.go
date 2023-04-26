@@ -113,12 +113,16 @@ func ParseRawRequest(request string, unsafe bool) (*Request, error) {
 		req.Path = urlx.GetRelativePath()
 		req.FullURL = urlx.String()
 	} else {
+
+		if req.Path == "" {
+			return nil, errorutil.NewWithTag("self-contained-raw", "path cannot be empty in self contained request")
+		}
 		// given url is relative construct one using Host Header
 		if _, ok := req.Headers["Host"]; !ok {
 			return nil, errorutil.NewWithTag("self-contained-raw", "host header is required for relative path")
 		}
-		// Review: Current default scheme in self contained templates if relative path is provided is https
-		req.FullURL = fmt.Sprintf("%s://%s%s", urlutil.HTTPS, strings.TrimSpace(req.Headers["Host"]), req.Path)
+		// Review: Current default scheme in self contained templates if relative path is provided is http
+		req.FullURL = fmt.Sprintf("%s://%s%s", urlutil.HTTP, strings.TrimSpace(req.Headers["Host"]), req.Path)
 	}
 	return req, nil
 }

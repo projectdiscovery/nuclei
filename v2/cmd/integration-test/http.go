@@ -42,6 +42,8 @@ var httpTestcases = map[string]testutils.TestCase{
 	"http/raw-dynamic-extractor.yaml":               &httpRawDynamicExtractor{},
 	"http/raw-get-query.yaml":                       &httpRawGetQuery{},
 	"http/raw-get.yaml":                             &httpRawGet{},
+	"http/raw-with-params.yaml":                     &httpRawWithParams{},
+	"http/raw-unsafe-with-params.yaml":              &httpRawWithParams{}, // Not a typo, functionality is same as above
 	"http/raw-path-trailing-slash.yaml":             &httpRawPathTrailingSlash{},
 	"http/raw-payload.yaml":                         &httpRawPayload{},
 	"http/raw-post-body.yaml":                       &httpRawPostBody{},
@@ -50,6 +52,7 @@ var httpTestcases = map[string]testutils.TestCase{
 	"http/request-condition.yaml":                   &httpRequestCondition{},
 	"http/request-condition-new.yaml":               &httpRequestCondition{},
 	"http/self-contained.yaml":                      &httpRequestSelfContained{},
+	"http/self-contained-with-path.yaml":            &httpRequestSelfContained{}, // Not a typo, functionality is same as above
 	"http/self-contained-with-params.yaml":          &httpRequestSelfContainedWithParams{},
 	"http/self-contained-file-input.yaml":           &httpRequestSelfContainedFileInput{},
 	"http/get-case-insensitive.yaml":                &httpGetCaseInsensitive{},
@@ -557,6 +560,38 @@ func (h *httpRawGet) Execute(filePath string) error {
 	return expectResultsCount(results, 1)
 }
 
+type httpRawWithParams struct{}
+
+// Execute executes a test case and returns an error if occurred
+func (h *httpRawWithParams) Execute(filePath string) error {
+	router := httprouter.New()
+	var errx error
+	router.GET("/", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+		params := r.URL.Query()
+		// we intentionally use params["test"] instead of params.Get("test") to test the case where
+		// there are multiple parameters with the same name
+		if !reflect.DeepEqual(params["key1"], []string{"value1"}) {
+			errx = errorutil.WrapfWithNil(errx, "expected %v, got %v", []string{"value1"}, params["key1"])
+		}
+		if !reflect.DeepEqual(params["key2"], []string{"value2"}) {
+			errx = errorutil.WrapfWithNil(errx, "expected %v, got %v", []string{"value2"}, params["key2"])
+		}
+		fmt.Fprintf(w, "Test is test raw-params-matcher text")
+	})
+	ts := httptest.NewServer(router)
+	defer ts.Close()
+
+	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, ts.URL+"/?key1=value1", debug)
+	if err != nil {
+		return err
+	}
+	if errx != nil {
+		return err
+	}
+
+	return expectResultsCount(results, 1)
+}
+
 type httpRawPathTrailingSlash struct{}
 
 func (h *httpRawPathTrailingSlash) Execute(filepath string) error {
@@ -865,16 +900,16 @@ type httpRequestSelfContainedWithParams struct{}
 // Execute executes a test case and returns an error if occurred
 func (h *httpRequestSelfContainedWithParams) Execute(filePath string) error {
 	router := httprouter.New()
-	var err error
+	var errx error
 	router.GET("/", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 		params := r.URL.Query()
 		// we intentionally use params["test"] instead of params.Get("test") to test the case where
 		// there are multiple parameters with the same name
 		if !reflect.DeepEqual(params["something"], []string{"here"}) {
-			err = errorutil.WrapfWithNil(err, "expected %v, got %v", []string{"here"}, params["something"])
+			errx = errorutil.WrapfWithNil(errx, "expected %v, got %v", []string{"here"}, params["something"])
 		}
 		if !reflect.DeepEqual(params["key"], []string{"value"}) {
-			err = errorutil.WrapfWithNil(err, "expected %v, got %v", []string{"key"}, params["value"])
+			errx = errorutil.WrapfWithNil(errx, "expected %v, got %v", []string{"value"}, params["key"])
 		}
 		_, _ = w.Write([]byte("This is self-contained response"))
 	})
@@ -890,6 +925,9 @@ func (h *httpRequestSelfContainedWithParams) Execute(filePath string) error {
 	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, "", debug)
 	if err != nil {
 		return err
+	}
+	if errx != nil {
+		return errx
 	}
 
 	return expectResultsCount(results, 1)

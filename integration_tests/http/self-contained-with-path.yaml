@@ -1,0 +1,18 @@
+id: self-contained-with-path
+
+info:
+  name: self-contained-with-path
+  author: pd-team
+  severity: info
+
+self-contained: true
+requests:
+  - raw:
+      - |
+        GET / HTTP/1.1
+        Host: 127.0.0.1:5431
+
+    matchers:
+      - type: word
+        words:
+          - This is self-contained response
