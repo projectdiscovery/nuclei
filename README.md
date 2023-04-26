@@ -161,7 +161,8 @@ OUTPUT:
    -ms, -matcher-status          display match failure status
    -me, -markdown-export string  directory to export results in markdown format
    -se, -sarif-export string     file to export results in SARIF format
-   -je, -json-export string      file to export results in JSON format as a JSON array. This can be memory intensive in larger scans.
+   -je, -json-export string      file to export results in JSON format as a JSON array. This can be memory intensive in larger scans
+   -jle, -jsonl-export string    file to export results in JSONL(ine) format as a list of line-delimited JSON objects
 
 CONFIGURATIONS:
    -config string                 path to the nuclei configuration file
@@ -264,14 +265,14 @@ DEBUG:
    -hc, -health-check        run diagnostic check up
 
 UPDATE:
-   -un, -update                      update nuclei engine to the latest released version
+   -up, -update                      update nuclei engine to the latest released version
    -ut, -update-templates            update nuclei-templates to latest released version
    -ud, -update-template-dir string  custom directory to install / update nuclei-templates
    -duc, -disable-update-check       disable automatic nuclei/templates update check
 
 STATISTICS:
    -stats                    display statistics about the running scan
-   -sj, -stats-json          write statistics data to an output file in JSONL(ines) format
+   -sj, -stats-json          display statistics in JSONL(ines) format
    -si, -stats-interval int  number of seconds to wait between showing a statistics update (default 5)
    -m, -metrics              expose nuclei metrics on a port
    -mp, -metrics-port int    port to expose nuclei metrics on (default 9092)

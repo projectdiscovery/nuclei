@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/projectdiscovery/nuclei/v2/pkg/templates/extensions"
+	stringsutil "github.com/projectdiscovery/utils/strings"
 )
 
 // TemplateFormat
@@ -32,4 +33,10 @@ func GetTemplateFormatFromExt(filePath string) TemplateFormat {
 // GetSupportedTemplateFileExtensions returns all supported template file extensions
 func GetSupportTemplateFileExtensions() []string {
 	return []string{extensions.YAML, extensions.JSON}
+}
+
+// isTemplate is a callback function used by goflags to decide if given file should be read
+// if it is not a nuclei-template file only then file is read
+func IsTemplate(filename string) bool {
+	return stringsutil.EqualFoldAny(filepath.Ext(filename), GetSupportTemplateFileExtensions()...)
 }
