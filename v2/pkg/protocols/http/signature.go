@@ -117,5 +117,5 @@ func GetDefaultSignerVars(signatureType SignatureType) map[string]interface{} {
 	if signatureType == AWSSignature {
 		return signer.AwsDefaultVars
 	}
-	return nil
+	return map[string]interface{}{}
 }
