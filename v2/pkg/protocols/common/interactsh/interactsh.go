@@ -202,9 +202,14 @@ func (c *Client) URL() (string, error) {
 			err = c.poll()
 		})
 		if err != nil {
-			return "", errorutil.NewWithErr(err).Msgf("interactsh client not initialized")
+			return "", errorutil.NewWithErr(err).Wrap(ErrInteractshClientNotInitialized)
+		}
+		// ensures interactsh is not nil
+		if c.interactsh == nil {
+			return "", ErrInteractshClientNotInitialized
 		}
 	}
+
 	c.generated.Store(true)
 	return c.interactsh.URL(), nil
 }
