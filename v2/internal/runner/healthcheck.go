@@ -60,15 +60,13 @@ func DoHealthCheck(options *types.Options) string {
 
 	// Data structures
 	data := map[string]interface{}{
-		"os": map[string]interface{}{
-			"name":      runtime.GOOS,
-			"arch":      runtime.GOARCH,
-			"goVersion": runtime.Version(),
-			"compiler":  runtime.Compiler,
-			"admin":     adminPriv,
-		},
-		"program": map[string]interface{}{
-			"version": config.Version,
+		"environment": map[string]interface{}{
+			"name":            runtime.GOOS,
+			"arch":            runtime.GOARCH,
+			"go version":      runtime.Version(),
+			"compiler":        runtime.Compiler,
+			"program version": config.Version,
+			"admin":           adminPriv,
 		},
 		"files": map[string]interface{}{},
 		// "internet": map[string]interface{}{},
@@ -99,7 +97,7 @@ func DoHealthCheck(options *types.Options) string {
 	}
 
 	// Other Host information
-	data["os"].(map[string]interface{})["ulimit"] = checkUlimit(data, ulimitmin)
+	data["environment"].(map[string]interface{})["ulimit"] = checkUlimit(data, ulimitmin)
 
 	// Test each DNS resolver set in config and the default resolver
 	resolvers = addIfNotExists(resolvers, resolverPublic)
