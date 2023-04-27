@@ -58,10 +58,6 @@ func DoHealthCheck(options *types.Options) string {
 		}
 	}
 
-	//Gather information about the network environment
-	netip, _ := iputil.WhatsMyIP()
-	mysourceip, _ := iputil.GetSourceIP(internetTarget)
-
 	// Data structures
 	data := map[string]interface{}{
 		"environment": map[string]interface{}{
@@ -71,8 +67,8 @@ func DoHealthCheck(options *types.Options) string {
 			"compiler":        runtime.Compiler,
 			"program version": config.Version,
 			"admin":           adminPriv,
-			"internet ip":     netip,
-			"source ip":       mysourceip,
+			"internet ip":     "",
+			"source ip":       "",
 		},
 		"files": map[string]interface{}{},
 		"dns":   map[string]interface{}{},
@@ -103,6 +99,8 @@ func DoHealthCheck(options *types.Options) string {
 
 	// Other Host information
 	data["environment"].(map[string]interface{})["ulimit"] = checkUlimit(data, ulimitmin)
+	data["environment"].(map[string]interface{})["source ip"], _ = iputil.GetSourceIP(internetTarget)
+	data["environment"].(map[string]interface{})["internet ip"], _ = iputil.WhatsMyIP()
 
 	// Test each DNS resolver set in config and the default resolver
 	resolvers = addIfNotExists(resolvers, resolverPublic)
