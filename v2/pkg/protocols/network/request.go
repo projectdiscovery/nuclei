@@ -27,6 +27,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/replacer"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/utils/vardump"
 	templateTypes "github.com/projectdiscovery/nuclei/v2/pkg/templates/types"
+	errorutil "github.com/projectdiscovery/utils/errors"
 )
 
 var _ protocols.Request = &Request{}
@@ -59,7 +60,7 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, metadata,
 		actualAddress := replacer.Replace(kv.address, variables)
 
 		if err := request.executeAddress(variables, actualAddress, address, input.MetaInput.Input, kv.tls, previous, callback); err != nil {
-			gologger.Warning().Msgf("Could not make network request for %s: %s\n", actualAddress, err)
+			gologger.Warning().Msgf("[%v] Could not make network request for (%s) : %s\n", request.options.TemplateID, actualAddress, err)
 			continue
 		}
 	}
@@ -177,7 +178,10 @@ input_loop:
 
 		if input.Read > 0 {
 			buffer := make([]byte, input.Read)
-			n, _ := conn.Read(buffer)
+			n, err := conn.Read(buffer)
+			if err != nil {
+				return errorutil.NewWithErr(err).Msgf("could not read response from connection")
+			}
 
 			responseBuilder.Write(buffer[:n])
 
