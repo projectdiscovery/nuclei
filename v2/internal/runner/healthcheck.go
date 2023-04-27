@@ -19,10 +19,10 @@ import (
 	"golang.org/x/net/ipv6"
 
 	"github.com/projectdiscovery/fdmax"
-	"github.com/projectdiscovery/iputil"
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/config"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 	file "github.com/projectdiscovery/utils/file"
+	iputil "github.com/projectdiscovery/utils/ip"
 	permission "github.com/projectdiscovery/utils/permission"
 )
 
@@ -103,23 +103,41 @@ func DoHealthCheck(options *types.Options) string {
 
 	// Test each DNS resolver set in config and the default resolver
 	resolvers = addIfNotExists(resolvers, resolverPublic)
+	dns := map[string]interface{}{}
 	for _, resolverCfg := range resolvers {
 		for _, host := range []string{internetTarget, defaultTarget} {
 			ipv4addresses, ipv6addresses = getAddresses(host, resolverCfg)
-
-			if ipv4addresses != "" {
-				dnsTests["Public IPv4 DNS ("+resolverCfg+") for "+host] = ipv4addresses
+			if ipv4addresses == "" {
+				ipv4addresses = "Fail (no IPv4 address)"
 			} else {
-				dnsTests["Public IPv4 DNS ("+resolverCfg+") for "+host] = "FAIL (No IPv4 address)"
+				tmpstring := ""
+				for _, ip := range strings.Split(ipv4addresses, " ") {
+					if iputil.IsInternal(ip) {
+						ip = ip + " (internal)"
+					}
+					tmpstring = tmpstring + ip + ", "
+				}
+				ipv4addresses = strings.TrimSuffix(tmpstring, ", ")
+				dns[host+" (IPv4)"] = ipv4addresses
+			}
+			if ipv6addresses == "" {
+				ipv6addresses = "Fail (no IPv6 address)"
+			} else {
+				tmpstring := ""
+				for _, ip := range strings.Split(ipv6addresses, " ") {
+					if iputil.IsInternal(ip) {
+						ip = ip + " (internal)"
+					}
+					tmpstring = tmpstring + ip + ", "
+				}
+				ipv4addresses = strings.TrimSuffix(tmpstring, ", ")
+				dns[host+" (IPv6)"] = ipv4addresses
 			}
 
-			if ipv6addresses != "" {
-				dnsTests["Public IPv6 DNS ("+resolverCfg+") for "+host] = ipv6addresses
-			} else {
-				dnsTests["Public IPv6 DNS ("+resolverCfg+") for "+host] = "FAIL (No IPv6 address)"
-			}
+			dnsTests[resolverCfg] = dns
 		}
 	}
+
 	// Rather than the last resolver in the list, use the first one for final answer
 	ipv4addresses, ipv6addresses = getAddresses(internetTarget, resolvers[0])
 
