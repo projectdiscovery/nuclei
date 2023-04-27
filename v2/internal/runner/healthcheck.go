@@ -24,6 +24,7 @@ import (
 	file "github.com/projectdiscovery/utils/file"
 	iputil "github.com/projectdiscovery/utils/ip"
 	permission "github.com/projectdiscovery/utils/permission"
+	router "github.com/projectdiscovery/utils/routing"
 )
 
 // DoHealthCheck performs network and self-diagnostic checks
@@ -67,8 +68,6 @@ func DoHealthCheck(options *types.Options) string {
 			"compiler":        runtime.Compiler,
 			"program version": config.Version,
 			"admin":           adminPriv,
-			"internet ip":     "",
-			"source ip":       "",
 		},
 		"files": map[string]interface{}{},
 		"dns":   map[string]interface{}{},
@@ -98,8 +97,10 @@ func DoHealthCheck(options *types.Options) string {
 	}
 
 	// Other Host information
+	v4, v6, _ := router.GetOutboundIPs()
+	data["environment"].(map[string]interface{})["source IPv4"] = v4.String()
+	data["environment"].(map[string]interface{})["source IPv6"] = v6.String()
 	data["environment"].(map[string]interface{})["ulimit"] = checkUlimit(data, ulimitmin)
-	data["environment"].(map[string]interface{})["source ip"], _ = iputil.GetSourceIP(internetTarget)
 	data["environment"].(map[string]interface{})["internet ip"], _ = iputil.WhatsMyIP()
 
 	// Test each DNS resolver set in config and the default resolver
@@ -134,7 +135,6 @@ func DoHealthCheck(options *types.Options) string {
 				ipv4addresses = strings.TrimSuffix(tmpstring, ", ")
 				dns[host+" (IPv6)"] = ipv4addresses
 			}
-
 			dnsTests[resolverCfg] = dns
 		}
 	}
