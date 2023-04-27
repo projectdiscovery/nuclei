@@ -36,6 +36,7 @@ func DoHealthCheck(options *types.Options) string {
 	internetTarget := defaultTarget
 	var ipv4addresses string
 	var ipv6addresses string
+	timeout := time.Duration(5 * time.Second)
 	adminPriv := permission.IsRoot
 
 	var resolvers []string
@@ -108,35 +109,11 @@ func DoHealthCheck(options *types.Options) string {
 	dns := map[string]interface{}{}
 	for _, resolverCfg := range resolvers {
 		for _, host := range []string{internetTarget, defaultTarget} {
-			ipv4addresses, ipv6addresses = getAddresses(host, resolverCfg)
-			if ipv4addresses == "" {
-				ipv4addresses = "Fail (no IPv4 address)"
-			} else {
-				tmpstring := ""
-				for _, ip := range strings.Split(ipv4addresses, " ") {
-					if iputil.IsInternal(ip) {
-						ip = ip + " (internal)"
-					}
-					tmpstring = tmpstring + ip + ", "
-				}
-				ipv4addresses = strings.TrimSuffix(tmpstring, ", ")
-				dns[host+" (IPv4)"] = ipv4addresses
-			}
-			if ipv6addresses == "" {
-				ipv6addresses = "Fail (no IPv6 address)"
-			} else {
-				tmpstring := ""
-				for _, ip := range strings.Split(ipv6addresses, " ") {
-					if iputil.IsInternal(ip) {
-						ip = ip + " (internal)"
-					}
-					tmpstring = tmpstring + ip + ", "
-				}
-				ipv4addresses = strings.TrimSuffix(tmpstring, ", ")
-				dns[host+" (IPv6)"] = ipv4addresses
-			}
-			dnsTests[resolverCfg] = dns
+			ipv4addresses, ipv6addresses := getAddresses(host, resolverCfg)
+			dns[host+" (IPv4)"] = processAddresses(host, ipv4addresses, "IPv4")
+			dns[host+" (IPv6)"] = processAddresses(host, ipv6addresses, "IPv6")
 		}
+		dnsTests[resolverCfg] = dns
 	}
 
 	// Rather than the last resolver in the list, use the first one for final answer
@@ -147,18 +124,34 @@ func DoHealthCheck(options *types.Options) string {
 
 	// Network connectivity
 	if ipv4addresses != "" {
-		netTests["IPv4 Connect ("+internetTarget+":80)"] = checkConnection(internetTarget, 80, "tcp4")
+		netTests["IPv4 Connect ("+internetTarget+":80)"] = checkConnection(internetTarget, 80, "tcp4", timeout)
 		netTests["IPv4 Traceroute ("+internetTarget+":80)"] = traceroute(ipv4addresses, "ipv4", adminPriv)
 		netTests["IPv4 Ping ("+internetTarget+")"] = ping(ipv4addresses, "ipv4", adminPriv)
 	}
 	if ipv6addresses != "" {
-		netTests["IPv6 Connect ("+internetTarget+":80)"] = checkConnection(internetTarget, 80, "tcp6")
+		netTests["IPv6 Connect ("+internetTarget+":80)"] = checkConnection(internetTarget, 80, "tcp6", timeout)
 		netTests["IPv6 Traceroute ("+internetTarget+":80)"] = traceroute(ipv6addresses, "ipv6", adminPriv)
 		netTests["IPv6 Ping ("+internetTarget+")"] = ping(ipv6addresses, "ipv6", adminPriv)
 
 	}
 	// send back formatted output
 	return mapToJson(data)
+}
+
+// processAddresses formats a list of addresses by adding "internal" as appropriate
+func processAddresses(host string, addresses string, version string) string {
+	if addresses == "" {
+		return "Fail (no " + version + " address)"
+	}
+
+	tmpstring := ""
+	for _, ip := range strings.Split(addresses, " ") {
+		if iputil.IsInternal(ip) {
+			ip = ip + " (internal)"
+		}
+		tmpstring = tmpstring + ip + ", "
+	}
+	return strings.TrimSuffix(tmpstring, ", ")
 }
 
 // addIfNotExists adds an element to a slice if it doesn't already exist
@@ -180,9 +173,9 @@ func getAddresses(target, dnsServer string) (string, string) {
 }
 
 // checkConnection checks if a connection can be made to a host
-func checkConnection(host string, port int, protocol string) string {
+func checkConnection(host string, port int, protocol string, timeout time.Duration) string {
 	address := net.JoinHostPort(host, strconv.Itoa(port))
-	conn, err := net.Dial(protocol, address)
+	conn, err := net.DialTimeout(protocol, address, timeout)
 	if err != nil {
 		return fmt.Sprintf("Fail (%s)", err)
 	}
