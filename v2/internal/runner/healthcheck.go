@@ -86,8 +86,16 @@ func DoHealthCheck(options *types.Options) string {
 
 	// File permissions
 	for _, filename := range []string{config.DefaultConfig.GetFlagsConfigFilePath(), config.DefaultConfig.GetIgnoreFilePath(), config.DefaultConfig.GetChecksumFilePath()} {
-		fileTests["Read: "+filename], _ = file.IsReadable(filename)
-		fileTests["Write: "+filename], _ = file.IsWriteable(filename)
+		if ok, _ := file.IsReadable(filename); ok {
+			fileTests["Read: "+filename] = "Pass"
+		} else {
+			fileTests["Read: "+filename] = "Fail"
+		}
+		if ok, _ := file.IsWriteable(filename); ok {
+			fileTests["Write: "+filename] = "Pass"
+		} else {
+			fileTests["Write: "+filename] = "Fail"
+		}
 	}
 
 	// Other Host information
@@ -174,7 +182,7 @@ func checkConnection(host string, port int, protocol string) string {
 	if conn != nil {
 		conn.Close()
 	}
-	return "Pass"
+	return "Success"
 }
 
 // mapToJson converts a map to a json string
@@ -404,10 +412,10 @@ func ping(addresses, proto string, adminPriv bool) string {
 func checkUlimit(data map[string]interface{}, difflimit int) string {
 	limit, err := fdmax.Get()
 	if err != nil {
-		return "N/A"
+		return "Fail: " + err.Error()
 	}
 	if (limit.Max - limit.Current) <= uint64(difflimit) {
 		return fmt.Sprintf("You may need to increase your file descriptor limit. %v/%v used", limit.Current, limit.Max)
 	}
-	return "N/A"
+	return "Pass"
 }
