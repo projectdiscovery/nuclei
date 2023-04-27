@@ -30,7 +30,7 @@ import (
 // If a target is specified via -u, it will perform additional checks
 func DoHealthCheck(options *types.Options) string {
 	const defaultTarget = "scanme.sh"
-	const resolverPublic = "1.1.1.1"
+	const resolverPublic = "1.1.1.1:53"
 	const ulimitmin = 1000 // Minimum free ulimit value
 	internetTarget := defaultTarget
 	var ipv4addresses string
@@ -69,7 +69,6 @@ func DoHealthCheck(options *types.Options) string {
 			"admin":           adminPriv,
 		},
 		"files": map[string]interface{}{},
-		// "internet": map[string]interface{}{},
 		"dns":   map[string]interface{}{},
 		"net":   map[string]interface{}{},
 		"asset": map[string]interface{}{},
@@ -154,7 +153,6 @@ func DoHealthCheck(options *types.Options) string {
 		netTests["IPv6 Ping ("+internetTarget+")"] = ping(ipv6addresses, "ipv6", adminPriv)
 
 	}
-
 	// send back formatted output
 	return mapToJson(data)
 }
@@ -173,17 +171,7 @@ func addIfNotExists(slice []string, element string) []string {
 
 // getAddresses returns the IPv4 and IPv6 addresses for a host
 func getAddresses(target, dnsServer string) (string, string) {
-	var ipv4addresses string
-	var ipv6addresses string
-	if net.ParseIP(target) != nil {
-		if iputil.IsIPv4(target) {
-			ipv4addresses = target
-		} else if iputil.IsIPv6(target) {
-			ipv6addresses = target
-		}
-	} else {
-		ipv4addresses, ipv6addresses = lookup(target, dnsServer)
-	}
+	ipv4addresses, ipv6addresses := lookup(target, dnsServer)
 	return ipv4addresses, ipv6addresses
 }
 
