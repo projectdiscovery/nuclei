@@ -58,6 +58,10 @@ func DoHealthCheck(options *types.Options) string {
 		}
 	}
 
+	//Gather information about the network environment
+	netip, _ := iputil.WhatsMyIP()
+	mysourceip, _ := iputil.GetSourceIP(internetTarget)
+
 	// Data structures
 	data := map[string]interface{}{
 		"environment": map[string]interface{}{
@@ -67,6 +71,8 @@ func DoHealthCheck(options *types.Options) string {
 			"compiler":        runtime.Compiler,
 			"program version": config.Version,
 			"admin":           adminPriv,
+			"internet ip":     netip,
+			"source ip":       mysourceip,
 		},
 		"files": map[string]interface{}{},
 		"dns":   map[string]interface{}{},
