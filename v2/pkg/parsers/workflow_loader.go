@@ -45,14 +45,13 @@ func (w *workflowLoader) GetTemplatePathsByTags(templateTags []string) []string 
 	for template, err := range errs {
 		gologger.Error().Msgf("Could not find template '%s': %s", template, err)
 	}
+
 	templatePathMap := w.pathFilter.Match(includedTemplates)
 
 	loadedTemplates := make([]string, 0, len(templatePathMap))
 	for templatePath := range templatePathMap {
-		loaded, err := LoadTemplate(templatePath, w.tagFilter, templateTags, w.options.Catalog)
-		if err != nil {
-			gologger.Warning().Msgf("Could not load template %s: %s\n", templatePath, err)
-		} else if loaded {
+		loaded, _ := LoadTemplate(templatePath, w.tagFilter, templateTags, w.options.Catalog)
+		if loaded {
 			loadedTemplates = append(loadedTemplates, templatePath)
 		}
 	}
@@ -69,8 +68,8 @@ func (w *workflowLoader) GetTemplatePaths(templatesList []string, noValidate boo
 	loadedTemplates := make([]string, 0, len(templatesPathMap))
 	for templatePath := range templatesPathMap {
 		matched, err := LoadTemplate(templatePath, w.tagFilter, nil, w.options.Catalog)
-		if err != nil {
-			gologger.Warning().Msgf("Could not load template %s: %s\n", templatePath, err)
+		if err != nil && !matched {
+			gologger.Warning().Msg(err.Error())
 		} else if matched || noValidate {
 			loadedTemplates = append(loadedTemplates, templatePath)
 		}
