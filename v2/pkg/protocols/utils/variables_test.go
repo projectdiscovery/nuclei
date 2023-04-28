@@ -12,7 +12,7 @@ func TestVariables(t *testing.T) {
 	baseURL := "http://localhost:9001/test/123"
 	parsed, _ := urlutil.Parse(baseURL)
 	// trailingslash is only true when both target/inputURL and payload {{BaseURL}}/xyz both have slash
-	values := GenerateVariablesWithURL(parsed, false, nil)
+	values := GenerateHTTPVariablesWithURL(parsed, false, nil)
 
 	require.Equal(t, values["BaseURL"], parsed.String(), "incorrect baseurl")
 	require.Equal(t, values["RootURL"], "http://localhost:9001", "incorrect rootURL")
@@ -25,7 +25,7 @@ func TestVariables(t *testing.T) {
 
 	baseURL = "https://example.com"
 	parsed, _ = urlutil.Parse(baseURL)
-	values = GenerateVariablesWithURL(parsed, false, nil)
+	values = GenerateHTTPVariablesWithURL(parsed, false, nil)
 
 	require.Equal(t, values["BaseURL"], parsed.String(), "incorrect baseurl")
 	require.Equal(t, values["Host"], "example.com", "incorrect domain name")
@@ -37,7 +37,7 @@ func TestVariables(t *testing.T) {
 
 	baseURL = "ftp://foobar.com/"
 	parsed, _ = urlutil.Parse(baseURL)
-	values = GenerateVariablesWithURL(parsed, false, nil)
+	values = GenerateHTTPVariablesWithURL(parsed, false, nil)
 
 	require.Equal(t, values["BaseURL"], parsed.String(), "incorrect baseurl")
 	require.Equal(t, values["Host"], "foobar.com", "incorrect domain name")
@@ -60,4 +60,15 @@ func TestVariables(t *testing.T) {
 	require.Equal(t, values["Scheme"], "http", "incorrect scheme")
 	require.Equal(t, values["Hostname"], "scanme.sh", "incorrect hostname")
 	require.Equal(t, values["ip"], "1.2.3.4", "incorrect ip")
+}
+
+func TestGenerateDNSVariables(t *testing.T) {
+	vars := GenerateDNSVariables("www.projectdiscovery.io")
+	require.Equal(t, map[string]interface{}{
+		"FQDN": "www.projectdiscovery.io",
+		"RDN":  "projectdiscovery.io",
+		"DN":   "projectdiscovery",
+		"TLD":  "io",
+		"SD":   "www",
+	}, vars, "could not get dns variables")
 }

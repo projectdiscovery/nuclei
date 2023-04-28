@@ -23,9 +23,9 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/helpers/eventcreator"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/helpers/responsehighlighter"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/utils/vardump"
-	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/dns"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/network/networkclientpool"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/utils"
+	protocolutils "github.com/projectdiscovery/nuclei/v2/pkg/protocols/utils"
 	templateTypes "github.com/projectdiscovery/nuclei/v2/pkg/templates/types"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 	"github.com/projectdiscovery/tlsx/pkg/tlsx"
@@ -187,7 +187,7 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 	payloadValues["Host"] = hostname
 	payloadValues["Port"] = port
 
-	hostnameVariables := dns.GenerateVariables(hostname)
+	hostnameVariables := protocolutils.GenerateDNSVariables(hostname)
 	values := generators.MergeMaps(payloadValues, hostnameVariables)
 	variablesMap := request.options.Variables.Evaluate(values)
 	payloadValues = generators.MergeMaps(variablesMap, payloadValues)
