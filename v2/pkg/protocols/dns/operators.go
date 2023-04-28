@@ -155,12 +155,13 @@ func recordsKeyValue(resourceRecords []dns.RR) output.InternalEvent {
 	for _, resourceRecord := range resourceRecords {
 		key := strings.ToLower(dns.TypeToString[resourceRecord.Header().Rrtype])
 		value := strings.ReplaceAll(resourceRecord.String(), resourceRecord.Header().String(), "")
+
 		if preVal, ok := oe[key]; ok {
 			switch v := oe[key].(type) {
 			case string:
 				oe[key] = []string{value, preVal.(string)}
 			case []string:
-				oe[key] = append(v, preVal.(string))
+				oe[key] = append(v, preVal.([]string)...)
 			}
 			continue
 		}
