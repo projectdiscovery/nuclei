@@ -23,21 +23,21 @@ require (
 	github.com/projectdiscovery/clistats v0.0.12
 	github.com/projectdiscovery/fastdialer v0.0.24
 	github.com/projectdiscovery/hmap v0.0.11
-	github.com/projectdiscovery/interactsh v1.1.1-0.20230417162754-2cd861b12467
+	github.com/projectdiscovery/interactsh v1.1.3
 	github.com/projectdiscovery/rawhttp v0.1.11
-	github.com/projectdiscovery/retryabledns v1.0.21
-	github.com/projectdiscovery/retryablehttp-go v1.0.14
-	github.com/projectdiscovery/stringsutil v0.0.2
+	github.com/projectdiscovery/retryabledns v1.0.23
+	github.com/projectdiscovery/retryablehttp-go v1.0.15
+	github.com/projectdiscovery/stringsutil v0.0.2 // indirect
 	github.com/projectdiscovery/yamldoc-go v1.0.4
 	github.com/remeh/sizedwaitgroup v1.0.0
 	github.com/rs/xid v1.5.0
 	github.com/segmentio/ksuid v1.0.4
-	github.com/shirou/gopsutil/v3 v3.23.3
+	github.com/shirou/gopsutil/v3 v3.23.3 // indirect
 	github.com/spaolacci/murmur3 v1.1.0 // indirect
 	github.com/spf13/cast v1.5.0
 	github.com/syndtr/goleveldb v1.0.0
 	github.com/valyala/fasttemplate v1.2.2
-	github.com/weppos/publicsuffix-go v0.30.0
+	github.com/weppos/publicsuffix-go v0.30.1-0.20230422193905-8fecedd899db
 	github.com/xanzy/go-gitlab v0.82.0
 	go.uber.org/multierr v1.11.0
 	golang.org/x/net v0.9.0
@@ -56,7 +56,7 @@ require (
 	github.com/antchfx/xmlquery v1.3.15
 	github.com/asaskevich/govalidator v0.0.0-20230301143203-a9d515a09cc2
 	github.com/aws/aws-sdk-go-v2 v1.17.8
-	github.com/aws/aws-sdk-go-v2/config v1.18.20
+	github.com/aws/aws-sdk-go-v2/config v1.18.21
 	github.com/aws/aws-sdk-go-v2/credentials v1.13.20
 	github.com/aws/aws-sdk-go-v2/feature/s3/manager v1.11.61
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.31.2
@@ -64,7 +64,7 @@ require (
 	github.com/fatih/structs v1.1.0
 	github.com/go-git/go-git/v5 v5.6.1
 	github.com/h2non/filetype v1.1.3
-	github.com/klauspost/compress v1.16.4
+	github.com/klauspost/compress v1.16.5
 	github.com/labstack/echo/v4 v4.10.2
 	github.com/mholt/archiver v3.1.1+incompatible
 	github.com/projectdiscovery/dsl v0.0.5-0.20230328190851-15d12ab4c5e4
@@ -77,9 +77,9 @@ require (
 	github.com/projectdiscovery/ratelimit v0.0.6
 	github.com/projectdiscovery/rdap v0.9.1-0.20221108103045-9865884d1917
 	github.com/projectdiscovery/sarif v0.0.1
-	github.com/projectdiscovery/tlsx v1.0.7
+	github.com/projectdiscovery/tlsx v1.0.8
 	github.com/projectdiscovery/uncover v1.0.2
-	github.com/projectdiscovery/utils v0.0.21-0.20230419140949-a6527b072e4a
+	github.com/projectdiscovery/utils v0.0.25
 	github.com/projectdiscovery/wappalyzergo v0.0.88
 	github.com/stretchr/testify v1.8.2
 	gopkg.in/src-d/go-git.v4 v4.13.1
@@ -102,7 +102,7 @@ require (
 	github.com/bits-and-blooms/bloom/v3 v3.3.1 // indirect
 	github.com/charmbracelet/glamour v0.6.0 // indirect
 	github.com/cheggaaa/pb/v3 v3.1.2 // indirect
-	github.com/cloudflare/cfssl v1.6.4-0.20221208165709-c5e40da60306 // indirect
+	github.com/cloudflare/cfssl v1.6.4 // indirect
 	github.com/cloudflare/circl v1.1.0 // indirect
 	github.com/dlclark/regexp2 v1.8.1 // indirect
 	github.com/fatih/color v1.14.1 // indirect
@@ -122,7 +122,7 @@ require (
 	github.com/muesli/termenv v0.15.1 // indirect
 	github.com/pjbgf/sha1cd v0.3.0 // indirect
 	github.com/pkg/browser v0.0.0-20210911075715-681adbf594b8 // indirect
-	github.com/projectdiscovery/asnmap v1.0.2 // indirect
+	github.com/projectdiscovery/asnmap v1.0.3 // indirect
 	github.com/projectdiscovery/cdncheck v0.0.4-0.20220413175814-b47bc2d578b1 // indirect
 	github.com/projectdiscovery/freeport v0.0.4 // indirect
 	github.com/shoenig/go-m1cpu v0.1.4 // indirect
@@ -190,7 +190,7 @@ require (
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/power-devops/perfstat v0.0.0-20210106213030-5aafc221ea8c // indirect
 	github.com/projectdiscovery/blackrock v0.0.0-20230328171319-f24b18d05b64 // indirect
-	github.com/projectdiscovery/networkpolicy v0.0.4
+	github.com/projectdiscovery/networkpolicy v0.0.5
 	github.com/rivo/uniseg v0.4.4 // indirect
 	github.com/saintfish/chardet v0.0.0-20230101081208-5e3ef4b5456d // indirect
 	github.com/tklauser/go-sysconf v0.3.11 // indirect
@@ -247,7 +247,6 @@ require (
 	github.com/mattn/go-colorable v0.1.13 // indirect
 	github.com/nwaples/rardecode v1.1.3 // indirect
 	github.com/pierrec/lz4 v2.6.1+incompatible // indirect
-	github.com/projectdiscovery/iputil v0.0.2 // indirect
 	github.com/sergi/go-diff v1.2.0 // indirect
 	github.com/src-d/gcfg v1.4.0 // indirect
 	github.com/xanzy/ssh-agent v0.3.3 // indirect
