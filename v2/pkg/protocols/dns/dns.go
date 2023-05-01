@@ -6,8 +6,6 @@ import (
 	"github.com/miekg/dns"
 	"github.com/pkg/errors"
 
-	"github.com/weppos/publicsuffix-go/publicsuffix"
-
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/expressions"
@@ -252,21 +250,4 @@ func classToInt(class string) uint16 {
 		result = dns.ClassANY
 	}
 	return uint16(result)
-}
-
-// GenerateVariables from a dns name
-func GenerateVariables(domain string) map[string]interface{} {
-	parsed, err := publicsuffix.Parse(strings.TrimSuffix(domain, "."))
-	if err != nil {
-		return map[string]interface{}{"FQDN": domain}
-	}
-
-	domainName := strings.Join([]string{parsed.SLD, parsed.TLD}, ".")
-	return map[string]interface{}{
-		"FQDN": domain,
-		"RDN":  domainName,
-		"DN":   parsed.SLD,
-		"TLD":  parsed.TLD,
-		"SD":   parsed.TRD,
-	}
 }
