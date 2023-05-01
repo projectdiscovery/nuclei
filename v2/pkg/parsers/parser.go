@@ -43,19 +43,19 @@ func LoadTemplate(templatePath string, tagFilter *filter.TagFilter, extraTags []
 		return false, fmt.Errorf(CouldNotLoadTemplate, templatePath, validationError)
 	}
 
-	validationWarning := validateTemplateOptionalFields(template)
-	var errmsg error
-	if validationWarning != nil {
-		stats.Increment(SyntaxWarningStats)
-		errmsg = fmt.Errorf(LoadedWithWarnings, templatePath, validationWarning)
-	}
-
 	ret, err := isTemplateInfoMetadataMatch(tagFilter, template, extraTags)
 	if err != nil {
 		return ret, fmt.Errorf(CouldNotLoadTemplate, templatePath, err)
 	}
-
-	return ret, errmsg
+	// if template loaded then check the template for optional fields to add warnings
+	if ret {
+		validationWarning := validateTemplateOptionalFields(template)
+		if validationWarning != nil {
+			stats.Increment(SyntaxWarningStats)
+			return ret, fmt.Errorf(LoadedWithWarnings, templatePath, validationWarning)
+		}
+	}
+	return ret, nil
 }
 
 // LoadWorkflow returns true if the workflow is valid and matches the filtering criteria.
