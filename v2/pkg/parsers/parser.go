@@ -22,34 +22,40 @@ const (
 	errMandatoryFieldMissingFmt = "mandatory '%s' field is missing"
 	errInvalidFieldFmt          = "invalid field format for '%s' (allowed format is %s)"
 	warningFieldMissingFmt      = "field '%s' is missing"
+	CouldNotLoadTemplate        = "Could not load template %s: %s"
+	LoadedWithWarnings          = "Loaded template %s: with syntax warning : %s"
 )
 
 // LoadTemplate returns true if the template is valid and matches the filtering criteria.
 func LoadTemplate(templatePath string, tagFilter *filter.TagFilter, extraTags []string, catalog catalog.Catalog) (bool, error) {
 	template, templateParseError := ParseTemplate(templatePath, catalog)
 	if templateParseError != nil {
-		return false, fmt.Errorf("Could not load template %s: %s", templatePath, templateParseError)
+		return false, fmt.Errorf(CouldNotLoadTemplate, templatePath, templateParseError)
 	}
 
 	if len(template.Workflows) > 0 {
 		return false, nil
 	}
-	validationError, validationWarning := validateTemplateFields(template)
+
+	validationError := validateTemplateMandatoryFields(template)
 	if validationError != nil {
 		stats.Increment(SyntaxErrorStats)
-		if validationWarning != nil {
-			return false, fmt.Errorf("Could not load template %s: %s, with syntax warning: %s", templatePath, validationError, validationWarning)
-		} else {
-			return false, fmt.Errorf("Could not load template %s: %s", templatePath, validationError)
-		}
-	}
-	// If we have warnings, we should still return true
-	if validationWarning != nil {
-		stats.Increment(SyntaxWarningStats)
-		return true, fmt.Errorf("Loaded template %s: with syntax warning : %s", templatePath, validationWarning)
+		return false, fmt.Errorf(CouldNotLoadTemplate, templatePath, validationError)
 	}
 
-	return isTemplateInfoMetadataMatch(tagFilter, template, extraTags)
+	validationWarning := validateTemplateOptionalFields(template)
+	var errmsg error
+	if validationWarning != nil {
+		stats.Increment(SyntaxWarningStats)
+		errmsg = fmt.Errorf(LoadedWithWarnings, templatePath, validationWarning)
+	}
+
+	ret, err := isTemplateInfoMetadataMatch(tagFilter, template, extraTags)
+	if err != nil {
+		return ret, fmt.Errorf(CouldNotLoadTemplate, templatePath, err)
+	}
+
+	return ret, errmsg
 }
 
 // LoadWorkflow returns true if the workflow is valid and matches the filtering criteria.
@@ -60,7 +66,7 @@ func LoadWorkflow(templatePath string, catalog catalog.Catalog) (bool, error) {
 	}
 
 	if len(template.Workflows) > 0 {
-		if validationError, _ := validateTemplateFields(template); validationError != nil {
+		if validationError := validateTemplateMandatoryFields(template); validationError != nil {
 			stats.Increment(SyntaxErrorStats)
 			return false, validationError
 		}
@@ -74,16 +80,11 @@ func isTemplateInfoMetadataMatch(tagFilter *filter.TagFilter, template *template
 	match, err := tagFilter.Match(template, extraTags)
 
 	if err == filter.ErrExcluded {
+
 		return false, filter.ErrExcluded
 	}
 
 	return match, err
-}
-
-func validateTemplateFields(template *templates.Template) (err error, warning error) {
-	err = validateTemplateMandatoryFields(template)
-	warning = validateTemplateOptionalFields(template)
-	return
 }
 
 // validateTemplateMandatoryFields validates the mandatory fields of a template
