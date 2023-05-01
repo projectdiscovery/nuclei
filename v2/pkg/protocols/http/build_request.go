@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"context"
 	"fmt"
-	"io"
 	"strings"
 	"time"
 
@@ -15,7 +14,6 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/contextargs"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/expressions"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/generators"
-	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/replacer"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/utils/vardump"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/http/race"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/http/raw"
@@ -30,7 +28,10 @@ import (
 )
 
 // ErrEvalExpression
-var ErrEvalExpression = errorutil.NewWithTag("expr", "could not evaluate helper expressions")
+var (
+	ErrEvalExpression = errorutil.NewWithTag("expr", "could not evaluate helper expressions")
+	ErrUnresolvedVars = errorutil.NewWithFmt("unresolved variables `%v` found in request")
+)
 
 // generatedRequest is a single generated request wrapped for a template request
 type generatedRequest struct {
@@ -157,6 +158,27 @@ func (r *requestGenerator) Make(ctx context.Context, input *contextargs.Context,
 func (r *requestGenerator) makeSelfContainedRequest(ctx context.Context, data string, payloads, dynamicValues map[string]interface{}) (*generatedRequest, error) {
 	isRawRequest := r.request.isRaw()
 
+	values := generators.MergeMaps(
+		generators.BuildPayloadFromOptions(r.request.options.Options),
+		dynamicValues,
+		payloads, // payloads should override other variables in case of duplicate vars
+	)
+	// adds all variables from `variables` section in template
+	variablesMap := r.request.options.Variables.Evaluate(values)
+	values = generators.MergeMaps(variablesMap, values)
+
+	signerVars := GetDefaultSignerVars(r.request.Signature.Value)
+	// this will ensure that default signer variables are overwritten by other variables
+	values = generators.MergeMaps(signerVars, values)
+
+	// priority of variables is as follows (from low to high) for self contained templates
+	// default signer vars < variables <  cli vars  < payload < dynamic values
+
+	// evaluate request
+	data, err := expressions.Evaluate(data, values)
+	if err != nil {
+		return nil, ErrEvalExpression.Wrap(err).WithTag("self-contained")
+	}
 	// If the request is a raw request, get the URL from the request
 	// header and use it to make the request.
 	if isRawRequest {
@@ -177,25 +199,8 @@ func (r *requestGenerator) makeSelfContainedRequest(ctx context.Context, data st
 			return nil, fmt.Errorf("malformed request supplied")
 		}
 
-		// Note: Here the order of payloads matter since payloads passed through file ex: -V "test=numbers.txt"
-		// are stored in payloads and options vars should not override payloads in any case
-		values := generators.MergeMaps(
-			generators.BuildPayloadFromOptions(r.request.options.Options),
-			payloads,
-		)
-
-		parts[1] = replacer.Replace(parts[1], values)
-		if len(dynamicValues) > 0 {
-			parts[1] = replacer.Replace(parts[1], dynamicValues)
-		}
-
-		// the url might contain placeholders with ignore list
-		if ignoreList := GetVariablesNamesSkipList(r.request.Signature.Value); ignoreList != nil {
-			if err := expressions.ContainsVariablesWithIgnoreList(ignoreList, parts[1]); err != nil {
-				return nil, err
-			}
-		} else if err := expressions.ContainsUnresolvedVariables(parts[1]); err != nil { // the url might contain placeholders
-			return nil, err
+		if err := expressions.ContainsUnresolvedVariables(parts[1]); err != nil {
+			return nil, ErrUnresolvedVars.Msgf(parts[1])
 		}
 
 		parsed, err := urlutil.ParseURL(parts[1], true)
@@ -213,16 +218,12 @@ func (r *requestGenerator) makeSelfContainedRequest(ctx context.Context, data st
 		}
 		return r.generateRawRequest(ctx, data, parsed, values, payloads)
 	}
-	values := generators.MergeMaps(
-		generators.BuildPayloadFromOptions(r.request.options.Options),
-		dynamicValues,
-		payloads, // payloads should override other variables in case of duplicate vars
-	)
-	// Evaluate (replace) variable with final values
-	data, err := expressions.Evaluate(data, values)
-	if err != nil {
-		return nil, ErrEvalExpression.Wrap(err).WithTag("self-contained")
+	if err := expressions.ContainsUnresolvedVariables(data); err != nil {
+		// early exit: if there are any unresolved variables in `path` after evaluation
+		// then return early since this will definitely fail
+		return nil, ErrUnresolvedVars.Msgf(data)
 	}
+
 	urlx, err := urlutil.ParseURL(data, true)
 	if err != nil {
 		return nil, errorutil.NewWithErr(err).Msgf("failed to parse %v in self contained request", data).WithTag("self-contained")
@@ -255,14 +256,17 @@ func (r *requestGenerator) generateHttpRequest(ctx context.Context, urlx *urluti
 // finalVars = contains all variables including generator and protocol specific variables
 // generatorValues = contains variables used in fuzzing or other generator specific values
 func (r *requestGenerator) generateRawRequest(ctx context.Context, rawRequest string, baseURL *urlutil.URL, finalVars, generatorValues map[string]interface{}) (*generatedRequest, error) {
-	// Unlike other requests parsedURL/ InputURL in self contained templates is extracted from raw request itself h
-	// and variables are supposed to be given from command line and not from inputURL
-	// ence this cause issues like duplicated params/paths.
-	// TODO: implement a generic raw request parser in rawhttp library (without variables and stuff)
-	baseURL.Params = nil // this fixes issue of duplicated params in self contained templates but not a appropriate fix
-	rawRequestData, err := raw.Parse(rawRequest, baseURL, r.request.Unsafe)
+
+	var rawRequestData *raw.Request
+	var err error
+	if r.request.SelfContained {
+		// in self contained requests baseURL is extracted from raw request itself
+		rawRequestData, err = raw.ParseRawRequest(rawRequest, r.request.Unsafe)
+	} else {
+		rawRequestData, err = raw.Parse(rawRequest, baseURL, r.request.Unsafe)
+	}
 	if err != nil {
-		return nil, err
+		return nil, errorutil.NewWithErr(err).Msgf("failed to parse raw request")
 	}
 
 	// Unsafe option uses rawhttp library
@@ -273,19 +277,12 @@ func (r *requestGenerator) generateRawRequest(ctx context.Context, rawRequest st
 		unsafeReq := &generatedRequest{rawRequest: rawRequestData, meta: generatorValues, original: r.request, interactshURLs: r.interactshURLs}
 		return unsafeReq, nil
 	}
-	var body io.ReadCloser
-	body = io.NopCloser(strings.NewReader(rawRequestData.Data))
-	if r.request.Race && r.request.RaceNumberRequests > 0 {
-		// More or less this ensures that all requests hit the endpoint at the same approximated time
-		// Todo: sync internally upon writing latest request byte
-		body = race.NewOpenGateWithTimeout(body, time.Duration(2)*time.Second)
-	}
 
 	urlx, err := urlutil.ParseURL(rawRequestData.FullURL, true)
 	if err != nil {
 		return nil, errorutil.NewWithErr(err).Msgf("failed to create request with url %v got %v", rawRequestData.FullURL, err).WithTag("raw")
 	}
-	req, err := retryablehttp.NewRequestFromURLWithContext(ctx, rawRequestData.Method, urlx, body)
+	req, err := retryablehttp.NewRequestFromURLWithContext(ctx, rawRequestData.Method, urlx, rawRequestData.Data)
 	if err != nil {
 		return nil, err
 	}
