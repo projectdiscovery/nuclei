@@ -20,6 +20,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/http/race"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/http/raw"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/http/utils"
+	protocolutils "github.com/projectdiscovery/nuclei/v2/pkg/protocols/utils"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 	"github.com/projectdiscovery/rawhttp"
 	"github.com/projectdiscovery/retryablehttp-go"
@@ -27,7 +28,6 @@ import (
 	readerutil "github.com/projectdiscovery/utils/reader"
 	stringsutil "github.com/projectdiscovery/utils/strings"
 	urlutil "github.com/projectdiscovery/utils/url"
-	protocolutils "github.com/projectdiscovery/nuclei/v2/pkg/protocols/utils"
 )
 
 // ErrEvalExpression
@@ -102,7 +102,7 @@ func (r *requestGenerator) Make(ctx context.Context, input *contextargs.Context,
 
 	// defaultreqvars are vars generated from request/input ex: {{baseURL}}, {{Host}} etc
 	// contextargs generate extra vars that may/may not be available always (ex: "ip")
-	defaultReqVars := protocolutils.GenerateHTTPVariablesWithURL(parsed, hasTrailingSlash, contextargs.GenerateVariables(input))
+	defaultReqVars := protocolutils.GenerateVariables(parsed, hasTrailingSlash, contextargs.GenerateVariables(input))
 	// optionvars are vars passed from CLI or env variables
 	optionVars := generators.BuildPayloadFromOptions(r.request.options.Options)
 
@@ -204,7 +204,7 @@ func (r *requestGenerator) makeSelfContainedRequest(ctx context.Context, data st
 			return nil, fmt.Errorf("could not parse request URL: %w", err)
 		}
 		values = generators.MergeMaps(
-			generators.MergeMaps(dynamicValues, protocolutils.GenerateHTTPVariablesWithURL(parsed, false, nil)),
+			generators.MergeMaps(dynamicValues, protocolutils.GenerateVariables(parsed, false, nil)),
 			values,
 		)
 		// Evaluate (replace) variable with final values

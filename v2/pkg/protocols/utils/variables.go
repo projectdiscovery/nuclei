@@ -2,7 +2,6 @@ package utils
 
 import (
 	"fmt"
-	"net"
 	"path"
 	"strings"
 
@@ -12,10 +11,8 @@ import (
 	"github.com/weppos/publicsuffix-go/publicsuffix"
 )
 
-var AllKnownVariables = append(KnownHTTPVariables, KnownDNSVariables...)
-
-// KnownHTTPVariables is the list of known http variables
-var KnownHTTPVariables = []string{"BaseURL", "RootURL", "Hostname", "Host", "Port", "Path", "File", "Scheme"}
+// KnownVariables are the variables that are known to input requests
+var KnownVariables = []string{"BaseURL", "RootURL", "Hostname", "Host", "Port", "Path", "File", "Scheme", "Input", "FQDN", "RDN", "DN", "TLD", "SD"}
 
 // GenerateVariables will create default variables with context args
 func GenerateVariablesWithContextArgs(input *contextargs.Context, trailingSlash bool) map[string]interface{} {
@@ -23,71 +20,11 @@ func GenerateVariablesWithContextArgs(input *contextargs.Context, trailingSlash 
 	if err != nil {
 		return nil
 	}
-	return GenerateHTTPVariablesWithURL(parsed, trailingSlash, contextargs.GenerateVariables(input))
+	return GenerateVariables(parsed, trailingSlash, contextargs.GenerateVariables(input))
 }
-
-// GenerateVariables will create default variables after parsing a url with additional variables
-func GenerateHTTPVariablesWithURL(inputURL *urlutil.URL, trailingSlash bool, additionalVars map[string]interface{}) map[string]interface{} {
-	parsed := inputURL.Clone()
-	// Query parameter merging is handled elsewhere and should not be included in {{BaseURL}} or other httpVariables
-	parsed.Params = make(urlutil.Params)
-	domain := parsed.Host
-	if strings.Contains(parsed.Host, ":") {
-		domain = strings.Split(parsed.Host, ":")[0]
-	}
-
-	port := parsed.Port()
-	if port == "" {
-		if parsed.Scheme == "https" {
-			port = "443"
-		} else if parsed.Scheme == "http" {
-			port = "80"
-		}
-	}
-
-	if trailingSlash {
-		parsed.Path = strings.TrimSuffix(parsed.Path, "/")
-	}
-
-	escapedPath := parsed.EscapedPath()
-	directory := path.Dir(escapedPath)
-	if directory == "." {
-		directory = ""
-	}
-	base := path.Base(escapedPath)
-	if base == "." {
-		base = ""
-	}
-	httpVariables := make(map[string]interface{})
-
-	for _, k := range KnownHTTPVariables {
-		switch k {
-		case "BaseURL":
-			httpVariables[k] = parsed.String()
-		case "RootURL":
-			httpVariables[k] = fmt.Sprintf("%s://%s", parsed.Scheme, parsed.Host)
-		case "Hostname":
-			httpVariables[k] = parsed.Host
-		case "Host":
-			httpVariables[k] = domain
-		case "Port":
-			httpVariables[k] = port
-		case "Path":
-			httpVariables[k] = directory
-		case "File":
-			httpVariables[k] = base
-		case "Scheme":
-			httpVariables[k] = parsed.Scheme
-		}
-	}
-
-	return generators.MergeMaps(httpVariables, additionalVars)
-}
-
-// KnownDNSVariables contains the list of known variables for dns requests
-var KnownDNSVariables = []string{"FQDN", "RDN", "DN", "TLD", "SD"}
 
 // GenerateDNSVariables from a dns name
+// This function is used by dns and ssl protocol to generate variables
 func GenerateDNSVariables(domain string) map[string]interface{} {
 	parsed, err := publicsuffix.Parse(strings.TrimSuffix(domain, "."))
 	if err != nil {
@@ -96,7 +33,7 @@ func GenerateDNSVariables(domain string) map[string]interface{} {
 
 	domainName := strings.Join([]string{parsed.SLD, parsed.TLD}, ".")
 	dnsVariables := make(map[string]interface{})
-	for _, k := range KnownDNSVariables {
+	for _, k := range KnownVariables {
 		switch k {
 		case "FQDN":
 			dnsVariables[k] = domain
@@ -113,69 +50,77 @@ func GenerateDNSVariables(domain string) map[string]interface{} {
 	return dnsVariables
 }
 
-// KnownTCPVariables contains the list of known variables for tcp requests
-var KnownTCPVariables = []string{"Host", "Port", "Hostname"}
+// GeneraterVariables accept string or *urlutil.URL object as input
+// Returns the map of KnownVariables keys
+// This function is used by http, websocket, metwork and whois protocols to generate variables
+func GenerateVariables(input interface{}, removeTrailingSlash bool, additionalVars map[string]interface{}) map[string]interface{} {
 
-func GenerateNetworkVariables(input string) map[string]interface{} {
-	if !strings.Contains(input, ":") {
-		return map[string]interface{}{"Hostname": input, "Host": input}
+	var vars = make(map[string]interface{})
+	switch input := input.(type) {
+	case string:
+		parsed, err := urlutil.Parse(input)
+		if err != nil {
+			return map[string]interface{}{"Input": input, "Hostname": input}
+		}
+		vars = generateVariables(parsed, removeTrailingSlash)
+	case *urlutil.URL:
+		vars = generateVariables(input, removeTrailingSlash)
 	}
-	host, port, err := net.SplitHostPort(input)
-	if err != nil {
-		return map[string]interface{}{"Hostname": input}
-	}
-	var tcpVariables = make(map[string]interface{})
-	for _, k := range KnownTCPVariables {
-		switch k {
-		case "Host":
-			tcpVariables[k] = host
-		case "Port":
-			tcpVariables[k] = port
-		case "Hostname":
-			tcpVariables[k] = input
+	return generators.MergeMaps(vars, additionalVars)
+}
+
+func generateVariables(inputURL *urlutil.URL, removeTrailingSlash bool) map[string]interface{} {
+	parsed := inputURL.Clone()
+	parsed.Params = make(urlutil.Params)
+	port := parsed.Port()
+	if port == "" {
+		if parsed.Scheme == "https" {
+			port = "443"
+		} else if parsed.Scheme == "http" {
+			port = "80"
 		}
 	}
-	return tcpVariables
-}
-
-// KnownWebSocketVariables contains the list of known variables for websocket requests
-var KnownWebSocketVariables = []string{"Hostname", "Host", "Scheme", "Path"}
-
-func GetWebsocketVariables(input *urlutil.URL) map[string]interface{} {
-	websocketVariables := make(map[string]interface{})
-
-	websocketVariables["Hostname"] = input.Host
-	websocketVariables["Host"] = input.Hostname()
-	websocketVariables["Scheme"] = input.Scheme
-	requestPath := input.Path
-	if values := urlutil.GetParams(input.URL.Query()); len(values) > 0 {
-		requestPath = requestPath + "?" + values.Encode()
+	if removeTrailingSlash {
+		parsed.Path = strings.TrimSuffix(parsed.Path, "/")
 	}
-	websocketVariables["Path"] = requestPath
-	return websocketVariables
-}
-
-var KnowneWhoISVariables = []string{"Input", "Hostname", "Host"}
-
-// GenerateWhoISVariables will create default variables after parsing a url
-func GenerateWhoISVariables(input string) map[string]interface{} {
-	var domain string
-
-	parsed, err := urlutil.Parse(input)
-	if err != nil {
-		return map[string]interface{}{"Input": input}
-	}
-	domain = parsed.Host
-	if domain == "" {
-		domain = input
-	}
-	if strings.Contains(domain, ":") {
-		domain = strings.Split(domain, ":")[0]
+	escapedPath := parsed.EscapedPath()
+	requestPath := path.Dir(escapedPath)
+	if requestPath == "." {
+		requestPath = ""
 	}
 
-	return map[string]interface{}{
-		"Input":    input,
-		"Hostname": parsed.Host,
-		"Host":     domain,
+	base := path.Base(escapedPath)
+	if base == "." {
+		base = ""
 	}
+
+	if parsed.Scheme == "ws" {
+		if values := urlutil.GetParams(parsed.URL.Query()); len(values) > 0 {
+			requestPath = escapedPath + "?" + values.Encode()
+		}
+	}
+	knownVariables := make(map[string]interface{})
+	for _, k := range KnownVariables {
+		switch k {
+		case "BaseURL":
+			knownVariables[k] = parsed.String()
+		case "RootURL":
+			knownVariables[k] = fmt.Sprintf("%s://%s", parsed.Scheme, parsed.Host)
+		case "Hostname":
+			knownVariables[k] = parsed.Host
+		case "Host":
+			knownVariables[k] = parsed.Hostname()
+		case "Port":
+			knownVariables[k] = port
+		case "Path":
+			knownVariables[k] = requestPath
+		case "File":
+			knownVariables[k] = base
+		case "Scheme":
+			knownVariables[k] = parsed.Scheme
+		case "Input":
+			knownVariables[k] = parsed.String()
+		}
+	}
+	return generators.MergeMaps(knownVariables, GenerateDNSVariables(parsed.Hostname()))
 }

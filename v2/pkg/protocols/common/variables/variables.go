@@ -2,7 +2,6 @@ package variables
 
 import (
 	"encoding/json"
-	"fmt"
 	"strings"
 
 	"github.com/alecthomas/jsonschema"
@@ -111,9 +110,8 @@ func evaluateVariableValue(expression string, values, processing map[string]inte
 func (variables *Variable) checkForLazyEval() bool {
 
 	variables.ForEach(func(key string, value interface{}) {
-		if stringsutil.ContainsAny(types.ToString(value), protocolutils.AllKnownVariables...) {
+		if stringsutil.ContainsAny(types.ToString(value), protocolutils.KnownVariables...) {
 			variables.LazyEval = true
-			fmt.Println("LazyEval")
 			return
 		}
 	})

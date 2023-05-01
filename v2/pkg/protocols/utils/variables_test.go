@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"reflect"
 	"testing"
 
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/contextargs"
@@ -8,11 +9,11 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestVariables(t *testing.T) {
+func TestHTTPVariables(t *testing.T) {
 	baseURL := "http://localhost:9001/test/123"
 	parsed, _ := urlutil.Parse(baseURL)
 	// trailingslash is only true when both target/inputURL and payload {{BaseURL}}/xyz both have slash
-	values := GenerateHTTPVariablesWithURL(parsed, false, nil)
+	values := GenerateVariables(parsed, false, nil)
 
 	require.Equal(t, values["BaseURL"], parsed.String(), "incorrect baseurl")
 	require.Equal(t, values["RootURL"], "http://localhost:9001", "incorrect rootURL")
@@ -25,7 +26,7 @@ func TestVariables(t *testing.T) {
 
 	baseURL = "https://example.com"
 	parsed, _ = urlutil.Parse(baseURL)
-	values = GenerateHTTPVariablesWithURL(parsed, false, nil)
+	values = GenerateVariables(parsed, false, nil)
 
 	require.Equal(t, values["BaseURL"], parsed.String(), "incorrect baseurl")
 	require.Equal(t, values["Host"], "example.com", "incorrect domain name")
@@ -37,7 +38,7 @@ func TestVariables(t *testing.T) {
 
 	baseURL = "ftp://foobar.com/"
 	parsed, _ = urlutil.Parse(baseURL)
-	values = GenerateHTTPVariablesWithURL(parsed, false, nil)
+	values = GenerateVariables(parsed, false, nil)
 
 	require.Equal(t, values["BaseURL"], parsed.String(), "incorrect baseurl")
 	require.Equal(t, values["Host"], "foobar.com", "incorrect domain name")
@@ -71,4 +72,96 @@ func TestGenerateDNSVariables(t *testing.T) {
 		"TLD":  "io",
 		"SD":   "www",
 	}, vars, "could not get dns variables")
+}
+
+func TestGenerateVariablesForDNS(t *testing.T) {
+	vars := GenerateVariables("www.projectdiscovery.io", false, nil)
+	expected := map[string]interface{}{
+		"FQDN": "www.projectdiscovery.io",
+		"RDN":  "projectdiscovery.io",
+		"DN":   "projectdiscovery",
+		"TLD":  "io",
+		"SD":   "www",
+	}
+	checkResults(t, vars, expected)
+}
+
+func TestGenerateVariablesForTCP(t *testing.T) {
+	vars := GenerateVariables("127.0.0.1:5431", false, nil)
+	expected := map[string]interface{}{
+		"Host":     "127.0.0.1",
+		"Port":     "5431",
+		"Hostname": "127.0.0.1:5431",
+	}
+	checkResults(t, vars, expected)
+
+	vars = GenerateVariables("127.0.0.1", false, nil)
+	expected = map[string]interface{}{
+		"Host":     "127.0.0.1",
+		"Hostname": "127.0.0.1",
+	}
+	checkResults(t, vars, expected)
+}
+
+func TestGenerateWhoISVariables(t *testing.T) {
+	vars := GenerateVariables("https://example.com", false, nil)
+	expected := map[string]interface{}{
+		"Host": "example.com", "Hostname": "example.com", "Input": "https://example.com",
+	}
+	checkResults(t, vars, expected)
+
+	vars = GenerateVariables("https://example.com:8080", false, nil)
+	expected = map[string]interface{}{
+		"Host": "example.com", "Hostname": "example.com:8080", "Input": "https://example.com:8080",
+	}
+	checkResults(t, vars, expected)
+}
+
+func TestGetWebsocketVariables(t *testing.T) {
+	baseURL := "ws://127.0.0.1:40221"
+	parsed, _ := urlutil.Parse(baseURL)
+	vars := GenerateVariables(parsed, false, nil)
+	expected := map[string]interface{}{
+		"Host":     "127.0.0.1",
+		"Hostname": "127.0.0.1:40221",
+		"Scheme":   "ws",
+		"Path":     "",
+	}
+	checkResults(t, vars, expected)
+
+	baseURL = "ws://127.0.0.1:40221/test?var=test"
+	parsed, _ = urlutil.Parse(baseURL)
+	vars = GenerateVariables(parsed, false, nil)
+	expected = map[string]interface{}{
+		"Host":     "127.0.0.1",
+		"Hostname": "127.0.0.1:40221",
+		"Scheme":   "ws",
+		"Path":     "/test?var=test",
+	}
+	checkResults(t, vars, expected)
+}
+
+// checkResults returns true if mapSubset is a subset of mapSet otherwise false
+func checkResults(t *testing.T, mapSet interface{}, mapSubset interface{}) {
+
+	got := reflect.ValueOf(mapSet)
+	expected := reflect.ValueOf(mapSubset)
+
+	require.Greater(t, len(expected.MapKeys()), 0, "failed expected value is empty")
+	require.Greater(t, len(got.MapKeys()), 0, "failed expected value is empty")
+
+	require.LessOrEqual(t, len(expected.MapKeys()), len(got.MapKeys()), "failed return value more than expected")
+
+	iterMapSubset := expected.MapRange()
+
+	for iterMapSubset.Next() {
+		k := iterMapSubset.Key()
+		v := iterMapSubset.Value()
+
+		value := got.MapIndex(k)
+
+		if !value.IsValid() || v.Interface() != value.Interface() {
+			require.Equal(t, value, v, "failed return value is not equal to expected")
+		}
+	}
 }

@@ -52,7 +52,7 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, metadata 
 		request.options.Progress.IncrementFailedRequestsBy(1)
 		return errors.Wrap(err, "could not get address from url")
 	}
-	variables := protocolutils.GenerateNetworkVariables(address)
+	variables := protocolutils.GenerateVariables(address, false, nil)
 	variablesMap := request.options.Variables.Evaluate(variables)
 	variables = generators.MergeMaps(variablesMap, variables)
 
