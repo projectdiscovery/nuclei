@@ -7,6 +7,7 @@ import (
 
 	"github.com/miekg/dns"
 	"github.com/pkg/errors"
+	"golang.org/x/exp/maps"
 
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
@@ -52,9 +53,27 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, metadata,
 	// merge with metadata (eg. from workflow context)
 	vars = generators.MergeMaps(vars, metadata, optionVars)
 	variablesMap := request.options.Variables.Evaluate(vars)
-	vars = generators.MergeMaps(variablesMap, vars)
+	vars = generators.MergeMaps(vars, variablesMap)
 
-	return request.execute(domain, metadata, previous, vars, callback)
+	if request.generator != nil {
+		iterator := request.generator.NewIterator()
+
+		for {
+			value, ok := iterator.Value()
+			if !ok {
+				break
+			}
+			value = generators.MergeMaps(value, vars)
+
+			if err := request.execute(domain, metadata, previous, value, callback); err != nil {
+				return err
+			}
+		}
+	} else {
+		value := maps.Clone(vars)
+		return request.execute(domain, metadata, previous, value, callback)
+	}
+	return nil
 }
 
 func (request *Request) execute(domain string, metadata, previous output.InternalEvent, vars map[string]interface{}, callback protocols.OutputEventCallback) error {
