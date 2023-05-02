@@ -108,7 +108,7 @@ func (template *Template) Requests() int {
 		len(template.RequestsWHOIS)
 }
 
-// compileProtocolRequests compiles all the protocol requests for the template
+// CompileProtocolRequests compiles all the protocol requests for the template
 func (template *Template) CompileProtocolRequests(options protocols.ExecuterOptions) error {
 	templateRequests := template.Requests()
 
