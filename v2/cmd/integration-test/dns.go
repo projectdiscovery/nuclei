@@ -5,12 +5,13 @@ import (
 )
 
 var dnsTestCases = map[string]testutils.TestCase{
-	"dns/basic.yaml":     &dnsBasic{},
-	"dns/ptr.yaml":       &dnsPtr{},
-	"dns/caa.yaml":       &dnsCAA{},
-	"dns/tlsa.yaml":      &dnsTLSA{},
-	"dns/variables.yaml": &dnsVariables{},
-	"dns/payload.yaml":   &dnsPayload{},
+	"dns/basic.yaml":                &dnsBasic{},
+	"dns/ptr.yaml":                  &dnsPtr{},
+	"dns/caa.yaml":                  &dnsCAA{},
+	"dns/tlsa.yaml":                 &dnsTLSA{},
+	"dns/variables.yaml":            &dnsVariables{},
+	"dns/payload.yaml":              &dnsPayload{},
+	"dns/dsl-matcher-variable.yaml": &dnsDSLMatcherVariable{},
 }
 
 type dnsBasic struct{}
@@ -86,4 +87,15 @@ func (h *dnsPayload) Execute(filePath string) error {
 		return err
 	}
 	return expectResultsCount(results, 4)
+}
+
+type dnsDSLMatcherVariable struct{}
+
+// Execute executes a test case and returns an error if occurred
+func (h *dnsDSLMatcherVariable) Execute(filePath string) error {
+	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, "one.one.one.one", debug)
+	if err != nil {
+		return err
+	}
+	return expectResultsCount(results, 1)
 }
