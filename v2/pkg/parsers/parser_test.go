@@ -23,6 +23,7 @@ func TestLoadTemplate(t *testing.T) {
 		name        string
 		template    *templates.Template
 		templateErr error
+		filter      filter.Config
 
 		expectedErr error
 		isValid     bool
@@ -43,7 +44,7 @@ func TestLoadTemplate(t *testing.T) {
 			name:        "emptyTemplate",
 			template:    &templates.Template{},
 			isValid:     false,
-			expectedErr: errors.New("mandatory 'name' field is missing, mandatory 'author' field is missing, mandatory 'id' field is missing, with syntax warning: field 'severity' is missing"),
+			expectedErr: errors.New("mandatory 'name' field is missing, mandatory 'author' field is missing, mandatory 'id' field is missing"),
 		},
 		{
 			name: "emptyNameWithInvalidID",
@@ -68,21 +69,49 @@ func TestLoadTemplate(t *testing.T) {
 			isValid:     true,
 			expectedErr: errors.New("field 'severity' is missing"),
 		},
+		{
+			name: "template-without-serverity-with-correct-filter-id",
+			template: &templates.Template{
+				ID: "CVE-2021-27330",
+				Info: model.Info{
+					Name:    "Valid template",
+					Authors: stringslice.StringSlice{Value: "Author"},
+				},
+			},
+			// should be error because the template is loaded
+			expectedErr: errors.New("field 'severity' is missing"),
+			isValid:     true,
+			filter:      filter.Config{IncludeIds: []string{"CVE-2021-27330"}},
+		},
+		{
+			name: "template-without-serverity-with-diff-filter-id",
+			template: &templates.Template{
+				ID: "CVE-2021-27330",
+				Info: model.Info{
+					Name:    "Valid template",
+					Authors: stringslice.StringSlice{Value: "Author"},
+				},
+			},
+			isValid: false,
+			filter:  filter.Config{IncludeIds: []string{"another-id"}},
+			// no error because the template is not loaded
+			expectedErr: nil,
+		},
 	}
 
 	for _, tc := range tt {
 		t.Run(tc.name, func(t *testing.T) {
 			parsedTemplatesCache.Store(tc.name, tc.template, tc.templateErr)
 
-			tagFilter, err := filter.New(&filter.Config{})
+			tagFilter, err := filter.New(&tc.filter)
 			require.Nil(t, err)
 			success, err := LoadTemplate(tc.name, tagFilter, nil, catalog)
-			require.Equal(t, tc.isValid, success)
 			if tc.expectedErr == nil {
 				require.NoError(t, err)
 			} else {
 				require.ErrorContains(t, err, tc.expectedErr.Error())
 			}
+			require.Equal(t, tc.isValid, success)
 		})
 	}
 
