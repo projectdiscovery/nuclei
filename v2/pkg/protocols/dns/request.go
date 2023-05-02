@@ -54,6 +54,11 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, metadata,
 	variablesMap := request.options.Variables.Evaluate(vars)
 	vars = generators.MergeMaps(variablesMap, vars)
 
+	return request.execute(domain, metadata, previous, vars, callback)
+}
+
+func (request *Request) execute(domain string, metadata, previous output.InternalEvent, vars map[string]interface{}, callback protocols.OutputEventCallback) error {
+
 	if vardump.EnableVarDump {
 		gologger.Debug().Msgf("Protocol request variables: \n%s\n", vardump.DumpVariables(vars))
 	}
@@ -115,7 +120,7 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, metadata,
 		}
 	}
 
-	outputEvent := request.responseToDSLMap(compiledRequest, response, input.MetaInput.Input, input.MetaInput.Input, traceData)
+	outputEvent := request.responseToDSLMap(compiledRequest, response, domain, domain, traceData)
 	for k, v := range previous {
 		outputEvent[k] = v
 	}
