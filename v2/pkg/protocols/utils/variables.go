@@ -5,6 +5,7 @@ import (
 	"path"
 	"strings"
 
+	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/contextargs"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/generators"
 	urlutil "github.com/projectdiscovery/utils/url"
@@ -50,9 +51,9 @@ func GenerateDNSVariables(domain string) map[string]interface{} {
 	return dnsVariables
 }
 
-// GeneraterVariables accept string or *urlutil.URL object as input
+// GenerateVariables accepts string or *urlutil.URL object as input
 // Returns the map of KnownVariables keys
-// This function is used by http, websocket, metwork and whois protocols to generate variables
+// This function is used by http, headless, websocket, network and whois protocols to generate protocol variables
 func GenerateVariables(input interface{}, removeTrailingSlash bool, additionalVars map[string]interface{}) map[string]interface{} {
 
 	var vars = make(map[string]interface{})
@@ -65,6 +66,11 @@ func GenerateVariables(input interface{}, removeTrailingSlash bool, additionalVa
 		vars = generateVariables(parsed, removeTrailingSlash)
 	case *urlutil.URL:
 		vars = generateVariables(input, removeTrailingSlash)
+	case urlutil.URL:
+		vars = generateVariables(&input, removeTrailingSlash)
+	default:
+		// return a non-fatal error
+		gologger.Error().Msgf("unknown type %T for input %v", input, input)
 	}
 	return generators.MergeMaps(vars, additionalVars)
 }
