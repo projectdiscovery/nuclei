@@ -26,6 +26,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/interactsh"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/replacer"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/utils/vardump"
+	protocolutils "github.com/projectdiscovery/nuclei/v2/pkg/protocols/utils"
 	templateTypes "github.com/projectdiscovery/nuclei/v2/pkg/templates/types"
 )
 
@@ -51,7 +52,7 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, metadata 
 		request.options.Progress.IncrementFailedRequestsBy(1)
 		return errors.Wrap(err, "could not get address from url")
 	}
-	variables := generateNetworkVariables(address)
+	variables := protocolutils.GenerateVariables(address, false, nil)
 	variablesMap := request.options.Variables.Evaluate(variables)
 	variables = generators.MergeMaps(variablesMap, variables)
 
@@ -347,19 +348,4 @@ func getAddress(toTest string) (string, error) {
 		toTest = parsed.Host
 	}
 	return toTest, nil
-}
-
-func generateNetworkVariables(input string) map[string]interface{} {
-	if !strings.Contains(input, ":") {
-		return map[string]interface{}{"Hostname": input, "Host": input}
-	}
-	host, port, err := net.SplitHostPort(input)
-	if err != nil {
-		return map[string]interface{}{"Hostname": input}
-	}
-	return map[string]interface{}{
-		"Host":     host,
-		"Port":     port,
-		"Hostname": input,
-	}
 }
