@@ -4,6 +4,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"net/url"
+	"strings"
 
 	"github.com/miekg/dns"
 	"github.com/pkg/errors"
@@ -137,8 +138,14 @@ func (request *Request) execute(domain string, metadata, previous output.Interna
 			request.options.Output.Request(request.options.TemplatePath, domain, "dns", err)
 		}
 	}
-
-	outputEvent := request.responseToDSLMap(compiledRequest, response, domain, domain, traceData)
+	matchedAt := domain
+	if len(response.Question) > 0 {
+		matchedAt = response.Question[0].Name
+	}
+	// remove the last dot
+	matchedAt = strings.TrimSuffix(matchedAt, ".")
+	// Create the output event
+	outputEvent := request.responseToDSLMap(compiledRequest, response, domain, matchedAt, traceData)
 	for k, v := range previous {
 		outputEvent[k] = v
 	}
