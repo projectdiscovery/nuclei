@@ -67,11 +67,11 @@ require (
 	github.com/klauspost/compress v1.16.5
 	github.com/labstack/echo/v4 v4.10.2
 	github.com/mholt/archiver v3.1.1+incompatible
-	github.com/projectdiscovery/dsl v0.0.5-0.20230328190851-15d12ab4c5e4
+	github.com/projectdiscovery/dsl v0.0.7
 	github.com/projectdiscovery/fasttemplate v0.0.2
 	github.com/projectdiscovery/goflags v0.1.8
 	github.com/projectdiscovery/gologger v1.1.8
-	github.com/projectdiscovery/httpx v1.2.9
+	github.com/projectdiscovery/httpx v1.3.0
 	github.com/projectdiscovery/mapcidr v1.1.1
 	github.com/projectdiscovery/nvd v1.0.10-0.20230327073015-721181aba1e8
 	github.com/projectdiscovery/ratelimit v0.0.6
@@ -80,7 +80,7 @@ require (
 	github.com/projectdiscovery/tlsx v1.0.9
 	github.com/projectdiscovery/uncover v1.0.2
 	github.com/projectdiscovery/utils v0.0.26
-	github.com/projectdiscovery/wappalyzergo v0.0.88
+	github.com/projectdiscovery/wappalyzergo v0.0.92
 	github.com/stretchr/testify v1.8.2
 	gopkg.in/src-d/go-git.v4 v4.13.1
 	gopkg.in/yaml.v3 v3.0.1
@@ -125,6 +125,7 @@ require (
 	github.com/projectdiscovery/asnmap v1.0.3 // indirect
 	github.com/projectdiscovery/cdncheck v1.0.1 // indirect
 	github.com/projectdiscovery/freeport v0.0.4 // indirect
+	github.com/sashabaranov/go-openai v1.8.0 // indirect
 	github.com/shoenig/go-m1cpu v0.1.4 // indirect
 	github.com/skeema/knownhosts v1.1.0 // indirect
 	github.com/smartystreets/assertions v1.0.0 // indirect
