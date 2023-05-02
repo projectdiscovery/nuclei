@@ -108,8 +108,8 @@ func (template *Template) Requests() int {
 		len(template.RequestsWHOIS)
 }
 
-// CompileProtocolRequests compiles all the protocol requests for the template
-func (template *Template) CompileProtocolRequests(options protocols.ExecuterOptions) error {
+// compileProtocolRequests compiles all the protocol requests for the template
+func (template *Template) compileProtocolRequests(options protocols.ExecuterOptions) error {
 	templateRequests := template.Requests()
 
 	if templateRequests == 0 {
@@ -237,7 +237,7 @@ func ParseTemplateFromReader(reader io.Reader, preprocessor Preprocessor, option
 		return nil, fmt.Errorf("no requests defined for %s", template.ID)
 	}
 
-	if err := template.CompileProtocolRequests(options); err != nil {
+	if err := template.compileProtocolRequests(options); err != nil {
 		return nil, err
 	}
 
