@@ -234,7 +234,7 @@ func lookup(name, dnsServer string) (string, string) {
 // NOTE: Only works if we have root permission
 // TODO: Add support for Windows
 func traceroute(assetIPs string, networkType string, adminPriv bool) string {
-	if !adminPriv {
+	if !adminPriv && runtime.GOOS != "windows" {
 		return "Traceroute: You must have root permissions to run this test"
 	}
 
@@ -338,7 +338,7 @@ func traceroute(assetIPs string, networkType string, adminPriv bool) string {
 
 // ping performs a ping of an IP address, both IPv6 and IPv4 as requested
 func ping(addresses, proto string, adminPriv bool) string {
-	if !adminPriv {
+	if !adminPriv && runtime.GOOS != "windows" {
 		return "Ping: You must have root permissions to run this test"
 	}
 	assetIP := strings.Split(addresses, ", ")[0]
