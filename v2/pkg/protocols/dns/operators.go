@@ -13,6 +13,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators/matchers"
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/generators"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 	"github.com/projectdiscovery/retryabledns"
 )
@@ -79,7 +80,7 @@ func (request *Request) getMatchPart(part string, data output.InternalEvent) (in
 
 // responseToDSLMap converts a DNS response to a map for use in DSL matching
 func (request *Request) responseToDSLMap(req, resp *dns.Msg, host, matched string, traceData *retryabledns.TraceData) output.InternalEvent {
-	return output.InternalEvent{
+	ret := output.InternalEvent{
 		"host":          host,
 		"matched":       matched,
 		"request":       req.String(),
@@ -95,6 +96,7 @@ func (request *Request) responseToDSLMap(req, resp *dns.Msg, host, matched strin
 		"type":          request.Type().String(),
 		"trace":         traceToString(traceData, false),
 	}
+	return generators.MergeMaps(ret, recordsKeyValue(resp.Answer))
 }
 
 // MakeResultEvent creates a result event from internal wrapped event
@@ -146,4 +148,24 @@ func traceToString(traceData *retryabledns.TraceData, withSteps bool) string {
 		}
 	}
 	return buffer.String()
+}
+
+func recordsKeyValue(resourceRecords []dns.RR) output.InternalEvent {
+	var oe = make(output.InternalEvent)
+	for _, resourceRecord := range resourceRecords {
+		key := strings.ToLower(dns.TypeToString[resourceRecord.Header().Rrtype])
+		value := strings.ReplaceAll(resourceRecord.String(), resourceRecord.Header().String(), "")
+
+		if preVal, ok := oe[key]; ok {
+			switch v := oe[key].(type) {
+			case string:
+				oe[key] = []string{value, preVal.(string)}
+			case []string:
+				oe[key] = append(v, preVal.([]string)...)
+			}
+			continue
+		}
+		oe[key] = value
+	}
+	return oe
 }
