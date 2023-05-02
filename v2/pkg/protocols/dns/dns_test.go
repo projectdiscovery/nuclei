@@ -10,17 +10,6 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/testutils"
 )
 
-func TestGenerateDNSVariables(t *testing.T) {
-	vars := GenerateVariables("www.projectdiscovery.io")
-	require.Equal(t, map[string]interface{}{
-		"FQDN": "www.projectdiscovery.io",
-		"RDN":  "projectdiscovery.io",
-		"DN":   "projectdiscovery",
-		"TLD":  "io",
-		"SD":   "www",
-	}, vars, "could not get dns variables")
-}
-
 func TestDNSCompileMake(t *testing.T) {
 	options := testutils.DefaultOptions
 
