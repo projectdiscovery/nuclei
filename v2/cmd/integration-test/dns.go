@@ -10,6 +10,7 @@ var dnsTestCases = map[string]testutils.TestCase{
 	"dns/caa.yaml":       &dnsCAA{},
 	"dns/tlsa.yaml":      &dnsTLSA{},
 	"dns/variables.yaml": &dnsVariables{},
+	"dns/payload.yaml":   &dnsPayload{},
 }
 
 type dnsBasic struct{}
@@ -65,4 +66,24 @@ func (h *dnsVariables) Execute(filePath string) error {
 		return err
 	}
 	return expectResultsCount(results, 1)
+}
+
+type dnsPayload struct{}
+
+// Execute executes a test case and returns an error if occurred
+func (h *dnsPayload) Execute(filePath string) error {
+	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, "google.com", debug)
+	if err != nil {
+		return err
+	}
+	if err := expectResultsCount(results, 3); err != nil {
+		return err
+	}
+
+	// override payload from CLI
+	results, err = testutils.RunNucleiTemplateAndGetResults(filePath, "google.com", debug, "-var", "subdomain_wordlist=subdomains.txt")
+	if err != nil {
+		return err
+	}
+	return expectResultsCount(results, 4)
 }

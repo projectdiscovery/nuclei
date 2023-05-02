@@ -63,8 +63,7 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, metadata,
 			if !ok {
 				break
 			}
-			value = generators.MergeMaps(value, vars)
-
+			value = generators.MergeMaps(vars, value)
 			if err := request.execute(domain, metadata, previous, value, callback); err != nil {
 				return err
 			}
