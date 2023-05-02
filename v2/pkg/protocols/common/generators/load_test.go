@@ -37,7 +37,7 @@ func TestLoadPayloads(t *testing.T) {
 		require.Equal(t, map[string][]string{"new": {"test", "another"}}, values, "could not get values")
 	})
 	t.Run("no-sandbox-unix", func(t *testing.T) {
-		if osutils.IsWindows() {
+		if osutils.IsLinux() {
 			return
 		}
 		_, err := generator.loadPayloads(map[string]interface{}{
