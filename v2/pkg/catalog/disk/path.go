@@ -4,8 +4,11 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/pkg/errors"
+	fileutil "github.com/projectdiscovery/utils/file"
+	urlutil "github.com/projectdiscovery/utils/url"
 )
 
 // ResolvePath resolves the path to an absolute one in various ways.
@@ -51,4 +54,44 @@ func (c *DiskCatalog) tryResolve(fullPath string) (string, error) {
 		return fullPath, nil
 	}
 	return "", errNoValidCombination
+}
+
+// BackwardsCompatiblePaths returns new paths for all old/legacy template paths
+// Note: this is a temporary function and will be removed in the future release
+func BackwardsCompatiblePaths(templateDir string, oldPath string) string {
+	// TODO: remove this function in the future release
+	// 1. all http related paths are now moved at path /http
+	// 2. netwok related CVES are now moved at path /network/cves
+	newPathCallback := func(path string) string {
+		// trim prefix slash if any
+		path = strings.TrimPrefix(path, "/")
+		// check if filepath exists else
+		if !fileutil.FileOrFolderExists(filepath.Join(templateDir, path)) {
+			// try to resolve path at /http subdirectory
+			if fileutil.FileOrFolderExists(filepath.Join(templateDir, "http", path)) {
+				return filepath.Join(templateDir, "http", path)
+				// try to resolve path at /network/cves subdirectory
+			} else if strings.HasPrefix(path, "cves") && fileutil.FileOrFolderExists(filepath.Join(templateDir, "network", "cves", path)) {
+				return filepath.Join(templateDir, "network", "cves", path)
+			}
+			// most likely the path is not found
+			return filepath.Join(templateDir, path)
+		}
+		return filepath.Join(templateDir, path)
+	}
+	switch {
+	case filepath.IsAbs(oldPath):
+		// trim the template directory from the path
+		return newPathCallback(strings.TrimPrefix(oldPath, templateDir))
+	case strings.Contains(oldPath, urlutil.SchemeSeparator):
+		// scheme seperator is used to identify the path as url
+		// TBD: add support for url directories ??
+		return oldPath
+	case strings.Contains(oldPath, "*"):
+		// this is most likely a glob path skip processing
+		return oldPath
+	default:
+		// this is most likely a relative path
+		return newPathCallback(oldPath)
+	}
 }

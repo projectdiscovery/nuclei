@@ -9,6 +9,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/config"
 	stringsutil "github.com/projectdiscovery/utils/strings"
+	urlutil "github.com/projectdiscovery/utils/url"
 )
 
 // GetTemplatesPath returns a list of absolute paths for the provided template list.
@@ -24,7 +25,7 @@ func (c *DiskCatalog) GetTemplatesPath(definitions []string) ([]string, map[stri
 			// this should be replaced with more appropriate and robust logic
 			continue
 		}
-		if strings.HasPrefix(t, "http") && stringsutil.ContainsAny(t, config.GetSupportTemplateFileExtensions()...) {
+		if strings.Contains(t, urlutil.SchemeSeparator) && stringsutil.ContainsAny(t, config.GetSupportTemplateFileExtensions()...) {
 			if _, ok := processed[t]; !ok {
 				processed[t] = true
 				allTemplates = append(allTemplates, t)
@@ -60,14 +61,9 @@ func (c *DiskCatalog) GetTemplatesPath(definitions []string) ([]string, map[stri
 // or folders provided as in.
 func (c *DiskCatalog) GetTemplatePath(target string) ([]string, error) {
 	processed := make(map[string]struct{})
-	absPath, err := c.convertPathToAbsolute(target)
-	if err != nil {
-		return nil, errors.Wrapf(err, "could not find template file")
-	}
-
 	// Template input includes a wildcard
-	if strings.Contains(absPath, "*") {
-		matches, findErr := c.findGlobPathMatches(absPath, processed)
+	if strings.Contains(target, "*") {
+		matches, findErr := c.findGlobPathMatches(target, processed)
 		if findErr != nil {
 			return nil, errors.Wrap(findErr, "could not find glob matches")
 		}
@@ -75,6 +71,14 @@ func (c *DiskCatalog) GetTemplatePath(target string) ([]string, error) {
 			return nil, errors.Errorf("no templates found for path")
 		}
 		return matches, nil
+	}
+
+	// try to handle deprecated template paths
+	absPath := BackwardsCompatiblePaths(c.templatesDirectory, target)
+
+	absPath, err := c.convertPathToAbsolute(absPath)
+	if err != nil {
+		return nil, errors.Wrapf(err, "could not find template file")
 	}
 
 	// Template input is either a file or a directory
@@ -117,8 +121,34 @@ func (c *DiskCatalog) convertPathToAbsolute(t string) (string, error) {
 
 // findGlobPathMatches returns the matched files from a glob path
 func (c *DiskCatalog) findGlobPathMatches(absPath string, processed map[string]struct{}) ([]string, error) {
-	matches, err := filepath.Glob(absPath)
-	if err != nil {
+	// to support globbing on old paths we use bruteforce to find matches with exit on first match
+	// trim templateDir if any
+	relPath := strings.TrimPrefix(absPath, c.templatesDirectory)
+	// trim leading slash if any
+	relPath = strings.TrimPrefix(relPath, string(os.PathSeparator))
+
+	OldPathsResolver := func(inputGlob string) []string {
+		templateDir := c.templatesDirectory
+		if c.templatesDirectory == "" {
+			templateDir = "./"
+		}
+		matches, _ := fs.Glob(os.DirFS(filepath.Join(templateDir, "http")), inputGlob)
+		if len(matches) != 0 {
+			return matches
+		}
+		// condition to support network cve related globs
+		matches, _ = fs.Glob(os.DirFS(filepath.Join(templateDir, "network")), inputGlob)
+		return matches
+	}
+
+	var matched []string
+	matches, err := fs.Glob(c.templatesFS, relPath)
+	if len(matches) != 0 {
+		matched = append(matched, matches...)
+	} else {
+		matched = append(matched, OldPathsResolver(relPath)...)
+	}
+	if err != nil && len(matched) == 0 {
 		return nil, errors.Errorf("wildcard found, but unable to glob: %s\n", err)
 	}
 	results := make([]string, 0, len(matches))
