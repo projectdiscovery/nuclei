@@ -216,6 +216,6 @@ func PrintDeprecatedPathsMsgIfApplicable(isSilent bool) {
 		return
 	}
 	if deprecatedPathsCounter > 0 && !isSilent {
-		gologger.Print().Msgf("[%v] Found %v templates loaded with deprecated paths, update before v2.9.5 for continued support\n", aurora.Yellow("WRN").String(), deprecatedPathsCounter)
+		gologger.Print().Msgf("[%v] Found %v templates loaded with deprecated paths, update before v2.9.5 for continued support.\n", aurora.Yellow("WRN").String(), deprecatedPathsCounter)
 	}
 }

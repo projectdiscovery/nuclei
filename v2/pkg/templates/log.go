@@ -49,7 +49,7 @@ func appendAtSignToAuthors(authors []string) string {
 // Unless mode is silent we print a message for deprecated protocol name
 func PrintDeprecatedProtocolNameMsgIfApplicable(isSilent bool, verbose bool) {
 	if len(deprecatedProtocolNameTemplates) > 0 && !isSilent {
-		gologger.Print().Msgf("[%v] Found %v templates loaded with deprecated protocol syntax, update before v2.9.5 for continued support\n", aurora.Yellow("WRN").String(), len(deprecatedProtocolNameTemplates))
+		gologger.Print().Msgf("[%v] Found %v templates loaded with deprecated protocol syntax, update before v2.9.5 for continued support.\n", aurora.Yellow("WRN").String(), len(deprecatedProtocolNameTemplates))
 	}
 	if verbose {
 		for template := range deprecatedProtocolNameTemplates {
