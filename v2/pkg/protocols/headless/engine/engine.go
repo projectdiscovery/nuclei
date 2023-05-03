@@ -14,7 +14,6 @@ import (
 	fileutil "github.com/projectdiscovery/utils/file"
 	osutils "github.com/projectdiscovery/utils/os"
 	processutil "github.com/projectdiscovery/utils/process"
-	reflectutil "github.com/projectdiscovery/utils/reflect"
 )
 
 // Browser is a browser structure for nuclei headless module
@@ -51,12 +50,6 @@ func New(options *types.Options) (*Browser, error) {
 
 	if MustDisableSandbox() {
 		chromeLauncher = chromeLauncher.NoSandbox(true)
-	}
-
-	// we need to set go rod internal value with reflection
-	launcherInternalBrowser := reflectutil.GetUnexportedField(chromeLauncher, "browser")
-	if internalInstance, ok := launcherInternalBrowser.(*launcher.Browser); ok {
-		internalInstance.IgnoreCerts = true
 	}
 
 	executablePath, err := os.Executable()
