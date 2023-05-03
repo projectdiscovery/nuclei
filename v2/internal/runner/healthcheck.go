@@ -21,6 +21,7 @@ import (
 	"github.com/projectdiscovery/fdmax"
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/config"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
+	"github.com/projectdiscovery/sliceutil"
 	file "github.com/projectdiscovery/utils/file"
 	iputil "github.com/projectdiscovery/utils/ip"
 	permission "github.com/projectdiscovery/utils/permission"
@@ -99,19 +100,23 @@ func DoHealthCheck(options *types.Options) string {
 
 	// Other Host information
 	v4, v6, _ := router.GetOutboundIPs()
+	myIP, _ := iputil.WhatsMyIP()
+	data["environment"].(map[string]interface{})["Internet ip"] = processAddresses(myIP, "IPv4")
 	data["environment"].(map[string]interface{})["source IPv4"] = v4.String()
 	data["environment"].(map[string]interface{})["source IPv6"] = v6.String()
 	data["environment"].(map[string]interface{})["ulimit"] = checkUlimit(data, ulimitmin)
-	data["environment"].(map[string]interface{})["internet ip"], _ = iputil.WhatsMyIP()
 
 	// Test each DNS resolver set in config and the default resolver
-	resolvers = addIfNotExists(resolvers, resolverPublic)
+	if !sliceutil.Contains(resolvers, resolverPublic) {
+		resolvers = append(resolvers, resolverPublic)
+	}
+	// resolvers = addIfNotExists(resolvers, resolverPublic)
 	dns := map[string]interface{}{}
 	for _, resolverCfg := range resolvers {
 		for _, host := range []string{internetTarget, defaultTarget} {
 			ipv4addresses, ipv6addresses := getAddresses(host, resolverCfg)
-			dns[host+" (IPv4)"] = processAddresses(host, ipv4addresses, "IPv4")
-			dns[host+" (IPv6)"] = processAddresses(host, ipv6addresses, "IPv6")
+			dns[host+" (IPv4)"] = processAddresses(ipv4addresses, "IPv4")
+			dns[host+" (IPv6)"] = processAddresses(ipv6addresses, "IPv6")
 		}
 		dnsTests[resolverCfg] = dns
 	}
@@ -139,7 +144,7 @@ func DoHealthCheck(options *types.Options) string {
 }
 
 // processAddresses formats a list of addresses by adding "internal" as appropriate
-func processAddresses(host string, addresses string, version string) string {
+func processAddresses(addresses string, version string) string {
 	if addresses == "" {
 		return "Fail (no " + version + " address)"
 	}
@@ -152,18 +157,6 @@ func processAddresses(host string, addresses string, version string) string {
 		tmpstring = tmpstring + ip + ", "
 	}
 	return strings.TrimSuffix(tmpstring, ", ")
-}
-
-// addIfNotExists adds an element to a slice if it doesn't already exist
-func addIfNotExists(slice []string, element string) []string {
-	for _, e := range slice {
-		if e == element {
-			// Element already exists in slice, return original slice
-			return slice
-		}
-	}
-	// Element doesn't exist in slice, append to slice and return
-	return append(slice, element)
 }
 
 // getAddresses returns the IPv4 and IPv6 addresses for a host
