@@ -101,9 +101,9 @@ func DoHealthCheck(options *types.Options) string {
 	// Other Host information
 	v4, v6, _ := router.GetOutboundIPs()
 	myIP, _ := iputil.WhatsMyIP()
-	data["environment"].(map[string]interface{})["Internet ip"] = processAddresses(myIP, "IPv4")
-	data["environment"].(map[string]interface{})["source IPv4"] = v4.String()
-	data["environment"].(map[string]interface{})["source IPv6"] = v6.String()
+	data["environment"].(map[string]interface{})["Internet ip"] = addInternalTag(myIP)
+	data["environment"].(map[string]interface{})["source IPv4"] = addInternalTag(v4.String())
+	data["environment"].(map[string]interface{})["source IPv6"] = addInternalTag(v6.String())
 	data["environment"].(map[string]interface{})["ulimit"] = checkUlimit(data, ulimitmin)
 
 	// Test each DNS resolver set in config and the default resolver
@@ -115,8 +115,8 @@ func DoHealthCheck(options *types.Options) string {
 	for _, resolverCfg := range resolvers {
 		for _, host := range []string{internetTarget, defaultTarget} {
 			ipv4addresses, ipv6addresses := getAddresses(host, resolverCfg)
-			dns[host+" (IPv4)"] = processAddresses(ipv4addresses, "IPv4")
-			dns[host+" (IPv6)"] = processAddresses(ipv6addresses, "IPv6")
+			dns[host+" (IPv4)"] = addInternalTag(ipv4addresses)
+			dns[host+" (IPv6)"] = addInternalTag(ipv6addresses)
 		}
 		dnsTests[resolverCfg] = dns
 	}
@@ -143,16 +143,18 @@ func DoHealthCheck(options *types.Options) string {
 	return mapToJson(data)
 }
 
-// processAddresses formats a list of addresses by adding "internal" as appropriate
-func processAddresses(addresses string, version string) string {
+// addInternalTag formats a list of addresses by adding "internal" as appropriate
+func addInternalTag(addresses string) string {
+	var tmpstring string
 	if addresses == "" {
-		return "Fail (no " + version + " address)"
+		return "Fail (no address)"
 	}
 
-	tmpstring := ""
 	for _, ip := range strings.Split(addresses, " ") {
+		fmt.Print("Checking internal for: " + ip + "\n")
 		if iputil.IsInternal(ip) {
 			ip = ip + " (internal)"
+			fmt.Print("Adding internal tag for: " + ip + "\n")
 		}
 		tmpstring = tmpstring + ip + ", "
 	}
