@@ -255,17 +255,36 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 	data["template-id"] = requestOptions.TemplateID
 	data["template-info"] = requestOptions.TemplateInfo
 
+	// if response is not struct compatible, error out
+	if !structs.IsStruct(response) {
+		return errorutil.NewWithTag("ssl", "response cannot be parsed into a struct: %v", response)
+	}
+
 	// Convert response to key value pairs and first cert chain item as well
 	responseParsed := structs.New(response)
 	for _, f := range responseParsed.Fields() {
+		if !f.IsExported() {
+			// if field is not exported f.IsZero() , f.Value() will panic
+			continue
+		}
 		tag := utils.CleanStructFieldJSONTag(f.Tag("json"))
 		if tag == "" || f.IsZero() {
 			continue
 		}
 		data[tag] = f.Value()
 	}
+
+	// if certificate response is not struct compatible, error out
+	if !structs.IsStruct(response.CertificateResponse) {
+		return errorutil.NewWithTag("ssl", "certificate response cannot be parsed into a struct: %v", response.CertificateResponse)
+	}
+
 	responseParsed = structs.New(response.CertificateResponse)
 	for _, f := range responseParsed.Fields() {
+		if !f.IsExported() {
+			// if field is not exported f.IsZero() , f.Value() will panic
+			continue
+		}
 		tag := utils.CleanStructFieldJSONTag(f.Tag("json"))
 		if tag == "" || f.IsZero() {
 			continue
