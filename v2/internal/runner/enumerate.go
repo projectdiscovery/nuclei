@@ -2,6 +2,7 @@ package runner
 
 import (
 	"bytes"
+	"context"
 	"crypto/sha1"
 	"encoding/base64"
 	"encoding/hex"
@@ -10,9 +11,11 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"github.com/klauspost/compress/zlib"
+	"github.com/pkg/errors"
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v2/internal/runner/nucleicloud"
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/loader"
@@ -21,7 +24,6 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/contextargs"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
-	"go.uber.org/atomic"
 )
 
 // runStandardEnumeration runs standard enumeration
@@ -84,9 +86,36 @@ func (r *Runner) runCloudEnumeration(store *loader.Store, cloudTemplates, cloudT
 	}
 	time.Sleep(3 * time.Second)
 
+	scanResponse, err := r.cloudClient.GetScan(taskID)
+	if err != nil {
+		return results, errors.Wrap(err, "could not get scan status")
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	// Start progress logging for the created scan
+	if r.progress != nil {
+		ticker := time.NewTicker(time.Duration(r.options.StatsInterval) * time.Second)
+		r.progress.Init(r.hmapInputProvider.Count(), int(scanResponse.Templates), int64(scanResponse.Total))
+		go func() {
+			defer ticker.Stop()
+			for {
+				select {
+				case <-ctx.Done():
+					return
+				case <-ticker.C:
+					if scanResponse, err := r.cloudClient.GetScan(taskID); err == nil {
+						r.progress.SetRequests(uint64(scanResponse.Current))
+					}
+				}
+			}
+		}()
+	}
+
 	err = r.cloudClient.GetResults(taskID, true, limit, func(re *output.ResultEvent) {
+		r.progress.IncrementMatched()
 		results.CompareAndSwap(false, true)
-		_ = count.Inc()
+		_ = count.Add(1)
 
 		if outputErr := r.output.Write(re); outputErr != nil {
 			gologger.Warning().Msgf("Could not write output: %s", err)

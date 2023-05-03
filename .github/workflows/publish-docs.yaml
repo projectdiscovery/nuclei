@@ -1,9 +1,9 @@
 name: ⏰ Publish Docs
 
 on:
-  pull_request:
-    paths:
-      - '**.go'
+  push:
+    branches:
+      - dev
   workflow_dispatch:
 
 jobs:
@@ -16,7 +16,7 @@ jobs:
           fetch-depth: 0
 
       - name: "Set up Go"
-        uses: actions/setup-go@v3
+        uses: actions/setup-go@v4
         with: 
           go-version: 1.19
 
@@ -46,3 +46,4 @@ jobs:
         uses: ad-m/github-push-action@master
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
+          branch: ${{ github.ref }}

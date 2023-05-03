@@ -15,7 +15,7 @@ type HTTPMethodType int
 const (
 	// name:GET
 	HTTPGet HTTPMethodType = iota + 1
-	// name:GET
+	// name:HEAD
 	HTTPHead
 	// name:POST
 	HTTPPost
@@ -108,6 +108,20 @@ func (holder *HTTPMethodTypeHolder) UnmarshalYAML(unmarshal func(interface{}) er
 	}
 
 	computedType, err := toHTTPMethodTypes(marshalledTypes)
+	if err != nil {
+		return err
+	}
+
+	holder.MethodType = computedType
+	return nil
+}
+
+func (holder *HTTPMethodTypeHolder) UnmarshalJSON(data []byte) error {
+	s := strings.Trim(string(data), `"`)
+	if s == "" {
+		return nil
+	}
+	computedType, err := toHTTPMethodTypes(s)
 	if err != nil {
 		return err
 	}

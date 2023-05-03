@@ -35,8 +35,6 @@ type Options struct {
 	CustomHeaders goflags.StringSlice
 	// Vars is the list of custom global vars
 	Vars goflags.RuntimeMap
-	// vars to use as iterative payload
-	varsPayload map[string]interface{}
 	// Severities filters templates based on their severity and only run the matching ones.
 	Severities severity.Severities
 	// ExcludeSeverities specifies severities to exclude
@@ -78,7 +76,7 @@ type Options struct {
 	// List of HTTP(s)/SOCKS5 proxy to use (comma separated or file input)
 	Proxy goflags.StringSlice
 	// TemplatesDirectory is the directory to use for storing templates
-	TemplatesDirectory string
+	NewTemplatesDirectory string
 	// TraceLogFile specifies a file to write with the trace of all requests
 	TraceLogFile string
 	// ErrorLogFile specifies a file to write with the errors of all requests
@@ -103,6 +101,12 @@ type Options struct {
 	ListTargets bool
 	// ListTemplates enables listing of templates for user
 	ListTemplates bool
+	// ListReportingSources enables listing of reporting source
+	ListReportingSources bool
+	// DisableReportingSource disables a reporting source
+	DisableReportingSource string
+	// EnableReportingSource enables a reporting source
+	EnableReportingSource string
 	// Limit the number of items at a time
 	OutputLimit int
 	// Nostore
@@ -135,6 +139,10 @@ type Options struct {
 	MetricsPort int
 	// MaxHostError is the maximum number of errors allowed for a host
 	MaxHostError int
+	// TrackError contains additional error messages that count towards the maximum number of errors allowed for a host
+	TrackError goflags.StringSlice
+	// NoHostErrors disables host skipping after maximum number of errors
+	NoHostErrors bool
 	// BulkSize is the of targets analyzed in parallel for each template
 	BulkSize int
 	// TemplateThreads is the number of templates executed in parallel
@@ -207,8 +215,6 @@ type Options struct {
 	AutomaticScan bool
 	// Silent suppresses any extra text and only writes found URLs on screen.
 	Silent bool
-	// Version specifies if we should just show version and exit
-	Version bool
 	// Validate validates the templates passed to nuclei.
 	Validate bool
 	// NoStrictSyntax disables strict syntax check on nuclei templates (allows custom key-value pairs).
@@ -220,18 +226,20 @@ type Options struct {
 	ShowVarDump bool
 	// No-Color disables the colored output.
 	NoColor bool
-	// UpdateTemplates updates the templates installed at startup
+	// UpdateTemplates updates the templates installed at startup (also used by cloud to update datasources)
 	UpdateTemplates bool
-	// JSON writes json output to files
-	JSON bool
+	// JSON writes json line output to files
+	JSONL bool
 	// JSONRequests writes requests/responses for matches in JSON output
 	JSONRequests bool
+	// JSONExport is the file to export JSON output format to
+	JSONExport string
+	// JSONLExport is the file to export JSONL output format to
+	JSONLExport string
 	// Cloud enables nuclei cloud scan execution
 	Cloud bool
 	// EnableProgressBar enables progress bar
 	EnableProgressBar bool
-	// TemplatesVersion shows the templates installed version
-	TemplatesVersion bool
 	// TemplateDisplay displays the template contents
 	TemplateDisplay bool
 	// TemplateList lists available templates
@@ -256,10 +264,6 @@ type Options struct {
 	NewTemplatesWithVersion goflags.StringSlice
 	// NoInteractsh disables use of interactsh server for interaction polling
 	NoInteractsh bool
-	// UpdateNuclei checks for an update for the nuclei engine
-	UpdateNuclei bool
-	// NoUpdateTemplates disables checking for nuclei templates updates
-	NoUpdateTemplates bool
 	// EnvironmentVariables enables support for environment variables
 	EnvironmentVariables bool
 	// MatcherStatus displays optional status for the failed matches as well
@@ -318,40 +322,46 @@ type Options struct {
 	UncoverLimit int
 	// Uncover search delay
 	UncoverDelay int
-	// ConfigPath contains the config path (used by healthcheck)
-	ConfigPath string
 	// ScanAllIPs associated to a dns record
 	ScanAllIPs bool
 	// IPVersion to scan (4,6)
 	IPVersion goflags.StringSlice
 	// Code templates trust store
 	Code string
-	// Github token used to clone/pull from private repos for custom templates
+	// GitHub token used to clone/pull from private repos for custom templates
 	GithubToken string
-	// GithubTemplateRepo is the list of custom public/private templates github repos
+	// GithubTemplateRepo is the list of custom public/private templates GitHub repos
 	GithubTemplateRepo []string
-	// AWS access key for downloading templates from s3 bucket
+	// GitLabServerURL is the gitlab server to use for custom templates
+	GitLabServerURL string
+	// GitLabToken used to clone/pull from private repos for custom templates
+	GitLabToken string
+	// GitLabTemplateRepositoryIDs is the comma-separated list of custom gitlab repositories IDs
+	GitLabTemplateRepositoryIDs []int
+	// AWS access key for downloading templates from S3 bucket
 	AwsAccessKey string
-	// AWS secret key for downloading templates from s3 bucket
+	// AWS secret key for downloading templates from S3 bucket
 	AwsSecretKey string
-	// AWS bucket name for downloading templates from s3 bucket
+	// AWS bucket name for downloading templates from S3 bucket
 	AwsBucketName string
-	// AWS Region name where aws s3 bucket is located
+	// AWS Region name where AWS S3 bucket is located
 	AwsRegion string
+	// AzureContainerName for downloading templates from Azure Blob Storage. Example: templates
+	AzureContainerName string
+	// AzureTenantID for downloading templates from Azure Blob Storage. Example: 00000000-0000-0000-0000-000000000000
+	AzureTenantID string
+	// AzureClientID for downloading templates from Azure Blob Storage. Example: 00000000-0000-0000-0000-000000000000
+	AzureClientID string
+	// AzureClientSecret for downloading templates from Azure Blob Storage. Example: 00000000-0000-0000-0000-000000000000
+	AzureClientSecret string
+	// AzureServiceURL for downloading templates from Azure Blob Storage. Example: https://XXXXXXXXXX.blob.core.windows.net/
+	AzureServiceURL string
 	// Scan Strategy (auto,hosts-spray,templates-spray)
 	ScanStrategy string
-}
-
-func (options *Options) AddVarPayload(key string, value interface{}) {
-	if options.varsPayload == nil {
-		options.varsPayload = make(map[string]interface{})
-	}
-
-	options.varsPayload[key] = value
-}
-
-func (options *Options) VarsPayload() map[string]interface{} {
-	return options.varsPayload
+	// Fuzzing Type overrides template level fuzzing-type configuration
+	FuzzingType string
+	// Fuzzing Mode overrides template level fuzzing-mode configuration
+	FuzzingMode string
 }
 
 // ShouldLoadResume resume file
@@ -385,5 +395,21 @@ func DefaultOptions() *Options {
 
 // HasCloudOptions returns true if cloud options have been specified
 func (options *Options) HasCloudOptions() bool {
-	return options.ScanList || options.DeleteScan != "" || options.ScanOutput != "" || options.ListDatasources || options.ListTargets || options.ListTemplates || options.RemoveDatasource != "" || options.AddTarget != "" || options.AddTemplate != "" || options.RemoveTarget != "" || options.RemoveTemplate != "" || options.GetTarget != "" || options.GetTemplate != ""
+	return options.ScanList ||
+		options.DeleteScan != "" ||
+		options.ScanOutput != "" ||
+		options.ListDatasources ||
+		options.ListTargets ||
+		options.ListTemplates ||
+		options.RemoveDatasource != "" ||
+		options.AddTarget != "" ||
+		options.AddTemplate != "" ||
+		options.RemoveTarget != "" ||
+		options.RemoveTemplate != "" ||
+		options.GetTarget != "" ||
+		options.GetTemplate != ""
+}
+
+func (options *Options) ShouldUseHostError() bool {
+	return options.MaxHostError > 0 && !options.NoHostErrors
 }

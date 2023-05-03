@@ -24,6 +24,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 	"github.com/projectdiscovery/nuclei/v2/pkg/utils"
 	fileutil "github.com/projectdiscovery/utils/file"
+	osutils "github.com/projectdiscovery/utils/os"
 )
 
 // Writer is an interface which writes output to somewhere for nuclei events.
@@ -66,10 +67,36 @@ type InternalEvent map[string]interface{}
 
 // InternalWrappedEvent is a wrapped event with operators result added to it.
 type InternalWrappedEvent struct {
+	// Mutex is internal field which is implicitly used
+	// to synchronize callback(event) and interactsh polling updates
+	// Refer protocols/http.Request.ExecuteWithResults for more details
+	sync.RWMutex
+
 	InternalEvent   InternalEvent
 	Results         []*ResultEvent
 	OperatorsResult *operators.Result
 	UsesInteractsh  bool
+}
+
+func (iwe *InternalWrappedEvent) HasOperatorResult() bool {
+	iwe.RLock()
+	defer iwe.RUnlock()
+
+	return iwe.OperatorsResult != nil
+}
+
+func (iwe *InternalWrappedEvent) HasResults() bool {
+	iwe.RLock()
+	defer iwe.RUnlock()
+
+	return len(iwe.Results) > 0
+}
+
+func (iwe *InternalWrappedEvent) SetOperatorResult(operatorResult *operators.Result) {
+	iwe.Lock()
+	defer iwe.Unlock()
+
+	iwe.OperatorsResult = operatorResult
 }
 
 // ResultEvent is a wrapped result event for a single nuclei output.
@@ -161,7 +188,7 @@ func NewStandardWriter(options *types.Options) (*StandardWriter, error) {
 		}
 	}
 	writer := &StandardWriter{
-		json:             options.JSON,
+		json:             options.JSONL,
 		jsonReqResp:      options.JSONRequests,
 		noMetadata:       options.NoMeta,
 		matcherStatus:    options.MatcherStatus,
@@ -303,6 +330,9 @@ func sanitizeFileName(fileName string) string {
 	fileName = strings.ReplaceAll(fileName, "\\", "_")
 	fileName = strings.ReplaceAll(fileName, "-", "_")
 	fileName = strings.ReplaceAll(fileName, ".", "_")
+	if osutils.IsWindows() {
+		fileName = strings.ReplaceAll(fileName, ":", "_")
+	}
 	fileName = strings.TrimPrefix(fileName, "__")
 	return fileName
 }

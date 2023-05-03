@@ -6,11 +6,10 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"net/url"
 	"strings"
 
-	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/http/utils"
 	"github.com/projectdiscovery/rawhttp/client"
+	errorutil "github.com/projectdiscovery/utils/errors"
 	stringsutil "github.com/projectdiscovery/utils/strings"
 	urlutil "github.com/projectdiscovery/utils/url"
 )
@@ -27,37 +26,7 @@ type Request struct {
 }
 
 // Parse parses the raw request as supplied by the user
-func Parse(request, baseURL string, unsafe bool) (*Request, error) {
-	// parse Input URL
-	inputURL, err := url.Parse(baseURL)
-	if err != nil {
-		return nil, fmt.Errorf("could not parse request URL: %w", err)
-	}
-	inputParams := urlutil.GetParams(inputURL.Query())
-
-	// Joins input url and new url preserving query parameters
-	joinPath := func(relpath string) (string, error) {
-		newpath := ""
-		// Join path with input along with parameters
-		relUrl, relerr := url.Parse(relpath)
-		if relUrl == nil {
-			// special case when url.Parse fails
-			newpath = utils.JoinURLPath(inputURL.Path, relpath)
-		} else {
-			newpath = utils.JoinURLPath(inputURL.Path, relUrl.Path)
-			if len(relUrl.Query()) > 0 {
-				relParam := urlutil.GetParams(relUrl.Query())
-				for k := range relParam {
-					inputParams.Add(k, relParam.Get(k))
-				}
-			}
-		}
-		if len(inputParams) > 0 {
-			newpath += "?" + inputParams.Encode()
-		}
-		return newpath, relerr
-	}
-
+func Parse(request string, inputURL *urlutil.URL, unsafe bool) (*Request, error) {
 	rawrequest, err := readRawRequest(request, unsafe)
 	if err != nil {
 		return nil, err
@@ -67,25 +36,56 @@ func Parse(request, baseURL string, unsafe bool) (*Request, error) {
 	// If path is empty do not tamper input url (see doc)
 	// can be omitted but makes things clear
 	case rawrequest.Path == "":
-		rawrequest.Path, _ = joinPath("")
+		rawrequest.Path = inputURL.GetRelativePath()
 
 	// full url provided instead of rel path
 	case strings.HasPrefix(rawrequest.Path, "http") && !unsafe:
-		var parseErr error
-		rawrequest.Path, parseErr = joinPath(rawrequest.Path)
-		if parseErr != nil {
-			return nil, fmt.Errorf("could not parse url:%w", parseErr)
+		urlx, err := urlutil.ParseURL(rawrequest.Path, true)
+		if err != nil {
+			return nil, errorutil.NewWithErr(err).WithTag("raw").Msgf("failed to parse url %v from template", rawrequest.Path)
 		}
+		cloned := inputURL.Clone()
+		parseErr := cloned.MergePath(urlx.GetRelativePath(), true)
+		if parseErr != nil {
+			return nil, errorutil.NewWithTag("raw", "could not automergepath for template path %v", urlx.GetRelativePath()).Wrap(parseErr)
+		}
+		rawrequest.Path = cloned.GetRelativePath()
 	// If unsafe changes must be made in raw request string iteself
 	case unsafe:
 		prevPath := rawrequest.Path
-		unsafeRelativePath, _ := joinPath(rawrequest.Path)
-		// replace itself
+		cloned := inputURL.Clone()
+		unsafeRelativePath := ""
+		if (cloned.Path == "" || cloned.Path == "/") && !strings.HasPrefix(prevPath, "/") {
+			// Edgecase if raw unsafe request is
+			// GET 1337?with=param HTTP/1.1
+			if tmpurl, err := urlutil.ParseRelativePath(prevPath, true); err == nil && len(tmpurl.Params) > 0 {
+				// if raw request contains parameters
+				cloned.Params.Merge(tmpurl.Params)
+				unsafeRelativePath = strings.TrimPrefix(tmpurl.Path, "/") + "?" + cloned.Params.Encode()
+			} else {
+				// if raw request does not contain param
+				if len(cloned.Params) > 0 {
+					unsafeRelativePath = prevPath + "?" + cloned.Params.Encode()
+				} else {
+					unsafeRelativePath = prevPath
+				}
+			}
+		} else {
+			err = cloned.MergePath(rawrequest.Path, true)
+			if err != nil {
+				return nil, errorutil.NewWithErr(err).WithTag("raw").Msgf("failed to automerge %v from unsafe template", rawrequest.Path)
+			}
+			unsafeRelativePath = cloned.GetRelativePath()
+		}
 		rawrequest.UnsafeRawBytes = bytes.Replace(rawrequest.UnsafeRawBytes, []byte(prevPath), []byte(unsafeRelativePath), 1)
 
 	default:
-		rawrequest.Path, _ = joinPath(rawrequest.Path)
-
+		cloned := inputURL.Clone()
+		parseErr := cloned.MergePath(rawrequest.Path, true)
+		if parseErr != nil {
+			return nil, errorutil.NewWithTag("raw", "could not automergepath for template path %v", rawrequest.Path).Wrap(parseErr)
+		}
+		rawrequest.Path = cloned.GetRelativePath()
 	}
 
 	if !unsafe {
@@ -96,7 +96,35 @@ func Parse(request, baseURL string, unsafe bool) (*Request, error) {
 	}
 
 	return rawrequest, nil
+}
 
+// ParseRawRequest parses the raw request as supplied by the user
+// this function should only be used for self-contained requests
+func ParseRawRequest(request string, unsafe bool) (*Request, error) {
+	req, err := readRawRequest(request, unsafe)
+	if err != nil {
+		return nil, err
+	}
+	if strings.HasPrefix(req.Path, "http") {
+		urlx, err := urlutil.Parse(req.Path)
+		if err != nil {
+			return nil, errorutil.NewWithErr(err).Msgf("failed to parse url %v", req.Path)
+		}
+		req.Path = urlx.GetRelativePath()
+		req.FullURL = urlx.String()
+	} else {
+
+		if req.Path == "" {
+			return nil, errorutil.NewWithTag("self-contained-raw", "path cannot be empty in self contained request")
+		}
+		// given url is relative construct one using Host Header
+		if _, ok := req.Headers["Host"]; !ok {
+			return nil, errorutil.NewWithTag("self-contained-raw", "host header is required for relative path")
+		}
+		// Review: Current default scheme in self contained templates if relative path is provided is http
+		req.FullURL = fmt.Sprintf("%s://%s%s", urlutil.HTTP, strings.TrimSpace(req.Headers["Host"]), req.Path)
+	}
+	return req, nil
 }
 
 // reads raw request line by line following convention
@@ -122,7 +150,7 @@ read_line:
 		goto read_line
 	}
 
-	parts := strings.Split(s, " ")
+	parts := strings.Fields(s)
 	if len(parts) > 0 {
 		rawRequest.Method = parts[0]
 		if len(parts) == 2 && strings.Contains(parts[1], "HTTP") {

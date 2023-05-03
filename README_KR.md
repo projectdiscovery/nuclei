@@ -28,9 +28,9 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/projectdiscovery/nuclei/blob/master/README.md">English</a> •
-  <a href="https://github.com/projectdiscovery/nuclei/blob/master/README_CN.md">中文</a> •
-  <a href="https://github.com/projectdiscovery/nuclei/blob/master/README_KR.md">한국어</a>
+  <a href="https://github.com/projectdiscovery/nuclei/blob/main/README.md">English</a> •
+  <a href="https://github.com/projectdiscovery/nuclei/blob/main/README_CN.md">中文</a> •
+  <a href="https://github.com/projectdiscovery/nuclei/blob/main/README_KR.md">한국어</a>
 </p>
 
 ---
@@ -128,7 +128,7 @@ OUTPUT:
    -srd, -store-resp-dir string  nuclei을 통해 전달된 모든 요청/응답을 사용자 지정 디렉터리에 저장(기본 "output")
    -silent                       결과만 표시
    -nc, -no-color                출력 내용 색상 비활성화 (ANSI escape codes)
-   -json                         JSONL(ines) 형식으로 출력
+   -j, -jsonl                    JSONL(ines) 형식으로 출력
    -irr, -include-rr             JSONL 출력에 요청/응답 쌍 포함(결과만)
    -nm, -no-meta                 cli 출력에서 결과 메타데이터 출력 비활성화
    -nts, -no-timestamp           cli 출력에서 결과 타임스탬프 출력 비활성화
@@ -178,6 +178,8 @@ OPTIMIZATIONS:
    -retries int                실패한 요청을 재시도하는 횟수 (기본 1)
    -ldp, -leave-default-ports  leave default HTTP/HTTPS ports (eg. host:80,host:443
    -mhe, -max-host-error int   스캔을 건너뛰기 전에 호스트에 대한 최대 오류 수 (기본 30)
+   -te, -track-error string[]  주어진 오류를 max-host-error 감시 목록(표준, 파일)에 추가
+   -nmhe, -no-mhe                      disable skipping host from scan based on errors
    -project                    프로젝트 폴더를 사용하여 동일한 요청을 여러 번 보내지 않음
    -project-path string        특정 프로젝트 경로 설정
    -spm, -stop-at-first-match  첫 번째 일치 후 HTTP 요청 처리 중지 (template/workflow 로직이 중단될 수 있음)
@@ -338,7 +340,7 @@ Thanks to all the amazing community [contributors for sending PRs](https://githu
 
 ### License
 
-Nuclei is distributed under [MIT License](https://github.com/projectdiscovery/nuclei/blob/master/LICENSE.md)
+Nuclei is distributed under [MIT License](https://github.com/projectdiscovery/nuclei/blob/main/LICENSE.md)
 
 <h1 align="left">
   <a href="https://discord.gg/projectdiscovery"><img src="static/Join-Discord.png" width="380" alt="Join Discord"></a> <a href="https://nuclei.projectdiscovery.io"><img src="static/check-nuclei-documentation.png" width="380" alt="Check Nuclei Documentation"></a>

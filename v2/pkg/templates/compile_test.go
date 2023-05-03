@@ -2,16 +2,21 @@ package templates_test
 
 import (
 	"context"
+	"fmt"
 	"log"
+	netHttp "net/http"
+	"net/http/httptest"
+	"os"
 	"testing"
 	"time"
 
+	"github.com/julienschmidt/httprouter"
+	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/config"
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/disk"
 	"github.com/projectdiscovery/nuclei/v2/pkg/model"
 	"github.com/projectdiscovery/nuclei/v2/pkg/model/types/severity"
 	"github.com/projectdiscovery/nuclei/v2/pkg/model/types/stringslice"
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators"
-	"github.com/projectdiscovery/nuclei/v2/pkg/operators/extractors"
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators/matchers"
 	"github.com/projectdiscovery/nuclei/v2/pkg/parsers"
 	"github.com/projectdiscovery/nuclei/v2/pkg/progress"
@@ -19,7 +24,6 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/generators"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/variables"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/http"
-	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/ssl"
 	"github.com/projectdiscovery/nuclei/v2/pkg/templates"
 	"github.com/projectdiscovery/nuclei/v2/pkg/testutils"
 	"github.com/projectdiscovery/nuclei/v2/pkg/workflows"
@@ -32,7 +36,7 @@ var executerOpts protocols.ExecuterOptions
 func setup() {
 	options := testutils.DefaultOptions
 	testutils.Init(options)
-	progressImpl, _ := progress.NewStatsTicker(0, false, false, false, 0)
+	progressImpl, _ := progress.NewStatsTicker(0, false, false, false, false, 0)
 
 	executerOpts = protocols.ExecuterOptions{
 		Output:       testutils.NewMockOutputWriter(),
@@ -41,7 +45,7 @@ func setup() {
 		ProjectFile:  nil,
 		IssuesClient: nil,
 		Browser:      nil,
-		Catalog:      disk.NewCatalog(options.TemplatesDirectory),
+		Catalog:      disk.NewCatalog(config.DefaultConfig.TemplatesDirectory),
 		RateLimiter:  ratelimit.New(context.Background(), uint(options.RateLimit), time.Second),
 	}
 	workflowLoader, err := parsers.NewLoader(&executerOpts)
@@ -53,42 +57,53 @@ func setup() {
 }
 
 func Test_ParseFromURL(t *testing.T) {
-	filePath := "https://api.nuclei.sh/api/v1/templates/raw/ssl/tls-version.yaml"
-	expectedTemplate := &templates.Template{
-		ID: "tls-version",
+	router := httprouter.New()
+	router.GET("/match-1.yaml", func(w netHttp.ResponseWriter, r *netHttp.Request, _ httprouter.Params) {
+		b, err := os.ReadFile("tests/match-1.yaml")
+		if err != nil {
+			w.Write([]byte(err.Error())) // nolint: errcheck
+		}
+		w.Write(b) // nolint: errcheck
+	})
+	ts := httptest.NewServer(router)
+	defer ts.Close()
+	var expectedTemplate = &templates.Template{
+		ID: "basic-get",
 		Info: model.Info{
+			Name:           "Basic GET Request",
 			Authors:        stringslice.StringSlice{Value: []string{"pdteam"}},
 			SeverityHolder: severity.Holder{Severity: severity.Info},
-			Name:           "TLS Version",
-			Tags:           stringslice.StringSlice{Value: []string{"ssl"}},
 		},
-		RequestsSSL: []*ssl.Request{
-			{
-				Address: "{{Host}}:{{Port}}",
-				Operators: operators.Operators{
-					Extractors: []*extractors.Extractor{
-						{
-							Type: extractors.ExtractorTypeHolder{ExtractorType: extractors.JSONExtractor},
-							JSON: []string{".tls_version"},
-						},
+		RequestsHTTP: []*http.Request{{
+			Operators: operators.Operators{
+				Matchers: []*matchers.Matcher{{
+					Type: matchers.MatcherTypeHolder{
+						MatcherType: matchers.WordsMatcher,
 					},
-				},
-			}},
+					Words: []string{"This is test matcher text"},
+				}},
+			},
+			Path:       []string{"{{BaseURL}}"},
+			AttackType: generators.AttackTypeHolder{},
+			Method: http.HTTPMethodTypeHolder{
+				MethodType: http.HTTPGet,
+			},
+		}},
 		TotalRequests: 1,
 		Executer:      nil,
-		Path:          "https://api.nuclei.sh/api/v1/templates/raw/ssl/tls-version.yaml",
+		Path:          ts.URL + "/match-1.yaml",
 	}
 	setup()
-	got, err := templates.Parse(filePath, nil, executerOpts)
+	got, err := templates.Parse(ts.URL+"/match-1.yaml", nil, executerOpts)
+	require.Nilf(t, err, "could not parse template (%s)", fmt.Sprint(err))
 	require.Nil(t, err, "could not parse template")
 	require.Equal(t, expectedTemplate.ID, got.ID)
 	require.Equal(t, expectedTemplate.Info, got.Info)
 	require.Equal(t, expectedTemplate.TotalRequests, got.TotalRequests)
 	require.Equal(t, expectedTemplate.Path, got.Path)
-	require.Equal(t, expectedTemplate.RequestsSSL[0].Address, got.RequestsSSL[0].Address)
-	require.Equal(t, expectedTemplate.RequestsSSL[0].Extractors[0].Type, got.RequestsSSL[0].Extractors[0].Type)
-	require.Equal(t, expectedTemplate.RequestsSSL[0].Extractors[0].JSON, got.RequestsSSL[0].Extractors[0].JSON)
-	require.Equal(t, len(expectedTemplate.RequestsSSL), len(got.RequestsSSL))
+	require.Equal(t, expectedTemplate.RequestsHTTP[0].Path, got.RequestsHTTP[0].Path)
+	require.Equal(t, expectedTemplate.RequestsHTTP[0].Operators.Matchers[0].Words, got.RequestsHTTP[0].Operators.Matchers[0].Words)
+	require.Equal(t, len(expectedTemplate.RequestsHTTP), len(got.RequestsHTTP))
 }
 
 func Test_ParseFromFile(t *testing.T) {

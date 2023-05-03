@@ -15,6 +15,7 @@ import (
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v2/internal/runner/nucleicloud"
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
+	"github.com/projectdiscovery/nuclei/v2/pkg/templates/extensions"
 )
 
 // Get all the scan lists for a user/apikey.
@@ -38,7 +39,7 @@ func (r *Runner) getScanList(limit int) error {
 			count++
 			lastTime = v.CreatedAt.String()
 			res := nucleicloud.PrepareScanListOutput(v)
-			if r.options.JSON {
+			if r.options.JSONL {
 				_ = jsoniter.NewEncoder(os.Stdout).Encode(res)
 			} else if !r.options.NoTables {
 				values = append(values, []string{strconv.FormatInt(res.ScanID, 10), res.Timestamp, strconv.Itoa(res.Target), strconv.Itoa(res.Template), strconv.Itoa(res.ScanResult), res.ScanTime, res.ScanStatus})
@@ -69,7 +70,7 @@ func (r *Runner) listDatasources() error {
 	header := []string{"ID", "UpdatedAt", "Type", "Repo", "Path"}
 	var values [][]string
 	for _, source := range datasources {
-		if r.options.JSON {
+		if r.options.JSONL {
 			_ = jsoniter.NewEncoder(os.Stdout).Encode(source)
 		} else if !r.options.NoTables {
 			values = append(values, []string{strconv.FormatInt(source.ID, 10), source.Updatedat.Format(nucleicloud.DDMMYYYYhhmmss), source.Type, source.Repo, source.Path})
@@ -77,6 +78,33 @@ func (r *Runner) listDatasources() error {
 			gologger.Silent().Msgf("%d. [%s] [%s] [%s] %s", source.ID, source.Updatedat.Format(nucleicloud.DDMMYYYYhhmmss), source.Type, source.Repo, source.Path)
 		}
 	}
+	if !r.options.NoTables {
+		r.prettyPrintTable(header, values)
+	}
+	return nil
+}
+
+func (r *Runner) listReportingSources() error {
+	items, err := r.cloudClient.ListReportingSources()
+	if err != nil {
+		return err
+	}
+	if len(items) == 0 {
+		return errors.New("no reporting source found")
+	}
+
+	header := []string{"ID", "Type", "ProjectName", "Enabled"}
+	var values [][]string
+	for _, source := range items {
+		if r.options.JSONL {
+			_ = jsoniter.NewEncoder(os.Stdout).Encode(source)
+		} else if !r.options.NoTables {
+			values = append(values, []string{strconv.FormatInt(source.ID, 10), source.Type, source.ProjectName, strconv.FormatBool(source.Enabled)})
+		} else {
+			gologger.Silent().Msgf("%d. [%s] [%s] [%t]", source.ID, source.Type, source.ProjectName, source.Enabled)
+		}
+	}
+
 	if !r.options.NoTables {
 		r.prettyPrintTable(header, values)
 	}
@@ -95,7 +123,7 @@ func (r *Runner) listTargets() error {
 	header := []string{"ID", "Reference", "Count"}
 	var values [][]string
 	for _, source := range items {
-		if r.options.JSON {
+		if r.options.JSONL {
 			_ = jsoniter.NewEncoder(os.Stdout).Encode(source)
 		} else if !r.options.NoTables {
 			values = append(values, []string{strconv.FormatInt(source.ID, 10), source.Reference, strconv.FormatInt(source.Count, 10)})
@@ -121,7 +149,7 @@ func (r *Runner) listTemplates() error {
 	header := []string{"ID", "Reference"}
 	var values [][]string
 	for _, source := range items {
-		if r.options.JSON {
+		if r.options.JSONL {
 			_ = jsoniter.NewEncoder(os.Stdout).Encode(source)
 		} else if !r.options.NoTables {
 			values = append(values, []string{strconv.FormatInt(source.ID, 10), source.Reference})
@@ -217,12 +245,29 @@ func (r *Runner) removeDatasource(datasource string) error {
 	return err
 }
 
+func (r *Runner) toggleReportingSource(source string, status bool) error {
+	ID, parseErr := strconv.ParseInt(source, 10, 64)
+	if parseErr != nil {
+		return errors.Wrap(parseErr, "could not parse reporting source id")
+	}
+
+	err := r.cloudClient.ToggleReportingSource(ID, status)
+	if err == nil {
+		t := "enabled"
+		if !status {
+			t = "disabled"
+		}
+		gologger.Info().Msgf("Reporting source %s %s", t, source)
+	}
+	return err
+}
+
 func (r *Runner) addTemplate(location string) error {
 	walkErr := filepath.WalkDir(location, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
-		if d.IsDir() || !strings.EqualFold(filepath.Ext(path), ".yaml") {
+		if d.IsDir() || !strings.EqualFold(filepath.Ext(path), extensions.YAML) {
 			return nil
 		}
 		base := filepath.Base(path)
@@ -245,8 +290,8 @@ func (r *Runner) addTarget(location string) error {
 		if d.IsDir() || !strings.EqualFold(filepath.Ext(path), ".txt") {
 			return nil
 		}
-		base := filepath.Base(location)
-		reference, targetErr := r.cloudClient.AddTarget(base, location)
+		base := filepath.Base(path)
+		reference, targetErr := r.cloudClient.AddTarget(base, path)
 		if targetErr != nil {
 			gologger.Error().Msgf("Could not upload %s: %s", location, targetErr)
 		} else if reference != "" {
@@ -293,7 +338,7 @@ func (r *Runner) removeTemplate(item string) error {
 	var err error
 	if ID, parseErr := strconv.ParseInt(item, 10, 64); parseErr == nil {
 		err = r.cloudClient.RemoveTemplate(ID, "")
-	} else if strings.EqualFold(path.Ext(item), ".yaml") {
+	} else if strings.EqualFold(path.Ext(item), extensions.YAML) {
 		err = r.cloudClient.RemoveTemplate(0, item)
 	} else {
 		return r.removeTemplatePrefix(item)

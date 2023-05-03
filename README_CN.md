@@ -29,9 +29,9 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/projectdiscovery/nuclei/blob/master/README.md">English</a> •
-  <a href="https://github.com/projectdiscovery/nuclei/blob/master/README_CN.md">中文</a> •
-  <a href="https://github.com/projectdiscovery/nuclei/blob/master/README_KR.md">Korean</a>
+  <a href="https://github.com/projectdiscovery/nuclei/blob/main/README.md">English</a> •
+  <a href="https://github.com/projectdiscovery/nuclei/blob/main/README_CN.md">中文</a> •
+  <a href="https://github.com/projectdiscovery/nuclei/blob/main/README_KR.md">Korean</a>
 </p>
 
 ---
@@ -132,7 +132,7 @@ Nuclei是一款注重于可配置性、可扩展性和易用性的基于模板�
    -srd, -store-resp-dir string          将nuclei的所有请求和响应输出到指定目录（默认：output）
    -silent                               只显示结果
    -nc, -no-color                        禁用输出内容着色（ANSI转义码）
-   -json                                 输出为jsonL（ines）
+   -j, -jsonl                            输出为jsonL（ines）
    -irr, -include-rr                     在JSONL中输出对应的请求和相应（仅结果）
    -nm, -no-meta                         不显示匹配的元数据
    -nts, -no-timestamp                   不在输出中显示时间戳
@@ -189,6 +189,8 @@ Nuclei是一款注重于可配置性、可扩展性和易用性的基于模板�
    -retries int                          重试次数（默认：1）
    -ldp, -leave-default-ports            指定HTTP/HTTPS默认端口（例如：host:80，host:443）
    -mhe, -max-host-error int             某主机扫描失败次数，跳过该主机（默认：30）
+   -te, -track-error string[]            将给定错误添加到最大主机错误监视列表（标准、文件）
+   -nmhe, -no-mhe                        disable skipping host from scan based on errors
    -project                              使用项目文件夹避免多次发送同一请求
    -project-path string                  设置特定的项目文件夹
    -spm, -stop-at-first-path             得到一个结果后停止（或许会中断模板和工作流的逻辑）
@@ -347,7 +349,7 @@ Nuclei构建很简单，通过数百名安全研究员的社区模板，Nuclei�
 
 ### 许可证
 
-Nuclei使用[MIT许可证](https://github.com/projectdiscovery/nuclei/blob/master/LICENSE.md)
+Nuclei使用[MIT许可证](https://github.com/projectdiscovery/nuclei/blob/main/LICENSE.md)
 
 <h1 align="left">
   <a href="https://discord.gg/projectdiscovery"><img src="static/Join-Discord.png" width="380" alt="Join Discord"></a> <a href="https://nuclei.projectdiscovery.io"><img src="static/check-nuclei-documentation.png" width="380" alt="Check Nuclei Documentation"></a>

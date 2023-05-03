@@ -17,6 +17,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/helpers/eventcreator"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/helpers/responsehighlighter"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/utils/vardump"
+	protocolutils "github.com/projectdiscovery/nuclei/v2/pkg/protocols/utils"
 	templateTypes "github.com/projectdiscovery/nuclei/v2/pkg/templates/types"
 	"github.com/projectdiscovery/nuclei/v2/pkg/utils"
 	"github.com/projectdiscovery/retryabledns"
@@ -45,9 +46,12 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, metadata,
 	if err != nil {
 		return errors.Wrap(err, "could not build request")
 	}
-	vars := GenerateVariables(domain)
+
+	vars := protocolutils.GenerateDNSVariables(domain)
+	// optionvars are vars passed from CLI or env variables
+	optionVars := generators.BuildPayloadFromOptions(request.options.Options)
 	// merge with metadata (eg. from workflow context)
-	vars = generators.MergeMaps(vars, metadata)
+	vars = generators.MergeMaps(vars, metadata, optionVars)
 	variablesMap := request.options.Variables.Evaluate(vars)
 	vars = generators.MergeMaps(variablesMap, vars)
 

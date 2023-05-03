@@ -4,6 +4,7 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
@@ -11,8 +12,13 @@ import (
 	"github.com/aws/aws-sdk-go-v2/feature/s3/manager"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/projectdiscovery/gologger"
-	"github.com/projectdiscovery/stringsutil"
+	nucleiConfig "github.com/projectdiscovery/nuclei/v2/pkg/catalog/config"
+	"github.com/projectdiscovery/nuclei/v2/pkg/types"
+	errorutil "github.com/projectdiscovery/utils/errors"
+	stringsutil "github.com/projectdiscovery/utils/strings"
 )
+
+var _ Provider = &customTemplateS3Bucket{}
 
 type customTemplateS3Bucket struct {
 	s3Client   *s3.Client
@@ -21,11 +27,11 @@ type customTemplateS3Bucket struct {
 	Location   string
 }
 
-// download custom templates from s3 bucket
-func (bk *customTemplateS3Bucket) Download(location string, ctx context.Context) {
-	downloadPath := filepath.Join(location, CustomS3TemplateDirectory, bk.bucketName)
+// Download retrieves all custom templates from s3 bucket
+func (bk *customTemplateS3Bucket) Download(ctx context.Context) {
+	downloadPath := filepath.Join(nucleiConfig.DefaultConfig.CustomS3TemplatesDirectory, bk.bucketName)
 
-	manager := manager.NewDownloader(bk.s3Client)
+	s3Manager := manager.NewDownloader(bk.s3Client)
 	paginator := s3.NewListObjectsV2Paginator(bk.s3Client, &s3.ListObjectsV2Input{
 		Bucket: &bk.bucketName,
 		Prefix: &bk.prefix,
@@ -38,18 +44,40 @@ func (bk *customTemplateS3Bucket) Download(location string, ctx context.Context)
 			return
 		}
 		for _, obj := range page.Contents {
-			if err := downloadToFile(manager, downloadPath, bk.bucketName, aws.ToString(obj.Key)); err != nil {
+			if err := downloadToFile(s3Manager, downloadPath, bk.bucketName, aws.ToString(obj.Key)); err != nil {
 				gologger.Error().Msgf("error downloading s3 bucket %s %s", bk.bucketName, err)
 				return
 			}
 		}
 	}
-	gologger.Info().Msgf("AWS bucket %s successfully cloned successfully at %s", bk.bucketName, downloadPath)
+	gologger.Info().Msgf("AWS bucket %s was cloned successfully at %s", bk.bucketName, downloadPath)
 }
 
-// download custom templates from s3 bucket
-func (bk *customTemplateS3Bucket) Update(location string, ctx context.Context) {
-	bk.Download(location, ctx)
+// Update downloads custom templates from s3 bucket
+func (bk *customTemplateS3Bucket) Update(ctx context.Context) {
+	bk.Download(ctx)
+}
+
+// NewS3Providers returns a new instances of a s3 providers for downloading custom templates
+func NewS3Providers(options *types.Options) ([]*customTemplateS3Bucket, error) {
+	providers := []*customTemplateS3Bucket{}
+	if options.AwsBucketName != "" {
+		s3c, err := getS3Client(context.TODO(), options.AwsAccessKey, options.AwsSecretKey, options.AwsRegion)
+		if err != nil {
+			return nil, errorutil.NewWithErr(err).Msgf("error downloading s3 bucket %s", options.AwsBucketName)
+		}
+		ctBucket := &customTemplateS3Bucket{
+			bucketName: options.AwsBucketName,
+			s3Client:   s3c,
+		}
+		if strings.Contains(options.AwsBucketName, "/") {
+			bPath := strings.SplitN(options.AwsBucketName, "/", 2)
+			ctBucket.bucketName = bPath[0]
+			ctBucket.prefix = bPath[1]
+		}
+		providers = append(providers, ctBucket)
+	}
+	return providers, nil
 }
 
 func downloadToFile(downloader *manager.Downloader, targetDirectory, bucket, key string) error {
@@ -76,8 +104,8 @@ func downloadToFile(downloader *manager.Downloader, targetDirectory, bucket, key
 	return err
 }
 
-func getS3Client(ctx context.Context, acccessKey, secretKey, region string) (*s3.Client, error) {
-	cfg, err := config.LoadDefaultConfig(ctx, config.WithCredentialsProvider(credentials.NewStaticCredentialsProvider(acccessKey, secretKey, "")), config.WithRegion(region))
+func getS3Client(ctx context.Context, accessKey string, secretKey string, region string) (*s3.Client, error) {
+	cfg, err := config.LoadDefaultConfig(ctx, config.WithCredentialsProvider(credentials.NewStaticCredentialsProvider(accessKey, secretKey, "")), config.WithRegion(region))
 	if err != nil {
 		return nil, err
 	}

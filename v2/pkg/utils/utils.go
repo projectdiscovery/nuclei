@@ -3,12 +3,13 @@ package utils
 import (
 	"errors"
 	"io"
-	"net/http"
 	"net/url"
 	"strings"
 
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalog"
+	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/config"
 	"github.com/projectdiscovery/nuclei/v2/pkg/utils/yaml"
+	"github.com/projectdiscovery/retryablehttp-go"
 	fileutil "github.com/projectdiscovery/utils/file"
 )
 
@@ -37,7 +38,7 @@ func IsURL(input string) bool {
 func ReadFromPathOrURL(templatePath string, catalog catalog.Catalog) (data []byte, err error) {
 	var reader io.Reader
 	if IsURL(templatePath) {
-		resp, err := http.Get(templatePath)
+		resp, err := retryablehttp.DefaultClient().Get(templatePath)
 		if err != nil {
 			return nil, err
 		}
@@ -58,7 +59,7 @@ func ReadFromPathOrURL(templatePath string, catalog catalog.Catalog) (data []byt
 	}
 
 	// pre-process directives only for local files
-	if fileutil.FileExists(templatePath) {
+	if fileutil.FileExists(templatePath) && config.GetTemplateFormatFromExt(templatePath) == config.YAML {
 		data, err = yaml.PreProcess(data)
 		if err != nil {
 			return nil, err
@@ -76,25 +77,4 @@ func StringSliceContains(slice []string, item string) bool {
 		}
 	}
 	return false
-}
-
-// ParseHostname returns hostname
-func ParseHostname(inputURL string) string {
-	/*
-		currently if URL is scanme.sh/path or scanme.sh:443 i.e without protocol then
-		url.Parse considers this as valid url but fails to parse hostname
-		this can be handled by adding schema
-	*/
-	input, err := url.Parse(inputURL)
-	if err != nil {
-		return ""
-	}
-	if input.Host == "" {
-		newinput, err := url.Parse("https://" + inputURL)
-		if err != nil {
-			return ""
-		}
-		return newinput.Host
-	}
-	return input.Host
 }

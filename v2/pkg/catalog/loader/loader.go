@@ -7,7 +7,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalog"
-	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/config"
+	cfg "github.com/projectdiscovery/nuclei/v2/pkg/catalog/config"
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/loader/filter"
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/loader/trustoracle"
 	"github.com/projectdiscovery/nuclei/v2/pkg/model/types/severity"
@@ -43,9 +43,8 @@ type Config struct {
 	ExcludeIds        []string
 	IncludeConditions []string
 
-	Catalog            catalog.Catalog
-	ExecutorOptions    protocols.ExecuterOptions
-	TemplatesDirectory string
+	Catalog         catalog.Catalog
+	ExecutorOptions protocols.ExecuterOptions
 }
 
 // Store is a storage for loaded nuclei templates
@@ -69,7 +68,7 @@ type Store struct {
 }
 
 // NewConfig returns a new loader config
-func NewConfig(options *types.Options, templateConfig *config.Config, catalog catalog.Catalog, executerOpts protocols.ExecuterOptions) *Config {
+func NewConfig(options *types.Options, catalog catalog.Catalog, executerOpts protocols.ExecuterOptions) *Config {
 	loaderConfig := Config{
 		Templates:                options.Templates,
 		Workflows:                options.Workflows,
@@ -86,7 +85,6 @@ func NewConfig(options *types.Options, templateConfig *config.Config, catalog ca
 		IncludeTags:              options.IncludeTags,
 		IncludeIds:               options.IncludeIds,
 		ExcludeIds:               options.ExcludeIds,
-		TemplatesDirectory:       templateConfig.TemplatesDirectory,
 		Protocols:                options.Protocols,
 		ExcludeProtocols:         options.ExcludeProtocols,
 		IncludeConditions:        options.IncludeConditions,
@@ -154,7 +152,7 @@ func New(config *Config) (*Store, error) {
 	}
 	// Handle a case with no templates or workflows, where we use base directory
 	if len(store.finalTemplates) == 0 && len(store.finalWorkflows) == 0 && !urlBasedTemplatesProvided {
-		store.finalTemplates = []string{config.TemplatesDirectory}
+		store.finalTemplates = []string{cfg.DefaultConfig.TemplatesDirectory}
 	}
 	return store, nil
 }
@@ -269,10 +267,10 @@ func areWorkflowTemplatesValid(store *Store, workflows []*workflows.WorkflowTemp
 }
 
 func isParsingError(message string, template string, err error) bool {
-	if err == templates.ErrCreateTemplateExecutor {
+	if errors.Is(err, filter.ErrExcluded) {
 		return false
 	}
-	if err == filter.ErrExcluded {
+	if errors.Is(err, templates.ErrCreateTemplateExecutor) {
 		return false
 	}
 	gologger.Error().Msgf(message, template, err)
@@ -321,7 +319,10 @@ func (store *Store) LoadTemplatesWithTags(templatesList, tags []string) []*templ
 		if loaded || store.pathFilter.MatchIncluded(templatePath) {
 			parsed, err := templates.Parse(templatePath, store.preprocessor, store.config.ExecutorOptions)
 			if err != nil {
-				stats.Increment(parsers.RuntimeWarningsStats)
+				// exclude templates not compatible with offline matching from total runtime warning stats
+				if !errors.Is(err, templates.ErrIncompatibleWithOfflineMatching) {
+					stats.Increment(parsers.RuntimeWarningsStats)
+				}
 				gologger.Warning().Msgf("Could not parse template %s: %s\n", templatePath, err)
 			} else if parsed != nil {
 
@@ -335,8 +336,9 @@ func (store *Store) LoadTemplatesWithTags(templatesList, tags []string) []*templ
 					loadedTemplates = append(loadedTemplates, parsed)
 				}
 			}
-		} else if err != nil {
-			gologger.Warning().Msgf("Could not load template %s: %s\n", templatePath, err)
+		}
+		if err != nil {
+			gologger.Warning().Msg(err.Error())
 		}
 	}
 

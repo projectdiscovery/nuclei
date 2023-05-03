@@ -1,7 +1,6 @@
 package fuzz
 
 import (
-	"net/url"
 	"regexp"
 	"strings"
 
@@ -9,12 +8,13 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/generators"
 	"github.com/projectdiscovery/retryablehttp-go"
+	urlutil "github.com/projectdiscovery/utils/url"
 )
 
 // ExecuteRuleInput is the input for rule Execute function
 type ExecuteRuleInput struct {
 	// URL is the URL for the request
-	URL *url.URL
+	URL *urlutil.URL
 	// Callback is the callback for generated rule requests
 	Callback func(GeneratedRequest) bool
 	// InteractURLs contains interact urls for execute call
@@ -69,7 +69,7 @@ func (rule *Rule) Execute(input *ExecuteRuleInput) error {
 }
 
 // isExecutable returns true if the rule can be executed based on provided input
-func (rule *Rule) isExecutable(parsed *url.URL) bool {
+func (rule *Rule) isExecutable(parsed *urlutil.URL) bool {
 	if len(parsed.Query()) > 0 && rule.partType == queryPartType {
 		return true
 	}
@@ -107,16 +107,17 @@ func (rule *Rule) Compile(generator *generators.PayloadGenerator, options *proto
 	}
 	if rule.Part != "" {
 		if valueType, ok := stringToPartType[rule.Part]; !ok {
-			return errors.Errorf("invalid part value specified: %s", rule.Mode)
+			return errors.Errorf("invalid part value specified: %s", rule.Part)
 		} else {
 			rule.partType = valueType
 		}
 	} else {
 		rule.partType = queryPartType
 	}
+
 	if rule.Type != "" {
 		if valueType, ok := stringToRuleType[rule.Type]; !ok {
-			return errors.Errorf("invalid type value specified: %s", rule.Mode)
+			return errors.Errorf("invalid type value specified: %s", rule.Type)
 		} else {
 			rule.ruleType = valueType
 		}

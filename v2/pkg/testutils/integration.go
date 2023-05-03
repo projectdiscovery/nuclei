@@ -16,6 +16,9 @@ import (
 	"github.com/julienschmidt/httprouter"
 )
 
+// ExtraArgs
+var ExtraDebugArgs = []string{}
+
 // RunNucleiTemplateAndGetResults returns a list of results for a template
 func RunNucleiTemplateAndGetResults(template, url string, debug bool, extra ...string) ([]string, error) {
 	return RunNucleiAndGetResults(true, template, url, debug, extra...)
@@ -44,8 +47,11 @@ func RunNucleiAndGetResults(isTemplate bool, template, url string, debug bool, e
 
 func RunNucleiBareArgsAndGetResults(debug bool, extra ...string) ([]string, error) {
 	cmd := exec.Command("./nuclei")
+	extra = append(extra, ExtraDebugArgs...)
 	cmd.Args = append(cmd.Args, extra...)
 	cmd.Args = append(cmd.Args, "-duc") // disable auto updates
+	cmd.Args = append(cmd.Args, "-interactions-poll-duration", "1")
+	cmd.Args = append(cmd.Args, "-interactions-cooldown-period", "10")
 	if debug {
 		cmd.Args = append(cmd.Args, "-debug")
 		cmd.Stderr = os.Stderr
@@ -58,7 +64,7 @@ func RunNucleiBareArgsAndGetResults(debug bool, extra ...string) ([]string, erro
 		fmt.Println(string(data))
 	}
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("%v: %v", err.Error(), string(data))
 	}
 	var parts []string
 	items := strings.Split(string(data), "\n")
@@ -94,6 +100,7 @@ func RunNucleiBinaryAndGetLoadedTemplates(nucleiBinary string, debug bool, args 
 	return matches[0][1], nil
 }
 func RunNucleiBinaryAndGetCombinedOutput(debug bool, args []string) (string, error) {
+	args = append(args, "-interactions-cooldown-period", "10", "-interactions-poll-duration", "1")
 	cmd := exec.Command("./nuclei", args...)
 	if debug {
 		cmd.Args = append(cmd.Args, "-debug")

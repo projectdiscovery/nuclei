@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/http/httpclientpool"
+	"github.com/projectdiscovery/retryablehttp-go"
 	"github.com/stretchr/testify/require"
 )
 
@@ -18,13 +19,13 @@ func TestRequestParseAnnotationsTimeout(t *testing.T) {
 		GET / HTTP/1.1
 		Host: {{Hostname}}`
 
-		httpReq, err := http.NewRequest(http.MethodGet, "https://example.com", nil)
+		httpReq, err := retryablehttp.NewRequest(http.MethodGet, "https://example.com", nil)
 		require.Nil(t, err, "could not create http request")
 
-		newRequest, cancelFunc, modified := request.parseAnnotations(rawRequest, httpReq)
-		require.NotNil(t, cancelFunc, "could not initialize valid cancel function")
+		overrides, modified := request.parseAnnotations(rawRequest, httpReq)
+		require.NotNil(t, overrides.cancelFunc, "could not initialize valid cancel function")
 		require.True(t, modified, "could not get correct modified value")
-		_, deadlined := newRequest.Context().Deadline()
+		_, deadlined := overrides.request.Context().Deadline()
 		require.True(t, deadlined, "could not get set request deadline")
 	})
 
@@ -35,13 +36,13 @@ func TestRequestParseAnnotationsTimeout(t *testing.T) {
 		rawRequest := `GET / HTTP/1.1
 		Host: {{Hostname}}`
 
-		httpReq, err := http.NewRequestWithContext(context.Background(), http.MethodGet, "https://example.com", nil)
+		httpReq, err := retryablehttp.NewRequestWithContext(context.Background(), http.MethodGet, "https://example.com", nil)
 		require.Nil(t, err, "could not create http request")
 
-		newRequest, cancelFunc, modified := request.parseAnnotations(rawRequest, httpReq)
-		require.Nil(t, cancelFunc, "cancel function should be nil")
+		newRequestWithOverrides, modified := request.parseAnnotations(rawRequest, httpReq)
+		require.Nil(t, newRequestWithOverrides.cancelFunc, "cancel function should be nil")
 		require.False(t, modified, "could not get correct modified value")
-		_, deadlined := newRequest.Context().Deadline()
+		_, deadlined := newRequestWithOverrides.request.Context().Deadline()
 		require.False(t, deadlined, "could not get set request deadline")
 	})
 }

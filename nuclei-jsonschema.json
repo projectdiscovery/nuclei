@@ -26,6 +26,19 @@
           "type": "number",
           "title": "cvss score for the template",
           "description": "CVSS Score for the template"
+        },
+        "epss-score": {
+          "type": "number",
+          "title": "epss score for the template",
+          "description": "EPSS Score for the template"
+        },
+        "cpe": {
+          "type": "string",
+          "title": "cpe for the template",
+          "description": "CPE for the template",
+          "examples": [
+            "cpe:/a:vendor:product:version"
+          ]
         }
       },
       "additionalProperties": false,
@@ -61,7 +74,8 @@
           ]
         },
         "reference": {
-          "$ref": "#/definitions/stringslice.StringSlice",
+          "$schema": "http://json-schema.org/draft-04/schema#",
+          "$ref": "#/definitions/stringslice.RawStringSlice",
           "title": "references for the template",
           "description": "Links relevant to the template"
         },
@@ -110,6 +124,16 @@
       "title": "severity of the template",
       "description": "Seriousness of the implications of the template"
     },
+    "stringslice.RawStringSlice": {
+      "oneOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "array"
+        }
+      ]
+    },
     "stringslice.StringSlice": {
       "oneOf": [
         {
@@ -132,8 +156,7 @@
     },
     "extractors.Extractor": {
       "required": [
-        "type",
-        "DSL"
+        "type"
       ],
       "properties": {
         "name": {
@@ -187,11 +210,13 @@
           "title": "optional attribute to extract from xpath",
           "description": "Optional attribute to extract from response XPath"
         },
-        "DSL": {
+        "dsl": {
           "items": {
             "type": "string"
           },
-          "type": "array"
+          "type": "array",
+          "title": "dsl expressions to extract",
+          "description": "Optional attribute to extract from response dsl"
         },
         "part": {
           "type": "string",
@@ -207,6 +232,11 @@
           "type": "boolean",
           "title": "use case insensitive extract",
           "description": "use case insensitive extract"
+        },
+        "to": {
+          "type": "string",
+          "title": "save extracted values to file",
+          "description": "save extracted values to file"
         }
       },
       "additionalProperties": false,
@@ -1319,6 +1349,14 @@
           "title": "http requests to make",
           "description": "HTTP requests to make for the template"
         },
+        "http": {
+          "items": {
+            "$ref": "#/definitions/http.Request"
+          },
+          "type": "array",
+          "title": "http requests to make",
+          "description": "HTTP requests to make for the template"
+        },
         "dns": {
           "items": {
             "$schema": "http://json-schema.org/draft-04/schema#",
@@ -1344,6 +1382,14 @@
           },
           "type": "array",
           "title": "network requests to make",
+          "description": "Network requests to make for the template"
+        },
+        "tcp": {
+          "items": {
+            "$ref": "#/definitions/network.Request"
+          },
+          "type": "array",
+          "title": "network(tcp) requests to make",
           "description": "Network requests to make for the template"
         },
         "headless": {

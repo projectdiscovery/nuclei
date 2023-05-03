@@ -1,0 +1,27 @@
+id: fuzz-query
+
+info:
+  name: Basic Fuzz URL Query
+  author: pdteam
+  severity: info
+
+requests:
+  - method: GET
+    path:
+      - "{{BaseURL}}"
+    fuzzing:
+      - part: query
+        type: postfix
+        mode: multiple
+        keys: ["id","name"] 
+        fuzz: ["fuzz-word"]
+    matchers-condition: and
+    matchers:
+      - type: word
+        part: body
+        words:
+          - "fuzz-word"
+      - type: word
+        part: header
+        words:
+          - "text/html"

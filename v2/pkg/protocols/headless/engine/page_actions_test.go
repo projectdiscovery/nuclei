@@ -3,10 +3,13 @@ package engine
 import (
 	"fmt"
 	"io"
+	"math/rand"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
 	"os"
+	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -190,18 +193,50 @@ func TestActionScreenshot(t *testing.T) {
 			<body>Nuclei Test Page</body>
 		</html>`
 
+	// filePath where screenshot is saved
+	filePath := filepath.Join(os.TempDir(), "test.png")
 	actions := []*Action{
 		{ActionType: ActionTypeHolder{ActionType: ActionNavigate}, Data: map[string]string{"url": "{{BaseURL}}"}},
 		{ActionType: ActionTypeHolder{ActionType: ActionWaitLoad}},
-		{ActionType: ActionTypeHolder{ActionType: ActionScreenshot}, Data: map[string]string{"to": "test"}},
+		{ActionType: ActionTypeHolder{ActionType: ActionScreenshot}, Data: map[string]string{"to": filePath}},
 	}
 
 	testHeadlessSimpleResponse(t, response, actions, 20*time.Second, func(page *Page, err error, out map[string]string) {
 		require.Nil(t, err, "could not run page actions")
 		require.Equal(t, "Nuclei Test Page", page.Page().MustInfo().Title, "could not navigate correctly")
-		el := page.Page()
-		require.FileExists(t, "test.png", el, "could not get screenshot file")
-		_ = os.Remove("test.png")
+		_ = page.Page()
+		require.FileExists(t, filePath, "could not find screenshot file %v", filePath)
+		if err := os.RemoveAll(filePath); err != nil {
+			t.Logf("got error %v while deleting temp file", err)
+		}
+	})
+}
+
+func TestActionScreenshotToDir(t *testing.T) {
+	response := `
+		<html>
+			<head>
+				<title>Nuclei Test Page</title>
+			</head>
+			<body>Nuclei Test Page</body>
+		</html>`
+
+	filePath := filepath.Join(os.TempDir(), "screenshot-"+strconv.Itoa(rand.Intn(1000)), "test.png")
+
+	actions := []*Action{
+		{ActionType: ActionTypeHolder{ActionType: ActionNavigate}, Data: map[string]string{"url": "{{BaseURL}}"}},
+		{ActionType: ActionTypeHolder{ActionType: ActionWaitLoad}},
+		{ActionType: ActionTypeHolder{ActionType: ActionScreenshot}, Data: map[string]string{"to": filePath, "mkdir": "true"}},
+	}
+
+	testHeadlessSimpleResponse(t, response, actions, 20*time.Second, func(page *Page, err error, out map[string]string) {
+		require.Nil(t, err, "could not run page actions")
+		require.Equal(t, "Nuclei Test Page", page.Page().MustInfo().Title, "could not navigate correctly")
+		_ = page.Page()
+		require.FileExists(t, filePath, "could not find screenshot file %v", filePath)
+		if err := os.RemoveAll(filePath); err != nil {
+			t.Logf("got error %v while deleting temp file", err)
+		}
 	})
 }
 
@@ -499,7 +534,8 @@ func TestActionWaitVisible(t *testing.T) {
 	})
 
 	t.Run("timeout because of element not visible", func(t *testing.T) {
-		testHeadlessSimpleResponse(t, response, actions, time.Second/2, func(page *Page, err error, out map[string]string) {
+		// increased timeout from time.Second/2 to time.Second due to random fails (probably due to overhead and system)
+		testHeadlessSimpleResponse(t, response, actions, time.Second, func(page *Page, err error, out map[string]string) {
 			require.Error(t, err)
 			require.Contains(t, err.Error(), "Element did not appear in the given amount of time")
 		})

@@ -6,8 +6,6 @@ import (
 	"github.com/miekg/dns"
 	"github.com/pkg/errors"
 
-	"github.com/weppos/publicsuffix-go/publicsuffix"
-
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/expressions"
@@ -22,7 +20,7 @@ type Request struct {
 	operators.Operators `yaml:",inline"`
 
 	// ID is the optional id of the request
-	ID string `yaml:"id,omitempty" jsonschema:"title=id of the dns request,description=ID is the optional ID of the DNS Request"`
+	ID string `yaml:"id,omitempty" json:"id,omitempty" jsonschema:"title=id of the dns request,description=ID is the optional ID of the DNS Request"`
 
 	// description: |
 	//   Name is the Hostname to make DNS request for.
@@ -30,10 +28,10 @@ type Request struct {
 	//   Generally, it is set to {{FQDN}} which is the domain we get from input.
 	// examples:
 	//   - value: "\"{{FQDN}}\""
-	Name string `yaml:"name,omitempty" jsonschema:"title=hostname to make dns request for,description=Name is the Hostname to make DNS request for"`
+	Name string `yaml:"name,omitempty" json:"name,omitempty" jsonschema:"title=hostname to make dns request for,description=Name is the Hostname to make DNS request for"`
 	// description: |
 	//   RequestType is the type of DNS request to make.
-	RequestType DNSRequestTypeHolder `yaml:"type,omitempty" jsonschema:"title=type of dns request to make,description=Type is the type of DNS request to make,enum=A,enum=NS,enum=DS,enum=CNAME,enum=SOA,enum=PTR,enum=MX,enum=TXT,enum=AAAA"`
+	RequestType DNSRequestTypeHolder `yaml:"type,omitempty" json:"type,omitempty" jsonschema:"title=type of dns request to make,description=Type is the type of DNS request to make,enum=A,enum=NS,enum=DS,enum=CNAME,enum=SOA,enum=PTR,enum=MX,enum=TXT,enum=AAAA"`
 	// description: |
 	//   Class is the class of the DNS request.
 	//
@@ -45,16 +43,16 @@ type Request struct {
 	//   - "hesiod"
 	//   - "none"
 	//   - "any"
-	Class string `yaml:"class,omitempty" jsonschema:"title=class of DNS request,description=Class is the class of the DNS request,enum=inet,enum=csnet,enum=chaos,enum=hesiod,enum=none,enum=any"`
+	Class string `yaml:"class,omitempty" json:"class,omitempty" jsonschema:"title=class of DNS request,description=Class is the class of the DNS request,enum=inet,enum=csnet,enum=chaos,enum=hesiod,enum=none,enum=any"`
 	// description: |
 	//   Retries is the number of retries for the DNS request
 	// examples:
 	//   - name: Use a retry of 3 to 5 generally
 	//     value: 5
-	Retries int `yaml:"retries,omitempty" jsonschema:"title=retries for dns request,description=Retries is the number of retries for the DNS request"`
+	Retries int `yaml:"retries,omitempty" json:"retries,omitempty" jsonschema:"title=retries for dns request,description=Retries is the number of retries for the DNS request"`
 	// description: |
 	//   Trace performs a trace operation for the target.
-	Trace bool `yaml:"trace,omitempty" jsonschema:"title=trace operation,description=Trace performs a trace operation for the target."`
+	Trace bool `yaml:"trace,omitempty" json:"trace,omitempty" jsonschema:"title=trace operation,description=Trace performs a trace operation for the target."`
 	// description: |
 	//   TraceMaxRecursion is the number of max recursion allowed for trace operations
 	// examples:
@@ -72,9 +70,9 @@ type Request struct {
 
 	// description: |
 	//   Recursion determines if resolver should recurse all records to get fresh results.
-	Recursion *bool `yaml:"recursion,omitempty" jsonschema:"title=recurse all servers,description=Recursion determines if resolver should recurse all records to get fresh results"`
+	Recursion *bool `yaml:"recursion,omitempty" json:"recursion,omitempty" jsonschema:"title=recurse all servers,description=Recursion determines if resolver should recurse all records to get fresh results"`
 	// Resolvers to use for the dns requests
-	Resolvers []string `yaml:"resolvers,omitempty" jsonschema:"title=Resolvers,description=Define resolvers to use within the template"`
+	Resolvers []string `yaml:"resolvers,omitempty" json:"resolvers,omitempty" jsonschema:"title=Resolvers,description=Define resolvers to use within the template"`
 }
 
 // RequestPartDefinitions contains a mapping of request part definitions and their
@@ -104,6 +102,11 @@ func (request *Request) GetCompiledOperators() []*operators.Operators {
 // GetID returns the unique ID of the request if any.
 func (request *Request) GetID() string {
 	return request.ID
+}
+
+// Options returns executer options for http request
+func (r *Request) Options() *protocols.ExecuterOptions {
+	return r.options
 }
 
 // Compile compiles the protocol request for further execution.
@@ -247,21 +250,4 @@ func classToInt(class string) uint16 {
 		result = dns.ClassANY
 	}
 	return uint16(result)
-}
-
-// GenerateVariables from a dns name
-func GenerateVariables(domain string) map[string]interface{} {
-	parsed, err := publicsuffix.Parse(strings.TrimSuffix(domain, "."))
-	if err != nil {
-		return map[string]interface{}{"FQDN": domain}
-	}
-
-	domainName := strings.Join([]string{parsed.SLD, parsed.TLD}, ".")
-	return map[string]interface{}{
-		"FQDN": domain,
-		"RDN":  domainName,
-		"DN":   parsed.SLD,
-		"TLD":  parsed.TLD,
-		"SD":   parsed.TRD,
-	}
 }

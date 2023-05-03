@@ -195,9 +195,18 @@ func tryCollectConditionsMatchinfo(template *templates.Template) map[string]inte
 		"severity":    template.Info.SeverityHolder.Severity.String(),
 		"protocol":    template.Type().String(),
 	}
-
 	for k, v := range template.Info.Metadata {
-		parameters[k] = v
+		// replace `-` in keys with `_` when ranging
+		parameters[strings.ReplaceAll(k, "-", "_")] = v
+	}
+
+	if template.Info.Classification != nil {
+		parameters["cvss_metrics"] = template.Info.Classification.CVSSMetrics
+		parameters["cvss_score"] = template.Info.Classification.CVSSScore
+		parameters["cve_id"] = template.Info.Classification.CVEID.ToSlice()
+		parameters["cwe_id"] = template.Info.Classification.CWEID.ToSlice()
+		parameters["cpe"] = template.Info.Classification.CPE
+		parameters["epss_score"] = template.Info.Classification.EPSSScore
 	}
 
 	if template.Type() == types.HTTPProtocol {
