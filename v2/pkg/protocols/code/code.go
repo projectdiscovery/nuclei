@@ -3,7 +3,6 @@ package code
 import (
 	"context"
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/pkg/errors"
@@ -20,6 +19,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/helpers/responsehighlighter"
 	templateTypes "github.com/projectdiscovery/nuclei/v2/pkg/templates/types"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
+	fileutil "github.com/projectdiscovery/utils/file"
 )
 
 // Request is a request for the SSL protocol
@@ -30,13 +30,13 @@ type Request struct {
 
 	// description: |
 	//   Engine type
-	Engine EngineTypeHolder `yaml:"engine,omitempty" jsonschema:"title=engine,description=Engine,enum=python,enum=powershell,enum=command"`
+	Engine string `yaml:"engine,omitempty" jsonschema:"title=engine,description=Engine,enum=python,enum=powershell,enum=command"`
 	// description: |
-	//   Source Snippet
-	Source  string `yaml:"source,omitempty" jsonschema:"title=source snippet,description=Source snippet"`
+	//   Source File/Snippet
+	Source string `yaml:"source,omitempty" jsonschema:"title=source file/snippet,description=Source snippet"`
+
 	options *protocols.ExecuterOptions
 	gozero  *gozero.Gozero
-	cmd     *gozero.Command
 	src     *gozero.Source
 }
 
@@ -45,7 +45,7 @@ func (request *Request) Compile(options *protocols.ExecuterOptions) error {
 	request.options = options
 
 	gozeroOptions := &gozero.Options{
-		Engine: request.Engine.EngineType.Executable(),
+		Engine: request.Engine,
 	}
 	engine, err := gozero.New(gozeroOptions)
 	if err != nil {
@@ -53,21 +53,17 @@ func (request *Request) Compile(options *protocols.ExecuterOptions) error {
 	}
 	request.gozero = engine
 
-	switch request.Engine.EngineType {
-	case Command:
-		cmdTokens := strings.Split(request.Source, " ")
-		cmd, err := gozero.NewCommandWithString(cmdTokens[0], cmdTokens[1:]...)
-		if err != nil {
-			return err
-		}
-		request.cmd = cmd
-	default:
-		src, err := gozero.NewSourceWithString(request.Source)
-		if err != nil {
-			return err
-		}
-		request.src = src
+	var src *gozero.Source
+
+	if fileutil.FileExists(request.Source) {
+		src, err = gozero.NewSourceWithFile(request.Source)
+	} else {
+		src, err = gozero.NewSourceWithString(request.Source)
 	}
+	if err != nil {
+		return err
+	}
+	request.src = src
 
 	if len(request.Matchers) > 0 || len(request.Extractors) > 0 {
 		compiled := &request.Operators
@@ -97,20 +93,21 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 	if err != nil {
 		return err
 	}
-	defer metaSrc.Cleanup() //nolint
+	defer func() {
+		if err := metaSrc.Cleanup(); err != nil {
+			gologger.Warning().Msgf("%s\n", err)
+		}
+	}()
 
-	var output *gozero.Source
-	switch request.Engine.EngineType {
-	case Command:
-		output, err = request.gozero.Exec(context.Background(), metaSrc, request.cmd)
-	default:
-		output, err = request.gozero.Eval(context.Background(), request.src, metaSrc)
-	}
-
+	output, err := request.gozero.Eval(context.Background(), request.src, metaSrc)
 	if err != nil {
 		return err
 	}
-	defer output.Cleanup() //nolint
+	defer func() {
+		if err := output.Cleanup(); err != nil {
+			gologger.Warning().Msgf("%s\n", err)
+		}
+	}()
 
 	dataOutput, err := output.ReadAll()
 	if err != nil {

@@ -9,7 +9,6 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalog"
 	cfg "github.com/projectdiscovery/nuclei/v2/pkg/catalog/config"
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/loader/filter"
-	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/loader/trustoracle"
 	"github.com/projectdiscovery/nuclei/v2/pkg/model/types/severity"
 	"github.com/projectdiscovery/nuclei/v2/pkg/parsers"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
@@ -18,7 +17,6 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 	"github.com/projectdiscovery/nuclei/v2/pkg/utils/stats"
 	"github.com/projectdiscovery/nuclei/v2/pkg/workflows"
-	fileutil "github.com/projectdiscovery/utils/file"
 )
 
 // Config contains the configuration options for the loader
@@ -59,8 +57,6 @@ type Store struct {
 	workflows []*templates.Template
 
 	preprocessor templates.Preprocessor
-
-	oracle *trustoracle.Oracle
 
 	// NotFoundCallback is called for each not found template
 	// This overrides error handling for not found templates
@@ -123,13 +119,6 @@ func New(config *Config) (*Store, error) {
 		}, config.Catalog),
 		finalTemplates: config.Templates,
 		finalWorkflows: config.Workflows,
-	}
-	if config.ExecutorOptions.Options != nil && fileutil.FileExists(config.ExecutorOptions.Options.Code) {
-		oracle, err := trustoracle.NewOracleWithDb(config.ExecutorOptions.Options.Code)
-		if err != nil {
-			return nil, err
-		}
-		store.oracle = oracle
 	}
 
 	urlBasedTemplatesProvided := len(config.TemplateURLs) > 0 || len(config.WorkflowURLs) > 0
@@ -328,10 +317,9 @@ func (store *Store) LoadTemplatesWithTags(templatesList, tags []string) []*templ
 
 				if len(parsed.RequestsHeadless) > 0 && !store.config.ExecutorOptions.Options.Headless {
 					gologger.Warning().Msgf("Headless flag is required for headless template %s\n", templatePath)
-				} else if len(parsed.RequestsCode) > 0 && (store.config.ExecutorOptions.Options.Code == "" || store.oracle == nil) {
-					gologger.Warning().Msgf("Code flag is required for code template %s\n", templatePath)
-				} else if len(parsed.RequestsCode) > 0 && !store.oracle.HasSeen(templatePath) {
-					gologger.Warning().Msgf("The template is not in the provided allow list: '%s'\n", templatePath)
+					//TODO: enable signature check
+					/*} else if len(parsed.RequestsCode) > 0 && !parsed.Verified {
+					gologger.Warning().Msgf("The template is not verified: '%s'\n", templatePath)*/
 				} else {
 					loadedTemplates = append(loadedTemplates, parsed)
 				}

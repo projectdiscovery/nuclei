@@ -326,8 +326,6 @@ type Options struct {
 	ScanAllIPs bool
 	// IPVersion to scan (4,6)
 	IPVersion goflags.StringSlice
-	// Code templates trust store
-	Code string
 	// GitHub token used to clone/pull from private repos for custom templates
 	GithubToken string
 	// GithubTemplateRepo is the list of custom public/private templates GitHub repos
