@@ -3,7 +3,6 @@ package runner
 import (
 	"bufio"
 	"fmt"
-	"log"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -24,6 +23,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/templates/signer"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 	fileutil "github.com/projectdiscovery/utils/file"
+	logutil "github.com/projectdiscovery/utils/log"
 	stringsutil "github.com/projectdiscovery/utils/strings"
 )
 
@@ -77,7 +77,7 @@ func ParseOptions(options *types.Options) {
 	loadResolvers(options)
 
 	if err := loadTemplateSignaturesKeys(options); err != nil {
-		log.Fatal(err)
+		gologger.Warning().Msgf("Could not initialize code template verifier: %s\n", err)
 	}
 
 	err := protocolinit.Init(options)
@@ -290,7 +290,7 @@ func configureOutput(options *types.Options) {
 	}
 
 	// disable standard logger (ref: https://github.com/golang/go/issues/19895)
-	// logutil.DisableDefaultLogger()
+	logutil.DisableDefaultLogger()
 }
 
 // loadResolvers loads resolvers from both user provided flag and file
