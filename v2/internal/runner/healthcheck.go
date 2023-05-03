@@ -110,7 +110,6 @@ func DoHealthCheck(options *types.Options) string {
 	if !sliceutil.Contains(resolvers, resolverPublic) {
 		resolvers = append(resolvers, resolverPublic)
 	}
-	// resolvers = addIfNotExists(resolvers, resolverPublic)
 	dns := map[string]interface{}{}
 	for _, resolverCfg := range resolvers {
 		for _, host := range []string{internetTarget, defaultTarget} {
@@ -151,6 +150,7 @@ func addInternalTag(addresses string) string {
 	}
 
 	for _, ip := range strings.Split(addresses, " ") {
+		ip = strings.TrimSuffix(ip, ",")
 		if iputil.IsInternal(ip) {
 			ip = ip + " (internal)"
 		}
