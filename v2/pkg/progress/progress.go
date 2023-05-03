@@ -170,6 +170,11 @@ func (p *StatsTicker) makePrintCallback() func(stats clistats.StatisticsClient) 
 		requests, okRequests := stats.GetCounter("requests")
 		total, okTotal := stats.GetCounter("total")
 
+		// If input is not given, total is 0 which cause percentage overflow
+		if total == 0 {
+			total = requests
+		}
+
 		if okRequests && okTotal && duration > 0 && !p.cloud {
 			builder.WriteString(" | RPS: ")
 			builder.WriteString(clistats.String(uint64(float64(requests) / duration.Seconds())))

@@ -30,6 +30,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/helpers/responsehighlighter"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/utils/vardump"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/network/networkclientpool"
+	protocolutils "github.com/projectdiscovery/nuclei/v2/pkg/protocols/utils"
 	templateTypes "github.com/projectdiscovery/nuclei/v2/pkg/templates/types"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 	urlutil "github.com/projectdiscovery/utils/url"
@@ -172,7 +173,7 @@ func (request *Request) executeRequestWithPayloads(input, hostname string, dynam
 	if err != nil {
 		return errors.Wrap(err, parseUrlErrorMessage)
 	}
-	defaultVars := getWebsocketVariables(parsed)
+	defaultVars := protocolutils.GenerateVariables(parsed, false, nil)
 	optionVars := generators.BuildPayloadFromOptions(request.options.Options)
 	variables := request.options.Variables.Evaluate(generators.MergeMaps(defaultVars, optionVars, dynamicValues))
 	payloadValues := generators.MergeMaps(variables, defaultVars, optionVars, dynamicValues)
@@ -406,18 +407,4 @@ func (request *Request) MakeResultEventItem(wrapped *output.InternalWrappedEvent
 // Type returns the type of the protocol request
 func (request *Request) Type() templateTypes.ProtocolType {
 	return templateTypes.WebsocketProtocol
-}
-
-func getWebsocketVariables(input *urlutil.URL) map[string]interface{} {
-	websocketVariables := make(map[string]interface{})
-
-	websocketVariables["Hostname"] = input.Host
-	websocketVariables["Host"] = input.Hostname()
-	websocketVariables["Scheme"] = input.Scheme
-	requestPath := input.Path
-	if values := urlutil.GetParams(input.URL.Query()); len(values) > 0 {
-		requestPath = requestPath + "?" + values.Encode()
-	}
-	websocketVariables["Path"] = requestPath
-	return websocketVariables
 }

@@ -23,9 +23,9 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/helpers/eventcreator"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/helpers/responsehighlighter"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/utils/vardump"
-	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/dns"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/network/networkclientpool"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/utils"
+	protocolutils "github.com/projectdiscovery/nuclei/v2/pkg/protocols/utils"
 	templateTypes "github.com/projectdiscovery/nuclei/v2/pkg/templates/types"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 	"github.com/projectdiscovery/tlsx/pkg/tlsx"
@@ -187,7 +187,7 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 	payloadValues["Host"] = hostname
 	payloadValues["Port"] = port
 
-	hostnameVariables := dns.GenerateVariables(hostname)
+	hostnameVariables := protocolutils.GenerateDNSVariables(hostname)
 	values := generators.MergeMaps(payloadValues, hostnameVariables)
 	variablesMap := request.options.Variables.Evaluate(values)
 	payloadValues = generators.MergeMaps(variablesMap, payloadValues)
@@ -255,17 +255,36 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 	data["template-id"] = requestOptions.TemplateID
 	data["template-info"] = requestOptions.TemplateInfo
 
+	// if response is not struct compatible, error out
+	if !structs.IsStruct(response) {
+		return errorutil.NewWithTag("ssl", "response cannot be parsed into a struct: %v", response)
+	}
+
 	// Convert response to key value pairs and first cert chain item as well
 	responseParsed := structs.New(response)
 	for _, f := range responseParsed.Fields() {
+		if !f.IsExported() {
+			// if field is not exported f.IsZero() , f.Value() will panic
+			continue
+		}
 		tag := utils.CleanStructFieldJSONTag(f.Tag("json"))
 		if tag == "" || f.IsZero() {
 			continue
 		}
 		data[tag] = f.Value()
 	}
+
+	// if certificate response is not struct compatible, error out
+	if !structs.IsStruct(response.CertificateResponse) {
+		return errorutil.NewWithTag("ssl", "certificate response cannot be parsed into a struct: %v", response.CertificateResponse)
+	}
+
 	responseParsed = structs.New(response.CertificateResponse)
 	for _, f := range responseParsed.Fields() {
+		if !f.IsExported() {
+			// if field is not exported f.IsZero() , f.Value() will panic
+			continue
+		}
 		tag := utils.CleanStructFieldJSONTag(f.Tag("json"))
 		if tag == "" || f.IsZero() {
 			continue
