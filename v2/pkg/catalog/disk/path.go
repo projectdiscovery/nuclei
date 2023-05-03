@@ -61,7 +61,7 @@ func (c *DiskCatalog) tryResolve(fullPath string) (string, error) {
 func BackwardsCompatiblePaths(templateDir string, oldPath string) string {
 	// TODO: remove this function in the future release
 	// 1. all http related paths are now moved at path /http
-	// 2. netwok related CVES are now moved at path /network/cves
+	// 2. network related CVES are now moved at path /network/cves
 	newPathCallback := func(path string) string {
 		// trim prefix slash if any
 		path = strings.TrimPrefix(path, "/")
@@ -80,7 +80,16 @@ func BackwardsCompatiblePaths(templateDir string, oldPath string) string {
 		return filepath.Join(templateDir, path)
 	}
 	switch {
+	case fileutil.FileOrFolderExists(oldPath):
+		// new path specified skip processing
+		return oldPath
 	case filepath.IsAbs(oldPath):
+		tmp := strings.TrimPrefix(oldPath, templateDir)
+		if tmp == oldPath {
+			// user provided absolute path which is not in template directory
+			// skip processing
+			return oldPath
+		}
 		// trim the template directory from the path
 		return newPathCallback(strings.TrimPrefix(oldPath, templateDir))
 	case strings.Contains(oldPath, urlutil.SchemeSeparator):
