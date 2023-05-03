@@ -151,10 +151,8 @@ func addInternalTag(addresses string) string {
 	}
 
 	for _, ip := range strings.Split(addresses, " ") {
-		fmt.Print("Checking internal for: " + ip + "\n")
 		if iputil.IsInternal(ip) {
 			ip = ip + " (internal)"
-			fmt.Print("Adding internal tag for: " + ip + "\n")
 		}
 		tmpstring = tmpstring + ip + ", "
 	}
@@ -225,10 +223,9 @@ func lookup(name, dnsServer string) (string, string) {
 	return strings.Join(ipv4s, ", "), strings.Join(ipv6s, ", ")
 }
 
-// traceroute returns the traceroute of an IP address, both IPv6 and IPv4
-// NOTE: Only works if we have root permission
-// TODO: Add support for Windows
+// traceroute returns the traceroute to an IP address and handles both IPv6 and IPv4
 func traceroute(assetIPs string, networkType string, adminPriv bool) string {
+	// Only works if we have root permission on Linux
 	if !adminPriv && runtime.GOOS != "windows" {
 		return "Traceroute: You must have root permissions to run this test"
 	}
