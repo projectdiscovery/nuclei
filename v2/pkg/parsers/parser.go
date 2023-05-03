@@ -167,8 +167,11 @@ func ParseTemplate(templatePath string, catalog catalog.Catalog) (*templates.Tem
 	template := &templates.Template{}
 
 	// check if the template is verified
-	if signer.DefaultVerifier != nil {
-		template.Verified, _ = signer.Verify(signer.DefaultVerifier, data)
+	for _, verifier := range signer.DefaultVerifiers {
+		if template.Verified {
+			break
+		}
+		template.Verified, _ = signer.Verify(verifier, data)
 	}
 
 	switch config.GetTemplateFormatFromExt(templatePath) {

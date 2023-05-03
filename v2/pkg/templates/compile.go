@@ -13,6 +13,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/executer"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/offlinehttp"
 	"github.com/projectdiscovery/nuclei/v2/pkg/templates/cache"
+	"github.com/projectdiscovery/nuclei/v2/pkg/templates/signer"
 	"github.com/projectdiscovery/nuclei/v2/pkg/utils"
 	"github.com/projectdiscovery/retryablehttp-go"
 	stringsutil "github.com/projectdiscovery/utils/strings"
@@ -255,6 +256,14 @@ func ParseTemplateFromReader(reader io.Reader, preprocessor Preprocessor, option
 		return nil, ErrCreateTemplateExecutor
 	}
 	template.parseSelfContainedRequests()
+
+	// check if the template is verified
+	for _, verifier := range signer.DefaultVerifiers {
+		if template.Verified {
+			break
+		}
+		template.Verified, _ = signer.Verify(verifier, data)
+	}
 
 	return template, nil
 }

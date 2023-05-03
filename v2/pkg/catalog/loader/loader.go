@@ -317,9 +317,8 @@ func (store *Store) LoadTemplatesWithTags(templatesList, tags []string) []*templ
 
 				if len(parsed.RequestsHeadless) > 0 && !store.config.ExecutorOptions.Options.Headless {
 					gologger.Warning().Msgf("Headless flag is required for headless template %s\n", templatePath)
-					//TODO: enable signature check
-					/*} else if len(parsed.RequestsCode) > 0 && !parsed.Verified {
-					gologger.Warning().Msgf("The template is not verified: '%s'\n", templatePath)*/
+				} else if len(parsed.RequestsCode) > 0 && !parsed.Verified {
+					gologger.Warning().Msgf("The template is not verified: '%s'\n", templatePath)
 				} else {
 					loadedTemplates = append(loadedTemplates, parsed)
 				}

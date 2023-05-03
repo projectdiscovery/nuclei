@@ -47,13 +47,8 @@ func main() {
 		log.Fatalf("couldn't parse options: %s\n", err)
 	}
 
-	var algo signer.AlgorithmType
-	switch opts.Algorithm {
-	case "rsa":
-		algo = signer.RSA
-	case "ecdsa":
-		algo = signer.ECDSA
-	default:
+	algo, err := signer.ParseAlgorithm(opts.Algorithm)
+	if err != nil {
 		log.Fatal("unknown algorithm type")
 	}
 

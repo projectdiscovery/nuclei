@@ -77,7 +77,7 @@ func NewVerifier(options *Options) (*Signer, error) {
 		err           error
 	)
 	if options.PublicKeyName != "" {
-		publicKeyData, err = readKeyFromFileOrEnv(options.PrivateKeyName)
+		publicKeyData, err = readKeyFromFileOrEnv(options.PublicKeyName)
 		if err != nil {
 			return nil, err
 		}
@@ -230,5 +230,5 @@ func readKeyFromFileOrEnv(keypath string) ([]byte, error) {
 	if keydata := os.Getenv(keypath); keydata != "" {
 		return []byte(keydata), nil
 	}
-	return nil, fmt.Errorf("Private key not found in file or environment variable: %s", keypath)
+	return nil, fmt.Errorf("Key not found in file or environment variable: %s", keypath)
 }
