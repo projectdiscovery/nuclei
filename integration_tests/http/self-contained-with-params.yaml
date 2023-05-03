@@ -1,0 +1,18 @@
+id: self-contained-with-params
+
+info:
+  name: self contained with params
+  author: pd-team
+  severity: info
+
+self-contained: true
+requests:
+  - raw:
+      - |
+        GET http://127.0.0.1:5431/?something=here&key=value HTTP/1.1
+        Host: {{Hostname}}
+
+    matchers:
+      - type: word
+        words:
+          - This is self-contained response

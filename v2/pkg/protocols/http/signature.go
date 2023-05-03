@@ -111,3 +111,11 @@ func GetVariablesNamesSkipList(signature SignatureType) map[string]interface{} {
 		return nil
 	}
 }
+
+// GetDefaultSignerVars returns the default signer variables
+func GetDefaultSignerVars(signatureType SignatureType) map[string]interface{} {
+	if signatureType == AWSSignature {
+		return signer.AwsDefaultVars
+	}
+	return map[string]interface{}{}
+}

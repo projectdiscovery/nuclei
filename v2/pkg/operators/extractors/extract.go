@@ -3,9 +3,10 @@ package extractors
 import (
 	"encoding/json"
 	"fmt"
+	"strings"
+
 	"github.com/antchfx/htmlquery"
 	"github.com/antchfx/xmlquery"
-	"strings"
 
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 )
@@ -29,6 +30,7 @@ func (e *Extractor) ExtractRegex(corpus string) map[string]struct{} {
 			}
 		}
 	}
+	e.SaveToFile(results)
 	return results
 }
 
@@ -56,6 +58,7 @@ func (e *Extractor) ExtractKval(data map[string]interface{}) map[string]struct{}
 			results[itemString] = struct{}{}
 		}
 	}
+	e.SaveToFile(results)
 	return results
 }
 
@@ -93,6 +96,7 @@ func (e *Extractor) ExtractHTML(corpus string) map[string]struct{} {
 			}
 		}
 	}
+	e.SaveToFile(results)
 	return results
 }
 
@@ -123,6 +127,7 @@ func (e *Extractor) ExtractXML(corpus string) map[string]struct{} {
 			}
 		}
 	}
+	e.SaveToFile(results)
 	return results
 }
 
@@ -159,6 +164,7 @@ func (e *Extractor) ExtractJSON(corpus string) map[string]struct{} {
 			}
 		}
 	}
+	e.SaveToFile(results)
 	return results
 }
 
@@ -168,7 +174,9 @@ func (e *Extractor) ExtractDSL(data map[string]interface{}) map[string]struct{} 
 
 	for _, compiledExpression := range e.dslCompiled {
 		result, err := compiledExpression.Evaluate(data)
-		if err != nil {
+		// ignore errors that are related to missing parameters
+		// eg: dns dsl can have all the parameters that are not present 
+		if err != nil && !strings.HasPrefix(err.Error(), "No parameter") {
 			return results
 		}
 
@@ -179,6 +187,6 @@ func (e *Extractor) ExtractDSL(data map[string]interface{}) map[string]struct{} 
 			}
 		}
 	}
-
+	e.SaveToFile(results)
 	return results
 }

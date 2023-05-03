@@ -1,6 +1,7 @@
 package interactsh
 
 import (
+	"errors"
 	"regexp"
 	"time"
 )
@@ -8,6 +9,8 @@ import (
 var (
 	defaultInteractionDuration = 60 * time.Second
 	interactshURLMarkerRegex   = regexp.MustCompile(`{{interactsh-url(?:_[0-9]+){0,3}}}`)
+
+	ErrInteractshClientNotInitialized = errors.New("interactsh client not initialized")
 )
 
 const (

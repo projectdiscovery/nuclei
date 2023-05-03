@@ -10,7 +10,7 @@ on:
 jobs:
   lint:
     name: Lint Test
-    runs-on: ubuntu-latest-16-cores
+    runs-on: ubuntu-latest
     steps:
       - name: Set up Go
         uses: actions/setup-go@v4
