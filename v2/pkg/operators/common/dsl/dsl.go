@@ -25,7 +25,7 @@ func init() {
 	}, func(args ...interface{}) (interface{}, error) {
 		argCount := len(args)
 		if argCount == 0 || argCount > 2 {
-			return nil, dsl.ErrinvalidDslFunction
+			return nil, dsl.ErrInvalidDslFunction
 		}
 		format := "4"
 		var dnsType uint16

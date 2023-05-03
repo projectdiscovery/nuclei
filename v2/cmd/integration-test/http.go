@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -19,6 +20,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/testutils"
 	"github.com/projectdiscovery/retryablehttp-go"
 	errorutil "github.com/projectdiscovery/utils/errors"
+	fileutil "github.com/projectdiscovery/utils/file"
 	logutil "github.com/projectdiscovery/utils/log"
 	sliceutil "github.com/projectdiscovery/utils/slice"
 	stringsutil "github.com/projectdiscovery/utils/strings"
@@ -40,6 +42,8 @@ var httpTestcases = map[string]testutils.TestCase{
 	"http/raw-dynamic-extractor.yaml":               &httpRawDynamicExtractor{},
 	"http/raw-get-query.yaml":                       &httpRawGetQuery{},
 	"http/raw-get.yaml":                             &httpRawGet{},
+	"http/raw-with-params.yaml":                     &httpRawWithParams{},
+	"http/raw-unsafe-with-params.yaml":              &httpRawWithParams{}, // Not a typo, functionality is same as above
 	"http/raw-path-trailing-slash.yaml":             &httpRawPathTrailingSlash{},
 	"http/raw-payload.yaml":                         &httpRawPayload{},
 	"http/raw-post-body.yaml":                       &httpRawPostBody{},
@@ -48,6 +52,8 @@ var httpTestcases = map[string]testutils.TestCase{
 	"http/request-condition.yaml":                   &httpRequestCondition{},
 	"http/request-condition-new.yaml":               &httpRequestCondition{},
 	"http/self-contained.yaml":                      &httpRequestSelfContained{},
+	"http/self-contained-with-path.yaml":            &httpRequestSelfContained{}, // Not a typo, functionality is same as above
+	"http/self-contained-with-params.yaml":          &httpRequestSelfContainedWithParams{},
 	"http/self-contained-file-input.yaml":           &httpRequestSelfContainedFileInput{},
 	"http/get-case-insensitive.yaml":                &httpGetCaseInsensitive{},
 	"http/get.yaml,http/get-case-insensitive.yaml":  &httpGetCaseInsensitiveCluster{},
@@ -59,6 +65,7 @@ var httpTestcases = map[string]testutils.TestCase{
 	"http/stop-at-first-match.yaml":                 &httpStopAtFirstMatch{},
 	"http/stop-at-first-match-with-extractors.yaml": &httpStopAtFirstMatchWithExtractors{},
 	"http/variables.yaml":                           &httpVariables{},
+	"http/variable-dsl-function.yaml":               &httpVariableDSLFunction{},
 	"http/get-override-sni.yaml":                    &httpSniAnnotation{},
 	"http/get-sni.yaml":                             &customCLISNI{},
 	"http/redirect-match-url.yaml":                  &httpRedirectMatchURL{},
@@ -69,6 +76,7 @@ var httpTestcases = map[string]testutils.TestCase{
 	"http/get-without-scheme.yaml":                  &httpGetWithoutScheme{},
 	"http/cl-body-without-header.yaml":              &httpCLBodyWithoutHeader{},
 	"http/cl-body-with-header.yaml":                 &httpCLBodyWithHeader{},
+	"http/save-extractor-values-to-file.yaml":       &httpSaveExtractorValuesToFile{},
 }
 
 type httpInteractshRequest struct{}
@@ -553,6 +561,37 @@ func (h *httpRawGet) Execute(filePath string) error {
 	return expectResultsCount(results, 1)
 }
 
+type httpRawWithParams struct{}
+
+// Execute executes a test case and returns an error if occurred
+func (h *httpRawWithParams) Execute(filePath string) error {
+	router := httprouter.New()
+	var errx error
+	router.GET("/", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+		params := r.URL.Query()
+		// we intentionally use params["test"] instead of params.Get("test") to test the case where
+		// there are multiple parameters with the same name
+		if !reflect.DeepEqual(params["key1"], []string{"value1"}) {
+			errx = errorutil.WrapfWithNil(errx, "expected %v, got %v", []string{"value1"}, params["key1"])
+		}
+		if !reflect.DeepEqual(params["key2"], []string{"value2"}) {
+			errx = errorutil.WrapfWithNil(errx, "expected %v, got %v", []string{"value2"}, params["key2"])
+		}
+		fmt.Fprintf(w, "Test is test raw-params-matcher text")
+	})
+	ts := httptest.NewServer(router)
+	defer ts.Close()
+
+	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, ts.URL+"/?key1=value1", debug)
+	if err != nil {
+		return err
+	}
+	if errx != nil {
+		return err
+	}
+	return expectResultsCount(results, 1)
+}
+
 type httpRawPathTrailingSlash struct{}
 
 func (h *httpRawPathTrailingSlash) Execute(filepath string) error {
@@ -855,6 +894,45 @@ func (h *httpRequestSelfContained) Execute(filePath string) error {
 	return expectResultsCount(results, 1)
 }
 
+// testcase to check duplicated values in params
+type httpRequestSelfContainedWithParams struct{}
+
+// Execute executes a test case and returns an error if occurred
+func (h *httpRequestSelfContainedWithParams) Execute(filePath string) error {
+	router := httprouter.New()
+	var errx error
+	router.GET("/", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+		params := r.URL.Query()
+		// we intentionally use params["test"] instead of params.Get("test") to test the case where
+		// there are multiple parameters with the same name
+		if !reflect.DeepEqual(params["something"], []string{"here"}) {
+			errx = errorutil.WrapfWithNil(errx, "expected %v, got %v", []string{"here"}, params["something"])
+		}
+		if !reflect.DeepEqual(params["key"], []string{"value"}) {
+			errx = errorutil.WrapfWithNil(errx, "expected %v, got %v", []string{"value"}, params["key"])
+		}
+		_, _ = w.Write([]byte("This is self-contained response"))
+	})
+	server := &http.Server{
+		Addr:    fmt.Sprintf("localhost:%d", defaultStaticPort),
+		Handler: router,
+	}
+	go func() {
+		_ = server.ListenAndServe()
+	}()
+	defer server.Close()
+
+	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, "", debug)
+	if err != nil {
+		return err
+	}
+	if errx != nil {
+		return errx
+	}
+
+	return expectResultsCount(results, 1)
+}
+
 type httpRequestSelfContainedFileInput struct{}
 
 func (h *httpRequestSelfContainedFileInput) Execute(filePath string) error {
@@ -1057,8 +1135,43 @@ func (h *httpVariables) Execute(filePath string) error {
 	if err != nil {
 		return err
 	}
+	if err := expectResultsCount(results, 1); err != nil {
+		return err
+	}
 
-	return expectResultsCount(results, 1)
+	// variable override that does not have any match
+	// to make sure the variable override is working
+	results, err = testutils.RunNucleiTemplateAndGetResults(filePath, ts.URL, debug, "-var", "a1=failed")
+	if err != nil {
+		return err
+	}
+
+	return expectResultsCount(results, 0)
+}
+
+type httpVariableDSLFunction struct{}
+
+// Execute executes a test case and returns an error if occurred
+func (h *httpVariableDSLFunction) Execute(filePath string) error {
+	results, err := testutils.RunNucleiBinaryAndGetCombinedOutput(debug, []string{"-t", filePath, "-u", "https://scanme.sh", "-debug-req"})
+	if err != nil {
+		return err
+	}
+
+	actual := []string{}
+	for _, v := range strings.Split(results, "\n") {
+		if strings.Contains(v, "GET") {
+			parts := strings.Fields(v)
+			if len(parts) == 3 {
+				actual = append(actual, parts[1])
+			}
+		}
+	}
+	if len(actual) == 2 && actual[0] == actual[1] {
+		return nil
+	}
+
+	return fmt.Errorf("expected 2 requests with same URL, got %v", actual)
 }
 
 type customCLISNI struct{}
@@ -1261,4 +1374,32 @@ func (h *httpCLBodyWithHeader) Execute(filePath string) error {
 		return err
 	}
 	return expectResultsCount(got, 1)
+}
+
+type httpSaveExtractorValuesToFile struct{}
+
+func (h *httpSaveExtractorValuesToFile) Execute(filePath string) error {
+	router := httprouter.New()
+	router.GET("/", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+		var buff bytes.Buffer
+		for i := 0; i < 10; i++ {
+			buff.WriteString(fmt.Sprintf(`"value": %v`+"\n", i))
+		}
+		_, _ = w.Write(buff.Bytes())
+	})
+	ts := httptest.NewServer(router)
+	defer ts.Close()
+
+	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, ts.URL, debug)
+	if err != nil {
+		return err
+	}
+
+	// remove output.txt file if exists
+	if !fileutil.FileExists("output.txt") {
+		return fmt.Errorf("extractor output file output.txt file does not exist")
+	} else {
+		_ = os.Remove("output.txt")
+	}
+	return expectResultsCount(results, 1)
 }
