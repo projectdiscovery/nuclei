@@ -14,7 +14,6 @@ import (
 	fileutil "github.com/projectdiscovery/utils/file"
 	osutils "github.com/projectdiscovery/utils/os"
 	processutil "github.com/projectdiscovery/utils/process"
-	reflectutil "github.com/projectdiscovery/utils/reflect"
 )
 
 // Browser is a browser structure for nuclei headless module
