@@ -7,10 +7,14 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
+	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/config"
 	stringsutil "github.com/projectdiscovery/utils/strings"
+	updateutils "github.com/projectdiscovery/utils/update"
 	urlutil "github.com/projectdiscovery/utils/url"
 )
+
+var deprecatedPathsCounter int
 
 // GetTemplatesPath returns a list of absolute paths for the provided template list.
 func (c *DiskCatalog) GetTemplatesPath(definitions []string) ([]string, map[string]error) {
@@ -75,6 +79,9 @@ func (c *DiskCatalog) GetTemplatePath(target string) ([]string, error) {
 
 	// try to handle deprecated template paths
 	absPath := BackwardsCompatiblePaths(c.templatesDirectory, target)
+	if absPath != target {
+		deprecatedPathsCounter++
+	}
 
 	absPath, err := c.convertPathToAbsolute(absPath)
 	if err != nil {
@@ -198,4 +205,16 @@ func (c *DiskCatalog) findDirectoryMatches(absPath string, processed map[string]
 		},
 	)
 	return results, err
+}
+
+// PrintDeprecatedPathsMsgIfApplicable prints a warning message if any deprecated paths are found
+func PrintDeprecatedPathsMsgIfApplicable() {
+	tversion := config.DefaultConfig.TemplateVersion
+	if !updateutils.IsOutdated("v9.4.3", tversion) {
+		// template version is not older than 9.4.3
+		return
+	}
+	if deprecatedPathsCounter > 0 {
+		gologger.Warning().Msgf("Found %v templates loaded with deprecated paths, update by v2.9.5 for continued support", deprecatedPathsCounter)
+	}
 }

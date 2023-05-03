@@ -483,6 +483,7 @@ func (r *Runner) RunEnumeration() error {
 		return nil // exit
 	}
 	store.Load()
+	disk.PrintDeprecatedPathsMsgIfApplicable()
 
 	// add the hosts from the metadata queries of loaded templates into input provider
 	if r.options.Uncover && len(r.options.UncoverQuery) == 0 {
