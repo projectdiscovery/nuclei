@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
+	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/config"
 	stringsutil "github.com/projectdiscovery/utils/strings"
 	urlutil "github.com/projectdiscovery/utils/url"
@@ -75,6 +76,7 @@ func (c *DiskCatalog) GetTemplatePath(target string) ([]string, error) {
 
 	// try to handle deprecated template paths
 	absPath := BackwardsCompatiblePaths(c.templatesDirectory, target)
+	gologger.Debug().Msgf("converted path %s to %s", target, absPath)
 
 	absPath, err := c.convertPathToAbsolute(absPath)
 	if err != nil {
