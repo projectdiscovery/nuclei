@@ -1,4 +1,4 @@
-id: basic-get
+id: basic-get-sni
 
 info:
   name: Basic GET Request with CLI SNI
