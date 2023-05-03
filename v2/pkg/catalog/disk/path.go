@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
+	"github.com/projectdiscovery/gologger"
 	fileutil "github.com/projectdiscovery/utils/file"
 	urlutil "github.com/projectdiscovery/utils/url"
 )
@@ -65,18 +66,16 @@ func BackwardsCompatiblePaths(templateDir string, oldPath string) string {
 	newPathCallback := func(path string) string {
 		// trim prefix slash if any
 		path = strings.TrimPrefix(path, "/")
-		// check if filepath exists else
-		if !fileutil.FileOrFolderExists(filepath.Join(templateDir, path)) {
-			// try to resolve path at /http subdirectory
-			if fileutil.FileOrFolderExists(filepath.Join(templateDir, "http", path)) {
-				return filepath.Join(templateDir, "http", path)
-				// try to resolve path at /network/cves subdirectory
-			} else if strings.HasPrefix(path, "cves") && fileutil.FileOrFolderExists(filepath.Join(templateDir, "network", "cves", path)) {
-				return filepath.Join(templateDir, "network", "cves", path)
-			}
-			// most likely the path is not found
-			return filepath.Join(templateDir, path)
+		// try to resolve path at /http subdirectory
+		if fileutil.FileOrFolderExists(filepath.Join(templateDir, "http", path)) {
+			return filepath.Join(templateDir, "http", path)
+			// try to resolve path at /network/cves subdirectory
+		} else if strings.HasPrefix(path, "cves") && fileutil.FileOrFolderExists(filepath.Join(templateDir, "network", "cves", path)) {
+			return filepath.Join(templateDir, "network", "cves", path)
+		} else {
+			gologger.Error().Msgf("fallback paths %v & %v does not exist. skipping", filepath.Join(templateDir, "http", path), filepath.Join(templateDir, "network", "cves", path))
 		}
+		// most likely the path is not found
 		return filepath.Join(templateDir, path)
 	}
 	switch {
