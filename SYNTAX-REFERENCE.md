@@ -2031,6 +2031,8 @@ Enum Values:
   - <code>CAA</code>
 
   - <code>TLSA</code>
+
+  - <code>ANY</code>
 </div>
 
 <hr />

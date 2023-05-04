@@ -895,6 +895,7 @@ func init() {
 		"AAAA",
 		"CAA",
 		"TLSA",
+		"ANY",
 	}
 
 	FILERequestDoc.Type = "file.Request"
