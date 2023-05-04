@@ -101,7 +101,7 @@ func DoHealthCheck(options *types.Options) string {
 	// Other Host information
 	v4, v6, _ := router.GetOutboundIPs()
 	myIP, _ := iputil.WhatsMyIP()
-	data["environment"].(map[string]interface{})["Internet ip"] = addInternalTag(myIP)
+	data["environment"].(map[string]interface{})["internet ip"] = addInternalTag(myIP)
 	data["environment"].(map[string]interface{})["source IPv4"] = addInternalTag(v4.String())
 	data["environment"].(map[string]interface{})["source IPv6"] = addInternalTag(v6.String())
 	data["environment"].(map[string]interface{})["ulimit"] = checkUlimit(data, ulimitmin)
