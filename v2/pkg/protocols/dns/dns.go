@@ -226,6 +226,8 @@ func questionTypeToInt(questionType string) uint16 {
 		question = dns.TypeCAA
 	case "TLSA":
 		question = dns.TypeTLSA
+	case "ANY":
+		question = dns.TypeANY
 	}
 	return question
 }
