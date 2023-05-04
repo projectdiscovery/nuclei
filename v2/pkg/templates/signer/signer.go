@@ -57,7 +57,7 @@ func New(options *Options) (*Signer, error) {
 
 	switch signer.options.Algorithm {
 	case RSA:
-		signer.sshSigner, signer.sshVerifier, err = parseRsa(privateKeyData, publicKeyData, passphraseData)
+		signer.sshSigner, signer.sshVerifier, err = parseRsa(privateKeyData, passphraseData, publicKeyData)
 	case ECDSA:
 		signer.ecdsaSigner, signer.ecdsaVerifier, err = parseECDSA(privateKeyData, publicKeyData)
 	default:
