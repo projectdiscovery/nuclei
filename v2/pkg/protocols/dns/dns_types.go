@@ -35,6 +35,8 @@ const (
 	CAA
 	// name:TLSA
 	TLSA
+	// name:ANY
+	ANY
 	limit
 )
 
@@ -51,6 +53,7 @@ var DNSRequestTypeMapping = map[DNSRequestType]string{
 	AAAA:  "AAAA",
 	CAA:   "CAA",
 	TLSA:  "TLSA",
+	ANY:   "ANY",
 }
 
 // GetSupportedDNSRequestTypes returns list of supported types
