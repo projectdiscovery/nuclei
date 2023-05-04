@@ -21,6 +21,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/utils/vardump"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/headless/engine"
 	"github.com/projectdiscovery/nuclei/v2/pkg/templates/signer"
+	protocoltypes "github.com/projectdiscovery/nuclei/v2/pkg/templates/types"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 	fileutil "github.com/projectdiscovery/utils/file"
 	logutil "github.com/projectdiscovery/utils/log"
@@ -351,6 +352,9 @@ func validateCertificatePaths(certificatePaths []string) {
 func readEnvInputVars(options *types.Options) {
 	if strings.EqualFold(os.Getenv("NUCLEI_CLOUD"), "true") {
 		options.Cloud = true
+
+		// TODO: disable files, offlinehttp, code
+		options.ExcludeProtocols = append(options.ExcludeProtocols, protocoltypes.CodeProtocol, protocoltypes.FileProtocol, protocoltypes.OfflineHTTPProtocol)
 	}
 	if options.CloudURL = os.Getenv("NUCLEI_CLOUD_SERVER"); options.CloudURL == "" {
 		options.CloudURL = "https://cloud-dev.nuclei.sh"
