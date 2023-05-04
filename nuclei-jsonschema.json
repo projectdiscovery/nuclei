@@ -399,7 +399,8 @@
         "TXT",
         "AAAA",
         "CAA",
-        "TLSA"
+        "TLSA",
+        "ANY"
       ],
       "type": "string",
       "title": "type of DNS request to make",
