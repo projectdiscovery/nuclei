@@ -79,7 +79,7 @@ require (
 	github.com/projectdiscovery/sarif v0.0.1
 	github.com/projectdiscovery/tlsx v1.0.9
 	github.com/projectdiscovery/uncover v1.0.2
-	github.com/projectdiscovery/utils v0.0.27-0.20230505132847-fe38d7cbbaaa
+	github.com/projectdiscovery/utils v0.0.27
 	github.com/projectdiscovery/wappalyzergo v0.0.92
 	github.com/stretchr/testify v1.8.2
 	gopkg.in/src-d/go-git.v4 v4.13.1
@@ -214,7 +214,7 @@ require (
 	golang.org/x/crypto v0.7.0
 	golang.org/x/exp v0.0.0-20230420155640-133eef4313cb
 	golang.org/x/mod v0.10.0 // indirect
-	golang.org/x/sys v0.7.0 // indirect
+	golang.org/x/sys v0.8.0 // indirect
 	golang.org/x/time v0.3.0 // indirect
 	golang.org/x/tools v0.8.0 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
