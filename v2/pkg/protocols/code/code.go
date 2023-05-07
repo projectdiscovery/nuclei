@@ -15,8 +15,10 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/contextargs"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/generators"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/helpers/eventcreator"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/helpers/responsehighlighter"
+	protocolutils "github.com/projectdiscovery/nuclei/v2/pkg/protocols/utils"
 	templateTypes "github.com/projectdiscovery/nuclei/v2/pkg/templates/types"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 	fileutil "github.com/projectdiscovery/utils/file"
@@ -99,6 +101,16 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 		}
 	}()
 
+	// inject all template context values as gozero env variables
+	variables := protocolutils.GenerateVariables(input.MetaInput.Input, false, nil)
+	// optionvars are vars passed from CLI or env variables
+	optionVars := generators.BuildPayloadFromOptions(request.options.Options)
+	variablesMap := request.options.Variables.Evaluate(variables)
+	variables = generators.MergeMaps(variablesMap, variables, optionVars)
+	for name, value := range variables {
+		metaSrc.AddVariable(gozero.Variable{Name: name, Value: fmt.Sprint(value)})
+	}
+
 	output, err := request.gozero.Eval(context.Background(), request.src, metaSrc)
 	if err != nil {
 		return err
@@ -119,7 +131,7 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 
 	data["type"] = request.Type().String()
 	data["response"] = string(dataOutput)
-	data["body"] = string(dataOutput)
+	data["body"] = dataOutputString
 	data["input"] = input.MetaInput.Input
 	data["template-path"] = request.options.TemplatePath
 	data["template-id"] = request.options.TemplateID
