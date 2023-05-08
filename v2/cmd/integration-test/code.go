@@ -14,7 +14,10 @@ var codeTestCases = map[string]testutils.TestCase{
 type pySnippet struct{}
 
 func prepareEnv() {
-	publicKeyAbsPath, _ := filepath.Abs("protocols/code/pub-key.pem")
+	publicKeyAbsPath, err := filepath.Abs("protocols/code/pub-key.pem")
+	if err != nil {
+		panic(err)
+	}
 	os.Setenv("NUCLEI_SIGNATURE_PUBLIC_KEY", publicKeyAbsPath)
 	os.Setenv("NUCLEI_SIGNATURE_ALGORITHM", "ecdsa")
 }
