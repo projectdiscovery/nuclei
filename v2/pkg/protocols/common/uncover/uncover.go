@@ -3,247 +3,133 @@ package uncover
 import (
 	"context"
 	"fmt"
-	"os"
+	"runtime"
 	"strings"
-	"sync"
-	"time"
 
-	"github.com/pkg/errors"
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v2/pkg/templates"
-	"github.com/projectdiscovery/ratelimit"
-	ucRunner "github.com/projectdiscovery/uncover/runner"
-	"github.com/projectdiscovery/uncover/uncover"
-	"github.com/projectdiscovery/uncover/uncover/agent/censys"
-	"github.com/projectdiscovery/uncover/uncover/agent/criminalip"
-	"github.com/projectdiscovery/uncover/uncover/agent/fofa"
-	"github.com/projectdiscovery/uncover/uncover/agent/hunter"
-	"github.com/projectdiscovery/uncover/uncover/agent/netlas"
-	"github.com/projectdiscovery/uncover/uncover/agent/quake"
-	"github.com/projectdiscovery/uncover/uncover/agent/shodan"
-	"github.com/projectdiscovery/uncover/uncover/agent/shodanidb"
-	"github.com/projectdiscovery/uncover/uncover/agent/zoomeye"
+	"github.com/projectdiscovery/uncover"
+	"github.com/projectdiscovery/uncover/sources"
 	mapsutil "github.com/projectdiscovery/utils/maps"
-	"github.com/remeh/sizedwaitgroup"
+	stringsutil "github.com/projectdiscovery/utils/strings"
 )
 
-const maxConcurrentAgents = 50
-
+// returns csv string of uncover supported agents
 func GetUncoverSupportedAgents() string {
-	uncoverSupportedAgents := []string{"shodan", "shodan-idb", "fofa", "censys", "quake", "hunter", "zoomeye", "netlas", "criminalip"}
-	return strings.Join(uncoverSupportedAgents, ",")
+	u, _ := uncover.New(&uncover.Options{})
+	return strings.Join(u.AllAgents(), ",")
 }
 
-func GetTargetsFromUncover(delay, limit int, field string, engine, query []string) (chan string, error) {
-	uncoverOptions := &ucRunner.Options{
-		Provider: &ucRunner.Provider{},
-		Delay:    delay,
-		Limit:    limit,
-		Query:    query,
-		Engine:   engine,
+// GetTargetsFromUncover returns targets from uncover
+func GetTargetsFromUncover(ctx context.Context, outputFormat string, opts *uncover.Options) (chan string, error) {
+	u, err := uncover.New(opts)
+	if err != nil {
+		return nil, err
 	}
-	for _, eng := range engine {
-		err := loadKeys(eng, uncoverOptions)
-		if err != nil {
-			gologger.Error().Label("WRN").Msgf(err.Error())
-			continue
-		}
+	resChan, err := u.Execute(ctx)
+	if err != nil {
+		return nil, err
 	}
-	return getTargets(uncoverOptions, field)
-}
-
-func GetUncoverTargetsFromMetadata(templates []*templates.Template, delay, limit int, field string) chan string {
-	ret := make(chan string)
-	var uqMap = make(map[string][]string)
-	var eng, query string
-	for _, template := range templates {
-		for k, v := range template.Info.Metadata {
-			switch k {
-			case "shodan-query":
-				eng = "shodan"
-			case "fofa-query":
-				eng = "fofa"
-			case "censys-query":
-				eng = "censys"
-			case "quake-query":
-				eng = "quake"
-			case "hunter-query":
-				eng = "hunter"
-			case "zoomeye-query":
-				eng = "zoomeye"
-			case "netlas-query":
-				eng = "netlas"
-			case "criminalip-query":
-				eng = "criminalip"
-			default:
-				continue
-			}
-			query = fmt.Sprintf("%v", v)
-			uqMap[eng] = append(uqMap[eng], query)
-		}
-	}
-	keys := mapsutil.GetKeys(uqMap)
-	gologger.Info().Msgf("Running uncover query against: %s", strings.Join(keys, ","))
-	var wg sync.WaitGroup
+	outputChan := make(chan string) // buffered channel
 	go func() {
-		for k, v := range uqMap {
-			wg.Add(1)
-			go func(engine, query []string) {
-				ch, _ := GetTargetsFromUncover(delay, limit, field, engine, query)
-				for c := range ch {
-					ret <- c
+		defer close(outputChan)
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case res, ok := <-resChan:
+				if !ok {
+					return
 				}
-				wg.Done()
-			}([]string{k}, v)
+				if res.Error != nil {
+					// only log in verbose mode
+					gologger.Verbose().Msgf("uncover: %v", res.Error)
+					continue
+				}
+				outputChan <- processUncoverOutput(res, outputFormat)
+			}
 		}
-		wg.Wait()
-		close(ret)
 	}()
-	return ret
+	return outputChan, nil
 }
 
-func getTargets(uncoverOptions *ucRunner.Options, field string) (chan string, error) {
-	var rateLimiter *ratelimit.Limiter
-	// create rateLimiter for uncover delay
-	if uncoverOptions.Delay > 0 {
-		rateLimiter = ratelimit.New(context.Background(), 1, time.Duration(uncoverOptions.Delay))
-	} else {
-		rateLimiter = ratelimit.NewUnlimited(context.Background())
+// processUncoverOutput returns output strign depending on uncover field
+func processUncoverOutput(result sources.Result, outputFormat string) string {
+	if (result.IP == "" || result.Port == 0) && stringsutil.ContainsAny(outputFormat, "ip", "port") {
+		// if ip or port is not present, fallback to using host
+		outputFormat = "host"
 	}
-	var agents []uncover.Agent
-	// declare clients
-	for _, engine := range uncoverOptions.Engine {
-		var (
-			agent uncover.Agent
-			err   error
-		)
-		switch engine {
-		case "shodan":
-			agent, err = shodan.NewWithOptions(&uncover.AgentOptions{RateLimiter: rateLimiter})
-		case "censys":
-			agent, err = censys.NewWithOptions(&uncover.AgentOptions{RateLimiter: rateLimiter})
-		case "fofa":
-			agent, err = fofa.NewWithOptions(&uncover.AgentOptions{RateLimiter: rateLimiter})
-		case "shodan-idb":
-			agent, err = shodanidb.NewWithOptions(&uncover.AgentOptions{RateLimiter: rateLimiter})
-		case "quake":
-			agent, err = quake.NewWithOptions(&uncover.AgentOptions{RateLimiter: rateLimiter})
-		case "hunter":
-			agent, err = hunter.NewWithOptions(&uncover.AgentOptions{RateLimiter: rateLimiter})
-		case "zoomeye":
-			agent, err = zoomeye.NewWithOptions(&uncover.AgentOptions{RateLimiter: rateLimiter})
-		case "netlas":
-			agent, err = netlas.NewWithOptions(&uncover.AgentOptions{RateLimiter: rateLimiter})
-		case "criminalip":
-			agent, err = criminalip.NewWithOptions(&uncover.AgentOptions{RateLimiter: rateLimiter})
-		default:
-			err = errors.Errorf("%s unknown uncover agent type", engine)
-		}
-		if err != nil {
-			return nil, err
-		}
-		agents = append(agents, agent)
-	}
-	// enumerate
-	swg := sizedwaitgroup.New(maxConcurrentAgents)
-	ret := make(chan string)
-	go func() {
-		for _, q := range uncoverOptions.Query {
-			uncoverQuery := &uncover.Query{
-				Query: q,
-				Limit: uncoverOptions.Limit,
+	replacer := strings.NewReplacer(
+		"ip", result.IP,
+		"host", result.Host,
+		"port", fmt.Sprint(result.Port),
+		"url", result.Url,
+	)
+	return replacer.Replace(outputFormat)
+}
+
+// GetUncoverTargetsFromMetadata returns targets from uncover metadata
+func GetUncoverTargetsFromMetadata(ctx context.Context, templates []*templates.Template, outputFormat string, opts *uncover.Options) chan string {
+	// contains map[engine]queries
+	queriesMap := make(map[string][]string)
+	for _, template := range templates {
+	innerLoop:
+		for k, v := range template.Info.Metadata {
+			if !strings.HasSuffix(k, "-query") {
+				// this is not a query
+				// query keys are like shodan-query, fofa-query, etc
+				continue innerLoop
 			}
-			for _, agent := range agents {
-				swg.Add()
-				go func(agent uncover.Agent, uncoverQuery *uncover.Query) {
-					defer swg.Done()
-					keys := uncoverOptions.Provider.GetKeys()
-					session, err := uncover.NewSession(&keys, uncoverOptions.Retries, uncoverOptions.Timeout)
-					if err != nil {
-						gologger.Error().Label(agent.Name()).Msgf("couldn't create uncover new session: %s", err)
-					}
-					ch, err := agent.Query(session, uncoverQuery)
-					if err != nil {
-						gologger.Warning().Msgf("%s", err)
+			engine := strings.TrimSuffix(k, "-query")
+			if queriesMap[engine] == nil {
+				queriesMap[engine] = []string{}
+			}
+			queriesMap[engine] = append(queriesMap[engine], fmt.Sprint(v))
+		}
+	}
+	keys := mapsutil.GetKeys(queriesMap)
+	gologger.Info().Msgf("Running uncover queries from template against: %s", strings.Join(keys, ","))
+	result := make(chan string, runtime.NumCPU())
+	go func() {
+		defer close(result)
+		// unfortunately uncover doesn't support execution of map[engine]queries
+		// if queries are given they are executed against all engines which is not what we want
+		// TODO: add support for map[engine]queries in uncover
+		// Note below implementation is intentionally sequential to avoid burning all the API keys
+		counter := 0
+
+		for eng, queries := range queriesMap {
+			// create new uncover options for each engine
+			uncoverOpts := &uncover.Options{
+				Agents:        []string{eng},
+				Queries:       queries,
+				Limit:         opts.Limit,
+				MaxRetry:      opts.MaxRetry,
+				Timeout:       opts.Timeout,
+				RateLimit:     opts.RateLimit,
+				RateLimitUnit: opts.RateLimitUnit,
+			}
+			ch, err := GetTargetsFromUncover(ctx, outputFormat, uncoverOpts)
+			if err != nil {
+				gologger.Error().Msgf("Could not get targets using %v engine from uncover: %s", eng, err)
+				return
+			}
+			for {
+				select {
+				case <-ctx.Done():
+					return
+				case res, ok := <-ch:
+					if !ok {
 						return
 					}
-					for result := range ch {
-						replacer := strings.NewReplacer(
-							"ip", result.IP,
-							"host", result.Host,
-							"port", fmt.Sprint(result.Port),
-						)
-						ret <- replacer.Replace(field)
+					result <- res
+					counter++
+					if opts.Limit > 0 && counter >= opts.Limit {
+						return
 					}
-				}(agent, uncoverQuery)
+				}
 			}
 		}
-		swg.Wait()
-		close(ret)
 	}()
-	return ret, nil
-}
-
-func loadKeys(engine string, options *ucRunner.Options) error {
-	switch engine {
-	case "fofa":
-		if email, exists := os.LookupEnv("FOFA_EMAIL"); exists {
-			if key, exists := os.LookupEnv("FOFA_KEY"); exists {
-				options.Provider.Fofa = append(options.Provider.Fofa, fmt.Sprintf("%s:%s", email, key))
-			} else {
-				return errors.New("missing FOFA_KEY env variable")
-			}
-		} else {
-			return errors.Errorf("FOFA_EMAIL & FOFA_KEY env variables are not configured")
-		}
-	case "shodan":
-		if key, exists := os.LookupEnv("SHODAN_API_KEY"); exists {
-			options.Provider.Shodan = append(options.Provider.Shodan, key)
-		} else {
-			return errors.Errorf("SHODAN_API_KEY env variable is not configured")
-		}
-	case "censys":
-		if id, exists := os.LookupEnv("CENSYS_API_ID"); exists {
-			if secret, exists := os.LookupEnv("CENSYS_API_SECRET"); exists {
-				options.Provider.Censys = append(options.Provider.Censys, fmt.Sprintf("%s:%s", id, secret))
-			} else {
-				return errors.New("missing CENSYS_API_SECRET env variable")
-			}
-		} else {
-			return errors.Errorf("CENSYS_API_ID & CENSYS_API_SECRET env variable is not configured")
-		}
-	case "hunter":
-		if key, exists := os.LookupEnv("HUNTER_API_KEY"); exists {
-			options.Provider.Hunter = append(options.Provider.Hunter, key)
-		} else {
-			return errors.Errorf("HUNTER_API_KEY env variable is not configured")
-		}
-	case "zoomeye":
-		if key, exists := os.LookupEnv("ZOOMEYE_API_KEY"); exists {
-			options.Provider.ZoomEye = append(options.Provider.ZoomEye, key)
-		} else {
-			return errors.Errorf("ZOOMEYE_API_KEY env variable is not configured")
-		}
-	case "quake":
-		if key, exists := os.LookupEnv("QUAKE_TOKEN"); exists {
-			options.Provider.Quake = append(options.Provider.Quake, key)
-		} else {
-			return errors.Errorf("QUAKE_TOKEN env variable is not configured")
-		}
-	case "netlas":
-		if key, exists := os.LookupEnv("NETLAS_API_KEY"); exists {
-			options.Provider.Netlas = append(options.Provider.Netlas, key)
-		} else {
-			return errors.Errorf("NETLAS_API_KEY env variable is not configured")
-		}
-	case "criminalip":
-		if key, exists := os.LookupEnv("CRIMINALIP_API_KEY"); exists {
-			options.Provider.CriminalIP = append(options.Provider.CriminalIP, key)
-		} else {
-			return errors.Errorf("CRIMINALIP_API_KEY env variable is not configured")
-		}
-	default:
-		return errors.Errorf("unknown uncover agent")
-	}
-	return nil
+	return result
 }
