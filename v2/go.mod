@@ -26,7 +26,7 @@ require (
 	github.com/projectdiscovery/interactsh v1.1.3
 	github.com/projectdiscovery/rawhttp v0.1.11
 	github.com/projectdiscovery/retryabledns v1.0.24
-	github.com/projectdiscovery/retryablehttp-go v1.0.15
+	github.com/projectdiscovery/retryablehttp-go v1.0.16
 	github.com/projectdiscovery/stringsutil v0.0.2 // indirect
 	github.com/projectdiscovery/yamldoc-go v1.0.4
 	github.com/remeh/sizedwaitgroup v1.0.0
@@ -70,7 +70,7 @@ require (
 	github.com/projectdiscovery/dsl v0.0.7
 	github.com/projectdiscovery/fasttemplate v0.0.2
 	github.com/projectdiscovery/goflags v0.1.8
-	github.com/projectdiscovery/gologger v1.1.8
+	github.com/projectdiscovery/gologger v1.1.9
 	github.com/projectdiscovery/httpx v1.3.0
 	github.com/projectdiscovery/mapcidr v1.1.1
 	github.com/projectdiscovery/nvd v1.0.10-0.20230327073015-721181aba1e8
@@ -78,8 +78,8 @@ require (
 	github.com/projectdiscovery/rdap v0.9.1-0.20221108103045-9865884d1917
 	github.com/projectdiscovery/sarif v0.0.1
 	github.com/projectdiscovery/tlsx v1.0.9
-	github.com/projectdiscovery/uncover v1.0.2
-	github.com/projectdiscovery/utils v0.0.27
+	github.com/projectdiscovery/uncover v1.0.4
+	github.com/projectdiscovery/utils v0.0.28
 	github.com/projectdiscovery/wappalyzergo v0.0.92
 	github.com/stretchr/testify v1.8.2
 	gopkg.in/src-d/go-git.v4 v4.13.1
