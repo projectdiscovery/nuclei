@@ -439,11 +439,10 @@ github.com/projectdiscovery/retryablehttp-go v1.0.15/go.mod h1:+OzSFUv3sQcPt+Mgb
 github.com/projectdiscovery/sarif v0.0.1 h1:C2Tyj0SGOKbCLgHrx83vaE6YkzXEVrMXYRGLkKCr/us=
 github.com/projectdiscovery/sarif v0.0.1/go.mod h1:cEYlDu8amcPf6b9dSakcz2nNnJsoz4aR6peERwV+wuQ=
 github.com/projectdiscovery/stringsutil v0.0.2 h1:uzmw3IVLJSMW1kEg8eCStG/cGbYYZAja8BH3LqqJXMA=
-github.com/projectdiscovery/stringsutil v0.0.2/go.mod h1:EJ3w6bC5fBYjVou6ryzodQq37D5c6qbAYQpGmAy+DC0=
 github.com/projectdiscovery/tlsx v1.0.9 h1:StUwVpPG0lrXq6FvxbFarPM+fu9Vke1sOPoyJcBVOFA=
 github.com/projectdiscovery/tlsx v1.0.9/go.mod h1:4vGhl8lxUWjXuyoVvnL2ObMY/FSrb9Mpx5U2KaTV05A=
-github.com/projectdiscovery/uncover v1.0.2 h1:mRFzflYyvwKkHd3XKufMlDRrb6p1mjFZTSHoNAUpFwo=
-github.com/projectdiscovery/uncover v1.0.2/go.mod h1:lz4QYfArSA6jJkXyB71kN2/Pc7IW7nJB8c95n7xtwqY=
+github.com/projectdiscovery/uncover v1.0.4 h1:d0lUNcnqDMfG4gR/WP2+UoQKLVmLE7opBiwnmI7ir/0=
+github.com/projectdiscovery/uncover v1.0.4/go.mod h1:fvSHBhj8zZFEXGOhQIpPe5j5LtDXI7adOns1iFJ5TTY=
 github.com/projectdiscovery/utils v0.0.3/go.mod h1:ne3eSlZlUKuhjHr8FfsfGcGteCzxcbJvFBx4VDBCxK0=
 github.com/projectdiscovery/utils v0.0.27 h1:HfLjy1ZuWWtGfLW5ixHcgWPqybuJhPltpHnHeBID2QQ=
 github.com/projectdiscovery/utils v0.0.27/go.mod h1:RpMyTA/KACEBK+Bo9mk9MgLH0Hfc+BZtSlZ4T9bjLBE=
