@@ -4,6 +4,7 @@ package hybrid
 
 import (
 	"bufio"
+	"context"
 	"fmt"
 	"io"
 	"os"
@@ -22,6 +23,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/protocolstate"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/uncover"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
+	uncoverlib "github.com/projectdiscovery/uncover"
 	fileutil "github.com/projectdiscovery/utils/file"
 	iputil "github.com/projectdiscovery/utils/ip"
 	readerutil "github.com/projectdiscovery/utils/reader"
@@ -137,7 +139,16 @@ func (i *Input) initializeInputSources(opts *Options) error {
 	}
 	if options.Uncover && options.UncoverQuery != nil {
 		gologger.Info().Msgf("Running uncover query against: %s", strings.Join(options.UncoverEngine, ","))
-		ch, err := uncover.GetTargetsFromUncover(options.UncoverDelay, options.UncoverLimit, options.UncoverField, options.UncoverEngine, options.UncoverQuery)
+		uncoverOpts := &uncoverlib.Options{
+			Agents:        options.UncoverEngine,
+			Queries:       options.UncoverQuery,
+			Limit:         options.UncoverLimit,
+			MaxRetry:      options.Retries,
+			Timeout:       options.Timeout,
+			RateLimit:     uint(options.UncoverRateLimit),
+			RateLimitUnit: time.Minute, // default unit is minute
+		}
+		ch, err := uncover.GetTargetsFromUncover(context.TODO(), options.UncoverField, uncoverOpts)
 		if err != nil {
 			return err
 		}
