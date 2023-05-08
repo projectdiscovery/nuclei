@@ -34,9 +34,9 @@ import (
 	"github.com/projectdiscovery/ratelimit"
 )
 
-var codeTestcases = map[string]testutils.TestCase{
-	"code/test.yaml": &goIntegrationTest{},
-	"code/test.json": &goIntegrationTest{},
+var libraryTestcases = map[string]testutils.TestCase{
+	"library/test.yaml": &goIntegrationTest{},
+	"library/test.json": &goIntegrationTest{},
 }
 
 type goIntegrationTest struct{}
@@ -56,15 +56,15 @@ func (h *goIntegrationTest) Execute(templatePath string) error {
 	ts := httptest.NewServer(router)
 	defer ts.Close()
 
-	results, err := executeNucleiAsCode(templatePath, ts.URL)
+	results, err := executeNucleiAsLibrary(templatePath, ts.URL)
 	if err != nil {
 		return err
 	}
 	return expectResultsCount(results, 1)
 }
 
-// executeNucleiAsCode contains an example
-func executeNucleiAsCode(templatePath, templateURL string) ([]string, error) {
+// executeNucleiAsLibrary contains an example
+func executeNucleiAsLibrary(templatePath, templateURL string) ([]string, error) {
 	cache := hosterrorscache.New(30, hosterrorscache.DefaultMaxHostsCount, nil)
 	defer cache.Close()
 

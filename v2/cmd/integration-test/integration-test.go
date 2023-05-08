@@ -32,7 +32,7 @@ var (
 		"headless":        headlessTestcases,
 		"whois":           whoisTestCases,
 		"ssl":             sslTestcases,
-		"code":            codeTestcases,
+		"library":         libraryTestcases,
 		"templatesPath":   templatesPathTestCases,
 		"templatesDir":    templatesDirTestCases,
 		"file":            fileTestcases,

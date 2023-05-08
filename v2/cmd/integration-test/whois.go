@@ -5,7 +5,7 @@ import (
 )
 
 var whoisTestCases = map[string]testutils.TestCase{
-	"whois/basic.yaml": &whoisBasic{},
+	"protocols/whois/basic.yaml": &whoisBasic{},
 }
 
 type whoisBasic struct{}

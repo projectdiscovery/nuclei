@@ -14,11 +14,11 @@ func getTemplatePath() string {
 
 var templatesPathTestCases = map[string]testutils.TestCase{
 	//template folder path issue
-	"http/get.yaml": &folderPathTemplateTest{},
+	"protocols/http/get.yaml": &folderPathTemplateTest{},
 	//cwd
-	"./dns/cname-fingerprint.yaml": &cwdTemplateTest{},
+	"./protocols/dns/cname-fingerprint.yaml": &cwdTemplateTest{},
 	//relative path
-	"dns/cname-fingerprint.yaml": &relativePathTemplateTest{},
+	"protocols/dns/cname-fingerprint.yaml": &relativePathTemplateTest{},
 	//absolute path
 	fmt.Sprintf("%v/dns/cname-fingerprint.yaml", getTemplatePath()): &absolutePathTemplateTest{},
 }
