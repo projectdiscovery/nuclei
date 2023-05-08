@@ -117,11 +117,10 @@ func (s *Signer) Sign(data []byte) ([]byte, error) {
 		}
 		return signatureData.Bytes(), nil
 	case ECDSA:
-		r, s, err := ecdsa.Sign(rand.Reader, s.ecdsaSigner, dataHash[:])
+		ecdsaSignature, err := ecdsa.SignASN1(rand.Reader, s.ecdsaSigner, dataHash[:])
 		if err != nil {
 			return nil, err
 		}
-		ecdsaSignature := &EcdsaSignature{R: r, S: s}
 		var signatureData bytes.Buffer
 		if err := gob.NewEncoder(&signatureData).Encode(ecdsaSignature); err != nil {
 			return nil, err
@@ -145,11 +144,11 @@ func (s *Signer) Verify(data, signatureData []byte) (bool, error) {
 		}
 		return true, nil
 	case ECDSA:
-		signature := &EcdsaSignature{}
+		var signature []byte
 		if err := gob.NewDecoder(bytes.NewReader(signatureData)).Decode(&signature); err != nil {
 			return false, err
 		}
-		return ecdsa.Verify(s.ecdsaVerifier, dataHash[:], signature.R, signature.S), nil
+		return ecdsa.VerifyASN1(s.ecdsaVerifier, dataHash[:], signature), nil
 	default:
 		return false, ErrUnknownAlgorithm
 	}
