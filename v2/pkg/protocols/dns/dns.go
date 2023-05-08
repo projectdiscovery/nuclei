@@ -206,6 +206,11 @@ func (request *Request) getDnsClient(options *protocols.ExecuterOptions, metadat
 
 // Requests returns the total number of requests the YAML rule will perform
 func (request *Request) Requests() int {
+	if request.generator != nil {
+		payloadRequests := request.generator.NewIterator().Total()
+		return payloadRequests
+	}
+
 	return 1
 }
 

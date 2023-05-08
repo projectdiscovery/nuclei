@@ -97,14 +97,20 @@ func (request *Request) execute(domain string, metadata, previous output.Interna
 			return nil
 		}
 	}
+	question := domain
+	if len(compiledRequest.Question) > 0 {
+		question = compiledRequest.Question[0].Name
+	}
+	// remove the last dot
+	question = strings.TrimSuffix(question, ".")
 
 	requestString := compiledRequest.String()
 	if varErr := expressions.ContainsUnresolvedVariables(requestString); varErr != nil {
-		gologger.Warning().Msgf("[%s] Could not make dns request for %s: %v\n", request.options.TemplateID, domain, varErr)
+		gologger.Warning().Msgf("[%s] Could not make dns request for %s: %v\n", request.options.TemplateID, question, varErr)
 		return nil
 	}
 	if request.options.Options.Debug || request.options.Options.DebugRequests || request.options.Options.StoreResponse {
-		msg := fmt.Sprintf("[%s] Dumped DNS request for %s", request.options.TemplateID, domain)
+		msg := fmt.Sprintf("[%s] Dumped DNS request for %s", request.options.TemplateID, question)
 		if request.options.Options.Debug || request.options.Options.DebugRequests {
 			gologger.Info().Str("domain", domain).Msgf(msg)
 			gologger.Print().Msgf("%s", requestString)
@@ -121,14 +127,15 @@ func (request *Request) execute(domain string, metadata, previous output.Interna
 	if err != nil {
 		request.options.Output.Request(request.options.TemplatePath, domain, request.Type().String(), err)
 		request.options.Progress.IncrementFailedRequestsBy(1)
+	} else {
+		request.options.Progress.IncrementRequests()
 	}
 	if response == nil {
 		return errors.Wrap(err, "could not send dns request")
 	}
-	request.options.Progress.IncrementRequests()
 
 	request.options.Output.Request(request.options.TemplatePath, domain, request.Type().String(), err)
-	gologger.Verbose().Msgf("[%s] Sent DNS request to %s\n", request.options.TemplateID, domain)
+	gologger.Verbose().Msgf("[%s] Sent DNS request to %s\n", request.options.TemplateID, question)
 
 	// perform trace if necessary
 	var traceData *retryabledns.TraceData
@@ -138,14 +145,9 @@ func (request *Request) execute(domain string, metadata, previous output.Interna
 			request.options.Output.Request(request.options.TemplatePath, domain, "dns", err)
 		}
 	}
-	matchedAt := domain
-	if len(response.Question) > 0 {
-		matchedAt = response.Question[0].Name
-	}
-	// remove the last dot
-	matchedAt = strings.TrimSuffix(matchedAt, ".")
+
 	// Create the output event
-	outputEvent := request.responseToDSLMap(compiledRequest, response, domain, matchedAt, traceData)
+	outputEvent := request.responseToDSLMap(compiledRequest, response, domain, question, traceData)
 	for k, v := range previous {
 		outputEvent[k] = v
 	}
@@ -154,9 +156,9 @@ func (request *Request) execute(domain string, metadata, previous output.Interna
 	}
 	event := eventcreator.CreateEvent(request, outputEvent, request.options.Options.Debug || request.options.Options.DebugResponse)
 
-	dumpResponse(event, request, request.options, response.String(), domain)
+	dumpResponse(event, request, request.options, response.String(), question)
 	if request.Trace {
-		dumpTraceData(event, request.options, traceToString(traceData, true), domain)
+		dumpTraceData(event, request.options, traceToString(traceData, true), question)
 	}
 
 	callback(event)
