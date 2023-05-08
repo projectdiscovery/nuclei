@@ -39,6 +39,7 @@ var (
 		"offlineHttp":     offlineHttpTestcases,
 		"customConfigDir": customConfigDirTestCases,
 		"fuzzing":         fuzzingTestCases,
+		"code":            codeTestCases,
 	}
 
 	// For debug purposes

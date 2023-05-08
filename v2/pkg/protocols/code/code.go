@@ -32,7 +32,7 @@ type Request struct {
 
 	// description: |
 	//   Engine type
-	Engine string `yaml:"engine,omitempty" jsonschema:"title=engine,description=Engine,enum=python,enum=powershell,enum=command"`
+	Engine []string `yaml:"engine,omitempty" jsonschema:"title=engine,description=Engine,enum=python,enum=powershell,enum=command"`
 	// description: |
 	//   Source File/Snippet
 	Source string `yaml:"source,omitempty" jsonschema:"title=source file/snippet,description=Source snippet"`
@@ -47,7 +47,7 @@ func (request *Request) Compile(options *protocols.ExecuterOptions) error {
 	request.options = options
 
 	gozeroOptions := &gozero.Options{
-		Engine: request.Engine,
+		Engines: request.Engine,
 	}
 	engine, err := gozero.New(gozeroOptions)
 	if err != nil {
