@@ -2,7 +2,6 @@ package signer
 
 import (
 	"errors"
-	"math/big"
 	"regexp"
 	"strings"
 )
@@ -35,11 +34,6 @@ type Options struct {
 	PublicKeyName  string
 	PublicKeyData  []byte
 	Algorithm      AlgorithmType
-}
-
-type EcdsaSignature struct {
-	R *big.Int
-	S *big.Int
 }
 
 var (
