@@ -3,14 +3,11 @@ package main
 import (
 	"io/fs"
 	"log"
-	"os"
 	"path/filepath"
 
-	"github.com/pkg/errors"
 	"github.com/projectdiscovery/goflags"
-	"github.com/projectdiscovery/nuclei/v2/pkg/templates/extensions"
 	"github.com/projectdiscovery/nuclei/v2/pkg/templates/signer"
-	stringsutil "github.com/projectdiscovery/utils/strings"
+	"github.com/projectdiscovery/nuclei/v2/pkg/utils"
 )
 
 type options struct {
@@ -76,69 +73,10 @@ func processItem(sign *signer.Signer, item string) error {
 			return nil
 		}
 
-		if err := processFile(sign, iterItem); err != nil {
+		if err := utils.ProcessFile(sign, iterItem); err != nil {
 			return err
 		}
 
 		return nil
 	})
-}
-
-func processFile(sign *signer.Signer, filePath string) error {
-	ext := filepath.Ext(filePath)
-	if !stringsutil.EqualFoldAny(ext, extensions.YAML) {
-		return nil
-	}
-	err := signTemplate(sign, filePath)
-	if err != nil {
-		return errors.Wrapf(err, "could not sign template: %s", filePath)
-	}
-
-	ok, err := verifyTemplateSignature(sign, filePath)
-	if err != nil {
-		return errors.Wrapf(err, "could not verify template: %s", filePath)
-	}
-	if !ok {
-		return errors.Wrapf(err, "template signature doesn't match: %s", filePath)
-	}
-
-	return nil
-}
-
-func appendToFile(path string, data []byte, digest string) error {
-	file, err := os.Create(path)
-	if err != nil {
-		return err
-	}
-	defer file.Close()
-
-	if _, err := file.Write(data); err != nil {
-		return err
-	}
-
-	if _, err := file.WriteString("\n" + digest); err != nil {
-		return err
-	}
-	return nil
-}
-
-func signTemplate(sign *signer.Signer, templatePath string) error {
-	templateData, err := os.ReadFile(templatePath)
-	if err != nil {
-		return err
-	}
-	signatureData, err := signer.Sign(sign, templateData)
-	if err != nil {
-		return err
-	}
-	dataWithoutSignature := signer.RemoveSignatureFromData(templateData)
-	return appendToFile(templatePath, dataWithoutSignature, signatureData)
-}
-
-func verifyTemplateSignature(sign *signer.Signer, templatePath string) (bool, error) {
-	templateData, err := os.ReadFile(templatePath)
-	if err != nil {
-		return false, err
-	}
-	return signer.Verify(sign, templateData)
 }
