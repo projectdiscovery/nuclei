@@ -1,6 +1,8 @@
 package signer
 
-import "errors"
+import (
+	"errors"
+)
 
 var DefaultVerifiers []*Signer
 
