@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"log"
 	"os"
 	"path/filepath"
@@ -131,8 +132,12 @@ func (h *unsignedCode) Execute(filePath string) error {
 	defer tearDownEnv()
 
 	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, "input", debug)
+
+	// should error out
 	if err != nil {
-		return err
+		return nil
 	}
-	return expectResultsCount(results, 0)
+
+	// this point should never be reached
+	return errors.Join(expectResultsCount(results, 1), errors.New("unsigned template was executed"))
 }
