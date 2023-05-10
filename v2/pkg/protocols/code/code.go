@@ -34,6 +34,12 @@ type Request struct {
 	//   Engine type
 	Engine []string `yaml:"engine,omitempty" jsonschema:"title=engine,description=Engine,enum=python,enum=powershell,enum=command"`
 	// description: |
+	//   Engine Arguments
+	Args []string `yaml:"args,omitempty" jsonschema:"title=args,description=Args"`
+	// description: |
+	//   Pattern preferred for file name
+	Pattern string `yaml:"pattern,omitempty" jsonschema:"title=pattern,description=Pattern"`
+	// description: |
 	//   Source File/Snippet
 	Source string `yaml:"source,omitempty" jsonschema:"title=source file/snippet,description=Source snippet"`
 
@@ -47,7 +53,9 @@ func (request *Request) Compile(options *protocols.ExecuterOptions) error {
 	request.options = options
 
 	gozeroOptions := &gozero.Options{
-		Engines: request.Engine,
+		Engines:                  request.Engine,
+		Args:                     request.Args,
+		EarlyCloseFileDescriptor: true,
 	}
 	engine, err := gozero.New(gozeroOptions)
 	if err != nil {
@@ -60,7 +68,7 @@ func (request *Request) Compile(options *protocols.ExecuterOptions) error {
 	if fileutil.FileExists(request.Source) {
 		src, err = gozero.NewSourceWithFile(request.Source)
 	} else {
-		src, err = gozero.NewSourceWithString(request.Source)
+		src, err = gozero.NewSourceWithString(request.Source, request.Pattern)
 	}
 	if err != nil {
 		return err
@@ -91,7 +99,7 @@ func (request *Request) GetID() string {
 
 // ExecuteWithResults executes the protocol requests and returns results instead of writing them.
 func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicValues, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
-	metaSrc, err := gozero.NewSourceWithString(input.MetaInput.Input)
+	metaSrc, err := gozero.NewSourceWithString(input.MetaInput.Input, "")
 	if err != nil {
 		return err
 	}

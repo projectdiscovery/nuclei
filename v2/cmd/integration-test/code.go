@@ -1,6 +1,7 @@
 package main
 
 import (
+	osutils "github.com/projectdiscovery/utils/os"
 	"log"
 	"os"
 	"path/filepath"
@@ -11,7 +12,7 @@ import (
 )
 
 var codeTestCases = map[string]testutils.TestCase{
-	"protocols/code/py-snippet.yaml": &pySnippet{},
+	"protocols/code/py-snippet.yaml": &codeSnippet{},
 	"protocols/code/py-file.yaml":    &pyFile{},
 	"protocols/code/py-env-var.yaml": &pyEnvVar{},
 }
@@ -30,6 +31,10 @@ func init() {
 	publicKeyAbsPath, err = filepath.Abs("protocols/code/pub-key.pem")
 	if err != nil {
 		panic(err)
+	}
+
+	if osutils.IsWindows() {
+		codeTestCases["protocols/code/ps1-snippet.yaml"] = &codeSnippet{}
 	}
 
 	signTemplates()
@@ -68,10 +73,10 @@ func tearDownEnv() {
 	os.Unsetenv("NUCLEI_SIGNATURE_ALGORITHM")
 }
 
-type pySnippet struct{}
+type codeSnippet struct{}
 
 // Execute executes a test case and returns an error if occurred
-func (h *pySnippet) Execute(filePath string) error {
+func (h *codeSnippet) Execute(filePath string) error {
 	prepareEnv()
 	defer tearDownEnv()
 
