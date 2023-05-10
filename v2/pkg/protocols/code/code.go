@@ -118,7 +118,6 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 	for name, value := range variables {
 		metaSrc.AddVariable(gozero.Variable{Name: name, Value: fmt.Sprint(value)})
 	}
-
 	output, err := request.gozero.Eval(context.Background(), request.src, metaSrc)
 	if err != nil {
 		return err

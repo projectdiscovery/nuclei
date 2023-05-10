@@ -18,20 +18,33 @@ var codeTestCases = map[string]testutils.TestCase{
 	"protocols/code/py-file.yaml":    &codeFile{},
 	"protocols/code/py-env-var.yaml": &codeEnvVar{},
 	"protocols/code/unsigned.yaml":   &unsignedCode{},
+	"protocols/code/rsa-signed.yaml": &rsaSignedCode{},
 }
 
 var (
-	privateKeyAbsPath string
-	publicKeyAbsPath  string
+	ecdsaPrivateKeyAbsPath string
+	ecdsaPublicKeyAbsPath  string
+
+	rsaPrivateKeyAbsPath string
+	rsaPublicKeyAbsPath  string
 )
 
 func init() {
 	var err error
-	privateKeyAbsPath, err = filepath.Abs("protocols/code/priv-key.pem")
+	ecdsaPrivateKeyAbsPath, err = filepath.Abs("protocols/code/ecdsa-priv-key.pem")
 	if err != nil {
 		panic(err)
 	}
-	publicKeyAbsPath, err = filepath.Abs("protocols/code/pub-key.pem")
+	ecdsaPublicKeyAbsPath, err = filepath.Abs("protocols/code/ecdsa-pub-key.pem")
+	if err != nil {
+		panic(err)
+	}
+
+	rsaPrivateKeyAbsPath, err = filepath.Abs("protocols/code/rsa-priv-key.pem")
+	if err != nil {
+		panic(err)
+	}
+	rsaPublicKeyAbsPath, err = filepath.Abs("protocols/code/rsa-pub-key.pem")
 	if err != nil {
 		panic(err)
 	}
@@ -46,8 +59,8 @@ func init() {
 // signTemplates tests the signing procedure on various platforms
 func signTemplates() {
 	signerOptions := &signer.Options{
-		PrivateKeyName: privateKeyAbsPath,
-		PublicKeyName:  publicKeyAbsPath,
+		PrivateKeyName: ecdsaPrivateKeyAbsPath,
+		PublicKeyName:  ecdsaPublicKeyAbsPath,
 		Algorithm:      signer.ECDSA,
 	}
 	sign, err := signer.New(signerOptions)
@@ -61,8 +74,13 @@ func signTemplates() {
 			panic(err)
 		}
 
-		// skip unsigned test case
+		// skip
+		// - unsigned test case
 		if _, ok := testCase.(*unsignedCode); ok {
+			continue
+		}
+		// - already rsa signed
+		if _, ok := testCase.(*rsaSignedCode); ok {
 			continue
 		}
 
@@ -72,8 +90,8 @@ func signTemplates() {
 	}
 }
 
-func prepareEnv() {
-	os.Setenv("NUCLEI_SIGNATURE_PUBLIC_KEY", publicKeyAbsPath)
+func prepareEnv(keypath string) {
+	os.Setenv("NUCLEI_SIGNATURE_PUBLIC_KEY", keypath)
 	os.Setenv("NUCLEI_SIGNATURE_ALGORITHM", "ecdsa")
 }
 
@@ -100,7 +118,7 @@ type codeFile struct{}
 
 // Execute executes a test case and returns an error if occurred
 func (h *codeFile) Execute(filePath string) error {
-	prepareEnv()
+	prepareEnv(ecdsaPublicKeyAbsPath)
 	defer tearDownEnv()
 
 	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, "input", debug)
@@ -114,7 +132,7 @@ type codeEnvVar struct{}
 
 // Execute executes a test case and returns an error if occurred
 func (h *codeEnvVar) Execute(filePath string) error {
-	prepareEnv()
+	prepareEnv(ecdsaPublicKeyAbsPath)
 	defer tearDownEnv()
 
 	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, "input", debug, "-V", "baz=baz")
@@ -128,7 +146,25 @@ type unsignedCode struct{}
 
 // Execute executes a test case and returns an error if occurred
 func (h *unsignedCode) Execute(filePath string) error {
-	prepareEnv()
+	prepareEnv(ecdsaPublicKeyAbsPath)
+	defer tearDownEnv()
+
+	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, "input", debug)
+
+	// should error out
+	if err != nil {
+		return nil
+	}
+
+	// this point should never be reached
+	return errors.Join(expectResultsCount(results, 1), errors.New("unsigned template was executed"))
+}
+
+type rsaSignedCode struct{}
+
+// Execute executes a test case and returns an error if occurred
+func (h *rsaSignedCode) Execute(filePath string) error {
+	prepareEnv(rsaPublicKeyAbsPath)
 	defer tearDownEnv()
 
 	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, "input", debug)
