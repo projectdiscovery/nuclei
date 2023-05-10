@@ -54,11 +54,17 @@ func signTemplates() {
 		log.Fatalf("couldn't create crypto engine: %s\n", err)
 	}
 
-	for templatePath := range codeTestCases {
+	for templatePath, testCase := range codeTestCases {
 		templatePath, err := filepath.Abs(templatePath)
 		if err != nil {
 			panic(err)
 		}
+
+		// skip unsigned test case
+		if _, ok := testCase.(*unsignedCode); ok {
+			continue
+		}
+
 		if err := utils.ProcessFile(sign, templatePath); err != nil {
 			log.Fatalf("Could not walk directory: %s\n", err)
 		}
