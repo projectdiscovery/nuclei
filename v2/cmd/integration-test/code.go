@@ -104,7 +104,7 @@ type codeSnippet struct{}
 
 // Execute executes a test case and returns an error if occurred
 func (h *codeSnippet) Execute(filePath string) error {
-	prepareEnv()
+	prepareEnv(ecdsaPublicKeyAbsPath)
 	defer tearDownEnv()
 
 	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, "input", debug)
