@@ -477,6 +477,21 @@
           "title": "trace-max-recursion level for dns request",
           "description": "TraceMaxRecursion is the number of max recursion allowed for trace operations"
         },
+        "attack": {
+          "$ref": "#/definitions/generators.AttackTypeHolder",
+          "title": "attack is the payload combination",
+          "description": "Attack is the type of payload combinations to perform"
+        },
+        "payloads": {
+          "patternProperties": {
+            ".*": {
+              "additionalProperties": true
+            }
+          },
+          "type": "object",
+          "title": "payloads for the network request",
+          "description": "Payloads contains any payloads for the current request"
+        },
         "recursion": {
           "type": "boolean",
           "title": "recurse all servers",
