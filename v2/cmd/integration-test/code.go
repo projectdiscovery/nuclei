@@ -25,8 +25,8 @@ var (
 	ecdsaPrivateKeyAbsPath string
 	ecdsaPublicKeyAbsPath  string
 
-	rsaPrivateKeyAbsPath string
-	rsaPublicKeyAbsPath  string
+	// rsaPrivateKeyAbsPath string
+	rsaPublicKeyAbsPath string
 )
 
 func init() {
@@ -40,10 +40,10 @@ func init() {
 		panic(err)
 	}
 
-	rsaPrivateKeyAbsPath, err = filepath.Abs("protocols/code/rsa-priv-key.pem")
-	if err != nil {
-		panic(err)
-	}
+	// rsaPrivateKeyAbsPath, err = filepath.Abs("protocols/code/rsa-priv-key.pem")
+	// if err != nil {
+	// 	panic(err)
+	// }
 	rsaPublicKeyAbsPath, err = filepath.Abs("protocols/code/rsa-pub-key.pem")
 	if err != nil {
 		panic(err)
