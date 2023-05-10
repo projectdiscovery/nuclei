@@ -2,8 +2,6 @@ module github.com/projectdiscovery/nuclei/v2
 
 go 1.20
 
-replace github.com/projectdiscovery/gozero => C:\\Users\\marco\\go\\src\\github.com\\projectdiscovery\\gozero
-
 require (
 	github.com/Knetic/govaluate v3.0.1-0.20171022003610-9aa49832a739+incompatible
 	github.com/alecthomas/jsonschema v0.0.0-20211022214203-8b29eab41725
