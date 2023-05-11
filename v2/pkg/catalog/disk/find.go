@@ -80,7 +80,7 @@ func (c *DiskCatalog) GetTemplatePath(target string) ([]string, error) {
 
 	// try to handle deprecated template paths
 	absPath := BackwardsCompatiblePaths(c.templatesDirectory, target)
-	if absPath != target {
+	if absPath != target && strings.TrimPrefix(c.templatesDirectory, absPath) != target {
 		deprecatedPathsCounter++
 	}
 
