@@ -275,6 +275,7 @@ func (t *TemplateManager) writeTemplatestoDisk(ghrd *updateutils.GHReleaseDownlo
 	if err != nil {
 		return errorutil.NewWithErr(err).Msgf("failed to download templates")
 	}
+
 	if err := config.DefaultConfig.WriteTemplatesConfig(); err != nil {
 		return errorutil.NewWithErr(err).Msgf("failed to write templates config")
 	}
@@ -287,6 +288,8 @@ func (t *TemplateManager) writeTemplatestoDisk(ghrd *updateutils.GHReleaseDownlo
 	if err := config.DefaultConfig.SetTemplatesVersion(ghrd.Latest.GetTagName()); err != nil {
 		return errorutil.NewWithErr(err).Msgf("failed to update templates version")
 	}
+
+	PurgeEmptyDirectories(dir)
 
 	// generate index of all templates
 	_ = os.Remove(config.DefaultConfig.GetTemplateIndexFilePath())

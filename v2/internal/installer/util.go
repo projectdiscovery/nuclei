@@ -5,7 +5,11 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"io/fs"
 	"net/http"
+	"os"
+	"path/filepath"
+	"sort"
 
 	"github.com/Masterminds/semver/v3"
 	"github.com/projectdiscovery/gologger"
@@ -66,4 +70,36 @@ func getNewAdditionsFileFromGithub(version string) ([]string, error) {
 		}
 	}
 	return templatesList, nil
+}
+
+func PurgeEmptyDirectories(dir string) {
+	alldirs := []string{}
+	filepath.WalkDir(dir, func(path string, d fs.DirEntry, err error) error {
+		if d.IsDir() {
+			alldirs = append(alldirs, path)
+		}
+		return nil
+	})
+	// sort in ascending order
+	sort.Strings(alldirs)
+	// reverse the order
+	sort.Sort(sort.Reverse(sort.StringSlice(alldirs)))
+
+	for _, d := range alldirs {
+		if isEmptyDir(d) {
+			_ = os.RemoveAll(d)
+		}
+	}
+}
+
+func isEmptyDir(dir string) bool {
+	hasFiles := false
+	_ = filepath.WalkDir(dir, func(path string, d fs.DirEntry, err error) error {
+		if !d.IsDir() {
+			hasFiles = true
+			return io.EOF
+		}
+		return nil
+	})
+	return !hasFiles
 }
