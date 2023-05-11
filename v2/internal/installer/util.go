@@ -74,7 +74,7 @@ func getNewAdditionsFileFromGithub(version string) ([]string, error) {
 
 func PurgeEmptyDirectories(dir string) {
 	alldirs := []string{}
-	filepath.WalkDir(dir, func(path string, d fs.DirEntry, err error) error {
+	_ = filepath.WalkDir(dir, func(path string, d fs.DirEntry, err error) error {
 		if d.IsDir() {
 			alldirs = append(alldirs, path)
 		}
