@@ -125,8 +125,6 @@ func (template *Template) compileProtocolRequests(options protocols.ExecuterOpti
 	if len(template.MultiProtoRequest.Queue) > 0 {
 		template.MultiProtoRequest.ID = template.ID
 		template.MultiProtoRequest.Info = template.Info
-		template.MultiProtoRequest.Variables = template.Variables
-
 		requests = append(requests, &template.MultiProtoRequest)
 	} else {
 		switch {

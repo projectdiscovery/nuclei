@@ -61,8 +61,8 @@ func PrintDeprecatedProtocolNameMsgIfApplicable(isSilent bool, verbose bool) {
 		gologger.Print().Msgf("[%v] Found %v templates loaded with deprecated protocol syntax, update before v2.9.5 for continued support.\n", aurora.Yellow("WRN").String(), len(templateIds))
 	}
 	if verbose {
-		for template := range templateIds {
-			gologger.Print().Msgf("  - %s\n", template)
+		for _, template := range templateIds {
+			gologger.Print().Msgf("  - %v\n", template)
 		}
 	}
 	deprecatedProtocolNameTemplates = sync.Map{}
