@@ -13,6 +13,8 @@ import (
 	stringsutil "github.com/projectdiscovery/utils/strings"
 )
 
+var knownConfigFiles = []string{"cves.json", "contributors.json", "TEMPLATES-STATS.json"}
+
 // TemplateFormat
 type TemplateFormat uint8
 
@@ -43,6 +45,9 @@ func GetSupportTemplateFileExtensions() []string {
 // isTemplate is a callback function used by goflags to decide if given file should be read
 // if it is not a nuclei-template file only then file is read
 func IsTemplate(filename string) bool {
+	if stringsutil.ContainsAny(filename, knownConfigFiles...) {
+		return false
+	}
 	return stringsutil.EqualFoldAny(filepath.Ext(filename), GetSupportTemplateFileExtensions()...)
 }
 
