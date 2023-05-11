@@ -122,30 +122,33 @@ func (template *Template) compileProtocolRequests(options protocols.ExecuterOpti
 
 	var requests []protocols.Request
 
-	if len(template.RequestsDNS) > 0 {
-		requests = append(requests, template.convertRequestToProtocolsRequest(template.RequestsDNS)...)
+	if len(template.MultiProtoRequest.Queue) > 0 {
+		template.MultiProtoRequest.ID = template.ID
+		template.MultiProtoRequest.Info = template.Info
+		template.MultiProtoRequest.Variables = template.Variables
+
+		requests = append(requests, &template.MultiProtoRequest)
+	} else {
+		switch {
+		case len(template.RequestsDNS) > 0:
+			requests = append(requests, template.convertRequestToProtocolsRequest(template.RequestsDNS)...)
+		case len(template.RequestsFile) > 0:
+			requests = append(requests, template.convertRequestToProtocolsRequest(template.RequestsFile)...)
+		case len(template.RequestsNetwork) > 0:
+			requests = append(requests, template.convertRequestToProtocolsRequest(template.RequestsNetwork)...)
+		case len(template.RequestsHTTP) > 0:
+			requests = append(requests, template.convertRequestToProtocolsRequest(template.RequestsHTTP)...)
+		case len(template.RequestsHeadless) > 0 && options.Options.Headless:
+			requests = append(requests, template.convertRequestToProtocolsRequest(template.RequestsHeadless)...)
+		case len(template.RequestsSSL) > 0:
+			requests = append(requests, template.convertRequestToProtocolsRequest(template.RequestsSSL)...)
+		case len(template.RequestsWebsocket) > 0:
+			requests = append(requests, template.convertRequestToProtocolsRequest(template.RequestsWebsocket)...)
+		case len(template.RequestsWHOIS) > 0:
+			requests = append(requests, template.convertRequestToProtocolsRequest(template.RequestsWHOIS)...)
+		}
 	}
-	if len(template.RequestsFile) > 0 {
-		requests = append(requests, template.convertRequestToProtocolsRequest(template.RequestsFile)...)
-	}
-	if len(template.RequestsNetwork) > 0 {
-		requests = append(requests, template.convertRequestToProtocolsRequest(template.RequestsNetwork)...)
-	}
-	if len(template.RequestsHTTP) > 0 {
-		requests = append(requests, template.convertRequestToProtocolsRequest(template.RequestsHTTP)...)
-	}
-	if len(template.RequestsHeadless) > 0 && options.Options.Headless {
-		requests = append(requests, template.convertRequestToProtocolsRequest(template.RequestsHeadless)...)
-	}
-	if len(template.RequestsSSL) > 0 {
-		requests = append(requests, template.convertRequestToProtocolsRequest(template.RequestsSSL)...)
-	}
-	if len(template.RequestsWebsocket) > 0 {
-		requests = append(requests, template.convertRequestToProtocolsRequest(template.RequestsWebsocket)...)
-	}
-	if len(template.RequestsWHOIS) > 0 {
-		requests = append(requests, template.convertRequestToProtocolsRequest(template.RequestsWHOIS)...)
-	}
+
 	template.Executer = executer.NewExecuter(requests, &options)
 	return nil
 }

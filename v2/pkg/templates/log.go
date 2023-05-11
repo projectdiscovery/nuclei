@@ -3,6 +3,7 @@ package templates
 import (
 	"fmt"
 	"strings"
+	"sync"
 
 	"github.com/logrusorgru/aurora"
 	"github.com/projectdiscovery/gologger"
@@ -12,7 +13,7 @@ import (
 var (
 	Colorizer                       aurora.Aurora
 	SeverityColorizer               func(severity.Severity) string
-	deprecatedProtocolNameTemplates = map[string]struct{}{} //templates that still use deprecated protocol names
+	deprecatedProtocolNameTemplates = sync.Map{} //templates that still use deprecated protocol names
 )
 
 // TemplateLogMessage returns a beautified log string for a template
@@ -48,13 +49,21 @@ func appendAtSignToAuthors(authors []string) string {
 // PrintDeprecatedProtocolNameMsgIfApplicable prints a message if deprecated protocol names are used
 // Unless mode is silent we print a message for deprecated protocol name
 func PrintDeprecatedProtocolNameMsgIfApplicable(isSilent bool, verbose bool) {
-	if len(deprecatedProtocolNameTemplates) > 0 && !isSilent {
-		gologger.Print().Msgf("[%v] Found %v templates loaded with deprecated protocol syntax, update before v2.9.5 for continued support.\n", aurora.Yellow("WRN").String(), len(deprecatedProtocolNameTemplates))
+	templateIds := []string{}
+	deprecatedProtocolNameTemplates.Range(func(key, value interface{}) bool {
+		if id, ok := key.(string); ok {
+			templateIds = append(templateIds, id)
+		}
+		return true
+	})
+
+	if len(templateIds) > 0 && !isSilent {
+		gologger.Print().Msgf("[%v] Found %v templates loaded with deprecated protocol syntax, update before v2.9.5 for continued support.\n", aurora.Yellow("WRN").String(), len(templateIds))
 	}
 	if verbose {
-		for template := range deprecatedProtocolNameTemplates {
+		for template := range templateIds {
 			gologger.Print().Msgf("  - %s\n", template)
 		}
 	}
-	deprecatedProtocolNameTemplates = map[string]struct{}{}
+	deprecatedProtocolNameTemplates = sync.Map{}
 }
