@@ -1,6 +1,7 @@
 package config
 
 import (
+	"bytes"
 	"crypto/md5"
 	"encoding/json"
 	"fmt"
@@ -123,6 +124,10 @@ func (c *Config) GetIgnoreFilePath() string {
 	return filepath.Join(c.configDir, NucleiIgnoreFileName)
 }
 
+func (c *Config) GetTemplateIndexFilePath() string {
+	return filepath.Join(c.TemplatesDirectory, NucleiTemplatesIndexFileName)
+}
+
 // GetTemplatesConfigFilePath returns checksum file path of nuclei templates
 func (c *Config) GetChecksumFilePath() string {
 	return filepath.Join(c.TemplatesDirectory, NucleiTemplatesCheckSumFileName)
@@ -235,6 +240,16 @@ func (c *Config) WriteTemplatesConfig() error {
 		return errorutil.NewWithErr(err).Msgf("failed to write nuclei config file at %s", c.getTemplatesConfigFilePath())
 	}
 	return nil
+}
+
+// WriteTemplatesIndex writes the nuclei templates index file
+func (c *Config) WriteTemplatesIndex(index map[string]string) error {
+	indexFile := c.GetTemplateIndexFilePath()
+	var buff bytes.Buffer
+	for k, v := range index {
+		_, _ = buff.WriteString(k + "," + v + "\n")
+	}
+	return os.WriteFile(indexFile, buff.Bytes(), 0600)
 }
 
 // getTemplatesConfigFilePath returns configDir/.templates-config.json file path
