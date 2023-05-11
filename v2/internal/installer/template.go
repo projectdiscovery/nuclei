@@ -229,20 +229,49 @@ func (t *TemplateManager) getAbsoluteFilePath(templatedir, uri string, f fs.File
 
 // writeChecksumFileInDir is actual method responsible for writing all templates to directory
 func (t *TemplateManager) writeTemplatestoDisk(ghrd *updateutils.GHReleaseDownloader, dir string) error {
+	LocaltemplatesIndex, err := config.GetNucleiTemplatesIndex()
+	if err != nil {
+		gologger.Warning().Msgf("failed to get local nuclei-templates index: %s", err)
+		if LocaltemplatesIndex == nil {
+			LocaltemplatesIndex = map[string]string{} // no-op
+		}
+	}
+
 	callbackFunc := func(uri string, f fs.FileInfo, r io.Reader) error {
 		writePath := t.getAbsoluteFilePath(dir, uri, f)
 		if writePath == "" {
 			// skip writing file
 			return nil
 		}
+
 		bin, err := io.ReadAll(r)
 		if err != nil {
 			// if error occurs, iteration also stops
 			return errorutil.NewWithErr(err).Msgf("failed to read file %s", uri)
 		}
+		// TODO: It might be better to just download index file from nuclei templates repo
+		// instead of creating it from scratch
+		id, _ := config.GetTemplateIDFromReader(bytes.NewReader(bin), uri)
+		if id != "" {
+			// based on template id, check if we are updating path of official nuclei template
+			if oldPath, ok := LocaltemplatesIndex[id]; ok {
+				if oldPath != writePath {
+					// write new template at new path and delete old template
+					if err := os.WriteFile(writePath, bin, f.Mode()); err != nil {
+						return errorutil.NewWithErr(err).Msgf("failed to write file %s", uri)
+					}
+					// after successful write, remove old template
+					if err := os.Remove(oldPath); err != nil {
+						gologger.Warning().Msgf("failed to remove old template %s: %s", oldPath, err)
+					}
+					return nil
+				}
+			}
+		}
+		// no change in template Path of official templates
 		return os.WriteFile(writePath, bin, f.Mode())
 	}
-	err := ghrd.DownloadSourceWithCallback(!HideProgressBar, callbackFunc)
+	err = ghrd.DownloadSourceWithCallback(!HideProgressBar, callbackFunc)
 	if err != nil {
 		return errorutil.NewWithErr(err).Msgf("failed to download templates")
 	}
@@ -257,6 +286,18 @@ func (t *TemplateManager) writeTemplatestoDisk(ghrd *updateutils.GHReleaseDownlo
 	// update templates version in config file
 	if err := config.DefaultConfig.SetTemplatesVersion(ghrd.Latest.GetTagName()); err != nil {
 		return errorutil.NewWithErr(err).Msgf("failed to update templates version")
+	}
+
+	// generate index of all templates
+	_ = os.Remove(config.DefaultConfig.GetTemplateIndexFilePath())
+
+	index, err := config.GetNucleiTemplatesIndex()
+	if err != nil {
+		return errorutil.NewWithErr(err).Msgf("failed to get nuclei templates index")
+	}
+
+	if err = config.DefaultConfig.WriteTemplatesIndex(index); err != nil {
+		return errorutil.NewWithErr(err).Msgf("failed to write nuclei templates index")
 	}
 
 	// after installation create and write checksums to .checksum file

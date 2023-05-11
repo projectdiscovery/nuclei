@@ -11,6 +11,7 @@ const (
 	NucleiTemplatesDirName           = "nuclei-templates"
 	OfficialNucleiTeamplatesRepoName = "nuclei-templates"
 	NucleiIgnoreFileName             = ".nuclei-ignore"
+	NucleiTemplatesIndexFileName     = ".templates-index" // contains index of official nuclei templates
 	NucleiTemplatesCheckSumFileName  = ".checksum"
 	NewTemplateAdditionsFileName     = ".new-additions"
 	CLIConifgFileName                = "config.yaml"
