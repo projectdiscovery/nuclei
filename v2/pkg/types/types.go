@@ -321,7 +321,7 @@ type Options struct {
 	// Uncover search limit
 	UncoverLimit int
 	// Uncover search delay
-	UncoverDelay int
+	UncoverRateLimit int
 	// ScanAllIPs associated to a dns record
 	ScanAllIPs bool
 	// IPVersion to scan (4,6)

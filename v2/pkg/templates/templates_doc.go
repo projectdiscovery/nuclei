@@ -607,6 +607,10 @@ func init() {
 			FieldName: "attack",
 		},
 		{
+			TypeName:  "dns.Request",
+			FieldName: "attack",
+		},
+		{
 			TypeName:  "network.Request",
 			FieldName: "attack",
 		},
@@ -807,7 +811,7 @@ func init() {
 			Value: "Trace contains trace data for DNS request if enabled",
 		},
 	}
-	DNSRequestDoc.Fields = make([]encoder.Doc, 9)
+	DNSRequestDoc.Fields = make([]encoder.Doc, 11)
 	DNSRequestDoc.Fields[0].Name = "id"
 	DNSRequestDoc.Fields[0].Type = "string"
 	DNSRequestDoc.Fields[0].Note = ""
@@ -857,16 +861,26 @@ func init() {
 	DNSRequestDoc.Fields[6].Comments[encoder.LineComment] = "TraceMaxRecursion is the number of max recursion allowed for trace operations"
 
 	DNSRequestDoc.Fields[6].AddExample("Use a retry of 100 to 150 generally", 100)
-	DNSRequestDoc.Fields[7].Name = "recursion"
-	DNSRequestDoc.Fields[7].Type = "dns.bool"
+	DNSRequestDoc.Fields[7].Name = "attack"
+	DNSRequestDoc.Fields[7].Type = "generators.AttackTypeHolder"
 	DNSRequestDoc.Fields[7].Note = ""
-	DNSRequestDoc.Fields[7].Description = "Recursion determines if resolver should recurse all records to get fresh results."
-	DNSRequestDoc.Fields[7].Comments[encoder.LineComment] = "Recursion determines if resolver should recurse all records to get fresh results."
-	DNSRequestDoc.Fields[8].Name = "resolvers"
-	DNSRequestDoc.Fields[8].Type = "[]string"
+	DNSRequestDoc.Fields[7].Description = "Attack is the type of payload combinations to perform.\n\nBatteringram is inserts the same payload into all defined payload positions at once, pitchfork combines multiple payload sets and clusterbomb generates\npermutations and combinations for all payloads."
+	DNSRequestDoc.Fields[7].Comments[encoder.LineComment] = "Attack is the type of payload combinations to perform."
+	DNSRequestDoc.Fields[8].Name = "payloads"
+	DNSRequestDoc.Fields[8].Type = "map[string]interface{}"
 	DNSRequestDoc.Fields[8].Note = ""
-	DNSRequestDoc.Fields[8].Description = "Resolvers to use for the dns requests"
-	DNSRequestDoc.Fields[8].Comments[encoder.LineComment] = " Resolvers to use for the dns requests"
+	DNSRequestDoc.Fields[8].Description = "Payloads contains any payloads for the current request.\n\nPayloads support both key-values combinations where a list\nof payloads is provided, or optionally a single file can also\nbe provided as payload which will be read on run-time."
+	DNSRequestDoc.Fields[8].Comments[encoder.LineComment] = "Payloads contains any payloads for the current request."
+	DNSRequestDoc.Fields[9].Name = "recursion"
+	DNSRequestDoc.Fields[9].Type = "dns.bool"
+	DNSRequestDoc.Fields[9].Note = ""
+	DNSRequestDoc.Fields[9].Description = "Recursion determines if resolver should recurse all records to get fresh results."
+	DNSRequestDoc.Fields[9].Comments[encoder.LineComment] = "Recursion determines if resolver should recurse all records to get fresh results."
+	DNSRequestDoc.Fields[10].Name = "resolvers"
+	DNSRequestDoc.Fields[10].Type = "[]string"
+	DNSRequestDoc.Fields[10].Note = ""
+	DNSRequestDoc.Fields[10].Description = "Resolvers to use for the dns requests"
+	DNSRequestDoc.Fields[10].Comments[encoder.LineComment] = " Resolvers to use for the dns requests"
 
 	DNSRequestTypeHolderDoc.Type = "DNSRequestTypeHolder"
 	DNSRequestTypeHolderDoc.Comments[encoder.LineComment] = " DNSRequestTypeHolder is used to hold internal type of the DNS type"
