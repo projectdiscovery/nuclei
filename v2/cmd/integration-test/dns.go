@@ -5,13 +5,13 @@ import (
 )
 
 var dnsTestCases = map[string]testutils.TestCase{
-	"dns/basic.yaml":                &dnsBasic{},
-	"dns/ptr.yaml":                  &dnsPtr{},
-	"dns/caa.yaml":                  &dnsCAA{},
-	"dns/tlsa.yaml":                 &dnsTLSA{},
-	"dns/variables.yaml":            &dnsVariables{},
-	"dns/payload.yaml":              &dnsPayload{},
-	"dns/dsl-matcher-variable.yaml": &dnsDSLMatcherVariable{},
+	"protocols/dns/basic.yaml":                &dnsBasic{},
+	"protocols/dns/ptr.yaml":                  &dnsPtr{},
+	"protocols/dns/caa.yaml":                  &dnsCAA{},
+	"protocols/dns/tlsa.yaml":                 &dnsTLSA{},
+	"protocols/dns/variables.yaml":            &dnsVariables{},
+	"protocols/dns/payload.yaml":              &dnsPayload{},
+	"protocols/dns/dsl-matcher-variable.yaml": &dnsDSLMatcherVariable{},
 }
 
 type dnsBasic struct{}
