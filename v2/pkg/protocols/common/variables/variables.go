@@ -21,11 +21,12 @@ type Variable struct {
 	utils.InsertionOrderedStringMap `yaml:"-" json:"-"`
 }
 
-func (variables *Variable) JSONSchemaType() *jsonschema.Type {
+func (variables Variable) JSONSchemaType() *jsonschema.Type {
 	gotType := &jsonschema.Type{
-		Type:        "map[string]string",
-		Title:       "variables for the request",
-		Description: "Additional variables for the request",
+		Type:                 "object",
+		Title:                "variables for the request",
+		Description:          "Additional variables for the request",
+		AdditionalProperties: []byte("true"),
 	}
 	return gotType
 }
