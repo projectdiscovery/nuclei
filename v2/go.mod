@@ -39,7 +39,7 @@ require (
 	github.com/weppos/publicsuffix-go v0.30.1-0.20230422193905-8fecedd899db
 	github.com/xanzy/go-gitlab v0.83.0
 	go.uber.org/multierr v1.11.0
-	golang.org/x/net v0.9.0
+	golang.org/x/net v0.10.0
 	golang.org/x/oauth2 v0.7.0
 	golang.org/x/text v0.9.0
 	gopkg.in/yaml.v2 v2.4.0
@@ -66,11 +66,11 @@ require (
 	github.com/klauspost/compress v1.16.5
 	github.com/labstack/echo/v4 v4.10.2
 	github.com/mholt/archiver v3.1.1+incompatible
-	github.com/projectdiscovery/dsl v0.0.7
+	github.com/projectdiscovery/dsl v0.0.9
 	github.com/projectdiscovery/fasttemplate v0.0.2
 	github.com/projectdiscovery/goflags v0.1.8
-	github.com/projectdiscovery/gologger v1.1.9
-	github.com/projectdiscovery/httpx v1.3.0
+	github.com/projectdiscovery/gologger v1.1.10
+	github.com/projectdiscovery/httpx v1.3.1
 	github.com/projectdiscovery/mapcidr v1.1.1
 	github.com/projectdiscovery/nvd v1.0.10-0.20230327073015-721181aba1e8
 	github.com/projectdiscovery/ratelimit v0.0.6
@@ -78,8 +78,8 @@ require (
 	github.com/projectdiscovery/sarif v0.0.1
 	github.com/projectdiscovery/tlsx v1.0.9
 	github.com/projectdiscovery/uncover v1.0.4
-	github.com/projectdiscovery/utils v0.0.28
-	github.com/projectdiscovery/wappalyzergo v0.0.92
+	github.com/projectdiscovery/utils v0.0.29
+	github.com/projectdiscovery/wappalyzergo v0.0.94
 	github.com/stretchr/testify v1.8.2
 	gopkg.in/src-d/go-git.v4 v4.13.1
 	gopkg.in/yaml.v3 v3.0.1
@@ -90,6 +90,7 @@ require (
 	github.com/Azure/azure-sdk-for-go/sdk/azcore v1.4.0 // indirect
 	github.com/Azure/azure-sdk-for-go/sdk/internal v1.2.0 // indirect
 	github.com/AzureAD/microsoft-authentication-library-for-go v0.9.0 // indirect
+	github.com/Mzack9999/gostruct v0.0.0-20230415193108-30b70932da81 // indirect
 	github.com/VividCortex/ewma v1.2.0 // indirect
 	github.com/aws/aws-sdk-go-v2/aws/protocol/eventstream v1.4.10 // indirect
 	github.com/aws/aws-sdk-go-v2/internal/v4a v1.0.25 // indirect
@@ -122,9 +123,9 @@ require (
 	github.com/pjbgf/sha1cd v0.3.0 // indirect
 	github.com/pkg/browser v0.0.0-20210911075715-681adbf594b8 // indirect
 	github.com/projectdiscovery/asnmap v1.0.3 // indirect
-	github.com/projectdiscovery/cdncheck v1.0.1 // indirect
+	github.com/projectdiscovery/cdncheck v1.0.2 // indirect
 	github.com/projectdiscovery/freeport v0.0.4 // indirect
-	github.com/sashabaranov/go-openai v1.8.0 // indirect
+	github.com/sashabaranov/go-openai v1.9.1 // indirect
 	github.com/shoenig/go-m1cpu v0.1.5 // indirect
 	github.com/skeema/knownhosts v1.1.0 // indirect
 	github.com/smartystreets/assertions v1.0.0 // indirect
