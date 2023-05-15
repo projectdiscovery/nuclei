@@ -184,8 +184,6 @@ file:
             - amzn\.mws\.[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}
     extensions:
         - all
-    archive: false
-    mimetype: false
 ```
 
 
@@ -2092,8 +2090,6 @@ extractors:
         - amzn\.mws\.[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}
 extensions:
     - all
-archive: false
-mimetype: false
 ```
 
 Part Definitions: 
@@ -2199,6 +2195,32 @@ Examples:
 max-size: 5Mb
 ```
 
+
+</div>
+
+<hr />
+
+<div class="dd">
+
+<code>archive</code>  <i>bool</i>
+
+</div>
+<div class="dt">
+
+elaborates archives
+
+</div>
+
+<hr />
+
+<div class="dd">
+
+<code>mime-type</code>  <i>bool</i>
+
+</div>
+<div class="dt">
+
+enables mime types check
 
 </div>
 
