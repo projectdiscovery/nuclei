@@ -953,7 +953,7 @@ func init() {
 			Value: "Raw contains the raw file contents",
 		},
 	}
-	FILERequestDoc.Fields = make([]encoder.Doc, 5)
+	FILERequestDoc.Fields = make([]encoder.Doc, 7)
 	FILERequestDoc.Fields[0].Name = "extensions"
 	FILERequestDoc.Fields[0].Type = "[]string"
 	FILERequestDoc.Fields[0].Note = ""
@@ -980,11 +980,21 @@ func init() {
 	FILERequestDoc.Fields[3].Comments[encoder.LineComment] = "MaxSize is the maximum size of the file to run request on."
 
 	FILERequestDoc.Fields[3].AddExample("", "5Mb")
-	FILERequestDoc.Fields[4].Name = "no-recursive"
+	FILERequestDoc.Fields[4].Name = "archive"
 	FILERequestDoc.Fields[4].Type = "bool"
 	FILERequestDoc.Fields[4].Note = ""
-	FILERequestDoc.Fields[4].Description = "NoRecursive specifies whether to not do recursive checks if folders are provided."
-	FILERequestDoc.Fields[4].Comments[encoder.LineComment] = "NoRecursive specifies whether to not do recursive checks if folders are provided."
+	FILERequestDoc.Fields[4].Description = "elaborates archives"
+	FILERequestDoc.Fields[4].Comments[encoder.LineComment] = "elaborates archives"
+	FILERequestDoc.Fields[5].Name = "mime-type"
+	FILERequestDoc.Fields[5].Type = "bool"
+	FILERequestDoc.Fields[5].Note = ""
+	FILERequestDoc.Fields[5].Description = "enables mime types check"
+	FILERequestDoc.Fields[5].Comments[encoder.LineComment] = "enables mime types check"
+	FILERequestDoc.Fields[6].Name = "no-recursive"
+	FILERequestDoc.Fields[6].Type = "bool"
+	FILERequestDoc.Fields[6].Note = ""
+	FILERequestDoc.Fields[6].Description = "NoRecursive specifies whether to not do recursive checks if folders are provided."
+	FILERequestDoc.Fields[6].Comments[encoder.LineComment] = "NoRecursive specifies whether to not do recursive checks if folders are provided."
 
 	NETWORKRequestDoc.Type = "network.Request"
 	NETWORKRequestDoc.Comments[encoder.LineComment] = " Request contains a Network protocol request to be made from a template"
