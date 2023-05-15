@@ -408,8 +408,8 @@ github.com/projectdiscovery/clistats v0.0.12 h1:KLYJxpiwEFidduU4PbcwEcCQ2L7c5wrf
 github.com/projectdiscovery/clistats v0.0.12/go.mod h1:9luKJj+7Hjq3+a7g129sKWRYx4SbTdkUWZQxabn3H5Y=
 github.com/projectdiscovery/dsl v0.0.7 h1:Jn2dUN9Le7lrw8BvWcU50ueV+pQREhUkikDrIkjGpAs=
 github.com/projectdiscovery/dsl v0.0.7/go.mod h1:71bLB5xpDKWSFTMaiV49uG2Sl2AtO9FHsMNPJ4eCpoE=
-github.com/projectdiscovery/fastdialer v0.0.25 h1:/j7M8sL35ZqpRYmz9hDjnWNBnN8Yj5iL0kab7qzp1nQ=
-github.com/projectdiscovery/fastdialer v0.0.25/go.mod h1:jQLHYaNsDc3MhpySVjKIo4o0GaUb07ISlDdkKURAxSo=
+github.com/projectdiscovery/fastdialer v0.0.26 h1:7dihwvnm76GU/cw0ViZvIlAB7dLHppifRYlVdJdMnRw=
+github.com/projectdiscovery/fastdialer v0.0.26/go.mod h1:kcWKnyh/H6iyZKlzQXSMZ4cDSZJpB4zdZV9W6PNty1k=
 github.com/projectdiscovery/fasttemplate v0.0.2 h1:h2cISk5xDhlJEinlBQS6RRx0vOlOirB2y3Yu4PJzpiA=
 github.com/projectdiscovery/fasttemplate v0.0.2/go.mod h1:XYWWVMxnItd+r0GbjA1GCsUopMw1/XusuQxdyAIHMCw=
 github.com/projectdiscovery/freeport v0.0.4 h1:H4VrK/7hUcC1zbg46zv9iSMBACBDpUqcHkV+FUyXISw=
@@ -426,8 +426,8 @@ github.com/projectdiscovery/interactsh v1.1.3 h1:xZvIF4pYXGXAwjwbYSRiE/97kOCvTl7
 github.com/projectdiscovery/interactsh v1.1.3/go.mod h1:UlpOGINO7wLjS2M8OhfBhfIBX0NIdAag5nhPDAz/9MQ=
 github.com/projectdiscovery/mapcidr v1.1.1 h1:68Xvw9cKugNeAVxHE3Nl1Ej26nm1taWq6e1WPXpluc0=
 github.com/projectdiscovery/mapcidr v1.1.1/go.mod h1:yyp9ghqmmC0+r5DySgDBXE4cf2QW8SBloVESCteWiAg=
-github.com/projectdiscovery/networkpolicy v0.0.5 h1:yiW1+nqtZmVB4RRt20Rhxs0tAO7ghPy+OY5kv3iaAG8=
-github.com/projectdiscovery/networkpolicy v0.0.5/go.mod h1:egI9+HL+Q80AzXs1PrOfARWZm1bAn6n3HMONM49uWS8=
+github.com/projectdiscovery/networkpolicy v0.0.6 h1:yDvm0XCrS9HeemRrBS+J+22surzVczM94W5nHiOy/1o=
+github.com/projectdiscovery/networkpolicy v0.0.6/go.mod h1:8HJQ/33Pi7v3a3MRWIQGXzpj+zHw2d60TysEL4qdoQk=
 github.com/projectdiscovery/nvd v1.0.10-0.20230327073015-721181aba1e8 h1:aDq18tNWbnN5ZM0ADQb+8KB4DEPIGZMXdDmcXyFUoNg=
 github.com/projectdiscovery/nvd v1.0.10-0.20230327073015-721181aba1e8/go.mod h1:JiVXOIewstCBMPsO+ZnmI43UXMPJGEE1jwuFVz4ujKM=
 github.com/projectdiscovery/ratelimit v0.0.6 h1:SAD2ArdT9F8NmbkAIZpl7DjNnbiXdUQLnMZt5dbVmZ0=

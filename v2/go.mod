@@ -21,7 +21,7 @@ require (
 	github.com/olekukonko/tablewriter v0.0.5
 	github.com/pkg/errors v0.9.1
 	github.com/projectdiscovery/clistats v0.0.12
-	github.com/projectdiscovery/fastdialer v0.0.25
+	github.com/projectdiscovery/fastdialer v0.0.26
 	github.com/projectdiscovery/hmap v0.0.11
 	github.com/projectdiscovery/interactsh v1.1.3
 	github.com/projectdiscovery/rawhttp v0.1.11
@@ -191,7 +191,7 @@ require (
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/power-devops/perfstat v0.0.0-20210106213030-5aafc221ea8c // indirect
 	github.com/projectdiscovery/blackrock v0.0.1 // indirect
-	github.com/projectdiscovery/networkpolicy v0.0.5
+	github.com/projectdiscovery/networkpolicy v0.0.6
 	github.com/rivo/uniseg v0.4.4 // indirect
 	github.com/saintfish/chardet v0.0.0-20230101081208-5e3ef4b5456d // indirect
 	github.com/tklauser/go-sysconf v0.3.11 // indirect
