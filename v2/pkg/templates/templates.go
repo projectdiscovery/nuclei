@@ -115,7 +115,7 @@ type Template struct {
 
 	// description: |
 	//   Constants contains any scalar costant for the current template
-	Constants map[string]interface{} `yaml:"costants,omitempty" json:"costants,omitempty" jsonschema:"title=constant for the template,description=costants contains any constant for the template"`
+	Constants map[string]interface{} `yaml:"constants,omitempty" json:"constants,omitempty" jsonschema:"title=constant for the template,description=constants contains any constant for the template"`
 
 	// TotalRequests is the total number of requests for the template.
 	TotalRequests int `yaml:"-" json:"-"`

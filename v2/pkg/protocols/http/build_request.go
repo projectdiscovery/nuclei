@@ -173,7 +173,7 @@ func (r *requestGenerator) makeSelfContainedRequest(ctx context.Context, data st
 	values = generators.MergeMaps(signerVars, values, r.options.Constants)
 
 	// priority of variables is as follows (from low to high) for self contained templates
-	// default signer vars < variables <  cli vars  < payload < dynamic values < costants
+	// default signer vars < variables <  cli vars  < payload < dynamic values < constants
 
 	// evaluate request
 	data, err := expressions.Evaluate(data, values)
