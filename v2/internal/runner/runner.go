@@ -31,6 +31,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/core/inputs/hybrid"
 	"github.com/projectdiscovery/nuclei/v2/pkg/external/customtemplates"
 	"github.com/projectdiscovery/nuclei/v2/pkg/input"
+	"github.com/projectdiscovery/nuclei/v2/pkg/js/compiler"
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
 	"github.com/projectdiscovery/nuclei/v2/pkg/parsers"
 	"github.com/projectdiscovery/nuclei/v2/pkg/progress"
@@ -71,6 +72,7 @@ type Runner struct {
 	hmapInputProvider *hybrid.Input
 	browser           *engine.Browser
 	ratelimiter       *ratelimit.Limiter
+	compiler          *compiler.Compiler
 	hostErrors        hosterrorscache.CacheInterface
 	resumeCfg         *types.ResumeCfg
 	pprofServer       *http.Server
@@ -319,6 +321,8 @@ func New(options *types.Options) (*Runner, error) {
 	} else {
 		runner.ratelimiter = ratelimit.NewUnlimited(context.Background())
 	}
+	compiler := compiler.New()
+	runner.compiler = compiler
 	return runner, nil
 }
 
@@ -428,6 +432,7 @@ func (r *Runner) RunEnumeration() error {
 		Browser:         r.browser,
 		Colorizer:       r.colorizer,
 		ResumeCfg:       r.resumeCfg,
+		Compiler:        r.compiler,
 		ExcludeMatchers: excludematchers.New(r.options.ExcludeMatchers),
 		InputHelper:     input.NewHelper(),
 	}

@@ -12,6 +12,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/file"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/headless"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/http"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/javascript"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/network"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/ssl"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/websocket"
@@ -89,6 +90,10 @@ type Template struct {
 	RequestsWebsocket []*websocket.Request `yaml:"websocket,omitempty" json:"websocket,omitempty" jsonschema:"title=websocket requests to make,description=Websocket requests to make for the template"`
 
 	// description: |
+	//   Javascript contains the javascript request to make in the template.
+	RequestsJavascript []*javascript.Request `yaml:"javascript,omitempty" json:"javascript,omitempty" jsonschema:"title=javascript requests to make,description=Javascript requests to make for the template"`
+
+	// description: |
 	//   WHOIS contains the WHOIS request to make in the template.
 	RequestsWHOIS []*whois.Request `yaml:"whois,omitempty" json:"whois,omitempty" jsonschema:"title=whois requests to make,description=WHOIS requests to make for the template"`
 	// description: |
@@ -156,6 +161,8 @@ func (template *Template) Type() types.ProtocolType {
 		return types.SSLProtocol
 	case len(template.RequestsWebsocket) > 0:
 		return types.WebsocketProtocol
+	case len(template.RequestsJavascript) > 0:
+		return types.JavascriptProtocol
 	case len(template.RequestsWHOIS) > 0:
 		return types.WHOISProtocol
 	default:

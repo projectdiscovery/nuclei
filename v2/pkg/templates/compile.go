@@ -105,6 +105,7 @@ func (template *Template) Requests() int {
 		len(template.Workflows) +
 		len(template.RequestsSSL) +
 		len(template.RequestsWebsocket) +
+		len(template.RequestsJavascript) +
 		len(template.RequestsWHOIS)
 }
 
@@ -139,6 +140,9 @@ func (template *Template) compileProtocolRequests(options protocols.ExecuterOpti
 	}
 	if len(template.RequestsSSL) > 0 {
 		requests = append(requests, template.convertRequestToProtocolsRequest(template.RequestsSSL)...)
+	}
+	if len(template.RequestsJavascript) > 0 {
+		requests = append(requests, template.convertRequestToProtocolsRequest(template.RequestsJavascript)...)
 	}
 	if len(template.RequestsWebsocket) > 0 {
 		requests = append(requests, template.convertRequestToProtocolsRequest(template.RequestsWebsocket)...)

@@ -16,3 +16,4 @@ v2/pkg/protocols/common/helpers/deserialization/testdata/ValueObject.class
 v2/pkg/protocols/common/helpers/deserialization/testdata/ValueObject2.ser
 *.exe
 v2/.gitignore
+v2/pkg/js/generator/bin/bin

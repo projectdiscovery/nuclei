@@ -59,10 +59,16 @@ require (
 	github.com/aws/aws-sdk-go-v2/credentials v1.13.24
 	github.com/aws/aws-sdk-go-v2/feature/s3/manager v1.11.64
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.33.1
+	github.com/ditashi/jsbeautifier-go v0.0.0-20141206144643-2520a8026a9c
 	github.com/docker/go-units v0.5.0
+	github.com/dop251/goja v0.0.0-20230427124612-428fc442ff5f
+	github.com/dop251/goja_nodejs v0.0.0-20230322100729-2550c7b6c124
 	github.com/fatih/structs v1.1.0
 	github.com/go-git/go-git/v5 v5.6.1
+	github.com/go-pg/pg v8.0.7+incompatible
+	github.com/go-sql-driver/mysql v1.6.0
 	github.com/h2non/filetype v1.1.3
+	github.com/hirochachacha/go-smb2 v1.1.0
 	github.com/klauspost/compress v1.16.5
 	github.com/labstack/echo/v4 v4.10.2
 	github.com/mholt/archiver v3.1.1+incompatible
@@ -81,6 +87,7 @@ require (
 	github.com/projectdiscovery/utils v0.0.29
 	github.com/projectdiscovery/wappalyzergo v0.0.94
 	github.com/stretchr/testify v1.8.2
+	github.com/zmap/zgrab2 v0.1.8-0.20230323032758-911c86f13080
 	gopkg.in/src-d/go-git.v4 v4.13.1
 	gopkg.in/yaml.v3 v3.0.1
 )
@@ -106,11 +113,15 @@ require (
 	github.com/cloudflare/circl v1.1.0 // indirect
 	github.com/dlclark/regexp2 v1.8.1 // indirect
 	github.com/fatih/color v1.14.1 // indirect
+	github.com/geoffgarside/ber v1.1.0 // indirect
+	github.com/go-sourcemap/sourcemap v2.1.3+incompatible // indirect
 	github.com/google/certificate-transparency-go v1.1.4 // indirect
 	github.com/google/go-github/v30 v30.1.0 // indirect
+	github.com/google/pprof v0.0.0-20230207041349-798e818bf904 // indirect
 	github.com/hashicorp/go-version v1.6.0 // indirect
 	github.com/hashicorp/golang-lru/v2 v2.0.1 // indirect
 	github.com/hbakhtiyor/strsim v0.0.0-20190107154042-4d2bbb273edf // indirect
+	github.com/jinzhu/inflection v1.0.0 // indirect
 	github.com/jmespath/go-jmespath v0.4.0 // indirect
 	github.com/kataras/jwt v0.1.8 // indirect
 	github.com/kylelemons/godebug v1.1.0 // indirect
@@ -142,6 +153,7 @@ require (
 	github.com/yuin/goldmark-emoji v1.0.1 // indirect
 	go.uber.org/atomic v1.10.0 // indirect
 	gopkg.in/djherbis/times.v1 v1.3.0 // indirect
+	mellium.im/sasl v0.3.1 // indirect
 )
 
 require (
@@ -207,7 +219,7 @@ require (
 	github.com/ysmood/leakless v0.8.0 // indirect
 	github.com/yusufpapurcu/wmi v1.2.2 // indirect
 	github.com/zmap/rc2 v0.0.0-20190804163417-abaa70531248 // indirect
-	github.com/zmap/zcrypto v0.0.0-20230205235340-d51ce4775101 // indirect
+	github.com/zmap/zcrypto v0.0.0-20230310154051-c8b263fd8300 // indirect
 	go.etcd.io/bbolt v1.3.7 // indirect
 	go.uber.org/zap v1.24.0 // indirect
 	goftp.io/server/v2 v2.0.0 // indirect
@@ -218,7 +230,7 @@ require (
 	golang.org/x/time v0.3.0 // indirect
 	golang.org/x/tools v0.8.0 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
-	google.golang.org/protobuf v1.29.1 // indirect
+	google.golang.org/protobuf v1.30.0 // indirect
 	gopkg.in/alecthomas/kingpin.v2 v2.2.6 // indirect
 	gopkg.in/corvus-ch/zbase32.v1 v1.0.0 // indirect
 )

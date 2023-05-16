@@ -175,11 +175,11 @@ func ParseTemplate(templatePath string, catalog catalog.Catalog) (*templates.Tem
 	case config.JSON:
 		err = json.Unmarshal(data, template)
 	case config.YAML:
-		if NoStrictSyntax {
-			err = yaml.Unmarshal(data, template)
-		} else {
-			err = yaml.UnmarshalStrict(data, template)
-		}
+		//	if NoStrictSyntax {
+		err = yaml.Unmarshal(data, template)
+	//	} else {
+	//		err = yaml.UnmarshalStrict(data, template)
+	//	}
 	default:
 		err = fmt.Errorf("failed to identify template format expected JSON or YAML but got %v", templatePath)
 	}

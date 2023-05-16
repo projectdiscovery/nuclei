@@ -7,6 +7,7 @@ import (
 
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalog"
 	"github.com/projectdiscovery/nuclei/v2/pkg/input"
+	"github.com/projectdiscovery/nuclei/v2/pkg/js/compiler"
 	"github.com/projectdiscovery/nuclei/v2/pkg/model"
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators"
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators/extractors"
@@ -74,6 +75,8 @@ type ExecuterOptions struct {
 	ExcludeMatchers *excludematchers.ExcludeMatchers
 	// InputHelper is a helper for input normalization
 	InputHelper *input.Helper
+	// Compiler is a javascript compiler for executing javascript code
+	Compiler *compiler.Compiler
 
 	Operators []*operators.Operators // only used by offlinehttp module
 
