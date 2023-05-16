@@ -92,7 +92,7 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 	optionVars := generators.BuildPayloadFromOptions(request.options.Options)
 	vars := request.options.Variables.Evaluate(generators.MergeMaps(defaultVars, optionVars, dynamicValues))
 
-	variables := generators.MergeMaps(vars, defaultVars, optionVars, dynamicValues)
+	variables := generators.MergeMaps(vars, defaultVars, optionVars, dynamicValues, request.options.Constants)
 
 	if vardump.EnableVarDump {
 		gologger.Debug().Msgf("Protocol request variables: \n%s\n", vardump.DumpVariables(variables))
