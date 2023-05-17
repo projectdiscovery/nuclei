@@ -279,6 +279,7 @@ func collectFuncDecl(decl *ast.FuncDecl) (extra PackageFunctionExtra) {
 		return
 	}
 	extra.Name = decl.Name.Name
+	extra.Doc = convertCommentsToJavascript(decl.Doc.Text())
 
 	for _, arg := range decl.Type.Params.List {
 		for _, name := range arg.Names {

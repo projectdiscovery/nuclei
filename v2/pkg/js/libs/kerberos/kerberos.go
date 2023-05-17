@@ -6,7 +6,6 @@ import (
 	"html/template"
 	"strings"
 
-	"github.com/projectdiscovery/gologger"
 	kclient "github.com/ropnop/gokrb5/v8/client"
 	kconfig "github.com/ropnop/gokrb5/v8/config"
 	"github.com/ropnop/gokrb5/v8/iana/errorcode"
@@ -71,49 +70,59 @@ func newKerbrosEnumUserOpts(domain, domainController string) (*kerberosEnumUserO
 	return &kerberosEnumUserOpts{realm: realm, config: Config, kdcs: kdcs}, nil
 }
 
+// EnumerateUserResponse is the response from EnumerateUser
+type EnumerateUserResponse struct {
+	Valid     bool
+	ASREPHash string
+}
+
 // EnumerateUser returns true if the user exists in the domain
 //
 // If the user is not found, false is returned.
 // If the user is found, true is returned. Optionally, the AS-REP
 // hash is also returned if discovered.
-func (c *Client) EnumerateUser(domain, controller string, username string) (bool, string, error) {
+func (c *Client) EnumerateUser(domain, controller string, username string) (EnumerateUserResponse, error) {
+	resp := EnumerateUserResponse{}
+
 	opts, err := newKerbrosEnumUserOpts(domain, controller)
 	if err != nil {
-		return false, "", err
+		return resp, err
 	}
 	cl := kclient.NewWithPassword(username, opts.realm, "foobar", opts.config, kclient.DisablePAFXFAST(true))
 
 	req, err := messages.NewASReqForTGT(cl.Credentials.Domain(), cl.Config, cl.Credentials.CName())
 	if err != nil {
-		return false, "", err
+		return resp, err
 	}
 	b, err := req.Marshal()
 	if err != nil {
-		return false, "", err
+		return resp, err
 	}
 	rb, err := cl.SendToKDC(b, opts.realm)
 	if err == nil {
 		var ASRep messages.ASRep
 		err = ASRep.Unmarshal(rb)
-		gologger.Info().Msgf("Got happy path err: %v\n", err)
 		if err != nil {
 			// something went wrong, it's not a valid response
-			return false, "", err
+			return resp, err
 		}
 		hashcatString, _ := asRepToHashcat(ASRep)
-		return true, hashcatString, nil
+		resp.Valid = true
+		resp.ASREPHash = hashcatString
+		return resp, nil
 	}
 	e, ok := err.(messages.KRBError)
 	if !ok {
-		return false, "", err
+		return resp, nil
 	}
 	switch e.ErrorCode {
 	case errorcode.KDC_ERR_C_PRINCIPAL_UNKNOWN:
-		return false, "", nil
+		return resp, nil
 	case errorcode.KDC_ERR_PREAUTH_REQUIRED:
-		return true, "", nil
+		resp.Valid = true
+		return resp, nil
 	default:
-		return false, "", err
+		return resp, err
 
 	}
 }

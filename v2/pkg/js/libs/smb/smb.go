@@ -52,7 +52,7 @@ func (c *Client) ConnectSMBInfoMode(host string, port int) (*smb.SMBLog, error) 
 // Returns metadata and error. If error is not nil,
 // state will be false
 func (c *Client) ListSMBv2Metadata(host string, port int) (*plugins.ServiceSMB, error) {
-	return collectSMBv2Metadata(host, port, 10*time.Second)
+	return collectSMBv2Metadata(host, port, 5*time.Second)
 }
 
 // ListShares tries to connect to provided host and port

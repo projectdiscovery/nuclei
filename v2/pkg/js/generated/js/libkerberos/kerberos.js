@@ -9,7 +9,7 @@ class Client {
     // If the user is found, true is returned. Optionally, the AS-REP
     // hash is also returned if discovered.
     EnumerateUser(domain, controller, username) {
-        return bool, string, error;
+        return EnumerateUserResponse, error;
     };
 };
 

@@ -11,6 +11,10 @@ import (
 //go:embed js
 var embedFS embed.FS
 
+func init() {
+	// TODO: Bundle scripts on init and register them on runtime
+}
+
 // RegisterScripts registers all scripts in the runtime
 func RegisterScripts(runtime *goja.Runtime) error {
 	dirs, err := embedFS.ReadDir("js")
