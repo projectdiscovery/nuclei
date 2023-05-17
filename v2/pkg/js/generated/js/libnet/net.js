@@ -8,6 +8,10 @@ function Open(address) {
 
 };
 
+function OpenTLS(address) {
+
+};
+
 function Recv(conn, timeout) {
 
 };
@@ -24,6 +28,7 @@ function SendRecv(conn, data, timeout) {
 module.exports = {
     Close: Close,
     Open: Open,
+    OpenTLS: OpenTLS,
     Recv: Recv,
     Send: Send,
     SendRecv: SendRecv,

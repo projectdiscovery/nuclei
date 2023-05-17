@@ -40,6 +40,10 @@ type Request struct {
 	//   PreCondition is a condition which is evaluated before sending the request.
 	PreCondition string `yaml:"pre-condition,omitempty" json:"pre-condition,omitempty" jsonschema:"title=pre-condition for the request,description=PreCondition is a condition which is evaluated before sending the request"`
 	// description: |
+	//   PreConditionExports is a list of variables to export from the pre-condition.
+	PreConditionExports []string `yaml:"pre-condition-exports,omitempty" json:"pre-condition-exports,omitempty" jsonschema:"title=pre-condition exports for the request,description=PreConditionExports is a list of variables to export from the pre-condition"`
+
+	// description: |
 	//   Args contains the arguments to pass to the javascript code.
 	Args map[string]interface{} `yaml:"args,omitempty" json:"args,omitempty"`
 	// description: |
@@ -158,18 +162,30 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 			fmt.Println("")
 		}
 
-		argsCopy, err := request.getArgsCopy(input, payloads, requestOptions)
+		argsCopy, err := request.getArgsCopy(input, payloads, requestOptions, true)
 		if err != nil {
 			return err
 		}
 
-		result, err := request.compiler.Execute(request.PreCondition, argsCopy)
+		result, err := request.compiler.ExecuteWithOptions(request.PreCondition, argsCopy, &compiler.ExecuteOptions{
+			CaptureVariables: request.PreConditionExports,
+		})
 		if err != nil {
 			return errorutil.NewWithTag(request.TemplateID, "could not execute pre-condition: %s", err)
 		}
-		if !result.GetSuccess() {
+		if !result.GetSuccess() && len(request.PreConditionExports) == 0 {
 			gologger.Warning().Msgf("[%s] Precondition for request %s was not satisfied\n", request.TemplateID, request.PreCondition)
 			return nil
+		}
+		if len(request.PreConditionExports) > 0 {
+			for _, export := range request.PreConditionExports {
+				if _, ok := result[export]; !ok {
+					gologger.Warning().Msgf("[%s] Precondition for request %s was not satisfied\n", request.TemplateID, request.PreCondition)
+					return nil
+				} else {
+					payloadValues[export] = result[export]
+				}
+			}
 		}
 		if request.options.Options.Debug || request.options.Options.DebugRequests {
 			gologger.Debug().Msgf("[%s] Precondition for request was satisfied\n", request.TemplateID)
@@ -193,7 +209,7 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 				callback(result)
 			}, requestOptions); err != nil {
 				gologger.Warning().Msgf("Could not execute request: %s\n", err)
-				continue
+				return nil
 			}
 			// If this was a match, and we want to stop at first match, skip all further requests.
 			shouldStopAtFirstMatch := request.options.Options.StopAtFirstMatch || request.StopAtFirstMatch
@@ -207,7 +223,7 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 
 func (request *Request) executeRequestWithPayloads(hostPort string, input *contextargs.Context, hostname string, payload map[string]interface{}, previous output.InternalEvent, callback protocols.OutputEventCallback, requestOptions *protocols.ExecuterOptions) error {
 	payloadValues := generators.MergeMaps(payload, previous)
-	argsCopy, err := request.getArgsCopy(input, payloadValues, requestOptions)
+	argsCopy, err := request.getArgsCopy(input, payloadValues, requestOptions, false)
 	if err != nil {
 		return err
 	}
@@ -224,7 +240,7 @@ func (request *Request) executeRequestWithPayloads(hostPort string, input *conte
 	gologger.Verbose().Msgf("Sent Javascript request to %s", hostPort)
 
 	if requestOptions.Options.Debug || requestOptions.Options.DebugRequests || requestOptions.Options.StoreResponse {
-		msg := fmt.Sprintf("[%s] Dumped Javascript request for %s:\nVariables: %+v\n\n", requestOptions.TemplateID, input.MetaInput.Input, argsCopy)
+		msg := fmt.Sprintf("[%s] Dumped Javascript request for %s:\nVariables: %+v", requestOptions.TemplateID, input.MetaInput.Input, argsCopy)
 
 		if requestOptions.Options.Debug || requestOptions.Options.DebugRequests {
 			gologger.Debug().Str("address", input.MetaInput.Input).Msg(msg)
@@ -276,9 +292,10 @@ func (request *Request) executeRequestWithPayloads(hostPort string, input *conte
 	return nil
 }
 
-func (request *Request) getArgsCopy(input *contextargs.Context, payloadValues map[string]interface{}, requestOptions *protocols.ExecuterOptions) (map[string]interface{}, error) {
+func (request *Request) getArgsCopy(input *contextargs.Context, payloadValues map[string]interface{}, requestOptions *protocols.ExecuterOptions, ignoreErrors bool) (map[string]interface{}, error) {
 	// Template args from payloads
 	argsCopy := make(map[string]interface{})
+mainLoop:
 	for k, v := range request.Args {
 		if vVal, ok := v.(string); ok && strings.Contains(vVal, "{") {
 			finalAddress, dataErr := expressions.Evaluate(vVal, payloadValues)
@@ -286,6 +303,10 @@ func (request *Request) getArgsCopy(input *contextargs.Context, payloadValues ma
 				requestOptions.Output.Request(requestOptions.TemplateID, input.MetaInput.Input, request.Type().String(), dataErr)
 				requestOptions.Progress.IncrementFailedRequestsBy(1)
 				return nil, errors.Wrap(dataErr, "could not evaluate template expressions")
+			}
+			if finalAddress == vVal && ignoreErrors {
+				argsCopy[k] = ""
+				continue mainLoop
 			}
 			argsCopy[k] = finalAddress
 		} else {

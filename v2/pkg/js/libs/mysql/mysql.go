@@ -5,8 +5,11 @@ import (
 	"fmt"
 	"net"
 	"net/url"
+	"time"
 
 	_ "github.com/go-sql-driver/mysql"
+	"github.com/praetorian-inc/fingerprintx/pkg/plugins"
+	mysqlplugin "github.com/praetorian-inc/fingerprintx/pkg/plugins/services/mysql"
 )
 
 // Client is a client for MySQL database.
@@ -22,6 +25,28 @@ type Client struct{}
 // The connection is closed after the function returns.
 func (c *Client) Connect(host string, port int, username, password string) (bool, error) {
 	return connect(host, port, username, password, "INFORMATION_SCHEMA")
+}
+
+// IsMySQL checks if the given host is running MySQL database.
+//
+// If the host is running MySQL database, it returns true.
+// If the host is not running MySQL database, it returns false.
+func (c *Client) IsMySQL(host string, port int) (bool, error) {
+	conn, err := net.DialTimeout("tcp", net.JoinHostPort(host, fmt.Sprintf("%d", port)), 5*time.Second)
+	if err != nil {
+		return false, err
+	}
+	defer conn.Close()
+
+	plugin := &mysqlplugin.MYSQLPlugin{}
+	service, err := plugin.Run(conn, 5*time.Second, plugins.Target{Host: host})
+	if err != nil {
+		return false, err
+	}
+	if service == nil {
+		return false, nil
+	}
+	return true, nil
 }
 
 // ConnectWithDB connects to MySQL database using given credentials and database name.

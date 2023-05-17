@@ -17,6 +17,7 @@ func init() {
 			// Functions
 			"Close":    original_net.Close,
 			"Open":     original_net.Open,
+			"OpenTLS":  original_net.OpenTLS,
 			"Recv":     original_net.Recv,
 			"Send":     original_net.Send,
 			"SendRecv": original_net.SendRecv,

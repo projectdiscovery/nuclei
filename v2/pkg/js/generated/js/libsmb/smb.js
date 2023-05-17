@@ -14,6 +14,14 @@ class Client {
     ConnectSMBInfoMode(host, port) {
         return SMBLog, error;
     };
+    // ListSMBv2Metadata tries to connect to provided host and port
+    // and list SMBv2 metadata.
+    // 
+    // Returns metadata and error. If error is not nil,
+    // state will be false
+    ListSMBv2Metadata(host, port) {
+        return ServiceSMB, error;
+    };
     // ListShares tries to connect to provided host and port
     // and list shares by using given credentials.
     // 

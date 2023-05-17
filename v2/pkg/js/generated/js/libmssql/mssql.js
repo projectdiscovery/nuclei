@@ -1,11 +1,11 @@
-// libmysql implements bindings for mysql protocol in javascript
+// libmssql implements bindings for mssql protocol in javascript
 // to be used from nuclei scanner.
 
-// Client is a client for MySQL database.
+// Client is a client for MS SQL database.
 // 
-// Internally client uses go-sql-driver/mysql driver.
+// Internally client uses denisenkom/go-mssqldb driver.
 class Client {
-    // Connect connects to MySQL database using given credentials.
+    // Connect connects to MS SQL database using given credentials.
     // 
     // If connection is successful, it returns true.
     // If connection is unsuccessful, it returns false and error.
@@ -14,7 +14,7 @@ class Client {
     Connect(host, port, username, password) {
         return bool, error;
     };
-    // ConnectWithDB connects to MySQL database using given credentials and database name.
+    // ConnectWithDB connects to MS SQL database using given credentials and database name.
     // 
     // If connection is successful, it returns true.
     // If connection is unsuccessful, it returns false and error.
@@ -23,11 +23,11 @@ class Client {
     ConnectWithDB(host, port, username, password, dbName) {
         return bool, error;
     };
-    // IsMySQL checks if the given host is running MySQL database.
+    // IsMssql checks if the given host is running MS SQL database.
     // 
-    // If the host is running MySQL database, it returns true.
-    // If the host is not running MySQL database, it returns false.
-    IsMySQL(host, port) {
+    // If the host is running MS SQL database, it returns true.
+    // If the host is not running MS SQL database, it returns false.
+    IsMssql(host, port) {
         return bool, error;
     };
 };

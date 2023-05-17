@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/hirochachacha/go-smb2"
+	"github.com/praetorian-inc/fingerprintx/pkg/plugins"
 	"github.com/zmap/zgrab2/lib/smb/smb"
 )
 
@@ -43,6 +44,15 @@ func (c *Client) ConnectSMBInfoMode(host string, port int) (*smb.SMBLog, error) 
 		}
 	}
 	return result, nil
+}
+
+// ListSMBv2Metadata tries to connect to provided host and port
+// and list SMBv2 metadata.
+//
+// Returns metadata and error. If error is not nil,
+// state will be false
+func (c *Client) ListSMBv2Metadata(host string, port int) (*plugins.ServiceSMB, error) {
+	return collectSMBv2Metadata(host, port, 10*time.Second)
 }
 
 // ListShares tries to connect to provided host and port

@@ -170,14 +170,6 @@ func gatherPackageData(pkg *ast.Package, data *TemplateData) {
 func identifyGenDecl(pkg *ast.Package, decl *ast.GenDecl, data *TemplateData) {
 	for _, spec := range decl.Specs {
 		switch spec := spec.(type) {
-		case *ast.ValueSpec:
-			for _, name := range spec.Names {
-				if !name.IsExported() {
-					continue
-				}
-
-				data.PackageVars[name.Name] = name.Name
-			}
 		case *ast.TypeSpec:
 			if !spec.Name.IsExported() {
 				continue

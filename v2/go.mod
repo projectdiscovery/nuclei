@@ -59,6 +59,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/credentials v1.13.24
 	github.com/aws/aws-sdk-go-v2/feature/s3/manager v1.11.64
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.33.1
+	github.com/denisenkom/go-mssqldb v0.12.3
 	github.com/ditashi/jsbeautifier-go v0.0.0-20141206144643-2520a8026a9c
 	github.com/docker/go-units v0.5.0
 	github.com/dop251/goja v0.0.0-20230427124612-428fc442ff5f
@@ -72,6 +73,7 @@ require (
 	github.com/klauspost/compress v1.16.5
 	github.com/labstack/echo/v4 v4.10.2
 	github.com/mholt/archiver v3.1.1+incompatible
+	github.com/praetorian-inc/fingerprintx v1.1.9
 	github.com/projectdiscovery/dsl v0.0.9
 	github.com/projectdiscovery/fasttemplate v0.0.2
 	github.com/projectdiscovery/goflags v0.1.8
@@ -86,6 +88,7 @@ require (
 	github.com/projectdiscovery/uncover v1.0.4
 	github.com/projectdiscovery/utils v0.0.29
 	github.com/projectdiscovery/wappalyzergo v0.0.94
+	github.com/ropnop/gokrb5/v8 v8.0.0-20201111231119-729746023c02
 	github.com/stretchr/testify v1.8.2
 	github.com/zmap/zgrab2 v0.1.8-0.20230323032758-911c86f13080
 	gopkg.in/src-d/go-git.v4 v4.13.1
@@ -115,12 +118,19 @@ require (
 	github.com/fatih/color v1.14.1 // indirect
 	github.com/geoffgarside/ber v1.1.0 // indirect
 	github.com/go-sourcemap/sourcemap v2.1.3+incompatible // indirect
+	github.com/golang-sql/civil v0.0.0-20190719163853-cb61b32ac6fe // indirect
+	github.com/golang-sql/sqlexp v0.1.0 // indirect
 	github.com/google/certificate-transparency-go v1.1.4 // indirect
 	github.com/google/go-github/v30 v30.1.0 // indirect
 	github.com/google/pprof v0.0.0-20230207041349-798e818bf904 // indirect
+	github.com/hashicorp/go-uuid v1.0.2 // indirect
 	github.com/hashicorp/go-version v1.6.0 // indirect
 	github.com/hashicorp/golang-lru/v2 v2.0.1 // indirect
 	github.com/hbakhtiyor/strsim v0.0.0-20190107154042-4d2bbb273edf // indirect
+	github.com/jcmturner/aescts/v2 v2.0.0 // indirect
+	github.com/jcmturner/dnsutils/v2 v2.0.0 // indirect
+	github.com/jcmturner/gofork v1.0.0 // indirect
+	github.com/jcmturner/rpc/v2 v2.0.2 // indirect
 	github.com/jinzhu/inflection v1.0.0 // indirect
 	github.com/jmespath/go-jmespath v0.4.0 // indirect
 	github.com/kataras/jwt v0.1.8 // indirect

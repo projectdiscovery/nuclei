@@ -8,6 +8,8 @@ import (
 	jsoniter "github.com/json-iterator/go"
 
 	"github.com/projectdiscovery/gologger"
+	_ "github.com/projectdiscovery/nuclei/v2/pkg/js/generated/go/libkerberos"
+	_ "github.com/projectdiscovery/nuclei/v2/pkg/js/generated/go/libmssql"
 	_ "github.com/projectdiscovery/nuclei/v2/pkg/js/generated/go/libmysql"
 	_ "github.com/projectdiscovery/nuclei/v2/pkg/js/generated/go/libnet"
 	_ "github.com/projectdiscovery/nuclei/v2/pkg/js/generated/go/libpostgres"
@@ -43,6 +45,10 @@ type ExecuteOptions struct {
 	// CaptureOutput specifies whether to capture the output
 	// of the script execution.
 	CaptureOutput bool
+
+	// CaptureVariables specifies the variables to capture
+	// from the script execution.
+	CaptureVariables []string
 }
 
 // ExecuteArgs is the arguments to pass to the script.
@@ -53,7 +59,11 @@ type ExecuteResult map[string]interface{}
 
 // GetSuccess returns whether the script was successful or not.
 func (e ExecuteResult) GetSuccess() bool {
-	return e["success"].(bool)
+	val, ok := e["success"].(bool)
+	if !ok {
+		return false
+	}
+	return val
 }
 
 // Execute executes a script with the default options.
@@ -79,11 +89,27 @@ func (c *Compiler) ExecuteWithOptions(code string, args ExecuteArgs, opts *Execu
 	if opts.CaptureOutput {
 		return convertOutputToResult(captured)
 	}
+	if len(opts.CaptureVariables) > 0 {
+		return c.captureVariables(runtime, opts.CaptureVariables)
+	}
 	var resultsBool bool
 	if val, ok := captured.(bool); ok {
 		resultsBool = val
 	}
 	return ExecuteResult{"success": resultsBool}, nil
+}
+
+// captureVariables captures the variables from the runtime.
+func (c *Compiler) captureVariables(runtime *goja.Runtime, variables []string) (ExecuteResult, error) {
+	results := make(ExecuteResult, len(variables))
+	for _, variable := range variables {
+		value := runtime.Get(variable)
+		if value == nil {
+			continue
+		}
+		results[variable] = value.Export()
+	}
+	return results, nil
 }
 
 func convertOutputToResult(output interface{}) (ExecuteResult, error) {

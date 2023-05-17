@@ -6,9 +6,9 @@ import (
 	"strings"
 	"time"
 
-	libnet "github.com/projectdiscovery/nuclei/v2/pkg/js/libs/net"
-
 	"github.com/go-pg/pg"
+	"github.com/praetorian-inc/fingerprintx/pkg/plugins"
+	postgres "github.com/praetorian-inc/fingerprintx/pkg/plugins/services/postgresql"
 )
 
 // Client is a client for Postgres database.
@@ -21,15 +21,6 @@ type Client struct{}
 // If connection is successful, it returns true.
 // If connection is unsuccessful, it returns false and error.
 func (c *Client) IsPostgres(host string, port int) (bool, error) {
-	startupPacket := []byte{
-		0x00, 0x00, 0x00, 0x54, 0x00, 0x03, 0x00, 0x00, 0x75, 0x73, 0x65, 0x72, 0x00, 0x70, 0x6f, 0x73,
-		0x74, 0x67, 0x72, 0x65, 0x73, 0x00, 0x64, 0x61, 0x74, 0x61, 0x62, 0x61, 0x73, 0x65, 0x00, 0x70,
-		0x6f, 0x73, 0x74, 0x67, 0x72, 0x65, 0x73, 0x00, 0x61, 0x70, 0x70, 0x6c, 0x69, 0x63, 0x61, 0x74,
-		0x69, 0x6f, 0x6e, 0x5f, 0x6e, 0x61, 0x6d, 0x65, 0x00, 0x70, 0x73, 0x71, 0x6c, 0x00, 0x63, 0x6c,
-		0x69, 0x65, 0x6e, 0x74, 0x5f, 0x65, 0x6e, 0x63, 0x6f, 0x64, 0x69, 0x6e, 0x67, 0x00, 0x55, 0x54,
-		0x46, 0x38, 0x00, 0x00,
-	}
-
 	timeout := 10 * time.Second
 
 	conn, err := net.DialTimeout("tcp", fmt.Sprintf("%s:%d", host, port), timeout)
@@ -40,43 +31,15 @@ func (c *Client) IsPostgres(host string, port int) (bool, error) {
 
 	conn.SetDeadline(time.Now().Add(timeout))
 
-	response, err := libnet.SendRecv(conn, startupPacket, timeout)
+	plugin := &postgres.POSTGRESPlugin{}
+	service, err := plugin.Run(conn, timeout, plugins.Target{Host: host})
 	if err != nil {
 		return false, err
 	}
-	if len(response) == 0 {
-		return false, nil
-	}
-
-	isPSQL := verifyPSQL([]byte(response))
-	if !isPSQL {
+	if service == nil {
 		return false, nil
 	}
 	return true, nil
-}
-
-const (
-	errorResponse            byte = 0x45
-	authReq                  byte = 0x52
-	negotiateProtocolVersion      = 0x76
-)
-
-// Taken from https://github.com/praetorian-inc/fingerprintx/blob/main/pkg/plugins/services/postgresql/postgresql.go
-func verifyPSQL(data []byte) bool {
-	msgLength := len(data)
-	if msgLength < 6 {
-		return false
-	}
-	if data[1] != 0 || data[2] != 0 {
-		return false
-	}
-	if data[0] == errorResponse || data[0] == negotiateProtocolVersion {
-		return true
-	}
-	if data[0] == authReq {
-		return true
-	}
-	return false
 }
 
 // Connect connects to Postgres database using given credentials.
@@ -119,6 +82,8 @@ func connect(host string, port int, username, password, dbName string) (bool, er
 		case strings.Contains(err.Error(), "no pg_hba.conf entry for host"):
 			fallthrough
 		case strings.Contains(err.Error(), "network unreachable"):
+			fallthrough
+		case strings.Contains(err.Error(), "reset"):
 			fallthrough
 		case strings.Contains(err.Error(), "i/o timeout"):
 			return false, err
