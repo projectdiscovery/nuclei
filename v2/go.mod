@@ -66,6 +66,7 @@ require (
 	github.com/dop251/goja_nodejs v0.0.0-20230322100729-2550c7b6c124
 	github.com/fatih/structs v1.1.0
 	github.com/go-git/go-git/v5 v5.6.1
+	github.com/go-ldap/ldap/v3 v3.4.4
 	github.com/go-pg/pg v8.0.7+incompatible
 	github.com/go-sql-driver/mysql v1.6.0
 	github.com/h2non/filetype v1.1.3
@@ -99,6 +100,7 @@ require (
 	aead.dev/minisign v0.2.0 // indirect
 	github.com/Azure/azure-sdk-for-go/sdk/azcore v1.4.0 // indirect
 	github.com/Azure/azure-sdk-for-go/sdk/internal v1.2.0 // indirect
+	github.com/Azure/go-ntlmssp v0.0.0-20220621081337-cb9428e4ac1e // indirect
 	github.com/AzureAD/microsoft-authentication-library-for-go v0.9.0 // indirect
 	github.com/Mzack9999/gostruct v0.0.0-20230415193108-30b70932da81 // indirect
 	github.com/VividCortex/ewma v1.2.0 // indirect
@@ -117,6 +119,7 @@ require (
 	github.com/dlclark/regexp2 v1.8.1 // indirect
 	github.com/fatih/color v1.14.1 // indirect
 	github.com/geoffgarside/ber v1.1.0 // indirect
+	github.com/go-asn1-ber/asn1-ber v1.5.4 // indirect
 	github.com/go-sourcemap/sourcemap v2.1.3+incompatible // indirect
 	github.com/golang-sql/civil v0.0.0-20190719163853-cb61b32ac6fe // indirect
 	github.com/golang-sql/sqlexp v0.1.0 // indirect

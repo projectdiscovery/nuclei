@@ -9,6 +9,7 @@ import (
 
 	"github.com/projectdiscovery/gologger"
 	_ "github.com/projectdiscovery/nuclei/v2/pkg/js/generated/go/libkerberos"
+	_ "github.com/projectdiscovery/nuclei/v2/pkg/js/generated/go/libldap"
 	_ "github.com/projectdiscovery/nuclei/v2/pkg/js/generated/go/libmssql"
 	_ "github.com/projectdiscovery/nuclei/v2/pkg/js/generated/go/libmysql"
 	_ "github.com/projectdiscovery/nuclei/v2/pkg/js/generated/go/libnet"

@@ -19,4 +19,4 @@ function getDomainControllerName(name, host) {
     console.log("Got domain controller", list.DNSDomainName);
     return list.DNSDomainName;
   } 
-}
+};
