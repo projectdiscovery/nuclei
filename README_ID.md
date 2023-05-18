@@ -142,6 +142,7 @@ OUTPUT:
    -se, -sarif-export string     file to export results in SARIF format
    -je, -json-export string      file to export results in JSON format as a JSON array. This can be memory intensive in larger scans
    -jle, -jsonl-export string    file to export results in JSONL(ine) format as a list of line-delimited JSON objects
+   -erp, -exclude-raw-payload    whether to exclude the raw request and response payloads from the JSON, JSONL, and markdown outputs
 
 CONFIGURATIONS:
    -config string                 path to the nuclei configuration file

@@ -136,6 +136,7 @@ OUTPUT:
    -ms, -matcher-status          매치 실패 상태 표시
    -me, -markdown-export string  마크다운 형식으로 결과를 내보낼 디렉터리
    -se, -sarif-export string     결과를 SARIF 형식으로 내보내는 파일
+   -erp, -exclude-raw-payload
 
 CONFIGURATIONS:
    -config string              nuclei 환경 설정 파일 경로

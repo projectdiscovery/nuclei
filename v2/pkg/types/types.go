@@ -236,6 +236,8 @@ type Options struct {
 	JSONExport string
 	// JSONLExport is the file to export JSONL output format to
 	JSONLExport string
+	// ExcludeRawPayload excludes raw request and response payloads from JSON output
+	ExcludeRawPayload bool
 	// Cloud enables nuclei cloud scan execution
 	Cloud bool
 	// EnableProgressBar enables progress bar

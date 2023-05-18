@@ -140,6 +140,7 @@ Nuclei是一款注重于可配置性、可扩展性和易用性的基于模板�
    -ms, -matcher-status                  显示匹配失败状态
    -me, -markdown-export string          以markdown导出结果
    -se, -sarif-export string             以SARIF导出结果
+   -erp, -exclude-raw-payload
 
 配置：
    -config string                        指定Nuclei的配置文件
