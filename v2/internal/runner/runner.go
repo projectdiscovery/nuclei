@@ -341,10 +341,16 @@ func createReportingOptions(options *types.Options) (*reporting.Options, error) 
 	}
 	if options.MarkdownExportDirectory != "" {
 		if reportingOptions != nil {
-			reportingOptions.MarkdownExporter = &markdown.Options{Directory: options.MarkdownExportDirectory}
+			reportingOptions.MarkdownExporter = &markdown.Options{
+				Directory:         options.MarkdownExportDirectory,
+				ExcludeRawPayload: options.ExcludeRawPayload,
+			}
 		} else {
 			reportingOptions = &reporting.Options{}
-			reportingOptions.MarkdownExporter = &markdown.Options{Directory: options.MarkdownExportDirectory}
+			reportingOptions.MarkdownExporter = &markdown.Options{
+				Directory:         options.MarkdownExportDirectory,
+				ExcludeRawPayload: options.ExcludeRawPayload,
+			}
 		}
 	}
 	if options.SarifExport != "" {
@@ -357,18 +363,30 @@ func createReportingOptions(options *types.Options) (*reporting.Options, error) 
 	}
 	if options.JSONExport != "" {
 		if reportingOptions != nil {
-			reportingOptions.JSONExporter = &json_exporter.Options{File: options.JSONExport}
+			reportingOptions.JSONExporter = &json_exporter.Options{
+				File:              options.JSONExport,
+				ExcludeRawPayload: options.ExcludeRawPayload,
+			}
 		} else {
 			reportingOptions = &reporting.Options{}
-			reportingOptions.JSONExporter = &json_exporter.Options{File: options.JSONExport}
+			reportingOptions.JSONExporter = &json_exporter.Options{
+				File:              options.JSONExport,
+				ExcludeRawPayload: options.ExcludeRawPayload,
+			}
 		}
 	}
 	if options.JSONLExport != "" {
 		if reportingOptions != nil {
-			reportingOptions.JSONLExporter = &jsonl.Options{File: options.JSONLExport}
+			reportingOptions.JSONLExporter = &jsonl.Options{
+				File:              options.JSONLExport,
+				ExcludeRawPayload: options.ExcludeRawPayload,
+			}
 		} else {
 			reportingOptions = &reporting.Options{}
-			reportingOptions.JSONLExporter = &jsonl.Options{File: options.JSONLExport}
+			reportingOptions.JSONLExporter = &jsonl.Options{
+				File:              options.JSONLExport,
+				ExcludeRawPayload: options.ExcludeRawPayload,
+			}
 		}
 	}
 
