@@ -267,6 +267,7 @@ DEBUG:
 UPDATE:
    -up, -update                      update nuclei engine to the latest released version
    -ut, -update-templates            update nuclei-templates to latest released version
+   -uct, -update-custom-templates    update custom templates to the latest available version(s)
    -ud, -update-template-dir string  custom directory to install / update nuclei-templates
    -duc, -disable-update-check       disable automatic nuclei/templates update check
 

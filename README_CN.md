@@ -226,6 +226,7 @@ Nuclei是一款注重于可配置性、可扩展性和易用性的基于模板�
 升级：
     -update                              更新Nuclei到最新版本
     -ut, -update-templates               更新Nuclei模板到最新版
+    -uct, -update-custom-templates
     -ud, -update-directory string        覆盖安装模板
     -duc, -disable-update-check          禁用更新
 

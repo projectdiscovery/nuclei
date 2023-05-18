@@ -209,6 +209,7 @@ DEBUG:
 UPDATE:
    -update                        최신 릴리스 버전으로 nuclei 엔진 업데이트
    -ut, -update-templates         최신 릴리스 버전으로 nuclei-templates 엔진 업데이트
+   -uct, -update-custom-templates
    -ud, -update-directory string  nuclei-templates를 설치할 기본 디렉터리를 덮어씀
    -duc, -disable-update-check    자동 nuclei/templates 업데이트 확인 비활성화
 
