@@ -154,10 +154,10 @@ func (c *Client) collectLdapMetadata(lConn *ldap.Conn, opts *ldapSessionOptions)
 }
 
 func parseDC(input string) string {
-	parts := strings.Split(input, ",")
+	parts := strings.Split(strings.ToLower(input), ",")
 
 	for i, part := range parts {
-		parts[i] = strings.TrimPrefix(part, "DC=")
+		parts[i] = strings.TrimPrefix(part, "dc=")
 	}
 
 	return strings.Join(parts, ".")

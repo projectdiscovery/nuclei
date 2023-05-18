@@ -274,7 +274,9 @@ func (request *Request) executeRequestWithPayloads(hostPort string, input *conte
 		data[k] = v
 	}
 	data["request"] = beautifyJavascript(request.Code)
-	data["response"] = results
+	if len(results) > 0 {
+		data["response"] = results
+	}
 	data["host"] = input.MetaInput.Input
 	data["matched"] = hostPort
 	data["template-path"] = requestOptions.TemplatePath
