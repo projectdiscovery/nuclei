@@ -44,7 +44,7 @@ to be used from nuclei scanner.
 | Name | Type | 
 |--------|-------------|
 {{- range $fieldName, $field := $methods.Fields }}
-| `{{$fieldName}}` | {{ $field }} |
+| {{$fieldName}} | `{{ $field }}` |
 {{- end }}
 {{- end }}
 {{- end }}

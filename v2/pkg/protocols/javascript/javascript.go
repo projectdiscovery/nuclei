@@ -5,6 +5,7 @@ import (
 	"net"
 	"os"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/alecthomas/chroma/quick"
@@ -119,6 +120,10 @@ func (request *Request) GetID() string {
 	return ""
 }
 
+// debugMutex locks debug printing of JS scripts. This does and
+// will cause bottlenecks so do not use during actual runs.
+var debugMutex = &sync.Mutex{}
+
 // ExecuteWithResults executes the protocol requests and returns results instead of writing them.
 func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicValues, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
 	hostPort, err := getAddress(input.MetaInput.Input)
@@ -158,7 +163,9 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 			if requestOptions.Options.NoColor {
 				highlightFormatter = "text"
 			}
+			debugMutex.Lock()
 			quick.Highlight(os.Stdout, beautifyJavascript(request.PreCondition), "javascript", highlightFormatter, "monokai")
+			debugMutex.Unlock()
 			fmt.Println("")
 		}
 
@@ -248,7 +255,9 @@ func (request *Request) executeRequestWithPayloads(hostPort string, input *conte
 			if requestOptions.Options.NoColor {
 				highlightFormatter = "text"
 			}
+			debugMutex.Lock()
 			quick.Highlight(os.Stdout, beautifyJavascript(request.Code), "javascript", highlightFormatter, "monokai")
+			debugMutex.Unlock()
 			fmt.Println("")
 		}
 		if requestOptions.Options.StoreResponse {

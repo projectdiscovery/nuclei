@@ -25,5 +25,5 @@ to be used from nuclei scanner.
 
 | Name | Type | 
 |--------|-------------|
-| `ASREPHash` | string |
-| `Valid` | bool |
+| ASREPHash | `string` |
+| Valid | `bool` |

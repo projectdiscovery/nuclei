@@ -25,5 +25,5 @@ to be used from nuclei scanner.
 
 | Name | Type | 
 |--------|-------------|
-| `Banner` | string |
-| `IsVNC` | bool |
+| Banner | `string` |
+| IsVNC | `bool` |

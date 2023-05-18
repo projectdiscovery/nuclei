@@ -22,3 +22,50 @@ to be used from nuclei scanner.
 
 
 
+## Exported Types Fields
+### Algorithms
+
+| Name | Type | 
+|--------|-------------|
+| HostKey | `string` |
+| Kex | `string` |
+| R | `R` |
+| W | `W` |
+### EndpointId
+
+| Name | Type | 
+|--------|-------------|
+| Comment | `string` |
+| ProtoVersion | `string` |
+| Raw | `string` |
+| SoftwareVersion | `string` |
+### HandshakeLog
+
+| Name | Type | 
+|--------|-------------|
+| AlgorithmSelection | `AlgorithmSelection` |
+| Banner | `string` |
+| ClientID | `ClientID` |
+| ClientKex | `ClientKex` |
+| Crypto | `Crypto` |
+| DHKeyExchange | `github.com/zmap/zgrab2/lib/ssh.kexAlgorithm` |
+| ServerID | `ServerID` |
+| ServerKex | `ServerKex` |
+| UserAuth | `[]string` |
+### KexInitMsg
+
+| Name | Type | 
+|--------|-------------|
+| CiphersClientServer | `[]string` |
+| CiphersServerClient | `[]string` |
+| CompressionClientServer | `[]string` |
+| CompressionServerClient | `[]string` |
+| Cookie | `[16]byte` |
+| FirstKexFollows | `bool` |
+| KexAlgos | `[]string` |
+| LanguagesClientServer | `[]string` |
+| LanguagesServerClient | `[]string` |
+| MACsClientServer | `[]string` |
+| MACsServerClient | `[]string` |
+| Reserved | `uint32` |
+| ServerHostKeyAlgos | `[]string` |

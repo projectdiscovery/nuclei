@@ -3,8 +3,10 @@ package generator
 import (
 	"fmt"
 	"go/ast"
+	"go/importer"
 	"go/parser"
 	"go/token"
+	"go/types"
 	"log"
 	"os"
 	"os/exec"
@@ -33,6 +35,8 @@ type TemplateData struct {
 	PackageVars             map[string]string
 	PackageTypes            map[string]string
 	PackageTypesExtra       map[string]PackageTypeExtra
+
+	typesPackage *types.Package
 }
 
 type PackageTypeExtra struct {
@@ -71,22 +75,40 @@ func CreateTemplateData(directory string, packagePrefix string) (*TemplateData, 
 
 	pkgs, err := parser.ParseDir(fset, directory, nil, parser.ParseComments)
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
 	if len(pkgs) != 1 {
 		return nil, fmt.Errorf("expected 1 package, got %d", len(pkgs))
 	}
 
-	var pkg *ast.Package
+	config := &types.Config{
+		Importer: importer.ForCompiler(fset, "source", nil),
+	}
+	var packageName string
+	var files []*ast.File
+	for k, v := range pkgs {
+		packageName = k
+		for _, f := range v.Files {
+			files = append(files, f)
+		}
+		break
+	}
+	pkg, err := config.Check(packageName, fset, files, nil)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	var pkgMain *ast.Package
 	for _, p := range pkgs {
-		pkg = p
+		pkgMain = p
 		break
 	}
 
 	//	ast.Print(fset, pkg)
-	log.Printf("[create] [discover] Package: %s\n", pkg.Name)
-	data := newTemplateData(packagePrefix, pkg.Name)
-	gatherPackageData(pkg, data)
+	log.Printf("[create] [discover] Package: %s\n", pkgMain.Name)
+	data := newTemplateData(packagePrefix, pkgMain.Name)
+	data.typesPackage = pkg
+	data.gatherPackageData(pkgMain, data)
 
 	for item, v := range data.PackageFuncsExtra {
 		if len(v.Items) == 0 {
@@ -205,11 +227,11 @@ func (d *TemplateData) WriteMarkdownIndexTemplate(output string) error {
 	return nil
 }
 
-func gatherPackageData(pkg *ast.Package, data *TemplateData) {
+func (d *TemplateData) gatherPackageData(pkg *ast.Package, data *TemplateData) {
 	ast.Inspect(pkg, func(node ast.Node) bool {
 		switch node := node.(type) {
 		case *ast.FuncDecl:
-			extra := collectFuncDecl(node)
+			extra := d.collectFuncDecl(node)
 			if extra.Name == "" {
 				return true
 			}
@@ -304,7 +326,7 @@ func processFunctionDetails(fn *ast.FuncDecl, ident *ast.Ident, data *TemplateDa
 		Name:    fn.Name.Name,
 		Args:    extractArgs(fn),
 		Doc:     convertCommentsToJavascript(fn.Doc.Text()),
-		Returns: extractReturns(fn),
+		Returns: data.extractReturns(fn),
 	}
 	data.PackageFuncsExtra[ident.Name].Items[fn.Name.Name] = extra
 }
@@ -319,10 +341,10 @@ func extractArgs(fn *ast.FuncDecl) []string {
 	return args
 }
 
-func extractReturns(fn *ast.FuncDecl) []string {
+func (d *TemplateData) extractReturns(fn *ast.FuncDecl) []string {
 	returns := make([]string, 0)
 	for _, ret := range fn.Type.Results.List {
-		returnType := extractReturnType(ret)
+		returnType := d.extractReturnType(ret)
 		if returnType != "" {
 			returns = append(returns, returnType)
 		}
@@ -330,34 +352,78 @@ func extractReturns(fn *ast.FuncDecl) []string {
 	return returns
 }
 
-func extractReturnType(ret *ast.Field) string {
+func (d *TemplateData) extractReturnType(ret *ast.Field) string {
 	switch v := ret.Type.(type) {
 	case *ast.ArrayType:
 		if vk, ok := v.Elt.(*ast.Ident); ok {
 			return "[" + vk.Name + "]"
 		}
 		if v, ok := v.Elt.(*ast.StarExpr); ok {
-			return handleStarExpr(v)
+			return d.handleStarExpr(v)
 		}
 	case *ast.Ident:
 		return v.Name
 	case *ast.StarExpr:
-		return handleStarExpr(v)
+		return d.handleStarExpr(v)
 	}
 	return ""
 }
 
-func handleStarExpr(v *ast.StarExpr) string {
+func (d *TemplateData) handleStarExpr(v *ast.StarExpr) string {
 	switch vk := v.X.(type) {
 	case *ast.Ident:
 		return vk.Name
 	case *ast.SelectorExpr:
+		if vk.X != nil {
+			d.collectTypeFromExternal(d.typesPackage, vk.X.(*ast.Ident).Name, vk.Sel.Name)
+		}
 		return vk.Sel.Name
 	}
 	return ""
 }
 
-func collectFuncDecl(decl *ast.FuncDecl) (extra PackageFunctionExtra) {
+func (d *TemplateData) collectTypeFromExternal(pkg *types.Package, pkgName, name string) {
+	extra := PackageTypeExtra{
+		Fields: make(map[string]string),
+	}
+
+	for _, importValue := range pkg.Imports() {
+		if importValue.Name() != pkgName {
+			continue
+		}
+		obj := importValue.Scope().Lookup(name)
+		if obj == nil || !obj.Exported() {
+			continue
+		}
+		typeName, ok := obj.(*types.TypeName)
+		if !ok {
+			continue
+		}
+		underlying, ok := typeName.Type().Underlying().(*types.Struct)
+		if !ok {
+			continue
+		}
+		for i := 0; i < underlying.NumFields(); i++ {
+			field := underlying.Field(i)
+			fieldType := field.Type().String()
+
+			if val, ok := field.Type().Underlying().(*types.Pointer); ok {
+				fieldType = field.Name()
+				d.collectTypeFromExternal(pkg, pkgName, val.Elem().(*types.Named).Obj().Name())
+			}
+			if _, ok := field.Type().Underlying().(*types.Struct); ok {
+				fieldType = field.Name()
+				d.collectTypeFromExternal(pkg, pkgName, field.Name())
+			}
+			extra.Fields[field.Name()] = fieldType
+		}
+		if len(extra.Fields) > 0 {
+			d.PackageTypesExtra[name] = extra
+		}
+	}
+}
+
+func (d *TemplateData) collectFuncDecl(decl *ast.FuncDecl) (extra PackageFunctionExtra) {
 	if decl.Recv != nil {
 		return
 	}

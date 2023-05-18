@@ -25,5 +25,5 @@ to be used from nuclei scanner.
 
 | Name | Type | 
 |--------|-------------|
-| `Banner` | string |
-| `IsSMTP` | bool |
+| Banner | `string` |
+| IsSMTP | `bool` |

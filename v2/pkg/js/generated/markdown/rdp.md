@@ -26,11 +26,11 @@ to be used from nuclei scanner.
 
 | Name | Type | 
 |--------|-------------|
-| `Auth` | bool |
-| `PluginInfo` |  |
+| Auth | `bool` |
+| PluginInfo | `` |
 ### IsRDPResponse
 
 | Name | Type | 
 |--------|-------------|
-| `IsRDP` | bool |
-| `OS` | string |
+| IsRDP | `bool` |
+| OS | `string` |

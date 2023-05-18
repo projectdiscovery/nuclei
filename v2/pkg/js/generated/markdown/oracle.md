@@ -25,5 +25,5 @@ to be used from nuclei scanner.
 
 | Name | Type | 
 |--------|-------------|
-| `Banner` | string |
-| `IsOracle` | bool |
+| Banner | `string` |
+| IsOracle | `bool` |
