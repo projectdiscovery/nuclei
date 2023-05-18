@@ -37,8 +37,6 @@ type TemplateData struct {
 	PackageTypesExtra       map[string]PackageTypeExtra
 
 	typesPackage *types.Package
-
-	Scripts map[string]string
 }
 
 type PackageTypeExtra struct {
@@ -440,11 +438,7 @@ func (d *TemplateData) collectFuncDecl(decl *ast.FuncDecl) (extra PackageFunctio
 			extra.Args = append(extra.Args, name.Name)
 		}
 	}
-	for _, ret := range decl.Type.Results.List {
-		for _, name := range ret.Names {
-			extra.Returns = append(extra.Returns, name.Name)
-		}
-	}
+	extra.Returns = d.extractReturns(decl)
 	return extra
 }
 

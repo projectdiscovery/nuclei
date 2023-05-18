@@ -11,11 +11,11 @@ to be used from nuclei scanner.
 
 ### Client
 
- 
+ Client is a minimal Oracle client for nuclei scripts.
 
 | Method | Description | Arguments | Returns |
 |--------|-------------|-----------|---------|
-| `IsOracle` |   | `host`, `port` | `IsOracleResponse`, `error` |
+| `IsOracle` |  IsOracle checks if a host is running an Oracle server. | `host`, `port` | `IsOracleResponse`, `error` |
 
 
 
