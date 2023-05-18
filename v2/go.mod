@@ -64,6 +64,7 @@ require (
 	github.com/docker/go-units v0.5.0
 	github.com/dop251/goja v0.0.0-20230427124612-428fc442ff5f
 	github.com/dop251/goja_nodejs v0.0.0-20230322100729-2550c7b6c124
+	github.com/evanw/esbuild v0.17.19
 	github.com/fatih/structs v1.1.0
 	github.com/go-git/go-git/v5 v5.6.1
 	github.com/go-ldap/ldap/v3 v3.4.4

@@ -13,10 +13,17 @@ import (
 	_ "github.com/projectdiscovery/nuclei/v2/pkg/js/generated/go/libmssql"
 	_ "github.com/projectdiscovery/nuclei/v2/pkg/js/generated/go/libmysql"
 	_ "github.com/projectdiscovery/nuclei/v2/pkg/js/generated/go/libnet"
+	_ "github.com/projectdiscovery/nuclei/v2/pkg/js/generated/go/liboracle"
+	_ "github.com/projectdiscovery/nuclei/v2/pkg/js/generated/go/libpop3"
 	_ "github.com/projectdiscovery/nuclei/v2/pkg/js/generated/go/libpostgres"
 	_ "github.com/projectdiscovery/nuclei/v2/pkg/js/generated/go/librdp"
+	_ "github.com/projectdiscovery/nuclei/v2/pkg/js/generated/go/libredis"
+	_ "github.com/projectdiscovery/nuclei/v2/pkg/js/generated/go/librsync"
 	_ "github.com/projectdiscovery/nuclei/v2/pkg/js/generated/go/libsmb"
+	_ "github.com/projectdiscovery/nuclei/v2/pkg/js/generated/go/libsmtp"
 	_ "github.com/projectdiscovery/nuclei/v2/pkg/js/generated/go/libssh"
+	_ "github.com/projectdiscovery/nuclei/v2/pkg/js/generated/go/libtelnet"
+	_ "github.com/projectdiscovery/nuclei/v2/pkg/js/generated/go/libvnc"
 )
 
 // Compiler provides a runtime to execute goja runtime
