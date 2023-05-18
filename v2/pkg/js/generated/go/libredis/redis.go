@@ -15,8 +15,10 @@ func init() {
 	module.Set(
 		gojs.Objects{
 			// Functions
-			"GetServerInfo":   original_redis.GetServerInfo,
-			"IsAuthenticated": original_redis.IsAuthenticated,
+			"Connect":           original_redis.Connect,
+			"GetServerInfo":     original_redis.GetServerInfo,
+			"GetServerInfoAuth": original_redis.GetServerInfoAuth,
+			"IsAuthenticated":   original_redis.IsAuthenticated,
 
 			// Var and consts
 

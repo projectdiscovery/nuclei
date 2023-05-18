@@ -23,6 +23,11 @@ class Client {
     ConnectWithDB(host, port, username, password, dbName) {
         return bool, error;
     };
+    // ExecuteQuery connects to Postgres database using given credentials and database name.
+    // and executes a query on the db.
+    ExecuteQuery(host, port, username, password, dbName, query) {
+        return [byte], error;
+    };
     // IsPostgres checks if the given host and port are running Postgres database.
     // 
     // If connection is successful, it returns true.

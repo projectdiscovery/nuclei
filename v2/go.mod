@@ -64,7 +64,6 @@ require (
 	github.com/docker/go-units v0.5.0
 	github.com/dop251/goja v0.0.0-20230427124612-428fc442ff5f
 	github.com/dop251/goja_nodejs v0.0.0-20230322100729-2550c7b6c124
-	github.com/evanw/esbuild v0.17.19
 	github.com/fatih/structs v1.1.0
 	github.com/go-git/go-git/v5 v5.6.1
 	github.com/go-ldap/ldap/v3 v3.4.4
@@ -75,6 +74,7 @@ require (
 	github.com/hirochachacha/go-smb2 v1.1.0
 	github.com/klauspost/compress v1.16.5
 	github.com/labstack/echo/v4 v4.10.2
+	github.com/lib/pq v1.10.1
 	github.com/mholt/archiver v3.1.1+incompatible
 	github.com/praetorian-inc/fingerprintx v1.1.9
 	github.com/projectdiscovery/dsl v0.0.9
