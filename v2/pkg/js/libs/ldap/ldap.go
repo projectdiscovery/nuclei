@@ -41,14 +41,14 @@ func (c *Client) IsLdap(host string, port int) (bool, error) {
 }
 
 // CollectLdapMetadata collects metadata from ldap server.
-func (c *Client) CollectLdapMetadata(domain string, controller string) (map[string]string, error) {
+func (c *Client) CollectLdapMetadata(domain string, controller string) (LDAPMetadata, error) {
 	opts := &ldapSessionOptions{
 		domain:           domain,
 		domainController: controller,
 	}
 	conn, err := c.newLdapSession(opts)
 	if err != nil {
-		return nil, err
+		return LDAPMetadata{}, err
 	}
 	defer c.close(conn)
 
@@ -86,7 +86,20 @@ func (c *Client) close(conn *ldap.Conn) {
 	conn.Close()
 }
 
-func (c *Client) collectLdapMetadata(lConn *ldap.Conn, opts *ldapSessionOptions) (map[string]string, error) {
+// LDAPMetadata is the metadata for ldap server.
+type LDAPMetadata struct {
+	BaseDN                        string
+	Domain                        string
+	DefaultNamingContext          string
+	DomainFunctionality           string
+	ForestFunctionality           string
+	DomainControllerFunctionality string
+	DnsHostName                   string
+}
+
+func (c *Client) collectLdapMetadata(lConn *ldap.Conn, opts *ldapSessionOptions) (LDAPMetadata, error) {
+	metadata := LDAPMetadata{}
+
 	var err error
 	if opts.username == "" {
 		err = lConn.UnauthenticatedBind("")
@@ -94,13 +107,13 @@ func (c *Client) collectLdapMetadata(lConn *ldap.Conn, opts *ldapSessionOptions)
 		err = lConn.Bind(opts.username, opts.password)
 	}
 	if err != nil {
-		return nil, err
+		return metadata, err
 	}
 
 	baseDN, _ := getBaseNamingContext(opts, lConn)
-	metadata := make(map[string]string)
-	metadata["baseDN"] = baseDN
-	metadata["domain"] = parseDC(baseDN)
+
+	metadata.BaseDN = baseDN
+	metadata.Domain = parseDC(baseDN)
 
 	srMetadata := ldap.NewSearchRequest(
 		"",
@@ -118,11 +131,23 @@ func (c *Client) collectLdapMetadata(lConn *ldap.Conn, opts *ldapSessionOptions)
 		nil)
 	resMetadata, err := lConn.Search(srMetadata)
 	if err != nil {
-		return nil, err
+		return metadata, err
 	}
 	for _, entry := range resMetadata.Entries {
 		for _, attr := range entry.Attributes {
-			metadata[attr.Name] = entry.GetAttributeValue(attr.Name)
+			value := entry.GetAttributeValue(attr.Name)
+			switch attr.Name {
+			case "defaultNamingContext":
+				metadata.DefaultNamingContext = value
+			case "domainFunctionality":
+				metadata.DomainFunctionality = value
+			case "forestFunctionality":
+				metadata.ForestFunctionality = value
+			case "domainControllerFunctionality":
+				metadata.DomainControllerFunctionality = value
+			case "dnsHostName":
+				metadata.DnsHostName = value
+			}
 		}
 	}
 	return metadata, nil

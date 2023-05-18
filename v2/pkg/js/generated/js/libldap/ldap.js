@@ -7,7 +7,7 @@
 class Client {
     // CollectLdapMetadata collects metadata from ldap server.
     CollectLdapMetadata(domain, controller) {
-        return error;
+        return LDAPMetadata, error;
     };
     // IsLdap checks if the given host and port are running ldap server.
     IsLdap(host, port) {

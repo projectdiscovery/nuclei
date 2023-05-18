@@ -37,6 +37,8 @@ type TemplateData struct {
 	PackageTypesExtra       map[string]PackageTypeExtra
 
 	typesPackage *types.Package
+
+	Scripts map[string]string
 }
 
 type PackageTypeExtra struct {

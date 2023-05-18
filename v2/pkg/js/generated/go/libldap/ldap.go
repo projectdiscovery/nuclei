@@ -19,10 +19,12 @@ func init() {
 			// Var and consts
 
 			// Types (value type)
-			"Client": func() original_ldap.Client { return original_ldap.Client{} },
+			"Client":       func() original_ldap.Client { return original_ldap.Client{} },
+			"LDAPMetadata": func() original_ldap.LDAPMetadata { return original_ldap.LDAPMetadata{} },
 
 			// Types (pointer type)
-			"NewClient": func() *original_ldap.Client { return &original_ldap.Client{} },
+			"NewClient":       func() *original_ldap.Client { return &original_ldap.Client{} },
+			"NewLDAPMetadata": func() *original_ldap.LDAPMetadata { return &original_ldap.LDAPMetadata{} },
 		},
 	).Register()
 }
