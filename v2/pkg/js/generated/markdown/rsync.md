@@ -15,7 +15,7 @@ to be used from nuclei scanner.
 
 | Method | Description | Arguments | Returns |
 |--------|-------------|-----------|---------|
-| `IsRsync` |  IsRsync checks if a host is running a Rsync server. | host, port | IsRsyncResponse, error |
+| `IsRsync` |  IsRsync checks if a host is running a Rsync server. | `host`, `port` | `IsRsyncResponse`, `error` |
 
 
 

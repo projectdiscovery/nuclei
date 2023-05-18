@@ -13,7 +13,7 @@ to be used from nuclei scanner.
 
 | Name | Description | Arguments | Returns |
 |--------|-------------|-----------|---------|
-GetServerInfo |  GetServerInfo returns the server info for a redis server | host, port |  |
-IsAuthenticated |  IsAuthenticated checks if the redis server requires authentication | host, port |  |
+GetServerInfo |  GetServerInfo returns the server info for a redis server | `host`, `port` |  |
+IsAuthenticated |  IsAuthenticated checks if the redis server requires authentication | `host`, `port` |  |
 
 

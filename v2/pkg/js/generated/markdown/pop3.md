@@ -15,7 +15,7 @@ to be used from nuclei scanner.
 
 | Method | Description | Arguments | Returns |
 |--------|-------------|-----------|---------|
-| `IsPOP3` |  IsPOP3 checks if a host is running a POP3 server. | host, port | IsPOP3Response, error |
+| `IsPOP3` |  IsPOP3 checks if a host is running a POP3 server. | `host`, `port` | `IsPOP3Response`, `error` |
 
 
 

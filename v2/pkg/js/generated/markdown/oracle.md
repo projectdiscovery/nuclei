@@ -15,7 +15,7 @@ to be used from nuclei scanner.
 
 | Method | Description | Arguments | Returns |
 |--------|-------------|-----------|---------|
-| `IsOracle` |   | host, port | IsOracleResponse, error |
+| `IsOracle` |   | `host`, `port` | `IsOracleResponse`, `error` |
 
 
 

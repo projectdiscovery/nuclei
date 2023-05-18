@@ -15,7 +15,7 @@ to be used from nuclei scanner.
 
 | Method | Description | Arguments | Returns |
 |--------|-------------|-----------|---------|
-| `IsTelnet` |  IsTelnet checks if a host is running a Telnet server. | host, port | IsTelnetResponse, error |
+| `IsTelnet` |  IsTelnet checks if a host is running a Telnet server. | `host`, `port` | `IsTelnetResponse`, `error` |
 
 
 

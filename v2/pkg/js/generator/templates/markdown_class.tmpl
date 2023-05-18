@@ -19,7 +19,7 @@ to be used from nuclei scanner.
 | Method | Description | Arguments | Returns |
 |--------|-------------|-----------|---------|
 {{- range $methodName, $method := $methods.Items }}
-| `{{$methodName}}` | {{uncomment $method.Doc}} | {{range $index, $arg := $method.Args}}{{if $index}}, {{end}}{{ $arg }}{{end}} | {{range $idx, $arg := $method.Returns}}{{if $idx}}, {{end}}{{ $arg }}{{end}} |
+| `{{$methodName}}` | {{uncomment $method.Doc}} | {{range $index, $arg := $method.Args}}{{if $index}}, {{end}}`{{ $arg }}`{{end}} | {{range $idx, $arg := $method.Returns}}{{if $idx}}, {{end}}`{{ $arg }}`{{end}} |
 {{- end }}
 
 {{- end }}
@@ -31,7 +31,7 @@ to be used from nuclei scanner.
 | Name | Description | Arguments | Returns |
 |--------|-------------|-----------|---------|
 {{- range $objName, $method := .PackageFuncsExtraNoType}}
-{{$objName}} | {{uncomment $method.Doc}} | {{range $index, $arg := $method.Args}}{{if $index}}, {{end}}{{ $arg }}{{end}} | {{range $idx, $arg := $method.Returns}}{{if $idx}}, {{end}}{{ $arg }}{{end}} |
+{{$objName}} | {{uncomment $method.Doc}} | {{range $index, $arg := $method.Args}}{{if $index}}, {{end}}`{{ $arg }}`{{end}} | {{range $idx, $arg := $method.Returns}}{{if $idx}}, {{end}}`{{ $arg }}`{{end}} |
 {{- end}}
 {{- end}}
 

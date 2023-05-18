@@ -15,7 +15,7 @@ to be used from nuclei scanner.
 
 | Method | Description | Arguments | Returns |
 |--------|-------------|-----------|---------|
-| `IsSMTP` |  IsSMTP checks if a host is running a SMTP server. | host, port | IsSMTPResponse, error |
+| `IsSMTP` |  IsSMTP checks if a host is running a SMTP server. | `host`, `port` | `IsSMTPResponse`, `error` |
 
 
 

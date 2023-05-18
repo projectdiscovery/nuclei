@@ -15,7 +15,7 @@ to be used from nuclei scanner.
 
 | Method | Description | Arguments | Returns |
 |--------|-------------|-----------|---------|
-| `IsVNC` |  IsVNC checks if a host is running a VNC server.  It returns a boolean indicating if the host is running a VNC server  and the banner of the VNC server. | host, port | IsVNCResponse, error |
+| `IsVNC` |  IsVNC checks if a host is running a VNC server.  It returns a boolean indicating if the host is running a VNC server  and the banner of the VNC server. | `host`, `port` | `IsVNCResponse`, `error` |
 
 
 
