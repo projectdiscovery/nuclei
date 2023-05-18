@@ -27,7 +27,7 @@ function getDomainControllerName(name, host) {
   } catch (e) {
     console.log("[smb] Error getting domain controller name", e);
   }
- 
+
   return "";
 }
 
@@ -56,7 +56,3 @@ function getDomainControllerNameByLDAP(host) {
     return list.domain;
   }
 }
-
-exports = {
-  getDomainControllerName: getDomainControllerName,
-};

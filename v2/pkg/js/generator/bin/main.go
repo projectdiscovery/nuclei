@@ -47,6 +47,8 @@ func process(directory string) error {
 		if err != nil {
 			return fmt.Errorf("could not write markdown template: %v", err)
 		}
+		data.InitNativeScripts()
+
 		err = data.WriteMarkdownIndexTemplate(path.Join(directory, "../generated/markdown/"))
 		if err != nil {
 			return fmt.Errorf("could not write markdown index template: %v", err)

@@ -4,11 +4,11 @@ function Close(conn) {
 
 };
 
-function Open(address) {
+function Open(protocol, address) {
 
 };
 
-function OpenTLS(address) {
+function OpenTLS(protocol, address) {
 
 };
 

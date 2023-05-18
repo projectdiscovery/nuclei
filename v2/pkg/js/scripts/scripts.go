@@ -11,6 +11,9 @@ import (
 //go:embed js
 var embedFS embed.FS
 
+//go:embed exports.js
+var exports string
+
 func init() {
 	// TODO: Bundle scripts on init and register them on runtime
 }
@@ -33,6 +36,10 @@ func RegisterScripts(runtime *goja.Runtime) error {
 		if err != nil {
 			return err
 		}
+	}
+	_, err = runtime.RunString(exports)
+	if err != nil {
+		return err
 	}
 	return nil
 }

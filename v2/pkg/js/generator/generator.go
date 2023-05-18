@@ -15,6 +15,8 @@ import (
 	"text/template"
 
 	_ "embed"
+
+	"github.com/projectdiscovery/nuclei/v2/pkg/js/compiler"
 )
 
 //go:embed templates/js_class.tmpl
@@ -37,6 +39,8 @@ type TemplateData struct {
 	PackageTypesExtra       map[string]PackageTypeExtra
 
 	typesPackage *types.Package
+
+	NativeScripts []string
 }
 
 type PackageTypeExtra struct {
@@ -149,6 +153,23 @@ func (d *TemplateData) WriteJSTemplate(output string, pkgName string) error {
 	return nil
 }
 
+func (d *TemplateData) InitNativeScripts() {
+	compiler := compiler.New()
+	runtime := compiler.VM()
+
+	exports := runtime.Get("exports")
+	if exports == nil {
+		return
+	}
+	exportsObj := exports.Export()
+	if exportsObj == nil {
+		return
+	}
+	for v := range exportsObj.(map[string]interface{}) {
+		d.NativeScripts = append(d.NativeScripts, v)
+	}
+}
+
 func (d *TemplateData) WriteGoTemplate(output string, pkgName string) error {
 	_ = os.MkdirAll(output, os.ModePerm)
 
@@ -223,6 +244,12 @@ func (d *TemplateData) WriteMarkdownIndexTemplate(output string) error {
 	outputFile2.WriteString("# Index\n\n")
 	for _, v := range markdownIndexes {
 		outputFile2.WriteString(fmt.Sprintf("* %s\n", v))
+	}
+	outputFile2.WriteString("\n\n")
+
+	outputFile2.WriteString("# Scripts\n\n")
+	for _, v := range d.NativeScripts {
+		outputFile2.WriteString(fmt.Sprintf("* `%s`\n", v))
 	}
 	return nil
 }

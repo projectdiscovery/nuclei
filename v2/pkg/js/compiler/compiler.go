@@ -82,6 +82,13 @@ func (c *Compiler) Execute(code string, args ExecuteArgs) (ExecuteResult, error)
 	return c.ExecuteWithOptions(code, args, &ExecuteOptions{})
 }
 
+// VM returns a new goja runtime for the compiler.
+func (c *Compiler) VM() *goja.Runtime {
+	runtime := c.newRuntime(false)
+	c.registerHelpersForVM(runtime)
+	return runtime
+}
+
 // ExecuteWithOptions executes a script with the provided options.
 func (c *Compiler) ExecuteWithOptions(code string, args ExecuteArgs, opts *ExecuteOptions) (ExecuteResult, error) {
 	defer func() {

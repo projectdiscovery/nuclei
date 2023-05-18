@@ -13,8 +13,3 @@ function hex_to_ascii(str1) {
   }
   return str;
 }
-
-exports = {
-  dump_json: dump_json,
-  hex_to_ascii: hex_to_ascii,
-};

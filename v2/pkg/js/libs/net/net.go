@@ -14,12 +14,12 @@ var dialer = &net.Dialer{
 }
 
 // Open opens a new connection to the address with a timeout.
-func Open(address string) (net.Conn, error) {
-	return dialer.Dial("tcp", address)
+func Open(protocol, address string) (net.Conn, error) {
+	return dialer.Dial(protocol, address)
 }
 
 // Open opens a new connection to the address with a timeout.
-func OpenTLS(address string) (net.Conn, error) {
+func OpenTLS(protocol, address string) (net.Conn, error) {
 	config := &tls.Config{InsecureSkipVerify: true}
 	host, _, _ := net.SplitHostPort(address)
 	if host != "" {
@@ -27,7 +27,7 @@ func OpenTLS(address string) (net.Conn, error) {
 		c.ServerName = host
 		config = c
 	}
-	return tls.DialWithDialer(dialer, "tcp", address, config)
+	return tls.DialWithDialer(dialer, protocol, address, config)
 }
 
 // Close closes the connection.
