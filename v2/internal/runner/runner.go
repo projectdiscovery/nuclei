@@ -80,7 +80,7 @@ type Runner struct {
 
 const pprofServerAddress = "127.0.0.1:8086"
 
-// New creates a new client for running enumeration process.
+// New creates a new client for running the enumeration process.
 func New(options *types.Options) (*Runner, error) {
 	runner := &Runner{
 		options: options,
@@ -95,6 +95,13 @@ func New(options *types.Options) (*Runner, error) {
 		runner.cloudClient = nucleicloud.New(options.CloudURL, options.CloudAPIKey)
 	}
 
+	// Build the manager for importing custom templates.
+	// This will be used in both of the below conditional logic blocks and therefore should be defined externally.
+	ctm, err := customtemplates.NewCustomTemplatesManager(options)
+	if err != nil {
+		gologger.Error().Label("custom-templates").Msgf("Failed to create custom templates manager: %s\n", err)
+	}
+
 	//  Version check by default
 	if config.DefaultConfig.CanCheckForUpdates() {
 		if err := installer.NucleiVersionCheck(); err != nil {
@@ -103,14 +110,8 @@ func New(options *types.Options) (*Runner, error) {
 			}
 		}
 
-		// check for custom template updates and update if available
-		ctm, err := customtemplates.NewCustomTemplatesManager(options)
-		if err != nil {
-			gologger.Error().Label("custom-templates").Msgf("Failed to create custom templates manager: %s\n", err)
-		}
-
 		// Check for template updates and update if available
-		// if custom templates manager is not nil, we will install custom templates if there is fresh installation
+		// if the custom templates manager is not nil, we will install custom templates if there is a fresh installation
 		tm := &installer.TemplateManager{CustomTemplates: ctm}
 		if err := tm.FreshInstallIfNotExists(); err != nil {
 			gologger.Warning().Msgf("failed to install nuclei templates: %s\n", err)
@@ -125,16 +126,18 @@ func New(options *types.Options) (*Runner, error) {
 			}
 		}
 
-		if options.UpdateTemplates {
-			// we automatically check for updates unless explicitly disabled
-			// this print statement is only to inform the user that there are no updates
-			if !config.DefaultConfig.NeedsTemplateUpdate() {
-				gologger.Info().Msgf("No new updates found for nuclei templates")
-			}
-			// manually trigger update of custom templates
-			if ctm != nil {
-				ctm.Update(context.TODO())
-			}
+		// we automatically check for updates unless explicitly disabled
+		// this print statement is only to inform the user that there are no updates
+		if !config.DefaultConfig.NeedsTemplateUpdate() {
+			gologger.Info().Msgf("No new updates found for nuclei templates")
+		}
+	}
+
+	if config.DefaultConfig.CanCheckForUpdates() || options.UpdateCustomTemplates {
+		// Trigger update of custom templates if updates aren't explicitly disabled or the user has requested an update
+		// of custom templates
+		if ctm != nil {
+			ctm.Update(context.TODO())
 		}
 	}
 

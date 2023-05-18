@@ -228,6 +228,8 @@ type Options struct {
 	NoColor bool
 	// UpdateTemplates updates the templates installed at startup (also used by cloud to update datasources)
 	UpdateTemplates bool
+	// UpdateCustomTemplates updates the custom templates installed at startup (e.g. AWS S3, Azure Blob, GitLab, etc.)
+	UpdateCustomTemplates bool
 	// JSON writes json line output to files
 	JSONL bool
 	// JSONRequests writes requests/responses for matches in JSON output

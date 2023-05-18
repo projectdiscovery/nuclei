@@ -293,6 +293,7 @@ on extensive configurability, massive extensibility and ease of use.`)
 	flagSet.CreateGroup("update", "Update",
 		flagSet.CallbackVarP(runner.NucleiToolUpdateCallback, "update", "up", "update nuclei engine to the latest released version"),
 		flagSet.BoolVarP(&options.UpdateTemplates, "update-templates", "ut", false, "update nuclei-templates to latest released version"),
+		flagSet.BoolVarP(&options.UpdateCustomTemplates, "update-custom-templates", "uct", false, "update custom templates to the latest available version(s)"),
 		flagSet.StringVarP(&options.NewTemplatesDirectory, "update-template-dir", "ud", "", "custom directory to install / update nuclei-templates"),
 		flagSet.CallbackVarP(disableUpdatesCallback, "disable-update-check", "duc", "disable automatic nuclei/templates update check"),
 	)
