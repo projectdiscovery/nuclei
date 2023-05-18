@@ -3,3 +3,7 @@
 function dump_json(data) {
     console.log(JSON.stringify(data, null, 2));
 };
+
+exports = {
+    dump_json: dump_json,
+};

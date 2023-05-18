@@ -56,3 +56,7 @@ function getDomainControllerNameByLDAP(host) {
     return list.domain;
   }
 }
+
+exports = {
+  getDomainControllerName: getDomainControllerName,
+};

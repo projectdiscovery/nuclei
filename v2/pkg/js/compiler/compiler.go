@@ -75,6 +75,13 @@ func (c *Compiler) Execute(code string, args ExecuteArgs) (ExecuteResult, error)
 
 // ExecuteWithOptions executes a script with the provided options.
 func (c *Compiler) ExecuteWithOptions(code string, args ExecuteArgs, opts *ExecuteOptions) (ExecuteResult, error) {
+	defer func() {
+		if err := recover(); err != nil {
+			gologger.Warning().Msgf("Recovered panic: %v", err)
+			return
+		}
+	}()
+
 	runtime := c.newRuntime(opts.Pool)
 	c.registerHelpersForVM(runtime)
 

@@ -21,10 +21,8 @@ func init() {
 			// Var and consts
 
 			// Types (value type)
-			"Info": func() original_redis.Info { return original_redis.Info{} },
 
 			// Types (pointer type)
-			"NewInfo": func() *original_redis.Info { return &original_redis.Info{} },
 		},
 	).Register()
 }
