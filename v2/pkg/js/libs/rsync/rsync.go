@@ -34,6 +34,9 @@ func (c *Client) IsRsync(host string, port int) (IsRsyncResponse, error) {
 	if err != nil {
 		return resp, err
 	}
+	if service == nil {
+		return resp, nil
+	}
 	resp.Banner = service.Version
 	resp.IsRsync = true
 	return resp, nil

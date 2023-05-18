@@ -34,7 +34,10 @@ func (c *Client) IsPOP3(host string, port int) (IsPOP3Response, error) {
 	if err != nil {
 		return resp, err
 	}
-	resp.Banner = service.Version
+	if service == nil {
+		return resp, nil
+	}
+	resp.Banner = service.Metadata().(plugins.ServicePOP3).Banner
 	resp.IsPOP3 = true
 	return resp, nil
 }

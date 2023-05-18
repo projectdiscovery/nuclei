@@ -43,6 +43,14 @@ func process(directory string) error {
 		if err != nil {
 			return fmt.Errorf("could not write go template: %v", err)
 		}
+		err = data.WriteMarkdownTemplate(path.Join(directory, "../generated/markdown/"), module)
+		if err != nil {
+			return fmt.Errorf("could not write markdown template: %v", err)
+		}
+		err = data.WriteMarkdownIndexTemplate(path.Join(directory, "../generated/markdown/"))
+		if err != nil {
+			return fmt.Errorf("could not write markdown index template: %v", err)
+		}
 		//	generate(module)
 	}
 

@@ -34,7 +34,10 @@ func (c *Client) IsTelnet(host string, port int) (IsTelnetResponse, error) {
 	if err != nil {
 		return resp, err
 	}
-	resp.Banner = service.Version
+	if service == nil {
+		return resp, nil
+	}
+	resp.Banner = service.Metadata().(plugins.ServiceTelnet).ServerData
 	resp.IsTelnet = true
 	return resp, nil
 }

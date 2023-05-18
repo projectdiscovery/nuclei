@@ -31,6 +31,9 @@ func (c *Client) IsOracle(host string, port int) (IsOracleResponse, error) {
 	if err != nil {
 		return resp, err
 	}
+	if service == nil {
+		return resp, nil
+	}
 	resp.Banner = service.Version
 	resp.Banner = service.Metadata().(plugins.ServiceOracle).Info
 	resp.IsOracle = true

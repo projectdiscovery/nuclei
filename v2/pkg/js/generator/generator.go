@@ -21,6 +21,9 @@ var jsClassFile string
 //go:embed templates/go_class.tmpl
 var goClassFile string
 
+//go:embed templates/markdown_class.tmpl
+var markdownClassFile string
+
 type TemplateData struct {
 	PackageName             string
 	PackagePath             string
@@ -146,6 +149,52 @@ func (d *TemplateData) WriteGoTemplate(output string, pkgName string) error {
 	cmd.Stdout = os.Stdout
 	if err := cmd.Run(); err != nil {
 		return err
+	}
+	return nil
+}
+
+var markdownIndexes = make(map[string]string)
+
+func (d *TemplateData) WriteMarkdownTemplate(output string, pkgName string) error {
+	_ = os.MkdirAll(output, os.ModePerm)
+
+	var err error
+	tmpl := template.New("markdown_class")
+	tmpl = tmpl.Funcs(templateFuncs())
+	tmpl, err = tmpl.Parse(markdownClassFile)
+	if err != nil {
+		return err
+	}
+
+	filename := path.Join(output, fmt.Sprintf("%s.md", pkgName))
+	outputFile2, err := os.Create(filename)
+	if err != nil {
+		return err
+	}
+
+	markdownIndexes[pkgName] = fmt.Sprintf("[%s](%s.md)", pkgName, pkgName)
+	if err := tmpl.Execute(outputFile2, d); err != nil {
+		outputFile2.Close()
+		return err
+	}
+	outputFile2.Close()
+
+	return nil
+}
+
+func (d *TemplateData) WriteMarkdownIndexTemplate(output string) error {
+	_ = os.MkdirAll(output, os.ModePerm)
+
+	filename := path.Join(output, "index.md")
+	outputFile2, err := os.Create(filename)
+	if err != nil {
+		return err
+	}
+	defer outputFile2.Close()
+
+	outputFile2.WriteString("# Index\n\n")
+	for _, v := range markdownIndexes {
+		outputFile2.WriteString(fmt.Sprintf("* %s\n", v))
 	}
 	return nil
 }
@@ -326,6 +375,9 @@ func templateFuncs() map[string]interface{} {
 			}
 
 			return strings.ToUpper(string(v[0])) + v[1:]
+		},
+		"uncomment": func(v string) string {
+			return strings.ReplaceAll(strings.ReplaceAll(v, "// ", " "), "\n", " ")
 		},
 	}
 }

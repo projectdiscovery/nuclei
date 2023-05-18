@@ -34,6 +34,9 @@ func (c *Client) IsSMTP(host string, port int) (IsSMTPResponse, error) {
 	if err != nil {
 		return resp, err
 	}
+	if service == nil {
+		return resp, nil
+	}
 	resp.Banner = service.Version
 	resp.IsSMTP = true
 	return resp, nil

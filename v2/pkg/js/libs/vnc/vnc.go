@@ -36,6 +36,9 @@ func (c *Client) IsVNC(host string, port int) (IsVNCResponse, error) {
 	if err != nil {
 		return resp, err
 	}
+	if service == nil {
+		return resp, nil
+	}
 	resp.Banner = service.Version
 	resp.IsVNC = true
 	return resp, nil

@@ -2,6 +2,8 @@
 package compiler
 
 import (
+	"runtime/debug"
+
 	"github.com/dop251/goja"
 	"github.com/dop251/goja_nodejs/console"
 	"github.com/dop251/goja_nodejs/require"
@@ -84,7 +86,8 @@ func (c *Compiler) Execute(code string, args ExecuteArgs) (ExecuteResult, error)
 func (c *Compiler) ExecuteWithOptions(code string, args ExecuteArgs, opts *ExecuteOptions) (ExecuteResult, error) {
 	defer func() {
 		if err := recover(); err != nil {
-			gologger.Warning().Msgf("Recovered panic: %v", err)
+			gologger.Warning().Msgf("Recovered panic %s %v: %v", code, args, err)
+			debug.PrintStack()
 			return
 		}
 	}()
@@ -102,6 +105,8 @@ func (c *Compiler) ExecuteWithOptions(code string, args ExecuteArgs, opts *Execu
 	captured := results.Export()
 
 	// If we need to capture output, we need to do it here.
+	// FIXME: This doesn't work with kval and returns blank response
+	// fix this.
 	if opts.CaptureOutput {
 		return convertOutputToResult(captured)
 	}
