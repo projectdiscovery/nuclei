@@ -19,3 +19,6 @@ to be used from nuclei scanner.
 | `ListSMBv2Metadata` |  ListSMBv2Metadata tries to connect to provided host and port  and list SMBv2 metadata.    Returns metadata and error. If error is not nil,  state will be false | host, port | ServiceSMB, error |
 | `ListShares` |  ListShares tries to connect to provided host and port  and list shares by using given credentials.    Credentials cannot be blank. guest or anonymous credentials  can be used by providing empty password. | host, port, user, password | [string], error |
 
+
+
+

@@ -17,3 +17,13 @@ to be used from nuclei scanner.
 |--------|-------------|-----------|---------|
 | `IsTelnet` |  IsTelnet checks if a host is running a Telnet server. | host, port | IsTelnetResponse, error |
 
+
+
+
+## Exported Types Fields
+### IsTelnetResponse
+
+| Name | Type | 
+|--------|-------------|
+| `Banner` | string |
+| `IsTelnet` | bool |

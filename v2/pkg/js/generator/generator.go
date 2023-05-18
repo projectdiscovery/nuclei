@@ -32,6 +32,11 @@ type TemplateData struct {
 	PackageFuncsExtra       map[string]PackageFuncExtra
 	PackageVars             map[string]string
 	PackageTypes            map[string]string
+	PackageTypesExtra       map[string]PackageTypeExtra
+}
+
+type PackageTypeExtra struct {
+	Fields map[string]string
 }
 
 type PackageFuncExtra struct {
@@ -55,6 +60,7 @@ func newTemplateData(packagePrefix, pkgName string) *TemplateData {
 		PackageFuncsExtra:       make(map[string]PackageFuncExtra),
 		PackageVars:             make(map[string]string),
 		PackageTypes:            make(map[string]string),
+		PackageTypesExtra:       make(map[string]PackageTypeExtra),
 	}
 }
 
@@ -209,6 +215,37 @@ func gatherPackageData(pkg *ast.Package, data *TemplateData) {
 			}
 			data.PackageFuncsExtraNoType[node.Name.Name] = extra
 			data.PackageFuncs[node.Name.Name] = node.Name.Name
+		case *ast.TypeSpec:
+			if !node.Name.IsExported() {
+				return true
+			}
+			if node.Type == nil {
+				return true
+			}
+			structDecl, ok := node.Type.(*ast.StructType)
+			if !ok {
+				return true
+			}
+
+			packageTypes := PackageTypeExtra{
+				Fields: make(map[string]string),
+			}
+			for _, field := range structDecl.Fields.List {
+				fieldName := field.Names[0].Name
+
+				var fieldTypeValue string
+				switch fieldType := field.Type.(type) {
+				case *ast.Ident: // Field type is a simple identifier
+					fieldTypeValue = fieldType.Name
+				case *ast.SelectorExpr: // Field type is a qualified identifier
+					fieldTypeValue = fmt.Sprintf("%s.%s", fieldType.X, fieldType.Sel)
+				}
+				packageTypes.Fields[fieldName] = fieldTypeValue
+			}
+			if len(packageTypes.Fields) == 0 {
+				return true
+			}
+			data.PackageTypesExtra[node.Name.Name] = packageTypes
 		case *ast.GenDecl:
 			identifyGenDecl(pkg, node, data)
 		}

@@ -17,3 +17,13 @@ to be used from nuclei scanner.
 |--------|-------------|-----------|---------|
 | `IsRsync` |  IsRsync checks if a host is running a Rsync server. | host, port | IsRsyncResponse, error |
 
+
+
+
+## Exported Types Fields
+### IsRsyncResponse
+
+| Name | Type | 
+|--------|-------------|
+| `Banner` | string |
+| `IsRsync` | bool |

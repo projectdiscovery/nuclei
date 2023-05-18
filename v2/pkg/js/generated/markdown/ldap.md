@@ -18,3 +18,6 @@ to be used from nuclei scanner.
 | `CollectLdapMetadata` |  CollectLdapMetadata collects metadata from ldap server. | domain, controller | error |
 | `IsLdap` |  IsLdap checks if the given host and port are running ldap server. | host, port | bool, error |
 
+
+
+

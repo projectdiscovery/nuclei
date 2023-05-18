@@ -17,3 +17,13 @@ to be used from nuclei scanner.
 |--------|-------------|-----------|---------|
 | `IsPOP3` |  IsPOP3 checks if a host is running a POP3 server. | host, port | IsPOP3Response, error |
 
+
+
+
+## Exported Types Fields
+### IsPOP3Response
+
+| Name | Type | 
+|--------|-------------|
+| `Banner` | string |
+| `IsPOP3` | bool |

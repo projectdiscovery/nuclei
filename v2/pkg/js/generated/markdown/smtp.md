@@ -17,3 +17,13 @@ to be used from nuclei scanner.
 |--------|-------------|-----------|---------|
 | `IsSMTP` |  IsSMTP checks if a host is running a SMTP server. | host, port | IsSMTPResponse, error |
 
+
+
+
+## Exported Types Fields
+### IsSMTPResponse
+
+| Name | Type | 
+|--------|-------------|
+| `Banner` | string |
+| `IsSMTP` | bool |

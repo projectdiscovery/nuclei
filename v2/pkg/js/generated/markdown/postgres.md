@@ -19,3 +19,6 @@ to be used from nuclei scanner.
 | `ConnectWithDB` |  ConnectWithDB connects to Postgres database using given credentials and database name.    If connection is successful, it returns true.  If connection is unsuccessful, it returns false and error.    The connection is closed after the function returns. | host, port, username, password, dbName | bool, error |
 | `IsPostgres` |  IsPostgres checks if the given host and port are running Postgres database.    If connection is successful, it returns true.  If connection is unsuccessful, it returns false and error. | host, port | bool, error |
 
+
+
+

@@ -1,7 +1,7 @@
 // libkerberos implements bindings for kerberos protocol in javascript
 // to be used from nuclei scanner.
 
-// 
+// Client is a kerberos client
 class Client {
     // EnumerateUser returns true if the user exists in the domain
     // 

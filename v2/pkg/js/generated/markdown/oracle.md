@@ -17,3 +17,13 @@ to be used from nuclei scanner.
 |--------|-------------|-----------|---------|
 | `IsOracle` |   | host, port | IsOracleResponse, error |
 
+
+
+
+## Exported Types Fields
+### IsOracleResponse
+
+| Name | Type | 
+|--------|-------------|
+| `Banner` | string |
+| `IsOracle` | bool |

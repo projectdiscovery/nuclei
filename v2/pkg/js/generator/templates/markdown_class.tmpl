@@ -34,3 +34,17 @@ to be used from nuclei scanner.
 {{$objName}} | {{uncomment $method.Doc}} | {{range $index, $arg := $method.Args}}{{if $index}}, {{end}}{{ $arg }}{{end}} | {{range $idx, $arg := $method.Returns}}{{if $idx}}, {{end}}{{ $arg }}{{end}} |
 {{- end}}
 {{- end}}
+
+{{ if .PackageTypesExtra }}
+## Exported Types Fields
+
+{{- range $typeName, $methods := .PackageTypesExtra }}
+### {{$typeName}}
+
+| Name | Type | 
+|--------|-------------|
+{{- range $fieldName, $field := $methods.Fields }}
+| `{{$fieldName}}` | {{ $field }} |
+{{- end }}
+{{- end }}
+{{- end }}

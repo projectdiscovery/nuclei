@@ -12,6 +12,7 @@ import (
 	"github.com/ropnop/gokrb5/v8/messages"
 )
 
+// Client is a kerberos client
 type Client struct{}
 
 type kerberosEnumUserOpts struct {
