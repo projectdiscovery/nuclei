@@ -23,7 +23,7 @@ require (
 	github.com/projectdiscovery/clistats v0.0.12
 	github.com/projectdiscovery/fastdialer v0.0.26
 	github.com/projectdiscovery/hmap v0.0.11
-	github.com/projectdiscovery/interactsh v1.1.4-0.20230513162113-039cf4c64fd9
+	github.com/projectdiscovery/interactsh v1.1.4
 	github.com/projectdiscovery/rawhttp v0.1.11
 	github.com/projectdiscovery/retryabledns v1.0.24
 	github.com/projectdiscovery/retryablehttp-go v1.0.16
@@ -40,7 +40,7 @@ require (
 	github.com/xanzy/go-gitlab v0.83.0
 	go.uber.org/multierr v1.11.0
 	golang.org/x/net v0.10.0
-	golang.org/x/oauth2 v0.7.0
+	golang.org/x/oauth2 v0.8.0
 	golang.org/x/text v0.9.0
 	gopkg.in/yaml.v2 v2.4.0
 	moul.io/http2curl v1.0.0
@@ -78,9 +78,9 @@ require (
 	github.com/projectdiscovery/sarif v0.0.1
 	github.com/projectdiscovery/tlsx v1.0.9
 	github.com/projectdiscovery/uncover v1.0.4
-	github.com/projectdiscovery/utils v0.0.29
+	github.com/projectdiscovery/utils v0.0.32
 	github.com/projectdiscovery/wappalyzergo v0.0.94
-	github.com/stretchr/testify v1.8.2
+	github.com/stretchr/testify v1.8.3
 	gopkg.in/src-d/go-git.v4 v4.13.1
 	gopkg.in/yaml.v3 v3.0.1
 )
