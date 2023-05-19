@@ -4,9 +4,11 @@ import (
 	"encoding/hex"
 	"fmt"
 	"net/url"
+	"strings"
 
 	"github.com/miekg/dns"
 	"github.com/pkg/errors"
+	"golang.org/x/exp/maps"
 
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
@@ -17,6 +19,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/helpers/eventcreator"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/helpers/responsehighlighter"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/utils/vardump"
+	protocolutils "github.com/projectdiscovery/nuclei/v2/pkg/protocols/utils"
 	templateTypes "github.com/projectdiscovery/nuclei/v2/pkg/templates/types"
 	"github.com/projectdiscovery/nuclei/v2/pkg/utils"
 	"github.com/projectdiscovery/retryabledns"
@@ -46,13 +49,35 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, metadata,
 		return errors.Wrap(err, "could not build request")
 	}
 
-	vars := GenerateVariables(domain)
+	vars := protocolutils.GenerateDNSVariables(domain)
 	// optionvars are vars passed from CLI or env variables
 	optionVars := generators.BuildPayloadFromOptions(request.options.Options)
 	// merge with metadata (eg. from workflow context)
 	vars = generators.MergeMaps(vars, metadata, optionVars)
 	variablesMap := request.options.Variables.Evaluate(vars)
-	vars = generators.MergeMaps(variablesMap, vars)
+	vars = generators.MergeMaps(vars, variablesMap)
+
+	if request.generator != nil {
+		iterator := request.generator.NewIterator()
+
+		for {
+			value, ok := iterator.Value()
+			if !ok {
+				break
+			}
+			value = generators.MergeMaps(vars, value)
+			if err := request.execute(domain, metadata, previous, value, callback); err != nil {
+				return err
+			}
+		}
+	} else {
+		value := maps.Clone(vars)
+		return request.execute(domain, metadata, previous, value, callback)
+	}
+	return nil
+}
+
+func (request *Request) execute(domain string, metadata, previous output.InternalEvent, vars map[string]interface{}, callback protocols.OutputEventCallback) error {
 
 	if vardump.EnableVarDump {
 		gologger.Debug().Msgf("Protocol request variables: \n%s\n", vardump.DumpVariables(vars))
@@ -73,14 +98,20 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, metadata,
 			return nil
 		}
 	}
+	question := domain
+	if len(compiledRequest.Question) > 0 {
+		question = compiledRequest.Question[0].Name
+	}
+	// remove the last dot
+	question = strings.TrimSuffix(question, ".")
 
 	requestString := compiledRequest.String()
 	if varErr := expressions.ContainsUnresolvedVariables(requestString); varErr != nil {
-		gologger.Warning().Msgf("[%s] Could not make dns request for %s: %v\n", request.options.TemplateID, domain, varErr)
+		gologger.Warning().Msgf("[%s] Could not make dns request for %s: %v\n", request.options.TemplateID, question, varErr)
 		return nil
 	}
 	if request.options.Options.Debug || request.options.Options.DebugRequests || request.options.Options.StoreResponse {
-		msg := fmt.Sprintf("[%s] Dumped DNS request for %s", request.options.TemplateID, domain)
+		msg := fmt.Sprintf("[%s] Dumped DNS request for %s", request.options.TemplateID, question)
 		if request.options.Options.Debug || request.options.Options.DebugRequests {
 			gologger.Info().Str("domain", domain).Msgf(msg)
 			gologger.Print().Msgf("%s", requestString)
@@ -97,14 +128,15 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, metadata,
 	if err != nil {
 		request.options.Output.Request(request.options.TemplatePath, domain, request.Type().String(), err)
 		request.options.Progress.IncrementFailedRequestsBy(1)
+	} else {
+		request.options.Progress.IncrementRequests()
 	}
 	if response == nil {
 		return errors.Wrap(err, "could not send dns request")
 	}
-	request.options.Progress.IncrementRequests()
 
 	request.options.Output.Request(request.options.TemplatePath, domain, request.Type().String(), err)
-	gologger.Verbose().Msgf("[%s] Sent DNS request to %s\n", request.options.TemplateID, domain)
+	gologger.Verbose().Msgf("[%s] Sent DNS request to %s\n", request.options.TemplateID, question)
 
 	// perform trace if necessary
 	var traceData *retryabledns.TraceData
@@ -115,7 +147,8 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, metadata,
 		}
 	}
 
-	outputEvent := request.responseToDSLMap(compiledRequest, response, input.MetaInput.Input, input.MetaInput.Input, traceData)
+	// Create the output event
+	outputEvent := request.responseToDSLMap(compiledRequest, response, domain, question, traceData)
 	for k, v := range previous {
 		outputEvent[k] = v
 	}
@@ -124,9 +157,9 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, metadata,
 	}
 	event := eventcreator.CreateEvent(request, outputEvent, request.options.Options.Debug || request.options.Options.DebugResponse)
 
-	dumpResponse(event, request, request.options, response.String(), domain)
+	dumpResponse(event, request, request.options, response.String(), question)
 	if request.Trace {
-		dumpTraceData(event, request.options, traceToString(traceData, true), domain)
+		dumpTraceData(event, request.options, traceToString(traceData, true), question)
 	}
 
 	callback(event)

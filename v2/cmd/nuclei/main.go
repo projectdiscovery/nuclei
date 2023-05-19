@@ -25,7 +25,6 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/utils/monitor"
 	errorutil "github.com/projectdiscovery/utils/errors"
 	fileutil "github.com/projectdiscovery/utils/file"
-	osutils "github.com/projectdiscovery/utils/os"
 )
 
 var (
@@ -167,7 +166,7 @@ on extensive configurability, massive extensibility and ease of use.`)
 		flagSet.BoolVarP(&options.StoreResponse, "store-resp", "sresp", false, "store all request/response passed through nuclei to output directory"),
 		flagSet.StringVarP(&options.StoreResponseDir, "store-resp-dir", "srd", runner.DefaultDumpTrafficOutputFolder, "store all request/response passed through nuclei to custom directory"),
 		flagSet.BoolVar(&options.Silent, "silent", false, "display findings only"),
-		flagSet.BoolVarP(&options.NoColor, "no-color", "nc", isColorNotAvailable(), "disable output content coloring (ANSI escape codes)"),
+		flagSet.BoolVarP(&options.NoColor, "no-color", "nc", false, "disable output content coloring (ANSI escape codes)"),
 		flagSet.BoolVarP(&options.JSONL, "jsonl", "j", false, "write output in JSONL(ines) format"),
 		flagSet.BoolVarP(&options.JSONRequests, "include-rr", "irr", false, "include request/response pairs in the JSONL output (for findings only)"),
 		flagSet.BoolVarP(&options.NoMeta, "no-meta", "nm", false, "disable printing result metadata in cli output"),
@@ -231,7 +230,7 @@ on extensive configurability, massive extensibility and ease of use.`)
 		flagSet.StringSliceVarP(&options.UncoverEngine, "uncover-engine", "ue", nil, fmt.Sprintf("uncover search engine (%s) (default shodan)", uncover.GetUncoverSupportedAgents()), goflags.FileStringSliceOptions),
 		flagSet.StringVarP(&options.UncoverField, "uncover-field", "uf", "ip:port", "uncover fields to return (ip,port,host)"),
 		flagSet.IntVarP(&options.UncoverLimit, "uncover-limit", "ul", 100, "uncover results to return"),
-		flagSet.IntVarP(&options.UncoverDelay, "uncover-delay", "ucd", 1, "delay between uncover query requests in seconds (0 to disable)"),
+		flagSet.IntVarP(&options.UncoverRateLimit, "uncover-ratelimit", "ur", 60, "override ratelimit of engines with unknown ratelimit (default 60 req/min)"),
 	)
 
 	flagSet.CreateGroup("rate-limit", "Rate-Limit",
@@ -356,11 +355,6 @@ on extensive configurability, massive extensibility and ease of use.`)
 
 	cleanupOldResumeFiles()
 	return flagSet
-}
-
-// isColorNotAvailable returns true if ascii colored output is not available.
-func isColorNotAvailable() bool {
-	return osutils.IsWindows()
 }
 
 // cleanupOldResumeFiles cleans up resume files older than 10 days.
