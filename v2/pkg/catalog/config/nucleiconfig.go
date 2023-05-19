@@ -21,8 +21,8 @@ var DefaultConfig *Config
 type Config struct {
 	TemplatesDirectory string `json:"nuclei-templates-directory,omitempty"`
 
-	// customtemplates exists in templates directory with the name of custom-templates provider
-	// below custom paths are absolute paths to respecitive custom-templates directories
+	// custom-xxx-templates exists in templates directory with the name of custom-templates provider
+	// below custom paths are absolute paths to respective custom-templates directories
 	CustomS3TemplatesDirectory     string `json:"custom-s3-templates-directory"`
 	CustomGithubTemplatesDirectory string `json:"custom-github-templates-directory"`
 	CustomGitLabTemplatesDirectory string `json:"custom-gitlab-templates-directory"`
@@ -46,10 +46,10 @@ type Config struct {
 }
 
 // WriteVersionCheckData writes version check data to config file
-func (c *Config) WriteVersionCheckData(ignorehash, nucleiVersion, templatesVersion string) error {
+func (c *Config) WriteVersionCheckData(ignoreHash, nucleiVersion, templatesVersion string) error {
 	updated := false
-	if ignorehash != "" && c.LatestNucleiIgnoreHash != ignorehash {
-		c.LatestNucleiIgnoreHash = ignorehash
+	if ignoreHash != "" && c.LatestNucleiIgnoreHash != ignoreHash {
+		c.LatestNucleiIgnoreHash = ignoreHash
 		updated = true
 	}
 	if nucleiVersion != "" && c.LatestNucleiVersion != nucleiVersion {
@@ -82,7 +82,7 @@ func (c *Config) NeedsTemplateUpdate() bool {
 	return !c.disableUpdates && (c.TemplateVersion == "" || IsOutdatedVersion(c.TemplateVersion, c.LatestNucleiTemplatesVersion) || !fileutil.FolderExists(c.TemplatesDirectory))
 }
 
-// NeedsIngoreFileUpdate returns true if Ignore file hash is different (aka ignore file is outdated)
+// NeedsIgnoreFileUpdate returns true if Ignore file hash is different (aka ignore file is outdated)
 func (c *Config) NeedsIgnoreFileUpdate() bool {
 	return c.NucleiIgnoreHash == "" || c.NucleiIgnoreHash != c.LatestNucleiIgnoreHash
 }
@@ -123,18 +123,18 @@ func (c *Config) GetIgnoreFilePath() string {
 	return filepath.Join(c.configDir, NucleiIgnoreFileName)
 }
 
-// GetTemplatesConfigFilePath returns checksum file path of nuclei templates
+// GetChecksumFilePath returns checksum file path of nuclei templates
 func (c *Config) GetChecksumFilePath() string {
 	return filepath.Join(c.TemplatesDirectory, NucleiTemplatesCheckSumFileName)
 }
 
-// GetCLIOptsConfigFilePath returns the nuclei cli config file path
+// GetFlagsConfigFilePath returns the nuclei cli config file path
 func (c *Config) GetFlagsConfigFilePath() string {
-	return filepath.Join(c.configDir, CLIConifgFileName)
+	return filepath.Join(c.configDir, CLIConfigFileName)
 }
 
-// GetNewAdditions returns new template additions in current template release
-// if .new-additions file is not present empty slice is returned
+// GetNewAdditions returns new template additions in current template release if .new-additions file is not present
+// empty slice is returned
 func (c *Config) GetNewAdditions() []string {
 	arr := []string{}
 	newAdditionsPath := filepath.Join(c.TemplatesDirectory, NewTemplateAdditionsFileName)
@@ -153,8 +153,7 @@ func (c *Config) GetNewAdditions() []string {
 	return arr
 }
 
-// SetConfigDir sets the nuclei configuration directory
-// and appropriate changes are made to the config
+// SetConfigDir sets the nuclei configuration directory and appropriate changes are made to the config
 func (c *Config) SetConfigDir(dir string) {
 	c.configDir = dir
 	if err := c.createConfigDirIfNotExists(); err != nil {
@@ -252,8 +251,7 @@ func (c *Config) createConfigDirIfNotExists() error {
 	return nil
 }
 
-// copyIgnoreFile copies the nuclei ignore file default config directory
-// to the current config directory
+// copyIgnoreFile copies the nuclei ignore file default config directory to the current config directory
 func (c *Config) copyIgnoreFile() {
 	if err := c.createConfigDirIfNotExists(); err != nil {
 		gologger.Error().Msgf("Could not create nuclei config directory at %s: %s", c.configDir, err)
@@ -308,7 +306,7 @@ func getDefaultConfigDir() string {
 	return filepath.Join(userCfgDir, "nuclei")
 }
 
-// Add Default Config adds default when .templates-config.json file is not present
+// applyDefaultConfig adds default when .templates-config.json file is not present
 func applyDefaultConfig() {
 	DefaultConfig.TemplatesDirectory = filepath.Join(DefaultConfig.homeDir, NucleiTemplatesDirName)
 	// updates all necessary paths
