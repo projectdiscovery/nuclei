@@ -14,6 +14,11 @@ class Client {
     ConnectSMBInfoMode(host, port) {
         return SMBLog, error;
     };
+    // DetectSMBGhost tries to detect SMBGhost vulnerability
+    // by using SMBv3 compression feature.
+    DetectSMBGhost(host, port) {
+        return bool, error;
+    };
     // ListSMBv2Metadata tries to connect to provided host and port
     // and list SMBv2 metadata.
     // 

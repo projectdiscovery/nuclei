@@ -23,6 +23,11 @@ class Client {
     ConnectWithDB(host, port, username, password, dbName) {
         return bool, error;
     };
+    // ExecuteQuery connects to Mysql database using given credentials and database name.
+    // and executes a query on the db.
+    ExecuteQuery(host, port, username, password, dbName, query) {
+        return string, error;
+    };
     // IsMySQL checks if the given host is running MySQL database.
     // 
     // If the host is running MySQL database, it returns true.

@@ -10,6 +10,7 @@ import (
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/praetorian-inc/fingerprintx/pkg/plugins"
 	mysqlplugin "github.com/praetorian-inc/fingerprintx/pkg/plugins/services/mysql"
+	"github.com/projectdiscovery/nuclei/v2/pkg/js/gojs/utils"
 )
 
 // Client is a client for MySQL database.
@@ -80,4 +81,30 @@ func connect(host string, port int, username, password, dbName string) (bool, er
 		return false, err
 	}
 	return true, nil
+}
+
+// ExecuteQuery connects to Mysql database using given credentials and database name.
+// and executes a query on the db.
+func (c *Client) ExecuteQuery(host string, port int, username, password, dbName, query string) (string, error) {
+	target := net.JoinHostPort(host, fmt.Sprintf("%d", port))
+
+	db, err := sql.Open("mysql", fmt.Sprintf("%v:%v@tcp(%v)/%s",
+		url.PathEscape(username),
+		url.PathEscape(password),
+		target,
+		dbName))
+	if err != nil {
+		return "", err
+	}
+	defer db.Close()
+
+	rows, err := db.Query(query)
+	if err != nil {
+		return "", err
+	}
+	resp, err := utils.UnmarshalSQLRows(rows)
+	if err != nil {
+		return "", err
+	}
+	return string(resp), nil
 }

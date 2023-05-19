@@ -15,7 +15,7 @@ func TestScriptsRuntime(t *testing.T) {
 	registry.Enable(runtime)
 	console.Enable(runtime)
 
-	err := RegisterScripts(runtime)
+	err := RegisterNativeScripts(runtime)
 	if err != nil {
 		t.Fatal(err)
 	}

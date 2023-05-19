@@ -12,7 +12,9 @@ import (
 func (c *Compiler) registerHelpersForVM(runtime *goja.Runtime) {
 	_ = c.registry.Enable(runtime)
 	runtime.Set("console", require.Require(runtime, console.ModuleName))
-	if err := scripts.RegisterScripts(runtime); err != nil {
+
+	// Register embedded scripts
+	if err := scripts.RegisterNativeScripts(runtime); err != nil {
 		gologger.Error().Msgf("Could not register scripts: %s\n", err)
 	}
 }
