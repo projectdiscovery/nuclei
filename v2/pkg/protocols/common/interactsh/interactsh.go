@@ -76,13 +76,15 @@ func New(options *Options) (*Client, error) {
 
 func (c *Client) poll() error {
 	if c.options.NoInteractsh {
-		return nil // do not init if disabled
+		// do not init if disabled
+		return ErrInteractshClientNotInitialized
 	}
 	interactsh, err := client.New(&client.Options{
 		ServerURL:           c.options.ServerURL,
 		Token:               c.options.Authorization,
 		DisableHTTPFallback: c.options.DisableHttpFallback,
 		HTTPClient:          c.options.HTTPClient,
+		KeepAliveInterval:   time.Minute,
 	})
 	if err != nil {
 		return errorutil.NewWithErr(err).Msgf("could not create client")
@@ -196,18 +198,17 @@ func (c *Client) AlreadyMatched(data *RequestData) bool {
 
 // URL returns a new URL that can be interacted with
 func (c *Client) URL() (string, error) {
+	// first time initialization
+	var err error
+	c.Do(func() {
+		err = c.poll()
+	})
+	if err != nil {
+		return "", errorutil.NewWithErr(err).Wrap(ErrInteractshClientNotInitialized)
+	}
+
 	if c.interactsh == nil {
-		var err error
-		c.Do(func() {
-			err = c.poll()
-		})
-		if err != nil {
-			return "", errorutil.NewWithErr(err).Wrap(ErrInteractshClientNotInitialized)
-		}
-		// ensures interactsh is not nil
-		if c.interactsh == nil {
-			return "", ErrInteractshClientNotInitialized
-		}
+		return "", ErrInteractshClientNotInitialized
 	}
 
 	c.generated.Store(true)
