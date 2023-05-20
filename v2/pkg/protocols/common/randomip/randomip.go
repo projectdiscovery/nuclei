@@ -1,11 +1,12 @@
 package randomip
 
 import (
-	"math/rand"
+	"crypto/rand"
 	"net"
 
 	"github.com/pkg/errors"
 	iputil "github.com/projectdiscovery/utils/ip"
+	randutil "github.com/projectdiscovery/utils/rand"
 )
 
 const (
@@ -16,7 +17,13 @@ func GetRandomIPWithCidr(cidrs ...string) (net.IP, error) {
 	if len(cidrs) == 0 {
 		return nil, errors.Errorf("must specify at least one cidr")
 	}
-	cidr := cidrs[rand.Intn(len(cidrs))]
+
+	randIdx, err := randutil.IntN(len(cidrs))
+	if err != nil {
+		return nil, err
+	}
+
+	cidr := cidrs[randIdx]
 
 	if !iputil.IsCIDR(cidr) {
 		return nil, errors.Errorf("%s is not a valid cidr", cidr)
@@ -56,7 +63,7 @@ func getRandomIP(ipnet *net.IPNet, size int) net.IP {
 			return ip
 		}
 
-		rand.Read(r)
+		_, _ = rand.Read(r)
 
 		for i := 0; i <= quotient; i++ {
 			if i == quotient {
