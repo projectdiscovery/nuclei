@@ -16,7 +16,7 @@ const (
 	CLIConfigFileName               = "config.yaml"
 	ReportingConfigFilename         = "reporting-config.yaml"
 	// Version is the current version of nuclei
-	Version = `v2.9.4-dev`
+	Version = `v2.9.5-dev`
 
 	// Directory Names of custom templates
 	CustomS3TemplatesDirName     = "s3"
