@@ -130,7 +130,9 @@ SMBGhost is a very popular SMB vulnerability in Windows SMB Server implementatio
 
 To implement the SMBGhost vulnerability detection in JS Library for `smb`, we can look for exploits in `Go` (Preferred) or other languages, or discover technical details and attempt to write a POC ourself.
 
-In this case, there is already a detection POC in Go for SMBGhost by doing a quick google search for `smbghost go github` at [GoGhost](https://github.com/deepsecurity-pe/GoGhost). 
+In this case, let's attempt to create the implementation from a python POC for SMBGhost detection from [smb-scanner](https://github.com/gabimarti/SMBScanner/blob/master/smb-scanner.py).
+
+The exploit works by sending a SMB packet to the server and checking if the result contains the indicator for the vulnerability.
 
 We can just the above implementation by defining a new function within `smb` package. Create a new file in `js/libs/smb/smbghost.go` and save it.
 
@@ -146,20 +148,13 @@ The truncated `pkt` definition is shown below. Copy and paste this to our newly 
 
 ```go
 const (
-	pkt = "\x00" + // session
-		"\x00\x00\xc0" + // legth
-
-		"\xfeSMB@\x00" + // protocol
-
-		//[MS-SMB2]: SMB2 NEGOTIATE Request
-		//https://docs.microsoft.com/en-us/openspecs/windows_protocols/ms-smb2/e14db7ff-763a-4263-8b10-0c3944f52fc5
-
-		"\x00\x00" +
-
+	# Packet to send and check vuln
+    pkt =  "\x00\x00\x00\xc0\xfeSMB@\x00\x00\x00\x00\x00\x00\x00\x00\x00\x1f\x00\x00\x00\x00\x00\x00\x00\x00
     ... truncated ...
 ```
 
-Then we can just implement the sending of this packet and checking if the detection was successful. Copy and paste the code from the `socketX` function from the original code. The cleaned up final `DetectSMBGhost` implementation is provided below.
+
+Then we can just implement the sending of this packet and checking if the detection was successful. The cleaned up final `DetectSMBGhost` implementation is provided below.
 
 ```go
 // DetectSMBGhost tries to detect SMBGhost vulnerability
@@ -174,18 +169,30 @@ func (c *Client) DetectSMBGhost(host string, port int) (bool, error) {
 	defer conn.Close()
 
 	conn.Write([]byte(pkt))
-	buff := make([]byte, 1024)
-	_ = conn.SetReadDeadline(time.Now().Add(2 * time.Second))
-	n, err := conn.Read(buff)
+
+	buff := make([]byte, 4)
+	nb, _ := conn.Read(buff)
+	args, err := structs.StructsUnpack(">I", buff[:nb])
 	if err != nil {
 		return false, err
 	}
-	if bytes.Contains([]byte(buff[:n]), []byte("Public")) {
-		return true, nil
+	length := args[0].(int)
+	data := make([]byte, length)
+	_ = conn.SetReadDeadline(time.Now().Add(2 * time.Second))
+	n, err := conn.Read(data)
+	if err != nil {
+		return false, err
 	}
-	return false, nil
+	data = data[:n]
+
+	if !bytes.Equal(data[68:70], []byte("\x11\x03")) || !bytes.Equal(data[70:72], []byte("\x02\x00")) {
+		return false, nil
+	}
+	return true, nil
 }
 ```
+
+The implements sends the packet, reads the number of bytes using `structs.StructsUnpack` method and reads the bytes returned, comparing to see if we have a successful detection.
 
 Now we can use this from a template like below - 
 
@@ -202,7 +209,7 @@ Which results in following in nuclei -
 [smbghost-detection] [javascript] [high] 222.134.104.66:445
 [smbghost-detection] [javascript] [high] 211.165.203.230:445
 [smbghost-detection] [javascript] [high] 192.28.213.141:445
-[smbghost-detection] [javascript] [high] 72.80.134.82:445
+[smbghost-detection] [javascript] [high] 22.80.134.82:445
 ```
 
 ## Code generation
