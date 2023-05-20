@@ -95,7 +95,7 @@ func (t *TemplateManager) installTemplatesAt(dir string) error {
 			return errorutil.NewWithErr(err).Msgf("failed to create directory at %s", dir)
 		}
 	}
-	ghrd, err := updateutils.NewghReleaseDownloader(config.OfficialNucleiTeamplatesRepoName)
+	ghrd, err := updateutils.NewghReleaseDownloader(config.OfficialNucleiTemplatesRepoName)
 	if err != nil {
 		return errorutil.NewWithErr(err).Msgf("failed to install templates at %s", dir)
 	}
@@ -116,7 +116,7 @@ func (t *TemplateManager) updateTemplatesAt(dir string) error {
 		oldchecksums = make(map[string]string)
 	}
 
-	ghrd, err := updateutils.NewghReleaseDownloader(config.OfficialNucleiTeamplatesRepoName)
+	ghrd, err := updateutils.NewghReleaseDownloader(config.OfficialNucleiTemplatesRepoName)
 	if err != nil {
 		return errorutil.NewWithErr(err).Msgf("failed to install templates at %s", dir)
 	}

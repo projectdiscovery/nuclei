@@ -1,0 +1,29 @@
+id: dns-attack
+
+info:
+  name: basic dns template
+  author: pdteam
+  severity: info
+
+
+dns:
+  - name: "{{subdomain_wordlist}}.{{FQDN}}"
+    type: A
+
+    attack: batteringram
+    payloads:
+      subdomain_wordlist: 
+      - one
+      - docs
+      - drive
+    
+    matchers:
+      - type: word
+        words:
+          - "IN\tA"
+
+    extractors:
+      - type: regex
+        group: 1
+        regex:
+          - "IN\tA\t(.+)"
