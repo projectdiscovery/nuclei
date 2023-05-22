@@ -11,7 +11,7 @@ require (
 	github.com/corpix/uarand v0.2.0
 	github.com/go-playground/validator/v10 v10.11.2
 	github.com/go-rod/rod v0.113.0
-	github.com/gobwas/ws v1.1.0
+	github.com/gobwas/ws v1.2.1
 	github.com/google/go-github v17.0.0+incompatible
 	github.com/itchyny/gojq v0.12.12
 	github.com/json-iterator/go v1.1.12
