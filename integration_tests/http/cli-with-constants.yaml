@@ -6,7 +6,7 @@ info:
   severity: info
 
 constants:
-  - test: test-in-template
+  test: test-in-template
 
 requests:
   - method: GET
