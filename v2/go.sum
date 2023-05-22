@@ -422,8 +422,8 @@ github.com/projectdiscovery/httpx v1.3.1 h1:yrpQJ/v31LLNiiSwfs0NAowtXDj4EWooKfTv
 github.com/projectdiscovery/httpx v1.3.1/go.mod h1:BIahPS6H86IArVsXV/T3SJ0CDuz2e6BIXz89eo0+IKQ=
 github.com/projectdiscovery/interactsh v1.1.4 h1:1qVxJ14aG/X7TLJoK5AHnaX6I7hnbPp5R2ql1bSYzqI=
 github.com/projectdiscovery/interactsh v1.1.4/go.mod h1:rM8IEm6AAm68fWWExzBHjhBWfRhFYzR9gY5emOFiZCY=
-github.com/projectdiscovery/mapcidr v1.1.1 h1:68Xvw9cKugNeAVxHE3Nl1Ej26nm1taWq6e1WPXpluc0=
-github.com/projectdiscovery/mapcidr v1.1.1/go.mod h1:yyp9ghqmmC0+r5DySgDBXE4cf2QW8SBloVESCteWiAg=
+github.com/projectdiscovery/mapcidr v1.1.2 h1:Mmq/nPqvVc7fjvH/kJVK0IBOny/LrJIxZ4tQsLPCrsA=
+github.com/projectdiscovery/mapcidr v1.1.2/go.mod h1:Aoq0x/wJl6KDbtQ8OcPkjIDCqx2iEyx5ty1nzso8wXM=
 github.com/projectdiscovery/networkpolicy v0.0.6 h1:yDvm0XCrS9HeemRrBS+J+22surzVczM94W5nHiOy/1o=
 github.com/projectdiscovery/networkpolicy v0.0.6/go.mod h1:8HJQ/33Pi7v3a3MRWIQGXzpj+zHw2d60TysEL4qdoQk=
 github.com/projectdiscovery/nvd v1.0.10-0.20230327073015-721181aba1e8 h1:aDq18tNWbnN5ZM0ADQb+8KB4DEPIGZMXdDmcXyFUoNg=
