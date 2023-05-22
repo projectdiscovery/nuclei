@@ -619,7 +619,7 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 				outputEvent["ip"] = httpclientpool.Dialer.GetDialedIP(hostname)
 			}
 
-			event := &output.InternalWrappedEvent{InternalEvent: outputEvent}
+			event := &output.InternalWrappedEvent{InternalEvent: outputEvent, Protocol: request.Type()}
 			if request.CompiledOperators != nil {
 				event.InternalEvent = outputEvent
 			}
@@ -746,7 +746,6 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 		}
 		// prune signature internal values if any
 		request.pruneSignatureInternalValues(generatedRequest.meta)
-
 		event := eventcreator.CreateEventWithAdditionalOptions(request, generators.MergeMaps(generatedRequest.dynamicValues, finalEvent), request.options.Options.Debug || request.options.Options.DebugResponse, func(internalWrappedEvent *output.InternalWrappedEvent) {
 			internalWrappedEvent.OperatorsResult.PayloadValues = generatedRequest.meta
 		})

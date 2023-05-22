@@ -24,7 +24,6 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/helpers/responsehighlighter"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/utils/vardump"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/network/networkclientpool"
-	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/utils"
 	protocolutils "github.com/projectdiscovery/nuclei/v2/pkg/protocols/utils"
 	templateTypes "github.com/projectdiscovery/nuclei/v2/pkg/templates/types"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
@@ -267,7 +266,7 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 			// if field is not exported f.IsZero() , f.Value() will panic
 			continue
 		}
-		tag := utils.CleanStructFieldJSONTag(f.Tag("json"))
+		tag := protocolutils.CleanStructFieldJSONTag(f.Tag("json"))
 		if tag == "" || f.IsZero() {
 			continue
 		}
@@ -279,13 +278,14 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 		return errorutil.NewWithTag("ssl", "certificate response cannot be parsed into a struct: %v", response.CertificateResponse)
 	}
 
+
 	responseParsed = structs.New(response.CertificateResponse)
 	for _, f := range responseParsed.Fields() {
 		if !f.IsExported() {
 			// if field is not exported f.IsZero() , f.Value() will panic
 			continue
 		}
-		tag := utils.CleanStructFieldJSONTag(f.Tag("json"))
+		tag := protocolutils.CleanStructFieldJSONTag(f.Tag("json"))
 		if tag == "" || f.IsZero() {
 			continue
 		}

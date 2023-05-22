@@ -264,7 +264,7 @@ func TestDNSMakeResult(t *testing.T) {
 	resp.Answer = append(resp.Answer, &dns.A{A: net.ParseIP("1.1.1.1"), Hdr: dns.RR_Header{Name: "one.one.one.one."}})
 
 	event := request.responseToDSLMap(req, resp, "one.one.one.one", "one.one.one.one", nil)
-	finalEvent := &output.InternalWrappedEvent{InternalEvent: event}
+	finalEvent := &output.InternalWrappedEvent{InternalEvent: event, Protocol: request.Type()}
 	if request.CompiledOperators != nil {
 		result, ok := request.CompiledOperators.Execute(event, request.Match, request.Extract, false)
 		if ok && result != nil {

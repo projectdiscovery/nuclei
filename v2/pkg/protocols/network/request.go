@@ -288,7 +288,7 @@ func (request *Request) executeRequestWithPayloads(variables map[string]interfac
 		})
 		callback(event)
 	} else if request.options.Interactsh != nil {
-		event = &output.InternalWrappedEvent{InternalEvent: outputEvent}
+		event = &output.InternalWrappedEvent{InternalEvent: outputEvent, Protocol: request.Type()}
 		request.options.Interactsh.RequestEvent(interactshURLs, &interactsh.RequestData{
 			MakeResultFunc: request.MakeResultEvent,
 			Event:          event,

@@ -9,10 +9,14 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/contextargs"
 	"github.com/projectdiscovery/nuclei/v2/pkg/templates/types"
+	stringsutil "github.com/projectdiscovery/utils/strings"
 	"golang.org/x/exp/maps"
 )
 
 var _ protocols.Request = &Request{}
+
+// contains variables that are already exported ex: dnx_xxx,http_xxx
+var ignore_prefixes = []string{}
 
 // refer doc.go for package description , limitations etc
 
@@ -88,12 +92,13 @@ func (r *Request) Extract(data map[string]interface{}, matcher *extractors.Extra
 
 // ExecuteWithResults executes the protocol requests and returns results instead of writing them.
 func (r *Request) ExecuteWithResults(input *contextargs.Context, dynamicValues, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
-	allProtoEvents := []*output.InternalWrappedEvent{}
+	var finalProtoEvent *output.InternalWrappedEvent
 	// contains values from previous protocols
 	templateContextValues := maps.Clone(dynamicValues)
 	// callback to process results from all protocols
 	multiProtoCallback := func(event *output.InternalWrappedEvent) {
-		allProtoEvents = append(allProtoEvents, event)
+		finalProtoEvent = event
+		// export dynamic values from operators (i.e internal:true)
 		if event.OperatorsResult != nil && len(event.OperatorsResult.DynamicValues) > 0 {
 			for k, v := range event.OperatorsResult.DynamicValues {
 				// TBD: iterate-all is only supported in `http` protocol
@@ -104,6 +109,14 @@ func (r *Request) ExecuteWithResults(input *contextargs.Context, dynamicValues, 
 					templateContextValues[k] = v[0]
 				} else {
 					templateContextValues[k] = v
+				}
+			}
+		}
+		// export protocol response variables with protocol name as prefix
+		for k, v := range event.InternalEvent {
+			if event.Protocol != types.InvalidProtocol && !stringsutil.EqualFoldAny(event.Protocol.String(), "", "invalid", "multi") {
+				if !stringsutil.HasPrefixAny(k, ignore_prefixes...) {
+					templateContextValues[event.Protocol.String()+"_"+k] = v
 				}
 			}
 		}
@@ -123,13 +136,11 @@ func (r *Request) ExecuteWithResults(input *contextargs.Context, dynamicValues, 
 			return err
 		}
 	}
-
 	// Review: how to handle events of multiple protocols in a single template
-	// currently we execute outputEventcallback for each protocol after all protocols are executed successfully
-	// Another approach is to just execute callback on last protocol in queue (TBD)
-	for _, v := range allProtoEvents {
-		callback(v)
-	}
+	// currently the outer callback is only executed once (for the last protocol in queue)
+	// due to workflow logic at https://github.com/projectdiscovery/nuclei/blob/main/v2/pkg/protocols/common/executer/executer.go#L150
+	// this causes addition of duplicated / unncessary variables with prefix template_id_all_variables
+	callback(finalProtoEvent)
 
 	return nil
 }
@@ -159,4 +170,13 @@ func (r *Request) GetCompiledOperators() []*operators.Operators {
 // Type returns the type of the protocol request
 func (r *Request) Type() types.ProtocolType {
 	return types.MultiProtocol
+}
+
+func init() {
+	protos := types.GetSupportedProtocolTypes()
+	for _, proto := range protos {
+		if proto != types.MultiProtocol && proto.String() != "" {
+			ignore_prefixes = append(ignore_prefixes, proto.String()+"_")
+		}
+	}
 }

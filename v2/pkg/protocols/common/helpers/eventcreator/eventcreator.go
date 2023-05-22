@@ -17,8 +17,7 @@ func CreateEvent(request protocols.Request, outputEvent output.InternalEvent, is
 // and enables extending the resulting event with additional attributes or values.
 func CreateEventWithAdditionalOptions(request protocols.Request, outputEvent output.InternalEvent, isResponseDebug bool,
 	addAdditionalOptions func(internalWrappedEvent *output.InternalWrappedEvent)) *output.InternalWrappedEvent {
-	event := &output.InternalWrappedEvent{InternalEvent: outputEvent}
-
+	event := &output.InternalWrappedEvent{InternalEvent: outputEvent, Protocol: request.Type()}
 	// Dump response variables if ran in debug mode
 	if vardump.EnableVarDump {
 		gologger.Debug().Msgf("Protocol response variables: \n%s\n", vardump.DumpVariables(outputEvent))
@@ -39,7 +38,7 @@ func CreateEventWithAdditionalOptions(request protocols.Request, outputEvent out
 }
 
 func CreateEventWithOperatorResults(request protocols.Request, internalEvent output.InternalEvent, operatorResult *operators.Result) *output.InternalWrappedEvent {
-	event := &output.InternalWrappedEvent{InternalEvent: internalEvent}
+	event := &output.InternalWrappedEvent{InternalEvent: internalEvent, Protocol: request.Type()}
 	event.OperatorsResult = operatorResult
 	event.Results = append(event.Results, request.MakeResultEvent(event)...)
 	return event
