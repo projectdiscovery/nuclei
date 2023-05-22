@@ -77,6 +77,7 @@ var httpTestcases = map[string]testutils.TestCase{
 	"http/cl-body-without-header.yaml":              &httpCLBodyWithoutHeader{},
 	"http/cl-body-with-header.yaml":                 &httpCLBodyWithHeader{},
 	"http/save-extractor-values-to-file.yaml":       &httpSaveExtractorValuesToFile{},
+	"http/cli-with-constants.yaml":                  &ConstantWithCliVar{},
 }
 
 type httpInteractshRequest struct{}
@@ -1402,4 +1403,23 @@ func (h *httpSaveExtractorValuesToFile) Execute(filePath string) error {
 		_ = os.Remove("output.txt")
 	}
 	return expectResultsCount(results, 1)
+}
+
+// constant shouldn't be overwritten by cli var with same name
+type ConstantWithCliVar struct{}
+
+// Execute executes a test case and returns an error if occurred
+func (h *ConstantWithCliVar) Execute(filePath string) error {
+	router := httprouter.New()
+	router.GET("/", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+		fmt.Fprintf(w, r.URL.Query().Get("p"))
+	})
+	ts := httptest.NewTLSServer(router)
+	defer ts.Close()
+
+	got, err := testutils.RunNucleiTemplateAndGetResults(filePath, ts.URL, debug, "-V", "test=fromcli")
+	if err != nil {
+		return err
+	}
+	return expectResultsCount(got, 1)
 }
