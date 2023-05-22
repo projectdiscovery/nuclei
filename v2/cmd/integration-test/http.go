@@ -1412,7 +1412,7 @@ type ConstantWithCliVar struct{}
 func (h *ConstantWithCliVar) Execute(filePath string) error {
 	router := httprouter.New()
 	router.GET("/", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-		fmt.Fprintf(w, r.URL.Query().Get("p"))
+		fmt.Fprint(w, r.URL.Query().Get("p"))
 	})
 	ts := httptest.NewTLSServer(router)
 	defer ts.Close()
