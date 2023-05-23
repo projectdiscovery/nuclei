@@ -19,6 +19,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/generators"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/helpers/eventcreator"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/helpers/responsehighlighter"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/interactsh"
 	protocolutils "github.com/projectdiscovery/nuclei/v2/pkg/protocols/utils"
 	templateTypes "github.com/projectdiscovery/nuclei/v2/pkg/templates/types"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
@@ -110,6 +111,8 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 		}
 	}()
 
+	var interactshURLs []string
+
 	// inject all template context values as gozero env variables
 	variables := protocolutils.GenerateVariables(input.MetaInput.Input, false, nil)
 	// optionvars are vars passed from CLI or env variables
@@ -117,26 +120,28 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 	variablesMap := request.options.Variables.Evaluate(variables)
 	variables = generators.MergeMaps(variablesMap, variables, optionVars)
 	for name, value := range variables {
-		metaSrc.AddVariable(gozero.Variable{Name: name, Value: fmt.Sprint(value)})
+		v := fmt.Sprint(value)
+		v, interactshURLs = request.options.Interactsh.Replace(v, interactshURLs)
+		metaSrc.AddVariable(gozero.Variable{Name: name, Value: v})
 	}
-	output, err := request.gozero.Eval(context.Background(), request.src, metaSrc)
+	gOutput, err := request.gozero.Eval(context.Background(), request.src, metaSrc)
 	if err != nil {
 		return err
 	}
 	defer func() {
-		if err := output.Cleanup(); err != nil {
+		if err := gOutput.Cleanup(); err != nil {
 			gologger.Warning().Msgf("%s\n", err)
 		}
 	}()
 
-	dataOutput, err := output.ReadAll()
+	dataOutput, err := gOutput.ReadAll()
 	if err != nil {
 		return err
 	}
 
 	dataOutputString := fmtStdout(string(dataOutput))
 
-	data := make(map[string]interface{})
+	data := make(output.InternalEvent)
 
 	data["type"] = request.Type().String()
 	data["response"] = string(dataOutput)
@@ -146,7 +151,25 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 	data["template-id"] = request.options.TemplateID
 	data["template-info"] = request.options.TemplateInfo
 
-	event := eventcreator.CreateEvent(request, data, request.options.Options.Debug || request.options.Options.DebugResponse)
+	if request.options.Interactsh != nil {
+		request.options.Interactsh.MakePlaceholders(interactshURLs, data)
+	}
+
+	// todo #1: interactsh async callback should be eliminated as it lead to ton of code duplication
+	// todo #2: various structs InternalWrappedEvent, InternalEvent should be unwrapped and merged into minimal callbacks and a unique struct (eg. event?)
+	var event *output.InternalWrappedEvent
+	event = eventcreator.CreateEvent(request, data, request.options.Options.Debug || request.options.Options.DebugResponse)
+	if request.options.Interactsh != nil {
+		event.UsesInteractsh = true
+		request.options.Interactsh.RequestEvent(interactshURLs, &interactsh.RequestData{
+			MakeResultFunc: request.MakeResultEvent,
+			Event:          event,
+			Operators:      request.CompiledOperators,
+			MatchFunc:      request.Match,
+			ExtractFunc:    request.Extract,
+		})
+	}
+
 	if request.options.Options.Debug || request.options.Options.DebugResponse || request.options.Options.StoreResponse {
 		msg := fmt.Sprintf("[%s] Dumped Code Execution for %s", request.options.TemplateID, input.MetaInput.Input)
 		if request.options.Options.Debug || request.options.Options.DebugResponse {
@@ -157,7 +180,9 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 			request.options.Output.WriteStoreDebugData(input.MetaInput.Input, request.options.TemplateID, request.Type().String(), fmt.Sprintf("%s\n%s", msg, dataOutputString))
 		}
 	}
+
 	callback(event)
+
 	return nil
 }
 

@@ -14,11 +14,12 @@ import (
 )
 
 var codeTestCases = map[string]testutils.TestCase{
-	"protocols/code/py-snippet.yaml": &codeSnippet{},
-	"protocols/code/py-file.yaml":    &codeFile{},
-	"protocols/code/py-env-var.yaml": &codeEnvVar{},
-	"protocols/code/unsigned.yaml":   &unsignedCode{},
-	"protocols/code/rsa-signed.yaml": &rsaSignedCode{},
+	"protocols/code/py-snippet.yaml":    &codeSnippet{},
+	"protocols/code/py-file.yaml":       &codeFile{},
+	"protocols/code/py-env-var.yaml":    &codeEnvVar{},
+	"protocols/code/unsigned.yaml":      &unsignedCode{},
+	"protocols/code/rsa-signed.yaml":    &rsaSignedCode{},
+	"protocols/code/py-interactsh.yaml": &codeSnippet{},
 }
 
 var (
