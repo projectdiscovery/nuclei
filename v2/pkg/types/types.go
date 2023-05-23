@@ -364,6 +364,8 @@ type Options struct {
 	CodeTemplateSignaturePublicKey string
 	// CodeTemplateSignatureAlgorithm specifies the sign algorithm (ecdsa, rsa)
 	CodeTemplateSignatureAlgorithm string
+	// SignTemplates enables signing of templates
+	SignTemplates bool
 }
 
 // ShouldLoadResume resume file
