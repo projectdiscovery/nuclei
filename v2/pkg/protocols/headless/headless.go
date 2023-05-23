@@ -9,7 +9,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/generators"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/headless/engine"
-	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/http/fuzz"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/headless/fuzz"
 	fileutil "github.com/projectdiscovery/utils/file"
 )
 
@@ -133,6 +133,20 @@ func (request *Request) Compile(options *protocols.ExecuterOptions) error {
 		request.CompiledOperators = compiled
 	}
 	request.options = options
+
+	if len(request.Fuzzing) > 0 {
+		for _, rule := range request.Fuzzing {
+			if fuzzingMode := options.Options.FuzzingMode; fuzzingMode != "" {
+				rule.Mode = fuzzingMode
+			}
+			if fuzzingType := options.Options.FuzzingType; fuzzingType != "" {
+				rule.Type = fuzzingType
+			}
+			if err := rule.Compile(request.generator, request.options); err != nil {
+				return errors.Wrap(err, "could not compile fuzzing rule")
+			}
+		}
+	}
 	return nil
 }
 
