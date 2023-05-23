@@ -32,9 +32,11 @@ type TemplateData struct {
 	PackageName             string
 	PackagePath             string
 	PackageFuncs            map[string]string
+	PackageInterfaces       map[string]string
 	PackageFuncsExtraNoType map[string]PackageFunctionExtra
 	PackageFuncsExtra       map[string]PackageFuncExtra
 	PackageVars             map[string]string
+	PackageVarsValues       map[string]string
 	PackageTypes            map[string]string
 	PackageTypesExtra       map[string]PackageTypeExtra
 
@@ -67,7 +69,9 @@ func newTemplateData(packagePrefix, pkgName string) *TemplateData {
 		PackageFuncsExtraNoType: make(map[string]PackageFunctionExtra),
 		PackageFuncsExtra:       make(map[string]PackageFuncExtra),
 		PackageVars:             make(map[string]string),
+		PackageVarsValues:       make(map[string]string),
 		PackageTypes:            make(map[string]string),
+		PackageInterfaces:       make(map[string]string),
 		PackageTypesExtra:       make(map[string]PackageTypeExtra),
 	}
 }
@@ -97,6 +101,9 @@ func CreateTemplateData(directory string, packagePrefix string) (*TemplateData, 
 		}
 		break
 	}
+
+	//	ast.Print(fset, files[0])
+
 	pkg, err := config.Check(packageName, fset, files, nil)
 	if err != nil {
 		log.Fatal(err)
@@ -108,7 +115,6 @@ func CreateTemplateData(directory string, packagePrefix string) (*TemplateData, 
 		break
 	}
 
-	//	ast.Print(fset, pkg)
 	log.Printf("[create] [discover] Package: %s\n", pkgMain.Name)
 	data := newTemplateData(packagePrefix, pkgMain.Name)
 	data.typesPackage = pkg
@@ -286,6 +292,13 @@ func (d *TemplateData) gatherPackageData(pkg *ast.Package, data *TemplateData) {
 				switch fieldType := field.Type.(type) {
 				case *ast.Ident: // Field type is a simple identifier
 					fieldTypeValue = fieldType.Name
+				case *ast.ArrayType:
+					switch fieldType.Elt.(type) {
+					case *ast.Ident:
+						fieldTypeValue = fmt.Sprintf("[]%s", fieldType.Elt.(*ast.Ident).Name)
+					case *ast.StarExpr:
+						fieldTypeValue = fmt.Sprintf("[]%s", d.handleStarExpr(fieldType.Elt.(*ast.StarExpr)))
+					}
 				case *ast.SelectorExpr: // Field type is a qualified identifier
 					fieldTypeValue = fmt.Sprintf("%s.%s", fieldType.X, fieldType.Sel)
 				}
@@ -305,6 +318,15 @@ func (d *TemplateData) gatherPackageData(pkg *ast.Package, data *TemplateData) {
 func identifyGenDecl(pkg *ast.Package, decl *ast.GenDecl, data *TemplateData) {
 	for _, spec := range decl.Specs {
 		switch spec := spec.(type) {
+		case *ast.ValueSpec:
+			if !spec.Names[0].IsExported() {
+				continue
+			}
+			if spec.Values == nil || len(spec.Values) == 0 {
+				continue
+			}
+			data.PackageVars[spec.Names[0].Name] = spec.Names[0].Name
+			data.PackageVarsValues[spec.Names[0].Name] = spec.Values[0].(*ast.BasicLit).Value
 		case *ast.TypeSpec:
 			if !spec.Name.IsExported() {
 				continue
@@ -314,6 +336,9 @@ func identifyGenDecl(pkg *ast.Package, decl *ast.GenDecl, data *TemplateData) {
 			}
 
 			switch spec.Type.(type) {
+			case *ast.InterfaceType:
+				data.PackageInterfaces[spec.Name.Name] = convertCommentsToJavascript(decl.Doc.Text())
+
 			case *ast.StructType:
 				data.PackageFuncsExtra[spec.Name.Name] = PackageFuncExtra{
 					Items: make(map[string]PackageFunctionExtra),
@@ -370,6 +395,9 @@ func extractArgs(fn *ast.FuncDecl) []string {
 
 func (d *TemplateData) extractReturns(fn *ast.FuncDecl) []string {
 	returns := make([]string, 0)
+	if fn.Type.Results == nil {
+		return returns
+	}
 	for _, ret := range fn.Type.Results.List {
 		returnType := d.extractReturnType(ret)
 		if returnType != "" {
@@ -382,8 +410,8 @@ func (d *TemplateData) extractReturns(fn *ast.FuncDecl) []string {
 func (d *TemplateData) extractReturnType(ret *ast.Field) string {
 	switch v := ret.Type.(type) {
 	case *ast.ArrayType:
-		if vk, ok := v.Elt.(*ast.Ident); ok {
-			return "[" + vk.Name + "]"
+		if v, ok := v.Elt.(*ast.Ident); ok {
+			return fmt.Sprintf("[]%s", v.Name)
 		}
 		if v, ok := v.Elt.(*ast.StarExpr); ok {
 			return d.handleStarExpr(v)

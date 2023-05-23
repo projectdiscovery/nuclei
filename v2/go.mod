@@ -9,6 +9,7 @@ require (
 	github.com/antchfx/htmlquery v1.3.0
 	github.com/bluele/gcache v0.0.2
 	github.com/corpix/uarand v0.2.0
+	github.com/free5gc/n3iwf v1.1.3-0.20230511081338-cd0bd04e7b63
 	github.com/go-playground/validator/v10 v10.11.2
 	github.com/go-rod/rod v0.112.9
 	github.com/gobwas/ws v1.1.0
@@ -84,6 +85,7 @@ require (
 	github.com/projectdiscovery/gostruct v0.0.0-20230520110439-bbdedaae3c35
 	github.com/projectdiscovery/httpx v1.3.1
 	github.com/projectdiscovery/mapcidr v1.1.1
+	github.com/projectdiscovery/n3iwf v0.0.0-20230523120440-b8cd232ff1f5
 	github.com/projectdiscovery/nvd v1.0.10-0.20230327073015-721181aba1e8
 	github.com/projectdiscovery/ratelimit v0.0.6
 	github.com/projectdiscovery/rdap v0.9.1-0.20221108103045-9865884d1917
@@ -93,6 +95,7 @@ require (
 	github.com/projectdiscovery/utils v0.0.29
 	github.com/projectdiscovery/wappalyzergo v0.0.94
 	github.com/ropnop/gokrb5/v8 v8.0.0-20201111231119-729746023c02
+	github.com/sirupsen/logrus v1.9.0
 	github.com/stretchr/testify v1.8.2
 	github.com/zmap/zgrab2 v0.1.8-0.20230323032758-911c86f13080
 	gopkg.in/src-d/go-git.v4 v4.13.1
@@ -115,15 +118,21 @@ require (
 	github.com/aymanbagabas/go-osc52/v2 v2.0.1 // indirect
 	github.com/bits-and-blooms/bitset v1.3.1 // indirect
 	github.com/bits-and-blooms/bloom/v3 v3.3.1 // indirect
+	github.com/bytedance/sonic v1.8.0 // indirect
 	github.com/charmbracelet/glamour v0.6.0 // indirect
 	github.com/cheggaaa/pb/v3 v3.1.2 // indirect
+	github.com/chenzhuoyu/base64x v0.0.0-20221115062448-fe3a3abad311 // indirect
 	github.com/cloudflare/cfssl v1.6.4 // indirect
 	github.com/cloudflare/circl v1.1.0 // indirect
 	github.com/dlclark/regexp2 v1.8.1 // indirect
 	github.com/fatih/color v1.14.1 // indirect
+	github.com/free5gc/util v1.0.5-0.20230511064842-2e120956883b // indirect
 	github.com/geoffgarside/ber v1.1.0 // indirect
+	github.com/gin-contrib/sse v0.1.0 // indirect
+	github.com/gin-gonic/gin v1.9.0 // indirect
 	github.com/go-asn1-ber/asn1-ber v1.5.4 // indirect
 	github.com/go-sourcemap/sourcemap v2.1.3+incompatible // indirect
+	github.com/goccy/go-json v0.10.0 // indirect
 	github.com/golang-sql/civil v0.0.0-20190719163853-cb61b32ac6fe // indirect
 	github.com/golang-sql/sqlexp v0.1.0 // indirect
 	github.com/google/certificate-transparency-go v1.1.4 // indirect
@@ -147,6 +156,7 @@ require (
 	github.com/mitchellh/go-homedir v1.1.0 // indirect
 	github.com/muesli/reflow v0.3.0 // indirect
 	github.com/muesli/termenv v0.15.1 // indirect
+	github.com/pelletier/go-toml/v2 v2.0.6 // indirect
 	github.com/pjbgf/sha1cd v0.3.0 // indirect
 	github.com/pkg/browser v0.0.0-20210911075715-681adbf594b8 // indirect
 	github.com/projectdiscovery/asnmap v1.0.3 // indirect
@@ -164,10 +174,14 @@ require (
 	github.com/tidwall/pretty v1.2.1 // indirect
 	github.com/tidwall/rtred v0.1.2 // indirect
 	github.com/tidwall/tinyqueue v0.1.1 // indirect
+	github.com/tim-ywliu/nested-logrus-formatter v1.3.2 // indirect
+	github.com/twitchyliquid64/golang-asm v0.15.1 // indirect
+	github.com/ugorji/go/codec v1.2.9 // indirect
 	github.com/ysmood/fetchup v0.2.2 // indirect
 	github.com/yuin/goldmark v1.5.4 // indirect
 	github.com/yuin/goldmark-emoji v1.0.1 // indirect
 	go.uber.org/atomic v1.10.0 // indirect
+	golang.org/x/arch v0.1.0 // indirect
 	gopkg.in/djherbis/times.v1 v1.3.0 // indirect
 	mellium.im/sasl v0.3.1 // indirect
 )

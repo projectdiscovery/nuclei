@@ -33,7 +33,7 @@ class Client {
     // Credentials cannot be blank. guest or anonymous credentials
     // can be used by providing empty password.
     ListShares(host, port, user, password) {
-        return [string], error;
+        return [] string, error;
     };
 };
 

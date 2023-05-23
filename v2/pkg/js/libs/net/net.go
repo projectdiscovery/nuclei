@@ -14,12 +14,16 @@ var dialer = &net.Dialer{
 }
 
 // Open opens a new connection to the address with a timeout.
-func Open(protocol, address string) (net.Conn, error) {
-	return dialer.Dial(protocol, address)
+func Open(protocol, address string) (*Conn, error) {
+	conn, err := dialer.Dial(protocol, address)
+	if err != nil {
+		return nil, err
+	}
+	return &Conn{conn: conn}, nil
 }
 
 // Open opens a new connection to the address with a timeout.
-func OpenTLS(protocol, address string) (net.Conn, error) {
+func OpenTLS(protocol, address string) (*Conn, error) {
 	config := &tls.Config{InsecureSkipVerify: true}
 	host, _, _ := net.SplitHostPort(address)
 	if host != "" {
@@ -27,49 +31,59 @@ func OpenTLS(protocol, address string) (net.Conn, error) {
 		c.ServerName = host
 		config = c
 	}
-	return tls.DialWithDialer(dialer, protocol, address, config)
+	conn, err := tls.DialWithDialer(dialer, protocol, address, config)
+	if err != nil {
+		return nil, err
+	}
+	return &Conn{conn: conn}, nil
+}
+
+// Conn is a connection to a remote host.
+type Conn struct {
+	conn net.Conn
 }
 
 // Close closes the connection.
-func Close(conn net.Conn) error {
-	err := conn.Close()
+func (c *Conn) Close() error {
+	err := c.conn.Close()
 	return err
 }
 
 // Send sends data to the connection with a timeout.
-func Send(conn net.Conn, data []byte, timeout time.Duration) error {
+func (c *Conn) Send(data []byte, timeout time.Duration) error {
 	if timeout == 0 {
 		timeout = 5 * time.Second
 	}
-	err := conn.SetWriteDeadline(time.Now().Add(timeout))
+	err := c.conn.SetWriteDeadline(time.Now().Add(timeout))
 	if err != nil {
 		return err
 	}
-	length, err := conn.Write(data)
+	length, err := c.conn.Write(data)
 	if err != nil {
 		return err
 	}
 	if length < len(data) {
-		return fmt.Errorf(
-			"failed to write all bytes (%d bytes written, %d bytes expected)",
-			length,
-			len(data),
-		)
+		return fmt.Errorf("failed to write all bytes (%d bytes written, %d bytes expected)", length, len(data))
 	}
 	return nil
 }
 
 // Recv receives data from the connection with a timeout.
-func Recv(conn net.Conn, timeout time.Duration) ([]byte, error) {
+func (c *Conn) Recv(timeout time.Duration, N int) ([]byte, error) {
 	if timeout == 0 {
 		timeout = 5 * time.Second
 	}
-	response := make([]byte, 4096)
-	err := conn.SetReadDeadline(time.Now().Add(timeout))
+	var response []byte
+	if N > 0 {
+		response = make([]byte, N)
+	} else {
+		response = make([]byte, 4096)
+	}
+	err := c.conn.SetReadDeadline(time.Now().Add(timeout))
 	if err != nil {
 		return []byte{}, err
 	}
-	length, err := conn.Read(response)
+	length, err := c.conn.Read(response)
 	if err != nil {
 		var netErr net.Error
 		if (errors.As(err, &netErr) && netErr.Timeout()) ||
@@ -82,13 +96,13 @@ func Recv(conn net.Conn, timeout time.Duration) ([]byte, error) {
 }
 
 // SendRecv sends data to the connection and receives data from the connection with a timeout.
-func SendRecv(conn net.Conn, data []byte, timeout time.Duration) ([]byte, error) {
+func (c *Conn) SendRecv(data []byte, timeout time.Duration) ([]byte, error) {
 	if timeout == 0 {
 		timeout = 5 * time.Second
 	}
-	err := Send(conn, data, timeout)
+	err := c.Send(data, timeout)
 	if err != nil {
 		return []byte{}, err
 	}
-	return Recv(conn, timeout)
+	return c.Recv(timeout, 0)
 }

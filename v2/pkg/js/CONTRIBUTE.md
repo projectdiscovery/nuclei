@@ -121,7 +121,7 @@ if (dbs) {
 Which results in the following in nuclei 
 
 ```bash
-[postgres-brute] [javascript] [high] 127.0.0.1 [map[output:[{"Database":"information_schema"},{"Database":"example"}]]]
+[mysql-brute] [javascript] [high] 127.0.0.1 [map[output:[{"Database":"information_schema"},{"Database":"example"}]]]
 ```
 
 **SMBGhost Exploit**

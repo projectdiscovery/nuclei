@@ -34,3 +34,7 @@ to be used from nuclei scanner.
 |--------|-------------|
 | IsRDP | `bool` |
 | OS | `string` |
+
+
+
+

@@ -1,6 +1,8 @@
 package structs
 
 import (
+	_ "embed"
+
 	"github.com/dop251/goja"
 	"github.com/projectdiscovery/gostruct"
 )
@@ -10,7 +12,12 @@ type Module struct{}
 
 // Enable enables the structs module for the goja runtime.
 func (m *Module) Enable(runtime *goja.Runtime) {
-	// TODO: Expose in browser
+	runtime.Set("structs", map[string]interface{}{
+		"pack": structsPackJavascript,
+		"unpack": func(format string, msg []byte) ([]interface{}, error) {
+			return StructsUnpack(format, msg)
+		},
+	})
 }
 
 // StructsUnpack the byte slice (presumably packed by Pack(format, msg)) according to the given format.
@@ -23,8 +30,34 @@ func StructsUnpack(format string, msg []byte) ([]interface{}, error) {
 
 // StructsPack returns a byte slice containing the values of msg slice packed according to the given format.
 // The items of msg slice must match the values required by the format exactly.
-func StructsPack(format string, msg []interface{}) ([]byte, error) {
-	return gostruct.Pack(buildFormatSliceFromStringFormat(format), msg)
+func StructsPack(formatStr string, msg []interface{}) ([]byte, error) {
+	format := buildFormatSliceFromStringFormat(formatStr)
+	return gostruct.Pack(format, msg)
+}
+
+func structsPackJavascript(formatStr string, msg interface{}) ([]byte, error) {
+	var args []interface{}
+	switch v := msg.(type) {
+	case []interface{}:
+		args = v
+	default:
+		args = []interface{}{v}
+	}
+	format := buildFormatSliceFromStringFormat(formatStr)
+
+	for i, f := range format {
+		if i >= len(args) {
+			break
+		}
+		switch f {
+		case "h", "H", "i", "I", "l", "L", "q", "Q", "b", "B":
+			switch v := args[i].(type) {
+			case int64:
+				args[i] = int(v)
+			}
+		}
+	}
+	return gostruct.Pack(format, args)
 }
 
 // StructsCalcSize returns the number of bytes needed to pack the values according to the given format.

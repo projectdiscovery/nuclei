@@ -69,3 +69,7 @@ to be used from nuclei scanner.
 | MACsServerClient | `[]string` |
 | Reserved | `uint32` |
 | ServerHostKeyAlgos | `[]string` |
+
+
+
+

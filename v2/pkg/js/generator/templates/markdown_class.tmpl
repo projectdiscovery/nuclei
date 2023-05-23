@@ -48,3 +48,24 @@ to be used from nuclei scanner.
 {{- end }}
 {{- end }}
 {{- end }}
+
+{{ if .PackageVarsValues }}
+
+## Exported Variables Values
+
+| Name | Value |
+|--------|-------------|
+{{- range $varName, $var := .PackageVarsValues }}
+| {{$varName}} | `{{ $var }}` |
+{{- end }}
+{{- end}}
+
+{{ if .PackageInterfaces }}
+## Exported Interfaces
+
+{{- range $typeName, $doc := .PackageInterfaces }}
+### {{$typeName}}
+
+{{ uncomment $doc }}
+{{- end }}
+{{- end }}

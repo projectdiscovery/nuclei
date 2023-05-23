@@ -27,3 +27,7 @@ to be used from nuclei scanner.
 |--------|-------------|
 | Banner | `string` |
 | IsTelnet | `bool` |
+
+
+
+

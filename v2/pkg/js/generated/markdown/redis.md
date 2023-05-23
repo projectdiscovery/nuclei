@@ -19,3 +19,7 @@ GetServerInfoAuth |  GetServerInfoAuth returns the server info for a redis serve
 IsAuthenticated |  IsAuthenticated checks if the redis server requires authentication | `host`, `port` | `bool`, `error` |
 
 
+
+
+
+

@@ -15,18 +15,16 @@ func init() {
 	module.Set(
 		gojs.Objects{
 			// Functions
-			"Close":    original_net.Close,
-			"Open":     original_net.Open,
-			"OpenTLS":  original_net.OpenTLS,
-			"Recv":     original_net.Recv,
-			"Send":     original_net.Send,
-			"SendRecv": original_net.SendRecv,
+			"Open":    original_net.Open,
+			"OpenTLS": original_net.OpenTLS,
 
 			// Var and consts
 
 			// Types (value type)
+			"Conn": func() original_net.Conn { return original_net.Conn{} },
 
 			// Types (pointer type)
+			"NewConn": func() *original_net.Conn { return &original_net.Conn{} },
 		},
 	).Register()
 }

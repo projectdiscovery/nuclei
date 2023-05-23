@@ -1,42 +1,170 @@
 package structs
 
 import (
+	"encoding/hex"
+	"fmt"
 	"testing"
 
 	"github.com/dop251/goja"
+	"github.com/dop251/goja_nodejs/console"
+	"github.com/dop251/goja_nodejs/require"
+	_ "github.com/projectdiscovery/nuclei/v2/pkg/js/generated/go/libnet"
+	net "github.com/projectdiscovery/nuclei/v2/pkg/js/generated/go/libnet"
+	"github.com/projectdiscovery/nuclei/v2/pkg/js/scripts/buffer"
 )
 
 func TestStructsJSPack(t *testing.T) {
+	registry := new(require.Registry)
+	runtime := goja.New()
+	registry.Enable(runtime)
+	console.Enable(runtime)
+	runtime.Set("print", fmt.Println)
+	bufferModule := &buffer.Module{}
+	bufferModule.Enable(runtime)
+	module := &Module{}
+	module.Enable(runtime)
+	net.Enable(runtime)
+
 	cases := []struct {
 		f    string
-		a    []interface{}
 		want []byte
 		e    bool
 	}{
-		//	{
-		//		"structs.pack('??', [true, false]);", nil, []byte{1, 0}, false,
-		//	},
-		//		{
-		//			"structs.pack('hhh', [0, 5, -5]);", nil, []byte{0, 0, 5, 0, 251, 255}, false,
-		//		},
-		//	{
-		//		"structs.pack('1s2s10s', ['a', 'bb', '1234567890']);", nil, []byte{97, 98, 98, 49, 50, 51, 52, 53, 54, 55, 56, 57, 48}, false,
-		//	},
+		{
+			"structs.pack('??', [true, false]);", []byte{1, 0}, false,
+		},
+		{
+			"structs.pack('hhh', [0, 5, -5]);", []byte{0, 0, 5, 0, 251, 255}, false,
+		},
+		{
+			"structs.pack('1s2s10s', ['a', 'bb', '1234567890']);", []byte{97, 98, 98, 49, 50, 51, 52, 53, 54, 55, 56, 57, 48}, false,
+		},
+		{
+			`let header = bytes.Buffer();
+
+			// Create the SMB packet first
+			header.append(structs.pack("B", 254));  // magic
+			header.append("SMB");
+			header.append(structs.pack("H", 64)); // header size
+			header.append(structs.pack("H", 0)); // credit charge
+			header.append(structs.pack("H", 0)); // channel sequence 
+			header.append(structs.pack("H", 0)); // reserved 
+			header.append(structs.pack("H", 0)); // negotiate protocol command 
+			header.append(structs.pack("H", 31)); // credits requested
+			header.append(structs.pack("I", 0)); // flags
+			header.append(structs.pack("I", 0)); // chain offset
+			header.append(structs.pack("Q", 0)); // message id
+			header.append(structs.pack("I", 0)); // process id
+			header.append(structs.pack("I", 0)); // tree id
+			header.append(structs.pack("Q", 0)); // session id
+			header.append(structs.pack("QQ", [0, 0]));	// signature
+						
+			// Create negotiation packet
+			let negotiation = bytes.Buffer();
+			negotiation.append(structs.pack("H", 0x24)); // struct size
+			negotiation.append(structs.pack("H", 8)); // amount of dialects
+			negotiation.append(structs.pack("H", 1)); // enable signing
+			negotiation.append(structs.pack("H", 0)); // reserved
+			negotiation.append(structs.pack("I", 0x7f)); // capabilities
+			negotiation.append(structs.pack("QQ", [(0 >> 64) & 0xffffffffffffffff, 0 & 0xffffffffffffffff])); // client guid
+			negotiation.append(structs.pack("I", 0x78)); // negotiation offset
+			negotiation.append(structs.pack("H", 2)); // negotiation context count
+			negotiation.append(structs.pack("H", 0)); // reserved
+			negotiation.append(structs.pack("H", 0x0202)); // smb 2.0.2 dialect
+			negotiation.append(structs.pack("H", 0x0210)); // smb 2.1.0 dialect
+			negotiation.append(structs.pack("H", 0x0222)); // smb 2.2.2 dialect
+			negotiation.append(structs.pack("H", 0x0224)); // smb 2.2.4 dialect
+			negotiation.append(structs.pack("H", 0x0300)); // smb 3.0.0 dialect
+			negotiation.append(structs.pack("H", 0x0302)); // smb 3.0.2 dialect
+			negotiation.append(structs.pack("H", 0x0310)); // smb 3.1.0 dialect
+			negotiation.append(structs.pack("H", 0x0311)); // smb 3.1.1 dialect
+			negotiation.append(structs.pack("I", 0)); // padding
+			negotiation.append(structs.pack("H", 1)); // negotiation context type
+			negotiation.append(structs.pack("H", 38)); // negotiation data length
+			negotiation.append(structs.pack("I", 0)); // reserved
+			negotiation.append(structs.pack("H", 1)); // negotiation hash algorithm count
+			negotiation.append(structs.pack("H", 32)); // negotiation salt length
+			negotiation.append(structs.pack("H", 1)); // negotiation hash algorithm SHA512
+			negotiation.append(structs.pack("H", 1)); // negotiation hash algorithm SHA512
+			negotiation.append(structs.pack("QQ", [(0 >> 64) & 0xffffffffffffffff, 0 & 0xffffffffffffffff])); // salt part 1
+			negotiation.append(structs.pack("QQ", [(0 >> 64) & 0xffffffffffffffff, 0 & 0xffffffffffffffff])); // salt part 2
+			negotiation.append(structs.pack("H", 3)); // unknown??
+			negotiation.append(structs.pack("H", 10)); // data length unknown??
+			negotiation.append(structs.pack("I", 0)); // reserved unknown??
+			negotiation.append("\x01\x00\x00\x00\x01\x00\x00\x00\x01\x00\x00\x00\x00\x00\x00\x00"); // unknown
+						
+			let packet = bytes.Buffer();
+			packet.append(header.bytes());
+			packet.append(negotiation.bytes());
+						
+			let netbios = bytes.Buffer();
+			netbios.append(structs.pack("H", 0)); // NetBIOS sessions message (should be 1 byte but whatever)
+			netbios.append(structs.pack("B", 0)); // just a pad to make it 3 bytes
+			netbios.append(structs.pack("B", packet.len())); // NetBIOS length (should be 3 bytes but whatever, as long as the packet isn't 0xff+ bytes)
+						
+			let final = bytes.Buffer();
+			final.append(netbios.bytes());
+			final.append(packet.bytes());
+			
+			console.log("Netbios", netbios.hex(), netbios.len());
+			console.log("Header", header.hex(), header.len());
+			console.log("Negotation", negotiation.hex(), negotiation.len());
+			console.log("Packet", final.hex(), final.len());
+			
+			console.log("Dumping hexdump of final packet");
+			print(final.hexdump());
+
+			let c = require("nuclei/libnet");
+			let conn = c.Open("tcp", "118.68.186.114:445");
+			conn.Send(final.bytes(), 0);
+			let bytesRecv = conn.Recv(0, 4);
+			console.log("recv Bytes", bytesRecv);
+			let size = structs.unpack("I", bytesRecv)[0];
+			console.log("Size", size);
+			let data = conn.Recv(0, size);
+			console.log("Data", data);
+			
+			// TODO: Add hexdump helpers
+			
+			version = structs.unpack("H", data.slice(68,70))[0]
+			context = structs.unpack("H", data.slice(70,72))[0]
+			
+			console.log("Version", version);
+			console.log("Context", context);
+			
+			if (version != 0x0311){
+				console.log("SMB version", version, "was found which is not vulnerable!");
+			} else if (context != 2) {
+				console.log("Server answered with context", context, "which indicates that the target may not have SMB compression enabled and is therefore not vulnerable!");
+			} else {
+				console.log("SMB version", version, "with context", context, "was found which indicates SMBv3.1.1 is being used and SMB compression is enabled, therefore being vulnerable to CVE-2020-0796!");
+			}
+			conn.Close();
+			`,
+			[]byte{},
+			false,
+		},
 	}
 	for _, tt := range cases {
-		runtime := goja.New()
-		module := &Module{}
-		module.Enable(runtime)
-
 		value, err := runtime.RunString(tt.f)
 		if err != nil {
 			t.Errorf("StructsJSPack() error f = %v = %v", tt.f, err)
 			continue
 		}
-		got := value.Export().([]byte)
+		var got []byte
+		switch v := value.Export().(type) {
+		case []byte:
+			got = v
+		case string:
+			fmt.Printf("Got %+v\n", v)
+			got = []byte(v)
+		}
+		hexStr := hex.EncodeToString(got)
+		fmt.Printf("%v\n", hexStr)
 		if len(got) != len(tt.want) {
 			t.Errorf("StructsJSPack() = %v, want %v", got, tt.want)
 		}
+		fmt.Printf("f=%v want=%v got=%v\n", tt.f, tt.want, got)
 		if got[0] != tt.want[0] {
 			t.Errorf("StructsJSPack() = %v, want %v", got, tt.want)
 		}

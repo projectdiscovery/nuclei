@@ -33,3 +33,7 @@ to be used from nuclei scanner.
 | DomainControllerFunctionality | `string` |
 | DomainFunctionality | `string` |
 | ForestFunctionality | `string` |
+
+
+
+
