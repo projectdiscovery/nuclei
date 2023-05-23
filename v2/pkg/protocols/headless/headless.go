@@ -9,6 +9,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/generators"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/headless/engine"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/http/fuzz"
 	fileutil "github.com/projectdiscovery/utils/file"
 )
 
@@ -54,6 +55,9 @@ type Request struct {
 	// cache any variables that may be needed for operation.
 	options   *protocols.ExecuterOptions
 	generator *generators.PayloadGenerator
+
+	// Fuzzing describes schema to fuzz headless requests
+	Fuzzing []*fuzz.Rule `yaml:"fuzzing,omitempty" json:"fuzzing,omitempty" jsonschema:"title=fuzzin rules for http fuzzing,description=Fuzzing describes rule schema to fuzz headless requests"`
 }
 
 // RequestPartDefinitions contains a mapping of request part definitions and their
