@@ -203,6 +203,9 @@ func parseECDSAPrivateKey(privateKeyData []byte) (*ecdsa.PrivateKey, error) {
 
 func parseECDSAPublicKey(publicKeyData []byte) (*ecdsa.PublicKey, error) {
 	blockPub, _ := pem.Decode(publicKeyData)
+	if blockPub == nil {
+		return nil, errors.New("failed to parse PEM block containing the public key")
+	}
 	genericPublicKey, err := x509.ParsePKIXPublicKey(blockPub.Bytes)
 	if err != nil {
 		return nil, err

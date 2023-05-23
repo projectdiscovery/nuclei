@@ -51,18 +51,26 @@ func main() {
 
 	// sign the templates if requested - only glob syntax is supported
 	if options.SignTemplates {
-		privkey := os.Getenv("NUCLEI_SIGNATURE_PRIVATE_KEY")
-		if privkey == "" {
-			gologger.Fatal().Msg("NUCLEI_SIGNATURE_PRIVATE_KEY not defined")
+		privKey := os.Getenv(signer.PrivateKeyEnvVarName)
+		if privKey == "" {
+			gologger.Fatal().Msgf("private key '%s' not defined ", signer.PrivateKeyEnvVarName)
 		}
-		pubkey := os.Getenv("NUCLEI_SIGNATURE_PUBLIC_KEY")
-		if pubkey == "" {
-			gologger.Fatal().Msg("NUCLEI_SIGNATURE_PUBLIC_KEY not defined")
+		pubKey := os.Getenv(signer.PublicKeyEnvVarName)
+		if pubKey == "" {
+			gologger.Fatal().Msgf("public key '%s' not defined ", signer.PublicKeyEnvVarName)
 		}
 		signerOptions := &signer.Options{
-			PrivateKeyName: privkey,
-			PublicKeyName:  pubkey,
-			Algorithm:      signer.RSA,
+			Algorithm: signer.RSA,
+		}
+		if fileutil.FileExists(privKey) {
+			signerOptions.PrivateKeyName = privKey
+		} else {
+			signerOptions.PrivateKeyData = []byte(privKey)
+		}
+		if fileutil.FileExists(pubKey) {
+			signerOptions.PublicKeyName = pubKey
+		} else {
+			signerOptions.PublicKeyData = []byte(pubKey)
 		}
 		sign, err := signer.New(signerOptions)
 		if err != nil {

@@ -4,6 +4,12 @@ import (
 	"errors"
 )
 
+const (
+	PrivateKeyEnvVarName = "NUCLEI_SIGNATURE_PRIVATE_KEY"
+	PublicKeyEnvVarName  = "NUCLEI_SIGNATURE_PUBLIC_KEY"
+	AlgorithmEnvVarName  = "NUCLEI_SIGNATURE_ALGORITHM"
+)
+
 var DefaultVerifiers []*Signer
 
 func init() {
