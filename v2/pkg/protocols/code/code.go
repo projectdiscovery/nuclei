@@ -3,6 +3,7 @@ package code
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/pkg/errors"
@@ -132,7 +133,8 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 	if err != nil {
 		return err
 	}
-	dataOutputString := string(dataOutput)
+
+	dataOutputString := fmtStdout(string(dataOutput))
 
 	data := make(map[string]interface{})
 
@@ -208,4 +210,8 @@ func (request *Request) MakeResultEventItem(wrapped *output.InternalWrappedEvent
 		MatcherStatus:    true,
 	}
 	return data
+}
+
+func fmtStdout(data string) string {
+	return strings.Trim(data, " \n\r\t")
 }
