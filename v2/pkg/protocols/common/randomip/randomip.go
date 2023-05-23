@@ -18,11 +18,12 @@ func GetRandomIPWithCidr(cidrs ...string) (net.IP, error) {
 		return nil, errors.Errorf("must specify at least one cidr")
 	}
 
-	randN, err := randutil.IntN(len(cidrs))
+	randIdx, err := randutil.IntN(len(cidrs))
 	if err != nil {
 		return nil, err
 	}
-	cidr := cidrs[randN]
+
+	cidr := cidrs[randIdx]
 
 	if !iputil.IsCIDR(cidr) {
 		return nil, errors.Errorf("%s is not a valid cidr", cidr)
