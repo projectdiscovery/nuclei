@@ -638,7 +638,7 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 	if !request.Unsafe && resp != nil && generatedRequest.request != nil && resp.Request != nil && !request.Race {
 		bodyBytes, _ := generatedRequest.request.BodyBytes()
 		resp.Request.Body = io.NopCloser(bytes.NewReader(bodyBytes))
-		command, _ := http2curl.GetCurlCommand(resp.Request)
+		command, err := http2curl.GetCurlCommand(resp.Request)
 		if err == nil && command != nil {
 			curlCommand = command.String()
 		}

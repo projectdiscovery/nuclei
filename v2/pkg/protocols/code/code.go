@@ -157,8 +157,7 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 
 	// todo #1: interactsh async callback should be eliminated as it lead to ton of code duplication
 	// todo #2: various structs InternalWrappedEvent, InternalEvent should be unwrapped and merged into minimal callbacks and a unique struct (eg. event?)
-	var event *output.InternalWrappedEvent
-	event = eventcreator.CreateEvent(request, data, request.options.Options.Debug || request.options.Options.DebugResponse)
+	event := eventcreator.CreateEvent(request, data, request.options.Options.Debug || request.options.Options.DebugResponse)
 	if request.options.Interactsh != nil {
 		event.UsesInteractsh = true
 		request.options.Interactsh.RequestEvent(interactshURLs, &interactsh.RequestData{
