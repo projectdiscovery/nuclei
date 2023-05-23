@@ -7,16 +7,16 @@ import (
 )
 
 const (
-	TemplateConfigFileName           = ".templates-config.json"
-	NucleiTemplatesDirName           = "nuclei-templates"
-	OfficialNucleiTeamplatesRepoName = "nuclei-templates"
-	NucleiIgnoreFileName             = ".nuclei-ignore"
-	NucleiTemplatesCheckSumFileName  = ".checksum"
-	NewTemplateAdditionsFileName     = ".new-additions"
-	CLIConifgFileName                = "config.yaml"
-	ReportingConfigFilename          = "reporting-config.yaml"
+	TemplateConfigFileName          = ".templates-config.json"
+	NucleiTemplatesDirName          = "nuclei-templates"
+	OfficialNucleiTemplatesRepoName = "nuclei-templates"
+	NucleiIgnoreFileName            = ".nuclei-ignore"
+	NucleiTemplatesCheckSumFileName = ".checksum"
+	NewTemplateAdditionsFileName    = ".new-additions"
+	CLIConfigFileName               = "config.yaml"
+	ReportingConfigFilename         = "reporting-config.yaml"
 	// Version is the current version of nuclei
-	Version = `v2.9.3`
+	Version = `v2.9.5-dev`
 
 	// Directory Names of custom templates
 	CustomS3TemplatesDirName     = "s3"
@@ -25,8 +25,7 @@ const (
 	CustomGitLabTemplatesDirName = "gitlab"
 )
 
-// IsOutdatedVersion compares two versions and returns true
-// if current version is outdated
+// IsOutdatedVersion compares two versions and returns true if the current version is outdated
 func IsOutdatedVersion(current, latest string) bool {
 	if latest == "" {
 		// if pdtm api call failed it's assumed that current version is outdated
@@ -44,6 +43,7 @@ func IsOutdatedVersion(current, latest string) bool {
 	return newVer.GreaterThan(currentVer)
 }
 
+// trimDevIfExists trims `-dev` suffix from version string if it exists
 func trimDevIfExists(version string) string {
 	if strings.HasSuffix(version, "-dev") {
 		return strings.TrimSuffix(version, "-dev")
