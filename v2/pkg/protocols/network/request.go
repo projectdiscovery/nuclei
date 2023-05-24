@@ -138,7 +138,6 @@ func (request *Request) executeRequestWithPayloads(variables map[string]interfac
 
 	inputEvents := make(map[string]interface{})
 
-input_loop:
 	for _, input := range request.Inputs {
 		data := []byte(input.Data)
 
@@ -199,26 +198,6 @@ input_loop:
 					payloads[k] = v
 				}
 			}
-		}
-
-		// global matchers can't be used with progressive steps as they are monolithic with output logic
-		// inline matchers
-		for _, match := range input.Match {
-			result, err := expressions.Eval(match, interimValues)
-			if err != nil {
-				return errors.Wrap(err, "could not evaluate inline matcher")
-			}
-			if v, ok := result.(bool); !ok || !v {
-				break input_loop
-			}
-		}
-		// inline extractors
-		for name, extract := range input.Extract {
-			result, err := expressions.Eval(extract, interimValues)
-			if err != nil {
-				return errors.Wrap(err, "could not evaluate inline extractor")
-			}
-			interimValues[name] = result
 		}
 	}
 
