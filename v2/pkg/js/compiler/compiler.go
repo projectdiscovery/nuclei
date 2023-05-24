@@ -10,8 +10,8 @@ import (
 	jsoniter "github.com/json-iterator/go"
 
 	"github.com/projectdiscovery/gologger"
+	_ "github.com/projectdiscovery/nuclei/v2/pkg/js/generated/go/libikev2"
 	_ "github.com/projectdiscovery/nuclei/v2/pkg/js/generated/go/libkerberos"
-	_ "github.com/projectdiscovery/nuclei/v2/pkg/js/generated/go/liblayers"
 	_ "github.com/projectdiscovery/nuclei/v2/pkg/js/generated/go/libldap"
 	_ "github.com/projectdiscovery/nuclei/v2/pkg/js/generated/go/libmssql"
 	_ "github.com/projectdiscovery/nuclei/v2/pkg/js/generated/go/libmysql"

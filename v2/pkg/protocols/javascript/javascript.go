@@ -23,6 +23,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/expressions"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/generators"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/helpers/eventcreator"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/interactsh"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/utils/vardump"
 	protocolutils "github.com/projectdiscovery/nuclei/v2/pkg/protocols/utils"
 	templateTypes "github.com/projectdiscovery/nuclei/v2/pkg/templates/types"
@@ -235,7 +236,17 @@ func (request *Request) executeRequestWithPayloads(hostPort string, input *conte
 		return err
 	}
 
-	results, err := request.compiler.ExecuteWithOptions(request.Code, argsCopy, &compiler.ExecuteOptions{
+	var requestData = []byte(request.Code)
+	var interactshURLs []string
+	if request.options.Interactsh != nil {
+		var transformedData string
+		transformedData, interactshURLs = request.options.Interactsh.Replace(string(request.Code), []string{})
+		requestData = []byte(transformedData)
+	}
+
+	gologger.Info().Msgf("Data: %s\n", string(requestData))
+
+	results, err := request.compiler.ExecuteWithOptions(string(requestData), argsCopy, &compiler.ExecuteOptions{
 		Pool:          false,
 		CaptureOutput: request.Output,
 	})
@@ -295,10 +306,29 @@ func (request *Request) executeRequestWithPayloads(hostPort string, input *conte
 			request.options.Output.WriteStoreDebugData(input.MetaInput.Input, request.options.TemplateID, request.Type().String(), msg)
 		}
 	}
+	if request.options.Interactsh != nil {
+		request.options.Interactsh.MakePlaceholders(interactshURLs, data)
+	}
 
-	event := eventcreator.CreateEventWithAdditionalOptions(request, data, requestOptions.Options.Debug || requestOptions.Options.DebugResponse, func(internalWrappedEvent *output.InternalWrappedEvent) {
-		internalWrappedEvent.OperatorsResult.PayloadValues = payload
-	})
+	var event *output.InternalWrappedEvent
+	if len(interactshURLs) == 0 {
+		event = eventcreator.CreateEventWithAdditionalOptions(request, generators.MergeMaps(data, payloadValues), request.options.Options.Debug || request.options.Options.DebugResponse, func(wrappedEvent *output.InternalWrappedEvent) {
+			wrappedEvent.OperatorsResult.PayloadValues = payload
+		})
+		callback(event)
+	} else if request.options.Interactsh != nil {
+		event = &output.InternalWrappedEvent{InternalEvent: data}
+		request.options.Interactsh.RequestEvent(interactshURLs, &interactsh.RequestData{
+			MakeResultFunc: request.MakeResultEvent,
+			Event:          event,
+			Operators:      request.CompiledOperators,
+			MatchFunc:      request.Match,
+			ExtractFunc:    request.Extract,
+		})
+	}
+	if len(interactshURLs) > 0 {
+		event.UsesInteractsh = true
+	}
 	callback(event)
 	return nil
 }

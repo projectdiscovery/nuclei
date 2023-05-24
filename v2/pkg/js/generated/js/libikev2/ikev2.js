@@ -1,4 +1,4 @@
-// liblayers implements bindings for layers protocol in javascript
+// libikev2 implements bindings for ikev2 protocol in javascript
 // to be used from nuclei scanner.
 
 // IKEMessage is the IKEv2 message

@@ -98,6 +98,8 @@ func (c *Client) poll() error {
 
 	err = interactsh.StartPolling(c.pollDuration, func(interaction *server.Interaction) {
 		request, err := c.requests.Get(interaction.UniqueID)
+		gologger.Info().Msgf("Request, err: %v %v\n", request, err)
+
 		if errors.Is(err, gcache.KeyNotFoundError) || request == nil {
 			// If we don't have any request for this ID, add it to temporary
 			// lru cache, so we can correlate when we get an add request.
@@ -153,7 +155,6 @@ func (c *Client) processInteractionForRequest(interaction *server.Interaction, d
 	data.Event.Unlock()
 
 	result, matched := data.Operators.Execute(data.Event.InternalEvent, data.MatchFunc, data.ExtractFunc, c.options.Debug || c.options.DebugRequest || c.options.DebugResponse)
-
 	// if we don't match, return
 	if !matched || result == nil {
 		return false
@@ -297,6 +298,7 @@ type RequestData struct {
 
 // RequestEvent is the event for a network request sent by nuclei.
 func (c *Client) RequestEvent(interactshURLs []string, data *RequestData) {
+	fmt.Printf("interact: %v data: %+v\n", interactshURLs, data)
 	for _, interactshURL := range interactshURLs {
 		id := strings.TrimRight(strings.TrimSuffix(interactshURL, c.getHostname()), ".")
 
