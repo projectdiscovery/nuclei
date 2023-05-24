@@ -10,6 +10,7 @@ import (
 
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/contextargs"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/executer"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/offlinehttp"
 	"github.com/projectdiscovery/nuclei/v2/pkg/templates/cache"
@@ -232,6 +233,10 @@ func ParseTemplateFromReader(reader io.Reader, preprocessor Preprocessor, option
 	if template.Variables.Len() > 0 {
 		options.Variables = template.Variables
 	}
+
+	// create empty context args for template scope
+	options.TemplateCtx = contextargs.New()
+	options.ProtocolType = template.Type()
 
 	// If no requests, and it is also not a workflow, return error.
 	if template.Requests() == 0 {

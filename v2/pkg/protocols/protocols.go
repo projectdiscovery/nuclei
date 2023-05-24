@@ -2,6 +2,7 @@ package protocols
 
 import (
 	"github.com/projectdiscovery/ratelimit"
+	stringsutil "github.com/projectdiscovery/utils/strings"
 
 	"github.com/logrusorgru/aurora"
 
@@ -83,6 +84,41 @@ type ExecuterOptions struct {
 	Colorizer      aurora.Aurora
 	WorkflowLoader model.WorkflowLoader
 	ResumeCfg      *types.ResumeCfg
+	// TemplateContext (contains all variables that are templatescoped i.e multi protocol)
+	// only used in case of multi protocol templates
+	TemplateCtx *contextargs.Context
+	// ProtocolType is the type of the template
+	ProtocolType templateTypes.ProtocolType
+}
+
+// AddTemplateVars adds vars to template context with optional prefix format is 'prefix_varname'
+// this method is no-op if template is not multi protocol
+func (e *ExecuterOptions) AddTemplateVars(prefix string, vars map[string]interface{}) {
+	if e.ProtocolType != templateTypes.MultiProtocol {
+		// no-op if not multi protocol template
+		return
+	}
+	for k, v := range vars {
+		if !stringsutil.EqualFoldAny(k, "template-id", "template-info", "template-path") {
+			if prefix != "" {
+				k = prefix + "_" + k
+			}
+			e.TemplateCtx.Set(k, v)
+		}
+	}
+}
+
+// AddTemplateVar adds given var to template context with optional prefix format is 'prefix_varname'
+// this method is no-op if template is not multi protocol
+func (e *ExecuterOptions) AddTemplateVar(prefix, key string, value interface{}) {
+	if e.ProtocolType != templateTypes.MultiProtocol {
+		// no-op if not multi protocol template
+		return
+	}
+	if prefix != "" {
+		key = prefix + "_" + key
+	}
+	e.TemplateCtx.Set(key, value)
 }
 
 // Copy returns a copy of the executeroptions structure

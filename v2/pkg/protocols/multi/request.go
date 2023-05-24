@@ -9,14 +9,10 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/contextargs"
 	"github.com/projectdiscovery/nuclei/v2/pkg/templates/types"
-	stringsutil "github.com/projectdiscovery/utils/strings"
 	"golang.org/x/exp/maps"
 )
 
 var _ protocols.Request = &Request{}
-
-// contains variables that are already exported ex: dnx_xxx,http_xxx
-var ignore_prefixes = []string{}
 
 // refer doc.go for package description , limitations etc
 
@@ -67,6 +63,7 @@ func (r *Request) Requests() int {
 // Compile compiles the protocol request for further execution.
 func (r *Request) Compile(executerOptions *protocols.ExecuterOptions) error {
 	r.options = executerOptions
+	r.options.TemplateCtx = contextargs.New()
 	for _, protocol := range r.Queue {
 		if err := protocol.Compile(executerOptions); err != nil {
 			return err
@@ -112,14 +109,6 @@ func (r *Request) ExecuteWithResults(input *contextargs.Context, dynamicValues, 
 				}
 			}
 		}
-		// export protocol response variables with protocol name as prefix
-		for k, v := range event.InternalEvent {
-			if event.Protocol != types.InvalidProtocol && !stringsutil.EqualFoldAny(event.Protocol.String(), "", "invalid", "multi") {
-				if !stringsutil.HasPrefixAny(k, ignore_prefixes...) {
-					templateContextValues[event.Protocol.String()+"_"+k] = v
-				}
-			}
-		}
 	}
 
 	// template context: contains values extracted using `internal` extractor from previous protocols
@@ -130,7 +119,7 @@ func (r *Request) ExecuteWithResults(input *contextargs.Context, dynamicValues, 
 
 	// execute all protocols in the queue
 	for _, req := range r.Queue {
-		err := req.ExecuteWithResults(input, templateContextValues, previous, multiProtoCallback)
+		err := req.ExecuteWithResults(input, dynamicValues, previous, multiProtoCallback)
 		// if error skip execution of next protocols
 		if err != nil {
 			return err
@@ -170,13 +159,4 @@ func (r *Request) GetCompiledOperators() []*operators.Operators {
 // Type returns the type of the protocol request
 func (r *Request) Type() types.ProtocolType {
 	return types.MultiProtocol
-}
-
-func init() {
-	protos := types.GetSupportedProtocolTypes()
-	for _, proto := range protos {
-		if proto != types.MultiProtocol && proto.String() != "" {
-			ignore_prefixes = append(ignore_prefixes, proto.String()+"_")
-		}
-	}
 }

@@ -187,7 +187,7 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 	payloadValues["Port"] = port
 
 	hostnameVariables := protocolutils.GenerateDNSVariables(hostname)
-	values := generators.MergeMaps(payloadValues, hostnameVariables)
+	values := generators.MergeMaps(payloadValues, hostnameVariables, request.options.TemplateCtx.GetAll())
 	variablesMap := request.options.Variables.Evaluate(values)
 	payloadValues = generators.MergeMaps(variablesMap, payloadValues)
 
@@ -270,6 +270,7 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 		if tag == "" || f.IsZero() {
 			continue
 		}
+		request.options.AddTemplateVar(request.Type().String(), tag, f.Value())
 		data[tag] = f.Value()
 	}
 
@@ -277,7 +278,6 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 	if !structs.IsStruct(response.CertificateResponse) {
 		return errorutil.NewWithTag("ssl", "certificate response cannot be parsed into a struct: %v", response.CertificateResponse)
 	}
-
 
 	responseParsed = structs.New(response.CertificateResponse)
 	for _, f := range responseParsed.Fields() {
@@ -289,9 +289,11 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 		if tag == "" || f.IsZero() {
 			continue
 		}
+		request.options.AddTemplateVar(request.Type().String(), tag, f.Value())
 		data[tag] = f.Value()
 	}
 
+	data = generators.MergeMaps(data, request.options.TemplateCtx.GetAll())
 	event := eventcreator.CreateEvent(request, data, requestOptions.Options.Debug || requestOptions.Options.DebugResponse)
 	if requestOptions.Options.Debug || requestOptions.Options.DebugResponse || requestOptions.Options.StoreResponse {
 		msg := fmt.Sprintf("[%s] Dumped SSL response for %s", requestOptions.TemplateID, input.MetaInput.Input)

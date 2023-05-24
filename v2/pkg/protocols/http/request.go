@@ -717,6 +717,8 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 		finalEvent := make(output.InternalEvent)
 
 		outputEvent := request.responseToDSLMap(response.resp, input.MetaInput.Input, matchedURL, tostring.UnsafeToString(dumpedRequest), tostring.UnsafeToString(response.fullResponse), tostring.UnsafeToString(response.body), tostring.UnsafeToString(response.headers), duration, generatedRequest.meta)
+		request.options.AddTemplateVars(request.Type().String(), outputEvent)
+		outputEvent = generators.MergeMaps(outputEvent, request.options.TemplateCtx.GetAll())
 		if i := strings.LastIndex(hostname, ":"); i != -1 {
 			hostname = hostname[:i]
 		}
