@@ -39,7 +39,7 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, metadata,
 
 	vars := protocolutils.GenerateVariablesWithContextArgs(input, false)
 	payloads := generators.BuildPayloadFromOptions(request.options.Options)
-	values := generators.MergeMaps(vars, metadata, payloads)
+	values := generators.MergeMaps(vars, metadata, payloads, request.options.TemplateCtx.GetAll())
 	variablesMap := request.options.Variables.Evaluate(values)
 	payloads = generators.MergeMaps(variablesMap, payloads)
 
@@ -130,6 +130,8 @@ func (request *Request) executeRequestWithPayloads(inputURL string, payloads map
 	}
 
 	outputEvent := request.responseToDSLMap(responseBody, reqBuilder.String(), inputURL, inputURL, page.DumpHistory())
+	request.options.AddTemplateVars(request.Type().String(), outputEvent)
+	outputEvent = generators.MergeMaps(outputEvent, request.options.TemplateCtx.GetAll())
 	for k, v := range out {
 		outputEvent[k] = v
 	}

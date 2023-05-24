@@ -53,6 +53,7 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, metadata 
 		return errors.Wrap(err, "could not get address from url")
 	}
 	variables := protocolutils.GenerateVariables(address, false, nil)
+	variables = generators.MergeMaps(variables, request.options.TemplateCtx.GetAll())
 	variablesMap := request.options.Variables.Evaluate(variables)
 	variables = generators.MergeMaps(variablesMap, variables)
 
@@ -264,6 +265,8 @@ func (request *Request) executeRequestWithPayloads(variables map[string]interfac
 
 	response := responseBuilder.String()
 	outputEvent := request.responseToDSLMap(reqBuilder.String(), string(final[:n]), response, input, actualAddress)
+	request.options.AddTemplateVars(request.Type().String(), outputEvent)
+	outputEvent = generators.MergeMaps(outputEvent, request.options.TemplateCtx.GetAll())
 	outputEvent["ip"] = request.dialer.GetDialedIP(hostname)
 	if request.options.StopAtFirstMatch {
 		outputEvent["stop-at-first-match"] = true
