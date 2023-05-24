@@ -3,12 +3,14 @@ package contextargs
 import (
 	"net/http/cookiejar"
 	"sync"
+	"sync/atomic"
 
 	"golang.org/x/exp/maps"
 )
 
 // Context implements a shared context struct to share information across multiple templates within a workflow
 type Context struct {
+	sync.Once
 	// Meta is the target for the executor
 	MetaInput *MetaInput
 
@@ -19,6 +21,8 @@ type Context struct {
 	*sync.RWMutex
 	// Args is a workflow shared key-value store
 	args Args
+	// initialized is used to check if the context is initialized(resolves race condition)
+	initialized atomic.Bool
 }
 
 // Create a new contextargs instance
@@ -34,6 +38,7 @@ func NewWithInput(input string) *Context {
 func (ctx *Context) initialize() {
 	ctx.args = newArgs()
 	ctx.RWMutex = &sync.RWMutex{}
+	ctx.initialized.Store(true)
 }
 
 func (ctx *Context) set(key string, value interface{}) {
@@ -45,19 +50,26 @@ func (ctx *Context) set(key string, value interface{}) {
 
 // Set the specific key-value pair
 func (ctx *Context) Set(key string, value interface{}) {
-	if !ctx.isInitialized() {
-		ctx.initialize()
-	}
+	ctx.Do(ctx.initialize)
 
 	ctx.set(key, value)
 }
 
 func (ctx *Context) isInitialized() bool {
-	return ctx.args != nil
+	return ctx.initialized.Load()
+}
+
+func (ctx *Context) isEmpty() bool {
+	ctx.Lock()
+	defer ctx.Unlock()
+	return !ctx.args.IsEmpty()
 }
 
 func (ctx *Context) hasArgs() bool {
-	return ctx.isInitialized() && !ctx.args.IsEmpty()
+	if !ctx.isInitialized() {
+		return false
+	}
+	return ctx.isEmpty()
 }
 
 func (ctx *Context) get(key string) (interface{}, bool) {
@@ -76,12 +88,19 @@ func (ctx *Context) Get(key string) (interface{}, bool) {
 	return ctx.get(key)
 }
 
+func (ctx *Context) getAll() Args {
+	ctx.RLock()
+	defer ctx.RUnlock()
+
+	return maps.Clone(ctx.args)
+}
+
 func (ctx *Context) GetAll() Args {
 	if !ctx.hasArgs() {
 		return nil
 	}
 
-	return maps.Clone(ctx.args)
+	return ctx.getAll()
 }
 
 func (ctx *Context) ForEach(f func(string, interface{})) {

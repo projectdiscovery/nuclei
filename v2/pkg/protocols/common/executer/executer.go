@@ -79,6 +79,10 @@ func (e *Executer) Execute(input *contextargs.Context) (bool, error) {
 		}
 
 		err := req.ExecuteWithResults(inputItem, dynamicValues, previous, func(event *output.InternalWrappedEvent) {
+			if event == nil {
+				// ideally this should never happen since protocol exits on error and callback is not called
+				return
+			}
 			ID := req.GetID()
 			if ID != "" {
 				builder := &strings.Builder{}
