@@ -144,7 +144,7 @@ func (request *Request) executeRequestWithPayloads(inputURL string, payloads map
 		event = eventcreator.CreateEvent(request, outputEvent, request.options.Options.Debug || request.options.Options.DebugResponse)
 		callback(event)
 	} else if request.options.Interactsh != nil {
-		event = &output.InternalWrappedEvent{InternalEvent: outputEvent, Protocol: request.Type()}
+		event = &output.InternalWrappedEvent{InternalEvent: outputEvent}
 		request.options.Interactsh.RequestEvent(page.InteractshURLs, &interactsh.RequestData{
 			MakeResultFunc: request.MakeResultEvent,
 			Event:          event,

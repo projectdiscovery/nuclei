@@ -208,7 +208,7 @@ func TestNetworkMakeResult(t *testing.T) {
 	req := "test-data\r\n"
 	resp := "resp-data\rSTAT \r\n1.1.1.1\n"
 	event := request.responseToDSLMap(req, resp, "one.one.one.one", "one.one.one.one", "test")
-	finalEvent := &output.InternalWrappedEvent{InternalEvent: event, Protocol: request.Type()}
+	finalEvent := &output.InternalWrappedEvent{InternalEvent: event}
 	event["ip"] = "192.168.1.1"
 	if request.CompiledOperators != nil {
 		result, ok := request.CompiledOperators.Execute(event, request.Match, request.Extract, false)

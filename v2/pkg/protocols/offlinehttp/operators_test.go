@@ -203,7 +203,7 @@ func TestHTTPMakeResult(t *testing.T) {
 	require.Equal(t, "Test-Response", event["test"], "could not get correct resp for header")
 
 	event["ip"] = "192.169.1.1"
-	finalEvent := &output.InternalWrappedEvent{InternalEvent: event, Protocol: request.Type()}
+	finalEvent := &output.InternalWrappedEvent{InternalEvent: event}
 	for _, operator := range request.compiledOperators {
 		result, ok := operator.Execute(event, request.Match, request.Extract, false)
 		if ok && result != nil {

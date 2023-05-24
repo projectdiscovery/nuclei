@@ -286,7 +286,7 @@ func testFileMakeResult(t *testing.T, matchers []*matchers.Matcher, matcherCondi
 	require.Len(t, event, 7, "could not get correct number of items in dsl map")
 	require.Equal(t, fileContent, event["raw"], "could not get correct resp")
 
-	finalEvent := &output.InternalWrappedEvent{InternalEvent: event, Protocol: request.Type()}
+	finalEvent := &output.InternalWrappedEvent{InternalEvent: event}
 	if request.CompiledOperators != nil {
 		result, ok := request.CompiledOperators.Execute(event, request.Match, request.Extract, isDebug)
 		if ok && result != nil {
