@@ -391,4 +391,13 @@ func readEnvInputVars(options *types.Options) {
 	options.AzureClientID = os.Getenv("AZURE_CLIENT_ID")
 	options.AzureClientSecret = os.Getenv("AZURE_CLIENT_SECRET")
 	options.AzureServiceURL = os.Getenv("AZURE_SERVICE_URL")
+
+	// General options to disable the template download locations from being used.
+	// This will override the default behavior of downloading templates from the default
+	// locations as well as the custom locations
+	options.PublicTemplateDisableDownload = os.Getenv("NUCLEI_TEMPLATES_PUBLIC_DISABLE_DOWNLOAD") == "true"
+	options.GitHubDisableDownload = os.Getenv("NUCLEI_TEMPLATES_GITHUB_DISABLE_DOWNLOAD") == "true"
+	options.GitLabDisableDownload = os.Getenv("NUCLEI_TEMPLATES_GITLAB_DISABLE_DOWNLOAD") == "true"
+	options.AwsDisableDownload = os.Getenv("NUCLEI_TEMPLATES_AWS_DISABLE_DOWNLOAD") == "true"
+	options.AzureDisableDownload = os.Getenv("NUCLEI_TEMPLATES_AZURE_DISABLE_DOWNLOAD") == "true"
 }
