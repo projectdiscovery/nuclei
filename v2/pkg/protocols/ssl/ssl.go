@@ -187,6 +187,7 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 	payloadValues["Port"] = port
 
 	hostnameVariables := protocolutils.GenerateDNSVariables(hostname)
+	// add template context variables to varMap
 	values := generators.MergeMaps(payloadValues, hostnameVariables, request.options.TemplateCtx.GetAll())
 	variablesMap := request.options.Variables.Evaluate(values)
 	payloadValues = generators.MergeMaps(variablesMap, payloadValues)
@@ -293,6 +294,7 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 		data[tag] = f.Value()
 	}
 
+	// add response fields ^ to template context and merge templatectx variables to output event
 	data = generators.MergeMaps(data, request.options.TemplateCtx.GetAll())
 	event := eventcreator.CreateEvent(request, data, requestOptions.Options.Debug || requestOptions.Options.DebugResponse)
 	if requestOptions.Options.Debug || requestOptions.Options.DebugResponse || requestOptions.Options.StoreResponse {

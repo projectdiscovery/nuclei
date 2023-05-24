@@ -100,7 +100,6 @@ func (r *Request) ExecuteWithResults(input *contextargs.Context, dynamicValues, 
 			for k, v := range event.OperatorsResult.DynamicValues {
 				// TBD: iterate-all is only supported in `http` protocol
 				// we either need to add support for iterate-all in other protocols or implement a different logic (specific to template context)
-
 				// currently if dynamic value array only contains one value we replace it with the value
 				if len(v) == 1 {
 					templateContextValues[k] = v[0]
@@ -119,7 +118,7 @@ func (r *Request) ExecuteWithResults(input *contextargs.Context, dynamicValues, 
 
 	// execute all protocols in the queue
 	for _, req := range r.Queue {
-		err := req.ExecuteWithResults(input, dynamicValues, previous, multiProtoCallback)
+		err := req.ExecuteWithResults(input, templateContextValues, previous, multiProtoCallback)
 		// if error skip execution of next protocols
 		if err != nil {
 			return err

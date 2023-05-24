@@ -175,6 +175,7 @@ func (request *Request) executeRequestWithPayloads(input, hostname string, dynam
 	}
 	defaultVars := protocolutils.GenerateVariables(parsed, false, nil)
 	optionVars := generators.BuildPayloadFromOptions(request.options.Options)
+	// add templatecontext variables to varMap
 	variables := request.options.Variables.Evaluate(generators.MergeMaps(defaultVars, optionVars, dynamicValues, request.options.TemplateCtx.GetAll()))
 	payloadValues := generators.MergeMaps(variables, defaultVars, optionVars, dynamicValues)
 
@@ -263,6 +264,7 @@ func (request *Request) executeRequestWithPayloads(input, hostname string, dynam
 	data["matched"] = addressToDial
 	data["ip"] = request.dialer.GetDialedIP(hostname)
 
+	// add response fields to template context and merge templatectx variables to output event
 	request.options.AddTemplateVars(request.Type(), data)
 	data = generators.MergeMaps(data, request.options.TemplateCtx.GetAll())
 
