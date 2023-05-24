@@ -332,16 +332,16 @@ type Options struct {
 	GithubToken string
 	// GithubTemplateRepo is the list of custom public/private templates GitHub repos
 	GithubTemplateRepo []string
-	// GitHubDisableDownload disables downloading templates from custom GitHub repositories
-	GitHubDisableDownload bool
+	// GitHubTemplateDisableDownload disables downloading templates from custom GitHub repositories
+	GitHubTemplateDisableDownload bool
 	// GitLabServerURL is the gitlab server to use for custom templates
 	GitLabServerURL string
 	// GitLabToken used to clone/pull from private repos for custom templates
 	GitLabToken string
 	// GitLabTemplateRepositoryIDs is the comma-separated list of custom gitlab repositories IDs
 	GitLabTemplateRepositoryIDs []int
-	// GitLabDisableDownload disables downloading templates from custom GitLab repositories
-	GitLabDisableDownload bool
+	// GitLabTemplateDisableDownload disables downloading templates from custom GitLab repositories
+	GitLabTemplateDisableDownload bool
 	// AWS access key for downloading templates from S3 bucket
 	AwsAccessKey string
 	// AWS secret key for downloading templates from S3 bucket
@@ -350,8 +350,8 @@ type Options struct {
 	AwsBucketName string
 	// AWS Region name where AWS S3 bucket is located
 	AwsRegion string
-	// AwsDisableDownload disables downloading templates from AWS S3 buckets
-	AwsDisableDownload bool
+	// AwsTemplateDisableDownload disables downloading templates from AWS S3 buckets
+	AwsTemplateDisableDownload bool
 	// AzureContainerName for downloading templates from Azure Blob Storage. Example: templates
 	AzureContainerName string
 	// AzureTenantID for downloading templates from Azure Blob Storage. Example: 00000000-0000-0000-0000-000000000000
@@ -362,8 +362,8 @@ type Options struct {
 	AzureClientSecret string
 	// AzureServiceURL for downloading templates from Azure Blob Storage. Example: https://XXXXXXXXXX.blob.core.windows.net/
 	AzureServiceURL string
-	// AzureDisableDownload disables downloading templates from Azure Blob Storage
-	AzureDisableDownload bool
+	// AzureTemplateDisableDownload disables downloading templates from Azure Blob Storage
+	AzureTemplateDisableDownload bool
 	// Scan Strategy (auto,hosts-spray,templates-spray)
 	ScanStrategy string
 	// Fuzzing Type overrides template level fuzzing-type configuration
