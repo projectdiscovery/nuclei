@@ -151,7 +151,7 @@ func (request *Request) execute(domain string, metadata, previous output.Interna
 	outputEvent := request.responseToDSLMap(compiledRequest, response, domain, question, traceData)
 	// expose response variables in proto_var format
 	// this is no-op if the template is not a multi protocol template
-	request.options.AddTemplateVars(request.Type().String(), outputEvent)
+	request.options.AddTemplateVars(request.Type(), outputEvent)
 	for k, v := range previous {
 		outputEvent[k] = v
 	}

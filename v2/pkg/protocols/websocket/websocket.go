@@ -263,7 +263,7 @@ func (request *Request) executeRequestWithPayloads(input, hostname string, dynam
 	data["matched"] = addressToDial
 	data["ip"] = request.dialer.GetDialedIP(hostname)
 
-	request.options.AddTemplateVars(request.Type().String(), data)
+	request.options.AddTemplateVars(request.Type(), data)
 	data = generators.MergeMaps(data, request.options.TemplateCtx.GetAll())
 
 	for k, v := range previous {

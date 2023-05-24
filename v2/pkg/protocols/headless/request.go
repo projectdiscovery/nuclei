@@ -130,7 +130,7 @@ func (request *Request) executeRequestWithPayloads(inputURL string, payloads map
 	}
 
 	outputEvent := request.responseToDSLMap(responseBody, reqBuilder.String(), inputURL, inputURL, page.DumpHistory())
-	request.options.AddTemplateVars(request.Type().String(), outputEvent)
+	request.options.AddTemplateVars(request.Type(), outputEvent)
 	outputEvent = generators.MergeMaps(outputEvent, request.options.TemplateCtx.GetAll())
 	for k, v := range out {
 		outputEvent[k] = v

@@ -91,24 +91,24 @@ type ExecuterOptions struct {
 	ProtocolType templateTypes.ProtocolType
 }
 
-// AddTemplateVars adds vars to template context with optional prefix format is 'prefix_varname'
+// AddTemplateVars adds vars to template context with given template type as prefix
 // this method is no-op if template is not multi protocol
-func (e *ExecuterOptions) AddTemplateVars(prefix string, vars map[string]interface{}) {
+func (e *ExecuterOptions) AddTemplateVars(templateType templateTypes.ProtocolType, vars map[string]interface{}) {
 	if e.ProtocolType != templateTypes.MultiProtocol {
 		// no-op if not multi protocol template
 		return
 	}
 	for k, v := range vars {
 		if !stringsutil.EqualFoldAny(k, "template-id", "template-info", "template-path") {
-			if prefix != "" {
-				k = prefix + "_" + k
+			if templateType < templateTypes.InvalidProtocol {
+				k = templateType.String() + "_" + k
 			}
 			e.TemplateCtx.Set(k, v)
 		}
 	}
 }
 
-// AddTemplateVar adds given var to template context with optional prefix format is 'prefix_varname'
+// AddTemplateVar adds given var to template context with given template type as prefix
 // this method is no-op if template is not multi protocol
 func (e *ExecuterOptions) AddTemplateVar(prefix, key string, value interface{}) {
 	if e.ProtocolType != templateTypes.MultiProtocol {

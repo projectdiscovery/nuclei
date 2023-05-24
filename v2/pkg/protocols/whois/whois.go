@@ -132,7 +132,7 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 	data["host"] = query
 	data["response"] = jsonDataString
 
-	request.options.AddTemplateVars(request.Type().String(), data)
+	request.options.AddTemplateVars(request.Type(), data)
 	data = generators.MergeMaps(data, request.options.TemplateCtx.GetAll())
 
 	event := eventcreator.CreateEvent(request, data, request.options.Options.Debug || request.options.Options.DebugResponse)
