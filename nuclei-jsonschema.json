@@ -1474,6 +1474,16 @@
           "$ref": "#/definitions/variables.Variable",
           "title": "variables for the http request",
           "description": "Variables contains any variables for the current request"
+        },
+        "constants": {
+          "patternProperties": {
+            ".*": {
+              "additionalProperties": true
+            }
+          },
+          "type": "object",
+          "title": "constant for the template",
+          "description": "constants contains any constant for the template"
         }
       },
       "additionalProperties": false,
