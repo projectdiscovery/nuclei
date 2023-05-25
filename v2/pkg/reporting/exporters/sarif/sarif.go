@@ -2,6 +2,7 @@ package sarif
 
 import (
 	"fmt"
+	"math"
 	"os"
 	"path"
 	"sync"
@@ -125,7 +126,7 @@ func (exporter *Exporter) Export(event *output.ResultEvent) error {
 	}
 
 	// If rule is added
-	ruleIndex := len(exporter.rules) - 1
+	ruleIndex := int(math.Max(0, float64(len(exporter.rules)-1)))
 	if exporter.rulemap[rule.Id] == nil {
 		exporter.rulemap[rule.Id] = &ruleIndex
 		exporter.rules = append(exporter.rules, rule)
