@@ -318,7 +318,7 @@ func (request *Request) executeFuzzingRule(input *contextargs.Context, previous 
 func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicValues, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
 	if request.Pipeline || request.Race && request.RaceNumberRequests > 0 || request.Threads > 0 {
 		variablesMap := request.options.Variables.Evaluate(generators.MergeMaps(dynamicValues, previous))
-		dynamicValues = generators.MergeMaps(variablesMap, dynamicValues)
+		dynamicValues = generators.MergeMaps(variablesMap, dynamicValues, request.options.Constants)
 	}
 	// verify if pipeline was requested
 	if request.Pipeline {
@@ -638,7 +638,7 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 	if !request.Unsafe && resp != nil && generatedRequest.request != nil && resp.Request != nil && !request.Race {
 		bodyBytes, _ := generatedRequest.request.BodyBytes()
 		resp.Request.Body = io.NopCloser(bytes.NewReader(bodyBytes))
-		command, _ := http2curl.GetCurlCommand(resp.Request)
+		command, err := http2curl.GetCurlCommand(resp.Request)
 		if err == nil && command != nil {
 			curlCommand = command.String()
 		}

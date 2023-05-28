@@ -42,7 +42,7 @@ func init() {
 	TemplateDoc.Type = "Template"
 	TemplateDoc.Comments[encoder.LineComment] = " Template is a YAML input file which defines all the requests and"
 	TemplateDoc.Description = "Template is a YAML input file which defines all the requests and\n other metadata for a template."
-	TemplateDoc.Fields = make([]encoder.Doc, 16)
+	TemplateDoc.Fields = make([]encoder.Doc, 17)
 	TemplateDoc.Fields[0].Name = "id"
 	TemplateDoc.Fields[0].Type = "string"
 	TemplateDoc.Fields[0].Note = ""
@@ -138,6 +138,11 @@ func init() {
 	TemplateDoc.Fields[15].Note = ""
 	TemplateDoc.Fields[15].Description = "Variables contains any variables for the current request."
 	TemplateDoc.Fields[15].Comments[encoder.LineComment] = "Variables contains any variables for the current request."
+	TemplateDoc.Fields[16].Name = "constants"
+	TemplateDoc.Fields[16].Type = "map[string]interface{}"
+	TemplateDoc.Fields[16].Note = ""
+	TemplateDoc.Fields[16].Description = "Constants contains any scalar costant for the current template"
+	TemplateDoc.Fields[16].Comments[encoder.LineComment] = "Constants contains any scalar costant for the current template"
 
 	MODELInfoDoc.Type = "model.Info"
 	MODELInfoDoc.Comments[encoder.LineComment] = " Info contains metadata information about a template"
@@ -607,6 +612,10 @@ func init() {
 			FieldName: "attack",
 		},
 		{
+			TypeName:  "dns.Request",
+			FieldName: "attack",
+		},
+		{
 			TypeName:  "network.Request",
 			FieldName: "attack",
 		},
@@ -807,7 +816,7 @@ func init() {
 			Value: "Trace contains trace data for DNS request if enabled",
 		},
 	}
-	DNSRequestDoc.Fields = make([]encoder.Doc, 9)
+	DNSRequestDoc.Fields = make([]encoder.Doc, 11)
 	DNSRequestDoc.Fields[0].Name = "id"
 	DNSRequestDoc.Fields[0].Type = "string"
 	DNSRequestDoc.Fields[0].Note = ""
@@ -857,16 +866,26 @@ func init() {
 	DNSRequestDoc.Fields[6].Comments[encoder.LineComment] = "TraceMaxRecursion is the number of max recursion allowed for trace operations"
 
 	DNSRequestDoc.Fields[6].AddExample("Use a retry of 100 to 150 generally", 100)
-	DNSRequestDoc.Fields[7].Name = "recursion"
-	DNSRequestDoc.Fields[7].Type = "dns.bool"
+	DNSRequestDoc.Fields[7].Name = "attack"
+	DNSRequestDoc.Fields[7].Type = "generators.AttackTypeHolder"
 	DNSRequestDoc.Fields[7].Note = ""
-	DNSRequestDoc.Fields[7].Description = "Recursion determines if resolver should recurse all records to get fresh results."
-	DNSRequestDoc.Fields[7].Comments[encoder.LineComment] = "Recursion determines if resolver should recurse all records to get fresh results."
-	DNSRequestDoc.Fields[8].Name = "resolvers"
-	DNSRequestDoc.Fields[8].Type = "[]string"
+	DNSRequestDoc.Fields[7].Description = "Attack is the type of payload combinations to perform.\n\nBatteringram is inserts the same payload into all defined payload positions at once, pitchfork combines multiple payload sets and clusterbomb generates\npermutations and combinations for all payloads."
+	DNSRequestDoc.Fields[7].Comments[encoder.LineComment] = "Attack is the type of payload combinations to perform."
+	DNSRequestDoc.Fields[8].Name = "payloads"
+	DNSRequestDoc.Fields[8].Type = "map[string]interface{}"
 	DNSRequestDoc.Fields[8].Note = ""
-	DNSRequestDoc.Fields[8].Description = "Resolvers to use for the dns requests"
-	DNSRequestDoc.Fields[8].Comments[encoder.LineComment] = " Resolvers to use for the dns requests"
+	DNSRequestDoc.Fields[8].Description = "Payloads contains any payloads for the current request.\n\nPayloads support both key-values combinations where a list\nof payloads is provided, or optionally a single file can also\nbe provided as payload which will be read on run-time."
+	DNSRequestDoc.Fields[8].Comments[encoder.LineComment] = "Payloads contains any payloads for the current request."
+	DNSRequestDoc.Fields[9].Name = "recursion"
+	DNSRequestDoc.Fields[9].Type = "dns.bool"
+	DNSRequestDoc.Fields[9].Note = ""
+	DNSRequestDoc.Fields[9].Description = "Recursion determines if resolver should recurse all records to get fresh results."
+	DNSRequestDoc.Fields[9].Comments[encoder.LineComment] = "Recursion determines if resolver should recurse all records to get fresh results."
+	DNSRequestDoc.Fields[10].Name = "resolvers"
+	DNSRequestDoc.Fields[10].Type = "[]string"
+	DNSRequestDoc.Fields[10].Note = ""
+	DNSRequestDoc.Fields[10].Description = "Resolvers to use for the dns requests"
+	DNSRequestDoc.Fields[10].Comments[encoder.LineComment] = " Resolvers to use for the dns requests"
 
 	DNSRequestTypeHolderDoc.Type = "DNSRequestTypeHolder"
 	DNSRequestTypeHolderDoc.Comments[encoder.LineComment] = " DNSRequestTypeHolder is used to hold internal type of the DNS type"
@@ -895,6 +914,7 @@ func init() {
 		"AAAA",
 		"CAA",
 		"TLSA",
+		"ANY",
 	}
 
 	FILERequestDoc.Type = "file.Request"
@@ -938,7 +958,7 @@ func init() {
 			Value: "Raw contains the raw file contents",
 		},
 	}
-	FILERequestDoc.Fields = make([]encoder.Doc, 5)
+	FILERequestDoc.Fields = make([]encoder.Doc, 7)
 	FILERequestDoc.Fields[0].Name = "extensions"
 	FILERequestDoc.Fields[0].Type = "[]string"
 	FILERequestDoc.Fields[0].Note = ""
@@ -965,11 +985,21 @@ func init() {
 	FILERequestDoc.Fields[3].Comments[encoder.LineComment] = "MaxSize is the maximum size of the file to run request on."
 
 	FILERequestDoc.Fields[3].AddExample("", "5Mb")
-	FILERequestDoc.Fields[4].Name = "no-recursive"
+	FILERequestDoc.Fields[4].Name = "archive"
 	FILERequestDoc.Fields[4].Type = "bool"
 	FILERequestDoc.Fields[4].Note = ""
-	FILERequestDoc.Fields[4].Description = "NoRecursive specifies whether to not do recursive checks if folders are provided."
-	FILERequestDoc.Fields[4].Comments[encoder.LineComment] = "NoRecursive specifies whether to not do recursive checks if folders are provided."
+	FILERequestDoc.Fields[4].Description = "elaborates archives"
+	FILERequestDoc.Fields[4].Comments[encoder.LineComment] = "elaborates archives"
+	FILERequestDoc.Fields[5].Name = "mime-type"
+	FILERequestDoc.Fields[5].Type = "bool"
+	FILERequestDoc.Fields[5].Note = ""
+	FILERequestDoc.Fields[5].Description = "enables mime types check"
+	FILERequestDoc.Fields[5].Comments[encoder.LineComment] = "enables mime types check"
+	FILERequestDoc.Fields[6].Name = "no-recursive"
+	FILERequestDoc.Fields[6].Type = "bool"
+	FILERequestDoc.Fields[6].Note = ""
+	FILERequestDoc.Fields[6].Description = "NoRecursive specifies whether to not do recursive checks if folders are provided."
+	FILERequestDoc.Fields[6].Comments[encoder.LineComment] = "NoRecursive specifies whether to not do recursive checks if folders are provided."
 
 	NETWORKRequestDoc.Type = "network.Request"
 	NETWORKRequestDoc.Comments[encoder.LineComment] = " Request contains a Network protocol request to be made from a template"

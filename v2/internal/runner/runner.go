@@ -14,6 +14,7 @@ import (
 
 	"github.com/projectdiscovery/nuclei/v2/internal/installer"
 	"github.com/projectdiscovery/nuclei/v2/internal/runner/nucleicloud"
+	uncoverlib "github.com/projectdiscovery/uncover"
 	updateutils "github.com/projectdiscovery/utils/update"
 
 	"github.com/logrusorgru/aurora"
@@ -489,7 +490,14 @@ func (r *Runner) RunEnumeration() error {
 
 	// add the hosts from the metadata queries of loaded templates into input provider
 	if r.options.Uncover && len(r.options.UncoverQuery) == 0 {
-		ret := uncover.GetUncoverTargetsFromMetadata(store.Templates(), r.options.UncoverDelay, r.options.UncoverLimit, r.options.UncoverField)
+		uncoverOpts := &uncoverlib.Options{
+			Limit:         r.options.UncoverLimit,
+			MaxRetry:      r.options.Retries,
+			Timeout:       r.options.Timeout,
+			RateLimit:     uint(r.options.UncoverRateLimit),
+			RateLimitUnit: time.Minute, // default unit is minute
+		}
+		ret := uncover.GetUncoverTargetsFromMetadata(context.TODO(), store.Templates(), r.options.UncoverField, uncoverOpts)
 		for host := range ret {
 			r.hmapInputProvider.Set(host)
 		}
