@@ -190,7 +190,7 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 	hostnameVariables := protocolutils.GenerateDNSVariables(hostname)
 	values := generators.MergeMaps(payloadValues, hostnameVariables)
 	variablesMap := request.options.Variables.Evaluate(values)
-	payloadValues = generators.MergeMaps(variablesMap, payloadValues)
+	payloadValues = generators.MergeMaps(variablesMap, payloadValues, request.options.Constants)
 
 	if vardump.EnableVarDump {
 		gologger.Debug().Msgf("Protocol request variables: \n%s\n", vardump.DumpVariables(payloadValues))
