@@ -9,7 +9,7 @@ import (
 const (
 	TemplateConfigFileName           = ".templates-config.json"
 	NucleiTemplatesDirName           = "nuclei-templates"
-	OfficialNucleiTeamplatesRepoName = "nuclei-templates"
+	OfficialNucleiTemplatesRepoName = "nuclei-templates"
 	NucleiIgnoreFileName             = ".nuclei-ignore"
 	NucleiTemplatesIndexFileName     = ".templates-index" // contains index of official nuclei templates
 	NucleiTemplatesCheckSumFileName  = ".checksum"
