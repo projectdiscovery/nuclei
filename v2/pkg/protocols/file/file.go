@@ -51,11 +51,11 @@ type Request struct {
 
 	// description: |
 	//   elaborates archives
-	Archive bool
+	Archive bool `yaml:"archive,omitempty" json:"archive,omitempty" jsonschema:"title=enable archives,description=Process compressed archives without unpacking"`
 
 	// description: |
 	//   enables mime types check
-	MimeType bool
+	MimeType bool `yaml:"mime-type,omitempty" json:"mime-type,omitempty" jsonschema:"title=enable filtering by mime-type,description=Filter files by mime-type"`
 
 	CompiledOperators *operators.Operators `yaml:"-" json:"-"`
 

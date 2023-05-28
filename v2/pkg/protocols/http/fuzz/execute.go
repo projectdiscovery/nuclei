@@ -47,7 +47,7 @@ func (rule *Rule) Execute(input *ExecuteRuleInput) error {
 	baseValues := input.Values
 	if rule.generator == nil {
 		evaluatedValues, interactURLs := rule.options.Variables.EvaluateWithInteractsh(baseValues, rule.options.Interactsh)
-		input.Values = generators.MergeMaps(evaluatedValues, baseValues)
+		input.Values = generators.MergeMaps(evaluatedValues, baseValues, rule.options.Constants)
 		input.InteractURLs = interactURLs
 		err := rule.executeRuleValues(input)
 		return err
@@ -60,7 +60,7 @@ func (rule *Rule) Execute(input *ExecuteRuleInput) error {
 		}
 		evaluatedValues, interactURLs := rule.options.Variables.EvaluateWithInteractsh(generators.MergeMaps(values, baseValues), rule.options.Interactsh)
 		input.InteractURLs = interactURLs
-		input.Values = generators.MergeMaps(values, evaluatedValues, baseValues)
+		input.Values = generators.MergeMaps(values, evaluatedValues, baseValues, rule.options.Constants)
 
 		if err := rule.executeRuleValues(input); err != nil {
 			return err

@@ -52,7 +52,7 @@ Kami memiliki [repositori khusus](https://github.com/projectdiscovery/nuclei-tem
 
 # Instalasi Nuclei
 
-Nuclei membutuhkan **go1.19** agar dapat diinstall. Jalankan perintah berikut untuk menginstal versi terbaru -
+Nuclei membutuhkan **go1.20** agar dapat diinstall. Jalankan perintah berikut untuk menginstal versi terbaru -
 
 ```sh
 go install -v github.com/projectdiscovery/nuclei/v2/cmd/nuclei@latest
@@ -304,7 +304,7 @@ Nuclei sangat meningkatkan cara Anda mendekati penilaian keamanan dengan menamba
 Para penguji penetrasi mendapatkan kekuatan penuh dari templat publik dan kemampuan penyesuaian kami untuk mempercepat proses penilaian mereka, dan khususnya dengan siklus regresi di mana Anda dapat dengan mudah memverifikasi perbaikannya.
 
 - Mudah untuk membuat daftar pemeriksa kepatuhan Anda, sederet standar (mis., OWASP 10 Teratas).
-- Dengan kemampuan seperti [fuzz](https://nuclei.projectdiscovery.io/templating-guide/#advance-fuzzing) dan [alur kerja](https://nuclei.projectdiscovery.io/templating-guide/#workflows), langkah manual yang rumit dan penilaian berulang dapat dengan mudah diotomatisasi dengan Nuclei.
+- Dengan kemampuan seperti [fuzz](https://nuclei.projectdiscovery.io/templating-guide/protocols/http-fuzzing/) dan [alur kerja](https://nuclei.projectdiscovery.io/templating-guide/workflows/), langkah manual yang rumit dan penilaian berulang dapat dengan mudah diotomatisasi dengan Nuclei.
 - Mudah untuk menguji ulang perbaikan kerentanan hanya dengan menjalankan ulang template.
 
 </td>

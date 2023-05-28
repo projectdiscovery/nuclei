@@ -53,7 +53,7 @@ We have a [dedicated repository](https://github.com/projectdiscovery/nuclei-temp
 
 # Install Nuclei
 
-Nuclei requires **go1.19** to install successfully. Run the following command to install the latest version -
+Nuclei requires **go1.20** to install successfully. Run the following command to install the latest version -
 
 ```sh
 go install -v github.com/projectdiscovery/nuclei/v2/cmd/nuclei@latest
@@ -368,7 +368,7 @@ Nuclei immensely improve how you approach security assessment by augmenting the 
 Pen-testers get the full power of our public templates and customization capabilities to speed up their assessment process, and specifically with the regression cycle where you can easily verify the fix.
 
 - Easily create your compliance, standards suite (e.g. OWASP Top 10) checklist.
-- With capabilities like [fuzz](https://nuclei.projectdiscovery.io/templating-guide/#advance-fuzzing) and [workflows](https://nuclei.projectdiscovery.io/templating-guide/#workflows), complex manual steps and repetitive assessment can be easily automated with Nuclei.
+- With capabilities like [fuzz](https://nuclei.projectdiscovery.io/templating-guide/protocols/http-fuzzing/) and [workflows](https://nuclei.projectdiscovery.io/templating-guide/workflows/), complex manual steps and repetitive assessment can be easily automated with Nuclei.
 - Easy to re-test vulnerability-fix by just re-running the template.
 
 </td>
