@@ -4,5 +4,5 @@ import (
 	_ "embed"
 )
 
-//go:embed ecdsa_public_key.pem
+//go:embed rsa_public_key
 var pdPublicKey []byte

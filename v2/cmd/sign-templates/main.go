@@ -25,7 +25,7 @@ func ParseOptions() (*options, error) {
 
 	flagSet.CreateGroup("sign", "sign",
 		flagSet.StringSliceVarP(&opts.Templates, "templates", "t", nil, "templates files/folders to sign", goflags.CommaSeparatedStringSliceOptions),
-		flagSet.StringVarP(&opts.Algorithm, "algorithm", "a", "ecdsa", "signature algorithm (ecdsa, rsa)"),
+		flagSet.StringVarP(&opts.Algorithm, "algorithm", "a", "rsa", "signature algorithm (rsa, ecdsa)"),
 		flagSet.StringVarP(&opts.PrivateKeyName, "private-key", "prk", "", "private key env var name or file location"),
 		flagSet.StringVarP(&opts.PrivateKeyPassPhrase, "private-key-pass", "prkp", "", "private key passphrase env var name or file location"),
 		flagSet.StringVarP(&opts.PublicKeyName, "public-key", "puk", "", "public key env var name or file location"),

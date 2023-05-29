@@ -14,7 +14,7 @@ var DefaultVerifiers []*Signer
 
 func init() {
 	// add default pd verifier
-	if verifier, err := NewVerifier(&Options{PublicKeyData: pdPublicKey, Algorithm: ECDSA}); err == nil {
+	if verifier, err := NewVerifier(&Options{PublicKeyData: pdPublicKey, Algorithm: RSA}); err == nil {
 		DefaultVerifiers = append(DefaultVerifiers, verifier)
 	}
 }

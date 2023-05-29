@@ -362,7 +362,7 @@ type Options struct {
 	FuzzingMode string
 	// CodeTemplateSignaturePublicKey is the custom public key used to verify the template signature (algorithm is automatically inferred from the length)
 	CodeTemplateSignaturePublicKey string
-	// CodeTemplateSignatureAlgorithm specifies the sign algorithm (ecdsa, rsa)
+	// CodeTemplateSignatureAlgorithm specifies the sign algorithm (rsa, ecdsa)
 	CodeTemplateSignatureAlgorithm string
 	// SignTemplates enables signing of templates
 	SignTemplates bool
