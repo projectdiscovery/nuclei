@@ -7,8 +7,7 @@ when template is compiled , we iterate over queue and compile all the requests i
 
 ### Execution
 when multi protocol template is executed , all protocol requests present in Queue are executed in order
-and dynamic values extracted from previous protocols are passed to next protocol in queue
-this is done by adding extracted `internal:true` values to `dynamicValues`
+and dynamic values extracted are added to template context.
 
 - Protocol Responses
 apart from extracted `internal:true` values response fields/values of protocol are added to template context at `ExecutorOptions.TemplateCtx`
@@ -52,4 +51,3 @@ adding these 3 statements takes care of all logic related to multi protocol exec
 - statements 1 & 2 are intentionally skipped in `file` protocol to avoid redundant data
   - file/dir input paths don't contain variables or are used in path (yet) 
   - since files are processed by scanning each line. adding statement 2 will unintenionally load all file(s) data
-

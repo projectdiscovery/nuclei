@@ -1,6 +1,8 @@
 package multi
 
 import (
+	"strconv"
+
 	"github.com/projectdiscovery/nuclei/v2/pkg/model"
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators"
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators/extractors"
@@ -104,7 +106,17 @@ func (r *Request) ExecuteWithResults(input *contextargs.Context, dynamicValues, 
 				if len(v) == 1 {
 					templateContextValues[k] = v[0]
 				} else {
-					templateContextValues[k] = v
+					// Note: if extracted value contains multiple values then they can be accessed by indexing
+					// ex: if values are dynamic = []string{"a","b","c"} then they are available as
+					// dynamic = "a" , dynamic1 = "b" , dynamic2 = "c"
+					// we intentionally omit first index for unknown situations (where no of extracted values are not known)
+					for i, val := range v {
+						if i == 0 {
+							templateContextValues[k] = val
+						} else {
+							templateContextValues[k+strconv.Itoa(i)] = val
+						}
+					}
 				}
 			}
 		}
