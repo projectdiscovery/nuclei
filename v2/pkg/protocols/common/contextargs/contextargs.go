@@ -4,7 +4,7 @@ import (
 	"net/http/cookiejar"
 	"sync"
 
-	"golang.org/x/exp/maps"
+	maputils "github.com/projectdiscovery/utils/maps"
 )
 
 // Context implements a shared context struct to share information across multiple templates within a workflow
@@ -18,7 +18,7 @@ type Context struct {
 	// Access to Args must use lock strategies to prevent data races
 	*sync.RWMutex
 	// Args is a workflow shared key-value store
-	args Args
+	args maputils.Map[string, interface{}]
 }
 
 // Create a new contextargs instance
@@ -28,7 +28,7 @@ func New() *Context {
 
 // Create a new contextargs instance with input string
 func NewWithInput(input string) *Context {
-	return &Context{MetaInput: &MetaInput{Input: input}, CookieJar: &cookiejar.Jar{}, RWMutex: &sync.RWMutex{}, args: newArgs()}
+	return &Context{MetaInput: &MetaInput{Input: input}, CookieJar: &cookiejar.Jar{}, RWMutex: &sync.RWMutex{}, args: make(maputils.Map[string, interface{}])}
 }
 
 func (ctx *Context) set(key string, value interface{}) {
@@ -70,14 +70,14 @@ func (ctx *Context) Get(key string) (interface{}, bool) {
 	return ctx.get(key)
 }
 
-func (ctx *Context) getAll() Args {
+func (ctx *Context) getAll() maputils.Map[string, interface{}] {
 	ctx.RLock()
 	defer ctx.RUnlock()
 
-	return maps.Clone(ctx.args)
+	return ctx.args.Clone()
 }
 
-func (ctx *Context) GetAll() Args {
+func (ctx *Context) GetAll() maputils.Map[string, interface{}] {
 	if !ctx.hasArgs() {
 		return nil
 	}
@@ -114,7 +114,7 @@ func (ctx *Context) Clone() *Context {
 	newCtx := &Context{
 		MetaInput: ctx.MetaInput.Clone(),
 		RWMutex:   ctx.RWMutex,
-		args:      ctx.args,
+		args:      ctx.args.Clone(),
 		CookieJar: ctx.CookieJar,
 	}
 	return newCtx

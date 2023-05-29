@@ -1,12 +1,11 @@
 package vardump
 
 import (
-	"sort"
 	"strconv"
 	"strings"
 
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
-	"golang.org/x/exp/maps"
+	mapsutil "github.com/projectdiscovery/utils/maps"
 )
 
 // EnableVarDump enables var dump for debugging optionally
@@ -24,8 +23,7 @@ func DumpVariables(data map[string]interface{}) string {
 
 	builder := &strings.Builder{}
 	// sort keys for deterministic output
-	keys := maps.Keys(data)
-	sort.Strings(keys)
+	keys := mapsutil.GetSortedKeys(data)
 
 	for _, k := range keys {
 		v := data[k]
