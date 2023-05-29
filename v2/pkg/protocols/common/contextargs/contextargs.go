@@ -4,6 +4,7 @@ import (
 	"net/http/cookiejar"
 	"sync"
 
+	"github.com/projectdiscovery/gologger"
 	maputils "github.com/projectdiscovery/utils/maps"
 )
 
@@ -28,7 +29,11 @@ func New() *Context {
 
 // Create a new contextargs instance with input string
 func NewWithInput(input string) *Context {
-	return &Context{MetaInput: &MetaInput{Input: input}, CookieJar: &cookiejar.Jar{}, RWMutex: &sync.RWMutex{}, args: make(maputils.Map[string, interface{}])}
+	jar, err := cookiejar.New(nil)
+	if err != nil {
+		gologger.Error().Msgf("Could not create cookie jar: %s\n", err)
+	}
+	return &Context{MetaInput: &MetaInput{Input: input}, CookieJar: jar, RWMutex: &sync.RWMutex{}, args: make(maputils.Map[string, interface{}])}
 }
 
 func (ctx *Context) set(key string, value interface{}) {
