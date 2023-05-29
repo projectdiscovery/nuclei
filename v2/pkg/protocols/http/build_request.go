@@ -115,7 +115,7 @@ func (r *requestGenerator) Make(ctx context.Context, input *contextargs.Context,
 		r.interactshURLs = append(r.interactshURLs, interactURLs...)
 	}
 	// allVars contains all variables from all sources
-	allVars := generators.MergeMaps(dynamicValues, defaultReqVars, optionVars, variablesMap)
+	allVars := generators.MergeMaps(dynamicValues, defaultReqVars, optionVars, variablesMap, r.options.Constants)
 
 	// Evaluate payload variables
 	// eg: payload variables can be username: jon.doe@{{Hostname}}
@@ -173,10 +173,10 @@ func (r *requestGenerator) makeSelfContainedRequest(ctx context.Context, data st
 
 	signerVars := GetDefaultSignerVars(r.request.Signature.Value)
 	// this will ensure that default signer variables are overwritten by other variables
-	values = generators.MergeMaps(signerVars, values)
+	values = generators.MergeMaps(signerVars, values, r.options.Constants)
 
 	// priority of variables is as follows (from low to high) for self contained templates
-	// default signer vars < variables <  cli vars  < payload < dynamic values
+	// default signer vars < variables <  cli vars  < payload < dynamic values < constants
 
 	// evaluate request
 	data, err := expressions.Evaluate(data, values)

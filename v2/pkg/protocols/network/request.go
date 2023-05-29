@@ -38,7 +38,7 @@ func (request *Request) Type() templateTypes.ProtocolType {
 }
 
 // ExecuteWithResults executes the protocol requests and returns results instead of writing them.
-func (request *Request) ExecuteWithResults(input *contextargs.Context, metadata /*TODO review unused parameter*/, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
+func (request *Request) ExecuteWithResults(input *contextargs.Context, metadata, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
 	var address string
 	var err error
 
@@ -56,7 +56,7 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, metadata 
 	// add template ctx variables to varMap
 	variables = generators.MergeMaps(variables, request.options.TemplateCtx.GetAll())
 	variablesMap := request.options.Variables.Evaluate(variables)
-	variables = generators.MergeMaps(variablesMap, variables)
+	variables = generators.MergeMaps(variablesMap, variables, request.options.Constants)
 
 	for _, kv := range request.addresses {
 		actualAddress := replacer.Replace(kv.address, variables)

@@ -55,7 +55,7 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, metadata,
 	// merge with metadata (eg. from workflow context)
 	vars = generators.MergeMaps(vars, metadata, optionVars, request.options.TemplateCtx.GetAll())
 	variablesMap := request.options.Variables.Evaluate(vars)
-	vars = generators.MergeMaps(vars, variablesMap)
+	vars = generators.MergeMaps(vars, variablesMap, request.options.Constants)
 
 	if request.generator != nil {
 		iterator := request.generator.NewIterator()

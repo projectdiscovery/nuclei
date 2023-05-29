@@ -71,6 +71,8 @@ type ExecuterOptions struct {
 	StopAtFirstMatch bool
 	// Variables is a list of variables from template
 	Variables variables.Variable
+	// Constants is a list of constants from template
+	Constants map[string]interface{}
 	// ExcludeMatchers is the list of matchers to exclude
 	ExcludeMatchers *excludematchers.ExcludeMatchers
 	// InputHelper is a helper for input normalization

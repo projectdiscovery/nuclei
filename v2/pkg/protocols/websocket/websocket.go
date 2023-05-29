@@ -177,7 +177,7 @@ func (request *Request) executeRequestWithPayloads(input, hostname string, dynam
 	optionVars := generators.BuildPayloadFromOptions(request.options.Options)
 	// add templatecontext variables to varMap
 	variables := request.options.Variables.Evaluate(generators.MergeMaps(defaultVars, optionVars, dynamicValues, request.options.TemplateCtx.GetAll()))
-	payloadValues := generators.MergeMaps(variables, defaultVars, optionVars, dynamicValues)
+	payloadValues := generators.MergeMaps(variables, defaultVars, optionVars, dynamicValues, request.options.Constants)
 
 	requestOptions := request.options
 	for key, value := range request.Headers {

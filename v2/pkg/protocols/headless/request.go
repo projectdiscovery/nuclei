@@ -42,7 +42,7 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, metadata,
 	// add templatecontext variables to varMap
 	values := generators.MergeMaps(vars, metadata, payloads, request.options.TemplateCtx.GetAll())
 	variablesMap := request.options.Variables.Evaluate(values)
-	payloads = generators.MergeMaps(variablesMap, payloads)
+	payloads = generators.MergeMaps(variablesMap, payloads, request.options.Constants)
 
 	// check for operator matches by wrapping callback
 	gotmatches := false
