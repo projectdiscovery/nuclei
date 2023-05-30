@@ -323,7 +323,7 @@ func (request *Request) buildEvent(input, filePath string, fileMatches []FileMat
 	return event
 }
 
-func dumpResponse(event *output.InternalWrappedEvent, requestOptions *protocols.ExecuterOptions, filematches []FileMatch, filePath string) {
+func dumpResponse(event *output.InternalWrappedEvent, requestOptions *protocols.ExecutorOptions, filematches []FileMatch, filePath string) {
 	cliOptions := requestOptions.Options
 	if cliOptions.Debug || cliOptions.DebugResponse {
 		for _, fileMatch := range filematches {
