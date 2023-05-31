@@ -176,7 +176,7 @@ func (request *Request) executeRequestWithPayloads(input, hostname string, dynam
 	defaultVars := protocolutils.GenerateVariables(parsed, false, nil)
 	optionVars := generators.BuildPayloadFromOptions(request.options.Options)
 	variables := request.options.Variables.Evaluate(generators.MergeMaps(defaultVars, optionVars, dynamicValues))
-	payloadValues := generators.MergeMaps(variables, defaultVars, optionVars, dynamicValues)
+	payloadValues := generators.MergeMaps(variables, defaultVars, optionVars, dynamicValues, request.options.Constants)
 
 	requestOptions := request.options
 	for key, value := range request.Headers {

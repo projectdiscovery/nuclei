@@ -50,7 +50,7 @@ Nuclei는 템플릿을 기반으로 대상 간에 요청을 보내기 위해 사
 
 # 설치
 
-Nuclei를 성공적으로 설치하기 위해서 **go1.19**가 필요합니다. 다음 명령을 실행하여 최신 버전을 설치합니다.
+Nuclei를 성공적으로 설치하기 위해서 **go1.20**가 필요합니다. 다음 명령을 실행하여 최신 버전을 설치합니다.
 
 ```sh
 go install -v github.com/projectdiscovery/nuclei/v2/cmd/nuclei@latest
@@ -290,7 +290,7 @@ Nuclei는 수동적이고 반복적인 프로세스를 보강하여 보안 평�
 침투 테스터는 평가 프로세스, 특히 수정 사항을 쉽게 확인할 수 있는 회귀 주기를 통해 공개 템플릿 및 사용자 지정 기능을 최대한 활용할 수 있습니다.
 
 - 규정 준수, 표준 제품군(예: OWASP Top 10) 체크리스트 쉽게 생성.
-- Nuclei의 [fuzz](https://nuclei.projectdiscovery.io/templating-guide/#advance-fuzzing) 및 [workflows](https://nuclei.projectdiscovery.io/templating-guide/#workflows) 같은 기능으로 복잡한 수동 단계와 반복 평가를 쉽게 자동화할 수 있음.
+- Nuclei의 [fuzz](https://nuclei.projectdiscovery.io/templating-guide/protocols/http-fuzzing/) 및 [workflows](https://nuclei.projectdiscovery.io/templating-guide/workflows/) 같은 기능으로 복잡한 수동 단계와 반복 평가를 쉽게 자동화할 수 있음.
 - 템플릿 재실행으로 취약점 수정 재테스트 용이.
 
 </td>

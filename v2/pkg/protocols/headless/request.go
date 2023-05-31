@@ -41,7 +41,7 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, metadata,
 	payloads := generators.BuildPayloadFromOptions(request.options.Options)
 	values := generators.MergeMaps(vars, metadata, payloads)
 	variablesMap := request.options.Variables.Evaluate(values)
-	payloads = generators.MergeMaps(variablesMap, payloads)
+	payloads = generators.MergeMaps(variablesMap, payloads, request.options.Constants)
 
 	// check for operator matches by wrapping callback
 	gotmatches := false

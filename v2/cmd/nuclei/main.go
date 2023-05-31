@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"fmt"
 	"os"
 	"os/signal"
@@ -208,6 +209,7 @@ on extensive configurability, massive extensibility and ease of use.`)
 		flagSet.StringVar(&options.CustomConfigDir, "config-directory", "", "override the default config path ($home/.config)"),
 		flagSet.IntVarP(&options.ResponseReadSize, "response-size-read", "rsr", 10*1024*1024, "max response size to read in bytes"),
 		flagSet.IntVarP(&options.ResponseSaveSize, "response-size-save", "rss", 1*1024*1024, "max response size to read in bytes"),
+		flagSet.CallbackVar(resetCallback, "reset", "reset removes all nuclei configuration and data files (including nuclei-templates)"),
 	)
 
 	flagSet.CreateGroup("interactsh", "interactsh",
@@ -425,6 +427,46 @@ func printTemplateVersion() {
 	if fileutil.FolderExists(cfg.CustomAzureTemplatesDirectory) {
 		gologger.Info().Msgf("Custom Azure templates location: %s ", cfg.CustomAzureTemplatesDirectory)
 	}
+	os.Exit(0)
+}
+
+func resetCallback() {
+	warning := fmt.Sprintf(`
+Using '-reset' will delete all nuclei configurations files and all nuclei-templates
+
+Following files will be deleted:
+1. All Config + Resumes files at %v
+2. All nuclei-templates at %v
+
+Note: Make sure you have backup of your custom nuclei-templates before proceeding
+
+`, config.DefaultConfig.GetConfigDir(), config.DefaultConfig.TemplatesDirectory)
+	gologger.Print().Msg(warning)
+	reader := bufio.NewReader(os.Stdin)
+	for {
+		fmt.Print("Are you sure you want to continue? [y/n]: ")
+		resp, err := reader.ReadString('\n')
+		if err != nil {
+			gologger.Fatal().Msgf("could not read response: %s", err)
+		}
+		resp = strings.TrimSpace(resp)
+		if strings.EqualFold(resp, "y") || strings.EqualFold(resp, "yes") {
+			break
+		}
+		if strings.EqualFold(resp, "n") || strings.EqualFold(resp, "no") || resp == "" {
+			fmt.Println("Exiting...")
+			os.Exit(0)
+		}
+	}
+	err := os.RemoveAll(config.DefaultConfig.GetConfigDir())
+	if err != nil {
+		gologger.Fatal().Msgf("could not delete config dir: %s", err)
+	}
+	err = os.RemoveAll(config.DefaultConfig.TemplatesDirectory)
+	if err != nil {
+		gologger.Fatal().Msgf("could not delete templates dir: %s", err)
+	}
+	gologger.Info().Msgf("Successfully deleted all nuclei configurations files and nuclei-templates")
 	os.Exit(0)
 }
 
