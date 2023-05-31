@@ -329,20 +329,12 @@ func createReportingOptions(options *types.Options) (*reporting.Options, error) 
 		if err != nil {
 			return nil, errors.Wrap(err, "could not open reporting config file")
 		}
+		defer file.Close()
 
 		reportingOptions = &reporting.Options{}
 		if err := yaml.DecodeAndValidate(file, reportingOptions); err != nil {
-			err := file.Close()
-			if err != nil {
-				return nil, err
-			}
 			return nil, errors.Wrap(err, "could not parse reporting config file")
 		}
-		err = file.Close()
-		if err != nil {
-			return nil, err
-		}
-
 		Walk(reportingOptions, expandEndVars)
 	}
 	if options.MarkdownExportDirectory != "" {
