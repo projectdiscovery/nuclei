@@ -124,7 +124,7 @@ type Request struct {
 
 	CompiledOperators *operators.Operators `yaml:"-" json:"-"`
 
-	options           *protocols.ExecuterOptions
+	options           *protocols.ExecutorOptions
 	connConfiguration *httpclientpool.Configuration
 	totalRequests     int
 	customHeaders     map[string]string
@@ -200,7 +200,7 @@ type Request struct {
 }
 
 // Options returns executer options for http request
-func (r *Request) Options() *protocols.ExecuterOptions {
+func (r *Request) Options() *protocols.ExecutorOptions {
 	return r.options
 }
 
@@ -236,7 +236,7 @@ func (request *Request) isRaw() bool {
 }
 
 // Compile compiles the protocol request for further execution.
-func (request *Request) Compile(options *protocols.ExecuterOptions) error {
+func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 	if err := request.validate(); err != nil {
 		return errors.Wrap(err, "validation error")
 	}
