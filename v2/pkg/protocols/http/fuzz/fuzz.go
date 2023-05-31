@@ -73,7 +73,7 @@ type Rule struct {
 	//       []string{"{{ssrf}}", "{{interactsh-url}}", "example-value"}
 	Fuzz []string `yaml:"fuzz,omitempty" json:"fuzz,omitempty" jsonschema:"title=payloads of fuzz rule,description=Payloads to perform fuzzing substitutions with"`
 
-	options   *protocols.ExecuterOptions
+	options   *protocols.ExecutorOptions
 	generator *generators.PayloadGenerator
 }
 

@@ -78,7 +78,7 @@ type Request struct {
 	// cache any variables that may be needed for operation.
 	dialer  *fastdialer.Dialer
 	tlsx    *tlsx.Service
-	options *protocols.ExecuterOptions
+	options *protocols.ExecutorOptions
 }
 
 // CanCluster returns true if the request can be clustered.
@@ -93,7 +93,7 @@ func (request *Request) CanCluster(other *Request) bool {
 }
 
 // Compile compiles the request generators preparing any requests possible.
-func (request *Request) Compile(options *protocols.ExecuterOptions) error {
+func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 	request.options = options
 
 	client, err := networkclientpool.Get(options.Options, &networkclientpool.Configuration{})
@@ -155,7 +155,7 @@ func (request *Request) Compile(options *protocols.ExecuterOptions) error {
 }
 
 // Options returns executer options for http request
-func (r *Request) Options() *protocols.ExecuterOptions {
+func (r *Request) Options() *protocols.ExecutorOptions {
 	return r.options
 }
 

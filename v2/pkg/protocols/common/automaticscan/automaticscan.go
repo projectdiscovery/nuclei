@@ -26,7 +26,7 @@ import (
 
 // Service is a service for automatic scan execution
 type Service struct {
-	opts          protocols.ExecuterOptions
+	opts          protocols.ExecutorOptions
 	store         *loader.Store
 	engine        *core.Engine
 	target        core.InputProvider
@@ -41,7 +41,7 @@ type Service struct {
 
 // Options contains configuration options for automatic scan service
 type Options struct {
-	ExecuterOpts protocols.ExecuterOptions
+	ExecuterOpts protocols.ExecutorOptions
 	Store        *loader.Store
 	Engine       *core.Engine
 	Target       core.InputProvider

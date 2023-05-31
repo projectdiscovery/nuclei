@@ -9,7 +9,7 @@ import (
 
 // Request is a offline http response processing request
 type Request struct {
-	options           *protocols.ExecuterOptions
+	options           *protocols.ExecutorOptions
 	compiledOperators []*operators.Operators
 }
 
@@ -41,7 +41,7 @@ func (request *Request) GetID() string {
 }
 
 // Compile compiles the protocol request for further execution.
-func (request *Request) Compile(options *protocols.ExecuterOptions) error {
+func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 	for _, operator := range options.Operators {
 		if err := operator.Compile(); err != nil {
 			return errors.Wrap(err, "could not compile operators")

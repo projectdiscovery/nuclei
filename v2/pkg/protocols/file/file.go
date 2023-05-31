@@ -60,7 +60,7 @@ type Request struct {
 	CompiledOperators *operators.Operators `yaml:"-" json:"-"`
 
 	// cache any variables that may be needed for operation.
-	options             *protocols.ExecuterOptions
+	options             *protocols.ExecutorOptions
 	mimeTypesChecks     []string
 	extensions          map[string]struct{}
 	denyList            map[string]struct{}
@@ -98,7 +98,7 @@ func (request *Request) GetID() string {
 }
 
 // Compile compiles the protocol request for further execution.
-func (request *Request) Compile(options *protocols.ExecuterOptions) error {
+func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 	// if there are no matchers/extractors, we trigger an error as no operation would be performed on the template
 	if request.Operators.IsEmpty() {
 		return errors.New("empty operators")

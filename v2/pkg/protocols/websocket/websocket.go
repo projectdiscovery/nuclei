@@ -70,7 +70,7 @@ type Request struct {
 
 	// cache any variables that may be needed for operation.
 	dialer  *fastdialer.Dialer
-	options *protocols.ExecuterOptions
+	options *protocols.ExecutorOptions
 }
 
 // Input is an input for the websocket protocol
@@ -96,7 +96,7 @@ const (
 )
 
 // Compile compiles the request generators preparing any requests possible.
-func (request *Request) Compile(options *protocols.ExecuterOptions) error {
+func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 	request.options = options
 
 	client, err := networkclientpool.Get(options.Options, &networkclientpool.Configuration{})

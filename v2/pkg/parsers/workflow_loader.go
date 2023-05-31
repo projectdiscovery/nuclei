@@ -11,11 +11,11 @@ import (
 type workflowLoader struct {
 	pathFilter *filter.PathFilter
 	tagFilter  *filter.TagFilter
-	options    *protocols.ExecuterOptions
+	options    *protocols.ExecutorOptions
 }
 
 // NewLoader returns a new workflow loader structure
-func NewLoader(options *protocols.ExecuterOptions) (model.WorkflowLoader, error) {
+func NewLoader(options *protocols.ExecutorOptions) (model.WorkflowLoader, error) {
 	tagFilter, err := filter.New(&filter.Config{
 		Authors:           options.Options.Authors,
 		Tags:              options.Options.Tags,
