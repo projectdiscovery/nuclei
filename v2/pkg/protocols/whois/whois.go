@@ -46,12 +46,12 @@ type Request struct {
 	Server string `yaml:"server,omitempty" json:"server,omitempty" jsonschema:"title=server url to execute the WHOIS request on,description=Server contains the server url to execute the WHOIS request on"`
 	// cache any variables that may be needed for operation.
 	client          *rdap.Client
-	options         *protocols.ExecuterOptions
+	options         *protocols.ExecutorOptions
 	parsedServerURL *url.URL
 }
 
 // Compile compiles the request generators preparing any requests possible.
-func (request *Request) Compile(options *protocols.ExecuterOptions) error {
+func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 	var err error
 	if request.Server != "" {
 		request.parsedServerURL, err = url.Parse(request.Server)

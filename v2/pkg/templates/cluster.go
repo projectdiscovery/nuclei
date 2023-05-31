@@ -113,7 +113,7 @@ func ClusterID(templates []*Template) string {
 	return cryptoutil.SHA256Sum(ids)
 }
 
-func ClusterTemplates(templatesList []*Template, options protocols.ExecuterOptions) ([]*Template, int) {
+func ClusterTemplates(templatesList []*Template, options protocols.ExecutorOptions) ([]*Template, int) {
 	if options.Options.OfflineHTTP || options.Options.DisableClustering {
 		return templatesList, 0
 	}
@@ -164,7 +164,7 @@ type ClusterExecuter struct {
 	requests     protocols.Request
 	operators    []*clusteredOperator
 	templateType types.ProtocolType
-	options      *protocols.ExecuterOptions
+	options      *protocols.ExecutorOptions
 }
 
 type clusteredOperator struct {
@@ -177,7 +177,7 @@ type clusteredOperator struct {
 var _ protocols.Executer = &ClusterExecuter{}
 
 // NewClusterExecuter creates a new request executer for list of requests
-func NewClusterExecuter(requests []*Template, options *protocols.ExecuterOptions) *ClusterExecuter {
+func NewClusterExecuter(requests []*Template, options *protocols.ExecutorOptions) *ClusterExecuter {
 	executer := &ClusterExecuter{options: options}
 	if len(requests[0].RequestsDNS) == 1 {
 		executer.templateType = types.DNSProtocol

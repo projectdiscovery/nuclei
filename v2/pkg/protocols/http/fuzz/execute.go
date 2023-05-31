@@ -87,7 +87,7 @@ func (rule *Rule) executeRuleValues(input *ExecuteRuleInput) error {
 }
 
 // Compile compiles a fuzzing rule and initializes it for operation
-func (rule *Rule) Compile(generator *generators.PayloadGenerator, options *protocols.ExecuterOptions) error {
+func (rule *Rule) Compile(generator *generators.PayloadGenerator, options *protocols.ExecutorOptions) error {
 	// If a payload generator is specified from base request, use it
 	// for payload values.
 	if generator != nil {

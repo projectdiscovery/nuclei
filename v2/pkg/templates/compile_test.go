@@ -31,14 +31,14 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-var executerOpts protocols.ExecuterOptions
+var executerOpts protocols.ExecutorOptions
 
 func setup() {
 	options := testutils.DefaultOptions
 	testutils.Init(options)
 	progressImpl, _ := progress.NewStatsTicker(0, false, false, false, false, 0)
 
-	executerOpts = protocols.ExecuterOptions{
+	executerOpts = protocols.ExecutorOptions{
 		Output:       testutils.NewMockOutputWriter(),
 		Options:      options,
 		Progress:     progressImpl,
@@ -162,7 +162,7 @@ func Test_ParseWorkflow(t *testing.T) {
 		},
 		Workflow: workflows.Workflow{
 			Workflows: []*workflows.WorkflowTemplate{{Template: "tests/match-1.yaml"}, {Template: "tests/match-1.yaml"}},
-			Options:   &protocols.ExecuterOptions{},
+			Options:   &protocols.ExecutorOptions{},
 		},
 		CompiledWorkflow: &workflows.Workflow{},
 		SelfContained:    false,

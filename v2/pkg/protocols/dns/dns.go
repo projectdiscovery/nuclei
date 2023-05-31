@@ -79,7 +79,7 @@ type Request struct {
 
 	CompiledOperators *operators.Operators `yaml:"-"`
 	dnsClient         *retryabledns.Client
-	options           *protocols.ExecuterOptions
+	options           *protocols.ExecutorOptions
 
 	// cache any variables that may be needed for operation.
 	class    uint16
@@ -122,12 +122,12 @@ func (request *Request) GetID() string {
 }
 
 // Options returns executer options for http request
-func (r *Request) Options() *protocols.ExecuterOptions {
+func (r *Request) Options() *protocols.ExecutorOptions {
 	return r.options
 }
 
 // Compile compiles the protocol request for further execution.
-func (request *Request) Compile(options *protocols.ExecuterOptions) error {
+func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 	if request.Retries == 0 {
 		request.Retries = 3
 	}
@@ -180,7 +180,7 @@ func (request *Request) Compile(options *protocols.ExecuterOptions) error {
 	return nil
 }
 
-func (request *Request) getDnsClient(options *protocols.ExecuterOptions, metadata map[string]interface{}) (*retryabledns.Client, error) {
+func (request *Request) getDnsClient(options *protocols.ExecutorOptions, metadata map[string]interface{}) (*retryabledns.Client, error) {
 	dnsClientOptions := &dnsclientpool.Configuration{
 		Retries: request.Retries,
 	}

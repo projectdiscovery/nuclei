@@ -15,7 +15,7 @@ type Workflow struct {
 	//   Workflows is a list of workflows to execute for a template.
 	Workflows []*WorkflowTemplate `yaml:"workflows,omitempty" json:"workflows,omitempty" jsonschema:"title=list of workflows to execute,description=List of workflows to execute for template"`
 
-	Options *protocols.ExecuterOptions `yaml:"-" json:"-"`
+	Options *protocols.ExecutorOptions `yaml:"-" json:"-"`
 }
 
 // WorkflowTemplate is a template to be run as part of a workflow
@@ -44,7 +44,7 @@ type WorkflowTemplate struct {
 // ProtocolExecuterPair is a pair of protocol executer and its options
 type ProtocolExecuterPair struct {
 	Executer     protocols.Executer
-	Options      *protocols.ExecuterOptions
+	Options      *protocols.ExecutorOptions
 	TemplateType templateTypes.ProtocolType
 }
 

@@ -27,7 +27,7 @@ import (
 )
 
 // runStandardEnumeration runs standard enumeration
-func (r *Runner) runStandardEnumeration(executerOpts protocols.ExecuterOptions, store *loader.Store, engine *core.Engine) (*atomic.Bool, error) {
+func (r *Runner) runStandardEnumeration(executerOpts protocols.ExecutorOptions, store *loader.Store, engine *core.Engine) (*atomic.Bool, error) {
 	if r.options.AutomaticScan {
 		return r.executeSmartWorkflowInput(executerOpts, store, engine)
 	}

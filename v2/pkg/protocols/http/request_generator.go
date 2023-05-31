@@ -16,7 +16,7 @@ type requestGenerator struct {
 	currentPayloads  map[string]interface{}
 	okCurrentPayload bool
 	request          *Request
-	options          *protocols.ExecuterOptions
+	options          *protocols.ExecutorOptions
 	payloadIterator  *generators.Iterator
 	interactshURLs   []string
 	onceFlow         map[string]struct{}
