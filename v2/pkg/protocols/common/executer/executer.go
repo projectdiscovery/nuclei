@@ -15,6 +15,10 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/helpers/writer"
 )
 
+// ShowFailureMatchPerRequest if set to true, will show failure match per request
+// by defalut shows failure match per template.
+var ShowFailureMatchPerRequest bool
+
 // Executer executes a group of requests for a protocol
 type Executer struct {
 	requests []protocols.Request
@@ -70,6 +74,7 @@ func (e *Executer) Execute(input *contextargs.Context) (bool, error) {
 		})
 	}
 	previous := make(map[string]interface{})
+	var outputEvent *output.InternalWrappedEvent
 	for _, req := range e.requests {
 		inputItem := input.Clone()
 		if e.options.InputHelper != nil && input.MetaInput.Input != "" {
@@ -79,6 +84,9 @@ func (e *Executer) Execute(input *contextargs.Context) (bool, error) {
 		}
 
 		err := req.ExecuteWithResults(inputItem, dynamicValues, previous, func(event *output.InternalWrappedEvent) {
+			if event != nil {
+				outputEvent = event
+			}
 			ID := req.GetID()
 			if ID != "" {
 				builder := &strings.Builder{}
@@ -93,14 +101,14 @@ func (e *Executer) Execute(input *contextargs.Context) (bool, error) {
 			// If no results were found, and also interactsh is not being used
 			// in that case we can skip it, otherwise we've to show failure in
 			// case of matcher-status flag.
-			if !event.HasOperatorResult() && !event.UsesInteractsh {
+			if !event.HasOperatorResult() && !event.UsesInteractsh && ShowFailureMatchPerRequest {
 				if err := e.options.Output.WriteFailure(event.InternalEvent); err != nil {
 					gologger.Warning().Msgf("Could not write failure event to output: %s\n", err)
 				}
 			} else {
 				if writer.WriteResult(event, e.options.Output, e.options.Progress, e.options.IssuesClient) {
 					results.CompareAndSwap(false, true)
-				} else {
+				} else if ShowFailureMatchPerRequest {
 					if err := e.options.Output.WriteFailure(event.InternalEvent); err != nil {
 						gologger.Warning().Msgf("Could not write failure event to output: %s\n", err)
 					}
@@ -117,6 +125,15 @@ func (e *Executer) Execute(input *contextargs.Context) (bool, error) {
 		if results.Load() && (e.options.StopAtFirstMatch || e.options.Options.StopAtFirstMatch) {
 			break
 		}
+	}
+
+	// Shows failure match per template if no results were found and matcher-status flag is set
+	if !ShowFailureMatchPerRequest && !results.Load() && e.options.Options.MatcherStatus && outputEvent != nil {
+		if err := e.options.Output.WriteFailure(outputEvent.InternalEvent); err != nil {
+			gologger.Warning().Msgf("Could not write failure event to output: %s\n", err)
+		}
+		// if matcher-status flag is set, then failed-match also considered as a match
+		results.CompareAndSwap(false, true)
 	}
 	return results.Load(), nil
 }
