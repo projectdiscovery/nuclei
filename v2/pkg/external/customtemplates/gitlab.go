@@ -134,6 +134,10 @@ func (bk *customTemplateGitLabRepo) Download(_ context.Context) {
 // Update is a wrapper around Download since it doesn't maintain a diff of the templates downloaded versus in the
 // repository for simplicity.
 func (bk *customTemplateGitLabRepo) Update(ctx context.Context) {
+	if len(bk.projectIDs) == 0 {
+		// No projects to download or update
+		return
+	}
 	bk.Download(ctx)
 }
 
