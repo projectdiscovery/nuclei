@@ -52,7 +52,7 @@ type Request struct {
 	CompiledOperators   *operators.Operators `yaml:"-" json:"-"`
 
 	// cache any variables that may be needed for operation.
-	options   *protocols.ExecuterOptions
+	options   *protocols.ExecutorOptions
 	generator *generators.PayloadGenerator
 }
 
@@ -82,7 +82,7 @@ func (request *Request) GetID() string {
 }
 
 // Compile compiles the protocol request for further execution.
-func (request *Request) Compile(options *protocols.ExecuterOptions) error {
+func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 	// TODO: logic similar to network + http => probably can be refactored
 	// Resolve payload paths from vars if they exists
 	for name, payload := range options.Options.Vars.AsMap() {

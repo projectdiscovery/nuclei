@@ -42,7 +42,7 @@ type Config struct {
 	IncludeConditions []string
 
 	Catalog         catalog.Catalog
-	ExecutorOptions protocols.ExecuterOptions
+	ExecutorOptions protocols.ExecutorOptions
 }
 
 // Store is a storage for loaded nuclei templates
@@ -64,7 +64,7 @@ type Store struct {
 }
 
 // NewConfig returns a new loader config
-func NewConfig(options *types.Options, catalog catalog.Catalog, executerOpts protocols.ExecuterOptions) *Config {
+func NewConfig(options *types.Options, catalog catalog.Catalog, executerOpts protocols.ExecutorOptions) *Config {
 	loaderConfig := Config{
 		Templates:                options.Templates,
 		Workflows:                options.Workflows,

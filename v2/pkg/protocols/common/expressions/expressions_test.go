@@ -42,3 +42,19 @@ func TestEvaluate(t *testing.T) {
 		require.Equal(t, item.expected, value, "could not get correct expression")
 	}
 }
+
+func TestEval(t *testing.T) {
+	items := []struct {
+		input    string
+		values   map[string]interface{}
+		expected interface{}
+	}{
+		{input: "'a' + 'a'", values: nil, expected: "aa"},
+		{input: "10 + to_number(b)", values: map[string]interface{}{"b": "4"}, expected: float64(14)},
+	}
+	for _, item := range items {
+		value, err := Eval(item.input, item.values)
+		require.Nil(t, err, "could not evaluate helper")
+		require.Equal(t, item.expected, value, "could not get correct expression")
+	}
+}
