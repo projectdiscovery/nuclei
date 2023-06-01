@@ -11,6 +11,15 @@ import (
 	stringsutil "github.com/projectdiscovery/utils/strings"
 )
 
+// Eval compiles the given expression and evaluate it with the given values preserving the return type
+func Eval(expression string, values map[string]interface{}) (interface{}, error) {
+	compiled, err := govaluate.NewEvaluableExpressionWithFunctions(expression, dsl.HelperFunctions)
+	if err != nil {
+		return nil, err
+	}
+	return compiled.Evaluate(values)
+}
+
 // Evaluate checks if the match contains a dynamic variable, for each
 // found one we will check if it's an expression and can
 // be compiled, it will be evaluated and the results will be returned.
