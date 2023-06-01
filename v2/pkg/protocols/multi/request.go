@@ -42,7 +42,7 @@ type Request struct {
 	// Queue is queue of all protocols present in the template
 	Queue []protocols.Request `yaml:"-" json:"-"`
 	// request executor options
-	options *protocols.ExecuterOptions `yaml:"-" json:"-"`
+	options *protocols.ExecutorOptions `yaml:"-" json:"-"`
 }
 
 // getLastRequest returns the last request in the queue
@@ -63,7 +63,7 @@ func (r *Request) Requests() int {
 }
 
 // Compile compiles the protocol request for further execution.
-func (r *Request) Compile(executerOptions *protocols.ExecuterOptions) error {
+func (r *Request) Compile(executerOptions *protocols.ExecutorOptions) error {
 	r.options = executerOptions
 	r.options.TemplateCtx = contextargs.New()
 	for _, protocol := range r.Queue {

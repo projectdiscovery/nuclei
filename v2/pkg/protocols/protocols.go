@@ -95,7 +95,7 @@ type ExecutorOptions struct {
 
 // AddTemplateVars adds vars to template context with given template type as prefix
 // this method is no-op if template is not multi protocol
-func (e *ExecuterOptions) AddTemplateVars(templateType templateTypes.ProtocolType, vars map[string]interface{}) {
+func (e *ExecutorOptions) AddTemplateVars(templateType templateTypes.ProtocolType, vars map[string]interface{}) {
 	if e.ProtocolType != templateTypes.MultiProtocol {
 		// no-op if not multi protocol template
 		return
@@ -112,7 +112,7 @@ func (e *ExecuterOptions) AddTemplateVars(templateType templateTypes.ProtocolTyp
 
 // AddTemplateVar adds given var to template context with given template type as prefix
 // this method is no-op if template is not multi protocol
-func (e *ExecuterOptions) AddTemplateVar(prefix, key string, value interface{}) {
+func (e *ExecutorOptions) AddTemplateVar(prefix, key string, value interface{}) {
 	if e.ProtocolType != templateTypes.MultiProtocol {
 		// no-op if not multi protocol template
 		return
