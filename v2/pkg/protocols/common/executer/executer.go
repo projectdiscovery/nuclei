@@ -65,8 +65,9 @@ func (e *Executer) Execute(input *contextargs.Context) (bool, error) {
 
 	dynamicValues := make(map[string]interface{})
 	if input.HasArgs() {
-		input.ForEach(func(key string, value interface{}) {
+		input.ForEach(func(key string, value interface{}) error {
 			dynamicValues[key] = value
+			return nil
 		})
 	}
 	previous := make(map[string]interface{})
@@ -129,8 +130,9 @@ func (e *Executer) Execute(input *contextargs.Context) (bool, error) {
 func (e *Executer) ExecuteWithResults(input *contextargs.Context, callback protocols.OutputEventCallback) error {
 	dynamicValues := make(map[string]interface{})
 	if input.HasArgs() {
-		input.ForEach(func(key string, value interface{}) {
+		input.ForEach(func(key string, value interface{}) error {
 			dynamicValues[key] = value
+			return nil
 		})
 	}
 	previous := make(map[string]interface{})
