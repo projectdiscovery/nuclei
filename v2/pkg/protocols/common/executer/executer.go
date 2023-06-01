@@ -22,13 +22,13 @@ var ShowFailureMatchPerRequest bool
 // Executer executes a group of requests for a protocol
 type Executer struct {
 	requests []protocols.Request
-	options  *protocols.ExecuterOptions
+	options  *protocols.ExecutorOptions
 }
 
 var _ protocols.Executer = &Executer{}
 
 // NewExecuter creates a new request executer for list of requests
-func NewExecuter(requests []protocols.Request, options *protocols.ExecuterOptions) *Executer {
+func NewExecuter(requests []protocols.Request, options *protocols.ExecutorOptions) *Executer {
 	return &Executer{requests: requests, options: options}
 }
 
