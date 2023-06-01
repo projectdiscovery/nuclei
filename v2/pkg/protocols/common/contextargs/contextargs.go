@@ -29,10 +29,9 @@ func NewWithInput(input string) *Context {
 	if err != nil {
 		gologger.Error().Msgf("Could not create cookie jar: %s\n", err)
 	}
-	syncMap := maputils.SyncLockMap[string, interface{}]{
+	return &Context{MetaInput: &MetaInput{Input: input}, CookieJar: jar, args: maputils.SyncLockMap[string, interface{}]{
 		Map: make(map[string]interface{}),
-	}
-	return &Context{MetaInput: &MetaInput{Input: input}, CookieJar: jar, args: syncMap}
+	}}
 }
 
 // Set the specific key-value pair
