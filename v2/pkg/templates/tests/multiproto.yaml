@@ -19,7 +19,7 @@ http:
 
     headers:
       Host: "{{ssl_subject_cn}}" # host extracted from ssl request
-      Cipher: "{{ssl_cipher}}"
+      Metadata: "{{ssl_cipher}}"
 
     matchers:
       - type: dsl
