@@ -12,7 +12,6 @@ import (
 	"github.com/projectdiscovery/gologger"
 	errorutil "github.com/projectdiscovery/utils/errors"
 	fileutil "github.com/projectdiscovery/utils/file"
-	folderutil "github.com/projectdiscovery/utils/folder"
 )
 
 // DefaultConfig is the default nuclei configuration
@@ -290,8 +289,10 @@ func init() {
 			gologger.Error().Msgf("failed to create config directory at %v got: %s", ConfigDir, err)
 		}
 	}
+	homeDir, _ := os.UserHomeDir()
 	DefaultConfig = &Config{
-		homeDir:   folderutil.HomeDirOrDefault(""),
+		//homeDir:   folderutil.HomeDirOrDefault(""),
+		homeDir:   homeDir,
 		configDir: ConfigDir,
 	}
 	// try to read config from file
@@ -314,11 +315,12 @@ func getDefaultConfigDir() string {
 	// Review Needed:  Earlier a dependency was used to locate home dir
 	// i.e 	"github.com/mitchellh/go-homedir" not sure if it is needed
 	// Even if such case exists it should be abstracted via below function call in utils/folder
-	homedir := folderutil.HomeDirOrDefault("")
+	//homedir := folderutil.HomeDirOrDefault("")
 	// TBD: we should probably stick to specification and use config directories provided by distro
 	// instead of manually creating one since $HOME/.config/ is config directory of Linux desktops
 	// Ref: https://pkg.go.dev/os#UserConfigDir
 	// some distros like NixOS or others have totally different config directories this causes issues for us (since we are not using os.UserConfigDir)
+	homedir, _ := os.UserConfigDir()
 	userCfgDir := filepath.Join(homedir, ".config")
 	return filepath.Join(userCfgDir, "nuclei")
 }
