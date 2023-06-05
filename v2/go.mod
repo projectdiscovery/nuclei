@@ -37,7 +37,7 @@ require (
 	github.com/syndtr/goleveldb v1.0.0
 	github.com/valyala/fasttemplate v1.2.2
 	github.com/weppos/publicsuffix-go v0.30.1-0.20230422193905-8fecedd899db
-	github.com/xanzy/go-gitlab v0.83.0
+	github.com/xanzy/go-gitlab v0.84.0
 	go.uber.org/multierr v1.11.0
 	golang.org/x/net v0.10.0
 	golang.org/x/oauth2 v0.8.0
