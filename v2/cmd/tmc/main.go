@@ -2,9 +2,8 @@ package main
 
 import (
 	"bytes"
-	"flag"
+	"encoding/json"
 	"fmt"
-	"io"
 	"log"
 	"net/url"
 	"os"
@@ -15,6 +14,7 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
+	"github.com/projectdiscovery/goflags"
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/gologger/levels"
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalog"
@@ -25,6 +25,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/templates"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 	"github.com/projectdiscovery/retryablehttp-go"
+	errorutil "github.com/projectdiscovery/utils/errors"
 	"gopkg.in/yaml.v3"
 )
 
@@ -63,42 +64,64 @@ func init() {
 	}
 }
 
-var (
-	input   = flag.String("i", "", "Templates to annotate")
-	verbose = flag.Bool("v", false, "show verbose output")
-)
+var idRegex = regexp.MustCompile("id: ([C|c][V|v][E|e]-[0-9]+-[0-9]+)")
+
+type options struct {
+	input   string
+	debug   bool
+	enhance bool
+	format  bool
+	lint    bool
+}
 
 func main() {
-	flag.Parse()
+	opts := options{}
+	flagSet := goflags.NewFlagSet()
+	flagSet.SetDescription(`TemplateMan CLI is baisc utility built on the TemplateMan API to standardize nuclei templates.`)
 
-	if *input == "" {
-		log.Fatalf("invalid input, see -h\n")
+	flagSet.CreateGroup("Input", "input",
+		flagSet.StringVarP(&opts.input, "input", "i", "", "Templates to annotate"),
+	)
+
+	flagSet.CreateGroup("Config", "config",
+		flagSet.BoolVarP(&opts.enhance, "enhance", "e", false, "enhance given nuclei template"),
+		flagSet.BoolVarP(&opts.format, "format", "f", false, "format given nuclei template"),
+		flagSet.BoolVarP(&opts.lint, "lint", "l", false, "lint given nuclei template"),
+		flagSet.BoolVarP(&opts.debug, "debug", "d", false, "show debug message"),
+	)
+
+	if err := flagSet.Parse(); err != nil {
+		gologger.Fatal().Msgf("Error parsing flags: %s\n", err)
 	}
-	if strings.HasPrefix(*input, "~/") {
+
+	if opts.input == "" {
+		gologger.Fatal().Msg("input template path/directory is required")
+	}
+	if strings.HasPrefix(opts.input, "~/") {
 		home, err := os.UserHomeDir()
 		if err != nil {
 			log.Fatalf("Failed to read UserHomeDir: %v, provide absolute template path/directory\n", err)
 		}
-		*input = filepath.Join(home, (*input)[2:])
+		opts.input = filepath.Join(home, (opts.input)[2:])
 	}
-	gologger.DefaultLogger.SetMaxLevel(levels.LevelSilent)
-	if *verbose {
-		gologger.DefaultLogger.SetMaxLevel(levels.LevelVerbose)
+	gologger.DefaultLogger.SetMaxLevel(levels.LevelInfo)
+	if opts.debug {
+		gologger.DefaultLogger.SetMaxLevel(levels.LevelDebug)
 	}
-	if err := process(); err != nil {
+	if err := process(opts); err != nil {
 		gologger.Error().Msgf("could not process: %s\n", err)
 	}
 }
 
-func process() error {
+func process(opts options) error {
 	tempDir, err := os.MkdirTemp("", "nuclei-nvd-%s")
 	if err != nil {
 		return err
 	}
 	defer os.RemoveAll(tempDir)
 
-	templateCatalog := disk.NewCatalog(filepath.Dir(*input))
-	paths, err := templateCatalog.GetTemplatePath(*input)
+	templateCatalog := disk.NewCatalog(filepath.Dir(opts.input))
+	paths, err := templateCatalog.GetTemplatePath(opts.input)
 	if err != nil {
 		return err
 	}
@@ -108,54 +131,150 @@ func process() error {
 			return err
 		}
 		dataString := string(data)
-		// try to fill max-requests
-		dataString, err = parseAndAddMaxRequests(templateCatalog, path, dataString)
-		if err != nil {
-			gologger.Error().Msgf("Could not compile max request %s: %s\n", path, err)
+
+		if opts.lint {
+			lint, err := lintTemplate(dataString)
+			if err != nil {
+				gologger.Info().Label("lint").Msg(formatErrMsg(path, err, opts.debug))
+			}
+			if lint {
+				gologger.Info().Label("lint").Msgf("✅ lint template: %s\n", path)
+			}
 		}
-		// try to resolve references to tags
-		dataString, err = parseAndAddReferenceBasedTags(path, dataString)
-		if err != nil {
-			gologger.Error().Msgf("Could not parse reference tags %s: %s\n", path, err)
-			continue
+
+		if opts.format {
+			formatedTemplateData, err := formatTemplate(dataString)
+			if err != nil {
+				gologger.Info().Label("format").Msg(formatErrMsg(path, err, opts.debug))
+			} else {
+				_ = os.WriteFile(path, []byte(formatedTemplateData), 0644)
+				dataString = formatedTemplateData
+				gologger.Info().Label("format").Msgf("✅ formatted template: %s\n", path)
+			}
 		}
-		// try and fill CVE data
-		fillCVEData(path, dataString)
+
+		if opts.enhance {
+			// try to fill max-requests
+			dataString, err = parseAndAddMaxRequests(templateCatalog, path, dataString)
+			if err != nil {
+				gologger.Info().Msgf(formatErrMsg(path, err, opts.debug))
+			}
+			gologger.Info().Label("max-request").Msgf("✅ updated template: %s\n", path)
+			// try to resolve references to tags
+			dataString, err = parseAndAddReferenceBasedTags(path, dataString)
+			if err != nil {
+				if opts.debug {
+					gologger.Error().Msgf("Could not parse reference tags %s: %s\n", path, err)
+				}
+			}
+			// currently enhance api only supports cve-id
+			matches := idRegex.FindAllStringSubmatch(dataString, 1)
+			if len(matches) == 0 {
+				continue
+			}
+			enhancedTemplateData, err := enhanceTemplate(dataString)
+			if err != nil {
+				gologger.Info().Label("enhance").Msg(formatErrMsg(path, err, opts.debug))
+				continue
+			}
+			_ = os.WriteFile(path, []byte(enhancedTemplateData), 0644)
+			gologger.Info().Label("enhance").Msgf("✅ updated template: %s\n", path)
+		}
 	}
 	return nil
 }
 
-var idRegex = regexp.MustCompile("id: ([C|c][V|v][E|e]-[0-9]+-[0-9]+)")
-
-func fillCVEData(filePath, data string) {
-	matches := idRegex.FindAllStringSubmatch(data, 1)
-	if len(matches) == 0 {
-		return
+func formatErrMsg(path string, err error, debug bool) string {
+	msg := fmt.Sprintf("❌ template: %s\n", path)
+	if debug {
+		msg = fmt.Sprintf("❌ template: %s err: %s\n", path, err)
 	}
-	enhanceTemplateData, err := enhanceTemplateData(data)
-	if err != nil {
-		gologger.Error().Msgf("Could not fill CVE info %s: %s\n", filePath, err)
-		return
-	}
-	_ = os.WriteFile(filePath, []byte(enhanceTemplateData), 0644)
-	gologger.Info().Msgf("Wrote updated template to %s\n", filePath)
+	return msg
 }
 
 // enhanceTemplateData enhances template data using templateman
 // ref: https://github.com/projectdiscovery/templateman/blob/main/templateman-rest-api/README.md#enhance-api
-func enhanceTemplateData(data string) (string, error) {
-	resp, err := retryablehttp.DefaultClient().Post("https://tm.nuclei.sh/enhance?resp_format=plain", "application/x-yaml", strings.NewReader(data))
+func enhanceTemplate(data string) (string, error) {
+	resp, err := retryablehttp.DefaultClient().Post("https://tm.nuclei.sh/enhance?resp_format=json", "application/x-yaml", strings.NewReader(data))
 	if err != nil {
 		return data, err
 	}
 	if resp.StatusCode != 200 {
-		return data, errors.New("unexpected status code: " + resp.Status)
+		return data, errorutil.New("unexpected status code: %v", resp.Status)
 	}
-	enhancedData, err := io.ReadAll(resp.Body)
+	var templateResp TemplateResp
+	if err := json.NewDecoder(resp.Body).Decode(&templateResp); err != nil {
+		return data, err
+	}
+	if templateResp.Enhance {
+		return templateResp.Enhanced, nil
+	}
+	if templateResp.ValidateErrorCount > 0 {
+		if len(templateResp.ValidateError) > 0 {
+			return data, errorutil.NewWithTag("validate", templateResp.ValidateError[0].Message+": at line %v", templateResp.ValidateError[0].Mark.Line)
+		}
+		return data, errorutil.New("validation failed").WithTag("validate")
+	}
+	if templateResp.Enhanced == "" && !templateResp.Lint {
+		if templateResp.LintError.Reason != "" {
+			return data, errorutil.NewWithTag("lint", templateResp.LintError.Reason+" : at line %v", templateResp.LintError.Mark.Line)
+		}
+		return data, errorutil.NewWithTag("lint", "at line: %v", templateResp.LintError.Mark.Line)
+	}
+	return data, errorutil.New("template enhance failed")
+}
+
+// formatTemplateData formats template data using templateman api
+func formatTemplate(data string) (string, error) {
+	resp, err := retryablehttp.DefaultClient().Post("https://tm.nuclei.sh/format?resp_format=json", "application/x-yaml", strings.NewReader(data))
 	if err != nil {
 		return data, err
 	}
-	return string(enhancedData), nil
+	if resp.StatusCode != 200 {
+		return data, errorutil.New("unexpected status code: %v", resp.Status)
+	}
+	var templateResp TemplateResp
+	if err := json.NewDecoder(resp.Body).Decode(&templateResp); err != nil {
+		return data, err
+	}
+	if templateResp.Format {
+		return templateResp.Updated, nil
+	}
+	if templateResp.ValidateErrorCount > 0 {
+		if len(templateResp.ValidateError) > 0 {
+			return data, errorutil.NewWithTag("validate", templateResp.ValidateError[0].Message+": at line %v", templateResp.ValidateError[0].Mark.Line)
+		}
+		return data, errorutil.New("validation failed").WithTag("validate")
+	}
+	if templateResp.Updated == "" && !templateResp.Lint {
+		if templateResp.LintError.Reason != "" {
+			return data, errorutil.NewWithTag("lint", templateResp.LintError.Reason+" : at line %v", templateResp.LintError.Mark.Line)
+		}
+		return data, errorutil.NewWithTag("lint", "at line: %v", templateResp.LintError.Mark.Line)
+	}
+	return data, errorutil.New("template format failed")
+}
+
+// lintTemplateData lints template data using templateman api
+func lintTemplate(data string) (bool, error) {
+	resp, err := retryablehttp.DefaultClient().Post("https://tm.nuclei.sh/lint", "application/x-yaml", strings.NewReader(data))
+	if err != nil {
+		return false, err
+	}
+	if resp.StatusCode != 200 {
+		return false, errorutil.New("unexpected status code: %v", resp.Status)
+	}
+	var lintResp TemplateLintResp
+	if err := json.NewDecoder(resp.Body).Decode(&lintResp); err != nil {
+		return false, err
+	}
+	if lintResp.Lint {
+		return true, nil
+	}
+	if lintResp.LintError.Reason != "" {
+		return false, errorutil.NewWithTag("lint", lintResp.LintError.Reason+" : at line %v", lintResp.LintError.Mark.Line)
+	}
+	return false, errorutil.NewWithTag("lint", "at line: %v", lintResp.LintError.Mark.Line)
 }
 
 // parseAndAddReferenceBasedTags parses and adds reference based tags to templates
@@ -217,40 +336,12 @@ func suggestTagsBasedOnReference(references, currentTags []string) []string {
 	return newTags
 }
 
-// InfoBlock Cloning struct from nuclei as we don't want any validation
-type InfoBlock struct {
-	Info TemplateInfo `yaml:"info"`
-}
-
-type TemplateClassification struct {
-	CvssMetrics string  `yaml:"cvss-metrics,omitempty"`
-	CvssScore   float64 `yaml:"cvss-score,omitempty"`
-	CveId       string  `yaml:"cve-id,omitempty"`
-	CweId       string  `yaml:"cwe-id,omitempty"`
-	Cpe         string  `yaml:"cpe,omitempty"`
-	EpssScore   float64 `yaml:"epss-score,omitempty"`
-}
-
-type TemplateInfo struct {
-	Name           string                 `yaml:"name"`
-	Author         string                 `yaml:"author"`
-	Severity       string                 `yaml:"severity,omitempty"`
-	Description    string                 `yaml:"description,omitempty"`
-	Reference      []string               `yaml:"reference,omitempty"`
-	Remediation    string                 `yaml:"remediation,omitempty"`
-	Classification TemplateClassification `yaml:"classification,omitempty"`
-	Metadata       map[string]interface{} `yaml:"metadata,omitempty"`
-	Tags           string                 `yaml:"tags,omitempty"`
-}
-
 // parseAndAddMaxRequests parses and adds max requests to templates
 func parseAndAddMaxRequests(catalog catalog.Catalog, path, data string) (string, error) {
 	template, err := parseTemplate(catalog, path)
 	if err != nil {
-		gologger.Warning().Label("max-request").Msgf("Could not parse template: %s\n", err)
 		return data, err
 	}
-
 	if template.TotalRequests < 1 {
 		return data, nil
 	}
@@ -258,11 +349,9 @@ func parseAndAddMaxRequests(catalog catalog.Catalog, path, data string) (string,
 	infoBlockStart, infoBlockEnd := getInfoStartEnd(data)
 	infoBlockOrig := data[infoBlockStart:infoBlockEnd]
 	infoBlockOrig = strings.TrimRight(infoBlockOrig, "\n")
-
 	infoBlock := InfoBlock{}
 	err = yaml.Unmarshal([]byte(data), &infoBlock)
 	if err != nil {
-		gologger.Warning().Label("max-request").Msgf("Could not unmarshal info block: %s\n", err)
 		return data, err
 	}
 	// if metadata is nil, create a new map
@@ -280,18 +369,12 @@ func parseAndAddMaxRequests(catalog catalog.Catalog, path, data string) (string,
 	yamlEncoder.SetIndent(yamlIndentSpaces)
 	err = yamlEncoder.Encode(infoBlock)
 	if err != nil {
-		gologger.Warning().Msgf("Could not marshal info block: %s\n", err)
 		return data, err
 	}
 	newInfoBlockData := strings.TrimSuffix(newInfoBlock.String(), "\n")
-
 	// replace old info block with new info block
 	newTemplate := strings.ReplaceAll(data, infoBlockOrig, newInfoBlockData)
-
 	err = os.WriteFile(path, []byte(newTemplate), 0644)
-	if err == nil {
-		gologger.Info().Label("max-request").Msgf("Wrote updated template to %s\n", path)
-	}
 	return newTemplate, err
 }
 
