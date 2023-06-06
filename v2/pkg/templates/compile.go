@@ -33,7 +33,7 @@ func init() {
 // TODO make sure reading from the disk the template parsing happens once: see parsers.ParseTemplate vs templates.Parse
 //
 //nolint:gocritic // this cannot be passed by pointer
-func Parse(filePath string, preprocessor Preprocessor, options protocols.ExecuterOptions) (*Template, error) {
+func Parse(filePath string, preprocessor Preprocessor, options protocols.ExecutorOptions) (*Template, error) {
 	if !options.DoNotCache {
 		if value, err := parsedTemplatesCache.Has(filePath); value != nil {
 			return value.(*Template), err
@@ -109,7 +109,7 @@ func (template *Template) Requests() int {
 }
 
 // compileProtocolRequests compiles all the protocol requests for the template
-func (template *Template) compileProtocolRequests(options protocols.ExecuterOptions) error {
+func (template *Template) compileProtocolRequests(options protocols.ExecutorOptions) error {
 	templateRequests := template.Requests()
 
 	if templateRequests == 0 {
@@ -172,7 +172,7 @@ func (template *Template) convertRequestToProtocolsRequest(requests interface{})
 // compileOfflineHTTPRequest iterates all requests if offline http mode is
 // specified and collects all matchers for all the base request templates
 // (those with URL {{BaseURL}} and it's slash variation.)
-func (template *Template) compileOfflineHTTPRequest(options protocols.ExecuterOptions) error {
+func (template *Template) compileOfflineHTTPRequest(options protocols.ExecutorOptions) error {
 	operatorsList := []*operators.Operators{}
 
 mainLoop:
@@ -200,7 +200,7 @@ mainLoop:
 
 // ParseTemplateFromReader reads the template from reader
 // returns the parsed template
-func ParseTemplateFromReader(reader io.Reader, preprocessor Preprocessor, options protocols.ExecuterOptions) (*Template, error) {
+func ParseTemplateFromReader(reader io.Reader, preprocessor Preprocessor, options protocols.ExecutorOptions) (*Template, error) {
 	template := &Template{}
 	data, err := io.ReadAll(reader)
 	if err != nil {
