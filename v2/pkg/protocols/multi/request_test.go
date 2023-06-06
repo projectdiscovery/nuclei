@@ -67,6 +67,8 @@ func TestMultiProtoWithProtoPrefix(t *testing.T) {
 	err = Template.MultiProtoRequest.Compile(&executerOpts)
 	require.Nil(t, err, "could not compile template")
 
+	require.True(t, len(Template.MultiProtoRequest.GetCompiledOperators()) > 0, "could not compile operators")
+
 	gotresults, err := Template.Executer.Execute(contextargs.NewWithInput("blog.projectdiscovery.io"))
 	require.Nil(t, err, "could not execute template")
 	require.True(t, gotresults)

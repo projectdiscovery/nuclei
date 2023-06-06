@@ -56,6 +56,13 @@ func (ctx *Context) ForEach(f func(string, interface{}) error) {
 	}
 }
 
+// Merge merges the map into the contextargs
+func (ctx *Context) Merge(m map[string]interface{}) {
+	if err := ctx.args.Merge(m); err != nil {
+		gologger.Error().Msgf("contextargs: could not merge: %s\n", err)
+	}
+}
+
 // Has check if the key exists
 func (ctx *Context) Has(key string) bool {
 	return ctx.args.Has(key)

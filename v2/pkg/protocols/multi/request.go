@@ -11,7 +11,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/contextargs"
 	"github.com/projectdiscovery/nuclei/v2/pkg/templates/types"
-	"golang.org/x/exp/maps"
+	errorutil "github.com/projectdiscovery/utils/errors"
 )
 
 var _ protocols.Request = &Request{}
@@ -66,9 +66,10 @@ func (r *Request) Requests() int {
 func (r *Request) Compile(executerOptions *protocols.ExecutorOptions) error {
 	r.options = executerOptions
 	r.options.TemplateCtx = contextargs.New()
+	r.options.ProtocolType = types.MultiProtocol
 	for _, protocol := range r.Queue {
-		if err := protocol.Compile(executerOptions); err != nil {
-			return err
+		if err := protocol.Compile(r.options); err != nil {
+			return errorutil.NewWithErr(err).Msgf("failed to compile protocol %s", protocol.Type())
 		}
 	}
 	return nil
@@ -92,8 +93,6 @@ func (r *Request) Extract(data map[string]interface{}, matcher *extractors.Extra
 // ExecuteWithResults executes the protocol requests and returns results instead of writing them.
 func (r *Request) ExecuteWithResults(input *contextargs.Context, dynamicValues, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
 	var finalProtoEvent *output.InternalWrappedEvent
-	// contains values from previous protocols
-	templateContextValues := maps.Clone(dynamicValues)
 	// callback to process results from all protocols
 	multiProtoCallback := func(event *output.InternalWrappedEvent) {
 		finalProtoEvent = event
@@ -104,7 +103,7 @@ func (r *Request) ExecuteWithResults(input *contextargs.Context, dynamicValues, 
 				// we either need to add support for iterate-all in other protocols or implement a different logic (specific to template context)
 				// currently if dynamic value array only contains one value we replace it with the value
 				if len(v) == 1 {
-					templateContextValues[k] = v[0]
+					r.options.TemplateCtx.Set(k, v[0])
 				} else {
 					// Note: if extracted value contains multiple values then they can be accessed by indexing
 					// ex: if values are dynamic = []string{"a","b","c"} then they are available as
@@ -112,9 +111,9 @@ func (r *Request) ExecuteWithResults(input *contextargs.Context, dynamicValues, 
 					// we intentionally omit first index for unknown situations (where no of extracted values are not known)
 					for i, val := range v {
 						if i == 0 {
-							templateContextValues[k] = val
+							r.options.TemplateCtx.Set(k, val)
 						} else {
-							templateContextValues[k+strconv.Itoa(i)] = val
+							r.options.TemplateCtx.Set(k+strconv.Itoa(i), val)
 						}
 					}
 				}
@@ -130,7 +129,7 @@ func (r *Request) ExecuteWithResults(input *contextargs.Context, dynamicValues, 
 
 	// execute all protocols in the queue
 	for _, req := range r.Queue {
-		err := req.ExecuteWithResults(input, templateContextValues, previous, multiProtoCallback)
+		err := req.ExecuteWithResults(input, dynamicValues, previous, multiProtoCallback)
 		// if error skip execution of next protocols
 		if err != nil {
 			return err
