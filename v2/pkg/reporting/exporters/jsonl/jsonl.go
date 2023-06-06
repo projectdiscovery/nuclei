@@ -18,7 +18,7 @@ type Exporter struct {
 type Options struct {
 	// File is the file to export found JSONL result to
 	File              string `yaml:"file"`
-	ExcludeRawPayload bool   `yaml:"exclude-raw-payload"`
+	IncludeRawPayload bool   `yaml:"include-raw-payload"`
 }
 
 // New creates a new JSONL exporter integration client based on options.
@@ -37,11 +37,11 @@ func (exporter *Exporter) Export(event *output.ResultEvent) error {
 	exporter.mutex.Lock()
 	defer exporter.mutex.Unlock()
 
-	// If the ExcludeRawPayload is set, then set the request and response to an empty string in the event to avoid
+	// If the IncludeRawPayload is not set, then set the request and response to an empty string in the event to avoid
 	// writing them to the list of events.
 	// This will reduce the amount of storage as well as the fields being excluded from the resulting JSONL output since
 	// the property is set to "omitempty"
-	if exporter.options.ExcludeRawPayload {
+	if !exporter.options.IncludeRawPayload {
 		event.Request = ""
 		event.Response = ""
 	}

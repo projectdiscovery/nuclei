@@ -22,7 +22,7 @@ type Exporter struct {
 type Options struct {
 	// Directory is the directory to export found results to
 	Directory         string `yaml:"directory"`
-	ExcludeRawPayload bool   `yaml:"exclude-raw-payload"`
+	IncludeRawPayload bool   `yaml:"include-raw-payload"`
 }
 
 // New creates a new markdown exporter integration client based on options.
@@ -52,11 +52,11 @@ func New(options *Options) (*Exporter, error) {
 
 // Export exports a passed result event to markdown
 func (exporter *Exporter) Export(event *output.ResultEvent) error {
-	// If the ExcludeRawPayload is set, then set the request and response to an empty string in the event to avoid
+	// If the IncludeRawPayload is not set, then set the request and response to an empty string in the event to avoid
 	// writing them to the list of events.
 	// This will reduce the amount of storage as well as the fields being excluded from the markdown report output since
 	// the property is set to "omitempty"
-	if exporter.options.ExcludeRawPayload {
+	if !exporter.options.IncludeRawPayload {
 		event.Request = ""
 		event.Response = ""
 	}
