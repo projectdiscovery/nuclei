@@ -343,13 +343,13 @@ func createReportingOptions(options *types.Options) (*reporting.Options, error) 
 		if reportingOptions != nil {
 			reportingOptions.MarkdownExporter = &markdown.Options{
 				Directory:         options.MarkdownExportDirectory,
-				IncludeRawPayload: options.JSONRequests,
+				IncludeRawPayload: options.IncludeRawRequests,
 			}
 		} else {
 			reportingOptions = &reporting.Options{}
 			reportingOptions.MarkdownExporter = &markdown.Options{
 				Directory:         options.MarkdownExportDirectory,
-				IncludeRawPayload: options.JSONRequests,
+				IncludeRawPayload: options.IncludeRawRequests,
 			}
 		}
 	}
@@ -365,13 +365,13 @@ func createReportingOptions(options *types.Options) (*reporting.Options, error) 
 		if reportingOptions != nil {
 			reportingOptions.JSONExporter = &json_exporter.Options{
 				File:              options.JSONExport,
-				IncludeRawPayload: options.JSONRequests,
+				IncludeRawPayload: options.IncludeRawRequests,
 			}
 		} else {
 			reportingOptions = &reporting.Options{}
 			reportingOptions.JSONExporter = &json_exporter.Options{
 				File:              options.JSONExport,
-				IncludeRawPayload: options.JSONRequests,
+				IncludeRawPayload: options.IncludeRawRequests,
 			}
 		}
 	}
@@ -379,13 +379,13 @@ func createReportingOptions(options *types.Options) (*reporting.Options, error) 
 		if reportingOptions != nil {
 			reportingOptions.JSONLExporter = &jsonl.Options{
 				File:              options.JSONLExport,
-				IncludeRawPayload: options.JSONRequests,
+				IncludeRawPayload: options.IncludeRawRequests,
 			}
 		} else {
 			reportingOptions = &reporting.Options{}
 			reportingOptions.JSONLExporter = &jsonl.Options{
 				File:              options.JSONLExport,
-				IncludeRawPayload: options.JSONRequests,
+				IncludeRawPayload: options.IncludeRawRequests,
 			}
 		}
 	}

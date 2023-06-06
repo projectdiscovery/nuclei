@@ -169,7 +169,7 @@ on extensive configurability, massive extensibility and ease of use.`)
 		flagSet.BoolVar(&options.Silent, "silent", false, "display findings only"),
 		flagSet.BoolVarP(&options.NoColor, "no-color", "nc", false, "disable output content coloring (ANSI escape codes)"),
 		flagSet.BoolVarP(&options.JSONL, "jsonl", "j", false, "write output in JSONL(ines) format"),
-		flagSet.BoolVarP(&options.JSONRequests, "include-rr", "irr", false, "include request/response pairs in the JSON and JSONL outputs (for findings only)"),
+		flagSet.BoolVarP(&options.IncludeRawRequests, "include-rr", "irr", false, "include request/response pairs in the JSON, JSONL, and Markdown outputs (for findings only)"),
 		flagSet.BoolVarP(&options.NoMeta, "no-meta", "nm", false, "disable printing result metadata in cli output"),
 		flagSet.BoolVarP(&options.Timestamp, "timestamp", "ts", false, "enables printing timestamp in cli output"),
 		flagSet.StringVarP(&options.ReportingDB, "report-db", "rdb", "", "nuclei reporting database (always use this to persist report data)"),

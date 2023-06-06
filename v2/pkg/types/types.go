@@ -230,8 +230,8 @@ type Options struct {
 	UpdateTemplates bool
 	// JSON writes json line output to files
 	JSONL bool
-	// JSONRequests writes requests/responses for matches in JSON output
-	JSONRequests bool
+	// IncludeRawRequests writes requests/responses for matches in JSON output
+	IncludeRawRequests bool
 	// JSONExport is the file to export JSON output format to
 	JSONExport string
 	// JSONLExport is the file to export JSONL output format to
