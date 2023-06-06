@@ -147,7 +147,7 @@ func validateOptions(options *types.Options) error {
 	}
 
 	// Verify that all GitLab options are provided if the GitLab server or token is provided
-	if options.GitLabToken != "" && options.UpdateTemplates && !options.GitLabTemplateDisableDownload {
+	if len(options.GitLabTemplateRepositoryIDs) != 0 && options.UpdateTemplates && !options.GitLabTemplateDisableDownload {
 		missing := validateMissingGitLabOptions(options)
 		if missing != nil {
 			return fmt.Errorf("gitlab server details are missing. Please provide %s", strings.Join(missing, ","))

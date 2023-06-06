@@ -37,8 +37,8 @@ type Executer interface {
 	ExecuteWithResults(input *contextargs.Context, callback OutputEventCallback) error
 }
 
-// ExecuterOptions contains the configuration options for executer clients
-type ExecuterOptions struct {
+// ExecutorOptions contains the configuration options for executer clients
+type ExecutorOptions struct {
 	// TemplateID is the ID of the template for the request
 	TemplateID string
 	// TemplatePath is the path of the template for the request
@@ -88,7 +88,7 @@ type ExecuterOptions struct {
 }
 
 // Copy returns a copy of the executeroptions structure
-func (e ExecuterOptions) Copy() ExecuterOptions {
+func (e ExecutorOptions) Copy() ExecutorOptions {
 	copy := e
 	return copy
 }
@@ -96,7 +96,7 @@ func (e ExecuterOptions) Copy() ExecuterOptions {
 // Request is an interface implemented any protocol based request generator.
 type Request interface {
 	// Compile compiles the request generators preparing any requests possible.
-	Compile(options *ExecuterOptions) error
+	Compile(options *ExecutorOptions) error
 	// Requests returns the total number of requests the rule will perform
 	Requests() int
 	// GetID returns the ID for the request if any. IDs are used for multi-request

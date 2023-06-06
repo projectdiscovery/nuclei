@@ -10,7 +10,7 @@ import (
 )
 
 // compileWorkflow compiles the workflow for execution
-func compileWorkflow(path string, preprocessor Preprocessor, options *protocols.ExecuterOptions, workflow *workflows.Workflow, loader model.WorkflowLoader) {
+func compileWorkflow(path string, preprocessor Preprocessor, options *protocols.ExecutorOptions, workflow *workflows.Workflow, loader model.WorkflowLoader) {
 	for _, workflow := range workflow.Workflows {
 		if err := parseWorkflow(preprocessor, workflow, options, loader); err != nil {
 			gologger.Warning().Msgf("Could not parse workflow %s: %v\n", path, err)
@@ -20,7 +20,7 @@ func compileWorkflow(path string, preprocessor Preprocessor, options *protocols.
 }
 
 // parseWorkflow parses and compiles all templates in a workflow recursively
-func parseWorkflow(preprocessor Preprocessor, workflow *workflows.WorkflowTemplate, options *protocols.ExecuterOptions, loader model.WorkflowLoader) error {
+func parseWorkflow(preprocessor Preprocessor, workflow *workflows.WorkflowTemplate, options *protocols.ExecutorOptions, loader model.WorkflowLoader) error {
 	shouldNotValidate := false
 
 	if workflow.Template == "" && workflow.Tags.IsEmpty() {
@@ -55,7 +55,7 @@ func parseWorkflow(preprocessor Preprocessor, workflow *workflows.WorkflowTempla
 }
 
 // parseWorkflowTemplate parses a workflow template creating an executer
-func parseWorkflowTemplate(workflow *workflows.WorkflowTemplate, preprocessor Preprocessor, options *protocols.ExecuterOptions, loader model.WorkflowLoader, noValidate bool) error {
+func parseWorkflowTemplate(workflow *workflows.WorkflowTemplate, preprocessor Preprocessor, options *protocols.ExecutorOptions, loader model.WorkflowLoader, noValidate bool) error {
 	var paths []string
 
 	subTemplateTags := workflow.Tags
