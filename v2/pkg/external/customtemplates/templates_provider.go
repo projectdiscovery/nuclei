@@ -49,7 +49,7 @@ func NewCustomTemplatesManager(options *types.Options) (*CustomTemplatesManager,
 		ctm.providers = append(ctm.providers, v)
 	}
 
-	// Add Aws S3 providers
+	// Add AWS S3 providers
 	s3Providers, err := NewS3Providers(options)
 	if err != nil {
 		return nil, errorutil.NewWithErr(err).Msgf("could not create s3 providers for custom templates")
