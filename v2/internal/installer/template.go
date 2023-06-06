@@ -78,7 +78,7 @@ func (t *TemplateManager) FreshInstallIfNotExists() error {
 
 // UpdateIfOutdated updates templates if they are outdated
 func (t *TemplateManager) UpdateIfOutdated() error {
-	// if folder does not exist, its a fresh install and not update
+	// if the templates folder does not exist, it's a fresh installation and do not update
 	if !fileutil.FolderExists(config.DefaultConfig.TemplatesDirectory) {
 		return t.FreshInstallIfNotExists()
 	}

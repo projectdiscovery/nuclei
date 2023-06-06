@@ -131,7 +131,7 @@ func validateOptions(options *types.Options) error {
 		validateCertificatePaths([]string{options.ClientCertFile, options.ClientKeyFile, options.ClientCAFile})
 	}
 	// Verify AWS secrets are passed if a S3 template bucket is passed
-	if options.AwsBucketName != "" && options.UpdateTemplates {
+	if options.AwsBucketName != "" && options.UpdateTemplates && !options.AwsTemplateDisableDownload {
 		missing := validateMissingS3Options(options)
 		if missing != nil {
 			return fmt.Errorf("aws s3 bucket details are missing. Please provide %s", strings.Join(missing, ","))
@@ -139,7 +139,7 @@ func validateOptions(options *types.Options) error {
 	}
 
 	// Verify Azure connection configuration is passed if the Azure template bucket is passed
-	if options.AzureContainerName != "" && options.UpdateTemplates {
+	if options.AzureContainerName != "" && options.UpdateTemplates && !options.AzureTemplateDisableDownload {
 		missing := validateMissingAzureOptions(options)
 		if missing != nil {
 			return fmt.Errorf("azure connection details are missing. Please provide %s", strings.Join(missing, ","))
@@ -147,7 +147,7 @@ func validateOptions(options *types.Options) error {
 	}
 
 	// Verify that all GitLab options are provided if the GitLab server or token is provided
-	if options.GitLabToken != "" && options.UpdateTemplates {
+	if options.GitLabToken != "" && options.UpdateTemplates && !options.GitLabTemplateDisableDownload {
 		missing := validateMissingGitLabOptions(options)
 		if missing != nil {
 			return fmt.Errorf("gitlab server details are missing. Please provide %s", strings.Join(missing, ","))

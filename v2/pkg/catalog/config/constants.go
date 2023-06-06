@@ -26,11 +26,11 @@ const (
 )
 
 // IsOutdatedVersion compares two versions and returns true
-// if current version is outdated
+// if the current version is outdated
 func IsOutdatedVersion(current, latest string) bool {
 	if latest == "" {
-		// if pdtm api call failed it's assumed that current version is outdated
-		// and it will be confirmed while updating from github
+		// if pdtm api call failed it's assumed that the current version is outdated
+		// and it will be confirmed while updating from GitHub
 		// this fixes `version string empty` errors
 		return true
 	}

@@ -58,36 +58,39 @@ func (customTemplate *customTemplateGithubRepo) Update(ctx context.Context) {
 	}
 }
 
-// NewGithubProviders returns new instance of github providers for downloading custom templates
+// NewGithubProviders returns new instance of GitHub providers for downloading custom templates
 func NewGithubProviders(options *types.Options) ([]*customTemplateGithubRepo, error) {
 	providers := []*customTemplateGithubRepo{}
 	gitHubClient := getGHClientIncognito()
 
-	for _, repoName := range options.GithubTemplateRepo {
-		owner, repo, err := getOwnerAndRepo(repoName)
-		if err != nil {
-			gologger.Error().Msgf("%s", err)
-			continue
+	if !options.GitHubTemplateDisableDownload {
+
+		for _, repoName := range options.GithubTemplateRepo {
+			owner, repo, err := getOwnerAndRepo(repoName)
+			if err != nil {
+				gologger.Error().Msgf("%s", err)
+				continue
+			}
+			githubRepo, err := getGithubRepo(gitHubClient, owner, repo, options.GithubToken)
+			if err != nil {
+				gologger.Error().Msgf("%s", err)
+				continue
+			}
+			customTemplateRepo := &customTemplateGithubRepo{
+				owner:       owner,
+				reponame:    repo,
+				gitCloneURL: githubRepo.GetCloneURL(),
+				githubToken: options.GithubToken,
+			}
+			providers = append(providers, customTemplateRepo)
 		}
-		githubRepo, err := getGithubRepo(gitHubClient, owner, repo, options.GithubToken)
-		if err != nil {
-			gologger.Error().Msgf("%s", err)
-			continue
-		}
-		customTemplateRepo := &customTemplateGithubRepo{
-			owner:       owner,
-			reponame:    repo,
-			gitCloneURL: githubRepo.GetCloneURL(),
-			githubToken: options.GithubToken,
-		}
-		providers = append(providers, customTemplateRepo)
 	}
 	return providers, nil
 }
 
 // getOwnerAndRepo returns the owner, repo, err from the given string
-// eg. it takes input projectdiscovery/nuclei-templates and
-// returns owner=> projectdiscovery , repo => nuclei-templates
+// e.g., it takes input projectdiscovery/nuclei-templates and
+// returns owner => projectdiscovery, repo => nuclei-templates
 func getOwnerAndRepo(reponame string) (owner string, repo string, err error) {
 	s := strings.Split(reponame, "/")
 	if len(s) != 2 {
@@ -118,7 +121,7 @@ getRepo:
 	return repo, nil
 }
 
-// download the git repo to given path
+// download the git repo to a given path
 func (ctr *customTemplateGithubRepo) cloneRepo(clonePath, githubToken string) error {
 	r, err := git.PlainClone(clonePath, false, &git.CloneOptions{
 		URL:  ctr.gitCloneURL,
@@ -127,7 +130,7 @@ func (ctr *customTemplateGithubRepo) cloneRepo(clonePath, githubToken string) er
 	if err != nil {
 		return errors.Errorf("%s/%s: %s", ctr.owner, ctr.reponame, err.Error())
 	}
-	// Add the user as well in the config. By default user is not set
+	// Add the user as well in the config. By default, user is not set
 	config, _ := r.Storer.Config()
 	config.User.Name = ctr.owner
 	return r.SetConfig(config)
