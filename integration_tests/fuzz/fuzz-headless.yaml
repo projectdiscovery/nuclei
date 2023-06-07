@@ -27,5 +27,5 @@ headless:
     matchers:
       - type: regex
         regex:
-          - "blog.com"
-          - "portal.com"
+          - "{{redirect}}"
+  
