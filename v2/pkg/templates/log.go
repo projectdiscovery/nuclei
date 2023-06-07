@@ -3,17 +3,17 @@ package templates
 import (
 	"fmt"
 	"strings"
-	"sync"
 
 	"github.com/logrusorgru/aurora"
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v2/pkg/model/types/severity"
+	mapsutil "github.com/projectdiscovery/utils/maps"
 )
 
 var (
 	Colorizer                       aurora.Aurora
 	SeverityColorizer               func(severity.Severity) string
-	deprecatedProtocolNameTemplates = sync.Map{} //templates that still use deprecated protocol names
+	deprecatedProtocolNameTemplates = mapsutil.SyncLockMap[string, bool]{Map: mapsutil.Map[string, bool]{}} //templates that still use deprecated protocol names
 )
 
 // TemplateLogMessage returns a beautified log string for a template
@@ -50,18 +50,20 @@ func appendAtSignToAuthors(authors []string) string {
 // Unless mode is silent we print a message for deprecated protocol name
 func PrintDeprecatedProtocolNameMsgIfApplicable(isSilent bool, verbose bool) {
 	count := 0
-	deprecatedProtocolNameTemplates.Range(func(key, value any) bool {
+	deprecatedProtocolNameTemplates.Iterate(func(k string, v bool) error {
 		count++
-		return true
+		return nil
 	})
 	if count > 0 && !isSilent {
 		gologger.Print().Msgf("[%v] Found %v templates loaded with deprecated protocol syntax, update before v2.9.5 for continued support.\n", aurora.Yellow("WRN").String(), count)
 	}
 	if verbose {
-		deprecatedProtocolNameTemplates.Range(func(template, value any) bool {
-			gologger.Print().Msgf("  - %s\n", template)
-			return true
+		deprecatedProtocolNameTemplates.Iterate(func(k string, v bool) error {
+			gologger.Print().Msgf("  - %s\n", k)
+			return nil
 		})
 	}
-	deprecatedProtocolNameTemplates = sync.Map{}
+	deprecatedProtocolNameTemplates.Lock()
+	deprecatedProtocolNameTemplates.Map = make(map[string]bool)
+	deprecatedProtocolNameTemplates.Unlock()
 }
