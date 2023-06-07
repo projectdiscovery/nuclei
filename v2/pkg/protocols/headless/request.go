@@ -181,7 +181,7 @@ func (request *Request) executeFuzzingRule(inputURL string, payloads map[string]
 		if gotmatches && (request.StopAtFirstMatch || request.options.Options.StopAtFirstMatch || request.options.StopAtFirstMatch) {
 			return true
 		}
-		if err := request.executeRequestWithPayloads(gr.Request.URL.String(), payloads, nil, callback); err != nil {
+		if err := request.executeRequestWithPayloads(gr.Request.URL.String(), gr.DynamicValues, previous, callback); err != nil {
 			return false
 		}
 		return true
