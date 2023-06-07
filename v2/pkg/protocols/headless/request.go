@@ -1,6 +1,8 @@
 package headless
 
 import (
+	"fmt"
+	"io"
 	"net/url"
 	"strings"
 	"time"
@@ -12,6 +14,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/contextargs"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/fuzz"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/generators"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/helpers/eventcreator"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/helpers/responsehighlighter"
@@ -19,6 +22,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/utils/vardump"
 	protocolutils "github.com/projectdiscovery/nuclei/v2/pkg/protocols/utils"
 	templateTypes "github.com/projectdiscovery/nuclei/v2/pkg/templates/types"
+	urlutil "github.com/projectdiscovery/utils/url"
 )
 
 var _ protocols.Request = &Request{}
@@ -51,7 +55,10 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, metadata,
 			gotmatches = results.OperatorsResult.Matched
 		}
 	}
-
+	// verify if fuzz elaboration was requested
+	if len(request.Fuzzing) > 0 {
+		return request.executeFuzzingRule(inputURL, payloads, wrappedCallback)
+	}
 	if request.generator != nil {
 		iterator := request.generator.NewIterator()
 		for {
@@ -91,6 +98,7 @@ func (request *Request) executeRequestWithPayloads(inputURL string, payloads map
 
 	instance.SetInteractsh(request.options.Interactsh)
 
+	fmt.Println("inputURL", inputURL)
 	parsedURL, err := url.Parse(inputURL)
 	if err != nil {
 		request.options.Output.Request(request.options.TemplatePath, inputURL, request.Type().String(), err)
@@ -165,4 +173,45 @@ func dumpResponse(event *output.InternalWrappedEvent, requestOptions *protocols.
 		highlightedResponse := responsehighlighter.Highlight(event.OperatorsResult, responseBody, cliOptions.NoColor, false)
 		gologger.Debug().Msgf("[%s] Dumped Headless response for %s\n\n%s", requestOptions.TemplateID, input, highlightedResponse)
 	}
+}
+
+func (request *Request) executeFuzzingRule(inputURL string, payloads map[string]interface{}, callback protocols.OutputEventCallback) error {
+	// check for operator matches by wrapping callback
+	fmt.Println("Inside executeFuzzingRule")
+	// check for operator matches by wrapping callback
+	gotmatches := false
+	wrappedCallback := func(results *output.InternalWrappedEvent) {
+		callback(results)
+		if results != nil && results.OperatorsResult != nil {
+			gotmatches = results.OperatorsResult.Matched
+		}
+	}
+	fuzzRequestCallback := func(gr fuzz.GeneratedRequest) bool {
+		fmt.Println("Inside fuzzRequestCallback")
+		fmt.Println(gr.Request.URL)
+		if gotmatches && (request.StopAtFirstMatch || request.options.Options.StopAtFirstMatch || request.options.StopAtFirstMatch) {
+			return true
+		}
+		if err := request.executeRequestWithPayloads(gr.Request.URL.String(), payloads, nil, wrappedCallback); err != nil {
+			return false
+		}
+		return true
+	}
+
+	parsedURL, err := urlutil.Parse(inputURL)
+	for _, rule := range request.Fuzzing {
+		err = rule.Execute(&fuzz.ExecuteRuleInput{
+			URL:         parsedURL,
+			Callback:    fuzzRequestCallback,
+			Values:      payloads,
+			BaseRequest: nil,
+		})
+		if err == io.EOF {
+			return nil
+		}
+		if err != nil {
+			return errors.Wrap(err, "could not execute rule")
+		}
+	}
+	return nil
 }
