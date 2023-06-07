@@ -206,7 +206,7 @@ func enhanceTemplate(data string) (string, error) {
 	if err := json.NewDecoder(resp.Body).Decode(&templateResp); err != nil {
 		return data, err
 	}
-	if templateResp.Enhance {
+	if templateResp.Enhance || strings.TrimSpace(templateResp.Enhanced) != "" {
 		return templateResp.Enhanced, nil
 	}
 	if templateResp.ValidateErrorCount > 0 {
@@ -215,7 +215,7 @@ func enhanceTemplate(data string) (string, error) {
 		}
 		return data, errorutil.New("validation failed").WithTag("validate")
 	}
-	if templateResp.Enhanced == "" && !templateResp.Lint {
+	if strings.TrimSpace(templateResp.Enhanced) == "" && !templateResp.Lint {
 		if templateResp.LintError.Reason != "" {
 			return data, errorutil.NewWithTag("lint", templateResp.LintError.Reason+" : at line %v", templateResp.LintError.Mark.Line)
 		}
@@ -237,7 +237,7 @@ func formatTemplate(data string) (string, error) {
 	if err := json.NewDecoder(resp.Body).Decode(&templateResp); err != nil {
 		return data, err
 	}
-	if templateResp.Format {
+	if templateResp.Format || strings.TrimSpace(templateResp.Updated) != "" {
 		return templateResp.Updated, nil
 	}
 	if templateResp.ValidateErrorCount > 0 {
@@ -246,7 +246,7 @@ func formatTemplate(data string) (string, error) {
 		}
 		return data, errorutil.New("validation failed").WithTag("validate")
 	}
-	if templateResp.Updated == "" && !templateResp.Lint {
+	if strings.TrimSpace(templateResp.Updated) == "" && !templateResp.Lint {
 		if templateResp.LintError.Reason != "" {
 			return data, errorutil.NewWithTag("lint", templateResp.LintError.Reason+" : at line %v", templateResp.LintError.Mark.Line)
 		}
