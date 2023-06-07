@@ -1,6 +1,8 @@
 package headless
 
 import (
+	"context"
+	"io"
 	"net/url"
 	"strings"
 	"time"
@@ -17,8 +19,10 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/helpers/responsehighlighter"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/interactsh"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/utils/vardump"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/headless/fuzz"
 	protocolutils "github.com/projectdiscovery/nuclei/v2/pkg/protocols/utils"
 	templateTypes "github.com/projectdiscovery/nuclei/v2/pkg/templates/types"
+	urlutil "github.com/projectdiscovery/utils/url"
 )
 
 var _ protocols.Request = &Request{}
@@ -165,4 +169,91 @@ func dumpResponse(event *output.InternalWrappedEvent, requestOptions *protocols.
 		highlightedResponse := responsehighlighter.Highlight(event.OperatorsResult, responseBody, cliOptions.NoColor, false)
 		gologger.Debug().Msgf("[%s] Dumped Headless response for %s\n\n%s", requestOptions.TemplateID, input, highlightedResponse)
 	}
+}
+
+var errStopExecution = errors.New("stop execution due to unresolved variables")
+
+// executeFuzzingRule executes fuzzing request for a URL
+func (request *Request) executeFuzzingRule(input *contextargs.Context, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
+
+	parsed, err := urlutil.Parse(input.MetaInput.Input)
+	if err != nil {
+		return errors.Wrap(err, "could not parse url")
+	}
+
+	fuzzRequestCallback := func(gr fuzz.GeneratedRequest) bool {
+		hasInteractMatchers := interactsh.HasMatchers(request.CompiledOperators)
+		hasInteractMarkers := len(gr.InteractURLs) > 0
+		if request.options.HostErrorsCache != nil && request.options.HostErrorsCache.Check(parsed.URL.String()) {
+			return false
+		}
+		request.options.RateLimiter.Take()
+		var gotMatches bool
+		requestErr := request.executeRequestWithPayloads(parsed.URL.String(), gr.DynamicValues, previous, func(event *output.InternalWrappedEvent) {
+			if hasInteractMarkers && hasInteractMatchers && request.options.Interactsh != nil {
+				requestData := &interactsh.RequestData{
+					MakeResultFunc: request.MakeResultEvent,
+					Event:          event,
+					Operators:      request.CompiledOperators,
+					MatchFunc:      request.Match,
+					ExtractFunc:    request.Extract,
+				}
+				request.options.Interactsh.RequestEvent(gr.InteractURLs, requestData)
+				gotMatches = request.options.Interactsh.AlreadyMatched(requestData)
+			} else {
+				callback(event)
+			}
+			// Add the extracts to the dynamic values if any.
+			if event.OperatorsResult != nil {
+				gotMatches = event.OperatorsResult.Matched
+			}
+		})
+
+		// If a variable is unresolved, skip all further requests
+		if errors.Is(requestErr, errStopExecution) {
+			return false
+		}
+		if requestErr != nil {
+			if request.options.HostErrorsCache != nil {
+				request.options.HostErrorsCache.MarkFailed(parsed.URL.String(), requestErr)
+			}
+		}
+		request.options.Progress.IncrementRequests()
+
+		// If this was a match, and we want to stop at first match, skip all further requests.
+		shouldStopAtFirstMatch := request.options.Options.StopAtFirstMatch || request.StopAtFirstMatch
+		if shouldStopAtFirstMatch && gotMatches {
+			return false
+		}
+		return true
+	}
+
+	// Iterate through all requests for template and queue them for fuzzing
+	generator := request.newGenerator(true)
+	for {
+		value, payloads, result := generator.nextValue()
+		if !result {
+			break
+		}
+		generated, err := generator.Make(context.Background(), input, value, payloads, nil)
+		if err != nil {
+			continue
+		}
+
+		for _, rule := range request.Fuzzing {
+			err = rule.Execute(&fuzz.ExecuteRuleInput{
+				URL:         parsed,
+				Callback:    fuzzRequestCallback,
+				Values:      generated.dynamicValues,
+				BaseRequest: generated.request,
+			})
+			if err == io.EOF {
+				return nil
+			}
+			if err != nil {
+				return errors.Wrap(err, "could not execute rule")
+			}
+		}
+	}
+	return nil
 }

@@ -57,7 +57,7 @@ type Request struct {
 	generator *generators.PayloadGenerator
 
 	// Fuzzing describes schema to fuzz headless requests
-	Fuzzing []*fuzz.Rule `yaml:"fuzzing,omitempty" json:"fuzzing,omitempty" jsonschema:"title=fuzzin rules for http fuzzing,description=Fuzzing describes rule schema to fuzz headless requests"`
+	Fuzzing []*fuzz.Rule `yaml:"fuzzing,omitempty" json:"fuzzing,omitempty" jsonschema:"title=fuzzin rules for headless fuzzing,description=Fuzzing describes rule schema to fuzz headless requests"`
 }
 
 // RequestPartDefinitions contains a mapping of request part definitions and their
