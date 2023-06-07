@@ -1,7 +1,6 @@
 package headless
 
 import (
-	"fmt"
 	"io"
 	"net/url"
 	"strings"
@@ -57,7 +56,7 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, metadata,
 	}
 	// verify if fuzz elaboration was requested
 	if len(request.Fuzzing) > 0 {
-		return request.executeFuzzingRule(inputURL, payloads, wrappedCallback)
+		return request.executeFuzzingRule(inputURL, payloads, previous, wrappedCallback)
 	}
 	if request.generator != nil {
 		iterator := request.generator.NewIterator()
@@ -98,7 +97,6 @@ func (request *Request) executeRequestWithPayloads(inputURL string, payloads map
 
 	instance.SetInteractsh(request.options.Interactsh)
 
-	fmt.Println("inputURL", inputURL)
 	parsedURL, err := url.Parse(inputURL)
 	if err != nil {
 		request.options.Output.Request(request.options.TemplatePath, inputURL, request.Type().String(), err)
@@ -175,32 +173,26 @@ func dumpResponse(event *output.InternalWrappedEvent, requestOptions *protocols.
 	}
 }
 
-func (request *Request) executeFuzzingRule(inputURL string, payloads map[string]interface{}, callback protocols.OutputEventCallback) error {
-	// check for operator matches by wrapping callback
-	fmt.Println("Inside executeFuzzingRule")
+// executeFuzzingRule executes a fuzzing rule in the template request
+func (request *Request) executeFuzzingRule(inputURL string, payloads map[string]interface{}, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
 	// check for operator matches by wrapping callback
 	gotmatches := false
-	wrappedCallback := func(results *output.InternalWrappedEvent) {
-		callback(results)
-		if results != nil && results.OperatorsResult != nil {
-			gotmatches = results.OperatorsResult.Matched
-		}
-	}
 	fuzzRequestCallback := func(gr fuzz.GeneratedRequest) bool {
-		fmt.Println("Inside fuzzRequestCallback")
-		fmt.Println(gr.Request.URL)
 		if gotmatches && (request.StopAtFirstMatch || request.options.Options.StopAtFirstMatch || request.options.StopAtFirstMatch) {
 			return true
 		}
-		if err := request.executeRequestWithPayloads(gr.Request.URL.String(), payloads, nil, wrappedCallback); err != nil {
+		if err := request.executeRequestWithPayloads(gr.Request.URL.String(), payloads, nil, callback); err != nil {
 			return false
 		}
 		return true
 	}
 
 	parsedURL, err := urlutil.Parse(inputURL)
+	if err != nil {
+		return errors.Wrap(err, "could not parse url")
+	}
 	for _, rule := range request.Fuzzing {
-		err = rule.Execute(&fuzz.ExecuteRuleInput{
+		err := rule.Execute(&fuzz.ExecuteRuleInput{
 			URL:         parsedURL,
 			Callback:    fuzzRequestCallback,
 			Values:      payloads,
