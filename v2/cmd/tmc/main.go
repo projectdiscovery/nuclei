@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
-	"net/url"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -13,7 +12,6 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/pkg/errors"
 	"github.com/projectdiscovery/goflags"
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/gologger/levels"
@@ -31,6 +29,9 @@ import (
 
 const (
 	yamlIndentSpaces = 2
+	// temaplateman api base url
+	//tmBaseUrl = "https://tm.nuclei.sh"
+	tmBaseUrl = "http://localhost:1000"
 )
 
 // allTagsRegex is a list of all tags in nuclei templates except id, info, and -
@@ -160,14 +161,7 @@ func process(opts options) error {
 				gologger.Info().Msgf(formatErrMsg(path, err, opts.debug))
 			}
 			gologger.Info().Label("max-request").Msgf("✅ updated template: %s\n", path)
-			// try to resolve references to tags
-			dataString, err = parseAndAddReferenceBasedTags(path, dataString)
-			if err != nil {
-				if opts.debug {
-					gologger.Error().Msgf("Could not parse reference tags %s: %s\n", path, err)
-				}
-			}
-			// currently enhance api only supports cve-id
+			// currently enhance api only supports cve-id's
 			matches := idRegex.FindAllStringSubmatch(dataString, 1)
 			if len(matches) == 0 {
 				continue
@@ -195,7 +189,7 @@ func formatErrMsg(path string, err error, debug bool) string {
 // enhanceTemplateData enhances template data using templateman
 // ref: https://github.com/projectdiscovery/templateman/blob/main/templateman-rest-api/README.md#enhance-api
 func enhanceTemplate(data string) (string, error) {
-	resp, err := retryablehttp.DefaultClient().Post("https://tm.nuclei.sh/enhance?resp_format=json", "application/x-yaml", strings.NewReader(data))
+	resp, err := retryablehttp.DefaultClient().Post(fmt.Sprintf("%s/enhance", tmBaseUrl), "application/x-yaml", strings.NewReader(data))
 	if err != nil {
 		return data, err
 	}
@@ -215,6 +209,9 @@ func enhanceTemplate(data string) (string, error) {
 		}
 		return data, errorutil.New("validation failed").WithTag("validate")
 	}
+	if templateResp.Error.Name != "" {
+		return data, errorutil.New(templateResp.Error.Name)
+	}
 	if strings.TrimSpace(templateResp.Enhanced) == "" && !templateResp.Lint {
 		if templateResp.LintError.Reason != "" {
 			return data, errorutil.NewWithTag("lint", templateResp.LintError.Reason+" : at line %v", templateResp.LintError.Mark.Line)
@@ -226,7 +223,7 @@ func enhanceTemplate(data string) (string, error) {
 
 // formatTemplateData formats template data using templateman api
 func formatTemplate(data string) (string, error) {
-	resp, err := retryablehttp.DefaultClient().Post("https://tm.nuclei.sh/format?resp_format=json", "application/x-yaml", strings.NewReader(data))
+	resp, err := retryablehttp.DefaultClient().Post(fmt.Sprintf("%s/format", tmBaseUrl), "application/x-yaml", strings.NewReader(data))
 	if err != nil {
 		return data, err
 	}
@@ -246,6 +243,9 @@ func formatTemplate(data string) (string, error) {
 		}
 		return data, errorutil.New("validation failed").WithTag("validate")
 	}
+	if templateResp.Error.Name != "" {
+		return data, errorutil.New(templateResp.Error.Name)
+	}
 	if strings.TrimSpace(templateResp.Updated) == "" && !templateResp.Lint {
 		if templateResp.LintError.Reason != "" {
 			return data, errorutil.NewWithTag("lint", templateResp.LintError.Reason+" : at line %v", templateResp.LintError.Mark.Line)
@@ -257,7 +257,7 @@ func formatTemplate(data string) (string, error) {
 
 // lintTemplateData lints template data using templateman api
 func lintTemplate(data string) (bool, error) {
-	resp, err := retryablehttp.DefaultClient().Post("https://tm.nuclei.sh/lint", "application/x-yaml", strings.NewReader(data))
+	resp, err := retryablehttp.DefaultClient().Post(fmt.Sprintf("%s/lint", tmBaseUrl), "application/x-yaml", strings.NewReader(data))
 	if err != nil {
 		return false, err
 	}
@@ -275,65 +275,6 @@ func lintTemplate(data string) (bool, error) {
 		return false, errorutil.NewWithTag("lint", lintResp.LintError.Reason+" : at line %v", lintResp.LintError.Mark.Line)
 	}
 	return false, errorutil.NewWithTag("lint", "at line: %v", lintResp.LintError.Mark.Line)
-}
-
-// parseAndAddReferenceBasedTags parses and adds reference based tags to templates
-func parseAndAddReferenceBasedTags(path string, data string) (string, error) {
-	block := &InfoBlock{}
-	if err := yaml.NewDecoder(strings.NewReader(data)).Decode(block); err != nil {
-		return "", errors.Wrap(err, "could not decode template yaml")
-	}
-	splitted := strings.Split(block.Info.Tags, ",")
-	if len(splitted) == 0 {
-		return data, nil
-	}
-	tagsCurrent := fmt.Sprintf("tags: %s", block.Info.Tags)
-	newTags := suggestTagsBasedOnReference(block.Info.Reference, splitted)
-
-	if len(newTags) == len(splitted) {
-		return data, nil
-	}
-	replaced := strings.ReplaceAll(data, tagsCurrent, fmt.Sprintf("tags: %s", strings.Join(newTags, ",")))
-	return replaced, os.WriteFile(path, []byte(replaced), os.ModePerm)
-}
-
-var referenceMapping = map[string]string{
-	"huntr.dev":               "huntr",
-	"hackerone.com":           "hackerone",
-	"tenable.com":             "tenable",
-	"packetstormsecurity.org": "packetstorm",
-	"seclists.org":            "seclists",
-	"wpscan.com":              "wpscan",
-	"packetstormsecurity.com": "packetstorm",
-	"exploit-db.com":          "edb",
-	"https://github.com/rapid7/metasploit-framework/": "msf",
-	"https://github.com/vulhub/vulhub/":               "vulhub",
-}
-
-func suggestTagsBasedOnReference(references, currentTags []string) []string {
-	uniqueTags := make(map[string]struct{})
-	for _, value := range currentTags {
-		uniqueTags[value] = struct{}{}
-	}
-
-	for _, reference := range references {
-		parsed, err := url.Parse(reference)
-		if err != nil {
-			continue
-		}
-		hostname := parsed.Hostname()
-
-		for value, tag := range referenceMapping {
-			if strings.HasSuffix(hostname, value) || strings.HasPrefix(reference, value) {
-				uniqueTags[tag] = struct{}{}
-			}
-		}
-	}
-	newTags := make([]string, 0, len(uniqueTags))
-	for tag := range uniqueTags {
-		newTags = append(newTags, tag)
-	}
-	return newTags
 }
 
 // parseAndAddMaxRequests parses and adds max requests to templates

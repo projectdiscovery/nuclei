@@ -8,6 +8,11 @@ type Mark struct {
 	Snippet  string `json:"snippet,omitempty"`
 }
 
+type Error struct {
+	Name string `json:"name"`
+	Mark Mark   `json:"mark"`
+}
+
 type LintError struct {
 	Name   string `json:"name,omitempty"`
 	Reason string `json:"reason,omitempty"`
@@ -45,6 +50,7 @@ type TemplateResp struct {
 	Validate           bool            `json:"template_validate,omitempty"`
 	ValidateErrorCount int             `json:"validate_error_count,omitempty"`
 	ValidateError      []ValidateError `json:"validate_error,omitempty"`
+	Error              Error           `json:"error,omitempty"`
 }
 
 // InfoBlock Cloning struct from nuclei as we don't want any validation
