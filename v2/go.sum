@@ -427,8 +427,8 @@ github.com/projectdiscovery/rawhttp v0.1.11 h1:NbfunXIVdmFWAhZ864fx09sQLnHOVTYKh
 github.com/projectdiscovery/rawhttp v0.1.11/go.mod h1:aH95fdyjmvUmyQWPTnIcHv5ncjhisOki76nXqXZZYYg=
 github.com/projectdiscovery/rdap v0.9.1-0.20221108103045-9865884d1917 h1:m03X4gBVSorSzvmm0bFa7gDV4QNSOWPL/fgZ4kTXBxk=
 github.com/projectdiscovery/rdap v0.9.1-0.20221108103045-9865884d1917/go.mod h1:JxXtZC9e195awe7EynrcnBJmFoad/BNDzW9mzFkK8Sg=
-github.com/projectdiscovery/retryabledns v1.0.26 h1:l2IGwJcbsFbap+YyXQsSwivTpIwpan8BgSOZ2uFo4MY=
-github.com/projectdiscovery/retryabledns v1.0.26/go.mod h1:yfYaRrJY8eNqKgxcwpLAsIiEMDj24QCI5fpJ8xWIwKY=
+github.com/projectdiscovery/retryabledns v1.0.28 h1:+Ln7Qduktqpdkw4G2IVWUKAcT36JjY7vk7XbRO3xt7c=
+github.com/projectdiscovery/retryabledns v1.0.28/go.mod h1:NtbDTfcsW9hIUf0HuVQNZSTTG063Phy0uaBBjZlif0Q=
 github.com/projectdiscovery/retryablehttp-go v1.0.17 h1:oppnrypatWsHxcMU5RuAcUsUu3nxBhId2CF3OBj9XJA=
 github.com/projectdiscovery/retryablehttp-go v1.0.17/go.mod h1:zJh8bQdxhIsaEGnxsacvMbgiCKT4UAOr4T1kZBnSa68=
 github.com/projectdiscovery/sarif v0.0.1 h1:C2Tyj0SGOKbCLgHrx83vaE6YkzXEVrMXYRGLkKCr/us=
@@ -439,8 +439,8 @@ github.com/projectdiscovery/tlsx v1.0.9/go.mod h1:4vGhl8lxUWjXuyoVvnL2ObMY/FSrb9
 github.com/projectdiscovery/uncover v1.0.6-0.20230601103158-bfd7e02a5bb1 h1:Pu6LvDqn+iSlhCDKKWm1ItPc++kqqlU8OntZeB/Prak=
 github.com/projectdiscovery/uncover v1.0.6-0.20230601103158-bfd7e02a5bb1/go.mod h1:Drl/CWD392mKtdXJhCBPlMkM0I6671pqedFphcnK5f8=
 github.com/projectdiscovery/utils v0.0.3/go.mod h1:ne3eSlZlUKuhjHr8FfsfGcGteCzxcbJvFBx4VDBCxK0=
-github.com/projectdiscovery/utils v0.0.34 h1:SnNJT2WeSoWhpnonVPb8YdbJiWtnll9U3SM3sfdMcnU=
-github.com/projectdiscovery/utils v0.0.34/go.mod h1:cUXbXdUIaRu+bpot7IlCCqPEp0tyB9M1VHMtGA0eJzE=
+github.com/projectdiscovery/utils v0.0.36 h1:HCEzA+eLkB5Gfhf7a2DxI7ziVgYkd9pWETuvm1RZJ7g=
+github.com/projectdiscovery/utils v0.0.36/go.mod h1:gyDuJpCGPHN6Lyo3O8PAkTxf88iiAxRZyaMFMrXV0z4=
 github.com/projectdiscovery/wappalyzergo v0.0.94 h1:IVRskuU95MajWCKYgvH5L67+MXDOWJDWSeBD61OsS/A=
 github.com/projectdiscovery/wappalyzergo v0.0.94/go.mod h1:HvYuW0Be4JCjVds/+XAEaMSqRG9yrI97UmZq0TPk6A0=
 github.com/projectdiscovery/yamldoc-go v1.0.4 h1:eZoESapnMw6WAHiVgRwNqvbJEfNHEH148uthhFbG5jE=
@@ -502,8 +502,8 @@ github.com/stretchr/testify v1.7.1/go.mod h1:6Fq8oRcR53rry900zMqJjRRixrwX3KX962/
 github.com/stretchr/testify v1.8.0/go.mod h1:yNjHg4UonilssWZ8iaSj1OCr/vHnekPRkoO+kdMU+MU=
 github.com/stretchr/testify v1.8.1/go.mod h1:w2LPCIKwWwSfY2zedu0+kehJoqGctiVI29o6fzry7u4=
 github.com/stretchr/testify v1.8.2/go.mod h1:w2LPCIKwWwSfY2zedu0+kehJoqGctiVI29o6fzry7u4=
-github.com/stretchr/testify v1.8.3 h1:RP3t2pwF7cMEbC1dqtB6poj3niw/9gnV4Cjg5oW5gtY=
-github.com/stretchr/testify v1.8.3/go.mod h1:sz/lmYIOXD/1dqDmKjjqLyZ2RngseejIcXlSw2iwfAo=
+github.com/stretchr/testify v1.8.4 h1:CcVxjf3Q8PM0mHUKJCdn+eZZtm5yQwehR5yeSVQQcUk=
+github.com/stretchr/testify v1.8.4/go.mod h1:sz/lmYIOXD/1dqDmKjjqLyZ2RngseejIcXlSw2iwfAo=
 github.com/syndtr/goleveldb v1.0.0 h1:fBdIW9lB4Iz0n9khmH8w27SJ3QEJ7+IgjPEwGSZiFdE=
 github.com/syndtr/goleveldb v1.0.0/go.mod h1:ZVVdQEZoIme9iO1Ch2Jdy24qqXrMMOU6lpPAyBWyWuQ=
 github.com/tidwall/assert v0.1.0 h1:aWcKyRBUAdLoVebxo95N7+YZVTFF/ASTr7BN4sLP6XI=
