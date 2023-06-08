@@ -26,7 +26,7 @@ type Request struct {
 }
 
 // Parse parses the raw request as supplied by the user
-func Parse(request string, inputURL *urlutil.URL, unsafe bool) (*Request, error) {
+func Parse(request string, inputURL *urlutil.URL, unsafe, disableMergePath bool) (*Request, error) {
 	rawrequest, err := readRawRequest(request, unsafe)
 	if err != nil {
 		return nil, err
@@ -45,6 +45,9 @@ func Parse(request string, inputURL *urlutil.URL, unsafe bool) (*Request, error)
 			return nil, errorutil.NewWithErr(err).WithTag("raw").Msgf("failed to parse url %v from template", rawrequest.Path)
 		}
 		cloned := inputURL.Clone()
+		if disableMergePath {
+			cloned.Path = ""
+		}
 		parseErr := cloned.MergePath(urlx.GetRelativePath(), true)
 		if parseErr != nil {
 			return nil, errorutil.NewWithTag("raw", "could not automergepath for template path %v", urlx.GetRelativePath()).Wrap(parseErr)
@@ -71,6 +74,9 @@ func Parse(request string, inputURL *urlutil.URL, unsafe bool) (*Request, error)
 				}
 			}
 		} else {
+			if disableMergePath {
+				cloned.Path = ""
+			}
 			err = cloned.MergePath(rawrequest.Path, true)
 			if err != nil {
 				return nil, errorutil.NewWithErr(err).WithTag("raw").Msgf("failed to automerge %v from unsafe template", rawrequest.Path)
@@ -81,6 +87,9 @@ func Parse(request string, inputURL *urlutil.URL, unsafe bool) (*Request, error)
 
 	default:
 		cloned := inputURL.Clone()
+		if disableMergePath {
+			cloned.Path = ""
+		}
 		parseErr := cloned.MergePath(rawrequest.Path, true)
 		if parseErr != nil {
 			return nil, errorutil.NewWithTag("raw", "could not automergepath for template path %v", rawrequest.Path).Wrap(parseErr)
