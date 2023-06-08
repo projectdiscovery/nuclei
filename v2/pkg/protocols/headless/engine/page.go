@@ -89,7 +89,7 @@ func (i *Instance) Run(baseURL *url.URL, actions []*Action, payloads map[string]
 	}
 
 	wait()
-	data["headers"] = headersToString(e.Response.Headers)
+	data["header"] = headersToString(e.Response.Headers)
 	data["status_code"] = fmt.Sprint(e.Response.Status)
 
 	return data, createdPage, nil
