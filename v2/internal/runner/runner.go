@@ -482,7 +482,7 @@ func (r *Runner) RunEnumeration() error {
 		return nil // exit
 	}
 	store.Load()
-	// TODO: remove below functions after v2.9.5 or update warning messages
+	// TODO: remove below functions after v3 or update warning messages
 	disk.PrintDeprecatedPathsMsgIfApplicable(r.options.Silent)
 	templates.PrintDeprecatedProtocolNameMsgIfApplicable(r.options.Silent, r.options.Verbose)
 
