@@ -1,6 +1,7 @@
 package engine
 
 import (
+	"fmt"
 	"net/url"
 	"strings"
 	"sync"
@@ -78,10 +79,19 @@ func (i *Instance) Run(baseURL *url.URL, actions []*Action, payloads map[string]
 		return nil, nil, err
 	}
 
+	//FIXME: this is a hack, make sure to fix this in the future. See: https://github.com/go-rod/rod/issues/188
+	var e proto.NetworkResponseReceived
+	wait := page.WaitEvent(&e)
+
 	data, err := createdPage.ExecuteActions(baseURL, actions)
 	if err != nil {
 		return nil, nil, err
 	}
+
+	wait()
+	data["headers"] = headersToString(e.Response.Headers)
+	data["status_code"] = fmt.Sprint(e.Response.Status)
+
 	return data, createdPage, nil
 }
 
@@ -177,4 +187,16 @@ func containsAnyModificationActionType(actionTypes ...ActionType) bool {
 		}
 	}
 	return false
+}
+
+// headersToString converts network headers to string
+func headersToString(headers proto.NetworkHeaders) string {
+	builder := &strings.Builder{}
+	for header, value := range headers {
+		builder.WriteString(header)
+		builder.WriteString(": ")
+		builder.WriteString(value.String())
+		builder.WriteRune('\n')
+	}
+	return builder.String()
 }

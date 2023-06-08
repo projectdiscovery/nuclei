@@ -1,6 +1,7 @@
 package headless
 
 import (
+	"strconv"
 	"time"
 
 	"github.com/projectdiscovery/nuclei/v2/pkg/model"
@@ -20,6 +21,12 @@ func (request *Request) Match(data map[string]interface{}, matcher *matchers.Mat
 	}
 
 	switch matcher.GetType() {
+	case matchers.StatusMatcher:
+		statusCode, ok := getStatusCode(data)
+		if !ok {
+			return false, []string{}
+		}
+		return matcher.Result(matcher.MatchStatusCode(statusCode)), []string{}
 	case matchers.SizeMatcher:
 		return matcher.Result(matcher.MatchSize(len(itemStr))), []string{}
 	case matchers.WordsMatcher:
@@ -32,6 +39,24 @@ func (request *Request) Match(data map[string]interface{}, matcher *matchers.Mat
 		return matcher.Result(matcher.MatchDSL(data)), []string{}
 	}
 	return false, []string{}
+}
+
+func getStatusCode(data map[string]interface{}) (int, bool) {
+	statusCodeValue, ok := data["status_code"]
+	if !ok {
+		return 0, false
+	}
+	statusCodeStr, ok := statusCodeValue.(string)
+	if !ok {
+		return 0, false
+	}
+
+	statusCode, err := strconv.Atoi(statusCodeStr)
+	if err != nil {
+		return 0, false
+	}
+
+	return statusCode, true
 }
 
 // Extract performs extracting operation for an extractor on model and returns true or false.
@@ -58,6 +83,8 @@ func (request *Request) getMatchPart(part string, data output.InternalEvent) (st
 		part = "data"
 	case "history":
 		part = "history"
+	case "header":
+		part = "headers"
 	}
 
 	item, ok := data[part]
@@ -70,12 +97,14 @@ func (request *Request) getMatchPart(part string, data output.InternalEvent) (st
 }
 
 // responseToDSLMap converts a headless response to a map for use in DSL matching
-func (request *Request) responseToDSLMap(resp, req, host, matched string, history string) output.InternalEvent {
+func (request *Request) responseToDSLMap(resp, headers, status_code, req, host, matched string, history string) output.InternalEvent {
 	return output.InternalEvent{
 		"host":          host,
 		"matched":       matched,
 		"req":           req,
 		"data":          resp,
+		"headers":       headers,
+		"status_code":   status_code,
 		"history":       history,
 		"type":          request.Type().String(),
 		"template-id":   request.options.TemplateID,
