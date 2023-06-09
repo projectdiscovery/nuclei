@@ -1,0 +1,30 @@
+id: nuclei-multi-protocol
+
+info:
+  name: multi protocol support
+  author: pdteam
+  severity: info
+
+dns:
+  - name: "{{FQDN}}" # dns request 
+    type: cname
+
+ssl:
+  - address: "{{Hostname}}" # ssl request
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}" # http request
+
+    headers:
+      Host: "{{ssl_subject_cn}}" # host extracted from ssl request
+      Metadata: "{{ssl_cipher}}"
+
+    matchers:
+      - type: dsl
+        dsl:
+          # - contains(http_body,'File not found') # check for http string
+          - http_status_code == 404
+          - contains(dns_cname, 'github.io') # check for cname
+        condition: and                                                                       

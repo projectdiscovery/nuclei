@@ -65,8 +65,9 @@ func (e *Executer) Execute(input *contextargs.Context) (bool, error) {
 
 	dynamicValues := make(map[string]interface{})
 	if input.HasArgs() {
-		input.ForEach(func(key string, value interface{}) {
+		input.ForEach(func(key string, value interface{}) error {
 			dynamicValues[key] = value
+			return nil
 		})
 	}
 	previous := make(map[string]interface{})
@@ -79,6 +80,10 @@ func (e *Executer) Execute(input *contextargs.Context) (bool, error) {
 		}
 
 		err := req.ExecuteWithResults(inputItem, dynamicValues, previous, func(event *output.InternalWrappedEvent) {
+			if event == nil {
+				// ideally this should never happen since protocol exits on error and callback is not called
+				return
+			}
 			ID := req.GetID()
 			if ID != "" {
 				builder := &strings.Builder{}
@@ -125,8 +130,9 @@ func (e *Executer) Execute(input *contextargs.Context) (bool, error) {
 func (e *Executer) ExecuteWithResults(input *contextargs.Context, callback protocols.OutputEventCallback) error {
 	dynamicValues := make(map[string]interface{})
 	if input.HasArgs() {
-		input.ForEach(func(key string, value interface{}) {
+		input.ForEach(func(key string, value interface{}) error {
 			dynamicValues[key] = value
+			return nil
 		})
 	}
 	previous := make(map[string]interface{})
