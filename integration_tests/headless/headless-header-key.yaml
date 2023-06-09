@@ -1,0 +1,18 @@
+id: headless-header-key
+
+info:
+  name: headless header key
+  author: pdteam
+  severity: info
+
+headless:
+  - steps:
+      - args:
+          url: "{{BaseURL}}"
+        action: navigate
+      - action: waitload
+
+    extractors:
+      - type: dsl
+        dsl:
+          - content_type
