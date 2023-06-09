@@ -1,4 +1,4 @@
-module github.com/projectdiscovery/nuclei/v2
+module github.com/gitadvisor/gohunter/v2
 
 go 1.20
 
