@@ -70,6 +70,9 @@ func (r *requestGenerator) Make(ctx context.Context, input *contextargs.Context,
 	// value of `reqData` depends on the type of request specified in template
 	// 1. If request is raw request =  reqData contains raw request (i.e http request dump)
 	// 2. If request is Normal ( simply put not a raw request) (Ex: with placeholders `path`) = reqData contains relative path
+
+	// add template context values to dynamicValues (this takes care of self-contained and other types of requests)
+	dynamicValues = generators.MergeMaps(dynamicValues, r.request.options.TemplateCtx.GetAll())
 	if r.request.SelfContained {
 		return r.makeSelfContainedRequest(ctx, reqData, payloads, dynamicValues)
 	}
