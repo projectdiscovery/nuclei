@@ -29,10 +29,18 @@ import (
 
 const (
 	yamlIndentSpaces = 2
-	// temaplateman api base url
-	//tmBaseUrl = "https://tm.nuclei.sh"
-	tmBaseUrl = "http://localhost:1000"
+	// templateman api base url
+	tmBaseUrlDefault = "https://tm.nuclei.sh"
 )
+
+var tmBaseUrl string
+
+func init() {
+	tmBaseUrl = os.Getenv("TEMPLATEMAN_SERVER")
+	if tmBaseUrl == "" {
+		tmBaseUrl = tmBaseUrlDefault
+	}
+}
 
 // allTagsRegex is a list of all tags in nuclei templates except id, info, and -
 var allTagsRegex []*regexp.Regexp
