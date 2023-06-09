@@ -129,7 +129,7 @@ func (request *Request) executeRequestWithPayloads(inputURL string, payloads map
 		responseBody, _ = html.HTML()
 	}
 
-	outputEvent := request.responseToDSLMap(responseBody, out["headers"], out["status_code"], reqBuilder.String(), inputURL, inputURL, page.DumpHistory())
+	outputEvent := request.responseToDSLMap(responseBody, out["header"], out["status_code"], reqBuilder.String(), inputURL, inputURL, page.DumpHistory())
 	for k, v := range out {
 		outputEvent[k] = v
 	}
