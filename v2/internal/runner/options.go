@@ -97,6 +97,10 @@ func ParseOptions(options *types.Options) {
 			options.UncoverEngine = append(options.UncoverEngine, "shodan")
 		}
 	}
+
+	if options.OfflineHTTP {
+		options.DisableHTTPProbe = true
+	}
 }
 
 // validateOptions validates the configuration options passed
@@ -154,7 +158,7 @@ func validateOptions(options *types.Options) error {
 	}
 
 	// Verify that all GitLab options are provided if the GitLab server or token is provided
-	if options.GitLabToken != "" && options.UpdateTemplates {
+	if len(options.GitLabTemplateRepositoryIDs) != 0 && options.UpdateTemplates {
 		missing := validateMissingGitLabOptions(options)
 		if missing != nil {
 			return fmt.Errorf("gitlab server details are missing. Please provide %s", strings.Join(missing, ","))

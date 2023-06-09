@@ -73,10 +73,7 @@ func (rule *Rule) buildQueryInput(input *ExecuteRuleInput, parsed *urlutil.URL, 
 		req.Header.Set("User-Agent", uarand.GetRandom())
 	} else {
 		req = input.BaseRequest.Clone(context.TODO())
-		//TODO: abstract below 3 lines with `req.UpdateURL(xx *urlutil.URL)`
-		req.URL = parsed
-		req.Request.URL = parsed.URL
-		req.Update()
+		req.SetURL(parsed)
 	}
 	request := GeneratedRequest{
 		Request:       req,

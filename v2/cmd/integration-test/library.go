@@ -99,7 +99,7 @@ func executeNucleiAsLibrary(templatePath, templateURL string) ([]string, error) 
 	catalog := disk.NewCatalog(path.Join(home, "nuclei-templates"))
 	ratelimiter := ratelimit.New(context.Background(), 150, time.Second)
 	defer ratelimiter.Stop()
-	executerOpts := protocols.ExecuterOptions{
+	executerOpts := protocols.ExecutorOptions{
 		Output:          outputWriter,
 		Options:         defaultOpts,
 		Progress:        mockProgress,

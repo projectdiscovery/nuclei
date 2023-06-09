@@ -192,7 +192,7 @@ func (template *Template) UnmarshalYAML(unmarshal func(interface{}) error) error
 	*template = Template(*alias)
 
 	if len(template.RequestsHTTP) > 0 || len(template.RequestsNetwork) > 0 {
-		deprecatedProtocolNameTemplates[template.ID] = struct{}{}
+		_ = deprecatedProtocolNameTemplates.Set(template.ID, true)
 	}
 
 	if len(alias.RequestsHTTP) > 0 && len(alias.RequestsWithHTTP) > 0 {

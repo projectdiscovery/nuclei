@@ -45,13 +45,13 @@ type Request struct {
 	//   Source File/Snippet
 	Source string `yaml:"source,omitempty" jsonschema:"title=source file/snippet,description=Source snippet"`
 
-	options *protocols.ExecuterOptions
+	options *protocols.ExecutorOptions
 	gozero  *gozero.Gozero
 	src     *gozero.Source
 }
 
 // Compile compiles the request generators preparing any requests possible.
-func (request *Request) Compile(options *protocols.ExecuterOptions) error {
+func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 	request.options = options
 
 	gozeroOptions := &gozero.Options{

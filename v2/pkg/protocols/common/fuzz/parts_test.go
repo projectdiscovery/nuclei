@@ -11,7 +11,7 @@ import (
 
 func TestExecuteQueryPartRule(t *testing.T) {
 	parsed, _ := urlutil.Parse("http://localhost:8080/?url=localhost&mode=multiple&file=passwdfile")
-	options := &protocols.ExecuterOptions{
+	options := &protocols.ExecutorOptions{
 		Interactsh: &interactsh.Client{},
 	}
 	t.Run("single", func(t *testing.T) {

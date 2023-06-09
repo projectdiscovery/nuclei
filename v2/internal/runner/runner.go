@@ -46,7 +46,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/headless/engine"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/http/httpclientpool"
 	"github.com/projectdiscovery/nuclei/v2/pkg/reporting"
-	json_exporter "github.com/projectdiscovery/nuclei/v2/pkg/reporting/exporters/jsonexporter"
+	"github.com/projectdiscovery/nuclei/v2/pkg/reporting/exporters/jsonexporter"
 	"github.com/projectdiscovery/nuclei/v2/pkg/reporting/exporters/jsonl"
 	"github.com/projectdiscovery/nuclei/v2/pkg/reporting/exporters/markdown"
 	"github.com/projectdiscovery/nuclei/v2/pkg/reporting/exporters/sarif"
@@ -70,7 +70,7 @@ type Runner struct {
 	issuesClient      reporting.Client
 	hmapInputProvider *hybrid.Input
 	browser           *engine.Browser
-	ratelimiter       *ratelimit.Limiter
+	rateLimiter       *ratelimit.Limiter
 	hostErrors        hosterrorscache.CacheInterface
 	resumeCfg         *types.ResumeCfg
 	pprofServer       *http.Server
@@ -80,7 +80,7 @@ type Runner struct {
 
 const pprofServerAddress = "127.0.0.1:8086"
 
-// New creates a new client for running enumeration process.
+// New creates a new client for running the enumeration process.
 func New(options *types.Options) (*Runner, error) {
 	runner := &Runner{
 		options: options,
@@ -109,8 +109,8 @@ func New(options *types.Options) (*Runner, error) {
 			gologger.Error().Label("custom-templates").Msgf("Failed to create custom templates manager: %s\n", err)
 		}
 
-		// Check for template updates and update if available
-		// if custom templates manager is not nil, we will install custom templates if there is fresh installation
+		// Check for template updates and update if available.
+		// If the custom templates manager is not nil, we will install custom templates if there is a fresh installation
 		tm := &installer.TemplateManager{CustomTemplates: ctm}
 		if err := tm.FreshInstallIfNotExists(); err != nil {
 			gologger.Warning().Msgf("failed to install nuclei templates: %s\n", err)
@@ -278,7 +278,7 @@ func New(options *types.Options) (*Runner, error) {
 		if err != nil {
 			return nil, err
 		}
-		err = json.Unmarshal([]byte(file), &resumeCfg)
+		err = json.Unmarshal(file, &resumeCfg)
 		if err != nil {
 			return nil, err
 		}
@@ -313,11 +313,11 @@ func New(options *types.Options) (*Runner, error) {
 	}
 
 	if options.RateLimitMinute > 0 {
-		runner.ratelimiter = ratelimit.New(context.Background(), uint(options.RateLimitMinute), time.Minute)
+		runner.rateLimiter = ratelimit.New(context.Background(), uint(options.RateLimitMinute), time.Minute)
 	} else if options.RateLimit > 0 {
-		runner.ratelimiter = ratelimit.New(context.Background(), uint(options.RateLimit), time.Second)
+		runner.rateLimiter = ratelimit.New(context.Background(), uint(options.RateLimit), time.Second)
 	} else {
-		runner.ratelimiter = ratelimit.NewUnlimited(context.Background())
+		runner.rateLimiter = ratelimit.NewUnlimited(context.Background())
 	}
 	return runner, nil
 }
@@ -329,14 +329,12 @@ func createReportingOptions(options *types.Options) (*reporting.Options, error) 
 		if err != nil {
 			return nil, errors.Wrap(err, "could not open reporting config file")
 		}
+		defer file.Close()
 
 		reportingOptions = &reporting.Options{}
 		if err := yaml.DecodeAndValidate(file, reportingOptions); err != nil {
-			file.Close()
 			return nil, errors.Wrap(err, "could not parse reporting config file")
 		}
-		file.Close()
-
 		Walk(reportingOptions, expandEndVars)
 	}
 	if options.MarkdownExportDirectory != "" {
@@ -357,10 +355,10 @@ func createReportingOptions(options *types.Options) (*reporting.Options, error) 
 	}
 	if options.JSONExport != "" {
 		if reportingOptions != nil {
-			reportingOptions.JSONExporter = &json_exporter.Options{File: options.JSONExport}
+			reportingOptions.JSONExporter = &jsonexporter.Options{File: options.JSONExport}
 		} else {
 			reportingOptions = &reporting.Options{}
-			reportingOptions.JSONExporter = &json_exporter.Options{File: options.JSONExport}
+			reportingOptions.JSONExporter = &jsonexporter.Options{File: options.JSONExport}
 		}
 	}
 	if options.JSONLExport != "" {
@@ -388,8 +386,8 @@ func (r *Runner) Close() {
 	if r.pprofServer != nil {
 		_ = r.pprofServer.Shutdown(context.Background())
 	}
-	if r.ratelimiter != nil {
-		r.ratelimiter.Stop()
+	if r.rateLimiter != nil {
+		r.rateLimiter.Stop()
 	}
 }
 
@@ -414,15 +412,15 @@ func (r *Runner) RunEnumeration() error {
 		r.options.ExcludedTemplates = append(r.options.ExcludedTemplates, ignoreFile.Files...)
 	}
 
-	// Create the executer options which will be used throughout the execution
+	// Create the executor options which will be used throughout the execution
 	// stage by the nuclei engine modules.
-	executerOpts := protocols.ExecuterOptions{
+	executorOpts := protocols.ExecutorOptions{
 		Output:          r.output,
 		Options:         r.options,
 		Progress:        r.progress,
 		Catalog:         r.catalog,
 		IssuesClient:    r.issuesClient,
-		RateLimiter:     r.ratelimiter,
+		RateLimiter:     r.rateLimiter,
 		Interactsh:      r.interactsh,
 		ProjectFile:     r.projectFile,
 		Browser:         r.browser,
@@ -436,19 +434,19 @@ func (r *Runner) RunEnumeration() error {
 		cache := hosterrorscache.New(r.options.MaxHostError, hosterrorscache.DefaultMaxHostsCount, r.options.TrackError)
 		cache.SetVerbose(r.options.Verbose)
 		r.hostErrors = cache
-		executerOpts.HostErrorsCache = cache
+		executorOpts.HostErrorsCache = cache
 	}
 
-	engine := core.New(r.options)
-	engine.SetExecuterOptions(executerOpts)
+	executorEngine := core.New(r.options)
+	executorEngine.SetExecuterOptions(executorOpts)
 
-	workflowLoader, err := parsers.NewLoader(&executerOpts)
+	workflowLoader, err := parsers.NewLoader(&executorOpts)
 	if err != nil {
 		return errors.Wrap(err, "Could not create loader.")
 	}
-	executerOpts.WorkflowLoader = workflowLoader
+	executorOpts.WorkflowLoader = workflowLoader
 
-	store, err := loader.New(loader.NewConfig(r.options, r.catalog, executerOpts))
+	store, err := loader.New(loader.NewConfig(r.options, r.catalog, executorOpts))
 	if err != nil {
 		return errors.Wrap(err, "could not load templates from config")
 	}
@@ -484,7 +482,7 @@ func (r *Runner) RunEnumeration() error {
 		return nil // exit
 	}
 	store.Load()
-	// TODO: remove below functions after v2.9.5 or update warning messages
+	// TODO: remove below functions after v3 or update warning messages
 	disk.PrintDeprecatedPathsMsgIfApplicable(r.options.Silent)
 	templates.PrintDeprecatedProtocolNameMsgIfApplicable(r.options.Silent, r.options.Verbose)
 
@@ -512,14 +510,14 @@ func (r *Runner) RunEnumeration() error {
 	r.displayExecutionInfo(store)
 
 	// If not explicitly disabled, check if http based protocols
-	// are used and if inputs are non-http to pre-perform probing
+	// are used, and if inputs are non-http to pre-perform probing
 	// of urls and storing them for execution.
 	if !r.options.DisableHTTPProbe && loader.IsHTTPBasedProtocolUsed(store) && r.isInputNonHTTP() {
 		inputHelpers, err := r.initializeTemplatesHTTPInput()
 		if err != nil {
 			return errors.Wrap(err, "could not probe http input")
 		}
-		executerOpts.InputHelper.InputsHTTP = inputHelpers
+		executorOpts.InputHelper.InputsHTTP = inputHelpers
 	}
 
 	enumeration := false
@@ -570,7 +568,7 @@ func (r *Runner) RunEnumeration() error {
 			enumeration = true
 		}
 	} else {
-		results, err = r.runStandardEnumeration(executerOpts, store, engine)
+		results, err = r.runStandardEnumeration(executorOpts, store, executorEngine)
 		enumeration = true
 	}
 
@@ -586,8 +584,8 @@ func (r *Runner) RunEnumeration() error {
 	}
 	r.progress.Stop()
 
-	if executerOpts.InputHelper != nil {
-		_ = executerOpts.InputHelper.Close()
+	if executorOpts.InputHelper != nil {
+		_ = executorOpts.InputHelper.Close()
 	}
 	if r.issuesClient != nil {
 		r.issuesClient.Close()
@@ -599,7 +597,7 @@ func (r *Runner) RunEnumeration() error {
 	if r.browser != nil {
 		r.browser.Close()
 	}
-	// check if passive scan was requested but no target was provided
+	// check if a passive scan was requested but no target was provided
 	if r.options.OfflineHTTP && len(r.options.Targets) == 0 && r.options.TargetsFilePath == "" {
 		return errors.Wrap(err, "missing required input (http response) to run passive templates")
 	}
@@ -619,11 +617,11 @@ func (r *Runner) isInputNonHTTP() bool {
 	return nonURLInput
 }
 
-func (r *Runner) executeSmartWorkflowInput(executerOpts protocols.ExecuterOptions, store *loader.Store, engine *core.Engine) (*atomic.Bool, error) {
+func (r *Runner) executeSmartWorkflowInput(executorOpts protocols.ExecutorOptions, store *loader.Store, engine *core.Engine) (*atomic.Bool, error) {
 	r.progress.Init(r.hmapInputProvider.Count(), 0, 0)
 
 	service, err := automaticscan.New(automaticscan.Options{
-		ExecuterOpts: executerOpts,
+		ExecuterOpts: executorOpts,
 		Store:        store,
 		Engine:       engine,
 		Target:       r.hmapInputProvider,
@@ -676,7 +674,7 @@ func (r *Runner) executeTemplatesInput(store *loader.Store, engine *core.Engine)
 	workflowCount := len(store.Workflows())
 	templateCount := originalTemplatesCount + workflowCount
 
-	// 0 matches means no templates were found in directory
+	// 0 matches means no templates were found in the directory
 	if templateCount == 0 {
 		return &atomic.Bool{}, errors.New("no valid templates were found")
 	}
@@ -726,7 +724,7 @@ type WalkFunc func(reflect.Value, reflect.StructField)
 // Walk traverses a struct and executes a callback function on each value in the struct.
 // The interface{} passed to the function should be a pointer to a struct or a struct.
 // WalkFunc is the callback function used for each value in the struct. It is passed the
-// reflect.Value and reflect.Type of the value in the struct.
+// reflect.Value and reflect.Type properties of the value in the struct.
 func Walk(s interface{}, callback WalkFunc) {
 	structValue := reflect.ValueOf(s)
 	if structValue.Kind() == reflect.Ptr {
