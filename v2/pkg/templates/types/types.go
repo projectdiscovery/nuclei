@@ -36,6 +36,8 @@ const (
 	WebsocketProtocol
 	// name:whois
 	WHOISProtocol
+	// name:code
+	CodeProtocol
 	// name: multi
 	MultiProtocol
 	limit
@@ -54,6 +56,7 @@ var protocolMappings = map[ProtocolType]string{
 	SSLProtocol:       "ssl",
 	WebsocketProtocol: "websocket",
 	WHOISProtocol:     "whois",
+	CodeProtocol:      "code",
 	MultiProtocol:     "multi",
 }
 

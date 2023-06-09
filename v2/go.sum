@@ -409,6 +409,8 @@ github.com/projectdiscovery/goflags v0.1.8 h1:Urhm2Isq2BdRt8h4h062lHKYXO65RHRjGT
 github.com/projectdiscovery/goflags v0.1.8/go.mod h1:Yxi9tclgwGczzDU65ntrwaIql5cXeTvW5j2WxFuF+Jk=
 github.com/projectdiscovery/gologger v1.1.10 h1:XNRdtzLTdxiFGuK9gutoL752mykzXDoii4P2yDovqck=
 github.com/projectdiscovery/gologger v1.1.10/go.mod h1:VqANHK7qcEq3i6/vV5HNWwdyv2aFPSrlaVDU4Ogrc6U=
+github.com/projectdiscovery/gozero v0.0.0-20230510004414-f1d11fdaf5c6 h1:M74WAoZ99q/LJPHC8aIWIt8+FLh699KqLm2CUSHoytA=
+github.com/projectdiscovery/gozero v0.0.0-20230510004414-f1d11fdaf5c6/go.mod h1:jCpXNvLUCPMzm5AhJv8wtnUt/7rz0TY2SsqvKQ8tn2E=
 github.com/projectdiscovery/hmap v0.0.12 h1:evLVD0LWQ6q+R8JLJHGcOJMs1soXNxv51KHyU7KdZ2g=
 github.com/projectdiscovery/hmap v0.0.12/go.mod h1:Glr/OTIv/Abh18rkIY6Zh+32wK5ivilGa7+DyCOmgMQ=
 github.com/projectdiscovery/httpx v1.3.1 h1:yrpQJ/v31LLNiiSwfs0NAowtXDj4EWooKfTvCwucbZ8=
