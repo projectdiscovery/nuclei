@@ -36,6 +36,8 @@ const (
 	WebsocketProtocol
 	// name:whois
 	WHOISProtocol
+	// name: multi
+	MultiProtocol
 	limit
 	InvalidProtocol
 )
@@ -52,6 +54,7 @@ var protocolMappings = map[ProtocolType]string{
 	SSLProtocol:       "ssl",
 	WebsocketProtocol: "websocket",
 	WHOISProtocol:     "whois",
+	MultiProtocol:     "multi",
 }
 
 func GetSupportedProtocolTypes() ProtocolTypes {

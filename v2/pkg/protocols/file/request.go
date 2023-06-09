@@ -19,6 +19,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/contextargs"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/generators"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/helpers/eventcreator"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/helpers/responsehighlighter"
 	templateTypes "github.com/projectdiscovery/nuclei/v2/pkg/templates/types"
@@ -233,6 +234,8 @@ func (request *Request) findMatchesWithReader(reader io.Reader, input, filePath 
 		for k, v := range previous {
 			dslMap[k] = v
 		}
+		// add template context variables to DSL map
+		dslMap = generators.MergeMaps(dslMap, request.options.TemplateCtx.GetAll())
 		discardEvent := eventcreator.CreateEvent(request, dslMap, isResponseDebug)
 		newOpResult := discardEvent.OperatorsResult
 		if newOpResult != nil {

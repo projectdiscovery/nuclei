@@ -90,7 +90,8 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 	// generate variables
 	defaultVars := protocolutils.GenerateVariables(input.MetaInput.Input, false, nil)
 	optionVars := generators.BuildPayloadFromOptions(request.options.Options)
-	vars := request.options.Variables.Evaluate(generators.MergeMaps(defaultVars, optionVars, dynamicValues))
+	// add templatectx variables to varMap
+	vars := request.options.Variables.Evaluate(generators.MergeMaps(defaultVars, optionVars, dynamicValues, request.options.TemplateCtx.GetAll()))
 
 	variables := generators.MergeMaps(vars, defaultVars, optionVars, dynamicValues, request.options.Constants)
 
@@ -131,6 +132,10 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 	data["type"] = request.Type().String()
 	data["host"] = query
 	data["response"] = jsonDataString
+
+	// add response fields to template context and merge templatectx variables to output event
+	request.options.AddTemplateVars(request.Type(), data)
+	data = generators.MergeMaps(data, request.options.TemplateCtx.GetAll())
 
 	event := eventcreator.CreateEvent(request, data, request.options.Options.Debug || request.options.Options.DebugResponse)
 	if request.options.Options.Debug || request.options.Options.DebugResponse {
