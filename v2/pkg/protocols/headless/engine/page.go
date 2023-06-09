@@ -191,7 +191,7 @@ func containsAnyModificationActionType(actionTypes ...ActionType) bool {
 	return false
 }
 
-// headersToString converts proto.NetworkHeaders to http.Header
+// networkHeadersToHttpHeaders converts proto.NetworkHeaders to http.Header
 func networkHeadersToHttpHeaders(headers proto.NetworkHeaders) http.Header {
 	httpHeaders := http.Header{}
 	for k, v := range headers {
