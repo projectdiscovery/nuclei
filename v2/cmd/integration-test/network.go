@@ -7,11 +7,11 @@ import (
 )
 
 var networkTestcases = map[string]testutils.TestCase{
-	"network/basic.yaml":          &networkBasic{},
-	"network/hex.yaml":            &networkBasic{},
-	"network/multi-step.yaml":     &networkMultiStep{},
-	"network/self-contained.yaml": &networkRequestSelContained{},
-	"network/variables.yaml":      &networkVariables{},
+	"protocols/network/basic.yaml":          &networkBasic{},
+	"protocols/network/hex.yaml":            &networkBasic{},
+	"protocols/network/multi-step.yaml":     &networkMultiStep{},
+	"protocols/network/self-contained.yaml": &networkRequestSelContained{},
+	"protocols/network/variables.yaml":      &networkVariables{},
 }
 
 const defaultStaticPort = 5431

@@ -63,7 +63,10 @@ func getRandomIP(ipnet *net.IPNet, size int) net.IP {
 			return ip
 		}
 
-		_, _ = rand.Read(r)
+		_, err := rand.Read(r)
+		if err != nil {
+			break
+		}
 
 		for i := 0; i <= quotient; i++ {
 			if i == quotient {

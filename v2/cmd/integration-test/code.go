@@ -1,134 +1,180 @@
 package main
 
 import (
-	"context"
-	"fmt"
+	"errors"
 	"log"
-	"net/http"
-	"net/http/httptest"
 	"os"
-	"path"
-	"strings"
-	"time"
+	"path/filepath"
 
-	"github.com/julienschmidt/httprouter"
-	"github.com/logrusorgru/aurora"
-	"github.com/pkg/errors"
-	"github.com/projectdiscovery/goflags"
-	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/config"
-	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/disk"
-	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/loader"
-	"github.com/projectdiscovery/nuclei/v2/pkg/core"
-	"github.com/projectdiscovery/nuclei/v2/pkg/core/inputs"
-	"github.com/projectdiscovery/nuclei/v2/pkg/output"
-	"github.com/projectdiscovery/nuclei/v2/pkg/parsers"
-	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
-	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/contextargs"
-	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/hosterrorscache"
-	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/interactsh"
-	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/protocolinit"
-	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/protocolstate"
-	"github.com/projectdiscovery/nuclei/v2/pkg/reporting"
+	osutils "github.com/projectdiscovery/utils/os"
+
+	"github.com/projectdiscovery/nuclei/v2/pkg/templates/signer"
 	"github.com/projectdiscovery/nuclei/v2/pkg/testutils"
-	"github.com/projectdiscovery/nuclei/v2/pkg/types"
-	"github.com/projectdiscovery/ratelimit"
+	"github.com/projectdiscovery/nuclei/v2/pkg/utils"
 )
 
-var codeTestcases = map[string]testutils.TestCase{
-	"code/test.yaml": &goIntegrationTest{},
-	"code/test.json": &goIntegrationTest{},
+var codeTestCases = map[string]testutils.TestCase{
+	"protocols/code/py-snippet.yaml":    &codeSnippet{},
+	"protocols/code/py-file.yaml":       &codeFile{},
+	"protocols/code/py-env-var.yaml":    &codeEnvVar{},
+	"protocols/code/unsigned.yaml":      &unsignedCode{},
+	"protocols/code/rsa-signed.yaml":    &rsaSignedCode{},
+	"protocols/code/py-interactsh.yaml": &codeSnippet{},
 }
 
-type goIntegrationTest struct{}
+var (
+	ecdsaPrivateKeyAbsPath string
+	ecdsaPublicKeyAbsPath  string
+
+	// rsaPrivateKeyAbsPath string
+	rsaPublicKeyAbsPath string
+)
+
+func init() {
+	var err error
+	ecdsaPrivateKeyAbsPath, err = filepath.Abs("protocols/code/ecdsa-priv-key.pem")
+	if err != nil {
+		panic(err)
+	}
+	ecdsaPublicKeyAbsPath, err = filepath.Abs("protocols/code/ecdsa-pub-key.pem")
+	if err != nil {
+		panic(err)
+	}
+
+	// rsaPrivateKeyAbsPath, err = filepath.Abs("protocols/code/rsa-priv-key.pem")
+	// if err != nil {
+	// 	panic(err)
+	// }
+	rsaPublicKeyAbsPath, err = filepath.Abs("protocols/code/rsa-pub-key.pem")
+	if err != nil {
+		panic(err)
+	}
+
+	if osutils.IsWindows() {
+		codeTestCases["protocols/code/ps1-snippet.yaml"] = &codeSnippet{}
+	}
+
+	signTemplates()
+}
+
+// signTemplates tests the signing procedure on various platforms
+func signTemplates() {
+	signerOptions := &signer.Options{
+		PrivateKeyName: ecdsaPrivateKeyAbsPath,
+		PublicKeyName:  ecdsaPublicKeyAbsPath,
+		Algorithm:      signer.ECDSA,
+	}
+	sign, err := signer.New(signerOptions)
+	if err != nil {
+		log.Fatalf("couldn't create crypto engine: %s\n", err)
+	}
+
+	for templatePath, testCase := range codeTestCases {
+		templatePath, err := filepath.Abs(templatePath)
+		if err != nil {
+			panic(err)
+		}
+
+		// skip
+		// - unsigned test case
+		if _, ok := testCase.(*unsignedCode); ok {
+			continue
+		}
+		// - already rsa signed
+		if _, ok := testCase.(*rsaSignedCode); ok {
+			continue
+		}
+
+		if err := utils.ProcessFile(sign, templatePath); err != nil {
+			log.Fatalf("Could not walk directory: %s\n", err)
+		}
+	}
+}
+
+func prepareEnv(keypath string) {
+	os.Setenv("NUCLEI_SIGNATURE_PUBLIC_KEY", keypath)
+	os.Setenv("NUCLEI_SIGNATURE_ALGORITHM", "ecdsa")
+}
+
+func tearDownEnv() {
+	os.Unsetenv("NUCLEI_SIGNATURE_PUBLIC_KEY")
+	os.Unsetenv("NUCLEI_SIGNATURE_ALGORITHM")
+}
+
+type codeSnippet struct{}
 
 // Execute executes a test case and returns an error if occurred
-//
-// Execute the docs at ../DESIGN.md if the code stops working for integration.
-func (h *goIntegrationTest) Execute(templatePath string) error {
-	router := httprouter.New()
+func (h *codeSnippet) Execute(filePath string) error {
+	prepareEnv(ecdsaPublicKeyAbsPath)
+	defer tearDownEnv()
 
-	router.GET("/", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-		fmt.Fprintf(w, "This is test matcher text")
-		if strings.EqualFold(r.Header.Get("test"), "nuclei") {
-			fmt.Fprintf(w, "This is test headers matcher text")
-		}
-	})
-	ts := httptest.NewServer(router)
-	defer ts.Close()
-
-	results, err := executeNucleiAsCode(templatePath, ts.URL)
+	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, "input", debug)
 	if err != nil {
 		return err
 	}
 	return expectResultsCount(results, 1)
 }
 
-// executeNucleiAsCode contains an example
-func executeNucleiAsCode(templatePath, templateURL string) ([]string, error) {
-	cache := hosterrorscache.New(30, hosterrorscache.DefaultMaxHostsCount, nil)
-	defer cache.Close()
+type codeFile struct{}
 
-	mockProgress := &testutils.MockProgressClient{}
-	reportingClient, err := reporting.New(&reporting.Options{}, "")
+// Execute executes a test case and returns an error if occurred
+func (h *codeFile) Execute(filePath string) error {
+	prepareEnv(ecdsaPublicKeyAbsPath)
+	defer tearDownEnv()
+
+	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, "input", debug)
 	if err != nil {
-		return nil, err
+		return err
 	}
-	defer reportingClient.Close()
+	return expectResultsCount(results, 1)
+}
 
-	outputWriter := testutils.NewMockOutputWriter()
-	var results []string
-	outputWriter.WriteCallback = func(event *output.ResultEvent) {
-		results = append(results, fmt.Sprintf("%v\n", event))
-	}
+type codeEnvVar struct{}
 
-	defaultOpts := types.DefaultOptions()
-	_ = protocolstate.Init(defaultOpts)
-	_ = protocolinit.Init(defaultOpts)
+// Execute executes a test case and returns an error if occurred
+func (h *codeEnvVar) Execute(filePath string) error {
+	prepareEnv(ecdsaPublicKeyAbsPath)
+	defer tearDownEnv()
 
-	defaultOpts.Templates = goflags.StringSlice{templatePath}
-	defaultOpts.ExcludeTags = config.ReadIgnoreFile().Tags
-
-	interactOpts := interactsh.DefaultOptions(outputWriter, reportingClient, mockProgress)
-	interactClient, err := interactsh.New(interactOpts)
+	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, "input", debug, "-V", "baz=baz")
 	if err != nil {
-		return nil, errors.Wrap(err, "could not create interact client")
+		return err
 	}
-	defer interactClient.Close()
+	return expectResultsCount(results, 1)
+}
 
-	home, _ := os.UserHomeDir()
-	catalog := disk.NewCatalog(path.Join(home, "nuclei-templates"))
-	ratelimiter := ratelimit.New(context.Background(), 150, time.Second)
-	defer ratelimiter.Stop()
-	executerOpts := protocols.ExecutorOptions{
-		Output:          outputWriter,
-		Options:         defaultOpts,
-		Progress:        mockProgress,
-		Catalog:         catalog,
-		IssuesClient:    reportingClient,
-		RateLimiter:     ratelimiter,
-		Interactsh:      interactClient,
-		HostErrorsCache: cache,
-		Colorizer:       aurora.NewAurora(true),
-		ResumeCfg:       types.NewResumeCfg(),
-	}
-	engine := core.New(defaultOpts)
-	engine.SetExecuterOptions(executerOpts)
+type unsignedCode struct{}
 
-	workflowLoader, err := parsers.NewLoader(&executerOpts)
+// Execute executes a test case and returns an error if occurred
+func (h *unsignedCode) Execute(filePath string) error {
+	prepareEnv(ecdsaPublicKeyAbsPath)
+	defer tearDownEnv()
+
+	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, "input", debug)
+
+	// should error out
 	if err != nil {
-		log.Fatalf("Could not create workflow loader: %s\n", err)
+		return nil
 	}
-	executerOpts.WorkflowLoader = workflowLoader
 
-	store, err := loader.New(loader.NewConfig(defaultOpts, catalog, executerOpts))
+	// this point should never be reached
+	return errors.Join(expectResultsCount(results, 1), errors.New("unsigned template was executed"))
+}
+
+type rsaSignedCode struct{}
+
+// Execute executes a test case and returns an error if occurred
+func (h *rsaSignedCode) Execute(filePath string) error {
+	prepareEnv(rsaPublicKeyAbsPath)
+	defer tearDownEnv()
+
+	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, "input", debug)
+
+	// should error out
 	if err != nil {
-		return nil, errors.Wrap(err, "could not create loader")
+		return nil
 	}
-	store.Load()
 
-	input := &inputs.SimpleInputProvider{Inputs: []*contextargs.MetaInput{{Input: templateURL}}}
-	_ = engine.Execute(store.Templates(), input)
-	engine.WorkPool().Wait() // Wait for the scan to finish
-
-	return results, nil
+	// this point should never be reached
+	return errors.Join(expectResultsCount(results, 1), errors.New("unsigned template was executed"))
 }

@@ -57,7 +57,7 @@ func New(options *Options) (*Signer, error) {
 
 	switch signer.options.Algorithm {
 	case RSA:
-		signer.sshSigner, signer.sshVerifier, err = parseRsa(privateKeyData, publicKeyData, passphraseData)
+		signer.sshSigner, signer.sshVerifier, err = parseRsa(privateKeyData, passphraseData, publicKeyData)
 	case ECDSA:
 		signer.ecdsaSigner, signer.ecdsaVerifier, err = parseECDSA(privateKeyData, publicKeyData)
 	default:
@@ -77,7 +77,7 @@ func NewVerifier(options *Options) (*Signer, error) {
 		err           error
 	)
 	if options.PublicKeyName != "" {
-		publicKeyData, err = readKeyFromFileOrEnv(options.PrivateKeyName)
+		publicKeyData, err = readKeyFromFileOrEnv(options.PublicKeyName)
 		if err != nil {
 			return nil, err
 		}
@@ -117,11 +117,10 @@ func (s *Signer) Sign(data []byte) ([]byte, error) {
 		}
 		return signatureData.Bytes(), nil
 	case ECDSA:
-		r, s, err := ecdsa.Sign(rand.Reader, s.ecdsaSigner, dataHash[:])
+		ecdsaSignature, err := ecdsa.SignASN1(rand.Reader, s.ecdsaSigner, dataHash[:])
 		if err != nil {
 			return nil, err
 		}
-		ecdsaSignature := &EcdsaSignature{R: r, S: s}
 		var signatureData bytes.Buffer
 		if err := gob.NewEncoder(&signatureData).Encode(ecdsaSignature); err != nil {
 			return nil, err
@@ -145,11 +144,11 @@ func (s *Signer) Verify(data, signatureData []byte) (bool, error) {
 		}
 		return true, nil
 	case ECDSA:
-		signature := &EcdsaSignature{}
+		var signature []byte
 		if err := gob.NewDecoder(bytes.NewReader(signatureData)).Decode(&signature); err != nil {
 			return false, err
 		}
-		return ecdsa.Verify(s.ecdsaVerifier, dataHash[:], signature.R, signature.S), nil
+		return ecdsa.VerifyASN1(s.ecdsaVerifier, dataHash[:], signature), nil
 	default:
 		return false, ErrUnknownAlgorithm
 	}
@@ -204,6 +203,9 @@ func parseECDSAPrivateKey(privateKeyData []byte) (*ecdsa.PrivateKey, error) {
 
 func parseECDSAPublicKey(publicKeyData []byte) (*ecdsa.PublicKey, error) {
 	blockPub, _ := pem.Decode(publicKeyData)
+	if blockPub == nil {
+		return nil, errors.New("failed to parse PEM block containing the public key")
+	}
 	genericPublicKey, err := x509.ParsePKIXPublicKey(blockPub.Bytes)
 	if err != nil {
 		return nil, err
@@ -230,5 +232,5 @@ func readKeyFromFileOrEnv(keypath string) ([]byte, error) {
 	if keydata := os.Getenv(keypath); keydata != "" {
 		return []byte(keydata), nil
 	}
-	return nil, fmt.Errorf("Private key not found in file or environment variable: %s", keypath)
+	return nil, fmt.Errorf("Key not found in file or environment variable: %s", keypath)
 }

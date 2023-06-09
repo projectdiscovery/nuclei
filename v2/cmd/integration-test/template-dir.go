@@ -8,7 +8,7 @@ import (
 )
 
 var templatesDirTestCases = map[string]testutils.TestCase{
-	"dns/cname-fingerprint.yaml": &templateDirWithTargetTest{},
+	"protocols/dns/cname-fingerprint.yaml": &templateDirWithTargetTest{},
 }
 
 type templateDirWithTargetTest struct{}

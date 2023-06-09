@@ -8,11 +8,11 @@ import (
 )
 
 var sslTestcases = map[string]testutils.TestCase{
-	"ssl/basic.yaml":          &sslBasic{},
-	"ssl/basic-ztls.yaml":     &sslBasicZtls{},
-	"ssl/custom-cipher.yaml":  &sslCustomCipher{},
-	"ssl/custom-version.yaml": &sslCustomVersion{},
-	"ssl/ssl-with-vars.yaml":  &sslWithVars{},
+	"protocols/ssl/basic.yaml":          &sslBasic{},
+	"protocols/ssl/basic-ztls.yaml":     &sslBasicZtls{},
+	"protocols/ssl/custom-cipher.yaml":  &sslCustomCipher{},
+	"protocols/ssl/custom-version.yaml": &sslCustomVersion{},
+	"protocols/ssl/ssl-with-vars.yaml":  &sslWithVars{},
 }
 
 type sslBasic struct{}

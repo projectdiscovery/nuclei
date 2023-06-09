@@ -59,7 +59,7 @@ type Store struct {
 	preprocessor templates.Preprocessor
 
 	// NotFoundCallback is called for each not found template
-	// This overrides error handling for not found templatesss
+	// This overrides error handling for not found templates
 	NotFoundCallback func(template string) bool
 }
 
@@ -108,6 +108,7 @@ func New(config *Config) (*Store, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	// Create a tag filter based on provided configuration
 	store := &Store{
 		config:    config,
@@ -313,8 +314,11 @@ func (store *Store) LoadTemplatesWithTags(templatesList, tags []string) []*templ
 				}
 				gologger.Warning().Msgf("Could not parse template %s: %s\n", templatePath, err)
 			} else if parsed != nil {
+
 				if len(parsed.RequestsHeadless) > 0 && !store.config.ExecutorOptions.Options.Headless {
 					gologger.Warning().Msgf("Headless flag is required for headless template %s\n", templatePath)
+				} else if len(parsed.RequestsCode) > 0 && !parsed.Verified {
+					gologger.Warning().Msgf("The template is not verified: '%s'\n", templatePath)
 				} else {
 					loadedTemplates = append(loadedTemplates, parsed)
 				}

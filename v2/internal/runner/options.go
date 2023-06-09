@@ -20,6 +20,8 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/protocolinit"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/utils/vardump"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/headless/engine"
+	"github.com/projectdiscovery/nuclei/v2/pkg/templates/signer"
+	protocoltypes "github.com/projectdiscovery/nuclei/v2/pkg/templates/types"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 	fileutil "github.com/projectdiscovery/utils/file"
 	logutil "github.com/projectdiscovery/utils/log"
@@ -48,6 +50,7 @@ func ParseOptions(options *types.Options) {
 
 	// Read the inputs and configure the logging
 	configureOutput(options)
+
 	// Show the user the banner
 	showBanner()
 
@@ -73,6 +76,10 @@ func ParseOptions(options *types.Options) {
 
 	// Load the resolvers if user asked for them
 	loadResolvers(options)
+
+	if err := loadTemplateSignaturesKeys(options); err != nil {
+		gologger.Warning().Msgf("Could not initialize code template verifier: %s\n", err)
+	}
 
 	err := protocolinit.Init(options)
 	if err != nil {
@@ -349,6 +356,9 @@ func validateCertificatePaths(certificatePaths []string) {
 func readEnvInputVars(options *types.Options) {
 	if strings.EqualFold(os.Getenv("NUCLEI_CLOUD"), "true") {
 		options.Cloud = true
+
+		// TODO: disable files, offlinehttp, code
+		options.ExcludeProtocols = append(options.ExcludeProtocols, protocoltypes.CodeProtocol, protocoltypes.FileProtocol, protocoltypes.OfflineHTTPProtocol)
 	}
 	if options.CloudURL = os.Getenv("NUCLEI_CLOUD_SERVER"); options.CloudURL == "" {
 		options.CloudURL = "https://cloud-dev.nuclei.sh"
@@ -395,4 +405,37 @@ func readEnvInputVars(options *types.Options) {
 	options.AzureClientID = os.Getenv("AZURE_CLIENT_ID")
 	options.AzureClientSecret = os.Getenv("AZURE_CLIENT_SECRET")
 	options.AzureServiceURL = os.Getenv("AZURE_SERVICE_URL")
+
+	// Custom public keys for template verification
+	options.CodeTemplateSignaturePublicKey = os.Getenv("NUCLEI_SIGNATURE_PUBLIC_KEY")
+	options.CodeTemplateSignatureAlgorithm = os.Getenv("NUCLEI_SIGNATURE_ALGORITHM")
+}
+
+func loadTemplateSignaturesKeys(options *types.Options) error {
+	if options.CodeTemplateSignaturePublicKey == "" {
+		return errors.New("public key not defined")
+	}
+
+	if options.CodeTemplateSignatureAlgorithm == "" {
+		return errors.New("signature algorithm not defined")
+	}
+
+	signatureAlgo, err := signer.ParseAlgorithm(options.CodeTemplateSignatureAlgorithm)
+	if err != nil {
+		return err
+	}
+
+	signerOptions := &signer.Options{Algorithm: signatureAlgo}
+	if fileutil.FileExists(options.CodeTemplateSignaturePublicKey) {
+		signerOptions.PublicKeyName = options.CodeTemplateSignaturePublicKey
+	} else {
+		signerOptions.PublicKeyData = []byte(options.CodeTemplateSignaturePublicKey)
+	}
+
+	verifier, err := signer.NewVerifier(signerOptions)
+	if err != nil {
+		return err
+	}
+
+	return signer.AddToDefault(verifier)
 }
