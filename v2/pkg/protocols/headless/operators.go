@@ -1,7 +1,8 @@
 package headless
 
 import (
-	"strconv"
+	"net/http"
+	"strings"
 	"time"
 
 	"github.com/projectdiscovery/nuclei/v2/pkg/model"
@@ -46,16 +47,10 @@ func getStatusCode(data map[string]interface{}) (int, bool) {
 	if !ok {
 		return 0, false
 	}
-	statusCodeStr, ok := statusCodeValue.(string)
+	statusCode, ok := statusCodeValue.(int)
 	if !ok {
 		return 0, false
 	}
-
-	statusCode, err := strconv.Atoi(statusCodeStr)
-	if err != nil {
-		return 0, false
-	}
-
 	return statusCode, true
 }
 
@@ -97,20 +92,39 @@ func (request *Request) getMatchPart(part string, data output.InternalEvent) (st
 }
 
 // responseToDSLMap converts a headless response to a map for use in DSL matching
-func (request *Request) responseToDSLMap(resp, headers, status_code, req, host, matched string, history string) output.InternalEvent {
-	return output.InternalEvent{
-		"host":          host,
-		"matched":       matched,
-		"req":           req,
-		"data":          resp,
-		"header":        headers,
-		"status_code":   status_code,
-		"history":       history,
-		"type":          request.Type().String(),
-		"template-id":   request.options.TemplateID,
-		"template-info": request.options.TemplateInfo,
-		"template-path": request.options.TemplatePath,
+func (request *Request) responseToDSLMap(resp, req, host, matched, history string, statusCode int, headers http.Header) output.InternalEvent {
+	data := make(output.InternalEvent, 11+len(headers))
+
+	for k, v := range headers {
+		k = strings.ToLower(strings.ReplaceAll(strings.TrimSpace(k), "-", "_"))
+		data[k] = strings.Join(v, " ")
 	}
+
+	data["host"] = host
+	data["matched"] = matched
+	data["req"] = req
+	data["data"] = resp
+	data["header"] = headersToString(headers)
+	data["status_code"] = statusCode
+	data["history"] = history
+	data["type"] = request.Type().String()
+	data["template-id"] = request.options.TemplateID
+	data["template-info"] = request.options.TemplateInfo
+	data["template-path"] = request.options.TemplatePath
+
+	return data
+}
+
+// headersToString converts network headers to string
+func headersToString(headers http.Header) string {
+	builder := &strings.Builder{}
+	for header, value := range headers {
+		builder.WriteString(header)
+		builder.WriteString(": ")
+		builder.WriteString(strings.Join(value, " "))
+		builder.WriteRune('\n')
+	}
+	return builder.String()
 }
 
 // MakeResultEvent creates a result event from internal wrapped event

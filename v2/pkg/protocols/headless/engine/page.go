@@ -1,7 +1,7 @@
 package engine
 
 import (
-	"fmt"
+	"net/http"
 	"net/url"
 	"strings"
 	"sync"
@@ -14,6 +14,8 @@ import (
 // Page is a single page in an isolated browser instance
 type Page struct {
 	page           *rod.Page
+	Headers        http.Header
+	StatusCode     int
 	rules          []rule
 	instance       *Instance
 	hijackRouter   *rod.HijackRouter
@@ -89,8 +91,8 @@ func (i *Instance) Run(baseURL *url.URL, actions []*Action, payloads map[string]
 	}
 
 	wait()
-	data["header"] = headersToString(e.Response.Headers)
-	data["status_code"] = fmt.Sprint(e.Response.Status)
+	createdPage.Headers = networkHeadersToHttpHeaders(e.Response.Headers)
+	createdPage.StatusCode = e.Response.Status
 
 	return data, createdPage, nil
 }
@@ -189,14 +191,11 @@ func containsAnyModificationActionType(actionTypes ...ActionType) bool {
 	return false
 }
 
-// headersToString converts network headers to string
-func headersToString(headers proto.NetworkHeaders) string {
-	builder := &strings.Builder{}
-	for header, value := range headers {
-		builder.WriteString(header)
-		builder.WriteString(": ")
-		builder.WriteString(value.String())
-		builder.WriteRune('\n')
+// headersToString converts proto.NetworkHeaders to http.Header
+func networkHeadersToHttpHeaders(headers proto.NetworkHeaders) http.Header {
+	httpHeaders := http.Header{}
+	for k, v := range headers {
+		httpHeaders[k] = []string{v.String()}
 	}
-	return builder.String()
+	return httpHeaders
 }
