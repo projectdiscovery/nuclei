@@ -13,7 +13,7 @@ endif
     
 all: build
 build:
-	$(GOBUILD) $(GOFLAGS) -ldflags '$(LDFLAGS)' -o "nuclei" cmd/nuclei/main.go
+	$(GOBUILD) $(GOFLAGS) -ldflags '$(LDFLAGS)' -o "nuclei" cmd/gohunter/main.go
 docs:
 	if ! which dstdocgen > /dev/null; then
 		echo -e "Command not found! Install? (y/n) \c"
