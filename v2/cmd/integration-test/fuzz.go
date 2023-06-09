@@ -13,9 +13,10 @@ import (
 )
 
 var fuzzingTestCases = map[string]testutils.TestCase{
-	"fuzz/fuzz-mode.yaml":  &fuzzModeOverride{},
-	"fuzz/fuzz-type.yaml":  &fuzzTypeOverride{},
-	"fuzz/fuzz-query.yaml": &httpFuzzQuery{},
+	"fuzz/fuzz-mode.yaml":     &fuzzModeOverride{},
+	"fuzz/fuzz-type.yaml":     &fuzzTypeOverride{},
+	"fuzz/fuzz-query.yaml":    &httpFuzzQuery{},
+	"fuzz/fuzz-headless.yaml": &HeadlessFuzzingQuery{},
 }
 
 type httpFuzzQuery struct{}
@@ -125,4 +126,24 @@ func (h *fuzzTypeOverride) Execute(filePath string) error {
 		return fmt.Errorf("expected id to be fuzz-word, got %s", values.Get("id"))
 	}
 	return nil
+}
+
+// HeadlessFuzzingQuery tests fuzzing is working not in headless mode
+type HeadlessFuzzingQuery struct{}
+
+// Execute executes a test case and returns an error if occurred
+func (h *HeadlessFuzzingQuery) Execute(filePath string) error {
+	router := httprouter.New()
+	router.GET("/", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+		resp := fmt.Sprintf("<html><body>%s</body></html>", r.URL.Query().Get("url"))
+		fmt.Fprint(w, resp)
+	})
+	ts := httptest.NewTLSServer(router)
+	defer ts.Close()
+
+	got, err := testutils.RunNucleiTemplateAndGetResults(filePath, ts.URL+"?url=https://scanme.sh", debug, "-headless")
+	if err != nil {
+		return err
+	}
+	return expectResultsCount(got, 2)
 }
