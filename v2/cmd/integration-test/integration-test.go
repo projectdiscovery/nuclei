@@ -130,7 +130,7 @@ func runTests(customTemplatePaths []string) []string {
 			if len(customTemplatePaths) == 0 || sliceutil.Contains(customTemplatePaths, templatePath) {
 				var failedTemplatePath string
 				var err error
-				if proto == "interactsh" {
+				if proto == "interactsh" || strings.Contains(templatePath, "interactsh") {
 					failedTemplatePath, err = executeWithRetry(testCase, templatePath, interactshRetryCount)
 				} else {
 					failedTemplatePath, err = execute(testCase, templatePath)
