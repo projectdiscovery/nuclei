@@ -40,6 +40,7 @@ var (
 		"customConfigDir": customConfigDirTestCases,
 		"fuzzing":         fuzzingTestCases,
 		"code":            codeTestCases,
+		"multi":           multiProtoTestcases,
 	}
 
 	// For debug purposes

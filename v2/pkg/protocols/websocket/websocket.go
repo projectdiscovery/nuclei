@@ -175,7 +175,8 @@ func (request *Request) executeRequestWithPayloads(input, hostname string, dynam
 	}
 	defaultVars := protocolutils.GenerateVariables(parsed, false, nil)
 	optionVars := generators.BuildPayloadFromOptions(request.options.Options)
-	variables := request.options.Variables.Evaluate(generators.MergeMaps(defaultVars, optionVars, dynamicValues))
+	// add templatecontext variables to varMap
+	variables := request.options.Variables.Evaluate(generators.MergeMaps(defaultVars, optionVars, dynamicValues, request.options.TemplateCtx.GetAll()))
 	payloadValues := generators.MergeMaps(variables, defaultVars, optionVars, dynamicValues, request.options.Constants)
 
 	requestOptions := request.options
@@ -254,12 +255,6 @@ func (request *Request) executeRequestWithPayloads(input, hostname string, dynam
 	gologger.Verbose().Msgf("Sent Websocket request to %s", input)
 
 	data := make(map[string]interface{})
-	for k, v := range previous {
-		data[k] = v
-	}
-	for k, v := range events {
-		data[k] = v
-	}
 
 	data["type"] = request.Type().String()
 	data["success"] = "true"
@@ -268,6 +263,17 @@ func (request *Request) executeRequestWithPayloads(input, hostname string, dynam
 	data["host"] = input
 	data["matched"] = addressToDial
 	data["ip"] = request.dialer.GetDialedIP(hostname)
+
+	// add response fields to template context and merge templatectx variables to output event
+	request.options.AddTemplateVars(request.Type(), data)
+	data = generators.MergeMaps(data, request.options.TemplateCtx.GetAll())
+
+	for k, v := range previous {
+		data[k] = v
+	}
+	for k, v := range events {
+		data[k] = v
+	}
 
 	event := eventcreator.CreateEventWithAdditionalOptions(request, data, requestOptions.Options.Debug || requestOptions.Options.DebugResponse, func(internalWrappedEvent *output.InternalWrappedEvent) {
 		internalWrappedEvent.OperatorsResult.PayloadValues = payloadValues

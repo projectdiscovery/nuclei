@@ -1,0 +1,41 @@
+{
+    "id": "nuclei-multi-protocol",
+    "info": {
+      "name": "multi protocol support",
+      "author": "pdteam",
+      "severity": "info"
+    },
+    "dns": [
+      {
+        "name": "{{FQDN}}",
+        "type": "cname"
+      }
+    ],
+    "ssl": [
+      {
+        "address": "{{Hostname}}"
+      }
+    ],
+    "http": [
+      {
+        "method": "GET",
+        "path": [
+          "{{BaseURL}}"
+        ],
+        "headers": {
+          "Host": "{{ssl_subject_cn}}",
+          "Metadata": "{{ssl_cipher}}"
+        },
+        "matchers": [
+          {
+            "type": "dsl",
+            "dsl": [
+              "http_status_code == 404",
+              "contains(dns_cname, 'github.io')"
+            ],
+            "condition": "and"
+          }
+        ]
+      }
+    ]
+}
