@@ -18,7 +18,7 @@ import (
 type Engine struct {
 	workPool     *WorkPool
 	options      *types.Options
-	executerOpts protocols.ExecuterOptions
+	executerOpts protocols.ExecutorOptions
 	Callback     func(*output.ResultEvent) // Executed on results
 }
 
@@ -58,12 +58,12 @@ func (e *Engine) GetWorkPool() *WorkPool {
 
 // SetExecuterOptions sets the executer options for the engine. This is required
 // before using the engine to perform any execution.
-func (e *Engine) SetExecuterOptions(options protocols.ExecuterOptions) {
+func (e *Engine) SetExecuterOptions(options protocols.ExecutorOptions) {
 	e.executerOpts = options
 }
 
-// ExecuterOptions returns protocols.ExecuterOptions for nuclei engine.
-func (e *Engine) ExecuterOptions() protocols.ExecuterOptions {
+// ExecuterOptions returns protocols.ExecutorOptions for nuclei engine.
+func (e *Engine) ExecuterOptions() protocols.ExecutorOptions {
 	return e.executerOpts
 }
 

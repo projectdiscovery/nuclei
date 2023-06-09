@@ -47,7 +47,7 @@ func (rule *Rule) Execute(input *ExecuteRuleInput) error {
 	baseValues := input.Values
 	if rule.generator == nil {
 		evaluatedValues, interactURLs := rule.options.Variables.EvaluateWithInteractsh(baseValues, rule.options.Interactsh)
-		input.Values = generators.MergeMaps(evaluatedValues, baseValues)
+		input.Values = generators.MergeMaps(evaluatedValues, baseValues, rule.options.Constants)
 		input.InteractURLs = interactURLs
 		err := rule.executeRuleValues(input)
 		return err
@@ -60,7 +60,7 @@ func (rule *Rule) Execute(input *ExecuteRuleInput) error {
 		}
 		evaluatedValues, interactURLs := rule.options.Variables.EvaluateWithInteractsh(generators.MergeMaps(values, baseValues), rule.options.Interactsh)
 		input.InteractURLs = interactURLs
-		input.Values = generators.MergeMaps(values, evaluatedValues, baseValues)
+		input.Values = generators.MergeMaps(values, evaluatedValues, baseValues, rule.options.Constants)
 
 		if err := rule.executeRuleValues(input); err != nil {
 			return err
@@ -87,7 +87,7 @@ func (rule *Rule) executeRuleValues(input *ExecuteRuleInput) error {
 }
 
 // Compile compiles a fuzzing rule and initializes it for operation
-func (rule *Rule) Compile(generator *generators.PayloadGenerator, options *protocols.ExecuterOptions) error {
+func (rule *Rule) Compile(generator *generators.PayloadGenerator, options *protocols.ExecutorOptions) error {
 	// If a payload generator is specified from base request, use it
 	// for payload values.
 	if generator != nil {
@@ -107,16 +107,17 @@ func (rule *Rule) Compile(generator *generators.PayloadGenerator, options *proto
 	}
 	if rule.Part != "" {
 		if valueType, ok := stringToPartType[rule.Part]; !ok {
-			return errors.Errorf("invalid part value specified: %s", rule.Mode)
+			return errors.Errorf("invalid part value specified: %s", rule.Part)
 		} else {
 			rule.partType = valueType
 		}
 	} else {
 		rule.partType = queryPartType
 	}
+
 	if rule.Type != "" {
 		if valueType, ok := stringToRuleType[rule.Type]; !ok {
-			return errors.Errorf("invalid type value specified: %s", rule.Mode)
+			return errors.Errorf("invalid type value specified: %s", rule.Type)
 		} else {
 			rule.ruleType = valueType
 		}

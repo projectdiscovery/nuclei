@@ -15,6 +15,7 @@ import (
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v2/internal/runner/nucleicloud"
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
+	"github.com/projectdiscovery/nuclei/v2/pkg/templates/extensions"
 )
 
 // Get all the scan lists for a user/apikey.
@@ -38,7 +39,7 @@ func (r *Runner) getScanList(limit int) error {
 			count++
 			lastTime = v.CreatedAt.String()
 			res := nucleicloud.PrepareScanListOutput(v)
-			if r.options.JSON {
+			if r.options.JSONL {
 				_ = jsoniter.NewEncoder(os.Stdout).Encode(res)
 			} else if !r.options.NoTables {
 				values = append(values, []string{strconv.FormatInt(res.ScanID, 10), res.Timestamp, strconv.Itoa(res.Target), strconv.Itoa(res.Template), strconv.Itoa(res.ScanResult), res.ScanTime, res.ScanStatus})
@@ -69,7 +70,7 @@ func (r *Runner) listDatasources() error {
 	header := []string{"ID", "UpdatedAt", "Type", "Repo", "Path"}
 	var values [][]string
 	for _, source := range datasources {
-		if r.options.JSON {
+		if r.options.JSONL {
 			_ = jsoniter.NewEncoder(os.Stdout).Encode(source)
 		} else if !r.options.NoTables {
 			values = append(values, []string{strconv.FormatInt(source.ID, 10), source.Updatedat.Format(nucleicloud.DDMMYYYYhhmmss), source.Type, source.Repo, source.Path})
@@ -95,7 +96,7 @@ func (r *Runner) listReportingSources() error {
 	header := []string{"ID", "Type", "ProjectName", "Enabled"}
 	var values [][]string
 	for _, source := range items {
-		if r.options.JSON {
+		if r.options.JSONL {
 			_ = jsoniter.NewEncoder(os.Stdout).Encode(source)
 		} else if !r.options.NoTables {
 			values = append(values, []string{strconv.FormatInt(source.ID, 10), source.Type, source.ProjectName, strconv.FormatBool(source.Enabled)})
@@ -122,7 +123,7 @@ func (r *Runner) listTargets() error {
 	header := []string{"ID", "Reference", "Count"}
 	var values [][]string
 	for _, source := range items {
-		if r.options.JSON {
+		if r.options.JSONL {
 			_ = jsoniter.NewEncoder(os.Stdout).Encode(source)
 		} else if !r.options.NoTables {
 			values = append(values, []string{strconv.FormatInt(source.ID, 10), source.Reference, strconv.FormatInt(source.Count, 10)})
@@ -148,7 +149,7 @@ func (r *Runner) listTemplates() error {
 	header := []string{"ID", "Reference"}
 	var values [][]string
 	for _, source := range items {
-		if r.options.JSON {
+		if r.options.JSONL {
 			_ = jsoniter.NewEncoder(os.Stdout).Encode(source)
 		} else if !r.options.NoTables {
 			values = append(values, []string{strconv.FormatInt(source.ID, 10), source.Reference})
@@ -266,7 +267,7 @@ func (r *Runner) addTemplate(location string) error {
 		if err != nil {
 			return err
 		}
-		if d.IsDir() || !strings.EqualFold(filepath.Ext(path), ".yaml") {
+		if d.IsDir() || !strings.EqualFold(filepath.Ext(path), extensions.YAML) {
 			return nil
 		}
 		base := filepath.Base(path)
@@ -337,7 +338,7 @@ func (r *Runner) removeTemplate(item string) error {
 	var err error
 	if ID, parseErr := strconv.ParseInt(item, 10, 64); parseErr == nil {
 		err = r.cloudClient.RemoveTemplate(ID, "")
-	} else if strings.EqualFold(path.Ext(item), ".yaml") {
+	} else if strings.EqualFold(path.Ext(item), extensions.YAML) {
 		err = r.cloudClient.RemoveTemplate(0, item)
 	} else {
 		return r.removeTemplatePrefix(item)

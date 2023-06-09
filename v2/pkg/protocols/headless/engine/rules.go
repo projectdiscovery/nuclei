@@ -20,7 +20,9 @@ func (p *Page) routingRuleHandler(ctx *rod.Hijack) {
 
 		switch rule.Action {
 		case ActionSetMethod:
-			ctx.Request.Req().Method = rule.Args["method"]
+			rule.Do(func() {
+				ctx.Request.Req().Method = rule.Args["method"]
+			})
 		case ActionAddHeader:
 			ctx.Request.Req().Header.Add(rule.Args["key"], rule.Args["value"])
 		case ActionSetHeader:

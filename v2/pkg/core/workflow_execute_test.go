@@ -3,8 +3,6 @@ package core
 import (
 	"testing"
 
-	"github.com/stretchr/testify/require"
-
 	"github.com/projectdiscovery/nuclei/v2/pkg/model/types/stringslice"
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators"
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
@@ -13,14 +11,15 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/contextargs"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 	"github.com/projectdiscovery/nuclei/v2/pkg/workflows"
+	"github.com/stretchr/testify/require"
 )
 
 func TestWorkflowsSimple(t *testing.T) {
 	progressBar, _ := progress.NewStatsTicker(0, false, false, false, false, 0)
 
-	workflow := &workflows.Workflow{Options: &protocols.ExecuterOptions{Options: &types.Options{TemplateThreads: 10}}, Workflows: []*workflows.WorkflowTemplate{
+	workflow := &workflows.Workflow{Options: &protocols.ExecutorOptions{Options: &types.Options{TemplateThreads: 10}}, Workflows: []*workflows.WorkflowTemplate{
 		{Executers: []*workflows.ProtocolExecuterPair{{
-			Executer: &mockExecuter{result: true}, Options: &protocols.ExecuterOptions{Progress: progressBar}},
+			Executer: &mockExecuter{result: true}, Options: &protocols.ExecutorOptions{Progress: progressBar}},
 		}},
 	}}
 
@@ -33,16 +32,16 @@ func TestWorkflowsSimpleMultiple(t *testing.T) {
 	progressBar, _ := progress.NewStatsTicker(0, false, false, false, false, 0)
 
 	var firstInput, secondInput string
-	workflow := &workflows.Workflow{Options: &protocols.ExecuterOptions{Options: &types.Options{TemplateThreads: 10}}, Workflows: []*workflows.WorkflowTemplate{
+	workflow := &workflows.Workflow{Options: &protocols.ExecutorOptions{Options: &types.Options{TemplateThreads: 10}}, Workflows: []*workflows.WorkflowTemplate{
 		{Executers: []*workflows.ProtocolExecuterPair{{
 			Executer: &mockExecuter{result: true, executeHook: func(input *contextargs.MetaInput) {
 				firstInput = input.Input
-			}}, Options: &protocols.ExecuterOptions{Progress: progressBar}},
+			}}, Options: &protocols.ExecutorOptions{Progress: progressBar}},
 		}},
 		{Executers: []*workflows.ProtocolExecuterPair{{
 			Executer: &mockExecuter{result: true, executeHook: func(input *contextargs.MetaInput) {
 				secondInput = input.Input
-			}}, Options: &protocols.ExecuterOptions{Progress: progressBar}},
+			}}, Options: &protocols.ExecutorOptions{Progress: progressBar}},
 		}},
 	}}
 
@@ -58,17 +57,17 @@ func TestWorkflowsSubtemplates(t *testing.T) {
 	progressBar, _ := progress.NewStatsTicker(0, false, false, false, false, 0)
 
 	var firstInput, secondInput string
-	workflow := &workflows.Workflow{Options: &protocols.ExecuterOptions{Options: &types.Options{TemplateThreads: 10}}, Workflows: []*workflows.WorkflowTemplate{
+	workflow := &workflows.Workflow{Options: &protocols.ExecutorOptions{Options: &types.Options{TemplateThreads: 10}}, Workflows: []*workflows.WorkflowTemplate{
 		{Executers: []*workflows.ProtocolExecuterPair{{
 			Executer: &mockExecuter{result: true, executeHook: func(input *contextargs.MetaInput) {
 				firstInput = input.Input
 			}, outputs: []*output.InternalWrappedEvent{
 				{OperatorsResult: &operators.Result{}, Results: []*output.ResultEvent{{}}},
-			}}, Options: &protocols.ExecuterOptions{Progress: progressBar}},
+			}}, Options: &protocols.ExecutorOptions{Progress: progressBar}},
 		}, Subtemplates: []*workflows.WorkflowTemplate{{Executers: []*workflows.ProtocolExecuterPair{{
 			Executer: &mockExecuter{result: true, executeHook: func(input *contextargs.MetaInput) {
 				secondInput = input.Input
-			}}, Options: &protocols.ExecuterOptions{Progress: progressBar}},
+			}}, Options: &protocols.ExecutorOptions{Progress: progressBar}},
 		}}}},
 	}}
 
@@ -84,15 +83,15 @@ func TestWorkflowsSubtemplatesNoMatch(t *testing.T) {
 	progressBar, _ := progress.NewStatsTicker(0, false, false, false, false, 0)
 
 	var firstInput, secondInput string
-	workflow := &workflows.Workflow{Options: &protocols.ExecuterOptions{Options: &types.Options{TemplateThreads: 10}}, Workflows: []*workflows.WorkflowTemplate{
+	workflow := &workflows.Workflow{Options: &protocols.ExecutorOptions{Options: &types.Options{TemplateThreads: 10}}, Workflows: []*workflows.WorkflowTemplate{
 		{Executers: []*workflows.ProtocolExecuterPair{{
 			Executer: &mockExecuter{result: false, executeHook: func(input *contextargs.MetaInput) {
 				firstInput = input.Input
-			}}, Options: &protocols.ExecuterOptions{Progress: progressBar}},
+			}}, Options: &protocols.ExecutorOptions{Progress: progressBar}},
 		}, Subtemplates: []*workflows.WorkflowTemplate{{Executers: []*workflows.ProtocolExecuterPair{{
 			Executer: &mockExecuter{result: true, executeHook: func(input *contextargs.MetaInput) {
 				secondInput = input.Input
-			}}, Options: &protocols.ExecuterOptions{Progress: progressBar}},
+			}}, Options: &protocols.ExecutorOptions{Progress: progressBar}},
 		}}}},
 	}}
 
@@ -108,7 +107,7 @@ func TestWorkflowsSubtemplatesWithMatcher(t *testing.T) {
 	progressBar, _ := progress.NewStatsTicker(0, false, false, false, false, 0)
 
 	var firstInput, secondInput string
-	workflow := &workflows.Workflow{Options: &protocols.ExecuterOptions{Options: &types.Options{TemplateThreads: 10}}, Workflows: []*workflows.WorkflowTemplate{
+	workflow := &workflows.Workflow{Options: &protocols.ExecutorOptions{Options: &types.Options{TemplateThreads: 10}}, Workflows: []*workflows.WorkflowTemplate{
 		{Executers: []*workflows.ProtocolExecuterPair{{
 			Executer: &mockExecuter{result: true, executeHook: func(input *contextargs.MetaInput) {
 				firstInput = input.Input
@@ -117,11 +116,11 @@ func TestWorkflowsSubtemplatesWithMatcher(t *testing.T) {
 					Matches:  map[string][]string{"tomcat": {}},
 					Extracts: map[string][]string{},
 				}},
-			}}, Options: &protocols.ExecuterOptions{Progress: progressBar}},
+			}}, Options: &protocols.ExecutorOptions{Progress: progressBar}},
 		}, Matchers: []*workflows.Matcher{{Name: stringslice.StringSlice{Value: "tomcat"}, Subtemplates: []*workflows.WorkflowTemplate{{Executers: []*workflows.ProtocolExecuterPair{{
 			Executer: &mockExecuter{result: true, executeHook: func(input *contextargs.MetaInput) {
 				secondInput = input.Input
-			}}, Options: &protocols.ExecuterOptions{Progress: progressBar}},
+			}}, Options: &protocols.ExecutorOptions{Progress: progressBar}},
 		}}}}}},
 	}}
 
@@ -137,7 +136,7 @@ func TestWorkflowsSubtemplatesWithMatcherNoMatch(t *testing.T) {
 	progressBar, _ := progress.NewStatsTicker(0, false, false, false, false, 0)
 
 	var firstInput, secondInput string
-	workflow := &workflows.Workflow{Options: &protocols.ExecuterOptions{Options: &types.Options{TemplateThreads: 10}}, Workflows: []*workflows.WorkflowTemplate{
+	workflow := &workflows.Workflow{Options: &protocols.ExecutorOptions{Options: &types.Options{TemplateThreads: 10}}, Workflows: []*workflows.WorkflowTemplate{
 		{Executers: []*workflows.ProtocolExecuterPair{{
 			Executer: &mockExecuter{result: true, executeHook: func(input *contextargs.MetaInput) {
 				firstInput = input.Input
@@ -146,11 +145,11 @@ func TestWorkflowsSubtemplatesWithMatcherNoMatch(t *testing.T) {
 					Matches:  map[string][]string{"tomcat": {}},
 					Extracts: map[string][]string{},
 				}},
-			}}, Options: &protocols.ExecuterOptions{Progress: progressBar}},
+			}}, Options: &protocols.ExecutorOptions{Progress: progressBar}},
 		}, Matchers: []*workflows.Matcher{{Name: stringslice.StringSlice{Value: "apache"}, Subtemplates: []*workflows.WorkflowTemplate{{Executers: []*workflows.ProtocolExecuterPair{{
 			Executer: &mockExecuter{result: true, executeHook: func(input *contextargs.MetaInput) {
 				secondInput = input.Input
-			}}, Options: &protocols.ExecuterOptions{Progress: progressBar}},
+			}}, Options: &protocols.ExecutorOptions{Progress: progressBar}},
 		}}}}}},
 	}}
 

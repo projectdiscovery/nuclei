@@ -29,10 +29,10 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/projectdiscovery/nuclei/blob/master/README.md">English</a> •
-  <a href="https://github.com/projectdiscovery/nuclei/blob/master/README_CN.md">中文</a> •
-  <a href="https://github.com/projectdiscovery/nuclei/blob/master/README_KR.md">Korean</a> •
-  <a href="https://github.com/projectdiscovery/nuclei/blob/master/README_ID.md">Indonesia</a>
+  <a href="https://github.com/projectdiscovery/nuclei/blob/main/README.md">English</a> •
+  <a href="https://github.com/projectdiscovery/nuclei/blob/main/README_CN.md">中文</a> •
+  <a href="https://github.com/projectdiscovery/nuclei/blob/main/README_KR.md">Korean</a> •
+  <a href="https://github.com/projectdiscovery/nuclei/blob/main/README_ID.md">Indonesia</a>
 </p>
 
 ---
@@ -53,7 +53,7 @@ We have a [dedicated repository](https://github.com/projectdiscovery/nuclei-temp
 
 # Install Nuclei
 
-Nuclei requires **go1.19** to install successfully. Run the following command to install the latest version -
+Nuclei requires **go1.20** to install successfully. Run the following command to install the latest version -
 
 ```sh
 go install -v github.com/projectdiscovery/nuclei/v2/cmd/nuclei@latest
@@ -143,8 +143,8 @@ FILTERING:
    -em, -exclude-matchers string[]    template matchers to exclude in result
    -s, -severity value[]              templates to run based on severity. Possible values: info, low, medium, high, critical, unknown
    -es, -exclude-severity value[]     templates to exclude based on severity. Possible values: info, low, medium, high, critical, unknown
-   -pt, -type value[]                 templates to run based on protocol type. Possible values: dns, file, http, headless, network, workflow, ssl, websocket, whois
-   -ept, -exclude-type value[]        templates to exclude based on protocol type. Possible values: dns, file, http, headless, network, workflow, ssl, websocket, whois
+   -pt, -type value[]                 templates to run based on protocol type. Possible values: dns, file, http, headless, tcp, workflow, ssl, websocket, whois
+   -ept, -exclude-type value[]        templates to exclude based on protocol type. Possible values: dns, file, http, headless, tcp, workflow, ssl, websocket, whois
    -tc, -template-condition string[]  templates to run based on expression condition
 
 OUTPUT:
@@ -153,7 +153,7 @@ OUTPUT:
    -srd, -store-resp-dir string  store all request/response passed through nuclei to custom directory (default "output")
    -silent                       display findings only
    -nc, -no-color                disable output content coloring (ANSI escape codes)
-   -json                         write output in JSONL(ines) format
+   -j, -jsonl                    write output in JSONL(ines) format
    -irr, -include-rr             include request/response pairs in the JSONL output (for findings only)
    -nm, -no-meta                 disable printing result metadata in cli output
    -ts, -timestamp               enables printing timestamp in cli output
@@ -161,6 +161,8 @@ OUTPUT:
    -ms, -matcher-status          display match failure status
    -me, -markdown-export string  directory to export results in markdown format
    -se, -sarif-export string     file to export results in SARIF format
+   -je, -json-export string      file to export results in JSON format
+   -jle, -jsonl-export string    file to export results in JSONL(ine) format
 
 CONFIGURATIONS:
    -config string                 path to the nuclei configuration file
@@ -189,7 +191,8 @@ CONFIGURATIONS:
    -sip, -source-ip string        source ip address to use for network scan
    -config-directory string       override the default config path ($home/.config)
    -rsr, -response-size-read int  max response size to read in bytes (default 10485760)
-   -rss, -response-size-save int  max response size to save in bytes (default 1048576)
+   -rss, -response-size-save int  max response size to read in bytes (default 1048576)
+   -reset                         reset removes all nuclei configuration and data files (including nuclei-templates)
 
 INTERACTSH:
    -iserver, -interactsh-server string  interactsh server url for self-hosted instance (default: oast.pro,oast.live,oast.site,oast.online,oast.fun,oast.me)
@@ -200,10 +203,14 @@ INTERACTSH:
    -interactions-cooldown-period int    extra time for interaction polling before exiting (default 5)
    -ni, -no-interactsh                  disable interactsh server for OAST testing, exclude OAST based templates
 
+FUZZING:
+   -ft, -fuzzing-type string  overrides fuzzing type set in template (replace, prefix, postfix, infix)
+   -fm, -fuzzing-mode string  overrides fuzzing mode set in template (multiple, single)
+
 UNCOVER:
    -uc, -uncover                  enable uncover engine
    -uq, -uncover-query string[]   uncover search query
-   -ue, -uncover-engine string[]  uncover search engine (shodan,shodan-idb,fofa,censys,quake,hunter,zoomeye,netlas) (default shodan)
+   -ue, -uncover-engine string[]  uncover search engine (shodan,shodan-idb,fofa,censys,quake,hunter,zoomeye,netlas,criminalip) (default shodan)
    -uf, -uncover-field string     uncover fields to return (ip,port,host) (default "ip:port")
    -ul, -uncover-limit int        uncover results to return (default 100)
    -ucd, -uncover-delay int       delay between uncover query requests in seconds (0 to disable) (default 1)
@@ -221,11 +228,13 @@ OPTIMIZATIONS:
    -retries int                        number of times to retry a failed request (default 1)
    -ldp, -leave-default-ports          leave default HTTP/HTTPS ports (eg. host:80,host:443)
    -mhe, -max-host-error int           max errors for a host before skipping from scan (default 30)
+   -te, -track-error string[]          adds given error to max-host-error watchlist (standard, file)
    -nmhe, -no-mhe                      disable skipping host from scan based on errors
    -project                            use a project folder to avoid sending same request multiple times
-   -project-path string                set a specific project path
+   -project-path string                set a specific project path (default "/tmp")
    -spm, -stop-at-first-match          stop processing HTTP requests after the first match (may break template/workflow logic)
    -stream                             stream mode - start elaborating without sorting the input
+   -ss, -scan-strategy value           strategy to use while scanning(auto/host-spray/template-spray) (default auto)
    -irt, -input-read-timeout duration  timeout on input read (default 3m0s)
    -nh, -no-httpx                      disable httpx probing for non-url input
    -no-stdin                           disable stdin processing
@@ -257,17 +266,40 @@ DEBUG:
    -hc, -health-check        run diagnostic check up
 
 UPDATE:
-   -un, -update                          update nuclei engine to the latest released version
-   -ut, -update-templates                update nuclei-templates to latest released version
-   -ud, -update-template-dir string      custom directory to install / update nuclei-templates
-   -duc, -disable-update-check           disable automatic nuclei/templates update check
+   -up, -update                      update nuclei engine to the latest released version
+   -ut, -update-templates            update nuclei-templates to latest released version
+   -ud, -update-template-dir string  custom directory to install / update nuclei-templates
+   -duc, -disable-update-check       disable automatic nuclei/templates update check
 
 STATISTICS:
    -stats                    display statistics about the running scan
-   -sj, -stats-json          write statistics data to an output file in JSONL(ines) format
+   -sj, -stats-json          display statistics in JSONL(ines) format
    -si, -stats-interval int  number of seconds to wait between showing a statistics update (default 5)
    -m, -metrics              expose nuclei metrics on a port
    -mp, -metrics-port int    port to expose nuclei metrics on (default 9092)
+
+CLOUD:
+   -cloud                              run scan on nuclei cloud
+   -ads, -add-datasource string        add specified data source (s3,github)
+   -atr, -add-target string            add target(s) to cloud
+   -atm, -add-template string          add template(s) to cloud
+   -lsn, -list-scan                    list previous cloud scans
+   -lso, -list-output string           list scan output by scan id
+   -ltr, -list-target                  list cloud target by id
+   -ltm, -list-template                list cloud template by id
+   -lds, -list-datasource              list cloud datasource by id
+   -lrs, -list-reportsource            list reporting sources
+   -dsn, -delete-scan string           delete cloud scan by id
+   -dtr, -delete-target string         delete target(s) from cloud
+   -dtm, -delete-template string       delete template(s) from cloud
+   -dds, -delete-datasource string     delete specified data source
+   -drs, -disable-reportsource string  disable specified reporting source
+   -ers, -enable-reportsource string   enable specified reporting source
+   -gtr, -get-target string            get target content by id
+   -gtm, -get-template string          get template content by id
+   -nos, -no-store                     disable scan/output storage on cloud
+   -no-tables                          do not display pretty-printed tables
+   -limit int                          limit the number of output to display (default 100)
 ```
 
 ### Running Nuclei
@@ -336,7 +368,7 @@ Nuclei immensely improve how you approach security assessment by augmenting the 
 Pen-testers get the full power of our public templates and customization capabilities to speed up their assessment process, and specifically with the regression cycle where you can easily verify the fix.
 
 - Easily create your compliance, standards suite (e.g. OWASP Top 10) checklist.
-- With capabilities like [fuzz](https://nuclei.projectdiscovery.io/templating-guide/#advance-fuzzing) and [workflows](https://nuclei.projectdiscovery.io/templating-guide/#workflows), complex manual steps and repetitive assessment can be easily automated with Nuclei.
+- With capabilities like [fuzz](https://nuclei.projectdiscovery.io/templating-guide/protocols/http-fuzzing/) and [workflows](https://nuclei.projectdiscovery.io/templating-guide/workflows/), complex manual steps and repetitive assessment can be easily automated with Nuclei.
 - Easy to re-test vulnerability-fix by just re-running the template.
 
 </td>
@@ -382,13 +414,24 @@ Examples of using Nuclei From Go Code to run templates on targets are provided i
 
 ### Credits
 
-Thanks to all the amazing community [contributors for sending PRs](https://github.com/projectdiscovery/nuclei/graphs/contributors). Do also check out the below similar open-source projects that may fit in your workflow:
+Thanks to all the amazing [community contributors for sending PRs](https://github.com/projectdiscovery/nuclei/graphs/contributors) and keeping this project updated. :heart:
+
+If you have an idea or some kind of improvement, you are welcome to contribute and participate in the Project, feel free to send your PR.
+
+<p align="center">
+<a href="https://github.com/projectdiscovery/nuclei/graphs/contributors">
+  <img src="https://contrib.rocks/image?repo=projectdiscovery/nuclei&max=500">
+</a>
+</p>
+
+
+Do also check out the below similar open-source projects that may fit in your workflow:
 
 [FFuF](https://github.com/ffuf/ffuf), [Qsfuzz](https://github.com/ameenmaali/qsfuzz), [Inception](https://github.com/proabiral/inception), [Snallygaster](https://github.com/hannob/snallygaster), [Gofingerprint](https://github.com/Static-Flow/gofingerprint), [Sn1per](https://github.com/1N3/Sn1per/tree/master/templates), [Google tsunami](https://github.com/google/tsunami-security-scanner), [Jaeles](https://github.com/jaeles-project/jaeles), [ChopChop](https://github.com/michelin/ChopChop)
 
 ### License
 
-Nuclei is distributed under [MIT License](https://github.com/projectdiscovery/nuclei/blob/master/LICENSE.md)
+Nuclei is distributed under [MIT License](https://github.com/projectdiscovery/nuclei/blob/main/LICENSE.md)
 
 <h1 align="left">
   <a href="https://discord.gg/projectdiscovery"><img src="static/Join-Discord.png" width="380" alt="Join Discord"></a> <a href="https://nuclei.projectdiscovery.io"><img src="static/check-nuclei-documentation.png" width="380" alt="Check Nuclei Documentation"></a>

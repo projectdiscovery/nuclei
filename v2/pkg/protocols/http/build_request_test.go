@@ -13,18 +13,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/generators"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/interactsh"
 	"github.com/projectdiscovery/nuclei/v2/pkg/testutils"
-	urlutil "github.com/projectdiscovery/utils/url"
 )
-
-func TestBaseURLWithTemplatePrefs(t *testing.T) {
-	baseURL := "http://localhost:53/test"
-	parsed, _ := urlutil.Parse(baseURL)
-
-	data := "{{BaseURL}}:8000/newpath"
-	parsed, data = UsePortFromPayload(parsed, data)
-	require.Equal(t, "http://localhost:8000/test", parsed.String(), "could not get correct value")
-	require.Equal(t, "{{BaseURL}}/newpath", data, "could not get correct data")
-}
 
 func TestMakeRequestFromModal(t *testing.T) {
 	options := testutils.DefaultOptions
@@ -197,7 +186,7 @@ func TestMakeRequestFromModelUniqueInteractsh(t *testing.T) {
 
 	generator.options.Interactsh, err = interactsh.New(&interactsh.Options{
 		ServerURL:           options.InteractshURL,
-		CacheSize:           int64(options.InteractionsCacheSize),
+		CacheSize:           options.InteractionsCacheSize,
 		Eviction:            time.Duration(options.InteractionsEviction) * time.Second,
 		CooldownPeriod:      time.Duration(options.InteractionsCoolDownPeriod) * time.Second,
 		PollDuration:        time.Duration(options.InteractionsPollDuration) * time.Second,

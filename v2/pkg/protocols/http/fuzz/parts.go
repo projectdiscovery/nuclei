@@ -66,7 +66,7 @@ func (rule *Rule) buildQueryInput(input *ExecuteRuleInput, parsed *urlutil.URL, 
 	var req *retryablehttp.Request
 	var err error
 	if input.BaseRequest == nil {
-		req, err = retryablehttp.NewRequest(http.MethodGet, parsed.String(), nil)
+		req, err = retryablehttp.NewRequestFromURL(http.MethodGet, parsed, nil)
 		if err != nil {
 			return err
 		}
@@ -98,7 +98,7 @@ func (rule *Rule) executeEvaluate(input *ExecuteRuleInput, key, value, payload s
 		"value": value,
 	})
 	firstpass, _ := expressions.Evaluate(payload, values)
-	interactData, interactshURLs := rule.options.Interactsh.ReplaceMarkers(firstpass, interactshURLs)
+	interactData, interactshURLs := rule.options.Interactsh.Replace(firstpass, interactshURLs)
 	evaluated, _ := expressions.Evaluate(interactData, values)
 	replaced := rule.executeReplaceRule(input, value, evaluated)
 	return replaced, interactshURLs

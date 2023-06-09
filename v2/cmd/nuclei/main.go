@@ -1,14 +1,13 @@
 package main
 
 import (
-	"errors"
+	"bufio"
 	"fmt"
-	"io"
 	"os"
 	"os/signal"
-	"path/filepath"
 	"runtime"
 	"runtime/pprof"
+	"strings"
 	"time"
 
 	"github.com/projectdiscovery/goflags"
@@ -23,6 +22,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/http"
 	templateTypes "github.com/projectdiscovery/nuclei/v2/pkg/templates/types"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
+	"github.com/projectdiscovery/nuclei/v2/pkg/types/scanstrategy"
 	"github.com/projectdiscovery/nuclei/v2/pkg/utils/monitor"
 	errorutil "github.com/projectdiscovery/utils/errors"
 	fileutil "github.com/projectdiscovery/utils/file"
@@ -38,8 +38,7 @@ func main() {
 	if err := runner.ConfigureOptions(); err != nil {
 		gologger.Fatal().Msgf("Could not initialize options: %s\n", err)
 	}
-	flagSet := readConfig()
-	configPath, _ := flagSet.GetConfigFilePath()
+	_ = readConfig()
 
 	if options.ListDslSignatures {
 		gologger.Info().Msgf("The available custom DSL functions are:")
@@ -66,7 +65,6 @@ func main() {
 	}
 
 	runner.ParseOptions(options)
-	options.ConfigPath = configPath
 
 	if options.HangMonitor {
 		cancel := monitor.NewStackMonitor(10 * time.Second)
@@ -116,7 +114,6 @@ func main() {
 }
 
 func readConfig() *goflags.FlagSet {
-
 	flagSet := goflags.NewFlagSet()
 	flagSet.SetDescription(`Nuclei is a fast, template based vulnerability scanner focusing
 on extensive configurability, massive extensibility and ease of use.`)
@@ -171,7 +168,7 @@ on extensive configurability, massive extensibility and ease of use.`)
 		flagSet.StringVarP(&options.StoreResponseDir, "store-resp-dir", "srd", runner.DefaultDumpTrafficOutputFolder, "store all request/response passed through nuclei to custom directory"),
 		flagSet.BoolVar(&options.Silent, "silent", false, "display findings only"),
 		flagSet.BoolVarP(&options.NoColor, "no-color", "nc", false, "disable output content coloring (ANSI escape codes)"),
-		flagSet.BoolVar(&options.JSON, "json", false, "write output in JSONL(ines) format"),
+		flagSet.BoolVarP(&options.JSONL, "jsonl", "j", false, "write output in JSONL(ines) format"),
 		flagSet.BoolVarP(&options.JSONRequests, "include-rr", "irr", false, "include request/response pairs in the JSONL output (for findings only)"),
 		flagSet.BoolVarP(&options.NoMeta, "no-meta", "nm", false, "disable printing result metadata in cli output"),
 		flagSet.BoolVarP(&options.Timestamp, "timestamp", "ts", false, "enables printing timestamp in cli output"),
@@ -179,6 +176,8 @@ on extensive configurability, massive extensibility and ease of use.`)
 		flagSet.BoolVarP(&options.MatcherStatus, "matcher-status", "ms", false, "display match failure status"),
 		flagSet.StringVarP(&options.MarkdownExportDirectory, "markdown-export", "me", "", "directory to export results in markdown format"),
 		flagSet.StringVarP(&options.SarifExport, "sarif-export", "se", "", "file to export results in SARIF format"),
+		flagSet.StringVarP(&options.JSONExport, "json-export", "je", "", "file to export results in JSON format"),
+		flagSet.StringVarP(&options.JSONLExport, "jsonl-export", "jle", "", "file to export results in JSONL(ine) format"),
 	)
 
 	flagSet.CreateGroup("configs", "Configurations",
@@ -209,6 +208,7 @@ on extensive configurability, massive extensibility and ease of use.`)
 		flagSet.StringVar(&options.CustomConfigDir, "config-directory", "", "override the default config path ($home/.config)"),
 		flagSet.IntVarP(&options.ResponseReadSize, "response-size-read", "rsr", 10*1024*1024, "max response size to read in bytes"),
 		flagSet.IntVarP(&options.ResponseSaveSize, "response-size-save", "rss", 1*1024*1024, "max response size to read in bytes"),
+		flagSet.CallbackVar(resetCallback, "reset", "reset removes all nuclei configuration and data files (including nuclei-templates)"),
 	)
 
 	flagSet.CreateGroup("interactsh", "interactsh",
@@ -221,13 +221,18 @@ on extensive configurability, massive extensibility and ease of use.`)
 		flagSet.BoolVarP(&options.NoInteractsh, "no-interactsh", "ni", false, "disable interactsh server for OAST testing, exclude OAST based templates"),
 	)
 
+	flagSet.CreateGroup("fuzzing", "Fuzzing",
+		flagSet.StringVarP(&options.FuzzingType, "fuzzing-type", "ft", "", "overrides fuzzing type set in template (replace, prefix, postfix, infix)"),
+		flagSet.StringVarP(&options.FuzzingMode, "fuzzing-mode", "fm", "", "overrides fuzzing mode set in template (multiple, single)"),
+	)
+
 	flagSet.CreateGroup("uncover", "Uncover",
 		flagSet.BoolVarP(&options.Uncover, "uncover", "uc", false, "enable uncover engine"),
 		flagSet.StringSliceVarP(&options.UncoverQuery, "uncover-query", "uq", nil, "uncover search query", goflags.FileStringSliceOptions),
 		flagSet.StringSliceVarP(&options.UncoverEngine, "uncover-engine", "ue", nil, fmt.Sprintf("uncover search engine (%s) (default shodan)", uncover.GetUncoverSupportedAgents()), goflags.FileStringSliceOptions),
 		flagSet.StringVarP(&options.UncoverField, "uncover-field", "uf", "ip:port", "uncover fields to return (ip,port,host)"),
 		flagSet.IntVarP(&options.UncoverLimit, "uncover-limit", "ul", 100, "uncover results to return"),
-		flagSet.IntVarP(&options.UncoverDelay, "uncover-delay", "ucd", 1, "delay between uncover query requests in seconds (0 to disable)"),
+		flagSet.IntVarP(&options.UncoverRateLimit, "uncover-ratelimit", "ur", 60, "override ratelimit of engines with unknown ratelimit (default 60 req/min)"),
 	)
 
 	flagSet.CreateGroup("rate-limit", "Rate-Limit",
@@ -238,21 +243,21 @@ on extensive configurability, massive extensibility and ease of use.`)
 		flagSet.IntVarP(&options.HeadlessBulkSize, "headless-bulk-size", "hbs", 10, "maximum number of headless hosts to be analyzed in parallel per template"),
 		flagSet.IntVarP(&options.HeadlessTemplateThreads, "headless-concurrency", "headc", 10, "maximum number of headless templates to be executed in parallel"),
 	)
-
 	flagSet.CreateGroup("optimization", "Optimizations",
 		flagSet.IntVar(&options.Timeout, "timeout", 10, "time to wait in seconds before timeout"),
 		flagSet.IntVar(&options.Retries, "retries", 1, "number of times to retry a failed request"),
 		flagSet.BoolVarP(&options.LeaveDefaultPorts, "leave-default-ports", "ldp", false, "leave default HTTP/HTTPS ports (eg. host:80,host:443)"),
 		flagSet.IntVarP(&options.MaxHostError, "max-host-error", "mhe", 30, "max errors for a host before skipping from scan"),
+		flagSet.StringSliceVarP(&options.TrackError, "track-error", "te", nil, "adds given error to max-host-error watchlist (standard, file)", goflags.FileStringSliceOptions),
 		flagSet.BoolVarP(&options.NoHostErrors, "no-mhe", "nmhe", false, "disable skipping host from scan based on errors"),
 		flagSet.BoolVar(&options.Project, "project", false, "use a project folder to avoid sending same request multiple times"),
 		flagSet.StringVar(&options.ProjectPath, "project-path", os.TempDir(), "set a specific project path"),
 		flagSet.BoolVarP(&options.StopAtFirstMatch, "stop-at-first-match", "spm", false, "stop processing HTTP requests after the first match (may break template/workflow logic)"),
 		flagSet.BoolVar(&options.Stream, "stream", false, "stream mode - start elaborating without sorting the input"),
 		flagSet.EnumVarP(&options.ScanStrategy, "scan-strategy", "ss", goflags.EnumVariable(0), "strategy to use while scanning(auto/host-spray/template-spray)", goflags.AllowdTypes{
-			"auto":           goflags.EnumVariable(0),
-			"host-spray":     goflags.EnumVariable(1),
-			"template-spray": goflags.EnumVariable(2),
+			scanstrategy.Auto.String():          goflags.EnumVariable(0),
+			scanstrategy.HostSpray.String():     goflags.EnumVariable(1),
+			scanstrategy.TemplateSpray.String(): goflags.EnumVariable(2),
 		}),
 		flagSet.DurationVarP(&options.InputReadTimeout, "input-read-timeout", "irt", time.Duration(3*time.Minute), "timeout on input read"),
 		flagSet.BoolVarP(&options.DisableHTTPProbe, "no-httpx", "nh", false, "disable httpx probing for non-url input"),
@@ -276,27 +281,27 @@ on extensive configurability, massive extensibility and ease of use.`)
 		flagSet.BoolVarP(&options.ListDslSignatures, "list-dsl-function", "ldf", false, "list all supported DSL function signatures"),
 		flagSet.StringVarP(&options.TraceLogFile, "trace-log", "tlog", "", "file to write sent requests trace log"),
 		flagSet.StringVarP(&options.ErrorLogFile, "error-log", "elog", "", "file to write sent requests error log"),
-		flagSet.BoolVar(&options.Version, "version", false, "show nuclei version"),
+		flagSet.CallbackVar(printVersion, "version", "show nuclei version"),
 		flagSet.BoolVarP(&options.HangMonitor, "hang-monitor", "hm", false, "enable nuclei hang monitoring"),
 		flagSet.BoolVarP(&options.Verbose, "verbose", "v", false, "show verbose output"),
 		flagSet.StringVar(&memProfile, "profile-mem", "", "optional nuclei memory profile dump file"),
 		flagSet.BoolVar(&options.VerboseVerbose, "vv", false, "display templates loaded for scan"),
 		flagSet.BoolVarP(&options.ShowVarDump, "show-var-dump", "svd", false, "show variables dump for debugging"),
 		flagSet.BoolVarP(&options.EnablePprof, "enable-pprof", "ep", false, "enable pprof debugging server"),
-		flagSet.BoolVarP(&options.TemplatesVersion, "templates-version", "tv", false, "shows the version of the installed nuclei-templates"),
+		flagSet.CallbackVarP(printTemplateVersion, "templates-version", "tv", "shows the version of the installed nuclei-templates"),
 		flagSet.BoolVarP(&options.HealthCheck, "health-check", "hc", false, "run diagnostic check up"),
 	)
 
 	flagSet.CreateGroup("update", "Update",
-		flagSet.BoolVarP(&options.UpdateNuclei, "update", "un", false, "update nuclei engine to the latest released version"),
+		flagSet.CallbackVarP(runner.NucleiToolUpdateCallback, "update", "up", "update nuclei engine to the latest released version"),
 		flagSet.BoolVarP(&options.UpdateTemplates, "update-templates", "ut", false, "update nuclei-templates to latest released version"),
-		flagSet.StringVarP(&options.TemplatesDirectory, "update-template-dir", "ud", "", "custom directory to install / update nuclei-templates"),
-		flagSet.BoolVarP(&options.NoUpdateTemplates, "disable-update-check", "duc", false, "disable automatic nuclei/templates update check"),
+		flagSet.StringVarP(&options.NewTemplatesDirectory, "update-template-dir", "ud", "", "custom directory to install / update nuclei-templates"),
+		flagSet.CallbackVarP(disableUpdatesCallback, "disable-update-check", "duc", "disable automatic nuclei/templates update check"),
 	)
 
 	flagSet.CreateGroup("stats", "Statistics",
 		flagSet.BoolVar(&options.EnableProgressBar, "stats", false, "display statistics about the running scan"),
-		flagSet.BoolVarP(&options.StatsJSON, "stats-json", "sj", false, "write statistics data to an output file in JSONL(ines) format"),
+		flagSet.BoolVarP(&options.StatsJSON, "stats-json", "sj", false, "display statistics in JSONL(ines) format"),
 		flagSet.IntVarP(&options.StatsInterval, "stats-interval", "si", 5, "number of seconds to wait between showing a statistics update"),
 		flagSet.BoolVarP(&options.Metrics, "metrics", "m", false, "expose nuclei metrics on a port"),
 		flagSet.IntVarP(&options.MetricsPort, "metrics-port", "mp", 9092, "port to expose nuclei metrics on"),
@@ -334,46 +339,29 @@ on extensive configurability, massive extensibility and ease of use.`)
 		http.LeaveDefaultPorts = true
 	}
 	if options.CustomConfigDir != "" {
-		originalIgnorePath := config.GetIgnoreFilePath()
-		config.SetCustomConfigDirectory(options.CustomConfigDir)
-		configPath := filepath.Join(options.CustomConfigDir, "config.yaml")
-		ignoreFile := filepath.Join(options.CustomConfigDir, ".nuclei-ignore")
-		if !fileutil.FileExists(ignoreFile) {
-			_ = fileutil.CopyFile(originalIgnorePath, ignoreFile)
-		}
-		readConfigFile := func() error {
-			if err := flagSet.MergeConfigFile(configPath); err != nil && !errors.Is(err, io.EOF) {
-				defaultConfigPath, _ := flagSet.GetConfigFilePath()
-				err = fileutil.CopyFile(defaultConfigPath, configPath)
-				if err != nil {
-					return err
-				}
-				return errors.New("reload the config file")
-			}
-			return nil
-		}
-		if err := readConfigFile(); err != nil {
-			_ = readConfigFile()
-		}
+		config.DefaultConfig.SetConfigDir(options.CustomConfigDir)
+		readFlagsConfig(flagSet)
 	}
 	if cfgFile != "" {
+		if !fileutil.FileExists(cfgFile) {
+			gologger.Fatal().Msgf("given config file '%s' does not exist", cfgFile)
+		}
+		// merge config file with flags
 		if err := flagSet.MergeConfigFile(cfgFile); err != nil {
 			gologger.Fatal().Msgf("Could not read config: %s\n", err)
 		}
-		cfgFileFolder := filepath.Dir(cfgFile)
-		if err := config.OverrideIgnoreFilePath(cfgFileFolder); err != nil {
-			gologger.Warning().Msgf("Could not read ignore file from custom path: %s\n", err)
-		}
 	}
+	if options.NewTemplatesDirectory != "" {
+		config.DefaultConfig.SetTemplatesDir(options.NewTemplatesDirectory)
+	}
+
 	cleanupOldResumeFiles()
 	return flagSet
 }
 
+// cleanupOldResumeFiles cleans up resume files older than 10 days.
 func cleanupOldResumeFiles() {
-	root, err := config.GetConfigDir()
-	if err != nil {
-		return
-	}
+	root := config.DefaultConfig.GetConfigDir()
 	filter := fileutil.FileFilters{
 		OlderThan: 24 * time.Hour * 10, // cleanup on the 10th day
 		Prefix:    "resume-",
@@ -381,9 +369,109 @@ func cleanupOldResumeFiles() {
 	_ = fileutil.DeleteFilesOlderThan(root, filter)
 }
 
+// readFlagsConfig reads the config file from the default config dir and copies it to the current config dir.
+func readFlagsConfig(flagset *goflags.FlagSet) {
+	// check if config.yaml file exists
+	defaultCfgFile, err := flagset.GetConfigFilePath()
+	if err != nil {
+		// something went wrong either dir is not readable or something else went wrong upstream in `goflags`
+		// warn and exit in this case
+		gologger.Warning().Msgf("Could not read config file: %s\n", err)
+		return
+	}
+	cfgFile := config.DefaultConfig.GetFlagsConfigFilePath()
+	if !fileutil.FileExists(cfgFile) {
+		if !fileutil.FileExists(defaultCfgFile) {
+			// if default config does not exist, warn and exit
+			gologger.Warning().Msgf("missing default config file : %s", defaultCfgFile)
+			return
+		}
+		// if does not exist copy it from the default config
+		if err = fileutil.CopyFile(defaultCfgFile, cfgFile); err != nil {
+			gologger.Warning().Msgf("Could not copy config file: %s\n", err)
+		}
+		return
+	}
+	// if config file exists, merge it with the default config
+	if err = flagset.MergeConfigFile(cfgFile); err != nil {
+		gologger.Warning().Msgf("failed to merge configfile with flags got: %s\n", err)
+	}
+}
+
+// disableUpdatesCallback disables the update check.
+func disableUpdatesCallback() {
+	config.DefaultConfig.DisableUpdateCheck()
+}
+
+// printVersion prints the nuclei version and exits.
+func printVersion() {
+	gologger.Info().Msgf("Nuclei Engine Version: %s", config.Version)
+	os.Exit(0)
+}
+
+// printTemplateVersion prints the nuclei template version and exits.
+func printTemplateVersion() {
+	cfg := config.DefaultConfig
+	gologger.Info().Msgf("Public nuclei-templates version: %s (%s)\n", cfg.TemplateVersion, cfg.TemplatesDirectory)
+
+	if fileutil.FolderExists(cfg.CustomS3TemplatesDirectory) {
+		gologger.Info().Msgf("Custom S3 templates location: %s\n", cfg.CustomS3TemplatesDirectory)
+	}
+	if fileutil.FolderExists(cfg.CustomGithubTemplatesDirectory) {
+		gologger.Info().Msgf("Custom Github templates location: %s ", cfg.CustomGithubTemplatesDirectory)
+	}
+	if fileutil.FolderExists(cfg.CustomGitLabTemplatesDirectory) {
+		gologger.Info().Msgf("Custom Gitlab templates location: %s ", cfg.CustomGitLabTemplatesDirectory)
+	}
+	if fileutil.FolderExists(cfg.CustomAzureTemplatesDirectory) {
+		gologger.Info().Msgf("Custom Azure templates location: %s ", cfg.CustomAzureTemplatesDirectory)
+	}
+	os.Exit(0)
+}
+
+func resetCallback() {
+	warning := fmt.Sprintf(`
+Using '-reset' will delete all nuclei configurations files and all nuclei-templates
+
+Following files will be deleted:
+1. All Config + Resumes files at %v
+2. All nuclei-templates at %v
+
+Note: Make sure you have backup of your custom nuclei-templates before proceeding
+
+`, config.DefaultConfig.GetConfigDir(), config.DefaultConfig.TemplatesDirectory)
+	gologger.Print().Msg(warning)
+	reader := bufio.NewReader(os.Stdin)
+	for {
+		fmt.Print("Are you sure you want to continue? [y/n]: ")
+		resp, err := reader.ReadString('\n')
+		if err != nil {
+			gologger.Fatal().Msgf("could not read response: %s", err)
+		}
+		resp = strings.TrimSpace(resp)
+		if strings.EqualFold(resp, "y") || strings.EqualFold(resp, "yes") {
+			break
+		}
+		if strings.EqualFold(resp, "n") || strings.EqualFold(resp, "no") || resp == "" {
+			fmt.Println("Exiting...")
+			os.Exit(0)
+		}
+	}
+	err := os.RemoveAll(config.DefaultConfig.GetConfigDir())
+	if err != nil {
+		gologger.Fatal().Msgf("could not delete config dir: %s", err)
+	}
+	err = os.RemoveAll(config.DefaultConfig.TemplatesDirectory)
+	if err != nil {
+		gologger.Fatal().Msgf("could not delete templates dir: %s", err)
+	}
+	gologger.Info().Msgf("Successfully deleted all nuclei configurations files and nuclei-templates")
+	os.Exit(0)
+}
+
 func init() {
 	// print stacktrace of errors in debug mode
-	if os.Getenv("DEBUG") != "" {
+	if strings.EqualFold(os.Getenv("DEBUG"), "true") {
 		errorutil.ShowStackTrace = true
 	}
 }

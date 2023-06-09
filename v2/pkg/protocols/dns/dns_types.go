@@ -35,6 +35,8 @@ const (
 	CAA
 	// name:TLSA
 	TLSA
+	// name:ANY
+	ANY
 	limit
 )
 
@@ -51,6 +53,7 @@ var DNSRequestTypeMapping = map[DNSRequestType]string{
 	AAAA:  "AAAA",
 	CAA:   "CAA",
 	TLSA:  "TLSA",
+	ANY:   "ANY",
 }
 
 // GetSupportedDNSRequestTypes returns list of supported types
@@ -108,6 +111,20 @@ func (holder *DNSRequestTypeHolder) UnmarshalYAML(unmarshal func(interface{}) er
 	}
 
 	computedType, err := toDNSRequestTypes(marshalledTypes)
+	if err != nil {
+		return err
+	}
+
+	holder.DNSRequestType = computedType
+	return nil
+}
+
+func (holder *DNSRequestTypeHolder) UnmarshalJSON(data []byte) error {
+	s := strings.Trim(string(data), `"`)
+	if s == "" {
+		return nil
+	}
+	computedType, err := toDNSRequestTypes(s)
 	if err != nil {
 		return err
 	}

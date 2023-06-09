@@ -30,6 +30,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/helpers/responsehighlighter"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/utils/vardump"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/network/networkclientpool"
+	protocolutils "github.com/projectdiscovery/nuclei/v2/pkg/protocols/utils"
 	templateTypes "github.com/projectdiscovery/nuclei/v2/pkg/templates/types"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 	urlutil "github.com/projectdiscovery/utils/url"
@@ -38,38 +39,38 @@ import (
 // Request is a request for the Websocket protocol
 type Request struct {
 	// Operators for the current request go here.
-	operators.Operators `yaml:",inline,omitempty"`
-	CompiledOperators   *operators.Operators `yaml:"-"`
+	operators.Operators `yaml:",inline,omitempty" json:",inline,omitempty"`
+	CompiledOperators   *operators.Operators `yaml:"-" json:"-"`
 
 	// description: |
 	//   Address contains address for the request
-	Address string `yaml:"address,omitempty" jsonschema:"title=address for the websocket request,description=Address contains address for the request"`
+	Address string `yaml:"address,omitempty" json:"address,omitempty" jsonschema:"title=address for the websocket request,description=Address contains address for the request"`
 	// description: |
 	//   Inputs contains inputs for the websocket protocol
-	Inputs []*Input `yaml:"inputs,omitempty" jsonschema:"title=inputs for the websocket request,description=Inputs contains any input/output for the current request"`
+	Inputs []*Input `yaml:"inputs,omitempty" json:"inputs,omitempty" jsonschema:"title=inputs for the websocket request,description=Inputs contains any input/output for the current request"`
 	// description: |
 	//   Headers contains headers for the request.
-	Headers map[string]string `yaml:"headers,omitempty" jsonschema:"title=headers contains the request headers,description=Headers contains headers for the request"`
+	Headers map[string]string `yaml:"headers,omitempty" json:"headers,omitempty" jsonschema:"title=headers contains the request headers,description=Headers contains headers for the request"`
 
 	// description: |
 	//   Attack is the type of payload combinations to perform.
 	//
 	//   Sniper is each payload once, pitchfork combines multiple payload sets and clusterbomb generates
 	//   permutations and combinations for all payloads.
-	AttackType generators.AttackTypeHolder `yaml:"attack,omitempty" jsonschema:"title=attack is the payload combination,description=Attack is the type of payload combinations to perform,enum=sniper,enum=pitchfork,enum=clusterbomb"`
+	AttackType generators.AttackTypeHolder `yaml:"attack,omitempty" json:"attack,omitempty" jsonschema:"title=attack is the payload combination,description=Attack is the type of payload combinations to perform,enum=sniper,enum=pitchfork,enum=clusterbomb"`
 	// description: |
 	//   Payloads contains any payloads for the current request.
 	//
 	//   Payloads support both key-values combinations where a list
 	//   of payloads is provided, or optionally a single file can also
 	//   be provided as payload which will be read on run-time.
-	Payloads map[string]interface{} `yaml:"payloads,omitempty" jsonschema:"title=payloads for the webosocket request,description=Payloads contains any payloads for the current request"`
+	Payloads map[string]interface{} `yaml:"payloads,omitempty" json:"payloads,omitempty" jsonschema:"title=payloads for the webosocket request,description=Payloads contains any payloads for the current request"`
 
 	generator *generators.PayloadGenerator
 
 	// cache any variables that may be needed for operation.
 	dialer  *fastdialer.Dialer
-	options *protocols.ExecuterOptions
+	options *protocols.ExecutorOptions
 }
 
 // Input is an input for the websocket protocol
@@ -81,12 +82,12 @@ type Input struct {
 	// examples:
 	//   - value: "\"TEST\""
 	//   - value: "\"hex_decode('50494e47')\""
-	Data string `yaml:"data,omitempty" jsonschema:"title=data to send as input,description=Data is the data to send as the input"`
+	Data string `yaml:"data,omitempty" json:"data,omitempty" jsonschema:"title=data to send as input,description=Data is the data to send as the input"`
 	// description: |
 	//   Name is the optional name of the data read to provide matching on.
 	// examples:
 	//   - value: "\"prefix\""
-	Name string `yaml:"name,omitempty" jsonschema:"title=optional name for data read,description=Optional name of the data read to provide matching on"`
+	Name string `yaml:"name,omitempty" json:"name,omitempty" jsonschema:"title=optional name for data read,description=Optional name of the data read to provide matching on"`
 }
 
 const (
@@ -95,7 +96,7 @@ const (
 )
 
 // Compile compiles the request generators preparing any requests possible.
-func (request *Request) Compile(options *protocols.ExecuterOptions) error {
+func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 	request.options = options
 
 	client, err := networkclientpool.Get(options.Options, &networkclientpool.Configuration{})
@@ -105,7 +106,7 @@ func (request *Request) Compile(options *protocols.ExecuterOptions) error {
 	request.dialer = client
 
 	if len(request.Payloads) > 0 {
-		request.generator, err = generators.New(request.Payloads, request.AttackType.Value, request.options.TemplatePath, request.options.Options.TemplatesDirectory, request.options.Options.Sandbox, options.Catalog, options.Options.AttackType)
+		request.generator, err = generators.New(request.Payloads, request.AttackType.Value, request.options.TemplatePath, request.options.Options.Sandbox, options.Catalog, options.Options.AttackType)
 		if err != nil {
 			return errors.Wrap(err, "could not parse payloads")
 		}
@@ -168,22 +169,14 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 func (request *Request) executeRequestWithPayloads(input, hostname string, dynamicValues, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
 	header := http.Header{}
 
-	payloadValues := make(map[string]interface{})
-	for k, v := range dynamicValues {
-		payloadValues[k] = v
-	}
-	parsed, err := url.Parse(input)
+	parsed, err := urlutil.Parse(input)
 	if err != nil {
 		return errors.Wrap(err, parseUrlErrorMessage)
 	}
-	payloadValues["Hostname"] = parsed.Host
-	payloadValues["Host"] = parsed.Hostname()
-	payloadValues["Scheme"] = parsed.Scheme
-	requestPath := parsed.Path
-	if values := urlutil.GetParams(parsed.Query()); len(values) > 0 {
-		requestPath = requestPath + "?" + values.Encode()
-	}
-	payloadValues["Path"] = requestPath
+	defaultVars := protocolutils.GenerateVariables(parsed, false, nil)
+	optionVars := generators.BuildPayloadFromOptions(request.options.Options)
+	variables := request.options.Variables.Evaluate(generators.MergeMaps(defaultVars, optionVars, dynamicValues))
+	payloadValues := generators.MergeMaps(variables, defaultVars, optionVars, dynamicValues, request.options.Constants)
 
 	requestOptions := request.options
 	for key, value := range request.Headers {

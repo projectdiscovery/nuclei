@@ -7,7 +7,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalog"
-	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/config"
+	cfg "github.com/projectdiscovery/nuclei/v2/pkg/catalog/config"
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/loader/filter"
 	"github.com/projectdiscovery/nuclei/v2/pkg/model/types/severity"
 	"github.com/projectdiscovery/nuclei/v2/pkg/parsers"
@@ -41,9 +41,8 @@ type Config struct {
 	ExcludeIds        []string
 	IncludeConditions []string
 
-	Catalog            catalog.Catalog
-	ExecutorOptions    protocols.ExecuterOptions
-	TemplatesDirectory string
+	Catalog         catalog.Catalog
+	ExecutorOptions protocols.ExecutorOptions
 }
 
 // Store is a storage for loaded nuclei templates
@@ -65,7 +64,7 @@ type Store struct {
 }
 
 // NewConfig returns a new loader config
-func NewConfig(options *types.Options, templateConfig *config.Config, catalog catalog.Catalog, executerOpts protocols.ExecuterOptions) *Config {
+func NewConfig(options *types.Options, catalog catalog.Catalog, executerOpts protocols.ExecutorOptions) *Config {
 	loaderConfig := Config{
 		Templates:                options.Templates,
 		Workflows:                options.Workflows,
@@ -82,7 +81,6 @@ func NewConfig(options *types.Options, templateConfig *config.Config, catalog ca
 		IncludeTags:              options.IncludeTags,
 		IncludeIds:               options.IncludeIds,
 		ExcludeIds:               options.ExcludeIds,
-		TemplatesDirectory:       templateConfig.TemplatesDirectory,
 		Protocols:                options.Protocols,
 		ExcludeProtocols:         options.ExcludeProtocols,
 		IncludeConditions:        options.IncludeConditions,
@@ -142,7 +140,7 @@ func New(config *Config) (*Store, error) {
 	}
 	// Handle a case with no templates or workflows, where we use base directory
 	if len(store.finalTemplates) == 0 && len(store.finalWorkflows) == 0 && !urlBasedTemplatesProvided {
-		store.finalTemplates = []string{config.TemplatesDirectory}
+		store.finalTemplates = []string{cfg.DefaultConfig.TemplatesDirectory}
 	}
 	return store, nil
 }
@@ -257,10 +255,10 @@ func areWorkflowTemplatesValid(store *Store, workflows []*workflows.WorkflowTemp
 }
 
 func isParsingError(message string, template string, err error) bool {
-	if err == templates.ErrCreateTemplateExecutor {
+	if errors.Is(err, filter.ErrExcluded) {
 		return false
 	}
-	if err == filter.ErrExcluded {
+	if errors.Is(err, templates.ErrCreateTemplateExecutor) {
 		return false
 	}
 	gologger.Error().Msgf(message, template, err)
@@ -269,35 +267,7 @@ func isParsingError(message string, template string, err error) bool {
 
 // LoadTemplates takes a list of templates and returns paths for them
 func (store *Store) LoadTemplates(templatesList []string) []*templates.Template {
-	includedTemplates, errs := store.config.Catalog.GetTemplatesPath(templatesList)
-	store.logErroredTemplates(errs)
-	templatePathMap := store.pathFilter.Match(includedTemplates)
-
-	loadedTemplates := make([]*templates.Template, 0, len(templatePathMap))
-	for templatePath := range templatePathMap {
-		loaded, err := parsers.LoadTemplate(templatePath, store.tagFilter, nil, store.config.Catalog)
-		if loaded || store.pathFilter.MatchIncluded(templatePath) {
-			parsed, err := templates.Parse(templatePath, store.preprocessor, store.config.ExecutorOptions)
-			if err != nil {
-				stats.Increment(parsers.RuntimeWarningsStats)
-				gologger.Warning().Msgf("Could not parse template %s: %s\n", templatePath, err)
-			} else if parsed != nil {
-				if len(parsed.RequestsHeadless) > 0 && !store.config.ExecutorOptions.Options.Headless {
-					gologger.Warning().Msgf("Headless flag is required for headless template %s\n", templatePath)
-				} else {
-					loadedTemplates = append(loadedTemplates, parsed)
-				}
-			}
-		} else if err != nil {
-			gologger.Warning().Msgf("Could not load template %s: %s\n", templatePath, err)
-		}
-	}
-
-	sort.SliceStable(loadedTemplates, func(i, j int) bool {
-		return loadedTemplates[i].Path < loadedTemplates[j].Path
-	})
-
-	return loadedTemplates
+	return store.LoadTemplatesWithTags(templatesList, nil)
 }
 
 // LoadWorkflows takes a list of workflows and returns paths for them
@@ -337,7 +307,10 @@ func (store *Store) LoadTemplatesWithTags(templatesList, tags []string) []*templ
 		if loaded || store.pathFilter.MatchIncluded(templatePath) {
 			parsed, err := templates.Parse(templatePath, store.preprocessor, store.config.ExecutorOptions)
 			if err != nil {
-				stats.Increment(parsers.RuntimeWarningsStats)
+				// exclude templates not compatible with offline matching from total runtime warning stats
+				if !errors.Is(err, templates.ErrIncompatibleWithOfflineMatching) {
+					stats.Increment(parsers.RuntimeWarningsStats)
+				}
 				gologger.Warning().Msgf("Could not parse template %s: %s\n", templatePath, err)
 			} else if parsed != nil {
 				if len(parsed.RequestsHeadless) > 0 && !store.config.ExecutorOptions.Options.Headless {
@@ -346,10 +319,16 @@ func (store *Store) LoadTemplatesWithTags(templatesList, tags []string) []*templ
 					loadedTemplates = append(loadedTemplates, parsed)
 				}
 			}
-		} else if err != nil {
-			gologger.Warning().Msgf("Could not load template %s: %s\n", templatePath, err)
+		}
+		if err != nil {
+			gologger.Warning().Msg(err.Error())
 		}
 	}
+
+	sort.SliceStable(loadedTemplates, func(i, j int) bool {
+		return loadedTemplates[i].Path < loadedTemplates[j].Path
+	})
+
 	return loadedTemplates
 }
 
