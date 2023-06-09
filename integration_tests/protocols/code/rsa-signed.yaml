@@ -1,0 +1,22 @@
+id: rsa-signed-code-snippet
+
+info:
+  name: rsa-signed-code-snippet
+  author: pdteam
+  severity: info
+  tags: code
+  description: |
+    rsa-signed-code-snippet
+
+code:
+  - engine:
+      - py
+      - python3
+    source: |
+      print("rsa signed code")
+    
+    matchers:
+      - type: word
+        words:
+          - "rsa signed code"
+# digest: 34ff81030101095369676e617475726501ff820001030106466f726d6174010c000104426c6f62010a00010452657374010a000000fe0110ff8201077373682d72736101fe0100000d6ef7e5efcb8f8d543805c44ae59bc23d22f5302537dd20efa298aab362552ffc77633dc0898b6718c3e939d1972d906f7e3f8276a8062a3ca587df5cb9a3d4542f335d38d3d8804c83172ddd47d1b58c4dee389377786a7be181021c838c4e90402d19ec445a8cd322fa5ec4606f444f753d7d500b9767001dae17ed4c5640ff4c7655f88742cbd46fe5ba502c8cf3725aff6f5de4e0998821522c847648797897319c4d4c611fda2b22093c85b1f66ba121b9f46bab6f1468ca6a662ed6e9029aff1853d2753e5b17cc4ff776fc5c15b70abae35ab0ca82b58dc0bf5339b98c34e3316393f229ea460cb134787442a958b0c9802a0ea6c79f43d13c934900

@@ -11,13 +11,13 @@ import (
 )
 
 var headlessTestcases = map[string]testutils.TestCase{
-	"headless/headless-basic.yaml":              &headlessBasic{},
-	"headless/headless-header-action.yaml":      &headlessHeaderActions{},
-	"headless/headless-extract-values.yaml":     &headlessExtractValues{},
-	"headless/headless-payloads.yaml":           &headlessPayloads{},
-	"headless/variables.yaml":                   &headlessVariables{},
-	"headless/file-upload.yaml":                 &headlessFileUpload{},
-	"headless/headless-header-status-test.yaml": &headlessHeaderStatus{},
+	"protocols/headless/headless-basic.yaml":              &headlessBasic{},
+	"protocols/headless/headless-header-action.yaml":      &headlessHeaderActions{},
+	"protocols/headless/headless-extract-values.yaml":     &headlessExtractValues{},
+	"protocols/headless/headless-payloads.yaml":           &headlessPayloads{},
+	"protocols/headless/variables.yaml":                   &headlessVariables{},
+	"protocols/headless/file-upload.yaml":                 &headlessFileUpload{},
+	"protocols/headless/headless-header-status-test.yaml": &headlessHeaderStatus{},
 }
 
 type headlessBasic struct{}

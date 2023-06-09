@@ -1,0 +1,21 @@
+id: unsigned-code-snippet
+
+info:
+  name: unsigned-code-snippet
+  author: pdteam
+  severity: info
+  tags: code
+  description: |
+    unsigned-code-snippet
+
+code:
+  - engine:
+      - py
+      - python3
+    source: |
+      print("unsigned code")
+    
+    matchers:
+      - type: word
+        words:
+          - "unsigned code"

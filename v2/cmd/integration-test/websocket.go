@@ -10,10 +10,10 @@ import (
 )
 
 var websocketTestCases = map[string]testutils.TestCase{
-	"websocket/basic.yaml":    &websocketBasic{},
-	"websocket/cswsh.yaml":    &websocketCswsh{},
-	"websocket/no-cswsh.yaml": &websocketNoCswsh{},
-	"websocket/path.yaml":     &websocketWithPath{},
+	"protocols/websocket/basic.yaml":    &websocketBasic{},
+	"protocols/websocket/cswsh.yaml":    &websocketCswsh{},
+	"protocols/websocket/no-cswsh.yaml": &websocketNoCswsh{},
+	"protocols/websocket/path.yaml":     &websocketWithPath{},
 }
 
 type websocketBasic struct{}

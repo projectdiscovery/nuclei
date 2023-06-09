@@ -1,0 +1,28 @@
+id: testcode
+
+info:
+  name: testcode
+  author: testcode
+  severity: info
+  tags: code
+  description: |
+    testcode
+
+variables:
+  i: "{{interactsh-url}}"
+
+code:
+  - engine:
+      - py
+      - python3
+    # Simulate interactsh interaction
+    source: |
+      import os
+      from urllib.request import urlopen
+      urlopen("http://" + os.getenv('i'))
+
+    matchers:
+      - type: word
+        part: interactsh_protocol
+        words:
+          - "http"
