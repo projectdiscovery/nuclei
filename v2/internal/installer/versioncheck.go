@@ -67,7 +67,12 @@ func NucleiVersionCheck() error {
 // getpdtmParams returns encoded query parameters sent to update check endpoint
 func getpdtmParams() string {
 	params := &url.Values{}
-	params.Add("os", runtime.GOOS)
+	switch runtime.GOOS {
+	// Currently, only binary downloads for Linux, macOS, and Windows are officially provided,
+	// other platforms like BSD do not provide an 'os' parameter.
+	case "windows", "linux", "darwin":
+		params.Add("os", runtime.GOOS)
+	}
 	params.Add("arch", runtime.GOARCH)
 	params.Add("go_version", runtime.Version())
 	params.Add("v", config.Version)
