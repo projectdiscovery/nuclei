@@ -592,6 +592,8 @@ func (r *Runner) RunEnumeration() error {
 		r.issuesClient.Close()
 	}
 
+	// todo: error propagation without canonical straight error check is required by cloud?
+	// use safe dereferencing to avoid potential panics in case of previous unchecked errors
 	if v := ptrutil.Safe(results); !v.Load() {
 		gologger.Info().Msgf("No results found. Better luck next time!")
 	}
