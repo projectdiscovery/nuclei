@@ -9,7 +9,7 @@ require (
 	github.com/antchfx/htmlquery v1.3.0
 	github.com/bluele/gcache v0.0.2
 	github.com/corpix/uarand v0.2.0
-	github.com/go-playground/validator/v10 v10.11.2
+	github.com/go-playground/validator/v10 v10.14.1
 	github.com/go-rod/rod v0.113.0
 	github.com/gobwas/ws v1.2.1
 	github.com/google/go-github v17.0.0+incompatible
@@ -106,6 +106,7 @@ require (
 	github.com/cloudflare/circl v1.3.3 // indirect
 	github.com/dlclark/regexp2 v1.8.1 // indirect
 	github.com/fatih/color v1.14.1 // indirect
+	github.com/gabriel-vasile/mimetype v1.4.2 // indirect
 	github.com/google/certificate-transparency-go v1.1.4 // indirect
 	github.com/google/go-github/v30 v30.1.0 // indirect
 	github.com/hashicorp/go-version v1.6.0 // indirect
@@ -180,7 +181,7 @@ require (
 	github.com/iancoleman/orderedmap v0.0.0-20190318233801-ac98e3ecb4b0 // indirect
 	github.com/itchyny/timefmt-go v0.1.5 // indirect
 	github.com/klauspost/cpuid/v2 v2.1.1 // indirect
-	github.com/leodido/go-urn v1.2.1 // indirect
+	github.com/leodido/go-urn v1.2.4 // indirect
 	github.com/libdns/libdns v0.2.1 // indirect
 	github.com/lor00x/goldap v0.0.0-20180618054307-a546dffdd1a3 // indirect
 	github.com/lufia/plan9stats v0.0.0-20211012122336-39d0f177ccd0 // indirect
