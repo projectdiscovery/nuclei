@@ -200,9 +200,22 @@ func (request *Request) findMatchesWithReader(reader io.Reader, input, filePath 
 	isResponseDebug := request.options.Options.Debug || request.options.Options.DebugResponse
 	totalBytesString := units.BytesSize(float64(totalBytes))
 
+	// we are forced to check if the whole file needs to be elaborated
+	// - matchers-condition option set to AND
+	hasAndCondition := request.CompiledOperators.GetMatchersCondition() == matchers.ANDCondition
+	// - any matcher has AND condition
+	for _, matcher := range request.CompiledOperators.Matchers {
+		if hasAndCondition {
+			break
+		}
+		if matcher.GetCondition() == matchers.ANDCondition {
+			hasAndCondition = true
+		}
+	}
+
 	scanner := bufio.NewScanner(reader)
 	buffer := []byte{}
-	if request.CompiledOperators.GetMatchersCondition() == matchers.ANDCondition {
+	if hasAndCondition {
 		scanner.Buffer(buffer, int(defaultMaxReadSize))
 		scanner.Split(func(data []byte, atEOF bool) (advance int, token []byte, err error) {
 			defaultMaxReadSizeInt := int(defaultMaxReadSize)
