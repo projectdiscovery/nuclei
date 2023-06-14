@@ -2,14 +2,7 @@ before:
   hooks:
     - go mod tidy
 
-# release options (https://goreleaser.com/customization/release/)
-
-release:
-  draft: true
-  prerelease: auto
-
 builds:
-
 - main: cmd/nuclei/main.go
   binary: nuclei
   id: nuclei-cli
@@ -60,7 +53,7 @@ announce:
     enabled: true
     channel: '#release'
     username: GoReleaser
-    message_template: '**New Release: {{ .ProjectName }} {{.Tag}}** is published! Check it out at {{ .ReleaseURL }}'
+    message_template: 'New Release: {{ .ProjectName }} {{.Tag}} is published! Check it out at {{ .ReleaseURL }}'
 
   discord:
     enabled: true

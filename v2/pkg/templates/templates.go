@@ -18,13 +18,9 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/whois"
 	"github.com/projectdiscovery/nuclei/v2/pkg/templates/types"
 	"github.com/projectdiscovery/nuclei/v2/pkg/workflows"
+	errorutil "github.com/projectdiscovery/utils/errors"
 	"go.uber.org/multierr"
 	"gopkg.in/yaml.v2"
-)
-
-const (
-	// TemplateExtension defines the template default file extension
-	TemplateExtension = ".yaml"
 )
 
 // Template is a YAML input file which defines all the requests and
@@ -42,17 +38,24 @@ type Template struct {
 	// examples:
 	//   - name: ID Example
 	//     value: "\"CVE-2021-19520\""
-	ID string `yaml:"id" jsonschema:"title=id of the template,description=The Unique ID for the template,example=cve-2021-19520,pattern=^([a-zA-Z0-9]+[-_])*[a-zA-Z0-9]+$"`
+	ID string `yaml:"id" json:"id" jsonschema:"title=id of the template,description=The Unique ID for the template,example=cve-2021-19520,pattern=^([a-zA-Z0-9]+[-_])*[a-zA-Z0-9]+$"`
 	// description: |
 	//   Info contains metadata information about the template.
 	// examples:
 	//   - value: exampleInfoStructure
-	Info model.Info `yaml:"info" jsonschema:"title=info for the template,description=Info contains metadata for the template"`
+	Info model.Info `yaml:"info" json:"info" jsonschema:"title=info for the template,description=Info contains metadata for the template"`
 	// description: |
 	//   Requests contains the http request to make in the template.
+	//   WARNING: 'requests' will be deprecated and will be removed in a future release. Please use 'http' instead.
 	// examples:
 	//   - value: exampleNormalHTTPRequest
 	RequestsHTTP []*http.Request `yaml:"requests,omitempty" json:"requests,omitempty" jsonschema:"title=http requests to make,description=HTTP requests to make for the template"`
+	// description: |
+	//   HTTP contains the http request to make in the template.
+	// examples:
+	//   - value: exampleNormalHTTPRequest
+	// RequestsWithHTTP is placeholder(internal) only, and should not be used instead use RequestsHTTP
+	RequestsWithHTTP []*http.Request `yaml:"http,omitempty" json:"http,omitempty" jsonschema:"title=http requests to make,description=HTTP requests to make for the template"`
 	// description: |
 	//   DNS contains the dns request to make in the template
 	// examples:
@@ -65,9 +68,16 @@ type Template struct {
 	RequestsFile []*file.Request `yaml:"file,omitempty" json:"file,omitempty" jsonschema:"title=file requests to make,description=File requests to make for the template"`
 	// description: |
 	//   Network contains the network request to make in the template
+	//   WARNING: 'network' will be deprecated and will be removed in a future release. Please use 'tcp' instead.
 	// examples:
 	//   - value: exampleNormalNetworkRequest
 	RequestsNetwork []*network.Request `yaml:"network,omitempty" json:"network,omitempty" jsonschema:"title=network requests to make,description=Network requests to make for the template"`
+	// description: |
+	//   TCP contains the network request to make in the template
+	// examples:
+	//   - value: exampleNormalNetworkRequest
+	// RequestsWithTCP is placeholder(internal) only, and should not be used instead use RequestsNetwork
+	RequestsWithTCP []*network.Request `yaml:"tcp,omitempty" json:"tcp,omitempty" jsonschema:"title=network(tcp) requests to make,description=Network requests to make for the template"`
 	// description: |
 	//   Headless contains the headless request to make in the template.
 	RequestsHeadless []*headless.Request `yaml:"headless,omitempty" json:"headless,omitempty" jsonschema:"title=headless requests to make,description=Headless requests to make for the template"`
@@ -88,20 +98,24 @@ type Template struct {
 
 	// description: |
 	//   Self Contained marks Requests for the template as self-contained
-	SelfContained bool `yaml:"self-contained,omitempty" jsonschema:"title=mark requests as self-contained,description=Mark Requests for the template as self-contained"`
+	SelfContained bool `yaml:"self-contained,omitempty" json:"self-contained,omitempty" jsonschema:"title=mark requests as self-contained,description=Mark Requests for the template as self-contained"`
 	// description: |
 	//  Stop execution once first match is found
-	StopAtFirstMatch bool `yaml:"stop-at-first-match,omitempty" jsonschema:"title=stop at first match,description=Stop at first match for the template"`
+	StopAtFirstMatch bool `yaml:"stop-at-first-match,omitempty" json:"stop-at-first-match,omitempty" jsonschema:"title=stop at first match,description=Stop at first match for the template"`
 
 	// description: |
 	//   Signature is the request signature method
 	// values:
 	//   - "AWS"
-	Signature http.SignatureTypeHolder `yaml:"signature,omitempty" jsonschema:"title=signature is the http request signature method,description=Signature is the HTTP Request signature Method,enum=AWS"`
+	Signature http.SignatureTypeHolder `yaml:"signature,omitempty" json:"signature,omitempty" jsonschema:"title=signature is the http request signature method,description=Signature is the HTTP Request signature Method,enum=AWS"`
 
 	// description: |
 	//   Variables contains any variables for the current request.
-	Variables variables.Variable `yaml:"variables,omitempty" jsonschema:"title=variables for the http request,description=Variables contains any variables for the current request"`
+	Variables variables.Variable `yaml:"variables,omitempty" json:"variables,omitempty" jsonschema:"title=variables for the http request,description=Variables contains any variables for the current request"`
+
+	// description: |
+	//   Constants contains any scalar costant for the current template
+	Constants map[string]interface{} `yaml:"constants,omitempty" json:"constants,omitempty" jsonschema:"title=constant for the template,description=constants contains any constant for the template"`
 
 	// TotalRequests is the total number of requests for the template.
 	TotalRequests int `yaml:"-" json:"-"`
@@ -109,6 +123,9 @@ type Template struct {
 	Executer protocols.Executer `yaml:"-" json:"-"`
 
 	Path string `yaml:"-" json:"-"`
+
+	// Verified defines if the template signature is digitally verified
+	Verified bool `yaml:"-" json:"-"`
 }
 
 // TemplateProtocols is a list of accepted template protocols
@@ -166,6 +183,23 @@ func (template *Template) UnmarshalYAML(unmarshal func(interface{}) error) error
 		return err
 	}
 	*template = Template(*alias)
+
+	if len(template.RequestsHTTP) > 0 || len(template.RequestsNetwork) > 0 {
+		_ = deprecatedProtocolNameTemplates.Set(template.ID, true)
+	}
+
+	if len(alias.RequestsHTTP) > 0 && len(alias.RequestsWithHTTP) > 0 {
+		return errorutil.New("use http or requests, both are not supported").WithTag("invalid template")
+	}
+	if len(alias.RequestsNetwork) > 0 && len(alias.RequestsWithTCP) > 0 {
+		return errorutil.New("use tcp or network, both are not supported").WithTag("invalid template")
+	}
+	if len(alias.RequestsWithHTTP) > 0 {
+		template.RequestsHTTP = alias.RequestsWithHTTP
+	}
+	if len(alias.RequestsWithTCP) > 0 {
+		template.RequestsNetwork = alias.RequestsWithTCP
+	}
 	return validate.New().Struct(template)
 }
 

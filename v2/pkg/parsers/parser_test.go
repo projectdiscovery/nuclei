@@ -5,13 +5,13 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/stretchr/testify/require"
-
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/disk"
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/loader/filter"
 	"github.com/projectdiscovery/nuclei/v2/pkg/model"
+	"github.com/projectdiscovery/nuclei/v2/pkg/model/types/severity"
 	"github.com/projectdiscovery/nuclei/v2/pkg/model/types/stringslice"
 	"github.com/projectdiscovery/nuclei/v2/pkg/templates"
+	"github.com/stretchr/testify/require"
 )
 
 func TestLoadTemplate(t *testing.T) {
@@ -23,22 +23,27 @@ func TestLoadTemplate(t *testing.T) {
 		name        string
 		template    *templates.Template
 		templateErr error
+		filter      filter.Config
 
 		expectedErr error
+		isValid     bool
 	}{
 		{
 			name: "valid",
 			template: &templates.Template{
 				ID: "CVE-2021-27330",
 				Info: model.Info{
-					Name:    "Valid template",
-					Authors: stringslice.StringSlice{Value: "Author"},
+					Name:           "Valid template",
+					Authors:        stringslice.StringSlice{Value: "Author"},
+					SeverityHolder: severity.Holder{Severity: severity.Medium},
 				},
 			},
+			isValid: true,
 		},
 		{
 			name:        "emptyTemplate",
 			template:    &templates.Template{},
+			isValid:     false,
 			expectedErr: errors.New("mandatory 'name' field is missing, mandatory 'author' field is missing, mandatory 'id' field is missing"),
 		},
 		{
@@ -46,10 +51,51 @@ func TestLoadTemplate(t *testing.T) {
 			template: &templates.Template{
 				ID: "invalid id",
 				Info: model.Info{
-					Authors: stringslice.StringSlice{Value: "Author"},
+					Authors:        stringslice.StringSlice{Value: "Author"},
+					SeverityHolder: severity.Holder{Severity: severity.Medium},
 				},
 			},
 			expectedErr: errors.New("mandatory 'name' field is missing, invalid field format for 'id' (allowed format is ^([a-zA-Z0-9]+[-_])*[a-zA-Z0-9]+$)"),
+		},
+		{
+			name: "emptySeverity",
+			template: &templates.Template{
+				ID: "CVE-2021-27330",
+				Info: model.Info{
+					Name:    "Valid template",
+					Authors: stringslice.StringSlice{Value: "Author"},
+				},
+			},
+			isValid:     true,
+			expectedErr: errors.New("field 'severity' is missing"),
+		},
+		{
+			name: "template-without-serverity-with-correct-filter-id",
+			template: &templates.Template{
+				ID: "CVE-2021-27330",
+				Info: model.Info{
+					Name:    "Valid template",
+					Authors: stringslice.StringSlice{Value: "Author"},
+				},
+			},
+			// should be error because the template is loaded
+			expectedErr: errors.New("field 'severity' is missing"),
+			isValid:     true,
+			filter:      filter.Config{IncludeIds: []string{"CVE-2021-27330"}},
+		},
+		{
+			name: "template-without-serverity-with-diff-filter-id",
+			template: &templates.Template{
+				ID: "CVE-2021-27330",
+				Info: model.Info{
+					Name:    "Valid template",
+					Authors: stringslice.StringSlice{Value: "Author"},
+				},
+			},
+			isValid: false,
+			filter:  filter.Config{IncludeIds: []string{"another-id"}},
+			// no error because the template is not loaded
+			expectedErr: nil,
 		},
 	}
 
@@ -57,16 +103,15 @@ func TestLoadTemplate(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			parsedTemplatesCache.Store(tc.name, tc.template, tc.templateErr)
 
-			tagFilter, err := filter.New(&filter.Config{})
+			tagFilter, err := filter.New(&tc.filter)
 			require.Nil(t, err)
 			success, err := LoadTemplate(tc.name, tagFilter, nil, catalog)
 			if tc.expectedErr == nil {
 				require.NoError(t, err)
-				require.True(t, success)
 			} else {
-				require.Equal(t, tc.expectedErr, err)
-				require.False(t, success)
+				require.ErrorContains(t, err, tc.expectedErr.Error())
 			}
+			require.Equal(t, tc.isValid, success)
 		})
 	}
 
@@ -93,8 +138,9 @@ func TestLoadTemplate(t *testing.T) {
 				template := &templates.Template{
 					ID: tc.id,
 					Info: model.Info{
-						Name:    "Valid template",
-						Authors: stringslice.StringSlice{Value: "Author"},
+						Name:           "Valid template",
+						Authors:        stringslice.StringSlice{Value: "Author"},
+						SeverityHolder: severity.Holder{Severity: severity.Medium},
 					},
 				}
 				parsedTemplatesCache.Store(name, template, nil)
@@ -106,7 +152,7 @@ func TestLoadTemplate(t *testing.T) {
 					require.NoError(t, err)
 					require.True(t, success)
 				} else {
-					require.Equal(t, errors.New("invalid field format for 'id' (allowed format is ^([a-zA-Z0-9]+[-_])*[a-zA-Z0-9]+$)"), err)
+					require.ErrorContains(t, err, "invalid field format for 'id' (allowed format is ^([a-zA-Z0-9]+[-_])*[a-zA-Z0-9]+$)")
 					require.False(t, success)
 				}
 			})

@@ -24,12 +24,12 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/contextargs"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/expressions"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/fuzz"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/generators"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/helpers/eventcreator"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/helpers/responsehighlighter"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/interactsh"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/tostring"
-	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/http/fuzz"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/http/httpclientpool"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/http/signer"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/http/signerpool"
@@ -239,7 +239,7 @@ func (request *Request) executeFuzzingRule(input *contextargs.Context, previous 
 		if request.options.HostErrorsCache != nil && request.options.HostErrorsCache.Check(input.MetaInput.Input) {
 			return false
 		}
-
+		request.options.RateLimiter.Take()
 		req := &generatedRequest{
 			request:        gr.Request,
 			dynamicValues:  gr.DynamicValues,
@@ -248,24 +248,26 @@ func (request *Request) executeFuzzingRule(input *contextargs.Context, previous 
 		}
 		var gotMatches bool
 		requestErr := request.executeRequest(input, req, gr.DynamicValues, hasInteractMatchers, func(event *output.InternalWrappedEvent) {
-			// Add the extracts to the dynamic values if any.
-			if event.OperatorsResult != nil {
-				gotMatches = event.OperatorsResult.Matched
-			}
 			if hasInteractMarkers && hasInteractMatchers && request.options.Interactsh != nil {
-				request.options.Interactsh.RequestEvent(gr.InteractURLs, &interactsh.RequestData{
+				requestData := &interactsh.RequestData{
 					MakeResultFunc: request.MakeResultEvent,
 					Event:          event,
 					Operators:      request.CompiledOperators,
 					MatchFunc:      request.Match,
 					ExtractFunc:    request.Extract,
-				})
+				}
+				request.options.Interactsh.RequestEvent(gr.InteractURLs, requestData)
+				gotMatches = request.options.Interactsh.AlreadyMatched(requestData)
 			} else {
 				callback(event)
 			}
+			// Add the extracts to the dynamic values if any.
+			if event.OperatorsResult != nil {
+				gotMatches = event.OperatorsResult.Matched
+			}
 		}, 0)
 		// If a variable is unresolved, skip all further requests
-		if requestErr == errStopExecution {
+		if errors.Is(requestErr, errStopExecution) {
 			return false
 		}
 		if requestErr != nil {
@@ -276,7 +278,8 @@ func (request *Request) executeFuzzingRule(input *contextargs.Context, previous 
 		request.options.Progress.IncrementRequests()
 
 		// If this was a match, and we want to stop at first match, skip all further requests.
-		if (request.options.Options.StopAtFirstMatch || request.StopAtFirstMatch) && gotMatches {
+		shouldStopAtFirstMatch := request.options.Options.StopAtFirstMatch || request.StopAtFirstMatch
+		if shouldStopAtFirstMatch && gotMatches {
 			return false
 		}
 		return true
@@ -315,7 +318,7 @@ func (request *Request) executeFuzzingRule(input *contextargs.Context, previous 
 func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicValues, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
 	if request.Pipeline || request.Race && request.RaceNumberRequests > 0 || request.Threads > 0 {
 		variablesMap := request.options.Variables.Evaluate(generators.MergeMaps(dynamicValues, previous))
-		dynamicValues = generators.MergeMaps(variablesMap, dynamicValues)
+		dynamicValues = generators.MergeMaps(variablesMap, dynamicValues, request.options.Constants)
 	}
 	// verify if pipeline was requested
 	if request.Pipeline {
@@ -345,15 +348,12 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 		// returns two values, error and skip, which skips the execution for the request instance.
 		executeFunc := func(data string, payloads, dynamicValue map[string]interface{}) (bool, error) {
 			hasInteractMatchers := interactsh.HasMatchers(request.CompiledOperators)
-			variablesMap, interactURLs := request.options.Variables.EvaluateWithInteractsh(generators.MergeMaps(dynamicValues, payloads), request.options.Interactsh)
-			dynamicValue = generators.MergeMaps(variablesMap, dynamicValue)
 
 			request.options.RateLimiter.Take()
 
 			ctx := request.newContext(input)
 			ctxWithTimeout, cancel := context.WithTimeout(ctx, time.Duration(request.options.Options.Timeout)*time.Second)
 			defer cancel()
-
 			generatedHttpRequest, err := generator.Make(ctxWithTimeout, input, data, payloads, dynamicValue)
 			if err != nil {
 				if err == io.EOF {
@@ -367,10 +367,6 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 				defer generatedHttpRequest.customCancelFunction()
 			}
 
-			// If the variables contain interactsh urls, use them
-			if len(interactURLs) > 0 {
-				generatedHttpRequest.interactshURLs = append(generatedHttpRequest.interactshURLs, interactURLs...)
-			}
 			hasInteractMarkers := interactsh.HasMarkers(data) || len(generatedHttpRequest.interactshURLs) > 0
 			if input.MetaInput.Input == "" {
 				input.MetaInput.Input = generatedHttpRequest.URL()
@@ -381,26 +377,32 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 			}
 			var gotMatches bool
 			err = request.executeRequest(input, generatedHttpRequest, previous, hasInteractMatchers, func(event *output.InternalWrappedEvent) {
-				// Add the extracts to the dynamic values if any.
-				if event.OperatorsResult != nil {
-					gotMatches = event.OperatorsResult.Matched
-					gotDynamicValues = generators.MergeMapsMany(event.OperatorsResult.DynamicValues, dynamicValues, gotDynamicValues)
-				}
 				if hasInteractMarkers && hasInteractMatchers && request.options.Interactsh != nil {
-					request.options.Interactsh.RequestEvent(generatedHttpRequest.interactshURLs, &interactsh.RequestData{
+					requestData := &interactsh.RequestData{
 						MakeResultFunc: request.MakeResultEvent,
 						Event:          event,
 						Operators:      request.CompiledOperators,
 						MatchFunc:      request.Match,
 						ExtractFunc:    request.Extract,
-					})
-				} else {
-					callback(event)
+					}
+					request.options.Interactsh.RequestEvent(generatedHttpRequest.interactshURLs, requestData)
+					gotMatches = request.options.Interactsh.AlreadyMatched(requestData)
 				}
+				// Add the extracts to the dynamic values if any.
+				if event.OperatorsResult != nil {
+					gotMatches = event.OperatorsResult.Matched
+					gotDynamicValues = generators.MergeMapsMany(event.OperatorsResult.DynamicValues, dynamicValues, gotDynamicValues)
+				}
+				// Note: This is a race condition prone zone i.e when request has interactsh_matchers
+				// Interactsh.RequestEvent tries to access/update output.InternalWrappedEvent depending on logic
+				// to avoid conflicts with `callback` mutex is used here and in Interactsh.RequestEvent
+				// Note: this only happens if requests > 1 and interactsh matcher is used
+				// TODO: interactsh logic in nuclei needs to be refactored to avoid such situations
+				callback(event)
 			}, generator.currentIndex)
 
 			// If a variable is unresolved, skip all further requests
-			if err == errStopExecution {
+			if errors.Is(err, errStopExecution) {
 				return true, nil
 			}
 			if err != nil {
@@ -412,7 +414,8 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 			request.options.Progress.IncrementRequests()
 
 			// If this was a match, and we want to stop at first match, skip all further requests.
-			if (generatedHttpRequest.original.options.Options.StopAtFirstMatch || generatedHttpRequest.original.options.StopAtFirstMatch || request.StopAtFirstMatch) && gotMatches {
+			shouldStopAtFirstMatch := generatedHttpRequest.original.options.Options.StopAtFirstMatch || generatedHttpRequest.original.options.StopAtFirstMatch || request.StopAtFirstMatch
+			if shouldStopAtFirstMatch && gotMatches {
 				return true, nil
 			}
 			return false, nil
@@ -555,7 +558,7 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 			httpclient := request.httpClient
 			if input.CookieJar != nil {
 				connConfiguration := request.connConfiguration
-				connConfiguration.Connection.Cookiejar = input.CookieJar
+				connConfiguration.Connection.SetCookieJar(input.CookieJar)
 				client, err := httpclientpool.Get(request.options.Options, connConfiguration)
 				if err != nil {
 					return errors.Wrap(err, "could not get http client")
@@ -569,6 +572,9 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 	if formedURL == "" {
 		formedURL = input.MetaInput.Input
 	}
+
+	// converts whitespace and other chars that cannot be printed to url encoded values
+	formedURL = urlutil.URLEncodeWithEscapes(formedURL)
 
 	// Dump the requests containing all headers
 	if !generatedRequest.original.Race {
@@ -632,7 +638,7 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 	if !request.Unsafe && resp != nil && generatedRequest.request != nil && resp.Request != nil && !request.Race {
 		bodyBytes, _ := generatedRequest.request.BodyBytes()
 		resp.Request.Body = io.NopCloser(bytes.NewReader(bodyBytes))
-		command, _ := http2curl.GetCurlCommand(resp.Request)
+		command, err := http2curl.GetCurlCommand(resp.Request)
 		if err == nil && command != nil {
 			curlCommand = command.String()
 		}
@@ -755,7 +761,7 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 		callback(event)
 
 		// Skip further responses if we have stop-at-first-match and a match
-		if (request.options.Options.StopAtFirstMatch || request.options.StopAtFirstMatch || request.StopAtFirstMatch) && len(event.Results) > 0 {
+		if (request.options.Options.StopAtFirstMatch || request.options.StopAtFirstMatch || request.StopAtFirstMatch) && event.HasResults() {
 			return nil
 		}
 	}

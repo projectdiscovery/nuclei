@@ -17,7 +17,7 @@ import (
 // Request contains a Network protocol request to be made from a template
 type Request struct {
 	// ID is the optional id of the request
-	ID string `yaml:"id,omitempty" jsonschema:"title=id of the request,description=ID of the network request"`
+	ID string `yaml:"id,omitempty" json:"id,omitempty" jsonschema:"title=id of the request,description=ID of the network request"`
 
 	// description: |
 	//   Host to send network requests to.
@@ -27,7 +27,7 @@ type Request struct {
 	// examples:
 	//   - value: |
 	//       []string{"{{Hostname}}"}
-	Address   []string `yaml:"host,omitempty" jsonschema:"title=host to send requests to,description=Host to send network requests to"`
+	Address   []string `yaml:"host,omitempty" json:"host,omitempty" jsonschema:"title=host to send requests to,description=Host to send network requests to"`
 	addresses []addressKV
 
 	// description: |
@@ -35,32 +35,32 @@ type Request struct {
 	//
 	//   Batteringram is inserts the same payload into all defined payload positions at once, pitchfork combines multiple payload sets and clusterbomb generates
 	//   permutations and combinations for all payloads.
-	AttackType generators.AttackTypeHolder `yaml:"attack,omitempty" jsonschema:"title=attack is the payload combination,description=Attack is the type of payload combinations to perform,enum=batteringram,enum=pitchfork,enum=clusterbomb"`
+	AttackType generators.AttackTypeHolder `yaml:"attack,omitempty" json:"attack,omitempty" jsonschema:"title=attack is the payload combination,description=Attack is the type of payload combinations to perform,enum=batteringram,enum=pitchfork,enum=clusterbomb"`
 	// description: |
 	//   Payloads contains any payloads for the current request.
 	//
 	//   Payloads support both key-values combinations where a list
 	//   of payloads is provided, or optionally a single file can also
 	//   be provided as payload which will be read on run-time.
-	Payloads map[string]interface{} `yaml:"payloads,omitempty" jsonschema:"title=payloads for the network request,description=Payloads contains any payloads for the current request"`
+	Payloads map[string]interface{} `yaml:"payloads,omitempty" json:"payloads,omitempty" jsonschema:"title=payloads for the network request,description=Payloads contains any payloads for the current request"`
 
 	// description: |
 	//   Inputs contains inputs for the network socket
-	Inputs []*Input `yaml:"inputs,omitempty" jsonschema:"title=inputs for the network request,description=Inputs contains any input/output for the current request"`
+	Inputs []*Input `yaml:"inputs,omitempty" json:"inputs,omitempty" jsonschema:"title=inputs for the network request,description=Inputs contains any input/output for the current request"`
 	// description: |
 	//   ReadSize is the size of response to read at the end
 	//
 	//   Default value for read-size is 1024.
 	// examples:
 	//   - value: "2048"
-	ReadSize int `yaml:"read-size,omitempty" jsonschema:"title=size of network response to read,description=Size of response to read at the end. Default is 1024 bytes"`
+	ReadSize int `yaml:"read-size,omitempty" json:"read-size,omitempty" jsonschema:"title=size of network response to read,description=Size of response to read at the end. Default is 1024 bytes"`
 	// description: |
 	//   ReadAll determines if the data stream should be read till the end regardless of the size
 	//
 	//   Default value for read-all is false.
 	// examples:
 	//   - value: false
-	ReadAll bool `yaml:"read-all,omitempty" jsonschema:"title=read all response stream,description=Read all response stream till the server stops sending"`
+	ReadAll bool `yaml:"read-all,omitempty" json:"read-all,omitempty" jsonschema:"title=read all response stream,description=Read all response stream till the server stops sending"`
 
 	// description: |
 	//   SelfContained specifies if the request is self-contained.
@@ -73,7 +73,7 @@ type Request struct {
 	generator *generators.PayloadGenerator
 	// cache any variables that may be needed for operation.
 	dialer  *fastdialer.Dialer
-	options *protocols.ExecuterOptions
+	options *protocols.ExecutorOptions
 }
 
 // RequestPartDefinitions contains a mapping of request part definitions and their
@@ -105,7 +105,7 @@ type Input struct {
 	// examples:
 	//   - value: "\"TEST\""
 	//   - value: "\"hex_decode('50494e47')\""
-	Data string `yaml:"data,omitempty" jsonschema:"title=data to send as input,description=Data is the data to send as the input"`
+	Data string `yaml:"data,omitempty" json:"data,omitempty" jsonschema:"title=data to send as input,description=Data is the data to send as the input"`
 	// description: |
 	//   Type is the type of input specified in `data` field.
 	//
@@ -113,7 +113,7 @@ type Input struct {
 	// values:
 	//   - "hex"
 	//   - "text"
-	Type NetworkInputTypeHolder `yaml:"type,omitempty" jsonschema:"title=type is the type of input data,description=Type of input specified in data field,enum=hex,enum=text"`
+	Type NetworkInputTypeHolder `yaml:"type,omitempty" json:"type,omitempty" jsonschema:"title=type is the type of input data,description=Type of input specified in data field,enum=hex,enum=text"`
 	// description: |
 	//   Read is the number of bytes to read from socket.
 	//
@@ -124,12 +124,12 @@ type Input struct {
 	//   The [network docs](https://nuclei.projectdiscovery.io/templating-guide/protocols/network/) highlight more on how to do this.
 	// examples:
 	//   - value: "1024"
-	Read int `yaml:"read,omitempty" jsonschema:"title=bytes to read from socket,description=Number of bytes to read from socket"`
+	Read int `yaml:"read,omitempty" json:"read,omitempty" jsonschema:"title=bytes to read from socket,description=Number of bytes to read from socket"`
 	// description: |
 	//   Name is the optional name of the data read to provide matching on.
 	// examples:
 	//   - value: "\"prefix\""
-	Name string `yaml:"name,omitempty" jsonschema:"title=optional name for data read,description=Optional name of the data read to provide matching on"`
+	Name string `yaml:"name,omitempty" json:"name,omitempty" jsonschema:"title=optional name for data read,description=Optional name of the data read to provide matching on"`
 }
 
 // GetID returns the unique ID of the request if any.
@@ -138,7 +138,7 @@ func (request *Request) GetID() string {
 }
 
 // Compile compiles the protocol request for further execution.
-func (request *Request) Compile(options *protocols.ExecuterOptions) error {
+func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 	var shouldUseTLS bool
 	var err error
 
@@ -162,7 +162,7 @@ func (request *Request) Compile(options *protocols.ExecuterOptions) error {
 	}
 
 	// Resolve payload paths from vars if they exists
-	for name, payload := range request.options.Options.VarsPayload() {
+	for name, payload := range request.options.Options.Vars.AsMap() {
 		payloadStr, ok := payload.(string)
 		// check if inputs contains the payload
 		var hasPayloadName bool
@@ -184,7 +184,7 @@ func (request *Request) Compile(options *protocols.ExecuterOptions) error {
 	}
 
 	if len(request.Payloads) > 0 {
-		request.generator, err = generators.New(request.Payloads, request.AttackType.Value, request.options.TemplatePath, request.options.Options.TemplatesDirectory, request.options.Options.Sandbox, request.options.Catalog, request.options.Options.AttackType)
+		request.generator, err = generators.New(request.Payloads, request.AttackType.Value, request.options.TemplatePath, request.options.Options.Sandbox, request.options.Catalog, request.options.Options.AttackType)
 		if err != nil {
 			return errors.Wrap(err, "could not parse payloads")
 		}

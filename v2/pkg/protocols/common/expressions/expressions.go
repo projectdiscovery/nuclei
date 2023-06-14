@@ -11,6 +11,15 @@ import (
 	stringsutil "github.com/projectdiscovery/utils/strings"
 )
 
+// Eval compiles the given expression and evaluate it with the given values preserving the return type
+func Eval(expression string, values map[string]interface{}) (interface{}, error) {
+	compiled, err := govaluate.NewEvaluableExpressionWithFunctions(expression, dsl.HelperFunctions)
+	if err != nil {
+		return nil, err
+	}
+	return compiled.Evaluate(values)
+}
+
 // Evaluate checks if the match contains a dynamic variable, for each
 // found one we will check if it's an expression and can
 // be compiled, it will be evaluated and the results will be returned.
@@ -40,7 +49,7 @@ func evaluate(data string, base map[string]interface{}) (string, error) {
 	// - simple: containing base values keys (variables)
 	// - complex: containing helper functions [ + variables]
 	// literals like {{2+2}} are not considered expressions
-	expressions := findExpressions(data, marker.ParenthesisOpen, marker.ParenthesisClose, base)
+	expressions := FindExpressions(data, marker.ParenthesisOpen, marker.ParenthesisClose, base)
 	for _, expression := range expressions {
 		// replace variable placeholders with base values
 		expression = replacer.Replace(expression, base)
@@ -62,7 +71,7 @@ func evaluate(data string, base map[string]interface{}) (string, error) {
 // maxIterations to avoid infinite loop
 const maxIterations = 250
 
-func findExpressions(data, OpenMarker, CloseMarker string, base map[string]interface{}) []string {
+func FindExpressions(data, OpenMarker, CloseMarker string, base map[string]interface{}) []string {
 	var (
 		iterations int
 		exps       []string

@@ -2,6 +2,7 @@ package parsers
 
 import (
 	"github.com/projectdiscovery/gologger"
+	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/config"
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/loader/filter"
 	"github.com/projectdiscovery/nuclei/v2/pkg/model"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
@@ -10,11 +11,11 @@ import (
 type workflowLoader struct {
 	pathFilter *filter.PathFilter
 	tagFilter  *filter.TagFilter
-	options    *protocols.ExecuterOptions
+	options    *protocols.ExecutorOptions
 }
 
 // NewLoader returns a new workflow loader structure
-func NewLoader(options *protocols.ExecuterOptions) (model.WorkflowLoader, error) {
+func NewLoader(options *protocols.ExecutorOptions) (model.WorkflowLoader, error) {
 	tagFilter, err := filter.New(&filter.Config{
 		Authors:           options.Options.Authors,
 		Tags:              options.Options.Tags,
@@ -60,7 +61,7 @@ func (w *workflowLoader) getTemplatePaths(tags, templatesList []string, noValida
 		loaded, err := LoadTemplate(templatePath, w.tagFilter, tags, w.options.Catalog)
 		if err != nil {
 			gologger.Warning().Msgf("Could not load template %s: %s\n", templatePath, err)
-		} else if loaded || noValidate {
+		} else if matched || noValidate {
 			loadedTemplates = append(loadedTemplates, templatePath)
 		}
 	}

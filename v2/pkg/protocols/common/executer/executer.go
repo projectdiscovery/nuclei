@@ -18,13 +18,13 @@ import (
 // Executer executes a group of requests for a protocol
 type Executer struct {
 	requests []protocols.Request
-	options  *protocols.ExecuterOptions
+	options  *protocols.ExecutorOptions
 }
 
 var _ protocols.Executer = &Executer{}
 
 // NewExecuter creates a new request executer for list of requests
-func NewExecuter(requests []protocols.Request, options *protocols.ExecuterOptions) *Executer {
+func NewExecuter(requests []protocols.Request, options *protocols.ExecutorOptions) *Executer {
 	return &Executer{requests: requests, options: options}
 }
 
@@ -93,7 +93,7 @@ func (e *Executer) Execute(input *contextargs.Context) (bool, error) {
 			// If no results were found, and also interactsh is not being used
 			// in that case we can skip it, otherwise we've to show failure in
 			// case of matcher-status flag.
-			if event.OperatorsResult == nil && !event.UsesInteractsh {
+			if !event.HasOperatorResult() && !event.UsesInteractsh {
 				if err := e.options.Output.WriteFailure(event.InternalEvent); err != nil {
 					gologger.Warning().Msgf("Could not write failure event to output: %s\n", err)
 				}

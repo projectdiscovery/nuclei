@@ -29,10 +29,10 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/projectdiscovery/nuclei/blob/master/README.md">English</a> •
-  <a href="https://github.com/projectdiscovery/nuclei/blob/master/README_CN.md">中文</a> •
-  <a href="https://github.com/projectdiscovery/nuclei/blob/master/README_KR.md">Korean</a> •
-  <a href="https://github.com/projectdiscovery/nuclei/blob/master/README_ID.md">Indonesia</a>
+  <a href="https://github.com/projectdiscovery/nuclei/blob/main/README.md">English</a> •
+  <a href="https://github.com/projectdiscovery/nuclei/blob/main/README_CN.md">中文</a> •
+  <a href="https://github.com/projectdiscovery/nuclei/blob/main/README_KR.md">Korean</a> •
+  <a href="https://github.com/projectdiscovery/nuclei/blob/main/README_ID.md">Indonesia</a>
 </p>
 
 ---
@@ -52,7 +52,7 @@ Kami memiliki [repositori khusus](https://github.com/projectdiscovery/nuclei-tem
 
 # Instalasi Nuclei
 
-Nuclei membutuhkan **go1.19** agar dapat diinstall. Jalankan perintah berikut untuk menginstal versi terbaru -
+Nuclei membutuhkan **go1.20** agar dapat diinstall. Jalankan perintah berikut untuk menginstal versi terbaru -
 
 ```sh
 go install -v github.com/projectdiscovery/nuclei/v2/cmd/nuclei@latest
@@ -132,7 +132,7 @@ OUTPUT:
    -srd, -store-resp-dir string  store all request/response passed through nuclei to custom directory (default "output")
    -silent                       display findings only
    -nc, -no-color                disable output content coloring (ANSI escape codes)
-   -json                         write output in JSONL(ines) format
+   -j, -jsonl                    write output in JSONL(ines) format
    -irr, -include-rr             include request/response pairs in the JSONL output (for findings only)
    -nm, -no-meta                 disable printing result metadata in cli output
    -nts, -no-timestamp           disable printing timestamp in cli output
@@ -140,6 +140,8 @@ OUTPUT:
    -ms, -matcher-status          display match failure status
    -me, -markdown-export string  directory to export results in markdown format
    -se, -sarif-export string     file to export results in SARIF format
+   -je, -json-export string      file to export results in JSON format as a JSON array. This can be memory intensive in larger scans
+   -jle, -jsonl-export string    file to export results in JSONL(ine) format as a list of line-delimited JSON objects
 
 CONFIGURATIONS:
    -config string                 path to the nuclei configuration file
@@ -188,6 +190,7 @@ OPTIMIZATIONS:
    -retries int                        number of times to retry a failed request (default 1)
    -ldp, -leave-default-ports          leave default HTTP/HTTPS ports (eg. host:80,host:443
    -mhe, -max-host-error int           max errors for a host before skipping from scan (default 30)
+   -te, -track-error string[]          adds given error to max-host-error watchlist (standard, file)
    -nmhe, -no-mhe                      disable skipping host from scan based on errors
    -project                            use a project folder to avoid sending same request multiple times
    -project-path string                set a specific project path
@@ -229,7 +232,7 @@ UPDATE:
 
 STATISTICS:
    -stats                    display statistics about the running scan
-   -sj, -stats-json          write statistics data to an output file in JSONL(ines) format
+   -sj, -stats-json          dispaly statistics in JSONL(ines) format
    -si, -stats-interval int  number of seconds to wait between showing a statistics update (default 5)
    -m, -metrics              expose nuclei metrics on a port
    -mp, -metrics-port int    port to expose nuclei metrics on (default 9092)
@@ -301,7 +304,7 @@ Nuclei sangat meningkatkan cara Anda mendekati penilaian keamanan dengan menamba
 Para penguji penetrasi mendapatkan kekuatan penuh dari templat publik dan kemampuan penyesuaian kami untuk mempercepat proses penilaian mereka, dan khususnya dengan siklus regresi di mana Anda dapat dengan mudah memverifikasi perbaikannya.
 
 - Mudah untuk membuat daftar pemeriksa kepatuhan Anda, sederet standar (mis., OWASP 10 Teratas).
-- Dengan kemampuan seperti [fuzz](https://nuclei.projectdiscovery.io/templating-guide/#advance-fuzzing) dan [alur kerja](https://nuclei.projectdiscovery.io/templating-guide/#workflows), langkah manual yang rumit dan penilaian berulang dapat dengan mudah diotomatisasi dengan Nuclei.
+- Dengan kemampuan seperti [fuzz](https://nuclei.projectdiscovery.io/templating-guide/protocols/http-fuzzing/) dan [alur kerja](https://nuclei.projectdiscovery.io/templating-guide/workflows/), langkah manual yang rumit dan penilaian berulang dapat dengan mudah diotomatisasi dengan Nuclei.
 - Mudah untuk menguji ulang perbaikan kerentanan hanya dengan menjalankan ulang template.
 
 </td>
@@ -348,7 +351,7 @@ Terima kasih kepada semua komunitas yang luar biasa yang [berkontribusi untuk me
 
 ### Lisensi
 
-Nuclei didistribusikan di bawah [Lisensi MIT](https://github.com/projectdiscovery/nuclei/blob/master/LICENSE.md)
+Nuclei didistribusikan di bawah [Lisensi MIT](https://github.com/projectdiscovery/nuclei/blob/main/LICENSE.md)
 
 <h1 align="left">
   <a href="https://discord.gg/projectdiscovery"><img src="static/Join-Discord.png" width="380" alt="Join Discord"></a> <a href="https://nuclei.projectdiscovery.io"><img src="static/check-nuclei-documentation.png" width="380" alt="Cek Dokumentasi Nuclei"></a>

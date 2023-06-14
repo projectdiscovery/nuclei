@@ -3,15 +3,14 @@ package filter
 import (
 	"testing"
 
-	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/dns"
-	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/http"
-
-	"github.com/stretchr/testify/require"
-
+	"github.com/projectdiscovery/nuclei/v2/pkg/model"
 	"github.com/projectdiscovery/nuclei/v2/pkg/model/types/severity"
 	"github.com/projectdiscovery/nuclei/v2/pkg/model/types/stringslice"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/dns"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/http"
 	"github.com/projectdiscovery/nuclei/v2/pkg/templates"
 	"github.com/projectdiscovery/nuclei/v2/pkg/templates/types"
+	"github.com/stretchr/testify/require"
 )
 
 func TestTagBasedFilter(t *testing.T) {
@@ -222,7 +221,9 @@ func TestTagBasedFilter(t *testing.T) {
 		dummyTemplate.Info.Metadata["bool_value"] = true
 		dummyTemplate.Info.Metadata["number_value"] = 1
 		testAdvancedFiltering(t, []string{"test_value == 'test' && bool_value && number_value>=1"}, dummyTemplate, false, true)
-
+		// some templates exist with hyphenated fields in the Metadata section.
+		dummyTemplate.Info.Metadata["tool-query"] = "test-toolkit"
+		testAdvancedFiltering(t, []string{"tool_query == 'test-toolkit'"}, dummyTemplate, false, true)
 	})
 	t.Run("advanced-filtering-negative", func(t *testing.T) {
 		dummyTemplate := newDummyTemplate("test", []string{"jira"}, []string{"test1", "test2"}, severity.High, types.HTTPProtocol)
@@ -237,6 +238,32 @@ func TestTagBasedFilter(t *testing.T) {
 		// create some metadata
 		dummyTemplate.Info.Metadata = make(map[string]interface{})
 		testAdvancedFiltering(t, []string{"non_existent_value == 'test'"}, dummyTemplate, false, false)
+	})
+	t.Run("template-condition", func(t *testing.T) {
+		dummyTemplate := newDummyTemplate("test", []string{"jira"}, []string{"test1", "test2"}, severity.High, types.HTTPProtocol)
+
+		// create some classification
+		dummyTemplate.Info.Classification = &model.Classification{
+			CVEID:       stringslice.StringSlice{Value: []string{"test-CVEID"}},
+			CWEID:       stringslice.StringSlice{Value: []string{"test-CWEID"}},
+			CVSSMetrics: "CVSS:3.1/AB:C/DE:F/GH:I/JK:L/M:N/O:P/Q:R/S:T",
+			CVSSScore:   5,
+			EPSSScore:   0.012345,
+			CPE:         "cpe:2.3:a:test:collaboration:1.0.0:-:*:*:*:*:*:*",
+		}
+		testAdvancedFiltering(t, []string{"cvss_score==5"}, dummyTemplate, false, true)
+		testAdvancedFiltering(t, []string{"cvss_score>=4"}, dummyTemplate, false, true)
+		testAdvancedFiltering(t, []string{"epss_score==0.012345"}, dummyTemplate, false, true)
+		testAdvancedFiltering(t, []string{"cpe=='cpe:2.3:a:test:collaboration:1.0.0:-:*:*:*:*:*:*'"}, dummyTemplate, false, true)
+		testAdvancedFiltering(t, []string{"contains(cpe,'cpe:2.3')"}, dummyTemplate, false, true)
+		testAdvancedFiltering(t, []string{"cvss_metrics=='CVSS:3.1/AB:C/DE:F/GH:I/JK:L/M:N/O:P/Q:R/S:T'"}, dummyTemplate, false, true)
+		testAdvancedFiltering(t, []string{"contains(cvss_metrics,'AB:C')"}, dummyTemplate, false, true)
+		testAdvancedFiltering(t, []string{"contains(cwe_id,'test-CWEID')"}, dummyTemplate, false, true)
+		testAdvancedFiltering(t, []string{"contains(cve_id,'test-CVEID')"}, dummyTemplate, false, true)
+		testAdvancedFiltering(t, []string{"cvss_score>=6"}, dummyTemplate, false, false)
+		// cve_id and cwe_id are arrays, the `==` operator does not work on arrays.
+		testAdvancedFiltering(t, []string{"cve_id=='test-CVEID'"}, dummyTemplate, false, false)
+		testAdvancedFiltering(t, []string{"cwe_id=='test-CWEID'"}, dummyTemplate, false, false)
 	})
 }
 

@@ -3,7 +3,6 @@ package runner
 import (
 	"fmt"
 	"net"
-	"path/filepath"
 	"runtime"
 	"strings"
 
@@ -17,21 +16,14 @@ func DoHealthCheck(options *types.Options) string {
 	// RW permissions on config file
 	var test strings.Builder
 	test.WriteString(fmt.Sprintf("Version: %s\n", config.Version))
-	test.WriteString(fmt.Sprintf("Operative System: %s\n", runtime.GOOS))
+	test.WriteString(fmt.Sprintf("Operating System: %s\n", runtime.GOOS))
 	test.WriteString(fmt.Sprintf("Architecture: %s\n", runtime.GOARCH))
 	test.WriteString(fmt.Sprintf("Go Version: %s\n", runtime.Version()))
 	test.WriteString(fmt.Sprintf("Compiler: %s\n", runtime.Compiler))
 
 	var testResult string
-
-	nucleiIgnorePath := config.GetIgnoreFilePath()
-	cf, _ := config.ReadConfiguration()
-	templatePath := ""
-	if cf != nil {
-		templatePath = cf.TemplatesDirectory
-	}
-	nucleiTemplatePath := filepath.Join(templatePath, "/", ".checksum")
-	for _, filename := range []string{options.ConfigPath, nucleiIgnorePath, nucleiTemplatePath} {
+	cfg := config.DefaultConfig
+	for _, filename := range []string{cfg.GetFlagsConfigFilePath(), cfg.GetIgnoreFilePath(), cfg.GetChecksumFilePath()} {
 		ok, err := fileutil.IsReadable(filename)
 		if ok {
 			testResult = "Ok"

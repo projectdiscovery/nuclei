@@ -64,9 +64,7 @@ func newHttpClient(options *types.Options) (*http.Client, error) {
 		dc := dialer.(interface {
 			DialContext(ctx context.Context, network, addr string) (net.Conn, error)
 		})
-		if proxyErr == nil {
-			transport.DialContext = dc.DialContext
-		}
+		transport.DialContext = dc.DialContext
 	}
 
 	jar, _ := cookiejar.New(nil)
