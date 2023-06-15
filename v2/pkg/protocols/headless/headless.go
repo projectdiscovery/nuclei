@@ -7,6 +7,7 @@ import (
 	useragent "github.com/projectdiscovery/nuclei/v2/pkg/model/types/userAgent"
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/fuzz"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/generators"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/headless/engine"
 	fileutil "github.com/projectdiscovery/utils/file"
@@ -54,6 +55,9 @@ type Request struct {
 	// cache any variables that may be needed for operation.
 	options   *protocols.ExecutorOptions
 	generator *generators.PayloadGenerator
+
+	// Fuzzing describes schema to fuzz headless requests
+	Fuzzing []*fuzz.Rule `yaml:"fuzzing,omitempty" json:"fuzzing,omitempty" jsonschema:"title=fuzzin rules for http fuzzing,description=Fuzzing describes rule schema to fuzz headless requests"`
 }
 
 // RequestPartDefinitions contains a mapping of request part definitions and their
@@ -129,6 +133,21 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 		request.CompiledOperators = compiled
 	}
 	request.options = options
+
+	if len(request.Fuzzing) > 0 {
+		for _, rule := range request.Fuzzing {
+			if fuzzingMode := options.Options.FuzzingMode; fuzzingMode != "" {
+				rule.Mode = fuzzingMode
+			}
+			if fuzzingType := options.Options.FuzzingType; fuzzingType != "" {
+				rule.Type = fuzzingType
+			}
+			if err := rule.Compile(request.generator, request.options); err != nil {
+				return errors.Wrap(err, "could not compile fuzzing rule")
+			}
+		}
+	}
+
 	return nil
 }
 
