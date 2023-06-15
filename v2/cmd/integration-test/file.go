@@ -5,9 +5,10 @@ import (
 )
 
 var fileTestcases = map[string]testutils.TestCase{
-	"file/matcher-with-or.yaml":  &fileWithOrMatcher{},
-	"file/matcher-with-and.yaml": &fileWithAndMatcher{},
-	"file/extract.yaml":          &fileWithExtractor{},
+	"file/matcher-with-or.yaml":         &fileWithOrMatcher{},
+	"file/matcher-with-and.yaml":        &fileWithAndMatcher{},
+	"file/matcher-with-nested-and.yaml": &fileWithAndMatcher{},
+	"file/extract.yaml":                 &fileWithExtractor{},
 }
 
 type fileWithOrMatcher struct{}
