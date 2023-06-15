@@ -115,6 +115,7 @@ func main() {
 
 func readConfig() *goflags.FlagSet {
 	flagSet := goflags.NewFlagSet()
+	flagSet.CaseSensitive = true
 	flagSet.SetDescription(`Nuclei is a fast, template based vulnerability scanner focusing
 on extensive configurability, massive extensibility and ease of use.`)
 
