@@ -408,6 +408,8 @@ github.com/projectdiscovery/goflags v0.1.9 h1:rLtdt7YNEIwsioT1HO48j01bZrqUTj45Ci
 github.com/projectdiscovery/goflags v0.1.9/go.mod h1:MHEkqm3XgxBf5fK4gr3IXsj6VeLTq4qJYGC/4JRYQ74=
 github.com/projectdiscovery/goflags v0.1.10-0.20230615123827-20fb594370ef h1:LWJlL68U+KNADm+Gd53YnQJ7fcfIHdXytl9mTq6TaOE=
 github.com/projectdiscovery/goflags v0.1.10-0.20230615123827-20fb594370ef/go.mod h1:MHEkqm3XgxBf5fK4gr3IXsj6VeLTq4qJYGC/4JRYQ74=
+github.com/projectdiscovery/goflags v0.1.10 h1:Gompf8JDy8y+5c4eWlc70KKtPuDH/hqFB3tMeHcMiKk=
+github.com/projectdiscovery/goflags v0.1.10/go.mod h1:MHEkqm3XgxBf5fK4gr3IXsj6VeLTq4qJYGC/4JRYQ74=
 github.com/projectdiscovery/gologger v1.1.10 h1:XNRdtzLTdxiFGuK9gutoL752mykzXDoii4P2yDovqck=
 github.com/projectdiscovery/gologger v1.1.10/go.mod h1:VqANHK7qcEq3i6/vV5HNWwdyv2aFPSrlaVDU4Ogrc6U=
 github.com/projectdiscovery/hmap v0.0.13 h1:8v5j99Pz0S7V1YrTeWp7xtr1yNOffKQ/KusHZfB+mrI=
