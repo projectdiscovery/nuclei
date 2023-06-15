@@ -68,7 +68,7 @@ require (
 	github.com/mholt/archiver v3.1.1+incompatible
 	github.com/projectdiscovery/dsl v0.0.9
 	github.com/projectdiscovery/fasttemplate v0.0.2
-	github.com/projectdiscovery/goflags v0.1.10-0.20230615123827-20fb594370ef
+	github.com/projectdiscovery/goflags v0.1.9
 	github.com/projectdiscovery/gologger v1.1.10
 	github.com/projectdiscovery/httpx v1.3.1
 	github.com/projectdiscovery/mapcidr v1.1.2

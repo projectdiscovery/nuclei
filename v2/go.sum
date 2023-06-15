@@ -404,6 +404,8 @@ github.com/projectdiscovery/freeport v0.0.4 h1:H4VrK/7hUcC1zbg46zv9iSMBACBDpUqcH
 github.com/projectdiscovery/freeport v0.0.4/go.mod h1:PY0bxSJ34HVy67LHIeF3uIutiCSDwOqKD8ruBkdiCwE=
 github.com/projectdiscovery/goflags v0.1.8 h1:Urhm2Isq2BdRt8h4h062lHKYXO65RHRjGTDSkUwex/g=
 github.com/projectdiscovery/goflags v0.1.8/go.mod h1:Yxi9tclgwGczzDU65ntrwaIql5cXeTvW5j2WxFuF+Jk=
+github.com/projectdiscovery/goflags v0.1.9 h1:rLtdt7YNEIwsioT1HO48j01bZrqUTj45CiXPgNflTBk=
+github.com/projectdiscovery/goflags v0.1.9/go.mod h1:MHEkqm3XgxBf5fK4gr3IXsj6VeLTq4qJYGC/4JRYQ74=
 github.com/projectdiscovery/goflags v0.1.10-0.20230615123827-20fb594370ef h1:LWJlL68U+KNADm+Gd53YnQJ7fcfIHdXytl9mTq6TaOE=
 github.com/projectdiscovery/goflags v0.1.10-0.20230615123827-20fb594370ef/go.mod h1:MHEkqm3XgxBf5fK4gr3IXsj6VeLTq4qJYGC/4JRYQ74=
 github.com/projectdiscovery/gologger v1.1.10 h1:XNRdtzLTdxiFGuK9gutoL752mykzXDoii4P2yDovqck=
