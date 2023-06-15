@@ -76,7 +76,7 @@ require (
 	github.com/projectdiscovery/ratelimit v0.0.8
 	github.com/projectdiscovery/rdap v0.9.1-0.20221108103045-9865884d1917
 	github.com/projectdiscovery/sarif v0.0.1
-	github.com/projectdiscovery/tlsx v1.0.9-0.20230615112335-4077a21cb8a1
+	github.com/projectdiscovery/tlsx v1.0.9-0.20230615131825-ce4246b60d66
 	github.com/projectdiscovery/uncover v1.0.6-0.20230601103158-bfd7e02a5bb1
 	github.com/projectdiscovery/utils v0.0.37
 	github.com/projectdiscovery/wappalyzergo v0.0.94
