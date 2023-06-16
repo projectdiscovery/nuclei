@@ -155,11 +155,15 @@ func process(opts options) error {
 		dataString := string(data)
 
 		// try to fill max-requests
-		dataString, err = parseAndAddMaxRequests(templateCatalog, path, dataString)
+		var updated bool // if max-requests is updated
+		dataString, updated, err = parseAndAddMaxRequests(templateCatalog, path, dataString)
 		if err != nil {
 			gologger.Info().Label("max-request").Msgf(logErrMsg(path, err, opts.debug, errFile))
 		} else {
-			gologger.Info().Label("max-request").Msgf("✅ updated template: %s\n", path)
+			if updated {
+				gologger.Info().Label("max-request").Msgf("✅ updated template: %s\n", path)
+			}
+			// do not print if max-requests is not updated
 		}
 
 		if opts.lint {
@@ -342,13 +346,13 @@ func validateTemplate(data string) (bool, error) {
 }
 
 // parseAndAddMaxRequests parses and adds max requests to templates
-func parseAndAddMaxRequests(catalog catalog.Catalog, path, data string) (string, error) {
+func parseAndAddMaxRequests(catalog catalog.Catalog, path, data string) (string, bool, error) {
 	template, err := parseTemplate(catalog, path)
 	if err != nil {
-		return data, err
+		return data, false, err
 	}
 	if template.TotalRequests < 1 {
-		return data, nil
+		return data, false, nil
 	}
 	// Marshal the updated info block back to YAML.
 	infoBlockStart, infoBlockEnd := getInfoStartEnd(data)
@@ -357,7 +361,7 @@ func parseAndAddMaxRequests(catalog catalog.Catalog, path, data string) (string,
 	infoBlock := InfoBlock{}
 	err = yaml.Unmarshal([]byte(data), &infoBlock)
 	if err != nil {
-		return data, err
+		return data, false, err
 	}
 	// if metadata is nil, create a new map
 	if infoBlock.Info.Metadata == nil {
@@ -365,7 +369,7 @@ func parseAndAddMaxRequests(catalog catalog.Catalog, path, data string) (string,
 	}
 	// do not update if it is already present and equal
 	if mr, ok := infoBlock.Info.Metadata["max-request"]; ok && mr.(int) == template.TotalRequests {
-		return data, nil
+		return data, false, nil
 	}
 	infoBlock.Info.Metadata["max-request"] = template.TotalRequests
 
@@ -374,13 +378,16 @@ func parseAndAddMaxRequests(catalog catalog.Catalog, path, data string) (string,
 	yamlEncoder.SetIndent(yamlIndentSpaces)
 	err = yamlEncoder.Encode(infoBlock)
 	if err != nil {
-		return data, err
+		return data, false, err
 	}
 	newInfoBlockData := strings.TrimSuffix(newInfoBlock.String(), "\n")
 	// replace old info block with new info block
 	newTemplate := strings.ReplaceAll(data, infoBlockOrig, newInfoBlockData)
 	err = os.WriteFile(path, []byte(newTemplate), 0644)
-	return newTemplate, err
+	if err == nil {
+		return newTemplate, true, nil
+	}
+	return newTemplate, false, err
 }
 
 // parseTemplate parses a template and returns the template object
