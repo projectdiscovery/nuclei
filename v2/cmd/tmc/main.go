@@ -76,11 +76,13 @@ func init() {
 var idRegex = regexp.MustCompile("id: ([C|c][V|v][E|e]-[0-9]+-[0-9]+)")
 
 type options struct {
-	input   string
-	debug   bool
-	enhance bool
-	format  bool
-	lint    bool
+	input        string
+	errorLogFile string
+	debug        bool
+	enhance      bool
+	format       bool
+	validate     bool
+	lint         bool
 }
 
 func main() {
@@ -96,6 +98,8 @@ func main() {
 		flagSet.BoolVarP(&opts.enhance, "enhance", "e", false, "enhance given nuclei template"),
 		flagSet.BoolVarP(&opts.format, "format", "f", false, "format given nuclei template"),
 		flagSet.BoolVarP(&opts.lint, "lint", "l", false, "lint given nuclei template"),
+		flagSet.BoolVarP(&opts.validate, "validate", "v", false, "validate given nuclei template"),
+		flagSet.StringVarP(&opts.errorLogFile, "error-log", "el", "", "file to write failed template update"),
 		flagSet.BoolVarP(&opts.debug, "debug", "d", false, "show debug message"),
 	)
 
@@ -129,6 +133,15 @@ func process(opts options) error {
 	}
 	defer os.RemoveAll(tempDir)
 
+	var errFile *os.File
+	if opts.errorLogFile != "" {
+		errFile, err = os.OpenFile(opts.errorLogFile, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
+		if err != nil {
+			gologger.Fatal().Msgf("could not open error log file: %s\n", err)
+		}
+		defer errFile.Close()
+	}
+
 	templateCatalog := disk.NewCatalog(filepath.Dir(opts.input))
 	paths, err := templateCatalog.GetTemplatePath(opts.input)
 	if err != nil {
@@ -141,20 +154,38 @@ func process(opts options) error {
 		}
 		dataString := string(data)
 
+		// try to fill max-requests
+		dataString, err = parseAndAddMaxRequests(templateCatalog, path, dataString)
+		if err != nil {
+			gologger.Info().Label("max-request").Msgf(logErrMsg(path, err, opts.debug, errFile))
+		} else {
+			gologger.Info().Label("max-request").Msgf("✅ updated template: %s\n", path)
+		}
+
 		if opts.lint {
 			lint, err := lintTemplate(dataString)
 			if err != nil {
-				gologger.Info().Label("lint").Msg(formatErrMsg(path, err, opts.debug))
+				gologger.Info().Label("lint").Msg(logErrMsg(path, err, opts.debug, errFile))
 			}
 			if lint {
 				gologger.Info().Label("lint").Msgf("✅ lint template: %s\n", path)
 			}
 		}
 
+		if opts.validate {
+			validate, err := validateTemplate(dataString)
+			if err != nil {
+				gologger.Info().Label("validate").Msg(logErrMsg(path, err, opts.debug, errFile))
+			}
+			if validate {
+				gologger.Info().Label("validate").Msgf("✅ validated template: %s\n", path)
+			}
+		}
+
 		if opts.format {
 			formatedTemplateData, err := formatTemplate(dataString)
 			if err != nil {
-				gologger.Info().Label("format").Msg(formatErrMsg(path, err, opts.debug))
+				gologger.Info().Label("format").Msg(logErrMsg(path, err, opts.debug, errFile))
 			} else {
 				_ = os.WriteFile(path, []byte(formatedTemplateData), 0644)
 				dataString = formatedTemplateData
@@ -163,12 +194,6 @@ func process(opts options) error {
 		}
 
 		if opts.enhance {
-			// try to fill max-requests
-			dataString, err = parseAndAddMaxRequests(templateCatalog, path, dataString)
-			if err != nil {
-				gologger.Info().Msgf(formatErrMsg(path, err, opts.debug))
-			}
-			gologger.Info().Label("max-request").Msgf("✅ updated template: %s\n", path)
 			// currently enhance api only supports cve-id's
 			matches := idRegex.FindAllStringSubmatch(dataString, 1)
 			if len(matches) == 0 {
@@ -176,7 +201,7 @@ func process(opts options) error {
 			}
 			enhancedTemplateData, err := enhanceTemplate(dataString)
 			if err != nil {
-				gologger.Info().Label("enhance").Msg(formatErrMsg(path, err, opts.debug))
+				gologger.Info().Label("enhance").Msg(logErrMsg(path, err, opts.debug, errFile))
 				continue
 			}
 			_ = os.WriteFile(path, []byte(enhancedTemplateData), 0644)
@@ -186,10 +211,13 @@ func process(opts options) error {
 	return nil
 }
 
-func formatErrMsg(path string, err error, debug bool) string {
+func logErrMsg(path string, err error, debug bool, errFile *os.File) string {
 	msg := fmt.Sprintf("❌ template: %s\n", path)
 	if debug {
 		msg = fmt.Sprintf("❌ template: %s err: %s\n", path, err)
+	}
+	if errFile != nil {
+		_, _ = errFile.WriteString(fmt.Sprintf("❌ template: %s err: %s\n", path, err))
 	}
 	return msg
 }
@@ -229,7 +257,7 @@ func enhanceTemplate(data string) (string, error) {
 	return data, errorutil.New("template enhance failed")
 }
 
-// formatTemplateData formats template data using templateman api
+// formatTemplateData formats template data using templateman format api
 func formatTemplate(data string) (string, error) {
 	resp, err := retryablehttp.DefaultClient().Post(fmt.Sprintf("%s/format", tmBaseUrl), "application/x-yaml", strings.NewReader(data))
 	if err != nil {
@@ -263,7 +291,7 @@ func formatTemplate(data string) (string, error) {
 	return data, errorutil.New("template format failed")
 }
 
-// lintTemplateData lints template data using templateman api
+// lintTemplateData lints template data using templateman lint api
 func lintTemplate(data string) (bool, error) {
 	resp, err := retryablehttp.DefaultClient().Post(fmt.Sprintf("%s/lint", tmBaseUrl), "application/x-yaml", strings.NewReader(data))
 	if err != nil {
@@ -283,6 +311,34 @@ func lintTemplate(data string) (bool, error) {
 		return false, errorutil.NewWithTag("lint", lintResp.LintError.Reason+" : at line %v", lintResp.LintError.Mark.Line)
 	}
 	return false, errorutil.NewWithTag("lint", "at line: %v", lintResp.LintError.Mark.Line)
+}
+
+// validateTemplate validates template data using templateman validate api
+func validateTemplate(data string) (bool, error) {
+	resp, err := retryablehttp.DefaultClient().Post(fmt.Sprintf("%s/validate", tmBaseUrl), "application/x-yaml", strings.NewReader(data))
+	if err != nil {
+		return false, err
+	}
+	if resp.StatusCode != 200 {
+		return false, errorutil.New("unexpected status code: %v", resp.Status)
+	}
+	var validateResp TemplateResp
+	if err := json.NewDecoder(resp.Body).Decode(&validateResp); err != nil {
+		return false, err
+	}
+	if validateResp.Validate {
+		return true, nil
+	}
+	if validateResp.ValidateErrorCount > 0 {
+		if len(validateResp.ValidateError) > 0 {
+			return false, errorutil.NewWithTag("validate", validateResp.ValidateError[0].Message+": at line %v", validateResp.ValidateError[0].Mark.Line)
+		}
+		return false, errorutil.New("validation failed").WithTag("validate")
+	}
+	if validateResp.Error.Name != "" {
+		return false, errorutil.New(validateResp.Error.Name)
+	}
+	return false, errorutil.New("template validation failed")
 }
 
 // parseAndAddMaxRequests parses and adds max requests to templates
