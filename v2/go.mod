@@ -20,7 +20,7 @@ require (
 	github.com/miekg/dns v1.1.54
 	github.com/olekukonko/tablewriter v0.0.5
 	github.com/pkg/errors v0.9.1
-	github.com/projectdiscovery/clistats v0.0.12
+	github.com/projectdiscovery/clistats v0.0.18
 	github.com/projectdiscovery/fastdialer v0.0.29
 	github.com/projectdiscovery/hmap v0.0.13
 	github.com/projectdiscovery/interactsh v1.1.4
@@ -127,7 +127,7 @@ require (
 	github.com/pkg/browser v0.0.0-20210911075715-681adbf594b8 // indirect
 	github.com/projectdiscovery/asnmap v1.0.4 // indirect
 	github.com/projectdiscovery/cdncheck v1.0.6 // indirect
-	github.com/projectdiscovery/freeport v0.0.4 // indirect
+	github.com/projectdiscovery/freeport v0.0.5 // indirect
 	github.com/refraction-networking/utls v1.3.2 // indirect
 	github.com/sashabaranov/go-openai v1.9.1 // indirect
 	github.com/shoenig/go-m1cpu v0.1.6 // indirect
