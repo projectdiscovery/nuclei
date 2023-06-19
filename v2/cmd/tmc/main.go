@@ -187,13 +187,15 @@ func process(opts options) error {
 		}
 
 		if opts.format {
-			formatedTemplateData, err := formatTemplate(dataString)
+			formatedTemplateData, isFormated, err := formatTemplate(dataString)
 			if err != nil {
 				gologger.Info().Label("format").Msg(logErrMsg(path, err, opts.debug, errFile))
 			} else {
-				_ = os.WriteFile(path, []byte(formatedTemplateData), 0644)
-				dataString = formatedTemplateData
-				gologger.Info().Label("format").Msgf("✅ formatted template: %s\n", path)
+				if isFormated {
+					_ = os.WriteFile(path, []byte(formatedTemplateData), 0644)
+					dataString = formatedTemplateData
+					gologger.Info().Label("format").Msgf("✅ formated template: %s\n", path)
+				}
 			}
 		}
 
@@ -203,13 +205,16 @@ func process(opts options) error {
 			if len(matches) == 0 {
 				continue
 			}
-			enhancedTemplateData, err := enhanceTemplate(dataString)
+			enhancedTemplateData, isEnhanced, err := enhanceTemplate(dataString)
 			if err != nil {
 				gologger.Info().Label("enhance").Msg(logErrMsg(path, err, opts.debug, errFile))
 				continue
+			} else {
+				if isEnhanced {
+					_ = os.WriteFile(path, []byte(enhancedTemplateData), 0644)
+					gologger.Info().Label("enhance").Msgf("✅ updated template: %s\n", path)
+				}
 			}
-			_ = os.WriteFile(path, []byte(enhancedTemplateData), 0644)
-			gologger.Info().Label("enhance").Msgf("✅ updated template: %s\n", path)
 		}
 	}
 	return nil
@@ -228,71 +233,71 @@ func logErrMsg(path string, err error, debug bool, errFile *os.File) string {
 
 // enhanceTemplateData enhances template data using templateman
 // ref: https://github.com/projectdiscovery/templateman/blob/main/templateman-rest-api/README.md#enhance-api
-func enhanceTemplate(data string) (string, error) {
+func enhanceTemplate(data string) (string, bool, error) {
 	resp, err := retryablehttp.DefaultClient().Post(fmt.Sprintf("%s/enhance", tmBaseUrl), "application/x-yaml", strings.NewReader(data))
 	if err != nil {
-		return data, err
+		return data, false, err
 	}
 	if resp.StatusCode != 200 {
-		return data, errorutil.New("unexpected status code: %v", resp.Status)
+		return data, false, errorutil.New("unexpected status code: %v", resp.Status)
 	}
 	var templateResp TemplateResp
 	if err := json.NewDecoder(resp.Body).Decode(&templateResp); err != nil {
-		return data, err
+		return data, false, err
 	}
-	if templateResp.Enhance || strings.TrimSpace(templateResp.Enhanced) != "" {
-		return templateResp.Enhanced, nil
+	if strings.TrimSpace(templateResp.Enhanced) != "" {
+		return templateResp.Enhanced, templateResp.Enhance, nil
 	}
 	if templateResp.ValidateErrorCount > 0 {
 		if len(templateResp.ValidateError) > 0 {
-			return data, errorutil.NewWithTag("validate", templateResp.ValidateError[0].Message+": at line %v", templateResp.ValidateError[0].Mark.Line)
+			return data, false, errorutil.NewWithTag("validate", templateResp.ValidateError[0].Message+": at line %v", templateResp.ValidateError[0].Mark.Line)
 		}
-		return data, errorutil.New("validation failed").WithTag("validate")
+		return data, false, errorutil.New("validation failed").WithTag("validate")
 	}
 	if templateResp.Error.Name != "" {
-		return data, errorutil.New(templateResp.Error.Name)
+		return data, false, errorutil.New(templateResp.Error.Name)
 	}
 	if strings.TrimSpace(templateResp.Enhanced) == "" && !templateResp.Lint {
 		if templateResp.LintError.Reason != "" {
-			return data, errorutil.NewWithTag("lint", templateResp.LintError.Reason+" : at line %v", templateResp.LintError.Mark.Line)
+			return data, false, errorutil.NewWithTag("lint", templateResp.LintError.Reason+" : at line %v", templateResp.LintError.Mark.Line)
 		}
-		return data, errorutil.NewWithTag("lint", "at line: %v", templateResp.LintError.Mark.Line)
+		return data, false, errorutil.NewWithTag("lint", "at line: %v", templateResp.LintError.Mark.Line)
 	}
-	return data, errorutil.New("template enhance failed")
+	return data, false, errorutil.New("template enhance failed")
 }
 
 // formatTemplateData formats template data using templateman format api
-func formatTemplate(data string) (string, error) {
+func formatTemplate(data string) (string, bool, error) {
 	resp, err := retryablehttp.DefaultClient().Post(fmt.Sprintf("%s/format", tmBaseUrl), "application/x-yaml", strings.NewReader(data))
 	if err != nil {
-		return data, err
+		return data, false, err
 	}
 	if resp.StatusCode != 200 {
-		return data, errorutil.New("unexpected status code: %v", resp.Status)
+		return data, false, errorutil.New("unexpected status code: %v", resp.Status)
 	}
 	var templateResp TemplateResp
 	if err := json.NewDecoder(resp.Body).Decode(&templateResp); err != nil {
-		return data, err
+		return data, false, err
 	}
-	if templateResp.Format || strings.TrimSpace(templateResp.Updated) != "" {
-		return templateResp.Updated, nil
+	if strings.TrimSpace(templateResp.Updated) != "" {
+		return templateResp.Updated, templateResp.Format, nil
 	}
 	if templateResp.ValidateErrorCount > 0 {
 		if len(templateResp.ValidateError) > 0 {
-			return data, errorutil.NewWithTag("validate", templateResp.ValidateError[0].Message+": at line %v", templateResp.ValidateError[0].Mark.Line)
+			return data, false, errorutil.NewWithTag("validate", templateResp.ValidateError[0].Message+": at line %v", templateResp.ValidateError[0].Mark.Line)
 		}
-		return data, errorutil.New("validation failed").WithTag("validate")
+		return data, false, errorutil.New("validation failed").WithTag("validate")
 	}
 	if templateResp.Error.Name != "" {
-		return data, errorutil.New(templateResp.Error.Name)
+		return data, false, errorutil.New(templateResp.Error.Name)
 	}
 	if strings.TrimSpace(templateResp.Updated) == "" && !templateResp.Lint {
 		if templateResp.LintError.Reason != "" {
-			return data, errorutil.NewWithTag("lint", templateResp.LintError.Reason+" : at line %v", templateResp.LintError.Mark.Line)
+			return data, false, errorutil.NewWithTag("lint", templateResp.LintError.Reason+" : at line %v", templateResp.LintError.Mark.Line)
 		}
-		return data, errorutil.NewWithTag("lint", "at line: %v", templateResp.LintError.Mark.Line)
+		return data, false, errorutil.NewWithTag("lint", "at line: %v", templateResp.LintError.Mark.Line)
 	}
-	return data, errorutil.New("template format failed")
+	return data, false, errorutil.New("template format failed")
 }
 
 // lintTemplateData lints template data using templateman lint api
