@@ -78,11 +78,12 @@ var idRegex = regexp.MustCompile("id: ([C|c][V|v][E|e]-[0-9]+-[0-9]+)")
 type options struct {
 	input        string
 	errorLogFile string
-	debug        bool
-	enhance      bool
-	format       bool
-	validate     bool
 	lint         bool
+	validate     bool
+	format       bool
+	enhance      bool
+	maxRequest   bool
+	debug        bool
 }
 
 func main() {
@@ -95,10 +96,11 @@ func main() {
 	)
 
 	flagSet.CreateGroup("Config", "config",
-		flagSet.BoolVarP(&opts.enhance, "enhance", "e", false, "enhance given nuclei template"),
-		flagSet.BoolVarP(&opts.format, "format", "f", false, "format given nuclei template"),
 		flagSet.BoolVarP(&opts.lint, "lint", "l", false, "lint given nuclei template"),
 		flagSet.BoolVarP(&opts.validate, "validate", "v", false, "validate given nuclei template"),
+		flagSet.BoolVarP(&opts.format, "format", "f", false, "format given nuclei template"),
+		flagSet.BoolVarP(&opts.enhance, "enhance", "e", false, "enhance given nuclei template"),
+		flagSet.BoolVarP(&opts.maxRequest, "max-request", "mr", false, "add / update max request counter"),
 		flagSet.StringVarP(&opts.errorLogFile, "error-log", "el", "", "file to write failed template update"),
 		flagSet.BoolVarP(&opts.debug, "debug", "d", false, "show debug message"),
 	)
@@ -154,16 +156,17 @@ func process(opts options) error {
 		}
 		dataString := string(data)
 
-		// try to fill max-requests
-		var updated bool // if max-requests is updated
-		dataString, updated, err = parseAndAddMaxRequests(templateCatalog, path, dataString)
-		if err != nil {
-			gologger.Info().Label("max-request").Msgf(logErrMsg(path, err, opts.debug, errFile))
-		} else {
-			if updated {
-				gologger.Info().Label("max-request").Msgf("✅ updated template: %s\n", path)
+		if opts.maxRequest {
+			var updated bool // if max-requests is updated
+			dataString, updated, err = parseAndAddMaxRequests(templateCatalog, path, dataString)
+			if err != nil {
+				gologger.Info().Label("max-request").Msgf(logErrMsg(path, err, opts.debug, errFile))
+			} else {
+				if updated {
+					gologger.Info().Label("max-request").Msgf("✅ updated template: %s\n", path)
+				}
+				// do not print if max-requests is not updated
 			}
-			// do not print if max-requests is not updated
 		}
 
 		if opts.lint {
