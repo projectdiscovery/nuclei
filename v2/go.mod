@@ -63,7 +63,7 @@ require (
 	github.com/fatih/structs v1.1.0
 	github.com/go-git/go-git/v5 v5.7.0
 	github.com/h2non/filetype v1.1.3
-	github.com/klauspost/compress v1.16.5
+	github.com/klauspost/compress v1.16.6
 	github.com/labstack/echo/v4 v4.10.2
 	github.com/mholt/archiver v3.1.1+incompatible
 	github.com/projectdiscovery/dsl v0.0.9
