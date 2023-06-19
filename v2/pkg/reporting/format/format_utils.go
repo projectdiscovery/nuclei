@@ -161,9 +161,7 @@ func CreateTemplateInfoTable(templateInfo *model.Info, formatter ResultFormatter
 			rows = append(rows, []string{"CVSS-Metrics", generateCVSSMetricsFromClassification(classification)})
 		}
 
-		for _, cveCweIdRow := range generateCVECWEIDLinksFromClassification(classification) {
-			rows = append(rows, cveCweIdRow)
-		}
+		rows = append(rows, generateCVECWEIDLinksFromClassification(classification)...)
 		rows = append(rows, []string{"CVSS-Score", strconv.FormatFloat(classification.CVSSScore, 'f', 2, 64)})
 	}
 

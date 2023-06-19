@@ -30,10 +30,8 @@ func CreateTable(headers []string, rows [][]string) (string, error) {
 		if rowSize == headerSize {
 			builder.WriteString(CreateTableRow(row...))
 		} else if rowSize < headerSize {
-			extendedRows := make([]string, headerSize, headerSize)
-			for i, value := range row {
-				extendedRows[i] = value
-			}
+			extendedRows := make([]string, headerSize)
+			copy(extendedRows, row)
 			builder.WriteString(CreateTableRow(extendedRows...))
 		} else {
 			return "", errorutil.New("Too many columns for the given headers")
