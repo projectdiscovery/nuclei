@@ -72,7 +72,7 @@ type TemplateInfo struct {
 	Author         string                 `yaml:"author"`
 	Severity       string                 `yaml:"severity,omitempty"`
 	Description    string                 `yaml:"description,omitempty"`
-	Reference      []string               `yaml:"reference,omitempty"`
+	Reference      interface{}            `yaml:"reference,omitempty"`
 	Remediation    string                 `yaml:"remediation,omitempty"`
 	Classification TemplateClassification `yaml:"classification,omitempty"`
 	Metadata       map[string]interface{} `yaml:"metadata,omitempty"`
