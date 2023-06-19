@@ -1014,6 +1014,11 @@
           "type": "string",
           "title": "specifies the password for digest authentication",
           "description": "Optional parameter which specifies the password for digest auth"
+        },
+        "disable-path-automerge": {
+          "type": "boolean",
+          "title": "disable auto merging of path",
+          "description": "Disable merging target url path with raw request path"
         }
       },
       "additionalProperties": false,

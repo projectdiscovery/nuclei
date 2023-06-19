@@ -423,7 +423,7 @@ func init() {
 			Value: "HTTP response headers in name:value format",
 		},
 	}
-	HTTPRequestDoc.Fields = make([]encoder.Doc, 30)
+	HTTPRequestDoc.Fields = make([]encoder.Doc, 31)
 	HTTPRequestDoc.Fields[0].Name = "path"
 	HTTPRequestDoc.Fields[0].Type = "[]string"
 	HTTPRequestDoc.Fields[0].Note = ""
@@ -602,6 +602,11 @@ func init() {
 	HTTPRequestDoc.Fields[29].Note = ""
 	HTTPRequestDoc.Fields[29].Description = "DigestAuthPassword specifies the password for digest authentication"
 	HTTPRequestDoc.Fields[29].Comments[encoder.LineComment] = "DigestAuthPassword specifies the password for digest authentication"
+	HTTPRequestDoc.Fields[30].Name = "disable-path-automerge"
+	HTTPRequestDoc.Fields[30].Type = "bool"
+	HTTPRequestDoc.Fields[30].Note = ""
+	HTTPRequestDoc.Fields[30].Description = "DisablePathAutomerge disables merging target url path with raw request path"
+	HTTPRequestDoc.Fields[30].Comments[encoder.LineComment] = "DisablePathAutomerge disables merging target url path with raw request path"
 
 	GENERATORSAttackTypeHolderDoc.Type = "generators.AttackTypeHolder"
 	GENERATORSAttackTypeHolderDoc.Comments[encoder.LineComment] = " AttackTypeHolder is used to hold internal type of the protocol"

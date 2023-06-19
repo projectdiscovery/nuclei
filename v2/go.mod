@@ -40,7 +40,7 @@ require (
 	github.com/xanzy/go-gitlab v0.84.0
 	go.uber.org/multierr v1.11.0
 	golang.org/x/net v0.11.0
-	golang.org/x/oauth2 v0.8.0
+	golang.org/x/oauth2 v0.9.0
 	golang.org/x/text v0.10.0
 	gopkg.in/yaml.v2 v2.4.0
 	moul.io/http2curl v1.0.0
@@ -63,21 +63,21 @@ require (
 	github.com/fatih/structs v1.1.0
 	github.com/go-git/go-git/v5 v5.7.0
 	github.com/h2non/filetype v1.1.3
-	github.com/klauspost/compress v1.16.5
+	github.com/klauspost/compress v1.16.6
 	github.com/labstack/echo/v4 v4.10.2
 	github.com/mholt/archiver v3.1.1+incompatible
 	github.com/projectdiscovery/dsl v0.0.9
 	github.com/projectdiscovery/fasttemplate v0.0.2
 	github.com/projectdiscovery/goflags v0.1.10
 	github.com/projectdiscovery/gologger v1.1.10
-	github.com/projectdiscovery/httpx v1.3.1
+	github.com/projectdiscovery/httpx v1.3.0
 	github.com/projectdiscovery/mapcidr v1.1.2
 	github.com/projectdiscovery/ratelimit v0.0.8
 	github.com/projectdiscovery/rdap v0.9.1-0.20221108103045-9865884d1917
 	github.com/projectdiscovery/sarif v0.0.1
-	github.com/projectdiscovery/tlsx v1.0.9
+	github.com/projectdiscovery/tlsx v1.1.0
 	github.com/projectdiscovery/uncover v1.0.6-0.20230601103158-bfd7e02a5bb1
-	github.com/projectdiscovery/utils v0.0.37
+	github.com/projectdiscovery/utils v0.0.38
 	github.com/projectdiscovery/wappalyzergo v0.0.94
 	github.com/stretchr/testify v1.8.4
 	gopkg.in/src-d/go-git.v4 v4.13.1
@@ -125,7 +125,7 @@ require (
 	github.com/pjbgf/sha1cd v0.3.0 // indirect
 	github.com/pkg/browser v0.0.0-20210911075715-681adbf594b8 // indirect
 	github.com/projectdiscovery/asnmap v1.0.4 // indirect
-	github.com/projectdiscovery/cdncheck v1.0.2 // indirect
+	github.com/projectdiscovery/cdncheck v1.0.6 // indirect
 	github.com/projectdiscovery/freeport v0.0.4 // indirect
 	github.com/refraction-networking/utls v1.3.2 // indirect
 	github.com/sashabaranov/go-openai v1.9.1 // indirect
