@@ -70,13 +70,13 @@ require (
 	github.com/projectdiscovery/fasttemplate v0.0.2
 	github.com/projectdiscovery/goflags v0.1.10
 	github.com/projectdiscovery/gologger v1.1.10
-	github.com/projectdiscovery/httpx v1.3.1
+	github.com/projectdiscovery/httpx v1.3.0
 	github.com/projectdiscovery/mapcidr v1.1.2
 	github.com/projectdiscovery/nvd v1.0.10-0.20230327073015-721181aba1e8
 	github.com/projectdiscovery/ratelimit v0.0.8
 	github.com/projectdiscovery/rdap v0.9.1-0.20221108103045-9865884d1917
 	github.com/projectdiscovery/sarif v0.0.1
-	github.com/projectdiscovery/tlsx v1.0.9
+	github.com/projectdiscovery/tlsx v1.0.9-0.20230615132425-ea84447a4ec5
 	github.com/projectdiscovery/uncover v1.0.6-0.20230601103158-bfd7e02a5bb1
 	github.com/projectdiscovery/utils v0.0.37
 	github.com/projectdiscovery/wappalyzergo v0.0.94
@@ -126,7 +126,7 @@ require (
 	github.com/pjbgf/sha1cd v0.3.0 // indirect
 	github.com/pkg/browser v0.0.0-20210911075715-681adbf594b8 // indirect
 	github.com/projectdiscovery/asnmap v1.0.4 // indirect
-	github.com/projectdiscovery/cdncheck v1.0.2 // indirect
+	github.com/projectdiscovery/cdncheck v1.0.6 // indirect
 	github.com/projectdiscovery/freeport v0.0.4 // indirect
 	github.com/refraction-networking/utls v1.3.2 // indirect
 	github.com/sashabaranov/go-openai v1.9.1 // indirect
