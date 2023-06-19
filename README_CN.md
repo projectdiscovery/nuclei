@@ -21,7 +21,7 @@
   <a href="#工作流程">工作流程</a> •
   <a href="#安装Nuclei">安装</a> •
   <a href="#对于安全工程师">对于安全工程师</a> •
-  <a href="#对于开发者和组织">对于开发者</a> •
+  <a href="#对于开发和组织">对于开发者</a> •
   <a href="https://nuclei.projectdiscovery.io/nuclei/get-started/">文档</a> •
   <a href="#c致谢">致谢</a> •
   <a href="https://nuclei.projectdiscovery.io/faq/nuclei/">常见问题</a> •
