@@ -8,7 +8,6 @@ import (
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/contextargs"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/generators"
-	putils "github.com/projectdiscovery/nuclei/v2/pkg/utils"
 	maputil "github.com/projectdiscovery/utils/maps"
 	urlutil "github.com/projectdiscovery/utils/url"
 	"github.com/weppos/publicsuffix-go/publicsuffix"
@@ -33,8 +32,6 @@ func init() {
 		Dn:       "DN",
 		Tld:      "TLD",
 		Sd:       "SD",
-		// note: this shouldn't be tested as it depends on third party API and varies with the runner environment
-		PublicIP: "PublicIP",
 	}
 }
 
@@ -55,7 +52,6 @@ const (
 	Dn
 	Tld
 	Sd
-	PublicIP
 )
 
 // GenerateVariables will create default variables with context args
@@ -168,8 +164,6 @@ func generateVariables(inputURL *urlutil.URL, removeTrailingSlash bool) map[stri
 			knownVariables[v] = parsed.Scheme
 		case Input:
 			knownVariables[v] = parsed.String()
-		case PublicIP:
-			knownVariables[v] = putils.GetPublicIP()
 		}
 	}
 	return generators.MergeMaps(knownVariables, GenerateDNSVariables(parsed.Hostname()))
