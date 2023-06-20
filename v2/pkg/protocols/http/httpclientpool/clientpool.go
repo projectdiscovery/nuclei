@@ -225,9 +225,14 @@ func wrappedGet(options *types.Options, configuration *Configuration) (*retryabl
 	}
 
 	transport := &http.Transport{
-		ForceAttemptHTTP2:   options.ForceAttemptHTTP2,
-		DialContext:         Dialer.Dial,
-		DialTLSContext:      Dialer.DialTLS,
+		ForceAttemptHTTP2: options.ForceAttemptHTTP2,
+		DialContext:       Dialer.Dial,
+		DialTLSContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
+			if options.HasClientCertificates() {
+				return Dialer.DialTLSWithConfig(ctx, network, addr, tlsConfig)
+			}
+			return Dialer.DialTLS(ctx, network, addr)
+		},
 		MaxIdleConns:        maxIdleConns,
 		MaxIdleConnsPerHost: maxIdleConnsPerHost,
 		MaxConnsPerHost:     maxConnsPerHost,
