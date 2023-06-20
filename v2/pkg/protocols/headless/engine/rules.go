@@ -36,19 +36,23 @@ func (p *Page) routingRuleHandler(ctx *rod.Hijack) {
 		}
 	}
 
-	// each http request is performed via the native go http client
-	// we first inject the shared cookies
-	if cookies := p.input.CookieJar.Cookies(ctx.Request.URL()); p.options.CookieReuse && len(cookies) > 0 {
-		p.instance.browser.httpclient.Jar.SetCookies(ctx.Request.URL(), cookies)
+	if p.options.CookieReuse {
+		// each http request is performed via the native go http client
+		// we first inject the shared cookies
+		if cookies := p.input.CookieJar.Cookies(ctx.Request.URL()); len(cookies) > 0 {
+			p.instance.browser.httpclient.Jar.SetCookies(ctx.Request.URL(), cookies)
+		}
 	}
 
 	// perform the request
 	_ = ctx.LoadResponse(p.instance.browser.httpclient, true)
 
-	// retrieve the updated cookies from the native http client and inject them into the shared cookie jar
-	// keeps existing one if not present
-	if cookies := p.instance.browser.httpclient.Jar.Cookies(ctx.Request.URL()); p.options.CookieReuse && len(cookies) > 0 {
-		p.input.CookieJar.SetCookies(ctx.Request.URL(), cookies)
+	if p.options.CookieReuse {
+		// retrieve the updated cookies from the native http client and inject them into the shared cookie jar
+		// keeps existing one if not present
+		if cookies := p.instance.browser.httpclient.Jar.Cookies(ctx.Request.URL()); len(cookies) > 0 {
+			p.input.CookieJar.SetCookies(ctx.Request.URL(), cookies)
+		}
 	}
 
 	for _, rule := range p.rules {
