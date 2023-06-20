@@ -1,7 +1,7 @@
 package engine
 
 import (
-	"fmt"
+	"net/http"
 	"net/url"
 	"strings"
 	"sync"
@@ -9,10 +9,12 @@ import (
 
 	"github.com/go-rod/rod"
 	"github.com/go-rod/rod/lib/proto"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/contextargs"
 )
 
 // Page is a single page in an isolated browser instance
 type Page struct {
+	input          *contextargs.Context
 	page           *rod.Page
 	rules          []rule
 	instance       *Instance
@@ -31,7 +33,7 @@ type HistoryData struct {
 }
 
 // Run runs a list of actions by creating a new page in the browser.
-func (i *Instance) Run(baseURL *url.URL, actions []*Action, payloads map[string]interface{}, timeout time.Duration) (map[string]string, *Page, error) {
+func (i *Instance) Run(input *contextargs.Context, actions []*Action, payloads map[string]interface{}, timeout time.Duration) (map[string]string, *Page, error) {
 	page, err := i.engine.Page(proto.TargetCreateTarget{})
 	if err != nil {
 		return nil, nil, err
@@ -44,7 +46,13 @@ func (i *Instance) Run(baseURL *url.URL, actions []*Action, payloads map[string]
 		}
 	}
 
-	createdPage := &Page{page: page, instance: i, mutex: &sync.RWMutex{}, payloads: payloads}
+	createdPage := &Page{
+		page:     page,
+		input:    input,
+		instance: i,
+		mutex:    &sync.RWMutex{},
+		payloads: payloads,
+	}
 
 	// in case the page has request/response modification rules - enable global hijacking
 	if createdPage.hasModificationRules() || containsModificationActions(actions...) {
@@ -79,18 +87,70 @@ func (i *Instance) Run(baseURL *url.URL, actions []*Action, payloads map[string]
 		return nil, nil, err
 	}
 
-	//FIXME: this is a hack, make sure to fix this in the future. See: https://github.com/go-rod/rod/issues/188
-	var e proto.NetworkResponseReceived
-	wait := page.WaitEvent(&e)
+	// inject cookies
+	// each http request is performed via the native go http client
+	// we first inject the shared cookies
+	URL, err := url.Parse(input.MetaInput.Input)
+	if err != nil {
+		return nil, nil, err
+	}
+	if cookies := input.CookieJar.Cookies(URL); len(cookies) > 0 {
+		var NetworkCookies []*proto.NetworkCookie
+		for _, cookie := range cookies {
+			networkCookie := &proto.NetworkCookie{
+				Name:     cookie.Name,
+				Value:    cookie.Value,
+				Domain:   cookie.Domain,
+				Path:     cookie.Path,
+				HTTPOnly: cookie.HttpOnly,
+				Secure:   cookie.Secure,
+				Expires:  proto.TimeSinceEpoch(cookie.Expires.Unix()),
+				SameSite: proto.NetworkCookieSameSite(GetSameSite(cookie)),
+				Priority: proto.NetworkCookiePriorityLow,
+			}
+			NetworkCookies = append(NetworkCookies, networkCookie)
+		}
+		params := proto.CookiesToParams(NetworkCookies)
+		for _, param := range params {
+			param.URL = input.MetaInput.Input
+		}
+		err := page.SetCookies(params)
+		if err != nil {
+			return nil, nil, err
+		}
+	}
 
-	data, err := createdPage.ExecuteActions(baseURL, actions)
+	// todo: this is wrong as the next intercepted result event might not be the result of page.Navigate
+	//FIXME: this is a hack, make sure to fix this in the future. See: https://github.com/go-rod/rod/issues/188
+	// var e proto.NetworkResponseReceived
+	// wait := page.WaitEvent(&e)
+
+	data, err := createdPage.ExecuteActions(input, actions)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	wait()
-	data["header"] = headersToString(e.Response.Headers)
-	data["status_code"] = fmt.Sprint(e.Response.Status)
+	// at the end of actions pull out updated cookies from the browser and inject them into the shared cookie jar
+	if cookies, err := page.Cookies([]string{URL.String()}); err == nil && len(cookies) > 0 {
+		var httpCookies []*http.Cookie
+		for _, cookie := range cookies {
+			httpCookie := &http.Cookie{
+				Name:     cookie.Name,
+				Value:    cookie.Value,
+				Domain:   cookie.Domain,
+				Path:     cookie.Path,
+				HttpOnly: cookie.HTTPOnly,
+				Secure:   cookie.Secure,
+			}
+			httpCookies = append(httpCookies, httpCookie)
+		}
+		input.CookieJar.SetCookies(URL, httpCookies)
+	}
+
+	// todo: this is wrong as per previous comment - this info must be captured and filled from within createdPage.ExecuteActions with optimistic match based on URL
+	// wait()
+	// data["header"] = headersToString(e.Response.Headers)
+	// data["status_code"] = fmt.Sprint(e.Response.Status)
 
 	return data, createdPage, nil
 }
@@ -199,4 +259,19 @@ func headersToString(headers proto.NetworkHeaders) string {
 		builder.WriteRune('\n')
 	}
 	return builder.String()
+}
+
+func GetSameSite(cookie *http.Cookie) string {
+	switch cookie.SameSite {
+	case http.SameSiteNoneMode:
+		return "none"
+	case http.SameSiteLaxMode:
+		return "lax"
+	case http.SameSiteStrictMode:
+		return "strict"
+	case http.SameSiteDefaultMode:
+		fallthrough
+	default:
+		return ""
+	}
 }

@@ -18,6 +18,7 @@ import (
 	"github.com/go-rod/rod/lib/utils"
 	"github.com/pkg/errors"
 	"github.com/projectdiscovery/gologger"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/contextargs"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/generators"
 	errorutil "github.com/projectdiscovery/utils/errors"
 	fileutil "github.com/projectdiscovery/utils/file"
@@ -38,8 +39,11 @@ const (
 )
 
 // ExecuteActions executes a list of actions on a page.
-func (p *Page) ExecuteActions(baseURL *url.URL, actions []*Action) (map[string]string, error) {
-	var err error
+func (p *Page) ExecuteActions(input *contextargs.Context, actions []*Action) (map[string]string, error) {
+	baseURL, err := url.Parse(input.MetaInput.Input)
+	if err != nil {
+		return nil, err
+	}
 
 	outData := make(map[string]string)
 	for _, act := range actions {

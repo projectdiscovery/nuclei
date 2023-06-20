@@ -229,8 +229,7 @@ func (request *Request) executeTurboHTTP(input *contextargs.Context, dynamicValu
 
 // executeFuzzingRule executes fuzzing request for a URL
 func (request *Request) executeFuzzingRule(input *contextargs.Context, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
-	parsed, err := urlutil.Parse(input.MetaInput.Input)
-	if err != nil {
+	if _, err := urlutil.Parse(input.MetaInput.Input); err != nil {
 		return errors.Wrap(err, "could not parse url")
 	}
 	fuzzRequestCallback := func(gr fuzz.GeneratedRequest) bool {
@@ -298,7 +297,7 @@ func (request *Request) executeFuzzingRule(input *contextargs.Context, previous 
 		}
 		for _, rule := range request.Fuzzing {
 			err = rule.Execute(&fuzz.ExecuteRuleInput{
-				URL:         parsed,
+				Input:       input,
 				Callback:    fuzzRequestCallback,
 				Values:      generated.dynamicValues,
 				BaseRequest: generated.request,
