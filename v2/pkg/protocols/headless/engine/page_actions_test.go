@@ -5,6 +5,7 @@ import (
 	"io"
 	"math/rand"
 	"net/http"
+	"net/http/cookiejar"
 	"net/http/httptest"
 	"os"
 	"path/filepath"
@@ -565,6 +566,8 @@ func testHeadless(t *testing.T, actions []*Action, timeout time.Duration, handle
 	defer ts.Close()
 
 	input := contextargs.NewWithInput(ts.URL)
+	input.CookieJar, err = cookiejar.New(nil)
+	require.Nil(t, err)
 
 	extractedData, page, err := instance.Run(input, actions, nil, &Options{Timeout: timeout})
 	assert(page, err, extractedData)

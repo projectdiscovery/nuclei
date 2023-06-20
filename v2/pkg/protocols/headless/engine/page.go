@@ -102,6 +102,7 @@ func (i *Instance) Run(input *contextargs.Context, actions []*Action, payloads m
 	if err != nil {
 		return nil, nil, err
 	}
+
 	if cookies := input.CookieJar.Cookies(URL); options.CookieReuse && len(cookies) > 0 {
 		var NetworkCookies []*proto.NetworkCookie
 		for _, cookie := range cookies {

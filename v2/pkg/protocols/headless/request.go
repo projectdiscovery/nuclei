@@ -106,6 +106,11 @@ func (request *Request) executeRequestWithPayloads(input *contextargs.Context, p
 		Timeout:     time.Duration(request.options.Options.PageTimeout) * time.Second,
 		CookieReuse: request.CookieReuse,
 	}
+
+	if options.CookieReuse && input.CookieJar == nil {
+		return errors.New("cookie-reuse set but cookie-jar is nil")
+	}
+
 	out, page, err := instance.Run(input, request.Steps, payloads, options)
 	if err != nil {
 		request.options.Output.Request(request.options.TemplatePath, input.MetaInput.Input, request.Type().String(), err)
