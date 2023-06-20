@@ -103,29 +103,31 @@ func (i *Instance) Run(input *contextargs.Context, actions []*Action, payloads m
 		return nil, nil, err
 	}
 
-	if cookies := input.CookieJar.Cookies(URL); options.CookieReuse && len(cookies) > 0 {
-		var NetworkCookies []*proto.NetworkCookie
-		for _, cookie := range cookies {
-			networkCookie := &proto.NetworkCookie{
-				Name:     cookie.Name,
-				Value:    cookie.Value,
-				Domain:   cookie.Domain,
-				Path:     cookie.Path,
-				HTTPOnly: cookie.HttpOnly,
-				Secure:   cookie.Secure,
-				Expires:  proto.TimeSinceEpoch(cookie.Expires.Unix()),
-				SameSite: proto.NetworkCookieSameSite(GetSameSite(cookie)),
-				Priority: proto.NetworkCookiePriorityLow,
+	if options.CookieReuse {
+		if cookies := input.CookieJar.Cookies(URL); len(cookies) > 0 {
+			var NetworkCookies []*proto.NetworkCookie
+			for _, cookie := range cookies {
+				networkCookie := &proto.NetworkCookie{
+					Name:     cookie.Name,
+					Value:    cookie.Value,
+					Domain:   cookie.Domain,
+					Path:     cookie.Path,
+					HTTPOnly: cookie.HttpOnly,
+					Secure:   cookie.Secure,
+					Expires:  proto.TimeSinceEpoch(cookie.Expires.Unix()),
+					SameSite: proto.NetworkCookieSameSite(GetSameSite(cookie)),
+					Priority: proto.NetworkCookiePriorityLow,
+				}
+				NetworkCookies = append(NetworkCookies, networkCookie)
 			}
-			NetworkCookies = append(NetworkCookies, networkCookie)
-		}
-		params := proto.CookiesToParams(NetworkCookies)
-		for _, param := range params {
-			param.URL = input.MetaInput.Input
-		}
-		err := page.SetCookies(params)
-		if err != nil {
-			return nil, nil, err
+			params := proto.CookiesToParams(NetworkCookies)
+			for _, param := range params {
+				param.URL = input.MetaInput.Input
+			}
+			err := page.SetCookies(params)
+			if err != nil {
+				return nil, nil, err
+			}
 		}
 	}
 
@@ -139,21 +141,23 @@ func (i *Instance) Run(input *contextargs.Context, actions []*Action, payloads m
 		return nil, nil, err
 	}
 
-	// at the end of actions pull out updated cookies from the browser and inject them into the shared cookie jar
-	if cookies, err := page.Cookies([]string{URL.String()}); options.CookieReuse && err == nil && len(cookies) > 0 {
-		var httpCookies []*http.Cookie
-		for _, cookie := range cookies {
-			httpCookie := &http.Cookie{
-				Name:     cookie.Name,
-				Value:    cookie.Value,
-				Domain:   cookie.Domain,
-				Path:     cookie.Path,
-				HttpOnly: cookie.HTTPOnly,
-				Secure:   cookie.Secure,
+	if options.CookieReuse {
+		// at the end of actions pull out updated cookies from the browser and inject them into the shared cookie jar
+		if cookies, err := page.Cookies([]string{URL.String()}); options.CookieReuse && err == nil && len(cookies) > 0 {
+			var httpCookies []*http.Cookie
+			for _, cookie := range cookies {
+				httpCookie := &http.Cookie{
+					Name:     cookie.Name,
+					Value:    cookie.Value,
+					Domain:   cookie.Domain,
+					Path:     cookie.Path,
+					HttpOnly: cookie.HTTPOnly,
+					Secure:   cookie.Secure,
+				}
+				httpCookies = append(httpCookies, httpCookie)
 			}
-			httpCookies = append(httpCookies, httpCookie)
+			input.CookieJar.SetCookies(URL, httpCookies)
 		}
-		input.CookieJar.SetCookies(URL, httpCookies)
 	}
 
 	// todo: this is wrong as per previous comment - this info must be captured and filled from within createdPage.ExecuteActions with optimistic match based on URL
