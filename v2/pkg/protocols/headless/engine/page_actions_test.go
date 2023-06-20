@@ -566,7 +566,7 @@ func testHeadless(t *testing.T, actions []*Action, timeout time.Duration, handle
 
 	input := contextargs.NewWithInput(ts.URL)
 
-	extractedData, page, err := instance.Run(input, actions, nil, timeout)
+	extractedData, page, err := instance.Run(input, actions, nil, &Options{Timeout: timeout})
 	assert(page, err, extractedData)
 
 	if page != nil {

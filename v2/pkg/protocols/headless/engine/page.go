@@ -15,6 +15,7 @@ import (
 // Page is a single page in an isolated browser instance
 type Page struct {
 	input          *contextargs.Context
+	options        *Options
 	page           *rod.Page
 	rules          []rule
 	instance       *Instance
@@ -32,13 +33,19 @@ type HistoryData struct {
 	RawResponse string
 }
 
+// Options contains additional configuration options for the browser instance
+type Options struct {
+	Timeout     time.Duration
+	CookieReuse bool
+}
+
 // Run runs a list of actions by creating a new page in the browser.
-func (i *Instance) Run(input *contextargs.Context, actions []*Action, payloads map[string]interface{}, timeout time.Duration) (map[string]string, *Page, error) {
+func (i *Instance) Run(input *contextargs.Context, actions []*Action, payloads map[string]interface{}, options *Options) (map[string]string, *Page, error) {
 	page, err := i.engine.Page(proto.TargetCreateTarget{})
 	if err != nil {
 		return nil, nil, err
 	}
-	page = page.Timeout(timeout)
+	page = page.Timeout(options.Timeout)
 
 	if i.browser.customAgent != "" {
 		if userAgentErr := page.SetUserAgent(&proto.NetworkSetUserAgentOverride{UserAgent: i.browser.customAgent}); userAgentErr != nil {
@@ -47,6 +54,7 @@ func (i *Instance) Run(input *contextargs.Context, actions []*Action, payloads m
 	}
 
 	createdPage := &Page{
+		options:  options,
 		page:     page,
 		input:    input,
 		instance: i,
@@ -94,7 +102,7 @@ func (i *Instance) Run(input *contextargs.Context, actions []*Action, payloads m
 	if err != nil {
 		return nil, nil, err
 	}
-	if cookies := input.CookieJar.Cookies(URL); len(cookies) > 0 {
+	if cookies := input.CookieJar.Cookies(URL); options.CookieReuse && len(cookies) > 0 {
 		var NetworkCookies []*proto.NetworkCookie
 		for _, cookie := range cookies {
 			networkCookie := &proto.NetworkCookie{
@@ -131,7 +139,7 @@ func (i *Instance) Run(input *contextargs.Context, actions []*Action, payloads m
 	}
 
 	// at the end of actions pull out updated cookies from the browser and inject them into the shared cookie jar
-	if cookies, err := page.Cookies([]string{URL.String()}); err == nil && len(cookies) > 0 {
+	if cookies, err := page.Cookies([]string{URL.String()}); options.CookieReuse && err == nil && len(cookies) > 0 {
 		var httpCookies []*http.Cookie
 		for _, cookie := range cookies {
 			httpCookie := &http.Cookie{

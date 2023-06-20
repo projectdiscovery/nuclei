@@ -19,6 +19,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/helpers/responsehighlighter"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/interactsh"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/utils/vardump"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/headless/engine"
 	protocolutils "github.com/projectdiscovery/nuclei/v2/pkg/protocols/utils"
 	templateTypes "github.com/projectdiscovery/nuclei/v2/pkg/templates/types"
 	urlutil "github.com/projectdiscovery/utils/url"
@@ -101,8 +102,11 @@ func (request *Request) executeRequestWithPayloads(input *contextargs.Context, p
 		request.options.Progress.IncrementFailedRequestsBy(1)
 		return errors.Wrap(err, errCouldGetHtmlElement)
 	}
-	timeout := time.Duration(request.options.Options.PageTimeout) * time.Second
-	out, page, err := instance.Run(input, request.Steps, payloads, timeout)
+	options := &engine.Options{
+		Timeout:     time.Duration(request.options.Options.PageTimeout) * time.Second,
+		CookieReuse: request.CookieReuse,
+	}
+	out, page, err := instance.Run(input, request.Steps, payloads, options)
 	if err != nil {
 		request.options.Output.Request(request.options.TemplatePath, input.MetaInput.Input, request.Type().String(), err)
 		request.options.Progress.IncrementFailedRequestsBy(1)

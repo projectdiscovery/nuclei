@@ -38,7 +38,7 @@ func (p *Page) routingRuleHandler(ctx *rod.Hijack) {
 
 	// each http request is performed via the native go http client
 	// we first inject the shared cookies
-	if cookies := p.input.CookieJar.Cookies(ctx.Request.URL()); len(cookies) > 0 {
+	if cookies := p.input.CookieJar.Cookies(ctx.Request.URL()); p.options.CookieReuse && len(cookies) > 0 {
 		p.instance.browser.httpclient.Jar.SetCookies(ctx.Request.URL(), cookies)
 	}
 
@@ -47,7 +47,7 @@ func (p *Page) routingRuleHandler(ctx *rod.Hijack) {
 
 	// retrieve the updated cookies from the native http client and inject them into the shared cookie jar
 	// keeps existing one if not present
-	if cookies := p.instance.browser.httpclient.Jar.Cookies(ctx.Request.URL()); len(cookies) > 0 {
+	if cookies := p.instance.browser.httpclient.Jar.Cookies(ctx.Request.URL()); p.options.CookieReuse && len(cookies) > 0 {
 		p.input.CookieJar.SetCookies(ctx.Request.URL(), cookies)
 	}
 
