@@ -258,16 +258,16 @@ func containsAnyModificationActionType(actionTypes ...ActionType) bool {
 }
 
 // headersToString converts network headers to string
-func headersToString(headers proto.NetworkHeaders) string {
-	builder := &strings.Builder{}
-	for header, value := range headers {
-		builder.WriteString(header)
-		builder.WriteString(": ")
-		builder.WriteString(value.String())
-		builder.WriteRune('\n')
-	}
-	return builder.String()
-}
+// func headersToString(headers proto.NetworkHeaders) string {
+// 	builder := &strings.Builder{}
+// 	for header, value := range headers {
+// 		builder.WriteString(header)
+// 		builder.WriteString(": ")
+// 		builder.WriteString(value.String())
+// 		builder.WriteRune('\n')
+// 	}
+// 	return builder.String()
+// }
 
 func GetSameSite(cookie *http.Cookie) string {
 	switch cookie.SameSite {
