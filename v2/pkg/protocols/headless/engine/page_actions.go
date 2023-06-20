@@ -217,7 +217,7 @@ func (p *Page) ActionDeleteHeader(act *Action, out map[string]string /*TODO revi
 }
 
 // ActionSetBody executes a SetBody action.
-func (p *Page) ActionSetBody(act *Action, out map[string]string /*TODO review unused parameter*/) error {
+func (p *Page) ActionSetBody(act *Action, out map[string]string) error {
 	in := p.getActionArgWithDefaultValues(act, "part")
 
 	args := make(map[string]string)
@@ -237,7 +237,7 @@ func (p *Page) ActionSetMethod(act *Action, out map[string]string) error {
 }
 
 // NavigateURL executes an ActionLoadURL actions loading a URL for the page.
-func (p *Page) NavigateURL(action *Action, out map[string]string, parsed *url.URL /*TODO review unused parameter*/) error {
+func (p *Page) NavigateURL(action *Action, out map[string]string, parsed *url.URL) error {
 	URL := p.getActionArgWithDefaultValues(action, "url")
 	if URL == "" {
 		return errinvalidArguments

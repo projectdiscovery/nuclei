@@ -1,6 +1,8 @@
 package engine
 
 import (
+	"bufio"
+	"fmt"
 	"net/http"
 	"net/url"
 	"strings"
@@ -10,6 +12,7 @@ import (
 	"github.com/go-rod/rod"
 	"github.com/go-rod/rod/lib/proto"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/contextargs"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/utils"
 )
 
 // Page is a single page in an isolated browser instance
@@ -131,11 +134,6 @@ func (i *Instance) Run(input *contextargs.Context, actions []*Action, payloads m
 		}
 	}
 
-	// todo: this is wrong as the next intercepted result event might not be the result of page.Navigate
-	//FIXME: this is a hack, make sure to fix this in the future. See: https://github.com/go-rod/rod/issues/188
-	// var e proto.NetworkResponseReceived
-	// wait := page.WaitEvent(&e)
-
 	data, err := createdPage.ExecuteActions(input, actions)
 	if err != nil {
 		return nil, nil, err
@@ -160,10 +158,16 @@ func (i *Instance) Run(input *contextargs.Context, actions []*Action, payloads m
 		}
 	}
 
-	// todo: this is wrong as per previous comment - this info must be captured and filled from within createdPage.ExecuteActions with optimistic match based on URL
-	// wait()
-	// data["header"] = headersToString(e.Response.Headers)
-	// data["status_code"] = fmt.Sprint(e.Response.Status)
+	// The first item of history data will contain the very first request from the browser
+	// we assume it's the one matching the initial URL
+	if len(createdPage.History) > 0 {
+		firstItem := createdPage.History[0]
+		if resp, err := http.ReadResponse(bufio.NewReader(strings.NewReader(firstItem.RawResponse)), nil); err == nil {
+			data["header"] = utils.HeadersToString(resp.Header)
+			data["status_code"] = fmt.Sprint(resp.StatusCode)
+			resp.Body.Close()
+		}
+	}
 
 	return data, createdPage, nil
 }
@@ -261,18 +265,6 @@ func containsAnyModificationActionType(actionTypes ...ActionType) bool {
 	}
 	return false
 }
-
-// headersToString converts network headers to string
-// func headersToString(headers proto.NetworkHeaders) string {
-// 	builder := &strings.Builder{}
-// 	for header, value := range headers {
-// 		builder.WriteString(header)
-// 		builder.WriteString(": ")
-// 		builder.WriteString(value.String())
-// 		builder.WriteRune('\n')
-// 	}
-// 	return builder.String()
-// }
 
 func GetSameSite(cookie *http.Cookie) string {
 	switch cookie.SameSite {
