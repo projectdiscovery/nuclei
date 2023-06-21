@@ -11,7 +11,7 @@ updates:
     directory: "/"
     schedule:
       interval: "weekly"
-    target-branch: "dev"
+    target-branch: "dep"
     commit-message:
       prefix: "chore"
       include: "scope"
@@ -23,7 +23,7 @@ updates:
     directory: "v2/"
     schedule:
       interval: "weekly"
-    target-branch: "dev"
+    target-branch: "dep"
     commit-message:
       prefix: "chore"
       include: "scope"
@@ -35,7 +35,7 @@ updates:
     directory: "/"
     schedule:
       interval: "weekly"
-    target-branch: "dev"
+    target-branch: "dep"
     commit-message:
       prefix: "chore"
       include: "scope"

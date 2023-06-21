@@ -1,0 +1,23 @@
+name: sync-dep
+on:
+  push:
+    branches:
+      - dev
+
+jobs:
+  sync-dep-with-main:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+      - name: Set up Node
+        uses: actions/setup-node@v3
+        with:
+          node-version: 12
+      - name: Opening pull request
+        id: pull
+        uses: tretuna/sync-branches@1.4.0
+        with:
+          GITHUB_TOKEN: ${{ secrets.PDTEAMX_PAT }}
+          FROM_BRANCH: "${{ github.ref_name }}"
+          TO_BRANCH: "dep"

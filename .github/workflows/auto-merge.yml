@@ -1,0 +1,16 @@
+name: auto-merge
+
+on:
+  pull_request:
+    branches:
+      - dep
+
+jobs:
+  automerge:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: ahmadnassri/action-dependabot-auto-merge@v2
+        with:
+          github-token: ${{ secrets.PDTEAMX_PAT }}
+          target: all
