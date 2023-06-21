@@ -50,7 +50,6 @@ type StandardWriter struct {
 	timestamp             bool
 	noMetadata            bool
 	matcherStatus         bool
-	matchStatusPerRequest bool
 	mutex                 *sync.Mutex
 	aurora                aurora.Aurora
 	outputFile            io.WriteCloser
@@ -188,12 +187,12 @@ func NewStandardWriter(options *types.Options) (*StandardWriter, error) {
 			gologger.Fatal().Msgf("Could not create output directory '%s': %s\n", options.StoreResponseDir, err)
 		}
 	}
+
 	writer := &StandardWriter{
 		json:                  options.JSONL,
 		jsonReqResp:           options.JSONRequests,
 		noMetadata:            options.NoMeta,
-		matcherStatus:         options.MatcherStatus,
-		matchStatusPerRequest: options.MatchStatusPerRequest,
+		matcherStatus:         options.MatcherStatus || options.MatchStatusPerRequest,
 		timestamp:             options.Timestamp,
 		aurora:                auroraColorizer,
 		mutex:                 &sync.Mutex{},
@@ -304,7 +303,7 @@ func (w *StandardWriter) Close() {
 
 // WriteFailure writes the failure event for template to file and/or screen.
 func (w *StandardWriter) WriteFailure(event InternalEvent) error {
-	if !w.matcherStatus && !w.matchStatusPerRequest {
+	if !w.matcherStatus {
 		return nil
 	}
 	templatePath, templateURL := utils.TemplatePathURL(types.ToString(event["template-path"]))
