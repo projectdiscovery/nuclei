@@ -39,7 +39,7 @@ func New(options *Options) (*Exporter, error) {
 	_ = os.MkdirAll(directory, 0755)
 
 	// index generation header
-	dataHeader := util.CreateTableHeader([]string{"Hostname/IP", "Finding", "Severity"})
+	dataHeader := util.CreateTableHeader("Hostname/IP", "Finding", "Severity")
 
 	err := os.WriteFile(filepath.Join(directory, indexFileName), []byte(dataHeader), 0644)
 	if err != nil {

@@ -21,7 +21,7 @@ func TestMarkDownHeaderCreation(t *testing.T) {
 
 	for _, currentTestCase := range testCases {
 		t.Run(strings.Join(currentTestCase.headers, ","), func(t1 *testing.T) {
-			assert.Equal(t1, CreateTableHeader(currentTestCase.headers), currentTestCase.expectedValue)
+			assert.Equal(t1, CreateTableHeader(currentTestCase.headers...), currentTestCase.expectedValue)
 		})
 	}
 }

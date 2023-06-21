@@ -21,9 +21,9 @@ func CreateTable(headers []string, rows [][]string) (string, error) {
 	headerSize := len(headers)
 	if headers == nil || headerSize == 0 {
 		return "", errorutil.New("No headers provided")
-	} else {
-		builder.WriteString(CreateTableHeader(headers))
 	}
+
+	builder.WriteString(CreateTableHeader(headers...))
 
 	for _, row := range rows {
 		rowSize := len(row)
@@ -41,7 +41,7 @@ func CreateTable(headers []string, rows [][]string) (string, error) {
 	return builder.String(), nil
 }
 
-func CreateTableHeader(headers []string) string {
+func CreateTableHeader(headers ...string) string {
 	headerSize := len(headers)
 	if headers == nil || headerSize == 0 {
 		return ""
