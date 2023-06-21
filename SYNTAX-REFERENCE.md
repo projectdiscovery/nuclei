@@ -1469,6 +1469,19 @@ DigestAuthPassword specifies the password for digest authentication
 
 <hr />
 
+<div class="dd">
+
+<code>disable-path-automerge</code>  <i>bool</i>
+
+</div>
+<div class="dt">
+
+DisablePathAutomerge disables merging target url path with raw request path
+
+</div>
+
+<hr />
+
 
 
 
