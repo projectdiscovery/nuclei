@@ -352,8 +352,8 @@ github.com/microcosm-cc/bluemonday v1.0.21/go.mod h1:ytNkv4RrDrLJ2pqlsSI46O6IVXm
 github.com/microcosm-cc/bluemonday v1.0.24 h1:NGQoPtwGVcbGkKfvyYk1yRqknzBuoMiUrO6R7uFTPlw=
 github.com/microcosm-cc/bluemonday v1.0.24/go.mod h1:ArQySAMps0790cHSkdPEJ7bGkF2VePWH773hsJNSHf8=
 github.com/miekg/dns v1.1.35/go.mod h1:KNUDUusw/aVsxyTYZM1oqvCicbwhgbNgztCETuNZ7xM=
-github.com/miekg/dns v1.1.54 h1:5jon9mWcb0sFJGpnI99tOMhCPyJ+RPVz5b63MQG0VWI=
-github.com/miekg/dns v1.1.54/go.mod h1:uInx36IzPl7FYnDcMeVWxj9byh7DutNykX4G9Sj60FY=
+github.com/miekg/dns v1.1.55 h1:GoQ4hpsj0nFLYe+bWiCToyrBEJXkQfOOIvFGFy0lEgo=
+github.com/miekg/dns v1.1.55/go.mod h1:uInx36IzPl7FYnDcMeVWxj9byh7DutNykX4G9Sj60FY=
 github.com/minio/minio-go/v6 v6.0.46/go.mod h1:qD0lajrGW49lKZLtXKtCB4X/qkMf0a5tBvN2PaZg7Gg=
 github.com/minio/selfupdate v0.6.0 h1:i76PgT0K5xO9+hjzKcacQtO7+MjJ4JKA8Ak8XQ9DDwU=
 github.com/minio/selfupdate v0.6.0/go.mod h1:bO02GTIPCMQFTEvE5h4DjYB58bCoZ35XLeBf0buTDdM=
@@ -405,8 +405,8 @@ github.com/projectdiscovery/cdncheck v1.0.6 h1:bjo4oxCD1Y5972ow0LWCjUpO8KOO12j6u
 github.com/projectdiscovery/cdncheck v1.0.6/go.mod h1:NN0QRfxBzUVZJoS0lN37spElCOXHzFuvq1yg5RhTxCE=
 github.com/projectdiscovery/clistats v0.0.12 h1:KLYJxpiwEFidduU4PbcwEcCQ2L7c5wrf7DI5IN5fZ+8=
 github.com/projectdiscovery/clistats v0.0.12/go.mod h1:9luKJj+7Hjq3+a7g129sKWRYx4SbTdkUWZQxabn3H5Y=
-github.com/projectdiscovery/dsl v0.0.11-0.20230621164734-2ce77d8fcf54 h1:U82Anj6uHSz/TzJ/i+C/Umh0oSwEKiOv2I6gWOvqzX0=
-github.com/projectdiscovery/dsl v0.0.11-0.20230621164734-2ce77d8fcf54/go.mod h1:u9d5whxkmbVWNXdRUJ8k5BcUpO22ip4wWyDMUO0NgRs=
+github.com/projectdiscovery/dsl v0.0.11-0.20230621170216-97e70ffb7efd h1:16DMjd4HeACrC9CkWJkkLeSh+LYPDorwNx11BlTbonU=
+github.com/projectdiscovery/dsl v0.0.11-0.20230621170216-97e70ffb7efd/go.mod h1:S72Cq/lfxzkldf64Sul1G2KFbGKNgpRFFCF/FazpznM=
 github.com/projectdiscovery/fastdialer v0.0.31 h1:eu0wTBCWjT8dXChmBtnQaAxoFpkLdvq0VroRxZoe/M8=
 github.com/projectdiscovery/fastdialer v0.0.31/go.mod h1:ttLvt0xnpNQAStYYQ6ElIBHfSXHuPEiXBkLH/OLbYlc=
 github.com/projectdiscovery/fasttemplate v0.0.2 h1:h2cISk5xDhlJEinlBQS6RRx0vOlOirB2y3Yu4PJzpiA=
@@ -444,8 +444,8 @@ github.com/projectdiscovery/tlsx v1.1.0 h1:6L5VKpHaoqvIHN6lH9zi7jIvph1JwYMYZOIpW
 github.com/projectdiscovery/tlsx v1.1.0/go.mod h1:C9xTbU2t54Anmvuq+4jxevR5rzqpp6XUUtV7G9J5CTE=
 github.com/projectdiscovery/uncover v1.0.6-0.20230601103158-bfd7e02a5bb1 h1:Pu6LvDqn+iSlhCDKKWm1ItPc++kqqlU8OntZeB/Prak=
 github.com/projectdiscovery/uncover v1.0.6-0.20230601103158-bfd7e02a5bb1/go.mod h1:Drl/CWD392mKtdXJhCBPlMkM0I6671pqedFphcnK5f8=
-github.com/projectdiscovery/utils v0.0.39-0.20230621163048-8647c83e20f4 h1:KiyKeoDGfa66Jfq0vxqfcxaWMXHsJ01LuZauEG4/K5E=
-github.com/projectdiscovery/utils v0.0.39-0.20230621163048-8647c83e20f4/go.mod h1:5+WAxSV7yGl6SDCtR1qiOyiEMCIo3jIff+A5OiYTCgM=
+github.com/projectdiscovery/utils v0.0.39-0.20230621170112-8dd2c290d962 h1:qQnIsYB72MmuaM9orhKpDzY0ddJKHf9Nuih0FnyV6x8=
+github.com/projectdiscovery/utils v0.0.39-0.20230621170112-8dd2c290d962/go.mod h1:rrd8dTBuKEScNMLgs1Xiu8rPCVeR0QTzmRcQ5iM3ymo=
 github.com/projectdiscovery/wappalyzergo v0.0.94 h1:IVRskuU95MajWCKYgvH5L67+MXDOWJDWSeBD61OsS/A=
 github.com/projectdiscovery/wappalyzergo v0.0.94/go.mod h1:HvYuW0Be4JCjVds/+XAEaMSqRG9yrI97UmZq0TPk6A0=
 github.com/projectdiscovery/yamldoc-go v1.0.4 h1:eZoESapnMw6WAHiVgRwNqvbJEfNHEH148uthhFbG5jE=
