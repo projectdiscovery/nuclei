@@ -66,7 +66,7 @@ require (
 	github.com/klauspost/compress v1.16.6
 	github.com/labstack/echo/v4 v4.10.2
 	github.com/mholt/archiver v3.1.1+incompatible
-	github.com/projectdiscovery/dsl v0.0.11-0.20230621003022-b5d83457b872
+	github.com/projectdiscovery/dsl v0.0.11-0.20230621164734-2ce77d8fcf54
 	github.com/projectdiscovery/fasttemplate v0.0.2
 	github.com/projectdiscovery/goflags v0.1.10
 	github.com/projectdiscovery/gologger v1.1.10
@@ -77,7 +77,7 @@ require (
 	github.com/projectdiscovery/sarif v0.0.1
 	github.com/projectdiscovery/tlsx v1.1.0
 	github.com/projectdiscovery/uncover v1.0.6-0.20230601103158-bfd7e02a5bb1
-	github.com/projectdiscovery/utils v0.0.38
+	github.com/projectdiscovery/utils v0.0.39-0.20230621163048-8647c83e20f4
 	github.com/projectdiscovery/wappalyzergo v0.0.94
 	github.com/stretchr/testify v1.8.4
 	gopkg.in/src-d/go-git.v4 v4.13.1
