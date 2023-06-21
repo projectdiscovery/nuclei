@@ -66,7 +66,7 @@ require (
 	github.com/klauspost/compress v1.16.6
 	github.com/labstack/echo/v4 v4.10.2
 	github.com/mholt/archiver v3.1.1+incompatible
-	github.com/projectdiscovery/dsl v0.0.11-0.20230620133543-3293a29d682c
+	github.com/projectdiscovery/dsl v0.0.11-0.20230621003022-b5d83457b872
 	github.com/projectdiscovery/fasttemplate v0.0.2
 	github.com/projectdiscovery/goflags v0.1.10
 	github.com/projectdiscovery/gologger v1.1.10
