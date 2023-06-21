@@ -59,6 +59,9 @@ func init() {
 			continue
 		}
 		re := regexp.MustCompile(tag + `:\s*\n`)
+		if t.Field(i).Type.Kind() == reflect.Bool {
+			re = regexp.MustCompile(tag + `:\s*(true|false)\s*\n`)
+		}
 		allTagsRegex = append(allTagsRegex, re)
 	}
 
