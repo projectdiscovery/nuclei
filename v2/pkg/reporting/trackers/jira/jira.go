@@ -1,7 +1,6 @@
 package jira
 
 import (
-	"bytes"
 	"fmt"
 	"io"
 	"strings"
@@ -10,15 +9,41 @@ import (
 	"github.com/trivago/tgo/tcontainer"
 
 	"github.com/projectdiscovery/gologger"
-	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/config"
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
+	"github.com/projectdiscovery/nuclei/v2/pkg/reporting/exporters/markdown/util"
 	"github.com/projectdiscovery/nuclei/v2/pkg/reporting/format"
-	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 	"github.com/projectdiscovery/retryablehttp-go"
 )
 
+type Formatter struct {
+	util.MarkdownFormatter
+}
+
+func (jiraFormatter *Formatter) MakeBold(text string) string {
+	return "*" + text + "*"
+}
+
+func (jiraFormatter *Formatter) CreateCodeBlock(title string, content string, _ string) string {
+	return fmt.Sprintf("\n%s\n{code}\n%s\n{code}\n", jiraFormatter.MakeBold(title), content)
+}
+
+func (jiraFormatter *Formatter) CreateTable(headers []string, rows [][]string) (string, error) {
+	table, err := jiraFormatter.MarkdownFormatter.CreateTable(headers, rows)
+	if err != nil {
+		return "", err
+	}
+	tableRows := strings.Split(table, "\n")
+	tableRowsWithoutHeaderSeparator := append(tableRows[:1], tableRows[2:]...)
+	return strings.Join(tableRowsWithoutHeaderSeparator, "\n"), nil
+}
+
+func (jiraFormatter *Formatter) CreateLink(title string, url string) string {
+	return fmt.Sprintf("[%s|%s]", title, url)
+}
+
 // Integration is a client for an issue tracker integration
 type Integration struct {
+	Formatter
 	jira    *jira.Client
 	options *Options
 }
@@ -129,7 +154,7 @@ func (i *Integration) CreateNewIssue(event *output.ResultEvent) error {
 		}
 	}
 	fields := &jira.IssueFields{
-		Description: jiraFormatDescription(event),
+		Description: format.CreateReportDescription(event, i),
 		Unknowns:    customFields,
 		Type:        jira.IssueType{Name: i.options.IssueType},
 		Project:     jira.Project{Key: i.options.ProjectName},
@@ -139,7 +164,7 @@ func (i *Integration) CreateNewIssue(event *output.ResultEvent) error {
 	if !i.options.Cloud {
 		fields = &jira.IssueFields{
 			Assignee:    &jira.User{Name: i.options.AccountID},
-			Description: jiraFormatDescription(event),
+			Description: format.CreateReportDescription(event, i),
 			Type:        jira.IssueType{Name: i.options.IssueType},
 			Project:     jira.Project{Key: i.options.ProjectName},
 			Summary:     summary,
@@ -171,7 +196,7 @@ func (i *Integration) CreateIssue(event *output.ResultEvent) error {
 			return err
 		} else if issueID != "" {
 			_, _, err = i.jira.Issue.AddComment(issueID, &jira.Comment{
-				Body: jiraFormatDescription(event),
+				Body: format.CreateReportDescription(event, i),
 			})
 			return err
 		}
@@ -181,7 +206,7 @@ func (i *Integration) CreateIssue(event *output.ResultEvent) error {
 
 // FindExistingIssue checks if the issue already exists and returns its ID
 func (i *Integration) FindExistingIssue(event *output.ResultEvent) (string, error) {
-	template := format.GetMatchedTemplate(event)
+	template := format.GetMatchedTemplateName(event)
 	jql := fmt.Sprintf("summary ~ \"%s\" AND summary ~ \"%s\" AND status != \"%s\"", template, event.Host, i.options.StatusNot)
 
 	searchOptions := &jira.SearchOptions{
@@ -207,118 +232,4 @@ func (i *Integration) FindExistingIssue(event *output.ResultEvent) (string, erro
 		gologger.Warning().Msgf("Discovered multiple opened issues %s for the host %s: The issue [%s] will be updated.", template, event.Host, chunk[0].ID)
 		return chunk[0].ID, nil
 	}
-}
-
-// jiraFormatDescription formats a short description of the generated
-// event by the nuclei scanner in Jira format.
-func jiraFormatDescription(event *output.ResultEvent) string { // TODO remove the code duplication: format.go <-> jira.go
-	template := format.GetMatchedTemplate(event)
-
-	builder := &bytes.Buffer{}
-	builder.WriteString("*Details*: *")
-	builder.WriteString(template)
-	builder.WriteString("* ")
-
-	builder.WriteString(" matched at ")
-	builder.WriteString(event.Host)
-
-	builder.WriteString("\n\n*Protocol*: ")
-	builder.WriteString(strings.ToUpper(event.Type))
-
-	builder.WriteString("\n\n*Full URL*: ")
-	builder.WriteString(event.Matched)
-
-	builder.WriteString("\n\n*Timestamp*: ")
-	builder.WriteString(event.Timestamp.Format("Mon Jan 2 15:04:05 -0700 MST 2006"))
-
-	builder.WriteString("\n\n*Template Information*\n\n| Key | Value |\n")
-	builder.WriteString(format.ToMarkdownTableString(&event.Info))
-
-	builder.WriteString(createMarkdownCodeBlock("Request", event.Request))
-
-	builder.WriteString("\n*Response*\n\n{code}\n")
-	// If the response is larger than 5 kb, truncate it before writing.
-	if len(event.Response) > 5*1024 {
-		builder.WriteString(event.Response[:5*1024])
-		builder.WriteString(".... Truncated ....")
-	} else {
-		builder.WriteString(event.Response)
-	}
-	builder.WriteString("\n{code}\n\n")
-
-	if len(event.ExtractedResults) > 0 || len(event.Metadata) > 0 {
-		builder.WriteString("\n*Extra Information*\n\n")
-		if len(event.ExtractedResults) > 0 {
-			builder.WriteString("*Extracted results*:\n\n")
-			for _, v := range event.ExtractedResults {
-				builder.WriteString("- ")
-				builder.WriteString(v)
-				builder.WriteString("\n")
-			}
-			builder.WriteString("\n")
-		}
-		if len(event.Metadata) > 0 {
-			builder.WriteString("*Metadata*:\n\n")
-			for k, v := range event.Metadata {
-				builder.WriteString("- ")
-				builder.WriteString(k)
-				builder.WriteString(": ")
-				builder.WriteString(types.ToString(v))
-				builder.WriteString("\n")
-			}
-			builder.WriteString("\n")
-		}
-	}
-	if event.Interaction != nil {
-		builder.WriteString("*Interaction Data*\n---\n")
-		builder.WriteString(event.Interaction.Protocol)
-		if event.Interaction.QType != "" {
-			builder.WriteString(" (")
-			builder.WriteString(event.Interaction.QType)
-			builder.WriteString(")")
-		}
-		builder.WriteString(" Interaction from ")
-		builder.WriteString(event.Interaction.RemoteAddress)
-		builder.WriteString(" at ")
-		builder.WriteString(event.Interaction.UniqueID)
-
-		if event.Interaction.RawRequest != "" {
-			builder.WriteString(createMarkdownCodeBlock("Interaction Request", event.Interaction.RawRequest))
-		}
-		if event.Interaction.RawResponse != "" {
-			builder.WriteString(createMarkdownCodeBlock("Interaction Response", event.Interaction.RawResponse))
-		}
-	}
-
-	reference := event.Info.Reference
-	if !reference.IsEmpty() {
-		builder.WriteString("\nReferences: \n")
-
-		referenceSlice := reference.ToSlice()
-		for i, item := range referenceSlice {
-			builder.WriteString("- ")
-			builder.WriteString(item)
-			if len(referenceSlice)-1 != i {
-				builder.WriteString("\n")
-			}
-		}
-	}
-	builder.WriteString("\n")
-
-	if event.CURLCommand != "" {
-		builder.WriteString("\n*CURL Command*\n{code}\n")
-		builder.WriteString(event.CURLCommand)
-		builder.WriteString("\n{code}")
-	}
-	builder.WriteString(fmt.Sprintf("\n---\nGenerated by [Nuclei %s](https://github.com/projectdiscovery/nuclei)", config.Version))
-	data := builder.String()
-	return data
-}
-
-func createMarkdownCodeBlock(title string, content string) string {
-	return "\n" + createBoldMarkdown(title) + "\n" + content + "*\n\n{code}"
-}
-
-func createBoldMarkdown(value string) string {
-	return "*" + value + "*\n\n{code}"
 }
