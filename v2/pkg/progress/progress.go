@@ -99,15 +99,23 @@ func (p *StatsTicker) Init(hostCount int64, rulesCount int, requestCount int64) 
 	p.stats.AddCounter("total", uint64(requestCount))
 
 	if p.active {
-		var printCallbackFunc clistats.PrintCallback
+		var printCallbackFunc clistats.DynamicCallback
 		if p.outputJSON {
 			printCallbackFunc = printCallbackJSON
 		} else {
 			printCallbackFunc = p.makePrintCallback()
 		}
-		if err := p.stats.Start(printCallbackFunc, p.tickDuration); err != nil {
+		p.stats.AddDynamic("summary", printCallbackFunc)
+		if err := p.stats.Start(); err != nil {
 			gologger.Warning().Msgf("Couldn't start statistics: %s", err)
 		}
+
+		p.stats.GetStatResponse(p.tickDuration, func(s string, err error) error {
+			if err != nil {
+				gologger.Warning().Msgf("Could not read statistics: %s\n", err)
+			}
+			return nil
+		})
 	}
 }
 
@@ -145,8 +153,8 @@ func (p *StatsTicker) IncrementFailedRequestsBy(count int64) {
 	p.stats.IncrementCounter("errors", int(count))
 }
 
-func (p *StatsTicker) makePrintCallback() func(stats clistats.StatisticsClient) {
-	return func(stats clistats.StatisticsClient) {
+func (p *StatsTicker) makePrintCallback() func(stats clistats.StatisticsClient) interface{} {
+	return func(stats clistats.StatisticsClient) interface{} {
 		builder := &strings.Builder{}
 
 		var duration time.Duration
@@ -209,14 +217,16 @@ func (p *StatsTicker) makePrintCallback() func(stats clistats.StatisticsClient) 
 		}
 
 		fmt.Fprintf(os.Stderr, "%s", builder.String())
+		return builder.String()
 	}
 }
 
-func printCallbackJSON(stats clistats.StatisticsClient) {
+func printCallbackJSON(stats clistats.StatisticsClient) interface{} {
 	builder := &strings.Builder{}
 	if err := json.NewEncoder(builder).Encode(metricsMap(stats)); err == nil {
 		fmt.Fprintf(os.Stderr, "%s", builder.String())
 	}
+	return builder.String()
 }
 
 func metricsMap(stats clistats.StatisticsClient) map[string]interface{} {
