@@ -277,7 +277,7 @@ type Options struct {
 	// Use ZTLS library
 	ZTLS bool
 	// Sandbox enables sandboxed nuclei template execution
-	Sandbox bool
+	NoSandbox bool
 	// ShowMatchLine enables display of match line number
 	ShowMatchLine bool
 	// EnablePprof enables exposing pprof runtime information with a webserver.

@@ -185,7 +185,7 @@ CONFIGURATIONS:
    -sml, -show-match-line         show match lines for file templates, works with extractors only
    -ztls                          use ztls library with autofallback to standard one for tls13
    -sni string                    tls sni hostname to use (default: input domain name)
-   -sandbox                       sandbox nuclei for safe templates execution
+   -no-sandbox                    disables sandbox(default) mode of nuclei for safe templates execution
    -i, -interface string          network interface to use for network scan
    -at, -attack-type string       type of payload combinations to perform (batteringram,pitchfork,clusterbomb)
    -sip, -source-ip string        source ip address to use for network scan
