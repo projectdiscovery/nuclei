@@ -6,6 +6,7 @@ import (
 	"github.com/xanzy/go-gitlab"
 
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
+	"github.com/projectdiscovery/nuclei/v2/pkg/reporting/exporters/markdown/util"
 	"github.com/projectdiscovery/nuclei/v2/pkg/reporting/format"
 	"github.com/projectdiscovery/retryablehttp-go"
 )
@@ -59,7 +60,7 @@ func New(options *Options) (*Integration, error) {
 // CreateIssue creates an issue in the tracker
 func (i *Integration) CreateIssue(event *output.ResultEvent) error {
 	summary := format.Summary(event)
-	description := format.MarkdownDescription(event)
+	description := format.CreateReportDescription(event, util.MarkdownFormatter{})
 	labels := []string{}
 	severityLabel := fmt.Sprintf("Severity: %s", event.Info.SeverityHolder.Severity.String())
 	if i.options.SeverityAsLabel && severityLabel != "" {
