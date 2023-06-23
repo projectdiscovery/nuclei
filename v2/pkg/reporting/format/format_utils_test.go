@@ -1,14 +1,14 @@
 package format
 
 import (
+	"github.com/stretchr/testify/assert"
 	"strings"
 	"testing"
-
-	"github.com/stretchr/testify/assert"
 
 	"github.com/projectdiscovery/nuclei/v2/pkg/model"
 	"github.com/projectdiscovery/nuclei/v2/pkg/model/types/severity"
 	"github.com/projectdiscovery/nuclei/v2/pkg/model/types/stringslice"
+	"github.com/projectdiscovery/nuclei/v2/pkg/reporting/exporters/markdown/util"
 )
 
 func TestToMarkdownTableString(t *testing.T) {
@@ -25,9 +25,11 @@ func TestToMarkdownTableString(t *testing.T) {
 		},
 	}
 
-	result := ToMarkdownTableString(&info)
+	result := CreateTemplateInfoTable(&info, &util.MarkdownFormatter{})
 
-	expectedOrderedAttributes := `| Name | Test Template Name |
+	expectedOrderedAttributes := `| Key | Value |
+| --- | --- |
+| Name | Test Template Name |
 | Authors | forgedhallpass, ice3man |
 | Tags | cve, misc |
 | Severity | high |

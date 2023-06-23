@@ -89,3 +89,7 @@
 {{binary}} -id tls-version -u scanme.sh
 # host:port
 {{binary}} -id tls-version -u scanme.sh:22
+
+# Options
+# Tls Impersonate
+{{binary}} -id tech-detect -tlsi -u https://scanme.sh
