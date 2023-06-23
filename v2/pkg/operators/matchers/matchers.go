@@ -112,7 +112,7 @@ type Matcher struct {
 	MatchAll bool `yaml:"match-all,omitempty" json:"match-all,omitempty" jsonschema:"title=match all values,description=match all matcher values ignoring condition"`
 
 	// cached data for the compiled matcher
-	condition     ConditionType
+	condition     ConditionType // todo: this field should be the one used for overridden marshal ops
 	matcherType   MatcherType
 	binaryDecoded []string
 	regexCompiled []*regexp.Regexp

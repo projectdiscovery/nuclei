@@ -8,7 +8,6 @@ import (
 	"io"
 	"net/http"
 	"net/http/httputil"
-	"path"
 	"strings"
 	"sync"
 	"time"
@@ -24,12 +23,12 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/contextargs"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/expressions"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/fuzz"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/generators"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/helpers/eventcreator"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/helpers/responsehighlighter"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/interactsh"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/tostring"
-	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/http/fuzz"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/http/httpclientpool"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/http/signer"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/http/signerpool"
@@ -523,10 +522,10 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 		if formedURL == "" {
 			urlx, err := urlutil.Parse(input.MetaInput.Input)
 			if err != nil {
-				formedURL = fmt.Sprintf("%s%s", formedURL, generatedRequest.rawRequest.Path)
+				formedURL = fmt.Sprintf("%s%s", input.MetaInput.Input, generatedRequest.rawRequest.Path)
 			} else {
-				urlx.Path = generatedRequest.rawRequest.Path
-				formedURL = fmt.Sprintf("%v://%v", urlx.Scheme, path.Join(urlx.Host, generatedRequest.rawRequest.Path))
+				_ = urlx.MergePath(generatedRequest.rawRequest.Path, true)
+				formedURL = urlx.String()
 			}
 		}
 		if parsed, parseErr := urlutil.ParseURL(formedURL, true); parseErr == nil {
