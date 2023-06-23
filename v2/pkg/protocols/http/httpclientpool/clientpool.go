@@ -231,6 +231,7 @@ func wrappedGet(options *types.Options, configuration *Configuration) (*retryabl
 		DialTLSContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
 			if options.HasClientCertificates() {
 				return Dialer.DialTLSWithConfig(ctx, network, addr, tlsConfig)
+			}
 			if options.TlsImpersonate {
 				return Dialer.DialTLSWithConfigImpersonate(ctx, network, addr, tlsConfig, impersonate.Random, nil)
 			}
