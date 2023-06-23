@@ -1469,6 +1469,19 @@ DigestAuthPassword specifies the password for digest authentication
 
 <hr />
 
+<div class="dd">
+
+<code>disable-path-automerge</code>  <i>bool</i>
+
+</div>
+<div class="dt">
+
+DisablePathAutomerge disables merging target url path with raw request path
+
+</div>
+
+<hr />
+
 
 
 
@@ -1584,6 +1597,8 @@ Appears in:
 
 
 - <code><a href="#httprequest">http.Request</a>.fuzzing</code>
+
+- <code><a href="#headlessrequest">headless.Request</a>.fuzzing</code>
 
 
 
@@ -2712,6 +2727,19 @@ description: |
 <div class="dt">
 
 StopAtFirstMatch stops the execution of the requests and template as soon as a match is found.
+
+</div>
+
+<hr />
+
+<div class="dd">
+
+<code>fuzzing</code>  <i>[]<a href="#fuzzrule">fuzz.Rule</a></i>
+
+</div>
+<div class="dt">
+
+Fuzzing describes schema to fuzz headless requests
 
 </div>
 

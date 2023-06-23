@@ -370,6 +370,8 @@ type Options struct {
 	FuzzingType string
 	// Fuzzing Mode overrides template level fuzzing-mode configuration
 	FuzzingMode string
+	// TlsImpersonate enables TLS impersonation
+	TlsImpersonate bool
 }
 
 // ShouldLoadResume resume file
