@@ -60,7 +60,7 @@ func (exporter *Exporter) addToolDetails() {
 	}
 	exporter.sarif.RegisterTool(driver)
 
-	reportLocation := sarif.ArtifactLocation{
+	reportloc := sarif.ArtifactLocation{
 		Uri: "file:///" + exporter.options.File,
 		Description: &sarif.Message{
 			Text: "Nuclei Sarif Report",
@@ -70,7 +70,7 @@ func (exporter *Exporter) addToolDetails() {
 	invocation := sarif.Invocation{
 		CommandLine:   os.Args[0],
 		Arguments:     os.Args[1:],
-		ResponseFiles: []sarif.ArtifactLocation{reportLocation},
+		ResponseFiles: []sarif.ArtifactLocation{reportloc},
 	}
 	exporter.sarif.RegisterToolInvocation(invocation)
 }
@@ -102,10 +102,10 @@ func (exporter *Exporter) Export(event *output.ResultEvent) error {
 	resultHeader := fmt.Sprintf("%v (%v) found on %v", event.Info.Name, event.TemplateID, event.Host)
 	resultLevel, vulnRating := exporter.getSeverity(severity)
 
-	// Extra metadata if generated sarif is uploaded to GitHub security page
-	ghMeta := map[string]interface{}{}
-	ghMeta["tags"] = []string{"security"}
-	ghMeta["security-severity"] = vulnRating
+	// Extra metdata if generated sarif is uploaded to github security page
+	ghmeta := map[string]interface{}{}
+	ghmeta["tags"] = []string{"security"}
+	ghmeta["security-severity"] = vulnRating
 
 	// rule contain details of template
 	rule := sarif.ReportingDescriptor{
@@ -115,10 +115,10 @@ func (exporter *Exporter) Export(event *output.ResultEvent) error {
 			// Points to template URL
 			Text: event.Info.Description + "\nMore details at\n" + event.TemplateURL + "\n",
 		},
-		Properties: ghMeta,
+		Properties: ghmeta,
 	}
 
-	// GitHub Uses ShortDescription as title
+	// Github Uses ShortDescription as title
 	if event.Info.Description != "" {
 		rule.ShortDescription = &sarif.MultiformatMessageString{
 			Text: resultHeader,
@@ -141,7 +141,7 @@ func (exporter *Exporter) Export(event *output.ResultEvent) error {
 		},
 		PhysicalLocation: sarif.PhysicalLocation{
 			ArtifactLocation: sarif.ArtifactLocation{
-				// GitHub only accepts file:// protocol and local & relative files only
+				// github only accepts file:// protocol and local & relative files only
 				// to avoid errors // is used which also translates to file according to specification
 				Uri: "/" + event.Path,
 				Description: &sarif.Message{
@@ -193,4 +193,5 @@ func (exporter *Exporter) Close() error {
 	}
 
 	return nil
+
 }

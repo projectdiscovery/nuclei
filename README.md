@@ -193,7 +193,6 @@ CONFIGURATIONS:
    -rsr, -response-size-read int  max response size to read in bytes (default 10485760)
    -rss, -response-size-save int  max response size to read in bytes (default 1048576)
    -reset                         reset removes all nuclei configuration and data files (including nuclei-templates)
-   -tlsi, -tls-impersonate        enable experimental client hello (ja3) tls randomization
 
 INTERACTSH:
    -iserver, -interactsh-server string  interactsh server url for self-hosted instance (default: oast.pro,oast.live,oast.site,oast.online,oast.fun,oast.me)

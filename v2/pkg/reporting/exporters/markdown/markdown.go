@@ -7,13 +7,11 @@ import (
 	"strings"
 
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
-	"github.com/projectdiscovery/nuclei/v2/pkg/reporting/exporters/markdown/util"
 	"github.com/projectdiscovery/nuclei/v2/pkg/reporting/format"
 	stringsutil "github.com/projectdiscovery/utils/strings"
 )
 
 const indexFileName = "index.md"
-const extension = ".md"
 
 type Exporter struct {
 	directory string
@@ -39,7 +37,9 @@ func New(options *Options) (*Exporter, error) {
 	_ = os.MkdirAll(directory, 0755)
 
 	// index generation header
-	dataHeader := util.CreateTableHeader("Hostname/IP", "Finding", "Severity")
+	dataHeader := "" +
+		"|Hostname/IP|Finding|Severity|\n" +
+		"|-|-|-|\n"
 
 	err := os.WriteFile(filepath.Join(directory, indexFileName), []byte(dataHeader), 0644)
 	if err != nil {
@@ -51,34 +51,9 @@ func New(options *Options) (*Exporter, error) {
 
 // Export exports a passed result event to markdown
 func (exporter *Exporter) Export(event *output.ResultEvent) error {
-	// index file generation
-	file, err := os.OpenFile(filepath.Join(exporter.directory, indexFileName), os.O_APPEND|os.O_WRONLY, 0644)
-	if err != nil {
-		return err
-	}
-	defer file.Close()
+	summary := format.Summary(event)
+	description := format.MarkdownDescription(event)
 
-	filename := createFileName(event)
-	host := util.CreateLink(event.Host, filename)
-	finding := event.TemplateID + " " + event.MatcherName
-	severity := event.Info.SeverityHolder.Severity.String()
-
-	_, err = file.WriteString(util.CreateTableRow(host, finding, severity))
-	if err != nil {
-		return err
-	}
-
-	dataBuilder := &bytes.Buffer{}
-	dataBuilder.WriteString(util.CreateHeading3(format.Summary(event)))
-	dataBuilder.WriteString("\n")
-	dataBuilder.WriteString(util.CreateHorizontalLine())
-	dataBuilder.WriteString(format.CreateReportDescription(event, util.MarkdownFormatter{}))
-	data := dataBuilder.Bytes()
-
-	return os.WriteFile(filepath.Join(exporter.directory, filename), data, 0644)
-}
-
-func createFileName(event *output.ResultEvent) string {
 	filenameBuilder := &strings.Builder{}
 	filenameBuilder.WriteString(event.TemplateID)
 	filenameBuilder.WriteString("-")
@@ -94,8 +69,29 @@ func createFileName(event *output.ResultEvent) string {
 		filenameBuilder.WriteRune('-')
 		filenameBuilder.WriteString(event.MatcherName)
 	}
-	filenameBuilder.WriteString(extension)
-	return sanitizeFilename(filenameBuilder.String())
+	filenameBuilder.WriteString(".md")
+	finalFilename := sanitizeFilename(filenameBuilder.String())
+
+	dataBuilder := &bytes.Buffer{}
+	dataBuilder.WriteString("### ")
+	dataBuilder.WriteString(summary)
+	dataBuilder.WriteString("\n---\n")
+	dataBuilder.WriteString(description)
+	data := dataBuilder.Bytes()
+
+	// index generation
+	file, err := os.OpenFile(filepath.Join(exporter.directory, indexFileName), os.O_APPEND|os.O_WRONLY, 0644)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+
+	_, err = file.WriteString("|[" + event.Host + "](" + finalFilename + ")" + "|" + event.TemplateID + " " + event.MatcherName + "|" + event.Info.SeverityHolder.Severity.String() + "|\n")
+	if err != nil {
+		return err
+	}
+
+	return os.WriteFile(filepath.Join(exporter.directory, finalFilename), data, 0644)
 }
 
 // Close closes the exporter after operation

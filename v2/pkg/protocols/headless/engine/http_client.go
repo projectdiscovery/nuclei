@@ -11,7 +11,6 @@ import (
 
 	"golang.org/x/net/proxy"
 
-	"github.com/projectdiscovery/fastdialer/fastdialer/ja3/impersonate"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/protocolstate"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/utils"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
@@ -40,14 +39,9 @@ func newHttpClient(options *types.Options) (*http.Client, error) {
 	}
 
 	transport := &http.Transport{
-		ForceAttemptHTTP2: options.ForceAttemptHTTP2,
-		DialContext:       dialer.Dial,
-		DialTLSContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
-			if options.TlsImpersonate {
-				return dialer.DialTLSWithConfigImpersonate(ctx, network, addr, tlsConfig, impersonate.Random, nil)
-			}
-			return dialer.DialTLS(ctx, network, addr)
-		},
+		ForceAttemptHTTP2:   options.ForceAttemptHTTP2,
+		DialContext:         dialer.Dial,
+		DialTLSContext:      dialer.DialTLS,
 		MaxIdleConns:        500,
 		MaxIdleConnsPerHost: 500,
 		MaxConnsPerHost:     500,

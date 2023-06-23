@@ -23,8 +23,8 @@ builds:
   flags:
     - -trimpath
 
-- main: cmd/tmc/main.go
-  binary: tmc
+- main: cmd/cve-annotate/main.go
+  binary: cve-annotate
   id: annotate
 
   env:
