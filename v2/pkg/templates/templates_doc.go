@@ -1212,7 +1212,7 @@ func init() {
 			Value: "Headless response received from client (default)",
 		},
 	}
-	HEADLESSRequestDoc.Fields = make([]encoder.Doc, 8)
+	HEADLESSRequestDoc.Fields = make([]encoder.Doc, 9)
 	HEADLESSRequestDoc.Fields[0].Name = "id"
 	HEADLESSRequestDoc.Fields[0].Type = "string"
 	HEADLESSRequestDoc.Fields[0].Note = ""
@@ -1253,6 +1253,11 @@ func init() {
 	HEADLESSRequestDoc.Fields[7].Note = ""
 	HEADLESSRequestDoc.Fields[7].Description = "Fuzzing describes schema to fuzz headless requests"
 	HEADLESSRequestDoc.Fields[7].Comments[encoder.LineComment] = " Fuzzing describes schema to fuzz headless requests"
+	HEADLESSRequestDoc.Fields[8].Name = "cookie-reuse"
+	HEADLESSRequestDoc.Fields[8].Type = "bool"
+	HEADLESSRequestDoc.Fields[8].Note = ""
+	HEADLESSRequestDoc.Fields[8].Description = "CookieReuse is an optional setting that enables cookie reuse"
+	HEADLESSRequestDoc.Fields[8].Comments[encoder.LineComment] = "CookieReuse is an optional setting that enables cookie reuse"
 
 	ENGINEActionDoc.Type = "engine.Action"
 	ENGINEActionDoc.Comments[encoder.LineComment] = " Action is an action taken by the browser to reach a navigation"
