@@ -2745,6 +2745,19 @@ Fuzzing describes schema to fuzz headless requests
 
 <hr />
 
+<div class="dd">
+
+<code>cookie-reuse</code>  <i>bool</i>
+
+</div>
+<div class="dt">
+
+CookieReuse is an optional setting that enables cookie reuse
+
+</div>
+
+<hr />
+
 
 
 
