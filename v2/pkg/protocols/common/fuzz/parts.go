@@ -24,16 +24,20 @@ func (rule *Rule) executePartRule(input *ExecuteRuleInput, payload string) error
 
 // executeQueryPartRule executes query part rules
 func (rule *Rule) executeQueryPartRule(input *ExecuteRuleInput, payload string) error {
-	requestURL := input.URL.Clone()
+	requestURL, err := urlutil.Parse(input.Input.MetaInput.Input)
+	if err != nil {
+		return err
+	}
+	origRequestURL := requestURL.Clone()
 	temp := urlutil.Params{}
-	for k, v := range input.URL.Query() {
+	for k, v := range origRequestURL.Query() {
 		// this has to be a deep copy
 		x := []string{}
 		x = append(x, v...)
 		temp[k] = x
 	}
 
-	for key, values := range input.URL.Query() {
+	for key, values := range origRequestURL.Query() {
 		for i, value := range values {
 			if !rule.matchKeyOrValue(key, value) {
 				continue

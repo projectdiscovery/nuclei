@@ -3,6 +3,7 @@ package utils
 import (
 	"crypto/tls"
 	"crypto/x509"
+	"net/http"
 	"os"
 	"strings"
 
@@ -45,4 +46,26 @@ func CalculateContentLength(contentLength, bodyLength int64) int64 {
 		return contentLength
 	}
 	return bodyLength
+}
+
+// headersToString converts http headers to string
+func HeadersToString(headers http.Header) string {
+	builder := &strings.Builder{}
+
+	for header, values := range headers {
+		builder.WriteString(header)
+		builder.WriteString(": ")
+
+		for i, value := range values {
+			builder.WriteString(value)
+
+			if i != len(values)-1 {
+				builder.WriteRune('\n')
+				builder.WriteString(header)
+				builder.WriteString(": ")
+			}
+		}
+		builder.WriteRune('\n')
+	}
+	return builder.String()
 }

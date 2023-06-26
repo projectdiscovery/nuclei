@@ -2,10 +2,8 @@ package offlinehttp
 
 import (
 	"io"
-	"net/http"
 	"net/http/httputil"
 	"os"
-	"strings"
 
 	"github.com/pkg/errors"
 	"github.com/remeh/sizedwaitgroup"
@@ -16,6 +14,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/contextargs"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/helpers/eventcreator"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/tostring"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/utils"
 	templateTypes "github.com/projectdiscovery/nuclei/v2/pkg/templates/types"
 )
 
@@ -86,7 +85,7 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, metadata 
 				return
 			}
 
-			outputEvent := request.responseToDSLMap(resp, data, data, data, tostring.UnsafeToString(dumpedResponse), tostring.UnsafeToString(body), headersToString(resp.Header), 0, nil)
+			outputEvent := request.responseToDSLMap(resp, data, data, data, tostring.UnsafeToString(dumpedResponse), tostring.UnsafeToString(body), utils.HeadersToString(resp.Header), 0, nil)
 			outputEvent["ip"] = ""
 			for k, v := range previous {
 				outputEvent[k] = v
@@ -104,26 +103,4 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, metadata 
 	}
 	request.options.Progress.IncrementRequests()
 	return nil
-}
-
-// headersToString converts http headers to string
-func headersToString(headers http.Header) string {
-	builder := &strings.Builder{}
-
-	for header, values := range headers {
-		builder.WriteString(header)
-		builder.WriteString(": ")
-
-		for i, value := range values {
-			builder.WriteString(value)
-
-			if i != len(values)-1 {
-				builder.WriteRune('\n')
-				builder.WriteString(header)
-				builder.WriteString(": ")
-			}
-		}
-		builder.WriteRune('\n')
-	}
-	return builder.String()
 }
