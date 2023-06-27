@@ -80,7 +80,6 @@ func isTemplateInfoMetadataMatch(tagFilter *filter.TagFilter, template *template
 	match, err := tagFilter.Match(template, extraTags)
 
 	if err == filter.ErrExcluded {
-
 		return false, filter.ErrExcluded
 	}
 

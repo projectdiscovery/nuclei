@@ -41,6 +41,7 @@ var (
 		"fuzzing":         fuzzingTestCases,
 		"code":            codeTestCases,
 		"multi":           multiProtoTestcases,
+		"generic":         genericTestcases,
 	}
 
 	// For debug purposes

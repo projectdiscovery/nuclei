@@ -197,6 +197,9 @@ type Request struct {
 	// description: |
 	//   DigestAuthPassword specifies the password for digest authentication
 	DigestAuthPassword string `yaml:"digest-password,omitempty" json:"digest-password,omitempty" jsonschema:"title=specifies the password for digest authentication,description=Optional parameter which specifies the password for digest auth"`
+	// description: |
+	//  DisablePathAutomerge disables merging target url path with raw request path
+	DisablePathAutomerge bool `yaml:"disable-path-automerge,omitempty" json:"disable-path-automerge,omitempty" jsonschema:"title=disable auto merging of path,description=Disable merging target url path with raw request path"`
 }
 
 // Options returns executer options for http request

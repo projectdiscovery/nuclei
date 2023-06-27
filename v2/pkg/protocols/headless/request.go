@@ -19,6 +19,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/helpers/responsehighlighter"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/interactsh"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/utils/vardump"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/headless/engine"
 	protocolutils "github.com/projectdiscovery/nuclei/v2/pkg/protocols/utils"
 	templateTypes "github.com/projectdiscovery/nuclei/v2/pkg/templates/types"
 	urlutil "github.com/projectdiscovery/utils/url"
@@ -35,7 +36,6 @@ func (request *Request) Type() templateTypes.ProtocolType {
 
 // ExecuteWithResults executes the protocol requests and returns results instead of writing them.
 func (request *Request) ExecuteWithResults(input *contextargs.Context, metadata, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
-	inputURL := input.MetaInput.Input
 	if request.options.Browser.UserAgent() == "" {
 		request.options.Browser.SetUserAgent(request.compiledUserAgent)
 	}
@@ -57,7 +57,7 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, metadata,
 	}
 	// verify if fuzz elaboration was requested
 	if len(request.Fuzzing) > 0 {
-		return request.executeFuzzingRule(inputURL, payloads, previous, wrappedCallback)
+		return request.executeFuzzingRule(input, payloads, previous, wrappedCallback)
 	}
 	if request.generator != nil {
 		iterator := request.generator.NewIterator()
@@ -70,23 +70,23 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, metadata,
 				return nil
 			}
 			value = generators.MergeMaps(value, payloads)
-			if err := request.executeRequestWithPayloads(inputURL, value, previous, wrappedCallback); err != nil {
+			if err := request.executeRequestWithPayloads(input, value, previous, wrappedCallback); err != nil {
 				return err
 			}
 		}
 	} else {
 		value := maps.Clone(payloads)
-		if err := request.executeRequestWithPayloads(inputURL, value, previous, wrappedCallback); err != nil {
+		if err := request.executeRequestWithPayloads(input, value, previous, wrappedCallback); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-func (request *Request) executeRequestWithPayloads(inputURL string, payloads map[string]interface{}, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
+func (request *Request) executeRequestWithPayloads(input *contextargs.Context, payloads map[string]interface{}, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
 	instance, err := request.options.Browser.NewInstance()
 	if err != nil {
-		request.options.Output.Request(request.options.TemplatePath, inputURL, request.Type().String(), err)
+		request.options.Output.Request(request.options.TemplatePath, input.MetaInput.Input, request.Type().String(), err)
 		request.options.Progress.IncrementFailedRequestsBy(1)
 		return errors.Wrap(err, errCouldGetHtmlElement)
 	}
@@ -98,32 +98,39 @@ func (request *Request) executeRequestWithPayloads(inputURL string, payloads map
 
 	instance.SetInteractsh(request.options.Interactsh)
 
-	parsedURL, err := url.Parse(inputURL)
-	if err != nil {
-		request.options.Output.Request(request.options.TemplatePath, inputURL, request.Type().String(), err)
+	if _, err := url.Parse(input.MetaInput.Input); err != nil {
+		request.options.Output.Request(request.options.TemplatePath, input.MetaInput.Input, request.Type().String(), err)
 		request.options.Progress.IncrementFailedRequestsBy(1)
 		return errors.Wrap(err, errCouldGetHtmlElement)
 	}
-	timeout := time.Duration(request.options.Options.PageTimeout) * time.Second
-	out, page, err := instance.Run(parsedURL, request.Steps, payloads, timeout)
+	options := &engine.Options{
+		Timeout:     time.Duration(request.options.Options.PageTimeout) * time.Second,
+		CookieReuse: request.CookieReuse,
+	}
+
+	if options.CookieReuse && input.CookieJar == nil {
+		return errors.New("cookie-reuse set but cookie-jar is nil")
+	}
+
+	out, page, err := instance.Run(input, request.Steps, payloads, options)
 	if err != nil {
-		request.options.Output.Request(request.options.TemplatePath, inputURL, request.Type().String(), err)
+		request.options.Output.Request(request.options.TemplatePath, input.MetaInput.Input, request.Type().String(), err)
 		request.options.Progress.IncrementFailedRequestsBy(1)
 		return errors.Wrap(err, errCouldGetHtmlElement)
 	}
 	defer page.Close()
 
-	request.options.Output.Request(request.options.TemplatePath, inputURL, request.Type().String(), nil)
+	request.options.Output.Request(request.options.TemplatePath, input.MetaInput.Input, request.Type().String(), nil)
 	request.options.Progress.IncrementRequests()
-	gologger.Verbose().Msgf("Sent Headless request to %s", inputURL)
+	gologger.Verbose().Msgf("Sent Headless request to %s", input.MetaInput.Input)
 
 	reqBuilder := &strings.Builder{}
 	if request.options.Options.Debug || request.options.Options.DebugRequests || request.options.Options.DebugResponse {
-		gologger.Info().Msgf("[%s] Dumped Headless request for %s", request.options.TemplateID, inputURL)
+		gologger.Info().Msgf("[%s] Dumped Headless request for %s", request.options.TemplateID, input.MetaInput.Input)
 
 		for _, act := range request.Steps {
 			actStepStr := act.String()
-			actStepStr = strings.ReplaceAll(actStepStr, "{{BaseURL}}", inputURL)
+			actStepStr = strings.ReplaceAll(actStepStr, "{{BaseURL}}", input.MetaInput.Input)
 			reqBuilder.WriteString("\t" + actStepStr + "\n")
 		}
 		gologger.Debug().Msgf(reqBuilder.String())
@@ -136,7 +143,7 @@ func (request *Request) executeRequestWithPayloads(inputURL string, payloads map
 		responseBody, _ = html.HTML()
 	}
 
-	outputEvent := request.responseToDSLMap(responseBody, out["header"], out["status_code"], reqBuilder.String(), inputURL, inputURL, page.DumpHistory())
+	outputEvent := request.responseToDSLMap(responseBody, out["header"], out["status_code"], reqBuilder.String(), input.MetaInput.Input, input.MetaInput.Input, page.DumpHistory())
 	// add response fields to template context and merge templatectx variables to output event
 	request.options.AddTemplateVars(request.Type(), outputEvent)
 	outputEvent = generators.MergeMaps(outputEvent, request.options.TemplateCtx.GetAll())
@@ -165,7 +172,7 @@ func (request *Request) executeRequestWithPayloads(inputURL string, payloads map
 		event.UsesInteractsh = true
 	}
 
-	dumpResponse(event, request.options, responseBody, inputURL)
+	dumpResponse(event, request.options, responseBody, input.MetaInput.Input)
 	return nil
 }
 
@@ -178,26 +185,27 @@ func dumpResponse(event *output.InternalWrappedEvent, requestOptions *protocols.
 }
 
 // executeFuzzingRule executes a fuzzing rule in the template request
-func (request *Request) executeFuzzingRule(inputURL string, payloads map[string]interface{}, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
+func (request *Request) executeFuzzingRule(input *contextargs.Context, payloads map[string]interface{}, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
 	// check for operator matches by wrapping callback
 	gotmatches := false
 	fuzzRequestCallback := func(gr fuzz.GeneratedRequest) bool {
 		if gotmatches && (request.StopAtFirstMatch || request.options.Options.StopAtFirstMatch || request.options.StopAtFirstMatch) {
 			return true
 		}
-		if err := request.executeRequestWithPayloads(gr.Request.URL.String(), gr.DynamicValues, previous, callback); err != nil {
+		newInput := input.Clone()
+		newInput.MetaInput.Input = gr.Request.URL.String()
+		if err := request.executeRequestWithPayloads(newInput, gr.DynamicValues, previous, callback); err != nil {
 			return false
 		}
 		return true
 	}
 
-	parsedURL, err := urlutil.Parse(inputURL)
-	if err != nil {
+	if _, err := urlutil.Parse(input.MetaInput.Input); err != nil {
 		return errors.Wrap(err, "could not parse url")
 	}
 	for _, rule := range request.Fuzzing {
 		err := rule.Execute(&fuzz.ExecuteRuleInput{
-			URL:         parsedURL,
+			Input:       input,
 			Callback:    fuzzRequestCallback,
 			Values:      payloads,
 			BaseRequest: nil,
