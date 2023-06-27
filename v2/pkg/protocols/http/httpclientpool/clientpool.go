@@ -17,6 +17,7 @@ import (
 	"golang.org/x/net/publicsuffix"
 
 	"github.com/projectdiscovery/fastdialer/fastdialer"
+	"github.com/projectdiscovery/fastdialer/fastdialer/ja3/impersonate"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/protocolstate"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/utils"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
@@ -225,9 +226,17 @@ func wrappedGet(options *types.Options, configuration *Configuration) (*retryabl
 	}
 
 	transport := &http.Transport{
-		ForceAttemptHTTP2:   options.ForceAttemptHTTP2,
-		DialContext:         Dialer.Dial,
-		DialTLSContext:      Dialer.DialTLS,
+		ForceAttemptHTTP2: options.ForceAttemptHTTP2,
+		DialContext:       Dialer.Dial,
+		DialTLSContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
+			if options.HasClientCertificates() {
+				return Dialer.DialTLSWithConfig(ctx, network, addr, tlsConfig)
+			}
+			if options.TlsImpersonate {
+				return Dialer.DialTLSWithConfigImpersonate(ctx, network, addr, tlsConfig, impersonate.Random, nil)
+			}
+			return Dialer.DialTLS(ctx, network, addr)
+		},
 		MaxIdleConns:        maxIdleConns,
 		MaxIdleConnsPerHost: maxIdleConnsPerHost,
 		MaxConnsPerHost:     maxConnsPerHost,
@@ -244,6 +253,7 @@ func wrappedGet(options *types.Options, configuration *Configuration) (*retryabl
 		if proxyErr != nil {
 			return nil, proxyErr
 		}
+
 		dialer, err := proxy.FromURL(socksURL, proxy.Direct)
 		if err != nil {
 			return nil, err
@@ -252,16 +262,15 @@ func wrappedGet(options *types.Options, configuration *Configuration) (*retryabl
 		dc := dialer.(interface {
 			DialContext(ctx context.Context, network, addr string) (net.Conn, error)
 		})
-		if proxyErr == nil {
-			transport.DialContext = dc.DialContext
-			transport.DialTLSContext = func(ctx context.Context, network, addr string) (net.Conn, error) {
-				// upgrade proxy connection to tls
-				conn, err := dc.DialContext(ctx, network, addr)
-				if err != nil {
-					return nil, err
-				}
-				return tls.Client(conn, tlsConfig), nil
+
+		transport.DialContext = dc.DialContext
+		transport.DialTLSContext = func(ctx context.Context, network, addr string) (net.Conn, error) {
+			// upgrade proxy connection to tls
+			conn, err := dc.DialContext(ctx, network, addr)
+			if err != nil {
+				return nil, err
 			}
+			return tls.Client(conn, tlsConfig), nil
 		}
 	}
 

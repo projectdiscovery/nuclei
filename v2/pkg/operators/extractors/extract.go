@@ -175,7 +175,7 @@ func (e *Extractor) ExtractDSL(data map[string]interface{}) map[string]struct{} 
 	for _, compiledExpression := range e.dslCompiled {
 		result, err := compiledExpression.Evaluate(data)
 		// ignore errors that are related to missing parameters
-		// eg: dns dsl can have all the parameters that are not present 
+		// eg: dns dsl can have all the parameters that are not present
 		if err != nil && !strings.HasPrefix(err.Error(), "No parameter") {
 			return results
 		}

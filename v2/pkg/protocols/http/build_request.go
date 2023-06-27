@@ -267,7 +267,7 @@ func (r *requestGenerator) generateRawRequest(ctx context.Context, rawRequest st
 		// in self contained requests baseURL is extracted from raw request itself
 		rawRequestData, err = raw.ParseRawRequest(rawRequest, r.request.Unsafe)
 	} else {
-		rawRequestData, err = raw.Parse(rawRequest, baseURL, r.request.Unsafe)
+		rawRequestData, err = raw.Parse(rawRequest, baseURL, r.request.Unsafe, r.request.DisablePathAutomerge)
 	}
 	if err != nil {
 		return nil, errorutil.NewWithErr(err).Msgf("failed to parse raw request")
