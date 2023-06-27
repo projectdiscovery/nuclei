@@ -78,8 +78,6 @@ var httpTestcases = map[string]testutils.TestCase{
 	"http/cl-body-with-header.yaml":                 &httpCLBodyWithHeader{},
 	"http/save-extractor-values-to-file.yaml":       &httpSaveExtractorValuesToFile{},
 	"http/cli-with-constants.yaml":                  &ConstantWithCliVar{},
-	"http/matcher-status.yaml":                      &matcherStatusTest{},
-	"http/matcher-status-per-request.yaml":          &matcherStatusPerRequestTest{},
 	"http/disable-path-automerge.yaml":              &httpDisablePathAutomerge{},
 }
 
@@ -1425,42 +1423,6 @@ func (h *ConstantWithCliVar) Execute(filePath string) error {
 		return err
 	}
 	return expectResultsCount(got, 1)
-}
-
-type matcherStatusTest struct{}
-
-// Execute executes a test case and returns an error if occurred
-func (h *matcherStatusTest) Execute(filePath string) error {
-	router := httprouter.New()
-	router.GET("/200", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-		w.WriteHeader(http.StatusOK)
-	})
-	ts := httptest.NewServer(router)
-	defer ts.Close()
-
-	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, ts.URL, debug, "-ms")
-	if err != nil {
-		return err
-	}
-	return expectResultsCount(results, 1)
-}
-
-type matcherStatusPerRequestTest struct{}
-
-// Execute executes a test case and returns an error if occurred
-func (h *matcherStatusPerRequestTest) Execute(filePath string) error {
-	router := httprouter.New()
-	router.GET("/200", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-		w.WriteHeader(http.StatusOK)
-	})
-	ts := httptest.NewServer(router)
-	defer ts.Close()
-
-	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, ts.URL, debug, "-msr")
-	if err != nil {
-		return err
-	}
-	return expectResultsCount(results, 5)
 }
 
 // disable path automerge in raw request

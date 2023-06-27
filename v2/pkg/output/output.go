@@ -45,19 +45,19 @@ type Writer interface {
 
 // StandardWriter is a writer writing output to file and screen for results.
 type StandardWriter struct {
-	json                  bool
-	jsonReqResp           bool
-	timestamp             bool
-	noMetadata            bool
-	matcherStatus         bool
-	mutex                 *sync.Mutex
-	aurora                aurora.Aurora
-	outputFile            io.WriteCloser
-	traceFile             io.WriteCloser
-	errorFile             io.WriteCloser
-	severityColors        func(severity.Severity) string
-	storeResponse         bool
-	storeResponseDir      string
+	json             bool
+	jsonReqResp      bool
+	timestamp        bool
+	noMetadata       bool
+	matcherStatus    bool
+	mutex            *sync.Mutex
+	aurora           aurora.Aurora
+	outputFile       io.WriteCloser
+	traceFile        io.WriteCloser
+	errorFile        io.WriteCloser
+	severityColors   func(severity.Severity) string
+	storeResponse    bool
+	storeResponseDir string
 }
 
 var decolorizerRegex = regexp.MustCompile(`\x1B\[[0-9;]*[a-zA-Z]`)
@@ -187,21 +187,20 @@ func NewStandardWriter(options *types.Options) (*StandardWriter, error) {
 			gologger.Fatal().Msgf("Could not create output directory '%s': %s\n", options.StoreResponseDir, err)
 		}
 	}
-
 	writer := &StandardWriter{
-		json:                  options.JSONL,
-		jsonReqResp:           options.JSONRequests,
-		noMetadata:            options.NoMeta,
-		matcherStatus:         options.MatcherStatus || options.MatchStatusPerRequest,
-		timestamp:             options.Timestamp,
-		aurora:                auroraColorizer,
-		mutex:                 &sync.Mutex{},
-		outputFile:            outputFile,
-		traceFile:             traceOutput,
-		errorFile:             errorOutput,
-		severityColors:        colorizer.New(auroraColorizer),
-		storeResponse:         options.StoreResponse,
-		storeResponseDir:      options.StoreResponseDir,
+		json:             options.JSONL,
+		jsonReqResp:      options.JSONRequests,
+		noMetadata:       options.NoMeta,
+		matcherStatus:    options.MatcherStatus,
+		timestamp:        options.Timestamp,
+		aurora:           auroraColorizer,
+		mutex:            &sync.Mutex{},
+		outputFile:       outputFile,
+		traceFile:        traceOutput,
+		errorFile:        errorOutput,
+		severityColors:   colorizer.New(auroraColorizer),
+		storeResponse:    options.StoreResponse,
+		storeResponseDir: options.StoreResponseDir,
 	}
 	return writer, nil
 }
