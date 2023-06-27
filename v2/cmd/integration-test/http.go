@@ -76,6 +76,7 @@ var httpTestcases = map[string]testutils.TestCase{
 	"protocols/http/cl-body-with-header.yaml":                          &httpCLBodyWithHeader{},
 	"protocols/http/save-extractor-values-to-file.yaml":                &httpSaveExtractorValuesToFile{},
 	"protocols/http/cli-with-constants.yaml":                           &ConstantWithCliVar{},
+	"protocols/http/disable-path-automerge.yaml":              &httpDisablePathAutomerge{},
 }
 
 type httpInteractshRequest struct{}
@@ -1416,6 +1417,24 @@ func (h *ConstantWithCliVar) Execute(filePath string) error {
 	defer ts.Close()
 
 	got, err := testutils.RunNucleiTemplateAndGetResults(filePath, ts.URL, debug, "-V", "test=fromcli")
+	if err != nil {
+		return err
+	}
+	return expectResultsCount(got, 1)
+}
+
+// disable path automerge in raw request
+type httpDisablePathAutomerge struct{}
+
+// Execute executes a test case and returns an error if occurred
+func (h *httpDisablePathAutomerge) Execute(filePath string) error {
+	router := httprouter.New()
+	router.GET("/api/v1/test", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+		fmt.Fprint(w, r.URL.Query().Get("id"))
+	})
+	ts := httptest.NewServer(router)
+	defer ts.Close()
+	got, err := testutils.RunNucleiTemplateAndGetResults(filePath, ts.URL+"/api/v1/user", debug)
 	if err != nil {
 		return err
 	}
