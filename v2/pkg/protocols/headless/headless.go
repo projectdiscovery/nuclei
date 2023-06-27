@@ -58,6 +58,10 @@ type Request struct {
 
 	// Fuzzing describes schema to fuzz headless requests
 	Fuzzing []*fuzz.Rule `yaml:"fuzzing,omitempty" json:"fuzzing,omitempty" jsonschema:"title=fuzzin rules for http fuzzing,description=Fuzzing describes rule schema to fuzz headless requests"`
+
+	// description: |
+	//   CookieReuse is an optional setting that enables cookie reuse
+	CookieReuse bool `yaml:"cookie-reuse,omitempty" json:"cookie-reuse,omitempty" jsonschema:"title=optional cookie reuse enable,description=Optional setting that enables cookie reuse"`
 }
 
 // RequestPartDefinitions contains a mapping of request part definitions and their

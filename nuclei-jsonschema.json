@@ -727,6 +727,11 @@
           "type": "array",
           "title": "fuzzin rules for http fuzzing",
           "description": "Fuzzing describes rule schema to fuzz headless requests"
+        },
+        "cookie-reuse": {
+          "type": "boolean",
+          "title": "optional cookie reuse enable",
+          "description": "Optional setting that enables cookie reuse"
         }
       },
       "additionalProperties": false,

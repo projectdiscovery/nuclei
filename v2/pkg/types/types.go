@@ -381,6 +381,11 @@ func (options *Options) ShouldFollowHTTPRedirects() bool {
 	return options.FollowRedirects || options.FollowHostRedirects
 }
 
+// HasClientCertificates determines if any client certificate was specified
+func (options *Options) HasClientCertificates() bool {
+	return options.ClientCertFile != "" || options.ClientCAFile != "" || options.ClientKeyFile != ""
+}
+
 // DefaultOptions returns default options for nuclei
 func DefaultOptions() *Options {
 	return &Options{
