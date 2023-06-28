@@ -56,6 +56,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/utils/stats"
 	"github.com/projectdiscovery/nuclei/v2/pkg/utils/yaml"
 	"github.com/projectdiscovery/retryablehttp-go"
+	ptrutil "github.com/projectdiscovery/utils/ptr"
 )
 
 // Runner is a client for running the enumeration process.
@@ -482,7 +483,7 @@ func (r *Runner) RunEnumeration() error {
 		return nil // exit
 	}
 	store.Load()
-	// TODO: remove below functions after v2.9.5 or update warning messages
+	// TODO: remove below functions after v3 or update warning messages
 	disk.PrintDeprecatedPathsMsgIfApplicable(r.options.Silent)
 	templates.PrintDeprecatedProtocolNameMsgIfApplicable(r.options.Silent, r.options.Verbose)
 
@@ -591,7 +592,9 @@ func (r *Runner) RunEnumeration() error {
 		r.issuesClient.Close()
 	}
 
-	if !results.Load() {
+	// todo: error propagation without canonical straight error check is required by cloud?
+	// use safe dereferencing to avoid potential panics in case of previous unchecked errors
+	if v := ptrutil.Safe(results); !v.Load() {
 		gologger.Info().Msgf("No results found. Better luck next time!")
 	}
 	if r.browser != nil {

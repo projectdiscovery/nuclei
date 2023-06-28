@@ -1,0 +1,18 @@
+id: basic-example
+
+info:
+  name: Test HTTP Template
+  author: pdteam
+  severity: info
+
+http:
+  - raw:
+      - |+
+        GET / HTTP/1.1
+        Host: {{Hostname}}
+
+    unsafe: true
+    matchers:
+      - type: dsl
+        dsl:
+          - true

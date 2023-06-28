@@ -360,6 +360,8 @@ type Options struct {
 	FuzzingType string
 	// Fuzzing Mode overrides template level fuzzing-mode configuration
 	FuzzingMode string
+	// TlsImpersonate enables TLS impersonation
+	TlsImpersonate bool
 }
 
 // ShouldLoadResume resume file
@@ -375,6 +377,11 @@ func (options *Options) ShouldSaveResume() bool {
 // ShouldFollowHTTPRedirects determines if http redirects should be followed
 func (options *Options) ShouldFollowHTTPRedirects() bool {
 	return options.FollowRedirects || options.FollowHostRedirects
+}
+
+// HasClientCertificates determines if any client certificate was specified
+func (options *Options) HasClientCertificates() bool {
+	return options.ClientCertFile != "" || options.ClientCAFile != "" || options.ClientKeyFile != ""
 }
 
 // DefaultOptions returns default options for nuclei

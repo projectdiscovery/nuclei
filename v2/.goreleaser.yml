@@ -23,15 +23,15 @@ builds:
   flags:
     - -trimpath
 
-- main: cmd/cve-annotate/main.go
-  binary: cve-annotate
-  id: annotate
-
-  env:
-  - CGO_ENABLED=0
-
-  goos: [linux]
-  goarch: [amd64]
+#- main: cmd/tmc/main.go
+#  binary: tmc
+#  id: annotate
+#
+#  env:
+#  - CGO_ENABLED=0
+#
+#  goos: [linux]
+#  goarch: [amd64]
 
 archives:
 - format: zip

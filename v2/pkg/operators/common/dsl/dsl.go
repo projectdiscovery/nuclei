@@ -82,8 +82,8 @@ func init() {
 			dns.TypeSRV:   rawResp.SRV,
 			dns.TypePTR:   rawResp.PTR,
 			dns.TypeMX:    rawResp.MX,
-			dns.TypeSOA:   rawResp.SOA,
 			dns.TypeCAA:   rawResp.CAA,
+			dns.TypeSOA:   rawResp.GetSOARecords(),
 		}
 
 		if values, ok := dnsValues[dnsType]; ok {

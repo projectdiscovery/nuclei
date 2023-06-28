@@ -22,6 +22,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/headless/engine"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 	fileutil "github.com/projectdiscovery/utils/file"
+	"github.com/projectdiscovery/utils/generic"
 	logutil "github.com/projectdiscovery/utils/log"
 	stringsutil "github.com/projectdiscovery/utils/strings"
 )
@@ -90,6 +91,10 @@ func ParseOptions(options *types.Options) {
 			options.UncoverEngine = append(options.UncoverEngine, "shodan")
 		}
 	}
+
+	if options.OfflineHTTP {
+		options.DisableHTTPProbe = true
+	}
 }
 
 // validateOptions validates the configuration options passed
@@ -124,11 +129,11 @@ func validateOptions(options *types.Options) error {
 	}
 
 	// Verify if any of the client certificate options were set since it requires all three to work properly
-	if len(options.ClientCertFile) > 0 || len(options.ClientKeyFile) > 0 || len(options.ClientCAFile) > 0 {
-		if len(options.ClientCertFile) == 0 || len(options.ClientKeyFile) == 0 || len(options.ClientCAFile) == 0 {
+	if options.HasClientCertificates() {
+		if generic.EqualsAny("", options.ClientCertFile, options.ClientKeyFile, options.ClientCAFile) {
 			return errors.New("if a client certification option is provided, then all three must be provided")
 		}
-		validateCertificatePaths([]string{options.ClientCertFile, options.ClientKeyFile, options.ClientCAFile})
+		validateCertificatePaths(options.ClientCertFile, options.ClientKeyFile, options.ClientCAFile)
 	}
 	// Verify AWS secrets are passed if a S3 template bucket is passed
 	if options.AwsBucketName != "" && options.UpdateTemplates {
@@ -330,9 +335,9 @@ func validateTemplatePaths(templatesDirectory string, templatePaths, workflowPat
 	}
 }
 
-func validateCertificatePaths(certificatePaths []string) {
+func validateCertificatePaths(certificatePaths ...string) {
 	for _, certificatePath := range certificatePaths {
-		if _, err := os.Stat(certificatePath); os.IsNotExist(err) {
+		if !fileutil.FileExists(certificatePath) {
 			// The provided path to the PEM certificate does not exist for the client authentication. As this is
 			// required for successful authentication, log and return an error
 			gologger.Fatal().Msgf("The given path (%s) to the certificate does not exist!", certificatePath)
