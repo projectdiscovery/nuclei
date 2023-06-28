@@ -7,17 +7,17 @@ import (
 )
 
 const (
-	TemplateConfigFileName           = ".templates-config.json"
-	NucleiTemplatesDirName           = "nuclei-templates"
+	TemplateConfigFileName          = ".templates-config.json"
+	NucleiTemplatesDirName          = "nuclei-templates"
 	OfficialNucleiTemplatesRepoName = "nuclei-templates"
-	NucleiIgnoreFileName             = ".nuclei-ignore"
-	NucleiTemplatesIndexFileName     = ".templates-index" // contains index of official nuclei templates
-	NucleiTemplatesCheckSumFileName  = ".checksum"
-	NewTemplateAdditionsFileName     = ".new-additions"
-	CLIConifgFileName                = "config.yaml"
-	ReportingConfigFilename          = "reporting-config.yaml"
+	NucleiIgnoreFileName            = ".nuclei-ignore"
+	NucleiTemplatesIndexFileName    = ".templates-index" // contains index of official nuclei templates
+	NucleiTemplatesCheckSumFileName = ".checksum"
+	NewTemplateAdditionsFileName    = ".new-additions"
+	CLIConifgFileName               = "config.yaml"
+	ReportingConfigFilename         = "reporting-config.yaml"
 	// Version is the current version of nuclei
-	Version = `v2.9.6`
+	Version = `v2.9.7`
 	// Directory Names of custom templates
 	CustomS3TemplatesDirName     = "s3"
 	CustomGithubTemplatesDirName = "github"
