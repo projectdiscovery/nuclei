@@ -4,13 +4,13 @@ import (
 	"testing"
 
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/contextargs"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/interactsh"
-	urlutil "github.com/projectdiscovery/utils/url"
 	"github.com/stretchr/testify/require"
 )
 
 func TestExecuteQueryPartRule(t *testing.T) {
-	parsed, _ := urlutil.Parse("http://localhost:8080/?url=localhost&mode=multiple&file=passwdfile")
+	URL := "http://localhost:8080/?url=localhost&mode=multiple&file=passwdfile"
 	options := &protocols.ExecutorOptions{
 		Interactsh: &interactsh.Client{},
 	}
@@ -22,8 +22,9 @@ func TestExecuteQueryPartRule(t *testing.T) {
 			options:  options,
 		}
 		var generatedURL []string
+		input := contextargs.NewWithInput(URL)
 		err := rule.executeQueryPartRule(&ExecuteRuleInput{
-			URL: parsed,
+			Input: input,
 			Callback: func(gr GeneratedRequest) bool {
 				generatedURL = append(generatedURL, gr.Request.URL.String())
 				return true
@@ -44,8 +45,9 @@ func TestExecuteQueryPartRule(t *testing.T) {
 			options:  options,
 		}
 		var generatedURL string
+		input := contextargs.NewWithInput(URL)
 		err := rule.executeQueryPartRule(&ExecuteRuleInput{
-			URL: parsed,
+			Input: input,
 			Callback: func(gr GeneratedRequest) bool {
 				generatedURL = gr.Request.URL.String()
 				return true
