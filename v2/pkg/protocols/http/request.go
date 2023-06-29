@@ -535,9 +535,12 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 		options.CustomRawBytes = generatedRequest.rawRequest.UnsafeRawBytes
 		options.ForceReadAllBody = request.ForceReadAllBody
 		options.SNI = request.options.Options.SNI
-		url, _ := urlutil.ParseURL(input.MetaInput.Input, false)
-		formedURL := url.Scheme + "://" + url.Host
-		resp, err = generatedRequest.original.rawhttpClient.DoRawWithOptions(generatedRequest.rawRequest.Method, formedURL, generatedRequest.rawRequest.Path, generators.ExpandMapValues(generatedRequest.rawRequest.Headers), io.NopCloser(strings.NewReader(generatedRequest.rawRequest.Data)), &options)
+		inputUrl := input.MetaInput.Input
+		if url, err := urlutil.ParseURL(inputUrl, false); err == nil {
+			inputUrl = fmt.Sprintf("%s://%s", url.Scheme, url.Host)
+		}
+		formedURL = fmt.Sprintf("%s%s", inputUrl, generatedRequest.rawRequest.Path)
+		resp, err = generatedRequest.original.rawhttpClient.DoRawWithOptions(generatedRequest.rawRequest.Method, inputUrl, generatedRequest.rawRequest.Path, generators.ExpandMapValues(generatedRequest.rawRequest.Headers), io.NopCloser(strings.NewReader(generatedRequest.rawRequest.Data)), &options)
 	} else {
 		hostname = generatedRequest.request.URL.Host
 		formedURL = generatedRequest.request.URL.String()
