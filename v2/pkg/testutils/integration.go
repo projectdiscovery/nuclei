@@ -63,7 +63,7 @@ func RunNucleiBareArgsAndGetResults(debug bool, extra ...string) ([]string, erro
 	if debug {
 		fmt.Println(string(data))
 	}
-	if err != nil {
+	if len(data) < 1 && err != nil {
 		return nil, fmt.Errorf("%v: %v", err.Error(), string(data))
 	}
 	var parts []string
