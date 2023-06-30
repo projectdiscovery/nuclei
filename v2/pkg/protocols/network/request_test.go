@@ -87,7 +87,7 @@ func TestNetworkExecuteWithResults(t *testing.T) {
 		})
 		require.Nil(t, err, "could not execute network request")
 	})
-	require.Nil(t, finalEvent, "could not get event output from request")
+	require.Nil(t, finalEvent.Results, "could not get event output from request")
 
 	request.Inputs[0].Type = NetworkInputTypeHolder{NetworkInputType: hexType}
 	request.Inputs[0].Data = hex.EncodeToString([]byte(fmt.Sprintf("GET / HTTP/1.1\r\nHost: %s\r\n\r\n", parsed.Host)))
