@@ -192,7 +192,7 @@ func NewStandardWriter(options *types.Options) (*StandardWriter, error) {
 		json:                  options.JSONL,
 		jsonReqResp:           options.JSONRequests,
 		noMetadata:            options.NoMeta,
-		matcherStatus:         options.MatcherStatus || options.MatchStatusPerRequest,
+		matcherStatus:         options.MatcherStatus,
 		timestamp:             options.Timestamp,
 		aurora:                auroraColorizer,
 		mutex:                 &sync.Mutex{},

@@ -72,18 +72,12 @@ func (e *Executer) Execute(input *contextargs.Context) (bool, error) {
 	previous := make(map[string]interface{})
 
 	var lastMatcherEvent *output.InternalWrappedEvent
-	writeFailureCallback := func(event *output.InternalWrappedEvent, matcherStatusPerReq, matcherStatus bool) {
-		if matcherStatusPerReq || matcherStatus {
-			results.CompareAndSwap(false, true)
-		}
-		if matcherStatus {
-			lastMatcherEvent = event
-			return
-		}
-		if matcherStatusPerReq {
+	writeFailureCallback := func(event *output.InternalWrappedEvent, matcherStatus bool) {
+		if !results.Load() && matcherStatus {
 			if err := e.options.Output.WriteFailure(event.InternalEvent); err != nil {
 				gologger.Warning().Msgf("Could not write failure event to output: %s\n", err)
 			}
+			results.CompareAndSwap(false, true)
 		}
 	}
 
@@ -110,13 +104,13 @@ func (e *Executer) Execute(input *contextargs.Context) (bool, error) {
 			// If no results were found, and also interactsh is not being used
 			// in that case we can skip it, otherwise we've to show failure in
 			// case of matcher-status flag.
-			if !event.HasOperatorResult() && !event.UsesInteractsh && e.options.Options.MatchStatusPerRequest {
-				writeFailureCallback(event, e.options.Options.MatchStatusPerRequest, e.options.Options.MatcherStatus)
+			if !event.HasOperatorResult() && !event.UsesInteractsh {
+				lastMatcherEvent = event
 			} else {
 				if writer.WriteResult(event, e.options.Output, e.options.Progress, e.options.IssuesClient) {
 					results.CompareAndSwap(false, true)
 				} else {
-					writeFailureCallback(event, e.options.Options.MatchStatusPerRequest, e.options.Options.MatcherStatus)
+					lastMatcherEvent = event
 				}
 			}
 		})
@@ -131,9 +125,8 @@ func (e *Executer) Execute(input *contextargs.Context) (bool, error) {
 			break
 		}
 	}
-
 	if lastMatcherEvent != nil {
-		writeFailureCallback(lastMatcherEvent, true, false)
+		writeFailureCallback(lastMatcherEvent, e.options.Options.MatcherStatus)
 	}
 	return results.Load(), nil
 }
