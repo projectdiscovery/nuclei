@@ -551,9 +551,9 @@ func testHeadlessSimpleResponse(t *testing.T, response string, actions []*Action
 
 func testHeadless(t *testing.T, actions []*Action, timeout time.Duration, handler func(w http.ResponseWriter, r *http.Request), assert func(page *Page, pageErr error, extractedData map[string]string)) {
 	t.Helper()
-	_ = protocolstate.Init(&types.Options{})
+	_ = protocolstate.Init(&types.Options{NoSandbox: true})
 
-	browser, err := New(&types.Options{ShowBrowser: false, UseInstalledChrome: testheadless.HeadlessLocal})
+	browser, err := New(&types.Options{ShowBrowser: false, UseInstalledChrome: testheadless.HeadlessLocal, NoSandbox: true})
 	require.Nil(t, err, "could not create browser")
 	defer browser.Close()
 
