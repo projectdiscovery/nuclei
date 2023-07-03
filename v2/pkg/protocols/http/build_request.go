@@ -149,7 +149,7 @@ func (r *requestGenerator) Make(ctx context.Context, input *contextargs.Context,
 	}
 	// while merging parameters first preference is given to target params
 	finalparams := parsed.Params
-	finalparams.Merge(reqURL.Params)
+	finalparams.Merge(reqURL.Params.Encode())
 	reqURL.Params = finalparams
 	return r.generateHttpRequest(ctx, reqURL, finalVars, payloads)
 }

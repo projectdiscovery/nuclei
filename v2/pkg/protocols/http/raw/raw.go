@@ -61,13 +61,13 @@ func Parse(request string, inputURL *urlutil.URL, unsafe, disablePathAutomerge b
 		if (cloned.Path == "" || cloned.Path == "/") && !strings.HasPrefix(prevPath, "/") {
 			// Edgecase if raw unsafe request is
 			// GET 1337?with=param HTTP/1.1
-			if tmpurl, err := urlutil.ParseRelativePath(prevPath, true); err == nil && len(tmpurl.Params) > 0 {
+			if tmpurl, err := urlutil.ParseRelativePath(prevPath, true); err == nil && !tmpurl.Params.IsEmpty() {
 				// if raw request contains parameters
-				cloned.Params.Merge(tmpurl.Params)
+				cloned.Params.Merge(tmpurl.Params.Encode())
 				unsafeRelativePath = strings.TrimPrefix(tmpurl.Path, "/") + "?" + cloned.Params.Encode()
 			} else {
 				// if raw request does not contain param
-				if len(cloned.Params) > 0 {
+				if !cloned.Params.IsEmpty() {
 					unsafeRelativePath = prevPath + "?" + cloned.Params.Encode()
 				} else {
 					unsafeRelativePath = prevPath
