@@ -23,27 +23,21 @@ builds:
   flags:
     - -trimpath
 
-- main: cmd/tmc/main.go
-  binary: tmc
-  id: annotate
-
-  env:
-  - CGO_ENABLED=0
-
-  goos: [linux]
-  goarch: [amd64]
+#- main: cmd/tmc/main.go
+#  binary: tmc
+#  id: annotate
+#
+#  env:
+#  - CGO_ENABLED=0
+#
+#  goos: [linux]
+#  goarch: [amd64]
 
 archives:
 - format: zip
   id: nuclei
   builds: [nuclei-cli]
-  replacements:
-      darwin: macOS
-
-- format: zip
-  id: annotate
-  builds: [annotate]
-  name_template: "{{ .Binary }}"
+  name_template: '{{ .ProjectName }}_{{ .Version }}_{{ if eq .Os "darwin" }}macOS{{ else }}{{ .Os }}{{ end }}_{{ .Arch }}'
 
 checksum:
   algorithm: sha256
