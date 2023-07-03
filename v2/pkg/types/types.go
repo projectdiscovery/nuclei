@@ -276,7 +276,7 @@ type Options struct {
 	ClientCAFile string
 	// Use ZTLS library
 	ZTLS bool
-	// Sandbox enables sandboxed nuclei template execution
+	// Disable sandboxed nuclei template execution
 	NoSandbox bool
 	// ShowMatchLine enables display of match line number
 	ShowMatchLine bool
