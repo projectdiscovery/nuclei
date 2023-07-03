@@ -75,7 +75,7 @@ func (rule *Rule) isExecutable(input *contextargs.Context) bool {
 	if err != nil {
 		return false
 	}
-	if len(parsed.Query()) > 0 && rule.partType == queryPartType {
+	if !parsed.Query().IsEmpty() && rule.partType == queryPartType {
 		return true
 	}
 	return false

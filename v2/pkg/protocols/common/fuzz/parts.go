@@ -7,9 +7,11 @@ import (
 	"strings"
 
 	"github.com/corpix/uarand"
+	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/expressions"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/generators"
 	"github.com/projectdiscovery/retryablehttp-go"
+	sliceutil "github.com/projectdiscovery/utils/slice"
 	urlutil "github.com/projectdiscovery/utils/url"
 )
 
@@ -29,32 +31,33 @@ func (rule *Rule) executeQueryPartRule(input *ExecuteRuleInput, payload string) 
 		return err
 	}
 	origRequestURL := requestURL.Clone()
-	temp := urlutil.Params{}
-	for k, v := range origRequestURL.Query() {
-		// this has to be a deep copy
-		x := []string{}
-		x = append(x, v...)
-		temp[k] = x
-	}
+	// clone the params to avoid modifying the original
+	temp := origRequestURL.Params.Clone()
 
-	for key, values := range origRequestURL.Query() {
+	origRequestURL.Query().Iterate(func(key string, values []string) bool {
+		cloned := sliceutil.Clone(values)
 		for i, value := range values {
 			if !rule.matchKeyOrValue(key, value) {
 				continue
 			}
 			var evaluated string
 			evaluated, input.InteractURLs = rule.executeEvaluate(input, key, value, payload, input.InteractURLs)
-			temp[key][i] = evaluated
+			cloned[i] = evaluated
 
 			if rule.modeType == singleModeType {
+				temp.Update(key, cloned)
 				requestURL.Params = temp
-				if err := rule.buildQueryInput(input, requestURL, input.InteractURLs); err != nil {
-					return err
+				if qerr := rule.buildQueryInput(input, requestURL, input.InteractURLs); qerr != nil {
+					err = qerr
+					gologger.Error().Msgf("Could not build request for query part rule %v: %s\n", rule, err)
+					return false
 				}
-				temp[key][i] = value // change back to previous value for temp
+				cloned[i] = value // change back to previous value for temp
 			}
 		}
-	}
+		temp.Update(key, cloned)
+		return true
+	})
 
 	if rule.modeType == multipleModeType {
 		requestURL.Params = temp
@@ -62,7 +65,8 @@ func (rule *Rule) executeQueryPartRule(input *ExecuteRuleInput, payload string) 
 			return err
 		}
 	}
-	return nil
+
+	return err
 }
 
 // buildQueryInput returns created request for a Query Input
