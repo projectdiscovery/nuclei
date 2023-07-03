@@ -8,12 +8,51 @@ import (
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/contextargs"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/generators"
+	maputil "github.com/projectdiscovery/utils/maps"
 	urlutil "github.com/projectdiscovery/utils/url"
 	"github.com/weppos/publicsuffix-go/publicsuffix"
 )
 
 // KnownVariables are the variables that are known to input requests
-var KnownVariables = []string{"BaseURL", "RootURL", "Hostname", "Host", "Port", "Path", "File", "Scheme", "Input", "FQDN", "RDN", "DN", "TLD", "SD"}
+var KnownVariables maputil.Map[KnownVariable, string]
+
+func init() {
+	KnownVariables = maputil.Map[KnownVariable, string]{
+		BaseURL:  "BaseURL",
+		RootURL:  "RootURL",
+		Hostname: "Hostname",
+		Host:     "Host",
+		Port:     "Port",
+		Path:     "Path",
+		File:     "File",
+		Scheme:   "Scheme",
+		Input:    "Input",
+		Fqdn:     "FQDN",
+		Rdn:      "RDN",
+		Dn:       "DN",
+		Tld:      "TLD",
+		Sd:       "SD",
+	}
+}
+
+type KnownVariable uint16
+
+const (
+	BaseURL KnownVariable = iota
+	RootURL
+	Hostname
+	Host
+	Port
+	Path
+	File
+	Scheme
+	Input
+	Fqdn
+	Rdn
+	Dn
+	Tld
+	Sd
+)
 
 // GenerateVariables will create default variables with context args
 func GenerateVariablesWithContextArgs(input *contextargs.Context, trailingSlash bool) map[string]interface{} {
@@ -34,18 +73,18 @@ func GenerateDNSVariables(domain string) map[string]interface{} {
 
 	domainName := strings.Join([]string{parsed.SLD, parsed.TLD}, ".")
 	dnsVariables := make(map[string]interface{})
-	for _, k := range KnownVariables {
+	for k, v := range KnownVariables {
 		switch k {
-		case "FQDN":
-			dnsVariables[k] = domain
-		case "RDN":
-			dnsVariables[k] = domainName
-		case "DN":
-			dnsVariables[k] = parsed.SLD
-		case "TLD":
-			dnsVariables[k] = parsed.TLD
-		case "SD":
-			dnsVariables[k] = parsed.TRD
+		case Fqdn:
+			dnsVariables[v] = domain
+		case Rdn:
+			dnsVariables[v] = domainName
+		case Dn:
+			dnsVariables[v] = parsed.SLD
+		case Tld:
+			dnsVariables[v] = parsed.TLD
+		case Sd:
+			dnsVariables[v] = parsed.TRD
 		}
 	}
 	return dnsVariables
@@ -55,13 +94,12 @@ func GenerateDNSVariables(domain string) map[string]interface{} {
 // Returns the map of KnownVariables keys
 // This function is used by http, headless, websocket, network and whois protocols to generate protocol variables
 func GenerateVariables(input interface{}, removeTrailingSlash bool, additionalVars map[string]interface{}) map[string]interface{} {
-
 	var vars = make(map[string]interface{})
 	switch input := input.(type) {
 	case string:
 		parsed, err := urlutil.Parse(input)
 		if err != nil {
-			return map[string]interface{}{"Input": input, "Hostname": input}
+			return map[string]interface{}{KnownVariables[Input]: input, KnownVariables[Hostname]: input}
 		}
 		vars = generateVariables(parsed, removeTrailingSlash)
 	case *urlutil.URL:
@@ -77,7 +115,7 @@ func GenerateVariables(input interface{}, removeTrailingSlash bool, additionalVa
 
 func generateVariables(inputURL *urlutil.URL, removeTrailingSlash bool) map[string]interface{} {
 	parsed := inputURL.Clone()
-	parsed.Params = make(urlutil.Params)
+	parsed.Params = urlutil.NewOrderedParams()
 	port := parsed.Port()
 	if port == "" {
 		if parsed.Scheme == "https" {
@@ -106,26 +144,26 @@ func generateVariables(inputURL *urlutil.URL, removeTrailingSlash bool) map[stri
 		}
 	}
 	knownVariables := make(map[string]interface{})
-	for _, k := range KnownVariables {
+	for k, v := range KnownVariables {
 		switch k {
-		case "BaseURL":
-			knownVariables[k] = parsed.String()
-		case "RootURL":
-			knownVariables[k] = fmt.Sprintf("%s://%s", parsed.Scheme, parsed.Host)
-		case "Hostname":
-			knownVariables[k] = parsed.Host
-		case "Host":
-			knownVariables[k] = parsed.Hostname()
-		case "Port":
-			knownVariables[k] = port
-		case "Path":
-			knownVariables[k] = requestPath
-		case "File":
-			knownVariables[k] = base
-		case "Scheme":
-			knownVariables[k] = parsed.Scheme
-		case "Input":
-			knownVariables[k] = parsed.String()
+		case BaseURL:
+			knownVariables[v] = parsed.String()
+		case RootURL:
+			knownVariables[v] = fmt.Sprintf("%s://%s", parsed.Scheme, parsed.Host)
+		case Hostname:
+			knownVariables[v] = parsed.Host
+		case Host:
+			knownVariables[v] = parsed.Hostname()
+		case Port:
+			knownVariables[v] = port
+		case Path:
+			knownVariables[v] = requestPath
+		case File:
+			knownVariables[v] = base
+		case Scheme:
+			knownVariables[v] = parsed.Scheme
+		case Input:
+			knownVariables[v] = parsed.String()
 		}
 	}
 	return generators.MergeMaps(knownVariables, GenerateDNSVariables(parsed.Hostname()))

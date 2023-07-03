@@ -109,11 +109,12 @@ func evaluateVariableValue(expression string, values, processing map[string]inte
 // checkForLazyEval checks if the variables have any lazy evaluation i.e any dsl function
 // and sets the flag accordingly.
 func (variables *Variable) checkForLazyEval() bool {
-
 	variables.ForEach(func(key string, value interface{}) {
-		if stringsutil.ContainsAny(types.ToString(value), protocolutils.KnownVariables...) {
-			variables.LazyEval = true
-			return
+		for _, v := range protocolutils.KnownVariables {
+			if stringsutil.ContainsAny(types.ToString(value), v) {
+				variables.LazyEval = true
+				return
+			}
 		}
 	})
 	return variables.LazyEval
