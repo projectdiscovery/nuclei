@@ -342,13 +342,13 @@ func createReportingOptions(options *types.Options) (*reporting.Options, error) 
 		if reportingOptions != nil {
 			reportingOptions.MarkdownExporter = &markdown.Options{
 				Directory:         options.MarkdownExportDirectory,
-				IncludeRawPayload: options.IncludeRawRequests,
+				IncludeRawPayload: options.IncludeRawRequests && !options.OmitRawRequests,
 			}
 		} else {
 			reportingOptions = &reporting.Options{}
 			reportingOptions.MarkdownExporter = &markdown.Options{
 				Directory:         options.MarkdownExportDirectory,
-				IncludeRawPayload: options.IncludeRawRequests,
+				IncludeRawPayload: options.IncludeRawRequests && !options.OmitRawRequests,
 			}
 		}
 	}
@@ -364,13 +364,13 @@ func createReportingOptions(options *types.Options) (*reporting.Options, error) 
 		if reportingOptions != nil {
 			reportingOptions.JSONExporter = &jsonexporter.Options{
 				File:              options.JSONExport,
-				IncludeRawPayload: options.IncludeRawRequests,
+				IncludeRawPayload: options.IncludeRawRequests && !options.OmitRawRequests,
 			}
 		} else {
 			reportingOptions = &reporting.Options{}
 			reportingOptions.JSONExporter = &jsonexporter.Options{
 				File:              options.JSONExport,
-				IncludeRawPayload: options.IncludeRawRequests,
+				IncludeRawPayload: options.IncludeRawRequests && !options.OmitRawRequests,
 			}
 		}
 	}
@@ -378,13 +378,13 @@ func createReportingOptions(options *types.Options) (*reporting.Options, error) 
 		if reportingOptions != nil {
 			reportingOptions.JSONLExporter = &jsonl.Options{
 				File:              options.JSONLExport,
-				IncludeRawPayload: options.IncludeRawRequests,
+				IncludeRawPayload: options.IncludeRawRequests && !options.OmitRawRequests,
 			}
 		} else {
 			reportingOptions = &reporting.Options{}
 			reportingOptions.JSONLExporter = &jsonl.Options{
 				File:              options.JSONLExport,
-				IncludeRawPayload: options.IncludeRawRequests,
+				IncludeRawPayload: options.IncludeRawRequests && !options.OmitRawRequests,
 			}
 		}
 	}

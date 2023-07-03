@@ -189,7 +189,7 @@ func NewStandardWriter(options *types.Options) (*StandardWriter, error) {
 	}
 	writer := &StandardWriter{
 		json:             options.JSONL,
-		jsonReqResp:      options.IncludeRawRequests,
+		jsonReqResp:      options.IncludeRawRequests && !options.OmitRawRequests,
 		noMetadata:       options.NoMeta,
 		matcherStatus:    options.MatcherStatus,
 		timestamp:        options.Timestamp,
