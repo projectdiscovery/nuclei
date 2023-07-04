@@ -231,7 +231,10 @@ type Options struct {
 	// JSON writes json line output to files
 	JSONL bool
 	// JSONRequests writes requests/responses for matches in JSON output
+	// Deprecated: use OmitRawRequests instead as of now JSONRequests(include raw requests) is always true
 	JSONRequests bool
+	// OmitRawRequests omits requests/responses for matches in JSON output
+	OmitRawRequests bool
 	// JSONExport is the file to export JSON output format to
 	JSONExport string
 	// JSONLExport is the file to export JSONL output format to
