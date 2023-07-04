@@ -23,7 +23,8 @@ type Exporter struct {
 // Options contains the configuration options for GitHub issue tracker client
 type Options struct {
 	// Directory is the directory to export found results to
-	Directory string `yaml:"directory"`
+	Directory         string `yaml:"directory"`
+	IncludeRawPayload bool   `yaml:"include-raw-payload"`
 }
 
 // New creates a new markdown exporter integration client based on options.
@@ -51,6 +52,15 @@ func New(options *Options) (*Exporter, error) {
 
 // Export exports a passed result event to markdown
 func (exporter *Exporter) Export(event *output.ResultEvent) error {
+	// If the IncludeRawPayload is not set, then set the request and response to an empty string in the event to avoid
+	// writing them to the list of events.
+	// This will reduce the amount of storage as well as the fields being excluded from the markdown report output since
+	// the property is set to "omitempty"
+	if !exporter.options.IncludeRawPayload {
+		event.Request = ""
+		event.Response = ""
+	}
+
 	// index file generation
 	file, err := os.OpenFile(filepath.Join(exporter.directory, indexFileName), os.O_APPEND|os.O_WRONLY, 0644)
 	if err != nil {
