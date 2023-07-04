@@ -63,7 +63,7 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, metadata,
 	for _, kv := range request.addresses {
 		actualAddress := replacer.Replace(kv.address, variables)
 
-		if visitedAddressess.Has(actualAddress) {
+		if visitedAddressess.Has(actualAddress) && !request.options.Options.DisableClustering {
 			continue
 		}
 		visitedAddressess.Set(actualAddress, struct{}{})
