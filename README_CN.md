@@ -134,6 +134,7 @@ Nuclei是一款注重于可配置性、可扩展性和易用性的基于模板�
    -nc, -no-color                        禁用输出内容着色（ANSI转义码）
    -j, -jsonl                            输出为jsonL（ines）
    -irr, -include-rr                     在JSONL中输出对应的请求和相应（仅结果）
+   -or, -omit-raw                     
    -nm, -no-meta                         不显示匹配的元数据
    -nts, -no-timestamp                   不在输出中显示时间戳
    -rdb, -report-db string               本地的Nuclei结果数据库（始终使用该数据库保存结果）
