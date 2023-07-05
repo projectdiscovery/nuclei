@@ -19,10 +19,11 @@ const (
 	// Version is the current version of nuclei
 	Version = `v2.9.8`
 	// Directory Names of custom templates
-	CustomS3TemplatesDirName     = "s3"
-	CustomGithubTemplatesDirName = "github"
-	CustomAzureTemplatesDirName  = "azure"
-	CustomGitLabTemplatesDirName = "gitlab"
+	CustomS3TemplatesDirName        = "s3"
+	CustomGithubTemplatesDirName    = "github"
+	CustomAzureTemplatesDirName     = "azure"
+	CustomGitLabTemplatesDirName    = "gitlab"
+	CustomBitbucketTemplatesDirName = "bitbucket"
 )
 
 // IsOutdatedVersion compares two versions and returns true if the current version is outdated

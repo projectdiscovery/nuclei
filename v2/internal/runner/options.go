@@ -384,6 +384,12 @@ func readEnvInputVars(options *types.Options) {
 		}
 	}
 
+	options.BitbucketToken = os.Getenv("BITBUCKET_TOKEN")
+	bitbucketRepolist := os.Getenv("BITBUCKET_TEMPLATE_REPO")
+	if bitbucketRepolist != "" {
+		options.BitbucketTemplateRepo = append(options.BitbucketTemplateRepo, stringsutil.SplitAny(bitbucketRepolist, ",")...)
+	}
+
 	// AWS options for downloading templates from an S3 bucket
 	options.AwsAccessKey = os.Getenv("AWS_ACCESS_KEY")
 	options.AwsSecretKey = os.Getenv("AWS_SECRET_KEY")

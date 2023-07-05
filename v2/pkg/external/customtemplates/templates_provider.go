@@ -76,5 +76,14 @@ func NewCustomTemplatesManager(options *types.Options) (*CustomTemplatesManager,
 		ctm.providers = append(ctm.providers, v)
 	}
 
+	// Add Bitbucket providers
+	bitbucketProviders, err := NewBitbucketProviders(options)
+	if err != nil {
+		return nil, errorutil.NewWithErr(err).Msgf("could not create bitbucket providers for custom templates")
+	}
+	for _, v := range bitbucketProviders {
+		ctm.providers = append(ctm.providers, v)
+	}
+
 	return ctm, nil
 }

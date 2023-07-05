@@ -333,6 +333,10 @@ type Options struct {
 	GithubToken string
 	// GithubTemplateRepo is the list of custom public/private templates GitHub repos
 	GithubTemplateRepo []string
+	// Bitbucket token used to clone/pull from public/private repos for custom templates
+	BitbucketToken string
+	// BitbucketTemplateRepo is the list of custom public/private templates Bitbucket repos
+	BitbucketTemplateRepo []string
 	// GitLabServerURL is the gitlab server to use for custom templates
 	GitLabServerURL string
 	// GitLabToken used to clone/pull from private repos for custom templates

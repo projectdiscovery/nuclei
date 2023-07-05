@@ -24,10 +24,11 @@ type Config struct {
 
 	// customtemplates exists in templates directory with the name of custom-templates provider
 	// below custom paths are absolute paths to respecitive custom-templates directories
-	CustomS3TemplatesDirectory     string `json:"custom-s3-templates-directory"`
-	CustomGithubTemplatesDirectory string `json:"custom-github-templates-directory"`
-	CustomGitLabTemplatesDirectory string `json:"custom-gitlab-templates-directory"`
-	CustomAzureTemplatesDirectory  string `json:"custom-azure-templates-directory"`
+	CustomS3TemplatesDirectory        string `json:"custom-s3-templates-directory"`
+	CustomGithubTemplatesDirectory    string `json:"custom-github-templates-directory"`
+	CustomGitLabTemplatesDirectory    string `json:"custom-gitlab-templates-directory"`
+	CustomBitbucketTemplatesDirectory string `json:"custom-bitbucket-templates-directory"`
+	CustomAzureTemplatesDirectory     string `json:"custom-azure-templates-directory"`
 
 	TemplateVersion  string `json:"nuclei-templates-version,omitempty"`
 	NucleiIgnoreHash string `json:"nuclei-ignore-hash,omitempty"`
@@ -111,7 +112,7 @@ func (c *Config) GetConfigDir() string {
 
 // GetAllCustomTemplateDirs returns all custom template directories
 func (c *Config) GetAllCustomTemplateDirs() []string {
-	return []string{c.CustomS3TemplatesDirectory, c.CustomGithubTemplatesDirectory, c.CustomGitLabTemplatesDirectory, c.CustomAzureTemplatesDirectory}
+	return []string{c.CustomS3TemplatesDirectory, c.CustomGithubTemplatesDirectory, c.CustomGitLabTemplatesDirectory, c.CustomBitbucketTemplatesDirectory, c.CustomAzureTemplatesDirectory}
 }
 
 // GetReportingConfigFilePath returns the nuclei reporting config file path
@@ -191,6 +192,7 @@ func (c *Config) SetTemplatesDir(dirPath string) {
 	c.CustomGithubTemplatesDirectory = filepath.Join(dirPath, CustomGithubTemplatesDirName)
 	c.CustomS3TemplatesDirectory = filepath.Join(dirPath, CustomS3TemplatesDirName)
 	c.CustomGitLabTemplatesDirectory = filepath.Join(dirPath, CustomGitLabTemplatesDirName)
+	c.CustomBitbucketTemplatesDirectory = filepath.Join(dirPath, CustomBitbucketTemplatesDirName)
 	c.CustomAzureTemplatesDirectory = filepath.Join(dirPath, CustomAzureTemplatesDirName)
 }
 
