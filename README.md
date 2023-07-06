@@ -41,7 +41,10 @@ Nuclei is used to send requests across targets based on a template, leading to z
 
 We have a [dedicated repository](https://github.com/projectdiscovery/nuclei-templates) that houses various type of vulnerability templates contributed by **more than 300** security researchers and engineers.
 
-
+| :exclamation:  **Disclaimer**  |
+|---------------------------------|
+| **This project is in active development**. Expect breaking changes with releases. Review the release changelog before updating. |
+| This project was primarily built to be used as a standalone CLI tool. **Running nuclei as a service may pose security risks.** It's recommended to use with caution and additional security measures. |
 
 ## How it works
 
