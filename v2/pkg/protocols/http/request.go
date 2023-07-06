@@ -228,8 +228,7 @@ func (request *Request) executeTurboHTTP(input *contextargs.Context, dynamicValu
 
 // executeFuzzingRule executes fuzzing request for a URL
 func (request *Request) executeFuzzingRule(input *contextargs.Context, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
-	parsed, err := urlutil.Parse(input.MetaInput.Input)
-	if err != nil {
+	if _, err := urlutil.Parse(input.MetaInput.Input); err != nil {
 		return errors.Wrap(err, "could not parse url")
 	}
 	fuzzRequestCallback := func(gr fuzz.GeneratedRequest) bool {
@@ -297,7 +296,7 @@ func (request *Request) executeFuzzingRule(input *contextargs.Context, previous 
 		}
 		for _, rule := range request.Fuzzing {
 			err = rule.Execute(&fuzz.ExecuteRuleInput{
-				URL:         parsed,
+				Input:       input,
 				Callback:    fuzzRequestCallback,
 				Values:      generated.dynamicValues,
 				BaseRequest: generated.request,
@@ -536,7 +535,12 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 		options.CustomRawBytes = generatedRequest.rawRequest.UnsafeRawBytes
 		options.ForceReadAllBody = request.ForceReadAllBody
 		options.SNI = request.options.Options.SNI
-		resp, err = generatedRequest.original.rawhttpClient.DoRawWithOptions(generatedRequest.rawRequest.Method, input.MetaInput.Input, generatedRequest.rawRequest.Path, generators.ExpandMapValues(generatedRequest.rawRequest.Headers), io.NopCloser(strings.NewReader(generatedRequest.rawRequest.Data)), &options)
+		inputUrl := input.MetaInput.Input
+		if url, err := urlutil.ParseURL(inputUrl, false); err == nil {
+			inputUrl = fmt.Sprintf("%s://%s", url.Scheme, url.Host)
+		}
+		formedURL = fmt.Sprintf("%s%s", inputUrl, generatedRequest.rawRequest.Path)
+		resp, err = generatedRequest.original.rawhttpClient.DoRawWithOptions(generatedRequest.rawRequest.Method, inputUrl, generatedRequest.rawRequest.Path, generators.ExpandMapValues(generatedRequest.rawRequest.Headers), io.NopCloser(strings.NewReader(generatedRequest.rawRequest.Data)), &options)
 	} else {
 		hostname = generatedRequest.request.URL.Host
 		formedURL = generatedRequest.request.URL.String()
