@@ -277,7 +277,7 @@ type Options struct {
 	ClientKeyFile string
 	// ClientCAFile client certificate authority file (PEM-encoded) used for authenticating against scanned hosts
 	ClientCAFile string
-	// Use ZTLS library
+	// Deprecated: Use ZTLS library
 	ZTLS bool
 	// Sandbox enables sandboxed nuclei template execution
 	Sandbox bool
