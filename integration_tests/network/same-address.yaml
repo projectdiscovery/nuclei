@@ -1,0 +1,29 @@
+id: same-target
+
+info:
+  name: same-target
+  author: pdteam
+  severity: info
+  description: Riak is a distributed NoSQL key-value data store that offers high availability, fault tolerance, operational simplicity, and scalability.
+
+network:
+  - host: 
+      - "{{Hostname}}"
+      - "{{Hostname}}"
+      - "{{Hostname}}"
+      - "{{Hostname}}"
+      - "{{Hostname}}"
+      - "{{Hostname}}"
+      - "{{Hostname}}"
+      - "{{Hostname}}"
+      - "{{Hostname}}"
+      - "{{Hostname}}"
+      - "{{Hostname}}"
+    inputs:
+      - data: "PING\r\n"
+    read-size: 4
+    matchers:
+      - type: word
+        part: data
+        words:
+          - "PONG"
