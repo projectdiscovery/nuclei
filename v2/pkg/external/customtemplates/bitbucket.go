@@ -50,7 +50,7 @@ func (customTemplate *customTemplateBitbucketRepo) Update(ctx context.Context) {
 	}
 	err := customTemplate.pullChanges(clonePath, customTemplate.bitbucketToken)
 	if err != nil {
-		gologger.Error().Msgf("%s", err)
+		gologger.Info().Msgf("bitbucket repository %s", err)
 	} else {
 		gologger.Info().Msgf("Repo %s/%s successfully pulled the changes.\n", customTemplate.owner, customTemplate.reponame)
 	}
