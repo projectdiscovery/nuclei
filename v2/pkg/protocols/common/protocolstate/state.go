@@ -95,8 +95,8 @@ func Init(options *types.Options) error {
 		opts.Deny = append(networkpolicy.DefaultIPv4DenylistRanges, networkpolicy.DefaultIPv6DenylistRanges...)
 	}
 	opts.WithDialerHistory = true
-	opts.WithZTLS = options.ZTLS
 	opts.SNIName = options.SNI
+	// fastdialer now by default fallbacks to ztls when there are tls related errors
 	dialer, err := fastdialer.NewDialer(opts)
 	if err != nil {
 		return errors.Wrap(err, "could not create dialer")
