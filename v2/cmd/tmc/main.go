@@ -206,11 +206,6 @@ func process(opts options) error {
 		}
 
 		if opts.enhance {
-			// currently enhance api only supports cve-id's
-			matches := idRegex.FindAllStringSubmatch(dataString, 1)
-			if len(matches) == 0 {
-				continue
-			}
 			enhancedTemplateData, isEnhanced, err := enhanceTemplate(dataString)
 			if err != nil {
 				gologger.Info().Label("enhance").Msg(logErrMsg(path, err, opts.debug, errFile))
