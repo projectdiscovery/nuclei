@@ -12,6 +12,7 @@ var networkTestcases = map[string]testutils.TestCase{
 	"network/multi-step.yaml":     &networkMultiStep{},
 	"network/self-contained.yaml": &networkRequestSelContained{},
 	"network/variables.yaml":      &networkVariables{},
+	"network/same-address.yaml":   &networkBasic{},
 }
 
 const defaultStaticPort = 5431
