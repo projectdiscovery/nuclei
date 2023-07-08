@@ -76,8 +76,6 @@ func init() {
 	}
 }
 
-var idRegex = regexp.MustCompile("id: ([C|c][V|v][E|e]-[0-9]+-[0-9]+)")
-
 type options struct {
 	input        string
 	errorLogFile string
