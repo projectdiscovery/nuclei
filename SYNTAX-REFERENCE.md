@@ -831,6 +831,29 @@ epss-score: "0.42509"
 
 <div class="dd">
 
+<code>epss-percentile</code>  <i>float64</i>
+
+</div>
+<div class="dt">
+
+EPSS Percentile for the template.
+
+
+
+Examples:
+
+
+```yaml
+epss-percentile: "0.42509"
+```
+
+
+</div>
+
+<hr />
+
+<div class="dd">
+
 <code>cpe</code>  <i>string</i>
 
 </div>

@@ -298,7 +298,7 @@ func init() {
 			FieldName: "classification",
 		},
 	}
-	MODELClassificationDoc.Fields = make([]encoder.Doc, 6)
+	MODELClassificationDoc.Fields = make([]encoder.Doc, 7)
 	MODELClassificationDoc.Fields[0].Name = "cve-id"
 	MODELClassificationDoc.Fields[0].Type = "stringslice.StringSlice"
 	MODELClassificationDoc.Fields[0].Note = ""
@@ -334,13 +334,20 @@ func init() {
 	MODELClassificationDoc.Fields[4].Comments[encoder.LineComment] = "EPSS Score for the template."
 
 	MODELClassificationDoc.Fields[4].AddExample("", "0.42509")
-	MODELClassificationDoc.Fields[5].Name = "cpe"
-	MODELClassificationDoc.Fields[5].Type = "string"
+	MODELClassificationDoc.Fields[5].Name = "epss-percentile"
+	MODELClassificationDoc.Fields[5].Type = "float64"
 	MODELClassificationDoc.Fields[5].Note = ""
-	MODELClassificationDoc.Fields[5].Description = "CPE for the template."
-	MODELClassificationDoc.Fields[5].Comments[encoder.LineComment] = "CPE for the template."
+	MODELClassificationDoc.Fields[5].Description = "EPSS Percentile for the template."
+	MODELClassificationDoc.Fields[5].Comments[encoder.LineComment] = "EPSS Percentile for the template."
 
-	MODELClassificationDoc.Fields[5].AddExample("", "cpe:/a:vendor:product:version")
+	MODELClassificationDoc.Fields[5].AddExample("", "0.42509")
+	MODELClassificationDoc.Fields[6].Name = "cpe"
+	MODELClassificationDoc.Fields[6].Type = "string"
+	MODELClassificationDoc.Fields[6].Note = ""
+	MODELClassificationDoc.Fields[6].Description = "CPE for the template."
+	MODELClassificationDoc.Fields[6].Comments[encoder.LineComment] = "CPE for the template."
+
+	MODELClassificationDoc.Fields[6].AddExample("", "cpe:/a:vendor:product:version")
 
 	HTTPRequestDoc.Type = "http.Request"
 	HTTPRequestDoc.Comments[encoder.LineComment] = " Request contains a http request to be made from a template"
