@@ -1,7 +1,6 @@
 package headless
 
 import (
-	"io"
 	"net/url"
 	"strings"
 	"time"
@@ -22,6 +21,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/headless/engine"
 	protocolutils "github.com/projectdiscovery/nuclei/v2/pkg/protocols/utils"
 	templateTypes "github.com/projectdiscovery/nuclei/v2/pkg/templates/types"
+	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 	urlutil "github.com/projectdiscovery/utils/url"
 )
 
@@ -206,7 +206,7 @@ func (request *Request) executeFuzzingRule(input *contextargs.Context, payloads 
 			Values:      payloads,
 			BaseRequest: nil,
 		})
-		if err == io.EOF {
+		if err == types.ErrNoMoreRequests {
 			return nil
 		}
 		if err != nil {
