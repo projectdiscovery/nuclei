@@ -1,0 +1,25 @@
+name: 🤖 dep auto merge
+
+on:
+  pull_request:
+    branches:
+      - dep
+  workflow_dispatch:
+
+permissions:
+  pull-requests: write
+  issues: write
+  repository-projects: write
+
+jobs:
+  automerge:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          token: ${{ secrets.DEPENDABOT_PAT }}
+
+      - uses: ahmadnassri/action-dependabot-auto-merge@v2
+        with:
+          github-token: ${{ secrets.DEPENDABOT_PAT }}
+          target: all
