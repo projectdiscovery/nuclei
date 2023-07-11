@@ -1,11 +1,17 @@
-name: sync-dep
+name: 🤖 sync dep
+
 on:
   push:
     branches:
       - dev
 
+permissions:
+  pull-requests: write
+  issues: write
+  repository-projects: write
+
 jobs:
-  sync-dep-with-main:
+  sync-dep-with-dev:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -14,10 +20,11 @@ jobs:
         uses: actions/setup-node@v3
         with:
           node-version: 12
+
       - name: Opening pull request
         id: pull
         uses: tretuna/sync-branches@1.4.0
         with:
-          GITHUB_TOKEN: ${{ secrets.PDTEAMX_PAT }}
+          GITHUB_TOKEN: ${{ secrets.DEPENDABOT_PAT }}
           FROM_BRANCH: "${{ github.ref_name }}"
           TO_BRANCH: "dep"
