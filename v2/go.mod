@@ -10,7 +10,7 @@ require (
 	github.com/bluele/gcache v0.0.2
 	github.com/corpix/uarand v0.2.0
 	github.com/go-playground/validator/v10 v10.14.1
-	github.com/go-rod/rod v0.113.0
+	github.com/go-rod/rod v0.113.4
 	github.com/gobwas/ws v1.2.1
 	github.com/google/go-github v17.0.0+incompatible
 	github.com/itchyny/gojq v0.12.13
