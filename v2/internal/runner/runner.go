@@ -112,7 +112,10 @@ func New(options *types.Options) (*Runner, error) {
 
 		// Check for template updates and update if available.
 		// If the custom templates manager is not nil, we will install custom templates if there is a fresh installation
-		tm := &installer.TemplateManager{CustomTemplates: ctm}
+		tm := &installer.TemplateManager{
+			CustomTemplates:        ctm,
+			DisablePublicTemplates: options.PublicTemplateDisableDownload,
+		}
 		if err := tm.FreshInstallIfNotExists(); err != nil {
 			gologger.Warning().Msgf("failed to install nuclei templates: %s\n", err)
 		}

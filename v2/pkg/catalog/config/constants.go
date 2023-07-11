@@ -14,7 +14,7 @@ const (
 	NucleiTemplatesIndexFileName    = ".templates-index" // contains index of official nuclei templates
 	NucleiTemplatesCheckSumFileName = ".checksum"
 	NewTemplateAdditionsFileName    = ".new-additions"
-	CLIConifgFileName               = "config.yaml"
+	CLIConfigFileName               = "config.yaml"
 	ReportingConfigFilename         = "reporting-config.yaml"
 	// Version is the current version of nuclei
 	Version = `v2.9.8`

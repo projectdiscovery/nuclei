@@ -29,7 +29,7 @@ import (
 
 func ConfigureOptions() error {
 	// with FileStringSliceOptions, FileNormalizedStringSliceOptions, FileCommaSeparatedStringSliceOptions
-	// if file has extension `.yaml,.json` we consider those as strings and not files to be read
+	// if file has the extension `.yaml` or `.json` we consider those as strings and not files to be read
 	isFromFileFunc := func(s string) bool {
 		return !config.IsTemplate(s)
 	}
@@ -292,7 +292,7 @@ func configureOutput(options *types.Options) {
 	logutil.DisableDefaultLogger()
 }
 
-// loadResolvers loads resolvers from both user provided flag and file
+// loadResolvers loads resolvers from both user-provided flags and file
 func loadResolvers(options *types.Options) {
 	if options.ResolversFile == "" {
 		return
@@ -398,11 +398,13 @@ func readEnvInputVars(options *types.Options) {
 	options.AzureServiceURL = os.Getenv("AZURE_SERVICE_URL")
 
 	// General options to disable the template download locations from being used.
-	// This will override the default behavior of downloading templates from the default
-	// locations as well as the custom locations
-	options.PublicTemplateDisableDownload = os.Getenv("NUCLEI_TEMPLATES_PUBLIC_DISABLE_DOWNLOAD") == "true"
-	options.GitHubTemplateDisableDownload = os.Getenv("NUCLEI_TEMPLATES_GITHUB_DISABLE_DOWNLOAD") == "true"
-	options.GitLabTemplateDisableDownload = os.Getenv("NUCLEI_TEMPLATES_GITLAB_DISABLE_DOWNLOAD") == "true"
-	options.AwsTemplateDisableDownload = os.Getenv("NUCLEI_TEMPLATES_AWS_DISABLE_DOWNLOAD") == "true"
-	options.AzureTemplateDisableDownload = os.Getenv("NUCLEI_TEMPLATES_AZURE_DISABLE_DOWNLOAD") == "true"
+	// This will override the default behavior of downloading templates from the default locations as well as the
+	// custom locations.
+	// The primary use-case is when the user wants to use custom templates only and does not want to download any
+	// templates from the default locations or is unable to connect to the public internet.
+	options.PublicTemplateDisableDownload = strings.ToLower(os.Getenv("NUCLEI_TEMPLATES_PUBLIC_DISABLE_DOWNLOAD")) == "true"
+	options.GitHubTemplateDisableDownload = strings.ToLower(os.Getenv("NUCLEI_TEMPLATES_GITHUB_DISABLE_DOWNLOAD")) == "true"
+	options.GitLabTemplateDisableDownload = strings.ToLower(os.Getenv("NUCLEI_TEMPLATES_GITLAB_DISABLE_DOWNLOAD")) == "true"
+	options.AwsTemplateDisableDownload = strings.ToLower(os.Getenv("NUCLEI_TEMPLATES_AWS_DISABLE_DOWNLOAD")) == "true"
+	options.AzureTemplateDisableDownload = strings.ToLower(os.Getenv("NUCLEI_TEMPLATES_AZURE_DISABLE_DOWNLOAD")) == "true"
 }
