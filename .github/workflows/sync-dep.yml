@@ -25,6 +25,6 @@ jobs:
         id: pull
         uses: tretuna/sync-branches@1.4.0
         with:
-          GITHUB_TOKEN: ${{ secrets.DEPENDABOT_PAT }}
+          GITHUB_TOKEN: "${{ secrets.DEPENDABOT_PAT }}"
           FROM_BRANCH: "${{ github.ref_name }}"
           TO_BRANCH: "dep"
