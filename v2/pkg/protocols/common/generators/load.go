@@ -2,11 +2,11 @@ package generators
 
 import (
 	"bufio"
-	"io"
 	"path/filepath"
 	"strings"
 
 	"github.com/pkg/errors"
+	pkgTypes "github.com/projectdiscovery/nuclei/v2/pkg/types"
 	"github.com/spf13/cast"
 )
 
@@ -60,7 +60,7 @@ func (generator *PayloadGenerator) loadPayloadsFromFile(filepath string) ([]stri
 		}
 		lines = append(lines, text)
 	}
-	if err := scanner.Err(); err != nil && !errors.Is(err, io.EOF) {
+	if err := scanner.Err(); err != nil && !errors.Is(err, pkgTypes.ErrNoMoreRequests) {
 		return lines, scanner.Err()
 	}
 	return lines, nil

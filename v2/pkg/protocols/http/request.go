@@ -134,7 +134,7 @@ func (request *Request) executeParallelHTTP(input *contextargs.Context, dynamicV
 		ctx := request.newContext(input)
 		generatedHttpRequest, err := generator.Make(ctx, input, inputData, payloads, dynamicValues)
 		if err != nil {
-			if err == io.EOF {
+			if err == types.ErrNoMoreRequests {
 				break
 			}
 			request.options.Progress.IncrementFailedRequestsBy(int64(generator.Total()))
@@ -301,7 +301,7 @@ func (request *Request) executeFuzzingRule(input *contextargs.Context, previous 
 				Values:      generated.dynamicValues,
 				BaseRequest: generated.request,
 			})
-			if err == io.EOF {
+			if err == types.ErrNoMoreRequests {
 				return nil
 			}
 			if err != nil {
@@ -354,7 +354,7 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 			defer cancel()
 			generatedHttpRequest, err := generator.Make(ctxWithTimeout, input, data, payloads, dynamicValue)
 			if err != nil {
-				if err == io.EOF {
+				if err == types.ErrNoMoreRequests {
 					return true, nil
 				}
 				request.options.Progress.IncrementFailedRequestsBy(int64(generator.Total()))

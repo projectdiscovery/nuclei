@@ -150,21 +150,9 @@ func (ctr *customTemplateGithubRepo) pullChanges(repoPath, githubToken string) e
 	return nil
 }
 
-// getLocalRepoClonePath returns the clone path.
-// if same name repo directory exists from another owner then it appends the owner then and returns the path
-// eg. for nuclei-templates directory exists for projectdiscovery owner, then for ehsandeep/nuclei-templates it will return nuclei-templates-ehsandeep
+// All Custom github repos are cloned in the format of 'reponame-owner' for uniqueness
 func (ctr *customTemplateGithubRepo) getLocalRepoClonePath(downloadPath string) string {
-	if fileutil.FolderExists(filepath.Join(downloadPath, ctr.reponame)) && !ctr.isRepoDirExists(filepath.Join(downloadPath, ctr.reponame)) {
-		return filepath.Join(downloadPath, ctr.reponame+"-"+ctr.owner)
-	}
-	return filepath.Join(downloadPath, ctr.reponame)
-}
-
-// isRepoDirExists take the path and checks if the same repo or not
-func (ctr *customTemplateGithubRepo) isRepoDirExists(repoPath string) bool {
-	r, _ := git.PlainOpen(repoPath)
-	local, _ := r.Config()
-	return local.User.Name == ctr.owner // repo already cloned no need to rename and clone
+	return filepath.Join(downloadPath, ctr.reponame+"-"+ctr.owner)
 }
 
 // returns the auth object with username and github token as password
