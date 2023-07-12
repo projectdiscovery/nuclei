@@ -1,12 +1,18 @@
 package types
 
 import (
+	"io"
 	"time"
 
 	"github.com/projectdiscovery/goflags"
 	"github.com/projectdiscovery/nuclei/v2/pkg/model/types/severity"
 	"github.com/projectdiscovery/nuclei/v2/pkg/templates/types"
 	fileutil "github.com/projectdiscovery/utils/file"
+)
+
+var (
+	// ErrNoMoreRequests is internal error to indicate that generator has no more requests to generate
+	ErrNoMoreRequests = io.EOF
 )
 
 // Options contains the configuration options for nuclei scanner.
