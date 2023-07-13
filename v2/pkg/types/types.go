@@ -1,12 +1,18 @@
 package types
 
 import (
+	"io"
 	"time"
 
 	"github.com/projectdiscovery/goflags"
 	"github.com/projectdiscovery/nuclei/v2/pkg/model/types/severity"
 	"github.com/projectdiscovery/nuclei/v2/pkg/templates/types"
 	fileutil "github.com/projectdiscovery/utils/file"
+)
+
+var (
+	// ErrNoMoreRequests is internal error to indicate that generator has no more requests to generate
+	ErrNoMoreRequests = io.EOF
 )
 
 // Options contains the configuration options for nuclei scanner.
@@ -277,7 +283,7 @@ type Options struct {
 	ClientKeyFile string
 	// ClientCAFile client certificate authority file (PEM-encoded) used for authenticating against scanned hosts
 	ClientCAFile string
-	// Use ZTLS library
+	// Deprecated: Use ZTLS library
 	ZTLS bool
 	// Sandbox enables sandboxed nuclei template execution
 	Sandbox bool

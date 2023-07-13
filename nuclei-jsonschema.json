@@ -32,6 +32,11 @@
           "title": "epss score for the template",
           "description": "EPSS Score for the template"
         },
+        "epss-percentile": {
+          "type": "number",
+          "title": "epss percentile for the template",
+          "description": "EPSS Percentile for the template"
+        },
         "cpe": {
           "type": "string",
           "title": "cpe for the template",

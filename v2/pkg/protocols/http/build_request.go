@@ -65,7 +65,7 @@ func (r *requestGenerator) Total() int {
 }
 
 // Make creates a http request for the provided input.
-// It returns io.EOF as error when all the requests have been exhausted.
+// It returns ErrNoMoreRequests as error when all the requests have been exhausted.
 func (r *requestGenerator) Make(ctx context.Context, input *contextargs.Context, reqData string, payloads, dynamicValues map[string]interface{}) (*generatedRequest, error) {
 	// value of `reqData` depends on the type of request specified in template
 	// 1. If request is raw request =  reqData contains raw request (i.e http request dump)
