@@ -391,8 +391,8 @@ github.com/projectdiscovery/asnmap v1.0.4 h1:dmXrls7Y0Sdeb6cLlKGwdYX8h1K9q2iYOGX
 github.com/projectdiscovery/asnmap v1.0.4/go.mod h1:iTLDyYsblEwYHcLiKZCRx8Et+xV7NlvgGLusANpgegc=
 github.com/projectdiscovery/blackrock v0.0.1 h1:lHQqhaaEFjgf5WkuItbpeCZv2DUIE45k0VbGJyft6LQ=
 github.com/projectdiscovery/blackrock v0.0.1/go.mod h1:ANUtjDfaVrqB453bzToU+YB4cUbvBRpLvEwoWIwlTss=
-github.com/projectdiscovery/cdncheck v1.0.6 h1:bjo4oxCD1Y5972ow0LWCjUpO8KOO12j6uGfPofVpC4c=
-github.com/projectdiscovery/cdncheck v1.0.6/go.mod h1:NN0QRfxBzUVZJoS0lN37spElCOXHzFuvq1yg5RhTxCE=
+github.com/projectdiscovery/cdncheck v1.0.9 h1:BS15gzj9gb5AVSKqTDzPamfSgStu7nJQOocUvrssFlg=
+github.com/projectdiscovery/cdncheck v1.0.9/go.mod h1:18SSl1w7rMj53CGeRIZTbDoa286a6xZIxGbaiEo4Fxs=
 github.com/projectdiscovery/clistats v0.0.19 h1:SA/qRHbmS9VEbVEPzX/ka01hZDYATL9ZjAnDatybhLw=
 github.com/projectdiscovery/clistats v0.0.19/go.mod h1:NQDAW/O7cK9xBIgk46kJjwGRkjSg5JkB8E4DvuxXr+c=
 github.com/projectdiscovery/dsl v0.0.12 h1:F3S94FKyakMMtRNuob+HbW0XmibBE3zwWBw+b10x2gg=
@@ -409,8 +409,8 @@ github.com/projectdiscovery/gologger v1.1.10 h1:XNRdtzLTdxiFGuK9gutoL752mykzXDoi
 github.com/projectdiscovery/gologger v1.1.10/go.mod h1:VqANHK7qcEq3i6/vV5HNWwdyv2aFPSrlaVDU4Ogrc6U=
 github.com/projectdiscovery/hmap v0.0.13 h1:8v5j99Pz0S7V1YrTeWp7xtr1yNOffKQ/KusHZfB+mrI=
 github.com/projectdiscovery/hmap v0.0.13/go.mod h1:Ymc9xjbfhswpmI/gOx5hyR4+OvqguSq1SDJTH197gWg=
-github.com/projectdiscovery/httpx v1.3.0 h1:x7XbAUd1i3SL/SqVBZFM5EXv7YRXL58jdwonwxR4bvE=
-github.com/projectdiscovery/httpx v1.3.0/go.mod h1:tglYwSUBz1zl2cC3NtjgURrI3cZsGepH1DLyQZZY2/M=
+github.com/projectdiscovery/httpx v1.3.3 h1:JINmFbxKcP6xtFtmukaG+Js+ya5I/zY6RV9hkO2j4oI=
+github.com/projectdiscovery/httpx v1.3.3/go.mod h1:5fvZBoI39IXwT62X9Q31aXpVWRsRbedCC0XZF4uT/yE=
 github.com/projectdiscovery/interactsh v1.1.4 h1:1qVxJ14aG/X7TLJoK5AHnaX6I7hnbPp5R2ql1bSYzqI=
 github.com/projectdiscovery/interactsh v1.1.4/go.mod h1:rM8IEm6AAm68fWWExzBHjhBWfRhFYzR9gY5emOFiZCY=
 github.com/projectdiscovery/mapcidr v1.1.2 h1:Mmq/nPqvVc7fjvH/kJVK0IBOny/LrJIxZ4tQsLPCrsA=
