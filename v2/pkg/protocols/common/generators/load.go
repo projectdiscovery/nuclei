@@ -24,7 +24,11 @@ func (generator *PayloadGenerator) loadPayloads(payloads map[string]interface{},
 			} else {
 				if sandbox {
 					pt = filepath.Clean(pt)
-					templatePathDir := filepath.Dir(templatePath)
+					templateAbsPath, err := filepath.Abs(templatePath)
+					if err != nil {
+						return nil, errors.New("impossible to obtain template absolute path")
+					}
+					templatePathDir := filepath.Dir(templateAbsPath)
 					if !(templatePathDir != "/" && strings.HasPrefix(pt, templatePathDir)) && !strings.HasPrefix(pt, templateDirectory) {
 						return nil, errors.New("denied payload file path specified")
 					}
