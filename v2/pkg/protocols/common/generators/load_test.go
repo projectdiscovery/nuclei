@@ -25,14 +25,20 @@ func TestLoadPayloads(t *testing.T) {
 	t.Run("templates-directory", func(t *testing.T) {
 		values, err := generator.loadPayloads(map[string]interface{}{
 			"new": fullpath,
-		}, "/test", tempdir, true)
+		}, "/test", tempdir, false)
 		require.NoError(t, err, "could not load payloads")
 		require.Equal(t, map[string][]string{"new": {"test", "another"}}, values, "could not get values")
+	})
+	t.Run("templates-path-relative", func(t *testing.T) {
+		_, err := generator.loadPayloads(map[string]interface{}{
+			"new": "../../../../../../../../../etc/passwd",
+		}, ".", tempdir, false)
+		require.Error(t, err, "could load payloads")
 	})
 	t.Run("template-directory", func(t *testing.T) {
 		values, err := generator.loadPayloads(map[string]interface{}{
 			"new": fullpath,
-		}, filepath.Join(tempdir, "test.yaml"), "/test", true)
+		}, filepath.Join(tempdir, "test.yaml"), "/test", false)
 		require.NoError(t, err, "could not load payloads")
 		require.Equal(t, map[string][]string{"new": {"test", "another"}}, values, "could not get values")
 	})
@@ -42,19 +48,19 @@ func TestLoadPayloads(t *testing.T) {
 		}
 		_, err := generator.loadPayloads(map[string]interface{}{
 			"new": "/etc/passwd",
-		}, "/random", "/test", false)
+		}, "/random", "/test", true)
 		require.NoError(t, err, "could load payloads")
 	})
 	t.Run("invalid", func(t *testing.T) {
 		values, err := generator.loadPayloads(map[string]interface{}{
 			"new": "/etc/passwd",
-		}, "/random", "/test", true)
+		}, "/random", "/test", false)
 		require.Error(t, err, "could load payloads")
 		require.Equal(t, 0, len(values), "could get values")
 
 		values, err = generator.loadPayloads(map[string]interface{}{
 			"new": fullpath,
-		}, "/random", "/test", true)
+		}, "/random", "/test", false)
 		require.Error(t, err, "could load payloads")
 		require.Equal(t, 0, len(values), "could get values")
 	})
