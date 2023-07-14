@@ -29,6 +29,12 @@ func TestLoadPayloads(t *testing.T) {
 		require.NoError(t, err, "could not load payloads")
 		require.Equal(t, map[string][]string{"new": {"test", "another"}}, values, "could not get values")
 	})
+	t.Run("templates-path-relative", func(t *testing.T) {
+		_, err := generator.loadPayloads(map[string]interface{}{
+			"new": "../../../../../../../../../etc/passwd",
+		}, ".", tempdir, true)
+		require.Error(t, err, "could load payloads")
+	})
 	t.Run("template-directory", func(t *testing.T) {
 		values, err := generator.loadPayloads(map[string]interface{}{
 			"new": fullpath,

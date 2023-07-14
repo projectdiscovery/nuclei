@@ -26,7 +26,7 @@ func (generator *PayloadGenerator) loadPayloads(payloads map[string]interface{},
 					pt = filepath.Clean(pt)
 					templateAbsPath, err := filepath.Abs(templatePath)
 					if err != nil {
-						return nil, errors.New("impossible to obtain template absolute path")
+						return nil, errors.Wrap(err, "could not get absolute path")
 					}
 					templatePathDir := filepath.Dir(templateAbsPath)
 					if !(templatePathDir != "/" && strings.HasPrefix(pt, templatePathDir)) && !strings.HasPrefix(pt, templateDirectory) {
