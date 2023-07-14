@@ -285,8 +285,10 @@ type Options struct {
 	ClientCAFile string
 	// Deprecated: Use ZTLS library
 	ZTLS bool
-	// Sandbox enables sandboxed nuclei template execution
-	Sandbox bool
+	// AllowLocalFileAccess allows local file access from templates payloads
+	AllowLocalFileAccess bool
+	// RestrictLocalNetworkAccess restricts local network access from templates requests
+	RestrictLocalNetworkAccess bool
 	// ShowMatchLine enables display of match line number
 	ShowMatchLine bool
 	// EnablePprof enables exposing pprof runtime information with a webserver.
