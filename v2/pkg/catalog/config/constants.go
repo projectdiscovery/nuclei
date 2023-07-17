@@ -14,7 +14,7 @@ const (
 	NucleiTemplatesIndexFileName    = ".templates-index" // contains index of official nuclei templates
 	NucleiTemplatesCheckSumFileName = ".checksum"
 	NewTemplateAdditionsFileName    = ".new-additions"
-	CLIConifgFileName               = "config.yaml"
+	CLIConfigFileName               = "config.yaml"
 	ReportingConfigFilename         = "reporting-config.yaml"
 	// Version is the current version of nuclei
 	Version = `v2.9.8`
@@ -25,11 +25,12 @@ const (
 	CustomGitLabTemplatesDirName = "gitlab"
 )
 
-// IsOutdatedVersion compares two versions and returns true if the current version is outdated
+// IsOutdatedVersion compares two versions and returns true
+// if the current version is outdated
 func IsOutdatedVersion(current, latest string) bool {
 	if latest == "" {
-		// if pdtm api call failed it's assumed that current version is outdated
-		// and it will be confirmed while updating from github
+		// if pdtm api call failed it's assumed that the current version is outdated
+		// and it will be confirmed while updating from GitHub
 		// this fixes `version string empty` errors
 		return true
 	}

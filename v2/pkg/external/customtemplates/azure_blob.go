@@ -25,7 +25,7 @@ type customTemplateAzureBlob struct {
 // NewAzureProviders creates a new Azure Blob Storage provider for downloading custom templates
 func NewAzureProviders(options *types.Options) ([]*customTemplateAzureBlob, error) {
 	providers := []*customTemplateAzureBlob{}
-	if options.AzureContainerName != "" {
+	if options.AzureContainerName != "" && !options.AzureTemplateDisableDownload {
 		// Establish a connection to Azure and build a client object with which to download templates from Azure Blob Storage
 		azClient, err := getAzureBlobClient(options.AzureTenantID, options.AzureClientID, options.AzureClientSecret, options.AzureServiceURL)
 		if err != nil {
