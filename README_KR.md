@@ -130,6 +130,7 @@ OUTPUT:
    -nc, -no-color                출력 내용 색상 비활성화 (ANSI escape codes)
    -j, -jsonl                    JSONL(ines) 형식으로 출력
    -irr, -include-rr             JSONL 출력에 요청/응답 쌍 포함(결과만)
+   -or, -omit-raw                
    -nm, -no-meta                 cli 출력에서 결과 메타데이터 출력 비활성화
    -nts, -no-timestamp           cli 출력에서 결과 타임스탬프 출력 비활성화
    -rdb, -report-db string       nuclei 보고 데이터베이스(보고서 데이터를 유지하려면 항상 이것을 사용)

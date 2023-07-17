@@ -13,6 +13,7 @@ var (
 	urlWithPortRegex = regexp.MustCompile(`^{{(BaseURL|RootURL)}}:(\d+)`)
 	// regex to detect traling slash in path (not applicable to raw requests)
 	trailingSlashregex = regexp.MustCompile(`^\Q{{\E[a-zA-Z]+\Q}}/\E`)
+	// ErrNoMoreRequests is internal error to
 )
 
 // HasTrailingSlash returns true if path(that has default variables) has trailing slash

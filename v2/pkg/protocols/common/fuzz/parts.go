@@ -2,14 +2,13 @@ package fuzz
 
 import (
 	"context"
-	"io"
 	"net/http"
 	"strings"
 
 	"github.com/corpix/uarand"
-	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/expressions"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/generators"
+	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 	"github.com/projectdiscovery/retryablehttp-go"
 	sliceutil "github.com/projectdiscovery/utils/slice"
 	urlutil "github.com/projectdiscovery/utils/url"
@@ -49,7 +48,6 @@ func (rule *Rule) executeQueryPartRule(input *ExecuteRuleInput, payload string) 
 				requestURL.Params = temp
 				if qerr := rule.buildQueryInput(input, requestURL, input.InteractURLs); qerr != nil {
 					err = qerr
-					gologger.Error().Msgf("Could not build request for query part rule %v: %s\n", rule, err)
 					return false
 				}
 				cloned[i] = value // change back to previous value for temp
@@ -89,7 +87,7 @@ func (rule *Rule) buildQueryInput(input *ExecuteRuleInput, parsed *urlutil.URL, 
 		DynamicValues: input.Values,
 	}
 	if !input.Callback(request) {
-		return io.EOF
+		return types.ErrNoMoreRequests
 	}
 	return nil
 }

@@ -135,7 +135,7 @@ func (c *Config) GetChecksumFilePath() string {
 
 // GetCLIOptsConfigFilePath returns the nuclei cli config file path
 func (c *Config) GetFlagsConfigFilePath() string {
-	return filepath.Join(c.configDir, CLIConifgFileName)
+	return filepath.Join(c.configDir, CLIConfigFileName)
 }
 
 // GetNewAdditions returns new template additions in current template release
