@@ -101,6 +101,11 @@ type Classification struct {
 	//   - value: "\"0.42509\""
 	EPSSScore float64 `json:"epss-score,omitempty" yaml:"epss-score,omitempty" jsonschema:"title=epss score for the template,description=EPSS Score for the template,example=0.42509"`
 	// description: |
+	//   EPSS Percentile for the template.
+	// examples:
+	//   - value: "\"0.42509\""
+	EPSSPercentile float64 `json:"epss-percentile,omitempty" yaml:"epss-percentile,omitempty" jsonschema:"title=epss percentile for the template,description=EPSS Percentile for the template,example=0.42509"`
+	// description: |
 	//   CPE for the template.
 	// examples:
 	//   - value: "\"cpe:/a:vendor:product:version\""

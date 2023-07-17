@@ -29,7 +29,7 @@ import (
 
 func ConfigureOptions() error {
 	// with FileStringSliceOptions, FileNormalizedStringSliceOptions, FileCommaSeparatedStringSliceOptions
-	// if file has extension `.yaml,.json` we consider those as strings and not files to be read
+	// if file has the extension `.yaml` or `.json` we consider those as strings and not files to be read
 	isFromFileFunc := func(s string) bool {
 		return !config.IsTemplate(s)
 	}
@@ -136,7 +136,7 @@ func validateOptions(options *types.Options) error {
 		validateCertificatePaths(options.ClientCertFile, options.ClientKeyFile, options.ClientCAFile)
 	}
 	// Verify AWS secrets are passed if a S3 template bucket is passed
-	if options.AwsBucketName != "" && options.UpdateTemplates {
+	if options.AwsBucketName != "" && options.UpdateTemplates && !options.AwsTemplateDisableDownload {
 		missing := validateMissingS3Options(options)
 		if missing != nil {
 			return fmt.Errorf("aws s3 bucket details are missing. Please provide %s", strings.Join(missing, ","))
@@ -144,7 +144,7 @@ func validateOptions(options *types.Options) error {
 	}
 
 	// Verify Azure connection configuration is passed if the Azure template bucket is passed
-	if options.AzureContainerName != "" && options.UpdateTemplates {
+	if options.AzureContainerName != "" && options.UpdateTemplates && !options.AzureTemplateDisableDownload {
 		missing := validateMissingAzureOptions(options)
 		if missing != nil {
 			return fmt.Errorf("azure connection details are missing. Please provide %s", strings.Join(missing, ","))
@@ -152,7 +152,7 @@ func validateOptions(options *types.Options) error {
 	}
 
 	// Verify that all GitLab options are provided if the GitLab server or token is provided
-	if len(options.GitLabTemplateRepositoryIDs) != 0 && options.UpdateTemplates {
+	if len(options.GitLabTemplateRepositoryIDs) != 0 && options.UpdateTemplates && !options.GitLabTemplateDisableDownload {
 		missing := validateMissingGitLabOptions(options)
 		if missing != nil {
 			return fmt.Errorf("gitlab server details are missing. Please provide %s", strings.Join(missing, ","))
@@ -292,7 +292,7 @@ func configureOutput(options *types.Options) {
 	logutil.DisableDefaultLogger()
 }
 
-// loadResolvers loads resolvers from both user provided flag and file
+// loadResolvers loads resolvers from both user-provided flags and file
 func loadResolvers(options *types.Options) {
 	if options.ResolversFile == "" {
 		return
@@ -396,4 +396,20 @@ func readEnvInputVars(options *types.Options) {
 	options.AzureClientID = os.Getenv("AZURE_CLIENT_ID")
 	options.AzureClientSecret = os.Getenv("AZURE_CLIENT_SECRET")
 	options.AzureServiceURL = os.Getenv("AZURE_SERVICE_URL")
+
+	// General options to disable the template download locations from being used.
+	// This will override the default behavior of downloading templates from the default locations as well as the
+	// custom locations.
+	// The primary use-case is when the user wants to use custom templates only and does not want to download any
+	// templates from the default locations or is unable to connect to the public internet.
+	options.PublicTemplateDisableDownload = getBoolEnvValue("DISABLE_NUCLEI_TEMPLATES_PUBLIC_DOWNLOAD")
+	options.GitHubTemplateDisableDownload = getBoolEnvValue("DISABLE_NUCLEI_TEMPLATES_GITHUB_DOWNLOAD")
+	options.GitLabTemplateDisableDownload = getBoolEnvValue("DISABLE_NUCLEI_TEMPLATES_GITLAB_DOWNLOAD")
+	options.AwsTemplateDisableDownload = getBoolEnvValue("DISABLE_NUCLEI_TEMPLATES_AWS_DOWNLOAD")
+	options.AzureTemplateDisableDownload = getBoolEnvValue("DISABLE_NUCLEI_TEMPLATES_AZURE_DOWNLOAD")
+}
+
+func getBoolEnvValue(key string) bool {
+	value := os.Getenv(key)
+	return strings.EqualFold(value, "true")
 }

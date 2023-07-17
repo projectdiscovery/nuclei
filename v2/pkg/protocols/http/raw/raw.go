@@ -83,6 +83,7 @@ func Parse(request string, inputURL *urlutil.URL, unsafe, disablePathAutomerge b
 			}
 			unsafeRelativePath = cloned.GetRelativePath()
 		}
+		rawrequest.Path = cloned.GetRelativePath()
 		rawrequest.UnsafeRawBytes = bytes.Replace(rawrequest.UnsafeRawBytes, []byte(prevPath), []byte(unsafeRelativePath), 1)
 
 	default:
