@@ -6,6 +6,7 @@ import (
 	"bufio"
 	"context"
 	"fmt"
+	"github.com/projectdiscovery/nuclei/v2/pkg/utils"
 	"io"
 	"os"
 	"strings"
@@ -120,7 +121,7 @@ func (i *Input) initializeInputSources(opts *Options) error {
 
 	// Handle stdin
 	if options.Stdin {
-		i.scanInputFromReader(readerutil.TimeoutReader{Reader: os.Stdin, Timeout: time.Duration(options.InputReadTimeout)})
+		i.scanInputFromReader(readerutil.TimeoutReader{Reader: os.Stdin, Timeout: options.InputReadTimeout}, opts.Options.ExcludeTargets)
 	}
 
 	// Handle target file
@@ -133,7 +134,7 @@ func (i *Input) initializeInputSources(opts *Options) error {
 			}
 		}
 		if input != nil {
-			i.scanInputFromReader(input)
+			i.scanInputFromReader(input, options.ExcludeTargets)
 			input.Close()
 		}
 	}
@@ -160,10 +161,17 @@ func (i *Input) initializeInputSources(opts *Options) error {
 }
 
 // scanInputFromReader scans a line of input from reader and passes it for storage
-func (i *Input) scanInputFromReader(reader io.Reader) {
+func (i *Input) scanInputFromReader(reader io.Reader, excludeTargets []string) {
 	scanner := bufio.NewScanner(reader)
 	for scanner.Scan() {
 		item := scanner.Text()
+
+		// If the scanned item is present in the excludeTargets slice, then skip the processing and adding it to the list
+		if utils.StringSliceContains(excludeTargets, item) {
+			gologger.Debug().Msgf("Excluding target from target list: %s", item)
+			continue
+		}
+
 		switch {
 		case iputil.IsCIDR(item):
 			i.expandCIDRInputValue(item)

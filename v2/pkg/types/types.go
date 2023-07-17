@@ -71,6 +71,8 @@ type Options struct {
 	Targets goflags.StringSlice
 	// TargetsFilePath specifies the targets from a file to scan using templates.
 	TargetsFilePath string
+	// ExcludeTargets hosts to exclude to scan from the input list
+	ExcludeTargets goflags.StringSlice
 	// Resume the scan from the state stored in the resume config file
 	Resume string
 	// Output is the file to write found results to.
