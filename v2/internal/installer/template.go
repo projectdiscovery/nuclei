@@ -57,7 +57,9 @@ func (t *templateUpdateResults) String() string {
 // TemplateManager is a manager for templates.
 // It downloads / updates / installs templates.
 type TemplateManager struct {
-	CustomTemplates *customtemplates.CustomTemplatesManager // optional if given tries to download custom templates
+	CustomTemplates        *customtemplates.CustomTemplatesManager // optional if given tries to download custom templates
+	DisablePublicTemplates bool                                    // if true,
+	// public templates are not downloaded from the GitHub nuclei-templates repository
 }
 
 // FreshInstallIfNotExists installs templates if they are not already installed
@@ -78,7 +80,7 @@ func (t *TemplateManager) FreshInstallIfNotExists() error {
 
 // UpdateIfOutdated updates templates if they are outdated
 func (t *TemplateManager) UpdateIfOutdated() error {
-	// if folder does not exist, its a fresh install and not update
+	// if the templates folder does not exist, it's a fresh installation and do not update
 	if !fileutil.FolderExists(config.DefaultConfig.TemplatesDirectory) {
 		return t.FreshInstallIfNotExists()
 	}
@@ -95,12 +97,16 @@ func (t *TemplateManager) installTemplatesAt(dir string) error {
 			return errorutil.NewWithErr(err).Msgf("failed to create directory at %s", dir)
 		}
 	}
+	if t.DisablePublicTemplates {
+		gologger.Info().Msgf("Skipping installation of public nuclei-templates")
+		return nil
+	}
 	ghrd, err := updateutils.NewghReleaseDownloader(config.OfficialNucleiTemplatesRepoName)
 	if err != nil {
 		return errorutil.NewWithErr(err).Msgf("failed to install templates at %s", dir)
 	}
 	// write templates to disk
-	if err := t.writeTemplatestoDisk(ghrd, dir); err != nil {
+	if err := t.writeTemplatesToDisk(ghrd, dir); err != nil {
 		return errorutil.NewWithErr(err).Msgf("failed to write templates to disk at %s", dir)
 	}
 	gologger.Info().Msgf("Successfully installed nuclei-templates at %s", dir)
@@ -109,10 +115,14 @@ func (t *TemplateManager) installTemplatesAt(dir string) error {
 
 // updateTemplatesAt updates templates at given directory
 func (t *TemplateManager) updateTemplatesAt(dir string) error {
-	// firstly read checksums from .checksum file these are used to generate stats
+	if t.DisablePublicTemplates {
+		gologger.Info().Msgf("Skipping update of public nuclei-templates")
+		return nil
+	}
+	// firstly, read checksums from .checksum file these are used to generate stats
 	oldchecksums, err := t.getChecksumFromDir(dir)
 	if err != nil {
-		// if something went wrong overwrite all files
+		// if something went wrong, overwrite all files
 		oldchecksums = make(map[string]string)
 	}
 
@@ -124,7 +134,7 @@ func (t *TemplateManager) updateTemplatesAt(dir string) error {
 	gologger.Info().Msgf("Your current nuclei-templates %s are outdated. Latest is %s\n", config.DefaultConfig.TemplateVersion, ghrd.Latest.GetTagName())
 
 	// write templates to disk
-	if err := t.writeTemplatestoDisk(ghrd, dir); err != nil {
+	if err := t.writeTemplatesToDisk(ghrd, dir); err != nil {
 		return err
 	}
 
@@ -173,9 +183,9 @@ func (t *TemplateManager) summarizeChanges(old, new map[string]string) *template
 	return results
 }
 
-// getAbsoluteFilePath returns absolute path where a file should be written based on given uri(i.e files in zip)
-// if returned path is empty, it means that file should not be written and skipped
-func (t *TemplateManager) getAbsoluteFilePath(templatedir, uri string, f fs.FileInfo) string {
+// getAbsoluteFilePath returns an absolute path where a file should be written based on given uri(i.e., files in zip)
+// if a returned path is empty, it means that file should not be written and skipped
+func (t *TemplateManager) getAbsoluteFilePath(templateDir, uri string, f fs.FileInfo) string {
 	// overwrite .nuclei-ignore everytime nuclei-templates are downloaded
 	if f.Name() == config.NucleiIgnoreFileName {
 		return config.DefaultConfig.GetIgnoreFilePath()
@@ -194,7 +204,7 @@ func (t *TemplateManager) getAbsoluteFilePath(templatedir, uri string, f fs.File
 	if index == -1 {
 		// zip files does not have directory at all , in this case log error but continue
 		gologger.Warning().Msgf("failed to get directory name from uri: %s", uri)
-		return filepath.Join(templatedir, uri)
+		return filepath.Join(templateDir, uri)
 	}
 	// seperator is also included in rootDir
 	rootDirectory := uri[:index+1]
@@ -205,14 +215,14 @@ func (t *TemplateManager) getAbsoluteFilePath(templatedir, uri string, f fs.File
 		return ""
 	}
 
-	newPath := filepath.Clean(filepath.Join(templatedir, relPath))
+	newPath := filepath.Clean(filepath.Join(templateDir, relPath))
 
-	if !strings.HasPrefix(newPath, templatedir) {
+	if !strings.HasPrefix(newPath, templateDir) {
 		// we don't allow LFI
 		return ""
 	}
 
-	if newPath == templatedir || newPath == templatedir+string(os.PathSeparator) {
+	if newPath == templateDir || newPath == templateDir+string(os.PathSeparator) {
 		// skip writing the folder itself since it already exists
 		return ""
 	}
@@ -228,12 +238,12 @@ func (t *TemplateManager) getAbsoluteFilePath(templatedir, uri string, f fs.File
 }
 
 // writeChecksumFileInDir is actual method responsible for writing all templates to directory
-func (t *TemplateManager) writeTemplatestoDisk(ghrd *updateutils.GHReleaseDownloader, dir string) error {
-	LocaltemplatesIndex, err := config.GetNucleiTemplatesIndex()
+func (t *TemplateManager) writeTemplatesToDisk(ghrd *updateutils.GHReleaseDownloader, dir string) error {
+	localTemplatesIndex, err := config.GetNucleiTemplatesIndex()
 	if err != nil {
 		gologger.Warning().Msgf("failed to get local nuclei-templates index: %s", err)
-		if LocaltemplatesIndex == nil {
-			LocaltemplatesIndex = map[string]string{} // no-op
+		if localTemplatesIndex == nil {
+			localTemplatesIndex = map[string]string{} // no-op
 		}
 	}
 
@@ -253,10 +263,10 @@ func (t *TemplateManager) writeTemplatestoDisk(ghrd *updateutils.GHReleaseDownlo
 		// instead of creating it from scratch
 		id, _ := config.GetTemplateIDFromReader(bytes.NewReader(bin), uri)
 		if id != "" {
-			// based on template id, check if we are updating path of official nuclei template
-			if oldPath, ok := LocaltemplatesIndex[id]; ok {
+			// based on template id, check if we are updating a path of official nuclei template
+			if oldPath, ok := localTemplatesIndex[id]; ok {
 				if oldPath != writePath {
-					// write new template at new path and delete old template
+					// write new template at a new path and delete old template
 					if err := os.WriteFile(writePath, bin, f.Mode()); err != nil {
 						return errorutil.NewWithErr(err).Msgf("failed to write file %s", uri)
 					}
@@ -303,12 +313,12 @@ func (t *TemplateManager) writeTemplatestoDisk(ghrd *updateutils.GHReleaseDownlo
 		return errorutil.NewWithErr(err).Msgf("failed to write nuclei templates index")
 	}
 
-	// after installation create and write checksums to .checksum file
+	// after installation, create and write checksums to .checksum file
 	return t.writeChecksumFileInDir(dir)
 }
 
 // getChecksumFromDir returns a map containing checksums (md5 hash) of all yaml files (with .yaml extension)
-// if .checksum file does not exist checksums are calculated and returned
+// if .checksum file does not exist, checksums are calculated and returned
 func (t *TemplateManager) getChecksumFromDir(dir string) (map[string]string, error) {
 	checksumFilePath := config.DefaultConfig.GetChecksumFilePath()
 	if fileutil.FileExists(checksumFilePath) {
