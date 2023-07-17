@@ -61,7 +61,7 @@ func (bk *customTemplateS3Bucket) Update(ctx context.Context) {
 // NewS3Providers returns a new instances of a s3 providers for downloading custom templates
 func NewS3Providers(options *types.Options) ([]*customTemplateS3Bucket, error) {
 	providers := []*customTemplateS3Bucket{}
-	if options.AwsBucketName != "" {
+	if options.AwsBucketName != "" && !options.AwsTemplateDisableDownload {
 		s3c, err := getS3Client(context.TODO(), options.AwsAccessKey, options.AwsSecretKey, options.AwsRegion)
 		if err != nil {
 			return nil, errorutil.NewWithErr(err).Msgf("error downloading s3 bucket %s", options.AwsBucketName)

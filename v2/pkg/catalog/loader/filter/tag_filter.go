@@ -207,6 +207,7 @@ func tryCollectConditionsMatchinfo(template *templates.Template) map[string]inte
 		parameters["cwe_id"] = template.Info.Classification.CWEID.ToSlice()
 		parameters["cpe"] = template.Info.Classification.CPE
 		parameters["epss_score"] = template.Info.Classification.EPSSScore
+		parameters["epss_percentile"] = template.Info.Classification.EPSSPercentile
 	}
 
 	if template.Type() == types.HTTPProtocol {
