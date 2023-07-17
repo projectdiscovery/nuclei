@@ -21,17 +21,17 @@ require (
 	github.com/olekukonko/tablewriter v0.0.5
 	github.com/pkg/errors v0.9.1
 	github.com/projectdiscovery/clistats v0.0.19
-	github.com/projectdiscovery/fastdialer v0.0.33
+	github.com/projectdiscovery/fastdialer v0.0.34
 	github.com/projectdiscovery/hmap v0.0.13
 	github.com/projectdiscovery/interactsh v1.1.4
-	github.com/projectdiscovery/rawhttp v0.1.16
+	github.com/projectdiscovery/rawhttp v0.1.18
 	github.com/projectdiscovery/retryabledns v1.0.30
 	github.com/projectdiscovery/retryablehttp-go v1.0.18
 	github.com/projectdiscovery/yamldoc-go v1.0.4
 	github.com/remeh/sizedwaitgroup v1.0.0
 	github.com/rs/xid v1.5.0
 	github.com/segmentio/ksuid v1.0.4
-	github.com/shirou/gopsutil/v3 v3.23.5 // indirect
+	github.com/shirou/gopsutil/v3 v3.23.6 // indirect
 	github.com/spaolacci/murmur3 v1.1.0 // indirect
 	github.com/spf13/cast v1.5.1
 	github.com/syndtr/goleveldb v1.0.0
@@ -69,7 +69,7 @@ require (
 	github.com/projectdiscovery/dsl v0.0.12
 	github.com/projectdiscovery/fasttemplate v0.0.2
 	github.com/projectdiscovery/goflags v0.1.10
-	github.com/projectdiscovery/gologger v1.1.10
+	github.com/projectdiscovery/gologger v1.1.11
 	github.com/projectdiscovery/httpx v1.3.0
 	github.com/projectdiscovery/mapcidr v1.1.2
 	github.com/projectdiscovery/ratelimit v0.0.8
@@ -77,7 +77,7 @@ require (
 	github.com/projectdiscovery/sarif v0.0.1
 	github.com/projectdiscovery/tlsx v1.1.0
 	github.com/projectdiscovery/uncover v1.0.6-0.20230601103158-bfd7e02a5bb1
-	github.com/projectdiscovery/utils v0.0.40
+	github.com/projectdiscovery/utils v0.0.41
 	github.com/projectdiscovery/wappalyzergo v0.0.104
 	github.com/stretchr/testify v1.8.4
 	gopkg.in/src-d/go-git.v4 v4.13.1
