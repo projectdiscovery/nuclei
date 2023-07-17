@@ -68,14 +68,14 @@ require (
 	github.com/mholt/archiver v3.1.1+incompatible
 	github.com/projectdiscovery/dsl v0.0.12
 	github.com/projectdiscovery/fasttemplate v0.0.2
-	github.com/projectdiscovery/goflags v0.1.10
+	github.com/projectdiscovery/goflags v0.1.11
 	github.com/projectdiscovery/gologger v1.1.10
 	github.com/projectdiscovery/httpx v1.3.0
 	github.com/projectdiscovery/mapcidr v1.1.2
 	github.com/projectdiscovery/ratelimit v0.0.8
 	github.com/projectdiscovery/rdap v0.9.1-0.20221108103045-9865884d1917
 	github.com/projectdiscovery/sarif v0.0.1
-	github.com/projectdiscovery/tlsx v1.1.0
+	github.com/projectdiscovery/tlsx v1.1.1
 	github.com/projectdiscovery/uncover v1.0.6-0.20230601103158-bfd7e02a5bb1
 	github.com/projectdiscovery/utils v0.0.40
 	github.com/projectdiscovery/wappalyzergo v0.0.104
