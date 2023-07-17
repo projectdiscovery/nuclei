@@ -97,68 +97,67 @@ func (t *TemplateManager) installTemplatesAt(dir string) error {
 			return errorutil.NewWithErr(err).Msgf("failed to create directory at %s", dir)
 		}
 	}
-	if !t.DisablePublicTemplates {
-		ghrd, err := updateutils.NewghReleaseDownloader(config.OfficialNucleiTemplatesRepoName)
-		if err != nil {
-			return errorutil.NewWithErr(err).Msgf("failed to install templates at %s", dir)
-		}
-		// write templates to disk
-		if err := t.writeTemplatesToDisk(ghrd, dir); err != nil {
-			return errorutil.NewWithErr(err).Msgf("failed to write templates to disk at %s", dir)
-		}
-		gologger.Info().Msgf("Successfully installed nuclei-templates at %s", dir)
-	} else {
+	if t.DisablePublicTemplates {
 		gologger.Info().Msgf("Skipping installation of public nuclei-templates")
+		return nil
 	}
+	ghrd, err := updateutils.NewghReleaseDownloader(config.OfficialNucleiTemplatesRepoName)
+	if err != nil {
+		return errorutil.NewWithErr(err).Msgf("failed to install templates at %s", dir)
+	}
+	// write templates to disk
+	if err := t.writeTemplatesToDisk(ghrd, dir); err != nil {
+		return errorutil.NewWithErr(err).Msgf("failed to write templates to disk at %s", dir)
+	}
+	gologger.Info().Msgf("Successfully installed nuclei-templates at %s", dir)
 	return nil
 }
 
 // updateTemplatesAt updates templates at given directory
 func (t *TemplateManager) updateTemplatesAt(dir string) error {
-	if !t.DisablePublicTemplates {
+	if t.DisablePublicTemplates {
+		gologger.Info().Msgf("Skipping update of public nuclei-templates")
+		return nil
+	}
+	// firstly, read checksums from .checksum file these are used to generate stats
+	oldchecksums, err := t.getChecksumFromDir(dir)
+	if err != nil {
+		// if something went wrong, overwrite all files
+		oldchecksums = make(map[string]string)
+	}
 
-		// firstly, read checksums from .checksum file these are used to generate stats
-		oldchecksums, err := t.getChecksumFromDir(dir)
-		if err != nil {
-			// if something went wrong, overwrite all files
-			oldchecksums = make(map[string]string)
-		}
+	ghrd, err := updateutils.NewghReleaseDownloader(config.OfficialNucleiTemplatesRepoName)
+	if err != nil {
+		return errorutil.NewWithErr(err).Msgf("failed to install templates at %s", dir)
+	}
 
-		ghrd, err := updateutils.NewghReleaseDownloader(config.OfficialNucleiTemplatesRepoName)
-		if err != nil {
-			return errorutil.NewWithErr(err).Msgf("failed to install templates at %s", dir)
-		}
+	gologger.Info().Msgf("Your current nuclei-templates %s are outdated. Latest is %s\n", config.DefaultConfig.TemplateVersion, ghrd.Latest.GetTagName())
 
-		gologger.Info().Msgf("Your current nuclei-templates %s are outdated. Latest is %s\n", config.DefaultConfig.TemplateVersion, ghrd.Latest.GetTagName())
+	// write templates to disk
+	if err := t.writeTemplatesToDisk(ghrd, dir); err != nil {
+		return err
+	}
 
-		// write templates to disk
-		if err := t.writeTemplatesToDisk(ghrd, dir); err != nil {
-			return err
-		}
+	// get checksums from new templates
+	newchecksums, err := t.getChecksumFromDir(dir)
+	if err != nil {
+		// unlikely this case will happen
+		return errorutil.NewWithErr(err).Msgf("failed to get checksums from %s after update", dir)
+	}
 
-		// get checksums from new templates
-		newchecksums, err := t.getChecksumFromDir(dir)
-		if err != nil {
-			// unlikely this case will happen
-			return errorutil.NewWithErr(err).Msgf("failed to get checksums from %s after update", dir)
-		}
+	// summarize all changes
+	results := t.summarizeChanges(oldchecksums, newchecksums)
 
-		// summarize all changes
-		results := t.summarizeChanges(oldchecksums, newchecksums)
-
-		// print summary
-		if results.totalCount > 0 {
-			gologger.Info().Msgf("Successfully updated nuclei-templates (%v) to %s. GoodLuck!", ghrd.Latest.GetTagName(), dir)
-			if !HideUpdateChangesTable {
-				// print summary table
-				gologger.Print().Msgf("\nNuclei Templates %s Changelog\n", ghrd.Latest.GetTagName())
-				gologger.DefaultLogger.Print().Msg(results.String())
-			}
-		} else {
-			gologger.Info().Msgf("Successfully updated nuclei-templates (%v) to %s. GoodLuck!", ghrd.Latest.GetTagName(), dir)
+	// print summary
+	if results.totalCount > 0 {
+		gologger.Info().Msgf("Successfully updated nuclei-templates (%v) to %s. GoodLuck!", ghrd.Latest.GetTagName(), dir)
+		if !HideUpdateChangesTable {
+			// print summary table
+			gologger.Print().Msgf("\nNuclei Templates %s Changelog\n", ghrd.Latest.GetTagName())
+			gologger.DefaultLogger.Print().Msg(results.String())
 		}
 	} else {
-		gologger.Info().Msgf("Skipping update of public nuclei-templates")
+		gologger.Info().Msgf("Successfully updated nuclei-templates (%v) to %s. GoodLuck!", ghrd.Latest.GetTagName(), dir)
 	}
 	return nil
 }

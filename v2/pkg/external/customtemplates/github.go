@@ -63,27 +63,28 @@ func NewGithubProviders(options *types.Options) ([]*customTemplateGithubRepo, er
 	providers := []*customTemplateGithubRepo{}
 	gitHubClient := getGHClientIncognito()
 
-	if !options.GitHubTemplateDisableDownload {
+	if options.GitHubTemplateDisableDownload {
+		return providers, nil
+	}
 
-		for _, repoName := range options.GithubTemplateRepo {
-			owner, repo, err := getOwnerAndRepo(repoName)
-			if err != nil {
-				gologger.Error().Msgf("%s", err)
-				continue
-			}
-			githubRepo, err := getGithubRepo(gitHubClient, owner, repo, options.GithubToken)
-			if err != nil {
-				gologger.Error().Msgf("%s", err)
-				continue
-			}
-			customTemplateRepo := &customTemplateGithubRepo{
-				owner:       owner,
-				reponame:    repo,
-				gitCloneURL: githubRepo.GetCloneURL(),
-				githubToken: options.GithubToken,
-			}
-			providers = append(providers, customTemplateRepo)
+	for _, repoName := range options.GithubTemplateRepo {
+		owner, repo, err := getOwnerAndRepo(repoName)
+		if err != nil {
+			gologger.Error().Msgf("%s", err)
+			continue
 		}
+		githubRepo, err := getGithubRepo(gitHubClient, owner, repo, options.GithubToken)
+		if err != nil {
+			gologger.Error().Msgf("%s", err)
+			continue
+		}
+		customTemplateRepo := &customTemplateGithubRepo{
+			owner:       owner,
+			reponame:    repo,
+			gitCloneURL: githubRepo.GetCloneURL(),
+			githubToken: options.GithubToken,
+		}
+		providers = append(providers, customTemplateRepo)
 	}
 	return providers, nil
 }

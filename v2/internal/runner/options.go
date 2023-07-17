@@ -402,9 +402,14 @@ func readEnvInputVars(options *types.Options) {
 	// custom locations.
 	// The primary use-case is when the user wants to use custom templates only and does not want to download any
 	// templates from the default locations or is unable to connect to the public internet.
-	options.PublicTemplateDisableDownload = strings.ToLower(os.Getenv("DISABLE_NUCLEI_TEMPLATES_PUBLIC_DOWNLOAD")) == "true"
-	options.GitHubTemplateDisableDownload = strings.ToLower(os.Getenv("DISABLE_NUCLEI_TEMPLATES_GITHUB_DOWNLOAD")) == "true"
-	options.GitLabTemplateDisableDownload = strings.ToLower(os.Getenv("DISABLE_NUCLEI_TEMPLATES_GITLAB_DOWNLOAD")) == "true"
-	options.AwsTemplateDisableDownload = strings.ToLower(os.Getenv("DISABLE_NUCLEI_TEMPLATES_AWS_DOWNLOAD")) == "true"
-	options.AzureTemplateDisableDownload = strings.ToLower(os.Getenv("DISABLE_NUCLEI_TEMPLATES_AZURE_DOWNLOAD")) == "true"
+	options.PublicTemplateDisableDownload = getBoolEnvValue("DISABLE_NUCLEI_TEMPLATES_PUBLIC_DOWNLOAD")
+	options.GitHubTemplateDisableDownload = getBoolEnvValue("DISABLE_NUCLEI_TEMPLATES_GITHUB_DOWNLOAD")
+	options.GitLabTemplateDisableDownload = getBoolEnvValue("DISABLE_NUCLEI_TEMPLATES_GITLAB_DOWNLOAD")
+	options.AwsTemplateDisableDownload = getBoolEnvValue("DISABLE_NUCLEI_TEMPLATES_AWS_DOWNLOAD")
+	options.AzureTemplateDisableDownload = getBoolEnvValue("DISABLE_NUCLEI_TEMPLATES_AZURE_DOWNLOAD")
+}
+
+func getBoolEnvValue(key string) bool {
+	value := os.Getenv(key)
+	return strings.EqualFold(value, "true")
 }
