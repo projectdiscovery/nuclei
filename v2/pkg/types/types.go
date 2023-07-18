@@ -287,8 +287,10 @@ type Options struct {
 	ClientCAFile string
 	// Deprecated: Use ZTLS library
 	ZTLS bool
-	// Sandbox enables sandboxed nuclei template execution
-	Sandbox bool
+	// AllowLocalFileAccess allows local file access from templates payloads
+	AllowLocalFileAccess bool
+	// RestrictLocalNetworkAccess restricts local network access from templates requests
+	RestrictLocalNetworkAccess bool
 	// ShowMatchLine enables display of match line number
 	ShowMatchLine bool
 	// EnablePprof enables exposing pprof runtime information with a webserver.
@@ -337,16 +339,22 @@ type Options struct {
 	ScanAllIPs bool
 	// IPVersion to scan (4,6)
 	IPVersion goflags.StringSlice
+	// PublicTemplateDisableDownload disables downloading templates from the nuclei-templates public repository
+	PublicTemplateDisableDownload bool
 	// GitHub token used to clone/pull from private repos for custom templates
 	GithubToken string
 	// GithubTemplateRepo is the list of custom public/private templates GitHub repos
 	GithubTemplateRepo []string
+	// GitHubTemplateDisableDownload disables downloading templates from custom GitHub repositories
+	GitHubTemplateDisableDownload bool
 	// GitLabServerURL is the gitlab server to use for custom templates
 	GitLabServerURL string
 	// GitLabToken used to clone/pull from private repos for custom templates
 	GitLabToken string
 	// GitLabTemplateRepositoryIDs is the comma-separated list of custom gitlab repositories IDs
 	GitLabTemplateRepositoryIDs []int
+	// GitLabTemplateDisableDownload disables downloading templates from custom GitLab repositories
+	GitLabTemplateDisableDownload bool
 	// AWS access key for downloading templates from S3 bucket
 	AwsAccessKey string
 	// AWS secret key for downloading templates from S3 bucket
@@ -355,6 +363,8 @@ type Options struct {
 	AwsBucketName string
 	// AWS Region name where AWS S3 bucket is located
 	AwsRegion string
+	// AwsTemplateDisableDownload disables downloading templates from AWS S3 buckets
+	AwsTemplateDisableDownload bool
 	// AzureContainerName for downloading templates from Azure Blob Storage. Example: templates
 	AzureContainerName string
 	// AzureTenantID for downloading templates from Azure Blob Storage. Example: 00000000-0000-0000-0000-000000000000
@@ -365,6 +375,8 @@ type Options struct {
 	AzureClientSecret string
 	// AzureServiceURL for downloading templates from Azure Blob Storage. Example: https://XXXXXXXXXX.blob.core.windows.net/
 	AzureServiceURL string
+	// AzureTemplateDisableDownload disables downloading templates from Azure Blob Storage
+	AzureTemplateDisableDownload bool
 	// Scan Strategy (auto,hosts-spray,templates-spray)
 	ScanStrategy string
 	// Fuzzing Type overrides template level fuzzing-type configuration

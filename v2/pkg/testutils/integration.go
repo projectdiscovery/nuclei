@@ -52,6 +52,7 @@ func RunNucleiBareArgsAndGetResults(debug bool, extra ...string) ([]string, erro
 	cmd.Args = append(cmd.Args, "-duc") // disable auto updates
 	cmd.Args = append(cmd.Args, "-interactions-poll-duration", "1")
 	cmd.Args = append(cmd.Args, "-interactions-cooldown-period", "10")
+	cmd.Args = append(cmd.Args, "-allow-local-file-access")
 	if debug {
 		cmd.Args = append(cmd.Args, "-debug")
 		cmd.Stderr = os.Stderr

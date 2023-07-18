@@ -11,7 +11,7 @@ import (
 )
 
 // loadPayloads loads the input payloads from a map to a data map
-func (generator *PayloadGenerator) loadPayloads(payloads map[string]interface{}, templatePath, templateDirectory string, sandbox bool) (map[string][]string, error) {
+func (generator *PayloadGenerator) loadPayloads(payloads map[string]interface{}, templatePath, templateDirectory string, allowLocalFileAccess bool) (map[string][]string, error) {
 	loadedPayloads := make(map[string][]string)
 
 	for name, payload := range payloads {
@@ -22,9 +22,13 @@ func (generator *PayloadGenerator) loadPayloads(payloads map[string]interface{},
 			if len(elements) >= 2 {
 				loadedPayloads[name] = elements
 			} else {
-				if sandbox {
+				if !allowLocalFileAccess {
 					pt = filepath.Clean(pt)
-					templatePathDir := filepath.Dir(templatePath)
+					templateAbsPath, err := filepath.Abs(templatePath)
+					if err != nil {
+						return nil, errors.Wrap(err, "could not get absolute path")
+					}
+					templatePathDir := filepath.Dir(templateAbsPath)
 					if !(templatePathDir != "/" && strings.HasPrefix(pt, templatePathDir)) && !strings.HasPrefix(pt, templateDirectory) {
 						return nil, errors.New("denied payload file path specified")
 					}

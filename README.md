@@ -41,11 +41,6 @@ Nuclei is used to send requests across targets based on a template, leading to z
 
 We have a [dedicated repository](https://github.com/projectdiscovery/nuclei-templates) that houses various type of vulnerability templates contributed by **more than 300** security researchers and engineers.
 
-| :exclamation:  **Disclaimer**  |
-|---------------------------------|
-| **This project is in active development**. Expect breaking changes with releases. Review the release changelog before updating. |
-| This project was primarily built to be used as a standalone CLI tool. **Running nuclei as a service may pose security risks.** It's recommended to use with caution and additional security measures. |
-
 ## How it works
 
 
@@ -53,6 +48,11 @@ We have a [dedicated repository](https://github.com/projectdiscovery/nuclei-temp
   <img src="static/nuclei-flow.jpg" alt="nuclei-flow" width="700px"></a>
 </h3>
 
+
+| :exclamation:  **Disclaimer**  |
+|---------------------------------|
+| **This project is in active development**. Expect breaking changes with releases. Review the release changelog before updating. |
+| This project was primarily built to be used as a standalone CLI tool. **Running nuclei as a service may pose security risks.** It's recommended to use with caution and additional security measures. |
 
 # Install Nuclei
 
@@ -158,7 +158,7 @@ OUTPUT:
    -silent                       display findings only
    -nc, -no-color                disable output content coloring (ANSI escape codes)
    -j, -jsonl                    write output in JSONL(ines) format
-   -irr, -include-rr             include request/response pairs in the JSON, JSONL, and Markdown outputs (for findings only) [DEPRECATED]
+   -irr, -include-rr             include request/response pairs in the JSON, JSONL, and Markdown outputs (for findings only) [DEPRECATED use -omit-raw] (default true)
    -or, -omit-raw                omit request/response pairs in the JSON, JSONL, and Markdown outputs (for findings only)
    -nm, -no-meta                 disable printing result metadata in cli output
    -ts, -timestamp               enables printing timestamp in cli output
@@ -170,35 +170,36 @@ OUTPUT:
    -jle, -jsonl-export string    file to export results in JSONL(ine) format
 
 CONFIGURATIONS:
-   -config string                 path to the nuclei configuration file
-   -fr, -follow-redirects         enable following redirects for http templates
-   -fhr, -follow-host-redirects   follow redirects on the same host
-   -mr, -max-redirects int        max number of redirects to follow for http templates (default 10)
-   -dr, -disable-redirects        disable redirects for http templates
-   -rc, -report-config string     nuclei reporting module configuration file
-   -H, -header string[]           custom header/cookie to include in all http request in header:value format (cli, file)
-   -V, -var value                 custom vars in key=value format
-   -r, -resolvers string          file containing resolver list for nuclei
-   -sr, -system-resolvers         use system DNS resolving as error fallback
-   -dc, -disable-clustering       disable clustering of requests
-   -passive                       enable passive HTTP response processing mode
-   -fh2, -force-http2             force http2 connection on requests
-   -ev, -env-vars                 enable environment variables to be used in template
-   -cc, -client-cert string       client certificate file (PEM-encoded) used for authenticating against scanned hosts
-   -ck, -client-key string        client key file (PEM-encoded) used for authenticating against scanned hosts
-   -ca, -client-ca string         client certificate authority file (PEM-encoded) used for authenticating against scanned hosts
-   -sml, -show-match-line         show match lines for file templates, works with extractors only
-   -ztls                          use ztls library with autofallback to standard one for tls13
-   -sni string                    tls sni hostname to use (default: input domain name)
-   -sandbox                       sandbox nuclei for safe templates execution
-   -i, -interface string          network interface to use for network scan
-   -at, -attack-type string       type of payload combinations to perform (batteringram,pitchfork,clusterbomb)
-   -sip, -source-ip string        source ip address to use for network scan
-   -config-directory string       override the default config path ($home/.config)
-   -rsr, -response-size-read int  max response size to read in bytes (default 10485760)
-   -rss, -response-size-save int  max response size to read in bytes (default 1048576)
-   -reset                         reset removes all nuclei configuration and data files (including nuclei-templates)
-   -tlsi, -tls-impersonate        enable experimental client hello (ja3) tls randomization
+   -config string                        path to the nuclei configuration file
+   -fr, -follow-redirects                enable following redirects for http templates
+   -fhr, -follow-host-redirects          follow redirects on the same host
+   -mr, -max-redirects int               max number of redirects to follow for http templates (default 10)
+   -dr, -disable-redirects               disable redirects for http templates
+   -rc, -report-config string            nuclei reporting module configuration file
+   -H, -header string[]                  custom header/cookie to include in all http request in header:value format (cli, file)
+   -V, -var value                        custom vars in key=value format
+   -r, -resolvers string                 file containing resolver list for nuclei
+   -sr, -system-resolvers                use system DNS resolving as error fallback
+   -dc, -disable-clustering              disable clustering of requests
+   -passive                              enable passive HTTP response processing mode
+   -fh2, -force-http2                    force http2 connection on requests
+   -ev, -env-vars                        enable environment variables to be used in template
+   -cc, -client-cert string              client certificate file (PEM-encoded) used for authenticating against scanned hosts
+   -ck, -client-key string               client key file (PEM-encoded) used for authenticating against scanned hosts
+   -ca, -client-ca string                client certificate authority file (PEM-encoded) used for authenticating against scanned hosts
+   -sml, -show-match-line                show match lines for file templates, works with extractors only
+   -ztls                                 use ztls library with autofallback to standard one for tls13 [Deprecated] autofallback to ztls is enabled by default
+   -sni string                           tls sni hostname to use (default: input domain name)
+   -lfa, -allow-local-file-access        allows file (payload) access anywhere on the system
+   -lna, -restrict-local-network-access  blocks connections to the local / private network
+   -i, -interface string                 network interface to use for network scan
+   -at, -attack-type string              type of payload combinations to perform (batteringram,pitchfork,clusterbomb)
+   -sip, -source-ip string               source ip address to use for network scan
+   -config-directory string              override the default config path ($home/.config)
+   -rsr, -response-size-read int         max response size to read in bytes (default 10485760)
+   -rss, -response-size-save int         max response size to read in bytes (default 1048576)
+   -reset                                reset removes all nuclei configuration and data files (including nuclei-templates)
+   -tlsi, -tls-impersonate               enable experimental client hello (ja3) tls randomization
 
 INTERACTSH:
    -iserver, -interactsh-server string  interactsh server url for self-hosted instance (default: oast.pro,oast.live,oast.site,oast.online,oast.fun,oast.me)
@@ -216,10 +217,10 @@ FUZZING:
 UNCOVER:
    -uc, -uncover                  enable uncover engine
    -uq, -uncover-query string[]   uncover search query
-   -ue, -uncover-engine string[]  uncover search engine (shodan,shodan-idb,fofa,censys,quake,hunter,zoomeye,netlas,criminalip) (default shodan)
+   -ue, -uncover-engine string[]  uncover search engine (shodan,censys,fofa,shodan-idb,quake,hunter,zoomeye,netlas,criminalip,publicwww,hunterhow) (default shodan)
    -uf, -uncover-field string     uncover fields to return (ip,port,host) (default "ip:port")
    -ul, -uncover-limit int        uncover results to return (default 100)
-   -ucd, -uncover-delay int       delay between uncover query requests in seconds (0 to disable) (default 1)
+   -ur, -uncover-ratelimit int    override ratelimit of engines with unknown ratelimit (default 60 req/min) (default 60)
 
 RATE-LIMIT:
    -rl, -rate-limit int               maximum number of requests to send per second (default 150)
