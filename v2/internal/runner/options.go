@@ -412,7 +412,7 @@ func readEnvInputVars(options *types.Options) {
 	options.MarkdownExportSortMode = strings.ToLower(os.Getenv("MARKDOWN_EXPORT_SORT_MODE"))
 	// If the user has not specified a valid sort mode, use the default
 	if options.MarkdownExportSortMode != "template" && options.MarkdownExportSortMode != "severity" && options.MarkdownExportSortMode != "host" {
-		options.MarkdownExportSortMode = "none"
+		options.MarkdownExportSortMode = ""
 	}
 }
 
