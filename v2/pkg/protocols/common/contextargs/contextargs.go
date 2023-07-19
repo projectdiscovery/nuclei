@@ -4,7 +4,7 @@ import (
 	"net/http/cookiejar"
 	"sync"
 
-	"golang.org/x/exp/maps"
+	mapsutil "github.com/projectdiscovery/utils/maps"
 )
 
 // Context implements a shared context struct to share information across multiple templates within a workflow
@@ -18,7 +18,7 @@ type Context struct {
 	// Access to Args must use lock strategies to prevent data races
 	*sync.RWMutex
 	// Args is a workflow shared key-value store
-	args Args
+	args *mapsutil.SyncLockMap[string, interface{}]
 }
 
 // Create a new contextargs instance
@@ -36,20 +36,13 @@ func (ctx *Context) initialize() {
 	ctx.RWMutex = &sync.RWMutex{}
 }
 
-func (ctx *Context) set(key string, value interface{}) {
-	ctx.Lock()
-	defer ctx.Unlock()
-
-	ctx.args.Set(key, value)
-}
-
 // Set the specific key-value pair
 func (ctx *Context) Set(key string, value interface{}) {
 	if !ctx.isInitialized() {
 		ctx.initialize()
 	}
 
-	ctx.set(key, value)
+	_ = ctx.args.Set(key, value)
 }
 
 func (ctx *Context) isInitialized() bool {
@@ -60,49 +53,33 @@ func (ctx *Context) hasArgs() bool {
 	return ctx.isInitialized() && !ctx.args.IsEmpty()
 }
 
-func (ctx *Context) get(key string) (interface{}, bool) {
-	ctx.RLock()
-	defer ctx.RUnlock()
-
-	return ctx.args.Get(key)
-}
-
 // Get the value with specific key if exists
 func (ctx *Context) Get(key string) (interface{}, bool) {
 	if !ctx.hasArgs() {
 		return nil, false
 	}
 
-	return ctx.get(key)
+	return ctx.args.Get(key)
 }
 
-func (ctx *Context) GetAll() Args {
+func (ctx *Context) GetAll() *mapsutil.SyncLockMap[string, interface{}] {
 	if !ctx.hasArgs() {
 		return nil
 	}
 
-	return maps.Clone(ctx.args)
+	return ctx.args.Clone()
 }
 
 func (ctx *Context) ForEach(f func(string, interface{})) {
-	ctx.RLock()
-	defer ctx.RUnlock()
-
-	for k, v := range ctx.args {
+	_ = ctx.args.Iterate(func(k string, v interface{}) error {
 		f(k, v)
-	}
-}
-
-func (ctx *Context) has(key string) bool {
-	ctx.RLock()
-	defer ctx.RUnlock()
-
-	return ctx.args.Has(key)
+		return nil
+	})
 }
 
 // Has check if the key exists
 func (ctx *Context) Has(key string) bool {
-	return ctx.hasArgs() && ctx.has(key)
+	return ctx.hasArgs() && ctx.args.Has(key)
 }
 
 func (ctx *Context) HasArgs() bool {

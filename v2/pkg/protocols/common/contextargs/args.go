@@ -1,5 +1,7 @@
 package contextargs
 
+import mapsutil "github.com/projectdiscovery/utils/maps"
+
 // Args is a generic map with helpers
 type Args map[string]interface{}
 
@@ -26,6 +28,6 @@ func (Args Args) IsEmpty() bool {
 }
 
 // create a new args map instance
-func newArgs() map[string]interface{} {
-	return make(map[string]interface{})
+func newArgs() *mapsutil.SyncLockMap[string, interface{}] {
+	return &mapsutil.SyncLockMap[string, interface{}]{}
 }
