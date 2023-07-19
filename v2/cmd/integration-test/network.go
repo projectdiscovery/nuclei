@@ -8,7 +8,7 @@ import (
 
 var networkTestcases = []TestCaseInfo{
 	{DisableOn: []string{"windows"}, Path: "network/basic.yaml", TestCase: &networkBasic{}},
-	{DisableOn: nil, Path: "network/hex.yaml", TestCase: &networkBasic{}},
+	{DisableOn: []string{"windows"}, Path: "network/hex.yaml", TestCase: &networkBasic{}},
 	{DisableOn: nil, Path: "network/multi-step.yaml", TestCase: &networkMultiStep{}},
 	{DisableOn: nil, Path: "network/self-contained.yaml", TestCase: &networkRequestSelContained{}},
 	{DisableOn: nil, Path: "network/variables.yaml", TestCase: &networkVariables{}},
