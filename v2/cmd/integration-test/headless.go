@@ -10,14 +10,14 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/testutils"
 )
 
-var headlessTestcases = map[string]testutils.TestCase{
-	"headless/headless-basic.yaml":              &headlessBasic{},
-	"headless/headless-header-action.yaml":      &headlessHeaderActions{},
-	"headless/headless-extract-values.yaml":     &headlessExtractValues{},
-	"headless/headless-payloads.yaml":           &headlessPayloads{},
-	"headless/variables.yaml":                   &headlessVariables{},
-	"headless/file-upload.yaml":                 &headlessFileUpload{},
-	"headless/headless-header-status-test.yaml": &headlessHeaderStatus{},
+var headlessTestcases = []TestCaseInfo{
+	{DisableOn: nil, Path: "headless/headless-basic.yaml", TestCase: &headlessBasic{}},
+	{DisableOn: nil, Path: "headless/headless-header-action.yaml", TestCase: &headlessHeaderActions{}},
+	{DisableOn: nil, Path: "headless/headless-extract-values.yaml", TestCase: &headlessExtractValues{}},
+	{DisableOn: nil, Path: "headless/headless-payloads.yaml", TestCase: &headlessPayloads{}},
+	{DisableOn: nil, Path: "headless/variables.yaml", TestCase: &headlessVariables{}},
+	{DisableOn: nil, Path: "headless/file-upload.yaml", TestCase: &headlessFileUpload{}},
+	{DisableOn: nil, Path: "headless/headless-header-status-test.yaml", TestCase: &headlessHeaderStatus{}},
 }
 
 type headlessBasic struct{}

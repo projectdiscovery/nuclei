@@ -9,11 +9,11 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/testutils"
 )
 
-var websocketTestCases = map[string]testutils.TestCase{
-	"websocket/basic.yaml":    &websocketBasic{},
-	"websocket/cswsh.yaml":    &websocketCswsh{},
-	"websocket/no-cswsh.yaml": &websocketNoCswsh{},
-	"websocket/path.yaml":     &websocketWithPath{},
+var websocketTestCases = []TestCaseInfo{
+	{DisableOn: nil, Path: "websocket/basic.yaml", TestCase: &websocketBasic{}},
+	{DisableOn: nil, Path: "websocket/cswsh.yaml", TestCase: &websocketCswsh{}},
+	{DisableOn: nil, Path: "websocket/no-cswsh.yaml", TestCase: &websocketNoCswsh{}},
+	{DisableOn: nil, Path: "websocket/path.yaml", TestCase: &websocketWithPath{}},
 }
 
 type websocketBasic struct{}

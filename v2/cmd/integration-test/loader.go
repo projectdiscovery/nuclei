@@ -12,13 +12,13 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/testutils"
 )
 
-var loaderTestcases = map[string]testutils.TestCase{
-	"loader/template-list.yaml":             &remoteTemplateList{},
-	"loader/workflow-list.yaml":             &remoteWorkflowList{},
-	"loader/excluded-template.yaml":         &excludedTemplate{},
-	"loader/nonexistent-template-list.yaml": &nonExistentTemplateList{},
-	"loader/nonexistent-workflow-list.yaml": &nonExistentWorkflowList{},
-	"loader/template-list-not-allowed.yaml": &remoteTemplateListNotAllowed{},
+var loaderTestcases = []TestCaseInfo{
+	{DisableOn: nil, Path: "loader/template-list.yaml", TestCase: &remoteTemplateList{}},
+	{DisableOn: nil, Path: "loader/workflow-list.yaml", TestCase: &remoteWorkflowList{}},
+	{DisableOn: nil, Path: "loader/excluded-template.yaml", TestCase: &excludedTemplate{}},
+	{DisableOn: nil, Path: "loader/nonexistent-template-list.yaml", TestCase: &nonExistentTemplateList{}},
+	{DisableOn: nil, Path: "loader/nonexistent-workflow-list.yaml", TestCase: &nonExistentWorkflowList{}},
+	{DisableOn: nil, Path: "loader/template-list-not-allowed.yaml", TestCase: &remoteTemplateListNotAllowed{}},
 }
 
 type remoteTemplateList struct{}

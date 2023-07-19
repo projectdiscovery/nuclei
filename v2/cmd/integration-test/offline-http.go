@@ -6,10 +6,10 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/testutils"
 )
 
-var offlineHttpTestcases = map[string]testutils.TestCase{
-	"offlinehttp/rfc-req-resp.yaml":          &RfcRequestResponse{},
-	"offlinehttp/offline-allowed-paths.yaml": &RequestResponseWithAllowedPaths{},
-	"offlinehttp/offline-raw.yaml":           &RawRequestResponse{},
+var offlineHttpTestcases = []TestCaseInfo{
+	{DisableOn: nil, Path: "offlinehttp/rfc-req-resp.yaml", TestCase: &RfcRequestResponse{}},
+	{DisableOn: nil, Path: "offlinehttp/offline-allowed-paths.yaml", TestCase: &RequestResponseWithAllowedPaths{}},
+	{DisableOn: nil, Path: "offlinehttp/offline-raw.yaml", TestCase: &RawRequestResponse{}},
 }
 
 type RfcRequestResponse struct{}

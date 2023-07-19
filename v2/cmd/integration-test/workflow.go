@@ -11,14 +11,14 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/testutils"
 )
 
-var workflowTestcases = map[string]testutils.TestCase{
-	"workflow/basic.yaml":                     &workflowBasic{},
-	"workflow/condition-matched.yaml":         &workflowConditionMatched{},
-	"workflow/condition-unmatched.yaml":       &workflowConditionUnmatch{},
-	"workflow/matcher-name.yaml":              &workflowMatcherName{},
-	"workflow/http-value-share-workflow.yaml": &workflowHttpKeyValueShare{},
-	"workflow/dns-value-share-workflow.yaml":  &workflowDnsKeyValueShare{},
-	"workflow/shared-cookie.yaml":             &workflowSharedCookies{},
+var workflowTestcases = []TestCaseInfo{
+	{DisableOn: nil, Path: "workflow/basic.yaml", TestCase: &workflowBasic{}},
+	{DisableOn: nil, Path: "workflow/condition-matched.yaml", TestCase: &workflowConditionMatched{}},
+	{DisableOn: nil, Path: "workflow/condition-unmatched.yaml", TestCase: &workflowConditionUnmatch{}},
+	{DisableOn: nil, Path: "workflow/matcher-name.yaml", TestCase: &workflowMatcherName{}},
+	{DisableOn: nil, Path: "workflow/http-value-share-workflow.yaml", TestCase: &workflowHttpKeyValueShare{}},
+	{DisableOn: nil, Path: "workflow/dns-value-share-workflow.yaml", TestCase: &workflowDnsKeyValueShare{}},
+	{DisableOn: nil, Path: "workflow/shared-cookie.yaml", TestCase: &workflowSharedCookies{}},
 }
 
 type workflowBasic struct{}

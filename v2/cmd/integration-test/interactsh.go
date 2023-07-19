@@ -1,10 +1,8 @@
 package main
 
-import "github.com/projectdiscovery/nuclei/v2/pkg/testutils"
-
 // All Interactsh related testcases
-var interactshTestCases = map[string]testutils.TestCase{
-	"http/interactsh.yaml":                     &httpInteractshRequest{},
-	"http/interactsh-stop-at-first-match.yaml": &httpInteractshStopAtFirstMatchRequest{},
-	"http/default-matcher-condition.yaml":      &httpDefaultMatcherCondition{},
+var interactshTestCases = []TestCaseInfo{
+	{DisableOn: []string{"windows"}, Path: "http/interactsh.yaml", TestCase: &httpInteractshRequest{}},
+	{DisableOn: []string{"windows"}, Path: "http/interactsh-stop-at-first-match.yaml", TestCase: &httpInteractshStopAtFirstMatchRequest{}},
+	{DisableOn: []string{"windows"}, Path: "http/default-matcher-condition.yaml", TestCase: &httpDefaultMatcherCondition{}},
 }

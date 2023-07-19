@@ -12,11 +12,11 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/testutils"
 )
 
-var fuzzingTestCases = map[string]testutils.TestCase{
-	"fuzz/fuzz-mode.yaml":     &fuzzModeOverride{},
-	"fuzz/fuzz-type.yaml":     &fuzzTypeOverride{},
-	"fuzz/fuzz-query.yaml":    &httpFuzzQuery{},
-	"fuzz/fuzz-headless.yaml": &HeadlessFuzzingQuery{},
+var fuzzingTestCases = []TestCaseInfo{
+	{DisableOn: nil, Path: "fuzz/fuzz-mode.yaml", TestCase: &fuzzModeOverride{}},
+	{DisableOn: nil, Path: "fuzz/fuzz-type.yaml", TestCase: &fuzzTypeOverride{}},
+	{DisableOn: nil, Path: "fuzz/fuzz-query.yaml", TestCase: &httpFuzzQuery{}},
+	{DisableOn: nil, Path: "fuzz/fuzz-headless.yaml", TestCase: &HeadlessFuzzingQuery{}},
 }
 
 type httpFuzzQuery struct{}

@@ -6,13 +6,13 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/testutils"
 )
 
-var networkTestcases = map[string]testutils.TestCase{
-	"network/basic.yaml":          &networkBasic{},
-	"network/hex.yaml":            &networkBasic{},
-	"network/multi-step.yaml":     &networkMultiStep{},
-	"network/self-contained.yaml": &networkRequestSelContained{},
-	"network/variables.yaml":      &networkVariables{},
-	"network/same-address.yaml":   &networkBasic{},
+var networkTestcases = []TestCaseInfo{
+	{DisableOn: []string{"windows"}, Path: "network/basic.yaml", TestCase: &networkBasic{}},
+	{DisableOn: nil, Path: "network/hex.yaml", TestCase: &networkBasic{}},
+	{DisableOn: nil, Path: "network/multi-step.yaml", TestCase: &networkMultiStep{}},
+	{DisableOn: nil, Path: "network/self-contained.yaml", TestCase: &networkRequestSelContained{}},
+	{DisableOn: nil, Path: "network/variables.yaml", TestCase: &networkVariables{}},
+	{DisableOn: nil, Path: "network/same-address.yaml", TestCase: &networkBasic{}},
 }
 
 const defaultStaticPort = 5431

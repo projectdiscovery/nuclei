@@ -13,8 +13,8 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/testutils"
 )
 
-var genericTestcases = map[string]testutils.TestCase{
-	"generic/auth/certificate/http-get.yaml": &clientCertificate{},
+var genericTestcases = []TestCaseInfo{
+	{DisableOn: nil, Path: "generic/auth/certificate/http-get.yaml", TestCase: &clientCertificate{}},
 }
 
 var (
