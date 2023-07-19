@@ -29,5 +29,5 @@ func (Args Args) IsEmpty() bool {
 
 // create a new args map instance
 func newArgs() *mapsutil.SyncLockMap[string, interface{}] {
-	return &mapsutil.SyncLockMap[string, interface{}]{}
+	return &mapsutil.SyncLockMap[string, interface{}]{Map: mapsutil.Map[string, interface{}]{}}
 }
