@@ -452,6 +452,10 @@ func (r *Runner) RunEnumeration(options ...core.EnumerateOption) error {
 		InputHelper:     input.NewHelper(),
 	}
 
+	for _, option := range options {
+		option(&executorOpts)
+	}
+
 	if r.options.ShouldUseHostError() {
 		cache := hosterrorscache.New(r.options.MaxHostError, hosterrorscache.DefaultMaxHostsCount, r.options.TrackError)
 		cache.SetVerbose(r.options.Verbose)

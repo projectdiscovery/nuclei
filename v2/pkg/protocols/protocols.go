@@ -1,6 +1,8 @@
 package protocols
 
 import (
+	"context"
+
 	"github.com/projectdiscovery/ratelimit"
 
 	"github.com/logrusorgru/aurora"
@@ -39,6 +41,7 @@ type Executer interface {
 
 // ExecutorOptions contains the configuration options for executer clients
 type ExecutorOptions struct {
+	Ctx context.Context
 	// TemplateID is the ID of the template for the request
 	TemplateID string
 	// TemplatePath is the path of the template for the request

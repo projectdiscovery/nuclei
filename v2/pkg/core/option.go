@@ -1,15 +1,15 @@
 package core
 
-import "context"
+import (
+	"context"
 
-type EnumerationOptions struct {
-	ctx context.Context
-}
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
+)
 
-type EnumerateOption func(opts *EnumerationOptions)
+type EnumerateOption func(opts *protocols.ExecutorOptions)
 
 func WithContext(ctx context.Context) EnumerateOption {
-	return func(opts *EnumerationOptions) {
-		opts.ctx = ctx
+	return func(opts *protocols.ExecutorOptions) {
+		opts.Ctx = ctx
 	}
 }
