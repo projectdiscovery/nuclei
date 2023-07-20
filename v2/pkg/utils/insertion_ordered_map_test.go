@@ -3,8 +3,8 @@ package utils
 import (
 	"testing"
 
+	"github.com/goccy/go-yaml"
 	"github.com/stretchr/testify/require"
-	"gopkg.in/yaml.v2"
 )
 
 func TestUnmarshalInsertionOrderedMapYAML(t *testing.T) {
