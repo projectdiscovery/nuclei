@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"strconv"
+
+	"github.com/goccy/go-yaml"
 )
 
 type InsertionOrderedStringMap struct {
@@ -32,13 +34,13 @@ func (insertionOrderedStringMap *InsertionOrderedStringMap) Len() int {
 }
 
 func (insertionOrderedStringMap *InsertionOrderedStringMap) UnmarshalYAML(unmarshal func(interface{}) error) error {
-	var data map[interface{}]interface{} //NOTE: this is a workaround. unmarshal func fails when using yaml.MapSlice
+	var data yaml.MapSlice
 	if err := unmarshal(&data); err != nil {
 		return err
 	}
 	insertionOrderedStringMap.values = make(map[string]interface{})
-	for k, v := range data {
-		insertionOrderedStringMap.Set(k.(string), toString(v))
+	for _, v := range data {
+		insertionOrderedStringMap.Set(v.Key.(string), toString(v.Value))
 	}
 	return nil
 }
