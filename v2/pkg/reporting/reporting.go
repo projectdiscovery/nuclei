@@ -7,8 +7,8 @@ import (
 	json_exporter "github.com/projectdiscovery/nuclei/v2/pkg/reporting/exporters/jsonexporter"
 	"github.com/projectdiscovery/nuclei/v2/pkg/reporting/exporters/jsonl"
 
+	"github.com/goccy/go-yaml"
 	"go.uber.org/multierr"
-	"gopkg.in/yaml.v2"
 
 	"errors"
 

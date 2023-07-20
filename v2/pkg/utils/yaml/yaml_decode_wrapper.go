@@ -5,8 +5,8 @@ import (
 	"strings"
 
 	"github.com/go-playground/validator/v10"
+	"github.com/goccy/go-yaml"
 	"github.com/pkg/errors"
-	"gopkg.in/yaml.v2"
 )
 
 var validate *validator.Validate

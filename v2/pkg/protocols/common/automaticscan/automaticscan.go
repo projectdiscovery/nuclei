@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/corpix/uarand"
+	"github.com/goccy/go-yaml"
 	"github.com/pkg/errors"
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/config"
@@ -21,7 +22,6 @@ import (
 	"github.com/projectdiscovery/retryablehttp-go"
 	sliceutil "github.com/projectdiscovery/utils/slice"
 	wappalyzer "github.com/projectdiscovery/wappalyzergo"
-	"gopkg.in/yaml.v2"
 )
 
 // Service is a service for automatic scan execution

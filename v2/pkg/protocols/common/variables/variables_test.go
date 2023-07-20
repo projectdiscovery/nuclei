@@ -5,8 +5,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/goccy/go-yaml"
 	"github.com/stretchr/testify/require"
-	"gopkg.in/yaml.v2"
 )
 
 func TestVariablesEvaluate(t *testing.T) {

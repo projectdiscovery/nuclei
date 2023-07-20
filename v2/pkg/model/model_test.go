@@ -5,10 +5,10 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/goccy/go-yaml"
 	"github.com/projectdiscovery/nuclei/v2/pkg/model/types/severity"
 	"github.com/projectdiscovery/nuclei/v2/pkg/model/types/stringslice"
 	"github.com/stretchr/testify/assert"
-	"gopkg.in/yaml.v2"
 )
 
 func TestInfoJsonMarshal(t *testing.T) {

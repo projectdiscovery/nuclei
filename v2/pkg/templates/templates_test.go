@@ -5,8 +5,8 @@ import (
 	"os"
 	"testing"
 
+	"github.com/goccy/go-yaml"
 	"github.com/stretchr/testify/require"
-	"gopkg.in/yaml.v2"
 )
 
 func TestTemplateStruct(t *testing.T) {

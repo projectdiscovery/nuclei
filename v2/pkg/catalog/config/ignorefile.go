@@ -3,8 +3,8 @@ package config
 import (
 	"os"
 
+	"github.com/goccy/go-yaml"
 	"github.com/projectdiscovery/gologger"
-	"gopkg.in/yaml.v2"
 )
 
 // IgnoreFile is an internal nuclei template blocking configuration file

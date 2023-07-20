@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 
 	validate "github.com/go-playground/validator/v10"
+	"github.com/goccy/go-yaml"
 	"github.com/projectdiscovery/nuclei/v2/pkg/model"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/variables"
@@ -20,7 +21,6 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/workflows"
 	errorutil "github.com/projectdiscovery/utils/errors"
 	"go.uber.org/multierr"
-	"gopkg.in/yaml.v2"
 )
 
 // Template is a YAML input file which defines all the requests and

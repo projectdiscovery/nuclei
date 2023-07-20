@@ -14,8 +14,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/goccy/go-yaml"
 	"github.com/julienschmidt/httprouter"
-	"gopkg.in/yaml.v2"
 
 	"github.com/projectdiscovery/nuclei/v2/pkg/testutils"
 	"github.com/projectdiscovery/retryablehttp-go"
