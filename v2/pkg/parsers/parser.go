@@ -6,6 +6,7 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/goccy/go-yaml"
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalog"
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/config"
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/loader/filter"
@@ -15,7 +16,6 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/templates/types"
 	"github.com/projectdiscovery/nuclei/v2/pkg/utils"
 	"github.com/projectdiscovery/nuclei/v2/pkg/utils/stats"
-	"gopkg.in/yaml.v2"
 )
 
 const (
@@ -177,7 +177,7 @@ func ParseTemplate(templatePath string, catalog catalog.Catalog) (*templates.Tem
 		if NoStrictSyntax {
 			err = yaml.Unmarshal(data, template)
 		} else {
-			err = yaml.UnmarshalStrict(data, template)
+			err = yaml.UnmarshalWithOptions(data, template, yaml.Strict())
 		}
 	default:
 		err = fmt.Errorf("failed to identify template format expected JSON or YAML but got %v", templatePath)

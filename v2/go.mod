@@ -62,6 +62,7 @@ require (
 	github.com/docker/go-units v0.5.0
 	github.com/fatih/structs v1.1.0
 	github.com/go-git/go-git/v5 v5.7.0
+	github.com/goccy/go-yaml v1.11.0
 	github.com/h2non/filetype v1.1.3
 	github.com/klauspost/compress v1.16.6
 	github.com/labstack/echo/v4 v4.10.2
@@ -145,6 +146,7 @@ require (
 	github.com/yuin/goldmark v1.5.4 // indirect
 	github.com/yuin/goldmark-emoji v1.0.1 // indirect
 	go.uber.org/atomic v1.10.0 // indirect
+	golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1 // indirect
 	gopkg.in/djherbis/times.v1 v1.3.0 // indirect
 )
 
