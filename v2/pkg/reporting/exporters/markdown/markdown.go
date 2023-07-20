@@ -2,14 +2,16 @@ package markdown
 
 import (
 	"bytes"
-	"github.com/projectdiscovery/gologger"
 	"os"
 	"path/filepath"
 	"strings"
 
+	"github.com/projectdiscovery/gologger"
+
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
 	"github.com/projectdiscovery/nuclei/v2/pkg/reporting/exporters/markdown/util"
 	"github.com/projectdiscovery/nuclei/v2/pkg/reporting/format"
+	fileutil "github.com/projectdiscovery/utils/file"
 	stringsutil "github.com/projectdiscovery/utils/strings"
 )
 
@@ -94,8 +96,7 @@ func (exporter *Exporter) Export(event *output.ResultEvent) error {
 		fileUrl = filepath.Join(subdirectory, filename)
 
 		// Create the subdirectory if it does not exist
-		err = os.MkdirAll(filepath.Join(exporter.directory, subdirectory), 0755)
-		if err != nil {
+		if err = fileutil.CreateFolders(filepath.Join(exporter.directory, subdirectory)); err != nil {
 			gologger.Warning().Msgf("Could not create subdirectory for markdown report: %s", err)
 		}
 	}
