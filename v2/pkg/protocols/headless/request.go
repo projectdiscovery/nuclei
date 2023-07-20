@@ -121,7 +121,7 @@ func (request *Request) executeRequestWithPayloads(input *contextargs.Context, p
 	defer page.Close()
 
 	reqLog := instance.GetRequestLog()
-	navigatedURL := request.getLastNaviationURLWithLog(reqLog) // also known as matchedURL if there is a match
+	navigatedURL := request.getLastNavigationURLWithLog(reqLog) // also known as matchedURL if there is a match
 
 	request.options.Output.Request(request.options.TemplatePath, input.MetaInput.Input, request.Type().String(), nil)
 	request.options.Progress.IncrementRequests()
@@ -228,7 +228,7 @@ func (request *Request) executeFuzzingRule(input *contextargs.Context, payloads 
 }
 
 // getLastNaviationURL returns last successfully navigated URL
-func (request *Request) getLastNaviationURLWithLog(reqLog map[string]string) string {
+func (request *Request) getLastNavigationURLWithLog(reqLog map[string]string) string {
 	for i := len(request.Steps) - 1; i >= 0; i-- {
 		if request.Steps[i].ActionType.ActionType == engine.ActionNavigate {
 			templateURL := request.Steps[i].GetArg("url")
