@@ -437,6 +437,7 @@ func (r *Runner) RunEnumeration(options ...core.EnumerateOption) error {
 	// Create the executor options which will be used throughout the execution
 	// stage by the nuclei engine modules.
 	executorOpts := protocols.ExecutorOptions{
+		Ctx:             context.Background(),
 		Output:          r.output,
 		Options:         r.options,
 		Progress:        r.progress,
@@ -521,7 +522,7 @@ func (r *Runner) RunEnumeration(options ...core.EnumerateOption) error {
 			RateLimit:     uint(r.options.UncoverRateLimit),
 			RateLimitUnit: time.Minute, // default unit is minute
 		}
-		ret := uncover.GetUncoverTargetsFromMetadata(context.TODO(), store.Templates(), r.options.UncoverField, uncoverOpts)
+		ret := uncover.GetUncoverTargetsFromMetadata(executorOpts.Ctx, store.Templates(), r.options.UncoverField, uncoverOpts)
 		for host := range ret {
 			r.hmapInputProvider.Set(host)
 		}
