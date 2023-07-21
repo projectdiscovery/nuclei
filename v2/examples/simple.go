@@ -5,12 +5,13 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"path"
+	"path/filepath"
 	"time"
 
 	"github.com/logrusorgru/aurora"
 
 	"github.com/projectdiscovery/goflags"
+	"github.com/projectdiscovery/httpx/common/httpx"
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/config"
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/disk"
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/loader"
@@ -47,7 +48,7 @@ func main() {
 	protocolstate.Init(defaultOpts)
 	protocolinit.Init(defaultOpts)
 
-	defaultOpts.IncludeIds = goflags.StringSlice{"cname-service"}
+	defaultOpts.IncludeIds = goflags.StringSlice{"cname-service", "tech-detect"}
 	defaultOpts.ExcludeTags = config.ReadIgnoreFile().Tags
 
 	interactOpts := interactsh.DefaultOptions(outputWriter, reportingClient, mockProgress)
@@ -58,7 +59,7 @@ func main() {
 	defer interactClient.Close()
 
 	home, _ := os.UserHomeDir()
-	catalog := disk.NewCatalog(path.Join(home, "nuclei-templates"))
+	catalog := disk.NewCatalog(filepath.Join(home, "nuclei-templates"))
 	executerOpts := protocols.ExecutorOptions{
 		Output:          outputWriter,
 		Options:         defaultOpts,
@@ -86,9 +87,20 @@ func main() {
 	}
 	store.Load()
 
+	// flat input without probe
 	inputArgs := []*contextargs.MetaInput{{Input: "docs.hackerone.com"}}
-
 	input := &inputs.SimpleInputProvider{Inputs: inputArgs}
+
+	httpxOptions := httpx.DefaultOptions
+	httpxOptions.Timeout = 5 * time.Second
+	httpxClient, err := httpx.New(&httpxOptions)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	// use httpx to probe the URL => https://scanme.sh
+	input.SetWithProbe("scanme.sh", httpxClient)
+
 	_ = engine.Execute(store.Templates(), input)
 	engine.WorkPool().Wait() // Wait for the scan to finish
 }
