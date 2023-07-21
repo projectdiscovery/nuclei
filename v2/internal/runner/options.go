@@ -407,6 +407,13 @@ func readEnvInputVars(options *types.Options) {
 	options.GitLabTemplateDisableDownload = getBoolEnvValue("DISABLE_NUCLEI_TEMPLATES_GITLAB_DOWNLOAD")
 	options.AwsTemplateDisableDownload = getBoolEnvValue("DISABLE_NUCLEI_TEMPLATES_AWS_DOWNLOAD")
 	options.AzureTemplateDisableDownload = getBoolEnvValue("DISABLE_NUCLEI_TEMPLATES_AZURE_DOWNLOAD")
+
+	// Options to modify the behavior of exporters
+	options.MarkdownExportSortMode = strings.ToLower(os.Getenv("MARKDOWN_EXPORT_SORT_MODE"))
+	// If the user has not specified a valid sort mode, use the default
+	if options.MarkdownExportSortMode != "template" && options.MarkdownExportSortMode != "severity" && options.MarkdownExportSortMode != "host" {
+		options.MarkdownExportSortMode = ""
+	}
 }
 
 func getBoolEnvValue(key string) bool {
