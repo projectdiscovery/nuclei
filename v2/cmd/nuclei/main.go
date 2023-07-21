@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"context"
 	"fmt"
 	"os"
 	"os/signal"
@@ -16,6 +17,7 @@ import (
 	"github.com/projectdiscovery/interactsh/pkg/client"
 	"github.com/projectdiscovery/nuclei/v2/internal/runner"
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/config"
+	"github.com/projectdiscovery/nuclei/v2/pkg/core"
 	"github.com/projectdiscovery/nuclei/v2/pkg/model/types/severity"
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators/common/dsl"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/uncover"
@@ -99,7 +101,7 @@ func main() {
 		}
 	}()
 
-	if err := nucleiRunner.RunEnumeration(); err != nil {
+	if err := nucleiRunner.RunEnumeration(core.WithContext(context.TODO())); err != nil {
 		if options.Validate {
 			gologger.Fatal().Msgf("Could not validate templates: %s\n", err)
 		} else {

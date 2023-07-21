@@ -437,7 +437,7 @@ func (r *Runner) RunEnumeration(options ...core.EnumerateOption) error {
 	// Create the executor options which will be used throughout the execution
 	// stage by the nuclei engine modules.
 	executorOpts := protocols.ExecutorOptions{
-		Ctx:             context.Background(),
+		Ctx:             context.Background(), // set default value
 		Output:          r.output,
 		Options:         r.options,
 		Progress:        r.progress,
@@ -540,7 +540,7 @@ func (r *Runner) RunEnumeration(options ...core.EnumerateOption) error {
 	// are used, and if inputs are non-http to pre-perform probing
 	// of urls and storing them for execution.
 	if !r.options.DisableHTTPProbe && loader.IsHTTPBasedProtocolUsed(store) && r.isInputNonHTTP() {
-		inputHelpers, err := r.initializeTemplatesHTTPInput()
+		inputHelpers, err := r.initializeTemplatesHTTPInput(executorOpts.Ctx)
 		if err != nil {
 			return errors.Wrap(err, "could not probe http input")
 		}

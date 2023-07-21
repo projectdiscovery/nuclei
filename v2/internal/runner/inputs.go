@@ -1,6 +1,7 @@
 package runner
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"strings"
@@ -20,7 +21,7 @@ const probeBulkSize = 50
 
 // initializeTemplatesHTTPInput initializes the http form of input
 // for any loaded http templates if input is in non-standard format.
-func (r *Runner) initializeTemplatesHTTPInput() (*hybrid.HybridMap, error) {
+func (r *Runner) initializeTemplatesHTTPInput(ctx context.Context) (*hybrid.HybridMap, error) {
 	hm, err := hybrid.New(hybrid.DefaultDiskOptions)
 	if err != nil {
 		return nil, errors.Wrap(err, "could not create temporary input file")
@@ -43,7 +44,7 @@ func (r *Runner) initializeTemplatesHTTPInput() (*hybrid.HybridMap, error) {
 
 	// Probe the non-standard URLs and store them in cache
 	swg := sizedwaitgroup.New(bulkSize)
-	count := int32(0)
+	var count atomic.Int32
 	r.hmapInputProvider.Scan(func(value *contextargs.MetaInput) bool {
 		if strings.HasPrefix(value.Input, "http://") || strings.HasPrefix(value.Input, "https://") {
 			return true
@@ -53,8 +54,8 @@ func (r *Runner) initializeTemplatesHTTPInput() (*hybrid.HybridMap, error) {
 		go func(input *contextargs.MetaInput) {
 			defer swg.Done()
 
-			if result := probeURL(input.Input, httpxClient); result != "" {
-				atomic.AddInt32(&count, 1)
+			if result := probeURL(ctx, input.Input, httpxClient); result != "" {
+				count.Add(1)
 				_ = hm.Set(input.Input, []byte(result))
 			}
 		}(value)
@@ -62,7 +63,7 @@ func (r *Runner) initializeTemplatesHTTPInput() (*hybrid.HybridMap, error) {
 	})
 	swg.Wait()
 
-	gologger.Info().Msgf("Found %d URL from httpx", atomic.LoadInt32(&count))
+	gologger.Info().Msgf("Found %d URL from httpx", count.Load())
 	return hm, nil
 }
 
@@ -73,10 +74,10 @@ var (
 // probeURL probes the scheme for a URL. first HTTPS is tried
 // and if any errors occur http is tried. If none succeeds, probing
 // is abandoned for such URLs.
-func probeURL(input string, httpxclient *httpx.HTTPX) string {
+func probeURL(ctx context.Context, input string, httpxclient *httpx.HTTPX) string {
 	for _, scheme := range httpSchemes {
 		formedURL := fmt.Sprintf("%s://%s", scheme, input)
-		req, err := httpxclient.NewRequest(http.MethodHead, formedURL)
+		req, err := httpxclient.NewRequestWithContext(ctx, http.MethodHead, formedURL)
 		if err != nil {
 			continue
 		}
