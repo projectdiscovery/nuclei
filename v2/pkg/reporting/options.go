@@ -1,6 +1,8 @@
 package reporting
 
 import (
+	"context"
+
 	"github.com/projectdiscovery/nuclei/v2/pkg/reporting/exporters/es"
 	"github.com/projectdiscovery/nuclei/v2/pkg/reporting/exporters/jsonexporter"
 	"github.com/projectdiscovery/nuclei/v2/pkg/reporting/exporters/jsonl"
@@ -15,6 +17,7 @@ import (
 
 // Options is a configuration file for nuclei reporting module
 type Options struct {
+	Ctx context.Context `yaml:"-"`
 	// AllowList contains a list of allowed events for reporting module
 	AllowList *Filter `yaml:"allow-list"`
 	// DenyList contains a list of denied events for reporting module

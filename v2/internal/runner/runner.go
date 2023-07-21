@@ -1,7 +1,6 @@
 package runner
 
 import (
-	"context"
 	"encoding/json"
 	"net/http"
 	_ "net/http/pprof"
@@ -15,6 +14,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/internal/installer"
 	"github.com/projectdiscovery/nuclei/v2/internal/runner/nucleicloud"
 	uncoverlib "github.com/projectdiscovery/uncover"
+	contextutil "github.com/projectdiscovery/utils/context"
 	updateutils "github.com/projectdiscovery/utils/update"
 
 	"github.com/logrusorgru/aurora"
@@ -83,6 +83,8 @@ const pprofServerAddress = "127.0.0.1:8086"
 
 // New creates a new client for running the enumeration process.
 func New(options *types.Options) (*Runner, error) {
+	ctx := contextutil.ValueOrDefault(nil)
+
 	runner := &Runner{
 		options: options,
 	}
@@ -105,7 +107,7 @@ func New(options *types.Options) (*Runner, error) {
 		}
 
 		// check for custom template updates and update if available
-		ctm, err := customtemplates.NewCustomTemplatesManager(context.TODO(), options)
+		ctm, err := customtemplates.NewCustomTemplatesManager(ctx, options)
 		if err != nil {
 			gologger.Error().Label("custom-templates").Msgf("Failed to create custom templates manager: %s\n", err)
 		}
@@ -116,10 +118,10 @@ func New(options *types.Options) (*Runner, error) {
 			CustomTemplates:        ctm,
 			DisablePublicTemplates: options.PublicTemplateDisableDownload,
 		}
-		if err := tm.FreshInstallIfNotExists(context.TODO()); err != nil {
+		if err := tm.FreshInstallIfNotExists(ctx); err != nil {
 			gologger.Warning().Msgf("failed to install nuclei templates: %s\n", err)
 		}
-		if err := tm.UpdateIfOutdated(context.TODO()); err != nil {
+		if err := tm.UpdateIfOutdated(ctx); err != nil {
 			gologger.Warning().Msgf("failed to update nuclei templates: %s\n", err)
 		}
 
@@ -137,7 +139,7 @@ func New(options *types.Options) (*Runner, error) {
 			}
 			// manually trigger update of custom templates
 			if ctm != nil {
-				ctm.Update(context.TODO())
+				ctm.Update(ctx)
 			}
 		}
 	}
@@ -184,7 +186,7 @@ func New(options *types.Options) (*Runner, error) {
 	}
 
 	if reportingOptions != nil {
-		client, err := reporting.New(reportingOptions, options.ReportingDB, context.TODO())
+		client, err := reporting.New(reportingOptions, options.ReportingDB)
 		if err != nil {
 			return nil, errors.Wrap(err, "could not create issue reporting client")
 		}
@@ -215,7 +217,7 @@ func New(options *types.Options) (*Runner, error) {
 
 	// Initialize the input source
 	hmapInput, err := hybrid.New(&hybrid.Options{
-		Ctx:     context.TODO(),
+		Ctx:     ctx,
 		Options: options,
 		NotFoundCallback: func(target string) bool {
 			if !options.Cloud {
@@ -318,11 +320,11 @@ func New(options *types.Options) (*Runner, error) {
 	}
 
 	if options.RateLimitMinute > 0 {
-		runner.rateLimiter = ratelimit.New(context.TODO(), uint(options.RateLimitMinute), time.Minute)
+		runner.rateLimiter = ratelimit.New(ctx, uint(options.RateLimitMinute), time.Minute)
 	} else if options.RateLimit > 0 {
-		runner.rateLimiter = ratelimit.New(context.TODO(), uint(options.RateLimit), time.Second)
+		runner.rateLimiter = ratelimit.New(ctx, uint(options.RateLimit), time.Second)
 	} else {
-		runner.rateLimiter = ratelimit.NewUnlimited(context.TODO())
+		runner.rateLimiter = ratelimit.NewUnlimited(ctx)
 	}
 	return runner, nil
 }
@@ -398,6 +400,7 @@ func createReportingOptions(options *types.Options) (*reporting.Options, error) 
 
 // Close releases all the resources and cleans up
 func (r *Runner) Close() {
+	ctx := contextutil.ValueOrDefault(nil)
 	if r.output != nil {
 		r.output.Close()
 	}
@@ -407,7 +410,7 @@ func (r *Runner) Close() {
 	r.hmapInputProvider.Close()
 	protocolinit.Close()
 	if r.pprofServer != nil {
-		_ = r.pprofServer.Shutdown(context.TODO())
+		_ = r.pprofServer.Shutdown(ctx)
 	}
 	if r.rateLimiter != nil {
 		r.rateLimiter.Stop()
@@ -438,7 +441,7 @@ func (r *Runner) RunEnumeration(options ...core.EnumerateOption) error {
 	// Create the executor options which will be used throughout the execution
 	// stage by the nuclei engine modules.
 	executorOpts := protocols.ExecutorOptions{
-		Ctx:             context.Background(), // set default value
+		Ctx:             contextutil.ValueOrDefault(nil), // set default value
 		Output:          r.output,
 		Options:         r.options,
 		Progress:        r.progress,

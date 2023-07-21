@@ -1,7 +1,6 @@
 package reporting
 
 import (
-	"context"
 	"os"
 
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/config"
@@ -24,6 +23,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/reporting/trackers/github"
 	"github.com/projectdiscovery/nuclei/v2/pkg/reporting/trackers/gitlab"
 	"github.com/projectdiscovery/nuclei/v2/pkg/reporting/trackers/jira"
+	contextutil "github.com/projectdiscovery/utils/context"
 	errorutil "github.com/projectdiscovery/utils/errors"
 	fileutil "github.com/projectdiscovery/utils/file"
 	sliceutil "github.com/projectdiscovery/utils/slice"
@@ -95,7 +95,9 @@ type ReportingClient struct {
 }
 
 // New creates a new nuclei issue tracker reporting client
-func New(options *Options, db string, ctx context.Context) (Client, error) {
+func New(options *Options, db string) (Client, error) {
+	ctx := contextutil.ValueOrDefault(options.Ctx)
+
 	client := &ReportingClient{options: options}
 
 	if options.GitHub != nil {

@@ -97,7 +97,7 @@ func (h *clientCertificate) Execute(filePath string) error {
 
 	tlsConfig := &tls.Config{
 		Certificates: []tls.Certificate{serverCert},
-		ClientAuth:   tls.RequireAndVerifyClientCert,
+		ClientAuth:   tls.RequireAnyClientCert,
 		ClientCAs:    certPool,
 	}
 

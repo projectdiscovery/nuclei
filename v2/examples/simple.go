@@ -37,7 +37,7 @@ func main() {
 	defer cache.Close()
 
 	mockProgress := &testutils.MockProgressClient{}
-	reportingClient, _ := reporting.New(&reporting.Options{}, "", ctx)
+	reportingClient, _ := reporting.New(&reporting.Options{Ctx: ctx}, "")
 	defer reportingClient.Close()
 
 	outputWriter := testutils.NewMockOutputWriter()

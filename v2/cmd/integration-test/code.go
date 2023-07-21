@@ -32,6 +32,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/testutils"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 	"github.com/projectdiscovery/ratelimit"
+	contextutil "github.com/projectdiscovery/utils/context"
 )
 
 var codeTestcases = map[string]testutils.TestCase{
@@ -65,11 +66,12 @@ func (h *goIntegrationTest) Execute(templatePath string) error {
 
 // executeNucleiAsCode contains an example
 func executeNucleiAsCode(templatePath, templateURL string) ([]string, error) {
+	ctx := contextutil.ValueOrDefault(nil)
 	cache := hosterrorscache.New(30, hosterrorscache.DefaultMaxHostsCount, nil)
 	defer cache.Close()
 
 	mockProgress := &testutils.MockProgressClient{}
-	reportingClient, err := reporting.New(&reporting.Options{}, "", context.TODO())
+	reportingClient, err := reporting.New(&reporting.Options{Ctx: ctx}, "")
 	if err != nil {
 		return nil, err
 	}
@@ -100,7 +102,7 @@ func executeNucleiAsCode(templatePath, templateURL string) ([]string, error) {
 	ratelimiter := ratelimit.New(context.Background(), 150, time.Second)
 	defer ratelimiter.Stop()
 	executerOpts := protocols.ExecutorOptions{
-		Ctx:             context.TODO(),
+		Ctx:             ctx,
 		Output:          outputWriter,
 		Options:         defaultOpts,
 		Progress:        mockProgress,
