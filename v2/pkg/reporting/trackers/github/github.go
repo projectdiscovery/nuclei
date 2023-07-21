@@ -46,8 +46,7 @@ type Options struct {
 }
 
 // New creates a new issue tracker integration client based on options.
-func New(options *Options) (*Integration, error) {
-	ctx := context.Background()
+func New(ctx context.Context, options *Options) (*Integration, error) {
 	ts := oauth2.StaticTokenSource(
 		&oauth2.Token{AccessToken: options.Token},
 	)

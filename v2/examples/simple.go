@@ -31,11 +31,13 @@ import (
 )
 
 func main() {
+	ctx := context.Background()
+
 	cache := hosterrorscache.New(30, hosterrorscache.DefaultMaxHostsCount, nil)
 	defer cache.Close()
 
 	mockProgress := &testutils.MockProgressClient{}
-	reportingClient, _ := reporting.New(&reporting.Options{}, "")
+	reportingClient, _ := reporting.New(&reporting.Options{}, "", ctx)
 	defer reportingClient.Close()
 
 	outputWriter := testutils.NewMockOutputWriter()
@@ -60,12 +62,13 @@ func main() {
 	home, _ := os.UserHomeDir()
 	catalog := disk.NewCatalog(path.Join(home, "nuclei-templates"))
 	executerOpts := protocols.ExecutorOptions{
+		Ctx:             ctx,
 		Output:          outputWriter,
 		Options:         defaultOpts,
 		Progress:        mockProgress,
 		Catalog:         catalog,
 		IssuesClient:    reportingClient,
-		RateLimiter:     ratelimit.New(context.Background(), 150, time.Second),
+		RateLimiter:     ratelimit.New(ctx, 150, time.Second),
 		Interactsh:      interactClient,
 		HostErrorsCache: cache,
 		Colorizer:       aurora.NewAurora(true),

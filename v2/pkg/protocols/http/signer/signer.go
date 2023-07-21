@@ -19,12 +19,12 @@ type SignerArgs interface {
 	Validate() error
 }
 
-func NewSigner(args SignerArgs) (signer Signer, err error) {
+func NewSigner(ctx context.Context, args SignerArgs) (signer Signer, err error) {
 	switch signerArgs := args.(type) {
 	case *AWSOptions:
-		awsSigner, err := NewAwsSigner(signerArgs)
+		awsSigner, err := NewAwsSigner(ctx, signerArgs)
 		if err != nil {
-			awsSigner, err = NewAwsSignerFromConfig(signerArgs)
+			awsSigner, err = NewAwsSignerFromConfig(ctx, signerArgs)
 			if err != nil {
 				return nil, err
 			}
@@ -36,7 +36,7 @@ func NewSigner(args SignerArgs) (signer Signer, err error) {
 }
 
 // GetCtxWithArgs creates and returns context with signature args
-func GetCtxWithArgs(maps ...map[string]interface{}) context.Context {
+func GetCtxWithArgs(pCtx context.Context, maps ...map[string]interface{}) context.Context {
 	var region, service string
 	for _, v := range maps {
 		for key, val := range v {
@@ -49,6 +49,6 @@ func GetCtxWithArgs(maps ...map[string]interface{}) context.Context {
 		}
 	}
 	// type ctxkey string
-	ctx := context.WithValue(context.Background(), SignerArg("service"), service)
+	ctx := context.WithValue(pCtx, SignerArg("service"), service)
 	return context.WithValue(ctx, SignerArg("region"), region)
 }

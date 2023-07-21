@@ -1,7 +1,6 @@
 package fuzz
 
 import (
-	"context"
 	"net/http"
 	"strings"
 
@@ -72,13 +71,13 @@ func (rule *Rule) buildQueryInput(input *ExecuteRuleInput, parsed *urlutil.URL, 
 	var req *retryablehttp.Request
 	var err error
 	if input.BaseRequest == nil {
-		req, err = retryablehttp.NewRequestFromURL(http.MethodGet, parsed, nil)
+		req, err = retryablehttp.NewRequestFromURLWithContext(rule.options.Ctx, http.MethodGet, parsed, nil)
 		if err != nil {
 			return err
 		}
 		req.Header.Set("User-Agent", uarand.GetRandom())
 	} else {
-		req = input.BaseRequest.Clone(context.TODO())
+		req = input.BaseRequest.Clone(rule.options.Ctx)
 		req.SetURL(parsed)
 	}
 	request := GeneratedRequest{

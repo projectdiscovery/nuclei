@@ -29,8 +29,8 @@ type Agent struct {
 const defaultMonitorIteration = 6
 
 // NewStackMonitor returns a new stack monitor instance
-func NewStackMonitor(interval time.Duration) context.CancelFunc {
-	ctx, cancel := context.WithCancel(context.Background())
+func NewStackMonitor(pCtx context.Context, interval time.Duration) context.CancelFunc {
+	ctx, cancel := context.WithCancel(pCtx)
 	ticker := time.NewTicker(interval)
 
 	monitor := &Agent{cancel: cancel}

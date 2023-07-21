@@ -25,7 +25,7 @@ func TestDownloadCustomTemplatesFromGitHub(t *testing.T) {
 	options.GithubTemplateRepo = []string{"projectdiscovery/nuclei-templates", "ehsandeep/nuclei-templates"}
 	options.GithubToken = os.Getenv("GITHUB_TOKEN")
 
-	ctm, err := NewCustomTemplatesManager(options)
+	ctm, err := NewCustomTemplatesManager(context.TODO(), options)
 	require.Nil(t, err, "could not create custom templates manager")
 
 	ctm.Download(context.Background())

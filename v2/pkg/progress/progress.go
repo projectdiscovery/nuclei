@@ -295,6 +295,6 @@ func (p *StatsTicker) Stop() {
 		}
 	}
 	if p.server != nil {
-		_ = p.server.Shutdown(context.Background())
+		_ = p.server.Shutdown(context.TODO())
 	}
 }

@@ -1,6 +1,7 @@
 package signerpool
 
 import (
+	"context"
 	"fmt"
 	"strings"
 	"sync"
@@ -36,7 +37,7 @@ func (c *Configuration) Hash() string {
 }
 
 // Get creates or gets a client for the protocol based on custom configuration
-func Get(options *types.Options, configuration *Configuration) (signer.Signer, error) {
+func Get(options *types.Options, configuration *Configuration, ctx context.Context) (signer.Signer, error) {
 	hash := configuration.Hash()
 	poolMutex.RLock()
 	if client, ok := clientPool[hash]; ok {
@@ -45,7 +46,7 @@ func Get(options *types.Options, configuration *Configuration) (signer.Signer, e
 	}
 	poolMutex.RUnlock()
 
-	client, err := signer.NewSigner(configuration.SignerArgs)
+	client, err := signer.NewSigner(ctx, configuration.SignerArgs)
 	if err != nil {
 		return nil, err
 	}

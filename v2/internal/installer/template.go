@@ -64,7 +64,7 @@ type TemplateManager struct {
 
 // FreshInstallIfNotExists installs templates if they are not already installed
 // if templates directory already exists, it does nothing
-func (t *TemplateManager) FreshInstallIfNotExists() error {
+func (t *TemplateManager) FreshInstallIfNotExists(ctx context.Context) error {
 	if fileutil.FolderExists(config.DefaultConfig.TemplatesDirectory) {
 		return nil
 	}
@@ -73,16 +73,16 @@ func (t *TemplateManager) FreshInstallIfNotExists() error {
 		return errorutil.NewWithErr(err).Msgf("failed to install templates at %s", config.DefaultConfig.TemplatesDirectory)
 	}
 	if t.CustomTemplates != nil {
-		t.CustomTemplates.Download(context.TODO())
+		t.CustomTemplates.Download(ctx)
 	}
 	return nil
 }
 
 // UpdateIfOutdated updates templates if they are outdated
-func (t *TemplateManager) UpdateIfOutdated() error {
+func (t *TemplateManager) UpdateIfOutdated(ctx context.Context) error {
 	// if the templates folder does not exist, it's a fresh installation and do not update
 	if !fileutil.FolderExists(config.DefaultConfig.TemplatesDirectory) {
-		return t.FreshInstallIfNotExists()
+		return t.FreshInstallIfNotExists(ctx)
 	}
 	if config.DefaultConfig.NeedsTemplateUpdate() {
 		return t.updateTemplatesAt(config.DefaultConfig.TemplatesDirectory)

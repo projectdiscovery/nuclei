@@ -35,7 +35,7 @@ func (r *Runner) runStandardEnumeration(executerOpts protocols.ExecutorOptions, 
 }
 
 // runCloudEnumeration runs cloud based enumeration
-func (r *Runner) runCloudEnumeration(store *loader.Store, cloudTemplates, cloudTargets []string, nostore bool, limit int) (*atomic.Bool, error) {
+func (r *Runner) runCloudEnumeration(ctx context.Context, store *loader.Store, cloudTemplates, cloudTargets []string, nostore bool, limit int) (*atomic.Bool, error) {
 	count := &atomic.Int64{}
 	now := time.Now()
 	defer func() {
@@ -90,7 +90,7 @@ func (r *Runner) runCloudEnumeration(store *loader.Store, cloudTemplates, cloudT
 	if err != nil {
 		return results, errors.Wrap(err, "could not get scan status")
 	}
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
 	// Start progress logging for the created scan

@@ -1,7 +1,6 @@
 package network
 
 import (
-	"context"
 	"encoding/hex"
 	"fmt"
 	"io"
@@ -123,9 +122,9 @@ func (request *Request) executeRequestWithPayloads(variables map[string]interfac
 	}
 
 	if shouldUseTLS {
-		conn, err = request.dialer.DialTLS(context.Background(), "tcp", actualAddress)
+		conn, err = request.dialer.DialTLS(request.options.Ctx, "tcp", actualAddress)
 	} else {
-		conn, err = request.dialer.Dial(context.Background(), "tcp", actualAddress)
+		conn, err = request.dialer.Dial(request.options.Ctx, "tcp", actualAddress)
 	}
 	if err != nil {
 		request.options.Output.Request(request.options.TemplatePath, address, request.Type().String(), err)

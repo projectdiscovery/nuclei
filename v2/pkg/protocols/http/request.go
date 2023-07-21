@@ -17,6 +17,7 @@ import (
 	"go.uber.org/multierr"
 	"moul.io/http2curl"
 
+	"github.com/projectdiscovery/fastdialer/fastdialer"
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators"
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
@@ -290,7 +291,7 @@ func (request *Request) executeFuzzingRule(input *contextargs.Context, previous 
 		if !result {
 			break
 		}
-		generated, err := generator.Make(context.Background(), input, value, payloads, nil)
+		generated, err := generator.Make(request.options.Ctx, input, value, payloads, nil)
 		if err != nil {
 			continue
 		}
@@ -781,11 +782,11 @@ func (request *Request) handleSignature(generatedRequest *generatedRequest) erro
 			AwsID:          types.ToString(allvars["aws-id"]),
 			AwsSecretToken: types.ToString(allvars["aws-secret"]),
 		}
-		awsSigner, err := signerpool.Get(request.options.Options, &signerpool.Configuration{SignerArgs: &awsopts})
+		awsSigner, err := signerpool.Get(request.options.Options, &signerpool.Configuration{SignerArgs: &awsopts}, request.options.Ctx)
 		if err != nil {
 			return err
 		}
-		ctx := signer.GetCtxWithArgs(allvars, signer.AwsDefaultVars)
+		ctx := signer.GetCtxWithArgs(request.options.Ctx, allvars, signer.AwsDefaultVars)
 		err = awsSigner.SignHTTP(ctx, generatedRequest.request.Request)
 		if err != nil {
 			return err
@@ -871,7 +872,7 @@ func (request *Request) pruneSignatureInternalValues(maps ...map[string]interfac
 
 func (request *Request) newContext(input *contextargs.Context) context.Context {
 	if input.MetaInput.CustomIP != "" {
-		return context.WithValue(context.Background(), "ip", input.MetaInput.CustomIP) //nolint
+		return context.WithValue(request.options.Ctx, fastdialer.IP, input.MetaInput.CustomIP) //nolint
 	}
-	return context.Background()
+	return request.options.Ctx
 }

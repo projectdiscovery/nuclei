@@ -84,9 +84,9 @@ func (a *AWSSigner) getPayloadHash(request *http.Request) string {
 }
 
 // NewAwsSigner
-func NewAwsSigner(opts *AWSOptions) (*AWSSigner, error) {
+func NewAwsSigner(ctx context.Context, opts *AWSOptions) (*AWSSigner, error) {
 	credcache := aws.NewCredentialsCache(credentials.NewStaticCredentialsProvider(opts.AwsID, opts.AwsSecretToken, ""))
-	awscred, err := credcache.Retrieve(context.TODO())
+	awscred, err := credcache.Retrieve(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -98,18 +98,16 @@ func NewAwsSigner(opts *AWSOptions) (*AWSSigner, error) {
 }
 
 // NewAwsSignerFromConfig
-func NewAwsSignerFromConfig(opts *AWSOptions) (*AWSSigner, error) {
-	/*
-		NewAwsSignerFromConfig fetches credentials from both
-		1. Environment Variables (old & new)
-		2. Shared Credentials ($HOME/.aws)
-	*/
-	cfg, err := awsconfig.LoadDefaultConfig(context.TODO())
+func NewAwsSignerFromConfig(ctx context.Context, opts *AWSOptions) (*AWSSigner, error) {
+	// NewAwsSignerFromConfig fetches credentials from both
+	// 1. Environment Variables (old & new)
+	// 2. Shared Credentials ($HOME/.aws)
+	cfg, err := awsconfig.LoadDefaultConfig(ctx)
 	if err != nil {
 		return nil, err
 	}
 	credcache := aws.NewCredentialsCache(cfg.Credentials)
-	awscred, err := credcache.Retrieve(context.TODO())
+	awscred, err := credcache.Retrieve(ctx)
 	if err != nil {
 		return nil, err
 	}

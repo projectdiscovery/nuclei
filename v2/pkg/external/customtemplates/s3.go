@@ -38,13 +38,13 @@ func (bk *customTemplateS3Bucket) Download(ctx context.Context) {
 	})
 
 	for paginator.HasMorePages() {
-		page, err := paginator.NextPage(context.TODO())
+		page, err := paginator.NextPage(ctx)
 		if err != nil {
 			gologger.Error().Msgf("error downloading s3 bucket %s %s", bk.bucketName, err)
 			return
 		}
 		for _, obj := range page.Contents {
-			if err := downloadToFile(s3Manager, downloadPath, bk.bucketName, aws.ToString(obj.Key)); err != nil {
+			if err := downloadToFile(ctx, s3Manager, downloadPath, bk.bucketName, aws.ToString(obj.Key)); err != nil {
 				gologger.Error().Msgf("error downloading s3 bucket %s %s", bk.bucketName, err)
 				return
 			}
@@ -80,7 +80,7 @@ func NewS3Providers(options *types.Options) ([]*customTemplateS3Bucket, error) {
 	return providers, nil
 }
 
-func downloadToFile(downloader *manager.Downloader, targetDirectory, bucket, key string) error {
+func downloadToFile(ctx context.Context, downloader *manager.Downloader, targetDirectory, bucket, key string) error {
 	// Create the directories in the path
 	file := filepath.Join(targetDirectory, key)
 	// If empty dir in s3
@@ -99,7 +99,7 @@ func downloadToFile(downloader *manager.Downloader, targetDirectory, bucket, key
 	defer fd.Close()
 
 	// Download the file using the AWS SDK for Go
-	_, err = downloader.Download(context.TODO(), fd, &s3.GetObjectInput{Bucket: &bucket, Key: &key})
+	_, err = downloader.Download(ctx, fd, &s3.GetObjectInput{Bucket: &bucket, Key: &key})
 
 	return err
 }

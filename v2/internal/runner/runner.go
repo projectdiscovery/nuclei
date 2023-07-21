@@ -105,7 +105,7 @@ func New(options *types.Options) (*Runner, error) {
 		}
 
 		// check for custom template updates and update if available
-		ctm, err := customtemplates.NewCustomTemplatesManager(options)
+		ctm, err := customtemplates.NewCustomTemplatesManager(context.TODO(), options)
 		if err != nil {
 			gologger.Error().Label("custom-templates").Msgf("Failed to create custom templates manager: %s\n", err)
 		}
@@ -116,10 +116,10 @@ func New(options *types.Options) (*Runner, error) {
 			CustomTemplates:        ctm,
 			DisablePublicTemplates: options.PublicTemplateDisableDownload,
 		}
-		if err := tm.FreshInstallIfNotExists(); err != nil {
+		if err := tm.FreshInstallIfNotExists(context.TODO()); err != nil {
 			gologger.Warning().Msgf("failed to install nuclei templates: %s\n", err)
 		}
-		if err := tm.UpdateIfOutdated(); err != nil {
+		if err := tm.UpdateIfOutdated(context.TODO()); err != nil {
 			gologger.Warning().Msgf("failed to update nuclei templates: %s\n", err)
 		}
 
@@ -184,7 +184,7 @@ func New(options *types.Options) (*Runner, error) {
 	}
 
 	if reportingOptions != nil {
-		client, err := reporting.New(reportingOptions, options.ReportingDB)
+		client, err := reporting.New(reportingOptions, options.ReportingDB, context.TODO())
 		if err != nil {
 			return nil, errors.Wrap(err, "could not create issue reporting client")
 		}
@@ -215,6 +215,7 @@ func New(options *types.Options) (*Runner, error) {
 
 	// Initialize the input source
 	hmapInput, err := hybrid.New(&hybrid.Options{
+		Ctx:     context.TODO(),
 		Options: options,
 		NotFoundCallback: func(target string) bool {
 			if !options.Cloud {
@@ -317,11 +318,11 @@ func New(options *types.Options) (*Runner, error) {
 	}
 
 	if options.RateLimitMinute > 0 {
-		runner.rateLimiter = ratelimit.New(context.Background(), uint(options.RateLimitMinute), time.Minute)
+		runner.rateLimiter = ratelimit.New(context.TODO(), uint(options.RateLimitMinute), time.Minute)
 	} else if options.RateLimit > 0 {
-		runner.rateLimiter = ratelimit.New(context.Background(), uint(options.RateLimit), time.Second)
+		runner.rateLimiter = ratelimit.New(context.TODO(), uint(options.RateLimit), time.Second)
 	} else {
-		runner.rateLimiter = ratelimit.NewUnlimited(context.Background())
+		runner.rateLimiter = ratelimit.NewUnlimited(context.TODO())
 	}
 	return runner, nil
 }
@@ -406,7 +407,7 @@ func (r *Runner) Close() {
 	r.hmapInputProvider.Close()
 	protocolinit.Close()
 	if r.pprofServer != nil {
-		_ = r.pprofServer.Shutdown(context.Background())
+		_ = r.pprofServer.Shutdown(context.TODO())
 	}
 	if r.rateLimiter != nil {
 		r.rateLimiter.Stop()
@@ -591,7 +592,7 @@ func (r *Runner) RunEnumeration(options ...core.EnumerateOption) error {
 				return errors.New("no templates provided for scan")
 			}
 			gologger.Info().Msgf("Running scan on cloud with URL %s", r.options.CloudURL)
-			results, err = r.runCloudEnumeration(store, cloudTemplates, r.cloudTargets, r.options.NoStore, r.options.OutputLimit)
+			results, err = r.runCloudEnumeration(executorOpts.Ctx, store, cloudTemplates, r.cloudTargets, r.options.NoStore, r.options.OutputLimit)
 			enumeration = true
 		}
 	} else {

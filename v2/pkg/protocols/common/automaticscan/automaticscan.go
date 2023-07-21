@@ -148,7 +148,7 @@ func (s *Service) executeWappalyzerTechDetection() error {
 }
 
 func (s *Service) processWappalyzerInputPair(input *contextargs.MetaInput) {
-	req, err := retryablehttp.NewRequest(http.MethodGet, input.Input, nil)
+	req, err := retryablehttp.NewRequestWithContext(s.opts.Ctx, http.MethodGet, input.Input, nil)
 	if err != nil {
 		return
 	}

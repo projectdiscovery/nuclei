@@ -32,8 +32,8 @@ func InitNucleiVersion(version string) {
 }
 
 // GetLatestNucleiTemplatesVersion returns the latest version info for nuclei and templates repos
-func GetLatestNucleiTemplatesVersion() (*LatestVersion, error) {
-	body, err := callRegisterServer(VersionsCall)
+func GetLatestNucleiTemplatesVersion(ctx context.Context) (*LatestVersion, error) {
+	body, err := callRegisterServerWithContext(ctx, VersionsCall)
 	if err != nil {
 		return nil, err
 	}
@@ -47,8 +47,8 @@ func GetLatestNucleiTemplatesVersion() (*LatestVersion, error) {
 }
 
 // GetLatestIgnoreFile returns the latest version of nuclei ignore
-func GetLatestIgnoreFile() ([]byte, error) {
-	body, err := callRegisterServer(IgnoreCall)
+func GetLatestIgnoreFile(ctx context.Context) ([]byte, error) {
+	body, err := callRegisterServerWithContext(ctx, IgnoreCall)
 	if err != nil {
 		return nil, err
 	}
@@ -61,9 +61,8 @@ func GetLatestIgnoreFile() ([]byte, error) {
 	return data, nil
 }
 
-// callRegisterServer makes a request to RegisterServer with a call.
-func callRegisterServer(call string) (io.ReadCloser, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+func callRegisterServerWithContext(pCtx context.Context, call string) (io.ReadCloser, error) {
+	ctx, cancel := context.WithTimeout(pCtx, 5*time.Second)
 	defer cancel()
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, RegisterServer+call, nil)

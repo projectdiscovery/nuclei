@@ -1,6 +1,7 @@
 package installer
 
 import (
+	"context"
 	"os"
 	"path/filepath"
 	"strings"
@@ -29,7 +30,7 @@ func TestTemplateInstallation(t *testing.T) {
 	templatesTempDir := filepath.Join(dir, "templates")
 	config.DefaultConfig.SetTemplatesDir(templatesTempDir)
 
-	err = tm.FreshInstallIfNotExists()
+	err = tm.FreshInstallIfNotExists(context.Background())
 	if err != nil {
 		if strings.Contains(err.Error(), "rate limit") {
 			t.Skip("Skipping test due to github rate limit")

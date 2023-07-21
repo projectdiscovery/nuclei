@@ -1,6 +1,7 @@
 package reporting
 
 import (
+	"context"
 	"os"
 
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/config"
@@ -94,12 +95,12 @@ type ReportingClient struct {
 }
 
 // New creates a new nuclei issue tracker reporting client
-func New(options *Options, db string) (Client, error) {
+func New(options *Options, db string, ctx context.Context) (Client, error) {
 	client := &ReportingClient{options: options}
 
 	if options.GitHub != nil {
 		options.GitHub.HttpClient = options.HttpClient
-		tracker, err := github.New(options.GitHub)
+		tracker, err := github.New(ctx, options.GitHub)
 		if err != nil {
 			return nil, errorutil.NewWithErr(err).Wrap(ErrReportingClientCreation)
 		}

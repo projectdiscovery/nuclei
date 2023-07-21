@@ -59,7 +59,7 @@ func (customTemplate *customTemplateGithubRepo) Update(ctx context.Context) {
 }
 
 // NewGithubProviders returns new instance of GitHub providers for downloading custom templates
-func NewGithubProviders(options *types.Options) ([]*customTemplateGithubRepo, error) {
+func NewGithubProviders(ctx context.Context, options *types.Options) ([]*customTemplateGithubRepo, error) {
 	providers := []*customTemplateGithubRepo{}
 	gitHubClient := getGHClientIncognito()
 
@@ -73,7 +73,7 @@ func NewGithubProviders(options *types.Options) ([]*customTemplateGithubRepo, er
 			gologger.Error().Msgf("%s", err)
 			continue
 		}
-		githubRepo, err := getGithubRepo(gitHubClient, owner, repo, options.GithubToken)
+		githubRepo, err := getGithubRepo(ctx, gitHubClient, owner, repo, options.GithubToken)
 		if err != nil {
 			gologger.Error().Msgf("%s", err)
 			continue
@@ -104,13 +104,13 @@ func getOwnerAndRepo(reponame string) (owner string, repo string, err error) {
 }
 
 // returns *github.Repository if passed github repo name
-func getGithubRepo(gitHubClient *github.Client, repoOwner, repoName, githubToken string) (*github.Repository, error) {
+func getGithubRepo(ctx context.Context, gitHubClient *github.Client, repoOwner, repoName, githubToken string) (*github.Repository, error) {
 	var retried bool
 getRepo:
-	repo, _, err := gitHubClient.Repositories.Get(context.Background(), repoOwner, repoName)
+	repo, _, err := gitHubClient.Repositories.Get(ctx, repoOwner, repoName)
 	if err != nil {
 		// retry with authentication
-		if gitHubClient = getGHClientWithToken(githubToken); gitHubClient != nil && !retried {
+		if gitHubClient = getGHClientWithToken(ctx, githubToken); gitHubClient != nil && !retried {
 			retried = true
 			goto getRepo
 		}
@@ -167,9 +167,8 @@ func getAuth(username, password string) *http.BasicAuth {
 	return nil
 }
 
-func getGHClientWithToken(token string) *github.Client {
+func getGHClientWithToken(ctx context.Context, token string) *github.Client {
 	if token != "" {
-		ctx := context.Background()
 		ts := oauth2.StaticTokenSource(
 			&oauth2.Token{AccessToken: token},
 		)

@@ -1,6 +1,7 @@
 package fuzz
 
 import (
+	"context"
 	"testing"
 
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
@@ -12,6 +13,7 @@ import (
 func TestExecuteQueryPartRule(t *testing.T) {
 	URL := "http://localhost:8080/?url=localhost&mode=multiple&file=passwdfile"
 	options := &protocols.ExecutorOptions{
+		Ctx:        context.TODO(),
 		Interactsh: &interactsh.Client{},
 	}
 	t.Run("single", func(t *testing.T) {

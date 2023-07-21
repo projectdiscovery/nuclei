@@ -46,6 +46,7 @@ type Input struct {
 
 // Options is a wrapper around types.Options structure
 type Options struct {
+	Ctx context.Context
 	// Options contains options for hmap provider
 	Options *types.Options
 	// NotFoundCallback is called for each not found target
@@ -148,7 +149,7 @@ func (i *Input) initializeInputSources(opts *Options) error {
 			RateLimit:     uint(options.UncoverRateLimit),
 			RateLimitUnit: time.Minute, // default unit is minute
 		}
-		ch, err := uncover.GetTargetsFromUncover(context.TODO(), options.UncoverField, uncoverOpts)
+		ch, err := uncover.GetTargetsFromUncover(opts.Ctx, options.UncoverField, uncoverOpts)
 		if err != nil {
 			return err
 		}

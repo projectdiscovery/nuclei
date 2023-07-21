@@ -79,6 +79,7 @@ type TemplateInfo struct {
 func NewMockExecuterOptions(options *types.Options, info *TemplateInfo) *protocols.ExecutorOptions {
 	progressImpl, _ := progress.NewStatsTicker(0, false, false, false, false, 0)
 	executerOpts := &protocols.ExecutorOptions{
+		Ctx:          context.TODO(),
 		TemplateID:   info.ID,
 		TemplateInfo: info.Info,
 		TemplatePath: info.Path,
@@ -89,7 +90,7 @@ func NewMockExecuterOptions(options *types.Options, info *TemplateInfo) *protoco
 		IssuesClient: nil,
 		Browser:      nil,
 		Catalog:      disk.NewCatalog(config.DefaultConfig.TemplatesDirectory),
-		RateLimiter:  ratelimit.New(context.Background(), uint(options.RateLimit), time.Second),
+		RateLimiter:  ratelimit.New(context.TODO(), uint(options.RateLimit), time.Second),
 	}
 	return executerOpts
 }
