@@ -113,7 +113,8 @@ func (r *Request) parseAnnotations(rawRequest string, request *retryablehttp.Req
 		if duration := reTimeoutAnnotation.FindStringSubmatch(rawRequest); len(duration) > 0 {
 			value := strings.TrimSpace(duration[1])
 			if parsed, err := time.ParseDuration(value); err == nil {
-				ctx, overrides.cancelFunc = context.WithTimeout(request.Context(), parsed)
+				// we need a new context to ignore all previous timeout/deadline/cancels
+				ctx, overrides.cancelFunc = context.WithTimeout(context.TODO(), parsed)
 				request = request.Clone(ctx)
 			}
 		} else {

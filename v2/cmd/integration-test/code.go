@@ -100,6 +100,7 @@ func executeNucleiAsCode(templatePath, templateURL string) ([]string, error) {
 	ratelimiter := ratelimit.New(context.Background(), 150, time.Second)
 	defer ratelimiter.Stop()
 	executerOpts := protocols.ExecutorOptions{
+		Ctx:             context.TODO(),
 		Output:          outputWriter,
 		Options:         defaultOpts,
 		Progress:        mockProgress,
