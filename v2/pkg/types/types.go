@@ -93,6 +93,8 @@ type Options struct {
 	ReportingConfig string
 	// MarkdownExportDirectory is the directory to export reports in Markdown format
 	MarkdownExportDirectory string
+	// MarkdownExportSortMode is the method to sort the markdown reports (options: severity, template, host, none)
+	MarkdownExportSortMode string
 	// SarifExport is the file to export sarif output format to
 	SarifExport string
 	// CloudURL is the URL for the nuclei cloud endpoint
