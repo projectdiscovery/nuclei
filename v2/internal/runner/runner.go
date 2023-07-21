@@ -346,12 +346,14 @@ func createReportingOptions(options *types.Options) (*reporting.Options, error) 
 			reportingOptions.MarkdownExporter = &markdown.Options{
 				Directory:         options.MarkdownExportDirectory,
 				IncludeRawPayload: !options.OmitRawRequests,
+				SortMode:          options.MarkdownExportSortMode,
 			}
 		} else {
 			reportingOptions = &reporting.Options{}
 			reportingOptions.MarkdownExporter = &markdown.Options{
 				Directory:         options.MarkdownExportDirectory,
 				IncludeRawPayload: !options.OmitRawRequests,
+				SortMode:          options.MarkdownExportSortMode,
 			}
 		}
 	}
