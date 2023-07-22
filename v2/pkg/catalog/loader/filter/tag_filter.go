@@ -171,18 +171,17 @@ func isIdMatch(tagFilter *TagFilter, templateId string) bool {
 	if len(tagFilter.excludeIds) == 0 && len(tagFilter.allowedIds) == 0 {
 		return true
 	}
-	included := false
-	if len(tagFilter.allowedIds) > 0 {
-		for id := range tagFilter.allowedIds {
-			match, err := filepath.Match(id, templateId)
-			if err != nil {
-				continue
-			}
 
-			if match {
-				included = true
-				break
-			}
+	included := len(tagFilter.allowedIds) == 0
+	for id := range tagFilter.allowedIds {
+		match, err := filepath.Match(id, templateId)
+		if err != nil {
+			continue
+		}
+
+		if match {
+			included = true
+			break
 		}
 	}
 
