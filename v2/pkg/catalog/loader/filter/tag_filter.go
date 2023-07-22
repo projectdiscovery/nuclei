@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 	"strings"
+	"path/filepath"
 
 	"github.com/Knetic/govaluate"
 	"github.com/projectdiscovery/gologger"
@@ -170,9 +171,19 @@ func isIdMatch(tagFilter *TagFilter, templateId string) bool {
 	if len(tagFilter.excludeIds) == 0 && len(tagFilter.allowedIds) == 0 {
 		return true
 	}
-	included := true
+	included := false
 	if len(tagFilter.allowedIds) > 0 {
-		_, included = tagFilter.allowedIds[templateId]
+		for id, _ := range tagFilter.allowedIds {
+			match, err := filepath.Match(id, templateId)
+			if err != nil {
+				continue
+			}
+
+			if match {
+				included = true
+				break
+			}
+		}
 	}
 
 	excluded := false
