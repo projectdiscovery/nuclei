@@ -173,7 +173,7 @@ func isIdMatch(tagFilter *TagFilter, templateId string) bool {
 	}
 	included := false
 	if len(tagFilter.allowedIds) > 0 {
-		for id, _ := range tagFilter.allowedIds {
+		for id := range tagFilter.allowedIds {
 			match, err := filepath.Match(id, templateId)
 			if err != nil {
 				continue
