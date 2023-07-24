@@ -40,6 +40,15 @@ type Info struct {
 	//   - value: "\"Subversion ALM for the enterprise before 8.8.2 allows reflected XSS at multiple locations\""
 	Description string `json:"description,omitempty" yaml:"description,omitempty" jsonschema:"title=description of the template,description=In-depth explanation on what the template does,example=Bower is a package manager which stores package information in the bower.json file"`
 	// description: |
+	//   References for the template.
+	//
+	//   This should contain links relevant to the template.
+	//
+	// examples:
+	//   - value: >
+	//       []string{"https://github.com/strapi/strapi", "https://github.com/getgrav/grav"}
+	Reference stringslice.RawStringSlice `json:"reference,omitempty" yaml:"reference,omitempty" jsonschema:"title=references for the template,description=Links relevant to the template"`
+	// description: |
 	//   Severity of the template.
 	SeverityHolder severity.Holder `json:"severity,omitempty" yaml:"severity,omitempty"`
 	// description: |

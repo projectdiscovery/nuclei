@@ -112,6 +112,19 @@ func CreateReportDescription(event *output.ResultEvent, formatter ResultFormatte
 		}
 	}
 
+	reference := event.Info.Reference
+	if !reference.IsEmpty() {
+		builder.WriteString("\nReferences: \n")
+
+		referenceSlice := reference.ToSlice()
+		for i, item := range referenceSlice {
+			builder.WriteString("- ")
+			builder.WriteString(item)
+			if len(referenceSlice)-1 != i {
+				builder.WriteString("\n")
+			}
+		}
+	}
 	builder.WriteString("\n")
 
 	if event.CURLCommand != "" {
