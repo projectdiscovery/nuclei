@@ -20,7 +20,7 @@ var (
 		Name:           "Argument Injection in Ruby Dragonfly",
 		Authors:        stringslice.StringSlice{Value: "0xspara"},
 		SeverityHolder: severity.Holder{Severity: severity.High},
-		Reference:      stringslice.NewRaw("https://zxsecurity.co.nz/research/argunment-injection-ruby-dragonfly/"),
+		Reference:      stringslice.NewPointer("https://zxsecurity.co.nz/research/argunment-injection-ruby-dragonfly/"),
 		Tags:           stringslice.StringSlice{Value: "cve,cve2021,rce,ruby"},
 	}
 	exampleNormalHTTPRequest = &http.Request{
