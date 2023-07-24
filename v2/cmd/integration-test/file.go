@@ -5,10 +5,10 @@ import (
 )
 
 var fileTestcases = []TestCaseInfo{
-	{DisableOn: nil, Path: "file/matcher-with-or.yaml", TestCase: &fileWithOrMatcher{}},
-	{DisableOn: nil, Path: "file/matcher-with-and.yaml", TestCase: &fileWithAndMatcher{}},
-	{DisableOn: nil, Path: "file/matcher-with-nested-and.yaml", TestCase: &fileWithAndMatcher{}},
-	{DisableOn: nil, Path: "file/extract.yaml", TestCase: &fileWithExtractor{}},
+	{Path: "file/matcher-with-or.yaml", TestCase: &fileWithOrMatcher{}},
+	{Path: "file/matcher-with-and.yaml", TestCase: &fileWithAndMatcher{}},
+	{Path: "file/matcher-with-nested-and.yaml", TestCase: &fileWithAndMatcher{}},
+	{Path: "file/extract.yaml", TestCase: &fileWithExtractor{}},
 }
 
 type fileWithOrMatcher struct{}

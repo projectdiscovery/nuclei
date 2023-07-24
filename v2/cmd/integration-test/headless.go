@@ -11,13 +11,13 @@ import (
 )
 
 var headlessTestcases = []TestCaseInfo{
-	{DisableOn: nil, Path: "headless/headless-basic.yaml", TestCase: &headlessBasic{}},
-	{DisableOn: nil, Path: "headless/headless-header-action.yaml", TestCase: &headlessHeaderActions{}},
-	{DisableOn: nil, Path: "headless/headless-extract-values.yaml", TestCase: &headlessExtractValues{}},
-	{DisableOn: nil, Path: "headless/headless-payloads.yaml", TestCase: &headlessPayloads{}},
-	{DisableOn: nil, Path: "headless/variables.yaml", TestCase: &headlessVariables{}},
-	{DisableOn: nil, Path: "headless/file-upload.yaml", TestCase: &headlessFileUpload{}},
-	{DisableOn: nil, Path: "headless/headless-header-status-test.yaml", TestCase: &headlessHeaderStatus{}},
+	{Path: "headless/headless-basic.yaml", TestCase: &headlessBasic{}},
+	{Path: "headless/headless-header-action.yaml", TestCase: &headlessHeaderActions{}},
+	{Path: "headless/headless-extract-values.yaml", TestCase: &headlessExtractValues{}},
+	{Path: "headless/headless-payloads.yaml", TestCase: &headlessPayloads{}},
+	{Path: "headless/variables.yaml", TestCase: &headlessVariables{}},
+	{Path: "headless/file-upload.yaml", TestCase: &headlessFileUpload{}},
+	{Path: "headless/headless-header-status-test.yaml", TestCase: &headlessHeaderStatus{}},
 }
 
 type headlessBasic struct{}

@@ -10,10 +10,10 @@ import (
 )
 
 var websocketTestCases = []TestCaseInfo{
-	{DisableOn: nil, Path: "websocket/basic.yaml", TestCase: &websocketBasic{}},
-	{DisableOn: nil, Path: "websocket/cswsh.yaml", TestCase: &websocketCswsh{}},
-	{DisableOn: nil, Path: "websocket/no-cswsh.yaml", TestCase: &websocketNoCswsh{}},
-	{DisableOn: nil, Path: "websocket/path.yaml", TestCase: &websocketWithPath{}},
+	{Path: "websocket/basic.yaml", TestCase: &websocketBasic{}},
+	{Path: "websocket/cswsh.yaml", TestCase: &websocketCswsh{}},
+	{Path: "websocket/no-cswsh.yaml", TestCase: &websocketNoCswsh{}},
+	{Path: "websocket/path.yaml", TestCase: &websocketWithPath{}},
 }
 
 type websocketBasic struct{}

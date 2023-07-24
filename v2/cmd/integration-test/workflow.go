@@ -12,13 +12,13 @@ import (
 )
 
 var workflowTestcases = []TestCaseInfo{
-	{DisableOn: nil, Path: "workflow/basic.yaml", TestCase: &workflowBasic{}},
-	{DisableOn: nil, Path: "workflow/condition-matched.yaml", TestCase: &workflowConditionMatched{}},
-	{DisableOn: nil, Path: "workflow/condition-unmatched.yaml", TestCase: &workflowConditionUnmatch{}},
-	{DisableOn: nil, Path: "workflow/matcher-name.yaml", TestCase: &workflowMatcherName{}},
-	{DisableOn: nil, Path: "workflow/http-value-share-workflow.yaml", TestCase: &workflowHttpKeyValueShare{}},
-	{DisableOn: nil, Path: "workflow/dns-value-share-workflow.yaml", TestCase: &workflowDnsKeyValueShare{}},
-	{DisableOn: nil, Path: "workflow/shared-cookie.yaml", TestCase: &workflowSharedCookies{}},
+	{Path: "workflow/basic.yaml", TestCase: &workflowBasic{}},
+	{Path: "workflow/condition-matched.yaml", TestCase: &workflowConditionMatched{}},
+	{Path: "workflow/condition-unmatched.yaml", TestCase: &workflowConditionUnmatch{}},
+	{Path: "workflow/matcher-name.yaml", TestCase: &workflowMatcherName{}},
+	{Path: "workflow/http-value-share-workflow.yaml", TestCase: &workflowHttpKeyValueShare{}},
+	{Path: "workflow/dns-value-share-workflow.yaml", TestCase: &workflowDnsKeyValueShare{}},
+	{Path: "workflow/shared-cookie.yaml", TestCase: &workflowSharedCookies{}},
 }
 
 type workflowBasic struct{}

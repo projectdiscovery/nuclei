@@ -5,13 +5,13 @@ import (
 )
 
 var dnsTestCases = []TestCaseInfo{
-	{DisableOn: nil, Path: "dns/basic.yaml", TestCase: &dnsBasic{}},
-	{DisableOn: nil, Path: "dns/ptr.yaml", TestCase: &dnsPtr{}},
-	{DisableOn: nil, Path: "dns/caa.yaml", TestCase: &dnsCAA{}},
-	{DisableOn: nil, Path: "dns/tlsa.yaml", TestCase: &dnsTLSA{}},
-	{DisableOn: nil, Path: "dns/variables.yaml", TestCase: &dnsVariables{}},
-	{DisableOn: nil, Path: "dns/payload.yaml", TestCase: &dnsPayload{}},
-	{DisableOn: nil, Path: "dns/dsl-matcher-variable.yaml", TestCase: &dnsDSLMatcherVariable{}},
+	{Path: "dns/basic.yaml", TestCase: &dnsBasic{}},
+	{Path: "dns/ptr.yaml", TestCase: &dnsPtr{}},
+	{Path: "dns/caa.yaml", TestCase: &dnsCAA{}},
+	{Path: "dns/tlsa.yaml", TestCase: &dnsTLSA{}},
+	{Path: "dns/variables.yaml", TestCase: &dnsVariables{}},
+	{Path: "dns/payload.yaml", TestCase: &dnsPayload{}},
+	{Path: "dns/dsl-matcher-variable.yaml", TestCase: &dnsDSLMatcherVariable{}},
 }
 
 type dnsBasic struct{}

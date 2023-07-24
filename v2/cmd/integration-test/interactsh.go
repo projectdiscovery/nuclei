@@ -1,8 +1,10 @@
 package main
 
+import osutils "github.com/projectdiscovery/utils/os"
+
 // All Interactsh related testcases
 var interactshTestCases = []TestCaseInfo{
-	{DisableOn: []string{"windows", "darwin"}, Path: "http/interactsh.yaml", TestCase: &httpInteractshRequest{}},
-	{DisableOn: []string{"windows", "darwin"}, Path: "http/interactsh-stop-at-first-match.yaml", TestCase: &httpInteractshStopAtFirstMatchRequest{}},
-	{DisableOn: []string{"windows", "darwin"}, Path: "http/default-matcher-condition.yaml", TestCase: &httpDefaultMatcherCondition{}},
+	{Path: "http/interactsh.yaml", TestCase: &httpInteractshRequest{}, DisableOn: func() bool { return osutils.IsWindows() || osutils.IsOSX() }},
+	{Path: "http/interactsh-stop-at-first-match.yaml", TestCase: &httpInteractshStopAtFirstMatchRequest{}, DisableOn: func() bool { return osutils.IsWindows() || osutils.IsOSX() }},
+	{Path: "http/default-matcher-condition.yaml", TestCase: &httpDefaultMatcherCondition{}, DisableOn: func() bool { return osutils.IsWindows() || osutils.IsOSX() }},
 }

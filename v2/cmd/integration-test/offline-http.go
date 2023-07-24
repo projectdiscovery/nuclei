@@ -7,9 +7,9 @@ import (
 )
 
 var offlineHttpTestcases = []TestCaseInfo{
-	{DisableOn: nil, Path: "offlinehttp/rfc-req-resp.yaml", TestCase: &RfcRequestResponse{}},
-	{DisableOn: nil, Path: "offlinehttp/offline-allowed-paths.yaml", TestCase: &RequestResponseWithAllowedPaths{}},
-	{DisableOn: nil, Path: "offlinehttp/offline-raw.yaml", TestCase: &RawRequestResponse{}},
+	{Path: "offlinehttp/rfc-req-resp.yaml", TestCase: &RfcRequestResponse{}},
+	{Path: "offlinehttp/offline-allowed-paths.yaml", TestCase: &RequestResponseWithAllowedPaths{}},
+	{Path: "offlinehttp/offline-raw.yaml", TestCase: &RawRequestResponse{}},
 }
 
 type RfcRequestResponse struct{}

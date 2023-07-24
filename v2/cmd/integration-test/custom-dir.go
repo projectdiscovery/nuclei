@@ -9,7 +9,7 @@ import (
 type customConfigDirTest struct{}
 
 var customConfigDirTestCases = []TestCaseInfo{
-	{DisableOn: nil, Path: "dns/cname-fingerprint.yaml", TestCase: &customConfigDirTest{}},
+	{Path: "dns/cname-fingerprint.yaml", TestCase: &customConfigDirTest{}},
 }
 
 // Execute executes a test case and returns an error if occurred

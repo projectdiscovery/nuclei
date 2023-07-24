@@ -14,13 +14,13 @@ func getTemplatePath() string {
 
 var templatesPathTestCases = []TestCaseInfo{
 	//template folder path issue
-	{DisableOn: nil, Path: "http/get.yaml", TestCase: &folderPathTemplateTest{}},
+	{Path: "http/get.yaml", TestCase: &folderPathTemplateTest{}},
 	//cwd
-	{DisableOn: nil, Path: "./dns/cname-fingerprint.yaml", TestCase: &cwdTemplateTest{}},
+	{Path: "./dns/cname-fingerprint.yaml", TestCase: &cwdTemplateTest{}},
 	//relative path
-	{DisableOn: nil, Path: "dns/cname-fingerprint.yaml", TestCase: &relativePathTemplateTest{}},
+	{Path: "dns/cname-fingerprint.yaml", TestCase: &relativePathTemplateTest{}},
 	//absolute path
-	{DisableOn: nil, Path: fmt.Sprintf("%v/dns/cname-fingerprint.yaml", getTemplatePath()), TestCase: &absolutePathTemplateTest{}},
+	{Path: fmt.Sprintf("%v/dns/cname-fingerprint.yaml", getTemplatePath()), TestCase: &absolutePathTemplateTest{}},
 }
 
 type cwdTemplateTest struct{}

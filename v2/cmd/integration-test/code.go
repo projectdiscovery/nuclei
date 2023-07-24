@@ -35,8 +35,8 @@ import (
 )
 
 var codeTestcases = []TestCaseInfo{
-	{DisableOn: nil, Path: "code/test.yaml", TestCase: &goIntegrationTest{}},
-	{DisableOn: nil, Path: "code/test.json", TestCase: &goIntegrationTest{}},
+	{Path: "code/test.yaml", TestCase: &goIntegrationTest{}},
+	{Path: "code/test.json", TestCase: &goIntegrationTest{}},
 }
 
 type goIntegrationTest struct{}

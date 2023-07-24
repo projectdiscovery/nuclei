@@ -5,7 +5,7 @@ import (
 )
 
 var whoisTestCases = []TestCaseInfo{
-	{DisableOn: nil, Path: "whois/basic.yaml", TestCase: &whoisBasic{}},
+	{Path: "whois/basic.yaml", TestCase: &whoisBasic{}},
 }
 
 type whoisBasic struct{}

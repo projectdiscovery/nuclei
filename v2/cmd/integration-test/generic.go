@@ -14,7 +14,7 @@ import (
 )
 
 var genericTestcases = []TestCaseInfo{
-	{DisableOn: nil, Path: "generic/auth/certificate/http-get.yaml", TestCase: &clientCertificate{}},
+	{Path: "generic/auth/certificate/http-get.yaml", TestCase: &clientCertificate{}},
 }
 
 var (

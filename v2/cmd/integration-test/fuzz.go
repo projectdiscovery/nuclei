@@ -13,10 +13,10 @@ import (
 )
 
 var fuzzingTestCases = []TestCaseInfo{
-	{DisableOn: nil, Path: "fuzz/fuzz-mode.yaml", TestCase: &fuzzModeOverride{}},
-	{DisableOn: nil, Path: "fuzz/fuzz-type.yaml", TestCase: &fuzzTypeOverride{}},
-	{DisableOn: nil, Path: "fuzz/fuzz-query.yaml", TestCase: &httpFuzzQuery{}},
-	{DisableOn: nil, Path: "fuzz/fuzz-headless.yaml", TestCase: &HeadlessFuzzingQuery{}},
+	{Path: "fuzz/fuzz-mode.yaml", TestCase: &fuzzModeOverride{}},
+	{Path: "fuzz/fuzz-type.yaml", TestCase: &fuzzTypeOverride{}},
+	{Path: "fuzz/fuzz-query.yaml", TestCase: &httpFuzzQuery{}},
+	{Path: "fuzz/fuzz-headless.yaml", TestCase: &HeadlessFuzzingQuery{}},
 }
 
 type httpFuzzQuery struct{}

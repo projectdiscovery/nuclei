@@ -13,12 +13,12 @@ import (
 )
 
 var loaderTestcases = []TestCaseInfo{
-	{DisableOn: nil, Path: "loader/template-list.yaml", TestCase: &remoteTemplateList{}},
-	{DisableOn: nil, Path: "loader/workflow-list.yaml", TestCase: &remoteWorkflowList{}},
-	{DisableOn: nil, Path: "loader/excluded-template.yaml", TestCase: &excludedTemplate{}},
-	{DisableOn: nil, Path: "loader/nonexistent-template-list.yaml", TestCase: &nonExistentTemplateList{}},
-	{DisableOn: nil, Path: "loader/nonexistent-workflow-list.yaml", TestCase: &nonExistentWorkflowList{}},
-	{DisableOn: nil, Path: "loader/template-list-not-allowed.yaml", TestCase: &remoteTemplateListNotAllowed{}},
+	{Path: "loader/template-list.yaml", TestCase: &remoteTemplateList{}},
+	{Path: "loader/workflow-list.yaml", TestCase: &remoteWorkflowList{}},
+	{Path: "loader/excluded-template.yaml", TestCase: &excludedTemplate{}},
+	{Path: "loader/nonexistent-template-list.yaml", TestCase: &nonExistentTemplateList{}},
+	{Path: "loader/nonexistent-workflow-list.yaml", TestCase: &nonExistentWorkflowList{}},
+	{Path: "loader/template-list-not-allowed.yaml", TestCase: &remoteTemplateListNotAllowed{}},
 }
 
 type remoteTemplateList struct{}

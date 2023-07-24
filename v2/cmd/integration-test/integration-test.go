@@ -14,9 +14,9 @@ import (
 )
 
 type TestCaseInfo struct {
-	DisableOn []string
 	Path      string
 	TestCase  testutils.TestCase
+	DisableOn func() bool
 }
 
 var (
@@ -107,7 +107,7 @@ func debugTests() {
 	testCaseInfos := protocolTests[runProtocol]
 	for _, testCaseInfo := range testCaseInfos {
 		if (runTemplate != "" && !strings.Contains(testCaseInfo.Path, runTemplate)) ||
-			(testCaseInfo.DisableOn != nil && sliceutil.Contains(testCaseInfo.DisableOn, runtime.GOOS)) {
+			(testCaseInfo.DisableOn != nil && testCaseInfo.DisableOn()) {
 			continue
 		}
 		if runProtocol == "interactsh" {
@@ -130,7 +130,7 @@ func runTests(customTemplatePaths []string) []string {
 			fmt.Printf("Running test cases for %q protocol\n", aurora.Blue(proto))
 		}
 		for _, testCaseInfo := range testCaseInfos {
-			if testCaseInfo.DisableOn != nil && sliceutil.Contains(testCaseInfo.DisableOn, runtime.GOOS) {
+			if testCaseInfo.DisableOn != nil && testCaseInfo.DisableOn() {
 				fmt.Printf("skipping test case %v. disabled on %v.\n", aurora.Blue(testCaseInfo.Path), runtime.GOOS)
 				continue
 			}
