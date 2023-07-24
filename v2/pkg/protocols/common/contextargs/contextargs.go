@@ -2,7 +2,6 @@ package contextargs
 
 import (
 	"net/http/cookiejar"
-	"sync"
 
 	mapsutil "github.com/projectdiscovery/utils/maps"
 )
@@ -15,8 +14,6 @@ type Context struct {
 	// CookieJar shared within workflow's http templates
 	CookieJar *cookiejar.Jar
 
-	// Access to Args must use lock strategies to prevent data races
-	*sync.RWMutex
 	// Args is a workflow shared key-value store
 	args *mapsutil.SyncLockMap[string, interface{}]
 }
@@ -32,8 +29,7 @@ func NewWithInput(input string) *Context {
 }
 
 func (ctx *Context) initialize() {
-	ctx.args = newArgs()
-	ctx.RWMutex = &sync.RWMutex{}
+	ctx.args = &mapsutil.SyncLockMap[string, interface{}]{Map: mapsutil.Map[string, interface{}]{}}
 }
 
 // Set the specific key-value pair
@@ -89,7 +85,6 @@ func (ctx *Context) HasArgs() bool {
 func (ctx *Context) Clone() *Context {
 	newCtx := &Context{
 		MetaInput: ctx.MetaInput.Clone(),
-		RWMutex:   ctx.RWMutex,
 		args:      ctx.args,
 		CookieJar: ctx.CookieJar,
 	}
