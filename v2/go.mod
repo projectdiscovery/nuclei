@@ -23,7 +23,7 @@ require (
 	github.com/projectdiscovery/clistats v0.0.19
 	github.com/projectdiscovery/fastdialer v0.0.35
 	github.com/projectdiscovery/hmap v0.0.13
-	github.com/projectdiscovery/interactsh v1.1.4
+	github.com/projectdiscovery/interactsh v1.1.5
 	github.com/projectdiscovery/rawhttp v0.1.16
 	github.com/projectdiscovery/retryabledns v1.0.30
 	github.com/projectdiscovery/retryablehttp-go v1.0.18
@@ -144,7 +144,7 @@ require (
 	github.com/ysmood/got v0.34.1 // indirect
 	github.com/yuin/goldmark v1.5.4 // indirect
 	github.com/yuin/goldmark-emoji v1.0.1 // indirect
-	go.uber.org/atomic v1.10.0 // indirect
+	go.uber.org/atomic v1.11.0 // indirect
 	gopkg.in/djherbis/times.v1 v1.3.0 // indirect
 )
 
@@ -159,7 +159,7 @@ require (
 	github.com/andybalholm/cascadia v1.3.1 // indirect
 	github.com/antchfx/xpath v1.2.3 // indirect
 	github.com/aymerick/douceur v0.2.0 // indirect
-	github.com/caddyserver/certmagic v0.17.2 // indirect
+	github.com/caddyserver/certmagic v0.18.2 // indirect
 	github.com/cnf/structhash v0.0.0-20201127153200-e1b16c1ebc08 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/dimchansky/utfbom v1.1.1 // indirect
@@ -182,14 +182,14 @@ require (
 	github.com/hdm/jarm-go v0.0.7 // indirect
 	github.com/iancoleman/orderedmap v0.0.0-20190318233801-ac98e3ecb4b0 // indirect
 	github.com/itchyny/timefmt-go v0.1.5 // indirect
-	github.com/klauspost/cpuid/v2 v2.1.1 // indirect
+	github.com/klauspost/cpuid/v2 v2.2.5 // indirect
 	github.com/leodido/go-urn v1.2.4 // indirect
 	github.com/libdns/libdns v0.2.1 // indirect
 	github.com/lor00x/goldap v0.0.0-20180618054307-a546dffdd1a3 // indirect
 	github.com/lufia/plan9stats v0.0.0-20211012122336-39d0f177ccd0 // indirect
 	github.com/mattn/go-isatty v0.0.19 // indirect
 	github.com/mattn/go-runewidth v0.0.14 // indirect
-	github.com/mholt/acmez v1.0.4 // indirect
+	github.com/mholt/acmez v1.2.0 // indirect
 	github.com/microcosm-cc/bluemonday v1.0.24 // indirect
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
 	github.com/modern-go/reflect2 v1.0.2 // indirect
@@ -214,7 +214,7 @@ require (
 	github.com/zmap/zcrypto v0.0.0-20230422215203-9a665e1e9968 // indirect
 	go.etcd.io/bbolt v1.3.7 // indirect
 	go.uber.org/zap v1.24.0 // indirect
-	goftp.io/server/v2 v2.0.0 // indirect
+	goftp.io/server/v2 v2.0.1 // indirect
 	golang.org/x/crypto v0.11.0
 	golang.org/x/exp v0.0.0-20230626212559-97b1e661b5df
 	golang.org/x/mod v0.11.0 // indirect
