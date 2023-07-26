@@ -1,9 +1,12 @@
 package core
 
 import (
+	"context"
+
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/contextargs"
+	"github.com/projectdiscovery/nuclei/v2/pkg/testutils/testcore"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 )
 
@@ -20,6 +23,7 @@ type Engine struct {
 	options      *types.Options
 	executerOpts protocols.ExecutorOptions
 	Callback     func(*output.ResultEvent) // Executed on results
+	stats        *testcore.WorkpoolStats   // no-op unless (build tag is stats)
 }
 
 // InputProvider is an input providing interface for the nuclei execution
@@ -41,6 +45,7 @@ type InputProvider interface {
 func New(options *types.Options) *Engine {
 	engine := &Engine{
 		options: options,
+		stats:   testcore.NewWorkpoolStats(context.Background(), options.TemplateThreads),
 	}
 	engine.workPool = engine.GetWorkPool()
 	return engine

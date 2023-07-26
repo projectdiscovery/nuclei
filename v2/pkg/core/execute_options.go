@@ -33,6 +33,7 @@ func (e *Engine) ExecuteWithResults(templatesList []*templates.Template, target 
 func (e *Engine) ExecuteScanWithOpts(templatesList []*templates.Template, target InputProvider, noCluster bool) *atomic.Bool {
 	results := &atomic.Bool{}
 	selfcontainedWg := &sync.WaitGroup{}
+	defer e.stats.Close() // no-op unless (build tag is stats)
 
 	var finalTemplates []*templates.Template
 	if !noCluster {

@@ -103,12 +103,14 @@ func (e *Engine) executeTemplateWithTargets(template *templates.Template, target
 
 		wg.WaitGroup.Add()
 		go func(index uint32, skip bool, value *contextargs.MetaInput) {
+			defer e.stats.SignalEnd(template, value.Input)
 			defer wg.WaitGroup.Done()
 			defer cleanupInFlight(index)
 			if skip {
 				return
 			}
 
+			e.stats.SignalStart(template, value.Input)
 			var match bool
 			var err error
 			switch template.Type() {
@@ -163,6 +165,8 @@ func (e *Engine) executeTemplatesOnTarget(alltemplates []*templates.Template, ta
 		sg.Add()
 		go func(template *templates.Template, value *contextargs.MetaInput, wg *sizedwaitgroup.SizedWaitGroup) {
 			defer wg.Done()
+			defer e.stats.SignalEnd(template, value.Input)
+			e.stats.SignalStart(template, value.Input)
 
 			var match bool
 			var err error
