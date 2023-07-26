@@ -319,6 +319,8 @@ func (w *StandardWriter) WriteFailure(event InternalEvent) error {
 		Info:          templateInfo,
 		Type:          types.ToString(event["type"]),
 		Host:          types.ToString(event["host"]),
+		Request:       types.ToString(event["request"]),
+		Response:      types.ToString(event["response"]),
 		MatcherStatus: false,
 		Timestamp:     time.Now(),
 	}
