@@ -1,13 +1,21 @@
 package matchers
 
 import (
+	"errors"
+	"os"
 	"strings"
 
 	"github.com/Knetic/govaluate"
 
+	dslRep "github.com/projectdiscovery/dsl"
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators/common/dsl"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/expressions"
+)
+
+var (
+	// showDSLErr controls whether to show hidden DSL errors or not
+	showDSLErr = strings.EqualFold(os.Getenv("SHOW_DSL_ERRORS"), "true")
 )
 
 // MatchStatusCode matches a status code check against a corpus
@@ -185,9 +193,9 @@ func (matcher *Matcher) MatchDSL(data map[string]interface{}) bool {
 			if matcher.condition == ANDCondition {
 				return false
 			}
-			if strings.Contains(err.Error(), "No parameter") {
+			if strings.Contains(err.Error(), "No parameter") { // Review: do we need to hide this error ?
 				gologger.Warning().Msgf("[%s] %s", data["template-id"], err.Error())
-			} else {
+			} else if !matcher.ignoreErr(err) {
 				gologger.Error().Label("WRN").Msgf("[%s] %s", data["template-id"], err.Error())
 			}
 			continue
@@ -216,6 +224,18 @@ func (matcher *Matcher) MatchDSL(data map[string]interface{}) bool {
 		if len(matcher.dslCompiled)-1 == i {
 			return true
 		}
+	}
+	return false
+}
+
+// ignoreErr checks if the error is to be ignored or not
+// Reference: https://github.com/projectdiscovery/nuclei/issues/3950
+func (m *Matcher) ignoreErr(err error) bool {
+	if showDSLErr {
+		return false
+	}
+	if errors.Is(err, dslRep.ErrParsingArg) {
+		return true
 	}
 	return false
 }
