@@ -193,10 +193,8 @@ func (matcher *Matcher) MatchDSL(data map[string]interface{}) bool {
 			if matcher.condition == ANDCondition {
 				return false
 			}
-			if strings.Contains(err.Error(), "No parameter") { // Review: do we need to hide this error ?
+			if !matcher.ignoreErr(err) {
 				gologger.Warning().Msgf("[%s] %s", data["template-id"], err.Error())
-			} else if !matcher.ignoreErr(err) {
-				gologger.Error().Label("WRN").Msgf("[%s] %s", data["template-id"], err.Error())
 			}
 			continue
 		}
@@ -234,7 +232,7 @@ func (m *Matcher) ignoreErr(err error) bool {
 	if showDSLErr {
 		return false
 	}
-	if errors.Is(err, dslRep.ErrParsingArg) {
+	if errors.Is(err, dslRep.ErrParsingArg) || strings.Contains(err.Error(), "No parameter") {
 		return true
 	}
 	return false
