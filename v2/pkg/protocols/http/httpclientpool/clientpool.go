@@ -21,6 +21,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/protocolstate"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/utils"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
+	"github.com/projectdiscovery/nuclei/v2/pkg/types/scanstrategy"
 	"github.com/projectdiscovery/rawhttp"
 	"github.com/projectdiscovery/retryablehttp-go"
 )
@@ -174,7 +175,7 @@ func wrappedGet(options *types.Options, configuration *Configuration) (*retryabl
 	maxConnsPerHost := 0
 	maxIdleConnsPerHost := -1
 
-	if configuration.Threads > 0 {
+	if configuration.Threads > 0 || options.ScanStrategy == scanstrategy.HostSpray.String() {
 		// Single host
 		retryableHttpOptions = retryablehttp.DefaultOptionsSingle
 		disableKeepAlives = false

@@ -268,6 +268,7 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 	}
 	request.connConfiguration = connectionConfiguration
 
+	// todo:zoppo
 	client, err := httpclientpool.Get(options.Options, connectionConfiguration)
 	if err != nil {
 		return errors.Wrap(err, "could not get dns client")
