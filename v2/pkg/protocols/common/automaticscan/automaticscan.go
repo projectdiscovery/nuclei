@@ -16,6 +16,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/contextargs"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/http/httpclientpool"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/http/utils"
 	"github.com/projectdiscovery/nuclei/v2/pkg/templates"
 	"github.com/projectdiscovery/nuclei/v2/pkg/templates/types"
 	"github.com/projectdiscovery/retryablehttp-go"
@@ -86,7 +87,9 @@ func New(opts Options) (*Service, error) {
 	childExecuter := opts.Engine.ChildExecuter()
 
 	httpclient, err := httpclientpool.Get(opts.ExecuterOpts.Options, &httpclientpool.Configuration{
-		Connection: &httpclientpool.ConnectionConfiguration{DisableKeepAlive: true},
+		Connection: &httpclientpool.ConnectionConfiguration{
+			DisableKeepAlive: utils.ShouldDisableKeepAlive(opts.ExecuterOpts.Options),
+		},
 	})
 	if err != nil {
 		return nil, errors.Wrap(err, "could not get http client")

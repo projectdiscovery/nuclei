@@ -24,6 +24,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/types/scanstrategy"
 	"github.com/projectdiscovery/rawhttp"
 	"github.com/projectdiscovery/retryablehttp-go"
+	mapsutil "github.com/projectdiscovery/utils/maps"
 )
 
 var (
@@ -32,9 +33,8 @@ var (
 
 	rawHttpClient     *rawhttp.Client
 	forceMaxRedirects int
-	poolMutex         *sync.RWMutex
 	normalClient      *retryablehttp.Client
-	clientPool        map[string]*retryablehttp.Client
+	clientPool        *mapsutil.SyncLockMap[string, *retryablehttp.Client]
 )
 
 // Init initializes the clientpool implementation
@@ -46,8 +46,9 @@ func Init(options *types.Options) error {
 	if options.ShouldFollowHTTPRedirects() {
 		forceMaxRedirects = options.MaxRedirects
 	}
-	poolMutex = &sync.RWMutex{}
-	clientPool = make(map[string]*retryablehttp.Client)
+	clientPool = &mapsutil.SyncLockMap[string, *retryablehttp.Client]{
+		Map: make(mapsutil.Map[string, *retryablehttp.Client]),
+	}
 
 	client, err := wrappedGet(options, &Configuration{})
 	if err != nil {
@@ -161,12 +162,9 @@ func wrappedGet(options *types.Options, configuration *Configuration) (*retryabl
 	}
 
 	hash := configuration.Hash()
-	poolMutex.RLock()
-	if client, ok := clientPool[hash]; ok {
-		poolMutex.RUnlock()
+	if client, ok := clientPool.Get(hash); ok {
 		return client, nil
 	}
-	poolMutex.RUnlock()
 
 	// Multiple Host
 	retryableHttpOptions := retryablehttp.DefaultOptionsSpraying
@@ -179,8 +177,8 @@ func wrappedGet(options *types.Options, configuration *Configuration) (*retryabl
 		// Single host
 		retryableHttpOptions = retryablehttp.DefaultOptionsSingle
 		disableKeepAlives = false
-		maxIdleConnsPerHost = 500
-		maxConnsPerHost = 500
+		maxIdleConnsPerHost = 2
+		maxConnsPerHost = 2
 	}
 
 	retryableHttpOptions.RetryWaitMax = 10 * time.Second
@@ -204,6 +202,7 @@ func wrappedGet(options *types.Options, configuration *Configuration) (*retryabl
 		redirectFlow = DontFollowRedirect
 		maxRedirects = 0
 	}
+
 	// override connection's settings if required
 	if configuration.Connection != nil {
 		disableKeepAlives = configuration.Connection.DisableKeepAlive
@@ -243,6 +242,10 @@ func wrappedGet(options *types.Options, configuration *Configuration) (*retryabl
 		MaxConnsPerHost:     maxConnsPerHost,
 		TLSClientConfig:     tlsConfig,
 		DisableKeepAlives:   disableKeepAlives,
+	}
+
+	if transport.DisableKeepAlives {
+		panic("at the disco")
 	}
 
 	if types.ProxyURL != "" {
@@ -299,9 +302,7 @@ func wrappedGet(options *types.Options, configuration *Configuration) (*retryabl
 
 	// Only add to client pool if we don't have a cookie jar in place.
 	if jar == nil {
-		poolMutex.Lock()
-		clientPool[hash] = client
-		poolMutex.Unlock()
+		clientPool.Set(hash, client)
 	}
 	return client, nil
 }
