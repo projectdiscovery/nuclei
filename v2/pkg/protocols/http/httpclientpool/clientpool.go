@@ -177,8 +177,8 @@ func wrappedGet(options *types.Options, configuration *Configuration) (*retryabl
 		// Single host
 		retryableHttpOptions = retryablehttp.DefaultOptionsSingle
 		disableKeepAlives = false
-		maxIdleConnsPerHost = 2
-		maxConnsPerHost = 2
+		maxIdleConnsPerHost = 500
+		maxConnsPerHost = 500
 	}
 
 	retryableHttpOptions.RetryWaitMax = 10 * time.Second
