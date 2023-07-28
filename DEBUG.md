@@ -1,6 +1,6 @@
 ## Debugging Nuclei
 
-While Adding new features or fixing bugs or writing new templates to properly understand the behavior it is essential to understand what debuggin options are available in nuclei. This guide lists all the debugging options available in nuclei.
+While Adding new features or fixing bugs or writing new templates to properly understand the behavior of that component, it is essential to understand what debugging options are available in nuclei. This guide lists all the debugging options available in nuclei.
 
 ### Template related debugging
 
