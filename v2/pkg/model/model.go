@@ -47,7 +47,7 @@ type Info struct {
 	// examples:
 	//   - value: >
 	//       []string{"https://github.com/strapi/strapi", "https://github.com/getgrav/grav"}
-	Reference stringslice.RawStringSlice `json:"reference,omitempty" yaml:"reference,omitempty" jsonschema:"title=references for the template,description=Links relevant to the template"`
+	Reference *stringslice.RawStringSlice `json:"reference,omitempty" yaml:"reference,omitempty" jsonschema:"title=references for the template,description=Links relevant to the template"`
 	// description: |
 	//   Severity of the template.
 	SeverityHolder severity.Holder `json:"severity,omitempty" yaml:"severity,omitempty"`
