@@ -114,6 +114,10 @@ func validateOptions(options *types.Options) error {
 		return errors.New("both verbose and silent mode specified")
 	}
 
+	if (options.HeadlessOptionalArguments != nil || options.ShowBrowser || options.UseInstalledChrome) && !options.Headless {
+		return errors.New("headless mode (-headless) is required if -ho, -sb, -sc or -lha are set")
+	}
+
 	if options.FollowHostRedirects && options.FollowRedirects {
 		return errors.New("both follow host redirects and follow redirects specified")
 	}

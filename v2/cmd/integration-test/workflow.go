@@ -11,14 +11,14 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/testutils"
 )
 
-var workflowTestcases = map[string]testutils.TestCase{
-	"workflow/basic.yaml":                     &workflowBasic{},
-	"workflow/condition-matched.yaml":         &workflowConditionMatched{},
-	"workflow/condition-unmatched.yaml":       &workflowConditionUnmatch{},
-	"workflow/matcher-name.yaml":              &workflowMatcherName{},
-	"workflow/http-value-share-workflow.yaml": &workflowHttpKeyValueShare{},
-	"workflow/dns-value-share-workflow.yaml":  &workflowDnsKeyValueShare{},
-	"workflow/shared-cookie.yaml":             &workflowSharedCookies{},
+var workflowTestcases = []TestCaseInfo{
+	{Path: "workflow/basic.yaml", TestCase: &workflowBasic{}},
+	{Path: "workflow/condition-matched.yaml", TestCase: &workflowConditionMatched{}},
+	{Path: "workflow/condition-unmatched.yaml", TestCase: &workflowConditionUnmatch{}},
+	{Path: "workflow/matcher-name.yaml", TestCase: &workflowMatcherName{}},
+	{Path: "workflow/http-value-share-workflow.yaml", TestCase: &workflowHttpKeyValueShare{}},
+	{Path: "workflow/dns-value-share-workflow.yaml", TestCase: &workflowDnsKeyValueShare{}},
+	{Path: "workflow/shared-cookie.yaml", TestCase: &workflowSharedCookies{}},
 }
 
 type workflowBasic struct{}
