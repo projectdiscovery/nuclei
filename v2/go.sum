@@ -437,8 +437,8 @@ github.com/projectdiscovery/uncover v1.0.6-0.20230601103158-bfd7e02a5bb1 h1:Pu6L
 github.com/projectdiscovery/uncover v1.0.6-0.20230601103158-bfd7e02a5bb1/go.mod h1:Drl/CWD392mKtdXJhCBPlMkM0I6671pqedFphcnK5f8=
 github.com/projectdiscovery/utils v0.0.44 h1:F/LNgBw53RNM/3mRZ1ji+prM1yDnehDRBf13TPk3WBM=
 github.com/projectdiscovery/utils v0.0.44/go.mod h1:HtUI1pyNCgQUuwZuxDILQ4NSUaFcfBh0TuCK/ZQTS6Q=
-github.com/projectdiscovery/wappalyzergo v0.0.104 h1:hdda6WxAzXVpLBbJW1sLqrwOXHn0prP9IYFY7dfCMjE=
-github.com/projectdiscovery/wappalyzergo v0.0.104/go.mod h1:4Z3DKhi75zIPMuA+qSDDWxZvnhL4qTLmDx4dxNMu7MA=
+github.com/projectdiscovery/wappalyzergo v0.0.106 h1:Mb7EOjb2qWCHv28HOJXdmGYDHg/Eh0XIRboxuhzUyo0=
+github.com/projectdiscovery/wappalyzergo v0.0.106/go.mod h1:4Z3DKhi75zIPMuA+qSDDWxZvnhL4qTLmDx4dxNMu7MA=
 github.com/projectdiscovery/yamldoc-go v1.0.4 h1:eZoESapnMw6WAHiVgRwNqvbJEfNHEH148uthhFbG5jE=
 github.com/projectdiscovery/yamldoc-go v1.0.4/go.mod h1:8PIPRcUD55UbtQdcfFR1hpIGRWG0P7alClXNGt1TBik=
 github.com/refraction-networking/utls v1.3.2 h1:o+AkWB57mkcoW36ET7uJ002CpBWHu0KPxi6vzxvPnv8=
