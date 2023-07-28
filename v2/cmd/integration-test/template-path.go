@@ -12,15 +12,15 @@ func getTemplatePath() string {
 	return config.DefaultConfig.TemplatesDirectory
 }
 
-var templatesPathTestCases = map[string]testutils.TestCase{
+var templatesPathTestCases = []TestCaseInfo{
 	//template folder path issue
-	"http/get.yaml": &folderPathTemplateTest{},
+	{Path: "http/get.yaml", TestCase: &folderPathTemplateTest{}},
 	//cwd
-	"./dns/cname-fingerprint.yaml": &cwdTemplateTest{},
+	{Path: "./dns/cname-fingerprint.yaml", TestCase: &cwdTemplateTest{}},
 	//relative path
-	"dns/cname-fingerprint.yaml": &relativePathTemplateTest{},
+	{Path: "dns/cname-fingerprint.yaml", TestCase: &relativePathTemplateTest{}},
 	//absolute path
-	fmt.Sprintf("%v/dns/cname-fingerprint.yaml", getTemplatePath()): &absolutePathTemplateTest{},
+	{Path: fmt.Sprintf("%v/dns/cname-fingerprint.yaml", getTemplatePath()), TestCase: &absolutePathTemplateTest{}},
 }
 
 type cwdTemplateTest struct{}

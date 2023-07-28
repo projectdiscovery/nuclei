@@ -134,7 +134,7 @@ func (i *Instance) Run(input *contextargs.Context, actions []*Action, payloads m
 		}
 	}
 
-	data, err := createdPage.ExecuteActions(input, actions)
+	data, err := createdPage.ExecuteActions(input, actions, payloads)
 	if err != nil {
 		return nil, nil, err
 	}
