@@ -17,8 +17,8 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/utils/vardump"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/http/race"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/http/raw"
-	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/http/utils"
 	protocolutils "github.com/projectdiscovery/nuclei/v2/pkg/protocols/utils"
+	httputil "github.com/projectdiscovery/nuclei/v2/pkg/protocols/utils/http"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 	"github.com/projectdiscovery/rawhttp"
 	"github.com/projectdiscovery/retryablehttp-go"
@@ -97,8 +97,8 @@ func (r *requestGenerator) Make(ctx context.Context, input *contextargs.Context,
 	hasTrailingSlash := false
 	if !isRawRequest {
 		// if path contains port ex: {{BaseURL}}:8080 use port specified in reqData
-		parsed, reqData = utils.UpdateURLPortFromPayload(parsed, reqData)
-		hasTrailingSlash = utils.HasTrailingSlash(reqData)
+		parsed, reqData = httputil.UpdateURLPortFromPayload(parsed, reqData)
+		hasTrailingSlash = httputil.HasTrailingSlash(reqData)
 	}
 
 	// defaultreqvars are vars generated from request/input ex: {{baseURL}}, {{Host}} etc
@@ -362,13 +362,13 @@ func (r *requestGenerator) fillRequest(req *retryablehttp.Request, values map[st
 		req.Body = bodyReader
 	}
 	if !r.request.Unsafe {
-		utils.SetHeader(req, "User-Agent", uarand.GetRandom())
+		httputil.SetHeader(req, "User-Agent", uarand.GetRandom())
 	}
 
 	// Only set these headers on non-raw requests
 	if len(r.request.Raw) == 0 && !r.request.Unsafe {
-		utils.SetHeader(req, "Accept", "*/*")
-		utils.SetHeader(req, "Accept-Language", "en")
+		httputil.SetHeader(req, "Accept", "*/*")
+		httputil.SetHeader(req, "Accept-Language", "en")
 	}
 
 	if !LeaveDefaultPorts {
