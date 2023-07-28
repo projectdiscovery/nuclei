@@ -9,9 +9,9 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/testutils"
 )
 
-var dslTestcases = map[string]testutils.TestCase{
-	"dsl/hide-version-warning.yaml": &dslVersionWarning{},
-	"dsl/show-version-warning.yaml": &dslShowVersionWarning{},
+var dslTestcases = []TestCaseInfo{
+	{Path: "dsl/hide-version-warning.yaml", TestCase: &dslVersionWarning{}},
+	{Path: "dsl/show-version-warning.yaml", TestCase: &dslShowVersionWarning{}},
 }
 
 type dslVersionWarning struct{}
