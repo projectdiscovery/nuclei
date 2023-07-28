@@ -40,6 +40,7 @@ var (
 		"customConfigDir": customConfigDirTestCases,
 		"fuzzing":         fuzzingTestCases,
 		"generic":         genericTestcases,
+		"dsl":             dslTestcases,
 	}
 
 	// For debug purposes
