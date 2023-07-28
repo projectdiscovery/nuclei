@@ -246,11 +246,12 @@ OPTIMIZATIONS:
    -no-stdin                           disable stdin processing
 
 HEADLESS:
-   -headless                    enable templates that require headless browser support (root user on Linux will disable sandbox)
-   -page-timeout int            seconds to wait for each page in headless mode (default 20)
-   -sb, -show-browser           show the browser on the screen when running templates with headless mode
-   -sc, -system-chrome          use local installed Chrome browser instead of nuclei installed
-   -lha, -list-headless-action  list available headless actions
+   -headless                        enable templates that require headless browser support (root user on Linux will disable sandbox)
+   -page-timeout int                seconds to wait for each page in headless mode (default 20)
+   -sb, -show-browser               show the browser on the screen when running templates with headless mode
+   -ho, -headless-options string[]  start headless chrome with additional options
+   -sc, -system-chrome              use local installed Chrome browser instead of nuclei installed
+   -lha, -list-headless-action      list available headless actions
 
 DEBUG:
    -debug                    show all requests and responses
