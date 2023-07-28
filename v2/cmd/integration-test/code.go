@@ -34,9 +34,9 @@ import (
 	"github.com/projectdiscovery/ratelimit"
 )
 
-var codeTestcases = map[string]testutils.TestCase{
-	"code/test.yaml": &goIntegrationTest{},
-	"code/test.json": &goIntegrationTest{},
+var codeTestcases = []TestCaseInfo{
+	{Path: "code/test.yaml", TestCase: &goIntegrationTest{}},
+	{Path: "code/test.json", TestCase: &goIntegrationTest{}},
 }
 
 type goIntegrationTest struct{}

@@ -4,8 +4,8 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/testutils"
 )
 
-var whoisTestCases = map[string]testutils.TestCase{
-	"whois/basic.yaml": &whoisBasic{},
+var whoisTestCases = []TestCaseInfo{
+	{Path: "whois/basic.yaml", TestCase: &whoisBasic{}},
 }
 
 type whoisBasic struct{}
