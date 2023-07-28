@@ -21,7 +21,7 @@ require (
 	github.com/olekukonko/tablewriter v0.0.5
 	github.com/pkg/errors v0.9.1
 	github.com/projectdiscovery/clistats v0.0.19
-	github.com/projectdiscovery/fastdialer v0.0.35-0.20230712222521-f5386e7cfc12
+	github.com/projectdiscovery/fastdialer v0.0.35
 	github.com/projectdiscovery/hmap v0.0.13
 	github.com/projectdiscovery/interactsh v1.1.4
 	github.com/projectdiscovery/rawhttp v0.1.16
