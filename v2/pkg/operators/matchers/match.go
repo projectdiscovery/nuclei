@@ -1,16 +1,16 @@
 package matchers
 
 import (
-	"errors"
 	"os"
 	"strings"
 
 	"github.com/Knetic/govaluate"
 
-	dslRep "github.com/projectdiscovery/dsl"
+	dslRepo "github.com/projectdiscovery/dsl"
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators/common/dsl"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/expressions"
+	stringsutil "github.com/projectdiscovery/utils/strings"
 )
 
 var (
@@ -232,7 +232,7 @@ func (m *Matcher) ignoreErr(err error) bool {
 	if showDSLErr {
 		return false
 	}
-	if errors.Is(err, dslRep.ErrParsingArg) || strings.Contains(err.Error(), "No parameter") {
+	if stringsutil.ContainsAny(err.Error(), "No parameter", dslRepo.ErrParsingArg.Error()) {
 		return true
 	}
 	return false
