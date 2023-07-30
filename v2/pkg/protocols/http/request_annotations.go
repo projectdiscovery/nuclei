@@ -36,15 +36,15 @@ const (
 // parseFlowAnnotations and override requests flow
 func parseFlowAnnotations(rawRequest string) (flowMark, bool) {
 	var fm flowMark
-	// parse request for known ovverride annotations
-	var hasFlowOveride bool
+	// parse request for known override annotations
+	var hasFlowOverride bool
 	// @once
 	if reOnceAnnotation.MatchString(rawRequest) {
 		fm = Once
-		hasFlowOveride = true
+		hasFlowOverride = true
 	}
 
-	return fm, hasFlowOveride
+	return fm, hasFlowOverride
 }
 
 type annotationOverrides struct {
@@ -55,7 +55,7 @@ type annotationOverrides struct {
 
 // parseAnnotations and override requests settings
 func (r *Request) parseAnnotations(rawRequest string, request *retryablehttp.Request) (overrides annotationOverrides, modified bool) {
-	// parse request for known ovverride annotations
+	// parse request for known override annotations
 
 	// @Host:target
 	if hosts := reHostAnnotation.FindStringSubmatch(rawRequest); len(hosts) > 0 {
