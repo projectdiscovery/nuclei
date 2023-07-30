@@ -326,7 +326,7 @@ type Options struct {
 	IncludeConditions goflags.StringSlice
 	// Custom Config Directory
 	CustomConfigDir string
-	// Enable uncover egine
+	// Enable uncover engine
 	Uncover bool
 	// Uncover search query
 	UncoverQuery goflags.StringSlice
