@@ -59,7 +59,7 @@ type Store struct {
 	preprocessor templates.Preprocessor
 
 	// NotFoundCallback is called for each not found template
-	// This overrides error handling for not found templatesss
+	// This overrides error handling for not found templates
 	NotFoundCallback func(template string) bool
 }
 
