@@ -23,7 +23,7 @@ type Config struct {
 	TemplatesDirectory string `json:"nuclei-templates-directory,omitempty"`
 
 	// customtemplates exists in templates directory with the name of custom-templates provider
-	// below custom paths are absolute paths to respecitive custom-templates directories
+	// below custom paths are absolute paths to respective custom-templates directories
 	CustomS3TemplatesDirectory     string `json:"custom-s3-templates-directory"`
 	CustomGitHubTemplatesDirectory string `json:"custom-github-templates-directory"`
 	CustomGitLabTemplatesDirectory string `json:"custom-gitlab-templates-directory"`
