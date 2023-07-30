@@ -57,7 +57,7 @@ func (r *Runner) listAvailableStoreTemplates(store *loader.Store) {
 					path = aurora.Cyan(tpl.Path).String()
 					tplBody, err = r.highlightTemplate(&tplBody)
 					if err != nil {
-						gologger.Error().Msgf("Could not hihglight the template %s: %s", tpl.Path, err)
+						gologger.Error().Msgf("Could not highlight the template %s: %s", tpl.Path, err)
 						continue
 					}
 
