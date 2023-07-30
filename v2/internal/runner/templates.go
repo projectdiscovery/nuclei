@@ -74,7 +74,7 @@ func (r *Runner) listAvailableStoreTemplates(store *loader.Store) {
 
 func (r *Runner) highlightTemplate(body *[]byte) ([]byte, error) {
 	var buf bytes.Buffer
-	// YAML lexer, true color terminar formatter and monokai style
+	// YAML lexer, true color terminal formatter and monokai style
 	err := quick.Highlight(&buf, string(*body), "yaml", "terminal16m", "monokai")
 	if err != nil {
 		return nil, err
