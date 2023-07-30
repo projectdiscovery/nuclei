@@ -10,6 +10,7 @@ func TestReadVarsFromFile(t *testing.T) {
 	content := `var1=value1
 var2=value2
 var3=value3
+
 var1=value11
 var4=value4=
 var5
