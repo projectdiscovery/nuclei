@@ -206,7 +206,7 @@ func (t *TemplateManager) getAbsoluteFilePath(templateDir, uri string, f fs.File
 		gologger.Warning().Msgf("failed to get directory name from uri: %s", uri)
 		return filepath.Join(templateDir, uri)
 	}
-	// seperator is also included in rootDir
+	// separator is also included in rootDir
 	rootDirectory := uri[:index+1]
 	relPath := strings.TrimPrefix(uri, rootDirectory)
 
