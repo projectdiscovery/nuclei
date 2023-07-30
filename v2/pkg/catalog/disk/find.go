@@ -48,7 +48,7 @@ func (c *DiskCatalog) GetTemplatesPath(definitions []string) ([]string, map[stri
 			}
 		}
 	}
-	// purge all falsepositivies
+	// purge all false positives
 	filteredTemplates := []string{}
 	for _, v := range allTemplates {
 		// TODO: this is a temporary fix to avoid treating these files as templates
