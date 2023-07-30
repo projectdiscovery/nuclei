@@ -21,7 +21,7 @@ var (
 	// request.host: takes the value from the host header
 	// target: overrides with the specific value
 	reSniAnnotation = regexp.MustCompile(`(?m)^@tls-sni:\s*(.+)\s*$`)
-	// @timeout:duration overrides the input timout with a custom duration
+	// @timeout:duration overrides the input timeout with a custom duration
 	reTimeoutAnnotation = regexp.MustCompile(`(?m)^@timeout:\s*(.+)\s*$`)
 	// @once sets the request to be executed only once for a specific URL
 	reOnceAnnotation = regexp.MustCompile(`(?m)^@once\s*$`)
