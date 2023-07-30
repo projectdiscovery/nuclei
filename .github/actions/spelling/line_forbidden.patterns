@@ -1,0 +1,141 @@
+# reject `m_data` as VxWorks defined it and that breaks things if it's used elsewhere
+# see [fprime](https://github.com/nasa/fprime/commit/d589f0a25c59ea9a800d851ea84c2f5df02fb529)
+# and [Qt](https://github.com/qtproject/qt-solutions/blame/fb7bc42bfcc578ff3fa3b9ca21a41e96eb37c1c7/qtscriptclassic/src/qscriptbuffer_p.h#L46)
+#\bm_data\b
+
+# If you have a framework that uses `it()` for testing and `fit()` for debugging a specific test,
+# you might not want to check in code where you were debugging w/ `fit()`.
+#\bfit\(
+
+# s.b. anymore
+\bany more[,.]
+
+# s.b. `cannot` (or `can't`)
+# See https://www.grammarly.com/blog/cannot-or-can-not/
+# > Don't use `can not` when you mean `cannot`. The only time you're likely to see `can not` written as separate words is when the word `can` happens to precede some other phrase that happens to start with `not`.
+# > `Can't` is a contraction of `cannot`, and it's best suited for informal writing.
+# > In formal writing and where contractions are frowned upon, use `cannot`.
+# > It is possible to write `can not`, but you generally find it only as part of some other construction, such as `not only . . . but also.`
+# - if you encounter such a case, add a pattern for that case to patterns.txt.
+\b[Cc]an not\b
+
+# s.b. GitHub
+(?<![&*.]|// |\btype )\bGithub\b(?![{)])
+
+# s.b. GitLab
+(?<![&*.]|// |\btype )\bGitlab\b(?![{)])
+
+# s.b. JavaScript
+\bJavascript\b
+
+# s.b. macOS or Mac OS X or ...
+\bMacOS\b
+
+# s.b. Microsoft
+\bMicroSoft\b
+
+# s.b. OAuth
+(?:^|[^-/*$])[ '"]oAuth(?: [a-z]|\d+ |[^ a-zA-Z0-9:;_.()])
+
+# s.b. TypeScript
+\bTypescript\b
+
+# s.b. another
+\ban[- ]other\b
+
+# s.b. case-(in)sensitive
+\bcase (?:in|)sensitive\b
+
+# s.b. deprecation warning
+\b[Dd]epreciation [Ww]arnings?\b
+
+# s.b. greater than
+\bgreater then\b
+
+# s.b. in front of
+\bin from of\b
+
+# s.b. into
+# when not phrasal and when `in order to` would be wrong:
+# https://thewritepractice.com/into-vs-in-to/
+\sin to\s(?!if\b)
+
+# s.b. is obsolete
+\bis obsolescent\b
+
+# s.b. it's or its
+\bits['’]
+
+# s.b. opt-in
+(?<!\sfor)\sopt in\s
+
+# s.b. less than
+\bless then\b
+
+# s.b. one of
+\bon of\b
+
+# s.b. otherwise
+\bother[- ]wise\b
+
+# s.b. or (more|less)
+\bore (?:more|less)\b
+
+# s.b. rather than
+\brather then\b
+
+# s.b. `regardless, ...` or `regardless of (whether)`
+\b[Rr]egardless if you\b
+
+# s.b. nonexistent
+\bnon existing\b
+
+# s.b. nonexistent
+\b[Nn]o[nt][- ]existent\b
+
+# s.b. brief / details/ param / return / retval
+(?:^\s*|(?:\*|//|/*)\s+`)[\\@](?:breif|(?:detail|detials)|(?:params(?!\.)|prama?)|ret(?:uns?)|retvl)\b
+
+# s.b. preexisting
+[Pp]re[- ]existing
+
+# s.b. preempt
+[Pp]re[- ]empt\b
+
+# s.b. preemptively
+[Pp]re[- ]emptively
+
+# s.b. recently changed or recent changes
+[Rr]ecent changed
+
+# s.b. reentrancy
+[Rr]e[- ]entrancy
+
+# s.b. reentrant
+[Rr]e[- ]entrant
+
+# s.b. understand
+\bunder stand\b
+
+# s.b. workarounds
+\bwork[- ]arounds\b
+
+# s.b. workaround
+(?:(?:[Aa]|[Tt]he|ugly)\swork[- ]around\b|\swork[- ]around\s+for)
+
+# s.b. (coarse|fine)-grained
+\b(?:coarse|fine) grained\b
+
+# s.b. neither/nor -- or reword
+\bnot\b[^.?!"/(]+\bnor\b
+
+# probably a double negative
+# s.b. neither/nor (plus rewording the beginning)
+\bnot\b[^.?!"/]*\bneither\b[^.?!"/(]*\bnor\b
+
+# In English, duplicated words are generally mistakes
+# There are a few exceptions (e.g. "that that").
+# If the highlighted doubled word pair is in:
+# * code, write a pattern to mask it.
+# * prose, have someone read the English before you dismiss this error.
+\s([A-Z]{3,}|[A-Z][a-z]{2,}|[a-z]{3,})\s\g{-1}\s
