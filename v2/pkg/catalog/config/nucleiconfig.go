@@ -83,7 +83,7 @@ func (c *Config) NeedsTemplateUpdate() bool {
 	return !c.disableUpdates && (c.TemplateVersion == "" || IsOutdatedVersion(c.TemplateVersion, c.LatestNucleiTemplatesVersion) || !fileutil.FolderExists(c.TemplatesDirectory))
 }
 
-// NeedsIngoreFileUpdate returns true if Ignore file hash is different (aka ignore file is outdated)
+// NeedsIgnoreFileUpdate returns true if Ignore file hash is different (aka ignore file is outdated)
 func (c *Config) NeedsIgnoreFileUpdate() bool {
 	return c.NucleiIgnoreHash == "" || c.NucleiIgnoreHash != c.LatestNucleiIgnoreHash
 }
