@@ -68,7 +68,7 @@ func NewCustomTemplatesManager(options *types.Options) (*CustomTemplatesManager,
 	}
 
 	// Add GitLab providers
-	gitlabProviders, err := NewGitlabProviders(options)
+	gitlabProviders, err := NewGitLabProviders(options)
 	if err != nil {
 		return nil, errorutil.NewWithErr(err).Msgf("could not create gitlab providers for custom templates")
 	}
