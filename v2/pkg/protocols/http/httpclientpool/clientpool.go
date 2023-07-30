@@ -244,10 +244,6 @@ func wrappedGet(options *types.Options, configuration *Configuration) (*retryabl
 		DisableKeepAlives:   disableKeepAlives,
 	}
 
-	if transport.DisableKeepAlives {
-		panic("at the disco")
-	}
-
 	if types.ProxyURL != "" {
 		if proxyURL, err := url.Parse(types.ProxyURL); err == nil {
 			transport.Proxy = http.ProxyURL(proxyURL)
