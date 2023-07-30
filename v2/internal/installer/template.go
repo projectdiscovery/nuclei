@@ -186,7 +186,7 @@ func (t *TemplateManager) summarizeChanges(old, new map[string]string) *template
 // getAbsoluteFilePath returns an absolute path where a file should be written based on given uri(i.e., files in zip)
 // if a returned path is empty, it means that file should not be written and skipped
 func (t *TemplateManager) getAbsoluteFilePath(templateDir, uri string, f fs.FileInfo) string {
-	// overwrite .nuclei-ignore everytime nuclei-templates are downloaded
+	// overwrite .nuclei-ignore every time nuclei-templates are downloaded
 	if f.Name() == config.NucleiIgnoreFileName {
 		return config.DefaultConfig.GetIgnoreFilePath()
 	}

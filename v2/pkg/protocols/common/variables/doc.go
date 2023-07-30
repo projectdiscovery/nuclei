@@ -22,6 +22,6 @@ package variables
 // Non-Linear Sources (need to re-evaluate)
 // 1. VariablesMap
 // 2. PayloadsMap
-// Everytime Linear Sources are updated , Non-Linear Sources need to be re-evaluated
+// Every time Linear Sources are updated , Non-Linear Sources need to be re-evaluated
 
 // Constants (no need to re-evaluate, should contain only scalars)
