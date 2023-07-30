@@ -20,7 +20,7 @@ var templatesPathTestCases = []TestCaseInfo{
 	//relative path
 	{Path: "dns/dns-saas-service-detection.yaml", TestCase: &relativePathTemplateTest{}},
 	//absolute path
-	{Path: fmt.Sprintf("%v/dns/cname-fingerprint.yaml", getTemplatePath()), TestCase: &absolutePathTemplateTest{}},
+	{Path: fmt.Sprintf("%v/dns/dns-saas-service-detection.yaml", getTemplatePath()), TestCase: &absolutePathTemplateTest{}},
 }
 
 type cwdTemplateTest struct{}
