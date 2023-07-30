@@ -42,6 +42,8 @@ type Options struct {
 	CustomHeaders goflags.StringSlice
 	// Vars is the list of custom global vars
 	Vars goflags.RuntimeMap
+	// VarsFile is a file containing key=value
+	VarsFile string
 	// Severities filters templates based on their severity and only run the matching ones.
 	Severities severity.Severities
 	// ExcludeSeverities specifies severities to exclude
