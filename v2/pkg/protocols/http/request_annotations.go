@@ -19,7 +19,7 @@ var (
 	// @tls-sni:target overrides the input target with the annotated one
 	// special values:
 	// request.host: takes the value from the host header
-	// target: overiddes with the specific value
+	// target: overrides with the specific value
 	reSniAnnotation = regexp.MustCompile(`(?m)^@tls-sni:\s*(.+)\s*$`)
 	// @timeout:duration overrides the input timout with a custom duration
 	reTimeoutAnnotation = regexp.MustCompile(`(?m)^@timeout:\s*(.+)\s*$`)
