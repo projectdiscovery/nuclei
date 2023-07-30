@@ -345,9 +345,9 @@ type Options struct {
 	// PublicTemplateDisableDownload disables downloading templates from the nuclei-templates public repository
 	PublicTemplateDisableDownload bool
 	// GitHub token used to clone/pull from private repos for custom templates
-	GithubToken string
-	// GithubTemplateRepo is the list of custom public/private templates GitHub repos
-	GithubTemplateRepo []string
+	GitHubToken string
+	// GitHubTemplateRepo is the list of custom public/private templates GitHub repos
+	GitHubTemplateRepo []string
 	// GitHubTemplateDisableDownload disables downloading templates from custom GitHub repositories
 	GitHubTemplateDisableDownload bool
 	// GitLabServerURL is the gitlab server to use for custom templates

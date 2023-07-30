@@ -41,7 +41,7 @@ func NewCustomTemplatesManager(options *types.Options) (*CustomTemplatesManager,
 	}
 
 	// Add GitHub providers
-	githubProviders, err := NewGithubProviders(options)
+	githubProviders, err := NewGitHubProviders(options)
 	if err != nil {
 		return nil, errorutil.NewWithErr(err).Msgf("could not create github providers for custom templates")
 	}

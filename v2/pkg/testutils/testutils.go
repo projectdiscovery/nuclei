@@ -64,8 +64,8 @@ var DefaultOptions = &types.Options{
 	InteractionsEviction:       60,
 	InteractionsCoolDownPeriod: 5,
 	InteractionsPollDuration:   5,
-	GithubTemplateRepo:         []string{},
-	GithubToken:                "",
+	GitHubTemplateRepo:         []string{},
+	GitHubToken:                "",
 }
 
 // TemplateInfo contains info for a mock executed template.
