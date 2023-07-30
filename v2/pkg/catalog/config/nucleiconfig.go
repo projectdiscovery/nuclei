@@ -32,7 +32,7 @@ type Config struct {
 	TemplateVersion  string `json:"nuclei-templates-version,omitempty"`
 	NucleiIgnoreHash string `json:"nuclei-ignore-hash,omitempty"`
 
-	// Latestxxx are not meant to be used directly and is used as
+	// LatestXXX are not meant to be used directly and is used as
 	// local cache of nuclei version check endpoint
 	// these fields are only update during nuclei version check
 	// TODO: move these fields to a separate unexported struct as they are not meant to be used directly
