@@ -102,7 +102,7 @@ type Options struct {
 	CloudURL string
 	// CloudAPIKey is the api-key for the nuclei cloud endpoint
 	CloudAPIKey string
-	// Scanlist feature to get all the scan ids for a user
+	// ScanList feature to get all the scan ids for a user
 	ScanList bool
 	// ListDatasources enables listing of datasources for user
 	ListDatasources bool
