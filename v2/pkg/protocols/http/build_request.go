@@ -253,7 +253,7 @@ func (r *requestGenerator) generateHttpRequest(ctx context.Context, urlx *urluti
 	return &generatedRequest{request: request, meta: generatorValues, original: r.request, dynamicValues: finalVars, interactshURLs: r.interactshURLs}, nil
 }
 
-// generateRawRequest generates Raw Request from from request data from template and variables
+// generateRawRequest generates Raw Request from request data from template and variables
 // finalVars = contains all variables including generator and protocol specific variables
 // generatorValues = contains variables used in fuzzing or other generator specific values
 func (r *requestGenerator) generateRawRequest(ctx context.Context, rawRequest string, baseURL *urlutil.URL, finalVars, generatorValues map[string]interface{}) (*generatedRequest, error) {

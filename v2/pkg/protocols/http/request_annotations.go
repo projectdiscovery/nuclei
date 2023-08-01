@@ -19,9 +19,9 @@ var (
 	// @tls-sni:target overrides the input target with the annotated one
 	// special values:
 	// request.host: takes the value from the host header
-	// target: overiddes with the specific value
+	// target: overrides with the specific value
 	reSniAnnotation = regexp.MustCompile(`(?m)^@tls-sni:\s*(.+)\s*$`)
-	// @timeout:duration overrides the input timout with a custom duration
+	// @timeout:duration overrides the input timeout with a custom duration
 	reTimeoutAnnotation = regexp.MustCompile(`(?m)^@timeout:\s*(.+)\s*$`)
 	// @once sets the request to be executed only once for a specific URL
 	reOnceAnnotation = regexp.MustCompile(`(?m)^@once\s*$`)
@@ -36,15 +36,15 @@ const (
 // parseFlowAnnotations and override requests flow
 func parseFlowAnnotations(rawRequest string) (flowMark, bool) {
 	var fm flowMark
-	// parse request for known ovverride annotations
-	var hasFlowOveride bool
+	// parse request for known override annotations
+	var hasFlowOverride bool
 	// @once
 	if reOnceAnnotation.MatchString(rawRequest) {
 		fm = Once
-		hasFlowOveride = true
+		hasFlowOverride = true
 	}
 
-	return fm, hasFlowOveride
+	return fm, hasFlowOverride
 }
 
 type annotationOverrides struct {
@@ -55,7 +55,7 @@ type annotationOverrides struct {
 
 // parseAnnotations and override requests settings
 func (r *Request) parseAnnotations(rawRequest string, request *retryablehttp.Request) (overrides annotationOverrides, modified bool) {
-	// parse request for known ovverride annotations
+	// parse request for known override annotations
 
 	// @Host:target
 	if hosts := reHostAnnotation.FindStringSubmatch(rawRequest); len(hosts) > 0 {

@@ -422,11 +422,11 @@ func printTemplateVersion() {
 	if fileutil.FolderExists(cfg.CustomS3TemplatesDirectory) {
 		gologger.Info().Msgf("Custom S3 templates location: %s\n", cfg.CustomS3TemplatesDirectory)
 	}
-	if fileutil.FolderExists(cfg.CustomGithubTemplatesDirectory) {
-		gologger.Info().Msgf("Custom Github templates location: %s ", cfg.CustomGithubTemplatesDirectory)
+	if fileutil.FolderExists(cfg.CustomGitHubTemplatesDirectory) {
+		gologger.Info().Msgf("Custom GitHub templates location: %s ", cfg.CustomGitHubTemplatesDirectory)
 	}
 	if fileutil.FolderExists(cfg.CustomGitLabTemplatesDirectory) {
-		gologger.Info().Msgf("Custom Gitlab templates location: %s ", cfg.CustomGitLabTemplatesDirectory)
+		gologger.Info().Msgf("Custom GitLab templates location: %s ", cfg.CustomGitLabTemplatesDirectory)
 	}
 	if fileutil.FolderExists(cfg.CustomAzureTemplatesDirectory) {
 		gologger.Info().Msgf("Custom Azure templates location: %s ", cfg.CustomAzureTemplatesDirectory)

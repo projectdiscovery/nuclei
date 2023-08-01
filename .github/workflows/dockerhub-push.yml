@@ -14,7 +14,7 @@ jobs:
       - name: Git Checkout
         uses: actions/checkout@v3
 
-      - name: Get Github tag
+      - name: Get GitHub tag
         id: meta
         run: |
           curl --silent "https://api.github.com/repos/projectdiscovery/nuclei/releases/latest" | jq -r .tag_name | xargs -I {} echo TAG={} >> $GITHUB_OUTPUT

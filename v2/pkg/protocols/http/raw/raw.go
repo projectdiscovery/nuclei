@@ -53,7 +53,7 @@ func Parse(request string, inputURL *urlutil.URL, unsafe, disablePathAutomerge b
 			return nil, errorutil.NewWithTag("raw", "could not automergepath for template path %v", urlx.GetRelativePath()).Wrap(parseErr)
 		}
 		rawrequest.Path = cloned.GetRelativePath()
-	// If unsafe changes must be made in raw request string iteself
+	// If unsafe changes must be made in raw request string itself
 	case unsafe:
 		prevPath := rawrequest.Path
 		cloned := inputURL.Clone()

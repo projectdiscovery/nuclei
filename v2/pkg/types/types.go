@@ -102,7 +102,7 @@ type Options struct {
 	CloudURL string
 	// CloudAPIKey is the api-key for the nuclei cloud endpoint
 	CloudAPIKey string
-	// Scanlist feature to get all the scan ids for a user
+	// ScanList feature to get all the scan ids for a user
 	ScanList bool
 	// ListDatasources enables listing of datasources for user
 	ListDatasources bool
@@ -326,7 +326,7 @@ type Options struct {
 	IncludeConditions goflags.StringSlice
 	// Custom Config Directory
 	CustomConfigDir string
-	// Enable uncover egine
+	// Enable uncover engine
 	Uncover bool
 	// Uncover search query
 	UncoverQuery goflags.StringSlice
@@ -345,9 +345,9 @@ type Options struct {
 	// PublicTemplateDisableDownload disables downloading templates from the nuclei-templates public repository
 	PublicTemplateDisableDownload bool
 	// GitHub token used to clone/pull from private repos for custom templates
-	GithubToken string
-	// GithubTemplateRepo is the list of custom public/private templates GitHub repos
-	GithubTemplateRepo []string
+	GitHubToken string
+	// GitHubTemplateRepo is the list of custom public/private templates GitHub repos
+	GitHubTemplateRepo []string
 	// GitHubTemplateDisableDownload disables downloading templates from custom GitHub repositories
 	GitHubTemplateDisableDownload bool
 	// GitLabServerURL is the gitlab server to use for custom templates
