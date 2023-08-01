@@ -128,7 +128,7 @@ func (c *Client) poll() error {
 	return nil
 }
 
-// requestShouldStopAtFirstmatch checks if furthur interactions should be stopped
+// requestShouldStopAtFirstmatch checks if further interactions should be stopped
 // note: extra care should be taken while using this function since internalEvent is
 // synchronized all the time and if caller functions has already acquired lock its best to explicitly specify that
 // we could use `TryLock()` but that may over complicate things and need to differentiate

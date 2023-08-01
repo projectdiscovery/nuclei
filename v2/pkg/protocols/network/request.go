@@ -58,15 +58,15 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, metadata,
 	variablesMap := request.options.Variables.Evaluate(variables)
 	variables = generators.MergeMaps(variablesMap, variables, request.options.Constants)
 
-	visitedAddressess := make(mapsutil.Map[string, struct{}])
+	visitedAddresses := make(mapsutil.Map[string, struct{}])
 
 	for _, kv := range request.addresses {
 		actualAddress := replacer.Replace(kv.address, variables)
 
-		if visitedAddressess.Has(actualAddress) && !request.options.Options.DisableClustering {
+		if visitedAddresses.Has(actualAddress) && !request.options.Options.DisableClustering {
 			continue
 		}
-		visitedAddressess.Set(actualAddress, struct{}{})
+		visitedAddresses.Set(actualAddress, struct{}{})
 
 		if err := request.executeAddress(variables, actualAddress, address, input.MetaInput.Input, kv.tls, previous, callback); err != nil {
 			outputEvent := request.responseToDSLMap("", "", "", address, "")

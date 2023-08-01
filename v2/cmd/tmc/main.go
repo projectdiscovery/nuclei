@@ -90,7 +90,7 @@ type options struct {
 func main() {
 	opts := options{}
 	flagSet := goflags.NewFlagSet()
-	flagSet.SetDescription(`TemplateMan CLI is baisc utility built on the TemplateMan API to standardize nuclei templates.`)
+	flagSet.SetDescription(`TemplateMan CLI is basic utility built on the TemplateMan API to standardize nuclei templates.`)
 
 	flagSet.CreateGroup("Input", "input",
 		flagSet.StringVarP(&opts.input, "input", "i", "", "Templates to annotate"),

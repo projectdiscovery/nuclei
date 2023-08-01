@@ -59,7 +59,7 @@ type Store struct {
 	preprocessor templates.Preprocessor
 
 	// NotFoundCallback is called for each not found template
-	// This overrides error handling for not found templatesss
+	// This overrides error handling for not found templates
 	NotFoundCallback func(template string) bool
 }
 
@@ -187,7 +187,7 @@ func (store *Store) ValidateTemplates() error {
 	if areTemplatesValid(store, filteredTemplatePaths) && areWorkflowsValid(store, filteredWorkflowPaths) {
 		return nil
 	}
-	return errors.New("errors occured during template validation")
+	return errors.New("errors occurred during template validation")
 }
 
 func areWorkflowsValid(store *Store, filteredWorkflowPaths map[string]struct{}) bool {

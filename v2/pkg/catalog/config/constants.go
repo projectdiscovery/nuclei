@@ -20,7 +20,7 @@ const (
 	Version = `v2.9.10`
 	// Directory Names of custom templates
 	CustomS3TemplatesDirName     = "s3"
-	CustomGithubTemplatesDirName = "github"
+	CustomGitHubTemplatesDirName = "github"
 	CustomAzureTemplatesDirName  = "azure"
 	CustomGitLabTemplatesDirName = "gitlab"
 )

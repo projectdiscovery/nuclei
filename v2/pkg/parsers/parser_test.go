@@ -70,7 +70,7 @@ func TestLoadTemplate(t *testing.T) {
 			expectedErr: errors.New("field 'severity' is missing"),
 		},
 		{
-			name: "template-without-serverity-with-correct-filter-id",
+			name: "template-without-severity-with-correct-filter-id",
 			template: &templates.Template{
 				ID: "CVE-2021-27330",
 				Info: model.Info{
@@ -84,7 +84,7 @@ func TestLoadTemplate(t *testing.T) {
 			filter:      filter.Config{IncludeIds: []string{"CVE-2021-27330"}},
 		},
 		{
-			name: "template-without-serverity-with-diff-filter-id",
+			name: "template-without-severity-with-diff-filter-id",
 			template: &templates.Template{
 				ID: "CVE-2021-27330",
 				Info: model.Info{

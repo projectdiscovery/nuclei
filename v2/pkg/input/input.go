@@ -18,7 +18,7 @@ type Helper struct {
 	InputsHTTP *hybrid.HybridMap
 }
 
-// NewHelper returns a new inpt helper instance
+// NewHelper returns a new input helper instance
 func NewHelper() *Helper {
 	helper := &Helper{}
 	return helper

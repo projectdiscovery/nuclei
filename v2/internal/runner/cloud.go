@@ -375,8 +375,8 @@ func (r *Runner) addCloudDataSource(source string) error {
 			return err
 		}
 	case "github":
-		for _, repo := range r.options.GithubTemplateRepo {
-			if _, err := r.processDataSourceItem(repo, r.options.GithubToken, "github"); err != nil {
+		for _, repo := range r.options.GitHubTemplateRepo {
+			if _, err := r.processDataSourceItem(repo, r.options.GitHubToken, "github"); err != nil {
 				return err
 			}
 		}

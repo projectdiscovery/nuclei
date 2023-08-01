@@ -45,7 +45,7 @@ func TestGetRandomIp(t *testing.T) {
 			valid: true,
 		},
 		{
-			name:     "Negativ CIDR length",
+			name:     "Negative CIDR length",
 			cidr:     []string{"10.11.12.13/-1"},
 			valid:    false,
 			errorMsg: "10.11.12.13/-1 is not a valid CIDR",

@@ -17,9 +17,9 @@ import (
 	"gopkg.in/src-d/go-git.v4/plumbing/transport/http"
 )
 
-var _ Provider = &customTemplateGithubRepo{}
+var _ Provider = &customTemplateGitHubRepo{}
 
-type customTemplateGithubRepo struct {
+type customTemplateGitHubRepo struct {
 	owner       string
 	reponame    string
 	gitCloneURL string
@@ -27,8 +27,8 @@ type customTemplateGithubRepo struct {
 }
 
 // This function download the custom github template repository
-func (customTemplate *customTemplateGithubRepo) Download(ctx context.Context) {
-	clonePath := customTemplate.getLocalRepoClonePath(config.DefaultConfig.CustomGithubTemplatesDirectory)
+func (customTemplate *customTemplateGitHubRepo) Download(ctx context.Context) {
+	clonePath := customTemplate.getLocalRepoClonePath(config.DefaultConfig.CustomGitHubTemplatesDirectory)
 
 	if !fileutil.FolderExists(clonePath) {
 		err := customTemplate.cloneRepo(clonePath, customTemplate.githubToken)
@@ -41,8 +41,8 @@ func (customTemplate *customTemplateGithubRepo) Download(ctx context.Context) {
 	}
 }
 
-func (customTemplate *customTemplateGithubRepo) Update(ctx context.Context) {
-	downloadPath := config.DefaultConfig.CustomGithubTemplatesDirectory
+func (customTemplate *customTemplateGitHubRepo) Update(ctx context.Context) {
+	downloadPath := config.DefaultConfig.CustomGitHubTemplatesDirectory
 	clonePath := customTemplate.getLocalRepoClonePath(downloadPath)
 
 	// If folder does not exits then clone/download the repo
@@ -58,31 +58,31 @@ func (customTemplate *customTemplateGithubRepo) Update(ctx context.Context) {
 	}
 }
 
-// NewGithubProviders returns new instance of GitHub providers for downloading custom templates
-func NewGithubProviders(options *types.Options) ([]*customTemplateGithubRepo, error) {
-	providers := []*customTemplateGithubRepo{}
+// NewGitHubProviders returns new instance of GitHub providers for downloading custom templates
+func NewGitHubProviders(options *types.Options) ([]*customTemplateGitHubRepo, error) {
+	providers := []*customTemplateGitHubRepo{}
 	gitHubClient := getGHClientIncognito()
 
 	if options.GitHubTemplateDisableDownload {
 		return providers, nil
 	}
 
-	for _, repoName := range options.GithubTemplateRepo {
+	for _, repoName := range options.GitHubTemplateRepo {
 		owner, repo, err := getOwnerAndRepo(repoName)
 		if err != nil {
 			gologger.Error().Msgf("%s", err)
 			continue
 		}
-		githubRepo, err := getGithubRepo(gitHubClient, owner, repo, options.GithubToken)
+		githubRepo, err := getGitHubRepo(gitHubClient, owner, repo, options.GitHubToken)
 		if err != nil {
 			gologger.Error().Msgf("%s", err)
 			continue
 		}
-		customTemplateRepo := &customTemplateGithubRepo{
+		customTemplateRepo := &customTemplateGitHubRepo{
 			owner:       owner,
 			reponame:    repo,
 			gitCloneURL: githubRepo.GetCloneURL(),
-			githubToken: options.GithubToken,
+			githubToken: options.GitHubToken,
 		}
 		providers = append(providers, customTemplateRepo)
 	}
@@ -104,7 +104,7 @@ func getOwnerAndRepo(reponame string) (owner string, repo string, err error) {
 }
 
 // returns *github.Repository if passed github repo name
-func getGithubRepo(gitHubClient *github.Client, repoOwner, repoName, githubToken string) (*github.Repository, error) {
+func getGitHubRepo(gitHubClient *github.Client, repoOwner, repoName, githubToken string) (*github.Repository, error) {
 	var retried bool
 getRepo:
 	repo, _, err := gitHubClient.Repositories.Get(context.Background(), repoOwner, repoName)
@@ -123,7 +123,7 @@ getRepo:
 }
 
 // download the git repo to a given path
-func (ctr *customTemplateGithubRepo) cloneRepo(clonePath, githubToken string) error {
+func (ctr *customTemplateGitHubRepo) cloneRepo(clonePath, githubToken string) error {
 	r, err := git.PlainClone(clonePath, false, &git.CloneOptions{
 		URL:  ctr.gitCloneURL,
 		Auth: getAuth(ctr.owner, githubToken),
@@ -138,7 +138,7 @@ func (ctr *customTemplateGithubRepo) cloneRepo(clonePath, githubToken string) er
 }
 
 // performs the git pull on given repo
-func (ctr *customTemplateGithubRepo) pullChanges(repoPath, githubToken string) error {
+func (ctr *customTemplateGitHubRepo) pullChanges(repoPath, githubToken string) error {
 	r, err := git.PlainOpen(repoPath)
 	if err != nil {
 		return err
@@ -155,7 +155,7 @@ func (ctr *customTemplateGithubRepo) pullChanges(repoPath, githubToken string) e
 }
 
 // All Custom github repos are cloned in the format of 'reponame-owner' for uniqueness
-func (ctr *customTemplateGithubRepo) getLocalRepoClonePath(downloadPath string) string {
+func (ctr *customTemplateGitHubRepo) getLocalRepoClonePath(downloadPath string) string {
 	return filepath.Join(downloadPath, ctr.reponame+"-"+ctr.owner)
 }
 

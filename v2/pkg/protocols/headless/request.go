@@ -227,7 +227,7 @@ func (request *Request) executeFuzzingRule(input *contextargs.Context, payloads 
 	return nil
 }
 
-// getLastNaviationURL returns last successfully navigated URL
+// getLastNavigationURL returns last successfully navigated URL
 func (request *Request) getLastNavigationURLWithLog(reqLog map[string]string) string {
 	for i := len(request.Steps) - 1; i >= 0; i-- {
 		if request.Steps[i].ActionType.ActionType == engine.ActionNavigate {

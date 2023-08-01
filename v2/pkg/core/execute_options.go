@@ -29,7 +29,7 @@ func (e *Engine) ExecuteWithResults(templatesList []*templates.Template, target 
 	return e.ExecuteScanWithOpts(templatesList, target, false)
 }
 
-// ExecuteScanWithOpts executes scan with given scanStatergy
+// ExecuteScanWithOpts executes scan with given scanStrategy
 func (e *Engine) ExecuteScanWithOpts(templatesList []*templates.Template, target InputProvider, noCluster bool) *atomic.Bool {
 	results := &atomic.Bool{}
 	selfcontainedWg := &sync.WaitGroup{}
