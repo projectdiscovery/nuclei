@@ -1,13 +1,13 @@
 package executer
 
 import (
-	"fmt"
 	"io"
 	"strconv"
 	"strings"
 	"sync/atomic"
 
 	"github.com/dop251/goja"
+	"github.com/logrusorgru/aurora"
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
@@ -127,6 +127,7 @@ func (f *FlowExecutor) Compile(callback func(event *output.InternalWrappedEvent)
 			for _, id := range ids {
 				req, ok := reqMap[id]
 				if !ok {
+					gologger.Error().Msgf("invalid request id '%s' provided", id)
 					// compile error
 					compileErrors = append(compileErrors, ErrInvalidRequestID.Msgf(id))
 					return
@@ -142,7 +143,6 @@ func (f *FlowExecutor) Compile(callback func(event *output.InternalWrappedEvent)
 								f.options.TemplateCtx.Set(k, v)
 							}
 							f.jsVM.Set("template", f.options.TemplateCtx.GetAll())
-							f.jsVM.Set("values", "adding new var in execution")
 						}
 					}
 				})
@@ -161,8 +161,27 @@ func (f *FlowExecutor) Compile(callback func(event *output.InternalWrappedEvent)
 	// create a new js vm/runtime
 	f.jsVM = goja.New()
 	if err := f.jsVM.Set("log", func(call goja.FunctionCall) goja.Value {
-		arg := call.Argument(0)
-		fmt.Println("log called with", arg.Export())
+		arg := call.Argument(0).Export()
+		gologger.DefaultLogger.Print().Msgf("[%v] %v", aurora.BrightCyan("JS"), arg)
+		return goja.Null()
+	}); err != nil {
+		return err
+	}
+
+	if err := f.jsVM.Set("poll", func(call goja.FunctionCall) goja.Value {
+		var m map[string]interface{} = f.options.TemplateCtx.GetAll()
+		f.jsVM.Set("template", m)
+		return goja.Null()
+	}); err != nil {
+		return err
+	}
+
+	if err := f.jsVM.Set("set", func(call goja.FunctionCall) goja.Value {
+		varName := call.Argument(0).Export()
+		varValue := call.Argument(1).Export()
+		f.options.TemplateCtx.Set(varName.(string), varValue)
+		// gologger.Debug().Msgf("JS: set %s to %s", varName, varValue)
+		// fmt.Printf("log: set %s to %s\n", varName, varValue)
 		return goja.Null()
 	}); err != nil {
 		return err
