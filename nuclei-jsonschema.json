@@ -1311,7 +1311,7 @@
             }
           },
           "type": "object",
-          "title": "payloads for the webosocket request",
+          "title": "payloads for the websocket request",
           "description": "Payloads contains any payloads for the current request"
         }
       },

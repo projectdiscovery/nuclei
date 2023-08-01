@@ -14,5 +14,5 @@
 // detection.
 //
 // The logic is very simple and can be further improved to increase the coverage of
-// this mode of nuclei exection.
+// this mode of nuclei execution.
 package automaticscan

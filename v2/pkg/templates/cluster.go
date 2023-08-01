@@ -29,7 +29,7 @@ import (
 // to the first individual request is compared for equality.
 // The equality check is performed as described below -
 //
-// Cases where clustering is not perfomed (request is considered different)
+// Cases where clustering is not performed (request is considered different)
 //   - If request contains payloads,raw,body,unsafe,req-condition,name attributes
 //   - If request methods,max-redirects,cookie-reuse,redirects are not equal
 //   - If request paths aren't identical.

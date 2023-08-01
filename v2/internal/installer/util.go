@@ -36,7 +36,7 @@ func GetNewTemplatesInVersions(versions ...string) []string {
 			continue
 		}
 
-		arr, err := getNewAdditionsFileFromGithub(v)
+		arr, err := getNewAdditionsFileFromGitHub(v)
 		if err != nil {
 			gologger.Error().Msgf("failed to fetch new additions for %v got: %v", v, err)
 			continue
@@ -46,7 +46,7 @@ func GetNewTemplatesInVersions(versions ...string) []string {
 	return allTemplates
 }
 
-func getNewAdditionsFileFromGithub(version string) ([]string, error) {
+func getNewAdditionsFileFromGitHub(version string) ([]string, error) {
 	resp, err := retryableHttpClient.Get(fmt.Sprintf("https://raw.githubusercontent.com/projectdiscovery/nuclei-templates/%s/.new-additions", version))
 	if err != nil {
 		return nil, err

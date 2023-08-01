@@ -172,7 +172,7 @@ func (h *httpInteractshStopAtFirstMatchRequest) Execute(filePath string) error {
 	if err != nil {
 		return err
 	}
-	// polling is asyncronous, so the interactions may be retrieved after the first request
+	// polling is asynchronous, so the interactions may be retrieved after the first request
 	return expectResultsCount(results, 1)
 }
 

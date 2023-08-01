@@ -129,7 +129,7 @@ func (c Catalog) ResolvePath(templateName, second string) (string, error) {
 
 	// if c second path is given, it's c folder and we join the two and check against keys
 	if second != "" {
-		// Note: Do not replace `path` with `filepath` since filepath is aware of Os path seperator
+		// Note: Do not replace `path` with `filepath` since filepath is aware of Os path separator
 		// and we only see `/` in s3 paths changing it to filepath cause build fail and other errors
 		target := path.Join(path.Dir(second), templateName)
 		for _, key := range keys {

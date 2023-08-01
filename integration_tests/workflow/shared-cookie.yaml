@@ -11,5 +11,5 @@ workflows:
   - template: workflow/http-2.yaml
   # store cookie in native browser context
   - template: workflow/headless-1.yaml
-  # retrive 2 standard library cookies + headless cookie
+  # retrieve 2 standard library cookies + headless cookie
   - template: workflow/http-3.yaml

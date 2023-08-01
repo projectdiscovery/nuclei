@@ -17,7 +17,7 @@ LIMIT=30
 BEFORE="30 mins ago"
 WORKFLOW="Build Test"
 
-# You can add multiple patterns seperated by |
+# You can add multiple patterns separated by |
 GREP_ERROR_PATTERN='Test "http/interactsh.yaml" failed'
 
 #Set fonts for Help.
@@ -81,7 +81,7 @@ function retry_failed_jobs() {
     select ( .conclusion=="failure" ) |
     select ( .updatedAt > $date) ' --arg date "$date" --arg branch "$BRANCH" --arg workflow "$WORKFLOW" | jq .databaseId)
 
-    # convert line seperated by space to array
+    # convert line separated by space to array
     eval "arr=($workflowIds)"
 
     if [[ -z $arr ]]

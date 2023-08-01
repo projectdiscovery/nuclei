@@ -141,8 +141,8 @@ func init() {
 	TemplateDoc.Fields[16].Name = "constants"
 	TemplateDoc.Fields[16].Type = "map[string]interface{}"
 	TemplateDoc.Fields[16].Note = ""
-	TemplateDoc.Fields[16].Description = "Constants contains any scalar costant for the current template"
-	TemplateDoc.Fields[16].Comments[encoder.LineComment] = "Constants contains any scalar costant for the current template"
+	TemplateDoc.Fields[16].Description = "Constants contains any scalar constant for the current template"
+	TemplateDoc.Fields[16].Comments[encoder.LineComment] = "Constants contains any scalar constant for the current template"
 
 	MODELInfoDoc.Type = "model.Info"
 	MODELInfoDoc.Comments[encoder.LineComment] = " Info contains metadata information about a template"
