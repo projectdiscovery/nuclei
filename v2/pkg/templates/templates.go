@@ -47,6 +47,18 @@ type Template struct {
 	//   - value: exampleInfoStructure
 	Info model.Info `yaml:"info" json:"info" jsonschema:"title=info for the template,description=Info contains metadata for the template"`
 	// description: |
+	//   Flow contains the execution flow for the template.
+	// examples:
+	//   - flow: |
+	// 		for region in regions {
+	//		    http(0)
+	//		 }
+	//		 for vpc in vpcs {
+	//		    http(1)
+	//		 }
+	//
+	Flow string `yaml:"flow,omitempty" json:"flow,omitempty" jsonschema:"title=template execution flow in js,description=Flow contains js code which defines how the template should be executed"`
+	// description: |
 	//   Requests contains the http request to make in the template.
 	//   WARNING: 'requests' will be deprecated and will be removed in a future release. Please use 'http' instead.
 	// examples:

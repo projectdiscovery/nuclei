@@ -91,12 +91,14 @@ type ExecutorOptions struct {
 	TemplateCtx *contextargs.Context
 	// ProtocolType is the type of the template
 	ProtocolType templateTypes.ProtocolType
+	// Flow is execution flow for the template (written in javascript)
+	Flow string
 }
 
 // AddTemplateVars adds vars to template context with given template type as prefix
 // this method is no-op if template is not multi protocol
 func (e *ExecutorOptions) AddTemplateVars(templateType templateTypes.ProtocolType, vars map[string]interface{}) {
-	if e.ProtocolType != templateTypes.MultiProtocol {
+	if e.ProtocolType != templateTypes.MultiProtocol || e.Flow != "" {
 		// no-op if not multi protocol template
 		return
 	}

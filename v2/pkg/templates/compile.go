@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"reflect"
+	"strings"
 
 	"github.com/pkg/errors"
 	"gopkg.in/yaml.v2"
@@ -236,6 +237,11 @@ func ParseTemplateFromReader(reader io.Reader, preprocessor Preprocessor, option
 
 	if template.Variables.Len() > 0 {
 		options.Variables = template.Variables
+	}
+
+	// TODO: we should add a syntax check here
+	if strings.TrimSpace(template.Flow) != "" {
+		options.Flow = template.Flow
 	}
 
 	// create empty context args for template scope
