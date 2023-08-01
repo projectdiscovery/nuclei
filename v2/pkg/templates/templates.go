@@ -264,6 +264,11 @@ func (template *Template) addProtocolsToQueue(keys ...string) {
 
 // isMultiProtocol checks if the template is a multi protocol template
 func (template *Template) isMultiProtocol() bool {
+	// Review: if template contains more than 1 protocol request (doesn't matter if it is same protocol or different)
+	// it is considered as multi protocol template
+	if template.Flow != "" {
+		return false
+	}
 	counter := len(template.RequestsDNS) + len(template.RequestsFile) +
 		len(template.RequestsHTTP) + len(template.RequestsHeadless) +
 		len(template.RequestsNetwork) + len(template.RequestsSSL) +

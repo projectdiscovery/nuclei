@@ -1,14 +1,20 @@
 package executer
 
 import (
+	"fmt"
+	"io"
 	"strconv"
+	"strings"
 	"sync/atomic"
 
+	"github.com/dop251/goja"
+	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/contextargs"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/generators"
 	errorutil "github.com/projectdiscovery/utils/errors"
+	fileutil "github.com/projectdiscovery/utils/file"
 	mapsutil "github.com/projectdiscovery/utils/maps"
 	"go.uber.org/multierr"
 )
@@ -23,6 +29,8 @@ type FlowExecutor struct {
 	options      *protocols.ExecutorOptions
 	allErrs      mapsutil.SyncLockMap[string, error]
 	results      *atomic.Bool
+	jsVM         *goja.Runtime
+	program      *goja.Program
 }
 
 // Init initializes the flow executor all dependencies
@@ -54,8 +62,17 @@ func (f *FlowExecutor) Compile(callback func(event *output.InternalWrappedEvent)
 	// constants
 	constants := f.options.Constants
 	allVars := generators.MergeMaps(optionVars, constants)
-	// merge all variables
 	f.options.TemplateCtx.Merge(allVars)
+	// TODO: this is another sandbox bypass we only expand in generators.go
+	// but we require it now in multiple places (move sandbox and payload read logic to config.DefaultConfig())
+	// merge all variables
+	for k, v := range f.options.TemplateCtx.GetAll() {
+		if str, ok := v.(string); ok && len(str) < 150 && fileutil.FileExists(str) {
+			if value, err := f.ReadDataFromFile(str); err == nil {
+				f.options.TemplateCtx.Set(k, value)
+			}
+		}
+	}
 
 	compileErrors := []error{}
 
@@ -124,6 +141,8 @@ func (f *FlowExecutor) Compile(callback func(event *output.InternalWrappedEvent)
 							for k, v := range result.OperatorsResult.DynamicValues {
 								f.options.TemplateCtx.Set(k, v)
 							}
+							f.jsVM.Set("template", f.options.TemplateCtx.GetAll())
+							f.jsVM.Set("values", "adding new var in execution")
 						}
 					}
 				})
@@ -139,11 +158,67 @@ func (f *FlowExecutor) Compile(callback func(event *output.InternalWrappedEvent)
 		return multierr.Combine(compileErrors...)
 	}
 
+	// create a new js vm/runtime
+	f.jsVM = goja.New()
+	if err := f.jsVM.Set("log", func(call goja.FunctionCall) goja.Value {
+		arg := call.Argument(0)
+		fmt.Println("log called with", arg.Export())
+		return goja.Null()
+	}); err != nil {
+		return err
+	}
+
+	var m map[string]interface{} = f.options.TemplateCtx.GetAll()
+
+	if err := f.jsVM.Set("template", m); err != nil {
+		// all template variables are available in js template object
+		return err
+	}
+
+	// register all protocols
+	for name, fn := range VarRegistry {
+		if err := f.jsVM.Set(name, fn); err != nil {
+			return err
+		}
+	}
+
+	program, err := goja.Compile("flow", f.options.Flow, false)
+	if err != nil {
+		return err
+	}
+	f.program = program
+
 	return nil
 }
 
 // Execute executes the flow
 func (f *FlowExecutor) Execute() (bool, error) {
 	// pass flow and execute the js vm and handle errors
+	value, err := f.jsVM.RunProgram(f.program)
+	if err != nil {
+		return false, errorutil.NewWithErr(err).Msgf("failed to execute flow\n%v\n", f.options.Flow)
+	}
+	gologger.Verbose().Msgf("Flow result: %s", value.String())
+
 	return f.results.Load(), nil
+}
+
+func (f *FlowExecutor) ReadDataFromFile(payload string) ([]string, error) {
+	values := []string{}
+	reader, err := f.options.Catalog.OpenFile(payload)
+	if err != nil {
+		return values, err
+	}
+	defer reader.Close()
+	bin, err := io.ReadAll(reader)
+	if err != nil {
+		return values, err
+	}
+	for _, line := range strings.Split(string(bin), "\n") {
+		line = strings.TrimSpace(line)
+		if line != "" {
+			values = append(values, line)
+		}
+	}
+	return values, nil
 }

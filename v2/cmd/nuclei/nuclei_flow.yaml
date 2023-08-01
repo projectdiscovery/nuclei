@@ -1,0 +1,69 @@
+id: vpc-logging-not-enabled
+info:
+  name: VPC flow logging Not enabled
+  author: princechaddha
+  severity: low
+  description: |
+    Checks if the Amazon CloudWatch alarmed is enabled for Sign In without MFA
+  reference:
+    - https://docs.aws.amazon.com/AWSEC2/latest/APIReference/API_DescribeVpcs.html
+    - https://docs.aws.amazon.com/AWSEC2/latest/APIReference/API_DescribeFlowLogs.html
+  remediation: Enabling VPC Flow Logs
+  tags: cloud,devops,aws,amazon,vpc,ec2,logging
+
+self-contained: true
+signature: aws
+variables:
+  service: ec2
+  regions: regions.txt
+
+flow:
+  vpc_logging.js
+
+http:
+  - id: extract-vpcs
+    raw:
+     - |
+        POST https://{{service}}.{{region}}.amazonaws.com/ HTTP/1.1
+        Host: {{service}}.{{region}}.amazonaws.com
+        Content-Type: application/x-www-form-urlencoded; charset=utf-8
+        User-Agent: aws-cli/2.9.15 Python/3.11.1 Darwin/22.3.0 source/arm64 prompt/off command/ec2.describe-vpcs
+
+        Action=DescribeVpcs&Version=2016-11-15
+    
+    extractors:
+      - type: regex
+        name: vpcs
+        part: body
+        internal: true
+        group: 1
+        regex:
+          - '<vpcId>([a-z-0-9]+)<\/vpcId>'
+
+  - id: extract-flow-logs
+    raw:
+      - |
+        POST https://{{service}}.{{region}}.amazonaws.com/ HTTP/1.1
+        Host: {{service}}.{{region}}.amazonaws.com
+        Content-Type: application/x-www-form-urlencoded; charset=utf-8
+        User-Agent: aws-cli/2.9.15 Python/3.11.1 Darwin/22.3.0 source/arm64 prompt/off command/ec2.describe-flow-logs
+
+        Action=DescribeFlowLogs&Version=2016-11-15&Filter.1.Name=resource-id&Filter.1.Value.1={{vpcId}}
+
+    iterate-all: true
+    matchers-condition: and
+    matchers:
+      - type: word
+        part: body
+        words:
+          - "</DescribeFlowLogsResponse>"
+
+      - type: word
+        words:
+          - "<flowLogId>"
+        negative: true
+
+    extractors:
+      - type: dsl
+        dsl:
+          - '"VPC flow logging is not enabled for " + vpcId + " in " + region + " region"'

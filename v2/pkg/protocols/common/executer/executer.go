@@ -14,6 +14,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/contextargs"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/helpers/writer"
 	"github.com/projectdiscovery/nuclei/v2/pkg/templates/types"
+	errorutil "github.com/projectdiscovery/utils/errors"
 	mapsutil "github.com/projectdiscovery/utils/maps"
 )
 
@@ -87,6 +88,7 @@ func (e *Executer) Execute(input *contextargs.Context) (bool, error) {
 
 // ExecuteWithResults executes the protocol requests and returns results instead of writing them.
 func (e *Executer) ExecuteWithResults(input *contextargs.Context, callback protocols.OutputEventCallback) error {
+	gologger.Info().Msgf("[%s] Running on %s\n", e.options.TemplateID, input.MetaInput.PrettyPrint())
 	userCallback := func(event *output.InternalWrappedEvent) {
 		if event != nil {
 			callback(event)
@@ -165,6 +167,7 @@ func (e *Executer) executeFlow(input *contextargs.Context, callback protocols.Ou
 		if req.Type() == types.MultiProtocol {
 			// multiprotocol execution is also mutually exclusive with flow and is slightly advanced version of executeWithCallbac()
 			// if request type is multiprotocol , then array does not contain any other request type
+			gologger.Info().Msgf("reqtype is %v", req.Type().String())
 			return e.executeWithCallback(input, nil)
 		}
 		switch req.Type() {
@@ -197,7 +200,7 @@ func (e *Executer) executeFlow(input *contextargs.Context, callback protocols.Ou
 	}
 
 	if err := flow.Compile(callback); err != nil {
-		return false, err
+		return false, errorutil.NewWithErr(err).Msgf("could not compile flow")
 	}
 
 	return flow.Execute()
