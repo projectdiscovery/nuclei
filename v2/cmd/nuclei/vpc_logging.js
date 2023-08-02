@@ -18,3 +18,8 @@ template["regions"].forEach(element => {
 //     set("vpcId", element) // set variable in template context
 //     http("extract-flow-logs")
 // });
+
+template["regions"].forEach(element => {
+    set("region", element) // set variable in template context
+    http();
+});

@@ -15,10 +15,22 @@ self-contained: true
 signature: aws
 variables:
   service: ec2
-  regions: regions.txt
+  regions: 
+    - us-east-1
+    - us-west-1
+    - ap-south-1
 
-flow:
-  vpc_logging.js
+flow: |
+  template["regions"].forEach(region => {
+    set("region",region);
+    http("extract-vpcs");
+    poll();
+    template["vpcs"].forEach(vpcId => {
+        set("vpcId",vpcId);
+        http("extract-flow-logs");
+    })
+  });
+  
 
 http:
   - id: extract-vpcs

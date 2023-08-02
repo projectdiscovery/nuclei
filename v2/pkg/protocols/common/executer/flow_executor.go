@@ -53,10 +53,7 @@ func (f *FlowExecutor) Compile(callback func(event *output.InternalWrappedEvent)
 			return nil
 		})
 	}
-	// variables
-	f.options.Variables.ForEach(func(key string, value interface{}) {
-		f.options.TemplateCtx.Set(key, value)
-	})
+	f.options.TemplateCtx.Merge(f.options.Variables.GetAll())
 	// cli options
 	optionVars := generators.BuildPayloadFromOptions(f.options.Options)
 	// constants
