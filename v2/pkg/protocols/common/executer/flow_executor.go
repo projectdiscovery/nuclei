@@ -99,6 +99,7 @@ func (f *FlowExecutor) Compile(callback func(event *output.InternalWrappedEvent)
 							callback(result)
 							// export dynamic values from operators (i.e internal:true)
 							// add add it to template context
+							// this is a conflicting behaviour with iterate-all
 							if result.HasOperatorResult() && len(result.OperatorsResult.DynamicValues) > 0 {
 								for k, v := range result.OperatorsResult.DynamicValues {
 									f.options.TemplateCtx.Set(k, v)

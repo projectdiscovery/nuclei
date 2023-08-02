@@ -426,6 +426,7 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 		var gotErr error
 		var skip bool
 		if len(gotDynamicValues) > 0 {
+			// fmt.Printf("dynamic values %v and templateCtx values %v\n", gotDynamicValues, request.options.TemplateCtx.GetAll())
 			operators.MakeDynamicValuesCallback(gotDynamicValues, request.IterateAll, func(data map[string]interface{}) bool {
 				if skip, gotErr = executeFunc(inputData, payloads, data); skip || gotErr != nil {
 					return true
