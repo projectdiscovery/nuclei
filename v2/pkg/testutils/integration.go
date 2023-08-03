@@ -77,6 +77,36 @@ func RunNucleiBareArgsAndGetResults(debug bool, extra ...string) ([]string, erro
 	return parts, nil
 }
 
+// RunNucleiArgsAndGetErrors returns a list of errors in nuclei output (ERR,WRN,FTL)
+func RunNucleiArgsAndGetErrors(debug bool, env []string, extra ...string) ([]string, error) {
+	cmd := exec.Command("./nuclei")
+	extra = append(extra, ExtraDebugArgs...)
+	cmd.Env = append(os.Environ(), env...)
+	cmd.Args = append(cmd.Args, extra...)
+	cmd.Args = append(cmd.Args, "-duc") // disable auto updates
+	cmd.Args = append(cmd.Args, "-interactions-poll-duration", "1")
+	cmd.Args = append(cmd.Args, "-interactions-cooldown-period", "10")
+	cmd.Args = append(cmd.Args, "-allow-local-file-access")
+	cmd.Args = append(cmd.Args, "-nc") // disable color
+	data, err := cmd.CombinedOutput()
+	if debug {
+		fmt.Println(string(data))
+	}
+	results := []string{}
+	for _, v := range strings.Split(string(data), "\n") {
+		line := strings.TrimSpace(v)
+		switch {
+		case strings.HasPrefix(line, "[ERR]"):
+			results = append(results, line)
+		case strings.HasPrefix(line, "[WRN]"):
+			results = append(results, line)
+		case strings.HasPrefix(line, "[FTL]"):
+			results = append(results, line)
+		}
+	}
+	return results, err
+}
+
 var templateLoaded = regexp.MustCompile(`(?:Templates|Workflows) loaded[^:]*: (\d+)`)
 
 // RunNucleiBinaryAndGetLoadedTemplates returns a list of results for a template
