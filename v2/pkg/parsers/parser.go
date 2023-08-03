@@ -80,7 +80,6 @@ func isTemplateInfoMetadataMatch(tagFilter *filter.TagFilter, template *template
 	match, err := tagFilter.Match(template, extraTags)
 
 	if err == filter.ErrExcluded {
-
 		return false, filter.ErrExcluded
 	}
 
@@ -167,8 +166,11 @@ func ParseTemplate(templatePath string, catalog catalog.Catalog) (*templates.Tem
 	template := &templates.Template{}
 
 	// check if the template is verified
-	if signer.DefaultVerifier != nil {
-		template.Verified, _ = signer.Verify(signer.DefaultVerifier, data)
+	for _, verifier := range signer.DefaultVerifiers {
+		if template.Verified {
+			break
+		}
+		template.Verified, _ = signer.Verify(verifier, data)
 	}
 
 	switch config.GetTemplateFormatFromExt(templatePath) {

@@ -21,7 +21,7 @@
   <a href="#工作流程">工作流程</a> •
   <a href="#安装Nuclei">安装</a> •
   <a href="#对于安全工程师">对于安全工程师</a> •
-  <a href="#对于开发者和组织">对于开发者</a> •
+  <a href="#对于开发和组织">对于开发者</a> •
   <a href="https://nuclei.projectdiscovery.io/nuclei/get-started/">文档</a> •
   <a href="#c致谢">致谢</a> •
   <a href="https://nuclei.projectdiscovery.io/faq/nuclei/">常见问题</a> •
@@ -52,7 +52,7 @@ Nuclei使用零误报的定制模板向目标发送请求，同时可以对主�
 
 # 安装Nuclei
 
-Nuclei需要**go1.19**才能安装成功。执行下列命令安装最新版本的Nuclei
+Nuclei需要**go1.20**才能安装成功。执行下列命令安装最新版本的Nuclei
 
 ```sh
 go install -v github.com/projectdiscovery/nuclei/v2/cmd/nuclei@latest
@@ -303,7 +303,7 @@ Nuclei通过增加手动、自动的过程，极大地改变了安全评估的�
 渗透测试员可以使用公共模板或者自定义模板来更快的完成渗透测试，特别是漏洞验证时，可以轻松的验证漏洞是否修复。
 
 - 轻松根据您的要求创建标准清单（例如：OWASP TOP 10）
-- 通过[FUZZ](https://nuclei.projectdiscovery.io/templating-guide/#advance-fuzzing)和[工作流](https://nuclei.projectdiscovery.io/templating-guide/#workflows)等功能，可以使用Nuclei完成复杂的手动步骤和重复性渗透测试
+- 通过[FUZZ](https://nuclei.projectdiscovery.io/templating-guide/protocols/http-fuzzing/)和[工作流](https://nuclei.projectdiscovery.io/templating-guide/workflows/)等功能，可以使用Nuclei完成复杂的手动步骤和重复性渗透测试
 - 只需要重新运行Nuclei即可验证漏洞修复情况
 
 </td>

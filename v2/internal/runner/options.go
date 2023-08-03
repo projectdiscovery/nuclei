@@ -20,8 +20,11 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/protocolinit"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/utils/vardump"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/headless/engine"
+	"github.com/projectdiscovery/nuclei/v2/pkg/templates/signer"
+	protocoltypes "github.com/projectdiscovery/nuclei/v2/pkg/templates/types"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 	fileutil "github.com/projectdiscovery/utils/file"
+	"github.com/projectdiscovery/utils/generic"
 	logutil "github.com/projectdiscovery/utils/log"
 	stringsutil "github.com/projectdiscovery/utils/strings"
 )
@@ -48,6 +51,7 @@ func ParseOptions(options *types.Options) {
 
 	// Read the inputs and configure the logging
 	configureOutput(options)
+
 	// Show the user the banner
 	showBanner()
 
@@ -74,6 +78,10 @@ func ParseOptions(options *types.Options) {
 	// Load the resolvers if user asked for them
 	loadResolvers(options)
 
+	if err := loadTemplateSignaturesKeys(options); err != nil {
+		gologger.Warning().Msgf("Could not initialize code template verifier: %s\n", err)
+	}
+
 	err := protocolinit.Init(options)
 	if err != nil {
 		gologger.Fatal().Msgf("Could not initialize protocols: %s\n", err)
@@ -89,6 +97,10 @@ func ParseOptions(options *types.Options) {
 		if len(options.UncoverEngine) == 0 {
 			options.UncoverEngine = append(options.UncoverEngine, "shodan")
 		}
+	}
+
+	if options.OfflineHTTP {
+		options.DisableHTTPProbe = true
 	}
 }
 
@@ -124,11 +136,11 @@ func validateOptions(options *types.Options) error {
 	}
 
 	// Verify if any of the client certificate options were set since it requires all three to work properly
-	if len(options.ClientCertFile) > 0 || len(options.ClientKeyFile) > 0 || len(options.ClientCAFile) > 0 {
-		if len(options.ClientCertFile) == 0 || len(options.ClientKeyFile) == 0 || len(options.ClientCAFile) == 0 {
+	if options.HasClientCertificates() {
+		if generic.EqualsAny("", options.ClientCertFile, options.ClientKeyFile, options.ClientCAFile) {
 			return errors.New("if a client certification option is provided, then all three must be provided")
 		}
-		validateCertificatePaths([]string{options.ClientCertFile, options.ClientKeyFile, options.ClientCAFile})
+		validateCertificatePaths(options.ClientCertFile, options.ClientKeyFile, options.ClientCAFile)
 	}
 	// Verify AWS secrets are passed if a S3 template bucket is passed
 	if options.AwsBucketName != "" && options.UpdateTemplates {
@@ -147,7 +159,7 @@ func validateOptions(options *types.Options) error {
 	}
 
 	// Verify that all GitLab options are provided if the GitLab server or token is provided
-	if options.GitLabToken != "" && options.UpdateTemplates {
+	if len(options.GitLabTemplateRepositoryIDs) != 0 && options.UpdateTemplates {
 		missing := validateMissingGitLabOptions(options)
 		if missing != nil {
 			return fmt.Errorf("gitlab server details are missing. Please provide %s", strings.Join(missing, ","))
@@ -330,9 +342,9 @@ func validateTemplatePaths(templatesDirectory string, templatePaths, workflowPat
 	}
 }
 
-func validateCertificatePaths(certificatePaths []string) {
+func validateCertificatePaths(certificatePaths ...string) {
 	for _, certificatePath := range certificatePaths {
-		if _, err := os.Stat(certificatePath); os.IsNotExist(err) {
+		if !fileutil.FileExists(certificatePath) {
 			// The provided path to the PEM certificate does not exist for the client authentication. As this is
 			// required for successful authentication, log and return an error
 			gologger.Fatal().Msgf("The given path (%s) to the certificate does not exist!", certificatePath)
@@ -345,6 +357,9 @@ func validateCertificatePaths(certificatePaths []string) {
 func readEnvInputVars(options *types.Options) {
 	if strings.EqualFold(os.Getenv("NUCLEI_CLOUD"), "true") {
 		options.Cloud = true
+
+		// TODO: disable files, offlinehttp, code
+		options.ExcludeProtocols = append(options.ExcludeProtocols, protocoltypes.CodeProtocol, protocoltypes.FileProtocol, protocoltypes.OfflineHTTPProtocol)
 	}
 	if options.CloudURL = os.Getenv("NUCLEI_CLOUD_SERVER"); options.CloudURL == "" {
 		options.CloudURL = "https://cloud-dev.nuclei.sh"
@@ -391,4 +406,37 @@ func readEnvInputVars(options *types.Options) {
 	options.AzureClientID = os.Getenv("AZURE_CLIENT_ID")
 	options.AzureClientSecret = os.Getenv("AZURE_CLIENT_SECRET")
 	options.AzureServiceURL = os.Getenv("AZURE_SERVICE_URL")
+
+	// Custom public keys for template verification
+	options.CodeTemplateSignaturePublicKey = os.Getenv("NUCLEI_SIGNATURE_PUBLIC_KEY")
+	options.CodeTemplateSignatureAlgorithm = os.Getenv("NUCLEI_SIGNATURE_ALGORITHM")
+}
+
+func loadTemplateSignaturesKeys(options *types.Options) error {
+	if options.CodeTemplateSignaturePublicKey == "" {
+		return errors.New("public key not defined")
+	}
+
+	if options.CodeTemplateSignatureAlgorithm == "" {
+		return errors.New("signature algorithm not defined")
+	}
+
+	signatureAlgo, err := signer.ParseAlgorithm(options.CodeTemplateSignatureAlgorithm)
+	if err != nil {
+		return err
+	}
+
+	signerOptions := &signer.Options{Algorithm: signatureAlgo}
+	if fileutil.FileExists(options.CodeTemplateSignaturePublicKey) {
+		signerOptions.PublicKeyName = options.CodeTemplateSignaturePublicKey
+	} else {
+		signerOptions.PublicKeyData = []byte(options.CodeTemplateSignaturePublicKey)
+	}
+
+	verifier, err := signer.NewVerifier(signerOptions)
+	if err != nil {
+		return err
+	}
+
+	return signer.AddToDefault(verifier)
 }

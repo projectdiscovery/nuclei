@@ -46,12 +46,12 @@ type Request struct {
 	Server string `yaml:"server,omitempty" json:"server,omitempty" jsonschema:"title=server url to execute the WHOIS request on,description=Server contains the server url to execute the WHOIS request on"`
 	// cache any variables that may be needed for operation.
 	client          *rdap.Client
-	options         *protocols.ExecuterOptions
+	options         *protocols.ExecutorOptions
 	parsedServerURL *url.URL
 }
 
 // Compile compiles the request generators preparing any requests possible.
-func (request *Request) Compile(options *protocols.ExecuterOptions) error {
+func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 	var err error
 	if request.Server != "" {
 		request.parsedServerURL, err = url.Parse(request.Server)
@@ -90,9 +90,10 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 	// generate variables
 	defaultVars := protocolutils.GenerateVariables(input.MetaInput.Input, false, nil)
 	optionVars := generators.BuildPayloadFromOptions(request.options.Options)
-	vars := request.options.Variables.Evaluate(generators.MergeMaps(defaultVars, optionVars, dynamicValues))
+	// add templatectx variables to varMap
+	vars := request.options.Variables.Evaluate(generators.MergeMaps(defaultVars, optionVars, dynamicValues, request.options.TemplateCtx.GetAll()))
 
-	variables := generators.MergeMaps(vars, defaultVars, optionVars, dynamicValues)
+	variables := generators.MergeMaps(vars, defaultVars, optionVars, dynamicValues, request.options.Constants)
 
 	if vardump.EnableVarDump {
 		gologger.Debug().Msgf("Protocol request variables: \n%s\n", vardump.DumpVariables(variables))
@@ -131,6 +132,10 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 	data["type"] = request.Type().String()
 	data["host"] = query
 	data["response"] = jsonDataString
+
+	// add response fields to template context and merge templatectx variables to output event
+	request.options.AddTemplateVars(request.Type(), data)
+	data = generators.MergeMaps(data, request.options.TemplateCtx.GetAll())
 
 	event := eventcreator.CreateEvent(request, data, request.options.Options.Debug || request.options.Options.DebugResponse)
 	if request.options.Options.Debug || request.options.Options.DebugResponse {

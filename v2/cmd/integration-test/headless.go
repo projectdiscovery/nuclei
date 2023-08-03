@@ -11,12 +11,13 @@ import (
 )
 
 var headlessTestcases = map[string]testutils.TestCase{
-	"headless/headless-basic.yaml":          &headlessBasic{},
-	"headless/headless-header-action.yaml":  &headlessHeaderActions{},
-	"headless/headless-extract-values.yaml": &headlessExtractValues{},
-	"headless/headless-payloads.yaml":       &headlessPayloads{},
-	"headless/variables.yaml":               &headlessVariables{},
-	"headless/file-upload.yaml":             &headlessFileUpload{},
+	"protocols/headless/headless-basic.yaml":              &headlessBasic{},
+	"protocols/headless/headless-header-action.yaml":      &headlessHeaderActions{},
+	"protocols/headless/headless-extract-values.yaml":     &headlessExtractValues{},
+	"protocols/headless/headless-payloads.yaml":           &headlessPayloads{},
+	"protocols/headless/variables.yaml":                   &headlessVariables{},
+	"protocols/headless/file-upload.yaml":                 &headlessFileUpload{},
+	"protocols/headless/headless-header-status-test.yaml": &headlessHeaderStatus{},
 }
 
 type headlessBasic struct{}
@@ -152,6 +153,18 @@ func (h *headlessFileUpload) Execute(filePath string) error {
 	defer ts.Close()
 
 	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, ts.URL, debug, "-headless")
+	if err != nil {
+		return err
+	}
+
+	return expectResultsCount(results, 1)
+}
+
+type headlessHeaderStatus struct{}
+
+// Execute executes a test case and returns an error if occurred
+func (h *headlessHeaderStatus) Execute(filePath string) error {
+	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, "https://scanme.sh", debug, "-headless")
 	if err != nil {
 		return err
 	}

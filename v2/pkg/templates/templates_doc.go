@@ -42,7 +42,7 @@ func init() {
 	TemplateDoc.Type = "Template"
 	TemplateDoc.Comments[encoder.LineComment] = " Template is a YAML input file which defines all the requests and"
 	TemplateDoc.Description = "Template is a YAML input file which defines all the requests and\n other metadata for a template."
-	TemplateDoc.Fields = make([]encoder.Doc, 16)
+	TemplateDoc.Fields = make([]encoder.Doc, 17)
 	TemplateDoc.Fields[0].Name = "id"
 	TemplateDoc.Fields[0].Type = "string"
 	TemplateDoc.Fields[0].Note = ""
@@ -138,6 +138,11 @@ func init() {
 	TemplateDoc.Fields[15].Note = ""
 	TemplateDoc.Fields[15].Description = "Variables contains any variables for the current request."
 	TemplateDoc.Fields[15].Comments[encoder.LineComment] = "Variables contains any variables for the current request."
+	TemplateDoc.Fields[16].Name = "constants"
+	TemplateDoc.Fields[16].Type = "map[string]interface{}"
+	TemplateDoc.Fields[16].Note = ""
+	TemplateDoc.Fields[16].Description = "Constants contains any scalar costant for the current template"
+	TemplateDoc.Fields[16].Comments[encoder.LineComment] = "Constants contains any scalar costant for the current template"
 
 	MODELInfoDoc.Type = "model.Info"
 	MODELInfoDoc.Comments[encoder.LineComment] = " Info contains metadata information about a template"
@@ -418,7 +423,7 @@ func init() {
 			Value: "HTTP response headers in name:value format",
 		},
 	}
-	HTTPRequestDoc.Fields = make([]encoder.Doc, 30)
+	HTTPRequestDoc.Fields = make([]encoder.Doc, 31)
 	HTTPRequestDoc.Fields[0].Name = "path"
 	HTTPRequestDoc.Fields[0].Type = "[]string"
 	HTTPRequestDoc.Fields[0].Note = ""
@@ -597,6 +602,11 @@ func init() {
 	HTTPRequestDoc.Fields[29].Note = ""
 	HTTPRequestDoc.Fields[29].Description = "DigestAuthPassword specifies the password for digest authentication"
 	HTTPRequestDoc.Fields[29].Comments[encoder.LineComment] = "DigestAuthPassword specifies the password for digest authentication"
+	HTTPRequestDoc.Fields[30].Name = "disable-path-automerge"
+	HTTPRequestDoc.Fields[30].Type = "bool"
+	HTTPRequestDoc.Fields[30].Note = ""
+	HTTPRequestDoc.Fields[30].Description = "DisablePathAutomerge disables merging target url path with raw request path"
+	HTTPRequestDoc.Fields[30].Comments[encoder.LineComment] = "DisablePathAutomerge disables merging target url path with raw request path"
 
 	GENERATORSAttackTypeHolderDoc.Type = "generators.AttackTypeHolder"
 	GENERATORSAttackTypeHolderDoc.Comments[encoder.LineComment] = " AttackTypeHolder is used to hold internal type of the protocol"
@@ -670,6 +680,10 @@ func init() {
 	FUZZRuleDoc.AppearsIn = []encoder.Appearance{
 		{
 			TypeName:  "http.Request",
+			FieldName: "fuzzing",
+		},
+		{
+			TypeName:  "headless.Request",
 			FieldName: "fuzzing",
 		},
 	}

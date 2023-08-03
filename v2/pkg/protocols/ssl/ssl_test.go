@@ -28,7 +28,7 @@ func TestSSLProtocol(t *testing.T) {
 	require.Nil(t, err, "could not compile ssl request")
 
 	var gotEvent output.InternalEvent
-	ctxArgs := contextargs.NewWithInput("google.com:443")
+	ctxArgs := contextargs.NewWithInput("scanme.sh:443")
 	err = request.ExecuteWithResults(ctxArgs, nil, nil, func(event *output.InternalWrappedEvent) {
 		gotEvent = event.InternalEvent
 	})
@@ -37,6 +37,6 @@ func TestSSLProtocol(t *testing.T) {
 }
 
 func TestGetAddress(t *testing.T) {
-	address, _ := getAddress("https://google.com")
-	require.Equal(t, "google.com:443", address, "could not get correct address")
+	address, _ := getAddress("https://scanme.sh")
+	require.Equal(t, "scanme.sh:443", address, "could not get correct address")
 }

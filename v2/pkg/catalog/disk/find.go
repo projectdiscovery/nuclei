@@ -80,7 +80,7 @@ func (c *DiskCatalog) GetTemplatePath(target string) ([]string, error) {
 
 	// try to handle deprecated template paths
 	absPath := BackwardsCompatiblePaths(c.templatesDirectory, target)
-	if absPath != target {
+	if absPath != target && strings.TrimPrefix(absPath, c.templatesDirectory+string(filepath.Separator)) != target {
 		deprecatedPathsCounter++
 	}
 
@@ -212,10 +212,9 @@ func (c *DiskCatalog) findDirectoryMatches(absPath string, processed map[string]
 // Unless mode is silent warning message is printed
 func PrintDeprecatedPathsMsgIfApplicable(isSilent bool) {
 	if !updateutils.IsOutdated("v9.4.3", config.DefaultConfig.TemplateVersion) {
-		// template version is not older than 9.4.3
 		return
 	}
 	if deprecatedPathsCounter > 0 && !isSilent {
-		gologger.Print().Msgf("[%v] Found %v templates loaded with deprecated paths, update before v2.9.5 for continued support.\n", aurora.Yellow("WRN").String(), deprecatedPathsCounter)
+		gologger.Print().Msgf("[%v] Found %v template[s] loaded with deprecated paths, update before v3 for continued support.\n", aurora.Yellow("WRN").String(), deprecatedPathsCounter)
 	}
 }

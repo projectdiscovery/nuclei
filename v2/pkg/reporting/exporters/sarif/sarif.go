@@ -2,6 +2,7 @@ package sarif
 
 import (
 	"fmt"
+	"math"
 	"os"
 	"path"
 	"sync"
@@ -59,7 +60,7 @@ func (exporter *Exporter) addToolDetails() {
 	}
 	exporter.sarif.RegisterTool(driver)
 
-	reportloc := sarif.ArtifactLocation{
+	reportLocation := sarif.ArtifactLocation{
 		Uri: "file:///" + exporter.options.File,
 		Description: &sarif.Message{
 			Text: "Nuclei Sarif Report",
@@ -69,7 +70,7 @@ func (exporter *Exporter) addToolDetails() {
 	invocation := sarif.Invocation{
 		CommandLine:   os.Args[0],
 		Arguments:     os.Args[1:],
-		ResponseFiles: []sarif.ArtifactLocation{reportloc},
+		ResponseFiles: []sarif.ArtifactLocation{reportLocation},
 	}
 	exporter.sarif.RegisterToolInvocation(invocation)
 }
@@ -101,10 +102,10 @@ func (exporter *Exporter) Export(event *output.ResultEvent) error {
 	resultHeader := fmt.Sprintf("%v (%v) found on %v", event.Info.Name, event.TemplateID, event.Host)
 	resultLevel, vulnRating := exporter.getSeverity(severity)
 
-	// Extra metdata if generated sarif is uploaded to github security page
-	ghmeta := map[string]interface{}{}
-	ghmeta["tags"] = []string{"security"}
-	ghmeta["security-severity"] = vulnRating
+	// Extra metadata if generated sarif is uploaded to GitHub security page
+	ghMeta := map[string]interface{}{}
+	ghMeta["tags"] = []string{"security"}
+	ghMeta["security-severity"] = vulnRating
 
 	// rule contain details of template
 	rule := sarif.ReportingDescriptor{
@@ -114,10 +115,10 @@ func (exporter *Exporter) Export(event *output.ResultEvent) error {
 			// Points to template URL
 			Text: event.Info.Description + "\nMore details at\n" + event.TemplateURL + "\n",
 		},
-		Properties: ghmeta,
+		Properties: ghMeta,
 	}
 
-	// Github Uses ShortDescription as title
+	// GitHub Uses ShortDescription as title
 	if event.Info.Description != "" {
 		rule.ShortDescription = &sarif.MultiformatMessageString{
 			Text: resultHeader,
@@ -125,7 +126,7 @@ func (exporter *Exporter) Export(event *output.ResultEvent) error {
 	}
 
 	// If rule is added
-	ruleIndex := len(exporter.rules) - 1
+	ruleIndex := int(math.Max(0, float64(len(exporter.rules)-1)))
 	if exporter.rulemap[rule.Id] == nil {
 		exporter.rulemap[rule.Id] = &ruleIndex
 		exporter.rules = append(exporter.rules, rule)
@@ -140,7 +141,7 @@ func (exporter *Exporter) Export(event *output.ResultEvent) error {
 		},
 		PhysicalLocation: sarif.PhysicalLocation{
 			ArtifactLocation: sarif.ArtifactLocation{
-				// github only accepts file:// protocol and local & relative files only
+				// GitHub only accepts file:// protocol and local & relative files only
 				// to avoid errors // is used which also translates to file according to specification
 				Uri: "/" + event.Path,
 				Description: &sarif.Message{
@@ -192,5 +193,4 @@ func (exporter *Exporter) Close() error {
 	}
 
 	return nil
-
 }

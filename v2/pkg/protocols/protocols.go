@@ -2,6 +2,7 @@ package protocols
 
 import (
 	"github.com/projectdiscovery/ratelimit"
+	stringsutil "github.com/projectdiscovery/utils/strings"
 
 	"github.com/logrusorgru/aurora"
 
@@ -38,8 +39,8 @@ type Executer interface {
 	ExecuteWithResults(input *contextargs.Context, callback OutputEventCallback) error
 }
 
-// ExecuterOptions contains the configuration options for executer clients
-type ExecuterOptions struct {
+// ExecutorOptions contains the configuration options for executer clients
+type ExecutorOptions struct {
 	// TemplateID is the ID of the template for the request
 	TemplateID string
 	// TemplatePath is the path of the template for the request
@@ -71,6 +72,8 @@ type ExecuterOptions struct {
 	StopAtFirstMatch bool
 	// Variables is a list of variables from template
 	Variables variables.Variable
+	// Constants is a list of constants from template
+	Constants map[string]interface{}
 	// ExcludeMatchers is the list of matchers to exclude
 	ExcludeMatchers *excludematchers.ExcludeMatchers
 	// InputHelper is a helper for input normalization
@@ -86,10 +89,45 @@ type ExecuterOptions struct {
 	Colorizer      aurora.Aurora
 	WorkflowLoader model.WorkflowLoader
 	ResumeCfg      *types.ResumeCfg
+	// TemplateContext (contains all variables that are templatescoped i.e multi protocol)
+	// only used in case of multi protocol templates
+	TemplateCtx *contextargs.Context
+	// ProtocolType is the type of the template
+	ProtocolType templateTypes.ProtocolType
+}
+
+// AddTemplateVars adds vars to template context with given template type as prefix
+// this method is no-op if template is not multi protocol
+func (e *ExecutorOptions) AddTemplateVars(templateType templateTypes.ProtocolType, vars map[string]interface{}) {
+	if e.ProtocolType != templateTypes.MultiProtocol {
+		// no-op if not multi protocol template
+		return
+	}
+	for k, v := range vars {
+		if !stringsutil.EqualFoldAny(k, "template-id", "template-info", "template-path") {
+			if templateType < templateTypes.InvalidProtocol {
+				k = templateType.String() + "_" + k
+			}
+			e.TemplateCtx.Set(k, v)
+		}
+	}
+}
+
+// AddTemplateVar adds given var to template context with given template type as prefix
+// this method is no-op if template is not multi protocol
+func (e *ExecutorOptions) AddTemplateVar(prefix, key string, value interface{}) {
+	if e.ProtocolType != templateTypes.MultiProtocol {
+		// no-op if not multi protocol template
+		return
+	}
+	if prefix != "" {
+		key = prefix + "_" + key
+	}
+	e.TemplateCtx.Set(key, value)
 }
 
 // Copy returns a copy of the executeroptions structure
-func (e ExecuterOptions) Copy() ExecuterOptions {
+func (e ExecutorOptions) Copy() ExecutorOptions {
 	copy := e
 	return copy
 }
@@ -97,7 +135,7 @@ func (e ExecuterOptions) Copy() ExecuterOptions {
 // Request is an interface implemented any protocol based request generator.
 type Request interface {
 	// Compile compiles the request generators preparing any requests possible.
-	Compile(options *ExecuterOptions) error
+	Compile(options *ExecutorOptions) error
 	// Requests returns the total number of requests the rule will perform
 	Requests() int
 	// GetID returns the ID for the request if any. IDs are used for multi-request

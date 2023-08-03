@@ -24,7 +24,6 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/helpers/responsehighlighter"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/utils/vardump"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/network/networkclientpool"
-	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/utils"
 	protocolutils "github.com/projectdiscovery/nuclei/v2/pkg/protocols/utils"
 	templateTypes "github.com/projectdiscovery/nuclei/v2/pkg/templates/types"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
@@ -78,7 +77,7 @@ type Request struct {
 	// cache any variables that may be needed for operation.
 	dialer  *fastdialer.Dialer
 	tlsx    *tlsx.Service
-	options *protocols.ExecuterOptions
+	options *protocols.ExecutorOptions
 }
 
 // CanCluster returns true if the request can be clustered.
@@ -93,7 +92,7 @@ func (request *Request) CanCluster(other *Request) bool {
 }
 
 // Compile compiles the request generators preparing any requests possible.
-func (request *Request) Compile(options *protocols.ExecuterOptions) error {
+func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 	request.options = options
 
 	client, err := networkclientpool.Get(options.Options, &networkclientpool.Configuration{})
@@ -155,7 +154,7 @@ func (request *Request) Compile(options *protocols.ExecuterOptions) error {
 }
 
 // Options returns executer options for http request
-func (r *Request) Options() *protocols.ExecuterOptions {
+func (r *Request) Options() *protocols.ExecutorOptions {
 	return r.options
 }
 
@@ -188,9 +187,10 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 	payloadValues["Port"] = port
 
 	hostnameVariables := protocolutils.GenerateDNSVariables(hostname)
-	values := generators.MergeMaps(payloadValues, hostnameVariables)
+	// add template context variables to varMap
+	values := generators.MergeMaps(payloadValues, hostnameVariables, request.options.TemplateCtx.GetAll())
 	variablesMap := request.options.Variables.Evaluate(values)
-	payloadValues = generators.MergeMaps(variablesMap, payloadValues)
+	payloadValues = generators.MergeMaps(variablesMap, payloadValues, request.options.Constants)
 
 	if vardump.EnableVarDump {
 		gologger.Debug().Msgf("Protocol request variables: \n%s\n", vardump.DumpVariables(payloadValues))
@@ -267,10 +267,11 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 			// if field is not exported f.IsZero() , f.Value() will panic
 			continue
 		}
-		tag := utils.CleanStructFieldJSONTag(f.Tag("json"))
+		tag := protocolutils.CleanStructFieldJSONTag(f.Tag("json"))
 		if tag == "" || f.IsZero() {
 			continue
 		}
+		request.options.AddTemplateVar(request.Type().String(), tag, f.Value())
 		data[tag] = f.Value()
 	}
 
@@ -285,13 +286,16 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 			// if field is not exported f.IsZero() , f.Value() will panic
 			continue
 		}
-		tag := utils.CleanStructFieldJSONTag(f.Tag("json"))
+		tag := protocolutils.CleanStructFieldJSONTag(f.Tag("json"))
 		if tag == "" || f.IsZero() {
 			continue
 		}
+		request.options.AddTemplateVar(request.Type().String(), tag, f.Value())
 		data[tag] = f.Value()
 	}
 
+	// add response fields ^ to template context and merge templatectx variables to output event
+	data = generators.MergeMaps(data, request.options.TemplateCtx.GetAll())
 	event := eventcreator.CreateEvent(request, data, requestOptions.Options.Debug || requestOptions.Options.DebugResponse)
 	if requestOptions.Options.Debug || requestOptions.Options.DebugResponse || requestOptions.Options.StoreResponse {
 		msg := fmt.Sprintf("[%s] Dumped SSL response for %s", requestOptions.TemplateID, input.MetaInput.Input)

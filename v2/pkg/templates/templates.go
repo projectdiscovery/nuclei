@@ -7,12 +7,14 @@ import (
 	validate "github.com/go-playground/validator/v10"
 	"github.com/projectdiscovery/nuclei/v2/pkg/model"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/code"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/variables"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/dns"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/file"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/headless"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/http"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/javascript"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/multi"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/network"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/ssl"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/websocket"
@@ -56,6 +58,7 @@ type Template struct {
 	// examples:
 	//   - value: exampleNormalHTTPRequest
 	// RequestsWithHTTP is placeholder(internal) only, and should not be used instead use RequestsHTTP
+	// Deprecated: Use RequestsHTTP instead.
 	RequestsWithHTTP []*http.Request `yaml:"http,omitempty" json:"http,omitempty" jsonschema:"title=http requests to make,description=HTTP requests to make for the template"`
 	// description: |
 	//   DNS contains the dns request to make in the template
@@ -78,6 +81,7 @@ type Template struct {
 	// examples:
 	//   - value: exampleNormalNetworkRequest
 	// RequestsWithTCP is placeholder(internal) only, and should not be used instead use RequestsNetwork
+	// Deprecated: Use RequestsNetwork instead.
 	RequestsWithTCP []*network.Request `yaml:"tcp,omitempty" json:"tcp,omitempty" jsonschema:"title=network(tcp) requests to make,description=Network requests to make for the template"`
 	// description: |
 	//   Headless contains the headless request to make in the template.
@@ -88,7 +92,6 @@ type Template struct {
 	// description: |
 	//   Websocket contains the Websocket request to make in the template.
 	RequestsWebsocket []*websocket.Request `yaml:"websocket,omitempty" json:"websocket,omitempty" jsonschema:"title=websocket requests to make,description=Websocket requests to make for the template"`
-
 	// description: |
 	//   Javascript contains the javascript request to make in the template.
 	RequestsJavascript []*javascript.Request `yaml:"javascript,omitempty" json:"javascript,omitempty" jsonschema:"title=javascript requests to make,description=Javascript requests to make for the template"`
@@ -96,6 +99,10 @@ type Template struct {
 	// description: |
 	//   WHOIS contains the WHOIS request to make in the template.
 	RequestsWHOIS []*whois.Request `yaml:"whois,omitempty" json:"whois,omitempty" jsonschema:"title=whois requests to make,description=WHOIS requests to make for the template"`
+	// description: |
+	//   Code contains code snippets.
+	RequestsCode []*code.Request `yaml:"code,omitempty" json:"code,omitempty" jsonschema:"title=code snippets to make,description=Code snippets"`
+
 	// description: |
 	//   Workflows is a yaml based workflow declaration code.
 	workflows.Workflow `yaml:",inline,omitempty" jsonschema:"title=workflows to run,description=Workflows to run for the template"`
@@ -118,6 +125,10 @@ type Template struct {
 	//   Variables contains any variables for the current request.
 	Variables variables.Variable `yaml:"variables,omitempty" json:"variables,omitempty" jsonschema:"title=variables for the http request,description=Variables contains any variables for the current request"`
 
+	// description: |
+	//   Constants contains any scalar costant for the current template
+	Constants map[string]interface{} `yaml:"constants,omitempty" json:"constants,omitempty" jsonschema:"title=constant for the template,description=constants contains any constant for the template"`
+
 	// TotalRequests is the total number of requests for the template.
 	TotalRequests int `yaml:"-" json:"-"`
 	// Executer is the actual template executor for running template requests
@@ -127,24 +138,16 @@ type Template struct {
 
 	// Verified defines if the template signature is digitally verified
 	Verified bool `yaml:"-" json:"-"`
-}
 
-// TemplateProtocols is a list of accepted template protocols
-var TemplateProtocols = []string{
-	"dns",
-	"file",
-	"http",
-	"headless",
-	"network",
-	"workflow",
-	"ssl",
-	"websocket",
-	"whois",
+	// MultiProtoRequest (Internal) contains multi protocol request if multiple protocols are used
+	MultiProtoRequest multi.Request `yaml:"-" json:"-"`
 }
 
 // Type returns the type of the template
 func (template *Template) Type() types.ProtocolType {
 	switch {
+	case len(template.MultiProtoRequest.Queue) > 0:
+		return types.MultiProtocol
 	case len(template.RequestsDNS) > 0:
 		return types.DNSProtocol
 	case len(template.RequestsFile) > 0:
@@ -165,6 +168,8 @@ func (template *Template) Type() types.ProtocolType {
 		return types.JavascriptProtocol
 	case len(template.RequestsWHOIS) > 0:
 		return types.WHOISProtocol
+	case len(template.RequestsCode) > 0:
+		return types.CodeProtocol
 	default:
 		return types.InvalidProtocol
 	}
@@ -188,7 +193,7 @@ func (template *Template) UnmarshalYAML(unmarshal func(interface{}) error) error
 	*template = Template(*alias)
 
 	if len(template.RequestsHTTP) > 0 || len(template.RequestsNetwork) > 0 {
-		deprecatedProtocolNameTemplates[template.ID] = struct{}{}
+		_ = deprecatedProtocolNameTemplates.Set(template.ID, true)
 	}
 
 	if len(alias.RequestsHTTP) > 0 && len(alias.RequestsWithHTTP) > 0 {
@@ -203,7 +208,64 @@ func (template *Template) UnmarshalYAML(unmarshal func(interface{}) error) error
 	if len(alias.RequestsWithTCP) > 0 {
 		template.RequestsNetwork = alias.RequestsWithTCP
 	}
-	return validate.New().Struct(template)
+	err = validate.New().Struct(template)
+	if err != nil {
+		return err
+	}
+	// check if the template contains a multi protocols
+	if template.isMultiProtocol() {
+		var tempmap yaml.MapSlice
+		err = unmarshal(&tempmap)
+		if err != nil {
+			return errorutil.NewWithErr(err).Msgf("failed to unmarshal multi protocol template %s", template.ID)
+		}
+		arr := []string{}
+		for _, v := range tempmap {
+			key, ok := v.Key.(string)
+			if !ok {
+				continue
+			}
+			arr = append(arr, key)
+		}
+		// add protocols to the protocol stack (the idea is to preserve the order of the protocols)
+		template.addProtocolsToQueue(arr...)
+	}
+	return nil
+}
+
+// Internal function to create a protocol stack from a template if the template is a multi protocol template
+func (template *Template) addProtocolsToQueue(keys ...string) {
+	for _, key := range keys {
+		switch key {
+		case types.DNSProtocol.String():
+			template.MultiProtoRequest.Queue = append(template.MultiProtoRequest.Queue, template.convertRequestToProtocolsRequest(template.RequestsDNS)...)
+		case types.FileProtocol.String():
+			template.MultiProtoRequest.Queue = append(template.MultiProtoRequest.Queue, template.convertRequestToProtocolsRequest(template.RequestsFile)...)
+		case types.HTTPProtocol.String():
+			template.MultiProtoRequest.Queue = append(template.MultiProtoRequest.Queue, template.convertRequestToProtocolsRequest(template.RequestsHTTP)...)
+		case types.HeadlessProtocol.String():
+			template.MultiProtoRequest.Queue = append(template.MultiProtoRequest.Queue, template.convertRequestToProtocolsRequest(template.RequestsHeadless)...)
+		case types.NetworkProtocol.String():
+			template.MultiProtoRequest.Queue = append(template.MultiProtoRequest.Queue, template.convertRequestToProtocolsRequest(template.RequestsNetwork)...)
+		case types.SSLProtocol.String():
+			template.MultiProtoRequest.Queue = append(template.MultiProtoRequest.Queue, template.convertRequestToProtocolsRequest(template.RequestsSSL)...)
+		case types.WebsocketProtocol.String():
+			template.MultiProtoRequest.Queue = append(template.MultiProtoRequest.Queue, template.convertRequestToProtocolsRequest(template.RequestsWebsocket)...)
+		case types.WHOISProtocol.String():
+			template.MultiProtoRequest.Queue = append(template.MultiProtoRequest.Queue, template.convertRequestToProtocolsRequest(template.RequestsWHOIS)...)
+		case types.JavascriptProtocol.String():
+			template.MultiProtoRequest.Queue = append(template.MultiProtoRequest.Queue, template.convertRequestToProtocolsRequest(template.RequestsJavascript)...)
+		}
+	}
+}
+
+// isMultiProtocol checks if the template is a multi protocol template
+func (template *Template) isMultiProtocol() bool {
+	counter := len(template.RequestsDNS) + len(template.RequestsFile) +
+		len(template.RequestsHTTP) + len(template.RequestsHeadless) +
+		len(template.RequestsNetwork) + len(template.RequestsSSL) +
+		len(template.RequestsWebsocket) + len(template.RequestsWHOIS) + len(template.RequestsJavascript)
+	return counter > 1
 }
 
 // MarshalJSON forces recursive struct validation during marshal operation
@@ -222,5 +284,22 @@ func (template *Template) UnmarshalJSON(data []byte) error {
 		return err
 	}
 	*template = Template(*alias)
-	return validate.New().Struct(template)
+	err = validate.New().Struct(template)
+	if err != nil {
+		return err
+	}
+	// check if template contains multiple protocols
+	if template.isMultiProtocol() {
+		var tempMap map[string]interface{}
+		err = json.Unmarshal(data, &tempMap)
+		if err != nil {
+			return errorutil.NewWithErr(err).Msgf("failed to unmarshal multi protocol template %s", template.ID)
+		}
+		arr := []string{}
+		for k := range tempMap {
+			arr = append(arr, k)
+		}
+		template.addProtocolsToQueue(arr...)
+	}
+	return nil
 }

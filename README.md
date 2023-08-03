@@ -37,7 +37,7 @@
 
 ---
 
-Nuclei is used to send requests across targets based on a template, leading to zero false positives and providing fast scanning on a large number of hosts. Nuclei offers scanning for a variety of protocols, including TCP, DNS, HTTP, SSL, File, Whois, Websocket, Headless etc. With powerful and flexible templating, Nuclei can be used to model all kinds of security checks.
+Nuclei is used to send requests across targets based on a template, leading to zero false positives and providing fast scanning on a large number of hosts. Nuclei offers scanning for a variety of protocols, including TCP, DNS, HTTP, SSL, File, Whois, Websocket, Headless, Code etc. With powerful and flexible templating, Nuclei can be used to model all kinds of security checks.
 
 We have a [dedicated repository](https://github.com/projectdiscovery/nuclei-templates) that houses various type of vulnerability templates contributed by **more than 300** security researchers and engineers.
 
@@ -53,7 +53,7 @@ We have a [dedicated repository](https://github.com/projectdiscovery/nuclei-temp
 
 # Install Nuclei
 
-Nuclei requires **go1.19** to install successfully. Run the following command to install the latest version -
+Nuclei requires **go1.20** to install successfully. Run the following command to install the latest version -
 
 ```sh
 go install -v github.com/projectdiscovery/nuclei/v2/cmd/nuclei@latest
@@ -143,8 +143,8 @@ FILTERING:
    -em, -exclude-matchers string[]    template matchers to exclude in result
    -s, -severity value[]              templates to run based on severity. Possible values: info, low, medium, high, critical, unknown
    -es, -exclude-severity value[]     templates to exclude based on severity. Possible values: info, low, medium, high, critical, unknown
-   -pt, -type value[]                 templates to run based on protocol type. Possible values: dns, file, http, headless, network, workflow, ssl, websocket, whois
-   -ept, -exclude-type value[]        templates to exclude based on protocol type. Possible values: dns, file, http, headless, network, workflow, ssl, websocket, whois
+   -pt, -type value[]                 templates to run based on protocol type. Possible values: dns, file, http, headless, tcp, workflow, ssl, websocket, whois, code
+   -ept, -exclude-type value[]        templates to exclude based on protocol type. Possible values: dns, file, http, headless, tcp, workflow, ssl, websocket, whois, code
    -tc, -template-condition string[]  templates to run based on expression condition
 
 OUTPUT:
@@ -153,7 +153,7 @@ OUTPUT:
    -srd, -store-resp-dir string  store all request/response passed through nuclei to custom directory (default "output")
    -silent                       display findings only
    -nc, -no-color                disable output content coloring (ANSI escape codes)
-   -j -jsonl                     write output in JSONL(ines) format
+   -j, -jsonl                    write output in JSONL(ines) format
    -irr, -include-rr             include request/response pairs in the JSONL output (for findings only)
    -nm, -no-meta                 disable printing result metadata in cli output
    -ts, -timestamp               enables printing timestamp in cli output
@@ -161,8 +161,8 @@ OUTPUT:
    -ms, -matcher-status          display match failure status
    -me, -markdown-export string  directory to export results in markdown format
    -se, -sarif-export string     file to export results in SARIF format
-   -je, -json-export string      file to export results in JSON format as a JSON array. This can be memory intensive in larger scans
-   -jle, -jsonl-export string    file to export results in JSONL(ine) format as a list of line-delimited JSON objects
+   -je, -json-export string      file to export results in JSON format
+   -jle, -jsonl-export string    file to export results in JSONL(ine) format
 
 CONFIGURATIONS:
    -config string                 path to the nuclei configuration file
@@ -192,6 +192,8 @@ CONFIGURATIONS:
    -config-directory string       override the default config path ($home/.config)
    -rsr, -response-size-read int  max response size to read in bytes (default 10485760)
    -rss, -response-size-save int  max response size to read in bytes (default 1048576)
+   -reset                         reset removes all nuclei configuration and data files (including nuclei-templates)
+   -tlsi, -tls-impersonate        enable experimental client hello (ja3) tls randomization
 
 INTERACTSH:
    -iserver, -interactsh-server string  interactsh server url for self-hosted instance (default: oast.pro,oast.live,oast.site,oast.online,oast.fun,oast.me)
@@ -233,7 +235,7 @@ OPTIMIZATIONS:
    -project-path string                set a specific project path (default "/tmp")
    -spm, -stop-at-first-match          stop processing HTTP requests after the first match (may break template/workflow logic)
    -stream                             stream mode - start elaborating without sorting the input
-   -ss, -scan-strategy value           strategy to use while scanning(auto/host-spray/template-spray) (default 0)
+   -ss, -scan-strategy value           strategy to use while scanning(auto/host-spray/template-spray) (default auto)
    -irt, -input-read-timeout duration  timeout on input read (default 3m0s)
    -nh, -no-httpx                      disable httpx probing for non-url input
    -no-stdin                           disable stdin processing
@@ -367,7 +369,7 @@ Nuclei immensely improve how you approach security assessment by augmenting the 
 Pen-testers get the full power of our public templates and customization capabilities to speed up their assessment process, and specifically with the regression cycle where you can easily verify the fix.
 
 - Easily create your compliance, standards suite (e.g. OWASP Top 10) checklist.
-- With capabilities like [fuzz](https://nuclei.projectdiscovery.io/templating-guide/#advance-fuzzing) and [workflows](https://nuclei.projectdiscovery.io/templating-guide/#workflows), complex manual steps and repetitive assessment can be easily automated with Nuclei.
+- With capabilities like [fuzz](https://nuclei.projectdiscovery.io/templating-guide/protocols/http-fuzzing/) and [workflows](https://nuclei.projectdiscovery.io/templating-guide/workflows/), complex manual steps and repetitive assessment can be easily automated with Nuclei.
 - Easy to re-test vulnerability-fix by just re-running the template.
 
 </td>

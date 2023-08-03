@@ -25,20 +25,21 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/variables"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/http"
 	"github.com/projectdiscovery/nuclei/v2/pkg/templates"
+	"github.com/projectdiscovery/nuclei/v2/pkg/templates/types"
 	"github.com/projectdiscovery/nuclei/v2/pkg/testutils"
 	"github.com/projectdiscovery/nuclei/v2/pkg/workflows"
 	"github.com/projectdiscovery/ratelimit"
 	"github.com/stretchr/testify/require"
 )
 
-var executerOpts protocols.ExecuterOptions
+var executerOpts protocols.ExecutorOptions
 
 func setup() {
 	options := testutils.DefaultOptions
 	testutils.Init(options)
 	progressImpl, _ := progress.NewStatsTicker(0, false, false, false, false, 0)
 
-	executerOpts = protocols.ExecuterOptions{
+	executerOpts = protocols.ExecutorOptions{
 		Output:       testutils.NewMockOutputWriter(),
 		Options:      options,
 		Progress:     progressImpl,
@@ -53,7 +54,6 @@ func setup() {
 		log.Fatalf("Could not create workflow loader: %s\n", err)
 	}
 	executerOpts.WorkflowLoader = workflowLoader
-
 }
 
 func Test_ParseFromURL(t *testing.T) {
@@ -162,7 +162,7 @@ func Test_ParseWorkflow(t *testing.T) {
 		},
 		Workflow: workflows.Workflow{
 			Workflows: []*workflows.WorkflowTemplate{{Template: "tests/match-1.yaml"}, {Template: "tests/match-1.yaml"}},
-			Options:   &protocols.ExecuterOptions{},
+			Options:   &protocols.ExecutorOptions{},
 		},
 		CompiledWorkflow: &workflows.Workflow{},
 		SelfContained:    false,
@@ -196,4 +196,17 @@ func Test_WrongTemplate(t *testing.T) {
 	got, err = templates.Parse(filePath, nil, executerOpts)
 	require.Nil(t, got, "could not parse template")
 	require.ErrorContains(t, err, "no requests defined ")
+}
+
+func Test_Multiprotocol(t *testing.T) {
+	setup()
+	got, err := templates.Parse("tests/multiproto.yaml", nil, executerOpts)
+	require.Nil(t, err, "could not parse template")
+	require.Equal(t, 3, got.Requests())
+	require.Equal(t, types.MultiProtocol, got.Type())
+
+	got, err = templates.Parse("tests/multiproto.json", nil, executerOpts)
+	require.Nil(t, err, "could not parse template")
+	require.Equal(t, 3, got.Requests())
+	require.Equal(t, types.MultiProtocol, got.Type())
 }

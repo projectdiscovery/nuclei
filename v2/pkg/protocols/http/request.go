@@ -8,7 +8,6 @@ import (
 	"io"
 	"net/http"
 	"net/http/httputil"
-	"path"
 	"strings"
 	"sync"
 	"time"
@@ -24,12 +23,12 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/contextargs"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/expressions"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/fuzz"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/generators"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/helpers/eventcreator"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/helpers/responsehighlighter"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/interactsh"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/tostring"
-	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/http/fuzz"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/http/httpclientpool"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/http/signer"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/http/signerpool"
@@ -229,8 +228,7 @@ func (request *Request) executeTurboHTTP(input *contextargs.Context, dynamicValu
 
 // executeFuzzingRule executes fuzzing request for a URL
 func (request *Request) executeFuzzingRule(input *contextargs.Context, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
-	parsed, err := urlutil.Parse(input.MetaInput.Input)
-	if err != nil {
+	if _, err := urlutil.Parse(input.MetaInput.Input); err != nil {
 		return errors.Wrap(err, "could not parse url")
 	}
 	fuzzRequestCallback := func(gr fuzz.GeneratedRequest) bool {
@@ -298,7 +296,7 @@ func (request *Request) executeFuzzingRule(input *contextargs.Context, previous 
 		}
 		for _, rule := range request.Fuzzing {
 			err = rule.Execute(&fuzz.ExecuteRuleInput{
-				URL:         parsed,
+				Input:       input,
 				Callback:    fuzzRequestCallback,
 				Values:      generated.dynamicValues,
 				BaseRequest: generated.request,
@@ -318,7 +316,7 @@ func (request *Request) executeFuzzingRule(input *contextargs.Context, previous 
 func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicValues, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
 	if request.Pipeline || request.Race && request.RaceNumberRequests > 0 || request.Threads > 0 {
 		variablesMap := request.options.Variables.Evaluate(generators.MergeMaps(dynamicValues, previous))
-		dynamicValues = generators.MergeMaps(variablesMap, dynamicValues)
+		dynamicValues = generators.MergeMaps(variablesMap, dynamicValues, request.options.Constants)
 	}
 	// verify if pipeline was requested
 	if request.Pipeline {
@@ -523,10 +521,10 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 		if formedURL == "" {
 			urlx, err := urlutil.Parse(input.MetaInput.Input)
 			if err != nil {
-				formedURL = fmt.Sprintf("%s%s", formedURL, generatedRequest.rawRequest.Path)
+				formedURL = fmt.Sprintf("%s%s", input.MetaInput.Input, generatedRequest.rawRequest.Path)
 			} else {
-				urlx.Path = generatedRequest.rawRequest.Path
-				formedURL = fmt.Sprintf("%v://%v", urlx.Scheme, path.Join(urlx.Host, generatedRequest.rawRequest.Path))
+				_ = urlx.MergePath(generatedRequest.rawRequest.Path, true)
+				formedURL = urlx.String()
 			}
 		}
 		if parsed, parseErr := urlutil.ParseURL(formedURL, true); parseErr == nil {
@@ -638,7 +636,7 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 	if !request.Unsafe && resp != nil && generatedRequest.request != nil && resp.Request != nil && !request.Race {
 		bodyBytes, _ := generatedRequest.request.BodyBytes()
 		resp.Request.Body = io.NopCloser(bytes.NewReader(bodyBytes))
-		command, _ := http2curl.GetCurlCommand(resp.Request)
+		command, err := http2curl.GetCurlCommand(resp.Request)
 		if err == nil && command != nil {
 			curlCommand = command.String()
 		}
@@ -717,6 +715,9 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 		finalEvent := make(output.InternalEvent)
 
 		outputEvent := request.responseToDSLMap(response.resp, input.MetaInput.Input, matchedURL, tostring.UnsafeToString(dumpedRequest), tostring.UnsafeToString(response.fullResponse), tostring.UnsafeToString(response.body), tostring.UnsafeToString(response.headers), duration, generatedRequest.meta)
+		// add response fields to template context and merge templatectx variables to output event
+		request.options.AddTemplateVars(request.Type(), outputEvent)
+		outputEvent = generators.MergeMaps(outputEvent, request.options.TemplateCtx.GetAll())
 		if i := strings.LastIndex(hostname, ":"); i != -1 {
 			hostname = hostname[:i]
 		}

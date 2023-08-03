@@ -360,6 +360,14 @@ type Options struct {
 	FuzzingType string
 	// Fuzzing Mode overrides template level fuzzing-mode configuration
 	FuzzingMode string
+	// TlsImpersonate enables TLS impersonation
+	TlsImpersonate bool
+	// CodeTemplateSignaturePublicKey is the custom public key used to verify the template signature (algorithm is automatically inferred from the length)
+	CodeTemplateSignaturePublicKey string
+	// CodeTemplateSignatureAlgorithm specifies the sign algorithm (rsa, ecdsa)
+	CodeTemplateSignatureAlgorithm string
+	// SignTemplates enables signing of templates
+	SignTemplates bool
 }
 
 // ShouldLoadResume resume file
@@ -375,6 +383,11 @@ func (options *Options) ShouldSaveResume() bool {
 // ShouldFollowHTTPRedirects determines if http redirects should be followed
 func (options *Options) ShouldFollowHTTPRedirects() bool {
 	return options.FollowRedirects || options.FollowHostRedirects
+}
+
+// HasClientCertificates determines if any client certificate was specified
+func (options *Options) HasClientCertificates() bool {
+	return options.ClientCertFile != "" || options.ClientCAFile != "" || options.ClientKeyFile != ""
 }
 
 // DefaultOptions returns default options for nuclei

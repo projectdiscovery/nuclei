@@ -42,7 +42,7 @@ type Config struct {
 	IncludeConditions []string
 
 	Catalog         catalog.Catalog
-	ExecutorOptions protocols.ExecuterOptions
+	ExecutorOptions protocols.ExecutorOptions
 }
 
 // Store is a storage for loaded nuclei templates
@@ -59,12 +59,12 @@ type Store struct {
 	preprocessor templates.Preprocessor
 
 	// NotFoundCallback is called for each not found template
-	// This overrides error handling for not found templatesss
+	// This overrides error handling for not found templates
 	NotFoundCallback func(template string) bool
 }
 
 // NewConfig returns a new loader config
-func NewConfig(options *types.Options, catalog catalog.Catalog, executerOpts protocols.ExecuterOptions) *Config {
+func NewConfig(options *types.Options, catalog catalog.Catalog, executerOpts protocols.ExecutorOptions) *Config {
 	loaderConfig := Config{
 		Templates:                options.Templates,
 		Workflows:                options.Workflows,
@@ -108,6 +108,7 @@ func New(config *Config) (*Store, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	// Create a tag filter based on provided configuration
 	store := &Store{
 		config:    config,
@@ -313,8 +314,11 @@ func (store *Store) LoadTemplatesWithTags(templatesList, tags []string) []*templ
 				}
 				gologger.Warning().Msgf("Could not parse template %s: %s\n", templatePath, err)
 			} else if parsed != nil {
+
 				if len(parsed.RequestsHeadless) > 0 && !store.config.ExecutorOptions.Options.Headless {
 					gologger.Warning().Msgf("Headless flag is required for headless template %s\n", templatePath)
+				} else if len(parsed.RequestsCode) > 0 && !parsed.Verified {
+					gologger.Warning().Msgf("The template is not verified: '%s'\n", templatePath)
 				} else {
 					loadedTemplates = append(loadedTemplates, parsed)
 				}

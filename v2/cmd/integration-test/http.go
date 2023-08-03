@@ -27,56 +27,56 @@ import (
 )
 
 var httpTestcases = map[string]testutils.TestCase{
-	// TODO: excluded due to parsing errors with console
-	// "http/raw-unsafe-request.yaml":                  &httpRawUnsafeRequest{},
-	"http/get-headers.yaml":                         &httpGetHeaders{},
-	"http/get-query-string.yaml":                    &httpGetQueryString{},
-	"http/get-redirects.yaml":                       &httpGetRedirects{},
-	"http/get-host-redirects.yaml":                  &httpGetHostRedirects{},
-	"http/disable-redirects.yaml":                   &httpDisableRedirects{},
-	"http/get.yaml":                                 &httpGet{},
-	"http/post-body.yaml":                           &httpPostBody{},
-	"http/post-json-body.yaml":                      &httpPostJSONBody{},
-	"http/post-multipart-body.yaml":                 &httpPostMultipartBody{},
-	"http/raw-cookie-reuse.yaml":                    &httpRawCookieReuse{},
-	"http/raw-dynamic-extractor.yaml":               &httpRawDynamicExtractor{},
-	"http/raw-get-query.yaml":                       &httpRawGetQuery{},
-	"http/raw-get.yaml":                             &httpRawGet{},
-	"http/raw-with-params.yaml":                     &httpRawWithParams{},
-	"http/raw-unsafe-with-params.yaml":              &httpRawWithParams{}, // Not a typo, functionality is same as above
-	"http/raw-path-trailing-slash.yaml":             &httpRawPathTrailingSlash{},
-	"http/raw-payload.yaml":                         &httpRawPayload{},
-	"http/raw-post-body.yaml":                       &httpRawPostBody{},
-	"http/raw-unsafe-path.yaml":                     &httpRawUnsafePath{},
-	"http/http-paths.yaml":                          &httpPaths{},
-	"http/request-condition.yaml":                   &httpRequestCondition{},
-	"http/request-condition-new.yaml":               &httpRequestCondition{},
-	"http/self-contained.yaml":                      &httpRequestSelfContained{},
-	"http/self-contained-with-path.yaml":            &httpRequestSelfContained{}, // Not a typo, functionality is same as above
-	"http/self-contained-with-params.yaml":          &httpRequestSelfContainedWithParams{},
-	"http/self-contained-file-input.yaml":           &httpRequestSelfContainedFileInput{},
-	"http/get-case-insensitive.yaml":                &httpGetCaseInsensitive{},
-	"http/get.yaml,http/get-case-insensitive.yaml":  &httpGetCaseInsensitiveCluster{},
-	"http/get-redirects-chain-headers.yaml":         &httpGetRedirectsChainHeaders{},
-	"http/dsl-matcher-variable.yaml":                &httpDSLVariable{},
-	"http/dsl-functions.yaml":                       &httpDSLFunctions{},
-	"http/race-simple.yaml":                         &httpRaceSimple{},
-	"http/race-multiple.yaml":                       &httpRaceMultiple{},
-	"http/stop-at-first-match.yaml":                 &httpStopAtFirstMatch{},
-	"http/stop-at-first-match-with-extractors.yaml": &httpStopAtFirstMatchWithExtractors{},
-	"http/variables.yaml":                           &httpVariables{},
-	"http/variable-dsl-function.yaml":               &httpVariableDSLFunction{},
-	"http/get-override-sni.yaml":                    &httpSniAnnotation{},
-	"http/get-sni.yaml":                             &customCLISNI{},
-	"http/redirect-match-url.yaml":                  &httpRedirectMatchURL{},
-	"http/get-sni-unsafe.yaml":                      &customCLISNIUnsafe{},
-	"http/annotation-timeout.yaml":                  &annotationTimeout{},
-	"http/custom-attack-type.yaml":                  &customAttackType{},
-	"http/get-all-ips.yaml":                         &scanAllIPS{},
-	"http/get-without-scheme.yaml":                  &httpGetWithoutScheme{},
-	"http/cl-body-without-header.yaml":              &httpCLBodyWithoutHeader{},
-	"http/cl-body-with-header.yaml":                 &httpCLBodyWithHeader{},
-	"http/save-extractor-values-to-file.yaml":       &httpSaveExtractorValuesToFile{},
+	"protocols/http/get-headers.yaml":                                  &httpGetHeaders{},
+	"protocols/http/get-query-string.yaml":                             &httpGetQueryString{},
+	"protocols/http/get-redirects.yaml":                                &httpGetRedirects{},
+	"protocols/http/get-host-redirects.yaml":                           &httpGetHostRedirects{},
+	"protocols/http/disable-redirects.yaml":                            &httpDisableRedirects{},
+	"protocols/http/get.yaml":                                          &httpGet{},
+	"protocols/http/post-body.yaml":                                    &httpPostBody{},
+	"protocols/http/post-json-body.yaml":                               &httpPostJSONBody{},
+	"protocols/http/post-multipart-body.yaml":                          &httpPostMultipartBody{},
+	"protocols/http/raw-cookie-reuse.yaml":                             &httpRawCookieReuse{},
+	"protocols/http/raw-dynamic-extractor.yaml":                        &httpRawDynamicExtractor{},
+	"protocols/http/raw-get-query.yaml":                                &httpRawGetQuery{},
+	"protocols/http/raw-get.yaml":                                      &httpRawGet{},
+	"protocols/http/raw-with-params.yaml":                              &httpRawWithParams{},
+	"protocols/http/raw-unsafe-with-params.yaml":                       &httpRawWithParams{}, // Not a typo, functionality is same as above
+	"protocols/http/raw-path-trailing-slash.yaml":                      &httpRawPathTrailingSlash{},
+	"protocols/http/raw-payload.yaml":                                  &httpRawPayload{},
+	"protocols/http/raw-post-body.yaml":                                &httpRawPostBody{},
+	"protocols/http/raw-unsafe-path.yaml":                              &httpRawUnsafePath{},
+	"protocols/http/http-paths.yaml":                                   &httpPaths{},
+	"protocols/http/request-condition.yaml":                            &httpRequestCondition{},
+	"protocols/http/request-condition-new.yaml":                        &httpRequestCondition{},
+	"protocols/http/self-contained.yaml":                               &httpRequestSelfContained{},
+	"protocols/http/self-contained-with-path.yaml":                     &httpRequestSelfContained{}, // Not a typo, functionality is same as above
+	"protocols/http/self-contained-with-params.yaml":                   &httpRequestSelfContainedWithParams{},
+	"protocols/http/self-contained-file-input.yaml":                    &httpRequestSelfContainedFileInput{},
+	"protocols/http/get-case-insensitive.yaml":                         &httpGetCaseInsensitive{},
+	"protocols/http/get.yaml,protocols/http/get-case-insensitive.yaml": &httpGetCaseInsensitiveCluster{},
+	"protocols/http/get-redirects-chain-headers.yaml":                  &httpGetRedirectsChainHeaders{},
+	"protocols/http/dsl-matcher-variable.yaml":                         &httpDSLVariable{},
+	"protocols/http/dsl-functions.yaml":                                &httpDSLFunctions{},
+	"protocols/http/race-simple.yaml":                                  &httpRaceSimple{},
+	"protocols/http/race-multiple.yaml":                                &httpRaceMultiple{},
+	"protocols/http/stop-at-first-match.yaml":                          &httpStopAtFirstMatch{},
+	"protocols/http/stop-at-first-match-with-extractors.yaml":          &httpStopAtFirstMatchWithExtractors{},
+	"protocols/http/variables.yaml":                                    &httpVariables{},
+	"protocols/http/variable-dsl-function.yaml":                        &httpVariableDSLFunction{},
+	"protocols/http/get-override-sni.yaml":                             &httpSniAnnotation{},
+	"protocols/http/get-sni.yaml":                                      &customCLISNI{},
+	"protocols/http/redirect-match-url.yaml":                           &httpRedirectMatchURL{},
+	"protocols/http/get-sni-unsafe.yaml":                               &customCLISNIUnsafe{},
+	"protocols/http/annotation-timeout.yaml":                           &annotationTimeout{},
+	"protocols/http/custom-attack-type.yaml":                           &customAttackType{},
+	"protocols/http/get-all-ips.yaml":                                  &scanAllIPS{},
+	"protocols/http/get-without-scheme.yaml":                           &httpGetWithoutScheme{},
+	"protocols/http/cl-body-without-header.yaml":                       &httpCLBodyWithoutHeader{},
+	"protocols/http/cl-body-with-header.yaml":                          &httpCLBodyWithHeader{},
+	"protocols/http/save-extractor-values-to-file.yaml":                &httpSaveExtractorValuesToFile{},
+	"protocols/http/cli-with-constants.yaml":                           &ConstantWithCliVar{},
+	"protocols/http/disable-path-automerge.yaml":              &httpDisablePathAutomerge{},
 }
 
 type httpInteractshRequest struct{}
@@ -831,7 +831,7 @@ func (h *httpRawCookieReuse) Execute(filePath string) error {
 //
 // 	ts := testutils.NewTCPServer(nil, defaultStaticPort, func(conn net.Conn) {
 // 		defer conn.Close()
-// 		_, _ = conn.Write([]byte("HTTP/1.1 200 OK\r\nContent-Length: 36\r\nContent-Type: text/plain; charset=utf-8\r\n\r\nThis is test raw-unsafe-matcher test"))
+// 		_, _ = conn.Write([]byte("protocols/http/1.1 200 OK\r\nContent-Length: 36\r\nContent-Type: text/plain; charset=utf-8\r\n\r\nThis is test raw-unsafe-matcher test"))
 // 	})
 // 	defer ts.Close()
 //
@@ -1402,4 +1402,41 @@ func (h *httpSaveExtractorValuesToFile) Execute(filePath string) error {
 		_ = os.Remove("output.txt")
 	}
 	return expectResultsCount(results, 1)
+}
+
+// constant shouldn't be overwritten by cli var with same name
+type ConstantWithCliVar struct{}
+
+// Execute executes a test case and returns an error if occurred
+func (h *ConstantWithCliVar) Execute(filePath string) error {
+	router := httprouter.New()
+	router.GET("/", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+		fmt.Fprint(w, r.URL.Query().Get("p"))
+	})
+	ts := httptest.NewTLSServer(router)
+	defer ts.Close()
+
+	got, err := testutils.RunNucleiTemplateAndGetResults(filePath, ts.URL, debug, "-V", "test=fromcli")
+	if err != nil {
+		return err
+	}
+	return expectResultsCount(got, 1)
+}
+
+// disable path automerge in raw request
+type httpDisablePathAutomerge struct{}
+
+// Execute executes a test case and returns an error if occurred
+func (h *httpDisablePathAutomerge) Execute(filePath string) error {
+	router := httprouter.New()
+	router.GET("/api/v1/test", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+		fmt.Fprint(w, r.URL.Query().Get("id"))
+	})
+	ts := httptest.NewServer(router)
+	defer ts.Close()
+	got, err := testutils.RunNucleiTemplateAndGetResults(filePath, ts.URL+"/api/v1/user", debug)
+	if err != nil {
+		return err
+	}
+	return expectResultsCount(got, 1)
 }

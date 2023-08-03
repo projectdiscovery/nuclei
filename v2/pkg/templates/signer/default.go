@@ -1,7 +1,29 @@
 package signer
 
-var DefaultVerifier *Signer
+import (
+	"errors"
+)
+
+const (
+	PrivateKeyEnvVarName = "NUCLEI_SIGNATURE_PRIVATE_KEY"
+	PublicKeyEnvVarName  = "NUCLEI_SIGNATURE_PUBLIC_KEY"
+	AlgorithmEnvVarName  = "NUCLEI_SIGNATURE_ALGORITHM"
+)
+
+var DefaultVerifiers []*Signer
 
 func init() {
-	DefaultVerifier, _ = NewVerifier(&Options{PublicKeyData: ecdsaPublicKey, Algorithm: ECDSA})
+	// add default pd verifier
+	if verifier, err := NewVerifier(&Options{PublicKeyData: pdPublicKey, Algorithm: RSA}); err == nil {
+		DefaultVerifiers = append(DefaultVerifiers, verifier)
+	}
+}
+
+func AddToDefault(s *Signer) error {
+	if s == nil {
+		return errors.New("signer is nil")
+	}
+
+	DefaultVerifiers = append(DefaultVerifiers, s)
+	return nil
 }

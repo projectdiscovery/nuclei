@@ -10,9 +10,11 @@ import (
 
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/contextargs"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/executer"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/offlinehttp"
 	"github.com/projectdiscovery/nuclei/v2/pkg/templates/cache"
+	"github.com/projectdiscovery/nuclei/v2/pkg/templates/signer"
 	"github.com/projectdiscovery/nuclei/v2/pkg/utils"
 	"github.com/projectdiscovery/retryablehttp-go"
 	stringsutil "github.com/projectdiscovery/utils/strings"
@@ -33,7 +35,7 @@ func init() {
 // TODO make sure reading from the disk the template parsing happens once: see parsers.ParseTemplate vs templates.Parse
 //
 //nolint:gocritic // this cannot be passed by pointer
-func Parse(filePath string, preprocessor Preprocessor, options protocols.ExecuterOptions) (*Template, error) {
+func Parse(filePath string, preprocessor Preprocessor, options protocols.ExecutorOptions) (*Template, error) {
 	if !options.DoNotCache {
 		if value, err := parsedTemplatesCache.Has(filePath); value != nil {
 			return value.(*Template), err
@@ -106,11 +108,12 @@ func (template *Template) Requests() int {
 		len(template.RequestsSSL) +
 		len(template.RequestsWebsocket) +
 		len(template.RequestsJavascript) +
-		len(template.RequestsWHOIS)
+		len(template.RequestsWHOIS) +
+		len(template.RequestsCode)
 }
 
 // compileProtocolRequests compiles all the protocol requests for the template
-func (template *Template) compileProtocolRequests(options protocols.ExecuterOptions) error {
+func (template *Template) compileProtocolRequests(options protocols.ExecutorOptions) error {
 	templateRequests := template.Requests()
 
 	if templateRequests == 0 {
@@ -123,32 +126,34 @@ func (template *Template) compileProtocolRequests(options protocols.ExecuterOpti
 
 	var requests []protocols.Request
 
-	if len(template.RequestsDNS) > 0 {
-		requests = append(requests, template.convertRequestToProtocolsRequest(template.RequestsDNS)...)
+	if len(template.MultiProtoRequest.Queue) > 0 {
+		template.MultiProtoRequest.ID = template.ID
+		template.MultiProtoRequest.Info = template.Info
+		requests = append(requests, &template.MultiProtoRequest)
+	} else {
+		switch {
+		case len(template.RequestsDNS) > 0:
+			requests = append(requests, template.convertRequestToProtocolsRequest(template.RequestsDNS)...)
+		case len(template.RequestsFile) > 0:
+			requests = append(requests, template.convertRequestToProtocolsRequest(template.RequestsFile)...)
+		case len(template.RequestsNetwork) > 0:
+			requests = append(requests, template.convertRequestToProtocolsRequest(template.RequestsNetwork)...)
+		case len(template.RequestsHTTP) > 0:
+			requests = append(requests, template.convertRequestToProtocolsRequest(template.RequestsHTTP)...)
+		case len(template.RequestsHeadless) > 0 && options.Options.Headless:
+			requests = append(requests, template.convertRequestToProtocolsRequest(template.RequestsHeadless)...)
+		case len(template.RequestsSSL) > 0:
+			requests = append(requests, template.convertRequestToProtocolsRequest(template.RequestsSSL)...)
+		case len(template.RequestsWebsocket) > 0:
+			requests = append(requests, template.convertRequestToProtocolsRequest(template.RequestsWebsocket)...)
+		case len(template.RequestsWHOIS) > 0:
+			requests = append(requests, template.convertRequestToProtocolsRequest(template.RequestsWHOIS)...)
+		case len(template.RequestsJavascript) > 0:
+			requests = append(requests, template.convertRequestToProtocolsRequest(template.RequestsJavascript)...)
+		}
 	}
-	if len(template.RequestsFile) > 0 {
-		requests = append(requests, template.convertRequestToProtocolsRequest(template.RequestsFile)...)
-	}
-	if len(template.RequestsNetwork) > 0 {
-		requests = append(requests, template.convertRequestToProtocolsRequest(template.RequestsNetwork)...)
-	}
-	if len(template.RequestsHTTP) > 0 {
-		requests = append(requests, template.convertRequestToProtocolsRequest(template.RequestsHTTP)...)
-	}
-	if len(template.RequestsHeadless) > 0 && options.Options.Headless {
-		requests = append(requests, template.convertRequestToProtocolsRequest(template.RequestsHeadless)...)
-	}
-	if len(template.RequestsSSL) > 0 {
-		requests = append(requests, template.convertRequestToProtocolsRequest(template.RequestsSSL)...)
-	}
-	if len(template.RequestsJavascript) > 0 {
-		requests = append(requests, template.convertRequestToProtocolsRequest(template.RequestsJavascript)...)
-	}
-	if len(template.RequestsWebsocket) > 0 {
-		requests = append(requests, template.convertRequestToProtocolsRequest(template.RequestsWebsocket)...)
-	}
-	if len(template.RequestsWHOIS) > 0 {
-		requests = append(requests, template.convertRequestToProtocolsRequest(template.RequestsWHOIS)...)
+	if len(template.RequestsCode) > 0 {
+		requests = append(requests, template.convertRequestToProtocolsRequest(template.RequestsCode)...)
 	}
 	template.Executer = executer.NewExecuter(requests, &options)
 	return nil
@@ -176,7 +181,7 @@ func (template *Template) convertRequestToProtocolsRequest(requests interface{})
 // compileOfflineHTTPRequest iterates all requests if offline http mode is
 // specified and collects all matchers for all the base request templates
 // (those with URL {{BaseURL}} and it's slash variation.)
-func (template *Template) compileOfflineHTTPRequest(options protocols.ExecuterOptions) error {
+func (template *Template) compileOfflineHTTPRequest(options protocols.ExecutorOptions) error {
 	operatorsList := []*operators.Operators{}
 
 mainLoop:
@@ -204,7 +209,7 @@ mainLoop:
 
 // ParseTemplateFromReader reads the template from reader
 // returns the parsed template
-func ParseTemplateFromReader(reader io.Reader, preprocessor Preprocessor, options protocols.ExecuterOptions) (*Template, error) {
+func ParseTemplateFromReader(reader io.Reader, preprocessor Preprocessor, options protocols.ExecutorOptions) (*Template, error) {
 	template := &Template{}
 	data, err := io.ReadAll(reader)
 	if err != nil {
@@ -236,6 +241,10 @@ func ParseTemplateFromReader(reader io.Reader, preprocessor Preprocessor, option
 		options.Variables = template.Variables
 	}
 
+	// create empty context args for template scope
+	options.TemplateCtx = contextargs.New()
+	options.ProtocolType = template.Type()
+	options.Constants = template.Constants
 	// If no requests, and it is also not a workflow, return error.
 	if template.Requests() == 0 {
 		return nil, fmt.Errorf("no requests defined for %s", template.ID)
@@ -255,6 +264,14 @@ func ParseTemplateFromReader(reader io.Reader, preprocessor Preprocessor, option
 		return nil, ErrCreateTemplateExecutor
 	}
 	template.parseSelfContainedRequests()
+
+	// check if the template is verified
+	for _, verifier := range signer.DefaultVerifiers {
+		if template.Verified {
+			break
+		}
+		template.Verified, _ = signer.Verify(verifier, data)
+	}
 
 	return template, nil
 }

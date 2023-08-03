@@ -70,6 +70,9 @@ func (r *requestGenerator) Make(ctx context.Context, input *contextargs.Context,
 	// value of `reqData` depends on the type of request specified in template
 	// 1. If request is raw request =  reqData contains raw request (i.e http request dump)
 	// 2. If request is Normal ( simply put not a raw request) (Ex: with placeholders `path`) = reqData contains relative path
+
+	// add template context values to dynamicValues (this takes care of self-contained and other types of requests)
+	dynamicValues = generators.MergeMaps(dynamicValues, r.request.options.TemplateCtx.GetAll())
 	if r.request.SelfContained {
 		return r.makeSelfContainedRequest(ctx, reqData, payloads, dynamicValues)
 	}
@@ -112,7 +115,7 @@ func (r *requestGenerator) Make(ctx context.Context, input *contextargs.Context,
 		r.interactshURLs = append(r.interactshURLs, interactURLs...)
 	}
 	// allVars contains all variables from all sources
-	allVars := generators.MergeMaps(dynamicValues, defaultReqVars, optionVars, variablesMap)
+	allVars := generators.MergeMaps(dynamicValues, defaultReqVars, optionVars, variablesMap, r.options.Constants)
 
 	// Evaluate payload variables
 	// eg: payload variables can be username: jon.doe@{{Hostname}}
@@ -170,10 +173,10 @@ func (r *requestGenerator) makeSelfContainedRequest(ctx context.Context, data st
 
 	signerVars := GetDefaultSignerVars(r.request.Signature.Value)
 	// this will ensure that default signer variables are overwritten by other variables
-	values = generators.MergeMaps(signerVars, values)
+	values = generators.MergeMaps(signerVars, values, r.options.Constants)
 
 	// priority of variables is as follows (from low to high) for self contained templates
-	// default signer vars < variables <  cli vars  < payload < dynamic values
+	// default signer vars < variables <  cli vars  < payload < dynamic values < constants
 
 	// evaluate request
 	data, err := expressions.Evaluate(data, values)
@@ -264,7 +267,7 @@ func (r *requestGenerator) generateRawRequest(ctx context.Context, rawRequest st
 		// in self contained requests baseURL is extracted from raw request itself
 		rawRequestData, err = raw.ParseRawRequest(rawRequest, r.request.Unsafe)
 	} else {
-		rawRequestData, err = raw.Parse(rawRequest, baseURL, r.request.Unsafe)
+		rawRequestData, err = raw.Parse(rawRequest, baseURL, r.request.Unsafe, r.request.DisablePathAutomerge)
 	}
 	if err != nil {
 		return nil, errorutil.NewWithErr(err).Msgf("failed to parse raw request")

@@ -1,9 +1,12 @@
 package main
 
 import (
+	"bufio"
 	"fmt"
+	"io/fs"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"runtime"
 	"runtime/pprof"
 	"strings"
@@ -19,9 +22,11 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators/common/dsl"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/uncover"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/http"
+	"github.com/projectdiscovery/nuclei/v2/pkg/templates/signer"
 	templateTypes "github.com/projectdiscovery/nuclei/v2/pkg/templates/types"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types/scanstrategy"
+	"github.com/projectdiscovery/nuclei/v2/pkg/utils"
 	"github.com/projectdiscovery/nuclei/v2/pkg/utils/monitor"
 	errorutil "github.com/projectdiscovery/utils/errors"
 	fileutil "github.com/projectdiscovery/utils/file"
@@ -42,6 +47,54 @@ func main() {
 	if options.ListDslSignatures {
 		gologger.Info().Msgf("The available custom DSL functions are:")
 		fmt.Println(dsl.GetPrintableDslFunctionSignatures(options.NoColor))
+		return
+	}
+
+	// sign the templates if requested - only glob syntax is supported
+	if options.SignTemplates {
+		privKey := os.Getenv(signer.PrivateKeyEnvVarName)
+		if privKey == "" {
+			gologger.Fatal().Msgf("private key '%s' not defined ", signer.PrivateKeyEnvVarName)
+		}
+		pubKey := os.Getenv(signer.PublicKeyEnvVarName)
+		if pubKey == "" {
+			gologger.Fatal().Msgf("public key '%s' not defined ", signer.PublicKeyEnvVarName)
+		}
+		signerOptions := &signer.Options{
+			Algorithm: signer.RSA,
+		}
+		if fileutil.FileExists(privKey) {
+			signerOptions.PrivateKeyName = privKey
+		} else {
+			signerOptions.PrivateKeyData = []byte(privKey)
+		}
+		if fileutil.FileExists(pubKey) {
+			signerOptions.PublicKeyName = pubKey
+		} else {
+			signerOptions.PublicKeyData = []byte(pubKey)
+		}
+		sign, err := signer.New(signerOptions)
+		if err != nil {
+			gologger.Fatal().Msgf("couldn't initialize signer crypto engine: %s\n", err)
+		}
+
+		for _, item := range options.Templates {
+			err := filepath.WalkDir(item, func(iterItem string, d fs.DirEntry, err error) error {
+				if err != nil || d.IsDir() {
+					return nil
+				}
+
+				if err := utils.ProcessFile(sign, iterItem); err != nil {
+					gologger.Warning().Msgf("could not sign '%s': %s\n", iterItem, err)
+				}
+
+				return nil
+			})
+			if err != nil {
+				gologger.Error().Msgf("%s\n", err)
+			}
+			gologger.Info().Msgf("All templates signatures were elaborated\n")
+		}
 		return
 	}
 
@@ -114,6 +167,7 @@ func main() {
 
 func readConfig() *goflags.FlagSet {
 	flagSet := goflags.NewFlagSet()
+	flagSet.CaseSensitive = true
 	flagSet.SetDescription(`Nuclei is a fast, template based vulnerability scanner focusing
 on extensive configurability, massive extensibility and ease of use.`)
 
@@ -142,6 +196,7 @@ on extensive configurability, massive extensibility and ease of use.`)
 		flagSet.BoolVarP(&options.TemplateDisplay, "template-display", "td", false, "displays the templates content"),
 		flagSet.BoolVar(&options.TemplateList, "tl", false, "list all available templates"),
 		flagSet.StringSliceVarConfigOnly(&options.RemoteTemplateDomainList, "remote-template-domain", []string{"api.nuclei.sh"}, "allowed domain list to load remote templates from"),
+		flagSet.BoolVar(&options.SignTemplates, "sign", false, "signs the templates with the private key defined in NUCLEI_SIGNATURE_PRIVATE_KEY env variable"),
 	)
 
 	flagSet.CreateGroup("filters", "Filtering",
@@ -207,6 +262,8 @@ on extensive configurability, massive extensibility and ease of use.`)
 		flagSet.StringVar(&options.CustomConfigDir, "config-directory", "", "override the default config path ($home/.config)"),
 		flagSet.IntVarP(&options.ResponseReadSize, "response-size-read", "rsr", 10*1024*1024, "max response size to read in bytes"),
 		flagSet.IntVarP(&options.ResponseSaveSize, "response-size-save", "rss", 1*1024*1024, "max response size to read in bytes"),
+		flagSet.CallbackVar(resetCallback, "reset", "reset removes all nuclei configuration and data files (including nuclei-templates)"),
+		flagSet.BoolVarP(&options.TlsImpersonate, "tls-impersonate", "tlsi", false, "enable experimental client hello (ja3) tls randomization"),
 	)
 
 	flagSet.CreateGroup("interactsh", "interactsh",
@@ -424,6 +481,46 @@ func printTemplateVersion() {
 	if fileutil.FolderExists(cfg.CustomAzureTemplatesDirectory) {
 		gologger.Info().Msgf("Custom Azure templates location: %s ", cfg.CustomAzureTemplatesDirectory)
 	}
+	os.Exit(0)
+}
+
+func resetCallback() {
+	warning := fmt.Sprintf(`
+Using '-reset' will delete all nuclei configurations files and all nuclei-templates
+
+Following files will be deleted:
+1. All Config + Resumes files at %v
+2. All nuclei-templates at %v
+
+Note: Make sure you have backup of your custom nuclei-templates before proceeding
+
+`, config.DefaultConfig.GetConfigDir(), config.DefaultConfig.TemplatesDirectory)
+	gologger.Print().Msg(warning)
+	reader := bufio.NewReader(os.Stdin)
+	for {
+		fmt.Print("Are you sure you want to continue? [y/n]: ")
+		resp, err := reader.ReadString('\n')
+		if err != nil {
+			gologger.Fatal().Msgf("could not read response: %s", err)
+		}
+		resp = strings.TrimSpace(resp)
+		if strings.EqualFold(resp, "y") || strings.EqualFold(resp, "yes") {
+			break
+		}
+		if strings.EqualFold(resp, "n") || strings.EqualFold(resp, "no") || resp == "" {
+			fmt.Println("Exiting...")
+			os.Exit(0)
+		}
+	}
+	err := os.RemoveAll(config.DefaultConfig.GetConfigDir())
+	if err != nil {
+		gologger.Fatal().Msgf("could not delete config dir: %s", err)
+	}
+	err = os.RemoveAll(config.DefaultConfig.TemplatesDirectory)
+	if err != nil {
+		gologger.Fatal().Msgf("could not delete templates dir: %s", err)
+	}
+	gologger.Info().Msgf("Successfully deleted all nuclei configurations files and nuclei-templates")
 	os.Exit(0)
 }
 

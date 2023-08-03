@@ -11,8 +11,8 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/expressions"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/fuzz"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/generators"
-	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/http/fuzz"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/http/httpclientpool"
 	"github.com/projectdiscovery/rawhttp"
 	"github.com/projectdiscovery/retryablehttp-go"
@@ -124,7 +124,7 @@ type Request struct {
 
 	CompiledOperators *operators.Operators `yaml:"-" json:"-"`
 
-	options           *protocols.ExecuterOptions
+	options           *protocols.ExecutorOptions
 	connConfiguration *httpclientpool.Configuration
 	totalRequests     int
 	customHeaders     map[string]string
@@ -197,10 +197,13 @@ type Request struct {
 	// description: |
 	//   DigestAuthPassword specifies the password for digest authentication
 	DigestAuthPassword string `yaml:"digest-password,omitempty" json:"digest-password,omitempty" jsonschema:"title=specifies the password for digest authentication,description=Optional parameter which specifies the password for digest auth"`
+	// description: |
+	//  DisablePathAutomerge disables merging target url path with raw request path
+	DisablePathAutomerge bool `yaml:"disable-path-automerge,omitempty" json:"disable-path-automerge,omitempty" jsonschema:"title=disable auto merging of path,description=Disable merging target url path with raw request path"`
 }
 
 // Options returns executer options for http request
-func (r *Request) Options() *protocols.ExecuterOptions {
+func (r *Request) Options() *protocols.ExecutorOptions {
 	return r.options
 }
 
@@ -236,7 +239,7 @@ func (request *Request) isRaw() bool {
 }
 
 // Compile compiles the protocol request for further execution.
-func (request *Request) Compile(options *protocols.ExecuterOptions) error {
+func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 	if err := request.validate(); err != nil {
 		return errors.Wrap(err, "validation error")
 	}

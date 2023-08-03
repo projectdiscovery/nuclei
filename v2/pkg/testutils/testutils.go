@@ -16,6 +16,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
 	"github.com/projectdiscovery/nuclei/v2/pkg/progress"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/contextargs"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/protocolinit"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 )
@@ -76,9 +77,9 @@ type TemplateInfo struct {
 }
 
 // NewMockExecuterOptions creates a new mock executeroptions struct
-func NewMockExecuterOptions(options *types.Options, info *TemplateInfo) *protocols.ExecuterOptions {
+func NewMockExecuterOptions(options *types.Options, info *TemplateInfo) *protocols.ExecutorOptions {
 	progressImpl, _ := progress.NewStatsTicker(0, false, false, false, false, 0)
-	executerOpts := &protocols.ExecuterOptions{
+	executerOpts := &protocols.ExecutorOptions{
 		TemplateID:   info.ID,
 		TemplateInfo: info.Info,
 		TemplatePath: info.Path,
@@ -90,6 +91,7 @@ func NewMockExecuterOptions(options *types.Options, info *TemplateInfo) *protoco
 		Browser:      nil,
 		Catalog:      disk.NewCatalog(config.DefaultConfig.TemplatesDirectory),
 		RateLimiter:  ratelimit.New(context.Background(), uint(options.RateLimit), time.Second),
+		TemplateCtx:  contextargs.New(),
 	}
 	return executerOpts
 }

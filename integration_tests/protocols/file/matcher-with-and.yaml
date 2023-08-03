@@ -1,0 +1,20 @@
+id: file-matcher-with-and
+
+info:
+  name: File Matcher With AND
+  author: pdteam
+  severity: info
+  tags: file
+
+file:
+  - extensions:
+      - all
+
+    matchers-condition: and
+    matchers:
+      - type: word
+        words:
+          - "CCC"
+      - type: word
+        words:
+          - "DDD"

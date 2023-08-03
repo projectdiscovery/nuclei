@@ -53,9 +53,9 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, metadata,
 	// optionvars are vars passed from CLI or env variables
 	optionVars := generators.BuildPayloadFromOptions(request.options.Options)
 	// merge with metadata (eg. from workflow context)
-	vars = generators.MergeMaps(vars, metadata, optionVars)
+	vars = generators.MergeMaps(vars, metadata, optionVars, request.options.TemplateCtx.GetAll())
 	variablesMap := request.options.Variables.Evaluate(vars)
-	vars = generators.MergeMaps(vars, variablesMap)
+	vars = generators.MergeMaps(vars, variablesMap, request.options.Constants)
 
 	if request.generator != nil {
 		iterator := request.generator.NewIterator()
@@ -149,12 +149,17 @@ func (request *Request) execute(domain string, metadata, previous output.Interna
 
 	// Create the output event
 	outputEvent := request.responseToDSLMap(compiledRequest, response, domain, question, traceData)
+	// expose response variables in proto_var format
+	// this is no-op if the template is not a multi protocol template
+	request.options.AddTemplateVars(request.Type(), outputEvent)
 	for k, v := range previous {
 		outputEvent[k] = v
 	}
 	for k, v := range vars {
 		outputEvent[k] = v
 	}
+	// add variables from template context before matching/extraction
+	outputEvent = generators.MergeMaps(outputEvent, request.options.TemplateCtx.GetAll())
 	event := eventcreator.CreateEvent(request, outputEvent, request.options.Options.Debug || request.options.Options.DebugResponse)
 
 	dumpResponse(event, request, request.options, response.String(), question)
@@ -184,7 +189,7 @@ func (request *Request) parseDNSInput(host string) (string, error) {
 	return host, nil
 }
 
-func dumpResponse(event *output.InternalWrappedEvent, request *Request, requestOptions *protocols.ExecuterOptions, response, domain string) {
+func dumpResponse(event *output.InternalWrappedEvent, request *Request, requestOptions *protocols.ExecutorOptions, response, domain string) {
 	cliOptions := request.options.Options
 	if cliOptions.Debug || cliOptions.DebugResponse || cliOptions.StoreResponse {
 		hexDump := false
@@ -203,7 +208,7 @@ func dumpResponse(event *output.InternalWrappedEvent, request *Request, requestO
 	}
 }
 
-func dumpTraceData(event *output.InternalWrappedEvent, requestOptions *protocols.ExecuterOptions, traceData, domain string) {
+func dumpTraceData(event *output.InternalWrappedEvent, requestOptions *protocols.ExecutorOptions, traceData, domain string) {
 	cliOptions := requestOptions.Options
 	if cliOptions.Debug || cliOptions.DebugResponse {
 		hexDump := false
