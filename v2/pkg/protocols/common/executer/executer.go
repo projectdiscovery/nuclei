@@ -195,8 +195,11 @@ func (e *Executer) executeFlow(input *contextargs.Context, callback protocols.Ou
 		allProtocols: allprotos,
 		input:        input,
 		options:      e.options,
-		allErrs:      mapsutil.SyncLockMap[string, error]{},
-		results:      &atomic.Bool{},
+		allErrs: mapsutil.SyncLockMap[string, error]{
+			ReadOnly: atomic.Bool{},
+			Map:      make(map[string]error),
+		},
+		results: &atomic.Bool{},
 	}
 
 	if err := flow.Compile(callback); err != nil {
