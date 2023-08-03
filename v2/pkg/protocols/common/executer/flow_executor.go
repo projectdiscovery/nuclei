@@ -46,6 +46,9 @@ func (f *FlowExecutor) Compile(callback func(event *output.InternalWrappedEvent)
 		f.results = new(atomic.Bool)
 	}
 
+	// create a new js vm/runtime
+	f.jsVM = goja.New()
+
 	// add all input args to template context
 	if f.input.HasArgs() {
 		f.input.ForEach(func(key string, value interface{}) error {
@@ -88,6 +91,10 @@ func (f *FlowExecutor) Compile(callback func(event *output.InternalWrappedEvent)
 			counter++
 		}
 		VarRegistry[proto] = func(ids ...string) {
+			defer func() {
+				var m map[string]interface{} = f.options.TemplateCtx.GetAll()
+				f.jsVM.Set("template", m)
+			}()
 			// if no id is passed execute all requests in sequence
 			if len(ids) == 0 {
 				// execution logic for http()
@@ -156,8 +163,6 @@ func (f *FlowExecutor) Compile(callback func(event *output.InternalWrappedEvent)
 		return multierr.Combine(compileErrors...)
 	}
 
-	// create a new js vm/runtime
-	f.jsVM = goja.New()
 	if err := f.jsVM.Set("log", func(call goja.FunctionCall) goja.Value {
 		arg := call.Argument(0).Export()
 		gologger.DefaultLogger.Print().Msgf("[%v] %v", aurora.BrightCyan("JS"), arg)
