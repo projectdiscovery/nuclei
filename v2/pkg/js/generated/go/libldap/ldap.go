@@ -1,14 +1,14 @@
 package ldap
 
 import (
-	original_ldap "github.com/projectdiscovery/nuclei/v2/pkg/js/libs/ldap"
+	lib_ldap "github.com/projectdiscovery/nuclei/v2/pkg/js/libs/ldap"
 
 	"github.com/dop251/goja"
 	"github.com/projectdiscovery/nuclei/v2/pkg/js/gojs"
 )
 
 var (
-	module = gojs.NewGojaModule("nuclei/libldap")
+	module = gojs.NewGojaModule("nuclei/ldap")
 )
 
 func init() {
@@ -19,12 +19,12 @@ func init() {
 			// Var and consts
 
 			// Types (value type)
-			"Client":       func() original_ldap.Client { return original_ldap.Client{} },
-			"LDAPMetadata": func() original_ldap.LDAPMetadata { return original_ldap.LDAPMetadata{} },
+			"Client":       func() lib_ldap.Client { return lib_ldap.Client{} },
+			"LDAPMetadata": func() lib_ldap.LDAPMetadata { return lib_ldap.LDAPMetadata{} },
 
 			// Types (pointer type)
-			"NewClient":       func() *original_ldap.Client { return &original_ldap.Client{} },
-			"NewLDAPMetadata": func() *original_ldap.LDAPMetadata { return &original_ldap.LDAPMetadata{} },
+			"NewClient":       func() *lib_ldap.Client { return &lib_ldap.Client{} },
+			"NewLDAPMetadata": func() *lib_ldap.LDAPMetadata { return &lib_ldap.LDAPMetadata{} },
 		},
 	).Register()
 }

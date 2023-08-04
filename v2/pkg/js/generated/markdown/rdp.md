@@ -30,10 +30,10 @@ to be used from nuclei scanner.
 | PluginInfo | `` |
 ### IsRDPResponse
 
-| Name | Type |
+| Name | Type | 
 |--------|-------------|
-| OS | `string` |
 | IsRDP | `bool` |
+| OS | `string` |
 
 
 

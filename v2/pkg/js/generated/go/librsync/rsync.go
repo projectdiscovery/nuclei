@@ -1,14 +1,14 @@
 package rsync
 
 import (
-	original_rsync "github.com/projectdiscovery/nuclei/v2/pkg/js/libs/rsync"
+	lib_rsync "github.com/projectdiscovery/nuclei/v2/pkg/js/libs/rsync"
 
 	"github.com/dop251/goja"
 	"github.com/projectdiscovery/nuclei/v2/pkg/js/gojs"
 )
 
 var (
-	module = gojs.NewGojaModule("nuclei/librsync")
+	module = gojs.NewGojaModule("nuclei/rsync")
 )
 
 func init() {
@@ -19,12 +19,12 @@ func init() {
 			// Var and consts
 
 			// Types (value type)
-			"Client":          func() original_rsync.Client { return original_rsync.Client{} },
-			"IsRsyncResponse": func() original_rsync.IsRsyncResponse { return original_rsync.IsRsyncResponse{} },
+			"Client":          func() lib_rsync.Client { return lib_rsync.Client{} },
+			"IsRsyncResponse": func() lib_rsync.IsRsyncResponse { return lib_rsync.IsRsyncResponse{} },
 
 			// Types (pointer type)
-			"NewClient":          func() *original_rsync.Client { return &original_rsync.Client{} },
-			"NewIsRsyncResponse": func() *original_rsync.IsRsyncResponse { return &original_rsync.IsRsyncResponse{} },
+			"NewClient":          func() *lib_rsync.Client { return &lib_rsync.Client{} },
+			"NewIsRsyncResponse": func() *lib_rsync.IsRsyncResponse { return &lib_rsync.IsRsyncResponse{} },
 		},
 	).Register()
 }

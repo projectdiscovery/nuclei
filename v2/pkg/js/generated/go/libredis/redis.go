@@ -1,24 +1,24 @@
 package redis
 
 import (
-	original_redis "github.com/projectdiscovery/nuclei/v2/pkg/js/libs/redis"
+	lib_redis "github.com/projectdiscovery/nuclei/v2/pkg/js/libs/redis"
 
 	"github.com/dop251/goja"
 	"github.com/projectdiscovery/nuclei/v2/pkg/js/gojs"
 )
 
 var (
-	module = gojs.NewGojaModule("nuclei/libredis")
+	module = gojs.NewGojaModule("nuclei/redis")
 )
 
 func init() {
 	module.Set(
 		gojs.Objects{
 			// Functions
-			"Connect":           original_redis.Connect,
-			"GetServerInfo":     original_redis.GetServerInfo,
-			"GetServerInfoAuth": original_redis.GetServerInfoAuth,
-			"IsAuthenticated":   original_redis.IsAuthenticated,
+			"Connect":           lib_redis.Connect,
+			"GetServerInfo":     lib_redis.GetServerInfo,
+			"GetServerInfoAuth": lib_redis.GetServerInfoAuth,
+			"IsAuthenticated":   lib_redis.IsAuthenticated,
 
 			// Var and consts
 

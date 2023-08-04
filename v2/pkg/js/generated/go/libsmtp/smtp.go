@@ -1,14 +1,14 @@
 package smtp
 
 import (
-	original_smtp "github.com/projectdiscovery/nuclei/v2/pkg/js/libs/smtp"
+	lib_smtp "github.com/projectdiscovery/nuclei/v2/pkg/js/libs/smtp"
 
 	"github.com/dop251/goja"
 	"github.com/projectdiscovery/nuclei/v2/pkg/js/gojs"
 )
 
 var (
-	module = gojs.NewGojaModule("nuclei/libsmtp")
+	module = gojs.NewGojaModule("nuclei/smtp")
 )
 
 func init() {
@@ -19,12 +19,12 @@ func init() {
 			// Var and consts
 
 			// Types (value type)
-			"Client":         func() original_smtp.Client { return original_smtp.Client{} },
-			"IsSMTPResponse": func() original_smtp.IsSMTPResponse { return original_smtp.IsSMTPResponse{} },
+			"Client":         func() lib_smtp.Client { return lib_smtp.Client{} },
+			"IsSMTPResponse": func() lib_smtp.IsSMTPResponse { return lib_smtp.IsSMTPResponse{} },
 
 			// Types (pointer type)
-			"NewClient":         func() *original_smtp.Client { return &original_smtp.Client{} },
-			"NewIsSMTPResponse": func() *original_smtp.IsSMTPResponse { return &original_smtp.IsSMTPResponse{} },
+			"NewClient":         func() *lib_smtp.Client { return &lib_smtp.Client{} },
+			"NewIsSMTPResponse": func() *lib_smtp.IsSMTPResponse { return &lib_smtp.IsSMTPResponse{} },
 		},
 	).Register()
 }

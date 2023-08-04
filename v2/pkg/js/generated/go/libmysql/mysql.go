@@ -1,14 +1,14 @@
 package mysql
 
 import (
-	original_mysql "github.com/projectdiscovery/nuclei/v2/pkg/js/libs/mysql"
+	lib_mysql "github.com/projectdiscovery/nuclei/v2/pkg/js/libs/mysql"
 
 	"github.com/dop251/goja"
 	"github.com/projectdiscovery/nuclei/v2/pkg/js/gojs"
 )
 
 var (
-	module = gojs.NewGojaModule("nuclei/libmysql")
+	module = gojs.NewGojaModule("nuclei/mysql")
 )
 
 func init() {
@@ -19,10 +19,10 @@ func init() {
 			// Var and consts
 
 			// Types (value type)
-			"Client": func() original_mysql.Client { return original_mysql.Client{} },
+			"Client": func() lib_mysql.Client { return lib_mysql.Client{} },
 
 			// Types (pointer type)
-			"NewClient": func() *original_mysql.Client { return &original_mysql.Client{} },
+			"NewClient": func() *lib_mysql.Client { return &lib_mysql.Client{} },
 		},
 	).Register()
 }

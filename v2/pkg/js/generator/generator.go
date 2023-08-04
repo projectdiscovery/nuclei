@@ -9,25 +9,24 @@ import (
 	"go/types"
 	"log"
 	"os"
-	"os/exec"
-	"path"
 	"strings"
-	"text/template"
 
 	_ "embed"
 
+	"github.com/pkg/errors"
 	"github.com/projectdiscovery/nuclei/v2/pkg/js/compiler"
 )
 
-//go:embed templates/js_class.tmpl
-var jsClassFile string
+var (
+	//go:embed templates/js_class.tmpl
+	jsClassFile string
+	//go:embed templates/go_class.tmpl
+	goClassFile string
+	//go:embed templates/markdown_class.tmpl
+	markdownClassFile string
+)
 
-//go:embed templates/go_class.tmpl
-var goClassFile string
-
-//go:embed templates/markdown_class.tmpl
-var markdownClassFile string
-
+// TemplateData contains the parameters for the JS code generator
 type TemplateData struct {
 	PackageName             string
 	PackagePath             string
@@ -42,18 +41,23 @@ type TemplateData struct {
 
 	typesPackage *types.Package
 
+	// NativeScripts contains the list of native scripts
+	// that should be included in the package.
 	NativeScripts []string
 }
 
+// PackageTypeExtra contains extra information about a type
 type PackageTypeExtra struct {
 	Fields map[string]string
 }
 
+// PackageFuncExtra contains extra information about a function
 type PackageFuncExtra struct {
 	Items map[string]PackageFunctionExtra
 	Doc   string
 }
 
+// PackageFunctionExtra contains extra information about a function
 type PackageFunctionExtra struct {
 	Args    []string
 	Name    string
@@ -61,6 +65,7 @@ type PackageFunctionExtra struct {
 	Doc     string
 }
 
+// newTemplateData creates a new template data structure
 func newTemplateData(packagePrefix, pkgName string) *TemplateData {
 	return &TemplateData{
 		PackageName:             pkgName,
@@ -76,6 +81,21 @@ func newTemplateData(packagePrefix, pkgName string) *TemplateData {
 	}
 }
 
+// GetLibraryModules takes a directory and returns subdirectories as modules
+func GetLibraryModules(directory string) ([]string, error) {
+	dirs, err := os.ReadDir(directory)
+	if err != nil {
+		return nil, errors.Wrap(err, "could not read directory")
+	}
+	var modules []string
+	for _, dir := range dirs {
+		if dir.IsDir() {
+			modules = append(modules, dir.Name())
+		}
+	}
+	return modules, nil
+}
+
 // CreateTemplateData creates a TemplateData structure from a directory
 // of go source code.
 func CreateTemplateData(directory string, packagePrefix string) (*TemplateData, error) {
@@ -83,7 +103,7 @@ func CreateTemplateData(directory string, packagePrefix string) (*TemplateData, 
 
 	pkgs, err := parser.ParseDir(fset, directory, nil, parser.ParseComments)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "could not parse directory")
 	}
 	if len(pkgs) != 1 {
 		return nil, fmt.Errorf("expected 1 package, got %d", len(pkgs))
@@ -102,11 +122,9 @@ func CreateTemplateData(directory string, packagePrefix string) (*TemplateData, 
 		break
 	}
 
-	//	ast.Print(fset, files[0])
-
 	pkg, err := config.Check(packageName, fset, files, nil)
 	if err != nil {
-		log.Fatal(err)
+		return nil, errors.Wrap(err, "could not check package")
 	}
 
 	var pkgMain *ast.Package
@@ -128,37 +146,8 @@ func CreateTemplateData(directory string, packagePrefix string) (*TemplateData, 
 	return data, nil
 }
 
-func (d *TemplateData) WriteJSTemplate(output string, pkgName string) error {
-	_ = os.MkdirAll(output, os.ModePerm)
-
-	var err error
-	tmpl := template.New("js_class")
-	tmpl, err = tmpl.Parse(jsClassFile)
-	if err != nil {
-		return err
-	}
-
-	filename := path.Join(output, fmt.Sprintf("%s.js", pkgName))
-	outputFile2, err := os.Create(filename)
-	if err != nil {
-		return err
-	}
-
-	if err := tmpl.Execute(outputFile2, d); err != nil {
-		outputFile2.Close()
-		return err
-	}
-	outputFile2.Close()
-
-	cmd := exec.Command("js-beautify", "-r", filename)
-	cmd.Stderr = os.Stderr
-	cmd.Stdout = os.Stdout
-	if err := cmd.Run(); err != nil {
-		return err
-	}
-	return nil
-}
-
+// InitNativeScripts initializes the native scripts array
+// with all the exported functions from the runtime
 func (d *TemplateData) InitNativeScripts() {
 	compiler := compiler.New()
 	runtime := compiler.VM()
@@ -176,90 +165,7 @@ func (d *TemplateData) InitNativeScripts() {
 	}
 }
 
-func (d *TemplateData) WriteGoTemplate(output string, pkgName string) error {
-	_ = os.MkdirAll(output, os.ModePerm)
-
-	var err error
-	tmpl := template.New("go_class")
-	tmpl = tmpl.Funcs(templateFuncs())
-	tmpl, err = tmpl.Parse(goClassFile)
-	if err != nil {
-		return err
-	}
-
-	filename := path.Join(output, fmt.Sprintf("%s.go", pkgName))
-	outputFile2, err := os.Create(filename)
-	if err != nil {
-		return err
-	}
-
-	if err := tmpl.Execute(outputFile2, d); err != nil {
-		outputFile2.Close()
-		return err
-	}
-	outputFile2.Close()
-
-	cmd := exec.Command("gofmt", "-w", filename)
-	cmd.Stderr = os.Stderr
-	cmd.Stdout = os.Stdout
-	if err := cmd.Run(); err != nil {
-		return err
-	}
-	return nil
-}
-
-var markdownIndexes = make(map[string]string)
-
-func (d *TemplateData) WriteMarkdownTemplate(output string, pkgName string) error {
-	_ = os.MkdirAll(output, os.ModePerm)
-
-	var err error
-	tmpl := template.New("markdown_class")
-	tmpl = tmpl.Funcs(templateFuncs())
-	tmpl, err = tmpl.Parse(markdownClassFile)
-	if err != nil {
-		return err
-	}
-
-	filename := path.Join(output, fmt.Sprintf("%s.md", pkgName))
-	outputFile2, err := os.Create(filename)
-	if err != nil {
-		return err
-	}
-
-	markdownIndexes[pkgName] = fmt.Sprintf("[%s](%s.md)", pkgName, pkgName)
-	if err := tmpl.Execute(outputFile2, d); err != nil {
-		outputFile2.Close()
-		return err
-	}
-	outputFile2.Close()
-
-	return nil
-}
-
-func (d *TemplateData) WriteMarkdownIndexTemplate(output string) error {
-	_ = os.MkdirAll(output, os.ModePerm)
-
-	filename := path.Join(output, "index.md")
-	outputFile2, err := os.Create(filename)
-	if err != nil {
-		return err
-	}
-	defer outputFile2.Close()
-
-	outputFile2.WriteString("# Index\n\n")
-	for _, v := range markdownIndexes {
-		outputFile2.WriteString(fmt.Sprintf("* %s\n", v))
-	}
-	outputFile2.WriteString("\n\n")
-
-	outputFile2.WriteString("# Scripts\n\n")
-	for _, v := range d.NativeScripts {
-		outputFile2.WriteString(fmt.Sprintf("* `%s`\n", v))
-	}
-	return nil
-}
-
+// gatherPackageData gathers data about the package
 func (d *TemplateData) gatherPackageData(pkg *ast.Package, data *TemplateData) {
 	ast.Inspect(pkg, func(node ast.Node) bool {
 		switch node := node.(type) {
@@ -352,6 +258,7 @@ func identifyGenDecl(pkg *ast.Package, decl *ast.GenDecl, data *TemplateData) {
 		}
 	}
 }
+
 func collectStructFuncsFromAST(pkg *ast.Package, spec *ast.TypeSpec, data *TemplateData) {
 	ast.Inspect(pkg, func(n ast.Node) bool {
 		if fn, isFunc := n.(*ast.FuncDecl); isFunc && fn.Name.IsExported() {
@@ -414,7 +321,7 @@ func (d *TemplateData) extractReturnType(ret *ast.Field) string {
 			return fmt.Sprintf("[]%s", v.Name)
 		}
 		if v, ok := v.Elt.(*ast.StarExpr); ok {
-			return d.handleStarExpr(v)
+			return fmt.Sprintf("[]%s", d.handleStarExpr(v))
 		}
 	case *ast.Ident:
 		return v.Name
@@ -497,41 +404,8 @@ func (d *TemplateData) collectFuncDecl(decl *ast.FuncDecl) (extra PackageFunctio
 	return extra
 }
 
-// GetModules takes a directory and returns subdirectories as modules
-func GetModules(directory string) ([]string, error) {
-	dirs, err := os.ReadDir(directory)
-	if err != nil {
-		return nil, err
-	}
-	var modules []string
-	for _, dir := range dirs {
-		if dir.IsDir() {
-			modules = append(modules, dir.Name())
-		}
-	}
-	return modules, nil
-}
-
+// convertCommentsToJavascript converts comments to javascript comments.
 func convertCommentsToJavascript(comments string) string {
 	suffix := strings.Trim(strings.TrimSuffix(strings.ReplaceAll(comments, "\n", "\n// "), "// "), "\n")
 	return fmt.Sprintf("// %s", suffix)
-}
-
-func templateFuncs() map[string]interface{} {
-	return map[string]interface{}{
-		"exist": func(v map[string]string, key string) bool {
-			_, exist := v[key]
-			return exist
-		},
-		"toTitle": func(v string) string {
-			if len(v) == 0 {
-				return v
-			}
-
-			return strings.ToUpper(string(v[0])) + v[1:]
-		},
-		"uncomment": func(v string) string {
-			return strings.ReplaceAll(strings.ReplaceAll(v, "// ", " "), "\n", " ")
-		},
-	}
 }

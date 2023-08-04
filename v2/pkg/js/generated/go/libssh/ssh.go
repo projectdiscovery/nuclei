@@ -1,14 +1,14 @@
 package ssh
 
 import (
-	original_ssh "github.com/projectdiscovery/nuclei/v2/pkg/js/libs/ssh"
+	lib_ssh "github.com/projectdiscovery/nuclei/v2/pkg/js/libs/ssh"
 
 	"github.com/dop251/goja"
 	"github.com/projectdiscovery/nuclei/v2/pkg/js/gojs"
 )
 
 var (
-	module = gojs.NewGojaModule("nuclei/libssh")
+	module = gojs.NewGojaModule("nuclei/ssh")
 )
 
 func init() {
@@ -19,10 +19,10 @@ func init() {
 			// Var and consts
 
 			// Types (value type)
-			"Client": func() original_ssh.Client { return original_ssh.Client{} },
+			"Client": func() lib_ssh.Client { return lib_ssh.Client{} },
 
 			// Types (pointer type)
-			"NewClient": func() *original_ssh.Client { return &original_ssh.Client{} },
+			"NewClient": func() *lib_ssh.Client { return &lib_ssh.Client{} },
 		},
 	).Register()
 }

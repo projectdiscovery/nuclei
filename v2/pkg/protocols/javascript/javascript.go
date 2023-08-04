@@ -77,11 +77,11 @@ type Request struct {
 
 	// cache any variables that may be needed for operation.
 	compiler *compiler.Compiler
-	options  *protocols.ExecuterOptions
+	options  *protocols.ExecutorOptions
 }
 
 // Compile compiles the request generators preparing any requests possible.
-func (request *Request) Compile(options *protocols.ExecuterOptions) error {
+func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 	request.options = options
 
 	request.compiler = options.Compiler
@@ -107,7 +107,7 @@ func (request *Request) Compile(options *protocols.ExecuterOptions) error {
 }
 
 // Options returns executer options for http request
-func (r *Request) Options() *protocols.ExecuterOptions {
+func (r *Request) Options() *protocols.ExecutorOptions {
 	return r.options
 }
 
@@ -229,7 +229,7 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 	return request.executeRequestWithPayloads(hostPort, input, hostname, nil, payloadValues, callback, requestOptions)
 }
 
-func (request *Request) executeRequestWithPayloads(hostPort string, input *contextargs.Context, hostname string, payload map[string]interface{}, previous output.InternalEvent, callback protocols.OutputEventCallback, requestOptions *protocols.ExecuterOptions) error {
+func (request *Request) executeRequestWithPayloads(hostPort string, input *contextargs.Context, hostname string, payload map[string]interface{}, previous output.InternalEvent, callback protocols.OutputEventCallback, requestOptions *protocols.ExecutorOptions) error {
 	payloadValues := generators.MergeMaps(payload, previous)
 	argsCopy, err := request.getArgsCopy(input, payloadValues, requestOptions, false)
 	if err != nil {
@@ -333,7 +333,7 @@ func (request *Request) executeRequestWithPayloads(hostPort string, input *conte
 	return nil
 }
 
-func (request *Request) getArgsCopy(input *contextargs.Context, payloadValues map[string]interface{}, requestOptions *protocols.ExecuterOptions, ignoreErrors bool) (map[string]interface{}, error) {
+func (request *Request) getArgsCopy(input *contextargs.Context, payloadValues map[string]interface{}, requestOptions *protocols.ExecutorOptions, ignoreErrors bool) (map[string]interface{}, error) {
 	// Template args from payloads
 	argsCopy := make(map[string]interface{})
 mainLoop:

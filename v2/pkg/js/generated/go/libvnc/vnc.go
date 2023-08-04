@@ -1,14 +1,14 @@
 package vnc
 
 import (
-	original_vnc "github.com/projectdiscovery/nuclei/v2/pkg/js/libs/vnc"
+	lib_vnc "github.com/projectdiscovery/nuclei/v2/pkg/js/libs/vnc"
 
 	"github.com/dop251/goja"
 	"github.com/projectdiscovery/nuclei/v2/pkg/js/gojs"
 )
 
 var (
-	module = gojs.NewGojaModule("nuclei/libvnc")
+	module = gojs.NewGojaModule("nuclei/vnc")
 )
 
 func init() {
@@ -19,12 +19,12 @@ func init() {
 			// Var and consts
 
 			// Types (value type)
-			"Client":        func() original_vnc.Client { return original_vnc.Client{} },
-			"IsVNCResponse": func() original_vnc.IsVNCResponse { return original_vnc.IsVNCResponse{} },
+			"Client":        func() lib_vnc.Client { return lib_vnc.Client{} },
+			"IsVNCResponse": func() lib_vnc.IsVNCResponse { return lib_vnc.IsVNCResponse{} },
 
 			// Types (pointer type)
-			"NewClient":        func() *original_vnc.Client { return &original_vnc.Client{} },
-			"NewIsVNCResponse": func() *original_vnc.IsVNCResponse { return &original_vnc.IsVNCResponse{} },
+			"NewClient":        func() *lib_vnc.Client { return &lib_vnc.Client{} },
+			"NewIsVNCResponse": func() *lib_vnc.IsVNCResponse { return &lib_vnc.IsVNCResponse{} },
 		},
 	).Register()
 }

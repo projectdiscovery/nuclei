@@ -1,14 +1,14 @@
 package rdp
 
 import (
-	original_rdp "github.com/projectdiscovery/nuclei/v2/pkg/js/libs/rdp"
+	lib_rdp "github.com/projectdiscovery/nuclei/v2/pkg/js/libs/rdp"
 
 	"github.com/dop251/goja"
 	"github.com/projectdiscovery/nuclei/v2/pkg/js/gojs"
 )
 
 var (
-	module = gojs.NewGojaModule("nuclei/librdp")
+	module = gojs.NewGojaModule("nuclei/rdp")
 )
 
 func init() {
@@ -19,14 +19,14 @@ func init() {
 			// Var and consts
 
 			// Types (value type)
-			"CheckRDPAuthResponse": func() original_rdp.CheckRDPAuthResponse { return original_rdp.CheckRDPAuthResponse{} },
-			"Client":               func() original_rdp.Client { return original_rdp.Client{} },
-			"IsRDPResponse":        func() original_rdp.IsRDPResponse { return original_rdp.IsRDPResponse{} },
+			"CheckRDPAuthResponse": func() lib_rdp.CheckRDPAuthResponse { return lib_rdp.CheckRDPAuthResponse{} },
+			"Client":               func() lib_rdp.Client { return lib_rdp.Client{} },
+			"IsRDPResponse":        func() lib_rdp.IsRDPResponse { return lib_rdp.IsRDPResponse{} },
 
 			// Types (pointer type)
-			"NewCheckRDPAuthResponse": func() *original_rdp.CheckRDPAuthResponse { return &original_rdp.CheckRDPAuthResponse{} },
-			"NewClient":               func() *original_rdp.Client { return &original_rdp.Client{} },
-			"NewIsRDPResponse":        func() *original_rdp.IsRDPResponse { return &original_rdp.IsRDPResponse{} },
+			"NewCheckRDPAuthResponse": func() *lib_rdp.CheckRDPAuthResponse { return &lib_rdp.CheckRDPAuthResponse{} },
+			"NewClient":               func() *lib_rdp.Client { return &lib_rdp.Client{} },
+			"NewIsRDPResponse":        func() *lib_rdp.IsRDPResponse { return &lib_rdp.IsRDPResponse{} },
 		},
 	).Register()
 }

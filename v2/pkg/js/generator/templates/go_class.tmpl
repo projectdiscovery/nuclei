@@ -1,6 +1,6 @@
 package {{.PackageName}}
 
-{{$pkgName:=(printf "original_%s" .PackageName) -}}
+{{$pkgName:=(printf "lib_%s" .PackageName) -}}
 
 import (
 	{{$pkgName}} "{{.PackagePath}}"
@@ -10,7 +10,7 @@ import (
 )
 
 var (
-	module = gojs.NewGojaModule("nuclei/lib{{.PackageName}}")
+	module = gojs.NewGojaModule("nuclei/{{.PackageName}}")
 )
 
 func init() {

@@ -1,14 +1,14 @@
 package kerberos
 
 import (
-	original_kerberos "github.com/projectdiscovery/nuclei/v2/pkg/js/libs/kerberos"
+	lib_kerberos "github.com/projectdiscovery/nuclei/v2/pkg/js/libs/kerberos"
 
 	"github.com/dop251/goja"
 	"github.com/projectdiscovery/nuclei/v2/pkg/js/gojs"
 )
 
 var (
-	module = gojs.NewGojaModule("nuclei/libkerberos")
+	module = gojs.NewGojaModule("nuclei/kerberos")
 )
 
 func init() {
@@ -19,12 +19,12 @@ func init() {
 			// Var and consts
 
 			// Types (value type)
-			"Client":                func() original_kerberos.Client { return original_kerberos.Client{} },
-			"EnumerateUserResponse": func() original_kerberos.EnumerateUserResponse { return original_kerberos.EnumerateUserResponse{} },
+			"Client":                func() lib_kerberos.Client { return lib_kerberos.Client{} },
+			"EnumerateUserResponse": func() lib_kerberos.EnumerateUserResponse { return lib_kerberos.EnumerateUserResponse{} },
 
 			// Types (pointer type)
-			"NewClient":                func() *original_kerberos.Client { return &original_kerberos.Client{} },
-			"NewEnumerateUserResponse": func() *original_kerberos.EnumerateUserResponse { return &original_kerberos.EnumerateUserResponse{} },
+			"NewClient":                func() *lib_kerberos.Client { return &lib_kerberos.Client{} },
+			"NewEnumerateUserResponse": func() *lib_kerberos.EnumerateUserResponse { return &lib_kerberos.EnumerateUserResponse{} },
 		},
 	).Register()
 }

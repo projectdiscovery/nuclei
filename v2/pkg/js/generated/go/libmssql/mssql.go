@@ -1,14 +1,14 @@
 package mssql
 
 import (
-	original_mssql "github.com/projectdiscovery/nuclei/v2/pkg/js/libs/mssql"
+	lib_mssql "github.com/projectdiscovery/nuclei/v2/pkg/js/libs/mssql"
 
 	"github.com/dop251/goja"
 	"github.com/projectdiscovery/nuclei/v2/pkg/js/gojs"
 )
 
 var (
-	module = gojs.NewGojaModule("nuclei/libmssql")
+	module = gojs.NewGojaModule("nuclei/mssql")
 )
 
 func init() {
@@ -19,10 +19,10 @@ func init() {
 			// Var and consts
 
 			// Types (value type)
-			"Client": func() original_mssql.Client { return original_mssql.Client{} },
+			"Client": func() lib_mssql.Client { return lib_mssql.Client{} },
 
 			// Types (pointer type)
-			"NewClient": func() *original_mssql.Client { return &original_mssql.Client{} },
+			"NewClient": func() *lib_mssql.Client { return &lib_mssql.Client{} },
 		},
 	).Register()
 }

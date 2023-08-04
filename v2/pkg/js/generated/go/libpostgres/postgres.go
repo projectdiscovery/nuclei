@@ -1,14 +1,14 @@
 package postgres
 
 import (
-	original_postgres "github.com/projectdiscovery/nuclei/v2/pkg/js/libs/postgres"
+	lib_postgres "github.com/projectdiscovery/nuclei/v2/pkg/js/libs/postgres"
 
 	"github.com/dop251/goja"
 	"github.com/projectdiscovery/nuclei/v2/pkg/js/gojs"
 )
 
 var (
-	module = gojs.NewGojaModule("nuclei/libpostgres")
+	module = gojs.NewGojaModule("nuclei/postgres")
 )
 
 func init() {
@@ -19,10 +19,10 @@ func init() {
 			// Var and consts
 
 			// Types (value type)
-			"Client": func() original_postgres.Client { return original_postgres.Client{} },
+			"Client": func() lib_postgres.Client { return lib_postgres.Client{} },
 
 			// Types (pointer type)
-			"NewClient": func() *original_postgres.Client { return &original_postgres.Client{} },
+			"NewClient": func() *lib_postgres.Client { return &lib_postgres.Client{} },
 		},
 	).Register()
 }

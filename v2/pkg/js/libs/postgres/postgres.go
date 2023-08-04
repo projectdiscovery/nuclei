@@ -11,7 +11,7 @@ import (
 	_ "github.com/lib/pq"
 	"github.com/praetorian-inc/fingerprintx/pkg/plugins"
 	postgres "github.com/praetorian-inc/fingerprintx/pkg/plugins/services/postgresql"
-	"github.com/projectdiscovery/nuclei/v2/pkg/js/gojs/utils"
+	"github.com/projectdiscovery/nuclei/v2/pkg/js/scripts/utils"
 )
 
 // Client is a client for Postgres database.

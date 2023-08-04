@@ -1,14 +1,14 @@
 package telnet
 
 import (
-	original_telnet "github.com/projectdiscovery/nuclei/v2/pkg/js/libs/telnet"
+	lib_telnet "github.com/projectdiscovery/nuclei/v2/pkg/js/libs/telnet"
 
 	"github.com/dop251/goja"
 	"github.com/projectdiscovery/nuclei/v2/pkg/js/gojs"
 )
 
 var (
-	module = gojs.NewGojaModule("nuclei/libtelnet")
+	module = gojs.NewGojaModule("nuclei/telnet")
 )
 
 func init() {
@@ -19,12 +19,12 @@ func init() {
 			// Var and consts
 
 			// Types (value type)
-			"Client":           func() original_telnet.Client { return original_telnet.Client{} },
-			"IsTelnetResponse": func() original_telnet.IsTelnetResponse { return original_telnet.IsTelnetResponse{} },
+			"Client":           func() lib_telnet.Client { return lib_telnet.Client{} },
+			"IsTelnetResponse": func() lib_telnet.IsTelnetResponse { return lib_telnet.IsTelnetResponse{} },
 
 			// Types (pointer type)
-			"NewClient":           func() *original_telnet.Client { return &original_telnet.Client{} },
-			"NewIsTelnetResponse": func() *original_telnet.IsTelnetResponse { return &original_telnet.IsTelnetResponse{} },
+			"NewClient":           func() *lib_telnet.Client { return &lib_telnet.Client{} },
+			"NewIsTelnetResponse": func() *lib_telnet.IsTelnetResponse { return &lib_telnet.IsTelnetResponse{} },
 		},
 	).Register()
 }

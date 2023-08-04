@@ -1,14 +1,14 @@
 package oracle
 
 import (
-	original_oracle "github.com/projectdiscovery/nuclei/v2/pkg/js/libs/oracle"
+	lib_oracle "github.com/projectdiscovery/nuclei/v2/pkg/js/libs/oracle"
 
 	"github.com/dop251/goja"
 	"github.com/projectdiscovery/nuclei/v2/pkg/js/gojs"
 )
 
 var (
-	module = gojs.NewGojaModule("nuclei/liboracle")
+	module = gojs.NewGojaModule("nuclei/oracle")
 )
 
 func init() {
@@ -19,12 +19,12 @@ func init() {
 			// Var and consts
 
 			// Types (value type)
-			"Client":           func() original_oracle.Client { return original_oracle.Client{} },
-			"IsOracleResponse": func() original_oracle.IsOracleResponse { return original_oracle.IsOracleResponse{} },
+			"Client":           func() lib_oracle.Client { return lib_oracle.Client{} },
+			"IsOracleResponse": func() lib_oracle.IsOracleResponse { return lib_oracle.IsOracleResponse{} },
 
 			// Types (pointer type)
-			"NewClient":           func() *original_oracle.Client { return &original_oracle.Client{} },
-			"NewIsOracleResponse": func() *original_oracle.IsOracleResponse { return &original_oracle.IsOracleResponse{} },
+			"NewClient":           func() *lib_oracle.Client { return &lib_oracle.Client{} },
+			"NewIsOracleResponse": func() *lib_oracle.IsOracleResponse { return &lib_oracle.IsOracleResponse{} },
 		},
 	).Register()
 }

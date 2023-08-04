@@ -1,30 +1,30 @@
 package net
 
 import (
-	original_net "github.com/projectdiscovery/nuclei/v2/pkg/js/libs/net"
+	lib_net "github.com/projectdiscovery/nuclei/v2/pkg/js/libs/net"
 
 	"github.com/dop251/goja"
 	"github.com/projectdiscovery/nuclei/v2/pkg/js/gojs"
 )
 
 var (
-	module = gojs.NewGojaModule("nuclei/libnet")
+	module = gojs.NewGojaModule("nuclei/net")
 )
 
 func init() {
 	module.Set(
 		gojs.Objects{
 			// Functions
-			"Open":    original_net.Open,
-			"OpenTLS": original_net.OpenTLS,
+			"Open":    lib_net.Open,
+			"OpenTLS": lib_net.OpenTLS,
 
 			// Var and consts
 
 			// Types (value type)
-			"Conn": func() original_net.Conn { return original_net.Conn{} },
+			"Conn": func() lib_net.Conn { return lib_net.Conn{} },
 
 			// Types (pointer type)
-			"NewConn": func() *original_net.Conn { return &original_net.Conn{} },
+			"NewConn": func() *lib_net.Conn { return &lib_net.Conn{} },
 		},
 	).Register()
 }

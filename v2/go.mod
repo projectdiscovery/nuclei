@@ -95,7 +95,7 @@ require (
 	github.com/projectdiscovery/wappalyzergo v0.0.102
 	github.com/ropnop/gokrb5/v8 v8.0.0-20201111231119-729746023c02
 	github.com/stretchr/testify v1.8.4
-	github.com/zmap/zgrab2 v0.1.7
+	github.com/zmap/zgrab2 v0.1.8-0.20230323032758-911c86f13080
 	gopkg.in/src-d/go-git.v4 v4.13.1
 	gopkg.in/yaml.v3 v3.0.1
 )

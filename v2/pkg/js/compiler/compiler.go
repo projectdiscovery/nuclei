@@ -8,6 +8,7 @@ import (
 	"github.com/dop251/goja_nodejs/console"
 	"github.com/dop251/goja_nodejs/require"
 	jsoniter "github.com/json-iterator/go"
+	"github.com/pkg/errors"
 
 	"github.com/projectdiscovery/gologger"
 	_ "github.com/projectdiscovery/nuclei/v2/pkg/js/generated/go/libikev2"
@@ -27,6 +28,7 @@ import (
 	_ "github.com/projectdiscovery/nuclei/v2/pkg/js/generated/go/libssh"
 	_ "github.com/projectdiscovery/nuclei/v2/pkg/js/generated/go/libtelnet"
 	_ "github.com/projectdiscovery/nuclei/v2/pkg/js/generated/go/libvnc"
+	"github.com/projectdiscovery/nuclei/v2/pkg/js/scripts"
 )
 
 // Compiler provides a runtime to execute goja runtime
@@ -66,8 +68,17 @@ type ExecuteOptions struct {
 // ExecuteArgs is the arguments to pass to the script.
 type ExecuteArgs map[string]interface{}
 
+// NewExecuteArgs returns a new execute arguments.
+func NewExecuteArgs() ExecuteArgs {
+	return make(map[string]interface{})
+}
+
 // ExecuteResult is the result of executing a script.
 type ExecuteResult map[string]interface{}
+
+func NewExecuteResult() ExecuteResult {
+	return make(map[string]interface{})
+}
 
 // GetSuccess returns whether the script was successful or not.
 func (e ExecuteResult) GetSuccess() bool {
@@ -112,9 +123,6 @@ func (c *Compiler) ExecuteWithOptions(code string, args ExecuteArgs, opts *Execu
 	}
 	captured := results.Export()
 
-	// If we need to capture output, we need to do it here.
-	// FIXME: This doesn't work with kval and returns blank response
-	// fix this.
 	if opts.CaptureOutput {
 		return convertOutputToResult(captured)
 	}
@@ -142,7 +150,11 @@ func (c *Compiler) captureVariables(runtime *goja.Runtime, variables []string) (
 }
 
 func convertOutputToResult(output interface{}) (ExecuteResult, error) {
-	marshalled, _ := jsoniter.Marshal(output)
+	marshalled, err := jsoniter.Marshal(output)
+	if err != nil {
+		return nil, errors.Wrap(err, "could not marshal output")
+	}
+
 	var outputMap map[string]interface{}
 	if err := jsoniter.Unmarshal(marshalled, &outputMap); err != nil {
 		var v interface{}
@@ -159,4 +171,15 @@ func convertOutputToResult(output interface{}) (ExecuteResult, error) {
 // TODO: Add support for runtime reuse for helper functions
 func (c *Compiler) newRuntime(reuse bool) *goja.Runtime {
 	return goja.New()
+}
+
+// registerHelpersForVM registers all the helper functions for the goja runtime.
+func (c *Compiler) registerHelpersForVM(runtime *goja.Runtime) {
+	_ = c.registry.Enable(runtime)
+	runtime.Set("console", require.Require(runtime, console.ModuleName))
+
+	// Register embedded scripts
+	if err := scripts.RegisterNativeScripts(runtime); err != nil {
+		gologger.Error().Msgf("Could not register scripts: %s\n", err)
+	}
 }
