@@ -21,6 +21,9 @@ dns:
       - type: word
         words:
           - "IN\tA"
+      - type: regex
+        regex:
+          - "IN\\s*A"
 
     extractors:
       - type: regex

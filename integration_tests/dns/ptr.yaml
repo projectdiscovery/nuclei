@@ -14,6 +14,9 @@ dns:
       - type: word
         words:
           - "IN\tPTR"
+      - type: regex
+        regex:
+          - "IN\\s*PTR"
 
     extractors:
       - type: regex

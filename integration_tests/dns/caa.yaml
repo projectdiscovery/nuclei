@@ -14,6 +14,9 @@ dns:
       - type: word
         words:
           - "IN\tCAA"
+      - type: regex
+        regex:
+          - "IN\\s*CAA"
 
     extractors:
       - type: regex
