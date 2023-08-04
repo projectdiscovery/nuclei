@@ -25,7 +25,7 @@ jobs:
       - name: Check out code
         uses: actions/checkout@v3
 
-      - name: Go Mod hygine
+      - name: Go Mod hygiene
         run: |
           go clean -modcache
           go mod tidy

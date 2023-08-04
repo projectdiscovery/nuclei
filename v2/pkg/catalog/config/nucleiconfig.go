@@ -23,16 +23,16 @@ type Config struct {
 	TemplatesDirectory string `json:"nuclei-templates-directory,omitempty"`
 
 	// customtemplates exists in templates directory with the name of custom-templates provider
-	// below custom paths are absolute paths to respecitive custom-templates directories
+	// below custom paths are absolute paths to respective custom-templates directories
 	CustomS3TemplatesDirectory     string `json:"custom-s3-templates-directory"`
-	CustomGithubTemplatesDirectory string `json:"custom-github-templates-directory"`
+	CustomGitHubTemplatesDirectory string `json:"custom-github-templates-directory"`
 	CustomGitLabTemplatesDirectory string `json:"custom-gitlab-templates-directory"`
 	CustomAzureTemplatesDirectory  string `json:"custom-azure-templates-directory"`
 
 	TemplateVersion  string `json:"nuclei-templates-version,omitempty"`
 	NucleiIgnoreHash string `json:"nuclei-ignore-hash,omitempty"`
 
-	// Latestxxx are not meant to be used directly and is used as
+	// LatestXXX are not meant to be used directly and is used as
 	// local cache of nuclei version check endpoint
 	// these fields are only update during nuclei version check
 	// TODO: move these fields to a separate unexported struct as they are not meant to be used directly
@@ -83,7 +83,7 @@ func (c *Config) NeedsTemplateUpdate() bool {
 	return !c.disableUpdates && (c.TemplateVersion == "" || IsOutdatedVersion(c.TemplateVersion, c.LatestNucleiTemplatesVersion) || !fileutil.FolderExists(c.TemplatesDirectory))
 }
 
-// NeedsIngoreFileUpdate returns true if Ignore file hash is different (aka ignore file is outdated)
+// NeedsIgnoreFileUpdate returns true if Ignore file hash is different (aka ignore file is outdated)
 func (c *Config) NeedsIgnoreFileUpdate() bool {
 	return c.NucleiIgnoreHash == "" || c.NucleiIgnoreHash != c.LatestNucleiIgnoreHash
 }
@@ -111,7 +111,7 @@ func (c *Config) GetConfigDir() string {
 
 // GetAllCustomTemplateDirs returns all custom template directories
 func (c *Config) GetAllCustomTemplateDirs() []string {
-	return []string{c.CustomS3TemplatesDirectory, c.CustomGithubTemplatesDirectory, c.CustomGitLabTemplatesDirectory, c.CustomAzureTemplatesDirectory}
+	return []string{c.CustomS3TemplatesDirectory, c.CustomGitHubTemplatesDirectory, c.CustomGitLabTemplatesDirectory, c.CustomAzureTemplatesDirectory}
 }
 
 // GetReportingConfigFilePath returns the nuclei reporting config file path
@@ -135,7 +135,7 @@ func (c *Config) GetChecksumFilePath() string {
 
 // GetCLIOptsConfigFilePath returns the nuclei cli config file path
 func (c *Config) GetFlagsConfigFilePath() string {
-	return filepath.Join(c.configDir, CLIConifgFileName)
+	return filepath.Join(c.configDir, CLIConfigFileName)
 }
 
 // GetNewAdditions returns new template additions in current template release
@@ -188,7 +188,7 @@ func (c *Config) SetTemplatesDir(dirPath string) {
 	}
 	c.TemplatesDirectory = dirPath
 	// Update the custom templates directory
-	c.CustomGithubTemplatesDirectory = filepath.Join(dirPath, CustomGithubTemplatesDirName)
+	c.CustomGitHubTemplatesDirectory = filepath.Join(dirPath, CustomGitHubTemplatesDirName)
 	c.CustomS3TemplatesDirectory = filepath.Join(dirPath, CustomS3TemplatesDirName)
 	c.CustomGitLabTemplatesDirectory = filepath.Join(dirPath, CustomGitLabTemplatesDirName)
 	c.CustomAzureTemplatesDirectory = filepath.Join(dirPath, CustomAzureTemplatesDirName)

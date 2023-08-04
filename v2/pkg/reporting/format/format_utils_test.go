@@ -1,9 +1,10 @@
 package format
 
 import (
-	"github.com/stretchr/testify/assert"
 	"strings"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 
 	"github.com/projectdiscovery/nuclei/v2/pkg/model"
 	"github.com/projectdiscovery/nuclei/v2/pkg/model/types/severity"
@@ -18,7 +19,7 @@ func TestToMarkdownTableString(t *testing.T) {
 		Description:    "Test description",
 		SeverityHolder: severity.Holder{Severity: severity.High},
 		Tags:           stringslice.StringSlice{Value: []string{"cve", "misc"}},
-		Reference:      stringslice.NewRaw("reference1"),
+		Reference:      stringslice.NewRawStringSlice("reference1"),
 		Metadata: map[string]interface{}{
 			"customDynamicKey1": "customDynamicValue1",
 			"customDynamicKey2": "customDynamicValue2",

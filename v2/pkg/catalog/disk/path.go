@@ -89,7 +89,7 @@ func BackwardsCompatiblePaths(templateDir string, oldPath string) string {
 		// trim the template directory from the path
 		return newPathCallback(tmp)
 	case strings.Contains(oldPath, urlutil.SchemeSeparator):
-		// scheme seperator is used to identify the path as url
+		// scheme separator is used to identify the path as url
 		// TBD: add support for url directories ??
 		return oldPath
 	case strings.Contains(oldPath, "*"):

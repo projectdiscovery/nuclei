@@ -10,14 +10,14 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/testutils"
 )
 
-var headlessTestcases = map[string]testutils.TestCase{
-	"protocols/headless/headless-basic.yaml":              &headlessBasic{},
-	"protocols/headless/headless-header-action.yaml":      &headlessHeaderActions{},
-	"protocols/headless/headless-extract-values.yaml":     &headlessExtractValues{},
-	"protocols/headless/headless-payloads.yaml":           &headlessPayloads{},
-	"protocols/headless/variables.yaml":                   &headlessVariables{},
-	"protocols/headless/file-upload.yaml":                 &headlessFileUpload{},
-	"protocols/headless/headless-header-status-test.yaml": &headlessHeaderStatus{},
+var headlessTestcases = []TestCaseInfo{
+	{Path: "protocols/headless/headless-basic.yaml", TestCase: &headlessBasic{}},
+	{Path: "protocols/headless/headless-header-action.yaml", TestCase: &headlessHeaderActions{}},
+	{Path: "protocols/headless/headless-extract-values.yaml", TestCase: &headlessExtractValues{}},
+	{Path: "protocols/headless/headless-payloads.yaml", TestCase: &headlessPayloads{}},
+	{Path: "protocols/headless/variables.yaml", TestCase: &headlessVariables{}},
+	{Path: "protocols/headless/file-upload.yaml", TestCase: &headlessFileUpload{}},
+	{Path: "protocols/headless/headless-header-status-test.yaml", TestCase: &headlessHeaderStatus{}},
 }
 
 type headlessBasic struct{}
