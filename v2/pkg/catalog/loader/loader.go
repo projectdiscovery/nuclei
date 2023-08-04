@@ -188,7 +188,7 @@ func (store *Store) ValidateTemplates() error {
 	if areTemplatesValid(store, filteredTemplatePaths) && areWorkflowsValid(store, filteredWorkflowPaths) {
 		return nil
 	}
-	return errors.New("errors occured during template validation")
+	return errors.New("errors occurred during template validation")
 }
 
 func areWorkflowsValid(store *Store, filteredWorkflowPaths map[string]struct{}) bool {

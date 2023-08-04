@@ -7,8 +7,8 @@ import (
 	errorutil "github.com/projectdiscovery/utils/errors"
 )
 
-var templatesDirTestCases = map[string]testutils.TestCase{
-	"protocols/dns/cname-fingerprint.yaml": &templateDirWithTargetTest{},
+var templatesDirTestCases = []TestCaseInfo{
+	{Path: "protocols/dns/cname-fingerprint.yaml", TestCase: &templateDirWithTargetTest{}},
 }
 
 type templateDirWithTargetTest struct{}

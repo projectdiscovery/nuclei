@@ -8,8 +8,8 @@ import (
 
 type customConfigDirTest struct{}
 
-var customConfigDirTestCases = map[string]testutils.TestCase{
-	"protocols/dns/cname-fingerprint.yaml": &customConfigDirTest{},
+var customConfigDirTestCases = []TestCaseInfo{
+	{Path: "protocols/dns/cname-fingerprint.yaml", TestCase: &customConfigDirTest{}},
 }
 
 // Execute executes a test case and returns an error if occurred

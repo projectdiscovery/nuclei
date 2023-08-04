@@ -121,7 +121,7 @@ type Template struct {
 	Variables variables.Variable `yaml:"variables,omitempty" json:"variables,omitempty" jsonschema:"title=variables for the http request,description=Variables contains any variables for the current request"`
 
 	// description: |
-	//   Constants contains any scalar costant for the current template
+	//   Constants contains any scalar constant for the current template
 	Constants map[string]interface{} `yaml:"constants,omitempty" json:"constants,omitempty" jsonschema:"title=constant for the template,description=constants contains any constant for the template"`
 
 	// TotalRequests is the total number of requests for the template.

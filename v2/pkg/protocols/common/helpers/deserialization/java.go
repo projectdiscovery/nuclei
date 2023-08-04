@@ -75,7 +75,7 @@ func urlsafeBase64Encode(data []byte) string {
 }
 
 // generateCommonsCollections40Payload generates org.apache.commons:commons-collections4:4.0
-// deserialization paylaod for a command.
+// deserialization payload for a command.
 func generateCommonsCollections40Payload(cmd string) []byte {
 	buffer := &bytes.Buffer{}
 
@@ -90,7 +90,7 @@ func generateCommonsCollections40Payload(cmd string) []byte {
 }
 
 // generateCommonsCollections440PPayload generates commons-collections 3.1
-// deserialization paylaod for a command.
+// deserialization payload for a command.
 func generateCommonsCollections31Payload(cmd string) []byte {
 	buffer := &bytes.Buffer{}
 
@@ -105,7 +105,7 @@ func generateCommonsCollections31Payload(cmd string) []byte {
 }
 
 // generateGroovy1Payload generates org.codehaus.groovy:groovy:2.3.9
-// deserialization paylaod for a command.
+// deserialization payload for a command.
 func generateGroovy1Payload(cmd string) []byte {
 	buffer := &bytes.Buffer{}
 
@@ -119,7 +119,7 @@ func generateGroovy1Payload(cmd string) []byte {
 	return buffer.Bytes()
 }
 
-// generateDNSPayload generates DNS interaction deserialization paylaod for a DNS Name.
+// generateDNSPayload generates DNS interaction deserialization payload for a DNS Name.
 // Taken from ysoserial DNS gadget.
 func generateDNSPayload(URL string) []byte {
 	parsed, err := url.Parse(URL)

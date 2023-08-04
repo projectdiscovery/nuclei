@@ -8,6 +8,7 @@ import (
 
 	"github.com/go-rod/rod"
 	"github.com/go-rod/rod/lib/launcher"
+	"github.com/go-rod/rod/lib/launcher/flags"
 	"github.com/pkg/errors"
 
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
@@ -75,6 +76,11 @@ func New(options *types.Options) (*Browser, error) {
 	if types.ProxyURL != "" {
 		chromeLauncher = chromeLauncher.Proxy(types.ProxyURL)
 	}
+
+	for k, v := range options.ParseHeadlessOptionalArguments() {
+		chromeLauncher.Set(flags.Flag(k), v)
+	}
+
 	launcherURL, err := chromeLauncher.Launch()
 	if err != nil {
 		return nil, err

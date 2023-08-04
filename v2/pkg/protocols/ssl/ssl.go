@@ -111,10 +111,6 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 	case request.ScanMode == "openssl" && !openssl.IsAvailable():
 		// if openssl is not installed instead of failing "auto" scanmode is used
 		request.ScanMode = "auto"
-
-	case options.Options.ZTLS && request.ScanMode == "ctls":
-		// only override if scanmode in template is "ctls" since auto internally uses ztls as fallback
-		request.ScanMode = "ztls"
 	}
 
 	tlsxOptions := &clients.Options{

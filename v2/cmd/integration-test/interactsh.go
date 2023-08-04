@@ -1,10 +1,10 @@
 package main
 
-import "github.com/projectdiscovery/nuclei/v2/pkg/testutils"
+import osutils "github.com/projectdiscovery/utils/os"
 
 // All Interactsh related testcases
-var interactshTestCases = map[string]testutils.TestCase{
-	"protocols/http/interactsh.yaml":                     &httpInteractshRequest{},
-	"protocols/http/interactsh-stop-at-first-match.yaml": &httpInteractshStopAtFirstMatchRequest{},
-	"protocols/http/default-matcher-condition.yaml":      &httpDefaultMatcherCondition{},
+var interactshTestCases = []TestCaseInfo{
+	{Path: "protocols/http/interactsh.yaml", TestCase: &httpInteractshRequest{}, DisableOn: func() bool { return osutils.IsWindows() || osutils.IsOSX() }},
+	{Path: "protocols/http/interactsh-stop-at-first-match.yaml", TestCase: &httpInteractshStopAtFirstMatchRequest{}, DisableOn: func() bool { return osutils.IsWindows() || osutils.IsOSX() }},
+	{Path: "protocols/http/default-matcher-condition.yaml", TestCase: &httpDefaultMatcherCondition{}, DisableOn: func() bool { return osutils.IsWindows() || osutils.IsOSX() }},
 }
