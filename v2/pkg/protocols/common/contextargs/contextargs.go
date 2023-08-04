@@ -2,9 +2,10 @@ package contextargs
 
 import (
 	"net/http/cookiejar"
+	"sync/atomic"
 
 	"github.com/projectdiscovery/gologger"
-	maputils "github.com/projectdiscovery/utils/maps"
+	mapsutil "github.com/projectdiscovery/utils/maps"
 )
 
 // Context implements a shared context struct to share information across multiple templates within a workflow
@@ -14,8 +15,9 @@ type Context struct {
 
 	// CookieJar shared within workflow's http templates
 	CookieJar *cookiejar.Jar
+
 	// Args is a workflow shared key-value store
-	args maputils.SyncLockMap[string, interface{}]
+	args *mapsutil.SyncLockMap[string, interface{}]
 }
 
 // Create a new contextargs instance
@@ -27,18 +29,30 @@ func New() *Context {
 func NewWithInput(input string) *Context {
 	jar, err := cookiejar.New(nil)
 	if err != nil {
-		gologger.Error().Msgf("Could not create cookie jar: %s\n", err)
+		gologger.Error().Msgf("contextargs: could not create cookie jar: %s\n", err)
 	}
-	return &Context{MetaInput: &MetaInput{Input: input}, CookieJar: jar, args: maputils.SyncLockMap[string, interface{}]{
-		Map: make(map[string]interface{}),
-	}}
+	return &Context{
+		MetaInput: &MetaInput{Input: input},
+		CookieJar: jar,
+		args: &mapsutil.SyncLockMap[string, interface{}]{
+			Map:      make(map[string]interface{}),
+			ReadOnly: atomic.Bool{},
+		},
+	}
 }
 
 // Set the specific key-value pair
 func (ctx *Context) Set(key string, value interface{}) {
-	if err := ctx.args.Set(key, value); err != nil {
-		gologger.Error().Msgf("contextargs: could not set key: %s\n", err)
-	}
+	_ = ctx.args.Set(key, value)
+}
+
+func (ctx *Context) hasArgs() bool {
+	return !ctx.args.IsEmpty()
+}
+
+// Merge the key-value pairs
+func (ctx *Context) Merge(args map[string]interface{}) {
+	_ = ctx.args.Merge(args)
 }
 
 // Add the specific key-value pair
@@ -64,29 +78,31 @@ func (ctx *Context) Add(key string, v interface{}) {
 
 // Get the value with specific key if exists
 func (ctx *Context) Get(key string) (interface{}, bool) {
+	if !ctx.hasArgs() {
+		return nil, false
+	}
+
 	return ctx.args.Get(key)
 }
 
-func (ctx *Context) GetAll() maputils.Map[string, interface{}] {
-	return ctx.args.GetAll()
+func (ctx *Context) GetAll() map[string]interface{} {
+	if !ctx.hasArgs() {
+		return nil
+	}
+
+	return ctx.args.Clone().Map
 }
 
-func (ctx *Context) ForEach(f func(string, interface{}) error) {
-	if err := ctx.args.Iterate(f); err != nil {
-		gologger.Error().Msgf("contextargs: could not iterate: %s\n", err)
-	}
-}
-
-// Merge merges the map into the contextargs
-func (ctx *Context) Merge(m map[string]interface{}) {
-	if err := ctx.args.Merge(m); err != nil {
-		gologger.Error().Msgf("contextargs: could not merge: %s\n", err)
-	}
+func (ctx *Context) ForEach(f func(string, interface{})) {
+	_ = ctx.args.Iterate(func(k string, v interface{}) error {
+		f(k, v)
+		return nil
+	})
 }
 
 // Has check if the key exists
 func (ctx *Context) Has(key string) bool {
-	return ctx.args.Has(key)
+	return ctx.hasArgs() && ctx.args.Has(key)
 }
 
 func (ctx *Context) HasArgs() bool {
@@ -96,7 +112,7 @@ func (ctx *Context) HasArgs() bool {
 func (ctx *Context) Clone() *Context {
 	newCtx := &Context{
 		MetaInput: ctx.MetaInput.Clone(),
-		args:      *ctx.args.Clone(),
+		args:      ctx.args,
 		CookieJar: ctx.CookieJar,
 	}
 	return newCtx

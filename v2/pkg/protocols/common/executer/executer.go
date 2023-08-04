@@ -64,6 +64,18 @@ func (e *Executer) Requests() int {
 
 // Execute executes the protocol group and returns true or false if results were found.
 func (e *Executer) Execute(input *contextargs.Context) (bool, error) {
+	results := &atomic.Bool{}
+
+	var lastMatcherEvent *output.InternalWrappedEvent
+	writeFailureCallback := func(event *output.InternalWrappedEvent, matcherStatus bool) {
+		if !results.Load() && matcherStatus {
+			if err := e.options.Output.WriteFailure(event.InternalEvent); err != nil {
+				gologger.Warning().Msgf("Could not write failure event to output: %s\n", err)
+			}
+			results.CompareAndSwap(false, true)
+		}
+	}
+
 	cliExecutorCallback := func(event *output.InternalWrappedEvent) {
 		// If no results were found, and also interactsh is not being used
 		// in that case we can skip it, otherwise we've to show failure in
@@ -72,18 +84,24 @@ func (e *Executer) Execute(input *contextargs.Context) (bool, error) {
 			if err := e.options.Output.WriteFailure(event.InternalEvent); err != nil {
 				gologger.Warning().Msgf("Could not write failure event to output: %s\n", err)
 			}
+			lastMatcherEvent = event
 		} else {
 			if ok := writer.WriteResult(event, e.options.Output, e.options.Progress, e.options.IssuesClient); !ok {
 				if err := e.options.Output.WriteFailure(event.InternalEvent); err != nil {
 					gologger.Warning().Msgf("Could not write failure event to output: %s\n", err)
 				}
+				lastMatcherEvent = event
 			}
 		}
 	}
 	if e.options.Flow != "" {
 		return e.executeFlow(input, cliExecutorCallback)
 	}
-	return e.executeWithCallback(input, cliExecutorCallback)
+	ok, err := e.executeWithCallback(input, results, cliExecutorCallback)
+	if lastMatcherEvent != nil {
+		writeFailureCallback(lastMatcherEvent, e.options.Options.MatcherStatus)
+	}
+	return ok, err
 }
 
 // ExecuteWithResults executes the protocol requests and returns results instead of writing them.
@@ -98,22 +116,24 @@ func (e *Executer) ExecuteWithResults(input *contextargs.Context, callback proto
 	if e.options.Flow != "" {
 		_, err = e.executeFlow(input, userCallback)
 	} else {
-		_, err = e.executeWithCallback(input, userCallback)
+		_, err = e.executeWithCallback(input, nil, userCallback)
 	}
 	return err
 }
 
 // executeWithCallback executes the protocol requests and calls the callback for each result.
-func (e *Executer) executeWithCallback(input *contextargs.Context, callback protocols.OutputEventCallback) (bool, error) {
-	results := &atomic.Bool{}
+func (e *Executer) executeWithCallback(input *contextargs.Context, results *atomic.Bool, callback protocols.OutputEventCallback) (bool, error) {
+	if results == nil {
+		results = &atomic.Bool{}
+	}
 	dynamicValues := make(map[string]interface{})
 	if input.HasArgs() {
-		input.ForEach(func(key string, value interface{}) error {
+		input.ForEach(func(key string, value interface{}) {
 			dynamicValues[key] = value
-			return nil
 		})
 	}
 	previous := make(map[string]interface{})
+
 	for _, req := range e.requests {
 		inputItem := input.Clone()
 		if e.options.InputHelper != nil && input.MetaInput.Input != "" {
@@ -168,7 +188,7 @@ func (e *Executer) executeFlow(input *contextargs.Context, callback protocols.Ou
 			// multiprotocol execution is also mutually exclusive with flow and is slightly advanced version of executeWithCallbac()
 			// if request type is multiprotocol , then array does not contain any other request type
 			gologger.Info().Msgf("reqtype is %v", req.Type().String())
-			return e.executeWithCallback(input, nil)
+			return e.executeWithCallback(input, nil, nil)
 		}
 		switch req.Type() {
 		case types.DNSProtocol:

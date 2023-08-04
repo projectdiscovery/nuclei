@@ -51,9 +51,8 @@ func (f *FlowExecutor) Compile(callback func(event *output.InternalWrappedEvent)
 
 	// add all input args to template context
 	if f.input.HasArgs() {
-		f.input.ForEach(func(key string, value interface{}) error {
+		f.input.ForEach(func(key string, value interface{}) {
 			f.options.TemplateCtx.Set(key, value)
-			return nil
 		})
 	}
 	f.options.TemplateCtx.Merge(f.options.Variables.GetAll())
@@ -93,7 +92,7 @@ func (f *FlowExecutor) Compile(callback func(event *output.InternalWrappedEvent)
 		VarRegistry[proto] = func(ids ...string) {
 			defer func() {
 				var m map[string]interface{} = f.options.TemplateCtx.GetAll()
-				f.jsVM.Set("template", m)
+				_ = f.jsVM.Set("template", m)
 			}()
 			// if no id is passed execute all requests in sequence
 			if len(ids) == 0 {
@@ -147,7 +146,7 @@ func (f *FlowExecutor) Compile(callback func(event *output.InternalWrappedEvent)
 							for k, v := range result.OperatorsResult.DynamicValues {
 								f.options.TemplateCtx.Set(k, v)
 							}
-							f.jsVM.Set("template", f.options.TemplateCtx.GetAll())
+							_ = f.jsVM.Set("template", f.options.TemplateCtx.GetAll())
 						}
 					}
 				})
@@ -173,7 +172,7 @@ func (f *FlowExecutor) Compile(callback func(event *output.InternalWrappedEvent)
 
 	if err := f.jsVM.Set("poll", func(call goja.FunctionCall) goja.Value {
 		var m map[string]interface{} = f.options.TemplateCtx.GetAll()
-		f.jsVM.Set("template", m)
+		_ = f.jsVM.Set("template", m)
 		return goja.Null()
 	}); err != nil {
 		return err
@@ -216,12 +215,10 @@ func (f *FlowExecutor) Compile(callback func(event *output.InternalWrappedEvent)
 // Execute executes the flow
 func (f *FlowExecutor) Execute() (bool, error) {
 	// pass flow and execute the js vm and handle errors
-	value, err := f.jsVM.RunProgram(f.program)
+	_, err := f.jsVM.RunProgram(f.program)
 	if err != nil {
 		return false, errorutil.NewWithErr(err).Msgf("failed to execute flow\n%v\n", f.options.Flow)
 	}
-	gologger.Verbose().Msgf("Flow result: %s", value.String())
-
 	return f.results.Load(), nil
 }
 

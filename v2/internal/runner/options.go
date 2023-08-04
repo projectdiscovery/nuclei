@@ -31,7 +31,7 @@ import (
 
 func ConfigureOptions() error {
 	// with FileStringSliceOptions, FileNormalizedStringSliceOptions, FileCommaSeparatedStringSliceOptions
-	// if file has extension `.yaml,.json` we consider those as strings and not files to be read
+	// if file has the extension `.yaml` or `.json` we consider those as strings and not files to be read
 	isFromFileFunc := func(s string) bool {
 		return !config.IsTemplate(s)
 	}
@@ -78,7 +78,7 @@ func ParseOptions(options *types.Options) {
 	// Load the resolvers if user asked for them
 	loadResolvers(options)
 
-	if err := loadTemplateSignaturesKeys(options); err != nil {
+	if err := loadTemplateSignaturesKeys(options); err != nil && !getBoolEnvValue("HIDE_TEMPLATE_SIG_WARNING") {
 		gologger.Warning().Msgf("Could not initialize code template verifier: %s\n", err)
 	}
 
@@ -87,9 +87,9 @@ func ParseOptions(options *types.Options) {
 		gologger.Fatal().Msgf("Could not initialize protocols: %s\n", err)
 	}
 
-	// Set Github token in env variable. runner.getGHClientWithToken() reads token from env
-	if options.GithubToken != "" && os.Getenv("GITHUB_TOKEN") != options.GithubToken {
-		os.Setenv("GITHUB_TOKEN", options.GithubToken)
+	// Set GitHub token in env variable. runner.getGHClientWithToken() reads token from env
+	if options.GitHubToken != "" && os.Getenv("GITHUB_TOKEN") != options.GitHubToken {
+		os.Setenv("GITHUB_TOKEN", options.GitHubToken)
 	}
 
 	if options.UncoverQuery != nil {
@@ -121,6 +121,10 @@ func validateOptions(options *types.Options) error {
 		return errors.New("both verbose and silent mode specified")
 	}
 
+	if (options.HeadlessOptionalArguments != nil || options.ShowBrowser || options.UseInstalledChrome) && !options.Headless {
+		return errors.New("headless mode (-headless) is required if -ho, -sb, -sc or -lha are set")
+	}
+
 	if options.FollowHostRedirects && options.FollowRedirects {
 		return errors.New("both follow host redirects and follow redirects specified")
 	}
@@ -143,7 +147,7 @@ func validateOptions(options *types.Options) error {
 		validateCertificatePaths(options.ClientCertFile, options.ClientKeyFile, options.ClientCAFile)
 	}
 	// Verify AWS secrets are passed if a S3 template bucket is passed
-	if options.AwsBucketName != "" && options.UpdateTemplates {
+	if options.AwsBucketName != "" && options.UpdateTemplates && !options.AwsTemplateDisableDownload {
 		missing := validateMissingS3Options(options)
 		if missing != nil {
 			return fmt.Errorf("aws s3 bucket details are missing. Please provide %s", strings.Join(missing, ","))
@@ -151,7 +155,7 @@ func validateOptions(options *types.Options) error {
 	}
 
 	// Verify Azure connection configuration is passed if the Azure template bucket is passed
-	if options.AzureContainerName != "" && options.UpdateTemplates {
+	if options.AzureContainerName != "" && options.UpdateTemplates && !options.AzureTemplateDisableDownload {
 		missing := validateMissingAzureOptions(options)
 		if missing != nil {
 			return fmt.Errorf("azure connection details are missing. Please provide %s", strings.Join(missing, ","))
@@ -159,7 +163,7 @@ func validateOptions(options *types.Options) error {
 	}
 
 	// Verify that all GitLab options are provided if the GitLab server or token is provided
-	if len(options.GitLabTemplateRepositoryIDs) != 0 && options.UpdateTemplates {
+	if len(options.GitLabTemplateRepositoryIDs) != 0 && options.UpdateTemplates && !options.GitLabTemplateDisableDownload {
 		missing := validateMissingGitLabOptions(options)
 		if missing != nil {
 			return fmt.Errorf("gitlab server details are missing. Please provide %s", strings.Join(missing, ","))
@@ -206,7 +210,7 @@ func validateCloudOptions(options *types.Options) error {
 		case "s3":
 			missing = validateMissingS3Options(options)
 		case "github":
-			missing = validateMissingGithubOptions(options)
+			missing = validateMissingGitHubOptions(options)
 		case "gitlab":
 			missing = validateMissingGitLabOptions(options)
 		case "azure":
@@ -256,12 +260,12 @@ func validateMissingAzureOptions(options *types.Options) []string {
 	return missing
 }
 
-func validateMissingGithubOptions(options *types.Options) []string {
+func validateMissingGitHubOptions(options *types.Options) []string {
 	var missing []string
-	if options.GithubToken == "" {
+	if options.GitHubToken == "" {
 		missing = append(missing, "GITHUB_TOKEN")
 	}
-	if len(options.GithubTemplateRepo) == 0 {
+	if len(options.GitHubTemplateRepo) == 0 {
 		missing = append(missing, "GITHUB_TEMPLATE_REPO")
 	}
 	return missing
@@ -299,7 +303,7 @@ func configureOutput(options *types.Options) {
 	logutil.DisableDefaultLogger()
 }
 
-// loadResolvers loads resolvers from both user provided flag and file
+// loadResolvers loads resolvers from both user-provided flags and file
 func loadResolvers(options *types.Options) {
 	if options.ResolversFile == "" {
 		return
@@ -366,10 +370,10 @@ func readEnvInputVars(options *types.Options) {
 	}
 	options.CloudAPIKey = os.Getenv("NUCLEI_CLOUD_API")
 
-	options.GithubToken = os.Getenv("GITHUB_TOKEN")
+	options.GitHubToken = os.Getenv("GITHUB_TOKEN")
 	repolist := os.Getenv("GITHUB_TEMPLATE_REPO")
 	if repolist != "" {
-		options.GithubTemplateRepo = append(options.GithubTemplateRepo, stringsutil.SplitAny(repolist, ",")...)
+		options.GitHubTemplateRepo = append(options.GitHubTemplateRepo, stringsutil.SplitAny(repolist, ",")...)
 	}
 
 	// GitLab options for downloading templates from a repository
@@ -410,6 +414,24 @@ func readEnvInputVars(options *types.Options) {
 	// Custom public keys for template verification
 	options.CodeTemplateSignaturePublicKey = os.Getenv("NUCLEI_SIGNATURE_PUBLIC_KEY")
 	options.CodeTemplateSignatureAlgorithm = os.Getenv("NUCLEI_SIGNATURE_ALGORITHM")
+
+	// General options to disable the template download locations from being used.
+	// This will override the default behavior of downloading templates from the default locations as well as the
+	// custom locations.
+	// The primary use-case is when the user wants to use custom templates only and does not want to download any
+	// templates from the default locations or is unable to connect to the public internet.
+	options.PublicTemplateDisableDownload = getBoolEnvValue("DISABLE_NUCLEI_TEMPLATES_PUBLIC_DOWNLOAD")
+	options.GitHubTemplateDisableDownload = getBoolEnvValue("DISABLE_NUCLEI_TEMPLATES_GITHUB_DOWNLOAD")
+	options.GitLabTemplateDisableDownload = getBoolEnvValue("DISABLE_NUCLEI_TEMPLATES_GITLAB_DOWNLOAD")
+	options.AwsTemplateDisableDownload = getBoolEnvValue("DISABLE_NUCLEI_TEMPLATES_AWS_DOWNLOAD")
+	options.AzureTemplateDisableDownload = getBoolEnvValue("DISABLE_NUCLEI_TEMPLATES_AZURE_DOWNLOAD")
+
+	// Options to modify the behavior of exporters
+	options.MarkdownExportSortMode = strings.ToLower(os.Getenv("MARKDOWN_EXPORT_SORT_MODE"))
+	// If the user has not specified a valid sort mode, use the default
+	if options.MarkdownExportSortMode != "template" && options.MarkdownExportSortMode != "severity" && options.MarkdownExportSortMode != "host" {
+		options.MarkdownExportSortMode = ""
+	}
 }
 
 func loadTemplateSignaturesKeys(options *types.Options) error {
@@ -439,4 +461,9 @@ func loadTemplateSignaturesKeys(options *types.Options) error {
 	}
 
 	return signer.AddToDefault(verifier)
+}
+
+func getBoolEnvValue(key string) bool {
+	value := os.Getenv(key)
+	return strings.EqualFold(value, "true")
 }

@@ -4,14 +4,16 @@ import (
 	"net"
 
 	"github.com/projectdiscovery/nuclei/v2/pkg/testutils"
+	osutils "github.com/projectdiscovery/utils/os"
 )
 
-var networkTestcases = map[string]testutils.TestCase{
-	"protocols/network/basic.yaml":          &networkBasic{},
-	"protocols/network/hex.yaml":            &networkBasic{},
-	"protocols/network/multi-step.yaml":     &networkMultiStep{},
-	"protocols/network/self-contained.yaml": &networkRequestSelContained{},
-	"protocols/network/variables.yaml":      &networkVariables{},
+var networkTestcases = []TestCaseInfo{
+	{Path: "protocols/network/basic.yaml", TestCase: &networkBasic{}, DisableOn: func() bool { return osutils.IsWindows() }},
+	{Path: "protocols/network/hex.yaml", TestCase: &networkBasic{}, DisableOn: func() bool { return osutils.IsWindows() }},
+	{Path: "protocols/network/multi-step.yaml", TestCase: &networkMultiStep{}},
+	{Path: "protocols/network/self-contained.yaml", TestCase: &networkRequestSelContained{}},
+	{Path: "protocols/network/variables.yaml", TestCase: &networkVariables{}},
+	{Path: "protocols/network/same-address.yaml", TestCase: &networkBasic{}},
 }
 
 const defaultStaticPort = 5431

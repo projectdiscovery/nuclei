@@ -358,7 +358,7 @@ Variables contains any variables for the current request.
 </div>
 <div class="dt">
 
-Constants contains any scalar costant for the current template
+Constants contains any scalar constant for the current template
 
 </div>
 
@@ -822,6 +822,29 @@ Examples:
 
 ```yaml
 epss-score: "0.42509"
+```
+
+
+</div>
+
+<hr />
+
+<div class="dd">
+
+<code>epss-percentile</code>  <i>float64</i>
+
+</div>
+<div class="dt">
+
+EPSS Percentile for the template.
+
+
+
+Examples:
+
+
+```yaml
+epss-percentile: "0.42509"
 ```
 
 

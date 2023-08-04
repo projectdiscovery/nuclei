@@ -134,7 +134,7 @@ func (request *Request) executeParallelHTTP(input *contextargs.Context, dynamicV
 		ctx := request.newContext(input)
 		generatedHttpRequest, err := generator.Make(ctx, input, inputData, payloads, dynamicValues)
 		if err != nil {
-			if err == io.EOF {
+			if err == types.ErrNoMoreRequests {
 				break
 			}
 			request.options.Progress.IncrementFailedRequestsBy(int64(generator.Total()))
@@ -301,7 +301,7 @@ func (request *Request) executeFuzzingRule(input *contextargs.Context, previous 
 				Values:      generated.dynamicValues,
 				BaseRequest: generated.request,
 			})
-			if err == io.EOF {
+			if err == types.ErrNoMoreRequests {
 				return nil
 			}
 			if err != nil {
@@ -354,7 +354,7 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 			defer cancel()
 			generatedHttpRequest, err := generator.Make(ctxWithTimeout, input, data, payloads, dynamicValue)
 			if err != nil {
-				if err == io.EOF {
+				if err == types.ErrNoMoreRequests {
 					return true, nil
 				}
 				request.options.Progress.IncrementFailedRequestsBy(int64(generator.Total()))
@@ -536,7 +536,12 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 		options.CustomRawBytes = generatedRequest.rawRequest.UnsafeRawBytes
 		options.ForceReadAllBody = request.ForceReadAllBody
 		options.SNI = request.options.Options.SNI
-		resp, err = generatedRequest.original.rawhttpClient.DoRawWithOptions(generatedRequest.rawRequest.Method, input.MetaInput.Input, generatedRequest.rawRequest.Path, generators.ExpandMapValues(generatedRequest.rawRequest.Headers), io.NopCloser(strings.NewReader(generatedRequest.rawRequest.Data)), &options)
+		inputUrl := input.MetaInput.Input
+		if url, err := urlutil.ParseURL(inputUrl, false); err == nil {
+			inputUrl = fmt.Sprintf("%s://%s", url.Scheme, url.Host)
+		}
+		formedURL = fmt.Sprintf("%s%s", inputUrl, generatedRequest.rawRequest.Path)
+		resp, err = generatedRequest.original.rawhttpClient.DoRawWithOptions(generatedRequest.rawRequest.Method, inputUrl, generatedRequest.rawRequest.Path, generators.ExpandMapValues(generatedRequest.rawRequest.Headers), io.NopCloser(strings.NewReader(generatedRequest.rawRequest.Data)), &options)
 	} else {
 		hostname = generatedRequest.request.URL.Host
 		formedURL = generatedRequest.request.URL.String()
@@ -637,7 +642,7 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 	if !request.Unsafe && resp != nil && generatedRequest.request != nil && resp.Request != nil && !request.Race {
 		bodyBytes, _ := generatedRequest.request.BodyBytes()
 		resp.Request.Body = io.NopCloser(bytes.NewReader(bodyBytes))
-		command, err := http2curl.GetCurlCommand(resp.Request)
+		command, err := http2curl.GetCurlCommand(generatedRequest.request.Request)
 		if err == nil && command != nil {
 			curlCommand = command.String()
 		}

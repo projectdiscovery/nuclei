@@ -4,14 +4,14 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/testutils"
 )
 
-var dnsTestCases = map[string]testutils.TestCase{
-	"protocols/dns/basic.yaml":                &dnsBasic{},
-	"protocols/dns/ptr.yaml":                  &dnsPtr{},
-	"protocols/dns/caa.yaml":                  &dnsCAA{},
-	"protocols/dns/tlsa.yaml":                 &dnsTLSA{},
-	"protocols/dns/variables.yaml":            &dnsVariables{},
-	"protocols/dns/payload.yaml":              &dnsPayload{},
-	"protocols/dns/dsl-matcher-variable.yaml": &dnsDSLMatcherVariable{},
+var dnsTestCases = []TestCaseInfo{
+	{Path: "protocols/dns/basic.yaml", TestCase: &dnsBasic{}},
+	{Path: "protocols/dns/ptr.yaml", TestCase: &dnsPtr{}},
+	{Path: "protocols/dns/caa.yaml", TestCase: &dnsCAA{}},
+	{Path: "protocols/dns/tlsa.yaml", TestCase: &dnsTLSA{}},
+	{Path: "protocols/dns/variables.yaml", TestCase: &dnsVariables{}},
+	{Path: "protocols/dns/payload.yaml", TestCase: &dnsPayload{}},
+	{Path: "protocols/dns/dsl-matcher-variable.yaml", TestCase: &dnsDSLMatcherVariable{}},
 }
 
 type dnsBasic struct{}

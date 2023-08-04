@@ -7,12 +7,12 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/testutils"
 )
 
-var sslTestcases = map[string]testutils.TestCase{
-	"protocols/ssl/basic.yaml":          &sslBasic{},
-	"protocols/ssl/basic-ztls.yaml":     &sslBasicZtls{},
-	"protocols/ssl/custom-cipher.yaml":  &sslCustomCipher{},
-	"protocols/ssl/custom-version.yaml": &sslCustomVersion{},
-	"protocols/ssl/ssl-with-vars.yaml":  &sslWithVars{},
+var sslTestcases = []TestCaseInfo{
+	{Path: "protocols/ssl/basic.yaml", TestCase: &sslBasic{}},
+	{Path: "protocols/ssl/basic-ztls.yaml", TestCase: &sslBasicZtls{}},
+	{Path: "protocols/ssl/custom-cipher.yaml", TestCase: &sslCustomCipher{}},
+	{Path: "protocols/ssl/custom-version.yaml", TestCase: &sslCustomVersion{}},
+	{Path: "protocols/ssl/ssl-with-vars.yaml", TestCase: &sslWithVars{}},
 }
 
 type sslBasic struct{}
