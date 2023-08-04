@@ -4,10 +4,11 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/testutils"
 )
 
-var fileTestcases = map[string]testutils.TestCase{
-	"protocols/file/matcher-with-or.yaml":  &fileWithOrMatcher{},
-	"protocols/file/matcher-with-and.yaml": &fileWithAndMatcher{},
-	"protocols/file/extract.yaml":          &fileWithExtractor{},
+var fileTestcases = []TestCaseInfo{
+	{Path: "protocols/file/matcher-with-or.yaml", TestCase: &fileWithOrMatcher{}},
+	{Path: "protocols/file/matcher-with-and.yaml", TestCase: &fileWithAndMatcher{}},
+	{Path: "protocols/file/matcher-with-nested-and.yaml", TestCase: &fileWithAndMatcher{}},
+	{Path: "protocols/file/extract.yaml", TestCase: &fileWithExtractor{}},
 }
 
 type fileWithOrMatcher struct{}

@@ -26,57 +26,60 @@ import (
 	stringsutil "github.com/projectdiscovery/utils/strings"
 )
 
-var httpTestcases = map[string]testutils.TestCase{
-	"protocols/http/get-headers.yaml":                                  &httpGetHeaders{},
-	"protocols/http/get-query-string.yaml":                             &httpGetQueryString{},
-	"protocols/http/get-redirects.yaml":                                &httpGetRedirects{},
-	"protocols/http/get-host-redirects.yaml":                           &httpGetHostRedirects{},
-	"protocols/http/disable-redirects.yaml":                            &httpDisableRedirects{},
-	"protocols/http/get.yaml":                                          &httpGet{},
-	"protocols/http/post-body.yaml":                                    &httpPostBody{},
-	"protocols/http/post-json-body.yaml":                               &httpPostJSONBody{},
-	"protocols/http/post-multipart-body.yaml":                          &httpPostMultipartBody{},
-	"protocols/http/raw-cookie-reuse.yaml":                             &httpRawCookieReuse{},
-	"protocols/http/raw-dynamic-extractor.yaml":                        &httpRawDynamicExtractor{},
-	"protocols/http/raw-get-query.yaml":                                &httpRawGetQuery{},
-	"protocols/http/raw-get.yaml":                                      &httpRawGet{},
-	"protocols/http/raw-with-params.yaml":                              &httpRawWithParams{},
-	"protocols/http/raw-unsafe-with-params.yaml":                       &httpRawWithParams{}, // Not a typo, functionality is same as above
-	"protocols/http/raw-path-trailing-slash.yaml":                      &httpRawPathTrailingSlash{},
-	"protocols/http/raw-payload.yaml":                                  &httpRawPayload{},
-	"protocols/http/raw-post-body.yaml":                                &httpRawPostBody{},
-	"protocols/http/raw-unsafe-path.yaml":                              &httpRawUnsafePath{},
-	"protocols/http/http-paths.yaml":                                   &httpPaths{},
-	"protocols/http/request-condition.yaml":                            &httpRequestCondition{},
-	"protocols/http/request-condition-new.yaml":                        &httpRequestCondition{},
-	"protocols/http/self-contained.yaml":                               &httpRequestSelfContained{},
-	"protocols/http/self-contained-with-path.yaml":                     &httpRequestSelfContained{}, // Not a typo, functionality is same as above
-	"protocols/http/self-contained-with-params.yaml":                   &httpRequestSelfContainedWithParams{},
-	"protocols/http/self-contained-file-input.yaml":                    &httpRequestSelfContainedFileInput{},
-	"protocols/http/get-case-insensitive.yaml":                         &httpGetCaseInsensitive{},
-	"protocols/http/get.yaml,protocols/http/get-case-insensitive.yaml": &httpGetCaseInsensitiveCluster{},
-	"protocols/http/get-redirects-chain-headers.yaml":                  &httpGetRedirectsChainHeaders{},
-	"protocols/http/dsl-matcher-variable.yaml":                         &httpDSLVariable{},
-	"protocols/http/dsl-functions.yaml":                                &httpDSLFunctions{},
-	"protocols/http/race-simple.yaml":                                  &httpRaceSimple{},
-	"protocols/http/race-multiple.yaml":                                &httpRaceMultiple{},
-	"protocols/http/stop-at-first-match.yaml":                          &httpStopAtFirstMatch{},
-	"protocols/http/stop-at-first-match-with-extractors.yaml":          &httpStopAtFirstMatchWithExtractors{},
-	"protocols/http/variables.yaml":                                    &httpVariables{},
-	"protocols/http/variable-dsl-function.yaml":                        &httpVariableDSLFunction{},
-	"protocols/http/get-override-sni.yaml":                             &httpSniAnnotation{},
-	"protocols/http/get-sni.yaml":                                      &customCLISNI{},
-	"protocols/http/redirect-match-url.yaml":                           &httpRedirectMatchURL{},
-	"protocols/http/get-sni-unsafe.yaml":                               &customCLISNIUnsafe{},
-	"protocols/http/annotation-timeout.yaml":                           &annotationTimeout{},
-	"protocols/http/custom-attack-type.yaml":                           &customAttackType{},
-	"protocols/http/get-all-ips.yaml":                                  &scanAllIPS{},
-	"protocols/http/get-without-scheme.yaml":                           &httpGetWithoutScheme{},
-	"protocols/http/cl-body-without-header.yaml":                       &httpCLBodyWithoutHeader{},
-	"protocols/http/cl-body-with-header.yaml":                          &httpCLBodyWithHeader{},
-	"protocols/http/save-extractor-values-to-file.yaml":                &httpSaveExtractorValuesToFile{},
-	"protocols/http/cli-with-constants.yaml":                           &ConstantWithCliVar{},
-	"protocols/http/disable-path-automerge.yaml":              &httpDisablePathAutomerge{},
+var httpTestcases = []TestCaseInfo{
+	// TODO: excluded due to parsing errors with console
+	// "http/raw-unsafe-request.yaml":                  &httpRawUnsafeRequest{},
+	{Path: "protocols/http/get-headers.yaml", TestCase: &httpGetHeaders{}},
+	{Path: "protocols/http/get-query-string.yaml", TestCase: &httpGetQueryString{}},
+	{Path: "protocols/http/get-redirects.yaml", TestCase: &httpGetRedirects{}},
+	{Path: "protocols/http/get-host-redirects.yaml", TestCase: &httpGetHostRedirects{}},
+	{Path: "protocols/http/disable-redirects.yaml", TestCase: &httpDisableRedirects{}},
+	{Path: "protocols/http/get.yaml", TestCase: &httpGet{}},
+	{Path: "protocols/http/post-body.yaml", TestCase: &httpPostBody{}},
+	{Path: "protocols/http/post-json-body.yaml", TestCase: &httpPostJSONBody{}},
+	{Path: "protocols/http/post-multipart-body.yaml", TestCase: &httpPostMultipartBody{}},
+	{Path: "protocols/http/raw-cookie-reuse.yaml", TestCase: &httpRawCookieReuse{}},
+	{Path: "protocols/http/raw-dynamic-extractor.yaml", TestCase: &httpRawDynamicExtractor{}},
+	{Path: "protocols/http/raw-get-query.yaml", TestCase: &httpRawGetQuery{}},
+	{Path: "protocols/http/raw-get.yaml", TestCase: &httpRawGet{}},
+	{Path: "protocols/http/raw-with-params.yaml", TestCase: &httpRawWithParams{}},
+	{Path: "protocols/http/raw-unsafe-with-params.yaml", TestCase: &httpRawWithParams{}}, // Not a typo, functionality is same as above
+	{Path: "protocols/http/raw-path-trailing-slash.yaml", TestCase: &httpRawPathTrailingSlash{}},
+	{Path: "protocols/http/raw-payload.yaml", TestCase: &httpRawPayload{}},
+	{Path: "protocols/http/raw-post-body.yaml", TestCase: &httpRawPostBody{}},
+	{Path: "protocols/http/raw-unsafe-path.yaml", TestCase: &httpRawUnsafePath{}},
+	{Path: "protocols/http/http-paths.yaml", TestCase: &httpPaths{}},
+	{Path: "protocols/http/request-condition.yaml", TestCase: &httpRequestCondition{}},
+	{Path: "protocols/http/request-condition-new.yaml", TestCase: &httpRequestCondition{}},
+	{Path: "protocols/http/self-contained.yaml", TestCase: &httpRequestSelfContained{}},
+	{Path: "protocols/http/self-contained-with-path.yaml", TestCase: &httpRequestSelfContained{}}, // Not a typo, functionality is same as above
+	{Path: "protocols/http/self-contained-with-params.yaml", TestCase: &httpRequestSelfContainedWithParams{}},
+	{Path: "protocols/http/self-contained-file-input.yaml", TestCase: &httpRequestSelfContainedFileInput{}},
+	{Path: "protocols/http/get-case-insensitive.yaml", TestCase: &httpGetCaseInsensitive{}},
+	{Path: "protocols/http/get.yaml,protocols/http/get-case-insensitive.yaml", TestCase: &httpGetCaseInsensitiveCluster{}},
+	{Path: "protocols/http/get-redirects-chain-headers.yaml", TestCase: &httpGetRedirectsChainHeaders{}},
+	{Path: "protocols/http/dsl-matcher-variable.yaml", TestCase: &httpDSLVariable{}},
+	{Path: "protocols/http/dsl-functions.yaml", TestCase: &httpDSLFunctions{}},
+	{Path: "protocols/http/race-simple.yaml", TestCase: &httpRaceSimple{}},
+	{Path: "protocols/http/race-multiple.yaml", TestCase: &httpRaceMultiple{}},
+	{Path: "protocols/http/stop-at-first-match.yaml", TestCase: &httpStopAtFirstMatch{}},
+	{Path: "protocols/http/stop-at-first-match-with-extractors.yaml", TestCase: &httpStopAtFirstMatchWithExtractors{}},
+	{Path: "protocols/http/variables.yaml", TestCase: &httpVariables{}},
+	{Path: "protocols/http/variable-dsl-function.yaml", TestCase: &httpVariableDSLFunction{}},
+	{Path: "protocols/http/get-override-sni.yaml", TestCase: &httpSniAnnotation{}},
+	{Path: "protocols/http/get-sni.yaml", TestCase: &customCLISNI{}},
+	{Path: "protocols/http/redirect-match-url.yaml", TestCase: &httpRedirectMatchURL{}},
+	{Path: "protocols/http/get-sni-unsafe.yaml", TestCase: &customCLISNIUnsafe{}},
+	{Path: "protocols/http/annotation-timeout.yaml", TestCase: &annotationTimeout{}},
+	{Path: "protocols/http/custom-attack-type.yaml", TestCase: &customAttackType{}},
+	{Path: "protocols/http/get-all-ips.yaml", TestCase: &scanAllIPS{}},
+	{Path: "protocols/http/get-without-scheme.yaml", TestCase: &httpGetWithoutScheme{}},
+	{Path: "protocols/http/cl-body-without-header.yaml", TestCase: &httpCLBodyWithoutHeader{}},
+	{Path: "protocols/http/cl-body-with-header.yaml", TestCase: &httpCLBodyWithHeader{}},
+	{Path: "protocols/http/save-extractor-values-to-file.yaml", TestCase: &httpSaveExtractorValuesToFile{}},
+	{Path: "protocols/http/cli-with-constants.yaml", TestCase: &ConstantWithCliVar{}},
+	{Path: "protocols/http/matcher-status.yaml", TestCase: &matcherStatusTest{}},
+	{Path: "protocols/http/disable-path-automerge.yaml", TestCase: &httpDisablePathAutomerge{}},
 }
 
 type httpInteractshRequest struct{}
@@ -169,7 +172,7 @@ func (h *httpInteractshStopAtFirstMatchRequest) Execute(filePath string) error {
 	if err != nil {
 		return err
 	}
-	// polling is asyncronous, so the interactions may be retrieved after the first request
+	// polling is asynchronous, so the interactions may be retrieved after the first request
 	return expectResultsCount(results, 1)
 }
 
@@ -359,7 +362,7 @@ func (h *httpDSLFunctions) Execute(filePath string) error {
 	resultPart = stringsutil.TrimPrefixAny(resultPart, "/", " ", "[")
 
 	extracted := strings.Split(resultPart, ",")
-	numberOfDslFunctions := 87
+	numberOfDslFunctions := 88
 	if len(extracted) != numberOfDslFunctions {
 		return errors.New("incorrect number of results")
 	}
@@ -1421,6 +1424,24 @@ func (h *ConstantWithCliVar) Execute(filePath string) error {
 		return err
 	}
 	return expectResultsCount(got, 1)
+}
+
+type matcherStatusTest struct{}
+
+// Execute executes a test case and returns an error if occurred
+func (h *matcherStatusTest) Execute(filePath string) error {
+	router := httprouter.New()
+	router.GET("/200", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+		w.WriteHeader(http.StatusOK)
+	})
+	ts := httptest.NewServer(router)
+	defer ts.Close()
+
+	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, ts.URL, debug, "-ms")
+	if err != nil {
+		return err
+	}
+	return expectResultsCount(results, 1)
 }
 
 // disable path automerge in raw request

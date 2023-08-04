@@ -98,6 +98,7 @@ requests:
         85: {{split("ab,cd,efg", ",", 2)}}
         86: {{ip_format('127.0.0.1', 3)}}
         87: {{ip_format('127.0.1.0', 11)}}
+        88: {{jarm('scanme.sh:443')}}
     extractors:
       - type: regex
         name: results

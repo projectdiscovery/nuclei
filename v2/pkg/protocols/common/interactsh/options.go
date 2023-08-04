@@ -43,7 +43,7 @@ type Options struct {
 	DisableHttpFallback bool
 	// NoInteractsh disables the engine
 	NoInteractsh bool
-	// NoColor dissbles printing colors for matches
+	// NoColor disables printing colors for matches
 	NoColor bool
 
 	StopAtFirstMatch bool

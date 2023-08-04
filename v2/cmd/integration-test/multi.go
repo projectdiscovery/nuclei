@@ -2,10 +2,10 @@ package main
 
 import "github.com/projectdiscovery/nuclei/v2/pkg/testutils"
 
-var multiProtoTestcases = map[string]testutils.TestCase{
-	"multi/dynamic-values.yaml":         &multiProtoDynamicExtractor{},
-	"multi/evaluate-variables.yaml":     &multiProtoDynamicExtractor{}, // Not a typo execution is same as above testcase
-	"multi/exported-response-vars.yaml": &multiProtoDynamicExtractor{}, // Not a typo execution is same as above testcase
+var multiProtoTestcases = []TestCaseInfo{
+	{Path: "protocols/multi/dynamic-values.yaml", TestCase: &multiProtoDynamicExtractor{}},
+	{Path: "protocols/multi/evaluate-variables.yaml", TestCase: &multiProtoDynamicExtractor{}},
+	{Path: "protocols/multi/exported-response-vars.yaml", TestCase: &multiProtoDynamicExtractor{}},
 }
 
 type multiProtoDynamicExtractor struct{}

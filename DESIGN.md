@@ -145,7 +145,7 @@ type Exporter interface {
 }
 ```
 
-Exporters include `Elasticsearch`, `markdown`, `sarif` . Trackers include `GitHub` , `Gitlab` and `Jira`.
+Exporters include `Elasticsearch`, `markdown`, `sarif` . Trackers include `GitHub` , `GitLab` and `Jira`.
 
 Each exporter and trackers implement their own configuration in YAML format and are very modular in nature, so adding new ones is easy.
 
@@ -484,7 +484,7 @@ $ go tool pprof -http=:8081 mem.pprof
 - [v2/pkg/reporting/exporters/markdown](./v2/pkg/reporting/exporters/markdown) - Markdown Result Exporter
 - [v2/pkg/reporting/exporters/es](./v2/pkg/reporting/exporters/es) - Elasticsearch Result Exporter
 - [v2/pkg/reporting/dedupe](./v2/pkg/reporting/dedupe) - Dedupe module for Results
-- [v2/pkg/reporting/trackers/gitlab](./v2/pkg/reporting/trackers/gitlab) - Gitlab Issue Tracker Exporter
+- [v2/pkg/reporting/trackers/gitlab](./v2/pkg/reporting/trackers/gitlab) - GitLab Issue Tracker Exporter
 - [v2/pkg/reporting/trackers/jira](./v2/pkg/reporting/trackers/jira) - Jira Issue Tracker Exporter
 - [v2/pkg/reporting/trackers/github](./v2/pkg/reporting/trackers/github) - GitHub Issue Tracker Exporter
 - [v2/pkg/reporting/format](./v2/pkg/reporting/format) - Result Formatting Functions

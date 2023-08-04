@@ -18,7 +18,7 @@ func TestInfoJsonMarshal(t *testing.T) {
 		Description:    "Test description",
 		SeverityHolder: severity.Holder{Severity: severity.High},
 		Tags:           stringslice.StringSlice{Value: []string{"cve", "misc"}},
-		Reference:      stringslice.NewRaw("Reference1"),
+		Reference:      stringslice.NewRawStringSlice("Reference1"),
 		Metadata: map[string]interface{}{
 			"string_key": "string_value",
 			"array_key":  []string{"array_value1", "array_value2"},
@@ -42,7 +42,7 @@ func TestInfoYamlMarshal(t *testing.T) {
 		Description:    "Test description",
 		SeverityHolder: severity.Holder{Severity: severity.High},
 		Tags:           stringslice.StringSlice{Value: []string{"cve", "misc"}},
-		Reference:      stringslice.NewRaw("Reference1"),
+		Reference:      stringslice.NewRawStringSlice("Reference1"),
 		Metadata: map[string]interface{}{
 			"string_key": "string_value",
 			"array_key":  []string{"array_value1", "array_value2"},

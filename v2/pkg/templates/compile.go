@@ -44,7 +44,6 @@ func Parse(filePath string, preprocessor Preprocessor, options protocols.Executo
 
 	var reader io.ReadCloser
 	if utils.IsURL(filePath) {
-		//todo:instead of creating a new client each time, a default one should be reused (same as the standard library)
 		// use retryablehttp (tls verification is enabled by default in the standard library)
 		resp, err := retryablehttp.DefaultClient().Get(filePath)
 		if err != nil {
