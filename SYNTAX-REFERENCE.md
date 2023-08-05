@@ -358,7 +358,7 @@ Variables contains any variables for the current request.
 </div>
 <div class="dt">
 
-Constants contains any scalar costant for the current template
+Constants contains any scalar constant for the current template
 
 </div>
 

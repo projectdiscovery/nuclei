@@ -2,6 +2,7 @@ package types
 
 import (
 	"io"
+	"strings"
 	"time"
 
 	"github.com/projectdiscovery/goflags"
@@ -93,13 +94,15 @@ type Options struct {
 	ReportingConfig string
 	// MarkdownExportDirectory is the directory to export reports in Markdown format
 	MarkdownExportDirectory string
+	// MarkdownExportSortMode is the method to sort the markdown reports (options: severity, template, host, none)
+	MarkdownExportSortMode string
 	// SarifExport is the file to export sarif output format to
 	SarifExport string
 	// CloudURL is the URL for the nuclei cloud endpoint
 	CloudURL string
 	// CloudAPIKey is the api-key for the nuclei cloud endpoint
 	CloudAPIKey string
-	// Scanlist feature to get all the scan ids for a user
+	// ScanList feature to get all the scan ids for a user
 	ScanList bool
 	// ListDatasources enables listing of datasources for user
 	ListDatasources bool
@@ -195,6 +198,8 @@ type Options struct {
 	Headless bool
 	// ShowBrowser specifies whether the show the browser in headless mode
 	ShowBrowser bool
+	// HeadlessOptionalArguments specifies optional arguments to pass to Chrome
+	HeadlessOptionalArguments goflags.StringSlice
 	// NoTables disables pretty printing of cloud results in tables
 	NoTables bool
 	// DisableClustering disables clustering of templates
@@ -321,7 +326,7 @@ type Options struct {
 	IncludeConditions goflags.StringSlice
 	// Custom Config Directory
 	CustomConfigDir string
-	// Enable uncover egine
+	// Enable uncover engine
 	Uncover bool
 	// Uncover search query
 	UncoverQuery goflags.StringSlice
@@ -340,9 +345,9 @@ type Options struct {
 	// PublicTemplateDisableDownload disables downloading templates from the nuclei-templates public repository
 	PublicTemplateDisableDownload bool
 	// GitHub token used to clone/pull from private repos for custom templates
-	GithubToken string
-	// GithubTemplateRepo is the list of custom public/private templates GitHub repos
-	GithubTemplateRepo []string
+	GitHubToken string
+	// GitHubTemplateRepo is the list of custom public/private templates GitHub repos
+	GitHubTemplateRepo []string
 	// GitHubTemplateDisableDownload disables downloading templates from custom GitHub repositories
 	GitHubTemplateDisableDownload bool
 	// GitLabServerURL is the gitlab server to use for custom templates
@@ -438,4 +443,18 @@ func (options *Options) HasCloudOptions() bool {
 
 func (options *Options) ShouldUseHostError() bool {
 	return options.MaxHostError > 0 && !options.NoHostErrors
+}
+
+func (options *Options) ParseHeadlessOptionalArguments() map[string]string {
+	optionalArguments := make(map[string]string)
+	for _, v := range options.HeadlessOptionalArguments {
+		if argParts := strings.SplitN(v, "=", 2); len(argParts) >= 2 {
+			key := strings.TrimSpace(argParts[0])
+			value := strings.TrimSpace(argParts[1])
+			if key != "" && value != "" {
+				optionalArguments[key] = value
+			}
+		}
+	}
+	return optionalArguments
 }
