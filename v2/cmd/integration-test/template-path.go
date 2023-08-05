@@ -20,7 +20,9 @@ var templatesPathTestCases = []TestCaseInfo{
 	//relative path
 	{Path: "dns/dns-saas-service-detection.yaml", TestCase: &relativePathTemplateTest{}},
 	//absolute path
-	{Path: fmt.Sprintf("%v/dns/dns-saas-service-detection.yaml", getTemplatePath()), TestCase: &absolutePathTemplateTest{}},
+	// TODO: uncomment on next nuclei-templates release; use target 8x8exch02.8x8.com
+	//{Path: fmt.Sprintf("%v/dns/dns-saas-service-detection.yaml", getTemplatePath()), TestCase: &absolutePathTemplateTest{}},
+	{Path: fmt.Sprintf("%v/ssl/ssl-dns-names.yaml", getTemplatePath()), TestCase: &absolutePathTemplateTest{}},
 }
 
 type cwdTemplateTest struct{}
@@ -49,7 +51,7 @@ type absolutePathTemplateTest struct{}
 
 // Execute executes a test case and returns an error if occurred
 func (h *absolutePathTemplateTest) Execute(filePath string) error {
-	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, "8x8exch02.8x8.com", debug)
+	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, "evil.com", debug)
 	if err != nil {
 		return err
 	}
