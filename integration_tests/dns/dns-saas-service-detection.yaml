@@ -11,8 +11,8 @@ dns:
     type: NS
 
     matchers:
-      - type: word
-        words:
+      - type: regex
+        regex:
           - "IN\tCNAME"
           - "IN\\s*CNAME"
 

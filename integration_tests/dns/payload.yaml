@@ -17,12 +17,10 @@ dns:
       - docs
       - drive
     
-    matchers:
-      - type: word
-        words:
-          - "IN\tA"
+    matchers:   
       - type: regex
         regex:
+          - "IN\tA"
           - "IN\\s*A"
 
     extractors:

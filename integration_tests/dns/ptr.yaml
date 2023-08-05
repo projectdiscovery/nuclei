@@ -11,11 +11,9 @@ dns:
     type: PTR
 
     matchers:
-      - type: word
-        words:
-          - "IN\tPTR"
       - type: regex
         regex:
+          - "IN\tPTR"
           - "IN\\s*PTR"
 
     extractors:
