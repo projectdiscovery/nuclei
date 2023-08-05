@@ -14,8 +14,6 @@ dns:
       - type: word
         words:
           - "IN\tCNAME"
-      - type: regex
-        regex:
           - "IN\\s*CNAME"
 
     extractors:
