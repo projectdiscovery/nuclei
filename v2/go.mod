@@ -66,7 +66,7 @@ require (
 	github.com/klauspost/compress v1.16.6
 	github.com/labstack/echo/v4 v4.10.2
 	github.com/mholt/archiver v3.1.1+incompatible
-	github.com/projectdiscovery/dsl v0.0.16
+	github.com/projectdiscovery/dsl v0.0.17
 	github.com/projectdiscovery/fasttemplate v0.0.2
 	github.com/projectdiscovery/goflags v0.1.12
 	github.com/projectdiscovery/gologger v1.1.11
@@ -89,7 +89,6 @@ require (
 	github.com/Azure/azure-sdk-for-go/sdk/azcore v1.6.0 // indirect
 	github.com/Azure/azure-sdk-for-go/sdk/internal v1.3.0 // indirect
 	github.com/AzureAD/microsoft-authentication-library-for-go v1.0.0 // indirect
-	github.com/Mzack9999/gostruct v0.0.0-20230415193108-30b70932da81 // indirect
 	github.com/VividCortex/ewma v1.2.0 // indirect
 	github.com/andybalholm/brotli v1.0.5 // indirect
 	github.com/aws/aws-sdk-go-v2/aws/protocol/eventstream v1.4.10 // indirect
@@ -127,6 +126,7 @@ require (
 	github.com/projectdiscovery/asnmap v1.0.4 // indirect
 	github.com/projectdiscovery/cdncheck v1.0.9 // indirect
 	github.com/projectdiscovery/freeport v0.0.5 // indirect
+	github.com/projectdiscovery/gostruct v0.0.0-20230520110439-bbdedaae3c35 // indirect
 	github.com/refraction-networking/utls v1.3.2 // indirect
 	github.com/sashabaranov/go-openai v1.14.1 // indirect
 	github.com/shoenig/go-m1cpu v0.1.6 // indirect
