@@ -40,6 +40,14 @@ jobs:
           GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
         run: go test ./...
         working-directory: v2/
+      
+      # issue with goccy/go-yaml: https://github.com/goccy/go-yaml/issues/65
+      - name: Convert Line Endings on Windows
+        if: ${{ matrix.os == 'windows-latest' }}
+        run: |
+          Get-ChildItem -Recurse -File | ForEach-Object { dos2unix $_.FullName }
+        shell: pwsh
+        working-directory: integration_tests/
 
       - name: Integration Tests
         timeout-minutes: 50
