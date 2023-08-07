@@ -98,7 +98,10 @@ type ExecutorOptions struct {
 // AddTemplateVars adds vars to template context with given template type as prefix
 // this method is no-op if template is not multi protocol
 func (e *ExecutorOptions) AddTemplateVars(templateType templateTypes.ProtocolType, vars map[string]interface{}) {
-	if e.ProtocolType != templateTypes.MultiProtocol || e.Flow != "" {
+	// if we wan't to disable adding response variables and other variables to template context
+	// this is the statement that does it . template context is currently only enabled for
+	// multiprotocol and flow templates
+	if e.ProtocolType != templateTypes.MultiProtocol && e.Flow == "" {
 		// no-op if not multi protocol template
 		return
 	}
@@ -115,7 +118,7 @@ func (e *ExecutorOptions) AddTemplateVars(templateType templateTypes.ProtocolTyp
 // AddTemplateVar adds given var to template context with given template type as prefix
 // this method is no-op if template is not multi protocol
 func (e *ExecutorOptions) AddTemplateVar(prefix, key string, value interface{}) {
-	if e.ProtocolType != templateTypes.MultiProtocol {
+	if e.ProtocolType != templateTypes.MultiProtocol && e.Flow == "" {
 		// no-op if not multi protocol template
 		return
 	}

@@ -61,6 +61,8 @@ func (ctx *Context) Add(key string, v interface{}) {
 	if !ok {
 		ctx.Set(key, v)
 	}
+
+	// If the key exists, append the value to the existing value
 	switch v := v.(type) {
 	case []string:
 		if values, ok := values.([]string); ok {
@@ -72,8 +74,10 @@ func (ctx *Context) Add(key string, v interface{}) {
 			tmp := []string{values, v}
 			ctx.Set(key, tmp)
 		}
+	default:
+		values, _ := ctx.Get(key)
+		ctx.Set(key, []interface{}{values, v})
 	}
-	// FixME: handle other edge cases
 }
 
 // Get the value with specific key if exists

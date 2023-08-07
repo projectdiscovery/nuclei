@@ -24,55 +24,56 @@ var (
 )
 
 type FlowExecutor struct {
-	input        *contextargs.Context
-	allProtocols map[string][]protocols.Request
-	options      *protocols.ExecutorOptions
-	allErrs      mapsutil.SyncLockMap[string, error]
-	results      *atomic.Bool
-	jsVM         *goja.Runtime
-	program      *goja.Program
+	input          *contextargs.Context
+	allProtocols   map[string][]protocols.Request
+	options        *protocols.ExecutorOptions
+	allErrs        mapsutil.SyncLockMap[string, error]
+	results        *atomic.Bool
+	jsVM           *goja.Runtime
+	program        *goja.Program
+	protoFunctions map[string]func(id ...string) // reqFunctions contains functions that allow executing requests/protocols from js
 }
 
 // Init initializes the flow executor all dependencies
 // this compiles and prepares for execution of a flow
 // since it has dependencies on variables and etc it can't be done moved to templates package
 func (f *FlowExecutor) Compile(callback func(event *output.InternalWrappedEvent)) error {
-	// define variables/objects
-	VarRegistry := map[string]func(id ...string){}
-	// store all dynamic variables and other variables here
-	f.options.TemplateCtx = contextargs.New()
-
 	if f.results == nil {
 		f.results = new(atomic.Bool)
 	}
-
+	// store all dynamic variables and other variables here
+	f.options.TemplateCtx = contextargs.New()
 	// create a new js vm/runtime
 	f.jsVM = goja.New()
 
+	// -----Load all types of variables-----
 	// add all input args to template context
 	if f.input.HasArgs() {
 		f.input.ForEach(func(key string, value interface{}) {
 			f.options.TemplateCtx.Set(key, value)
 		})
 	}
-	f.options.TemplateCtx.Merge(f.options.Variables.GetAll())
+	// load all variables and evaluate with existing data
+	variableMap := f.options.Variables.Evaluate(f.options.TemplateCtx.GetAll())
 	// cli options
 	optionVars := generators.BuildPayloadFromOptions(f.options.Options)
 	// constants
 	constants := f.options.Constants
-	allVars := generators.MergeMaps(optionVars, constants)
-	f.options.TemplateCtx.Merge(allVars)
-	// TODO: this is another sandbox bypass we only expand in generators.go
-	// but we require it now in multiple places (move sandbox and payload read logic to config.DefaultConfig())
-	// merge all variables
-	for k, v := range f.options.TemplateCtx.GetAll() {
+	allVars := generators.MergeMaps(variableMap, constants, optionVars)
+	// we support loading variables from files in variables , cli options and constants
+	// try to load if files exist
+	for k, v := range allVars {
 		if str, ok := v.(string); ok && len(str) < 150 && fileutil.FileExists(str) {
 			if value, err := f.ReadDataFromFile(str); err == nil {
-				f.options.TemplateCtx.Set(k, value)
+				allVars[k] = value
 			}
 		}
 	}
+	f.options.TemplateCtx.Merge(allVars)
+	// ------
 
+	// ---- define callback functions/objects----
+	f.protoFunctions = map[string]func(id ...string){}
 	compileErrors := []error{}
 
 	for proto, requests := range f.allProtocols {
@@ -83,20 +84,22 @@ func (f *FlowExecutor) Compile(callback func(event *output.InternalWrappedEvent)
 			if request.GetID() != "" {
 				// if id is present use it
 				reqMap[request.GetID()] = request
-			} else {
-				// fallback to using index as id
-				reqMap[strconv.Itoa(counter)] = request
 			}
+			// fallback to using index as id
+			// always allow index as id as a fallback
+			reqMap[strconv.Itoa(counter)] = request
 			counter++
 		}
-		VarRegistry[proto] = func(ids ...string) {
+		// ---define hook that allows protocol/request execution from js-----
+		f.protoFunctions[proto] = func(ids ...string) {
 			defer func() {
+				// to avoid polling update template variables everytime we execute a protocol
 				var m map[string]interface{} = f.options.TemplateCtx.GetAll()
 				_ = f.jsVM.Set("template", m)
 			}()
 			// if no id is passed execute all requests in sequence
 			if len(ids) == 0 {
-				// execution logic for http()
+				// execution logic for http()/dns() etc
 				for index := range f.allProtocols[proto] {
 					req := f.allProtocols[proto][index]
 					err := req.ExecuteWithResults(f.input, output.InternalEvent(f.options.TemplateCtx.GetAll()), nil, func(result *output.InternalWrappedEvent) {
@@ -162,17 +165,25 @@ func (f *FlowExecutor) Compile(callback func(event *output.InternalWrappedEvent)
 		return multierr.Combine(compileErrors...)
 	}
 
+	// register all built in functions
+	return f.RegisterBuiltInFunctions()
+}
+
+// RegisterBuiltInFunctions registers all built in functions for the flow
+func (f *FlowExecutor) RegisterBuiltInFunctions() error {
+	// currently we register following builtin functions
+	// log -> log to stdout with [JS] prefix should only be used for debugging
+	// set -> set a variable in template context
+	// proto(arg ...String) <- this is generic syntax of how a protocol/request binding looks in js
+	// we only register only those protocols that are available in template
+
+	// we also register a map datatype called template with all template variables
+	// template -> all template variables are available in js template object
+
 	if err := f.jsVM.Set("log", func(call goja.FunctionCall) goja.Value {
+		// TODO: verify string interpolation and handle multiple args
 		arg := call.Argument(0).Export()
 		gologger.DefaultLogger.Print().Msgf("[%v] %v", aurora.BrightCyan("JS"), arg)
-		return goja.Null()
-	}); err != nil {
-		return err
-	}
-
-	if err := f.jsVM.Set("poll", func(call goja.FunctionCall) goja.Value {
-		var m map[string]interface{} = f.options.TemplateCtx.GetAll()
-		_ = f.jsVM.Set("template", m)
 		return goja.Null()
 	}); err != nil {
 		return err
@@ -182,8 +193,6 @@ func (f *FlowExecutor) Compile(callback func(event *output.InternalWrappedEvent)
 		varName := call.Argument(0).Export()
 		varValue := call.Argument(1).Export()
 		f.options.TemplateCtx.Set(varName.(string), varValue)
-		// gologger.Debug().Msgf("JS: set %s to %s", varName, varValue)
-		// fmt.Printf("log: set %s to %s\n", varName, varValue)
 		return goja.Null()
 	}); err != nil {
 		return err
@@ -197,7 +206,7 @@ func (f *FlowExecutor) Compile(callback func(event *output.InternalWrappedEvent)
 	}
 
 	// register all protocols
-	for name, fn := range VarRegistry {
+	for name, fn := range f.protoFunctions {
 		if err := f.jsVM.Set(name, fn); err != nil {
 			return err
 		}
@@ -208,7 +217,6 @@ func (f *FlowExecutor) Compile(callback func(event *output.InternalWrappedEvent)
 		return err
 	}
 	f.program = program
-
 	return nil
 }
 
@@ -222,9 +230,11 @@ func (f *FlowExecutor) Execute() (bool, error) {
 	return f.results.Load(), nil
 }
 
+// ReadDataFromFile reads data from file respecting sandbox options
 func (f *FlowExecutor) ReadDataFromFile(payload string) ([]string, error) {
 	values := []string{}
-	reader, err := f.options.Catalog.OpenFile(payload)
+	// load file respecting sandbox
+	reader, err := f.options.Options.LoadHelperFile(payload, f.options.TemplatePath, f.options.Catalog)
 	if err != nil {
 		return values, err
 	}

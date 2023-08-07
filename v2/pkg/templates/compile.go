@@ -3,7 +3,6 @@ package templates
 import (
 	"fmt"
 	"io"
-	"os"
 	"path/filepath"
 	"reflect"
 	"strings"
@@ -20,6 +19,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/templates/signer"
 	"github.com/projectdiscovery/nuclei/v2/pkg/utils"
 	"github.com/projectdiscovery/retryablehttp-go"
+	errorutil "github.com/projectdiscovery/utils/errors"
 	fileutil "github.com/projectdiscovery/utils/file"
 	stringsutil "github.com/projectdiscovery/utils/strings"
 )
@@ -241,13 +241,20 @@ func ParseTemplateFromReader(reader io.Reader, preprocessor Preprocessor, option
 		options.Variables = template.Variables
 	}
 
-	// TODO: we should add a syntax check here
+	// TODO: we should add a syntax check here or somehow use a javascript linter
+	// simplest option for now seems to compile using goja and see if it fails
 	if strings.TrimSpace(template.Flow) != "" {
 		if len(template.Flow) > 0 && filepath.Ext(template.Flow) == ".js" && fileutil.FileExists(template.Flow) {
-			// TODO: this is sandbox  bypass, we should remove it
-			// move sandbox check to config so it can be reused here and in the generator
-			if bin, err := os.ReadFile(template.Flow); err == nil {
+			// load file respecting sandbox
+			file, err := options.Options.LoadHelperFile(template.Flow, options.TemplatePath, options.Catalog)
+			if err != nil {
+				return nil, errorutil.NewWithErr(err).Msgf("loading flow file from %v denied", template.Flow)
+			}
+			defer file.Close()
+			if bin, err := io.ReadAll(file); err == nil {
 				template.Flow = string(bin)
+			} else {
+				return nil, errorutil.NewWithErr(err).Msgf("something went wrong failed to read file")
 			}
 		}
 		options.Flow = template.Flow

@@ -106,7 +106,7 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 
 	if len(request.Payloads) > 0 {
 		var err error
-		request.generator, err = generators.New(request.Payloads, request.AttackType.Value, options.TemplatePath, options.Options.AllowLocalFileAccess, options.Catalog, options.Options.AttackType)
+		request.generator, err = generators.New(request.Payloads, request.AttackType.Value, options.TemplatePath, options.Catalog, options.Options.AttackType, request.options.Options)
 		if err != nil {
 			return errors.Wrap(err, "could not parse payloads")
 		}

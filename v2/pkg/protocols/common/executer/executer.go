@@ -97,11 +97,11 @@ func (e *Executer) Execute(input *contextargs.Context) (bool, error) {
 	if e.options.Flow != "" {
 		return e.executeFlow(input, cliExecutorCallback)
 	}
-	ok, err := e.executeWithCallback(input, results, cliExecutorCallback)
+	_, err := e.executeWithCallback(input, results, cliExecutorCallback)
 	if lastMatcherEvent != nil {
 		writeFailureCallback(lastMatcherEvent, e.options.Options.MatcherStatus)
 	}
-	return ok, err
+	return results.Load(), err
 }
 
 // ExecuteWithResults executes the protocol requests and returns results instead of writing them.
