@@ -19,10 +19,10 @@ var (
 )
 
 func init() {
-	_ = dsl.AddMultiSignatureHelperFunction("resolve", []string{
+	_ = dsl.AddFunction(dsl.NewWithMultipleSignatures("resolve", []string{
 		"(host string) string",
 		"(format string) string",
-	}, func(args ...interface{}) (interface{}, error) {
+	}, false, func(args ...interface{}) (interface{}, error) {
 		argCount := len(args)
 		if argCount == 0 || argCount > 2 {
 			return nil, dsl.ErrInvalidDslFunction
@@ -94,7 +94,7 @@ func init() {
 		}
 
 		return "", fmt.Errorf("no records found")
-	})
+	}))
 
 	dsl.PrintDebugCallback = func(args ...interface{}) error {
 		gologger.Info().Msgf("print_debug value: %s", fmt.Sprint(args))
