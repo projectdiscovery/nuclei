@@ -34,6 +34,9 @@ type Request struct {
 	operators.Operators `yaml:",inline,omitempty" json:",inline,omitempty"`
 	CompiledOperators   *operators.Operators `yaml:"-" json:"-"`
 
+	// ID is the optional id of the request
+	ID string `yaml:"id,omitempty" json:"id,omitempty" jsonschema:"title=id of the request,description=ID of the network request"`
+
 	// description: |
 	//   Query contains query for the request
 	Query string `yaml:"query,omitempty" json:"query,omitempty" jsonschema:"title=query for the WHOIS request,description=Query contains query for the request"`

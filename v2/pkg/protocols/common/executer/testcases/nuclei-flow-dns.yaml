@@ -9,10 +9,10 @@ info:
 
 flow: |
   dns("0");
-  log(template)
   template["nameservers"].forEach(nameserver => {
     set("nameserver",nameserver);
     dns("1");
+    log(template)
   });
 
 dns:

@@ -264,6 +264,8 @@ func ParseTemplateFromReader(reader io.Reader, preprocessor Preprocessor, option
 	options.TemplateCtx = contextargs.New()
 	options.ProtocolType = template.Type()
 	options.Constants = template.Constants
+
+	template.Options = &options
 	// If no requests, and it is also not a workflow, return error.
 	if template.Requests() == 0 {
 		return nil, fmt.Errorf("no requests defined for %s", template.ID)

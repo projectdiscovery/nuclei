@@ -56,4 +56,10 @@ func TestFlowTemplateWithID(t *testing.T) {
 	gotresults, err := Template.Executer.Execute(contextargs.NewWithInput("hackerone.com"))
 	require.Nil(t, err, "could not execute template")
 	require.True(t, gotresults)
+
+	value, ok := Template.Options.TemplateCtx.Get("nameservers")
+	require.True(t, ok)
+	if value != nil {
+		require.True(t, len(value.([]string)) > 0)
+	}
 }

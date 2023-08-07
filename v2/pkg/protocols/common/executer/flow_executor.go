@@ -43,7 +43,9 @@ func (f *FlowExecutor) Compile(callback func(event *output.InternalWrappedEvent)
 		f.results = new(atomic.Bool)
 	}
 	// store all dynamic variables and other variables here
-	f.options.TemplateCtx = contextargs.New()
+	if f.options.TemplateCtx == nil {
+		f.options.TemplateCtx = contextargs.New()
+	}
 	// create a new js vm/runtime
 	f.jsVM = goja.New()
 

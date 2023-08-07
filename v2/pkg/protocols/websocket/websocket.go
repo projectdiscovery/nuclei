@@ -42,6 +42,8 @@ type Request struct {
 	operators.Operators `yaml:",inline,omitempty" json:",inline,omitempty"`
 	CompiledOperators   *operators.Operators `yaml:"-" json:"-"`
 
+	// ID is the optional id of the request
+	ID string `yaml:"id,omitempty" json:"id,omitempty" jsonschema:"title=id of the request,description=ID of the network request"`
 	// description: |
 	//   Address contains address for the request
 	Address string `yaml:"address,omitempty" json:"address,omitempty" jsonschema:"title=address for the websocket request,description=Address contains address for the request"`
