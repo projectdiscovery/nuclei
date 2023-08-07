@@ -57,6 +57,7 @@ func TestFlowTemplateWithIndex(t *testing.T) {
 	require.Nil(t, err, "could not execute template")
 	require.True(t, gotresults)
 
+	// apart from parse->compile->execution this testcase checks if dynamic extracted variables are available
 	value, ok := Template.Options.TemplateCtx.Get("nameservers")
 	require.True(t, ok)
 	if value != nil {
@@ -66,6 +67,8 @@ func TestFlowTemplateWithIndex(t *testing.T) {
 
 func TestFlowTemplateWithID(t *testing.T) {
 	setup()
+	// apart from parse->compile->execution this testcase checks support for use custom id for protocol request and invocation of
+	// the same in js
 	Template, err := templates.Parse("testcases/nuclei-flow-dns-id.yaml", nil, executerOpts)
 	require.Nil(t, err, "could not parse template")
 
@@ -88,7 +91,11 @@ func TestFlowTemplateWithID(t *testing.T) {
 func TestFlowWithProtoPrefix(t *testing.T) {
 	// test
 	setup()
-	Template, err := templates.Parse("testcases/nuclei-flow-dns.yaml", nil, executerOpts)
+
+	// apart from parse->compile->execution this testcase checks
+	// mix of custom protocol request id and index is supported in js
+	// and also validates availability of protocol response variables in template context
+	Template, err := templates.Parse("testcases/nuclei-flow-dns-prefix.yaml", nil, executerOpts)
 	require.Nil(t, err, "could not parse template")
 
 	require.True(t, Template.Flow != "", "not a flow template") // this is classifer if template is flow or not
@@ -101,5 +108,14 @@ func TestFlowWithProtoPrefix(t *testing.T) {
 	require.True(t, gotresults)
 
 	// while there are lot of variables lets just look for only these
-	// protoVars := []string{"dns_"}
+	protoVars := []string{"dns_0_host", "dns_0_matched", "dns_0_answer", "dns_0_raw",
+		"probe-ns_host", "probe-ns_matched", "probe-ns_answer", "probe-ns_raw"}
+
+	for _, v := range protoVars {
+		value, ok := Template.Options.TemplateCtx.Get(v)
+		require.Truef(t, ok, "could not find variable %s", v)
+		if value != nil {
+			require.Truef(t, len(value.(string)) > 0, "variable %s is empty", v)
+		}
+	}
 }

@@ -13,8 +13,7 @@ flow: |
     set("nameserver",nameserver);
     dns("1");
   });
-  log(template)
-
+  
 dns:
   - name: "{{FQDN}}"
     type: NS
