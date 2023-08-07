@@ -81,15 +81,11 @@ func (e *Executer) Execute(input *contextargs.Context) (bool, error) {
 		// in that case we can skip it, otherwise we've to show failure in
 		// case of matcher-status flag.
 		if !event.HasOperatorResult() && !event.UsesInteractsh {
-			if err := e.options.Output.WriteFailure(event.InternalEvent); err != nil {
-				gologger.Warning().Msgf("Could not write failure event to output: %s\n", err)
-			}
 			lastMatcherEvent = event
 		} else {
-			if ok := writer.WriteResult(event, e.options.Output, e.options.Progress, e.options.IssuesClient); !ok {
-				if err := e.options.Output.WriteFailure(event.InternalEvent); err != nil {
-					gologger.Warning().Msgf("Could not write failure event to output: %s\n", err)
-				}
+			if writer.WriteResult(event, e.options.Output, e.options.Progress, e.options.IssuesClient) {
+				results.CompareAndSwap(false, true)
+			} else {
 				lastMatcherEvent = event
 			}
 		}

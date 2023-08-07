@@ -91,6 +91,8 @@ func (request *Request) GetID() string {
 
 // Compile compiles the protocol request for further execution.
 func (request *Request) Compile(options *protocols.ExecutorOptions) error {
+	request.options = options
+
 	// TODO: logic similar to network + http => probably can be refactored
 	// Resolve payload paths from vars if they exists
 	for name, payload := range options.Options.Vars.AsMap() {
@@ -136,7 +138,6 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 		}
 		request.CompiledOperators = compiled
 	}
-	request.options = options
 
 	if len(request.Fuzzing) > 0 {
 		for _, rule := range request.Fuzzing {
