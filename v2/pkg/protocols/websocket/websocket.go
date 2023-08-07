@@ -267,7 +267,7 @@ func (request *Request) executeRequestWithPayloads(input, hostname string, dynam
 	data["ip"] = request.dialer.GetDialedIP(hostname)
 
 	// add response fields to template context and merge templatectx variables to output event
-	request.options.AddTemplateVars(request.Type(), data)
+	request.options.AddTemplateVars(request.Type(), request.ID, data)
 	data = generators.MergeMaps(data, request.options.TemplateCtx.GetAll())
 
 	for k, v := range previous {

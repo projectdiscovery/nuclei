@@ -97,17 +97,19 @@ type ExecutorOptions struct {
 
 // AddTemplateVars adds vars to template context with given template type as prefix
 // this method is no-op if template is not multi protocol
-func (e *ExecutorOptions) AddTemplateVars(templateType templateTypes.ProtocolType, vars map[string]interface{}) {
+func (e *ExecutorOptions) AddTemplateVars(templateType templateTypes.ProtocolType, reqID string, vars map[string]interface{}) {
 	// if we wan't to disable adding response variables and other variables to template context
 	// this is the statement that does it . template context is currently only enabled for
 	// multiprotocol and flow templates
 	if e.ProtocolType != templateTypes.MultiProtocol && e.Flow == "" {
-		// no-op if not multi protocol template
+		// no-op if not multi protocol template or flow template
 		return
 	}
 	for k, v := range vars {
 		if !stringsutil.EqualFoldAny(k, "template-id", "template-info", "template-path") {
-			if templateType < templateTypes.InvalidProtocol {
+			if reqID != "" {
+				k = reqID + "_" + k
+			} else if templateType < templateTypes.InvalidProtocol {
 				k = templateType.String() + "_" + k
 			}
 			e.TemplateCtx.Set(k, v)
@@ -117,13 +119,15 @@ func (e *ExecutorOptions) AddTemplateVars(templateType templateTypes.ProtocolTyp
 
 // AddTemplateVar adds given var to template context with given template type as prefix
 // this method is no-op if template is not multi protocol
-func (e *ExecutorOptions) AddTemplateVar(prefix, key string, value interface{}) {
+func (e *ExecutorOptions) AddTemplateVar(templateType templateTypes.ProtocolType, reqID string, key string, value interface{}) {
 	if e.ProtocolType != templateTypes.MultiProtocol && e.Flow == "" {
-		// no-op if not multi protocol template
+		// no-op if not multi protocol template or flow template
 		return
 	}
-	if prefix != "" {
-		key = prefix + "_" + key
+	if reqID != "" {
+		key = reqID + "_" + key
+	} else if templateType < templateTypes.InvalidProtocol {
+		key = templateType.String() + "_" + key
 	}
 	e.TemplateCtx.Set(key, value)
 }

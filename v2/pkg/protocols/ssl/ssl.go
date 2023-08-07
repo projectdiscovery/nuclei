@@ -270,7 +270,7 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 		if tag == "" || f.IsZero() {
 			continue
 		}
-		request.options.AddTemplateVar(request.Type().String(), tag, f.Value())
+		request.options.AddTemplateVar(request.Type(), request.ID, tag, f.Value())
 		data[tag] = f.Value()
 	}
 
@@ -289,7 +289,7 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 		if tag == "" || f.IsZero() {
 			continue
 		}
-		request.options.AddTemplateVar(request.Type().String(), tag, f.Value())
+		request.options.AddTemplateVar(request.Type(), request.ID, tag, f.Value())
 		data[tag] = f.Value()
 	}
 

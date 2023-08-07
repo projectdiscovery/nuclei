@@ -42,7 +42,7 @@ func setup() {
 	executerOpts.WorkflowLoader = workflowLoader
 }
 
-func TestFlowTemplateWithID(t *testing.T) {
+func TestFlowTemplateWithIndex(t *testing.T) {
 	// test
 	setup()
 	Template, err := templates.Parse("testcases/nuclei-flow-dns.yaml", nil, executerOpts)
@@ -62,4 +62,44 @@ func TestFlowTemplateWithID(t *testing.T) {
 	if value != nil {
 		require.True(t, len(value.([]string)) > 0)
 	}
+}
+
+func TestFlowTemplateWithID(t *testing.T) {
+	setup()
+	Template, err := templates.Parse("testcases/nuclei-flow-dns-id.yaml", nil, executerOpts)
+	require.Nil(t, err, "could not parse template")
+
+	require.True(t, Template.Flow != "", "not a flow template") // this is classifer if template is flow or not
+
+	err = Template.Executer.Compile()
+	require.Nil(t, err, "could not compile template")
+
+	gotresults, err := Template.Executer.Execute(contextargs.NewWithInput("hackerone.com"))
+	require.Nil(t, err, "could not execute template")
+	require.True(t, gotresults)
+
+	value, ok := Template.Options.TemplateCtx.Get("nameservers")
+	require.True(t, ok)
+	if value != nil {
+		require.True(t, len(value.([]string)) > 0)
+	}
+}
+
+func TestFlowWithProtoPrefix(t *testing.T) {
+	// test
+	setup()
+	Template, err := templates.Parse("testcases/nuclei-flow-dns.yaml", nil, executerOpts)
+	require.Nil(t, err, "could not parse template")
+
+	require.True(t, Template.Flow != "", "not a flow template") // this is classifer if template is flow or not
+
+	err = Template.Executer.Compile()
+	require.Nil(t, err, "could not compile template")
+
+	gotresults, err := Template.Executer.Execute(contextargs.NewWithInput("hackerone.com"))
+	require.Nil(t, err, "could not execute template")
+	require.True(t, gotresults)
+
+	// while there are lot of variables lets just look for only these
+	// protoVars := []string{"dns_"}
 }

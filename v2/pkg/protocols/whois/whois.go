@@ -137,7 +137,7 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 	data["response"] = jsonDataString
 
 	// add response fields to template context and merge templatectx variables to output event
-	request.options.AddTemplateVars(request.Type(), data)
+	request.options.AddTemplateVars(request.Type(), request.ID, data)
 	data = generators.MergeMaps(data, request.options.TemplateCtx.GetAll())
 
 	event := eventcreator.CreateEvent(request, data, request.options.Options.Debug || request.options.Options.DebugResponse)

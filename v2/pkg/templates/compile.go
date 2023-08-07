@@ -241,6 +241,11 @@ func ParseTemplateFromReader(reader io.Reader, preprocessor Preprocessor, option
 		options.Variables = template.Variables
 	}
 
+	// if more than 1 request per protocol exist we add request id to protocol request
+	// since in template context we have proto_prefix for each protocol it is overwritten
+	// if request id is not present
+	template.validateAllRequestIDs()
+
 	// TODO: we should add a syntax check here or somehow use a javascript linter
 	// simplest option for now seems to compile using goja and see if it fails
 	if strings.TrimSpace(template.Flow) != "" {

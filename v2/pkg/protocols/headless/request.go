@@ -156,7 +156,7 @@ func (request *Request) executeRequestWithPayloads(input *contextargs.Context, p
 
 	outputEvent := request.responseToDSLMap(responseBody, out["header"], out["status_code"], reqBuilder.String(), input.MetaInput.Input, input.MetaInput.Input, page.DumpHistory())
 	// add response fields to template context and merge templatectx variables to output event
-	request.options.AddTemplateVars(request.Type(), outputEvent)
+	request.options.AddTemplateVars(request.Type(), request.ID, outputEvent)
 	outputEvent = generators.MergeMaps(outputEvent, request.options.TemplateCtx.GetAll())
 	for k, v := range out {
 		outputEvent[k] = v

@@ -3,6 +3,7 @@ package templates
 
 import (
 	"encoding/json"
+	"strconv"
 
 	validate "github.com/go-playground/validator/v10"
 	"github.com/projectdiscovery/nuclei/v2/pkg/model"
@@ -180,9 +181,84 @@ func (template *Template) Type() types.ProtocolType {
 	}
 }
 
+// validateAllRequestIDs check if that protocol already has given id if not
+// then is is manually set to proto_index
+func (template *Template) validateAllRequestIDs() {
+	// this is required in multiprotocol and flow where we save response variables
+	// and all other data in template context if template as two requests in a protocol
+	// then it is overwritten to avoid this we use proto_index as request ID
+	if len(template.RequestsCode) > 1 {
+		for i, req := range template.RequestsCode {
+			if req.ID == "" {
+				req.ID = template.Type().String() + "_" + strconv.Itoa(i)
+			}
+		}
+	}
+	if len(template.RequestsDNS) > 1 {
+		for i, req := range template.RequestsDNS {
+			if req.ID == "" {
+				req.ID = template.Type().String() + "_" + strconv.Itoa(i)
+			}
+		}
+	}
+	if len(template.RequestsFile) > 1 {
+		for i, req := range template.RequestsFile {
+			if req.ID == "" {
+				req.ID = template.Type().String() + "_" + strconv.Itoa(i)
+			}
+		}
+	}
+	if len(template.RequestsHTTP) > 1 {
+		for i, req := range template.RequestsHTTP {
+			if req.ID == "" {
+				req.ID = template.Type().String() + "_" + strconv.Itoa(i)
+			}
+		}
+	}
+	if len(template.RequestsHeadless) > 1 {
+		for i, req := range template.RequestsHeadless {
+			if req.ID == "" {
+				req.ID = template.Type().String() + "_" + strconv.Itoa(i)
+			}
+		}
+
+	}
+	if len(template.RequestsNetwork) > 1 {
+		for i, req := range template.RequestsNetwork {
+			if req.ID == "" {
+				req.ID = template.Type().String() + "_" + strconv.Itoa(i)
+			}
+		}
+	}
+	if len(template.RequestsSSL) > 1 {
+		for i, req := range template.RequestsSSL {
+			if req.ID == "" {
+				req.ID = template.Type().String() + "_" + strconv.Itoa(i)
+			}
+		}
+	}
+	if len(template.RequestsWebsocket) > 1 {
+		for i, req := range template.RequestsWebsocket {
+			if req.ID == "" {
+				req.ID = template.Type().String() + "_" + strconv.Itoa(i)
+			}
+		}
+	}
+	if len(template.RequestsWHOIS) > 1 {
+		for i, req := range template.RequestsWHOIS {
+			if req.ID == "" {
+				req.ID = template.Type().String() + "_" + strconv.Itoa(i)
+			}
+		}
+	}
+}
+
 // MarshalYAML forces recursive struct validation during marshal operation
 func (template *Template) MarshalYAML() ([]byte, error) {
 	out, marshalErr := yaml.Marshal(template)
+	// Review: we are adding requestIDs for templateContext
+	// if we are using this method then we might need to purge manually added IDS that start with `templatetype_`
+	// this is only applicable if there are more than 1 request fields in protocol
 	errValidate := validate.New().Struct(template)
 	return out, multierr.Append(marshalErr, errValidate)
 }

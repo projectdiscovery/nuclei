@@ -88,7 +88,7 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, metadata 
 
 			outputEvent := request.responseToDSLMap(resp, data, data, data, tostring.UnsafeToString(dumpedResponse), tostring.UnsafeToString(body), utils.HeadersToString(resp.Header), 0, nil)
 			// add response fields to template context and merge templatectx variables to output event
-			request.options.AddTemplateVars(request.Type(), outputEvent)
+			request.options.AddTemplateVars(request.Type(), request.GetID(), outputEvent)
 			outputEvent = generators.MergeMaps(outputEvent, request.options.TemplateCtx.GetAll())
 			outputEvent["ip"] = ""
 			for k, v := range previous {

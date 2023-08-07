@@ -721,7 +721,7 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 
 		outputEvent := request.responseToDSLMap(response.resp, input.MetaInput.Input, matchedURL, tostring.UnsafeToString(dumpedRequest), tostring.UnsafeToString(response.fullResponse), tostring.UnsafeToString(response.body), tostring.UnsafeToString(response.headers), duration, generatedRequest.meta)
 		// add response fields to template context and merge templatectx variables to output event
-		request.options.AddTemplateVars(request.Type(), outputEvent)
+		request.options.AddTemplateVars(request.Type(), request.ID, outputEvent)
 		outputEvent = generators.MergeMaps(outputEvent, request.options.TemplateCtx.GetAll())
 		if i := strings.LastIndex(hostname, ":"); i != -1 {
 			hostname = hostname[:i]
