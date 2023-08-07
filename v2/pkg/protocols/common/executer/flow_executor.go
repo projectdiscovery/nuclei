@@ -13,6 +13,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/contextargs"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/generators"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/utils/vardump"
 	errorutil "github.com/projectdiscovery/utils/errors"
 	fileutil "github.com/projectdiscovery/utils/file"
 	mapsutil "github.com/projectdiscovery/utils/maps"
@@ -66,6 +67,8 @@ func (f *FlowExecutor) Compile(callback func(event *output.InternalWrappedEvent)
 		if str, ok := v.(string); ok && len(str) < 150 && fileutil.FileExists(str) {
 			if value, err := f.ReadDataFromFile(str); err == nil {
 				allVars[k] = value
+			} else {
+				gologger.Warning().Msgf("could not load file '%s' for variable '%s': %s", str, k, err)
 			}
 		}
 	}
@@ -183,7 +186,14 @@ func (f *FlowExecutor) RegisterBuiltInFunctions() error {
 	if err := f.jsVM.Set("log", func(call goja.FunctionCall) goja.Value {
 		// TODO: verify string interpolation and handle multiple args
 		arg := call.Argument(0).Export()
-		gologger.DefaultLogger.Print().Msgf("[%v] %v", aurora.BrightCyan("JS"), arg)
+		switch value := arg.(type) {
+		case string:
+			gologger.DefaultLogger.Print().Msgf("[%v] %v", aurora.BrightCyan("JS"), value)
+		case map[string]interface{}:
+			gologger.DefaultLogger.Print().Msgf("[%v] %v", aurora.BrightCyan("JS"), vardump.DumpVariables(value))
+		default:
+			gologger.DefaultLogger.Print().Msgf("[%v] %v", aurora.BrightCyan("JS"), value)
+		}
 		return goja.Null()
 	}); err != nil {
 		return err
