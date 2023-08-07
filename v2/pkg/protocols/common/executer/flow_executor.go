@@ -14,6 +14,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/contextargs"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/generators"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/utils/vardump"
+	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 	errorutil "github.com/projectdiscovery/utils/errors"
 	fileutil "github.com/projectdiscovery/utils/file"
 	mapsutil "github.com/projectdiscovery/utils/maps"
@@ -32,7 +33,7 @@ type FlowExecutor struct {
 	results        *atomic.Bool
 	jsVM           *goja.Runtime
 	program        *goja.Program
-	protoFunctions map[string]func(id ...string) // reqFunctions contains functions that allow executing requests/protocols from js
+	protoFunctions map[string]func(call goja.FunctionCall) goja.Value // reqFunctions contains functions that allow executing requests/protocols from js
 }
 
 // Init initializes the flow executor all dependencies
@@ -78,7 +79,7 @@ func (f *FlowExecutor) Compile(callback func(event *output.InternalWrappedEvent)
 	// ------
 
 	// ---- define callback functions/objects----
-	f.protoFunctions = map[string]func(id ...string){}
+	f.protoFunctions = map[string]func(call goja.FunctionCall) goja.Value{}
 	compileErrors := []error{}
 
 	for proto, requests := range f.allProtocols {
@@ -96,12 +97,18 @@ func (f *FlowExecutor) Compile(callback func(event *output.InternalWrappedEvent)
 			counter++
 		}
 		// ---define hook that allows protocol/request execution from js-----
-		f.protoFunctions[proto] = func(ids ...string) {
+		f.protoFunctions[proto] = func(call goja.FunctionCall) goja.Value {
 			defer func() {
 				// to avoid polling update template variables everytime we execute a protocol
 				var m map[string]interface{} = f.options.TemplateCtx.GetAll()
 				_ = f.jsVM.Set("template", m)
 			}()
+			ids := []string{}
+			for _, v := range call.Arguments {
+				ids = append(ids, types.ToString(v.Export()))
+			}
+			matcherStatus := &atomic.Bool{} // due to interactsh matcher polling logic this needs to be atomic bool
+
 			// if no id is passed execute all requests in sequence
 			if len(ids) == 0 {
 				// execution logic for http()/dns() etc
@@ -114,9 +121,12 @@ func (f *FlowExecutor) Compile(callback func(event *output.InternalWrappedEvent)
 							// export dynamic values from operators (i.e internal:true)
 							// add add it to template context
 							// this is a conflicting behaviour with iterate-all
-							if result.HasOperatorResult() && len(result.OperatorsResult.DynamicValues) > 0 {
-								for k, v := range result.OperatorsResult.DynamicValues {
-									f.options.TemplateCtx.Set(k, v)
+							if result.HasOperatorResult() {
+								matcherStatus.CompareAndSwap(false, result.OperatorsResult.Matched)
+								if len(result.OperatorsResult.DynamicValues) > 0 {
+									for k, v := range result.OperatorsResult.DynamicValues {
+										f.options.TemplateCtx.Set(k, v)
+									}
 								}
 							}
 						}
@@ -129,10 +139,10 @@ func (f *FlowExecutor) Compile(callback func(event *output.InternalWrappedEvent)
 							id, _ = reqMap.GetKeyWithValue(req)
 						}
 						_ = f.allErrs.Set(id, err)
-						return
+						return f.jsVM.ToValue(matcherStatus.Load())
 					}
 				}
-				return
+				return f.jsVM.ToValue(matcherStatus.Load())
 			}
 
 			// execution logic for http("0") or http("get-aws-vpcs")
@@ -142,7 +152,7 @@ func (f *FlowExecutor) Compile(callback func(event *output.InternalWrappedEvent)
 					gologger.Error().Msgf("invalid request id '%s' provided", id)
 					// compile error
 					compileErrors = append(compileErrors, ErrInvalidRequestID.Msgf(id))
-					return
+					return f.jsVM.ToValue(matcherStatus.Load())
 				}
 				err := req.ExecuteWithResults(f.input, output.InternalEvent(f.options.TemplateCtx.GetAll()), nil, func(result *output.InternalWrappedEvent) {
 					if result != nil {
@@ -150,11 +160,14 @@ func (f *FlowExecutor) Compile(callback func(event *output.InternalWrappedEvent)
 						callback(result)
 						// export dynamic values from operators (i.e internal:true)
 						// add add it to template context
-						if result.HasOperatorResult() && len(result.OperatorsResult.DynamicValues) > 0 {
-							for k, v := range result.OperatorsResult.DynamicValues {
-								f.options.TemplateCtx.Set(k, v)
+						if result.HasOperatorResult() {
+							matcherStatus.CompareAndSwap(false, result.OperatorsResult.Matched)
+							if len(result.OperatorsResult.DynamicValues) > 0 {
+								for k, v := range result.OperatorsResult.DynamicValues {
+									f.options.TemplateCtx.Set(k, v)
+								}
+								_ = f.jsVM.Set("template", f.options.TemplateCtx.GetAll())
 							}
-							_ = f.jsVM.Set("template", f.options.TemplateCtx.GetAll())
 						}
 					}
 				})
@@ -163,6 +176,7 @@ func (f *FlowExecutor) Compile(callback func(event *output.InternalWrappedEvent)
 					_ = f.allErrs.Set(index, err)
 				}
 			}
+			return f.jsVM.ToValue(matcherStatus.Load())
 		}
 	}
 
@@ -235,9 +249,12 @@ func (f *FlowExecutor) RegisterBuiltInFunctions() error {
 // Execute executes the flow
 func (f *FlowExecutor) Execute() (bool, error) {
 	// pass flow and execute the js vm and handle errors
-	_, err := f.jsVM.RunProgram(f.program)
+	value, err := f.jsVM.RunProgram(f.program)
 	if err != nil {
 		return false, errorutil.NewWithErr(err).Msgf("failed to execute flow\n%v\n", f.options.Flow)
+	}
+	if value != nil {
+		return value.ToBoolean(), nil
 	}
 	return f.results.Load(), nil
 }

@@ -136,24 +136,31 @@ func (template *Template) compileProtocolRequests(options protocols.ExecutorOpti
 		switch {
 		case len(template.RequestsDNS) > 0:
 			requests = append(requests, template.convertRequestToProtocolsRequest(template.RequestsDNS)...)
+			fallthrough
 		case len(template.RequestsFile) > 0:
 			requests = append(requests, template.convertRequestToProtocolsRequest(template.RequestsFile)...)
+			fallthrough
 		case len(template.RequestsNetwork) > 0:
 			requests = append(requests, template.convertRequestToProtocolsRequest(template.RequestsNetwork)...)
+			fallthrough
 		case len(template.RequestsHTTP) > 0:
 			requests = append(requests, template.convertRequestToProtocolsRequest(template.RequestsHTTP)...)
+			fallthrough
 		case len(template.RequestsHeadless) > 0 && options.Options.Headless:
 			requests = append(requests, template.convertRequestToProtocolsRequest(template.RequestsHeadless)...)
+			fallthrough
 		case len(template.RequestsSSL) > 0:
 			requests = append(requests, template.convertRequestToProtocolsRequest(template.RequestsSSL)...)
+			fallthrough
 		case len(template.RequestsWebsocket) > 0:
 			requests = append(requests, template.convertRequestToProtocolsRequest(template.RequestsWebsocket)...)
+			fallthrough
 		case len(template.RequestsWHOIS) > 0:
 			requests = append(requests, template.convertRequestToProtocolsRequest(template.RequestsWHOIS)...)
+			fallthrough
+		case len(template.RequestsCode) > 0:
+			requests = append(requests, template.convertRequestToProtocolsRequest(template.RequestsCode)...)
 		}
-	}
-	if len(template.RequestsCode) > 0 {
-		requests = append(requests, template.convertRequestToProtocolsRequest(template.RequestsCode)...)
 	}
 	template.Executer = executer.NewExecuter(requests, &options)
 	return nil

@@ -183,7 +183,6 @@ func (e *Executer) executeFlow(input *contextargs.Context, callback protocols.Ou
 		if req.Type() == types.MultiProtocol {
 			// multiprotocol execution is also mutually exclusive with flow and is slightly advanced version of executeWithCallbac()
 			// if request type is multiprotocol , then array does not contain any other request type
-			gologger.Info().Msgf("reqtype is %v", req.Type().String())
 			return e.executeWithCallback(input, nil, nil)
 		}
 		switch req.Type() {
@@ -205,6 +204,8 @@ func (e *Executer) executeFlow(input *contextargs.Context, callback protocols.Ou
 			allprotos[types.WHOISProtocol.String()] = append(allprotos[types.WHOISProtocol.String()], req)
 		case types.CodeProtocol:
 			allprotos[types.CodeProtocol.String()] = append(allprotos[types.CodeProtocol.String()], req)
+		default:
+			gologger.Error().Msgf("invalid request type %s", req.Type().String())
 		}
 	}
 	flow := &FlowExecutor{
