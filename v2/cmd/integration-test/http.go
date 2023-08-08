@@ -1453,11 +1453,16 @@ func (h *httpDisablePathAutomerge) Execute(filePath string) error {
 	router.GET("/api/v1/test", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 		fmt.Fprint(w, r.URL.Query().Get("id"))
 	})
+	router.GET("/", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+		fmt.Fprint(w, "empty path in raw request")
+	})
+
 	ts := httptest.NewServer(router)
 	defer ts.Close()
 	got, err := testutils.RunNucleiTemplateAndGetResults(filePath, ts.URL+"/api/v1/user", debug)
 	if err != nil {
 		return err
 	}
-	return expectResultsCount(got, 1)
+	fmt.Println("got: ", got)
+	return expectResultsCount(got, 2)
 }
