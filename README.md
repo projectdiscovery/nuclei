@@ -111,7 +111,7 @@ Nuclei is a fast, template based vulnerability scanner focusing
 on extensive configurability, massive extensibility and ease of use.
 
 Usage:
-  ./nuclei [flags]
+  nuclei [flags]
 
 Flags:
 TARGET:
@@ -157,7 +157,7 @@ OUTPUT:
    -silent                       display findings only
    -nc, -no-color                disable output content coloring (ANSI escape codes)
    -j, -jsonl                    write output in JSONL(ines) format
-   -irr, -include-rr             include request/response pairs in the JSON, JSONL, and Markdown outputs (for findings only) [DEPRECATED use -omit-raw] (default true)
+   -irr, -include-rr -omit-raw   include request/response pairs in the JSON, JSONL, and Markdown outputs (for findings only) [DEPRECATED use -omit-raw] (default true)
    -or, -omit-raw                omit request/response pairs in the JSON, JSONL, and Markdown outputs (for findings only)
    -nm, -no-meta                 disable printing result metadata in cli output
    -ts, -timestamp               enables printing timestamp in cli output
@@ -284,6 +284,29 @@ STATISTICS:
    -si, -stats-interval int  number of seconds to wait between showing a statistics update (default 5)
    -m, -metrics              expose nuclei metrics on a port
    -mp, -metrics-port int    port to expose nuclei metrics on (default 9092)
+
+CLOUD:
+   -cloud                              run scan on nuclei cloud
+   -ads, -add-datasource string        add specified data source (s3,github)
+   -atr, -add-target string            add target(s) to cloud
+   -atm, -add-template string          add template(s) to cloud
+   -lsn, -list-scan                    list previous cloud scans
+   -lso, -list-output string           list scan output by scan id
+   -ltr, -list-target                  list cloud target by id
+   -ltm, -list-template                list cloud template by id
+   -lds, -list-datasource              list cloud datasource by id
+   -lrs, -list-reportsource            list reporting sources
+   -dsn, -delete-scan string           delete cloud scan by id
+   -dtr, -delete-target string         delete target(s) from cloud
+   -dtm, -delete-template string       delete template(s) from cloud
+   -dds, -delete-datasource string     delete specified data source
+   -drs, -disable-reportsource string  disable specified reporting source
+   -ers, -enable-reportsource string   enable specified reporting source
+   -gtr, -get-target string            get target content by id
+   -gtm, -get-template string          get template content by id
+   -nos, -no-store                     disable scan/output storage on cloud
+   -no-tables                          do not display pretty-printed tables
+   -limit int                          limit the number of output to display (default 100)
 ```
 
 ### Running Nuclei
