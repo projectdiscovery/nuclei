@@ -1463,6 +1463,5 @@ func (h *httpDisablePathAutomerge) Execute(filePath string) error {
 	if err != nil {
 		return err
 	}
-	fmt.Println("got: ", got)
 	return expectResultsCount(got, 2)
 }
