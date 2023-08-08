@@ -334,6 +334,8 @@ func (template *Template) addProtocolsToQueue(keys ...string) {
 			template.MultiProtoRequest.Queue = append(template.MultiProtoRequest.Queue, template.convertRequestToProtocolsRequest(template.RequestsWebsocket)...)
 		case types.WHOISProtocol.String():
 			template.MultiProtoRequest.Queue = append(template.MultiProtoRequest.Queue, template.convertRequestToProtocolsRequest(template.RequestsWHOIS)...)
+		case types.CodeProtocol.String():
+			template.MultiProtoRequest.Queue = append(template.MultiProtoRequest.Queue, template.convertRequestToProtocolsRequest(template.RequestsCode)...)
 		}
 	}
 }

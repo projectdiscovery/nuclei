@@ -82,9 +82,10 @@ func (f *FlowExecutor) Compile(callback func(event *output.InternalWrappedEvent)
 	f.protoFunctions = map[string]func(call goja.FunctionCall) goja.Value{}
 	compileErrors := []error{}
 
-	for proto, requests := range f.allProtocols {
+	for p, requests := range f.allProtocols {
 		reqMap := mapsutil.Map[string, protocols.Request]{}
 		counter := 0
+		proto := strings.ToLower(p) // donot use loop variables in callback functions directly
 		for index := range requests {
 			request := f.allProtocols[proto][index]
 			if request.GetID() != "" {
@@ -253,7 +254,7 @@ func (f *FlowExecutor) Execute() (bool, error) {
 	if err != nil {
 		return false, errorutil.NewWithErr(err).Msgf("failed to execute flow\n%v\n", f.options.Flow)
 	}
-	if value != nil {
+	if value.Export() != nil {
 		return value.ToBoolean(), nil
 	}
 	return f.results.Load(), nil

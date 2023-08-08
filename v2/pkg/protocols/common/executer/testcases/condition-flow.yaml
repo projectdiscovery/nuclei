@@ -5,8 +5,7 @@ info:
   severity: info
 
 
-flow: |
-  dns() && http("0");
+flow: dns() && http()
 
 dns:
   - name: "{{FQDN}}"

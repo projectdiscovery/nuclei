@@ -119,3 +119,51 @@ func TestFlowWithProtoPrefix(t *testing.T) {
 		}
 	}
 }
+
+func TestFlowWithConditionNegative(t *testing.T) {
+	setup()
+
+	// apart from parse->compile->execution this testcase checks
+	// if bitwise operator (&&) are properly executed and working
+	Template, err := templates.Parse("testcases/condition-flow.yaml", nil, executerOpts)
+	require.Nil(t, err, "could not parse template")
+
+	require.True(t, Template.Flow != "", "not a flow template") // this is classifer if template is flow or not
+
+	err = Template.Executer.Compile()
+	require.Nil(t, err, "could not compile template")
+
+	// expect no results and verify thant dns request is executed and http is not
+	gotresults, err := Template.Executer.Execute(contextargs.NewWithInput("scanme.sh"))
+	require.Nil(t, err, "could not execute template")
+	require.False(t, gotresults)
+
+	m := Template.Options.TemplateCtx.GetAll()
+
+	require.Equal(t, m["http_status"], nil) // since http() was not execute this variable should not exist
+	require.NotEqual(t, m["dns_raw"], "")   // since dns() was execute this variable should exist
+}
+
+func TestFlowWithConditionPositive(t *testing.T) {
+	setup()
+
+	// apart from parse->compile->execution this testcase checks
+	// if bitwise operator (&&) are properly executed and working
+	Template, err := templates.Parse("testcases/condition-flow.yaml", nil, executerOpts)
+	require.Nil(t, err, "could not parse template")
+
+	require.True(t, Template.Flow != "", "not a flow template") // this is classifer if template is flow or not
+
+	err = Template.Executer.Compile()
+	require.Nil(t, err, "could not compile template")
+
+	// positive match . expect results also verify that both dns() and http() were executed
+	gotresults, err := Template.Executer.Execute(contextargs.NewWithInput("blog.projectdiscovery.io"))
+	require.Nil(t, err, "could not execute template")
+	require.True(t, gotresults)
+
+	m := Template.Options.TemplateCtx.GetAll()
+
+	require.NotEqual(t, m["http_status"], "") // since http() was not execute this variable should not exist
+	require.NotEqual(t, m["dns_raw"], "")     // since dns() was execute this variable should exist
+}
