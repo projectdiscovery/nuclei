@@ -47,16 +47,16 @@ func (t *iterateValuesFlow) Execute(filePath string) error {
 	}
 	router.GET("/", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(fmt.Sprint(testemails)))
+		_, _ = w.Write([]byte(fmt.Sprint(testemails)))
 	})
 	router.GET("/user/"+getBase64(testemails[0]), func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("Welcome ! This is test matcher text"))
+		_, _ = w.Write([]byte("Welcome ! This is test matcher text"))
 	})
 
 	router.GET("/user/"+getBase64(testemails[1]), func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("Welcome ! This is test matcher text"))
+		_, _ = w.Write([]byte("Welcome ! This is test matcher text"))
 	})
 
 	ts := httptest.NewServer(router)
