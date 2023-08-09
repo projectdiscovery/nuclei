@@ -6,8 +6,6 @@ info:
   severity: info
 
 
-### this is non-parallel/concurrency=1 version of iterate-values-flow-parallel.yaml
-
 flow: |
   http(0)
   for(let email of template["emails"]) {

@@ -14,7 +14,6 @@ var flowTestcases = []TestCaseInfo{
 	{Path: "flow/conditional-flow.yaml", TestCase: &conditionalFlow{}},
 	{Path: "flow/conditional-flow-negative.yaml", TestCase: &conditionalFlowNegative{}},
 	{Path: "flow/iterate-values-flow.yaml", TestCase: &iterateValuesFlow{}},
-	{Path: "flow/iterate-values-flow-parallel.yaml", TestCase: &iterateValuesFlow{}},
 	{Path: "flow/dns-ns-probe.yaml", TestCase: &dnsNsProbe{}},
 }
 

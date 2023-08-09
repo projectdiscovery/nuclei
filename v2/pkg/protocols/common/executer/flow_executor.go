@@ -9,6 +9,7 @@ import (
 	"github.com/dop251/goja"
 	"github.com/logrusorgru/aurora"
 	"github.com/projectdiscovery/gologger"
+	"github.com/projectdiscovery/nuclei/v2/pkg/operators"
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/contextargs"
@@ -124,6 +125,11 @@ func (f *FlowExecutor) Compile(callback func(event *output.InternalWrappedEvent)
 							// this is a conflicting behaviour with iterate-all
 							if result.HasOperatorResult() {
 								matcherStatus.CompareAndSwap(false, result.OperatorsResult.Matched)
+								if !result.OperatorsResult.Matched && !hasMatchers(req.GetCompiledOperators()) {
+									// if matcher status is false . check if template/request contains any matcher at all
+									// if it does then we need to set matcher status to true
+									matcherStatus.CompareAndSwap(false, true)
+								}
 								if len(result.OperatorsResult.DynamicValues) > 0 {
 									for k, v := range result.OperatorsResult.DynamicValues {
 										f.options.TemplateCtx.Set(k, v)
@@ -283,4 +289,14 @@ func (f *FlowExecutor) ReadDataFromFile(payload string) ([]string, error) {
 		}
 	}
 	return values, nil
+}
+
+// Checks if template has matchers
+func hasMatchers(all []*operators.Operators) bool {
+	for _, operator := range all {
+		if len(operator.Matchers) > 0 {
+			return true
+		}
+	}
+	return false
 }
