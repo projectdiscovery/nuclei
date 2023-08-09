@@ -86,7 +86,7 @@ func (r *requestGenerator) Make(ctx context.Context, input *contextargs.Context,
 		}
 	} else {
 		for payloadName, payloadValue := range payloads {
-			payloads[payloadName] = types.ToString(payloadValue)
+			payloads[payloadName] = types.ToStringNSlice(payloadValue)
 		}
 	}
 

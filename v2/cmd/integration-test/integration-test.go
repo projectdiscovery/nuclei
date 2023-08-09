@@ -49,6 +49,7 @@ var (
 		"multi":           multiProtoTestcases,
 		"generic":         genericTestcases,
 		"dsl":             dslTestcases,
+		"flow":            flowTestcases,
 	}
 
 	// For debug purposes

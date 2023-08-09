@@ -1,0 +1,37 @@
+id: extract-emails
+
+info:
+  name: Extract Email IDs from Response
+  author: pdteam
+  severity: info
+
+
+### this is non-parallel/concurrency=1 version of iterate-values-flow-parallel.yaml
+
+flow: |
+  http(0)
+  for(let email of template["emails"]) {
+    set("email",email);
+    http(1);
+  }
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}"
+
+    extractors:
+      - type: regex
+        name: emails
+        internal: true
+        regex:
+          - '[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}'
+
+  - method: GET
+    path:
+      - "{{BaseURL}}/user/{{base64(email)}}"
+  
+    matchers:
+      - type: word
+        words:
+          - "Welcome"

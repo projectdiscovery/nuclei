@@ -225,7 +225,10 @@ func (f *FlowExecutor) RegisterBuiltInFunctions() error {
 		return err
 	}
 
-	var m map[string]interface{} = f.options.TemplateCtx.GetAll()
+	var m = f.options.TemplateCtx.GetAll()
+	if m == nil {
+		m = map[string]interface{}{}
+	}
 
 	if err := f.jsVM.Set("template", m); err != nil {
 		// all template variables are available in js template object
