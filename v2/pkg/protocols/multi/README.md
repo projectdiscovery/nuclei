@@ -36,7 +36,7 @@ to make response fields of that protocol available to global context
 	outputEvent := request.responseToDSLMap(compiledRequest, response, domain, question, traceData)
 	// expose response variables in proto_var format
 	// this is no-op if the template is not a multi protocol template
-	request.options.AddTemplateVars(request.Type(), outputEvent)
+	request.options.AddTemplateVars(request.Type(),request.ID, outputEvent)
 ```
 
 - Append all available template context values to outputEvent

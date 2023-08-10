@@ -117,10 +117,12 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 
 	// inject all template context values as gozero env variables
 	variables := protocolutils.GenerateVariables(input.MetaInput.Input, false, nil)
+	// add template context values
+	variables = generators.MergeMaps(variables, request.options.TemplateCtx.GetAll())
 	// optionvars are vars passed from CLI or env variables
 	optionVars := generators.BuildPayloadFromOptions(request.options.Options)
 	variablesMap := request.options.Variables.Evaluate(variables)
-	variables = generators.MergeMaps(variablesMap, variables, optionVars)
+	variables = generators.MergeMaps(variablesMap, variables, optionVars, request.options.Constants)
 	for name, value := range variables {
 		v := fmt.Sprint(value)
 		v, interactshURLs = request.options.Interactsh.Replace(v, interactshURLs)
@@ -152,6 +154,13 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 	data["template-path"] = request.options.TemplatePath
 	data["template-id"] = request.options.TemplateID
 	data["template-info"] = request.options.TemplateInfo
+
+	// expose response variables in proto_var format
+	// this is no-op if the template is not a multi protocol template
+	request.options.AddTemplateVars(request.Type(), request.ID, data)
+
+	// add variables from template context before matching/extraction
+	data = generators.MergeMaps(data, request.options.TemplateCtx.GetAll())
 
 	if request.options.Interactsh != nil {
 		request.options.Interactsh.MakePlaceholders(interactshURLs, data)
