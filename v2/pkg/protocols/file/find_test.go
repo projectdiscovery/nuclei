@@ -10,6 +10,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/model"
 	"github.com/projectdiscovery/nuclei/v2/pkg/model/types/severity"
 	"github.com/projectdiscovery/nuclei/v2/pkg/testutils"
+	permissionutil "github.com/projectdiscovery/utils/permission"
 )
 
 func TestFindInputPaths(t *testing.T) {
@@ -44,7 +45,7 @@ func TestFindInputPaths(t *testing.T) {
 		"test.js":           "TEST",
 	}
 	for k, v := range files {
-		err = os.WriteFile(filepath.Join(tempDir, k), []byte(v), os.ModePerm)
+		err = os.WriteFile(filepath.Join(tempDir, k), []byte(v), permissionutil.TempFilePermission)
 		require.Nil(t, err, "could not write temporary file")
 	}
 	expected := []string{"config.yaml", "final.yaml", "test.js"}
