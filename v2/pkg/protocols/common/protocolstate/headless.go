@@ -22,7 +22,7 @@ var (
 // if the request does not respect the rules, it will be canceled with reason
 func ValidateNFailRequest(page *rod.Page, e *proto.FetchRequestPaused) error {
 	reqURL := e.Request.URL
-	normalized := strings.ToLower(reqURL)
+	normalized := strings.ToLower(reqURL) // normalize url to lowercase
 	if !allowLocalFileAccess && strings.HasPrefix(normalized, "file:") {
 		FailWithReason(page, e)
 		return ErrURLDenied.Msgf(reqURL, "use of file:// protocol disabled use '-lfa' to enable")
@@ -40,11 +40,7 @@ func ValidateNFailRequest(page *rod.Page, e *proto.FetchRequestPaused) error {
 	return nil
 }
 
-// IsLFAEnabled returns true if local file access is enabled
-func IsLFAEnabled() bool {
-	return allowLocalFileAccess
-}
-
+// FailWithReason fails request with AccessDenied reason
 func FailWithReason(page *rod.Page, e *proto.FetchRequestPaused) error {
 	m := proto.FetchFailRequest{
 		RequestID:   e.RequestID,
@@ -53,9 +49,10 @@ func FailWithReason(page *rod.Page, e *proto.FetchRequestPaused) error {
 	return m.Call(page)
 }
 
-func InitHeadless(lna bool, lfa bool) {
-	allowLocalFileAccess = lfa
-	if lna {
+// InitHeadless initializes headless protocol state
+func InitHeadless(RestrictLocalNetworkAccess bool, localFileAccess bool) {
+	allowLocalFileAccess = localFileAccess
+	if !RestrictLocalNetworkAccess {
 		return
 	}
 	networkPolicy, _ = networkpolicy.New(networkpolicy.Options{
@@ -63,6 +60,7 @@ func InitHeadless(lna bool, lfa bool) {
 	})
 }
 
+// isValidHost checks if the host is valid (only limited to http/https protocols)
 func isValidHost(targetUrl string) bool {
 	if !strings.HasPrefix(targetUrl, "http:") && !strings.HasPrefix(targetUrl, "https:") {
 		return true

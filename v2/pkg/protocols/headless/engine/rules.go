@@ -104,6 +104,9 @@ func (p *Page) routingRuleHandler(ctx *rod.Hijack) {
 
 // routingRuleHandlerNative handles native proxy rule
 func (p *Page) routingRuleHandlerNative(e *proto.FetchRequestPaused) error {
+	// ValidateNFailRequest validates if Local file access is enabled
+	// and local network access is enables if not it will fail the request
+	// that don't match the rules
 	if err := protocolstate.ValidateNFailRequest(p.page, e); err != nil {
 		return err
 	}

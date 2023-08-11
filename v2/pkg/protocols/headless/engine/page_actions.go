@@ -18,7 +18,6 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/contextargs"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/expressions"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/generators"
-	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/protocolstate"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/utils/vardump"
 	protocolutils "github.com/projectdiscovery/nuclei/v2/pkg/protocols/utils"
 	httputil "github.com/projectdiscovery/nuclei/v2/pkg/protocols/utils/http"
@@ -71,7 +70,7 @@ func (p *Page) ExecuteActions(input *contextargs.Context, actions []*Action, var
 		case ActionWaitEvent:
 			err = p.WaitEvent(act, outData)
 		case ActionFilesInput:
-			if protocolstate.IsLFAEnabled() {
+			if p.options.Options.AllowLocalFileAccess {
 				err = p.FilesInput(act, outData)
 			} else {
 				err = errorutil.New("use -lfa flag to enable file load access")
