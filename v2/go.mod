@@ -39,9 +39,9 @@ require (
 	github.com/weppos/publicsuffix-go v0.30.1-0.20230422193905-8fecedd899db
 	github.com/xanzy/go-gitlab v0.84.0
 	go.uber.org/multierr v1.11.0
-	golang.org/x/net v0.13.0
-	golang.org/x/oauth2 v0.10.0
-	golang.org/x/text v0.11.0
+	golang.org/x/net v0.14.0
+	golang.org/x/oauth2 v0.11.0
+	golang.org/x/text v0.12.0
 	gopkg.in/yaml.v2 v2.4.0
 	moul.io/http2curl v1.0.0
 )
@@ -68,7 +68,7 @@ require (
 	github.com/mholt/archiver v3.1.1+incompatible
 	github.com/projectdiscovery/dsl v0.0.17
 	github.com/projectdiscovery/fasttemplate v0.0.2
-	github.com/projectdiscovery/goflags v0.1.12
+	github.com/projectdiscovery/goflags v0.1.16
 	github.com/projectdiscovery/gologger v1.1.11
 	github.com/projectdiscovery/httpx v1.3.4
 	github.com/projectdiscovery/mapcidr v1.1.2
@@ -77,7 +77,7 @@ require (
 	github.com/projectdiscovery/sarif v0.0.1
 	github.com/projectdiscovery/tlsx v1.1.1
 	github.com/projectdiscovery/uncover v1.0.6-0.20230601103158-bfd7e02a5bb1
-	github.com/projectdiscovery/utils v0.0.47
+	github.com/projectdiscovery/utils v0.0.49
 	github.com/projectdiscovery/wappalyzergo v0.0.108
 	github.com/stretchr/testify v1.8.4
 	gopkg.in/src-d/go-git.v4 v4.13.1
@@ -215,10 +215,10 @@ require (
 	go.etcd.io/bbolt v1.3.7 // indirect
 	go.uber.org/zap v1.24.0 // indirect
 	goftp.io/server/v2 v2.0.0 // indirect
-	golang.org/x/crypto v0.11.0
+	golang.org/x/crypto v0.12.0
 	golang.org/x/exp v0.0.0-20230626212559-97b1e661b5df
 	golang.org/x/mod v0.12.0 // indirect
-	golang.org/x/sys v0.10.0 // indirect
+	golang.org/x/sys v0.11.0 // indirect
 	golang.org/x/time v0.3.0 // indirect
 	golang.org/x/tools v0.11.0 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
