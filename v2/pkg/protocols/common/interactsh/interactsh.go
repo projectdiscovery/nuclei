@@ -20,7 +20,6 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators"
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/helpers/responsehighlighter"
-	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/helpers/writer"
 	errorutil "github.com/projectdiscovery/utils/errors"
 	stringsutil "github.com/projectdiscovery/utils/strings"
 )
@@ -179,11 +178,9 @@ func (c *Client) processInteractionForRequest(interaction *server.Interaction, d
 		c.debugPrintInteraction(interaction, data.Event.OperatorsResult)
 	}
 
-	if writer.WriteResult(data.Event, c.options.Output, c.options.Progress, c.options.IssuesClient) {
-		c.matched.Store(true)
-		if requestShouldStopAtFirstMatch(data) || c.options.StopAtFirstMatch {
-			_ = c.matchedTemplates.SetWithExpire(hash(data.Event.InternalEvent), true, defaultInteractionDuration)
-		}
+	c.matched.Store(true)
+	if requestShouldStopAtFirstMatch(data) || c.options.StopAtFirstMatch {
+		_ = c.matchedTemplates.SetWithExpire(hash(data.Event.InternalEvent), true, defaultInteractionDuration)
 	}
 
 	return true
