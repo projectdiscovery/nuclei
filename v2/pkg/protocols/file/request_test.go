@@ -15,6 +15,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/contextargs"
 	"github.com/projectdiscovery/nuclei/v2/pkg/testutils"
+	permissionutil "github.com/projectdiscovery/utils/permission"
 )
 
 func TestFileExecuteWithResults(t *testing.T) {
@@ -58,7 +59,7 @@ func TestFileExecuteWithResults(t *testing.T) {
 		"config.yaml": "TEST\r\n1.1.1.1\r\n",
 	}
 	for k, v := range files {
-		err = os.WriteFile(filepath.Join(tempDir, k), []byte(v), os.ModePerm)
+		err = os.WriteFile(filepath.Join(tempDir, k), []byte(v), permissionutil.TempFilePermission)
 		require.Nil(t, err, "could not write temporary file")
 	}
 
