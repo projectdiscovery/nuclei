@@ -1,5 +1,6 @@
 .idea
 .vscode
+.devcontainer
 v2/vendor
 v2/dist
 integration_tests/nuclei

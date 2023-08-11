@@ -15,6 +15,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/internal/installer"
 	"github.com/projectdiscovery/nuclei/v2/internal/runner/nucleicloud"
 	uncoverlib "github.com/projectdiscovery/uncover"
+	permissionutil "github.com/projectdiscovery/utils/permission"
 	updateutils "github.com/projectdiscovery/utils/update"
 
 	"github.com/logrusorgru/aurora"
@@ -742,7 +743,7 @@ func (r *Runner) SaveResumeConfig(path string) error {
 	resumeCfgClone.ResumeFrom = resumeCfgClone.Current
 	data, _ := json.MarshalIndent(resumeCfgClone, "", "\t")
 
-	return os.WriteFile(path, data, os.ModePerm)
+	return os.WriteFile(path, data, permissionutil.ConfigFilePermission)
 }
 
 type WalkFunc func(reflect.Value, reflect.StructField)
