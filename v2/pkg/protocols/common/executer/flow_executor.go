@@ -5,6 +5,7 @@ import (
 	"reflect"
 	"strconv"
 	"strings"
+	"sync"
 	"sync/atomic"
 
 	"github.com/dop251/goja"
@@ -29,12 +30,14 @@ var (
 )
 
 type ProtoOptions struct {
-	Hide bool
+	Hide  bool
+	Async bool
 }
 
 func GetProtoOptions(m map[string]interface{}) *ProtoOptions {
 	options := &ProtoOptions{
-		Hide: GetBool(m["hide"]),
+		Hide:  GetBool(m["hide"]),
+		Async: GetBool(m["async"]),
 	}
 	return options
 }
@@ -48,6 +51,7 @@ type FlowExecutor struct {
 	jsVM           *goja.Runtime
 	program        *goja.Program
 	protoFunctions map[string]func(call goja.FunctionCall) goja.Value // reqFunctions contains functions that allow executing requests/protocols from js
+	wg             sync.WaitGroup
 }
 
 // Init initializes the flow executor all dependencies
@@ -113,11 +117,6 @@ func (f *FlowExecutor) Compile(callback func(event *output.InternalWrappedEvent)
 		}
 		// ---define hook that allows protocol/request execution from js-----
 		f.protoFunctions[proto] = func(call goja.FunctionCall) goja.Value {
-			defer func() {
-				// to avoid polling update template variables everytime we execute a protocol
-				var m map[string]interface{} = f.options.TemplateCtx.GetAll()
-				_ = f.jsVM.Set("template", m)
-			}()
 			ids := []string{}
 			opts := &ProtoOptions{}
 			for _, v := range call.Arguments {
@@ -128,6 +127,15 @@ func (f *FlowExecutor) Compile(callback func(event *output.InternalWrappedEvent)
 					ids = append(ids, types.ToString(value))
 				}
 			}
+			if opts.Async {
+				f.wg.Add(1)
+				defer f.wg.Done()
+			}
+			defer func() {
+				// to avoid polling update template variables everytime we execute a protocol
+				var m map[string]interface{} = f.options.TemplateCtx.GetAll()
+				_ = f.jsVM.Set("template", m)
+			}()
 			matcherStatus := &atomic.Bool{} // due to interactsh matcher polling logic this needs to be atomic bool
 
 			// if no id is passed execute all requests in sequence
@@ -361,6 +369,7 @@ func (f *FlowExecutor) Execute() (bool, error) {
 	if err != nil {
 		return false, errorutil.NewWithErr(err).Msgf("failed to execute flow\n%v\n", f.options.Flow)
 	}
+	f.wg.Wait()
 	runtimeErr := f.GetRuntimeErrors()
 	if runtimeErr != nil {
 		return false, errorutil.NewWithErr(runtimeErr).Msgf("got following errors while executing flow")
