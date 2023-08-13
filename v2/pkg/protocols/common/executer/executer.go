@@ -208,6 +208,7 @@ func (e *Executer) executeFlow(input *contextargs.Context, callback protocols.Ou
 			gologger.Error().Msgf("invalid request type %s", req.Type().String())
 		}
 	}
+
 	flow := &FlowExecutor{
 		allProtocols: allprotos,
 		input:        input,
