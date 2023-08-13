@@ -28,6 +28,17 @@ var (
 	ErrInvalidRequestID = errorutil.NewWithFmt("invalid request id '%s' provided")
 )
 
+type ProtoOptions struct {
+	Hide bool
+}
+
+func GetProtoOptions(m map[string]interface{}) *ProtoOptions {
+	options := &ProtoOptions{
+		Hide: GetBool(m["hide"]),
+	}
+	return options
+}
+
 type FlowExecutor struct {
 	input          *contextargs.Context
 	allProtocols   map[string][]protocols.Request
@@ -108,8 +119,14 @@ func (f *FlowExecutor) Compile(callback func(event *output.InternalWrappedEvent)
 				_ = f.jsVM.Set("template", m)
 			}()
 			ids := []string{}
+			opts := &ProtoOptions{}
 			for _, v := range call.Arguments {
-				ids = append(ids, types.ToString(v.Export()))
+				switch value := v.Export().(type) {
+				case map[string]interface{}:
+					opts = GetProtoOptions(value)
+				default:
+					ids = append(ids, types.ToString(value))
+				}
 			}
 			matcherStatus := &atomic.Bool{} // due to interactsh matcher polling logic this needs to be atomic bool
 
@@ -121,7 +138,9 @@ func (f *FlowExecutor) Compile(callback func(event *output.InternalWrappedEvent)
 					err := req.ExecuteWithResults(f.input, output.InternalEvent(f.options.TemplateCtx.GetAll()), nil, func(result *output.InternalWrappedEvent) {
 						if result != nil {
 							f.results.CompareAndSwap(false, true)
-							callback(result)
+							if !opts.Hide {
+								callback(result)
+							}
 							// export dynamic values from operators (i.e internal:true)
 							// add add it to template context
 							// this is a conflicting behaviour with iterate-all
@@ -170,7 +189,9 @@ func (f *FlowExecutor) Compile(callback func(event *output.InternalWrappedEvent)
 				err := req.ExecuteWithResults(f.input, output.InternalEvent(f.options.TemplateCtx.GetAll()), nil, func(result *output.InternalWrappedEvent) {
 					if result != nil {
 						f.results.CompareAndSwap(false, true)
-						callback(result)
+						if !opts.Hide {
+							callback(result)
+						}
 						// export dynamic values from operators (i.e internal:true)
 						// add add it to template context
 						if result.HasOperatorResult() {
@@ -384,6 +405,23 @@ func (f *FlowExecutor) ReadDataFromFile(payload string) ([]string, error) {
 func hasMatchers(all []*operators.Operators) bool {
 	for _, operator := range all {
 		if len(operator.Matchers) > 0 {
+			return true
+		}
+	}
+	return false
+}
+
+// GetBool returns bool value from interface
+func GetBool(value interface{}) bool {
+	if value == nil {
+		return false
+	}
+	switch v := value.(type) {
+	case bool:
+		return v
+	default:
+		tmpValue := types.ToString(value)
+		if strings.EqualFold(tmpValue, "true") {
 			return true
 		}
 	}
