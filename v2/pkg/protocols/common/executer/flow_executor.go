@@ -2,6 +2,7 @@ package executer
 
 import (
 	"io"
+	"reflect"
 	"strconv"
 	"strings"
 	"sync/atomic"
@@ -13,6 +14,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/contextargs"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/executer/builtin"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/generators"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/utils/vardump"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
@@ -234,6 +236,74 @@ func (f *FlowExecutor) RegisterBuiltInFunctions() error {
 		varValue := call.Argument(1).Export()
 		f.options.TemplateCtx.Set(varName.(string), varValue)
 		return goja.Null()
+	}); err != nil {
+		return err
+	}
+
+	// iterate provides global iterator function by handling null values or strings
+	if err := f.jsVM.Set("iterate", func(call goja.FunctionCall) goja.Value {
+		allVars := []any{}
+		for _, v := range call.Arguments {
+			if v.Export() == nil {
+				continue
+			}
+			if v.ExportType().Kind() == reflect.Slice {
+				// convert []datatype to []interface{}
+				// since it cannot be type asserted to []interface{} directly
+				rfValue := reflect.ValueOf(v.Export())
+				for i := 0; i < rfValue.Len(); i++ {
+					allVars = append(allVars, rfValue.Index(i).Interface())
+				}
+			} else {
+				allVars = append(allVars, v.Export())
+			}
+		}
+		return f.jsVM.ToValue(allVars)
+	}); err != nil {
+		return err
+	}
+
+	// unfortunately js doesn't have trimLeft/trimRight
+	if err := f.jsVM.Set("trimLeft", func(call goja.FunctionCall) goja.Value {
+		value := call.Argument(0).String()
+		char := call.Argument(1).String()
+		if char == "" {
+			char = " "
+		}
+		return f.jsVM.ToValue(strings.TrimLeft(value, char))
+	}); err != nil {
+		return err
+	}
+
+	if err := f.jsVM.Set("trimRight", func(call goja.FunctionCall) goja.Value {
+		value := call.Argument(0).String()
+		char := call.Argument(1).String()
+		if char == "" {
+			char = " "
+		}
+		return f.jsVM.ToValue(strings.TrimRight(value, char))
+	}); err != nil {
+		return err
+	}
+
+	if err := f.jsVM.Set("trim", func(call goja.FunctionCall) goja.Value {
+		value := call.Argument(0).String()
+		char := call.Argument(1).String()
+		if char == "" {
+			char = " "
+		}
+		return f.jsVM.ToValue(strings.Trim(value, char))
+	}); err != nil {
+		return err
+	}
+
+	// add a builtin dedupe object
+	if err := f.jsVM.Set("Dedupe", func(call goja.ConstructorCall) *goja.Object {
+		d := builtin.NewDedupe(f.jsVM)
+		obj := call.This
+		obj.Set("Add", d.Add)
+		obj.Set("Values", d.Values)
+		return nil
 	}); err != nil {
 		return err
 	}
