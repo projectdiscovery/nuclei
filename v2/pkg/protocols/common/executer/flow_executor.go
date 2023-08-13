@@ -138,6 +138,7 @@ func (f *FlowExecutor) Compile(callback func(event *output.InternalWrappedEvent)
 							}
 						}
 					})
+					// fmt.Printf("done executing %v with index %v and err %v", proto, index, err)
 					if err != nil {
 						// save all errors in a map with id as key
 						// its less likely that there will be race condition but just in case
@@ -145,7 +146,10 @@ func (f *FlowExecutor) Compile(callback func(event *output.InternalWrappedEvent)
 						if id == "" {
 							id, _ = reqMap.GetKeyWithValue(req)
 						}
-						_ = f.allErrs.Set(id, err)
+						err = f.allErrs.Set(proto+":"+id, err)
+						if err != nil {
+							gologger.Error().Msgf("failed to store flow runtime errors got %v", err)
+						}
 						return f.jsVM.ToValue(matcherStatus.Load())
 					}
 				}
@@ -180,7 +184,10 @@ func (f *FlowExecutor) Compile(callback func(event *output.InternalWrappedEvent)
 				})
 				if err != nil {
 					index := id
-					_ = f.allErrs.Set(index, err)
+					err = f.allErrs.Set(proto+":"+index, err)
+					if err != nil {
+						gologger.Error().Msgf("failed to store flow runtime errors got %v", err)
+					}
 				}
 			}
 			return f.jsVM.ToValue(matcherStatus.Load())
@@ -263,10 +270,22 @@ func (f *FlowExecutor) Execute() (bool, error) {
 	if err != nil {
 		return false, errorutil.NewWithErr(err).Msgf("failed to execute flow\n%v\n", f.options.Flow)
 	}
+	runtimeErr := f.GetRuntimeErrors()
+	if runtimeErr != nil {
+		return false, errorutil.NewWithErr(runtimeErr).Msgf("got following errors while executing flow")
+	}
 	if value.Export() != nil {
 		return value.ToBoolean(), nil
 	}
 	return f.results.Load(), nil
+}
+
+func (f *FlowExecutor) GetRuntimeErrors() error {
+	errs := []error{}
+	for proto, err := range f.allErrs.GetAll() {
+		errs = append(errs, errorutil.NewWithErr(err).Msgf("failed to execute %v protocol", proto))
+	}
+	return multierr.Combine(errs...)
 }
 
 // ReadDataFromFile reads data from file respecting sandbox options
