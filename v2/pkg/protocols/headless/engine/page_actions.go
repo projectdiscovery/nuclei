@@ -73,7 +73,7 @@ func (p *Page) ExecuteActions(input *contextargs.Context, actions []*Action, var
 			if p.options.Options.AllowLocalFileAccess {
 				err = p.FilesInput(act, outData)
 			} else {
-				err = errorutil.New("use -lfa flag to enable file load access")
+				err = errorutil.New("Use -allow-local-file-access flag to enable local file access")
 			}
 		case ActionAddHeader:
 			err = p.ActionAddHeader(act, outData)
