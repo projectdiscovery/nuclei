@@ -21,7 +21,7 @@ require (
 	github.com/olekukonko/tablewriter v0.0.5
 	github.com/pkg/errors v0.9.1
 	github.com/projectdiscovery/clistats v0.0.19
-	github.com/projectdiscovery/fastdialer v0.0.35
+	github.com/projectdiscovery/fastdialer v0.0.36
 	github.com/projectdiscovery/hmap v0.0.14
 	github.com/projectdiscovery/interactsh v1.1.4
 	github.com/projectdiscovery/rawhttp v0.1.18
@@ -127,7 +127,8 @@ require (
 	github.com/projectdiscovery/cdncheck v1.0.9 // indirect
 	github.com/projectdiscovery/freeport v0.0.5 // indirect
 	github.com/projectdiscovery/gostruct v0.0.1 // indirect
-	github.com/refraction-networking/utls v1.3.2 // indirect
+	github.com/quic-go/quic-go v0.37.0 // indirect
+	github.com/refraction-networking/utls v1.4.2 // indirect
 	github.com/sashabaranov/go-openai v1.14.1 // indirect
 	github.com/shoenig/go-m1cpu v0.1.6 // indirect
 	github.com/skeema/knownhosts v1.1.1 // indirect
