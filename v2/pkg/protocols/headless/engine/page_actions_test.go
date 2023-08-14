@@ -569,7 +569,7 @@ func testHeadless(t *testing.T, actions []*Action, timeout time.Duration, handle
 	input.CookieJar, err = cookiejar.New(nil)
 	require.Nil(t, err)
 
-	extractedData, page, err := instance.Run(input, actions, nil, &Options{Timeout: timeout})
+	extractedData, page, err := instance.Run(input, actions, nil, &Options{Timeout: timeout, Options: &types.Options{}})
 	assert(page, err, extractedData)
 
 	if page != nil {
