@@ -126,7 +126,7 @@ require (
 	github.com/projectdiscovery/asnmap v1.0.4 // indirect
 	github.com/projectdiscovery/cdncheck v1.0.9 // indirect
 	github.com/projectdiscovery/freeport v0.0.5 // indirect
-	github.com/projectdiscovery/gostruct v0.0.0-20230520110439-bbdedaae3c35 // indirect
+	github.com/projectdiscovery/gostruct v0.0.1 // indirect
 	github.com/refraction-networking/utls v1.3.2 // indirect
 	github.com/sashabaranov/go-openai v1.14.1 // indirect
 	github.com/shoenig/go-m1cpu v0.1.6 // indirect
