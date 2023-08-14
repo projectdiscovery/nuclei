@@ -569,7 +569,7 @@ func testHeadless(t *testing.T, actions []*Action, timeout time.Duration, handle
 	input.CookieJar, err = cookiejar.New(nil)
 	require.Nil(t, err)
 
-	extractedData, page, err := instance.Run(input, actions, nil, &Options{Timeout: timeout, Options: &types.Options{}})
+	extractedData, page, err := instance.Run(input, actions, nil, &Options{Timeout: timeout, Options: &types.Options{AllowLocalFileAccess: true}}) // allow file access in test
 	assert(page, err, extractedData)
 
 	if page != nil {

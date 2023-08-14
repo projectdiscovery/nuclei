@@ -8,6 +8,7 @@ import (
 	"github.com/go-rod/rod/lib/proto"
 	"github.com/projectdiscovery/networkpolicy"
 	errorutil "github.com/projectdiscovery/utils/errors"
+	"go.uber.org/multierr"
 )
 
 // initalize state of headless protocol
@@ -24,18 +25,15 @@ func ValidateNFailRequest(page *rod.Page, e *proto.FetchRequestPaused) error {
 	reqURL := e.Request.URL
 	normalized := strings.ToLower(reqURL) // normalize url to lowercase
 	if !allowLocalFileAccess && strings.HasPrefix(normalized, "file:") {
-		FailWithReason(page, e)
-		return ErrURLDenied.Msgf(reqURL, "use of file:// protocol disabled use '-lfa' to enable")
+		return multierr.Combine(FailWithReason(page, e), ErrURLDenied.Msgf(reqURL, "use of file:// protocol disabled use '-lfa' to enable"))
 	}
 	// validate potential invalid schemes
 	// javascript protocol is allowed for xss fuzzing
 	if strings.HasPrefix(normalized, "ftp:") {
-		FailWithReason(page, e)
-		return ErrURLDenied.Msgf(reqURL, "protocol blocked by network policy")
+		return multierr.Combine(FailWithReason(page, e), ErrURLDenied.Msgf(reqURL, "protocol blocked by network policy"))
 	}
 	if !isValidHost(reqURL) {
-		FailWithReason(page, e)
-		return ErrURLDenied.Msgf(reqURL, "address blocked by network policy")
+		return multierr.Combine(FailWithReason(page, e), ErrURLDenied.Msgf(reqURL, "address blocked by network policy"))
 	}
 	return nil
 }
