@@ -179,7 +179,9 @@ func (c *Client) processInteractionForRequest(interaction *server.Interaction, d
 		c.debugPrintInteraction(interaction, data.Event.OperatorsResult)
 	}
 
-	if writer.WriteResult(data.Event, c.options.Output, c.options.Progress, c.options.IssuesClient) {
+	// if event is not already matched, write it to output
+	if !data.Event.InteractshMatched.Load() && writer.WriteResult(data.Event, c.options.Output, c.options.Progress, c.options.IssuesClient) {
+		data.Event.InteractshMatched.Store(true)
 		c.matched.Store(true)
 		if requestShouldStopAtFirstMatch(data) || c.options.StopAtFirstMatch {
 			_ = c.matchedTemplates.SetWithExpire(hash(data.Event.InternalEvent), true, defaultInteractionDuration)

@@ -107,7 +107,10 @@ func (e *Executer) Execute(input *contextargs.Context) (bool, error) {
 			if !event.HasOperatorResult() && !event.UsesInteractsh {
 				lastMatcherEvent = event
 			} else {
-				if writer.WriteResult(event, e.options.Output, e.options.Progress, e.options.IssuesClient) {
+				if !(event.UsesInteractsh && event.InteractshMatched.Load()) && writer.WriteResult(event, e.options.Output, e.options.Progress, e.options.IssuesClient) {
+					if event.UsesInteractsh {
+						event.InteractshMatched.CompareAndSwap(false, true)
+					}
 					results.CompareAndSwap(false, true)
 				} else {
 					lastMatcherEvent = event
@@ -131,7 +134,8 @@ func (e *Executer) Execute(input *contextargs.Context) (bool, error) {
 	return results.Load(), nil
 }
 
-// ExecuteWithResults executes the protocol requests and returns results instead of writing them.
+// Deprecated: Use Execute instead along with outputWriter.callback https://github.com/projectdiscovery/nuclei/issues/4054 will include
+// abstraction for this in future.
 func (e *Executer) ExecuteWithResults(input *contextargs.Context, callback protocols.OutputEventCallback) error {
 	dynamicValues := make(map[string]interface{})
 	if input.HasArgs() {
