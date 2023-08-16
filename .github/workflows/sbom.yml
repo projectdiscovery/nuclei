@@ -1,4 +1,4 @@
-name: SBOM-Dependency
+name: Export SBOM and Convert to CSV
 
 on:
   push:
@@ -10,62 +10,95 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout code
+      - name: Checkout repository
         uses: actions/checkout@v2
-
-      - name: Set up curl
-        run: sudo apt-get install -y curl
-
-      - name: Run curl command
-        run: |
-          curl -L \
-            -H "Accept: application/vnd.github+json" \
-            -H "Authorization: ${{ secrets.GITHUB_TOKEN }}" \
-            -H "X-GitHub-Api-Version: 2022-11-28" \
-            https://api.github.com/repos/rahiCICD/nuclei/dependency-graph/sbom > sbom.json
 
       - name: Set up Python
         uses: actions/setup-python@v2
         with:
-          python-version: '3.x' # Replace with the desired Python version
+          python-version: '3.x'
 
-      - name: Convert SBOM to CSV
+      - name: Install dependencies
+        run: pip install requests
+
+      - name: Export SBOM
+        run: |
+          python - <<EOF
+          import requests
+          import json
+          import csv
+
+          owner = 'rahiCICD'
+          repo = 'nuclei'
+          token = '${{ secrets.GITHUB_TOKEN }}'
+
+          def export_dependency_graph():
+              url = f'https://api.github.com/repos/{owner}/{repo}/dependency-graph/sbom'
+              headers = {
+                  'Authorization': f'Bearer {token}',
+                  'Accept': 'application/vnd.github.hawkgirl-preview+json'
+              }
+
+              try:
+                  response = requests.get(url, headers=headers)
+                  response.raise_for_status()
+
+                  dependency_graph = response.json()
+                  sbom = dependency_graph.get('sbom', {})
+
+                  with open('sbom.json', 'w') as file:
+                      json.dump(sbom, file, indent=4)
+
+                  print('SBOM exported successfully.')
+              except requests.exceptions.RequestException as e:
+                  print(f'Error exporting SBOM: {e}')
+
+          export_dependency_graph()
+          EOF
+
+      - name: Convert JSON to CSV
         run: |
           python - <<EOF
           import json
           import csv
 
-          # Load SPDX SBOM from JSON file
+          # Load JSON data
           with open("sbom.json") as file:
-              sbom_data = json.load(file)
+              data = json.load(file)
 
-          # Extract relevant information from SPDX SBOM
-          sbom = sbom_data["sbom"]
-          packages = sbom_data["packages"]
+          # Extract relevant information from JSON
+          packages = data.get("packages", [])
 
           # Create CSV file and write header row
           with open("sbom.csv", mode="w", newline="") as file:
               writer = csv.writer(file)
-              writer.writerow(["Package ID", "Package Name", "Version", "Download Location", "License Declared", "License Concluded", "Files Analyzed", "Supplier"])
+              writer.writerow(["Package ID", "Package Name", "Version", "Download Location", "License Declared", "Files Analyzed", "Supplier"])
 
               # Write package information to CSV file
               for package in packages:
                   writer.writerow([
-                      package["SPDXID"],
-                      package["name"],
-                      package["versionInfo"],
+                      package.get("SPDXID", "NOASSERTION"),
+                      package.get("name", "NOASSERTION"),
+                      package.get("versionInfo", "NOASSERTION"),
                       package.get("downloadLocation", "NOASSERTION"),
                       package.get("licenseDeclared", "NOASSERTION"),
-                      package.get("licenseConcluded", "NOASSERTION"),
                       package.get("filesAnalyzed", False),
                       package.get("supplier", "NOASSERTION")
                   ])
 
-          print("SBOM converted to CSV successfully!")
+          print("JSON data converted to CSV successfully!")
           EOF
 
-      - name: Upload artifacts
-        uses: actions/upload-artifact@v2
-        with:
-          name: sbom-csv
-          path: sbom.csv
+      - name: Check if page timed out
+        run: |
+          if [ -f "sbom.csv" ]; then
+            echo "Page Timed Out. Please inform the user that you could not retrieve the page."
+          fi
+
+      - name: Commit and push changes
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add sbom.csv
+          git commit -m "Add SBOM CSV file"
+          git push
