@@ -41,7 +41,7 @@ jobs:
 
           # Extract relevant information from SPDX SBOM
           sbom = sbom_data["sbom"]
-          packages = sbom_data["packages"]
+          packages = sbom_data.get("packages", [])
 
           # Create CSV file and write header row
           with open("sbom.csv", mode="w", newline="") as file:
