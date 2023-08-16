@@ -29,10 +29,11 @@ jobs:
         with:
           python-version: '3.x' # Replace with the desired Python version
 
+      - name: Install dependencies
+        run: pip install json csv
+
       - name: Convert SBOM to CSV
         run: |
-          python -m pip install jsonlines
-
           python - <<EOF
           import json
           import csv
@@ -42,11 +43,7 @@ jobs:
               sbom_data = json.load(file)
 
           # Extract relevant information from SPDX SBOM
-          if "packages" in sbom_data:
-              packages = sbom_data["packages"]
-          else:
-              print("No packages found in SBOM.")
-              exit(1)
+          packages = sbom_data["packages"]
 
           # Create CSV file and write header row
           with open("sbom.csv", mode="w", newline="") as file:
