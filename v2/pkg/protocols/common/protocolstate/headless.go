@@ -1,13 +1,13 @@
 package protocolstate
 
 import (
-	"net/url"
 	"strings"
 
 	"github.com/go-rod/rod"
 	"github.com/go-rod/rod/lib/proto"
 	"github.com/projectdiscovery/networkpolicy"
 	errorutil "github.com/projectdiscovery/utils/errors"
+	urlutil "github.com/projectdiscovery/utils/url"
 	"go.uber.org/multierr"
 )
 
@@ -66,7 +66,7 @@ func isValidHost(targetUrl string) bool {
 	if networkPolicy == nil {
 		return true
 	}
-	urlx, err := url.Parse(targetUrl)
+	urlx, err := urlutil.Parse(targetUrl)
 	if err != nil {
 		// not a valid url
 		return false
