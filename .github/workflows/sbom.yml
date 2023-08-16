@@ -1,7 +1,7 @@
 name: SBOM-Dependency
 
 on:
-  push:
+  pull_request:
     branches:
       - main
 
@@ -28,7 +28,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v2
         with:
-          python-version: '3.7' 
+          python-version: '3.x' # Replace with the desired Python version
 
       - name: Convert SBOM to CSV
         run: |
@@ -37,37 +37,4 @@ jobs:
           import json
           import csv
 
-          # Load SPDX SBOM from JSON file
-          with open("sbom.json") as file:
-              sbom_data = json.load(file)
-
-          # Extract relevant information from SPDX SBOM
-          sbom = sbom_data["sbom"]
-          packages = sbom.get("packages", [])
-
-          # Create CSV file and write header row
-          with open("sbom.csv", mode="w", newline="") as file:
-              writer = csv.writer(file)
-              writer.writerow(["Package ID", "Package Name", "Version", "Download Location", "License Declared", "License Concluded", "Files Analyzed", "Supplier"])
-
-              # Write package information to CSV file
-              for package in packages:
-                  writer.writerow([
-                      package.get("SPDXID", "NOASSERTION"),
-                      package.get("name", "NOASSERTION"),
-                      package.get("versionInfo", "NOASSERTION"),
-                      package.get("downloadLocation", "NOASSERTION"),
-                      package.get("licenseDeclared", "NOASSERTION"),
-                      package.get("licenseConcluded", "NOASSERTION"),
-                      package.get("filesAnalyzed", False),
-                      package.get("supplier", "NOASSERTION")
-                  ])
-
-          print("SBOM converted to CSV successfully!")
-          EOF
-
-      - name: Upload artifacts
-        uses: actions/upload-artifact@v2
-        with:
-          name: sbom-csv
-          path: sbom.csv
+         
