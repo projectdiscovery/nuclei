@@ -29,9 +29,6 @@ jobs:
         with:
           python-version: '3.x' # Replace with the desired Python version
 
-      - name: Install dependencies
-        run: pip install json csv
-
       - name: Convert SBOM to CSV
         run: |
           python - <<EOF
