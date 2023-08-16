@@ -1,4 +1,4 @@
-name: SBOM-Dependepncy
+name: SBOM-Dependency
 
 on:
   push:
@@ -66,8 +66,8 @@ jobs:
           print("SBOM converted to CSV successfully!")
           EOF
 
-          - name: Upload artifacts
+      - name: Upload artifacts
         uses: actions/upload-artifact@v2
         with:
-          name: curl-output
+          name: sbom-csv
           path: sbom.csv
