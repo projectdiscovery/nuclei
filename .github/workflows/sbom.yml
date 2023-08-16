@@ -40,7 +40,7 @@ jobs:
               sbom_data = json.load(file)
 
           # Extract relevant information from SPDX SBOM
-          sbom = data["sbom"]
+          sbom = sbom_data["sbom"]
           packages = sbom_data["packages"]
 
           # Create CSV file and write header row
