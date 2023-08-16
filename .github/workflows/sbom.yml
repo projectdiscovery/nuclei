@@ -1,32 +1,32 @@
-name: Download and Upload Artifact
+name: Upload Artifact
 on:
   push:
     branches:
       - main
 
 jobs:
-  download-and-upload-artifact:
+  upload-artifact:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
 
-      - name: Download SBOM
-        run: |
-          # Install curl
-          sudo apt-get update
-          sudo apt-get install -y curl
+      - name: Install curl
+        run: sudo apt-get install curl -y
 
-          # Download SBOM using curl
-          curl -L \
-            -H "Accept: application/vnd.github+json" \
-            -H "Authorization: Bearer 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 \
+      - name: Generate SBOM
+        run: |
+          # Octokit.js code
+          # Replace '', 'rahiCICD', and 'nuclei' with the actual values
+          curl -X GET \
+            -H "Authorization: token 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" \
+            -H "Accept: application/vnd.github.v3+json" \
             -H "X-GitHub-Api-Version: 2022-11-28" \
-            -o sbom.txt \
-            https://github.com/rahiCICD/nuclei/dependency-graph/sbom
+            "https://api.github.com/repos/rahiCICD/nuclei/dependency-graph/sbom" \
+            -o sbom.txt
 
       - name: Upload SBOM
         uses: actions/upload-artifact@v2
         with:
           name: sbom
-          path: sbom.txt
+          path: sbom.json
