@@ -1,31 +1,32 @@
-name: Upload Artifact
+name: Download and Upload Artifact
 on:
   push:
     branches:
       - main
 
 jobs:
-  upload-artifact:
+  download-and-upload-artifact:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
 
-      - name: Generate SBOM
+      - name: Download SBOM
         run: |
           # Install curl
           sudo apt-get update
           sudo apt-get install -y curl
 
-          # Generate SBOM using curl
+          # Download SBOM using curl
           curl -L \
             -H "Accept: application/vnd.github+json" \
             -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
             -H "X-GitHub-Api-Version: 2022-11-28" \
-            https://github.com/rahiCICD/nuclei/dependency-graph/sbom> sbom.json
+            -o sbom.txt \
+            https://github.com/rahiCICD/nuclei/dependency-graph/sbom
 
       - name: Upload SBOM
         uses: actions/upload-artifact@v2
         with:
           name: sbom
-          path: sbom.json
+          path: sbom.txt
