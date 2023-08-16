@@ -28,4 +28,4 @@ jobs:
         uses: actions/upload-artifact@v2
         with:
           name: curl-output
-          path: nuclei.json
+          path: nuclei-sbom.json
