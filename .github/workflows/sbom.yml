@@ -3,7 +3,6 @@ name: SBOM Generator
 on:
   push:
     branches: [ "main" ]
-
   workflow_dispatch:
 
 permissions: read-all
@@ -11,15 +10,17 @@ permissions: read-all
 jobs:
   build:
     runs-on: ubuntu-latest
-  steps:
-  - uses: actions/checkout@v3
+    steps:
+    - uses: actions/checkout@v2
 
-  - uses: advanced-security/sbom-generator-action@v0.0.1
-    id: sbom
-    env: 
-      GITHUB_TOKEN: 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
+    - name: SBOM Generator Action
+      uses: advanced-security/sbom-generator-action@v0.0.1
+      id: sbom
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-  - uses: actions/upload-artifact@v3.1.0
-    with: 
-      path: ${{ steps.sbom.outputs.fileName }}
-      name: "SBOM"
+    - name: Upload SBOM Artifact
+      uses: actions/upload-artifact@v2
+      with:
+        name: SBOM
+        path: ${{ steps.sbom.outputs.fileName }}
