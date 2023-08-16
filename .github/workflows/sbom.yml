@@ -17,13 +17,15 @@ jobs:
         run: sudo apt-get install -y curl
 
       - name: Run curl command and save response to environment variable
+       
         run: |
-          response=$(curl -L \
+            response=$(curl -L \
             -H "Accept: application/vnd.github+json" \
             -H "Authorization: ${{ secrets.GITHUB_TOKEN }}" \
             -H "X-GitHub-Api-Version: 2022-11-28" \
-            https://api.github.com/repos/rahiCICD/nuclei/dependency-graph/sbom)
-          echo "SBOM_RESPONSE=$response" >> $GITHUB_ENV
+             https://api.github.com/repos/rahiCICD/nuclei/dependency-graph/sbom)
+             echo "Response: $response"
+             echo "SBOM_RESPONSE=$response" >> $GITHUB_ENV
 
       - name: Set up Python
         uses: actions/setup-python@v2
