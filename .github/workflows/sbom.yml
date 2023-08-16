@@ -11,8 +11,7 @@ permissions: read-all
 jobs:
   build:
     runs-on: ubuntu-latest
-
-   steps:
+  steps:
   - uses: actions/checkout@v3
 
   - uses: advanced-security/sbom-generator-action@v0.0.1
