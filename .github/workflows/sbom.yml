@@ -29,11 +29,10 @@ jobs:
         with:
           python-version: '3.x' # Replace with the desired Python version
 
-      - name: Install dependencies
-        run: pip install -r requirements.txt # If you have any dependencies, list them in a requirements.txt file
-
       - name: Convert SBOM to CSV
         run: |
+          python -m pip install jsonlines
+
           python - <<EOF
           import json
           import csv
