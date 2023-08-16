@@ -1,4 +1,4 @@
-name: Export SBOM
+name: SBOM-Dependency
 
 on:
   push:
@@ -6,30 +6,65 @@ on:
       - main
 
 jobs:
-  export_sbom:
+  build:
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
 
+      - name: Set up curl
+        run: sudo apt-get install -y curl
+
+      - name: Run curl command
+        run: |
+          curl -L \
+            -H "Accept: application/vnd.github+json" \
+            -H "Authorization: ${{ secrets.GITHUB_TOKEN }}" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            https://api.github.com/repos/rahiCICD/nuclei/dependency-graph/sbom > sbom.json
+
       - name: Set up Python
         uses: actions/setup-python@v2
         with:
-          python-version: 3.x
+          python-version: '3.x' # Replace with the desired Python version
 
-      - name: Install dependencies
-        run: pip install requests
-
-      - name: Export SBOM
+      - name: Convert SBOM to CSV
         run: |
-          python -c "import requests, json; owner = 'rahiCICD'; repo = 'nuclei'; token = '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'; url = f'https://api.github.com/repos/{owner}/{repo}/dependency-graph/sbom'; headers = {{'Authorization': f'Bearer {token}', 'Accept': 'application/vnd.github.hawkgirl-preview+json'}}; response = requests.get(url, headers=headers); response.raise_for_status(); sbom = response.json().get('sbom', {}); with open('sbom.json', 'w') as file: json.dump(sbom, file, indent=4); print('SBOM exported successfully.')"
+          python - <<EOF
+          import json
+          import csv
 
-      - name: Convert JSON to CSV
-        run: |
-          python -c "import json, csv; with open('sbom.json') as file: data = json.load(file); packages = data.get('packages', []); with open('sbom.csv', mode='w', newline='') as file: writer = csv.writer(file); writer.writerow(['Package ID', 'Package Name', 'Version', 'Download Location', 'License Declared', 'Files Analyzed', 'Supplier']); for package in packages: writer.writerow([package.get('SPDXID', 'NOASSERTION'), package.get('name', 'NOASSERTION'), package.get('versionInfo', 'NOASSERTION'), package.get('downloadLocation', 'NOASSERTION'), package.get('licenseDeclared', 'NOASSERTION'), package.get('filesAnalyzed', False), package.get('supplier', 'NOASSERTION')]); print('JSON data converted to CSV successfully!')"
+          # Load SPDX SBOM from JSON file
+          with open("sbom.json") as file:
+              sbom_data = json.load(file)
 
-      - name: Upload SBOM CSV
+          # Extract relevant information from SPDX SBOM
+          sbom = sbom_data["sbom"]
+          packages = sbom_data["packages"]
+
+          # Create CSV file and write header row
+          with open("sbom.csv", mode="w", newline="") as file:
+              writer = csv.writer(file)
+              writer.writerow(["Package ID", "Package Name", "Version", "Download Location", "License Declared", "License Concluded", "Files Analyzed", "Supplier"])
+
+              # Write package information to CSV file
+              for package in packages:
+                  writer.writerow([
+                      package["SPDXID"],
+                      package["name"],
+                      package["versionInfo"],
+                      package.get("downloadLocation", "NOASSERTION"),
+                      package.get("licenseDeclared", "NOASSERTION"),
+                      package.get("licenseConcluded", "NOASSERTION"),
+                      package.get("filesAnalyzed", False),
+                      package.get("supplier", "NOASSERTION")
+                  ])
+
+          print("SBOM converted to CSV successfully!")
+          EOF
+
+      - name: Upload artifacts
         uses: actions/upload-artifact@v2
         with:
           name: sbom-csv
