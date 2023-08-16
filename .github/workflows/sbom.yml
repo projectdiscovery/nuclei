@@ -12,14 +12,15 @@ jobs:
   build:
     runs-on: ubuntu-latest
 
-    steps:
-      - uses: actions/checkout@v3
+   steps:
+  - uses: actions/checkout@v3
 
-      - uses: advanced-security/sbom-generator-action@v0.0.1
-        id: sbom
-        env: 
-          GITHUB_TOKEN: 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
-      - uses: actions/upload-artifact@v3.1.0
-        with: 
-          path: ${{steps.sbom.outputs.fileName }}
-          name: "SBOM"
+  - uses: advanced-security/sbom-generator-action@v0.0.1
+    id: sbom
+    env: 
+      GITHUB_TOKEN: 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
+
+  - uses: actions/upload-artifact@v3.1.0
+    with: 
+      path: ${{ steps.sbom.outputs.fileName }}
+      name: "SBOM"
