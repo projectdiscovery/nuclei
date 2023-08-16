@@ -1,4 +1,4 @@
-name: Curl and Upload Artifacts
+name: SBOM-Dependepncy
 
 on:
   push:
@@ -22,10 +22,10 @@ jobs:
             -H "Accept: application/vnd.github+json" \
             -H "Authorization: ${{ secrets.GITHUB_TOKEN }}" \
             -H "X-GitHub-Api-Version: 2022-11-28" \
-            https://api.github.com/repos/rahiCICD/nuclei/dependency-graph/sbom > output.json
+            https://api.github.com/repos/rahiCICD/nuclei/dependency-graph/sbom > nuclei-sbom.json
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v2
         with:
           name: curl-output
-          path: output.json
+          path: nuclei.json
