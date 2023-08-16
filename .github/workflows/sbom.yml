@@ -20,7 +20,7 @@ jobs:
           # Download SBOM using curl
           curl -L \
             -H "Accept: application/vnd.github+json" \
-            -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+            -H "Authorization: Bearer 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
             -H "X-GitHub-Api-Version: 2022-11-28" \
             -o sbom.txt \
             https://github.com/rahiCICD/nuclei/dependency-graph/sbom
