@@ -42,7 +42,11 @@ jobs:
               sbom_data = json.load(file)
 
           # Extract relevant information from SPDX SBOM
-          packages = sbom_data["packages"]
+          if "packages" in sbom_data:
+              packages = sbom_data["packages"]
+          else:
+              print("No packages found in SBOM.")
+              exit(1)
 
           # Create CSV file and write header row
           with open("sbom.csv", mode="w", newline="") as file:
