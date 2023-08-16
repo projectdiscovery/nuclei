@@ -17,15 +17,14 @@ jobs:
         run: sudo apt-get install -y curl
 
       - name: Run curl command and save response to environment variable
-       
         run: |
-            response=$(curl -sSL \
+          response=$(curl -sSL \
             -H "Accept: application/vnd.github+json" \
             -H "Authorization: ${{ secrets.GITHUB_TOKEN }}" \
             -H "X-GitHub-Api-Version: 2022-11-28" \
-             https://api.github.com/repos/rahiCICD/nuclei/dependency-graph/sbom)
-             echo "Response: $response"
-             echo "SBOM_RESPONSE=$response" >> $GITHUB_ENV
+            "https://api.github.com/repos/rahiCICD/nuclei/dependency-graph/sbom")
+          echo "Response: $response"
+          echo "SBOM_RESPONSE=$response" >> $GITHUB_ENV
 
       - name: Set up Python
         uses: actions/setup-python@v2
@@ -44,7 +43,7 @@ jobs:
 
           # Extract relevant information from SPDX SBOM
           sbom = sbom_data["sbom"]
-          packages = sbom_data.get("packages", [])
+          packages = sbom.get("packages", [])
 
           # Create CSV file and write header row
           with open("sbom.csv", mode="w", newline="") as file:
@@ -54,9 +53,9 @@ jobs:
               # Write package information to CSV file
               for package in packages:
                   writer.writerow([
-                      package["SPDXID"],
-                      package["name"],
-                      package["versionInfo"],
+                      package.get("SPDXID", "NOASSERTION"),
+                      package.get("name", "NOASSERTION"),
+                      package.get("versionInfo", "NOASSERTION"),
                       package.get("downloadLocation", "NOASSERTION"),
                       package.get("licenseDeclared", "NOASSERTION"),
                       package.get("licenseConcluded", "NOASSERTION"),
