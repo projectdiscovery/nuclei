@@ -16,15 +16,14 @@ jobs:
       - name: Set up curl
         run: sudo apt-get install -y curl
 
-      - name: Run curl command and save response to environment variable
+      - name: Run curl command and save response to file
         run: |
           response=$(curl -sSL \
             -H "Accept: application/vnd.github+json" \
             -H "Authorization: ${{ secrets.GITHUB_TOKEN }}" \
             -H "X-GitHub-Api-Version: 2022-11-28" \
             "https://api.github.com/repos/rahiCICD/nuclei/dependency-graph/sbom")
-          echo "Response: $response"
-          echo "SBOM_RESPONSE=$response" >> $GITHUB_ENV
+          echo "$response" > sbom.json
 
       - name: Set up Python
         uses: actions/setup-python@v2
@@ -38,8 +37,9 @@ jobs:
           import json
           import csv
 
-          # Load SPDX SBOM from environment variable
-          sbom_data = json.loads(os.environ['SBOM_RESPONSE'])
+          # Load SPDX SBOM from JSON file
+          with open("sbom.json") as file:
+              sbom_data = json.load(file)
 
           # Extract relevant information from SPDX SBOM
           sbom = sbom_data["sbom"]
