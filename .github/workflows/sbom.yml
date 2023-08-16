@@ -1,4 +1,4 @@
-name: Export SBOM and Convert to CSV
+name: Export SBOM
 
 on:
   push:
@@ -6,99 +6,31 @@ on:
       - main
 
 jobs:
-  build:
+  export_sbom:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repository
+      - name: Checkout code
         uses: actions/checkout@v2
 
       - name: Set up Python
         uses: actions/setup-python@v2
         with:
-          python-version: '3.x'
+          python-version: 3.x
 
       - name: Install dependencies
         run: pip install requests
 
       - name: Export SBOM
         run: |
-          python - <<EOF
-          import requests
-          import json
-          import csv
-
-          owner = 'rahiCICD'
-          repo = 'nuclei'
-          token = '${{ secrets.GITHUB_TOKEN }}'
-
-          def export_dependency_graph():
-              url = f'https://api.github.com/repos/{owner}/{repo}/dependency-graph/sbom'
-              headers = {
-                  'Authorization': f'{token}',
-                  'Accept': 'application/vnd.github.hawkgirl-preview+json'
-              }
-
-              try:
-                  response = requests.get(url, headers=headers)
-                  response.raise_for_status()
-
-                  dependency_graph = response.json()
-                  sbom = dependency_graph.get('sbom', {})
-
-                  with open('sbom.json', 'w') as file:
-                      json.dump(sbom, file, indent=4)
-
-                  print('SBOM exported successfully.')
-              except requests.exceptions.RequestException as e:
-                  print(f'Error exporting SBOM: {e}')
-
-          export_dependency_graph()
-          EOF
+          python -c "import requests, json; owner = 'rahiCICD'; repo = 'nuclei'; token = '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'; url = f'https://api.github.com/repos/{owner}/{repo}/dependency-graph/sbom'; headers = {{'Authorization': f'Bearer {token}', 'Accept': 'application/vnd.github.hawkgirl-preview+json'}}; response = requests.get(url, headers=headers); response.raise_for_status(); sbom = response.json().get('sbom', {}); with open('sbom.json', 'w') as file: json.dump(sbom, file, indent=4); print('SBOM exported successfully.')"
 
       - name: Convert JSON to CSV
         run: |
-          python - <<EOF
-          import json
-          import csv
+          python -c "import json, csv; with open('sbom.json') as file: data = json.load(file); packages = data.get('packages', []); with open('sbom.csv', mode='w', newline='') as file: writer = csv.writer(file); writer.writerow(['Package ID', 'Package Name', 'Version', 'Download Location', 'License Declared', 'Files Analyzed', 'Supplier']); for package in packages: writer.writerow([package.get('SPDXID', 'NOASSERTION'), package.get('name', 'NOASSERTION'), package.get('versionInfo', 'NOASSERTION'), package.get('downloadLocation', 'NOASSERTION'), package.get('licenseDeclared', 'NOASSERTION'), package.get('filesAnalyzed', False), package.get('supplier', 'NOASSERTION')]); print('JSON data converted to CSV successfully!')"
 
-          # Load JSON data
-          with open("sbom.json") as file:
-              data = json.load(file)
-
-          # Extract relevant information from JSON
-          packages = data.get("packages", [])
-
-          # Create CSV file and write header row
-          with open("sbom.csv", mode="w", newline="") as file:
-              writer = csv.writer(file)
-              writer.writerow(["Package ID", "Package Name", "Version", "Download Location", "License Declared", "Files Analyzed", "Supplier"])
-
-              # Write package information to CSV file
-              for package in packages:
-                  writer.writerow([
-                      package.get("SPDXID", "NOASSERTION"),
-                      package.get("name", "NOASSERTION"),
-                      package.get("versionInfo", "NOASSERTION"),
-                      package.get("downloadLocation", "NOASSERTION"),
-                      package.get("licenseDeclared", "NOASSERTION"),
-                      package.get("filesAnalyzed", False),
-                      package.get("supplier", "NOASSERTION")
-                  ])
-
-          print("JSON data converted to CSV successfully!")
-          EOF
-
-      - name: Check if page timed out
-        run: |
-          if [ -f "sbom.csv" ]; then
-            echo "Page Timed Out. Please inform the user that you could not retrieve the page."
-          fi
-
-      - name: Commit and push changes
-        run: |
-          git config --local user.email "action@github.com"
-          git config --local user.name "GitHub Action"
-          git add sbom.csv
-          git commit -m "Add SBOM CSV file"
-          git push
+      - name: Upload SBOM CSV
+        uses: actions/upload-artifact@v2
+        with:
+          name: sbom-csv
+          path: sbom.csv
