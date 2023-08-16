@@ -22,7 +22,7 @@ jobs:
             -H "Accept: application/vnd.github+json" \
             -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
             -H "X-GitHub-Api-Version: 2022-11-28" \
-            https://github.com/rahiCICD/nuclei/network/dependencies > sbom.json
+            https://github.com/rahiCICD/nuclei/dependency-graph/sbom> sbom.json
 
       - name: Upload SBOM
         uses: actions/upload-artifact@v2
