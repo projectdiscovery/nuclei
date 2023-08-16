@@ -16,7 +16,7 @@ jobs:
       - name: Set up curl
         run: sudo apt-get install -y curl
 
-      - name: Run curl command
+      - name: Run curl command and save response to sbom.json
         run: |
           curl -L \
             -H "Accept: application/vnd.github+json" \
