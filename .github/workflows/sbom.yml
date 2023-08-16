@@ -35,7 +35,7 @@ jobs:
           def export_dependency_graph():
               url = f'https://api.github.com/repos/{owner}/{repo}/dependency-graph/sbom'
               headers = {
-                  'Authorization': f'Bearer {token}',
+                  'Authorization': f'{token}',
                   'Accept': 'application/vnd.github.hawkgirl-preview+json'
               }
 
