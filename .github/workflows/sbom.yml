@@ -19,7 +19,7 @@ jobs:
       - name: Run curl command and save response to environment variable
        
         run: |
-            response=$(curl -L \
+            response=$(curl -sSL \
             -H "Accept: application/vnd.github+json" \
             -H "Authorization: ${{ secrets.GITHUB_TOKEN }}" \
             -H "X-GitHub-Api-Version: 2022-11-28" \
