@@ -1,0 +1,175 @@
+---
+title: "Base HTTP"
+---
+<Note>
+**Requests**
+
+    Nuclei offers extensive support for various features related to HTTP protocol. Raw and Model based HTTP requests are supported, along with options Non-RFC client requests support too. Payloads can also be specified and raw requests can be transformed based on payload values along with many more capabilities that are shown later on this Page.
+
+    HTTP Requests start with a `request` block which specifies the start of the requests for the template.
+</Note>
+
+```yaml
+# Start the requests for the template right here
+http:
+```
+
+<Note>
+**Method**
+
+Request method can be **GET**, **POST**, **PUT**, **DELETE**, etc. depending on the needs.
+</Note>
+
+```yaml
+# Method is the method for the request
+method: GET
+```
+
+<Note>
+**Redirects**
+
+Redirection conditions can be specified per each template. By default, redirects are not followed. However, if desired, they can be enabled with `redirects: true` in request details. 10 redirects are followed at maximum by default which should be good enough for most use cases. More fine grained control can be exercised over number of redirects followed by using `max-redirects` field.
+</Note>
+
+An example of the usage:
+
+```yaml
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/login.php"
+    redirects: true
+    max-redirects: 3
+```
+
+<Warning>Currently redirects are defined per template, not per request.</Warning>
+
+<Note>
+**Path**
+
+The next part of the requests is the **path** of the request path. Dynamic variables can be placed in the path to modify its behavior on runtime.
+
+    Variables start with `{{` and end with `}}` and are case-sensitive.
+
+    **{{BaseURL}}** - This will replace on runtime in the request by the input URL as specified in the target file.
+
+    **{{RootURL}}** - This will replace on runtime in the request by the root URL as specified in the target file.
+
+    **{{Hostname}}** - Hostname variable is replaced by the hostname including port of the target on runtime.
+
+    **{{Host}}** - This will replace on runtime in the request by the input host as specified in the target file.
+
+    **{{Port}}** - This will replace on runtime in the request by the input port as specified in the target file.
+
+    **{{Path}}** - This will replace on runtime in the request by the input path as specified in the target file.
+
+    **{{File}}** - This will replace on runtime in the request by the input filename as specified in the target file.
+
+    **{{Scheme}}** - This will replace on runtime in the request by protocol scheme as specified in the target file.
+
+</Note>
+
+An example is provided below - https://example.com:443/foo/bar.php
+
+| Variable     | Value                               |
+|--------------|-------------------------------------|
+| \{\{BaseURL\}\}  | https://example.com:443/foo/bar.php |
+| \{\{RootURL\}\}  | https://example.com:443             |
+| \{\{Hostname\}\} | example.com:443                     |
+| \{\{Host\}\}     | example.com                         |
+| \{\{Port\}\}     | 443                                 |
+| \{\{Path\}\}     | /foo                                |
+| \{\{File\}\}     | bar.php                             |
+| \{\{Scheme\}\}   | https                               |
+
+
+Some sample dynamic variable replacement examples:
+
+```yaml
+path: "{{BaseURL}}/.git/config"
+# This path will be replaced on execution with BaseURL
+# If BaseURL is set to  https://abc.com then the
+# path will get replaced to the following: https://abc.com/.git/config
+```
+
+Multiple paths can also be specified in one request which will be requested for the target.
+
+### Headers
+
+Headers can also be specified to be sent along with the requests. Headers are placed in form of key/value pairs. An example header configuration looks like this:
+
+```yaml
+# headers contain the headers for the request
+headers:
+  # Custom user-agent header
+  User-Agent: Some-Random-User-Agent
+  # Custom request origin
+  Origin: https://google.com
+```
+
+### Body
+
+Body specifies a body to be sent along with the request. For instance:
+
+```yaml
+# Body is a string sent along with the request
+body: "{\"some random JSON\"}"
+
+# Body is a string sent along with the request
+body: "admin=test"
+```
+
+### Session
+
+To maintain cookie based browser like session between multiple requests, you can simply use `cookie-reuse: true` in your template, Useful in cases where you want to maintain session between series of request to complete the exploit chain and to perform authenticated scans. 
+
+```yaml
+# cookie-reuse accepts boolean input and false as default
+cookie-reuse: true
+```
+
+### Request Condition
+
+Request condition allows checking for the condition between multiple requests for writing complex checks and exploits involving various HTTP requests to complete the exploit chain.
+
+The functionality will be automatically enabled if DSL matchers/extractors contain numbers as a suffix with respective attributes.
+
+For example, the attribute `status_code` will point to the effective status code of the current request/response pair in elaboration. Previous responses status codes are accessible by suffixing the attribute name with `_n`, where n is the n-th ordered request 1-based. So if the template has four requests and we are currently at number 3:
+- `status_code`: will refer to the response code of request number 3
+- `status_code_1` and `status_code_2` will refer to the response codes of the sequential responses number one and two 
+
+For example with `status_code_1`, `status_code_3`, and`body_2`:
+
+```yaml
+    matchers:
+      - type: dsl
+        dsl:
+          - "status_code_1 == 404 && status_code_2 == 200 && contains((body_2), 'secret_string')"
+```
+<Note>Request conditions might require more memory as all attributes of previous responses are kept in memory</Note>
+
+### **Example HTTP Template**
+
+The final template file for the `.git/config` file mentioned above is as follows:
+
+```yaml
+id: git-config
+
+info:
+  name: Git Config File
+  author: Ice3man
+  severity: medium
+  description: Searches for the pattern /.git/config on passed URLs.
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/.git/config"
+    matchers:
+      - type: word
+        words:
+          - "[core]"
+```
+
+
+
