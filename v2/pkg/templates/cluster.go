@@ -250,7 +250,7 @@ func (e *ClusterExecuter) Execute(input *contextargs.Context) (bool, error) {
 			event.InternalEvent["template-info"] = operator.templateInfo
 
 			if result == nil && !matched {
-				if err := e.options.Output.WriteFailure(event.InternalEvent); err != nil {
+				if err := e.options.Output.WriteFailure(event); err != nil {
 					gologger.Warning().Msgf("Could not write failure event to output: %s\n", err)
 				}
 				continue
