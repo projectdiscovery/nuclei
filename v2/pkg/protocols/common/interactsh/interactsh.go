@@ -100,6 +100,10 @@ func (c *Client) poll() error {
 
 	err = interactsh.StartPolling(c.pollDuration, func(interaction *server.Interaction) {
 		request, err := c.requests.Get(interaction.UniqueID)
+		// for more context in github actions
+		if strings.EqualFold(os.Getenv("GITHUB_ACTIONS"), "true") && c.options.Debug {
+			gologger.DefaultLogger.Print().Msgf("[Interactsh]: got interaction of %v for request %v and error %v", interaction, request, err)
+		}
 		if errors.Is(err, gcache.KeyNotFoundError) || request == nil {
 			// If we don't have any request for this ID, add it to temporary
 			// lru cache, so we can correlate when we get an add request.
@@ -155,6 +159,11 @@ func (c *Client) processInteractionForRequest(interaction *server.Interaction, d
 	data.Event.Unlock()
 
 	result, matched := data.Operators.Execute(data.Event.InternalEvent, data.MatchFunc, data.ExtractFunc, c.options.Debug || c.options.DebugRequest || c.options.DebugResponse)
+
+	// for more context in github actions
+	if strings.EqualFold(os.Getenv("GITHUB_ACTIONS"), "true") && c.options.Debug {
+		gologger.DefaultLogger.Print().Msgf("[Interactsh]: got result %v and status %v after processing interaction", result, matched)
+	}
 
 	// if we don't match, return
 	if !matched || result == nil {
