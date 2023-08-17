@@ -7,6 +7,7 @@ import (
 	"github.com/go-rod/rod/lib/proto"
 	"github.com/projectdiscovery/networkpolicy"
 	errorutil "github.com/projectdiscovery/utils/errors"
+	stringsutil "github.com/projectdiscovery/utils/strings"
 	urlutil "github.com/projectdiscovery/utils/url"
 	"go.uber.org/multierr"
 )
@@ -23,13 +24,14 @@ var (
 // if the request does not respect the rules, it will be canceled with reason
 func ValidateNFailRequest(page *rod.Page, e *proto.FetchRequestPaused) error {
 	reqURL := e.Request.URL
-	normalized := strings.ToLower(reqURL) // normalize url to lowercase
-	if !allowLocalFileAccess && strings.HasPrefix(normalized, "file:") {
+	normalized := strings.ToLower(reqURL)      // normalize url to lowercase
+	normalized = strings.TrimSpace(normalized) // trim leading & trailing whitespaces
+	if !allowLocalFileAccess && stringsutil.HasPrefixI(normalized, "file:") {
 		return multierr.Combine(FailWithReason(page, e), ErrURLDenied.Msgf(reqURL, "use of file:// protocol disabled use '-lfa' to enable"))
 	}
 	// validate potential invalid schemes
 	// javascript protocol is allowed for xss fuzzing
-	if strings.HasPrefix(normalized, "ftp:") {
+	if HasPrefixAnyI(normalized, "ftp:", "externalfile:", "chrome:", "chrome-extension:") {
 		return multierr.Combine(FailWithReason(page, e), ErrURLDenied.Msgf(reqURL, "protocol blocked by network policy"))
 	}
 	if !isValidHost(reqURL) {
@@ -60,7 +62,7 @@ func InitHeadless(RestrictLocalNetworkAccess bool, localFileAccess bool) {
 
 // isValidHost checks if the host is valid (only limited to http/https protocols)
 func isValidHost(targetUrl string) bool {
-	if !strings.HasPrefix(targetUrl, "http:") && !strings.HasPrefix(targetUrl, "https:") {
+	if !stringsutil.HasPrefixAny(targetUrl, "http:", "https:") {
 		return true
 	}
 	if networkPolicy == nil {
@@ -74,4 +76,15 @@ func isValidHost(targetUrl string) bool {
 	targetUrl = urlx.Hostname()
 	_, ok := networkPolicy.ValidateHost(targetUrl)
 	return ok
+}
+
+// HasPrefixAnyI checks if the string has any of the prefixes
+// TODO: replace with stringsutil.HasPrefixAnyI after implementation
+func HasPrefixAnyI(s string, prefixes ...string) bool {
+	for _, prefix := range prefixes {
+		if stringsutil.HasPrefixI(s, prefix) {
+			return true
+		}
+	}
+	return false
 }
