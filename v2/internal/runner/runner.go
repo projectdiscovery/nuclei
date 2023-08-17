@@ -310,6 +310,15 @@ func New(options *types.Options) (*Runner, error) {
 	if httpclient != nil {
 		opts.HTTPClient = httpclient
 	}
+	if opts.HTTPClient == nil {
+		httpOpts := retryablehttp.DefaultOptionsSingle
+		httpOpts.Timeout = 20 * time.Second // for stability reasons
+		if options.Timeout > 20 {
+			httpOpts.Timeout = time.Duration(options.Timeout) * time.Second
+		}
+		// in testing it was found most of times when interactsh failed, it was due to failure in registering /polling requests
+		opts.HTTPClient = retryablehttp.NewClient(retryablehttp.DefaultOptionsSingle)
+	}
 	interactshClient, err := interactsh.New(opts)
 	if err != nil {
 		gologger.Error().Msgf("Could not create interactsh client: %s", err)

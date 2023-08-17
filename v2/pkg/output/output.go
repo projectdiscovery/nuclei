@@ -8,6 +8,7 @@ import (
 	"regexp"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/pkg/errors"
@@ -77,6 +78,9 @@ type InternalWrappedEvent struct {
 	Results         []*ResultEvent
 	OperatorsResult *operators.Result
 	UsesInteractsh  bool
+	// Only applicable if interactsh is used
+	// This is used to avoid duplicate successful interactsh events
+	InteractshMatched atomic.Bool
 }
 
 func (iwe *InternalWrappedEvent) HasOperatorResult() bool {
