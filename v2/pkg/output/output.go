@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
+	"go.uber.org/multierr"
 
 	jsoniter "github.com/json-iterator/go"
 	"github.com/logrusorgru/aurora"
@@ -36,7 +37,7 @@ type Writer interface {
 	// Write writes the event to file and/or screen.
 	Write(*ResultEvent) error
 	// WriteFailure writes the optional failure event for template to file and/or screen.
-	WriteFailure(event InternalEvent) error
+	WriteFailure(*InternalWrappedEvent) error
 	// Request logs a request in the trace log
 	Request(templateID, url, requestType string, err error)
 	//  WriteStoreDebugData writes the request/response debug data to file
@@ -302,10 +303,26 @@ func (w *StandardWriter) Close() {
 }
 
 // WriteFailure writes the failure event for template to file and/or screen.
-func (w *StandardWriter) WriteFailure(event InternalEvent) error {
+func (w *StandardWriter) WriteFailure(wrappedEvent *InternalWrappedEvent) error {
 	if !w.matcherStatus {
 		return nil
 	}
+	if len(wrappedEvent.Results) > 0 {
+		errs := []error{}
+		for _, result := range wrappedEvent.Results {
+			result.MatcherStatus = false // just in case
+			if err := w.Write(result); err != nil {
+				errs = append(errs, err)
+			}
+		}
+		if len(errs) > 0 {
+			return multierr.Combine(errs...)
+		}
+		return nil
+	}
+	// if no results were found, manually create a failure event
+	event := wrappedEvent.InternalEvent
+
 	templatePath, templateURL := utils.TemplatePathURL(types.ToString(event["template-path"]))
 	var templateInfo model.Info
 	if event["template-info"] != nil {
