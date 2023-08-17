@@ -77,7 +77,7 @@ func (e *Executer) Execute(input *contextargs.Context) (bool, error) {
 			if err := e.options.Output.WriteFailure(event.InternalEvent); err != nil {
 				gologger.Warning().Msgf("Could not write failure event to output: %s\n", err)
 			}
-			results.CompareAndSwap(false, true)
+			results.Store(true)
 		}
 	}
 
@@ -109,9 +109,9 @@ func (e *Executer) Execute(input *contextargs.Context) (bool, error) {
 			} else {
 				if !(event.UsesInteractsh && event.InteractshMatched.Load()) && writer.WriteResult(event, e.options.Output, e.options.Progress, e.options.IssuesClient) {
 					if event.UsesInteractsh {
-						event.InteractshMatched.CompareAndSwap(false, true)
+						results.Store(true)
 					}
-					results.CompareAndSwap(false, true)
+					results.Store(true)
 				} else {
 					lastMatcherEvent = event
 				}
@@ -171,7 +171,7 @@ func (e *Executer) ExecuteWithResults(input *contextargs.Context, callback proto
 			if event.OperatorsResult == nil {
 				return
 			}
-			results.CompareAndSwap(false, true)
+			results.Store(true)
 			callback(event)
 		})
 		if err != nil {
