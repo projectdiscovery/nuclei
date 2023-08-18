@@ -8,6 +8,7 @@ import (
 	"net/http/cookiejar"
 	"net/http/httptest"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -620,11 +621,25 @@ func TestContainsAnyModificationActionType(t *testing.T) {
 }
 
 func TestBlockedHeadlessURLS(t *testing.T) {
+
+	// run this test from binary since we are changing values
+	// of global variables
+	if os.Getenv("TEST_BLOCK_HEADLESS_URLS") != "1" {
+		cmd := exec.Command(os.Args[0], "-test.run=TestBlockedHeadlessURLS", "-test.v")
+		cmd.Env = append(cmd.Env, "TEST_BLOCK_HEADLESS_URLS=1")
+		out, err := cmd.CombinedOutput()
+		if !strings.Contains(string(out), "PASS\n") || err != nil {
+			t.Fatalf("%s\n(exit status %v)", string(out), err)
+		}
+		return
+	}
+
 	opts := &types.Options{
 		AllowLocalFileAccess:       false,
 		RestrictLocalNetworkAccess: true,
 	}
-	_ = protocolstate.Init(opts)
+	err := protocolstate.Init(opts)
+	require.Nil(t, err, "could not init protocol state")
 
 	browser, err := New(&types.Options{ShowBrowser: false, UseInstalledChrome: testheadless.HeadlessLocal})
 	require.Nil(t, err, "could not create browser")
@@ -658,9 +673,9 @@ func TestBlockedHeadlessURLS(t *testing.T) {
 		}
 
 		data, page, err := instance.Run(contextargs.NewWithInput(ts.URL), actions, nil, &Options{Timeout: 20 * time.Second, Options: opts}) // allow file access in test
-		require.Len(t, data, 0, "expected no data for url %s got %v", testcase, data)
 		require.Error(t, err, "expected error for url %s got %v", testcase, data)
 		require.True(t, stringsutil.ContainsAny(err.Error(), "net::ERR_ACCESS_DENIED", "failed to parse url", "Cannot navigate to invalid URL", "net::ERR_ABORTED", "net::ERR_INVALID_URL"), "found different error %v for testcases %v", err, testcase)
+		require.Len(t, data, 0, "expected no data for url %s got %v", testcase, data)
 		if page != nil {
 			page.Close()
 		}
