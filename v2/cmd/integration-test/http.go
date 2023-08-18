@@ -1465,3 +1465,13 @@ func (h *httpDisablePathAutomerge) Execute(filePath string) error {
 	}
 	return expectResultsCount(got, 2)
 }
+
+type httpInteractshRequestsWithMCAnd struct{}
+
+func (h *httpInteractshRequestsWithMCAnd) Execute(filePath string) error {
+	got, err := testutils.RunNucleiTemplateAndGetResults(filePath, "honey.scanme.sh", debug)
+	if err != nil {
+		return err
+	}
+	return expectResultsCount(got, 1)
+}
