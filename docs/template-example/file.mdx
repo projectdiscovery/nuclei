@@ -1,0 +1,58 @@
+---
+title: "File"
+---
+
+## Basic File Template
+
+This template checks for a pattern in provided files.
+
+```yaml
+id: ssh-public-key
+
+info:
+  name: SSH Public Key Detect
+  author: pd-team
+  severity: low
+
+file:
+  - extensions:
+      - pub
+    max-size: 1024 # read very small chunks
+
+    matchers:
+      - type: word
+        words:
+          - "ssh-rsa"
+```
+
+## Extension Denylist with No-Recursive
+
+The below template is same as last one, but it makes use of an extension denylist along with the no-recursive option.
+
+```yaml
+id: ssh-private-key
+
+info:
+  name: SSH Private Key Detect
+  author: pd-team
+  severity: high
+
+file:
+  - extensions:
+      - all
+    denylist:
+      - pub
+    no-recursive: true
+    max-size: 1024 # read very small chunks
+
+    matchers:
+      - type: word
+        words:
+          - "BEGIN OPENSSH PRIVATE KEY"
+          - "BEGIN PRIVATE KEY"
+          - "BEGIN RSA PRIVATE KEY"
+          - "BEGIN DSA PRIVATE KEY"
+          - "BEGIN EC PRIVATE KEY"
+          - "BEGIN PGP PRIVATE KEY BLOCK"
+          - "ssh-rsa"
+```
