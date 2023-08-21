@@ -66,7 +66,7 @@ require (
 	github.com/klauspost/compress v1.16.6
 	github.com/labstack/echo/v4 v4.10.2
 	github.com/mholt/archiver v3.1.1+incompatible
-	github.com/projectdiscovery/dsl v0.0.18
+	github.com/projectdiscovery/dsl v0.0.19
 	github.com/projectdiscovery/fasttemplate v0.0.2
 	github.com/projectdiscovery/goflags v0.1.16
 	github.com/projectdiscovery/gologger v1.1.11
@@ -77,7 +77,7 @@ require (
 	github.com/projectdiscovery/sarif v0.0.1
 	github.com/projectdiscovery/tlsx v1.1.3
 	github.com/projectdiscovery/uncover v1.0.6-0.20230601103158-bfd7e02a5bb1
-	github.com/projectdiscovery/utils v0.0.49
+	github.com/projectdiscovery/utils v0.0.50
 	github.com/projectdiscovery/wappalyzergo v0.0.108
 	github.com/stretchr/testify v1.8.4
 	gopkg.in/src-d/go-git.v4 v4.13.1
@@ -129,7 +129,7 @@ require (
 	github.com/projectdiscovery/gostruct v0.0.1 // indirect
 	github.com/quic-go/quic-go v0.37.0 // indirect
 	github.com/refraction-networking/utls v1.4.2 // indirect
-	github.com/sashabaranov/go-openai v1.14.1 // indirect
+	github.com/sashabaranov/go-openai v1.14.2 // indirect
 	github.com/shoenig/go-m1cpu v0.1.6 // indirect
 	github.com/skeema/knownhosts v1.1.1 // indirect
 	github.com/smartystreets/assertions v1.0.0 // indirect
