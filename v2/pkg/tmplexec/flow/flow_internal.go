@@ -1,151 +1,21 @@
-package executer
+package flow
 
 import (
-	"io"
 	"reflect"
-	"strconv"
 	"strings"
-	"sync"
 	"sync/atomic"
 
 	"github.com/dop251/goja"
 	"github.com/logrusorgru/aurora"
 	"github.com/projectdiscovery/gologger"
-	"github.com/projectdiscovery/nuclei/v2/pkg/operators"
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
-	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/contextargs"
-	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/executer/builtin"
-	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/generators"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/utils/vardump"
-	"github.com/projectdiscovery/nuclei/v2/pkg/types"
-	errorutil "github.com/projectdiscovery/utils/errors"
-	fileutil "github.com/projectdiscovery/utils/file"
+	"github.com/projectdiscovery/nuclei/v2/pkg/tmplexec/flow/builtin"
 	mapsutil "github.com/projectdiscovery/utils/maps"
-	"go.uber.org/multierr"
 )
 
-var (
-	ErrInvalidRequestID = errorutil.NewWithFmt("invalid request id '%s' provided")
-)
-
-type ProtoOptions struct {
-	Hide      bool
-	Async     bool
-	protoName string
-	reqIDS    []string
-	callback  func(result *output.InternalWrappedEvent)
-}
-
-// LoadOptions loads the protocol options from a map
-func (P *ProtoOptions) LoadOptions(m map[string]interface{}) {
-	P.Hide = GetBool(m["hide"])
-	P.Async = GetBool(m["async"])
-}
-
-type FlowExecutor struct {
-	input          *contextargs.Context
-	allProtocols   map[string][]protocols.Request
-	options        *protocols.ExecutorOptions
-	allErrs        mapsutil.SyncLockMap[string, error]
-	results        *atomic.Bool
-	jsVM           *goja.Runtime
-	program        *goja.Program
-	protoFunctions map[string]func(call goja.FunctionCall) goja.Value // reqFunctions contains functions that allow executing requests/protocols from js
-	wg             sync.WaitGroup
-}
-
-// Init initializes the flow executor all dependencies
-// this compiles and prepares for execution of a flow
-// since it has dependencies on variables and etc it can't be done moved to templates package
-func (f *FlowExecutor) Compile(callback func(event *output.InternalWrappedEvent)) error {
-	if f.results == nil {
-		f.results = new(atomic.Bool)
-	}
-	// store all dynamic variables and other variables here
-	if f.options.TemplateCtx == nil {
-		f.options.TemplateCtx = contextargs.New()
-	}
-	// create a new js vm/runtime
-	f.jsVM = goja.New()
-
-	// -----Load all types of variables-----
-	// add all input args to template context
-	if f.input.HasArgs() {
-		f.input.ForEach(func(key string, value interface{}) {
-			f.options.TemplateCtx.Set(key, value)
-		})
-	}
-	// load all variables and evaluate with existing data
-	variableMap := f.options.Variables.Evaluate(f.options.TemplateCtx.GetAll())
-	// cli options
-	optionVars := generators.BuildPayloadFromOptions(f.options.Options)
-	// constants
-	constants := f.options.Constants
-	allVars := generators.MergeMaps(variableMap, constants, optionVars)
-	// we support loading variables from files in variables , cli options and constants
-	// try to load if files exist
-	for k, v := range allVars {
-		if str, ok := v.(string); ok && len(str) < 150 && fileutil.FileExists(str) {
-			if value, err := f.ReadDataFromFile(str); err == nil {
-				allVars[k] = value
-			} else {
-				gologger.Warning().Msgf("could not load file '%s' for variable '%s': %s", str, k, err)
-			}
-		}
-	}
-	f.options.TemplateCtx.Merge(allVars)
-
-	// ---- define callback functions/objects----
-	f.protoFunctions = map[string]func(call goja.FunctionCall) goja.Value{}
-	// iterate over all protocols and generate callback functions for each protocol
-	for p, requests := range f.allProtocols {
-		// for each protocol build a requestMap with reqID and protocol request
-		reqMap := mapsutil.Map[string, protocols.Request]{}
-		counter := 0
-		proto := strings.ToLower(p) // donot use loop variables in callback functions directly
-		for index := range requests {
-			request := f.allProtocols[proto][index]
-			if request.GetID() != "" {
-				// if id is present use it
-				reqMap[request.GetID()] = request
-			}
-			// fallback to using index as id
-			// always allow index as id as a fallback
-			reqMap[strconv.Itoa(counter)] = request
-			counter++
-		}
-		// ---define hook that allows protocol/request execution from js-----
-		// --- this is the actual callback that is executed when function is invoked in js----
-		f.protoFunctions[proto] = func(call goja.FunctionCall) goja.Value {
-			opts := &ProtoOptions{
-				callback:  callback,
-				protoName: proto,
-			}
-			for _, v := range call.Arguments {
-				switch value := v.Export().(type) {
-				case map[string]interface{}:
-					opts.LoadOptions(value)
-				default:
-					opts.reqIDS = append(opts.reqIDS, types.ToString(value))
-				}
-			}
-			if opts.Async {
-				f.wg.Add(1)
-				go func() {
-					defer f.wg.Done()
-					f.requestExecutor(reqMap, opts)
-				}()
-				return f.jsVM.ToValue(true)
-			}
-
-			return f.jsVM.ToValue(f.requestExecutor(reqMap, opts))
-		}
-	}
-
-	// register all built in functions
-	return f.RegisterBuiltInFunctions()
-}
+// contains all internal/unexported methods of flow
 
 // requestExecutor executes a protocol/request and returns true if any matcher was found
 func (f *FlowExecutor) requestExecutor(reqMap mapsutil.Map[string, protocols.Request], opts *ProtoOptions) bool {
@@ -164,7 +34,7 @@ func (f *FlowExecutor) requestExecutor(reqMap mapsutil.Map[string, protocols.Req
 				if result != nil {
 					f.results.CompareAndSwap(false, true)
 					if !opts.Hide {
-						opts.callback(result)
+						f.callback(result)
 					}
 					// export dynamic values from operators (i.e internal:true)
 					// add add it to template context
@@ -220,7 +90,7 @@ func (f *FlowExecutor) requestExecutor(reqMap mapsutil.Map[string, protocols.Req
 			if result != nil {
 				f.results.CompareAndSwap(false, true)
 				if !opts.Hide {
-					opts.callback(result)
+					f.callback(result)
 				}
 				// export dynamic values from operators (i.e internal:true)
 				// add add it to template context
@@ -246,8 +116,8 @@ func (f *FlowExecutor) requestExecutor(reqMap mapsutil.Map[string, protocols.Req
 	return matcherStatus.Load()
 }
 
-// RegisterBuiltInFunctions registers all built in functions for the flow
-func (f *FlowExecutor) RegisterBuiltInFunctions() error {
+// registerBuiltInFunctions registers all built in functions for the flow
+func (f *FlowExecutor) registerBuiltInFunctions() error {
 	// currently we register following builtin functions
 	// log -> log to stdout with [JS] prefix should only be used for debugging
 	// set -> set a variable in template context
@@ -374,89 +244,4 @@ func (f *FlowExecutor) RegisterBuiltInFunctions() error {
 	}
 	f.program = program
 	return nil
-}
-
-// Execute executes the flow
-func (f *FlowExecutor) Execute() (bool, error) {
-	// pass flow and execute the js vm and handle errors
-	value, err := f.jsVM.RunProgram(f.program)
-	if err != nil {
-		return false, errorutil.NewWithErr(err).Msgf("failed to execute flow\n%v\n", f.options.Flow)
-	}
-	f.wg.Wait()
-	runtimeErr := f.GetRuntimeErrors()
-	if runtimeErr != nil {
-		return false, errorutil.NewWithErr(runtimeErr).Msgf("got following errors while executing flow")
-	}
-	if value.Export() != nil {
-		return value.ToBoolean(), nil
-	}
-	return f.results.Load(), nil
-}
-
-func (f *FlowExecutor) GetRuntimeErrors() error {
-	errs := []error{}
-	for proto, err := range f.allErrs.GetAll() {
-		errs = append(errs, errorutil.NewWithErr(err).Msgf("failed to execute %v protocol", proto))
-	}
-	return multierr.Combine(errs...)
-}
-
-// ReadDataFromFile reads data from file respecting sandbox options
-func (f *FlowExecutor) ReadDataFromFile(payload string) ([]string, error) {
-	values := []string{}
-	// load file respecting sandbox
-	reader, err := f.options.Options.LoadHelperFile(payload, f.options.TemplatePath, f.options.Catalog)
-	if err != nil {
-		return values, err
-	}
-	defer reader.Close()
-	bin, err := io.ReadAll(reader)
-	if err != nil {
-		return values, err
-	}
-	for _, line := range strings.Split(string(bin), "\n") {
-		line = strings.TrimSpace(line)
-		if line != "" {
-			values = append(values, line)
-		}
-	}
-	return values, nil
-}
-
-// Checks if template has matchers
-func hasMatchers(all []*operators.Operators) bool {
-	for _, operator := range all {
-		if len(operator.Matchers) > 0 {
-			return true
-		}
-	}
-	return false
-}
-
-// hasOperators checks if template has operators (i.e matchers/extractors)
-func hasOperators(all []*operators.Operators) bool {
-	for _, operator := range all {
-		if operator != nil {
-			return true
-		}
-	}
-	return false
-}
-
-// GetBool returns bool value from interface
-func GetBool(value interface{}) bool {
-	if value == nil {
-		return false
-	}
-	switch v := value.(type) {
-	case bool:
-		return v
-	default:
-		tmpValue := types.ToString(value)
-		if strings.EqualFold(tmpValue, "true") {
-			return true
-		}
-	}
-	return false
 }

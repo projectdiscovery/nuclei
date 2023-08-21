@@ -13,10 +13,10 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/contextargs"
-	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/executer"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/offlinehttp"
 	"github.com/projectdiscovery/nuclei/v2/pkg/templates/cache"
 	"github.com/projectdiscovery/nuclei/v2/pkg/templates/signer"
+	"github.com/projectdiscovery/nuclei/v2/pkg/tmplexec"
 	"github.com/projectdiscovery/nuclei/v2/pkg/utils"
 	"github.com/projectdiscovery/retryablehttp-go"
 	errorutil "github.com/projectdiscovery/utils/errors"
@@ -161,7 +161,7 @@ func (template *Template) compileProtocolRequests(options protocols.ExecutorOpti
 			requests = append(requests, template.convertRequestToProtocolsRequest(template.RequestsCode)...)
 		}
 	}
-	template.Executer = executer.NewExecuter(requests, &options)
+	template.Executer = tmplexec.NewTemplateExecuter(requests, &options)
 	return nil
 }
 
@@ -206,7 +206,7 @@ mainLoop:
 	}
 	if len(operatorsList) > 0 {
 		options.Operators = operatorsList
-		template.Executer = executer.NewExecuter([]protocols.Request{&offlinehttp.Request{}}, &options)
+		template.Executer = tmplexec.NewTemplateExecuter([]protocols.Request{&offlinehttp.Request{}}, &options)
 		return nil
 	}
 

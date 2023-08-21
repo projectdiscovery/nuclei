@@ -349,7 +349,7 @@ func TestActionGetResource(t *testing.T) {
 				<title>Nuclei Test Page</title>
 			</head>
 			<body>
-				<img id="test" src="https://nuclei.projectdiscovery.io/static/logo.png">
+				<img id="test" src="https://raw.githubusercontent.com/projectdiscovery/wallpapers/main/pd-floppy.jpg">
 			</body>
 		</html>`
 
@@ -360,7 +360,7 @@ func TestActionGetResource(t *testing.T) {
 
 	testHeadlessSimpleResponse(t, response, actions, 20*time.Second, func(page *Page, err error, out map[string]string) {
 		require.Nil(t, err, "could not run page actions")
-		require.Equal(t, len(out["src"]), 3159, "could not find resource")
+		require.Equal(t, len(out["src"]), 121808, "could not find resource")
 	})
 }
 
