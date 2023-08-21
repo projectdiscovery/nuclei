@@ -167,3 +167,37 @@ func TestFlowWithConditionPositive(t *testing.T) {
 	require.NotEqual(t, m["http_status"], "") // since http() was not execute this variable should not exist
 	require.NotEqual(t, m["dns_raw"], "")     // since dns() was execute this variable should exist
 }
+
+func TestFlowWithNoMatchers(t *testing.T) {
+	// when using conditional flow with no matchers at all
+	// we implicitly assume that request was successful and internally changed the result to true (for scope of condition only)
+
+	// testcase-1 : no matchers but contains extractor
+	Template, err := templates.Parse("testcases/condition-flow-extractors.yaml", nil, executerOpts)
+	require.Nil(t, err, "could not parse template")
+
+	require.True(t, Template.Flow != "", "not a flow template") // this is classifer if template is flow or not
+
+	err = Template.Executer.Compile()
+	require.Nil(t, err, "could not compile template")
+
+	// positive match . expect results also verify that both dns() and http() were executed
+	gotresults, err := Template.Executer.Execute(contextargs.NewWithInput("blog.projectdiscovery.io"))
+	require.Nil(t, err, "could not execute template")
+	require.True(t, gotresults)
+
+	// testcase-2 : no matchers and no extractors
+	Template, err = templates.Parse("testcases/condition-flow-no-operators.yaml", nil, executerOpts)
+	require.Nil(t, err, "could not parse template")
+
+	require.True(t, Template.Flow != "", "not a flow template") // this is classifer if template is flow or not
+
+	err = Template.Executer.Compile()
+	require.Nil(t, err, "could not compile template")
+
+	// positive match . expect results also verify that both dns() and http() were executed
+	gotresults, err = Template.Executer.Execute(contextargs.NewWithInput("blog.projectdiscovery.io"))
+	require.Nil(t, err, "could not execute template")
+	require.True(t, gotresults)
+
+}

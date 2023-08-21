@@ -181,6 +181,10 @@ func (f *FlowExecutor) requestExecutor(reqMap mapsutil.Map[string, protocols.Req
 								f.options.TemplateCtx.Set(k, v)
 							}
 						}
+					} else if !result.HasOperatorResult() && !hasOperators(req.GetCompiledOperators()) {
+						// if matcher status is false . check if template/request contains any matcher at all
+						// if it does then we need to set matcher status to true
+						matcherStatus.CompareAndSwap(false, true)
 					}
 				}
 			})
@@ -424,6 +428,16 @@ func (f *FlowExecutor) ReadDataFromFile(payload string) ([]string, error) {
 func hasMatchers(all []*operators.Operators) bool {
 	for _, operator := range all {
 		if len(operator.Matchers) > 0 {
+			return true
+		}
+	}
+	return false
+}
+
+// hasOperators checks if template has operators (i.e matchers/extractors)
+func hasOperators(all []*operators.Operators) bool {
+	for _, operator := range all {
+		if operator != nil {
 			return true
 		}
 	}
