@@ -2,15 +2,15 @@
 title: 'Overview'
 ---
 
-## What is **Nuclei?**
+## What Is **Nuclei?**
 
-Nuclei is a fast scanner used to scan across the modern applications, infrastructure, cloud environments, and networks to help you find and remediate vulnerabilities.
+Nuclei scans modern applications, infrastructure, cloud environments, and networks to help you find and fix vulnerabilities fast.
 
-Under the hood, it operates on the concept of templates, which are essentially simple YAML file that describe how to detect, prioritize and remediate specific security vulnerabilities.
+Under the hood, Nuclei uses templates—simple YAML files—that describe how to detect, prioritize, and remediate specific security vulnerabilities.
 
-Hundreds of security researchers and engineers from around the globe contribute to the template ecosystem, which is available and updated regularly within the Nuclei tool. Over 5000 templates have been contributed to date. These templates include real-world exploits and latest attack vectors, including the Log4j vulnerability, GitLab RCE, and many others, to match adaptability in an ever-evolving threat landscape.
+Hundreds of security researchers and engineers from around the globe contribute to the Nuclei template ecosystem. To match your adaptability to the ever-evolving threat landscape, over 5,000 templates are available in the Nuclei tool and updated regularly, including templates addressing real-world exploits and latest attack vectors, like the Log4j vulnerability, GitLab RCE, and many others. Each template represents a potential attack vector and includes a detailed description of the vulnerability, its severity and priority score, and, where possible, trending exploits the vulnerability enables. 
 
-Each template represents a potential attack vector and includes a detailed description of the vulnerability, its severity, priority score, and sometimes even trending exploits. The template-driven approach not only adds a high degree of flexibility but also ensures that the vulnerabilities detected by Nuclei are not just theoretical risks but are indicative of real-world exploitability.
+The template-driven Nuclei approach is highly flexible and ensures that vulnerabilities detected by Nuclei aren't merely theoretical—they indicate a genuine risk of being exploited in the real world.
 
 Once configured, Nuclei can provide detailed information on each vulnerability, including:
 
@@ -22,26 +22,26 @@ Once configured, Nuclei can provide detailed information on each vulnerability, 
 </CardGroup>
 
 
-## Where to use Nuclei?
+## Where To Use Nuclei?
 
 | Use Case                         | Description |
 | -------------------------------- | ----------- |
 | Web Application Security         | Identifies common web vulnerabilities with community-powered templates. |
 | Infrastructure Security          | Audits server configurations, open ports, and insecure services for security issues. |
 | API Security Testing `alpha`      | Tests APIs against known vulnerabilities and misconfigurations. |
-| (CI/CD) Security | Integrates into CI/CD pipelines to minimize vulnerability resurface into production. |
-| Third-party Vendor Assessment    | Evaluates the security of third-party vendors by scanning their digital assets. |
+| (CI/CD) Security | Integrates into CI/CD pipelines to minimize vulnerabilities resurfacing into production. |
+| Third-Party Vendor Assessment    | Evaluates the security of third-party vendors by scanning their digital assets. |
 | Cloud Security `alpha` | Scans cloud environments for misconfigurations and vulnerabilities. |
 | Mobile Application Security      | Scans mobile applications for security issues, including API tests and configuration checks. |
 | Network Device Security `alpha`  | Identifies vulnerabilities in network devices like routers, switches, and firewalls. |
 | Web Server Assessment            | Identifies common vulnerabilities and misconfigurations in web servers. |
 | Content Management System (CMS) Assessment | Identifies vulnerabilities specific to CMS platforms like WordPress, Joomla, or Drupal. |
-| Database Security Assessment     | Scans databases for known vulnerabilities, default configurations, and access control issues. |
+| Database Security Assessment     | Scans databases for known vulnerabilities, default configurations, and access-control issues. |
 
-People use Nuclei in a variety of ways:
+There are many ways to use Nuclei:
 
-- **Security Engineers/Analysts**: Conduct security assessments, proactively identify vulnerabilities, convert custom vectors and analyze latest attack vectors.
-- **Red Teams**: Leverage Nuclei as part of their offensive security operations to simulate real-world attack scenarios, identify weaknesses, and provide actionable recommendations for enhancing overall security.
-- **DevOps Teams**: Integrate Nuclei into their CI/CD pipelines to ensure continuous security and regression of custom vulnerabilities.
-- **Bug Bounty Hunters**: Leverage Nuclei to find vulnerabilities across their programs listed on platforms like HackerOne, Bugcrowd, Intigriti etc.
-- **Penetration Testers**: Utilize Nuclei to automate their assessment methodologies into templates for their clients' systems.
+- **Security Engineers and Analysts**: Use Nuclei to conduct security assessments, proactively identify vulnerabilities, convert custom vectors, and analyze latest attack vectors.
+- **Red Teams**: Include Nuclei in their offensive security operations to simulate real-world attack scenarios, identify weaknesses, and provide actionable recommendations for enhancing overall security.
+- **DevOps Teams**: Integrate Nuclei into their CI/CD pipelines to ensure continuous security and prevent the introduction of custom vulnerabilities.
+- **Bug Bounty Hunters**: Use Nuclei to find vulnerabilities across their programs listed on platforms like HackerOne, Bugcrowd, and Intigriti.
+- **Penetration Testers**: Automate their assessment methodologies into templates for their clients' systems with Nuclei.
