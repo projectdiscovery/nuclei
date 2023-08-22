@@ -93,6 +93,9 @@ type ExecutorOptions struct {
 	ProtocolType templateTypes.ProtocolType
 	// Flow is execution flow for the template (written in javascript)
 	Flow string
+	// IsMultiProtocol is true if template has more than one protocol
+	IsMultiProtocol bool
+	// TemplateCtx retains state of template variables
 }
 
 // AddTemplateVars adds vars to template context with given template type as prefix
@@ -101,7 +104,7 @@ func (e *ExecutorOptions) AddTemplateVars(templateType templateTypes.ProtocolTyp
 	// if we wan't to disable adding response variables and other variables to template context
 	// this is the statement that does it . template context is currently only enabled for
 	// multiprotocol and flow templates
-	if e.ProtocolType != templateTypes.MultiProtocol && e.Flow == "" {
+	if !e.IsMultiProtocol && e.Flow == "" {
 		// no-op if not multi protocol template or flow template
 		return
 	}
@@ -120,7 +123,7 @@ func (e *ExecutorOptions) AddTemplateVars(templateType templateTypes.ProtocolTyp
 // AddTemplateVar adds given var to template context with given template type as prefix
 // this method is no-op if template is not multi protocol
 func (e *ExecutorOptions) AddTemplateVar(templateType templateTypes.ProtocolType, reqID string, key string, value interface{}) {
-	if e.ProtocolType != templateTypes.MultiProtocol && e.Flow == "" {
+	if !e.IsMultiProtocol && e.Flow == "" {
 		// no-op if not multi protocol template or flow template
 		return
 	}

@@ -95,9 +95,7 @@ func (f *FlowExecutor) Compile() error {
 		f.results = new(atomic.Bool)
 	}
 	// store all dynamic variables and other variables here
-	if f.options.TemplateCtx == nil {
-		f.options.TemplateCtx = contextargs.New()
-	}
+	f.options.TemplateCtx = contextargs.New()
 	// create a new js vm/runtime
 	f.jsVM = goja.New()
 
@@ -167,13 +165,18 @@ func (f *FlowExecutor) Compile() error {
 			return f.jsVM.ToValue(f.requestExecutor(reqMap, opts))
 		}
 	}
-
-	// register all functions in javascript runtime
 	return f.registerBuiltInFunctions()
 }
 
 // ExecuteWithResults executes the flow and returns results
 func (f *FlowExecutor) ExecuteWithResults(input *contextargs.Context, callback protocols.OutputEventCallback) error {
+	defer func() {
+		if e := recover(); e != nil {
+			gologger.Error().Label(f.options.TemplateID).Msgf("panic occurred while executing target %v with flow: %v", input.MetaInput.Input, e)
+			panic(e)
+		}
+	}()
+
 	f.callback = callback
 	f.input = input
 	// -----Load all types of variables-----
@@ -186,7 +189,6 @@ func (f *FlowExecutor) ExecuteWithResults(input *contextargs.Context, callback p
 	if f.callback == nil {
 		return fmt.Errorf("output callback cannot be nil")
 	}
-
 	// pass flow and execute the js vm and handle errors
 	value, err := f.jsVM.RunProgram(f.program)
 	if err != nil {
@@ -234,4 +236,9 @@ func (f *FlowExecutor) ReadDataFromFile(payload string) ([]string, error) {
 		}
 	}
 	return values, nil
+}
+
+// Name returns the type of engine
+func (f *FlowExecutor) Name() string {
+	return "flow"
 }

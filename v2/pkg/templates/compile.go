@@ -128,10 +128,13 @@ func (template *Template) compileProtocolRequests(options protocols.ExecutorOpti
 
 	var requests []protocols.Request
 
-	if len(template.MultiProtoRequest.Queue) > 0 {
-		template.MultiProtoRequest.ID = template.ID
-		template.MultiProtoRequest.Info = template.Info
-		requests = append(requests, &template.MultiProtoRequest)
+	if template.hasMultipleRequests() {
+		// when multiple requests are present preserve the order of requests and protocols
+		// which is already done during unmarshalling
+		requests = template.RequestsQueue
+		if options.Flow == "" {
+			options.IsMultiProtocol = true
+		}
 	} else {
 		if len(template.RequestsDNS) > 0 {
 			requests = append(requests, template.convertRequestToProtocolsRequest(template.RequestsDNS)...)

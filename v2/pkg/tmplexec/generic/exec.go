@@ -11,7 +11,7 @@ import (
 )
 
 // generic engine as name suggests is a generic template
-// execution engine and executes all protocol requests one after another
+// execution engine and executes all requests one after another
 // without any logic in between
 type Generic struct {
 	requests []protocols.Request
@@ -86,4 +86,9 @@ func (g *Generic) ExecuteWithResults(input *contextargs.Context, callback protoc
 		}
 	}
 	return nil
+}
+
+// Type returns the type of engine
+func (g *Generic) Name() string {
+	return "generic"
 }

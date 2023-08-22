@@ -1,9 +1,8 @@
 ## multi protocol execution
 
 ### Implementation
-when template is unmarshalled, if it uses more than one protocol, it will be converted to a multi protocol
-and the order of the protocols will be preserved as they were in the template and are stored in Request.Queue
-when template is compiled , we iterate over queue and compile all the requests in the queue
+when template is unmarshalled, if it uses more than one protocol, then order of protocols is preserved and is same is passed to Executor
+multiproto is engine/backend for TemplateExecutor which takes care of sharing logic between protocols and executing them in order
 
 ### Execution
 when multi protocol template is executed , all protocol requests present in Queue are executed in order
@@ -12,13 +11,6 @@ and dynamic values extracted are added to template context.
 - Protocol Responses
 apart from extracted `internal:true` values response fields/values of protocol are added to template context at `ExecutorOptions.TemplateCtx`
 which takes care of sync and other issues if any. all response fields are prefixed with template type prefix ex: `ssl_subject_dn`
-
-### Other Methods
-Such templates are usually used when a particular vulnerability requires more than one protocol to be executed
-and in such cases the final result is core of the logic hence all methods such as
-Ex:  MakeResultEventItem, MakeResultEvent, GetCompiledOperators
-are not implemented in multi protocol and just call the same method on last protocol in queue
-
 
 ### Adding New Protocol to multi protocol execution logic
 while logic/implementation of multi protocol execution is abstracted. it requires 3 statements to be added in newly implemented protocol

@@ -56,7 +56,6 @@ func TestFlowTemplateWithIndex(t *testing.T) {
 	gotresults, err := Template.Executer.Execute(contextargs.NewWithInput("hackerone.com"))
 	require.Nil(t, err, "could not execute template")
 	require.True(t, gotresults)
-
 	// apart from parse->compile->execution this testcase checks if dynamic extracted variables are available
 	value, ok := Template.Options.TemplateCtx.Get("nameservers")
 	require.True(t, ok)

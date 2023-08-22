@@ -116,7 +116,7 @@ func (ctx *Context) HasArgs() bool {
 func (ctx *Context) Clone() *Context {
 	newCtx := &Context{
 		MetaInput: ctx.MetaInput.Clone(),
-		args:      ctx.args,
+		args:      ctx.args.Clone(),
 		CookieJar: ctx.CookieJar,
 	}
 	return newCtx

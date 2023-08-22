@@ -14,6 +14,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/helpers/writer"
 	"github.com/projectdiscovery/nuclei/v2/pkg/tmplexec/flow"
 	"github.com/projectdiscovery/nuclei/v2/pkg/tmplexec/generic"
+	"github.com/projectdiscovery/nuclei/v2/pkg/tmplexec/multiproto"
 )
 
 // TemplateExecutor is an executor for a template
@@ -30,12 +31,30 @@ var _ protocols.Executer = &TemplateExecuter{}
 
 // NewTemplateExecuter creates a new request TemplateExecuter for list of requests
 func NewTemplateExecuter(requests []protocols.Request, options *protocols.ExecutorOptions) *TemplateExecuter {
+	isMultiProto := false
+	lastProto := ""
+	for _, request := range requests {
+		if request.Type().String() != lastProto && lastProto != "" {
+			isMultiProto = true
+			break
+		}
+		lastProto = request.Type().String()
+	}
+
 	e := &TemplateExecuter{requests: requests, options: options, results: &atomic.Bool{}}
 	if options.Flow != "" {
 		e.engine = flow.NewFlowExecutor(requests, options, e.results)
 	} else {
-		e.engine = generic.NewGenericEngine(requests, options, e.results)
+		// Review:
+		// multiproto engine is only used if there is more than one protocol in template
+		// else we use generic engine (should we use multiproto engine for single protocol with multiple requests as well ?)
+		if isMultiProto {
+			e.engine = multiproto.NewMultiProtocol(requests, options, e.results)
+		} else {
+			e.engine = generic.NewGenericEngine(requests, options, e.results)
+		}
 	}
+
 	return e
 }
 
@@ -85,6 +104,10 @@ func (e *TemplateExecuter) Execute(input *contextargs.Context) (bool, error) {
 	}
 
 	cliExecutorCallback := func(event *output.InternalWrappedEvent) {
+		if event == nil {
+			// something went wrong
+			return
+		}
 		// If no results were found, and also interactsh is not being used
 		// in that case we can skip it, otherwise we've to show failure in
 		// case of matcher-status flag.
@@ -98,7 +121,26 @@ func (e *TemplateExecuter) Execute(input *contextargs.Context) (bool, error) {
 			}
 		}
 	}
-	err := e.engine.ExecuteWithResults(input, cliExecutorCallback)
+	var err error
+
+	// Note: this is required for flow executor
+	// flow executer is tightly coupled with lot of executor options
+	// and map , wg and other types earlier we tried to use (compile once and run multiple times)
+	// but it is causing lot of panic and nil pointer dereference issues
+	// so in compile step earlier we compile it to validate javascript syntax and other things
+	// and while executing we create new instance of flow executor everytime
+	if e.options.Flow != "" {
+		// compile flow
+		flowexec := flow.NewFlowExecutor(e.requests, e.options, results)
+		if err := flowexec.Compile(); err != nil {
+			return false, err
+		}
+		// execute flow
+		err = flowexec.ExecuteWithResults(input, cliExecutorCallback)
+	} else {
+		err = e.engine.ExecuteWithResults(input, cliExecutorCallback)
+	}
+
 	if lastMatcherEvent != nil {
 		writeFailureCallback(lastMatcherEvent, e.options.Options.MatcherStatus)
 	}

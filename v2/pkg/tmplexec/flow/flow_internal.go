@@ -20,6 +20,10 @@ import (
 // requestExecutor executes a protocol/request and returns true if any matcher was found
 func (f *FlowExecutor) requestExecutor(reqMap mapsutil.Map[string, protocols.Request], opts *ProtoOptions) bool {
 	defer func() {
+		// evaluate all variables after execution of each protocol
+		variableMap := f.options.Variables.Evaluate(f.options.TemplateCtx.GetAll())
+		f.options.TemplateCtx.Merge(variableMap) // merge all variables into template context
+
 		// to avoid polling update template variables everytime we execute a protocol
 		var m map[string]interface{} = f.options.TemplateCtx.GetAll()
 		_ = f.jsVM.Set("template", m)
