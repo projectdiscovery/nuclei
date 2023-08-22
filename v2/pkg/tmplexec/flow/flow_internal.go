@@ -11,6 +11,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/utils/vardump"
 	"github.com/projectdiscovery/nuclei/v2/pkg/tmplexec/flow/builtin"
+	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 	mapsutil "github.com/projectdiscovery/utils/maps"
 )
 
@@ -149,7 +150,7 @@ func (f *FlowExecutor) registerBuiltInFunctions() error {
 	if err := f.jsVM.Set("set", func(call goja.FunctionCall) goja.Value {
 		varName := call.Argument(0).Export()
 		varValue := call.Argument(1).Export()
-		f.options.GetTemplateCtx(f.input.MetaInput).Set(varName.(string), varValue)
+		f.options.GetTemplateCtx(f.input.MetaInput).Set(types.ToString(varName), varValue)
 		return goja.Null()
 	}); err != nil {
 		return err
