@@ -136,7 +136,7 @@ func (m *MockOutputWriter) Request(templateID, url, requestType string, err erro
 }
 
 // WriteFailure writes the event to file and/or screen.
-func (m *MockOutputWriter) WriteFailure(result output.InternalEvent) error {
+func (m *MockOutputWriter) WriteFailure(*output.InternalWrappedEvent) error {
 	return nil
 }
 func (m *MockOutputWriter) WriteStoreDebugData(host, templateID, eventType string, data string) {

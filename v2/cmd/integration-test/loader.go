@@ -10,6 +10,7 @@ import (
 	"github.com/julienschmidt/httprouter"
 
 	"github.com/projectdiscovery/nuclei/v2/pkg/testutils"
+	permissionutil "github.com/projectdiscovery/utils/permission"
 )
 
 var loaderTestcases = []TestCaseInfo{
@@ -48,7 +49,7 @@ func (h *remoteTemplateList) Execute(templateList string) error {
 	defer ts.Close()
 
 	configFileData := `remote-template-domain: [ "` + ts.Listener.Addr().String() + `" ]`
-	err := os.WriteFile("test-config.yaml", []byte(configFileData), os.ModePerm)
+	err := os.WriteFile("test-config.yaml", []byte(configFileData), permissionutil.ConfigFilePermission)
 	if err != nil {
 		return err
 	}
@@ -147,7 +148,7 @@ func (h *remoteWorkflowList) Execute(workflowList string) error {
 	defer ts.Close()
 
 	configFileData := `remote-template-domain: [ "` + ts.Listener.Addr().String() + `" ]`
-	err := os.WriteFile("test-config.yaml", []byte(configFileData), os.ModePerm)
+	err := os.WriteFile("test-config.yaml", []byte(configFileData), permissionutil.ConfigFilePermission)
 	if err != nil {
 		return err
 	}

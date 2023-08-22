@@ -36,7 +36,9 @@ func Parse(request string, inputURL *urlutil.URL, unsafe, disablePathAutomerge b
 	// If path is empty do not tamper input url (see doc)
 	// can be omitted but makes things clear
 	case rawrequest.Path == "":
-		rawrequest.Path = inputURL.GetRelativePath()
+		if !disablePathAutomerge {
+			rawrequest.Path = inputURL.GetRelativePath()
+		}
 
 	// full url provided instead of rel path
 	case strings.HasPrefix(rawrequest.Path, "http") && !unsafe:
