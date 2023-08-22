@@ -138,6 +138,7 @@ func (e *ExecutorOptions) AddTemplateVar(templateType templateTypes.ProtocolType
 // Copy returns a copy of the executeroptions structure
 func (e ExecutorOptions) Copy() ExecutorOptions {
 	copy := e
+	copy.TemplateCtx = e.TemplateCtx.Clone()
 	return copy
 }
 

@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"sync"
 	"sync/atomic"
 
 	"github.com/projectdiscovery/gologger"
@@ -23,6 +24,7 @@ type TemplateExecuter struct {
 	options  *protocols.ExecutorOptions
 	engine   TemplateEngine
 	results  *atomic.Bool
+	m        sync.Mutex
 }
 
 // Both executer & Executor are correct spellings (its open to interpretation)
@@ -131,7 +133,9 @@ func (e *TemplateExecuter) Execute(input *contextargs.Context) (bool, error) {
 	// and while executing we create new instance of flow executor everytime
 	if e.options.Flow != "" {
 		// compile flow
+		e.m.Lock()
 		flowexec := flow.NewFlowExecutor(e.requests, e.options, results)
+		e.m.Unlock()
 		if err := flowexec.Compile(); err != nil {
 			return false, err
 		}

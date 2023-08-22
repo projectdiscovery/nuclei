@@ -75,7 +75,7 @@ func NewFlowExecutor(requests []protocols.Request, options *protocols.ExecutorOp
 			gologger.Error().Msgf("invalid request type %s", req.Type().String())
 		}
 	}
-	return &FlowExecutor{
+	f := &FlowExecutor{
 		allProtocols: allprotos,
 		options:      options,
 		allErrs: mapsutil.SyncLockMap[string, error]{
@@ -84,7 +84,10 @@ func NewFlowExecutor(requests []protocols.Request, options *protocols.ExecutorOp
 		},
 		protoFunctions: map[string]func(call goja.FunctionCall) goja.Value{},
 		results:        results,
+		jsVM:           goja.New(),
 	}
+	f.options.TemplateCtx = contextargs.New()
+	return f
 }
 
 // Init initializes the flow executor all dependencies
@@ -94,10 +97,6 @@ func (f *FlowExecutor) Compile() error {
 	if f.results == nil {
 		f.results = new(atomic.Bool)
 	}
-	// store all dynamic variables and other variables here
-	f.options.TemplateCtx = contextargs.New()
-	// create a new js vm/runtime
-	f.jsVM = goja.New()
 
 	// load all variables and evaluate with existing data
 	variableMap := f.options.Variables.Evaluate(f.options.TemplateCtx.GetAll())
