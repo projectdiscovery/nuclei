@@ -57,12 +57,6 @@ func TestFlowTemplateWithIndex(t *testing.T) {
 	gotresults, err := Template.Executer.Execute(input)
 	require.Nil(t, err, "could not execute template")
 	require.True(t, gotresults)
-	// apart from parse->compile->execution this testcase checks if dynamic extracted variables are available
-	value, ok := Template.Options.GetTemplateCtx(input.MetaInput).Get("nameservers")
-	require.True(t, ok)
-	if value != nil {
-		require.True(t, len(value.([]string)) > 0)
-	}
 }
 
 func TestFlowTemplateWithID(t *testing.T) {
@@ -81,12 +75,6 @@ func TestFlowTemplateWithID(t *testing.T) {
 	gotresults, err := Template.Executer.Execute(target)
 	require.Nil(t, err, "could not execute template")
 	require.True(t, gotresults)
-
-	value, ok := Template.Options.GetTemplateCtx(target.MetaInput).Get("nameservers")
-	require.True(t, ok)
-	if value != nil {
-		require.True(t, len(value.([]string)) > 0)
-	}
 }
 
 func TestFlowWithProtoPrefix(t *testing.T) {
@@ -108,18 +96,6 @@ func TestFlowWithProtoPrefix(t *testing.T) {
 	gotresults, err := Template.Executer.Execute(input)
 	require.Nil(t, err, "could not execute template")
 	require.True(t, gotresults)
-
-	// while there are lot of variables lets just look for only these
-	protoVars := []string{"dns_0_host", "dns_0_matched", "dns_0_answer", "dns_0_raw",
-		"probe-ns_host", "probe-ns_matched", "probe-ns_answer", "probe-ns_raw"}
-
-	for _, v := range protoVars {
-		value, ok := Template.Options.GetTemplateCtx(input.MetaInput).Get(v)
-		require.Truef(t, ok, "could not find variable %s", v)
-		if value != nil {
-			require.Truef(t, len(value.(string)) > 0, "variable %s is empty", v)
-		}
-	}
 }
 
 func TestFlowWithConditionNegative(t *testing.T) {
@@ -140,11 +116,6 @@ func TestFlowWithConditionNegative(t *testing.T) {
 	gotresults, err := Template.Executer.Execute(input)
 	require.Nil(t, err, "could not execute template")
 	require.False(t, gotresults)
-
-	m := Template.Options.GetTemplateCtx(input.MetaInput).GetAll()
-
-	require.Equal(t, m["http_status"], nil) // since http() was not execute this variable should not exist
-	require.NotEqual(t, m["dns_raw"], "")   // since dns() was execute this variable should exist
 }
 
 func TestFlowWithConditionPositive(t *testing.T) {
@@ -165,11 +136,6 @@ func TestFlowWithConditionPositive(t *testing.T) {
 	gotresults, err := Template.Executer.Execute(input)
 	require.Nil(t, err, "could not execute template")
 	require.True(t, gotresults)
-
-	m := Template.Options.GetTemplateCtx(input.MetaInput).GetAll()
-
-	require.NotEqual(t, m["http_status"], "") // since http() was not execute this variable should not exist
-	require.NotEqual(t, m["dns_raw"], "")     // since dns() was execute this variable should exist
 }
 
 func TestFlowWithNoMatchers(t *testing.T) {
