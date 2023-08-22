@@ -88,8 +88,8 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, metadata 
 
 			outputEvent := request.responseToDSLMap(resp, data, data, data, tostring.UnsafeToString(dumpedResponse), tostring.UnsafeToString(body), utils.HeadersToString(resp.Header), 0, nil)
 			// add response fields to template context and merge templatectx variables to output event
-			request.options.AddTemplateVars(request.Type(), request.GetID(), outputEvent)
-			outputEvent = generators.MergeMaps(outputEvent, request.options.TemplateCtx.GetAll())
+			request.options.AddTemplateVars(input.MetaInput, request.Type(), request.GetID(), outputEvent)
+			outputEvent = generators.MergeMaps(outputEvent, request.options.GetTemplateCtx(input.MetaInput).GetAll())
 			outputEvent["ip"] = ""
 			for k, v := range previous {
 				outputEvent[k] = v

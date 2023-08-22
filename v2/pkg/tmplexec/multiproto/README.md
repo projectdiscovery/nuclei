@@ -16,10 +16,10 @@ which takes care of sync and other issues if any. all response fields are prefix
 while logic/implementation of multi protocol execution is abstracted. it requires 3 statements to be added in newly implemented protocol
 to make response fields of that protocol available to global context
 
-- Add `request.options.TemplateCtx.GetAll()` to variablesMap in `ExecuteWithResults` Method just above `request.options.Variables.Evaluate`
+- Add `request.options.GetTemplateCtx(f.input.MetaInput).GetAll()` to variablesMap in `ExecuteWithResults` Method just above `request.options.Variables.Evaluate`
 ```go
 // example
-	values := generators.MergeMaps(payloadValues, hostnameVariables, request.options.TemplateCtx.GetAll())
+	values := generators.MergeMaps(payloadValues, hostnameVariables, request.options.GetTemplateCtx(f.input.MetaInput).GetAll())
 	variablesMap := request.options.Variables.Evaluate(values)
 ```
 
@@ -34,7 +34,7 @@ to make response fields of that protocol available to global context
 - Append all available template context values to outputEvent
 ```go
 	// add variables from template context before matching/extraction
-	outputEvent = generators.MergeMaps(outputEvent, request.options.TemplateCtx.GetAll())
+	outputEvent = generators.MergeMaps(outputEvent, request.options.GetTemplateCtx(f.input.MetaInput).GetAll())
 ```
 
 adding these 3 statements takes care of all logic related to multi protocol execution

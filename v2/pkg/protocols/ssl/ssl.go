@@ -187,7 +187,7 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 
 	hostnameVariables := protocolutils.GenerateDNSVariables(hostname)
 	// add template context variables to varMap
-	values := generators.MergeMaps(payloadValues, hostnameVariables, request.options.TemplateCtx.GetAll())
+	values := generators.MergeMaps(payloadValues, hostnameVariables, request.options.GetTemplateCtx(input.MetaInput).GetAll())
 	variablesMap := request.options.Variables.Evaluate(values)
 	payloadValues = generators.MergeMaps(variablesMap, payloadValues, request.options.Constants)
 
@@ -270,7 +270,7 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 		if tag == "" || f.IsZero() {
 			continue
 		}
-		request.options.AddTemplateVar(request.Type(), request.ID, tag, f.Value())
+		request.options.AddTemplateVar(input.MetaInput, request.Type(), request.ID, tag, f.Value())
 		data[tag] = f.Value()
 	}
 
@@ -289,12 +289,12 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 		if tag == "" || f.IsZero() {
 			continue
 		}
-		request.options.AddTemplateVar(request.Type(), request.ID, tag, f.Value())
+		request.options.AddTemplateVar(input.MetaInput, request.Type(), request.ID, tag, f.Value())
 		data[tag] = f.Value()
 	}
 
 	// add response fields ^ to template context and merge templatectx variables to output event
-	data = generators.MergeMaps(data, request.options.TemplateCtx.GetAll())
+	data = generators.MergeMaps(data, request.options.GetTemplateCtx(input.MetaInput).GetAll())
 	event := eventcreator.CreateEvent(request, data, requestOptions.Options.Debug || requestOptions.Options.DebugResponse)
 	if requestOptions.Options.Debug || requestOptions.Options.DebugResponse || requestOptions.Options.StoreResponse {
 		msg := fmt.Sprintf("[%s] Dumped SSL response for %s", requestOptions.TemplateID, input.MetaInput.Input)

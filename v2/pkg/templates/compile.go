@@ -12,7 +12,6 @@ import (
 
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
-	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/contextargs"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/offlinehttp"
 	"github.com/projectdiscovery/nuclei/v2/pkg/templates/cache"
 	"github.com/projectdiscovery/nuclei/v2/pkg/templates/signer"
@@ -63,7 +62,7 @@ func Parse(filePath string, preprocessor Preprocessor, options protocols.Executo
 	}
 	defer reader.Close()
 	options.TemplatePath = filePath
-	template, err := ParseTemplateFromReader(reader, preprocessor, options)
+	template, err := ParseTemplateFromReader(reader, preprocessor, options.Copy())
 	if err != nil {
 		return nil, err
 	}
@@ -275,7 +274,7 @@ func ParseTemplateFromReader(reader io.Reader, preprocessor Preprocessor, option
 	}
 
 	// create empty context args for template scope
-	options.TemplateCtx = contextargs.New()
+	options.CreateTemplateCtxStore()
 	options.ProtocolType = template.Type()
 	options.Constants = template.Constants
 

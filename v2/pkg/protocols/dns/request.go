@@ -53,7 +53,7 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, metadata,
 	// optionvars are vars passed from CLI or env variables
 	optionVars := generators.BuildPayloadFromOptions(request.options.Options)
 	// merge with metadata (eg. from workflow context)
-	vars = generators.MergeMaps(vars, metadata, optionVars, request.options.TemplateCtx.GetAll())
+	vars = generators.MergeMaps(vars, metadata, optionVars, request.options.GetTemplateCtx(input.MetaInput).GetAll())
 	variablesMap := request.options.Variables.Evaluate(vars)
 	vars = generators.MergeMaps(vars, variablesMap, request.options.Constants)
 
@@ -66,18 +66,18 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, metadata,
 				break
 			}
 			value = generators.MergeMaps(vars, value)
-			if err := request.execute(domain, metadata, previous, value, callback); err != nil {
+			if err := request.execute(input, domain, metadata, previous, value, callback); err != nil {
 				return err
 			}
 		}
 	} else {
 		value := maps.Clone(vars)
-		return request.execute(domain, metadata, previous, value, callback)
+		return request.execute(input, domain, metadata, previous, value, callback)
 	}
 	return nil
 }
 
-func (request *Request) execute(domain string, metadata, previous output.InternalEvent, vars map[string]interface{}, callback protocols.OutputEventCallback) error {
+func (request *Request) execute(input *contextargs.Context, domain string, metadata, previous output.InternalEvent, vars map[string]interface{}, callback protocols.OutputEventCallback) error {
 
 	if vardump.EnableVarDump {
 		gologger.Debug().Msgf("Protocol request variables: \n%s\n", vardump.DumpVariables(vars))
@@ -151,7 +151,7 @@ func (request *Request) execute(domain string, metadata, previous output.Interna
 	outputEvent := request.responseToDSLMap(compiledRequest, response, domain, question, traceData)
 	// expose response variables in proto_var format
 	// this is no-op if the template is not a multi protocol template
-	request.options.AddTemplateVars(request.Type(), request.ID, outputEvent)
+	request.options.AddTemplateVars(input.MetaInput, request.Type(), request.ID, outputEvent)
 	for k, v := range previous {
 		outputEvent[k] = v
 	}
@@ -159,7 +159,7 @@ func (request *Request) execute(domain string, metadata, previous output.Interna
 		outputEvent[k] = v
 	}
 	// add variables from template context before matching/extraction
-	outputEvent = generators.MergeMaps(outputEvent, request.options.TemplateCtx.GetAll())
+	outputEvent = generators.MergeMaps(outputEvent, request.options.GetTemplateCtx(input.MetaInput).GetAll())
 	event := eventcreator.CreateEvent(request, outputEvent, request.options.Options.Debug || request.options.Options.DebugResponse)
 
 	dumpResponse(event, request, request.options, response.String(), question)

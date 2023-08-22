@@ -53,11 +53,12 @@ func TestFlowTemplateWithIndex(t *testing.T) {
 	err = Template.Executer.Compile()
 	require.Nil(t, err, "could not compile template")
 
-	gotresults, err := Template.Executer.Execute(contextargs.NewWithInput("hackerone.com"))
+	input := contextargs.NewWithInput("hackerone.com")
+	gotresults, err := Template.Executer.Execute(input)
 	require.Nil(t, err, "could not execute template")
 	require.True(t, gotresults)
 	// apart from parse->compile->execution this testcase checks if dynamic extracted variables are available
-	value, ok := Template.Options.TemplateCtx.Get("nameservers")
+	value, ok := Template.Options.GetTemplateCtx(input.MetaInput).Get("nameservers")
 	require.True(t, ok)
 	if value != nil {
 		require.True(t, len(value.([]string)) > 0)
@@ -76,11 +77,12 @@ func TestFlowTemplateWithID(t *testing.T) {
 	err = Template.Executer.Compile()
 	require.Nil(t, err, "could not compile template")
 
-	gotresults, err := Template.Executer.Execute(contextargs.NewWithInput("hackerone.com"))
+	target := contextargs.NewWithInput("hackerone.com")
+	gotresults, err := Template.Executer.Execute(target)
 	require.Nil(t, err, "could not execute template")
 	require.True(t, gotresults)
 
-	value, ok := Template.Options.TemplateCtx.Get("nameservers")
+	value, ok := Template.Options.GetTemplateCtx(target.MetaInput).Get("nameservers")
 	require.True(t, ok)
 	if value != nil {
 		require.True(t, len(value.([]string)) > 0)
@@ -102,7 +104,8 @@ func TestFlowWithProtoPrefix(t *testing.T) {
 	err = Template.Executer.Compile()
 	require.Nil(t, err, "could not compile template")
 
-	gotresults, err := Template.Executer.Execute(contextargs.NewWithInput("hackerone.com"))
+	input := contextargs.NewWithInput("hackerone.com")
+	gotresults, err := Template.Executer.Execute(input)
 	require.Nil(t, err, "could not execute template")
 	require.True(t, gotresults)
 
@@ -111,7 +114,7 @@ func TestFlowWithProtoPrefix(t *testing.T) {
 		"probe-ns_host", "probe-ns_matched", "probe-ns_answer", "probe-ns_raw"}
 
 	for _, v := range protoVars {
-		value, ok := Template.Options.TemplateCtx.Get(v)
+		value, ok := Template.Options.GetTemplateCtx(input.MetaInput).Get(v)
 		require.Truef(t, ok, "could not find variable %s", v)
 		if value != nil {
 			require.Truef(t, len(value.(string)) > 0, "variable %s is empty", v)
@@ -132,12 +135,13 @@ func TestFlowWithConditionNegative(t *testing.T) {
 	err = Template.Executer.Compile()
 	require.Nil(t, err, "could not compile template")
 
+	input := contextargs.NewWithInput("scanme.sh")
 	// expect no results and verify thant dns request is executed and http is not
-	gotresults, err := Template.Executer.Execute(contextargs.NewWithInput("scanme.sh"))
+	gotresults, err := Template.Executer.Execute(input)
 	require.Nil(t, err, "could not execute template")
 	require.False(t, gotresults)
 
-	m := Template.Options.TemplateCtx.GetAll()
+	m := Template.Options.GetTemplateCtx(input.MetaInput).GetAll()
 
 	require.Equal(t, m["http_status"], nil) // since http() was not execute this variable should not exist
 	require.NotEqual(t, m["dns_raw"], "")   // since dns() was execute this variable should exist
@@ -156,12 +160,13 @@ func TestFlowWithConditionPositive(t *testing.T) {
 	err = Template.Executer.Compile()
 	require.Nil(t, err, "could not compile template")
 
+	input := contextargs.NewWithInput("blog.projectdiscovery.io")
 	// positive match . expect results also verify that both dns() and http() were executed
-	gotresults, err := Template.Executer.Execute(contextargs.NewWithInput("blog.projectdiscovery.io"))
+	gotresults, err := Template.Executer.Execute(input)
 	require.Nil(t, err, "could not execute template")
 	require.True(t, gotresults)
 
-	m := Template.Options.TemplateCtx.GetAll()
+	m := Template.Options.GetTemplateCtx(input.MetaInput).GetAll()
 
 	require.NotEqual(t, m["http_status"], "") // since http() was not execute this variable should not exist
 	require.NotEqual(t, m["dns_raw"], "")     // since dns() was execute this variable should exist

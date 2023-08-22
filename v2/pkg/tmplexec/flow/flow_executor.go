@@ -49,7 +49,7 @@ type FlowExecutor struct {
 }
 
 // NewFlowExecutor creates a new flow executor from a list of requests
-func NewFlowExecutor(requests []protocols.Request, options *protocols.ExecutorOptions, results *atomic.Bool) *FlowExecutor {
+func NewFlowExecutor(requests []protocols.Request, input *contextargs.Context, options *protocols.ExecutorOptions, results *atomic.Bool) *FlowExecutor {
 	allprotos := make(map[string][]protocols.Request)
 	for _, req := range requests {
 		switch req.Type() {
@@ -85,21 +85,18 @@ func NewFlowExecutor(requests []protocols.Request, options *protocols.ExecutorOp
 		protoFunctions: map[string]func(call goja.FunctionCall) goja.Value{},
 		results:        results,
 		jsVM:           goja.New(),
+		input:          input,
 	}
-	f.options.TemplateCtx = contextargs.New()
 	return f
 }
 
-// Init initializes the flow executor all dependencies
-// this compiles and prepares for execution of a flow
-// since it has dependencies on variables and etc it can't be done moved to templates package
+// Compile compiles js program and registers all functions
 func (f *FlowExecutor) Compile() error {
 	if f.results == nil {
 		f.results = new(atomic.Bool)
 	}
-
 	// load all variables and evaluate with existing data
-	variableMap := f.options.Variables.Evaluate(f.options.TemplateCtx.GetAll())
+	variableMap := f.options.Variables.Evaluate(f.options.GetTemplateCtx(f.input.MetaInput).GetAll())
 	// cli options
 	optionVars := generators.BuildPayloadFromOptions(f.options.Options)
 	// constants
@@ -116,7 +113,7 @@ func (f *FlowExecutor) Compile() error {
 			}
 		}
 	}
-	f.options.TemplateCtx.Merge(allVars) // merge all variables into template context
+	f.options.GetTemplateCtx(f.input.MetaInput).Merge(allVars) // merge all variables into template context
 
 	// ---- define callback functions/objects----
 	f.protoFunctions = map[string]func(call goja.FunctionCall) goja.Value{}
@@ -182,7 +179,7 @@ func (f *FlowExecutor) ExecuteWithResults(input *contextargs.Context, callback p
 	// add all input args to template context
 	if f.input != nil && f.input.HasArgs() {
 		f.input.ForEach(func(key string, value interface{}) {
-			f.options.TemplateCtx.Set(key, value)
+			f.options.GetTemplateCtx(f.input.MetaInput).Set(key, value)
 		})
 	}
 	if f.callback == nil {

@@ -2,6 +2,7 @@ package contextargs
 
 import (
 	"bytes"
+	"crypto/md5"
 	"fmt"
 	"strings"
 
@@ -66,4 +67,10 @@ func (metaInput *MetaInput) PrettyPrint() string {
 		return fmt.Sprintf("%s [%s]", metaInput.Input, metaInput.CustomIP)
 	}
 	return metaInput.Input
+}
+
+// GetScanHash returns a unique hash that represents a scan by hashing (metainput + templateId)
+func (metaInput *MetaInput) GetScanHash(templateId string) string {
+	scanHash := md5.Sum([]byte(templateId + ":" + metaInput.Input + ":" + metaInput.CustomIP))
+	return string(scanHash[:])
 }

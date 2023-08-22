@@ -154,13 +154,13 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 			if !ok {
 				break
 			}
-			if err := request.executeRequestWithPayloads(input.MetaInput.Input, hostname, value, previous, callback); err != nil {
+			if err := request.executeRequestWithPayloads(input, hostname, value, previous, callback); err != nil {
 				return err
 			}
 		}
 	} else {
 		value := make(map[string]interface{})
-		if err := request.executeRequestWithPayloads(input.MetaInput.Input, hostname, value, previous, callback); err != nil {
+		if err := request.executeRequestWithPayloads(input, hostname, value, previous, callback); err != nil {
 			return err
 		}
 	}
@@ -168,8 +168,9 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 }
 
 // ExecuteWithResults executes the protocol requests and returns results instead of writing them.
-func (request *Request) executeRequestWithPayloads(input, hostname string, dynamicValues, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
+func (request *Request) executeRequestWithPayloads(target *contextargs.Context, hostname string, dynamicValues, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
 	header := http.Header{}
+	input := target.MetaInput.Input
 
 	parsed, err := urlutil.Parse(input)
 	if err != nil {
@@ -178,7 +179,7 @@ func (request *Request) executeRequestWithPayloads(input, hostname string, dynam
 	defaultVars := protocolutils.GenerateVariables(parsed, false, nil)
 	optionVars := generators.BuildPayloadFromOptions(request.options.Options)
 	// add templatecontext variables to varMap
-	variables := request.options.Variables.Evaluate(generators.MergeMaps(defaultVars, optionVars, dynamicValues, request.options.TemplateCtx.GetAll()))
+	variables := request.options.Variables.Evaluate(generators.MergeMaps(defaultVars, optionVars, dynamicValues, request.options.GetTemplateCtx(target.MetaInput).GetAll()))
 	payloadValues := generators.MergeMaps(variables, defaultVars, optionVars, dynamicValues, request.options.Constants)
 
 	requestOptions := request.options
@@ -267,8 +268,8 @@ func (request *Request) executeRequestWithPayloads(input, hostname string, dynam
 	data["ip"] = request.dialer.GetDialedIP(hostname)
 
 	// add response fields to template context and merge templatectx variables to output event
-	request.options.AddTemplateVars(request.Type(), request.ID, data)
-	data = generators.MergeMaps(data, request.options.TemplateCtx.GetAll())
+	request.options.AddTemplateVars(target.MetaInput, request.Type(), request.ID, data)
+	data = generators.MergeMaps(data, request.options.GetTemplateCtx(target.MetaInput).GetAll())
 
 	for k, v := range previous {
 		data[k] = v

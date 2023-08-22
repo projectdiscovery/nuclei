@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"strings"
-	"sync"
 	"sync/atomic"
 
 	"github.com/projectdiscovery/gologger"
@@ -24,7 +23,6 @@ type TemplateExecuter struct {
 	options  *protocols.ExecutorOptions
 	engine   TemplateEngine
 	results  *atomic.Bool
-	m        sync.Mutex
 }
 
 // Both executer & Executor are correct spellings (its open to interpretation)
@@ -45,7 +43,10 @@ func NewTemplateExecuter(requests []protocols.Request, options *protocols.Execut
 
 	e := &TemplateExecuter{requests: requests, options: options, results: &atomic.Bool{}}
 	if options.Flow != "" {
-		e.engine = flow.NewFlowExecutor(requests, options, e.results)
+		// we use a dummy input here because goal of flow executor at this point is to just check
+		// syntax and other things are correct before proceeding to actual execution
+		// during execution new instance of flow will be created as it is tightly coupled with lot of executor options
+		e.engine = flow.NewFlowExecutor(requests, contextargs.NewWithInput("dummy"), options, e.results)
 	} else {
 		// Review:
 		// multiproto engine is only used if there is more than one protocol in template
@@ -94,6 +95,11 @@ func (e *TemplateExecuter) Requests() int {
 // Execute executes the protocol group and returns true or false if results were found.
 func (e *TemplateExecuter) Execute(input *contextargs.Context) (bool, error) {
 	results := &atomic.Bool{}
+	defer func() {
+		// it is essential to remove template context of `Scan i.e template x input pair`
+		// since it is of no use after scan is completed (regardless of success or failure)
+		e.options.RemoveTemplateCtx(input.MetaInput)
+	}()
 
 	var lastMatcherEvent *output.InternalWrappedEvent
 	writeFailureCallback := func(event *output.InternalWrappedEvent, matcherStatus bool) {
@@ -132,14 +138,10 @@ func (e *TemplateExecuter) Execute(input *contextargs.Context) (bool, error) {
 	// so in compile step earlier we compile it to validate javascript syntax and other things
 	// and while executing we create new instance of flow executor everytime
 	if e.options.Flow != "" {
-		// compile flow
-		e.m.Lock()
-		flowexec := flow.NewFlowExecutor(e.requests, e.options, results)
-		e.m.Unlock()
+		flowexec := flow.NewFlowExecutor(e.requests, input, e.options, results)
 		if err := flowexec.Compile(); err != nil {
 			return false, err
 		}
-		// execute flow
 		err = flowexec.ExecuteWithResults(input, cliExecutorCallback)
 	} else {
 		err = e.engine.ExecuteWithResults(input, cliExecutorCallback)

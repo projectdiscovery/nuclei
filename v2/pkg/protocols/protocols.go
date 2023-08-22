@@ -1,7 +1,10 @@
 package protocols
 
 import (
+	"sync/atomic"
+
 	"github.com/projectdiscovery/ratelimit"
+	mapsutil "github.com/projectdiscovery/utils/maps"
 	stringsutil "github.com/projectdiscovery/utils/strings"
 
 	"github.com/logrusorgru/aurora"
@@ -86,21 +89,47 @@ type ExecutorOptions struct {
 	Colorizer      aurora.Aurora
 	WorkflowLoader model.WorkflowLoader
 	ResumeCfg      *types.ResumeCfg
-	// TemplateContext (contains all variables that are templatescoped i.e multi protocol)
-	// only used in case of multi protocol templates
-	TemplateCtx *contextargs.Context
 	// ProtocolType is the type of the template
 	ProtocolType templateTypes.ProtocolType
 	// Flow is execution flow for the template (written in javascript)
 	Flow string
 	// IsMultiProtocol is true if template has more than one protocol
 	IsMultiProtocol bool
-	// TemplateCtx retains state of template variables
+	// templateStore is a map which contains template context for each scan  (i.e input * template-id pair)
+	templateCtxStore *mapsutil.SyncLockMap[string, *contextargs.Context]
+}
+
+// CreateTemplateCtxStore creates template context store (which contains templateCtx for every scan)
+func (e *ExecutorOptions) CreateTemplateCtxStore() {
+	e.templateCtxStore = &mapsutil.SyncLockMap[string, *contextargs.Context]{
+		Map:      make(map[string]*contextargs.Context),
+		ReadOnly: atomic.Bool{},
+	}
+}
+
+// RemoveTemplateCtx removes template context of given scan from store
+func (e *ExecutorOptions) RemoveTemplateCtx(input *contextargs.MetaInput) {
+	scanId := input.GetScanHash(e.TemplateID)
+	if e.templateCtxStore != nil {
+		e.templateCtxStore.Delete(scanId)
+	}
+}
+
+// GetTemplateCtx returns template context for given input
+func (e *ExecutorOptions) GetTemplateCtx(input *contextargs.MetaInput) *contextargs.Context {
+	scanId := input.GetScanHash(e.TemplateID)
+	templateCtx, ok := e.templateCtxStore.Get(scanId)
+	if !ok {
+		// if template context does not exist create new and add it to store and return it
+		templateCtx = contextargs.New()
+		_ = e.templateCtxStore.Set(scanId, templateCtx)
+	}
+	return templateCtx
 }
 
 // AddTemplateVars adds vars to template context with given template type as prefix
 // this method is no-op if template is not multi protocol
-func (e *ExecutorOptions) AddTemplateVars(templateType templateTypes.ProtocolType, reqID string, vars map[string]interface{}) {
+func (e *ExecutorOptions) AddTemplateVars(input *contextargs.MetaInput, reqType templateTypes.ProtocolType, reqID string, vars map[string]interface{}) {
 	// if we wan't to disable adding response variables and other variables to template context
 	// this is the statement that does it . template context is currently only enabled for
 	// multiprotocol and flow templates
@@ -108,37 +137,39 @@ func (e *ExecutorOptions) AddTemplateVars(templateType templateTypes.ProtocolTyp
 		// no-op if not multi protocol template or flow template
 		return
 	}
+	templateCtx := e.GetTemplateCtx(input)
 	for k, v := range vars {
 		if !stringsutil.EqualFoldAny(k, "template-id", "template-info", "template-path") {
 			if reqID != "" {
 				k = reqID + "_" + k
-			} else if templateType < templateTypes.InvalidProtocol {
-				k = templateType.String() + "_" + k
+			} else if reqType < templateTypes.InvalidProtocol {
+				k = reqType.String() + "_" + k
 			}
-			e.TemplateCtx.Set(k, v)
+			templateCtx.Set(k, v)
 		}
 	}
 }
 
 // AddTemplateVar adds given var to template context with given template type as prefix
 // this method is no-op if template is not multi protocol
-func (e *ExecutorOptions) AddTemplateVar(templateType templateTypes.ProtocolType, reqID string, key string, value interface{}) {
+func (e *ExecutorOptions) AddTemplateVar(input *contextargs.MetaInput, templateType templateTypes.ProtocolType, reqID string, key string, value interface{}) {
 	if !e.IsMultiProtocol && e.Flow == "" {
 		// no-op if not multi protocol template or flow template
 		return
 	}
+	templateCtx := e.GetTemplateCtx(input)
 	if reqID != "" {
 		key = reqID + "_" + key
 	} else if templateType < templateTypes.InvalidProtocol {
 		key = templateType.String() + "_" + key
 	}
-	e.TemplateCtx.Set(key, value)
+	templateCtx.Set(key, value)
 }
 
 // Copy returns a copy of the executeroptions structure
 func (e ExecutorOptions) Copy() ExecutorOptions {
 	copy := e
-	copy.TemplateCtx = e.TemplateCtx.Clone()
+	copy.CreateTemplateCtxStore()
 	return copy
 }
 
