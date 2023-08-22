@@ -22,10 +22,10 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/projectdiscovery/clistats v0.0.19
 	github.com/projectdiscovery/fastdialer v0.0.36
-	github.com/projectdiscovery/hmap v0.0.14
+	github.com/projectdiscovery/hmap v0.0.15
 	github.com/projectdiscovery/interactsh v1.1.4
 	github.com/projectdiscovery/rawhttp v0.1.18
-	github.com/projectdiscovery/retryabledns v1.0.34
+	github.com/projectdiscovery/retryabledns v1.0.35
 	github.com/projectdiscovery/retryablehttp-go v1.0.22
 	github.com/projectdiscovery/yamldoc-go v1.0.4
 	github.com/remeh/sizedwaitgroup v1.0.0
@@ -66,9 +66,9 @@ require (
 	github.com/klauspost/compress v1.16.6
 	github.com/labstack/echo/v4 v4.10.2
 	github.com/mholt/archiver v3.1.1+incompatible
-	github.com/projectdiscovery/dsl v0.0.18
+	github.com/projectdiscovery/dsl v0.0.19
 	github.com/projectdiscovery/fasttemplate v0.0.2
-	github.com/projectdiscovery/goflags v0.1.16
+	github.com/projectdiscovery/goflags v0.1.17
 	github.com/projectdiscovery/gologger v1.1.11
 	github.com/projectdiscovery/httpx v1.3.4
 	github.com/projectdiscovery/mapcidr v1.1.2
@@ -77,8 +77,8 @@ require (
 	github.com/projectdiscovery/sarif v0.0.1
 	github.com/projectdiscovery/tlsx v1.1.3
 	github.com/projectdiscovery/uncover v1.0.6-0.20230601103158-bfd7e02a5bb1
-	github.com/projectdiscovery/utils v0.0.49
-	github.com/projectdiscovery/wappalyzergo v0.0.108
+	github.com/projectdiscovery/utils v0.0.50
+	github.com/projectdiscovery/wappalyzergo v0.0.109
 	github.com/stretchr/testify v1.8.4
 	gopkg.in/src-d/go-git.v4 v4.13.1
 	gopkg.in/yaml.v3 v3.0.1
@@ -110,7 +110,7 @@ require (
 	github.com/google/certificate-transparency-go v1.1.4 // indirect
 	github.com/google/go-github/v30 v30.1.0 // indirect
 	github.com/hashicorp/go-version v1.6.0 // indirect
-	github.com/hashicorp/golang-lru/v2 v2.0.2 // indirect
+	github.com/hashicorp/golang-lru/v2 v2.0.5 // indirect
 	github.com/hbakhtiyor/strsim v0.0.0-20190107154042-4d2bbb273edf // indirect
 	github.com/jmespath/go-jmespath v0.4.0 // indirect
 	github.com/kataras/jwt v0.1.8 // indirect
@@ -129,7 +129,7 @@ require (
 	github.com/projectdiscovery/gostruct v0.0.1 // indirect
 	github.com/quic-go/quic-go v0.37.0 // indirect
 	github.com/refraction-networking/utls v1.4.2 // indirect
-	github.com/sashabaranov/go-openai v1.14.1 // indirect
+	github.com/sashabaranov/go-openai v1.14.2 // indirect
 	github.com/shoenig/go-m1cpu v0.1.6 // indirect
 	github.com/skeema/knownhosts v1.1.1 // indirect
 	github.com/smartystreets/assertions v1.0.0 // indirect
