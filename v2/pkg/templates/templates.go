@@ -334,6 +334,11 @@ func (template *Template) addRequestsToQueue(keys ...string) {
 			template.RequestsQueue = append(template.RequestsQueue, template.convertRequestToProtocolsRequest(template.RequestsWHOIS)...)
 		case types.CodeProtocol.String():
 			template.RequestsQueue = append(template.RequestsQueue, template.convertRequestToProtocolsRequest(template.RequestsCode)...)
+			// for deprecated protocols
+		case "requests":
+			template.RequestsQueue = append(template.RequestsQueue, template.convertRequestToProtocolsRequest(template.RequestsHTTP)...)
+		case "network":
+			template.RequestsQueue = append(template.RequestsQueue, template.convertRequestToProtocolsRequest(template.RequestsNetwork)...)
 		}
 	}
 }
