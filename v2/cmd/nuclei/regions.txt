@@ -1,3 +1,0 @@
-us-east-1
-us-west-1
-ap-south-1
