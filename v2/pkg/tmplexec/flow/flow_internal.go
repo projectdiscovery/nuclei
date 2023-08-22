@@ -2,7 +2,6 @@ package flow
 
 import (
 	"reflect"
-	"strings"
 	"sync/atomic"
 
 	"github.com/dop251/goja"
@@ -175,40 +174,6 @@ func (f *FlowExecutor) registerBuiltInFunctions() error {
 			}
 		}
 		return f.jsVM.ToValue(allVars)
-	}); err != nil {
-		return err
-	}
-
-	// unfortunately js doesn't have trimLeft/trimRight
-	if err := f.jsVM.Set("trimLeft", func(call goja.FunctionCall) goja.Value {
-		value := call.Argument(0).String()
-		char := call.Argument(1).String()
-		if char == "" {
-			char = " "
-		}
-		return f.jsVM.ToValue(strings.TrimLeft(value, char))
-	}); err != nil {
-		return err
-	}
-
-	if err := f.jsVM.Set("trimRight", func(call goja.FunctionCall) goja.Value {
-		value := call.Argument(0).String()
-		char := call.Argument(1).String()
-		if char == "" {
-			char = " "
-		}
-		return f.jsVM.ToValue(strings.TrimRight(value, char))
-	}); err != nil {
-		return err
-	}
-
-	if err := f.jsVM.Set("trim", func(call goja.FunctionCall) goja.Value {
-		value := call.Argument(0).String()
-		char := call.Argument(1).String()
-		if char == "" {
-			char = " "
-		}
-		return f.jsVM.ToValue(strings.Trim(value, char))
 	}); err != nil {
 		return err
 	}

@@ -110,10 +110,10 @@ Now we can see the template is straight forward and easy to understand. we are f
 - update variables at runtime (ex: when jwt expires update it by using refresh token and then continue execution)
 - and a lot more (this is just a tip of iceberg)
 
-orchestration can be understood as nuclei logic bindings for javascript (i.e two way interaction between javascript and nuclei for a specific template)
+simply put request execution orchestration can be understood as nuclei logic bindings for javascript (i.e two way interaction between javascript and nuclei for a specific template)
 
 To better understand orchestration we can try to build a template for vhost enumeration using flow. which usually requires writing / using a new tool
-for simple vhost enumeration we need to 
+**for simple vhost enumeration we need to** 
 - do a PTR lookup for given ip
 - get SSL ceritificate for given ip (i.e tls-grab)
   - extract subject_cn from certificate
@@ -187,10 +187,131 @@ In above Js code we are using some Nuclei functions and 1 Map lets understand wh
 
 For such complex use case of vhost enumeration just adding 5 lines of js code using nuclei helper functions we achieved vhost enumeration.
 
-**Is this template ready?**
-No, we are still missing one thing i.e subject_cn can contain values like `*.projectdiscovery.io` and we need to remove the prefix `*.` 
-there are lot of ways to do this we can either
-- use javscript `replace()` function to remove prefix (ex: `vhost.replace("*.","")`)
-- use nuclei js helper function `trimLeft()`  (ex: `trimLeft(vhost,"*.")`)
-- use dsl helper functions in http request
+Final template for vhost along with handling edgecases like 
+- wildcard prefix in subject_cn,subject_an
+- `.` in PTR value
 
+```yaml
+id: vhost-enum-flow
+
+info:
+  name: vhost enum flow
+  author: tarunKoyalwar
+  severity: info
+  description: |
+    vhost enumeration by extracting potential vhost names from ssl certificate and dns ptr records
+
+flow: |
+  ssl();
+  dns({hide: true});
+  for (let vhost of iterate(template["ssl_subject_cn"],template["ssl_subject_an"])) {
+    vhost = vhost.replace("*.", "")
+    set("vhost", vhost);
+    http();
+  }
+
+ssl:
+  - address: "{{Host}}:{{Port}}"
+
+dns:
+  - name: "{{FQDN}}"
+    type: PTR
+
+    matchers:
+      - type: word
+        words:
+          - "IN\tPTR"
+
+    extractors:
+      - type: regex
+        name: ptrValue
+        internal: true
+        group: 1
+        regex:
+          - "IN\tPTR\t(.+)" 
+
+http:
+  - raw:
+      - |
+        GET / HTTP/1.1
+        Host: {{trim_suffix(vhost, ".")}}
+
+    matchers:
+      - type: status
+        negative: true
+        status:
+          - 400
+          - 502
+
+    extractors:
+      - type: dsl
+        dsl:
+          - '"VHOST: " + vhost + ", SC: " + status_code + ", CL: " + content_length'
+```
+
+
+### Nuclei JS Bindings
+
+This section contains breif description of all nuclei JS bindings and their usage
+
+**1. Protocol Execution Functions**
+
+  Any protocol that is present in a nuclei template can be called/executed in javascript in format `proto_name()` i.e `http()` , `dns()` , `ssl()` etc
+  If we want to execute a specific request of a protocol (ref: see [nuclei-flow-dns](testcases/nuclei-flow-dns-id.yaml)) this can be achieved by either passing
+  - index of that request in protocol (ex: `dns(0)`, `dns(1)` etc)
+  - id of that request in protocol (ex: `dns("extract-vps")`, `dns("probe-http")` etc)
+  For More complex use cases multiple requests of a single protocol can be executed by just specifying their index or id one after another (ex: `dns("extract-vps","1")`)
+
+**2. Iterate Helper Function**
+  
+  Iterate is a nuclei js helper function which can be used to iterate over any type of value (array,map,string,number) while handling empty / nil values.
+  This is addon helper function to omit boilerplate code of checking if value is empty or not and then iterating over it
+  ```javascript
+  iterate(123,{"a":1,"b":2,"c":3})
+  // iterate over array with custom separator
+  iterate([1,2,3,4,5], " ")
+  ```
+  **Note:** In above example we used `iterate(template["ssl_subject_cn"],template["ssl_subject_an"])` which removed lot of boilerplate code of checking if value is empty or not and then iterating over it
+
+**3. Set Helper Function**
+
+  When Iterating over a values/array or some other use case we might want to invoke a request with custom/given value and this can be achieved by using `set()` helper function. This is acheived by adding this value to template context (global variables) and then using it in request. the format of `set()` is `set("variable_name",value)` ex: `set("username","admin")` etc
+  ```javascript
+    for (let vhost of myArray) {
+    set("vhost", vhost);
+    http(1)
+  }
+  ```
+  **Note:** In above example we used `set("vhost", vhost)` which added `vhost` to template context (global variables) and then called `http(1)` which used this value in request
+
+**4. Template Context**
+
+  when using `nuclei -jsonl` flag we get lot of data/metadata related to a vulnerability (ex: template details,extracted-values and much more) . A template context is nothing but a map/JSON containing all this data along with internal/unexported data that is only available at runtime (ex: extracted values from previous requests, variables added using `set()` etc). This template context is available in javascript as `template` variable and can be used to access any data from it. ex: `template["ssl_subject_cn"]` , `template["ssl_subject_an"]` etc
+  ```javascript
+  template["ssl_subject_cn"] // returns value of ssl_subject_cn from template context which is available after executing ssl request 
+  template["ptrValue"]  // returns value of ptrValue which was extracted using regex with internal: true
+  ```
+  Lot of times we don't known what all data is available in template context and this can be easily found by printing it to stdout using `log()` function
+  ```javascript
+  log(template)
+  ```
+
+**5. Log Helper Function**
+
+  It is a nuclei js alternative to `console.log` and this pretty prints map data in readable format
+  **Note:** This should be used for debugging purposed only as this prints data to stdout
+
+**6. Dedupe**
+
+  Lot of times just having arrays/slices is not enough and we might need to remove duplicate variables . for example in earlier vhost enumeration we did not remove any duplicates as there is always a chance of duplicate values in `ssl_subject_cn` and `ssl_subject_an` and this can be achieved by using `dedupe()` object. This is nuclei js helper function to abstract away boilerplate code of removing duplicates from array/slice
+  ```javascript
+  let uniq = new Dedupe(); // create new dedupe object
+  uniq.Add(template["ptrValue"]) 
+  uniq.Add(template["ssl_subject_cn"]);
+  uniq.Add(template["ssl_subject_an"]); 
+  log(uniq.Values())
+  ```
+  And that's it , this automatically converts any slice/array to map and removes duplicates from it and returns a slice/array of unique values
+
+------
+> Similar to DSL helper functions . we can either use built in functions available with `Javscript (ECMAScript 5.1)` or use DSL helper functions and its upto user to decide which one to uses
