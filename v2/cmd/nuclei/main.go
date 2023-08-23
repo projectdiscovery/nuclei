@@ -14,6 +14,7 @@ import (
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/gologger/levels"
 	"github.com/projectdiscovery/interactsh/pkg/client"
+	"github.com/projectdiscovery/nuclei/v2/internal/installer"
 	"github.com/projectdiscovery/nuclei/v2/internal/runner"
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/config"
 	"github.com/projectdiscovery/nuclei/v2/pkg/model/types/severity"
@@ -339,6 +340,11 @@ on extensive configurability, massive extensibility and ease of use.`)
 	_ = flagSet.Parse()
 
 	gologger.DefaultLogger.SetTimestamp(options.Timestamp, levels.LevelDebug)
+
+	if options.Silent {
+		// hide release notes if silent mode is enabled
+		installer.HideReleaseNotes = true
+	}
 
 	if options.LeaveDefaultPorts {
 		http.LeaveDefaultPorts = true
