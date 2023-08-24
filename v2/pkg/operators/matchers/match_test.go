@@ -157,9 +157,7 @@ func TestMatcher_MatchXPath_HTML(t *testing.T) {
 
 	// invalid xpath
 	m = &Matcher{Type: MatcherTypeHolder{MatcherType: XPathMatcher}, XPath: []string{"//a[@a==1]"}}
-	err = m.CompileMatchers()
-	require.Nil(t, err)
-
+	_ = m.CompileMatchers()
 	isMatched = m.MatchXPath(body)
 	require.False(t, isMatched, "Invalid xpath did not return false")
 }
@@ -203,9 +201,7 @@ func TestMatcher_MatchXPath_XML(t *testing.T) {
 
 	// invalid xpath
 	m = &Matcher{Type: MatcherTypeHolder{MatcherType: XPathMatcher}, XPath: []string{"//a[@a==1]"}}
-	err = m.CompileMatchers()
-	require.Nil(t, err)
-
+	_ = m.CompileMatchers()
 	isMatched = m.MatchXPath(body)
 	require.False(t, isMatched, "Invalid xpath did not return false")
 

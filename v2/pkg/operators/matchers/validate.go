@@ -6,6 +6,7 @@ import (
 	"reflect"
 	"strings"
 
+	"github.com/antchfx/xpath"
 	sliceutil "github.com/projectdiscovery/utils/slice"
 	"gopkg.in/yaml.v3"
 )
@@ -41,7 +42,21 @@ func (matcher *Matcher) Validate() error {
 	case XPathMatcher:
 		expectedFields = append(commonExpectedFields, "XPath", "Part")
 	}
-	return checkFields(matcher, matcherMap, expectedFields...)
+
+	if err = checkFields(matcher, matcherMap, expectedFields...); err != nil {
+		return err
+	}
+
+	// validate the XPath query
+	if matcher.matcherType == XPathMatcher {
+		for _, query := range matcher.XPath {
+			if _, err = xpath.Compile(query); err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
 }
 
 func checkFields(m *Matcher, matcherMap map[string]interface{}, expectedFields ...string) error {
