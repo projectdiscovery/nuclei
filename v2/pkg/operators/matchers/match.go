@@ -253,7 +253,7 @@ func (matcher *Matcher) MatchHTML(corpus string) bool {
 			continue
 		}
 
-		// Continue if the word doesn't match
+		// Continue if the xpath doesn't return any nodes
 		if len(nodes) == 0 {
 			// If we are in an AND request and a match failed,
 			// return false as the AND condition fails on any single mismatch.
@@ -293,7 +293,7 @@ func (matcher *Matcher) MatchXML(corpus string) bool {
 			continue
 		}
 
-		// Continue if the word doesn't match
+		// Continue if the xpath doesn't return any nodes
 		if len(nodes) == 0 {
 			// If we are in an AND request and a match failed,
 			// return false as the AND condition fails on any single mismatch.
