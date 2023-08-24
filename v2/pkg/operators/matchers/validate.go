@@ -38,6 +38,8 @@ func (matcher *Matcher) Validate() error {
 		expectedFields = append(commonExpectedFields, "Binary", "Part", "Encoding", "CaseInsensitive")
 	case RegexMatcher:
 		expectedFields = append(commonExpectedFields, "Regex", "Part", "Encoding", "CaseInsensitive")
+	case XPathMatcher:
+		expectedFields = append(commonExpectedFields, "XPath", "Part")
 	}
 	return checkFields(matcher, matcherMap, expectedFields...)
 }

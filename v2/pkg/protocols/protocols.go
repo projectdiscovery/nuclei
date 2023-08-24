@@ -176,6 +176,7 @@ func MakeDefaultExtractFunc(data map[string]interface{}, extractor *extractors.E
 		return extractor.ExtractXPath(itemStr)
 	case extractors.DSLExtractor:
 		return extractor.ExtractDSL(data)
+
 	}
 	return nil
 }
@@ -205,6 +206,8 @@ func MakeDefaultMatchFunc(data map[string]interface{}, matcher *matchers.Matcher
 		return matcher.ResultWithMatchedSnippet(matcher.MatchBinary(item))
 	case matchers.DSLMatcher:
 		return matcher.Result(matcher.MatchDSL(data)), nil
+	case matchers.XPathMatcher:
+		return matcher.Result(matcher.MatchXPath(item)), []string{}
 	}
 	return false, nil
 }
