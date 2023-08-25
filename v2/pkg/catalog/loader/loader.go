@@ -20,6 +20,8 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 	"github.com/projectdiscovery/nuclei/v2/pkg/utils/stats"
 	"github.com/projectdiscovery/nuclei/v2/pkg/workflows"
+	stringsutil "github.com/projectdiscovery/utils/strings"
+	urlutil "github.com/projectdiscovery/utils/url"
 )
 
 // Config contains the configuration options for the loader
@@ -126,18 +128,26 @@ func New(config *Config) (*Store, error) {
 	// Do a check to see if we have URLs in templates flag, if so
 	// we need to processs them separately and remove them from the initial list
 	var templatesFinal []string
-	var urlTemplates []string
 	for _, template := range config.Templates {
-		isURL := strings.HasPrefix(template, "http://") || strings.HasPrefix(template, "https://")
-
-		if _, err := url.ParseRequestURI(template); isURL && err == nil {
-			urlTemplates = append(urlTemplates, handleTemplatesEditorURLs(template))
+		// TODO: Add and replace this with urlutil.IsURL() helper
+		if stringsutil.HasPrefixAny(template, "http://", "https://") {
+			config.TemplateURLs = append(config.TemplateURLs, template)
 		} else {
 			templatesFinal = append(templatesFinal, template)
 		}
 	}
+
+	// fix editor paths
+	remoteTemplates := []string{}
+	for _, v := range config.TemplateURLs {
+		if _, err := urlutil.Parse(v); err == nil {
+			remoteTemplates = append(remoteTemplates, handleTemplatesEditorURLs(v))
+		} else {
+			templatesFinal = append(templatesFinal, v) // something went wrong, treat it as a file
+		}
+	}
+	config.TemplateURLs = remoteTemplates
 	store.finalTemplates = templatesFinal
-	config.TemplateURLs = append(config.TemplateURLs, urlTemplates...)
 
 	urlBasedTemplatesProvided := len(config.TemplateURLs) > 0 || len(config.WorkflowURLs) > 0
 	if urlBasedTemplatesProvided {
