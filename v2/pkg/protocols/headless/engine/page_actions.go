@@ -30,7 +30,8 @@ import (
 )
 
 var (
-	errinvalidArguments = errors.New("invalid arguments provided")
+	errinvalidArguments = errorutil.New("invalid arguments provided")
+	ErrLFAccessDenied   = errorutil.New("Use -allow-local-file-access flag to enable local file access")
 )
 
 const (
@@ -70,7 +71,11 @@ func (p *Page) ExecuteActions(input *contextargs.Context, actions []*Action, var
 		case ActionWaitEvent:
 			err = p.WaitEvent(act, outData)
 		case ActionFilesInput:
-			err = p.FilesInput(act, outData)
+			if p.options.Options.AllowLocalFileAccess {
+				err = p.FilesInput(act, outData)
+			} else {
+				err = ErrLFAccessDenied
+			}
 		case ActionAddHeader:
 			err = p.ActionAddHeader(act, outData)
 		case ActionSetHeader:
