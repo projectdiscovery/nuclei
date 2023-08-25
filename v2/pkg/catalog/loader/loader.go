@@ -128,7 +128,9 @@ func New(config *Config) (*Store, error) {
 	var templatesFinal []string
 	var urlTemplates []string
 	for _, template := range config.Templates {
-		if _, err := url.ParseRequestURI(template); err == nil {
+		isURL := strings.HasPrefix(template, "http://") || strings.HasPrefix(template, "https://")
+
+		if _, err := url.ParseRequestURI(template); isURL && err == nil {
 			urlTemplates = append(urlTemplates, handleTemplatesEditorURLs(template))
 		} else {
 			templatesFinal = append(templatesFinal, template)
