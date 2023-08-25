@@ -16,7 +16,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/contextargs"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/http/httpclientpool"
-	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/http/utils"
+	httputil "github.com/projectdiscovery/nuclei/v2/pkg/protocols/utils/http"
 	"github.com/projectdiscovery/nuclei/v2/pkg/templates"
 	"github.com/projectdiscovery/nuclei/v2/pkg/templates/types"
 	"github.com/projectdiscovery/retryablehttp-go"
@@ -88,7 +88,7 @@ func New(opts Options) (*Service, error) {
 
 	httpclient, err := httpclientpool.Get(opts.ExecuterOpts.Options, &httpclientpool.Configuration{
 		Connection: &httpclientpool.ConnectionConfiguration{
-			DisableKeepAlive: utils.ShouldDisableKeepAlive(opts.ExecuterOpts.Options),
+			DisableKeepAlive: httputil.ShouldDisableKeepAlive(opts.ExecuterOpts.Options),
 		},
 	})
 	if err != nil {
