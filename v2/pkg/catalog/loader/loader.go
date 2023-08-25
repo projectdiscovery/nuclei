@@ -22,6 +22,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/utils/stats"
 	"github.com/projectdiscovery/nuclei/v2/pkg/workflows"
 	"github.com/projectdiscovery/retryablehttp-go"
+	errorutil "github.com/projectdiscovery/utils/errors"
 	stringsutil "github.com/projectdiscovery/utils/strings"
 	urlutil "github.com/projectdiscovery/utils/url"
 )
@@ -205,8 +206,7 @@ func (store *Store) ReadTemplateFromURI(uri string, remote bool) ([]byte, error)
 		uri = handleTemplatesEditorURLs(uri)
 		remoteTemplates, _, err := getRemoteTemplatesAndWorkflows([]string{uri}, nil, store.config.RemoteTemplateDomainList)
 		if err != nil || len(remoteTemplates) == 0 {
-			gologger.Warning().Msgf("Could not load template %s: %v %s\n", uri, remoteTemplates, err)
-			return nil, err
+			return nil, errorutil.NewWithErr(err).Msgf("Could not load template %s: got %v", uri, remoteTemplates)
 		}
 		resp, err := retryablehttp.Get(remoteTemplates[0])
 		if err != nil {
@@ -215,8 +215,7 @@ func (store *Store) ReadTemplateFromURI(uri string, remote bool) ([]byte, error)
 		defer resp.Body.Close()
 		return io.ReadAll(resp.Body)
 	} else {
-		bin, err := os.ReadFile(uri)
-		return bin, err
+		return os.ReadFile(uri)
 	}
 }
 
