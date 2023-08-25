@@ -169,7 +169,7 @@ func handleTemplatesEditorURLs(input string) string {
 	if err != nil {
 		return input
 	}
-	if !strings.HasSuffix(parsed.Hostname(), "ondigitalocean.app") {
+	if !strings.HasSuffix(parsed.Hostname(), "templates.nuclei.sh") {
 		return input
 	}
 	if strings.HasSuffix(parsed.Path, ".yaml") {
