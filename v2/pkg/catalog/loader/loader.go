@@ -1,8 +1,11 @@
 package loader
 
 import (
+	"fmt"
+	"net/url"
 	"os"
 	"sort"
+	"strings"
 
 	"github.com/pkg/errors"
 	"github.com/projectdiscovery/gologger"
@@ -120,6 +123,20 @@ func New(config *Config) (*Store, error) {
 		finalWorkflows: config.Workflows,
 	}
 
+	// Do a check to see if we have URLs in templates flag, if so
+	// we need to processs them separately and remove them from the initial list
+	var templatesFinal []string
+	var urlTemplates []string
+	for _, template := range config.Templates {
+		if _, err := url.ParseRequestURI(template); err == nil {
+			urlTemplates = append(urlTemplates, handleTemplatesEditorURLs(template))
+		} else {
+			templatesFinal = append(templatesFinal, template)
+		}
+	}
+	store.finalTemplates = templatesFinal
+	config.TemplateURLs = append(config.TemplateURLs, urlTemplates...)
+
 	urlBasedTemplatesProvided := len(config.TemplateURLs) > 0 || len(config.WorkflowURLs) > 0
 	if urlBasedTemplatesProvided {
 		remoteTemplates, remoteWorkflows, err := getRemoteTemplatesAndWorkflows(config.TemplateURLs, config.WorkflowURLs, config.RemoteTemplateDomainList)
@@ -143,6 +160,22 @@ func New(config *Config) (*Store, error) {
 		store.finalTemplates = []string{cfg.DefaultConfig.TemplatesDirectory}
 	}
 	return store, nil
+}
+
+func handleTemplatesEditorURLs(input string) string {
+	parsed, err := url.Parse(input)
+	if err != nil {
+		return input
+	}
+	if !strings.HasSuffix(parsed.Hostname(), "ondigitalocean.app") {
+		return input
+	}
+	if strings.HasSuffix(parsed.Path, ".yaml") {
+		return input
+	}
+	parsed.Path = fmt.Sprintf("%s.yaml", parsed.Path)
+	finalURL := parsed.String()
+	return finalURL
 }
 
 // Templates returns all the templates in the store
