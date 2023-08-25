@@ -22,6 +22,7 @@ func Init(options *types.Options) error {
 		return nil
 	}
 	opts := fastdialer.DefaultOptions
+	InitHeadless(options.RestrictLocalNetworkAccess, options.AllowLocalFileAccess)
 
 	switch {
 	case options.SourceIP != "" && options.Interface != "":
