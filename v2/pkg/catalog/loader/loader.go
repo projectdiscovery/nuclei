@@ -2,6 +2,7 @@ package loader
 
 import (
 	"fmt"
+	"io"
 	"net/url"
 	"os"
 	"sort"
@@ -20,8 +21,14 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 	"github.com/projectdiscovery/nuclei/v2/pkg/utils/stats"
 	"github.com/projectdiscovery/nuclei/v2/pkg/workflows"
+	"github.com/projectdiscovery/retryablehttp-go"
 	stringsutil "github.com/projectdiscovery/utils/strings"
 	urlutil "github.com/projectdiscovery/utils/url"
+)
+
+const (
+	httpPrefix  = "http://"
+	httpsPrefix = "https://"
 )
 
 // Config contains the configuration options for the loader
@@ -130,7 +137,7 @@ func New(config *Config) (*Store, error) {
 	var templatesFinal []string
 	for _, template := range config.Templates {
 		// TODO: Add and replace this with urlutil.IsURL() helper
-		if stringsutil.HasPrefixAny(template, "http://", "https://") {
+		if stringsutil.HasPrefixAny(template, httpPrefix, httpsPrefix) {
 			config.TemplateURLs = append(config.TemplateURLs, template)
 		} else {
 			templatesFinal = append(templatesFinal, template)
@@ -188,6 +195,29 @@ func handleTemplatesEditorURLs(input string) string {
 	parsed.Path = fmt.Sprintf("%s.yaml", parsed.Path)
 	finalURL := parsed.String()
 	return finalURL
+}
+
+// ReadTemplateFromURI should only be used for viewing templates
+// and should not be used anywhere else like loading and executing templates
+// there is no sandbox restriction here
+func (store *Store) ReadTemplateFromURI(uri string, remote bool) ([]byte, error) {
+	if stringsutil.HasPrefixAny(uri, httpPrefix, httpsPrefix) && remote {
+		uri = handleTemplatesEditorURLs(uri)
+		remoteTemplates, _, err := getRemoteTemplatesAndWorkflows([]string{uri}, nil, store.config.RemoteTemplateDomainList)
+		if err != nil || len(remoteTemplates) == 0 {
+			gologger.Warning().Msgf("Could not load template %s: %v %s\n", uri, remoteTemplates, err)
+			return nil, err
+		}
+		resp, err := retryablehttp.Get(remoteTemplates[0])
+		if err != nil {
+			return nil, err
+		}
+		defer resp.Body.Close()
+		return io.ReadAll(resp.Body)
+	} else {
+		bin, err := os.ReadFile(uri)
+		return bin, err
+	}
 }
 
 // Templates returns all the templates in the store
