@@ -1,0 +1,15 @@
+id: nuclei-headless-local
+
+info:
+  name: Nuclei Headless Local
+  author: pdteam
+  severity: high
+
+headless:
+  - steps: 
+    - action: navigate
+      args:
+        url: "{{BaseURL}}"
+
+    - action: waitload
+    
