@@ -28,5 +28,4 @@ func TestValidate(t *testing.T) {
 	m = &Matcher{matcherType: XPathMatcher, XPath: []string{"//a[@a==1]"}}
 	err = m.Validate()
 	require.NotNil(t, err, "Invalid XPath query was correctly validated")
-
 }

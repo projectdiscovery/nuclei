@@ -176,7 +176,6 @@ func MakeDefaultExtractFunc(data map[string]interface{}, extractor *extractors.E
 		return extractor.ExtractXPath(itemStr)
 	case extractors.DSLExtractor:
 		return extractor.ExtractDSL(data)
-
 	}
 	return nil
 }

@@ -55,7 +55,6 @@ func (matcher *Matcher) Validate() error {
 			}
 		}
 	}
-
 	return nil
 }
 

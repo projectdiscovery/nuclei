@@ -240,7 +240,6 @@ func (matcher *Matcher) MatchXPath(corpus string) bool {
 func (matcher *Matcher) MatchHTML(corpus string) bool {
 	doc, err := htmlquery.Parse(strings.NewReader(corpus))
 	if err != nil {
-		gologger.Warning().Msgf("Error in htmlquery.Parse(): %q", err.Error())
 		return false
 	}
 
@@ -249,7 +248,6 @@ func (matcher *Matcher) MatchHTML(corpus string) bool {
 	for _, k := range matcher.XPath {
 		nodes, err := htmlquery.QueryAll(doc, k)
 		if err != nil {
-			gologger.Warning().Msgf("Error while evaluating xpath matcher expression: %q", k)
 			continue
 		}
 
@@ -272,7 +270,6 @@ func (matcher *Matcher) MatchHTML(corpus string) bool {
 
 		matches = matches + len(nodes)
 	}
-
 	return matches > 0
 }
 
@@ -280,7 +277,6 @@ func (matcher *Matcher) MatchHTML(corpus string) bool {
 func (matcher *Matcher) MatchXML(corpus string) bool {
 	doc, err := xmlquery.Parse(strings.NewReader(corpus))
 	if err != nil {
-		gologger.Warning().Msgf("Error in xmlquery.Parse(): %q", err.Error())
 		return false
 	}
 
@@ -289,7 +285,6 @@ func (matcher *Matcher) MatchXML(corpus string) bool {
 	for _, k := range matcher.XPath {
 		nodes, err := xmlquery.QueryAll(doc, k)
 		if err != nil {
-			gologger.Warning().Msgf("Error while evaluating xpath matcher expression: %q", k)
 			continue
 		}
 
@@ -309,7 +304,6 @@ func (matcher *Matcher) MatchXML(corpus string) bool {
 		if matcher.condition == ORCondition && !matcher.MatchAll {
 			return true
 		}
-
 		matches = matches + len(nodes)
 	}
 
