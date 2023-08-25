@@ -126,9 +126,9 @@ TEMPLATES:
    -ntv, -new-templates-version string[]  run new templates added in specific version
    -as, -automatic-scan                   automatic web scan using wappalyzer technology detection to tags mapping
    -t, -templates string[]                list of template or template directory to run (comma-separated, file)
-   -tu, -template-url string[]            list of template urls to run (comma-separated, file)
+   -turl, -template-url string[]          template url or list containing template urls to run (comma-separated, file)
    -w, -workflows string[]                list of workflow or workflow directory to run (comma-separated, file)
-   -wu, -workflow-url string[]            list of workflow urls to run (comma-separated, file)
+   -wurl, -workflow-url string[]          workflow url or list containing workflow urls to run (comma-separated, file)
    -validate                              validate the passed templates to nuclei
    -nss, -no-strict-syntax                disable strict syntax check on templates
    -td, -template-display                 displays the templates content
