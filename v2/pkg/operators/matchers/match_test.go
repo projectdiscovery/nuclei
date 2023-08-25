@@ -89,3 +89,123 @@ func TestMatcher_MatchDSL(t *testing.T) {
 		require.True(t, isMatched)
 	}
 }
+
+func TestMatcher_MatchXPath_HTML(t *testing.T) {
+	body := `<!doctype html>
+<html>
+<head>
+    <title>Example Domain</title>
+
+    <meta charset="utf-8" />
+    <meta http-equiv="Content-type" content="text/html; charset=utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+</head>
+
+<body>
+<div>
+    <h1>Example Domain</h1>
+    <p>This domain is for use in illustrative examples in documents. You may use this
+    domain in literature without prior coordination or asking for permission.</p>
+    <p><a href="https://www.iana.org/domains/example">More information...</a></p>
+</div>
+</body>
+</html>
+`
+	body2 := `<!doctype html>
+<html>
+<head>
+    <title>Example Domain</title>
+</head>
+<body>
+<h1> It's test time! </h1>
+</body>
+</html>
+`
+
+	// single match
+	m := &Matcher{Type: MatcherTypeHolder{MatcherType: XPathMatcher}, XPath: []string{"/html/body/div/p[2]/a"}}
+	err := m.CompileMatchers()
+	require.Nil(t, err)
+
+	isMatched := m.MatchXPath(body)
+	require.True(t, isMatched, "Could not match valid XPath")
+
+	isMatched = m.MatchXPath("<h1>aaaaaaaaa")
+	require.False(t, isMatched, "Could match invalid XPath")
+
+	// OR match
+	m = &Matcher{Type: MatcherTypeHolder{MatcherType: XPathMatcher}, Condition: "or", XPath: []string{"/html/head/title[contains(text(), 'PATRICAAA')]", "/html/body/div/p[2]/a"}}
+	err = m.CompileMatchers()
+	require.Nil(t, err)
+
+	isMatched = m.MatchXPath(body)
+	require.True(t, isMatched, "Could not match valid multi-XPath with OR condition")
+
+	isMatched = m.MatchXPath(body2)
+	require.False(t, isMatched, "Could match invalid multi-XPath with OR condition")
+
+	// AND match
+	m = &Matcher{Type: MatcherTypeHolder{MatcherType: XPathMatcher}, Condition: "and", XPath: []string{"/html/head/title[contains(text(), 'Example Domain')]", "/html/body/div/p[2]/a"}}
+	err = m.CompileMatchers()
+	require.Nil(t, err)
+
+	isMatched = m.MatchXPath(body)
+	require.True(t, isMatched, "Could not match valid multi-XPath with AND condition")
+
+	isMatched = m.MatchXPath(body2)
+	require.False(t, isMatched, "Could match invalid multi-XPath with AND condition")
+
+	// invalid xpath
+	m = &Matcher{Type: MatcherTypeHolder{MatcherType: XPathMatcher}, XPath: []string{"//a[@a==1]"}}
+	_ = m.CompileMatchers()
+	isMatched = m.MatchXPath(body)
+	require.False(t, isMatched, "Invalid xpath did not return false")
+}
+
+func TestMatcher_MatchXPath_XML(t *testing.T) {
+	body := `<?xml version="1.0" encoding="utf-8"?><foo>bar</foo><wibble id="1" /><parent><child>baz</child></parent>`
+	body2 := `<?xml version="1.0" encoding="utf-8"?><test>bar</test><wibble2 id="1" /><roditelj><dijete>alo</dijete></roditelj>`
+
+	// single match
+	m := &Matcher{Type: MatcherTypeHolder{MatcherType: XPathMatcher}, XPath: []string{"//foo[contains(text(), 'bar')]"}}
+	err := m.CompileMatchers()
+	require.Nil(t, err)
+
+	isMatched := m.MatchXPath(body)
+	require.True(t, isMatched, "Could not match valid XPath")
+
+	isMatched = m.MatchXPath("<h1>aaaaaaaaa</h1>")
+	require.False(t, isMatched, "Could match invalid XPath")
+
+	// OR match
+	m = &Matcher{Type: MatcherTypeHolder{MatcherType: XPathMatcher}, Condition: "or", XPath: []string{"/foo[contains(text(), 'PATRICAAA')]", "/parent/child"}}
+	err = m.CompileMatchers()
+	require.Nil(t, err)
+
+	isMatched = m.MatchXPath(body)
+	require.True(t, isMatched, "Could not match valid multi-XPath with OR condition")
+
+	isMatched = m.MatchXPath(body2)
+	require.False(t, isMatched, "Could match invalid multi-XPath with OR condition")
+
+	// AND match
+	m = &Matcher{Type: MatcherTypeHolder{MatcherType: XPathMatcher}, Condition: "and", XPath: []string{"/foo[contains(text(), 'bar')]", "/parent/child"}}
+	err = m.CompileMatchers()
+	require.Nil(t, err)
+
+	isMatched = m.MatchXPath(body)
+	require.True(t, isMatched, "Could not match valid multi-XPath with AND condition")
+
+	isMatched = m.MatchXPath(body2)
+	require.False(t, isMatched, "Could match invalid multi-XPath with AND condition")
+
+	// invalid xpath
+	m = &Matcher{Type: MatcherTypeHolder{MatcherType: XPathMatcher}, XPath: []string{"//a[@a==1]"}}
+	_ = m.CompileMatchers()
+	isMatched = m.MatchXPath(body)
+	require.False(t, isMatched, "Invalid xpath did not return false")
+
+	// invalid xml
+	isMatched = m.MatchXPath("<h1> not right <q id=2/>notvalid")
+	require.False(t, isMatched, "Invalid xpath did not return false")
+}
