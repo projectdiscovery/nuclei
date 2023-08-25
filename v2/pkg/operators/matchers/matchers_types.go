@@ -25,6 +25,8 @@ const (
 	SizeMatcher
 	// name:dsl
 	DSLMatcher
+	// name:xpath
+	XPathMatcher
 	limit
 )
 
@@ -36,6 +38,7 @@ var MatcherTypes = map[MatcherType]string{
 	RegexMatcher:  "regex",
 	BinaryMatcher: "binary",
 	DSLMatcher:    "dsl",
+	XPathMatcher:  "xpath",
 }
 
 // GetType returns the type of the matcher
