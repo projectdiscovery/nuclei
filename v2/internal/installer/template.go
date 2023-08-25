@@ -12,6 +12,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/charmbracelet/glamour"
 	"github.com/olekukonko/tablewriter"
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/config"
@@ -29,6 +30,7 @@ const (
 var (
 	HideProgressBar        = true
 	HideUpdateChangesTable = false
+	HideReleaseNotes       = false
 )
 
 // TemplateUpdateResults contains the results of template update
@@ -105,6 +107,7 @@ func (t *TemplateManager) installTemplatesAt(dir string) error {
 	if err != nil {
 		return errorutil.NewWithErr(err).Msgf("failed to install templates at %s", dir)
 	}
+
 	// write templates to disk
 	if err := t.writeTemplatesToDisk(ghrd, dir); err != nil {
 		return errorutil.NewWithErr(err).Msgf("failed to write templates to disk at %s", dir)
@@ -186,7 +189,7 @@ func (t *TemplateManager) summarizeChanges(old, new map[string]string) *template
 // getAbsoluteFilePath returns an absolute path where a file should be written based on given uri(i.e., files in zip)
 // if a returned path is empty, it means that file should not be written and skipped
 func (t *TemplateManager) getAbsoluteFilePath(templateDir, uri string, f fs.FileInfo) string {
-	// overwrite .nuclei-ignore everytime nuclei-templates are downloaded
+	// overwrite .nuclei-ignore every time nuclei-templates are downloaded
 	if f.Name() == config.NucleiIgnoreFileName {
 		return config.DefaultConfig.GetIgnoreFilePath()
 	}
@@ -206,7 +209,7 @@ func (t *TemplateManager) getAbsoluteFilePath(templateDir, uri string, f fs.File
 		gologger.Warning().Msgf("failed to get directory name from uri: %s", uri)
 		return filepath.Join(templateDir, uri)
 	}
-	// seperator is also included in rootDir
+	// separator is also included in rootDir
 	rootDirectory := uri[:index+1]
 	relPath := strings.TrimPrefix(uri, rootDirectory)
 
@@ -311,6 +314,21 @@ func (t *TemplateManager) writeTemplatesToDisk(ghrd *updateutils.GHReleaseDownlo
 
 	if err = config.DefaultConfig.WriteTemplatesIndex(index); err != nil {
 		return errorutil.NewWithErr(err).Msgf("failed to write nuclei templates index")
+	}
+
+	if !HideReleaseNotes {
+		output := ghrd.Latest.GetBody()
+		// adjust colors for both dark / light terminal themes
+		r, err := glamour.NewTermRenderer(glamour.WithAutoStyle())
+		if err != nil {
+			gologger.Error().Msgf("markdown rendering not supported: %v", err)
+		}
+		if rendered, err := r.Render(output); err == nil {
+			output = rendered
+		} else {
+			gologger.Error().Msg(err.Error())
+		}
+		gologger.Print().Msgf("\n%v\n\n", output)
 	}
 
 	// after installation, create and write checksums to .checksum file

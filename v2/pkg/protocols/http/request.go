@@ -36,6 +36,7 @@ import (
 	templateTypes "github.com/projectdiscovery/nuclei/v2/pkg/templates/types"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 	"github.com/projectdiscovery/rawhttp"
+	sliceutil "github.com/projectdiscovery/utils/slice"
 	stringsutil "github.com/projectdiscovery/utils/strings"
 	urlutil "github.com/projectdiscovery/utils/url"
 )
@@ -343,6 +344,7 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 
 	var gotDynamicValues map[string][]string
 	var requestErr error
+
 	for {
 		// returns two values, error and skip, which skips the execution for the request instance.
 		executeFunc := func(data string, payloads, dynamicValue map[string]interface{}) (bool, error) {
@@ -376,7 +378,10 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 			}
 			var gotMatches bool
 			err = request.executeRequest(input, generatedHttpRequest, previous, hasInteractMatchers, func(event *output.InternalWrappedEvent) {
-				if hasInteractMarkers && hasInteractMatchers && request.options.Interactsh != nil {
+				// a special case where operators has interactsh matchers and multiple request are made
+				// ex: status_code_2 , interactsh_protocol (from 1st request) etc
+				needsRequestEvent := interactsh.HasMatchers(request.CompiledOperators) && request.NeedsRequestCondition()
+				if (hasInteractMarkers || needsRequestEvent) && request.options.Interactsh != nil {
 					requestData := &interactsh.RequestData{
 						MakeResultFunc: request.MakeResultEvent,
 						Event:          event,
@@ -384,7 +389,9 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 						MatchFunc:      request.Match,
 						ExtractFunc:    request.Extract,
 					}
-					request.options.Interactsh.RequestEvent(generatedHttpRequest.interactshURLs, requestData)
+					allOASTUrls := getInteractshURLsFromEvent(event.InternalEvent)
+					allOASTUrls = append(allOASTUrls, generatedHttpRequest.interactshURLs...)
+					request.options.Interactsh.RequestEvent(sliceutil.Dedupe(allOASTUrls), requestData)
 					gotMatches = request.options.Interactsh.AlreadyMatched(requestData)
 				}
 				// Add the extracts to the dynamic values if any.
@@ -642,7 +649,7 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 	if !request.Unsafe && resp != nil && generatedRequest.request != nil && resp.Request != nil && !request.Race {
 		bodyBytes, _ := generatedRequest.request.BodyBytes()
 		resp.Request.Body = io.NopCloser(bytes.NewReader(bodyBytes))
-		command, err := http2curl.GetCurlCommand(resp.Request)
+		command, err := http2curl.GetCurlCommand(generatedRequest.request.Request)
 		if err == nil && command != nil {
 			curlCommand = command.String()
 		}

@@ -1,4 +1,4 @@
-package utils
+package httputil
 
 import (
 	"regexp"
@@ -13,7 +13,7 @@ import (
 var (
 	// TODO: adapt regex for cases where port is updated
 	urlWithPortRegex = regexp.MustCompile(`^{{(BaseURL|RootURL)}}:(\d+)`)
-	// regex to detect traling slash in path (not applicable to raw requests)
+	// regex to detect trailing slash in path (not applicable to raw requests)
 	trailingSlashregex = regexp.MustCompile(`^\Q{{\E[a-zA-Z]+\Q}}/\E`)
 	// ErrNoMoreRequests is internal error to
 )

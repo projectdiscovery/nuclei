@@ -53,7 +53,7 @@ func GetTargetsFromUncover(ctx context.Context, outputFormat string, opts *uncov
 	return outputChan, nil
 }
 
-// processUncoverOutput returns output strign depending on uncover field
+// processUncoverOutput returns output string depending on uncover field
 func processUncoverOutput(result sources.Result, outputFormat string) string {
 	if (result.IP == "" || result.Port == 0) && stringsutil.ContainsAny(outputFormat, "ip", "port") {
 		// if ip or port is not present, fallback to using host

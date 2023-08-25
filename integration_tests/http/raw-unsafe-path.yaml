@@ -16,6 +16,7 @@ info:
     - "/text4shell/attack?search=$%7bscript:javascript:java.lang.Runtime.getRuntime().exec('nslookup%20{}.getparam')%7d"
     - "/test/..;/..;/"
     - "/xyz/%u2s/%invalid"
+    - "//CFIDE/wizards/common/utils.cfc"
 
 
 # Test all unsafe URL Handling Edgecases
@@ -49,6 +50,10 @@ requests:
     # test relative path with invalid/corrupted characters
       - |+
         GET /xyz/%u2s/%invalid HTTP/1.1
+        Host: scanme.sh
+    # test relative path start with // (should not be removed)
+      - |+
+        GET //CFIDE/wizards/common/utils.cfc HTTP/1.1
         Host: scanme.sh
 
     unsafe: true

@@ -2,11 +2,8 @@ package engine
 
 import (
 	"context"
-	"net"
-	"net/url"
 	"os"
 	"path/filepath"
-	"regexp"
 	"strconv"
 	"strings"
 	"sync"
@@ -19,17 +16,22 @@ import (
 	"github.com/pkg/errors"
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/contextargs"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/expressions"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/generators"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/utils/vardump"
+	protocolutils "github.com/projectdiscovery/nuclei/v2/pkg/protocols/utils"
+	httputil "github.com/projectdiscovery/nuclei/v2/pkg/protocols/utils/http"
 	errorutil "github.com/projectdiscovery/utils/errors"
 	fileutil "github.com/projectdiscovery/utils/file"
 	folderutil "github.com/projectdiscovery/utils/folder"
 	stringsutil "github.com/projectdiscovery/utils/strings"
+	urlutil "github.com/projectdiscovery/utils/url"
 	"github.com/segmentio/ksuid"
 )
 
 var (
-	errinvalidArguments = errors.New("invalid arguments provided")
-	reUrlWithPort       = regexp.MustCompile(`{{BaseURL}}:(\d+)`)
+	errinvalidArguments = errorutil.New("invalid arguments provided")
+	ErrLFAccessDenied   = errorutil.New("Use -allow-local-file-access flag to enable local file access")
 )
 
 const (
@@ -39,17 +41,13 @@ const (
 )
 
 // ExecuteActions executes a list of actions on a page.
-func (p *Page) ExecuteActions(input *contextargs.Context, actions []*Action) (map[string]string, error) {
-	baseURL, err := url.Parse(input.MetaInput.Input)
-	if err != nil {
-		return nil, err
-	}
-
+func (p *Page) ExecuteActions(input *contextargs.Context, actions []*Action, variables map[string]interface{}) (map[string]string, error) {
 	outData := make(map[string]string)
+	var err error
 	for _, act := range actions {
 		switch act.ActionType.ActionType {
 		case ActionNavigate:
-			err = p.NavigateURL(act, outData, baseURL)
+			err = p.NavigateURL(act, outData, variables)
 		case ActionScript:
 			err = p.RunScript(act, outData)
 		case ActionClick:
@@ -73,7 +71,11 @@ func (p *Page) ExecuteActions(input *contextargs.Context, actions []*Action) (ma
 		case ActionWaitEvent:
 			err = p.WaitEvent(act, outData)
 		case ActionFilesInput:
-			err = p.FilesInput(act, outData)
+			if p.options.Options.AllowLocalFileAccess {
+				err = p.FilesInput(act, outData)
+			} else {
+				err = ErrLFAccessDenied
+			}
 		case ActionAddHeader:
 			err = p.ActionAddHeader(act, outData)
 		case ActionSetHeader:
@@ -237,25 +239,57 @@ func (p *Page) ActionSetMethod(act *Action, out map[string]string) error {
 }
 
 // NavigateURL executes an ActionLoadURL actions loading a URL for the page.
-func (p *Page) NavigateURL(action *Action, out map[string]string, parsed *url.URL) error {
-	URL := p.getActionArgWithDefaultValues(action, "url")
-	if URL == "" {
+func (p *Page) NavigateURL(action *Action, out map[string]string, allvars map[string]interface{}) error {
+	// input <- is input url from cli
+	// target <- is the url from template (ex: {{BaseURL}}/test)
+	input, err := urlutil.Parse(p.input.MetaInput.Input)
+	if err != nil {
+		return errorutil.NewWithErr(err).Msgf("could not parse url %s", p.input.MetaInput.Input)
+	}
+	target := p.getActionArgWithDefaultValues(action, "url")
+	if target == "" {
 		return errinvalidArguments
 	}
 
-	// Handle the dynamic value substitution here.
-	URL, parsed = baseURLWithTemplatePrefs(URL, parsed)
-	if strings.HasSuffix(parsed.Path, "/") && strings.Contains(URL, "{{BaseURL}}/") {
-		parsed.Path = strings.TrimSuffix(parsed.Path, "/")
-	}
-	parsedString := parsed.String()
-	final := replaceWithValues(URL, map[string]interface{}{
-		"Hostname": parsed.Hostname(),
-		"BaseURL":  parsedString,
-	})
+	// if target contains port ex: {{BaseURL}}:8080 use port specified in input
+	input, target = httputil.UpdateURLPortFromPayload(input, target)
+	hasTrailingSlash := httputil.HasTrailingSlash(target)
 
-	if err := p.page.Navigate(final); err != nil {
-		return errors.Wrap(err, "could not navigate")
+	// create vars from input url
+	defaultReqVars := protocolutils.GenerateVariables(input, hasTrailingSlash, contextargs.GenerateVariables(p.input))
+	// merge all variables
+	// Note: ideally we should evaluate all available variables with reqvars
+	// but due to cyclic dependency between packages `engine` and `protocols`
+	// allvars are evaluated,merged and passed from headless package itself
+	// TODO: remove cyclic dependency between packages `engine` and `protocols`
+	allvars = generators.MergeMaps(allvars, defaultReqVars)
+
+	if vardump.EnableVarDump {
+		gologger.Debug().Msgf("Final Protocol request variables: \n%s\n", vardump.DumpVariables(allvars))
+	}
+
+	// Evaluate the target url with all variables
+	target, err = expressions.Evaluate(target, allvars)
+	if err != nil {
+		return errorutil.NewWithErr(err).Msgf("could not evaluate url %s", target)
+	}
+
+	reqURL, err := urlutil.ParseURL(target, true)
+	if err != nil {
+		return errorutil.NewWithTag("http", "failed to parse url %v while creating http request", target)
+	}
+
+	// ===== parameter automerge =====
+	// while merging parameters first preference is given to target params
+	finalparams := input.Params.Clone()
+	finalparams.Merge(reqURL.Params.Encode())
+	reqURL.Params = finalparams
+
+	// log all navigated requests
+	p.instance.requestLog[action.GetArg("url")] = reqURL.String()
+
+	if err := p.page.Navigate(reqURL.String()); err != nil {
+		return errorutil.NewWithErr(err).Msgf("could not navigate to url %s", reqURL.String())
 	}
 	return nil
 }
@@ -607,23 +641,6 @@ func selectorBy(selector string) rod.SelectorType {
 	default:
 		return rod.SelectorTypeText
 	}
-}
-
-// baseURLWithTemplatePrefs returns the url for BaseURL keeping
-// the template port and path preference over the user provided one.
-func baseURLWithTemplatePrefs(data string, parsed *url.URL) (string, *url.URL) {
-	// template port preference over input URL port if template has a port
-	matches := reUrlWithPort.FindAllStringSubmatch(data, -1)
-	if len(matches) == 0 {
-		return data, parsed
-	}
-	port := matches[0][1]
-	parsed.Host = net.JoinHostPort(parsed.Hostname(), port)
-	data = strings.ReplaceAll(data, ":"+port, "")
-	if parsed.Path == "" {
-		parsed.Path = "/"
-	}
-	return data, parsed
 }
 
 func (p *Page) getActionArg(action *Action, arg string) string {

@@ -10,6 +10,9 @@ http:
       - |
         GET /api/v1/test?id=123 HTTP/1.1
         Host: {{Hostname}}
+      - |
+        GET HTTP/1.1
+        Host: {{Hostname}}
     disable-path-automerge: true
     matchers:
       - type: status

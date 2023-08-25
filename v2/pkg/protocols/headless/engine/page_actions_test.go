@@ -8,6 +8,7 @@ import (
 	"net/http/cookiejar"
 	"net/http/httptest"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -20,6 +21,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/protocolstate"
 	"github.com/projectdiscovery/nuclei/v2/pkg/testutils/testheadless"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
+	stringsutil "github.com/projectdiscovery/utils/strings"
 )
 
 func TestActionNavigate(t *testing.T) {
@@ -36,7 +38,7 @@ func TestActionNavigate(t *testing.T) {
 	actions := []*Action{{ActionType: ActionTypeHolder{ActionType: ActionNavigate}, Data: map[string]string{"url": "{{BaseURL}}"}}, {ActionType: ActionTypeHolder{ActionType: ActionWaitLoad}}}
 
 	testHeadlessSimpleResponse(t, response, actions, 20*time.Second, func(page *Page, err error, out map[string]string) {
-		require.Nil(t, err, "could not run page actions")
+		require.Nilf(t, err, "could not run page actions")
 		require.Equal(t, "Nuclei Test Page", page.Page().MustInfo().Title, "could not navigate correctly")
 	})
 }
@@ -316,6 +318,29 @@ func TestActionFilesInput(t *testing.T) {
 	})
 }
 
+// Negative testcase for files input where it should fail
+func TestActionFilesInputNegative(t *testing.T) {
+	response := `
+		<html>
+			<head>
+				<title>Nuclei Test Page</title>
+			</head>
+			<body>Nuclei Test Page</body>
+			<input type="file">
+		</html>`
+
+	actions := []*Action{
+		{ActionType: ActionTypeHolder{ActionType: ActionNavigate}, Data: map[string]string{"url": "{{BaseURL}}"}},
+		{ActionType: ActionTypeHolder{ActionType: ActionWaitLoad}},
+		{ActionType: ActionTypeHolder{ActionType: ActionFilesInput}, Data: map[string]string{"selector": "input", "value": "test1.pdf"}},
+	}
+	t.Setenv("LOCAL_FILE_ACCESS", "false")
+
+	testHeadlessSimpleResponse(t, response, actions, 20*time.Second, func(page *Page, err error, out map[string]string) {
+		require.ErrorContains(t, err, ErrLFAccessDenied.Error(), "got file access when -lfa is false")
+	})
+}
+
 func TestActionWaitLoad(t *testing.T) {
 	response := `
 		<html>
@@ -349,7 +374,7 @@ func TestActionGetResource(t *testing.T) {
 				<title>Nuclei Test Page</title>
 			</head>
 			<body>
-				<img id="test" src="https://nuclei.projectdiscovery.io/static/logo.png">
+				<img id="test" src="https://raw.githubusercontent.com/projectdiscovery/wallpapers/main/pd-floppy.jpg">
 			</body>
 		</html>`
 
@@ -360,7 +385,7 @@ func TestActionGetResource(t *testing.T) {
 
 	testHeadlessSimpleResponse(t, response, actions, 20*time.Second, func(page *Page, err error, out map[string]string) {
 		require.Nil(t, err, "could not run page actions")
-		require.Equal(t, len(out["src"]), 3159, "could not find resource")
+		require.Equal(t, len(out["src"]), 121808, "could not find resource")
 	})
 }
 
@@ -569,7 +594,10 @@ func testHeadless(t *testing.T, actions []*Action, timeout time.Duration, handle
 	input.CookieJar, err = cookiejar.New(nil)
 	require.Nil(t, err)
 
-	extractedData, page, err := instance.Run(input, actions, nil, &Options{Timeout: timeout})
+	lfa := getBoolFromEnv("LOCAL_FILE_ACCESS", true)
+	rna := getBoolFromEnv("RESTRICED_LOCAL_NETWORK_ACCESS", false)
+
+	extractedData, page, err := instance.Run(input, actions, nil, &Options{Timeout: timeout, Options: &types.Options{AllowLocalFileAccess: lfa, RestrictLocalNetworkAccess: rna}}) // allow file access in test
 	assert(page, err, extractedData)
 
 	if page != nil {
@@ -590,4 +618,74 @@ func TestContainsAnyModificationActionType(t *testing.T) {
 	if !containsAnyModificationActionType(ActionSetMethod, ActionAddHeader, ActionSetHeader, ActionDeleteHeader, ActionSetBody) {
 		t.Error("Expected true, got false")
 	}
+}
+
+func TestBlockedHeadlessURLS(t *testing.T) {
+
+	// run this test from binary since we are changing values
+	// of global variables
+	if os.Getenv("TEST_BLOCK_HEADLESS_URLS") != "1" {
+		cmd := exec.Command(os.Args[0], "-test.run=TestBlockedHeadlessURLS", "-test.v")
+		cmd.Env = append(cmd.Env, "TEST_BLOCK_HEADLESS_URLS=1")
+		out, err := cmd.CombinedOutput()
+		if !strings.Contains(string(out), "PASS\n") || err != nil {
+			t.Fatalf("%s\n(exit status %v)", string(out), err)
+		}
+		return
+	}
+
+	opts := &types.Options{
+		AllowLocalFileAccess:       false,
+		RestrictLocalNetworkAccess: true,
+	}
+	err := protocolstate.Init(opts)
+	require.Nil(t, err, "could not init protocol state")
+
+	browser, err := New(&types.Options{ShowBrowser: false, UseInstalledChrome: testheadless.HeadlessLocal})
+	require.Nil(t, err, "could not create browser")
+	defer browser.Close()
+
+	instance, err := browser.NewInstance()
+	require.Nil(t, err, "could not create browser instance")
+	defer instance.Close()
+
+	ts := httptest.NewServer(nil)
+	defer ts.Close()
+
+	testcases := []string{
+		"file:/etc/hosts",
+		" file:///etc/hosts\r\n",
+		"	fILe:/../../../../etc/hosts",
+		ts.URL, // local test server
+		"fTP://example.com:21\r\n",
+		"ftp://example.com:21",
+		"chrome://settings",
+		"	chROme://version",
+		"chrome-extension://version\r",
+		"	chrOme-EXTension://settings",
+		"view-source:file:/etc/hosts",
+	}
+
+	for _, testcase := range testcases {
+		actions := []*Action{
+			{ActionType: ActionTypeHolder{ActionType: ActionNavigate}, Data: map[string]string{"url": testcase}},
+			{ActionType: ActionTypeHolder{ActionType: ActionWaitLoad}},
+		}
+
+		data, page, err := instance.Run(contextargs.NewWithInput(ts.URL), actions, nil, &Options{Timeout: 20 * time.Second, Options: opts}) // allow file access in test
+		require.Error(t, err, "expected error for url %s got %v", testcase, data)
+		require.True(t, stringsutil.ContainsAny(err.Error(), "net::ERR_ACCESS_DENIED", "failed to parse url", "Cannot navigate to invalid URL", "net::ERR_ABORTED", "net::ERR_INVALID_URL"), "found different error %v for testcases %v", err, testcase)
+		require.Len(t, data, 0, "expected no data for url %s got %v", testcase, data)
+		if page != nil {
+			page.Close()
+		}
+	}
+}
+
+func getBoolFromEnv(key string, defaultValue bool) bool {
+	val := os.Getenv(key)
+	if val == "" {
+		return defaultValue
+	}
+	return strings.EqualFold(val, "true")
 }
