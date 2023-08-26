@@ -341,9 +341,9 @@ on extensive configurability, massive extensibility and ease of use.`)
 
 	gologger.DefaultLogger.SetTimestamp(options.Timestamp, levels.LevelDebug)
 
-	if options.Silent {
+	if options.VerboseVerbose {
 		// hide release notes if silent mode is enabled
-		installer.HideReleaseNotes = true
+		installer.HideReleaseNotes = false
 	}
 
 	if options.LeaveDefaultPorts {
