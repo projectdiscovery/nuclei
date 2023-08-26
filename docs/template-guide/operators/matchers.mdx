@@ -8,7 +8,7 @@ Matchers allow different type of flexible comparisons on protocol responses. The
 
 ### Types
 
-Multiple matchers can be specified in a request. There are basically 6 types of matchers:
+Multiple matchers can be specified in a request. There are basically 7 types of matchers:
 
 | Matcher Type | Part Matched                |
 |--------------|-----------------------------|
@@ -18,6 +18,7 @@ Multiple matchers can be specified in a request. There are basically 6 types of 
 | regex        | Part for a protocol         |
 | binary       | Part for a protocol         |
 | dsl          | Part for a protocol         |
+| xpath        | Part for a protocol         |
 
 To match status codes for responses, you can use the following syntax.
 
@@ -56,6 +57,16 @@ matchers:
 ```
 
 **Word** and **Regex** matchers can be further configured depending on the needs of the users.
+
+**XPath** matchers use XPath queries to match XML and HTML responses. If the XPath query returns any results, it's considered a match.
+
+```yaml
+matchers:
+  - type: xpath
+    part: body
+    xpath:
+      - "/html/head/title[contains(text(), 'Example Domain')]"
+```
 
 Complex matchers of type **dsl** allows building more elaborate expressions with helper functions. These function allow access to Protocol Response which contains variety of data based on each protocol. See protocol specific documentation to learn about different returned results.
 

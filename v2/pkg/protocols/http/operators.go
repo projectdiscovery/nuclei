@@ -40,6 +40,8 @@ func (request *Request) Match(data map[string]interface{}, matcher *matchers.Mat
 		return matcher.ResultWithMatchedSnippet(matcher.MatchBinary(item))
 	case matchers.DSLMatcher:
 		return matcher.Result(matcher.MatchDSL(data)), []string{}
+	case matchers.XPathMatcher:
+		return matcher.Result(matcher.MatchXPath(item)), []string{}
 	}
 	return false, []string{}
 }
