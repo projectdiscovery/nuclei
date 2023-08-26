@@ -1,0 +1,17 @@
+---
+title: "Generate Template (AI)"
+description: "Generate nuclei template using AI prompt"
+api: "POST https://templates-api.nuclei.sh/v1/template/user/generate"
+version: 'v1'
+---
+
+
+## Parameters (required)
+
+<ParamField body="prompt" type="string" required>
+  AI Prompt to generate nuclei template
+</ParamField>
+
+<ParamField body="model" type="string" default="gpt-4" required>
+ OpenAI model to use
+</ParamField>
