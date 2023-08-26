@@ -1,0 +1,20 @@
+---
+title: "Scan Template"
+description: "Scan target host using a specified nuclei template."
+api: "POST https://templates-api.nuclei.sh/v1/template/user/scan"
+version: 'v1'
+---
+
+## Parameters (required)
+
+<ParamField body="target" type="string" required>
+  Target host to scan using nuclei template.
+
+  **Constraints**: Valid hostname or IP address or URL.
+</ParamField>
+
+<ParamField body="template_base64" type="string" required>
+  Base64 encoded nuclei template.
+
+  **Constraints**: Valid Base64 encoded template.
+</ParamField>
