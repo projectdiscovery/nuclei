@@ -430,8 +430,8 @@ github.com/projectdiscovery/rdap v0.9.1-0.20221108103045-9865884d1917 h1:m03X4gB
 github.com/projectdiscovery/rdap v0.9.1-0.20221108103045-9865884d1917/go.mod h1:JxXtZC9e195awe7EynrcnBJmFoad/BNDzW9mzFkK8Sg=
 github.com/projectdiscovery/retryabledns v1.0.35 h1:lPX8f7exDaiNJc/4Rc44xQfFK9BpA8ZLtpQ+te2ymLU=
 github.com/projectdiscovery/retryabledns v1.0.35/go.mod h1:V4nRoHJzK2UmlGgKMRduLBkgNNMXJXmJchB5Wui8s4c=
-github.com/projectdiscovery/retryablehttp-go v1.0.22 h1:GfOELRfB8O2s5LHUwT6gwE95meI9VXaEUpu5T7pGIbc=
-github.com/projectdiscovery/retryablehttp-go v1.0.22/go.mod h1:dog12XS0gQZS+nL2SYnzvRJIYFv/ZGDHEtzeKCwkkQc=
+github.com/projectdiscovery/retryablehttp-go v1.0.23 h1:f2ErGh40TRn+D3ViamsUGLMfQhMsofnRegQqxJ6Gpmo=
+github.com/projectdiscovery/retryablehttp-go v1.0.23/go.mod h1:y8068pvYKptYGBM+Mfjcj2+N1aepogiFrU8Y+1HFxIg=
 github.com/projectdiscovery/sarif v0.0.1 h1:C2Tyj0SGOKbCLgHrx83vaE6YkzXEVrMXYRGLkKCr/us=
 github.com/projectdiscovery/sarif v0.0.1/go.mod h1:cEYlDu8amcPf6b9dSakcz2nNnJsoz4aR6peERwV+wuQ=
 github.com/projectdiscovery/stringsutil v0.0.2 h1:uzmw3IVLJSMW1kEg8eCStG/cGbYYZAja8BH3LqqJXMA=
@@ -439,8 +439,8 @@ github.com/projectdiscovery/tlsx v1.1.3 h1:V/8VZaSpe5CQYPmmpdWmiA85UcSZcricD9C2u
 github.com/projectdiscovery/tlsx v1.1.3/go.mod h1:BcWbUEOpZNMEW65Z4hkI366o1YdAgjw1Kapt+E5mOW8=
 github.com/projectdiscovery/uncover v1.0.6-0.20230601103158-bfd7e02a5bb1 h1:Pu6LvDqn+iSlhCDKKWm1ItPc++kqqlU8OntZeB/Prak=
 github.com/projectdiscovery/uncover v1.0.6-0.20230601103158-bfd7e02a5bb1/go.mod h1:Drl/CWD392mKtdXJhCBPlMkM0I6671pqedFphcnK5f8=
-github.com/projectdiscovery/utils v0.0.50 h1:nP62c7dLUTwXaZf7ijjL9DmClolSJvp7NfOdtdYlmQ0=
-github.com/projectdiscovery/utils v0.0.50/go.mod h1:WhzbWSyGkTDn4Jvw+7jM2yP675/RARegNjoA6S7zYcc=
+github.com/projectdiscovery/utils v0.0.51 h1:WZV8kP4VW/I1ZkXDjyoudhhfVVHpAKKnW+Re0LVNMbc=
+github.com/projectdiscovery/utils v0.0.51/go.mod h1:WhzbWSyGkTDn4Jvw+7jM2yP675/RARegNjoA6S7zYcc=
 github.com/projectdiscovery/wappalyzergo v0.0.109 h1:BERfwTRn1dvB1tbhyc5m67R8VkC9zbVuPsEq4VEm07k=
 github.com/projectdiscovery/wappalyzergo v0.0.109/go.mod h1:4Z3DKhi75zIPMuA+qSDDWxZvnhL4qTLmDx4dxNMu7MA=
 github.com/projectdiscovery/yamldoc-go v1.0.4 h1:eZoESapnMw6WAHiVgRwNqvbJEfNHEH148uthhFbG5jE=
