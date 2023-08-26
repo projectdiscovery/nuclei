@@ -30,7 +30,7 @@ const (
 var (
 	HideProgressBar        = true
 	HideUpdateChangesTable = false
-	HideReleaseNotes       = false
+	HideReleaseNotes       = true
 )
 
 // TemplateUpdateResults contains the results of template update
