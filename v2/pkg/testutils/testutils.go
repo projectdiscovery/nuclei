@@ -18,6 +18,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/protocolinit"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
+	"github.com/projectdiscovery/nuclei/v2/pkg/utils"
 )
 
 // Init initializes the protocols and their configurations
@@ -136,7 +137,30 @@ func (m *MockOutputWriter) Request(templateID, url, requestType string, err erro
 }
 
 // WriteFailure writes the event to file and/or screen.
-func (m *MockOutputWriter) WriteFailure(*output.InternalWrappedEvent) error {
+func (m *MockOutputWriter) WriteFailure(wrappedEvent *output.InternalWrappedEvent) error {
+	if m.WriteCallback != nil {
+		// create event
+		event := wrappedEvent.InternalEvent
+		templatePath, templateURL := utils.TemplatePathURL(types.ToString(event["template-path"]))
+		var templateInfo model.Info
+		if event["template-info"] != nil {
+			templateInfo = event["template-info"].(model.Info)
+		}
+		data := &output.ResultEvent{
+			Template:      templatePath,
+			TemplateURL:   templateURL,
+			TemplateID:    types.ToString(event["template-id"]),
+			TemplatePath:  types.ToString(event["template-path"]),
+			Info:          templateInfo,
+			Type:          types.ToString(event["type"]),
+			Host:          types.ToString(event["host"]),
+			Request:       types.ToString(event["request"]),
+			Response:      types.ToString(event["response"]),
+			MatcherStatus: false,
+			Timestamp:     time.Now(),
+		}
+		m.WriteCallback(data)
+	}
 	return nil
 }
 func (m *MockOutputWriter) WriteStoreDebugData(host, templateID, eventType string, data string) {
