@@ -298,7 +298,9 @@ func wrappedGet(options *types.Options, configuration *Configuration) (*retryabl
 
 	// Only add to client pool if we don't have a cookie jar in place.
 	if jar == nil {
-		clientPool.Set(hash, client)
+		if err := clientPool.Set(hash, client); err != nil {
+			return nil, err
+		}
 	}
 	return client, nil
 }
