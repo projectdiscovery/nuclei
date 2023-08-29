@@ -31,7 +31,7 @@ func ValidateNFailRequest(page *rod.Page, e *proto.FetchRequestPaused) error {
 	}
 	// validate potential invalid schemes
 	// javascript protocol is allowed for xss fuzzing
-	if HasPrefixAnyI(normalized, "ftp:", "externalfile:", "chrome:", "chrome-extension:") {
+	if stringsutil.HasPrefixAnyI(normalized, "ftp:", "externalfile:", "chrome:", "chrome-extension:") {
 		return multierr.Combine(FailWithReason(page, e), ErrURLDenied.Msgf(reqURL, "protocol blocked by network policy"))
 	}
 	if !isValidHost(reqURL) {
@@ -76,15 +76,4 @@ func isValidHost(targetUrl string) bool {
 	targetUrl = urlx.Hostname()
 	_, ok := networkPolicy.ValidateHost(targetUrl)
 	return ok
-}
-
-// HasPrefixAnyI checks if the string has any of the prefixes
-// TODO: replace with stringsutil.HasPrefixAnyI after implementation
-func HasPrefixAnyI(s string, prefixes ...string) bool {
-	for _, prefix := range prefixes {
-		if stringsutil.HasPrefixI(s, prefix) {
-			return true
-		}
-	}
-	return false
 }
