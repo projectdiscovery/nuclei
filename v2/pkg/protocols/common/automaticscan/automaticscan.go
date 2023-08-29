@@ -59,13 +59,13 @@ func New(opts Options) (*Service, error) {
 
 	var mappingData map[string]string
 	config := config.DefaultConfig
-	if err == nil {
-		mappingFile := filepath.Join(config.TemplatesDirectory, mappingFilename)
-		if file, err := os.Open(mappingFile); err == nil {
-			_ = yaml.NewDecoder(file).Decode(&mappingData)
-			file.Close()
-		}
+
+	mappingFile := filepath.Join(config.TemplatesDirectory, mappingFilename)
+	if file, err := os.Open(mappingFile); err == nil {
+		_ = yaml.NewDecoder(file).Decode(&mappingData)
+		file.Close()
 	}
+
 	if opts.ExecuterOpts.Options.Verbose {
 		gologger.Verbose().Msgf("Normalized mapping (%d): %v\n", len(mappingData), mappingData)
 	}
