@@ -6,6 +6,7 @@ import (
 	"net/url"
 	"os"
 	"runtime"
+	"sync"
 
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/config"
 	"github.com/projectdiscovery/retryablehttp-go"
@@ -34,7 +35,55 @@ type PdtmAPIResponse struct {
 // and returns an error if it fails to check on success it returns nil and changes are
 // made to the default config in config.DefaultConfig
 func NucleiVersionCheck() error {
-	resp, err := retryableHttpClient.Get(pdtmNucleiVersionEndpoint + "?" + getpdtmParams())
+	return doVersionCheck(false)
+}
+
+// this will be updated by features of 1.21 release (which directly provides sync.Once(func()))
+type sdkUpdateCheck struct {
+	sync.Once
+}
+
+var sdkUpdateCheckInstance = &sdkUpdateCheck{}
+
+// NucleiSDKVersionCheck checks for latest version of nuclei which running in sdk mode
+// this only happens once per process regardless of how many times this function is called
+func NucleiSDKVersionCheck() {
+	sdkUpdateCheckInstance.Do(func() {
+		_ = doVersionCheck(true)
+	})
+}
+
+// getpdtmParams returns encoded query parameters sent to update check endpoint
+func getpdtmParams(isSDK bool) string {
+	params := &url.Values{}
+	params.Add("os", runtime.GOOS)
+	params.Add("arch", runtime.GOARCH)
+	params.Add("go_version", runtime.Version())
+	params.Add("v", config.Version)
+	if isSDK {
+		params.Add("sdk", "true")
+	}
+	return params.Encode()
+}
+
+// UpdateIgnoreFile updates default ignore file by downloading latest ignore file
+func UpdateIgnoreFile() error {
+	resp, err := retryableHttpClient.Get(pdtmNucleiIgnoreFileEndpoint + "?" + getpdtmParams(false))
+	if err != nil {
+		return err
+	}
+	bin, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return err
+	}
+	if err := os.WriteFile(config.DefaultConfig.GetIgnoreFilePath(), bin, 0644); err != nil {
+		return err
+	}
+	return config.DefaultConfig.UpdateNucleiIgnoreHash()
+}
+
+func doVersionCheck(isSDK bool) error {
+	resp, err := retryableHttpClient.Get(pdtmNucleiVersionEndpoint + "?" + getpdtmParams(isSDK))
 	if err != nil {
 		return err
 	}
@@ -62,30 +111,4 @@ func NucleiVersionCheck() error {
 		}
 	}
 	return config.DefaultConfig.WriteVersionCheckData(pdtmResp.IgnoreHash, nucleiversion, templateversion)
-}
-
-// getpdtmParams returns encoded query parameters sent to update check endpoint
-func getpdtmParams() string {
-	params := &url.Values{}
-	params.Add("os", runtime.GOOS)
-	params.Add("arch", runtime.GOARCH)
-	params.Add("go_version", runtime.Version())
-	params.Add("v", config.Version)
-	return params.Encode()
-}
-
-// UpdateIgnoreFile updates default ignore file by downloading latest ignore file
-func UpdateIgnoreFile() error {
-	resp, err := retryableHttpClient.Get(pdtmNucleiIgnoreFileEndpoint + "?" + getpdtmParams())
-	if err != nil {
-		return err
-	}
-	bin, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return err
-	}
-	if err := os.WriteFile(config.DefaultConfig.GetIgnoreFilePath(), bin, 0644); err != nil {
-		return err
-	}
-	return config.DefaultConfig.UpdateNucleiIgnoreHash()
 }

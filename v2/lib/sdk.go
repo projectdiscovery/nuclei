@@ -2,15 +2,9 @@ package nuclei
 
 import (
 	"bufio"
-	"context"
-	"encoding/json"
-	"fmt"
 	"io"
-	"time"
 
-	"github.com/logrusorgru/aurora"
 	"github.com/projectdiscovery/httpx/common/httpx"
-	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/config"
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/disk"
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/loader"
 	"github.com/projectdiscovery/nuclei/v2/pkg/core"
@@ -19,26 +13,50 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/parsers"
 	"github.com/projectdiscovery/nuclei/v2/pkg/progress"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
-	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/contextargs"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/hosterrorscache"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/interactsh"
-	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/protocolinit"
-	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/protocolstate"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/headless/engine"
 	"github.com/projectdiscovery/nuclei/v2/pkg/reporting"
-	"github.com/projectdiscovery/nuclei/v2/pkg/testutils"
+	"github.com/projectdiscovery/nuclei/v2/pkg/templates"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 	"github.com/projectdiscovery/ratelimit"
+	"github.com/projectdiscovery/retryablehttp-go"
 	errorutil "github.com/projectdiscovery/utils/errors"
 )
 
 // NucleiSDKOptions contains options for nuclei SDK
 type NucleiSDKOptions func(e *NucleiEngine) error
 
+var (
+	// ErrNotImplemented is returned when a feature is not implemented
+	ErrNotImplemented = errorutil.New("Not implemented")
+	// ErrNoTemplatesAvailable is returned when no templates are available to execute
+	ErrNoTemplatesAvailable = errorutil.New("No templates available")
+	// ErrNoTargetsAvailable is returned when no targets are available to scan
+	ErrNoTargetsAvailable = errorutil.New("No targets available")
+	// ErrOptionsNotSupported is returned when an option is not supported in thread safe mode
+	ErrOptionsNotSupported = errorutil.NewWithFmt("Option %v not supported in thread safe mode")
+)
+
+type engineMode uint
+
+const (
+	singleInstance engineMode = iota
+	threadSafe
+)
+
 // NucleiEngine is the Engine/Client for nuclei which
 // runs scans using templates and returns results
 type NucleiEngine struct {
 	// user options
-	resultCallback func(event *output.ResultEvent)
+	resultCallbacks             []func(event *output.ResultEvent)
+	onFailureCallback           func(event *output.InternalEvent)
+	disableTemplatesAutoUpgrade bool
+	enableStats                 bool
+	onUpdateAvailableCallback   func(newVersion string)
+
+	// ready-status fields
+	templatesLoaded bool
 
 	// unexported core fields
 	interactshClient *interactsh.Client
@@ -48,6 +66,9 @@ type NucleiEngine struct {
 	httpxClient      *httpx.HTTPX
 	inputProvider    *inputs.SimpleInputProvider
 	engine           *core.Engine
+	mode             engineMode
+	browserInstance  *engine.Browser
+	httpClient       *retryablehttp.Client
 
 	// unexported meta options
 	opts           *types.Options
@@ -75,6 +96,14 @@ func (e *NucleiEngine) LoadAllTemplates() error {
 	return nil
 }
 
+// GetTemplates returns all nuclei templates that are loaded
+func (e *NucleiEngine) GetTemplates() []*templates.Template {
+	if !e.templatesLoaded {
+		_ = e.LoadAllTemplates()
+	}
+	return e.store.Templates()
+}
+
 // LoadTargets(urls/domains/ips only) adds targets to the nuclei engine
 func (e *NucleiEngine) LoadTargets(targets []string, probeNonHttp bool) {
 	for _, target := range targets {
@@ -87,88 +116,48 @@ func (e *NucleiEngine) LoadTargets(targets []string, probeNonHttp bool) {
 }
 
 // LoadTargetsFromReader adds targets(urls/domains/ips only) from reader to the nuclei engine
-func (e *NucleiEngine) LoadTargetsFromReader(reader io.Reader) {
+func (e *NucleiEngine) LoadTargetsFromReader(reader io.Reader, probeNonHttp bool) {
 	buff := bufio.NewScanner(reader)
 	for buff.Scan() {
-		e.inputProvider.Set(buff.Text())
-	}
-}
-
-// applyRequiredDefaults to options
-func (e *NucleiEngine) applyRequiredDefaults() {
-	if e.customWriter == nil {
-		e.customWriter = testutils.NewMockOutputWriter()
-	}
-	if e.customProgress == nil {
-		e.customProgress = &testutils.MockProgressClient{}
-	}
-	if e.hostErrCache == nil {
-		e.hostErrCache = hosterrorscache.New(30, hosterrorscache.DefaultMaxHostsCount, nil)
-	}
-	// setup interactsh
-	if e.interactshOpts != nil {
-		e.interactshOpts.Output = e.customWriter
-		e.interactshOpts.Progress = e.customProgress
-	} else {
-		e.interactshOpts = interactsh.DefaultOptions(e.customWriter, e.rc, e.customProgress)
-	}
-	if e.resultCallback == nil {
-		e.resultCallback = func(event *output.ResultEvent) {
-			bin, _ := json.Marshal(event)
-			fmt.Printf("%v\n", string(bin))
+		if probeNonHttp {
+			e.inputProvider.SetWithProbe(buff.Text(), e.httpxClient)
+		} else {
+			e.inputProvider.Set(buff.Text())
 		}
 	}
-	if e.rateLimiter == nil {
-		e.rateLimiter = ratelimit.New(context.Background(), 150, time.Second)
-	}
-	// these templates are known to have weak matchers
-	// and idea is to disable them to avoid false positives
-	e.opts.ExcludeTags = config.ReadIgnoreFile().Tags
-
-	e.inputProvider = &inputs.SimpleInputProvider{
-		Inputs: []*contextargs.MetaInput{},
-	}
 }
 
-// init
-func (e *NucleiEngine) init() error {
-	protocolstate.Init(e.opts)
-	protocolinit.Init(e.opts)
-	e.applyRequiredDefaults()
-	var err error
+// Close all resources used by nuclei engine
+func (e *NucleiEngine) Close() {
+	e.interactshClient.Close()
+	e.rc.Close()
+	e.customWriter.Close()
+	e.hostErrCache.Close()
+	e.executerOpts.RateLimiter.Stop()
+}
 
-	if e.rc, err = reporting.New(&reporting.Options{}, ""); err != nil {
-		return err
+// ExecuteWithCallback executes templates on targets and calls callback on each result(only if results are found)
+func (e *NucleiEngine) ExecuteWithCallback(callback ...func(event *output.ResultEvent)) error {
+	if !e.templatesLoaded {
+		_ = e.LoadAllTemplates()
 	}
-	e.interactshOpts.IssuesClient = e.rc
-	if e.interactshClient, err = interactsh.New(e.interactshOpts); err != nil {
-		return err
+	if len(e.store.Templates()) == 0 && len(e.store.Workflows()) == 0 {
+		return ErrNoTemplatesAvailable
 	}
-
-	e.catalog = disk.NewCatalog(config.DefaultConfig.TemplatesDirectory)
-
-	e.executerOpts = protocols.ExecutorOptions{
-		Output:          e.customWriter,
-		Options:         e.opts,
-		Progress:        e.customProgress,
-		Catalog:         e.catalog,
-		IssuesClient:    e.rc,
-		RateLimiter:     e.rateLimiter,
-		Interactsh:      e.interactshClient,
-		HostErrorsCache: e.hostErrCache,
-		Colorizer:       aurora.NewAurora(true),
-		ResumeCfg:       types.NewResumeCfg(),
+	if e.inputProvider.Count() == 0 {
+		return ErrNoTargetsAvailable
 	}
 
-	e.engine = core.New(e.opts)
-	e.engine.SetExecuterOptions(e.executerOpts)
-
-	httpxOptions := httpx.DefaultOptions
-	httpxOptions.Timeout = 5 * time.Second
-	if e.httpxClient, err = httpx.New(&httpxOptions); err != nil {
-		return err
+	filtered := []func(event *output.ResultEvent){}
+	for _, callback := range callback {
+		if callback != nil {
+			filtered = append(filtered, callback)
+		}
 	}
+	e.resultCallbacks = append(e.resultCallbacks, filtered...)
 
+	_ = e.engine.ExecuteScanWithOpts(e.store.Templates(), e.inputProvider, false)
+	defer e.engine.WorkPool().Wait()
 	return nil
 }
 
@@ -177,6 +166,7 @@ func NewNucleiEngine(options ...NucleiSDKOptions) (*NucleiEngine, error) {
 	// default options
 	e := &NucleiEngine{
 		opts: types.DefaultOptions(),
+		mode: singleInstance,
 	}
 	for _, option := range options {
 		if err := option(e); err != nil {

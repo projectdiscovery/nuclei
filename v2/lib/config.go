@@ -4,11 +4,15 @@ import (
 	"context"
 	"time"
 
+	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v2/pkg/model/types/severity"
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
 	"github.com/projectdiscovery/nuclei/v2/pkg/progress"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/hosterrorscache"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/interactsh"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/utils/vardump"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/headless/engine"
+	"github.com/projectdiscovery/nuclei/v2/pkg/templates/types"
 	"github.com/projectdiscovery/ratelimit"
 )
 
@@ -16,14 +20,14 @@ import (
 type TemplateFilters struct {
 	Severity             string   // filter by severities (accepts CSV values of info, low, medium, high, critical)
 	ExcludeSeverities    string   // filter by excluding severities (accepts CSV values of info, low, medium, high, critical)
+	ProtocolTypes        string   // filter by protocol types
+	ExcludeProtocolTypes string   // filter by excluding protocol types
 	Authors              []string // fiter by author
 	Tags                 []string // filter by tags present in template
 	ExcludeTags          []string // filter by excluding tags present in template
 	IncludeTags          []string // filter by including tags present in template
 	IDs                  []string // filter by template IDs
 	ExcludeIDs           []string // filter by excluding template IDs
-	ProtocolTypes        []string // filter by protocol types
-	ExcludeProtocolTypes []string // filter by excluding protocol types
 	TemplateCondition    []string // DSL condition/ expression
 }
 
@@ -39,6 +43,14 @@ func WithTemplateFilters(filters TemplateFilters) NucleiSDKOptions {
 		if err := es.Set(filters.ExcludeSeverities); err != nil {
 			return err
 		}
+		pt := types.ProtocolTypes{}
+		if err := pt.Set(filters.ProtocolTypes); err != nil {
+			return err
+		}
+		ept := types.ProtocolTypes{}
+		if err := ept.Set(filters.ExcludeProtocolTypes); err != nil {
+			return err
+		}
 		e.opts.Authors = filters.Authors
 		e.opts.Tags = filters.Tags
 		e.opts.ExcludeTags = filters.ExcludeTags
@@ -47,6 +59,8 @@ func WithTemplateFilters(filters TemplateFilters) NucleiSDKOptions {
 		e.opts.ExcludeIds = filters.ExcludeIDs
 		e.opts.Severities = s
 		e.opts.ExcludeSeverities = es
+		e.opts.Protocols = pt
+		e.opts.ExcludeProtocols = ept
 		e.opts.IncludeConditions = filters.TemplateCondition
 		return nil
 	}
@@ -58,6 +72,9 @@ type InteractshOpts interactsh.Options
 // WithInteractshOptions sets interactsh options
 func WithInteractshOptions(opts InteractshOpts) NucleiSDKOptions {
 	return func(e *NucleiEngine) error {
+		if e.mode == threadSafe {
+			return ErrOptionsNotSupported.Msgf("WithInteractshOptions")
+		}
 		optsPtr := &opts
 		e.interactshOpts = (*interactsh.Options)(optsPtr)
 		return nil
@@ -91,6 +108,7 @@ func WithGlobalRateLimit(maxTokens int, duration time.Duration) NucleiSDKOptions
 	}
 }
 
+// HeadlessOpts contains options for headless templates
 type HeadlessOpts struct {
 	PageTimeout     int // timeout for page load
 	ShowBrowser     bool
@@ -110,15 +128,41 @@ func EnableHeadlessWithOpts(hopts *HeadlessOpts) NucleiSDKOptions {
 			e.opts.ShowBrowser = hopts.ShowBrowser
 			e.opts.UseInstalledChrome = hopts.UseChrome
 		}
+		if engine.MustDisableSandbox() {
+			gologger.Warning().Msgf("The current platform and privileged user will run the browser without sandbox\n")
+		}
+		browser, err := engine.New(e.opts)
+		if err != nil {
+			return err
+		}
+		e.executerOpts.Browser = browser
 		return nil
 	}
 }
 
+// StatsOptions
+type StatsOptions struct {
+	Interval          int
+	JSON              bool
+	StartMetricServer bool
+	MetricServerPort  int
+}
+
 // EnableStats enables Stats collection with defined interval(in sec) and callback
 // Note: callback is executed in a separate goroutine
-func EnableStatsWithOpts(interval int, callback func()) NucleiSDKOptions {
+func EnableStatsWithOpts(opts StatsOptions) NucleiSDKOptions {
 	return func(e *NucleiEngine) error {
-		e.opts.StatsInterval = interval
+		if e.mode == threadSafe {
+			return ErrOptionsNotSupported.Msgf("EnableStatsWithOpts")
+		}
+		if opts.Interval == 0 {
+			opts.Interval = 5 //sec
+		}
+		e.opts.StatsInterval = opts.Interval
+		e.enableStats = true
+		e.opts.StatsJSON = opts.JSON
+		e.opts.Metrics = opts.StartMetricServer
+		e.opts.MetricsPort = opts.MetricServerPort
 		return nil
 	}
 }
@@ -137,12 +181,17 @@ type VerbosityOptions struct {
 // and does not affect SDK output
 func WithVerbosity(opts VerbosityOptions) NucleiSDKOptions {
 	return func(e *NucleiEngine) error {
+		if e.mode == threadSafe {
+			return ErrOptionsNotSupported.Msgf("WithVerbosity")
+		}
 		e.opts.Verbose = opts.Verbose
 		e.opts.Silent = opts.Silent
 		e.opts.Debug = opts.Debug
 		e.opts.DebugRequests = opts.DebugRequest
 		e.opts.DebugResponse = opts.DebugResponse
-		e.opts.ShowVarDump = opts.ShowVarDump
+		if opts.ShowVarDump {
+			vardump.EnableVarDump = true
+		}
 		return nil
 	}
 }
@@ -161,6 +210,9 @@ type NetworkConfig struct {
 // WithNetworkConfig allows setting network config options
 func WithNetworkConfig(opts NetworkConfig) NucleiSDKOptions {
 	return func(e *NucleiEngine) error {
+		if e.mode == threadSafe {
+			return ErrOptionsNotSupported.Msgf("WithNetworkConfig")
+		}
 		e.opts.Timeout = opts.Timeout
 		e.opts.Retries = opts.Retries
 		e.opts.LeaveDefaultPorts = opts.LeaveDefaultPorts
@@ -172,6 +224,9 @@ func WithNetworkConfig(opts NetworkConfig) NucleiSDKOptions {
 // WithProxy allows setting proxy options
 func WithProxy(proxy []string, proxyInternalRequests bool) NucleiSDKOptions {
 	return func(e *NucleiEngine) error {
+		if e.mode == threadSafe {
+			return ErrOptionsNotSupported.Msgf("WithProxy")
+		}
 		e.opts.Proxy = proxy
 		e.opts.ProxyInternal = proxyInternalRequests
 		return nil
@@ -194,6 +249,9 @@ type OutputWriter output.Writer
 // if outputWriter is used callback will be ignored
 func UseOutputWriter(writer OutputWriter) NucleiSDKOptions {
 	return func(e *NucleiEngine) error {
+		if e.mode == threadSafe {
+			return ErrOptionsNotSupported.Msgf("UseOutputWriter")
+		}
 		e.customWriter = writer
 		return nil
 	}
@@ -206,7 +264,37 @@ type StatsWriter progress.Progress
 // which can be used to write stats somewhere (ex: send to webserver etc)
 func UseStatsWriter(writer StatsWriter) NucleiSDKOptions {
 	return func(e *NucleiEngine) error {
+		if e.mode == threadSafe {
+			return ErrOptionsNotSupported.Msgf("UseStatsWriter")
+		}
 		e.customProgress = writer
+		return nil
+	}
+}
+
+// WithTemplateUpdateCallback allows setting a callback which will be called
+// when nuclei templates are outdated
+// Note: Nuclei-templates are crucial part of nuclei and using outdated templates or nuclei sdk is not recommended
+// as it may cause unexpected results due to compatibility issues
+func WithTemplateUpdateCallback(disableTemplatesAutoUpgrade bool, callback func(newVersion string)) NucleiSDKOptions {
+	return func(e *NucleiEngine) error {
+		if e.mode == threadSafe {
+			return ErrOptionsNotSupported.Msgf("WithTemplateUpdateCallback")
+		}
+		e.disableTemplatesAutoUpgrade = disableTemplatesAutoUpgrade
+		e.onUpdateAvailableCallback = callback
+		return nil
+	}
+}
+
+// WithSandboxOptions allows setting supported sandbox options
+func WithSandboxOptions(allowLocalFileAccess bool, restrictLocalNetworkAccess bool) NucleiSDKOptions {
+	return func(e *NucleiEngine) error {
+		if e.mode == threadSafe {
+			return ErrOptionsNotSupported.Msgf("WithSandboxOptions")
+		}
+		e.opts.AllowLocalFileAccess = allowLocalFileAccess
+		e.opts.RestrictLocalNetworkAccess = restrictLocalNetworkAccess
 		return nil
 	}
 }

@@ -106,6 +106,7 @@ func (n *NoopWriter) Write(data []byte, level levels.Level) {}
 type MockOutputWriter struct {
 	aurora          aurora.Aurora
 	RequestCallback func(templateID, url, requestType string, err error)
+	FailureCallback func(result *output.InternalEvent)
 	WriteCallback   func(o *output.ResultEvent)
 }
 
@@ -139,6 +140,9 @@ func (m *MockOutputWriter) Request(templateID, url, requestType string, err erro
 
 // WriteFailure writes the event to file and/or screen.
 func (m *MockOutputWriter) WriteFailure(result output.InternalEvent) error {
+	if m.FailureCallback != nil && result != nil {
+		m.FailureCallback(&result)
+	}
 	return nil
 }
 func (m *MockOutputWriter) WriteStoreDebugData(host, templateID, eventType string, data string) {
