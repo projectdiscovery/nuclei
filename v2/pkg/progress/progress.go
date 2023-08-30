@@ -244,11 +244,6 @@ func metricsMap(stats clistats.StatisticsClient) map[string]interface{} {
 	return results
 }
 
-// getMetrics returns a map of important metrics for client
-func (p *StatsTicker) getMetrics() map[string]interface{} {
-	return metricsMap(p.stats)
-}
-
 // fmtDuration formats the duration for the time elapsed
 func fmtDuration(d time.Duration) string {
 	d = d.Round(time.Second)
