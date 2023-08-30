@@ -675,6 +675,10 @@ func (r *Runner) executeTemplatesInput(store *loader.Store, engine *core.Engine)
 	finalTemplates = append(finalTemplates, store.Templates()...)
 	finalTemplates = append(finalTemplates, store.Workflows()...)
 
+	if len(finalTemplates) == 0 {
+		return nil, errors.New("no templates provided for scan")
+	}
+
 	results := engine.ExecuteScanWithOpts(finalTemplates, r.hmapInputProvider, r.options.DisableClustering)
 	return results, nil
 }
