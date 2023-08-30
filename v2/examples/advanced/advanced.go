@@ -21,18 +21,17 @@ func main() {
 		defer sg.Done()
 		err = ne.ExecuteNucleiWithOpts([]string{"scanme.sh"},
 			nuclei.WithTemplateFilters(nuclei.TemplateFilters{ProtocolTypes: "dns"}),
-			nuclei.WithConcurrency(nuclei.Concurrency{TemplateConcurrency: 1}), // never use templateconcurrency 1. this is just for testing
 		)
 		if err != nil {
 			panic(err)
 		}
 	}()
 
-	// scan 2 = run dns templates on honey.scanme.sh
+	// scan 2 = run templates with oast tags on honey.scanme.sh
 	sg.Add()
 	go func() {
 		defer sg.Done()
-		err = ne.ExecuteNucleiWithOpts([]string{"honey.scanme.sh"}, nuclei.WithTemplateFilters(nuclei.TemplateFilters{ProtocolTypes: "dns"}))
+		err = ne.ExecuteNucleiWithOpts([]string{"http://honey.scanme.sh"}, nuclei.WithTemplateFilters(nuclei.TemplateFilters{Tags: []string{"oast"}}))
 		if err != nil {
 			panic(err)
 		}
