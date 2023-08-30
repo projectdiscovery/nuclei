@@ -142,10 +142,9 @@ func EnableHeadlessWithOpts(hopts *HeadlessOpts) NucleiSDKOptions {
 
 // StatsOptions
 type StatsOptions struct {
-	Interval          int
-	JSON              bool
-	StartMetricServer bool
-	MetricServerPort  int
+	Interval         int
+	JSON             bool
+	MetricServerPort int
 }
 
 // EnableStats enables Stats collection with defined interval(in sec) and callback
@@ -161,7 +160,6 @@ func EnableStatsWithOpts(opts StatsOptions) NucleiSDKOptions {
 		e.opts.StatsInterval = opts.Interval
 		e.enableStats = true
 		e.opts.StatsJSON = opts.JSON
-		e.opts.Metrics = opts.StartMetricServer
 		e.opts.MetricsPort = opts.MetricServerPort
 		return nil
 	}

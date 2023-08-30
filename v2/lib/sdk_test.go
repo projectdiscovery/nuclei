@@ -7,7 +7,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestExample(t *testing.T) {
+func TestSimpleNuclei(t *testing.T) {
 	ne, err := nuclei.NewNucleiEngine(
 		nuclei.WithTemplateFilters(nuclei.TemplateFilters{ProtocolTypes: "dns"}),
 		nuclei.EnableStatsWithOpts(nuclei.StatsOptions{JSON: true}),

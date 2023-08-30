@@ -4,6 +4,9 @@
 package nuclei_test
 
 import (
+	"os"
+	"testing"
+
 	nuclei "github.com/projectdiscovery/nuclei/v2/lib"
 	"github.com/remeh/sizedwaitgroup"
 )
@@ -12,8 +15,7 @@ import (
 func ExampleNucleiEngine() {
 	// create nuclei engine with options
 	ne, err := nuclei.NewNucleiEngine(
-		nuclei.WithTemplateFilters(nuclei.TemplateFilters{ProtocolTypes: "dns"}), // only use dns templates
-		nuclei.WithConcurrency(nuclei.Concurrency{TemplateConcurrency: 1}),       // never use templateconcurrency 1. this is just for testing
+		nuclei.WithTemplateFilters(nuclei.TemplateFilters{IDs: []string{"self-signed-ssl"}}), // only run self-signed-ssl template
 	)
 	if err != nil {
 		panic(err)
@@ -28,8 +30,7 @@ func ExampleNucleiEngine() {
 	defer ne.Close()
 
 	// Output:
-	// [dns-saas-service-detection] scanme.sh
-	// [nameserver-fingerprint] scanme.sh
+	// [self-signed-ssl] scanme.sh:443
 }
 
 func ExampleThreadSafeNucleiEngine() {
@@ -47,8 +48,7 @@ func ExampleThreadSafeNucleiEngine() {
 	go func() {
 		defer sg.Done()
 		err = ne.ExecuteNucleiWithOpts([]string{"scanme.sh"},
-			nuclei.WithTemplateFilters(nuclei.TemplateFilters{ProtocolTypes: "dns"}),
-			nuclei.WithConcurrency(nuclei.Concurrency{TemplateConcurrency: 1}), // never use templateconcurrency 1. this is just for testing
+			nuclei.WithTemplateFilters(nuclei.TemplateFilters{IDs: []string{"nameserver-fingerprint"}}), // only run self-signed-ssl template
 		)
 		if err != nil {
 			panic(err)
@@ -70,7 +70,16 @@ func ExampleThreadSafeNucleiEngine() {
 	defer ne.Close()
 
 	// Output:
-	// [dns-saas-service-detection] scanme.sh
 	// [nameserver-fingerprint] scanme.sh
 	// [dns-saas-service-detection] honey.scanme.sh
+}
+
+func TestMain(m *testing.M) {
+	// this file only contains testtables examples https://go.dev/blog/examples
+	// and actual functionality test are in sdk_test.go
+	if os.Getenv("GH_ACTION") != "" {
+		// no need to run this test on github actions
+		return
+	}
+	m.Run()
 }

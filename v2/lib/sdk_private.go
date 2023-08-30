@@ -113,11 +113,12 @@ func (e *NucleiEngine) init() error {
 
 	// setup progressbar
 	if e.enableStats {
-		progressInstance, progressErr := progress.NewStatsTicker(e.opts.StatsInterval, e.enableStats, e.opts.StatsJSON, e.opts.Metrics, false, e.opts.MetricsPort)
+		progressInstance, progressErr := progress.NewStatsTicker(e.opts.StatsInterval, e.enableStats, e.opts.StatsJSON, false, e.opts.MetricsPort)
 		if progressErr != nil {
 			return err
 		}
 		e.customProgress = progressInstance
+		e.interactshOpts.Progress = progressInstance
 	}
 
 	if err := reporting.CreateConfigIfNotExists(); err != nil {

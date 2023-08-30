@@ -4,14 +4,14 @@ import nuclei "github.com/projectdiscovery/nuclei/v2/lib"
 
 func main() {
 	ne, err := nuclei.NewNucleiEngine(
-		nuclei.WithTemplateFilters(nuclei.TemplateFilters{ProtocolTypes: "dns"}), // only use dns templates
-		nuclei.WithConcurrency(nuclei.Concurrency{TemplateConcurrency: 1}),       // never use templateconcurrency 1. this is just for testing
+		nuclei.WithTemplateFilters(nuclei.TemplateFilters{Tags: []string{"oast"}}),
+		nuclei.EnableStatsWithOpts(nuclei.StatsOptions{MetricServerPort: 6064}), // optionally enable metrics server for better observability
 	)
 	if err != nil {
 		panic(err)
 	}
 	// load targets and optionally probe non http/https targets
-	ne.LoadTargets([]string{"scanme.sh"}, false)
+	ne.LoadTargets([]string{"http://honey.scanme.sh"}, false)
 	err = ne.ExecuteWithCallback(nil)
 	if err != nil {
 		panic(err)

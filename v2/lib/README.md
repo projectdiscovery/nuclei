@@ -52,7 +52,7 @@ For Various use cases like batching etc you might want to run nuclei in goroutin
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		err = ne.ExecuteNucleiWithOpts([]string{"scanme.sh"}, nuclei.WithTemplateFilters(nuclei.TemplateFilters{ProtocolTypes: "dns"}))
+		err = ne.ExecuteNucleiWithOpts([]string{"scanme.sh"}, nuclei.WithTemplateFilters(nuclei.TemplateFilters{ProtocolTypes: "http"}))
 		if err != nil {
             panic(err)
         }
