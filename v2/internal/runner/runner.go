@@ -337,7 +337,7 @@ func New(options *types.Options) (*Runner, error) {
 }
 
 func createReportingOptions(options *types.Options) (*reporting.Options, error) {
-	var reportingOptions *reporting.Options
+	var reportingOptions = &reporting.Options{}
 	if options.ReportingConfig != "" {
 		file, err := os.Open(options.ReportingConfig)
 		if err != nil {
@@ -345,7 +345,6 @@ func createReportingOptions(options *types.Options) (*reporting.Options, error) 
 		}
 		defer file.Close()
 
-		reportingOptions = &reporting.Options{}
 		if err := yaml.DecodeAndValidate(file, reportingOptions); err != nil {
 			return nil, errors.Wrap(err, "could not parse reporting config file")
 		}
