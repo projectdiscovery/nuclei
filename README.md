@@ -126,9 +126,9 @@ TEMPLATES:
    -ntv, -new-templates-version string[]  run new templates added in specific version
    -as, -automatic-scan                   automatic web scan using wappalyzer technology detection to tags mapping
    -t, -templates string[]                list of template or template directory to run (comma-separated, file)
-   -tu, -template-url string[]            list of template urls to run (comma-separated, file)
+   -turl, -template-url string[]          template url or list containing template urls to run (comma-separated, file)
    -w, -workflows string[]                list of workflow or workflow directory to run (comma-separated, file)
-   -wu, -workflow-url string[]            list of workflow urls to run (comma-separated, file)
+   -wurl, -workflow-url string[]          workflow url or list containing workflow urls to run (comma-separated, file)
    -validate                              validate the passed templates to nuclei
    -nss, -no-strict-syntax                disable strict syntax check on templates
    -td, -template-display                 displays the templates content
@@ -139,7 +139,7 @@ FILTERING:
    -tags string[]                     templates to run based on tags (comma-separated, file)
    -etags, -exclude-tags string[]     templates to exclude based on tags (comma-separated, file)
    -itags, -include-tags string[]     tags to be executed even if they are excluded either by default or configuration
-   -id, -template-id string[]         templates to run based on template ids (comma-separated, file)
+   -id, -template-id string[]         templates to run based on template ids (comma-separated, file, allow-wildcard)
    -eid, -exclude-id string[]         templates to exclude based on template ids (comma-separated, file)
    -it, -include-templates string[]   templates to be executed even if they are excluded either by default or configuration
    -et, -exclude-templates string[]   template or template directory to exclude (comma-separated, file)
@@ -246,11 +246,12 @@ OPTIMIZATIONS:
    -no-stdin                           disable stdin processing
 
 HEADLESS:
-   -headless                    enable templates that require headless browser support (root user on Linux will disable sandbox)
-   -page-timeout int            seconds to wait for each page in headless mode (default 20)
-   -sb, -show-browser           show the browser on the screen when running templates with headless mode
-   -sc, -system-chrome          use local installed Chrome browser instead of nuclei installed
-   -lha, -list-headless-action  list available headless actions
+   -headless                        enable templates that require headless browser support (root user on Linux will disable sandbox)
+   -page-timeout int                seconds to wait for each page in headless mode (default 20)
+   -sb, -show-browser               show the browser on the screen when running templates with headless mode
+   -ho, -headless-options string[]  start headless chrome with additional options
+   -sc, -system-chrome              use local installed Chrome browser instead of nuclei installed
+   -lha, -list-headless-action      list available headless actions
 
 DEBUG:
    -debug                    show all requests and responses
@@ -283,29 +284,6 @@ STATISTICS:
    -si, -stats-interval int  number of seconds to wait between showing a statistics update (default 5)
    -m, -metrics              expose nuclei metrics on a port
    -mp, -metrics-port int    port to expose nuclei metrics on (default 9092)
-
-CLOUD:
-   -cloud                              run scan on nuclei cloud
-   -ads, -add-datasource string        add specified data source (s3,github)
-   -atr, -add-target string            add target(s) to cloud
-   -atm, -add-template string          add template(s) to cloud
-   -lsn, -list-scan                    list previous cloud scans
-   -lso, -list-output string           list scan output by scan id
-   -ltr, -list-target                  list cloud target by id
-   -ltm, -list-template                list cloud template by id
-   -lds, -list-datasource              list cloud datasource by id
-   -lrs, -list-reportsource            list reporting sources
-   -dsn, -delete-scan string           delete cloud scan by id
-   -dtr, -delete-target string         delete target(s) from cloud
-   -dtm, -delete-template string       delete template(s) from cloud
-   -dds, -delete-datasource string     delete specified data source
-   -drs, -disable-reportsource string  disable specified reporting source
-   -ers, -enable-reportsource string   enable specified reporting source
-   -gtr, -get-target string            get target content by id
-   -gtm, -get-template string          get template content by id
-   -nos, -no-store                     disable scan/output storage on cloud
-   -no-tables                          do not display pretty-printed tables
-   -limit int                          limit the number of output to display (default 100)
 ```
 
 ### Running Nuclei
