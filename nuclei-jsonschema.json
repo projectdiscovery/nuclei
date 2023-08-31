@@ -342,6 +342,14 @@
           "title": "dsl expressions to match in response",
           "description": "DSL are the dsl expressions that will be evaluated as part of nuclei matching rules"
         },
+        "xpath": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array",
+          "title": "xpath queries to match in response",
+          "description": "xpath are the XPath queries that will be evaluated against the response part of nuclei matching rules"
+        },
         "encoding": {
           "enum": [
             "hex"
@@ -371,7 +379,8 @@
         "binary",
         "status",
         "size",
-        "dsl"
+        "dsl",
+        "xpath"
       ],
       "type": "string",
       "title": "type of the matcher",
@@ -1311,7 +1320,7 @@
             }
           },
           "type": "object",
-          "title": "payloads for the webosocket request",
+          "title": "payloads for the websocket request",
           "description": "Payloads contains any payloads for the current request"
         }
       },

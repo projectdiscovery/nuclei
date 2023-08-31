@@ -13,6 +13,7 @@ import (
 	"github.com/go-rod/rod/lib/proto"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/contextargs"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/utils"
+	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 )
 
 // Page is a single page in an isolated browser instance
@@ -40,6 +41,7 @@ type HistoryData struct {
 type Options struct {
 	Timeout     time.Duration
 	CookieReuse bool
+	Options     *types.Options
 }
 
 // Run runs a list of actions by creating a new page in the browser.
@@ -134,7 +136,7 @@ func (i *Instance) Run(input *contextargs.Context, actions []*Action, payloads m
 		}
 	}
 
-	data, err := createdPage.ExecuteActions(input, actions)
+	data, err := createdPage.ExecuteActions(input, actions, payloads)
 	if err != nil {
 		return nil, nil, err
 	}

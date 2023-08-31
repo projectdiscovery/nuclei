@@ -285,7 +285,7 @@ func (i *Input) setItem(metaInput *contextargs.MetaInput) {
 	}
 }
 
-// setHostMapStream sets iteam in stream mode
+// setHostMapStream sets item in stream mode
 func (i *Input) setHostMapStream(data string) {
 	if _, err := i.hostMapStream.Merge([][]byte{[]byte(data)}); err != nil {
 		gologger.Warning().Msgf("%s\n", err)

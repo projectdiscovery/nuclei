@@ -80,9 +80,9 @@ func ParseOptions(options *types.Options) {
 		gologger.Fatal().Msgf("Could not initialize protocols: %s\n", err)
 	}
 
-	// Set Github token in env variable. runner.getGHClientWithToken() reads token from env
-	if options.GithubToken != "" && os.Getenv("GITHUB_TOKEN") != options.GithubToken {
-		os.Setenv("GITHUB_TOKEN", options.GithubToken)
+	// Set GitHub token in env variable. runner.getGHClientWithToken() reads token from env
+	if options.GitHubToken != "" && os.Getenv("GITHUB_TOKEN") != options.GitHubToken {
+		os.Setenv("GITHUB_TOKEN", options.GitHubToken)
 	}
 
 	if options.UncoverQuery != nil {
@@ -112,6 +112,10 @@ func validateOptions(options *types.Options) error {
 	}
 	if options.Verbose && options.Silent {
 		return errors.New("both verbose and silent mode specified")
+	}
+
+	if (options.HeadlessOptionalArguments != nil || options.ShowBrowser || options.UseInstalledChrome) && !options.Headless {
+		return errors.New("headless mode (-headless) is required if -ho, -sb, -sc or -lha are set")
 	}
 
 	if options.FollowHostRedirects && options.FollowRedirects {
@@ -199,7 +203,7 @@ func validateCloudOptions(options *types.Options) error {
 		case "s3":
 			missing = validateMissingS3Options(options)
 		case "github":
-			missing = validateMissingGithubOptions(options)
+			missing = validateMissingGitHubOptions(options)
 		case "gitlab":
 			missing = validateMissingGitLabOptions(options)
 		case "azure":
@@ -249,12 +253,12 @@ func validateMissingAzureOptions(options *types.Options) []string {
 	return missing
 }
 
-func validateMissingGithubOptions(options *types.Options) []string {
+func validateMissingGitHubOptions(options *types.Options) []string {
 	var missing []string
-	if options.GithubToken == "" {
+	if options.GitHubToken == "" {
 		missing = append(missing, "GITHUB_TOKEN")
 	}
-	if len(options.GithubTemplateRepo) == 0 {
+	if len(options.GitHubTemplateRepo) == 0 {
 		missing = append(missing, "GITHUB_TEMPLATE_REPO")
 	}
 	return missing
@@ -356,10 +360,10 @@ func readEnvInputVars(options *types.Options) {
 	}
 	options.CloudAPIKey = os.Getenv("NUCLEI_CLOUD_API")
 
-	options.GithubToken = os.Getenv("GITHUB_TOKEN")
+	options.GitHubToken = os.Getenv("GITHUB_TOKEN")
 	repolist := os.Getenv("GITHUB_TEMPLATE_REPO")
 	if repolist != "" {
-		options.GithubTemplateRepo = append(options.GithubTemplateRepo, stringsutil.SplitAny(repolist, ",")...)
+		options.GitHubTemplateRepo = append(options.GitHubTemplateRepo, stringsutil.SplitAny(repolist, ",")...)
 	}
 
 	// GitLab options for downloading templates from a repository
@@ -407,6 +411,13 @@ func readEnvInputVars(options *types.Options) {
 	options.GitLabTemplateDisableDownload = getBoolEnvValue("DISABLE_NUCLEI_TEMPLATES_GITLAB_DOWNLOAD")
 	options.AwsTemplateDisableDownload = getBoolEnvValue("DISABLE_NUCLEI_TEMPLATES_AWS_DOWNLOAD")
 	options.AzureTemplateDisableDownload = getBoolEnvValue("DISABLE_NUCLEI_TEMPLATES_AZURE_DOWNLOAD")
+
+	// Options to modify the behavior of exporters
+	options.MarkdownExportSortMode = strings.ToLower(os.Getenv("MARKDOWN_EXPORT_SORT_MODE"))
+	// If the user has not specified a valid sort mode, use the default
+	if options.MarkdownExportSortMode != "template" && options.MarkdownExportSortMode != "severity" && options.MarkdownExportSortMode != "host" {
+		options.MarkdownExportSortMode = ""
+	}
 }
 
 func getBoolEnvValue(key string) bool {
