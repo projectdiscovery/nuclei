@@ -2,6 +2,7 @@ package contextargs
 
 import (
 	"bytes"
+	"crypto/md5"
 	"fmt"
 	"strings"
 
@@ -14,6 +15,8 @@ type MetaInput struct {
 	Input string `json:"input,omitempty"`
 	// CustomIP to use for connection
 	CustomIP string `json:"customIP,omitempty"`
+	// hash of the input
+	hash string `json:"-"`
 }
 
 func (metaInput *MetaInput) marshalToBuffer() (bytes.Buffer, error) {
@@ -66,4 +69,20 @@ func (metaInput *MetaInput) PrettyPrint() string {
 		return fmt.Sprintf("%s [%s]", metaInput.Input, metaInput.CustomIP)
 	}
 	return metaInput.Input
+}
+
+// GetScanHash returns a unique hash that represents a scan by hashing (metainput + templateId)
+func (metaInput *MetaInput) GetScanHash(templateId string) string {
+	// there may be some cases where metainput is changed ex: while executing self-contained template etc
+	// but that totally changes the scanID/hash so to avoid that we compute hash only once
+	// and reuse it for all subsequent calls
+	if metaInput.hash == "" {
+		metaInput.hash = getMd5Hash(templateId + ":" + metaInput.Input + ":" + metaInput.CustomIP)
+	}
+	return metaInput.hash
+}
+
+func getMd5Hash(data string) string {
+	bin := md5.Sum([]byte(data))
+	return string(bin[:])
 }

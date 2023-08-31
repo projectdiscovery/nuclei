@@ -34,6 +34,9 @@ type Request struct {
 	operators.Operators `yaml:",inline,omitempty" json:",inline,omitempty"`
 	CompiledOperators   *operators.Operators `yaml:"-" json:"-"`
 
+	// ID is the optional id of the request
+	ID string `yaml:"id,omitempty" json:"id,omitempty" jsonschema:"title=id of the request,description=ID of the network request"`
+
 	// description: |
 	//   Query contains query for the request
 	Query string `yaml:"query,omitempty" json:"query,omitempty" jsonschema:"title=query for the WHOIS request,description=Query contains query for the request"`
@@ -91,7 +94,7 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 	defaultVars := protocolutils.GenerateVariables(input.MetaInput.Input, false, nil)
 	optionVars := generators.BuildPayloadFromOptions(request.options.Options)
 	// add templatectx variables to varMap
-	vars := request.options.Variables.Evaluate(generators.MergeMaps(defaultVars, optionVars, dynamicValues, request.options.TemplateCtx.GetAll()))
+	vars := request.options.Variables.Evaluate(generators.MergeMaps(defaultVars, optionVars, dynamicValues, request.options.GetTemplateCtx(input.MetaInput).GetAll()))
 
 	variables := generators.MergeMaps(vars, defaultVars, optionVars, dynamicValues, request.options.Constants)
 
@@ -134,8 +137,8 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 	data["response"] = jsonDataString
 
 	// add response fields to template context and merge templatectx variables to output event
-	request.options.AddTemplateVars(request.Type(), data)
-	data = generators.MergeMaps(data, request.options.TemplateCtx.GetAll())
+	request.options.AddTemplateVars(input.MetaInput, request.Type(), request.ID, data)
+	data = generators.MergeMaps(data, request.options.GetTemplateCtx(input.MetaInput).GetAll())
 
 	event := eventcreator.CreateEvent(request, data, request.options.Options.Debug || request.options.Options.DebugResponse)
 	if request.options.Options.Debug || request.options.Options.DebugResponse {

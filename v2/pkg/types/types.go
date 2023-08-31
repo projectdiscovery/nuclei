@@ -2,12 +2,17 @@ package types
 
 import (
 	"io"
+	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
 	"github.com/projectdiscovery/goflags"
+	"github.com/projectdiscovery/nuclei/v2/pkg/catalog"
+	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/config"
 	"github.com/projectdiscovery/nuclei/v2/pkg/model/types/severity"
 	"github.com/projectdiscovery/nuclei/v2/pkg/templates/types"
+	errorutil "github.com/projectdiscovery/utils/errors"
 	fileutil "github.com/projectdiscovery/utils/file"
 )
 
@@ -463,4 +468,30 @@ func (options *Options) ParseHeadlessOptionalArguments() map[string]string {
 		}
 	}
 	return optionalArguments
+}
+
+// LoadHelperFile loads a helper file needed for the template
+// this respects the sandbox rules and only loads files from
+// allowed directories
+func (options *Options) LoadHelperFile(filePath, templatePath string, catalog catalog.Catalog) (io.ReadCloser, error) {
+	if !options.AllowLocalFileAccess {
+		filePath = filepath.Clean(filePath)
+		templateAbsPath, err := filepath.Abs(templatePath)
+		if err != nil {
+			return nil, errorutil.NewWithErr(err).Msgf("could not get absolute path")
+		}
+		templateDirectory := config.DefaultConfig.TemplatesDirectory
+		templatePathDir := filepath.Dir(templateAbsPath)
+		if !(templatePathDir != "/" && strings.HasPrefix(filePath, templatePathDir)) && !strings.HasPrefix(filePath, templateDirectory) {
+			return nil, errorutil.New("denied payload file path specified")
+		}
+	}
+	if catalog != nil {
+		return catalog.OpenFile(filePath)
+	}
+	f, err := os.Open(filePath)
+	if err != nil {
+		return nil, errorutil.NewWithErr(err).Msgf("could not open file %v", filePath)
+	}
+	return f, nil
 }

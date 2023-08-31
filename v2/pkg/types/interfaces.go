@@ -77,6 +77,21 @@ func ToString(data interface{}) string {
 	}
 }
 
+// ToStringNSlice converts an interface to string in a quick way or to a slice with strings
+// if the input is a slice of interfaces.
+func ToStringNSlice(data interface{}) interface{} {
+	switch s := data.(type) {
+	case []interface{}:
+		var a []string
+		for _, v := range s {
+			a = append(a, ToString(v))
+		}
+		return a
+	default:
+		return ToString(data)
+	}
+}
+
 func ToHexOrString(data interface{}) string {
 	switch s := data.(type) {
 	case string:
