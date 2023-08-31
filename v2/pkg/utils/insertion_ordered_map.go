@@ -58,7 +58,7 @@ func (insertionOrderedStringMap *InsertionOrderedStringMap) UnmarshalJSON(data [
 }
 
 // toString converts an interface to string in a quick way
-func toString(data interface{}) string {
+func toString(data interface{}) interface{} {
 	switch s := data.(type) {
 	case nil:
 		return ""
@@ -92,6 +92,8 @@ func toString(data interface{}) string {
 		return strconv.FormatUint(uint64(s), 10)
 	case []byte:
 		return string(s)
+	case []interface{}:
+		return data
 	default:
 		return fmt.Sprintf("%v", data)
 	}

@@ -7,6 +7,7 @@ import (
 
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/disk"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/generators"
+	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 )
 
 func TestRequestGeneratorPaths(t *testing.T) {
@@ -34,7 +35,7 @@ func TestRequestGeneratorClusterBombSingle(t *testing.T) {
 		Raw:        []string{`GET /{{username}}:{{password}} HTTP/1.1`},
 	}
 	catalogInstance := disk.NewCatalog("")
-	req.generator, err = generators.New(req.Payloads, req.AttackType.Value, "", false, catalogInstance, "")
+	req.generator, err = generators.New(req.Payloads, req.AttackType.Value, "", catalogInstance, "", types.DefaultOptions())
 	require.Nil(t, err, "could not create generator")
 
 	generator := req.newGenerator(false)
@@ -58,7 +59,7 @@ func TestRequestGeneratorClusterBombMultipleRaw(t *testing.T) {
 		Raw:        []string{`GET /{{username}}:{{password}} HTTP/1.1`, `GET /{{username}}@{{password}} HTTP/1.1`},
 	}
 	catalogInstance := disk.NewCatalog("")
-	req.generator, err = generators.New(req.Payloads, req.AttackType.Value, "", false, catalogInstance, "")
+	req.generator, err = generators.New(req.Payloads, req.AttackType.Value, "", catalogInstance, "", types.DefaultOptions())
 	require.Nil(t, err, "could not create generator")
 
 	generator := req.newGenerator(false)

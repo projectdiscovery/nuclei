@@ -50,6 +50,36 @@ func (ctx *Context) hasArgs() bool {
 	return !ctx.args.IsEmpty()
 }
 
+// Merge the key-value pairs
+func (ctx *Context) Merge(args map[string]interface{}) {
+	_ = ctx.args.Merge(args)
+}
+
+// Add the specific key-value pair
+func (ctx *Context) Add(key string, v interface{}) {
+	values, ok := ctx.args.Get(key)
+	if !ok {
+		ctx.Set(key, v)
+	}
+
+	// If the key exists, append the value to the existing value
+	switch v := v.(type) {
+	case []string:
+		if values, ok := values.([]string); ok {
+			values = append(values, v...)
+			ctx.Set(key, values)
+		}
+	case string:
+		if values, ok := values.(string); ok {
+			tmp := []string{values, v}
+			ctx.Set(key, tmp)
+		}
+	default:
+		values, _ := ctx.Get(key)
+		ctx.Set(key, []interface{}{values, v})
+	}
+}
+
 // Get the value with specific key if exists
 func (ctx *Context) Get(key string) (interface{}, bool) {
 	if !ctx.hasArgs() {
@@ -86,7 +116,7 @@ func (ctx *Context) HasArgs() bool {
 func (ctx *Context) Clone() *Context {
 	newCtx := &Context{
 		MetaInput: ctx.MetaInput.Clone(),
-		args:      ctx.args,
+		args:      ctx.args.Clone(),
 		CookieJar: ctx.CookieJar,
 	}
 	return newCtx

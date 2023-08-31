@@ -1,4 +1,4 @@
-package multi_test
+package multiproto_test
 
 import (
 	"context"
@@ -47,9 +47,9 @@ func TestMultiProtoWithDynamicExtractor(t *testing.T) {
 	Template, err := templates.Parse("testcases/multiprotodynamic.yaml", nil, executerOpts)
 	require.Nil(t, err, "could not parse template")
 
-	require.Equal(t, 2, len(Template.MultiProtoRequest.Queue))
+	require.Equal(t, 2, len(Template.RequestsQueue))
 
-	err = Template.MultiProtoRequest.Compile(&executerOpts)
+	err = Template.Executer.Compile()
 	require.Nil(t, err, "could not compile template")
 
 	gotresults, err := Template.Executer.Execute(contextargs.NewWithInput("blog.projectdiscovery.io"))
@@ -62,12 +62,10 @@ func TestMultiProtoWithProtoPrefix(t *testing.T) {
 	Template, err := templates.Parse("testcases/multiprotowithprefix.yaml", nil, executerOpts)
 	require.Nil(t, err, "could not parse template")
 
-	require.Equal(t, 3, len(Template.MultiProtoRequest.Queue))
+	require.Equal(t, 3, len(Template.RequestsQueue))
 
-	err = Template.MultiProtoRequest.Compile(&executerOpts)
+	err = Template.Executer.Compile()
 	require.Nil(t, err, "could not compile template")
-
-	require.True(t, len(Template.MultiProtoRequest.GetCompiledOperators()) > 0, "could not compile operators")
 
 	gotresults, err := Template.Executer.Execute(contextargs.NewWithInput("blog.projectdiscovery.io"))
 	require.Nil(t, err, "could not execute template")
