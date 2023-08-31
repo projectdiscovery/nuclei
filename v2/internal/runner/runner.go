@@ -351,55 +351,25 @@ func createReportingOptions(options *types.Options) (*reporting.Options, error) 
 		Walk(reportingOptions, expandEndVars)
 	}
 	if options.MarkdownExportDirectory != "" {
-		if reportingOptions != nil {
-			reportingOptions.MarkdownExporter = &markdown.Options{
-				Directory:         options.MarkdownExportDirectory,
-				IncludeRawPayload: !options.OmitRawRequests,
-				SortMode:          options.MarkdownExportSortMode,
-			}
-		} else {
-			reportingOptions = &reporting.Options{}
-			reportingOptions.MarkdownExporter = &markdown.Options{
-				Directory:         options.MarkdownExportDirectory,
-				IncludeRawPayload: !options.OmitRawRequests,
-				SortMode:          options.MarkdownExportSortMode,
-			}
+		reportingOptions.MarkdownExporter = &markdown.Options{
+			Directory:         options.MarkdownExportDirectory,
+			IncludeRawPayload: !options.OmitRawRequests,
+			SortMode:          options.MarkdownExportSortMode,
 		}
 	}
 	if options.SarifExport != "" {
-		if reportingOptions != nil {
-			reportingOptions.SarifExporter = &sarif.Options{File: options.SarifExport}
-		} else {
-			reportingOptions = &reporting.Options{}
-			reportingOptions.SarifExporter = &sarif.Options{File: options.SarifExport}
-		}
+		reportingOptions.SarifExporter = &sarif.Options{File: options.SarifExport}
 	}
 	if options.JSONExport != "" {
-		if reportingOptions != nil {
-			reportingOptions.JSONExporter = &jsonexporter.Options{
-				File:              options.JSONExport,
-				IncludeRawPayload: !options.OmitRawRequests,
-			}
-		} else {
-			reportingOptions = &reporting.Options{}
-			reportingOptions.JSONExporter = &jsonexporter.Options{
-				File:              options.JSONExport,
-				IncludeRawPayload: !options.OmitRawRequests,
-			}
+		reportingOptions.JSONExporter = &jsonexporter.Options{
+			File:              options.JSONExport,
+			IncludeRawPayload: !options.OmitRawRequests,
 		}
 	}
 	if options.JSONLExport != "" {
-		if reportingOptions != nil {
-			reportingOptions.JSONLExporter = &jsonl.Options{
-				File:              options.JSONLExport,
-				IncludeRawPayload: !options.OmitRawRequests,
-			}
-		} else {
-			reportingOptions = &reporting.Options{}
-			reportingOptions.JSONLExporter = &jsonl.Options{
-				File:              options.JSONLExport,
-				IncludeRawPayload: !options.OmitRawRequests,
-			}
+		reportingOptions.JSONLExporter = &jsonl.Options{
+			File:              options.JSONLExport,
+			IncludeRawPayload: !options.OmitRawRequests,
 		}
 	}
 
