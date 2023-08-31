@@ -32,6 +32,8 @@ type Request struct {
 	operators.Operators `yaml:",inline,omitempty"`
 	CompiledOperators   *operators.Operators `yaml:"-"`
 
+	// ID is the optional id of the request
+	ID string `yaml:"id,omitempty" json:"id,omitempty" jsonschema:"title=id of the dns request,description=ID is the optional ID of the DNS Request"`
 	// description: |
 	//   Engine type
 	Engine []string `yaml:"engine,omitempty" jsonschema:"title=engine,description=Engine,enum=python,enum=powershell,enum=command"`
@@ -96,7 +98,7 @@ func (request *Request) Requests() int {
 
 // GetID returns the ID for the request if any.
 func (request *Request) GetID() string {
-	return ""
+	return request.ID
 }
 
 // ExecuteWithResults executes the protocol requests and returns results instead of writing them.
@@ -115,10 +117,12 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 
 	// inject all template context values as gozero env variables
 	variables := protocolutils.GenerateVariables(input.MetaInput.Input, false, nil)
+	// add template context values
+	variables = generators.MergeMaps(variables, request.options.GetTemplateCtx(input.MetaInput).GetAll())
 	// optionvars are vars passed from CLI or env variables
 	optionVars := generators.BuildPayloadFromOptions(request.options.Options)
 	variablesMap := request.options.Variables.Evaluate(variables)
-	variables = generators.MergeMaps(variablesMap, variables, optionVars)
+	variables = generators.MergeMaps(variablesMap, variables, optionVars, request.options.Constants)
 	for name, value := range variables {
 		v := fmt.Sprint(value)
 		v, interactshURLs = request.options.Interactsh.Replace(v, interactshURLs)
@@ -150,6 +154,13 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 	data["template-path"] = request.options.TemplatePath
 	data["template-id"] = request.options.TemplateID
 	data["template-info"] = request.options.TemplateInfo
+
+	// expose response variables in proto_var format
+	// this is no-op if the template is not a multi protocol template
+	request.options.AddTemplateVars(input.MetaInput, request.Type(), request.ID, data)
+
+	// add variables from template context before matching/extraction
+	data = generators.MergeMaps(data, request.options.GetTemplateCtx(input.MetaInput).GetAll())
 
 	if request.options.Interactsh != nil {
 		request.options.Interactsh.MakePlaceholders(interactshURLs, data)

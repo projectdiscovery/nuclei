@@ -102,7 +102,10 @@ func Parse(request string, inputURL *urlutil.URL, unsafe, disablePathAutomerge b
 		if _, ok := rawrequest.Headers["Host"]; !ok {
 			rawrequest.Headers["Host"] = inputURL.Host
 		}
-		rawrequest.FullURL = fmt.Sprintf("%s://%s%s", inputURL.Scheme, strings.TrimSpace(inputURL.Host), rawrequest.Path)
+		cloned := inputURL.Clone()
+		cloned.Path = ""
+		_ = cloned.MergePath(rawrequest.Path, true)
+		rawrequest.FullURL = cloned.String()
 	}
 
 	return rawrequest, nil

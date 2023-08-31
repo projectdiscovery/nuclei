@@ -6,13 +6,14 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/disk"
+	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 )
 
 func TestBatteringRamGenerator(t *testing.T) {
 	usernames := []string{"admin", "password"}
 
 	catalogInstance := disk.NewCatalog("")
-	generator, err := New(map[string]interface{}{"username": usernames}, BatteringRamAttack, "", false, catalogInstance, "")
+	generator, err := New(map[string]interface{}{"username": usernames}, BatteringRamAttack, "", catalogInstance, "", getOptions(false))
 	require.Nil(t, err, "could not create generator")
 
 	iterator := generator.NewIterator()
@@ -32,7 +33,7 @@ func TestPitchforkGenerator(t *testing.T) {
 	passwords := []string{"password1", "password2", "password3"}
 
 	catalogInstance := disk.NewCatalog("")
-	generator, err := New(map[string]interface{}{"username": usernames, "password": passwords}, PitchForkAttack, "", false, catalogInstance, "")
+	generator, err := New(map[string]interface{}{"username": usernames, "password": passwords}, PitchForkAttack, "", catalogInstance, "", getOptions(false))
 	require.Nil(t, err, "could not create generator")
 
 	iterator := generator.NewIterator()
@@ -54,7 +55,7 @@ func TestClusterbombGenerator(t *testing.T) {
 	passwords := []string{"admin", "password", "token"}
 
 	catalogInstance := disk.NewCatalog("")
-	generator, err := New(map[string]interface{}{"username": usernames, "password": passwords}, ClusterBombAttack, "", false, catalogInstance, "")
+	generator, err := New(map[string]interface{}{"username": usernames, "password": passwords}, ClusterBombAttack, "", catalogInstance, "", getOptions(false))
 	require.Nil(t, err, "could not create generator")
 
 	iterator := generator.NewIterator()
@@ -82,4 +83,10 @@ func TestClusterbombGenerator(t *testing.T) {
 		require.Contains(t, passwords, value["password"], "Could not get correct clusterbomb password")
 	}
 	require.Equal(t, 3, count, "could not get correct clusterbomb counts")
+}
+
+func getOptions(allowLocalFileAccess bool) *types.Options {
+	opts := types.DefaultOptions()
+	opts.AllowLocalFileAccess = allowLocalFileAccess
+	return opts
 }

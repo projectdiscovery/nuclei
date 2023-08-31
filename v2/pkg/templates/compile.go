@@ -3,20 +3,23 @@ package templates
 import (
 	"fmt"
 	"io"
+	"path/filepath"
 	"reflect"
+	"strings"
 
 	"github.com/pkg/errors"
 	"gopkg.in/yaml.v2"
 
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
-	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/contextargs"
-	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/executer"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/offlinehttp"
 	"github.com/projectdiscovery/nuclei/v2/pkg/templates/cache"
 	"github.com/projectdiscovery/nuclei/v2/pkg/templates/signer"
+	"github.com/projectdiscovery/nuclei/v2/pkg/tmplexec"
 	"github.com/projectdiscovery/nuclei/v2/pkg/utils"
 	"github.com/projectdiscovery/retryablehttp-go"
+	errorutil "github.com/projectdiscovery/utils/errors"
+	fileutil "github.com/projectdiscovery/utils/file"
 	stringsutil "github.com/projectdiscovery/utils/strings"
 )
 
@@ -59,7 +62,7 @@ func Parse(filePath string, preprocessor Preprocessor, options protocols.Executo
 	}
 	defer reader.Close()
 	options.TemplatePath = filePath
-	template, err := ParseTemplateFromReader(reader, preprocessor, options)
+	template, err := ParseTemplateFromReader(reader, preprocessor, options.Copy())
 	if err != nil {
 		return nil, err
 	}
@@ -124,34 +127,43 @@ func (template *Template) compileProtocolRequests(options protocols.ExecutorOpti
 
 	var requests []protocols.Request
 
-	if len(template.MultiProtoRequest.Queue) > 0 {
-		template.MultiProtoRequest.ID = template.ID
-		template.MultiProtoRequest.Info = template.Info
-		requests = append(requests, &template.MultiProtoRequest)
+	if template.hasMultipleRequests() {
+		// when multiple requests are present preserve the order of requests and protocols
+		// which is already done during unmarshalling
+		requests = template.RequestsQueue
+		if options.Flow == "" {
+			options.IsMultiProtocol = true
+		}
 	} else {
-		switch {
-		case len(template.RequestsDNS) > 0:
+		if len(template.RequestsDNS) > 0 {
 			requests = append(requests, template.convertRequestToProtocolsRequest(template.RequestsDNS)...)
-		case len(template.RequestsFile) > 0:
+		}
+		if len(template.RequestsFile) > 0 {
 			requests = append(requests, template.convertRequestToProtocolsRequest(template.RequestsFile)...)
-		case len(template.RequestsNetwork) > 0:
+		}
+		if len(template.RequestsNetwork) > 0 {
 			requests = append(requests, template.convertRequestToProtocolsRequest(template.RequestsNetwork)...)
-		case len(template.RequestsHTTP) > 0:
+		}
+		if len(template.RequestsHTTP) > 0 {
 			requests = append(requests, template.convertRequestToProtocolsRequest(template.RequestsHTTP)...)
-		case len(template.RequestsHeadless) > 0 && options.Options.Headless:
+		}
+		if len(template.RequestsHeadless) > 0 && options.Options.Headless {
 			requests = append(requests, template.convertRequestToProtocolsRequest(template.RequestsHeadless)...)
-		case len(template.RequestsSSL) > 0:
+		}
+		if len(template.RequestsSSL) > 0 {
 			requests = append(requests, template.convertRequestToProtocolsRequest(template.RequestsSSL)...)
-		case len(template.RequestsWebsocket) > 0:
+		}
+		if len(template.RequestsWebsocket) > 0 {
 			requests = append(requests, template.convertRequestToProtocolsRequest(template.RequestsWebsocket)...)
-		case len(template.RequestsWHOIS) > 0:
+		}
+		if len(template.RequestsWHOIS) > 0 {
 			requests = append(requests, template.convertRequestToProtocolsRequest(template.RequestsWHOIS)...)
 		}
+		if len(template.RequestsCode) > 0 {
+			requests = append(requests, template.convertRequestToProtocolsRequest(template.RequestsCode)...)
+		}
 	}
-	if len(template.RequestsCode) > 0 {
-		requests = append(requests, template.convertRequestToProtocolsRequest(template.RequestsCode)...)
-	}
-	template.Executer = executer.NewExecuter(requests, &options)
+	template.Executer = tmplexec.NewTemplateExecuter(requests, &options)
 	return nil
 }
 
@@ -196,7 +208,7 @@ mainLoop:
 	}
 	if len(operatorsList) > 0 {
 		options.Operators = operatorsList
-		template.Executer = executer.NewExecuter([]protocols.Request{&offlinehttp.Request{}}, &options)
+		template.Executer = tmplexec.NewTemplateExecuter([]protocols.Request{&offlinehttp.Request{}}, &options)
 		return nil
 	}
 
@@ -237,10 +249,36 @@ func ParseTemplateFromReader(reader io.Reader, preprocessor Preprocessor, option
 		options.Variables = template.Variables
 	}
 
+	// if more than 1 request per protocol exist we add request id to protocol request
+	// since in template context we have proto_prefix for each protocol it is overwritten
+	// if request id is not present
+	template.validateAllRequestIDs()
+
+	// TODO: we should add a syntax check here or somehow use a javascript linter
+	// simplest option for now seems to compile using goja and see if it fails
+	if strings.TrimSpace(template.Flow) != "" {
+		if len(template.Flow) > 0 && filepath.Ext(template.Flow) == ".js" && fileutil.FileExists(template.Flow) {
+			// load file respecting sandbox
+			file, err := options.Options.LoadHelperFile(template.Flow, options.TemplatePath, options.Catalog)
+			if err != nil {
+				return nil, errorutil.NewWithErr(err).Msgf("loading flow file from %v denied", template.Flow)
+			}
+			defer file.Close()
+			if bin, err := io.ReadAll(file); err == nil {
+				template.Flow = string(bin)
+			} else {
+				return nil, errorutil.NewWithErr(err).Msgf("something went wrong failed to read file")
+			}
+		}
+		options.Flow = template.Flow
+	}
+
 	// create empty context args for template scope
-	options.TemplateCtx = contextargs.New()
+	options.CreateTemplateCtxStore()
 	options.ProtocolType = template.Type()
 	options.Constants = template.Constants
+
+	template.Options = &options
 	// If no requests, and it is also not a workflow, return error.
 	if template.Requests() == 0 {
 		return nil, fmt.Errorf("no requests defined for %s", template.ID)
