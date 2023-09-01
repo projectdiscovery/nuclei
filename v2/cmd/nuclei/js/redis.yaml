@@ -10,11 +10,11 @@ javascript:
   - code: >
       var m = require("nuclei/redis");
       m.GetServerInfo(Host, 6379)
+
     args:
       Host: "{{Host}}"
 
-    extractors:
-      - type: kval
-        part: response
-        kval:
-          - "response"
+    matchers:
+      - type: dsl
+        dsl:
+          - success

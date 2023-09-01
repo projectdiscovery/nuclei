@@ -249,7 +249,8 @@ func (request *Request) executeRequestWithPayloads(hostPort string, input *conte
 		CaptureOutput: request.Output,
 	})
 	if err != nil {
-		return errorutil.NewWithTag(request.TemplateID, "could not execute javascript code: %s", err)
+		// shouldn't fail even if it returned error instead create a failure event
+		results = compiler.ExecuteResult{"success": false, "error": err.Error()}
 	}
 
 	requestOptions.Output.Request(requestOptions.TemplateID, hostPort, request.Type().String(), err)
@@ -307,6 +308,15 @@ func (request *Request) executeRequestWithPayloads(hostPort string, input *conte
 			request.options.Output.WriteStoreDebugData(input.MetaInput.Input, request.options.TemplateID, request.Type().String(), msg)
 		}
 	}
+
+	if w, ok := data["error"]; ok && w != nil {
+		event := eventcreator.CreateEventWithAdditionalOptions(request, generators.MergeMaps(data, payloadValues), request.options.Options.Debug || request.options.Options.DebugResponse, func(wrappedEvent *output.InternalWrappedEvent) {
+			wrappedEvent.OperatorsResult.PayloadValues = payload
+		})
+		callback(event)
+		return err
+	}
+
 	if request.options.Interactsh != nil {
 		request.options.Interactsh.MakePlaceholders(interactshURLs, data)
 	}
@@ -318,7 +328,7 @@ func (request *Request) executeRequestWithPayloads(hostPort string, input *conte
 		})
 		callback(event)
 	} else if request.options.Interactsh != nil {
-		event = &output.InternalWrappedEvent{InternalEvent: data}
+		event = &output.InternalWrappedEvent{InternalEvent: data, UsesInteractsh: true}
 		request.options.Interactsh.RequestEvent(interactshURLs, &interactsh.RequestData{
 			MakeResultFunc: request.MakeResultEvent,
 			Event:          event,
@@ -327,10 +337,6 @@ func (request *Request) executeRequestWithPayloads(hostPort string, input *conte
 			ExtractFunc:    request.Extract,
 		})
 	}
-	if len(interactshURLs) > 0 {
-		event.UsesInteractsh = true
-	}
-	callback(event)
 	return nil
 }
 

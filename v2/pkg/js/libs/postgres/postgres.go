@@ -32,7 +32,7 @@ func (c *Client) IsPostgres(host string, port int) (bool, error) {
 	}
 	defer conn.Close()
 
-	conn.SetDeadline(time.Now().Add(timeout))
+	_ = conn.SetDeadline(time.Now().Add(timeout))
 
 	plugin := &postgres.POSTGRESPlugin{}
 	service, err := plugin.Run(conn, timeout, plugins.Target{Host: host})

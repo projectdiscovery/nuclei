@@ -141,11 +141,9 @@ func (c *Compiler) ExecuteWithOptions(code string, args *ExecuteArgs, opts *Exec
 	if len(opts.CaptureVariables) > 0 {
 		return c.captureVariables(runtime, opts.CaptureVariables)
 	}
-	var resultsBool bool
-	if val, ok := captured.(bool); ok {
-		resultsBool = val
-	}
-	return ExecuteResult{"success": resultsBool}, nil
+	// success is true by default . since js throws errors on failure
+	// hence output result is always success
+	return ExecuteResult{"response": captured, "success": results.ToBoolean()}, nil
 }
 
 // captureVariables captures the variables from the runtime.

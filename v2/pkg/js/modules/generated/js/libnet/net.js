@@ -9,7 +9,7 @@ class Conn {
     };
     // Recv receives data from the connection with a timeout.
     Recv(timeout, N) {
-        return [] byte, error;
+        return Uint8Array;
     };
     // Send sends data to the connection with a timeout.
     Send(data, timeout) {
@@ -17,7 +17,7 @@ class Conn {
     };
     // SendRecv sends data to the connection and receives data from the connection with a timeout.
     SendRecv(data, timeout) {
-        return [] byte, error;
+        return Uint8Array;
     };
 };
 
