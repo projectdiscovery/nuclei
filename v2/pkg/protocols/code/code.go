@@ -33,7 +33,7 @@ type Request struct {
 	CompiledOperators   *operators.Operators `yaml:"-"`
 
 	// ID is the optional id of the request
-	ID string `yaml:"id,omitempty" json:"id,omitempty" jsonschema:"title=id of the dns request,description=ID is the optional ID of the DNS Request"`
+	ID string `yaml:"id,omitempty" json:"id,omitempty" jsonschema:"title=id of the request,description=ID is the optional ID of the Request"`
 	// description: |
 	//   Engine type
 	Engine []string `yaml:"engine,omitempty" jsonschema:"title=engine,description=Engine,enum=python,enum=powershell,enum=command"`
