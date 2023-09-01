@@ -12,8 +12,7 @@ func main() {
 		panic(err)
 	}
 	// setup sizedWaitgroup to handle concurrency
-	// here we are using sizedWaitgroup to limit concurrency to 1
-	sg := sizedwaitgroup.New(1)
+	sg := sizedwaitgroup.New(10)
 
 	// scan 1 = run dns templates on scanme.sh
 	sg.Add()
