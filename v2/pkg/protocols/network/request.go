@@ -56,7 +56,7 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, metadata,
 	}
 	variables := protocolutils.GenerateVariables(address, false, nil)
 	// add template ctx variables to varMap
-	variables = generators.MergeMaps(variables, request.options.TemplateCtx.GetAll())
+	variables = generators.MergeMaps(variables, request.options.GetTemplateCtx(input.MetaInput).GetAll())
 	variablesMap := request.options.Variables.Evaluate(variables)
 	variables = generators.MergeMaps(variablesMap, variables, request.options.Constants)
 
@@ -70,7 +70,7 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, metadata,
 		}
 		visitedAddresses.Set(actualAddress, struct{}{})
 
-		if err := request.executeAddress(variables, actualAddress, address, input.MetaInput.Input, kv.tls, previous, callback); err != nil {
+		if err := request.executeAddress(variables, actualAddress, address, input, kv.tls, previous, callback); err != nil {
 			outputEvent := request.responseToDSLMap("", "", "", address, "")
 			callback(&output.InternalWrappedEvent{InternalEvent: outputEvent})
 			gologger.Warning().Msgf("[%v] Could not make network request for (%s) : %s\n", request.options.TemplateID, actualAddress, err)
@@ -81,7 +81,7 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, metadata,
 }
 
 // executeAddress executes the request for an address
-func (request *Request) executeAddress(variables map[string]interface{}, actualAddress, address, input string, shouldUseTLS bool, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
+func (request *Request) executeAddress(variables map[string]interface{}, actualAddress, address string, input *contextargs.Context, shouldUseTLS bool, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
 	variables = generators.MergeMaps(variables, map[string]interface{}{"Hostname": address})
 	payloads := generators.BuildPayloadFromOptions(request.options.Options)
 
@@ -114,7 +114,7 @@ func (request *Request) executeAddress(variables map[string]interface{}, actualA
 	return nil
 }
 
-func (request *Request) executeRequestWithPayloads(variables map[string]interface{}, actualAddress, address, input string, shouldUseTLS bool, payloads map[string]interface{}, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
+func (request *Request) executeRequestWithPayloads(variables map[string]interface{}, actualAddress, address string, input *contextargs.Context, shouldUseTLS bool, payloads map[string]interface{}, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
 	var (
 		hostname string
 		conn     net.Conn
@@ -279,10 +279,10 @@ func (request *Request) executeRequestWithPayloads(variables map[string]interfac
 	}
 
 	response := responseBuilder.String()
-	outputEvent := request.responseToDSLMap(reqBuilder.String(), string(final[:n]), response, input, actualAddress)
+	outputEvent := request.responseToDSLMap(reqBuilder.String(), string(final[:n]), response, input.MetaInput.Input, actualAddress)
 	// add response fields to template context and merge templatectx variables to output event
-	request.options.AddTemplateVars(request.Type(), outputEvent)
-	outputEvent = generators.MergeMaps(outputEvent, request.options.TemplateCtx.GetAll())
+	request.options.AddTemplateVars(input.MetaInput, request.Type(), request.ID, outputEvent)
+	outputEvent = generators.MergeMaps(outputEvent, request.options.GetTemplateCtx(input.MetaInput).GetAll())
 	outputEvent["ip"] = request.dialer.GetDialedIP(hostname)
 	if request.options.StopAtFirstMatch {
 		outputEvent["stop-at-first-match"] = true

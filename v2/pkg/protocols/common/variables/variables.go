@@ -66,6 +66,11 @@ func (variables *Variable) UnmarshalJSON(data []byte) error {
 func (variables *Variable) Evaluate(values map[string]interface{}) map[string]interface{} {
 	result := make(map[string]interface{}, variables.Len())
 	variables.ForEach(func(key string, value interface{}) {
+		if sliceValue, ok := value.([]interface{}); ok {
+			// slices cannot be evaluated
+			result[key] = sliceValue
+			return
+		}
 		valueString := types.ToString(value)
 		combined := generators.MergeMaps(values, result)
 		if value, ok := combined[key]; ok {
@@ -76,12 +81,26 @@ func (variables *Variable) Evaluate(values map[string]interface{}) map[string]in
 	return result
 }
 
+// GetAll returns all variables as a map
+func (variables *Variable) GetAll() map[string]interface{} {
+	result := make(map[string]interface{}, variables.Len())
+	variables.ForEach(func(key string, value interface{}) {
+		result[key] = value
+	})
+	return result
+}
+
 // EvaluateWithInteractsh returns evaluation results of variables with interactsh
 func (variables *Variable) EvaluateWithInteractsh(values map[string]interface{}, interact *interactsh.Client) (map[string]interface{}, []string) {
 	result := make(map[string]interface{}, variables.Len())
 
 	var interactURLs []string
 	variables.ForEach(func(key string, value interface{}) {
+		if sliceValue, ok := value.([]interface{}); ok {
+			// slices cannot be evaluated
+			result[key] = sliceValue
+			return
+		}
 		valueString := types.ToString(value)
 		if strings.Contains(valueString, "interactsh-url") {
 			valueString, interactURLs = interact.Replace(valueString, interactURLs)

@@ -72,7 +72,8 @@ func (r *requestGenerator) Make(ctx context.Context, input *contextargs.Context,
 	// 2. If request is Normal ( simply put not a raw request) (Ex: with placeholders `path`) = reqData contains relative path
 
 	// add template context values to dynamicValues (this takes care of self-contained and other types of requests)
-	dynamicValues = generators.MergeMaps(dynamicValues, r.request.options.TemplateCtx.GetAll())
+	// Note: `iterate-all` and flow are mutually exclusive. flow uses templateCtx and iterate-all uses dynamicValues
+	dynamicValues = generators.MergeMaps(dynamicValues, r.request.options.GetTemplateCtx(input.MetaInput).GetAll())
 	if r.request.SelfContained {
 		return r.makeSelfContainedRequest(ctx, reqData, payloads, dynamicValues)
 	}
@@ -85,7 +86,7 @@ func (r *requestGenerator) Make(ctx context.Context, input *contextargs.Context,
 		}
 	} else {
 		for payloadName, payloadValue := range payloads {
-			payloads[payloadName] = types.ToString(payloadValue)
+			payloads[payloadName] = types.ToStringNSlice(payloadValue)
 		}
 	}
 

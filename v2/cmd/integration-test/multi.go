@@ -1,6 +1,8 @@
 package main
 
-import "github.com/projectdiscovery/nuclei/v2/pkg/testutils"
+import (
+	"github.com/projectdiscovery/nuclei/v2/pkg/testutils"
+)
 
 var multiProtoTestcases = []TestCaseInfo{
 	{Path: "protocols/multi/dynamic-values.yaml", TestCase: &multiProtoDynamicExtractor{}},
