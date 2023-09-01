@@ -11,6 +11,7 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/projectdiscovery/gologger"
+	"github.com/projectdiscovery/nuclei/v2/pkg/js/libs/goconsole"
 	_ "github.com/projectdiscovery/nuclei/v2/pkg/js/modules/generated/go/libikev2"
 	_ "github.com/projectdiscovery/nuclei/v2/pkg/js/modules/generated/go/libkerberos"
 	_ "github.com/projectdiscovery/nuclei/v2/pkg/js/modules/generated/go/libldap"
@@ -28,7 +29,6 @@ import (
 	_ "github.com/projectdiscovery/nuclei/v2/pkg/js/modules/generated/go/libssh"
 	_ "github.com/projectdiscovery/nuclei/v2/pkg/js/modules/generated/go/libtelnet"
 	_ "github.com/projectdiscovery/nuclei/v2/pkg/js/modules/generated/go/libvnc"
-	"github.com/projectdiscovery/nuclei/v2/pkg/js/modules/libs/goconsole"
 	"github.com/projectdiscovery/nuclei/v2/pkg/js/scripts"
 )
 
@@ -64,11 +64,17 @@ type ExecuteOptions struct {
 }
 
 // ExecuteArgs is the arguments to pass to the script.
-type ExecuteArgs map[string]interface{}
+type ExecuteArgs struct {
+	Args        map[string]interface{} //these are protocol variables
+	TemplateCtx map[string]interface{} // templateCtx contains template scoped variables
+}
 
 // NewExecuteArgs returns a new execute arguments.
-func NewExecuteArgs() ExecuteArgs {
-	return make(map[string]interface{})
+func NewExecuteArgs() *ExecuteArgs {
+	return &ExecuteArgs{
+		Args:        make(map[string]interface{}),
+		TemplateCtx: make(map[string]interface{}),
+	}
 }
 
 // ExecuteResult is the result of executing a script.
@@ -88,7 +94,7 @@ func (e ExecuteResult) GetSuccess() bool {
 }
 
 // Execute executes a script with the default options.
-func (c *Compiler) Execute(code string, args ExecuteArgs) (ExecuteResult, error) {
+func (c *Compiler) Execute(code string, args *ExecuteArgs) (ExecuteResult, error) {
 	return c.ExecuteWithOptions(code, args, &ExecuteOptions{})
 }
 
@@ -100,7 +106,7 @@ func (c *Compiler) VM() *goja.Runtime {
 }
 
 // ExecuteWithOptions executes a script with the provided options.
-func (c *Compiler) ExecuteWithOptions(code string, args ExecuteArgs, opts *ExecuteOptions) (ExecuteResult, error) {
+func (c *Compiler) ExecuteWithOptions(code string, args *ExecuteArgs, opts *ExecuteOptions) (ExecuteResult, error) {
 	defer func() {
 		if err := recover(); err != nil {
 			gologger.Error().Msgf("Recovered panic %s %v: %v", code, args, err)
@@ -112,9 +118,17 @@ func (c *Compiler) ExecuteWithOptions(code string, args ExecuteArgs, opts *Execu
 	runtime := c.newRuntime(opts.Pool)
 	c.registerHelpersForVM(runtime)
 
-	for k, v := range args {
+	if args == nil {
+		args = NewExecuteArgs()
+	}
+	for k, v := range args.Args {
 		runtime.Set(k, v)
 	}
+	if args.TemplateCtx == nil {
+		args.TemplateCtx = make(map[string]interface{})
+	}
+	runtime.Set("template", args.TemplateCtx)
+
 	results, err := runtime.RunString(code)
 	if err != nil {
 		return nil, err

@@ -1,10 +1,10 @@
 package mssql
 
 import (
-	lib_mssql "github.com/projectdiscovery/nuclei/v2/pkg/js/modules/libs/mssql"
+	lib_mssql "github.com/projectdiscovery/nuclei/v2/pkg/js/libs/mssql"
 
 	"github.com/dop251/goja"
-	"github.com/projectdiscovery/nuclei/v2/pkg/js/modules/gojs"
+	"github.com/projectdiscovery/nuclei/v2/pkg/js/gojs"
 )
 
 var (

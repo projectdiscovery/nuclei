@@ -1,10 +1,10 @@
 package ssh
 
 import (
-	lib_ssh "github.com/projectdiscovery/nuclei/v2/pkg/js/modules/libs/ssh"
+	lib_ssh "github.com/projectdiscovery/nuclei/v2/pkg/js/libs/ssh"
 
 	"github.com/dop251/goja"
-	"github.com/projectdiscovery/nuclei/v2/pkg/js/modules/gojs"
+	"github.com/projectdiscovery/nuclei/v2/pkg/js/gojs"
 )
 
 var (

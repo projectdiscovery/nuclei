@@ -1,0 +1,28 @@
+id: test-javascript-ssh
+info:
+  name: test-javascript-ssh
+  author: Ice3man
+  severity: high
+  metadata:
+    shodan-query: "port:5900"
+
+javascript:
+  - code: >
+      var m = require("nuclei/vnc");
+      var c = m.Client();
+      var resp = c.IsVNC(Host, 5900);
+      var data = null;
+      if (resp) {
+        dump_json(resp);
+        data = resp.Banner;
+        data;
+      }
+    args:
+      Host: "{{Host}}"
+    output: true
+
+    extractors:
+      - type: kval
+        part: response
+        kval:
+          - "response"

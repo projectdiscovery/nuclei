@@ -1,0 +1,28 @@
+id: test-javascript-ssh
+info:
+  name: test-javascript-ssh
+  author: Ice3man
+  severity: high
+  metadata:
+    shodan-query: "port:23"
+
+javascript:
+  - code: >
+      var m = require("nuclei/telnet");
+      var c = m.Client();
+      var resp = c.IsTelnet(Host, 23);
+      var data = null;
+      if (resp) {
+        console.log(resp.Banner);
+        data = hex_to_ascii(resp.Banner);
+      }
+      data
+    args:
+      Host: "{{Host}}"
+    output: true
+
+    extractors:
+      - type: kval
+        part: response
+        kval:
+          - "response"

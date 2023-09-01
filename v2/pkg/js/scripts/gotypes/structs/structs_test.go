@@ -8,8 +8,8 @@ import (
 	"github.com/dop251/goja"
 	"github.com/dop251/goja_nodejs/console"
 	"github.com/dop251/goja_nodejs/require"
-	_ "github.com/projectdiscovery/nuclei/v2/pkg/js/generated/go/libnet"
-	net "github.com/projectdiscovery/nuclei/v2/pkg/js/generated/go/libnet"
+	_ "github.com/projectdiscovery/nuclei/v2/pkg/js/modules/generated/go/libnet"
+	net "github.com/projectdiscovery/nuclei/v2/pkg/js/modules/generated/go/libnet"
 	"github.com/projectdiscovery/nuclei/v2/pkg/js/scripts/gotypes/buffer"
 )
 

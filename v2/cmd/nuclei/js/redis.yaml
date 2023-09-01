@@ -1,0 +1,20 @@
+id: test-javascript-ssh
+info:
+  name: test-javascript-ssh
+  author: Ice3man
+  severity: high
+  metadata:
+    shodan-query: "port:6379"
+
+javascript:
+  - code: >
+      var m = require("nuclei/redis");
+      m.GetServerInfo(Host, 6379)
+    args:
+      Host: "{{Host}}"
+
+    extractors:
+      - type: kval
+        part: response
+        kval:
+          - "response"

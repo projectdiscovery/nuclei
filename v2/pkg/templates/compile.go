@@ -111,7 +111,8 @@ func (template *Template) Requests() int {
 		len(template.RequestsSSL) +
 		len(template.RequestsWebsocket) +
 		len(template.RequestsWHOIS) +
-		len(template.RequestsCode)
+		len(template.RequestsCode) +
+		len(template.RequestsJavascript)
 }
 
 // compileProtocolRequests compiles all the protocol requests for the template
@@ -162,6 +163,9 @@ func (template *Template) compileProtocolRequests(options protocols.ExecutorOpti
 		}
 		if len(template.RequestsCode) > 0 {
 			requests = append(requests, template.convertRequestToProtocolsRequest(template.RequestsCode)...)
+		}
+		if len(template.RequestsJavascript) > 0 {
+			requests = append(requests, template.convertRequestToProtocolsRequest(template.RequestsJavascript)...)
 		}
 	}
 	template.Executer = tmplexec.NewTemplateExecuter(requests, &options)

@@ -1,10 +1,10 @@
 package ikev2
 
 import (
-	lib_ikev2 "github.com/projectdiscovery/nuclei/v2/pkg/js/modules/libs/ikev2"
+	lib_ikev2 "github.com/projectdiscovery/nuclei/v2/pkg/js/libs/ikev2"
 
 	"github.com/dop251/goja"
-	"github.com/projectdiscovery/nuclei/v2/pkg/js/modules/gojs"
+	"github.com/projectdiscovery/nuclei/v2/pkg/js/gojs"
 )
 
 var (

@@ -1,10 +1,10 @@
 package pop3
 
 import (
-	lib_pop3 "github.com/projectdiscovery/nuclei/v2/pkg/js/modules/libs/pop3"
+	lib_pop3 "github.com/projectdiscovery/nuclei/v2/pkg/js/libs/pop3"
 
 	"github.com/dop251/goja"
-	"github.com/projectdiscovery/nuclei/v2/pkg/js/modules/gojs"
+	"github.com/projectdiscovery/nuclei/v2/pkg/js/gojs"
 )
 
 var (

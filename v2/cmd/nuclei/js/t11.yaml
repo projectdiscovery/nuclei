@@ -1,0 +1,38 @@
+id: test-javascript-ssh
+info:
+  name: test-javascript-ssh
+  author: Ice3man
+  severity: high
+  metadata:
+    shodan-query: "port:3389"
+
+javascript:
+  - code: >
+      var m = require("nuclei/rdp");
+      var c = m.Client();
+    
+      var data = null;
+      try {
+        var resp = c.IsRDP(Host, 3389);
+        if (resp && resp.IsRDP == true)  {
+          data = resp.OS;
+        }
+      } catch (e) {
+        var resp = c.CheckRDPAuth(Host, 3389);
+        if (resp && resp.Auth) {
+            data = resp.PluginInfo;
+        }
+      }
+      if (data && data != null) {
+        dump_json(resp);
+        data;
+      } 
+    args:
+      Host: "{{Host}}"
+    output: true
+
+    extractors:
+      - type: kval
+        part: response
+        kval:
+          - "response"

@@ -1,0 +1,27 @@
+id: test-javascript-ssh
+info:
+  name: test-javascript-ssh
+  author: Ice3man
+  severity: high
+  metadata:
+    shodan-query: "port:389"
+
+javascript:
+  - code: >
+      var m = require("nuclei/ldap");
+      var c = m.Client();
+      console.log(c.IsLdap(Host, 389));
+      var data = c.CollectLdapMetadata("", Host);
+      if (data) {
+        dump_json(data);
+      }
+      data.domain
+    args:
+      Host: "{{Host}}"
+    output: true
+  
+    matchers:
+      - type: word
+        part: response
+        words:
+          - "spookysec.local"

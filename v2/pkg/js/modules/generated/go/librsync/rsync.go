@@ -1,10 +1,10 @@
 package rsync
 
 import (
-	lib_rsync "github.com/projectdiscovery/nuclei/v2/pkg/js/modules/libs/rsync"
+	lib_rsync "github.com/projectdiscovery/nuclei/v2/pkg/js/libs/rsync"
 
 	"github.com/dop251/goja"
-	"github.com/projectdiscovery/nuclei/v2/pkg/js/modules/gojs"
+	"github.com/projectdiscovery/nuclei/v2/pkg/js/gojs"
 )
 
 var (

@@ -1,0 +1,32 @@
+id: test-javascript-ssh
+info:
+  name: test-javascript-ssh
+  author: Ice3man
+  severity: high
+
+javascript:
+  - code: >
+      var m = require("nuclei/ssh");
+      var c = m.Client();
+
+      var response = c.ConnectSSHInfoMode(Host, 22);
+     
+      if (response) {
+          console.log("Banner", response.Banner);
+          console.log("ServerID", response.ServerID.Raw);
+          console.log("Server Key Exchange", JSON.stringify(response.ServerKex));
+          console.log("Algorithms Selection", JSON.stringify(response.AlgorithmSelection));
+          for (var i = 0; i < response.UserAuth.length; i++) {
+              console.log("Discovered auth", response.UserAuth[i]);
+          }
+      }
+      response.UserAuth
+    args:
+      Host: "{{Host}}"
+    output: true
+
+    matchers:
+      - type: word
+        part: response
+        words:
+          - "password"
