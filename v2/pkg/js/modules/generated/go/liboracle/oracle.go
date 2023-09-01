@@ -1,0 +1,34 @@
+package oracle
+
+import (
+	lib_oracle "github.com/projectdiscovery/nuclei/v2/pkg/js/modules/libs/oracle"
+
+	"github.com/dop251/goja"
+	"github.com/projectdiscovery/nuclei/v2/pkg/js/modules/gojs"
+)
+
+var (
+	module = gojs.NewGojaModule("nuclei/oracle")
+)
+
+func init() {
+	module.Set(
+		gojs.Objects{
+			// Functions
+
+			// Var and consts
+
+			// Types (value type)
+			"Client":           func() lib_oracle.Client { return lib_oracle.Client{} },
+			"IsOracleResponse": func() lib_oracle.IsOracleResponse { return lib_oracle.IsOracleResponse{} },
+
+			// Types (pointer type)
+			"NewClient":           func() *lib_oracle.Client { return &lib_oracle.Client{} },
+			"NewIsOracleResponse": func() *lib_oracle.IsOracleResponse { return &lib_oracle.IsOracleResponse{} },
+		},
+	).Register()
+}
+
+func Enable(runtime *goja.Runtime) {
+	module.Enable(runtime)
+}

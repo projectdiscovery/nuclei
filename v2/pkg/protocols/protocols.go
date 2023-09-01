@@ -3,7 +3,6 @@ package protocols
 import (
 	"sync/atomic"
 
-	"github.com/dop251/goja_nodejs/require"
 	"github.com/projectdiscovery/ratelimit"
 	mapsutil "github.com/projectdiscovery/utils/maps"
 	stringsutil "github.com/projectdiscovery/utils/strings"
@@ -12,6 +11,7 @@ import (
 
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalog"
 	"github.com/projectdiscovery/nuclei/v2/pkg/input"
+	"github.com/projectdiscovery/nuclei/v2/pkg/js/compiler"
 	"github.com/projectdiscovery/nuclei/v2/pkg/model"
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators"
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators/extractors"
@@ -98,8 +98,9 @@ type ExecutorOptions struct {
 	IsMultiProtocol bool
 	// templateStore is a map which contains template context for each scan  (i.e input * template-id pair)
 	templateCtxStore *mapsutil.SyncLockMap[string, *contextargs.Context]
-	// jsregistry is javascript register with nuclei backend functions
-	jsregistry *require.Registry
+	// JsCompiler is abstracted javascript compiler which adds node modules and provides execution
+	// environment for javascript templates
+	JsCompiler *compiler.Compiler
 }
 
 // CreateTemplateCtxStore creates template context store (which contains templateCtx for every scan)

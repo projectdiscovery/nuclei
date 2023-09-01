@@ -2,27 +2,23 @@ package scripts
 
 import (
 	"embed"
-	_ "embed"
 	"math/rand"
 	"path/filepath"
-	"time"
 
 	"github.com/dop251/goja"
-	"github.com/projectdiscovery/nuclei/v2/pkg/js/scripts/buffer"
+	"github.com/projectdiscovery/nuclei/v2/pkg/js/scripts/gotypes/buffer"
 )
 
-//go:embed js
-var embedFS embed.FS
+var (
+	//go:embed js
+	embedFS embed.FS
 
-//go:embed exports.js
-var exports string
+	//go:embed exports.js
+	exports string
+)
 
-func init() {
-	// TODO: Bundle scripts on init and register them on runtime
-	rand.Seed(time.Now().UnixNano())
-}
-
-func initNative(runtime *goja.Runtime) {
+// initBuiltInFunc initializes runtime with builtin functions
+func initBuiltInFunc(runtime *goja.Runtime) {
 	module := buffer.Module{}
 	module.Enable(runtime)
 
@@ -38,9 +34,12 @@ func initNative(runtime *goja.Runtime) {
 	})
 }
 
-// RegisterNativeScripts registers all native scripts in the runtime
+// RegisterNativeScripts are js scripts that were added for convenience
+// and abstraction purposes we execute them in every runtime and make them
+// available for use in any js script
+// see: scripts/ for examples
 func RegisterNativeScripts(runtime *goja.Runtime) error {
-	initNative(runtime)
+	initBuiltInFunc(runtime)
 
 	dirs, err := embedFS.ReadDir("js")
 	if err != nil {
@@ -54,11 +53,13 @@ func RegisterNativeScripts(runtime *goja.Runtime) error {
 		if err != nil {
 			return err
 		}
+		// run all built in js helper functions or scripts
 		_, err = runtime.RunString(string(contents))
 		if err != nil {
 			return err
 		}
 	}
+	// exports defines the exports object
 	_, err = runtime.RunString(exports)
 	if err != nil {
 		return err
