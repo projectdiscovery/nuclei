@@ -16,7 +16,7 @@ type Module struct{}
 //
 // Also see how k6 does it.
 func (m *Module) Enable(runtime *goja.Runtime) {
-	runtime.Set("bytes", map[string]interface{}{
+	_ = runtime.Set("bytes", map[string]interface{}{
 		"Buffer": NewBuffer,
 	})
 }

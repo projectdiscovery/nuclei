@@ -163,7 +163,7 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 				highlightFormatter = "text"
 			}
 			var buff bytes.Buffer
-			quick.Highlight(&buff, beautifyJavascript(request.PreCondition), "javascript", highlightFormatter, "monokai")
+			_ = quick.Highlight(&buff, beautifyJavascript(request.PreCondition), "javascript", highlightFormatter, "monokai")
 			gologger.DefaultLogger.Print().Msgf("%v", buff.String())
 		}
 
@@ -266,7 +266,7 @@ func (request *Request) executeRequestWithPayloads(hostPort string, input *conte
 				highlightFormatter = "text"
 			}
 			var buff bytes.Buffer
-			quick.Highlight(&buff, beautifyJavascript(request.Code), "javascript", highlightFormatter, "monokai")
+			_ = quick.Highlight(&buff, beautifyJavascript(request.Code), "javascript", highlightFormatter, "monokai")
 			gologger.DefaultLogger.Print().Msgf("%v", buff.String())
 		}
 		if requestOptions.Options.StoreResponse {

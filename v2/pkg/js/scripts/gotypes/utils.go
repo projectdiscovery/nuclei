@@ -28,13 +28,10 @@ func UnmarshalSQLRows(rows *sql.Rows) ([]byte, error) {
 			switch v.DatabaseTypeName() {
 			case "VARCHAR", "TEXT", "UUID", "TIMESTAMP":
 				scanArgs[i] = new(sql.NullString)
-				break
 			case "BOOL":
 				scanArgs[i] = new(sql.NullBool)
-				break
 			case "INT4":
 				scanArgs[i] = new(sql.NullInt64)
-				break
 			default:
 				scanArgs[i] = new(sql.NullString)
 			}

@@ -12,7 +12,7 @@ type Module struct{}
 
 // Enable enables the structs module for the goja runtime.
 func (m *Module) Enable(runtime *goja.Runtime) {
-	runtime.Set("structs", map[string]interface{}{
+	_ = runtime.Set("structs", map[string]interface{}{
 		"pack": structsPackJavascript,
 		"unpack": func(format string, msg []byte) ([]interface{}, error) {
 			return StructsUnpack(format, msg)

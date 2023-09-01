@@ -27,7 +27,7 @@ func (c *Client) IsLdap(host string, port int) (bool, error) {
 	}
 	defer conn.Close()
 
-	conn.SetDeadline(time.Now().Add(timeout))
+	_ = conn.SetDeadline(time.Now().Add(timeout))
 
 	plugin := &pluginldap.LDAPPlugin{}
 	service, err := plugin.Run(conn, timeout, plugins.Target{Host: host})

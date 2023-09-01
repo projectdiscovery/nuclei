@@ -28,7 +28,7 @@ func (c *Client) ConnectSMBInfoMode(host string, port int) (*smb.SMBLog, error) 
 	}
 	defer conn.Close()
 
-	conn.SetDeadline(time.Now().Add(10 * time.Second))
+	_ = conn.SetDeadline(time.Now().Add(10 * time.Second))
 	setupSession := true
 
 	result, err := smb.GetSMBLog(conn, setupSession, false, false)
@@ -77,7 +77,9 @@ func (c *Client) ListShares(host string, port int, user, password string) ([]str
 	if err != nil {
 		return nil, err
 	}
-	defer s.Logoff()
+	defer func() {
+		_ = s.Logoff()
+	}()
 
 	names, err := s.ListSharenames()
 	if err != nil {

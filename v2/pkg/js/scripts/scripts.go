@@ -26,17 +26,17 @@ func initBuiltInFunc(runtime *goja.Runtime) {
 	module := buffer.Module{}
 	module.Enable(runtime)
 
-	runtime.Set("Rand", func(n int) []byte {
+	_ = runtime.Set("Rand", func(n int) []byte {
 		b := make([]byte, n)
 		for i := range b {
 			b[i] = byte(rand.Intn(255))
 		}
 		return b
 	})
-	runtime.Set("RandInt", func() int64 {
+	_ = runtime.Set("RandInt", func() int64 {
 		return rand.Int63()
 	})
-	runtime.Set("log", func(call goja.FunctionCall) goja.Value {
+	_ = runtime.Set("log", func(call goja.FunctionCall) goja.Value {
 		// TODO: verify string interpolation and handle multiple args
 		arg := call.Argument(0).Export()
 		switch value := arg.(type) {
@@ -50,7 +50,7 @@ func initBuiltInFunc(runtime *goja.Runtime) {
 		return goja.Null()
 	})
 	// export exports given values to nuclei
-	runtime.Set("exportToNuclei", func(call goja.FunctionCall) goja.Value {
+	_ = runtime.Set("exportToNuclei", func(call goja.FunctionCall) goja.Value {
 		for _, v := range call.Arguments {
 			fmt.Printf("%v\n", v.ExportType())
 		}

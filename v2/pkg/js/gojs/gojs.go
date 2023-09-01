@@ -28,9 +28,7 @@ type Module interface {
 type GojaModule struct {
 	name string
 	sets map[string]interface{}
-
-	runtime *goja.Runtime
-	once    sync.Once
+	once sync.Once
 }
 
 func NewGojaModule(name string) Module {
@@ -62,12 +60,12 @@ func (p *GojaModule) Require(runtime *goja.Runtime, module *goja.Object) {
 	o := module.Get("exports").(*goja.Object)
 
 	for k, v := range p.sets {
-		o.Set(k, v)
+		_ = o.Set(k, v)
 	}
 }
 
 func (p *GojaModule) Enable(runtime Runtime) {
-	runtime.Set(p.Name(), require.Require(runtime.(*goja.Runtime), p.Name()))
+	_ = runtime.Set(p.Name(), require.Require(runtime.(*goja.Runtime), p.Name()))
 }
 
 func (p *GojaModule) Register() Module {

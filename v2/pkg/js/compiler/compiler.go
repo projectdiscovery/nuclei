@@ -122,12 +122,12 @@ func (c *Compiler) ExecuteWithOptions(code string, args *ExecuteArgs, opts *Exec
 		args = NewExecuteArgs()
 	}
 	for k, v := range args.Args {
-		runtime.Set(k, v)
+		_ = runtime.Set(k, v)
 	}
 	if args.TemplateCtx == nil {
 		args.TemplateCtx = make(map[string]interface{})
 	}
-	runtime.Set("template", args.TemplateCtx)
+	_ = runtime.Set("template", args.TemplateCtx)
 
 	results, err := runtime.RunString(code)
 	if err != nil {
@@ -187,7 +187,7 @@ func (c *Compiler) newRuntime(reuse bool) *goja.Runtime {
 func (c *Compiler) registerHelpersForVM(runtime *goja.Runtime) {
 	_ = c.registry.Enable(runtime)
 	// by default import console module
-	runtime.Set("console", require.Require(runtime, console.ModuleName))
+	_ = runtime.Set("console", require.Require(runtime, console.ModuleName))
 
 	// Register embedded scripts
 	if err := scripts.RegisterNativeScripts(runtime); err != nil {
