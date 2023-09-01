@@ -283,9 +283,6 @@ func (request *Request) executeRequestWithPayloads(hostPort string, input *conte
 		data[k] = v
 	}
 	data["request"] = beautifyJavascript(request.Code)
-	if len(results) > 0 {
-		data["response"] = results
-	}
 	data["host"] = input.MetaInput.Input
 	data["matched"] = hostPort
 	data["template-path"] = requestOptions.TemplatePath
@@ -309,7 +306,7 @@ func (request *Request) executeRequestWithPayloads(hostPort string, input *conte
 		}
 	}
 
-	if w, ok := data["error"]; ok && w != nil {
+	if _, ok := data["error"]; ok {
 		event := eventcreator.CreateEventWithAdditionalOptions(request, generators.MergeMaps(data, payloadValues), request.options.Options.Debug || request.options.Options.DebugResponse, func(wrappedEvent *output.InternalWrappedEvent) {
 			wrappedEvent.OperatorsResult.PayloadValues = payload
 		})
