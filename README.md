@@ -379,7 +379,7 @@ We have [a discussion thread around this](https://github.com/projectdiscovery/nu
 
 ### Using Nuclei From Go Code
 
-Examples of using Nuclei From Go Code to run templates on targets are provided in the [examples](v2/examples/) folder.
+Complete guide of using Nuclei as Library/SDK is available at [lib](v2/lib/README.md)
 
 
 ### Resources
