@@ -71,7 +71,7 @@ func ParseOptions(options *types.Options) {
 	}
 	// Validate the options passed by the user and if any
 	// invalid options have been used, exit.
-	if err := validateOptions(options); err != nil {
+	if err := ValidateOptions(options); err != nil {
 		gologger.Fatal().Msgf("Program exiting: %s\n", err)
 	}
 
@@ -105,7 +105,7 @@ func ParseOptions(options *types.Options) {
 }
 
 // validateOptions validates the configuration options passed
-func validateOptions(options *types.Options) error {
+func ValidateOptions(options *types.Options) error {
 	validate := validator.New()
 	if err := validate.Struct(options); err != nil {
 		if _, ok := err.(*validator.InvalidValidationError); ok {

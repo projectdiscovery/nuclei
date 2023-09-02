@@ -77,7 +77,7 @@ type TemplateInfo struct {
 
 // NewMockExecuterOptions creates a new mock executeroptions struct
 func NewMockExecuterOptions(options *types.Options, info *TemplateInfo) *protocols.ExecutorOptions {
-	progressImpl, _ := progress.NewStatsTicker(0, false, false, false, false, 0)
+	progressImpl, _ := progress.NewStatsTicker(0, false, false, false, 0)
 	executerOpts := &protocols.ExecutorOptions{
 		TemplateID:   info.ID,
 		TemplateInfo: info.Info,
@@ -105,6 +105,7 @@ func (n *NoopWriter) Write(data []byte, level levels.Level) {}
 type MockOutputWriter struct {
 	aurora          aurora.Aurora
 	RequestCallback func(templateID, url, requestType string, err error)
+	FailureCallback func(result *output.InternalEvent)
 	WriteCallback   func(o *output.ResultEvent)
 }
 
@@ -138,6 +139,9 @@ func (m *MockOutputWriter) Request(templateID, url, requestType string, err erro
 
 // WriteFailure writes the event to file and/or screen.
 func (m *MockOutputWriter) WriteFailure(result output.InternalEvent) error {
+	if m.FailureCallback != nil && result != nil {
+		m.FailureCallback(&result)
+	}
 	return nil
 }
 func (m *MockOutputWriter) WriteStoreDebugData(host, templateID, eventType string, data string) {
