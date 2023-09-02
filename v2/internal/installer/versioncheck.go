@@ -63,6 +63,7 @@ func getpdtmParams(isSDK bool) string {
 	if isSDK {
 		params.Add("sdk", "true")
 	}
+	params.Add("utm_source", getUtmSource())
 	return params.Encode()
 }
 
