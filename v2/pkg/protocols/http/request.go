@@ -229,8 +229,12 @@ func (request *Request) executeTurboHTTP(input *contextargs.Context, dynamicValu
 
 // executeFuzzingRule executes fuzzing request for a URL
 func (request *Request) executeFuzzingRule(input *contextargs.Context, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
-	if _, err := urlutil.Parse(input.MetaInput.Input); err != nil {
-		return errors.Wrap(err, "could not parse url")
+	// If request is self-contained we don't need to parse any input.
+	if !request.SelfContained {
+		// If it's not self-contained we parse user provided input
+		if _, err := urlutil.Parse(input.MetaInput.Input); err != nil {
+			return errors.Wrap(err, "could not parse url")
+		}
 	}
 	fuzzRequestCallback := func(gr fuzz.GeneratedRequest) bool {
 		hasInteractMatchers := interactsh.HasMatchers(request.CompiledOperators)
