@@ -11,11 +11,14 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/dns/dnsclientpool"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 	sliceutil "github.com/projectdiscovery/utils/slice"
+	stringsutil "github.com/projectdiscovery/utils/strings"
 )
 
 var (
 	HelperFunctions map[string]govaluate.ExpressionFunction
 	FunctionNames   []string
+	// knownPorts is a list of known ports for protocols implemented in nuclei
+	knowPorts = []string{"80", "443", "8080", "8081", "8443", "53"}
 )
 
 func init() {
@@ -94,6 +97,20 @@ func init() {
 		}
 
 		return "", fmt.Errorf("no records found")
+	})
+	_ = dsl.AddMultiSignatureHelperFunction("getNetworkPort", []string{
+		"(Port string,defaultPort string) string)",
+		"(Port int,defaultPort int) int",
+	}, func(args ...interface{}) (interface{}, error) {
+		if len(args) != 2 {
+			return nil, dsl.ErrInvalidDslFunction
+		}
+		port := types.ToString(args[0])
+		defaultPort := types.ToString(args[1])
+		if port == "" || stringsutil.EqualFoldAny(port, knowPorts...) {
+			return defaultPort, nil
+		}
+		return port, nil
 	})
 
 	dsl.PrintDebugCallback = func(args ...interface{}) error {

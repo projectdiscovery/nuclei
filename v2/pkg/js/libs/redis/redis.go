@@ -1,11 +1,12 @@
 package redis
 
 import (
+	"context"
 	"fmt"
 	"net"
 	"time"
 
-	"github.com/go-redis/redis"
+	"github.com/redis/go-redis/v9"
 
 	"github.com/praetorian-inc/fingerprintx/pkg/plugins"
 	pluginsredis "github.com/praetorian-inc/fingerprintx/pkg/plugins/services/redis"
@@ -21,13 +22,13 @@ func GetServerInfo(host string, port int) (string, error) {
 	})
 
 	// Ping the Redis server
-	_, err := client.Ping().Result()
+	_, err := client.Ping(context.TODO()).Result()
 	if err != nil {
 		return "", err
 	}
 
 	// Get Redis server info
-	infoCmd := client.Info()
+	infoCmd := client.Info(context.TODO())
 	if infoCmd.Err() != nil {
 		return "", infoCmd.Err()
 	}
@@ -43,12 +44,12 @@ func Connect(host string, port int, password string) (bool, error) {
 		Password: password, // no password set
 		DB:       0,        // use default DB
 	})
-	_, err := client.Ping().Result()
+	_, err := client.Ping(context.TODO()).Result()
 	if err != nil {
 		return false, err
 	}
 	// Get Redis server info
-	infoCmd := client.Info()
+	infoCmd := client.Info(context.TODO())
 	if infoCmd.Err() != nil {
 		return false, infoCmd.Err()
 	}
@@ -56,32 +57,29 @@ func Connect(host string, port int, password string) (bool, error) {
 	return true, nil
 }
 
-
 // GetServerInfoAuth returns the server info for a redis server
 func GetServerInfoAuth(host string, port int, password string) (string, error) {
 	// create a new client
 	client := redis.NewClient(&redis.Options{
 		Addr:     fmt.Sprintf("%s:%d", host, port),
 		Password: password, // no password set
-		DB:       0,  // use default DB
+		DB:       0,        // use default DB
 	})
 
 	// Ping the Redis server
-	_, err := client.Ping().Result()
+	_, err := client.Ping(context.TODO()).Result()
 	if err != nil {
 		return "", err
 	}
 
 	// Get Redis server info
-	infoCmd := client.Info()
+	infoCmd := client.Info(context.TODO())
 	if infoCmd.Err() != nil {
 		return "", infoCmd.Err()
 	}
 
 	return infoCmd.Val(), nil
 }
-
-
 
 // IsAuthenticated checks if the redis server requires authentication
 func IsAuthenticated(host string, port int) (bool, error) {

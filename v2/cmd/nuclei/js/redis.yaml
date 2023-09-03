@@ -4,15 +4,20 @@ info:
   author: Ice3man
   severity: high
   metadata:
-    shodan-query: "port:6379"
+    shodan-query: product:"redis"
 
 javascript:
-  - code: >
+  - code: |
       var m = require("nuclei/redis");
-      m.GetServerInfo(Host, 6379)
+      if(Port == "" || Port == null){
+        Port = 6379;
+      }
+      log(template)
+      m.GetServerInfo(Host, Port);
 
     args:
       Host: "{{Host}}"
+      Port: "{{Port}}"
 
     matchers:
       - type: dsl

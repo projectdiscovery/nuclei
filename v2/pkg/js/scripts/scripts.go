@@ -2,15 +2,17 @@ package scripts
 
 import (
 	"embed"
-	"fmt"
 	"math/rand"
+	"net"
 	"path/filepath"
+	"time"
 
 	"github.com/dop251/goja"
 	"github.com/logrusorgru/aurora"
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v2/pkg/js/scripts/gotypes/buffer"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/utils/vardump"
+	stringsutil "github.com/projectdiscovery/utils/strings"
 )
 
 var (
@@ -19,6 +21,8 @@ var (
 
 	//go:embed exports.js
 	exports string
+	// knownPorts is a list of known ports for protocols implemented in nuclei
+	knowPorts = []string{"80", "443", "8080", "8081", "8443", "53"}
 )
 
 // initBuiltInFunc initializes runtime with builtin functions
@@ -49,12 +53,39 @@ func initBuiltInFunc(runtime *goja.Runtime) {
 		}
 		return goja.Null()
 	})
-	// export exports given values to nuclei
-	_ = runtime.Set("exportToNuclei", func(call goja.FunctionCall) goja.Value {
-		for _, v := range call.Arguments {
-			fmt.Printf("%v\n", v.ExportType())
+	// getNetworkPort returns the port if it is not a known port
+	_ = runtime.Set("getNetworkPort", func(call goja.FunctionCall) goja.Value {
+		inputPort := call.Argument(0).String()
+		if inputPort == "" || stringsutil.EqualFoldAny(inputPort, knowPorts...) {
+			// if inputPort is empty or a know port of other protocol
+			// return given defaultPort
+			return call.Argument(1)
 		}
-		return goja.Null()
+		return call.Argument(0)
+	})
+
+	// is port open check is port is actually open
+	// it can be invoked as isPortOpen(host, port, [timeout])
+	// where timeout is optional and defaults to 5 seconds
+	_ = runtime.Set("isPortOpen", func(call goja.FunctionCall) goja.Value {
+		host := call.Argument(0).String()
+		if host == "" {
+			return runtime.ToValue(false)
+		}
+		port := call.Argument(1).String()
+		if port == "" {
+			return runtime.ToValue(false)
+		}
+		timeoutinSec := call.Argument(2).ToInteger()
+		if timeoutinSec == 0 {
+			timeoutinSec = 5
+		}
+		conn, err := net.DialTimeout("tcp", net.JoinHostPort(host, port), time.Duration(timeoutinSec)*time.Second)
+		if err != nil {
+			return runtime.ToValue(false)
+		}
+		_ = conn.Close()
+		return runtime.ToValue(true)
 	})
 }
 
