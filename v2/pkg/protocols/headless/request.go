@@ -2,6 +2,7 @@ package headless
 
 import (
 	"fmt"
+	"github.com/projectdiscovery/retryablehttp-go"
 	"net/url"
 	"strings"
 	"time"
@@ -211,12 +212,16 @@ func (request *Request) executeFuzzingRule(input *contextargs.Context, payloads 
 	if _, err := urlutil.Parse(input.MetaInput.Input); err != nil {
 		return errors.Wrap(err, "could not parse url")
 	}
+	baseRequest, err := retryablehttp.NewRequest("GET", input.MetaInput.Input, nil)
+	if err != nil {
+		return errors.Wrap(err, "could not create base request")
+	}
 	for _, rule := range request.Fuzzing {
 		err := rule.Execute(&fuzz.ExecuteRuleInput{
 			Input:       input,
 			Callback:    fuzzRequestCallback,
 			Values:      payloads,
-			BaseRequest: nil,
+			BaseRequest: baseRequest,
 		})
 		if err == types.ErrNoMoreRequests {
 			return nil
