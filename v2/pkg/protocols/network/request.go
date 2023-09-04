@@ -45,7 +45,7 @@ func (request *Request) ExecuteWithResults(target *contextargs.Context, metadata
 	var err error
 
 	input := target.Clone()
-	if err := input.UpdatePortFromConstants(request.options.Constants); err != nil {
+	if err := input.UseNetworkPort(request.Port); err != nil {
 		gologger.Debug().Msgf("Could not network port from constants: %s\n", err)
 	}
 

@@ -7,12 +7,10 @@ info:
   description: Description of the Template
   reference: https://example-reference-link
 
-constants:
-    networkPort: 2846
-
-network:
+tcp:
   - host: 
       - "{{Hostname}}"
+    port: 2846
     inputs:
       - data: "PING\r\n"
     read-size: 4
