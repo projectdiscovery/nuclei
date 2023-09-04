@@ -55,11 +55,11 @@ func Cluster(list []*Template) [][]*Template {
 		// We only cluster http, dns and ssl requests as of now.
 		// Take care of requests that can't be clustered first.
 		if len(template.RequestsHTTP) == 0 && len(template.RequestsDNS) == 0 && len(template.RequestsSSL) == 0 {
-			skip.Set(key, struct{}{})
+			_ = skip.Set(key, struct{}{})
 			final = append(final, []*Template{template})
 			continue
 		}
-		skip.Set(key, struct{}{})
+		_ = skip.Set(key, struct{}{})
 
 		var templateType types.ProtocolType
 		switch {
@@ -86,21 +86,21 @@ func Cluster(list []*Template) [][]*Template {
 				if len(other.RequestsDNS) != 1 {
 					continue
 				} else if template.RequestsDNS[0].CanCluster(other.RequestsDNS[0]) {
-					skip.Set(otherKey, struct{}{})
+					_ = skip.Set(otherKey, struct{}{})
 					cluster = append(cluster, other)
 				}
 			case types.HTTPProtocol:
 				if len(other.RequestsHTTP) != 1 {
 					continue
 				} else if template.RequestsHTTP[0].CanCluster(other.RequestsHTTP[0]) {
-					skip.Set(otherKey, struct{}{})
+					_ = skip.Set(otherKey, struct{}{})
 					cluster = append(cluster, other)
 				}
 			case types.SSLProtocol:
 				if len(other.RequestsSSL) != 1 {
 					continue
 				} else if template.RequestsSSL[0].CanCluster(other.RequestsSSL[0]) {
-					skip.Set(otherKey, struct{}{})
+					_ = skip.Set(otherKey, struct{}{})
 					cluster = append(cluster, other)
 				}
 			}
