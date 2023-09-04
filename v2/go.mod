@@ -69,7 +69,7 @@ require (
 	github.com/mholt/archiver v3.1.1+incompatible
 	github.com/projectdiscovery/dsl v0.0.19
 	github.com/projectdiscovery/fasttemplate v0.0.2
-	github.com/projectdiscovery/goflags v0.1.18
+	github.com/projectdiscovery/goflags v0.1.19
 	github.com/projectdiscovery/gologger v1.1.11
 	github.com/projectdiscovery/httpx v1.3.4
 	github.com/projectdiscovery/mapcidr v1.1.2
