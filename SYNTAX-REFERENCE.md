@@ -498,6 +498,35 @@ description: Subversion ALM for the enterprise before 8.8.2 allows reflected XSS
 
 <div class="dd">
 
+<code>impact</code>  <i>string</i>
+
+</div>
+<div class="dt">
+
+Impact of the template.
+
+You can go in-depth here on impact of the template.
+
+
+
+Examples:
+
+
+```yaml
+impact: Successful exploitation of this vulnerability could allow an attacker to execute arbitrary SQL queries, potentially leading to unauthorized access, data leakage, or data manipulation.
+```
+
+```yaml
+impact: Successful exploitation of this vulnerability could allow an attacker to execute arbitrary script code in the context of the victim's browser, potentially leading to session hijacking, defacement, or theft of sensitive information.
+```
+
+
+</div>
+
+<hr />
+
+<div class="dd">
+
 <code>reference</code>  <i><a href="#stringslicerawstringslice">stringslice.RawStringSlice</a></i>
 
 </div>
