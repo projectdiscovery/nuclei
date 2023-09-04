@@ -78,6 +78,14 @@
             "Bower is a package manager which stores package information in the bower.json file"
           ]
         },
+        "impact": {
+          "type": "string",
+          "title": "impact of the template",
+          "description": "In-depth explanation on the impact of the issue found by the template",
+          "examples": [
+            "Successful exploitation of this vulnerability could allow an attacker to execute arbitrary SQL queries"
+          ]
+        },
         "reference": {
           "$schema": "http://json-schema.org/draft-04/schema#",
           "$ref": "#/definitions/stringslice.RawStringSlice",
