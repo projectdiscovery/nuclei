@@ -11,14 +11,14 @@ import (
 func TestClusterTemplates(t *testing.T) {
 	tests := []struct {
 		name      string
-		templates map[string]*Template
+		templates []*Template
 		expected  [][]*Template
 	}{
 		{
 			name: "http-cluster-get",
-			templates: map[string]*Template{
-				"first.yaml":  {RequestsHTTP: []*http.Request{{Path: []string{"{{BaseURL}}"}}}},
-				"second.yaml": {RequestsHTTP: []*http.Request{{Path: []string{"{{BaseURL}}"}}}},
+			templates: []*Template{
+				{Path: "first.yaml", RequestsHTTP: []*http.Request{{Path: []string{"{{BaseURL}}"}}}},
+				{Path: "second.yaml", RequestsHTTP: []*http.Request{{Path: []string{"{{BaseURL}}"}}}},
 			},
 			expected: [][]*Template{{
 				{RequestsHTTP: []*http.Request{{Path: []string{"{{BaseURL}}"}}}},
@@ -27,9 +27,9 @@ func TestClusterTemplates(t *testing.T) {
 		},
 		{
 			name: "no-http-cluster",
-			templates: map[string]*Template{
-				"first.yaml":  {RequestsHTTP: []*http.Request{{Path: []string{"{{BaseURL}}/random"}}}},
-				"second.yaml": {RequestsHTTP: []*http.Request{{Path: []string{"{{BaseURL}}/another"}}}},
+			templates: []*Template{
+				{Path: "first.yaml", RequestsHTTP: []*http.Request{{Path: []string{"{{BaseURL}}/random"}}}},
+				{Path: "second.yaml", RequestsHTTP: []*http.Request{{Path: []string{"{{BaseURL}}/another"}}}},
 			},
 			expected: [][]*Template{
 				{{RequestsHTTP: []*http.Request{{Path: []string{"{{BaseURL}}/random"}}}}},
@@ -38,9 +38,9 @@ func TestClusterTemplates(t *testing.T) {
 		},
 		{
 			name: "dns-cluster",
-			templates: map[string]*Template{
-				"first.yaml":  {RequestsDNS: []*dns.Request{{Name: "{{Hostname}}"}}},
-				"second.yaml": {RequestsDNS: []*dns.Request{{Name: "{{Hostname}}"}}},
+			templates: []*Template{
+				{Path: "first.yaml", RequestsDNS: []*dns.Request{{Name: "{{Hostname}}"}}},
+				{Path: "second.yaml", RequestsDNS: []*dns.Request{{Name: "{{Hostname}}"}}},
 			},
 			expected: [][]*Template{{
 				{RequestsDNS: []*dns.Request{{Name: "{{Hostname}}"}}},
