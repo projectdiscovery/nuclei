@@ -3,7 +3,16 @@ package contextargs
 import (
 	"net/http/cookiejar"
 
+	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 	mapsutil "github.com/projectdiscovery/utils/maps"
+	stringsutil "github.com/projectdiscovery/utils/strings"
+	urlutil "github.com/projectdiscovery/utils/url"
+)
+
+var (
+	// reservedPorts contains list of reserved ports for non-network requests in nuclei
+	reservedPorts           = []string{"80", "443", "8080", "8443", "8081", "53"}
+	reservedNetworkPortName = "networkPort"
 )
 
 // Context implements a shared context struct to share information across multiple templates within a workflow
@@ -47,6 +56,29 @@ func (ctx *Context) isInitialized() bool {
 
 func (ctx *Context) hasArgs() bool {
 	return ctx.isInitialized() && !ctx.args.IsEmpty()
+}
+
+// UpdatePortFromConstants gets networkPort from constants and updates input port when necessary
+func (ctx *Context) UpdatePortFromConstants(constants map[string]interface{}) error {
+	var port string
+	if val, ok := constants[reservedNetworkPortName]; ok {
+		port = types.ToString(val)
+		if port == "" {
+			return nil
+		}
+	}
+
+	target, err := urlutil.Parse(ctx.MetaInput.Input)
+	if err != nil {
+		return err
+	}
+	inputPort := target.Port()
+	if inputPort == "" || stringsutil.EqualFoldAny(inputPort, reservedPorts...) {
+		// replace port with networkPort
+		target.UpdatePort(port)
+		ctx.MetaInput.Input = target.Host
+	}
+	return nil
 }
 
 // Get the value with specific key if exists

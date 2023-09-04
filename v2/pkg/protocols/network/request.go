@@ -40,9 +40,14 @@ func (request *Request) Type() templateTypes.ProtocolType {
 }
 
 // ExecuteWithResults executes the protocol requests and returns results instead of writing them.
-func (request *Request) ExecuteWithResults(input *contextargs.Context, metadata, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
+func (request *Request) ExecuteWithResults(target *contextargs.Context, metadata, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
 	var address string
 	var err error
+
+	input := target.Clone()
+	if err := input.UpdatePortFromConstants(request.options.Constants); err != nil {
+		gologger.Debug().Msgf("Could not network port from constants: %s\n", err)
+	}
 
 	if request.SelfContained {
 		address = ""
