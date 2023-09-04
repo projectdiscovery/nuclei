@@ -98,6 +98,11 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 		compiled := &request.Operators
 		compiled.ExcludeMatchers = options.ExcludeMatchers
 		compiled.TemplateID = options.TemplateID
+		for _, matcher := range compiled.Matchers {
+			if matcher.Part == "" {
+				matcher.Part = "response"
+			}
+		}
 		if err := compiled.Compile(); err != nil {
 			return errorutil.NewWithTag(request.TemplateID, "could not compile operators got %v", err)
 		}
@@ -164,7 +169,7 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 			}
 			var buff bytes.Buffer
 			_ = quick.Highlight(&buff, beautifyJavascript(request.PreCondition), "javascript", highlightFormatter, "monokai")
-			gologger.DefaultLogger.Print().Msgf("%v", buff.String())
+			prettyPrint(request.TemplateID, buff.String())
 		}
 
 		argsCopy, err := request.getArgsCopy(input, payloads, requestOptions, true)
@@ -215,8 +220,11 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 				}
 				callback(result)
 			}, requestOptions); err != nil {
-				gologger.Warning().Msgf("Could not execute request: %s\n", err)
-				return nil
+				_ = err
+				// Review: should we log error here?
+				// it is technically not error as it is expected to fail
+				// gologger.Warning().Msgf("Could not execute request: %s\n", err)
+				// do not return even if error occured
 			}
 			// If this was a match, and we want to stop at first match, skip all further requests.
 			shouldStopAtFirstMatch := request.options.Options.StopAtFirstMatch || request.StopAtFirstMatch
@@ -254,10 +262,10 @@ func (request *Request) executeRequestWithPayloads(hostPort string, input *conte
 	}
 
 	requestOptions.Output.Request(requestOptions.TemplateID, hostPort, request.Type().String(), err)
-	gologger.Verbose().Msgf("Sent Javascript request to %s", hostPort)
+	gologger.Verbose().Msgf("[%s] Sent Javascript request to %s", request.TemplateID, hostPort)
 
 	if requestOptions.Options.Debug || requestOptions.Options.DebugRequests || requestOptions.Options.StoreResponse {
-		msg := fmt.Sprintf("[%s] Dumped Javascript request for %s:\nVariables: %+v", requestOptions.TemplateID, input.MetaInput.Input, argsCopy)
+		msg := fmt.Sprintf("[%s] Dumped Javascript request for %s:\nVariables:\n %v", requestOptions.TemplateID, input.MetaInput.Input, vardump.DumpVariables(argsCopy.Args))
 
 		if requestOptions.Options.Debug || requestOptions.Options.DebugRequests {
 			gologger.Debug().Str("address", input.MetaInput.Input).Msg(msg)
@@ -267,7 +275,7 @@ func (request *Request) executeRequestWithPayloads(hostPort string, input *conte
 			}
 			var buff bytes.Buffer
 			_ = quick.Highlight(&buff, beautifyJavascript(request.Code), "javascript", highlightFormatter, "monokai")
-			gologger.DefaultLogger.Print().Msgf("%v", buff.String())
+			prettyPrint(request.TemplateID, buff.String())
 		}
 		if requestOptions.Options.StoreResponse {
 			request.options.Output.WriteStoreDebugData(input.MetaInput.Input, request.options.TemplateID, request.Type().String(), msg)
@@ -297,7 +305,7 @@ func (request *Request) executeRequestWithPayloads(hostPort string, input *conte
 	data = generators.MergeMaps(data, request.options.GetTemplateCtx(input.MetaInput).GetAll())
 
 	if requestOptions.Options.Debug || requestOptions.Options.DebugRequests || requestOptions.Options.StoreResponse {
-		msg := fmt.Sprintf("[%s] Dumped Javascript response for %s:\n%+v", requestOptions.TemplateID, input.MetaInput.Input, results)
+		msg := fmt.Sprintf("[%s] Dumped Javascript response for %s:\n%v", requestOptions.TemplateID, input.MetaInput.Input, vardump.DumpVariables(results))
 		if requestOptions.Options.Debug || requestOptions.Options.DebugRequests {
 			gologger.Debug().Str("address", input.MetaInput.Input).Msg(msg)
 		}
@@ -434,4 +442,15 @@ func beautifyJavascript(code string) string {
 		return code
 	}
 	return beautified
+}
+
+func prettyPrint(templateId string, buff string) {
+	lines := strings.Split(buff, "\n")
+	final := []string{}
+	for _, v := range lines {
+		if v != "" {
+			final = append(final, "\t"+v)
+		}
+	}
+	gologger.Debug().Msgf(" [%v] Javascript Code:\n\n%v\n\n", templateId, strings.Join(final, "\n"))
 }
