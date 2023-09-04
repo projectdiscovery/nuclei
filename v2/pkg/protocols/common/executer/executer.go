@@ -3,6 +3,7 @@ package executer
 import (
 	"fmt"
 	"strings"
+	"sync"
 	"sync/atomic"
 
 	"github.com/pkg/errors"
@@ -71,6 +72,7 @@ func (e *Executer) Execute(input *contextargs.Context) (bool, error) {
 	}
 	previous := make(map[string]interface{})
 
+	mtx := &sync.Mutex{}
 	var lastMatcherEvent *output.InternalWrappedEvent
 	writeFailureCallback := func(event *output.InternalWrappedEvent, matcherStatus bool) {
 		if !results.Load() && matcherStatus {
@@ -105,7 +107,9 @@ func (e *Executer) Execute(input *contextargs.Context) (bool, error) {
 			// in that case we can skip it, otherwise we've to show failure in
 			// case of matcher-status flag.
 			if !event.HasOperatorResult() && !event.UsesInteractsh {
+				mtx.Lock()
 				lastMatcherEvent = event
+				mtx.Unlock()
 			} else {
 				if !(event.UsesInteractsh && event.InteractshMatched.Load()) && writer.WriteResult(event, e.options.Output, e.options.Progress, e.options.IssuesClient) {
 					if event.UsesInteractsh {
@@ -113,7 +117,9 @@ func (e *Executer) Execute(input *contextargs.Context) (bool, error) {
 					}
 					results.Store(true)
 				} else {
+					mtx.Lock()
 					lastMatcherEvent = event
+					mtx.Unlock()
 				}
 			}
 		})
