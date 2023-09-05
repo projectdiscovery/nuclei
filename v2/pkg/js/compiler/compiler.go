@@ -114,7 +114,9 @@ func (c *Compiler) ExecuteWithOptions(code string, args *ExecuteArgs, opts *Exec
 			return
 		}
 	}()
-
+	if opts == nil {
+		opts = &ExecuteOptions{}
+	}
 	runtime := c.newRuntime(opts.Pool)
 	c.registerHelpersForVM(runtime)
 

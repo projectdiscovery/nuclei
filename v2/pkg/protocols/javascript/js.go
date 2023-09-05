@@ -47,9 +47,6 @@ type Request struct {
 	// description: |
 	//   PreCondition is a condition which is evaluated before sending the request.
 	PreCondition string `yaml:"pre-condition,omitempty" json:"pre-condition,omitempty" jsonschema:"title=pre-condition for the request,description=PreCondition is a condition which is evaluated before sending the request"`
-	// description: |
-	//   PreConditionExports is a list of variables to export from the pre-condition.
-	PreConditionExports []string `yaml:"pre-condition-exports,omitempty" json:"pre-condition-exports,omitempty" jsonschema:"title=pre-condition exports for the request,description=PreConditionExports is a list of variables to export from the pre-condition"`
 
 	// description: |
 	//   Args contains the arguments to pass to the javascript code.
@@ -57,10 +54,6 @@ type Request struct {
 	// description: |
 	//   Code contains code to execute for the javascript request.
 	Code string `yaml:"code,omitempty" json:"code,omitempty" jsonschema:"title=code to execute in javascript,description=Executes inline javascript code for the request"`
-	// description: |
-	//   Output captures the output of the javascript code
-	//   and makes it available for matching and extraction.
-	Output bool `yaml:"output,omitempty" json:"output,omitempty" jsonschema:"title=capture output of the javascript code,description=Captures output of the javascript code"`
 
 	// description: |
 	//   StopAtFirstMatch stops processing the request at first match.
@@ -196,27 +189,14 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 		}
 		argsCopy.TemplateCtx = templateCtx.GetAll()
 
-		result, err := request.options.JsCompiler.ExecuteWithOptions(request.PreCondition, argsCopy, &compiler.ExecuteOptions{
-			CaptureVariables: request.PreConditionExports,
-		})
+		result, err := request.options.JsCompiler.ExecuteWithOptions(request.PreCondition, argsCopy, nil)
 		if err != nil {
 			return errorutil.NewWithTag(request.TemplateID, "could not execute pre-condition: %s", err)
 		}
-		if !result.GetSuccess() && len(request.PreConditionExports) == 0 {
+		if !result.GetSuccess() || types.ToString(result["error"]) != "" {
 			gologger.Warning().Msgf("[%s] Precondition for request %s was not satisfied\n", request.TemplateID, request.PreCondition)
 			request.options.Progress.IncrementFailedRequestsBy(1)
 			return nil
-		}
-		if len(request.PreConditionExports) > 0 {
-			for _, export := range request.PreConditionExports {
-				if _, ok := result[export]; !ok {
-					gologger.Warning().Msgf("[%s] Precondition for request %s was not satisfied\n", request.TemplateID, request.PreCondition)
-					return nil
-				} else {
-					payloadValues[export] = result[export]
-					templateCtx.Set(export, result[export])
-				}
-			}
 		}
 		if request.options.Options.Debug || request.options.Options.DebugRequests {
 			request.options.Progress.IncrementRequests()
@@ -332,8 +312,7 @@ func (request *Request) executeRequestWithPayloads(hostPort string, input *conte
 	}
 
 	results, err := request.options.JsCompiler.ExecuteWithOptions(string(requestData), argsCopy, &compiler.ExecuteOptions{
-		Pool:          false,
-		CaptureOutput: request.Output,
+		Pool: false,
 	})
 	if err != nil {
 		// shouldn't fail even if it returned error instead create a failure event
