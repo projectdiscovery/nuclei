@@ -1,8 +1,8 @@
-## libmysql 
+## mysql 
 ---
 
 
-`libmysql` implements bindings for `mysql` protocol in javascript
+`mysql` implements bindings for `mysql` protocol in javascript
 to be used from nuclei scanner.
 
 

@@ -19,6 +19,7 @@ func init() {
 			"GetServerInfo":     lib_redis.GetServerInfo,
 			"GetServerInfoAuth": lib_redis.GetServerInfoAuth,
 			"IsAuthenticated":   lib_redis.IsAuthenticated,
+			"RunLuaScript":      lib_redis.RunLuaScript,
 
 			// Var and consts
 

@@ -1,37 +1,49 @@
-/**@module libkev2*/
-
 /**
- * @fileoverview libikev2 implements bindings for ikev2 protocol in javascript to be used from nuclei scanner.
+ * @module ikev2
+ * @description ikev2 implements bindings for ikev2 protocol in javascript to be used from nuclei scanner.
  */
 
 /**
  * @class
- * @description IKEMessage is the IKEv2 message. IKEv2 implements a limited subset of IKEv2 Protocol, specifically the IKE_NOTIFY and IKE_NONCE payloads and the IKE_SA_INIT exchange.
+ * @name IKEMessage
+ * @description IKEv2 implements a limited subset of IKEv2 Protocol, specifically the IKE_NOTIFY and IKE_NONCE payloads and the IKE_SA_INIT exchange.
  */
 class IKEMessage {
     /**
      * @method
-     * @description AppendPayload appends a payload to the IKE message
+     * @name AppendPayload
+     * @description appends a payload to the IKE message
      * @param {Object} payload - The payload to append
+     * @returns {void}
+     * @example
+     * let ikeMessage = new IKEMessage();
+     * ikeMessage.AppendPayload(payload);
      */
     AppendPayload(payload) {
-        // Implementation goes here
+        return;
     };
 
     /**
      * @method
-     * @description Encode encodes the final IKE message
-     * @returns {Uint8Array} - The encoded IKE message
+     * @name Encode
+     * @description encodes the final IKE message
+     * @returns {Array} - Returns an array of bytes
+     * @throws {Error} If there is an error in encoding
+     * @example
+     * let ikeMessage = new IKEMessage();
+     * try {
+     *   let encodedMessage = ikeMessage.Encode();
+     * } catch (error) {
+     *   console.error(error);
+     * }
      */
     Encode() {
-        // Implementation goes here
-        return new Uint8Array();
+        // Removed 'error' as errors are thrown, not returned
+        return [];
     };
 };
 
-/**
- * @description Exports the IKEMessage class
- */
+
 module.exports = {
     IKEMessage: IKEMessage,
 };

@@ -1,8 +1,8 @@
-## libldap 
+## ldap 
 ---
 
 
-`libldap` implements bindings for `ldap` protocol in javascript
+`ldap` implements bindings for `ldap` protocol in javascript
 to be used from nuclei scanner.
 
 

@@ -1,8 +1,8 @@
-## libsmtp 
+## smtp 
 ---
 
 
-`libsmtp` implements bindings for `smtp` protocol in javascript
+`smtp` implements bindings for `smtp` protocol in javascript
 to be used from nuclei scanner.
 
 

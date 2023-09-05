@@ -1,8 +1,8 @@
-## libikev2 
+## ikev2 
 ---
 
 
-`libikev2` implements bindings for `ikev2` protocol in javascript
+`ikev2` implements bindings for `ikev2` protocol in javascript
 to be used from nuclei scanner.
 
 

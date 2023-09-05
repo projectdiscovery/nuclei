@@ -1,8 +1,8 @@
-## libssh 
+## ssh 
 ---
 
 
-`libssh` implements bindings for `ssh` protocol in javascript
+`ssh` implements bindings for `ssh` protocol in javascript
 to be used from nuclei scanner.
 
 

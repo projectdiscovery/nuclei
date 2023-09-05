@@ -1,8 +1,8 @@
-## libpop3 
+## pop3 
 ---
 
 
-`libpop3` implements bindings for `pop3` protocol in javascript
+`pop3` implements bindings for `pop3` protocol in javascript
 to be used from nuclei scanner.
 
 

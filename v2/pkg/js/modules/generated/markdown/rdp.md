@@ -1,8 +1,8 @@
-## librdp 
+## rdp 
 ---
 
 
-`librdp` implements bindings for `rdp` protocol in javascript
+`rdp` implements bindings for `rdp` protocol in javascript
 to be used from nuclei scanner.
 
 

@@ -1,8 +1,8 @@
-## libsmb 
+## smb 
 ---
 
 
-`libsmb` implements bindings for `smb` protocol in javascript
+`smb` implements bindings for `smb` protocol in javascript
 to be used from nuclei scanner.
 
 

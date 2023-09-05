@@ -1,45 +1,54 @@
 /**
- * @fileoverview libldap implements bindings for ldap protocol in javascript to be used from nuclei scanner.
+ * @module ldap
+ * @description ldap implements bindings for ldap protocol in javascript to be used from nuclei scanner.
  */
 
 /**
- * Client is a client for ldap protocol in golang.
- * It is a wrapper around the standard library ldap package.
- * 
- * @class
+ * @class Client
+ * @description Client is a client for ldap protocol in golang. It is a wrapper around the standard library ldap package.
  */
 class Client {
     /**
-     * CollectLdapMetadata collects metadata from ldap server.
-     * 
-     * @param {string} domain - The domain to collect metadata from.
-     * @param {string} controller - The controller to use for the collection.
-     * @returns {Object} LDAPMetadata - The collected metadata.
-     * @throws {Error} If an error occurs during the collection.
+     * @method CollectLdapMetadata
+     * @description Collects metadata from ldap server.
+     * @param {string} domain - The domain from which to collect LDAP metadata.
+     * @param {string} controller - The controller from which to collect LDAP metadata.
+     * @throws {Error} If an error occurred while collecting metadata.
+     * @returns {Object} The collected LDAP metadata.
+     * @example
+     * let client = new Client();
+     * try {
+     *     let metadata = client.CollectLdapMetadata('example.com', 'controller1');
+     *     console.log(metadata);
+     * } catch (error) {
+     *     console.error(`Failed to collect LDAP metadata: ${error}`);
+     * }
      */
     CollectLdapMetadata(domain, controller) {
-        // return LDAPMetadata, error;
-        throw new Error('Not implemented');
+        // Implementation goes here
     };
 
     /**
-     * IsLdap checks if the given host and port are running ldap server.
-     * 
+     * @method IsLdap
+     * @description Checks if the given host and port are running ldap server.
      * @param {string} host - The host to check.
      * @param {number} port - The port to check.
-     * @returns {boolean} - True if the host and port are running an ldap server, false otherwise.
-     * @throws {Error} If an error occurs during the check.
+     * @throws {Error} If an error occurred while checking.
+     * @returns {boolean} True if the host and port are running an LDAP server, false otherwise.
+     * @example
+     * let client = new Client();
+     * try {
+     *     let isLdap = client.IsLdap('localhost', 389);
+     *     console.log(`Is LDAP: ${isLdap}`);
+     * } catch (error) {
+     *     console.error(`Failed to check if LDAP: ${error}`);
+     * }
      */
     IsLdap(host, port) {
-        // return bool, error;
-        throw new Error('Not implemented');
+        // Implementation goes here
     };
 };
 
 module.exports = {
-    /**
-     * The Client class
-     * @type {Client}
-     */
     Client: Client,
 };

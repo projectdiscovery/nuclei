@@ -1,8 +1,8 @@
-## libvnc 
+## vnc 
 ---
 
 
-`libvnc` implements bindings for `vnc` protocol in javascript
+`vnc` implements bindings for `vnc` protocol in javascript
 to be used from nuclei scanner.
 
 

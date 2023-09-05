@@ -1,8 +1,8 @@
-## libtelnet 
+## telnet 
 ---
 
 
-`libtelnet` implements bindings for `telnet` protocol in javascript
+`telnet` implements bindings for `telnet` protocol in javascript
 to be used from nuclei scanner.
 
 

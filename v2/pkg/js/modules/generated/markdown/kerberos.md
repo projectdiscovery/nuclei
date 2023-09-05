@@ -1,8 +1,8 @@
-## libkerberos 
+## kerberos 
 ---
 
 
-`libkerberos` implements bindings for `kerberos` protocol in javascript
+`kerberos` implements bindings for `kerberos` protocol in javascript
 to be used from nuclei scanner.
 
 

@@ -1,8 +1,8 @@
-## librsync 
+## rsync 
 ---
 
 
-`librsync` implements bindings for `rsync` protocol in javascript
+`rsync` implements bindings for `rsync` protocol in javascript
 to be used from nuclei scanner.
 
 

@@ -1,8 +1,8 @@
-## libnet 
+## net 
 ---
 
 
-`libnet` implements bindings for `net` protocol in javascript
+`net` implements bindings for `net` protocol in javascript
 to be used from nuclei scanner.
 
 

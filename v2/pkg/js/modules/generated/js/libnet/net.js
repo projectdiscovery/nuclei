@@ -1,70 +1,119 @@
 /**
- * libnet implements bindings for net protocol in javascript
- * to be used from nuclei scanner.
+ * @module net
+ * @description net implements bindings for net protocol in javascript to be used from nuclei scanner.
  */
 
 /**
- * Conn is a connection to a remote host.
  * @class
+ * @name Conn
+ * @description Conn is a connection to a remote host.
  */
 class Conn {
     /**
-     * Close closes the connection.
-     * @throws {Error} If an error occurred while closing the connection.
+     * @method
+     * @name Close
+     * @description Close closes the connection.
+     * @throws {Error} If an error occurred during closing the connection.
+     * @example
+     * let conn = new Conn();
+     * try {
+     *   conn.Close();
+     * } catch (error) {
+     *   console.error(error);
+     * }
      */
     Close() {
+        throw new Error('Error closing connection');
     };
 
     /**
-     * Recv receives data from the connection with a timeout.
-     * @param {number} timeout - The timeout duration.
-     * @param {number} N - The number of data to receive.
-     * @returns {Uint8Array} The received data.
+     * @method
+     * @name Recv
+     * @description Recv receives data from the connection with a timeout.
+     * @param {number} timeout - The timeout for receiving data.
+     * @param {number} N - The number of bytes to receive.
+     * @returns {Array} An array of bytes received from the connection.
+     * @throws {Error} If an error occurred during receiving the data.
+     * @example
+     * let conn = new Conn();
+     * try {
+     *   let data = conn.Recv(5000, 1024);
+     * } catch (error) {
+     *   console.error(error);
+     * }
      */
     Recv(timeout, N) {
-        return new Uint8Array();
+        // Implementation here
     };
 
     /**
-     * Send sends data to the connection with a timeout.
-     * @param {Uint8Array} data - The data to send.
-     * @param {number} timeout - The timeout duration.
-     * @throws {Error} If an error occurred while sending the data.
+     * @method
+     * @name Send
+     * @description Send sends data to the connection with a timeout.
+     * @param {Array} data - The data to send.
+     * @param {number} timeout - The timeout for sending data.
+     * @throws {Error} If an error occurred during sending the data.
+     * @example
+     * let conn = new Conn();
+     * try {
+     *   conn.Send([1,2,3,4,5], 5000);
+     * } catch (error) {
+     *   console.error(error);
+     * }
      */
     Send(data, timeout) {
+        // Implementation here
     };
 
     /**
-     * SendRecv sends data to the connection and receives data from the connection with a timeout.
-     * @param {Uint8Array} data - The data to send.
-     * @param {number} timeout - The timeout duration.
-     * @returns {Uint8Array} The received data.
+     * @method
+     * @name SendRecv
+     * @description SendRecv sends data to the connection and receives data from the connection with a timeout.
+     * @param {Array} data - The data to send.
+     * @param {number} timeout - The timeout for sending and receiving data.
+     * @returns {Array} An array of bytes received from the connection.
+     * @throws {Error} If an error occurred during sending or receiving the data.
+     * @example
+     * let conn = new Conn();
+     * try {
+     *   let receivedData = conn.SendRecv([1,2,3,4,5], 5000);
+     * } catch (error) {
+     *   console.error(error);
+     * }
      */
     SendRecv(data, timeout) {
-        return new Uint8Array();
+        // Implementation here
     };
 };
 
 /**
- * Open a connection with the specified protocol and address.
+ * @function
+ * @name Open
+ * @description Open a connection with the specified protocol and address.
  * @param {string} protocol - The protocol to use.
  * @param {string} address - The address to connect to.
+ * @example
+ * Open('http', 'localhost:8080');
  */
 function Open(protocol, address) {
-
+    // Implementation here
 };
 
 /**
- * Open a TLS connection with the specified protocol and address.
+ * @function
+ * @name OpenTLS
+ * @description Open a TLS connection with the specified protocol and address.
  * @param {string} protocol - The protocol to use.
  * @param {string} address - The address to connect to.
+ * @example
+ * OpenTLS('https', 'localhost:443');
  */
 function OpenTLS(protocol, address) {
-
+    // Implementation here
 };
 
 module.exports = {
+    Conn: Conn,
     Open: Open,
     OpenTLS: OpenTLS,
-    NetConn: Conn,
 };

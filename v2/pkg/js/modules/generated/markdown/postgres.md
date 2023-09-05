@@ -1,8 +1,8 @@
-## libpostgres 
+## postgres 
 ---
 
 
-`libpostgres` implements bindings for `postgres` protocol in javascript
+`postgres` implements bindings for `postgres` protocol in javascript
 to be used from nuclei scanner.
 
 
