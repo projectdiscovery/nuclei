@@ -181,7 +181,7 @@ require (
 	github.com/projectdiscovery/freeport v0.0.5 // indirect
 	github.com/quic-go/quic-go v0.37.0 // indirect
 	github.com/refraction-networking/utls v1.4.2 // indirect
-	github.com/sashabaranov/go-openai v1.14.1 // indirect
+	github.com/sashabaranov/go-openai v1.15.1 // indirect
 	github.com/shoenig/go-m1cpu v0.1.6 // indirect
 	github.com/sirupsen/logrus v1.9.3 // indirect
 	github.com/skeema/knownhosts v1.1.1 // indirect
