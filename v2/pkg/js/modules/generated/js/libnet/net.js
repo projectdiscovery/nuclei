@@ -13,7 +13,6 @@ class Conn {
      * @throws {Error} If an error occurred while closing the connection.
      */
     Close() {
-        throw new Error();
     };
 
     /**
@@ -23,7 +22,7 @@ class Conn {
      * @returns {Uint8Array} The received data.
      */
     Recv(timeout, N) {
-        return Uint8Array;
+        return new Uint8Array();
     };
 
     /**
@@ -33,7 +32,6 @@ class Conn {
      * @throws {Error} If an error occurred while sending the data.
      */
     Send(data, timeout) {
-        throw new Error();
     };
 
     /**
@@ -43,7 +41,7 @@ class Conn {
      * @returns {Uint8Array} The received data.
      */
     SendRecv(data, timeout) {
-        return Uint8Array;
+        return new Uint8Array();
     };
 };
 
