@@ -50,7 +50,7 @@ func main() {
 	}
 	llm := openai.NewClient(finalKey)
 
-	filepath.WalkDir(dir, func(path string, d os.DirEntry, err error) error {
+	_ = filepath.WalkDir(dir, func(path string, d os.DirEntry, err error) error {
 		if !d.IsDir() && filepath.Ext(path) == ".js" {
 			log.Printf("Processing %s", path)
 			if err := updateDocsWithLLM(llm, path); err != nil {

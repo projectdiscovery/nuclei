@@ -28,7 +28,6 @@ class IKEMessage {
 };
 
 /**
- * @module
  * @description Exports the IKEMessage class
  */
 module.exports = {

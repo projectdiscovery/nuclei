@@ -1,8 +1,5 @@
 /**
- * libldap implements bindings for ldap protocol in javascript
- * to be used from nuclei scanner.
- * 
- * @module Client
+ * @fileoverview libldap implements bindings for ldap protocol in javascript to be used from nuclei scanner.
  */
 
 /**

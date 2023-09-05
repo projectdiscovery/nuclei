@@ -3,7 +3,7 @@
  */
 
 /**
- * Class representing a kerberos client.
+ * @class Class representing a kerberos client.
  */
 class Client {
     /**
