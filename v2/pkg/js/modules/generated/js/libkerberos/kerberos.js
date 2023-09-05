@@ -1,3 +1,4 @@
+/**@module libkerberos */
 /**
  * @fileoverview This module implements bindings for kerberos protocol in javascript to be used from nuclei scanner.
  */
@@ -22,6 +23,7 @@ class Client {
         // Implementation goes here
     };
 };
+
 
 module.exports = {
     Client: Client,

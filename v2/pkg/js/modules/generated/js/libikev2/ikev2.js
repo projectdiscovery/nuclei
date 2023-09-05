@@ -1,3 +1,5 @@
+/**@module libkev2*/
+
 /**
  * @fileoverview libikev2 implements bindings for ikev2 protocol in javascript to be used from nuclei scanner.
  */

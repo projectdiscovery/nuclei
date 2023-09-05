@@ -6,6 +6,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"strings"
 
 	errorutil "github.com/projectdiscovery/utils/errors"
 	fileutil "github.com/projectdiscovery/utils/file"
@@ -17,6 +18,19 @@ var (
 	key     string
 	keyfile string
 )
+
+const prompt = `
+---original javascript---
+{{source}}
+---instructions----
+1. new javascript file should contain at least following annotations
+@module,@exports , @class , @method , @typedef , @throws, @return , @param , @example etc with necessary / required details when applicable
+2. take note that new javascript should not contain any class, method or function that does not exist in original javascript code
+3. always try to include @example for every method , and before adding any '@' make sure it is actually true
+4. re-think and verify if function is a method or public function
+5. donot forget to include return types of functions/methods
+---new javascript---
+`
 
 // doclint is automatic javascript documentation linter for nuclei
 // it uses LLM to autocomplete the generated js code to proper JSDOC notation
@@ -75,9 +89,9 @@ func updateDocsWithLLM(llm *openai.Client, path string) error {
 		Model: "gpt-4",
 		Messages: []openai.ChatCompletionMessage{
 			{Role: "system", Content: "Act as helpful assistant and update below js code with proper documentation so that it can be parsed by jsdoc. Note: in javascript code if any function/method return 'error' remove it as errors are thrown not returned"},
-			{Role: "user", Content: string(bin)},
+			{Role: "user", Content: strings.ReplaceAll(prompt, "{{source}}", string(bin))},
 		},
-		Temperature: 0.1,
+		Temperature: 0.3,
 	})
 	if err != nil {
 		return err

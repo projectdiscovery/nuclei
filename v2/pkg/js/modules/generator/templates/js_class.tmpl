@@ -1,4 +1,5 @@
-{{$packageName:=(printf "lib%s" .PackageName) -}}
+{{$packageName:=(printf "%s" .PackageName) -}}
+/**@module {{$packageName}} */
 // {{$packageName}} implements bindings for {{.PackageName}} protocol in javascript
 // to be used from nuclei scanner.
 
