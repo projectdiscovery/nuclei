@@ -74,7 +74,7 @@ func updateDocsWithLLM(llm *openai.Client, path string) error {
 	resp, err := llm.CreateChatCompletion(context.TODO(), openai.ChatCompletionRequest{
 		Model: "gpt-4",
 		Messages: []openai.ChatCompletionMessage{
-			{Role: "system", Content: "Act as helpful assistant and update below js code with proper documentation so that it can be parsed by jsdoc"},
+			{Role: "system", Content: "Act as helpful assistant and update below js code with proper documentation so that it can be parsed by jsdoc. Note: in javascript code if any function/method return 'error' remove it as errors are thrown not returned"},
 			{Role: "user", Content: string(bin)},
 		},
 		Temperature: 0.1,

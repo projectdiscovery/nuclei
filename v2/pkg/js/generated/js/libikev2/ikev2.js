@@ -12,7 +12,7 @@ class IKEMessage {
     };
     // Encode encodes the final IKE message
     Encode() {
-        return [] byte, error;
+        return [], error;
     };
 };
 
