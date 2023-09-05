@@ -32,10 +32,13 @@ func (variables Variable) JSONSchemaType() *jsonschema.Type {
 }
 
 func (variables *Variable) UnmarshalYAML(unmarshal func(interface{}) error) error {
-	variables.InsertionOrderedStringMap = utils.InsertionOrderedStringMap{}
-	if err := unmarshal(&variables.InsertionOrderedStringMap); err != nil {
+	var ms map[string]interface{}
+	if err := unmarshal(&ms); err != nil {
 		return err
 	}
+
+	mp := utils.NewInsertionOrderedStringMap(ms)
+	variables.InsertionOrderedStringMap = *mp
 
 	if variables.LazyEval || variables.checkForLazyEval() {
 		return nil
