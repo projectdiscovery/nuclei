@@ -50,6 +50,7 @@ var (
 		"generic":         genericTestcases,
 		"dsl":             dslTestcases,
 		"flow":            flowTestcases,
+		"javascript":      jsTestcases,
 	}
 
 	// For debug purposes

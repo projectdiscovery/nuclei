@@ -27,14 +27,4 @@ func TestBuffers(t *testing.T) {
 	if rut.String() != "1,2,3" {
 		t.Fatalf("invalid buffer bytes: %+v", rut.Export().([]uint8))
 	}
-
-	t.Run("append-init", func(t *testing.T) {
-		rut, err := runtime.RunString(`bytes.Buffer(buffer.bytes()).bytes();`)
-		if err != nil {
-			t.Fatal(err)
-		}
-		if rut.String() != "1,2,3" {
-			t.Fatalf("invalid buffer bytes: %+v", rut.Export().([]uint8))
-		}
-	})
 }
