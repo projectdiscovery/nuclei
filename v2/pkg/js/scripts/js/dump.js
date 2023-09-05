@@ -4,6 +4,11 @@ function dump_json(data) {
   console.log(JSON.stringify(data, null, 2));
 }
 
+// to_json returns beautified JSON.
+function to_json(data) {
+  return JSON.stringify(data, null, 2);
+}
+
 // hex_to_ascii converts a hex string to ascii.
 function hex_to_ascii(str1) {
   var hex = str1.toString();

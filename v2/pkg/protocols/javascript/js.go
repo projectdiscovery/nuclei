@@ -99,7 +99,7 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 		compiled.ExcludeMatchers = options.ExcludeMatchers
 		compiled.TemplateID = options.TemplateID
 		for _, matcher := range compiled.Matchers {
-			if matcher.Part == "" {
+			if matcher.Part == "" && matcher.Type.MatcherType != matchers.DSLMatcher {
 				matcher.Part = "response"
 			}
 		}
@@ -118,7 +118,15 @@ func (r *Request) Options() *protocols.ExecutorOptions {
 
 // Requests returns the total number of requests the rule will perform
 func (request *Request) Requests() int {
-	return 1
+	pre_conditions := 0
+	if request.PreCondition != "" {
+		pre_conditions = 1
+	}
+	if request.generator != nil {
+		payloadRequests := request.generator.NewIterator().Total()
+		return payloadRequests + pre_conditions
+	}
+	return 1 + pre_conditions
 }
 
 // GetID returns the ID for the request if any.
@@ -130,6 +138,7 @@ func (request *Request) GetID() string {
 func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicValues, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
 	hostPort, err := getAddress(input.MetaInput.Input)
 	if err != nil {
+		request.options.Progress.IncrementFailedRequestsBy(1)
 		return err
 	}
 	hostname, port, _ := net.SplitHostPort(hostPort)
@@ -186,6 +195,7 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 		}
 		if !result.GetSuccess() && len(request.PreConditionExports) == 0 {
 			gologger.Warning().Msgf("[%s] Precondition for request %s was not satisfied\n", request.TemplateID, request.PreCondition)
+			request.options.Progress.IncrementFailedRequestsBy(1)
 			return nil
 		}
 		if len(request.PreConditionExports) > 0 {
@@ -200,6 +210,7 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 			}
 		}
 		if request.options.Options.Debug || request.options.Options.DebugRequests {
+			request.options.Progress.IncrementRequests()
 			gologger.Debug().Msgf("[%s] Precondition for request was satisfied\n", request.TemplateID)
 		}
 	}
@@ -217,6 +228,7 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 			if err := request.executeRequestWithPayloads(hostPort, input, hostname, value, payloadValues, func(result *output.InternalWrappedEvent) {
 				if result.OperatorsResult != nil && result.OperatorsResult.Matched {
 					gotMatches = true
+					request.options.Progress.IncrementMatched()
 				}
 				callback(result)
 			}, requestOptions); err != nil {
@@ -260,6 +272,7 @@ func (request *Request) executeRequestWithPayloads(hostPort string, input *conte
 		// shouldn't fail even if it returned error instead create a failure event
 		results = compiler.ExecuteResult{"success": false, "error": err.Error()}
 	}
+	request.options.Progress.IncrementRequests()
 
 	requestOptions.Output.Request(requestOptions.TemplateID, hostPort, request.Type().String(), err)
 	gologger.Verbose().Msgf("[%s] Sent Javascript request to %s", request.TemplateID, hostPort)
