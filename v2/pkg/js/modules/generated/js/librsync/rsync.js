@@ -1,14 +1,25 @@
-// librsync implements bindings for rsync protocol in javascript
-// to be used from nuclei scanner.
+/**
+ * @fileoverview Implements bindings for rsync protocol in javascript to be used from nuclei scanner.
+ */
 
-// Client is a minimal Rsync client for nuclei scripts.
+/**
+ * @class Client
+ * @classdesc A minimal Rsync client for nuclei scripts.
+ */
 class Client {
-    // IsRsync checks if a host is running a Rsync server.
+    /**
+     * @method IsRsync
+     * @description Checks if a host is running a Rsync server.
+     * @param {string} host - The host to check.
+     * @param {number} port - The port to check.
+     * @returns {IsRsyncResponse} The response from the Rsync server.
+     * @throws {Error} If an error occurs during the check.
+     */
     IsRsync(host, port) {
-        return IsRsyncResponse, error;
+        // Implementation of the method goes here.
+        // If an error occurs, it should be thrown, not returned.
     };
 };
-
 
 module.exports = {
     Client: Client,

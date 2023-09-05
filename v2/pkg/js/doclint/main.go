@@ -48,7 +48,7 @@ func main() {
 	if finalKey == "" {
 		log.Fatal("openai api key is not set")
 	}
-	llm := openai.NewClient(key)
+	llm := openai.NewClient(finalKey)
 
 	filepath.WalkDir(dir, func(path string, d os.DirEntry, err error) error {
 		if !d.IsDir() && filepath.Ext(path) == ".js" {
