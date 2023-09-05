@@ -4,7 +4,6 @@ import (
 	"embed"
 	"math/rand"
 	"net"
-	"path/filepath"
 	"time"
 
 	"github.com/dop251/goja"
@@ -104,7 +103,8 @@ func RegisterNativeScripts(runtime *goja.Runtime) error {
 		if dir.IsDir() {
 			continue
 		}
-		contents, err := embedFS.ReadFile(filepath.Join("js", dir.Name()))
+		// embeds have / as path separator (on all os)
+		contents, err := embedFS.ReadFile("js" + "/" + dir.Name())
 		if err != nil {
 			return err
 		}

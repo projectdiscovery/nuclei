@@ -2,6 +2,7 @@ package main
 
 import (
 	"log"
+	"time"
 
 	"github.com/ory/dockertest/v3"
 	"github.com/projectdiscovery/nuclei/v2/pkg/testutils"
@@ -32,7 +33,14 @@ func (j *javascriptRedisPassBrute) Execute(filePath string) error {
 	defer purge(redisResource)
 	errs := []error{}
 	for i := 0; i < defaultRetry; i++ {
-		results, err := testutils.RunNucleiTemplateAndGetResults(filePath, finalURL, debug)
+		results := []string{}
+		var err error
+		_ = pool.Retry(func() error {
+			//let ssh server start
+			time.Sleep(3 * time.Second)
+			results, err = testutils.RunNucleiTemplateAndGetResults(filePath, finalURL, debug)
+			return nil
+		})
 		if err != nil {
 			return err
 		}
@@ -57,7 +65,14 @@ func (j *javascriptSSHServerFingerprint) Execute(filePath string) error {
 	defer purge(sshResource)
 	errs := []error{}
 	for i := 0; i < defaultRetry; i++ {
-		results, err := testutils.RunNucleiTemplateAndGetResults(filePath, finalURL, debug)
+		results := []string{}
+		var err error
+		_ = pool.Retry(func() error {
+			//let ssh server start
+			time.Sleep(3 * time.Second)
+			results, err = testutils.RunNucleiTemplateAndGetResults(filePath, finalURL, debug)
+			return nil
+		})
 		if err != nil {
 			return err
 		}
