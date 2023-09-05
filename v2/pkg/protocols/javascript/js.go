@@ -2,9 +2,11 @@ package javascript
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"net"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"github.com/alecthomas/chroma/quick"
@@ -29,6 +31,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 	errorutil "github.com/projectdiscovery/utils/errors"
 	urlutil "github.com/projectdiscovery/utils/url"
+	"github.com/remeh/sizedwaitgroup"
 )
 
 // Request is a request for the javascript protocol
@@ -68,6 +71,12 @@ type Request struct {
 	//   Sniper is each payload once, pitchfork combines multiple payload sets and clusterbomb generates
 	//   permutations and combinations for all payloads.
 	AttackType generators.AttackTypeHolder `yaml:"attack,omitempty" json:"attack,omitempty" jsonschema:"title=attack is the payload combination,description=Attack is the type of payload combinations to perform,enum=sniper,enum=pitchfork,enum=clusterbomb"`
+	// description: |
+	//   Payload concurreny i.e threads for sending requests.
+	// examples:
+	//   - name: Send requests using 10 concurrent threads
+	//     value: 10
+	Threads int `yaml:"threads,omitempty" json:"threads,omitempty" jsonschema:"title=threads for sending requests,description=Threads specifies number of threads to use sending requests. This enables Connection Pooling"`
 	// description: |
 	//   Payloads contains any payloads for the current request.
 	//
@@ -215,6 +224,11 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 		}
 	}
 
+	if request.generator != nil && request.Threads > 1 {
+		request.executeRequestParallel(context.Background(), hostPort, hostname, input, payloadValues, callback)
+		return nil
+	}
+
 	var gotMatches bool
 	if request.generator != nil {
 		iterator := request.generator.NewIterator()
@@ -246,6 +260,59 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 		}
 	}
 	return request.executeRequestWithPayloads(hostPort, input, hostname, nil, payloadValues, callback, requestOptions)
+}
+
+func (request *Request) executeRequestParallel(ctxParent context.Context, hostPort, hostname string, input *contextargs.Context, payloadValues map[string]interface{}, callback protocols.OutputEventCallback) {
+	threads := request.Threads
+	if threads == 0 {
+		threads = 1
+	}
+	ctx, cancel := context.WithCancel(ctxParent)
+	defer cancel()
+	requestOptions := request.options
+	gotmatches := &atomic.Bool{}
+	sg := sizedwaitgroup.New(threads)
+	if request.generator != nil {
+		iterator := request.generator.NewIterator()
+
+		for {
+			value, ok := iterator.Value()
+			if !ok {
+				return
+			}
+			sg.Add()
+			go func() {
+				defer sg.Done()
+				if ctx.Err() != nil {
+					// work already done exit
+					return
+				}
+				shouldStopAtFirstMatch := request.options.Options.StopAtFirstMatch || request.StopAtFirstMatch
+				if err := request.executeRequestWithPayloads(hostPort, input, hostname, value, payloadValues, func(result *output.InternalWrappedEvent) {
+					if result.OperatorsResult != nil && result.OperatorsResult.Matched {
+						gotmatches.Store(true)
+					}
+					callback(result)
+				}, requestOptions); err != nil {
+					_ = err
+					// Review: should we log error here?
+					// it is technically not error as it is expected to fail
+					// gologger.Warning().Msgf("Could not execute request: %s\n", err)
+					// do not return even if error occured
+				}
+				// If this was a match, and we want to stop at first match, skip all further requests.
+
+				if shouldStopAtFirstMatch && gotmatches.Load() {
+					cancel()
+					return
+				}
+			}()
+		}
+	}
+	sg.Wait()
+	if gotmatches.Load() {
+		request.options.Progress.IncrementMatched()
+	}
 }
 
 func (request *Request) executeRequestWithPayloads(hostPort string, input *contextargs.Context, hostname string, payload map[string]interface{}, previous output.InternalEvent, callback protocols.OutputEventCallback, requestOptions *protocols.ExecutorOptions) error {
