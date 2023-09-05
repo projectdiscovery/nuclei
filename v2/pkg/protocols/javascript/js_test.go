@@ -29,7 +29,7 @@ var (
 func setup() {
 	options := testutils.DefaultOptions
 	testutils.Init(options)
-	progressImpl, _ := progress.NewStatsTicker(0, false, false, false, false, 0)
+	progressImpl, _ := progress.NewStatsTicker(int(0), false, false, false, false, int(0))
 
 	executerOpts = protocols.ExecutorOptions{
 		Output:       testutils.NewMockOutputWriter(),

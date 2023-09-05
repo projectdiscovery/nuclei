@@ -74,6 +74,7 @@ require (
 	github.com/labstack/echo/v4 v4.10.2
 	github.com/lib/pq v1.10.1
 	github.com/mholt/archiver v3.1.1+incompatible
+	github.com/ory/dockertest/v3 v3.10.0
 	github.com/praetorian-inc/fingerprintx v1.1.9
 	github.com/projectdiscovery/dsl v0.0.16
 	github.com/projectdiscovery/fasttemplate v0.0.2
@@ -172,7 +173,6 @@ require (
 	github.com/opencontainers/go-digest v1.0.0 // indirect
 	github.com/opencontainers/image-spec v1.0.2 // indirect
 	github.com/opencontainers/runc v1.1.9 // indirect
-	github.com/ory/dockertest/v3 v3.10.0 // indirect
 	github.com/pelletier/go-toml/v2 v2.0.6 // indirect
 	github.com/pjbgf/sha1cd v0.3.0 // indirect
 	github.com/pkg/browser v0.0.0-20210911075715-681adbf594b8 // indirect
