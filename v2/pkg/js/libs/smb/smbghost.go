@@ -16,7 +16,7 @@ const (
 
 // DetectSMBGhost tries to detect SMBGhost vulnerability
 // by using SMBv3 compression feature.
-func (c *Client) DetectSMBGhost(host string, port int) (bool, error) {
+func (c *SMBClient) DetectSMBGhost(host string, port int) (bool, error) {
 	addr := net.JoinHostPort(host, strconv.Itoa(port))
 	conn, err := net.DialTimeout("tcp", addr, 5*time.Second)
 	if err != nil {

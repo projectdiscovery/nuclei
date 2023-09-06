@@ -9,17 +9,17 @@ import (
 	"github.com/zmap/zgrab2/lib/ssh"
 )
 
-// Client is a client for SSH servers.
+// SSHClient is a client for SSH servers.
 //
 // Internally client uses github.com/zmap/zgrab2/lib/ssh driver.
-type Client struct{}
+type SSHClient struct{}
 
 // Connect tries to connect to provided host and port
 // with provided username and password with ssh.
 //
 // Returns state of connection and error. If error is not nil,
 // state will be false
-func (c *Client) Connect(host string, port int, username, password string) (bool, error) {
+func (c *SSHClient) Connect(host string, port int, username, password string) (bool, error) {
 	conn, err := connect(host, port, username, password, "")
 	if err != nil {
 		return false, err
@@ -34,7 +34,7 @@ func (c *Client) Connect(host string, port int, username, password string) (bool
 //
 // Returns state of connection and error. If error is not nil,
 // state will be false
-func (c *Client) ConnectWithKey(host string, port int, username, key string) (bool, error) {
+func (c *SSHClient) ConnectWithKey(host string, port int, username, key string) (bool, error) {
 	conn, err := connect(host, port, username, "", key)
 	if err != nil {
 		return false, err
@@ -52,7 +52,7 @@ func (c *Client) ConnectWithKey(host string, port int, username, key string) (bo
 //
 // HandshakeLog is a struct that contains information about the
 // ssh connection
-func (c *Client) ConnectSSHInfoMode(host string, port int) (*ssh.HandshakeLog, error) {
+func (c *SSHClient) ConnectSSHInfoMode(host string, port int) (*ssh.HandshakeLog, error) {
 	return connectSSHInfoMode(host, port)
 }
 

@@ -15,10 +15,10 @@ import (
 // Client is a client for ldap protocol in golang.
 //
 // It is a wrapper around the standard library ldap package.
-type Client struct{}
+type LdapClient struct{}
 
 // IsLdap checks if the given host and port are running ldap server.
-func (c *Client) IsLdap(host string, port int) (bool, error) {
+func (c *LdapClient) IsLdap(host string, port int) (bool, error) {
 	timeout := 10 * time.Second
 
 	conn, err := net.DialTimeout("tcp", fmt.Sprintf("%s:%d", host, port), timeout)
@@ -41,7 +41,7 @@ func (c *Client) IsLdap(host string, port int) (bool, error) {
 }
 
 // CollectLdapMetadata collects metadata from ldap server.
-func (c *Client) CollectLdapMetadata(domain string, controller string) (LDAPMetadata, error) {
+func (c *LdapClient) CollectLdapMetadata(domain string, controller string) (LDAPMetadata, error) {
 	opts := &ldapSessionOptions{
 		domain:           domain,
 		domainController: controller,
@@ -64,7 +64,7 @@ type ldapSessionOptions struct {
 	baseDN           string
 }
 
-func (c *Client) newLdapSession(opts *ldapSessionOptions) (*ldap.Conn, error) {
+func (c *LdapClient) newLdapSession(opts *ldapSessionOptions) (*ldap.Conn, error) {
 	port := opts.port
 	dc := opts.domainController
 	if port == 0 {
@@ -82,7 +82,7 @@ func (c *Client) newLdapSession(opts *ldapSessionOptions) (*ldap.Conn, error) {
 	return lConn, nil
 }
 
-func (c *Client) close(conn *ldap.Conn) {
+func (c *LdapClient) close(conn *ldap.Conn) {
 	conn.Close()
 }
 
@@ -97,7 +97,7 @@ type LDAPMetadata struct {
 	DnsHostName                   string
 }
 
-func (c *Client) collectLdapMetadata(lConn *ldap.Conn, opts *ldapSessionOptions) (LDAPMetadata, error) {
+func (c *LdapClient) collectLdapMetadata(lConn *ldap.Conn, opts *ldapSessionOptions) (LDAPMetadata, error) {
 	metadata := LDAPMetadata{}
 
 	var err error

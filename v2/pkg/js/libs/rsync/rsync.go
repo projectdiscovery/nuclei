@@ -9,8 +9,8 @@ import (
 	"github.com/praetorian-inc/fingerprintx/pkg/plugins/services/rsync"
 )
 
-// Client is a minimal Rsync client for nuclei scripts.
-type Client struct{}
+// RsyncClient is a minimal Rsync client for nuclei scripts.
+type RsyncClient struct{}
 
 // IsRsyncResponse is the response from the IsRsync function.
 type IsRsyncResponse struct {
@@ -19,7 +19,7 @@ type IsRsyncResponse struct {
 }
 
 // IsRsync checks if a host is running a Rsync server.
-func (c *Client) IsRsync(host string, port int) (IsRsyncResponse, error) {
+func (c *RsyncClient) IsRsync(host string, port int) (IsRsyncResponse, error) {
 	resp := IsRsyncResponse{}
 
 	timeout := 5 * time.Second

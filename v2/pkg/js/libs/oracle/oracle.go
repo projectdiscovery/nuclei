@@ -9,8 +9,8 @@ import (
 	"github.com/praetorian-inc/fingerprintx/pkg/plugins/services/oracledb"
 )
 
-// Client is a minimal Oracle client for nuclei scripts.
-type Client struct{}
+// OracleClient is a minimal Oracle client for nuclei scripts.
+type OracleClient struct{}
 
 // IsOracleResponse is the response from the IsOracle function.
 type IsOracleResponse struct {
@@ -19,7 +19,7 @@ type IsOracleResponse struct {
 }
 
 // IsOracle checks if a host is running an Oracle server.
-func (c *Client) IsOracle(host string, port int) (IsOracleResponse, error) {
+func (c *OracleClient) IsOracle(host string, port int) (IsOracleResponse, error) {
 	resp := IsOracleResponse{}
 
 	timeout := 5 * time.Second

@@ -19,10 +19,10 @@ func init() {
 			// Var and consts
 
 			// Types (value type)
-			"Client": func() lib_postgres.Client { return lib_postgres.Client{} },
+			"Client": func() lib_postgres.PGClient { return lib_postgres.PGClient{} },
 
 			// Types (pointer type)
-			"NewClient": func() *lib_postgres.Client { return &lib_postgres.Client{} },
+			"NewClient": func() *lib_postgres.PGClient { return &lib_postgres.PGClient{} },
 		},
 	).Register()
 }

@@ -9,8 +9,8 @@ import (
 	"github.com/praetorian-inc/fingerprintx/pkg/plugins/services/telnet"
 )
 
-// Client is a minimal Telnet client for nuclei scripts.
-type Client struct{}
+// TelnetClient is a minimal Telnet client for nuclei scripts.
+type TelnetClient struct{}
 
 // IsTelnetResponse is the response from the IsTelnet function.
 type IsTelnetResponse struct {
@@ -19,7 +19,7 @@ type IsTelnetResponse struct {
 }
 
 // IsTelnet checks if a host is running a Telnet server.
-func (c *Client) IsTelnet(host string, port int) (IsTelnetResponse, error) {
+func (c *TelnetClient) IsTelnet(host string, port int) (IsTelnetResponse, error) {
 	resp := IsTelnetResponse{}
 
 	timeout := 5 * time.Second

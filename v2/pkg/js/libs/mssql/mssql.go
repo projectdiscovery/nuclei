@@ -15,7 +15,7 @@ import (
 // Client is a client for MS SQL database.
 //
 // Internally client uses denisenkom/go-mssqldb driver.
-type Client struct{}
+type MSSQLClient struct{}
 
 // Connect connects to MS SQL database using given credentials.
 //
@@ -23,7 +23,7 @@ type Client struct{}
 // If connection is unsuccessful, it returns false and error.
 //
 // The connection is closed after the function returns.
-func (c *Client) Connect(host string, port int, username, password string) (bool, error) {
+func (c *MSSQLClient) Connect(host string, port int, username, password string) (bool, error) {
 	return connect(host, port, username, password, "master")
 }
 
@@ -33,7 +33,7 @@ func (c *Client) Connect(host string, port int, username, password string) (bool
 // If connection is unsuccessful, it returns false and error.
 //
 // The connection is closed after the function returns.
-func (c *Client) ConnectWithDB(host string, port int, username, password, dbName string) (bool, error) {
+func (c *MSSQLClient) ConnectWithDB(host string, port int, username, password, dbName string) (bool, error) {
 	return connect(host, port, username, password, dbName)
 }
 
@@ -78,7 +78,7 @@ func connect(host string, port int, username, password, dbName string) (bool, er
 //
 // If the host is running MS SQL database, it returns true.
 // If the host is not running MS SQL database, it returns false.
-func (c *Client) IsMssql(host string, port int) (bool, error) {
+func (c *MSSQLClient) IsMssql(host string, port int) (bool, error) {
 	conn, err := net.DialTimeout("tcp", net.JoinHostPort(host, fmt.Sprintf("%d", port)), 5*time.Second)
 	if err != nil {
 		return false, err

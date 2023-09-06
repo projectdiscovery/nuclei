@@ -14,16 +14,16 @@ var dialer = &net.Dialer{
 }
 
 // Open opens a new connection to the address with a timeout.
-func Open(protocol, address string) (*Conn, error) {
+func Open(protocol, address string) (*NetConn, error) {
 	conn, err := dialer.Dial(protocol, address)
 	if err != nil {
 		return nil, err
 	}
-	return &Conn{conn: conn}, nil
+	return &NetConn{conn: conn}, nil
 }
 
 // Open opens a new connection to the address with a timeout.
-func OpenTLS(protocol, address string) (*Conn, error) {
+func OpenTLS(protocol, address string) (*NetConn, error) {
 	config := &tls.Config{InsecureSkipVerify: true}
 	host, _, _ := net.SplitHostPort(address)
 	if host != "" {
@@ -35,22 +35,22 @@ func OpenTLS(protocol, address string) (*Conn, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &Conn{conn: conn}, nil
+	return &NetConn{conn: conn}, nil
 }
 
-// Conn is a connection to a remote host.
-type Conn struct {
+// NetConn is a connection to a remote host.
+type NetConn struct {
 	conn net.Conn
 }
 
 // Close closes the connection.
-func (c *Conn) Close() error {
+func (c *NetConn) Close() error {
 	err := c.conn.Close()
 	return err
 }
 
 // Send sends data to the connection with a timeout.
-func (c *Conn) Send(data []byte, timeout time.Duration) error {
+func (c *NetConn) Send(data []byte, timeout time.Duration) error {
 	if timeout == 0 {
 		timeout = 5 * time.Second
 	}
@@ -69,7 +69,7 @@ func (c *Conn) Send(data []byte, timeout time.Duration) error {
 }
 
 // Recv receives data from the connection with a timeout.
-func (c *Conn) Recv(timeout time.Duration, N int) ([]byte, error) {
+func (c *NetConn) Recv(timeout time.Duration, N int) ([]byte, error) {
 	if timeout == 0 {
 		timeout = 5 * time.Second
 	}
@@ -96,7 +96,7 @@ func (c *Conn) Recv(timeout time.Duration, N int) ([]byte, error) {
 }
 
 // SendRecv sends data to the connection and receives data from the connection with a timeout.
-func (c *Conn) SendRecv(data []byte, timeout time.Duration) ([]byte, error) {
+func (c *NetConn) SendRecv(data []byte, timeout time.Duration) ([]byte, error) {
 	if timeout == 0 {
 		timeout = 5 * time.Second
 	}

@@ -13,7 +13,7 @@ import (
 )
 
 // Client is a kerberos client
-type Client struct{}
+type KerberosClient struct{}
 
 type kerberosEnumUserOpts struct {
 	realm  string
@@ -82,7 +82,7 @@ type EnumerateUserResponse struct {
 // If the user is not found, false is returned.
 // If the user is found, true is returned. Optionally, the AS-REP
 // hash is also returned if discovered.
-func (c *Client) EnumerateUser(domain, controller string, username string) (EnumerateUserResponse, error) {
+func (c *KerberosClient) EnumerateUser(domain, controller string, username string) (EnumerateUserResponse, error) {
 	resp := EnumerateUserResponse{}
 
 	opts, err := newKerbrosEnumUserOpts(domain, controller)

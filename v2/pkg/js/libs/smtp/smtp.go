@@ -9,8 +9,8 @@ import (
 	"github.com/praetorian-inc/fingerprintx/pkg/plugins/services/smtp"
 )
 
-// Client is a minimal SMTP client for nuclei scripts.
-type Client struct{}
+// SMTPClient is a minimal SMTP client for nuclei scripts.
+type SMTPClient struct{}
 
 // IsSMTPResponse is the response from the IsSMTP function.
 type IsSMTPResponse struct {
@@ -19,7 +19,7 @@ type IsSMTPResponse struct {
 }
 
 // IsSMTP checks if a host is running a SMTP server.
-func (c *Client) IsSMTP(host string, port int) (IsSMTPResponse, error) {
+func (c *SMTPClient) IsSMTP(host string, port int) (IsSMTPResponse, error) {
 	resp := IsSMTPResponse{}
 
 	timeout := 5 * time.Second

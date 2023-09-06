@@ -19,16 +19,29 @@ var (
 	keyfile string
 )
 
+const sysprompt = `
+Act as helpful coding assistant and using provided original javascript code and instructions create a new javascript file with valid jsdoc annotations/tags
+--- instructions ---
+new javascript file should contain JsDOC annotations like @module, @class, @method, @typedef, @throws, @return, @param, and @example,
+incorporating all necessary information applicable. Your new file must strictly stick to classes, methods, or functions present in the original code - no new elements are permitted.
+While writing @example, do not access properties (aka variables) of types that are not defined/known. Properly identify if a element is function or method and properly annotate it.
+Always include return types of functions/methods (when applicable). Omit Implementations of functions/methods in new javascript and replace it with '// implemented in go' comment.
+Also Skip using @exports anywhere in file.
+
+`
+
 const prompt = `
 ---original javascript---
 {{source}}
 ---instructions----
-1. new javascript file should contain at least following annotations
-@module,@exports , @class , @method , @typedef , @throws, @return , @param , @example etc with necessary / required details when applicable
+1. new javascript file should contain following js doc annotations
+@module, @class , @method , @typedef , @throws, @return , @param , @example etc with necessary / required details when applicable
 2. take note that new javascript should not contain any class, method or function that does not exist in original javascript code
-3. always try to include @example for every method , and before adding any '@' make sure it is actually true
+3. while writing @example do not access properties (aka variables) of types that are not defined/known
 4. re-think and verify if function is a method or public function
 5. donot forget to include return types of functions/methods
+6. Skip adding @exports anywhere in file
+7. Omit implementation of functions/methods actual function/method body should be always empty. It should contain '// implemented in go' comment
 ---new javascript---
 `
 

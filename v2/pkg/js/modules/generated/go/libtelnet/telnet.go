@@ -19,11 +19,11 @@ func init() {
 			// Var and consts
 
 			// Types (value type)
-			"Client":           func() lib_telnet.Client { return lib_telnet.Client{} },
+			"Client":           func() lib_telnet.TelnetClient { return lib_telnet.TelnetClient{} },
 			"IsTelnetResponse": func() lib_telnet.IsTelnetResponse { return lib_telnet.IsTelnetResponse{} },
 
 			// Types (pointer type)
-			"NewClient":           func() *lib_telnet.Client { return &lib_telnet.Client{} },
+			"NewClient":           func() *lib_telnet.TelnetClient { return &lib_telnet.TelnetClient{} },
 			"NewIsTelnetResponse": func() *lib_telnet.IsTelnetResponse { return &lib_telnet.IsTelnetResponse{} },
 		},
 	).Register()

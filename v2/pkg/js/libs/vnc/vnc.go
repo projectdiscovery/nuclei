@@ -9,8 +9,8 @@ import (
 	"github.com/praetorian-inc/fingerprintx/pkg/plugins/services/vnc"
 )
 
-// Client is a minimal VNC client for nuclei scripts.
-type Client struct{}
+// VNCClient is a minimal VNC client for nuclei scripts.
+type VNCClient struct{}
 
 // IsVNCResponse is the response from the IsVNC function.
 type IsVNCResponse struct {
@@ -21,7 +21,7 @@ type IsVNCResponse struct {
 // IsVNC checks if a host is running a VNC server.
 // It returns a boolean indicating if the host is running a VNC server
 // and the banner of the VNC server.
-func (c *Client) IsVNC(host string, port int) (IsVNCResponse, error) {
+func (c *VNCClient) IsVNC(host string, port int) (IsVNCResponse, error) {
 	resp := IsVNCResponse{}
 
 	timeout := 5 * time.Second

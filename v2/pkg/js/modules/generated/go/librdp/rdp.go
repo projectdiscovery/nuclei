@@ -20,12 +20,12 @@ func init() {
 
 			// Types (value type)
 			"CheckRDPAuthResponse": func() lib_rdp.CheckRDPAuthResponse { return lib_rdp.CheckRDPAuthResponse{} },
-			"Client":               func() lib_rdp.Client { return lib_rdp.Client{} },
+			"Client":               func() lib_rdp.RDPClient { return lib_rdp.RDPClient{} },
 			"IsRDPResponse":        func() lib_rdp.IsRDPResponse { return lib_rdp.IsRDPResponse{} },
 
 			// Types (pointer type)
 			"NewCheckRDPAuthResponse": func() *lib_rdp.CheckRDPAuthResponse { return &lib_rdp.CheckRDPAuthResponse{} },
-			"NewClient":               func() *lib_rdp.Client { return &lib_rdp.Client{} },
+			"NewClient":               func() *lib_rdp.RDPClient { return &lib_rdp.RDPClient{} },
 			"NewIsRDPResponse":        func() *lib_rdp.IsRDPResponse { return &lib_rdp.IsRDPResponse{} },
 		},
 	).Register()

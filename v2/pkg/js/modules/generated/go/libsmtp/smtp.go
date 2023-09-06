@@ -19,11 +19,11 @@ func init() {
 			// Var and consts
 
 			// Types (value type)
-			"Client":         func() lib_smtp.Client { return lib_smtp.Client{} },
+			"Client":         func() lib_smtp.SMTPClient { return lib_smtp.SMTPClient{} },
 			"IsSMTPResponse": func() lib_smtp.IsSMTPResponse { return lib_smtp.IsSMTPResponse{} },
 
 			// Types (pointer type)
-			"NewClient":         func() *lib_smtp.Client { return &lib_smtp.Client{} },
+			"NewClient":         func() *lib_smtp.SMTPClient { return &lib_smtp.SMTPClient{} },
 			"NewIsSMTPResponse": func() *lib_smtp.IsSMTPResponse { return &lib_smtp.IsSMTPResponse{} },
 		},
 	).Register()

@@ -14,16 +14,16 @@ import (
 	utils "github.com/projectdiscovery/nuclei/v2/pkg/js/scripts/gotypes"
 )
 
-// Client is a client for Postgres database.
+// PGClient is a client for Postgres database.
 //
 // Internally client uses go-pg/pg driver.
-type Client struct{}
+type PGClient struct{}
 
 // IsPostgres checks if the given host and port are running Postgres database.
 //
 // If connection is successful, it returns true.
 // If connection is unsuccessful, it returns false and error.
-func (c *Client) IsPostgres(host string, port int) (bool, error) {
+func (c *PGClient) IsPostgres(host string, port int) (bool, error) {
 	timeout := 10 * time.Second
 
 	conn, err := net.DialTimeout("tcp", fmt.Sprintf("%s:%d", host, port), timeout)
@@ -51,13 +51,13 @@ func (c *Client) IsPostgres(host string, port int) (bool, error) {
 // If connection is unsuccessful, it returns false and error.
 //
 // The connection is closed after the function returns.
-func (c *Client) Connect(host string, port int, username, password string) (bool, error) {
+func (c *PGClient) Connect(host string, port int, username, password string) (bool, error) {
 	return connect(host, port, username, password, "postgres")
 }
 
 // ExecuteQuery connects to Postgres database using given credentials and database name.
 // and executes a query on the db.
-func (c *Client) ExecuteQuery(host string, port int, username, password, dbName, query string) (string, error) {
+func (c *PGClient) ExecuteQuery(host string, port int, username, password, dbName, query string) (string, error) {
 	target := net.JoinHostPort(host, fmt.Sprintf("%d", port))
 
 	connStr := fmt.Sprintf("postgres://%s:%s@%s/%s?sslmode=disable", username, password, target, dbName)
@@ -83,7 +83,7 @@ func (c *Client) ExecuteQuery(host string, port int, username, password, dbName,
 // If connection is unsuccessful, it returns false and error.
 //
 // The connection is closed after the function returns.
-func (c *Client) ConnectWithDB(host string, port int, username, password, dbName string) (bool, error) {
+func (c *PGClient) ConnectWithDB(host string, port int, username, password, dbName string) (bool, error) {
 	return connect(host, port, username, password, dbName)
 }
 

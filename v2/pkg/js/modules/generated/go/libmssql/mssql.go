@@ -19,10 +19,10 @@ func init() {
 			// Var and consts
 
 			// Types (value type)
-			"Client": func() lib_mssql.Client { return lib_mssql.Client{} },
+			"Client": func() lib_mssql.MSSQLClient { return lib_mssql.MSSQLClient{} },
 
 			// Types (pointer type)
-			"NewClient": func() *lib_mssql.Client { return &lib_mssql.Client{} },
+			"NewClient": func() *lib_mssql.MSSQLClient { return &lib_mssql.MSSQLClient{} },
 		},
 	).Register()
 }

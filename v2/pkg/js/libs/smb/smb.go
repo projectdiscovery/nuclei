@@ -10,18 +10,18 @@ import (
 	"github.com/zmap/zgrab2/lib/smb/smb"
 )
 
-// Client is a client for SMB servers.
+// SMBClient is a client for SMB servers.
 //
 // Internally client uses github.com/zmap/zgrab2/lib/smb/smb driver.
 // github.com/hirochachacha/go-smb2 driver
-type Client struct{}
+type SMBClient struct{}
 
 // ConnectSMBInfoMode tries to connect to provided host and port
 // and discovery SMB information
 //
 // Returns handshake log and error. If error is not nil,
 // state will be false
-func (c *Client) ConnectSMBInfoMode(host string, port int) (*smb.SMBLog, error) {
+func (c *SMBClient) ConnectSMBInfoMode(host string, port int) (*smb.SMBLog, error) {
 	conn, err := net.DialTimeout("tcp", fmt.Sprintf("%s:%d", host, port), 10*time.Second)
 	if err != nil {
 		return nil, err
@@ -51,7 +51,7 @@ func (c *Client) ConnectSMBInfoMode(host string, port int) (*smb.SMBLog, error) 
 //
 // Returns metadata and error. If error is not nil,
 // state will be false
-func (c *Client) ListSMBv2Metadata(host string, port int) (*plugins.ServiceSMB, error) {
+func (c *SMBClient) ListSMBv2Metadata(host string, port int) (*plugins.ServiceSMB, error) {
 	return collectSMBv2Metadata(host, port, 5*time.Second)
 }
 
@@ -60,7 +60,7 @@ func (c *Client) ListSMBv2Metadata(host string, port int) (*plugins.ServiceSMB, 
 //
 // Credentials cannot be blank. guest or anonymous credentials
 // can be used by providing empty password.
-func (c *Client) ListShares(host string, port int, user, password string) ([]string, error) {
+func (c *SMBClient) ListShares(host string, port int, user, password string) ([]string, error) {
 	conn, err := net.DialTimeout("tcp", fmt.Sprintf("%s:%d", host, port), 10*time.Second)
 	if err != nil {
 		return nil, err
