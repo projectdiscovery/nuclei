@@ -1,16 +1,10 @@
 name: 🔨 Performance Test
 
-# todo: temporary disabled to allow testing
-# on:
-#   workflow_dispatch:
-#   schedule:
-#     # Weekly
-#     - cron: '0 0 * * 0'
-
-# todo: only to enable execution within PR
 on:
-  pull_request:
   workflow_dispatch:
+  schedule:
+    # Weekly
+    - cron: '0 0 * * 0'
 
 jobs:
   build:
