@@ -19,10 +19,10 @@ func init() {
 			// Var and consts
 
 			// Types (value type)
-			"Client": func() lib_mysql.MySQLClient { return lib_mysql.MySQLClient{} },
+			"MySQLClient": func() lib_mysql.MySQLClient { return lib_mysql.MySQLClient{} },
 
 			// Types (pointer type)
-			"NewClient": func() *lib_mysql.MySQLClient { return &lib_mysql.MySQLClient{} },
+			"NewMySQLClient": func() *lib_mysql.MySQLClient { return &lib_mysql.MySQLClient{} },
 		},
 	).Register()
 }

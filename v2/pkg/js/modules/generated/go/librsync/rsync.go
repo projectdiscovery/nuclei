@@ -19,12 +19,12 @@ func init() {
 			// Var and consts
 
 			// Types (value type)
-			"Client":          func() lib_rsync.RsyncClient { return lib_rsync.RsyncClient{} },
 			"IsRsyncResponse": func() lib_rsync.IsRsyncResponse { return lib_rsync.IsRsyncResponse{} },
+			"RsyncClient":     func() lib_rsync.RsyncClient { return lib_rsync.RsyncClient{} },
 
 			// Types (pointer type)
-			"NewClient":          func() *lib_rsync.RsyncClient { return &lib_rsync.RsyncClient{} },
 			"NewIsRsyncResponse": func() *lib_rsync.IsRsyncResponse { return &lib_rsync.IsRsyncResponse{} },
+			"NewRsyncClient":     func() *lib_rsync.RsyncClient { return &lib_rsync.RsyncClient{} },
 		},
 	).Register()
 }

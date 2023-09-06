@@ -9,9 +9,9 @@ to be used from nuclei scanner.
 
 ## Types
 
-### Conn
+### NetConn
 
- Conn is a connection to a remote host.
+ NetConn is a connection to a remote host.
 
 | Method | Description | Arguments | Returns |
 |--------|-------------|-----------|---------|
@@ -25,12 +25,12 @@ to be used from nuclei scanner.
 
 | Name | Description | Arguments | Returns |
 |--------|-------------|-----------|---------|
-Open |  Open opens a new connection to the address with a timeout. | `protocol`, `address` | `Conn`, `error` |
-OpenTLS |  Open opens a new connection to the address with a timeout. | `protocol`, `address` | `Conn`, `error` |
+Open |  Open opens a new connection to the address with a timeout. | `protocol`, `address` | `NetConn`, `error` |
+OpenTLS |  Open opens a new connection to the address with a timeout. | `protocol`, `address` | `NetConn`, `error` |
 
 
 ## Exported Types Fields
-### Conn
+### NetConn
 
 | Name | Type | 
 |--------|-------------|

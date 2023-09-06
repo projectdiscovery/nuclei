@@ -9,9 +9,9 @@ to be used from nuclei scanner.
 
 ## Types
 
-### Client
+### SMBClient
 
- Client is a client for SMB servers.    Internally client uses github.com/zmap/zgrab2/lib/smb/smb driver.  github.com/hirochachacha/go-smb2 driver
+ SMBClient is a client for SMB servers.    Internally client uses github.com/zmap/zgrab2/lib/smb/smb driver.  github.com/hirochachacha/go-smb2 driver
 
 | Method | Description | Arguments | Returns |
 |--------|-------------|-----------|---------|

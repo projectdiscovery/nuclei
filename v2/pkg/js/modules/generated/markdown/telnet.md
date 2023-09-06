@@ -9,9 +9,9 @@ to be used from nuclei scanner.
 
 ## Types
 
-### Client
+### TelnetClient
 
- Client is a minimal Telnet client for nuclei scripts.
+ TelnetClient is a minimal Telnet client for nuclei scripts.
 
 | Method | Description | Arguments | Returns |
 |--------|-------------|-----------|---------|

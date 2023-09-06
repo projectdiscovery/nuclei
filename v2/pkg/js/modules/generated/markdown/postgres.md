@@ -9,9 +9,9 @@ to be used from nuclei scanner.
 
 ## Types
 
-### Client
+### PGClient
 
- Client is a client for Postgres database.    Internally client uses go-pg/pg driver.
+ PGClient is a client for Postgres database.    Internally client uses go-pg/pg driver.
 
 | Method | Description | Arguments | Returns |
 |--------|-------------|-----------|---------|

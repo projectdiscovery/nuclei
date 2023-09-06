@@ -19,12 +19,12 @@ func init() {
 			// Var and consts
 
 			// Types (value type)
-			"Client":        func() lib_vnc.VNCClient { return lib_vnc.VNCClient{} },
 			"IsVNCResponse": func() lib_vnc.IsVNCResponse { return lib_vnc.IsVNCResponse{} },
+			"VNCClient":     func() lib_vnc.VNCClient { return lib_vnc.VNCClient{} },
 
 			// Types (pointer type)
-			"NewClient":        func() *lib_vnc.VNCClient { return &lib_vnc.VNCClient{} },
 			"NewIsVNCResponse": func() *lib_vnc.IsVNCResponse { return &lib_vnc.IsVNCResponse{} },
+			"NewVNCClient":     func() *lib_vnc.VNCClient { return &lib_vnc.VNCClient{} },
 		},
 	).Register()
 }

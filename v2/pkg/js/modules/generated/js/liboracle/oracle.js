@@ -1,31 +1,30 @@
-/**
+/** 
  * @module oracle
- * @description oracle implements bindings for oracle protocol in javascript
- * to be used from nuclei scanner.
+ * This module implements bindings for oracle protocol in javascript to be used from nuclei scanner.
  */
 
 /**
- * @class Client
- * @description Client is a minimal Oracle client for nuclei scripts.
+ * @class
+ * OracleClient is a minimal Oracle client for nuclei scripts.
  */
-class Client {
+class OracleClient {
     /**
-     * @method IsOracle
-     * @description checks if a host is running an Oracle server.
+     * @method
+     * IsOracle checks if a host is running an Oracle server.
      * @param {string} host - The host to check.
      * @param {number} port - The port to check.
-     * @returns {boolean} IsOracleResponse - Returns true if host is running an Oracle server, false otherwise.
-     * @throws {Error} If there is a network error or the input parameters are not valid.
+     * @returns {IsOracleResponse} - The response from the Oracle server.
+     * @throws {error} If there is an error in the process.
      * @example
-     * let client = new Client();
-     * let isOracle = client.IsOracle("localhost", 1521);
+     * let oracleClient = new OracleClient();
+     * oracleClient.IsOracle("localhost", 1521);
      */
     IsOracle(host, port) {
-        // Implementation here
+        // implemented in go
     };
 };
 
-
+// ReadOnly DONOT EDIT
 module.exports = {
-    Client: Client,
+    OracleClient: OracleClient,
 };

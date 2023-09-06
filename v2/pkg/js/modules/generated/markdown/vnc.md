@@ -9,9 +9,9 @@ to be used from nuclei scanner.
 
 ## Types
 
-### Client
+### VNCClient
 
- Client is a minimal VNC client for nuclei scripts.
+ VNCClient is a minimal VNC client for nuclei scripts.
 
 | Method | Description | Arguments | Returns |
 |--------|-------------|-----------|---------|

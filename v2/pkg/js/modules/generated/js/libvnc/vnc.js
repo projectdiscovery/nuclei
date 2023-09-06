@@ -1,31 +1,31 @@
-/**
- * @module vnc
- * @description vnc implements bindings for vnc protocol in javascript to be used from nuclei scanner.
+/** 
+ * @module vnc 
+ * vnc implements bindings for vnc protocol in javascript
+ * to be used from nuclei scanner.
  */
 
 /**
- * @class Client
- * @description This is a minimal VNC client for nuclei scripts.
+ * @class VNCClient
+ * @description A minimal VNC client for nuclei scripts.
  */
-class Client {
+class VNCClient {
     /**
      * @method IsVNC
-     * @description This method checks if a host is running a VNC server.
-     * @param {string} host - The host to check for a VNC server.
-     * @param {number} port - The port to check for a VNC server.
-     * @returns {boolean} IsVNCResponse - Returns a boolean indicating if the host is running a VNC server and the banner of the VNC server.
-     * @throws {Error} If an error occurs during the process.
+     * @description Checks if a host is running a VNC server.
+     * @param {string} host - The host to check.
+     * @param {number} port - The port to check.
+     * @returns {Object} IsVNCResponse - The response object.
+     * @throws {error} If an error occurs during the operation.
      * @example
-     * let client = new Client();
+     * let client = new VNCClient();
      * let response = client.IsVNC("localhost", 5900);
-     * console.log(response);
      */
     IsVNC(host, port) {
-        // Implementation of the method goes here
+        // implemented in go
     };
 };
 
-
+// ReadOnly DONOT EDIT
 module.exports = {
-    Client: Client,
+    VNCClient: VNCClient,
 };

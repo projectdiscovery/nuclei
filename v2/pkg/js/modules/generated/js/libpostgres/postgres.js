@@ -1,80 +1,72 @@
 /**
  * @module postgres
- * @description postgres implements bindings for postgres protocol in javascript to be used from nuclei scanner.
+ * This module implements bindings for postgres protocol in javascript to be used from nuclei scanner.
  */
 
 /**
- * @class Client
- * @description Client is a client for Postgres database. Internally client uses go-pg/pg driver.
+ * @class
+ * @classdesc PGClient is a client for Postgres database. Internally client uses go-pg/pg driver.
  */
-class Client {
+class PGClient {
     /**
-     * @method Connect
+     * @method
      * @description Connects to Postgres database using given credentials. The connection is closed after the function returns.
      * @param {string} host - The host of the Postgres database.
      * @param {number} port - The port of the Postgres database.
-     * @param {string} username - The username to connect to the Postgres database.
-     * @param {string} password - The password to connect to the Postgres database.
-     * @returns {boolean} Returns true if connection is successful, false otherwise.
-     * @throws {Error} Throws an error if connection is unsuccessful.
-     * @example
-     * Connect('localhost', 5432, 'user', 'password');
+     * @param {string} username - The username for the Postgres database.
+     * @param {string} password - The password for the Postgres database.
+     * @returns {boolean} Returns true if connection is successful, otherwise false.
+     * @throws {Error} If connection is unsuccessful.
      */
     Connect(host, port, username, password) {
-        // implementation here
+        // implemented in go
     };
 
     /**
-     * @method ConnectWithDB
+     * @method
      * @description Connects to Postgres database using given credentials and database name. The connection is closed after the function returns.
      * @param {string} host - The host of the Postgres database.
      * @param {number} port - The port of the Postgres database.
-     * @param {string} username - The username to connect to the Postgres database.
-     * @param {string} password - The password to connect to the Postgres database.
+     * @param {string} username - The username for the Postgres database.
+     * @param {string} password - The password for the Postgres database.
      * @param {string} dbName - The name of the database.
-     * @returns {boolean} Returns true if connection is successful, false otherwise.
-     * @throws {Error} Throws an error if connection is unsuccessful.
-     * @example
-     * ConnectWithDB('localhost', 5432, 'user', 'password', 'myDatabase');
+     * @returns {boolean} Returns true if connection is successful, otherwise false.
+     * @throws {Error} If connection is unsuccessful.
      */
     ConnectWithDB(host, port, username, password, dbName) {
-        // implementation here
+        // implemented in go
     };
 
     /**
-     * @method ExecuteQuery
+     * @method
      * @description Connects to Postgres database using given credentials and database name and executes a query on the db.
      * @param {string} host - The host of the Postgres database.
      * @param {number} port - The port of the Postgres database.
-     * @param {string} username - The username to connect to the Postgres database.
-     * @param {string} password - The password to connect to the Postgres database.
+     * @param {string} username - The username for the Postgres database.
+     * @param {string} password - The password for the Postgres database.
      * @param {string} dbName - The name of the database.
-     * @param {string} query - The query to execute on the database.
-     * @returns {string} Returns the result of the query.
-     * @throws {Error} Throws an error if connection or query execution is unsuccessful.
-     * @example
-     * ExecuteQuery('localhost', 5432, 'user', 'password', 'myDatabase', 'SELECT * FROM users');
+     * @param {string} query - The query to be executed.
+     * @returns {string} Returns the result of the query execution.
+     * @throws {Error} If connection is unsuccessful or query execution fails.
      */
     ExecuteQuery(host, port, username, password, dbName, query) {
-        // implementation here
+        // implemented in go
     };
 
     /**
-     * @method IsPostgres
+     * @method
      * @description Checks if the given host and port are running Postgres database.
-     * @param {string} host - The host to check.
-     * @param {number} port - The port to check.
-     * @returns {boolean} Returns true if the given host and port are running Postgres database, false otherwise.
-     * @throws {Error} Throws an error if connection is unsuccessful.
-     * @example
-     * IsPostgres('localhost', 5432);
+     * @param {string} host - The host of the Postgres database.
+     * @param {number} port - The port of the Postgres database.
+     * @returns {boolean} Returns true if connection is successful, otherwise false.
+     * @throws {Error} If connection is unsuccessful.
      */
     IsPostgres(host, port) {
-        // implementation here
+        // implemented in go
     };
 };
 
-
+// ReadOnly DONOT EDIT
 module.exports = {
-    Client: Client,
+    PGClient: PGClient,
 };

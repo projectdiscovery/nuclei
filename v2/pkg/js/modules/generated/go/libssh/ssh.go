@@ -19,10 +19,10 @@ func init() {
 			// Var and consts
 
 			// Types (value type)
-			"Client": func() lib_ssh.SSHClient { return lib_ssh.SSHClient{} },
+			"SSHClient": func() lib_ssh.SSHClient { return lib_ssh.SSHClient{} },
 
 			// Types (pointer type)
-			"NewClient": func() *lib_ssh.SSHClient { return &lib_ssh.SSHClient{} },
+			"NewSSHClient": func() *lib_ssh.SSHClient { return &lib_ssh.SSHClient{} },
 		},
 	).Register()
 }

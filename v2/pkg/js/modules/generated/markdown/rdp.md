@@ -9,9 +9,9 @@ to be used from nuclei scanner.
 
 ## Types
 
-### Client
+### RDPClient
 
- Client is a client for rdp servers
+ RDPClient is a client for rdp servers
 
 | Method | Description | Arguments | Returns |
 |--------|-------------|-----------|---------|

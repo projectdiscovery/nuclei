@@ -1,60 +1,60 @@
 /**
  * @module goconsole
- * @description goconsole implements bindings for goconsole protocol in javascript to be used from nuclei scanner.
+ * This module implements bindings for goconsole protocol in javascript
+ * to be used from nuclei scanner.
  */
 
 /**
- * @class GoConsolePrinter
- * @description GoConsolePrinter is a console printer for nuclei using gologger
+ * @class
+ * GoConsolePrinter is a console printer for nuclei using gologger
  */
 class GoConsolePrinter {
     /**
-     * @method Error
-     * @description This method is not returning anything, hence removed.
-     * @param {string} msg - The message to be logged.
-     * @throws {Error} If an error occurred.
+     * @method
+     * @param {string} msg - The message to be printed
+     * @throws {Error} If an error occurred
      * @example
      * let printer = new GoConsolePrinter();
      * printer.Error("This is an error message");
      */
+    Error(msg) {
+        // implemented in go
+    };
 
     /**
-     * @method Log
-     * @description Logs the given message
-     * @param {string} msg - The message to be logged.
+     * @method
+     * @param {string} msg - The message to be logged
      * @example
      * let printer = new GoConsolePrinter();
      * printer.Log("This is a log message");
      */
     Log(msg) {
-        return;
+        // implemented in go
     };
 
     /**
-     * @method Warn
-     * @description Logs the given warning message
-     * @param {string} msg - The message to be logged.
+     * @method
+     * @param {string} msg - The message to be warned
      * @example
      * let printer = new GoConsolePrinter();
      * printer.Warn("This is a warning message");
      */
     Warn(msg) {
-        return;
+        // implemented in go
     };
 };
 
 /**
- * @function NewGoConsolePrinter
- * @description Creates a new instance of GoConsolePrinter
- * @returns {GoConsolePrinter} A new instance of GoConsolePrinter.
+ * @function
+ * @returns {GoConsolePrinter} A new instance of GoConsolePrinter
  * @example
  * let printer = NewGoConsolePrinter();
  */
 function NewGoConsolePrinter() {
-    return new GoConsolePrinter();
+    // implemented in go
 };
 
-
+// ReadOnly DONOT EDIT
 module.exports = {
     GoConsolePrinter: GoConsolePrinter,
     NewGoConsolePrinter: NewGoConsolePrinter,

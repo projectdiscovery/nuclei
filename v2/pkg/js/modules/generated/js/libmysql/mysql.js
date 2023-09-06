@@ -1,84 +1,88 @@
 /**
  * @module mysql
- * @description mysql implements bindings for mysql protocol in javascript to be used from nuclei scanner.
+ * This module implements bindings for mysql protocol in javascript to be used from nuclei scanner.
  */
 
 /**
  * @class
- * @classdesc Client is a client for MySQL database. Internally client uses go-sql-driver/mysql driver.
+ * @classdesc MySQLClient is a client for MySQL database. Internally client uses go-sql-driver/mysql driver.
  */
-class Client {
+class MySQLClient {
     /**
      * @method
-     * @description Connects to MySQL database using given credentials.
+     * @description Connects to MySQL database using given credentials. The connection is closed after the function returns.
      * @param {string} host - The host of the MySQL database.
      * @param {number} port - The port of the MySQL database.
-     * @param {string} username - The username to connect to the MySQL database.
-     * @param {string} password - The password to connect to the MySQL database.
-     * @returns {boolean} - Returns true if connection is successful, false otherwise.
-     * @throws {Error} - Throws an error if connection is unsuccessful.
+     * @param {string} username - The username for the MySQL database.
+     * @param {string} password - The password for the MySQL database.
+     * @returns {boolean} Returns true if connection is successful, otherwise false.
+     * @throws {Error} If connection is unsuccessful.
      * @example
-     * // returns true if connection is successful
-     * Connect('localhost', 3306, 'root', 'password');
+     * // Connect to MySQL database
+     * let client = new MySQLClient();
+     * client.Connect('localhost', 3306, 'root', 'password');
      */
     Connect(host, port, username, password) {
-        // Implementation here
+        // implemented in go
     };
 
     /**
      * @method
-     * @description Connects to MySQL database using given credentials and database name.
+     * @description Connects to MySQL database using given credentials and database name. The connection is closed after the function returns.
      * @param {string} host - The host of the MySQL database.
      * @param {number} port - The port of the MySQL database.
-     * @param {string} username - The username to connect to the MySQL database.
-     * @param {string} password - The password to connect to the MySQL database.
+     * @param {string} username - The username for the MySQL database.
+     * @param {string} password - The password for the MySQL database.
      * @param {string} dbName - The name of the database.
-     * @returns {boolean} - Returns true if connection is successful, false otherwise.
-     * @throws {Error} - Throws an error if connection is unsuccessful.
+     * @returns {boolean} Returns true if connection is successful, otherwise false.
+     * @throws {Error} If connection is unsuccessful.
      * @example
-     * // returns true if connection is successful
-     * ConnectWithDB('localhost', 3306, 'root', 'password', 'myDatabase');
+     * // Connect to MySQL database with a specific database
+     * let client = new MySQLClient();
+     * client.ConnectWithDB('localhost', 3306, 'root', 'password', 'myDatabase');
      */
     ConnectWithDB(host, port, username, password, dbName) {
-        // Implementation here
+        // implemented in go
     };
 
     /**
      * @method
-     * @description Connects to MySQL database using given credentials and database name and executes a query on the db.
+     * @description Connects to Mysql database using given credentials and database name and executes a query on the db.
      * @param {string} host - The host of the MySQL database.
      * @param {number} port - The port of the MySQL database.
-     * @param {string} username - The username to connect to the MySQL database.
-     * @param {string} password - The password to connect to the MySQL database.
+     * @param {string} username - The username for the MySQL database.
+     * @param {string} password - The password for the MySQL database.
      * @param {string} dbName - The name of the database.
-     * @param {string} query - The query to execute on the database.
-     * @returns {string} - Returns the result of the query execution.
-     * @throws {Error} - Throws an error if query execution is unsuccessful.
+     * @param {string} query - The query to execute.
+     * @returns {string} The result of the query.
+     * @throws {Error} If execution of query is unsuccessful.
      * @example
-     * // returns the result of the query execution
-     * ExecuteQuery('localhost', 3306, 'root', 'password', 'myDatabase', 'SELECT * FROM users');
+     * // Execute a query on the MySQL database
+     * let client = new MySQLClient();
+     * client.ExecuteQuery('localhost', 3306, 'root', 'password', 'myDatabase', 'SELECT * FROM users');
      */
     ExecuteQuery(host, port, username, password, dbName, query) {
-        // Implementation here
+        // implemented in go
     };
 
     /**
      * @method
      * @description Checks if the given host is running MySQL database.
      * @param {string} host - The host to check.
-     * @param {number} port - The port of the host.
-     * @returns {boolean} - Returns true if the host is running MySQL database, false otherwise.
-     * @throws {Error} - Throws an error if the check is unsuccessful.
+     * @param {number} port - The port to check.
+     * @returns {boolean} Returns true if the host is running MySQL database, otherwise false.
+     * @throws {Error} If check is unsuccessful.
      * @example
-     * // returns true if the host is running MySQL database
-     * IsMySQL('localhost', 3306);
+     * // Check if a host is running MySQL database
+     * let client = new MySQLClient();
+     * client.IsMySQL('localhost', 3306);
      */
     IsMySQL(host, port) {
-        // Implementation here
+        // implemented in go
     };
 };
 
-
+// ReadOnly DONOT EDIT
 module.exports = {
-    Client: Client,
+    MySQLClient: MySQLClient,
 };

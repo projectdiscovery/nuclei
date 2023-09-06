@@ -9,9 +9,9 @@ to be used from nuclei scanner.
 
 ## Types
 
-### Client
+### OracleClient
 
- Client is a minimal Oracle client for nuclei scripts.
+ OracleClient is a minimal Oracle client for nuclei scripts.
 
 | Method | Description | Arguments | Returns |
 |--------|-------------|-----------|---------|

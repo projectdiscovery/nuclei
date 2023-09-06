@@ -19,10 +19,10 @@ func init() {
 			// Var and consts
 
 			// Types (value type)
-			"Client": func() lib_smb.SMBClient { return lib_smb.SMBClient{} },
+			"SMBClient": func() lib_smb.SMBClient { return lib_smb.SMBClient{} },
 
 			// Types (pointer type)
-			"NewClient": func() *lib_smb.SMBClient { return &lib_smb.SMBClient{} },
+			"NewSMBClient": func() *lib_smb.SMBClient { return &lib_smb.SMBClient{} },
 		},
 	).Register()
 }

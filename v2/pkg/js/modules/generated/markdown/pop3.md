@@ -9,9 +9,9 @@ to be used from nuclei scanner.
 
 ## Types
 
-### Client
+### Pop3Client
 
- Client is a minimal POP3 client for nuclei scripts.
+ Pop3Client is a minimal POP3 client for nuclei scripts.
 
 | Method | Description | Arguments | Returns |
 |--------|-------------|-----------|---------|

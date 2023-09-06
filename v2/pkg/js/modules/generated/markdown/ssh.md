@@ -9,9 +9,9 @@ to be used from nuclei scanner.
 
 ## Types
 
-### Client
+### SSHClient
 
- Client is a client for SSH servers.    Internally client uses github.com/zmap/zgrab2/lib/ssh driver.
+ SSHClient is a client for SSH servers.    Internally client uses github.com/zmap/zgrab2/lib/ssh driver.
 
 | Method | Description | Arguments | Returns |
 |--------|-------------|-----------|---------|

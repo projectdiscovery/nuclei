@@ -9,9 +9,9 @@ to be used from nuclei scanner.
 
 ## Types
 
-### Client
+### SMTPClient
 
- Client is a minimal SMTP client for nuclei scripts.
+ SMTPClient is a minimal SMTP client for nuclei scripts.
 
 | Method | Description | Arguments | Returns |
 |--------|-------------|-----------|---------|

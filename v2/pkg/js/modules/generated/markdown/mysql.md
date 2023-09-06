@@ -9,9 +9,9 @@ to be used from nuclei scanner.
 
 ## Types
 
-### Client
+### MySQLClient
 
- Client is a client for MySQL database.    Internally client uses go-sql-driver/mysql driver.
+ MySQLClient is a client for MySQL database.    Internally client uses go-sql-driver/mysql driver.
 
 | Method | Description | Arguments | Returns |
 |--------|-------------|-----------|---------|

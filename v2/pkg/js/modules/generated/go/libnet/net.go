@@ -21,10 +21,10 @@ func init() {
 			// Var and consts
 
 			// Types (value type)
-			"Conn": func() lib_net.NetConn { return lib_net.NetConn{} },
+			"NetConn": func() lib_net.NetConn { return lib_net.NetConn{} },
 
 			// Types (pointer type)
-			"NewConn": func() *lib_net.NetConn { return &lib_net.NetConn{} },
+			"NewNetConn": func() *lib_net.NetConn { return &lib_net.NetConn{} },
 		},
 	).Register()
 }

@@ -9,7 +9,7 @@ to be used from nuclei scanner.
 
 ## Types
 
-### Client
+### KerberosClient
 
  Client is a kerberos client
 

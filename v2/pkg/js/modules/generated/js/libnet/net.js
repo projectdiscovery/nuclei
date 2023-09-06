@@ -1,94 +1,72 @@
 /**
  * @module net
- * @description net implements bindings for net protocol in javascript to be used from nuclei scanner.
+ * This module implements bindings for net protocol in javascript to be used from nuclei scanner.
  */
 
 /**
  * @class
- * @name Conn
- * @description Conn is a connection to a remote host.
+ * @classdesc NetConn is a connection to a remote host.
  */
-class Conn {
+class NetConn {
     /**
      * @method
-     * @name Close
      * @description Close closes the connection.
-     * @throws {Error} If an error occurred during closing the connection.
+     * @throws {Error} If an error occurred while closing the connection.
      * @example
-     * let conn = new Conn();
-     * try {
-     *   conn.Close();
-     * } catch (error) {
-     *   console.error(error);
-     * }
+     * let netConn = new NetConn();
+     * netConn.Close();
      */
     Close() {
-        throw new Error('Error closing connection');
+        // implemented in go
     };
 
     /**
      * @method
-     * @name Recv
      * @description Recv receives data from the connection with a timeout.
-     * @param {number} timeout - The timeout for receiving data.
+     * @param {number} timeout - The timeout duration.
      * @param {number} N - The number of bytes to receive.
      * @returns {Array} An array of bytes received from the connection.
-     * @throws {Error} If an error occurred during receiving the data.
+     * @throws {Error} If an error occurred while receiving data.
      * @example
-     * let conn = new Conn();
-     * try {
-     *   let data = conn.Recv(5000, 1024);
-     * } catch (error) {
-     *   console.error(error);
-     * }
+     * let netConn = new NetConn();
+     * let data = netConn.Recv(5000, 1024);
      */
     Recv(timeout, N) {
-        // Implementation here
+        // implemented in go
     };
 
     /**
      * @method
-     * @name Send
      * @description Send sends data to the connection with a timeout.
      * @param {Array} data - The data to send.
-     * @param {number} timeout - The timeout for sending data.
-     * @throws {Error} If an error occurred during sending the data.
+     * @param {number} timeout - The timeout duration.
+     * @throws {Error} If an error occurred while sending data.
      * @example
-     * let conn = new Conn();
-     * try {
-     *   conn.Send([1,2,3,4,5], 5000);
-     * } catch (error) {
-     *   console.error(error);
-     * }
+     * let netConn = new NetConn();
+     * netConn.Send([1, 2, 3, 4], 5000);
      */
     Send(data, timeout) {
-        // Implementation here
+        // implemented in go
     };
 
     /**
      * @method
-     * @name SendRecv
      * @description SendRecv sends data to the connection and receives data from the connection with a timeout.
      * @param {Array} data - The data to send.
-     * @param {number} timeout - The timeout for sending and receiving data.
+     * @param {number} timeout - The timeout duration.
      * @returns {Array} An array of bytes received from the connection.
-     * @throws {Error} If an error occurred during sending or receiving the data.
+     * @throws {Error} If an error occurred while sending or receiving data.
      * @example
-     * let conn = new Conn();
-     * try {
-     *   let receivedData = conn.SendRecv([1,2,3,4,5], 5000);
-     * } catch (error) {
-     *   console.error(error);
-     * }
+     * let netConn = new NetConn();
+     * let response = netConn.SendRecv([1, 2, 3, 4], 5000);
      */
     SendRecv(data, timeout) {
-        // Implementation here
+        // implemented in go
     };
 };
 
 /**
  * @function
- * @name Open
  * @description Open a connection with the specified protocol and address.
  * @param {string} protocol - The protocol to use.
  * @param {string} address - The address to connect to.
@@ -96,24 +74,24 @@ class Conn {
  * Open('http', 'localhost:8080');
  */
 function Open(protocol, address) {
-    // Implementation here
+    // implemented in go
 };
 
 /**
  * @function
- * @name OpenTLS
  * @description Open a TLS connection with the specified protocol and address.
  * @param {string} protocol - The protocol to use.
  * @param {string} address - The address to connect to.
  * @example
- * OpenTLS('https', 'localhost:443');
+ * OpenTLS('https', 'localhost:8443');
  */
 function OpenTLS(protocol, address) {
-    // Implementation here
+    // implemented in go
 };
 
+// ReadOnly DONOT EDIT
 module.exports = {
-    Conn: Conn,
+    NetConn: NetConn,
     Open: Open,
     OpenTLS: OpenTLS,
 };

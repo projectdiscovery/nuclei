@@ -19,12 +19,12 @@ func init() {
 			// Var and consts
 
 			// Types (value type)
-			"Client":         func() lib_pop3.Pop3Client { return lib_pop3.Pop3Client{} },
 			"IsPOP3Response": func() lib_pop3.IsPOP3Response { return lib_pop3.IsPOP3Response{} },
+			"Pop3Client":     func() lib_pop3.Pop3Client { return lib_pop3.Pop3Client{} },
 
 			// Types (pointer type)
-			"NewClient":         func() *lib_pop3.Pop3Client { return &lib_pop3.Pop3Client{} },
 			"NewIsPOP3Response": func() *lib_pop3.IsPOP3Response { return &lib_pop3.IsPOP3Response{} },
+			"NewPop3Client":     func() *lib_pop3.Pop3Client { return &lib_pop3.Pop3Client{} },
 		},
 	).Register()
 }

@@ -19,12 +19,12 @@ func init() {
 			// Var and consts
 
 			// Types (value type)
-			"Client":           func() lib_oracle.OracleClient { return lib_oracle.OracleClient{} },
 			"IsOracleResponse": func() lib_oracle.IsOracleResponse { return lib_oracle.IsOracleResponse{} },
+			"OracleClient":     func() lib_oracle.OracleClient { return lib_oracle.OracleClient{} },
 
 			// Types (pointer type)
-			"NewClient":           func() *lib_oracle.OracleClient { return &lib_oracle.OracleClient{} },
 			"NewIsOracleResponse": func() *lib_oracle.IsOracleResponse { return &lib_oracle.IsOracleResponse{} },
+			"NewOracleClient":     func() *lib_oracle.OracleClient { return &lib_oracle.OracleClient{} },
 		},
 	).Register()
 }

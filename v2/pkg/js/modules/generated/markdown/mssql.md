@@ -9,7 +9,7 @@ to be used from nuclei scanner.
 
 ## Types
 
-### Client
+### MSSQLClient
 
  Client is a client for MS SQL database.    Internally client uses denisenkom/go-mssqldb driver.
 

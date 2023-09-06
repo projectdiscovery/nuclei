@@ -19,29 +19,20 @@ var (
 	keyfile string
 )
 
-const sysprompt = `
+const sysPrompt = `
 Act as helpful coding assistant and using provided original javascript code and instructions create a new javascript file with valid jsdoc annotations/tags
 --- instructions ---
 new javascript file should contain JsDOC annotations like @module, @class, @method, @typedef, @throws, @return, @param, and @example,
 incorporating all necessary information applicable. Your new file must strictly stick to classes, methods, or functions present in the original code - no new elements are permitted.
 While writing @example, do not access properties (aka variables) of types that are not defined/known. Properly identify if a element is function or method and properly annotate it.
 Always include return types of functions/methods (when applicable). Omit Implementations of functions/methods in new javascript and replace it with '// implemented in go' comment.
-Also Skip using @exports anywhere in file.
-
+Also Skip using @exports anywhere in file.Take additional care not to include 'error' as return type of any function/method as errors are thrown not returned in javascript.
+Donot add jsdoc annotations to 'module.exports' and copy it without any modification
 `
 
-const prompt = `
+const userPrompt = `
 ---original javascript---
 {{source}}
----instructions----
-1. new javascript file should contain following js doc annotations
-@module, @class , @method , @typedef , @throws, @return , @param , @example etc with necessary / required details when applicable
-2. take note that new javascript should not contain any class, method or function that does not exist in original javascript code
-3. while writing @example do not access properties (aka variables) of types that are not defined/known
-4. re-think and verify if function is a method or public function
-5. donot forget to include return types of functions/methods
-6. Skip adding @exports anywhere in file
-7. Omit implementation of functions/methods actual function/method body should be always empty. It should contain '// implemented in go' comment
 ---new javascript---
 `
 
@@ -101,10 +92,10 @@ func updateDocsWithLLM(llm *openai.Client, path string) error {
 	resp, err := llm.CreateChatCompletion(context.TODO(), openai.ChatCompletionRequest{
 		Model: "gpt-4",
 		Messages: []openai.ChatCompletionMessage{
-			{Role: "system", Content: "Act as helpful assistant and update below js code with proper documentation so that it can be parsed by jsdoc. Note: in javascript code if any function/method return 'error' remove it as errors are thrown not returned"},
-			{Role: "user", Content: strings.ReplaceAll(prompt, "{{source}}", string(bin))},
+			{Role: "system", Content: sysPrompt},
+			{Role: "user", Content: strings.ReplaceAll(userPrompt, "{{source}}", string(bin))},
 		},
-		Temperature: 0.3,
+		Temperature: 0.1,
 	})
 	if err != nil {
 		return err

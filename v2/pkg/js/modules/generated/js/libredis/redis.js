@@ -1,74 +1,68 @@
-/**
- * @module redis
- * @description This module implements bindings for the redis protocol in JavaScript to be used from nuclei scanner.
+/** 
+ * @module redis 
+ * This module implements bindings for redis protocol in javascript
+ * to be used from nuclei scanner.
  */
 
 /**
- * @function Connect
- * @description Connects to the Redis server.
+ * Connect to a Redis server.
+ * @function
  * @param {string} host - The host of the Redis server.
  * @param {number} port - The port of the Redis server.
  * @param {string} password - The password for the Redis server.
- * @example
- * Connect('localhost', 6379, 'password');
  */
 function Connect(host, port, password) {
-
+    // implemented in go
 };
 
 /**
- * @function GetServerInfo
- * @description Retrieves server information.
+ * Get information about the Redis server.
+ * @function
  * @param {string} host - The host of the Redis server.
  * @param {number} port - The port of the Redis server.
- * @example
- * GetServerInfo('localhost', 6379);
+ * @returns {Object} An object containing information about the server.
  */
 function GetServerInfo(host, port) {
-
+    // implemented in go
 };
 
 /**
- * @function GetServerInfoAuth
- * @description Retrieves server information with authentication.
+ * Get information about the Redis server with authentication.
+ * @function
  * @param {string} host - The host of the Redis server.
  * @param {number} port - The port of the Redis server.
  * @param {string} password - The password for the Redis server.
- * @example
- * GetServerInfoAuth('localhost', 6379, 'password');
+ * @returns {Object} An object containing information about the server.
  */
 function GetServerInfoAuth(host, port, password) {
-
+    // implemented in go
 };
 
 /**
- * @function IsAuthenticated
- * @description Checks if the connection to the Redis server is authenticated.
+ * Check if the Redis server is authenticated.
+ * @function
  * @param {string} host - The host of the Redis server.
  * @param {number} port - The port of the Redis server.
- * @returns {boolean} - Returns true if the connection is authenticated, false otherwise.
- * @example
- * IsAuthenticated('localhost', 6379);
+ * @returns {boolean} True if the server is authenticated, false otherwise.
  */
 function IsAuthenticated(host, port) {
-
+    // implemented in go
 };
 
 /**
- * @function RunLuaScript
- * @description Runs a Lua script on the Redis server.
+ * Run a Lua script on the Redis server.
+ * @function
  * @param {string} host - The host of the Redis server.
  * @param {number} port - The port of the Redis server.
  * @param {string} password - The password for the Redis server.
  * @param {string} script - The Lua script to run.
- * @example
- * RunLuaScript('localhost', 6379, 'password', 'return redis.call(\'ping\')');
+ * @returns {Object} The result of the script execution.
  */
 function RunLuaScript(host, port, password, script) {
-
+    // implemented in go
 };
 
-
+// ReadOnly DONOT EDIT
 module.exports = {
     Connect: Connect,
     GetServerInfo: GetServerInfo,

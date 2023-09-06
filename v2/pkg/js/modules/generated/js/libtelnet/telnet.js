@@ -1,47 +1,35 @@
 /**
  * @module telnet
- * @description telnet implements bindings for telnet protocol in javascript to be used from nuclei scanner.
+ * This module implements bindings for telnet protocol in javascript to be used from nuclei scanner.
  */
 
 /**
  * @class
- * @name Client
- * @description This is a minimal Telnet client for nuclei scripts.
+ * @classdesc TelnetClient is a minimal Telnet client for nuclei scripts.
  */
-class Client {
+class TelnetClient {
     /**
      * @method
      * @name IsTelnet
-     * @description This method checks if a host is running a Telnet server.
      * @param {string} host - The host to check.
-     * @param {number} port - The port to check on the host.
-     * @returns {boolean} IsTelnetResponse - The response of the check.
-     * @throws {Error} If an error occurs during the check.
+     * @param {number} port - The port to check.
+     * @returns {boolean} IsTelnetResponse - Returns true if the host is running a Telnet server, false otherwise.
+     * @throws {Error} If an error occurred during the operation.
      * @example
-     * const client = new Client();
-     * try {
-     *  const response = client.IsTelnet('localhost', 23);
-     *  console.log(response);
-     * } catch (error) {
-     *  console.error(error);
+     * let client = new TelnetClient();
+     * let isTelnet = client.IsTelnet("localhost", 23);
+     * if (isTelnet) {
+     *   console.log("The host is running a Telnet server.");
+     * } else {
+     *   console.log("The host is not running a Telnet server.");
      * }
      */
     IsTelnet(host, port) {
-        let IsTelnetResponse;
-        try {
-            // Code to check if the host is running a Telnet server goes here.
-            // If an error occurs, it should be thrown, not returned.
-        } catch (error) {
-            throw error;
-        }
-        return IsTelnetResponse;
+        // implemented in go
     };
 };
 
-/**
- * @typedef {Object} Client
- * @property {function} IsTelnet - The method to check if a host is running a Telnet server.
- */
+// ReadOnly DONOT EDIT
 module.exports = {
-    Client: Client,
+    TelnetClient: TelnetClient,
 };

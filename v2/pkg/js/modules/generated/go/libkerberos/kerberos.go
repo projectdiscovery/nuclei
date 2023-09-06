@@ -19,12 +19,12 @@ func init() {
 			// Var and consts
 
 			// Types (value type)
-			"Client":                func() lib_kerberos.KerberosClient { return lib_kerberos.KerberosClient{} },
 			"EnumerateUserResponse": func() lib_kerberos.EnumerateUserResponse { return lib_kerberos.EnumerateUserResponse{} },
+			"KerberosClient":        func() lib_kerberos.KerberosClient { return lib_kerberos.KerberosClient{} },
 
 			// Types (pointer type)
-			"NewClient":                func() *lib_kerberos.KerberosClient { return &lib_kerberos.KerberosClient{} },
 			"NewEnumerateUserResponse": func() *lib_kerberos.EnumerateUserResponse { return &lib_kerberos.EnumerateUserResponse{} },
+			"NewKerberosClient":        func() *lib_kerberos.KerberosClient { return &lib_kerberos.KerberosClient{} },
 		},
 	).Register()
 }

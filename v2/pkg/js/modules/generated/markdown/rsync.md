@@ -9,9 +9,9 @@ to be used from nuclei scanner.
 
 ## Types
 
-### Client
+### RsyncClient
 
- Client is a minimal Rsync client for nuclei scripts.
+ RsyncClient is a minimal Rsync client for nuclei scripts.
 
 | Method | Description | Arguments | Returns |
 |--------|-------------|-----------|---------|

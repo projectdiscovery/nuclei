@@ -1,18 +1,13 @@
 /**
  * @module ssh
- * @description ssh implements bindings for ssh protocol in javascript to be used from nuclei scanner.
- */
-
-/**
- * @typedef {Object} HandshakeLog
- * @description A struct that contains information about the ssh connection.
+ * This module implements bindings for ssh protocol in javascript to be used from nuclei scanner.
  */
 
 /**
  * @class
- * @description Client is a client for SSH servers. Internally client uses github.com/zmap/zgrab2/lib/ssh driver.
+ * @classdesc SSHClient is a client for SSH servers. Internally client uses github.com/zmap/zgrab2/lib/ssh driver.
  */
-class Client {
+class SSHClient {
     /**
      * @method
      * @description Connect tries to connect to provided host and port with provided username and password with ssh.
@@ -20,29 +15,34 @@ class Client {
      * @param {number} port - The port to connect to.
      * @param {string} username - The username for authentication.
      * @param {string} password - The password for authentication.
-     * @returns {boolean} The state of the connection.
-     * @throws {Error} If an error occurs during connection.
+     * @returns {boolean} Returns state of connection. If error is thrown, state will be false.
+     * @throws Will throw an error if the connection fails.
      * @example
-     * const client = new Client();
-     * client.Connect('localhost', 22, 'user', 'pass');
+     * let client = new SSHClient();
+     * client.Connect('localhost', 22, 'root', 'password');
      */
     Connect(host, port, username, password) {
-        // Implementation here...
+        // implemented in go
     };
+
+    /**
+     * @typedef {Object} HandshakeLog
+     * @description HandshakeLog is a struct that contains information about the ssh connection.
+     */
 
     /**
      * @method
      * @description ConnectSSHInfoMode tries to connect to provided host and port.
      * @param {string} host - The host to connect to.
      * @param {number} port - The port to connect to.
-     * @returns {HandshakeLog} Information about the ssh connection.
-     * @throws {Error} If an error occurs during connection.
+     * @returns {HandshakeLog} Returns HandshakeLog. If error is thrown, state will be false.
+     * @throws Will throw an error if the connection fails.
      * @example
-     * const client = new Client();
+     * let client = new SSHClient();
      * client.ConnectSSHInfoMode('localhost', 22);
      */
     ConnectSSHInfoMode(host, port) {
-        // Implementation here...
+        // implemented in go
     };
 
     /**
@@ -52,20 +52,18 @@ class Client {
      * @param {number} port - The port to connect to.
      * @param {string} username - The username for authentication.
      * @param {string} key - The private key for authentication.
-     * @returns {boolean} The state of the connection.
-     * @throws {Error} If an error occurs during connection.
+     * @returns {boolean} Returns state of connection. If error is thrown, state will be false.
+     * @throws Will throw an error if the connection fails.
      * @example
-     * const client = new Client();
-     * client.ConnectWithKey('localhost', 22, 'user', 'private_key');
+     * let client = new SSHClient();
+     * client.ConnectWithKey('localhost', 22, 'root', 'private_key');
      */
     ConnectWithKey(host, port, username, key) {
-        // Implementation here...
+        // implemented in go
     };
 };
 
-/**
- * @description Exports the Client class.
- */
+// ReadOnly DONOT EDIT
 module.exports = {
-    Client: Client,
+    SSHClient: SSHClient,
 };

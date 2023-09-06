@@ -9,7 +9,7 @@ to be used from nuclei scanner.
 
 ## Types
 
-### Client
+### LdapClient
 
  Client is a client for ldap protocol in golang.    It is a wrapper around the standard library ldap package.
 
