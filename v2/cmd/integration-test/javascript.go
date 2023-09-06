@@ -24,7 +24,7 @@ var (
 type javascriptRedisPassBrute struct{}
 
 func (j *javascriptRedisPassBrute) Execute(filePath string) error {
-	if redisResource == nil {
+	if redisResource == nil || pool == nil {
 		// skip test as redis is not running
 		return nil
 	}
@@ -56,7 +56,7 @@ func (j *javascriptRedisPassBrute) Execute(filePath string) error {
 type javascriptSSHServerFingerprint struct{}
 
 func (j *javascriptSSHServerFingerprint) Execute(filePath string) error {
-	if sshResource == nil {
+	if sshResource == nil || pool == nil {
 		// skip test as redis is not running
 		return nil
 	}
