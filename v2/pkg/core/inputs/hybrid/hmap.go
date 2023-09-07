@@ -315,7 +315,11 @@ func (i *Input) setItem(metaInput *contextargs.MetaInput, exclude bool) {
 		// Otherwise, increment the dupeCount and don't bother adding it to the stream
 		if exclude {
 			i.excludedCount++
-			i.hostMap.Del(key)
+			err := i.hostMap.Del(key)
+			if err != nil {
+				gologger.Error().Msgf("Error excluding target from list: %s", key)
+				return
+			}
 			gologger.Info().Msgf("Excluding target from target list: %s", key)
 		} else {
 			i.dupeCount++
@@ -385,7 +389,11 @@ func (i *Input) expandCIDRInputValue(value string, exclude bool) {
 			// map. Otherwise, increment the dupeCount and don't bother adding it to the stream
 			if exclude {
 				i.excludedCount++
-				i.hostMap.Del(key)
+				err := i.hostMap.Del(key)
+				if err != nil {
+					gologger.Error().Msgf("Error excluding target from list: %s", key)
+					return
+				}
 				gologger.Info().Msgf("Excluding target from target list: %s", key)
 			} else {
 				i.dupeCount++
