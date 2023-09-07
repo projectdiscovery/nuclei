@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/corpix/uarand"
+	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/expressions"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/generators"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
@@ -16,6 +17,7 @@ import (
 
 // executePartRule executes part rules based on type
 func (rule *Rule) executePartRule(input *ExecuteRuleInput, payload string) error {
+	gologger.Info().Msgf("input: %+v\n", input.Input.MetaInput.RawRequest)
 	switch rule.partType {
 	case queryPartType:
 		return rule.executeQueryPartRule(input, payload)

@@ -77,6 +77,11 @@ type Options struct {
 	Targets goflags.StringSlice
 	// TargetsFilePath specifies the targets from a file to scan using templates.
 	TargetsFilePath string
+	// InputFile specifies a file containing raw requests.
+	// The type of the must be one of the types supported by InputFileMode flag.
+	InputFile string
+	// InputFileMode specifies the mode of input file (jsonl, burp, openapi, swagger, etc)
+	InputFileMode string
 	// Resume the scan from the state stored in the resume config file
 	Resume string
 	// Output is the file to write found results to.

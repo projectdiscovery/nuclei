@@ -28,6 +28,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/disk"
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/loader"
 	"github.com/projectdiscovery/nuclei/v2/pkg/core"
+	inputformat "github.com/projectdiscovery/nuclei/v2/pkg/core/inputs/formats/input"
 	"github.com/projectdiscovery/nuclei/v2/pkg/core/inputs/hybrid"
 	"github.com/projectdiscovery/nuclei/v2/pkg/external/customtemplates"
 	"github.com/projectdiscovery/nuclei/v2/pkg/input"
@@ -70,6 +71,7 @@ type Runner struct {
 	colorizer         aurora.Aurora
 	issuesClient      reporting.Client
 	hmapInputProvider *hybrid.Input
+	inputFileProvider core.InputProvider
 	browser           *engine.Browser
 	rateLimiter       *ratelimit.Limiter
 	hostErrors        hosterrorscache.CacheInterface
@@ -209,7 +211,7 @@ func New(options *types.Options) (*Runner, error) {
 		}()
 	}
 
-	if (len(options.Templates) == 0 || !options.NewTemplates || (options.TargetsFilePath == "" && !options.Stdin && len(options.Targets) == 0)) && (options.UpdateTemplates && !options.Cloud) {
+	if (len(options.Templates) == 0 || !options.NewTemplates || (options.TargetsFilePath == "" && !options.Stdin && len(options.Targets) == 0 && options.InputFile == "")) && (options.UpdateTemplates && !options.Cloud) {
 		os.Exit(0)
 	}
 
@@ -240,6 +242,13 @@ func New(options *types.Options) (*Runner, error) {
 	}
 	runner.hmapInputProvider = hmapInput
 
+	if options.InputFile != "" && options.InputFileMode != "" {
+		provider, err := inputformat.NewInputProvider(options.InputFile, options.InputFileMode)
+		if err != nil {
+			return nil, errors.Wrap(err, "could not create input provider")
+		}
+		runner.inputFileProvider = provider
+	}
 	// Create the output file if asked
 	outputWriter, err := output.NewStandardWriter(options)
 	if err != nil {
@@ -470,7 +479,12 @@ func (r *Runner) RunEnumeration() error {
 	}
 	executorOpts.WorkflowLoader = workflowLoader
 
-	store, err := loader.New(loader.NewConfig(r.options, r.catalog, executorOpts))
+	// If using input-file flags, only load http fuzzing based templates.
+	loaderConfig := loader.NewConfig(r.options, r.catalog, executorOpts)
+	if r.inputFileProvider != nil {
+		loaderConfig.OnlyLoadHTTPFuzzing = true
+	}
+	store, err := loader.New(loaderConfig)
 	if err != nil {
 		return errors.Wrap(err, "could not load templates from config")
 	}
@@ -679,7 +693,15 @@ func (r *Runner) executeTemplatesInput(store *loader.Store, engine *core.Engine)
 		return nil, errors.New("no templates provided for scan")
 	}
 
-	results := engine.ExecuteScanWithOpts(finalTemplates, r.hmapInputProvider, r.options.DisableClustering)
+	// If we have input provider of input file, pass it instead of
+	// normal URL inputs of r.hmapInputProvider.
+	var provider core.InputProvider
+	if r.inputFileProvider != nil {
+		provider = r.inputFileProvider
+	} else {
+		provider = r.hmapInputProvider
+	}
+	results := engine.ExecuteScanWithOpts(finalTemplates, provider, r.options.DisableClustering)
 	return results, nil
 }
 

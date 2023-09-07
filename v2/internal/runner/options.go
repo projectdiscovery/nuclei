@@ -125,6 +125,14 @@ func ValidateOptions(options *types.Options) error {
 		return errors.New("headless mode (-headless) is required if -ho, -sb, -sc or -lha are set")
 	}
 
+	if options.InputFile != "" {
+		if options.InputFileMode == "" {
+			return errors.New("input-mode is required if input-file is set")
+		}
+		if len(options.Targets) > 0 || options.TargetsFilePath != "" {
+			return errors.New("input-file cannot be used with targets or target-list")
+		}
+	}
 	if options.FollowHostRedirects && options.FollowRedirects {
 		return errors.New("both follow host redirects and follow redirects specified")
 	}

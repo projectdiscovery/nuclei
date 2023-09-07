@@ -35,6 +35,7 @@ import (
 	templateTypes "github.com/projectdiscovery/nuclei/v2/pkg/templates/types"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 	"github.com/projectdiscovery/rawhttp"
+	"github.com/projectdiscovery/retryablehttp-go"
 	stringsutil "github.com/projectdiscovery/utils/strings"
 	urlutil "github.com/projectdiscovery/utils/url"
 )
@@ -228,9 +229,9 @@ func (request *Request) executeTurboHTTP(input *contextargs.Context, dynamicValu
 
 // executeFuzzingRule executes fuzzing request for a URL
 func (request *Request) executeFuzzingRule(input *contextargs.Context, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
-	if _, err := urlutil.Parse(input.MetaInput.Input); err != nil {
-		return errors.Wrap(err, "could not parse url")
-	}
+	// if _, err := urlutil.Parse(input.MetaInput.Input); err != nil {
+	// 	return errors.Wrap(err, "could not parse url")
+	// }
 	fuzzRequestCallback := func(gr fuzz.GeneratedRequest) bool {
 		hasInteractMatchers := interactsh.HasMatchers(request.CompiledOperators)
 		hasInteractMarkers := len(gr.InteractURLs) > 0
@@ -290,22 +291,39 @@ func (request *Request) executeFuzzingRule(input *contextargs.Context, previous 
 		if !result {
 			break
 		}
-		generated, err := generator.Make(context.Background(), input, value, payloads, nil)
-		if err != nil {
-			continue
+
+		// TODO: Support building from raw request instead of input URL
+		// For now we are doing hacky manner of building
+		var generatedRequest *retryablehttp.Request
+		var dynamicValues map[string]interface{}
+		if input.MetaInput.RawRequest != nil {
+			generated, err := input.MetaInput.RawRequest.Request()
+			if err != nil {
+				fmt.Printf("could not parse raw request: %s\n", err)
+				continue
+			}
+			generatedRequest = generated
+			dynamicValues = make(map[string]interface{})
+		} else {
+			generated, err := generator.Make(context.Background(), input, value, payloads, nil)
+			if err != nil {
+				continue
+			}
+			generatedRequest = generated.request
+			dynamicValues = generated.dynamicValues
 		}
 		for _, rule := range request.Fuzzing {
-			err = rule.Execute(&fuzz.ExecuteRuleInput{
+			executeErr := rule.Execute(&fuzz.ExecuteRuleInput{
 				Input:       input,
 				Callback:    fuzzRequestCallback,
-				Values:      generated.dynamicValues,
-				BaseRequest: generated.request,
+				Values:      dynamicValues,
+				BaseRequest: generatedRequest,
 			})
-			if err == types.ErrNoMoreRequests {
+			if executeErr == types.ErrNoMoreRequests {
 				return nil
 			}
-			if err != nil {
-				return errors.Wrap(err, "could not execute rule")
+			if executeErr != nil {
+				return errors.Wrap(executeErr, "could not execute rule")
 			}
 		}
 	}
