@@ -1,0 +1,36 @@
+name: 🔨 Performance Test
+
+on:
+  workflow_dispatch:
+  schedule:
+    # Weekly
+    - cron: '0 0 * * 0'
+
+jobs:
+  build:
+    name: Test Performance
+    strategy:
+      matrix:
+        go-version: [1.20.x]
+        os: [ubuntu-latest, macOS-latest]
+
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: ${{ matrix.go-version }}
+
+      - name: Check out code
+        uses: actions/checkout@v3
+
+      - name: Go Mod hygine
+        run: |
+          go clean -modcache
+          go mod tidy
+        working-directory: v2/
+
+      # Max GH exection time 6H => timeout after that
+      - name: Running performance with big list
+        run: go run -race . -l ../functional-test/targets-150.txt
+        working-directory: v2/cmd/nuclei/
