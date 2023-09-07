@@ -6,7 +6,6 @@ import (
 	"bufio"
 	"context"
 	"fmt"
-	"github.com/projectdiscovery/nuclei/v2/pkg/utils"
 	"io"
 	"os"
 	"strings"
@@ -39,6 +38,7 @@ type Input struct {
 	ipOptions         *ipOptions
 	inputCount        int64
 	dupeCount         int64
+	excludedCount     int64
 	hostMap           *hybrid.HybridMap
 	hostMapStream     *filekv.FileDB
 	hostMapStreamOnce sync.Once
@@ -111,9 +111,9 @@ func (i *Input) initializeInputSources(opts *Options) error {
 	for _, target := range options.Targets {
 		switch {
 		case iputil.IsCIDR(target):
-			i.expandCIDRInputValue(target)
+			i.expandCIDRInputValue(target, false)
 		case asn.IsASN(target):
-			i.expandASNInputValue(target)
+			i.expandASNInputValue(target, false)
 		default:
 			i.Set(target)
 		}
@@ -121,23 +121,29 @@ func (i *Input) initializeInputSources(opts *Options) error {
 
 	// Handle stdin
 	if options.Stdin {
-		i.scanInputFromReader(readerutil.TimeoutReader{Reader: os.Stdin, Timeout: options.InputReadTimeout}, opts.Options.ExcludeTargets)
+		i.scanInputFromReader(readerutil.TimeoutReader{Reader: os.Stdin, Timeout: options.InputReadTimeout})
 	}
 
 	// Handle target file
 	if options.TargetsFilePath != "" {
 		input, inputErr := os.Open(options.TargetsFilePath)
 		if inputErr != nil {
-			// Handle cloud based input here.
+			// Handle cloud-based input here.
 			if opts.NotFoundCallback == nil || !opts.NotFoundCallback(options.TargetsFilePath) {
 				return errors.Wrap(inputErr, "could not open targets file")
 			}
 		}
 		if input != nil {
-			i.scanInputFromReader(input, options.ExcludeTargets)
+			i.scanInputFromReader(input)
 			input.Close()
 		}
 	}
+
+	// If there are excluded targets, then run the processExcludeTargets function
+	if len(options.ExcludeTargets) > 0 {
+		i.processExcludeTargets(options.ExcludeTargets)
+	}
+
 	if options.Uncover && options.UncoverQuery != nil {
 		gologger.Info().Msgf("Running uncover query against: %s", strings.Join(options.UncoverEngine, ","))
 		uncoverOpts := &uncoverlib.Options{
@@ -160,34 +166,46 @@ func (i *Input) initializeInputSources(opts *Options) error {
 	return nil
 }
 
+func (i *Input) processExcludeTargets(excludeTargets []string) []string {
+	targetList := []string{}
+
+	for _, target := range excludeTargets {
+		switch {
+		case iputil.IsCIDR(target):
+			i.expandCIDRInputValue(target, true)
+		case asn.IsASN(target):
+			i.expandASNInputValue(target, true)
+		default:
+			i.Remove(target)
+		}
+	}
+
+	return targetList
+}
+
 // scanInputFromReader scans a line of input from reader and passes it for storage
-func (i *Input) scanInputFromReader(reader io.Reader, excludeTargets []string) {
+func (i *Input) scanInputFromReader(reader io.Reader) {
 	scanner := bufio.NewScanner(reader)
 	for scanner.Scan() {
 		item := scanner.Text()
 
-		// If the scanned item is present in the excludeTargets slice, then skip the processing and adding it to the list
-		if utils.StringSliceContains(excludeTargets, item) {
-			gologger.Debug().Msgf("Excluding target from target list: %s", item)
-			continue
-		}
-
 		switch {
 		case iputil.IsCIDR(item):
-			i.expandCIDRInputValue(item)
+			i.expandCIDRInputValue(item, false)
 		case asn.IsASN(item):
-			i.expandASNInputValue(item)
+			i.expandASNInputValue(item, false)
 		default:
 			i.Set(item)
 		}
 	}
 }
 
-// Set normalizes and stores passed input values
-func (i *Input) Set(value string) {
+func (i *Input) ProcessValue(value string) []*contextargs.MetaInput {
+	var inputs []*contextargs.MetaInput
+
 	URL := strings.TrimSpace(value)
 	if URL == "" {
-		return
+		return inputs
 	}
 	// parse hostname if url is given
 	urlx, err := urlutil.Parse(URL)
@@ -199,15 +217,15 @@ func (i *Input) Set(value string) {
 			return fmt.Sprintf("got empty hostname for %v skipping ip selection", URL)
 		})
 		metaInput := &contextargs.MetaInput{Input: URL}
-		i.setItem(metaInput)
-		return
+		inputs = append(inputs, metaInput)
+		return inputs
 	}
 
 	// Check if input is ip or hostname
 	if iputil.IsIP(urlx.Hostname()) {
 		metaInput := &contextargs.MetaInput{Input: URL}
-		i.setItem(metaInput)
-		return
+		inputs = append(inputs, metaInput)
+		return inputs
 	}
 
 	if i.ipOptions.ScanAllIPs {
@@ -227,9 +245,9 @@ func (i *Input) Set(value string) {
 						continue
 					}
 					metaInput := &contextargs.MetaInput{Input: value, CustomIP: ip}
-					i.setItem(metaInput)
+					inputs = append(inputs, metaInput)
 				}
-				return
+				return inputs
 			} else {
 				gologger.Debug().Msgf("scanAllIps: no ip's found reverting to default")
 			}
@@ -258,23 +276,50 @@ func (i *Input) Set(value string) {
 	for _, ip := range ips {
 		if ip != "" {
 			metaInput := &contextargs.MetaInput{Input: URL, CustomIP: ip}
-			i.setItem(metaInput)
+			inputs = append(inputs, metaInput)
 		} else {
 			metaInput := &contextargs.MetaInput{Input: URL}
-			i.setItem(metaInput)
+			inputs = append(inputs, metaInput)
 		}
+	}
+
+	return inputs
+}
+
+// Set normalizes and stores passed input values
+func (i *Input) Set(value string) {
+	var values = i.ProcessValue(value)
+	for _, value := range values {
+		i.setItem(value, false)
+	}
+}
+
+// Remove normalizes and removes passed input values if they're already present in the list of hosts
+func (i *Input) Remove(value string) {
+	var values = i.ProcessValue(value)
+	for _, value := range values {
+		i.setItem(value, true)
 	}
 }
 
 // setItem in the kv store
-func (i *Input) setItem(metaInput *contextargs.MetaInput) {
+func (i *Input) setItem(metaInput *contextargs.MetaInput, exclude bool) {
 	key, err := metaInput.MarshalString()
 	if err != nil {
 		gologger.Warning().Msgf("%s\n", err)
 		return
 	}
 	if _, ok := i.hostMap.Get(key); ok {
-		i.dupeCount++
+		// If the "exclude" parameter is set to true, then increment the excludedCount and remove the host from the
+		// map.
+		// Otherwise, increment the dupeCount and don't bother adding it to the stream
+		if exclude {
+			i.excludedCount++
+			i.hostMap.Del(key)
+			gologger.Info().Msgf("Excluding target from target list: %s", key)
+		} else {
+			i.dupeCount++
+		}
 		return
 	}
 
@@ -326,7 +371,7 @@ func (i *Input) Scan(callback func(value *contextargs.MetaInput) bool) {
 }
 
 // expandCIDRInputValue expands CIDR and stores expanded IPs
-func (i *Input) expandCIDRInputValue(value string) {
+func (i *Input) expandCIDRInputValue(value string, exclude bool) {
 	ips, _ := mapcidr.IPAddressesAsStream(value)
 	for ip := range ips {
 		metaInput := &contextargs.MetaInput{Input: ip}
@@ -336,7 +381,15 @@ func (i *Input) expandCIDRInputValue(value string) {
 			return
 		}
 		if _, ok := i.hostMap.Get(key); ok {
-			i.dupeCount++
+			// If the "exclude" parameter is set to true, then increment the excludedCount and remove the host from the
+			// map. Otherwise, increment the dupeCount and don't bother adding it to the stream
+			if exclude {
+				i.excludedCount++
+				i.hostMap.Del(key)
+				gologger.Info().Msgf("Excluding target from target list: %s", key)
+			} else {
+				i.dupeCount++
+			}
 			continue
 		}
 		i.inputCount++
@@ -348,9 +401,9 @@ func (i *Input) expandCIDRInputValue(value string) {
 }
 
 // expandASNInputValue expands CIDRs for given ASN and stores expanded IPs
-func (i *Input) expandASNInputValue(value string) {
+func (i *Input) expandASNInputValue(value string, exclude bool) {
 	cidrs, _ := asn.GetCIDRsForASNNum(value)
 	for _, cidr := range cidrs {
-		i.expandCIDRInputValue(cidr.String())
+		i.expandCIDRInputValue(cidr.String(), exclude)
 	}
 }

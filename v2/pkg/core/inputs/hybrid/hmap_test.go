@@ -33,7 +33,7 @@ func Test_expandCIDRInputValue(t *testing.T) {
 		require.Nil(t, err, "could not create temporary input file")
 		input := &Input{hostMap: hm}
 
-		input.expandCIDRInputValue(tt.cidr)
+		input.expandCIDRInputValue(tt.cidr, false)
 		// scan
 		got := []string{}
 		input.hostMap.Scan(func(k, _ []byte) error {
@@ -170,7 +170,7 @@ func Test_expandASNInputValue(t *testing.T) {
 		require.Nil(t, err, "could not create temporary input file")
 		input := &Input{hostMap: hm}
 		// get the IP addresses for ASN number
-		input.expandASNInputValue(tt.asn)
+		input.expandASNInputValue(tt.asn, false)
 		// scan the hmap
 		got := []string{}
 		input.hostMap.Scan(func(k, v []byte) error {
