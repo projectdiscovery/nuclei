@@ -14,6 +14,12 @@ func init() {
 	// register the default data formats
 	RegisterDataFormat(NewJSON())
 	RegisterDataFormat(NewXML())
+	RegisterDataFormat(NewRaw())
+}
+
+// Get returns the dataformat by name
+func Get(name string) DataFormat {
+	return dataformats[name]
 }
 
 // RegisterEncoder registers an encoder
@@ -28,9 +34,9 @@ type DataFormat interface {
 	// Name returns the name of the encoder
 	Name() string
 	// Encode encodes the data into a format
-	Encode(map[string]interface{}) (string, error)
+	Encode(data map[string]interface{}) (string, error)
 	// Decode decodes the data from a format
-	Decode(string) (map[string]interface{}, error)
+	Decode(input string) (map[string]interface{}, error)
 }
 
 // Decoded is a decoded data format
@@ -40,6 +46,8 @@ type Decoded struct {
 	// Data is the decoded data
 	Data map[string]interface{}
 }
+
+const rawDataFormat = "raw"
 
 // Decode decodes the data from a format
 func Decode(data string) (*Decoded, error) {
@@ -56,7 +64,15 @@ func Decode(data string) (*Decoded, error) {
 			return value, nil
 		}
 	}
-	return nil, nil
+	decodedValue, err := dataformats[rawDataFormat].Decode(data)
+	if err != nil {
+		return nil, err
+	}
+	value := &Decoded{
+		DataFormat: rawDataFormat,
+		Data:       decodedValue,
+	}
+	return value, nil
 }
 
 // Encode encodes the data into a format
