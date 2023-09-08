@@ -303,7 +303,7 @@ func (request *Request) executeFuzzingRule(input *contextargs.Context, previous 
 				continue
 			}
 			generatedRequest = generated
-			dynamicValues = make(map[string]interface{})
+			dynamicValues = payloads
 		} else {
 			generated, err := generator.Make(context.Background(), input, value, payloads, nil)
 			if err != nil {

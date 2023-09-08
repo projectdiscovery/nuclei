@@ -2,6 +2,7 @@ package input
 
 import (
 	"github.com/pkg/errors"
+	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v2/pkg/core/inputs/formats"
 	"github.com/projectdiscovery/nuclei/v2/pkg/core/inputs/formats/json"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/contextargs"
@@ -49,11 +50,14 @@ func (i *InputProvider) Count() int64 {
 // Scan iterates the input and each found item is passed to the
 // callback consumer.
 func (i *InputProvider) Scan(callback func(value *contextargs.MetaInput) bool) {
-	_ = i.format.Parse(i.inputFile, func(request *formats.RawRequest) bool {
+	err := i.format.Parse(i.inputFile, func(request *formats.RawRequest) bool {
 		return callback(&contextargs.MetaInput{
 			RawRequest: request,
 		})
 	})
+	if err != nil {
+		gologger.Warning().Msgf("Could not parse input file: %s\n", err)
+	}
 }
 
 // Set adds item to input provider

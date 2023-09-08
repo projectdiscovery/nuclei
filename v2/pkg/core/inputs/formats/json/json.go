@@ -56,7 +56,8 @@ func (j *JSONFormat) Parse(input string, resultsCb formats.RawRequestCallback) e
 			gologger.Warning().Msgf("Could not parse raw request %s: %s\n", request.URL, err)
 			continue
 		}
-		if resultsCb(rawRequest) {
+
+		if !resultsCb(rawRequest) {
 			break
 		}
 	}

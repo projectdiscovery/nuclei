@@ -71,12 +71,15 @@ func (rule *Rule) Execute(input *ExecuteRuleInput) error {
 
 // isExecutable returns true if the rule can be executed based on provided input
 func (rule *Rule) isExecutable(input *contextargs.Context) bool {
-	if input.MetaInput.RawRequest != nil {
-		return true
-	}
 	parsed, err := urlutil.Parse(input.MetaInput.Input)
-	if err != nil {
+	if input.MetaInput.RawRequest == nil && err != nil {
 		return false
+	}
+	if err != nil {
+		parsed, err = urlutil.Parse(input.MetaInput.RawRequest.URL)
+		if err != nil {
+			return false
+		}
 	}
 	if !parsed.Query().IsEmpty() && rule.partType == queryPartType {
 		return true
