@@ -20,13 +20,14 @@ func (x *XML) IsType(data string) bool {
 }
 
 // Encode encodes the data into XML format
-func (x *XML) Encode(data map[string]interface{}) ([]byte, error) {
-	return mxj.Map(data).XmlIndent("", "  ")
+func (x *XML) Encode(data map[string]interface{}) (string, error) {
+	marshalled, err := mxj.Map(data).XmlIndent("", "  ")
+	return string(marshalled), err
 }
 
 // Decode decodes the data from XML format
-func (x *XML) Decode(data []byte) (map[string]interface{}, error) {
-	return mxj.NewMapXml(data)
+func (x *XML) Decode(data string) (map[string]interface{}, error) {
+	return mxj.NewMapXml([]byte(data))
 }
 
 // Name returns the name of the encoder

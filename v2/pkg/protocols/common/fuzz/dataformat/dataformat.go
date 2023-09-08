@@ -1,5 +1,10 @@
 package dataformat
 
+import (
+	"errors"
+	"fmt"
+)
+
 // dataformats is a list of dataformats
 var dataformats map[string]DataFormat
 
@@ -23,7 +28,44 @@ type DataFormat interface {
 	// Name returns the name of the encoder
 	Name() string
 	// Encode encodes the data into a format
-	Encode(map[string]interface{}) ([]byte, error)
+	Encode(map[string]interface{}) (string, error)
 	// Decode decodes the data from a format
-	Decode([]byte) (map[string]interface{}, error)
+	Decode(string) (map[string]interface{}, error)
+}
+
+// Decoded is a decoded data format
+type Decoded struct {
+	// DataFormat is the data format
+	DataFormat string
+	// Data is the decoded data
+	Data map[string]interface{}
+}
+
+// Decode decodes the data from a format
+func Decode(data string) (*Decoded, error) {
+	for _, dataformat := range dataformats {
+		if dataformat.IsType(data) {
+			decoded, err := dataformat.Decode(data)
+			if err != nil {
+				return nil, err
+			}
+			value := &Decoded{
+				DataFormat: dataformat.Name(),
+				Data:       decoded,
+			}
+			return value, nil
+		}
+	}
+	return nil, nil
+}
+
+// Encode encodes the data into a format
+func Encode(data map[string]interface{}, dataformat string) (string, error) {
+	if dataformat == "" {
+		return "", errors.New("dataformat is required")
+	}
+	if encoder, ok := dataformats[dataformat]; ok {
+		return encoder.Encode(data)
+	}
+	return "", fmt.Errorf("dataformat %s is not supported", dataformat)
 }
