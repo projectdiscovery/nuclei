@@ -1,8 +1,6 @@
 package component
 
 import (
-	"encoding/json"
-	"fmt"
 	"testing"
 
 	"github.com/leslie-qiwa/flat"
@@ -32,9 +30,6 @@ func TestFlatMap_FlattenUnflatten(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-
-	marshalled, _ := json.MarshalIndent(flattened, "", "  ")
-	fmt.Println(string(marshalled))
 
 	nested, err := flat.Unflatten(flattened, opts)
 	if err != nil {

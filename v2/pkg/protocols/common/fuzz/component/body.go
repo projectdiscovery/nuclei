@@ -1,6 +1,7 @@
 package component
 
 import (
+	"context"
 	"io"
 	"strings"
 
@@ -12,6 +13,8 @@ import (
 // Body is a component for a request body
 type Body struct {
 	value *Value
+
+	req *retryablehttp.Request
 }
 
 var _ Component = &Body{}
@@ -23,7 +26,7 @@ func NewBody() *Body {
 
 // Name returns the name of the component
 func (b *Body) Name() string {
-	return "body"
+	return RequestBodyComponent
 }
 
 // Parse parses the component and returns the
@@ -32,6 +35,8 @@ func (b *Body) Parse(req *retryablehttp.Request) error {
 	if req.Body == nil {
 		return nil
 	}
+	b.req = req
+
 	contentType := req.Header.Get("Content-Type")
 
 	data, err := io.ReadAll(req.Body)
@@ -41,6 +46,9 @@ func (b *Body) Parse(req *retryablehttp.Request) error {
 	dataStr := string(data)
 
 	b.value = NewValue(dataStr)
+	if b.value.Parsed() != nil {
+		return nil
+	}
 
 	switch {
 	case strings.Contains(contentType, "application/x-www-form-urlencoded"):
@@ -49,11 +57,6 @@ func (b *Body) Parse(req *retryablehttp.Request) error {
 		return b.parseBody("json", req)
 	case strings.Contains(contentType, "application/xml") && b.value.Parsed() == nil:
 		return b.parseBody("xml", req)
-		// case strings.Contains(contentType, "multipart/form-data"):
-		// 	return b.parseMultipart(req)
-	}
-	if b.value.Parsed() != nil {
-		return nil
 	}
 	return b.parseBody("raw", req)
 }
@@ -70,11 +73,6 @@ func (b *Body) parseBody(decoderName string, req *retryablehttp.Request) error {
 }
 
 // Iterate iterates through the component
-//
-// We cannot iterate normally because there
-// can be multiple nesting. So we need to a do traversal
-// and get keys with values that can be assigned values dynamically.
-// Therefore we flatten the value map and iterate over it.
 func (b *Body) Iterate(callback func(key string, value interface{})) {
 	for key, value := range b.value.Parsed() {
 		callback(key, value)
@@ -82,18 +80,21 @@ func (b *Body) Iterate(callback func(key string, value interface{})) {
 }
 
 // SetValue sets a value in the component
-//
-// After calling setValue for mutation, the value must be
-// called again so as to reset the body to its original state.
 func (b *Body) SetValue(key string, value string) error {
-
+	if !b.value.SetParsedValue(key, value) {
+		return ErrSetValue
+	}
 	return nil
 }
 
 // Rebuild returns a new request with the
 // component rebuilt
 func (b *Body) Rebuild() (*retryablehttp.Request, error) {
-	// When rebuilding, account for any encodings applied
-	// to the body.
-	return nil, nil
+	encoded, err := b.value.Encode()
+	if err != nil {
+		return nil, errors.Wrap(err, "could not encode body")
+	}
+	cloned := b.req.Clone(context.Background())
+	cloned.Body = io.NopCloser(strings.NewReader(encoded))
+	return cloned, nil
 }

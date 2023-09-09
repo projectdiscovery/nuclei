@@ -21,6 +21,9 @@ type Value struct {
 
 // NewValue returns a new value component
 func NewValue(data string) *Value {
+	if data == "" {
+		return &Value{}
+	}
 	v := &Value{data: data}
 
 	// Do any decoding on the data if needed
@@ -61,8 +64,24 @@ func (v *Value) SetParsed(parsed map[string]interface{}, dataFormat string) {
 
 // SetParsedValue sets the parsed value for a key
 // in the parsed map
-func (v *Value) SetParsedValue(key string, value interface{}) {
-	v.parsed[key] = value
+func (v *Value) SetParsedValue(key string, value interface{}) bool {
+	origValue, ok := v.parsed[key]
+	if !ok {
+		v.parsed[key] = value
+		return true
+	}
+	// If the value is a list, append to it
+	// otherwise replace it
+	switch v := origValue.(type) {
+	case []interface{}:
+		origValue = append(v, value)
+	case string:
+		origValue = value
+	default:
+		return false
+	}
+	v.parsed[key] = origValue
+	return true
 }
 
 // Encode encodes the value into a string

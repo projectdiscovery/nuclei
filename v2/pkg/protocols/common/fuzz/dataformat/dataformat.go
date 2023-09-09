@@ -15,6 +15,7 @@ func init() {
 	RegisterDataFormat(NewJSON())
 	RegisterDataFormat(NewXML())
 	RegisterDataFormat(NewRaw())
+	RegisterDataFormat(NewForm())
 }
 
 // Get returns the dataformat by name
