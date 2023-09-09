@@ -5,8 +5,10 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
+	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/contextargs"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/fuzz/component"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/generators"
 	"github.com/projectdiscovery/retryablehttp-go"
 	urlutil "github.com/projectdiscovery/utils/url"
@@ -45,12 +47,32 @@ func (rule *Rule) Execute(input *ExecuteRuleInput) error {
 	if !rule.isExecutable(input.Input) {
 		return nil
 	}
+
+	var componentsList []component.Component
+	// Get all the components for the request input
+	// TODO: Convert URL to request structure
+	//
+	// Iterate through all components and try to gather
+	// them from the provided request.
+	for _, componentName := range component.Components {
+		component := component.New(componentName)
+		discovered, err := component.Parse(input.BaseRequest)
+		if err != nil {
+			gologger.Warning().Msgf("Could not parse component %s: %s\n", componentName, err)
+			continue
+		}
+		if !discovered {
+			continue
+		}
+		componentsList = append(componentsList, component)
+	}
+
 	baseValues := input.Values
 	if rule.generator == nil {
 		evaluatedValues, interactURLs := rule.options.Variables.EvaluateWithInteractsh(baseValues, rule.options.Interactsh)
 		input.Values = generators.MergeMaps(evaluatedValues, baseValues, rule.options.Constants)
 		input.InteractURLs = interactURLs
-		err := rule.executeRuleValues(input)
+		err := rule.executeRuleValues(input, componentsList)
 		return err
 	}
 	iterator := rule.generator.NewIterator()
@@ -63,7 +85,7 @@ func (rule *Rule) Execute(input *ExecuteRuleInput) error {
 		input.InteractURLs = interactURLs
 		input.Values = generators.MergeMaps(values, evaluatedValues, baseValues, rule.options.Constants)
 
-		if err := rule.executeRuleValues(input); err != nil {
+		if err := rule.executeRuleValues(input, componentsList); err != nil {
 			return err
 		}
 	}
@@ -71,24 +93,21 @@ func (rule *Rule) Execute(input *ExecuteRuleInput) error {
 
 // isExecutable returns true if the rule can be executed based on provided input
 func (rule *Rule) isExecutable(input *contextargs.Context) bool {
-	parsed, err := urlutil.Parse(input.MetaInput.Input)
+	_, err := urlutil.Parse(input.MetaInput.Input)
 	if input.MetaInput.RawRequest == nil && err != nil {
 		return false
 	}
 	if err != nil {
-		parsed, err = urlutil.Parse(input.MetaInput.RawRequest.URL)
+		_, err = urlutil.Parse(input.MetaInput.RawRequest.URL)
 		if err != nil {
 			return false
 		}
 	}
-	if !parsed.Query().IsEmpty() && rule.partType == queryPartType {
-		return true
-	}
-	return false
+	return true
 }
 
 // executeRuleValues executes a rule with a set of values
-func (rule *Rule) executeRuleValues(input *ExecuteRuleInput) error {
+func (rule *Rule) executeRuleValues(input *ExecuteRuleInput, components []component.Component) error {
 	for _, payload := range rule.Fuzz {
 		if err := rule.executePartRule(input, payload); err != nil {
 			return err

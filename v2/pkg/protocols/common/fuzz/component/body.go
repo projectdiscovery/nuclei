@@ -31,9 +31,9 @@ func (b *Body) Name() string {
 
 // Parse parses the component and returns the
 // parsed component
-func (b *Body) Parse(req *retryablehttp.Request) error {
+func (b *Body) Parse(req *retryablehttp.Request) (bool, error) {
 	if req.Body == nil {
-		return nil
+		return false, nil
 	}
 	b.req = req
 
@@ -41,13 +41,13 @@ func (b *Body) Parse(req *retryablehttp.Request) error {
 
 	data, err := io.ReadAll(req.Body)
 	if err != nil {
-		return errors.Wrap(err, "could not read body")
+		return false, errors.Wrap(err, "could not read body")
 	}
 	dataStr := string(data)
 
 	b.value = NewValue(dataStr)
 	if b.value.Parsed() != nil {
-		return nil
+		return true, nil
 	}
 
 	switch {
@@ -62,14 +62,14 @@ func (b *Body) Parse(req *retryablehttp.Request) error {
 }
 
 // parseBody parses a body with a custom decoder
-func (b *Body) parseBody(decoderName string, req *retryablehttp.Request) error {
+func (b *Body) parseBody(decoderName string, req *retryablehttp.Request) (bool, error) {
 	decoder := dataformat.Get(decoderName)
 	decoded, err := decoder.Decode(b.value.String())
 	if err != nil {
-		return errors.Wrap(err, "could not decode raw")
+		return false, errors.Wrap(err, "could not decode raw")
 	}
 	b.value.SetParsed(decoded, decoder.Name())
-	return nil
+	return true, nil
 }
 
 // Iterate iterates through the component

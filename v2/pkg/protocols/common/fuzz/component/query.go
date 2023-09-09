@@ -29,9 +29,9 @@ func (q *Query) Name() string {
 
 // Parse parses the component and returns the
 // parsed component
-func (q *Query) Parse(req *retryablehttp.Request) error {
+func (q *Query) Parse(req *retryablehttp.Request) (bool, error) {
 	if req.URL.Query().IsEmpty() {
-		return nil
+		return false, nil
 	}
 	q.req = req
 
@@ -39,10 +39,10 @@ func (q *Query) Parse(req *retryablehttp.Request) error {
 
 	parsed, err := dataformat.Get("form").Decode(q.value.String())
 	if err != nil {
-		return err
+		return false, err
 	}
 	q.value.SetParsed(parsed, "form")
-	return nil
+	return true, nil
 }
 
 // Iterate iterates through the component

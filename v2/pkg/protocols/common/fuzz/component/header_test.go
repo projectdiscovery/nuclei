@@ -16,7 +16,7 @@ func TestHeaderComponent(t *testing.T) {
 	req.Header.Set("User-Agent", "test-agent")
 
 	header := NewHeader()
-	err = header.Parse(req)
+	_, err = header.Parse(req)
 	if err != nil {
 		t.Fatal(err)
 	}

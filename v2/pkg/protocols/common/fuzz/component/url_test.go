@@ -15,7 +15,7 @@ func TestURLComponent(t *testing.T) {
 	}
 
 	urlComponent := NewURL()
-	err = urlComponent.Parse(req)
+	_, err = urlComponent.Parse(req)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -15,7 +15,7 @@ func TestQueryComponent(t *testing.T) {
 	}
 
 	query := NewQuery()
-	err = query.Parse(req)
+	_, err = query.Parse(req)
 	if err != nil {
 		t.Fatal(err)
 	}

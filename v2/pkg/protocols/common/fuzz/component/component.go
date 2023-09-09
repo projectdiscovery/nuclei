@@ -7,6 +7,7 @@ import (
 	"github.com/projectdiscovery/retryablehttp-go"
 )
 
+// ErrSetValue is a error raised when a value cannot be set
 var ErrSetValue = errors.New("could not set value")
 
 // Component is a component for a request
@@ -15,7 +16,7 @@ type Component interface {
 	Name() string
 	// Parse parses the component and returns the
 	// parsed component
-	Parse(req *retryablehttp.Request) error
+	Parse(req *retryablehttp.Request) (bool, error)
 	// Iterate iterates through the component
 	//
 	// We cannot iterate normally because there
@@ -50,11 +51,25 @@ const (
 	RequestHeaderComponent = "header"
 )
 
+// Components is a list of all available components
+var Components = []string{
+	RequestBodyComponent,
+	RequestQueryComponent,
+	RequestURLComponent,
+	RequestHeaderComponent,
+}
+
 // New creates a new component for a componentType
 func New(componentType string) Component {
 	switch componentType {
 	case "body":
 		return NewBody()
+	case "query":
+		return NewQuery()
+	case "url":
+		return NewURL()
+	case "header":
+		return NewHeader()
 	}
 	return nil
 }

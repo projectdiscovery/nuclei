@@ -17,7 +17,7 @@ func TestBodyComponent(t *testing.T) {
 	req.Header.Set("Content-Type", "application/json")
 
 	body := New(RequestBodyComponent)
-	err = body.Parse(req)
+	_, err = body.Parse(req)
 	if err != nil {
 		t.Fatal(err)
 	}

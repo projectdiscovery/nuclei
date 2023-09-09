@@ -29,16 +29,16 @@ func (q *URL) Name() string {
 
 // Parse parses the component and returns the
 // parsed component
-func (q *URL) Parse(req *retryablehttp.Request) error {
+func (q *URL) Parse(req *retryablehttp.Request) (bool, error) {
 	q.req = req
 	q.value = NewValue(req.URL.Path)
 
 	parsed, err := dataformat.Get("raw").Decode(q.value.String())
 	if err != nil {
-		return err
+		return false, err
 	}
 	q.value.SetParsed(parsed, "raw")
-	return nil
+	return true, nil
 }
 
 // Iterate iterates through the component

@@ -27,7 +27,7 @@ func (q *Header) Name() string {
 
 // Parse parses the component and returns the
 // parsed component
-func (q *Header) Parse(req *retryablehttp.Request) error {
+func (q *Header) Parse(req *retryablehttp.Request) (bool, error) {
 	q.req = req
 	q.value = NewValue("")
 
@@ -40,7 +40,7 @@ func (q *Header) Parse(req *retryablehttp.Request) error {
 		parsedHeaders[key] = value
 	}
 	q.value.SetParsed(parsedHeaders, "")
-	return nil
+	return true, nil
 }
 
 // Iterate iterates through the component
