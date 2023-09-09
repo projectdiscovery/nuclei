@@ -48,7 +48,11 @@ func IsTemplate(filename string) bool {
 	if stringsutil.ContainsAny(filename, knownConfigFiles...) {
 		return false
 	}
-	return stringsutil.EqualFoldAny(filepath.Ext(filename), GetSupportTemplateFileExtensions()...)
+	isTemplate := stringsutil.EqualFoldAny(filepath.Ext(filename), GetSupportTemplateFileExtensions()...)
+	if !isTemplate {
+		gologger.Info().Msgf("The '%s' is recognized as a template list. Template file's extension should be yaml or json.\n", filename)
+	}
+	return isTemplate
 }
 
 type template struct {
