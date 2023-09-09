@@ -6,14 +6,16 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/fuzz/dataformat"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/fuzz/encoding"
 	"github.com/projectdiscovery/retryablehttp-go"
 )
 
 // Body is a component for a request body
 type Body struct {
-	parsed  string
-	decoded map[string]interface{}
-	decoder string
+	parsed          string
+	decoded         map[string]interface{}
+	encodingDecoded *encoding.Decoded
+	decoder         string
 }
 
 var _ Component = &Body{}
@@ -42,50 +44,32 @@ func (b *Body) Parse(req *retryablehttp.Request) error {
 	}
 	b.parsed = string(data)
 
+	// Do any decoding on the data if needed
+	decoded, err := encoding.Decode(b.parsed)
+	if err == nil {
+		b.encodingDecoded = decoded
+		b.parsed = decoded.Data
+	}
+
 	switch {
 	case strings.Contains(contentType, "application/x-www-form-urlencoded"):
-		return b.parseForm(req)
+		return b.parseBody("form", req)
 	case strings.Contains(contentType, "application/json") || dataformat.Get("json").IsType(b.parsed):
-		return b.parseJSON(req)
+		return b.parseBody("json", req)
 	case strings.Contains(contentType, "application/xml") || dataformat.Get("xml").IsType(b.parsed):
-		return b.parseXML(req)
+		return b.parseBody("xml", req)
 		// case strings.Contains(contentType, "multipart/form-data"):
 		// 	return b.parseMultipart(req)
 	}
-
-	return nil
+	return b.parseBody("raw", req)
 }
 
-// parseForm parses a form body
-func (b *Body) parseForm(req *retryablehttp.Request) error {
-	decoder := dataformat.Get("form")
+// parseBody parses a body with a custom decoder
+func (b *Body) parseBody(decoderName string, req *retryablehttp.Request) error {
+	decoder := dataformat.Get(decoderName)
 	decoded, err := decoder.Decode(b.parsed)
 	if err != nil {
-		return errors.Wrap(err, "could not decode form")
-	}
-	b.decoded = decoded
-	b.decoder = decoder.Name()
-	return nil
-}
-
-// parseJSON parses a json body
-func (b *Body) parseJSON(req *retryablehttp.Request) error {
-	decoder := dataformat.Get("json")
-	decoded, err := decoder.Decode(b.parsed)
-	if err != nil {
-		return errors.Wrap(err, "could not decode json")
-	}
-	b.decoded = decoded
-	b.decoder = decoder.Name()
-	return nil
-}
-
-// parseXML parses a xml body
-func (b *Body) parseXML(req *retryablehttp.Request) error {
-	decoder := dataformat.Get("xml")
-	decoded, err := decoder.Decode(b.parsed)
-	if err != nil {
-		return errors.Wrap(err, "could not decode xml")
+		return errors.Wrap(err, "could not decode raw")
 	}
 	b.decoded = decoded
 	b.decoder = decoder.Name()
@@ -94,18 +78,22 @@ func (b *Body) parseXML(req *retryablehttp.Request) error {
 
 // Iterate iterates through the component
 func (b *Body) Iterate(callback func(key string, value interface{})) {
-	for key, value := range b.decoded {
-		callback(key, value)
-	}
+	// We cannot iterate normally because there
+	// can be multiple nesting. So we need to a do traversal
+	// and get keys with values that can be assigned values dynamically.
+
 }
 
 // SetValue sets a value in the component
 func (b *Body) SetValue(key string, value string) error {
+
 	return nil
 }
 
 // Rebuild returns a new request with the
 // component rebuilt
 func (b *Body) Rebuild() (*retryablehttp.Request, error) {
+	// When rebuilding, account for any encodings applied
+	// to the body.
 	return nil, nil
 }
