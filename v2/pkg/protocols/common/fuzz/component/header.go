@@ -70,7 +70,7 @@ func (q *Header) Rebuild() (*retryablehttp.Request, error) {
 				cloned.Header.Add(key, vv.(string))
 			}
 		case string:
-			cloned.Header.Add(key, v)
+			cloned.Header.Set(key, v)
 		}
 	}
 	return cloned, nil

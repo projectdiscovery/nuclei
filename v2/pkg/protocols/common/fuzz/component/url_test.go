@@ -30,19 +30,16 @@ func TestURLComponent(t *testing.T) {
 	require.Equal(t, []string{"value"}, keys, "unexpected keys")
 	require.Equal(t, []string{"/testpath"}, values, "unexpected values")
 
-	// Update the URL path
 	err = urlComponent.SetValue("value", "/newpath")
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	// Rebuild the request with the updated URL
 	rebuilt, err := urlComponent.Rebuild()
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	// Assert that the rebuilt request's URL is as expected
 	require.Equal(t, "/newpath", rebuilt.URL.Path, "unexpected URL path")
 	require.Equal(t, "https://example.com/newpath", rebuilt.URL.String(), "unexpected full URL")
 }
