@@ -1,6 +1,9 @@
 package component
 
-import "github.com/projectdiscovery/retryablehttp-go"
+import (
+	"github.com/leslie-qiwa/flat"
+	"github.com/projectdiscovery/retryablehttp-go"
+)
 
 // Component is a component for a request
 type Component interface {
@@ -18,3 +21,10 @@ type Component interface {
 	// component rebuilt
 	Rebuild() (*retryablehttp.Request, error)
 }
+
+var (
+	flatOpts = &flat.Options{
+		Safe:      true,
+		Delimiter: "~",
+	}
+)
