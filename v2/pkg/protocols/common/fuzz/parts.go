@@ -1,95 +1,67 @@
 package fuzz
 
 import (
-	"context"
-	"net/http"
 	"strings"
 
-	"github.com/corpix/uarand"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/expressions"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/fuzz/component"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/generators"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 	"github.com/projectdiscovery/retryablehttp-go"
-	sliceutil "github.com/projectdiscovery/utils/slice"
-	urlutil "github.com/projectdiscovery/utils/url"
 )
 
 // executePartRule executes part rules based on type
-func (rule *Rule) executePartRule(input *ExecuteRuleInput, payload string) error {
-	switch rule.partType {
-	case queryPartType:
-		return rule.executeQueryPartRule(input, payload)
+func (rule *Rule) executePartRule(input *ExecuteRuleInput, payload string, component component.Component) error {
+	return rule.executePartComponent(input, payload, component)
+}
+
+// executePartComponent executes component part rules
+func (rule *Rule) executePartComponent(input *ExecuteRuleInput, payload string, component component.Component) error {
+	var finalErr error
+	component.Iterate(func(key string, value interface{}) {
+		valueStr := types.ToString(value)
+		if !rule.matchKeyOrValue(key, valueStr) {
+			return
+		}
+
+		var evaluated string
+		evaluated, input.InteractURLs = rule.executeEvaluate(input, key, valueStr, payload, input.InteractURLs)
+		component.SetValue(key, evaluated)
+
+		if rule.modeType == singleModeType {
+			req, err := component.Rebuild()
+			if err != nil {
+				return
+			}
+
+			if qerr := rule.buildInput(input, req, input.InteractURLs); qerr != nil {
+				finalErr = err
+				return
+			}
+			component.SetValue(key, valueStr) // change back to previous value for temp
+		}
+	})
+	if finalErr != nil {
+		return finalErr
+	}
+
+	if rule.modeType == multipleModeType {
+		req, err := component.Rebuild()
+		if err != nil {
+			return err
+		}
+		if qerr := rule.buildInput(input, req, input.InteractURLs); qerr != nil {
+			err = qerr
+			return err
+		}
 	}
 	return nil
 }
 
-// executeQueryPartRule executes query part rules
-func (rule *Rule) executeQueryPartRule(input *ExecuteRuleInput, payload string) error {
-	var requestURL *urlutil.URL
-	var err error
-	if input.BaseRequest != nil {
-		requestURL = input.BaseRequest.URL
-	} else {
-		requestURL, err = urlutil.Parse(input.Input.MetaInput.Input)
-	}
-	if err != nil {
-		return err
-	}
-
-	origRequestURL := requestURL.Clone()
-	// clone the params to avoid modifying the original
-	temp := origRequestURL.Params.Clone()
-
-	origRequestURL.Query().Iterate(func(key string, values []string) bool {
-		cloned := sliceutil.Clone(values)
-		for i, value := range values {
-			if !rule.matchKeyOrValue(key, value) {
-				continue
-			}
-			var evaluated string
-			evaluated, input.InteractURLs = rule.executeEvaluate(input, key, value, payload, input.InteractURLs)
-			cloned[i] = evaluated
-
-			if rule.modeType == singleModeType {
-				temp.Update(key, cloned)
-				requestURL.Params = temp
-				if qerr := rule.buildQueryInput(input, requestURL, input.InteractURLs); qerr != nil {
-					err = qerr
-					return false
-				}
-				cloned[i] = value // change back to previous value for temp
-			}
-		}
-		temp.Update(key, cloned)
-		return true
-	})
-
-	if rule.modeType == multipleModeType {
-		requestURL.Params = temp
-		if err := rule.buildQueryInput(input, requestURL, input.InteractURLs); err != nil {
-			return err
-		}
-	}
-
-	return err
-}
-
-// buildQueryInput returns created request for a Query Input
-func (rule *Rule) buildQueryInput(input *ExecuteRuleInput, parsed *urlutil.URL, interactURLs []string) error {
-	var req *retryablehttp.Request
-	var err error
-	if input.BaseRequest == nil {
-		req, err = retryablehttp.NewRequestFromURL(http.MethodGet, parsed, nil)
-		if err != nil {
-			return err
-		}
-		req.Header.Set("User-Agent", uarand.GetRandom())
-	} else {
-		req = input.BaseRequest.Clone(context.TODO())
-		req.SetURL(parsed)
-	}
+// buildInput returns created request for a Query Input
+func (rule *Rule) buildInput(input *ExecuteRuleInput, httpReq *retryablehttp.Request, interactURLs []string) error {
 	request := GeneratedRequest{
-		Request:       req,
+		Request:       httpReq,
 		InteractURLs:  interactURLs,
 		DynamicValues: input.Values,
 	}

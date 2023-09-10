@@ -18,6 +18,17 @@ func init() {
 	RegisterDataFormat(NewForm())
 }
 
+const (
+	// JSONDataFormat is the name of the JSON data format
+	JSONDataFormat = "json"
+	// XMLDataFormat is the name of the XML data format
+	XMLDataFormat = "xml"
+	// RawDataFormat is the name of the Raw data format
+	RawDataFormat = "raw"
+	// FormDataFormat is the name of the Form data format
+	FormDataFormat = "form"
+)
+
 // Get returns the dataformat by name
 func Get(name string) DataFormat {
 	return dataformats[name]
@@ -48,8 +59,6 @@ type Decoded struct {
 	Data map[string]interface{}
 }
 
-const rawDataFormat = "raw"
-
 // Decode decodes the data from a format
 func Decode(data string) (*Decoded, error) {
 	for _, dataformat := range dataformats {
@@ -65,15 +74,7 @@ func Decode(data string) (*Decoded, error) {
 			return value, nil
 		}
 	}
-	decodedValue, err := dataformats[rawDataFormat].Decode(data)
-	if err != nil {
-		return nil, err
-	}
-	value := &Decoded{
-		DataFormat: rawDataFormat,
-		Data:       decodedValue,
-	}
-	return value, nil
+	return nil, nil
 }
 
 // Encode encodes the data into a format

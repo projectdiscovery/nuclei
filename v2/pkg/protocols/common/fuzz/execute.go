@@ -51,6 +51,7 @@ func (rule *Rule) Execute(input *ExecuteRuleInput) error {
 	var componentsList []component.Component
 	// Get all the components for the request input
 	// TODO: Convert URL to request structure
+	// to keep supporting old format as well.
 	//
 	// Iterate through all components and try to gather
 	// them from the provided request.
@@ -64,31 +65,41 @@ func (rule *Rule) Execute(input *ExecuteRuleInput) error {
 		if !discovered {
 			continue
 		}
+		if component.Name() != rule.Part && rule.partType != responsePartType {
+			continue
+		}
 		componentsList = append(componentsList, component)
 	}
 
 	baseValues := input.Values
-	if rule.generator == nil {
-		evaluatedValues, interactURLs := rule.options.Variables.EvaluateWithInteractsh(baseValues, rule.options.Interactsh)
-		input.Values = generators.MergeMaps(evaluatedValues, baseValues, rule.options.Constants)
-		input.InteractURLs = interactURLs
-		err := rule.executeRuleValues(input, componentsList)
-		return err
-	}
-	iterator := rule.generator.NewIterator()
-	for {
-		values, next := iterator.Value()
-		if !next {
-			return nil
-		}
-		evaluatedValues, interactURLs := rule.options.Variables.EvaluateWithInteractsh(generators.MergeMaps(values, baseValues), rule.options.Interactsh)
-		input.InteractURLs = interactURLs
-		input.Values = generators.MergeMaps(values, evaluatedValues, baseValues, rule.options.Constants)
-
-		if err := rule.executeRuleValues(input, componentsList); err != nil {
+	for _, component := range componentsList {
+		if rule.generator == nil {
+			evaluatedValues, interactURLs := rule.options.Variables.EvaluateWithInteractsh(baseValues, rule.options.Interactsh)
+			input.Values = generators.MergeMaps(evaluatedValues, baseValues, rule.options.Constants)
+			input.InteractURLs = interactURLs
+			err := rule.executeRuleValues(input, component)
 			return err
 		}
 	}
+mainLoop:
+	for _, component := range componentsList {
+		iterator := rule.generator.NewIterator()
+		for {
+			values, next := iterator.Value()
+			if !next {
+				continue mainLoop
+			}
+			evaluatedValues, interactURLs := rule.options.Variables.EvaluateWithInteractsh(generators.MergeMaps(values, baseValues), rule.options.Interactsh)
+			input.InteractURLs = interactURLs
+			input.Values = generators.MergeMaps(values, evaluatedValues, baseValues, rule.options.Constants)
+
+			if err := rule.executeRuleValues(input, component); err != nil {
+				gologger.Warning().Msgf("Could not execute rule: %s\n", err)
+				return err
+			}
+		}
+	}
+	return nil
 }
 
 // isExecutable returns true if the rule can be executed based on provided input
@@ -107,9 +118,9 @@ func (rule *Rule) isExecutable(input *contextargs.Context) bool {
 }
 
 // executeRuleValues executes a rule with a set of values
-func (rule *Rule) executeRuleValues(input *ExecuteRuleInput, components []component.Component) error {
+func (rule *Rule) executeRuleValues(input *ExecuteRuleInput, component component.Component) error {
 	for _, payload := range rule.Fuzz {
-		if err := rule.executePartRule(input, payload); err != nil {
+		if err := rule.executePartRule(input, payload, component); err != nil {
 			return err
 		}
 	}

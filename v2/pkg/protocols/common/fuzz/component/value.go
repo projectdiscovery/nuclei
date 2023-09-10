@@ -35,7 +35,7 @@ func NewValue(data string) *Value {
 
 	// Do any dataformat decoding on the data if needed
 	decodedDataformat, err := dataformat.Decode(data)
-	if err == nil {
+	if err == nil && decodedDataformat != nil {
 		v.SetParsed(decodedDataformat.Data, decodedDataformat.DataFormat)
 	}
 	return v
@@ -89,8 +89,12 @@ func (v *Value) SetParsedValue(key string, value interface{}) bool {
 func (v *Value) Encode() (string, error) {
 	toEncodeStr := v.data
 
+	nested, err := flat.Unflatten(v.parsed, flatOpts)
+	if err != nil {
+		return "", err
+	}
 	if v.dataFormat != "" {
-		dataformatStr, err := dataformat.Encode(v.parsed, v.dataFormat)
+		dataformatStr, err := dataformat.Encode(nested, v.dataFormat)
 		if err != nil {
 			return "", err
 		}

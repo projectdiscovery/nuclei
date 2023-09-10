@@ -33,11 +33,11 @@ func (q *URL) Parse(req *retryablehttp.Request) (bool, error) {
 	q.req = req
 	q.value = NewValue(req.URL.Path)
 
-	parsed, err := dataformat.Get("raw").Decode(q.value.String())
+	parsed, err := dataformat.Get(dataformat.RawDataFormat).Decode(q.value.String())
 	if err != nil {
 		return false, err
 	}
-	q.value.SetParsed(parsed, "raw")
+	q.value.SetParsed(parsed, dataformat.RawDataFormat)
 	return true, nil
 }
 

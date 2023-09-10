@@ -55,5 +55,5 @@ func (f *Form) Decode(data string) (map[string]interface{}, error) {
 
 // Name returns the name of the encoder
 func (f *Form) Name() string {
-	return "form"
+	return FormDataFormat
 }

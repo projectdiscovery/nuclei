@@ -37,11 +37,11 @@ func (q *Query) Parse(req *retryablehttp.Request) (bool, error) {
 
 	q.value = NewValue(req.URL.Query().Encode())
 
-	parsed, err := dataformat.Get("form").Decode(q.value.String())
+	parsed, err := dataformat.Get(dataformat.FormDataFormat).Decode(q.value.String())
 	if err != nil {
 		return false, err
 	}
-	q.value.SetParsed(parsed, "form")
+	q.value.SetParsed(parsed, dataformat.FormDataFormat)
 	return true, nil
 }
 

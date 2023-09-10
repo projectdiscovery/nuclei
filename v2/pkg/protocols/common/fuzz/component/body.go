@@ -1,6 +1,7 @@
 package component
 
 import (
+	"bytes"
 	"context"
 	"io"
 	"strings"
@@ -43,7 +44,12 @@ func (b *Body) Parse(req *retryablehttp.Request) (bool, error) {
 	if err != nil {
 		return false, errors.Wrap(err, "could not read body")
 	}
+	req.Body = io.NopCloser(bytes.NewReader(data))
 	dataStr := string(data)
+
+	if dataStr == "" {
+		return false, nil
+	}
 
 	b.value = NewValue(dataStr)
 	if b.value.Parsed() != nil {
@@ -51,14 +57,16 @@ func (b *Body) Parse(req *retryablehttp.Request) (bool, error) {
 	}
 
 	switch {
-	case strings.Contains(contentType, "application/x-www-form-urlencoded"):
-		return b.parseBody("form", req)
 	case strings.Contains(contentType, "application/json") && b.value.Parsed() == nil:
-		return b.parseBody("json", req)
+		return b.parseBody(dataformat.JSONDataFormat, req)
 	case strings.Contains(contentType, "application/xml") && b.value.Parsed() == nil:
-		return b.parseBody("xml", req)
+		return b.parseBody(dataformat.XMLDataFormat, req)
 	}
-	return b.parseBody("raw", req)
+	parsed, err := b.parseBody(dataformat.FormDataFormat, req)
+	if err != nil {
+		return b.parseBody(dataformat.RawDataFormat, req)
+	}
+	return parsed, err
 }
 
 // parseBody parses a body with a custom decoder
@@ -75,6 +83,9 @@ func (b *Body) parseBody(decoderName string, req *retryablehttp.Request) (bool, 
 // Iterate iterates through the component
 func (b *Body) Iterate(callback func(key string, value interface{})) {
 	for key, value := range b.value.Parsed() {
+		if strings.HasPrefix(key, "#_") {
+			continue
+		}
 		callback(key, value)
 	}
 }
@@ -96,5 +107,6 @@ func (b *Body) Rebuild() (*retryablehttp.Request, error) {
 	}
 	cloned := b.req.Clone(context.Background())
 	cloned.Body = io.NopCloser(strings.NewReader(encoded))
+	cloned.ContentLength = int64(len(encoded))
 	return cloned, nil
 }

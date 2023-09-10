@@ -44,5 +44,5 @@ func (j *JSON) Decode(data string) (map[string]interface{}, error) {
 
 // Name returns the name of the encoder
 func (j *JSON) Name() string {
-	return "json"
+	return JSONDataFormat
 }

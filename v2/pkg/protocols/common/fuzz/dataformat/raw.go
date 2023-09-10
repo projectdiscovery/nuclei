@@ -30,5 +30,5 @@ func (r *Raw) Decode(data string) (map[string]interface{}, error) {
 
 // Name returns the name of the encoder
 func (r *Raw) Name() string {
-	return "raw"
+	return RawDataFormat
 }

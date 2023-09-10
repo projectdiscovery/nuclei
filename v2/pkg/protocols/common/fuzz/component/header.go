@@ -46,6 +46,10 @@ func (q *Header) Parse(req *retryablehttp.Request) (bool, error) {
 // Iterate iterates through the component
 func (q *Header) Iterate(callback func(key string, value interface{})) {
 	for key, value := range q.value.Parsed() {
+		// Skip ignored headers
+		if _, ok := defaultIgnoredHeaderKeys[key]; ok {
+			continue
+		}
 		callback(key, value)
 	}
 }
@@ -74,4 +78,43 @@ func (q *Header) Rebuild() (*retryablehttp.Request, error) {
 		}
 	}
 	return cloned, nil
+}
+
+// A list of headers that are essential to the request and
+// must not be fuzzed.
+var defaultIgnoredHeaderKeys = map[string]struct{}{
+	"Accept-Charset":                 {},
+	"Accept-Datetime":                {},
+	"Accept-Encoding":                {},
+	"Accept-Language":                {},
+	"Accept":                         {},
+	"Access-Control-Request-Headers": {},
+	"Access-Control-Request-Method":  {},
+	"Authorization":                  {},
+	"Cache-Control":                  {},
+	"Connection":                     {},
+	"Cookie":                         {},
+	"Content-Length":                 {},
+	"Content-Type":                   {},
+	"Date":                           {},
+	"Dnt":                            {},
+	"Expect":                         {},
+	"Forwarded":                      {},
+	"From":                           {},
+	"Host":                           {},
+	"If-Match":                       {},
+	"If-Modified-Since":              {},
+	"If-None-Match":                  {},
+	"If-Range":                       {},
+	"If-Unmodified-Since":            {},
+	"Max-Forwards":                   {},
+	"Pragma":                         {},
+	"Proxy-Authorization":            {},
+	"Range":                          {},
+	"TE":                             {},
+	"Upgrade":                        {},
+	"Via":                            {},
+	"Warning":                        {},
+	"X-CSRF-Token":                   {},
+	"X-Requested-With":               {},
 }
