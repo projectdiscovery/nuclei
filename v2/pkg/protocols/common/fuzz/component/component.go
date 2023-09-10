@@ -49,6 +49,8 @@ const (
 	RequestURLComponent = "url"
 	// RequestHeaderComponent is the name of the request header component
 	RequestHeaderComponent = "header"
+	// RequestCookieComponent is the name of the request cookie component
+	RequestCookieComponent = "cookie"
 )
 
 // Components is a list of all available components
@@ -56,7 +58,8 @@ var Components = []string{
 	//RequestBodyComponent,
 	//RequestQueryComponent,
 	//RequestURLComponent,
-	RequestHeaderComponent,
+	//RequestHeaderComponent,
+	RequestCookieComponent,
 }
 
 // New creates a new component for a componentType
@@ -70,6 +73,8 @@ func New(componentType string) Component {
 		return NewURL()
 	case "header":
 		return NewHeader()
+	case "cookie":
+		return NewCookie()
 	}
 	return nil
 }

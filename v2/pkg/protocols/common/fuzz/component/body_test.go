@@ -1,7 +1,6 @@
 package component
 
 import (
-	"fmt"
 	"io"
 	"strings"
 	"testing"
@@ -62,10 +61,6 @@ func TestBodyXMLComponent(t *testing.T) {
 		t.Fatal(err)
 	}
 	require.True(t, parsed, "could not parse body")
-
-	bodyComponent.Iterate(func(key string, value interface{}) {
-		fmt.Printf("key: %v value: %v\n", key, value)
-	})
 
 	bodyComponent.SetValue("stockCheck~productId", "2'6842")
 	rebuilt, err := bodyComponent.Rebuild()
