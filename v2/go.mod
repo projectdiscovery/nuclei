@@ -59,6 +59,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/credentials v1.13.27
 	github.com/aws/aws-sdk-go-v2/feature/s3/manager v1.11.72
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.37.0
+	github.com/clbanning/mxj/v2 v2.7.0
 	github.com/denisenkom/go-mssqldb v0.12.3
 	github.com/ditashi/jsbeautifier-go v0.0.0-20141206144643-2520a8026a9c
 	github.com/docker/go-units v0.5.0
@@ -72,6 +73,7 @@ require (
 	github.com/hirochachacha/go-smb2 v1.1.0
 	github.com/klauspost/compress v1.16.6
 	github.com/labstack/echo/v4 v4.10.2
+	github.com/leslie-qiwa/flat v0.0.0-20230424180412-f9d1cf014baa
 	github.com/lib/pq v1.10.1
 	github.com/mholt/archiver v3.1.1+incompatible
 	github.com/ory/dockertest/v3 v3.10.0

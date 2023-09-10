@@ -53,10 +53,10 @@ const (
 
 // Components is a list of all available components
 var Components = []string{
-	RequestBodyComponent,
+	//RequestBodyComponent,
 	//RequestQueryComponent,
 	//RequestURLComponent,
-	//RequestHeaderComponent,
+	RequestHeaderComponent,
 }
 
 // New creates a new component for a componentType

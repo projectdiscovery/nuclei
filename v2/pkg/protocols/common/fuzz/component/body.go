@@ -4,11 +4,13 @@ import (
 	"bytes"
 	"context"
 	"io"
+	"strconv"
 	"strings"
 
 	"github.com/pkg/errors"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/fuzz/dataformat"
 	"github.com/projectdiscovery/retryablehttp-go"
+	readerutil "github.com/projectdiscovery/utils/reader"
 )
 
 // Body is a component for a request body
@@ -106,7 +108,12 @@ func (b *Body) Rebuild() (*retryablehttp.Request, error) {
 		return nil, errors.Wrap(err, "could not encode body")
 	}
 	cloned := b.req.Clone(context.Background())
-	cloned.Body = io.NopCloser(strings.NewReader(encoded))
+	reusableReader, err := readerutil.NewReusableReadCloser(encoded)
+	if err != nil {
+		return nil, errors.Wrap(err, "could not create reusable reader")
+	}
+	cloned.Body = reusableReader
 	cloned.ContentLength = int64(len(encoded))
+	cloned.Header.Set("Content-Length", strconv.Itoa(len(encoded)))
 	return cloned, nil
 }
