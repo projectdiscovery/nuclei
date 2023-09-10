@@ -59,6 +59,14 @@ type Request struct {
 	// description: |
 	//   Method is the HTTP Request Method.
 	Method HTTPMethodTypeHolder `yaml:"method,omitempty" json:"method,omitempty" jsonschema:"title=method is the http request method,description=Method is the HTTP Request Method,enum=GET,enum=HEAD,enum=POST,enum=PUT,enum=DELETE,enum=CONNECT,enum=OPTIONS,enum=TRACE,enum=PATCH,enum=PURGE"`
+
+	// description: |
+	//   Analyzer is the optional analyzer to use for the request.
+	//
+	//  This can be used to perform additional analysis on the request
+	//  and response.
+	Analyzer string `yaml:"analyzer,omitempty" json:"analyzer,omitempty" jsonschema:"title=analyzer to use for the request,description=Analyzer is the optional analyzer to use for the request,enum=time_delay`
+
 	// description: |
 	//   Body is an optional parameter which contains HTTP Request body.
 	// examples:

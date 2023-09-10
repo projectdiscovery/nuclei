@@ -24,6 +24,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/contextargs"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/expressions"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/fuzz"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/fuzz/analyzers"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/generators"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/helpers/eventcreator"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/helpers/responsehighlighter"
@@ -244,6 +245,7 @@ func (request *Request) executeFuzzingRule(input *contextargs.Context, previous 
 			dynamicValues:  gr.DynamicValues,
 			interactshURLs: gr.InteractURLs,
 			original:       request,
+			component:      gr.Component,
 		}
 		var gotMatches bool
 		requestErr := request.executeRequest(input, req, gr.DynamicValues, hasInteractMatchers, func(event *output.InternalWrappedEvent) {
@@ -487,6 +489,17 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 	for payloadName, payloadValue := range generatedRequest.meta {
 		if data, err := expressions.Evaluate(types.ToString(payloadValue), finalMap); err == nil {
 			generatedRequest.meta[payloadName] = data
+		}
+	}
+
+	if request.Analyzer != "" {
+		analyzer := &analyzers.Analyzer{}
+		analysis, err := analyzer.Analyze(request.httpClient, generatedRequest.request, generatedRequest.component, generatedRequest.dynamicValues)
+		if err != nil {
+			return err
+		}
+		if analysis != nil {
+			fmt.Printf("analysis: %v\n", analysis)
 		}
 	}
 

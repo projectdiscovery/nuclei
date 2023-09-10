@@ -36,6 +36,8 @@ type GeneratedRequest struct {
 	InteractURLs []string
 	// DynamicValues contains dynamic values map
 	DynamicValues map[string]interface{}
+	// Component is the component for the request
+	Component component.Component
 }
 
 // Execute executes a fuzzing rule accepting a callback on which

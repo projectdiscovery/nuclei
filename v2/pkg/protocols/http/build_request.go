@@ -13,6 +13,7 @@ import (
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/contextargs"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/expressions"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/fuzz/component"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/generators"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/utils/vardump"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/http/race"
@@ -43,6 +44,7 @@ type generatedRequest struct {
 	request              *retryablehttp.Request
 	dynamicValues        map[string]interface{}
 	interactshURLs       []string
+	component            component.Component
 	customCancelFunction context.CancelFunc
 }
 

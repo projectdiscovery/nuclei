@@ -34,7 +34,7 @@ func (rule *Rule) executePartComponent(input *ExecuteRuleInput, payload string, 
 				return
 			}
 
-			if qerr := rule.buildInput(input, req, input.InteractURLs); qerr != nil {
+			if qerr := rule.buildInput(input, req, input.InteractURLs, component); qerr != nil {
 				finalErr = err
 				return
 			}
@@ -50,7 +50,7 @@ func (rule *Rule) executePartComponent(input *ExecuteRuleInput, payload string, 
 		if err != nil {
 			return err
 		}
-		if qerr := rule.buildInput(input, req, input.InteractURLs); qerr != nil {
+		if qerr := rule.buildInput(input, req, input.InteractURLs, component); qerr != nil {
 			err = qerr
 			return err
 		}
@@ -59,11 +59,12 @@ func (rule *Rule) executePartComponent(input *ExecuteRuleInput, payload string, 
 }
 
 // buildInput returns created request for a Query Input
-func (rule *Rule) buildInput(input *ExecuteRuleInput, httpReq *retryablehttp.Request, interactURLs []string) error {
+func (rule *Rule) buildInput(input *ExecuteRuleInput, httpReq *retryablehttp.Request, interactURLs []string, component component.Component) error {
 	request := GeneratedRequest{
 		Request:       httpReq,
 		InteractURLs:  interactURLs,
 		DynamicValues: input.Values,
+		Component:     component,
 	}
 	if !input.Callback(request) {
 		return types.ErrNoMoreRequests
