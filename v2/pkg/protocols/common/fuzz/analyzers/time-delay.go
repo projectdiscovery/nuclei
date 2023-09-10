@@ -33,8 +33,11 @@ var (
 
 // Analysis is a time delay analysis result
 type Analysis struct {
-	Matched bool
-	Reason  string
+	Matched  bool     `json:"matched"`
+	Reasons  []string `json:"reasons"`
+	Analyzer string   `json:"analyzer"`
+
+	VulnerableRequest *retryablehttp.Request `json:"-"`
 }
 
 // doHTTPRequestWithTimeTracing does a http request with time tracing
@@ -65,21 +68,20 @@ func (a *Analyzer) Analyze(httpclient *retryablehttp.Client, req *retryablehttp.
 	if err != nil {
 		return nil, errors.Wrap(err, "could not get request time baseline")
 	}
-	fmt.Printf("baselinertt: %+v\n", averageRtt)
-	component.Iterate(func(key string, value interface{}) {
-		fmt.Printf("analysis: key: %v value: %v\n", key, value)
-	})
 
+	var vulnReqMain *retryablehttp.Request
 	delays := []string{}
 	for _, delay := range delaySeconds {
-		delayed, err := a.delayFor(delay, averageRtt, httpclient, req, finalMap, component)
+		delayed, vulnReq, err := a.delayFor(delay, averageRtt, httpclient, req, finalMap, component)
 		if err != nil {
 			return nil, errors.Wrap(err, "could not delay the request for duration")
 		}
-		fmt.Printf("delayed: %v\n", delayed)
 		// We've not delayed so return
 		if delayed == "" {
 			return nil, nil
+		}
+		if vulnReqMain == nil && vulnReq != nil {
+			vulnReqMain = vulnReq
 		}
 		delays = append(delays, delayed)
 	}
@@ -87,14 +89,11 @@ func (a *Analyzer) Analyze(httpclient *retryablehttp.Client, req *retryablehttp.
 		return nil, nil
 	}
 	if len(delays) == len(delaySeconds) {
-		var reasons []string
-		for _, delay := range delays {
-			reasons = append(reasons, fmt.Sprintf("delayed: %s", delay))
-		}
-
 		return &Analysis{
-			Matched: true,
-			Reason:  strings.Join(reasons, ", "),
+			Matched:           true,
+			Reasons:           delays,
+			Analyzer:          "time-delay",
+			VulnerableRequest: vulnReqMain,
 		}, nil
 	}
 	return nil, nil
@@ -103,7 +102,7 @@ func (a *Analyzer) Analyze(httpclient *retryablehttp.Client, req *retryablehttp.
 var delayPlaceholder = "{{delay}}"
 
 // delayFor tries delaying a response for duration seconds
-func (a *Analyzer) delayFor(duration int, originalWaitTime float64, httpclient *retryablehttp.Client, req *retryablehttp.Request, payloads map[string]interface{}, component component.Component) (string, error) {
+func (a *Analyzer) delayFor(duration int, originalWaitTime float64, httpclient *retryablehttp.Client, req *retryablehttp.Request, payloads map[string]interface{}, component component.Component) (string, *retryablehttp.Request, error) {
 	keysToValues := make(map[string]interface{})
 	component.Iterate(func(key string, value interface{}) {
 		valueStr := types.ToString(value)
@@ -118,7 +117,7 @@ func (a *Analyzer) delayFor(duration int, originalWaitTime float64, httpclient *
 		component.SetValue(key, valueStr)
 	})
 	if len(keysToValues) == 0 {
-		return "", nil
+		return "", nil, nil
 	}
 	defer func() {
 		// Reset the values back to original
@@ -129,7 +128,7 @@ func (a *Analyzer) delayFor(duration int, originalWaitTime float64, httpclient *
 
 	mutation, err := component.Rebuild()
 	if err != nil {
-		return "", errors.Wrap(err, "could not rebuild component")
+		return "", nil, errors.Wrap(err, "could not rebuild component")
 	}
 
 	// Set the upper and lower bounds
@@ -150,14 +149,13 @@ func (a *Analyzer) delayFor(duration int, originalWaitTime float64, httpclient *
 	mutation = mutation.WithContext(ctx)
 	responseDelay, err := doHTTPRequestWithTimeTracing(httpclient, mutation)
 	if err != nil {
-		return "", errors.Wrap(err, "could not do request with time tracing")
+		return "", nil, errors.Wrap(err, "could not do request with time tracing")
 	}
 
-	fmt.Printf("responseDuration: %v lowerBound: %v\n", math.Ceil(responseDelay), lowerBound)
 	if math.Ceil(responseDelay) >= float64(lowerBound) {
-		return fmt.Sprintf("responseDelay %.2f greater than lowerBound %.2f (upperBound: %.2f)", responseDelay, lowerBound, upperBound), nil
+		return fmt.Sprintf("responseDelay %.2f greater than lowerBound %.2f (upperBound: %.2f)", responseDelay, lowerBound, upperBound), mutation, nil
 	}
-	return "", nil
+	return "", nil, nil
 }
 
 const defaultInitializationCount = 2

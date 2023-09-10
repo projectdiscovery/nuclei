@@ -1,8 +1,6 @@
 package component
 
 import (
-	"fmt"
-
 	"github.com/leslie-qiwa/flat"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/fuzz/dataformat"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/fuzz/encoding"
@@ -62,8 +60,6 @@ func (v *Value) SetParsed(parsed map[string]interface{}, dataFormat string) {
 		v.parsed = parsed
 	}
 	v.dataFormat = dataFormat
-
-	fmt.Printf("v.parsed: %v dataFormat: %s\n", v.parsed, v.dataFormat)
 }
 
 // SetParsedValue sets the parsed value for a key

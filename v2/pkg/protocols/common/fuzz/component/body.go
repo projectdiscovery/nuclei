@@ -3,7 +3,6 @@ package component
 import (
 	"bytes"
 	"context"
-	"fmt"
 	"io"
 	"strconv"
 	"strings"
@@ -44,7 +43,6 @@ func (b *Body) Parse(req *retryablehttp.Request) (bool, error) {
 	contentType := req.Header.Get("Content-Type")
 
 	data, err := io.ReadAll(req.Body)
-	fmt.Printf("data: %v err: %v\n", string(data), err)
 	if err != nil {
 		return false, errors.Wrap(err, "could not read body")
 	}

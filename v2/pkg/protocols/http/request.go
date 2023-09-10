@@ -492,14 +492,22 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 		}
 	}
 
+	var analysisResult *analyzers.Analysis
 	if request.Analyzer != "" {
 		analyzer := &analyzers.Analyzer{}
 		analysis, err := analyzer.Analyze(request.httpClient, generatedRequest.request, generatedRequest.component, generatedRequest.dynamicValues)
 		if err != nil {
 			return err
 		}
+		if request.options.Options.Debug || request.options.Options.DebugRequests {
+			gologger.Info().Msgf("[%s] Analyzer result for %s [%v]: \n", request.options.TemplateID, analysis.Analyzer, analysis.Matched)
+			for i, reason := range analysis.Reasons {
+				gologger.Info().Msgf("[%d] %s\n", i+1, reason)
+			}
+		}
 		if analysis != nil {
-			fmt.Printf("analysis: %v\n", analysis)
+			analysisResult = analysis
+			generatedRequest.request = analysis.VulnerableRequest
 		}
 	}
 
@@ -763,6 +771,12 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 			outputEvent["ip"] = input.MetaInput.CustomIP
 		} else {
 			outputEvent["ip"] = httpclientpool.Dialer.GetDialedIP(hostname)
+		}
+		if analysisResult != nil {
+			outputEvent["analysis"] = analysisResult
+			if analysisResult.Matched {
+				outputEvent["time_delay"] = true
+			}
 		}
 		if request.options.Interactsh != nil {
 			request.options.Interactsh.MakePlaceholders(generatedRequest.interactshURLs, outputEvent)
