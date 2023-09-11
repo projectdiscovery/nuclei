@@ -7,7 +7,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/projectdiscovery/nuclei/v2/pkg/js/scripts/gotypes/structs"
+	"github.com/projectdiscovery/nuclei/v2/pkg/js/global/gotypes/structs"
 )
 
 const (

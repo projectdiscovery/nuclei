@@ -11,7 +11,7 @@ import (
 	_ "github.com/lib/pq"
 	"github.com/praetorian-inc/fingerprintx/pkg/plugins"
 	postgres "github.com/praetorian-inc/fingerprintx/pkg/plugins/services/postgresql"
-	utils "github.com/projectdiscovery/nuclei/v2/pkg/js/scripts/gotypes"
+	utils "github.com/projectdiscovery/nuclei/v2/pkg/js/global/gotypes"
 )
 
 // PGClient is a client for Postgres database.

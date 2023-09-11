@@ -8,8 +8,8 @@ import (
 	"github.com/dop251/goja"
 	"github.com/dop251/goja_nodejs/console"
 	"github.com/dop251/goja_nodejs/require"
-	net "github.com/projectdiscovery/nuclei/v2/pkg/js/modules/generated/go/libnet"
-	"github.com/projectdiscovery/nuclei/v2/pkg/js/scripts/gotypes/buffer"
+	net "github.com/projectdiscovery/nuclei/v2/pkg/js/generated/go/libnet"
+	"github.com/projectdiscovery/nuclei/v2/pkg/js/global/gotypes/buffer"
 )
 
 func TestStructsJSPack(t *testing.T) {
