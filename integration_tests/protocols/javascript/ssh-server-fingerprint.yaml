@@ -11,7 +11,7 @@ info:
 javascript:
   - code: |
       var m = require("nuclei/ssh");
-      var c = m.Client();
+      var c = m.SSHClient();
       var response = c.ConnectSSHInfoMode(Host, Port);
       to_json(response);
     args:

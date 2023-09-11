@@ -12,7 +12,7 @@ info:
 javascript:
   - code: |
       var m = require("nuclei/mssql");
-      var c = m.Client();
+      var c = m.MSSQLClient();
       c.IsMssql(Host, Port);
 
     args:
