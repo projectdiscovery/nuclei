@@ -68,12 +68,12 @@ Code contains actual javascript code that is executed by nuclei engine at runtim
 
 Args can be simply understood as variables in javascript that are passed at runtime and support DSL usage
 
-And that's it this nuclei template can fingerprint any SSH server software previously to support this 
 
 ### **Output**
 
 Value of Last expression is returned as output of javascript protocol template and can be used in matchers / extractors. If server returns an error instead then "error" variable is exposed in matcher/extractor with error message
 
+And that's it this nuclei template can fingerprint any SSH server software previously to support this 
 
 ### **SSH Password Bruteforce Template**
 
@@ -91,7 +91,7 @@ javascript:
       var m = require("nuclei/ssh");
       var c = m.SSHClient();
       var response = c.ConnectSSHInfoMode(Host, Port);
-      // only bruteforce if ssh allows password based authentication
+      // only bruteforce if ssh server allows password based authentication
       response["UserAuth"].includes("password")
 
     code: |
@@ -143,7 +143,7 @@ Pre-Condition is a optional javascript code that is executed before running "cod
 - **Provider/Driver specific exploit**
 
 Some vulnerabilities are specific to software/driver, example a redis buffer overflow exploit or a exploit of specific VPN software or anything that's not a IETF standard protocol. since they are not standard protocols and it doesn't make much sense to add them as a protocol in nuclei.
-Such exploits cannot be written using 'network' protocol or Very complex to write such exploits can be written by exposing required library in nuclei (if not already present) and writing actual exploit in javascript protocol minus the boilerplate and scaling issues and other goodies of nuclei
+Such exploits cannot be written using 'network' protocol or Very complex to write, such exploits can be written by exposing required library in nuclei (if not already present) and writing actual exploit in javascript protocol minus the boilerplate and scaling issues and other goodies of nuclei
 
 - **Non Network Checks**
 
@@ -168,7 +168,7 @@ One off exploits written in code are not scalable and maintainable due to nature
 
 - **Leveraging turing complete language**
 
-While YAML based DSL is powerful and easy to use it is not turing complete and has its own limitations. Javascript protocol is turing complete thus users who are already familiar with javascript can write network and other exploits without learning new DSL or hacking around existing DSL
+While YAML based DSL is powerful and easy to use it is not turing complete and has its own limitations. Javascript is turing complete thus users who are already familiar with javascript can write network and other exploits without learning new DSL or hacking around existing DSL.
 
 
 ## Requirements
@@ -179,11 +179,11 @@ While YAML based DSL is powerful and easy to use it is not turing complete and h
 
 ## API Reference
 
-API reference of all exposed modules and functions can be found [here](.)
+API reference of all exposed modules and functions can be found [here](https://tarunkoyalwar.github.io/jsproto-docs/)
 
 ## Examples
 
-A collection of javascript protocol templates can be found [here](https://github.com/projectdiscovery/nuclei-templates/tree/main/javascript)
+A collection of javascript protocol templates can be found [here](https://github.com/tarunKoyalwar/nuclei-templates/tree/main/javascript)
 
 ## Contributing
 
