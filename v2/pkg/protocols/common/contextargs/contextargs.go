@@ -2,8 +2,10 @@ package contextargs
 
 import (
 	"net/http/cookiejar"
+	"strings"
 
 	mapsutil "github.com/projectdiscovery/utils/maps"
+	sliceutil "github.com/projectdiscovery/utils/slice"
 	stringsutil "github.com/projectdiscovery/utils/strings"
 	urlutil "github.com/projectdiscovery/utils/url"
 )
@@ -58,7 +60,12 @@ func (ctx *Context) hasArgs() bool {
 
 // UseNetworkPort updates input with required/default network port for that template
 // but is ignored if input/target contains non-http ports like 80,8080,8081 etc
-func (ctx *Context) UseNetworkPort(port string) error {
+func (ctx *Context) UseNetworkPort(port string, excludePorts string) error {
+	ignorePorts := reservedPorts
+	if excludePorts != "" {
+		// TODO: add support for service names like http,https,ssh etc once https://github.com/projectdiscovery/netdb is ready
+		ignorePorts = sliceutil.Dedupe(strings.Split(excludePorts, ","))
+	}
 	if port == "" {
 		// if template does not contain port, do nothing
 		return nil
@@ -68,7 +75,7 @@ func (ctx *Context) UseNetworkPort(port string) error {
 		return err
 	}
 	inputPort := target.Port()
-	if inputPort == "" || stringsutil.EqualFoldAny(inputPort, reservedPorts...) {
+	if inputPort == "" || stringsutil.EqualFoldAny(inputPort, ignorePorts...) {
 		// replace port with networkPort
 		target.UpdatePort(port)
 		ctx.MetaInput.Input = target.Host

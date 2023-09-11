@@ -86,6 +86,53 @@ host:
 
 If a port is specified in the host, the user supplied port is ignored and the template port takes precedence.
 
+### Port
+
+Nuclei v2.9.15 adds a new field 'port' that can be specified seperately instead of doing something like
+
+```yaml
+ # let's say we are writing a network template for xyz-ssh-exploit
+host:
+  - "{{Hostname}}
+  - "{{Hostname}}:22"
+```
+
+In above 'host' example we are sending two network requests i.e
+- first request is sent to **port** (if present) in input/target.
+- second request is sent to **22** port (i.e default ssh port)
+
+the reason behind doing so is giving users flexibility to run a network template on both default port and non-default port. Suppose a user already knowns that **ssh service** is running on non-default port of 2222 (after doing a port scan with service discovery). In this case users can simply run
+
+```console
+$ nuclei -u scanme.sh:2222 -id "xyz-ssh-exploit"
+```
+
+and nuclei will use '2222' instead of default port '22' and if user doesnot specifiy any port in input then '22' is used. But this maynot be straightforward to understand and generates warnings in logs (since one request is destined to fail).
+
+Another known issue with this design of writing network templates is request being sent to **unexpected ports**. Ex: a web service might be running on port 8443 and when user runs 
+
+```console
+$ nuclei -u scanme.sh:8443 
+```
+
+In this case "xyz-ssh-exploit" template will send one request to "scanme.sh:22" and another request to "scanme.sh:8443" which might return unexpected response and eventually error out. This is especially true in case of automations.
+
+Now, this can be avoided while keeping existing functionality by writing network templates in following fashion:
+
+```yaml
+ # new xyz-ssh-exploit
+host:
+  - "{{Hostname}}"
+Port: 22
+```
+In above design functionality to run template on non-standard ports will exist except on default reserved ports of 80,443,8080,8443,8081,53 and even this can be customized by adding new field
+
+```yaml
+exclude-ports: 80,443
+```
+when exclude-ports is used default **reserved ports** list is overwritten.
+
+
 #### Matchers / Extractor Parts
 
 Valid `part` values supported by **Network** protocol for Matchers / Extractor are - 

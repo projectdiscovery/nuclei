@@ -51,6 +51,10 @@ type Request struct {
 	//   Port is the port to send network requests to. this acts as default port but is overriden if target/input contains
 	// non-http(s) ports like 80,8080,8081 etc
 	Port string `yaml:"port,omitempty" json:"port,omitempty" jsonschema:"title=port to send requests to,description=Port to send network requests to"`
+
+	// description:	|
+	//	ExcludePorts is the list of ports to exclude from being scanned . It is intended to be used with `Port` field and contains a list of ports which are ignored/skipped
+	ExcludePorts string `yaml:"exclude-ports,omitempty" json:"exclude-ports,omitempty" jsonschema:"title=exclude ports from being scanned,description=Exclude ports from being scanned"`
 	// description: |
 	//   ReadSize is the size of response to read at the end
 	//

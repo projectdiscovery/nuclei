@@ -48,7 +48,7 @@ func (request *Request) ExecuteWithResults(target *contextargs.Context, metadata
 	// use network port updates input with new port requested in template file
 	// and it is ignored if input port is not standard http(s) ports like 80,8080,8081 etc
 	// idea is to reduce redundant dials to http ports
-	if err := input.UseNetworkPort(request.Port); err != nil {
+	if err := input.UseNetworkPort(request.Port, request.ExcludePorts); err != nil {
 		gologger.Debug().Msgf("Could not network port from constants: %s\n", err)
 	}
 
