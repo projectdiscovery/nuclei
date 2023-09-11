@@ -99,6 +99,7 @@ func GetLibraryModules(directory string) ([]string, error) {
 // CreateTemplateData creates a TemplateData structure from a directory
 // of go source code.
 func CreateTemplateData(directory string, packagePrefix string) (*TemplateData, error) {
+	fmt.Println(directory)
 	fset := token.NewFileSet()
 
 	pkgs, err := parser.ParseDir(fset, directory, nil, parser.ParseComments)

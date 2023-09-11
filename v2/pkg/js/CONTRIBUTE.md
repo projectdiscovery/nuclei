@@ -1,4 +1,4 @@
-# JS Contribution Guide
+# JS Contribution Guide (outdated)
 
 The JS layer provides a mechanism to add scriptability into the Nuclei Engine. The `pkg/js` directory contains the implementation of the JS runtime in Nuclei.
 

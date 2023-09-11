@@ -28,8 +28,8 @@ import (
 	_ "github.com/projectdiscovery/nuclei/v2/pkg/js/generated/go/libssh"
 	_ "github.com/projectdiscovery/nuclei/v2/pkg/js/generated/go/libtelnet"
 	_ "github.com/projectdiscovery/nuclei/v2/pkg/js/generated/go/libvnc"
+	"github.com/projectdiscovery/nuclei/v2/pkg/js/global"
 	"github.com/projectdiscovery/nuclei/v2/pkg/js/libs/goconsole"
-	"github.com/projectdiscovery/nuclei/v2/pkg/js/scripts"
 )
 
 // Compiler provides a runtime to execute goja runtime
@@ -192,7 +192,7 @@ func (c *Compiler) registerHelpersForVM(runtime *goja.Runtime) {
 	_ = runtime.Set("console", require.Require(runtime, console.ModuleName))
 
 	// Register embedded scripts
-	if err := scripts.RegisterNativeScripts(runtime); err != nil {
+	if err := global.RegisterNativeScripts(runtime); err != nil {
 		gologger.Error().Msgf("Could not register scripts: %s\n", err)
 	}
 }

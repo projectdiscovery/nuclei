@@ -6,4 +6,4 @@
 - https://github.com/praetorian-inc/fingerprintx - A lot of Network Protocol fingerprinting functionality is used from `fingerprintx` package. 
 - https://github.com/zmap/zgrab2 - Used for SMB and SSH protocol handshake Metadata gathering.
 
-A lot of other Go based libraries are used in the javascript layer. Thanks goes to the creators and maintaners.
+A lot of other Go based libraries are used in the javascript layer. Thanks goes to the creators and maintainers.
