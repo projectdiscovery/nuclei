@@ -1,6 +1,5 @@
 /**
  * @module smtp
- * This module implements bindings for smtp protocol in javascript to be used from nuclei scanner.
  */
 
 /**

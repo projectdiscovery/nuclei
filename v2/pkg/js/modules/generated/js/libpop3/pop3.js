@@ -1,6 +1,5 @@
 /** 
  * @module pop3 
- * This module implements bindings for pop3 protocol in javascript to be used from nuclei scanner.
  */
 
 /**

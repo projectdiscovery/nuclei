@@ -1,6 +1,5 @@
 /**
  * @module postgres
- * This module implements bindings for postgres protocol in javascript to be used from nuclei scanner.
  */
 
 /**

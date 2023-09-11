@@ -1,7 +1,5 @@
 /** 
  * @module vnc 
- * vnc implements bindings for vnc protocol in javascript
- * to be used from nuclei scanner.
  */
 
 /**

@@ -1,7 +1,5 @@
 /**
  * @module ldap
- * ldap implements bindings for ldap protocol in javascript
- * to be used from nuclei scanner.
  */
 
 /**

@@ -1,6 +1,5 @@
 /** 
  * @module oracle
- * This module implements bindings for oracle protocol in javascript to be used from nuclei scanner.
  */
 
 /**

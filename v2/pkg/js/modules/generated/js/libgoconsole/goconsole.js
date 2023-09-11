@@ -1,7 +1,5 @@
 /**
  * @module goconsole
- * This module implements bindings for goconsole protocol in javascript
- * to be used from nuclei scanner.
  */
 
 /**

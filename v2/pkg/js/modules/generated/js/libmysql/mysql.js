@@ -1,6 +1,5 @@
 /**
  * @module mysql
- * This module implements bindings for mysql protocol in javascript to be used from nuclei scanner.
  */
 
 /**

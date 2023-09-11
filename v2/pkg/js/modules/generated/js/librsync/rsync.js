@@ -1,6 +1,5 @@
 /**
  * @module rsync
- * This module implements bindings for rsync protocol in javascript to be used from nuclei scanner.
  */
 
 /**

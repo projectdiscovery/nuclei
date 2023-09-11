@@ -1,7 +1,5 @@
 /**
  * @module mssql
- * mssql implements bindings for mssql protocol in javascript
- * to be used from nuclei scanner.
  */
 
 /**

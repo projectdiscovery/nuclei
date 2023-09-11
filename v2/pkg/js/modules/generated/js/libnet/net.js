@@ -1,6 +1,5 @@
 /**
  * @module net
- * This module implements bindings for net protocol in javascript to be used from nuclei scanner.
  */
 
 /**

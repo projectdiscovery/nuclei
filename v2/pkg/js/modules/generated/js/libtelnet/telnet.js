@@ -1,6 +1,5 @@
 /**
  * @module telnet
- * This module implements bindings for telnet protocol in javascript to be used from nuclei scanner.
  */
 
 /**

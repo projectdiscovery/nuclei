@@ -1,6 +1,5 @@
 /**
  * @module kerberos
- * This module implements bindings for kerberos protocol in javascript to be used from nuclei scanner.
  */
 
 /**

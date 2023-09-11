@@ -1,6 +1,5 @@
 /**
  * @module ssh
- * This module implements bindings for ssh protocol in javascript to be used from nuclei scanner.
  */
 
 /**

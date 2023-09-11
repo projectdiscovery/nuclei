@@ -1,7 +1,5 @@
 /** 
  * @module redis 
- * This module implements bindings for redis protocol in javascript
- * to be used from nuclei scanner.
  */
 
 /**

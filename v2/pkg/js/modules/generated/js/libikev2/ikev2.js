@@ -1,7 +1,5 @@
 /** 
  * @module ikev2
- * This module implements bindings for ikev2 protocol in javascript
- * to be used from nuclei scanner.
  */
 
 /**
