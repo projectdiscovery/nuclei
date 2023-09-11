@@ -135,6 +135,8 @@ type ResultEvent struct {
 	Request string `json:"request,omitempty"`
 	// Response is the optional, dumped response for the match.
 	Response string `json:"response,omitempty"`
+	// Body is the optional, dumped response.body for the match.
+	Body string `json:"body,omitempty"`
 	// Metadata contains any optional metadata for the event
 	Metadata map[string]interface{} `json:"meta,omitempty"`
 	// IP is the IP address for the found result event.
