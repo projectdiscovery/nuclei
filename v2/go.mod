@@ -94,6 +94,7 @@ require (
 	github.com/projectdiscovery/wappalyzergo v0.0.107
 	github.com/redis/go-redis/v9 v9.1.0
 	github.com/ropnop/gokrb5/v8 v8.0.0-20201111231119-729746023c02
+	github.com/sashabaranov/go-openai v1.15.1
 	github.com/stretchr/testify v1.8.4
 	github.com/zmap/zgrab2 v0.1.8-0.20230806160807-97ba87c0e706
 	gopkg.in/src-d/go-git.v4 v4.13.1
@@ -181,7 +182,6 @@ require (
 	github.com/projectdiscovery/freeport v0.0.5 // indirect
 	github.com/quic-go/quic-go v0.37.0 // indirect
 	github.com/refraction-networking/utls v1.4.2 // indirect
-	github.com/sashabaranov/go-openai v1.15.1 // indirect
 	github.com/shoenig/go-m1cpu v0.1.6 // indirect
 	github.com/sirupsen/logrus v1.9.3 // indirect
 	github.com/skeema/knownhosts v1.1.1 // indirect
