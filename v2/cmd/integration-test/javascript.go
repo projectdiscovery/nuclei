@@ -89,6 +89,7 @@ func (j *javascriptSSHServerFingerprint) Execute(filePath string) error {
 func purge(resource *dockertest.Resource) {
 	if resource != nil && pool != nil {
 		containerName := resource.Container.Name
+		_ = pool.Client.StopContainer(resource.Container.ID, 0)
 		err := pool.Purge(resource)
 		if err != nil {
 			log.Printf("Could not purge resource: %s", err)
@@ -116,6 +117,7 @@ func init() {
 		Repository: "redis",
 		Tag:        "latest",
 		Cmd:        []string{"redis-server", "--requirepass", "iamadmin"},
+		Platform:   "linux/amd64",
 	})
 	if err != nil {
 		log.Printf("Could not start resource: %s", err)
@@ -138,6 +140,7 @@ func init() {
 			"USER_NAME=admin",
 			"USER_PASSWORD=admin",
 		},
+		Platform: "linux/amd64",
 	})
 	if err != nil {
 		log.Printf("Could not start resource: %s", err)
