@@ -10,6 +10,10 @@ devtools contains tools and scripts to automate booring tasks related to javascr
 
 [jsdocgen](./jsdocgen/README.md) is LLM (OpenAI) based dev tool it takes generated javascript files and annotes them with jsdoc comments using predefined prompt
 
+### scrapefuncs
+
+[scrapefuncs](./scrapefuncs/README.md) is a tool to scrapes all helper functions exposed in javascript with help of go/ast and generates a js file with jsdoc comments using LLM (OpenAI)
+
 
 ### Generating API Reference (aka static site using javascript files using jsdoc)
 
