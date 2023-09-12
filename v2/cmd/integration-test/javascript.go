@@ -6,12 +6,14 @@ import (
 
 	"github.com/ory/dockertest/v3"
 	"github.com/projectdiscovery/nuclei/v2/pkg/testutils"
+	osutils "github.com/projectdiscovery/utils/os"
 	"go.uber.org/multierr"
 )
 
 var jsTestcases = []TestCaseInfo{
-	{Path: "protocols/javascript/redis-pass-brute.yaml", TestCase: &javascriptRedisPassBrute{}},
-	{Path: "protocols/javascript/ssh-server-fingerprint.yaml", TestCase: &javascriptSSHServerFingerprint{}},
+	{Path: "protocols/javascript/redis-pass-brute.yaml", TestCase: &javascriptRedisPassBrute{}, DisableOn: func() bool { return osutils.IsWindows() || osutils.IsOSX() }},
+	{Path: "protocols/javascript/ssh-server-fingerprint.yaml", TestCase: &javascriptSSHServerFingerprint{}, DisableOn: func() bool { return osutils.IsWindows() || osutils.IsOSX() }},
+	{Path: "protocols/javascript/net-multi-step.yaml", TestCase: &networkMultiStep{}},
 }
 
 var (

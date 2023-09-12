@@ -188,7 +188,7 @@ func (c *Compiler) newRuntime(reuse bool) *goja.Runtime {
 // registerHelpersForVM registers all the helper functions for the goja runtime.
 func (c *Compiler) registerHelpersForVM(runtime *goja.Runtime) {
 	_ = c.registry.Enable(runtime)
-	// by default import console module
+	// by default import below modules every time
 	_ = runtime.Set("console", require.Require(runtime, console.ModuleName))
 
 	// Register embedded scripts

@@ -4,6 +4,7 @@ import (
 	"encoding/hex"
 
 	"github.com/dop251/goja"
+	"github.com/projectdiscovery/nuclei/v2/pkg/js/global/gotypes/structs"
 )
 
 // Module is the module for working with buffers in nuclei js integration.
@@ -34,6 +35,7 @@ func NewBuffer(call goja.ConstructorCall) interface{} {
 	obj.buf = make([]byte, 0)
 	return map[string]interface{}{
 		"append":  obj.Append,
+		"pack":    obj.Pack,
 		"bytes":   obj.Bytes,
 		"string":  obj.String,
 		"len":     obj.Len,
@@ -71,4 +73,15 @@ func (b *Buffer) Hex() string {
 // Hexdump returns the hexdump representation of the buffer.
 func (b *Buffer) Hexdump() string {
 	return hex.Dump(b.buf)
+}
+
+// Pack uses structs.Pack and packs given data and appends it to the buffer.
+// it packs the data according to the given format.
+func (b *Buffer) Pack(formatStr string, msg []interface{}) error {
+	bin, err := structs.StructsPack(formatStr, msg)
+	if err != nil {
+		return err
+	}
+	b.Append(bin)
+	return nil
 }

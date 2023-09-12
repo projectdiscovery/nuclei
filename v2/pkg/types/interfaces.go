@@ -3,6 +3,7 @@
 package types
 
 import (
+	"bytes"
 	"encoding/hex"
 	"fmt"
 	"strconv"
@@ -120,10 +121,29 @@ func ToStringSlice(i interface{}) []string {
 		return v
 	case string:
 		return strings.Fields(v)
-	case interface{}:
-		return []string{ToString(v)}
 	default:
 		return nil
+	}
+}
+
+// ToByteSlice casts an interface to a []byte type.
+func ToByteSlice(i interface{}) []byte {
+	switch v := i.(type) {
+	case []byte:
+		return v
+	case []string:
+		return []byte(strings.Join(v, ""))
+	case string:
+		return []byte(v)
+	case []interface{}:
+		var buff bytes.Buffer
+		for _, u := range v {
+			buff.WriteString(ToString(u))
+		}
+		return buff.Bytes()
+	default:
+		strValue := ToString(i)
+		return []byte(strValue)
 	}
 }
 

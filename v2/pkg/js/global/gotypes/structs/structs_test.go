@@ -9,7 +9,6 @@ import (
 	"github.com/dop251/goja_nodejs/console"
 	"github.com/dop251/goja_nodejs/require"
 	net "github.com/projectdiscovery/nuclei/v2/pkg/js/generated/go/libnet"
-	"github.com/projectdiscovery/nuclei/v2/pkg/js/global/gotypes/buffer"
 )
 
 func TestStructsJSPack(t *testing.T) {
@@ -18,8 +17,6 @@ func TestStructsJSPack(t *testing.T) {
 	registry.Enable(runtime)
 	console.Enable(runtime)
 	_ = runtime.Set("print", fmt.Println)
-	bufferModule := &buffer.Module{}
-	bufferModule.Enable(runtime)
 	module := &Module{}
 	module.Enable(runtime)
 	net.Enable(runtime)
