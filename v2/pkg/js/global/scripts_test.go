@@ -9,6 +9,7 @@ import (
 )
 
 func TestScriptsRuntime(t *testing.T) {
+	defaultImports = ""
 	runtime := goja.New()
 
 	registry := new(require.Registry)

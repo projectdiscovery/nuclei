@@ -31,7 +31,7 @@ var (
 // default imported modules
 // there might be other methods to achieve this
 // but this is most straightforward
-const (
+var (
 	defaultImports = `
 	  var structs = require("nuclei/structs");
 	  var bytes = require("nuclei/bytes");
