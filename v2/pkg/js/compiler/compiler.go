@@ -11,6 +11,7 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/projectdiscovery/gologger"
+	_ "github.com/projectdiscovery/nuclei/v2/pkg/js/generated/go/libbytes"
 	_ "github.com/projectdiscovery/nuclei/v2/pkg/js/generated/go/libikev2"
 	_ "github.com/projectdiscovery/nuclei/v2/pkg/js/generated/go/libkerberos"
 	_ "github.com/projectdiscovery/nuclei/v2/pkg/js/generated/go/libldap"
@@ -26,6 +27,7 @@ import (
 	_ "github.com/projectdiscovery/nuclei/v2/pkg/js/generated/go/libsmb"
 	_ "github.com/projectdiscovery/nuclei/v2/pkg/js/generated/go/libsmtp"
 	_ "github.com/projectdiscovery/nuclei/v2/pkg/js/generated/go/libssh"
+	_ "github.com/projectdiscovery/nuclei/v2/pkg/js/generated/go/libstructs"
 	_ "github.com/projectdiscovery/nuclei/v2/pkg/js/generated/go/libtelnet"
 	_ "github.com/projectdiscovery/nuclei/v2/pkg/js/generated/go/libvnc"
 	"github.com/projectdiscovery/nuclei/v2/pkg/js/global"

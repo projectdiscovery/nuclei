@@ -66,11 +66,11 @@ func process() error {
 		// 	return fmt.Errorf("could not write markdown template: %v", err)
 		// }
 
+		// err = data.WriteMarkdownIndexTemplate(path.Join(generatedDir, "markdown/"))
+		// if err != nil {
+		// 	return fmt.Errorf("could not write markdown index template: %v", err)
+		// }
 		data.InitNativeScripts()
-		err = data.WriteMarkdownIndexTemplate(path.Join(generatedDir, "markdown/"))
-		if err != nil {
-			return fmt.Errorf("could not write markdown index template: %v", err)
-		}
 	}
 	return nil
 }

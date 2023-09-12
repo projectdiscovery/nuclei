@@ -3,39 +3,22 @@ package structs
 import (
 	_ "embed"
 
-	"github.com/dop251/goja"
 	"github.com/projectdiscovery/gostruct"
 )
-
-// Module is the goja module for structs.
-type Module struct{}
-
-// Enable enables the structs module for the goja runtime.
-func (m *Module) Enable(runtime *goja.Runtime) {
-	_ = runtime.Set("structs", map[string]interface{}{
-		"pack": structsPackJavascript,
-		"unpack": func(format string, msg []byte) ([]interface{}, error) {
-			return StructsUnpack(format, msg)
-		},
-	})
-}
 
 // StructsUnpack the byte slice (presumably packed by Pack(format, msg)) according to the given format.
 // The result is a []interface{} slice even if it contains exactly one item.
 // The byte slice must contain not less the amount of data required by the format
 // (len(msg) must more or equal CalcSize(format)).
-func StructsUnpack(format string, msg []byte) ([]interface{}, error) {
+// Ex: structs.Unpack(">I", buff[:nb])
+func Unpack(format string, msg []byte) ([]interface{}, error) {
 	return gostruct.UnPack(buildFormatSliceFromStringFormat(format), msg)
 }
 
 // StructsPack returns a byte slice containing the values of msg slice packed according to the given format.
 // The items of msg slice must match the values required by the format exactly.
-func StructsPack(formatStr string, msg []interface{}) ([]byte, error) {
-	format := buildFormatSliceFromStringFormat(formatStr)
-	return gostruct.Pack(format, msg)
-}
-
-func structsPackJavascript(formatStr string, msg interface{}) ([]byte, error) {
+// Ex: structs.pack("H", 0)
+func Pack(formatStr string, msg interface{}) ([]byte, error) {
 	var args []interface{}
 	switch v := msg.(type) {
 	case []interface{}:

@@ -11,10 +11,10 @@ import (
 	"github.com/dop251/goja"
 	"github.com/logrusorgru/aurora"
 	"github.com/projectdiscovery/gologger"
-	"github.com/projectdiscovery/nuclei/v2/pkg/js/global/gotypes/buffer"
 	"github.com/projectdiscovery/nuclei/v2/pkg/js/gojs"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/utils/vardump"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
+	errorutil "github.com/projectdiscovery/utils/errors"
 	stringsutil "github.com/projectdiscovery/utils/strings"
 )
 
@@ -33,15 +33,13 @@ var (
 // but this is most straightforward
 const (
 	defaultImports = `
-	  var structs = require('structs');
-	  var bytes = require('bytes');
+	  var structs = require("nuclei/structs");
+	  var bytes = require("nuclei/bytes");
 	`
 )
 
 // initBuiltInFunc initializes runtime with builtin functions
 func initBuiltInFunc(runtime *goja.Runtime) {
-	module := buffer.Module{}
-	module.Enable(runtime)
 
 	_ = gojs.RegisterFuncWithSignature(runtime, gojs.FuncOpts{
 		Name:        "Rand",
@@ -219,7 +217,7 @@ func RegisterNativeScripts(runtime *goja.Runtime) error {
 	// import default modules
 	_, err = runtime.RunString(defaultImports)
 	if err != nil {
-		return err
+		return errorutil.NewWithErr(err).Msgf("could not import default modules %v", defaultImports)
 	}
 
 	return nil

@@ -7,7 +7,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/projectdiscovery/nuclei/v2/pkg/js/global/gotypes/structs"
+	"github.com/projectdiscovery/nuclei/v2/pkg/js/libs/structs"
 )
 
 const (
@@ -32,7 +32,7 @@ func (c *SMBClient) DetectSMBGhost(host string, port int) (bool, error) {
 
 	buff := make([]byte, 4)
 	nb, _ := conn.Read(buff)
-	args, err := structs.StructsUnpack(">I", buff[:nb])
+	args, err := structs.Unpack(">I", buff[:nb])
 	if err != nil {
 		return false, err
 	}

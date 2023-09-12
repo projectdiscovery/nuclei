@@ -28,11 +28,7 @@ generated/js contains a visual representation of all exposed functions and types
 
 ## [global](./global/)
 
-global (or builtin) contains all builtin types and functions that are by default available in javascript runtime without needing to import any module using 'require' keyword. Its split into 3 sections
-
-### [- global/gotypes](./global/gotypes/)
-
-global/types contains all builtin types/objects/classes that are written in go and are made available in javascript runtime
+global (or builtin) contains all builtin types and functions that are by default available in javascript runtime without needing to import any module using 'require' keyword. Its split into 2 sections
 
 ### [- global/js](./global/js/)
 

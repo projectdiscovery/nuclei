@@ -10,7 +10,7 @@ import (
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/praetorian-inc/fingerprintx/pkg/plugins"
 	mysqlplugin "github.com/praetorian-inc/fingerprintx/pkg/plugins/services/mysql"
-	utils "github.com/projectdiscovery/nuclei/v2/pkg/js/global/gotypes"
+	utils "github.com/projectdiscovery/nuclei/v2/pkg/js/utils"
 )
 
 // MySQLClient is a client for MySQL database.

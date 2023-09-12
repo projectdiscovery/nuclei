@@ -1,26 +1,11 @@
-package buffer
+package bytes
 
 import (
 	"encoding/hex"
 
 	"github.com/dop251/goja"
-	"github.com/projectdiscovery/nuclei/v2/pkg/js/global/gotypes/structs"
+	"github.com/projectdiscovery/nuclei/v2/pkg/js/libs/structs"
 )
-
-// Module is the module for working with buffers in nuclei js integration.
-type Module struct{}
-
-// TODO:
-// https://github.com/dop251/goja/issues/379
-// This looks like it could be used instead of this custom buffer
-// implementation. However, it's not clear how to use it.
-//
-// Also see how k6 does it.
-func (m *Module) Enable(runtime *goja.Runtime) {
-	_ = runtime.Set("bytes", map[string]interface{}{
-		"Buffer": NewBuffer,
-	})
-}
 
 // Buffer is a minimal buffer implementation over a byte slice
 // that is used to pack/unpack binary data in nuclei js integration.
@@ -34,19 +19,25 @@ func NewBuffer(call goja.ConstructorCall) interface{} {
 
 	obj.buf = make([]byte, 0)
 	return map[string]interface{}{
-		"append":  obj.Append,
-		"pack":    obj.Pack,
-		"bytes":   obj.Bytes,
-		"string":  obj.String,
-		"len":     obj.Len,
-		"hex":     obj.Hex,
-		"hexdump": obj.Hexdump,
+		"Write":   obj.Write,
+		"Pack":    obj.Pack,
+		"Bytes":   obj.Bytes,
+		"String":  obj.String,
+		"Len":     obj.Len,
+		"Hex":     obj.Hex,
+		"Hexdump": obj.Hexdump,
 	}
 }
 
-// Append appends a byte slice to the buffer.
-func (b *Buffer) Append(data []byte) *Buffer {
+// Write appends a byte slice to the buffer.
+func (b *Buffer) Write(data []byte) *Buffer {
 	b.buf = append(b.buf, data...)
+	return b
+}
+
+// WriteString appends a string to the buffer.
+func (b *Buffer) WriteString(data string) *Buffer {
+	b.buf = append(b.buf, []byte(data)...)
 	return b
 }
 
@@ -78,10 +69,10 @@ func (b *Buffer) Hexdump() string {
 // Pack uses structs.Pack and packs given data and appends it to the buffer.
 // it packs the data according to the given format.
 func (b *Buffer) Pack(formatStr string, msg []interface{}) error {
-	bin, err := structs.StructsPack(formatStr, msg)
+	bin, err := structs.Pack(formatStr, msg)
 	if err != nil {
 		return err
 	}
-	b.Append(bin)
+	b.Write(bin)
 	return nil
 }
