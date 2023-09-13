@@ -56,7 +56,6 @@ func getRemoteTemplatesAndWorkflows(templateURLs, workflowURLs, remoteTemplateDo
 			}
 		}
 	}
-
 	return remoteTemplateList, remoteWorkFlowList, err
 }
 

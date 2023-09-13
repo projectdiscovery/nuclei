@@ -14,7 +14,9 @@ import (
 	"golang.org/x/text/transform"
 
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/generators"
+	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 	"github.com/projectdiscovery/rawhttp"
+	mapsutil "github.com/projectdiscovery/utils/maps"
 	stringsutil "github.com/projectdiscovery/utils/strings"
 )
 
@@ -162,4 +164,17 @@ func decodeGBK(s []byte) ([]byte, error) {
 func isContentTypeGbk(contentType string) bool {
 	contentType = strings.ToLower(contentType)
 	return stringsutil.ContainsAny(contentType, "gbk", "gb2312", "gb18030")
+}
+
+// if template contains more than 1 request and matchers require requestcondition from
+// both requests , then we need to request for event from interactsh even if current request
+// doesnot use interactsh url in it
+func getInteractshURLsFromEvent(event map[string]interface{}) []string {
+	interactshUrls := map[string]struct{}{}
+	for k, v := range event {
+		if strings.HasPrefix(k, "interactsh-url") {
+			interactshUrls[types.ToString(v)] = struct{}{}
+		}
+	}
+	return mapsutil.GetKeys(interactshUrls)
 }
