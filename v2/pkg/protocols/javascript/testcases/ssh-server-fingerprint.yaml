@@ -14,7 +14,7 @@ javascript:
       to_json(response);
     args:
       Host: "{{Host}}"
-      Port: "{{getNetworkPort(Port,22)}}"
+      Port: "22"
 
     extractors:
       - type: json

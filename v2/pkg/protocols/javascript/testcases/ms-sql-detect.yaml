@@ -17,7 +17,7 @@ javascript:
 
     args:
       Host: "{{Host}}"
-      Port: "{{getNetworkPort(Port,1433)}}"
+      Port: "1433"
 
     matchers:
       - type: dsl
