@@ -40,6 +40,15 @@ type Info struct {
 	//   - value: "\"Subversion ALM for the enterprise before 8.8.2 allows reflected XSS at multiple locations\""
 	Description string `json:"description,omitempty" yaml:"description,omitempty" jsonschema:"title=description of the template,description=In-depth explanation on what the template does,example=Bower is a package manager which stores package information in the bower.json file"`
 	// description: |
+	//   Impact of the template.
+	//
+	//   You can go in-depth here on impact of the template.
+	//
+	// examples:
+	//   - value: "\"Successful exploitation of this vulnerability could allow an attacker to execute arbitrary SQL queries, potentially leading to unauthorized access, data leakage, or data manipulation.\""
+	//   - value: "\"Successful exploitation of this vulnerability could allow an attacker to execute arbitrary script code in the context of the victim's browser, potentially leading to session hijacking, defacement, or theft of sensitive information.\""
+	Impact string `json:"impact,omitempty" yaml:"impact,omitempty" jsonschema:"title=impact of the template,description=In-depth explanation on the impact of the issue found by the template,example=Successful exploitation of this vulnerability could allow an attacker to execute arbitrary SQL queries, potentially leading to unauthorized access, data leakage, or data manipulation."`
+	// description: |
 	//   References for the template.
 	//
 	//   This should contain links relevant to the template.

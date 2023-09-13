@@ -1,5 +1,6 @@
 .idea
 .vscode
+.devcontainer
 v2/vendor
 v2/dist
 integration_tests/nuclei
@@ -22,3 +23,4 @@ bindgen
 jsdocgen
 nuclei
 v2/scrapefuncs
+*.DS_Store

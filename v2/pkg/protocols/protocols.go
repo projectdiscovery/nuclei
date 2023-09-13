@@ -289,6 +289,8 @@ func MakeDefaultMatchFunc(data map[string]interface{}, matcher *matchers.Matcher
 		return matcher.ResultWithMatchedSnippet(matcher.MatchBinary(item))
 	case matchers.DSLMatcher:
 		return matcher.Result(matcher.MatchDSL(data)), nil
+	case matchers.XPathMatcher:
+		return matcher.Result(matcher.MatchXPath(item)), []string{}
 	}
 	return false, nil
 }

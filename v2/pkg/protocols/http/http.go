@@ -14,6 +14,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/fuzz"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/generators"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/http/httpclientpool"
+	httputil "github.com/projectdiscovery/nuclei/v2/pkg/protocols/utils/http"
 	"github.com/projectdiscovery/rawhttp"
 	"github.com/projectdiscovery/retryablehttp-go"
 	fileutil "github.com/projectdiscovery/utils/file"
@@ -250,7 +251,9 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 		MaxRedirects: request.MaxRedirects,
 		NoTimeout:    false,
 		CookieReuse:  request.CookieReuse,
-		Connection:   &httpclientpool.ConnectionConfiguration{DisableKeepAlive: true},
+		Connection: &httpclientpool.ConnectionConfiguration{
+			DisableKeepAlive: httputil.ShouldDisableKeepAlive(options.Options),
+		},
 		RedirectFlow: httpclientpool.DontFollowRedirect,
 	}
 

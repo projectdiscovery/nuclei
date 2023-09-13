@@ -14,6 +14,7 @@ import (
 
 	"github.com/DataDog/gostackparse"
 	"github.com/projectdiscovery/gologger"
+	permissionutil "github.com/projectdiscovery/utils/permission"
 	"github.com/rs/xid"
 )
 
@@ -79,7 +80,7 @@ func (s *Agent) monitorWorker() {
 		s.cancel()
 		stackTraceFile := fmt.Sprintf("nuclei-stacktrace-%s.dump", xid.New().String())
 		gologger.Error().Msgf("Detected hanging goroutine (count=%d/%d) = %s\n", current, s.goroutineCount, stackTraceFile)
-		if err := os.WriteFile(stackTraceFile, currentStack, os.ModePerm); err != nil {
+		if err := os.WriteFile(stackTraceFile, currentStack, permissionutil.ConfigFilePermission); err != nil {
 			gologger.Error().Msgf("Could not write stack trace for goroutines: %s\n", err)
 		}
 		os.Exit(1) // exit forcefully if we've been stuck

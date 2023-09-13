@@ -17,6 +17,7 @@ import (
 	"go.uber.org/multierr"
 	"moul.io/http2curl"
 
+	"github.com/projectdiscovery/fastdialer/fastdialer"
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators"
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
@@ -35,6 +36,7 @@ import (
 	templateTypes "github.com/projectdiscovery/nuclei/v2/pkg/templates/types"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 	"github.com/projectdiscovery/rawhttp"
+	sliceutil "github.com/projectdiscovery/utils/slice"
 	stringsutil "github.com/projectdiscovery/utils/strings"
 	urlutil "github.com/projectdiscovery/utils/url"
 )
@@ -342,6 +344,7 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 
 	var gotDynamicValues map[string][]string
 	var requestErr error
+
 	for {
 		// returns two values, error and skip, which skips the execution for the request instance.
 		executeFunc := func(data string, payloads, dynamicValue map[string]interface{}) (bool, error) {
@@ -375,7 +378,10 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 			}
 			var gotMatches bool
 			err = request.executeRequest(input, generatedHttpRequest, previous, hasInteractMatchers, func(event *output.InternalWrappedEvent) {
-				if hasInteractMarkers && hasInteractMatchers && request.options.Interactsh != nil {
+				// a special case where operators has interactsh matchers and multiple request are made
+				// ex: status_code_2 , interactsh_protocol (from 1st request) etc
+				needsRequestEvent := interactsh.HasMatchers(request.CompiledOperators) && request.NeedsRequestCondition()
+				if (hasInteractMarkers || needsRequestEvent) && request.options.Interactsh != nil {
 					requestData := &interactsh.RequestData{
 						MakeResultFunc: request.MakeResultEvent,
 						Event:          event,
@@ -383,7 +389,9 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 						MatchFunc:      request.Match,
 						ExtractFunc:    request.Extract,
 					}
-					request.options.Interactsh.RequestEvent(generatedHttpRequest.interactshURLs, requestData)
+					allOASTUrls := getInteractshURLsFromEvent(event.InternalEvent)
+					allOASTUrls = append(allOASTUrls, generatedHttpRequest.interactshURLs...)
+					request.options.Interactsh.RequestEvent(sliceutil.Dedupe(allOASTUrls), requestData)
 					gotMatches = request.options.Interactsh.AlreadyMatched(requestData)
 				}
 				// Add the extracts to the dynamic values if any.
@@ -874,7 +882,7 @@ func (request *Request) pruneSignatureInternalValues(maps ...map[string]interfac
 
 func (request *Request) newContext(input *contextargs.Context) context.Context {
 	if input.MetaInput.CustomIP != "" {
-		return context.WithValue(context.Background(), "ip", input.MetaInput.CustomIP) //nolint
+		return context.WithValue(context.Background(), fastdialer.IP, input.MetaInput.CustomIP)
 	}
 	return context.Background()
 }
