@@ -1,13 +1,14 @@
 package ldap
 
 import (
+	"context"
 	"fmt"
-	"net"
 	"strings"
 	"time"
 
 	"github.com/go-ldap/ldap/v3"
 	"github.com/praetorian-inc/fingerprintx/pkg/plugins"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/protocolstate"
 
 	pluginldap "github.com/praetorian-inc/fingerprintx/pkg/plugins/services/ldap"
 )
@@ -21,7 +22,8 @@ type LdapClient struct{}
 func (c *LdapClient) IsLdap(host string, port int) (bool, error) {
 	timeout := 10 * time.Second
 
-	conn, err := net.DialTimeout("tcp", fmt.Sprintf("%s:%d", host, port), timeout)
+	conn, err := protocolstate.Dialer.Dial(context.TODO(), "tcp", fmt.Sprintf("%s:%d", host, port))
+
 	if err != nil {
 		return false, err
 	}
@@ -71,7 +73,7 @@ func (c *LdapClient) newLdapSession(opts *ldapSessionOptions) (*ldap.Conn, error
 		port = 389
 	}
 
-	conn, err := net.Dial("tcp", fmt.Sprintf("%s:%d", dc, port))
+	conn, err := protocolstate.Dialer.Dial(context.TODO(), "tcp", fmt.Sprintf("%s:%d", dc, port))
 	if err != nil {
 		return nil, err
 	}
