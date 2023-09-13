@@ -38,3 +38,10 @@ jobs:
           platforms: linux/amd64,linux/arm64
           push: true
           tags: projectdiscovery/nuclei:latest,projectdiscovery/nuclei:${{ steps.meta.outputs.TAG }}
+
+      - name: Update DockerHub Description
+        uses: peter-evans/dockerhub-description@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+          repository: projectdiscovery/nuclei
