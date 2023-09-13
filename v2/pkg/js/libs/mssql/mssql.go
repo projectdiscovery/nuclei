@@ -1,6 +1,7 @@
 package mssql
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"net"
@@ -10,6 +11,7 @@ import (
 
 	_ "github.com/denisenkom/go-mssqldb"
 	"github.com/praetorian-inc/fingerprintx/pkg/plugins/services/mssql"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/protocolstate"
 )
 
 // Client is a client for MS SQL database.
@@ -41,6 +43,11 @@ func connect(host string, port int, username, password, dbName string) (bool, er
 	if host == "" || port <= 0 {
 		return false, fmt.Errorf("invalid host or port")
 	}
+	if !protocolstate.IsHostAllowed(host) {
+		// host is not valid according to network policy
+		return false, protocolstate.ErrHostDenied.Msgf(host)
+	}
+
 	target := net.JoinHostPort(host, fmt.Sprintf("%d", port))
 
 	connString := fmt.Sprintf("sqlserver://%s:%s@%s?database=%s&connection+timeout=30",
@@ -79,7 +86,12 @@ func connect(host string, port int, username, password, dbName string) (bool, er
 // If the host is running MS SQL database, it returns true.
 // If the host is not running MS SQL database, it returns false.
 func (c *MSSQLClient) IsMssql(host string, port int) (bool, error) {
-	conn, err := net.DialTimeout("tcp", net.JoinHostPort(host, fmt.Sprintf("%d", port)), 5*time.Second)
+	if !protocolstate.IsHostAllowed(host) {
+		// host is not valid according to network policy
+		return false, protocolstate.ErrHostDenied.Msgf(host)
+	}
+
+	conn, err := protocolstate.Dialer.Dial(context.TODO(), "tcp", net.JoinHostPort(host, fmt.Sprintf("%d", port)))
 	if err != nil {
 		return false, err
 	}

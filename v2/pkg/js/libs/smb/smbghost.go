@@ -2,12 +2,14 @@ package smb
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"net"
 	"strconv"
 	"time"
 
 	"github.com/projectdiscovery/nuclei/v2/pkg/js/libs/structs"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/protocolstate"
 )
 
 const (
@@ -18,7 +20,7 @@ const (
 // by using SMBv3 compression feature.
 func (c *SMBClient) DetectSMBGhost(host string, port int) (bool, error) {
 	addr := net.JoinHostPort(host, strconv.Itoa(port))
-	conn, err := net.DialTimeout("tcp", addr, 5*time.Second)
+	conn, err := protocolstate.Dialer.Dial(context.TODO(), "tcp", addr)
 	if err != nil {
 		return false, err
 

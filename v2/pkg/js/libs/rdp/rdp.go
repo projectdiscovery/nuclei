@@ -1,12 +1,13 @@
 package rdp
 
 import (
+	"context"
 	"fmt"
-	"net"
 	"time"
 
 	"github.com/praetorian-inc/fingerprintx/pkg/plugins"
 	"github.com/praetorian-inc/fingerprintx/pkg/plugins/services/rdp"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/protocolstate"
 )
 
 // RDPClient is a client for rdp servers
@@ -27,7 +28,7 @@ func (c *RDPClient) IsRDP(host string, port int) (IsRDPResponse, error) {
 	resp := IsRDPResponse{}
 
 	timeout := 5 * time.Second
-	conn, err := net.DialTimeout("tcp", fmt.Sprintf("%s:%d", host, port), timeout)
+	conn, err := protocolstate.Dialer.Dial(context.TODO(), "tcp", fmt.Sprintf("%s:%d", host, port))
 	if err != nil {
 		return resp, err
 	}
@@ -56,7 +57,7 @@ func (c *RDPClient) CheckRDPAuth(host string, port int) (CheckRDPAuthResponse, e
 	resp := CheckRDPAuthResponse{}
 
 	timeout := 5 * time.Second
-	conn, err := net.DialTimeout("tcp", fmt.Sprintf("%s:%d", host, port), timeout)
+	conn, err := protocolstate.Dialer.Dial(context.TODO(), "tcp", fmt.Sprintf("%s:%d", host, port))
 	if err != nil {
 		return resp, err
 	}

@@ -1,12 +1,14 @@
 package rsync
 
 import (
+	"context"
 	"net"
 	"strconv"
 	"time"
 
 	"github.com/praetorian-inc/fingerprintx/pkg/plugins"
 	"github.com/praetorian-inc/fingerprintx/pkg/plugins/services/rsync"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/protocolstate"
 )
 
 // RsyncClient is a minimal Rsync client for nuclei scripts.
@@ -23,7 +25,7 @@ func (c *RsyncClient) IsRsync(host string, port int) (IsRsyncResponse, error) {
 	resp := IsRsyncResponse{}
 
 	timeout := 5 * time.Second
-	conn, err := net.DialTimeout("tcp", net.JoinHostPort(host, strconv.Itoa(port)), timeout)
+	conn, err := protocolstate.Dialer.Dial(context.TODO(), "tcp", net.JoinHostPort(host, strconv.Itoa(port)))
 	if err != nil {
 		return resp, err
 	}

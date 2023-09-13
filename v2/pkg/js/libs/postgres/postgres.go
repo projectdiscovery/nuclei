@@ -1,6 +1,7 @@
 package postgres
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"net"
@@ -12,6 +13,7 @@ import (
 	"github.com/praetorian-inc/fingerprintx/pkg/plugins"
 	postgres "github.com/praetorian-inc/fingerprintx/pkg/plugins/services/postgresql"
 	utils "github.com/projectdiscovery/nuclei/v2/pkg/js/utils"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/protocolstate"
 )
 
 // PGClient is a client for Postgres database.
@@ -26,7 +28,7 @@ type PGClient struct{}
 func (c *PGClient) IsPostgres(host string, port int) (bool, error) {
 	timeout := 10 * time.Second
 
-	conn, err := net.DialTimeout("tcp", fmt.Sprintf("%s:%d", host, port), timeout)
+	conn, err := protocolstate.Dialer.Dial(context.TODO(), "tcp", fmt.Sprintf("%s:%d", host, port))
 	if err != nil {
 		return false, err
 	}
@@ -58,6 +60,12 @@ func (c *PGClient) Connect(host string, port int, username, password string) (bo
 // ExecuteQuery connects to Postgres database using given credentials and database name.
 // and executes a query on the db.
 func (c *PGClient) ExecuteQuery(host string, port int, username, password, dbName, query string) (string, error) {
+
+	if !protocolstate.IsHostAllowed(host) {
+		// host is not valid according to network policy
+		return "", protocolstate.ErrHostDenied.Msgf(host)
+	}
+
 	target := net.JoinHostPort(host, fmt.Sprintf("%d", port))
 
 	connStr := fmt.Sprintf("postgres://%s:%s@%s/%s?sslmode=disable", username, password, target, dbName)
@@ -91,6 +99,12 @@ func connect(host string, port int, username, password, dbName string) (bool, er
 	if host == "" || port <= 0 {
 		return false, fmt.Errorf("invalid host or port")
 	}
+
+	if !protocolstate.IsHostAllowed(host) {
+		// host is not valid according to network policy
+		return false, protocolstate.ErrHostDenied.Msgf(host)
+	}
+
 	target := net.JoinHostPort(host, fmt.Sprintf("%d", port))
 
 	db := pg.Connect(&pg.Options{

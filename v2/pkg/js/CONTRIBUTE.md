@@ -47,9 +47,17 @@ go based helpers are written in go and can import any go library if required. Mi
 
 ### Go Code Guidelines
 
-1. Keep exported package clean. Do not keep unncessary global exports which the consumer of the API doesn't need to know about. Keep only user-exposed API public.
-2. Use timeouts and context cancellation when calling Network related stuff. Also make sure to close your connections or provide a mechanism to the user of the API to do so.
-3. Always try to return single types from inside javascript with an error like `(IsRDP, error)` instead of returning multiple values `(name, version string, err error)`. The second one will get converted to an array is much harder for consumers to deal with. Instead, try to return `Structures` which will be accessible natively.
+1. Always use 'protocolstate.Dialer' (i.e fastdialer) to dial connections instead of net.Dial this has many benefits along with proxy support , **network policy** usage (i.e local network access can be disabled from cli)
+2. When usage of 'protocolstate.Dialer' is not possible due to some reason ex: imported library does not accept dialer etc then validate host using 'protocolstate.IsHostAllowed' before dialing connection.
+```go
+	if !protocolstate.IsHostAllowed(host) {
+		// host is not valid according to network policy
+		return false, protocolstate.ErrHostDenied.Msgf(host)
+	}
+```
+3. Keep exported package clean. Do not keep unncessary global exports which the consumer of the API doesn't need to know about. Keep only user-exposed API public.
+4. Use timeouts and context cancellation when calling Network related stuff. Also make sure to close your connections or provide a mechanism to the user of the API to do so.
+5. Always try to return single types from inside javascript with an error like `(IsRDP, error)` instead of returning multiple values `(name, version string, err error)`. The second one will get converted to an array is much harder for consumers to deal with. Instead, try to return `Structures` which will be accessible natively.
 
 
 ### Javascript Code Guidelines

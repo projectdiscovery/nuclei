@@ -20,6 +20,12 @@ type LdapClient struct{}
 
 // IsLdap checks if the given host and port are running ldap server.
 func (c *LdapClient) IsLdap(host string, port int) (bool, error) {
+
+	if !protocolstate.IsHostAllowed(host) {
+		// host is not valid according to network policy
+		return false, protocolstate.ErrHostDenied.Msgf(host)
+	}
+
 	timeout := 10 * time.Second
 
 	conn, err := protocolstate.Dialer.Dial(context.TODO(), "tcp", fmt.Sprintf("%s:%d", host, port))
@@ -48,6 +54,12 @@ func (c *LdapClient) CollectLdapMetadata(domain string, controller string) (LDAP
 		domain:           domain,
 		domainController: controller,
 	}
+
+	if !protocolstate.IsHostAllowed(domain) {
+		// host is not valid according to network policy
+		return LDAPMetadata{}, protocolstate.ErrHostDenied.Msgf(domain)
+	}
+
 	conn, err := c.newLdapSession(opts)
 	if err != nil {
 		return LDAPMetadata{}, err

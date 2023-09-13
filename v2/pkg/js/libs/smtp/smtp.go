@@ -1,12 +1,14 @@
 package smtp
 
 import (
+	"context"
 	"net"
 	"strconv"
 	"time"
 
 	"github.com/praetorian-inc/fingerprintx/pkg/plugins"
 	"github.com/praetorian-inc/fingerprintx/pkg/plugins/services/smtp"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/protocolstate"
 )
 
 // SMTPClient is a minimal SMTP client for nuclei scripts.
@@ -23,7 +25,7 @@ func (c *SMTPClient) IsSMTP(host string, port int) (IsSMTPResponse, error) {
 	resp := IsSMTPResponse{}
 
 	timeout := 5 * time.Second
-	conn, err := net.DialTimeout("tcp", net.JoinHostPort(host, strconv.Itoa(port)), timeout)
+	conn, err := protocolstate.Dialer.Dial(context.TODO(), "tcp", net.JoinHostPort(host, strconv.Itoa(port)))
 	if err != nil {
 		return resp, err
 	}

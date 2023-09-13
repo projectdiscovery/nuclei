@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/protocolstate"
 	"github.com/zmap/zgrab2/lib/ssh"
 )
 
@@ -57,6 +58,10 @@ func (c *SSHClient) ConnectSSHInfoMode(host string, port int) (*ssh.HandshakeLog
 }
 
 func connectSSHInfoMode(host string, port int) (*ssh.HandshakeLog, error) {
+	if !protocolstate.IsHostAllowed(host) {
+		// host is not valid according to network policy
+		return nil, protocolstate.ErrHostDenied.Msgf(host)
+	}
 	data := new(ssh.HandshakeLog)
 
 	sshConfig := ssh.MakeSSHConfig()
@@ -78,6 +83,10 @@ func connectSSHInfoMode(host string, port int) (*ssh.HandshakeLog, error) {
 }
 
 func connect(host string, port int, user, password, privateKey string) (*ssh.Client, error) {
+	if !protocolstate.IsHostAllowed(host) {
+		// host is not valid according to network policy
+		return nil, protocolstate.ErrHostDenied.Msgf(host)
+	}
 	if host == "" || port <= 0 {
 		return nil, errors.New("invalid host or port")
 	}

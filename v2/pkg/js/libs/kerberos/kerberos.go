@@ -6,6 +6,7 @@ import (
 	"html/template"
 	"strings"
 
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/protocolstate"
 	kclient "github.com/ropnop/gokrb5/v8/client"
 	kconfig "github.com/ropnop/gokrb5/v8/config"
 	"github.com/ropnop/gokrb5/v8/iana/errorcode"
@@ -83,7 +84,13 @@ type EnumerateUserResponse struct {
 // If the user is found, true is returned. Optionally, the AS-REP
 // hash is also returned if discovered.
 func (c *KerberosClient) EnumerateUser(domain, controller string, username string) (EnumerateUserResponse, error) {
+
 	resp := EnumerateUserResponse{}
+
+	if !protocolstate.IsHostAllowed(domain) {
+		// host is not valid according to network policy
+		return resp, protocolstate.ErrHostDenied.Msgf(domain)
+	}
 
 	opts, err := newKerbrosEnumUserOpts(domain, controller)
 	if err != nil {

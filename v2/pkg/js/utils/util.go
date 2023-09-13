@@ -79,8 +79,3 @@ func UnmarshalSQLRows(rows *sql.Rows) ([]byte, error) {
 	}
 	return jsoniter.Marshal(finalRows)
 }
-
-// ValidateAddress validates an address using network policy
-func ValidateAddress(address string) bool {
-	return false
-}

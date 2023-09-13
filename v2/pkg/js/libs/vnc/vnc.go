@@ -1,12 +1,14 @@
 package vnc
 
 import (
+	"context"
 	"net"
 	"strconv"
 	"time"
 
 	"github.com/praetorian-inc/fingerprintx/pkg/plugins"
 	"github.com/praetorian-inc/fingerprintx/pkg/plugins/services/vnc"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/protocolstate"
 )
 
 // VNCClient is a minimal VNC client for nuclei scripts.
@@ -25,7 +27,7 @@ func (c *VNCClient) IsVNC(host string, port int) (IsVNCResponse, error) {
 	resp := IsVNCResponse{}
 
 	timeout := 5 * time.Second
-	conn, err := net.DialTimeout("tcp", net.JoinHostPort(host, strconv.Itoa(port)), timeout)
+	conn, err := protocolstate.Dialer.Dial(context.TODO(), "tcp", net.JoinHostPort(host, strconv.Itoa(port)))
 	if err != nil {
 		return resp, err
 	}

@@ -1,6 +1,7 @@
 package mysql
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"net"
@@ -11,6 +12,7 @@ import (
 	"github.com/praetorian-inc/fingerprintx/pkg/plugins"
 	mysqlplugin "github.com/praetorian-inc/fingerprintx/pkg/plugins/services/mysql"
 	utils "github.com/projectdiscovery/nuclei/v2/pkg/js/utils"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/protocolstate"
 )
 
 // MySQLClient is a client for MySQL database.
@@ -33,7 +35,11 @@ func (c *MySQLClient) Connect(host string, port int, username, password string) 
 // If the host is running MySQL database, it returns true.
 // If the host is not running MySQL database, it returns false.
 func (c *MySQLClient) IsMySQL(host string, port int) (bool, error) {
-	conn, err := net.DialTimeout("tcp", net.JoinHostPort(host, fmt.Sprintf("%d", port)), 5*time.Second)
+	if !protocolstate.IsHostAllowed(host) {
+		// host is not valid according to network policy
+		return false, protocolstate.ErrHostDenied.Msgf(host)
+	}
+	conn, err := protocolstate.Dialer.Dial(context.TODO(), "tcp", net.JoinHostPort(host, fmt.Sprintf("%d", port)))
 	if err != nil {
 		return false, err
 	}
@@ -64,6 +70,12 @@ func connect(host string, port int, username, password, dbName string) (bool, er
 	if host == "" || port <= 0 {
 		return false, fmt.Errorf("invalid host or port")
 	}
+
+	if !protocolstate.IsHostAllowed(host) {
+		// host is not valid according to network policy
+		return false, protocolstate.ErrHostDenied.Msgf(host)
+	}
+
 	target := net.JoinHostPort(host, fmt.Sprintf("%d", port))
 
 	db, err := sql.Open("mysql", fmt.Sprintf("%v:%v@tcp(%v)/%s",
@@ -86,6 +98,12 @@ func connect(host string, port int, username, password, dbName string) (bool, er
 // ExecuteQuery connects to Mysql database using given credentials and database name.
 // and executes a query on the db.
 func (c *MySQLClient) ExecuteQuery(host string, port int, username, password, dbName, query string) (string, error) {
+
+	if !protocolstate.IsHostAllowed(host) {
+		// host is not valid according to network policy
+		return "", protocolstate.ErrHostDenied.Msgf(host)
+	}
+
 	target := net.JoinHostPort(host, fmt.Sprintf("%d", port))
 
 	db, err := sql.Open("mysql", fmt.Sprintf("%v:%v@tcp(%v)/%s",

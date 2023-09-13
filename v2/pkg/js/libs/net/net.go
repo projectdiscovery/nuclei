@@ -1,6 +1,7 @@
 package net
 
 import (
+	"context"
 	"crypto/tls"
 	"encoding/hex"
 	"errors"
@@ -9,17 +10,14 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/protocolstate"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 )
-
-var dialer = &net.Dialer{
-	Timeout: 5 * time.Second,
-}
 
 // Open opens a new connection to the address with a timeout.
 // supported protocols: tcp, udp
 func Open(protocol, address string) (*NetConn, error) {
-	conn, err := dialer.Dial(protocol, address)
+	conn, err := protocolstate.Dialer.Dial(context.TODO(), protocol, address)
 	if err != nil {
 		return nil, err
 	}
@@ -36,7 +34,7 @@ func OpenTLS(protocol, address string) (*NetConn, error) {
 		c.ServerName = host
 		config = c
 	}
-	conn, err := tls.DialWithDialer(dialer, protocol, address, config)
+	conn, err := protocolstate.Dialer.DialTLSWithConfig(context.TODO(), protocol, address, config)
 	if err != nil {
 		return nil, err
 	}

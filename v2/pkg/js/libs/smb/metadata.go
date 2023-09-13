@@ -1,12 +1,14 @@
 package smb
 
 import (
+	"context"
 	"fmt"
 	"net"
 	"time"
 
 	"github.com/praetorian-inc/fingerprintx/pkg/plugins"
 	"github.com/praetorian-inc/fingerprintx/pkg/plugins/services/smb"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/protocolstate"
 )
 
 // collectSMBv2Metadata collects metadata for SMBv2 services.
@@ -14,7 +16,7 @@ func collectSMBv2Metadata(host string, port int, timeout time.Duration) (*plugin
 	if timeout == 0 {
 		timeout = 5 * time.Second
 	}
-	conn, err := net.DialTimeout("tcp", net.JoinHostPort(host, fmt.Sprintf("%d", port)), timeout)
+	conn, err := protocolstate.Dialer.Dial(context.TODO(), "tcp", net.JoinHostPort(host, fmt.Sprintf("%d", port)))
 	if err != nil {
 		return nil, err
 	}
