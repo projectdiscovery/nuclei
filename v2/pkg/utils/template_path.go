@@ -8,11 +8,11 @@ import (
 
 const (
 	// TemplatesRepoURL is the URL for files in nuclei-templates repository
-	TemplatesRepoURL = "https://github.com/projectdiscovery/nuclei-templates/blob/main/"
+	TemplatesRepoURL = "https://templates.nuclei.sh/public/"
 )
 
 // TemplatePathURL returns the Path and URL for the provided template
-func TemplatePathURL(fullPath string) (string, string) {
+func TemplatePathURL(fullPath, templateId string) (string, string) {
 	var templateDirectory string
 	configData := config.DefaultConfig
 	if configData.TemplatesDirectory != "" && strings.HasPrefix(fullPath, configData.TemplatesDirectory) {
@@ -22,6 +22,6 @@ func TemplatePathURL(fullPath string) (string, string) {
 	}
 
 	finalPath := strings.TrimPrefix(strings.TrimPrefix(fullPath, templateDirectory), "/")
-	templateURL := TemplatesRepoURL + finalPath
+	templateURL := TemplatesRepoURL + templateId
 	return finalPath, templateURL
 }

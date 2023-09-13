@@ -104,7 +104,7 @@ func (e *TemplateExecuter) Execute(input *contextargs.Context) (bool, error) {
 	var lastMatcherEvent *output.InternalWrappedEvent
 	writeFailureCallback := func(event *output.InternalWrappedEvent, matcherStatus bool) {
 		if !results.Load() && matcherStatus {
-			if err := e.options.Output.WriteFailure(event.InternalEvent); err != nil {
+			if err := e.options.Output.WriteFailure(event); err != nil {
 				gologger.Warning().Msgf("Could not write failure event to output: %s\n", err)
 			}
 			results.CompareAndSwap(false, true)

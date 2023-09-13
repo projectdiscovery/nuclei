@@ -20,6 +20,7 @@ import (
 	protocolutils "github.com/projectdiscovery/nuclei/v2/pkg/protocols/utils"
 	httputil "github.com/projectdiscovery/nuclei/v2/pkg/protocols/utils/http"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
+	"github.com/projectdiscovery/nuclei/v2/pkg/types/scanstrategy"
 	"github.com/projectdiscovery/rawhttp"
 	"github.com/projectdiscovery/retryablehttp-go"
 	errorutil "github.com/projectdiscovery/utils/errors"
@@ -345,7 +346,7 @@ func (r *requestGenerator) fillRequest(req *retryablehttp.Request, values map[st
 	}
 
 	// In case of multiple threads the underlying connection should remain open to allow reuse
-	if r.request.Threads <= 0 && req.Header.Get("Connection") == "" {
+	if r.request.Threads <= 0 && req.Header.Get("Connection") == "" && r.options.Options.ScanStrategy != scanstrategy.HostSpray.String() {
 		req.Close = true
 	}
 
