@@ -7,6 +7,7 @@ import (
 
 	"github.com/go-rod/rod"
 	"github.com/go-rod/rod/lib/proto"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/protocolstate"
 )
 
 // routingRuleHandler handles proxy rule for actions related to request/response modification
@@ -103,6 +104,12 @@ func (p *Page) routingRuleHandler(ctx *rod.Hijack) {
 
 // routingRuleHandlerNative handles native proxy rule
 func (p *Page) routingRuleHandlerNative(e *proto.FetchRequestPaused) error {
+	// ValidateNFailRequest validates if Local file access is enabled
+	// and local network access is enables if not it will fail the request
+	// that don't match the rules
+	if err := protocolstate.ValidateNFailRequest(p.page, e); err != nil {
+		return err
+	}
 	body, _ := FetchGetResponseBody(p.page, e)
 	headers := make(map[string][]string)
 	for _, h := range e.ResponseHeaders {

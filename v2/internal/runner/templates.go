@@ -2,7 +2,6 @@ package runner
 
 import (
 	"bytes"
-	"os"
 	"path/filepath"
 	"strings"
 
@@ -45,14 +44,12 @@ func (r *Runner) listAvailableStoreTemplates(store *loader.Store) {
 		if hasExtraFlags(r.options) {
 			if r.options.TemplateDisplay {
 				colorize := !r.options.NoColor
-
 				path := tpl.Path
-				tplBody, err := os.ReadFile(path)
+				tplBody, err := store.ReadTemplateFromURI(path, true)
 				if err != nil {
 					gologger.Error().Msgf("Could not read the template %s: %s", path, err)
 					continue
 				}
-
 				if colorize {
 					path = aurora.Cyan(tpl.Path).String()
 					tplBody, err = r.highlightTemplate(&tplBody)
@@ -60,7 +57,6 @@ func (r *Runner) listAvailableStoreTemplates(store *loader.Store) {
 						gologger.Error().Msgf("Could not highlight the template %s: %s", tpl.Path, err)
 						continue
 					}
-
 				}
 				gologger.Silent().Msgf("Template: %s\n\n%s", path, tplBody)
 			} else {

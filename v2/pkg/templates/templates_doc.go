@@ -155,7 +155,7 @@ func init() {
 			FieldName: "info",
 		},
 	}
-	MODELInfoDoc.Fields = make([]encoder.Doc, 9)
+	MODELInfoDoc.Fields = make([]encoder.Doc, 10)
 	MODELInfoDoc.Fields[0].Name = "name"
 	MODELInfoDoc.Fields[0].Type = "string"
 	MODELInfoDoc.Fields[0].Note = ""
@@ -188,37 +188,46 @@ func init() {
 	MODELInfoDoc.Fields[3].AddExample("", "Bower is a package manager which stores package information in the bower.json file")
 
 	MODELInfoDoc.Fields[3].AddExample("", "Subversion ALM for the enterprise before 8.8.2 allows reflected XSS at multiple locations")
-	MODELInfoDoc.Fields[4].Name = "reference"
-	MODELInfoDoc.Fields[4].Type = "stringslice.RawStringSlice"
+	MODELInfoDoc.Fields[4].Name = "impact"
+	MODELInfoDoc.Fields[4].Type = "string"
 	MODELInfoDoc.Fields[4].Note = ""
-	MODELInfoDoc.Fields[4].Description = "References for the template.\n\nThis should contain links relevant to the template."
-	MODELInfoDoc.Fields[4].Comments[encoder.LineComment] = "References for the template."
+	MODELInfoDoc.Fields[4].Description = "Impact of the template.\n\nYou can go in-depth here on impact of the template."
+	MODELInfoDoc.Fields[4].Comments[encoder.LineComment] = "Impact of the template."
 
-	MODELInfoDoc.Fields[4].AddExample("", []string{"https://github.com/strapi/strapi", "https://github.com/getgrav/grav"})
-	MODELInfoDoc.Fields[5].Name = "severity"
-	MODELInfoDoc.Fields[5].Type = "severity.Holder"
+	MODELInfoDoc.Fields[4].AddExample("", "Successful exploitation of this vulnerability could allow an attacker to execute arbitrary SQL queries, potentially leading to unauthorized access, data leakage, or data manipulation.")
+
+	MODELInfoDoc.Fields[4].AddExample("", "Successful exploitation of this vulnerability could allow an attacker to execute arbitrary script code in the context of the victim's browser, potentially leading to session hijacking, defacement, or theft of sensitive information.")
+	MODELInfoDoc.Fields[5].Name = "reference"
+	MODELInfoDoc.Fields[5].Type = "stringslice.RawStringSlice"
 	MODELInfoDoc.Fields[5].Note = ""
-	MODELInfoDoc.Fields[5].Description = "Severity of the template."
-	MODELInfoDoc.Fields[5].Comments[encoder.LineComment] = "Severity of the template."
-	MODELInfoDoc.Fields[6].Name = "metadata"
-	MODELInfoDoc.Fields[6].Type = "map[string]interface{}"
+	MODELInfoDoc.Fields[5].Description = "References for the template.\n\nThis should contain links relevant to the template."
+	MODELInfoDoc.Fields[5].Comments[encoder.LineComment] = "References for the template."
+
+	MODELInfoDoc.Fields[5].AddExample("", []string{"https://github.com/strapi/strapi", "https://github.com/getgrav/grav"})
+	MODELInfoDoc.Fields[6].Name = "severity"
+	MODELInfoDoc.Fields[6].Type = "severity.Holder"
 	MODELInfoDoc.Fields[6].Note = ""
-	MODELInfoDoc.Fields[6].Description = "Metadata of the template."
-	MODELInfoDoc.Fields[6].Comments[encoder.LineComment] = "Metadata of the template."
-
-	MODELInfoDoc.Fields[6].AddExample("", map[string]string{"customField1": "customValue1"})
-	MODELInfoDoc.Fields[7].Name = "classification"
-	MODELInfoDoc.Fields[7].Type = "model.Classification"
+	MODELInfoDoc.Fields[6].Description = "Severity of the template."
+	MODELInfoDoc.Fields[6].Comments[encoder.LineComment] = "Severity of the template."
+	MODELInfoDoc.Fields[7].Name = "metadata"
+	MODELInfoDoc.Fields[7].Type = "map[string]interface{}"
 	MODELInfoDoc.Fields[7].Note = ""
-	MODELInfoDoc.Fields[7].Description = "Classification contains classification information about the template."
-	MODELInfoDoc.Fields[7].Comments[encoder.LineComment] = "Classification contains classification information about the template."
-	MODELInfoDoc.Fields[8].Name = "remediation"
-	MODELInfoDoc.Fields[8].Type = "string"
-	MODELInfoDoc.Fields[8].Note = ""
-	MODELInfoDoc.Fields[8].Description = "Remediation steps for the template.\n\nYou can go in-depth here on how to mitigate the problem found by this template."
-	MODELInfoDoc.Fields[8].Comments[encoder.LineComment] = "Remediation steps for the template."
+	MODELInfoDoc.Fields[7].Description = "Metadata of the template."
+	MODELInfoDoc.Fields[7].Comments[encoder.LineComment] = "Metadata of the template."
 
-	MODELInfoDoc.Fields[8].AddExample("", "Change the default administrative username and password of Apache ActiveMQ by editing the file jetty-realm.properties")
+	MODELInfoDoc.Fields[7].AddExample("", map[string]string{"customField1": "customValue1"})
+	MODELInfoDoc.Fields[8].Name = "classification"
+	MODELInfoDoc.Fields[8].Type = "model.Classification"
+	MODELInfoDoc.Fields[8].Note = ""
+	MODELInfoDoc.Fields[8].Description = "Classification contains classification information about the template."
+	MODELInfoDoc.Fields[8].Comments[encoder.LineComment] = "Classification contains classification information about the template."
+	MODELInfoDoc.Fields[9].Name = "remediation"
+	MODELInfoDoc.Fields[9].Type = "string"
+	MODELInfoDoc.Fields[9].Note = ""
+	MODELInfoDoc.Fields[9].Description = "Remediation steps for the template.\n\nYou can go in-depth here on how to mitigate the problem found by this template."
+	MODELInfoDoc.Fields[9].Comments[encoder.LineComment] = "Remediation steps for the template."
+
+	MODELInfoDoc.Fields[9].AddExample("", "Change the default administrative username and password of Apache ActiveMQ by editing the file jetty-realm.properties")
 
 	STRINGSLICEStringSliceDoc.Type = "stringslice.StringSlice"
 	STRINGSLICEStringSliceDoc.Comments[encoder.LineComment] = " StringSlice represents a single (in-lined) or multiple string value(s)."
@@ -1070,7 +1079,7 @@ func init() {
 			Value: "Full Network protocol data",
 		},
 	}
-	NETWORKRequestDoc.Fields = make([]encoder.Doc, 7)
+	NETWORKRequestDoc.Fields = make([]encoder.Doc, 9)
 	NETWORKRequestDoc.Fields[0].Name = "id"
 	NETWORKRequestDoc.Fields[0].Type = "string"
 	NETWORKRequestDoc.Fields[0].Note = ""
@@ -1098,20 +1107,30 @@ func init() {
 	NETWORKRequestDoc.Fields[4].Note = ""
 	NETWORKRequestDoc.Fields[4].Description = "Inputs contains inputs for the network socket"
 	NETWORKRequestDoc.Fields[4].Comments[encoder.LineComment] = "Inputs contains inputs for the network socket"
-	NETWORKRequestDoc.Fields[5].Name = "read-size"
-	NETWORKRequestDoc.Fields[5].Type = "int"
+	NETWORKRequestDoc.Fields[5].Name = "port"
+	NETWORKRequestDoc.Fields[5].Type = "string"
 	NETWORKRequestDoc.Fields[5].Note = ""
-	NETWORKRequestDoc.Fields[5].Description = "ReadSize is the size of response to read at the end\n\nDefault value for read-size is 1024."
-	NETWORKRequestDoc.Fields[5].Comments[encoder.LineComment] = "ReadSize is the size of response to read at the end"
-
-	NETWORKRequestDoc.Fields[5].AddExample("", 2048)
-	NETWORKRequestDoc.Fields[6].Name = "read-all"
-	NETWORKRequestDoc.Fields[6].Type = "bool"
+	NETWORKRequestDoc.Fields[5].Description = "description: |\n   Port is the port to send network requests to. this acts as default port but is overriden if target/input contains\n non-http(s) ports like 80,8080,8081 etc"
+	NETWORKRequestDoc.Fields[5].Comments[encoder.LineComment] = " description: |"
+	NETWORKRequestDoc.Fields[6].Name = "exclude-ports"
+	NETWORKRequestDoc.Fields[6].Type = "string"
 	NETWORKRequestDoc.Fields[6].Note = ""
-	NETWORKRequestDoc.Fields[6].Description = "ReadAll determines if the data stream should be read till the end regardless of the size\n\nDefault value for read-all is false."
-	NETWORKRequestDoc.Fields[6].Comments[encoder.LineComment] = "ReadAll determines if the data stream should be read till the end regardless of the size"
+	NETWORKRequestDoc.Fields[6].Description = "description:	|\n	ExcludePorts is the list of ports to exclude from being scanned . It is intended to be used with `Port` field and contains a list of ports which are ignored/skipped"
+	NETWORKRequestDoc.Fields[6].Comments[encoder.LineComment] = " description:	|"
+	NETWORKRequestDoc.Fields[7].Name = "read-size"
+	NETWORKRequestDoc.Fields[7].Type = "int"
+	NETWORKRequestDoc.Fields[7].Note = ""
+	NETWORKRequestDoc.Fields[7].Description = "ReadSize is the size of response to read at the end\n\nDefault value for read-size is 1024."
+	NETWORKRequestDoc.Fields[7].Comments[encoder.LineComment] = "ReadSize is the size of response to read at the end"
 
-	NETWORKRequestDoc.Fields[6].AddExample("", false)
+	NETWORKRequestDoc.Fields[7].AddExample("", 2048)
+	NETWORKRequestDoc.Fields[8].Name = "read-all"
+	NETWORKRequestDoc.Fields[8].Type = "bool"
+	NETWORKRequestDoc.Fields[8].Note = ""
+	NETWORKRequestDoc.Fields[8].Description = "ReadAll determines if the data stream should be read till the end regardless of the size\n\nDefault value for read-all is false."
+	NETWORKRequestDoc.Fields[8].Comments[encoder.LineComment] = "ReadAll determines if the data stream should be read till the end regardless of the size"
+
+	NETWORKRequestDoc.Fields[8].AddExample("", false)
 
 	NETWORKInputDoc.Type = "network.Input"
 	NETWORKInputDoc.Comments[encoder.LineComment] = ""

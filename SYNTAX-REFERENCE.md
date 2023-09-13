@@ -498,6 +498,35 @@ description: Subversion ALM for the enterprise before 8.8.2 allows reflected XSS
 
 <div class="dd">
 
+<code>impact</code>  <i>string</i>
+
+</div>
+<div class="dt">
+
+Impact of the template.
+
+You can go in-depth here on impact of the template.
+
+
+
+Examples:
+
+
+```yaml
+impact: Successful exploitation of this vulnerability could allow an attacker to execute arbitrary SQL queries, potentially leading to unauthorized access, data leakage, or data manipulation.
+```
+
+```yaml
+impact: Successful exploitation of this vulnerability could allow an attacker to execute arbitrary script code in the context of the victim's browser, potentially leading to session hijacking, defacement, or theft of sensitive information.
+```
+
+
+</div>
+
+<hr />
+
+<div class="dd">
+
 <code>reference</code>  <i><a href="#stringslicerawstringslice">stringslice.RawStringSlice</a></i>
 
 </div>
@@ -2414,6 +2443,35 @@ be provided as payload which will be read on run-time.
 <div class="dt">
 
 Inputs contains inputs for the network socket
+
+</div>
+
+<hr />
+
+<div class="dd">
+
+<code>port</code>  <i>string</i>
+
+</div>
+<div class="dt">
+
+description: |
+   Port is the port to send network requests to. this acts as default port but is overriden if target/input contains
+ non-http(s) ports like 80,8080,8081 etc
+
+</div>
+
+<hr />
+
+<div class="dd">
+
+<code>exclude-ports</code>  <i>string</i>
+
+</div>
+<div class="dt">
+
+description:	|
+	ExcludePorts is the list of ports to exclude from being scanned . It is intended to be used with `Port` field and contains a list of ports which are ignored/skipped
 
 </div>
 
