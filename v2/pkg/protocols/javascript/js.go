@@ -110,6 +110,12 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 		}
 		request.CompiledOperators = compiled
 	}
+
+	// "Port" is a special variable and it should not contains any dsl expressions
+	if strings.Contains(request.getPort(), "{{") {
+		return errorutil.NewWithTag(request.TemplateID, "'Port' variable cannot contain any dsl expressions")
+	}
+
 	return nil
 }
 
@@ -137,7 +143,16 @@ func (request *Request) GetID() string {
 }
 
 // ExecuteWithResults executes the protocol requests and returns results instead of writing them.
-func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicValues, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
+func (request *Request) ExecuteWithResults(target *contextargs.Context, dynamicValues, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
+
+	input := target.Clone()
+	// use network port updates input with new port requested in template file
+	// and it is ignored if input port is not standard http(s) ports like 80,8080,8081 etc
+	// idea is to reduce redundant dials to http ports
+	if err := input.UseNetworkPort(request.getPort(), request.getExcludePorts()); err != nil {
+		gologger.Debug().Msgf("Could not network port from constants: %s\n", err)
+	}
+
 	hostPort, err := getAddress(input.MetaInput.Input)
 	if err != nil {
 		request.options.Progress.IncrementFailedRequestsBy(1)
@@ -425,6 +440,11 @@ mainLoop:
 			argsCopy[k] = v
 		}
 	}
+
+	// "Port" is a special variable that is considered as network port
+	// and is conditional based on input port and default port specified in input
+	argsCopy["Port"] = input.Port()
+
 	return &compiler.ExecuteArgs{Args: argsCopy}, nil
 }
 
@@ -473,6 +493,24 @@ func (request *Request) GetCompiledOperators() []*operators.Operators {
 // Type returns the type of the protocol request
 func (request *Request) Type() templateTypes.ProtocolType {
 	return templateTypes.JavascriptProtocol
+}
+
+func (request *Request) getPort() string {
+	for k, v := range request.Args {
+		if strings.EqualFold(k, "Port") {
+			return types.ToString(v)
+		}
+	}
+	return ""
+}
+
+func (request *Request) getExcludePorts() string {
+	for k, v := range request.Args {
+		if strings.EqualFold(k, "exclude-ports") {
+			return types.ToString(v)
+		}
+	}
+	return ""
 }
 
 func (request *Request) MakeResultEventItem(wrapped *output.InternalWrappedEvent) *output.ResultEvent {
