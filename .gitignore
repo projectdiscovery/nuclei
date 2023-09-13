@@ -24,3 +24,4 @@ jsdocgen
 nuclei
 v2/scrapefuncs
 *.DS_Store
+v2/pkg/protocols/headless/engine/.cache

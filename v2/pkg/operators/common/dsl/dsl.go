@@ -98,10 +98,10 @@ func init() {
 
 		return "", fmt.Errorf("no records found")
 	}))
-	_ = dsl.AddMultiSignatureHelperFunction("getNetworkPort", []string{
+	_ = dsl.AddFunction(dsl.NewWithMultipleSignatures("getNetworkPort", []string{
 		"(Port string,defaultPort string) string)",
 		"(Port int,defaultPort int) int",
-	}, func(args ...interface{}) (interface{}, error) {
+	}, false, func(args ...interface{}) (interface{}, error) {
 		if len(args) != 2 {
 			return nil, dsl.ErrInvalidDslFunction
 		}
@@ -111,7 +111,7 @@ func init() {
 			return defaultPort, nil
 		}
 		return port, nil
-	})
+	}))
 
 	dsl.PrintDebugCallback = func(args ...interface{}) error {
 		gologger.Info().Msgf("print_debug value: %s", fmt.Sprint(args))
