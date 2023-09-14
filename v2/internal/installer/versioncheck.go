@@ -71,6 +71,7 @@ func getpdtmParams() string {
 	params.Add("arch", runtime.GOARCH)
 	params.Add("go_version", runtime.Version())
 	params.Add("v", config.Version)
+	params.Add("utm_source", getUtmSource())
 	return params.Encode()
 }
 
