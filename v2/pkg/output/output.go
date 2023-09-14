@@ -215,7 +215,7 @@ func NewStandardWriter(options *types.Options) (*StandardWriter, error) {
 func (w *StandardWriter) Write(event *ResultEvent) error {
 	// Enrich the result event with extra metadata on the template-path and url.
 	if event.TemplatePath != "" {
-		event.Template, event.TemplateURL = utils.TemplatePathURL(types.ToString(event.TemplatePath))
+		event.Template, event.TemplateURL = utils.TemplatePathURL(types.ToString(event.TemplatePath), types.ToString(event.TemplateID))
 	}
 	event.Timestamp = time.Now()
 
@@ -327,7 +327,7 @@ func (w *StandardWriter) WriteFailure(wrappedEvent *InternalWrappedEvent) error 
 	// if no results were found, manually create a failure event
 	event := wrappedEvent.InternalEvent
 
-	templatePath, templateURL := utils.TemplatePathURL(types.ToString(event["template-path"]))
+	templatePath, templateURL := utils.TemplatePathURL(types.ToString(event["template-path"]), types.ToString(event["template-id"]))
 	var templateInfo model.Info
 	if event["template-info"] != nil {
 		templateInfo = event["template-info"].(model.Info)
