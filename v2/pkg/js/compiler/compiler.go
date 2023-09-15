@@ -12,6 +12,7 @@ import (
 
 	"github.com/projectdiscovery/gologger"
 	_ "github.com/projectdiscovery/nuclei/v2/pkg/js/generated/go/libbytes"
+	_ "github.com/projectdiscovery/nuclei/v2/pkg/js/generated/go/libfs"
 	_ "github.com/projectdiscovery/nuclei/v2/pkg/js/generated/go/libikev2"
 	_ "github.com/projectdiscovery/nuclei/v2/pkg/js/generated/go/libkerberos"
 	_ "github.com/projectdiscovery/nuclei/v2/pkg/js/generated/go/libldap"
