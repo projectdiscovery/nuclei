@@ -32,6 +32,8 @@ gitLab:
   project-name: "1234"
   # issue-label is the label of the created issue type
   issue-label: bug
+  # duplicate-issue-check flag to enable duplicate tracking issue check.
+  duplicate-issue-check: true
 
 # Jira contains configuration options for Jira issue tracker
 jira:
