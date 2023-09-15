@@ -8,6 +8,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httputil"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -36,6 +37,7 @@ import (
 	templateTypes "github.com/projectdiscovery/nuclei/v2/pkg/templates/types"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 	"github.com/projectdiscovery/rawhttp"
+	"github.com/projectdiscovery/utils/reader"
 	sliceutil "github.com/projectdiscovery/utils/slice"
 	stringsutil "github.com/projectdiscovery/utils/strings"
 	urlutil "github.com/projectdiscovery/utils/url"
@@ -490,6 +492,32 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 	// Dump request for variables checks
 	// For race conditions we can't dump the request body at this point as it's already waiting the open-gate event, already handled with a similar code within the race function
 	if !generatedRequest.original.Race {
+
+		// change encoding type to content-length unless transfer-encoding header is manually set
+		if generatedRequest.request != nil && !stringsutil.EqualFoldAny(generatedRequest.request.Method, http.MethodGet, http.MethodHead) && generatedRequest.request.Body != nil && generatedRequest.request.Header.Get("Transfer-Encoding") != "chunked" {
+			var newReqBody *reader.ReusableReadCloser
+			newReqBody, ok := generatedRequest.request.Body.(*reader.ReusableReadCloser)
+			if !ok {
+				newReqBody, err = reader.NewReusableReadCloser(generatedRequest.request.Body)
+			}
+			if err == nil {
+				// update the request body with the reusable reader
+				generatedRequest.request.Body = newReqBody
+				// get content length
+				length, _ := io.Copy(io.Discard, newReqBody)
+				generatedRequest.request.ContentLength = length
+			} else {
+				// log error and continue
+				gologger.Verbose().Msgf("[%v] Could not read request body while forcing transfer encoding: %s\n", request.options.TemplateID, err)
+				err = nil
+			}
+		}
+
+		// do the same for unsafe requests
+		if generatedRequest.rawRequest != nil && !stringsutil.EqualFoldAny(generatedRequest.rawRequest.Method, http.MethodGet, http.MethodHead) && generatedRequest.rawRequest.Data != "" && generatedRequest.rawRequest.Headers["Transfer-Encoding"] != "chunked" {
+			generatedRequest.rawRequest.Headers["Content-Length"] = strconv.Itoa(len(generatedRequest.rawRequest.Data))
+		}
+
 		var dumpError error
 		// TODO: dump is currently not working with post-processors - somehow it alters the signature
 		dumpedRequest, dumpError = dump(generatedRequest, input.MetaInput.Input)
@@ -514,6 +542,7 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 	var hostname string
 	timeStart := time.Now()
 	if generatedRequest.original.Pipeline {
+		// if request is a pipeline request, use the pipelined client
 		if generatedRequest.rawRequest != nil {
 			formedURL = generatedRequest.rawRequest.FullURL
 			if parsed, parseErr := urlutil.ParseURL(formedURL, true); parseErr == nil {
@@ -524,6 +553,7 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 			resp, err = generatedRequest.pipelinedClient.Dor(generatedRequest.request)
 		}
 	} else if generatedRequest.original.Unsafe && generatedRequest.rawRequest != nil {
+		// if request is a unsafe request, use the rawhttp client
 		formedURL = generatedRequest.rawRequest.FullURL
 		// use request url as matched url if empty
 		if formedURL == "" {
@@ -545,11 +575,15 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 		options.SNI = request.options.Options.SNI
 		inputUrl := input.MetaInput.Input
 		if url, err := urlutil.ParseURL(inputUrl, false); err == nil {
-			inputUrl = fmt.Sprintf("%s://%s", url.Scheme, url.Host)
+			url.Path = ""
+			url.Params = nil
+			// inputUrl should only contain scheme://host:port
+			inputUrl = url.String()
 		}
 		formedURL = fmt.Sprintf("%s%s", inputUrl, generatedRequest.rawRequest.Path)
 		resp, err = generatedRequest.original.rawhttpClient.DoRawWithOptions(generatedRequest.rawRequest.Method, inputUrl, generatedRequest.rawRequest.Path, generators.ExpandMapValues(generatedRequest.rawRequest.Headers), io.NopCloser(strings.NewReader(generatedRequest.rawRequest.Data)), &options)
 	} else {
+		//** For Normal requests **//
 		hostname = generatedRequest.request.URL.Host
 		formedURL = generatedRequest.request.URL.String()
 		// if nuclei-project is available check if the request was already sent previously
