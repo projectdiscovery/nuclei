@@ -45,6 +45,11 @@ javascript based helpers are written in javascript and are available in javascri
 go based helpers are written in go and can import any go library if required. Minimal/Simple helper functions can be directly added using `runtime.Set("function_name", function)` in [global/scripts.go](./global/scripts.go) file. For more complex helpers, a new package can be created in [libs](./libs/) directory and can be imported in [global/scripts.go](./global/scripts.go) file. Refer to existing implementations in [globals](./global/) directory for more details.
 
 
+### Updating / Publishing Docs
+
+Javscript Protocol Documentation is auto-generated using [jsdoc] and is hosted at [js-proto-docs](https://projectdiscovery.github.io/js-proto-docs/). To update documentation, please follow steps mentioned at [projectdiscovery/js-proto-docs](https://github.com/projectdiscovery/js-proto-docs)
+
+
 ### Go Code Guidelines
 
 1. Always use 'protocolstate.Dialer' (i.e fastdialer) to dial connections instead of net.Dial this has many benefits along with proxy support , **network policy** usage (i.e local network access can be disabled from cli)

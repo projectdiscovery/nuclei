@@ -32,4 +32,4 @@ and then open `http://localhost:8000/` in browser
 
 ### Notes
 
-we currently use [clean-jsdoc-theme](https://www.npmjs.com/package/clean-jsdoc-theme) demo at [sample-jsproto-docs/](https://tarunkoyalwar.github.io/jsproto-docs/)
+we currently use [clean-jsdoc-theme](https://www.npmjs.com/package/clean-jsdoc-theme) demo at [sample-jsproto-docs/](https://projectdiscovery.github.io/js-proto-docs/)
