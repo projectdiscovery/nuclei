@@ -179,6 +179,8 @@ func (request *Request) ExecuteWithResults(target *contextargs.Context, dynamicV
 	values := generators.MergeMaps(payloadValues, hostnameVariables, request.options.Constants, templateCtx.GetAll())
 	variablesMap := request.options.Variables.Evaluate(values)
 	payloadValues = generators.MergeMaps(variablesMap, payloadValues, request.options.Constants, hostnameVariables)
+	// export all variables to template context
+	templateCtx.Merge(payloadValues)
 
 	if vardump.EnableVarDump {
 		gologger.Debug().Msgf("Protocol request variables: \n%s\n", vardump.DumpVariables(payloadValues))

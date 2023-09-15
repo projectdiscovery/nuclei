@@ -32,6 +32,7 @@ import (
 	_ "github.com/projectdiscovery/nuclei/v2/pkg/js/generated/go/libvnc"
 	"github.com/projectdiscovery/nuclei/v2/pkg/js/global"
 	"github.com/projectdiscovery/nuclei/v2/pkg/js/libs/goconsole"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/generators"
 )
 
 // Compiler provides a runtime to execute goja runtime
@@ -131,6 +132,8 @@ func (c *Compiler) ExecuteWithOptions(code string, args *ExecuteArgs, opts *Exec
 	if args.TemplateCtx == nil {
 		args.TemplateCtx = make(map[string]interface{})
 	}
+	// merge all args into templatectx
+	args.TemplateCtx = generators.MergeMaps(args.TemplateCtx, args.Args)
 	_ = runtime.Set("template", args.TemplateCtx)
 
 	results, err := runtime.RunString(code)
