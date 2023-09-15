@@ -65,6 +65,10 @@ type ExecuteOptions struct {
 	// CaptureVariables specifies the variables to capture
 	// from the script execution.
 	CaptureVariables []string
+
+	// Callback can be used to register new runtime helper functions
+	// ex: export etc
+	Callback func(runtime *goja.Runtime) error
 }
 
 // ExecuteArgs is the arguments to pass to the script.
@@ -123,6 +127,13 @@ func (c *Compiler) ExecuteWithOptions(code string, args *ExecuteArgs, opts *Exec
 	}
 	runtime := c.newRuntime(opts.Pool)
 	c.registerHelpersForVM(runtime)
+
+	// register runtime functions if any
+	if opts.Callback != nil {
+		if err := opts.Callback(runtime); err != nil {
+			return nil, err
+		}
+	}
 
 	if args == nil {
 		args = NewExecuteArgs()

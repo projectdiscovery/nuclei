@@ -11,9 +11,11 @@ import (
 
 	"github.com/alecthomas/chroma/quick"
 	"github.com/ditashi/jsbeautifier-go/jsbeautifier"
+	"github.com/dop251/goja"
 	"github.com/pkg/errors"
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v2/pkg/js/compiler"
+	"github.com/projectdiscovery/nuclei/v2/pkg/js/gojs"
 	"github.com/projectdiscovery/nuclei/v2/pkg/model"
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators"
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators/extractors"
@@ -32,6 +34,7 @@ import (
 	errorutil "github.com/projectdiscovery/utils/errors"
 	urlutil "github.com/projectdiscovery/utils/url"
 	"github.com/remeh/sizedwaitgroup"
+	"golang.org/x/exp/maps"
 )
 
 // Request is a request for the javascript protocol
@@ -43,6 +46,11 @@ type Request struct {
 	// description: |
 	// ID is request id in that protocol
 	ID string `yaml:"id,omitempty" json:"id,omitempty" jsonschema:"title=id of the request,description=ID is the optional ID of the Request"`
+
+	// description: |
+	//  Init is javascript code to execute after compiling template and before executing it on any target
+	//  This is helpful for preparing payloads or other setup that maybe required for exploits
+	Init string `yaml:"init,omitempty" json:"init,omitempty" jsonschema:"title=init javascript code,description=Init is the javascript code to execute after compiling template"`
 
 	// description: |
 	//   PreCondition is a condition which is evaluated before sending the request.
@@ -114,6 +122,93 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 	// "Port" is a special variable and it should not contains any dsl expressions
 	if strings.Contains(request.getPort(), "{{") {
 		return errorutil.NewWithTag(request.TemplateID, "'Port' variable cannot contain any dsl expressions")
+	}
+
+	if request.Init != "" {
+		// execute init code if any
+		if request.options.Options.Debug || request.options.Options.DebugRequests {
+			gologger.Debug().Msgf("[%s] Executing Template Init\n", request.TemplateID)
+			var highlightFormatter = "terminal256"
+			if request.options.Options.NoColor {
+				highlightFormatter = "text"
+			}
+			var buff bytes.Buffer
+			_ = quick.Highlight(&buff, beautifyJavascript(request.Init), "javascript", highlightFormatter, "monokai")
+			prettyPrint(request.TemplateID, buff.String())
+		}
+
+		opts := &compiler.ExecuteOptions{}
+		// register 'export' function to export variables from init code
+		// these are saved in args and are available in pre-condition and request code
+		opts.Callback = func(runtime *goja.Runtime) error {
+			err := gojs.RegisterFuncWithSignature(runtime, gojs.FuncOpts{
+				Name: "set",
+				Signatures: []string{
+					"set(string, interface{})",
+				},
+				Description: "set variable from init code. this function is available in init code only",
+				FuncDecl: func(call goja.FunctionCall) goja.Value {
+					if len(call.Arguments) != 2 {
+						return runtime.NewGoError(fmt.Errorf("set function expects 2 arguments"))
+					}
+					name := call.Argument(0).String()
+					value := call.Argument(1).Export()
+					if request.Args == nil {
+						request.Args = make(map[string]interface{})
+					}
+					request.Args[name] = value
+					return runtime.ToValue(true)
+				},
+			})
+			if err != nil {
+				return err
+			}
+
+			return gojs.RegisterFuncWithSignature(runtime, gojs.FuncOpts{
+				Name: "updatePayload",
+				Signatures: []string{
+					"updatePayload(string, interface{})",
+				},
+				Description: "update/override any payload from init code. this function is available in init code only",
+				FuncDecl: func(call goja.FunctionCall) goja.Value {
+					if len(call.Arguments) != 2 {
+						return runtime.NewGoError(fmt.Errorf("updatePayload function expects 2 arguments"))
+					}
+					name := call.Argument(0).String()
+					value := call.Argument(1).Export()
+					if request.Payloads == nil {
+						request.Payloads = make(map[string]interface{})
+					}
+					if request.generator != nil {
+						request.Payloads[name] = value
+						request.generator, err = generators.New(request.Payloads, request.AttackType.Value, request.options.TemplatePath, options.Catalog, options.Options.AttackType, options.Options)
+						if err != nil {
+							return runtime.NewGoError(err)
+						}
+					} else {
+						return runtime.NewGoError(fmt.Errorf("payloads not defined and cannot be updated"))
+					}
+					return runtime.ToValue(true)
+				},
+			})
+		}
+
+		args := compiler.NewExecuteArgs()
+		args.Args = maps.Clone(request.Args)
+
+		result, err := request.options.JsCompiler.ExecuteWithOptions(request.Init, args, opts)
+		if err != nil {
+			return errorutil.NewWithTag(request.TemplateID, "could not execute pre-condition: %s", err)
+		}
+		if types.ToString(result["error"]) != "" {
+			gologger.Warning().Msgf("[%s] Init failed with error %v\n", request.TemplateID, result["error"])
+			return nil
+		} else {
+			if request.options.Options.Debug || request.options.Options.DebugResponse {
+				gologger.Debug().Msgf("[%s] Init executed successfully\n", request.TemplateID)
+				gologger.Debug().Msgf("[%s] Init result:\n %v\n", request.TemplateID, result["response"])
+			}
+		}
 	}
 
 	return nil
