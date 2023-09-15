@@ -33,6 +33,8 @@ type Options struct {
 	// SeverityAsLabel (optional) sends the severity as the label of the created
 	// issue.
 	SeverityAsLabel bool `yaml:"severity-as-label"`
+	// DuplicateIssueCheck is a bool to enable duplicate tracking issue check and update the newest
+	DuplicateIssueCheck bool `yaml:"duplicate-issue-check" default:"false"`
 
 	HttpClient *retryablehttp.Client `yaml:"-"`
 }
@@ -71,6 +73,33 @@ func (i *Integration) CreateIssue(event *output.ResultEvent) error {
 	}
 	customLabels := gitlab.Labels(labels)
 	assigneeIDs := []int{i.userID}
+	if i.options.DuplicateIssueCheck {
+		searchState := "all"
+		issues, _, err := i.client.Issues.ListProjectIssues(i.options.ProjectName, &gitlab.ListProjectIssuesOptions{
+			State:  &searchState,
+			Search: &summary,
+		})
+		if err != nil {
+			return err
+		}
+		if len(issues) > 0 {
+			issue := issues[0]
+			_, _, err := i.client.Notes.CreateIssueNote(i.options.ProjectName, issue.IID, &gitlab.CreateIssueNoteOptions{
+				Body: &description,
+			})
+			if err != nil {
+				return err
+			}
+			if issue.State == "closed" {
+				reopen := "reopen"
+				_, resp, err := i.client.Issues.UpdateIssue(i.options.ProjectName, issue.IID, &gitlab.UpdateIssueOptions{
+					StateEvent: &reopen,
+				})
+				fmt.Sprintln(resp, err)
+			}
+			return err
+		}
+	}
 	_, _, err := i.client.Issues.CreateIssue(i.options.ProjectName, &gitlab.CreateIssueOptions{
 		Title:       &summary,
 		Description: &description,
