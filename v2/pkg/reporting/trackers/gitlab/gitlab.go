@@ -74,8 +74,10 @@ func (i *Integration) CreateIssue(event *output.ResultEvent) error {
 	customLabels := gitlab.Labels(labels)
 	assigneeIDs := []int{i.userID}
 	if i.options.DuplicateIssueCheck {
+		searchIn := "title"
 		searchState := "all"
 		issues, _, err := i.client.Issues.ListProjectIssues(i.options.ProjectName, &gitlab.ListProjectIssuesOptions{
+			In:     &searchIn,
 			State:  &searchState,
 			Search: &summary,
 		})
