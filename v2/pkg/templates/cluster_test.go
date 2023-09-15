@@ -9,50 +9,30 @@ import (
 )
 
 func TestClusterTemplates(t *testing.T) {
-	tests := []struct {
-		name      string
-		templates map[string]*Template
-		expected  [][]*Template
-	}{
-		{
-			name: "http-cluster-get",
-			templates: map[string]*Template{
-				"first.yaml":  {RequestsHTTP: []*http.Request{{Path: []string{"{{BaseURL}}"}}}},
-				"second.yaml": {RequestsHTTP: []*http.Request{{Path: []string{"{{BaseURL}}"}}}},
-			},
-			expected: [][]*Template{{
-				{RequestsHTTP: []*http.Request{{Path: []string{"{{BaseURL}}"}}}},
-				{RequestsHTTP: []*http.Request{{Path: []string{"{{BaseURL}}"}}}},
-			}},
-		},
-		{
-			name: "no-http-cluster",
-			templates: map[string]*Template{
-				"first.yaml":  {RequestsHTTP: []*http.Request{{Path: []string{"{{BaseURL}}/random"}}}},
-				"second.yaml": {RequestsHTTP: []*http.Request{{Path: []string{"{{BaseURL}}/another"}}}},
-			},
-			expected: [][]*Template{
-				{{RequestsHTTP: []*http.Request{{Path: []string{"{{BaseURL}}/random"}}}}},
-				{{RequestsHTTP: []*http.Request{{Path: []string{"{{BaseURL}}/another"}}}}},
-			},
-		},
-		{
-			name: "dns-cluster",
-			templates: map[string]*Template{
-				"first.yaml":  {RequestsDNS: []*dns.Request{{Name: "{{Hostname}}"}}},
-				"second.yaml": {RequestsDNS: []*dns.Request{{Name: "{{Hostname}}"}}},
-			},
-			expected: [][]*Template{{
-				{RequestsDNS: []*dns.Request{{Name: "{{Hostname}}"}}},
-				{RequestsDNS: []*dns.Request{{Name: "{{Hostname}}"}}},
-			}},
-		},
-	}
-
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			returned := Cluster(test.templates)
-			require.ElementsMatch(t, returned, test.expected, "could not get cluster results")
-		})
-	}
+	t.Run("http-cluster-get", func(t *testing.T) {
+		tp1 := &Template{Path: "first.yaml", RequestsHTTP: []*http.Request{{Path: []string{"{{BaseURL}}"}}}}
+		tp2 := &Template{Path: "second.yaml", RequestsHTTP: []*http.Request{{Path: []string{"{{BaseURL}}"}}}}
+		tpls := []*Template{tp1, tp2}
+		// cluster 0
+		expected := []*Template{tp1, tp2}
+		got := Cluster(tpls)[0]
+		require.ElementsMatchf(t, expected, got, "different %v %v", len(expected), len(got))
+	})
+	t.Run("no-http-cluster", func(t *testing.T) {
+		tp1 := &Template{Path: "first.yaml", RequestsHTTP: []*http.Request{{Path: []string{"{{BaseURL}}/random"}}}}
+		tp2 := &Template{Path: "second.yaml", RequestsHTTP: []*http.Request{{Path: []string{"{{BaseURL}}/another"}}}}
+		tpls := []*Template{tp1, tp2}
+		expected := [][]*Template{{tp1}, {tp2}}
+		got := Cluster(tpls)
+		require.ElementsMatch(t, expected, got)
+	})
+	t.Run("dns-cluster", func(t *testing.T) {
+		tp1 := &Template{Path: "first.yaml", RequestsDNS: []*dns.Request{{Name: "{{Hostname}}"}}}
+		tp2 := &Template{Path: "second.yaml", RequestsDNS: []*dns.Request{{Name: "{{Hostname}}"}}}
+		tpls := []*Template{tp1, tp2}
+		// cluster 0
+		expected := []*Template{tp1, tp2}
+		got := Cluster(tpls)[0]
+		require.ElementsMatch(t, got, expected)
+	})
 }
