@@ -576,7 +576,7 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 		inputUrl := input.MetaInput.Input
 		if url, err := urlutil.ParseURL(inputUrl, false); err == nil {
 			url.Path = ""
-			url.Params = nil
+			url.Params = urlutil.NewOrderedParams() // donot include query params
 			// inputUrl should only contain scheme://host:port
 			inputUrl = url.String()
 		}
