@@ -4,6 +4,8 @@ import (
 	"bufio"
 	"context"
 	"fmt"
+	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
@@ -276,6 +278,9 @@ func (r *requestGenerator) generateRawRequest(ctx context.Context, rawRequest st
 		if len(r.options.Options.CustomHeaders) > 0 {
 			_ = rawRequestData.TryFillCustomHeaders(r.options.Options.CustomHeaders)
 		}
+		if rawRequestData.Data != "" && !stringsutil.EqualFoldAny(rawRequestData.Method, http.MethodHead, http.MethodGet) && rawRequestData.Headers["Transfer-Encoding"] != "chunked" {
+			rawRequestData.Headers["Content-Length"] = strconv.Itoa(len(rawRequestData.Data))
+		}
 		unsafeReq := &generatedRequest{rawRequest: rawRequestData, meta: generatorValues, original: r.request, interactshURLs: r.interactshURLs}
 		return unsafeReq, nil
 	}
@@ -288,6 +293,12 @@ func (r *requestGenerator) generateRawRequest(ctx context.Context, rawRequest st
 	if err != nil {
 		return nil, err
 	}
+
+	// force transfer encoding if conditions are met
+	if len(rawRequestData.Data) > 0 && req.Header.Get("Transfer-Encoding") != "chunked" && !stringsutil.EqualFoldAny(rawRequestData.Method, http.MethodGet, http.MethodHead) {
+		req.ContentLength = int64(len(rawRequestData.Data))
+	}
+
 	// override the body with a new one that will be used to read the request body in parallel threads
 	// for race condition testing
 	if r.request.Threads > 0 && r.request.Race {
