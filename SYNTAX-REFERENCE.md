@@ -2450,6 +2450,35 @@ Inputs contains inputs for the network socket
 
 <div class="dd">
 
+<code>port</code>  <i>string</i>
+
+</div>
+<div class="dt">
+
+description: |
+   Port is the port to send network requests to. this acts as default port but is overriden if target/input contains
+ non-http(s) ports like 80,8080,8081 etc
+
+</div>
+
+<hr />
+
+<div class="dd">
+
+<code>exclude-ports</code>  <i>string</i>
+
+</div>
+<div class="dt">
+
+description:	|
+	ExcludePorts is the list of ports to exclude from being scanned . It is intended to be used with `Port` field and contains a list of ports which are ignored/skipped
+
+</div>
+
+<hr />
+
+<div class="dd">
+
 <code>read-size</code>  <i>int</i>
 
 </div>

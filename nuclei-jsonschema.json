@@ -1134,6 +1134,16 @@
           "title": "inputs for the network request",
           "description": "Inputs contains any input/output for the current request"
         },
+        "port": {
+          "type": "string",
+          "title": "port to send requests to",
+          "description": "Port to send network requests to"
+        },
+        "exclude-ports": {
+          "type": "string",
+          "title": "exclude ports from being scanned",
+          "description": "Exclude ports from being scanned"
+        },
         "read-size": {
           "type": "integer",
           "title": "size of network response to read",
