@@ -10,6 +10,7 @@ import (
 	"github.com/pkg/errors"
 	"gopkg.in/yaml.v2"
 
+	"github.com/projectdiscovery/nuclei/v2/pkg/js/compiler"
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/offlinehttp"
@@ -110,7 +111,8 @@ func (template *Template) Requests() int {
 		len(template.RequestsSSL) +
 		len(template.RequestsWebsocket) +
 		len(template.RequestsWHOIS) +
-		len(template.RequestsCode)
+		len(template.RequestsCode) +
+		len(template.RequestsJavascript)
 }
 
 // compileProtocolRequests compiles all the protocol requests for the template
@@ -161,6 +163,9 @@ func (template *Template) compileProtocolRequests(options protocols.ExecutorOpti
 		}
 		if len(template.RequestsCode) > 0 {
 			requests = append(requests, template.convertRequestToProtocolsRequest(template.RequestsCode)...)
+		}
+		if len(template.RequestsJavascript) > 0 {
+			requests = append(requests, template.convertRequestToProtocolsRequest(template.RequestsJavascript)...)
 		}
 	}
 	template.Executer = tmplexec.NewTemplateExecuter(requests, &options)
@@ -277,6 +282,11 @@ func ParseTemplateFromReader(reader io.Reader, preprocessor Preprocessor, option
 	options.CreateTemplateCtxStore()
 	options.ProtocolType = template.Type()
 	options.Constants = template.Constants
+
+	// initialize the js compiler if missing
+	if options.JsCompiler == nil {
+		options.JsCompiler = compiler.New()
+	}
 
 	template.Options = &options
 	// If no requests, and it is also not a workflow, return error.
