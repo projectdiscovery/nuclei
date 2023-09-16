@@ -1,0 +1,21 @@
+id: network-port-example
+
+info:
+  name: Example Template with Network Port
+  author: pdteam
+  severity: high
+  description: This is an updated description for the network port example.
+  reference: https://updated-reference-link
+
+tcp:
+  - host: 
+      - "{{Hostname}}"
+    port: 23846
+    inputs:
+      - data: "PING\r\n"
+    read-size: 4
+    matchers:
+    - type: word
+      part: data
+      words:
+        - "PONG"
