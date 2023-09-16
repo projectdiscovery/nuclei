@@ -114,6 +114,15 @@ func (ctx *Context) UseNetworkPort(port string, excludePorts string) error {
 	return nil
 }
 
+// Port returns the port of the target
+func (ctx *Context) Port() string {
+	target, err := urlutil.Parse(ctx.MetaInput.Input)
+	if err != nil {
+		return ""
+	}
+	return target.Port()
+}
+
 // Get the value with specific key if exists
 func (ctx *Context) Get(key string) (interface{}, bool) {
 	if !ctx.hasArgs() {

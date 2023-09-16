@@ -16,6 +16,7 @@ import (
 
 var (
 	ErrURLDenied         = errorutil.NewWithFmt("headless: url %v dropped by rule: %v")
+	ErrHostDenied        = errorutil.NewWithFmt("host %v dropped by network policy")
 	networkPolicy        *networkpolicy.NetworkPolicy
 	allowLocalFileAccess bool
 )
@@ -74,6 +75,15 @@ func isValidHost(targetUrl string) bool {
 		return false
 	}
 	targetUrl = urlx.Hostname()
+	_, ok := networkPolicy.ValidateHost(targetUrl)
+	return ok
+}
+
+// IsHostAllowed checks if the host is allowed by network policy
+func IsHostAllowed(targetUrl string) bool {
+	if networkPolicy == nil {
+		return true
+	}
 	_, ok := networkPolicy.ValidateHost(targetUrl)
 	return ok
 }
