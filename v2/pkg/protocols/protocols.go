@@ -11,6 +11,7 @@ import (
 
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalog"
 	"github.com/projectdiscovery/nuclei/v2/pkg/input"
+	"github.com/projectdiscovery/nuclei/v2/pkg/js/compiler"
 	"github.com/projectdiscovery/nuclei/v2/pkg/model"
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators"
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators/extractors"
@@ -97,6 +98,9 @@ type ExecutorOptions struct {
 	IsMultiProtocol bool
 	// templateStore is a map which contains template context for each scan  (i.e input * template-id pair)
 	templateCtxStore *mapsutil.SyncLockMap[string, *contextargs.Context]
+	// JsCompiler is abstracted javascript compiler which adds node modules and provides execution
+	// environment for javascript templates
+	JsCompiler *compiler.Compiler
 }
 
 // CreateTemplateCtxStore creates template context store (which contains templateCtx for every scan)

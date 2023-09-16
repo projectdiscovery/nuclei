@@ -30,3 +30,8 @@ functional:
 	cd cmd/functional-test; bash run.sh
 tidy:
 	$(GOMOD) tidy
+devtools:
+	$(GOBUILD) $(GOFLAGS) -ldflags '$(LDFLAGS)' -o "bindgen" pkg/js/devtools/bindgen/cmd/bindgen/main.go
+	$(GOBUILD) $(GOFLAGS) -ldflags '$(LDFLAGS)' -o "jsdocgen" pkg/js/devtools/jsdocgen/main.go
+	$(GOBUILD) $(GOFLAGS) -ldflags '$(LDFLAGS)' -o "scrapefuncs" pkg/js/devtools/scrapefuncs/main.go
+

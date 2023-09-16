@@ -14,6 +14,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/file"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/headless"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/http"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/javascript"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/network"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/ssl"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/websocket"
@@ -109,6 +110,9 @@ type Template struct {
 	// description: |
 	//   Code contains code snippets.
 	RequestsCode []*code.Request `yaml:"code,omitempty" json:"code,omitempty" jsonschema:"title=code snippets to make,description=Code snippets"`
+	// description: |
+	//   Javascript contains the javascript request to make in the template.
+	RequestsJavascript []*javascript.Request `yaml:"javascript,omitempty" json:"javascript,omitempty" jsonschema:"title=javascript requests to make,description=Javascript requests to make for the template"`
 
 	// description: |
 	//   Workflows is a yaml based workflow declaration code.
@@ -173,6 +177,8 @@ func (template *Template) Type() types.ProtocolType {
 		return types.WHOISProtocol
 	case len(template.RequestsCode) > 0:
 		return types.CodeProtocol
+	case len(template.RequestsJavascript) > 0:
+		return types.JavascriptProtocol
 	default:
 		return types.InvalidProtocol
 	}
@@ -243,6 +249,13 @@ func (template *Template) validateAllRequestIDs() {
 	}
 	if len(template.RequestsWHOIS) > 1 {
 		for i, req := range template.RequestsWHOIS {
+			if req.ID == "" {
+				req.ID = req.Type().String() + "_" + strconv.Itoa(i)
+			}
+		}
+	}
+	if len(template.RequestsJavascript) > 1 {
+		for i, req := range template.RequestsJavascript {
 			if req.ID == "" {
 				req.ID = req.Type().String() + "_" + strconv.Itoa(i)
 			}
@@ -334,6 +347,8 @@ func (template *Template) addRequestsToQueue(keys ...string) {
 			template.RequestsQueue = append(template.RequestsQueue, template.convertRequestToProtocolsRequest(template.RequestsWHOIS)...)
 		case types.CodeProtocol.String():
 			template.RequestsQueue = append(template.RequestsQueue, template.convertRequestToProtocolsRequest(template.RequestsCode)...)
+		case types.JavascriptProtocol.String():
+			template.RequestsQueue = append(template.RequestsQueue, template.convertRequestToProtocolsRequest(template.RequestsJavascript)...)
 			// for deprecated protocols
 		case "requests":
 			template.RequestsQueue = append(template.RequestsQueue, template.convertRequestToProtocolsRequest(template.RequestsHTTP)...)
@@ -349,7 +364,8 @@ func (template *Template) hasMultipleRequests() bool {
 	counter := len(template.RequestsDNS) + len(template.RequestsFile) +
 		len(template.RequestsHTTP) + len(template.RequestsHeadless) +
 		len(template.RequestsNetwork) + len(template.RequestsSSL) +
-		len(template.RequestsWebsocket) + len(template.RequestsWHOIS)
+		len(template.RequestsWebsocket) + len(template.RequestsWHOIS) +
+		len(template.RequestsCode) + len(template.RequestsJavascript)
 	return counter > 1
 }
 
