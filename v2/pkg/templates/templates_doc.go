@@ -1079,7 +1079,7 @@ func init() {
 			Value: "Full Network protocol data",
 		},
 	}
-	NETWORKRequestDoc.Fields = make([]encoder.Doc, 7)
+	NETWORKRequestDoc.Fields = make([]encoder.Doc, 9)
 	NETWORKRequestDoc.Fields[0].Name = "id"
 	NETWORKRequestDoc.Fields[0].Type = "string"
 	NETWORKRequestDoc.Fields[0].Note = ""
@@ -1107,20 +1107,30 @@ func init() {
 	NETWORKRequestDoc.Fields[4].Note = ""
 	NETWORKRequestDoc.Fields[4].Description = "Inputs contains inputs for the network socket"
 	NETWORKRequestDoc.Fields[4].Comments[encoder.LineComment] = "Inputs contains inputs for the network socket"
-	NETWORKRequestDoc.Fields[5].Name = "read-size"
-	NETWORKRequestDoc.Fields[5].Type = "int"
+	NETWORKRequestDoc.Fields[5].Name = "port"
+	NETWORKRequestDoc.Fields[5].Type = "string"
 	NETWORKRequestDoc.Fields[5].Note = ""
-	NETWORKRequestDoc.Fields[5].Description = "ReadSize is the size of response to read at the end\n\nDefault value for read-size is 1024."
-	NETWORKRequestDoc.Fields[5].Comments[encoder.LineComment] = "ReadSize is the size of response to read at the end"
-
-	NETWORKRequestDoc.Fields[5].AddExample("", 2048)
-	NETWORKRequestDoc.Fields[6].Name = "read-all"
-	NETWORKRequestDoc.Fields[6].Type = "bool"
+	NETWORKRequestDoc.Fields[5].Description = "description: |\n   Port is the port to send network requests to. this acts as default port but is overriden if target/input contains\n non-http(s) ports like 80,8080,8081 etc"
+	NETWORKRequestDoc.Fields[5].Comments[encoder.LineComment] = " description: |"
+	NETWORKRequestDoc.Fields[6].Name = "exclude-ports"
+	NETWORKRequestDoc.Fields[6].Type = "string"
 	NETWORKRequestDoc.Fields[6].Note = ""
-	NETWORKRequestDoc.Fields[6].Description = "ReadAll determines if the data stream should be read till the end regardless of the size\n\nDefault value for read-all is false."
-	NETWORKRequestDoc.Fields[6].Comments[encoder.LineComment] = "ReadAll determines if the data stream should be read till the end regardless of the size"
+	NETWORKRequestDoc.Fields[6].Description = "description:	|\n	ExcludePorts is the list of ports to exclude from being scanned . It is intended to be used with `Port` field and contains a list of ports which are ignored/skipped"
+	NETWORKRequestDoc.Fields[6].Comments[encoder.LineComment] = " description:	|"
+	NETWORKRequestDoc.Fields[7].Name = "read-size"
+	NETWORKRequestDoc.Fields[7].Type = "int"
+	NETWORKRequestDoc.Fields[7].Note = ""
+	NETWORKRequestDoc.Fields[7].Description = "ReadSize is the size of response to read at the end\n\nDefault value for read-size is 1024."
+	NETWORKRequestDoc.Fields[7].Comments[encoder.LineComment] = "ReadSize is the size of response to read at the end"
 
-	NETWORKRequestDoc.Fields[6].AddExample("", false)
+	NETWORKRequestDoc.Fields[7].AddExample("", 2048)
+	NETWORKRequestDoc.Fields[8].Name = "read-all"
+	NETWORKRequestDoc.Fields[8].Type = "bool"
+	NETWORKRequestDoc.Fields[8].Note = ""
+	NETWORKRequestDoc.Fields[8].Description = "ReadAll determines if the data stream should be read till the end regardless of the size\n\nDefault value for read-all is false."
+	NETWORKRequestDoc.Fields[8].Comments[encoder.LineComment] = "ReadAll determines if the data stream should be read till the end regardless of the size"
+
+	NETWORKRequestDoc.Fields[8].AddExample("", false)
 
 	NETWORKInputDoc.Type = "network.Input"
 	NETWORKInputDoc.Comments[encoder.LineComment] = ""

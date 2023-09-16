@@ -7,29 +7,29 @@ title: 'Running Nuclei'
 
 ## Running **Nuclei**
 
-Nuclei templates can be primarily executed in two ways,
+Nuclei templates can be primarily executed in two ways:
 
 1. **Templates** (`-t/templates`)
 
-As default, all the templates (except nuclei-ignore list) gets executed from default template installation path.
+As default, all the templates (except nuclei-ignore list) get executed from the default template installation path.
 
 ```sh
 nuclei -u https://example.com
 ```
 
-Custom template directory or multiple template directory can be executed as follows,
+Custom template directory or multiple template directory can be executed as follows:
 
 ```sh
 nuclei -u https://example.com -t cves/ -t exposures/
 ```
 
-Custom template Github repos are downloaded under `github` directory. Custom repo templates can be passed as follows
+Custom template Github repos are downloaded under `github` directory. Custom repo templates can be passed as follows:
 
 ```sh
 nuclei -u https://example.com -t github/private-repo
 ```
 
-Similarly, Templates can be executed against list of URLs.
+Similarly, Templates can be executed against a list of URLs.
 
 ```sh
 nuclei -list http_urls.txt
@@ -41,7 +41,7 @@ nuclei -list http_urls.txt
 nuclei -u https://example.com -w workflows/
 ```
 
-Similarly, Workflows can be executed against list of URLs.
+Similarly, Workflows can be executed against a list of URLs.
 
 ```sh
 nuclei -list http_urls.txt -w workflows/wordpress-workflow.yaml
@@ -77,7 +77,9 @@ And this example will run all the templates available under `~/nuclei-templates/
 nuclei -u https://example.com -tags config -t exposures/
 ```
 
-Multiple filters works together with AND condition, below example runs all template with `cve` tags AND has `critical` OR `high` severity AND `geeknik` as author of template.
+Multiple filters works together with AND condition,
+below example runs all templates with `cve` tags
+AND has `critical` OR `high` severity AND `geeknik` as author of template.
 
 ```sh
 nuclei -u https://example.com -tags cve -severity critical,high -author geeknik
@@ -155,19 +157,21 @@ To use this feature, users need to set the following environment variables:
 <Accordion title="For AWS Bucket" icon="pencil">
 
 ```bash
-export AWS_ACCESS_KEY=AKIAXXXXXXXX export AWS_SECRET_KEY=XXXXXX export
-  AWS_REGION=us-xxx-1 export AWS_TEMPLATE_BUCKET=aws_bucket_name
+export AWS_ACCESS_KEY=AKIAXXXXXXXX
+export AWS_SECRET_KEY=XXXXXX
+export AWS_REGION=us-xxx-1
+export AWS_TEMPLATE_BUCKET=aws_bucket_name
 ```
 
 </Accordion>
 <Accordion title="For Azure Blob Storage" icon="pencil">
 
 ```bash
-export AZURE_TENANT_ID=00000000-0000-0000-0000-000000000000 export
-  AZURE_CLIENT_ID=00000000-0000-0000-0000-000000000000 export
-  AZURE_CLIENT_SECRET=00000000-0000-0000-0000-000000000000 export
-  AZURE_SERVICE_URL=https://XXXXXXXXXX.blob.core.windows.net/ export
-  AZURE_CONTAINER_NAME=templates
+export AZURE_TENANT_ID=00000000-0000-0000-0000-000000000000
+export AZURE_CLIENT_ID=00000000-0000-0000-0000-000000000000
+export AZURE_CLIENT_SECRET=00000000-0000-0000-0000-000000000000
+export AZURE_SERVICE_URL=https://XXXXXXXXXX.blob.core.windows.net/
+export AZURE_CONTAINER_NAME=templates
 ```
 
 </Accordion>
@@ -406,7 +410,7 @@ Feel free to play with these flags to tune your nuclei scan speed and accuracy.
 Many BugBounty platform/programs requires you to identify the HTTP traffic you make, this can be achieved by setting custom header using config file at `$HOME/.config/nuclei/config.yaml` or CLI flag `-H / header`
 
 <Note>
-Setting custom header using config file88
+Setting custom header using config file
 
 ```yaml
 # Headers to include with each request.
@@ -498,7 +502,7 @@ nuclei -l urls.txt -include-tags iot,misc,fuzz
 
 ### Scan on internet database
 
-Nuclei supports integration with [uncover module](https://github.com/projectdiscovery/uncover)that supports services like Shodan, Censys, Hunter, Zoomeye, many more to execute Nuclei on these databases.
+Nuclei supports integration with [uncover module](https://github.com/projectdiscovery/uncover) that supports services like Shodan, Censys, Hunter, Zoomeye, many more to execute Nuclei on these databases.
 
 Here are uncover options to use -
 
@@ -584,8 +588,8 @@ For enterprises dealing with large-scale scanning, optimizing Nuclei can be a bu
 
 User should select **Scan Strategy** based on number of targets and Each strategy has its own pros & cons.
 
-- When targets < 1000 . `template-spray` should be used . this strategy is slightly faster than `host-spray` but uses more RAM and doesnot optimally reuse connections.
-- When targets > 1000 . `host-spray` should be used . this strategy uses less RAM than `template-spray` and reuses HTTP connections along with some minor improvements and these are crucial when mass scanning.
+- When targets < 1000, `template-spray` should be used. This strategy is slightly faster than `host-spray` but uses more RAM and does not optimally reuse connections.
+- When targets > 1000, `host-spray` should be used. This strategy uses less RAM than `template-spray` and reuses HTTP connections along with some minor improvements and these are crucial when mass scanning.
 
 ### Concurrency & Bulk-Size
 
@@ -607,7 +611,7 @@ This option should only be enabled if targets > 10k . This skips any type of sor
 
 ## Nuclei **Config**
 
-> Since release of [v.2.3.2](https://blog.projectdiscovery.io/nuclei-v2-3-0-release/) nuclei uses [goflags](https://github.com/projectdiscovery/goflags) for clean CLI experience and long/short formatted flags.
+> Since release of [v2.3.2](https://blog.projectdiscovery.io/nuclei-v2-3-0-release/) nuclei uses [goflags](https://github.com/projectdiscovery/goflags) for clean CLI experience and long/short formatted flags.
 >
 > [goflags](https://github.com/projectdiscovery/goflags) comes with auto-generated config file support that coverts all available CLI flags into config file, basically you can define all CLI flags into config file to avoid repetitive CLI flags that loads as default for every scan of nuclei.
 >
@@ -810,18 +814,18 @@ Nuclei supports SARIF export of valid findings with `-se, -sarif-export` flag. T
 nuclei -l urls.txt -t cves/ -sarif-export report.sarif
 ```
 
-It is also possible to visualize Nuclei results using **sarif** file.
+It is also possible to visualize Nuclei results using **SARIF** files.
 
-1. By Uploading SARIF File to [SARIF Viewer](https://microsoft.github.io/sarif-web-component/)
+1. By uploading a SARIF file to [SARIF Viewer](https://microsoft.github.io/sarif-web-component/)
 
-2. By Uploading SARIF File to Github Actions
+2. By uploading a SARIF file to []Github Actions](https://docs.github.com/en/code-security/code-scanning/integrating-with-code-scanning/uploading-a-sarif-file-to-github)
 
-more info [here](https://github.com/projectdiscovery/nuclei/pull/2925).
+More info on the SARIF output is documented [here](https://github.com/projectdiscovery/nuclei/pull/2925).
 
 <Note>
   These are **not official** viewers of Nuclei and `Nuclei` has no liability
   towards any of these options to visualize **Nuclei** results. These are just
-  some publicly available options to visualize SARIF File.
+  some publicly available options to visualize SARIF files.
 </Note>
 
 ## Scan **Metrics**
@@ -859,3 +863,25 @@ nuclei -passive -target http_data
 ```
 
 <Note>Passive mode support is limited for templates having `{{BasedURL}}` or `{{BasedURL/}}` as base path.</Note>
+
+## Running With Docker
+If Nuclei was installed within a Docker container based on the [installation instructions](./install),
+the executable does not have the context of the host machine. This means that the executable will not be able to access
+local files such as those used for input lists or templates. To resolve this, the container should be run with volumes
+mapped to the local filesystem to allow access to these files.
+
+### Basic Usage
+This example runs a Nuclei container against `google.com`, prints the results to JSON and removes the container once it
+has completed:
+```sh
+docker run --rm projectdiscovery/nuclei -u google.com -jsonl
+```
+
+### Using Volumes
+This example runs a Nuclei container against a list of URLs, writes the results to a `.jsonl` file and removes the
+container once it has completed.
+```sh
+# This assumes there's a file called `urls.txt` in the current directory
+docker run --rm -v ./:/app/ projectdiscovery/nuclei -l /app/urls.txt -jsonl /app/results.jsonl
+# The results will be written to `./results.jsonl` on the host machine once the container has completed
+```
