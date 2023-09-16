@@ -7,29 +7,29 @@ title: 'Running Nuclei'
 
 ## Running **Nuclei**
 
-Nuclei templates can be primarily executed in two ways,
+Nuclei templates can be primarily executed in two ways:
 
 1. **Templates** (`-t/templates`)
 
-As default, all the templates (except nuclei-ignore list) gets executed from default template installation path.
+As default, all the templates (except nuclei-ignore list) get executed from the default template installation path.
 
 ```sh
 nuclei -u https://example.com
 ```
 
-Custom template directory or multiple template directory can be executed as follows,
+Custom template directory or multiple template directory can be executed as follows:
 
 ```sh
 nuclei -u https://example.com -t cves/ -t exposures/
 ```
 
-Custom template Github repos are downloaded under `github` directory. Custom repo templates can be passed as follows
+Custom template Github repos are downloaded under `github` directory. Custom repo templates can be passed as follows:
 
 ```sh
 nuclei -u https://example.com -t github/private-repo
 ```
 
-Similarly, Templates can be executed against list of URLs.
+Similarly, Templates can be executed against a list of URLs.
 
 ```sh
 nuclei -list http_urls.txt
@@ -41,7 +41,7 @@ nuclei -list http_urls.txt
 nuclei -u https://example.com -w workflows/
 ```
 
-Similarly, Workflows can be executed against list of URLs.
+Similarly, Workflows can be executed against a list of URLs.
 
 ```sh
 nuclei -list http_urls.txt -w workflows/wordpress-workflow.yaml
@@ -77,7 +77,9 @@ And this example will run all the templates available under `~/nuclei-templates/
 nuclei -u https://example.com -tags config -t exposures/
 ```
 
-Multiple filters works together with AND condition, below example runs all template with `cve` tags AND has `critical` OR `high` severity AND `geeknik` as author of template.
+Multiple filters works together with AND condition,
+below example runs all templates with `cve` tags
+AND has `critical` OR `high` severity AND `geeknik` as author of template.
 
 ```sh
 nuclei -u https://example.com -tags cve -severity critical,high -author geeknik
@@ -861,3 +863,25 @@ nuclei -passive -target http_data
 ```
 
 <Note>Passive mode support is limited for templates having `{{BasedURL}}` or `{{BasedURL/}}` as base path.</Note>
+
+## Running With Docker
+If Nuclei was installed within a Docker container based on the [installation instructions](./install),
+the executable does not have the context of the host machine. This means that the executable will not be able to access
+local files such as those used for input lists or templates. To resolve this, the container should be run with volumes
+mapped to the local filesystem to allow access to these files.
+
+### Basic Usage
+This example runs a Nuclei container against `google.com`, prints the results to JSON and removes the container once it
+has completed:
+```sh
+docker run --rm projectdiscovery/nuclei -u google.com -jsonl
+```
+
+### Using Volumes
+This example runs a Nuclei container against a list of URLs, writes the results to a `.jsonl` file and removes the
+container once it has completed.
+```sh
+# This assumes there's a file called `urls.txt` in the current directory
+docker run --rm -v ./:/app/ projectdiscovery/nuclei -l /app/urls.txt -jsonl /app/results.jsonl
+# The results will be written to `./results.jsonl` on the host machine once the container has completed
+```
