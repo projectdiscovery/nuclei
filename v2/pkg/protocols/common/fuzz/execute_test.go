@@ -1,9 +1,9 @@
 package fuzz
 
 import (
+	"github.com/projectdiscovery/retryablehttp-go"
 	"testing"
 
-	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/contextargs"
 	"github.com/stretchr/testify/require"
 )
 
@@ -12,11 +12,15 @@ func TestRuleIsExecutable(t *testing.T) {
 	err := rule.Compile(nil, nil)
 	require.NoError(t, err, "could not compile rule")
 
-	input := contextargs.NewWithInput("https://example.com/?url=localhost")
-	result := rule.isExecutable(input)
+	req, err := retryablehttp.NewRequest("GET", "https://example.com/?url=localhost", nil)
+	require.NoError(t, err, "could not build request")
+
+	result := rule.isExecutable(req)
 	require.True(t, result, "could not get correct result")
 
-	input = contextargs.NewWithInput("https://example.com/")
-	result = rule.isExecutable(input)
+	req, err = retryablehttp.NewRequest("GET", "https://example.com/", nil)
+	require.NoError(t, err, "could not build request")
+
+	result = rule.isExecutable(req)
 	require.False(t, result, "could not get correct result")
 }
