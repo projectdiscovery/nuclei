@@ -34,7 +34,6 @@ import (
 	errorutil "github.com/projectdiscovery/utils/errors"
 	urlutil "github.com/projectdiscovery/utils/url"
 	"github.com/remeh/sizedwaitgroup"
-	"golang.org/x/exp/maps"
 )
 
 // Request is a request for the javascript protocol
@@ -147,17 +146,18 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 					"set(string, interface{})",
 				},
 				Description: "set variable from init code. this function is available in init code only",
-				FuncDecl: func(call goja.FunctionCall) goja.Value {
-					if len(call.Arguments) != 2 {
-						return runtime.NewGoError(fmt.Errorf("set function expects 2 arguments"))
+				FuncDecl: func(varname string, value any) error {
+					if varname == "" {
+						return fmt.Errorf("variable name cannot be empty")
 					}
-					name := call.Argument(0).String()
-					value := call.Argument(1).Export()
+					if value == nil {
+						return fmt.Errorf("variable value cannot be empty")
+					}
 					if request.Args == nil {
 						request.Args = make(map[string]interface{})
 					}
-					request.Args[name] = value
-					return runtime.ToValue(true)
+					request.Args[varname] = value
+					return nil
 				},
 			})
 			if err != nil {
@@ -170,31 +170,28 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 					"updatePayload(string, interface{})",
 				},
 				Description: "update/override any payload from init code. this function is available in init code only",
-				FuncDecl: func(call goja.FunctionCall) goja.Value {
-					if len(call.Arguments) != 2 {
-						return runtime.NewGoError(fmt.Errorf("updatePayload function expects 2 arguments"))
-					}
-					name := call.Argument(0).String()
-					value := call.Argument(1).Export()
+				FuncDecl: func(varname string, Value any) error {
 					if request.Payloads == nil {
 						request.Payloads = make(map[string]interface{})
 					}
 					if request.generator != nil {
-						request.Payloads[name] = value
+						request.Payloads[varname] = Value
 						request.generator, err = generators.New(request.Payloads, request.AttackType.Value, request.options.TemplatePath, options.Catalog, options.Options.AttackType, options.Options)
 						if err != nil {
-							return runtime.NewGoError(err)
+							return err
 						}
 					} else {
-						return runtime.NewGoError(fmt.Errorf("payloads not defined and cannot be updated"))
+						return fmt.Errorf("payloads not defined and cannot be updated")
 					}
-					return runtime.ToValue(true)
+					return nil
 				},
 			})
 		}
 
 		args := compiler.NewExecuteArgs()
-		args.Args = maps.Clone(request.Args)
+		allVars := generators.MergeMaps(options.Variables.GetAll(), options.Options.Vars.AsMap(), request.options.Constants)
+		// proceed with whatever args we have
+		args.Args, _ = request.evaluateArgs(allVars, options, true)
 
 		result, err := request.options.JsCompiler.ExecuteWithOptions(request.Init, args, opts)
 		if err != nil {
@@ -206,7 +203,7 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 		} else {
 			if request.options.Options.Debug || request.options.Options.DebugResponse {
 				gologger.Debug().Msgf("[%s] Init executed successfully\n", request.TemplateID)
-				gologger.Debug().Msgf("[%s] Init result:\n %v\n", request.TemplateID, result["response"])
+				gologger.Debug().Msgf("[%s] Init result: %v\n", request.TemplateID, result["response"])
 			}
 		}
 	}
@@ -363,14 +360,14 @@ func (request *Request) executeRequestParallel(ctxParent context.Context, hostPo
 	defer cancel()
 	requestOptions := request.options
 	gotmatches := &atomic.Bool{}
+
 	sg := sizedwaitgroup.New(threads)
 	if request.generator != nil {
 		iterator := request.generator.NewIterator()
-
 		for {
 			value, ok := iterator.Value()
 			if !ok {
-				return
+				break
 			}
 			sg.Add()
 			go func() {
@@ -382,6 +379,7 @@ func (request *Request) executeRequestParallel(ctxParent context.Context, hostPo
 				shouldStopAtFirstMatch := request.options.Options.StopAtFirstMatch || request.StopAtFirstMatch
 				if err := request.executeRequestWithPayloads(hostPort, input, hostname, value, payloadValues, func(result *output.InternalWrappedEvent) {
 					if result.OperatorsResult != nil && result.OperatorsResult.Matched {
+						fmt.Print("got match\n")
 						gotmatches.Store(true)
 					}
 					callback(result)
@@ -395,6 +393,7 @@ func (request *Request) executeRequestParallel(ctxParent context.Context, hostPo
 				// If this was a match, and we want to stop at first match, skip all further requests.
 
 				if shouldStopAtFirstMatch && gotmatches.Load() {
+					fmt.Printf("canceling\n")
 					cancel()
 					return
 				}
@@ -518,14 +517,26 @@ func (request *Request) executeRequestWithPayloads(hostPort string, input *conte
 
 func (request *Request) getArgsCopy(input *contextargs.Context, payloadValues map[string]interface{}, requestOptions *protocols.ExecutorOptions, ignoreErrors bool) (*compiler.ExecuteArgs, error) {
 	// Template args from payloads
+	argsCopy, err := request.evaluateArgs(payloadValues, requestOptions, ignoreErrors)
+	if err != nil {
+		requestOptions.Output.Request(requestOptions.TemplateID, input.MetaInput.Input, request.Type().String(), err)
+		requestOptions.Progress.IncrementFailedRequestsBy(1)
+	}
+	// "Port" is a special variable that is considered as network port
+	// and is conditional based on input port and default port specified in input
+	argsCopy["Port"] = input.Port()
+
+	return &compiler.ExecuteArgs{Args: argsCopy}, nil
+}
+
+// evaluateArgs evaluates arguments using available payload values and returns a copy of args
+func (request *Request) evaluateArgs(payloadValues map[string]interface{}, requestOptions *protocols.ExecutorOptions, ignoreErrors bool) (map[string]interface{}, error) {
 	argsCopy := make(map[string]interface{})
 mainLoop:
 	for k, v := range request.Args {
 		if vVal, ok := v.(string); ok && strings.Contains(vVal, "{") {
 			finalAddress, dataErr := expressions.Evaluate(vVal, payloadValues)
 			if dataErr != nil {
-				requestOptions.Output.Request(requestOptions.TemplateID, input.MetaInput.Input, request.Type().String(), dataErr)
-				requestOptions.Progress.IncrementFailedRequestsBy(1)
 				return nil, errors.Wrap(dataErr, "could not evaluate template expressions")
 			}
 			if finalAddress == vVal && ignoreErrors {
@@ -537,12 +548,7 @@ mainLoop:
 			argsCopy[k] = v
 		}
 	}
-
-	// "Port" is a special variable that is considered as network port
-	// and is conditional based on input port and default port specified in input
-	argsCopy["Port"] = input.Port()
-
-	return &compiler.ExecuteArgs{Args: argsCopy}, nil
+	return argsCopy, nil
 }
 
 // RequestPartDefinitions contains a mapping of request part definitions and their
