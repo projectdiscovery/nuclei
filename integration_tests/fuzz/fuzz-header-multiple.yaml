@@ -1,11 +1,11 @@
-id: fuzz-header-basic
+id: fuzz-header-multiple
 
 info:
-  name: fuzz header basic
+  name: fuzz header multiple
   author: pdteam
   severity: info
   description: |
-    In this template we check for any reflection when fuzzing headers
+    In this template we fuzz multiple headers with single payload
 
 http:
   - raw:
