@@ -19,12 +19,11 @@ function ListDir(path, itemType) {
  * @function
  * @description ReadFile reads file contents within permitted paths
  * @param {string} path - The path to read file from.
- * @typedef {Object} byte
- * @returns {byte[]} - The contents of the file in bytes.
+ * @returns {Uint8Array} - The contents of the file in a byte array.
  * @throws {error} - The error encountered during file reading.
  * @example
  * let m = require('nuclei/fs'); 
- * let contents = m.ReadFile('/tmp/file.txt');
+ * let content = m.ReadFile('/tmp/file.txt');
  */
 function ReadFile(path) {
     // implemented in go
@@ -38,7 +37,7 @@ function ReadFile(path) {
  * @throws {error} - The error encountered during file reading.
  * @example
  * let m = require('nuclei/fs'); 
- * let contents = m.ReadFileAsString('/tmp/file.txt');
+ * let content = m.ReadFileAsString('/tmp/file.txt');
  */
 function ReadFileAsString(path) {
     // implemented in go

@@ -86,7 +86,9 @@ function ListTests(){
 1. DONOT ADD ANY NEW Annotation (@) Other than those already mentioned in above example
 2. All Function/Class/Method body should be empty with comment 'implemented in go'
 3. ALL MODULE IMPORT PATHS SHOULD BE 'nuclei/<module name>'
-4. If any function returns a unknown type then always define it using @typedef and then use it in @returns
+4. ALWAYS replace '[]byte' with Uint8Array and treat as equivalent
+5. IF AND ONLY IF a function returns unknown objects (ex: LDAPResponse etc) only then create a @typedef for it and then use @returns with that
+6. DONOT create a typedef for built in and known types like string,int,float,[]byte,bool etc
 --- end instructions ---
 `
 
