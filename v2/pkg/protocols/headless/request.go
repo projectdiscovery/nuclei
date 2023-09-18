@@ -6,6 +6,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/projectdiscovery/retryablehttp-go"
+
 	"github.com/pkg/errors"
 	"golang.org/x/exp/maps"
 
@@ -211,12 +213,16 @@ func (request *Request) executeFuzzingRule(input *contextargs.Context, payloads 
 	if _, err := urlutil.Parse(input.MetaInput.Input); err != nil {
 		return errors.Wrap(err, "could not parse url")
 	}
+	baseRequest, err := retryablehttp.NewRequest("GET", input.MetaInput.Input, nil)
+	if err != nil {
+		return errors.Wrap(err, "could not create base request")
+	}
 	for _, rule := range request.Fuzzing {
 		err := rule.Execute(&fuzz.ExecuteRuleInput{
 			Input:       input,
 			Callback:    fuzzRequestCallback,
 			Values:      payloads,
-			BaseRequest: nil,
+			BaseRequest: baseRequest,
 		})
 		if err == types.ErrNoMoreRequests {
 			return nil

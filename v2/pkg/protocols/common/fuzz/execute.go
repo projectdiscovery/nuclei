@@ -9,7 +9,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/contextargs"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/generators"
 	"github.com/projectdiscovery/retryablehttp-go"
-	urlutil "github.com/projectdiscovery/utils/url"
+	errorutil "github.com/projectdiscovery/utils/errors"
 )
 
 // ExecuteRuleInput is the input for rule Execute function
@@ -42,8 +42,11 @@ type GeneratedRequest struct {
 // Input is not thread safe and should not be shared between concurrent
 // goroutines.
 func (rule *Rule) Execute(input *ExecuteRuleInput) error {
-	if !rule.isExecutable(input.Input) {
-		return nil
+	if input.BaseRequest == nil {
+		return errorutil.NewWithTag("fuzz", "base request is nil for rule %v", rule)
+	}
+	if !rule.isExecutable(input.BaseRequest) {
+		return errorutil.NewWithTag("fuzz", "rule is not executable on %v", input.BaseRequest.URL.String())
 	}
 	baseValues := input.Values
 	if rule.generator == nil {
@@ -70,12 +73,11 @@ func (rule *Rule) Execute(input *ExecuteRuleInput) error {
 }
 
 // isExecutable returns true if the rule can be executed based on provided input
-func (rule *Rule) isExecutable(input *contextargs.Context) bool {
-	parsed, err := urlutil.Parse(input.MetaInput.Input)
-	if err != nil {
-		return false
+func (rule *Rule) isExecutable(req *retryablehttp.Request) bool {
+	if !req.Query().IsEmpty() && rule.partType == queryPartType {
+		return true
 	}
-	if !parsed.Query().IsEmpty() && rule.partType == queryPartType {
+	if len(req.Header) > 0 && rule.partType == headersPartType {
 		return true
 	}
 	return false
