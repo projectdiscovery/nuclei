@@ -2,10 +2,11 @@ package headless
 
 import (
 	"fmt"
-	"github.com/projectdiscovery/retryablehttp-go"
 	"net/url"
 	"strings"
 	"time"
+
+	"github.com/projectdiscovery/retryablehttp-go"
 
 	"github.com/pkg/errors"
 	"golang.org/x/exp/maps"

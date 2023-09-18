@@ -2,11 +2,12 @@ package fuzz
 
 import (
 	"context"
-	"github.com/pkg/errors"
-	"github.com/projectdiscovery/gologger"
 	"io"
 	"net/http"
 	"strings"
+
+	"github.com/pkg/errors"
+	"github.com/projectdiscovery/gologger"
 
 	"github.com/corpix/uarand"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/expressions"
@@ -48,7 +49,7 @@ func (rule *Rule) executeHeadersPartRule(input *ExecuteRuleInput, payload string
 
 			if rule.modeType == singleModeType {
 				headers[key] = cloned
-				if err := rule.buildHeadersInput(input, headers, input.InteractURLs); err != nil {
+				if err := rule.buildHeadersInput(input, headers, input.InteractURLs); err != nil && err != io.EOF {
 					gologger.Error().Msgf("Could not build request for headers part rule %v: %s\n", rule, err)
 					return err
 				}
@@ -114,12 +115,13 @@ func (rule *Rule) executeQueryPartRule(input *ExecuteRuleInput, payload string) 
 func (rule *Rule) buildHeadersInput(input *ExecuteRuleInput, headers http.Header, interactURLs []string) error {
 	var req *retryablehttp.Request
 	if input.BaseRequest == nil {
-		return errors.New("Base request cannot be null when fuzzing headers")
+		return errors.New("Base request cannot be nil when fuzzing headers")
 	} else {
 		req = input.BaseRequest.Clone(context.TODO())
 		req.Header = headers
-		// If we modify Host header we also should change this property
-		req.Host = headers.Get("Host")
+		// update host of request and not URL
+		// URL.Host is used to dial the connection
+		req.Request.Host = req.Header.Get("Host")
 	}
 	request := GeneratedRequest{
 		Request:       req,

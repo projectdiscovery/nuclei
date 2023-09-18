@@ -277,6 +277,7 @@ func (request *Request) executeFuzzingRule(input *contextargs.Context, previous 
 			if request.options.HostErrorsCache != nil {
 				request.options.HostErrorsCache.MarkFailed(input.MetaInput.Input, requestErr)
 			}
+			gologger.Verbose().Msgf("[%s] Error occurred in request: %s\n", request.options.TemplateID, requestErr)
 		}
 		request.options.Progress.IncrementRequests()
 

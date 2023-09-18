@@ -9,6 +9,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/contextargs"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/generators"
 	"github.com/projectdiscovery/retryablehttp-go"
+	errorutil "github.com/projectdiscovery/utils/errors"
 )
 
 // ExecuteRuleInput is the input for rule Execute function
@@ -41,8 +42,11 @@ type GeneratedRequest struct {
 // Input is not thread safe and should not be shared between concurrent
 // goroutines.
 func (rule *Rule) Execute(input *ExecuteRuleInput) error {
+	if input.BaseRequest == nil {
+		return errorutil.NewWithTag("fuzz", "base request is nil for rule %v", rule)
+	}
 	if !rule.isExecutable(input.BaseRequest) {
-		return nil
+		return errorutil.NewWithTag("fuzz", "rule is not executable on %v", input.BaseRequest.URL.String())
 	}
 	baseValues := input.Values
 	if rule.generator == nil {
