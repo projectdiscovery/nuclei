@@ -1,6 +1,8 @@
 package fuzz
 
 import (
+	"github.com/projectdiscovery/retryablehttp-go"
+	"net/http"
 	"testing"
 
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
@@ -9,6 +11,68 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestExecuteHeadersPartRule(t *testing.T) {
+	options := &protocols.ExecutorOptions{
+		Interactsh: &interactsh.Client{},
+	}
+	req, err := retryablehttp.NewRequest("GET", "http://localhost:8080/", nil)
+	require.NoError(t, err, "can't build request")
+
+	req.Header.Set("X-Custom-Foo", "foo")
+	req.Header.Set("X-Custom-Bar", "bar")
+
+	t.Run("single", func(t *testing.T) {
+		rule := &Rule{
+			ruleType: postfixRuleType,
+			partType: headersPartType,
+			modeType: singleModeType,
+			options:  options,
+		}
+		var generatedHeaders []http.Header
+		err := rule.executeHeadersPartRule(&ExecuteRuleInput{
+			Input:       contextargs.New(),
+			BaseRequest: req,
+			Callback: func(gr GeneratedRequest) bool {
+				generatedHeaders = append(generatedHeaders, gr.Request.Header.Clone())
+				return true
+			},
+		}, "1337'")
+		require.NoError(t, err, "could not execute part rule")
+		require.ElementsMatch(t, []http.Header{
+			{
+				"X-Custom-Foo": {"foo1337'"},
+				"X-Custom-Bar": {"bar"},
+			},
+			{
+				"X-Custom-Foo": {"foo"},
+				"X-Custom-Bar": {"bar1337'"},
+			},
+		}, generatedHeaders, "could not get generated headers")
+	})
+
+	t.Run("multiple", func(t *testing.T) {
+		rule := &Rule{
+			ruleType: postfixRuleType,
+			partType: headersPartType,
+			modeType: multipleModeType,
+			options:  options,
+		}
+		var generatedHeaders http.Header
+		err := rule.executeHeadersPartRule(&ExecuteRuleInput{
+			Input:       contextargs.New(),
+			BaseRequest: req,
+			Callback: func(gr GeneratedRequest) bool {
+				generatedHeaders = gr.Request.Header.Clone()
+				return true
+			},
+		}, "1337'")
+		require.NoError(t, err, "could not execute part rule")
+		require.Equal(t, http.Header{
+			"X-Custom-Foo": {"foo1337'"},
+			"X-Custom-Bar": {"bar1337'"},
+		}, generatedHeaders, "could not get generated headers")
+	})
+}
 func TestExecuteQueryPartRule(t *testing.T) {
 	URL := "http://localhost:8080/?url=localhost&mode=multiple&file=passwdfile"
 	options := &protocols.ExecutorOptions{
