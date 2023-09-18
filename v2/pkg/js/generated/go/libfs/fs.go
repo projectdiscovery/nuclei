@@ -18,6 +18,7 @@ func init() {
 			"ListDir":          lib_fs.ListDir,
 			"ReadFile":         lib_fs.ReadFile,
 			"ReadFileAsString": lib_fs.ReadFileAsString,
+			"ReadFilesFromDir": lib_fs.ReadFilesFromDir,
 
 			// Var and consts
 

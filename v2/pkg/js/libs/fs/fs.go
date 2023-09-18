@@ -6,9 +6,9 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/protocolstate"
 )
 
-// ListDir lists directory contents within permitted paths
-// itemType can be used to filter type of results
-// allowed values are: file, dir, all
+// ListDir lists all files and directories within a path
+// depending on the itemType provided
+// itemType can be any one of ['file','dir','all']
 func ListDir(path string, itemType string) ([]string, error) {
 	finalPath, err := protocolstate.NormalizePath(path)
 	if err != nil {
@@ -49,4 +49,22 @@ func ReadFileAsString(path string) (string, error) {
 		return "", err
 	}
 	return string(bin), nil
+}
+
+// ReadFilesFromDir reads all files from a directory
+// and returns a array with file contents of all files
+func ReadFilesFromDir(dir string) ([]string, error) {
+	files, err := ListDir(dir, "file")
+	if err != nil {
+		return nil, err
+	}
+	var results []string
+	for _, file := range files {
+		content, err := ReadFileAsString(dir + "/" + file)
+		if err != nil {
+			return nil, err
+		}
+		results = append(results, content)
+	}
+	return results, nil
 }

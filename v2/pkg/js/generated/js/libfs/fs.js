@@ -1,54 +1,66 @@
-/**
- * @module fs
- */
+/**@module fs */
 
 /**
- * @method
- * @name ListDir
- * @param {string} path - The path of the directory.
- * @param {string} itemType - The type of the item (values => all/file/dir)
- * @throws {Error} If an error occurred while listing the directory.
+ * @function
+ * @description ListDir lists all files and directories within a path depending on the itemType provided. itemType can be any one of ['file','dir','all']
+ * @param {string} path - The path to list files and directories from.
+ * @param {string} itemType - The type of item to list. Can be 'file', 'dir', or 'all'.
+ * @returns {string[]} - The list of files or directories.
+ * @throws {error} - The error encountered during listing.
  * @example
- * // Usage of ListDir
- * let m = require('nuclei/fs');
- * let files = ListDir('helpers', 'file');
+ * let m = require('nuclei/fs'); 
+ * let items = m.ListDir('/tmp', 'all');
  */
 function ListDir(path, itemType) {
     // implemented in go
-}
+};
 
 /**
- * @method
- * @name ReadFile
- * @param {string} path - The path of the file.
- * @throws {Error} If an error occurred while reading the file.
- * @return {Buffer} The content of the file.
+ * @function
+ * @description ReadFile reads file contents within permitted paths
+ * @param {string} path - The path to read file from.
+ * @typedef {Object} byte
+ * @returns {byte[]} - The contents of the file in bytes.
+ * @throws {error} - The error encountered during file reading.
  * @example
- * // Usage of ReadFile
- * let m = require('nuclei/fs');
- * let content = ReadFile('helpers/usernames.txt');
+ * let m = require('nuclei/fs'); 
+ * let contents = m.ReadFile('/tmp/file.txt');
  */
 function ReadFile(path) {
     // implemented in go
-}
+};
 
 /**
- * @method
- * @name ReadFileAsString
- * @param {string} path - The path of the file.
- * @throws {Error} If an error occurred while reading the file.
- * @return {string} The content of the file as a string.
+ * @function
+ * @description ReadFileAsString reads file contents within permitted paths and returns content as string
+ * @param {string} path - The path to read file from.
+ * @returns {string} - The contents of the file as a string.
+ * @throws {error} - The error encountered during file reading.
  * @example
- * // Usage of ReadFileAsString
- * let m = require('nuclei/fs');
- * let content = ReadFileAsString('helpers/usernames.txt');
+ * let m = require('nuclei/fs'); 
+ * let contents = m.ReadFileAsString('/tmp/file.txt');
  */
 function ReadFileAsString(path) {
     // implemented in go
-}
+};
+
+/**
+ * @function
+ * @description ReadFilesFromDir reads all files from a directory and returns a array with file contents of all files
+ * @param {string} dir - The directory to read files from.
+ * @returns {string[]} - The contents of all files in the directory.
+ * @throws {error} - The error encountered during file reading.
+ * @example
+ * let m = require('nuclei/fs'); 
+ * let contents = m.ReadFilesFromDir('/tmp');
+ */
+function ReadFilesFromDir(dir) {
+    // implemented in go
+};
 
 module.exports = {
     ListDir: ListDir,
     ReadFile: ReadFile,
     ReadFileAsString: ReadFileAsString,
+    ReadFilesFromDir: ReadFilesFromDir,
 };

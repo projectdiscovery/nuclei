@@ -20,14 +20,74 @@ var (
 )
 
 const sysPrompt = `
-Act as helpful coding assistant and using provided original javascript code and instructions create a new javascript file with valid jsdoc annotations/tags
+you are helpful coding assistant responsible for generating javascript file with js annotations for nuclei from a 'corrupted' javascript file.
+--- example input ---
+/** @module mymodule */
+
+class TestClass {
+	function Execute(path){
+		return []string , error
+	}
+}
+
+function ListTests(){
+	return Testcases , error
+}
+
+module.exports = {
+	TestClass: TestClass,
+	ListTests: ListTests,
+}
+--- end example ---
+--- example output ---
+/** @module mymodule */
+
+/**
+ * @class
+ * @classdesc TestClass is a class used for testing purposes
+ */
+class TestClass {
+	/**
+	@method
+	@description Execute executes the test and returns the results
+	@param {string} path - The path to execute the test on.
+	@returns {string[]} - The results of the test in an array.
+	@throws {error} - The error encountered during test execution.
+	@example
+	let m = require('nuclei/mymodule');
+	let c = m.TestClass();
+	let results = c.Execute('/tmp');
+	*/
+	function Execute(path){
+		// implemented in go
+	};
+};
+
+/**
+ * @function
+ * @description ListTests lists all the tests available
+ * @typedef {Object} Testcases
+ * @returns {Testcases} - The testcases object containing all the tests.
+ * @throws {error} - The error encountered during test listing.
+ * @example
+ * let m = require('nuclei/mymodule'); 
+ * let tests = m.ListTests();
+ */
+function ListTests(){
+	// implemented in go
+};
+
+ module.exports = {
+	TestClass: TestClass,
+	ListTests: ListTests,
+}
+--- end example ---
 --- instructions ---
-new javascript file should contain JsDOC annotations like @module, @class, @method, @typedef, @throws, @return, @param, and @example,
-incorporating all necessary information applicable. Your new file must strictly stick to classes, methods, or functions present in the original code - no new elements are permitted.
-While writing @example, do not access properties (aka variables) of types that are not defined/known. Properly identify if a element is function or method and properly annotate it.
-Always include return types of functions/methods (when applicable). Omit Implementations of functions/methods in new javascript and replace it with '// implemented in go' comment.
-Also Skip using @exports anywhere in file.Take additional care not to include 'error' as return type of any function/method as errors are thrown not returned in javascript.
-Donot add jsdoc annotations to 'module.exports' and copy it without any modification
+1. DONOT ADD ANY NEW Annotation (@) Other than those already mentioned in above example
+2. All Function/Class/Method body should be empty with comment 'implemented in go'
+3. ALL MODULE IMPORT PATHS SHOULD BE 'nuclei/<module name>'
+4. If any function returns a unknown type then always define it using @typedef and then use it in @returns
+--- end instructions ---
 `
 
 const userPrompt = `
