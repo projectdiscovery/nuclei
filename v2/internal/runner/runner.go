@@ -337,7 +337,7 @@ func New(options *types.Options) (*Runner, error) {
 }
 
 func createReportingOptions(options *types.Options) (*reporting.Options, error) {
-	var reportingOptions *reporting.Options
+	var reportingOptions = &reporting.Options{}
 	if options.ReportingConfig != "" {
 		file, err := os.Open(options.ReportingConfig)
 		if err != nil {
@@ -345,62 +345,31 @@ func createReportingOptions(options *types.Options) (*reporting.Options, error) 
 		}
 		defer file.Close()
 
-		reportingOptions = &reporting.Options{}
 		if err := yaml.DecodeAndValidate(file, reportingOptions); err != nil {
 			return nil, errors.Wrap(err, "could not parse reporting config file")
 		}
 		Walk(reportingOptions, expandEndVars)
 	}
 	if options.MarkdownExportDirectory != "" {
-		if reportingOptions != nil {
-			reportingOptions.MarkdownExporter = &markdown.Options{
-				Directory:         options.MarkdownExportDirectory,
-				IncludeRawPayload: !options.OmitRawRequests,
-				SortMode:          options.MarkdownExportSortMode,
-			}
-		} else {
-			reportingOptions = &reporting.Options{}
-			reportingOptions.MarkdownExporter = &markdown.Options{
-				Directory:         options.MarkdownExportDirectory,
-				IncludeRawPayload: !options.OmitRawRequests,
-				SortMode:          options.MarkdownExportSortMode,
-			}
+		reportingOptions.MarkdownExporter = &markdown.Options{
+			Directory:         options.MarkdownExportDirectory,
+			IncludeRawPayload: !options.OmitRawRequests,
+			SortMode:          options.MarkdownExportSortMode,
 		}
 	}
 	if options.SarifExport != "" {
-		if reportingOptions != nil {
-			reportingOptions.SarifExporter = &sarif.Options{File: options.SarifExport}
-		} else {
-			reportingOptions = &reporting.Options{}
-			reportingOptions.SarifExporter = &sarif.Options{File: options.SarifExport}
-		}
+		reportingOptions.SarifExporter = &sarif.Options{File: options.SarifExport}
 	}
 	if options.JSONExport != "" {
-		if reportingOptions != nil {
-			reportingOptions.JSONExporter = &jsonexporter.Options{
-				File:              options.JSONExport,
-				IncludeRawPayload: !options.OmitRawRequests,
-			}
-		} else {
-			reportingOptions = &reporting.Options{}
-			reportingOptions.JSONExporter = &jsonexporter.Options{
-				File:              options.JSONExport,
-				IncludeRawPayload: !options.OmitRawRequests,
-			}
+		reportingOptions.JSONExporter = &jsonexporter.Options{
+			File:              options.JSONExport,
+			IncludeRawPayload: !options.OmitRawRequests,
 		}
 	}
 	if options.JSONLExport != "" {
-		if reportingOptions != nil {
-			reportingOptions.JSONLExporter = &jsonl.Options{
-				File:              options.JSONLExport,
-				IncludeRawPayload: !options.OmitRawRequests,
-			}
-		} else {
-			reportingOptions = &reporting.Options{}
-			reportingOptions.JSONLExporter = &jsonl.Options{
-				File:              options.JSONLExport,
-				IncludeRawPayload: !options.OmitRawRequests,
-			}
+		reportingOptions.JSONLExporter = &jsonl.Options{
+			File:              options.JSONLExport,
+			IncludeRawPayload: !options.OmitRawRequests,
 		}
 	}
 
