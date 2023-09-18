@@ -71,7 +71,7 @@ require (
 	github.com/projectdiscovery/fasttemplate v0.0.2
 	github.com/projectdiscovery/goflags v0.1.20
 	github.com/projectdiscovery/gologger v1.1.11
-	github.com/projectdiscovery/httpx v1.3.4
+	github.com/projectdiscovery/httpx v1.3.5
 	github.com/projectdiscovery/mapcidr v1.1.2
 	github.com/projectdiscovery/ratelimit v0.0.9
 	github.com/projectdiscovery/rdap v0.9.1-0.20221108103045-9865884d1917
