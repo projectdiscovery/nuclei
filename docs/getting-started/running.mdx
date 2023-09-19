@@ -688,6 +688,21 @@ github:
   issue-label: 'Nuclei'
 ```
 
+Alternatively if you use GitLab, create a config file following content and replace the appropriate values:
+
+```yaml
+# GitLab contains configuration options for GitLab issue tracker
+
+gitlab:
+  username: '$user'
+  base-url: 'gitlab.com'
+  token: '$token'
+  project-name: 'testing-project'
+  issue-label: 'nuclei-label'
+  severity-as-label: true
+  duplicate-issue-check: true
+```
+
 To store results in Elasticsearch, create a config file with the following content and replace the appropriate values:
 
 ```yaml
