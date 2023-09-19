@@ -818,7 +818,7 @@ It is also possible to visualize Nuclei results using **SARIF** files.
 
 1. By uploading a SARIF file to [SARIF Viewer](https://microsoft.github.io/sarif-web-component/)
 
-2. By uploading a SARIF file to []Github Actions](https://docs.github.com/en/code-security/code-scanning/integrating-with-code-scanning/uploading-a-sarif-file-to-github)
+2. By uploading a SARIF file to [Github Actions](https://docs.github.com/en/code-security/code-scanning/integrating-with-code-scanning/uploading-a-sarif-file-to-github)
 
 More info on the SARIF output is documented [here](https://github.com/projectdiscovery/nuclei/pull/2925).
 
@@ -835,7 +835,6 @@ Nuclei expose running scan metrics on a local port `9092` when `-metrics` flag i
 Here is an example to query `metrics` while running nuclei as following `nuclei -t cves/ -l urls.txt -metrics`
 
 ```bash
-
 curl -s localhost:9092/metrics | jq .
 ```
 
