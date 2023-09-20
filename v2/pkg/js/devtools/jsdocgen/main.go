@@ -64,9 +64,16 @@ class TestClass {
 };
 
 /**
+ * @typdef {object} Testcases
+ * @description Testcases is a object containing all the tests.
+ */
+ const Testcases = {};
+
+
+
+/**
  * @function
  * @description ListTests lists all the tests available
- * @typedef {Object} Testcases
  * @returns {Testcases} - The testcases object containing all the tests.
  * @throws {error} - The error encountered during test listing.
  * @example
@@ -77,7 +84,7 @@ function ListTests(){
 	// implemented in go
 };
 
- module.exports = {
+module.exports = {
 	TestClass: TestClass,
 	ListTests: ListTests,
 }
@@ -87,8 +94,9 @@ function ListTests(){
 2. All Function/Class/Method body should be empty with comment 'implemented in go'
 3. ALL MODULE IMPORT PATHS SHOULD BE 'nuclei/<module name>'
 4. ALWAYS replace '[]byte' with Uint8Array and treat as equivalent
-5. IF AND ONLY IF a function returns unknown objects (ex: LDAPResponse etc) only then create a @typedef for it and then use @returns with that
+5. IF AND ONLY IF a function returns unknown objects (ex: LDAPResponse etc) only then create a @typedef and its respecitve declaration using const <name> = {}
 6. DONOT create a typedef for built in and known types like string,int,float,[]byte,bool etc
+7. JsDOC comments **must** always start with /** and end with */ and each line should start with * (star)
 --- end instructions ---
 `
 

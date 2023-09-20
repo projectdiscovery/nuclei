@@ -145,7 +145,7 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 				Signatures: []string{
 					"set(string, interface{})",
 				},
-				Description: "set variable from init code. this function is available in init code only",
+				Description: "set variable from init code. this function is available in init code block only",
 				FuncDecl: func(varname string, value any) error {
 					if varname == "" {
 						return fmt.Errorf("variable name cannot be empty")
@@ -169,7 +169,7 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 				Signatures: []string{
 					"updatePayload(string, interface{})",
 				},
-				Description: "update/override any payload from init code. this function is available in init code only",
+				Description: "update/override any payload from init code. this function is available in init code block only",
 				FuncDecl: func(varname string, Value any) error {
 					if request.Payloads == nil {
 						request.Payloads = make(map[string]interface{})

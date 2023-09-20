@@ -1,42 +1,45 @@
-/**
- * @module goconsole
- */
+/** @module goconsole */
 
 /**
  * @class
- * GoConsolePrinter is a console printer for nuclei using gologger
+ * @classdesc GoConsolePrinter is a console printer for nuclei using gologger
  */
 class GoConsolePrinter {
     /**
-     * @method
-     * @param {string} msg - The message to be printed
-     * @throws {Error} If an error occurred
-     * @example
-     * let printer = new GoConsolePrinter();
-     * printer.Error("This is an error message");
-     */
+    * @method
+    * @description Error logs an error message
+    * @param {string} msg - The message to log.
+    * @example
+    * let m = require('nuclei/goconsole');
+    * let c = m.GoConsolePrinter();
+    * c.Error('This is an error message');
+    */
     Error(msg) {
         // implemented in go
     };
 
     /**
-     * @method
-     * @param {string} msg - The message to be logged
-     * @example
-     * let printer = new GoConsolePrinter();
-     * printer.Log("This is a log message");
-     */
+    * @method
+    * @description Log logs a message
+    * @param {string} msg - The message to log.
+    * @example
+    * let m = require('nuclei/goconsole');
+    * let c = m.GoConsolePrinter();
+    * c.Log('This is a log message');
+    */
     Log(msg) {
         // implemented in go
     };
 
     /**
-     * @method
-     * @param {string} msg - The message to be warned
-     * @example
-     * let printer = new GoConsolePrinter();
-     * printer.Warn("This is a warning message");
-     */
+    * @method
+    * @description Warn logs a warning message
+    * @param {string} msg - The message to log.
+    * @example
+    * let m = require('nuclei/goconsole');
+    * let c = m.GoConsolePrinter();
+    * c.Warn('This is a warning message');
+    */
     Warn(msg) {
         // implemented in go
     };
@@ -44,15 +47,16 @@ class GoConsolePrinter {
 
 /**
  * @function
- * @returns {GoConsolePrinter} A new instance of GoConsolePrinter
+ * @description NewGoConsolePrinter creates a new instance of GoConsolePrinter
+ * @returns {GoConsolePrinter} - The new instance of GoConsolePrinter.
  * @example
- * let printer = NewGoConsolePrinter();
+ * let m = require('nuclei/goconsole'); 
+ * let printer = m.NewGoConsolePrinter();
  */
 function NewGoConsolePrinter() {
     // implemented in go
 };
 
-// ReadOnly DONOT EDIT
 module.exports = {
     GoConsolePrinter: GoConsolePrinter,
     NewGoConsolePrinter: NewGoConsolePrinter,
