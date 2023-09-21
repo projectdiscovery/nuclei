@@ -53,27 +53,7 @@ func main() {
 
 	// sign the templates if requested - only glob syntax is supported
 	if options.SignTemplates {
-		privKey := os.Getenv(signer.PrivateKeyEnvVarName)
-		if privKey == "" {
-			gologger.Fatal().Msgf("private key '%s' not defined ", signer.PrivateKeyEnvVarName)
-		}
-		pubKey := os.Getenv(signer.PublicKeyEnvVarName)
-		if pubKey == "" {
-			gologger.Fatal().Msgf("public key '%s' not defined ", signer.PublicKeyEnvVarName)
-		}
-		signerOptions := &signer.Options{
-			Algorithm: signer.RSA,
-		}
-		if fileutil.FileExists(privKey) {
-			signerOptions.PrivateKeyName = privKey
-		} else {
-			signerOptions.PrivateKeyData = []byte(privKey)
-		}
-		if fileutil.FileExists(pubKey) {
-			signerOptions.PublicKeyName = pubKey
-		} else {
-			signerOptions.PublicKeyData = []byte(pubKey)
-		}
+		signerOptions := signer.GetSigerKeysOrGenerate()
 		sign, err := signer.New(signerOptions)
 		if err != nil {
 			gologger.Fatal().Msgf("couldn't initialize signer crypto engine: %s\n", err)

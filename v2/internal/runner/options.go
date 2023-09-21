@@ -435,26 +435,10 @@ func readEnvInputVars(options *types.Options) {
 }
 
 func loadTemplateSignaturesKeys(options *types.Options) error {
-	if options.CodeTemplateSignaturePublicKey == "" {
-		return errors.New("public key not defined")
-	}
-
-	if options.CodeTemplateSignatureAlgorithm == "" {
-		return errors.New("signature algorithm not defined")
-	}
-
-	signatureAlgo, err := signer.ParseAlgorithm(options.CodeTemplateSignatureAlgorithm)
+	signerOptions, err := signer.GetSignerOptions()
 	if err != nil {
 		return err
 	}
-
-	signerOptions := &signer.Options{Algorithm: signatureAlgo}
-	if fileutil.FileExists(options.CodeTemplateSignaturePublicKey) {
-		signerOptions.PublicKeyName = options.CodeTemplateSignaturePublicKey
-	} else {
-		signerOptions.PublicKeyData = []byte(options.CodeTemplateSignaturePublicKey)
-	}
-
 	verifier, err := signer.NewVerifier(signerOptions)
 	if err != nil {
 		return err

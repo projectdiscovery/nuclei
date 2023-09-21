@@ -44,8 +44,8 @@ func main() {
 		log.Fatalf("couldn't parse options: %s\n", err)
 	}
 
-	algo, err := signer.ParseAlgorithm(opts.Algorithm)
-	if err != nil {
+	algo := signer.ParseAlgorithm(opts.Algorithm)
+	if algo == signer.Undefined {
 		log.Fatal("unknown algorithm type")
 	}
 

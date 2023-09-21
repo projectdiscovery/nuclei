@@ -12,8 +12,11 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/projectdiscovery/gologger"
+	errorutil "github.com/projectdiscovery/utils/errors"
 	fileutil "github.com/projectdiscovery/utils/file"
 	"golang.org/x/crypto/ssh"
+	"golang.org/x/term"
 )
 
 type Signer struct {
@@ -198,6 +201,25 @@ func parseECDSA(privateKeyData, publicKeyData []byte) (*ecdsa.PrivateKey, *ecdsa
 
 func parseECDSAPrivateKey(privateKeyData []byte) (*ecdsa.PrivateKey, error) {
 	blockPriv, _ := pem.Decode(privateKeyData)
+	if blockPriv == nil {
+		return nil, errorutil.New("failed to decode PEM block containing the private key")
+	}
+	// if pem block is encrypted , decrypt it
+	if x509.IsEncryptedPEMBlock(blockPriv) { // nolint: all
+		gologger.Info().Msgf("Private Key is encrypted with passphrase")
+		gologger.DefaultLogger.Print().Msgf("Enter passphrase (exit to abort): ")
+		bin, err := term.ReadPassword(int(os.Stdin.Fd()))
+		if err != nil {
+			return nil, err
+		}
+		if string(bin) == "exit" {
+			return nil, errorutil.New("private key requires passphrase, but none was provided")
+		}
+		blockPriv.Bytes, err = x509.DecryptPEMBlock(blockPriv, bin) // nolint: all
+		if err != nil {
+			return nil, err
+		}
+	}
 	return x509.ParseECPrivateKey(blockPriv.Bytes)
 }
 

@@ -14,15 +14,15 @@ const (
 	Undefined
 )
 
-func ParseAlgorithm(algorithm string) (AlgorithmType, error) {
+func ParseAlgorithm(algorithm string) AlgorithmType {
 	algorithm = strings.ToLower(strings.TrimSpace(algorithm))
 	switch algorithm {
 	case "ecdsa":
-		return ECDSA, nil
+		return ECDSA
 	case "rsa":
-		return RSA, nil
+		return RSA
 	default:
-		return Undefined, nil
+		return Undefined
 	}
 }
 
