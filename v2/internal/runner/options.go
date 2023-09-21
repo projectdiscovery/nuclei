@@ -435,7 +435,7 @@ func readEnvInputVars(options *types.Options) {
 }
 
 func loadTemplateSignaturesKeys(options *types.Options) error {
-	signerOptions, err := signer.GetSignerOptions()
+	signerOptions, err := signer.GetSignerVerifyOptions()
 	if err != nil {
 		return err
 	}

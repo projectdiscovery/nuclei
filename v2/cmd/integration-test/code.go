@@ -3,7 +3,6 @@ package main
 import (
 	"errors"
 	"log"
-	"os"
 	"path/filepath"
 
 	osutils "github.com/projectdiscovery/utils/os"
@@ -96,24 +95,18 @@ func signTemplates() {
 	}
 }
 
-func prepareEnv(keypath string) {
-	os.Setenv("NUCLEI_SIGNATURE_PUBLIC_KEY", keypath)
-	os.Setenv("NUCLEI_SIGNATURE_ALGORITHM", "ecdsa")
-}
-
-func tearDownEnv() {
-	os.Unsetenv("NUCLEI_SIGNATURE_PUBLIC_KEY")
-	os.Unsetenv("NUCLEI_SIGNATURE_ALGORITHM")
+func getEnvValues() []string {
+	return []string{
+		"NUCLEI_SIGNATURE_PUBLIC_KEY=" + ecdsaPublicKeyAbsPath,
+		"NUCLEI_SIGNATURE_ALGORITHM=ecdsa",
+	}
 }
 
 type codeSnippet struct{}
 
 // Execute executes a test case and returns an error if occurred
 func (h *codeSnippet) Execute(filePath string) error {
-	prepareEnv(ecdsaPublicKeyAbsPath)
-	defer tearDownEnv()
-
-	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, "input", debug)
+	results, err := testutils.RunNucleiArgsWithEnvAndGetResults(debug, getEnvValues(), "-t", filePath, "-u", "input")
 	if err != nil {
 		return err
 	}
@@ -124,10 +117,7 @@ type codeFile struct{}
 
 // Execute executes a test case and returns an error if occurred
 func (h *codeFile) Execute(filePath string) error {
-	prepareEnv(ecdsaPublicKeyAbsPath)
-	defer tearDownEnv()
-
-	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, "input", debug)
+	results, err := testutils.RunNucleiArgsWithEnvAndGetResults(debug, getEnvValues(), "-t", filePath, "-u", "input")
 	if err != nil {
 		return err
 	}
@@ -138,10 +128,7 @@ type codeEnvVar struct{}
 
 // Execute executes a test case and returns an error if occurred
 func (h *codeEnvVar) Execute(filePath string) error {
-	prepareEnv(ecdsaPublicKeyAbsPath)
-	defer tearDownEnv()
-
-	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, "input", debug, "-V", "baz=baz")
+	results, err := testutils.RunNucleiArgsWithEnvAndGetResults(debug, getEnvValues(), "-t", filePath, "-u", "input")
 	if err != nil {
 		return err
 	}
@@ -152,10 +139,7 @@ type unsignedCode struct{}
 
 // Execute executes a test case and returns an error if occurred
 func (h *unsignedCode) Execute(filePath string) error {
-	prepareEnv(ecdsaPublicKeyAbsPath)
-	defer tearDownEnv()
-
-	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, "input", debug)
+	results, err := testutils.RunNucleiArgsWithEnvAndGetResults(debug, getEnvValues(), "-t", filePath, "-u", "input")
 
 	// should error out
 	if err != nil {
@@ -170,10 +154,7 @@ type rsaSignedCode struct{}
 
 // Execute executes a test case and returns an error if occurred
 func (h *rsaSignedCode) Execute(filePath string) error {
-	prepareEnv(rsaPublicKeyAbsPath)
-	defer tearDownEnv()
-
-	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, "input", debug)
+	results, err := testutils.RunNucleiArgsWithEnvAndGetResults(debug, getEnvValues(), "-t", filePath, "-u", "input")
 
 	// should error out
 	if err != nil {

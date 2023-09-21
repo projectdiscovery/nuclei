@@ -255,5 +255,5 @@ func readKeyFromFileOrEnv(keypath string) ([]byte, error) {
 	if keydata := os.Getenv(keypath); keydata != "" {
 		return []byte(keydata), nil
 	}
-	return nil, fmt.Errorf("Key not found in file or environment variable: %s", keypath)
+	return nil, fmt.Errorf("key not found in file or environment variable: %s", keypath)
 }

@@ -36,6 +36,28 @@ type Options struct {
 	Algorithm      AlgorithmType
 }
 
+// HasPublicKey returns true if the options has a public key and algorithm
+func (o *Options) HasPublicKey() bool {
+	if o.Algorithm == Undefined {
+		return false
+	}
+	if o.PublicKeyName != "" || len(o.PublicKeyData) > 0 {
+		return true
+	}
+	return false
+}
+
+// HasPrivateKey returns true if the options has a private key and algorithm
+func (o *Options) HasPrivateKey() bool {
+	if o.Algorithm == Undefined {
+		return false
+	}
+	if o.PrivateKeyName != "" || len(o.PrivateKeyData) > 0 {
+		return true
+	}
+	return false
+}
+
 var (
 	ReDigest            = regexp.MustCompile(`(?m)^#\sdigest:\s.+$`)
 	ErrUnknownAlgorithm = errors.New("unknown algorithm")

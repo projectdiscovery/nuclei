@@ -15,7 +15,6 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/config"
 	errorutil "github.com/projectdiscovery/utils/errors"
 	fileutil "github.com/projectdiscovery/utils/file"
-	"github.com/projectdiscovery/utils/generic"
 	"golang.org/x/term"
 )
 
@@ -53,7 +52,7 @@ func AddToDefault(s *Signer) error {
 // GetSigerKeysOrGenerate returns the key if exist or generates new keys
 func GetSigerKeysOrGenerate() *Options {
 	// get keys from env or config directory
-	keys, err := getKeys()
+	keys, err := getKeys(true)
 	if err == nil {
 		return keys
 	}
@@ -62,55 +61,61 @@ func GetSigerKeysOrGenerate() *Options {
 	return generateKeyPair()
 }
 
-// GetSignerOptions gets signer options from environment variables or config directory
-func GetSignerOptions() (*Options, error) {
-	return getKeys()
+// GetSignerVerifyOptions gets signer options from environment variables or config directory
+// note: this does not load private key
+func GetSignerVerifyOptions() (*Options, error) {
+	return getKeys(false)
 }
 
 // getKeysOrGenerate returns the keys from the environment variables
 // or nuclei config directory if they are present
-func getKeys() (*Options, error) {
+func getKeys(requirePrivateKey bool) (*Options, error) {
 	// GET KEYS FROM ENV
+	keys := getKeysFromEnv()
+	// validate keys from env
+	if keys.HasPublicKey() && keys.HasPrivateKey() {
+		return keys, nil
+	} else if keys.HasPublicKey() && !keys.HasPrivateKey() && !requirePrivateKey {
+		return keys, nil
+	}
+	// fallback to load keys from config directory
+	keys = getKeysFromConfigDir()
+	// validate keys from config directory
+	if keys.HasPublicKey() && keys.HasPrivateKey() {
+		return keys, nil
+	} else if keys.HasPublicKey() && !keys.HasPrivateKey() && !requirePrivateKey {
+		return keys, nil
+	}
+
+	return nil, errorutil.New("template signer keys not found use -sign to generate new keys")
+}
+
+func getKeysFromEnv() *Options {
 	privKey := getDataFromEnv(PrivateKeyEnvVarName)
 	pubKey := getDataFromEnv(PublicKeyEnvVarName)
 	algo := os.Getenv(AlgorithmEnvVarName)
 
-	isValid := true
-	algotype := ParseAlgorithm(algo)
-	// all above 3 values are required if not present its invalid
-	if privKey == nil || pubKey == nil || algo == "" || algotype == Undefined {
-		isValid = false
+	return &Options{
+		PrivateKeyData: privKey,
+		PublicKeyData:  pubKey,
+		Algorithm:      ParseAlgorithm(algo),
 	}
+}
 
-	if isValid {
-		return &Options{
-			PrivateKeyData: privKey,
-			PublicKeyData:  pubKey,
-			Algorithm:      algotype,
-		}, nil
-	}
-
-	// If keys are not present in env get them from config directory
+func getKeysFromConfigDir() *Options {
+	opts := &Options{}
 	cfgdir := config.DefaultConfig.GetConfigDir()
-	// check if keys are present in config directory
-	FileExists := func(fileName string) bool {
-		return fileutil.FileExists(filepath.Join(cfgdir, fileName))
-	}
-	keyfilesExist := generic.EqualsAll(true, FileExists(PrivateKeyFileName), FileExists(PublicKeyFileName), FileExists(AlgoFileName))
 
-	algotype = ParseAlgorithm(string(getDataFromFile(filepath.Join(cfgdir, AlgoFileName))))
-	if algotype == Undefined && keyfilesExist {
-		return nil, errorutil.New("invalid algorithm")
+	if fileutil.FileExists(filepath.Join(cfgdir, PrivateKeyFileName)) {
+		opts.PrivateKeyName = filepath.Join(cfgdir, PrivateKeyFileName)
 	}
-	if keyfilesExist {
-		return &Options{
-			PrivateKeyName: filepath.Join(cfgdir, PrivateKeyFileName),
-			PublicKeyName:  filepath.Join(cfgdir, PublicKeyFileName),
-			Algorithm:      algotype,
-		}, nil
+	if fileutil.FileExists(filepath.Join(cfgdir, PublicKeyFileName)) {
+		opts.PublicKeyName = filepath.Join(cfgdir, PublicKeyFileName)
 	}
-
-	return nil, errorutil.New("template signer keys not found use -sign to generate new keys")
+	if fileutil.FileExists(filepath.Join(cfgdir, AlgoFileName)) {
+		opts.Algorithm = ParseAlgorithm(string(getDataFromFile(filepath.Join(cfgdir, AlgoFileName))))
+	}
+	return opts
 }
 
 func generateKeyPair() *Options {
