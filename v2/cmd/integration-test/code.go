@@ -102,6 +102,13 @@ func getEnvValues() []string {
 	}
 }
 
+func getRSAEnvValues() []string {
+	return []string{
+		"NUCLEI_SIGNATURE_PUBLIC_KEY=" + rsaPublicKeyAbsPath,
+		"NUCLEI_SIGNATURE_ALGORITHM=rsa",
+	}
+}
+
 type codeSnippet struct{}
 
 // Execute executes a test case and returns an error if occurred
@@ -154,7 +161,7 @@ type rsaSignedCode struct{}
 
 // Execute executes a test case and returns an error if occurred
 func (h *rsaSignedCode) Execute(filePath string) error {
-	results, err := testutils.RunNucleiArgsWithEnvAndGetResults(debug, getEnvValues(), "-t", filePath, "-u", "input")
+	results, err := testutils.RunNucleiArgsWithEnvAndGetResults(debug, getRSAEnvValues(), "-t", filePath, "-u", "input")
 
 	// should error out
 	if err != nil {
