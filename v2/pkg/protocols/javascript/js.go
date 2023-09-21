@@ -379,7 +379,6 @@ func (request *Request) executeRequestParallel(ctxParent context.Context, hostPo
 				shouldStopAtFirstMatch := request.options.Options.StopAtFirstMatch || request.StopAtFirstMatch
 				if err := request.executeRequestWithPayloads(hostPort, input, hostname, value, payloadValues, func(result *output.InternalWrappedEvent) {
 					if result.OperatorsResult != nil && result.OperatorsResult.Matched {
-						fmt.Print("got match\n")
 						gotmatches.Store(true)
 					}
 					callback(result)
@@ -393,7 +392,6 @@ func (request *Request) executeRequestParallel(ctxParent context.Context, hostPo
 				// If this was a match, and we want to stop at first match, skip all further requests.
 
 				if shouldStopAtFirstMatch && gotmatches.Load() {
-					fmt.Printf("canceling\n")
 					cancel()
 					return
 				}
