@@ -148,7 +148,7 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 	data := make(output.InternalEvent)
 
 	data["type"] = request.Type().String()
-	data["response"] = string(dataOutput)
+	data["response"] = fmtStdout(string(dataOutput))
 	data["body"] = dataOutputString
 	data["input"] = input.MetaInput.Input
 	data["template-path"] = request.options.TemplatePath
