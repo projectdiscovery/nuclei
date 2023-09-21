@@ -207,11 +207,12 @@ func parseECDSAPrivateKey(privateKeyData []byte) (*ecdsa.PrivateKey, error) {
 	// if pem block is encrypted , decrypt it
 	if x509.IsEncryptedPEMBlock(blockPriv) { // nolint: all
 		gologger.Info().Msgf("Private Key is encrypted with passphrase")
-		gologger.DefaultLogger.Print().Msgf("Enter passphrase (exit to abort): ")
+		fmt.Printf("[*] Enter passphrase (exit to abort): ")
 		bin, err := term.ReadPassword(int(os.Stdin.Fd()))
 		if err != nil {
 			return nil, err
 		}
+		fmt.Println()
 		if string(bin) == "exit" {
 			return nil, errorutil.New("private key requires passphrase, but none was provided")
 		}

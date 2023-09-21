@@ -7,6 +7,7 @@ import (
 	"crypto/x509"
 	"encoding/pem"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 
@@ -98,7 +99,7 @@ func getKeys() (*Options, error) {
 	keyfilesExist := generic.EqualsAll(true, FileExists(PrivateKeyFileName), FileExists(PublicKeyFileName), FileExists(AlgoFileName))
 
 	algotype = ParseAlgorithm(string(getDataFromFile(filepath.Join(cfgdir, AlgoFileName))))
-	if algotype == Undefined {
+	if algotype == Undefined && keyfilesExist {
 		return nil, errorutil.New("invalid algorithm")
 	}
 	if keyfilesExist {
@@ -109,12 +110,12 @@ func getKeys() (*Options, error) {
 		}, nil
 	}
 
-	return nil, errorutil.New("keys not found")
+	return nil, errorutil.New("template signer keys not found use -sign to generate new keys")
 }
 
 func generateKeyPair() *Options {
 	gologger.Info().Msgf("Generating new key-pair for signing code templates")
-	gologger.DefaultLogger.Print().Msgf("Enter passphrase (exit to abort): ")
+	fmt.Printf("[*] Enter passphrase (exit to abort): ")
 	passphrase := getPassphrase()
 
 	// generate new key-pair
@@ -195,14 +196,16 @@ func getPassphrase() []byte {
 	if err != nil {
 		gologger.Fatal().Msgf("could not read passphrase: %s", err)
 	}
+	fmt.Println()
 	if string(bin) == "exit" {
 		gologger.Fatal().Msgf("exiting")
 	}
-	gologger.Info().Msgf("Enter same passphrase again")
+	fmt.Printf("[*] Enter same passphrase again: ")
 	bin2, err := term.ReadPassword(int(os.Stdin.Fd()))
 	if err != nil {
 		gologger.Fatal().Msgf("could not read passphrase: %s", err)
 	}
+	fmt.Println()
 	// review: should we allow empty passphrase?
 	// we currently allow empty passphrase
 	if string(bin) != string(bin2) {
