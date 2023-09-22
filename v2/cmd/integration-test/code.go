@@ -135,7 +135,7 @@ type codeEnvVar struct{}
 
 // Execute executes a test case and returns an error if occurred
 func (h *codeEnvVar) Execute(filePath string) error {
-	results, err := testutils.RunNucleiArgsWithEnvAndGetResults(debug, getEnvValues(), "-t", filePath, "-u", "input")
+	results, err := testutils.RunNucleiArgsWithEnvAndGetResults(debug, getEnvValues(), "-t", filePath, "-u", "input", "-V", "baz=baz")
 	if err != nil {
 		return err
 	}

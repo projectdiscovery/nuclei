@@ -208,7 +208,7 @@ func (request *Request) executeRequestWithPayloads(target *contextargs.Context, 
 	}
 
 	if vardump.EnableVarDump {
-		gologger.Debug().Msgf("Protocol request variables: \n%s\n", vardump.DumpVariables(payloadValues))
+		gologger.Debug().Msgf("Websocket Protocol request variables: \n%s\n", vardump.DumpVariables(payloadValues))
 	}
 
 	finalAddress, dataErr := expressions.EvaluateByte([]byte(request.Address), payloadValues)

@@ -1,6 +1,6 @@
 module github.com/projectdiscovery/nuclei/v2
 
-go 1.20
+go 1.21
 
 require (
 	github.com/Knetic/govaluate v3.0.1-0.20171022003610-9aa49832a739+incompatible
@@ -82,7 +82,7 @@ require (
 	github.com/projectdiscovery/goflags v0.1.20
 	github.com/projectdiscovery/gologger v1.1.11
 	github.com/projectdiscovery/gostruct v0.0.1
-	github.com/projectdiscovery/gozero v0.0.0-20230510004414-f1d11fdaf5c6
+	github.com/projectdiscovery/gozero v0.0.0-20230922163601-43ad398bdcdf
 	github.com/projectdiscovery/httpx v1.3.4
 	github.com/projectdiscovery/mapcidr v1.1.2
 	github.com/projectdiscovery/n3iwf v0.0.0-20230523120440-b8cd232ff1f5
@@ -91,7 +91,7 @@ require (
 	github.com/projectdiscovery/sarif v0.0.1
 	github.com/projectdiscovery/tlsx v1.1.4
 	github.com/projectdiscovery/uncover v1.0.6-0.20230601103158-bfd7e02a5bb1
-	github.com/projectdiscovery/utils v0.0.54
+	github.com/projectdiscovery/utils v0.0.55
 	github.com/projectdiscovery/wappalyzergo v0.0.107
 	github.com/redis/go-redis/v9 v9.1.0
 	github.com/ropnop/gokrb5/v8 v8.0.0-20201111231119-729746023c02
