@@ -1,0 +1,91 @@
+#  Copyright 2021 Praetorian Security, Inc.
+
+#  Licensed under the Apache License, Version 2.0 (the License);
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+
+#       http://www.apache.org/licenses/LICENSE-2.0
+
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an AS IS BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
+
+# GoKart analyzers configuration
+
+# Uncomment analyzers section below to create a new vulnerability type
+
+# analyzers:
+#   # Each entry specifies a vulnerability type.
+
+#   # Name of the vulnerability:
+#   Test Sink:
+#     # Description of this vulnerability
+#     doc: Writing data to Printf()
+#     # Message displayed when this vulnerability is found
+#     message: Test Sink reachable by user input
+#     # List of vulnerable functions used to identify this vulnerability
+#     vuln_calls:
+#       # Package name
+#       log:
+#         # Function name
+#         - Printf
+
+# Each entry specifies a source that should be considered untrusted
+# If the package already exists in the sources section, add the variable/function/type underneath
+# Each package can contain multiple vulnerable sources.
+sources:
+  # Sources that are defined in Go documentation as a variable go here (note: these variables will have an SSA type of Global).
+  variables:
+    os:
+      - Args
+  # Sources that are defined in Go documentation as a function go here.
+  functions:
+    flag:
+      - Arg
+      - Args
+    os:
+      - Environ
+      - File
+    crypto/tls:
+      - LoadX509KeyPair
+      - X509KeyPair
+    os/user:
+      - Lookup
+      - LookupId
+      - Current
+    crypto/x509:
+      - Subjects
+    io:
+      - ReadAtLeast
+      - ReadFull
+    database/sql:
+      - Query
+      - QueryRow
+    bytes:
+      - String
+      - ReadBytes
+      - ReadByte
+    bufio:
+      - Text
+      - Bytes
+      - ReadString
+      - ReadSlice
+      - ReadRune
+      - ReadLine
+      - ReadBytes
+      - ReadByte
+    archive/tar:
+      - Next
+      - FileInfo
+      - Header
+    net/url:
+      - ParseQuery
+      - ParseUriRequest
+      - Parse
+      - Query
+  # Sources that are defined in Go documentation as a type go here (note: adding types will consider all functions that use that type to be tainted).
+  types:
+    net/http:
+      - Request
