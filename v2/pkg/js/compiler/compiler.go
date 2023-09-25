@@ -5,6 +5,7 @@ import (
 	"runtime/debug"
 
 	"github.com/dop251/goja"
+	"github.com/dop251/goja/parser"
 	"github.com/dop251/goja_nodejs/console"
 	"github.com/dop251/goja_nodejs/require"
 	jsoniter "github.com/json-iterator/go"
@@ -33,6 +34,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/js/global"
 	"github.com/projectdiscovery/nuclei/v2/pkg/js/libs/goconsole"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/generators"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/protocolstate"
 )
 
 // Compiler provides a runtime to execute goja runtime
@@ -104,6 +106,7 @@ func (c *Compiler) Execute(code string, args *ExecuteArgs) (ExecuteResult, error
 // VM returns a new goja runtime for the compiler.
 func (c *Compiler) VM() *goja.Runtime {
 	runtime := c.newRuntime(false)
+	runtime.SetParserOptions(parser.WithDisableSourceMaps)
 	c.registerHelpersForVM(runtime)
 	return runtime
 }
@@ -187,7 +190,7 @@ func convertOutputToResult(output interface{}) (ExecuteResult, error) {
 // newRuntime creates a new goja runtime
 // TODO: Add support for runtime reuse for helper functions
 func (c *Compiler) newRuntime(reuse bool) *goja.Runtime {
-	return goja.New()
+	return protocolstate.NewJSRuntime()
 }
 
 // registerHelpersForVM registers all the helper functions for the goja runtime.

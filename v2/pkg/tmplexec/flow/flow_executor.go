@@ -14,6 +14,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/contextargs"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/generators"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/protocolstate"
 	templateTypes "github.com/projectdiscovery/nuclei/v2/pkg/templates/types"
 
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
@@ -84,7 +85,7 @@ func NewFlowExecutor(requests []protocols.Request, input *contextargs.Context, o
 		},
 		protoFunctions: map[string]func(call goja.FunctionCall) goja.Value{},
 		results:        results,
-		jsVM:           goja.New(),
+		jsVM:           protocolstate.NewJSRuntime(),
 		input:          input,
 	}
 	return f
