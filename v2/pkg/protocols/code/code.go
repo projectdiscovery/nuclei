@@ -3,6 +3,7 @@ package code
 import (
 	"context"
 	"fmt"
+	"io"
 	"strings"
 	"time"
 
@@ -25,7 +26,6 @@ import (
 	protocolutils "github.com/projectdiscovery/nuclei/v2/pkg/protocols/utils"
 	templateTypes "github.com/projectdiscovery/nuclei/v2/pkg/templates/types"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
-	fileutil "github.com/projectdiscovery/utils/file"
 )
 
 // Request is a request for the SSL protocol
@@ -71,11 +71,25 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 
 	var src *gozero.Source
 
-	if fileutil.FileExists(request.Source) {
-		src, err = gozero.NewSourceWithFile(request.Source)
-	} else {
-		src, err = gozero.NewSourceWithString(request.Source, request.Pattern)
+	// simple test to check if source is a file or a snippet
+	if len(strings.Split(request.Source, "\n")) == 1 {
+		// get valid path to source file
+		sourceAbsPath, err := options.Options.GetValidAbsPath(request.Source, options.TemplatePath)
+		if err == nil {
+			// try to load it with sandbox config
+			data, err := options.Options.LoadHelperFile(sourceAbsPath, options.TemplatePath, options.Catalog)
+			if err != nil {
+				return err
+			}
+			val, err := io.ReadAll(data)
+			if err != nil {
+				return err
+			}
+			request.Source = string(val)
+		}
 	}
+
+	src, err = gozero.NewSourceWithString(request.Source, request.Pattern)
 	if err != nil {
 		return err
 	}

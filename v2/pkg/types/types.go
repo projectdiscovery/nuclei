@@ -475,25 +475,81 @@ func (options *Options) ParseHeadlessOptionalArguments() map[string]string {
 // LoadHelperFile loads a helper file needed for the template
 // this respects the sandbox rules and only loads files from
 // allowed directories
-func (options *Options) LoadHelperFile(filePath, templatePath string, catalog catalog.Catalog) (io.ReadCloser, error) {
+func (options *Options) LoadHelperFile(helperFile, templatePath string, catalog catalog.Catalog) (io.ReadCloser, error) {
 	if !options.AllowLocalFileAccess {
-		filePath = filepath.Clean(filePath)
-		templateAbsPath, err := filepath.Abs(templatePath)
+		// if global file access is disabled try loading with restrictions
+		absPath, err := options.GetValidAbsPath(helperFile, templatePath)
 		if err != nil {
-			return nil, errorutil.NewWithErr(err).Msgf("could not get absolute path")
+			return nil, err
 		}
-		templateDirectory := config.DefaultConfig.TemplatesDirectory
-		templatePathDir := filepath.Dir(templateAbsPath)
-		if !(templatePathDir != "/" && strings.HasPrefix(filePath, templatePathDir)) && !strings.HasPrefix(filePath, templateDirectory) {
-			return nil, errorutil.New("denied payload file path specified")
-		}
+		helperFile = absPath
 	}
 	if catalog != nil {
-		return catalog.OpenFile(filePath)
+		return catalog.OpenFile(helperFile)
 	}
-	f, err := os.Open(filePath)
+	f, err := os.Open(helperFile)
 	if err != nil {
-		return nil, errorutil.NewWithErr(err).Msgf("could not open file %v", filePath)
+		return nil, errorutil.NewWithErr(err).Msgf("could not open file %v", helperFile)
 	}
 	return f, nil
+}
+
+// GetValidAbsPath returns absolute path of helper file if it is allowed to be loaded
+// this respects the sandbox rules and only loads files from allowed directories
+func (o *Options) GetValidAbsPath(helperFilePath, templatePath string) (string, error) {
+	// Conditions to allow helper file
+	// 1. If helper file is present in nuclei-templates directory
+	// 2. If helper file and template file are in same directory given that its not root directory
+
+	// clean input path just in case
+	helperFilePath = filepath.Clean(helperFilePath)
+	templatePath = filepath.Clean(templatePath) // just in case
+
+	// Get platform specific absolute path of template directory
+	AbsTemplateDir, _ := filepath.Abs(config.DefaultConfig.TemplatesDirectory)
+
+	// As per rule, helper files present in nuclei-templates directory are allowed
+	if !filepath.IsAbs(helperFilePath) && fileutil.FileOrFolderExists(filepath.Join(AbsTemplateDir, helperFilePath)) {
+		// if helper file is relative path and present in nuclei-templates directory, allow it
+		return filepath.Join(config.DefaultConfig.TemplatesDirectory, helperFilePath), nil
+	} else if strings.HasPrefix(helperFilePath, AbsTemplateDir) {
+		// if helper file is absolute path and present in nuclei-templates directory, allow it
+		return helperFilePath, nil
+	}
+
+	// As per rule, if helper file and template file are in same directory given that its not root directory, allow it
+	helperBaseDir, err := getAbsDir(helperFilePath)
+	if err != nil {
+		return "", err
+	}
+	templateBaseDir, err := getAbsDir(templatePath)
+	if err != nil {
+		return "", err
+	}
+	if !isRootDir(helperBaseDir) && strings.HasPrefix(helperBaseDir, templateBaseDir) {
+		return filepath.Join(templateBaseDir, helperFilePath), nil
+	}
+
+	// all other cases are denied
+	return "", errorutil.New("denied payload file path specified")
+}
+
+// getAbsDir calulates absolute path of given path and returns its base directory
+func getAbsDir(path string) (string, error) {
+	absPath, err := filepath.Abs(path)
+	if err != nil {
+		return "", errorutil.NewWithErr(err).Msgf("could not get absolute path")
+	}
+	return filepath.Dir(absPath), nil
+}
+
+func isRootDir(path string) bool {
+	if path == "/" {
+		return true
+	}
+	if strings.HasSuffix(path, ":") || strings.HasSuffix(path, ":\\") {
+		// windows drive letter
+		return true
+	}
+	return false
 }

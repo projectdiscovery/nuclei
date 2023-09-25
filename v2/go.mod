@@ -22,11 +22,11 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/projectdiscovery/clistats v0.0.19
 	github.com/projectdiscovery/fastdialer v0.0.37
-	github.com/projectdiscovery/hmap v0.0.18
+	github.com/projectdiscovery/hmap v0.0.17
 	github.com/projectdiscovery/interactsh v1.1.6
 	github.com/projectdiscovery/rawhttp v0.1.18
 	github.com/projectdiscovery/retryabledns v1.0.35
-	github.com/projectdiscovery/retryablehttp-go v1.0.26
+	github.com/projectdiscovery/retryablehttp-go v1.0.25
 	github.com/projectdiscovery/yamldoc-go v1.0.4
 	github.com/remeh/sizedwaitgroup v1.0.0
 	github.com/rs/xid v1.5.0
@@ -77,12 +77,12 @@ require (
 	github.com/mholt/archiver v3.1.1+incompatible
 	github.com/ory/dockertest/v3 v3.10.0
 	github.com/praetorian-inc/fingerprintx v1.1.9
-	github.com/projectdiscovery/dsl v0.0.22-0.20230911020052-7ab80c9abba8
+	github.com/projectdiscovery/dsl v0.0.20
 	github.com/projectdiscovery/fasttemplate v0.0.2
-	github.com/projectdiscovery/goflags v0.1.20
+	github.com/projectdiscovery/goflags v0.1.19
 	github.com/projectdiscovery/gologger v1.1.11
 	github.com/projectdiscovery/gostruct v0.0.1
-	github.com/projectdiscovery/gozero v0.0.0-20230922163601-43ad398bdcdf
+	github.com/projectdiscovery/gozero v0.0.1
 	github.com/projectdiscovery/httpx v1.3.4
 	github.com/projectdiscovery/mapcidr v1.1.2
 	github.com/projectdiscovery/n3iwf v0.0.0-20230523120440-b8cd232ff1f5
