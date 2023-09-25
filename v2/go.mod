@@ -23,7 +23,7 @@ require (
 	github.com/projectdiscovery/clistats v0.0.19
 	github.com/projectdiscovery/fastdialer v0.0.37
 	github.com/projectdiscovery/hmap v0.0.19
-	github.com/projectdiscovery/interactsh v1.1.6
+	github.com/projectdiscovery/interactsh v1.1.7
 	github.com/projectdiscovery/rawhttp v0.1.18
 	github.com/projectdiscovery/retryabledns v1.0.35
 	github.com/projectdiscovery/retryablehttp-go v1.0.27
