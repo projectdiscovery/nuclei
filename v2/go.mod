@@ -123,7 +123,7 @@ require (
 	github.com/muesli/termenv v0.15.1 // indirect
 	github.com/pjbgf/sha1cd v0.3.0 // indirect
 	github.com/pkg/browser v0.0.0-20210911075715-681adbf594b8 // indirect
-	github.com/projectdiscovery/asnmap v1.0.4 // indirect
+	github.com/projectdiscovery/asnmap v1.0.5 // indirect
 	github.com/projectdiscovery/cdncheck v1.0.9 // indirect
 	github.com/projectdiscovery/freeport v0.0.5 // indirect
 	github.com/projectdiscovery/gostruct v0.0.1 // indirect
