@@ -89,12 +89,14 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 			return errors.Wrap(err, "could not compile operators")
 		}
 		for _, matcher := range compiled.Matchers {
-			if matcher.Part == "" && matcher.Type.MatcherType != matchers.DSLMatcher {
+			// default matcher part for code protocol is response
+			if matcher.Part == "" || matcher.Part == "body" {
 				matcher.Part = "response"
 			}
 		}
 		for _, extractor := range compiled.Extractors {
-			if extractor.Part == "" {
+			// default extractor part for code protocol is response
+			if extractor.Part == "" || extractor.Part == "body" {
 				extractor.Part = "response"
 			}
 		}
@@ -159,8 +161,7 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 	data := make(output.InternalEvent)
 
 	data["type"] = request.Type().String()
-	data["stdout"] = gOutput.Stdout.String() // stdout contains unfiltered output
-	data["response"] = dataOutputString      // response contains filtered output (eg without trailing \n)
+	data["response"] = dataOutputString // response contains filtered output (eg without trailing \n)
 	data["input"] = input.MetaInput.Input
 	data["template-path"] = request.options.TemplatePath
 	data["template-id"] = request.options.TemplateID
