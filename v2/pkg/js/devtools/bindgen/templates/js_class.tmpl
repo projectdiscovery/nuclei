@@ -1,7 +1,7 @@
 {{$packageName:=(printf "%s" .PackageName) -}}
 /**@module {{$packageName}} */
-// {{$packageName}} implements bindings for {{.PackageName}} protocol in javascript
-// to be used from nuclei scanner.
+
+
 
 {{- range $typeName, $methods := .PackageFuncsExtra }}
 
@@ -18,9 +18,11 @@ class {{$typeName}} {
 
 {{- end }}
 
+
 {{- range $objName, $method := .PackageFuncsExtraNoType}}
+{{$method.Doc}}
 function {{$objName}}({{range $index, $arg := $method.Args}}{{if $index}}, {{end}}{{ $arg }}{{end}}) {
-        
+        return {{range $idx, $arg := $method.Returns}}{{if $idx}}, {{end}}{{ $arg }}{{end}};
     };
 {{- end}}
 

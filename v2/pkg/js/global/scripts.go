@@ -110,25 +110,17 @@ func initBuiltInFunc(runtime *goja.Runtime) {
 			"isPortOpen(host string, port string, [timeout int]) bool",
 		},
 		Description: "isPortOpen checks if given port is open on host. timeout is optional and defaults to 5 seconds",
-		FuncDecl: func(call goja.FunctionCall) goja.Value {
-			host := call.Argument(0).String()
-			if host == "" {
-				return runtime.ToValue(false)
+		FuncDecl: func(host string, port string, timeout ...int) (bool, error) {
+			timeoutInSec := 5
+			if len(timeout) > 0 {
+				timeoutInSec = timeout[0]
 			}
-			port := call.Argument(1).String()
-			if port == "" {
-				return runtime.ToValue(false)
-			}
-			timeoutinSec := call.Argument(2).ToInteger()
-			if timeoutinSec == 0 {
-				timeoutinSec = 5
-			}
-			conn, err := net.DialTimeout("tcp", net.JoinHostPort(host, port), time.Duration(timeoutinSec)*time.Second)
+			conn, err := net.DialTimeout("tcp", net.JoinHostPort(host, port), time.Duration(timeoutInSec)*time.Second)
 			if err != nil {
-				return runtime.ToValue(false)
+				return false, err
 			}
 			_ = conn.Close()
-			return runtime.ToValue(true)
+			return true, nil
 		},
 	})
 

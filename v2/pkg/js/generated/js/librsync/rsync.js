@@ -1,6 +1,4 @@
-/**
- * @module rsync
- */
+/** @module rsync */
 
 /**
  * @class
@@ -8,27 +6,28 @@
  */
 class RsyncClient {
     /**
-     * @method
-     * @name IsRsync
-     * @param {string} host - The host to check.
-     * @param {number} port - The port to check.
-     * @returns {IsRsyncResponse} - The response from the Rsync server.
-     * @throws {error} - Throws an error if unable to check.
-     * @example
-     * let client = new RsyncClient();
-     * try {
-     *   let response = client.IsRsync("localhost", 22);
-     *   console.log(response);
-     * } catch (error) {
-     *   console.error(error);
-     * }
-     */
+    * @method
+    * @description IsRsync checks if a host is running a Rsync server.
+    * @param {string} host - The host to check.
+    * @param {int} port - The port to check.
+    * @returns {IsRsyncResponse} - The response from the IsRsync check.
+    * @throws {error} - The error encountered during the IsRsync check.
+    * @example
+    * let m = require('nuclei/rsync');
+    * let c = m.RsyncClient();
+    * let response = c.IsRsync('localhost', 22);
+    */
     IsRsync(host, port) {
         // implemented in go
     };
 };
 
-// ReadOnly DONOT EDIT
+/**
+ * @typedef {object} IsRsyncResponse
+ * @description IsRsyncResponse is an object containing the response from the IsRsync check.
+ */
+const IsRsyncResponse = {};
+
 module.exports = {
     RsyncClient: RsyncClient,
 };
