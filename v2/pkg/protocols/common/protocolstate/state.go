@@ -21,6 +21,7 @@ func Init(options *types.Options) error {
 	if Dialer != nil {
 		return nil
 	}
+	lfaAllowed = options.AllowLocalFileAccess
 	opts := fastdialer.DefaultOptions
 	InitHeadless(options.RestrictLocalNetworkAccess, options.AllowLocalFileAccess)
 

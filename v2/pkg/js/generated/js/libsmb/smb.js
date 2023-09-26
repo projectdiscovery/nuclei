@@ -1,92 +1,90 @@
-/** 
- * @module smb
+/** @module smb */
+
+/**
+ * @typedef {object} SMBLog
+ * @description SMBLog is an object containing the log of the SMB handshake.
  */
+const SMBLog = {};
+
+/**
+ * @typedef {object} ServiceSMB
+ * @description ServiceSMB is an object containing the metadata of the SMBv2 service.
+ */
+
+const ServiceSMB = {};
 
 /**
  * @class
- * @description SMBClient is a client for SMB servers. Internally client uses github.com/zmap/zgrab2/lib/smb/smb driver and github.com/hirochachacha/go-smb2 driver.
+ * @classdesc SMBClient is a client for SMB servers.
  */
 class SMBClient {
     /**
-     * @method
-     * @description ConnectSMBInfoMode tries to connect to provided host and port and discovery SMB information
-     * @param {string} host - The host to connect to
-     * @param {number} port - The port to connect to
-     * @returns {Object} SMBLog - The handshake log
-     * @throws {Error} If an error occurs, the error is thrown
-     * @example
-     * let client = new SMBClient();
-     * try {
-     *     let log = client.ConnectSMBInfoMode('localhost', 8080);
-     * } catch (error) {
-     *     console.error(error);
-     * }
-     */
+    * @method
+    * @description ConnectSMBInfoMode tries to connect to provided host and port and discover SMB information
+    * @param {string} host - The host to connect to.
+    * @param {string} port - The port to connect to.
+    * @returns {SMBLog} - The log of the SMB handshake.
+    * @throws {error} - The error encountered during the connection.
+    * @example
+    * let m = require('nuclei/smb');
+    * let c = m.SMBClient();
+    * let log = c.ConnectSMBInfoMode('localhost', '445');
+    */
     ConnectSMBInfoMode(host, port) {
         // implemented in go
     };
 
     /**
-     * @method
-     * @description DetectSMBGhost tries to detect SMBGhost vulnerability by using SMBv3 compression feature.
-     * @param {string} host - The host to connect to
-     * @param {number} port - The port to connect to
-     * @returns {boolean} - Returns true if vulnerability is detected, false otherwise
-     * @throws {Error} If an error occurs, the error is thrown
-     * @example
-     * let client = new SMBClient();
-     * try {
-     *     let isVulnerable = client.DetectSMBGhost('localhost', 8080);
-     * } catch (error) {
-     *     console.error(error);
-     * }
-     */
+    * @method
+    * @description DetectSMBGhost tries to detect SMBGhost vulnerability by using SMBv3 compression feature.
+    * @param {string} host - The host to connect to.
+    * @param {string} port - The port to connect to.
+    * @returns {boolean} - The result of the SMBGhost vulnerability detection.
+    * @throws {error} - The error encountered during the detection.
+    * @example
+    * let m = require('nuclei/smb');
+    * let c = m.SMBClient();
+    * let isVulnerable = c.DetectSMBGhost('localhost', '445');
+    */
     DetectSMBGhost(host, port) {
         // implemented in go
     };
 
     /**
-     * @method
-     * @description ListSMBv2Metadata tries to connect to provided host and port and list SMBv2 metadata.
-     * @param {string} host - The host to connect to
-     * @param {number} port - The port to connect to
-     * @returns {Object} ServiceSMB - The metadata
-     * @throws {Error} If an error occurs, the error is thrown
-     * @example
-     * let client = new SMBClient();
-     * try {
-     *     let metadata = client.ListSMBv2Metadata('localhost', 8080);
-     * } catch (error) {
-     *     console.error(error);
-     * }
-     */
+    * @method
+    * @description ListSMBv2Metadata tries to connect to provided host and port and list SMBv2 metadata.
+    * @param {string} host - The host to connect to.
+    * @param {string} port - The port to connect to.
+    * @returns {ServiceSMB} - The metadata of the SMBv2 service.
+    * @throws {error} - The error encountered during the listing.
+    * @example
+    * let m = require('nuclei/smb');
+    * let c = m.SMBClient();
+    * let metadata = c.ListSMBv2Metadata('localhost', '445');
+    */
     ListSMBv2Metadata(host, port) {
         // implemented in go
     };
 
     /**
-     * @method
-     * @description ListShares tries to connect to provided host and port and list shares by using given credentials. Credentials cannot be blank. guest or anonymous credentials can be used by providing empty password.
-     * @param {string} host - The host to connect to
-     * @param {number} port - The port to connect to
-     * @param {string} user - The username
-     * @param {string} password - The password
-     * @returns {Array.<string>} - The list of shares
-     * @throws {Error} If an error occurs, the error is thrown
-     * @example
-     * let client = new SMBClient();
-     * try {
-     *     let shares = client.ListShares('localhost', 8080, 'user', 'password');
-     * } catch (error) {
-     *     console.error(error);
-     * }
-     */
+    * @method
+    * @description ListShares tries to connect to provided host and port and list shares by using given credentials.
+    * @param {string} host - The host to connect to.
+    * @param {string} port - The port to connect to.
+    * @param {string} user - The username for authentication.
+    * @param {string} password - The password for authentication.
+    * @returns {string[]} - The list of shares.
+    * @throws {error} - The error encountered during the listing.
+    * @example
+    * let m = require('nuclei/smb');
+    * let c = m.SMBClient();
+    * let shares = c.ListShares('localhost', '445', 'user', 'password');
+    */
     ListShares(host, port, user, password) {
         // implemented in go
     };
 };
 
-// ReadOnly DONOT EDIT
 module.exports = {
     SMBClient: SMBClient,
 };
