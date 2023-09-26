@@ -1,6 +1,4 @@
-/**
- * @module net
- */
+/**@module net */
 
 /**
  * @class
@@ -8,117 +6,114 @@
  */
 class NetConn {
     /**
-     * @method
-     * @description Close closes the connection.
-     * @throws {Error} If an error occurred while closing the connection.
-     * @example
-     * // Close the connection
-     * let conn = Open('tcp', 'localhost:80');
-     * conn.Close();
-     */
+    * @method
+    * @description Close closes the connection.
+    * @throws {error} - The error encountered during connection closing.
+    * @example
+    * let m = require('nuclei/net');
+    * let c = m.Open('tcp', 'localhost:8080');
+    * c.Close();
+    */
     Close() {
         // implemented in go
     };
 
     /**
-     * @method
-     * @description Recv receives data from the connection with a timeout. If N is 0, it will read up to 4096 bytes.
-     * @param {number} N - The number of bytes to receive.
-     * @returns {Array} The received bytes.
-     * @throws {Error} If an error occurred while receiving data.
-     * @example
-     * // Receive data
-     * let conn = Open('tcp', 'localhost:80');
-     * let data = conn.Recv(10); // Receive 10 bytes
-     * log(data);
-     */
+    * @method
+    * @description Recv receives data from the connection with a timeout. If N is 0, it will read up to 4096 bytes.
+    * @param {number} N - The number of bytes to receive.
+    * @returns {Uint8Array} - The received data in an array.
+    * @throws {error} - The error encountered during data receiving.
+    * @example
+    * let m = require('nuclei/net');
+    * let c = m.Open('tcp', 'localhost:8080');
+    * let data = c.Recv(1024);
+    */
     Recv(N) {
         // implemented in go
     };
 
     /**
-     * @method
-     * @description RecvHex receives data from the connection with a timeout in hex format. If N is 0, it will read up to 4096 bytes.
-     * @param {number} N - The number of bytes to receive.
-     * @returns {string} The received data in hex format.
-     * @throws {Error} If an error occurred while receiving data.
-     * @example
-     * // Receive data in hex format
-     * let conn = Open('tcp', 'localhost:80');
-     * let data = conn.RecvHex(10); // Receive 10 bytes
-     * log(data);
-     */
+    * @method
+    * @description RecvHex receives data from the connection with a timeout in hex format. If N is 0, it will read up to 4096 bytes.
+    * @param {number} N - The number of bytes to receive.
+    * @returns {string} - The received data in hex format.
+    * @throws {error} - The error encountered during data receiving.
+    * @example
+    * let m = require('nuclei/net');
+    * let c = m.Open('tcp', 'localhost:8080');
+    * let data = c.RecvHex(1024);
+    */
     RecvHex(N) {
         // implemented in go
     };
 
     /**
-     * @method
-     * @description RecvString receives data from the connection with a timeout. Output is returned as a string. If N is 0, it will read up to 4096 bytes.
-     * @param {number} N - The number of bytes to receive.
-     * @returns {string} The received data as a string.
-     * @throws {Error} If an error occurred while receiving data.
-     * @example
-     * // Receive data
-     * let conn = Open('tcp', 'localhost:80');
-     * let data = conn.RecvString(10); // Receive 10 bytes
-     * log(data);
-     */
+    * @method
+    * @description RecvString receives data from the connection with a timeout. Output is returned as a string. If N is 0, it will read up to 4096 bytes.
+    * @param {number} N - The number of bytes to receive.
+    * @returns {string} - The received data as a string.
+    * @throws {error} - The error encountered during data receiving.
+    * @example
+    * let m = require('nuclei/net');
+    * let c = m.Open('tcp', 'localhost:8080');
+    * let data = c.RecvString(1024);
+    */
     RecvString(N) {
         // implemented in go
     };
 
     /**
-     * @method
-     * @description Send sends data to the connection with a timeout.
-     * @param {string} data - The data to send.
-     * @throws {Error} If an error occurred while sending data.
-     * @example
-     * // Send data
-     * let conn = Open('tcp', 'localhost:80');
-     * conn.Send('Hello World!');
-     */
+    * @method
+    * @description Send sends data to the connection with a timeout.
+    * @param {Uint8Array} data - The data to send.
+    * @throws {error} - The error encountered during data sending.
+    * @example
+    * let m = require('nuclei/net');
+    * let c = m.Open('tcp', 'localhost:8080');
+    * c.Send(new Uint8Array([1, 2, 3]));
+    */
     Send(data) {
         // implemented in go
     };
 
     /**
-     * @method
-     * @description SendArray sends array data to connection.
-     * @param {Array} data - The array data to send.
-     * @throws {Error} If an error occurred while sending data.
-     * @example
-     * // Send array data
-     * let conn = Open('tcp', 'localhost:80');
-     * conn.SendArray([0xde, 0x0b]);
-     */
+    * @method
+    * @description SendArray sends array data to connection.
+    * @param {Uint8Array} data - The array data to send.
+    * @throws {error} - The error encountered during data sending.
+    * @example
+    * let m = require('nuclei/net');
+    * let c = m.Open('tcp', 'localhost:8080');
+    * c.SendArray(new Uint8Array([1, 2, 3]));
+    */
     SendArray(data) {
         // implemented in go
     };
 
     /**
-     * @method
-     * @description SendHex sends hex data to connection.
-     * @param {string} data - The hex data to send.
-     * @throws {Error} If an error occurred while sending data.
-     * @example
-     * // Send hex data
-     * let conn = Open('tcp', 'localhost:80');
-     * conn.SendHex('0xde0b');
-     */
+    * @method
+    * @description SendHex sends hex data to connection.
+    * @param {string} data - The hex data to send.
+    * @throws {error} - The error encountered during data sending.
+    * @example
+    * let m = require('nuclei/net');
+    * let c = m.Open('tcp', 'localhost:8080');
+    * c.SendHex('0x123');
+    */
     SendHex(data) {
         // implemented in go
     };
 
     /**
-     * @method
-     * @description SetTimeout sets read/write timeout for the connection (in seconds).
-     * @param {number} value - The timeout value in seconds.
-     * @example
-     * // Set timeout for connection
-     * let conn = Open('tcp', 'localhost:80');
-     * conn.SetTimeout(10); // 10 seconds
-     */
+    * @method
+    * @description SetTimeout sets read/write timeout for the connection (in seconds).
+    * @param {number} value - The timeout value in seconds.
+    * @example
+    * let m = require('nuclei/net');
+    * let c = m.Open('tcp', 'localhost:8080');
+    * c.SetTimeout(5);
+    */
     SetTimeout(value) {
         // implemented in go
     };
@@ -126,12 +121,14 @@ class NetConn {
 
 /**
  * @function
- * @description Open a connection with the specified protocol and address.
+ * @description Open opens a new connection to the address with a timeout. Supported protocols: tcp, udp.
  * @param {string} protocol - The protocol to use.
  * @param {string} address - The address to connect to.
+ * @returns {NetConn} - The NetConn object representing the connection.
+ * @throws {error} - The error encountered during connection opening.
  * @example
- * // Open a connection
- * let conn = Open('tcp', 'localhost:80');
+ * let m = require('nuclei/net'); 
+ * let conn = m.Open('tcp', 'localhost:8080');
  */
 function Open(protocol, address) {
     // implemented in go
@@ -139,12 +136,14 @@ function Open(protocol, address) {
 
 /**
  * @function
- * @description Open a TLS connection with the specified protocol and address.
+ * @description OpenTLS opens a new connection to the address with a timeout. Supported protocols: tcp, udp.
  * @param {string} protocol - The protocol to use.
  * @param {string} address - The address to connect to.
+ * @returns {NetConn} - The NetConn object representing the connection.
+ * @throws {error} - The error encountered during connection opening.
  * @example
- * // Open a TLS connection
- * let conn = OpenTLS('tcp', 'localhost:443');
+ * let m = require('nuclei/net'); 
+ * let conn = m.OpenTLS('tcp', 'localhost:8080');
  */
 function OpenTLS(protocol, address) {
     // implemented in go

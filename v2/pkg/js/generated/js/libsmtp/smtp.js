@@ -1,29 +1,33 @@
-/**
- * @module smtp
- */
+/** @module smtp */
 
 /**
  * @class
- * SMTPClient is a minimal SMTP client for nuclei scripts.
+ * @classdesc SMTPClient is a minimal SMTP client for nuclei scripts.
  */
 class SMTPClient {
     /**
-     * @method
-     * IsSMTP checks if a host is running a SMTP server.
-     * @param {string} host - The host to check.
-     * @param {number} port - The port to check.
-     * @returns {boolean} IsSMTPResponse - The response indicating if the host is running a SMTP server.
-     * @throws {Error} If an error occurs during the check.
-     * @example
-     * let client = new SMTPClient();
-     * let isSMTP = client.IsSMTP("localhost", 25);
-     */
+    * @method
+    * @description IsSMTP checks if a host is running a SMTP server.
+    * @param {string} host - The host to check.
+    * @param {int} port - The port to check.
+    * @returns {IsSMTPResponse} - The response of the check.
+    * @throws {error} - The error encountered during the check.
+    * @example
+    * let m = require('nuclei/smtp');
+    * let c = m.SMTPClient();
+    * let response = c.IsSMTP('localhost', 25);
+    */
     IsSMTP(host, port) {
         // implemented in go
     };
 };
 
-// ReadOnly DONOT EDIT
+/**
+ * @typedef {object} IsSMTPResponse
+ * @description IsSMTPResponse is an object containing the response of the IsSMTP check.
+ */
+const IsSMTPResponse = {};
+
 module.exports = {
     SMTPClient: SMTPClient,
 };

@@ -9,6 +9,11 @@ function to_json(data) {
   return JSON.stringify(data, null, 2);
 }
 
+// to_array sets object type as array
+function to_array(data) {
+  return Object.setPrototypeOf(data, Array.prototype);
+}
+
 // hex_to_ascii converts a hex string to ascii.
 function hex_to_ascii(str1) {
   var hex = str1.toString();
