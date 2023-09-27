@@ -14,7 +14,7 @@ Workflows can be defined with `workflows` attribute, following the `template` / 
 
 ```yaml
 workflows:
-  - template: technologies/template-to-execute.yaml
+  - template: http/technologies/template-to-execute.yaml
 ```
 
 **Type of workflows**
@@ -30,10 +30,10 @@ A workflow that runs all config related templates on the list of give URLs.
 
 ```yaml
 workflows:
-  - template: files/git-config.yaml
-  - template: files/svn-config.yaml
-  - template: files/env-file.yaml
-  - template: files/backup-files.yaml
+  - template: http/exposures/configs/git-config.yaml
+  - template: http/exposures/configs/exposed-svn.yaml
+  - template: http/vulnerabilities/generic/generic-env.yaml
+  - template: http/exposures/backups/zip-backup-files.yaml
   - tags: xss,ssrf,cve,lfi
 ```
 
@@ -41,9 +41,8 @@ A workflow that runs specific list of checks defined for your project.
 
 ```yaml
 workflows:
-  - template: cves/
-  - template: exposed-tokens/
-  - template: exposures/
+  - template: http/cves/
+  - template: http/exposures/
   - tags: exposures
 ```
 ### Conditional Workflows
@@ -56,7 +55,7 @@ A workflow that executes subtemplates when base template gets matched.
 
 ```yaml
 workflows:
-  - template: technologies/jira-detect.yaml
+  - template: http/technologies/jira-detect.yaml
     subtemplates:
       - tags: jira
       - template: exploits/jira/
@@ -68,7 +67,7 @@ A workflow that executes subtemplates when a matcher of base template is found i
 
 ```yaml
 workflows:
-  - template: technologies/tech-detect.yaml
+  - template: http/technologies/tech-detect.yaml
     matchers:
       - name: vbulletin
         subtemplates:
@@ -89,15 +88,15 @@ A workflow showcasing chain of template executions that run only if the previous
 
 ```yaml
 workflows:
-  - template: technologies/tech-detect.yaml
+  - template: http/technologies/tech-detect.yaml
     matchers:
       - name: lotus-domino
         subtemplates:
-          - template: technologies/lotus-domino-version.yaml
+          - template: http/technologies/lotus-domino-version.yaml
             subtemplates:
-              - template: cves/xx-yy-zz.yaml
+              - template: http/cves/2020/xx-yy-zz.yaml
                 subtemplates:
-                  - template: cves/xx-xx-xx.yaml
+                  - template: http/cves/2020/xx-xx-xx.yaml
 ```
 
 Conditional workflows are great examples of performing checks and vulnerability detection in most efficient manner instead of spraying all the templates on all the targets and generally come with good ROI on your time and is gentle for the targets as well.
