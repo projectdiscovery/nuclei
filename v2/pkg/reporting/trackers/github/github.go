@@ -3,19 +3,18 @@ package github
 import (
 	"context"
 	"fmt"
-	"net/http"
-	"net/url"
-	"strings"
-
 	"github.com/google/go-github/github"
 	"github.com/pkg/errors"
-	"golang.org/x/oauth2"
-
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
 	"github.com/projectdiscovery/nuclei/v2/pkg/reporting/exporters/markdown/util"
 	"github.com/projectdiscovery/nuclei/v2/pkg/reporting/format"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 	"github.com/projectdiscovery/retryablehttp-go"
+	"golang.org/x/oauth2"
+	"io"
+	"net/http"
+	"net/url"
+	"strings"
 )
 
 // Integration is a client for an issue tracker integration
@@ -41,6 +40,9 @@ type Options struct {
 	// SeverityAsLabel (optional) sends the severity as the label of the created
 	// issue.
 	SeverityAsLabel bool `yaml:"severity-as-label"`
+	// DuplicateIssueCheck (optional) comments under existing finding issue
+	// instead of creating duplicates for subsequent runs.
+	DuplicateIssueCheck bool `yaml:"duplicate-issue-check"`
 
 	HttpClient *retryablehttp.Client `yaml:"-"`
 }
@@ -76,7 +78,7 @@ func New(options *Options) (*Integration, error) {
 }
 
 // CreateIssue creates an issue in the tracker
-func (i *Integration) CreateIssue(event *output.ResultEvent) error {
+func (i *Integration) CreateIssue(event *output.ResultEvent) (err error) {
 	summary := format.Summary(event)
 	description := format.CreateReportDescription(event, util.MarkdownFormatter{})
 	labels := []string{}
@@ -88,12 +90,75 @@ func (i *Integration) CreateIssue(event *output.ResultEvent) error {
 		labels = append(labels, label)
 	}
 
-	req := &github.IssueRequest{
-		Title:     &summary,
-		Body:      &description,
-		Labels:    &labels,
-		Assignees: &[]string{i.options.Username},
+	ctx := context.Background()
+
+	var existingIssue *github.Issue
+	if i.options.DuplicateIssueCheck {
+		existingIssue, err = i.findIssueByTitle(ctx, summary)
+		if err != nil && !errors.Is(err, io.EOF) {
+			return err
+		}
 	}
-	_, _, err := i.client.Issues.Create(context.Background(), i.options.Owner, i.options.ProjectName, req)
-	return err
+
+	if existingIssue == nil {
+		req := &github.IssueRequest{
+			Title:     &summary,
+			Body:      &description,
+			Labels:    &labels,
+			Assignees: &[]string{i.options.Username},
+		}
+		_, _, err = i.client.Issues.Create(ctx, i.options.Owner, i.options.ProjectName, req)
+		return err
+	} else {
+		if existingIssue.GetState() == "closed" {
+			stateOpen := "open"
+			if _, _, err := i.client.Issues.Edit(ctx, i.options.Owner, i.options.ProjectName, *existingIssue.Number, &github.IssueRequest{
+				State: &stateOpen,
+			}); err != nil {
+				return fmt.Errorf("error reopening issue %d: %s", *existingIssue.Number, err)
+			}
+		}
+
+		req := &github.IssueComment{
+			Body: &description,
+		}
+		_, _, err = i.client.Issues.CreateComment(ctx, i.options.Owner, i.options.ProjectName, *existingIssue.Number, req)
+		return err
+	}
+}
+
+func (i *Integration) findIssueByTitle(ctx context.Context, title string) (*github.Issue, error) {
+	req := &github.SearchOptions{
+		Sort:      "updated",
+		Order:     "desc",
+		TextMatch: false,
+		ListOptions: github.ListOptions{
+			Page:    1,
+			PerPage: 100,
+		},
+	}
+
+	query := fmt.Sprintf(`is:issue repo:%s/%s "%s"`, i.options.Owner, i.options.ProjectName, title)
+
+	for {
+		issues, resp, err := i.client.Search.Issues(ctx, query, req)
+		if err != nil {
+			return nil, fmt.Errorf("error listing issues for %s, %s: %w", i.options.Owner, i.options.ProjectName, err)
+		}
+
+		for _, issue := range issues.Issues {
+			if issue.Title != nil && *issue.Title == title {
+				return &issue, nil
+			}
+		}
+
+		if resp.NextPage <= req.Page || len(issues.Issues) == 0 {
+			return nil, io.EOF
+		}
+
+		req.ListOptions = github.ListOptions{
+			Page:    resp.NextPage,
+			PerPage: 100,
+		}
+	}
 }
