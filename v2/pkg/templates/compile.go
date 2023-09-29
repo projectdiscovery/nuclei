@@ -1,6 +1,7 @@
 package templates
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 	"reflect"
@@ -10,6 +11,7 @@ import (
 	"gopkg.in/yaml.v2"
 
 	"github.com/projectdiscovery/gologger"
+	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/config"
 	"github.com/projectdiscovery/nuclei/v2/pkg/js/compiler"
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
@@ -29,6 +31,7 @@ var (
 )
 
 var parsedTemplatesCache *cache.Templates
+var NoStrictSyntax bool
 
 func init() {
 	parsedTemplatesCache = cache.New()
@@ -233,8 +236,23 @@ func ParseTemplateFromReader(reader io.Reader, preprocessor Preprocessor, option
 		data = preprocessor.Process(data)
 	}
 
-	if err := yaml.Unmarshal(data, template); err != nil {
-		return nil, err
+	switch config.GetTemplateFormatFromExt(template.Path) {
+	case config.JSON:
+		err = json.Unmarshal(data, template)
+	case config.YAML:
+		if NoStrictSyntax {
+			err = yaml.Unmarshal(data, template)
+		} else {
+			err = yaml.UnmarshalStrict(data, template)
+		}
+	default:
+		// assume its yaml
+		if err = yaml.Unmarshal(data, template); err != nil {
+			return nil, err
+		}
+	}
+	if err != nil {
+		return nil, errorutil.NewWithErr(err).Msgf("failed to parse %s", template.Path)
 	}
 
 	if utils.IsBlank(template.Info.Name) {
@@ -299,21 +317,25 @@ func ParseTemplateFromReader(reader io.Reader, preprocessor Preprocessor, option
 	template.parseSelfContainedRequests()
 
 	// check if the template is verified
+	// only valid templates can be verified or signed
 	for _, verifier := range signer.DefaultVerifiers {
 		if template.Verified {
 			break
 		}
-		template.Verified, _ = signer.Verify(verifier, data)
-	}
+		template.Verified, _ = signer.Verify(verifier, data, template)
 
+	}
 	return template, nil
 }
 
-var jsCompiler *compiler.Compiler
-
-func GetJsCompiler() *compiler.Compiler {
-	sync.OnceFunc(func() {
+var (
+	jsCompiler     *compiler.Compiler
+	jsCompilerOnce = sync.OnceFunc(func() {
 		jsCompiler = compiler.New()
 	})
+)
+
+func GetJsCompiler() *compiler.Compiler {
+	jsCompilerOnce()
 	return jsCompiler
 }

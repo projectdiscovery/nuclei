@@ -501,15 +501,20 @@ func (o *Options) GetValidAbsPath(helperFilePath, templatePath string) (string, 
 	// 1. If helper file is present in nuclei-templates directory
 	// 2. If helper file and template file are in same directory given that its not root directory
 
-	// clean input path just in case
-	helperFilePath, err := fileutil.ResolveNClean(helperFilePath, config.DefaultConfig.GetTemplateDir())
-	if err != nil {
-		return "", errorutil.NewWithErr(err).Msgf("could not clean helper file path %v", helperFilePath)
+	// resolve and clean helper file path
+	// ResolveNClean uses a custom base path instead of CWD
+	resolvedPath, err := fileutil.ResolveNClean(helperFilePath, config.DefaultConfig.GetTemplateDir())
+	if err == nil {
+		// As per rule 1, if helper file is present in nuclei-templates directory, allow it
+		if strings.HasPrefix(resolvedPath, config.DefaultConfig.GetTemplateDir()) {
+			return resolvedPath, nil
+		}
 	}
 
-	// As per rule 1, if helper file is present in nuclei-templates directory, allow it
-	if strings.HasPrefix(helperFilePath, config.DefaultConfig.GetTemplateDir()) {
-		return helperFilePath, nil
+	// CleanPath resolves using CWD and cleans the path
+	helperFilePath, err = fileutil.CleanPath(helperFilePath)
+	if err != nil {
+		return "", errorutil.NewWithErr(err).Msgf("could not clean helper file path %v", helperFilePath)
 	}
 
 	templatePath, err = fileutil.CleanPath(templatePath)

@@ -1,21 +1,19 @@
 package parsers
 
 import (
-	"encoding/json"
 	"fmt"
 	"regexp"
 	"strings"
 
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalog"
-	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/config"
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/loader/filter"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v2/pkg/templates"
 	"github.com/projectdiscovery/nuclei/v2/pkg/templates/cache"
-	"github.com/projectdiscovery/nuclei/v2/pkg/templates/signer"
 	"github.com/projectdiscovery/nuclei/v2/pkg/templates/types"
+	pkgTypes "github.com/projectdiscovery/nuclei/v2/pkg/types"
 	"github.com/projectdiscovery/nuclei/v2/pkg/utils"
 	"github.com/projectdiscovery/nuclei/v2/pkg/utils/stats"
-	"gopkg.in/yaml.v2"
 )
 
 const (
@@ -135,7 +133,6 @@ func validateTemplateOptionalFields(template *templates.Template) error {
 var (
 	parsedTemplatesCache *cache.Templates
 	ShouldValidate       bool
-	NoStrictSyntax       bool
 	templateIDRegexp     = regexp.MustCompile(`^([a-zA-Z0-9]+[-_])*[a-zA-Z0-9]+$`)
 )
 
@@ -158,33 +155,12 @@ func ParseTemplate(templatePath string, catalog catalog.Catalog) (*templates.Tem
 	if value, err := parsedTemplatesCache.Has(templatePath); value != nil {
 		return value.(*templates.Template), err
 	}
-	data, err := utils.ReadFromPathOrURL(templatePath, catalog)
-	if err != nil {
-		return nil, err
-	}
 
-	template := &templates.Template{}
-
-	// check if the template is verified
-	for _, verifier := range signer.DefaultVerifiers {
-		if template.Verified {
-			break
-		}
-		template.Verified, _ = signer.Verify(verifier, data)
-	}
-
-	switch config.GetTemplateFormatFromExt(templatePath) {
-	case config.JSON:
-		err = json.Unmarshal(data, template)
-	case config.YAML:
-		if NoStrictSyntax {
-			err = yaml.Unmarshal(data, template)
-		} else {
-			err = yaml.UnmarshalStrict(data, template)
-		}
-	default:
-		err = fmt.Errorf("failed to identify template format expected JSON or YAML but got %v", templatePath)
-	}
+	template, err := templates.Parse(templatePath, nil, protocols.ExecutorOptions{
+		Options:      pkgTypes.DefaultOptions(),
+		Catalog:      catalog,
+		TemplatePath: templatePath,
+	})
 	if err != nil {
 		stats.Increment(SyntaxErrorStats)
 		return nil, err

@@ -7,9 +7,9 @@ import (
 
 	osutils "github.com/projectdiscovery/utils/os"
 
+	"github.com/projectdiscovery/nuclei/v2/pkg/templates"
 	"github.com/projectdiscovery/nuclei/v2/pkg/templates/signer"
 	"github.com/projectdiscovery/nuclei/v2/pkg/testutils"
-	"github.com/projectdiscovery/nuclei/v2/pkg/utils"
 )
 
 var codeTestCases = []TestCaseInfo{
@@ -89,7 +89,7 @@ func signTemplates() {
 			continue
 		}
 
-		if err := utils.ProcessFile(sign, templatePath); err != nil {
+		if err := templates.SignTemplate(sign, templatePath); err != nil {
 			log.Fatalf("Could not walk directory: %s\n", err)
 		}
 	}

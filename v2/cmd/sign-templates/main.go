@@ -6,8 +6,8 @@ import (
 	"path/filepath"
 
 	"github.com/projectdiscovery/goflags"
+	"github.com/projectdiscovery/nuclei/v2/pkg/templates"
 	"github.com/projectdiscovery/nuclei/v2/pkg/templates/signer"
-	"github.com/projectdiscovery/nuclei/v2/pkg/utils"
 )
 
 type options struct {
@@ -72,11 +72,9 @@ func processItem(sign *signer.Signer, item string) error {
 		if err != nil || d.IsDir() {
 			return nil
 		}
-
-		if err := utils.ProcessFile(sign, iterItem); err != nil {
+		if err := templates.SignTemplate(sign, iterItem); err != nil {
 			return err
 		}
-
 		return nil
 	})
 }

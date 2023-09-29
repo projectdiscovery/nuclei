@@ -23,11 +23,11 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators/common/dsl"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/uncover"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/http"
+	"github.com/projectdiscovery/nuclei/v2/pkg/templates"
 	"github.com/projectdiscovery/nuclei/v2/pkg/templates/signer"
 	templateTypes "github.com/projectdiscovery/nuclei/v2/pkg/templates/types"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types/scanstrategy"
-	"github.com/projectdiscovery/nuclei/v2/pkg/utils"
 	"github.com/projectdiscovery/nuclei/v2/pkg/utils/monitor"
 	errorutil "github.com/projectdiscovery/utils/errors"
 	fileutil "github.com/projectdiscovery/utils/file"
@@ -65,7 +65,7 @@ func main() {
 					return nil
 				}
 
-				if err := utils.ProcessFile(sign, iterItem); err != nil {
+				if err := templates.SignTemplate(sign, iterItem); err != nil {
 					gologger.Warning().Msgf("could not sign '%s': %s\n", iterItem, err)
 				}
 

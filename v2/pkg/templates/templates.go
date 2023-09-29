@@ -397,6 +397,11 @@ func (template *Template) ImportFileRefs(options *protocols.ExecutorOptions) err
 	return multierr.Combine(errs...)
 }
 
+// GetFileImports returns a list of files that are imported by the template
+func (template *Template) GetFileImports() []string {
+	return template.ImportedFiles
+}
+
 // addProtocolsToQueue adds protocol requests to the queue and preserves order of the protocols and requests
 func (template *Template) addRequestsToQueue(keys ...string) {
 	for _, key := range keys {

@@ -148,7 +148,7 @@ func New(options *types.Options) (*Runner, error) {
 	}
 
 	// TODO: refactor to pass options reference globally without cycles
-	parsers.NoStrictSyntax = options.NoStrictSyntax
+	templates.NoStrictSyntax = options.NoStrictSyntax
 	yaml.StrictSyntax = !options.NoStrictSyntax
 
 	if options.Headless {

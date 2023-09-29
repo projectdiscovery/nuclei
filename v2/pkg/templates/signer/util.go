@@ -5,7 +5,14 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"os"
 )
+
+// SignableTemplate is a template that can be signed
+type SignableTemplate interface {
+	// GetFileImports returns a list of files that are imported by the template
+	GetFileImports() []string
+}
 
 const (
 	SignaturePattern = "# digest: "
@@ -16,12 +23,21 @@ func RemoveSignatureFromData(data []byte) []byte {
 	return bytes.Trim(ReDigest.ReplaceAll(data, []byte("")), "\n")
 }
 
-func Sign(sign *Signer, data []byte) (string, error) {
+func Sign(sign *Signer, data []byte, tmpl SignableTemplate) (string, error) {
 	if sign == nil {
 		return "", errors.New("invalid nil signer")
 	}
-	cleanedData := RemoveSignatureFromData(data)
-	signatureData, err := sign.Sign(cleanedData)
+	buff := bytes.NewBuffer(RemoveSignatureFromData(data))
+	// if file has any imports process them
+	for _, file := range tmpl.GetFileImports() {
+		bin, err := os.ReadFile(file)
+		if err != nil {
+			return "", err
+		}
+		buff.WriteRune('\n')
+		buff.Write(bin)
+	}
+	signatureData, err := sign.Sign(buff.Bytes())
 	if err != nil {
 		return "", err
 	}
@@ -29,7 +45,8 @@ func Sign(sign *Signer, data []byte) (string, error) {
 	return fmt.Sprintf(SignatureFmt, signatureData), nil
 }
 
-func Verify(sign *Signer, data []byte) (bool, error) {
+// Verify verifies the signature of the data
+func Verify(sign *Signer, data []byte, tmpl SignableTemplate) (bool, error) {
 	if sign == nil {
 		return false, errors.New("invalid nil verifier")
 	}
@@ -44,7 +61,16 @@ func Verify(sign *Signer, data []byte) (bool, error) {
 		return false, err
 	}
 
-	cleanedData := RemoveSignatureFromData(data)
+	buff := bytes.NewBuffer(RemoveSignatureFromData(data))
+	// if file has any imports process them
+	for _, file := range tmpl.GetFileImports() {
+		bin, err := os.ReadFile(file)
+		if err != nil {
+			return false, err
+		}
+		buff.WriteRune('\n')
+		buff.Write(bin)
+	}
 
-	return sign.Verify(cleanedData, digest)
+	return sign.Verify(buff.Bytes(), digest)
 }
