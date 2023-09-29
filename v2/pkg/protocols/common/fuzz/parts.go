@@ -1,9 +1,11 @@
 package fuzz
 
 import (
+	"errors"
 	"strings"
 
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/expressions"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/fuzz/analyzers"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/fuzz/component"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/generators"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
@@ -26,7 +28,9 @@ func (rule *Rule) executePartComponent(input *ExecuteRuleInput, payload string, 
 
 		var evaluated string
 		evaluated, input.InteractURLs = rule.executeEvaluate(input, key, valueStr, payload, input.InteractURLs)
-		component.SetValue(key, evaluated)
+		if !input.HasAnalyzers {
+			component.SetValue(key, evaluated)
+		}
 
 		if rule.modeType == singleModeType {
 			req, err := component.Rebuild()
@@ -34,7 +38,7 @@ func (rule *Rule) executePartComponent(input *ExecuteRuleInput, payload string, 
 				return
 			}
 
-			if qerr := rule.buildInput(input, req, input.InteractURLs, component); qerr != nil {
+			if qerr := rule.buildInput(input, req, input.InteractURLs, component, key, evaluated, valueStr); qerr != nil {
 				finalErr = err
 				return
 			}
@@ -45,12 +49,17 @@ func (rule *Rule) executePartComponent(input *ExecuteRuleInput, payload string, 
 		return finalErr
 	}
 
+	// We do not support analyzers with
+	// multiple payload mode.
 	if rule.modeType == multipleModeType {
+		if input.HasAnalyzers {
+			return errors.New("analyzers are not supported with multiple payloads")
+		}
 		req, err := component.Rebuild()
 		if err != nil {
 			return err
 		}
-		if qerr := rule.buildInput(input, req, input.InteractURLs, component); qerr != nil {
+		if qerr := rule.buildInput(input, req, input.InteractURLs, component, "", "", ""); qerr != nil {
 			err = qerr
 			return err
 		}
@@ -59,12 +68,23 @@ func (rule *Rule) executePartComponent(input *ExecuteRuleInput, payload string, 
 }
 
 // buildInput returns created request for a Query Input
-func (rule *Rule) buildInput(input *ExecuteRuleInput, httpReq *retryablehttp.Request, interactURLs []string, component component.Component) error {
+func (rule *Rule) buildInput(input *ExecuteRuleInput, httpReq *retryablehttp.Request, interactURLs []string, component component.Component, key, value, originalValue string) error {
 	request := GeneratedRequest{
 		Request:       httpReq,
 		InteractURLs:  interactURLs,
 		DynamicValues: input.Values,
 		Component:     component,
+	}
+	if input.HasAnalyzers {
+		request.AnalyzerInput = &analyzers.AnalyzerInput{
+			Request:   httpReq,
+			Component: component,
+			FinalArgs: input.Values,
+
+			Key:           key,
+			Value:         value,
+			OriginalValue: originalValue,
+		}
 	}
 	if !input.Callback(request) {
 		return types.ErrNoMoreRequests

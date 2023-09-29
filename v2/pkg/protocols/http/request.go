@@ -246,6 +246,7 @@ func (request *Request) executeFuzzingRule(input *contextargs.Context, previous 
 			interactshURLs: gr.InteractURLs,
 			original:       request,
 			component:      gr.Component,
+			analyzerInput:  gr.AnalyzerInput,
 		}
 		var gotMatches bool
 		requestErr := request.executeRequest(input, req, gr.DynamicValues, hasInteractMatchers, func(event *output.InternalWrappedEvent) {
@@ -314,12 +315,14 @@ func (request *Request) executeFuzzingRule(input *contextargs.Context, previous 
 			generatedRequest = generated.request
 			dynamicValues = generated.dynamicValues
 		}
+
 		for _, rule := range request.Fuzzing {
 			executeErr := rule.Execute(&fuzz.ExecuteRuleInput{
-				Input:       input,
-				Callback:    fuzzRequestCallback,
-				Values:      dynamicValues,
-				BaseRequest: generatedRequest,
+				Input:        input,
+				Callback:     fuzzRequestCallback,
+				Values:       dynamicValues,
+				BaseRequest:  generatedRequest,
+				HasAnalyzers: request.Analyzer != "",
 			})
 			if executeErr == types.ErrNoMoreRequests {
 				return nil
@@ -495,9 +498,19 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 	var analysisResult *analyzers.Analysis
 	if request.Analyzer != "" {
 		analyzer := &analyzers.Analyzer{}
-		analysis, err := analyzer.Analyze(request.httpClient, generatedRequest.request, generatedRequest.component, generatedRequest.dynamicValues)
+
+		dumped, err := httputil.DumpRequest(generatedRequest.request.Request, false)
 		if err != nil {
 			return err
+		}
+		fmt.Printf("dumped: %v\n", string(dumped))
+
+		analysis, err := analyzer.Analyze(request.httpClient, generatedRequest.analyzerInput)
+		if err != nil {
+			return err
+		}
+		if analysis == nil {
+			return nil
 		}
 		if request.options.Options.Debug || request.options.Options.DebugRequests {
 			gologger.Info().Msgf("[%s] Analyzer result for %s [%v]: \n", request.options.TemplateID, analysis.Analyzer, analysis.Matched)

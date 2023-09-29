@@ -12,7 +12,6 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/fuzz/component"
-	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 	"github.com/projectdiscovery/retryablehttp-go"
 )
 
@@ -28,7 +27,7 @@ var (
 	// deltaPercent is 25% more/less than the original wait time
 	deltaPercent = 0.25
 	// delaySeconds is the list of timeouts to delay the request for
-	delaySeconds = []int{8, 4, 9}
+	delaySeconds = []int{3, 6, 9}
 )
 
 // Analysis is a time delay analysis result
@@ -62,17 +61,29 @@ func doHTTPRequestWithTimeTracing(httpclient *retryablehttp.Client, req *retryab
 	return ttfb.Seconds(), nil
 }
 
+// AnalyzerInput is the input for an analyzer
+type AnalyzerInput struct {
+	Request   *retryablehttp.Request
+	Component component.Component
+	FinalArgs map[string]interface{}
+
+	Key           string
+	Value         string
+	OriginalValue string
+}
+
 // Analyze analyzes the normalized request with a mutation
-func (a *Analyzer) Analyze(httpclient *retryablehttp.Client, req *retryablehttp.Request, component component.Component, finalMap map[string]interface{}) (*Analysis, error) {
-	averageRtt, err := a.createRequestBaseline(httpclient, req, component)
+func (a *Analyzer) Analyze(httpclient *retryablehttp.Client, input *AnalyzerInput) (*Analysis, error) {
+	averageRtt, err := a.createRequestBaseline(httpclient, input.Request, input.Component)
 	if err != nil {
 		return nil, errors.Wrap(err, "could not get request time baseline")
 	}
+	fmt.Printf("average rtt: %v\n", averageRtt)
 
 	var vulnReqMain *retryablehttp.Request
 	delays := []string{}
 	for _, delay := range delaySeconds {
-		delayed, vulnReq, err := a.delayFor(delay, averageRtt, httpclient, req, finalMap, component)
+		delayed, vulnReq, err := a.delayFor(delay, averageRtt, httpclient, input)
 		if err != nil {
 			return nil, errors.Wrap(err, "could not delay the request for duration")
 		}
@@ -102,31 +113,19 @@ func (a *Analyzer) Analyze(httpclient *retryablehttp.Client, req *retryablehttp.
 var delayPlaceholder = "{{delay}}"
 
 // delayFor tries delaying a response for duration seconds
-func (a *Analyzer) delayFor(duration int, originalWaitTime float64, httpclient *retryablehttp.Client, req *retryablehttp.Request, payloads map[string]interface{}, component component.Component) (string, *retryablehttp.Request, error) {
-	keysToValues := make(map[string]interface{})
-	component.Iterate(func(key string, value interface{}) {
-		valueStr := types.ToString(value)
+func (a *Analyzer) delayFor(duration int, originalWaitTime float64, httpclient *retryablehttp.Client, input *AnalyzerInput) (string, *retryablehttp.Request, error) {
+	fmt.Printf("got input: %+v\n", input)
 
-		if !strings.Contains(valueStr, delayPlaceholder) {
-			return
-		}
+	valueStr := strings.ReplaceAll(input.Value, delayPlaceholder, strconv.Itoa(duration))
+	input.Component.SetValue(input.Key, valueStr)
 
-		keysToValues[key] = value
-		// Replace the placeholder with the duration
-		valueStr = strings.ReplaceAll(valueStr, delayPlaceholder, strconv.Itoa(duration))
-		component.SetValue(key, valueStr)
-	})
-	if len(keysToValues) == 0 {
-		return "", nil, nil
-	}
+	fmt.Printf("evaluated: %v\n", valueStr)
+
 	defer func() {
-		// Reset the values back to original
-		for key, value := range keysToValues {
-			component.SetValue(key, types.ToString(value))
-		}
+		input.Component.SetValue(input.Key, input.OriginalValue)
 	}()
 
-	mutation, err := component.Rebuild()
+	mutation, err := input.Component.Rebuild()
 	if err != nil {
 		return "", nil, errors.Wrap(err, "could not rebuild component")
 	}
@@ -140,7 +139,7 @@ func (a *Analyzer) delayFor(duration int, originalWaitTime float64, httpclient *
 	//
 	// It is set to a calculation of originalRequestDuration + delta + duration * 2.
 	// while the lowest acceptable duration is the delay seconds itself.
-	upperBound := originalWaitTime + delta + float64(duration)*2
+	upperBound := (originalWaitTime + delta + float64(duration)*2) * 2
 	lowerBound := float64(duration)
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(upperBound)*time.Second)
@@ -149,8 +148,11 @@ func (a *Analyzer) delayFor(duration int, originalWaitTime float64, httpclient *
 	mutation = mutation.WithContext(ctx)
 	responseDelay, err := doHTTPRequestWithTimeTracing(httpclient, mutation)
 	if err != nil {
+		fmt.Printf("err: %v\n", err)
 		return "", nil, errors.Wrap(err, "could not do request with time tracing")
 	}
+
+	fmt.Printf("response delay: %v\n", responseDelay)
 
 	if math.Ceil(responseDelay) >= float64(lowerBound) {
 		return fmt.Sprintf("responseDelay %.2f greater than lowerBound %.2f (upperBound: %.2f)", responseDelay, lowerBound, upperBound), mutation, nil

@@ -13,6 +13,7 @@ import (
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/contextargs"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/expressions"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/fuzz/analyzers"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/fuzz/component"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/generators"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/utils/vardump"
@@ -46,6 +47,7 @@ type generatedRequest struct {
 	interactshURLs       []string
 	component            component.Component
 	customCancelFunction context.CancelFunc
+	analyzerInput        *analyzers.AnalyzerInput
 }
 
 func (g *generatedRequest) URL() string {

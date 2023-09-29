@@ -8,6 +8,7 @@ import (
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/contextargs"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/fuzz/analyzers"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/fuzz/component"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/generators"
 	"github.com/projectdiscovery/retryablehttp-go"
@@ -26,6 +27,8 @@ type ExecuteRuleInput struct {
 	Values map[string]interface{}
 	// BaseRequest is the base http request for fuzzing rule
 	BaseRequest *retryablehttp.Request
+	// HasAnalyzers is a flag that tells if the rule has analyzers
+	HasAnalyzers bool
 }
 
 // GeneratedRequest is a single generated request for rule
@@ -38,6 +41,9 @@ type GeneratedRequest struct {
 	DynamicValues map[string]interface{}
 	// Component is the component for the request
 	Component component.Component
+
+	// AnalyzerInput is the input for analyzer
+	AnalyzerInput *analyzers.AnalyzerInput
 }
 
 // Execute executes a fuzzing rule accepting a callback on which
