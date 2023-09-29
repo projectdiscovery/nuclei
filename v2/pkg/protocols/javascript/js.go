@@ -11,9 +11,11 @@ import (
 
 	"github.com/alecthomas/chroma/quick"
 	"github.com/ditashi/jsbeautifier-go/jsbeautifier"
+	"github.com/dop251/goja"
 	"github.com/pkg/errors"
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v2/pkg/js/compiler"
+	"github.com/projectdiscovery/nuclei/v2/pkg/js/gojs"
 	"github.com/projectdiscovery/nuclei/v2/pkg/model"
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators"
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators/extractors"
@@ -43,6 +45,11 @@ type Request struct {
 	// description: |
 	// ID is request id in that protocol
 	ID string `yaml:"id,omitempty" json:"id,omitempty" jsonschema:"title=id of the request,description=ID is the optional ID of the Request"`
+
+	// description: |
+	//  Init is javascript code to execute after compiling template and before executing it on any target
+	//  This is helpful for preparing payloads or other setup that maybe required for exploits
+	Init string `yaml:"init,omitempty" json:"init,omitempty" jsonschema:"title=init javascript code,description=Init is the javascript code to execute after compiling template"`
 
 	// description: |
 	//   PreCondition is a condition which is evaluated before sending the request.
@@ -119,6 +126,91 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 	// "Port" is a special variable and it should not contains any dsl expressions
 	if strings.Contains(request.getPort(), "{{") {
 		return errorutil.NewWithTag(request.TemplateID, "'Port' variable cannot contain any dsl expressions")
+	}
+
+	if request.Init != "" {
+		// execute init code if any
+		if request.options.Options.Debug || request.options.Options.DebugRequests {
+			gologger.Debug().Msgf("[%s] Executing Template Init\n", request.TemplateID)
+			var highlightFormatter = "terminal256"
+			if request.options.Options.NoColor {
+				highlightFormatter = "text"
+			}
+			var buff bytes.Buffer
+			_ = quick.Highlight(&buff, beautifyJavascript(request.Init), "javascript", highlightFormatter, "monokai")
+			prettyPrint(request.TemplateID, buff.String())
+		}
+
+		opts := &compiler.ExecuteOptions{}
+		// register 'export' function to export variables from init code
+		// these are saved in args and are available in pre-condition and request code
+		opts.Callback = func(runtime *goja.Runtime) error {
+			err := gojs.RegisterFuncWithSignature(runtime, gojs.FuncOpts{
+				Name: "set",
+				Signatures: []string{
+					"set(string, interface{})",
+				},
+				Description: "set variable from init code. this function is available in init code block only",
+				FuncDecl: func(varname string, value any) error {
+					if varname == "" {
+						return fmt.Errorf("variable name cannot be empty")
+					}
+					if value == nil {
+						return fmt.Errorf("variable value cannot be empty")
+					}
+					if request.Args == nil {
+						request.Args = make(map[string]interface{})
+					}
+					request.Args[varname] = value
+					return nil
+				},
+			})
+			if err != nil {
+				return err
+			}
+
+			return gojs.RegisterFuncWithSignature(runtime, gojs.FuncOpts{
+				Name: "updatePayload",
+				Signatures: []string{
+					"updatePayload(string, interface{})",
+				},
+				Description: "update/override any payload from init code. this function is available in init code block only",
+				FuncDecl: func(varname string, Value any) error {
+					if request.Payloads == nil {
+						request.Payloads = make(map[string]interface{})
+					}
+					if request.generator != nil {
+						request.Payloads[varname] = Value
+						request.generator, err = generators.New(request.Payloads, request.AttackType.Value, request.options.TemplatePath, options.Catalog, options.Options.AttackType, options.Options)
+						if err != nil {
+							return err
+						}
+					} else {
+						return fmt.Errorf("payloads not defined and cannot be updated")
+					}
+					return nil
+				},
+			})
+		}
+
+		args := compiler.NewExecuteArgs()
+		allVars := generators.MergeMaps(options.Variables.GetAll(), options.Options.Vars.AsMap(), request.options.Constants)
+		// proceed with whatever args we have
+		args.Args, _ = request.evaluateArgs(allVars, options, true)
+
+		result, err := request.options.JsCompiler.ExecuteWithOptions(request.Init, args, opts)
+		if err != nil {
+			return errorutil.NewWithTag(request.TemplateID, "could not execute pre-condition: %s", err)
+		}
+		if types.ToString(result["error"]) != "" {
+			gologger.Warning().Msgf("[%s] Init failed with error %v\n", request.TemplateID, result["error"])
+			return nil
+		} else {
+			if request.options.Options.Debug || request.options.Options.DebugResponse {
+				gologger.Debug().Msgf("[%s] Init executed successfully\n", request.TemplateID)
+				gologger.Debug().Msgf("[%s] Init result: %v\n", request.TemplateID, result["response"])
+			}
+		}
 	}
 
 	return nil
@@ -273,14 +365,14 @@ func (request *Request) executeRequestParallel(ctxParent context.Context, hostPo
 	defer cancel()
 	requestOptions := request.options
 	gotmatches := &atomic.Bool{}
+
 	sg := sizedwaitgroup.New(threads)
 	if request.generator != nil {
 		iterator := request.generator.NewIterator()
-
 		for {
 			value, ok := iterator.Value()
 			if !ok {
-				return
+				break
 			}
 			sg.Add()
 			go func() {
@@ -428,14 +520,26 @@ func (request *Request) executeRequestWithPayloads(hostPort string, input *conte
 
 func (request *Request) getArgsCopy(input *contextargs.Context, payloadValues map[string]interface{}, requestOptions *protocols.ExecutorOptions, ignoreErrors bool) (*compiler.ExecuteArgs, error) {
 	// Template args from payloads
+	argsCopy, err := request.evaluateArgs(payloadValues, requestOptions, ignoreErrors)
+	if err != nil {
+		requestOptions.Output.Request(requestOptions.TemplateID, input.MetaInput.Input, request.Type().String(), err)
+		requestOptions.Progress.IncrementFailedRequestsBy(1)
+	}
+	// "Port" is a special variable that is considered as network port
+	// and is conditional based on input port and default port specified in input
+	argsCopy["Port"] = input.Port()
+
+	return &compiler.ExecuteArgs{Args: argsCopy}, nil
+}
+
+// evaluateArgs evaluates arguments using available payload values and returns a copy of args
+func (request *Request) evaluateArgs(payloadValues map[string]interface{}, requestOptions *protocols.ExecutorOptions, ignoreErrors bool) (map[string]interface{}, error) {
 	argsCopy := make(map[string]interface{})
 mainLoop:
 	for k, v := range request.Args {
 		if vVal, ok := v.(string); ok && strings.Contains(vVal, "{") {
 			finalAddress, dataErr := expressions.Evaluate(vVal, payloadValues)
 			if dataErr != nil {
-				requestOptions.Output.Request(requestOptions.TemplateID, input.MetaInput.Input, request.Type().String(), dataErr)
-				requestOptions.Progress.IncrementFailedRequestsBy(1)
 				return nil, errors.Wrap(dataErr, "could not evaluate template expressions")
 			}
 			if finalAddress == vVal && ignoreErrors {
@@ -447,12 +551,7 @@ mainLoop:
 			argsCopy[k] = v
 		}
 	}
-
-	// "Port" is a special variable that is considered as network port
-	// and is conditional based on input port and default port specified in input
-	argsCopy["Port"] = input.Port()
-
-	return &compiler.ExecuteArgs{Args: argsCopy}, nil
+	return argsCopy, nil
 }
 
 // RequestPartDefinitions contains a mapping of request part definitions and their

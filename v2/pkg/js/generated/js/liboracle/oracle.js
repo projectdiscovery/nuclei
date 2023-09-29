@@ -1,29 +1,33 @@
-/** 
- * @module oracle
- */
+/** @module oracle */
 
 /**
  * @class
- * OracleClient is a minimal Oracle client for nuclei scripts.
+ * @classdesc OracleClient is a minimal Oracle client for nuclei scripts.
  */
 class OracleClient {
     /**
-     * @method
-     * IsOracle checks if a host is running an Oracle server.
-     * @param {string} host - The host to check.
-     * @param {number} port - The port to check.
-     * @returns {IsOracleResponse} - The response from the Oracle server.
-     * @throws {error} If there is an error in the process.
-     * @example
-     * let oracleClient = new OracleClient();
-     * oracleClient.IsOracle("localhost", 1521);
-     */
+    * @method
+    * @description IsOracle checks if a host is running an Oracle server.
+    * @param {string} host - The host to check.
+    * @param {int} port - The port to check.
+    * @returns {IsOracleResponse} - The response from the Oracle server.
+    * @throws {error} - The error encountered during the check.
+    * @example
+    * let m = require('nuclei/oracle');
+    * let c = m.OracleClient();
+    * let response = c.IsOracle('localhost', 1521);
+    */
     IsOracle(host, port) {
         // implemented in go
     };
 };
 
-// ReadOnly DONOT EDIT
+/**
+ * @typedef {object} IsOracleResponse
+ * @description IsOracleResponse is an object containing the response from the Oracle server.
+ */
+const IsOracleResponse = {};
+
 module.exports = {
     OracleClient: OracleClient,
 };
