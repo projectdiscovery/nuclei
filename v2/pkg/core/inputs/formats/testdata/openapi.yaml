@@ -1,0 +1,582 @@
+openapi: 3.0.1
+info:
+  title: VAmPI
+  description: OpenAPI v3 specs for VAmPI
+  version: '0.1'
+servers:
+  - url: http://localhost:5000
+components: {}
+paths:
+  /createdb:
+    get:
+      tags:
+        - db-init
+      summary: Creates and populates the database with dummy data
+      description: Creates and populates the database with dummy data
+      operationId: api_views.main.populate_db
+      responses:
+        '200':
+          description: Creates and populates the database with dummy data
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: 'Database populated.'
+  /:
+    get:
+      tags:
+        - home
+      summary: VAmPI home
+      description: >-
+        VAmPI is a vulnerable on purpose API. It was created in order to
+        evaluate the efficiency of third party tools in identifying
+        vulnerabilities in APIs but it can also be used in learning/teaching
+        purposes.
+      operationId: api_views.main.basic
+      responses:
+        '200':
+          description: Home - Help
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: 'VAmPI the Vulnerable API'
+                  help:
+                    type: string
+                    example: 'VAmPI is a vulnerable on purpose API. It was created in order to evaluate the efficiency of third party tools in identifying vulnerabilities in APIs but it can also be used in learning/teaching purposes.'
+                  vulnerable:
+                    type: number
+                    example: 1
+  /users/v1:
+    get:
+      tags:
+        - users
+      summary: Retrieves all users
+      description: Displays all users with basic information
+      operationId: api_views.users.get_all_users
+      responses:
+        '200':
+          description: See basic info about all users
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    email:
+                      type: string
+                      example: 'mail1@mail.com'
+                    username:
+                      type: string
+                      example: 'name1'
+  /users/v1/_debug:
+    get:
+      tags:
+        - users
+      summary: Retrieves all details for all users
+      description: Displays all details for all users
+      operationId: api_views.users.debug
+      responses:
+        '200':
+          description: See all details of the users
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    admin:
+                      type: boolean
+                      example: false
+                    email:
+                      type: string
+                      example: 'mail1@mail.com'
+                    password:
+                      type: string
+                      example: 'pass1'
+                    username:
+                      type: string
+                      example: 'name1'
+  /users/v1/register:
+    post:
+      tags:
+        - users
+      summary: Register new user
+      description: Register new user
+      operationId: api_views.users.register_user
+      requestBody:
+        description: Username of the user
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                username:
+                  type: string
+                  example: 'John.Doe'
+                password:
+                  type: string
+                  example: 'password123'
+                email:
+                  type: string
+                  example: 'user@tempmail.com'
+        required: true
+      responses:
+        '200':
+          description: Sucessfully created user
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: 'Successfully registered. Login to receive an auth token.'
+                  status:
+                    type: string
+                    enum: ['success', 'fail']
+                    example: 'success'
+        '400':
+          description: Invalid request
+          content: {}
+  /users/v1/login:
+    post:
+      tags:
+        - users
+      summary: Login to VAmPI
+      description: Login to VAmPI
+      operationId: api_views.users.login_user
+      requestBody:
+        description: Username of the user
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                username:
+                  type: string
+                  example: 'John.Doe'
+                password:
+                  type: string
+                  example: 'password123'
+        required: true
+      responses:
+        '200':
+          description: Sucessfully logged in user
+          content:
+            application/json:
+                schema:
+                  type: object
+                  properties:
+                    auth_token:
+                      type: string
+                      example: 'eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJleHAiOjE2NzAxNjA2MTcsImlhdCI6MTY3MDE2MDU1Nywic3ViIjoiSm9obi5Eb2UifQ.n17N4AxTbL4_z65-NR46meoytauPDjImUxrLiUMSTQw'
+                    message:
+                      type: string
+                      example: 'Successfully logged in.'
+                    status:
+                      type: string
+                      enum: ['success', 'fail']
+                      example: 'success'
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum: ['fail']
+                    example: 'fail'
+                  message:
+                    type: string
+                    example: 'Password is not correct for the given username.'
+  /users/v1/{username}:
+    get:
+      tags:
+        - users
+      summary: Retrieves user by username
+      description: Displays user by username
+      operationId: api_views.users.get_by_username
+      parameters:
+        - name: username
+          in: path
+          description: retrieve username data
+          required: true
+          schema:
+            type: string
+            example: 'John.Doe'
+      responses:
+        '200':
+          description: Successfully display user info
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    username:
+                      type: string
+                      example: 'John.Doe'
+                    email:
+                      type: string
+                      example: 'user@tempmail.com'
+        '404':
+          description: User not found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum: ['fail']
+                    example: 'fail'
+                  message:
+                    type: string
+                    example: 'User not found'
+
+    delete:
+      tags:
+        - users
+      summary: Deletes user by username (Only Admins)
+      description: Deletes user by username (Only Admins)
+      operationId: api_views.users.delete_user
+      parameters:
+        - name: username
+          in: path
+          description: Delete username
+          required: true
+          schema:
+            type: string
+            example: 'name1'
+      responses:
+        '200':
+          description: Sucessfully deleted user
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: 'User deleted.'
+                  status:
+                    type: string
+                    enum: ['success', 'fail']
+                    example: 'success'
+        '401':
+          description: User not authorized
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: 'fail'
+                    enum: ['fail']
+                  message:
+                    type: string
+                    example: 'Only Admins may delete users!'
+        '404':
+          description: User not found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: 'fail'
+                    enum: ['fail']
+                  message:
+                    type: string
+                    example: 'User not found!'
+  /users/v1/{username}/email:
+    put:
+      tags:
+        - users
+      summary: Update users email
+      description: Update a single users email
+      operationId: api_views.users.update_email
+      parameters:
+        - name: username
+          in: path
+          description: username to update email
+          required: true
+          schema:
+            type: string
+            example: 'name1'
+      requestBody:
+        description: field to update
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email:
+                  type: string
+                  example: 'mail3@mail.com'
+        required: true
+      responses:
+        '204':
+          description: Sucessfully updated user email
+          content: {}
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum: ['fail']
+                    example: 'fail'
+                  message:
+                    type: string
+                    example: 'Please Provide a valid email address.'
+        '401':
+          description: User not authorized
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum: ['fail']
+                    example: 'fail'
+                  message:
+                    type: string
+                    example: 'Invalid Token'
+  /users/v1/{username}/password:
+    put:
+      tags:
+        - users
+      summary: Update users password
+      description: Update users password
+      operationId: api_views.users.update_password
+      parameters:
+        - name: username
+          in: path
+          description: username to update password
+          required: true
+          schema:
+            type: string
+            example: 'name1'
+      requestBody:
+        description: field to update
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                password:
+                  type: string
+                  example: 'pass4'
+        required: true
+      responses:
+        '204':
+          description: Sucessfully updated users password
+          content: {}
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum: ['fail']
+                    example: 'fail'
+                  message:
+                    type: string
+                    example: 'Malformed Data'
+        '401':
+          description: User not authorized
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum: ['fail']
+                    example: 'fail'
+                  message:
+                    type: string
+                    example: 'Invalid Token'
+  /books/v1:
+    get:
+      tags:
+        - books
+      summary: Retrieves all books
+      description: Retrieves all books
+      operationId: api_views.books.get_all_books
+      responses:
+        '200':
+          description: See all books
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  Books:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        book_title:
+                          type: string
+                        user:
+                          type: string
+              example:
+                Books:
+                  - book_title: 'bookTitle77'
+                    user: 'name1'
+                  - book_title: 'bookTitle85'
+                    user: 'name2'
+                  - book_title: 'bookTitle47'
+                    user: 'admin'
+    post:
+      tags:
+        - books
+      summary: Add new book
+      description: Add new book
+      operationId: api_views.books.add_new_book
+      requestBody:
+        description: >-
+          Add new book with title and secret content only available to the user
+          who added it.
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                book_title:
+                  type: string
+                  example: 'book99'
+                secret:
+                  type: string
+                  example: 'pass1secret'
+        required: true
+      responses:
+        '200':
+          description: Sucessfully added a book
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: 'Book has been added.'
+                  status:
+                    type: string
+                    enum: ['success', 'fail']
+                    example: 'success'
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum: ['fail']
+                    example: 'fail'
+                  message:
+                    type: string
+                    example: 'Book Already exists!'
+        '401':
+          description: User not authorized
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum: ['fail']
+                    example: 'fail'
+                  message:
+                    type: string
+                    example: 'Invalid Token'
+  /books/v1/{book_title}:
+    get:
+      tags:
+        - books
+      summary: Retrieves book by title along with secret
+      description: >-
+        Retrieves book by title along with secret. Only the owner may retrieve
+        it
+      operationId: api_views.books.get_by_title
+      parameters:
+        - name: book_title
+          in: path
+          description: retrieve book data
+          required: true
+          schema:
+            type: string
+            example: 'bookTitle77'
+      responses:
+        '200':
+          description: Successfully retrieve book info
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    book_title:
+                      type: string
+                      example: 'bookTitle77'
+                    owner:
+                      type: string
+                      example: 'name1'
+                    secret:
+                      type: string
+                      example: 'secret for bookTitle77'
+        '401':
+          description: User not authorized
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum: ['fail']
+                    example: 'fail'
+                  message:
+                    type: string
+                    example: 'Invalid Token'
+        '404':
+          description: Book not found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum: ['fail']
+                    example: 'fail'
+                  message:
+                    type: string
+                    example: 'Book not found!'

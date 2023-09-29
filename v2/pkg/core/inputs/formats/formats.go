@@ -25,7 +25,7 @@ type RawRequest struct {
 	// URL is the URL of the raw request
 	URL string `json:"url"`
 	// Headers contains the headers of the raw request
-	Headers map[string]string `json:"headers"`
+	Headers map[string][]string `json:"headers"`
 	// Body is the body of the raw request
 	Body string `json:"body"`
 	// Method is the method of the raw request
@@ -50,7 +50,9 @@ func (r *RawRequest) Request() (*retryablehttp.Request, error) {
 		return nil, errors.Wrap(err, "could not create request")
 	}
 	for k, v := range r.Headers {
-		req.Header.Set(k, v)
+		for _, value := range v {
+			req.Header.Add(k, value)
+		}
 	}
 	return req, nil
 }
@@ -62,9 +64,9 @@ func ParseRawRequest(raw, body, URL string) (*RawRequest, error) {
 		return nil, errors.Wrap(err, "could not parse raw request")
 	}
 
-	headers := make(map[string]string)
+	headers := make(map[string][]string)
 	for k, v := range parsedRequest.Header {
-		headers[k] = strings.Join(v, " ")
+		headers[k] = v
 	}
 
 	return &RawRequest{
