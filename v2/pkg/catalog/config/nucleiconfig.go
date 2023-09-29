@@ -68,6 +68,12 @@ func (c *Config) WriteVersionCheckData(ignorehash, nucleiVersion, templatesVersi
 	return nil
 }
 
+// GetTemplateDir returns the nuclei templates directory absolute path
+func (c *Config) GetTemplateDir() string {
+	val, _ := filepath.Abs(c.TemplatesDirectory)
+	return val
+}
+
 // DisableUpdateCheck disables update check and template updates
 func (c *Config) DisableUpdateCheck() {
 	c.disableUpdates = true

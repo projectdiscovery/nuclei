@@ -502,47 +502,32 @@ func (o *Options) GetValidAbsPath(helperFilePath, templatePath string) (string, 
 	// 2. If helper file and template file are in same directory given that its not root directory
 
 	// clean input path just in case
-	helperFilePath = filepath.Clean(helperFilePath)
-	templatePath = filepath.Clean(templatePath) // just in case
+	helperFilePath, err := fileutil.ResolveNClean(helperFilePath, config.DefaultConfig.GetTemplateDir())
+	if err != nil {
+		return "", errorutil.NewWithErr(err).Msgf("could not clean helper file path %v", helperFilePath)
+	}
 
-	// Get platform specific absolute path of template directory
-	AbsTemplateDir, _ := filepath.Abs(config.DefaultConfig.TemplatesDirectory)
-
-	// As per rule, helper files present in nuclei-templates directory are allowed
-	if !filepath.IsAbs(helperFilePath) && fileutil.FileOrFolderExists(filepath.Join(AbsTemplateDir, helperFilePath)) {
-		// if helper file is relative path and present in nuclei-templates directory, allow it
-		return filepath.Join(config.DefaultConfig.TemplatesDirectory, helperFilePath), nil
-	} else if strings.HasPrefix(helperFilePath, AbsTemplateDir) {
-		// if helper file is absolute path and present in nuclei-templates directory, allow it
+	// As per rule 1, if helper file is present in nuclei-templates directory, allow it
+	if strings.HasPrefix(helperFilePath, config.DefaultConfig.GetTemplateDir()) {
 		return helperFilePath, nil
 	}
 
-	// As per rule, if helper file and template file are in same directory given that its not root directory, allow it
-	helperBaseDir, err := getAbsDir(helperFilePath)
+	templatePath, err = fileutil.CleanPath(templatePath)
 	if err != nil {
-		return "", err
+		return "", errorutil.NewWithErr(err).Msgf("could not clean template path %v", templatePath)
 	}
-	templateBaseDir, err := getAbsDir(templatePath)
-	if err != nil {
-		return "", err
-	}
-	if !isRootDir(helperBaseDir) && strings.HasPrefix(helperBaseDir, templateBaseDir) {
-		return filepath.Join(templateBaseDir, helperFilePath), nil
+
+	// As per rule 2, if template and helper file exist in same directory or helper file existed in any child dir of template dir
+	// and given that its not root directory, allow it
+	if !isRootDir(filepath.Dir(helperFilePath)) && strings.HasPrefix(filepath.Dir(helperFilePath), filepath.Dir(templatePath)) {
+		return helperFilePath, nil
 	}
 
 	// all other cases are denied
-	return "", errorutil.New("denied payload file path specified")
+	return "", errorutil.New("access to helper file %v denied", helperFilePath)
 }
 
-// getAbsDir calulates absolute path of given path and returns its base directory
-func getAbsDir(path string) (string, error) {
-	absPath, err := filepath.Abs(path)
-	if err != nil {
-		return "", errorutil.NewWithErr(err).Msgf("could not get absolute path")
-	}
-	return filepath.Dir(absPath), nil
-}
-
+// isRootDir checks if given is root directory
 func isRootDir(path string) bool {
 	if path == "/" {
 		return true

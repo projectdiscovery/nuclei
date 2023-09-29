@@ -3,7 +3,6 @@ package code
 import (
 	"context"
 	"fmt"
-	"io"
 	"strings"
 	"time"
 
@@ -70,24 +69,6 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 	request.gozero = engine
 
 	var src *gozero.Source
-
-	// simple test to check if source is a file or a snippet
-	if len(strings.Split(request.Source, "\n")) == 1 {
-		// get valid path to source file
-		sourceAbsPath, err := options.Options.GetValidAbsPath(request.Source, options.TemplatePath)
-		if err == nil {
-			// try to load it with sandbox config
-			data, err := options.Options.LoadHelperFile(sourceAbsPath, options.TemplatePath, options.Catalog)
-			if err != nil {
-				return err
-			}
-			val, err := io.ReadAll(data)
-			if err != nil {
-				return err
-			}
-			request.Source = string(val)
-		}
-	}
 
 	src, err = gozero.NewSourceWithString(request.Source, request.Pattern)
 	if err != nil {

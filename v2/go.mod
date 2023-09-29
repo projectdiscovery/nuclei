@@ -91,7 +91,7 @@ require (
 	github.com/projectdiscovery/sarif v0.0.1
 	github.com/projectdiscovery/tlsx v1.1.4
 	github.com/projectdiscovery/uncover v1.0.6-0.20230601103158-bfd7e02a5bb1
-	github.com/projectdiscovery/utils v0.0.55
+	github.com/projectdiscovery/utils v0.0.57-0.20230929135041-ae4731ebef78
 	github.com/projectdiscovery/wappalyzergo v0.0.107
 	github.com/redis/go-redis/v9 v9.1.0
 	github.com/ropnop/gokrb5/v8 v8.0.0-20201111231119-729746023c02
@@ -129,6 +129,7 @@ require (
 	github.com/cloudflare/cfssl v1.6.4 // indirect
 	github.com/cloudflare/circl v1.3.3 // indirect
 	github.com/containerd/continuity v0.4.2 // indirect
+	github.com/denisbrodbeck/machineid v1.0.1 // indirect
 	github.com/dgryski/go-rendezvous v0.0.0-20200823014737-9f7001d12a5f // indirect
 	github.com/dlclark/regexp2 v1.10.0 // indirect
 	github.com/docker/cli v24.0.5+incompatible // indirect

@@ -3,13 +3,13 @@ package templates
 import (
 	"fmt"
 	"io"
-	"path/filepath"
 	"reflect"
-	"strings"
+	"sync"
 
 	"github.com/pkg/errors"
 	"gopkg.in/yaml.v2"
 
+	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v2/pkg/js/compiler"
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
@@ -20,7 +20,6 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/utils"
 	"github.com/projectdiscovery/retryablehttp-go"
 	errorutil "github.com/projectdiscovery/utils/errors"
-	fileutil "github.com/projectdiscovery/utils/file"
 	stringsutil "github.com/projectdiscovery/utils/strings"
 )
 
@@ -259,25 +258,6 @@ func ParseTemplateFromReader(reader io.Reader, preprocessor Preprocessor, option
 	// if request id is not present
 	template.validateAllRequestIDs()
 
-	// TODO: we should add a syntax check here or somehow use a javascript linter
-	// simplest option for now seems to compile using goja and see if it fails
-	if strings.TrimSpace(template.Flow) != "" {
-		if len(template.Flow) > 0 && filepath.Ext(template.Flow) == ".js" && fileutil.FileExists(template.Flow) {
-			// load file respecting sandbox
-			file, err := options.Options.LoadHelperFile(template.Flow, options.TemplatePath, options.Catalog)
-			if err != nil {
-				return nil, errorutil.NewWithErr(err).Msgf("loading flow file from %v denied", template.Flow)
-			}
-			defer file.Close()
-			if bin, err := io.ReadAll(file); err == nil {
-				template.Flow = string(bin)
-			} else {
-				return nil, errorutil.NewWithErr(err).Msgf("something went wrong failed to read file")
-			}
-		}
-		options.Flow = template.Flow
-	}
-
 	// create empty context args for template scope
 	options.CreateTemplateCtxStore()
 	options.ProtocolType = template.Type()
@@ -285,13 +265,22 @@ func ParseTemplateFromReader(reader io.Reader, preprocessor Preprocessor, option
 
 	// initialize the js compiler if missing
 	if options.JsCompiler == nil {
-		options.JsCompiler = compiler.New()
+		options.JsCompiler = GetJsCompiler()
 	}
 
 	template.Options = &options
 	// If no requests, and it is also not a workflow, return error.
 	if template.Requests() == 0 {
 		return nil, fmt.Errorf("no requests defined for %s", template.ID)
+	}
+
+	// load `flow` and `source` in code protocol from file
+	// if file is referenced instead of actual source code
+	if err := template.ImportFileRefs(template.Options); err != nil {
+		return nil, errorutil.NewWithErr(err).Msgf("failed to load file refs for %s", template.ID)
+	}
+	if len(template.ImportedFiles) > 0 {
+		gologger.Verbose().Msgf("[%s] Imported content from %v files", template.ID, template.ImportedFiles)
 	}
 
 	if err := template.compileProtocolRequests(options); err != nil {
@@ -318,4 +307,13 @@ func ParseTemplateFromReader(reader io.Reader, preprocessor Preprocessor, option
 	}
 
 	return template, nil
+}
+
+var jsCompiler *compiler.Compiler
+
+func GetJsCompiler() *compiler.Compiler {
+	sync.OnceFunc(func() {
+		jsCompiler = compiler.New()
+	})
+	return jsCompiler
 }
