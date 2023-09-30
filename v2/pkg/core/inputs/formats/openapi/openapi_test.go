@@ -1,6 +1,7 @@
 package openapi
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 
@@ -37,13 +38,14 @@ var methodToURLs = map[string][]string{
 func TestJSONFormatterParse(t *testing.T) {
 	format := New()
 
-	proxifyInputFile := "../testdata/openapi.yaml"
+	proxifyInputFile := "../testdata/aurora.yaml"
 
 	gotMethodsToURLs := make(map[string][]string)
 
 	err := format.Parse(proxifyInputFile, func(request *formats.RawRequest) bool {
 		gotMethodsToURLs[request.Method] = append(gotMethodsToURLs[request.Method],
 			strings.Replace(request.URL, baseURL, "{{baseUrl}}", 1))
+		fmt.Printf("%v\n\n", request.Raw)
 		return false
 	})
 	if err != nil {
