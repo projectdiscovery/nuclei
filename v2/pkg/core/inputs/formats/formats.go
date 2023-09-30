@@ -2,6 +2,7 @@ package formats
 
 import (
 	"bufio"
+	"io"
 	"net/http"
 	"strings"
 
@@ -69,6 +70,13 @@ func ParseRawRequest(raw, body, URL string) (*RawRequest, error) {
 		headers[k] = v
 	}
 
+	if parsedRequest.Body != nil {
+		data, err := io.ReadAll(parsedRequest.Body)
+		if err != nil {
+			return nil, errors.Wrap(err, "could not read request body")
+		}
+		body = string(data)
+	}
 	return &RawRequest{
 		URL:     URL,
 		Headers: headers,
