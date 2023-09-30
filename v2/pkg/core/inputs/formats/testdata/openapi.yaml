@@ -4,7 +4,7 @@ info:
   description: OpenAPI v3 specs for VAmPI
   version: '0.1'
 servers:
-  - url: http://localhost:5000
+  - url: http://hackthebox:5000
 components: {}
 paths:
   /createdb:

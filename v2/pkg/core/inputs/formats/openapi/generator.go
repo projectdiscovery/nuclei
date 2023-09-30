@@ -163,6 +163,9 @@ func generateRequestsFromOp(method, pathURL, requestPath string, op *openapi3.Op
 			continue
 		}
 	}
+	if op.RequestBody != nil {
+		return nil
+	}
 
 	dumped, err := httputil.DumpRequestOut(req, true)
 	if err != nil {
