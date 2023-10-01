@@ -12,12 +12,10 @@ code:
   - engine:
       - py
       - python3
-    source: |
-      import sys
-      print("hello from " + sys.stdin.read())
+    source: code.py
     
     matchers:
       - type: word
         words:
           - "hello from input"
-# digest: 4a0a00473045022100f740bf66993a8327313594d748c57ac0c563cb03ec436bfad4de467b8d7bd61002202d02b901d033a6af4e981d53f7799aa3c35e99cee5df7ad9e7deb61cc8c11707
+# digest: 4b0a00483046022100f7555a58783f6301975f8c10b8c5a85316ece2f18f931ed5c7ffac4963e50cb7022100ad2f2aecf8ee12f16ea4888cb063d84dbda0e8161cd6983fa7ecfc5ab8f9d03d

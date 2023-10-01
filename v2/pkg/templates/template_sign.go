@@ -13,6 +13,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/protocolstate"
 	"github.com/projectdiscovery/nuclei/v2/pkg/templates/signer"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
+	errorutil "github.com/projectdiscovery/utils/errors"
 )
 
 // Due to file references in sensitive fields of template
@@ -54,7 +55,7 @@ func SignTemplate(templateSigner *signer.Signer, templatePath string) error {
 
 	template, bin, err := getTemplate(templatePath)
 	if err != nil {
-		return err
+		return errorutil.NewWithErr(err).Msgf("failed to get template from disk")
 	}
 	if !template.Verified {
 		// if template not verified then sign it
@@ -91,7 +92,7 @@ func getTemplate(templatePath string) (*Template, []byte, error) {
 	}
 	template, err := ParseTemplateFromReader(bytes.NewReader(bin), nil, executerOpts)
 	if err != nil {
-		return nil, bin, err
+		return nil, bin, errorutil.NewWithErr(err).Msgf("failed to parse template")
 	}
 	return template, bin, nil
 }

@@ -200,35 +200,36 @@ func (template *Template) validateAllRequestIDs() {
 	if len(template.RequestsCode) > 1 {
 		for i, req := range template.RequestsCode {
 			if req.ID == "" {
-				req.ID = req.Type().String() + "_" + strconv.Itoa(i)
+				req.ID = req.Type().String() + "_" + strconv.Itoa(i+1)
 			}
 		}
 	}
+
 	if len(template.RequestsDNS) > 1 {
 		for i, req := range template.RequestsDNS {
 			if req.ID == "" {
-				req.ID = req.Type().String() + "_" + strconv.Itoa(i)
+				req.ID = req.Type().String() + "_" + strconv.Itoa(i+1)
 			}
 		}
 	}
 	if len(template.RequestsFile) > 1 {
 		for i, req := range template.RequestsFile {
 			if req.ID == "" {
-				req.ID = req.Type().String() + "_" + strconv.Itoa(i)
+				req.ID = req.Type().String() + "_" + strconv.Itoa(i+1)
 			}
 		}
 	}
 	if len(template.RequestsHTTP) > 1 {
 		for i, req := range template.RequestsHTTP {
 			if req.ID == "" {
-				req.ID = req.Type().String() + "_" + strconv.Itoa(i)
+				req.ID = req.Type().String() + "_" + strconv.Itoa(i+1)
 			}
 		}
 	}
 	if len(template.RequestsHeadless) > 1 {
 		for i, req := range template.RequestsHeadless {
 			if req.ID == "" {
-				req.ID = req.Type().String() + "_" + strconv.Itoa(i)
+				req.ID = req.Type().String() + "_" + strconv.Itoa(i+1)
 			}
 		}
 
@@ -236,35 +237,35 @@ func (template *Template) validateAllRequestIDs() {
 	if len(template.RequestsNetwork) > 1 {
 		for i, req := range template.RequestsNetwork {
 			if req.ID == "" {
-				req.ID = req.Type().String() + "_" + strconv.Itoa(i)
+				req.ID = req.Type().String() + "_" + strconv.Itoa(i+1)
 			}
 		}
 	}
 	if len(template.RequestsSSL) > 1 {
 		for i, req := range template.RequestsSSL {
 			if req.ID == "" {
-				req.ID = req.Type().String() + "_" + strconv.Itoa(i)
+				req.ID = req.Type().String() + "_" + strconv.Itoa(i+1)
 			}
 		}
 	}
 	if len(template.RequestsWebsocket) > 1 {
 		for i, req := range template.RequestsWebsocket {
 			if req.ID == "" {
-				req.ID = req.Type().String() + "_" + strconv.Itoa(i)
+				req.ID = req.Type().String() + "_" + strconv.Itoa(i+1)
 			}
 		}
 	}
 	if len(template.RequestsWHOIS) > 1 {
 		for i, req := range template.RequestsWHOIS {
 			if req.ID == "" {
-				req.ID = req.Type().String() + "_" + strconv.Itoa(i)
+				req.ID = req.Type().String() + "_" + strconv.Itoa(i+1)
 			}
 		}
 	}
 	if len(template.RequestsJavascript) > 1 {
 		for i, req := range template.RequestsJavascript {
 			if req.ID == "" {
-				req.ID = req.Type().String() + "_" + strconv.Itoa(i)
+				req.ID = req.Type().String() + "_" + strconv.Itoa(i+1)
 			}
 		}
 	}

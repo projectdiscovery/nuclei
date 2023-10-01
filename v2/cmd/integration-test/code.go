@@ -112,7 +112,7 @@ func signTemplates() {
 		}
 
 		if err := templates.SignTemplate(sign, templatePath); err != nil {
-			log.Fatalf("Could not walk directory: %s\n", err)
+			log.Fatalf("Could not sign template %v got: %s\n", templatePath, err)
 		}
 	}
 }

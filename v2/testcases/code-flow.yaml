@@ -1,0 +1,20 @@
+id: code-flow-template
+
+info:
+  name: example code template
+  author: pdteam
+  severity: info
+
+flow: flow.js
+
+code:
+  - engine:
+      - sh
+      - bash
+    source: code.txt
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}"
+# digest: 490a00463044022070f2aa8f3632dfe9a21ee8a3bee7aa6b1e072562d878df1ea71572cefbc35cf4022042eb3ce135e27317f8b7d4c392473836796d16da9bd51a0504336d352065db86
