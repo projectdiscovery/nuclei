@@ -32,6 +32,10 @@ var (
 )
 
 func init() {
+	// allow local file access to load content of file references in template
+	// in order to sign them for testing purposes
+	templates.TemplateSignerLFA()
+
 	// since re-signing of code protocol templates is not supported
 	// for testing purposes remove them from template
 	// to test signing of code protocol templates

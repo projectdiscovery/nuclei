@@ -28,6 +28,14 @@ var (
 	})
 )
 
+// New Signer/Verification logic requires it to load content of file references
+// and this is done respecting sandbox restrictions to avoid any security issues
+// AllowLocalFileAccess is a function that allows local file access by disabling sandbox restrictions
+// and **MUST** be called before signing / verifying any templates for intialization
+func TemplateSignerLFA() {
+	defaultOpts.AllowLocalFileAccess = true
+}
+
 // VerifyTemplateSignature verifies the signature of the template
 // using default signers
 func VerifyTemplateSignature(templatePath string) (bool, error) {
