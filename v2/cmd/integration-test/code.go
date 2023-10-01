@@ -3,6 +3,7 @@ package main
 import (
 	"errors"
 	"log"
+	"os"
 	"path/filepath"
 
 	osutils "github.com/projectdiscovery/utils/os"
@@ -31,6 +32,23 @@ var (
 )
 
 func init() {
+	// since re-signing of code protocol templates is not supported
+	// for testing purposes remove them from template
+	// to test signing of code protocol templates
+	for _, v := range codeTestCases {
+		if v.DisableOn != nil && v.DisableOn() {
+			continue
+		}
+		bin, err := os.ReadFile(v.Path)
+		if err != nil {
+			panic(err)
+		}
+		updated := signer.RemoveSignatureFromData(bin)
+		if err := os.WriteFile(v.Path, updated, 0644); err != nil {
+			panic(err)
+		}
+	}
+
 	var err error
 	ecdsaPrivateKeyAbsPath, err = filepath.Abs("protocols/code/ecdsa-priv-key.pem")
 	if err != nil {
