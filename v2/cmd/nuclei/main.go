@@ -59,6 +59,8 @@ func main() {
 			gologger.Fatal().Msgf("couldn't initialize signer crypto engine: %s\n", err)
 		}
 
+		successCounter := 0
+		errorCounter := 0
 		for _, item := range options.Templates {
 			err := filepath.WalkDir(item, func(iterItem string, d fs.DirEntry, err error) error {
 				if err != nil || d.IsDir() {
@@ -66,7 +68,10 @@ func main() {
 				}
 
 				if err := templates.SignTemplate(sign, iterItem); err != nil {
-					gologger.Warning().Msgf("could not sign '%s': %s\n", iterItem, err)
+					errorCounter++
+					gologger.Error().Msgf("could not sign '%s': %s\n", iterItem, err)
+				} else {
+					successCounter++
 				}
 
 				return nil
@@ -74,8 +79,8 @@ func main() {
 			if err != nil {
 				gologger.Error().Msgf("%s\n", err)
 			}
-			gologger.Info().Msgf("All templates signatures were elaborated\n")
 		}
+		gologger.Info().Msgf("All templates signatures were elaborated success=%d failed=%d\n", successCounter, errorCounter)
 		return
 	}
 

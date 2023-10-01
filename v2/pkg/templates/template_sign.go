@@ -2,6 +2,7 @@ package templates
 
 import (
 	"bytes"
+	"fmt"
 	"os"
 	"path/filepath"
 	"sync"
@@ -39,7 +40,8 @@ func VerifyTemplateSignature(templatePath string) (bool, error) {
 
 // SignTemplate signs the tempalate using custom signer
 func SignTemplate(templateSigner *signer.Signer, templatePath string) error {
-	// sign templates is individual process so we need to initialize
+	// sign templates requires code files such as javsacript bash command to be included
+	// in template hence we first load template and append such resolved file references to content
 	initOnce()
 
 	template, bin, err := getTemplate(templatePath)
@@ -48,7 +50,15 @@ func SignTemplate(templateSigner *signer.Signer, templatePath string) error {
 	}
 	if !template.Verified {
 		// if template not verified then sign it
-		// TODO: do not allow re-signing templates having code protocol
+
+		if len(template.RequestsCode) > 0 {
+			// if template contains code protocol and digest then re-signing is not allowed
+			digestData := signer.GetSignatureFromData(bin)
+			if len(digestData) != 0 {
+				return fmt.Errorf("re-signing of code protocol templates is not supported")
+			}
+		}
+
 		signatureData, err := signer.Sign(templateSigner, bin, template)
 		if err != nil {
 			return err

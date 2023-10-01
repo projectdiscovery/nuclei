@@ -178,6 +178,9 @@ func ParseTemplate(templatePath string, catalog catalog.Catalog) (*templates.Tem
 	default:
 		err = fmt.Errorf("failed to identify template format expected JSON or YAML but got %v", templatePath)
 	}
+	if err != nil {
+		return nil, err
+	}
 
 	parsedTemplatesCache.Store(templatePath, template, nil)
 	return template, nil

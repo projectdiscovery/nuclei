@@ -23,6 +23,10 @@ func RemoveSignatureFromData(data []byte) []byte {
 	return bytes.Trim(ReDigest.ReplaceAll(data, []byte("")), "\n")
 }
 
+func GetSignatureFromData(data []byte) []byte {
+	return ReDigest.Find(data)
+}
+
 func Sign(sign *Signer, data []byte, tmpl SignableTemplate) (string, error) {
 	if sign == nil {
 		return "", errors.New("invalid nil signer")
