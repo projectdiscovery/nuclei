@@ -1,19 +1,20 @@
 package parsers
 
 import (
+	"encoding/json"
 	"fmt"
 	"regexp"
 	"strings"
 
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalog"
+	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/config"
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/loader/filter"
-	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v2/pkg/templates"
 	"github.com/projectdiscovery/nuclei/v2/pkg/templates/cache"
 	"github.com/projectdiscovery/nuclei/v2/pkg/templates/types"
-	pkgTypes "github.com/projectdiscovery/nuclei/v2/pkg/types"
 	"github.com/projectdiscovery/nuclei/v2/pkg/utils"
 	"github.com/projectdiscovery/nuclei/v2/pkg/utils/stats"
+	"gopkg.in/yaml.v2"
 )
 
 const (
@@ -133,6 +134,7 @@ func validateTemplateOptionalFields(template *templates.Template) error {
 var (
 	parsedTemplatesCache *cache.Templates
 	ShouldValidate       bool
+	NoStrictSyntax       bool
 	templateIDRegexp     = regexp.MustCompile(`^([a-zA-Z0-9]+[-_])*[a-zA-Z0-9]+$`)
 )
 
@@ -140,6 +142,7 @@ const (
 	SyntaxWarningStats   = "syntax-warnings"
 	SyntaxErrorStats     = "syntax-errors"
 	RuntimeWarningsStats = "runtime-warnings"
+	VerifiedWarning      = "verified-warnings"
 )
 
 func init() {
@@ -148,6 +151,7 @@ func init() {
 	stats.NewEntry(SyntaxWarningStats, "Found %d templates with syntax warning (use -validate flag for further examination)")
 	stats.NewEntry(SyntaxErrorStats, "Found %d templates with syntax error (use -validate flag for further examination)")
 	stats.NewEntry(RuntimeWarningsStats, "Found %d templates with runtime error (use -validate flag for further examination)")
+	stats.NewEntry(VerifiedWarning, "Found %d unverified templates (carefully examine the template before using it and use -sign flag to sign them)")
 }
 
 // ParseTemplate parses a template and returns a *templates.Template structure
@@ -155,15 +159,24 @@ func ParseTemplate(templatePath string, catalog catalog.Catalog) (*templates.Tem
 	if value, err := parsedTemplatesCache.Has(templatePath); value != nil {
 		return value.(*templates.Template), err
 	}
-
-	template, err := templates.Parse(templatePath, nil, protocols.ExecutorOptions{
-		Options:      pkgTypes.DefaultOptions(),
-		Catalog:      catalog,
-		TemplatePath: templatePath,
-	})
+	data, err := utils.ReadFromPathOrURL(templatePath, catalog)
 	if err != nil {
-		stats.Increment(SyntaxErrorStats)
 		return nil, err
+	}
+
+	template := &templates.Template{}
+
+	switch config.GetTemplateFormatFromExt(templatePath) {
+	case config.JSON:
+		err = json.Unmarshal(data, template)
+	case config.YAML:
+		if NoStrictSyntax {
+			err = yaml.Unmarshal(data, template)
+		} else {
+			err = yaml.UnmarshalStrict(data, template)
+		}
+	default:
+		err = fmt.Errorf("failed to identify template format expected JSON or YAML but got %v", templatePath)
 	}
 
 	parsedTemplatesCache.Store(templatePath, template, nil)

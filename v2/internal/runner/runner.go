@@ -148,7 +148,7 @@ func New(options *types.Options) (*Runner, error) {
 	}
 
 	// TODO: refactor to pass options reference globally without cycles
-	templates.NoStrictSyntax = options.NoStrictSyntax
+	parsers.NoStrictSyntax = options.NoStrictSyntax
 	yaml.StrictSyntax = !options.NoStrictSyntax
 
 	if options.Headless {
@@ -699,6 +699,7 @@ func (r *Runner) displayExecutionInfo(store *loader.Store) {
 	stats.Display(parsers.SyntaxWarningStats)
 	stats.Display(parsers.SyntaxErrorStats)
 	stats.Display(parsers.RuntimeWarningsStats)
+	stats.Display(parsers.VerifiedWarning)
 
 	cfg := config.DefaultConfig
 

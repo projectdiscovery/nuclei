@@ -14,6 +14,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/templates/types"
 	errorutil "github.com/projectdiscovery/utils/errors"
 	fileutil "github.com/projectdiscovery/utils/file"
+	folderutil "github.com/projectdiscovery/utils/folder"
 )
 
 var (
@@ -484,9 +485,6 @@ func (options *Options) LoadHelperFile(helperFile, templatePath string, catalog 
 		}
 		helperFile = absPath
 	}
-	if catalog != nil {
-		return catalog.OpenFile(helperFile)
-	}
 	f, err := os.Open(helperFile)
 	if err != nil {
 		return nil, errorutil.NewWithErr(err).Msgf("could not open file %v", helperFile)
@@ -523,8 +521,9 @@ func (o *Options) GetValidAbsPath(helperFilePath, templatePath string) (string, 
 	}
 
 	// As per rule 2, if template and helper file exist in same directory or helper file existed in any child dir of template dir
-	// and given that its not root directory, allow it
-	if !isRootDir(filepath.Dir(helperFilePath)) && strings.HasPrefix(filepath.Dir(helperFilePath), filepath.Dir(templatePath)) {
+	// and both of them are present in user home directory, allow it
+	// Review: should we keep this rule ? add extra option to disable this ?
+	if isHomeDir(helperFilePath) && isHomeDir(templatePath) && strings.HasPrefix(filepath.Dir(helperFilePath), filepath.Dir(templatePath)) {
 		return helperFilePath, nil
 	}
 
@@ -533,13 +532,7 @@ func (o *Options) GetValidAbsPath(helperFilePath, templatePath string) (string, 
 }
 
 // isRootDir checks if given is root directory
-func isRootDir(path string) bool {
-	if path == "/" {
-		return true
-	}
-	if strings.HasSuffix(path, ":") || strings.HasSuffix(path, ":\\") {
-		// windows drive letter
-		return true
-	}
-	return false
+func isHomeDir(path string) bool {
+	homeDir := folderutil.HomeDirOrDefault("")
+	return strings.HasPrefix(path, homeDir)
 }

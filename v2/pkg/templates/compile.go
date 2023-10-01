@@ -10,7 +10,6 @@ import (
 	"github.com/pkg/errors"
 	"gopkg.in/yaml.v2"
 
-	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/config"
 	"github.com/projectdiscovery/nuclei/v2/pkg/js/compiler"
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators"
@@ -31,7 +30,6 @@ var (
 )
 
 var parsedTemplatesCache *cache.Templates
-var NoStrictSyntax bool
 
 func init() {
 	parsedTemplatesCache = cache.New()
@@ -240,11 +238,7 @@ func ParseTemplateFromReader(reader io.Reader, preprocessor Preprocessor, option
 	case config.JSON:
 		err = json.Unmarshal(data, template)
 	case config.YAML:
-		if NoStrictSyntax {
-			err = yaml.Unmarshal(data, template)
-		} else {
-			err = yaml.UnmarshalStrict(data, template)
-		}
+		err = yaml.Unmarshal(data, template)
 	default:
 		// assume its yaml
 		if err = yaml.Unmarshal(data, template); err != nil {
@@ -297,9 +291,10 @@ func ParseTemplateFromReader(reader io.Reader, preprocessor Preprocessor, option
 	if err := template.ImportFileRefs(template.Options); err != nil {
 		return nil, errorutil.NewWithErr(err).Msgf("failed to load file refs for %s", template.ID)
 	}
-	if len(template.ImportedFiles) > 0 {
-		gologger.Verbose().Msgf("[%s] Imported content from %v files", template.ID, template.ImportedFiles)
-	}
+	// Review: should we log this?
+	// if len(template.ImportedFiles) > 0 {
+	// 	// gologger.Verbose().Msgf("[%s] Imported content from %v files", template.ID, template.ImportedFiles)
+	// }
 
 	if err := template.compileProtocolRequests(options); err != nil {
 		return nil, err
