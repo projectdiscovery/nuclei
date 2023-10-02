@@ -102,7 +102,7 @@ func (rule *Rule) executeEvaluate(input *ExecuteRuleInput, key, value, payload s
 	// TODO: Handle errors
 	values := generators.MergeMaps(input.Values, map[string]interface{}{
 		"value": value,
-	})
+	}, rule.options.Options.Vars.AsMap(), rule.options.Variables.GetAll())
 	firstpass, _ := expressions.Evaluate(payload, values)
 	interactData, interactshURLs := rule.options.Interactsh.Replace(firstpass, interactshURLs)
 	evaluated, _ := expressions.Evaluate(interactData, values)
