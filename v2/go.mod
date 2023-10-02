@@ -21,8 +21,8 @@ require (
 	github.com/olekukonko/tablewriter v0.0.5
 	github.com/pkg/errors v0.9.1
 	github.com/projectdiscovery/clistats v0.0.19
-	github.com/projectdiscovery/fastdialer v0.0.37
-	github.com/projectdiscovery/hmap v0.0.19
+	github.com/projectdiscovery/fastdialer v0.0.38
+	github.com/projectdiscovery/hmap v0.0.20
 	github.com/projectdiscovery/interactsh v1.1.7
 	github.com/projectdiscovery/rawhttp v0.1.18
 	github.com/projectdiscovery/retryabledns v1.0.36
@@ -78,7 +78,7 @@ require (
 	github.com/projectdiscovery/sarif v0.0.1
 	github.com/projectdiscovery/tlsx v1.1.4
 	github.com/projectdiscovery/uncover v1.0.6
-	github.com/projectdiscovery/utils v0.0.55
+	github.com/projectdiscovery/utils v0.0.56
 	github.com/projectdiscovery/wappalyzergo v0.0.109
 	github.com/stretchr/testify v1.8.4
 	gopkg.in/src-d/go-git.v4 v4.13.1
@@ -103,6 +103,7 @@ require (
 	github.com/cheggaaa/pb/v3 v3.1.4 // indirect
 	github.com/cloudflare/cfssl v1.6.4 // indirect
 	github.com/cloudflare/circl v1.3.3 // indirect
+	github.com/denisbrodbeck/machineid v1.0.1 // indirect
 	github.com/dlclark/regexp2 v1.8.1 // indirect
 	github.com/fatih/color v1.15.0 // indirect
 	github.com/gabriel-vasile/mimetype v1.4.2 // indirect
@@ -128,7 +129,7 @@ require (
 	github.com/projectdiscovery/freeport v0.0.5 // indirect
 	github.com/projectdiscovery/gostruct v0.0.1 // indirect
 	github.com/quic-go/quic-go v0.38.1 // indirect
-	github.com/refraction-networking/utls v1.5.2 // indirect
+	github.com/refraction-networking/utls v1.5.3 // indirect
 	github.com/sashabaranov/go-openai v1.14.2 // indirect
 	github.com/shoenig/go-m1cpu v0.1.6 // indirect
 	github.com/skeema/knownhosts v1.1.1 // indirect
