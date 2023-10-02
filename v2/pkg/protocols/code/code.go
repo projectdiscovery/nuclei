@@ -25,6 +25,7 @@ import (
 	protocolutils "github.com/projectdiscovery/nuclei/v2/pkg/protocols/utils"
 	templateTypes "github.com/projectdiscovery/nuclei/v2/pkg/templates/types"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
+	errorutil "github.com/projectdiscovery/utils/errors"
 )
 
 // Request is a request for the SSL protocol
@@ -64,7 +65,7 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 	}
 	engine, err := gozero.New(gozeroOptions)
 	if err != nil {
-		return err
+		return errorutil.NewWithErr(err).Msgf("[%s] engines '%s' not available on host", options.TemplateID, strings.Join(request.Engine, ","))
 	}
 	request.gozero = engine
 
