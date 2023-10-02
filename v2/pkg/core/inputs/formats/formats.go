@@ -62,6 +62,8 @@ func (r *RawRequest) Request() (*retryablehttp.Request, error) {
 
 // ParseRawRequest parses a raw request from a string
 func ParseRawRequest(raw, body, URL string) (*RawRequest, error) {
+	raw = strings.Replace(raw, "HTTP/2", "HTTP/1.1", 1)
+
 	parsedRequest, err := http.ReadRequest(bufio.NewReader(strings.NewReader(raw)))
 	if err != nil {
 		return nil, errors.Wrap(err, "could not parse raw request")
