@@ -94,42 +94,6 @@ There are again multiple ways to sign templates. We can either use 'nuclei' itse
 $ ./nuclei -t code_template.yaml -sign
 ```
 
-#### Using `sign-templates`
-
-**Installation**
-
-```console
-$ go install -v github.com/projectdiscovery/nuclei/v2/cmd/sign-templates@latest
-```
-
-**Usage**
-
-```
-./sign-templates -h
-sign-templates is a utility to perform template signature
-
-Usage:
-  ./sign-templates [flags]
-
-Flags:
-SIGN:
-   -t, -templates string[]          templates files/folders to sign
-   -a, -algorithm string            signature algorithm (rsa, ecdsa) (default "rsa")
-   -prk, -private-key string        private key env var name or file location
-   -prkp, -private-key-pass string  private key passphrase env var name or file location
-   -puk, -public-key string         public key env var name or file location
-```
-
-**Example**
-
-```console
-$ sign-templates -t code_template.yaml -prk path/to/private.key -puk path/to/public.key -a rsa
-```
-
-**Note**
-
-`sign-templates` standalone utility does not generate keys nor does it pick up keys from default locations. Keys must be provided via `-prk` and `-puk` flags or via environment variables.
-
 ## Template Digest
 
 When a template is signed, a digest is generated and added to the template. This digest is a hash of the template content and is used to verify the integrity of the template. If the template is modified after signing, the digest will change, and the signature verification will fail which happens during template loading.
@@ -211,3 +175,70 @@ code:
           - "hello from input"
 # digest: 4a0a00473045022023beecb1c4ef5b3b3a4d936a689d0fa5fea35524d23bbc12001fa0b21ca2500b02210082484d006ee0663ba1c8450ff0d10eb053308137af25cde223406c3423c4e5d1
 ```
+
+### Optional Fields for Code Protocol
+
+Apart from required fields mentioned above, Code protocol also supports following optional fields to further customize the execution of code.
+
+#### Args
+
+Args are arguments that are sent to engine while executing the code. For example if we want to bypass execution policy in powershell for specific template this can be done by adding following args to the template.
+
+```yaml
+  - engine:
+      - powershell
+      - powershell.exe
+    args:
+      - -ExecutionPolicy
+      - Bypass
+      - -File
+```
+
+#### Pattern
+
+Pattern field can be used to customize name / extension of temporary file while executing a code snippet in a template
+
+```yaml
+    pattern: "*.ps1"
+```
+
+adding `pattern: "*.ps1"` will make sure that name of temporary file given pattern
+
+
+### Example Code Template with Args and Pattern
+
+Below is a example code template where we are executing a powershell script while customizing behaviour of execution policy and setting pattern to `*.ps1`
+
+```yaml
+id: ps1-code-snippet
+
+info:
+  name: ps1-code-snippet
+  author: pdteam
+  severity: info
+  tags: code
+  description: |
+    ps1-code-snippet
+
+code:
+  - engine:
+      - powershell
+      - powershell.exe
+    args:
+      - -ExecutionPolicy
+      - Bypass
+      - -File
+    pattern: "*.ps1"
+    source: |
+      $stdin = [Console]::In
+      $line = $stdin.ReadLine()
+      Write-Host "hello from $line"
+    
+    matchers:
+      - type: word
+        words:
+          - "hello from input"
+# digest: 4a0a00473045022023beecb1c4ef5b3b3a4d936a689d0fa5fea35524d23bbc12001fa0b21ca2500b02210082484d006ee0663ba1c8450ff0d10eb053308137af25cde223406c3423c4e5d1
+```
+
+For more examples, please refer to example [code-templates](https://github.com/projectdiscovery/nuclei/blob/3a5f9d626ea7b632ccca601b658acd9758f8f01b/integration_tests/protocols/code) in integration tests.
