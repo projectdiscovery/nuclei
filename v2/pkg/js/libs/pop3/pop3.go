@@ -1,16 +1,18 @@
 package pop3
 
 import (
+	"context"
 	"net"
 	"strconv"
 	"time"
 
 	"github.com/praetorian-inc/fingerprintx/pkg/plugins"
 	"github.com/praetorian-inc/fingerprintx/pkg/plugins/services/pop3"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/protocolstate"
 )
 
-// Client is a minimal POP3 client for nuclei scripts.
-type Client struct{}
+// Pop3Client is a minimal POP3 client for nuclei scripts.
+type Pop3Client struct{}
 
 // IsPOP3Response is the response from the IsPOP3 function.
 type IsPOP3Response struct {
@@ -19,11 +21,11 @@ type IsPOP3Response struct {
 }
 
 // IsPOP3 checks if a host is running a POP3 server.
-func (c *Client) IsPOP3(host string, port int) (IsPOP3Response, error) {
+func (c *Pop3Client) IsPOP3(host string, port int) (IsPOP3Response, error) {
 	resp := IsPOP3Response{}
 
 	timeout := 5 * time.Second
-	conn, err := net.DialTimeout("tcp", net.JoinHostPort(host, strconv.Itoa(port)), timeout)
+	conn, err := protocolstate.Dialer.Dial(context.TODO(), "tcp", net.JoinHostPort(host, strconv.Itoa(port)))
 	if err != nil {
 		return resp, err
 	}

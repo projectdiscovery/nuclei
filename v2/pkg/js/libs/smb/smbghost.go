@@ -2,12 +2,14 @@ package smb
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"net"
 	"strconv"
 	"time"
 
-	"github.com/projectdiscovery/nuclei/v2/pkg/js/scripts/gotypes/structs"
+	"github.com/projectdiscovery/nuclei/v2/pkg/js/libs/structs"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/protocolstate"
 )
 
 const (
@@ -16,9 +18,9 @@ const (
 
 // DetectSMBGhost tries to detect SMBGhost vulnerability
 // by using SMBv3 compression feature.
-func (c *Client) DetectSMBGhost(host string, port int) (bool, error) {
+func (c *SMBClient) DetectSMBGhost(host string, port int) (bool, error) {
 	addr := net.JoinHostPort(host, strconv.Itoa(port))
-	conn, err := net.DialTimeout("tcp", addr, 5*time.Second)
+	conn, err := protocolstate.Dialer.Dial(context.TODO(), "tcp", addr)
 	if err != nil {
 		return false, err
 
@@ -32,7 +34,7 @@ func (c *Client) DetectSMBGhost(host string, port int) (bool, error) {
 
 	buff := make([]byte, 4)
 	nb, _ := conn.Read(buff)
-	args, err := structs.StructsUnpack(">I", buff[:nb])
+	args, err := structs.Unpack(">I", buff[:nb])
 	if err != nil {
 		return false, err
 	}

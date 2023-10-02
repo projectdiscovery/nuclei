@@ -1,6 +1,7 @@
 package postgres
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"net"
@@ -11,22 +12,23 @@ import (
 	_ "github.com/lib/pq"
 	"github.com/praetorian-inc/fingerprintx/pkg/plugins"
 	postgres "github.com/praetorian-inc/fingerprintx/pkg/plugins/services/postgresql"
-	utils "github.com/projectdiscovery/nuclei/v2/pkg/js/scripts/gotypes"
+	utils "github.com/projectdiscovery/nuclei/v2/pkg/js/utils"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/protocolstate"
 )
 
-// Client is a client for Postgres database.
+// PGClient is a client for Postgres database.
 //
 // Internally client uses go-pg/pg driver.
-type Client struct{}
+type PGClient struct{}
 
 // IsPostgres checks if the given host and port are running Postgres database.
 //
 // If connection is successful, it returns true.
 // If connection is unsuccessful, it returns false and error.
-func (c *Client) IsPostgres(host string, port int) (bool, error) {
+func (c *PGClient) IsPostgres(host string, port int) (bool, error) {
 	timeout := 10 * time.Second
 
-	conn, err := net.DialTimeout("tcp", fmt.Sprintf("%s:%d", host, port), timeout)
+	conn, err := protocolstate.Dialer.Dial(context.TODO(), "tcp", fmt.Sprintf("%s:%d", host, port))
 	if err != nil {
 		return false, err
 	}
@@ -51,13 +53,19 @@ func (c *Client) IsPostgres(host string, port int) (bool, error) {
 // If connection is unsuccessful, it returns false and error.
 //
 // The connection is closed after the function returns.
-func (c *Client) Connect(host string, port int, username, password string) (bool, error) {
+func (c *PGClient) Connect(host string, port int, username, password string) (bool, error) {
 	return connect(host, port, username, password, "postgres")
 }
 
 // ExecuteQuery connects to Postgres database using given credentials and database name.
 // and executes a query on the db.
-func (c *Client) ExecuteQuery(host string, port int, username, password, dbName, query string) (string, error) {
+func (c *PGClient) ExecuteQuery(host string, port int, username, password, dbName, query string) (string, error) {
+
+	if !protocolstate.IsHostAllowed(host) {
+		// host is not valid according to network policy
+		return "", protocolstate.ErrHostDenied.Msgf(host)
+	}
+
 	target := net.JoinHostPort(host, fmt.Sprintf("%d", port))
 
 	connStr := fmt.Sprintf("postgres://%s:%s@%s/%s?sslmode=disable", username, password, target, dbName)
@@ -83,7 +91,7 @@ func (c *Client) ExecuteQuery(host string, port int, username, password, dbName,
 // If connection is unsuccessful, it returns false and error.
 //
 // The connection is closed after the function returns.
-func (c *Client) ConnectWithDB(host string, port int, username, password, dbName string) (bool, error) {
+func (c *PGClient) ConnectWithDB(host string, port int, username, password, dbName string) (bool, error) {
 	return connect(host, port, username, password, dbName)
 }
 
@@ -91,6 +99,12 @@ func connect(host string, port int, username, password, dbName string) (bool, er
 	if host == "" || port <= 0 {
 		return false, fmt.Errorf("invalid host or port")
 	}
+
+	if !protocolstate.IsHostAllowed(host) {
+		// host is not valid according to network policy
+		return false, protocolstate.ErrHostDenied.Msgf(host)
+	}
+
 	target := net.JoinHostPort(host, fmt.Sprintf("%d", port))
 
 	db := pg.Connect(&pg.Options{

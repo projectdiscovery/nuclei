@@ -6,20 +6,21 @@ import (
 	"strings"
 	"time"
 
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/protocolstate"
 	"github.com/zmap/zgrab2/lib/ssh"
 )
 
-// Client is a client for SSH servers.
+// SSHClient is a client for SSH servers.
 //
 // Internally client uses github.com/zmap/zgrab2/lib/ssh driver.
-type Client struct{}
+type SSHClient struct{}
 
 // Connect tries to connect to provided host and port
 // with provided username and password with ssh.
 //
 // Returns state of connection and error. If error is not nil,
 // state will be false
-func (c *Client) Connect(host string, port int, username, password string) (bool, error) {
+func (c *SSHClient) Connect(host string, port int, username, password string) (bool, error) {
 	conn, err := connect(host, port, username, password, "")
 	if err != nil {
 		return false, err
@@ -34,7 +35,7 @@ func (c *Client) Connect(host string, port int, username, password string) (bool
 //
 // Returns state of connection and error. If error is not nil,
 // state will be false
-func (c *Client) ConnectWithKey(host string, port int, username, key string) (bool, error) {
+func (c *SSHClient) ConnectWithKey(host string, port int, username, key string) (bool, error) {
 	conn, err := connect(host, port, username, "", key)
 	if err != nil {
 		return false, err
@@ -52,11 +53,15 @@ func (c *Client) ConnectWithKey(host string, port int, username, key string) (bo
 //
 // HandshakeLog is a struct that contains information about the
 // ssh connection
-func (c *Client) ConnectSSHInfoMode(host string, port int) (*ssh.HandshakeLog, error) {
+func (c *SSHClient) ConnectSSHInfoMode(host string, port int) (*ssh.HandshakeLog, error) {
 	return connectSSHInfoMode(host, port)
 }
 
 func connectSSHInfoMode(host string, port int) (*ssh.HandshakeLog, error) {
+	if !protocolstate.IsHostAllowed(host) {
+		// host is not valid according to network policy
+		return nil, protocolstate.ErrHostDenied.Msgf(host)
+	}
 	data := new(ssh.HandshakeLog)
 
 	sshConfig := ssh.MakeSSHConfig()
@@ -78,6 +83,10 @@ func connectSSHInfoMode(host string, port int) (*ssh.HandshakeLog, error) {
 }
 
 func connect(host string, port int, user, password, privateKey string) (*ssh.Client, error) {
+	if !protocolstate.IsHostAllowed(host) {
+		// host is not valid according to network policy
+		return nil, protocolstate.ErrHostDenied.Msgf(host)
+	}
 	if host == "" || port <= 0 {
 		return nil, errors.New("invalid host or port")
 	}

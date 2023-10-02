@@ -5,6 +5,8 @@ import (
 	"strings"
 
 	"github.com/Knetic/govaluate"
+	"github.com/antchfx/htmlquery"
+	"github.com/antchfx/xmlquery"
 
 	dslRepo "github.com/projectdiscovery/dsl"
 	"github.com/projectdiscovery/gologger"
@@ -224,6 +226,88 @@ func (matcher *Matcher) MatchDSL(data map[string]interface{}) bool {
 		}
 	}
 	return false
+}
+
+// MatchXPath matches on a generic map result
+func (matcher *Matcher) MatchXPath(corpus string) bool {
+	if strings.HasPrefix(corpus, "<?xml") {
+		return matcher.MatchXML(corpus)
+	}
+	return matcher.MatchHTML(corpus)
+}
+
+// MatchHTML matches items from HTML using XPath selectors
+func (matcher *Matcher) MatchHTML(corpus string) bool {
+	doc, err := htmlquery.Parse(strings.NewReader(corpus))
+	if err != nil {
+		return false
+	}
+
+	matches := 0
+
+	for _, k := range matcher.XPath {
+		nodes, err := htmlquery.QueryAll(doc, k)
+		if err != nil {
+			continue
+		}
+
+		// Continue if the xpath doesn't return any nodes
+		if len(nodes) == 0 {
+			// If we are in an AND request and a match failed,
+			// return false as the AND condition fails on any single mismatch.
+			switch matcher.condition {
+			case ANDCondition:
+				return false
+			case ORCondition:
+				continue
+			}
+		}
+
+		// If the condition was an OR, return on the first match.
+		if matcher.condition == ORCondition && !matcher.MatchAll {
+			return true
+		}
+
+		matches = matches + len(nodes)
+	}
+	return matches > 0
+}
+
+// MatchXML matches items from XML using XPath selectors
+func (matcher *Matcher) MatchXML(corpus string) bool {
+	doc, err := xmlquery.Parse(strings.NewReader(corpus))
+	if err != nil {
+		return false
+	}
+
+	matches := 0
+
+	for _, k := range matcher.XPath {
+		nodes, err := xmlquery.QueryAll(doc, k)
+		if err != nil {
+			continue
+		}
+
+		// Continue if the xpath doesn't return any nodes
+		if len(nodes) == 0 {
+			// If we are in an AND request and a match failed,
+			// return false as the AND condition fails on any single mismatch.
+			switch matcher.condition {
+			case ANDCondition:
+				return false
+			case ORCondition:
+				continue
+			}
+		}
+
+		// If the condition was an OR, return on the first match.
+		if matcher.condition == ORCondition && !matcher.MatchAll {
+			return true
+		}
+		matches = matches + len(nodes)
+	}
+
+	return matches > 0
 }
 
 // ignoreErr checks if the error is to be ignored or not

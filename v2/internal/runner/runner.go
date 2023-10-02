@@ -15,6 +15,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/internal/installer"
 	"github.com/projectdiscovery/nuclei/v2/internal/runner/nucleicloud"
 	uncoverlib "github.com/projectdiscovery/uncover"
+	permissionutil "github.com/projectdiscovery/utils/permission"
 	updateutils "github.com/projectdiscovery/utils/update"
 
 	"github.com/logrusorgru/aurora"
@@ -317,6 +318,15 @@ func New(options *types.Options) (*Runner, error) {
 	opts.DebugResponse = runner.options.DebugResponse
 	if httpclient != nil {
 		opts.HTTPClient = httpclient
+	}
+	if opts.HTTPClient == nil {
+		httpOpts := retryablehttp.DefaultOptionsSingle
+		httpOpts.Timeout = 20 * time.Second // for stability reasons
+		if options.Timeout > 20 {
+			httpOpts.Timeout = time.Duration(options.Timeout) * time.Second
+		}
+		// in testing it was found most of times when interactsh failed, it was due to failure in registering /polling requests
+		opts.HTTPClient = retryablehttp.NewClient(retryablehttp.DefaultOptionsSingle)
 	}
 	interactshClient, err := interactsh.New(opts)
 	if err != nil {
@@ -735,7 +745,7 @@ func (r *Runner) SaveResumeConfig(path string) error {
 	resumeCfgClone.ResumeFrom = resumeCfgClone.Current
 	data, _ := json.MarshalIndent(resumeCfgClone, "", "\t")
 
-	return os.WriteFile(path, data, os.ModePerm)
+	return os.WriteFile(path, data, permissionutil.ConfigFilePermission)
 }
 
 type WalkFunc func(reflect.Value, reflect.StructField)

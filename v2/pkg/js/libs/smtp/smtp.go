@@ -1,16 +1,18 @@
 package smtp
 
 import (
+	"context"
 	"net"
 	"strconv"
 	"time"
 
 	"github.com/praetorian-inc/fingerprintx/pkg/plugins"
 	"github.com/praetorian-inc/fingerprintx/pkg/plugins/services/smtp"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/protocolstate"
 )
 
-// Client is a minimal SMTP client for nuclei scripts.
-type Client struct{}
+// SMTPClient is a minimal SMTP client for nuclei scripts.
+type SMTPClient struct{}
 
 // IsSMTPResponse is the response from the IsSMTP function.
 type IsSMTPResponse struct {
@@ -19,11 +21,11 @@ type IsSMTPResponse struct {
 }
 
 // IsSMTP checks if a host is running a SMTP server.
-func (c *Client) IsSMTP(host string, port int) (IsSMTPResponse, error) {
+func (c *SMTPClient) IsSMTP(host string, port int) (IsSMTPResponse, error) {
 	resp := IsSMTPResponse{}
 
 	timeout := 5 * time.Second
-	conn, err := net.DialTimeout("tcp", net.JoinHostPort(host, strconv.Itoa(port)), timeout)
+	conn, err := protocolstate.Dialer.Dial(context.TODO(), "tcp", net.JoinHostPort(host, strconv.Itoa(port)))
 	if err != nil {
 		return resp, err
 	}

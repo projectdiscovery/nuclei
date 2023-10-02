@@ -1,5 +1,6 @@
 .idea
 .vscode
+.devcontainer
 v2/vendor
 v2/dist
 integration_tests/nuclei
@@ -16,3 +17,11 @@ v2/pkg/protocols/common/helpers/deserialization/testdata/ValueObject.class
 v2/pkg/protocols/common/helpers/deserialization/testdata/ValueObject2.ser
 *.exe
 v2/.gitignore
+v2/pkg/js/devtools/bindgen/cmd/bindgen
+v2/pkg/js/devtools/jsdocgen/jsdocgen
+bindgen
+jsdocgen
+nuclei
+v2/scrapefuncs
+*.DS_Store
+v2/pkg/protocols/headless/engine/.cache

@@ -20,7 +20,7 @@ javascript:
 
     args:
       Host: "{{Host}}"
-      Port: "{{getNetworkPort(Port,6379)}}"
+      Port: "6379"
       Password: "{{passwords}}"
 
     payloads:

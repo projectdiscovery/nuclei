@@ -1,0 +1,118 @@
+---
+title: "Workflow"
+---
+
+## Generic workflows
+
+A generic workflow that runs two templates, one to detect Jira and another to detect Confluence.
+
+```yaml
+id: workflow-example
+info:
+  name: Test Workflow Template
+  author: pdteam
+
+workflows:
+  - template: technologies/jira-detect.yaml
+  - template: technologies/confluence-detect.yaml
+```
+
+## Basic conditional workflows
+
+A condition based workflow, which first tries to detect if springboot is running on a target. If springboot is found, a list of exploits executed against it. 
+
+```yaml
+id: springboot-workflow
+
+info:
+  name: Springboot Security Checks
+  author: dwisiswant0
+
+workflows:
+  - template: security-misconfiguration/springboot-detect.yaml
+    subtemplates:
+      - template: cves/CVE-2018-1271.yaml
+      - template: cves/CVE-2018-1271.yaml
+      - template: cves/CVE-2020-5410.yaml
+      - template: vulnerabilities/springboot-actuators-jolokia-xxe.yaml
+      - template: vulnerabilities/springboot-h2-db-rce.yaml
+```
+
+## Multi condition workflows
+
+This template demonstrates nested workflows with nuclei, where there's multiple levels of chaining of templates.
+
+```yaml
+id: springboot-workflow
+
+info:
+  name: Springboot Security Checks
+  author: dwisiswant0
+
+workflows:
+  - template: technologies/tech-detect.yaml
+    matchers:
+      - name: lotus-domino
+        subtemplates:
+          - template: technologies/lotus-domino-version.yaml
+            subtemplates:
+              - template: cves/xx-yy-zz.yaml
+                subtemplates:
+                  - template: cves/xx-xx-xx.yaml
+```
+
+## Conditional workflows with matcher
+
+This template detects if WordPress is running on an input host, and if found a set of targeted exploits and CVEs are executed against it.
+
+```yaml
+id: workflow-example
+info:
+  name: Test Workflow Template
+  author: pdteam
+
+workflows:
+  - template: technologies/tech-detect.yaml
+    matchers:
+      - name: wordpress
+        subtemplates:
+          - template: cves/CVE-2019-6715.yaml
+          - template: cves/CVE-2019-9978.yaml
+          - template: files/wordpress-db-backup.yaml
+          - template: files/wordpress-debug-log.yaml
+          - template: files/wordpress-directory-listing.yaml
+          - template: files/wordpress-emergency-script.yaml
+          - template: files/wordpress-installer-log.yaml
+          - template: files/wordpress-tmm-db-migrate.yaml
+          - template: files/wordpress-user-enumeration.yaml
+          - template: security-misconfiguration/wordpress-accessible-wpconfig.yaml
+          - template: vulnerabilities/sassy-social-share.yaml
+          - template: vulnerabilities/w3c-total-cache-ssrf.yaml
+          - template: vulnerabilities/wordpress-duplicator-path-traversal.yaml
+          - template: vulnerabilities/wordpress-social-metrics-tracker.yaml
+          - template: vulnerabilities/wordpress-wordfence-xss.yaml
+          - template: vulnerabilities/wordpress-wpcourses-info-disclosure.yaml
+```
+
+## Multiple Matcher workflow
+
+Very similar to the last example, with multiple matcher names.
+
+```yaml
+id: workflow-multiple-matcher
+info:
+  name: Test Workflow Template
+  author: pdteam
+
+workflows:
+  - template: technologies/tech-detect.yaml
+    matchers:
+      - name: vbulletin
+        subtemplates:
+          - tags: vbulletin
+
+      - name: jboss
+        subtemplates:
+          - tags: jboss
+
+```

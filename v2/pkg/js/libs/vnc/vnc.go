@@ -1,16 +1,18 @@
 package vnc
 
 import (
+	"context"
 	"net"
 	"strconv"
 	"time"
 
 	"github.com/praetorian-inc/fingerprintx/pkg/plugins"
 	"github.com/praetorian-inc/fingerprintx/pkg/plugins/services/vnc"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/protocolstate"
 )
 
-// Client is a minimal VNC client for nuclei scripts.
-type Client struct{}
+// VNCClient is a minimal VNC client for nuclei scripts.
+type VNCClient struct{}
 
 // IsVNCResponse is the response from the IsVNC function.
 type IsVNCResponse struct {
@@ -21,11 +23,11 @@ type IsVNCResponse struct {
 // IsVNC checks if a host is running a VNC server.
 // It returns a boolean indicating if the host is running a VNC server
 // and the banner of the VNC server.
-func (c *Client) IsVNC(host string, port int) (IsVNCResponse, error) {
+func (c *VNCClient) IsVNC(host string, port int) (IsVNCResponse, error) {
 	resp := IsVNCResponse{}
 
 	timeout := 5 * time.Second
-	conn, err := net.DialTimeout("tcp", net.JoinHostPort(host, strconv.Itoa(port)), timeout)
+	conn, err := protocolstate.Dialer.Dial(context.TODO(), "tcp", net.JoinHostPort(host, strconv.Itoa(port)))
 	if err != nil {
 		return resp, err
 	}
