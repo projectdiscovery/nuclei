@@ -12,6 +12,7 @@ code:
   - engine:
       - py
       - python3
+      - python
     source: |
       import sys
       print("hello from " + sys.stdin.read())
