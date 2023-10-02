@@ -1,6 +1,7 @@
 package mysql
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"net"
@@ -10,13 +11,14 @@ import (
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/praetorian-inc/fingerprintx/pkg/plugins"
 	mysqlplugin "github.com/praetorian-inc/fingerprintx/pkg/plugins/services/mysql"
-	utils "github.com/projectdiscovery/nuclei/v2/pkg/js/scripts/gotypes"
+	utils "github.com/projectdiscovery/nuclei/v2/pkg/js/utils"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/protocolstate"
 )
 
-// Client is a client for MySQL database.
+// MySQLClient is a client for MySQL database.
 //
 // Internally client uses go-sql-driver/mysql driver.
-type Client struct{}
+type MySQLClient struct{}
 
 // Connect connects to MySQL database using given credentials.
 //
@@ -24,7 +26,7 @@ type Client struct{}
 // If connection is unsuccessful, it returns false and error.
 //
 // The connection is closed after the function returns.
-func (c *Client) Connect(host string, port int, username, password string) (bool, error) {
+func (c *MySQLClient) Connect(host string, port int, username, password string) (bool, error) {
 	return connect(host, port, username, password, "INFORMATION_SCHEMA")
 }
 
@@ -32,8 +34,12 @@ func (c *Client) Connect(host string, port int, username, password string) (bool
 //
 // If the host is running MySQL database, it returns true.
 // If the host is not running MySQL database, it returns false.
-func (c *Client) IsMySQL(host string, port int) (bool, error) {
-	conn, err := net.DialTimeout("tcp", net.JoinHostPort(host, fmt.Sprintf("%d", port)), 5*time.Second)
+func (c *MySQLClient) IsMySQL(host string, port int) (bool, error) {
+	if !protocolstate.IsHostAllowed(host) {
+		// host is not valid according to network policy
+		return false, protocolstate.ErrHostDenied.Msgf(host)
+	}
+	conn, err := protocolstate.Dialer.Dial(context.TODO(), "tcp", net.JoinHostPort(host, fmt.Sprintf("%d", port)))
 	if err != nil {
 		return false, err
 	}
@@ -56,7 +62,7 @@ func (c *Client) IsMySQL(host string, port int) (bool, error) {
 // If connection is unsuccessful, it returns false and error.
 //
 // The connection is closed after the function returns.
-func (c *Client) ConnectWithDB(host string, port int, username, password, dbName string) (bool, error) {
+func (c *MySQLClient) ConnectWithDB(host string, port int, username, password, dbName string) (bool, error) {
 	return connect(host, port, username, password, dbName)
 }
 
@@ -64,6 +70,12 @@ func connect(host string, port int, username, password, dbName string) (bool, er
 	if host == "" || port <= 0 {
 		return false, fmt.Errorf("invalid host or port")
 	}
+
+	if !protocolstate.IsHostAllowed(host) {
+		// host is not valid according to network policy
+		return false, protocolstate.ErrHostDenied.Msgf(host)
+	}
+
 	target := net.JoinHostPort(host, fmt.Sprintf("%d", port))
 
 	db, err := sql.Open("mysql", fmt.Sprintf("%v:%v@tcp(%v)/%s",
@@ -85,7 +97,13 @@ func connect(host string, port int, username, password, dbName string) (bool, er
 
 // ExecuteQuery connects to Mysql database using given credentials and database name.
 // and executes a query on the db.
-func (c *Client) ExecuteQuery(host string, port int, username, password, dbName, query string) (string, error) {
+func (c *MySQLClient) ExecuteQuery(host string, port int, username, password, dbName, query string) (string, error) {
+
+	if !protocolstate.IsHostAllowed(host) {
+		// host is not valid according to network policy
+		return "", protocolstate.ErrHostDenied.Msgf(host)
+	}
+
 	target := net.JoinHostPort(host, fmt.Sprintf("%d", port))
 
 	db, err := sql.Open("mysql", fmt.Sprintf("%v:%v@tcp(%v)/%s",

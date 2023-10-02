@@ -6,12 +6,14 @@ import (
 
 	"github.com/ory/dockertest/v3"
 	"github.com/projectdiscovery/nuclei/v2/pkg/testutils"
+	osutils "github.com/projectdiscovery/utils/os"
 	"go.uber.org/multierr"
 )
 
 var jsTestcases = []TestCaseInfo{
-	{Path: "protocols/javascript/redis-pass-brute.yaml", TestCase: &javascriptRedisPassBrute{}},
-	{Path: "protocols/javascript/ssh-server-fingerprint.yaml", TestCase: &javascriptSSHServerFingerprint{}},
+	{Path: "protocols/javascript/redis-pass-brute.yaml", TestCase: &javascriptRedisPassBrute{}, DisableOn: func() bool { return osutils.IsWindows() || osutils.IsOSX() }},
+	{Path: "protocols/javascript/ssh-server-fingerprint.yaml", TestCase: &javascriptSSHServerFingerprint{}, DisableOn: func() bool { return osutils.IsWindows() || osutils.IsOSX() }},
+	{Path: "protocols/javascript/net-multi-step.yaml", TestCase: &networkMultiStep{}},
 }
 
 var (
@@ -89,6 +91,7 @@ func (j *javascriptSSHServerFingerprint) Execute(filePath string) error {
 func purge(resource *dockertest.Resource) {
 	if resource != nil && pool != nil {
 		containerName := resource.Container.Name
+		_ = pool.Client.StopContainer(resource.Container.ID, 0)
 		err := pool.Purge(resource)
 		if err != nil {
 			log.Printf("Could not purge resource: %s", err)
@@ -116,6 +119,7 @@ func init() {
 		Repository: "redis",
 		Tag:        "latest",
 		Cmd:        []string{"redis-server", "--requirepass", "iamadmin"},
+		Platform:   "linux/amd64",
 	})
 	if err != nil {
 		log.Printf("Could not start resource: %s", err)
@@ -138,6 +142,7 @@ func init() {
 			"USER_NAME=admin",
 			"USER_PASSWORD=admin",
 		},
+		Platform: "linux/amd64",
 	})
 	if err != nil {
 		log.Printf("Could not start resource: %s", err)

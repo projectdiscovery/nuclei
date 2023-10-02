@@ -107,6 +107,7 @@ func (request *Request) executeRequestWithPayloads(input *contextargs.Context, p
 	options := &engine.Options{
 		Timeout:     time.Duration(request.options.Options.PageTimeout) * time.Second,
 		CookieReuse: request.CookieReuse,
+		Options:     request.options.Options,
 	}
 
 	if options.CookieReuse && input.CookieJar == nil {

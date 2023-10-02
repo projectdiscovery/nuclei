@@ -11,25 +11,28 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/projectdiscovery/gologger"
+	_ "github.com/projectdiscovery/nuclei/v2/pkg/js/generated/go/libbytes"
+	_ "github.com/projectdiscovery/nuclei/v2/pkg/js/generated/go/libikev2"
+	_ "github.com/projectdiscovery/nuclei/v2/pkg/js/generated/go/libkerberos"
+	_ "github.com/projectdiscovery/nuclei/v2/pkg/js/generated/go/libldap"
+	_ "github.com/projectdiscovery/nuclei/v2/pkg/js/generated/go/libmssql"
+	_ "github.com/projectdiscovery/nuclei/v2/pkg/js/generated/go/libmysql"
+	_ "github.com/projectdiscovery/nuclei/v2/pkg/js/generated/go/libnet"
+	_ "github.com/projectdiscovery/nuclei/v2/pkg/js/generated/go/liboracle"
+	_ "github.com/projectdiscovery/nuclei/v2/pkg/js/generated/go/libpop3"
+	_ "github.com/projectdiscovery/nuclei/v2/pkg/js/generated/go/libpostgres"
+	_ "github.com/projectdiscovery/nuclei/v2/pkg/js/generated/go/librdp"
+	_ "github.com/projectdiscovery/nuclei/v2/pkg/js/generated/go/libredis"
+	_ "github.com/projectdiscovery/nuclei/v2/pkg/js/generated/go/librsync"
+	_ "github.com/projectdiscovery/nuclei/v2/pkg/js/generated/go/libsmb"
+	_ "github.com/projectdiscovery/nuclei/v2/pkg/js/generated/go/libsmtp"
+	_ "github.com/projectdiscovery/nuclei/v2/pkg/js/generated/go/libssh"
+	_ "github.com/projectdiscovery/nuclei/v2/pkg/js/generated/go/libstructs"
+	_ "github.com/projectdiscovery/nuclei/v2/pkg/js/generated/go/libtelnet"
+	_ "github.com/projectdiscovery/nuclei/v2/pkg/js/generated/go/libvnc"
+	"github.com/projectdiscovery/nuclei/v2/pkg/js/global"
 	"github.com/projectdiscovery/nuclei/v2/pkg/js/libs/goconsole"
-	_ "github.com/projectdiscovery/nuclei/v2/pkg/js/modules/generated/go/libikev2"
-	_ "github.com/projectdiscovery/nuclei/v2/pkg/js/modules/generated/go/libkerberos"
-	_ "github.com/projectdiscovery/nuclei/v2/pkg/js/modules/generated/go/libldap"
-	_ "github.com/projectdiscovery/nuclei/v2/pkg/js/modules/generated/go/libmssql"
-	_ "github.com/projectdiscovery/nuclei/v2/pkg/js/modules/generated/go/libmysql"
-	_ "github.com/projectdiscovery/nuclei/v2/pkg/js/modules/generated/go/libnet"
-	_ "github.com/projectdiscovery/nuclei/v2/pkg/js/modules/generated/go/liboracle"
-	_ "github.com/projectdiscovery/nuclei/v2/pkg/js/modules/generated/go/libpop3"
-	_ "github.com/projectdiscovery/nuclei/v2/pkg/js/modules/generated/go/libpostgres"
-	_ "github.com/projectdiscovery/nuclei/v2/pkg/js/modules/generated/go/librdp"
-	_ "github.com/projectdiscovery/nuclei/v2/pkg/js/modules/generated/go/libredis"
-	_ "github.com/projectdiscovery/nuclei/v2/pkg/js/modules/generated/go/librsync"
-	_ "github.com/projectdiscovery/nuclei/v2/pkg/js/modules/generated/go/libsmb"
-	_ "github.com/projectdiscovery/nuclei/v2/pkg/js/modules/generated/go/libsmtp"
-	_ "github.com/projectdiscovery/nuclei/v2/pkg/js/modules/generated/go/libssh"
-	_ "github.com/projectdiscovery/nuclei/v2/pkg/js/modules/generated/go/libtelnet"
-	_ "github.com/projectdiscovery/nuclei/v2/pkg/js/modules/generated/go/libvnc"
-	"github.com/projectdiscovery/nuclei/v2/pkg/js/scripts"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/generators"
 )
 
 // Compiler provides a runtime to execute goja runtime
@@ -129,6 +132,8 @@ func (c *Compiler) ExecuteWithOptions(code string, args *ExecuteArgs, opts *Exec
 	if args.TemplateCtx == nil {
 		args.TemplateCtx = make(map[string]interface{})
 	}
+	// merge all args into templatectx
+	args.TemplateCtx = generators.MergeMaps(args.TemplateCtx, args.Args)
 	_ = runtime.Set("template", args.TemplateCtx)
 
 	results, err := runtime.RunString(code)
@@ -188,11 +193,11 @@ func (c *Compiler) newRuntime(reuse bool) *goja.Runtime {
 // registerHelpersForVM registers all the helper functions for the goja runtime.
 func (c *Compiler) registerHelpersForVM(runtime *goja.Runtime) {
 	_ = c.registry.Enable(runtime)
-	// by default import console module
+	// by default import below modules every time
 	_ = runtime.Set("console", require.Require(runtime, console.ModuleName))
 
 	// Register embedded scripts
-	if err := scripts.RegisterNativeScripts(runtime); err != nil {
+	if err := global.RegisterNativeScripts(runtime); err != nil {
 		gologger.Error().Msgf("Could not register scripts: %s\n", err)
 	}
 }

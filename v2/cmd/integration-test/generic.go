@@ -11,6 +11,7 @@ import (
 	"github.com/julienschmidt/httprouter"
 
 	"github.com/projectdiscovery/nuclei/v2/pkg/testutils"
+	permissionutil "github.com/projectdiscovery/utils/permission"
 )
 
 var genericTestcases = []TestCaseInfo{
@@ -84,8 +85,8 @@ func (h *clientCertificate) Execute(filePath string) error {
 		fmt.Fprintf(w, "Hello, %s!\n", r.TLS.PeerCertificates[0].Subject)
 	})
 
-	_ = os.WriteFile("server.crt", []byte(serverCRT), os.ModePerm)
-	_ = os.WriteFile("server.key", []byte(serverKey), os.ModePerm)
+	_ = os.WriteFile("server.crt", []byte(serverCRT), permissionutil.ConfigFilePermission)
+	_ = os.WriteFile("server.key", []byte(serverKey), permissionutil.ConfigFilePermission)
 	defer os.Remove("server.crt")
 	defer os.Remove("server.key")
 

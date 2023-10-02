@@ -1,0 +1,87 @@
+---
+title: "HTTP Payloads"
+---
+
+<Note>
+
+Nuclei engine supports payloads module that allow to run various type of payloads in multiple format, It's possible to define placeholders with simple keywords (or using brackets `{{helper_function(variable)}}` in case mutator functions are needed), and perform **batteringram**, **pitchfork** and **clusterbomb** attacks. The wordlist for these attacks needs to be defined during the request definition under the Payload field, with a name matching the keyword, Nuclei supports both file based and in template wordlist support and Finally all DSL functionalities are fully available and supported, and can be used to manipulate the final values.
+
+Payloads are defined using variable name and can be referenced in the request in between `§ §` or `{{ }}` marker.
+
+</Note>
+
+An example of the using payloads with local wordlist:
+
+```yaml
+    # HTTP Intruder fuzzing using local wordlist.
+
+    payloads:
+      paths: params.txt
+      header: local.txt
+```
+
+An example of the using payloads with in template wordlist support:
+
+```yaml
+    # HTTP Intruder fuzzing using in template wordlist.
+
+    payloads:
+      password:
+        - admin
+        - guest
+        - password
+```
+
+**Note:** be careful while selecting attack type, as unexpected input will break the template. 
+
+For example, if you used `clusterbomb` or `pitchfork` as attack type and defined only one variable in the payload section, template will fail to compile, as `clusterbomb` or `pitchfork` expect more than one variable to use in the template. 
+
+### Attack mode
+
+Nuclei engine supports multiple attack types, including `batteringram` as default type which generally used to fuzz single parameter, `clusterbomb` and `pitchfork` for fuzzing multiple parameters which works same as classical burp intruder.
+
+| **Type**    | batteringram                                                                                                                                                                                                                                                                                                      | pitchfork                                                                                                                                                                                                                                                                                                         | clusterbomb                                                                                                                                                                                                                                                                                                       |
+|-------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| **Support** | <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24"><path fill-rule="evenodd" d="M1 12C1 5.925 5.925 1 12 1s11 4.925 11 11-4.925 11-11 11S1 18.075 1 12zm16.28-2.72a.75.75 0 00-1.06-1.06l-5.97 5.97-2.47-2.47a.75.75 0 00-1.06 1.06l3 3a.75.75 0 001.06 0l6.5-6.5z"></path></svg> | <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24"><path fill-rule="evenodd" d="M1 12C1 5.925 5.925 1 12 1s11 4.925 11 11-4.925 11-11 11S1 18.075 1 12zm16.28-2.72a.75.75 0 00-1.06-1.06l-5.97 5.97-2.47-2.47a.75.75 0 00-1.06 1.06l3 3a.75.75 0 001.06 0l6.5-6.5z"></path></svg> | <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24"><path fill-rule="evenodd" d="M1 12C1 5.925 5.925 1 12 1s11 4.925 11 11-4.925 11-11 11S1 18.075 1 12zm16.28-2.72a.75.75 0 00-1.06-1.06l-5.97 5.97-2.47-2.47a.75.75 0 00-1.06 1.06l3 3a.75.75 0 001.06 0l6.5-6.5z"></path></svg> |
+
+<Note>
+**batteringram**
+
+    The battering ram attack type places the same payload value in all positions. It uses only one payload set. It loops through the payload set and replaces all positions with the payload value.
+</Note>
+
+<Note>
+**pitchfork**
+ The pitchfork attack type uses one payload set for each position. It places the first payload in the first position, the second payload in the second position, and so on.
+
+It then loops through all payload sets at the same time. The first request uses the first payload from each payload set, the second request uses the second payload from each payload set, and so on.
+
+</Note>
+
+<Note>
+**clusterbomb**
+The cluster bomb attack tries all different combinations of payloads. It still puts the first payload in the first position, and the second payload in the second position. But when it loops through the payload sets, it tries all combinations.
+
+    It then loops through all payload sets at the same time. The first request uses the first payload from each payload set, the second request uses the second payload from each payload set, and so on.
+
+    This attack type is useful for a brute-force attack. Load a list of commonly used usernames in the first payload set, and a list of commonly used passwords in the second payload set. The cluster bomb attack will then try all combinations.
+
+    More details [here](https://www.sjoerdlangkemper.nl/2017/08/02/burp-intruder-attack-types/). 
+
+</Note>
+
+An example of the using `clusterbomb` attack to fuzz.
+
+```yaml
+http:
+  - raw:
+      - |
+        POST /?file={{path}} HTTP/1.1
+        User-Agent: {{header}}
+        Host: {{Hostname}}
+
+    payloads:
+      path: helpers/wordlists/prams.txt
+      header: helpers/wordlists/header.txt
+    attack: clusterbomb # Defining HTTP fuzz attack type
+```

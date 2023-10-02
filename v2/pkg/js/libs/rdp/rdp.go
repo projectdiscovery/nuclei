@@ -1,16 +1,17 @@
 package rdp
 
 import (
+	"context"
 	"fmt"
-	"net"
 	"time"
 
 	"github.com/praetorian-inc/fingerprintx/pkg/plugins"
 	"github.com/praetorian-inc/fingerprintx/pkg/plugins/services/rdp"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/protocolstate"
 )
 
-// Client is a client for rdp servers
-type Client struct{}
+// RDPClient is a client for rdp servers
+type RDPClient struct{}
 
 type IsRDPResponse struct {
 	IsRDP bool
@@ -23,11 +24,11 @@ type IsRDPResponse struct {
 // If connection is unsuccessful, it returns false and error.
 //
 // The Name of the OS is also returned if the connection is successful.
-func (c *Client) IsRDP(host string, port int) (IsRDPResponse, error) {
+func (c *RDPClient) IsRDP(host string, port int) (IsRDPResponse, error) {
 	resp := IsRDPResponse{}
 
 	timeout := 5 * time.Second
-	conn, err := net.DialTimeout("tcp", fmt.Sprintf("%s:%d", host, port), timeout)
+	conn, err := protocolstate.Dialer.Dial(context.TODO(), "tcp", fmt.Sprintf("%s:%d", host, port))
 	if err != nil {
 		return resp, err
 	}
@@ -52,11 +53,11 @@ type CheckRDPAuthResponse struct {
 
 // CheckRDPAuth checks if the given host and port are running rdp server
 // with authentication and returns their metadata.
-func (c *Client) CheckRDPAuth(host string, port int) (CheckRDPAuthResponse, error) {
+func (c *RDPClient) CheckRDPAuth(host string, port int) (CheckRDPAuthResponse, error) {
 	resp := CheckRDPAuthResponse{}
 
 	timeout := 5 * time.Second
-	conn, err := net.DialTimeout("tcp", fmt.Sprintf("%s:%d", host, port), timeout)
+	conn, err := protocolstate.Dialer.Dial(context.TODO(), "tcp", fmt.Sprintf("%s:%d", host, port))
 	if err != nil {
 		return resp, err
 	}

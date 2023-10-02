@@ -2,10 +2,19 @@ package contextargs
 
 import (
 	"net/http/cookiejar"
+	"strings"
 	"sync/atomic"
 
 	"github.com/projectdiscovery/gologger"
 	mapsutil "github.com/projectdiscovery/utils/maps"
+	sliceutil "github.com/projectdiscovery/utils/slice"
+	stringsutil "github.com/projectdiscovery/utils/strings"
+	urlutil "github.com/projectdiscovery/utils/url"
+)
+
+var (
+	// reservedPorts contains list of reserved ports for non-network requests in nuclei
+	reservedPorts = []string{"80", "443", "8080", "8443", "8081", "53"}
 )
 
 // Context implements a shared context struct to share information across multiple templates within a workflow
@@ -78,6 +87,40 @@ func (ctx *Context) Add(key string, v interface{}) {
 		values, _ := ctx.Get(key)
 		ctx.Set(key, []interface{}{values, v})
 	}
+}
+
+// UseNetworkPort updates input with required/default network port for that template
+// but is ignored if input/target contains non-http ports like 80,8080,8081 etc
+func (ctx *Context) UseNetworkPort(port string, excludePorts string) error {
+	ignorePorts := reservedPorts
+	if excludePorts != "" {
+		// TODO: add support for service names like http,https,ssh etc once https://github.com/projectdiscovery/netdb is ready
+		ignorePorts = sliceutil.Dedupe(strings.Split(excludePorts, ","))
+	}
+	if port == "" {
+		// if template does not contain port, do nothing
+		return nil
+	}
+	target, err := urlutil.Parse(ctx.MetaInput.Input)
+	if err != nil {
+		return err
+	}
+	inputPort := target.Port()
+	if inputPort == "" || stringsutil.EqualFoldAny(inputPort, ignorePorts...) {
+		// replace port with networkPort
+		target.UpdatePort(port)
+		ctx.MetaInput.Input = target.Host
+	}
+	return nil
+}
+
+// Port returns the port of the target
+func (ctx *Context) Port() string {
+	target, err := urlutil.Parse(ctx.MetaInput.Input)
+	if err != nil {
+		return ""
+	}
+	return target.Port()
 }
 
 // Get the value with specific key if exists

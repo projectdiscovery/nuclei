@@ -9,12 +9,12 @@ info:
 javascript:
   - code: |
       var m = require("nuclei/ssh");
-      var c = m.Client();
+      var c = m.SSHClient();
       var response = c.ConnectSSHInfoMode(Host, Port);
       to_json(response);
     args:
       Host: "{{Host}}"
-      Port: "{{getNetworkPort(Port,22)}}"
+      Port: "22"
 
     extractors:
       - type: json

@@ -12,12 +12,12 @@ info:
 javascript:
   - code: |
       var m = require("nuclei/mssql");
-      var c = m.Client();
+      var c = m.MSSQLClient();
       c.IsMssql(Host, Port);
 
     args:
       Host: "{{Host}}"
-      Port: "{{getNetworkPort(Port,1433)}}"
+      Port: "1433"
 
     matchers:
       - type: dsl

@@ -1,16 +1,18 @@
 package telnet
 
 import (
+	"context"
 	"net"
 	"strconv"
 	"time"
 
 	"github.com/praetorian-inc/fingerprintx/pkg/plugins"
 	"github.com/praetorian-inc/fingerprintx/pkg/plugins/services/telnet"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/protocolstate"
 )
 
-// Client is a minimal Telnet client for nuclei scripts.
-type Client struct{}
+// TelnetClient is a minimal Telnet client for nuclei scripts.
+type TelnetClient struct{}
 
 // IsTelnetResponse is the response from the IsTelnet function.
 type IsTelnetResponse struct {
@@ -19,11 +21,11 @@ type IsTelnetResponse struct {
 }
 
 // IsTelnet checks if a host is running a Telnet server.
-func (c *Client) IsTelnet(host string, port int) (IsTelnetResponse, error) {
+func (c *TelnetClient) IsTelnet(host string, port int) (IsTelnetResponse, error) {
 	resp := IsTelnetResponse{}
 
 	timeout := 5 * time.Second
-	conn, err := net.DialTimeout("tcp", net.JoinHostPort(host, strconv.Itoa(port)), timeout)
+	conn, err := protocolstate.Dialer.Dial(context.TODO(), "tcp", net.JoinHostPort(host, strconv.Itoa(port)))
 	if err != nil {
 		return resp, err
 	}
