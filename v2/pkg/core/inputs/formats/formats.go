@@ -15,6 +15,8 @@ type RawRequestCallback func(request *RawRequest) bool
 
 // Format is an interface implemented by all input formats
 type Format interface {
+	// Name returns the name of the format
+	Name() string
 	// Parse parses the input and calls the provided callback
 	// function for each RawRequest it discovers.
 	Parse(input string, resultsCb RawRequestCallback) error

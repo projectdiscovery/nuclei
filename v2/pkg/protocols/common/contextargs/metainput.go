@@ -81,8 +81,8 @@ func (metaInput *MetaInput) Clone() *MetaInput {
 	return input
 }
 
-func cloneMap(m map[string]string) map[string]string {
-	clone := make(map[string]string)
+func cloneMap(m map[string][]string) map[string][]string {
+	clone := make(map[string][]string)
 	for k, v := range m {
 		clone[k] = v
 	}

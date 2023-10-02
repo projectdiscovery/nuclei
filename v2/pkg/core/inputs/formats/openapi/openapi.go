@@ -16,6 +16,11 @@ func New() *OpenAPIFormat {
 
 var _ formats.Format = &OpenAPIFormat{}
 
+// Name returns the name of the format
+func (j *OpenAPIFormat) Name() string {
+	return "openapi"
+}
+
 // Parse parses the input and calls the provided callback
 // function for each RawRequest it discovers.
 func (j *OpenAPIFormat) Parse(input string, resultsCb formats.RawRequestCallback) error {

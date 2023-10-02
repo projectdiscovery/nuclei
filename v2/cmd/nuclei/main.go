@@ -18,6 +18,7 @@ import (
 	"github.com/projectdiscovery/interactsh/pkg/client"
 	"github.com/projectdiscovery/nuclei/v2/internal/runner"
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/config"
+	"github.com/projectdiscovery/nuclei/v2/pkg/core/inputs/formats/input"
 	"github.com/projectdiscovery/nuclei/v2/pkg/model/types/severity"
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators/common/dsl"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/uncover"
@@ -182,7 +183,7 @@ on extensive configurability, massive extensibility and ease of use.`)
 		flagSet.BoolVarP(&options.ScanAllIPs, "scan-all-ips", "sa", false, "scan all the IP's associated with dns record"),
 		flagSet.StringSliceVarP(&options.IPVersion, "ip-version", "iv", nil, "IP version to scan of hostname (4,6) - (default 4)", goflags.CommaSeparatedStringSliceOptions),
 		flagSet.StringVarP(&options.InputFile, "input-file", "if", "", "path to file containing raw requests"),
-		flagSet.StringVarP(&options.InputFileMode, "input-mode", "im", "", "mode of input file (jsonl, burp, openapi, swagger)"),
+		flagSet.StringVarP(&options.InputFileMode, "input-mode", "im", "", fmt.Sprintf("mode of input file (%v)", input.Formats())),
 	)
 
 	flagSet.CreateGroup("templates", "Templates",

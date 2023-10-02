@@ -23,6 +23,11 @@ func New() *PostmanFormat {
 
 var _ formats.Format = &PostmanFormat{}
 
+// Name returns the name of the format
+func (j *PostmanFormat) Name() string {
+	return "postman"
+}
+
 // Parse parses the input and calls the provided callback
 // function for each RawRequest it discovers.
 func (j *PostmanFormat) Parse(input string, resultsCb formats.RawRequestCallback) error {

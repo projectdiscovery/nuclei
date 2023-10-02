@@ -154,9 +154,9 @@ func generateRequestsFromOp(method, pathURL, requestPath string, op *openapi3.Op
 			}
 
 			callback(&formats.RawRequest{
-				Method:  req.Method,
-				URL:     req.URL.String(),
-				Headers: req.Header,
+				Method:  cloned.Method,
+				URL:     cloned.URL.String(),
+				Headers: cloned.Header,
 				Body:    body,
 				Raw:     string(dumped),
 			})

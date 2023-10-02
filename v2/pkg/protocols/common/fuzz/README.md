@@ -140,3 +140,80 @@ This addition allows `context-analysis` for detecting Cross Site Scripting attac
 **heuristics** analyzer - 
 
 Heuristics analyzer allows checking requests for differences by issuing different versions of the request and identifying whether the response can be controlled by the input or a significant enough change occurs. This can be used to detect things like Boolean Based SQLi, etc.
+## Configurations
+
+- [ ] Allow configuring parts of request to fuzz
+  - [ ] allow subselection also like XML Attribute, XML Parameter, multipart Filename, Contents, etc
+- [ ] Allow configuring components of request to fuzz
+- [ ] Add optional Anti-CSRF mechanism inspired by zap technique (record pages producing csrf, have allowlist and use it to re-request tokens)
+- [ ] Allow ignoring parameters with a regex - 
+
+
+### Zapproxy default parameters exclusion list - 
+
+- (?i)ASP.NET_SessionId", NameValuePair.TYPE_UNDEFINED
+- (?i)ASPSESSIONID.*", NameValuePair.TYPE_UNDEFINED
+- (?i)PHPSESSID", NameValuePair.TYPE_UNDEFINED
+- (?i)SITESERVER", NameValuePair.TYPE_UNDEFINED
+- (?i)sessid", NameValuePair.TYPE_UNDEFINED
+- __VIEWSTATE", NameValuePair.TYPE_POST_DATA
+- __EVENTVALIDATION", NameValuePair.TYPE_POST_DATA
+- __EVENTTARGET", NameValuePair.TYPE_POST_DATA
+- __EVENTARGUMENT", NameValuePair.TYPE_POST_DATA
+- javax.faces.ViewState", NameValuePair.TYPE_POST_DATA
+- (?i)jsessionid", NameValuePair.TYPE_UNDEFINED
+- cfid", NameValuePair.TYPE_COOKIE
+- cftoken", NameValuePair.TYPE_COOKIE
+
+### CSRF Token parameter names - 
+
+- "anticsrf",
+- "CSRFToken",
+- "__RequestVerificationToken",
+- "csrfmiddlewaretoken",
+- "authenticity_token",
+- "OWASP_CSRFTOKEN",
+- "anoncsrf",
+- "csrf_token",
+- "_csrf",
+- "_csrfSecret",
+- "__csrf_magic",
+- "CSRF",
+- "_token",
+- "_csrf_token"
+
+1. Skip irrelevant checks -> SSRF shouldn't be discovered by default on parameters that have non-URL values.
+
+Skip all tests for below parameter names
+
+true	Cookie	Name	Matches regex	aspsessionid.*
+true	Cookie	Name	Is	asp.net_sessionid
+true	Body parameter	Name	Is	__eventtarget
+true	Body parameter	Name	Is	__eventargument
+true	Body parameter	Name	Is	__viewstate
+true	Body parameter	Name	Is	__eventvalidation
+true	Any parameter	Name	Is	jsessionid
+true	Cookie	Name	Is	cfid
+true	Cookie	Name	Is	cftoken
+true	Cookie	Name	Is	PHPSESSID
+true	Cookie	Name	Is	session_id
+true	XML attribute	Name	Is	version
+true	XML attribute	Name	Is	encoding
+true	XML attribute	Name	Is	standalone
+true	XML attribute	Name	Matches regex	xmlns.*
+true	XML attribute	Name	Is	xml:lang
+true	XML attribute	Name	Is	lang
+true	Cookie	Name	Is	_ga
+true	Cookie	Name	Is	_gid
+true	Cookie	Name	Is	_gat
+true	Cookie	Name	Matches regex	_ga_.*
+true	Cookie	Name	Matches regex	_gac_.*
+true	Cookie	Name	Matches regex	AWSALB.*
+
+- During fuzzing, record frequently occuring parameters which don't match anything and do not run [future idea].
+### Ideas
+
+- Add a disallowed_paths options
+- Add disallowed_parameters options
+- Allow user full customization during scanning
+- Support various authentication methods

@@ -1,12 +1,36 @@
 package input
 
 import (
+	"strings"
+
 	"github.com/pkg/errors"
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v2/pkg/core/inputs/formats"
+	"github.com/projectdiscovery/nuclei/v2/pkg/core/inputs/formats/burp"
 	"github.com/projectdiscovery/nuclei/v2/pkg/core/inputs/formats/json"
+	"github.com/projectdiscovery/nuclei/v2/pkg/core/inputs/formats/openapi"
+	"github.com/projectdiscovery/nuclei/v2/pkg/core/inputs/formats/postman"
+	"github.com/projectdiscovery/nuclei/v2/pkg/core/inputs/formats/swagger"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/contextargs"
 )
+
+var providersList = []formats.Format{
+	burp.New(),
+	json.New(),
+	openapi.New(),
+	postman.New(),
+	swagger.New(),
+}
+
+// Formats returns the list of supported formats in comma-separated
+// manner
+func Formats() string {
+	var formats []string
+	for _, provider := range providersList {
+		formats = append(formats, provider.Name())
+	}
+	return strings.Join(formats, ", ")
+}
 
 // InputProvider is an interface implemented by format nuclei input provider
 type InputProvider struct {
@@ -22,10 +46,12 @@ type InputProvider struct {
 // so it has been implemented this way.
 func NewInputProvider(inputFile, inputMode string) (*InputProvider, error) {
 	var format formats.Format
-	switch inputMode {
-	case "jsonl":
-		format = json.New()
-	default:
+	for _, provider := range providersList {
+		if provider.Name() == inputMode {
+			format = provider
+		}
+	}
+	if format == nil {
 		return nil, errors.Errorf("invalid input mode %s", inputMode)
 	}
 

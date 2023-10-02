@@ -25,6 +25,11 @@ func New() *SwaggerFormat {
 
 var _ formats.Format = &SwaggerFormat{}
 
+// Name returns the name of the format
+func (j *SwaggerFormat) Name() string {
+	return "swagger"
+}
+
 // Parse parses the input and calls the provided callback
 // function for each RawRequest it discovers.
 func (j *SwaggerFormat) Parse(input string, resultsCb formats.RawRequestCallback) error {

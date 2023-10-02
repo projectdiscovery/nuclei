@@ -18,6 +18,11 @@ func New() *BurpFormat {
 
 var _ formats.Format = &BurpFormat{}
 
+// Name returns the name of the format
+func (j *BurpFormat) Name() string {
+	return "burp"
+}
+
 // Parse parses the input and calls the provided callback
 // function for each RawRequest it discovers.
 func (j *BurpFormat) Parse(input string, resultsCb formats.RawRequestCallback) error {
