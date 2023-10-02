@@ -29,7 +29,9 @@ func (rule *Rule) executePartComponent(input *ExecuteRuleInput, payload string, 
 		var evaluated string
 		evaluated, input.InteractURLs = rule.executeEvaluate(input, key, valueStr, payload, input.InteractURLs)
 		if !input.HasAnalyzers {
-			component.SetValue(key, evaluated)
+			if err := component.SetValue(key, evaluated); err != nil {
+				return
+			}
 		}
 
 		if rule.modeType == singleModeType {
@@ -39,7 +41,7 @@ func (rule *Rule) executePartComponent(input *ExecuteRuleInput, payload string, 
 			}
 
 			if qerr := rule.buildInput(input, req, input.InteractURLs, component, key, evaluated, valueStr); qerr != nil {
-				finalErr = err
+				finalErr = qerr
 				return
 			}
 			component.SetValue(key, valueStr) // change back to previous value for temp
@@ -59,6 +61,7 @@ func (rule *Rule) executePartComponent(input *ExecuteRuleInput, payload string, 
 		if err != nil {
 			return err
 		}
+
 		if qerr := rule.buildInput(input, req, input.InteractURLs, component, "", "", ""); qerr != nil {
 			err = qerr
 			return err

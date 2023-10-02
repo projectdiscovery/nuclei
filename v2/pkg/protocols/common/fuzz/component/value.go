@@ -1,7 +1,10 @@
 package component
 
 import (
+	"strconv"
+
 	"github.com/leslie-qiwa/flat"
+	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/fuzz/dataformat"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/fuzz/encoding"
 )
@@ -64,7 +67,7 @@ func (v *Value) SetParsed(parsed map[string]interface{}, dataFormat string) {
 
 // SetParsedValue sets the parsed value for a key
 // in the parsed map
-func (v *Value) SetParsedValue(key string, value interface{}) bool {
+func (v *Value) SetParsedValue(key string, value string) bool {
 	origValue, ok := v.parsed[key]
 	if !ok {
 		v.parsed[key] = value
@@ -77,8 +80,14 @@ func (v *Value) SetParsedValue(key string, value interface{}) bool {
 		origValue = append(v, value)
 	case string:
 		origValue = value
+	case int, int32, int64, float32, float64:
+		parsed, err := strconv.ParseInt(value, 10, 64)
+		if err != nil {
+			return false
+		}
+		origValue = parsed
 	default:
-		return false
+		gologger.Error().Msgf("unknown type %T for value %s", v, v)
 	}
 	v.parsed[key] = origValue
 	return true
