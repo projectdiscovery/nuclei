@@ -8,6 +8,7 @@ import (
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/contextargs"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/expressions"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/fuzz/analyzers"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/fuzz/component"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/generators"
@@ -182,6 +183,14 @@ func (rule *Rule) Compile(generator *generators.PayloadGenerator, options *proto
 		rule.keysMap[strings.ToLower(key)] = struct{}{}
 	}
 	for _, value := range rule.ValuesRegex {
+		if strings.Contains(value, "{{") {
+			varsMap := options.Options.Vars.AsMap()
+			evaluated, err := expressions.Evaluate(value, generators.MergeMaps(options.Variables.GetAll(), varsMap))
+			if err != nil {
+				return errors.Wrap(err, "could not evaluate value regex")
+			}
+			value = evaluated
+		}
 		compiled, err := regexp.Compile(value)
 		if err != nil {
 			return errors.Wrap(err, "could not compile value regex")

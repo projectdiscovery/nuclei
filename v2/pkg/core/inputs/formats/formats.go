@@ -62,6 +62,7 @@ func (r *RawRequest) Request() (*retryablehttp.Request, error) {
 
 // ParseRawRequest parses a raw request from a string
 func ParseRawRequest(raw, body, URL string) (*RawRequest, error) {
+	// TODO: Only replace in first line instead of entire body
 	raw = strings.Replace(raw, "HTTP/2", "HTTP/1.1", 1)
 
 	parsedRequest, err := http.ReadRequest(bufio.NewReader(strings.NewReader(raw)))
