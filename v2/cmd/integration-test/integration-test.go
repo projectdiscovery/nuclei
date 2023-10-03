@@ -132,8 +132,10 @@ func runTests(customTemplatePaths []string) []string {
 	var failedTestTemplatePaths []string
 
 	for proto, testCaseInfos := range protocolTests {
-		if proto != "" && !strings.EqualFold(proto, protocol) {
-			continue
+		if protocol != "" {
+			if !strings.EqualFold(proto, protocol) {
+				continue
+			}
 		}
 		if len(customTemplatePaths) == 0 {
 			fmt.Printf("Running test cases for %q protocol\n", aurora.Blue(proto))

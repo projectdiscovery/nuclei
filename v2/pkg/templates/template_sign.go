@@ -60,11 +60,8 @@ func SignTemplate(templateSigner *signer.TemplateSigner, templatePath string) er
 		// if template not verified then sign it
 
 		if len(template.RequestsCode) > 0 {
-			//TODO: if template contains code protocol and digest then check if it belongs to user
-			// digestData := signer.GetSignatureFromData(bin)
-			// if len(digestData) != 0 {
-			// 	return fmt.Errorf("re-signing of code protocol templates is not supported")
-			// }
+			// verify using current template signer
+			// if verified then 
 		}
 
 		signatureData, err := templateSigner.Sign(bin, template)
