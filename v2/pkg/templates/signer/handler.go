@@ -23,7 +23,7 @@ import (
 const (
 	CertType           = "PD NUCLEI USER CERTIFICATE"
 	PrivateKeyType     = "PD NUCLEI USER PRIVATE KEY"
-	CertFilename       = "nuclei-user-cert.pem"
+	CertFilename       = "nuclei-user.crt"
 	PrivateKeyFilename = "nuclei-user-private-key.pem"
 	CertEnvVarName     = "NUCLEI_USER_CERTIFICATE"
 	PrivateKeyEnvName  = "NUCLEI_USER_PRIVATE_KEY"
@@ -171,6 +171,7 @@ func (k *KeyHandler) GenerateKeyPair() {
 
 // SaveToDisk saves the generated key-pair to the given directory
 func (k *KeyHandler) SaveToDisk(dir string) error {
+	_ = fileutil.FixMissingDirs(filepath.Join(dir, CertFilename)) // not required but just in case will take care of missing dirs in path
 	if err := os.WriteFile(filepath.Join(dir, CertFilename), k.UserCert, 0600); err != nil {
 		return err
 	}
@@ -265,4 +266,27 @@ func (k *KeyHandler) marshalPrivateKey(privateKey *ecdsa.PrivateKey) ([]byte, er
 		pemBlock = encBlock
 	}
 	return pem.EncodeToMemory(pemBlock), nil
+}
+
+func getPassphrase() []byte {
+	bin, err := term.ReadPassword(int(os.Stdin.Fd()))
+	if err != nil {
+		gologger.Fatal().Msgf("could not read passphrase: %s", err)
+	}
+	fmt.Println()
+	if string(bin) == "exit" {
+		gologger.Fatal().Msgf("exiting")
+	}
+	fmt.Printf("[*] Enter same passphrase again: ")
+	bin2, err := term.ReadPassword(int(os.Stdin.Fd()))
+	if err != nil {
+		gologger.Fatal().Msgf("could not read passphrase: %s", err)
+	}
+	fmt.Println()
+	// review: should we allow empty passphrase?
+	// we currently allow empty passphrase
+	if string(bin) != string(bin2) {
+		gologger.Fatal().Msgf("passphrase did not match try again")
+	}
+	return bin
 }

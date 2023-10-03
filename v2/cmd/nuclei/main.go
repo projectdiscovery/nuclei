@@ -53,8 +53,7 @@ func main() {
 
 	// sign the templates if requested - only glob syntax is supported
 	if options.SignTemplates {
-		signerOptions := signer.GetSigerKeysOrGenerate()
-		sign, err := signer.New(signerOptions)
+		tsigner, err := signer.NewTemplateSigner(nil, nil) // will read from env , config or generate new keys
 		if err != nil {
 			gologger.Fatal().Msgf("couldn't initialize signer crypto engine: %s\n", err)
 		}
@@ -67,7 +66,7 @@ func main() {
 					return nil
 				}
 
-				if err := templates.SignTemplate(sign, iterItem); err != nil {
+				if err := templates.SignTemplate(tsigner, iterItem); err != nil {
 					errorCounter++
 					gologger.Error().Msgf("could not sign '%s': %s\n", iterItem, err)
 				} else {

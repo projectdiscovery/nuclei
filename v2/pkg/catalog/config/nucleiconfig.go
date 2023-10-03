@@ -115,6 +115,11 @@ func (c *Config) GetConfigDir() string {
 	return c.configDir
 }
 
+// GetKeysDir returns the nuclei signer keys directory
+func (c *Config) GetKeysDir() string {
+	return filepath.Join(c.configDir, "keys")
+}
+
 // GetAllCustomTemplateDirs returns all custom template directories
 func (c *Config) GetAllCustomTemplateDirs() []string {
 	return []string{c.CustomS3TemplatesDirectory, c.CustomGitHubTemplatesDirectory, c.CustomGitLabTemplatesDirectory, c.CustomAzureTemplatesDirectory}

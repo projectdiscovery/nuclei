@@ -1,21 +1,21 @@
-id: rsa-signed-code-snippet
+id: py-nosig
 
 info:
-  name: rsa-signed-code-snippet
+  name: py-nosig
   author: pdteam
   severity: info
   tags: code
   description: |
-    rsa-signed-code-snippet
+    Python code without signature
 
 code:
   - engine:
       - py
       - python3
     source: |
-      print("rsa signed code")
+      print("py unsigned code")
     
     matchers:
       - type: word
         words:
-          - "rsa signed code"
+          - "py unsigned code"

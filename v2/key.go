@@ -2,5 +2,5 @@ package v2
 
 import _ "embed"
 
-//go:embed nuclei.cert
+//go:embed nuclei.crt
 var NucleiCert []byte

@@ -56,25 +56,3 @@ func TestKeyHandler(t *testing.T) {
 		t.Fatal("invalid user name found")
 	}
 }
-
-// func TestDumpKey(t *testing.T) {
-// 	if val := os.Getenv("KEY_TEST_CI"); val != "1" {
-// 		cmd := exec.Command(os.Args[0], "-test.run=^TestDumpKey$", "-test.v")
-// 		cmd.Env = append(cmd.Env, "KEY_TEST_CI=1")
-// 		var buff bytes.Buffer
-// 		cmd.Stdin = &buff
-// 		buff.WriteString("CIUSER\n")
-// 		buff.WriteString("\n")
-// 		out, err := cmd.CombinedOutput()
-// 		t.Log(string(out))
-// 		if !strings.Contains(string(out), "PASS\n") || err != nil {
-// 			t.Fatalf("%s\n(exit status %v)", string(out), err)
-// 		}
-// 		return
-// 	}
-// 	gologger.DefaultLogger.SetMaxLevel(levels.LevelSilent)
-// 	h := &KeyHandler{}
-// 	noUserPassphrase = true
-// 	h.GenerateKeyPair()
-// 	os.WriteFile("test.key", h.UserCert, 0600)
-// }

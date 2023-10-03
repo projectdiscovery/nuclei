@@ -313,11 +313,11 @@ func ParseTemplateFromReader(reader io.Reader, preprocessor Preprocessor, option
 
 	// check if the template is verified
 	// only valid templates can be verified or signed
-	for _, verifier := range signer.DefaultVerifiers {
+	for _, verifier := range signer.DefaultTemplateVerifiers {
 		if template.Verified {
 			break
 		}
-		template.Verified, _ = signer.Verify(verifier, data, template)
+		template.Verified, _ = verifier.Verify(data, template)
 
 	}
 	return template, nil
