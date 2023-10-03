@@ -59,10 +59,11 @@ func SignTemplate(templateSigner *signer.TemplateSigner, templatePath string) er
 	if !template.Verified {
 		// if template not verified then sign it
 
-		if len(template.RequestsCode) > 0 {
-			// verify using current template signer
-			// if verified then 
-		}
+		// TODO: only allow re-signer if template is signed by current signer
+		// if len(template.RequestsCode) > 0 {
+		// 	// verify using current template signer
+		// 	// if verified then
+		// }
 
 		signatureData, err := templateSigner.Sign(bin, template)
 		if err != nil {
