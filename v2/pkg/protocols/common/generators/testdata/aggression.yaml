@@ -1,0 +1,10 @@
+linux_path:
+  default:
+    - /etc/passwd
+  medium:
+    - ../etc/passwd
+    - ../../etc/passwd
+  high:
+    - ../../../etc/passwd
+    - ../../../../etc/passwd
+    - ../../../../../etc/passwd

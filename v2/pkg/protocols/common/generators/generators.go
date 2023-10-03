@@ -23,12 +23,25 @@ func New(payloads map[string]interface{}, attackType AttackType, templatePath st
 		attackType = BatteringRamAttack
 	}
 
-	// Resolve payload paths if they are files.
+	// Check the agression level user wants and
+	// get the values to be processed acccordingly.
 	payloadsFinal := make(map[string]interface{})
-	for name, payload := range payloads {
-		payloadsFinal[name] = payload
+	for payloadName, v := range payloads {
+		switch value := v.(type) {
+		case map[interface{}]interface{}:
+			values, err := parsePayloadsWithAggression(payloadName, value, "default") // TODO: Make configurable aggression
+			if err != nil {
+				return nil, errors.Wrap(err, "could not parse payloads with aggression")
+			}
+			for k, v := range values {
+				payloadsFinal[k] = v
+			}
+		default:
+			payloadsFinal[payloadName] = v
+		}
 	}
-	for name, payload := range payloads {
+	// Resolve payload paths if they are files.
+	for name, payload := range payloadsFinal {
 		payloadStr, ok := payload.(string)
 		if ok {
 			final, resolveErr := catalog.ResolvePath(payloadStr, templatePath)
@@ -65,6 +78,56 @@ func New(payloads map[string]interface{}, attackType AttackType, templatePath st
 		}
 	}
 	return generator, nil
+}
+
+type aggressionLevelToPayloads struct {
+	Default []interface{}
+	Medium  []interface{}
+	High    []interface{}
+}
+
+// parsePayloadsWithAggression parses the payloads with the aggression level
+//
+// Three agression are supported -
+//   - default
+//   - medium
+//   - high
+//
+// default is the default level. If medium is specified, all templates from
+// default and medium are executed. Similarly with high, including all templates
+// from default, medium, high.
+func parsePayloadsWithAggression(name string, v map[interface{}]interface{}, agression string) (map[string]interface{}, error) {
+	payloadsLevels := &aggressionLevelToPayloads{}
+
+	for k, v := range v {
+		if _, ok := v.([]interface{}); !ok {
+			return nil, errors.Errorf("only lists are supported for aggression levels payloads")
+		}
+		switch k {
+		case "default":
+			payloadsLevels.Default = v.([]interface{})
+		case "medium":
+			payloadsLevels.Medium = v.([]interface{})
+		case "high":
+			payloadsLevels.High = v.([]interface{})
+		default:
+			return nil, errors.Errorf("invalid aggression level %s specified for %s", k, name)
+		}
+	}
+
+	payloads := make(map[string]interface{})
+	switch agression {
+	case "default":
+		payloads[name] = payloadsLevels.Default
+	case "medium":
+		payloads[name] = append(payloadsLevels.Default, payloadsLevels.Medium...)
+	case "high":
+		payloads[name] = append(payloadsLevels.Default, payloadsLevels.Medium...)
+		payloads[name] = append(payloads[name].([]interface{}), payloadsLevels.High...)
+	default:
+		return nil, errors.Errorf("invalid aggression level %s specified for %s", agression, name)
+	}
+	return payloads, nil
 }
 
 // Iterator is a single instance of an iterator for a generator structure
