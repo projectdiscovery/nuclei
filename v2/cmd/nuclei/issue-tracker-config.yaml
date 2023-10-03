@@ -17,6 +17,8 @@
 #  project-name: test-project
 #  # issue-label is the label of the created issue type
 #  issue-label: bug
+#  # duplicate-issue-check flag to enable duplicate tracking issue check.
+#  duplicate-issue-check: false
 #
 # GitLab contains configuration options for gitlab issue tracker
 #gitlab:
