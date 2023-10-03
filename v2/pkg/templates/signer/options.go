@@ -1,8 +1,6 @@
 package signer
 
 import (
-	"errors"
-	"regexp"
 	"strings"
 )
 
@@ -57,8 +55,3 @@ func (o *Options) HasPrivateKey() bool {
 	}
 	return false
 }
-
-var (
-	ReDigest            = regexp.MustCompile(`(?m)^#\sdigest:\s.+$`)
-	ErrUnknownAlgorithm = errors.New("unknown algorithm")
-)

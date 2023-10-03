@@ -39,22 +39,6 @@ $ ./nuclei -sign
 
 ```
 
-### Using `openssl` 
-
-```console
-# ECDSA
-$ openssl ecparam -name prime256v1 -genkey -noout -out private.key
-$ openssl ec -in priv-key.pem -pubout > public.key
-```
-
-
-### Using `ssh-keygen`
-
-```console
-# RSA
-$ ssh-keygen -t rsa
-```
-
 **Storing Generated Keys**
 
 When using `nuclei` to generate keys, keys are by default stored at $config/nuclei in 3 files:

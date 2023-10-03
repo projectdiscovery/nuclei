@@ -1,20 +1,25 @@
 package signer
 
 import (
+	"bytes"
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
 	"crypto/x509"
+	"crypto/x509/pkix"
 	"encoding/pem"
 	"errors"
 	"fmt"
+	"math/big"
 	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/config"
 	errorutil "github.com/projectdiscovery/utils/errors"
 	fileutil "github.com/projectdiscovery/utils/file"
+	"github.com/rs/xid"
 	"golang.org/x/term"
 )
 
@@ -120,6 +125,15 @@ func getKeysFromConfigDir() *Options {
 
 func generateKeyPair() *Options {
 	gologger.Info().Msgf("Generating new key-pair for signing code templates")
+	fmt.Printf("[*] Enter User/Organization Name : ")
+	identifier := ""
+	_, err := fmt.Scanln(&identifier)
+	if err != nil {
+		gologger.Fatal().Msgf("failed to user/organization name: %s", err)
+	}
+	if identifier == "" {
+		gologger.Fatal().Msgf("user/organization name cannot be empty")
+	}
 	fmt.Printf("[*] Enter passphrase (exit to abort): ")
 	passphrase := getPassphrase()
 
@@ -128,18 +142,18 @@ func generateKeyPair() *Options {
 	if err != nil {
 		gologger.Fatal().Msgf("failed to generate ecdsa key-pair: %s", err)
 	}
+	publicCert, err := createCertWithMetadata(identifier, privateKey)
+	if err != nil {
+		gologger.Fatal().Msgf("failed to create certificate: %s", err)
+	}
+
 	privateKeyData, err := x509.MarshalECPrivateKey(privateKey)
 	if err != nil {
 		gologger.Fatal().Msgf("failed to marshal ecdsa private key: %s", err)
 	}
-	publicKeyData, err := x509.MarshalPKIXPublicKey(&privateKey.PublicKey)
-	if err != nil {
-		gologger.Fatal().Msgf("failed to marshal ecdsa public key: %s", err)
-	}
-
 	//  pem encode keys
 	pemBlock := &pem.Block{
-		Type: "EC PRIVATE KEY", Bytes: privateKeyData,
+		Type: "PD NUCLEI USER PRIVATE KEY", Bytes: privateKeyData,
 	}
 	// encrypt private key if passphrase is provided
 	if len(passphrase) > 0 {
@@ -152,16 +166,13 @@ func generateKeyPair() *Options {
 		}
 		pemBlock = encBlock
 	}
-	publicKeyPem := &pem.Block{
-		Type: "PUBLIC KEY", Bytes: publicKeyData,
-	}
 
 	// write keys to config directory
 	cfgdir := config.DefaultConfig.GetConfigDir()
 	if err := os.WriteFile(filepath.Join(cfgdir, PrivateKeyFileName), pem.EncodeToMemory(pemBlock), 0600); err != nil {
 		gologger.Fatal().Msgf("failed to write private key: %s", err)
 	}
-	if err := os.WriteFile(filepath.Join(cfgdir, PublicKeyFileName), pem.EncodeToMemory(publicKeyPem), 0600); err != nil {
+	if err := os.WriteFile(filepath.Join(cfgdir, PublicKeyFileName), publicCert, 0600); err != nil {
 		gologger.Fatal().Msgf("failed to write public key: %s", err)
 	}
 	if err := os.WriteFile(filepath.Join(cfgdir, AlgoFileName), []byte("ecdsa"), 0600); err != nil {
@@ -171,10 +182,47 @@ func generateKeyPair() *Options {
 
 	return &Options{
 		PrivateKeyData: pem.EncodeToMemory(pemBlock),
-		PublicKeyData:  pem.EncodeToMemory(publicKeyPem),
+		PublicKeyData:  publicCert,
 		PassphraseData: passphrase,
 		Algorithm:      ECDSA,
 	}
+}
+
+func createCertWithMetadata(identifier string, privateKey *ecdsa.PrivateKey) ([]byte, error) {
+	// Setting up the certificate
+	notBefore := time.Now()
+	notAfter := notBefore.Add(4 * 365 * 24 * time.Hour)
+
+	serialNumber := big.NewInt(xid.New().Time().Unix())
+	// create certificate template
+	template := x509.Certificate{
+		SerialNumber: serialNumber,
+		Subject: pkix.Name{
+			Organization: []string{identifier}, // Enter your organization here
+		},
+		SignatureAlgorithm: x509.ECDSAWithSHA256,
+		Issuer:             pkix.Name{Organization: []string{"ProjectDiscovery OSS"}},
+		NotBefore:          notBefore,
+		NotAfter:           notAfter,
+		PublicKey:          privateKey.PublicKey,
+		KeyUsage:           x509.KeyUsageDigitalSignature,
+		ExtKeyUsage: []x509.ExtKeyUsage{
+			x509.ExtKeyUsageServerAuth,
+		},
+		IsCA:                  false,
+		BasicConstraintsValid: true,
+	}
+	// Create the certificate
+	derBytes, err := x509.CreateCertificate(rand.Reader, &template, &template, privateKey.PublicKey, privateKey)
+	if err != nil {
+		return nil, err
+	}
+
+	var certOut bytes.Buffer
+	if err := pem.Encode(&certOut, &pem.Block{Type: "PD NUCLEI USER CERTIFICATE", Bytes: derBytes}); err != nil {
+		return nil, err
+	}
+	return certOut.Bytes(), nil
 }
 
 // getDataFromFile returns the data from the file
