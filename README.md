@@ -117,7 +117,7 @@ Flags:
 TARGET:
    -u, -target string[]             target URLs/hosts to scan
    -l, -list string                 path to file containing a list of target URLs/hosts to scan (one per line)
-   -etg, -exclude-targets string[]  hosts to exclude to scan from the input list (ip, cidr, hostname)
+   -eh, -exclude-hosts string[]     hosts to exclude to scan from the input list (ip, cidr, hostname)
    -resume string                   resume scan using resume.cfg (clustering will be disabled)
    -sa, -scan-all-ips               scan all the IP's associated with dns record
    -iv, -ip-version string[]        IP version to scan of hostname (4,6) - (default 4)

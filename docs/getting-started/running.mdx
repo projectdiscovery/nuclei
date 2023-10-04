@@ -73,12 +73,12 @@ For scanning multiple targets, you can provide a file containing a list of URLs 
 nuclei -list targets.txt
 ```
 
-### 3. **Excluding Specific Targets** (`-etg/-exclude-targets`)
+### 3. **Excluding Specific Targets** (`-eh/-exclude-hosts`)
 
-There may be scenarios where you want to exclude certain IPs, CIDRs, or hostnames from being scanned. This can be achieved using the `-etg` or `-exclude-targets` flag:
+There may be scenarios where you want to exclude certain IPs, CIDRs, or hostnames from being scanned. This can be achieved using the `-eh` or `-exclude-hosts` flag:
 
 ```sh
-nuclei -list targets.txt -etg 1.1.1.1,exclude.example.com
+nuclei -list targets.txt -eh 1.1.1.1,exclude.example.com
 ```
 
 **NOTE**: 
@@ -295,7 +295,7 @@ Flags:
 TARGET:
    -u, -target string[]             target URLs/hosts to scan
    -l, -list string                 path to file containing a list of target URLs/hosts to scan (one per line)
-   -etg, -exclude-targets string[]  hosts to exclude to scan from the input list (ip, cidr, hostname)
+   -eh, -exclude-hosts string[]     hosts to exclude to scan from the input list (ip, cidr, hostname)
    -resume string                   resume scan using resume.cfg (clustering will be disabled)
    -sa, -scan-all-ips               scan all the IP's associated with dns record
    -iv, -ip-version string[]        IP version to scan of hostname (4,6) - (default 4)
