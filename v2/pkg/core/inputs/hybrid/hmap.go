@@ -305,6 +305,7 @@ func (i *Input) setItem(metaInput *contextargs.MetaInput, exclude bool) {
 	if _, ok := i.hostMap.Get(key); ok {
 		if exclude {
 			i.excludedCount++
+			i.inputCount--
 			err := i.hostMap.Del(key)
 			if err != nil {
 				gologger.Error().Msgf("Error excluding target from list: %s", key)
@@ -376,6 +377,7 @@ func (i *Input) expandCIDRInputValue(value string, exclude bool) {
 		if _, ok := i.hostMap.Get(key); ok {
 			if exclude {
 				i.excludedCount++
+				i.inputCount--
 				err := i.hostMap.Del(key)
 				if err != nil {
 					gologger.Error().Msgf("Error excluding target from list: %s", key)
