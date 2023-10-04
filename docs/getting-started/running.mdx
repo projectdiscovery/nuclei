@@ -47,6 +47,71 @@ Similarly, Workflows can be executed against a list of URLs.
 nuclei -list http_urls.txt -w workflows/wordpress-workflow.yaml
 ```
 
+## Specifying Targets with **Nuclei**
+
+When executing Nuclei, you can specify the targets (URLs or hosts) in several ways, ensuring flexibility based on your use-case requirements.
+
+### 1. **Direct Target Specification** (`-u/-target`)
+
+The simplest way to run Nuclei is by providing a single URL or host using the `-u` or `-target` flag:
+
+```sh
+nuclei -u https://example.com
+```
+
+Multiple URLs or hosts can be scanned by passing them as a comma-separated list:
+
+```sh
+nuclei -u https://example.com,http://testsite.com
+```
+
+### 2. **List of Targets** (`-l/-list`)
+
+For scanning multiple targets, you can provide a file containing a list of URLs or hosts, one per line, using the `-l` or `-list` option:
+
+```sh
+nuclei -list targets.txt
+```
+
+### 3. **Excluding Specific Targets** (`-etg/-exclude-targets`)
+
+There may be scenarios where you want to exclude certain IPs, CIDRs, or hostnames from being scanned. This can be achieved using the `-etg` or `-exclude-targets` flag:
+
+```sh
+nuclei -list targets.txt -etg 1.1.1.1,exclude.example.com
+```
+
+**NOTE**: 
+- The exclude target process takes the input per line as provided without any alterations.
+- Hostname resolutions are not performed to exclude IPs.
+
+
+### 4. **Resuming a Scan** (`-resume`)
+
+If a scan was previously interrupted, you can resume it using a configuration file:
+
+```sh
+nuclei -resume resume.cfg
+```
+
+Note: When using this option, clustering will be disabled.
+
+### 5. **Scanning All Associated IPs** (`-sa/-scan-all-ips`)
+
+To scan all IP addresses associated with a given DNS record:
+
+```sh
+nuclei -u example.com -sa
+```
+
+### 6. **IP Version Specification** (`-iv/-ip-version`)
+
+By default, Nuclei scans using IP version 4. However, you can specify which IP version (4 or 6) you want to scan using the `-iv` or `-ip-version` option:
+
+```sh
+nuclei -u example.com -iv 6
+```
+
 ### Nuclei **Filters**
 
 Nuclei engine supports three basic filters to customize template execution.
@@ -228,11 +293,12 @@ Usage:
 
 Flags:
 TARGET:
-   -u, -target string[]       target URLs/hosts to scan
-   -l, -list string           path to file containing a list of target URLs/hosts to scan (one per line)
-   -resume string             resume scan using resume.cfg (clustering will be disabled)
-   -sa, -scan-all-ips         scan all the IP's associated with dns record
-   -iv, -ip-version string[]  IP version to scan of hostname (4,6) - (default 4)
+   -u, -target string[]             target URLs/hosts to scan
+   -l, -list string                 path to file containing a list of target URLs/hosts to scan (one per line)
+   -etg, -exclude-targets string[]  hosts to exclude to scan from the input list (ip, cidr, hostname)
+   -resume string                   resume scan using resume.cfg (clustering will be disabled)
+   -sa, -scan-all-ips               scan all the IP's associated with dns record
+   -iv, -ip-version string[]        IP version to scan of hostname (4,6) - (default 4)
 
 TEMPLATES:
    -nt, -new-templates                    run only new templates added in latest nuclei-templates release
@@ -277,7 +343,7 @@ OUTPUT:
    -ms, -matcher-status          display match failure status
    -me, -markdown-export string  directory to export results in markdown format
    -se, -sarif-export string     file to export results in SARIF format
-
+   
 CONFIGURATIONS:
    -config string                 path to the nuclei configuration file
    -fr, -follow-redirects         enable following redirects for http templates
@@ -306,7 +372,7 @@ CONFIGURATIONS:
    -config-directory string       override the default config path ($home/.config)
    -rsr, -response-size-read int  max response size to read in bytes (default 10485760)
    -rss, -response-size-save int  max response size to read in bytes (default 1048576)
-
+   
 INTERACTSH:
    -iserver, -interactsh-server string  interactsh server url for self-hosted instance (default: oast.pro,oast.live,oast.site,oast.online,oast.fun,oast.me)
    -itoken, -interactsh-token string    authentication token for self-hosted interactsh server
