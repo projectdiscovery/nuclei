@@ -89,6 +89,10 @@ func New(opts *Options) (*Input, error) {
 	if initErr := input.initializeInputSources(opts); initErr != nil {
 		return nil, initErr
 	}
+	if input.excludedCount > 0 {
+		gologger.Info().Msgf("Number of hosts excluded from input: %d", input.excludedCount)
+	}
+
 	if input.dupeCount > 0 {
 		gologger.Info().Msgf("Supplied input was automatically deduplicated (%d removed).", input.dupeCount)
 	}
@@ -306,7 +310,6 @@ func (i *Input) setItem(metaInput *contextargs.MetaInput, exclude bool) {
 				gologger.Error().Msgf("Error excluding target from list: %s", key)
 				return
 			}
-			gologger.Info().Msgf("Excluding target from target list: %s", key)
 		} else {
 			i.dupeCount++
 		}
@@ -378,7 +381,6 @@ func (i *Input) expandCIDRInputValue(value string, exclude bool) {
 					gologger.Error().Msgf("Error excluding target from list: %s", key)
 					return
 				}
-				gologger.Info().Msgf("Excluding target from target list: %s", key)
 			} else {
 				i.dupeCount++
 			}
