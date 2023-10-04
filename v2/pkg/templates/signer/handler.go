@@ -132,7 +132,7 @@ func (k *KeyHandler) ParsePrivateKey() error {
 // GenerateKeyPair generates a new key-pair for signing code templates
 func (k *KeyHandler) GenerateKeyPair() {
 
-	gologger.Info().Msgf("Generating new key-pair for signing code templates")
+	gologger.Info().Msgf("Generating new key-pair for signing templates")
 	fmt.Printf("[*] Enter User/Organization Name (exit to abort) : ")
 
 	// get user/organization name
@@ -166,7 +166,7 @@ func (k *KeyHandler) GenerateKeyPair() {
 	if err != nil {
 		gologger.Fatal().Msgf("failed to marshal ecdsa private key: %s", err)
 	}
-	gologger.Info().Msgf("Successfully generated new key-pair for signing code templates")
+	gologger.Info().Msgf("Successfully generated new key-pair for signing templates")
 }
 
 // SaveToDisk saves the generated key-pair to the given directory

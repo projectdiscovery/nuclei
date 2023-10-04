@@ -11,6 +11,8 @@ import (
 	"github.com/projectdiscovery/gologger/levels"
 )
 
+// This Unit Test generates a new key pair and parses it
+// to ensure that the key handler works as expected.
 func TestKeyHandler(t *testing.T) {
 	if val := os.Getenv("KEY_HANDLER_CI"); val != "1" {
 		cmd := exec.Command(os.Args[0], "-test.run=^TestKeyHandler$", "-test.v")

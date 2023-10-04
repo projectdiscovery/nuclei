@@ -6,6 +6,7 @@ import (
 	"io"
 	"reflect"
 	"sync"
+	"sync/atomic"
 
 	"github.com/pkg/errors"
 	"gopkg.in/yaml.v2"
@@ -27,12 +28,21 @@ import (
 var (
 	ErrCreateTemplateExecutor          = errors.New("cannot create template executer")
 	ErrIncompatibleWithOfflineMatching = errors.New("template can't be used for offline matching")
+	parsedTemplatesCache               *cache.Templates
+	// track how many templates are verfied and by which signer
+	SignatureStats = map[string]*atomic.Uint64{}
 )
 
-var parsedTemplatesCache *cache.Templates
+const (
+	Unsigned = "unsigned"
+)
 
 func init() {
 	parsedTemplatesCache = cache.New()
+	for _, verifier := range signer.DefaultTemplateVerifiers {
+		SignatureStats[verifier.Identifier()] = &atomic.Uint64{}
+	}
+	SignatureStats["unsigned"] = &atomic.Uint64{}
 }
 
 // Parse parses a yaml request template file
@@ -314,11 +324,14 @@ func ParseTemplateFromReader(reader io.Reader, preprocessor Preprocessor, option
 	// check if the template is verified
 	// only valid templates can be verified or signed
 	for _, verifier := range signer.DefaultTemplateVerifiers {
+		template.Verified, _ = verifier.Verify(data, template)
 		if template.Verified {
+			SignatureStats[verifier.Identifier()].Add(1)
 			break
 		}
-		template.Verified, _ = verifier.Verify(data, template)
-
+	}
+	if !template.Verified {
+		SignatureStats[Unsigned].Add(1)
 	}
 	return template, nil
 }
