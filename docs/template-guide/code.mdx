@@ -12,79 +12,135 @@ However, it's important to exercise caution while utilizing this feature, as exe
 
 ## Template Signing (beta)
 
-Template signing via the private-public key mechanism is a crucial aspect of ensuring the integrity and authenticity of templates. This mechanism involves the use of asymmetric cryptography, specifically RSA and ECDSA algorithms, to create a secure and verifiable signature.
+Template signing via the private-public key mechanism is a crucial aspect of ensuring the integrity and authenticity of templates. This mechanism involves the use of asymmetric cryptography, specifically  ECDSA algorithm, to create a secure and verifiable signature.
 
 In this process, a template author generates a private key that remains confidential and securely stored. The corresponding public key is then shared with the template consumers. When a template is created or modified, the author signs it using their private key, generating a unique signature that is attached to the template.
 
-Template consumers can verify the authenticity and integrity of a signed template by using the author's public key. By applying the appropriate cryptographic algorithm (RSA or ECDSA), they can validate the signature and ensure that the template has not been tampered with since it was signed. This provides a level of trust, as any modifications or unauthorized changes to the template would result in a failed verification process.
+Template consumers can verify the authenticity and integrity of a signed template by using the author's public key. By applying the appropriate cryptographic algorithm (ECDSA), they can validate the signature and ensure that the template has not been tampered with since it was signed. This provides a level of trust, as any modifications or unauthorized changes to the template would result in a failed verification process.
 
 By employing the private-public key mechanism, template signing adds an additional layer of security and trust to the template ecosystem. It helps establish the identity of the template author and ensures that the templates used in various systems are genuine and have not been altered maliciously.
 
+### What does signing a template mean ?
+
+Template signing is a mechanism to ensure the integrity and authenticity of templates. The primary goal is to provide template writers/consumers a way to trust crowdsource/custom templates ensuring that they are not tampered
+
+All Official nuclei templates include a digital signature in them and are verified by nuclei while loading templates using ProjectDiscovery's public key shipped with nuclei binary itself.
+
+Individuals / Organizations running nuclei in their work environment can generate their own key-pair with `nuclei` and sign their custom templates with their private key, thus ensuring that only authorized templates are being used in their environment.
+
+This also allows entities to fully utilize the power of new protocols like `code` and `javascript` without worrying about malicious custom templates being used in their environment.
+
+**Points to note**
+
+- Template signing is optional for all protocols except `code`.
+
+- Code File References (ex: `source: protocols/code/pyfile.py`) are allowed and content of these files is included in the template digest
+
+- Payload File References (ex: `payloads: protocols/http/params.txt`) are not included in the template digest as it is treated as a payload/helper and not actual code that is being executed
+
+- Template Signing is deterministic while both signing and verifying a template i.e if a code file is referenced in a template that is present outside of templates directory with `-lfa` flag then verification will fail if same template is used without `-lfa` flag. (Note this only applies to `-lfa` i.e local file access flag only)
+
 ## How to sign custom templates
 
-First it's necessary to generate a private/public key pair. Nuclei currently supports RSA and ECDSA algorithms for signing templates and verifying signatures.
+Simplest and recommended way to generate key-pair and signing/verfifying templates is to use `nuclei` itself.
 
-**There are multiple ways to generate a key pair.**
-
-### Using `nuclei`
-
-Nuclei CLI only supports generating ECDSA key-pairs. To generate a key-pair, run the following command:
+#### When Signing a template if key-pair does not exist then nuclei will prompt user to generate a new key-pair with options 
 
 ```console
-$ ./nuclei -sign
-[INF] Generating new key-pair for signing code templates
+$ ./nuclei -t my-template.yaml -sign -v
+[INF] Generating new key-pair for signing templates
+[*] Enter User/Organization Name (exit to abort) : ProjectDiscovery.io
 [*] Enter passphrase (exit to abort): 
 [*] Enter same passphrase again: 
-[INF] Successfully generated new key-pair for signing code templates
+[INF] Successfully generated new key-pair for signing templates
 
 ```
 
-**Storing Generated Keys**
+> Note: Passphrase is optional and can be left blank when used private key is encrypted with passphrase using PEMCipherAES256 Algo
 
-When using `nuclei` to generate keys, keys are by default stored at $config/nuclei in 3 files:
-
-```
-nuclei-template-signer          # private key
-nuclei-template-signer.pub      # public key
-nuclei-template-signer.algo     # algorithm used for signing
-```
-
-When using `openssl` or `ssh-keygen` generated keys can be moved to above files with appropriate names and nuclei will automatically pick them up.
-
-Another way to specify the location of the keys is to use the following environment variables:
+#### Signing a template with existing key-pair
 
 ```console
-# OSX + Linux
-export NUCLEI_SIGNATURE_PRIVATE_KEY=path/to/private.key
-export NUCLEI_SIGNATURE_PUBLIC_KEY=path/to/public.key
-export NUCLEI_SIGNATURE_ALGORITHM=rsa
-
-# Windows
-$env:NUCLEI_SIGNATURE_PRIVATE_KEY='path/to/private.key'
-$env:NUCLEI_SIGNATURE_PUBLIC_KEY='path/to/public.key'
-$env:NUCLEI_SIGNATURE_ALGORITHM='rsa'
+$ ./nuclei -t ~/nuclei-templates/http -sign -v
+[INF] All templates signatures were elaborated success=6464 failed=0
 ```
 
-We can specifiy location of keys or content of keys directly in above env variables
-
-
-### Signing Templates
-
-There are again multiple ways to sign templates. We can either use 'nuclei' itself or a standalone utility 'sign-templates' to sign templates.
-
-#### Using `nuclei`
-
-```console
-$ ./nuclei -t code_template.yaml -sign
-```
-
-## Template Digest
+### Template Digest
 
 When a template is signed, a digest is generated and added to the template. This digest is a hash of the template content and is used to verify the integrity of the template. If the template is modified after signing, the digest will change, and the signature verification will fail which happens during template loading.
 
 ```yaml
 # digest: 4a0a00473045022023beecb1c4ef5b3b3a4d936a689d0fa5fea35524d23bbc12001fa0b21ca2500b02210082484d006ee0663ba1c8450ff0d10eb053308137af25cde223406c3423c4e5d1
 ```
+
+### Where are keys stored ?
+
+key-pair generated by nuclei are stored in 2 files in $config/nuclei/keys directory where $config is system specific config directory
+
+```
+$ la ~/.config/nuclei/keys 
+total 16
+-rw-------  1 tarun  staff   251B Oct  4 21:45 nuclei-user-private-key.pem # encrypted private key with passphrase
+-rw-------  1 tarun  staff   572B Oct  4 21:45 nuclei-user.crt # self signed certificate which includes public key and identifier (i.e user/org name)
+```
+
+### Sharing and Using Public Key
+
+Public key is stored in $config/nuclei/keys/nuclei-user.crt and can be shared with other users / organizations to verify templates signed by you.
+
+#### Using Public Key
+
+- A simple way to use public key is to copy it to $config/nuclei/keys directory of other user's machine
+
+- Another way is to use environment variable `NUCLEI_USER_CERTIFICATE=xxx` to specify path of public key or content of public key directly
+
+```console
+$ export NUCLEI_USER_CERTIFICATE=path/to/nuclei-user.crt
+```
+
+or 
+
+```console
+$ export NUCLEI_USER_CERTIFICATE=$(cat path/to/nuclei-user.crt)
+```
+
+#### Verifying Templates
+
+Everytime `nuclei` is run, it loads user certificate (aka public key) from above locations and uses it to verify templates.
+
+`nuclei` also prints identifier of public key being used and warns user of unsigned custom templates
+
+```
+[INF] Executing 6219 signed templates from 'ProjectDiscovery.io'
+[WRN] Executing 687 unsigned templates. Use with caution
+```
+
+### Managing Private Key
+
+Private key is stored in $config/nuclei/keys/nuclei-user-private-key.pem and is encrypted with passphrase if provided while generating key-pair.
+
+It is not used/loaded by default by nuclei and is only used on demand i.e when signing templates using `-sign` flag
+
+Some Users might want to store / backup or move private key to different location or machine and `nuclei` doesn't enforce any restrictions on that.
+
+#### Using Private Key
+
+- A simple way to use private key is to copy it to $config/nuclei/keys directory of other user's machine
+
+- Another way is to use environment variable `NUCLEI_USER_PRIVATE_KEY=xxx` to specify path of private key or content of private key directly
+
+```console
+$ export NUCLEI_USER_PRIVATE_KEY=path/to/nuclei-user-private-key.pem
+```
+
+or
+
+```console
+$ export NUCLEI_USER_PRIVATE_KEY=$(cat path/to/nuclei-user-private-key.pem)
+```
+
+> Note: You are responsible for securing and managing private key and nuclei has no accountability for any loss of private key
+
 
 ## Code
 
