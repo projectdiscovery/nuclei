@@ -3,6 +3,7 @@ package signer
 import (
 	"bytes"
 	"crypto/ecdsa"
+	"crypto/md5"
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/gob"
@@ -12,6 +13,7 @@ import (
 	"os"
 	"regexp"
 	"strings"
+	"sync"
 
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/config"
@@ -22,7 +24,7 @@ var (
 	ReDigest            = regexp.MustCompile(`(?m)^#\sdigest:\s.+$`)
 	ErrUnknownAlgorithm = errors.New("unknown algorithm")
 	SignaturePattern    = "# digest: "
-	SignatureFmt        = SignaturePattern + "%x"
+	SignatureFmt        = SignaturePattern + "%x" + ":%v" // `#digest: <signature>:<fragment>`
 )
 
 func RemoveSignatureFromData(data []byte) []byte {
@@ -42,7 +44,9 @@ type SignableTemplate interface {
 }
 
 type TemplateSigner struct {
-	handler *KeyHandler
+	sync.Once
+	handler  *KeyHandler
+	fragment string
 }
 
 // Identifier returns the identifier for the template signer
@@ -50,19 +54,17 @@ func (t *TemplateSigner) Identifier() string {
 	return t.handler.cert.Subject.CommonName
 }
 
-// fragment is a digital signature of public key using the private key
-// it is used to identify the signer
-func (t *TemplateSigner) GetUserFragment() (string, error) {
-	hashed := sha256.Sum256(t.handler.ecdsaPubKey.X.Bytes())
-	ecdsaSignature, err := ecdsa.SignASN1(rand.Reader, t.handler.ecdsaKey, hashed[:])
-	if err != nil {
-		return "", err
-	}
-	var signatureData bytes.Buffer
-	if err := gob.NewEncoder(&signatureData).Encode(ecdsaSignature); err != nil {
-		return "", err
-	}
-	return fmt.Sprintf("%x", signatureData.String()), nil
+// fragment is optional part of signature that is used to identify the user
+// who signed the template via md5 hash of public key
+func (t *TemplateSigner) GetUserFragment() string {
+	// wrap with sync.Once to reduce unnecessary md5 hashing
+	t.Do(func() {
+		if t.handler.ecdsaPubKey != nil {
+			hashed := md5.Sum(t.handler.ecdsaPubKey.X.Bytes())
+			t.fragment = fmt.Sprintf("%x", hashed)
+		}
+	})
+	return t.fragment
 }
 
 // Sign signs the given template with the template signer and returns the signature
@@ -72,18 +74,16 @@ func (t *TemplateSigner) Sign(data []byte, tmpl SignableTemplate) (string, error
 	// if not then return error
 	if tmpl.HasCodeProtocol() {
 		sig := GetSignatureFromData(data)
-		arr := strings.SplitN(string(sig), "@", 2)
-		if len(arr) == 1 && strings.TrimSpace(arr[0]) != "" {
+		arr := strings.SplitN(string(sig), ":", 3)
+		if len(arr) == 2 {
 			// signature has no fragment
 			return "", errorutil.NewWithTag("signer", "re-signing code protocol templates not allowed: no fragment found")
 		}
-		if len(arr) == 2 {
-			fragment, _ := t.GetUserFragment()
-			if fragment != arr[1] {
-				fmt.Printf("signature: %v\n", arr[0])
-				fmt.Printf("existing fragment: %v\n", arr[1])
-				fmt.Printf("current fragment: %v\n", fragment)
-				return "", errorutil.NewWithTag("signer", "fragment mismatch: expected '%v' got '%v'", fragment, arr[1])
+		if len(arr) == 3 {
+			// signature has fragment verify if it is equal to current fragment
+			fragment := t.GetUserFragment()
+			if fragment != arr[2] {
+				return "", errorutil.NewWithTag("signer", "fragment mismatch: expected '%v' got '%v'", fragment, arr[2])
 			}
 		}
 	}
@@ -118,12 +118,7 @@ func (t *TemplateSigner) sign(data []byte) (string, error) {
 	if err := gob.NewEncoder(&signatureData).Encode(ecdsaSignature); err != nil {
 		return "", err
 	}
-	// add fragment of user along with signature
-	fragment, err := t.GetUserFragment()
-	if err != nil {
-		return "", err
-	}
-	return fmt.Sprintf(SignatureFmt, signatureData.Bytes()) + "@" + fragment, nil
+	return fmt.Sprintf(SignatureFmt, signatureData.Bytes(), t.GetUserFragment()), nil
 }
 
 // Verify verifies the given template with the template signer
@@ -134,13 +129,9 @@ func (t *TemplateSigner) Verify(data []byte, tmpl SignableTemplate) (bool, error
 	}
 
 	digestData = bytes.TrimSpace(bytes.TrimPrefix(digestData, []byte(SignaturePattern)))
-	// trim fragment if any
-	signature := strings.SplitN(string(digestData), "@", 2)
-	if len(signature) == 1 && strings.TrimSpace(signature[0]) == "" {
-		// no signature found hence not verified
-		return false, nil
-	}
-	digest, err := hex.DecodeString(signature[0])
+	// remove fragment from digest as it is used for re-signing purposes only
+	digestString := strings.TrimSuffix(string(digestData), ":"+t.GetUserFragment())
+	digest, err := hex.DecodeString(digestString)
 	if err != nil {
 		return false, err
 	}
