@@ -191,6 +191,11 @@ func (template *Template) Type() types.ProtocolType {
 	}
 }
 
+// HasCodeProtocol returns true if the template has a code protocol section
+func (template *Template) HasCodeProtocol() bool {
+	return len(template.RequestsCode) > 0
+}
+
 // validateAllRequestIDs check if that protocol already has given id if not
 // then is is manually set to proto_index
 func (template *Template) validateAllRequestIDs() {

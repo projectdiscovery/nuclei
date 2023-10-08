@@ -11,9 +11,11 @@ import (
 	"fmt"
 	"os"
 	"regexp"
+	"strings"
 
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/config"
+	errorutil "github.com/projectdiscovery/utils/errors"
 )
 
 var (
@@ -35,6 +37,8 @@ func GetSignatureFromData(data []byte) []byte {
 type SignableTemplate interface {
 	// GetFileImports returns a list of files that are imported by the template
 	GetFileImports() []string
+	// HasCodeProtocol returns true if the template has a code protocol section
+	HasCodeProtocol() bool
 }
 
 type TemplateSigner struct {
@@ -46,8 +50,44 @@ func (t *TemplateSigner) Identifier() string {
 	return t.handler.cert.Subject.CommonName
 }
 
+// fragment is a digital signature of public key using the private key
+// it is used to identify the signer
+func (t *TemplateSigner) GetUserFragment() (string, error) {
+	hashed := sha256.Sum256(t.handler.ecdsaPubKey.X.Bytes())
+	ecdsaSignature, err := ecdsa.SignASN1(rand.Reader, t.handler.ecdsaKey, hashed[:])
+	if err != nil {
+		return "", err
+	}
+	var signatureData bytes.Buffer
+	if err := gob.NewEncoder(&signatureData).Encode(ecdsaSignature); err != nil {
+		return "", err
+	}
+	return fmt.Sprintf("%x", signatureData.String()), nil
+}
+
 // Sign signs the given template with the template signer and returns the signature
 func (t *TemplateSigner) Sign(data []byte, tmpl SignableTemplate) (string, error) {
+	// while re-signing template check if it has a code protocol
+	// if it does then verify that it is signed by current signer
+	// if not then return error
+	if tmpl.HasCodeProtocol() {
+		sig := GetSignatureFromData(data)
+		arr := strings.SplitN(string(sig), "@", 2)
+		if len(arr) == 1 && strings.TrimSpace(arr[0]) != "" {
+			// signature has no fragment
+			return "", errorutil.NewWithTag("signer", "re-signing code protocol templates not allowed: no fragment found")
+		}
+		if len(arr) == 2 {
+			fragment, _ := t.GetUserFragment()
+			if fragment != arr[1] {
+				fmt.Printf("signature: %v\n", arr[0])
+				fmt.Printf("existing fragment: %v\n", arr[1])
+				fmt.Printf("current fragment: %v\n", fragment)
+				return "", errorutil.NewWithTag("signer", "fragment mismatch: expected '%v' got '%v'", fragment, arr[1])
+			}
+		}
+	}
+
 	buff := bytes.NewBuffer(RemoveSignatureFromData(data))
 	// if file has any imports process them
 	for _, file := range tmpl.GetFileImports() {
@@ -78,7 +118,12 @@ func (t *TemplateSigner) sign(data []byte) (string, error) {
 	if err := gob.NewEncoder(&signatureData).Encode(ecdsaSignature); err != nil {
 		return "", err
 	}
-	return fmt.Sprintf(SignatureFmt, signatureData.Bytes()), nil
+	// add fragment of user along with signature
+	fragment, err := t.GetUserFragment()
+	if err != nil {
+		return "", err
+	}
+	return fmt.Sprintf(SignatureFmt, signatureData.Bytes()) + "@" + fragment, nil
 }
 
 // Verify verifies the given template with the template signer
@@ -89,7 +134,13 @@ func (t *TemplateSigner) Verify(data []byte, tmpl SignableTemplate) (bool, error
 	}
 
 	digestData = bytes.TrimSpace(bytes.TrimPrefix(digestData, []byte(SignaturePattern)))
-	digest, err := hex.DecodeString(string(digestData))
+	// trim fragment if any
+	signature := strings.SplitN(string(digestData), "@", 2)
+	if len(signature) == 1 && strings.TrimSpace(signature[0]) == "" {
+		// no signature found hence not verified
+		return false, nil
+	}
+	digest, err := hex.DecodeString(signature[0])
 	if err != nil {
 		return false, err
 	}
