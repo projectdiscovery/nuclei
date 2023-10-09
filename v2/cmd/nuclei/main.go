@@ -388,7 +388,11 @@ on extensive configurability, massive extensibility and ease of use.`)
 		flagSet.BoolVar(&options.NoTables, "no-tables", false, "do not display pretty-printed tables"),
 		flagSet.IntVar(&options.OutputLimit, "limit", 100, "limit the number of output to display"),
 	)
-
+	// nuclei has multiple migrations
+	// ex: resume.cfg moved to platform standard cache dir from config dir
+	// ex: config.yaml moved to platform standard config dir from linux specific config dir
+	// and hence it will be attempted in config package during init
+	goflags.DisableAutoConfigMigration = true
 	_ = flagSet.Parse()
 
 	gologger.DefaultLogger.SetTimestamp(options.Timestamp, levels.LevelDebug)
@@ -424,7 +428,7 @@ on extensive configurability, massive extensibility and ease of use.`)
 
 // cleanupOldResumeFiles cleans up resume files older than 10 days.
 func cleanupOldResumeFiles() {
-	root := config.DefaultConfig.GetConfigDir()
+	root := config.DefaultConfig.GetCacheDir()
 	filter := fileutil.FileFilters{
 		OlderThan: 24 * time.Hour * 10, // cleanup on the 10th day
 		Prefix:    "resume-",
@@ -469,6 +473,8 @@ func disableUpdatesCallback() {
 // printVersion prints the nuclei version and exits.
 func printVersion() {
 	gologger.Info().Msgf("Nuclei Engine Version: %s", config.Version)
+	gologger.Info().Msgf("Nuclei Config Directory: %s", config.DefaultConfig.GetConfigDir())
+	gologger.Info().Msgf("Nuclei Cache Directory: %s", config.DefaultConfig.GetCacheDir()) // cache dir contains resume files
 	os.Exit(0)
 }
 
