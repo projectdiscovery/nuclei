@@ -298,6 +298,11 @@ func init() {
 	goflags.AttemptConfigMigration() // regardless how many times this is called it will only migrate once based on condition
 
 	ConfigDir := folderutil.AppConfigDirOrDefault(FallbackConfigFolderName, BinaryName)
+
+	if cfgDir := os.Getenv(NucleiConfigDirEnv); cfgDir != "" {
+		ConfigDir = cfgDir
+	}
+
 	// create config directory if not exists
 	if !fileutil.FolderExists(ConfigDir) {
 		if err := fileutil.CreateFolder(ConfigDir); err != nil {

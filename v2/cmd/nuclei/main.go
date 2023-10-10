@@ -262,7 +262,6 @@ on extensive configurability, massive extensibility and ease of use.`)
 		flagSet.StringVarP(&options.Interface, "interface", "i", "", "network interface to use for network scan"),
 		flagSet.StringVarP(&options.AttackType, "attack-type", "at", "", "type of payload combinations to perform (batteringram,pitchfork,clusterbomb)"),
 		flagSet.StringVarP(&options.SourceIP, "source-ip", "sip", "", "source ip address to use for network scan"),
-		flagSet.StringVar(&options.CustomConfigDir, "config-directory", "", "override the default config path ($home/.config)"),
 		flagSet.IntVarP(&options.ResponseReadSize, "response-size-read", "rsr", 10*1024*1024, "max response size to read in bytes"),
 		flagSet.IntVarP(&options.ResponseSaveSize, "response-size-save", "rss", 1*1024*1024, "max response size to read in bytes"),
 		flagSet.CallbackVar(resetCallback, "reset", "reset removes all nuclei configuration and data files (including nuclei-templates)"),
@@ -405,8 +404,8 @@ on extensive configurability, massive extensibility and ease of use.`)
 	if options.LeaveDefaultPorts {
 		http.LeaveDefaultPorts = true
 	}
-	if options.CustomConfigDir != "" {
-		config.DefaultConfig.SetConfigDir(options.CustomConfigDir)
+	if customConfigDir := os.Getenv(config.NucleiConfigDirEnv); customConfigDir != "" {
+		config.DefaultConfig.SetConfigDir(customConfigDir)
 		readFlagsConfig(flagSet)
 	}
 	if cfgFile != "" {

@@ -19,7 +19,7 @@ func (h *customConfigDirTest) Execute(filePath string) error {
 		return err
 	}
 	defer os.RemoveAll(customTempDirectory)
-	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, "8x8exch02.8x8.com", debug, "-config-directory", customTempDirectory)
+	results, err := testutils.RunNucleiBareArgsAndGetResults(debug, []string{"NUCLEI_CONFIG_DIR=" + customTempDirectory}, "-t", filePath, "-u", "8x8exch02.8x8.com")
 	if err != nil {
 		return err
 	}
