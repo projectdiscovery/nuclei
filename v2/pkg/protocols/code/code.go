@@ -142,7 +142,7 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 	if err != nil {
 		return err
 	}
-	gologger.Verbose().Msgf("[%s] Executed Code on target %v", request.options.TemplateID, input.MetaInput.Input)
+	gologger.Verbose().Msgf("[%s] Executed code on local machine %v", request.options.TemplateID, input.MetaInput.Input)
 
 	if vardump.EnableVarDump {
 		gologger.Debug().Msgf("Code Protocol request variables: \n%s\n", vardump.DumpVariables(variables))

@@ -142,7 +142,7 @@ const (
 	SyntaxWarningStats   = "syntax-warnings"
 	SyntaxErrorStats     = "syntax-errors"
 	RuntimeWarningsStats = "runtime-warnings"
-	VerifiedWarning      = "verified-warnings"
+	UnsignedWarning      = "unsigned-warnings"
 )
 
 func init() {
@@ -151,7 +151,7 @@ func init() {
 	stats.NewEntry(SyntaxWarningStats, "Found %d templates with syntax warning (use -validate flag for further examination)")
 	stats.NewEntry(SyntaxErrorStats, "Found %d templates with syntax error (use -validate flag for further examination)")
 	stats.NewEntry(RuntimeWarningsStats, "Found %d templates with runtime error (use -validate flag for further examination)")
-	stats.NewEntry(VerifiedWarning, "Found %d unverified templates (carefully examine the template before using it and use -sign flag to sign them)")
+	stats.NewEntry(UnsignedWarning, "Found %d unsigned or tampered code template (carefully examine before using it & use -sign flag to sign them)")
 }
 
 // ParseTemplate parses a template and returns a *templates.Template structure

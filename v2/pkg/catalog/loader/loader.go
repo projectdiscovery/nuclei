@@ -393,7 +393,7 @@ func (store *Store) LoadTemplatesWithTags(templatesList, tags []string) []*templ
 					gologger.Warning().Msgf("Headless flag is required for headless template '%s'\n", templatePath)
 				} else if len(parsed.RequestsCode) > 0 && !parsed.Verified {
 					// donot include unverified 'Code' protocol custom template in final list
-					stats.Increment(parsers.VerifiedWarning)
+					stats.Increment(parsers.UnsignedWarning)
 					if store.config.ExecutorOptions.Options.VerboseVerbose { // only shown in -vv
 						gologger.Verbose().Msgf("Skipping Unverified custom template %s", templatePath)
 					}

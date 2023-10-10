@@ -77,13 +77,13 @@ func (t *TemplateSigner) Sign(data []byte, tmpl SignableTemplate) (string, error
 		arr := strings.SplitN(string(sig), ":", 3)
 		if len(arr) == 2 {
 			// signature has no fragment
-			return "", errorutil.NewWithTag("signer", "re-signing code protocol templates not allowed: no fragment found")
+			return "", errorutil.NewWithTag("signer", "re-signing code templates are not allowed for security reasons.")
 		}
 		if len(arr) == 3 {
 			// signature has fragment verify if it is equal to current fragment
 			fragment := t.GetUserFragment()
 			if fragment != arr[2] {
-				return "", errorutil.NewWithTag("signer", "fragment mismatch: expected '%v' got '%v'", fragment, arr[2])
+				return "", errorutil.NewWithTag("signer", "re-signing code templates are not allowed for security reasons.")
 			}
 		}
 	}

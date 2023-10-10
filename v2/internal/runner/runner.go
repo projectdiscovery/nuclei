@@ -699,7 +699,7 @@ func (r *Runner) displayExecutionInfo(store *loader.Store) {
 	stats.Display(parsers.SyntaxWarningStats)
 	stats.Display(parsers.SyntaxErrorStats)
 	stats.Display(parsers.RuntimeWarningsStats)
-	stats.Display(parsers.VerifiedWarning)
+	stats.Display(parsers.UnsignedWarning)
 
 	cfg := config.DefaultConfig
 
@@ -716,9 +716,9 @@ func (r *Runner) displayExecutionInfo(store *loader.Store) {
 	for k, v := range templates.SignatureStats {
 		if v.Load() > 0 {
 			if k != templates.Unsigned {
-				gologger.Info().Msgf("Executing %d signed templates from '%s'", v.Load(), k)
+				gologger.Info().Msgf("Executing %d signed templates from %s", v.Load(), k)
 			} else if !r.options.Silent {
-				gologger.DefaultLogger.Print().Msgf("[%v] Executing %d unsigned templates. Use with caution", aurora.BrightYellow("WRN"), v.Load())
+				gologger.DefaultLogger.Print().Msgf("[%v] Executing %d unsigned templates. Use with caution.", aurora.BrightYellow("WRN"), v.Load())
 			}
 		}
 	}
