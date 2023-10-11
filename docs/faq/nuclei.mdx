@@ -1,0 +1,130 @@
+---
+title: "Nuclei"
+---
+
+<AccordionGroup>
+  <Accordion title="What is nuclei?" icon="circle-info" iconType="solid">
+    Nuclei is a fast and customizable vulnerability scanner based on simple **YAML-based templates**.
+	
+	It has two components, 1) [Nuclei](http://github.com/projectdiscovery/nuclei) engine - the core of the project allows scripting HTTP / DNS / Network / Headless / File protocols based checks in a very simple to read-and-write YAML-based format. 2) Nuclei [templates](http://github.com/projectdiscovery/nuclei-templates) - ready-to-use **community-contributed** vulnerability templates.
+
+  </Accordion>
+
+  <Accordion title="What was the genesis behind nuclei?" icon="circle-info" iconType="solid">
+    Traditional scanners always lacked the features to allow easy-to-write custom checks on top of their engine. And this is why we started developing Nuclei with a core focus on simplicity, modularity, and the ability to scan on many assets.
+
+	We wanted something simple enough to be used by _**everyone**_ while complex enough to integrate into the modern web with its intricacies. The features implemented in nuclei are tailored to allow very rapid prototyping of complex security checks.
+  </Accordion>
+
+  <Accordion title="What modules does nuclei engine support?" icon="circle-info" iconType="solid">
+    Nuclei engine supports the following type of modules.
+
+	- [HTTP](/template-guide/http/base-http/)
+	- [DNS](/template-guide/dns/)
+	- [TCP](/template-guide/network/)
+	- [FILE](/template-guide/file/)
+  </Accordion>
+
+  <Accordion title="What kind of scans can I perform with nuclei?" icon="circle-info" iconType="solid">
+   Nuclei can be used to detect security vulnerabilities in **Web Applications**, **Networks**, **DNS** based misconfiguration, and **Secrets scanning** in source code or files on the local file system.
+  </Accordion>
+
+  <Accordion title="How well-maintained is this project?" icon="circle-info" iconType="solid">
+   The nuclei project is actively developed and maintained by the [ProjectDiscovery](https://projectdiscovery.io/#/) team, and generally releases every 2 weeks.
+  </Accordion>
+
+  <Accordion title="How can I support/contribute to this project? 💙" icon="fire-flame-curved" iconType="solid">
+    To help keep project momentum, we request everyone to write and share new templates with the community in the [template project](https://github.com/projectdiscovery/nuclei-templates). Please help us maintain this public, ready to use, and up-to-date nuclei template repository.
+
+	If you found an interesting/unique security issue using nuclei and want to share the process walk-through in the form of a blog, we are happy to publish your guest post on the [ProjectDiscovery blog](https://blog.projectdiscovery.io).
+  </Accordion>
+
+  <Accordion title="I found results with nuclei. When should I report it?" icon="triangle-exclamation" iconType="solid">
+    **Wait a minute** -- after nuclei detected a security issue, it's always advised to have a second look before reporting it. Here's a tip to confirm/validate the issues.
+
+    <Accordion title="How do I validate nuclei results?" icon="fire-flame-curved" iconType="solid">
+        Once nuclei finds a result, and you have vulnerable **target** and **template**, rerun the template with **`-debug`** flag to inspect the output against the expected matcher defined in the template. In this way, you can confirm the identified vulnerability.
+    </Accordion>
+  </Accordion>
+
+  <Accordion title="How much traffic does nuclei generate?" icon="triangle-exclamation" iconType="solid">
+    By default nuclei will make several thousand requests (both HTTP protocol and other services) against a single target when running **all nuclei-templates**. This stems from over 3500 nuclei templates in the [[template releases](https://github.com/projectdiscovery/nuclei-templates/releases/), with more added daily.
+
+    <Note>As default, few templates listed [here](https://github.com/projectdiscovery/nuclei-templates/blob/master/.nuclei-ignore) are excluded from default scans.</Note>
+  </Accordion>
+
+  <Accordion title="Is it safe to run nuclei?" icon="triangle-exclamation" iconType="solid">
+   We consider two factors to say **"safe"** in context of nuclei -
+
+    1. The **traffic** nuclei makes against the target website.
+    2. The **impact** templates have on the target website.
+
+    <Check>
+    **HTTP Traffic**
+
+    Nuclei usually makes fewer HTTP requests than the number of templates selected for a scan due to its intelligent request reduction. While some templates contain multiple requests, this rule generally holds true across most scan configurations.
+    </Check>
+
+    <Check>
+    **Safe Templates**
+
+    The nuclei templates project houses a variety of templates which perform fuzzing and other actions which may result in a DoS against the target system (see [the list here](https://github.com/projectdiscovery/nuclei-templates/blob/master/.nuclei-ignore)). To ensure  these templates are not accidentally run, they are tagged and excluded them from the default scan. These templates can be only executed when explicitly invoked using the `-itags` option.
+    </Check>
+
+  </Accordion>
+
+  <Accordion title="What is nuclei's license?" icon="circle-info" iconType="solid">
+   Nuclei is an open-source project distributed under the [MIT License](https://github.com/projectdiscovery/nuclei/blob/master/LICENSE.md).
+  </Accordion>
+
+  <Accordion title="I have more questions! 🙋" icon="circle-info" iconType="solid">
+   Please join our [Discord server](https://discord.gg/projectdiscovery), or contact us via [Twitter](http://twitter.com/pdnuclei).
+  </Accordion>
+
+  <Accordion title="Missing dependencies in headless mode on Linux" icon="triangle-exclamation" iconType="solid">
+    Headless mode on machines based on Linux (OS or containers, eg. Docker) might face runtime errors due to missing dependencies related to specific OS-shared libraries used by chrome binary.
+    Usually, these errors can be fixed by pre-installing the browser on the specific distribution. Here is a list of the steps needed for the most common distributions.
+	Ubuntu
+
+	With snap:
+	```sh
+	sudo snap install chromium
+	```
+
+	Without snap:
+	```sh
+	sudo apt update
+	sudo snap refresh
+	sudo apt install zip curl wget git
+	sudo snap install golang --classic
+	wget -q -O - https://dl-ssl.google.com/linux/linux_signing_key.pub | sudo apt-key add - 
+	sudo sh -c 'echo "deb http://dl.google.com/linux/chrome/deb/ stable main" >> /etc/apt/sources.list.d/google.list'
+	sudo apt update 
+	sudo apt install google-chrome-stable
+	```
+
+	In case you are unable to install the browser, or want to install only the minimum required dependencies, run the following command:
+	```
+	sudo apt-get install libnss3 libgconf-2-4
+	```
+
+	If you encounter an error similar to "libnss3.so: cannot open shared object file: No such file or directory," try running the following command to install the dev version:
+
+	```
+	sudo apt-get install libnss3-dev
+	```
+
+	Error type examples:
+	```
+	Error:      	Expected nil, but got: &errors.errorString{s:"[launcher] Failed to launch the browser, the doc might help https://go-rod.github.io/#/compatibility?id=os: /root/.cache/rod/browser/chromium-1018003/chrome-linux/chrome: error while loading shared libraries: libnss3.so: cannot open shared object file: No such file or directory\n"}
+	```
+	```
+	could not create browser
+	```
+	```
+	Command '/usr/bin/chromium-browser' requires the chromium snap to be installed.
+	Please install it with:
+	snap install chromium
+	```
+  </Accordion>
+</AccordionGroup>

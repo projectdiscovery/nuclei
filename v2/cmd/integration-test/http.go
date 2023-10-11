@@ -26,60 +26,60 @@ import (
 	stringsutil "github.com/projectdiscovery/utils/strings"
 )
 
-var httpTestcases = map[string]testutils.TestCase{
+var httpTestcases = []TestCaseInfo{
 	// TODO: excluded due to parsing errors with console
 	// "http/raw-unsafe-request.yaml":                  &httpRawUnsafeRequest{},
-	"http/get-headers.yaml":                         &httpGetHeaders{},
-	"http/get-query-string.yaml":                    &httpGetQueryString{},
-	"http/get-redirects.yaml":                       &httpGetRedirects{},
-	"http/get-host-redirects.yaml":                  &httpGetHostRedirects{},
-	"http/disable-redirects.yaml":                   &httpDisableRedirects{},
-	"http/get.yaml":                                 &httpGet{},
-	"http/post-body.yaml":                           &httpPostBody{},
-	"http/post-json-body.yaml":                      &httpPostJSONBody{},
-	"http/post-multipart-body.yaml":                 &httpPostMultipartBody{},
-	"http/raw-cookie-reuse.yaml":                    &httpRawCookieReuse{},
-	"http/raw-dynamic-extractor.yaml":               &httpRawDynamicExtractor{},
-	"http/raw-get-query.yaml":                       &httpRawGetQuery{},
-	"http/raw-get.yaml":                             &httpRawGet{},
-	"http/raw-with-params.yaml":                     &httpRawWithParams{},
-	"http/raw-unsafe-with-params.yaml":              &httpRawWithParams{}, // Not a typo, functionality is same as above
-	"http/raw-path-trailing-slash.yaml":             &httpRawPathTrailingSlash{},
-	"http/raw-payload.yaml":                         &httpRawPayload{},
-	"http/raw-post-body.yaml":                       &httpRawPostBody{},
-	"http/raw-unsafe-path.yaml":                     &httpRawUnsafePath{},
-	"http/http-paths.yaml":                          &httpPaths{},
-	"http/request-condition.yaml":                   &httpRequestCondition{},
-	"http/request-condition-new.yaml":               &httpRequestCondition{},
-	"http/self-contained.yaml":                      &httpRequestSelfContained{},
-	"http/self-contained-with-path.yaml":            &httpRequestSelfContained{}, // Not a typo, functionality is same as above
-	"http/self-contained-with-params.yaml":          &httpRequestSelfContainedWithParams{},
-	"http/self-contained-file-input.yaml":           &httpRequestSelfContainedFileInput{},
-	"http/get-case-insensitive.yaml":                &httpGetCaseInsensitive{},
-	"http/get.yaml,http/get-case-insensitive.yaml":  &httpGetCaseInsensitiveCluster{},
-	"http/get-redirects-chain-headers.yaml":         &httpGetRedirectsChainHeaders{},
-	"http/dsl-matcher-variable.yaml":                &httpDSLVariable{},
-	"http/dsl-functions.yaml":                       &httpDSLFunctions{},
-	"http/race-simple.yaml":                         &httpRaceSimple{},
-	"http/race-multiple.yaml":                       &httpRaceMultiple{},
-	"http/stop-at-first-match.yaml":                 &httpStopAtFirstMatch{},
-	"http/stop-at-first-match-with-extractors.yaml": &httpStopAtFirstMatchWithExtractors{},
-	"http/variables.yaml":                           &httpVariables{},
-	"http/variable-dsl-function.yaml":               &httpVariableDSLFunction{},
-	"http/get-override-sni.yaml":                    &httpSniAnnotation{},
-	"http/get-sni.yaml":                             &customCLISNI{},
-	"http/redirect-match-url.yaml":                  &httpRedirectMatchURL{},
-	"http/get-sni-unsafe.yaml":                      &customCLISNIUnsafe{},
-	"http/annotation-timeout.yaml":                  &annotationTimeout{},
-	"http/custom-attack-type.yaml":                  &customAttackType{},
-	"http/get-all-ips.yaml":                         &scanAllIPS{},
-	"http/get-without-scheme.yaml":                  &httpGetWithoutScheme{},
-	"http/cl-body-without-header.yaml":              &httpCLBodyWithoutHeader{},
-	"http/cl-body-with-header.yaml":                 &httpCLBodyWithHeader{},
-	"http/save-extractor-values-to-file.yaml":       &httpSaveExtractorValuesToFile{},
-	"http/cli-with-constants.yaml":                  &ConstantWithCliVar{},
-	"http/matcher-status.yaml":                      &matcherStatusTest{},
-	"http/disable-path-automerge.yaml":              &httpDisablePathAutomerge{},
+	{Path: "http/get-headers.yaml", TestCase: &httpGetHeaders{}},
+	{Path: "http/get-query-string.yaml", TestCase: &httpGetQueryString{}},
+	{Path: "http/get-redirects.yaml", TestCase: &httpGetRedirects{}},
+	{Path: "http/get-host-redirects.yaml", TestCase: &httpGetHostRedirects{}},
+	{Path: "http/disable-redirects.yaml", TestCase: &httpDisableRedirects{}},
+	{Path: "http/get.yaml", TestCase: &httpGet{}},
+	{Path: "http/post-body.yaml", TestCase: &httpPostBody{}},
+	{Path: "http/post-json-body.yaml", TestCase: &httpPostJSONBody{}},
+	{Path: "http/post-multipart-body.yaml", TestCase: &httpPostMultipartBody{}},
+	{Path: "http/raw-cookie-reuse.yaml", TestCase: &httpRawCookieReuse{}},
+	{Path: "http/raw-dynamic-extractor.yaml", TestCase: &httpRawDynamicExtractor{}},
+	{Path: "http/raw-get-query.yaml", TestCase: &httpRawGetQuery{}},
+	{Path: "http/raw-get.yaml", TestCase: &httpRawGet{}},
+	{Path: "http/raw-with-params.yaml", TestCase: &httpRawWithParams{}},
+	{Path: "http/raw-unsafe-with-params.yaml", TestCase: &httpRawWithParams{}}, // Not a typo, functionality is same as above
+	{Path: "http/raw-path-trailing-slash.yaml", TestCase: &httpRawPathTrailingSlash{}},
+	{Path: "http/raw-payload.yaml", TestCase: &httpRawPayload{}},
+	{Path: "http/raw-post-body.yaml", TestCase: &httpRawPostBody{}},
+	{Path: "http/raw-unsafe-path.yaml", TestCase: &httpRawUnsafePath{}},
+	{Path: "http/http-paths.yaml", TestCase: &httpPaths{}},
+	{Path: "http/request-condition.yaml", TestCase: &httpRequestCondition{}},
+	{Path: "http/request-condition-new.yaml", TestCase: &httpRequestCondition{}},
+	{Path: "http/self-contained.yaml", TestCase: &httpRequestSelfContained{}},
+	{Path: "http/self-contained-with-path.yaml", TestCase: &httpRequestSelfContained{}}, // Not a typo, functionality is same as above
+	{Path: "http/self-contained-with-params.yaml", TestCase: &httpRequestSelfContainedWithParams{}},
+	{Path: "http/self-contained-file-input.yaml", TestCase: &httpRequestSelfContainedFileInput{}},
+	{Path: "http/get-case-insensitive.yaml", TestCase: &httpGetCaseInsensitive{}},
+	{Path: "http/get.yaml,http/get-case-insensitive.yaml", TestCase: &httpGetCaseInsensitiveCluster{}},
+	{Path: "http/get-redirects-chain-headers.yaml", TestCase: &httpGetRedirectsChainHeaders{}},
+	{Path: "http/dsl-matcher-variable.yaml", TestCase: &httpDSLVariable{}},
+	{Path: "http/dsl-functions.yaml", TestCase: &httpDSLFunctions{}},
+	{Path: "http/race-simple.yaml", TestCase: &httpRaceSimple{}},
+	{Path: "http/race-multiple.yaml", TestCase: &httpRaceMultiple{}},
+	{Path: "http/stop-at-first-match.yaml", TestCase: &httpStopAtFirstMatch{}},
+	{Path: "http/stop-at-first-match-with-extractors.yaml", TestCase: &httpStopAtFirstMatchWithExtractors{}},
+	{Path: "http/variables.yaml", TestCase: &httpVariables{}},
+	{Path: "http/variable-dsl-function.yaml", TestCase: &httpVariableDSLFunction{}},
+	{Path: "http/get-override-sni.yaml", TestCase: &httpSniAnnotation{}},
+	{Path: "http/get-sni.yaml", TestCase: &customCLISNI{}},
+	{Path: "http/redirect-match-url.yaml", TestCase: &httpRedirectMatchURL{}},
+	{Path: "http/get-sni-unsafe.yaml", TestCase: &customCLISNIUnsafe{}},
+	{Path: "http/annotation-timeout.yaml", TestCase: &annotationTimeout{}},
+	{Path: "http/custom-attack-type.yaml", TestCase: &customAttackType{}},
+	{Path: "http/get-all-ips.yaml", TestCase: &scanAllIPS{}},
+	{Path: "http/get-without-scheme.yaml", TestCase: &httpGetWithoutScheme{}},
+	{Path: "http/cl-body-without-header.yaml", TestCase: &httpCLBodyWithoutHeader{}},
+	{Path: "http/cl-body-with-header.yaml", TestCase: &httpCLBodyWithHeader{}},
+	{Path: "http/save-extractor-values-to-file.yaml", TestCase: &httpSaveExtractorValuesToFile{}},
+	{Path: "http/cli-with-constants.yaml", TestCase: &ConstantWithCliVar{}},
+	{Path: "http/matcher-status.yaml", TestCase: &matcherStatusTest{}},
+	{Path: "http/disable-path-automerge.yaml", TestCase: &httpDisablePathAutomerge{}},
 }
 
 type httpInteractshRequest struct{}
@@ -172,7 +172,7 @@ func (h *httpInteractshStopAtFirstMatchRequest) Execute(filePath string) error {
 	if err != nil {
 		return err
 	}
-	// polling is asyncronous, so the interactions may be retrieved after the first request
+	// polling is asynchronous, so the interactions may be retrieved after the first request
 	return expectResultsCount(results, 1)
 }
 
@@ -362,7 +362,7 @@ func (h *httpDSLFunctions) Execute(filePath string) error {
 	resultPart = stringsutil.TrimPrefixAny(resultPart, "/", " ", "[")
 
 	extracted := strings.Split(resultPart, ",")
-	numberOfDslFunctions := 87
+	numberOfDslFunctions := 88
 	if len(extracted) != numberOfDslFunctions {
 		return errors.New("incorrect number of results")
 	}
@@ -1453,9 +1453,23 @@ func (h *httpDisablePathAutomerge) Execute(filePath string) error {
 	router.GET("/api/v1/test", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 		fmt.Fprint(w, r.URL.Query().Get("id"))
 	})
+	router.GET("/", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+		fmt.Fprint(w, "empty path in raw request")
+	})
+
 	ts := httptest.NewServer(router)
 	defer ts.Close()
 	got, err := testutils.RunNucleiTemplateAndGetResults(filePath, ts.URL+"/api/v1/user", debug)
+	if err != nil {
+		return err
+	}
+	return expectResultsCount(got, 2)
+}
+
+type httpInteractshRequestsWithMCAnd struct{}
+
+func (h *httpInteractshRequestsWithMCAnd) Execute(filePath string) error {
+	got, err := testutils.RunNucleiTemplateAndGetResults(filePath, "honey.scanme.sh", debug)
 	if err != nil {
 		return err
 	}

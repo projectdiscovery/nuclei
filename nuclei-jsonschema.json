@@ -32,6 +32,11 @@
           "title": "epss score for the template",
           "description": "EPSS Score for the template"
         },
+        "epss-percentile": {
+          "type": "number",
+          "title": "epss percentile for the template",
+          "description": "EPSS Percentile for the template"
+        },
         "cpe": {
           "type": "string",
           "title": "cpe for the template",
@@ -71,6 +76,14 @@
           "description": "In-depth explanation on what the template does",
           "examples": [
             "Bower is a package manager which stores package information in the bower.json file"
+          ]
+        },
+        "impact": {
+          "type": "string",
+          "title": "impact of the template",
+          "description": "In-depth explanation on the impact of the issue found by the template",
+          "examples": [
+            "Successful exploitation of this vulnerability could allow an attacker to execute arbitrary SQL queries"
           ]
         },
         "reference": {
@@ -337,6 +350,14 @@
           "title": "dsl expressions to match in response",
           "description": "DSL are the dsl expressions that will be evaluated as part of nuclei matching rules"
         },
+        "xpath": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array",
+          "title": "xpath queries to match in response",
+          "description": "xpath are the XPath queries that will be evaluated against the response part of nuclei matching rules"
+        },
         "encoding": {
           "enum": [
             "hex"
@@ -366,7 +387,8 @@
         "binary",
         "status",
         "size",
-        "dsl"
+        "dsl",
+        "xpath"
       ],
       "type": "string",
       "title": "type of the matcher",
@@ -1112,6 +1134,16 @@
           "title": "inputs for the network request",
           "description": "Inputs contains any input/output for the current request"
         },
+        "port": {
+          "type": "string",
+          "title": "port to send requests to",
+          "description": "Port to send network requests to"
+        },
+        "exclude-ports": {
+          "type": "string",
+          "title": "exclude ports from being scanned",
+          "description": "Exclude ports from being scanned"
+        },
         "read-size": {
           "type": "integer",
           "title": "size of network response to read",
@@ -1306,7 +1338,7 @@
             }
           },
           "type": "object",
-          "title": "payloads for the webosocket request",
+          "title": "payloads for the websocket request",
           "description": "Payloads contains any payloads for the current request"
         }
       },

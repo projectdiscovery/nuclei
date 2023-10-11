@@ -11,61 +11,62 @@ import (
 	"github.com/julienschmidt/httprouter"
 
 	"github.com/projectdiscovery/nuclei/v2/pkg/testutils"
+	permissionutil "github.com/projectdiscovery/utils/permission"
 )
 
-var genericTestcases = map[string]testutils.TestCase{
-	"generic/auth/certificate/http-get.yaml": &clientCertificate{},
+var genericTestcases = []TestCaseInfo{
+	{Path: "generic/auth/certificate/http-get.yaml", TestCase: &clientCertificate{}},
 }
 
 var (
 	serverCRT = `-----BEGIN CERTIFICATE-----
-MIIDETCCAfkCFHA1RpGfOY5p/vQmeMQ1oRFqH+CGMA0GCSqGSIb3DQEBCwUAMEUx
+MIIDEzCCAfsCFC21Zw7U0tGDyLyMalwfo9cWbL6dMA0GCSqGSIb3DQEBCwUAMEUx
 CzAJBgNVBAYTAkFVMRMwEQYDVQQIDApTb21lLVN0YXRlMSEwHwYDVQQKDBhJbnRl
-cm5ldCBXaWRnaXRzIFB0eSBMdGQwHhcNMjMwNjIxMDA0MjQ2WhcNMjMwNzIxMDA0
-MjQ2WjBFMQswCQYDVQQGEwJBVTETMBEGA1UECAwKU29tZS1TdGF0ZTEhMB8GA1UE
-CgwYSW50ZXJuZXQgV2lkZ2l0cyBQdHkgTHRkMIIBIjANBgkqhkiG9w0BAQEFAAOC
-AQ8AMIIBCgKCAQEA3VdrKR5hmZ+vyvg6NB2dOL5vEIQ/9DevivnKWqX5mserYLMj
-Wq0knVfogewZnrDe+zVC3kOogBQvYk8Z53kTY9qpJT85dMCuW4xDx0JU+cWHul9a
-pzF+bvws4paCWIcsGONyocPAx5g07LbPU9civC80QkQqELo1zYiRU1bX8vRJJqbN
-TW2mzl9MN3AnCAYTwq8WhVG/1QR3LPQhPR68/1LWrFefQaEWaXT2s+Xv7K7NDXro
-WSba4SgKdFd6fyUVMVr/ioT1KT45TP5jbRrW5JJUTdpkiXaIucrZg39f6F5gTZGA
-U7bNROUMkqrJJngN9+Hp+YH1GpkKgu9EKA30EQIDAQABMA0GCSqGSIb3DQEBCwUA
-A4IBAQAw91bxiAi7DIVsKL3k4B0I+50ZKq9VMVNE3YCTPygpfuRiGQvlITZ5I8I5
-3Ok2wWltgKx6EnicHIlLg42yRj7j3mdgOLMFMrUCfJmdogwnS+k6veG3G1RHUs9r
-ATfX49u/hEX2pe7Rvx2VYVIugwrQESgQ21iaf6uUMsrq6W8eYZ31as1nJKpqIGbu
-W1fZMSi0RIUJP+mpVBE82IW+gJRi3uKU4HKPqyrU3dviBFdBxb3lNbh34/vdNkIw
-4H2CfBxEvdwLYAhWDerlm4wWCmjkMiHfBHPBhhOICTkR25a7NFy27h/UDHjVC/6m
-fGshVSBtxVPJP7kcvZ1scIctvFZZ
------END CERTIFICATE-----
+cm5ldCBXaWRnaXRzIFB0eSBMdGQwIBcNMjMwNzI4MTAwNzI3WhgPMzAwMzA5Mjkx
+MDA3MjdaMEUxCzAJBgNVBAYTAkFVMRMwEQYDVQQIDApTb21lLVN0YXRlMSEwHwYD
+VQQKDBhJbnRlcm5ldCBXaWRnaXRzIFB0eSBMdGQwggEiMA0GCSqGSIb3DQEBAQUA
+A4IBDwAwggEKAoIBAQCjMlvOKQX9yn9SOYPJ8p+jeDUU/JWPwT4LRfqaxvvKSnS7
+NZzd7lS4AR0YTjyjiRj3+t0QnEDHVKBD8cMh9kMXkQ2S0r7psCURLvvZOYt4v6KM
+CyZpBbp8b/pG3aJQHDZjRDOApQrXhx62XJDIs64YKA8NybYOLqNisrWGrfqF4uEz
+RMgVGlthuQcXo3n2HzobuYN7RsHBzCWGLn9fRMDC2j3IAnQLf4YOznOJ57CjMd2W
+mn/yhHK8h9s4iU5zw3+PK+X/IM4GeAfeJMx8c5uq2A8A24uzMidyhxJCK7VUprjK
+/ckdNYya6dkG2De+LR7W82ygfWbFDOnZKM26cPG/AgMBAAEwDQYJKoZIhvcNAQEL
+BQADggEBAH5+Wdb/1jgBhihN6Pb6SWJmDvwkOEP3t00E3fBao4TDqdDOhPsLYrAm
+8gt16OcGrrXDQA3bi79mAVqAqCvaf4hk0vSI0L4rNcCSP4D3fUBjRO3fY3fM4Qw8
+xg9AusF5hRrvzFbEak7lPJ01kLOJEgBA1l457HrLnXcpDTml8Y46WqdWa6yVM33l
+7tNaXWrPwYZYMTcRumIytsYtIJXp/sMLBIT0AO/QR4yarvVOeMSJ1va459PjKLBG
+JGGmf2rigaT050e71QOrGyMXgT6xsNjJgzeVhUgPO422mPT692kDi2oB5DA0Fau0
+4qm5CMFgmYcC3zQoN53aDs1mHyWeroc=
+-----END CERTIFICATE-----	
 `
 	serverKey = `-----BEGIN PRIVATE KEY-----
-MIIEwAIBADANBgkqhkiG9w0BAQEFAASCBKowggSmAgEAAoIBAQDdV2spHmGZn6/K
-+Do0HZ04vm8QhD/0N6+K+cpapfmax6tgsyNarSSdV+iB7BmesN77NULeQ6iAFC9i
-TxnneRNj2qklPzl0wK5bjEPHQlT5xYe6X1qnMX5u/CziloJYhywY43Khw8DHmDTs
-ts9T1yK8LzRCRCoQujXNiJFTVtfy9Ekmps1NbabOX0w3cCcIBhPCrxaFUb/VBHcs
-9CE9Hrz/UtasV59BoRZpdPaz5e/srs0NeuhZJtrhKAp0V3p/JRUxWv+KhPUpPjlM
-/mNtGtbkklRN2mSJdoi5ytmDf1/oXmBNkYBTts1E5QySqskmeA334en5gfUamQqC
-70QoDfQRAgMBAAECggEBALtPsHMSr9vW5Giq2m6iJRwRJGJg2NJukZLVwuYlkW7n
-zGNAFgo1fkfdTfks+Z1u5rTGJPl9XkpNSrAyaqSVtNALCptnvtLMAIGe2Pj2bH0X
-Kb6R1WCqJOn9ZGq4nkQW2D2Ttb2psCn458jvB9NWu6FvfRUbJFIVk1SFXx6c3pFN
-kPCUudAiscaldUDCiz4FccKGXdRjq6HIeeWqvdErteb6JPTs9QXCHfBql9Esl4rK
-SHt9RmAFNY+CLExHiFPBR15hHZRtiVkAVrgnPg1CPGAyVG0hGXj7YMMWpAyfFWpn
-8gWVt7XJ4UX2knUwfU8p8dWe6qwf+AMrhravYJyccoUCgYEA8Ts0kHFnLga8Ewao
-nyDQs5uYGG0PWkbXqnFVYnMeSbXzyC4ouInIk/eOQABCxdjy3NF9QuYvVLpfLJ+9
-a97q1Vyg6lZ4PPuK8ZcPrHFSNNaj4eWNTOMo/Qdzz4bfflTsv8vjeeMxsqb6woXV
-+E23UKCPlQPf86jugZVdaMtvZKsCgYEA6uR7glji70pVoG/f3soX1vllmVTtiLnh
-zYMmwPyTRDvoGgg/nGK+GCq//Xyn8D900hbX8KKqGX7ca5FGk5pOpW/QE9uLcuWK
-xcy8KAc05k1u4VaS5loWKnPGWreIpj3RbCfbPs5X/jBC+fPIA4Q8Qor5ZGdqVBvW
-IKejnNqasjMCgYEAqltPUbpkTWLAKweGyWnZOR3mmUlbkDt7Toje7bmyaAew82t1
-omzbU3N958DHZwVA7aSbu0TnpARB9jeRA77XRHo3wYXzP828X8R4cyVMEriJ35vG
-38eESLyckrAC4SqETyZjrM4/aJT3fawaYVIw5SWegHPOEjr4xFaBMuKH9iUCgYEA
-wFpC2kc374UMAcobpjIQu7aYAKyPqDuwMb+I6NjtMB9uvoKqtMIXsWqwtkBytkcA
-v1p9k01hxmcg0eWxygW/CbM6zkgnNfvLXJeALbdZFo+qkVV4DrMPG8ybToalnJ1a
-9hrda91GKZ4T+uQrktWjE0sDV7loVWBGRY+CaFyL+gkCgYEA3Z0j8VOLJnAKdCDp
-3N74460pykwJ2suEYSJG6glXfU3fZ5VwAYjimxgD0S2VU4qK8PYBfa/oFH2vRX5p
-11dWQWbfBdREO70UmJD4Pr6g3q9AF6DXLXb7dVm4y+hX065Xshk8oIuITVyO/XVK
-wWqBD5GScI+Q7PLMes7aqtsDDJI=
------END PRIVATE KEY-----
+MIIEvwIBADANBgkqhkiG9w0BAQEFAASCBKkwggSlAgEAAoIBAQCjMlvOKQX9yn9S
+OYPJ8p+jeDUU/JWPwT4LRfqaxvvKSnS7NZzd7lS4AR0YTjyjiRj3+t0QnEDHVKBD
+8cMh9kMXkQ2S0r7psCURLvvZOYt4v6KMCyZpBbp8b/pG3aJQHDZjRDOApQrXhx62
+XJDIs64YKA8NybYOLqNisrWGrfqF4uEzRMgVGlthuQcXo3n2HzobuYN7RsHBzCWG
+Ln9fRMDC2j3IAnQLf4YOznOJ57CjMd2Wmn/yhHK8h9s4iU5zw3+PK+X/IM4GeAfe
+JMx8c5uq2A8A24uzMidyhxJCK7VUprjK/ckdNYya6dkG2De+LR7W82ygfWbFDOnZ
+KM26cPG/AgMBAAECggEAFtRko2J5xBcf2JDTLt0SF/wo8Nak1Ydi9pDDjgNoFdR0
+n/vQBfvhPhxpxYysTvRO2eHuKvSw2zGredXIRmf82r8f9vokWuyZQt4fvTOfnzSv
+uIeWx/pVLDM9/8vhePN5aEmSKtzrt1rfoQMx/eGk6RwxfuxI25MKqDP30O9lrHTn
+Y0lW7dthgdDMlQnSpOqUm2ldDsykYCBFteh4i5RDzAhiGx1ryaz3FMg+/y0VTTk0
+BM43qW6H9PD8P4iOau3DGIPNqtIlFSnWoYaM6Ta2osfzzdsnFbe5F7JbdMrf5MBc
+Jq3VMUqffRmHubz7di03qRsRqGYQn2cJeiuVC+y6gQKBgQDYpq3MfMjwzPeoB1Ay
+ZQdzx+T290XRxFZwkiv3uugsYMlFGEabdAMFx5oIIOdjWSBLI92RvXbg7qMd/xMC
+ya/GzbKQd+5GbRLW+TZ0odGkMFkTo+DEkt07yEM8mrPJ6XePUndHbiNFSdpVKx4g
+KdmiRHinm3R8Lr5/puvISrOdcwKBgQDA1kln9aD1mvIdObI6MubPitb+NuNcpVDo
+myc1UrEJbcn8nBbLb+0Q+7gckjau2C8GN7Olnd8RCYLc7kU1On2pY+f19Ru/PdZX
+cjCCTcxqCJvWkNWOzw14ag6UrDTF5nxtoVl/eXbHxWqFjdt0a211sa1mp3Gn3ZNq
+m/teImYHhQKBgQCzWUA1MPPzi+pU2kEEhugla8xauha9cUiRhiAJw1uiKTlVDqSc
+2ewKo9MaeYqzjruSGI26sVqxGDxGf7tQKoBuFiiFOhMxj+fxuHrhEHiI8FE9VgOj
+F2U3sTAgAn1lX/VO21jM9BsUp++rY7dbrulwUDiFn8ZNazDeYeN8eoK4iwKBgQCb
+cqJN+YW9NyCBSqdPnwTMvSE+YES7xFAKkjfzFiu8bBJtXe5KJHm4PRJXhc4q9/5A
+Rtq8YR0WgNJLApArrnDqAa1Vajbp3RFSAKz1/X0Q5MurFanxqxsyvFvwoTkRZxFa
+1rxstB96Prv12TrVCFx+ibI8lDJcnZNeV0s0wQn6eQKBgQDXkfPuX5TFBpNe1bWI
+KUFmw9R1ynmUlIOaU3ITLv9C+w8zaJSpxFDZgJdv3uT8PfnXrsHm+lWjaOunvjri
+quZSc06mLlEbggYoIFQNPeNPRyN0+GLvefMS3mCotzanZTmD5GrH9XG451tVPiH9
+G/lpNA1ccRCCsLslcG/aaa5PQw==
+-----END PRIVATE KEY-----	
 `
 )
 
@@ -84,8 +85,8 @@ func (h *clientCertificate) Execute(filePath string) error {
 		fmt.Fprintf(w, "Hello, %s!\n", r.TLS.PeerCertificates[0].Subject)
 	})
 
-	_ = os.WriteFile("server.crt", []byte(serverCRT), os.ModePerm)
-	_ = os.WriteFile("server.key", []byte(serverKey), os.ModePerm)
+	_ = os.WriteFile("server.crt", []byte(serverCRT), permissionutil.ConfigFilePermission)
+	_ = os.WriteFile("server.key", []byte(serverKey), permissionutil.ConfigFilePermission)
 	defer os.Remove("server.crt")
 	defer os.Remove("server.key")
 

@@ -4,6 +4,8 @@ import (
 	"bufio"
 	"context"
 	"fmt"
+	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
@@ -17,9 +19,10 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/utils/vardump"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/http/race"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/http/raw"
-	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/http/utils"
 	protocolutils "github.com/projectdiscovery/nuclei/v2/pkg/protocols/utils"
+	httputil "github.com/projectdiscovery/nuclei/v2/pkg/protocols/utils/http"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
+	"github.com/projectdiscovery/nuclei/v2/pkg/types/scanstrategy"
 	"github.com/projectdiscovery/rawhttp"
 	"github.com/projectdiscovery/retryablehttp-go"
 	errorutil "github.com/projectdiscovery/utils/errors"
@@ -65,7 +68,7 @@ func (r *requestGenerator) Total() int {
 }
 
 // Make creates a http request for the provided input.
-// It returns io.EOF as error when all the requests have been exhausted.
+// It returns ErrNoMoreRequests as error when all the requests have been exhausted.
 func (r *requestGenerator) Make(ctx context.Context, input *contextargs.Context, reqData string, payloads, dynamicValues map[string]interface{}) (*generatedRequest, error) {
 	// value of `reqData` depends on the type of request specified in template
 	// 1. If request is raw request =  reqData contains raw request (i.e http request dump)
@@ -97,8 +100,8 @@ func (r *requestGenerator) Make(ctx context.Context, input *contextargs.Context,
 	hasTrailingSlash := false
 	if !isRawRequest {
 		// if path contains port ex: {{BaseURL}}:8080 use port specified in reqData
-		parsed, reqData = utils.UpdateURLPortFromPayload(parsed, reqData)
-		hasTrailingSlash = utils.HasTrailingSlash(reqData)
+		parsed, reqData = httputil.UpdateURLPortFromPayload(parsed, reqData)
+		hasTrailingSlash = httputil.HasTrailingSlash(reqData)
 	}
 
 	// defaultreqvars are vars generated from request/input ex: {{baseURL}}, {{Host}} etc
@@ -253,7 +256,7 @@ func (r *requestGenerator) generateHttpRequest(ctx context.Context, urlx *urluti
 	return &generatedRequest{request: request, meta: generatorValues, original: r.request, dynamicValues: finalVars, interactshURLs: r.interactshURLs}, nil
 }
 
-// generateRawRequest generates Raw Request from from request data from template and variables
+// generateRawRequest generates Raw Request from request data from template and variables
 // finalVars = contains all variables including generator and protocol specific variables
 // generatorValues = contains variables used in fuzzing or other generator specific values
 func (r *requestGenerator) generateRawRequest(ctx context.Context, rawRequest string, baseURL *urlutil.URL, finalVars, generatorValues map[string]interface{}) (*generatedRequest, error) {
@@ -275,6 +278,9 @@ func (r *requestGenerator) generateRawRequest(ctx context.Context, rawRequest st
 		if len(r.options.Options.CustomHeaders) > 0 {
 			_ = rawRequestData.TryFillCustomHeaders(r.options.Options.CustomHeaders)
 		}
+		if rawRequestData.Data != "" && !stringsutil.EqualFoldAny(rawRequestData.Method, http.MethodHead, http.MethodGet) && rawRequestData.Headers["Transfer-Encoding"] != "chunked" {
+			rawRequestData.Headers["Content-Length"] = strconv.Itoa(len(rawRequestData.Data))
+		}
 		unsafeReq := &generatedRequest{rawRequest: rawRequestData, meta: generatorValues, original: r.request, interactshURLs: r.interactshURLs}
 		return unsafeReq, nil
 	}
@@ -287,6 +293,12 @@ func (r *requestGenerator) generateRawRequest(ctx context.Context, rawRequest st
 	if err != nil {
 		return nil, err
 	}
+
+	// force transfer encoding if conditions are met
+	if len(rawRequestData.Data) > 0 && req.Header.Get("Transfer-Encoding") != "chunked" && !stringsutil.EqualFoldAny(rawRequestData.Method, http.MethodGet, http.MethodHead) {
+		req.ContentLength = int64(len(rawRequestData.Data))
+	}
+
 	// override the body with a new one that will be used to read the request body in parallel threads
 	// for race condition testing
 	if r.request.Threads > 0 && r.request.Race {
@@ -341,7 +353,7 @@ func (r *requestGenerator) fillRequest(req *retryablehttp.Request, values map[st
 	}
 
 	// In case of multiple threads the underlying connection should remain open to allow reuse
-	if r.request.Threads <= 0 && req.Header.Get("Connection") == "" {
+	if r.request.Threads <= 0 && req.Header.Get("Connection") == "" && r.options.Options.ScanStrategy != scanstrategy.HostSpray.String() {
 		req.Close = true
 	}
 
@@ -362,13 +374,13 @@ func (r *requestGenerator) fillRequest(req *retryablehttp.Request, values map[st
 		req.Body = bodyReader
 	}
 	if !r.request.Unsafe {
-		utils.SetHeader(req, "User-Agent", uarand.GetRandom())
+		httputil.SetHeader(req, "User-Agent", uarand.GetRandom())
 	}
 
 	// Only set these headers on non-raw requests
 	if len(r.request.Raw) == 0 && !r.request.Unsafe {
-		utils.SetHeader(req, "Accept", "*/*")
-		utils.SetHeader(req, "Accept-Language", "en")
+		httputil.SetHeader(req, "Accept", "*/*")
+		httputil.SetHeader(req, "Accept-Language", "en")
 	}
 
 	if !LeaveDefaultPorts {

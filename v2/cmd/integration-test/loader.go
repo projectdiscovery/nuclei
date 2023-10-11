@@ -10,15 +10,16 @@ import (
 	"github.com/julienschmidt/httprouter"
 
 	"github.com/projectdiscovery/nuclei/v2/pkg/testutils"
+	permissionutil "github.com/projectdiscovery/utils/permission"
 )
 
-var loaderTestcases = map[string]testutils.TestCase{
-	"loader/template-list.yaml":             &remoteTemplateList{},
-	"loader/workflow-list.yaml":             &remoteWorkflowList{},
-	"loader/excluded-template.yaml":         &excludedTemplate{},
-	"loader/nonexistent-template-list.yaml": &nonExistentTemplateList{},
-	"loader/nonexistent-workflow-list.yaml": &nonExistentWorkflowList{},
-	"loader/template-list-not-allowed.yaml": &remoteTemplateListNotAllowed{},
+var loaderTestcases = []TestCaseInfo{
+	{Path: "loader/template-list.yaml", TestCase: &remoteTemplateList{}},
+	{Path: "loader/workflow-list.yaml", TestCase: &remoteWorkflowList{}},
+	{Path: "loader/excluded-template.yaml", TestCase: &excludedTemplate{}},
+	{Path: "loader/nonexistent-template-list.yaml", TestCase: &nonExistentTemplateList{}},
+	{Path: "loader/nonexistent-workflow-list.yaml", TestCase: &nonExistentWorkflowList{}},
+	{Path: "loader/template-list-not-allowed.yaml", TestCase: &remoteTemplateListNotAllowed{}},
 }
 
 type remoteTemplateList struct{}
@@ -48,13 +49,13 @@ func (h *remoteTemplateList) Execute(templateList string) error {
 	defer ts.Close()
 
 	configFileData := `remote-template-domain: [ "` + ts.Listener.Addr().String() + `" ]`
-	err := os.WriteFile("test-config.yaml", []byte(configFileData), os.ModePerm)
+	err := os.WriteFile("test-config.yaml", []byte(configFileData), permissionutil.ConfigFilePermission)
 	if err != nil {
 		return err
 	}
 	defer os.Remove("test-config.yaml")
 
-	results, err := testutils.RunNucleiBareArgsAndGetResults(debug, "-target", ts.URL, "-tu", ts.URL+"/template_list", "-config", "test-config.yaml")
+	results, err := testutils.RunNucleiBareArgsAndGetResults(debug, "-target", ts.URL, "-template-url", ts.URL+"/template_list", "-config", "test-config.yaml")
 	if err != nil {
 		return err
 	}
@@ -111,7 +112,7 @@ func (h *remoteTemplateListNotAllowed) Execute(templateList string) error {
 	ts := httptest.NewServer(router)
 	defer ts.Close()
 
-	_, err := testutils.RunNucleiBareArgsAndGetResults(debug, "-target", ts.URL, "-tu", ts.URL+"/template_list")
+	_, err := testutils.RunNucleiBareArgsAndGetResults(debug, "-target", ts.URL, "-template-url", ts.URL+"/template_list")
 	if err == nil {
 		return fmt.Errorf("expected error for not allowed remote template list url")
 	}
@@ -147,13 +148,13 @@ func (h *remoteWorkflowList) Execute(workflowList string) error {
 	defer ts.Close()
 
 	configFileData := `remote-template-domain: [ "` + ts.Listener.Addr().String() + `" ]`
-	err := os.WriteFile("test-config.yaml", []byte(configFileData), os.ModePerm)
+	err := os.WriteFile("test-config.yaml", []byte(configFileData), permissionutil.ConfigFilePermission)
 	if err != nil {
 		return err
 	}
 	defer os.Remove("test-config.yaml")
 
-	results, err := testutils.RunNucleiBareArgsAndGetResults(debug, "-target", ts.URL, "-wu", ts.URL+"/workflow_list", "-config", "test-config.yaml")
+	results, err := testutils.RunNucleiBareArgsAndGetResults(debug, "-target", ts.URL, "-workflow-url", ts.URL+"/workflow_list", "-config", "test-config.yaml")
 	if err != nil {
 		return err
 	}
@@ -169,7 +170,7 @@ func (h *nonExistentTemplateList) Execute(nonExistingTemplateList string) error 
 	ts := httptest.NewServer(router)
 	defer ts.Close()
 
-	_, err := testutils.RunNucleiBareArgsAndGetResults(debug, "-target", ts.URL, "-tu", ts.URL+"/404")
+	_, err := testutils.RunNucleiBareArgsAndGetResults(debug, "-target", ts.URL, "-template-url", ts.URL+"/404")
 	if err == nil {
 		return fmt.Errorf("expected error for nonexisting workflow url")
 	}
@@ -185,7 +186,7 @@ func (h *nonExistentWorkflowList) Execute(nonExistingWorkflowList string) error 
 	ts := httptest.NewServer(router)
 	defer ts.Close()
 
-	_, err := testutils.RunNucleiBareArgsAndGetResults(debug, "-target", ts.URL, "-wu", ts.URL+"/404")
+	_, err := testutils.RunNucleiBareArgsAndGetResults(debug, "-target", ts.URL, "-workflow-url", ts.URL+"/404")
 	if err == nil {
 		return fmt.Errorf("expected error for nonexisting workflow url")
 	}

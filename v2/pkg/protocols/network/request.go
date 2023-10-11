@@ -29,6 +29,7 @@ import (
 	protocolutils "github.com/projectdiscovery/nuclei/v2/pkg/protocols/utils"
 	templateTypes "github.com/projectdiscovery/nuclei/v2/pkg/templates/types"
 	errorutil "github.com/projectdiscovery/utils/errors"
+	mapsutil "github.com/projectdiscovery/utils/maps"
 )
 
 var _ protocols.Request = &Request{}
@@ -39,9 +40,17 @@ func (request *Request) Type() templateTypes.ProtocolType {
 }
 
 // ExecuteWithResults executes the protocol requests and returns results instead of writing them.
-func (request *Request) ExecuteWithResults(input *contextargs.Context, metadata, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
+func (request *Request) ExecuteWithResults(target *contextargs.Context, metadata, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
 	var address string
 	var err error
+
+	input := target.Clone()
+	// use network port updates input with new port requested in template file
+	// and it is ignored if input port is not standard http(s) ports like 80,8080,8081 etc
+	// idea is to reduce redundant dials to http ports
+	if err := input.UseNetworkPort(request.Port, request.ExcludePorts); err != nil {
+		gologger.Debug().Msgf("Could not network port from constants: %s\n", err)
+	}
 
 	if request.SelfContained {
 		address = ""
@@ -57,8 +66,15 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, metadata,
 	variablesMap := request.options.Variables.Evaluate(variables)
 	variables = generators.MergeMaps(variablesMap, variables, request.options.Constants)
 
+	visitedAddresses := make(mapsutil.Map[string, struct{}])
+
 	for _, kv := range request.addresses {
 		actualAddress := replacer.Replace(kv.address, variables)
+
+		if visitedAddresses.Has(actualAddress) && !request.options.Options.DisableClustering {
+			continue
+		}
+		visitedAddresses.Set(actualAddress, struct{}{})
 
 		if err := request.executeAddress(variables, actualAddress, address, input.MetaInput.Input, kv.tls, previous, callback); err != nil {
 			outputEvent := request.responseToDSLMap("", "", "", address, "")
@@ -110,7 +126,6 @@ func (request *Request) executeRequestWithPayloads(variables map[string]interfac
 		conn     net.Conn
 		err      error
 	)
-
 	if host, _, err := net.SplitHostPort(actualAddress); err == nil {
 		hostname = host
 	}

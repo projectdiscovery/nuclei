@@ -1,12 +1,19 @@
 package types
 
 import (
+	"io"
+	"strings"
 	"time"
 
 	"github.com/projectdiscovery/goflags"
 	"github.com/projectdiscovery/nuclei/v2/pkg/model/types/severity"
 	"github.com/projectdiscovery/nuclei/v2/pkg/templates/types"
 	fileutil "github.com/projectdiscovery/utils/file"
+)
+
+var (
+	// ErrNoMoreRequests is internal error to indicate that generator has no more requests to generate
+	ErrNoMoreRequests = io.EOF
 )
 
 // Options contains the configuration options for nuclei scanner.
@@ -87,13 +94,15 @@ type Options struct {
 	ReportingConfig string
 	// MarkdownExportDirectory is the directory to export reports in Markdown format
 	MarkdownExportDirectory string
+	// MarkdownExportSortMode is the method to sort the markdown reports (options: severity, template, host, none)
+	MarkdownExportSortMode string
 	// SarifExport is the file to export sarif output format to
 	SarifExport string
 	// CloudURL is the URL for the nuclei cloud endpoint
 	CloudURL string
 	// CloudAPIKey is the api-key for the nuclei cloud endpoint
 	CloudAPIKey string
-	// Scanlist feature to get all the scan ids for a user
+	// ScanList feature to get all the scan ids for a user
 	ScanList bool
 	// ListDatasources enables listing of datasources for user
 	ListDatasources bool
@@ -189,6 +198,8 @@ type Options struct {
 	Headless bool
 	// ShowBrowser specifies whether the show the browser in headless mode
 	ShowBrowser bool
+	// HeadlessOptionalArguments specifies optional arguments to pass to Chrome
+	HeadlessOptionalArguments goflags.StringSlice
 	// NoTables disables pretty printing of cloud results in tables
 	NoTables bool
 	// DisableClustering disables clustering of templates
@@ -277,10 +288,12 @@ type Options struct {
 	ClientKeyFile string
 	// ClientCAFile client certificate authority file (PEM-encoded) used for authenticating against scanned hosts
 	ClientCAFile string
-	// Use ZTLS library
+	// Deprecated: Use ZTLS library
 	ZTLS bool
-	// Sandbox enables sandboxed nuclei template execution
-	Sandbox bool
+	// AllowLocalFileAccess allows local file access from templates payloads
+	AllowLocalFileAccess bool
+	// RestrictLocalNetworkAccess restricts local network access from templates requests
+	RestrictLocalNetworkAccess bool
 	// ShowMatchLine enables display of match line number
 	ShowMatchLine bool
 	// EnablePprof enables exposing pprof runtime information with a webserver.
@@ -313,7 +326,7 @@ type Options struct {
 	IncludeConditions goflags.StringSlice
 	// Custom Config Directory
 	CustomConfigDir string
-	// Enable uncover egine
+	// Enable uncover engine
 	Uncover bool
 	// Uncover search query
 	UncoverQuery goflags.StringSlice
@@ -329,10 +342,14 @@ type Options struct {
 	ScanAllIPs bool
 	// IPVersion to scan (4,6)
 	IPVersion goflags.StringSlice
+	// PublicTemplateDisableDownload disables downloading templates from the nuclei-templates public repository
+	PublicTemplateDisableDownload bool
 	// GitHub token used to clone/pull from private repos for custom templates
-	GithubToken string
-	// GithubTemplateRepo is the list of custom public/private templates GitHub repos
-	GithubTemplateRepo []string
+	GitHubToken string
+	// GitHubTemplateRepo is the list of custom public/private templates GitHub repos
+	GitHubTemplateRepo []string
+	// GitHubTemplateDisableDownload disables downloading templates from custom GitHub repositories
+	GitHubTemplateDisableDownload bool
 	// Bitbucket token used to clone/pull from public/private repos for custom templates
 	BitbucketToken string
 	// BitbucketTemplateRepo is the list of custom public/private templates Bitbucket repos
@@ -343,6 +360,8 @@ type Options struct {
 	GitLabToken string
 	// GitLabTemplateRepositoryIDs is the comma-separated list of custom gitlab repositories IDs
 	GitLabTemplateRepositoryIDs []int
+	// GitLabTemplateDisableDownload disables downloading templates from custom GitLab repositories
+	GitLabTemplateDisableDownload bool
 	// AWS access key for downloading templates from S3 bucket
 	AwsAccessKey string
 	// AWS secret key for downloading templates from S3 bucket
@@ -351,6 +370,8 @@ type Options struct {
 	AwsBucketName string
 	// AWS Region name where AWS S3 bucket is located
 	AwsRegion string
+	// AwsTemplateDisableDownload disables downloading templates from AWS S3 buckets
+	AwsTemplateDisableDownload bool
 	// AzureContainerName for downloading templates from Azure Blob Storage. Example: templates
 	AzureContainerName string
 	// AzureTenantID for downloading templates from Azure Blob Storage. Example: 00000000-0000-0000-0000-000000000000
@@ -361,6 +382,8 @@ type Options struct {
 	AzureClientSecret string
 	// AzureServiceURL for downloading templates from Azure Blob Storage. Example: https://XXXXXXXXXX.blob.core.windows.net/
 	AzureServiceURL string
+	// AzureTemplateDisableDownload disables downloading templates from Azure Blob Storage
+	AzureTemplateDisableDownload bool
 	// Scan Strategy (auto,hosts-spray,templates-spray)
 	ScanStrategy string
 	// Fuzzing Type overrides template level fuzzing-type configuration
@@ -402,6 +425,8 @@ func DefaultOptions() *Options {
 		Timeout:                 5,
 		Retries:                 1,
 		MaxHostError:            30,
+		ResponseReadSize:        10 * 1024 * 1024,
+		ResponseSaveSize:        1024 * 1024,
 	}
 }
 
@@ -424,4 +449,18 @@ func (options *Options) HasCloudOptions() bool {
 
 func (options *Options) ShouldUseHostError() bool {
 	return options.MaxHostError > 0 && !options.NoHostErrors
+}
+
+func (options *Options) ParseHeadlessOptionalArguments() map[string]string {
+	optionalArguments := make(map[string]string)
+	for _, v := range options.HeadlessOptionalArguments {
+		if argParts := strings.SplitN(v, "=", 2); len(argParts) >= 2 {
+			key := strings.TrimSpace(argParts[0])
+			value := strings.TrimSpace(argParts[1])
+			if key != "" && value != "" {
+				optionalArguments[key] = value
+			}
+		}
+	}
+	return optionalArguments
 }

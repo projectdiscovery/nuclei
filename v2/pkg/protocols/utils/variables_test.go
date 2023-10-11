@@ -12,7 +12,7 @@ import (
 func TestHTTPVariables(t *testing.T) {
 	baseURL := "http://localhost:9001/test/123"
 	parsed, _ := urlutil.Parse(baseURL)
-	// trailingslash is only true when both target/inputURL and payload {{BaseURL}}/xyz both have slash
+	// trailing slash is only true when both target/inputURL and payload {{BaseURL}}/xyz both have slash
 	values := GenerateVariables(parsed, false, nil)
 
 	require.Equal(t, values["BaseURL"], parsed.String(), "incorrect baseurl")

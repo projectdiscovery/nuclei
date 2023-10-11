@@ -358,7 +358,7 @@ Variables contains any variables for the current request.
 </div>
 <div class="dt">
 
-Constants contains any scalar costant for the current template
+Constants contains any scalar constant for the current template
 
 </div>
 
@@ -489,6 +489,35 @@ description: Bower is a package manager which stores package information in the 
 
 ```yaml
 description: Subversion ALM for the enterprise before 8.8.2 allows reflected XSS at multiple locations
+```
+
+
+</div>
+
+<hr />
+
+<div class="dd">
+
+<code>impact</code>  <i>string</i>
+
+</div>
+<div class="dt">
+
+Impact of the template.
+
+You can go in-depth here on impact of the template.
+
+
+
+Examples:
+
+
+```yaml
+impact: Successful exploitation of this vulnerability could allow an attacker to execute arbitrary SQL queries, potentially leading to unauthorized access, data leakage, or data manipulation.
+```
+
+```yaml
+impact: Successful exploitation of this vulnerability could allow an attacker to execute arbitrary script code in the context of the victim's browser, potentially leading to session hijacking, defacement, or theft of sensitive information.
 ```
 
 
@@ -822,6 +851,29 @@ Examples:
 
 ```yaml
 epss-score: "0.42509"
+```
+
+
+</div>
+
+<hr />
+
+<div class="dd">
+
+<code>epss-percentile</code>  <i>float64</i>
+
+</div>
+<div class="dt">
+
+EPSS Percentile for the template.
+
+
+
+Examples:
+
+
+```yaml
+epss-percentile: "0.42509"
 ```
 
 
@@ -2391,6 +2443,35 @@ be provided as payload which will be read on run-time.
 <div class="dt">
 
 Inputs contains inputs for the network socket
+
+</div>
+
+<hr />
+
+<div class="dd">
+
+<code>port</code>  <i>string</i>
+
+</div>
+<div class="dt">
+
+description: |
+   Port is the port to send network requests to. this acts as default port but is overriden if target/input contains
+ non-http(s) ports like 80,8080,8081 etc
+
+</div>
+
+<hr />
+
+<div class="dd">
+
+<code>exclude-ports</code>  <i>string</i>
+
+</div>
+<div class="dt">
+
+description:	|
+	ExcludePorts is the list of ports to exclude from being scanned . It is intended to be used with `Port` field and contains a list of ports which are ignored/skipped
 
 </div>
 

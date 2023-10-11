@@ -15,6 +15,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/internal/installer"
 	"github.com/projectdiscovery/nuclei/v2/internal/runner/nucleicloud"
 	uncoverlib "github.com/projectdiscovery/uncover"
+	permissionutil "github.com/projectdiscovery/utils/permission"
 	updateutils "github.com/projectdiscovery/utils/update"
 
 	"github.com/logrusorgru/aurora"
@@ -112,7 +113,10 @@ func New(options *types.Options) (*Runner, error) {
 
 		// Check for template updates and update if available.
 		// If the custom templates manager is not nil, we will install custom templates if there is a fresh installation
-		tm := &installer.TemplateManager{CustomTemplates: ctm}
+		tm := &installer.TemplateManager{
+			CustomTemplates:        ctm,
+			DisablePublicTemplates: options.PublicTemplateDisableDownload,
+		}
 		if err := tm.FreshInstallIfNotExists(); err != nil {
 			gologger.Warning().Msgf("failed to install nuclei templates: %s\n", err)
 		}
@@ -306,6 +310,15 @@ func New(options *types.Options) (*Runner, error) {
 	if httpclient != nil {
 		opts.HTTPClient = httpclient
 	}
+	if opts.HTTPClient == nil {
+		httpOpts := retryablehttp.DefaultOptionsSingle
+		httpOpts.Timeout = 20 * time.Second // for stability reasons
+		if options.Timeout > 20 {
+			httpOpts.Timeout = time.Duration(options.Timeout) * time.Second
+		}
+		// in testing it was found most of times when interactsh failed, it was due to failure in registering /polling requests
+		opts.HTTPClient = retryablehttp.NewClient(retryablehttp.DefaultOptionsSingle)
+	}
 	interactshClient, err := interactsh.New(opts)
 	if err != nil {
 		gologger.Error().Msgf("Could not create interactsh client: %s", err)
@@ -324,7 +337,7 @@ func New(options *types.Options) (*Runner, error) {
 }
 
 func createReportingOptions(options *types.Options) (*reporting.Options, error) {
-	var reportingOptions *reporting.Options
+	var reportingOptions = &reporting.Options{}
 	if options.ReportingConfig != "" {
 		file, err := os.Open(options.ReportingConfig)
 		if err != nil {
@@ -332,60 +345,31 @@ func createReportingOptions(options *types.Options) (*reporting.Options, error) 
 		}
 		defer file.Close()
 
-		reportingOptions = &reporting.Options{}
 		if err := yaml.DecodeAndValidate(file, reportingOptions); err != nil {
 			return nil, errors.Wrap(err, "could not parse reporting config file")
 		}
 		Walk(reportingOptions, expandEndVars)
 	}
 	if options.MarkdownExportDirectory != "" {
-		if reportingOptions != nil {
-			reportingOptions.MarkdownExporter = &markdown.Options{
-				Directory:         options.MarkdownExportDirectory,
-				IncludeRawPayload: !options.OmitRawRequests,
-			}
-		} else {
-			reportingOptions = &reporting.Options{}
-			reportingOptions.MarkdownExporter = &markdown.Options{
-				Directory:         options.MarkdownExportDirectory,
-				IncludeRawPayload: !options.OmitRawRequests,
-			}
+		reportingOptions.MarkdownExporter = &markdown.Options{
+			Directory:         options.MarkdownExportDirectory,
+			IncludeRawPayload: !options.OmitRawRequests,
+			SortMode:          options.MarkdownExportSortMode,
 		}
 	}
 	if options.SarifExport != "" {
-		if reportingOptions != nil {
-			reportingOptions.SarifExporter = &sarif.Options{File: options.SarifExport}
-		} else {
-			reportingOptions = &reporting.Options{}
-			reportingOptions.SarifExporter = &sarif.Options{File: options.SarifExport}
-		}
+		reportingOptions.SarifExporter = &sarif.Options{File: options.SarifExport}
 	}
 	if options.JSONExport != "" {
-		if reportingOptions != nil {
-			reportingOptions.JSONExporter = &jsonexporter.Options{
-				File:              options.JSONExport,
-				IncludeRawPayload: !options.OmitRawRequests,
-			}
-		} else {
-			reportingOptions = &reporting.Options{}
-			reportingOptions.JSONExporter = &jsonexporter.Options{
-				File:              options.JSONExport,
-				IncludeRawPayload: !options.OmitRawRequests,
-			}
+		reportingOptions.JSONExporter = &jsonexporter.Options{
+			File:              options.JSONExport,
+			IncludeRawPayload: !options.OmitRawRequests,
 		}
 	}
 	if options.JSONLExport != "" {
-		if reportingOptions != nil {
-			reportingOptions.JSONLExporter = &jsonl.Options{
-				File:              options.JSONLExport,
-				IncludeRawPayload: !options.OmitRawRequests,
-			}
-		} else {
-			reportingOptions = &reporting.Options{}
-			reportingOptions.JSONLExporter = &jsonl.Options{
-				File:              options.JSONLExport,
-				IncludeRawPayload: !options.OmitRawRequests,
-			}
+		reportingOptions.JSONLExporter = &jsonl.Options{
+			File:              options.JSONLExport,
+			IncludeRawPayload: !options.OmitRawRequests,
 		}
 	}
 
@@ -737,7 +721,7 @@ func (r *Runner) SaveResumeConfig(path string) error {
 	resumeCfgClone.ResumeFrom = resumeCfgClone.Current
 	data, _ := json.MarshalIndent(resumeCfgClone, "", "\t")
 
-	return os.WriteFile(path, data, os.ModePerm)
+	return os.WriteFile(path, data, permissionutil.ConfigFilePermission)
 }
 
 type WalkFunc func(reflect.Value, reflect.StructField)

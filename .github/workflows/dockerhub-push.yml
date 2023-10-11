@@ -14,7 +14,7 @@ jobs:
       - name: Git Checkout
         uses: actions/checkout@v3
 
-      - name: Get Github tag
+      - name: Get GitHub tag
         id: meta
         run: |
           curl --silent "https://api.github.com/repos/projectdiscovery/nuclei/releases/latest" | jq -r .tag_name | xargs -I {} echo TAG={} >> $GITHUB_OUTPUT
@@ -38,3 +38,10 @@ jobs:
           platforms: linux/amd64,linux/arm64
           push: true
           tags: projectdiscovery/nuclei:latest,projectdiscovery/nuclei:${{ steps.meta.outputs.TAG }}
+
+      - name: Update DockerHub Description
+        uses: peter-evans/dockerhub-description@v3
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_TOKEN }}
+          repository: projectdiscovery/nuclei
