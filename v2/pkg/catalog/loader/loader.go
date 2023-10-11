@@ -28,9 +28,12 @@ import (
 )
 
 const (
-	httpPrefix            = "http://"
-	httpsPrefix           = "https://"
-	TrustedTemplateDomain = "templates.nuclei.sh"
+	httpPrefix  = "http://"
+	httpsPrefix = "https://"
+)
+
+var (
+	TrustedTemplateDomains = []string{"templates.nuclei.sh", "cloud.projectdiscovery.io"}
 )
 
 // Config contains the configuration options for the loader
@@ -101,7 +104,7 @@ func NewConfig(options *types.Options, catalog catalog.Catalog, executerOpts pro
 		Catalog:                  catalog,
 		ExecutorOptions:          executerOpts,
 	}
-	loaderConfig.RemoteTemplateDomainList = append(loaderConfig.RemoteTemplateDomainList, TrustedTemplateDomain)
+	loaderConfig.RemoteTemplateDomainList = append(loaderConfig.RemoteTemplateDomainList, TrustedTemplateDomains...)
 	return &loaderConfig
 }
 
