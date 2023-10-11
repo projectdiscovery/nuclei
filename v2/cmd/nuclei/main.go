@@ -341,8 +341,8 @@ on extensive configurability, massive extensibility and ease of use.`)
 Run nuclei on single host:
 	$ nuclei -target example.com
 
-Run a scan with specific template directories:
-	$ nuclei -target example.com -t cves/ -t panels/
+Run nuclei with specific template directories:
+	$ nuclei -target example.com -t http/cves/ -t ssl
 
 Run nuclei against a list of hosts:
 	$ nuclei -list hosts.txt
@@ -351,9 +351,9 @@ Run nuclei with a JSON output:
 	$ nuclei -target example.com -json-export output.json
 
 Run nuclei with sorted Markdown outputs (with environment variables):
-	$ MARKDOWN_EXPORT_SORT_MODE=template nuclei -target example.com -markdown-export markdown/
+	$ MARKDOWN_EXPORT_SORT_MODE=template nuclei -target example.com -markdown-export nuclei_report/
 
-Additional documentation is available at: https://nuclei.projectdiscovery.io/nuclei/get-started/#running-nuclei
+Additional documentation is available at: https://docs.nuclei.sh/getting-started/running
 	`)
 
 	_ = flagSet.Parse()
