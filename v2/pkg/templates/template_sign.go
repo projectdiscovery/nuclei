@@ -4,12 +4,14 @@ import (
 	"bytes"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/disk"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/protocolinit"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/protocolstate"
+	"github.com/projectdiscovery/nuclei/v2/pkg/templates/extensions"
 	"github.com/projectdiscovery/nuclei/v2/pkg/templates/signer"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 	errorutil "github.com/projectdiscovery/utils/errors"
@@ -26,6 +28,7 @@ var (
 		_ = protocolstate.Init(defaultOpts)
 		_ = protocolinit.Init(defaultOpts)
 	})
+	ErrNotATemplate = errorutil.NewWithTag("signer", "given filePath is not a template")
 )
 
 // New Signer/Verification logic requires it to load content of file references
@@ -52,19 +55,20 @@ func SignTemplate(templateSigner *signer.TemplateSigner, templatePath string) er
 	// in template hence we first load template and append such resolved file references to content
 	initOnce()
 
+	// signing is only supported on yaml nuclei templates
+	if !strings.HasSuffix(templatePath, extensions.YAML) {
+		return ErrNotATemplate
+	}
+
 	template, bin, err := getTemplate(templatePath)
 	if err != nil {
 		return errorutil.NewWithErr(err).Msgf("failed to get template from disk")
 	}
+	if len(template.Workflows) > 0 {
+		// signing workflows is not supported at least yet
+		return ErrNotATemplate
+	}
 	if !template.Verified {
-		// if template not verified then sign it
-
-		// TODO: only allow re-signer if template is signed by current signer
-		// if len(template.RequestsCode) > 0 {
-		// 	// verify using current template signer
-		// 	// if verified then
-		// }
-
 		signatureData, err := templateSigner.Sign(bin, template)
 		if err != nil {
 			return err

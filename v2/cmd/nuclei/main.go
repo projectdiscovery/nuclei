@@ -24,6 +24,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/uncover"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/http"
 	"github.com/projectdiscovery/nuclei/v2/pkg/templates"
+	"github.com/projectdiscovery/nuclei/v2/pkg/templates/extensions"
 	"github.com/projectdiscovery/nuclei/v2/pkg/templates/signer"
 	templateTypes "github.com/projectdiscovery/nuclei/v2/pkg/templates/types"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
@@ -62,13 +63,17 @@ func main() {
 		errorCounter := 0
 		for _, item := range options.Templates {
 			err := filepath.WalkDir(item, func(iterItem string, d fs.DirEntry, err error) error {
-				if err != nil || d.IsDir() {
+				if err != nil || d.IsDir() || !strings.HasSuffix(iterItem, extensions.YAML) {
+					// skip non yaml files
 					return nil
 				}
 
 				if err := templates.SignTemplate(tsigner, iterItem); err != nil {
-					errorCounter++
-					gologger.Error().Msgf("could not sign '%s': %s\n", iterItem, err)
+					if err != templates.ErrNotATemplate {
+						// skip warnings and errors as given items are not templates
+						errorCounter++
+						gologger.Error().Msgf("could not sign '%s': %s\n", iterItem, err)
+					}
 				} else {
 					successCounter++
 				}
