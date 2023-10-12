@@ -11,6 +11,7 @@ import (
 	"github.com/pkg/errors"
 	"gopkg.in/yaml.v2"
 
+	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/config"
 	"github.com/projectdiscovery/nuclei/v2/pkg/js/compiler"
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators"
@@ -233,17 +234,67 @@ mainLoop:
 // ParseTemplateFromReader reads the template from reader
 // returns the parsed template
 func ParseTemplateFromReader(reader io.Reader, preprocessor Preprocessor, options protocols.ExecutorOptions) (*Template, error) {
-	template := &Template{}
 	data, err := io.ReadAll(reader)
 	if err != nil {
 		return nil, err
 	}
 
-	data = template.expandPreprocessors(data)
-	if preprocessor != nil {
-		data = preprocessor.Process(data)
+	// a preprocessor is a variable like
+	// {{randstr}} which is replaced before unmarshalling
+	// as it is known to be a random static value per template
+	hasPreprocessor := false
+	allPreprocessors := getPreprocessors(preprocessor)
+	for _, preprocessor := range allPreprocessors {
+		if preprocessor.Exists(data) {
+			hasPreprocessor = true
+			break
+		}
 	}
 
+	if !hasPreprocessor {
+		// if no preprocessors exists parse template and exit
+		template, err := parseTemplate(data, options)
+		if err != nil {
+			return nil, err
+		}
+		if !template.Verified {
+			gologger.Error().Msgf("unsigned %v", template.ID)
+			SignatureStats[Unsigned].Add(1)
+		}
+		return template, nil
+	}
+
+	// if preprocessor is required / exists in this template
+	// first unmarshal it and check if its verified
+	// persist verified status value and then
+	// expand all preprocessor and reparse template
+
+	// === signature verification befoer preprocessors ===
+	template, err := parseTemplate(data, options)
+	if err != nil {
+		return nil, err
+	}
+	isVerified := template.Verified
+	if !template.Verified {
+		SignatureStats[Unsigned].Add(1)
+	}
+
+	// ==== execute preprocessors ======
+	for _, v := range allPreprocessors {
+		data = v.Process(data)
+	}
+	reParsed, err := parseTemplate(data, options)
+	if err != nil {
+		return nil, err
+	}
+	reParsed.Verified = isVerified
+	return reParsed, nil
+}
+
+// this method does not include any kind of preprocessing
+func parseTemplate(data []byte, options protocols.ExecutorOptions) (*Template, error) {
+	template := &Template{}
+	var err error
 	switch config.GetTemplateFormatFromExt(template.Path) {
 	case config.JSON:
 		err = json.Unmarshal(data, template)
@@ -301,10 +352,6 @@ func ParseTemplateFromReader(reader io.Reader, preprocessor Preprocessor, option
 	if err := template.ImportFileRefs(template.Options); err != nil {
 		return nil, errorutil.NewWithErr(err).Msgf("failed to load file refs for %s", template.ID)
 	}
-	// Review: should we log this?
-	// if len(template.ImportedFiles) > 0 {
-	// 	// gologger.Verbose().Msgf("[%s] Imported content from %v files", template.ID, template.ImportedFiles)
-	// }
 
 	if err := template.compileProtocolRequests(options); err != nil {
 		return nil, err
@@ -329,9 +376,6 @@ func ParseTemplateFromReader(reader io.Reader, preprocessor Preprocessor, option
 			SignatureStats[verifier.Identifier()].Add(1)
 			break
 		}
-	}
-	if !template.Verified {
-		SignatureStats[Unsigned].Add(1)
 	}
 	return template, nil
 }
