@@ -29,7 +29,7 @@ func New(payloads map[string]interface{}, attackType AttackType, templatePath st
 	for payloadName, v := range payloads {
 		switch value := v.(type) {
 		case map[interface{}]interface{}:
-			values, err := parsePayloadsWithAggression(payloadName, value, "default") // TODO: Make configurable aggression
+			values, err := parsePayloadsWithAggression(payloadName, value, opts.Aggression) // TODO: Make configurable aggression
 			if err != nil {
 				return nil, errors.Wrap(err, "could not parse payloads with aggression")
 			}

@@ -24,8 +24,6 @@ type Rule struct {
 	ruleType ruleType
 	// description: |
 	//   Part is the part of request to fuzz.
-	//
-	//   query fuzzes the query part of url. More parts will be added later.
 	// values:
 	//   - "query"
 	//   - "url"
@@ -35,6 +33,7 @@ type Rule struct {
 	//   - "response"
 	Part     string `yaml:"part,omitempty" json:"part,omitempty" jsonschema:"title=part of rule,description=Part of request rule to fuzz,enum=query,enum=url,enum=body,enum=header,enum=response,enum=cookie"`
 	partType partType
+
 	// description: |
 	//   Mode is the mode of fuzzing to perform.
 	//

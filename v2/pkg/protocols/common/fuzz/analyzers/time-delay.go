@@ -15,13 +15,19 @@ import (
 	"github.com/projectdiscovery/retryablehttp-go"
 )
 
-// Analyzer is an interface implemented by time delay analyzer
+// TimeDelayAnalyzer is an interface implemented by time delay analyzer
 // It tries to control the delay in the request
 // with means of a delay causing payload predictably a number
 // of times.
 //
+// TODO: Improve and do more in-depth analysis for verification
+// and offer configurable verification levels in order to control
+// the quality of the results.
+//
 // Ported from: https://github.com/andresriancho/w3af/blob/master/w3af/core/controllers/delay_detection/exact_delay_controller.py
-type Analyzer struct{}
+type TimeDelayAnalyzer struct{}
+
+var _ Analyzer = &TimeDelayAnalyzer{}
 
 var (
 	// deltaPercent is 25% more/less than the original wait time
@@ -29,15 +35,6 @@ var (
 	// delaySeconds is the list of timeouts to delay the request for
 	delaySeconds = []int{3, 6, 9}
 )
-
-// Analysis is a time delay analysis result
-type Analysis struct {
-	Matched  bool     `json:"matched"`
-	Reasons  []string `json:"reasons"`
-	Analyzer string   `json:"analyzer"`
-
-	VulnerableRequest *retryablehttp.Request `json:"-"`
-}
 
 // doHTTPRequestWithTimeTracing does a http request with time tracing
 func doHTTPRequestWithTimeTracing(httpclient *retryablehttp.Client, req *retryablehttp.Request) (float64, error) {
@@ -61,24 +58,12 @@ func doHTTPRequestWithTimeTracing(httpclient *retryablehttp.Client, req *retryab
 	return ttfb.Seconds(), nil
 }
 
-// AnalyzerInput is the input for an analyzer
-type AnalyzerInput struct {
-	Request   *retryablehttp.Request
-	Component component.Component
-	FinalArgs map[string]interface{}
-
-	Key           string
-	Value         string
-	OriginalValue string
-}
-
 // Analyze analyzes the normalized request with a mutation
-func (a *Analyzer) Analyze(httpclient *retryablehttp.Client, input *AnalyzerInput) (*Analysis, error) {
+func (a *TimeDelayAnalyzer) Analyze(httpclient *retryablehttp.Client, input *AnalyzerInput) (*Analysis, error) {
 	averageRtt, err := a.createRequestBaseline(httpclient, input.Request, input.Component)
 	if err != nil {
 		return nil, errors.Wrap(err, "could not get request time baseline")
 	}
-	fmt.Printf("average rtt: %v\n", averageRtt)
 
 	var vulnReqMain *retryablehttp.Request
 	delays := []string{}
@@ -113,7 +98,7 @@ func (a *Analyzer) Analyze(httpclient *retryablehttp.Client, input *AnalyzerInpu
 var delayPlaceholder = "{{delay}}"
 
 // delayFor tries delaying a response for duration seconds
-func (a *Analyzer) delayFor(duration int, originalWaitTime float64, httpclient *retryablehttp.Client, input *AnalyzerInput) (string, *retryablehttp.Request, error) {
+func (a *TimeDelayAnalyzer) delayFor(duration int, originalWaitTime float64, httpclient *retryablehttp.Client, input *AnalyzerInput) (string, *retryablehttp.Request, error) {
 	fmt.Printf("got input: %+v\n", input)
 
 	valueStr := strings.ReplaceAll(input.Value, delayPlaceholder, strconv.Itoa(duration))
@@ -164,7 +149,7 @@ const defaultInitializationCount = 2
 
 // createRequestBaseline creates a new time baseline from a request
 // by repeating it with a blank mutation `defaultInitializationCount` times.
-func (a *Analyzer) createRequestBaseline(httpclient *retryablehttp.Client, req *retryablehttp.Request, component component.Component) (float64, error) {
+func (a *TimeDelayAnalyzer) createRequestBaseline(httpclient *retryablehttp.Client, req *retryablehttp.Request, component component.Component) (float64, error) {
 	rttsSum := float64(0)
 	for i := 0; i < defaultInitializationCount; i++ {
 		duration, err := doHTTPRequestWithTimeTracing(httpclient, req)
