@@ -19,6 +19,7 @@ The addition of fuzzing functionality enhancements also comes with a lot of addi
 - [ ] Swagger Definition
 - [ ] Postman Definition
 - [ ] HAR File
+- [ ] Raw Text Files
 
 ### Encoding
 
