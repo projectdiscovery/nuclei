@@ -11,7 +11,6 @@ import (
 	"github.com/pkg/errors"
 	"gopkg.in/yaml.v2"
 
-	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/config"
 	"github.com/projectdiscovery/nuclei/v2/pkg/js/compiler"
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators"
@@ -258,7 +257,6 @@ func ParseTemplateFromReader(reader io.Reader, preprocessor Preprocessor, option
 			return nil, err
 		}
 		if !template.Verified {
-			gologger.Error().Msgf("unsigned %v", template.ID)
 			SignatureStats[Unsigned].Add(1)
 		}
 		return template, nil
