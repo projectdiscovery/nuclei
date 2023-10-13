@@ -330,8 +330,6 @@ type Options struct {
 	DisableStdin bool
 	// IncludeConditions is the list of conditions templates should match
 	IncludeConditions goflags.StringSlice
-	// Custom Config Directory
-	CustomConfigDir string
 	// Enable uncover engine
 	Uncover bool
 	// Uncover search query
