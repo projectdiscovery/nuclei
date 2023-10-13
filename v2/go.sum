@@ -837,8 +837,6 @@ github.com/projectdiscovery/tlsx v1.1.4 h1:jXRvichO/ZfhYERch1CbNS1PRbS2KgSBj7JoW
 github.com/projectdiscovery/tlsx v1.1.4/go.mod h1:crzMlxOokVQDwGVm51JPZi1ZAgzxhNl1KVRmbff6pkI=
 github.com/projectdiscovery/uncover v1.0.6-0.20230601103158-bfd7e02a5bb1 h1:Pu6LvDqn+iSlhCDKKWm1ItPc++kqqlU8OntZeB/Prak=
 github.com/projectdiscovery/uncover v1.0.6-0.20230601103158-bfd7e02a5bb1/go.mod h1:Drl/CWD392mKtdXJhCBPlMkM0I6671pqedFphcnK5f8=
-github.com/projectdiscovery/utils v0.0.58-0.20231009151631-3681bca54127 h1:GNsAR3SPNcWE3wpW+HJJsPOGWnmdMdECXZN3k3zqkTI=
-github.com/projectdiscovery/utils v0.0.58-0.20231009151631-3681bca54127/go.mod h1:5ub86JF91NnI3nTMIzEpL/pfsNb0jtHznzKi9hv03X4=
 github.com/projectdiscovery/utils v0.0.58-0.20231009161115-60268dca6e8f h1:5GMMQ6d7vqLMvjfibclgWgptj7vm9iDAz8xgRCYd+iI=
 github.com/projectdiscovery/utils v0.0.58-0.20231009161115-60268dca6e8f/go.mod h1:5ub86JF91NnI3nTMIzEpL/pfsNb0jtHznzKi9hv03X4=
 github.com/projectdiscovery/wappalyzergo v0.0.107 h1:B8gzJpAh08f1o+OiDunHAfKtqXiDnFCc7Rj1qKp+DB8=
@@ -1255,6 +1253,7 @@ golang.org/x/sync v0.0.0-20220601150217-0de741cfad7f/go.mod h1:RxMgew5VJxzue5/jJ
 golang.org/x/sync v0.0.0-20220722155255-886fb9371eb4/go.mod h1:RxMgew5VJxzue5/jJTE5uejpjVlOe/izrB70Jof72aM=
 golang.org/x/sync v0.1.0/go.mod h1:RxMgew5VJxzue5/jJTE5uejpjVlOe/izrB70Jof72aM=
 golang.org/x/sync v0.4.0 h1:zxkM55ReGkDlKSM+Fu41A+zmbZuaPVbGMzvvdUPznYQ=
+golang.org/x/sync v0.4.0/go.mod h1:FU7BRWz2tNW+3quACPkgCx/L+uEAv1htQ0V83Z9Rj+Y=
 golang.org/x/sys v0.0.0-20180823144017-11551d06cbcc/go.mod h1:STP8DvDyc/dI5b8T5hshtkjS+E42TnysNCUPdjciGhY=
 golang.org/x/sys v0.0.0-20180830151530-49385e6e1522/go.mod h1:STP8DvDyc/dI5b8T5hshtkjS+E42TnysNCUPdjciGhY=
 golang.org/x/sys v0.0.0-20180905080454-ebe1bf3edb33/go.mod h1:STP8DvDyc/dI5b8T5hshtkjS+E42TnysNCUPdjciGhY=
@@ -1340,6 +1339,7 @@ golang.org/x/term v0.6.0/go.mod h1:m6U89DPEgQRMq3DNkDClhWw02AUbt2daBVO4cn4Hv9U=
 golang.org/x/term v0.8.0/go.mod h1:xPskH00ivmX89bAKVGSKKtLOWNx2+17Eiy94tnKShWo=
 golang.org/x/term v0.10.0/go.mod h1:lpqdcUyK/oCiQxvxVrppt5ggO2KCZ5QblwqPnfZ6d5o=
 golang.org/x/term v0.13.0 h1:bb+I9cTfFazGW51MZqBVmZy7+JEJMouUHTUSKVQLBek=
+golang.org/x/term v0.13.0/go.mod h1:LTmsnFJwVN6bCy1rVCoS+qHT1HhALEFxKncY3WNNh4U=
 golang.org/x/text v0.0.0-20170915032832-14c0d48ead0c/go.mod h1:NqM8EUOU14njkJ3fqMW+pc6Ldnwhi/IjpwHt7yyuwOQ=
 golang.org/x/text v0.3.0/go.mod h1:NqM8EUOU14njkJ3fqMW+pc6Ldnwhi/IjpwHt7yyuwOQ=
 golang.org/x/text v0.3.1-0.20180807135948-17ff2d5776d2/go.mod h1:NqM8EUOU14njkJ3fqMW+pc6Ldnwhi/IjpwHt7yyuwOQ=
