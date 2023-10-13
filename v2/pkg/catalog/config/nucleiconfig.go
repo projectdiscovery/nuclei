@@ -70,6 +70,12 @@ func (c *Config) WriteVersionCheckData(ignorehash, nucleiVersion, templatesVersi
 	return nil
 }
 
+// GetTemplateDir returns the nuclei templates directory absolute path
+func (c *Config) GetTemplateDir() string {
+	val, _ := filepath.Abs(c.TemplatesDirectory)
+	return val
+}
+
 // DisableUpdateCheck disables update check and template updates
 func (c *Config) DisableUpdateCheck() {
 	c.disableUpdates = true
@@ -109,6 +115,11 @@ func (c *Config) UpdateNucleiIgnoreHash() error {
 // GetConfigDir returns the nuclei configuration directory
 func (c *Config) GetConfigDir() string {
 	return c.configDir
+}
+
+// GetKeysDir returns the nuclei signer keys directory
+func (c *Config) GetKeysDir() string {
+	return filepath.Join(c.configDir, "keys")
 }
 
 // GetAllCustomTemplateDirs returns all custom template directories

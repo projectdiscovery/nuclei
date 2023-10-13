@@ -393,11 +393,15 @@ func (store *Store) LoadTemplatesWithTags(templatesList, tags []string) []*templ
 				}
 				gologger.Warning().Msgf("Could not parse template %s: %s\n", templatePath, err)
 			} else if parsed != nil {
-
 				if len(parsed.RequestsHeadless) > 0 && !store.config.ExecutorOptions.Options.Headless {
-					gologger.Warning().Msgf("Headless flag is required for headless template %s\n", templatePath)
-				} else if len(parsed.RequestsCode) > 0 && !parsed.Verified {
-					gologger.Warning().Msgf("The template is not verified: '%s'\n", templatePath)
+					// donot include headless template in final list if headless flag is not set
+					gologger.Warning().Msgf("Headless flag is required for headless template '%s'\n", templatePath)
+				} else if len(parsed.RequestsCode) > 0 && !parsed.Verified && len(parsed.Workflows) == 0 {
+					// donot include unverified 'Code' protocol custom template in final list
+					stats.Increment(parsers.UnsignedWarning)
+					if store.config.ExecutorOptions.Options.VerboseVerbose { // only shown in -vv
+						gologger.Verbose().Msgf("Skipping Unverified custom template %s", templatePath)
+					}
 				} else {
 					loadedTemplates = append(loadedTemplates, parsed)
 				}

@@ -8,10 +8,10 @@ info:
   reference: https://example-reference-link
 
 flow: |
-  dns("0");
+  dns(1);
   template["nameservers"].forEach(nameserver => {
     set("nameserver",nameserver);
-    dns("1");
+    dns(2);
   });
   
 dns:

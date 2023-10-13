@@ -23,6 +23,7 @@ var (
 	debug        = os.Getenv("DEBUG") == "true"
 	githubAction = os.Getenv("GH_ACTION") == "true"
 	customTests  = os.Getenv("TESTS")
+	protocol     = os.Getenv("PROTO")
 
 	success = aurora.Green("[✓]").String()
 	failed  = aurora.Red("[✘]").String()
@@ -131,6 +132,11 @@ func runTests(customTemplatePaths []string) []string {
 	var failedTestTemplatePaths []string
 
 	for proto, testCaseInfos := range protocolTests {
+		if protocol != "" {
+			if !strings.EqualFold(proto, protocol) {
+				continue
+			}
+		}
 		if len(customTemplatePaths) == 0 {
 			fmt.Printf("Running test cases for %q protocol\n", aurora.Blue(proto))
 		}
@@ -170,7 +176,7 @@ func execute(testCase testutils.TestCase, templatePath string) (string, error) {
 func expectResultsCount(results []string, expectedNumbers ...int) error {
 	match := sliceutil.Contains(expectedNumbers, len(results))
 	if !match {
-		return fmt.Errorf("incorrect number of results: %d (actual) vs %v (expected) \nResults:\n\t%s\n", len(results), expectedNumbers, strings.Join(results, "\n\t"))
+		return fmt.Errorf("incorrect number of results: %d (actual) vs %v (expected) \nResults:\n\t%s\n", len(results), expectedNumbers, strings.Join(results, "\n\t")) // nolint:all
 	}
 	return nil
 }

@@ -149,7 +149,11 @@ func generateVariables(inputURL *urlutil.URL, removeTrailingSlash bool) map[stri
 		case BaseURL:
 			knownVariables[v] = parsed.String()
 		case RootURL:
-			knownVariables[v] = fmt.Sprintf("%s://%s", parsed.Scheme, parsed.Host)
+			if parsed.Scheme != "" {
+				knownVariables[v] = fmt.Sprintf("%s://%s", parsed.Scheme, parsed.Host)
+			} else {
+				knownVariables[v] = parsed.Host
+			}
 		case Hostname:
 			knownVariables[v] = parsed.Host
 		case Host:

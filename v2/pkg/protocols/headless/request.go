@@ -94,7 +94,7 @@ func (request *Request) executeRequestWithPayloads(input *contextargs.Context, p
 	defer instance.Close()
 
 	if vardump.EnableVarDump {
-		gologger.Debug().Msgf("Protocol request variables: \n%s\n", vardump.DumpVariables(payloads))
+		gologger.Debug().Msgf("Headless Protocol request variables: \n%s\n", vardump.DumpVariables(payloads))
 	}
 
 	instance.SetInteractsh(request.options.Interactsh)

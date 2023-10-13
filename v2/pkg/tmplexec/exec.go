@@ -155,7 +155,6 @@ func (e *TemplateExecuter) Execute(input *contextargs.Context) (bool, error) {
 
 // ExecuteWithResults executes the protocol requests and returns results instead of writing them.
 func (e *TemplateExecuter) ExecuteWithResults(input *contextargs.Context, callback protocols.OutputEventCallback) error {
-	gologger.Info().Msgf("[%s] Running on %s\n", e.options.TemplateID, input.MetaInput.PrettyPrint())
 	userCallback := func(event *output.InternalWrappedEvent) {
 		if event != nil {
 			callback(event)

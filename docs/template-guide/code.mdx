@@ -1,0 +1,342 @@
+---
+title: "Code"
+---
+
+## Code Requests (beta)
+
+Nuclei enables the execution of external code on the host operating system. This feature allows security researchers, pentesters, and developers to extend the capabilities of Nuclei and perform complex actions beyond the scope of regular supported protocol-based testing.
+
+By leveraging this capability, Nuclei can interact with the underlying operating system and execute custom scripts or commands, opening up a wide range of possibilities. It enables users to perform tasks such as system-level configurations, file operations, network interactions, and more. This level of control and flexibility empowers users to tailor their security testing workflows according to their specific requirements.
+
+However, it's important to exercise caution while utilizing this feature, as executing external code on the host operating system carries inherent risks. It is crucial to ensure that the executed code is secure, thoroughly tested, and does not pose any unintended consequences or security risks to the target system.
+
+## Template Signing (beta)
+
+Template signing via the private-public key mechanism is a crucial aspect of ensuring the integrity and authenticity of templates. This mechanism involves the use of asymmetric cryptography, specifically  ECDSA algorithm, to create a secure and verifiable signature.
+
+In this process, a template author generates a private key that remains confidential and securely stored. The corresponding public key is then shared with the template consumers. When a template is created or modified, the author signs it using their private key, generating a unique signature that is attached to the template.
+
+Template consumers can verify the authenticity and integrity of a signed template by using the author's public key. By applying the appropriate cryptographic algorithm (ECDSA), they can validate the signature and ensure that the template has not been tampered with since it was signed. This provides a level of trust, as any modifications or unauthorized changes to the template would result in a failed verification process.
+
+By employing the private-public key mechanism, template signing adds an additional layer of security and trust to the template ecosystem. It helps establish the identity of the template author and ensures that the templates used in various systems are genuine and have not been altered maliciously.
+
+### What does signing a template mean ?
+
+Template signing is a mechanism to ensure the integrity and authenticity of templates. The primary goal is to provide template writers/consumers a way to trust crowdsource/custom templates ensuring that they are not tampered
+
+All Official nuclei templates include a digital signature in them and are verified by nuclei while loading templates using ProjectDiscovery's public key shipped with nuclei binary itself.
+
+Individuals / Organizations running nuclei in their work environment can generate their own key-pair with `nuclei` and sign their custom templates with their private key, thus ensuring that only authorized templates are being used in their environment.
+
+This also allows entities to fully utilize the power of new protocols like `code` and `javascript` without worrying about malicious custom templates being used in their environment.
+
+**Points to note**
+
+- Template signing is optional for all protocols except `code`.
+
+- Code File References (ex: `source: protocols/code/pyfile.py`) are allowed and content of these files is included in the template digest
+
+- Payload File References (ex: `payloads: protocols/http/params.txt`) are not included in the template digest as it is treated as a payload/helper and not actual code that is being executed
+
+- Template Signing is deterministic while both signing and verifying a template i.e if a code file is referenced in a template that is present outside of templates directory with `-lfa` flag then verification will fail if same template is used without `-lfa` flag. (Note this only applies to `-lfa` i.e local file access flag only)
+
+## How to sign custom templates
+
+Simplest and recommended way to generate key-pair and signing/verfifying templates is to use `nuclei` itself.
+
+#### When Signing a template if key-pair does not exist then nuclei will prompt user to generate a new key-pair with options 
+
+```console
+$ ./nuclei -t my-template.yaml -sign -v
+[INF] Generating new key-pair for signing templates
+[*] Enter User/Organization Name (exit to abort) : projectdiscovery/nuclei-templates
+[*] Enter passphrase (exit to abort): 
+[*] Enter same passphrase again: 
+[INF] Successfully generated new key-pair for signing templates
+
+```
+
+> Note: Passphrase is optional and can be left blank when used private key is encrypted with passphrase using PEMCipherAES256 Algo
+
+#### Signing a template with existing key-pair
+
+```console
+$ ./nuclei -t ~/nuclei-templates/http -sign -v
+[INF] All templates signatures were elaborated success=6464 failed=0
+```
+
+### Template Digest
+
+When a template is signed, a digest is generated and added to the template. This digest is a hash of the template content and is used to verify the integrity of the template. If the template is modified after signing, the digest will change, and the signature verification will fail which happens during template loading.
+
+```yaml
+# digest: 4a0a00473045022100eb01da6b97893e7868c584f330a0cd52df9bddac005860bb8595ba5b8aed58c9022050043feac68d69045cf320cba9298a2eb2e792ea4720d045d01e803de1943e7d:4a3eb6b4988d95847d4203be25ed1d46
+```
+
+It is in the format of `signature:fragment` where signature is digital signature of template which is used to verify integrity of template
+and fragment is a metadata generated by md5 hashing public key to disable re-signing of code templates not written by you.
+
+fragment is meant to act like a speed bump to prevent mass-signing of code protocol templates to prevent any unintended misuse.
+
+### Where are keys stored ?
+
+key-pair generated by nuclei are stored in 2 files in `$config/nuclei/keys` directory where `$config` is system specific config directory
+
+```
+$ la ~/.config/nuclei/keys 
+total 16
+-rw-------  1 tarun  staff   251B Oct  4 21:45 nuclei-user-private-key.pem # encrypted private key with passphrase
+-rw-------  1 tarun  staff   572B Oct  4 21:45 nuclei-user.crt # self signed certificate which includes public key and identifier (i.e user/org name)
+```
+
+### Sharing and Using Public Key
+
+Public key is stored in $config/nuclei/keys/nuclei-user.crt and can be shared with other users / organizations to verify templates signed by you.
+
+#### Using Public Key
+
+- A simple way to use public key is to copy it to $config/nuclei/keys directory of other user's machine
+
+- Another way is to use environment variable `NUCLEI_USER_CERTIFICATE=xxx` to specify path of public key or content of public key directly
+
+```console
+$ export NUCLEI_USER_CERTIFICATE=path/to/nuclei-user.crt
+```
+
+or 
+
+```console
+$ export NUCLEI_USER_CERTIFICATE=$(cat path/to/nuclei-user.crt)
+```
+
+#### Verifying Templates
+
+Everytime `nuclei` is run, it loads user certificate (aka public key) from above locations and uses it to verify templates.
+
+`nuclei` also prints identifier of public key being used and warns user of unsigned custom templates
+
+```
+[INF] Executing 6219 signed templates from projectdiscovery/nuclei-templates
+[WRN] Executing 687 unsigned templates. Use with caution.
+```
+
+### Managing Private Key
+
+Private key is stored in $config/nuclei/keys/nuclei-user-private-key.pem and is encrypted with passphrase if provided while generating key-pair.
+
+It is not used/loaded by default by nuclei and is only used on demand i.e when signing templates using `-sign` flag
+
+Some Users might want to store / backup or move private key to different location or machine and `nuclei` doesn't enforce any restrictions on that.
+
+#### Using Private Key
+
+- A simple way to use private key is to copy it to $config/nuclei/keys directory of other user's machine
+
+- Another way is to use environment variable `NUCLEI_USER_PRIVATE_KEY=xxx` to specify path of private key or content of private key directly
+
+```console
+$ export NUCLEI_USER_PRIVATE_KEY=path/to/nuclei-user-private-key.pem
+```
+
+or
+
+```console
+$ export NUCLEI_USER_PRIVATE_KEY=$(cat path/to/nuclei-user-private-key.pem)
+```
+
+> Note: You are responsible for securing and managing private key and nuclei has no accountability for any loss of private key
+
+
+## Code
+
+In the context of template creation, a code block is used to indicate the start of the requests for the template. This block marks the beginning of the code-related instructions.
+
+```yaml
+# Start the requests for the template right here
+code:
+```
+
+To execute the code, a list of engines is specified, which are searched sequentially until a valid one is found on the system. The engine names must match the corresponding binary names on the system.
+
+```yaml
+- engine:
+    - py
+    - python3
+```
+
+The code to be executed can be provided either as an external file or as a code snippet directly within the template.
+
+For an external file:
+
+```yaml
+source: protocols/code/pyfile.py
+```
+
+For a code snippet:
+```yaml
+source: |
+      import sys
+      print("hello from " + sys.stdin.read())
+```
+
+The target is passed to the template via stdin, and the output of the executed code is available for further processing in matchers and extractors. In the case of the Code protocol, the body part represents all data printed to stdout during the execution of the code.
+
+#### Matchers / Extractor Parts
+
+Valid `part` values supported by **Code** protocol for Matchers / Extractor are - 
+    
+| Value    | Description                                          |
+| -------- | ---------------------------------------------------- |
+| response | execution output (trailing whitespaces are filtered) |
+| stderr   | Raw Stderr Output(if any)                            |
+
+
+#### **Example Code Template**
+
+The provided example demonstrates the execution of a Python script within the template. The specified engines are searched in the given order, and the code snippet is executed accordingly. Additionally, a matcher is included to check if the code's stdout contains the phrase "hello from input." (input must be passed as target with nuclei)
+
+```yaml
+id: py-code-snippet
+
+info:
+  name: py-code-snippet
+  author: pdteam
+  severity: info
+  tags: code
+  description: |
+    py-code-snippet
+
+code:
+  - engine:
+      - py
+      - python3
+    source: |
+      import sys
+      print("hello from " + sys.stdin.read())
+    
+    matchers:
+      - type: word
+        words:
+          - "hello from input"
+# digest: 4a0a00473045022067a69eb337ffa56d1c8e2cc57b7f74a5eb3294e6f366c9074778b2da3f1d795d02210096d6acda6acd2fe0ff005b08a9c0b72b63f599532ec6493f44b8518265d0e5fd:4a3eb6b4988d95847d4203be25ed1d46
+```
+
+### Optional Fields for Code Protocol
+
+Apart from required fields mentioned above, Code protocol also supports following optional fields to further customize the execution of code.
+
+#### Args
+
+Args are arguments that are sent to engine while executing the code. For example if we want to bypass execution policy in powershell for specific template this can be done by adding following args to the template.
+
+```yaml
+  - engine:
+      - powershell
+      - powershell.exe
+    args:
+      - -ExecutionPolicy
+      - Bypass
+      - -File
+```
+
+#### Pattern
+
+Pattern field can be used to customize name / extension of temporary file while executing a code snippet in a template
+
+```yaml
+    pattern: "*.ps1"
+```
+
+adding `pattern: "*.ps1"` will make sure that name of temporary file given pattern
+
+
+### Example Code Template with Args and Pattern
+
+Below is a example code template where we are executing a powershell script while customizing behaviour of execution policy and setting pattern to `*.ps1`
+
+```yaml
+id: ps1-code-snippet
+
+info:
+  name: ps1-code-snippet
+  author: pdteam
+  severity: info
+  tags: code
+  description: |
+    ps1-code-snippet
+
+code:
+  - engine:
+      - powershell
+      - powershell.exe
+    args:
+      - -ExecutionPolicy
+      - Bypass
+      - -File
+    pattern: "*.ps1"
+    source: |
+      $stdin = [Console]::In
+      $line = $stdin.ReadLine()
+      Write-Host "hello from $line"
+    
+    matchers:
+      - type: word
+        words:
+          - "hello from input"
+# digest: 4a0a00473045022100eb01da6b97893e7868c584f330a0cd52df9bddac005860bb8595ba5b8aed58c9022050043feac68d69045cf320cba9298a2eb2e792ea4720d045d01e803de1943e7d:4a3eb6b4988d95847d4203be25ed1d46
+```
+
+For more examples, please refer to example [code-templates](https://github.com/projectdiscovery/nuclei/blob/3a5f9d626ea7b632ccca601b658acd9758f8f01b/integration_tests/protocols/code) in integration tests.
+
+
+## FAQ
+
+### I got this error when running a template . What does it mean ?
+
+```
+./nuclei -u scanme.sh -t simple-code.yaml 
+
+                     __     _
+   ____  __  _______/ /__  (_)
+  / __ \/ / / / ___/ / _ \/ /
+ / / / / /_/ / /__/ /  __/ /
+/_/ /_/\__,_/\___/_/\___/_/   v3.0.0-dev
+
+		projectdiscovery.io
+
+[WRN] Found 1 unsigned or tampered code template (carefully examine before using it & use -sign flag to sign them)
+[INF] Current nuclei version: v3.0.0-dev (development)
+[INF] Current nuclei-templates version: v9.6.4 (latest)
+[WRN] Executing 1 unsigned templates. Use with caution.
+[INF] Targets loaded for current scan: 1
+[INF] No results found. Better luck next time!
+[FTL] Could not run nuclei: no templates provided for scan
+```
+
+Here `simple-code.yaml` is a code protocol template which is not signed or content of template has been modified after signing which indicates loss of integrity of template.
+If you are template writer then you can go ahead and sign the template using `-sign` flag and if you are template consumer then you should carefully examine the template before signing it.
+
+### What does `re-signing code templates are not allowed for security reasons` error mean?
+
+```bash
+nuclei -u scanme.sh -t simple-code.yaml -sign
+
+[ERR] could not sign 'simple-code.yaml': [signer:RUNTIME] re-signing code templates are not allowed for security reasons.
+[INF] All templates signatures were elaborated success=0 failed=1
+```
+
+The error message `re-signing code templates are not allowed for security reasons` comes from the Nuclei engine. This error indicates that a code template initially signed by another user and someone is trying to re-sign it.
+
+This measure was implemented to prevent running untrusted templates unknowingly, which might lead to potential security issues.
+When you encounter this error, it suggests that you're dealing with a template that has been signed by another user Likely, the original signer is not you or the team from projectdiscovery.
+
+By default, Nuclei disallows executing code templates that are signed by anyone other than you or from the public templates provided by projectdiscovery/nuclei-templates.
+
+This is done to prevent potential security abuse using code templates.
+
+To resolve this error:
+  1.  Open and thoroughly examine the code template for any modifications.
+  2.  Manually remove the existing digest signature from the template.
+  3.  Sign the template again.
+
+This way, you can ensure that only templates verified and trusted by you (or projectdiscovery) are run, thus maintaining a secure environment.

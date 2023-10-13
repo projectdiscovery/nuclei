@@ -265,7 +265,7 @@ func (p *Page) NavigateURL(action *Action, out map[string]string, allvars map[st
 	allvars = generators.MergeMaps(allvars, defaultReqVars)
 
 	if vardump.EnableVarDump {
-		gologger.Debug().Msgf("Final Protocol request variables: \n%s\n", vardump.DumpVariables(allvars))
+		gologger.Debug().Msgf("Headless Protocol request variables: \n%s\n", vardump.DumpVariables(allvars))
 	}
 
 	// Evaluate the target url with all variables
