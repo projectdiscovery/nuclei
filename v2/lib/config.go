@@ -16,6 +16,29 @@ import (
 	"github.com/projectdiscovery/ratelimit"
 )
 
+// TemplateSources contains template sources
+// which define where to load templates from
+type TemplateSources struct {
+	Templates       []string // template file/directory paths
+	Workflows       []string // workflow file/directory paths
+	RemoteTemplates []string // remote template urls
+	RemoteWorkflows []string // remote workflow urls
+	TrustedDomains  []string // trusted domains for remote templates/workflows
+}
+
+// WithTemplatesOrWorkflows sets templates / workflows to use /load
+func WithTemplatesOrWorkflows(sources TemplateSources) NucleiSDKOptions {
+	return func(e *NucleiEngine) error {
+		// by default all of these values are empty
+		e.opts.Templates = sources.Templates
+		e.opts.Workflows = sources.Workflows
+		e.opts.TemplateURLs = sources.RemoteTemplates
+		e.opts.WorkflowURLs = sources.RemoteWorkflows
+		e.opts.RemoteTemplateDomainList = append(e.opts.RemoteTemplateDomainList, sources.TrustedDomains...)
+		return nil
+	}
+}
+
 // config contains all SDK configuration options
 type TemplateFilters struct {
 	Severity             string   // filter by severities (accepts CSV values of info, low, medium, high, critical)

@@ -23,6 +23,9 @@ const (
 	CustomGitHubTemplatesDirName = "github"
 	CustomAzureTemplatesDirName  = "azure"
 	CustomGitLabTemplatesDirName = "gitlab"
+	BinaryName                   = "nuclei"
+	FallbackConfigFolderName     = ".nuclei-config"
+	NucleiConfigDirEnv           = "NUCLEI_CONFIG_DIR"
 )
 
 // IsOutdatedVersion compares two versions and returns true

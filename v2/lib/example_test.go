@@ -41,6 +41,7 @@ func ExampleThreadSafeNucleiEngine() {
 	}
 	// setup sizedWaitgroup to handle concurrency
 	// here we are using sizedWaitgroup to limit concurrency to 1
+	// but can be anything in general
 	sg := sizedwaitgroup.New(1)
 
 	// scan 1 = run dns templates on scanme.sh
@@ -71,7 +72,6 @@ func ExampleThreadSafeNucleiEngine() {
 
 	// Output:
 	// [nameserver-fingerprint] scanme.sh
-	// [dns-saas-service-detection] honey.scanme.sh
 }
 
 func TestMain(m *testing.M) {
