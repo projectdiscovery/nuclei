@@ -37,7 +37,7 @@ func RunNucleiAndGetResults(isTemplate bool, template, url string, debug bool, e
 		templateOrWorkflowFlag = "-w"
 	}
 
-	return RunNucleiBareArgsAndGetResults(debug, append([]string{
+	return RunNucleiBareArgsAndGetResults(debug, nil, append([]string{
 		templateOrWorkflowFlag,
 		template,
 		"-target",
@@ -45,7 +45,7 @@ func RunNucleiAndGetResults(isTemplate bool, template, url string, debug bool, e
 	}, extra...)...)
 }
 
-func RunNucleiBareArgsAndGetResults(debug bool, extra ...string) ([]string, error) {
+func RunNucleiBareArgsAndGetResults(debug bool, env []string, extra ...string) ([]string, error) {
 	cmd := exec.Command("./nuclei")
 	extra = append(extra, ExtraDebugArgs...)
 	cmd.Args = append(cmd.Args, extra...)
@@ -53,6 +53,9 @@ func RunNucleiBareArgsAndGetResults(debug bool, extra ...string) ([]string, erro
 	cmd.Args = append(cmd.Args, "-interactions-poll-duration", "1")
 	cmd.Args = append(cmd.Args, "-interactions-cooldown-period", "10")
 	cmd.Args = append(cmd.Args, "-allow-local-file-access")
+	if env != nil {
+		cmd.Env = append(os.Environ(), env...)
+	}
 	if debug {
 		cmd.Args = append(cmd.Args, "-debug")
 		cmd.Stderr = os.Stderr

@@ -262,7 +262,6 @@ on extensive configurability, massive extensibility and ease of use.`)
 		flagSet.StringVarP(&options.Interface, "interface", "i", "", "network interface to use for network scan"),
 		flagSet.StringVarP(&options.AttackType, "attack-type", "at", "", "type of payload combinations to perform (batteringram,pitchfork,clusterbomb)"),
 		flagSet.StringVarP(&options.SourceIP, "source-ip", "sip", "", "source ip address to use for network scan"),
-		flagSet.StringVar(&options.CustomConfigDir, "config-directory", "", "override the default config path ($home/.config)"),
 		flagSet.IntVarP(&options.ResponseReadSize, "response-size-read", "rsr", 10*1024*1024, "max response size to read in bytes"),
 		flagSet.IntVarP(&options.ResponseSaveSize, "response-size-save", "rss", 1*1024*1024, "max response size to read in bytes"),
 		flagSet.CallbackVar(resetCallback, "reset", "reset removes all nuclei configuration and data files (including nuclei-templates)"),
@@ -388,7 +387,11 @@ on extensive configurability, massive extensibility and ease of use.`)
 		flagSet.BoolVar(&options.NoTables, "no-tables", false, "do not display pretty-printed tables"),
 		flagSet.IntVar(&options.OutputLimit, "limit", 100, "limit the number of output to display"),
 	)
-
+	// nuclei has multiple migrations
+	// ex: resume.cfg moved to platform standard cache dir from config dir
+	// ex: config.yaml moved to platform standard config dir from linux specific config dir
+	// and hence it will be attempted in config package during init
+	goflags.DisableAutoConfigMigration = true
 	_ = flagSet.Parse()
 
 	gologger.DefaultLogger.SetTimestamp(options.Timestamp, levels.LevelDebug)
@@ -401,8 +404,8 @@ on extensive configurability, massive extensibility and ease of use.`)
 	if options.LeaveDefaultPorts {
 		http.LeaveDefaultPorts = true
 	}
-	if options.CustomConfigDir != "" {
-		config.DefaultConfig.SetConfigDir(options.CustomConfigDir)
+	if customConfigDir := os.Getenv(config.NucleiConfigDirEnv); customConfigDir != "" {
+		config.DefaultConfig.SetConfigDir(customConfigDir)
 		readFlagsConfig(flagSet)
 	}
 	if cfgFile != "" {
@@ -424,7 +427,7 @@ on extensive configurability, massive extensibility and ease of use.`)
 
 // cleanupOldResumeFiles cleans up resume files older than 10 days.
 func cleanupOldResumeFiles() {
-	root := config.DefaultConfig.GetConfigDir()
+	root := config.DefaultConfig.GetCacheDir()
 	filter := fileutil.FileFilters{
 		OlderThan: 24 * time.Hour * 10, // cleanup on the 10th day
 		Prefix:    "resume-",
@@ -469,6 +472,8 @@ func disableUpdatesCallback() {
 // printVersion prints the nuclei version and exits.
 func printVersion() {
 	gologger.Info().Msgf("Nuclei Engine Version: %s", config.Version)
+	gologger.Info().Msgf("Nuclei Config Directory: %s", config.DefaultConfig.GetConfigDir())
+	gologger.Info().Msgf("Nuclei Cache Directory: %s", config.DefaultConfig.GetCacheDir()) // cache dir contains resume files
 	os.Exit(0)
 }
 
