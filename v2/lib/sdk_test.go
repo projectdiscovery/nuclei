@@ -20,6 +20,24 @@ func TestSimpleNuclei(t *testing.T) {
 	defer ne.Close()
 }
 
+func TestSimpleNucleiRemote(t *testing.T) {
+	ne, err := nuclei.NewNucleiEngine(
+		nuclei.WithTemplatesOrWorkflows(
+			nuclei.TemplateSources{
+				RemoteTemplates: []string{"https://templates.nuclei.sh/public/nameserver-fingerprint.yaml"},
+			},
+		),
+	)
+	require.Nil(t, err)
+	ne.LoadTargets([]string{"scanme.sh"}, false) // probe non http/https target is set to false here
+	err = ne.LoadAllTemplates()
+	require.Nil(t, err, "could not load templates")
+	// when callback is nil it nuclei will print JSON output to stdout
+	err = ne.ExecuteWithCallback(nil)
+	require.Nil(t, err)
+	defer ne.Close()
+}
+
 func TestThreadSafeNuclei(t *testing.T) {
 	// create nuclei engine with options
 	ne, err := nuclei.NewThreadSafeNucleiEngine()

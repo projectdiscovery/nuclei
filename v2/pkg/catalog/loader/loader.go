@@ -32,6 +32,10 @@ const (
 	httpsPrefix = "https://"
 )
 
+var (
+	TrustedTemplateDomains = []string{"templates.nuclei.sh", "cloud.projectdiscovery.io"}
+)
+
 // Config contains the configuration options for the loader
 type Config struct {
 	Templates                []string
@@ -100,6 +104,7 @@ func NewConfig(options *types.Options, catalog catalog.Catalog, executerOpts pro
 		Catalog:                  catalog,
 		ExecutorOptions:          executerOpts,
 	}
+	loaderConfig.RemoteTemplateDomainList = append(loaderConfig.RemoteTemplateDomainList, TrustedTemplateDomains...)
 	return &loaderConfig
 }
 
