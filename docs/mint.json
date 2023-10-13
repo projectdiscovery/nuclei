@@ -72,6 +72,7 @@
         "template-guide/dns",
         "template-guide/file",
         "template-guide/javascript",
+        "template-guide/code",
         {
           "group": "Operators",
           "pages": [

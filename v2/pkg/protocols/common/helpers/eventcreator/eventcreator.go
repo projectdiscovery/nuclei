@@ -6,6 +6,8 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/utils/vardump"
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
 )
 
 // CreateEvent wraps the outputEvent with the result of the operators defined on the request
@@ -21,7 +23,8 @@ func CreateEventWithAdditionalOptions(request protocols.Request, outputEvent out
 
 	// Dump response variables if ran in debug mode
 	if vardump.EnableVarDump {
-		gologger.Debug().Msgf("Protocol response variables: \n%s\n", vardump.DumpVariables(outputEvent))
+		protoName := cases.Title(language.English).String(request.Type().String())
+		gologger.Debug().Msgf("%v Protocol response variables: \n%s\n", protoName, vardump.DumpVariables(outputEvent))
 	}
 	for _, compiledOperator := range request.GetCompiledOperators() {
 		if compiledOperator != nil {

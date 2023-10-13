@@ -1,29 +1,41 @@
 package signer
 
 import (
-	"errors"
+	"github.com/projectdiscovery/gologger"
+	v2 "github.com/projectdiscovery/nuclei/v2"
+	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/config"
+	errorutil "github.com/projectdiscovery/utils/errors"
 )
 
-const (
-	PrivateKeyEnvVarName = "NUCLEI_SIGNATURE_PRIVATE_KEY"
-	PublicKeyEnvVarName  = "NUCLEI_SIGNATURE_PUBLIC_KEY"
-	AlgorithmEnvVarName  = "NUCLEI_SIGNATURE_ALGORITHM"
-)
-
-var DefaultVerifiers []*Signer
+// DefaultTemplateVerifiers contains the default template verifiers
+var DefaultTemplateVerifiers []*TemplateSigner
 
 func init() {
-	// add default pd verifier
-	if verifier, err := NewVerifier(&Options{PublicKeyData: pdPublicKey, Algorithm: RSA}); err == nil {
-		DefaultVerifiers = append(DefaultVerifiers, verifier)
+	h := &KeyHandler{
+		UserCert: v2.NucleiCert,
+	}
+	if err := h.ParseUserCert(); err != nil {
+		gologger.Error().Msgf("Could not parse pd nuclei certificate: %s\n", err)
+		return
+	}
+	DefaultTemplateVerifiers = append(DefaultTemplateVerifiers, &TemplateSigner{handler: h})
+
+	// try to load default user cert
+	usr := &KeyHandler{}
+	if err := usr.ReadCert(CertEnvVarName, config.DefaultConfig.GetKeysDir()); err == nil {
+		if err := usr.ParseUserCert(); err != nil {
+			gologger.Error().Msgf("malformed user cert found: %s\n", err)
+			return
+		}
+		DefaultTemplateVerifiers = append(DefaultTemplateVerifiers, &TemplateSigner{handler: usr})
 	}
 }
 
-func AddToDefault(s *Signer) error {
+// AddSignerToDefault adds a signer to the default list of signers
+func AddSignerToDefault(s *TemplateSigner) error {
 	if s == nil {
-		return errors.New("signer is nil")
+		return errorutil.New("signer is nil")
 	}
-
-	DefaultVerifiers = append(DefaultVerifiers, s)
+	DefaultTemplateVerifiers = append(DefaultTemplateVerifiers, s)
 	return nil
 }

@@ -83,9 +83,9 @@ func (f *FlowExecutor) requestExecutor(reqMap mapsutil.Map[string, protocols.Req
 	for _, id := range opts.reqIDS {
 		req, ok := reqMap[id]
 		if !ok {
-			gologger.Error().Msgf("invalid request id '%s' provided", id)
+			gologger.Error().Msgf("[%v] invalid request id '%s' provided", f.options.TemplateID, id)
 			// compile error
-			if err := f.allErrs.Set(opts.protoName+":"+id, ErrInvalidRequestID.Msgf(id)); err != nil {
+			if err := f.allErrs.Set(opts.protoName+":"+id, ErrInvalidRequestID.Msgf(f.options.TemplateID, id)); err != nil {
 				gologger.Error().Msgf("failed to store flow runtime errors got %v", err)
 			}
 			return matcherStatus.Load()

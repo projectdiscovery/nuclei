@@ -8,7 +8,7 @@ info:
   reference: https://example-reference-link
 
 flow: |
-  dns("0");
+  dns(1);
   template["nameservers"].forEach(nameserver => {
     set("nameserver",nameserver);
     dns("probe-ns");

@@ -11,7 +11,6 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/loader/filter"
 	"github.com/projectdiscovery/nuclei/v2/pkg/templates"
 	"github.com/projectdiscovery/nuclei/v2/pkg/templates/cache"
-	"github.com/projectdiscovery/nuclei/v2/pkg/templates/signer"
 	"github.com/projectdiscovery/nuclei/v2/pkg/templates/types"
 	"github.com/projectdiscovery/nuclei/v2/pkg/utils"
 	"github.com/projectdiscovery/nuclei/v2/pkg/utils/stats"
@@ -143,6 +142,7 @@ const (
 	SyntaxWarningStats   = "syntax-warnings"
 	SyntaxErrorStats     = "syntax-errors"
 	RuntimeWarningsStats = "runtime-warnings"
+	UnsignedWarning      = "unsigned-warnings"
 )
 
 func init() {
@@ -151,6 +151,7 @@ func init() {
 	stats.NewEntry(SyntaxWarningStats, "Found %d templates with syntax warning (use -validate flag for further examination)")
 	stats.NewEntry(SyntaxErrorStats, "Found %d templates with syntax error (use -validate flag for further examination)")
 	stats.NewEntry(RuntimeWarningsStats, "Found %d templates with runtime error (use -validate flag for further examination)")
+	stats.NewEntry(UnsignedWarning, "Found %d unsigned or tampered code template (carefully examine before using it & use -sign flag to sign them)")
 }
 
 // ParseTemplate parses a template and returns a *templates.Template structure
@@ -165,14 +166,6 @@ func ParseTemplate(templatePath string, catalog catalog.Catalog) (*templates.Tem
 
 	template := &templates.Template{}
 
-	// check if the template is verified
-	for _, verifier := range signer.DefaultVerifiers {
-		if template.Verified {
-			break
-		}
-		template.Verified, _ = signer.Verify(verifier, data)
-	}
-
 	switch config.GetTemplateFormatFromExt(templatePath) {
 	case config.JSON:
 		err = json.Unmarshal(data, template)
@@ -186,7 +179,6 @@ func ParseTemplate(templatePath string, catalog catalog.Catalog) (*templates.Tem
 		err = fmt.Errorf("failed to identify template format expected JSON or YAML but got %v", templatePath)
 	}
 	if err != nil {
-		stats.Increment(SyntaxErrorStats)
 		return nil, err
 	}
 
