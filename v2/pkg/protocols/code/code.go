@@ -10,6 +10,7 @@ import (
 
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/gozero"
+	gozerotypes "github.com/projectdiscovery/gozero/types"
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators"
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators/extractors"
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators/matchers"
@@ -20,10 +21,11 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/helpers/eventcreator"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/helpers/responsehighlighter"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/interactsh"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/utils/vardump"
 	protocolutils "github.com/projectdiscovery/nuclei/v2/pkg/protocols/utils"
 	templateTypes "github.com/projectdiscovery/nuclei/v2/pkg/templates/types"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
-	fileutil "github.com/projectdiscovery/utils/file"
+	errorutil "github.com/projectdiscovery/utils/errors"
 )
 
 // Request is a request for the SSL protocol
@@ -63,17 +65,13 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 	}
 	engine, err := gozero.New(gozeroOptions)
 	if err != nil {
-		return err
+		return errorutil.NewWithErr(err).Msgf("[%s] engines '%s' not available on host", options.TemplateID, strings.Join(request.Engine, ","))
 	}
 	request.gozero = engine
 
 	var src *gozero.Source
 
-	if fileutil.FileExists(request.Source) {
-		src, err = gozero.NewSourceWithFile(request.Source)
-	} else {
-		src, err = gozero.NewSourceWithString(request.Source, request.Pattern)
-	}
+	src, err = gozero.NewSourceWithString(request.Source, request.Pattern)
 	if err != nil {
 		return err
 	}
@@ -85,6 +83,18 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 		compiled.TemplateID = options.TemplateID
 		if err := compiled.Compile(); err != nil {
 			return errors.Wrap(err, "could not compile operators")
+		}
+		for _, matcher := range compiled.Matchers {
+			// default matcher part for code protocol is response
+			if matcher.Part == "" || matcher.Part == "body" {
+				matcher.Part = "response"
+			}
+		}
+		for _, extractor := range compiled.Extractors {
+			// default extractor part for code protocol is response
+			if extractor.Part == "" || extractor.Part == "body" {
+				extractor.Part = "response"
+			}
 		}
 		request.CompiledOperators = compiled
 	}
@@ -126,34 +136,35 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 	for name, value := range variables {
 		v := fmt.Sprint(value)
 		v, interactshURLs = request.options.Interactsh.Replace(v, interactshURLs)
-		metaSrc.AddVariable(gozero.Variable{Name: name, Value: v})
+		metaSrc.AddVariable(gozerotypes.Variable{Name: name, Value: v})
 	}
 	gOutput, err := request.gozero.Eval(context.Background(), request.src, metaSrc)
 	if err != nil {
 		return err
 	}
-	defer func() {
-		if err := gOutput.Cleanup(); err != nil {
-			gologger.Warning().Msgf("%s\n", err)
-		}
-	}()
+	gologger.Verbose().Msgf("[%s] Executed code on local machine %v", request.options.TemplateID, input.MetaInput.Input)
 
-	dataOutput, err := gOutput.ReadAll()
-	if err != nil {
-		return err
+	if vardump.EnableVarDump {
+		gologger.Debug().Msgf("Code Protocol request variables: \n%s\n", vardump.DumpVariables(variables))
 	}
 
-	dataOutputString := fmtStdout(string(dataOutput))
+	if request.options.Options.Debug || request.options.Options.DebugRequests {
+		gologger.Debug().Msgf("[%s] Dumped Executed Source Code for %v\n\n%v\n", request.options.TemplateID, input.MetaInput.Input, request.Source)
+	}
+
+	dataOutputString := fmtStdout(gOutput.Stdout.String())
 
 	data := make(output.InternalEvent)
 
 	data["type"] = request.Type().String()
-	data["response"] = string(dataOutput)
-	data["body"] = dataOutputString
+	data["response"] = dataOutputString // response contains filtered output (eg without trailing \n)
 	data["input"] = input.MetaInput.Input
 	data["template-path"] = request.options.TemplatePath
 	data["template-id"] = request.options.TemplateID
 	data["template-info"] = request.options.TemplateInfo
+	if gOutput.Stderr.Len() > 0 {
+		data["stderr"] = fmtStdout(gOutput.Stderr.String())
+	}
 
 	// expose response variables in proto_var format
 	// this is no-op if the template is not a multi protocol template
@@ -181,10 +192,10 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 	}
 
 	if request.options.Options.Debug || request.options.Options.DebugResponse || request.options.Options.StoreResponse {
-		msg := fmt.Sprintf("[%s] Dumped Code Execution for %s", request.options.TemplateID, input.MetaInput.Input)
+		msg := fmt.Sprintf("[%s] Dumped Code Execution for %s\n\n", request.options.TemplateID, input.MetaInput.Input)
 		if request.options.Options.Debug || request.options.Options.DebugResponse {
 			gologger.Debug().Msg(msg)
-			gologger.Print().Msgf("%s", responsehighlighter.Highlight(event.OperatorsResult, dataOutputString, request.options.Options.NoColor, false))
+			gologger.Print().Msgf("%s\n\n", responsehighlighter.Highlight(event.OperatorsResult, dataOutputString, request.options.Options.NoColor, false))
 		}
 		if request.options.Options.StoreResponse {
 			request.options.Output.WriteStoreDebugData(input.MetaInput.Input, request.options.TemplateID, request.Type().String(), fmt.Sprintf("%s\n%s", msg, dataOutputString))

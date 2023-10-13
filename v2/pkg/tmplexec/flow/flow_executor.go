@@ -14,6 +14,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/contextargs"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/generators"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/protocolstate"
 	templateTypes "github.com/projectdiscovery/nuclei/v2/pkg/templates/types"
 
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
@@ -25,7 +26,7 @@ import (
 
 var (
 	// ErrInvalidRequestID is a request id error
-	ErrInvalidRequestID = errorutil.NewWithFmt("invalid request id '%s' provided")
+	ErrInvalidRequestID = errorutil.NewWithFmt("[%s] invalid request id '%s' provided")
 )
 
 // FlowExecutor is a flow executor for executing a flow
@@ -84,7 +85,7 @@ func NewFlowExecutor(requests []protocols.Request, input *contextargs.Context, o
 		},
 		protoFunctions: map[string]func(call goja.FunctionCall) goja.Value{},
 		results:        results,
-		jsVM:           goja.New(),
+		jsVM:           protocolstate.NewJSRuntime(),
 		input:          input,
 	}
 	return f
@@ -124,6 +125,7 @@ func (f *FlowExecutor) Compile() error {
 		counter := 0
 		proto := strings.ToLower(p) // donot use loop variables in callback functions directly
 		for index := range requests {
+			counter++ // start index from 1
 			request := f.allProtocols[proto][index]
 			if request.GetID() != "" {
 				// if id is present use it
@@ -132,7 +134,6 @@ func (f *FlowExecutor) Compile() error {
 			// fallback to using index as id
 			// always allow index as id as a fallback
 			reqMap[strconv.Itoa(counter)] = request
-			counter++
 		}
 		// ---define hook that allows protocol/request execution from js-----
 		// --- this is the actual callback that is executed when function is invoked in js----

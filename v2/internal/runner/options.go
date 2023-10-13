@@ -20,7 +20,6 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/protocolinit"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/utils/vardump"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/headless/engine"
-	"github.com/projectdiscovery/nuclei/v2/pkg/templates/signer"
 	protocoltypes "github.com/projectdiscovery/nuclei/v2/pkg/templates/types"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 	fileutil "github.com/projectdiscovery/utils/file"
@@ -77,10 +76,6 @@ func ParseOptions(options *types.Options) {
 
 	// Load the resolvers if user asked for them
 	loadResolvers(options)
-
-	if err := loadTemplateSignaturesKeys(options); err != nil && !getBoolEnvValue("HIDE_TEMPLATE_SIG_WARNING") {
-		gologger.Warning().Msgf("Could not initialize code template verifier: %s\n", err)
-	}
 
 	err := protocolinit.Init(options)
 	if err != nil {
@@ -432,35 +427,6 @@ func readEnvInputVars(options *types.Options) {
 	if options.MarkdownExportSortMode != "template" && options.MarkdownExportSortMode != "severity" && options.MarkdownExportSortMode != "host" {
 		options.MarkdownExportSortMode = ""
 	}
-}
-
-func loadTemplateSignaturesKeys(options *types.Options) error {
-	if options.CodeTemplateSignaturePublicKey == "" {
-		return errors.New("public key not defined")
-	}
-
-	if options.CodeTemplateSignatureAlgorithm == "" {
-		return errors.New("signature algorithm not defined")
-	}
-
-	signatureAlgo, err := signer.ParseAlgorithm(options.CodeTemplateSignatureAlgorithm)
-	if err != nil {
-		return err
-	}
-
-	signerOptions := &signer.Options{Algorithm: signatureAlgo}
-	if fileutil.FileExists(options.CodeTemplateSignaturePublicKey) {
-		signerOptions.PublicKeyName = options.CodeTemplateSignaturePublicKey
-	} else {
-		signerOptions.PublicKeyData = []byte(options.CodeTemplateSignaturePublicKey)
-	}
-
-	verifier, err := signer.NewVerifier(signerOptions)
-	if err != nil {
-		return err
-	}
-
-	return signer.AddToDefault(verifier)
 }
 
 func getBoolEnvValue(key string) bool {

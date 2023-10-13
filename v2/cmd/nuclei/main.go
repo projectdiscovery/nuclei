@@ -23,11 +23,12 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators/common/dsl"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/uncover"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/http"
+	"github.com/projectdiscovery/nuclei/v2/pkg/templates"
+	"github.com/projectdiscovery/nuclei/v2/pkg/templates/extensions"
 	"github.com/projectdiscovery/nuclei/v2/pkg/templates/signer"
 	templateTypes "github.com/projectdiscovery/nuclei/v2/pkg/templates/types"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types/scanstrategy"
-	"github.com/projectdiscovery/nuclei/v2/pkg/utils"
 	"github.com/projectdiscovery/nuclei/v2/pkg/utils/monitor"
 	errorutil "github.com/projectdiscovery/utils/errors"
 	fileutil "github.com/projectdiscovery/utils/file"
@@ -53,40 +54,28 @@ func main() {
 
 	// sign the templates if requested - only glob syntax is supported
 	if options.SignTemplates {
-		privKey := os.Getenv(signer.PrivateKeyEnvVarName)
-		if privKey == "" {
-			gologger.Fatal().Msgf("private key '%s' not defined ", signer.PrivateKeyEnvVarName)
-		}
-		pubKey := os.Getenv(signer.PublicKeyEnvVarName)
-		if pubKey == "" {
-			gologger.Fatal().Msgf("public key '%s' not defined ", signer.PublicKeyEnvVarName)
-		}
-		signerOptions := &signer.Options{
-			Algorithm: signer.RSA,
-		}
-		if fileutil.FileExists(privKey) {
-			signerOptions.PrivateKeyName = privKey
-		} else {
-			signerOptions.PrivateKeyData = []byte(privKey)
-		}
-		if fileutil.FileExists(pubKey) {
-			signerOptions.PublicKeyName = pubKey
-		} else {
-			signerOptions.PublicKeyData = []byte(pubKey)
-		}
-		sign, err := signer.New(signerOptions)
+		tsigner, err := signer.NewTemplateSigner(nil, nil) // will read from env , config or generate new keys
 		if err != nil {
 			gologger.Fatal().Msgf("couldn't initialize signer crypto engine: %s\n", err)
 		}
 
+		successCounter := 0
+		errorCounter := 0
 		for _, item := range options.Templates {
 			err := filepath.WalkDir(item, func(iterItem string, d fs.DirEntry, err error) error {
-				if err != nil || d.IsDir() {
+				if err != nil || d.IsDir() || !strings.HasSuffix(iterItem, extensions.YAML) {
+					// skip non yaml files
 					return nil
 				}
 
-				if err := utils.ProcessFile(sign, iterItem); err != nil {
-					gologger.Warning().Msgf("could not sign '%s': %s\n", iterItem, err)
+				if err := templates.SignTemplate(tsigner, iterItem); err != nil {
+					if err != templates.ErrNotATemplate {
+						// skip warnings and errors as given items are not templates
+						errorCounter++
+						gologger.Error().Msgf("could not sign '%s': %s\n", iterItem, err)
+					}
+				} else {
+					successCounter++
 				}
 
 				return nil
@@ -94,8 +83,8 @@ func main() {
 			if err != nil {
 				gologger.Error().Msgf("%s\n", err)
 			}
-			gologger.Info().Msgf("All templates signatures were elaborated\n")
 		}
+		gologger.Info().Msgf("All templates signatures were elaborated success=%d failed=%d\n", successCounter, errorCounter)
 		return
 	}
 

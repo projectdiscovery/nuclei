@@ -3,7 +3,10 @@ package templates
 
 import (
 	"encoding/json"
+	"io"
+	"path/filepath"
 	"strconv"
+	"strings"
 
 	validate "github.com/go-playground/validator/v10"
 	"github.com/projectdiscovery/nuclei/v2/pkg/model"
@@ -22,6 +25,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/templates/types"
 	"github.com/projectdiscovery/nuclei/v2/pkg/workflows"
 	errorutil "github.com/projectdiscovery/utils/errors"
+	fileutil "github.com/projectdiscovery/utils/file"
 	"go.uber.org/multierr"
 	"gopkg.in/yaml.v2"
 )
@@ -152,6 +156,9 @@ type Template struct {
 
 	// RequestsQueue contains all template requests in order (both protocol & request order)
 	RequestsQueue []protocols.Request `yaml:"-" json:"-"`
+
+	// ImportedFiles contains list of files whose contents are imported after template was compiled
+	ImportedFiles []string `yaml:"-" json:"-"`
 }
 
 // Type returns the type of the template
@@ -184,6 +191,11 @@ func (template *Template) Type() types.ProtocolType {
 	}
 }
 
+// HasCodeProtocol returns true if the template has a code protocol section
+func (template *Template) HasCodeProtocol() bool {
+	return len(template.RequestsCode) > 0
+}
+
 // validateAllRequestIDs check if that protocol already has given id if not
 // then is is manually set to proto_index
 func (template *Template) validateAllRequestIDs() {
@@ -193,35 +205,36 @@ func (template *Template) validateAllRequestIDs() {
 	if len(template.RequestsCode) > 1 {
 		for i, req := range template.RequestsCode {
 			if req.ID == "" {
-				req.ID = req.Type().String() + "_" + strconv.Itoa(i)
+				req.ID = req.Type().String() + "_" + strconv.Itoa(i+1)
 			}
 		}
 	}
+
 	if len(template.RequestsDNS) > 1 {
 		for i, req := range template.RequestsDNS {
 			if req.ID == "" {
-				req.ID = req.Type().String() + "_" + strconv.Itoa(i)
+				req.ID = req.Type().String() + "_" + strconv.Itoa(i+1)
 			}
 		}
 	}
 	if len(template.RequestsFile) > 1 {
 		for i, req := range template.RequestsFile {
 			if req.ID == "" {
-				req.ID = req.Type().String() + "_" + strconv.Itoa(i)
+				req.ID = req.Type().String() + "_" + strconv.Itoa(i+1)
 			}
 		}
 	}
 	if len(template.RequestsHTTP) > 1 {
 		for i, req := range template.RequestsHTTP {
 			if req.ID == "" {
-				req.ID = req.Type().String() + "_" + strconv.Itoa(i)
+				req.ID = req.Type().String() + "_" + strconv.Itoa(i+1)
 			}
 		}
 	}
 	if len(template.RequestsHeadless) > 1 {
 		for i, req := range template.RequestsHeadless {
 			if req.ID == "" {
-				req.ID = req.Type().String() + "_" + strconv.Itoa(i)
+				req.ID = req.Type().String() + "_" + strconv.Itoa(i+1)
 			}
 		}
 
@@ -229,35 +242,35 @@ func (template *Template) validateAllRequestIDs() {
 	if len(template.RequestsNetwork) > 1 {
 		for i, req := range template.RequestsNetwork {
 			if req.ID == "" {
-				req.ID = req.Type().String() + "_" + strconv.Itoa(i)
+				req.ID = req.Type().String() + "_" + strconv.Itoa(i+1)
 			}
 		}
 	}
 	if len(template.RequestsSSL) > 1 {
 		for i, req := range template.RequestsSSL {
 			if req.ID == "" {
-				req.ID = req.Type().String() + "_" + strconv.Itoa(i)
+				req.ID = req.Type().String() + "_" + strconv.Itoa(i+1)
 			}
 		}
 	}
 	if len(template.RequestsWebsocket) > 1 {
 		for i, req := range template.RequestsWebsocket {
 			if req.ID == "" {
-				req.ID = req.Type().String() + "_" + strconv.Itoa(i)
+				req.ID = req.Type().String() + "_" + strconv.Itoa(i+1)
 			}
 		}
 	}
 	if len(template.RequestsWHOIS) > 1 {
 		for i, req := range template.RequestsWHOIS {
 			if req.ID == "" {
-				req.ID = req.Type().String() + "_" + strconv.Itoa(i)
+				req.ID = req.Type().String() + "_" + strconv.Itoa(i+1)
 			}
 		}
 	}
 	if len(template.RequestsJavascript) > 1 {
 		for i, req := range template.RequestsJavascript {
 			if req.ID == "" {
-				req.ID = req.Type().String() + "_" + strconv.Itoa(i)
+				req.ID = req.Type().String() + "_" + strconv.Itoa(i+1)
 			}
 		}
 	}
@@ -323,6 +336,76 @@ func (template *Template) UnmarshalYAML(unmarshal func(interface{}) error) error
 		template.addRequestsToQueue(arr...)
 	}
 	return nil
+}
+
+// ImportFileRefs checks if sensitive fields like `flow` , `source` in code protocol are referencing files
+// instead of actual javascript / engine code if so it loads the file contents and replaces the reference
+func (template *Template) ImportFileRefs(options *protocols.ExecutorOptions) error {
+	var errs []error
+
+	loadFile := func(source string) (string, bool) {
+		// load file respecting sandbox
+		data, err := options.Options.LoadHelperFile(source, options.TemplatePath, options.Catalog)
+		if err == nil {
+			defer data.Close()
+			bin, err := io.ReadAll(data)
+			if err == nil {
+				return string(bin), true
+			} else {
+				errs = append(errs, err)
+			}
+		} else {
+			errs = append(errs, err)
+		}
+		return "", false
+	}
+
+	// for code protocol requests
+	for _, request := range template.RequestsCode {
+		// simple test to check if source is a file or a snippet
+		if len(strings.Split(request.Source, "\n")) == 1 && fileutil.FileExists(request.Source) {
+			if val, ok := loadFile(request.Source); ok {
+				template.ImportedFiles = append(template.ImportedFiles, request.Source)
+				request.Source = val
+			}
+		}
+	}
+
+	// flow code references
+	if template.Flow != "" {
+		if len(template.Flow) > 0 && filepath.Ext(template.Flow) == ".js" && fileutil.FileExists(template.Flow) {
+			if val, ok := loadFile(template.Flow); ok {
+				template.ImportedFiles = append(template.ImportedFiles, template.Flow)
+				template.Flow = val
+			}
+		}
+		options.Flow = template.Flow
+	}
+
+	// for multiprotocol requests
+	// mutually exclusive with flow
+	if len(template.RequestsQueue) > 0 && template.Flow == "" {
+		// this is most likely a multiprotocol template
+		for _, req := range template.RequestsQueue {
+			if req.Type() == types.CodeProtocol {
+				request := req.(*code.Request)
+				// simple test to check if source is a file or a snippet
+				if len(strings.Split(request.Source, "\n")) == 1 && fileutil.FileExists(request.Source) {
+					if val, ok := loadFile(request.Source); ok {
+						template.ImportedFiles = append(template.ImportedFiles, request.Source)
+						request.Source = val
+					}
+				}
+			}
+		}
+	}
+
+	return multierr.Combine(errs...)
+}
+
+// GetFileImports returns a list of files that are imported by the template
+func (template *Template) GetFileImports() []string {
+	return template.ImportedFiles
 }
 
 // addProtocolsToQueue adds protocol requests to the queue and preserves order of the protocols and requests

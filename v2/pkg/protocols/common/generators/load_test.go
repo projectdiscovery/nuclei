@@ -66,7 +66,7 @@ func TestLoadPayloads(t *testing.T) {
 		values, err := generator.loadPayloads(map[string]interface{}{
 			"new": "/etc/passwd",
 		}, "/random")
-		require.Error(t, err, "could load payloads")
+		require.Error(t, err, "could load payloads got %v", values)
 		require.Equal(t, 0, len(values), "could get values")
 
 		// testcase when loading file from template directory and template file is at root i.e /

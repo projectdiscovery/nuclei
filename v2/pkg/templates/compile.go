@@ -1,15 +1,17 @@
 package templates
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
-	"path/filepath"
 	"reflect"
-	"strings"
+	"sync"
+	"sync/atomic"
 
 	"github.com/pkg/errors"
 	"gopkg.in/yaml.v2"
 
+	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/config"
 	"github.com/projectdiscovery/nuclei/v2/pkg/js/compiler"
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
@@ -20,19 +22,27 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/utils"
 	"github.com/projectdiscovery/retryablehttp-go"
 	errorutil "github.com/projectdiscovery/utils/errors"
-	fileutil "github.com/projectdiscovery/utils/file"
 	stringsutil "github.com/projectdiscovery/utils/strings"
 )
 
 var (
 	ErrCreateTemplateExecutor          = errors.New("cannot create template executer")
 	ErrIncompatibleWithOfflineMatching = errors.New("template can't be used for offline matching")
+	parsedTemplatesCache               *cache.Templates
+	// track how many templates are verfied and by which signer
+	SignatureStats = map[string]*atomic.Uint64{}
 )
 
-var parsedTemplatesCache *cache.Templates
+const (
+	Unsigned = "unsigned"
+)
 
 func init() {
 	parsedTemplatesCache = cache.New()
+	for _, verifier := range signer.DefaultTemplateVerifiers {
+		SignatureStats[verifier.Identifier()] = &atomic.Uint64{}
+	}
+	SignatureStats["unsigned"] = &atomic.Uint64{}
 }
 
 // Parse parses a yaml request template file
@@ -223,19 +233,79 @@ mainLoop:
 // ParseTemplateFromReader reads the template from reader
 // returns the parsed template
 func ParseTemplateFromReader(reader io.Reader, preprocessor Preprocessor, options protocols.ExecutorOptions) (*Template, error) {
-	template := &Template{}
 	data, err := io.ReadAll(reader)
 	if err != nil {
 		return nil, err
 	}
 
-	data = template.expandPreprocessors(data)
-	if preprocessor != nil {
-		data = preprocessor.Process(data)
+	// a preprocessor is a variable like
+	// {{randstr}} which is replaced before unmarshalling
+	// as it is known to be a random static value per template
+	hasPreprocessor := false
+	allPreprocessors := getPreprocessors(preprocessor)
+	for _, preprocessor := range allPreprocessors {
+		if preprocessor.Exists(data) {
+			hasPreprocessor = true
+			break
+		}
 	}
 
-	if err := yaml.Unmarshal(data, template); err != nil {
+	if !hasPreprocessor {
+		// if no preprocessors exists parse template and exit
+		template, err := parseTemplate(data, options)
+		if err != nil {
+			return nil, err
+		}
+		if !template.Verified {
+			SignatureStats[Unsigned].Add(1)
+		}
+		return template, nil
+	}
+
+	// if preprocessor is required / exists in this template
+	// first unmarshal it and check if its verified
+	// persist verified status value and then
+	// expand all preprocessor and reparse template
+
+	// === signature verification befoer preprocessors ===
+	template, err := parseTemplate(data, options)
+	if err != nil {
 		return nil, err
+	}
+	isVerified := template.Verified
+	if !template.Verified {
+		SignatureStats[Unsigned].Add(1)
+	}
+
+	// ==== execute preprocessors ======
+	for _, v := range allPreprocessors {
+		data = v.Process(data)
+	}
+	reParsed, err := parseTemplate(data, options)
+	if err != nil {
+		return nil, err
+	}
+	reParsed.Verified = isVerified
+	return reParsed, nil
+}
+
+// this method does not include any kind of preprocessing
+func parseTemplate(data []byte, options protocols.ExecutorOptions) (*Template, error) {
+	template := &Template{}
+	var err error
+	switch config.GetTemplateFormatFromExt(template.Path) {
+	case config.JSON:
+		err = json.Unmarshal(data, template)
+	case config.YAML:
+		err = yaml.Unmarshal(data, template)
+	default:
+		// assume its yaml
+		if err = yaml.Unmarshal(data, template); err != nil {
+			return nil, err
+		}
+	}
+	if err != nil {
+		return nil, errorutil.NewWithErr(err).Msgf("failed to parse %s", template.Path)
 	}
 
 	if utils.IsBlank(template.Info.Name) {
@@ -259,25 +329,6 @@ func ParseTemplateFromReader(reader io.Reader, preprocessor Preprocessor, option
 	// if request id is not present
 	template.validateAllRequestIDs()
 
-	// TODO: we should add a syntax check here or somehow use a javascript linter
-	// simplest option for now seems to compile using goja and see if it fails
-	if strings.TrimSpace(template.Flow) != "" {
-		if len(template.Flow) > 0 && filepath.Ext(template.Flow) == ".js" && fileutil.FileExists(template.Flow) {
-			// load file respecting sandbox
-			file, err := options.Options.LoadHelperFile(template.Flow, options.TemplatePath, options.Catalog)
-			if err != nil {
-				return nil, errorutil.NewWithErr(err).Msgf("loading flow file from %v denied", template.Flow)
-			}
-			defer file.Close()
-			if bin, err := io.ReadAll(file); err == nil {
-				template.Flow = string(bin)
-			} else {
-				return nil, errorutil.NewWithErr(err).Msgf("something went wrong failed to read file")
-			}
-		}
-		options.Flow = template.Flow
-	}
-
 	// create empty context args for template scope
 	options.CreateTemplateCtxStore()
 	options.ProtocolType = template.Type()
@@ -285,13 +336,19 @@ func ParseTemplateFromReader(reader io.Reader, preprocessor Preprocessor, option
 
 	// initialize the js compiler if missing
 	if options.JsCompiler == nil {
-		options.JsCompiler = compiler.New()
+		options.JsCompiler = GetJsCompiler()
 	}
 
 	template.Options = &options
 	// If no requests, and it is also not a workflow, return error.
 	if template.Requests() == 0 {
 		return nil, fmt.Errorf("no requests defined for %s", template.ID)
+	}
+
+	// load `flow` and `source` in code protocol from file
+	// if file is referenced instead of actual source code
+	if err := template.ImportFileRefs(template.Options); err != nil {
+		return nil, errorutil.NewWithErr(err).Msgf("failed to load file refs for %s", template.ID)
 	}
 
 	if err := template.compileProtocolRequests(options); err != nil {
@@ -310,12 +367,25 @@ func ParseTemplateFromReader(reader io.Reader, preprocessor Preprocessor, option
 	template.parseSelfContainedRequests()
 
 	// check if the template is verified
-	for _, verifier := range signer.DefaultVerifiers {
+	// only valid templates can be verified or signed
+	for _, verifier := range signer.DefaultTemplateVerifiers {
+		template.Verified, _ = verifier.Verify(data, template)
 		if template.Verified {
+			SignatureStats[verifier.Identifier()].Add(1)
 			break
 		}
-		template.Verified, _ = signer.Verify(verifier, data)
 	}
-
 	return template, nil
+}
+
+var (
+	jsCompiler     *compiler.Compiler
+	jsCompilerOnce = sync.OnceFunc(func() {
+		jsCompiler = compiler.New()
+	})
+)
+
+func GetJsCompiler() *compiler.Compiler {
+	jsCompilerOnce()
+	return jsCompiler
 }
