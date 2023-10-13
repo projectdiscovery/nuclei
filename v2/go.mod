@@ -21,11 +21,11 @@ require (
 	github.com/olekukonko/tablewriter v0.0.5
 	github.com/pkg/errors v0.9.1
 	github.com/projectdiscovery/clistats v0.0.19
-	github.com/projectdiscovery/fastdialer v0.0.39
-	github.com/projectdiscovery/hmap v0.0.21
+	github.com/projectdiscovery/fastdialer v0.0.40
+	github.com/projectdiscovery/hmap v0.0.22
 	github.com/projectdiscovery/interactsh v1.1.7
 	github.com/projectdiscovery/rawhttp v0.1.21
-	github.com/projectdiscovery/retryabledns v1.0.37
+	github.com/projectdiscovery/retryabledns v1.0.38
 	github.com/projectdiscovery/retryablehttp-go v1.0.30
 	github.com/projectdiscovery/yamldoc-go v1.0.4
 	github.com/remeh/sizedwaitgroup v1.0.0
@@ -39,7 +39,7 @@ require (
 	github.com/weppos/publicsuffix-go v0.30.2-0.20230730094716-a20f9abcc222
 	github.com/xanzy/go-gitlab v0.84.0
 	go.uber.org/multierr v1.11.0
-	golang.org/x/net v0.15.0
+	golang.org/x/net v0.17.0
 	golang.org/x/oauth2 v0.11.0
 	golang.org/x/text v0.13.0
 	gopkg.in/yaml.v2 v2.4.0
@@ -129,7 +129,7 @@ require (
 	github.com/projectdiscovery/freeport v0.0.5 // indirect
 	github.com/projectdiscovery/gostruct v0.0.1 // indirect
 	github.com/quic-go/quic-go v0.38.1 // indirect
-	github.com/refraction-networking/utls v1.5.3 // indirect
+	github.com/refraction-networking/utls v1.5.4 // indirect
 	github.com/sashabaranov/go-openai v1.14.2 // indirect
 	github.com/shoenig/go-m1cpu v0.1.6 // indirect
 	github.com/skeema/knownhosts v1.1.1 // indirect
@@ -217,10 +217,10 @@ require (
 	go.etcd.io/bbolt v1.3.7 // indirect
 	go.uber.org/zap v1.25.0 // indirect
 	goftp.io/server/v2 v2.0.1 // indirect
-	golang.org/x/crypto v0.13.0
+	golang.org/x/crypto v0.14.0
 	golang.org/x/exp v0.0.0-20230817173708-d852ddb80c63
 	golang.org/x/mod v0.12.0 // indirect
-	golang.org/x/sys v0.12.0 // indirect
+	golang.org/x/sys v0.13.0 // indirect
 	golang.org/x/time v0.3.0 // indirect
 	golang.org/x/tools v0.13.0 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
