@@ -256,7 +256,7 @@ func ParseTemplateFromReader(reader io.Reader, preprocessor Preprocessor, option
 		if err != nil {
 			return nil, err
 		}
-		if !template.Verified {
+		if !template.Verified && len(template.Workflows) == 0 {
 			SignatureStats[Unsigned].Add(1)
 		}
 		return template, nil
@@ -273,7 +273,8 @@ func ParseTemplateFromReader(reader io.Reader, preprocessor Preprocessor, option
 		return nil, err
 	}
 	isVerified := template.Verified
-	if !template.Verified {
+	if !template.Verified && len(template.Workflows) == 0 {
+		// workflows are not signed by default
 		SignatureStats[Unsigned].Add(1)
 	}
 
