@@ -46,6 +46,9 @@ func newHttpClient(options *types.Options) (*http.Client, error) {
 			if options.TlsImpersonate {
 				return dialer.DialTLSWithConfigImpersonate(ctx, network, addr, tlsConfig, impersonate.Random, nil)
 			}
+			if options.HasClientCertificates() || options.ForceAttemptHTTP2 {
+				return dialer.DialTLSWithConfig(ctx, network, addr, tlsConfig)
+			}
 			return dialer.DialTLS(ctx, network, addr)
 		},
 		MaxIdleConns:        500,

@@ -229,11 +229,11 @@ func wrappedGet(options *types.Options, configuration *Configuration) (*retryabl
 		ForceAttemptHTTP2: options.ForceAttemptHTTP2,
 		DialContext:       Dialer.Dial,
 		DialTLSContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
-			if options.HasClientCertificates() {
-				return Dialer.DialTLSWithConfig(ctx, network, addr, tlsConfig)
-			}
 			if options.TlsImpersonate {
 				return Dialer.DialTLSWithConfigImpersonate(ctx, network, addr, tlsConfig, impersonate.Random, nil)
+			}
+			if options.HasClientCertificates() || options.ForceAttemptHTTP2 {
+				return Dialer.DialTLSWithConfig(ctx, network, addr, tlsConfig)
 			}
 			return Dialer.DialTLS(ctx, network, addr)
 		},
