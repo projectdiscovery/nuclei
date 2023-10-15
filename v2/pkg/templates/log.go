@@ -6,6 +6,7 @@ import (
 
 	"github.com/logrusorgru/aurora"
 	"github.com/projectdiscovery/gologger"
+	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/config"
 	"github.com/projectdiscovery/nuclei/v2/pkg/model/types/severity"
 	mapsutil "github.com/projectdiscovery/utils/maps"
 )
@@ -57,7 +58,7 @@ func PrintDeprecatedProtocolNameMsgIfApplicable(isSilent bool, verbose bool) {
 	if count > 0 && !isSilent {
 		gologger.Print().Msgf("[%v] Found %v templates loaded with deprecated protocol syntax, update before v3 for continued support.\n", aurora.Yellow("WRN").String(), count)
 	}
-	if verbose {
+	if config.DefaultConfig.LogAllEvents {
 		_ = deprecatedProtocolNameTemplates.Iterate(func(k string, v bool) error {
 			gologger.Print().Msgf("  - %s\n", k)
 			return nil

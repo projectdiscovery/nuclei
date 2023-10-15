@@ -8,9 +8,11 @@ import (
 	"sync"
 	"sync/atomic"
 
+	"github.com/logrusorgru/aurora"
 	"github.com/pkg/errors"
 	"gopkg.in/yaml.v2"
 
+	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/config"
 	"github.com/projectdiscovery/nuclei/v2/pkg/js/compiler"
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators"
@@ -42,7 +44,7 @@ func init() {
 	for _, verifier := range signer.DefaultTemplateVerifiers {
 		SignatureStats[verifier.Identifier()] = &atomic.Uint64{}
 	}
-	SignatureStats["unsigned"] = &atomic.Uint64{}
+	SignatureStats[Unsigned] = &atomic.Uint64{}
 }
 
 // Parse parses a yaml request template file
@@ -257,6 +259,9 @@ func ParseTemplateFromReader(reader io.Reader, preprocessor Preprocessor, option
 			return nil, err
 		}
 		if !template.Verified && len(template.Workflows) == 0 {
+			if config.DefaultConfig.LogAllEvents {
+				gologger.DefaultLogger.Print().Msgf("[%v] Template %s is not signed or tampered\n", aurora.Yellow("WRN").String(), template.ID)
+			}
 			SignatureStats[Unsigned].Add(1)
 		}
 		return template, nil
@@ -275,6 +280,9 @@ func ParseTemplateFromReader(reader io.Reader, preprocessor Preprocessor, option
 	isVerified := template.Verified
 	if !template.Verified && len(template.Workflows) == 0 {
 		// workflows are not signed by default
+		if config.DefaultConfig.LogAllEvents {
+			gologger.DefaultLogger.Print().Msgf("[%v] Template %s is not signed or tampered\n", aurora.Yellow("WRN").String(), template.ID)
+		}
 		SignatureStats[Unsigned].Add(1)
 	}
 

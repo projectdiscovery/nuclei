@@ -139,10 +139,12 @@ var (
 )
 
 const (
-	SyntaxWarningStats   = "syntax-warnings"
-	SyntaxErrorStats     = "syntax-errors"
-	RuntimeWarningsStats = "runtime-warnings"
-	UnsignedWarning      = "unsigned-warnings"
+	SyntaxWarningStats       = "syntax-warnings"
+	SyntaxErrorStats         = "syntax-errors"
+	RuntimeWarningsStats     = "runtime-warnings"
+	UnsignedWarning          = "unsigned-warnings"
+	HeadlessFlagWarningStats = "headless-flag-missing-warnings"
+	TemplatesExecutedStats   = "templates-executed"
 )
 
 func init() {
@@ -152,6 +154,8 @@ func init() {
 	stats.NewEntry(SyntaxErrorStats, "Found %d templates with syntax error (use -validate flag for further examination)")
 	stats.NewEntry(RuntimeWarningsStats, "Found %d templates with runtime error (use -validate flag for further examination)")
 	stats.NewEntry(UnsignedWarning, "Found %d unsigned or tampered code template (carefully examine before using it & use -sign flag to sign them)")
+	stats.NewEntry(HeadlessFlagWarningStats, "Excluded %d Headless templates, missing '-headless' flag (use -headless flag to enable headless mode)")
+	stats.NewEntry(TemplatesExecutedStats, "Executed %d templates")
 }
 
 // ParseTemplate parses a template and returns a *templates.Template structure

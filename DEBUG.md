@@ -39,6 +39,7 @@ Nuclei was built with some environment variables in mind to help with debugging.
 | `DEBUG=true`                     | Enables Printing Stack Traces for all errors             |
 | `SHOW_DSL_ERRORS=true`           | Enables Printing DSL Errors (that are hidden by default) |
 | `HIDE_TEMPLATE_SIG_WARNING=true` | Hides Template Signature Verification Warnings           |
+| `NUCLEI_LOG_ALL=true`            | Log All Events that were skipped in verbose mode         |
 
 
 
