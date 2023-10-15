@@ -155,7 +155,7 @@ func init() {
 	stats.NewEntry(RuntimeWarningsStats, "Found %d templates with runtime error (use -validate flag for further examination)")
 	stats.NewEntry(UnsignedWarning, "Found %d unsigned or tampered code template (carefully examine before using it & use -sign flag to sign them)")
 	stats.NewEntry(HeadlessFlagWarningStats, "Excluded %d Headless templates, missing '-headless' flag (use -headless flag to enable headless mode)")
-	stats.NewEntry(TemplatesExecutedStats, "Executed %d templates")
+	stats.NewEntry(TemplatesExecutedStats, "Excluded %d templates based on filters and known templates with weak matchers")
 }
 
 // ParseTemplate parses a template and returns a *templates.Template structure
