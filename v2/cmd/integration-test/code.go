@@ -1,134 +1,140 @@
 package main
 
 import (
-	"context"
-	"fmt"
+	"errors"
 	"log"
-	"net/http"
-	"net/http/httptest"
-	"os"
-	"path"
-	"strings"
-	"time"
+	"path/filepath"
 
-	"github.com/julienschmidt/httprouter"
-	"github.com/logrusorgru/aurora"
-	"github.com/pkg/errors"
-	"github.com/projectdiscovery/goflags"
-	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/config"
-	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/disk"
-	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/loader"
-	"github.com/projectdiscovery/nuclei/v2/pkg/core"
-	"github.com/projectdiscovery/nuclei/v2/pkg/core/inputs"
-	"github.com/projectdiscovery/nuclei/v2/pkg/output"
-	"github.com/projectdiscovery/nuclei/v2/pkg/parsers"
-	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
-	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/contextargs"
-	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/hosterrorscache"
-	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/interactsh"
-	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/protocolinit"
-	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/protocolstate"
-	"github.com/projectdiscovery/nuclei/v2/pkg/reporting"
+	osutils "github.com/projectdiscovery/utils/os"
+
+	"github.com/projectdiscovery/nuclei/v2/pkg/templates"
+	"github.com/projectdiscovery/nuclei/v2/pkg/templates/signer"
 	"github.com/projectdiscovery/nuclei/v2/pkg/testutils"
-	"github.com/projectdiscovery/nuclei/v2/pkg/types"
-	"github.com/projectdiscovery/ratelimit"
 )
 
-var codeTestcases = []TestCaseInfo{
-	{Path: "code/test.yaml", TestCase: &goIntegrationTest{}},
-	{Path: "code/test.json", TestCase: &goIntegrationTest{}},
+var codeTestCases = []TestCaseInfo{
+	{Path: "protocols/code/py-snippet.yaml", TestCase: &codeSnippet{}},
+	{Path: "protocols/code/py-file.yaml", TestCase: &codeFile{}},
+	{Path: "protocols/code/py-env-var.yaml", TestCase: &codeEnvVar{}},
+	{Path: "protocols/code/unsigned.yaml", TestCase: &unsignedCode{}},
+	{Path: "protocols/code/py-nosig.yaml", TestCase: &codePyNoSig{}},
+	{Path: "protocols/code/py-interactsh.yaml", TestCase: &codeSnippet{}},
+	{Path: "protocols/code/ps1-snippet.yaml", TestCase: &codeSnippet{}, DisableOn: func() bool { return !osutils.IsWindows() }},
 }
 
-type goIntegrationTest struct{}
+const (
+	testCertFile = "protocols/keys/ci.crt"
+	testKeyFile  = "protocols/keys/ci-private-key.pem"
+)
+
+var testcertpath = ""
+
+func init() {
+	// allow local file access to load content of file references in template
+	// in order to sign them for testing purposes
+	templates.TemplateSignerLFA()
+
+	tsigner, err := signer.NewTemplateSignerFromFiles(testCertFile, testKeyFile)
+	if err != nil {
+		panic(err)
+	}
+
+	testcertpath, _ = filepath.Abs(testCertFile)
+
+	for _, v := range codeTestCases {
+		templatePath := v.Path
+		testCase := v.TestCase
+
+		if v.DisableOn != nil && v.DisableOn() {
+			// skip ps1 test case on non-windows platforms
+			continue
+		}
+
+		templatePath, err := filepath.Abs(templatePath)
+		if err != nil {
+			panic(err)
+		}
+
+		// skip
+		// - unsigned test cases
+		if _, ok := testCase.(*unsignedCode); ok {
+			continue
+		}
+		if _, ok := testCase.(*codePyNoSig); ok {
+			continue
+		}
+		if err := templates.SignTemplate(tsigner, templatePath); err != nil {
+			log.Fatalf("Could not sign template %v got: %s\n", templatePath, err)
+		}
+	}
+
+}
+
+func getEnvValues() []string {
+	return []string{
+		signer.CertEnvVarName + "=" + testcertpath,
+	}
+}
+
+type codeSnippet struct{}
 
 // Execute executes a test case and returns an error if occurred
-//
-// Execute the docs at ../DESIGN.md if the code stops working for integration.
-func (h *goIntegrationTest) Execute(templatePath string) error {
-	router := httprouter.New()
-
-	router.GET("/", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-		fmt.Fprintf(w, "This is test matcher text")
-		if strings.EqualFold(r.Header.Get("test"), "nuclei") {
-			fmt.Fprintf(w, "This is test headers matcher text")
-		}
-	})
-	ts := httptest.NewServer(router)
-	defer ts.Close()
-
-	results, err := executeNucleiAsCode(templatePath, ts.URL)
+func (h *codeSnippet) Execute(filePath string) error {
+	results, err := testutils.RunNucleiArgsWithEnvAndGetResults(debug, getEnvValues(), "-t", filePath, "-u", "input")
 	if err != nil {
 		return err
 	}
 	return expectResultsCount(results, 1)
 }
 
-// executeNucleiAsCode contains an example
-func executeNucleiAsCode(templatePath, templateURL string) ([]string, error) {
-	cache := hosterrorscache.New(30, hosterrorscache.DefaultMaxHostsCount, nil)
-	defer cache.Close()
+type codeFile struct{}
 
-	mockProgress := &testutils.MockProgressClient{}
-	reportingClient, err := reporting.New(&reporting.Options{}, "")
+// Execute executes a test case and returns an error if occurred
+func (h *codeFile) Execute(filePath string) error {
+	results, err := testutils.RunNucleiArgsWithEnvAndGetResults(debug, getEnvValues(), "-t", filePath, "-u", "input")
 	if err != nil {
-		return nil, err
+		return err
 	}
-	defer reportingClient.Close()
+	return expectResultsCount(results, 1)
+}
 
-	outputWriter := testutils.NewMockOutputWriter()
-	var results []string
-	outputWriter.WriteCallback = func(event *output.ResultEvent) {
-		results = append(results, fmt.Sprintf("%v\n", event))
-	}
+type codeEnvVar struct{}
 
-	defaultOpts := types.DefaultOptions()
-	_ = protocolstate.Init(defaultOpts)
-	_ = protocolinit.Init(defaultOpts)
-
-	defaultOpts.Templates = goflags.StringSlice{templatePath}
-	defaultOpts.ExcludeTags = config.ReadIgnoreFile().Tags
-
-	interactOpts := interactsh.DefaultOptions(outputWriter, reportingClient, mockProgress)
-	interactClient, err := interactsh.New(interactOpts)
+// Execute executes a test case and returns an error if occurred
+func (h *codeEnvVar) Execute(filePath string) error {
+	results, err := testutils.RunNucleiArgsWithEnvAndGetResults(debug, getEnvValues(), "-t", filePath, "-u", "input", "-V", "baz=baz")
 	if err != nil {
-		return nil, errors.Wrap(err, "could not create interact client")
+		return err
 	}
-	defer interactClient.Close()
+	return expectResultsCount(results, 1)
+}
 
-	home, _ := os.UserHomeDir()
-	catalog := disk.NewCatalog(path.Join(home, "nuclei-templates"))
-	ratelimiter := ratelimit.New(context.Background(), 150, time.Second)
-	defer ratelimiter.Stop()
-	executerOpts := protocols.ExecutorOptions{
-		Output:          outputWriter,
-		Options:         defaultOpts,
-		Progress:        mockProgress,
-		Catalog:         catalog,
-		IssuesClient:    reportingClient,
-		RateLimiter:     ratelimiter,
-		Interactsh:      interactClient,
-		HostErrorsCache: cache,
-		Colorizer:       aurora.NewAurora(true),
-		ResumeCfg:       types.NewResumeCfg(),
-	}
-	engine := core.New(defaultOpts)
-	engine.SetExecuterOptions(executerOpts)
+type unsignedCode struct{}
 
-	workflowLoader, err := parsers.NewLoader(&executerOpts)
+// Execute executes a test case and returns an error if occurred
+func (h *unsignedCode) Execute(filePath string) error {
+	results, err := testutils.RunNucleiArgsWithEnvAndGetResults(debug, getEnvValues(), "-t", filePath, "-u", "input")
+
+	// should error out
 	if err != nil {
-		log.Fatalf("Could not create workflow loader: %s\n", err)
+		return nil
 	}
-	executerOpts.WorkflowLoader = workflowLoader
 
-	store, err := loader.New(loader.NewConfig(defaultOpts, catalog, executerOpts))
+	// this point should never be reached
+	return errors.Join(expectResultsCount(results, 1), errors.New("unsigned template was executed"))
+}
+
+type codePyNoSig struct{}
+
+// Execute executes a test case and returns an error if occurred
+func (h *codePyNoSig) Execute(filePath string) error {
+	results, err := testutils.RunNucleiArgsWithEnvAndGetResults(debug, getEnvValues(), "-t", filePath, "-u", "input")
+
+	// should error out
 	if err != nil {
-		return nil, errors.Wrap(err, "could not create loader")
+		return nil
 	}
-	store.Load()
 
-	input := &inputs.SimpleInputProvider{Inputs: []*contextargs.MetaInput{{Input: templateURL}}}
-	_ = engine.Execute(store.Templates(), input)
-	engine.WorkPool().Wait() // Wait for the scan to finish
-
-	return results, nil
+	// this point should never be reached
+	return errors.Join(expectResultsCount(results, 1), errors.New("unsigned template was executed"))
 }

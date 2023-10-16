@@ -2,13 +2,19 @@ package types
 
 import (
 	"io"
+	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
 	"github.com/projectdiscovery/goflags"
+	"github.com/projectdiscovery/nuclei/v2/pkg/catalog"
+	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/config"
 	"github.com/projectdiscovery/nuclei/v2/pkg/model/types/severity"
 	"github.com/projectdiscovery/nuclei/v2/pkg/templates/types"
+	errorutil "github.com/projectdiscovery/utils/errors"
 	fileutil "github.com/projectdiscovery/utils/file"
+	folderutil "github.com/projectdiscovery/utils/folder"
 )
 
 var (
@@ -210,7 +216,7 @@ type Options struct {
 	SystemResolvers bool
 	// ShowActions displays a list of all headless actions
 	ShowActions bool
-	// Metrics enables display of metrics via an http endpoint
+	// Deprecated: Enabled by default through clistats . Metrics enables display of metrics via an http endpoint
 	Metrics bool
 	// Debug mode allows debugging request/responses for the engine
 	Debug bool
@@ -324,8 +330,6 @@ type Options struct {
 	DisableStdin bool
 	// IncludeConditions is the list of conditions templates should match
 	IncludeConditions goflags.StringSlice
-	// Custom Config Directory
-	CustomConfigDir string
 	// Enable uncover engine
 	Uncover bool
 	// Uncover search query
@@ -388,6 +392,12 @@ type Options struct {
 	FuzzingMode string
 	// TlsImpersonate enables TLS impersonation
 	TlsImpersonate bool
+	// CodeTemplateSignaturePublicKey is the custom public key used to verify the template signature (algorithm is automatically inferred from the length)
+	CodeTemplateSignaturePublicKey string
+	// CodeTemplateSignatureAlgorithm specifies the sign algorithm (rsa, ecdsa)
+	CodeTemplateSignatureAlgorithm string
+	// SignTemplates enables signing of templates
+	SignTemplates bool
 }
 
 // ShouldLoadResume resume file
@@ -459,4 +469,68 @@ func (options *Options) ParseHeadlessOptionalArguments() map[string]string {
 		}
 	}
 	return optionalArguments
+}
+
+// LoadHelperFile loads a helper file needed for the template
+// this respects the sandbox rules and only loads files from
+// allowed directories
+func (options *Options) LoadHelperFile(helperFile, templatePath string, catalog catalog.Catalog) (io.ReadCloser, error) {
+	if !options.AllowLocalFileAccess {
+		// if global file access is disabled try loading with restrictions
+		absPath, err := options.GetValidAbsPath(helperFile, templatePath)
+		if err != nil {
+			return nil, err
+		}
+		helperFile = absPath
+	}
+	f, err := os.Open(helperFile)
+	if err != nil {
+		return nil, errorutil.NewWithErr(err).Msgf("could not open file %v", helperFile)
+	}
+	return f, nil
+}
+
+// GetValidAbsPath returns absolute path of helper file if it is allowed to be loaded
+// this respects the sandbox rules and only loads files from allowed directories
+func (o *Options) GetValidAbsPath(helperFilePath, templatePath string) (string, error) {
+	// Conditions to allow helper file
+	// 1. If helper file is present in nuclei-templates directory
+	// 2. If helper file and template file are in same directory given that its not root directory
+
+	// resolve and clean helper file path
+	// ResolveNClean uses a custom base path instead of CWD
+	resolvedPath, err := fileutil.ResolveNClean(helperFilePath, config.DefaultConfig.GetTemplateDir())
+	if err == nil {
+		// As per rule 1, if helper file is present in nuclei-templates directory, allow it
+		if strings.HasPrefix(resolvedPath, config.DefaultConfig.GetTemplateDir()) {
+			return resolvedPath, nil
+		}
+	}
+
+	// CleanPath resolves using CWD and cleans the path
+	helperFilePath, err = fileutil.CleanPath(helperFilePath)
+	if err != nil {
+		return "", errorutil.NewWithErr(err).Msgf("could not clean helper file path %v", helperFilePath)
+	}
+
+	templatePath, err = fileutil.CleanPath(templatePath)
+	if err != nil {
+		return "", errorutil.NewWithErr(err).Msgf("could not clean template path %v", templatePath)
+	}
+
+	// As per rule 2, if template and helper file exist in same directory or helper file existed in any child dir of template dir
+	// and both of them are present in user home directory, allow it
+	// Review: should we keep this rule ? add extra option to disable this ?
+	if isHomeDir(helperFilePath) && isHomeDir(templatePath) && strings.HasPrefix(filepath.Dir(helperFilePath), filepath.Dir(templatePath)) {
+		return helperFilePath, nil
+	}
+
+	// all other cases are denied
+	return "", errorutil.New("access to helper file %v denied", helperFilePath)
+}
+
+// isRootDir checks if given is root directory
+func isHomeDir(path string) bool {
+	homeDir := folderutil.HomeDirOrDefault("")
+	return strings.HasPrefix(path, homeDir)
 }

@@ -261,7 +261,7 @@ func New(options *types.Options) (*Runner, error) {
 		statsInterval = -1
 		options.EnableProgressBar = true
 	}
-	runner.progress, progressErr = progress.NewStatsTicker(statsInterval, options.EnableProgressBar, options.StatsJSON, options.Metrics, options.Cloud, options.MetricsPort)
+	runner.progress, progressErr = progress.NewStatsTicker(statsInterval, options.EnableProgressBar, options.StatsJSON, options.Cloud, options.MetricsPort)
 	if progressErr != nil {
 		return nil, progressErr
 	}
@@ -641,16 +641,6 @@ func (r *Runner) executeSmartWorkflowInput(executorOpts protocols.ExecutorOption
 }
 
 func (r *Runner) executeTemplatesInput(store *loader.Store, engine *core.Engine) (*atomic.Bool, error) {
-	var unclusteredRequests int64
-	for _, template := range store.Templates() {
-		// workflows will dynamically adjust the totals while running, as
-		// it can't be known in advance which requests will be called
-		if len(template.Workflows) > 0 {
-			continue
-		}
-		unclusteredRequests += int64(template.TotalRequests) * r.hmapInputProvider.Count()
-	}
-
 	if r.options.VerboseVerbose {
 		for _, template := range store.Templates() {
 			r.logAvailableTemplate(template.Path)
@@ -660,34 +650,15 @@ func (r *Runner) executeTemplatesInput(store *loader.Store, engine *core.Engine)
 		}
 	}
 
-	// Cluster the templates first because we want info on how many
-	// templates did we cluster for showing to user in CLI
-	originalTemplatesCount := len(store.Templates())
-	finalTemplates, clusterCount := templates.ClusterTemplates(store.Templates(), engine.ExecuterOptions())
+	finalTemplates := []*templates.Template{}
+	finalTemplates = append(finalTemplates, store.Templates()...)
 	finalTemplates = append(finalTemplates, store.Workflows()...)
 
-	var totalRequests int64
-	for _, t := range finalTemplates {
-		if len(t.Workflows) > 0 {
-			continue
-		}
-		totalRequests += int64(t.Executer.Requests()) * r.hmapInputProvider.Count()
-	}
-	if totalRequests < unclusteredRequests {
-		gologger.Info().Msgf("Templates clustered: %d (Reduced %d Requests)", clusterCount, unclusteredRequests-totalRequests)
-	}
-	workflowCount := len(store.Workflows())
-	templateCount := originalTemplatesCount + workflowCount
-
-	// 0 matches means no templates were found in the directory
-	if templateCount == 0 {
-		return &atomic.Bool{}, errors.New("no valid templates were found")
+	if len(finalTemplates) == 0 {
+		return nil, errors.New("no templates provided for scan")
 	}
 
-	// tracks global progress and captures stdout/stderr until p.Wait finishes
-	r.progress.Init(r.hmapInputProvider.Count(), templateCount, totalRequests)
-
-	results := engine.ExecuteScanWithOpts(finalTemplates, r.hmapInputProvider, true)
+	results := engine.ExecuteScanWithOpts(finalTemplates, r.hmapInputProvider, r.options.DisableClustering)
 	return results, nil
 }
 
@@ -697,6 +668,12 @@ func (r *Runner) displayExecutionInfo(store *loader.Store) {
 	stats.Display(parsers.SyntaxWarningStats)
 	stats.Display(parsers.SyntaxErrorStats)
 	stats.Display(parsers.RuntimeWarningsStats)
+	if r.options.Verbose {
+		// only print these stats in verbose mode
+		stats.DisplayAsWarning(parsers.HeadlessFlagWarningStats)
+		stats.DisplayAsWarning(parsers.TemplatesExecutedStats)
+	}
+	stats.DisplayAsWarning(parsers.UnsignedWarning)
 
 	cfg := config.DefaultConfig
 
@@ -709,6 +686,15 @@ func (r *Runner) displayExecutionInfo(store *loader.Store) {
 	}
 	if len(store.Workflows()) > 0 {
 		gologger.Info().Msgf("Workflows loaded for current scan: %d", len(store.Workflows()))
+	}
+	for k, v := range templates.SignatureStats {
+		if v.Load() > 0 {
+			if k != templates.Unsigned {
+				gologger.Info().Msgf("Executing %d signed templates from %s", v.Load(), k)
+			} else if !r.options.Silent {
+				gologger.DefaultLogger.Print().Msgf("[%v] Executing %d unsigned templates. Use with caution.", aurora.BrightYellow("WRN"), v.Load())
+			}
+		}
 	}
 	if r.hmapInputProvider.Count() > 0 {
 		gologger.Info().Msgf("Targets loaded for current scan: %d", r.hmapInputProvider.Count())

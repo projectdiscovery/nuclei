@@ -4,10 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"net"
-	"net/http"
 	"os"
-	"strconv"
 	"strings"
 	"time"
 
@@ -44,13 +41,12 @@ type StatsTicker struct {
 	cloud        bool
 	active       bool
 	outputJSON   bool
-	server       *http.Server
 	stats        clistats.StatisticsClient
 	tickDuration time.Duration
 }
 
 // NewStatsTicker creates and returns a new progress tracking object.
-func NewStatsTicker(duration int, active, outputJSON, metrics, cloud bool, port int) (Progress, error) {
+func NewStatsTicker(duration int, active, outputJSON, cloud bool, port int) (Progress, error) {
 	var tickDuration time.Duration
 	if active && duration != -1 {
 		tickDuration = time.Duration(duration) * time.Second
@@ -60,7 +56,12 @@ func NewStatsTicker(duration int, active, outputJSON, metrics, cloud bool, port 
 
 	progress := &StatsTicker{}
 
-	stats, err := clistats.New()
+	statsOpts := &clistats.DefaultOptions
+	statsOpts.ListenPort = port
+	// metrics port is enabled by default and is not configurable with new version of clistats
+	// by default 63636 is used and than can be modified with -mp flag
+
+	stats, err := clistats.NewWithOptions(context.TODO(), statsOpts)
 	if err != nil {
 		return nil, err
 	}
@@ -70,21 +71,6 @@ func NewStatsTicker(duration int, active, outputJSON, metrics, cloud bool, port 
 	progress.tickDuration = tickDuration
 	progress.outputJSON = outputJSON
 
-	if metrics {
-		http.HandleFunc("/metrics", func(w http.ResponseWriter, req *http.Request) {
-			metrics := progress.getMetrics()
-			_ = json.NewEncoder(w).Encode(metrics)
-		})
-		progress.server = &http.Server{
-			Addr:    net.JoinHostPort("127.0.0.1", strconv.Itoa(port)),
-			Handler: http.DefaultServeMux,
-		}
-		go func() {
-			if err := progress.server.ListenAndServe(); err != nil {
-				gologger.Warning().Msgf("Could not serve metrics: %s", err)
-			}
-		}()
-	}
 	return progress, nil
 }
 
@@ -110,6 +96,7 @@ func (p *StatsTicker) Init(hostCount int64, rulesCount int, requestCount int64) 
 			gologger.Warning().Msgf("Couldn't start statistics: %s", err)
 		}
 
+		// Note: this is needed and is responsible for the tick event
 		p.stats.GetStatResponse(p.tickDuration, func(s string, err error) error {
 			if err != nil {
 				gologger.Warning().Msgf("Could not read statistics: %s\n", err)
@@ -265,11 +252,6 @@ func metricsMap(stats clistats.StatisticsClient) map[string]interface{} {
 	return results
 }
 
-// getMetrics returns a map of important metrics for client
-func (p *StatsTicker) getMetrics() map[string]interface{} {
-	return metricsMap(p.stats)
-}
-
 // fmtDuration formats the duration for the time elapsed
 func fmtDuration(d time.Duration) string {
 	d = d.Round(time.Second)
@@ -293,8 +275,5 @@ func (p *StatsTicker) Stop() {
 		if err := p.stats.Stop(); err != nil {
 			gologger.Warning().Msgf("Couldn't stop statistics: %s", err)
 		}
-	}
-	if p.server != nil {
-		_ = p.server.Shutdown(context.Background())
 	}
 }

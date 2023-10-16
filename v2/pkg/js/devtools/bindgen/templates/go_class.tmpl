@@ -1,0 +1,48 @@
+package {{.PackageName}}
+
+{{$pkgName:=(printf "lib_%s" .PackageName) -}}
+
+import (
+	{{$pkgName}} "{{.PackagePath}}"
+
+	"github.com/dop251/goja"
+	"github.com/projectdiscovery/nuclei/v2/pkg/js/gojs"
+)
+
+var (
+	module = gojs.NewGojaModule("nuclei/{{.PackageName}}")
+)
+
+func init() {
+	module.Set(
+		gojs.Objects{
+			{{- $pkgFuncs:=.PackageFuncs}}
+			// Functions
+			{{- range $objName, $objDefine := .PackageFuncs}}
+			"{{$objName}}": {{$pkgName}}.{{$objDefine}},
+			{{- end}}
+
+			// Var and consts
+			{{- range $objName, $objDefine := .PackageVars}}
+			"{{$objName}}": {{$pkgName}}.{{$objDefine}},
+			{{- end}}
+
+			// Types (value type)
+			{{- range $objName, $objDefine := .PackageTypes}}
+			"{{$objName}}": {{printf "func() %s.%s { return %s.%s{} }" $pkgName $objDefine $pkgName $objDefine}},
+			{{- end}}
+
+			// Types (pointer type)
+			{{range $objName, $objDefine := .PackageTypes}}
+			{{- $newObjName := printf "%s%s" "New" $objName -}}
+			{{- if not (exist $pkgFuncs $newObjName) -}}
+			"{{$newObjName}}": {{printf "func() *%s.%s { return &%s.%s{} }" $pkgName $objDefine $pkgName $objDefine}},
+			{{end -}}
+			{{- end -}}
+			},
+		).Register()
+}
+
+func Enable(runtime *goja.Runtime) {
+	module.Enable(runtime)
+}

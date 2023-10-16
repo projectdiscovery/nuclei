@@ -741,19 +741,6 @@
           "type": "string",
           "title": "condition between the matchers",
           "description": "Conditions between the matchers"
-        },
-        "fuzzing": {
-          "items": {
-            "$ref": "#/definitions/fuzz.Rule"
-          },
-          "type": "array",
-          "title": "fuzzin rules for http fuzzing",
-          "description": "Fuzzing describes rule schema to fuzz headless requests"
-        },
-        "cookie-reuse": {
-          "type": "boolean",
-          "title": "optional cookie reuse enable",
-          "description": "Optional setting that enables cookie reuse"
         }
       },
       "additionalProperties": false,
