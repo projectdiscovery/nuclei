@@ -2,8 +2,8 @@ package signer
 
 import (
 	"github.com/projectdiscovery/gologger"
-	v2 "github.com/projectdiscovery/nuclei/v3"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/config"
+	"github.com/projectdiscovery/nuclei/v3/pkg/keys"
 	errorutil "github.com/projectdiscovery/utils/errors"
 )
 
@@ -12,7 +12,7 @@ var DefaultTemplateVerifiers []*TemplateSigner
 
 func init() {
 	h := &KeyHandler{
-		UserCert: v2.NucleiCert,
+		UserCert: keys.NucleiCert,
 	}
 	if err := h.ParseUserCert(); err != nil {
 		gologger.Error().Msgf("Could not parse pd nuclei certificate: %s\n", err)

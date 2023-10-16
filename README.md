@@ -379,7 +379,7 @@ We have [a discussion thread around this](https://github.com/projectdiscovery/nu
 
 ### Using Nuclei From Go Code
 
-Complete guide of using Nuclei as Library/SDK is available at [lib](lib/README.md)
+Complete guide of using Nuclei as Library/SDK is available at [godoc](https://pkg.go.dev/github.com/projectdiscovery/nuclei/v3/lib#section-readme)
 
 
 ### Resources
