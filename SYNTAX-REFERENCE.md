@@ -74,6 +74,29 @@ info:
 
 <div class="dd">
 
+<code>flow</code>  <i>string</i>
+
+</div>
+<div class="dt">
+
+description: |
+   Flow contains the execution flow for the template.
+ examples:
+   - flow: |
+ 		for region in regions {
+		    http(0)
+		 }
+		 for vpc in vpcs {
+		    http(1)
+		 }
+
+
+</div>
+
+<hr />
+
+<div class="dd">
+
 <code>requests</code>  <i>[]<a href="#httprequest">http.Request</a></i>
 
 </div>
@@ -124,6 +147,7 @@ description: |
  examples:
    - value: exampleNormalHTTPRequest
  RequestsWithHTTP is placeholder(internal) only, and should not be used instead use RequestsHTTP
+ Deprecated: Use RequestsHTTP instead.
 
 </div>
 
@@ -237,6 +261,7 @@ description: |
  examples:
    - value: exampleNormalNetworkRequest
  RequestsWithTCP is placeholder(internal) only, and should not be used instead use RequestsNetwork
+ Deprecated: Use RequestsNetwork instead.
 
 </div>
 
@@ -289,6 +314,32 @@ Websocket contains the Websocket request to make in the template.
 <div class="dt">
 
 WHOIS contains the WHOIS request to make in the template.
+
+</div>
+
+<hr />
+
+<div class="dd">
+
+<code>code</code>  <i>[]<a href="#coderequest">code.Request</a></i>
+
+</div>
+<div class="dt">
+
+Code contains code snippets.
+
+</div>
+
+<hr />
+
+<div class="dd">
+
+<code>javascript</code>  <i>[]<a href="#javascriptrequest">javascript.Request</a></i>
+
+</div>
+<div class="dt">
+
+Javascript contains the javascript request to make in the template.
 
 </div>
 
@@ -1553,6 +1604,8 @@ Appears in:
 - <code><a href="#headlessrequest">headless.Request</a>.attack</code>
 
 - <code><a href="#websocketrequest">websocket.Request</a>.attack</code>
+
+- <code><a href="#javascriptrequest">javascript.Request</a>.attack</code>
 
 
 
@@ -2820,6 +2873,28 @@ StopAtFirstMatch stops the execution of the requests and template as soon as a m
 </div>
 <div class="dt">
 
+Fuzzing describes schema to fuzz headless requests
+
+</div>
+
+<hr />
+
+<div class="dd">
+
+<code>cookie-reuse</code>  <i>bool</i>
+
+</div>
+<div class="dt">
+
+CookieReuse is an optional setting that enables cookie reuse
+
+</div>
+
+<hr />
+
+
+
+
 
 ## engine.Action
 Action is an action taken by the browser to reach a navigation
@@ -3044,6 +3119,19 @@ Part Definitions:
 
 <div class="dd">
 
+<code>id</code>  <i>string</i>
+
+</div>
+<div class="dt">
+
+ID is the optional id of the request
+
+</div>
+
+<hr />
+
+<div class="dd">
+
 <code>address</code>  <i>string</i>
 
 </div>
@@ -3162,6 +3250,19 @@ Part Definitions:
 - <code>response</code> - Websocket response received from the server
 - <code>host</code> - Host is the input to the template
 - <code>matched</code> - Matched is the input which was matched upon
+
+<hr />
+
+<div class="dd">
+
+<code>id</code>  <i>string</i>
+
+</div>
+<div class="dt">
+
+ID is the optional id of the request
+
+</div>
 
 <hr />
 
@@ -3326,6 +3427,19 @@ Appears in:
 
 <div class="dd">
 
+<code>id</code>  <i>string</i>
+
+</div>
+<div class="dt">
+
+ID is the optional id of the request
+
+</div>
+
+<hr />
+
+<div class="dd">
+
 <code>query</code>  <i>string</i>
 
 </div>
@@ -3349,6 +3463,255 @@ description: |
 
  	 If present, specifies the WHOIS server to execute the Request on.
    Otherwise, nil enables bootstrapping
+
+</div>
+
+<hr />
+
+
+
+
+
+## code.Request
+Request is a request for the SSL protocol
+
+Appears in:
+
+
+- <code><a href="#template">Template</a>.code</code>
+
+
+
+Part Definitions: 
+
+
+- <code>type</code> - Type is the type of request made
+- <code>host</code> - Host is the input to the template
+- <code>matched</code> - Matched is the input which was matched upon
+
+<hr />
+
+<div class="dd">
+
+<code>id</code>  <i>string</i>
+
+</div>
+<div class="dt">
+
+ID is the optional id of the request
+
+</div>
+
+<hr />
+
+<div class="dd">
+
+<code>engine</code>  <i>[]string</i>
+
+</div>
+<div class="dt">
+
+Engine type
+
+</div>
+
+<hr />
+
+<div class="dd">
+
+<code>args</code>  <i>[]string</i>
+
+</div>
+<div class="dt">
+
+Engine Arguments
+
+</div>
+
+<hr />
+
+<div class="dd">
+
+<code>pattern</code>  <i>string</i>
+
+</div>
+<div class="dt">
+
+Pattern preferred for file name
+
+</div>
+
+<hr />
+
+<div class="dd">
+
+<code>source</code>  <i>string</i>
+
+</div>
+<div class="dt">
+
+Source File/Snippet
+
+</div>
+
+<hr />
+
+
+
+
+
+## javascript.Request
+Request is a request for the javascript protocol
+
+Appears in:
+
+
+- <code><a href="#template">Template</a>.javascript</code>
+
+
+
+Part Definitions: 
+
+
+- <code>type</code> - Type is the type of request made
+- <code>response</code> - Javascript protocol result response
+- <code>host</code> - Host is the input to the template
+- <code>matched</code> - Matched is the input which was matched upon
+
+<hr />
+
+<div class="dd">
+
+<code>id</code>  <i>string</i>
+
+</div>
+<div class="dt">
+
+description: |
+ ID is request id in that protocol
+
+</div>
+
+<hr />
+
+<div class="dd">
+
+<code>init</code>  <i>string</i>
+
+</div>
+<div class="dt">
+
+Init is javascript code to execute after compiling template and before executing it on any target
+This is helpful for preparing payloads or other setup that maybe required for exploits
+
+</div>
+
+<hr />
+
+<div class="dd">
+
+<code>pre-condition</code>  <i>string</i>
+
+</div>
+<div class="dt">
+
+PreCondition is a condition which is evaluated before sending the request.
+
+</div>
+
+<hr />
+
+<div class="dd">
+
+<code>args</code>  <i>map[string]interface{}</i>
+
+</div>
+<div class="dt">
+
+Args contains the arguments to pass to the javascript code.
+
+</div>
+
+<hr />
+
+<div class="dd">
+
+<code>code</code>  <i>string</i>
+
+</div>
+<div class="dt">
+
+Code contains code to execute for the javascript request.
+
+</div>
+
+<hr />
+
+<div class="dd">
+
+<code>stop-at-first-match</code>  <i>bool</i>
+
+</div>
+<div class="dt">
+
+StopAtFirstMatch stops processing the request at first match.
+
+</div>
+
+<hr />
+
+<div class="dd">
+
+<code>attack</code>  <i><a href="#generatorsattacktypeholder">generators.AttackTypeHolder</a></i>
+
+</div>
+<div class="dt">
+
+Attack is the type of payload combinations to perform.
+
+Sniper is each payload once, pitchfork combines multiple payload sets and clusterbomb generates
+permutations and combinations for all payloads.
+
+</div>
+
+<hr />
+
+<div class="dd">
+
+<code>threads</code>  <i>int</i>
+
+</div>
+<div class="dt">
+
+Payload concurreny i.e threads for sending requests.
+
+
+
+Examples:
+
+
+```yaml
+# Send requests using 10 concurrent threads
+threads: 10
+```
+
+
+</div>
+
+<hr />
+
+<div class="dd">
+
+<code>payloads</code>  <i>map[string]interface{}</i>
+
+</div>
+<div class="dt">
+
+Payloads contains any payloads for the current request.
+
+Payloads support both key-values combinations where a list
+of payloads is provided, or optionally a single file can also
+be provided as payload which will be read on run-time.
 
 </div>
 

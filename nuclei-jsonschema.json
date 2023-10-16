@@ -394,6 +394,73 @@
       "title": "type of the matcher",
       "description": "Type of the matcher"
     },
+    "code.Request": {
+      "properties": {
+        "matchers": {
+          "items": {
+            "$ref": "#/definitions/matchers.Matcher"
+          },
+          "type": "array",
+          "title": "matchers to run on response",
+          "description": "Detection mechanism to identify whether the request was successful by doing pattern matching"
+        },
+        "extractors": {
+          "items": {
+            "$ref": "#/definitions/extractors.Extractor"
+          },
+          "type": "array",
+          "title": "extractors to run on response",
+          "description": "Extractors contains the extraction mechanism for the request to identify and extract parts of the response"
+        },
+        "matchers-condition": {
+          "enum": [
+            "and",
+            "or"
+          ],
+          "type": "string",
+          "title": "condition between the matchers",
+          "description": "Conditions between the matchers"
+        },
+        "id": {
+          "type": "string",
+          "title": "id of the request",
+          "description": "ID is the optional ID of the Request"
+        },
+        "engine": {
+          "items": {
+            "enum": [
+              "python",
+              "powershell",
+              "command"
+            ],
+            "type": "string"
+          },
+          "type": "array",
+          "title": "engine",
+          "description": "Engine"
+        },
+        "args": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array",
+          "title": "args",
+          "description": "Args"
+        },
+        "pattern": {
+          "type": "string",
+          "title": "pattern",
+          "description": "Pattern"
+        },
+        "source": {
+          "type": "string",
+          "title": "source file/snippet",
+          "description": "Source snippet"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object"
+    },
     "fuzz.Rule": {
       "properties": {
         "type": {
@@ -741,6 +808,19 @@
           "type": "string",
           "title": "condition between the matchers",
           "description": "Conditions between the matchers"
+        },
+        "fuzzing": {
+          "items": {
+            "$ref": "#/definitions/fuzz.Rule"
+          },
+          "type": "array",
+          "title": "fuzzin rules for http fuzzing",
+          "description": "Fuzzing describes rule schema to fuzz headless requests"
+        },
+        "cookie-reuse": {
+          "type": "boolean",
+          "title": "optional cookie reuse enable",
+          "description": "Optional setting that enables cookie reuse"
         }
       },
       "additionalProperties": false,
@@ -1046,6 +1126,90 @@
       "title": "type of the signature",
       "description": "Type of the signature"
     },
+    "javascript.Request": {
+      "properties": {
+        "matchers": {
+          "items": {
+            "$ref": "#/definitions/matchers.Matcher"
+          },
+          "type": "array",
+          "title": "matchers to run on response",
+          "description": "Detection mechanism to identify whether the request was successful by doing pattern matching"
+        },
+        "extractors": {
+          "items": {
+            "$ref": "#/definitions/extractors.Extractor"
+          },
+          "type": "array",
+          "title": "extractors to run on response",
+          "description": "Extractors contains the extraction mechanism for the request to identify and extract parts of the response"
+        },
+        "matchers-condition": {
+          "enum": [
+            "and",
+            "or"
+          ],
+          "type": "string",
+          "title": "condition between the matchers",
+          "description": "Conditions between the matchers"
+        },
+        "id": {
+          "type": "string",
+          "title": "id of the request",
+          "description": "ID is the optional ID of the Request"
+        },
+        "init": {
+          "type": "string",
+          "title": "init javascript code",
+          "description": "Init is the javascript code to execute after compiling template"
+        },
+        "pre-condition": {
+          "type": "string",
+          "title": "pre-condition for the request",
+          "description": "PreCondition is a condition which is evaluated before sending the request"
+        },
+        "args": {
+          "patternProperties": {
+            ".*": {
+              "additionalProperties": true
+            }
+          },
+          "type": "object"
+        },
+        "code": {
+          "type": "string",
+          "title": "code to execute in javascript",
+          "description": "Executes inline javascript code for the request"
+        },
+        "stop-at-first-match": {
+          "type": "boolean",
+          "title": "stop at first match",
+          "description": "Stop the execution after a match is found"
+        },
+        "attack": {
+          "$ref": "#/definitions/generators.AttackTypeHolder",
+          "title": "attack is the payload combination",
+          "description": "Attack is the type of payload combinations to perform"
+        },
+        "threads": {
+          "type": "integer",
+          "title": "threads for sending requests",
+          "description": "Threads specifies number of threads to use sending requests. This enables Connection Pooling"
+        },
+        "payloads": {
+          "patternProperties": {
+            ".*": {
+              "additionalProperties": true
+            }
+          },
+          "type": "object",
+          "title": "payloads for the webosocket request",
+          "description": "Payloads contains any payloads for the current request"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object"
+    },
     "network.Input": {
       "properties": {
         "data": {
@@ -1197,6 +1361,11 @@
           "title": "condition between the matchers",
           "description": "Conditions between the matchers"
         },
+        "id": {
+          "type": "string",
+          "title": "id of the request",
+          "description": "ID of the request"
+        },
         "address": {
           "type": "string",
           "title": "address for the ssl request",
@@ -1289,6 +1458,11 @@
           "title": "condition between the matchers",
           "description": "Conditions between the matchers"
         },
+        "id": {
+          "type": "string",
+          "title": "id of the request",
+          "description": "ID of the network request"
+        },
         "address": {
           "type": "string",
           "title": "address for the websocket request",
@@ -1359,6 +1533,11 @@
           "title": "condition between the matchers",
           "description": "Conditions between the matchers"
         },
+        "id": {
+          "type": "string",
+          "title": "id of the request",
+          "description": "ID of the network request"
+        },
         "query": {
           "type": "string",
           "title": "query for the WHOIS request",
@@ -1393,6 +1572,11 @@
           "$ref": "#/definitions/model.Info",
           "title": "info for the template",
           "description": "Info contains metadata for the template"
+        },
+        "flow": {
+          "type": "string",
+          "title": "template execution flow in js",
+          "description": "Flow contains js code which defines how the template should be executed"
         },
         "requests": {
           "items": {
@@ -1481,6 +1665,24 @@
           "type": "array",
           "title": "whois requests to make",
           "description": "WHOIS requests to make for the template"
+        },
+        "code": {
+          "items": {
+            "$schema": "http://json-schema.org/draft-04/schema#",
+            "$ref": "#/definitions/code.Request"
+          },
+          "type": "array",
+          "title": "code snippets to make",
+          "description": "Code snippets"
+        },
+        "javascript": {
+          "items": {
+            "$schema": "http://json-schema.org/draft-04/schema#",
+            "$ref": "#/definitions/javascript.Request"
+          },
+          "type": "array",
+          "title": "javascript requests to make",
+          "description": "Javascript requests to make for the template"
         },
         "workflows": {
           "items": {
