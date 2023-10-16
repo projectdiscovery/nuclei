@@ -132,6 +132,7 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 		Fastdialer:        client,
 		ClientHello:       true,
 		ServerHello:       true,
+		DisplayDns:        true,
 	}
 
 	tlsxService, err := tlsx.New(tlsxOptions)
