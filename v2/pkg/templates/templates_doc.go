@@ -34,6 +34,8 @@ var (
 	WEBSOCKETRequestDoc           encoder.Doc
 	WEBSOCKETInputDoc             encoder.Doc
 	WHOISRequestDoc               encoder.Doc
+	CODERequestDoc                encoder.Doc
+	JAVASCRIPTRequestDoc          encoder.Doc
 	HTTPSignatureTypeHolderDoc    encoder.Doc
 	VARIABLESVariableDoc          encoder.Doc
 )
@@ -42,7 +44,7 @@ func init() {
 	TemplateDoc.Type = "Template"
 	TemplateDoc.Comments[encoder.LineComment] = " Template is a YAML input file which defines all the requests and"
 	TemplateDoc.Description = "Template is a YAML input file which defines all the requests and\n other metadata for a template."
-	TemplateDoc.Fields = make([]encoder.Doc, 17)
+	TemplateDoc.Fields = make([]encoder.Doc, 20)
 	TemplateDoc.Fields[0].Name = "id"
 	TemplateDoc.Fields[0].Type = "string"
 	TemplateDoc.Fields[0].Note = ""
@@ -57,92 +59,107 @@ func init() {
 	TemplateDoc.Fields[1].Comments[encoder.LineComment] = "Info contains metadata information about the template."
 
 	TemplateDoc.Fields[1].AddExample("", exampleInfoStructure)
-	TemplateDoc.Fields[2].Name = "requests"
-	TemplateDoc.Fields[2].Type = "[]http.Request"
+	TemplateDoc.Fields[2].Name = "flow"
+	TemplateDoc.Fields[2].Type = "string"
 	TemplateDoc.Fields[2].Note = ""
-	TemplateDoc.Fields[2].Description = "Requests contains the http request to make in the template.\nWARNING: 'requests' will be deprecated and will be removed in a future release. Please use 'http' instead."
-	TemplateDoc.Fields[2].Comments[encoder.LineComment] = "Requests contains the http request to make in the template."
-
-	TemplateDoc.Fields[2].AddExample("", exampleNormalHTTPRequest)
-	TemplateDoc.Fields[3].Name = "http"
+	TemplateDoc.Fields[2].Description = "description: |\n   Flow contains the execution flow for the template.\n examples:\n   - flow: |\n 		for region in regions {\n		    http(0)\n		 }\n		 for vpc in vpcs {\n		    http(1)\n		 }\n"
+	TemplateDoc.Fields[2].Comments[encoder.LineComment] = " description: |"
+	TemplateDoc.Fields[3].Name = "requests"
 	TemplateDoc.Fields[3].Type = "[]http.Request"
 	TemplateDoc.Fields[3].Note = ""
-	TemplateDoc.Fields[3].Description = "description: |\n   HTTP contains the http request to make in the template.\n examples:\n   - value: exampleNormalHTTPRequest\n RequestsWithHTTP is placeholder(internal) only, and should not be used instead use RequestsHTTP"
-	TemplateDoc.Fields[3].Comments[encoder.LineComment] = " description: |"
-	TemplateDoc.Fields[4].Name = "dns"
-	TemplateDoc.Fields[4].Type = "[]dns.Request"
+	TemplateDoc.Fields[3].Description = "Requests contains the http request to make in the template.\nWARNING: 'requests' will be deprecated and will be removed in a future release. Please use 'http' instead."
+	TemplateDoc.Fields[3].Comments[encoder.LineComment] = "Requests contains the http request to make in the template."
+
+	TemplateDoc.Fields[3].AddExample("", exampleNormalHTTPRequest)
+	TemplateDoc.Fields[4].Name = "http"
+	TemplateDoc.Fields[4].Type = "[]http.Request"
 	TemplateDoc.Fields[4].Note = ""
-	TemplateDoc.Fields[4].Description = "DNS contains the dns request to make in the template"
-	TemplateDoc.Fields[4].Comments[encoder.LineComment] = "DNS contains the dns request to make in the template"
-
-	TemplateDoc.Fields[4].AddExample("", exampleNormalDNSRequest)
-	TemplateDoc.Fields[5].Name = "file"
-	TemplateDoc.Fields[5].Type = "[]file.Request"
+	TemplateDoc.Fields[4].Description = "description: |\n   HTTP contains the http request to make in the template.\n examples:\n   - value: exampleNormalHTTPRequest\n RequestsWithHTTP is placeholder(internal) only, and should not be used instead use RequestsHTTP\n Deprecated: Use RequestsHTTP instead."
+	TemplateDoc.Fields[4].Comments[encoder.LineComment] = " description: |"
+	TemplateDoc.Fields[5].Name = "dns"
+	TemplateDoc.Fields[5].Type = "[]dns.Request"
 	TemplateDoc.Fields[5].Note = ""
-	TemplateDoc.Fields[5].Description = "File contains the file request to make in the template"
-	TemplateDoc.Fields[5].Comments[encoder.LineComment] = "File contains the file request to make in the template"
+	TemplateDoc.Fields[5].Description = "DNS contains the dns request to make in the template"
+	TemplateDoc.Fields[5].Comments[encoder.LineComment] = "DNS contains the dns request to make in the template"
 
-	TemplateDoc.Fields[5].AddExample("", exampleNormalFileRequest)
-	TemplateDoc.Fields[6].Name = "network"
-	TemplateDoc.Fields[6].Type = "[]network.Request"
+	TemplateDoc.Fields[5].AddExample("", exampleNormalDNSRequest)
+	TemplateDoc.Fields[6].Name = "file"
+	TemplateDoc.Fields[6].Type = "[]file.Request"
 	TemplateDoc.Fields[6].Note = ""
-	TemplateDoc.Fields[6].Description = "Network contains the network request to make in the template\nWARNING: 'network' will be deprecated and will be removed in a future release. Please use 'tcp' instead."
-	TemplateDoc.Fields[6].Comments[encoder.LineComment] = "Network contains the network request to make in the template"
+	TemplateDoc.Fields[6].Description = "File contains the file request to make in the template"
+	TemplateDoc.Fields[6].Comments[encoder.LineComment] = "File contains the file request to make in the template"
 
-	TemplateDoc.Fields[6].AddExample("", exampleNormalNetworkRequest)
-	TemplateDoc.Fields[7].Name = "tcp"
+	TemplateDoc.Fields[6].AddExample("", exampleNormalFileRequest)
+	TemplateDoc.Fields[7].Name = "network"
 	TemplateDoc.Fields[7].Type = "[]network.Request"
 	TemplateDoc.Fields[7].Note = ""
-	TemplateDoc.Fields[7].Description = "description: |\n   TCP contains the network request to make in the template\n examples:\n   - value: exampleNormalNetworkRequest\n RequestsWithTCP is placeholder(internal) only, and should not be used instead use RequestsNetwork"
-	TemplateDoc.Fields[7].Comments[encoder.LineComment] = " description: |"
-	TemplateDoc.Fields[8].Name = "headless"
-	TemplateDoc.Fields[8].Type = "[]headless.Request"
+	TemplateDoc.Fields[7].Description = "Network contains the network request to make in the template\nWARNING: 'network' will be deprecated and will be removed in a future release. Please use 'tcp' instead."
+	TemplateDoc.Fields[7].Comments[encoder.LineComment] = "Network contains the network request to make in the template"
+
+	TemplateDoc.Fields[7].AddExample("", exampleNormalNetworkRequest)
+	TemplateDoc.Fields[8].Name = "tcp"
+	TemplateDoc.Fields[8].Type = "[]network.Request"
 	TemplateDoc.Fields[8].Note = ""
-	TemplateDoc.Fields[8].Description = "Headless contains the headless request to make in the template."
-	TemplateDoc.Fields[8].Comments[encoder.LineComment] = "Headless contains the headless request to make in the template."
-	TemplateDoc.Fields[9].Name = "ssl"
-	TemplateDoc.Fields[9].Type = "[]ssl.Request"
+	TemplateDoc.Fields[8].Description = "description: |\n   TCP contains the network request to make in the template\n examples:\n   - value: exampleNormalNetworkRequest\n RequestsWithTCP is placeholder(internal) only, and should not be used instead use RequestsNetwork\n Deprecated: Use RequestsNetwork instead."
+	TemplateDoc.Fields[8].Comments[encoder.LineComment] = " description: |"
+	TemplateDoc.Fields[9].Name = "headless"
+	TemplateDoc.Fields[9].Type = "[]headless.Request"
 	TemplateDoc.Fields[9].Note = ""
-	TemplateDoc.Fields[9].Description = "SSL contains the SSL request to make in the template."
-	TemplateDoc.Fields[9].Comments[encoder.LineComment] = "SSL contains the SSL request to make in the template."
-	TemplateDoc.Fields[10].Name = "websocket"
-	TemplateDoc.Fields[10].Type = "[]websocket.Request"
+	TemplateDoc.Fields[9].Description = "Headless contains the headless request to make in the template."
+	TemplateDoc.Fields[9].Comments[encoder.LineComment] = "Headless contains the headless request to make in the template."
+	TemplateDoc.Fields[10].Name = "ssl"
+	TemplateDoc.Fields[10].Type = "[]ssl.Request"
 	TemplateDoc.Fields[10].Note = ""
-	TemplateDoc.Fields[10].Description = "Websocket contains the Websocket request to make in the template."
-	TemplateDoc.Fields[10].Comments[encoder.LineComment] = "Websocket contains the Websocket request to make in the template."
-	TemplateDoc.Fields[11].Name = "whois"
-	TemplateDoc.Fields[11].Type = "[]whois.Request"
+	TemplateDoc.Fields[10].Description = "SSL contains the SSL request to make in the template."
+	TemplateDoc.Fields[10].Comments[encoder.LineComment] = "SSL contains the SSL request to make in the template."
+	TemplateDoc.Fields[11].Name = "websocket"
+	TemplateDoc.Fields[11].Type = "[]websocket.Request"
 	TemplateDoc.Fields[11].Note = ""
-	TemplateDoc.Fields[11].Description = "WHOIS contains the WHOIS request to make in the template."
-	TemplateDoc.Fields[11].Comments[encoder.LineComment] = "WHOIS contains the WHOIS request to make in the template."
-	TemplateDoc.Fields[12].Name = "self-contained"
-	TemplateDoc.Fields[12].Type = "bool"
+	TemplateDoc.Fields[11].Description = "Websocket contains the Websocket request to make in the template."
+	TemplateDoc.Fields[11].Comments[encoder.LineComment] = "Websocket contains the Websocket request to make in the template."
+	TemplateDoc.Fields[12].Name = "whois"
+	TemplateDoc.Fields[12].Type = "[]whois.Request"
 	TemplateDoc.Fields[12].Note = ""
-	TemplateDoc.Fields[12].Description = "Self Contained marks Requests for the template as self-contained"
-	TemplateDoc.Fields[12].Comments[encoder.LineComment] = "Self Contained marks Requests for the template as self-contained"
-	TemplateDoc.Fields[13].Name = "stop-at-first-match"
-	TemplateDoc.Fields[13].Type = "bool"
+	TemplateDoc.Fields[12].Description = "WHOIS contains the WHOIS request to make in the template."
+	TemplateDoc.Fields[12].Comments[encoder.LineComment] = "WHOIS contains the WHOIS request to make in the template."
+	TemplateDoc.Fields[13].Name = "code"
+	TemplateDoc.Fields[13].Type = "[]code.Request"
 	TemplateDoc.Fields[13].Note = ""
-	TemplateDoc.Fields[13].Description = "Stop execution once first match is found"
-	TemplateDoc.Fields[13].Comments[encoder.LineComment] = "Stop execution once first match is found"
-	TemplateDoc.Fields[14].Name = "signature"
-	TemplateDoc.Fields[14].Type = "http.SignatureTypeHolder"
+	TemplateDoc.Fields[13].Description = "Code contains code snippets."
+	TemplateDoc.Fields[13].Comments[encoder.LineComment] = "Code contains code snippets."
+	TemplateDoc.Fields[14].Name = "javascript"
+	TemplateDoc.Fields[14].Type = "[]javascript.Request"
 	TemplateDoc.Fields[14].Note = ""
-	TemplateDoc.Fields[14].Description = "Signature is the request signature method"
-	TemplateDoc.Fields[14].Comments[encoder.LineComment] = "Signature is the request signature method"
-	TemplateDoc.Fields[14].Values = []string{
+	TemplateDoc.Fields[14].Description = "Javascript contains the javascript request to make in the template."
+	TemplateDoc.Fields[14].Comments[encoder.LineComment] = "Javascript contains the javascript request to make in the template."
+	TemplateDoc.Fields[15].Name = "self-contained"
+	TemplateDoc.Fields[15].Type = "bool"
+	TemplateDoc.Fields[15].Note = ""
+	TemplateDoc.Fields[15].Description = "Self Contained marks Requests for the template as self-contained"
+	TemplateDoc.Fields[15].Comments[encoder.LineComment] = "Self Contained marks Requests for the template as self-contained"
+	TemplateDoc.Fields[16].Name = "stop-at-first-match"
+	TemplateDoc.Fields[16].Type = "bool"
+	TemplateDoc.Fields[16].Note = ""
+	TemplateDoc.Fields[16].Description = "Stop execution once first match is found"
+	TemplateDoc.Fields[16].Comments[encoder.LineComment] = "Stop execution once first match is found"
+	TemplateDoc.Fields[17].Name = "signature"
+	TemplateDoc.Fields[17].Type = "http.SignatureTypeHolder"
+	TemplateDoc.Fields[17].Note = ""
+	TemplateDoc.Fields[17].Description = "Signature is the request signature method"
+	TemplateDoc.Fields[17].Comments[encoder.LineComment] = "Signature is the request signature method"
+	TemplateDoc.Fields[17].Values = []string{
 		"AWS",
 	}
-	TemplateDoc.Fields[15].Name = "variables"
-	TemplateDoc.Fields[15].Type = "variables.Variable"
-	TemplateDoc.Fields[15].Note = ""
-	TemplateDoc.Fields[15].Description = "Variables contains any variables for the current request."
-	TemplateDoc.Fields[15].Comments[encoder.LineComment] = "Variables contains any variables for the current request."
-	TemplateDoc.Fields[16].Name = "constants"
-	TemplateDoc.Fields[16].Type = "map[string]interface{}"
-	TemplateDoc.Fields[16].Note = ""
-	TemplateDoc.Fields[16].Description = "Constants contains any scalar constant for the current template"
-	TemplateDoc.Fields[16].Comments[encoder.LineComment] = "Constants contains any scalar constant for the current template"
+	TemplateDoc.Fields[18].Name = "variables"
+	TemplateDoc.Fields[18].Type = "variables.Variable"
+	TemplateDoc.Fields[18].Note = ""
+	TemplateDoc.Fields[18].Description = "Variables contains any variables for the current request."
+	TemplateDoc.Fields[18].Comments[encoder.LineComment] = "Variables contains any variables for the current request."
+	TemplateDoc.Fields[19].Name = "constants"
+	TemplateDoc.Fields[19].Type = "map[string]interface{}"
+	TemplateDoc.Fields[19].Note = ""
+	TemplateDoc.Fields[19].Description = "Constants contains any scalar constant for the current template"
+	TemplateDoc.Fields[19].Comments[encoder.LineComment] = "Constants contains any scalar constant for the current template"
 
 	MODELInfoDoc.Type = "model.Info"
 	MODELInfoDoc.Comments[encoder.LineComment] = " Info contains metadata information about a template"
@@ -646,6 +663,10 @@ func init() {
 		},
 		{
 			TypeName:  "websocket.Request",
+			FieldName: "attack",
+		},
+		{
+			TypeName:  "javascript.Request",
 			FieldName: "attack",
 		},
 	}
@@ -1238,7 +1259,7 @@ func init() {
 			Value: "Headless response received from client (default)",
 		},
 	}
-	HEADLESSRequestDoc.Fields = make([]encoder.Doc, 7)
+	HEADLESSRequestDoc.Fields = make([]encoder.Doc, 9)
 	HEADLESSRequestDoc.Fields[0].Name = "id"
 	HEADLESSRequestDoc.Fields[0].Type = "string"
 	HEADLESSRequestDoc.Fields[0].Note = ""
@@ -1274,6 +1295,16 @@ func init() {
 	HEADLESSRequestDoc.Fields[6].Note = ""
 	HEADLESSRequestDoc.Fields[6].Description = "StopAtFirstMatch stops the execution of the requests and template as soon as a match is found."
 	HEADLESSRequestDoc.Fields[6].Comments[encoder.LineComment] = "StopAtFirstMatch stops the execution of the requests and template as soon as a match is found."
+	HEADLESSRequestDoc.Fields[7].Name = "fuzzing"
+	HEADLESSRequestDoc.Fields[7].Type = "[]fuzz.Rule"
+	HEADLESSRequestDoc.Fields[7].Note = ""
+	HEADLESSRequestDoc.Fields[7].Description = "Fuzzing describes schema to fuzz headless requests"
+	HEADLESSRequestDoc.Fields[7].Comments[encoder.LineComment] = " Fuzzing describes schema to fuzz headless requests"
+	HEADLESSRequestDoc.Fields[8].Name = "cookie-reuse"
+	HEADLESSRequestDoc.Fields[8].Type = "bool"
+	HEADLESSRequestDoc.Fields[8].Note = ""
+	HEADLESSRequestDoc.Fields[8].Description = "CookieReuse is an optional setting that enables cookie reuse"
+	HEADLESSRequestDoc.Fields[8].Comments[encoder.LineComment] = "CookieReuse is an optional setting that enables cookie reuse"
 
 	ENGINEActionDoc.Type = "engine.Action"
 	ENGINEActionDoc.Comments[encoder.LineComment] = " Action is an action taken by the browser to reach a navigation"
@@ -1399,29 +1430,22 @@ func init() {
 			Value: "Matched is the input which was matched upon",
 		},
 	}
-	SSLRequestDoc.Fields = make([]encoder.Doc, 5)
-	SSLRequestDoc.Fields[0].Name = "address"
+	SSLRequestDoc.Fields = make([]encoder.Doc, 6)
+	SSLRequestDoc.Fields[0].Name = "id"
 	SSLRequestDoc.Fields[0].Type = "string"
 	SSLRequestDoc.Fields[0].Note = ""
-	SSLRequestDoc.Fields[0].Description = "Address contains address for the request"
-	SSLRequestDoc.Fields[0].Comments[encoder.LineComment] = "Address contains address for the request"
-	SSLRequestDoc.Fields[1].Name = "min_version"
+	SSLRequestDoc.Fields[0].Description = "ID is the optional id of the request"
+	SSLRequestDoc.Fields[0].Comments[encoder.LineComment] = " ID is the optional id of the request"
+	SSLRequestDoc.Fields[1].Name = "address"
 	SSLRequestDoc.Fields[1].Type = "string"
 	SSLRequestDoc.Fields[1].Note = ""
-	SSLRequestDoc.Fields[1].Description = "Minimum tls version - auto if not specified."
-	SSLRequestDoc.Fields[1].Comments[encoder.LineComment] = "Minimum tls version - auto if not specified."
-	SSLRequestDoc.Fields[1].Values = []string{
-		"sslv3",
-		"tls10",
-		"tls11",
-		"tls12",
-		"tls13",
-	}
-	SSLRequestDoc.Fields[2].Name = "max_version"
+	SSLRequestDoc.Fields[1].Description = "Address contains address for the request"
+	SSLRequestDoc.Fields[1].Comments[encoder.LineComment] = "Address contains address for the request"
+	SSLRequestDoc.Fields[2].Name = "min_version"
 	SSLRequestDoc.Fields[2].Type = "string"
 	SSLRequestDoc.Fields[2].Note = ""
-	SSLRequestDoc.Fields[2].Description = "Max tls version - auto if not specified."
-	SSLRequestDoc.Fields[2].Comments[encoder.LineComment] = "Max tls version - auto if not specified."
+	SSLRequestDoc.Fields[2].Description = "Minimum tls version - auto if not specified."
+	SSLRequestDoc.Fields[2].Comments[encoder.LineComment] = "Minimum tls version - auto if not specified."
 	SSLRequestDoc.Fields[2].Values = []string{
 		"sslv3",
 		"tls10",
@@ -1429,16 +1453,28 @@ func init() {
 		"tls12",
 		"tls13",
 	}
-	SSLRequestDoc.Fields[3].Name = "cipher_suites"
-	SSLRequestDoc.Fields[3].Type = "[]string"
+	SSLRequestDoc.Fields[3].Name = "max_version"
+	SSLRequestDoc.Fields[3].Type = "string"
 	SSLRequestDoc.Fields[3].Note = ""
-	SSLRequestDoc.Fields[3].Description = "Client Cipher Suites  - auto if not specified."
-	SSLRequestDoc.Fields[3].Comments[encoder.LineComment] = "Client Cipher Suites  - auto if not specified."
-	SSLRequestDoc.Fields[4].Name = "scan_mode"
-	SSLRequestDoc.Fields[4].Type = "string"
+	SSLRequestDoc.Fields[3].Description = "Max tls version - auto if not specified."
+	SSLRequestDoc.Fields[3].Comments[encoder.LineComment] = "Max tls version - auto if not specified."
+	SSLRequestDoc.Fields[3].Values = []string{
+		"sslv3",
+		"tls10",
+		"tls11",
+		"tls12",
+		"tls13",
+	}
+	SSLRequestDoc.Fields[4].Name = "cipher_suites"
+	SSLRequestDoc.Fields[4].Type = "[]string"
 	SSLRequestDoc.Fields[4].Note = ""
-	SSLRequestDoc.Fields[4].Description = "description: |\n   Tls Scan Mode - auto if not specified\n values:\n   - \"ctls\"\n   - \"ztls\"\n   - \"auto\"\n	 - \"openssl\" # reverts to \"auto\" is openssl is not installed"
-	SSLRequestDoc.Fields[4].Comments[encoder.LineComment] = " description: |"
+	SSLRequestDoc.Fields[4].Description = "Client Cipher Suites  - auto if not specified."
+	SSLRequestDoc.Fields[4].Comments[encoder.LineComment] = "Client Cipher Suites  - auto if not specified."
+	SSLRequestDoc.Fields[5].Name = "scan_mode"
+	SSLRequestDoc.Fields[5].Type = "string"
+	SSLRequestDoc.Fields[5].Note = ""
+	SSLRequestDoc.Fields[5].Description = "description: |\n   Tls Scan Mode - auto if not specified\n values:\n   - \"ctls\"\n   - \"ztls\"\n   - \"auto\"\n	 - \"openssl\" # reverts to \"auto\" is openssl is not installed"
+	SSLRequestDoc.Fields[5].Comments[encoder.LineComment] = " description: |"
 
 	WEBSOCKETRequestDoc.Type = "websocket.Request"
 	WEBSOCKETRequestDoc.Comments[encoder.LineComment] = " Request is a request for the Websocket protocol"
@@ -1475,32 +1511,37 @@ func init() {
 			Value: "Matched is the input which was matched upon",
 		},
 	}
-	WEBSOCKETRequestDoc.Fields = make([]encoder.Doc, 5)
-	WEBSOCKETRequestDoc.Fields[0].Name = "address"
+	WEBSOCKETRequestDoc.Fields = make([]encoder.Doc, 6)
+	WEBSOCKETRequestDoc.Fields[0].Name = "id"
 	WEBSOCKETRequestDoc.Fields[0].Type = "string"
 	WEBSOCKETRequestDoc.Fields[0].Note = ""
-	WEBSOCKETRequestDoc.Fields[0].Description = "Address contains address for the request"
-	WEBSOCKETRequestDoc.Fields[0].Comments[encoder.LineComment] = "Address contains address for the request"
-	WEBSOCKETRequestDoc.Fields[1].Name = "inputs"
-	WEBSOCKETRequestDoc.Fields[1].Type = "[]websocket.Input"
+	WEBSOCKETRequestDoc.Fields[0].Description = "ID is the optional id of the request"
+	WEBSOCKETRequestDoc.Fields[0].Comments[encoder.LineComment] = " ID is the optional id of the request"
+	WEBSOCKETRequestDoc.Fields[1].Name = "address"
+	WEBSOCKETRequestDoc.Fields[1].Type = "string"
 	WEBSOCKETRequestDoc.Fields[1].Note = ""
-	WEBSOCKETRequestDoc.Fields[1].Description = "Inputs contains inputs for the websocket protocol"
-	WEBSOCKETRequestDoc.Fields[1].Comments[encoder.LineComment] = "Inputs contains inputs for the websocket protocol"
-	WEBSOCKETRequestDoc.Fields[2].Name = "headers"
-	WEBSOCKETRequestDoc.Fields[2].Type = "map[string]string"
+	WEBSOCKETRequestDoc.Fields[1].Description = "Address contains address for the request"
+	WEBSOCKETRequestDoc.Fields[1].Comments[encoder.LineComment] = "Address contains address for the request"
+	WEBSOCKETRequestDoc.Fields[2].Name = "inputs"
+	WEBSOCKETRequestDoc.Fields[2].Type = "[]websocket.Input"
 	WEBSOCKETRequestDoc.Fields[2].Note = ""
-	WEBSOCKETRequestDoc.Fields[2].Description = "Headers contains headers for the request."
-	WEBSOCKETRequestDoc.Fields[2].Comments[encoder.LineComment] = "Headers contains headers for the request."
-	WEBSOCKETRequestDoc.Fields[3].Name = "attack"
-	WEBSOCKETRequestDoc.Fields[3].Type = "generators.AttackTypeHolder"
+	WEBSOCKETRequestDoc.Fields[2].Description = "Inputs contains inputs for the websocket protocol"
+	WEBSOCKETRequestDoc.Fields[2].Comments[encoder.LineComment] = "Inputs contains inputs for the websocket protocol"
+	WEBSOCKETRequestDoc.Fields[3].Name = "headers"
+	WEBSOCKETRequestDoc.Fields[3].Type = "map[string]string"
 	WEBSOCKETRequestDoc.Fields[3].Note = ""
-	WEBSOCKETRequestDoc.Fields[3].Description = "Attack is the type of payload combinations to perform.\n\nSniper is each payload once, pitchfork combines multiple payload sets and clusterbomb generates\npermutations and combinations for all payloads."
-	WEBSOCKETRequestDoc.Fields[3].Comments[encoder.LineComment] = "Attack is the type of payload combinations to perform."
-	WEBSOCKETRequestDoc.Fields[4].Name = "payloads"
-	WEBSOCKETRequestDoc.Fields[4].Type = "map[string]interface{}"
+	WEBSOCKETRequestDoc.Fields[3].Description = "Headers contains headers for the request."
+	WEBSOCKETRequestDoc.Fields[3].Comments[encoder.LineComment] = "Headers contains headers for the request."
+	WEBSOCKETRequestDoc.Fields[4].Name = "attack"
+	WEBSOCKETRequestDoc.Fields[4].Type = "generators.AttackTypeHolder"
 	WEBSOCKETRequestDoc.Fields[4].Note = ""
-	WEBSOCKETRequestDoc.Fields[4].Description = "Payloads contains any payloads for the current request.\n\nPayloads support both key-values combinations where a list\nof payloads is provided, or optionally a single file can also\nbe provided as payload which will be read on run-time."
-	WEBSOCKETRequestDoc.Fields[4].Comments[encoder.LineComment] = "Payloads contains any payloads for the current request."
+	WEBSOCKETRequestDoc.Fields[4].Description = "Attack is the type of payload combinations to perform.\n\nSniper is each payload once, pitchfork combines multiple payload sets and clusterbomb generates\npermutations and combinations for all payloads."
+	WEBSOCKETRequestDoc.Fields[4].Comments[encoder.LineComment] = "Attack is the type of payload combinations to perform."
+	WEBSOCKETRequestDoc.Fields[5].Name = "payloads"
+	WEBSOCKETRequestDoc.Fields[5].Type = "map[string]interface{}"
+	WEBSOCKETRequestDoc.Fields[5].Note = ""
+	WEBSOCKETRequestDoc.Fields[5].Description = "Payloads contains any payloads for the current request.\n\nPayloads support both key-values combinations where a list\nof payloads is provided, or optionally a single file can also\nbe provided as payload which will be read on run-time."
+	WEBSOCKETRequestDoc.Fields[5].Comments[encoder.LineComment] = "Payloads contains any payloads for the current request."
 
 	WEBSOCKETInputDoc.Type = "websocket.Input"
 	WEBSOCKETInputDoc.Comments[encoder.LineComment] = ""
@@ -1538,17 +1579,148 @@ func init() {
 			FieldName: "whois",
 		},
 	}
-	WHOISRequestDoc.Fields = make([]encoder.Doc, 2)
-	WHOISRequestDoc.Fields[0].Name = "query"
+	WHOISRequestDoc.Fields = make([]encoder.Doc, 3)
+	WHOISRequestDoc.Fields[0].Name = "id"
 	WHOISRequestDoc.Fields[0].Type = "string"
 	WHOISRequestDoc.Fields[0].Note = ""
-	WHOISRequestDoc.Fields[0].Description = "Query contains query for the request"
-	WHOISRequestDoc.Fields[0].Comments[encoder.LineComment] = "Query contains query for the request"
-	WHOISRequestDoc.Fields[1].Name = "server"
+	WHOISRequestDoc.Fields[0].Description = "ID is the optional id of the request"
+	WHOISRequestDoc.Fields[0].Comments[encoder.LineComment] = " ID is the optional id of the request"
+	WHOISRequestDoc.Fields[1].Name = "query"
 	WHOISRequestDoc.Fields[1].Type = "string"
 	WHOISRequestDoc.Fields[1].Note = ""
-	WHOISRequestDoc.Fields[1].Description = "description: |\n 	 Optional WHOIS server URL.\n\n 	 If present, specifies the WHOIS server to execute the Request on.\n   Otherwise, nil enables bootstrapping"
-	WHOISRequestDoc.Fields[1].Comments[encoder.LineComment] = " description: |"
+	WHOISRequestDoc.Fields[1].Description = "Query contains query for the request"
+	WHOISRequestDoc.Fields[1].Comments[encoder.LineComment] = "Query contains query for the request"
+	WHOISRequestDoc.Fields[2].Name = "server"
+	WHOISRequestDoc.Fields[2].Type = "string"
+	WHOISRequestDoc.Fields[2].Note = ""
+	WHOISRequestDoc.Fields[2].Description = "description: |\n 	 Optional WHOIS server URL.\n\n 	 If present, specifies the WHOIS server to execute the Request on.\n   Otherwise, nil enables bootstrapping"
+	WHOISRequestDoc.Fields[2].Comments[encoder.LineComment] = " description: |"
+
+	CODERequestDoc.Type = "code.Request"
+	CODERequestDoc.Comments[encoder.LineComment] = " Request is a request for the SSL protocol"
+	CODERequestDoc.Description = "Request is a request for the SSL protocol"
+	CODERequestDoc.AppearsIn = []encoder.Appearance{
+		{
+			TypeName:  "Template",
+			FieldName: "code",
+		},
+	}
+	CODERequestDoc.PartDefinitions = []encoder.KeyValue{
+		{
+			Key:   "type",
+			Value: "Type is the type of request made",
+		},
+		{
+			Key:   "host",
+			Value: "Host is the input to the template",
+		},
+		{
+			Key:   "matched",
+			Value: "Matched is the input which was matched upon",
+		},
+	}
+	CODERequestDoc.Fields = make([]encoder.Doc, 5)
+	CODERequestDoc.Fields[0].Name = "id"
+	CODERequestDoc.Fields[0].Type = "string"
+	CODERequestDoc.Fields[0].Note = ""
+	CODERequestDoc.Fields[0].Description = "ID is the optional id of the request"
+	CODERequestDoc.Fields[0].Comments[encoder.LineComment] = " ID is the optional id of the request"
+	CODERequestDoc.Fields[1].Name = "engine"
+	CODERequestDoc.Fields[1].Type = "[]string"
+	CODERequestDoc.Fields[1].Note = ""
+	CODERequestDoc.Fields[1].Description = "Engine type"
+	CODERequestDoc.Fields[1].Comments[encoder.LineComment] = "Engine type"
+	CODERequestDoc.Fields[2].Name = "args"
+	CODERequestDoc.Fields[2].Type = "[]string"
+	CODERequestDoc.Fields[2].Note = ""
+	CODERequestDoc.Fields[2].Description = "Engine Arguments"
+	CODERequestDoc.Fields[2].Comments[encoder.LineComment] = "Engine Arguments"
+	CODERequestDoc.Fields[3].Name = "pattern"
+	CODERequestDoc.Fields[3].Type = "string"
+	CODERequestDoc.Fields[3].Note = ""
+	CODERequestDoc.Fields[3].Description = "Pattern preferred for file name"
+	CODERequestDoc.Fields[3].Comments[encoder.LineComment] = "Pattern preferred for file name"
+	CODERequestDoc.Fields[4].Name = "source"
+	CODERequestDoc.Fields[4].Type = "string"
+	CODERequestDoc.Fields[4].Note = ""
+	CODERequestDoc.Fields[4].Description = "Source File/Snippet"
+	CODERequestDoc.Fields[4].Comments[encoder.LineComment] = "Source File/Snippet"
+
+	JAVASCRIPTRequestDoc.Type = "javascript.Request"
+	JAVASCRIPTRequestDoc.Comments[encoder.LineComment] = " Request is a request for the javascript protocol"
+	JAVASCRIPTRequestDoc.Description = "Request is a request for the javascript protocol"
+	JAVASCRIPTRequestDoc.AppearsIn = []encoder.Appearance{
+		{
+			TypeName:  "Template",
+			FieldName: "javascript",
+		},
+	}
+	JAVASCRIPTRequestDoc.PartDefinitions = []encoder.KeyValue{
+		{
+			Key:   "type",
+			Value: "Type is the type of request made",
+		},
+		{
+			Key:   "response",
+			Value: "Javascript protocol result response",
+		},
+		{
+			Key:   "host",
+			Value: "Host is the input to the template",
+		},
+		{
+			Key:   "matched",
+			Value: "Matched is the input which was matched upon",
+		},
+	}
+	JAVASCRIPTRequestDoc.Fields = make([]encoder.Doc, 9)
+	JAVASCRIPTRequestDoc.Fields[0].Name = "id"
+	JAVASCRIPTRequestDoc.Fields[0].Type = "string"
+	JAVASCRIPTRequestDoc.Fields[0].Note = ""
+	JAVASCRIPTRequestDoc.Fields[0].Description = "description: |\n ID is request id in that protocol"
+	JAVASCRIPTRequestDoc.Fields[0].Comments[encoder.LineComment] = " description: |"
+	JAVASCRIPTRequestDoc.Fields[1].Name = "init"
+	JAVASCRIPTRequestDoc.Fields[1].Type = "string"
+	JAVASCRIPTRequestDoc.Fields[1].Note = ""
+	JAVASCRIPTRequestDoc.Fields[1].Description = "Init is javascript code to execute after compiling template and before executing it on any target\nThis is helpful for preparing payloads or other setup that maybe required for exploits"
+	JAVASCRIPTRequestDoc.Fields[1].Comments[encoder.LineComment] = "Init is javascript code to execute after compiling template and before executing it on any target"
+	JAVASCRIPTRequestDoc.Fields[2].Name = "pre-condition"
+	JAVASCRIPTRequestDoc.Fields[2].Type = "string"
+	JAVASCRIPTRequestDoc.Fields[2].Note = ""
+	JAVASCRIPTRequestDoc.Fields[2].Description = "PreCondition is a condition which is evaluated before sending the request."
+	JAVASCRIPTRequestDoc.Fields[2].Comments[encoder.LineComment] = "PreCondition is a condition which is evaluated before sending the request."
+	JAVASCRIPTRequestDoc.Fields[3].Name = "args"
+	JAVASCRIPTRequestDoc.Fields[3].Type = "map[string]interface{}"
+	JAVASCRIPTRequestDoc.Fields[3].Note = ""
+	JAVASCRIPTRequestDoc.Fields[3].Description = "Args contains the arguments to pass to the javascript code."
+	JAVASCRIPTRequestDoc.Fields[3].Comments[encoder.LineComment] = "Args contains the arguments to pass to the javascript code."
+	JAVASCRIPTRequestDoc.Fields[4].Name = "code"
+	JAVASCRIPTRequestDoc.Fields[4].Type = "string"
+	JAVASCRIPTRequestDoc.Fields[4].Note = ""
+	JAVASCRIPTRequestDoc.Fields[4].Description = "Code contains code to execute for the javascript request."
+	JAVASCRIPTRequestDoc.Fields[4].Comments[encoder.LineComment] = "Code contains code to execute for the javascript request."
+	JAVASCRIPTRequestDoc.Fields[5].Name = "stop-at-first-match"
+	JAVASCRIPTRequestDoc.Fields[5].Type = "bool"
+	JAVASCRIPTRequestDoc.Fields[5].Note = ""
+	JAVASCRIPTRequestDoc.Fields[5].Description = "StopAtFirstMatch stops processing the request at first match."
+	JAVASCRIPTRequestDoc.Fields[5].Comments[encoder.LineComment] = "StopAtFirstMatch stops processing the request at first match."
+	JAVASCRIPTRequestDoc.Fields[6].Name = "attack"
+	JAVASCRIPTRequestDoc.Fields[6].Type = "generators.AttackTypeHolder"
+	JAVASCRIPTRequestDoc.Fields[6].Note = ""
+	JAVASCRIPTRequestDoc.Fields[6].Description = "Attack is the type of payload combinations to perform.\n\nSniper is each payload once, pitchfork combines multiple payload sets and clusterbomb generates\npermutations and combinations for all payloads."
+	JAVASCRIPTRequestDoc.Fields[6].Comments[encoder.LineComment] = "Attack is the type of payload combinations to perform."
+	JAVASCRIPTRequestDoc.Fields[7].Name = "threads"
+	JAVASCRIPTRequestDoc.Fields[7].Type = "int"
+	JAVASCRIPTRequestDoc.Fields[7].Note = ""
+	JAVASCRIPTRequestDoc.Fields[7].Description = "Payload concurreny i.e threads for sending requests."
+	JAVASCRIPTRequestDoc.Fields[7].Comments[encoder.LineComment] = "Payload concurreny i.e threads for sending requests."
+
+	JAVASCRIPTRequestDoc.Fields[7].AddExample("Send requests using 10 concurrent threads", 10)
+	JAVASCRIPTRequestDoc.Fields[8].Name = "payloads"
+	JAVASCRIPTRequestDoc.Fields[8].Type = "map[string]interface{}"
+	JAVASCRIPTRequestDoc.Fields[8].Note = ""
+	JAVASCRIPTRequestDoc.Fields[8].Description = "Payloads contains any payloads for the current request.\n\nPayloads support both key-values combinations where a list\nof payloads is provided, or optionally a single file can also\nbe provided as payload which will be read on run-time."
+	JAVASCRIPTRequestDoc.Fields[8].Comments[encoder.LineComment] = "Payloads contains any payloads for the current request."
 
 	HTTPSignatureTypeHolderDoc.Type = "http.SignatureTypeHolder"
 	HTTPSignatureTypeHolderDoc.Comments[encoder.LineComment] = " SignatureTypeHolder is used to hold internal type of the signature"
@@ -1604,6 +1776,8 @@ func GetTemplateDoc() *encoder.FileDoc {
 			&WEBSOCKETRequestDoc,
 			&WEBSOCKETInputDoc,
 			&WHOISRequestDoc,
+			&CODERequestDoc,
+			&JAVASCRIPTRequestDoc,
 			&HTTPSignatureTypeHolderDoc,
 			&VARIABLESVariableDoc,
 		},
