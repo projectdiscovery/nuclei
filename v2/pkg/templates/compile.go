@@ -1,32 +1,50 @@
 package templates
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 	"reflect"
+	"sync"
+	"sync/atomic"
 
+	"github.com/logrusorgru/aurora"
 	"github.com/pkg/errors"
 	"gopkg.in/yaml.v2"
 
+	"github.com/projectdiscovery/gologger"
+	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/config"
+	"github.com/projectdiscovery/nuclei/v2/pkg/js/compiler"
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
-	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/executer"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/offlinehttp"
 	"github.com/projectdiscovery/nuclei/v2/pkg/templates/cache"
+	"github.com/projectdiscovery/nuclei/v2/pkg/templates/signer"
+	"github.com/projectdiscovery/nuclei/v2/pkg/tmplexec"
 	"github.com/projectdiscovery/nuclei/v2/pkg/utils"
 	"github.com/projectdiscovery/retryablehttp-go"
+	errorutil "github.com/projectdiscovery/utils/errors"
 	stringsutil "github.com/projectdiscovery/utils/strings"
 )
 
 var (
 	ErrCreateTemplateExecutor          = errors.New("cannot create template executer")
 	ErrIncompatibleWithOfflineMatching = errors.New("template can't be used for offline matching")
+	parsedTemplatesCache               *cache.Templates
+	// track how many templates are verfied and by which signer
+	SignatureStats = map[string]*atomic.Uint64{}
 )
 
-var parsedTemplatesCache *cache.Templates
+const (
+	Unsigned = "unsigned"
+)
 
 func init() {
 	parsedTemplatesCache = cache.New()
+	for _, verifier := range signer.DefaultTemplateVerifiers {
+		SignatureStats[verifier.Identifier()] = &atomic.Uint64{}
+	}
+	SignatureStats[Unsigned] = &atomic.Uint64{}
 }
 
 // Parse parses a yaml request template file
@@ -57,7 +75,7 @@ func Parse(filePath string, preprocessor Preprocessor, options protocols.Executo
 	}
 	defer reader.Close()
 	options.TemplatePath = filePath
-	template, err := ParseTemplateFromReader(reader, preprocessor, options)
+	template, err := ParseTemplateFromReader(reader, preprocessor, options.Copy())
 	if err != nil {
 		return nil, err
 	}
@@ -104,7 +122,9 @@ func (template *Template) Requests() int {
 		len(template.Workflows) +
 		len(template.RequestsSSL) +
 		len(template.RequestsWebsocket) +
-		len(template.RequestsWHOIS)
+		len(template.RequestsWHOIS) +
+		len(template.RequestsCode) +
+		len(template.RequestsJavascript)
 }
 
 // compileProtocolRequests compiles all the protocol requests for the template
@@ -121,31 +141,46 @@ func (template *Template) compileProtocolRequests(options protocols.ExecutorOpti
 
 	var requests []protocols.Request
 
-	if len(template.RequestsDNS) > 0 {
-		requests = append(requests, template.convertRequestToProtocolsRequest(template.RequestsDNS)...)
+	if template.hasMultipleRequests() {
+		// when multiple requests are present preserve the order of requests and protocols
+		// which is already done during unmarshalling
+		requests = template.RequestsQueue
+		if options.Flow == "" {
+			options.IsMultiProtocol = true
+		}
+	} else {
+		if len(template.RequestsDNS) > 0 {
+			requests = append(requests, template.convertRequestToProtocolsRequest(template.RequestsDNS)...)
+		}
+		if len(template.RequestsFile) > 0 {
+			requests = append(requests, template.convertRequestToProtocolsRequest(template.RequestsFile)...)
+		}
+		if len(template.RequestsNetwork) > 0 {
+			requests = append(requests, template.convertRequestToProtocolsRequest(template.RequestsNetwork)...)
+		}
+		if len(template.RequestsHTTP) > 0 {
+			requests = append(requests, template.convertRequestToProtocolsRequest(template.RequestsHTTP)...)
+		}
+		if len(template.RequestsHeadless) > 0 && options.Options.Headless {
+			requests = append(requests, template.convertRequestToProtocolsRequest(template.RequestsHeadless)...)
+		}
+		if len(template.RequestsSSL) > 0 {
+			requests = append(requests, template.convertRequestToProtocolsRequest(template.RequestsSSL)...)
+		}
+		if len(template.RequestsWebsocket) > 0 {
+			requests = append(requests, template.convertRequestToProtocolsRequest(template.RequestsWebsocket)...)
+		}
+		if len(template.RequestsWHOIS) > 0 {
+			requests = append(requests, template.convertRequestToProtocolsRequest(template.RequestsWHOIS)...)
+		}
+		if len(template.RequestsCode) > 0 {
+			requests = append(requests, template.convertRequestToProtocolsRequest(template.RequestsCode)...)
+		}
+		if len(template.RequestsJavascript) > 0 {
+			requests = append(requests, template.convertRequestToProtocolsRequest(template.RequestsJavascript)...)
+		}
 	}
-	if len(template.RequestsFile) > 0 {
-		requests = append(requests, template.convertRequestToProtocolsRequest(template.RequestsFile)...)
-	}
-	if len(template.RequestsNetwork) > 0 {
-		requests = append(requests, template.convertRequestToProtocolsRequest(template.RequestsNetwork)...)
-	}
-	if len(template.RequestsHTTP) > 0 {
-		requests = append(requests, template.convertRequestToProtocolsRequest(template.RequestsHTTP)...)
-	}
-	if len(template.RequestsHeadless) > 0 && options.Options.Headless {
-		requests = append(requests, template.convertRequestToProtocolsRequest(template.RequestsHeadless)...)
-	}
-	if len(template.RequestsSSL) > 0 {
-		requests = append(requests, template.convertRequestToProtocolsRequest(template.RequestsSSL)...)
-	}
-	if len(template.RequestsWebsocket) > 0 {
-		requests = append(requests, template.convertRequestToProtocolsRequest(template.RequestsWebsocket)...)
-	}
-	if len(template.RequestsWHOIS) > 0 {
-		requests = append(requests, template.convertRequestToProtocolsRequest(template.RequestsWHOIS)...)
-	}
-	template.Executer = executer.NewExecuter(requests, &options)
+	template.Executer = tmplexec.NewTemplateExecuter(requests, &options)
 	return nil
 }
 
@@ -190,7 +225,7 @@ mainLoop:
 	}
 	if len(operatorsList) > 0 {
 		options.Operators = operatorsList
-		template.Executer = executer.NewExecuter([]protocols.Request{&offlinehttp.Request{}}, &options)
+		template.Executer = tmplexec.NewTemplateExecuter([]protocols.Request{&offlinehttp.Request{}}, &options)
 		return nil
 	}
 
@@ -200,19 +235,86 @@ mainLoop:
 // ParseTemplateFromReader reads the template from reader
 // returns the parsed template
 func ParseTemplateFromReader(reader io.Reader, preprocessor Preprocessor, options protocols.ExecutorOptions) (*Template, error) {
-	template := &Template{}
 	data, err := io.ReadAll(reader)
 	if err != nil {
 		return nil, err
 	}
 
-	data = template.expandPreprocessors(data)
-	if preprocessor != nil {
-		data = preprocessor.Process(data)
+	// a preprocessor is a variable like
+	// {{randstr}} which is replaced before unmarshalling
+	// as it is known to be a random static value per template
+	hasPreprocessor := false
+	allPreprocessors := getPreprocessors(preprocessor)
+	for _, preprocessor := range allPreprocessors {
+		if preprocessor.Exists(data) {
+			hasPreprocessor = true
+			break
+		}
 	}
 
-	if err := yaml.Unmarshal(data, template); err != nil {
+	if !hasPreprocessor {
+		// if no preprocessors exists parse template and exit
+		template, err := parseTemplate(data, options)
+		if err != nil {
+			return nil, err
+		}
+		if !template.Verified && len(template.Workflows) == 0 {
+			if config.DefaultConfig.LogAllEvents {
+				gologger.DefaultLogger.Print().Msgf("[%v] Template %s is not signed or tampered\n", aurora.Yellow("WRN").String(), template.ID)
+			}
+			SignatureStats[Unsigned].Add(1)
+		}
+		return template, nil
+	}
+
+	// if preprocessor is required / exists in this template
+	// first unmarshal it and check if its verified
+	// persist verified status value and then
+	// expand all preprocessor and reparse template
+
+	// === signature verification befoer preprocessors ===
+	template, err := parseTemplate(data, options)
+	if err != nil {
 		return nil, err
+	}
+	isVerified := template.Verified
+	if !template.Verified && len(template.Workflows) == 0 {
+		// workflows are not signed by default
+		if config.DefaultConfig.LogAllEvents {
+			gologger.DefaultLogger.Print().Msgf("[%v] Template %s is not signed or tampered\n", aurora.Yellow("WRN").String(), template.ID)
+		}
+		SignatureStats[Unsigned].Add(1)
+	}
+
+	// ==== execute preprocessors ======
+	for _, v := range allPreprocessors {
+		data = v.Process(data)
+	}
+	reParsed, err := parseTemplate(data, options)
+	if err != nil {
+		return nil, err
+	}
+	reParsed.Verified = isVerified
+	return reParsed, nil
+}
+
+// this method does not include any kind of preprocessing
+func parseTemplate(data []byte, options protocols.ExecutorOptions) (*Template, error) {
+	template := &Template{}
+	var err error
+	switch config.GetTemplateFormatFromExt(template.Path) {
+	case config.JSON:
+		err = json.Unmarshal(data, template)
+	case config.YAML:
+		err = yaml.Unmarshal(data, template)
+	default:
+		// assume its yaml
+		if err = yaml.Unmarshal(data, template); err != nil {
+			return nil, err
+		}
+	}
+	if err != nil {
+		return nil, errorutil.NewWithErr(err).Msgf("failed to parse %s", template.Path)
 	}
 
 	if utils.IsBlank(template.Info.Name) {
@@ -231,11 +333,31 @@ func ParseTemplateFromReader(reader io.Reader, preprocessor Preprocessor, option
 		options.Variables = template.Variables
 	}
 
+	// if more than 1 request per protocol exist we add request id to protocol request
+	// since in template context we have proto_prefix for each protocol it is overwritten
+	// if request id is not present
+	template.validateAllRequestIDs()
+
+	// create empty context args for template scope
+	options.CreateTemplateCtxStore()
+	options.ProtocolType = template.Type()
 	options.Constants = template.Constants
 
+	// initialize the js compiler if missing
+	if options.JsCompiler == nil {
+		options.JsCompiler = GetJsCompiler()
+	}
+
+	template.Options = &options
 	// If no requests, and it is also not a workflow, return error.
 	if template.Requests() == 0 {
 		return nil, fmt.Errorf("no requests defined for %s", template.ID)
+	}
+
+	// load `flow` and `source` in code protocol from file
+	// if file is referenced instead of actual source code
+	if err := template.ImportFileRefs(template.Options); err != nil {
+		return nil, errorutil.NewWithErr(err).Msgf("failed to load file refs for %s", template.ID)
 	}
 
 	if err := template.compileProtocolRequests(options); err != nil {
@@ -253,5 +375,26 @@ func ParseTemplateFromReader(reader io.Reader, preprocessor Preprocessor, option
 	}
 	template.parseSelfContainedRequests()
 
+	// check if the template is verified
+	// only valid templates can be verified or signed
+	for _, verifier := range signer.DefaultTemplateVerifiers {
+		template.Verified, _ = verifier.Verify(data, template)
+		if template.Verified {
+			SignatureStats[verifier.Identifier()].Add(1)
+			break
+		}
+	}
 	return template, nil
+}
+
+var (
+	jsCompiler     *compiler.Compiler
+	jsCompilerOnce = sync.OnceFunc(func() {
+		jsCompiler = compiler.New()
+	})
+)
+
+func GetJsCompiler() *compiler.Compiler {
+	jsCompilerOnce()
+	return jsCompiler
 }

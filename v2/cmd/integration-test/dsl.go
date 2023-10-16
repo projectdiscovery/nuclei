@@ -14,6 +14,8 @@ var dslTestcases = []TestCaseInfo{
 	{Path: "dsl/show-version-warning.yaml", TestCase: &dslShowVersionWarning{}},
 }
 
+var defaultDSLEnvs = []string{"HIDE_TEMPLATE_SIG_WARNING=true"}
+
 type dslVersionWarning struct{}
 
 func (d *dslVersionWarning) Execute(templatePath string) error {
@@ -23,7 +25,7 @@ func (d *dslVersionWarning) Execute(templatePath string) error {
 	})
 	ts := httptest.NewServer(router)
 	defer ts.Close()
-	results, err := testutils.RunNucleiArgsAndGetErrors(debug, nil, "-t", templatePath, "-target", ts.URL, "-v")
+	results, err := testutils.RunNucleiArgsAndGetErrors(debug, defaultDSLEnvs, "-t", templatePath, "-target", ts.URL, "-v")
 	if err != nil {
 		return err
 	}
@@ -39,7 +41,7 @@ func (d *dslShowVersionWarning) Execute(templatePath string) error {
 	})
 	ts := httptest.NewServer(router)
 	defer ts.Close()
-	results, err := testutils.RunNucleiArgsAndGetErrors(debug, []string{"SHOW_DSL_ERRORS=true"}, "-t", templatePath, "-target", ts.URL, "-v")
+	results, err := testutils.RunNucleiArgsAndGetErrors(debug, append(defaultDSLEnvs, "SHOW_DSL_ERRORS=true"), "-t", templatePath, "-target", ts.URL, "-v")
 	if err != nil {
 		return err
 	}

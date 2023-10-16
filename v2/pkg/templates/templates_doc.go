@@ -1238,7 +1238,7 @@ func init() {
 			Value: "Headless response received from client (default)",
 		},
 	}
-	HEADLESSRequestDoc.Fields = make([]encoder.Doc, 9)
+	HEADLESSRequestDoc.Fields = make([]encoder.Doc, 7)
 	HEADLESSRequestDoc.Fields[0].Name = "id"
 	HEADLESSRequestDoc.Fields[0].Type = "string"
 	HEADLESSRequestDoc.Fields[0].Note = ""
@@ -1274,16 +1274,6 @@ func init() {
 	HEADLESSRequestDoc.Fields[6].Note = ""
 	HEADLESSRequestDoc.Fields[6].Description = "StopAtFirstMatch stops the execution of the requests and template as soon as a match is found."
 	HEADLESSRequestDoc.Fields[6].Comments[encoder.LineComment] = "StopAtFirstMatch stops the execution of the requests and template as soon as a match is found."
-	HEADLESSRequestDoc.Fields[7].Name = "fuzzing"
-	HEADLESSRequestDoc.Fields[7].Type = "[]fuzz.Rule"
-	HEADLESSRequestDoc.Fields[7].Note = ""
-	HEADLESSRequestDoc.Fields[7].Description = "Fuzzing describes schema to fuzz headless requests"
-	HEADLESSRequestDoc.Fields[7].Comments[encoder.LineComment] = " Fuzzing describes schema to fuzz headless requests"
-	HEADLESSRequestDoc.Fields[8].Name = "cookie-reuse"
-	HEADLESSRequestDoc.Fields[8].Type = "bool"
-	HEADLESSRequestDoc.Fields[8].Note = ""
-	HEADLESSRequestDoc.Fields[8].Description = "CookieReuse is an optional setting that enables cookie reuse"
-	HEADLESSRequestDoc.Fields[8].Comments[encoder.LineComment] = "CookieReuse is an optional setting that enables cookie reuse"
 
 	ENGINEActionDoc.Type = "engine.Action"
 	ENGINEActionDoc.Comments[encoder.LineComment] = " Action is an action taken by the browser to reach a navigation"

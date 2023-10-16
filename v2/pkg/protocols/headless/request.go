@@ -45,7 +45,8 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, metadata,
 
 	vars := protocolutils.GenerateVariablesWithContextArgs(input, false)
 	payloads := generators.BuildPayloadFromOptions(request.options.Options)
-	values := generators.MergeMaps(vars, metadata, payloads)
+	// add templatecontext variables to varMap
+	values := generators.MergeMaps(vars, metadata, payloads, request.options.GetTemplateCtx(input.MetaInput).GetAll())
 	variablesMap := request.options.Variables.Evaluate(values)
 	payloads = generators.MergeMaps(variablesMap, payloads, request.options.Constants)
 
@@ -95,7 +96,7 @@ func (request *Request) executeRequestWithPayloads(input *contextargs.Context, p
 	defer instance.Close()
 
 	if vardump.EnableVarDump {
-		gologger.Debug().Msgf("Protocol request variables: \n%s\n", vardump.DumpVariables(payloads))
+		gologger.Debug().Msgf("Headless Protocol request variables: \n%s\n", vardump.DumpVariables(payloads))
 	}
 
 	instance.SetInteractsh(request.options.Interactsh)
@@ -156,7 +157,10 @@ func (request *Request) executeRequestWithPayloads(input *contextargs.Context, p
 		responseBody, _ = html.HTML()
 	}
 
-	outputEvent := request.responseToDSLMap(responseBody, out["header"], out["status_code"], reqBuilder.String(), input.MetaInput.Input, navigatedURL, page.DumpHistory())
+	outputEvent := request.responseToDSLMap(responseBody, out["header"], out["status_code"], reqBuilder.String(), input.MetaInput.Input, input.MetaInput.Input, page.DumpHistory())
+	// add response fields to template context and merge templatectx variables to output event
+	request.options.AddTemplateVars(input.MetaInput, request.Type(), request.ID, outputEvent)
+	outputEvent = generators.MergeMaps(outputEvent, request.options.GetTemplateCtx(input.MetaInput).GetAll())
 	for k, v := range out {
 		outputEvent[k] = v
 	}

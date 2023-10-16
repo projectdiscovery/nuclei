@@ -11,15 +11,15 @@ import (
 )
 
 var headlessTestcases = []TestCaseInfo{
-	{Path: "headless/headless-basic.yaml", TestCase: &headlessBasic{}},
-	{Path: "headless/headless-header-action.yaml", TestCase: &headlessHeaderActions{}},
-	{Path: "headless/headless-extract-values.yaml", TestCase: &headlessExtractValues{}},
-	{Path: "headless/headless-payloads.yaml", TestCase: &headlessPayloads{}},
-	{Path: "headless/variables.yaml", TestCase: &headlessVariables{}},
-	{Path: "headless/headless-local.yaml", TestCase: &headlessLocal{}},
-	{Path: "headless/file-upload.yaml", TestCase: &headlessFileUpload{}},
-	{Path: "headless/file-upload-negative.yaml", TestCase: &headlessFileUploadNegative{}},
-	{Path: "headless/headless-header-status-test.yaml", TestCase: &headlessHeaderStatus{}},
+	{Path: "protocols/headless/headless-basic.yaml", TestCase: &headlessBasic{}},
+	{Path: "protocols/headless/headless-header-action.yaml", TestCase: &headlessHeaderActions{}},
+	{Path: "protocols/headless/headless-extract-values.yaml", TestCase: &headlessExtractValues{}},
+	{Path: "protocols/headless/headless-payloads.yaml", TestCase: &headlessPayloads{}},
+	{Path: "protocols/headless/variables.yaml", TestCase: &headlessVariables{}},
+	{Path: "protocols/headless/headless-local.yaml", TestCase: &headlessLocal{}},
+	{Path: "protocols/headless/file-upload.yaml", TestCase: &headlessFileUpload{}},
+	{Path: "protocols/headless/file-upload-negative.yaml", TestCase: &headlessFileUploadNegative{}},
+	{Path: "protocols/headless/headless-header-status-test.yaml", TestCase: &headlessHeaderStatus{}},
 }
 
 type headlessBasic struct{}

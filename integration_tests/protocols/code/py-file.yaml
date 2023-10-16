@@ -1,0 +1,21 @@
+id: py-file
+
+info:
+  name: py-file
+  author: pdteam
+  severity: info
+  tags: code
+  description: |
+    py-file
+
+code:
+  - engine:
+      - py
+      - python3
+    source: protocols/code/pyfile.py
+    
+    matchers:
+      - type: word
+        words:
+          - "hello from input"
+# digest: 4a0a00473045022100863e07e45c5fa8d808022dfd60679145e17b4ad6c97b493ef28adaf586407dc3022001f2b2d6e565123c0ef51921862352b0b5499b4adfbf5a92af20eb77107c4920:4a3eb6b4988d95847d4203be25ed1d46

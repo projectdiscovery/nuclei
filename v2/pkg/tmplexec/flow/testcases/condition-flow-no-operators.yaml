@@ -1,0 +1,23 @@
+id: ghost-blog-detection
+info:
+  name: Ghost blog detection
+  author: pdteam
+  severity: info
+
+
+flow: dns() && http()
+
+
+dns:
+  - name: "{{FQDN}}"
+    type: CNAME
+        
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}?ref={{dns_cname}}"
+
+    matchers:
+      - type: word
+        words:
+          - "ghost.io"

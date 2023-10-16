@@ -178,6 +178,25 @@ export AZURE_CONTAINER_NAME=templates
 
 </AccordionGroup>
 
+Environment variables can also be provided to disable download from default and custom template locations:
+
+```bash
+# Disable download from the default nuclei-templates project
+export DISABLE_NUCLEI_TEMPLATES_PUBLIC_DOWNLOAD=true
+
+# Disable download from public / private GitHub project(s)
+export DISABLE_NUCLEI_TEMPLATES_GITHUB_DOWNLOAD=true
+
+# Disable download from public / private GitLab project(s)
+export DISABLE_NUCLEI_TEMPLATES_GITLAB_DOWNLOAD=true
+
+# Disable download from public / private AWS Bucket(s)
+export DISABLE_NUCLEI_TEMPLATES_AWS_DOWNLOAD=true
+
+# Disable download from public / private Azure Blob Storage
+export DISABLE_NUCLEI_TEMPLATES_AZURE_DOWNLOAD=true
+```
+
 Once the environment variables are set, following command to download the custom templates:
 
 ```bash

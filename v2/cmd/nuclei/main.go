@@ -3,8 +3,10 @@ package main
 import (
 	"bufio"
 	"fmt"
+	"io/fs"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"runtime"
 	"runtime/pprof"
 	"strings"
@@ -21,6 +23,9 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/operators/common/dsl"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/uncover"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/http"
+	"github.com/projectdiscovery/nuclei/v2/pkg/templates"
+	"github.com/projectdiscovery/nuclei/v2/pkg/templates/extensions"
+	"github.com/projectdiscovery/nuclei/v2/pkg/templates/signer"
 	templateTypes "github.com/projectdiscovery/nuclei/v2/pkg/templates/types"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types/scanstrategy"
@@ -44,6 +49,42 @@ func main() {
 	if options.ListDslSignatures {
 		gologger.Info().Msgf("The available custom DSL functions are:")
 		fmt.Println(dsl.GetPrintableDslFunctionSignatures(options.NoColor))
+		return
+	}
+
+	// sign the templates if requested - only glob syntax is supported
+	if options.SignTemplates {
+		tsigner, err := signer.NewTemplateSigner(nil, nil) // will read from env , config or generate new keys
+		if err != nil {
+			gologger.Fatal().Msgf("couldn't initialize signer crypto engine: %s\n", err)
+		}
+
+		successCounter := 0
+		errorCounter := 0
+		for _, item := range options.Templates {
+			err := filepath.WalkDir(item, func(iterItem string, d fs.DirEntry, err error) error {
+				if err != nil || d.IsDir() || !strings.HasSuffix(iterItem, extensions.YAML) {
+					// skip non yaml files
+					return nil
+				}
+
+				if err := templates.SignTemplate(tsigner, iterItem); err != nil {
+					if err != templates.ErrNotATemplate {
+						// skip warnings and errors as given items are not templates
+						errorCounter++
+						gologger.Error().Msgf("could not sign '%s': %s\n", iterItem, err)
+					}
+				} else {
+					successCounter++
+				}
+
+				return nil
+			})
+			if err != nil {
+				gologger.Error().Msgf("%s\n", err)
+			}
+		}
+		gologger.Info().Msgf("All templates signatures were elaborated success=%d failed=%d\n", successCounter, errorCounter)
 		return
 	}
 
@@ -145,6 +186,7 @@ on extensive configurability, massive extensibility and ease of use.`)
 		flagSet.BoolVarP(&options.TemplateDisplay, "template-display", "td", false, "displays the templates content"),
 		flagSet.BoolVar(&options.TemplateList, "tl", false, "list all available templates"),
 		flagSet.StringSliceVarConfigOnly(&options.RemoteTemplateDomainList, "remote-template-domain", []string{"templates.nuclei.sh"}, "allowed domain list to load remote templates from"),
+		flagSet.BoolVar(&options.SignTemplates, "sign", false, "signs the templates with the private key defined in NUCLEI_SIGNATURE_PRIVATE_KEY env variable"),
 	)
 
 	flagSet.CreateGroup("filters", "Filtering",
@@ -209,7 +251,6 @@ on extensive configurability, massive extensibility and ease of use.`)
 		flagSet.StringVarP(&options.Interface, "interface", "i", "", "network interface to use for network scan"),
 		flagSet.StringVarP(&options.AttackType, "attack-type", "at", "", "type of payload combinations to perform (batteringram,pitchfork,clusterbomb)"),
 		flagSet.StringVarP(&options.SourceIP, "source-ip", "sip", "", "source ip address to use for network scan"),
-		flagSet.StringVar(&options.CustomConfigDir, "config-directory", "", "override the default config path ($home/.config)"),
 		flagSet.IntVarP(&options.ResponseReadSize, "response-size-read", "rsr", 10*1024*1024, "max response size to read in bytes"),
 		flagSet.IntVarP(&options.ResponseSaveSize, "response-size-save", "rss", 1*1024*1024, "max response size to read in bytes"),
 		flagSet.CallbackVar(resetCallback, "reset", "reset removes all nuclei configuration and data files (including nuclei-templates)"),
@@ -309,7 +350,6 @@ on extensive configurability, massive extensibility and ease of use.`)
 		flagSet.BoolVar(&options.EnableProgressBar, "stats", false, "display statistics about the running scan"),
 		flagSet.BoolVarP(&options.StatsJSON, "stats-json", "sj", false, "display statistics in JSONL(ines) format"),
 		flagSet.IntVarP(&options.StatsInterval, "stats-interval", "si", 5, "number of seconds to wait between showing a statistics update"),
-		flagSet.BoolVarP(&options.Metrics, "metrics", "m", false, "expose nuclei metrics on a port"),
 		flagSet.IntVarP(&options.MetricsPort, "metrics-port", "mp", 9092, "port to expose nuclei metrics on"),
 	)
 
@@ -356,6 +396,11 @@ Run nuclei with sorted Markdown outputs (with environment variables):
 Additional documentation is available at: https://docs.nuclei.sh/getting-started/running
 	`)
 
+	// nuclei has multiple migrations
+	// ex: resume.cfg moved to platform standard cache dir from config dir
+	// ex: config.yaml moved to platform standard config dir from linux specific config dir
+	// and hence it will be attempted in config package during init
+	goflags.DisableAutoConfigMigration = true
 	_ = flagSet.Parse()
 
 	gologger.DefaultLogger.SetTimestamp(options.Timestamp, levels.LevelDebug)
@@ -368,8 +413,8 @@ Additional documentation is available at: https://docs.nuclei.sh/getting-started
 	if options.LeaveDefaultPorts {
 		http.LeaveDefaultPorts = true
 	}
-	if options.CustomConfigDir != "" {
-		config.DefaultConfig.SetConfigDir(options.CustomConfigDir)
+	if customConfigDir := os.Getenv(config.NucleiConfigDirEnv); customConfigDir != "" {
+		config.DefaultConfig.SetConfigDir(customConfigDir)
 		readFlagsConfig(flagSet)
 	}
 	if cfgFile != "" {
@@ -391,7 +436,7 @@ Additional documentation is available at: https://docs.nuclei.sh/getting-started
 
 // cleanupOldResumeFiles cleans up resume files older than 10 days.
 func cleanupOldResumeFiles() {
-	root := config.DefaultConfig.GetConfigDir()
+	root := config.DefaultConfig.GetCacheDir()
 	filter := fileutil.FileFilters{
 		OlderThan: 24 * time.Hour * 10, // cleanup on the 10th day
 		Prefix:    "resume-",
@@ -436,6 +481,8 @@ func disableUpdatesCallback() {
 // printVersion prints the nuclei version and exits.
 func printVersion() {
 	gologger.Info().Msgf("Nuclei Engine Version: %s", config.Version)
+	gologger.Info().Msgf("Nuclei Config Directory: %s", config.DefaultConfig.GetConfigDir())
+	gologger.Info().Msgf("Nuclei Cache Directory: %s", config.DefaultConfig.GetCacheDir()) // cache dir contains resume files
 	os.Exit(0)
 }
 

@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
+	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/config"
 	fileutil "github.com/projectdiscovery/utils/file"
 	urlutil "github.com/projectdiscovery/utils/url"
 )
@@ -37,12 +38,11 @@ func (c *DiskCatalog) ResolvePath(templateName, second string) (string, error) {
 		return potentialPath, nil
 	}
 
-	if c.templatesDirectory != "" {
-		templatePath := filepath.Join(c.templatesDirectory, templateName)
-		if potentialPath, err := c.tryResolve(templatePath); err != errNoValidCombination {
-			return potentialPath, nil
-		}
+	templatePath = filepath.Join(config.DefaultConfig.GetTemplateDir(), templateName)
+	if potentialPath, err := c.tryResolve(templatePath); err != errNoValidCombination {
+		return potentialPath, nil
 	}
+
 	return "", fmt.Errorf("no such path found: %s", templateName)
 }
 
@@ -50,7 +50,7 @@ var errNoValidCombination = errors.New("no valid combination found")
 
 // tryResolve attempts to load locate the target by iterating across all the folders tree
 func (c *DiskCatalog) tryResolve(fullPath string) (string, error) {
-	if _, err := os.Stat(fullPath); !os.IsNotExist(err) {
+	if fileutil.FileExists(fullPath) {
 		return fullPath, nil
 	}
 	return "", errNoValidCombination

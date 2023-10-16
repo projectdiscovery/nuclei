@@ -57,7 +57,7 @@
             "template-guide/introduction",
             "template-guide/template-details",
             {
-               "group":"HTTP",
+               "group":"HTTPs",
                "pages":[
                   "template-guide/http/base-http",
                   "template-guide/http/raw-http",
@@ -71,6 +71,8 @@
             "template-guide/network",
             "template-guide/dns",
             "template-guide/file",
+            "template-guide/javascript",
+            "template-guide/code",
             {
                "group":"Operators",
                "pages":[
@@ -140,11 +142,5 @@
    "feedback":{
       "thumbsRating":true,
       "suggestEdit":true
-   },
-   "api":{
-      "auth":{
-         "method":"key",
-         "name":"X-API-KEY"
-      }
    }
 }

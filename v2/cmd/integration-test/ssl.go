@@ -8,11 +8,11 @@ import (
 )
 
 var sslTestcases = []TestCaseInfo{
-	{Path: "ssl/basic.yaml", TestCase: &sslBasic{}},
-	{Path: "ssl/basic-ztls.yaml", TestCase: &sslBasicZtls{}},
-	{Path: "ssl/custom-cipher.yaml", TestCase: &sslCustomCipher{}},
-	{Path: "ssl/custom-version.yaml", TestCase: &sslCustomVersion{}},
-	{Path: "ssl/ssl-with-vars.yaml", TestCase: &sslWithVars{}},
+	{Path: "protocols/ssl/basic.yaml", TestCase: &sslBasic{}},
+	{Path: "protocols/ssl/basic-ztls.yaml", TestCase: &sslBasicZtls{}},
+	{Path: "protocols/ssl/custom-cipher.yaml", TestCase: &sslCustomCipher{}},
+	{Path: "protocols/ssl/custom-version.yaml", TestCase: &sslCustomVersion{}},
+	{Path: "protocols/ssl/ssl-with-vars.yaml", TestCase: &sslWithVars{}},
 }
 
 type sslBasic struct{}

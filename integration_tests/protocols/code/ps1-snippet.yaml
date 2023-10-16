@@ -1,0 +1,28 @@
+id: ps1-code-snippet
+
+info:
+  name: ps1-code-snippet
+  author: pdteam
+  severity: info
+  tags: code
+  description: |
+    ps1-code-snippet
+
+code:
+  - engine:
+      - powershell
+      - powershell.exe
+    args:
+      - -ExecutionPolicy
+      - Bypass
+      - -File
+    pattern: "*.ps1"
+    source: |
+      $stdin = [Console]::In
+      $line = $stdin.ReadLine()
+      Write-Host "hello from $line"
+    
+    matchers:
+      - type: word
+        words:
+          - "hello from input"
