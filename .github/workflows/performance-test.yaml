@@ -28,9 +28,8 @@ jobs:
         run: |
           go clean -modcache
           go mod tidy
-        working-directory: v2/
 
       # Max GH exection time 6H => timeout after that
       - name: Running performance with big list
         run: go run -race . -l ../functional-test/targets-150.txt
-        working-directory: v2/cmd/nuclei/
+        working-directory: cmd/nuclei/

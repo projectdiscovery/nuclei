@@ -20,4 +20,4 @@ jobs:
           go run . -ut
           go run . -validate
           go run . -validate -w workflows
-        working-directory: v2/cmd/nuclei/
+        working-directory: cmd/nuclei/

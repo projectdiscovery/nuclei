@@ -30,4 +30,4 @@ jobs:
         run: |
           chmod +x run.sh
           bash run.sh ${{ matrix.os }}
-        working-directory: v2/cmd/functional-test
+        working-directory: cmd/functional-test
