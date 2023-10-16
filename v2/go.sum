@@ -409,8 +409,8 @@ github.com/projectdiscovery/fasttemplate v0.0.2 h1:h2cISk5xDhlJEinlBQS6RRx0vOlOi
 github.com/projectdiscovery/fasttemplate v0.0.2/go.mod h1:XYWWVMxnItd+r0GbjA1GCsUopMw1/XusuQxdyAIHMCw=
 github.com/projectdiscovery/freeport v0.0.5 h1:jnd3Oqsl4S8n0KuFkE5Hm8WGDP24ITBvmyw5pFTHS8Q=
 github.com/projectdiscovery/freeport v0.0.5/go.mod h1:PY0bxSJ34HVy67LHIeF3uIutiCSDwOqKD8ruBkdiCwE=
-github.com/projectdiscovery/goflags v0.1.22 h1:KfECpBLlO61o+oxAL23PcTQFcbtbQCudnVUVSNV320Q=
-github.com/projectdiscovery/goflags v0.1.22/go.mod h1:Yrd35hS3d5REoO+O54DT9vYttRIXbHd5aVyECnE08Xg=
+github.com/projectdiscovery/goflags v0.1.23 h1:/mbzTf0T76CyCBQ+ofDGjpBI+ExhpxTA49MJtgAoa2U=
+github.com/projectdiscovery/goflags v0.1.23/go.mod h1:15Hc92q689vj6bJv0NdLb9NT/PTrPtT9ItSZBUAJULs=
 github.com/projectdiscovery/gologger v1.1.11 h1:8vsz9oJlDT9euw6xlj7F7dZ6RWItVIqVwn4Mr6uzky8=
 github.com/projectdiscovery/gologger v1.1.11/go.mod h1:UR2bgXl7zraOxYGnUwuO917hifWrwMJ0feKnVqMQkzY=
 github.com/projectdiscovery/gostruct v0.0.1 h1:1KvR6Pn4mDbQqoLEQzhRfHpbreLno2R9xqRCCt5tgmU=
@@ -421,8 +421,8 @@ github.com/projectdiscovery/httpx v1.3.5 h1:opyRTMsi9ccNptOnTin4Dp2NTmLC9ewgVjG8
 github.com/projectdiscovery/httpx v1.3.5/go.mod h1:pqhzh944aK7Lm9LbWnf146jse89YILK/Pp+b2dNMJqE=
 github.com/projectdiscovery/interactsh v1.1.7 h1:rK+eKklyM+4qaLS+1MgtHDvrHdAnSTMx/Ezd62pWNL8=
 github.com/projectdiscovery/interactsh v1.1.7/go.mod h1:WYxbcV0fz3LMf83mugCYo5VUsBb4nfIdAVK6GVJhobs=
-github.com/projectdiscovery/mapcidr v1.1.10 h1:5TjaMJ/Tyz2hYaoRZDPfzAtuE91z8HiQhrH2X+1grys=
-github.com/projectdiscovery/mapcidr v1.1.10/go.mod h1:Q1KH2VLTmvWoGJJI5k+H2XKW1PBy4kdMQQQ9KEHgC6Q=
+github.com/projectdiscovery/mapcidr v1.1.12 h1:hVgTpEAeLhYixDPdcDXaL2MXK3q+3rFdxAoCgbPLxIc=
+github.com/projectdiscovery/mapcidr v1.1.12/go.mod h1:hIRTgZEnI7+moVgeipU6A5yv3o+VrUw0tE/3GJw3Y2Y=
 github.com/projectdiscovery/networkpolicy v0.0.6 h1:yDvm0XCrS9HeemRrBS+J+22surzVczM94W5nHiOy/1o=
 github.com/projectdiscovery/networkpolicy v0.0.6/go.mod h1:8HJQ/33Pi7v3a3MRWIQGXzpj+zHw2d60TysEL4qdoQk=
 github.com/projectdiscovery/ratelimit v0.0.11 h1:QPIIo8ACGd2YayOQ/EdQOP3hd+X+9afSbC34wa3eiyI=
