@@ -691,7 +691,7 @@ func (r *Runner) displayExecutionInfo(store *loader.Store) {
 		if v.Load() > 0 {
 			if k != templates.Unsigned {
 				gologger.Info().Msgf("Executing %d signed templates from %s", v.Load(), k)
-			} else if !r.options.Silent {
+			} else if !r.options.Silent && !config.DefaultConfig.HideTemplateSigWarning {
 				gologger.DefaultLogger.Print().Msgf("[%v] Executing %d unsigned templates. Use with caution.", aurora.BrightYellow("WRN"), v.Load())
 			}
 		}

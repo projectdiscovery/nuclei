@@ -32,9 +32,10 @@ type Config struct {
 	CustomGitLabTemplatesDirectory string `json:"custom-gitlab-templates-directory"`
 	CustomAzureTemplatesDirectory  string `json:"custom-azure-templates-directory"`
 
-	TemplateVersion  string `json:"nuclei-templates-version,omitempty"`
-	NucleiIgnoreHash string `json:"nuclei-ignore-hash,omitempty"`
-	LogAllEvents     bool   `json:"-"` // when enabled logs all events (more than verbose)
+	TemplateVersion        string `json:"nuclei-templates-version,omitempty"`
+	NucleiIgnoreHash       string `json:"nuclei-ignore-hash,omitempty"`
+	LogAllEvents           bool   `json:"-"` // when enabled logs all events (more than verbose)
+	HideTemplateSigWarning bool   `json:"-"` // when enabled disables template signature warning
 
 	// LatestXXX are not meant to be used directly and is used as
 	// local cache of nuclei version check endpoint
@@ -332,6 +333,9 @@ func init() {
 	// with this switch enabled nuclei will print details of above N templates
 	if value := env.GetEnvOrDefault("NUCLEI_LOG_ALL", false); value {
 		DefaultConfig.LogAllEvents = true
+	}
+	if value := env.GetEnvOrDefault("HIDE_TEMPLATE_SIG_WARNING", false); value {
+		DefaultConfig.HideTemplateSigWarning = true
 	}
 
 	// try to read config from file
