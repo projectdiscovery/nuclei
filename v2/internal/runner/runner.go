@@ -699,7 +699,12 @@ func (r *Runner) displayExecutionInfo(store *loader.Store) {
 	stats.Display(parsers.SyntaxWarningStats)
 	stats.Display(parsers.SyntaxErrorStats)
 	stats.Display(parsers.RuntimeWarningsStats)
-	stats.Display(parsers.UnsignedWarning)
+	if r.options.Verbose {
+		// only print these stats in verbose mode
+		stats.DisplayAsWarning(parsers.HeadlessFlagWarningStats)
+		stats.DisplayAsWarning(parsers.TemplatesExecutedStats)
+	}
+	stats.DisplayAsWarning(parsers.UnsignedWarning)
 
 	cfg := config.DefaultConfig
 
