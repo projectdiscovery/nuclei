@@ -31,6 +31,12 @@ var (
 	ErrNotATemplate = errorutil.NewWithTag("signer", "given filePath is not a template")
 )
 
+// UseOptionsForSigner sets the options to use for signing templates
+// instead of default options
+func UseOptionsForSigner(opts *types.Options) {
+	defaultOpts = opts
+}
+
 // New Signer/Verification logic requires it to load content of file references
 // and this is done respecting sandbox restrictions to avoid any security issues
 // AllowLocalFileAccess is a function that allows local file access by disabling sandbox restrictions

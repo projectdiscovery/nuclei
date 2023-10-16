@@ -54,6 +54,8 @@ func main() {
 
 	// sign the templates if requested - only glob syntax is supported
 	if options.SignTemplates {
+		// use parsed options when initializing signer instead of default options
+		templates.UseOptionsForSigner(options)
 		tsigner, err := signer.NewTemplateSigner(nil, nil) // will read from env , config or generate new keys
 		if err != nil {
 			gologger.Fatal().Msgf("couldn't initialize signer crypto engine: %s\n", err)
