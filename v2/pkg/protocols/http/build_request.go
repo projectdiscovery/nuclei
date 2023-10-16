@@ -73,6 +73,10 @@ func (r *requestGenerator) Make(ctx context.Context, input *contextargs.Context,
 	// value of `reqData` depends on the type of request specified in template
 	// 1. If request is raw request =  reqData contains raw request (i.e http request dump)
 	// 2. If request is Normal ( simply put not a raw request) (Ex: with placeholders `path`) = reqData contains relative path
+
+	// add template context values to dynamicValues (this takes care of self-contained and other types of requests)
+	// Note: `iterate-all` and flow are mutually exclusive. flow uses templateCtx and iterate-all uses dynamicValues
+	dynamicValues = generators.MergeMaps(dynamicValues, r.request.options.GetTemplateCtx(input.MetaInput).GetAll())
 	if r.request.SelfContained {
 		return r.makeSelfContainedRequest(ctx, reqData, payloads, dynamicValues)
 	}
@@ -85,7 +89,7 @@ func (r *requestGenerator) Make(ctx context.Context, input *contextargs.Context,
 		}
 	} else {
 		for payloadName, payloadValue := range payloads {
-			payloads[payloadName] = types.ToString(payloadValue)
+			payloads[payloadName] = types.ToStringNSlice(payloadValue)
 		}
 	}
 
@@ -130,7 +134,7 @@ func (r *requestGenerator) Make(ctx context.Context, input *contextargs.Context,
 	finalVars := generators.MergeMaps(allVars, payloads)
 
 	if vardump.EnableVarDump {
-		gologger.Debug().Msgf("Final Protocol request variables: \n%s\n", vardump.DumpVariables(finalVars))
+		gologger.Debug().Msgf("HTTP Protocol request variables: \n%s\n", vardump.DumpVariables(finalVars))
 	}
 
 	// Note: If possible any changes to current logic (i.e evaluate -> then parse URL)

@@ -42,6 +42,8 @@ type Request struct {
 	operators.Operators `yaml:",inline,omitempty" json:",inline,omitempty"`
 	CompiledOperators   *operators.Operators `yaml:"-" json:"-"`
 
+	// ID is the optional id of the request
+	ID string `yaml:"id,omitempty" json:"id,omitempty" jsonschema:"title=id of the request,description=ID of the network request"`
 	// description: |
 	//   Address contains address for the request
 	Address string `yaml:"address,omitempty" json:"address,omitempty" jsonschema:"title=address for the websocket request,description=Address contains address for the request"`
@@ -106,7 +108,7 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 	request.dialer = client
 
 	if len(request.Payloads) > 0 {
-		request.generator, err = generators.New(request.Payloads, request.AttackType.Value, request.options.TemplatePath, request.options.Options.AllowLocalFileAccess, options.Catalog, options.Options.AttackType)
+		request.generator, err = generators.New(request.Payloads, request.AttackType.Value, request.options.TemplatePath, options.Catalog, options.Options.AttackType, types.DefaultOptions())
 		if err != nil {
 			return errors.Wrap(err, "could not parse payloads")
 		}
@@ -152,13 +154,13 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 			if !ok {
 				break
 			}
-			if err := request.executeRequestWithPayloads(input.MetaInput.Input, hostname, value, previous, callback); err != nil {
+			if err := request.executeRequestWithPayloads(input, hostname, value, previous, callback); err != nil {
 				return err
 			}
 		}
 	} else {
 		value := make(map[string]interface{})
-		if err := request.executeRequestWithPayloads(input.MetaInput.Input, hostname, value, previous, callback); err != nil {
+		if err := request.executeRequestWithPayloads(input, hostname, value, previous, callback); err != nil {
 			return err
 		}
 	}
@@ -166,8 +168,9 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 }
 
 // ExecuteWithResults executes the protocol requests and returns results instead of writing them.
-func (request *Request) executeRequestWithPayloads(input, hostname string, dynamicValues, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
+func (request *Request) executeRequestWithPayloads(target *contextargs.Context, hostname string, dynamicValues, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
 	header := http.Header{}
+	input := target.MetaInput.Input
 
 	parsed, err := urlutil.Parse(input)
 	if err != nil {
@@ -175,7 +178,8 @@ func (request *Request) executeRequestWithPayloads(input, hostname string, dynam
 	}
 	defaultVars := protocolutils.GenerateVariables(parsed, false, nil)
 	optionVars := generators.BuildPayloadFromOptions(request.options.Options)
-	variables := request.options.Variables.Evaluate(generators.MergeMaps(defaultVars, optionVars, dynamicValues))
+	// add templatecontext variables to varMap
+	variables := request.options.Variables.Evaluate(generators.MergeMaps(defaultVars, optionVars, dynamicValues, request.options.GetTemplateCtx(target.MetaInput).GetAll()))
 	payloadValues := generators.MergeMaps(variables, defaultVars, optionVars, dynamicValues, request.options.Constants)
 
 	requestOptions := request.options
@@ -204,7 +208,7 @@ func (request *Request) executeRequestWithPayloads(input, hostname string, dynam
 	}
 
 	if vardump.EnableVarDump {
-		gologger.Debug().Msgf("Protocol request variables: \n%s\n", vardump.DumpVariables(payloadValues))
+		gologger.Debug().Msgf("Websocket Protocol request variables: \n%s\n", vardump.DumpVariables(payloadValues))
 	}
 
 	finalAddress, dataErr := expressions.EvaluateByte([]byte(request.Address), payloadValues)
@@ -254,12 +258,6 @@ func (request *Request) executeRequestWithPayloads(input, hostname string, dynam
 	gologger.Verbose().Msgf("Sent Websocket request to %s", input)
 
 	data := make(map[string]interface{})
-	for k, v := range previous {
-		data[k] = v
-	}
-	for k, v := range events {
-		data[k] = v
-	}
 
 	data["type"] = request.Type().String()
 	data["success"] = "true"
@@ -268,6 +266,17 @@ func (request *Request) executeRequestWithPayloads(input, hostname string, dynam
 	data["host"] = input
 	data["matched"] = addressToDial
 	data["ip"] = request.dialer.GetDialedIP(hostname)
+
+	// add response fields to template context and merge templatectx variables to output event
+	request.options.AddTemplateVars(target.MetaInput, request.Type(), request.ID, data)
+	data = generators.MergeMaps(data, request.options.GetTemplateCtx(target.MetaInput).GetAll())
+
+	for k, v := range previous {
+		data[k] = v
+	}
+	for k, v := range events {
+		data[k] = v
+	}
 
 	event := eventcreator.CreateEventWithAdditionalOptions(request, data, requestOptions.Options.Debug || requestOptions.Options.DebugResponse, func(internalWrappedEvent *output.InternalWrappedEvent) {
 		internalWrappedEvent.OperatorsResult.PayloadValues = payloadValues

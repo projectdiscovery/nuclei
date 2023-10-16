@@ -14,9 +14,9 @@ func getTemplatePath() string {
 
 var templatesPathTestCases = []TestCaseInfo{
 	//template folder path issue
-	{Path: "http/get.yaml", TestCase: &folderPathTemplateTest{}},
+	{Path: "protocols/http/get.yaml", TestCase: &folderPathTemplateTest{}},
 	//cwd
-	{Path: "./dns/cname-fingerprint.yaml", TestCase: &cwdTemplateTest{}},
+	{Path: "./dns/detect-dangling-cname.yaml", TestCase: &cwdTemplateTest{}},
 	//relative path
 	{Path: "dns/dns-saas-service-detection.yaml", TestCase: &relativePathTemplateTest{}},
 	//absolute path

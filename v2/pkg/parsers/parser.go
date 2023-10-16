@@ -11,7 +11,6 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/loader/filter"
 	"github.com/projectdiscovery/nuclei/v2/pkg/templates"
 	"github.com/projectdiscovery/nuclei/v2/pkg/templates/cache"
-	"github.com/projectdiscovery/nuclei/v2/pkg/templates/signer"
 	"github.com/projectdiscovery/nuclei/v2/pkg/templates/types"
 	"github.com/projectdiscovery/nuclei/v2/pkg/utils"
 	"github.com/projectdiscovery/nuclei/v2/pkg/utils/stats"
@@ -140,9 +139,12 @@ var (
 )
 
 const (
-	SyntaxWarningStats   = "syntax-warnings"
-	SyntaxErrorStats     = "syntax-errors"
-	RuntimeWarningsStats = "runtime-warnings"
+	SyntaxWarningStats       = "syntax-warnings"
+	SyntaxErrorStats         = "syntax-errors"
+	RuntimeWarningsStats     = "runtime-warnings"
+	UnsignedWarning          = "unsigned-warnings"
+	HeadlessFlagWarningStats = "headless-flag-missing-warnings"
+	TemplatesExecutedStats   = "templates-executed"
 )
 
 func init() {
@@ -151,6 +153,9 @@ func init() {
 	stats.NewEntry(SyntaxWarningStats, "Found %d templates with syntax warning (use -validate flag for further examination)")
 	stats.NewEntry(SyntaxErrorStats, "Found %d templates with syntax error (use -validate flag for further examination)")
 	stats.NewEntry(RuntimeWarningsStats, "Found %d templates with runtime error (use -validate flag for further examination)")
+	stats.NewEntry(UnsignedWarning, "Found %d unsigned or tampered code template (carefully examine before using it & use -sign flag to sign them)")
+	stats.NewEntry(HeadlessFlagWarningStats, "Excluded %d headless templates (disabled as default), use -headless option to run headless templates.")
+	stats.NewEntry(TemplatesExecutedStats, "Excluded %d templates with known weak matchers / tags excluded from default run using .nuclei-ignore")
 }
 
 // ParseTemplate parses a template and returns a *templates.Template structure
@@ -165,11 +170,6 @@ func ParseTemplate(templatePath string, catalog catalog.Catalog) (*templates.Tem
 
 	template := &templates.Template{}
 
-	// check if the template is verified
-	if signer.DefaultVerifier != nil {
-		template.Verified, _ = signer.Verify(signer.DefaultVerifier, data)
-	}
-
 	switch config.GetTemplateFormatFromExt(templatePath) {
 	case config.JSON:
 		err = json.Unmarshal(data, template)
@@ -183,7 +183,6 @@ func ParseTemplate(templatePath string, catalog catalog.Catalog) (*templates.Tem
 		err = fmt.Errorf("failed to identify template format expected JSON or YAML but got %v", templatePath)
 	}
 	if err != nil {
-		stats.Increment(SyntaxErrorStats)
 		return nil, err
 	}
 

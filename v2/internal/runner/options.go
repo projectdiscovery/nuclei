@@ -20,6 +20,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/protocolinit"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/utils/vardump"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/headless/engine"
+	protocoltypes "github.com/projectdiscovery/nuclei/v2/pkg/templates/types"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 	fileutil "github.com/projectdiscovery/utils/file"
 	"github.com/projectdiscovery/utils/generic"
@@ -49,6 +50,7 @@ func ParseOptions(options *types.Options) {
 
 	// Read the inputs and configure the logging
 	configureOutput(options)
+
 	// Show the user the banner
 	showBanner()
 
@@ -68,7 +70,7 @@ func ParseOptions(options *types.Options) {
 	}
 	// Validate the options passed by the user and if any
 	// invalid options have been used, exit.
-	if err := validateOptions(options); err != nil {
+	if err := ValidateOptions(options); err != nil {
 		gologger.Fatal().Msgf("Program exiting: %s\n", err)
 	}
 
@@ -98,7 +100,7 @@ func ParseOptions(options *types.Options) {
 }
 
 // validateOptions validates the configuration options passed
-func validateOptions(options *types.Options) error {
+func ValidateOptions(options *types.Options) error {
 	validate := validator.New()
 	if err := validate.Struct(options); err != nil {
 		if _, ok := err.(*validator.InvalidValidationError); ok {
@@ -354,6 +356,9 @@ func validateCertificatePaths(certificatePaths ...string) {
 func readEnvInputVars(options *types.Options) {
 	if strings.EqualFold(os.Getenv("NUCLEI_CLOUD"), "true") {
 		options.Cloud = true
+
+		// TODO: disable files, offlinehttp, code
+		options.ExcludeProtocols = append(options.ExcludeProtocols, protocoltypes.CodeProtocol, protocoltypes.FileProtocol, protocoltypes.OfflineHTTPProtocol)
 	}
 	if options.CloudURL = os.Getenv("NUCLEI_CLOUD_SERVER"); options.CloudURL == "" {
 		options.CloudURL = "https://cloud-dev.nuclei.sh"
@@ -400,6 +405,10 @@ func readEnvInputVars(options *types.Options) {
 	options.AzureClientID = os.Getenv("AZURE_CLIENT_ID")
 	options.AzureClientSecret = os.Getenv("AZURE_CLIENT_SECRET")
 	options.AzureServiceURL = os.Getenv("AZURE_SERVICE_URL")
+
+	// Custom public keys for template verification
+	options.CodeTemplateSignaturePublicKey = os.Getenv("NUCLEI_SIGNATURE_PUBLIC_KEY")
+	options.CodeTemplateSignatureAlgorithm = os.Getenv("NUCLEI_SIGNATURE_ALGORITHM")
 
 	// General options to disable the template download locations from being used.
 	// This will override the default behavior of downloading templates from the default locations as well as the

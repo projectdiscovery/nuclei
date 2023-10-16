@@ -7,16 +7,16 @@ import (
 )
 
 var offlineHttpTestcases = []TestCaseInfo{
-	{Path: "offlinehttp/rfc-req-resp.yaml", TestCase: &RfcRequestResponse{}},
-	{Path: "offlinehttp/offline-allowed-paths.yaml", TestCase: &RequestResponseWithAllowedPaths{}},
-	{Path: "offlinehttp/offline-raw.yaml", TestCase: &RawRequestResponse{}},
+	{Path: "protocols/offlinehttp/rfc-req-resp.yaml", TestCase: &RfcRequestResponse{}},
+	{Path: "protocols/offlinehttp/offline-allowed-paths.yaml", TestCase: &RequestResponseWithAllowedPaths{}},
+	{Path: "protocols/offlinehttp/offline-raw.yaml", TestCase: &RawRequestResponse{}},
 }
 
 type RfcRequestResponse struct{}
 
 // Execute executes a test case and returns an error if occurred
 func (h *RfcRequestResponse) Execute(filePath string) error {
-	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, "offlinehttp/data/", debug, "-passive")
+	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, "protocols/offlinehttp/data/", debug, "-passive")
 	if err != nil {
 		return err
 	}
@@ -28,7 +28,7 @@ type RequestResponseWithAllowedPaths struct{}
 
 // Execute executes a test case and returns an error if occurred
 func (h *RequestResponseWithAllowedPaths) Execute(filePath string) error {
-	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, "offlinehttp/data/", debug, "-passive")
+	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, "protocols/offlinehttp/data/", debug, "-passive")
 	if err != nil {
 		return err
 	}
@@ -40,7 +40,7 @@ type RawRequestResponse struct{}
 
 // Execute executes a test case and returns an error if occurred
 func (h *RawRequestResponse) Execute(filePath string) error {
-	_, err := testutils.RunNucleiTemplateAndGetResults(filePath, "offlinehttp/data/", debug, "-passive")
+	_, err := testutils.RunNucleiTemplateAndGetResults(filePath, "protocols/offlinehttp/data/", debug, "-passive")
 	if err == nil {
 		return fmt.Errorf("incorrect result: no error (actual) vs error expected")
 	}

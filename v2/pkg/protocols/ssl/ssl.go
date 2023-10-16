@@ -24,7 +24,6 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/helpers/responsehighlighter"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/utils/vardump"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/network/networkclientpool"
-	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/utils"
 	protocolutils "github.com/projectdiscovery/nuclei/v2/pkg/protocols/utils"
 	templateTypes "github.com/projectdiscovery/nuclei/v2/pkg/templates/types"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
@@ -41,6 +40,9 @@ type Request struct {
 	// Operators for the current request go here.
 	operators.Operators `yaml:",inline,omitempty" json:",inline,omitempty"`
 	CompiledOperators   *operators.Operators `yaml:"-" json:"-"`
+
+	// ID is the optional id of the request
+	ID string `yaml:"id,omitempty" json:"id,omitempty" jsonschema:"title=id of the request,description=ID of the request"`
 
 	// description: |
 	//   Address contains address for the request
@@ -130,6 +132,7 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 		Fastdialer:        client,
 		ClientHello:       true,
 		ServerHello:       true,
+		DisplayDns:        true,
 	}
 
 	tlsxService, err := tlsx.New(tlsxOptions)
@@ -184,12 +187,13 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 	payloadValues["Port"] = port
 
 	hostnameVariables := protocolutils.GenerateDNSVariables(hostname)
-	values := generators.MergeMaps(payloadValues, hostnameVariables)
+	// add template context variables to varMap
+	values := generators.MergeMaps(payloadValues, hostnameVariables, request.options.GetTemplateCtx(input.MetaInput).GetAll())
 	variablesMap := request.options.Variables.Evaluate(values)
 	payloadValues = generators.MergeMaps(variablesMap, payloadValues, request.options.Constants)
 
 	if vardump.EnableVarDump {
-		gologger.Debug().Msgf("Protocol request variables: \n%s\n", vardump.DumpVariables(payloadValues))
+		gologger.Debug().Msgf("SSL Protocol request variables: \n%s\n", vardump.DumpVariables(payloadValues))
 	}
 
 	finalAddress, dataErr := expressions.EvaluateByte([]byte(request.Address), payloadValues)
@@ -219,7 +223,7 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 	}
 
 	requestOptions.Output.Request(requestOptions.TemplateID, hostPort, request.Type().String(), err)
-	gologger.Verbose().Msgf("Sent SSL request to %s", hostPort)
+	gologger.Verbose().Msgf("[%s] Sent SSL request to %s", request.options.TemplateID, hostPort)
 
 	if requestOptions.Options.Debug || requestOptions.Options.DebugRequests || requestOptions.Options.StoreResponse {
 		msg := fmt.Sprintf("[%s] Dumped SSL request for %s", requestOptions.TemplateID, input.MetaInput.Input)
@@ -263,10 +267,11 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 			// if field is not exported f.IsZero() , f.Value() will panic
 			continue
 		}
-		tag := utils.CleanStructFieldJSONTag(f.Tag("json"))
+		tag := protocolutils.CleanStructFieldJSONTag(f.Tag("json"))
 		if tag == "" || f.IsZero() {
 			continue
 		}
+		request.options.AddTemplateVar(input.MetaInput, request.Type(), request.ID, tag, f.Value())
 		data[tag] = f.Value()
 	}
 
@@ -281,13 +286,16 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 			// if field is not exported f.IsZero() , f.Value() will panic
 			continue
 		}
-		tag := utils.CleanStructFieldJSONTag(f.Tag("json"))
+		tag := protocolutils.CleanStructFieldJSONTag(f.Tag("json"))
 		if tag == "" || f.IsZero() {
 			continue
 		}
+		request.options.AddTemplateVar(input.MetaInput, request.Type(), request.ID, tag, f.Value())
 		data[tag] = f.Value()
 	}
 
+	// add response fields ^ to template context and merge templatectx variables to output event
+	data = generators.MergeMaps(data, request.options.GetTemplateCtx(input.MetaInput).GetAll())
 	event := eventcreator.CreateEvent(request, data, requestOptions.Options.Debug || requestOptions.Options.DebugResponse)
 	if requestOptions.Options.Debug || requestOptions.Options.DebugResponse || requestOptions.Options.StoreResponse {
 		msg := fmt.Sprintf("[%s] Dumped SSL response for %s", requestOptions.TemplateID, input.MetaInput.Input)

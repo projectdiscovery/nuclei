@@ -5,6 +5,7 @@ import (
 	"strconv"
 
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
+	mapsutil "github.com/projectdiscovery/utils/maps"
 )
 
 // formatScreen formats the output for showing on screen.
@@ -83,7 +84,9 @@ func (w *StandardWriter) formatScreen(output *ResultEvent) []byte {
 		builder.WriteString(" [")
 
 		first := true
-		for name, value := range output.Metadata {
+		// sort to get predictable output
+		for _, name := range mapsutil.GetSortedKeys(output.Metadata) {
+			value := output.Metadata[name]
 			if !first {
 				builder.WriteRune(',')
 			}

@@ -2820,28 +2820,6 @@ StopAtFirstMatch stops the execution of the requests and template as soon as a m
 </div>
 <div class="dt">
 
-Fuzzing describes schema to fuzz headless requests
-
-</div>
-
-<hr />
-
-<div class="dd">
-
-<code>cookie-reuse</code>  <i>bool</i>
-
-</div>
-<div class="dt">
-
-CookieReuse is an optional setting that enables cookie reuse
-
-</div>
-
-<hr />
-
-
-
-
 
 ## engine.Action
 Action is an action taken by the browser to reach a navigation

@@ -9,13 +9,13 @@ import (
 )
 
 var networkTestcases = []TestCaseInfo{
-	{Path: "network/basic.yaml", TestCase: &networkBasic{}, DisableOn: func() bool { return osutils.IsWindows() }},
-	{Path: "network/hex.yaml", TestCase: &networkBasic{}, DisableOn: func() bool { return osutils.IsWindows() }},
-	{Path: "network/multi-step.yaml", TestCase: &networkMultiStep{}},
-	{Path: "network/self-contained.yaml", TestCase: &networkRequestSelContained{}},
-	{Path: "network/variables.yaml", TestCase: &networkVariables{}},
-	{Path: "network/same-address.yaml", TestCase: &networkBasic{}},
-	{Path: "network/network-port.yaml", TestCase: &networkPort{}},
+	{Path: "protocols/network/basic.yaml", TestCase: &networkBasic{}, DisableOn: func() bool { return osutils.IsWindows() }},
+	{Path: "protocols/network/hex.yaml", TestCase: &networkBasic{}, DisableOn: func() bool { return osutils.IsWindows() }},
+	{Path: "protocols/network/multi-step.yaml", TestCase: &networkMultiStep{}},
+	{Path: "protocols/network/self-contained.yaml", TestCase: &networkRequestSelContained{}},
+	{Path: "protocols/network/variables.yaml", TestCase: &networkVariables{}},
+	{Path: "protocols/network/same-address.yaml", TestCase: &networkBasic{}},
+	{Path: "protocols/network/network-port.yaml", TestCase: &networkPort{}},
 }
 
 const defaultStaticPort = 5431

@@ -12,6 +12,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/output"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/contextargs"
+	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/generators"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/helpers/eventcreator"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/tostring"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/utils"
@@ -86,6 +87,9 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, metadata 
 			}
 
 			outputEvent := request.responseToDSLMap(resp, data, data, data, tostring.UnsafeToString(dumpedResponse), tostring.UnsafeToString(body), utils.HeadersToString(resp.Header), 0, nil)
+			// add response fields to template context and merge templatectx variables to output event
+			request.options.AddTemplateVars(input.MetaInput, request.Type(), request.GetID(), outputEvent)
+			outputEvent = generators.MergeMaps(outputEvent, request.options.GetTemplateCtx(input.MetaInput).GetAll())
 			outputEvent["ip"] = ""
 			for k, v := range previous {
 				outputEvent[k] = v

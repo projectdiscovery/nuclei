@@ -7,7 +7,6 @@ package dedupe
 import (
 	"crypto/sha1"
 	"os"
-	"reflect"
 	"unsafe"
 
 	"github.com/syndtr/goleveldb/leveldb"
@@ -119,7 +118,6 @@ func (s *Storage) Index(result *output.ResultEvent) (bool, error) {
 //
 // Reference - https://stackoverflow.com/questions/59209493/how-to-use-unsafe-get-a-byte-slice-from-a-string-without-memory-copy
 func unsafeToBytes(data string) []byte {
-	var buf = *(*[]byte)(unsafe.Pointer(&data))
-	(*reflect.SliceHeader)(unsafe.Pointer(&buf)).Cap = len(data)
-	return buf
+	var buf = (*[]byte)(unsafe.Pointer(&data))
+	return *buf
 }

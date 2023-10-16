@@ -5,17 +5,17 @@ import (
 )
 
 var fileTestcases = []TestCaseInfo{
-	{Path: "file/matcher-with-or.yaml", TestCase: &fileWithOrMatcher{}},
-	{Path: "file/matcher-with-and.yaml", TestCase: &fileWithAndMatcher{}},
-	{Path: "file/matcher-with-nested-and.yaml", TestCase: &fileWithAndMatcher{}},
-	{Path: "file/extract.yaml", TestCase: &fileWithExtractor{}},
+	{Path: "protocols/file/matcher-with-or.yaml", TestCase: &fileWithOrMatcher{}},
+	{Path: "protocols/file/matcher-with-and.yaml", TestCase: &fileWithAndMatcher{}},
+	{Path: "protocols/file/matcher-with-nested-and.yaml", TestCase: &fileWithAndMatcher{}},
+	{Path: "protocols/file/extract.yaml", TestCase: &fileWithExtractor{}},
 }
 
 type fileWithOrMatcher struct{}
 
 // Execute executes a test case and returns an error if occurred
 func (h *fileWithOrMatcher) Execute(filePath string) error {
-	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, "file/data/", debug)
+	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, "protocols/file/data/", debug)
 	if err != nil {
 		return err
 	}
@@ -27,7 +27,7 @@ type fileWithAndMatcher struct{}
 
 // Execute executes a test case and returns an error if occurred
 func (h *fileWithAndMatcher) Execute(filePath string) error {
-	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, "file/data/", debug)
+	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, "protocols/file/data/", debug)
 	if err != nil {
 		return err
 	}
@@ -39,7 +39,7 @@ type fileWithExtractor struct{}
 
 // Execute executes a test case and returns an error if occurred
 func (h *fileWithExtractor) Execute(filePath string) error {
-	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, "file/data/", debug)
+	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, "protocols/file/data/", debug)
 	if err != nil {
 		return err
 	}

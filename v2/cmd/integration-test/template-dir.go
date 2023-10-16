@@ -8,7 +8,7 @@ import (
 )
 
 var templatesDirTestCases = []TestCaseInfo{
-	{Path: "dns/cname-fingerprint.yaml", TestCase: &templateDirWithTargetTest{}},
+	{Path: "protocols/dns/cname-fingerprint.yaml", TestCase: &templateDirWithTargetTest{}},
 }
 
 type templateDirWithTargetTest struct{}

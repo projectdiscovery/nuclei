@@ -5,7 +5,7 @@ import (
 )
 
 var whoisTestCases = []TestCaseInfo{
-	{Path: "whois/basic.yaml", TestCase: &whoisBasic{}},
+	{Path: "protocols/whois/basic.yaml", TestCase: &whoisBasic{}},
 }
 
 type whoisBasic struct{}

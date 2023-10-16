@@ -40,6 +40,10 @@ func Display(name string) {
 	Default.Display(name)
 }
 
+func DisplayAsWarning(name string) {
+	Default.DisplayAsWarning(name)
+}
+
 // GetValue returns the value for a set variable
 func GetValue(name string) int64 {
 	return Default.GetValue(name)
@@ -83,6 +87,21 @@ func (s *Storage) Display(name string) {
 		return // don't show for nil stats
 	}
 	gologger.Error().Label("WRN").Msgf(data.description, dataValue)
+}
+
+func (s *Storage) DisplayAsWarning(name string) {
+	s.mutex.RLock()
+	data, ok := s.data[name]
+	s.mutex.RUnlock()
+	if !ok {
+		return
+	}
+
+	dataValue := atomic.LoadInt64(&data.value)
+	if dataValue == 0 {
+		return // don't show for nil stats
+	}
+	gologger.Warning().Label("WRN").Msgf(data.description, dataValue)
 }
 
 // GetValue returns the value for a set variable

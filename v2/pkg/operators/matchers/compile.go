@@ -38,7 +38,7 @@ func (matcher *Matcher) CompileMatchers() error {
 	}
 
 	// By default, match on body if user hasn't provided any specific items
-	if matcher.Part == "" {
+	if matcher.Part == "" && matcher.GetType() != DSLMatcher {
 		matcher.Part = "body"
 	}
 

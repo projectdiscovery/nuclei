@@ -9,7 +9,7 @@ import (
 type customConfigDirTest struct{}
 
 var customConfigDirTestCases = []TestCaseInfo{
-	{Path: "dns/cname-fingerprint.yaml", TestCase: &customConfigDirTest{}},
+	{Path: "protocols/dns/cname-fingerprint.yaml", TestCase: &customConfigDirTest{}},
 }
 
 // Execute executes a test case and returns an error if occurred
@@ -19,7 +19,7 @@ func (h *customConfigDirTest) Execute(filePath string) error {
 		return err
 	}
 	defer os.RemoveAll(customTempDirectory)
-	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, "8x8exch02.8x8.com", debug, "-config-directory", customTempDirectory)
+	results, err := testutils.RunNucleiBareArgsAndGetResults(debug, []string{"NUCLEI_CONFIG_DIR=" + customTempDirectory}, "-t", filePath, "-u", "8x8exch02.8x8.com")
 	if err != nil {
 		return err
 	}

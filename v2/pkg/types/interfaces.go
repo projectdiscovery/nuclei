@@ -3,6 +3,7 @@
 package types
 
 import (
+	"bytes"
 	"encoding/hex"
 	"fmt"
 	"strconv"
@@ -77,6 +78,21 @@ func ToString(data interface{}) string {
 	}
 }
 
+// ToStringNSlice converts an interface to string in a quick way or to a slice with strings
+// if the input is a slice of interfaces.
+func ToStringNSlice(data interface{}) interface{} {
+	switch s := data.(type) {
+	case []interface{}:
+		var a []string
+		for _, v := range s {
+			a = append(a, ToString(v))
+		}
+		return a
+	default:
+		return ToString(data)
+	}
+}
+
 func ToHexOrString(data interface{}) string {
 	switch s := data.(type) {
 	case string:
@@ -105,10 +121,29 @@ func ToStringSlice(i interface{}) []string {
 		return v
 	case string:
 		return strings.Fields(v)
-	case interface{}:
-		return []string{ToString(v)}
 	default:
 		return nil
+	}
+}
+
+// ToByteSlice casts an interface to a []byte type.
+func ToByteSlice(i interface{}) []byte {
+	switch v := i.(type) {
+	case []byte:
+		return v
+	case []string:
+		return []byte(strings.Join(v, ""))
+	case string:
+		return []byte(v)
+	case []interface{}:
+		var buff bytes.Buffer
+		for _, u := range v {
+			buff.WriteString(ToString(u))
+		}
+		return buff.Bytes()
+	default:
+		strValue := ToString(i)
+		return []byte(strValue)
 	}
 }
 
