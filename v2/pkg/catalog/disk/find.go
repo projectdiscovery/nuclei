@@ -81,6 +81,9 @@ func (c *DiskCatalog) GetTemplatePath(target string) ([]string, error) {
 	// try to handle deprecated template paths
 	absPath := BackwardsCompatiblePaths(c.templatesDirectory, target)
 	if absPath != target && strings.TrimPrefix(absPath, c.templatesDirectory+string(filepath.Separator)) != target {
+		if config.DefaultConfig.LogAllEvents {
+			gologger.DefaultLogger.Print().Msgf("[%v] requested Template path %s is deprecated, please update to %s\n", aurora.Yellow("WRN").String(), target, absPath)
+		}
 		deprecatedPathsCounter++
 	}
 

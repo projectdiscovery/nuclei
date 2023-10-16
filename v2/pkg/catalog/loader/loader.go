@@ -8,9 +8,11 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/logrusorgru/aurora"
 	"github.com/pkg/errors"
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalog"
+	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/config"
 	cfg "github.com/projectdiscovery/nuclei/v2/pkg/catalog/config"
 	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/loader/filter"
 	"github.com/projectdiscovery/nuclei/v2/pkg/model/types/severity"
@@ -395,12 +397,15 @@ func (store *Store) LoadTemplatesWithTags(templatesList, tags []string) []*templ
 			} else if parsed != nil {
 				if len(parsed.RequestsHeadless) > 0 && !store.config.ExecutorOptions.Options.Headless {
 					// donot include headless template in final list if headless flag is not set
-					gologger.Warning().Msgf("Headless flag is required for headless template '%s'\n", templatePath)
+					stats.Increment(parsers.HeadlessFlagWarningStats)
+					if config.DefaultConfig.LogAllEvents {
+						gologger.Print().Msgf("[%v] Headless flag is required for headless template '%s'.\n", aurora.Yellow("WRN").String(), templatePath)
+					}
 				} else if len(parsed.RequestsCode) > 0 && !parsed.Verified && len(parsed.Workflows) == 0 {
 					// donot include unverified 'Code' protocol custom template in final list
 					stats.Increment(parsers.UnsignedWarning)
-					if store.config.ExecutorOptions.Options.VerboseVerbose { // only shown in -vv
-						gologger.Verbose().Msgf("Skipping Unverified custom template %s", templatePath)
+					if config.DefaultConfig.LogAllEvents {
+						gologger.Print().Msgf("[%v] Tampered/Unsigned template at %v.\n", aurora.Yellow("WRN").String(), templatePath)
 					}
 				} else {
 					loadedTemplates = append(loadedTemplates, parsed)
@@ -408,6 +413,13 @@ func (store *Store) LoadTemplatesWithTags(templatesList, tags []string) []*templ
 			}
 		}
 		if err != nil {
+			if strings.Contains(err.Error(), filter.ErrExcluded.Error()) {
+				stats.Increment(parsers.TemplatesExecutedStats)
+				if config.DefaultConfig.LogAllEvents {
+					gologger.Print().Msgf("[%v] %v\n", aurora.Yellow("WRN").String(), err.Error())
+				}
+				continue
+			}
 			gologger.Warning().Msg(err.Error())
 		}
 	}

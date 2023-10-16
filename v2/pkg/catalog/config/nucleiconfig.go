@@ -12,6 +12,7 @@ import (
 
 	"github.com/projectdiscovery/goflags"
 	"github.com/projectdiscovery/gologger"
+	"github.com/projectdiscovery/utils/env"
 	errorutil "github.com/projectdiscovery/utils/errors"
 	fileutil "github.com/projectdiscovery/utils/file"
 	folderutil "github.com/projectdiscovery/utils/folder"
@@ -33,6 +34,7 @@ type Config struct {
 
 	TemplateVersion  string `json:"nuclei-templates-version,omitempty"`
 	NucleiIgnoreHash string `json:"nuclei-ignore-hash,omitempty"`
+	LogAllEvents     bool   `json:"-"` // when enabled logs all events (more than verbose)
 
 	// LatestXXX are not meant to be used directly and is used as
 	// local cache of nuclei version check endpoint
@@ -324,6 +326,14 @@ func init() {
 		homeDir:   folderutil.HomeDirOrDefault(""),
 		configDir: ConfigDir,
 	}
+
+	// when enabled will log events in more verbosity than -v or -debug
+	// ex: N templates are excluded
+	// with this switch enabled nuclei will print details of above N templates
+	if value := env.GetEnvOrDefault("NUCLEI_LOG_ALL", false); value {
+		DefaultConfig.LogAllEvents = true
+	}
+
 	// try to read config from file
 	if err := DefaultConfig.ReadTemplatesConfig(); err != nil {
 		gologger.Verbose().Msgf("config file not found, creating new config file at %s", DefaultConfig.getTemplatesConfigFilePath())
