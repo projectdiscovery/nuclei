@@ -80,7 +80,7 @@ func initBuiltInFunc(runtime *goja.Runtime) {
 			default:
 				gologger.DefaultLogger.Print().Msgf("[%v] %v", aurora.BrightCyan("JS"), value)
 			}
-			return goja.Null()
+			return call.Argument(0)
 		},
 	})
 
