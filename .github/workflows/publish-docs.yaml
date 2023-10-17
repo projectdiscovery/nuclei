@@ -31,7 +31,6 @@ jobs:
           go build -o "cmd/docgen/docgen" cmd/docgen/docgen.go 
           ./cmd/docgen/docgen ../SYNTAX-REFERENCE.md ../nuclei-jsonschema.json
           git status -s | wc -l | xargs -I {} echo CHANGES={} >> $GITHUB_OUTPUT
-        working-directory: v2
 
       - name: Commit files
         if: steps.generate-docs.outputs.CHANGES > 0

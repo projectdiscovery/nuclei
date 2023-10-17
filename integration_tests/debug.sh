@@ -17,11 +17,11 @@ export GORACE="halt_on_error=1"
 
 echo "::group::Build nuclei"
 rm nuclei 2>/dev/null
-cd ../v2/cmd/nuclei
+cd ../cmd/nuclei
 go build -race .
-mv nuclei ../../../integration_tests/nuclei 
+mv nuclei ../../integration_tests/nuclei 
 echo -e "::endgroup::\n"
-cd ../../../integration_tests
+cd ../../integration_tests
 cmdstring=""
 
 if [ -n "$1" ]; then
