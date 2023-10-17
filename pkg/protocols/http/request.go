@@ -793,7 +793,9 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 		if request.NeedsRequestCondition() {
 			for k, v := range outputEvent {
 				key := fmt.Sprintf("%s_%d", k, requestCount)
-				previousEvent[key] = v
+				if previousEvent[key] != nil {
+					previousEvent[key] = v
+				}
 				finalEvent[key] = v
 			}
 		}
