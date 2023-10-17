@@ -4,7 +4,7 @@
     <working_directory value="$PROJECT_DIR$/v2" />
     <go_parameters value="-i" />
     <kind value="DIRECTORY" />
-    <directory value="$PROJECT_DIR$/v2/" />
+    <directory value="$PROJECT_DIR$/" />
     <filePath value="$PROJECT_DIR$" />
     <framework value="gotest" />
     <method v="2" />

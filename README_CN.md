@@ -55,7 +55,7 @@ Nuclei使用零误报的定制模板向目标发送请求，同时可以对主�
 Nuclei需要**go1**才能安装成功。执行下列命令安装最新版本的Nuclei
 
 ```sh
-go install -v github.com/projectdiscovery/nuclei/v2/cmd/nuclei@latest
+go install -v github.com/projectdiscovery/nuclei/v3/cmd/nuclei@latest
 ```
 
 **更多的安装方式 [请点击此处](https://nuclei.projectdiscovery.io/nuclei/get-started/).**
