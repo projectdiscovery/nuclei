@@ -73,6 +73,8 @@
             "template-guide/file",
             "template-guide/javascript",
             "template-guide/code",
+            "template-guide/multi",
+            "template-guide/flow",
             {
                "group":"Operators",
                "pages":[
