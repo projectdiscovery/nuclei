@@ -1,0 +1,171 @@
+---
+title: "Multi"
+---
+
+Nuclei provides support for a variety of protocols including HTTP, DNS, Network, SSL, and Code. This allows users to write Nuclei templates for vulnerabilities across these protocols. However, there may be instances where a vulnerability requires the synchronous execution of multiple protocols for testing or exploitation. A prime example of this is **subdomain takeovers**, which necessitates a check for the CNAME record of a subdomain, followed by a verification of string in HTTP response. While this was partially achievable with workflows in Nuclei, the introduction of **Nuclei v3.0** has made it possible to conveniently write a **template** that can execute multiple protocols synchronously. This allows for checks to be performed on the results of each protocol, along with other enhancements.
+
+**Example:**
+
+```yaml
+id: dns-http-template
+
+info:
+  name: dns + http takeover template
+  author: pdteam
+  severity: info
+
+dns:
+  - name: "{{FQDN}}" # dns request
+    type: cname
+
+http:
+  - method: GET # http request
+    path:
+      - "{{BaseURL}}"
+
+    matchers:
+      - type: dsl
+        dsl:
+          - contains(http_body,'Domain not found') # check for string from http response
+          - contains(dns_cname, 'github.io') # check for cname from dns response
+        condition: and
+```
+The example above demonstrates that there is no need for new logic or syntax. Simply write the logic for each protocol and then use the protocol-prefixed variable or the [dynamic extractor](https://docs.nuclei.sh/template-guide/operators/extractors#dynamic-extractor) to export that variable. This variable is then shared across all protocols. We refer to this as the **Template Context**, which contains all variables that are scoped at the template level.
+
+## Features
+
+The following features enhance the power of multi-protocol execution:
+
+- Protocol-Scoped Shared Variables Across Protocols
+- Data Export across Protocols using Dynamic Extractor
+
+### Protocol Scoped Variables
+
+In the previous example, we demonstrated how to export the DNS CNAME and use it in an HTTP request. However, you might encounter a scenario where a template includes more than four protocols, and you need to export various response fields such as `subject_dn`, `ns`, `cname`, `header`, and so on. While you could achieve this by adding more dynamic extractors, this approach could clutter the template and introduce redundant logic, making it difficult to track and maintain all the variables.
+
+To address this issue, multi-protocol execution supports template-scoped protocol responses. This means that all response fields from all protocols in a template are available in the template context with a protocol prefix.
+
+Here's an example to illustrate this:
+
+ Protocol | Response Field | Exported Variable |
+ -------- | -------------- | ----------------- |
+ ssl      | subject_cn     | ssl_subject_cn    |
+ dns      | cname          | dns_cname         |
+ http     | header         | http_header       |
+ code     | response       | code_response     |
+
+This is just an example, but it's important to note that the response fields of all protocols used in a multi-protocol template are exported.
+
+**Example:**
+
+```yaml
+id: dns-ssl-http-proto-prefix
+
+info:
+  name: multi protocol request with response fields
+  author: pdteam
+  severity: info
+
+dns:
+  - name: "{{FQDN}}" # DNS Request
+    type: cname
+
+ssl:
+  - address: "{{Hostname}}" # ssl request
+
+http:
+  - method: GET # http request
+    path:
+      - "{{BaseURL}}"
+
+    matchers:
+      - type: dsl
+        dsl:
+          - contains(http_body,'ProjectDiscovery.io') # check for http string
+          - trim_suffix(dns_cname,'.ghost.io.') == 'projectdiscovery' # check for cname (extracted information from dns response)
+          - ssl_subject_cn == 'blog.projectdiscovery.io'
+        condition: and
+```
+To list all exported response fields write a multi protocol template and run it with `-v -svd` flag and it will print all exported response fields
+
+Example:
+ 
+```bash
+nuclei -t multi-protocol-template.yaml -u scanme.sh -debug -svd
+```
+
+### Data Export across Protocols
+
+If you are unfamiliar with dynamic extractors, we recommend reading the [dynamic extractor](https://docs.nuclei.sh/template-guide/operators/extractors#dynamic-extractor) section first.
+
+Previously, Dynamic Extractors were only supported for specific protocols or workflows. However, with multi-protocol execution, dynamically extracted values are stored in the template context and can be used across all protocols.
+
+**Example:**
+
+```yaml
+id: dns-http-template
+
+info:
+  name: dns + http takeover template
+  author: pdteam
+  severity: info
+
+dns:
+  - name: "{{FQDN}}" # dns request
+    type: cname
+
+    extractors:
+      - type: dsl
+        name: exported_cname
+        dsl:
+          - cname
+        internal: true
+
+http:
+  - method: GET # http request
+    path:
+      - "{{BaseURL}}"
+
+    matchers:
+      - type: dsl
+        dsl:
+          - contains(body,'Domain not found') # check for http string
+          - contains(exported_cname, 'github.io') # check for cname (extracted information from dns response)
+        condition: and
+```
+## How Multi Protocol Works?
+
+At this point we have seen how multi protocol templates look like and what are the features it brings to the table. Now let's see how multi protocol templates work and things to keep in mind while writing them.
+
+- Multi Protocol Templates are executed in order of protocols defined in template.
+- Protocols in multi protocol templates are executed in serial i.e one after another.
+- Response fields of protocols are exported to template context as soon as that protocol is executed.
+- Variables are scoped at template level and evaluated after each protocol execution.
+- Multi protocol brings limited indirect support for preprocessing(using variables) and postprocessing(using dynamic extractors) for protocols.
+
+## FAQ
+
+**What Protocols are supported in Multi-Protocol Execution Mode?**
+
+> There is no restriction around any protocol and any protocol available/implemented in nuclei engine can be used in multi protocol templates
+
+**How many protocols can be used in Multi-Protocol Execution Mode?**
+
+> There is no restriction around number of protocols but currently duplicated protocols are not supported i.e dns -> http -> ssl -> http. Please open a issue if you have a vulnerabilty/usecase that requires duplicated protocols
+
+**What happens if a protocol fails?**
+
+> Multi Protocol Execution follows exit on error policy i.e if protocol fails to execute then execution of remaining protocols is skipped and template execution is stopped
+
+**How is multi protocol execution different from workflows?**
+
+> Workflow as name suggest is a workflow that executes templates based on workflow file
+> - Workflow does not contain actual logic of vulnerability but just a workflow that executes different templates
+> - Workflow supports conditional execution of multiple templates
+> - Workflow has limited supported for variables and dynamic extractors
+
+To summarize workflow is a step higher than template and manages execution of templates based on workflow file
+
+**Is multi protocol execution supported in nuclei v2?**
+
+> No, Multi Protocol Execution is only supported in nuclei v3 and above
