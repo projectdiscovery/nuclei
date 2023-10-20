@@ -25,7 +25,7 @@ require (
 	github.com/projectdiscovery/hmap v0.0.22
 	github.com/projectdiscovery/interactsh v1.1.7
 	github.com/projectdiscovery/rawhttp v0.1.22
-	github.com/projectdiscovery/retryabledns v1.0.38
+	github.com/projectdiscovery/retryabledns v1.0.39
 	github.com/projectdiscovery/retryablehttp-go v1.0.31
 	github.com/projectdiscovery/yamldoc-go v1.0.4
 	github.com/remeh/sizedwaitgroup v1.0.0
@@ -77,7 +77,7 @@ require (
 	github.com/mholt/archiver v3.1.1+incompatible
 	github.com/ory/dockertest/v3 v3.10.0
 	github.com/praetorian-inc/fingerprintx v1.1.9
-	github.com/projectdiscovery/dsl v0.0.25
+	github.com/projectdiscovery/dsl v0.0.26
 	github.com/projectdiscovery/fasttemplate v0.0.2
 	github.com/projectdiscovery/goflags v0.1.24
 	github.com/projectdiscovery/gologger v1.1.11
@@ -86,11 +86,11 @@ require (
 	github.com/projectdiscovery/httpx v1.3.5
 	github.com/projectdiscovery/mapcidr v1.1.12
 	github.com/projectdiscovery/n3iwf v0.0.0-20230523120440-b8cd232ff1f5
-	github.com/projectdiscovery/ratelimit v0.0.11
+	github.com/projectdiscovery/ratelimit v0.0.12
 	github.com/projectdiscovery/rdap v0.9.1-0.20221108103045-9865884d1917
 	github.com/projectdiscovery/sarif v0.0.1
 	github.com/projectdiscovery/tlsx v1.1.6-0.20231016194953-a3ff9518c766
-	github.com/projectdiscovery/uncover v1.0.6-0.20230601103158-bfd7e02a5bb1
+	github.com/projectdiscovery/uncover v1.0.7
 	github.com/projectdiscovery/utils v0.0.58
 	github.com/projectdiscovery/wappalyzergo v0.0.109
 	github.com/redis/go-redis/v9 v9.1.0

@@ -17,7 +17,9 @@ type Preprocessor interface {
 
 var (
 	preprocessorRegex    = regexp.MustCompile(`{{([a-z0-9_]+)}}`)
-	defaultPreprocessors = []Preprocessor{}
+	defaultPreprocessors = []Preprocessor{
+		&randStrPreprocessor{},
+	}
 )
 
 func getPreprocessors(preprocessor Preprocessor) []Preprocessor {
