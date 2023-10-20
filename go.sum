@@ -835,8 +835,8 @@ github.com/projectdiscovery/stringsutil v0.0.2 h1:uzmw3IVLJSMW1kEg8eCStG/cGbYYZA
 github.com/projectdiscovery/stringsutil v0.0.2/go.mod h1:EJ3w6bC5fBYjVou6ryzodQq37D5c6qbAYQpGmAy+DC0=
 github.com/projectdiscovery/tlsx v1.1.6-0.20231016194953-a3ff9518c766 h1:wa2wak7RAPA9QfCKZYXVvJCggbrIptc4ZkPjEvCKAKo=
 github.com/projectdiscovery/tlsx v1.1.6-0.20231016194953-a3ff9518c766/go.mod h1:bFATagikCvdPOsmaN1h5VQSbZjTW8bCQ6bjoQEePUq8=
-github.com/projectdiscovery/uncover v1.0.6-0.20230601103158-bfd7e02a5bb1 h1:Pu6LvDqn+iSlhCDKKWm1ItPc++kqqlU8OntZeB/Prak=
-github.com/projectdiscovery/uncover v1.0.6-0.20230601103158-bfd7e02a5bb1/go.mod h1:Drl/CWD392mKtdXJhCBPlMkM0I6671pqedFphcnK5f8=
+github.com/projectdiscovery/uncover v1.0.7 h1:ut+2lTuvmftmveqF5RTjMWAgyLj8ltPQC7siFy9sj0A=
+github.com/projectdiscovery/uncover v1.0.7/go.mod h1:HFXgm1sRPuoN0D4oATljPIdmbo/EEh1wVuxQqo/dwFE=
 github.com/projectdiscovery/utils v0.0.58 h1:kk2AkSO84QZc9rDRI8jWA2Iia4uzb4sUcfh4h0xA20I=
 github.com/projectdiscovery/utils v0.0.58/go.mod h1:rsR5Kzjrb+/Yp7JSnEblLk4LfU4zH5Z7wQn8RzaGSdY=
 github.com/projectdiscovery/wappalyzergo v0.0.109 h1:BERfwTRn1dvB1tbhyc5m67R8VkC9zbVuPsEq4VEm07k=
