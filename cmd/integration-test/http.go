@@ -82,6 +82,7 @@ var httpTestcases = []TestCaseInfo{
 	{Path: "protocols/http/matcher-status.yaml", TestCase: &matcherStatusTest{}},
 	{Path: "protocols/http/disable-path-automerge.yaml", TestCase: &httpDisablePathAutomerge{}},
 	{Path: "protocols/http/http-preprocessor.yaml", TestCase: &httpPreprocessor{}},
+	{Path: "protocols/http/multi-request.yaml", TestCase: &httpMultiRequest{}},
 }
 
 type httpInteractshRequest struct{}
@@ -1495,6 +1496,30 @@ func (h *httpPreprocessor) Execute(filePath string) error {
 			w.WriteHeader(http.StatusBadRequest)
 			fmt.Fprint(w, "not ok")
 		}
+	})
+	ts := httptest.NewServer(router)
+	defer ts.Close()
+
+	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, ts.URL, debug)
+	if err != nil {
+		return err
+	}
+
+	return expectResultsCount(results, 1)
+}
+
+type httpMultiRequest struct{}
+
+// Execute executes a test case and returns an error if occurred
+func (h *httpMultiRequest) Execute(filePath string) error {
+	router := httprouter.New()
+	router.GET("/ping", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+		w.WriteHeader(http.StatusOK)
+		fmt.Fprint(w, "ping")
+	})
+	router.GET("/pong", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+		w.WriteHeader(http.StatusOK)
+		fmt.Fprint(w, "pong")
 	})
 	ts := httptest.NewServer(router)
 	defer ts.Close()
