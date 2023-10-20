@@ -10,6 +10,7 @@ import (
 	"net/http/httputil"
 	"os"
 	"reflect"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -80,6 +81,8 @@ var httpTestcases = []TestCaseInfo{
 	{Path: "protocols/http/cli-with-constants.yaml", TestCase: &ConstantWithCliVar{}},
 	{Path: "protocols/http/matcher-status.yaml", TestCase: &matcherStatusTest{}},
 	{Path: "protocols/http/disable-path-automerge.yaml", TestCase: &httpDisablePathAutomerge{}},
+	{Path: "protocols/http/http-preprocessor.yaml", TestCase: &httpPreprocessor{}},
+	{Path: "protocols/http/multi-request.yaml", TestCase: &httpMultiRequest{}},
 }
 
 type httpInteractshRequest struct{}
@@ -1474,4 +1477,57 @@ func (h *httpInteractshRequestsWithMCAnd) Execute(filePath string) error {
 		return err
 	}
 	return expectResultsCount(got, 1)
+}
+
+// integration test to check if preprocessor i.e {{randstr}}
+// is working correctly
+type httpPreprocessor struct{}
+
+// Execute executes a test case and returns an error if occurred
+func (h *httpPreprocessor) Execute(filePath string) error {
+	router := httprouter.New()
+	re := regexp.MustCompile(`[A-Za-z0-9]{25,}`)
+	router.GET("/", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+		value := r.URL.RequestURI()
+		if re.MatchString(value) {
+			w.WriteHeader(http.StatusOK)
+			fmt.Fprint(w, "ok")
+		} else {
+			w.WriteHeader(http.StatusBadRequest)
+			fmt.Fprint(w, "not ok")
+		}
+	})
+	ts := httptest.NewServer(router)
+	defer ts.Close()
+
+	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, ts.URL, debug)
+	if err != nil {
+		return err
+	}
+
+	return expectResultsCount(results, 1)
+}
+
+type httpMultiRequest struct{}
+
+// Execute executes a test case and returns an error if occurred
+func (h *httpMultiRequest) Execute(filePath string) error {
+	router := httprouter.New()
+	router.GET("/ping", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+		w.WriteHeader(http.StatusOK)
+		fmt.Fprint(w, "ping")
+	})
+	router.GET("/pong", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+		w.WriteHeader(http.StatusOK)
+		fmt.Fprint(w, "pong")
+	})
+	ts := httptest.NewServer(router)
+	defer ts.Close()
+
+	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, ts.URL, debug)
+	if err != nil {
+		return err
+	}
+
+	return expectResultsCount(results, 1)
 }
