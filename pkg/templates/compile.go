@@ -272,7 +272,7 @@ func ParseTemplateFromReader(reader io.Reader, preprocessor Preprocessor, option
 	// persist verified status value and then
 	// expand all preprocessor and reparse template
 
-	// === signature verification befoer preprocessors ===
+	// === signature verification before preprocessors ===
 	template, err := parseTemplate(data, options)
 	if err != nil {
 		return nil, err
