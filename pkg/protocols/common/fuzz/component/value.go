@@ -5,8 +5,8 @@ import (
 
 	"github.com/leslie-qiwa/flat"
 	"github.com/projectdiscovery/gologger"
-	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/fuzz/dataformat"
-	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/fuzz/encoding"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/fuzz/dataformat"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/fuzz/encoding"
 )
 
 // Value is a value component containing a single

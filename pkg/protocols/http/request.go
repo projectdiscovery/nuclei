@@ -26,6 +26,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/expressions"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/fuzz"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/fuzz/analyzers"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/generators"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/helpers/eventcreator"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/helpers/responsehighlighter"
@@ -37,6 +38,7 @@ import (
 	templateTypes "github.com/projectdiscovery/nuclei/v3/pkg/templates/types"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	"github.com/projectdiscovery/rawhttp"
+	"github.com/projectdiscovery/retryablehttp-go"
 	"github.com/projectdiscovery/utils/reader"
 	sliceutil "github.com/projectdiscovery/utils/slice"
 	stringsutil "github.com/projectdiscovery/utils/strings"
@@ -233,12 +235,12 @@ func (request *Request) executeTurboHTTP(input *contextargs.Context, dynamicValu
 // executeFuzzingRule executes fuzzing request for a URL
 func (request *Request) executeFuzzingRule(input *contextargs.Context, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
 	// If request is self-contained we don't need to parse any input.
-	if !request.SelfContained {
-		// If it's not self-contained we parse user provided input
-		if _, err := urlutil.Parse(input.MetaInput.Input); err != nil {
-			return errors.Wrap(err, "could not parse url")
-		}
-	}
+	// if !request.SelfContained {
+	// 	// If it's not self-contained we parse user provided input
+	// 	if _, err := urlutil.Parse(input.MetaInput.Input); err != nil {
+	// 		return errors.Wrap(err, "could not parse url")
+	// 	}
+	// }
 	fuzzRequestCallback := func(gr fuzz.GeneratedRequest) bool {
 		hasInteractMatchers := interactsh.HasMatchers(request.CompiledOperators)
 		hasInteractMarkers := len(gr.InteractURLs) > 0
@@ -251,6 +253,8 @@ func (request *Request) executeFuzzingRule(input *contextargs.Context, previous 
 			dynamicValues:  gr.DynamicValues,
 			interactshURLs: gr.InteractURLs,
 			original:       request,
+			component:      gr.Component,
+			analyzerInput:  gr.AnalyzerInput,
 		}
 		var gotMatches bool
 		requestErr := request.executeRequest(input, req, gr.DynamicValues, hasInteractMatchers, func(event *output.InternalWrappedEvent) {
@@ -299,22 +303,39 @@ func (request *Request) executeFuzzingRule(input *contextargs.Context, previous 
 		if !result {
 			break
 		}
-		generated, err := generator.Make(context.Background(), input, value, payloads, nil)
-		if err != nil {
-			continue
+		// TODO: Support building from raw request instead of input URL
+		// For now we are doing hacky manner of building
+		var generatedRequest *retryablehttp.Request
+		var dynamicValues map[string]interface{}
+		if input.MetaInput.RawRequest != nil {
+			generated, err := input.MetaInput.RawRequest.Request()
+			if err != nil {
+				fmt.Printf("could not parse raw request: %s\n", err)
+				continue
+			}
+			generatedRequest = generated
+			dynamicValues = payloads
+		} else {
+			generated, err := generator.Make(context.Background(), input, value, payloads, nil)
+			if err != nil {
+				continue
+			}
+			generatedRequest = generated.request
+			dynamicValues = generated.dynamicValues
 		}
 		for _, rule := range request.Fuzzing {
-			err = rule.Execute(&fuzz.ExecuteRuleInput{
-				Input:       input,
-				Callback:    fuzzRequestCallback,
-				Values:      generated.dynamicValues,
-				BaseRequest: generated.request,
+			executeErr := rule.Execute(&fuzz.ExecuteRuleInput{
+				Input:        input,
+				Callback:     fuzzRequestCallback,
+				Values:       dynamicValues,
+				BaseRequest:  generatedRequest,
+				HasAnalyzers: request.Analyzer != "",
 			})
-			if err == types.ErrNoMoreRequests {
+			if executeErr == types.ErrNoMoreRequests {
 				return nil
 			}
-			if err != nil {
-				return errors.Wrap(err, "could not execute rule")
+			if executeErr != nil {
+				return errors.Wrap(executeErr, "could not execute rule")
 			}
 		}
 	}
@@ -487,6 +508,35 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 		}
 	}
 
+	var analysisResult *analyzers.Analysis
+	if request.Analyzer != "" {
+		analyzer := &analyzers.Analyzer{}
+
+		dumped, err := httputil.DumpRequest(generatedRequest.request.Request, false)
+		if err != nil {
+			return err
+		}
+		fmt.Printf("dumped: %v\n", string(dumped))
+
+		analysis, err := analyzer.Analyze(request.httpClient, generatedRequest.analyzerInput)
+		if err != nil {
+			return err
+		}
+		if analysis == nil {
+			return nil
+		}
+		if request.options.Options.Debug || request.options.Options.DebugRequests {
+			gologger.Info().Msgf("[%s] Analyzer result for %s [%v]: \n", request.options.TemplateID, analysis.Analyzer, analysis.Matched)
+			for i, reason := range analysis.Reasons {
+				gologger.Info().Msgf("[%d] %s\n", i+1, reason)
+			}
+		}
+		if analysis != nil {
+			analysisResult = analysis
+			generatedRequest.request = analysis.VulnerableRequest
+		}
+	}
+
 	var (
 		resp          *http.Response
 		fromCache     bool
@@ -527,6 +577,7 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 		// TODO: dump is currently not working with post-processors - somehow it alters the signature
 		dumpedRequest, dumpError = dump(generatedRequest, input.MetaInput.Input)
 		if dumpError != nil {
+			fmt.Println("dump error", dumpError)
 			return dumpError
 		}
 		dumpedRequestString := string(dumpedRequest)
@@ -667,6 +718,12 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 				outputEvent["ip"] = input.MetaInput.CustomIP
 			} else {
 				outputEvent["ip"] = httpclientpool.Dialer.GetDialedIP(hostname)
+			}
+			if analysisResult != nil {
+				outputEvent["analysis"] = analysisResult
+				if analysisResult.Matched {
+					outputEvent["time_delay"] = true
+				}
 			}
 
 			event := &output.InternalWrappedEvent{InternalEvent: outputEvent}

@@ -7,7 +7,7 @@ import (
 	"strings"
 
 	jsoniter "github.com/json-iterator/go"
-	"github.com/projectdiscovery/nuclei/v2/pkg/core/inputs/formats"
+	"github.com/projectdiscovery/nuclei/v3/pkg/core/inputs/formats"
 )
 
 // MetaInput represents a target with metadata (TODO: replace with https://github.com/projectdiscovery/metainput)

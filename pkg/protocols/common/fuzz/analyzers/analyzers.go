@@ -1,7 +1,7 @@
 package analyzers
 
 import (
-	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/fuzz/component"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/fuzz/component"
 	"github.com/projectdiscovery/retryablehttp-go"
 )
 

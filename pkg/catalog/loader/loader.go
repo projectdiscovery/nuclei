@@ -62,6 +62,9 @@ type Config struct {
 
 	Catalog         catalog.Catalog
 	ExecutorOptions protocols.ExecutorOptions
+	// OnlyLoadHTTPFuzzing is used to load only http fuzzing templates
+	// when passing input file with mode
+	OnlyLoadHTTPFuzzing bool
 }
 
 // Store is a storage for loaded nuclei templates
@@ -407,6 +410,8 @@ func (store *Store) LoadTemplatesWithTags(templatesList, tags []string) []*templ
 					if config.DefaultConfig.LogAllEvents {
 						gologger.Print().Msgf("[%v] Tampered/Unsigned template at %v.\n", aurora.Yellow("WRN").String(), templatePath)
 					}
+				} else if store.config.OnlyLoadHTTPFuzzing && !templateHasHTTPFuzzing(parsed) {
+					gologger.Warning().Msgf("The template does not contain http fuzzing: '%s'\n", templatePath)
 				} else {
 					loadedTemplates = append(loadedTemplates, parsed)
 				}
@@ -429,6 +434,15 @@ func (store *Store) LoadTemplatesWithTags(templatesList, tags []string) []*templ
 	})
 
 	return loadedTemplates
+}
+
+func templateHasHTTPFuzzing(template *templates.Template) bool {
+	for _, request := range template.RequestsHTTP {
+		if len(request.Fuzzing) > 0 {
+			return true
+		}
+	}
+	return false
 }
 
 // IsHTTPBasedProtocolUsed returns true if http/headless protocol is being used for

@@ -19,6 +19,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/internal/installer"
 	"github.com/projectdiscovery/nuclei/v3/internal/runner"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/config"
+	"github.com/projectdiscovery/nuclei/v3/pkg/core/inputs/formats/input"
 	"github.com/projectdiscovery/nuclei/v3/pkg/model/types/severity"
 	"github.com/projectdiscovery/nuclei/v3/pkg/operators/common/dsl"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/uncover"
@@ -173,6 +174,8 @@ on extensive configurability, massive extensibility and ease of use.`)
 		flagSet.StringVar(&options.Resume, "resume", "", "resume scan using resume.cfg (clustering will be disabled)"),
 		flagSet.BoolVarP(&options.ScanAllIPs, "scan-all-ips", "sa", false, "scan all the IP's associated with dns record"),
 		flagSet.StringSliceVarP(&options.IPVersion, "ip-version", "iv", nil, "IP version to scan of hostname (4,6) - (default 4)", goflags.CommaSeparatedStringSliceOptions),
+		flagSet.StringVarP(&options.InputFile, "input-file", "if", "", "path to file containing raw requests"),
+		flagSet.StringVarP(&options.InputFileMode, "input-mode", "im", "", fmt.Sprintf("mode of input file (%v)", input.Formats())),
 	)
 
 	flagSet.CreateGroup("templates", "Templates",

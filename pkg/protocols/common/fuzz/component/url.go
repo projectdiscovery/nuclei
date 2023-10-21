@@ -4,7 +4,7 @@ import (
 	"context"
 
 	"github.com/pkg/errors"
-	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/fuzz/dataformat"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/fuzz/dataformat"
 	"github.com/projectdiscovery/retryablehttp-go"
 )
 
