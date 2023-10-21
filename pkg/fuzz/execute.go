@@ -6,11 +6,11 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/projectdiscovery/gologger"
+	"github.com/projectdiscovery/nuclei/v3/pkg/fuzz/analyzers"
+	"github.com/projectdiscovery/nuclei/v3/pkg/fuzz/component"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/expressions"
-	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/fuzz/analyzers"
-	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/fuzz/component"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/generators"
 	"github.com/projectdiscovery/retryablehttp-go"
 	urlutil "github.com/projectdiscovery/utils/url"

@@ -8,10 +8,10 @@ import (
 	json "github.com/json-iterator/go"
 	"github.com/pkg/errors"
 
+	"github.com/projectdiscovery/nuclei/v3/pkg/fuzz"
 	"github.com/projectdiscovery/nuclei/v3/pkg/operators"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/expressions"
-	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/fuzz"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/generators"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http/httpclientpool"
 	httputil "github.com/projectdiscovery/nuclei/v3/pkg/protocols/utils/http"

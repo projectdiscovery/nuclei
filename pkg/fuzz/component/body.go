@@ -8,7 +8,7 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
-	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/fuzz/dataformat"
+	"github.com/projectdiscovery/nuclei/v3/pkg/fuzz/dataformat"
 	"github.com/projectdiscovery/retryablehttp-go"
 	readerutil "github.com/projectdiscovery/utils/reader"
 )

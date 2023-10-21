@@ -7,9 +7,9 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
-	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/fuzz/common"
-	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/fuzz/common/compare"
-	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/fuzz/common/normalizer"
+	"github.com/projectdiscovery/nuclei/v3/pkg/fuzz/common"
+	"github.com/projectdiscovery/nuclei/v3/pkg/fuzz/common/compare"
+	"github.com/projectdiscovery/nuclei/v3/pkg/fuzz/common/normalizer"
 	"github.com/projectdiscovery/retryablehttp-go"
 )
 

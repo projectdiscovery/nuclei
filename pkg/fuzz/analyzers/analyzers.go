@@ -3,7 +3,7 @@ package analyzers
 import (
 	"fmt"
 
-	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/fuzz/component"
+	"github.com/projectdiscovery/nuclei/v3/pkg/fuzz/component"
 	"github.com/projectdiscovery/retryablehttp-go"
 )
 

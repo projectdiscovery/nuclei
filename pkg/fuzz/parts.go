@@ -4,9 +4,9 @@ import (
 	"errors"
 	"strings"
 
+	"github.com/projectdiscovery/nuclei/v3/pkg/fuzz/analyzers"
+	"github.com/projectdiscovery/nuclei/v3/pkg/fuzz/component"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/expressions"
-	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/fuzz/analyzers"
-	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/fuzz/component"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/generators"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	"github.com/projectdiscovery/retryablehttp-go"
