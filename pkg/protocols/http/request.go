@@ -510,7 +510,10 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 
 	var analysisResult *analyzers.Analysis
 	if request.Analyzer != "" {
-		analyzer := &analyzers.Analyzer{}
+		analyzer, err := analyzers.GetAnalyzer(request.Analyzer)
+		if err != nil {
+			return err
+		}
 
 		dumped, err := httputil.DumpRequest(generatedRequest.request.Request, false)
 		if err != nil {

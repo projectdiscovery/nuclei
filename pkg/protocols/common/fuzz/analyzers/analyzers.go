@@ -1,8 +1,17 @@
 package analyzers
 
 import (
+	"fmt"
+
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/fuzz/component"
 	"github.com/projectdiscovery/retryablehttp-go"
+)
+
+type AnalyzerType string
+
+const (
+	TimeDelay AnalyzerType = "time-delay"
+	Heuristic AnalyzerType = "heuristic"
 )
 
 // Analysis is an analysis of a request using a specific analyzer
@@ -28,4 +37,16 @@ type AnalyzerInput struct {
 type Analyzer interface {
 	// Analyze analyzes the normalized request with a mutation
 	Analyze(httpclient *retryablehttp.Client, input *AnalyzerInput) (*Analysis, error)
+}
+
+// GetAnalyzer returns a new analyzer for the given type
+func GetAnalyzer(analyzerType string) (Analyzer, error) {
+	switch analyzerType {
+	case string(TimeDelay):
+		return &TimeDelayAnalyzer{}, nil
+	case string(Heuristic):
+		return &HeuristicsAnalyzer{}, nil
+	default:
+		return nil, fmt.Errorf("invalid analyzer type: %s", analyzerType)
+	}
 }

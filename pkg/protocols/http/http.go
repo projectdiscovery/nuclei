@@ -66,7 +66,7 @@ type Request struct {
 	//
 	//  This can be used to perform additional analysis on the request
 	//  and response.
-	Analyzer string `yaml:"analyzer,omitempty" json:"analyzer,omitempty" jsonschema:"title=analyzer to use for the request,description=Analyzer is the optional analyzer to use for the request,enum=time_delay"`
+	Analyzer string `yaml:"analyzer,omitempty" json:"analyzer,omitempty" jsonschema:"title=analyzer to use for the request,description=Analyzer is the optional analyzer to use for the request,enum=time_delay,heuristic"`
 
 	// description: |
 	//   Body is an optional parameter which contains HTTP Request body.

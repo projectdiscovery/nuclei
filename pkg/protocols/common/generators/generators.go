@@ -111,6 +111,7 @@ func parsePayloadsWithAggression(name string, v map[interface{}]interface{}, agr
 		case "high":
 			payloadsLevels.High = v.([]interface{})
 		default:
+			// Review: missing error handling & default case
 			return nil, errors.Errorf("invalid aggression level %s specified for %s", k, name)
 		}
 	}

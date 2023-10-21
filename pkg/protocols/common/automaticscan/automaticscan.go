@@ -13,6 +13,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/config"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/loader"
 	"github.com/projectdiscovery/nuclei/v3/pkg/core"
+	"github.com/projectdiscovery/nuclei/v3/pkg/core/inputs"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http/httpclientpool"
@@ -30,7 +31,7 @@ type Service struct {
 	opts          protocols.ExecutorOptions
 	store         *loader.Store
 	engine        *core.Engine
-	target        core.InputProvider
+	target        inputs.InputProvider
 	wappalyzer    *wappalyzer.Wappalyze
 	childExecuter *core.ChildExecuter
 	httpclient    *retryablehttp.Client
@@ -45,7 +46,7 @@ type Options struct {
 	ExecuterOpts protocols.ExecutorOptions
 	Store        *loader.Store
 	Engine       *core.Engine
-	Target       core.InputProvider
+	Target       inputs.InputProvider
 }
 
 const mappingFilename = "wappalyzer-mapping.yml"
@@ -179,7 +180,7 @@ func (s *Service) processWappalyzerInputPair(input *contextargs.MetaInput) {
 	}
 
 	if s.opts.Options.Verbose {
-		gologger.Verbose().Msgf("Wappalyzer fingerprints %v for %s\n", normalized, input)
+		gologger.Verbose().Msgf("Wappalyzer fingerprints %v for %v\n", normalized, input)
 	}
 
 	for k := range normalized {
@@ -205,7 +206,7 @@ func (s *Service) processWappalyzerInputPair(input *contextargs.MetaInput) {
 	uniqueTags := sliceutil.Dedupe(items)
 
 	templatesList := s.store.LoadTemplatesWithTags(s.allTemplates, uniqueTags)
-	gologger.Info().Msgf("Executing tags (%v) for host %s (%d templates)", strings.Join(uniqueTags, ","), input, len(templatesList))
+	gologger.Info().Msgf("Executing tags (%v) for host %v (%d templates)", strings.Join(uniqueTags, ","), input, len(templatesList))
 	for _, t := range templatesList {
 		s.opts.Progress.AddToTotal(int64(t.Executer.Requests()))
 

@@ -29,6 +29,8 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/disk"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/loader"
 	"github.com/projectdiscovery/nuclei/v3/pkg/core"
+	"github.com/projectdiscovery/nuclei/v3/pkg/core/inputs"
+	inputformat "github.com/projectdiscovery/nuclei/v3/pkg/core/inputs/formats/input"
 	"github.com/projectdiscovery/nuclei/v3/pkg/core/inputs/hybrid"
 	"github.com/projectdiscovery/nuclei/v3/pkg/external/customtemplates"
 	"github.com/projectdiscovery/nuclei/v3/pkg/input"
@@ -78,6 +80,8 @@ type Runner struct {
 	pprofServer       *http.Server
 	cloudClient       *nucleicloud.Client
 	cloudTargets      []string
+	// TODO: refactor and remove hmapInputProvider and use inputProvider
+	inputProvider inputs.InputProvider
 }
 
 const pprofServerAddress = "127.0.0.1:8086"
@@ -241,12 +245,13 @@ func New(options *types.Options) (*Runner, error) {
 	}
 	runner.hmapInputProvider = hmapInput
 
+	// if input file is provided (i.e http proxy dumps or openapi file etc)
 	if options.InputFile != "" && options.InputFileMode != "" {
 		provider, err := inputformat.NewInputProvider(options.InputFile, options.InputFileMode)
 		if err != nil {
 			return nil, errors.Wrap(err, "could not create input provider")
 		}
-		runner.inputFileProvider = provider
+		runner.inputProvider = provider
 	}
 
 	// Create the output file if asked
@@ -459,7 +464,7 @@ func (r *Runner) RunEnumeration() error {
 
 	// If using input-file flags, only load http fuzzing based templates.
 	loaderConfig := loader.NewConfig(r.options, r.catalog, executorOpts)
-	if r.inputFileProvider != nil {
+	if r.inputProvider != nil {
 		loaderConfig.OnlyLoadHTTPFuzzing = true
 	}
 	store, err := loader.New(loaderConfig)
@@ -671,15 +676,12 @@ func (r *Runner) executeTemplatesInput(store *loader.Store, engine *core.Engine)
 		return nil, errors.New("no templates provided for scan")
 	}
 
-	// If we have input provider of input file, pass it instead of
-	// normal URL inputs of r.hmapInputProvider.
-	var provider core.InputProvider
-	if r.inputFileProvider != nil {
-		provider = r.inputFileProvider
-	} else {
-		provider = r.hmapInputProvider
+	// pass input provider to engine
+	// TODO: this should be not necessary after r.hmapInputProvider is removed + refactored
+	if r.inputProvider == nil {
+		r.inputProvider = r.hmapInputProvider
 	}
-	results := engine.ExecuteScanWithOpts(finalTemplates, provider, r.options.DisableClustering)
+	results := engine.ExecuteScanWithOpts(finalTemplates, r.inputProvider, r.options.DisableClustering)
 	return results, nil
 }
 

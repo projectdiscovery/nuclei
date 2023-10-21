@@ -403,6 +403,8 @@ type Options struct {
 	CodeTemplateSignatureAlgorithm string
 	// SignTemplates enables signing of templates
 	SignTemplates bool
+	// Aggression level of fuzzing (default/medium/high)
+	Aggression string
 }
 
 // ShouldLoadResume resume file
