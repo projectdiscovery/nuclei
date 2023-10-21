@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
+	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/fuzz/component"
 	"github.com/projectdiscovery/retryablehttp-go"
 )
@@ -102,12 +103,17 @@ func (a *TimeDelayAnalyzer) delayFor(duration int, originalWaitTime float64, htt
 	fmt.Printf("got input: %+v\n", input)
 
 	valueStr := strings.ReplaceAll(input.Value, delayPlaceholder, strconv.Itoa(duration))
-	input.Component.SetValue(input.Key, valueStr)
+	if err := input.Component.SetValue(input.Key, valueStr); err != nil {
+		return "", nil, err
+	}
 
 	fmt.Printf("evaluated: %v\n", valueStr)
 
 	defer func() {
-		input.Component.SetValue(input.Key, input.OriginalValue)
+		err := input.Component.SetValue(input.Key, input.OriginalValue)
+		if err != nil {
+			gologger.Verbose().Msgf("analyzer: timedelay: failed to set value: %s", err)
+		}
 	}()
 
 	mutation, err := input.Component.Rebuild()

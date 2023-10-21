@@ -44,7 +44,11 @@ func (rule *Rule) executePartComponent(input *ExecuteRuleInput, payload string, 
 				finalErr = qerr
 				return
 			}
-			component.SetValue(key, valueStr) // change back to previous value for temp
+			err = component.SetValue(key, valueStr) // change back to previous value for temp
+			if err != nil {
+				finalErr = err
+				return
+			}
 		}
 	})
 	if finalErr != nil {

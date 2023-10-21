@@ -32,7 +32,8 @@ func TestBodyComponent(t *testing.T) {
 	require.Equal(t, []string{"foo"}, keys, "unexpected keys")
 	require.Equal(t, []string{"bar"}, values, "unexpected values")
 
-	body.SetValue("foo", "baz")
+	err = body.SetValue("foo", "baz")
+	require.Nil(t, err, "could not set value")
 
 	rebuilt, err := body.Rebuild()
 	if err != nil {
@@ -62,7 +63,8 @@ func TestBodyXMLComponent(t *testing.T) {
 	}
 	require.True(t, parsed, "could not parse body")
 
-	bodyComponent.SetValue("stockCheck~productId", "2'6842")
+	err = bodyComponent.SetValue("stockCheck~productId", "2'6842")
+	require.Nil(t, err, "could not set value")
 	rebuilt, err := bodyComponent.Rebuild()
 	if err != nil {
 		t.Fatal(err)
