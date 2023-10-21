@@ -12,6 +12,7 @@ code:
   - engine:
       - py
       - python3
+      - python
     source: |
       import sys
       print("hello from " + sys.stdin.read())
@@ -20,4 +21,4 @@ code:
       - type: word
         words:
           - "hello from input"
-# digest: 4b0a00483046022100b7fef4d710fa7e3b8916dc990a381551deb42c558d92a043358325f3994078f5022100db47c9f752185ad42af1a5268788567f88fcd8e41053674fdb637f01f02bbbaa
+# digest: 4b0a004830460221009a87b77e770e688bb1ce05e75ac075cdb3f318aad18a6dbc3fc2ec729a8ba5990221009020d69ba3baf47f9d835d4b6bd644a9e4f2d699369acc2a15983f5c270d2e79:4a3eb6b4988d95847d4203be25ed1d46

@@ -7,10 +7,10 @@ info:
 
 
 flow: |
-  http(0)
+  http(1)
   for(let email of template["emails"]) {
     set("email",email);
-    http(1);
+    http(2);
   }
 
 http:

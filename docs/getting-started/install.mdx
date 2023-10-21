@@ -6,7 +6,7 @@ title: 'Install'
 <Tabs>
   <Tab title="Go">
     ```bash
-    go install -v github.com/projectdiscovery/nuclei/v2/cmd/nuclei@latest
+    go install -v github.com/projectdiscovery/nuclei/v3/cmd/nuclei@latest
     ```
 
     <Note>Nuclei require latest **GO** version to install successfully.</Note>
@@ -24,11 +24,13 @@ title: 'Install'
     ```bash
     docker pull projectdiscovery/nuclei:latest
     ```
+
+    Docker-specific usage instructions can be found [here](./running#running-with-docker).
   </Tab>
   <Tab title="Github">
     ```bash
     git clone https://github.com/projectdiscovery/nuclei.git; \
-    cd nuclei/v2/cmd/nuclei; \
+    cd nuclei/cmd/nuclei; \
     go build; \
     mv nuclei /usr/local/bin/; \
     nuclei -version;

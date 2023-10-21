@@ -178,8 +178,41 @@ In above nuclei template we are bruteforcing ssh server with list of usernames a
 
 Looking at this template now we can tell that javascript template is very powerful to write multi step and protocol/vendor specific exploits which is primary goal of javascript protocol.
 
+
+### Init
+
+`init` is a optional javascript code that can be used to initialize template and it is executed just after compiling template and before running it on any target. Although rarely needed, it can be used to load and preprocess data before running template on any target.
+For example in below code block we are loading all ssh private keys from `nuclei-templates/helpers` directory and storing them as a variable in payloads with name `keys`, if we were loading private keys from 'pre-condition' code block then it would have been loaded for every target which is not ideal.
+
+```
+variables:
+  keysDir: "helpers/"  # load all private keys from this directory
+
+javascript:
+    # init field can be used to make any preperations before the actual exploit
+    # here we are reading all private keys from helpers folder and storing them in a list
+  - init: |
+      let m = require('nuclei/fs');
+      let privatekeys = m.ReadFilesFromDir(keysDir)
+      updatePayload('keys',privatekeys)
+
+    payloads:
+      # 'keys' will be updated by actual private keys after init is executed
+      keys: 
+        - key1
+        - key2
+```
+
+Two special functions that are available in init block are
+
+
+| Function                   | Description                              |
+| -------------------------- | ---------------------------------------- |
+| `updatePayload(key,value)` | updates payload with given key and value |
+| `set(key,value)`           | sets a variable with given key and value |
+
 A collection of javascript protocol templates can be found [here](https://github.com/projectdiscovery/nuclei-templates/pull/8206).
 
 ## Contributing
 
-If you want to add a new module or function to nuclei javascript runtime please open a PR with your changes, refer [Contributing](https://github.com/projectdiscovery/nuclei/blob/7085b47c19dbe3a70b3d4eb23177995bda5c285a/v2/pkg/js/CONTRIBUTE.md) for more details.
+If you want to add a new module or function to nuclei javascript runtime please open a PR with your changes, refer [Contributing](https://github.com/projectdiscovery/nuclei/blob/7085b47c19dbe3a70b3d4eb23177995bda5c285a/pkg/js/CONTRIBUTE.md) for more details.

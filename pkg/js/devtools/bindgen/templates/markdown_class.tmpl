@@ -1,0 +1,71 @@
+{{$packageName:=(printf "%s" .PackageName) -}}
+## {{$packageName}} 
+---
+
+
+`{{$packageName}}` implements bindings for `{{.PackageName}}` protocol in javascript
+to be used from nuclei scanner.
+
+
+{{ if .PackageFuncsExtra }}
+## Types 
+
+{{- range $typeName, $methods := .PackageFuncsExtra }}
+
+### {{$typeName}}
+
+{{ uncomment $methods.Doc }}
+
+| Method | Description | Arguments | Returns |
+|--------|-------------|-----------|---------|
+{{- range $methodName, $method := $methods.Items }}
+| `{{$methodName}}` | {{uncomment $method.Doc}} | {{range $index, $arg := $method.Args}}{{if $index}}, {{end}}`{{ $arg }}`{{end}} | {{range $idx, $arg := $method.Returns}}{{if $idx}}, {{end}}`{{ $arg }}`{{end}} |
+{{- end }}
+
+{{- end }}
+{{- end }}
+
+{{ if .PackageFuncsExtraNoType }}
+## Exported Functions
+
+| Name | Description | Arguments | Returns |
+|--------|-------------|-----------|---------|
+{{- range $objName, $method := .PackageFuncsExtraNoType}}
+{{$objName}} | {{uncomment $method.Doc}} | {{range $index, $arg := $method.Args}}{{if $index}}, {{end}}`{{ $arg }}`{{end}} | {{range $idx, $arg := $method.Returns}}{{if $idx}}, {{end}}`{{ $arg }}`{{end}} |
+{{- end}}
+{{- end}}
+
+{{ if .PackageTypesExtra }}
+## Exported Types Fields
+
+{{- range $typeName, $methods := .PackageTypesExtra }}
+### {{$typeName}}
+
+| Name | Type | 
+|--------|-------------|
+{{- range $fieldName, $field := $methods.Fields }}
+| {{$fieldName}} | `{{ $field }}` |
+{{- end }}
+{{- end }}
+{{- end }}
+
+{{ if .PackageVarsValues }}
+
+## Exported Variables Values
+
+| Name | Value |
+|--------|-------------|
+{{- range $varName, $var := .PackageVarsValues }}
+| {{$varName}} | `{{ $var }}` |
+{{- end }}
+{{- end}}
+
+{{ if .PackageInterfaces }}
+## Exported Interfaces
+
+{{- range $typeName, $doc := .PackageInterfaces }}
+### {{$typeName}}
+
+{{ uncomment $doc }}
+{{- end }}
+{{- end }}

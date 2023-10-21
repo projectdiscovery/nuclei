@@ -56,10 +56,10 @@ We have a [dedicated repository](https://github.com/projectdiscovery/nuclei-temp
 
 # Install Nuclei
 
-Nuclei requires **go1.20** to install successfully. Run the following command to install the latest version -
+Nuclei requires **go1.21** to install successfully. Run the following command to install the latest version -
 
 ```sh
-go install -v github.com/projectdiscovery/nuclei/v2/cmd/nuclei@latest
+go install -v github.com/projectdiscovery/nuclei/v3/cmd/nuclei@latest
 ```
 
 <details>
@@ -379,7 +379,7 @@ We have [a discussion thread around this](https://github.com/projectdiscovery/nu
 
 ### Using Nuclei From Go Code
 
-Complete guide of using Nuclei as Library/SDK is available at [lib](v2/lib/README.md)
+Complete guide of using Nuclei as Library/SDK is available at [godoc](https://pkg.go.dev/github.com/projectdiscovery/nuclei/v3/lib#section-readme)
 
 
 ### Resources
