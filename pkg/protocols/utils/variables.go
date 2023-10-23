@@ -22,6 +22,7 @@ func init() {
 		RootURL:  "RootURL",
 		Hostname: "Hostname",
 		Host:     "Host",
+		Endpoint: "Endpoint",
 		Port:     "Port",
 		Path:     "Path",
 		File:     "File",
@@ -42,6 +43,7 @@ const (
 	RootURL
 	Hostname
 	Host
+	Endpoint
 	Port
 	Path
 	File
@@ -158,6 +160,8 @@ func generateVariables(inputURL *urlutil.URL, removeTrailingSlash bool) map[stri
 			knownVariables[v] = parsed.Host
 		case Host:
 			knownVariables[v] = parsed.Hostname()
+		case Endpoint:
+			knownVariables[v] = endpoint(parsed.Hostname(), port)
 		case Port:
 			knownVariables[v] = port
 		case Path:
@@ -171,4 +175,11 @@ func generateVariables(inputURL *urlutil.URL, removeTrailingSlash bool) map[stri
 		}
 	}
 	return generators.MergeMaps(knownVariables, GenerateDNSVariables(parsed.Hostname()))
+}
+
+func endpoint(hostname, port string) string {
+	if port != "" {
+		return fmt.Sprintf("%s:%s", hostname, port)
+	}
+	return hostname
 }
