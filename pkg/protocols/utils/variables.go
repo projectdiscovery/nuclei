@@ -2,6 +2,7 @@ package utils
 
 import (
 	"fmt"
+	"net"
 	"path"
 	"strings"
 
@@ -179,7 +180,7 @@ func generateVariables(inputURL *urlutil.URL, removeTrailingSlash bool) map[stri
 
 func endpoint(hostname, port string) string {
 	if port != "" {
-		return fmt.Sprintf("%s:%s", hostname, port)
+		return net.JoinHostPort(hostname, port)
 	}
 	return hostname
 }
