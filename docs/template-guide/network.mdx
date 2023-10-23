@@ -66,20 +66,20 @@ Multiple steps can be chained together in sequence to do network reading / writi
 
 The next part of the requests is the **host** to connect to. Dynamic variables can be placed in the path to modify its value on runtime. Variables start with `{{` and end with `}}` and are case-sensitive.
 
-1. **Hostname** - variable is replaced by the hostname provided on command line.
+1. **Endpoint** - variable is replaced by the IP/domain and port combination provided on command line.
 
 An example name value:
 
 ```yaml
 host: 
-  - "{{Hostname}}"
+  - "{{Endpoint}}"
 ```
 
-Nuclei can also do TLS connection to the target server. Just add `tls://` as prefix before the **Hostname** and you're good to go.
+Nuclei can also do TLS connection to the target server. Just add `tls://` as prefix before the **Endpoint** and you're good to go.
 
 ```yaml
 host:
-  - "tls://{{Hostname}}"
+  - "tls://{{Endpoint}}"
 ```
 
 If a port is specified in the host, the user supplied port is ignored and the template port takes precedence.
@@ -91,8 +91,8 @@ Starting from Nuclei v2.9.15, a new field called `port` has been introduced in n
 Previously, if you wanted to write a network template for an exploit targeting SSH, you would have to specify both the hostname and the port in the host field, like this:
 ```yaml
 host:
-  - "{{Hostname}}"
-  - "{{Host}}:22"
+  - "{{Endpoint}}"
+  - "{{Endpoint}}:22"
 ```
 
 In the above example, two network requests are sent: one to the port specified in the input/target, and another to the default SSH port (22).
@@ -117,7 +117,7 @@ To address these issues while maintaining the existing functionality, network te
 
 ```yaml
 host:
-  - "{{Hostname}}"
+  - "{{Endpoint}}"
 port: 22
 ```
 In this new design, the functionality to run templates on non-standard ports will still exist, except for the default reserved ports (`80`, `443`, `8080`, `8443`, `8081`, `53`). Additionally, the list of default reserved ports can be customized by adding a new field called exclude-ports:
@@ -154,7 +154,7 @@ tcp:
   - inputs:
       - data: "{{hex_decode('3a000000a741000000000000d40700000000000061646d696e2e24636d640000000000ffffffff130000001069736d6173746572000100000000')}}"
     host:
-      - "{{Hostname}}"
+      - "{{Endpoint}}"
     port: 27017
     read-size: 2048
     matchers:

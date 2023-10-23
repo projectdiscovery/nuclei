@@ -16,7 +16,7 @@ info:
 
 tcp:
   - host: 
-      - "{{Hostname}}"
+      - "{{Endpoint}}"
     inputs:
       - data: "PING\r\n"
     read-size: 4
@@ -41,7 +41,7 @@ info:
 
 tcp:
   - host: 
-      - "tls://{{Hostname}}"
+      - "tls://{{Endpoint}}"
     inputs:
       - data: "PING\r\n"
     read-size: 4
@@ -66,7 +66,7 @@ info:
 
 tcp:
   - host: 
-      - "{{Hostname}}"
+      - "{{Endpoint}}"
     inputs:
       - data: "50494e47"
         type: hex
@@ -98,7 +98,7 @@ tcp:
   - inputs:
       - data: "{{hex_decode('3a000000a741000000000000d40700000000000061646d696e2e24636d640000000000ffffffff130000001069736d6173746572000100000000')}}"
     host:
-      - "{{Hostname}}"
+      - "{{Endpoint}}"
     read-size: 2048
     matchers:
       - type: word
@@ -131,7 +131,7 @@ tcp:
         read: 1024
       - data: "site cpto /var/www/html/{{randstr}}\r\n"
     host:
-      - "{{Hostname}}"
+      - "{{Endpoint}}"
     read-size: 1024
     matchers:
       - type: word
