@@ -28,16 +28,6 @@ func New(payloads map[string]interface{}, attackType AttackType, templatePath st
 	for name, payload := range payloads {
 		payloadsFinal[name] = payload
 	}
-	for name, payload := range payloads {
-		payloadStr, ok := payload.(string)
-		if ok {
-			final, resolveErr := catalog.ResolvePath(payloadStr, templatePath)
-			if resolveErr != nil {
-				return nil, errors.Wrap(resolveErr, "could not read payload file")
-			}
-			payloadsFinal[name] = final
-		}
-	}
 
 	generator := &PayloadGenerator{catalog: catalog, options: opts}
 	if err := generator.validate(payloadsFinal, templatePath); err != nil {
