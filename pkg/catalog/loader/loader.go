@@ -161,6 +161,7 @@ func New(config *Config) (*Store, error) {
 		if _, err := urlutil.Parse(v); err == nil {
 			remoteTemplates = append(remoteTemplates, handleTemplatesEditorURLs(v))
 		} else {
+			
 			templatesFinal = append(templatesFinal, v) // something went wrong, treat it as a file
 		}
 	}
