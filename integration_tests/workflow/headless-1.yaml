@@ -6,7 +6,6 @@ info:
   tags: headless
 
 headless:
-  - cookie-reuse: true
     steps:
       - action: navigate
         args:

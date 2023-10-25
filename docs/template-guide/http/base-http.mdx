@@ -121,11 +121,11 @@ body: "admin=test"
 
 ### Session
 
-To maintain cookie based browser like session between multiple requests, you can simply use `cookie-reuse: true` in your template, Useful in cases where you want to maintain session between series of request to complete the exploit chain and to perform authenticated scans. 
+To maintain a cookie-based browser-like session between multiple requests, cookies are reused by default. This is beneficial when you want to maintain a session between a series of requests to complete the exploit chain or to perform authenticated scans. If you need to disable this behavior, you can use the disable-cookie field.
 
 ```yaml
-# cookie-reuse accepts boolean input and false as default
-cookie-reuse: true
+# disable-cookie accepts boolean input and false as default
+disable-cookie: true
 ```
 
 ### Request Condition
