@@ -19,9 +19,9 @@ pkg/protocols/common/helpers/deserialization/testdata/ValueObject2.ser
 .gitignore
 pkg/js/devtools/bindgen/cmd/bindgen
 pkg/js/devtools/jsdocgen/jsdocgen
-./bindgen
-./jsdocgen
-./scrapefuncs
+bindgen
+jsdocgen
+scrapefuncs
 *.DS_Store
 pkg/protocols/headless/engine/.cache
-./nuclei
+/nuclei

@@ -5,7 +5,6 @@ import (
 	"io"
 	"net/url"
 	"os"
-	"path/filepath"
 	"sort"
 	"strings"
 
@@ -26,7 +25,6 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/workflows"
 	"github.com/projectdiscovery/retryablehttp-go"
 	errorutil "github.com/projectdiscovery/utils/errors"
-	fileutil "github.com/projectdiscovery/utils/file"
 	stringsutil "github.com/projectdiscovery/utils/strings"
 	urlutil "github.com/projectdiscovery/utils/url"
 )
@@ -161,7 +159,7 @@ func New(config *Config) (*Store, error) {
 		if _, err := urlutil.Parse(v); err == nil {
 			remoteTemplates = append(remoteTemplates, handleTemplatesEditorURLs(v))
 		} else {
-			
+
 			templatesFinal = append(templatesFinal, v) // something went wrong, treat it as a file
 		}
 	}
@@ -191,18 +189,6 @@ func New(config *Config) (*Store, error) {
 		store.finalTemplates = []string{cfg.DefaultConfig.TemplatesDirectory}
 	}
 
-	// try to convert relative paths to absolute paths if exists
-	// internal paths like http/cves etc are converted to absolute paths later on from catalog
-	// at this moment only root templates/folders are converted to absolute paths if such path exists
-	for i, path := range store.finalTemplates {
-		if filepath.IsAbs(path) {
-			continue
-		}
-		absPath, err := filepath.Abs(path)
-		if err == nil && fileutil.FileOrFolderExists(absPath) {
-			store.finalTemplates[i] = absPath
-		}
-	}
 	return store, nil
 }
 
