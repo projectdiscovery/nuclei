@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/config"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	fileutil "github.com/projectdiscovery/utils/file"
 	folderutil "github.com/projectdiscovery/utils/folder"
@@ -25,7 +26,20 @@ func (g *PayloadGenerator) validate(payloads map[string]interface{}, templatePat
 			if fileutil.FileExists(payloadType) {
 				continue
 			}
+			// if file already exists in nuclei-templates directory, skip any further checks
+			if fileutil.FileExists(filepath.Join(config.DefaultConfig.GetTemplateDir(), payloadType)) {
+				continue
+			}
 
+			// in below code, we calculate all possible paths from root and try to resolve the payload
+			// at each level of the path. if the payload is found, we break the loop and continue
+			// ex: template-path: /home/user/nuclei-templates/cves/2020/CVE-2020-1234.yaml
+			// then we check if helper file "my-payload.txt" exists at below paths:
+			// 1. /home/user/nuclei-templates/cves/2020/my-payload.txt
+			// 2. /home/user/nuclei-templates/cves/my-payload.txt
+			// 3. /home/user/nuclei-templates/my-payload.txt
+			// 4. /home/user/my-payload.txt
+			// 5. /home/my-payload.txt
 			changed := false
 
 			dir, _ := filepath.Split(templatePath)
