@@ -76,6 +76,14 @@ type Request struct {
 	//   - "auto"
 	//	 - "openssl" # reverts to "auto" is openssl is not installed
 	ScanMode string `yaml:"scan_mode,omitempty" json:"scan_mode,omitempty" jsonschema:"title=Scan Mode,description=Scan Mode - auto if not specified.,enum=ctls,enum=ztls,enum=auto"`
+	// description: |
+	//   TLS Versions Enum - false if not specified
+	//   Enumerates supported TLS versions
+	TLSVersionsEnum bool `yaml:"tls_versions_enum,omitempty" json:"tls_versions_enum,omitempty" jsonschema:"title=Enumerate Versions,description=Enumerate Version - false if not specified"`
+	// description: |
+	//   TLS Ciphers Enum - false if not specified
+	//   Enumerates supported TLS ciphers
+	TLSCiphersEnum bool `yaml:"tls_ciphers_enum,omitempty" json:"tls_ciphers_enum,omitempty" jsonschema:"title=Enumerate Ciphers,description=Enumerate Ciphers - false if not specified"`
 
 	// cache any variables that may be needed for operation.
 	dialer  *fastdialer.Dialer
@@ -133,6 +141,8 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 		ClientHello:       true,
 		ServerHello:       true,
 		DisplayDns:        true,
+		TlsVersionsEnum:   request.TLSVersionsEnum,
+		TlsCiphersEnum:    request.TLSCiphersEnum,
 	}
 
 	tlsxService, err := tlsx.New(tlsxOptions)
