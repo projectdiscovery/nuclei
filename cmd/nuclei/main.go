@@ -32,6 +32,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/utils/monitor"
 	errorutil "github.com/projectdiscovery/utils/errors"
 	fileutil "github.com/projectdiscovery/utils/file"
+	updateutils "github.com/projectdiscovery/utils/update"
 )
 
 var (
@@ -158,6 +159,10 @@ func main() {
 }
 
 func readConfig() *goflags.FlagSet {
+
+	// when true updates nuclei binary to latest version
+	var updateNucleiBinary bool
+
 	flagSet := goflags.NewFlagSet()
 	flagSet.CaseSensitive = true
 	flagSet.SetDescription(`Nuclei is a fast, template based vulnerability scanner focusing
@@ -342,7 +347,7 @@ on extensive configurability, massive extensibility and ease of use.`)
 	)
 
 	flagSet.CreateGroup("update", "Update",
-		flagSet.CallbackVarP(runner.NucleiToolUpdateCallback, "update", "up", "update nuclei engine to the latest released version"),
+		flagSet.BoolVarP(&updateNucleiBinary, "update", "up", false, "update nuclei engine to the latest released version"),
 		flagSet.BoolVarP(&options.UpdateTemplates, "update-templates", "ut", false, "update nuclei-templates to latest released version"),
 		flagSet.StringVarP(&options.NewTemplatesDirectory, "update-template-dir", "ud", "", "custom directory to install / update nuclei-templates"),
 		flagSet.CallbackVarP(disableUpdatesCallback, "disable-update-check", "duc", "disable automatic nuclei/templates update check"),
@@ -410,6 +415,14 @@ Additional documentation is available at: https://docs.nuclei.sh/getting-started
 	if options.VerboseVerbose {
 		// hide release notes if silent mode is enabled
 		installer.HideReleaseNotes = false
+	}
+
+	if options.Timeout > 30 {
+		// default github binary/template download timeout is 30 sec
+		updateutils.DownloadUpdateTimeout = time.Duration(options.Timeout) * time.Second
+	}
+	if updateNucleiBinary {
+		runner.NucleiToolUpdateCallback()
 	}
 
 	if options.LeaveDefaultPorts {

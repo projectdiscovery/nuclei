@@ -159,6 +159,7 @@ func New(config *Config) (*Store, error) {
 		if _, err := urlutil.Parse(v); err == nil {
 			remoteTemplates = append(remoteTemplates, handleTemplatesEditorURLs(v))
 		} else {
+
 			templatesFinal = append(templatesFinal, v) // something went wrong, treat it as a file
 		}
 	}
@@ -187,6 +188,7 @@ func New(config *Config) (*Store, error) {
 	if len(store.finalTemplates) == 0 && len(store.finalWorkflows) == 0 && !urlBasedTemplatesProvided {
 		store.finalTemplates = []string{cfg.DefaultConfig.TemplatesDirectory}
 	}
+
 	return store, nil
 }
 

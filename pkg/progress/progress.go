@@ -65,6 +65,8 @@ func NewStatsTicker(duration int, active, outputJSON, cloud bool, port int) (Pro
 	if err != nil {
 		return nil, err
 	}
+	// only print in verbose mode
+	gologger.Verbose().Msgf("Started metrics server at localhost:%v", stats.Options.ListenPort)
 	progress.cloud = cloud
 	progress.active = active
 	progress.stats = stats
