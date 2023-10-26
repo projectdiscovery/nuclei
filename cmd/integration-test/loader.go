@@ -10,6 +10,7 @@ import (
 	"github.com/julienschmidt/httprouter"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/testutils"
+	errorutil "github.com/projectdiscovery/utils/errors"
 	permissionutil "github.com/projectdiscovery/utils/permission"
 )
 
@@ -20,6 +21,7 @@ var loaderTestcases = []TestCaseInfo{
 	{Path: "loader/nonexistent-template-list.yaml", TestCase: &nonExistentTemplateList{}},
 	{Path: "loader/nonexistent-workflow-list.yaml", TestCase: &nonExistentWorkflowList{}},
 	{Path: "loader/template-list-not-allowed.yaml", TestCase: &remoteTemplateListNotAllowed{}},
+	{Path: "loader/load-template-with-id", TestCase: &loadTemplateWithID{}},
 }
 
 type remoteTemplateList struct{}
@@ -192,4 +194,14 @@ func (h *nonExistentWorkflowList) Execute(nonExistingWorkflowList string) error 
 	}
 
 	return nil
+}
+
+type loadTemplateWithID struct{}
+
+func (h *loadTemplateWithID) Execute(nooop string) error {
+	results, err := testutils.RunNucleiBareArgsAndGetResults(debug, nil, "-target", "scanme.sh", "-id", "self-signed-ssl")
+	if err != nil {
+		return errorutil.NewWithErr(err).Msgf("failed to load template with id")
+	}
+	return expectResultsCount(results, 1)
 }
