@@ -76,10 +76,10 @@ type TemplateInfo struct {
 	Path string
 }
 
-// NewMockExecuterOptions creates a new mock executeroptions struct
+// NewMockExecuterOptions creates a new mock executor options struct
 func NewMockExecuterOptions(options *types.Options, info *TemplateInfo) *protocols.ExecutorOptions {
 	progressImpl, _ := progress.NewStatsTicker(0, false, false, false, 0)
-	executerOpts := &protocols.ExecutorOptions{
+	executorOpts := &protocols.ExecutorOptions{
 		TemplateID:   info.ID,
 		TemplateInfo: info.Info,
 		TemplatePath: info.Path,
@@ -92,8 +92,8 @@ func NewMockExecuterOptions(options *types.Options, info *TemplateInfo) *protoco
 		Catalog:      disk.NewCatalog(config.DefaultConfig.TemplatesDirectory),
 		RateLimiter:  ratelimit.New(context.Background(), uint(options.RateLimit), time.Second),
 	}
-	executerOpts.CreateTemplateCtxStore()
-	return executerOpts
+	executorOpts.CreateTemplateCtxStore()
+	return executorOpts
 }
 
 // NoopWriter is a NooP gologger writer.
@@ -131,7 +131,7 @@ func (m *MockOutputWriter) Write(result *output.ResultEvent) error {
 	return nil
 }
 
-// Request writes a log the requests trace log
+// Request writes a log the request's trace log
 func (m *MockOutputWriter) Request(templateID, url, requestType string, err error) {
 	if m.RequestCallback != nil {
 		m.RequestCallback(templateID, url, requestType, err)
@@ -141,7 +141,7 @@ func (m *MockOutputWriter) Request(templateID, url, requestType string, err erro
 // WriteFailure writes the event to file and/or screen.
 func (m *MockOutputWriter) WriteFailure(wrappedEvent *output.InternalWrappedEvent) error {
 	if m.WriteCallback != nil {
-		// create event
+		// Create event
 		event := wrappedEvent.InternalEvent
 		templatePath, templateURL := utils.TemplatePathURL(types.ToString(event["template-path"]), types.ToString(event["template-id"]))
 		var templateInfo model.Info
@@ -165,16 +165,15 @@ func (m *MockOutputWriter) WriteFailure(wrappedEvent *output.InternalWrappedEven
 	}
 	return nil
 }
-func (m *MockOutputWriter) WriteStoreDebugData(host, templateID, eventType string, data string) {
 
-}
+func (m *MockOutputWriter) WriteStoreDebugData(host, templateID, eventType string, data string) {}
 
 type MockProgressClient struct{}
 
 // Stop stops the progress recorder.
 func (m *MockProgressClient) Stop() {}
 
-// Init inits the progress bar with initial details for scan
+// Init initializes the progress bar with initial details for scan
 func (m *MockProgressClient) Init(hostCount int64, rulesCount int, requestCount int64) {}
 
 // AddToTotal adds a value to the total request count
@@ -193,5 +192,4 @@ func (m *MockProgressClient) IncrementMatched() {}
 func (m *MockProgressClient) IncrementErrorsBy(count int64) {}
 
 // IncrementFailedRequestsBy increments the number of requests counter by count
-// along with errors.
 func (m *MockProgressClient) IncrementFailedRequestsBy(count int64) {}
