@@ -402,9 +402,14 @@ STATISTICS:
    -stats                    display statistics about the running scan
    -sj, -stats-json          write statistics data to an output file in JSONL(ines) format
    -si, -stats-interval int  number of seconds to wait between showing a statistics update (default 5)
-   -m, -metrics              expose nuclei metrics on a port
    -mp, -metrics-port int    port to expose nuclei metrics on (default 9092)
 ```
+
+<Tip>
+  From Nuclei v3.0.0 `-metrics` port has been removed and merged with `-stats`
+  when using `-stats` flag metrics will be by default available at `localhost:9092/metrics`
+  and metrics-port can be configured by `-metrics-port` flag
+</Tip>
 
 ### Rate **Limits**
 
