@@ -24,9 +24,9 @@ require (
 	github.com/projectdiscovery/fastdialer v0.0.40
 	github.com/projectdiscovery/hmap v0.0.22
 	github.com/projectdiscovery/interactsh v1.1.7
-	github.com/projectdiscovery/rawhttp v0.1.22
+	github.com/projectdiscovery/rawhttp v0.1.23
 	github.com/projectdiscovery/retryabledns v1.0.39
-	github.com/projectdiscovery/retryablehttp-go v1.0.31
+	github.com/projectdiscovery/retryablehttp-go v1.0.32
 	github.com/projectdiscovery/yamldoc-go v1.0.4
 	github.com/remeh/sizedwaitgroup v1.0.0
 	github.com/rs/xid v1.5.0
@@ -79,7 +79,7 @@ require (
 	github.com/praetorian-inc/fingerprintx v1.1.9
 	github.com/projectdiscovery/dsl v0.0.26
 	github.com/projectdiscovery/fasttemplate v0.0.2
-	github.com/projectdiscovery/goflags v0.1.24
+	github.com/projectdiscovery/goflags v0.1.25
 	github.com/projectdiscovery/gologger v1.1.11
 	github.com/projectdiscovery/gostruct v0.0.1
 	github.com/projectdiscovery/gozero v0.0.1

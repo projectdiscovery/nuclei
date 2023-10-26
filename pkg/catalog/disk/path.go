@@ -50,7 +50,7 @@ var errNoValidCombination = errors.New("no valid combination found")
 
 // tryResolve attempts to load locate the target by iterating across all the folders tree
 func (c *DiskCatalog) tryResolve(fullPath string) (string, error) {
-	if fileutil.FileExists(fullPath) {
+	if fileutil.FileOrFolderExists(fullPath) {
 		return fullPath, nil
 	}
 	return "", errNoValidCombination
