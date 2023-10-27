@@ -83,7 +83,7 @@ func (request *Request) getMatchPart(part string, data output.InternalEvent) (in
 // responseToDSLMap converts a DNS response to a map for use in DSL matching
 func (request *Request) responseToDSLMap(req, resp *dns.Msg, host, matched string, traceData *retryabledns.TraceData) output.InternalEvent {
 	ret := output.InternalEvent{
-		"host":          strings.TrimSuffix(host, "."),
+		"host":          host,
 		"matched":       matched,
 		"request":       req.String(),
 		"rcode":         resp.Rcode,
