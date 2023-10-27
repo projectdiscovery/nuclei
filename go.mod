@@ -81,7 +81,7 @@ require (
 	github.com/projectdiscovery/fasttemplate v0.0.2
 	github.com/projectdiscovery/goflags v0.1.25
 	github.com/projectdiscovery/gologger v1.1.11
-	github.com/projectdiscovery/gostruct v0.0.1
+	github.com/projectdiscovery/gostruct v0.0.2-0.20231027114208-c6e6f477bf25
 	github.com/projectdiscovery/gozero v0.0.1
 	github.com/projectdiscovery/httpx v1.3.5
 	github.com/projectdiscovery/mapcidr v1.1.12

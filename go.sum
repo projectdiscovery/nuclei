@@ -803,8 +803,8 @@ github.com/projectdiscovery/goflags v0.1.25 h1:nHXKo464RW7qzyeRMGEtHmsySWw2Cl1tq
 github.com/projectdiscovery/goflags v0.1.25/go.mod h1:EhPEodSIWQkoPXtK80o2yY5xjfE+KNSLrKcLM02y9tw=
 github.com/projectdiscovery/gologger v1.1.11 h1:8vsz9oJlDT9euw6xlj7F7dZ6RWItVIqVwn4Mr6uzky8=
 github.com/projectdiscovery/gologger v1.1.11/go.mod h1:UR2bgXl7zraOxYGnUwuO917hifWrwMJ0feKnVqMQkzY=
-github.com/projectdiscovery/gostruct v0.0.1 h1:1KvR6Pn4mDbQqoLEQzhRfHpbreLno2R9xqRCCt5tgmU=
-github.com/projectdiscovery/gostruct v0.0.1/go.mod h1:H86peL4HKwMXcQQtEa6lmC8FuD9XFt6gkNR0B/Mu5PE=
+github.com/projectdiscovery/gostruct v0.0.2-0.20231027114208-c6e6f477bf25 h1:O/rKkdvXbFe4x/7bYC41Q3wPj9TXIyy2A8W5aPXPFyw=
+github.com/projectdiscovery/gostruct v0.0.2-0.20231027114208-c6e6f477bf25/go.mod h1:H86peL4HKwMXcQQtEa6lmC8FuD9XFt6gkNR0B/Mu5PE=
 github.com/projectdiscovery/gozero v0.0.1 h1:f08ZnYlbDZV/TNGDvIXV9s/oB/sAI+HWaSbW4em4aKM=
 github.com/projectdiscovery/gozero v0.0.1/go.mod h1:/dHwbly+1lhOX9UreVure4lEe7K4hIHeu/c/wZGNTDo=
 github.com/projectdiscovery/hmap v0.0.22 h1:iBddf2s45zTF+fNIw2WdQVJT2nJKI6p8Ie2c/eEOw2I=
