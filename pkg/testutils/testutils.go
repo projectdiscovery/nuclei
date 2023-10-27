@@ -176,8 +176,7 @@ func (m *MockOutputWriter) WriteFailure(wrappedEvent *output.InternalWrappedEven
 		MatcherStatus: false,
 		Timestamp:     time.Now(),
 	}
-	m.Write(data)
-	return nil
+	return m.Write(data)
 }
 
 func (m *MockOutputWriter) WriteStoreDebugData(host, templateID, eventType string, data string) {}
