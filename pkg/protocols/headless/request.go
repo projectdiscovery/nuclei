@@ -106,7 +106,6 @@ func (request *Request) executeRequestWithPayloads(input *contextargs.Context, p
 		request.options.Progress.IncrementFailedRequestsBy(1)
 		return errors.Wrap(err, errCouldGetHtmlElement)
 	}
-	fmt.Println(request.DisableCookie)
 	options := &engine.Options{
 		Timeout:       time.Duration(request.options.Options.PageTimeout) * time.Second,
 		DisableCookie: request.DisableCookie,
