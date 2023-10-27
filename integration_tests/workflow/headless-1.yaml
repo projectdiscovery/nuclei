@@ -6,7 +6,7 @@ info:
   tags: headless
 
 headless:
-    steps:
+    - steps:
       - action: navigate
         args:
           url: "{{BaseURL}}/headless1"
