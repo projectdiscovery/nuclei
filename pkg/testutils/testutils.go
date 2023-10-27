@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/projectdiscovery/ratelimit"
+	"go.uber.org/multierr"
 
 	"github.com/logrusorgru/aurora"
 
@@ -140,34 +141,46 @@ func (m *MockOutputWriter) Request(templateID, url, requestType string, err erro
 
 // WriteFailure writes the event to file and/or screen.
 func (m *MockOutputWriter) WriteFailure(wrappedEvent *output.InternalWrappedEvent) error {
-	if m.WriteCallback != nil {
-		// create event
-		event := wrappedEvent.InternalEvent
-		templatePath, templateURL := utils.TemplatePathURL(types.ToString(event["template-path"]), types.ToString(event["template-id"]))
-		var templateInfo model.Info
-		if ti, ok := event["template-info"].(model.Info); ok {
-			templateInfo = ti
+	// if failure event has more than one result, write them all
+	if len(wrappedEvent.Results) > 0 {
+		errs := []error{}
+		for _, result := range wrappedEvent.Results {
+			result.MatcherStatus = false // just in case
+			if err := m.Write(result); err != nil {
+				errs = append(errs, err)
+			}
 		}
-		data := &output.ResultEvent{
-			Template:      templatePath,
-			TemplateURL:   templateURL,
-			TemplateID:    types.ToString(event["template-id"]),
-			TemplatePath:  types.ToString(event["template-path"]),
-			Info:          templateInfo,
-			Type:          types.ToString(event["type"]),
-			Host:          types.ToString(event["host"]),
-			Request:       types.ToString(event["request"]),
-			Response:      types.ToString(event["response"]),
-			MatcherStatus: false,
-			Timestamp:     time.Now(),
+		if len(errs) > 0 {
+			return multierr.Combine(errs...)
 		}
-		m.WriteCallback(data)
+		return nil
 	}
+
+	// create event
+	event := wrappedEvent.InternalEvent
+	templatePath, templateURL := utils.TemplatePathURL(types.ToString(event["template-path"]), types.ToString(event["template-id"]))
+	var templateInfo model.Info
+	if ti, ok := event["template-info"].(model.Info); ok {
+		templateInfo = ti
+	}
+	data := &output.ResultEvent{
+		Template:      templatePath,
+		TemplateURL:   templateURL,
+		TemplateID:    types.ToString(event["template-id"]),
+		TemplatePath:  types.ToString(event["template-path"]),
+		Info:          templateInfo,
+		Type:          types.ToString(event["type"]),
+		Host:          types.ToString(event["host"]),
+		Request:       types.ToString(event["request"]),
+		Response:      types.ToString(event["response"]),
+		MatcherStatus: false,
+		Timestamp:     time.Now(),
+	}
+	m.Write(data)
 	return nil
 }
-func (m *MockOutputWriter) WriteStoreDebugData(host, templateID, eventType string, data string) {
 
-}
+func (m *MockOutputWriter) WriteStoreDebugData(host, templateID, eventType string, data string) {}
 
 type MockProgressClient struct{}
 
