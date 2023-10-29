@@ -1,6 +1,9 @@
 package dataformat
 
-import "net/url"
+import (
+	"net/url"
+	"strings"
+)
 
 type Form struct{}
 
@@ -15,6 +18,10 @@ func NewForm() *Form {
 
 // IsType returns true if the data is Form encoded
 func (f *Form) IsType(data string) bool {
+	values, err := url.ParseQuery(data)
+	if err == nil && len(values) > 0 {
+		return strings.Contains(data, "=")
+	}
 	return false
 }
 

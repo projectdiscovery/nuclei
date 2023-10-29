@@ -74,7 +74,17 @@ func Decode(data string) (*Decoded, error) {
 			return value, nil
 		}
 	}
-	return nil, nil
+	// If we don't map any datatype, we can return raw.
+	rawFormat := Get(RawDataFormat)
+	rawDecoded, err := rawFormat.Decode(data)
+	if err != nil {
+		return nil, err
+	}
+	value := &Decoded{
+		DataFormat: rawFormat.Name(),
+		Data:       rawDecoded,
+	}
+	return value, nil
 }
 
 // Encode encodes the data into a format
