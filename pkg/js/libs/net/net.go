@@ -1,6 +1,7 @@
 package net
 
 import (
+	"bytes"
 	"context"
 	"crypto/tls"
 	"encoding/hex"
@@ -10,6 +11,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 )
@@ -27,7 +29,7 @@ func Open(protocol, address string) (*NetConn, error) {
 // Open opens a new connection to the address with a timeout.
 // supported protocols: tcp, udp
 func OpenTLS(protocol, address string) (*NetConn, error) {
-	config := &tls.Config{InsecureSkipVerify: true}
+	config := &tls.Config{InsecureSkipVerify: true, MinVersion: tls.VersionTLS10}
 	host, _, _ := net.SplitHostPort(address)
 	if host != "" {
 		c := config.Clone()
@@ -113,30 +115,32 @@ func (c *NetConn) Send(data string) error {
 }
 
 // Recv receives data from the connection with a timeout.
-// If N is 0, it will read up to 4096 bytes.
+// If N is 0, it will read all data sent by the server.
 func (c *NetConn) Recv(N int) ([]byte, error) {
 	c.setDeadLine()
-	var response []byte
-	if N > 0 {
-		response = make([]byte, N)
-	} else {
-		response = make([]byte, 4096)
-	}
-	length, err := c.conn.Read(response)
-	if err != nil {
-		var netErr net.Error
-		if (errors.As(err, &netErr) && netErr.Timeout()) ||
-			errors.Is(err, syscall.ECONNREFUSED) { // timeout error or connection refused
-			return response, nil
+	var buff bytes.Buffer
+	defer func() {
+		if r := recover(); r != nil {
+			gologger.Error().Msgf("unbounded read from connection caused a panic: %v", r)
 		}
-		return response[:length], err
+	}()
+	if buff.Len() < N || N == 0 {
+		_, err := buff.ReadFrom(c.conn)
+		if err != nil {
+			var netErr net.Error
+			if (errors.As(err, &netErr) && netErr.Timeout()) ||
+				errors.Is(err, syscall.ECONNREFUSED) { // timeout error or connection refused
+				return buff.Bytes(), nil
+			}
+			return buff.Bytes(), err
+		}
 	}
-	return response[:length], nil
+	return buff.Bytes(), nil
 }
 
 // RecvString receives data from the connection with a timeout
 // output is returned as a string.
-// If N is 0, it will read up to 4096 bytes.
+// If N is 0, it will read all data sent by the server.
 func (c *NetConn) RecvString(N int) (string, error) {
 	bin, err := c.Recv(N)
 	if err != nil {
@@ -147,7 +151,7 @@ func (c *NetConn) RecvString(N int) (string, error) {
 
 // RecvHex receives data from the connection with a timeout
 // in hex format.
-// If N is 0, it will read up to 4096 bytes.
+// If N is 0,it will read all data sent by the server.
 func (c *NetConn) RecvHex(N int) (string, error) {
 	bin, err := c.Recv(N)
 	if err != nil {

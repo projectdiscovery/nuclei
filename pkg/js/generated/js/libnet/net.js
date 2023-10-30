@@ -20,8 +20,8 @@ class NetConn {
 
     /**
     * @method
-    * @description Recv receives data from the connection with a timeout. If N is 0, it will read up to 4096 bytes.
-    * @param {number} N - The number of bytes to receive.
+    * @description Recv receives data from the connection with a timeout. If N is 0, it will read all available data.
+    * @param {number} [N=0] - The number of bytes to receive.
     * @returns {Uint8Array} - The received data in an array.
     * @throws {error} - The error encountered during data receiving.
     * @example
@@ -35,8 +35,8 @@ class NetConn {
 
     /**
     * @method
-    * @description RecvHex receives data from the connection with a timeout in hex format. If N is 0, it will read up to 4096 bytes.
-    * @param {number} N - The number of bytes to receive.
+    * @description RecvHex receives data from the connection with a timeout in hex format. If N is 0, it will read all available data.
+    * @param {number} [N=0] - The number of bytes to receive.
     * @returns {string} - The received data in hex format.
     * @throws {error} - The error encountered during data receiving.
     * @example
@@ -50,8 +50,8 @@ class NetConn {
 
     /**
     * @method
-    * @description RecvString receives data from the connection with a timeout. Output is returned as a string. If N is 0, it will read up to 4096 bytes.
-    * @param {number} N - The number of bytes to receive.
+    * @description RecvString receives data from the connection with a timeout. Output is returned as a string. If N is 0, it will read all available data.
+    * @param {number} [N=0] - The number of bytes to receive.
     * @returns {string} - The received data as a string.
     * @throws {error} - The error encountered during data receiving.
     * @example
