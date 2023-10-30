@@ -13,15 +13,11 @@ const (
 
 // TemplatePathURL returns the Path and URL for the provided template
 func TemplatePathURL(fullPath, templateId string) (string, string) {
-	var templateDirectory string
-	configData := config.DefaultConfig
-	if configData.TemplatesDirectory != "" && strings.HasPrefix(fullPath, configData.TemplatesDirectory) {
-		templateDirectory = configData.TemplatesDirectory
-	} else {
+	if IsCustomTemplate(fullPath) {
 		return "", ""
 	}
 
-	finalPath := strings.TrimPrefix(strings.TrimPrefix(fullPath, templateDirectory), "/")
+	relativePath := strings.TrimPrefix(strings.TrimPrefix(fullPath, config.DefaultConfig.TemplatesDirectory), "/")
 	templateURL := TemplatesRepoURL + templateId
-	return finalPath, templateURL
+	return relativePath, templateURL
 }
