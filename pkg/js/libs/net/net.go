@@ -128,12 +128,14 @@ func (c *NetConn) Recv(N int) ([]byte, error) {
 		_, err := buff.ReadFrom(c.conn)
 		if err != nil {
 			var netErr net.Error
-			if (errors.As(err, &netErr) && netErr.Timeout()) ||
-				errors.Is(err, syscall.ECONNREFUSED) { // timeout error or connection refused
-				return buff.Bytes(), nil
+			if !(errors.As(err, &netErr) && netErr.Timeout()) && !errors.Is(err, syscall.ECONNREFUSED) { // timeout error or connection refused
+				return []byte{}, err
 			}
-			return buff.Bytes(), err
 		}
+	}
+	// don't return more than N bytes even if we read more
+	if N > 0 && buff.Len() > N {
+		return buff.Bytes()[:N], nil
 	}
 	return buff.Bytes(), nil
 }
