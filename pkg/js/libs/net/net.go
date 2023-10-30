@@ -1,19 +1,17 @@
 package net
 
 import (
-	"bytes"
 	"context"
 	"crypto/tls"
 	"encoding/hex"
-	"errors"
 	"fmt"
 	"net"
-	"syscall"
 	"time"
 
-	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
+	errorutil "github.com/projectdiscovery/utils/errors"
+	"github.com/projectdiscovery/utils/reader"
 )
 
 // Open opens a new connection to the address with a timeout.
@@ -69,9 +67,15 @@ func (c *NetConn) setDeadLine() {
 	_ = c.conn.SetDeadline(time.Now().Add(c.timeout))
 }
 
+// unsetDeadLine unsets read/write deadline for the connection.
+func (c *NetConn) unsetDeadLine() {
+	_ = c.conn.SetDeadline(time.Time{})
+}
+
 // SendArray sends array data to connection
 func (c *NetConn) SendArray(data []interface{}) error {
 	c.setDeadLine()
+	defer c.unsetDeadLine()
 	input := types.ToByteSlice(data)
 	length, err := c.conn.Write(input)
 	if err != nil {
@@ -86,6 +90,7 @@ func (c *NetConn) SendArray(data []interface{}) error {
 // SendHex sends hex data to connection
 func (c *NetConn) SendHex(data string) error {
 	c.setDeadLine()
+	defer c.unsetDeadLine()
 	bin, err := hex.DecodeString(data)
 	if err != nil {
 		return err
@@ -103,6 +108,7 @@ func (c *NetConn) SendHex(data string) error {
 // Send sends data to the connection with a timeout.
 func (c *NetConn) Send(data string) error {
 	c.setDeadLine()
+	defer c.unsetDeadLine()
 	bin := []byte(data)
 	length, err := c.conn.Write(bin)
 	if err != nil {
@@ -115,34 +121,24 @@ func (c *NetConn) Send(data string) error {
 }
 
 // Recv receives data from the connection with a timeout.
-// If N is 0, it will read all data sent by the server.
+// If N is 0, it will read all data sent by the server with 8MB limit.
 func (c *NetConn) Recv(N int) ([]byte, error) {
 	c.setDeadLine()
-	var buff bytes.Buffer
-	defer func() {
-		if r := recover(); r != nil {
-			gologger.Error().Msgf("unbounded read from connection caused a panic: %v", r)
-		}
-	}()
-	if buff.Len() < N || N == 0 {
-		_, err := buff.ReadFrom(c.conn)
-		if err != nil {
-			var netErr net.Error
-			if !(errors.As(err, &netErr) && netErr.Timeout()) && !errors.Is(err, syscall.ECONNREFUSED) { // timeout error or connection refused
-				return []byte{}, err
-			}
-		}
+	defer c.unsetDeadLine()
+	if N == 0 {
+		// in utils we use -1 to indicate read all rather than 0
+		N = -1
 	}
-	// don't return more than N bytes even if we read more
-	if N > 0 && buff.Len() > N {
-		return buff.Bytes()[:N], nil
+	bin, err := reader.ConnReadN(c.conn, int64(N))
+	if err != nil {
+		return []byte{}, errorutil.NewWithErr(err).Msgf("failed to read %d bytes", N)
 	}
-	return buff.Bytes(), nil
+	return bin, nil
 }
 
 // RecvString receives data from the connection with a timeout
 // output is returned as a string.
-// If N is 0, it will read all data sent by the server.
+// If N is 0, it will read all data sent by the server with 8MB limit.
 func (c *NetConn) RecvString(N int) (string, error) {
 	bin, err := c.Recv(N)
 	if err != nil {
@@ -153,7 +149,7 @@ func (c *NetConn) RecvString(N int) (string, error) {
 
 // RecvHex receives data from the connection with a timeout
 // in hex format.
-// If N is 0,it will read all data sent by the server.
+// If N is 0,it will read all data sent by the server with 8MB limit.
 func (c *NetConn) RecvHex(N int) (string, error) {
 	bin, err := c.Recv(N)
 	if err != nil {
