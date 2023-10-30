@@ -78,3 +78,8 @@ func StringSliceContains(slice []string, item string) bool {
 	}
 	return false
 }
+
+// IsCustomTemplate checks if the template is a custom template
+func IsCustomTemplate(templatePath string) bool {
+	return !strings.HasPrefix(templatePath, config.DefaultConfig.TemplatesDirectory)
+}
