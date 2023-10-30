@@ -13,6 +13,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/config"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	fileutil "github.com/projectdiscovery/utils/file"
+	folderutil "github.com/projectdiscovery/utils/folder"
 	"golang.org/x/oauth2"
 	"gopkg.in/src-d/go-git.v4/plumbing/transport/http"
 )
@@ -85,8 +86,20 @@ func NewGitHubProviders(options *types.Options) ([]*customTemplateGitHubRepo, er
 			githubToken: options.GitHubToken,
 		}
 		providers = append(providers, customTemplateRepo)
+
+		customTemplateRepo.restructureRepoDir()
 	}
 	return providers, nil
+}
+
+func (customTemplateRepo *customTemplateGitHubRepo) restructureRepoDir() {
+	customGitHubTemplatesDirectory := config.DefaultConfig.CustomGitHubTemplatesDirectory
+	oldRepoClonePath := filepath.Join(customGitHubTemplatesDirectory, customTemplateRepo.reponame+"-"+customTemplateRepo.owner)
+	newRepoClonePath := customTemplateRepo.getLocalRepoClonePath(customGitHubTemplatesDirectory)
+
+	if fileutil.FolderExists(oldRepoClonePath) && !fileutil.FolderExists(newRepoClonePath) {
+		_ = folderutil.SyncDirectory(oldRepoClonePath, newRepoClonePath)
+	}
 }
 
 // getOwnerAndRepo returns the owner, repo, err from the given string
@@ -154,9 +167,9 @@ func (ctr *customTemplateGitHubRepo) pullChanges(repoPath, githubToken string) e
 	return nil
 }
 
-// All Custom github repos are cloned in the format of 'reponame-owner' for uniqueness
+// All Custom github repos are cloned in the format of 'owner/reponame' for uniqueness
 func (ctr *customTemplateGitHubRepo) getLocalRepoClonePath(downloadPath string) string {
-	return filepath.Join(downloadPath, ctr.reponame+"-"+ctr.owner)
+	return filepath.Join(downloadPath, ctr.owner, ctr.reponame)
 }
 
 // returns the auth object with username and github token as password
