@@ -1,7 +1,9 @@
 package main
 
 import (
+	"fmt"
 	"net"
+	"os"
 	"strings"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/testutils"
@@ -35,17 +37,21 @@ func (h *networkBasic) Execute(filePath string) error {
 			routerErr = err
 			return
 		}
-		if string(data) == "PING" {
+		if strings.TrimSpace(string(data)) == "PING" {
 			_, _ = conn.Write([]byte("PONG"))
+		} else {
+			routerErr = fmt.Errorf("invalid data received: %s", string(data))
 		}
 	})
 	defer ts.Close()
 
 	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, ts.URL, debug)
 	if err != nil {
+		fmt.Fprintf(os.Stderr, "Could not run nuclei: %s\n", err)
 		return err
 	}
 	if routerErr != nil {
+		fmt.Fprintf(os.Stderr, "routerErr: %s\n", routerErr)
 		return routerErr
 	}
 
