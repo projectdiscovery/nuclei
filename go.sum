@@ -825,8 +825,8 @@ github.com/projectdiscovery/rawhttp v0.1.23 h1:j5QwJBR1G7Xx4lw62IsIf5+9F7Ywtt76D
 github.com/projectdiscovery/rawhttp v0.1.23/go.mod h1:VP3RbSitMZCeohVcxFGvW/LFMaX9H4GxZMiuiVwV8cU=
 github.com/projectdiscovery/rdap v0.9.1-0.20221108103045-9865884d1917 h1:m03X4gBVSorSzvmm0bFa7gDV4QNSOWPL/fgZ4kTXBxk=
 github.com/projectdiscovery/rdap v0.9.1-0.20221108103045-9865884d1917/go.mod h1:JxXtZC9e195awe7EynrcnBJmFoad/BNDzW9mzFkK8Sg=
-github.com/projectdiscovery/retryabledns v1.0.39 h1:hvh/fNfKAB+JdOtLtJLo1/MO2nihTE/OWanGnIQp8Ds=
-github.com/projectdiscovery/retryabledns v1.0.39/go.mod h1:HaHABQBdiL1KoOQ99XqMRDC0RhkzkGfiV3QnUhYUeRg=
+github.com/projectdiscovery/retryabledns v1.0.40 h1:BasP4PSL9oRGghJNiRNQGd5EYM/gySoZQH0i7WKFEsg=
+github.com/projectdiscovery/retryabledns v1.0.40/go.mod h1:BI0AsUmaWF8k/AjEhDGRekMwqda6IDLI43misQuTdYQ=
 github.com/projectdiscovery/retryablehttp-go v1.0.32 h1:lWGi58MUH7LslgE0qc6DEkidoDMFI/nsRmHM/PdXe6Y=
 github.com/projectdiscovery/retryablehttp-go v1.0.32/go.mod h1:3fKRRexRsSmHmewYK1at8vyyLLj1coofDNw3EASFx9c=
 github.com/projectdiscovery/sarif v0.0.1 h1:C2Tyj0SGOKbCLgHrx83vaE6YkzXEVrMXYRGLkKCr/us=
