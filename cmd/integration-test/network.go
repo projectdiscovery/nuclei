@@ -8,12 +8,13 @@ import (
 	"time"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/testutils"
+	osutils "github.com/projectdiscovery/utils/os"
 	"github.com/projectdiscovery/utils/reader"
 )
 
 var networkTestcases = []TestCaseInfo{
-	{Path: "protocols/network/basic.yaml", TestCase: &networkBasic{}},
-	{Path: "protocols/network/hex.yaml", TestCase: &networkBasic{}},
+	{Path: "protocols/network/basic.yaml", TestCase: &networkBasic{}, DisableOn: func() bool { return osutils.IsWindows() }},
+	{Path: "protocols/network/hex.yaml", TestCase: &networkBasic{}, DisableOn: func() bool { return osutils.IsWindows() }},
 	{Path: "protocols/network/multi-step.yaml", TestCase: &networkMultiStep{}},
 	{Path: "protocols/network/self-contained.yaml", TestCase: &networkRequestSelContained{}},
 	{Path: "protocols/network/variables.yaml", TestCase: &networkVariables{}},
