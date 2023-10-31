@@ -21,6 +21,6 @@ http:
       - type: dsl
         dsl:
           - contains(http_body,'ProjectDiscovery.io') # check for http string
-          - trim_suffix(dns_cname,'.ghost.io.') == 'projectdiscovery' # check for cname (extracted information from dns response)
+          - trim_suffix(dns_cname,'.ghost.io') == 'projectdiscovery' # check for cname (extracted information from dns response)
           - ssl_subject_cn == 'blog.projectdiscovery.io'
         condition: and
