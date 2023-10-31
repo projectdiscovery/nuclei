@@ -5,8 +5,10 @@ import (
 	"net"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/testutils"
+	"github.com/projectdiscovery/utils/reader"
 )
 
 var networkTestcases = []TestCaseInfo{
@@ -32,12 +34,12 @@ func (h *networkBasic) Execute(filePath string) error {
 	ts := testutils.NewTCPServer(nil, defaultStaticPort, func(conn net.Conn) {
 		defer conn.Close()
 
-		data := make([]byte, 4)
-		if _, err := conn.Read(data); err != nil {
+		data, err := reader.ConnReadNWithTimeout(conn, 4, time.Duration(5)*time.Second)
+		if err != nil {
 			routerErr = err
 			return
 		}
-		if strings.TrimSpace(string(data)) == "PING" {
+		if string(data) == "PING" {
 			_, _ = conn.Write([]byte("PONG"))
 		} else {
 			routerErr = fmt.Errorf("invalid data received: %s", string(data))
@@ -67,8 +69,8 @@ func (h *networkMultiStep) Execute(filePath string) error {
 	ts := testutils.NewTCPServer(nil, defaultStaticPort, func(conn net.Conn) {
 		defer conn.Close()
 
-		data := make([]byte, 5)
-		if _, err := conn.Read(data); err != nil {
+		data, err := reader.ConnReadNWithTimeout(conn, 5, time.Duration(5)*time.Second)
+		if err != nil {
 			routerErr = err
 			return
 		}
@@ -76,8 +78,8 @@ func (h *networkMultiStep) Execute(filePath string) error {
 			_, _ = conn.Write([]byte("PING"))
 		}
 
-		data = make([]byte, 6)
-		if _, err := conn.Read(data); err != nil {
+		data, err = reader.ConnReadNWithTimeout(conn, 6, time.Duration(5)*time.Second)
+		if err != nil {
 			routerErr = err
 			return
 		}
@@ -133,8 +135,8 @@ func (h *networkVariables) Execute(filePath string) error {
 	ts := testutils.NewTCPServer(nil, defaultStaticPort, func(conn net.Conn) {
 		defer conn.Close()
 
-		data := make([]byte, 4)
-		if _, err := conn.Read(data); err != nil {
+		data, err := reader.ConnReadNWithTimeout(conn, 4, time.Duration(5)*time.Second)
+		if err != nil {
 			routerErr = err
 			return
 		}
@@ -161,8 +163,8 @@ func (n *networkPort) Execute(filePath string) error {
 	ts := testutils.NewTCPServer(nil, 23846, func(conn net.Conn) {
 		defer conn.Close()
 
-		data := make([]byte, 4)
-		if _, err := conn.Read(data); err != nil {
+		data, err := reader.ConnReadNWithTimeout(conn, 4, time.Duration(5)*time.Second)
+		if err != nil {
 			return
 		}
 		if string(data) == "PING" {
@@ -194,8 +196,8 @@ func (n *networkPort) Execute(filePath string) error {
 	ts2 := testutils.NewTCPServer(nil, 34567, func(conn net.Conn) {
 		defer conn.Close()
 
-		data := make([]byte, 4)
-		if _, err := conn.Read(data); err != nil {
+		data, err := reader.ConnReadNWithTimeout(conn, 4, time.Duration(5)*time.Second)
+		if err != nil {
 			return
 		}
 		if string(data) == "PING" {
