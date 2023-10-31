@@ -14,6 +14,10 @@ import (
 	"github.com/projectdiscovery/utils/reader"
 )
 
+var (
+	defaultTimeout = time.Duration(5) * time.Second
+)
+
 // Open opens a new connection to the address with a timeout.
 // supported protocols: tcp, udp
 func Open(protocol, address string) (*NetConn, error) {
@@ -21,7 +25,7 @@ func Open(protocol, address string) (*NetConn, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &NetConn{conn: conn}, nil
+	return &NetConn{conn: conn, timeout: defaultTimeout}, nil
 }
 
 // Open opens a new connection to the address with a timeout.
@@ -38,7 +42,7 @@ func OpenTLS(protocol, address string) (*NetConn, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &NetConn{conn: conn}, nil
+	return &NetConn{conn: conn, timeout: defaultTimeout}, nil
 }
 
 // NetConn is a connection to a remote host.
@@ -129,7 +133,7 @@ func (c *NetConn) Recv(N int) ([]byte, error) {
 		// in utils we use -1 to indicate read all rather than 0
 		N = -1
 	}
-	bin, err := reader.ConnReadN(c.conn, int64(N))
+	bin, err := reader.ConnReadNWithTimeout(c.conn, int64(N), c.timeout)
 	if err != nil {
 		return []byte{}, errorutil.NewWithErr(err).Msgf("failed to read %d bytes", N)
 	}

@@ -5,17 +5,18 @@ import (
 	"strings"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/testutils"
-	osutils "github.com/projectdiscovery/utils/os"
 )
 
 var networkTestcases = []TestCaseInfo{
-	{Path: "protocols/network/basic.yaml", TestCase: &networkBasic{}, DisableOn: func() bool { return osutils.IsWindows() }},
-	{Path: "protocols/network/hex.yaml", TestCase: &networkBasic{}, DisableOn: func() bool { return osutils.IsWindows() }},
+	{Path: "protocols/network/basic.yaml", TestCase: &networkBasic{}},
+	{Path: "protocols/network/hex.yaml", TestCase: &networkBasic{}},
 	{Path: "protocols/network/multi-step.yaml", TestCase: &networkMultiStep{}},
 	{Path: "protocols/network/self-contained.yaml", TestCase: &networkRequestSelContained{}},
 	{Path: "protocols/network/variables.yaml", TestCase: &networkVariables{}},
 	{Path: "protocols/network/same-address.yaml", TestCase: &networkBasic{}},
 	{Path: "protocols/network/network-port.yaml", TestCase: &networkPort{}},
+	{Path: "protocols/network/net-https.yaml", TestCase: &networkhttps{}},
+	{Path: "protocols/network/net-https-timeout.yaml", TestCase: &networkhttps{}},
 }
 
 const defaultStaticPort = 5431
@@ -204,5 +205,16 @@ func (n *networkPort) Execute(filePath string) error {
 		return err
 	}
 
+	return expectResultsCount(results, 1)
+}
+
+type networkhttps struct{}
+
+// Execute executes a test case and returns an error if occurred
+func (h *networkhttps) Execute(filePath string) error {
+	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, "scanme.sh", debug)
+	if err != nil {
+		return err
+	}
 	return expectResultsCount(results, 1)
 }
