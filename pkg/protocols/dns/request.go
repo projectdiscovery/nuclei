@@ -103,6 +103,7 @@ func (request *Request) execute(input *contextargs.Context, domain string, metad
 		question = compiledRequest.Question[0].Name
 	}
 	// remove the last dot
+	domain = strings.TrimSuffix(domain, ".")
 	question = strings.TrimSuffix(question, ".")
 
 	requestString := compiledRequest.String()
