@@ -12,8 +12,8 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/projectdiscovery/nuclei/v3/internal/installer"
 	"github.com/projectdiscovery/nuclei/v3/internal/runner/nucleicloud"
+	"github.com/projectdiscovery/nuclei/v3/pkg/installer"
 	uncoverlib "github.com/projectdiscovery/uncover"
 	permissionutil "github.com/projectdiscovery/utils/permission"
 	updateutils "github.com/projectdiscovery/utils/update"
