@@ -5,7 +5,6 @@ import (
 	"io"
 	"strconv"
 	"strings"
-	"sync"
 	"sync/atomic"
 
 	"github.com/dop251/goja"
@@ -29,6 +28,13 @@ var (
 	ErrInvalidRequestID = errorutil.NewWithFmt("[%s] invalid request id '%s' provided")
 )
 
+// ProtoOptions are options that can be passed to flow protocol callback
+// ex: dns(protoOptions) <- protoOptions are optional and can be anything
+type ProtoOptions struct {
+	protoName string
+	reqIDS    []string
+}
+
 // FlowExecutor is a flow executor for executing a flow
 type FlowExecutor struct {
 	input   *contextargs.Context
@@ -44,7 +50,6 @@ type FlowExecutor struct {
 	protoFunctions map[string]func(call goja.FunctionCall) goja.Value // reqFunctions contains functions that allow executing requests/protocols from js
 
 	// logic related variables
-	wg      sync.WaitGroup
 	results *atomic.Bool
 	allErrs mapsutil.SyncLockMap[string, error]
 }
@@ -145,22 +150,10 @@ func (f *FlowExecutor) Compile() error {
 			}
 			for _, v := range call.Arguments {
 				switch value := v.Export().(type) {
-				case map[string]interface{}:
-					opts.LoadOptions(value)
 				default:
 					opts.reqIDS = append(opts.reqIDS, types.ToString(value))
 				}
 			}
-			// parallel execution of protocols
-			if opts.Async {
-				f.wg.Add(1)
-				go func() {
-					defer f.wg.Done()
-					f.requestExecutor(reqMap, opts)
-				}()
-				return f.jsVM.ToValue(true)
-			}
-
 			return f.jsVM.ToValue(f.requestExecutor(reqMap, opts))
 		}
 	}
@@ -192,7 +185,6 @@ func (f *FlowExecutor) ExecuteWithResults(input *contextargs.Context, callback p
 	if err != nil {
 		return errorutil.NewWithErr(err).Msgf("failed to execute flow\n%v\n", f.options.Flow)
 	}
-	f.wg.Wait()
 	runtimeErr := f.GetRuntimeErrors()
 	if runtimeErr != nil {
 		return errorutil.NewWithErr(runtimeErr).Msgf("got following errors while executing flow")
