@@ -7,7 +7,7 @@ info:
 
 
 variables:
-  cname_filtered: '{{trim_suffix(dns_cname,".ghost.io.")}}'
+  cname_filtered: '{{trim_suffix(dns_cname,".ghost.io")}}'
 
 dns:
   - name: "{{FQDN}}" # DNS Request

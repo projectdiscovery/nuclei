@@ -13,7 +13,7 @@ dns:
       - type: dsl
         name: blogid
         dsl:
-          - trim_suffix(cname,'.ghost.io.')
+          - trim_suffix(cname,'.ghost.io')
         internal: true
 
 
