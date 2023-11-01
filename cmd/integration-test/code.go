@@ -22,7 +22,7 @@ var codeTestCases = []TestCaseInfo{
 	{Path: "protocols/code/unsigned.yaml", TestCase: &unsignedCode{}, DisableOn: isCodeDisabled},
 	{Path: "protocols/code/py-nosig.yaml", TestCase: &codePyNoSig{}, DisableOn: isCodeDisabled},
 	{Path: "protocols/code/py-interactsh.yaml", TestCase: &codeSnippet{}, DisableOn: isCodeDisabled},
-	{Path: "protocols/code/ps1-snippet.yaml", TestCase: &codeSnippet{}, DisableOn: func() bool { return !osutils.IsWindows() && isCodeDisabled() }},
+	{Path: "protocols/code/ps1-snippet.yaml", TestCase: &codeSnippet{}, DisableOn: func() bool { return !osutils.IsWindows() || isCodeDisabled() }},
 }
 
 const (
