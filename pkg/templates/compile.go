@@ -110,6 +110,9 @@ func (template *Template) parseSelfContainedRequests() {
 	for _, request := range template.RequestsNetwork {
 		request.SelfContained = true
 	}
+	for _, request := range template.RequestsHeadless {
+		request.SelfContained = true
+	}
 }
 
 // Requests returns the total request count for the template
