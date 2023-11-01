@@ -35,13 +35,13 @@ type FlowExecutor struct {
 	options *protocols.ExecutorOptions
 
 	// javascript runtime reference and compiled program
-	jsVM    *goja.Runtime
-	program *goja.Program // compiled js program
+	jsVM      *goja.Runtime
+	program   *goja.Program                // compiled js program
+	lastEvent *output.InternalWrappedEvent // contains last event that was emitted
 
 	// protocol requests and their callback functions
 	allProtocols   map[string][]protocols.Request
 	protoFunctions map[string]func(call goja.FunctionCall) goja.Value // reqFunctions contains functions that allow executing requests/protocols from js
-	callback       func(event *output.InternalWrappedEvent)           // result event callback
 
 	// logic related variables
 	wg      sync.WaitGroup
@@ -176,7 +176,6 @@ func (f *FlowExecutor) ExecuteWithResults(input *contextargs.Context, callback p
 		}
 	}()
 
-	f.callback = callback
 	f.input = input
 	// -----Load all types of variables-----
 	// add all input args to template context
@@ -185,7 +184,7 @@ func (f *FlowExecutor) ExecuteWithResults(input *contextargs.Context, callback p
 			f.options.GetTemplateCtx(f.input.MetaInput).Set(key, value)
 		})
 	}
-	if f.callback == nil {
+	if callback == nil {
 		return fmt.Errorf("output callback cannot be nil")
 	}
 	// pass flow and execute the js vm and handle errors
@@ -198,6 +197,8 @@ func (f *FlowExecutor) ExecuteWithResults(input *contextargs.Context, callback p
 	if runtimeErr != nil {
 		return errorutil.NewWithErr(runtimeErr).Msgf("got following errors while executing flow")
 	}
+	// this is where final result is generated/created
+	callback(f.lastEvent)
 	if value.Export() != nil {
 		f.results.Store(value.ToBoolean())
 	} else {

@@ -81,9 +81,7 @@ func (f *FlowExecutor) getProtoRequestCallback(req protocols.Request, matcherSta
 	return func(result *output.InternalWrappedEvent) {
 		if result != nil {
 			f.results.CompareAndSwap(false, true)
-			if !opts.Hide {
-				f.callback(result)
-			}
+			f.lastEvent = result
 			// export dynamic values from operators (i.e internal:true)
 			// add add it to template context
 			// this is a conflicting behaviour with iterate-all
