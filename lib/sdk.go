@@ -2,6 +2,7 @@ package nuclei
 
 import (
 	"bufio"
+	"bytes"
 	"io"
 
 	"github.com/projectdiscovery/httpx/common/httpx"
@@ -18,6 +19,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/headless/engine"
 	"github.com/projectdiscovery/nuclei/v3/pkg/reporting"
 	"github.com/projectdiscovery/nuclei/v3/pkg/templates"
+	"github.com/projectdiscovery/nuclei/v3/pkg/templates/signer"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	"github.com/projectdiscovery/ratelimit"
 	"github.com/projectdiscovery/retryablehttp-go"
@@ -125,6 +127,39 @@ func (e *NucleiEngine) LoadTargetsFromReader(reader io.Reader, probeNonHttp bool
 			e.inputProvider.Set(buff.Text())
 		}
 	}
+}
+
+// GetExecuterOptions returns the nuclei executor options
+func (e *NucleiEngine) GetExecuterOptions() *protocols.ExecutorOptions {
+	return &e.executerOpts
+}
+
+// ParseTemplate parses a template from given data
+// template verification status can be accessed from template.Verified
+func (e *NucleiEngine) ParseTemplate(data []byte) (*templates.Template, error) {
+	return templates.ParseTemplateFromReader(bytes.NewReader(data), nil, e.executerOpts)
+}
+
+// SignTemplate signs the tempalate using given signer
+func (e *NucleiEngine) SignTemplate(tmplSigner *signer.TemplateSigner, data []byte) ([]byte, error) {
+	tmpl, err := e.ParseTemplate(data)
+	if err != nil {
+		return data, err
+	}
+	if tmpl.Verified {
+		// already signed
+		return data, nil
+	}
+	if len(tmpl.Workflows) > 0 {
+		return data, templates.ErrNotATemplate
+	}
+	signatureData, err := tmplSigner.Sign(data, tmpl)
+	if err != nil {
+		return data, err
+	}
+	buff := bytes.NewBuffer(signer.RemoveSignatureFromData(data))
+	buff.WriteString("\n" + signatureData)
+	return buff.Bytes(), err
 }
 
 // Close all resources used by nuclei engine

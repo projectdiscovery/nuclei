@@ -4,10 +4,8 @@ import (
 	"context"
 	"encoding/hex"
 	"fmt"
-	"io"
 	"net"
 	"net/url"
-	"os"
 	"strings"
 	"time"
 
@@ -30,6 +28,13 @@ import (
 	templateTypes "github.com/projectdiscovery/nuclei/v3/pkg/templates/types"
 	errorutil "github.com/projectdiscovery/utils/errors"
 	mapsutil "github.com/projectdiscovery/utils/maps"
+	"github.com/projectdiscovery/utils/reader"
+)
+
+var (
+	// TODO: make this configurable
+	// DefaultReadTimeout is the default read timeout for network requests
+	DefaultReadTimeout = time.Duration(5) * time.Second
 )
 
 var _ protocols.Request = &Request{}
@@ -196,15 +201,14 @@ func (request *Request) executeRequestWithPayloads(variables map[string]interfac
 		}
 
 		if input.Read > 0 {
-			buffer := make([]byte, input.Read)
-			n, err := conn.Read(buffer)
+			buffer, err := reader.ConnReadNWithTimeout(conn, int64(input.Read), DefaultReadTimeout)
 			if err != nil {
 				return errorutil.NewWithErr(err).Msgf("could not read response from connection")
 			}
 
-			responseBuilder.Write(buffer[:n])
+			responseBuilder.Write(buffer)
 
-			bufferStr := string(buffer[:n])
+			bufferStr := string(buffer)
 			if input.Name != "" {
 				inputEvents[input.Name] = bufferStr
 				interimValues[input.Name] = bufferStr
@@ -243,51 +247,19 @@ func (request *Request) executeRequestWithPayloads(variables map[string]interfac
 	if request.ReadSize != 0 {
 		bufferSize = request.ReadSize
 	}
-
-	var (
-		final []byte
-		n     int
-	)
-
 	if request.ReadAll {
-		readInterval := time.NewTimer(time.Second * 1)
-		// stop the timer and drain the channel
-		closeTimer := func(t *time.Timer) {
-			if !t.Stop() {
-				<-t.C
-			}
-		}
-	readSocket:
-		for {
-			select {
-			case <-readInterval.C:
-				closeTimer(readInterval)
-				break readSocket
-			default:
-				buf := make([]byte, bufferSize)
-				nBuf, err := conn.Read(buf)
-				if err != nil && !os.IsTimeout(err) && err != io.EOF {
-					request.options.Output.Request(request.options.TemplatePath, address, request.Type().String(), err)
-					closeTimer(readInterval)
-					return errors.Wrap(err, "could not read from server")
-				}
-				responseBuilder.Write(buf[:nBuf])
-				final = append(final, buf...)
-				n += nBuf
-			}
-		}
-	} else {
-		final = make([]byte, bufferSize)
-		n, err = conn.Read(final)
-		if err != nil && !os.IsTimeout(err) && err != io.EOF {
-			request.options.Output.Request(request.options.TemplatePath, address, request.Type().String(), err)
-			return errors.Wrap(err, "could not read from server")
-		}
-		responseBuilder.Write(final[:n])
+		bufferSize = -1
 	}
 
+	final, err := reader.ConnReadNWithTimeout(conn, int64(bufferSize), DefaultReadTimeout)
+	if err != nil {
+		request.options.Output.Request(request.options.TemplatePath, address, request.Type().String(), err)
+		return errors.Wrap(err, "could not read from server")
+	}
+	responseBuilder.Write(final)
+
 	response := responseBuilder.String()
-	outputEvent := request.responseToDSLMap(reqBuilder.String(), string(final[:n]), response, input.MetaInput.Input, actualAddress)
+	outputEvent := request.responseToDSLMap(reqBuilder.String(), string(final), response, input.MetaInput.Input, actualAddress)
 	// add response fields to template context and merge templatectx variables to output event
 	request.options.AddTemplateVars(input.MetaInput, request.Type(), request.ID, outputEvent)
 	outputEvent = generators.MergeMaps(outputEvent, request.options.GetTemplateCtx(input.MetaInput).GetAll())
