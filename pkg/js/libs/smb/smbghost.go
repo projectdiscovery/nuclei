@@ -10,6 +10,7 @@ import (
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/js/libs/structs"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
+	"github.com/projectdiscovery/utils/reader"
 )
 
 const (
@@ -31,10 +32,8 @@ func (c *SMBClient) DetectSMBGhost(host string, port int) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-
-	buff := make([]byte, 4)
-	nb, _ := conn.Read(buff)
-	args, err := structs.Unpack(">I", buff[:nb])
+	buff, _ := reader.ConnReadNWithTimeout(conn, 4, time.Duration(5)*time.Second)
+	args, err := structs.Unpack(">I", buff)
 	if err != nil {
 		return false, err
 	}
@@ -43,13 +42,14 @@ func (c *SMBClient) DetectSMBGhost(host string, port int) (bool, error) {
 	}
 
 	length := args[0].(int)
-	data := make([]byte, length)
 	_ = conn.SetReadDeadline(time.Now().Add(2 * time.Second))
-	n, err := conn.Read(data)
+	data, err := reader.ConnReadNWithTimeout(conn, int64(length), time.Duration(5)*time.Second)
 	if err != nil {
 		return false, err
 	}
-	data = data[:n]
+	if len(data) < 72 {
+		return false, errors.New("invalid response expected at least 72 bytes")
+	}
 
 	if !bytes.Equal(data[68:70], []byte("\x11\x03")) || !bytes.Equal(data[70:72], []byte("\x02\x00")) {
 		return false, nil

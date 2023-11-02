@@ -159,7 +159,7 @@ func recordsKeyValue(resourceRecords []dns.RR) output.InternalEvent {
 	var oe = make(output.InternalEvent)
 	for _, resourceRecord := range resourceRecords {
 		key := strings.ToLower(dns.TypeToString[resourceRecord.Header().Rrtype])
-		value := strings.ReplaceAll(resourceRecord.String(), resourceRecord.Header().String(), "")
+		value := strings.TrimSuffix(strings.ReplaceAll(resourceRecord.String(), resourceRecord.Header().String(), ""), ".")
 
 		// if the key is already present, we need to convert the value to a slice
 		// if the key has slice, then append the value to the slice

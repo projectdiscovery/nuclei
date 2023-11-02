@@ -12,8 +12,8 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/projectdiscovery/nuclei/v3/internal/installer"
 	"github.com/projectdiscovery/nuclei/v3/internal/runner/nucleicloud"
+	"github.com/projectdiscovery/nuclei/v3/pkg/installer"
 	uncoverlib "github.com/projectdiscovery/uncover"
 	permissionutil "github.com/projectdiscovery/utils/permission"
 	updateutils "github.com/projectdiscovery/utils/update"
@@ -692,7 +692,7 @@ func (r *Runner) displayExecutionInfo(store *loader.Store) {
 			if k != templates.Unsigned {
 				gologger.Info().Msgf("Executing %d signed templates from %s", v.Load(), k)
 			} else if !r.options.Silent && !config.DefaultConfig.HideTemplateSigWarning {
-				gologger.DefaultLogger.Print().Msgf("[%v] Executing %d unsigned templates. Use with caution.", aurora.BrightYellow("WRN"), v.Load())
+				gologger.Print().Msgf("[%v] Executing %d unsigned templates. Use with caution.", aurora.BrightYellow("WRN"), v.Load())
 			}
 		}
 	}
