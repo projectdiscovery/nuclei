@@ -91,7 +91,7 @@ require (
 	github.com/projectdiscovery/sarif v0.0.1
 	github.com/projectdiscovery/tlsx v1.1.6-0.20231016194953-a3ff9518c766
 	github.com/projectdiscovery/uncover v1.0.7
-	github.com/projectdiscovery/utils v0.0.58
+	github.com/projectdiscovery/utils v0.0.61-0.20231031205429-0bc6a3c60ca6
 	github.com/projectdiscovery/wappalyzergo v0.0.109
 	github.com/redis/go-redis/v9 v9.1.0
 	github.com/ropnop/gokrb5/v8 v8.0.0-20201111231119-729746023c02
@@ -166,7 +166,7 @@ require (
 	github.com/kylelemons/godebug v1.1.0 // indirect
 	github.com/lucasb-eyer/go-colorful v1.2.0 // indirect
 	github.com/mackerelio/go-osstat v0.2.4 // indirect
-	github.com/minio/selfupdate v0.6.0 // indirect
+	github.com/minio/selfupdate v0.6.1-0.20230907112617-f11e74f84ca7 // indirect
 	github.com/mitchellh/go-homedir v1.1.0 // indirect
 	github.com/mitchellh/mapstructure v1.5.0 // indirect
 	github.com/moby/term v0.5.0 // indirect

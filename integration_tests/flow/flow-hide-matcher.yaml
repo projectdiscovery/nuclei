@@ -1,0 +1,28 @@
+id: flow-hide-matcher
+
+info:
+  name: Test HTTP Template
+  author: pdteam
+  severity: info
+  description: In flow matcher output of previous step is hidden and only last event matcher output is shown
+
+flow: http(1) && http(2)
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}"
+
+    matchers:
+      - type: word
+        words:
+          - ok
+
+  - method: GET
+    path:
+      - "{{BaseURL}}"
+
+    matchers:
+      - type: word
+        words:
+          - "Failed event"
