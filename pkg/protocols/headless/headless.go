@@ -60,6 +60,10 @@ type Request struct {
 	Fuzzing []*fuzz.Rule `yaml:"fuzzing,omitempty" json:"fuzzing,omitempty" jsonschema:"title=fuzzin rules for http fuzzing,description=Fuzzing describes rule schema to fuzz headless requests"`
 
 	// description: |
+	//   SelfContained specifies if the request is self-contained.
+	SelfContained bool `yaml:"-" json:"-"`
+
+	// description: |
 	//   CookieReuse is an optional setting that enables cookie reuse
 	CookieReuse bool `yaml:"cookie-reuse,omitempty" json:"cookie-reuse,omitempty" jsonschema:"title=optional cookie reuse enable,description=Optional setting that enables cookie reuse"`
 }

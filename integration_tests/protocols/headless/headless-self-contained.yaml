@@ -1,0 +1,20 @@
+id: headless-self-contained
+info:
+  name: Headless Self Contained
+  author: pdteam
+  severity: info
+  tags: headless
+
+self-contained: true
+
+headless:
+  - steps:
+      - action: navigate
+        args:
+          url: "https://postman-echo.com/get?q={{query}}"
+        
+      - action: waitload
+    matchers:
+      - type: word
+        words:
+          - "selfcontained"
