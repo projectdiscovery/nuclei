@@ -58,7 +58,7 @@ var protocolMappings = map[ProtocolType]string{
 	WebsocketProtocol:  "websocket",
 	WHOISProtocol:      "whois",
 	CodeProtocol:       "code",
-	JavascriptProtocol: "js",
+	JavascriptProtocol: "javascript",
 }
 
 func GetSupportedProtocolTypes() ProtocolTypes {

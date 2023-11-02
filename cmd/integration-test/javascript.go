@@ -14,6 +14,7 @@ var jsTestcases = []TestCaseInfo{
 	{Path: "protocols/javascript/redis-pass-brute.yaml", TestCase: &javascriptRedisPassBrute{}, DisableOn: func() bool { return osutils.IsWindows() || osutils.IsOSX() }},
 	{Path: "protocols/javascript/ssh-server-fingerprint.yaml", TestCase: &javascriptSSHServerFingerprint{}, DisableOn: func() bool { return osutils.IsWindows() || osutils.IsOSX() }},
 	{Path: "protocols/javascript/net-multi-step.yaml", TestCase: &networkMultiStep{}},
+	{Path: "protocols/javascript/net-https.yaml", TestCase: &javascriptNetHttps{}},
 }
 
 var (
@@ -22,6 +23,16 @@ var (
 	pool          *dockertest.Pool
 	defaultRetry  = 3
 )
+
+type javascriptNetHttps struct{}
+
+func (j *javascriptNetHttps) Execute(filePath string) error {
+	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, "scanme.sh", debug)
+	if err != nil {
+		return err
+	}
+	return expectResultsCount(results, 1)
+}
 
 type javascriptRedisPassBrute struct{}
 

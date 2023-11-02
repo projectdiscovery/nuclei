@@ -72,12 +72,13 @@ func ExampleThreadSafeNucleiEngine() {
 
 	// Output:
 	// [nameserver-fingerprint] scanme.sh
+	// [caa-fingerprint] honey.scanme.sh
 }
 
 func TestMain(m *testing.M) {
 	// this file only contains testtables examples https://go.dev/blog/examples
 	// and actual functionality test are in sdk_test.go
-	if os.Getenv("GH_ACTION") != "" {
+	if os.Getenv("GH_ACTION") != "" || os.Getenv("CI") != "" {
 		// no need to run this test on github actions
 		return
 	}

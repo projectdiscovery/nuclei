@@ -4,14 +4,18 @@ import (
 	"context"
 	"crypto/tls"
 	"encoding/hex"
-	"errors"
 	"fmt"
 	"net"
-	"syscall"
 	"time"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
+	errorutil "github.com/projectdiscovery/utils/errors"
+	"github.com/projectdiscovery/utils/reader"
+)
+
+var (
+	defaultTimeout = time.Duration(5) * time.Second
 )
 
 // Open opens a new connection to the address with a timeout.
@@ -21,13 +25,13 @@ func Open(protocol, address string) (*NetConn, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &NetConn{conn: conn}, nil
+	return &NetConn{conn: conn, timeout: defaultTimeout}, nil
 }
 
 // Open opens a new connection to the address with a timeout.
 // supported protocols: tcp, udp
 func OpenTLS(protocol, address string) (*NetConn, error) {
-	config := &tls.Config{InsecureSkipVerify: true}
+	config := &tls.Config{InsecureSkipVerify: true, MinVersion: tls.VersionTLS10}
 	host, _, _ := net.SplitHostPort(address)
 	if host != "" {
 		c := config.Clone()
@@ -38,7 +42,7 @@ func OpenTLS(protocol, address string) (*NetConn, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &NetConn{conn: conn}, nil
+	return &NetConn{conn: conn, timeout: defaultTimeout}, nil
 }
 
 // NetConn is a connection to a remote host.
@@ -67,9 +71,15 @@ func (c *NetConn) setDeadLine() {
 	_ = c.conn.SetDeadline(time.Now().Add(c.timeout))
 }
 
+// unsetDeadLine unsets read/write deadline for the connection.
+func (c *NetConn) unsetDeadLine() {
+	_ = c.conn.SetDeadline(time.Time{})
+}
+
 // SendArray sends array data to connection
 func (c *NetConn) SendArray(data []interface{}) error {
 	c.setDeadLine()
+	defer c.unsetDeadLine()
 	input := types.ToByteSlice(data)
 	length, err := c.conn.Write(input)
 	if err != nil {
@@ -84,6 +94,7 @@ func (c *NetConn) SendArray(data []interface{}) error {
 // SendHex sends hex data to connection
 func (c *NetConn) SendHex(data string) error {
 	c.setDeadLine()
+	defer c.unsetDeadLine()
 	bin, err := hex.DecodeString(data)
 	if err != nil {
 		return err
@@ -101,6 +112,7 @@ func (c *NetConn) SendHex(data string) error {
 // Send sends data to the connection with a timeout.
 func (c *NetConn) Send(data string) error {
 	c.setDeadLine()
+	defer c.unsetDeadLine()
 	bin := []byte(data)
 	length, err := c.conn.Write(bin)
 	if err != nil {
@@ -113,30 +125,24 @@ func (c *NetConn) Send(data string) error {
 }
 
 // Recv receives data from the connection with a timeout.
-// If N is 0, it will read up to 4096 bytes.
+// If N is 0, it will read all data sent by the server with 8MB limit.
 func (c *NetConn) Recv(N int) ([]byte, error) {
 	c.setDeadLine()
-	var response []byte
-	if N > 0 {
-		response = make([]byte, N)
-	} else {
-		response = make([]byte, 4096)
+	defer c.unsetDeadLine()
+	if N == 0 {
+		// in utils we use -1 to indicate read all rather than 0
+		N = -1
 	}
-	length, err := c.conn.Read(response)
+	bin, err := reader.ConnReadNWithTimeout(c.conn, int64(N), c.timeout)
 	if err != nil {
-		var netErr net.Error
-		if (errors.As(err, &netErr) && netErr.Timeout()) ||
-			errors.Is(err, syscall.ECONNREFUSED) { // timeout error or connection refused
-			return response, nil
-		}
-		return response[:length], err
+		return []byte{}, errorutil.NewWithErr(err).Msgf("failed to read %d bytes", N)
 	}
-	return response[:length], nil
+	return bin, nil
 }
 
 // RecvString receives data from the connection with a timeout
 // output is returned as a string.
-// If N is 0, it will read up to 4096 bytes.
+// If N is 0, it will read all data sent by the server with 8MB limit.
 func (c *NetConn) RecvString(N int) (string, error) {
 	bin, err := c.Recv(N)
 	if err != nil {
@@ -147,7 +153,7 @@ func (c *NetConn) RecvString(N int) (string, error) {
 
 // RecvHex receives data from the connection with a timeout
 // in hex format.
-// If N is 0, it will read up to 4096 bytes.
+// If N is 0,it will read all data sent by the server with 8MB limit.
 func (c *NetConn) RecvHex(N int) (string, error) {
 	bin, err := c.Recv(N)
 	if err != nil {

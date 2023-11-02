@@ -30,6 +30,6 @@ func TestDownloadCustomTemplatesFromGitHub(t *testing.T) {
 
 	ctm.Download(context.Background())
 
-	require.DirExists(t, filepath.Join(templatesDirectory, "github", "nuclei-templates-projectdiscovery"), "cloned directory does not exists")
-	require.DirExists(t, filepath.Join(templatesDirectory, "github", "nuclei-templates-ehsandeep"), "cloned directory does not exists")
+	require.DirExists(t, filepath.Join(templatesDirectory, "github", "projectdiscovery", "nuclei-templates"), "cloned directory does not exists")
+	require.DirExists(t, filepath.Join(templatesDirectory, "github", "ehsandeep", "nuclei-templates"), "cloned directory does not exists")
 }
