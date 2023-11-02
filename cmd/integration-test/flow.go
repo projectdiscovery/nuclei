@@ -15,6 +15,7 @@ var flowTestcases = []TestCaseInfo{
 	{Path: "flow/conditional-flow-negative.yaml", TestCase: &conditionalFlowNegative{}},
 	{Path: "flow/iterate-values-flow.yaml", TestCase: &iterateValuesFlow{}},
 	{Path: "flow/dns-ns-probe.yaml", TestCase: &dnsNsProbe{}},
+	{Path: "flow/flow-hide-matcher.yaml", TestCase: &flowHideMatcher{}},
 }
 
 type conditionalFlow struct{}
@@ -24,7 +25,7 @@ func (t *conditionalFlow) Execute(filePath string) error {
 	if err != nil {
 		return err
 	}
-	return expectResultsCount(results, 2)
+	return expectResultsCount(results, 1)
 }
 
 type conditionalFlowNegative struct{}
@@ -66,7 +67,7 @@ func (t *iterateValuesFlow) Execute(filePath string) error {
 	if err != nil {
 		return err
 	}
-	return expectResultsCount(results, 2)
+	return expectResultsCount(results, 1)
 }
 
 type dnsNsProbe struct{}
@@ -76,9 +77,20 @@ func (t *dnsNsProbe) Execute(filePath string) error {
 	if err != nil {
 		return err
 	}
-	return expectResultsCount(results, 3)
+	return expectResultsCount(results, 1)
 }
 
 func getBase64(input string) string {
 	return base64.StdEncoding.EncodeToString([]byte(input))
+}
+
+type flowHideMatcher struct{}
+
+func (t *flowHideMatcher) Execute(filePath string) error {
+	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, "scanme.sh", debug)
+	if err != nil {
+		return err
+	}
+	// this matcher should not return any results
+	return expectResultsCount(results, 0)
 }

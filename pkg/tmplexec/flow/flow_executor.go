@@ -5,7 +5,6 @@ import (
 	"io"
 	"strconv"
 	"strings"
-	"sync"
 	"sync/atomic"
 
 	"github.com/dop251/goja"
@@ -29,22 +28,28 @@ var (
 	ErrInvalidRequestID = errorutil.NewWithFmt("[%s] invalid request id '%s' provided")
 )
 
+// ProtoOptions are options that can be passed to flow protocol callback
+// ex: dns(protoOptions) <- protoOptions are optional and can be anything
+type ProtoOptions struct {
+	protoName string
+	reqIDS    []string
+}
+
 // FlowExecutor is a flow executor for executing a flow
 type FlowExecutor struct {
 	input   *contextargs.Context
 	options *protocols.ExecutorOptions
 
 	// javascript runtime reference and compiled program
-	jsVM    *goja.Runtime
-	program *goja.Program // compiled js program
+	jsVM      *goja.Runtime
+	program   *goja.Program                // compiled js program
+	lastEvent *output.InternalWrappedEvent // contains last event that was emitted
 
 	// protocol requests and their callback functions
 	allProtocols   map[string][]protocols.Request
 	protoFunctions map[string]func(call goja.FunctionCall) goja.Value // reqFunctions contains functions that allow executing requests/protocols from js
-	callback       func(event *output.InternalWrappedEvent)           // result event callback
 
 	// logic related variables
-	wg      sync.WaitGroup
 	results *atomic.Bool
 	allErrs mapsutil.SyncLockMap[string, error]
 }
@@ -72,6 +77,8 @@ func NewFlowExecutor(requests []protocols.Request, input *contextargs.Context, o
 			allprotos[templateTypes.WHOISProtocol.String()] = append(allprotos[templateTypes.WHOISProtocol.String()], req)
 		case templateTypes.CodeProtocol:
 			allprotos[templateTypes.CodeProtocol.String()] = append(allprotos[templateTypes.CodeProtocol.String()], req)
+		case templateTypes.JavascriptProtocol:
+			allprotos[templateTypes.JavascriptProtocol.String()] = append(allprotos[templateTypes.JavascriptProtocol.String()], req)
 		default:
 			gologger.Error().Msgf("invalid request type %s", req.Type().String())
 		}
@@ -143,22 +150,10 @@ func (f *FlowExecutor) Compile() error {
 			}
 			for _, v := range call.Arguments {
 				switch value := v.Export().(type) {
-				case map[string]interface{}:
-					opts.LoadOptions(value)
 				default:
 					opts.reqIDS = append(opts.reqIDS, types.ToString(value))
 				}
 			}
-			// parallel execution of protocols
-			if opts.Async {
-				f.wg.Add(1)
-				go func() {
-					defer f.wg.Done()
-					f.requestExecutor(reqMap, opts)
-				}()
-				return f.jsVM.ToValue(true)
-			}
-
 			return f.jsVM.ToValue(f.requestExecutor(reqMap, opts))
 		}
 	}
@@ -174,7 +169,6 @@ func (f *FlowExecutor) ExecuteWithResults(input *contextargs.Context, callback p
 		}
 	}()
 
-	f.callback = callback
 	f.input = input
 	// -----Load all types of variables-----
 	// add all input args to template context
@@ -183,7 +177,7 @@ func (f *FlowExecutor) ExecuteWithResults(input *contextargs.Context, callback p
 			f.options.GetTemplateCtx(f.input.MetaInput).Set(key, value)
 		})
 	}
-	if f.callback == nil {
+	if callback == nil {
 		return fmt.Errorf("output callback cannot be nil")
 	}
 	// pass flow and execute the js vm and handle errors
@@ -191,11 +185,12 @@ func (f *FlowExecutor) ExecuteWithResults(input *contextargs.Context, callback p
 	if err != nil {
 		return errorutil.NewWithErr(err).Msgf("failed to execute flow\n%v\n", f.options.Flow)
 	}
-	f.wg.Wait()
 	runtimeErr := f.GetRuntimeErrors()
 	if runtimeErr != nil {
 		return errorutil.NewWithErr(runtimeErr).Msgf("got following errors while executing flow")
 	}
+	// this is where final result is generated/created
+	callback(f.lastEvent)
 	if value.Export() != nil {
 		f.results.Store(value.ToBoolean())
 	} else {
