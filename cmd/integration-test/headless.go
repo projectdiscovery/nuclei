@@ -12,6 +12,7 @@ import (
 
 var headlessTestcases = []TestCaseInfo{
 	{Path: "protocols/headless/headless-basic.yaml", TestCase: &headlessBasic{}},
+	{Path: "protocols/headless/headless-self-contained.yaml", TestCase: &headlessSelfContained{}},
 	{Path: "protocols/headless/headless-header-action.yaml", TestCase: &headlessHeaderActions{}},
 	{Path: "protocols/headless/headless-extract-values.yaml", TestCase: &headlessExtractValues{}},
 	{Path: "protocols/headless/headless-payloads.yaml", TestCase: &headlessPayloads{}},
@@ -34,6 +35,18 @@ func (h *headlessBasic) Execute(filePath string) error {
 	defer ts.Close()
 
 	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, ts.URL, debug, "-headless")
+	if err != nil {
+		return err
+	}
+
+	return expectResultsCount(results, 1)
+}
+
+type headlessSelfContained struct{}
+
+// Execute executes a test case and returns an error if occurred
+func (h *headlessSelfContained) Execute(filePath string) error {
+	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, "", debug, "-headless", "-var query=selfcontained")
 	if err != nil {
 		return err
 	}
