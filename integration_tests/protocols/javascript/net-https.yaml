@@ -1,0 +1,25 @@
+id: net-https
+
+info:
+  name: net-https
+  author: pdteam
+  severity: info
+  description: send and receive https data using net module
+
+
+javascript:
+  - code: |
+      let m = require('nuclei/net');
+      let name=Host+':'+Port;
+      let conn = m.OpenTLS('tcp', name);
+      conn.Send('GET / HTTP/1.1\r\nHost:'+name+'\r\nConnection: close\r\n\r\n');
+      resp = conn.RecvString();
+
+    args:
+      Host: "{{Host}}"
+      Port: "443"
+
+    matchers:
+      - type: word
+        words:
+          - "HTTP/1.1 200 OK"
