@@ -85,6 +85,12 @@ AND has `critical` OR `high` severity AND `geeknik` as author of template.
 nuclei -u https://example.com -tags cve -severity critical,high -author geeknik
 ```
 
+Example to check and list-only templates that match the current conditions with the `-tl` option:
+
+```sh
+nuclei -tl -tags cve -severity critical,high -author geeknik
+```
+
 Multiple filters can also be combined using the template condition flag (`-tc`) that allows complex expressions like the following ones:
 
 ```sh
