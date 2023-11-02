@@ -34,34 +34,7 @@ func (f *FlowExecutor) requestExecutor(reqMap mapsutil.Map[string, protocols.Req
 		// execution logic for http()/dns() etc
 		for index := range f.allProtocols[opts.protoName] {
 			req := f.allProtocols[opts.protoName][index]
-			err := req.ExecuteWithResults(f.input, output.InternalEvent(f.options.GetTemplateCtx(f.input.MetaInput).GetAll()), nil, func(result *output.InternalWrappedEvent) {
-				if result != nil {
-					f.results.CompareAndSwap(false, true)
-					if !opts.Hide {
-						f.callback(result)
-					}
-					// export dynamic values from operators (i.e internal:true)
-					// add add it to template context
-					// this is a conflicting behaviour with iterate-all
-					if result.HasOperatorResult() {
-						matcherStatus.CompareAndSwap(false, result.OperatorsResult.Matched)
-						if !result.OperatorsResult.Matched && !hasMatchers(req.GetCompiledOperators()) {
-							// if matcher status is false . check if template/request contains any matcher at all
-							// if it does then we need to set matcher status to true
-							matcherStatus.CompareAndSwap(false, true)
-						}
-						if len(result.OperatorsResult.DynamicValues) > 0 {
-							for k, v := range result.OperatorsResult.DynamicValues {
-								f.options.GetTemplateCtx(f.input.MetaInput).Set(k, v)
-							}
-						}
-					} else if !result.HasOperatorResult() && !hasOperators(req.GetCompiledOperators()) {
-						// if matcher status is false . check if template/request contains any matcher at all
-						// if it does then we need to set matcher status to true
-						matcherStatus.CompareAndSwap(false, true)
-					}
-				}
-			})
+			err := req.ExecuteWithResults(f.input, output.InternalEvent(f.options.GetTemplateCtx(f.input.MetaInput).GetAll()), nil, f.getProtoRequestCallback(req, matcherStatus, opts))
 			if err != nil {
 				// save all errors in a map with id as key
 				// its less likely that there will be race condition but just in case
@@ -90,25 +63,7 @@ func (f *FlowExecutor) requestExecutor(reqMap mapsutil.Map[string, protocols.Req
 			}
 			return matcherStatus.Load()
 		}
-		err := req.ExecuteWithResults(f.input, output.InternalEvent(f.options.GetTemplateCtx(f.input.MetaInput).GetAll()), nil, func(result *output.InternalWrappedEvent) {
-			if result != nil {
-				f.results.CompareAndSwap(false, true)
-				if !opts.Hide {
-					f.callback(result)
-				}
-				// export dynamic values from operators (i.e internal:true)
-				// add add it to template context
-				if result.HasOperatorResult() {
-					matcherStatus.CompareAndSwap(false, result.OperatorsResult.Matched)
-					if len(result.OperatorsResult.DynamicValues) > 0 {
-						for k, v := range result.OperatorsResult.DynamicValues {
-							f.options.GetTemplateCtx(f.input.MetaInput).Set(k, v)
-						}
-						_ = f.jsVM.Set("template", f.options.GetTemplateCtx(f.input.MetaInput).GetAll())
-					}
-				}
-			}
-		})
+		err := req.ExecuteWithResults(f.input, output.InternalEvent(f.options.GetTemplateCtx(f.input.MetaInput).GetAll()), nil, f.getProtoRequestCallback(req, matcherStatus, opts))
 		if err != nil {
 			index := id
 			err = f.allErrs.Set(opts.protoName+":"+index, err)
@@ -118,6 +73,39 @@ func (f *FlowExecutor) requestExecutor(reqMap mapsutil.Map[string, protocols.Req
 		}
 	}
 	return matcherStatus.Load()
+}
+
+// getProtoRequestCallback returns a callback that is executed
+// after execution of each protocol request
+func (f *FlowExecutor) getProtoRequestCallback(req protocols.Request, matcherStatus *atomic.Bool, opts *ProtoOptions) func(result *output.InternalWrappedEvent) {
+	return func(result *output.InternalWrappedEvent) {
+		if result != nil {
+			f.results.CompareAndSwap(false, true)
+			f.lastEvent = result
+			// export dynamic values from operators (i.e internal:true)
+			// add add it to template context
+			// this is a conflicting behaviour with iterate-all
+			if result.HasOperatorResult() {
+				// this is to handle case where there is any operator result (matcher or extractor)
+				matcherStatus.CompareAndSwap(false, result.OperatorsResult.Matched)
+				if !result.OperatorsResult.Matched && !hasMatchers(req.GetCompiledOperators()) {
+					// if matcher status is false . check if template/request contains any matcher at all
+					// if it does then we need to set matcher status to true
+					matcherStatus.CompareAndSwap(false, true)
+				}
+				if len(result.OperatorsResult.DynamicValues) > 0 {
+					for k, v := range result.OperatorsResult.DynamicValues {
+						f.options.GetTemplateCtx(f.input.MetaInput).Set(k, v)
+					}
+				}
+			} else if !result.HasOperatorResult() && !hasOperators(req.GetCompiledOperators()) {
+				// this is to handle case where there are no operator result and there was no matcher in operators
+				// if matcher status is false . check if template/request contains any matcher at all
+				// if it does then we need to set matcher status to true
+				matcherStatus.CompareAndSwap(false, true)
+			}
+		}
+	}
 }
 
 // registerBuiltInFunctions registers all built in functions for the flow

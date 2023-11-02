@@ -72,6 +72,7 @@ func ExampleThreadSafeNucleiEngine() {
 
 	// Output:
 	// [nameserver-fingerprint] scanme.sh
+	// [caa-fingerprint] honey.scanme.sh
 }
 
 func TestMain(m *testing.M) {
