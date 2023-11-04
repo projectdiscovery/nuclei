@@ -19,13 +19,14 @@ func NewBuffer(call goja.ConstructorCall) interface{} {
 
 	obj.buf = make([]byte, 0)
 	return map[string]interface{}{
-		"Write":   obj.Write,
-		"Pack":    obj.Pack,
-		"Bytes":   obj.Bytes,
-		"String":  obj.String,
-		"Len":     obj.Len,
-		"Hex":     obj.Hex,
-		"Hexdump": obj.Hexdump,
+		"Write":       obj.Write,
+		"WriteString": obj.WriteString,
+		"Pack":        obj.Pack,
+		"Bytes":       obj.Bytes,
+		"String":      obj.String,
+		"Len":         obj.Len,
+		"Hex":         obj.Hex,
+		"Hexdump":     obj.Hexdump,
 	}
 }
 
