@@ -22,9 +22,10 @@ var (
 )
 
 const (
-	userProfileURL = "https://%s/api/v1/user/profile?utm_source=%s"
-	apiKeyEnv      = "PDCP_API_KEY"
-	apiServerEnv   = "PDCP_API_SERVER"
+	userProfileURL   = "https://%s/v1/template/user/profile?utm_source=%s"
+	apiKeyEnv        = "PDCP_API_KEY"
+	apiServerEnv     = "PDCP_API_SERVER"
+	ApiKeyHeaderName = "X-Api-Key"
 )
 
 type PDCPCredentials struct {
@@ -87,7 +88,7 @@ func (p *PDCPCredHandler) SaveCreds(resp *PDCPCredentials) error {
 	if !fileutil.FolderExists(PDCPDir) {
 		_ = fileutil.CreateFolder(PDCPDir)
 	}
-	bin, err := yaml.Marshal(resp)
+	bin, err := yaml.Marshal([]*PDCPCredentials{resp})
 	if err != nil {
 		return err
 	}
@@ -102,7 +103,12 @@ func (p *PDCPCredHandler) ValidateAPIKey(key string, host string, toolName strin
 	if err != nil {
 		return nil, err
 	}
-	resp, err := retryablehttp.DefaultClient().Get(fmt.Sprintf(userProfileURL, urlx.Host, toolName))
+	req, err := retryablehttp.NewRequest("GET", fmt.Sprintf(userProfileURL, urlx.Host, toolName), nil)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set(ApiKeyHeaderName, key)
+	resp, err := retryablehttp.DefaultHTTPClient.Do(req)
 	if err != nil {
 		return nil, err
 	}
