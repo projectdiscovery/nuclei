@@ -1,7 +1,6 @@
 package output
 
 import (
-	"encoding/base64"
 	"fmt"
 	"io"
 	"os"
@@ -61,13 +60,9 @@ type StandardWriter struct {
 	severityColors   func(severity.Severity) string
 	storeResponse    bool
 	storeResponseDir string
-	omitTemplate     bool
 }
 
-var (
-	decolorizerRegex               = regexp.MustCompile(`\x1B\[[0-9;]*[a-zA-Z]`)
-	MaxTemplateFileSizeForEncoding = 1024 * 1024
-)
+var decolorizerRegex = regexp.MustCompile(`\x1B\[[0-9;]*[a-zA-Z]`)
 
 // InternalEvent is an internal output generation structure for nuclei.
 type InternalEvent map[string]interface{}
@@ -214,7 +209,6 @@ func NewStandardWriter(options *types.Options) (*StandardWriter, error) {
 		severityColors:   colorizer.New(auroraColorizer),
 		storeResponse:    options.StoreResponse,
 		storeResponseDir: options.StoreResponseDir,
-		omitTemplate:     options.OmitTemplate,
 	}
 	return writer, nil
 }
@@ -224,11 +218,6 @@ func (w *StandardWriter) Write(event *ResultEvent) error {
 	// Enrich the result event with extra metadata on the template-path and url.
 	if event.TemplatePath != "" {
 		event.Template, event.TemplateURL = utils.TemplatePathURL(types.ToString(event.TemplatePath), types.ToString(event.TemplateID))
-		if event.TemplateURL == "" && !w.omitTemplate {
-			if data, err := os.ReadFile(event.TemplatePath); err == nil && len(data) <= MaxTemplateFileSizeForEncoding {
-				event.TemplateEncoded = base64.StdEncoding.EncodeToString(data)
-			}
-		}
 	}
 
 	event.Timestamp = time.Now()

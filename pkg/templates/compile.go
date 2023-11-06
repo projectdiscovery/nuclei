@@ -128,7 +128,7 @@ func (template *Template) Requests() int {
 }
 
 // compileProtocolRequests compiles all the protocol requests for the template
-func (template *Template) compileProtocolRequests(options protocols.ExecutorOptions) error {
+func (template *Template) compileProtocolRequests(options *protocols.ExecutorOptions) error {
 	templateRequests := template.Requests()
 
 	if templateRequests == 0 {
@@ -180,7 +180,7 @@ func (template *Template) compileProtocolRequests(options protocols.ExecutorOpti
 			requests = append(requests, template.convertRequestToProtocolsRequest(template.RequestsJavascript)...)
 		}
 	}
-	template.Executer = tmplexec.NewTemplateExecuter(requests, &options)
+	template.Executer = tmplexec.NewTemplateExecuter(requests, options)
 	return nil
 }
 
@@ -206,7 +206,7 @@ func (template *Template) convertRequestToProtocolsRequest(requests interface{})
 // compileOfflineHTTPRequest iterates all requests if offline http mode is
 // specified and collects all matchers for all the base request templates
 // (those with URL {{BaseURL}} and it's slash variation.)
-func (template *Template) compileOfflineHTTPRequest(options protocols.ExecutorOptions) error {
+func (template *Template) compileOfflineHTTPRequest(options *protocols.ExecutorOptions) error {
 	operatorsList := []*operators.Operators{}
 
 mainLoop:
@@ -225,7 +225,7 @@ mainLoop:
 	}
 	if len(operatorsList) > 0 {
 		options.Operators = operatorsList
-		template.Executer = tmplexec.NewTemplateExecuter([]protocols.Request{&offlinehttp.Request{}}, &options)
+		template.Executer = tmplexec.NewTemplateExecuter([]protocols.Request{&offlinehttp.Request{}}, options)
 		return nil
 	}
 
@@ -360,7 +360,7 @@ func parseTemplate(data []byte, options protocols.ExecutorOptions) (*Template, e
 		return nil, errorutil.NewWithErr(err).Msgf("failed to load file refs for %s", template.ID)
 	}
 
-	if err := template.compileProtocolRequests(options); err != nil {
+	if err := template.compileProtocolRequests(template.Options); err != nil {
 		return nil, err
 	}
 
@@ -377,12 +377,17 @@ func parseTemplate(data []byte, options protocols.ExecutorOptions) (*Template, e
 
 	// check if the template is verified
 	// only valid templates can be verified or signed
-	for _, verifier := range signer.DefaultTemplateVerifiers {
+	var verifier *signer.TemplateSigner
+	for _, verifier = range signer.DefaultTemplateVerifiers {
 		template.Verified, _ = verifier.Verify(data, template)
 		if template.Verified {
 			SignatureStats[verifier.Identifier()].Add(1)
 			break
 		}
+	}
+
+	if !(template.Verified && verifier.Identifier() == "projectdiscovery/nuclei-templates") {
+		template.Options.RawTemplate = data
 	}
 	return template, nil
 }
