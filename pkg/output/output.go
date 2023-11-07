@@ -1,6 +1,7 @@
 package output
 
 import (
+	"encoding/base64"
 	"fmt"
 	"io"
 	"os"
@@ -60,6 +61,7 @@ type StandardWriter struct {
 	severityColors   func(severity.Severity) string
 	storeResponse    bool
 	storeResponseDir string
+	omitTemplate     bool
 }
 
 var decolorizerRegex = regexp.MustCompile(`\x1B\[[0-9;]*[a-zA-Z]`)
@@ -209,6 +211,7 @@ func NewStandardWriter(options *types.Options) (*StandardWriter, error) {
 		severityColors:   colorizer.New(auroraColorizer),
 		storeResponse:    options.StoreResponse,
 		storeResponseDir: options.StoreResponseDir,
+		omitTemplate:     options.OmitTemplate,
 	}
 	return writer, nil
 }
@@ -347,9 +350,22 @@ func (w *StandardWriter) WriteFailure(wrappedEvent *InternalWrappedEvent) error 
 		Response:      types.ToString(event["response"]),
 		MatcherStatus: false,
 		Timestamp:     time.Now(),
+		//FIXME: this is workaround to encode the template when no results were found
+		TemplateEncoded: w.encodeTemplate(types.ToString(event["template-path"])),
 	}
 	return w.Write(data)
 }
+
+var maxTemplateFileSizeForEncoding = 1024 * 1024
+
+func (w *StandardWriter) encodeTemplate(templatePath string) string {
+	data, err := os.ReadFile(templatePath)
+	if err == nil && !w.omitTemplate && len(data) <= maxTemplateFileSizeForEncoding {
+		return base64.StdEncoding.EncodeToString(data)
+	}
+	return ""
+}
+
 func sanitizeFileName(fileName string) string {
 	fileName = strings.ReplaceAll(fileName, "http:", "")
 	fileName = strings.ReplaceAll(fileName, "https:", "")
