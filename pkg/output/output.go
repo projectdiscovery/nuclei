@@ -60,6 +60,7 @@ type StandardWriter struct {
 	severityColors   func(severity.Severity) string
 	storeResponse    bool
 	storeResponseDir string
+	DisableStdout    bool
 }
 
 var decolorizerRegex = regexp.MustCompile(`\x1B\[[0-9;]*[a-zA-Z]`)
@@ -236,8 +237,10 @@ func (w *StandardWriter) Write(event *ResultEvent) error {
 	w.mutex.Lock()
 	defer w.mutex.Unlock()
 
-	_, _ = os.Stdout.Write(data)
-	_, _ = os.Stdout.Write([]byte("\n"))
+	if !w.DisableStdout {
+		_, _ = os.Stdout.Write(data)
+		_, _ = os.Stdout.Write([]byte("\n"))
+	}
 
 	if w.outputFile != nil {
 		if !w.json {

@@ -363,6 +363,7 @@ on extensive configurability, massive extensibility and ease of use.`)
 
 	flagSet.CreateGroup("cloud", "Cloud",
 		flagSet.BoolVar(&pdcpauth, "auth", false, "configure projectdiscovery cloud (pdcp) api key"),
+		flagSet.BoolVarP(&options.DisableCloudUpload, "disable-cloud-upload", "dcu", false, "disable uploading scan results to pdcp"),
 		flagSet.BoolVar(&options.Cloud, "cloud", false, "run scan on nuclei cloud"),
 		flagSet.StringVarP(&options.AddDatasource, "add-datasource", "ads", "", "add specified data source (s3,github)"),
 		flagSet.StringVarP(&options.AddTarget, "add-target", "atr", "", "add target(s) to cloud"),

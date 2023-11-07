@@ -3,6 +3,7 @@ package runner
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	_ "net/http/pprof"
 	"os"
@@ -12,6 +13,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/projectdiscovery/nuclei/v3/internal/pdcp"
 	"github.com/projectdiscovery/nuclei/v3/internal/runner/nucleicloud"
 	"github.com/projectdiscovery/nuclei/v3/pkg/installer"
 	uncoverlib "github.com/projectdiscovery/uncover"
@@ -78,6 +80,8 @@ type Runner struct {
 	pprofServer       *http.Server
 	cloudClient       *nucleicloud.Client
 	cloudTargets      []string
+	// pdcp auto-save options
+	pdcpUploadErrMsg string
 }
 
 const pprofServerAddress = "127.0.0.1:8086"
@@ -246,7 +250,8 @@ func New(options *types.Options) (*Runner, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "could not create output file")
 	}
-	runner.output = outputWriter
+	// setup a proxy writer to automatically upload results to PDCP
+	runner.output = runner.setupPDCPUpload(outputWriter)
 
 	if options.JSONL && options.EnableProgressBar {
 		options.StatsJSON = true
@@ -392,6 +397,31 @@ func (r *Runner) Close() {
 	if r.rateLimiter != nil {
 		r.rateLimiter.Stop()
 	}
+}
+
+// setupPDCPUpload sets up the PDCP upload writer
+// by creating a new writer and returning it
+func (r *Runner) setupPDCPUpload(writer output.Writer) output.Writer {
+	if r.options.DisableCloudUpload {
+		r.pdcpUploadErrMsg = fmt.Sprintf("[%v] PDCP Auto-Save Disabled by user", aurora.BrightYellow("WRN"))
+		return writer
+	}
+	color := aurora.NewAurora(!r.options.NoColor)
+	h := &pdcp.PDCPCredHandler{}
+	creds, err := h.GetCreds()
+	if err != nil {
+		if err != pdcp.ErrNoCreds {
+			gologger.Verbose().Msgf("Could not get credentials for PDCP upload: %s\n", err)
+		}
+		r.pdcpUploadErrMsg = fmt.Sprintf("[%v] PDCP Auto-Save Disabled: No API Key found get one from https://cloud.projectdiscovery.io", color.BrightYellow("WRN"))
+		return writer
+	}
+	uploadWriter, err := pdcp.NewUploadWriter(creds)
+	if err != nil {
+		r.pdcpUploadErrMsg = fmt.Sprintf("[%v] PDCP (cloud.projectdiscovery.io) Auto-Save Failed: %s\n", color.BrightYellow("WRN"), err)
+		return writer
+	}
+	return output.NewMultiWriter(writer, uploadWriter)
 }
 
 // RunEnumeration sets up the input layer for giving input nuclei.
@@ -679,6 +709,11 @@ func (r *Runner) displayExecutionInfo(store *loader.Store) {
 
 	gologger.Info().Msgf("Current nuclei version: %v %v", config.Version, updateutils.GetVersionDescription(config.Version, cfg.LatestNucleiVersion))
 	gologger.Info().Msgf("Current nuclei-templates version: %v %v", cfg.TemplateVersion, updateutils.GetVersionDescription(cfg.TemplateVersion, cfg.LatestNucleiTemplatesVersion))
+	if r.pdcpUploadErrMsg != "" {
+		gologger.Print().Msgf("%s", r.pdcpUploadErrMsg)
+	} else {
+		gologger.Info().Msgf("PDCP Auto-Save Enabled: View scan results in dashboard at https://cloud.projectdiscovery.io")
+	}
 
 	if len(store.Templates()) > 0 {
 		gologger.Info().Msgf("New templates added in latest release: %d", len(config.DefaultConfig.GetNewAdditions()))

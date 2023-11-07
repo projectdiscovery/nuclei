@@ -398,6 +398,8 @@ type Options struct {
 	CodeTemplateSignatureAlgorithm string
 	// SignTemplates enables signing of templates
 	SignTemplates bool
+	// Disables cloud upload
+	DisableCloudUpload bool
 }
 
 // ShouldLoadResume resume file
