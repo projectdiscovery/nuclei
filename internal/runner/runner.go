@@ -17,6 +17,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/internal/runner/nucleicloud"
 	"github.com/projectdiscovery/nuclei/v3/pkg/installer"
 	uncoverlib "github.com/projectdiscovery/uncover"
+	"github.com/projectdiscovery/utils/env"
 	permissionutil "github.com/projectdiscovery/utils/permission"
 	updateutils "github.com/projectdiscovery/utils/update"
 
@@ -61,6 +62,9 @@ import (
 	"github.com/projectdiscovery/retryablehttp-go"
 	ptrutil "github.com/projectdiscovery/utils/ptr"
 )
+
+// HideAutoSaveMsg is a global variable to hide the auto-save message
+var HideAutoSaveMsg = false
 
 // Runner is a client for running the enumeration process.
 type Runner struct {
@@ -410,15 +414,15 @@ func (r *Runner) setupPDCPUpload(writer output.Writer) output.Writer {
 	h := &pdcp.PDCPCredHandler{}
 	creds, err := h.GetCreds()
 	if err != nil {
-		if err != pdcp.ErrNoCreds {
+		if err != pdcp.ErrNoCreds && !HideAutoSaveMsg {
 			gologger.Verbose().Msgf("Could not get credentials for PDCP upload: %s\n", err)
 		}
-		r.pdcpUploadErrMsg = fmt.Sprintf("[%v] PDCP Auto-Save Disabled: No API Key found get one from https://cloud.projectdiscovery.io", color.BrightYellow("WRN"))
+		r.pdcpUploadErrMsg = fmt.Sprintf("[%v] PDCP Auto-Save Disabled: No API Key found get one from %v", color.BrightYellow("WRN"), pdcp.DashBoardURL)
 		return writer
 	}
 	uploadWriter, err := pdcp.NewUploadWriter(creds)
 	if err != nil {
-		r.pdcpUploadErrMsg = fmt.Sprintf("[%v] PDCP (cloud.projectdiscovery.io) Auto-Save Failed: %s\n", color.BrightYellow("WRN"), err)
+		r.pdcpUploadErrMsg = fmt.Sprintf("[%v] PDCP (%v) Auto-Save Failed: %s\n", color.BrightYellow("WRN"), pdcp.DashBoardURL, err)
 		return writer
 	}
 	return output.NewMultiWriter(writer, uploadWriter)
@@ -709,10 +713,12 @@ func (r *Runner) displayExecutionInfo(store *loader.Store) {
 
 	gologger.Info().Msgf("Current nuclei version: %v %v", config.Version, updateutils.GetVersionDescription(config.Version, cfg.LatestNucleiVersion))
 	gologger.Info().Msgf("Current nuclei-templates version: %v %v", cfg.TemplateVersion, updateutils.GetVersionDescription(cfg.TemplateVersion, cfg.LatestNucleiTemplatesVersion))
-	if r.pdcpUploadErrMsg != "" {
-		gologger.Print().Msgf("%s", r.pdcpUploadErrMsg)
-	} else {
-		gologger.Info().Msgf("PDCP Auto-Save Enabled: View scan results in dashboard at https://cloud.projectdiscovery.io")
+	if !HideAutoSaveMsg {
+		if r.pdcpUploadErrMsg != "" {
+			gologger.Print().Msgf("%s", r.pdcpUploadErrMsg)
+		} else {
+			gologger.Info().Msgf("PDCP Auto-Save Enabled: View scan results in dashboard at %v", pdcp.DashBoardURL)
+		}
 	}
 
 	if len(store.Templates()) > 0 {
@@ -792,4 +798,8 @@ func expandEndVars(f reflect.Value, fieldType reflect.StructField) {
 			}
 		}
 	}
+}
+
+func init() {
+	HideAutoSaveMsg = env.GetEnvOrDefault("HIDE_PDCP_SAVE_MSG", false)
 }
