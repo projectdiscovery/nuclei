@@ -1,0 +1,37 @@
+{{$packageName:=(printf "%s" .PackageName) -}}
+/**@module {{$packageName}} */
+
+
+
+{{- range $typeName, $methods := .PackageFuncsExtra }}
+
+{{ $methods.Doc }}
+class {{$typeName}} {
+
+        {{- range $methodName, $method := $methods.Items }}
+    {{$method.Doc}}
+    {{ $method.Name }}({{range $index, $arg := $method.Args}}{{if $index}}, {{end}}{{ $arg }}{{end}}) {
+        return {{range $idx, $arg := $method.Returns}}{{if $idx}}, {{end}}{{ $arg }}{{end}};
+    };
+        {{- end }}
+};
+
+{{- end }}
+
+
+{{- range $objName, $method := .PackageFuncsExtraNoType}}
+{{$method.Doc}}
+function {{$objName}}({{range $index, $arg := $method.Args}}{{if $index}}, {{end}}{{ $arg }}{{end}}) {
+        return {{range $idx, $arg := $method.Returns}}{{if $idx}}, {{end}}{{ $arg }}{{end}};
+    };
+{{- end}}
+
+
+module.exports = {
+{{- range $typeName, $methods := .PackageFuncsExtra }}
+    {{$typeName}}: {{$typeName}},
+{{- end }}
+{{- range $objName, $method := .PackageFuncsExtraNoType}}
+    {{$objName}}: {{$objName}},
+{{- end}}
+};

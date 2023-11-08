@@ -82,9 +82,9 @@ A brief overview of the methods is provided below -
 
 For reference protocol requests implementations, one can look at the below packages  - 
 
-1. [pkg/protocols/http](./v2/pkg/protocols/http)
-2. [pkg/protocols/dns](./v2/pkg/protocols/dns)
-3. [pkg/protocols/network](./v2/pkg/protocols/network)
+1. [pkg/protocols/http](./pkg/protocols/http)
+2. [pkg/protocols/dns](./pkg/protocols/dns)
+3. [pkg/protocols/network](./pkg/protocols/network)
 
 ### Executer
 
@@ -189,9 +189,9 @@ Polling for interactions and server registration only starts when a template use
 
 Next we arrive in the `RunEnumeration` function of the runner.
 
-`HostErrorsCache` is initialised which is used throughout the run of Nuclei enumeration to keep track of errors per host and skip further requests if the errors are greater than the provided threshold. The functionality for the error tracking cache is defined in [hosterrorscache.go](https://github.com/projectdiscovery/nuclei/blob/main/v2/pkg/protocols/common/hosterrorscache/hosterrorscache.go) and is pretty simplistic in nature.
+`HostErrorsCache` is initialised which is used throughout the run of Nuclei enumeration to keep track of errors per host and skip further requests if the errors are greater than the provided threshold. The functionality for the error tracking cache is defined in [hosterrorscache.go](https://github.com/projectdiscovery/nuclei/blob/main/pkg/protocols/common/hosterrorscache/hosterrorscache.go) and is pretty simplistic in nature.
 
-Next the `WorkflowLoader` is initialised which used to load workflows. It exists in `v2/pkg/parsers/workflow_loader.go`
+Next the `WorkflowLoader` is initialised which used to load workflows. It exists in `pkg/parsers/workflow_loader.go`
 
 The loader is initialised moving forward which is responsible for Using Catalog, Passed Tags, Filters, Paths, etc. to return compiled `Templates` and `Workflows`. 
 
@@ -387,7 +387,7 @@ Almost all of these protocols have boilerplate functions for which default imple
 
 Step by step description of how to add a new protocol to Nuclei - 
 
-1. Add the protocol implementation in `pkg/protocols` directory. If it's a small protocol with fewer options, considering adding it to the `pkg/protocols/others` directory. Add the enum for the new protocol to `v2/pkg/templates/types/types.go`.
+1. Add the protocol implementation in `pkg/protocols` directory. If it's a small protocol with fewer options, considering adding it to the `pkg/protocols/others` directory. Add the enum for the new protocol to `pkg/templates/types/types.go`.
 
 2. Add the protocol request structure to the `Template` structure fields. This is done in `pkg/templates/templates.go` with the corresponding import line.
 
@@ -395,7 +395,7 @@ Step by step description of how to add a new protocol to Nuclei -
 
 import (
 	...
-	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/others/websocket"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/others/websocket"
 )
 
 // Template is a YAML input file which defines all the requests and
@@ -479,52 +479,52 @@ $ go tool pprof -http=:8081 mem.pprof
 
 ## Project Structure
 
-- [v2/pkg/reporting](./v2/pkg/reporting) - Reporting modules for nuclei.
-- [v2/pkg/reporting/exporters/sarif](./v2/pkg/reporting/exporters/sarif) - Sarif Result Exporter
-- [v2/pkg/reporting/exporters/markdown](./v2/pkg/reporting/exporters/markdown) - Markdown Result Exporter
-- [v2/pkg/reporting/exporters/es](./v2/pkg/reporting/exporters/es) - Elasticsearch Result Exporter
-- [v2/pkg/reporting/dedupe](./v2/pkg/reporting/dedupe) - Dedupe module for Results
-- [v2/pkg/reporting/trackers/gitlab](./v2/pkg/reporting/trackers/gitlab) - GitLab Issue Tracker Exporter
-- [v2/pkg/reporting/trackers/jira](./v2/pkg/reporting/trackers/jira) - Jira Issue Tracker Exporter
-- [v2/pkg/reporting/trackers/github](./v2/pkg/reporting/trackers/github) - GitHub Issue Tracker Exporter
-- [v2/pkg/reporting/format](./v2/pkg/reporting/format) - Result Formatting Functions
-- [v2/pkg/parsers](./v2/pkg/parsers) - Implements template as well as workflow loader for initial template discovery, validation and - loading.
-- [v2/pkg/types](./v2/pkg/types) - Contains CLI options as well as misc helper functions.
-- [v2/pkg/progress](./v2/pkg/progress) - Progress tracking
-- [v2/pkg/operators](./v2/pkg/operators) - Operators for Nuclei
-- [v2/pkg/operators/common/dsl](./v2/pkg/operators/common/dsl) - DSL functions for Nuclei YAML Syntax
-- [v2/pkg/operators/matchers](./v2/pkg/operators/matchers) - Matchers implementation
-- [v2/pkg/operators/extractors](./v2/pkg/operators/extractors) - Extractors implementation
-- [v2/pkg/catalog](./v2/pkg/catalog) - Template loading from disk helpers
-- [v2/pkg/catalog/config](./v2/pkg/catalog/config) - Internal configuration management
-- [v2/pkg/catalog/loader](./v2/pkg/catalog/loader) - Implements loading and validation of templates and workflows.
-- [v2/pkg/catalog/loader/filter](./v2/pkg/catalog/loader/filter) - Filter filters templates based on tags and paths
-- [v2/pkg/output](./v2/pkg/output) - Output module for nuclei
-- [v2/pkg/workflows](./v2/pkg/workflows) - Workflow execution logic + declarations
-- [v2/pkg/utils](./v2/pkg/utils) - Utility functions
-- [v2/pkg/model](./v2/pkg/model) - Template Info + misc
-- [v2/pkg/templates](./v2/pkg/templates) - Templates core starting point
-- [v2/pkg/templates/cache](./v2/pkg/templates/cache) - Templates cache
-- [v2/pkg/protocols](./v2/pkg/protocols) - Protocol Specification
-- [v2/pkg/protocols/file](./v2/pkg/protocols/file) - File protocol
-- [v2/pkg/protocols/network](./v2/pkg/protocols/network) - Network protocol
-- [v2/pkg/protocols/common/expressions](./v2/pkg/protocols/common/expressions) - Expression evaluation + Templating Support
-- [v2/pkg/protocols/common/interactsh](./v2/pkg/protocols/common/interactsh) - Interactsh integration
-- [v2/pkg/protocols/common/generators](./v2/pkg/protocols/common/generators) - Payload support for Requests (Sniper, etc.)
-- [v2/pkg/protocols/common/executer](./v2/pkg/protocols/common/executer) - Default Template Executer
-- [v2/pkg/protocols/common/replacer](./v2/pkg/protocols/common/replacer) - Template replacement helpers
-- [v2/pkg/protocols/common/helpers/eventcreator](./v2/pkg/protocols/common/helpers/eventcreator) - Result event creator
-- [v2/pkg/protocols/common/helpers/responsehighlighter](./v2/pkg/protocols/common/helpers/responsehighlighter) - Debug response highlighter
-- [v2/pkg/protocols/common/helpers/deserialization](./v2/pkg/protocols/common/helpers/deserialization) - Deserialization helper functions
-- [v2/pkg/protocols/common/hosterrorscache](./v2/pkg/protocols/common/hosterrorscache) - Host errors cache for tracking erroring hosts
-- [v2/pkg/protocols/offlinehttp](./v2/pkg/protocols/offlinehttp) - Offline http protocol
-- [v2/pkg/protocols/http](./v2/pkg/protocols/http) - HTTP protocol
-- [v2/pkg/protocols/http/race](./v2/pkg/protocols/http/race) - HTTP Race Module
-- [v2/pkg/protocols/http/raw](./v2/pkg/protocols/http/raw) - HTTP Raw Request Support
-- [v2/pkg/protocols/headless](./v2/pkg/protocols/headless) - Headless Module
-- [v2/pkg/protocols/headless/engine](./v2/pkg/protocols/headless/engine) - Internal Headless implementation
-- [v2/pkg/protocols/dns](./v2/pkg/protocols/dns) - DNS protocol
-- [v2/pkg/projectfile](./v2/pkg/projectfile) - Project File Implementation
+- [pkg/reporting](./pkg/reporting) - Reporting modules for nuclei.
+- [pkg/reporting/exporters/sarif](./pkg/reporting/exporters/sarif) - Sarif Result Exporter
+- [pkg/reporting/exporters/markdown](./pkg/reporting/exporters/markdown) - Markdown Result Exporter
+- [pkg/reporting/exporters/es](./pkg/reporting/exporters/es) - Elasticsearch Result Exporter
+- [pkg/reporting/dedupe](./pkg/reporting/dedupe) - Dedupe module for Results
+- [pkg/reporting/trackers/gitlab](./pkg/reporting/trackers/gitlab) - GitLab Issue Tracker Exporter
+- [pkg/reporting/trackers/jira](./pkg/reporting/trackers/jira) - Jira Issue Tracker Exporter
+- [pkg/reporting/trackers/github](./pkg/reporting/trackers/github) - GitHub Issue Tracker Exporter
+- [pkg/reporting/format](./pkg/reporting/format) - Result Formatting Functions
+- [pkg/parsers](./pkg/parsers) - Implements template as well as workflow loader for initial template discovery, validation and - loading.
+- [pkg/types](./pkg/types) - Contains CLI options as well as misc helper functions.
+- [pkg/progress](./pkg/progress) - Progress tracking
+- [pkg/operators](./pkg/operators) - Operators for Nuclei
+- [pkg/operators/common/dsl](./pkg/operators/common/dsl) - DSL functions for Nuclei YAML Syntax
+- [pkg/operators/matchers](./pkg/operators/matchers) - Matchers implementation
+- [pkg/operators/extractors](./pkg/operators/extractors) - Extractors implementation
+- [pkg/catalog](./pkg/catalog) - Template loading from disk helpers
+- [pkg/catalog/config](./pkg/catalog/config) - Internal configuration management
+- [pkg/catalog/loader](./pkg/catalog/loader) - Implements loading and validation of templates and workflows.
+- [pkg/catalog/loader/filter](./pkg/catalog/loader/filter) - Filter filters templates based on tags and paths
+- [pkg/output](./pkg/output) - Output module for nuclei
+- [pkg/workflows](./pkg/workflows) - Workflow execution logic + declarations
+- [pkg/utils](./pkg/utils) - Utility functions
+- [pkg/model](./pkg/model) - Template Info + misc
+- [pkg/templates](./pkg/templates) - Templates core starting point
+- [pkg/templates/cache](./pkg/templates/cache) - Templates cache
+- [pkg/protocols](./pkg/protocols) - Protocol Specification
+- [pkg/protocols/file](./pkg/protocols/file) - File protocol
+- [pkg/protocols/network](./pkg/protocols/network) - Network protocol
+- [pkg/protocols/common/expressions](./pkg/protocols/common/expressions) - Expression evaluation + Templating Support
+- [pkg/protocols/common/interactsh](./pkg/protocols/common/interactsh) - Interactsh integration
+- [pkg/protocols/common/generators](./pkg/protocols/common/generators) - Payload support for Requests (Sniper, etc.)
+- [pkg/protocols/common/executer](./pkg/protocols/common/executer) - Default Template Executer
+- [pkg/protocols/common/replacer](./pkg/protocols/common/replacer) - Template replacement helpers
+- [pkg/protocols/common/helpers/eventcreator](./pkg/protocols/common/helpers/eventcreator) - Result event creator
+- [pkg/protocols/common/helpers/responsehighlighter](./pkg/protocols/common/helpers/responsehighlighter) - Debug response highlighter
+- [pkg/protocols/common/helpers/deserialization](./pkg/protocols/common/helpers/deserialization) - Deserialization helper functions
+- [pkg/protocols/common/hosterrorscache](./pkg/protocols/common/hosterrorscache) - Host errors cache for tracking erroring hosts
+- [pkg/protocols/offlinehttp](./pkg/protocols/offlinehttp) - Offline http protocol
+- [pkg/protocols/http](./pkg/protocols/http) - HTTP protocol
+- [pkg/protocols/http/race](./pkg/protocols/http/race) - HTTP Race Module
+- [pkg/protocols/http/raw](./pkg/protocols/http/raw) - HTTP Raw Request Support
+- [pkg/protocols/headless](./pkg/protocols/headless) - Headless Module
+- [pkg/protocols/headless/engine](./pkg/protocols/headless/engine) - Internal Headless implementation
+- [pkg/protocols/dns](./pkg/protocols/dns) - DNS protocol
+- [pkg/projectfile](./pkg/projectfile) - Project File Implementation
 
 ### Notes
 

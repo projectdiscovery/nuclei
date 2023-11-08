@@ -17,13 +17,12 @@ jobs:
 
       - uses: actions/setup-go@v4
         with: 
-          go-version: 1.20.x
+          go-version: 1.21.x
 
       - uses: goreleaser/goreleaser-action@v4
         with: 
           args: "release --rm-dist"
           version: latest
-          workdir: v2/
         env: 
           GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
           SLACK_WEBHOOK: "${{ secrets.RELEASE_SLACK_WEBHOOK }}"

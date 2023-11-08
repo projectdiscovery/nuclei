@@ -34,9 +34,12 @@ When this flag is provided, nuclei will log all errors to the file specified. Th
 
 Nuclei was built with some environment variables in mind to help with debugging. These environment variables can be set to enable debugging of a particular component/functionality for nuclei.
 
-| Environment Variable   | Description                                              |
-| ---------------------- | -------------------------------------------------------- |
-| `DEBUG=true`           | Enables Printing Stack Traces for all errors             |
-| `SHOW_DSL_ERRORS=true` | Enables Printing DSL Errors (that are hidden by default) |
+| Environment Variable             | Description                                              |
+| -------------------------------- | -------------------------------------------------------- |
+| `DEBUG=true`                     | Enables Printing Stack Traces for all errors             |
+| `SHOW_DSL_ERRORS=true`           | Enables Printing DSL Errors (that are hidden by default) |
+| `HIDE_TEMPLATE_SIG_WARNING=true` | Hides Template Signature Verification Warnings           |
+| `NUCLEI_LOG_ALL=true`            | Log All Events that were skipped in verbose mode         |
+
 
 
