@@ -8,7 +8,9 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"path/filepath"
 	"strconv"
+	"strings"
 	"sync/atomic"
 	"time"
 
@@ -24,7 +26,6 @@ import (
 
 const (
 	uploadEndpoint = "/v1/scans/import"
-	dashboardURL   = "https://cloud.projectdiscovery.io/scans/%v"
 )
 
 var _ output.Writer = &UploadWriter{}
@@ -53,7 +54,7 @@ func NewUploadWriter(creds *PDCPCredentials) (*UploadWriter, error) {
 
 	var err error
 	// tempfile is created in nuclei-results-<unix-timestamp>.json format
-	u.tempFile, err = os.CreateTemp(cacheDir, "nuclei-results-"+strconv.Itoa(int(time.Now().Unix()))+".json")
+	u.tempFile, err = os.OpenFile(filepath.Join(cacheDir, "nuclei-results-"+strconv.Itoa(int(time.Now().Unix()))+".json"), os.O_RDWR|os.O_CREATE, 0600)
 	if err != nil {
 		return nil, errorutil.NewWithErr(err).Msgf("could not create temporary file")
 	}
@@ -85,8 +86,9 @@ func (u *UploadWriter) Upload() {
 
 	// start from beginning
 	_, _ = u.tempFile.Seek(0, 0)
+	// skip if file is empty
 	scanner := bufio.NewScanner(u.tempFile)
-	if scanner.Scan() && scanner.Text() == "" {
+	if !scanner.Scan() || (scanner.Scan() && strings.TrimSpace(scanner.Text()) == "") {
 		gologger.Verbose().Msgf("Auto Save Skipped, no results found to upload")
 		return
 
@@ -96,10 +98,10 @@ func (u *UploadWriter) Upload() {
 	id, err := u.upload()
 	if err != nil {
 		gologger.Error().Msgf("Failed to upload scan result: %v", err)
-		gologger.Info().Msgf("you can still manually upload scan results file at %v at cloud.projectdiscovery.io", u.tempFile.Name())
+		gologger.Info().Msgf("you can still manually upload scan results file at %v at %v", u.tempFile.Name(), DashBoardURL)
 		return
 	}
-	gologger.Info().Msgf("Successfully uploaded scan result, you can now view results in scans dashboard at %v", fmt.Sprintf(dashboardURL, id))
+	gologger.Info().Msgf("Successfully uploaded scan result, you can now view results in scans dashboard at %v", getScanDashBoardURL(id))
 }
 
 func (u *UploadWriter) upload() (string, error) {
@@ -126,7 +128,7 @@ func (u *UploadWriter) upload() (string, error) {
 		return "", errorutil.NewWithErr(err).Msgf("could not get id from response")
 	}
 	if resp.StatusCode != http.StatusOK {
-		return "", errorutil.NewWithErr(err).Msgf("could not upload results got %v", string(bin))
+		return "", fmt.Errorf("could not upload results got status code %v", resp.StatusCode)
 	}
 	var uploadResp uploadResponse
 	if err := json.Unmarshal(bin, &uploadResp); err != nil {
@@ -146,4 +148,11 @@ func (u *UploadWriter) Close() {
 	if !u.done.Load() {
 		u.Upload()
 	}
+}
+
+func getScanDashBoardURL(id string) string {
+	ux, _ := urlutil.Parse(DashBoardURL)
+	ux.Path = "/scans/" + id
+	ux.Update()
+	return ux.String()
 }

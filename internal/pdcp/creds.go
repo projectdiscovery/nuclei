@@ -26,6 +26,7 @@ const (
 	apiKeyEnv        = "PDCP_API_KEY"
 	apiServerEnv     = "PDCP_API_SERVER"
 	ApiKeyHeaderName = "X-Api-Key"
+	dashBoardEnv     = "PDCP_DASHBOARD_URL"
 )
 
 type PDCPCredentials struct {
@@ -131,4 +132,8 @@ func (p *PDCPCredHandler) ValidateAPIKey(key string, host string, toolName strin
 		return nil, fmt.Errorf("invalid response from server got %v", string(bin))
 	}
 	return &PDCPCredentials{Username: profile.UserName, APIKey: key, Server: host}, nil
+}
+
+func init() {
+	DashBoardURL = env.GetEnvOrDefault("PDCP_DASHBOARD_URL", DashBoardURL)
 }

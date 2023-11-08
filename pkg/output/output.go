@@ -47,20 +47,21 @@ type Writer interface {
 
 // StandardWriter is a writer writing output to file and screen for results.
 type StandardWriter struct {
-	json             bool
-	jsonReqResp      bool
-	timestamp        bool
-	noMetadata       bool
-	matcherStatus    bool
-	mutex            *sync.Mutex
-	aurora           aurora.Aurora
-	outputFile       io.WriteCloser
-	traceFile        io.WriteCloser
-	errorFile        io.WriteCloser
-	severityColors   func(severity.Severity) string
-	storeResponse    bool
-	storeResponseDir string
-	DisableStdout    bool
+	json                  bool
+	jsonReqResp           bool
+	timestamp             bool
+	noMetadata            bool
+	matcherStatus         bool
+	mutex                 *sync.Mutex
+	aurora                aurora.Aurora
+	outputFile            io.WriteCloser
+	traceFile             io.WriteCloser
+	errorFile             io.WriteCloser
+	severityColors        func(severity.Severity) string
+	storeResponse         bool
+	storeResponseDir      string
+	DisableStdout         bool
+	AddNewLinesOutputFile bool // by default this is only done for stdout
 }
 
 var decolorizerRegex = regexp.MustCompile(`\x1B\[[0-9;]*[a-zA-Z]`)
@@ -248,6 +249,9 @@ func (w *StandardWriter) Write(event *ResultEvent) error {
 		}
 		if _, writeErr := w.outputFile.Write(data); writeErr != nil {
 			return errors.Wrap(err, "could not write to output")
+		}
+		if w.AddNewLinesOutputFile && w.json {
+			_, _ = w.outputFile.Write([]byte("\n"))
 		}
 	}
 	return nil

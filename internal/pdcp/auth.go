@@ -13,8 +13,8 @@ import (
 	"golang.org/x/term"
 )
 
-const (
-	LoginURL         = "https://cloud.projectdiscovery.io"
+var (
+	DashBoardURL     = "https://cloud.projectdiscovery.io"
 	DefaultApiServer = "https://api.dev.projectdiscovery.io"
 )
 
@@ -41,7 +41,7 @@ func CheckNValidateCredentials(toolName string) {
 	}
 
 	// if we are here, we need to get credentials from user
-	gologger.Info().Msgf("Get your free api key by signing up at %v", LoginURL)
+	gologger.Info().Msgf("Get your free api key by signing up at %v", DashBoardURL)
 	fmt.Printf("[*] Enter PDCP API Key (exit to abort): ")
 	bin, err := term.ReadPassword(int(os.Stdin.Fd()))
 	if err != nil {

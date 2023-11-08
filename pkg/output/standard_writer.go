@@ -99,8 +99,9 @@ func WithStoreResponse(storeResponse bool, respDir string) WriterOptions {
 // if no writer is specified it writes to stdout
 func NewWriter(opts ...WriterOptions) (*StandardWriter, error) {
 	s := &StandardWriter{
-		mutex:         &sync.Mutex{},
-		DisableStdout: true,
+		mutex:                 &sync.Mutex{},
+		DisableStdout:         true,
+		AddNewLinesOutputFile: true,
 	}
 	for _, opt := range opts {
 		if err := opt(s); err != nil {
