@@ -35,7 +35,7 @@ import (
 // applyRequiredDefaults to options
 func (e *NucleiEngine) applyRequiredDefaults() {
 	if e.customWriter == nil {
-		mockoutput := testutils.NewMockOutputWriter()
+		mockoutput := testutils.NewMockOutputWriter(e.opts.OmitTemplate)
 		mockoutput.WriteCallback = func(event *output.ResultEvent) {
 			if len(e.resultCallbacks) > 0 {
 				for _, callback := range e.resultCallbacks {
