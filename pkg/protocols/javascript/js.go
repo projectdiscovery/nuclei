@@ -634,6 +634,7 @@ func (request *Request) MakeResultEventItem(wrapped *output.InternalWrappedEvent
 		Request:          types.ToString(wrapped.InternalEvent["request"]),
 		Response:         types.ToString(wrapped.InternalEvent["response"]),
 		IP:               types.ToString(wrapped.InternalEvent["ip"]),
+		TemplateEncoded:  request.options.EncodeTemplate(),
 	}
 	return data
 }

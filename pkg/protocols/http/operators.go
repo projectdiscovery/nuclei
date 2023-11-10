@@ -164,6 +164,7 @@ func (request *Request) MakeResultEventItem(wrapped *output.InternalWrappedEvent
 		Request:          types.ToString(wrapped.InternalEvent["request"]),
 		Response:         request.truncateResponse(wrapped.InternalEvent["response"]),
 		CURLCommand:      types.ToString(wrapped.InternalEvent["curl-command"]),
+		TemplateEncoded:  request.options.EncodeTemplate(),
 	}
 	return data
 }

@@ -107,6 +107,7 @@ func (request *Request) MakeResultEventItem(wrapped *output.InternalWrappedEvent
 		ExtractedResults: wrapped.OperatorsResult.OutputExtracts,
 		Response:         types.ToString(wrapped.InternalEvent["raw"]),
 		Timestamp:        time.Now(),
+		TemplateEncoded:  request.options.EncodeTemplate(),
 	}
 	return data
 }

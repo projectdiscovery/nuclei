@@ -51,6 +51,28 @@ type Config struct {
 	configDir      string `json:"-"` //  Nuclei Global Config Directory
 }
 
+// IsCustomTemplate determines whether a given template is custom-built or part of the official Nuclei templates.
+// It checks if the template's path matches any of the predefined custom template directories
+// (such as S3, GitHub, GitLab, and Azure directories). If the template resides in any of these directories,
+// it is considered custom. Additionally, if the template's path does not start with the main Nuclei TemplatesDirectory,
+// it is also considered custom. This function assumes that template paths are either absolute
+// or relative to the same base as the paths configured in DefaultConfig.
+func (c *Config) IsCustomTemplate(templatePath string) bool {
+	customDirs := []string{
+		c.CustomS3TemplatesDirectory,
+		c.CustomGitHubTemplatesDirectory,
+		c.CustomGitLabTemplatesDirectory,
+		c.CustomAzureTemplatesDirectory,
+	}
+
+	for _, dir := range customDirs {
+		if strings.HasPrefix(templatePath, dir) {
+			return true
+		}
+	}
+	return !strings.HasPrefix(templatePath, c.TemplatesDirectory)
+}
+
 // WriteVersionCheckData writes version check data to config file
 func (c *Config) WriteVersionCheckData(ignorehash, nucleiVersion, templatesVersion string) error {
 	updated := false

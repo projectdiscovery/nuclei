@@ -39,7 +39,7 @@ func setup() {
 	progressImpl, _ := progress.NewStatsTicker(0, false, false, false, 0)
 
 	executerOpts = protocols.ExecutorOptions{
-		Output:       testutils.NewMockOutputWriter(),
+		Output:       testutils.NewMockOutputWriter(options.OmitTemplate),
 		Options:      options,
 		Progress:     progressImpl,
 		ProjectFile:  nil,
