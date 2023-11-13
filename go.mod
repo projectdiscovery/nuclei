@@ -24,7 +24,7 @@ require (
 	github.com/projectdiscovery/fastdialer v0.0.43
 	github.com/projectdiscovery/hmap v0.0.24
 	github.com/projectdiscovery/interactsh v1.1.7
-	github.com/projectdiscovery/rawhttp v0.1.24
+	github.com/projectdiscovery/rawhttp v0.1.25
 	github.com/projectdiscovery/retryabledns v1.0.41
 	github.com/projectdiscovery/retryablehttp-go v1.0.35
 	github.com/projectdiscovery/yamldoc-go v1.0.4
