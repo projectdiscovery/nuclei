@@ -84,7 +84,7 @@ require (
 	github.com/projectdiscovery/gostruct v0.0.2
 	github.com/projectdiscovery/gozero v0.0.1
 	github.com/projectdiscovery/httpx v1.3.6
-	github.com/projectdiscovery/mapcidr v1.1.14
+	github.com/projectdiscovery/mapcidr v1.1.15
 	github.com/projectdiscovery/n3iwf v0.0.0-20230523120440-b8cd232ff1f5
 	github.com/projectdiscovery/ratelimit v0.0.14
 	github.com/projectdiscovery/rdap v0.9.1-0.20221108103045-9865884d1917
