@@ -793,8 +793,8 @@ github.com/projectdiscovery/clistats v0.0.19 h1:SA/qRHbmS9VEbVEPzX/ka01hZDYATL9Z
 github.com/projectdiscovery/clistats v0.0.19/go.mod h1:NQDAW/O7cK9xBIgk46kJjwGRkjSg5JkB8E4DvuxXr+c=
 github.com/projectdiscovery/dsl v0.0.27 h1:7JosPkZi7l6wHn4ojxjZRqFIh58d5z2V/ZSDfvBEXDI=
 github.com/projectdiscovery/dsl v0.0.27/go.mod h1:jYku7Nu5FvlidS0+QNmh2I/UMvemf37bkWMKEU+SZ00=
-github.com/projectdiscovery/fastdialer v0.0.42 h1:O8YKG1bsMMOLbnt8k5B37sWqGOgHmvtlVuFBkIBU7Gg=
-github.com/projectdiscovery/fastdialer v0.0.42/go.mod h1:SMsoaA9W25A55fqj18ibUD/yCSfhPsaq11ATXGD9aXg=
+github.com/projectdiscovery/fastdialer v0.0.43 h1:tL1Ivcx4XVJ5hjPA0OoXy8P3TB5paPTnRjkOm/DSLNs=
+github.com/projectdiscovery/fastdialer v0.0.43/go.mod h1:pPYldB5+HwlRNB69vHOUBx/Uk0NBcSw1y4z3UZyPOiU=
 github.com/projectdiscovery/fasttemplate v0.0.2 h1:h2cISk5xDhlJEinlBQS6RRx0vOlOirB2y3Yu4PJzpiA=
 github.com/projectdiscovery/fasttemplate v0.0.2/go.mod h1:XYWWVMxnItd+r0GbjA1GCsUopMw1/XusuQxdyAIHMCw=
 github.com/projectdiscovery/freeport v0.0.5 h1:jnd3Oqsl4S8n0KuFkE5Hm8WGDP24ITBvmyw5pFTHS8Q=
@@ -827,8 +827,8 @@ github.com/projectdiscovery/rdap v0.9.1-0.20221108103045-9865884d1917 h1:m03X4gB
 github.com/projectdiscovery/rdap v0.9.1-0.20221108103045-9865884d1917/go.mod h1:JxXtZC9e195awe7EynrcnBJmFoad/BNDzW9mzFkK8Sg=
 github.com/projectdiscovery/retryabledns v1.0.41 h1:08EKCoKy+Vusxa84ZMN/KLF4CvwfHB+GYbZUWD7tJo0=
 github.com/projectdiscovery/retryabledns v1.0.41/go.mod h1:AnMPvBks/ZJLcD9wIPMJ/Mu2eEv0mmShiz7oCTwuUns=
-github.com/projectdiscovery/retryablehttp-go v1.0.34 h1:WbRc4uC3zojCQc0iQvh5Bmb/0W/0TOxEKdmDTaKkaQs=
-github.com/projectdiscovery/retryablehttp-go v1.0.34/go.mod h1:tZ3+g7wye1AWuU8utoO02joOB+Jbty8968yEXFCnLPk=
+github.com/projectdiscovery/retryablehttp-go v1.0.35 h1:neiZxP9Dn2rY8VLybr0lJP4ztAkGX5mM7C+Pq2rY0v4=
+github.com/projectdiscovery/retryablehttp-go v1.0.35/go.mod h1:yO6T+2rhVDrr0vwqHcVTLFz3LbZT2aqyBwCQe8GDsQY=
 github.com/projectdiscovery/sarif v0.0.1 h1:C2Tyj0SGOKbCLgHrx83vaE6YkzXEVrMXYRGLkKCr/us=
 github.com/projectdiscovery/sarif v0.0.1/go.mod h1:cEYlDu8amcPf6b9dSakcz2nNnJsoz4aR6peERwV+wuQ=
 github.com/projectdiscovery/stringsutil v0.0.2 h1:uzmw3IVLJSMW1kEg8eCStG/cGbYYZAja8BH3LqqJXMA=
