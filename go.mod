@@ -21,12 +21,12 @@ require (
 	github.com/olekukonko/tablewriter v0.0.5
 	github.com/pkg/errors v0.9.1
 	github.com/projectdiscovery/clistats v0.0.19
-	github.com/projectdiscovery/fastdialer v0.0.42
+	github.com/projectdiscovery/fastdialer v0.0.43
 	github.com/projectdiscovery/hmap v0.0.24
 	github.com/projectdiscovery/interactsh v1.1.7
-	github.com/projectdiscovery/rawhttp v0.1.24
-	github.com/projectdiscovery/retryabledns v1.0.41
-	github.com/projectdiscovery/retryablehttp-go v1.0.34
+	github.com/projectdiscovery/rawhttp v0.1.25
+	github.com/projectdiscovery/retryabledns v1.0.42
+	github.com/projectdiscovery/retryablehttp-go v1.0.35
 	github.com/projectdiscovery/yamldoc-go v1.0.4
 	github.com/remeh/sizedwaitgroup v1.0.0
 	github.com/rs/xid v1.5.0
@@ -83,8 +83,8 @@ require (
 	github.com/projectdiscovery/gologger v1.1.11
 	github.com/projectdiscovery/gostruct v0.0.2
 	github.com/projectdiscovery/gozero v0.0.1
-	github.com/projectdiscovery/httpx v1.3.5
-	github.com/projectdiscovery/mapcidr v1.1.14
+	github.com/projectdiscovery/httpx v1.3.6
+	github.com/projectdiscovery/mapcidr v1.1.15
 	github.com/projectdiscovery/n3iwf v0.0.0-20230523120440-b8cd232ff1f5
 	github.com/projectdiscovery/ratelimit v0.0.14
 	github.com/projectdiscovery/rdap v0.9.1-0.20221108103045-9865884d1917
