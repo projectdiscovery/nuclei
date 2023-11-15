@@ -9,6 +9,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/progress"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
+	"github.com/projectdiscovery/nuclei/v3/pkg/scan"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	"github.com/projectdiscovery/nuclei/v3/pkg/workflows"
 	"github.com/stretchr/testify/require"
@@ -186,12 +187,13 @@ func (m *mockExecuter) Execute(input *contextargs.Context) (bool, error) {
 }
 
 // ExecuteWithResults executes the protocol requests and returns results instead of writing them.
-func (m *mockExecuter) ExecuteWithResults(input *contextargs.Context, callback protocols.OutputEventCallback) error {
+func (m *mockExecuter) ExecuteWithResults(input *contextargs.Context) ([]*output.ResultEvent, error) {
+	scanCtx := scan.NewScanContext(input)
 	if m.executeHook != nil {
 		m.executeHook(input.MetaInput)
 	}
 	for _, output := range m.outputs {
-		callback(output)
+		scanCtx.LogEvent(output)
 	}
-	return nil
+	return scanCtx.GenerateResult(), nil
 }
