@@ -12,6 +12,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/helpers/writer"
+	"github.com/projectdiscovery/nuclei/v3/pkg/scan"
 	"github.com/projectdiscovery/nuclei/v3/pkg/templates/types"
 	cryptoutil "github.com/projectdiscovery/utils/crypto"
 	mapsutil "github.com/projectdiscovery/utils/maps"
@@ -280,13 +281,14 @@ func (e *ClusterExecuter) Execute(input *contextargs.Context) (bool, error) {
 }
 
 // ExecuteWithResults executes the protocol requests and returns results instead of writing them.
-func (e *ClusterExecuter) ExecuteWithResults(input *contextargs.Context, callback protocols.OutputEventCallback) error {
+func (e *ClusterExecuter) ExecuteWithResults(input *contextargs.Context) ([]*output.ResultEvent, error) {
+	scanCtx := scan.NewScanContext(input)
 	dynamicValues := make(map[string]interface{})
 
 	inputItem := input.Clone()
 	if e.options.InputHelper != nil && input.MetaInput.Input != "" {
 		if inputItem.MetaInput.Input = e.options.InputHelper.Transform(input.MetaInput.Input, e.templateType); input.MetaInput.Input == "" {
-			return nil
+			return nil, nil
 		}
 	}
 	err := e.requests.ExecuteWithResults(inputItem, dynamicValues, nil, func(event *output.InternalWrappedEvent) {
@@ -298,12 +300,13 @@ func (e *ClusterExecuter) ExecuteWithResults(input *contextargs.Context, callbac
 				event.InternalEvent["template-path"] = operator.templatePath
 				event.InternalEvent["template-info"] = operator.templateInfo
 				event.Results = e.requests.MakeResultEvent(event)
-				callback(event)
+				// callback(event)
+				scanCtx.LogEvent(event)
 			}
 		}
 	})
 	if err != nil && e.options.HostErrorsCache != nil {
 		e.options.HostErrorsCache.MarkFailed(input.MetaInput.Input, err)
 	}
-	return err
+	return scanCtx.GenerateResult(), err
 }

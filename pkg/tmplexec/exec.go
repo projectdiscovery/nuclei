@@ -12,6 +12,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/helpers/writer"
+	"github.com/projectdiscovery/nuclei/v3/pkg/scan"
 	"github.com/projectdiscovery/nuclei/v3/pkg/tmplexec/flow"
 	"github.com/projectdiscovery/nuclei/v3/pkg/tmplexec/generic"
 	"github.com/projectdiscovery/nuclei/v3/pkg/tmplexec/multiproto"
@@ -111,7 +112,8 @@ func (e *TemplateExecuter) Execute(input *contextargs.Context) (bool, error) {
 		}
 	}
 
-	cliExecutorCallback := func(event *output.InternalWrappedEvent) {
+	scanCtx := scan.NewScanContext(input)
+	scanCtx.OnResult = func(event *output.InternalWrappedEvent) {
 		if event == nil {
 			// something went wrong
 			return
@@ -142,9 +144,9 @@ func (e *TemplateExecuter) Execute(input *contextargs.Context) (bool, error) {
 		if err := flowexec.Compile(); err != nil {
 			return false, err
 		}
-		err = flowexec.ExecuteWithResults(input, cliExecutorCallback)
+		err = flowexec.ExecuteWithResults(scanCtx)
 	} else {
-		err = e.engine.ExecuteWithResults(input, cliExecutorCallback)
+		err = e.engine.ExecuteWithResults(scanCtx)
 	}
 
 	if lastMatcherEvent != nil {
@@ -154,11 +156,11 @@ func (e *TemplateExecuter) Execute(input *contextargs.Context) (bool, error) {
 }
 
 // ExecuteWithResults executes the protocol requests and returns results instead of writing them.
-func (e *TemplateExecuter) ExecuteWithResults(input *contextargs.Context, callback protocols.OutputEventCallback) error {
-	userCallback := func(event *output.InternalWrappedEvent) {
-		if event != nil {
-			callback(event)
-		}
+func (e *TemplateExecuter) ExecuteWithResults(input *contextargs.Context) ([]*output.ResultEvent, error) {
+	scanCtx := scan.NewScanContext(input)
+	err := e.engine.ExecuteWithResults(scanCtx)
+	if err != nil && !e.options.Options.MatcherStatus {
+		return nil, err
 	}
-	return e.engine.ExecuteWithResults(input, userCallback)
+	return scanCtx.GenerateResult(), err
 }

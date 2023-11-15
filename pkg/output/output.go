@@ -157,6 +157,7 @@ type ResultEvent struct {
 	Lines []int `json:"matched-line,omitempty"`
 
 	FileToIndexPosition map[string]int `json:"-"`
+	Error               string         `json:"error,omitempty"`
 }
 
 // NewStandardWriter creates a new output writer based on user configurations

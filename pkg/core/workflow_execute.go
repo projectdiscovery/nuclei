@@ -1,14 +1,12 @@
 package core
 
 import (
-	"fmt"
 	"net/http/cookiejar"
 	"sync/atomic"
 
 	"github.com/remeh/sizedwaitgroup"
 
 	"github.com/projectdiscovery/gologger"
-	"github.com/projectdiscovery/nuclei/v3/pkg/output"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
 	"github.com/projectdiscovery/nuclei/v3/pkg/workflows"
 )
@@ -61,33 +59,33 @@ func (e *Engine) runWorkflowStep(template *workflows.WorkflowTemplate, input *co
 
 			// Don't print results with subtemplates, only print results on template.
 			if len(template.Subtemplates) > 0 {
-				err = executer.Executer.ExecuteWithResults(input, func(result *output.InternalWrappedEvent) {
-					if result.OperatorsResult == nil {
-						return
-					}
-					if len(result.Results) > 0 {
-						firstMatched = true
-					}
+				// err = executer.Executer.ExecuteWithResults(input, func(result *output.InternalWrappedEvent) {
+				// 	if result.OperatorsResult == nil {
+				// 		return
+				// 	}
+				// 	if len(result.Results) > 0 {
+				// 		firstMatched = true
+				// 	}
 
-					if result.OperatorsResult != nil && result.OperatorsResult.Extracts != nil {
-						for k, v := range result.OperatorsResult.Extracts {
-							// normalize items:
-							switch len(v) {
-							case 0, 1:
-								// - key:[item] => key: item
-								input.Set(k, v[0])
-							default:
-								// - key:[item_0, ..., item_n] => key0:item_0, keyn:item_n
-								for vIdx, vVal := range v {
-									normalizedKIdx := fmt.Sprintf("%s%d", k, vIdx)
-									input.Set(normalizedKIdx, vVal)
-								}
-								// also add the original name with full slice
-								input.Set(k, v)
-							}
-						}
-					}
-				})
+				// 	if result.OperatorsResult != nil && result.OperatorsResult.Extracts != nil {
+				// 		for k, v := range result.OperatorsResult.Extracts {
+				// 			// normalize items:
+				// 			switch len(v) {
+				// 			case 0, 1:
+				// 				// - key:[item] => key: item
+				// 				input.Set(k, v[0])
+				// 			default:
+				// 				// - key:[item_0, ..., item_n] => key0:item_0, keyn:item_n
+				// 				for vIdx, vVal := range v {
+				// 					normalizedKIdx := fmt.Sprintf("%s%d", k, vIdx)
+				// 					input.Set(normalizedKIdx, vVal)
+				// 				}
+				// 				// also add the original name with full slice
+				// 				input.Set(k, v)
+				// 			}
+				// 		}
+				// 	}
+				// })
 			} else {
 				var matched bool
 				matched, err = executer.Executer.Execute(input)
@@ -115,35 +113,35 @@ func (e *Engine) runWorkflowStep(template *workflows.WorkflowTemplate, input *co
 		for _, executer := range template.Executers {
 			executer.Options.Progress.AddToTotal(int64(executer.Executer.Requests()))
 
-			err := executer.Executer.ExecuteWithResults(input, func(event *output.InternalWrappedEvent) {
-				if event.OperatorsResult == nil {
-					return
-				}
+			// err := executer.Executer.ExecuteWithResults(input, func(event *output.InternalWrappedEvent) {
+			// 	if event.OperatorsResult == nil {
+			// 		return
+			// 	}
 
-				if event.OperatorsResult.Extracts != nil {
-					for k, v := range event.OperatorsResult.Extracts {
-						input.Set(k, v)
-					}
-				}
+			// 	if event.OperatorsResult.Extracts != nil {
+			// 		for k, v := range event.OperatorsResult.Extracts {
+			// 			input.Set(k, v)
+			// 		}
+			// 	}
 
-				for _, matcher := range template.Matchers {
-					if !matcher.Match(event.OperatorsResult) {
-						continue
-					}
+			// 	for _, matcher := range template.Matchers {
+			// 		if !matcher.Match(event.OperatorsResult) {
+			// 			continue
+			// 		}
 
-					for _, subtemplate := range matcher.Subtemplates {
-						swg.Add()
+			// 		for _, subtemplate := range matcher.Subtemplates {
+			// 			swg.Add()
 
-						go func(subtemplate *workflows.WorkflowTemplate) {
-							defer swg.Done()
+			// 			go func(subtemplate *workflows.WorkflowTemplate) {
+			// 				defer swg.Done()
 
-							if err := e.runWorkflowStep(subtemplate, input, results, swg, w); err != nil {
-								gologger.Warning().Msgf(workflowStepExecutionError, subtemplate.Template, err)
-							}
-						}(subtemplate)
-					}
-				}
-			})
+			// 				if err := e.runWorkflowStep(subtemplate, input, results, swg, w); err != nil {
+			// 					gologger.Warning().Msgf(workflowStepExecutionError, subtemplate.Template, err)
+			// 				}
+			// 			}(subtemplate)
+			// 		}
+			// 	}
+			// })
 			if err != nil {
 				if len(template.Executers) == 1 {
 					mainErr = err

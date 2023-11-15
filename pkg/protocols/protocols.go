@@ -42,7 +42,7 @@ type Executer interface {
 	// Execute executes the protocol group and returns true or false if results were found.
 	Execute(input *contextargs.Context) (bool, error)
 	// ExecuteWithResults executes the protocol requests and returns results instead of writing them.
-	ExecuteWithResults(input *contextargs.Context, callback OutputEventCallback) error
+	ExecuteWithResults(input *contextargs.Context) ([]*output.ResultEvent, error)
 }
 
 // ExecutorOptions contains the configuration options for executer clients

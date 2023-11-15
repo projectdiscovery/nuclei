@@ -5,7 +5,6 @@ import (
 	"sync/atomic"
 
 	"github.com/projectdiscovery/gologger"
-	"github.com/projectdiscovery/nuclei/v3/pkg/output"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
 	"github.com/projectdiscovery/nuclei/v3/pkg/templates"
 	"github.com/projectdiscovery/nuclei/v3/pkg/templates/types"
@@ -24,11 +23,12 @@ func (e *Engine) executeAllSelfContained(alltemplates []*templates.Template, res
 			var err error
 			var match bool
 			if e.Callback != nil {
-				err = template.Executer.ExecuteWithResults(contextargs.New(), func(event *output.InternalWrappedEvent) {
-					for _, result := range event.Results {
+				if results, err := template.Executer.ExecuteWithResults(contextargs.New()); err != nil {
+					for _, result := range results {
 						e.Callback(result)
 					}
-				})
+				}
+
 				match = true
 			} else {
 				match, err = template.Executer.Execute(contextargs.New())
@@ -118,11 +118,11 @@ func (e *Engine) executeTemplateWithTargets(template *templates.Template, target
 				ctxArgs := contextargs.New()
 				ctxArgs.MetaInput = value
 				if e.Callback != nil {
-					err = template.Executer.ExecuteWithResults(ctxArgs, func(event *output.InternalWrappedEvent) {
-						for _, result := range event.Results {
+					if results, err := template.Executer.ExecuteWithResults(ctxArgs); err != nil {
+						for _, result := range results {
 							e.Callback(result)
 						}
-					})
+					}
 					match = true
 				} else {
 					match, err = template.Executer.Execute(ctxArgs)
@@ -173,11 +173,11 @@ func (e *Engine) executeTemplatesOnTarget(alltemplates []*templates.Template, ta
 				ctxArgs := contextargs.New()
 				ctxArgs.MetaInput = value
 				if e.Callback != nil {
-					err = template.Executer.ExecuteWithResults(ctxArgs, func(event *output.InternalWrappedEvent) {
-						for _, result := range event.Results {
+					if results, err := template.Executer.ExecuteWithResults(ctxArgs); err != nil {
+						for _, result := range results {
 							e.Callback(result)
 						}
-					})
+					}
 					match = true
 				} else {
 					match, err = template.Executer.Execute(ctxArgs)
