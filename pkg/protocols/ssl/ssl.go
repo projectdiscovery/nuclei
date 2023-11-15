@@ -375,6 +375,7 @@ func (request *Request) MakeResultEventItem(wrapped *output.InternalWrappedEvent
 		Timestamp:        time.Now(),
 		MatcherStatus:    true,
 		IP:               types.ToString(wrapped.InternalEvent["ip"]),
+		TemplateEncoded:  request.options.EncodeTemplate(),
 	}
 	return data
 }

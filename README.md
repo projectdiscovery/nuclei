@@ -157,8 +157,9 @@ OUTPUT:
    -silent                       display findings only
    -nc, -no-color                disable output content coloring (ANSI escape codes)
    -j, -jsonl                    write output in JSONL(ines) format
-   -irr, -include-rr             include request/response pairs in the JSON, JSONL, and Markdown outputs (for findings only) [DEPRECATED use -omit-raw] (default true)
+   -irr, -include-rr -omit-raw   include request/response pairs in the JSON, JSONL, and Markdown outputs (for findings only) [DEPRECATED use -omit-raw] (default true)
    -or, -omit-raw                omit request/response pairs in the JSON, JSONL, and Markdown outputs (for findings only)
+   -ot, -omit-template           omit encoded template in the JSON, JSONL output
    -nm, -no-meta                 disable printing result metadata in cli output
    -ts, -timestamp               enables printing timestamp in cli output
    -rdb, -report-db string       nuclei reporting database (always use this to persist report data)
