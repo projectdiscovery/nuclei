@@ -12,6 +12,8 @@ import (
 	"strings"
 	"time"
 
+	_ "github.com/projectdiscovery/utils/pprof"
+
 	"github.com/projectdiscovery/goflags"
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/gologger/levels"
