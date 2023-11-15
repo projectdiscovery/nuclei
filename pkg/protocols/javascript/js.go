@@ -435,7 +435,7 @@ func (request *Request) executeRequestWithPayloads(hostPort string, input *conte
 	request.options.Progress.IncrementRequests()
 
 	requestOptions.Output.Request(requestOptions.TemplateID, hostPort, request.Type().String(), err)
-	gologger.Verbose().Msgf("[%s] Sent Javascript request to %s", request.TemplateID, hostPort)
+	gologger.Verbose().Msgf("[%s] Sent Javascript request to %s", request.options.TemplateID, hostPort)
 
 	if requestOptions.Options.Debug || requestOptions.Options.DebugRequests || requestOptions.Options.StoreResponse {
 		msg := fmt.Sprintf("[%s] Dumped Javascript request for %s:\nVariables:\n %v", requestOptions.TemplateID, input.MetaInput.Input, vardump.DumpVariables(argsCopy.Args))
@@ -634,6 +634,7 @@ func (request *Request) MakeResultEventItem(wrapped *output.InternalWrappedEvent
 		Request:          types.ToString(wrapped.InternalEvent["request"]),
 		Response:         types.ToString(wrapped.InternalEvent["response"]),
 		IP:               types.ToString(wrapped.InternalEvent["ip"]),
+		TemplateEncoded:  request.options.EncodeTemplate(),
 	}
 	return data
 }

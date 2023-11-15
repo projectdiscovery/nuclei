@@ -2,9 +2,12 @@ package testutils
 
 import (
 	"context"
+	"encoding/base64"
+	"os"
 	"time"
 
 	"github.com/projectdiscovery/ratelimit"
+	"go.uber.org/multierr"
 
 	"github.com/logrusorgru/aurora"
 
@@ -83,7 +86,7 @@ func NewMockExecuterOptions(options *types.Options, info *TemplateInfo) *protoco
 		TemplateID:   info.ID,
 		TemplateInfo: info.Info,
 		TemplatePath: info.Path,
-		Output:       NewMockOutputWriter(),
+		Output:       NewMockOutputWriter(options.OmitTemplate),
 		Options:      options,
 		Progress:     progressImpl,
 		ProjectFile:  nil,
@@ -105,14 +108,15 @@ func (n *NoopWriter) Write(data []byte, level levels.Level) {}
 // MockOutputWriter is a mocked output writer.
 type MockOutputWriter struct {
 	aurora          aurora.Aurora
+	omitTemplate    bool
 	RequestCallback func(templateID, url, requestType string, err error)
 	FailureCallback func(result *output.InternalEvent)
 	WriteCallback   func(o *output.ResultEvent)
 }
 
 // NewMockOutputWriter creates a new mock output writer
-func NewMockOutputWriter() *MockOutputWriter {
-	return &MockOutputWriter{aurora: aurora.NewAurora(false)}
+func NewMockOutputWriter(omomitTemplate bool) *MockOutputWriter {
+	return &MockOutputWriter{aurora: aurora.NewAurora(false), omitTemplate: omomitTemplate}
 }
 
 // Close closes the output writer interface
@@ -140,34 +144,57 @@ func (m *MockOutputWriter) Request(templateID, url, requestType string, err erro
 
 // WriteFailure writes the event to file and/or screen.
 func (m *MockOutputWriter) WriteFailure(wrappedEvent *output.InternalWrappedEvent) error {
-	if m.WriteCallback != nil {
-		// create event
-		event := wrappedEvent.InternalEvent
-		templatePath, templateURL := utils.TemplatePathURL(types.ToString(event["template-path"]), types.ToString(event["template-id"]))
-		var templateInfo model.Info
-		if ti, ok := event["template-info"].(model.Info); ok {
-			templateInfo = ti
+	// if failure event has more than one result, write them all
+	if len(wrappedEvent.Results) > 0 {
+		errs := []error{}
+		for _, result := range wrappedEvent.Results {
+			result.MatcherStatus = false // just in case
+			if err := m.Write(result); err != nil {
+				errs = append(errs, err)
+			}
 		}
-		data := &output.ResultEvent{
-			Template:      templatePath,
-			TemplateURL:   templateURL,
-			TemplateID:    types.ToString(event["template-id"]),
-			TemplatePath:  types.ToString(event["template-path"]),
-			Info:          templateInfo,
-			Type:          types.ToString(event["type"]),
-			Host:          types.ToString(event["host"]),
-			Request:       types.ToString(event["request"]),
-			Response:      types.ToString(event["response"]),
-			MatcherStatus: false,
-			Timestamp:     time.Now(),
+		if len(errs) > 0 {
+			return multierr.Combine(errs...)
 		}
-		m.WriteCallback(data)
+		return nil
 	}
-	return nil
-}
-func (m *MockOutputWriter) WriteStoreDebugData(host, templateID, eventType string, data string) {
 
+	// create event
+	event := wrappedEvent.InternalEvent
+	templatePath, templateURL := utils.TemplatePathURL(types.ToString(event["template-path"]), types.ToString(event["template-id"]))
+	var templateInfo model.Info
+	if ti, ok := event["template-info"].(model.Info); ok {
+		templateInfo = ti
+	}
+	data := &output.ResultEvent{
+		Template:      templatePath,
+		TemplateURL:   templateURL,
+		TemplateID:    types.ToString(event["template-id"]),
+		TemplatePath:  types.ToString(event["template-path"]),
+		Info:          templateInfo,
+		Type:          types.ToString(event["type"]),
+		Host:          types.ToString(event["host"]),
+		Request:       types.ToString(event["request"]),
+		Response:      types.ToString(event["response"]),
+		MatcherStatus: false,
+		Timestamp:     time.Now(),
+		//FIXME: this is workaround to encode the template when no results were found
+		TemplateEncoded: m.encodeTemplate(types.ToString(event["template-path"])),
+	}
+	return m.Write(data)
 }
+
+var maxTemplateFileSizeForEncoding = 1024 * 1024
+
+func (w *MockOutputWriter) encodeTemplate(templatePath string) string {
+	data, err := os.ReadFile(templatePath)
+	if err == nil && !w.omitTemplate && len(data) <= maxTemplateFileSizeForEncoding && config.DefaultConfig.IsCustomTemplate(templatePath) {
+		return base64.StdEncoding.EncodeToString(data)
+	}
+	return ""
+}
+
+func (m *MockOutputWriter) WriteStoreDebugData(host, templateID, eventType string, data string) {}
 
 type MockProgressClient struct{}
 

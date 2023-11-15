@@ -75,18 +75,18 @@ func executeNucleiAsLibrary(templatePath, templateURL string) ([]string, error) 
 	}
 	defer reportingClient.Close()
 
-	outputWriter := testutils.NewMockOutputWriter()
-	var results []string
-	outputWriter.WriteCallback = func(event *output.ResultEvent) {
-		results = append(results, fmt.Sprintf("%v\n", event))
-	}
-
 	defaultOpts := types.DefaultOptions()
 	_ = protocolstate.Init(defaultOpts)
 	_ = protocolinit.Init(defaultOpts)
 
 	defaultOpts.Templates = goflags.StringSlice{templatePath}
 	defaultOpts.ExcludeTags = config.ReadIgnoreFile().Tags
+
+	outputWriter := testutils.NewMockOutputWriter(defaultOpts.OmitTemplate)
+	var results []string
+	outputWriter.WriteCallback = func(event *output.ResultEvent) {
+		results = append(results, fmt.Sprintf("%v\n", event))
+	}
 
 	interactOpts := interactsh.DefaultOptions(outputWriter, reportingClient, mockProgress)
 	interactClient, err := interactsh.New(interactOpts)

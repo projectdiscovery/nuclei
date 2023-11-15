@@ -11,12 +11,12 @@ import (
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/gologger/levels"
 	"github.com/projectdiscovery/httpx/common/httpx"
-	"github.com/projectdiscovery/nuclei/v3/internal/installer"
 	"github.com/projectdiscovery/nuclei/v3/internal/runner"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/config"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/disk"
 	"github.com/projectdiscovery/nuclei/v3/pkg/core"
 	"github.com/projectdiscovery/nuclei/v3/pkg/core/inputs"
+	"github.com/projectdiscovery/nuclei/v3/pkg/installer"
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
 	"github.com/projectdiscovery/nuclei/v3/pkg/progress"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
@@ -35,7 +35,7 @@ import (
 // applyRequiredDefaults to options
 func (e *NucleiEngine) applyRequiredDefaults() {
 	if e.customWriter == nil {
-		mockoutput := testutils.NewMockOutputWriter()
+		mockoutput := testutils.NewMockOutputWriter(e.opts.OmitTemplate)
 		mockoutput.WriteCallback = func(event *output.ResultEvent) {
 			if len(e.resultCallbacks) > 0 {
 				for _, callback := range e.resultCallbacks {
@@ -75,9 +75,12 @@ func (e *NucleiEngine) applyRequiredDefaults() {
 	if e.rateLimiter == nil {
 		e.rateLimiter = ratelimit.New(context.Background(), 150, time.Second)
 	}
+	if e.opts.ExcludeTags == nil {
+		e.opts.ExcludeTags = []string{}
+	}
 	// these templates are known to have weak matchers
 	// and idea is to disable them to avoid false positives
-	e.opts.ExcludeTags = config.ReadIgnoreFile().Tags
+	e.opts.ExcludeTags = append(e.opts.ExcludeTags, config.ReadIgnoreFile().Tags...)
 
 	e.inputProvider = &inputs.SimpleInputProvider{
 		Inputs: []*contextargs.MetaInput{},
