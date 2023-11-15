@@ -20,7 +20,6 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolinit"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/utils/vardump"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/headless/engine"
-	protocoltypes "github.com/projectdiscovery/nuclei/v3/pkg/templates/types"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	fileutil "github.com/projectdiscovery/utils/file"
 	"github.com/projectdiscovery/utils/generic"
@@ -184,37 +183,6 @@ func ValidateOptions(options *types.Options) error {
 	if !useIPV4 && !useIPV6 {
 		return errors.New("ipv4 and/or ipv6 must be selected")
 	}
-
-	// Validate cloud option
-	if err := validateCloudOptions(options); err != nil {
-		return err
-	}
-	return nil
-}
-
-func validateCloudOptions(options *types.Options) error {
-	if options.HasCloudOptions() && !options.Cloud {
-		return errors.New("cloud flags cannot be used without cloud option")
-	}
-	if options.Cloud {
-		if options.CloudAPIKey == "" {
-			return errors.New("missing NUCLEI_CLOUD_API env variable")
-		}
-		var missing []string
-		switch options.AddDatasource {
-		case "s3":
-			missing = validateMissingS3Options(options)
-		case "github":
-			missing = validateMissingGitHubOptions(options)
-		case "gitlab":
-			missing = validateMissingGitLabOptions(options)
-		case "azure":
-			missing = validateMissingAzureOptions(options)
-		}
-		if len(missing) > 0 {
-			return fmt.Errorf("missing %v env variables", strings.Join(missing, ", "))
-		}
-	}
 	return nil
 }
 
@@ -251,17 +219,6 @@ func validateMissingAzureOptions(options *types.Options) []string {
 	}
 	if options.AzureContainerName == "" {
 		missing = append(missing, "AZURE_CONTAINER_NAME")
-	}
-	return missing
-}
-
-func validateMissingGitHubOptions(options *types.Options) []string {
-	var missing []string
-	if options.GitHubToken == "" {
-		missing = append(missing, "GITHUB_TOKEN")
-	}
-	if len(options.GitHubTemplateRepo) == 0 {
-		missing = append(missing, "GITHUB_TEMPLATE_REPO")
 	}
 	return missing
 }
@@ -354,17 +311,6 @@ func validateCertificatePaths(certificatePaths ...string) {
 
 // Read the input from env and set options
 func readEnvInputVars(options *types.Options) {
-	if strings.EqualFold(os.Getenv("NUCLEI_CLOUD"), "true") {
-		options.Cloud = true
-
-		// TODO: disable files, offlinehttp, code
-		options.ExcludeProtocols = append(options.ExcludeProtocols, protocoltypes.CodeProtocol, protocoltypes.FileProtocol, protocoltypes.OfflineHTTPProtocol)
-	}
-	if options.CloudURL = os.Getenv("NUCLEI_CLOUD_SERVER"); options.CloudURL == "" {
-		options.CloudURL = "https://cloud-dev.nuclei.sh"
-	}
-	options.CloudAPIKey = os.Getenv("NUCLEI_CLOUD_API")
-
 	options.GitHubToken = os.Getenv("GITHUB_TOKEN")
 	repolist := os.Getenv("GITHUB_TEMPLATE_REPO")
 	if repolist != "" {

@@ -8,13 +8,11 @@ import (
 	_ "net/http/pprof"
 	"os"
 	"reflect"
-	"strconv"
 	"strings"
 	"sync/atomic"
 	"time"
 
 	"github.com/projectdiscovery/nuclei/v3/internal/pdcp"
-	"github.com/projectdiscovery/nuclei/v3/internal/runner/nucleicloud"
 	"github.com/projectdiscovery/nuclei/v3/pkg/installer"
 	uncoverlib "github.com/projectdiscovery/uncover"
 	"github.com/projectdiscovery/utils/env"
@@ -82,8 +80,6 @@ type Runner struct {
 	hostErrors        hosterrorscache.CacheInterface
 	resumeCfg         *types.ResumeCfg
 	pprofServer       *http.Server
-	cloudClient       *nucleicloud.Client
-	cloudTargets      []string
 	// pdcp auto-save options
 	pdcpUploadErrMsg string
 }
@@ -99,10 +95,6 @@ func New(options *types.Options) (*Runner, error) {
 	if options.HealthCheck {
 		gologger.Print().Msgf("%s\n", DoHealthCheck(options))
 		os.Exit(0)
-	}
-
-	if options.Cloud {
-		runner.cloudClient = nucleicloud.New(options.CloudURL, options.CloudAPIKey)
 	}
 
 	//  Version check by default
@@ -218,31 +210,14 @@ func New(options *types.Options) (*Runner, error) {
 		}()
 	}
 
-	if (len(options.Templates) == 0 || !options.NewTemplates || (options.TargetsFilePath == "" && !options.Stdin && len(options.Targets) == 0)) && (options.UpdateTemplates && !options.Cloud) {
+	if (len(options.Templates) == 0 || !options.NewTemplates || (options.TargetsFilePath == "" && !options.Stdin && len(options.Targets) == 0)) && options.UpdateTemplates {
 		os.Exit(0)
 	}
 
+	// @tarunKoyalwar: check hybridoptions ??
 	// Initialize the input source
 	hmapInput, err := hybrid.New(&hybrid.Options{
 		Options: options,
-		NotFoundCallback: func(target string) bool {
-			if !options.Cloud {
-				return false
-			}
-			parsed, parseErr := strconv.ParseInt(target, 10, 64)
-			if parseErr != nil {
-				if err := runner.cloudClient.ExistsDataSourceItem(nucleicloud.ExistsDataSourceItemRequest{Contents: target, Type: "targets"}); err == nil {
-					runner.cloudTargets = append(runner.cloudTargets, target)
-					return true
-				}
-				return false
-			}
-			if exists, err := runner.cloudClient.ExistsTarget(parsed); err == nil {
-				runner.cloudTargets = append(runner.cloudTargets, exists.Reference)
-				return true
-			}
-			return false
-		},
 	})
 	if err != nil {
 		return nil, errors.Wrap(err, "could not create input provider")
@@ -266,11 +241,7 @@ func New(options *types.Options) (*Runner, error) {
 	// Creates the progress tracking object
 	var progressErr error
 	statsInterval := options.StatsInterval
-	if options.Cloud && !options.EnableProgressBar {
-		statsInterval = -1
-		options.EnableProgressBar = true
-	}
-	runner.progress, progressErr = progress.NewStatsTicker(statsInterval, options.EnableProgressBar, options.StatsJSON, options.Cloud, options.MetricsPort)
+	runner.progress, progressErr = progress.NewStatsTicker(statsInterval, options.EnableProgressBar, options.StatsJSON, false, options.MetricsPort)
 	if progressErr != nil {
 		return nil, progressErr
 	}
@@ -488,25 +459,6 @@ func (r *Runner) RunEnumeration() error {
 		return errors.Wrap(err, "could not load templates from config")
 	}
 
-	var cloudTemplates []string
-	if r.options.Cloud {
-		// hook template loading
-		store.NotFoundCallback = func(template string) bool {
-			parsed, parseErr := strconv.ParseInt(template, 10, 64)
-			if parseErr != nil {
-				if err := r.cloudClient.ExistsDataSourceItem(nucleicloud.ExistsDataSourceItemRequest{Type: "templates", Contents: template}); err == nil {
-					cloudTemplates = append(cloudTemplates, template)
-					return true
-				}
-				return false
-			}
-			if exists, err := r.cloudClient.ExistsTemplate(parsed); err == nil {
-				cloudTemplates = append(cloudTemplates, exists.Reference)
-				return true
-			}
-			return false
-		}
-	}
 	if r.options.Validate {
 		if err := store.ValidateTemplates(); err != nil {
 			return err
@@ -559,55 +511,8 @@ func (r *Runner) RunEnumeration() error {
 
 	enumeration := false
 	var results *atomic.Bool
-	if r.options.Cloud {
-		if r.options.ScanList {
-			err = r.getScanList(r.options.OutputLimit)
-		} else if r.options.DeleteScan != "" {
-			err = r.deleteScan(r.options.DeleteScan)
-		} else if r.options.ScanOutput != "" {
-			err = r.getResults(r.options.ScanOutput, r.options.OutputLimit)
-		} else if r.options.ListDatasources {
-			err = r.listDatasources()
-		} else if r.options.ListTargets {
-			err = r.listTargets()
-		} else if r.options.ListTemplates {
-			err = r.listTemplates()
-		} else if r.options.ListReportingSources {
-			err = r.listReportingSources()
-		} else if r.options.AddDatasource != "" {
-			err = r.addCloudDataSource(r.options.AddDatasource)
-		} else if r.options.RemoveDatasource != "" {
-			err = r.removeDatasource(r.options.RemoveDatasource)
-		} else if r.options.DisableReportingSource != "" {
-			err = r.toggleReportingSource(r.options.DisableReportingSource, false)
-		} else if r.options.EnableReportingSource != "" {
-			err = r.toggleReportingSource(r.options.EnableReportingSource, true)
-		} else if r.options.AddTarget != "" {
-			err = r.addTarget(r.options.AddTarget)
-		} else if r.options.AddTemplate != "" {
-			err = r.addTemplate(r.options.AddTemplate)
-		} else if r.options.GetTarget != "" {
-			err = r.getTarget(r.options.GetTarget)
-		} else if r.options.GetTemplate != "" {
-			err = r.getTemplate(r.options.GetTemplate)
-		} else if r.options.RemoveTarget != "" {
-			err = r.removeTarget(r.options.RemoveTarget)
-		} else if r.options.RemoveTemplate != "" {
-			err = r.removeTemplate(r.options.RemoveTemplate)
-		} else if r.options.ReportingConfig != "" {
-			err = r.addCloudReportingSource()
-		} else {
-			if len(store.Templates())+len(store.Workflows())+len(cloudTemplates) == 0 {
-				return errors.New("no templates provided for scan")
-			}
-			gologger.Info().Msgf("Running scan on cloud with URL %s", r.options.CloudURL)
-			results, err = r.runCloudEnumeration(store, cloudTemplates, r.cloudTargets, r.options.NoStore, r.options.OutputLimit)
-			enumeration = true
-		}
-	} else {
-		results, err = r.runStandardEnumeration(executorOpts, store, executorEngine)
-		enumeration = true
-	}
+	results, err = r.runStandardEnumeration(executorOpts, store, executorEngine)
+	enumeration = true
 
 	if !enumeration {
 		return err
