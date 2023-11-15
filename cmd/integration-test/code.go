@@ -87,7 +87,7 @@ type codeSnippet struct{}
 
 // Execute executes a test case and returns an error if occurred
 func (h *codeSnippet) Execute(filePath string) error {
-	results, err := testutils.RunNucleiArgsWithEnvAndGetResults(debug, getEnvValues(), "-t", filePath, "-u", "input")
+	results, err := testutils.RunNucleiArgsWithEnvAndGetResults(debug, getEnvValues(), "-t", filePath, "-u", "input", "-code")
 	if err != nil {
 		return err
 	}
@@ -98,7 +98,7 @@ type codeFile struct{}
 
 // Execute executes a test case and returns an error if occurred
 func (h *codeFile) Execute(filePath string) error {
-	results, err := testutils.RunNucleiArgsWithEnvAndGetResults(debug, getEnvValues(), "-t", filePath, "-u", "input")
+	results, err := testutils.RunNucleiArgsWithEnvAndGetResults(debug, getEnvValues(), "-t", filePath, "-u", "input", "-code")
 	if err != nil {
 		return err
 	}
@@ -109,7 +109,7 @@ type codeEnvVar struct{}
 
 // Execute executes a test case and returns an error if occurred
 func (h *codeEnvVar) Execute(filePath string) error {
-	results, err := testutils.RunNucleiArgsWithEnvAndGetResults(debug, getEnvValues(), "-t", filePath, "-u", "input", "-V", "baz=baz")
+	results, err := testutils.RunNucleiArgsWithEnvAndGetResults(debug, getEnvValues(), "-t", filePath, "-u", "input", "-V", "baz=baz", "-code")
 	if err != nil {
 		return err
 	}
@@ -120,7 +120,7 @@ type unsignedCode struct{}
 
 // Execute executes a test case and returns an error if occurred
 func (h *unsignedCode) Execute(filePath string) error {
-	results, err := testutils.RunNucleiArgsWithEnvAndGetResults(debug, getEnvValues(), "-t", filePath, "-u", "input")
+	results, err := testutils.RunNucleiArgsWithEnvAndGetResults(debug, getEnvValues(), "-t", filePath, "-u", "input", "-code")
 
 	// should error out
 	if err != nil {
@@ -135,7 +135,7 @@ type codePyNoSig struct{}
 
 // Execute executes a test case and returns an error if occurred
 func (h *codePyNoSig) Execute(filePath string) error {
-	results, err := testutils.RunNucleiArgsWithEnvAndGetResults(debug, getEnvValues(), "-t", filePath, "-u", "input")
+	results, err := testutils.RunNucleiArgsWithEnvAndGetResults(debug, getEnvValues(), "-t", filePath, "-u", "input", "-code")
 
 	// should error out
 	if err != nil {

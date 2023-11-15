@@ -176,7 +176,7 @@ func (template *Template) compileProtocolRequests(options *protocols.ExecutorOpt
 		if len(template.RequestsWHOIS) > 0 {
 			requests = append(requests, template.convertRequestToProtocolsRequest(template.RequestsWHOIS)...)
 		}
-		if len(template.RequestsCode) > 0 {
+		if len(template.RequestsCode) > 0 && options.Options.EnableCodeTemplates {
 			requests = append(requests, template.convertRequestToProtocolsRequest(template.RequestsCode)...)
 		}
 		if len(template.RequestsJavascript) > 0 {

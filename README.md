@@ -133,6 +133,8 @@ TEMPLATES:
    -nss, -no-strict-syntax                disable strict syntax check on templates
    -td, -template-display                 displays the templates content
    -tl                                    list all available templates
+   -sign                                  signs the templates with the private key defined in NUCLEI_SIGNATURE_PRIVATE_KEY env variable
+   -code                                  enable loading code protocol-based templates
 
 FILTERING:
    -a, -author string[]               templates to run based on authors (comma-separated, file)
