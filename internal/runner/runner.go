@@ -48,10 +48,6 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/headless/engine"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http/httpclientpool"
 	"github.com/projectdiscovery/nuclei/v3/pkg/reporting"
-	"github.com/projectdiscovery/nuclei/v3/pkg/reporting/exporters/jsonexporter"
-	"github.com/projectdiscovery/nuclei/v3/pkg/reporting/exporters/jsonl"
-	"github.com/projectdiscovery/nuclei/v3/pkg/reporting/exporters/markdown"
-	"github.com/projectdiscovery/nuclei/v3/pkg/reporting/exporters/sarif"
 	"github.com/projectdiscovery/nuclei/v3/pkg/templates"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	"github.com/projectdiscovery/nuclei/v3/pkg/utils"
@@ -214,7 +210,6 @@ func New(options *types.Options) (*Runner, error) {
 		os.Exit(0)
 	}
 
-	// @tarunKoyalwar: check hybridoptions ??
 	// Initialize the input source
 	hmapInput, err := hybrid.New(&hybrid.Options{
 		Options: options,
@@ -316,44 +311,12 @@ func New(options *types.Options) (*Runner, error) {
 	return runner, nil
 }
 
-func createReportingOptions(options *types.Options) (*reporting.Options, error) {
-	var reportingOptions = &reporting.Options{}
-	if options.ReportingConfig != "" {
-		file, err := os.Open(options.ReportingConfig)
-		if err != nil {
-			return nil, errors.Wrap(err, "could not open reporting config file")
-		}
-		defer file.Close()
-
-		if err := yaml.DecodeAndValidate(file, reportingOptions); err != nil {
-			return nil, errors.Wrap(err, "could not parse reporting config file")
-		}
-		Walk(reportingOptions, expandEndVars)
+// runStandardEnumeration runs standard enumeration
+func (r *Runner) runStandardEnumeration(executerOpts protocols.ExecutorOptions, store *loader.Store, engine *core.Engine) (*atomic.Bool, error) {
+	if r.options.AutomaticScan {
+		return r.executeSmartWorkflowInput(executerOpts, store, engine)
 	}
-	if options.MarkdownExportDirectory != "" {
-		reportingOptions.MarkdownExporter = &markdown.Options{
-			Directory:         options.MarkdownExportDirectory,
-			IncludeRawPayload: !options.OmitRawRequests,
-			SortMode:          options.MarkdownExportSortMode,
-		}
-	}
-	if options.SarifExport != "" {
-		reportingOptions.SarifExporter = &sarif.Options{File: options.SarifExport}
-	}
-	if options.JSONExport != "" {
-		reportingOptions.JSONExporter = &jsonexporter.Options{
-			File:              options.JSONExport,
-			IncludeRawPayload: !options.OmitRawRequests,
-		}
-	}
-	if options.JSONLExport != "" {
-		reportingOptions.JSONLExporter = &jsonl.Options{
-			File:              options.JSONLExport,
-			IncludeRawPayload: !options.OmitRawRequests,
-		}
-	}
-
-	return reportingOptions, nil
+	return r.executeTemplatesInput(store, engine)
 }
 
 // Close releases all the resources and cleans up
