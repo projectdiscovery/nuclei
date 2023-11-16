@@ -94,12 +94,12 @@ func (e *TemplateExecuter) Requests() int {
 }
 
 // Execute executes the protocol group and returns true or false if results were found.
-func (e *TemplateExecuter) Execute(input *contextargs.Context) (bool, error) {
+func (e *TemplateExecuter) Execute(ctx *scan.ScanContext) (bool, error) {
 	results := &atomic.Bool{}
 	defer func() {
 		// it is essential to remove template context of `Scan i.e template x input pair`
 		// since it is of no use after scan is completed (regardless of success or failure)
-		e.options.RemoveTemplateCtx(input.MetaInput)
+		e.options.RemoveTemplateCtx(ctx.Input.MetaInput)
 	}()
 
 	var lastMatcherEvent *output.InternalWrappedEvent
@@ -112,8 +112,7 @@ func (e *TemplateExecuter) Execute(input *contextargs.Context) (bool, error) {
 		}
 	}
 
-	scanCtx := scan.NewScanContext(input)
-	scanCtx.OnResult = func(event *output.InternalWrappedEvent) {
+	ctx.OnResult = func(event *output.InternalWrappedEvent) {
 		if event == nil {
 			// something went wrong
 			return
@@ -140,13 +139,13 @@ func (e *TemplateExecuter) Execute(input *contextargs.Context) (bool, error) {
 	// so in compile step earlier we compile it to validate javascript syntax and other things
 	// and while executing we create new instance of flow executor everytime
 	if e.options.Flow != "" {
-		flowexec := flow.NewFlowExecutor(e.requests, input, e.options, results)
+		flowexec := flow.NewFlowExecutor(e.requests, ctx.Input, e.options, results)
 		if err := flowexec.Compile(); err != nil {
 			return false, err
 		}
-		err = flowexec.ExecuteWithResults(scanCtx)
+		err = flowexec.ExecuteWithResults(ctx)
 	} else {
-		err = e.engine.ExecuteWithResults(scanCtx)
+		err = e.engine.ExecuteWithResults(ctx)
 	}
 
 	if lastMatcherEvent != nil {
@@ -156,11 +155,11 @@ func (e *TemplateExecuter) Execute(input *contextargs.Context) (bool, error) {
 }
 
 // ExecuteWithResults executes the protocol requests and returns results instead of writing them.
-func (e *TemplateExecuter) ExecuteWithResults(input *contextargs.Context) ([]*output.ResultEvent, error) {
-	scanCtx := scan.NewScanContext(input)
-	err := e.engine.ExecuteWithResults(scanCtx)
+func (e *TemplateExecuter) ExecuteWithResults(ctx *scan.ScanContext) ([]*output.ResultEvent, error) {
+	// scanCtx := scan.NewScanContext(input)
+	err := e.engine.ExecuteWithResults(ctx)
 	if err != nil && !e.options.Options.MatcherStatus {
 		return nil, err
 	}
-	return scanCtx.GenerateResult(), err
+	return ctx.GenerateResult(), err
 }

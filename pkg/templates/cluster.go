@@ -10,7 +10,6 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/operators"
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
-	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/helpers/writer"
 	"github.com/projectdiscovery/nuclei/v3/pkg/scan"
 	"github.com/projectdiscovery/nuclei/v3/pkg/templates/types"
@@ -241,12 +240,12 @@ func (e *ClusterExecuter) Requests() int {
 }
 
 // Execute executes the protocol group and returns true or false if results were found.
-func (e *ClusterExecuter) Execute(input *contextargs.Context) (bool, error) {
+func (e *ClusterExecuter) Execute(ctx *scan.ScanContext) (bool, error) {
 	var results bool
 
-	inputItem := input.Clone()
-	if e.options.InputHelper != nil && input.MetaInput.Input != "" {
-		if inputItem.MetaInput.Input = e.options.InputHelper.Transform(input.MetaInput.Input, e.templateType); input.MetaInput.Input == "" {
+	inputItem := ctx.Input.Clone()
+	if e.options.InputHelper != nil && ctx.Input.MetaInput.Input != "" {
+		if inputItem.MetaInput.Input = e.options.InputHelper.Transform(ctx.Input.MetaInput.Input, e.templateType); ctx.Input.MetaInput.Input == "" {
 			return false, nil
 		}
 	}
@@ -275,19 +274,19 @@ func (e *ClusterExecuter) Execute(input *contextargs.Context) (bool, error) {
 		}
 	})
 	if err != nil && e.options.HostErrorsCache != nil {
-		e.options.HostErrorsCache.MarkFailed(input.MetaInput.Input, err)
+		e.options.HostErrorsCache.MarkFailed(ctx.Input.MetaInput.Input, err)
 	}
 	return results, err
 }
 
 // ExecuteWithResults executes the protocol requests and returns results instead of writing them.
-func (e *ClusterExecuter) ExecuteWithResults(input *contextargs.Context) ([]*output.ResultEvent, error) {
-	scanCtx := scan.NewScanContext(input)
+func (e *ClusterExecuter) ExecuteWithResults(ctx *scan.ScanContext) ([]*output.ResultEvent, error) {
+	scanCtx := scan.NewScanContext(ctx.Input)
 	dynamicValues := make(map[string]interface{})
 
-	inputItem := input.Clone()
-	if e.options.InputHelper != nil && input.MetaInput.Input != "" {
-		if inputItem.MetaInput.Input = e.options.InputHelper.Transform(input.MetaInput.Input, e.templateType); input.MetaInput.Input == "" {
+	inputItem := ctx.Input.Clone()
+	if e.options.InputHelper != nil && ctx.Input.MetaInput.Input != "" {
+		if inputItem.MetaInput.Input = e.options.InputHelper.Transform(ctx.Input.MetaInput.Input, e.templateType); ctx.Input.MetaInput.Input == "" {
 			return nil, nil
 		}
 	}
@@ -305,7 +304,7 @@ func (e *ClusterExecuter) ExecuteWithResults(input *contextargs.Context) ([]*out
 		}
 	})
 	if err != nil && e.options.HostErrorsCache != nil {
-		e.options.HostErrorsCache.MarkFailed(input.MetaInput.Input, err)
+		e.options.HostErrorsCache.MarkFailed(ctx.Input.MetaInput.Input, err)
 	}
 	return scanCtx.GenerateResult(), err
 }
