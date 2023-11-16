@@ -319,3 +319,11 @@ func WithSandboxOptions(allowLocalFileAccess bool, restrictLocalNetworkAccess bo
 		return nil
 	}
 }
+
+// EnableCodeTemplates allows loading/executing code protocol templates
+func EnableCodeTemplates() NucleiSDKOptions {
+	return func(e *NucleiEngine) error {
+		e.opts.EnableCodeTemplates = true
+		return nil
+	}
+}
