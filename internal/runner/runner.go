@@ -57,8 +57,12 @@ import (
 	ptrutil "github.com/projectdiscovery/utils/ptr"
 )
 
-// HideAutoSaveMsg is a global variable to hide the auto-save message
-var HideAutoSaveMsg = false
+var (
+	// HideAutoSaveMsg is a global variable to hide the auto-save message
+	HideAutoSaveMsg = false
+	// DisableCloudUpload is a global variable to disable cloud upload
+	DisableCloudUpload = false
+)
 
 // Runner is a client for running the enumeration process.
 type Runner struct {
@@ -340,8 +344,8 @@ func (r *Runner) Close() {
 // setupPDCPUpload sets up the PDCP upload writer
 // by creating a new writer and returning it
 func (r *Runner) setupPDCPUpload(writer output.Writer) output.Writer {
-	if r.options.DisableCloudUpload {
-		r.pdcpUploadErrMsg = fmt.Sprintf("[%v] Scan results upload to cloud is disalbed.", aurora.BrightYellow("WRN"))
+	if r.options.DisableCloudUpload || DisableCloudUpload {
+		r.pdcpUploadErrMsg = fmt.Sprintf("[%v] Scan results upload to cloud is disabled.", aurora.BrightYellow("WRN"))
 		return writer
 	}
 	color := aurora.NewAurora(!r.options.NoColor)
@@ -670,4 +674,5 @@ func expandEndVars(f reflect.Value, fieldType reflect.StructField) {
 
 func init() {
 	HideAutoSaveMsg = env.GetEnvOrDefault("DISABLE_CLOUD_UPLOAD_WRN", false)
+	DisableCloudUpload = env.GetEnvOrDefault("DISABLE_CLOUD_UPLOAD", false)
 }

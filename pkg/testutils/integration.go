@@ -21,6 +21,7 @@ var (
 	ExtraDebugArgs = []string{}
 	ExtraEnvVars   = []string{
 		"DISABLE_CLOUD_UPLOAD_WRN=true",
+		"DISABLE_CLOUD_UPLOAD=true",
 	}
 )
 
