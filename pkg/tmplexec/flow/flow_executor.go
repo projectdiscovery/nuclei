@@ -191,7 +191,6 @@ func (f *FlowExecutor) ExecuteWithResults(ctx *scan.ScanContext) error {
 		return errorutil.NewWithErr(runtimeErr).Msgf("got following errors while executing flow")
 	}
 	// this is where final result is generated/created
-	// callback(f.lastEvent)
 	ctx.LogEvent(f.lastEvent)
 	if value.Export() != nil {
 		f.results.Store(value.ToBoolean())

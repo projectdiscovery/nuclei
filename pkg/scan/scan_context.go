@@ -2,26 +2,17 @@ package scan
 
 import (
 	"context"
+	"strings"
 
-	"github.com/projectdiscovery/nuclei/v3/pkg/model"
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
 )
 
 type ScanContext struct {
 	context.Context
-	ScanId string // MD5 (templateID+target+ip)
-	// existing Input/target related info
-	Input *contextargs.Context
-	// templateInfo
-	Info model.Info
-	// Globally shared args aka template Context
-	TemplateMap map[string]interface{}
-	// stats tracker like req count etc
-	// Stats *Stats
-
-	errors  []error
-	results []*output.ResultEvent
+	Input  *contextargs.Context
+	errors []error
+	events []*output.InternalWrappedEvent
 
 	OnError  func(error)
 	OnResult func(e *output.InternalWrappedEvent)
@@ -32,15 +23,35 @@ func NewScanContext(input *contextargs.Context) *ScanContext {
 }
 
 func (s *ScanContext) GenerateResult() []*output.ResultEvent {
-	// ...
-	return s.results
+	errorMessage := joinErrors(s.errors)
+	results := aggregateResults(s.events)
+	for _, result := range results {
+		result.Error = errorMessage
+	}
+	return results
+}
+
+func aggregateResults(events []*output.InternalWrappedEvent) []*output.ResultEvent {
+	var results []*output.ResultEvent
+	for _, e := range events {
+		results = append(results, e.Results...)
+	}
+	return results
+}
+
+func joinErrors(errors []error) string {
+	var errorMessages []string
+	for _, e := range errors {
+		errorMessages = append(errorMessages, e.Error())
+	}
+	return strings.Join(errorMessages, "; ")
 }
 
 func (s *ScanContext) LogEvent(e *output.InternalWrappedEvent) {
 	if s.OnResult != nil {
 		s.OnResult(e)
 	}
-	s.results = append(s.results, e.Results...)
+	s.events = append(s.events, e)
 }
 
 func (s *ScanContext) LogError(err error) error {

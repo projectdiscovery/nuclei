@@ -300,7 +300,6 @@ func (e *ClusterExecuter) ExecuteWithResults(input *contextargs.Context) ([]*out
 				event.InternalEvent["template-path"] = operator.templatePath
 				event.InternalEvent["template-info"] = operator.templateInfo
 				event.Results = e.requests.MakeResultEvent(event)
-				// callback(event)
 				scanCtx.LogEvent(event)
 			}
 		}

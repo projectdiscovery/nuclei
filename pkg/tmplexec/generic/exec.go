@@ -72,7 +72,6 @@ func (g *Generic) ExecuteWithResults(ctx *scan.ScanContext) error {
 			}
 			// for ExecuteWithResults : this callback will execute user defined callback and some error handling
 			// for Execute : this callback will print the result to output
-			// callback(event)
 			ctx.LogEvent(event)
 		})
 		if err != nil {
