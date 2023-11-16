@@ -84,6 +84,14 @@ type Request struct {
 	//   TLS Ciphers Enum - false if not specified
 	//   Enumerates supported TLS ciphers
 	TLSCiphersEnum bool `yaml:"tls_ciphers_enum,omitempty" json:"tls_ciphers_enum,omitempty" jsonschema:"title=Enumerate Ciphers,description=Enumerate Ciphers - false if not specified"`
+	// description: |
+	//  TLS Cipher types to enumerate
+	// values:
+	//   - "insecure" (default)
+	//   - "weak"
+	//   - "secure"
+	//   - "all"
+	TLSCipherTypes []string `yaml:"tls_cipher_types,omitempty" json:"tls_cipher_types,omitempty" jsonschema:"title=TLS Cipher Types,description=TLS Cipher Types to enumerate,enum=weak,enum=secure,enum=insecure,enum=all"`
 
 	// cache any variables that may be needed for operation.
 	dialer  *fastdialer.Dialer
@@ -123,6 +131,14 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 		// if openssl is not installed instead of failing "auto" scanmode is used
 		request.ScanMode = "auto"
 	}
+	if request.TLSCiphersEnum {
+		// cipher enumeration requires tls version enumeration first
+		request.TLSVersionsEnum = true
+	}
+	if request.TLSCiphersEnum && len(request.TLSCipherTypes) == 0 {
+		// by default only look for insecure ciphers
+		request.TLSCipherTypes = []string{"insecure"}
+	}
 
 	tlsxOptions := &clients.Options{
 		AllCiphers:        true,
@@ -143,6 +159,7 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 		DisplayDns:        true,
 		TlsVersionsEnum:   request.TLSVersionsEnum,
 		TlsCiphersEnum:    request.TLSCiphersEnum,
+		TLsCipherLevel:    request.TLSCipherTypes,
 	}
 
 	tlsxService, err := tlsx.New(tlsxOptions)
