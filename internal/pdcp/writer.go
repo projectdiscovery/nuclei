@@ -89,7 +89,7 @@ func (u *UploadWriter) Upload() {
 	// skip if file is empty
 	scanner := bufio.NewScanner(u.tempFile)
 	if !scanner.Scan() || (scanner.Scan() && strings.TrimSpace(scanner.Text()) == "") {
-		gologger.Verbose().Msgf("Auto Save Skipped, no results found to upload")
+		gologger.Verbose().Msgf("Scan results upload to cloud skipped, no results found to upload")
 		return
 
 	}
@@ -97,17 +97,16 @@ func (u *UploadWriter) Upload() {
 
 	id, err := u.upload()
 	if err != nil {
-		gologger.Error().Msgf("Failed to upload scan result: %v", err)
-		gologger.Info().Msgf("you can still manually upload scan results file at %v at %v", u.tempFile.Name(), DashBoardURL)
+		gologger.Error().Msgf("Failed to upload scan results on cloud: %v", err)
 		return
 	}
-	gologger.Info().Msgf("Successfully uploaded scan result, you can now view results in scans dashboard at %v", getScanDashBoardURL(id))
+	gologger.Info().Msgf("Scan results uploaded! View them at %v", getScanDashBoardURL(id))
 }
 
 func (u *UploadWriter) upload() (string, error) {
 	req, err := retryablehttp.NewRequest(http.MethodPost, u.uploadURL.String(), u.tempFile)
 	if err != nil {
-		return "", errorutil.NewWithErr(err).Msgf("could not create upload request")
+		return "", errorutil.NewWithErr(err).Msgf("could not create cloud upload request")
 	}
 	req.Header.Set(ApiKeyHeaderName, u.creds.APIKey)
 	req.Header.Set("Content-Type", "application/octet-stream")

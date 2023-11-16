@@ -341,7 +341,7 @@ func (r *Runner) Close() {
 // by creating a new writer and returning it
 func (r *Runner) setupPDCPUpload(writer output.Writer) output.Writer {
 	if r.options.DisableCloudUpload {
-		r.pdcpUploadErrMsg = fmt.Sprintf("[%v] PDCP Auto-Save Disabled by user", aurora.BrightYellow("WRN"))
+		r.pdcpUploadErrMsg = fmt.Sprintf("[%v] Scan results upload to cloud is disalbed.", aurora.BrightYellow("WRN"))
 		return writer
 	}
 	color := aurora.NewAurora(!r.options.NoColor)
@@ -349,9 +349,9 @@ func (r *Runner) setupPDCPUpload(writer output.Writer) output.Writer {
 	creds, err := h.GetCreds()
 	if err != nil {
 		if err != pdcp.ErrNoCreds && !HideAutoSaveMsg {
-			gologger.Verbose().Msgf("Could not get credentials for PDCP upload: %s\n", err)
+			gologger.Verbose().Msgf("Could not get credentials for cloud upload: %s\n", err)
 		}
-		r.pdcpUploadErrMsg = fmt.Sprintf("[%v] PDCP Auto-Save Disabled: No API Key found get one from %v", color.BrightYellow("WRN"), pdcp.DashBoardURL)
+		r.pdcpUploadErrMsg = fmt.Sprintf("[%v] To view results on Cloud Dashboard, Configure API key from %v", color.BrightYellow("WRN"), pdcp.DashBoardURL)
 		return writer
 	}
 	uploadWriter, err := pdcp.NewUploadWriter(creds)
@@ -585,7 +585,7 @@ func (r *Runner) displayExecutionInfo(store *loader.Store) {
 		if r.pdcpUploadErrMsg != "" {
 			gologger.Print().Msgf("%s", r.pdcpUploadErrMsg)
 		} else {
-			gologger.Info().Msgf("PDCP Auto-Save Enabled: View scan results in dashboard at %v", pdcp.DashBoardURL)
+			gologger.Info().Msgf("To view results on cloud dashboard, visit %v/scans upon scan completion.", pdcp.DashBoardURL)
 		}
 	}
 
@@ -669,5 +669,5 @@ func expandEndVars(f reflect.Value, fieldType reflect.StructField) {
 }
 
 func init() {
-	HideAutoSaveMsg = env.GetEnvOrDefault("HIDE_PDCP_SAVE_MSG", false)
+	HideAutoSaveMsg = env.GetEnvOrDefault("DISABLE_CLOUD_UPLOAD_WRN", false)
 }

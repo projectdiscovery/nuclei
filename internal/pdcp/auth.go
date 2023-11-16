@@ -15,7 +15,7 @@ import (
 
 var (
 	DashBoardURL     = "https://cloud.projectdiscovery.io"
-	DefaultApiServer = "https://api.dev.projectdiscovery.io"
+	DefaultApiServer = "https://api.projectdiscovery.io"
 )
 
 // CheckNValidateCredentials checks if credentials exist on filesystem
@@ -30,7 +30,7 @@ func CheckNValidateCredentials(toolName string) {
 		// validate by fetching user profile
 		gotCreds, err := h.ValidateAPIKey(creds.APIKey, creds.Server, config.BinaryName)
 		if err == nil {
-			gologger.Info().Msgf("Successfully logged in as (@%v)", gotCreds.Username)
+			gologger.Info().Msgf("You are logged in as (@%v)", gotCreds.Username)
 			os.Exit(0)
 		}
 		gologger.Error().Msgf("Invalid API key found in file, please recheck or recreate your API key and retry.")

@@ -20,7 +20,7 @@ import (
 var (
 	ExtraDebugArgs = []string{}
 	ExtraEnvVars   = []string{
-		"HIDE_PDCP_SAVE_MSG=true",
+		"DISABLE_CLOUD_UPLOAD_WRN=true",
 	}
 )
 
