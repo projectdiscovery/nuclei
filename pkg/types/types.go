@@ -400,6 +400,8 @@ type Options struct {
 	CodeTemplateSignatureAlgorithm string
 	// SignTemplates enables signing of templates
 	SignTemplates bool
+	// EnableCodeTemplates enables code templates
+	EnableCodeTemplates bool
 }
 
 // ShouldLoadResume resume file
