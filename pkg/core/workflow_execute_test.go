@@ -25,7 +25,9 @@ func TestWorkflowsSimple(t *testing.T) {
 	}}
 
 	engine := &Engine{}
-	matched := engine.executeWorkflow(&contextargs.MetaInput{Input: "https://test.com"}, workflow)
+	input := contextargs.NewWithInput("https://test.com")
+	ctx := scan.NewScanContext(input)
+	matched := engine.executeWorkflow(ctx, workflow)
 	require.True(t, matched, "could not get correct match value")
 }
 
@@ -47,7 +49,9 @@ func TestWorkflowsSimpleMultiple(t *testing.T) {
 	}}
 
 	engine := &Engine{}
-	matched := engine.executeWorkflow(&contextargs.MetaInput{Input: "https://test.com"}, workflow)
+	input := contextargs.NewWithInput("https://test.com")
+	ctx := scan.NewScanContext(input)
+	matched := engine.executeWorkflow(ctx, workflow)
 	require.True(t, matched, "could not get correct match value")
 
 	require.Equal(t, "https://test.com", firstInput, "could not get correct first input")
@@ -73,7 +77,9 @@ func TestWorkflowsSubtemplates(t *testing.T) {
 	}}
 
 	engine := &Engine{}
-	matched := engine.executeWorkflow(&contextargs.MetaInput{Input: "https://test.com"}, workflow)
+	input := contextargs.NewWithInput("https://test.com")
+	ctx := scan.NewScanContext(input)
+	matched := engine.executeWorkflow(ctx, workflow)
 	require.True(t, matched, "could not get correct match value")
 
 	require.Equal(t, "https://test.com", firstInput, "could not get correct first input")
@@ -97,7 +103,9 @@ func TestWorkflowsSubtemplatesNoMatch(t *testing.T) {
 	}}
 
 	engine := &Engine{}
-	matched := engine.executeWorkflow(&contextargs.MetaInput{Input: "https://test.com"}, workflow)
+	input := contextargs.NewWithInput("https://test.com")
+	ctx := scan.NewScanContext(input)
+	matched := engine.executeWorkflow(ctx, workflow)
 	require.False(t, matched, "could not get correct match value")
 
 	require.Equal(t, "https://test.com", firstInput, "could not get correct first input")
@@ -126,7 +134,9 @@ func TestWorkflowsSubtemplatesWithMatcher(t *testing.T) {
 	}}
 
 	engine := &Engine{}
-	matched := engine.executeWorkflow(&contextargs.MetaInput{Input: "https://test.com"}, workflow)
+	input := contextargs.NewWithInput("https://test.com")
+	ctx := scan.NewScanContext(input)
+	matched := engine.executeWorkflow(ctx, workflow)
 	require.True(t, matched, "could not get correct match value")
 
 	require.Equal(t, "https://test.com", firstInput, "could not get correct first input")
@@ -155,7 +165,9 @@ func TestWorkflowsSubtemplatesWithMatcherNoMatch(t *testing.T) {
 	}}
 
 	engine := &Engine{}
-	matched := engine.executeWorkflow(&contextargs.MetaInput{Input: "https://test.com"}, workflow)
+	input := contextargs.NewWithInput("https://test.com")
+	ctx := scan.NewScanContext(input)
+	matched := engine.executeWorkflow(ctx, workflow)
 	require.False(t, matched, "could not get correct match value")
 
 	require.Equal(t, "https://test.com", firstInput, "could not get correct first input")
@@ -179,21 +191,20 @@ func (m *mockExecuter) Requests() int {
 }
 
 // Execute executes the protocol group and  returns true or false if results were found.
-func (m *mockExecuter) Execute(input *contextargs.Context) (bool, error) {
+func (m *mockExecuter) Execute(ctx *scan.ScanContext) (bool, error) {
 	if m.executeHook != nil {
-		m.executeHook(input.MetaInput)
+		m.executeHook(ctx.Input.MetaInput)
 	}
 	return m.result, nil
 }
 
 // ExecuteWithResults executes the protocol requests and returns results instead of writing them.
-func (m *mockExecuter) ExecuteWithResults(input *contextargs.Context) ([]*output.ResultEvent, error) {
-	scanCtx := scan.NewScanContext(input)
+func (m *mockExecuter) ExecuteWithResults(ctx *scan.ScanContext) ([]*output.ResultEvent, error) {
 	if m.executeHook != nil {
-		m.executeHook(input.MetaInput)
+		m.executeHook(ctx.Input.MetaInput)
 	}
 	for _, output := range m.outputs {
-		scanCtx.LogEvent(output)
+		ctx.LogEvent(output)
 	}
-	return scanCtx.GenerateResult(), nil
+	return ctx.GenerateResult(), nil
 }
