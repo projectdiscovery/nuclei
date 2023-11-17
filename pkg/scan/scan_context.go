@@ -49,7 +49,7 @@ func (s *ScanContext) LogEvent(e *output.InternalWrappedEvent) {
 	s.events = append(s.events, e)
 }
 
-func (s *ScanContext) LogError(err error) error {
+func (s *ScanContext) LogError(err error) {
 	if s.OnError != nil {
 		s.OnError(err)
 	}
@@ -63,6 +63,4 @@ func (s *ScanContext) LogError(err error) error {
 	for _, e := range s.events {
 		e.InternalEvent["error"] = errorMessage
 	}
-
-	return err
 }
