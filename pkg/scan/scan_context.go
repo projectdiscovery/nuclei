@@ -23,12 +23,7 @@ func NewScanContext(input *contextargs.Context) *ScanContext {
 }
 
 func (s *ScanContext) GenerateResult() []*output.ResultEvent {
-	errorMessage := joinErrors(s.errors)
-	results := aggregateResults(s.events)
-	for _, result := range results {
-		result.Error = errorMessage
-	}
-	return results
+	return aggregateResults(s.events)
 }
 
 func aggregateResults(events []*output.InternalWrappedEvent) []*output.ResultEvent {
@@ -59,5 +54,15 @@ func (s *ScanContext) LogError(err error) error {
 		s.OnError(err)
 	}
 	s.errors = append(s.errors, err)
+
+	errorMessage := joinErrors(s.errors)
+	results := aggregateResults(s.events)
+	for _, result := range results {
+		result.Error = errorMessage
+	}
+	for _, e := range s.events {
+		e.InternalEvent["error"] = errorMessage
+	}
+
 	return err
 }

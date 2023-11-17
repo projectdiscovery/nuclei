@@ -93,6 +93,7 @@ func (m *MultiProtocol) ExecuteWithResults(ctx *scan.ScanContext) error {
 		err := req.ExecuteWithResults(ctx.Input, output.InternalEvent(values), nil, multiProtoCallback)
 		// if error skip execution of next protocols
 		if err != nil {
+			ctx.LogError(err)
 			return err
 		}
 	}

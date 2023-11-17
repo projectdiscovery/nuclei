@@ -75,6 +75,7 @@ func (g *Generic) ExecuteWithResults(ctx *scan.ScanContext) error {
 			ctx.LogEvent(event)
 		})
 		if err != nil {
+			ctx.LogError(err)
 			if g.options.HostErrorsCache != nil {
 				g.options.HostErrorsCache.MarkFailed(ctx.Input.MetaInput.ID(), err)
 			}

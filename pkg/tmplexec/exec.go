@@ -156,10 +156,7 @@ func (e *TemplateExecuter) Execute(ctx *scan.ScanContext) (bool, error) {
 
 // ExecuteWithResults executes the protocol requests and returns results instead of writing them.
 func (e *TemplateExecuter) ExecuteWithResults(ctx *scan.ScanContext) ([]*output.ResultEvent, error) {
-	// scanCtx := scan.NewScanContext(input)
 	err := e.engine.ExecuteWithResults(ctx)
-	if err != nil && !e.options.Options.MatcherStatus {
-		return nil, err
-	}
+	ctx.LogError(err)
 	return ctx.GenerateResult(), err
 }

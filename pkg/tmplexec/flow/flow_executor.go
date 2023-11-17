@@ -184,10 +184,12 @@ func (f *FlowExecutor) ExecuteWithResults(ctx *scan.ScanContext) error {
 	// pass flow and execute the js vm and handle errors
 	value, err := f.jsVM.RunProgram(f.program)
 	if err != nil {
+		ctx.LogError(err)
 		return errorutil.NewWithErr(err).Msgf("failed to execute flow\n%v\n", f.options.Flow)
 	}
 	runtimeErr := f.GetRuntimeErrors()
 	if runtimeErr != nil {
+		ctx.LogError(runtimeErr)
 		return errorutil.NewWithErr(runtimeErr).Msgf("got following errors while executing flow")
 	}
 	// this is where final result is generated/created

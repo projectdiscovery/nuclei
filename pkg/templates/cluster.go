@@ -303,6 +303,10 @@ func (e *ClusterExecuter) ExecuteWithResults(ctx *scan.ScanContext) ([]*output.R
 			}
 		}
 	})
+	if err != nil {
+		ctx.LogError(err)
+	}
+
 	if err != nil && e.options.HostErrorsCache != nil {
 		e.options.HostErrorsCache.MarkFailed(ctx.Input.MetaInput.Input, err)
 	}

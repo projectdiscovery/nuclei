@@ -354,6 +354,7 @@ func (w *StandardWriter) WriteFailure(wrappedEvent *InternalWrappedEvent) error 
 		Timestamp:     time.Now(),
 		//FIXME: this is workaround to encode the template when no results were found
 		TemplateEncoded: w.encodeTemplate(types.ToString(event["template-path"])),
+		Error:           types.ToString(event["error"]),
 	}
 	return w.Write(data)
 }
