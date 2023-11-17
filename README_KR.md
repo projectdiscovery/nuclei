@@ -98,15 +98,19 @@ TARGET:
    -resume string        resume.cfg를 사용한 스캔 재개(클러스터링이 비활성화됨)
 
 TEMPLATES:
-   -nt, -new-templates          nuclei-templates에 가장 최근에 추가된 새 템플릿만 실행
-   -as, -automatic-scan         태그 매핑에 대한 wappalyzer 기술 탐지를 사용한 자동 웹 스캔
-   -t, -templates string[]      실행할 템플릿 또는 템플릿 디렉터리 목록(쉼표로 구분된 파일)
-   -tu, -template-url string[]  실행할 템플릿 URL 목록(쉼표로 구분된 파일)
-   -w, -workflows string[]      실행할 워크플로 또는 워크플로 디렉터리 목록(쉼표로 구분된 파일)
-   -wu, -workflow-url string[]  실행할 워크플로 URL 목록(쉼표로 구분된 파일)
-   -validate                    nuclei로 전달된 템플릿 검증
-   -tl                          사용 가능한 모든 템플릿 목록
-   -td                          템플릿 내용 표시
+   -nt, -new-templates                    run only new templates added in latest nuclei-templates release
+   -ntv, -new-templates-version string[]  run new templates added in specific version
+   -as, -automatic-scan                   automatic web scan using wappalyzer technology detection to tags mapping
+   -t, -templates string[]                list of template or template directory to run (comma-separated, file)
+   -turl, -template-url string[]          template url or list containing template urls to run (comma-separated, file)
+   -w, -workflows string[]                list of workflow or workflow directory to run (comma-separated, file)
+   -wurl, -workflow-url string[]          workflow url or list containing workflow urls to run (comma-separated, file)
+   -validate                              validate the passed templates to nuclei
+   -nss, -no-strict-syntax                disable strict syntax check on templates
+   -td, -template-display                 displays the templates content
+   -tl                                    list all available templates
+   -sign                                  signs the templates with the private key defined in NUCLEI_SIGNATURE_PRIVATE_KEY env variable
+   -code                                  enable loading code protocol-based templates
 
 FILTERING:
    -a, -author string[]              작성자를 기준으로 실행할 템플릿(쉼표로 구분된 파일)

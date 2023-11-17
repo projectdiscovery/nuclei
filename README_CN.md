@@ -7,7 +7,7 @@
 
 
 <p align="center">
-<img src="https://img.shields.io/github/go-mod/go-version/projectdiscovery/nuclei?filename=v2%2Fgo.mod">
+<img src="https://img.shields.io/github/go-mod/go-version/projectdiscovery/nuclei">
 <a href="https://github.com/projectdiscovery/nuclei/releases"><img src="https://img.shields.io/github/downloads/projectdiscovery/nuclei/total">
 <a href="https://github.com/projectdiscovery/nuclei/graphs/contributors"><img src="https://img.shields.io/github/contributors-anon/projectdiscovery/nuclei">
 <a href="https://github.com/projectdiscovery/nuclei/releases/"><img src="https://img.shields.io/github/release/projectdiscovery/nuclei">
@@ -100,17 +100,19 @@ Nuclei是一款注重于可配置性、可扩展性和易用性的基于模板�
    -iv, -ip-version string[]             要扫描的主机名的IP版本（4,6）-（默认为4）
 
 模板：
-   -nt, -new-templates                   只扫描最新nuclei-templates版本中添加的模板
-   -ntv, -new-templates-version string[] 运行在特定nuclei-templates版本中添加的新模板
-   -as, -automatic-scan                  在web扫描中使用wappalyzer技术检测的指纹找包含对应tags的模板
-   -t, -templates string[]               指定需要扫描的模板文件或者模板目录（逗号分隔，文件）
-   -tu, -template-url string[]           从URL加载模板（逗号分隔，文件）
-   -w, -workflows string[]               指定需要扫描中的工作流文件或者工作流目录（逗号分隔，文件）
-   -wu, -workflow-url string[]           从URL加载工作流（逗号分隔，文件）
-   -validate                             验证模板
-   -nss, -no-strict-syntax               禁用对模板的严格语法检查
-   -td, -template-display                显示模板内容
-   -tl                                   列出所有可用的模板
+   -nt, -new-templates                    run only new templates added in latest nuclei-templates release
+   -ntv, -new-templates-version string[]  run new templates added in specific version
+   -as, -automatic-scan                   automatic web scan using wappalyzer technology detection to tags mapping
+   -t, -templates string[]                list of template or template directory to run (comma-separated, file)
+   -turl, -template-url string[]          template url or list containing template urls to run (comma-separated, file)
+   -w, -workflows string[]                list of workflow or workflow directory to run (comma-separated, file)
+   -wurl, -workflow-url string[]          workflow url or list containing workflow urls to run (comma-separated, file)
+   -validate                              validate the passed templates to nuclei
+   -nss, -no-strict-syntax                disable strict syntax check on templates
+   -td, -template-display                 displays the templates content
+   -tl                                    list all available templates
+   -sign                                  signs the templates with the private key defined in NUCLEI_SIGNATURE_PRIVATE_KEY env variable
+   -code                                  enable loading code protocol-based templates
 
 过滤：
    -a, -author string[]                  执行指定作者的模板（逗号分隔，文件）
