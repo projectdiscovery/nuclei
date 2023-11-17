@@ -50,6 +50,10 @@ func (s *ScanContext) LogEvent(e *output.InternalWrappedEvent) {
 }
 
 func (s *ScanContext) LogError(err error) {
+	if err == nil {
+		return
+	}
+
 	if s.OnError != nil {
 		s.OnError(err)
 	}
