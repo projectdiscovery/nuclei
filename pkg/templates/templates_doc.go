@@ -1430,7 +1430,7 @@ func init() {
 			Value: "Matched is the input which was matched upon",
 		},
 	}
-	SSLRequestDoc.Fields = make([]encoder.Doc, 6)
+	SSLRequestDoc.Fields = make([]encoder.Doc, 9)
 	SSLRequestDoc.Fields[0].Name = "id"
 	SSLRequestDoc.Fields[0].Type = "string"
 	SSLRequestDoc.Fields[0].Note = ""
@@ -1475,6 +1475,21 @@ func init() {
 	SSLRequestDoc.Fields[5].Note = ""
 	SSLRequestDoc.Fields[5].Description = "description: |\n   Tls Scan Mode - auto if not specified\n values:\n   - \"ctls\"\n   - \"ztls\"\n   - \"auto\"\n	 - \"openssl\" # reverts to \"auto\" is openssl is not installed"
 	SSLRequestDoc.Fields[5].Comments[encoder.LineComment] = " description: |"
+	SSLRequestDoc.Fields[6].Name = "tls_versions_enum"
+	SSLRequestDoc.Fields[6].Type = "bool"
+	SSLRequestDoc.Fields[6].Note = ""
+	SSLRequestDoc.Fields[6].Description = "TLS Versions Enum - false if not specified\nEnumerates supported TLS versions"
+	SSLRequestDoc.Fields[6].Comments[encoder.LineComment] = "TLS Versions Enum - false if not specified"
+	SSLRequestDoc.Fields[7].Name = "tls_ciphers_enum"
+	SSLRequestDoc.Fields[7].Type = "bool"
+	SSLRequestDoc.Fields[7].Note = ""
+	SSLRequestDoc.Fields[7].Description = "TLS Ciphers Enum - false if not specified\nEnumerates supported TLS ciphers"
+	SSLRequestDoc.Fields[7].Comments[encoder.LineComment] = "TLS Ciphers Enum - false if not specified"
+	SSLRequestDoc.Fields[8].Name = "tls_cipher_types"
+	SSLRequestDoc.Fields[8].Type = "[]string"
+	SSLRequestDoc.Fields[8].Note = ""
+	SSLRequestDoc.Fields[8].Description = "description: |\n  TLS Cipher types to enumerate\n values:\n   - \"insecure\" (default)\n   - \"weak\"\n   - \"secure\"\n   - \"all\""
+	SSLRequestDoc.Fields[8].Comments[encoder.LineComment] = " description: |"
 
 	WEBSOCKETRequestDoc.Type = "websocket.Request"
 	WEBSOCKETRequestDoc.Comments[encoder.LineComment] = " Request is a request for the Websocket protocol"
