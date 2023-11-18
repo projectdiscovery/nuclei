@@ -36,7 +36,6 @@ requests:
         regex:
           - "Token: '([A-Za-z0-9]+)'"
 
-    cookie-reuse: true
     matchers:
       - type: word
         words:

@@ -6,8 +6,7 @@ info:
   tags: headless
 
 headless:
-  - cookie-reuse: true
-    steps:
+    - steps:
       - action: navigate
         args:
           url: "{{BaseURL}}/headless1"
