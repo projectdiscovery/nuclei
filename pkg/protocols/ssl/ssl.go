@@ -79,11 +79,11 @@ type Request struct {
 	// description: |
 	//   TLS Versions Enum - false if not specified
 	//   Enumerates supported TLS versions
-	TLSVersionsEnum bool `yaml:"tls_versions_enum,omitempty" json:"tls_versions_enum,omitempty" jsonschema:"title=Enumerate Versions,description=Enumerate Version - false if not specified"`
+	TLSVersionsEnum bool `yaml:"tls_version_enum,omitempty" json:"tls_version_enum,omitempty" jsonschema:"title=Enumerate Versions,description=Enumerate Version - false if not specified"`
 	// description: |
 	//   TLS Ciphers Enum - false if not specified
 	//   Enumerates supported TLS ciphers
-	TLSCiphersEnum bool `yaml:"tls_ciphers_enum,omitempty" json:"tls_ciphers_enum,omitempty" jsonschema:"title=Enumerate Ciphers,description=Enumerate Ciphers - false if not specified"`
+	TLSCiphersEnum bool `yaml:"tls_cipher_enum,omitempty" json:"tls_cipher_enum,omitempty" jsonschema:"title=Enumerate Ciphers,description=Enumerate Ciphers - false if not specified"`
 	// description: |
 	//  TLS Cipher types to enumerate
 	// values:
