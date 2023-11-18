@@ -164,6 +164,7 @@ func readConfig() *goflags.FlagSet {
 
 	// when true updates nuclei binary to latest version
 	var updateNucleiBinary bool
+	var pdcpauth bool
 
 	flagSet := goflags.NewFlagSet()
 	flagSet.CaseSensitive = true
@@ -365,27 +366,8 @@ on extensive configurability, massive extensibility and ease of use.`)
 	)
 
 	flagSet.CreateGroup("cloud", "Cloud",
-		flagSet.BoolVar(&options.Cloud, "cloud", false, "run scan on nuclei cloud"),
-		flagSet.StringVarP(&options.AddDatasource, "add-datasource", "ads", "", "add specified data source (s3,github)"),
-		flagSet.StringVarP(&options.AddTarget, "add-target", "atr", "", "add target(s) to cloud"),
-		flagSet.StringVarP(&options.AddTemplate, "add-template", "atm", "", "add template(s) to cloud"),
-		flagSet.BoolVarP(&options.ScanList, "list-scan", "lsn", false, "list previous cloud scans"),
-		flagSet.StringVarP(&options.ScanOutput, "list-output", "lso", "", "list scan output by scan id"),
-		flagSet.BoolVarP(&options.ListTargets, "list-target", "ltr", false, "list cloud target by id"),
-		flagSet.BoolVarP(&options.ListTemplates, "list-template", "ltm", false, "list cloud template by id"),
-		flagSet.BoolVarP(&options.ListDatasources, "list-datasource", "lds", false, "list cloud datasource by id"),
-		flagSet.BoolVarP(&options.ListReportingSources, "list-reportsource", "lrs", false, "list reporting sources"),
-		flagSet.StringVarP(&options.DeleteScan, "delete-scan", "dsn", "", "delete cloud scan by id"),
-		flagSet.StringVarP(&options.RemoveTarget, "delete-target", "dtr", "", "delete target(s) from cloud"),
-		flagSet.StringVarP(&options.RemoveTemplate, "delete-template", "dtm", "", "delete template(s) from cloud"),
-		flagSet.StringVarP(&options.RemoveDatasource, "delete-datasource", "dds", "", "delete specified data source"),
-		flagSet.StringVarP(&options.DisableReportingSource, "disable-reportsource", "drs", "", "disable specified reporting source"),
-		flagSet.StringVarP(&options.EnableReportingSource, "enable-reportsource", "ers", "", "enable specified reporting source"),
-		flagSet.StringVarP(&options.GetTarget, "get-target", "gtr", "", "get target content by id"),
-		flagSet.StringVarP(&options.GetTemplate, "get-template", "gtm", "", "get template content by id"),
-		flagSet.BoolVarP(&options.NoStore, "no-store", "nos", false, "disable scan/output storage on cloud"),
-		flagSet.BoolVar(&options.NoTables, "no-tables", false, "do not display pretty-printed tables"),
-		flagSet.IntVar(&options.OutputLimit, "limit", 100, "limit the number of output to display"),
+		flagSet.BoolVar(&pdcpauth, "auth", false, "configure projectdiscovery cloud (pdcp) api key"),
+		flagSet.BoolVarP(&options.DisableCloudUpload, "disable-cloud-upload", "dcu", false, "disable uploading scan results to pdcp"),
 	)
 
 	flagSet.SetCustomHelpText(`EXAMPLES:
@@ -413,6 +395,10 @@ Additional documentation is available at: https://docs.nuclei.sh/getting-started
 	// and hence it will be attempted in config package during init
 	goflags.DisableAutoConfigMigration = true
 	_ = flagSet.Parse()
+
+	if pdcpauth {
+		runner.AuthWithPDCP()
+	}
 
 	gologger.DefaultLogger.SetTimestamp(options.Timestamp, levels.LevelDebug)
 
