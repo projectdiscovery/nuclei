@@ -1,6 +1,6 @@
 id: cookiereuse-raw-example
 info:
-  name: Test CookieReuse RAW Template
+  name: Test Cookie Reuse RAW Template
   author: pdteam
   severity: info
 
@@ -27,7 +27,6 @@ requests:
         Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8
         Accept-Language: en-US,en;q=0.9
         
-    cookie-reuse: true
     matchers:
       - type: word
         words:

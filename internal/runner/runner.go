@@ -671,6 +671,7 @@ func (r *Runner) displayExecutionInfo(store *loader.Store) {
 	if r.options.Verbose {
 		// only print these stats in verbose mode
 		stats.DisplayAsWarning(parsers.HeadlessFlagWarningStats)
+		stats.DisplayAsWarning(parsers.CodeFlagWarningStats)
 		stats.DisplayAsWarning(parsers.TemplatesExecutedStats)
 	}
 	stats.DisplayAsWarning(parsers.UnsignedWarning)

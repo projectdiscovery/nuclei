@@ -145,6 +145,7 @@ const (
 	UnsignedWarning          = "unsigned-warnings"
 	HeadlessFlagWarningStats = "headless-flag-missing-warnings"
 	TemplatesExecutedStats   = "templates-executed"
+	CodeFlagWarningStats     = "code-flag-missing-warnings"
 )
 
 func init() {
@@ -154,8 +155,9 @@ func init() {
 	stats.NewEntry(SyntaxErrorStats, "Found %d templates with syntax error (use -validate flag for further examination)")
 	stats.NewEntry(RuntimeWarningsStats, "Found %d templates with runtime error (use -validate flag for further examination)")
 	stats.NewEntry(UnsignedWarning, "Found %d unsigned or tampered code template (carefully examine before using it & use -sign flag to sign them)")
-	stats.NewEntry(HeadlessFlagWarningStats, "Excluded %d headless templates (disabled as default), use -headless option to run headless templates.")
-	stats.NewEntry(TemplatesExecutedStats, "Excluded %d templates with known weak matchers / tags excluded from default run using .nuclei-ignore")
+	stats.NewEntry(HeadlessFlagWarningStats, "Excluded %d headless template[s] (disabled as default), use -headless option to run headless templates.")
+	stats.NewEntry(CodeFlagWarningStats, "Excluded %d code template[s] (disabled as default), use -code option to run code templates.")
+	stats.NewEntry(TemplatesExecutedStats, "Excluded %d template[s] with known weak matchers / tags excluded from default run using .nuclei-ignore")
 }
 
 // ParseTemplate parses a template and returns a *templates.Template structure
