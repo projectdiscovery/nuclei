@@ -2,6 +2,8 @@ package testutils
 
 import (
 	"context"
+	"encoding/base64"
+	"os"
 	"time"
 
 	"github.com/projectdiscovery/ratelimit"
@@ -84,7 +86,7 @@ func NewMockExecuterOptions(options *types.Options, info *TemplateInfo) *protoco
 		TemplateID:   info.ID,
 		TemplateInfo: info.Info,
 		TemplatePath: info.Path,
-		Output:       NewMockOutputWriter(),
+		Output:       NewMockOutputWriter(options.OmitTemplate),
 		Options:      options,
 		Progress:     progressImpl,
 		ProjectFile:  nil,
@@ -106,14 +108,15 @@ func (n *NoopWriter) Write(data []byte, level levels.Level) {}
 // MockOutputWriter is a mocked output writer.
 type MockOutputWriter struct {
 	aurora          aurora.Aurora
+	omitTemplate    bool
 	RequestCallback func(templateID, url, requestType string, err error)
 	FailureCallback func(result *output.InternalEvent)
 	WriteCallback   func(o *output.ResultEvent)
 }
 
 // NewMockOutputWriter creates a new mock output writer
-func NewMockOutputWriter() *MockOutputWriter {
-	return &MockOutputWriter{aurora: aurora.NewAurora(false)}
+func NewMockOutputWriter(omomitTemplate bool) *MockOutputWriter {
+	return &MockOutputWriter{aurora: aurora.NewAurora(false), omitTemplate: omomitTemplate}
 }
 
 // Close closes the output writer interface
@@ -175,8 +178,20 @@ func (m *MockOutputWriter) WriteFailure(wrappedEvent *output.InternalWrappedEven
 		Response:      types.ToString(event["response"]),
 		MatcherStatus: false,
 		Timestamp:     time.Now(),
+		//FIXME: this is workaround to encode the template when no results were found
+		TemplateEncoded: m.encodeTemplate(types.ToString(event["template-path"])),
 	}
 	return m.Write(data)
+}
+
+var maxTemplateFileSizeForEncoding = 1024 * 1024
+
+func (w *MockOutputWriter) encodeTemplate(templatePath string) string {
+	data, err := os.ReadFile(templatePath)
+	if err == nil && !w.omitTemplate && len(data) <= maxTemplateFileSizeForEncoding && config.DefaultConfig.IsCustomTemplate(templatePath) {
+		return base64.StdEncoding.EncodeToString(data)
+	}
+	return ""
 }
 
 func (m *MockOutputWriter) WriteStoreDebugData(host, templateID, eventType string, data string) {}

@@ -1,6 +1,7 @@
 package protocols
 
 import (
+	"encoding/base64"
 	"sync/atomic"
 
 	"github.com/projectdiscovery/ratelimit"
@@ -30,6 +31,8 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 )
 
+var MaxTemplateFileSizeForEncoding = 1024 * 1024
+
 // Executer is an interface implemented any protocol based request executer.
 type Executer interface {
 	// Compile compiles the execution generators preparing any requests possible.
@@ -50,6 +53,8 @@ type ExecutorOptions struct {
 	TemplatePath string
 	// TemplateInfo contains information block of the template request
 	TemplateInfo model.Info
+	// RawTemplate is the raw template for the request
+	RawTemplate []byte
 	// Output is a writer interface for writing output events from executer.
 	Output output.Writer
 	// Options contains configuration options for the executer.
@@ -293,4 +298,11 @@ func MakeDefaultMatchFunc(data map[string]interface{}, matcher *matchers.Matcher
 		return matcher.Result(matcher.MatchXPath(item)), []string{}
 	}
 	return false, nil
+}
+
+func (e *ExecutorOptions) EncodeTemplate() string {
+	if !e.Options.OmitTemplate && len(e.RawTemplate) <= MaxTemplateFileSizeForEncoding {
+		return base64.StdEncoding.EncodeToString(e.RawTemplate)
+	}
+	return ""
 }

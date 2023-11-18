@@ -95,8 +95,8 @@ type Configuration struct {
 	MaxRedirects int
 	// NoTimeout disables http request timeout for context based usage
 	NoTimeout bool
-	// CookieReuse enables cookie reuse for the http client (cookiejar impl)
-	CookieReuse bool
+	// DisableCookie disables cookie reuse for the http client (cookiejar impl)
+	DisableCookie bool
 	// FollowRedirects specifies the redirects flow
 	RedirectFlow RedirectFlow
 	// Connection defines custom connection configuration
@@ -116,7 +116,7 @@ func (c *Configuration) Hash() string {
 	builder.WriteString("f")
 	builder.WriteString(strconv.Itoa(int(c.RedirectFlow)))
 	builder.WriteString("r")
-	builder.WriteString(strconv.FormatBool(c.CookieReuse))
+	builder.WriteString(strconv.FormatBool(c.DisableCookie))
 	builder.WriteString("c")
 	builder.WriteString(strconv.FormatBool(c.Connection != nil))
 	hash := builder.String()
@@ -125,7 +125,7 @@ func (c *Configuration) Hash() string {
 
 // HasStandardOptions checks whether the configuration requires custom settings
 func (c *Configuration) HasStandardOptions() bool {
-	return c.Threads == 0 && c.MaxRedirects == 0 && c.RedirectFlow == DontFollowRedirect && !c.CookieReuse && c.Connection == nil && !c.NoTimeout
+	return c.Threads == 0 && c.MaxRedirects == 0 && c.RedirectFlow == DontFollowRedirect && c.DisableCookie && c.Connection == nil && !c.NoTimeout
 }
 
 // GetRawHTTP returns the rawhttp request client
@@ -277,7 +277,7 @@ func wrappedGet(options *types.Options, configuration *Configuration) (*retryabl
 	var jar *cookiejar.Jar
 	if configuration.Connection != nil && configuration.Connection.HasCookieJar() {
 		jar = configuration.Connection.GetCookieJar()
-	} else if configuration.CookieReuse {
+	} else if !configuration.DisableCookie {
 		if jar, err = cookiejar.New(&cookiejar.Options{PublicSuffixList: publicsuffix.List}); err != nil {
 			return nil, errors.Wrap(err, "could not create cookiejar")
 		}

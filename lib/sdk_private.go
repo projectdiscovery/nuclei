@@ -35,7 +35,7 @@ import (
 // applyRequiredDefaults to options
 func (e *NucleiEngine) applyRequiredDefaults() {
 	if e.customWriter == nil {
-		mockoutput := testutils.NewMockOutputWriter()
+		mockoutput := testutils.NewMockOutputWriter(e.opts.OmitTemplate)
 		mockoutput.WriteCallback = func(event *output.ResultEvent) {
 			if len(e.resultCallbacks) > 0 {
 				for _, callback := range e.resultCallbacks {
@@ -75,9 +75,12 @@ func (e *NucleiEngine) applyRequiredDefaults() {
 	if e.rateLimiter == nil {
 		e.rateLimiter = ratelimit.New(context.Background(), 150, time.Second)
 	}
+	if e.opts.ExcludeTags == nil {
+		e.opts.ExcludeTags = []string{}
+	}
 	// these templates are known to have weak matchers
 	// and idea is to disable them to avoid false positives
-	e.opts.ExcludeTags = config.ReadIgnoreFile().Tags
+	e.opts.ExcludeTags = append(e.opts.ExcludeTags, config.ReadIgnoreFile().Tags...)
 
 	e.inputProvider = &inputs.SimpleInputProvider{
 		Inputs: []*contextargs.MetaInput{},
