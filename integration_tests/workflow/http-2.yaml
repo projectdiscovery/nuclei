@@ -9,4 +9,3 @@ http:
   - method: GET
     path:
       - "{{BaseURL}}/http2"
-    cookie-reuse: true
