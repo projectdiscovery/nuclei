@@ -403,6 +403,12 @@ func (store *Store) LoadTemplatesWithTags(templatesList, tags []string) []*templ
 					if config.DefaultConfig.LogAllEvents {
 						gologger.Print().Msgf("[%v] Headless flag is required for headless template '%s'.\n", aurora.Yellow("WRN").String(), templatePath)
 					}
+				} else if len(parsed.RequestsCode) > 0 && !store.config.ExecutorOptions.Options.EnableCodeTemplates {
+					// donot include 'Code' protocol custom template in final list if code flag is not set
+					stats.Increment(parsers.CodeFlagWarningStats)
+					if config.DefaultConfig.LogAllEvents {
+						gologger.Print().Msgf("[%v] Code flag is required for code protocol template '%s'.\n", aurora.Yellow("WRN").String(), templatePath)
+					}
 				} else if len(parsed.RequestsCode) > 0 && !parsed.Verified && len(parsed.Workflows) == 0 {
 					// donot include unverified 'Code' protocol custom template in final list
 					stats.Increment(parsers.UnsignedWarning)

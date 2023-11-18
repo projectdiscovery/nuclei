@@ -37,7 +37,7 @@ func (p *Page) routingRuleHandler(ctx *rod.Hijack) {
 		}
 	}
 
-	if p.options.CookieReuse {
+	if !p.options.DisableCookie {
 		// each http request is performed via the native go http client
 		// we first inject the shared cookies
 		if cookies := p.input.CookieJar.Cookies(ctx.Request.URL()); len(cookies) > 0 {
@@ -48,7 +48,7 @@ func (p *Page) routingRuleHandler(ctx *rod.Hijack) {
 	// perform the request
 	_ = ctx.LoadResponse(p.instance.browser.httpclient, true)
 
-	if p.options.CookieReuse {
+	if !p.options.DisableCookie {
 		// retrieve the updated cookies from the native http client and inject them into the shared cookie jar
 		// keeps existing one if not present
 		if cookies := p.instance.browser.httpclient.Jar.Cookies(ctx.Request.URL()); len(cookies) > 0 {

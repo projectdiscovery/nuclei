@@ -146,7 +146,13 @@ type Request struct {
 	// description: |
 	//   CookieReuse is an optional setting that enables cookie reuse for
 	//   all requests defined in raw section.
+	// Deprecated: This is default now. Use disable-cookie to disable cookie reuse. cookie-reuse will be removed in future releases.
 	CookieReuse bool `yaml:"cookie-reuse,omitempty" json:"cookie-reuse,omitempty" jsonschema:"title=optional cookie reuse enable,description=Optional setting that enables cookie reuse"`
+
+	// description: |
+	//   DisableCookie is an optional setting that disables cookie reuse
+	DisableCookie bool `yaml:"disable-cookie,omitempty" json:"disable-cookie,omitempty" jsonschema:"title=optional disable cookie reuse,description=Optional setting that disables cookie reuse"`
+
 	// description: |
 	//   Enables force reading of the entire raw unsafe request body ignoring
 	//   any specified content length headers.
@@ -247,10 +253,10 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 	}
 
 	connectionConfiguration := &httpclientpool.Configuration{
-		Threads:      request.Threads,
-		MaxRedirects: request.MaxRedirects,
-		NoTimeout:    false,
-		CookieReuse:  request.CookieReuse,
+		Threads:       request.Threads,
+		MaxRedirects:  request.MaxRedirects,
+		NoTimeout:     false,
+		DisableCookie: request.DisableCookie,
 		Connection: &httpclientpool.ConnectionConfiguration{
 			DisableKeepAlive: httputil.ShouldDisableKeepAlive(options.Options),
 		},

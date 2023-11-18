@@ -252,6 +252,8 @@ type Options struct {
 	JSONRequests bool
 	// OmitRawRequests omits requests/responses for matches in JSON output
 	OmitRawRequests bool
+	// OmitTemplate omits encoded template from JSON output
+	OmitTemplate bool
 	// JSONExport is the file to export JSON output format to
 	JSONExport string
 	// JSONLExport is the file to export JSONL output format to
@@ -398,6 +400,8 @@ type Options struct {
 	CodeTemplateSignatureAlgorithm string
 	// SignTemplates enables signing of templates
 	SignTemplates bool
+	// EnableCodeTemplates enables code templates
+	EnableCodeTemplates bool
 }
 
 // ShouldLoadResume resume file

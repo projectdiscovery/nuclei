@@ -28,16 +28,16 @@ func Pack(formatStr string, msg interface{}) ([]byte, error) {
 	}
 	format := buildFormatSliceFromStringFormat(formatStr)
 
-	for i, f := range format {
-		if i >= len(args) {
-			break
-		}
+	var idxMsg int
+	for _, f := range format {
 		switch f {
+		case "<", ">", "!":
 		case "h", "H", "i", "I", "l", "L", "q", "Q", "b", "B":
-			switch v := args[i].(type) {
+			switch v := args[idxMsg].(type) {
 			case int64:
-				args[i] = int(v)
+				args[idxMsg] = int(v)
 			}
+			idxMsg++
 		}
 	}
 	return gostruct.Pack(format, args)
