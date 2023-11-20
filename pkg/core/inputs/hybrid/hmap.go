@@ -92,7 +92,6 @@ func New(opts *Options) (*Input, error) {
 	if input.excludedCount > 0 {
 		gologger.Info().Msgf("Number of hosts excluded from input: %d", input.excludedCount)
 	}
-
 	if input.dupeCount > 0 {
 		gologger.Info().Msgf("Supplied input was automatically deduplicated (%d removed).", input.dupeCount)
 	}
@@ -115,9 +114,11 @@ func (i *Input) initializeInputSources(opts *Options) error {
 	for _, target := range options.Targets {
 		switch {
 		case iputil.IsCIDR(target):
-			i.expandCIDRInputValue(target, false)
+			ips := i.expandCIDRInputValue(target)
+			i.addTargets(ips)
 		case asn.IsASN(target):
-			i.expandASNInputValue(target, false)
+			ips := i.expandASNInputValue(target)
+			i.addTargets(ips)
 		default:
 			i.Set(target)
 		}
@@ -142,20 +143,6 @@ func (i *Input) initializeInputSources(opts *Options) error {
 			input.Close()
 		}
 	}
-
-	if len(options.ExcludeTargets) > 0 {
-		for _, target := range options.ExcludeTargets {
-			switch {
-			case iputil.IsCIDR(target):
-				i.expandCIDRInputValue(target, true)
-			case asn.IsASN(target):
-				i.expandASNInputValue(target, true)
-			default:
-				i.Remove(target)
-			}
-		}
-	}
-
 	if options.Uncover && options.UncoverQuery != nil {
 		gologger.Info().Msgf("Running uncover query against: %s", strings.Join(options.UncoverEngine, ","))
 		uncoverOpts := &uncoverlib.Options{
@@ -175,6 +162,22 @@ func (i *Input) initializeInputSources(opts *Options) error {
 			i.Set(c)
 		}
 	}
+
+	if len(options.ExcludeTargets) > 0 {
+		for _, target := range options.ExcludeTargets {
+			switch {
+			case iputil.IsCIDR(target):
+				ips := i.expandCIDRInputValue(target)
+				i.removeTargets(ips)
+			case asn.IsASN(target):
+				ips := i.expandASNInputValue(target)
+				i.removeTargets(ips)
+			default:
+				i.Del(target)
+			}
+		}
+	}
+
 	return nil
 }
 
@@ -185,9 +188,11 @@ func (i *Input) scanInputFromReader(reader io.Reader) {
 		item := scanner.Text()
 		switch {
 		case iputil.IsCIDR(item):
-			i.expandCIDRInputValue(item, false)
+			ips := i.expandCIDRInputValue(item)
+			i.addTargets(ips)
 		case asn.IsASN(item):
-			i.expandASNInputValue(item, false)
+			ips := i.expandASNInputValue(item)
+			i.addTargets(ips)
 		default:
 			i.Set(item)
 		}
@@ -196,26 +201,9 @@ func (i *Input) scanInputFromReader(reader io.Reader) {
 
 // Set normalizes and stores passed input values
 func (i *Input) Set(value string) {
-	values := i.processValue(value)
-	for _, value := range values {
-		i.setItem(value, false)
-	}
-}
-
-// Remove normalizes and removes passed input values if they're already present in the list of hosts
-func (i *Input) Remove(value string) {
-	values := i.processValue(value)
-	for _, value := range values {
-		i.setItem(value, true)
-	}
-}
-
-func (i *Input) processValue(value string) []*contextargs.MetaInput {
-	var inputs []*contextargs.MetaInput
-
 	URL := strings.TrimSpace(value)
 	if URL == "" {
-		return inputs
+		return
 	}
 	// parse hostname if url is given
 	urlx, err := urlutil.Parse(URL)
@@ -227,15 +215,15 @@ func (i *Input) processValue(value string) []*contextargs.MetaInput {
 			return fmt.Sprintf("got empty hostname for %v skipping ip selection", URL)
 		})
 		metaInput := &contextargs.MetaInput{Input: URL}
-		inputs = append(inputs, metaInput)
-		return inputs
+		i.setItem(metaInput)
+		return
 	}
 
 	// Check if input is ip or hostname
 	if iputil.IsIP(urlx.Hostname()) {
 		metaInput := &contextargs.MetaInput{Input: URL}
-		inputs = append(inputs, metaInput)
-		return inputs
+		i.setItem(metaInput)
+		return
 	}
 
 	if i.ipOptions.ScanAllIPs {
@@ -255,9 +243,9 @@ func (i *Input) processValue(value string) []*contextargs.MetaInput {
 						continue
 					}
 					metaInput := &contextargs.MetaInput{Input: value, CustomIP: ip}
-					inputs = append(inputs, metaInput)
+					i.setItem(metaInput)
 				}
-				return inputs
+				return
 			} else {
 				gologger.Debug().Msgf("scanAllIps: no ip's found reverting to default")
 			}
@@ -286,34 +274,105 @@ func (i *Input) processValue(value string) []*contextargs.MetaInput {
 	for _, ip := range ips {
 		if ip != "" {
 			metaInput := &contextargs.MetaInput{Input: URL, CustomIP: ip}
-			inputs = append(inputs, metaInput)
+			i.setItem(metaInput)
 		} else {
 			metaInput := &contextargs.MetaInput{Input: URL}
-			inputs = append(inputs, metaInput)
+			i.setItem(metaInput)
 		}
 	}
-	return inputs
+}
+
+func (i *Input) Del(value string) {
+	URL := strings.TrimSpace(value)
+	if URL == "" {
+		return
+	}
+	// parse hostname if url is given
+	urlx, err := urlutil.Parse(URL)
+	if err != nil || (urlx != nil && urlx.Host == "") {
+		gologger.Debug().Label("url").MsgFunc(func() string {
+			if err != nil {
+				return fmt.Sprintf("failed to parse url %v got %v skipping ip selection", URL, err)
+			}
+			return fmt.Sprintf("got empty hostname for %v skipping ip selection", URL)
+		})
+		metaInput := &contextargs.MetaInput{Input: URL}
+		i.delItem(metaInput)
+		return
+	}
+
+	// Check if input is ip or hostname
+	if iputil.IsIP(urlx.Hostname()) {
+		metaInput := &contextargs.MetaInput{Input: URL}
+		i.delItem(metaInput)
+		return
+	}
+
+	if i.ipOptions.ScanAllIPs {
+		// scan all ips
+		dnsData, err := protocolstate.Dialer.GetDNSData(urlx.Hostname())
+		if err == nil {
+			if (len(dnsData.A) + len(dnsData.AAAA)) > 0 {
+				var ips []string
+				if i.ipOptions.IPV4 {
+					ips = append(ips, dnsData.A...)
+				}
+				if i.ipOptions.IPV6 {
+					ips = append(ips, dnsData.AAAA...)
+				}
+				for _, ip := range ips {
+					if ip == "" {
+						continue
+					}
+					metaInput := &contextargs.MetaInput{Input: value, CustomIP: ip}
+					i.delItem(metaInput)
+				}
+				return
+			} else {
+				gologger.Debug().Msgf("scanAllIps: no ip's found reverting to default")
+			}
+		} else {
+			// failed to scanallips falling back to defaults
+			gologger.Debug().Msgf("scanAllIps: dns resolution failed: %v", err)
+		}
+	}
+
+	ips := []string{}
+	// only scan the target but ipv6 if it has one
+	if i.ipOptions.IPV6 {
+		dnsData, err := protocolstate.Dialer.GetDNSData(urlx.Hostname())
+		if err == nil && len(dnsData.AAAA) > 0 {
+			// pick/ prefer 1st
+			ips = append(ips, dnsData.AAAA[0])
+		} else {
+			gologger.Warning().Msgf("target does not have ipv6 address falling back to ipv4 %v\n", err)
+		}
+	}
+	if i.ipOptions.IPV4 {
+		// if IPV4 is enabled do not specify ip let dialer handle it
+		ips = append(ips, "")
+	}
+
+	for _, ip := range ips {
+		if ip != "" {
+			metaInput := &contextargs.MetaInput{Input: URL, CustomIP: ip}
+			i.delItem(metaInput)
+		} else {
+			metaInput := &contextargs.MetaInput{Input: URL}
+			i.delItem(metaInput)
+		}
+	}
 }
 
 // setItem in the kv store
-func (i *Input) setItem(metaInput *contextargs.MetaInput, exclude bool) {
+func (i *Input) setItem(metaInput *contextargs.MetaInput) {
 	key, err := metaInput.MarshalString()
 	if err != nil {
 		gologger.Warning().Msgf("%s\n", err)
 		return
 	}
 	if _, ok := i.hostMap.Get(key); ok {
-		if exclude {
-			i.excludedCount++
-			i.inputCount--
-			err := i.hostMap.Del(key)
-			if err != nil {
-				gologger.Error().Msgf("Error excluding target from list: %s", key)
-				return
-			}
-		} else {
-			i.dupeCount++
-		}
+		i.dupeCount++
 		return
 	}
 
@@ -322,6 +381,21 @@ func (i *Input) setItem(metaInput *contextargs.MetaInput, exclude bool) {
 	if i.hostMapStream != nil {
 		i.setHostMapStream(key)
 	}
+}
+
+// setItem in the kv store
+func (i *Input) delItem(metaInput *contextargs.MetaInput) {
+	key, err := metaInput.MarshalString()
+	if err != nil {
+		gologger.Warning().Msgf("%s\n", err)
+		return
+	}
+	if _, ok := i.hostMap.Get(key); !ok {
+		return
+	}
+
+	i.excludedCount++
+	_ = i.hostMap.Del(key)
 }
 
 // setHostMapStream sets item in stream mode
@@ -365,27 +439,35 @@ func (i *Input) Scan(callback func(value *contextargs.MetaInput) bool) {
 }
 
 // expandCIDRInputValue expands CIDR and stores expanded IPs
-func (i *Input) expandCIDRInputValue(value string, exclude bool) {
-	ips, _ := mapcidr.IPAddressesAsStream(value)
-	for ip := range ips {
-		metaInput := &contextargs.MetaInput{Input: ip}
+func (i *Input) expandCIDRInputValue(value string) []string {
+	var ips []string
+	ipsCh, _ := mapcidr.IPAddressesAsStream(value)
+	for ip := range ipsCh {
+		ips = append(ips, ip)
+	}
+	return ips
+}
+
+// expandASNInputValue expands CIDRs for given ASN and stores expanded IPs
+func (i *Input) expandASNInputValue(value string) []string {
+	var ips []string
+	cidrs, _ := asn.GetCIDRsForASNNum(value)
+	for _, cidr := range cidrs {
+		ips = append(ips, i.expandCIDRInputValue(cidr.String())...)
+	}
+	return ips
+}
+
+func (i *Input) addTargets(targets []string) {
+	for _, target := range targets {
+		metaInput := &contextargs.MetaInput{Input: target}
 		key, err := metaInput.MarshalString()
 		if err != nil {
 			gologger.Warning().Msgf("%s\n", err)
 			return
 		}
 		if _, ok := i.hostMap.Get(key); ok {
-			if exclude {
-				i.excludedCount++
-				i.inputCount--
-				err := i.hostMap.Del(key)
-				if err != nil {
-					gologger.Error().Msgf("Error excluding target from list: %s", key)
-					return
-				}
-			} else {
-				i.dupeCount++
-			}
+			i.dupeCount++
 			continue
 		}
 		i.inputCount++
@@ -396,10 +478,30 @@ func (i *Input) expandCIDRInputValue(value string, exclude bool) {
 	}
 }
 
-// expandASNInputValue expands CIDRs for given ASN and stores expanded IPs
-func (i *Input) expandASNInputValue(value string, exclude bool) {
-	cidrs, _ := asn.GetCIDRsForASNNum(value)
-	for _, cidr := range cidrs {
-		i.expandCIDRInputValue(cidr.String(), exclude)
+func (i *Input) removeTargets(targets []string) {
+	for _, target := range targets {
+		metaInput := &contextargs.MetaInput{Input: target}
+		key, err := metaInput.MarshalString()
+		if err != nil {
+			gologger.Warning().Msgf("%s\n", err)
+			return
+		}
+
+		i.hostMap.Scan(func(k, _ []byte) error {
+			var tmpMetaInput contextargs.MetaInput
+			if err := tmpMetaInput.Unmarshal(string(k)); err != nil {
+				return err
+			}
+			tmpKey, err := tmpMetaInput.MarshalString()
+			if err != nil {
+				return err
+			}
+			if tmpKey == key {
+				i.hostMap.Del(tmpKey)
+				i.excludedCount++
+				i.inputCount--
+			}
+			return nil
+		})
 	}
 }
