@@ -269,31 +269,11 @@ UNCOVER引擎:
     -stats                               显示正在扫描的统计信息
     -sj, -stats-json                     将统计信息以JSONL格式输出到文件
     -si, -stats-inerval int              显示统计信息更新的间隔秒数（默认：5）
-    -m, -metrics                         开启metrics服务
     -mp, -metrics-port int               更改metrics服务的端口（默认：9092）
 
 云服务:
-   -cloud                                在nuclei云上运行扫描
-   -ads, -add-datasource string          添加指定的数据源（s3、github）
-   -atr, -add-target string              向云中添加目标
-   -atm, -add-template string            向云中添加模板
-   -lsn, -list-scan                      列出先前的云扫描
-   -lso, -list-output string             按扫描ID列出扫描输出
-   -ltr, -list-target                    按ID列出云目标
-   -ltm, -list-template                  按ID列出云模板
-   -lds, -list-datasource                按ID列出云数据源
-   -lrs, -list-reportsource              列出报告源
-   -dsn, -delete-scan string             按ID删除云扫描
-   -dtr, -delete-target string           从云中删除目标
-   -dtm, -delete-template string         从云中删除模板
-   -dds, -delete-datasource string       删除指定的数据源
-   -drs, -disable-reportsource string    禁用指定的报告源
-   -ers, -enable-reportsource string     启用指定的报告源
-   -gtr, -get-target string              按ID获取目标内容
-   -gtm, -get-template string            按ID获取模板内容
-   -nos, -no-store                       禁用云上的扫描/输出存储
-   -no-tables                            不显示漂亮打印的表格
-   -limit int                            限制要显示的输出数量（默认 100）
+   -auth                配置projectdiscovery云（pdcp）API密钥
+   -cup, -cloud-upload  将扫描结果上传到pdcp仪表板
 
 ```
 

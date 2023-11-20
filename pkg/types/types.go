@@ -357,7 +357,7 @@ type Options struct {
 	// EnableCodeTemplates enables code templates
 	EnableCodeTemplates bool
 	// Disables cloud upload
-	DisableCloudUpload bool
+	EnableCloudUpload bool
 }
 
 // ShouldLoadResume resume file
