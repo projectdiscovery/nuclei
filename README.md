@@ -148,8 +148,8 @@ FILTERING:
    -em, -exclude-matchers string[]    template matchers to exclude in result
    -s, -severity value[]              templates to run based on severity. Possible values: info, low, medium, high, critical, unknown
    -es, -exclude-severity value[]     templates to exclude based on severity. Possible values: info, low, medium, high, critical, unknown
-   -pt, -type value[]                 templates to run based on protocol type. Possible values: dns, file, http, headless, tcp, workflow, ssl, websocket, whois, code
-   -ept, -exclude-type value[]        templates to exclude based on protocol type. Possible values: dns, file, http, headless, tcp, workflow, ssl, websocket, whois, code
+   -pt, -type value[]                 templates to run based on protocol type. Possible values: dns, file, http, headless, tcp, workflow, ssl, websocket, whois, code, javascript
+   -ept, -exclude-type value[]        templates to exclude based on protocol type. Possible values: dns, file, http, headless, tcp, workflow, ssl, websocket, whois, code, javascript
    -tc, -template-condition string[]  templates to run based on expression condition
 
 OUTPUT:
@@ -197,7 +197,6 @@ CONFIGURATIONS:
    -i, -interface string                 network interface to use for network scan
    -at, -attack-type string              type of payload combinations to perform (batteringram,pitchfork,clusterbomb)
    -sip, -source-ip string               source ip address to use for network scan
-   -config-directory string              override the default config path ($home/.config)
    -rsr, -response-size-read int         max response size to read in bytes (default 10485760)
    -rss, -response-size-save int         max response size to read in bytes (default 1048576)
    -reset                                reset removes all nuclei configuration and data files (including nuclei-templates)
@@ -233,20 +232,20 @@ RATE-LIMIT:
    -headc, -headless-concurrency int  maximum number of headless templates to be executed in parallel (default 10)
 
 OPTIMIZATIONS:
-   -timeout int                        time to wait in seconds before timeout (default 10)
-   -retries int                        number of times to retry a failed request (default 1)
-   -ldp, -leave-default-ports          leave default HTTP/HTTPS ports (eg. host:80,host:443)
-   -mhe, -max-host-error int           max errors for a host before skipping from scan (default 30)
-   -te, -track-error string[]          adds given error to max-host-error watchlist (standard, file)
-   -nmhe, -no-mhe                      disable skipping host from scan based on errors
-   -project                            use a project folder to avoid sending same request multiple times
-   -project-path string                set a specific project path (default "/tmp")
-   -spm, -stop-at-first-match          stop processing HTTP requests after the first match (may break template/workflow logic)
-   -stream                             stream mode - start elaborating without sorting the input
-   -ss, -scan-strategy value           strategy to use while scanning(auto/host-spray/template-spray) (default auto)
-   -irt, -input-read-timeout duration  timeout on input read (default 3m0s)
-   -nh, -no-httpx                      disable httpx probing for non-url input
-   -no-stdin                           disable stdin processing
+   -timeout int                     time to wait in seconds before timeout (default 10)
+   -retries int                     number of times to retry a failed request (default 1)
+   -ldp, -leave-default-ports       leave default HTTP/HTTPS ports (eg. host:80,host:443)
+   -mhe, -max-host-error int        max errors for a host before skipping from scan (default 30)
+   -te, -track-error string[]       adds given error to max-host-error watchlist (standard, file)
+   -nmhe, -no-mhe                   disable skipping host from scan based on errors
+   -project                         use a project folder to avoid sending same request multiple times
+   -project-path string             set a specific project path (default "/tmp")
+   -spm, -stop-at-first-match       stop processing HTTP requests after the first match (may break template/workflow logic)
+   -stream                          stream mode - start elaborating without sorting the input
+   -ss, -scan-strategy value        strategy to use while scanning(auto/host-spray/template-spray) (default auto)
+   -irt, -input-read-timeout value  timeout on input read (default 3m0s)
+   -nh, -no-httpx                   disable httpx probing for non-url input
+   -no-stdin                        disable stdin processing
 
 HEADLESS:
    -headless                        enable templates that require headless browser support (root user on Linux will disable sandbox)
@@ -285,8 +284,30 @@ STATISTICS:
    -stats                    display statistics about the running scan
    -sj, -stats-json          display statistics in JSONL(ines) format
    -si, -stats-interval int  number of seconds to wait between showing a statistics update (default 5)
-   -m, -metrics              expose nuclei metrics on a port
    -mp, -metrics-port int    port to expose nuclei metrics on (default 9092)
+
+CLOUD:
+   -auth                configure projectdiscovery cloud (pdcp) api key
+   -cup, -cloud-upload  upload scan results to pdcp dashboard
+
+
+EXAMPLES:
+Run nuclei on single host:
+	$ nuclei -target example.com
+
+Run nuclei with specific template directories:
+	$ nuclei -target example.com -t http/cves/ -t ssl
+
+Run nuclei against a list of hosts:
+	$ nuclei -list hosts.txt
+
+Run nuclei with a JSON output:
+	$ nuclei -target example.com -json-export output.json
+
+Run nuclei with sorted Markdown outputs (with environment variables):
+	$ MARKDOWN_EXPORT_SORT_MODE=template nuclei -target example.com -markdown-export nuclei_report/
+
+Additional documentation is available at: https://docs.nuclei.sh/getting-started/running
 ```
 
 ### Running Nuclei

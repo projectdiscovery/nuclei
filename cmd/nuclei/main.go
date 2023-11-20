@@ -367,7 +367,7 @@ on extensive configurability, massive extensibility and ease of use.`)
 
 	flagSet.CreateGroup("cloud", "Cloud",
 		flagSet.BoolVar(&pdcpauth, "auth", false, "configure projectdiscovery cloud (pdcp) api key"),
-		flagSet.BoolVarP(&options.DisableCloudUpload, "disable-cloud-upload", "dcu", false, "disable uploading scan results to pdcp"),
+		flagSet.BoolVarP(&options.EnableCloudUpload, "cloud-upload", "cup", false, "upload scan results to pdcp dashboard"),
 	)
 
 	flagSet.SetCustomHelpText(`EXAMPLES:
