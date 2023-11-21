@@ -406,7 +406,7 @@ func (i *Input) delItem(metaInput *contextargs.MetaInput) {
 		}
 
 		if tmpUrl.Host == targetUrl.Host {
-			i.hostMap.Del(tmpKey)
+			_ = i.hostMap.Del(tmpKey)
 			i.excludedCount++
 			i.inputCount--
 		}
