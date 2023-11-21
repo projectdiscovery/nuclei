@@ -83,8 +83,15 @@ func (request *Request) getOpenPorts(target *contextargs.Context) ([]string, err
 
 // ExecuteWithResults executes the protocol requests and returns results instead of writing them.
 func (request *Request) ExecuteWithResults(target *contextargs.Context, metadata, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
-	var address string
-	var err error
+	visitedAddresses := make(mapsutil.Map[string, struct{}])
+
+	if request.Port == "" {
+		// backwords compatibility or for other use cases
+		// where port is not provided in template
+		if err := request.executeOnTarget(target, visitedAddresses, metadata, previous, callback); err != nil {
+			return err
+		}
+	}
 
 	// get open ports from list of ports provided in template
 	ports, err := request.getOpenPorts(target)
@@ -96,10 +103,7 @@ func (request *Request) ExecuteWithResults(target *contextargs.Context, metadata
 		gologger.Verbose().Msgf("[%v] got errors while checking open ports: %s\n", request.options.TemplateID, err)
 	}
 
-	visitedAddresses := make(mapsutil.Map[string, struct{}])
-
 	for _, port := range ports {
-
 		input := target.Clone()
 		// use network port updates input with new port requested in template file
 		// and it is ignored if input port is not standard http(s) ports like 80,8080,8081 etc
@@ -107,40 +111,49 @@ func (request *Request) ExecuteWithResults(target *contextargs.Context, metadata
 		if err := input.UseNetworkPort(port, request.ExcludePorts); err != nil {
 			gologger.Debug().Msgf("Could not network port from constants: %s\n", err)
 		}
-
-		if request.SelfContained {
-			address = ""
-		} else {
-			address, err = getAddress(input.MetaInput.Input)
-		}
-		if err != nil {
-			request.options.Output.Request(request.options.TemplatePath, input.MetaInput.Input, request.Type().String(), err)
-			request.options.Progress.IncrementFailedRequestsBy(1)
-			return errors.Wrap(err, "could not get address from url")
-		}
-		variables := protocolutils.GenerateVariables(address, false, nil)
-		// add template ctx variables to varMap
-		variables = generators.MergeMaps(variables, request.options.GetTemplateCtx(input.MetaInput).GetAll())
-		variablesMap := request.options.Variables.Evaluate(variables)
-		variables = generators.MergeMaps(variablesMap, variables, request.options.Constants)
-
-		for _, kv := range request.addresses {
-			actualAddress := replacer.Replace(kv.address, variables)
-
-			if visitedAddresses.Has(actualAddress) && !request.options.Options.DisableClustering {
-				continue
-			}
-			visitedAddresses.Set(actualAddress, struct{}{})
-
-			if err := request.executeAddress(variables, actualAddress, address, input, kv.tls, previous, callback); err != nil {
-				outputEvent := request.responseToDSLMap("", "", "", address, "")
-				callback(&output.InternalWrappedEvent{InternalEvent: outputEvent})
-				gologger.Warning().Msgf("[%v] Could not make network request for (%s) : %s\n", request.options.TemplateID, actualAddress, err)
-				continue
-			}
+		if err := request.executeOnTarget(input, visitedAddresses, metadata, previous, callback); err != nil {
+			return err
 		}
 	}
 
+	return nil
+}
+
+func (request *Request) executeOnTarget(input *contextargs.Context, visited mapsutil.Map[string, struct{}], metadata, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
+	var address string
+	var err error
+
+	if request.SelfContained {
+		address = ""
+	} else {
+		address, err = getAddress(input.MetaInput.Input)
+	}
+	if err != nil {
+		request.options.Output.Request(request.options.TemplatePath, input.MetaInput.Input, request.Type().String(), err)
+		request.options.Progress.IncrementFailedRequestsBy(1)
+		return errors.Wrap(err, "could not get address from url")
+	}
+	variables := protocolutils.GenerateVariables(address, false, nil)
+	// add template ctx variables to varMap
+	variables = generators.MergeMaps(variables, request.options.GetTemplateCtx(input.MetaInput).GetAll())
+	variablesMap := request.options.Variables.Evaluate(variables)
+	variables = generators.MergeMaps(variablesMap, variables, request.options.Constants)
+
+	for _, kv := range request.addresses {
+		actualAddress := replacer.Replace(kv.address, variables)
+
+		if visited.Has(actualAddress) && !request.options.Options.DisableClustering {
+			continue
+		}
+		visited.Set(actualAddress, struct{}{})
+
+		if err := request.executeAddress(variables, actualAddress, address, input, kv.tls, previous, callback); err != nil {
+			outputEvent := request.responseToDSLMap("", "", "", address, "")
+			callback(&output.InternalWrappedEvent{InternalEvent: outputEvent})
+			gologger.Warning().Msgf("[%v] Could not make network request for (%s) : %s\n", request.options.TemplateID, actualAddress, err)
+			continue
+		}
+	}
 	return nil
 }
 
