@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
+	"go.uber.org/multierr"
 	"golang.org/x/exp/maps"
 
 	"github.com/projectdiscovery/gologger"
@@ -22,6 +23,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/helpers/eventcreator"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/helpers/responsehighlighter"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/interactsh"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/replacer"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/utils/vardump"
 	protocolutils "github.com/projectdiscovery/nuclei/v3/pkg/protocols/utils"
@@ -44,52 +46,101 @@ func (request *Request) Type() templateTypes.ProtocolType {
 	return templateTypes.NetworkProtocol
 }
 
+// getOpenPorts returns all open ports from list of ports provided in template
+// if only 1 port is provided, no need to check if port is open or not
+func (request *Request) getOpenPorts(target *contextargs.Context) ([]string, error) {
+	if len(request.ports) == 1 {
+		// no need to check if port is open or not
+		return request.ports, nil
+	}
+	errs := []error{}
+	// if more than 1 port is provided, check if port is open or not
+	openPorts := make([]string, 0)
+	for _, port := range request.ports {
+		cloned := target.Clone()
+		if err := cloned.UseNetworkPort(port, request.ExcludePorts); err != nil {
+			errs = append(errs, err)
+			continue
+		}
+		addr, err := getAddress(cloned.MetaInput.Input)
+		if err != nil {
+			errs = append(errs, err)
+			continue
+		}
+		conn, err := protocolstate.Dialer.Dial(context.TODO(), "tcp", addr)
+		if err != nil {
+			errs = append(errs, err)
+			continue
+		}
+		_ = conn.Close()
+		openPorts = append(openPorts, port)
+	}
+	if len(openPorts) == 0 {
+		return nil, multierr.Combine(errs...)
+	}
+	return openPorts, nil
+}
+
 // ExecuteWithResults executes the protocol requests and returns results instead of writing them.
 func (request *Request) ExecuteWithResults(target *contextargs.Context, metadata, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
 	var address string
 	var err error
 
-	input := target.Clone()
-	// use network port updates input with new port requested in template file
-	// and it is ignored if input port is not standard http(s) ports like 80,8080,8081 etc
-	// idea is to reduce redundant dials to http ports
-	if err := input.UseNetworkPort(request.Port, request.ExcludePorts); err != nil {
-		gologger.Debug().Msgf("Could not network port from constants: %s\n", err)
-	}
-
-	if request.SelfContained {
-		address = ""
-	} else {
-		address, err = getAddress(input.MetaInput.Input)
+	// get open ports from list of ports provided in template
+	ports, err := request.getOpenPorts(target)
+	if len(ports) == 0 {
+		return err
 	}
 	if err != nil {
-		request.options.Output.Request(request.options.TemplatePath, input.MetaInput.Input, request.Type().String(), err)
-		request.options.Progress.IncrementFailedRequestsBy(1)
-		return errors.Wrap(err, "could not get address from url")
+		// TODO: replace this after scan context is implemented
+		gologger.Verbose().Msgf("[%v] got errors while checking open ports: %s\n", request.options.TemplateID, err)
 	}
-	variables := protocolutils.GenerateVariables(address, false, nil)
-	// add template ctx variables to varMap
-	variables = generators.MergeMaps(variables, request.options.GetTemplateCtx(input.MetaInput).GetAll())
-	variablesMap := request.options.Variables.Evaluate(variables)
-	variables = generators.MergeMaps(variablesMap, variables, request.options.Constants)
 
 	visitedAddresses := make(mapsutil.Map[string, struct{}])
 
-	for _, kv := range request.addresses {
-		actualAddress := replacer.Replace(kv.address, variables)
+	for _, port := range ports {
 
-		if visitedAddresses.Has(actualAddress) && !request.options.Options.DisableClustering {
-			continue
+		input := target.Clone()
+		// use network port updates input with new port requested in template file
+		// and it is ignored if input port is not standard http(s) ports like 80,8080,8081 etc
+		// idea is to reduce redundant dials to http ports
+		if err := input.UseNetworkPort(port, request.ExcludePorts); err != nil {
+			gologger.Debug().Msgf("Could not network port from constants: %s\n", err)
 		}
-		visitedAddresses.Set(actualAddress, struct{}{})
 
-		if err := request.executeAddress(variables, actualAddress, address, input, kv.tls, previous, callback); err != nil {
-			outputEvent := request.responseToDSLMap("", "", "", address, "")
-			callback(&output.InternalWrappedEvent{InternalEvent: outputEvent})
-			gologger.Warning().Msgf("[%v] Could not make network request for (%s) : %s\n", request.options.TemplateID, actualAddress, err)
-			continue
+		if request.SelfContained {
+			address = ""
+		} else {
+			address, err = getAddress(input.MetaInput.Input)
+		}
+		if err != nil {
+			request.options.Output.Request(request.options.TemplatePath, input.MetaInput.Input, request.Type().String(), err)
+			request.options.Progress.IncrementFailedRequestsBy(1)
+			return errors.Wrap(err, "could not get address from url")
+		}
+		variables := protocolutils.GenerateVariables(address, false, nil)
+		// add template ctx variables to varMap
+		variables = generators.MergeMaps(variables, request.options.GetTemplateCtx(input.MetaInput).GetAll())
+		variablesMap := request.options.Variables.Evaluate(variables)
+		variables = generators.MergeMaps(variablesMap, variables, request.options.Constants)
+
+		for _, kv := range request.addresses {
+			actualAddress := replacer.Replace(kv.address, variables)
+
+			if visitedAddresses.Has(actualAddress) && !request.options.Options.DisableClustering {
+				continue
+			}
+			visitedAddresses.Set(actualAddress, struct{}{})
+
+			if err := request.executeAddress(variables, actualAddress, address, input, kv.tls, previous, callback); err != nil {
+				outputEvent := request.responseToDSLMap("", "", "", address, "")
+				callback(&output.InternalWrappedEvent{InternalEvent: outputEvent})
+				gologger.Warning().Msgf("[%v] Could not make network request for (%s) : %s\n", request.options.TemplateID, actualAddress, err)
+				continue
+			}
 		}
 	}
+
 	return nil
 }
 
