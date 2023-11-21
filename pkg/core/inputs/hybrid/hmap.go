@@ -385,17 +385,33 @@ func (i *Input) setItem(metaInput *contextargs.MetaInput) {
 
 // setItem in the kv store
 func (i *Input) delItem(metaInput *contextargs.MetaInput) {
-	key, err := metaInput.MarshalString()
+	targetUrl, err := urlutil.ParseURL(metaInput.Input, true)
 	if err != nil {
 		gologger.Warning().Msgf("%s\n", err)
 		return
 	}
-	if _, ok := i.hostMap.Get(key); !ok {
-		return
-	}
 
-	i.excludedCount++
-	_ = i.hostMap.Del(key)
+	i.hostMap.Scan(func(k, _ []byte) error {
+		var tmpMetaInput contextargs.MetaInput
+		if err := tmpMetaInput.Unmarshal(string(k)); err != nil {
+			return err
+		}
+		tmpKey, err := tmpMetaInput.MarshalString()
+		if err != nil {
+			return err
+		}
+		tmpUrl, err := urlutil.ParseURL(tmpMetaInput.Input, true)
+		if err != nil {
+			return err
+		}
+
+		if tmpUrl.Host == targetUrl.Host {
+			i.hostMap.Del(tmpKey)
+			i.excludedCount++
+			i.inputCount--
+		}
+		return nil
+	})
 }
 
 // setHostMapStream sets item in stream mode
@@ -481,27 +497,6 @@ func (i *Input) addTargets(targets []string) {
 func (i *Input) removeTargets(targets []string) {
 	for _, target := range targets {
 		metaInput := &contextargs.MetaInput{Input: target}
-		key, err := metaInput.MarshalString()
-		if err != nil {
-			gologger.Warning().Msgf("%s\n", err)
-			return
-		}
-
-		i.hostMap.Scan(func(k, _ []byte) error {
-			var tmpMetaInput contextargs.MetaInput
-			if err := tmpMetaInput.Unmarshal(string(k)); err != nil {
-				return err
-			}
-			tmpKey, err := tmpMetaInput.MarshalString()
-			if err != nil {
-				return err
-			}
-			if tmpKey == key {
-				i.hostMap.Del(tmpKey)
-				i.excludedCount++
-				i.inputCount--
-			}
-			return nil
-		})
+		i.delItem(metaInput)
 	}
 }
