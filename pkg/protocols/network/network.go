@@ -186,7 +186,7 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 				return errorutil.NewWithErr(err).Msgf("could not parse port %v from '%s'", port, request.Port)
 			}
 			if portInt < 1 || portInt > 65535 {
-				return errorutil.NewWithErr(err).Msgf("port %v is not in valid range", portInt)
+				return errorutil.NewWithTag(request.TemplateID, "port %v is not in valid range", portInt)
 			}
 			request.ports = append(request.ports, port)
 		}
