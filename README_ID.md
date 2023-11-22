@@ -105,13 +105,15 @@ TEMPLATES:
    -ntv, -new-templates-version string[]  run new templates added in specific version
    -as, -automatic-scan                   automatic web scan using wappalyzer technology detection to tags mapping
    -t, -templates string[]                list of template or template directory to run (comma-separated, file)
-   -tu, -template-url string[]            list of template urls to run (comma-separated, file)
+   -turl, -template-url string[]          template url or list containing template urls to run (comma-separated, file)
    -w, -workflows string[]                list of workflow or workflow directory to run (comma-separated, file)
-   -wu, -workflow-url string[]            list of workflow urls to run (comma-separated, file)
+   -wurl, -workflow-url string[]          workflow url or list containing workflow urls to run (comma-separated, file)
    -validate                              validate the passed templates to nuclei
    -nss, -no-strict-syntax                disable strict syntax check on templates
    -td, -template-display                 displays the templates content
    -tl                                    list all available templates
+   -sign                                  signs the templates with the private key defined in NUCLEI_SIGNATURE_PRIVATE_KEY env variable
+   -code                                  enable loading code protocol-based templates
 
 FILTERING:
    -a, -author string[]               templates to run based on authors (comma-separated, file)
@@ -264,27 +266,27 @@ STATISTICS:
    -mp, -metrics-port int    port to expose nuclei metrics on (default 9092)
 
 CLOUD:
-   -cloud                              run scan on nuclei cloud
-   -ads, -add-datasource string        add specified data source (s3,github)
-   -atr, -add-target string            add target(s) to cloud
-   -atm, -add-template string          add template(s) to cloud
-   -lsn, -list-scan                    list previous cloud scans
-   -lso, -list-output string           list scan output by scan id
-   -ltr, -list-target                  list cloud target by id
-   -ltm, -list-template                list cloud template by id
-   -lds, -list-datasource              list cloud datasource by id
-   -lrs, -list-reportsource            list reporting sources
-   -dsn, -delete-scan string           delete cloud scan by id
-   -dtr, -delete-target string         delete target(s) from cloud
-   -dtm, -delete-template string       delete template(s) from cloud
-   -dds, -delete-datasource string     delete specified data source
-   -drs, -disable-reportsource string  disable specified reporting source
-   -ers, -enable-reportsource string   enable specified reporting source
-   -gtr, -get-target string            get target content by id
-   -gtm, -get-template string          get template content by id
-   -nos, -no-store                     disable scan/output storage on cloud
-   -no-tables                          do not display pretty-printed tables
-   -limit int                          limit the number of output to display (default 100)
+   -auth                configure projectdiscovery cloud (pdcp) api key
+   -cup, -cloud-upload  upload scan results to pdcp dashboard
+
+
+EXAMPLES:
+Run nuclei on single host:
+	$ nuclei -target example.com
+
+Run nuclei with specific template directories:
+	$ nuclei -target example.com -t http/cves/ -t ssl
+
+Run nuclei against a list of hosts:
+	$ nuclei -list hosts.txt
+
+Run nuclei with a JSON output:
+	$ nuclei -target example.com -json-export output.json
+
+Run nuclei with sorted Markdown outputs (with environment variables):
+	$ MARKDOWN_EXPORT_SORT_MODE=template nuclei -target example.com -markdown-export nuclei_report/
+
+Additional documentation is available at: https://docs.nuclei.sh/getting-started/running
 ```
 
 ### Menjalankan Nuclei

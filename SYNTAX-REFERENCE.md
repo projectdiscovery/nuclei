@@ -1390,12 +1390,12 @@ Valid values:
 
 <div class="dd">
 
-<code>cookie-reuse</code>  <i>bool</i>
+<code>disable-cookie</code>  <i>bool</i>
 
 </div>
 <div class="dt">
 
-CookieReuse is an optional setting that enables cookie reuse for
+DisableCookie is an optional setting that disables cookie reuse for
 all requests defined in raw section.
 
 </div>
@@ -2881,12 +2881,12 @@ Fuzzing describes schema to fuzz headless requests
 
 <div class="dd">
 
-<code>cookie-reuse</code>  <i>bool</i>
+<code>disable-cookie</code>  <i>bool</i>
 
 </div>
 <div class="dt">
 
-CookieReuse is an optional setting that enables cookie reuse
+DisableCookie is an optional setting that disables cookie reuse
 
 </div>
 

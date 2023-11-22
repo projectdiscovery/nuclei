@@ -100,17 +100,19 @@ Nuclei是一款注重于可配置性、可扩展性和易用性的基于模板�
    -iv, -ip-version string[]             要扫描的主机名的IP版本（4,6）-（默认为4）
 
 模板：
-   -nt, -new-templates                   只扫描最新nuclei-templates版本中添加的模板
-   -ntv, -new-templates-version string[] 运行在特定nuclei-templates版本中添加的新模板
-   -as, -automatic-scan                  在web扫描中使用wappalyzer技术检测的指纹找包含对应tags的模板
-   -t, -templates string[]               指定需要扫描的模板文件或者模板目录（逗号分隔，文件）
-   -tu, -template-url string[]           从URL加载模板（逗号分隔，文件）
-   -w, -workflows string[]               指定需要扫描中的工作流文件或者工作流目录（逗号分隔，文件）
-   -wu, -workflow-url string[]           从URL加载工作流（逗号分隔，文件）
-   -validate                             验证模板
-   -nss, -no-strict-syntax               禁用对模板的严格语法检查
-   -td, -template-display                显示模板内容
-   -tl                                   列出所有可用的模板
+   -nt, -new-templates                    run only new templates added in latest nuclei-templates release
+   -ntv, -new-templates-version string[]  run new templates added in specific version
+   -as, -automatic-scan                   automatic web scan using wappalyzer technology detection to tags mapping
+   -t, -templates string[]                list of template or template directory to run (comma-separated, file)
+   -turl, -template-url string[]          template url or list containing template urls to run (comma-separated, file)
+   -w, -workflows string[]                list of workflow or workflow directory to run (comma-separated, file)
+   -wurl, -workflow-url string[]          workflow url or list containing workflow urls to run (comma-separated, file)
+   -validate                              validate the passed templates to nuclei
+   -nss, -no-strict-syntax                disable strict syntax check on templates
+   -td, -template-display                 displays the templates content
+   -tl                                    list all available templates
+   -sign                                  signs the templates with the private key defined in NUCLEI_SIGNATURE_PRIVATE_KEY env variable
+   -code                                  enable loading code protocol-based templates
 
 过滤：
    -a, -author string[]                  执行指定作者的模板（逗号分隔，文件）
@@ -267,31 +269,11 @@ UNCOVER引擎:
     -stats                               显示正在扫描的统计信息
     -sj, -stats-json                     将统计信息以JSONL格式输出到文件
     -si, -stats-inerval int              显示统计信息更新的间隔秒数（默认：5）
-    -m, -metrics                         开启metrics服务
     -mp, -metrics-port int               更改metrics服务的端口（默认：9092）
 
 云服务:
-   -cloud                                在nuclei云上运行扫描
-   -ads, -add-datasource string          添加指定的数据源（s3、github）
-   -atr, -add-target string              向云中添加目标
-   -atm, -add-template string            向云中添加模板
-   -lsn, -list-scan                      列出先前的云扫描
-   -lso, -list-output string             按扫描ID列出扫描输出
-   -ltr, -list-target                    按ID列出云目标
-   -ltm, -list-template                  按ID列出云模板
-   -lds, -list-datasource                按ID列出云数据源
-   -lrs, -list-reportsource              列出报告源
-   -dsn, -delete-scan string             按ID删除云扫描
-   -dtr, -delete-target string           从云中删除目标
-   -dtm, -delete-template string         从云中删除模板
-   -dds, -delete-datasource string       删除指定的数据源
-   -drs, -disable-reportsource string    禁用指定的报告源
-   -ers, -enable-reportsource string     启用指定的报告源
-   -gtr, -get-target string              按ID获取目标内容
-   -gtm, -get-template string            按ID获取模板内容
-   -nos, -no-store                       禁用云上的扫描/输出存储
-   -no-tables                            不显示漂亮打印的表格
-   -limit int                            限制要显示的输出数量（默认 100）
+   -auth                配置projectdiscovery云（pdcp）API密钥
+   -cup, -cloud-upload  将扫描结果上传到pdcp仪表板
 
 ```
 

@@ -20,12 +20,22 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolinit"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/utils/vardump"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/headless/engine"
-	protocoltypes "github.com/projectdiscovery/nuclei/v3/pkg/templates/types"
+	"github.com/projectdiscovery/nuclei/v3/pkg/reporting"
+	"github.com/projectdiscovery/nuclei/v3/pkg/reporting/exporters/jsonexporter"
+	"github.com/projectdiscovery/nuclei/v3/pkg/reporting/exporters/jsonl"
+	"github.com/projectdiscovery/nuclei/v3/pkg/reporting/exporters/markdown"
+	"github.com/projectdiscovery/nuclei/v3/pkg/reporting/exporters/sarif"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
+	"github.com/projectdiscovery/nuclei/v3/pkg/utils/yaml"
 	fileutil "github.com/projectdiscovery/utils/file"
 	"github.com/projectdiscovery/utils/generic"
 	logutil "github.com/projectdiscovery/utils/log"
 	stringsutil "github.com/projectdiscovery/utils/strings"
+)
+
+const (
+	// Default directory used to save protocols traffic
+	DefaultDumpTrafficOutputFolder = "output"
 )
 
 func ConfigureOptions() error {
@@ -184,37 +194,6 @@ func ValidateOptions(options *types.Options) error {
 	if !useIPV4 && !useIPV6 {
 		return errors.New("ipv4 and/or ipv6 must be selected")
 	}
-
-	// Validate cloud option
-	if err := validateCloudOptions(options); err != nil {
-		return err
-	}
-	return nil
-}
-
-func validateCloudOptions(options *types.Options) error {
-	if options.HasCloudOptions() && !options.Cloud {
-		return errors.New("cloud flags cannot be used without cloud option")
-	}
-	if options.Cloud {
-		if options.CloudAPIKey == "" {
-			return errors.New("missing NUCLEI_CLOUD_API env variable")
-		}
-		var missing []string
-		switch options.AddDatasource {
-		case "s3":
-			missing = validateMissingS3Options(options)
-		case "github":
-			missing = validateMissingGitHubOptions(options)
-		case "gitlab":
-			missing = validateMissingGitLabOptions(options)
-		case "azure":
-			missing = validateMissingAzureOptions(options)
-		}
-		if len(missing) > 0 {
-			return fmt.Errorf("missing %v env variables", strings.Join(missing, ", "))
-		}
-	}
 	return nil
 }
 
@@ -255,17 +234,6 @@ func validateMissingAzureOptions(options *types.Options) []string {
 	return missing
 }
 
-func validateMissingGitHubOptions(options *types.Options) []string {
-	var missing []string
-	if options.GitHubToken == "" {
-		missing = append(missing, "GITHUB_TOKEN")
-	}
-	if len(options.GitHubTemplateRepo) == 0 {
-		missing = append(missing, "GITHUB_TEMPLATE_REPO")
-	}
-	return missing
-}
-
 func validateMissingGitLabOptions(options *types.Options) []string {
 	var missing []string
 	if options.GitLabToken == "" {
@@ -276,6 +244,46 @@ func validateMissingGitLabOptions(options *types.Options) []string {
 	}
 
 	return missing
+}
+
+func createReportingOptions(options *types.Options) (*reporting.Options, error) {
+	var reportingOptions = &reporting.Options{}
+	if options.ReportingConfig != "" {
+		file, err := os.Open(options.ReportingConfig)
+		if err != nil {
+			return nil, errors.Wrap(err, "could not open reporting config file")
+		}
+		defer file.Close()
+
+		if err := yaml.DecodeAndValidate(file, reportingOptions); err != nil {
+			return nil, errors.Wrap(err, "could not parse reporting config file")
+		}
+		Walk(reportingOptions, expandEndVars)
+	}
+	if options.MarkdownExportDirectory != "" {
+		reportingOptions.MarkdownExporter = &markdown.Options{
+			Directory:         options.MarkdownExportDirectory,
+			IncludeRawPayload: !options.OmitRawRequests,
+			SortMode:          options.MarkdownExportSortMode,
+		}
+	}
+	if options.SarifExport != "" {
+		reportingOptions.SarifExporter = &sarif.Options{File: options.SarifExport}
+	}
+	if options.JSONExport != "" {
+		reportingOptions.JSONExporter = &jsonexporter.Options{
+			File:              options.JSONExport,
+			IncludeRawPayload: !options.OmitRawRequests,
+		}
+	}
+	if options.JSONLExport != "" {
+		reportingOptions.JSONLExporter = &jsonl.Options{
+			File:              options.JSONLExport,
+			IncludeRawPayload: !options.OmitRawRequests,
+		}
+	}
+
+	return reportingOptions, nil
 }
 
 // configureOutput configures the output logging levels to be displayed on the screen
@@ -354,17 +362,6 @@ func validateCertificatePaths(certificatePaths ...string) {
 
 // Read the input from env and set options
 func readEnvInputVars(options *types.Options) {
-	if strings.EqualFold(os.Getenv("NUCLEI_CLOUD"), "true") {
-		options.Cloud = true
-
-		// TODO: disable files, offlinehttp, code
-		options.ExcludeProtocols = append(options.ExcludeProtocols, protocoltypes.CodeProtocol, protocoltypes.FileProtocol, protocoltypes.OfflineHTTPProtocol)
-	}
-	if options.CloudURL = os.Getenv("NUCLEI_CLOUD_SERVER"); options.CloudURL == "" {
-		options.CloudURL = "https://cloud-dev.nuclei.sh"
-	}
-	options.CloudAPIKey = os.Getenv("NUCLEI_CLOUD_API")
-
 	options.GitHubToken = os.Getenv("GITHUB_TOKEN")
 	repolist := os.Getenv("GITHUB_TEMPLATE_REPO")
 	if repolist != "" {

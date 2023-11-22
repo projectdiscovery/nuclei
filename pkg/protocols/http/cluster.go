@@ -16,7 +16,7 @@ func (request *Request) CanCluster(other *Request) bool {
 	}
 	if request.Method != other.Method ||
 		request.MaxRedirects != other.MaxRedirects ||
-		request.CookieReuse != other.CookieReuse ||
+		request.DisableCookie != other.DisableCookie ||
 		request.Redirects != other.Redirects {
 		return false
 	}

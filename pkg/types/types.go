@@ -104,48 +104,6 @@ type Options struct {
 	MarkdownExportSortMode string
 	// SarifExport is the file to export sarif output format to
 	SarifExport string
-	// CloudURL is the URL for the nuclei cloud endpoint
-	CloudURL string
-	// CloudAPIKey is the api-key for the nuclei cloud endpoint
-	CloudAPIKey string
-	// ScanList feature to get all the scan ids for a user
-	ScanList bool
-	// ListDatasources enables listing of datasources for user
-	ListDatasources bool
-	// ListTargets enables listing of targets for user
-	ListTargets bool
-	// ListTemplates enables listing of templates for user
-	ListTemplates bool
-	// ListReportingSources enables listing of reporting source
-	ListReportingSources bool
-	// DisableReportingSource disables a reporting source
-	DisableReportingSource string
-	// EnableReportingSource enables a reporting source
-	EnableReportingSource string
-	// Limit the number of items at a time
-	OutputLimit int
-	// Nostore
-	NoStore bool
-	// Delete scan
-	DeleteScan string
-	// AddDatasource adds a datasource to cloud storage
-	AddDatasource string
-	// RemoveDatasource deletes a datasource from cloud storage
-	RemoveDatasource string
-	// AddTemplate adds a list of templates to custom datasource
-	AddTemplate string
-	// AddTarget adds a list of targets to custom datasource
-	AddTarget string
-	// GetTemplate gets a template by id
-	GetTemplate string
-	// GetTarget gets a target by id
-	GetTarget string
-	// RemoveTemplate removes a list of templates
-	RemoveTemplate string
-	// RemoveTarget removes a list of targets
-	RemoveTarget string
-	// Get issues for a scan
-	ScanOutput string
 	// ResolversFile is a file containing resolvers for nuclei.
 	ResolversFile string
 	// StatsInterval is the number of seconds to display stats after
@@ -206,8 +164,6 @@ type Options struct {
 	ShowBrowser bool
 	// HeadlessOptionalArguments specifies optional arguments to pass to Chrome
 	HeadlessOptionalArguments goflags.StringSlice
-	// NoTables disables pretty printing of cloud results in tables
-	NoTables bool
 	// DisableClustering disables clustering of templates
 	DisableClustering bool
 	// UseInstalledChrome skips chrome install and use local instance
@@ -252,12 +208,12 @@ type Options struct {
 	JSONRequests bool
 	// OmitRawRequests omits requests/responses for matches in JSON output
 	OmitRawRequests bool
+	// OmitTemplate omits encoded template from JSON output
+	OmitTemplate bool
 	// JSONExport is the file to export JSON output format to
 	JSONExport string
 	// JSONLExport is the file to export JSONL output format to
 	JSONLExport string
-	// Cloud enables nuclei cloud scan execution
-	Cloud bool
 	// EnableProgressBar enables progress bar
 	EnableProgressBar bool
 	// TemplateDisplay displays the template contents
@@ -398,6 +354,10 @@ type Options struct {
 	CodeTemplateSignatureAlgorithm string
 	// SignTemplates enables signing of templates
 	SignTemplates bool
+	// EnableCodeTemplates enables code templates
+	EnableCodeTemplates bool
+	// Disables cloud upload
+	EnableCloudUpload bool
 }
 
 // ShouldLoadResume resume file
@@ -434,23 +394,6 @@ func DefaultOptions() *Options {
 		ResponseReadSize:        10 * 1024 * 1024,
 		ResponseSaveSize:        1024 * 1024,
 	}
-}
-
-// HasCloudOptions returns true if cloud options have been specified
-func (options *Options) HasCloudOptions() bool {
-	return options.ScanList ||
-		options.DeleteScan != "" ||
-		options.ScanOutput != "" ||
-		options.ListDatasources ||
-		options.ListTargets ||
-		options.ListTemplates ||
-		options.RemoveDatasource != "" ||
-		options.AddTarget != "" ||
-		options.AddTemplate != "" ||
-		options.RemoveTarget != "" ||
-		options.RemoveTemplate != "" ||
-		options.GetTarget != "" ||
-		options.GetTemplate != ""
 }
 
 func (options *Options) ShouldUseHostError() bool {

@@ -172,6 +172,9 @@ func initBuiltInFunc(runtime *goja.Runtime) {
 			return runtime.ToValue(buff.String())
 		},
 	})
+
+	// register additional helpers
+	registerAdditionalHelpers(runtime)
 }
 
 // RegisterNativeScripts are js scripts that were added for convenience

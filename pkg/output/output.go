@@ -1,6 +1,7 @@
 package output
 
 import (
+	"encoding/base64"
 	"fmt"
 	"io"
 	"os"
@@ -20,6 +21,7 @@ import (
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/interactsh/pkg/server"
 	"github.com/projectdiscovery/nuclei/v3/internal/colorizer"
+	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/config"
 	"github.com/projectdiscovery/nuclei/v3/pkg/model"
 	"github.com/projectdiscovery/nuclei/v3/pkg/model/types/severity"
 	"github.com/projectdiscovery/nuclei/v3/pkg/operators"
@@ -47,19 +49,22 @@ type Writer interface {
 
 // StandardWriter is a writer writing output to file and screen for results.
 type StandardWriter struct {
-	json             bool
-	jsonReqResp      bool
-	timestamp        bool
-	noMetadata       bool
-	matcherStatus    bool
-	mutex            *sync.Mutex
-	aurora           aurora.Aurora
-	outputFile       io.WriteCloser
-	traceFile        io.WriteCloser
-	errorFile        io.WriteCloser
-	severityColors   func(severity.Severity) string
-	storeResponse    bool
-	storeResponseDir string
+	json                  bool
+	jsonReqResp           bool
+	timestamp             bool
+	noMetadata            bool
+	matcherStatus         bool
+	mutex                 *sync.Mutex
+	aurora                aurora.Aurora
+	outputFile            io.WriteCloser
+	traceFile             io.WriteCloser
+	errorFile             io.WriteCloser
+	severityColors        func(severity.Severity) string
+	storeResponse         bool
+	storeResponseDir      string
+	omitTemplate     bool
+	DisableStdout         bool
+	AddNewLinesOutputFile bool // by default this is only done for stdout
 }
 
 var decolorizerRegex = regexp.MustCompile(`\x1B\[[0-9;]*[a-zA-Z]`)
@@ -115,6 +120,8 @@ type ResultEvent struct {
 	TemplateID string `json:"template-id"`
 	// TemplatePath is the path of template
 	TemplatePath string `json:"template-path,omitempty"`
+	// TemplateEncoded is the base64 encoded template
+	TemplateEncoded string `json:"template-encoded,omitempty"`
 	// Info contains information block of the template for the result.
 	Info model.Info `json:"info,inline"`
 	// MatcherName is the name of the matcher matched if any.
@@ -207,6 +214,7 @@ func NewStandardWriter(options *types.Options) (*StandardWriter, error) {
 		severityColors:   colorizer.New(auroraColorizer),
 		storeResponse:    options.StoreResponse,
 		storeResponseDir: options.StoreResponseDir,
+		omitTemplate:     options.OmitTemplate,
 	}
 	return writer, nil
 }
@@ -217,6 +225,7 @@ func (w *StandardWriter) Write(event *ResultEvent) error {
 	if event.TemplatePath != "" {
 		event.Template, event.TemplateURL = utils.TemplatePathURL(types.ToString(event.TemplatePath), types.ToString(event.TemplateID))
 	}
+
 	event.Timestamp = time.Now()
 
 	var data []byte
@@ -236,8 +245,10 @@ func (w *StandardWriter) Write(event *ResultEvent) error {
 	w.mutex.Lock()
 	defer w.mutex.Unlock()
 
-	_, _ = os.Stdout.Write(data)
-	_, _ = os.Stdout.Write([]byte("\n"))
+	if !w.DisableStdout {
+		_, _ = os.Stdout.Write(data)
+		_, _ = os.Stdout.Write([]byte("\n"))
+	}
 
 	if w.outputFile != nil {
 		if !w.json {
@@ -245,6 +256,9 @@ func (w *StandardWriter) Write(event *ResultEvent) error {
 		}
 		if _, writeErr := w.outputFile.Write(data); writeErr != nil {
 			return errors.Wrap(err, "could not write to output")
+		}
+		if w.AddNewLinesOutputFile && w.json {
+			_, _ = w.outputFile.Write([]byte("\n"))
 		}
 	}
 	return nil
@@ -344,9 +358,22 @@ func (w *StandardWriter) WriteFailure(wrappedEvent *InternalWrappedEvent) error 
 		Response:      types.ToString(event["response"]),
 		MatcherStatus: false,
 		Timestamp:     time.Now(),
+		//FIXME: this is workaround to encode the template when no results were found
+		TemplateEncoded: w.encodeTemplate(types.ToString(event["template-path"])),
 	}
 	return w.Write(data)
 }
+
+var maxTemplateFileSizeForEncoding = 1024 * 1024
+
+func (w *StandardWriter) encodeTemplate(templatePath string) string {
+	data, err := os.ReadFile(templatePath)
+	if err == nil && !w.omitTemplate && len(data) <= maxTemplateFileSizeForEncoding && config.DefaultConfig.IsCustomTemplate(templatePath) {
+		return base64.StdEncoding.EncodeToString(data)
+	}
+	return ""
+}
+
 func sanitizeFileName(fileName string) string {
 	fileName = strings.ReplaceAll(fileName, "http:", "")
 	fileName = strings.ReplaceAll(fileName, "https:", "")

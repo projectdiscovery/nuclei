@@ -130,13 +130,13 @@ func (request *Request) executeRequestWithPayloads(input *contextargs.Context, p
 		return errors.Wrap(err, errCouldGetHtmlElement)
 	}
 	options := &engine.Options{
-		Timeout:     time.Duration(request.options.Options.PageTimeout) * time.Second,
-		CookieReuse: request.CookieReuse,
-		Options:     request.options.Options,
+		Timeout:       time.Duration(request.options.Options.PageTimeout) * time.Second,
+		DisableCookie: request.DisableCookie,
+		Options:       request.options.Options,
 	}
 
-	if options.CookieReuse && input.CookieJar == nil {
-		return errors.New("cookie-reuse set but cookie-jar is nil")
+	if !options.DisableCookie && input.CookieJar == nil {
+		return errors.New("cookie reuse enabled but cookie-jar is nil")
 	}
 
 	out, page, err := instance.Run(input, request.Steps, payloads, options)
