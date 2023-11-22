@@ -476,21 +476,7 @@ func (i *Input) expandASNInputValue(value string) []string {
 
 func (i *Input) addTargets(targets []string) {
 	for _, target := range targets {
-		metaInput := &contextargs.MetaInput{Input: target}
-		key, err := metaInput.MarshalString()
-		if err != nil {
-			gologger.Warning().Msgf("%s\n", err)
-			return
-		}
-		if _, ok := i.hostMap.Get(key); ok {
-			i.dupeCount++
-			continue
-		}
-		i.inputCount++
-		_ = i.hostMap.Set(key, nil)
-		if i.hostMapStream != nil {
-			i.setHostMapStream(key)
-		}
+		i.Set(target)
 	}
 }
 
