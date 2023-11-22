@@ -39,7 +39,9 @@ type Input struct {
 	inputCount        int64
 	excludedCount     int64
 	dupeCount         int64
+	skippedCount      int64
 	hostMap           *hybrid.HybridMap
+	excludedHosts     map[string]struct{}
 	hostMapStream     *filekv.FileDB
 	hostMapStreamOnce sync.Once
 	sync.Once
@@ -94,6 +96,9 @@ func New(opts *Options) (*Input, error) {
 	}
 	if input.dupeCount > 0 {
 		gologger.Info().Msgf("Supplied input was automatically deduplicated (%d removed).", input.dupeCount)
+	}
+	if input.skippedCount > 0 {
+		gologger.Info().Msgf("Number of hosts skipped from input due to exclusion: %d", input.skippedCount)
 	}
 	return input, nil
 }
@@ -282,6 +287,32 @@ func (i *Input) Set(value string) {
 	}
 }
 
+// SetWithExclusions normalizes and stores passed input values if not excluded
+func (i *Input) SetWithExclusions(value string) {
+	URL := strings.TrimSpace(value)
+	if URL == "" {
+		return
+	}
+	if i.isExcluded(URL) {
+		i.skippedCount++
+		return
+	}
+	i.Set(URL)
+}
+
+// isExcluded checks if a URL is in the exclusion list
+func (i *Input) isExcluded(URL string) bool {
+	metaInput := &contextargs.MetaInput{Input: URL}
+	key, err := metaInput.MarshalString()
+	if err != nil {
+		gologger.Warning().Msgf("%s\n", err)
+		return false
+	}
+
+	_, exists := i.excludedHosts[key]
+	return exists
+}
+
 func (i *Input) Del(value string) {
 	URL := strings.TrimSpace(value)
 	if URL == "" {
@@ -407,6 +438,7 @@ func (i *Input) delItem(metaInput *contextargs.MetaInput) {
 
 		if tmpUrl.Host == targetUrl.Host {
 			_ = i.hostMap.Del(tmpKey)
+			i.excludedHosts[tmpKey] = struct{}{}
 			i.excludedCount++
 			i.inputCount--
 		}
