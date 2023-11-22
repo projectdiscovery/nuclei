@@ -13,7 +13,9 @@ import (
 // SSHClient is a client for SSH servers.
 //
 // Internally client uses github.com/zmap/zgrab2/lib/ssh driver.
-type SSHClient struct{}
+type SSHClient struct {
+	Connection *ssh.Client
+}
 
 // Connect tries to connect to provided host and port
 // with provided username and password with ssh.
@@ -25,7 +27,7 @@ func (c *SSHClient) Connect(host string, port int, username, password string) (b
 	if err != nil {
 		return false, err
 	}
-	defer conn.Close()
+	c.Connection = conn
 
 	return true, nil
 }
@@ -40,7 +42,7 @@ func (c *SSHClient) ConnectWithKey(host string, port int, username, key string) 
 	if err != nil {
 		return false, err
 	}
-	defer conn.Close()
+	c.Connection = conn
 
 	return true, nil
 }
@@ -55,6 +57,17 @@ func (c *SSHClient) ConnectWithKey(host string, port int, username, key string) 
 // ssh connection
 func (c *SSHClient) ConnectSSHInfoMode(host string, port int) (*ssh.HandshakeLog, error) {
 	return connectSSHInfoMode(host, port)
+}
+
+// Close closes the SSH connection and destroys the client
+//
+// Returns the success state and error. If error is not nil,
+// state will be false
+func (c *SSHClient) Close() (bool, error) {
+	if err := c.Connection.Close(); err != nil {
+		return false, err
+	}
+	return true, nil
 }
 
 func connectSSHInfoMode(host string, port int) (*ssh.HandshakeLog, error) {
