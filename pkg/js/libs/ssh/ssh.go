@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
+	errorutil "github.com/projectdiscovery/utils/errors"
 	"github.com/zmap/zgrab2/lib/ssh"
 )
 
@@ -67,6 +68,9 @@ func (c *SSHClient) ConnectSSHInfoMode(host string, port int) (*ssh.HandshakeLog
 //
 // The string contains the command output
 func (c *SSHClient) Run(cmd string) (string, error) {
+	if c.Connection == nil {
+		return "", errorutil.New("no connection")
+	}
 	session, err := c.Connection.NewSession()
 	if err != nil {
 		return "", err
