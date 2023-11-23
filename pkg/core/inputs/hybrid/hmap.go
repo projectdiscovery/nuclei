@@ -73,6 +73,7 @@ func New(opts *Options) (*Input, error) {
 			IPV4:       sliceutil.Contains(options.IPVersion, "4"),
 			IPV6:       sliceutil.Contains(options.IPVersion, "6"),
 		},
+		excludedHosts: make(map[string]struct{}),
 	}
 	if options.Stream {
 		fkvOptions := filekv.DefaultOptions
