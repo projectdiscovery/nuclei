@@ -76,6 +76,8 @@ type Options struct {
 	InteractshToken string
 	// Target URLs/Domains to scan using a template
 	Targets goflags.StringSlice
+	// ExcludeTargets URLs/Domains to exclude from scanning
+	ExcludeTargets goflags.StringSlice
 	// TargetsFilePath specifies the targets from a file to scan using templates.
 	TargetsFilePath string
 	// Resume the scan from the state stored in the resume config file
