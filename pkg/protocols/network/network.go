@@ -1,6 +1,7 @@
 package network
 
 import (
+	"strconv"
 	"strings"
 
 	"github.com/pkg/errors"
@@ -11,6 +12,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/expressions"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/generators"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/network/networkclientpool"
+	errorutil "github.com/projectdiscovery/utils/errors"
 	fileutil "github.com/projectdiscovery/utils/file"
 )
 
@@ -73,6 +75,10 @@ type Request struct {
 	// description: |
 	//   SelfContained specifies if the request is self-contained.
 	SelfContained bool `yaml:"-" json:"-"`
+
+	// description: |
+	// ports is post processed list of ports to scan (obtained from Port)
+	ports []string `yaml:"-" json:"-"`
 
 	// Operators for the current request go here.
 	operators.Operators `yaml:",inline,omitempty"`
@@ -166,6 +172,23 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 		}
 		if compiled, evalErr := expressions.Evaluate(input.Data, map[string]interface{}{}); evalErr == nil {
 			input.Data = compiled
+		}
+	}
+
+	// parse ports and validate
+	if request.Port != "" {
+		for _, port := range strings.Split(request.Port, ",") {
+			if port == "" {
+				continue
+			}
+			portInt, err := strconv.Atoi(port)
+			if err != nil {
+				return errorutil.NewWithErr(err).Msgf("could not parse port %v from '%s'", port, request.Port)
+			}
+			if portInt < 1 || portInt > 65535 {
+				return errorutil.NewWithTag(request.TemplateID, "port %v is not in valid range", portInt)
+			}
+			request.ports = append(request.ports, port)
 		}
 	}
 
