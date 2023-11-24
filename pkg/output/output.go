@@ -25,6 +25,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/model"
 	"github.com/projectdiscovery/nuclei/v3/pkg/model/types/severity"
 	"github.com/projectdiscovery/nuclei/v3/pkg/operators"
+	protocolUtils "github.com/projectdiscovery/nuclei/v3/pkg/protocols/utils"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	"github.com/projectdiscovery/nuclei/v3/pkg/utils"
 	fileutil "github.com/projectdiscovery/utils/file"
@@ -62,7 +63,7 @@ type StandardWriter struct {
 	severityColors        func(severity.Severity) string
 	storeResponse         bool
 	storeResponseDir      string
-	omitTemplate     bool
+	omitTemplate          bool
 	DisableStdout         bool
 	AddNewLinesOutputFile bool // by default this is only done for stdout
 }
@@ -132,6 +133,12 @@ type ResultEvent struct {
 	Type string `json:"type"`
 	// Host is the host input on which match was found.
 	Host string `json:"host,omitempty"`
+	// Port is port of the host input on which match was found (if applicable).
+	Port string `json:"port,omitempty"`
+	// Scheme is the scheme of the host input on which match was found (if applicable).
+	Scheme string `json:"scheme,omitempty"`
+	// URL is the Base URL of the host input on which match was found (if applicable).
+	URL string `json:"url,omitempty"`
 	// Path is the path input on which match was found.
 	Path string `json:"path,omitempty"`
 	// Matched contains the matched input in its transformed form.
@@ -346,6 +353,14 @@ func (w *StandardWriter) WriteFailure(wrappedEvent *InternalWrappedEvent) error 
 	if event["template-info"] != nil {
 		templateInfo = event["template-info"].(model.Info)
 	}
+	fields := protocolUtils.GetJsonFieldsFromURL(types.ToString(event["host"]))
+	if types.ToString(event["ip"]) != "" {
+		fields.Ip = types.ToString(event["ip"])
+	}
+	if types.ToString(event["path"]) != "" {
+		fields.Path = types.ToString(event["path"])
+	}
+
 	data := &ResultEvent{
 		Template:      templatePath,
 		TemplateURL:   templateURL,
@@ -353,7 +368,12 @@ func (w *StandardWriter) WriteFailure(wrappedEvent *InternalWrappedEvent) error 
 		TemplatePath:  types.ToString(event["template-path"]),
 		Info:          templateInfo,
 		Type:          types.ToString(event["type"]),
-		Host:          types.ToString(event["host"]),
+		Host:          fields.Host,
+		Path:          fields.Path,
+		Port:          fields.Port,
+		Scheme:        fields.Scheme,
+		URL:           fields.URL,
+		IP:            fields.Ip,
 		Request:       types.ToString(event["request"]),
 		Response:      types.ToString(event["response"]),
 		MatcherStatus: false,

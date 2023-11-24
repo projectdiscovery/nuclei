@@ -10,6 +10,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/operators/matchers"
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
+	protocolUtils "github.com/projectdiscovery/nuclei/v3/pkg/protocols/utils"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 )
 
@@ -125,17 +126,28 @@ func (request *Request) GetCompiledOperators() []*operators.Operators {
 }
 
 func (request *Request) MakeResultEventItem(wrapped *output.InternalWrappedEvent) *output.ResultEvent {
+	fields := protocolUtils.GetJsonFieldsFromURL(types.ToString(wrapped.InternalEvent["host"]))
+	if types.ToString(wrapped.InternalEvent["ip"]) != "" {
+		fields.Ip = types.ToString(wrapped.InternalEvent["ip"])
+	}
+	if types.ToString(wrapped.InternalEvent["path"]) != "" {
+		fields.Path = types.ToString(wrapped.InternalEvent["path"])
+	}
 	data := &output.ResultEvent{
 		TemplateID:       types.ToString(wrapped.InternalEvent["template-id"]),
 		TemplatePath:     types.ToString(wrapped.InternalEvent["template-path"]),
 		Info:             wrapped.InternalEvent["template-info"].(model.Info),
 		Type:             types.ToString(wrapped.InternalEvent["type"]),
-		Host:             types.ToString(wrapped.InternalEvent["host"]),
+		Host:             fields.Host,
+		Path:             fields.Path,
+		Port:             fields.Port,
+		Scheme:           fields.Scheme,
+		URL:              fields.URL,
 		Matched:          types.ToString(wrapped.InternalEvent["matched"]),
 		ExtractedResults: wrapped.OperatorsResult.OutputExtracts,
 		Timestamp:        time.Now(),
 		MatcherStatus:    true,
-		IP:               types.ToString(wrapped.InternalEvent["ip"]),
+		IP:               fields.Ip,
 		Request:          types.ToString(wrapped.InternalEvent["request"]),
 		Response:         types.ToString(wrapped.InternalEvent["data"]),
 		TemplateEncoded:  request.options.EncodeTemplate(),
