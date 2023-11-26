@@ -209,6 +209,10 @@ func getBaseNamingContext(opts *ldapSessionOptions, conn *ldap.Conn) (string, er
 type KerberoastableUser struct {
 	SAMAccountName       string
 	ServicePrincipalName string
+	PWDLastSet           string
+	MemberOf             string
+	UserAccountControl   string
+	LastLogon            string
 }
 
 // GetKerberoastableUsers collects all "person" users that have an SPN
@@ -269,6 +273,10 @@ func (c *LdapClient) GetKerberoastableUsers(domain, controller string, username,
 		[]string{
 			"SAMAccountName",
 			"ServicePrincipalName",
+			"pwdLastSet",
+			"MemberOf",
+			"userAccountControl",
+			"lastLogon",
 		},
 		nil,
 	)
@@ -287,6 +295,10 @@ func (c *LdapClient) GetKerberoastableUsers(domain, controller string, username,
 		ku = append(ku, KerberoastableUser{
 			SAMAccountName:       usr.GetAttributeValue("sAMAccountName"),
 			ServicePrincipalName: usr.GetAttributeValue("servicePrincipalName"),
+			PWDLastSet:           usr.GetAttributeValue("pwdLastSet"),
+			MemberOf:             usr.GetAttributeValue("MemberOf"),
+			UserAccountControl:   usr.GetAttributeValue("userAccountControl"),
+			LastLogon:            usr.GetAttributeValue("lastLogon"),
 		})
 	}
 	return ku, nil
