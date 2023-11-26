@@ -143,3 +143,49 @@ func asRepToHashcat(asrep messages.ASRep) (string, error) {
 		hex.EncodeToString(asrep.EncPart.Cipher[:16]),
 		hex.EncodeToString(asrep.EncPart.Cipher[16:])), nil
 }
+
+type TGS struct {
+	Ticket messages.Ticket
+	Hash   string
+}
+
+func (c *KerberosClient) GetServiceTicket(domain, controller string, username, password string, target, spn string) (TGS, error) {
+	var tgs TGS
+
+	if !protocolstate.IsHostAllowed(domain) {
+		// host is not valid according to network policy
+		return tgs, protocolstate.ErrHostDenied.Msgf(domain)
+	}
+
+	opts, err := newKerbrosEnumUserOpts(domain, controller)
+	if err != nil {
+		return tgs, err
+	}
+	cl := kclient.NewWithPassword(username, opts.realm, password, opts.config, kclient.DisablePAFXFAST(true))
+
+	ticket, _, err := cl.GetServiceTicket(spn)
+	if err != nil {
+		return tgs, err
+	}
+
+	hashcat, err := tgsToHashcat(ticket)
+	if err != nil {
+		return tgs, err
+	}
+
+	return TGS{
+		Ticket: ticket,
+		Hash:   hashcat,
+	}, nil
+}
+
+func tgsToHashcat(tgs messages.Ticket) (string, error) {
+	return fmt.Sprintf("$krb5tgs$%d$*%s$%s$%s*$%s$%s",
+		tgs.EncPart.EType,
+		"",
+		tgs.Realm,
+		strings.Join(tgs.SName.NameString[:], "/"),
+		hex.EncodeToString(tgs.EncPart.Cipher[:16]),
+		hex.EncodeToString(tgs.EncPart.Cipher[16:]),
+	), nil
+}
