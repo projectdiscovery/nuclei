@@ -655,26 +655,25 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 		request.options.Output.Request(request.options.TemplatePath, formedURL, request.Type().String(), err)
 		request.options.Progress.IncrementErrorsBy(1)
 
-		// If we have interactsh markers and request times out, still send
+		// In case of interactsh markers and request times out, still send
 		// a callback event so in case we receive an interaction, correlation is possible.
-		if hasInteractMatchers {
-			outputEvent := request.responseToDSLMap(&http.Response{}, input.MetaInput.Input, formedURL, tostring.UnsafeToString(dumpedRequest), "", "", "", 0, generatedRequest.meta)
-			if i := strings.LastIndex(hostname, ":"); i != -1 {
-				hostname = hostname[:i]
-			}
-
-			if input.MetaInput.CustomIP != "" {
-				outputEvent["ip"] = input.MetaInput.CustomIP
-			} else {
-				outputEvent["ip"] = httpclientpool.Dialer.GetDialedIP(hostname)
-			}
-
-			event := &output.InternalWrappedEvent{InternalEvent: outputEvent}
-			if request.CompiledOperators != nil {
-				event.InternalEvent = outputEvent
-			}
-			callback(event)
+		// Also, to log failed use-cases.
+		outputEvent := request.responseToDSLMap(&http.Response{}, input.MetaInput.Input, formedURL, tostring.UnsafeToString(dumpedRequest), "", "", "", 0, generatedRequest.meta)
+		if i := strings.LastIndex(hostname, ":"); i != -1 {
+			hostname = hostname[:i]
 		}
+
+		if input.MetaInput.CustomIP != "" {
+			outputEvent["ip"] = input.MetaInput.CustomIP
+		} else {
+			outputEvent["ip"] = httpclientpool.Dialer.GetDialedIP(hostname)
+		}
+
+		event := &output.InternalWrappedEvent{InternalEvent: outputEvent}
+		if request.CompiledOperators != nil {
+			event.InternalEvent = outputEvent
+		}
+		callback(event)
 		return err
 	}
 	defer func() {
