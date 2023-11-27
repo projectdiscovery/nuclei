@@ -168,7 +168,7 @@ func (c *KerberosClient) GetServiceTicket(domain, controller string, username, p
 		return tgs, err
 	}
 
-	hashcat, err := tgsToHashcat(ticket)
+	hashcat, err := tgsToHashcat(ticket, target)
 	if err != nil {
 		return tgs, err
 	}
@@ -179,10 +179,10 @@ func (c *KerberosClient) GetServiceTicket(domain, controller string, username, p
 	}, nil
 }
 
-func tgsToHashcat(tgs messages.Ticket) (string, error) {
+func tgsToHashcat(tgs messages.Ticket, username string) (string, error) {
 	return fmt.Sprintf("$krb5tgs$%d$*%s$%s$%s*$%s$%s",
 		tgs.EncPart.EType,
-		"",
+		username,
 		tgs.Realm,
 		strings.Join(tgs.SName.NameString[:], "/"),
 		hex.EncodeToString(tgs.EncPart.Cipher[:16]),
