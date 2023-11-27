@@ -5,8 +5,8 @@ import (
 	"sync/atomic"
 
 	"github.com/projectdiscovery/gologger"
-	"github.com/projectdiscovery/nuclei/v3/pkg/output"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
+	"github.com/projectdiscovery/nuclei/v3/pkg/scan"
 	"github.com/projectdiscovery/nuclei/v3/pkg/templates"
 	"github.com/projectdiscovery/nuclei/v3/pkg/templates/types"
 	generalTypes "github.com/projectdiscovery/nuclei/v3/pkg/types"
@@ -23,15 +23,17 @@ func (e *Engine) executeAllSelfContained(alltemplates []*templates.Template, res
 			defer sg.Done()
 			var err error
 			var match bool
+			ctx := scan.NewScanContext(contextargs.New())
 			if e.Callback != nil {
-				err = template.Executer.ExecuteWithResults(contextargs.New(), func(event *output.InternalWrappedEvent) {
-					for _, result := range event.Results {
+				if results, err := template.Executer.ExecuteWithResults(ctx); err != nil {
+					for _, result := range results {
 						e.Callback(result)
 					}
-				})
+				}
+
 				match = true
 			} else {
-				match, err = template.Executer.Execute(contextargs.New())
+				match, err = template.Executer.Execute(ctx)
 			}
 			if err != nil {
 				gologger.Warning().Msgf("[%s] Could not execute step: %s\n", e.executerOpts.Colorizer.BrightBlue(template.ID), err)
@@ -111,21 +113,22 @@ func (e *Engine) executeTemplateWithTargets(template *templates.Template, target
 
 			var match bool
 			var err error
+			ctxArgs := contextargs.New()
+			ctxArgs.MetaInput = value
+			ctx := scan.NewScanContext(ctxArgs)
 			switch template.Type() {
 			case types.WorkflowProtocol:
-				match = e.executeWorkflow(value, template.CompiledWorkflow)
+				match = e.executeWorkflow(ctx, template.CompiledWorkflow)
 			default:
-				ctxArgs := contextargs.New()
-				ctxArgs.MetaInput = value
 				if e.Callback != nil {
-					err = template.Executer.ExecuteWithResults(ctxArgs, func(event *output.InternalWrappedEvent) {
-						for _, result := range event.Results {
+					if results, err := template.Executer.ExecuteWithResults(ctx); err != nil {
+						for _, result := range results {
 							e.Callback(result)
 						}
-					})
+					}
 					match = true
 				} else {
-					match, err = template.Executer.Execute(ctxArgs)
+					match, err = template.Executer.Execute(ctx)
 				}
 			}
 			if err != nil {
@@ -166,21 +169,22 @@ func (e *Engine) executeTemplatesOnTarget(alltemplates []*templates.Template, ta
 
 			var match bool
 			var err error
+			ctxArgs := contextargs.New()
+			ctxArgs.MetaInput = value
+			ctx := scan.NewScanContext(ctxArgs)
 			switch template.Type() {
 			case types.WorkflowProtocol:
-				match = e.executeWorkflow(value, template.CompiledWorkflow)
+				match = e.executeWorkflow(ctx, template.CompiledWorkflow)
 			default:
-				ctxArgs := contextargs.New()
-				ctxArgs.MetaInput = value
 				if e.Callback != nil {
-					err = template.Executer.ExecuteWithResults(ctxArgs, func(event *output.InternalWrappedEvent) {
-						for _, result := range event.Results {
+					if results, err := template.Executer.ExecuteWithResults(ctx); err != nil {
+						for _, result := range results {
 							e.Callback(result)
 						}
-					})
+					}
 					match = true
 				} else {
-					match, err = template.Executer.Execute(ctxArgs)
+					match, err = template.Executer.Execute(ctx)
 				}
 			}
 			if err != nil {
@@ -221,7 +225,8 @@ func (e *ChildExecuter) Execute(template *templates.Template, value *contextargs
 
 		ctxArgs := contextargs.New()
 		ctxArgs.MetaInput = value
-		match, err := template.Executer.Execute(ctxArgs)
+		ctx := scan.NewScanContext(ctxArgs)
+		match, err := template.Executer.Execute(ctx)
 		if err != nil {
 			gologger.Warning().Msgf("[%s] Could not execute step: %s\n", e.e.executerOpts.Colorizer.BrightBlue(template.ID), err)
 		}

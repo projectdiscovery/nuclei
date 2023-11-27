@@ -159,6 +159,7 @@ type ResultEvent struct {
 	Lines []int `json:"matched-line,omitempty"`
 
 	FileToIndexPosition map[string]int `json:"-"`
+	Error               string         `json:"error,omitempty"`
 }
 
 // NewStandardWriter creates a new output writer based on user configurations
@@ -360,6 +361,7 @@ func (w *StandardWriter) WriteFailure(wrappedEvent *InternalWrappedEvent) error 
 		Timestamp:     time.Now(),
 		//FIXME: this is workaround to encode the template when no results were found
 		TemplateEncoded: w.encodeTemplate(types.ToString(event["template-path"])),
+		Error:           types.ToString(event["error"]),
 	}
 	return w.Write(data)
 }

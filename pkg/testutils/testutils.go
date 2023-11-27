@@ -180,6 +180,7 @@ func (m *MockOutputWriter) WriteFailure(wrappedEvent *output.InternalWrappedEven
 		Timestamp:     time.Now(),
 		//FIXME: this is workaround to encode the template when no results were found
 		TemplateEncoded: m.encodeTemplate(types.ToString(event["template-path"])),
+		Error:           types.ToString(event["error"]),
 	}
 	return m.Write(data)
 }

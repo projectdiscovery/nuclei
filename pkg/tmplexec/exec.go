@@ -12,6 +12,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/helpers/writer"
+	"github.com/projectdiscovery/nuclei/v3/pkg/scan"
 	"github.com/projectdiscovery/nuclei/v3/pkg/tmplexec/flow"
 	"github.com/projectdiscovery/nuclei/v3/pkg/tmplexec/generic"
 	"github.com/projectdiscovery/nuclei/v3/pkg/tmplexec/multiproto"
@@ -93,12 +94,12 @@ func (e *TemplateExecuter) Requests() int {
 }
 
 // Execute executes the protocol group and returns true or false if results were found.
-func (e *TemplateExecuter) Execute(input *contextargs.Context) (bool, error) {
+func (e *TemplateExecuter) Execute(ctx *scan.ScanContext) (bool, error) {
 	results := &atomic.Bool{}
 	defer func() {
 		// it is essential to remove template context of `Scan i.e template x input pair`
 		// since it is of no use after scan is completed (regardless of success or failure)
-		e.options.RemoveTemplateCtx(input.MetaInput)
+		e.options.RemoveTemplateCtx(ctx.Input.MetaInput)
 	}()
 
 	var lastMatcherEvent *output.InternalWrappedEvent
@@ -111,7 +112,7 @@ func (e *TemplateExecuter) Execute(input *contextargs.Context) (bool, error) {
 		}
 	}
 
-	cliExecutorCallback := func(event *output.InternalWrappedEvent) {
+	ctx.OnResult = func(event *output.InternalWrappedEvent) {
 		if event == nil {
 			// something went wrong
 			return
@@ -138,13 +139,13 @@ func (e *TemplateExecuter) Execute(input *contextargs.Context) (bool, error) {
 	// so in compile step earlier we compile it to validate javascript syntax and other things
 	// and while executing we create new instance of flow executor everytime
 	if e.options.Flow != "" {
-		flowexec := flow.NewFlowExecutor(e.requests, input, e.options, results)
+		flowexec := flow.NewFlowExecutor(e.requests, ctx.Input, e.options, results)
 		if err := flowexec.Compile(); err != nil {
 			return false, err
 		}
-		err = flowexec.ExecuteWithResults(input, cliExecutorCallback)
+		err = flowexec.ExecuteWithResults(ctx)
 	} else {
-		err = e.engine.ExecuteWithResults(input, cliExecutorCallback)
+		err = e.engine.ExecuteWithResults(ctx)
 	}
 
 	if lastMatcherEvent != nil {
@@ -154,11 +155,8 @@ func (e *TemplateExecuter) Execute(input *contextargs.Context) (bool, error) {
 }
 
 // ExecuteWithResults executes the protocol requests and returns results instead of writing them.
-func (e *TemplateExecuter) ExecuteWithResults(input *contextargs.Context, callback protocols.OutputEventCallback) error {
-	userCallback := func(event *output.InternalWrappedEvent) {
-		if event != nil {
-			callback(event)
-		}
-	}
-	return e.engine.ExecuteWithResults(input, userCallback)
+func (e *TemplateExecuter) ExecuteWithResults(ctx *scan.ScanContext) ([]*output.ResultEvent, error) {
+	err := e.engine.ExecuteWithResults(ctx)
+	ctx.LogError(err)
+	return ctx.GenerateResult(), err
 }

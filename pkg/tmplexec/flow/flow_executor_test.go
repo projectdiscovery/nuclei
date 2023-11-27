@@ -12,6 +12,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/progress"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
+	"github.com/projectdiscovery/nuclei/v3/pkg/scan"
 	"github.com/projectdiscovery/nuclei/v3/pkg/templates"
 	"github.com/projectdiscovery/nuclei/v3/pkg/testutils"
 	"github.com/projectdiscovery/ratelimit"
@@ -54,7 +55,8 @@ func TestFlowTemplateWithIndex(t *testing.T) {
 	require.Nil(t, err, "could not compile template")
 
 	input := contextargs.NewWithInput("hackerone.com")
-	gotresults, err := Template.Executer.Execute(input)
+	ctx := scan.NewScanContext(input)
+	gotresults, err := Template.Executer.Execute(ctx)
 	require.Nil(t, err, "could not execute template")
 	require.True(t, gotresults)
 }
@@ -72,7 +74,8 @@ func TestFlowTemplateWithID(t *testing.T) {
 	require.Nil(t, err, "could not compile template")
 
 	target := contextargs.NewWithInput("hackerone.com")
-	gotresults, err := Template.Executer.Execute(target)
+	ctx := scan.NewScanContext(target)
+	gotresults, err := Template.Executer.Execute(ctx)
 	require.Nil(t, err, "could not execute template")
 	require.True(t, gotresults)
 }
@@ -93,7 +96,8 @@ func TestFlowWithProtoPrefix(t *testing.T) {
 	require.Nil(t, err, "could not compile template")
 
 	input := contextargs.NewWithInput("hackerone.com")
-	gotresults, err := Template.Executer.Execute(input)
+	ctx := scan.NewScanContext(input)
+	gotresults, err := Template.Executer.Execute(ctx)
 	require.Nil(t, err, "could not execute template")
 	require.True(t, gotresults)
 }
@@ -112,8 +116,9 @@ func TestFlowWithConditionNegative(t *testing.T) {
 	require.Nil(t, err, "could not compile template")
 
 	input := contextargs.NewWithInput("scanme.sh")
+	ctx := scan.NewScanContext(input)
 	// expect no results and verify thant dns request is executed and http is not
-	gotresults, err := Template.Executer.Execute(input)
+	gotresults, err := Template.Executer.Execute(ctx)
 	require.Nil(t, err, "could not execute template")
 	require.False(t, gotresults)
 }
@@ -132,8 +137,9 @@ func TestFlowWithConditionPositive(t *testing.T) {
 	require.Nil(t, err, "could not compile template")
 
 	input := contextargs.NewWithInput("blog.projectdiscovery.io")
+	ctx := scan.NewScanContext(input)
 	// positive match . expect results also verify that both dns() and http() were executed
-	gotresults, err := Template.Executer.Execute(input)
+	gotresults, err := Template.Executer.Execute(ctx)
 	require.Nil(t, err, "could not execute template")
 	require.True(t, gotresults)
 }
@@ -151,8 +157,10 @@ func TestFlowWithNoMatchers(t *testing.T) {
 	err = Template.Executer.Compile()
 	require.Nil(t, err, "could not compile template")
 
+	input := contextargs.NewWithInput("blog.projectdiscovery.io")
+	ctx := scan.NewScanContext(input)
 	// positive match . expect results also verify that both dns() and http() were executed
-	gotresults, err := Template.Executer.Execute(contextargs.NewWithInput("blog.projectdiscovery.io"))
+	gotresults, err := Template.Executer.Execute(ctx)
 	require.Nil(t, err, "could not execute template")
 	require.True(t, gotresults)
 
@@ -165,8 +173,10 @@ func TestFlowWithNoMatchers(t *testing.T) {
 	err = Template.Executer.Compile()
 	require.Nil(t, err, "could not compile template")
 
+	anotherInput := contextargs.NewWithInput("blog.projectdiscovery.io")
+	anotherCtx := scan.NewScanContext(anotherInput)
 	// positive match . expect results also verify that both dns() and http() were executed
-	gotresults, err = Template.Executer.Execute(contextargs.NewWithInput("blog.projectdiscovery.io"))
+	gotresults, err = Template.Executer.Execute(anotherCtx)
 	require.Nil(t, err, "could not execute template")
 	require.True(t, gotresults)
 
