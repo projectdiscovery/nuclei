@@ -36,9 +36,9 @@ func GetJsonFieldsFromURL(URL string) JsonFields {
 	}
 	if iputil.IsIP(parsed.Host) {
 		fields.Ip = parsed.Host
-	} else {
-		fields.Host = parsed.Host
 	}
+
+	fields.Host = parsed.Host
 	return fields
 }
 
@@ -64,8 +64,8 @@ func GetJsonFieldsFromMetaInput(ctx *contextargs.MetaInput) JsonFields {
 	}
 	if iputil.IsIP(parsed.Host) {
 		fields.Ip = parsed.Host
-	} else {
-		fields.Host = parsed.Host
 	}
+
+	fields.Host = parsed.Host
 	return fields
 }
