@@ -152,6 +152,7 @@ func (request *Request) MakeResultEventItem(wrapped *output.InternalWrappedEvent
 		Request:          types.ToString(wrapped.InternalEvent["request"]),
 		Response:         types.ToString(wrapped.InternalEvent["raw"]),
 		TemplateEncoded:  request.options.EncodeTemplate(),
+		Error:            types.ToString(wrapped.InternalEvent["error"]),
 	}
 	return data
 }

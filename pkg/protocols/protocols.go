@@ -27,6 +27,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/variables"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/headless/engine"
 	"github.com/projectdiscovery/nuclei/v3/pkg/reporting"
+	"github.com/projectdiscovery/nuclei/v3/pkg/scan"
 	templateTypes "github.com/projectdiscovery/nuclei/v3/pkg/templates/types"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 )
@@ -40,9 +41,9 @@ type Executer interface {
 	// Requests returns the total number of requests the rule will perform
 	Requests() int
 	// Execute executes the protocol group and returns true or false if results were found.
-	Execute(input *contextargs.Context) (bool, error)
+	Execute(ctx *scan.ScanContext) (bool, error)
 	// ExecuteWithResults executes the protocol requests and returns results instead of writing them.
-	ExecuteWithResults(input *contextargs.Context, callback OutputEventCallback) error
+	ExecuteWithResults(ctx *scan.ScanContext) ([]*output.ResultEvent, error)
 }
 
 // ExecutorOptions contains the configuration options for executer clients
