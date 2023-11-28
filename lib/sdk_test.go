@@ -24,7 +24,7 @@ func TestSimpleNucleiRemote(t *testing.T) {
 	ne, err := nuclei.NewNucleiEngine(
 		nuclei.WithTemplatesOrWorkflows(
 			nuclei.TemplateSources{
-				RemoteTemplates: []string{"https://templates.nuclei.sh/public/nameserver-fingerprint.yaml"},
+				RemoteTemplates: []string{"https://cloud.projectdiscovery.io/public/nameserver-fingerprint.yaml"},
 			},
 		),
 	)
