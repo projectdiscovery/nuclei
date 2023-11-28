@@ -8,7 +8,7 @@ import (
 
 const (
 	// TemplatesRepoURL is the URL for files in nuclei-templates repository
-	TemplatesRepoURL = "https://templates.nuclei.sh/public/"
+	TemplatesRepoURL = "https://cloud.projectdiscovery.io/public/"
 )
 
 // TemplatePathURL returns the Path and URL for the provided template
