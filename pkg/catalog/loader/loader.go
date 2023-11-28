@@ -197,7 +197,7 @@ func handleTemplatesEditorURLs(input string) string {
 	if err != nil {
 		return input
 	}
-	if !strings.HasSuffix(parsed.Hostname(), "templates.nuclei.sh") {
+	if !strings.HasSuffix(parsed.Hostname(), "cloud.projectdiscovery.io") {
 		return input
 	}
 	if strings.HasSuffix(parsed.Path, ".yaml") {
