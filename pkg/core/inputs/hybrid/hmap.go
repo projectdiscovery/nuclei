@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"regexp"
 	"strings"
 	"sync"
 	"time"
@@ -437,7 +438,8 @@ func (i *Input) delItem(metaInput *contextargs.MetaInput) {
 			return err
 		}
 
-		if tmpUrl.Host == targetUrl.Host {
+		matched, _ := regexp.MatchString(metaInput.Input, tmpUrl.Host)
+		if tmpUrl.Host == targetUrl.Host || matched {
 			_ = i.hostMap.Del(tmpKey)
 			i.excludedHosts[tmpKey] = struct{}{}
 			i.excludedCount++
