@@ -20,6 +20,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/progress"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolinit"
+	protocolUtils "github.com/projectdiscovery/nuclei/v3/pkg/protocols/utils"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	"github.com/projectdiscovery/nuclei/v3/pkg/utils"
 )
@@ -166,6 +167,13 @@ func (m *MockOutputWriter) WriteFailure(wrappedEvent *output.InternalWrappedEven
 	if ti, ok := event["template-info"].(model.Info); ok {
 		templateInfo = ti
 	}
+	fields := protocolUtils.GetJsonFieldsFromURL(types.ToString(event["host"]))
+	if types.ToString(event["ip"]) != "" {
+		fields.Ip = types.ToString(event["ip"])
+	}
+	if types.ToString(event["path"]) != "" {
+		fields.Path = types.ToString(event["path"])
+	}
 	data := &output.ResultEvent{
 		Template:      templatePath,
 		TemplateURL:   templateURL,
@@ -173,7 +181,12 @@ func (m *MockOutputWriter) WriteFailure(wrappedEvent *output.InternalWrappedEven
 		TemplatePath:  types.ToString(event["template-path"]),
 		Info:          templateInfo,
 		Type:          types.ToString(event["type"]),
-		Host:          types.ToString(event["host"]),
+		Path:          fields.Path,
+		Host:          fields.Host,
+		Port:          fields.Port,
+		Scheme:        fields.Scheme,
+		URL:           fields.URL,
+		IP:            fields.Ip,
 		Request:       types.ToString(event["request"]),
 		Response:      types.ToString(event["response"]),
 		MatcherStatus: false,
