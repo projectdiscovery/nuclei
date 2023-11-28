@@ -390,18 +390,28 @@ func (request *Request) Type() templateTypes.ProtocolType {
 }
 
 func (request *Request) MakeResultEventItem(wrapped *output.InternalWrappedEvent) *output.ResultEvent {
+	fields := protocolutils.GetJsonFieldsFromURL(types.ToString(wrapped.InternalEvent["host"]))
+	if types.ToString(wrapped.InternalEvent["ip"]) != "" {
+		fields.Ip = types.ToString(wrapped.InternalEvent["ip"])
+	}
+	// in case scheme is not specified , we only connect to port 443 unless custom https port was specified
+	// like 8443 etc
+	if fields.Port == "80" {
+		fields.Port = "443"
+	}
 	data := &output.ResultEvent{
 		TemplateID:       types.ToString(wrapped.InternalEvent["template-id"]),
 		TemplatePath:     types.ToString(wrapped.InternalEvent["template-path"]),
 		Info:             wrapped.InternalEvent["template-info"].(model.Info),
 		Type:             types.ToString(wrapped.InternalEvent["type"]),
-		Host:             types.ToString(wrapped.InternalEvent["host"]),
+		Host:             fields.Host,
+		Port:             fields.Port,
 		Matched:          types.ToString(wrapped.InternalEvent["matched"]),
 		Metadata:         wrapped.OperatorsResult.PayloadValues,
 		ExtractedResults: wrapped.OperatorsResult.OutputExtracts,
 		Timestamp:        time.Now(),
 		MatcherStatus:    true,
-		IP:               types.ToString(wrapped.InternalEvent["ip"]),
+		IP:               fields.Ip,
 		TemplateEncoded:  request.options.EncodeTemplate(),
 		Error:            types.ToString(wrapped.InternalEvent["error"]),
 	}
