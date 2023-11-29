@@ -23,6 +23,12 @@ func Init(options *types.Options) error {
 	}
 	lfaAllowed = options.AllowLocalFileAccess
 	opts := fastdialer.DefaultOptions
+	if options.DialerTimeout > 0 {
+		opts.DialerTimeout = options.DialerTimeout
+	}
+	if options.DialerKeepAlive > 0 {
+		opts.DialerKeepAlive = options.DialerKeepAlive
+	}
 	InitHeadless(options.RestrictLocalNetworkAccess, options.AllowLocalFileAccess)
 
 	switch {
@@ -98,6 +104,7 @@ func Init(options *types.Options) error {
 	}
 	opts.WithDialerHistory = true
 	opts.SNIName = options.SNI
+
 	// fastdialer now by default fallbacks to ztls when there are tls related errors
 	dialer, err := fastdialer.NewDialer(opts)
 	if err != nil {

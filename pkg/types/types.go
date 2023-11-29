@@ -270,6 +270,10 @@ type Options struct {
 	DisableRedirects bool
 	// SNI custom hostname
 	SNI string
+	// DialerTimeout sets the timeout for network requests.
+	DialerTimeout time.Duration
+	// DialerKeepAlive sets the keep alive duration for network requests.
+	DialerKeepAlive time.Duration
 	// Interface to use for network scan
 	Interface string
 	// SourceIP sets custom source IP address for network requests
