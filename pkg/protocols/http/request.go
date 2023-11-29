@@ -578,6 +578,11 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 		options.CustomRawBytes = generatedRequest.rawRequest.UnsafeRawBytes
 		options.ForceReadAllBody = request.ForceReadAllBody
 		options.SNI = request.options.Options.SNI
+		if request.options.Options.HTTPTimeout > 0 {
+			options.Timeout = request.options.Options.HTTPTimeout
+			generatedRequest.original.rawhttpClient.Options.Timeout = request.options.Options.HTTPTimeout
+		}
+
 		inputUrl := input.MetaInput.Input
 		if url, err := urlutil.ParseURL(inputUrl, false); err == nil {
 			url.Path = ""
@@ -614,6 +619,10 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 					return errors.Wrap(err, "could not get http client")
 				}
 				httpclient = client
+			}
+			if request.options.Options.HTTPTimeout > 0 {
+				httpclient.HTTPClient.Timeout = request.options.Options.HTTPTimeout
+				httpclient.HTTPClient2.Timeout = request.options.Options.HTTPTimeout
 			}
 			resp, err = httpclient.Do(generatedRequest.request)
 		}

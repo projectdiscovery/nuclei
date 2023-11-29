@@ -186,6 +186,7 @@ CONFIGURATIONS:
    -dc, -disable-clustering              disable clustering of requests
    -passive                              enable passive HTTP response processing mode
    -fh2, -force-http2                    force http2 connection on requests
+   -ht, -http-timeout                    timeout for HTTP requests
    -ev, -env-vars                        enable environment variables to be used in template
    -cc, -client-cert string              client certificate file (PEM-encoded) used for authenticating against scanned hosts
    -ck, -client-key string               client key file (PEM-encoded) used for authenticating against scanned hosts

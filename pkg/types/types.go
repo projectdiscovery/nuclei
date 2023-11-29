@@ -158,6 +158,8 @@ type Options struct {
 	OfflineHTTP bool
 	// Force HTTP2 requests
 	ForceAttemptHTTP2 bool
+	// HTTPTimeout sets the timeout for HTTP requests
+	HTTPTimeout time.Duration
 	// StatsJSON writes stats output in JSON format
 	StatsJSON bool
 	// Headless specifies whether to allow headless mode templates
