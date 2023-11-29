@@ -193,6 +193,8 @@ CONFIGURATIONS:
    -sml, -show-match-line                show match lines for file templates, works with extractors only
    -ztls                                 use ztls library with autofallback to standard one for tls13 [Deprecated] autofallback to ztls is enabled by default
    -sni string                           tls sni hostname to use (default: input domain name)
+   -dt, -dialer-timeout value            timeout for network requests.
+   -dka, -dialer-keep-alive value        keep-alive duration for network requests.
    -lfa, -allow-local-file-access        allows file (payload) access anywhere on the system
    -lna, -restrict-local-network-access  blocks connections to the local / private network
    -i, -interface string                 network interface to use for network scan
