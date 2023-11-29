@@ -12,6 +12,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/pkg/errors"
+
 	_ "github.com/projectdiscovery/utils/pprof"
 
 	"github.com/projectdiscovery/goflags"
@@ -113,9 +115,10 @@ func main() {
 
 	runner.ParseOptions(options)
 
+	var stackMonitor *monitor.Agent
 	if options.HangMonitor {
-		cancel := monitor.NewStackMonitor(10 * time.Second)
-		defer cancel()
+		stackMonitor = monitor.NewStackMonitor()
+		defer stackMonitor.Start(10 * time.Second)
 	}
 
 	nucleiRunner, err := runner.New(options)
@@ -124,6 +127,15 @@ func main() {
 	}
 	if nucleiRunner == nil {
 		return
+	}
+	if options.HangMonitor && options.HangMonitorIncludeRunnerResumeFile {
+		stackMonitor.RegisterCallback(func(dumpID string) error {
+			resumeFileName := fmt.Sprintf("crash-resume-file-%s.dump", dumpID)
+			nucleiRunner.Close()
+			gologger.Info().Msgf("Creating resume file: %s\n", resumeFileName)
+			err := nucleiRunner.SaveResumeConfig(resumeFileName)
+			return errors.Wrap(err, "couldn't create resume file")
+		})
 	}
 
 	// Setup graceful exits
@@ -343,6 +355,7 @@ on extensive configurability, massive extensibility and ease of use.`)
 		flagSet.StringVarP(&options.ErrorLogFile, "error-log", "elog", "", "file to write sent requests error log"),
 		flagSet.CallbackVar(printVersion, "version", "show nuclei version"),
 		flagSet.BoolVarP(&options.HangMonitor, "hang-monitor", "hm", false, "enable nuclei hang monitoring"),
+		flagSet.BoolVarP(&options.HangMonitorIncludeRunnerResumeFile, "hang-monitor-include-runner-resume-file", "hmrf", false, "make hang monitoring dump a resume file from the runner, in addition to the stacktrace"),
 		flagSet.BoolVarP(&options.Verbose, "verbose", "v", false, "show verbose output"),
 		flagSet.StringVar(&memProfile, "profile-mem", "", "optional nuclei memory profile dump file"),
 		flagSet.BoolVar(&options.VerboseVerbose, "vv", false, "display templates loaded for scan"),

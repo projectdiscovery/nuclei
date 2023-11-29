@@ -224,6 +224,8 @@ type Options struct {
 	TemplateList bool
 	// HangMonitor enables nuclei hang monitoring
 	HangMonitor bool
+	// HangMonitorIncludeRunnerResumeFile will make hang monitoring dump a resume file from the runner, in addition to the stacktrace
+	HangMonitorIncludeRunnerResumeFile bool
 	// Stdin specifies whether stdin input was given to the process
 	Stdin bool
 	// StopAtFirstMatch stops processing template at first full match (this may break chained requests)
