@@ -266,27 +266,27 @@ STATISTICS:
    -mp, -metrics-port int    port to expose nuclei metrics on (default 9092)
 
 CLOUD:
-   -cloud                              run scan on nuclei cloud
-   -ads, -add-datasource string        add specified data source (s3,github)
-   -atr, -add-target string            add target(s) to cloud
-   -atm, -add-template string          add template(s) to cloud
-   -lsn, -list-scan                    list previous cloud scans
-   -lso, -list-output string           list scan output by scan id
-   -ltr, -list-target                  list cloud target by id
-   -ltm, -list-template                list cloud template by id
-   -lds, -list-datasource              list cloud datasource by id
-   -lrs, -list-reportsource            list reporting sources
-   -dsn, -delete-scan string           delete cloud scan by id
-   -dtr, -delete-target string         delete target(s) from cloud
-   -dtm, -delete-template string       delete template(s) from cloud
-   -dds, -delete-datasource string     delete specified data source
-   -drs, -disable-reportsource string  disable specified reporting source
-   -ers, -enable-reportsource string   enable specified reporting source
-   -gtr, -get-target string            get target content by id
-   -gtm, -get-template string          get template content by id
-   -nos, -no-store                     disable scan/output storage on cloud
-   -no-tables                          do not display pretty-printed tables
-   -limit int                          limit the number of output to display (default 100)
+   -auth                configure projectdiscovery cloud (pdcp) api key
+   -cup, -cloud-upload  upload scan results to pdcp dashboard
+
+
+EXAMPLES:
+Run nuclei on single host:
+	$ nuclei -target example.com
+
+Run nuclei with specific template directories:
+	$ nuclei -target example.com -t http/cves/ -t ssl
+
+Run nuclei against a list of hosts:
+	$ nuclei -list hosts.txt
+
+Run nuclei with a JSON output:
+	$ nuclei -target example.com -json-export output.json
+
+Run nuclei with sorted Markdown outputs (with environment variables):
+	$ MARKDOWN_EXPORT_SORT_MODE=template nuclei -target example.com -markdown-export nuclei_report/
+
+Additional documentation is available at: https://docs.nuclei.sh/getting-started/running
 ```
 
 ### Menjalankan Nuclei

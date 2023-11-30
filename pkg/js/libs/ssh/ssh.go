@@ -7,13 +7,16 @@ import (
 	"time"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
+	errorutil "github.com/projectdiscovery/utils/errors"
 	"github.com/zmap/zgrab2/lib/ssh"
 )
 
 // SSHClient is a client for SSH servers.
 //
 // Internally client uses github.com/zmap/zgrab2/lib/ssh driver.
-type SSHClient struct{}
+type SSHClient struct {
+	Connection *ssh.Client
+}
 
 // Connect tries to connect to provided host and port
 // with provided username and password with ssh.
@@ -25,7 +28,7 @@ func (c *SSHClient) Connect(host string, port int, username, password string) (b
 	if err != nil {
 		return false, err
 	}
-	defer conn.Close()
+	c.Connection = conn
 
 	return true, nil
 }
@@ -40,7 +43,7 @@ func (c *SSHClient) ConnectWithKey(host string, port int, username, key string) 
 	if err != nil {
 		return false, err
 	}
-	defer conn.Close()
+	c.Connection = conn
 
 	return true, nil
 }
@@ -55,6 +58,42 @@ func (c *SSHClient) ConnectWithKey(host string, port int, username, key string) 
 // ssh connection
 func (c *SSHClient) ConnectSSHInfoMode(host string, port int) (*ssh.HandshakeLog, error) {
 	return connectSSHInfoMode(host, port)
+}
+
+// Run tries to open a new SSH session, then tries to execute
+// the provided command in said session
+//
+// Returns string and error. If error is not nil,
+// state will be false
+//
+// The string contains the command output
+func (c *SSHClient) Run(cmd string) (string, error) {
+	if c.Connection == nil {
+		return "", errorutil.New("no connection")
+	}
+	session, err := c.Connection.NewSession()
+	if err != nil {
+		return "", err
+	}
+	defer session.Close()
+
+	data, err := session.Output(cmd)
+	if err != nil {
+		return "", err
+	}
+
+	return string(data), nil
+}
+
+// Close closes the SSH connection and destroys the client
+//
+// Returns the success state and error. If error is not nil,
+// state will be false
+func (c *SSHClient) Close() (bool, error) {
+	if err := c.Connection.Close(); err != nil {
+		return false, err
+	}
+	return true, nil
 }
 
 func connectSSHInfoMode(host string, port int) (*ssh.HandshakeLog, error) {

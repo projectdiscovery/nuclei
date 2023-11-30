@@ -10,19 +10,20 @@ import (
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
+	"github.com/projectdiscovery/nuclei/v3/pkg/scan"
 	"github.com/projectdiscovery/nuclei/v3/pkg/workflows"
 )
 
 const workflowStepExecutionError = "[%s] Could not execute workflow step: %s\n"
 
 // executeWorkflow runs a workflow on an input and returns true or false
-func (e *Engine) executeWorkflow(input *contextargs.MetaInput, w *workflows.Workflow) bool {
+func (e *Engine) executeWorkflow(ctx *scan.ScanContext, w *workflows.Workflow) bool {
 	results := &atomic.Bool{}
 
 	// at this point we should be at the start root execution of a workflow tree, hence we create global shared instances
 	workflowCookieJar, _ := cookiejar.New(nil)
 	ctxArgs := contextargs.New()
-	ctxArgs.MetaInput = input
+	ctxArgs.MetaInput = ctx.Input.MetaInput
 	ctxArgs.CookieJar = workflowCookieJar
 
 	// we can know the nesting level only at runtime, so the best we can do here is increase template threads by one unit in case it's equal to 1 to allow
@@ -39,7 +40,7 @@ func (e *Engine) executeWorkflow(input *contextargs.MetaInput, w *workflows.Work
 		func(template *workflows.WorkflowTemplate) {
 			defer swg.Done()
 
-			if err := e.runWorkflowStep(template, ctxArgs, results, &swg, w); err != nil {
+			if err := e.runWorkflowStep(template, ctx, results, &swg, w); err != nil {
 				gologger.Warning().Msgf(workflowStepExecutionError, template.Template, err)
 			}
 		}(template)
@@ -50,7 +51,7 @@ func (e *Engine) executeWorkflow(input *contextargs.MetaInput, w *workflows.Work
 
 // runWorkflowStep runs a workflow step for the workflow. It executes the workflow
 // in a recursive manner running all subtemplates and matchers.
-func (e *Engine) runWorkflowStep(template *workflows.WorkflowTemplate, input *contextargs.Context, results *atomic.Bool, swg *sizedwaitgroup.SizedWaitGroup, w *workflows.Workflow) error {
+func (e *Engine) runWorkflowStep(template *workflows.WorkflowTemplate, ctx *scan.ScanContext, results *atomic.Bool, swg *sizedwaitgroup.SizedWaitGroup, w *workflows.Workflow) error {
 	var firstMatched bool
 	var err error
 	var mainErr error
@@ -61,7 +62,7 @@ func (e *Engine) runWorkflowStep(template *workflows.WorkflowTemplate, input *co
 
 			// Don't print results with subtemplates, only print results on template.
 			if len(template.Subtemplates) > 0 {
-				err = executer.Executer.ExecuteWithResults(input, func(result *output.InternalWrappedEvent) {
+				ctx.OnResult = func(result *output.InternalWrappedEvent) {
 					if result.OperatorsResult == nil {
 						return
 					}
@@ -75,29 +76,30 @@ func (e *Engine) runWorkflowStep(template *workflows.WorkflowTemplate, input *co
 							switch len(v) {
 							case 0, 1:
 								// - key:[item] => key: item
-								input.Set(k, v[0])
+								ctx.Input.Set(k, v[0])
 							default:
 								// - key:[item_0, ..., item_n] => key0:item_0, keyn:item_n
 								for vIdx, vVal := range v {
 									normalizedKIdx := fmt.Sprintf("%s%d", k, vIdx)
-									input.Set(normalizedKIdx, vVal)
+									ctx.Input.Set(normalizedKIdx, vVal)
 								}
 								// also add the original name with full slice
-								input.Set(k, v)
+								ctx.Input.Set(k, v)
 							}
 						}
 					}
-				})
+				}
+				_, err = executer.Executer.ExecuteWithResults(ctx)
 			} else {
 				var matched bool
-				matched, err = executer.Executer.Execute(input)
+				matched, err = executer.Executer.Execute(ctx)
 				if matched {
 					firstMatched = true
 				}
 			}
 			if err != nil {
 				if w.Options.HostErrorsCache != nil {
-					w.Options.HostErrorsCache.MarkFailed(input.MetaInput.ID(), err)
+					w.Options.HostErrorsCache.MarkFailed(ctx.Input.MetaInput.ID(), err)
 				}
 				if len(template.Executers) == 1 {
 					mainErr = err
@@ -115,14 +117,14 @@ func (e *Engine) runWorkflowStep(template *workflows.WorkflowTemplate, input *co
 		for _, executer := range template.Executers {
 			executer.Options.Progress.AddToTotal(int64(executer.Executer.Requests()))
 
-			err := executer.Executer.ExecuteWithResults(input, func(event *output.InternalWrappedEvent) {
+			ctx.OnResult = func(event *output.InternalWrappedEvent) {
 				if event.OperatorsResult == nil {
 					return
 				}
 
 				if event.OperatorsResult.Extracts != nil {
 					for k, v := range event.OperatorsResult.Extracts {
-						input.Set(k, v)
+						ctx.Input.Set(k, v)
 					}
 				}
 
@@ -137,13 +139,14 @@ func (e *Engine) runWorkflowStep(template *workflows.WorkflowTemplate, input *co
 						go func(subtemplate *workflows.WorkflowTemplate) {
 							defer swg.Done()
 
-							if err := e.runWorkflowStep(subtemplate, input, results, swg, w); err != nil {
+							if err := e.runWorkflowStep(subtemplate, ctx, results, swg, w); err != nil {
 								gologger.Warning().Msgf(workflowStepExecutionError, subtemplate.Template, err)
 							}
 						}(subtemplate)
 					}
 				}
-			})
+			}
+			_, err := executer.Executer.ExecuteWithResults(ctx)
 			if err != nil {
 				if len(template.Executers) == 1 {
 					mainErr = err
@@ -160,7 +163,7 @@ func (e *Engine) runWorkflowStep(template *workflows.WorkflowTemplate, input *co
 			swg.Add()
 
 			go func(template *workflows.WorkflowTemplate) {
-				if err := e.runWorkflowStep(template, input, results, swg, w); err != nil {
+				if err := e.runWorkflowStep(template, ctx, results, swg, w); err != nil {
 					gologger.Warning().Msgf(workflowStepExecutionError, template.Template, err)
 				}
 				swg.Done()

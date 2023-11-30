@@ -174,6 +174,7 @@ func execute(testCase testutils.TestCase, templatePath string) (string, error) {
 }
 
 func expectResultsCount(results []string, expectedNumbers ...int) error {
+	results = filterHeadlessLogs(results)
 	match := sliceutil.Contains(expectedNumbers, len(results))
 	if !match {
 		return fmt.Errorf("incorrect number of results: %d (actual) vs %v (expected) \nResults:\n\t%s\n", len(results), expectedNumbers, strings.Join(results, "\n\t")) // nolint:all
@@ -185,4 +186,18 @@ func normalizeSplit(str string) []string {
 	return strings.FieldsFunc(str, func(r rune) bool {
 		return r == ','
 	})
+}
+
+// if chromium is not installed go-rod installs it in .cache directory
+// this function filters out the logs from download and installation
+func filterHeadlessLogs(results []string) []string {
+	// [launcher.Browser] 2021/09/23 15:24:05 [launcher] [info] Starting browser
+	filtered := []string{}
+	for _, result := range results {
+		if strings.Contains(result, "[launcher.Browser]") {
+			continue
+		}
+		filtered = append(filtered, result)
+	}
+	return filtered
 }
