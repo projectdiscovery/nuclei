@@ -1,7 +1,7 @@
 package expressions
 
 import (
-	"fmt"
+	"errors"
 	"testing"
 
 	elabel "github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/errors/label"
@@ -18,7 +18,7 @@ func TestUnresolvedVariablesCheck(t *testing.T) {
 		{"{{test}}/{{another}}", errorutil.NewWithTag(elabel.UnresolvedVariablesErrorLabel, "unresolved variables found: test,another")},
 		{"test", nil},
 		{"%7b%7btest%7d%7d", errorutil.NewWithTag(elabel.UnresolvedVariablesErrorLabel, "unresolved variables found: test")},
-		{"%7B%7Bfirst%2Asecond%7D%7D", errorutil.NewWithTag(elabel.UnresolvedVariablesErrorLabel, fmt.Sprint("unresolved variables found: first%2Asecond"))},
+		{"%7B%7Bfirst%2Asecond%7D%7D", errorutil.NewWithTag(elabel.UnresolvedVariablesErrorLabel, errors.New("unresolved variables found: first%2Asecond").Error())},
 		{"{{7*7}}", nil},
 		{"{{'a'+'b'}}", nil},
 		{"{{'a'}}", nil},
