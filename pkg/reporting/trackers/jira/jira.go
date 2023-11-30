@@ -207,7 +207,7 @@ func (i *Integration) CreateIssue(event *output.ResultEvent) error {
 // FindExistingIssue checks if the issue already exists and returns its ID
 func (i *Integration) FindExistingIssue(event *output.ResultEvent) (string, error) {
 	template := format.GetMatchedTemplateName(event)
-	jql := fmt.Sprintf("summary ~ \"%s\" AND summary ~ \"%s\" AND status != \"%s\"", template, event.Host, i.options.StatusNot)
+	jql := fmt.Sprintf("summary ~ \"%s\" AND summary ~ \"%s\" AND status != \"%s\" AND project = \"%s\"", template, event.Host, i.options.StatusNot, i.options.ProjectName)
 
 	searchOptions := &jira.SearchOptions{
 		MaxResults: 1, // if any issue exists, then we won't create a new one

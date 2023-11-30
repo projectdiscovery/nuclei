@@ -164,6 +164,7 @@ func readConfig() *goflags.FlagSet {
 
 	// when true updates nuclei binary to latest version
 	var updateNucleiBinary bool
+	var pdcpauth bool
 
 	flagSet := goflags.NewFlagSet()
 	flagSet.CaseSensitive = true
@@ -177,6 +178,7 @@ on extensive configurability, massive extensibility and ease of use.`)
 	flagSet.CreateGroup("input", "Target",
 		flagSet.StringSliceVarP(&options.Targets, "target", "u", nil, "target URLs/hosts to scan", goflags.StringSliceOptions),
 		flagSet.StringVarP(&options.TargetsFilePath, "list", "l", "", "path to file containing a list of target URLs/hosts to scan (one per line)"),
+		flagSet.StringSliceVarP(&options.ExcludeTargets, "exclude-hosts", "eh", nil, "hosts to exclude to scan from the input list (ip, cidr, hostname)", goflags.FileCommaSeparatedStringSliceOptions),
 		flagSet.StringVar(&options.Resume, "resume", "", "resume scan using resume.cfg (clustering will be disabled)"),
 		flagSet.BoolVarP(&options.ScanAllIPs, "scan-all-ips", "sa", false, "scan all the IP's associated with dns record"),
 		flagSet.StringSliceVarP(&options.IPVersion, "ip-version", "iv", nil, "IP version to scan of hostname (4,6) - (default 4)", goflags.CommaSeparatedStringSliceOptions),
@@ -194,7 +196,7 @@ on extensive configurability, massive extensibility and ease of use.`)
 		flagSet.BoolVarP(&options.NoStrictSyntax, "no-strict-syntax", "nss", false, "disable strict syntax check on templates"),
 		flagSet.BoolVarP(&options.TemplateDisplay, "template-display", "td", false, "displays the templates content"),
 		flagSet.BoolVar(&options.TemplateList, "tl", false, "list all available templates"),
-		flagSet.StringSliceVarConfigOnly(&options.RemoteTemplateDomainList, "remote-template-domain", []string{"templates.nuclei.sh"}, "allowed domain list to load remote templates from"),
+		flagSet.StringSliceVarConfigOnly(&options.RemoteTemplateDomainList, "remote-template-domain", []string{"cloud.projectdiscovery.io"}, "allowed domain list to load remote templates from"),
 		flagSet.BoolVar(&options.SignTemplates, "sign", false, "signs the templates with the private key defined in NUCLEI_SIGNATURE_PRIVATE_KEY env variable"),
 		flagSet.BoolVar(&options.EnableCodeTemplates, "code", false, "enable loading code protocol-based templates"),
 	)
@@ -257,6 +259,8 @@ on extensive configurability, massive extensibility and ease of use.`)
 		flagSet.BoolVarP(&options.ShowMatchLine, "show-match-line", "sml", false, "show match lines for file templates, works with extractors only"),
 		flagSet.BoolVar(&options.ZTLS, "ztls", false, "use ztls library with autofallback to standard one for tls13 [Deprecated] autofallback to ztls is enabled by default"), //nolint:all
 		flagSet.StringVar(&options.SNI, "sni", "", "tls sni hostname to use (default: input domain name)"),
+		flagSet.DurationVarP(&options.DialerTimeout, "dialer-timeout", "dt", 0, "timeout for network requests."),
+		flagSet.DurationVarP(&options.DialerKeepAlive, "dialer-keep-alive", "dka", 0, "keep-alive duration for network requests."),
 		flagSet.BoolVarP(&options.AllowLocalFileAccess, "allow-local-file-access", "lfa", false, "allows file (payload) access anywhere on the system"),
 		flagSet.BoolVarP(&options.RestrictLocalNetworkAccess, "restrict-local-network-access", "lna", false, "blocks connections to the local / private network"),
 		flagSet.StringVarP(&options.Interface, "interface", "i", "", "network interface to use for network scan"),
@@ -365,27 +369,8 @@ on extensive configurability, massive extensibility and ease of use.`)
 	)
 
 	flagSet.CreateGroup("cloud", "Cloud",
-		flagSet.BoolVar(&options.Cloud, "cloud", false, "run scan on nuclei cloud"),
-		flagSet.StringVarP(&options.AddDatasource, "add-datasource", "ads", "", "add specified data source (s3,github)"),
-		flagSet.StringVarP(&options.AddTarget, "add-target", "atr", "", "add target(s) to cloud"),
-		flagSet.StringVarP(&options.AddTemplate, "add-template", "atm", "", "add template(s) to cloud"),
-		flagSet.BoolVarP(&options.ScanList, "list-scan", "lsn", false, "list previous cloud scans"),
-		flagSet.StringVarP(&options.ScanOutput, "list-output", "lso", "", "list scan output by scan id"),
-		flagSet.BoolVarP(&options.ListTargets, "list-target", "ltr", false, "list cloud target by id"),
-		flagSet.BoolVarP(&options.ListTemplates, "list-template", "ltm", false, "list cloud template by id"),
-		flagSet.BoolVarP(&options.ListDatasources, "list-datasource", "lds", false, "list cloud datasource by id"),
-		flagSet.BoolVarP(&options.ListReportingSources, "list-reportsource", "lrs", false, "list reporting sources"),
-		flagSet.StringVarP(&options.DeleteScan, "delete-scan", "dsn", "", "delete cloud scan by id"),
-		flagSet.StringVarP(&options.RemoveTarget, "delete-target", "dtr", "", "delete target(s) from cloud"),
-		flagSet.StringVarP(&options.RemoveTemplate, "delete-template", "dtm", "", "delete template(s) from cloud"),
-		flagSet.StringVarP(&options.RemoveDatasource, "delete-datasource", "dds", "", "delete specified data source"),
-		flagSet.StringVarP(&options.DisableReportingSource, "disable-reportsource", "drs", "", "disable specified reporting source"),
-		flagSet.StringVarP(&options.EnableReportingSource, "enable-reportsource", "ers", "", "enable specified reporting source"),
-		flagSet.StringVarP(&options.GetTarget, "get-target", "gtr", "", "get target content by id"),
-		flagSet.StringVarP(&options.GetTemplate, "get-template", "gtm", "", "get template content by id"),
-		flagSet.BoolVarP(&options.NoStore, "no-store", "nos", false, "disable scan/output storage on cloud"),
-		flagSet.BoolVar(&options.NoTables, "no-tables", false, "do not display pretty-printed tables"),
-		flagSet.IntVar(&options.OutputLimit, "limit", 100, "limit the number of output to display"),
+		flagSet.BoolVar(&pdcpauth, "auth", false, "configure projectdiscovery cloud (pdcp) api key"),
+		flagSet.BoolVarP(&options.EnableCloudUpload, "cloud-upload", "cup", false, "upload scan results to pdcp dashboard"),
 	)
 
 	flagSet.SetCustomHelpText(`EXAMPLES:
@@ -413,6 +398,10 @@ Additional documentation is available at: https://docs.nuclei.sh/getting-started
 	// and hence it will be attempted in config package during init
 	goflags.DisableAutoConfigMigration = true
 	_ = flagSet.Parse()
+
+	if pdcpauth {
+		runner.AuthWithPDCP()
+	}
 
 	gologger.DefaultLogger.SetTimestamp(options.Timestamp, levels.LevelDebug)
 

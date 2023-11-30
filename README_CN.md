@@ -31,7 +31,8 @@
 <p align="center">
   <a href="https://github.com/projectdiscovery/nuclei/blob/main/README.md">English</a> •
   <a href="https://github.com/projectdiscovery/nuclei/blob/main/README_CN.md">中文</a> •
-  <a href="https://github.com/projectdiscovery/nuclei/blob/main/README_KR.md">Korean</a>
+  <a href="https://github.com/projectdiscovery/nuclei/blob/main/README_KR.md">Korean</a> •
+  <a href="https://github.com/projectdiscovery/nuclei/blob/main/README_ID.md">Indonesia</a>
 </p>
 
 ---
@@ -49,6 +50,10 @@ Nuclei使用零误报的定制模板向目标发送请求，同时可以对主�
   <img src="static/nuclei-flow.jpg" alt="nuclei-flow" width="700px"></a>
 </h3>
 
+| :exclamation:  **免责声明**  |
+|---------------------------------|
+| **这个项目正在积极开发中**。预计发布会带来突破性的更改。更新前请查看版本更改日志。 |
+| 这个项目主要是为了作为一个独立的命令行工具而构建的。 **将Nuclei作为服务运行可能存在安全风险。** 强烈建议谨慎使用，并采取额外的安全措施。 |
 
 # 安装Nuclei
 
@@ -57,6 +62,23 @@ Nuclei需要**go1**才能安装成功。执行下列命令安装最新版本的N
 ```sh
 go install -v github.com/projectdiscovery/nuclei/v3/cmd/nuclei@latest
 ```
+
+<details>
+  <summary>Brew</summary>
+  
+  ```sh
+  brew install nuclei
+  ```
+  
+</details>
+<details>
+  <summary>Docker</summary>
+  
+  ```sh
+  docker pull projectdiscovery/nuclei:latest
+  ```
+  
+</details>
 
 **更多的安装方式 [请点击此处](https://nuclei.projectdiscovery.io/nuclei/get-started/).**
 
@@ -100,19 +122,19 @@ Nuclei是一款注重于可配置性、可扩展性和易用性的基于模板�
    -iv, -ip-version string[]             要扫描的主机名的IP版本（4,6）-（默认为4）
 
 模板：
-   -nt, -new-templates                    run only new templates added in latest nuclei-templates release
-   -ntv, -new-templates-version string[]  run new templates added in specific version
-   -as, -automatic-scan                   automatic web scan using wappalyzer technology detection to tags mapping
-   -t, -templates string[]                list of template or template directory to run (comma-separated, file)
-   -turl, -template-url string[]          template url or list containing template urls to run (comma-separated, file)
-   -w, -workflows string[]                list of workflow or workflow directory to run (comma-separated, file)
-   -wurl, -workflow-url string[]          workflow url or list containing workflow urls to run (comma-separated, file)
-   -validate                              validate the passed templates to nuclei
-   -nss, -no-strict-syntax                disable strict syntax check on templates
-   -td, -template-display                 displays the templates content
-   -tl                                    list all available templates
-   -sign                                  signs the templates with the private key defined in NUCLEI_SIGNATURE_PRIVATE_KEY env variable
-   -code                                  enable loading code protocol-based templates
+   -nt, -new-templates                    仅运行最新发布的nuclei模板
+   -ntv, -new-templates-version string[]  仅运行特定版本中添加的新模板
+   -as, -automatic-scan                   基于Wappalyzer技术的标签映射自动扫描
+   -t, -templates string[]                指定要运行的模板或者模板目录（以逗号分隔或目录形式）
+   -turl, -template-url string[]          指定要运行的模板URL或模板目录URL（以逗号分隔或目录形式）
+   -w, -workflows string[]                指定要运行的工作流或工作流目录（以逗号分隔或目录形式）
+   -wurl, -workflow-url string[]          指定要运行的工作流URL或工作流目录URL（以逗号分隔或目录形式）
+   -validate                              使用nuclei验证模板有效性
+   -nss, -no-strict-syntax                禁用对模板的严格检查
+   -td, -template-display                 显示模板内容
+   -tl                                    列出所有可用的模板
+   -sign                                  使用NUCLEI_SIGNATURE_PRIVATE_KEY环境变量中的私钥对模板进行签名
+   -code                                  启用加载基于协议的代码模板
 
 过滤：
    -a, -author string[]                  执行指定作者的模板（逗号分隔，文件）
@@ -140,6 +162,7 @@ Nuclei是一款注重于可配置性、可扩展性和易用性的基于模板�
    -j, -jsonl                            输出格式为jsonL（ines）
    -irr, -include-rr                     在JSON、JSONL和Markdown中输出请求/响应对（仅结果）[已弃用，使用-omit-raw替代]
    -or, -omit-raw                        在JSON、JSONL和Markdown中不输出请求/响应对
+   -ot, -omit-template           省略JSON、JSONL输出中的编码模板
    -nm, -no-meta                         在cli输出中不打印元数据
    -ts, -timestamp                       在cli输出中打印时间戳
    -rdb, -report-db string               本地的nuclei结果数据库（始终使用该数据库保存结果）
@@ -176,7 +199,6 @@ Nuclei是一款注重于可配置性、可扩展性和易用性的基于模板�
    -i, -interface string                 指定用于网络扫描的网卡
    -at, -attack-type string              payload的组合模式（batteringram,pitchfork,clusterbomb）
    -sip, -source-ip string               指定用于网络扫描的源IP
-   -config-directory string              覆盖默认配置路径（$home/.config）
    -rsr, -response-size-read int         最大读取响应大小（默认：10485760字节）
    -rss, -response-size-save int         最大储存响应大小（默认：1048576字节）
    -reset                                删除所有nuclei配置和数据文件（包括nuclei-templates）
@@ -269,33 +291,32 @@ UNCOVER引擎:
     -stats                               显示正在扫描的统计信息
     -sj, -stats-json                     将统计信息以JSONL格式输出到文件
     -si, -stats-inerval int              显示统计信息更新的间隔秒数（默认：5）
-    -m, -metrics                         开启metrics服务
     -mp, -metrics-port int               更改metrics服务的端口（默认：9092）
 
 云服务:
-   -cloud                                在nuclei云上运行扫描
-   -ads, -add-datasource string          添加指定的数据源（s3、github）
-   -atr, -add-target string              向云中添加目标
-   -atm, -add-template string            向云中添加模板
-   -lsn, -list-scan                      列出先前的云扫描
-   -lso, -list-output string             按扫描ID列出扫描输出
-   -ltr, -list-target                    按ID列出云目标
-   -ltm, -list-template                  按ID列出云模板
-   -lds, -list-datasource                按ID列出云数据源
-   -lrs, -list-reportsource              列出报告源
-   -dsn, -delete-scan string             按ID删除云扫描
-   -dtr, -delete-target string           从云中删除目标
-   -dtm, -delete-template string         从云中删除模板
-   -dds, -delete-datasource string       删除指定的数据源
-   -drs, -disable-reportsource string    禁用指定的报告源
-   -ers, -enable-reportsource string     启用指定的报告源
-   -gtr, -get-target string              按ID获取目标内容
-   -gtm, -get-template string            按ID获取模板内容
-   -nos, -no-store                       禁用云上的扫描/输出存储
-   -no-tables                            不显示漂亮打印的表格
-   -limit int                            限制要显示的输出数量（默认 100）
+   -auth                配置projectdiscovery云（pdcp）API密钥
+   -cup, -cloud-upload  将扫描结果上传到pdcp仪表板
+
+例子:
+扫描一个单独的URL:
+	$ nuclei -target example.com
+
+对URL运行指定的模板:
+	$ nuclei -target example.com -t http/cves/ -t ssl
+
+扫描hosts.txt中的多个URL:
+	$ nuclei -list hosts.txt
+
+输出结果为JSON格式:
+	$ nuclei -target example.com -json-export output.json
+
+使用已排序的Markdown输出（使用环境变量）运行nuclei:
+	$ MARKDOWN_EXPORT_SORT_MODE=template nuclei -target example.com -markdown-export nuclei_report/
 
 ```
+
+更多信息请参考文档: https://docs.nuclei.sh/getting-started/running
+
 
 ### 运行Nuclei
 
@@ -387,6 +408,10 @@ Nuclei构建很简单，通过数百名安全研究员的社区模板，Nuclei�
   <a href="https://github.com/projectdiscovery/nuclei-action"><img src="static/learn-more-button.png" width="170px" alt="Learn More"></a>
 </h1>
 
+### 将nuclei加入您的代码
+
+有关使用Nuclei作为Library/SDK的完整指南，请访问[godoc](https://pkg.go.dev/github.com/projectdiscovery/nuclei/v3/lib#section-readme)
+
 ### 资源
 
 - [使用PinkDraconian发现Nuclei的BUG (Robbe Van Roey)](https://www.youtube.com/watch?v=ewP0xVPW-Pk) 作者：[@PinkDraconian](https://twitter.com/PinkDraconian)
@@ -403,7 +428,17 @@ Nuclei构建很简单，通过数百名安全研究员的社区模板，Nuclei�
 
 ### 致谢
 
-感谢所有[社区贡献者提供的PR](https://github.com/projectdiscovery/nuclei/graphs/contributors)，另外您可以其他类似的开源项目：
+感谢所有[社区贡献者提供的PR](https://github.com/projectdiscovery/nuclei/graphs/contributors)，并不断更新此项目:heart:
+
+如果你有想法或某种改进，欢迎你参与该项目，随时发送你的PR。
+
+<p align="center">
+<a href="https://github.com/projectdiscovery/nuclei/graphs/contributors">
+  <img src="https://contrib.rocks/image?repo=projectdiscovery/nuclei&max=500">
+</a>
+</p>
+
+另外您可以其他类似的开源项目：
 
 [FFuF](https://github.com/ffuf/ffuf), [Qsfuzz](https://github.com/ameenmaali/qsfuzz), [Inception](https://github.com/proabiral/inception), [Snallygaster](https://github.com/hannob/snallygaster), [Gofingerprint](https://github.com/Static-Flow/gofingerprint), [Sn1per](https://github.com/1N3/Sn1per/tree/master/templates), [Google tsunami](https://github.com/google/tsunami-security-scanner), [Jaeles](https://github.com/jaeles-project/jaeles), [ChopChop](https://github.com/michelin/ChopChop)
 

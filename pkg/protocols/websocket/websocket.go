@@ -395,21 +395,27 @@ var RequestPartDefinitions = map[string]string{
 }
 
 func (request *Request) MakeResultEventItem(wrapped *output.InternalWrappedEvent) *output.ResultEvent {
+	fields := protocolutils.GetJsonFieldsFromURL(types.ToString(wrapped.InternalEvent["host"]))
+	if types.ToString(wrapped.InternalEvent["ip"]) != "" {
+		fields.Ip = types.ToString(wrapped.InternalEvent["ip"])
+	}
 	data := &output.ResultEvent{
 		TemplateID:       types.ToString(request.options.TemplateID),
 		TemplatePath:     types.ToString(request.options.TemplatePath),
 		Info:             request.options.TemplateInfo,
 		Type:             types.ToString(wrapped.InternalEvent["type"]),
-		Host:             types.ToString(wrapped.InternalEvent["host"]),
+		Host:             fields.Host,
+		Port:             fields.Port,
 		Matched:          types.ToString(wrapped.InternalEvent["matched"]),
 		Metadata:         wrapped.OperatorsResult.PayloadValues,
 		ExtractedResults: wrapped.OperatorsResult.OutputExtracts,
 		Timestamp:        time.Now(),
 		MatcherStatus:    true,
-		IP:               types.ToString(wrapped.InternalEvent["ip"]),
+		IP:               fields.Ip,
 		Request:          types.ToString(wrapped.InternalEvent["request"]),
 		Response:         types.ToString(wrapped.InternalEvent["response"]),
 		TemplateEncoded:  request.options.EncodeTemplate(),
+		Error:            types.ToString(wrapped.InternalEvent["error"]),
 	}
 	return data
 }

@@ -14,6 +14,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/generators"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
+	"github.com/projectdiscovery/nuclei/v3/pkg/scan"
 	templateTypes "github.com/projectdiscovery/nuclei/v3/pkg/templates/types"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
@@ -161,15 +162,15 @@ func (f *FlowExecutor) Compile() error {
 }
 
 // ExecuteWithResults executes the flow and returns results
-func (f *FlowExecutor) ExecuteWithResults(input *contextargs.Context, callback protocols.OutputEventCallback) error {
+func (f *FlowExecutor) ExecuteWithResults(ctx *scan.ScanContext) error {
 	defer func() {
 		if e := recover(); e != nil {
-			gologger.Error().Label(f.options.TemplateID).Msgf("panic occurred while executing target %v with flow: %v", input.MetaInput.Input, e)
+			gologger.Error().Label(f.options.TemplateID).Msgf("panic occurred while executing target %v with flow: %v", ctx.Input.MetaInput.Input, e)
 			panic(e)
 		}
 	}()
 
-	f.input = input
+	f.input = ctx.Input
 	// -----Load all types of variables-----
 	// add all input args to template context
 	if f.input != nil && f.input.HasArgs() {
@@ -177,20 +178,22 @@ func (f *FlowExecutor) ExecuteWithResults(input *contextargs.Context, callback p
 			f.options.GetTemplateCtx(f.input.MetaInput).Set(key, value)
 		})
 	}
-	if callback == nil {
+	if ctx.OnResult == nil {
 		return fmt.Errorf("output callback cannot be nil")
 	}
 	// pass flow and execute the js vm and handle errors
 	value, err := f.jsVM.RunProgram(f.program)
 	if err != nil {
+		ctx.LogError(err)
 		return errorutil.NewWithErr(err).Msgf("failed to execute flow\n%v\n", f.options.Flow)
 	}
 	runtimeErr := f.GetRuntimeErrors()
 	if runtimeErr != nil {
+		ctx.LogError(runtimeErr)
 		return errorutil.NewWithErr(runtimeErr).Msgf("got following errors while executing flow")
 	}
 	// this is where final result is generated/created
-	callback(f.lastEvent)
+	ctx.LogEvent(f.lastEvent)
 	if value.Export() != nil {
 		f.results.Store(value.ToBoolean())
 	} else {

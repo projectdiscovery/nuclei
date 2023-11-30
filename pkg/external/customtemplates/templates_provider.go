@@ -35,11 +35,6 @@ func (c *CustomTemplatesManager) Update(ctx context.Context) {
 func NewCustomTemplatesManager(options *types.Options) (*CustomTemplatesManager, error) {
 	ctm := &CustomTemplatesManager{providers: []Provider{}}
 
-	if options.Cloud {
-		// if cloud is enabled, custom templates are Nop
-		return ctm, nil
-	}
-
 	// Add GitHub providers
 	githubProviders, err := NewGitHubProviders(options)
 	if err != nil {
