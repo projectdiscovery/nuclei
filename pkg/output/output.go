@@ -25,6 +25,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/model"
 	"github.com/projectdiscovery/nuclei/v3/pkg/model/types/severity"
 	"github.com/projectdiscovery/nuclei/v3/pkg/operators"
+	protocolUtils "github.com/projectdiscovery/nuclei/v3/pkg/protocols/utils"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	"github.com/projectdiscovery/nuclei/v3/pkg/utils"
 	fileutil "github.com/projectdiscovery/utils/file"
@@ -49,20 +50,22 @@ type Writer interface {
 
 // StandardWriter is a writer writing output to file and screen for results.
 type StandardWriter struct {
-	json             bool
-	jsonReqResp      bool
-	timestamp        bool
-	noMetadata       bool
-	matcherStatus    bool
-	mutex            *sync.Mutex
-	aurora           aurora.Aurora
-	outputFile       io.WriteCloser
-	traceFile        io.WriteCloser
-	errorFile        io.WriteCloser
-	severityColors   func(severity.Severity) string
-	storeResponse    bool
-	storeResponseDir string
-	omitTemplate     bool
+	json                  bool
+	jsonReqResp           bool
+	timestamp             bool
+	noMetadata            bool
+	matcherStatus         bool
+	mutex                 *sync.Mutex
+	aurora                aurora.Aurora
+	outputFile            io.WriteCloser
+	traceFile             io.WriteCloser
+	errorFile             io.WriteCloser
+	severityColors        func(severity.Severity) string
+	storeResponse         bool
+	storeResponseDir      string
+	omitTemplate          bool
+	DisableStdout         bool
+	AddNewLinesOutputFile bool // by default this is only done for stdout
 }
 
 var decolorizerRegex = regexp.MustCompile(`\x1B\[[0-9;]*[a-zA-Z]`)
@@ -130,6 +133,12 @@ type ResultEvent struct {
 	Type string `json:"type"`
 	// Host is the host input on which match was found.
 	Host string `json:"host,omitempty"`
+	// Port is port of the host input on which match was found (if applicable).
+	Port string `json:"port,omitempty"`
+	// Scheme is the scheme of the host input on which match was found (if applicable).
+	Scheme string `json:"scheme,omitempty"`
+	// URL is the Base URL of the host input on which match was found (if applicable).
+	URL string `json:"url,omitempty"`
 	// Path is the path input on which match was found.
 	Path string `json:"path,omitempty"`
 	// Matched contains the matched input in its transformed form.
@@ -157,6 +166,7 @@ type ResultEvent struct {
 	Lines []int `json:"matched-line,omitempty"`
 
 	FileToIndexPosition map[string]int `json:"-"`
+	Error               string         `json:"error,omitempty"`
 }
 
 // NewStandardWriter creates a new output writer based on user configurations
@@ -243,8 +253,10 @@ func (w *StandardWriter) Write(event *ResultEvent) error {
 	w.mutex.Lock()
 	defer w.mutex.Unlock()
 
-	_, _ = os.Stdout.Write(data)
-	_, _ = os.Stdout.Write([]byte("\n"))
+	if !w.DisableStdout {
+		_, _ = os.Stdout.Write(data)
+		_, _ = os.Stdout.Write([]byte("\n"))
+	}
 
 	if w.outputFile != nil {
 		if !w.json {
@@ -252,6 +264,9 @@ func (w *StandardWriter) Write(event *ResultEvent) error {
 		}
 		if _, writeErr := w.outputFile.Write(data); writeErr != nil {
 			return errors.Wrap(err, "could not write to output")
+		}
+		if w.AddNewLinesOutputFile && w.json {
+			_, _ = w.outputFile.Write([]byte("\n"))
 		}
 	}
 	return nil
@@ -339,6 +354,14 @@ func (w *StandardWriter) WriteFailure(wrappedEvent *InternalWrappedEvent) error 
 	if event["template-info"] != nil {
 		templateInfo = event["template-info"].(model.Info)
 	}
+	fields := protocolUtils.GetJsonFieldsFromURL(types.ToString(event["host"]))
+	if types.ToString(event["ip"]) != "" {
+		fields.Ip = types.ToString(event["ip"])
+	}
+	if types.ToString(event["path"]) != "" {
+		fields.Path = types.ToString(event["path"])
+	}
+
 	data := &ResultEvent{
 		Template:      templatePath,
 		TemplateURL:   templateURL,
@@ -346,13 +369,19 @@ func (w *StandardWriter) WriteFailure(wrappedEvent *InternalWrappedEvent) error 
 		TemplatePath:  types.ToString(event["template-path"]),
 		Info:          templateInfo,
 		Type:          types.ToString(event["type"]),
-		Host:          types.ToString(event["host"]),
+		Host:          fields.Host,
+		Path:          fields.Path,
+		Port:          fields.Port,
+		Scheme:        fields.Scheme,
+		URL:           fields.URL,
+		IP:            fields.Ip,
 		Request:       types.ToString(event["request"]),
 		Response:      types.ToString(event["response"]),
 		MatcherStatus: false,
 		Timestamp:     time.Now(),
 		//FIXME: this is workaround to encode the template when no results were found
 		TemplateEncoded: w.encodeTemplate(types.ToString(event["template-path"])),
+		Error:           types.ToString(event["error"]),
 	}
 	return w.Write(data)
 }

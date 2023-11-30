@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"regexp"
 	"strings"
 	"sync"
 	"time"
@@ -37,8 +38,11 @@ const DefaultMaxDedupeItemsCount = 10000
 type Input struct {
 	ipOptions         *ipOptions
 	inputCount        int64
+	excludedCount     int64
 	dupeCount         int64
+	skippedCount      int64
 	hostMap           *hybrid.HybridMap
+	excludedHosts     map[string]struct{}
 	hostMapStream     *filekv.FileDB
 	hostMapStreamOnce sync.Once
 	sync.Once
@@ -70,6 +74,7 @@ func New(opts *Options) (*Input, error) {
 			IPV4:       sliceutil.Contains(options.IPVersion, "4"),
 			IPV6:       sliceutil.Contains(options.IPVersion, "6"),
 		},
+		excludedHosts: make(map[string]struct{}),
 	}
 	if options.Stream {
 		fkvOptions := filekv.DefaultOptions
@@ -88,8 +93,14 @@ func New(opts *Options) (*Input, error) {
 	if initErr := input.initializeInputSources(opts); initErr != nil {
 		return nil, initErr
 	}
+	if input.excludedCount > 0 {
+		gologger.Info().Msgf("Number of hosts excluded from input: %d", input.excludedCount)
+	}
 	if input.dupeCount > 0 {
 		gologger.Info().Msgf("Supplied input was automatically deduplicated (%d removed).", input.dupeCount)
+	}
+	if input.skippedCount > 0 {
+		gologger.Info().Msgf("Number of hosts skipped from input due to exclusion: %d", input.skippedCount)
 	}
 	return input, nil
 }
@@ -110,9 +121,11 @@ func (i *Input) initializeInputSources(opts *Options) error {
 	for _, target := range options.Targets {
 		switch {
 		case iputil.IsCIDR(target):
-			i.expandCIDRInputValue(target)
+			ips := i.expandCIDRInputValue(target)
+			i.addTargets(ips)
 		case asn.IsASN(target):
-			i.expandASNInputValue(target)
+			ips := i.expandASNInputValue(target)
+			i.addTargets(ips)
 		default:
 			i.Set(target)
 		}
@@ -156,6 +169,22 @@ func (i *Input) initializeInputSources(opts *Options) error {
 			i.Set(c)
 		}
 	}
+
+	if len(options.ExcludeTargets) > 0 {
+		for _, target := range options.ExcludeTargets {
+			switch {
+			case iputil.IsCIDR(target):
+				ips := i.expandCIDRInputValue(target)
+				i.removeTargets(ips)
+			case asn.IsASN(target):
+				ips := i.expandASNInputValue(target)
+				i.removeTargets(ips)
+			default:
+				i.Del(target)
+			}
+		}
+	}
+
 	return nil
 }
 
@@ -166,9 +195,11 @@ func (i *Input) scanInputFromReader(reader io.Reader) {
 		item := scanner.Text()
 		switch {
 		case iputil.IsCIDR(item):
-			i.expandCIDRInputValue(item)
+			ips := i.expandCIDRInputValue(item)
+			i.addTargets(ips)
 		case asn.IsASN(item):
-			i.expandASNInputValue(item)
+			ips := i.expandASNInputValue(item)
+			i.addTargets(ips)
 		default:
 			i.Set(item)
 		}
@@ -258,6 +289,114 @@ func (i *Input) Set(value string) {
 	}
 }
 
+// SetWithExclusions normalizes and stores passed input values if not excluded
+func (i *Input) SetWithExclusions(value string) {
+	URL := strings.TrimSpace(value)
+	if URL == "" {
+		return
+	}
+	if i.isExcluded(URL) {
+		i.skippedCount++
+		return
+	}
+	i.Set(URL)
+}
+
+// isExcluded checks if a URL is in the exclusion list
+func (i *Input) isExcluded(URL string) bool {
+	metaInput := &contextargs.MetaInput{Input: URL}
+	key, err := metaInput.MarshalString()
+	if err != nil {
+		gologger.Warning().Msgf("%s\n", err)
+		return false
+	}
+
+	_, exists := i.excludedHosts[key]
+	return exists
+}
+
+func (i *Input) Del(value string) {
+	URL := strings.TrimSpace(value)
+	if URL == "" {
+		return
+	}
+	// parse hostname if url is given
+	urlx, err := urlutil.Parse(URL)
+	if err != nil || (urlx != nil && urlx.Host == "") {
+		gologger.Debug().Label("url").MsgFunc(func() string {
+			if err != nil {
+				return fmt.Sprintf("failed to parse url %v got %v skipping ip selection", URL, err)
+			}
+			return fmt.Sprintf("got empty hostname for %v skipping ip selection", URL)
+		})
+		metaInput := &contextargs.MetaInput{Input: URL}
+		i.delItem(metaInput)
+		return
+	}
+
+	// Check if input is ip or hostname
+	if iputil.IsIP(urlx.Hostname()) {
+		metaInput := &contextargs.MetaInput{Input: URL}
+		i.delItem(metaInput)
+		return
+	}
+
+	if i.ipOptions.ScanAllIPs {
+		// scan all ips
+		dnsData, err := protocolstate.Dialer.GetDNSData(urlx.Hostname())
+		if err == nil {
+			if (len(dnsData.A) + len(dnsData.AAAA)) > 0 {
+				var ips []string
+				if i.ipOptions.IPV4 {
+					ips = append(ips, dnsData.A...)
+				}
+				if i.ipOptions.IPV6 {
+					ips = append(ips, dnsData.AAAA...)
+				}
+				for _, ip := range ips {
+					if ip == "" {
+						continue
+					}
+					metaInput := &contextargs.MetaInput{Input: value, CustomIP: ip}
+					i.delItem(metaInput)
+				}
+				return
+			} else {
+				gologger.Debug().Msgf("scanAllIps: no ip's found reverting to default")
+			}
+		} else {
+			// failed to scanallips falling back to defaults
+			gologger.Debug().Msgf("scanAllIps: dns resolution failed: %v", err)
+		}
+	}
+
+	ips := []string{}
+	// only scan the target but ipv6 if it has one
+	if i.ipOptions.IPV6 {
+		dnsData, err := protocolstate.Dialer.GetDNSData(urlx.Hostname())
+		if err == nil && len(dnsData.AAAA) > 0 {
+			// pick/ prefer 1st
+			ips = append(ips, dnsData.AAAA[0])
+		} else {
+			gologger.Warning().Msgf("target does not have ipv6 address falling back to ipv4 %v\n", err)
+		}
+	}
+	if i.ipOptions.IPV4 {
+		// if IPV4 is enabled do not specify ip let dialer handle it
+		ips = append(ips, "")
+	}
+
+	for _, ip := range ips {
+		if ip != "" {
+			metaInput := &contextargs.MetaInput{Input: URL, CustomIP: ip}
+			i.delItem(metaInput)
+		} else {
+			metaInput := &contextargs.MetaInput{Input: URL}
+			i.delItem(metaInput)
+		}
+	}
+}
+
 // setItem in the kv store
 func (i *Input) setItem(metaInput *contextargs.MetaInput) {
 	key, err := metaInput.MarshalString()
@@ -275,6 +414,39 @@ func (i *Input) setItem(metaInput *contextargs.MetaInput) {
 	if i.hostMapStream != nil {
 		i.setHostMapStream(key)
 	}
+}
+
+// setItem in the kv store
+func (i *Input) delItem(metaInput *contextargs.MetaInput) {
+	targetUrl, err := urlutil.ParseURL(metaInput.Input, true)
+	if err != nil {
+		gologger.Warning().Msgf("%s\n", err)
+		return
+	}
+
+	i.hostMap.Scan(func(k, _ []byte) error {
+		var tmpMetaInput contextargs.MetaInput
+		if err := tmpMetaInput.Unmarshal(string(k)); err != nil {
+			return err
+		}
+		tmpKey, err := tmpMetaInput.MarshalString()
+		if err != nil {
+			return err
+		}
+		tmpUrl, err := urlutil.ParseURL(tmpMetaInput.Input, true)
+		if err != nil {
+			return err
+		}
+
+		matched, _ := regexp.MatchString(metaInput.Input, tmpUrl.Host)
+		if tmpUrl.Host == targetUrl.Host || matched {
+			_ = i.hostMap.Del(tmpKey)
+			i.excludedHosts[tmpKey] = struct{}{}
+			i.excludedCount++
+			i.inputCount--
+		}
+		return nil
+	})
 }
 
 // setHostMapStream sets item in stream mode
@@ -318,31 +490,34 @@ func (i *Input) Scan(callback func(value *contextargs.MetaInput) bool) {
 }
 
 // expandCIDRInputValue expands CIDR and stores expanded IPs
-func (i *Input) expandCIDRInputValue(value string) {
-	ips, _ := mapcidr.IPAddressesAsStream(value)
-	for ip := range ips {
-		metaInput := &contextargs.MetaInput{Input: ip}
-		key, err := metaInput.MarshalString()
-		if err != nil {
-			gologger.Warning().Msgf("%s\n", err)
-			return
-		}
-		if _, ok := i.hostMap.Get(key); ok {
-			i.dupeCount++
-			continue
-		}
-		i.inputCount++
-		_ = i.hostMap.Set(key, nil)
-		if i.hostMapStream != nil {
-			i.setHostMapStream(key)
-		}
+func (i *Input) expandCIDRInputValue(value string) []string {
+	var ips []string
+	ipsCh, _ := mapcidr.IPAddressesAsStream(value)
+	for ip := range ipsCh {
+		ips = append(ips, ip)
 	}
+	return ips
 }
 
 // expandASNInputValue expands CIDRs for given ASN and stores expanded IPs
-func (i *Input) expandASNInputValue(value string) {
+func (i *Input) expandASNInputValue(value string) []string {
+	var ips []string
 	cidrs, _ := asn.GetCIDRsForASNNum(value)
 	for _, cidr := range cidrs {
-		i.expandCIDRInputValue(cidr.String())
+		ips = append(ips, i.expandCIDRInputValue(cidr.String())...)
+	}
+	return ips
+}
+
+func (i *Input) addTargets(targets []string) {
+	for _, target := range targets {
+		i.Set(target)
+	}
+}
+
+func (i *Input) removeTargets(targets []string) {
+	for _, target := range targets {
+		metaInput := &contextargs.MetaInput{Input: target}
+		i.delItem(metaInput)
 	}
 }

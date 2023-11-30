@@ -7,7 +7,7 @@ import (
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
-	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
+	"github.com/projectdiscovery/nuclei/v3/pkg/scan"
 )
 
 // generic engine as name suggests is a generic template
@@ -34,18 +34,18 @@ func (g *Generic) Compile() error {
 }
 
 // ExecuteWithResults executes the template and returns results
-func (g *Generic) ExecuteWithResults(input *contextargs.Context, callback protocols.OutputEventCallback) error {
+func (g *Generic) ExecuteWithResults(ctx *scan.ScanContext) error {
 	dynamicValues := make(map[string]interface{})
-	if input.HasArgs() {
-		input.ForEach(func(key string, value interface{}) {
+	if ctx.Input.HasArgs() {
+		ctx.Input.ForEach(func(key string, value interface{}) {
 			dynamicValues[key] = value
 		})
 	}
 	previous := make(map[string]interface{})
 
 	for _, req := range g.requests {
-		inputItem := input.Clone()
-		if g.options.InputHelper != nil && input.MetaInput.Input != "" {
+		inputItem := ctx.Input.Clone()
+		if g.options.InputHelper != nil && ctx.Input.MetaInput.Input != "" {
 			if inputItem.MetaInput.Input = g.options.InputHelper.Transform(inputItem.MetaInput.Input, req.Type()); inputItem.MetaInput.Input == "" {
 				return nil
 			}
@@ -72,13 +72,14 @@ func (g *Generic) ExecuteWithResults(input *contextargs.Context, callback protoc
 			}
 			// for ExecuteWithResults : this callback will execute user defined callback and some error handling
 			// for Execute : this callback will print the result to output
-			callback(event)
+			ctx.LogEvent(event)
 		})
 		if err != nil {
+			ctx.LogError(err)
 			if g.options.HostErrorsCache != nil {
-				g.options.HostErrorsCache.MarkFailed(input.MetaInput.ID(), err)
+				g.options.HostErrorsCache.MarkFailed(ctx.Input.MetaInput.ID(), err)
 			}
-			gologger.Warning().Msgf("[%s] Could not execute request for %s: %s\n", g.options.TemplateID, input.MetaInput.PrettyPrint(), err)
+			gologger.Warning().Msgf("[%s] Could not execute request for %s: %s\n", g.options.TemplateID, ctx.Input.MetaInput.PrettyPrint(), err)
 		}
 		// If a match was found and stop at first match is set, break out of the loop and return
 		if g.results.Load() && (g.options.StopAtFirstMatch || g.options.Options.StopAtFirstMatch) {

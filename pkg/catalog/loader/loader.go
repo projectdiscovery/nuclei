@@ -35,7 +35,7 @@ const (
 )
 
 var (
-	TrustedTemplateDomains = []string{"templates.nuclei.sh", "cloud.projectdiscovery.io"}
+	TrustedTemplateDomains = []string{"cloud.projectdiscovery.io"}
 )
 
 // Config contains the configuration options for the loader
@@ -197,7 +197,7 @@ func handleTemplatesEditorURLs(input string) string {
 	if err != nil {
 		return input
 	}
-	if !strings.HasSuffix(parsed.Hostname(), "templates.nuclei.sh") {
+	if !strings.HasSuffix(parsed.Hostname(), "cloud.projectdiscovery.io") {
 		return input
 	}
 	if strings.HasSuffix(parsed.Path, ".yaml") {
