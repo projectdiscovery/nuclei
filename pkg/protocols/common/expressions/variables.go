@@ -7,6 +7,8 @@ import (
 
 	"github.com/Knetic/govaluate"
 	"github.com/projectdiscovery/nuclei/v3/pkg/operators/common/dsl"
+	elabel "github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/errors/label"
+	errorutil "github.com/projectdiscovery/utils/errors"
 )
 
 var (
@@ -38,7 +40,7 @@ func ContainsUnresolvedVariables(items ...string) error {
 			unresolvedVariables = append(unresolvedVariables, match[1])
 		}
 		if len(unresolvedVariables) > 0 {
-			return errors.New("unresolved variables found: " + strings.Join(unresolvedVariables, ","))
+			return errorutil.NewWithTag(elabel.UnresolvedVariablesErrorLabel, "unresolved variables found: "+strings.Join(unresolvedVariables, ","))
 		}
 	}
 

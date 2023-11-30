@@ -17,6 +17,7 @@ import (
 	"github.com/projectdiscovery/gologger/formatter"
 	"github.com/projectdiscovery/gologger/levels"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/config"
+	elabel "github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/errors/label"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolinit"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/utils/vardump"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/headless/engine"
@@ -26,6 +27,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/reporting/exporters/markdown"
 	"github.com/projectdiscovery/nuclei/v3/pkg/reporting/exporters/sarif"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
+	"github.com/projectdiscovery/nuclei/v3/pkg/utils/stats"
 	"github.com/projectdiscovery/nuclei/v3/pkg/utils/yaml"
 	fileutil "github.com/projectdiscovery/utils/file"
 	"github.com/projectdiscovery/utils/generic"
@@ -86,6 +88,8 @@ func ParseOptions(options *types.Options) {
 
 	// Load the resolvers if user asked for them
 	loadResolvers(options)
+
+	options.ErrorLabels = parseErrorLables(options.ErrorLabels)
 
 	err := protocolinit.Init(options)
 	if err != nil {
@@ -429,4 +433,22 @@ func readEnvInputVars(options *types.Options) {
 func getBoolEnvValue(key string) bool {
 	value := os.Getenv(key)
 	return strings.EqualFold(value, "true")
+}
+
+func parseErrorLables(errorLabels []string) []string {
+	// Make error label entries in stats
+	for _, v := range elabel.ErrorLableMap {
+		stats.NewEntry(v.Name, v.Description)
+	}
+	if len(errorLabels) == 0 {
+		return errorLabels
+	}
+	var errLabels []string
+	for _, label := range errorLabels {
+		label = strings.ToLower(label)
+		if v, ok := elabel.ErrorLableMap[label]; ok {
+			errLabels = append(errLabels, v.Name)
+		}
+	}
+	return errLabels
 }

@@ -14,6 +14,7 @@ import (
 
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
+	elabel "github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/errors/label"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/expressions"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/generators"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/utils/vardump"
@@ -34,7 +35,7 @@ import (
 // ErrEvalExpression
 var (
 	ErrEvalExpression = errorutil.NewWithTag("expr", "could not evaluate helper expressions")
-	ErrUnresolvedVars = errorutil.NewWithFmt("unresolved variables `%v` found in request")
+	UnresolvedErrFmt  = "unresolved variables `%v` found in request"
 )
 
 // generatedRequest is a single generated request wrapped for a template request
@@ -208,7 +209,7 @@ func (r *requestGenerator) makeSelfContainedRequest(ctx context.Context, data st
 		}
 
 		if err := expressions.ContainsUnresolvedVariables(parts[1]); err != nil {
-			return nil, ErrUnresolvedVars.Msgf(parts[1])
+			return nil, errorutil.NewWithTag(elabel.UnresolvedVariablesErrorLabel, UnresolvedErrFmt, parts[1])
 		}
 
 		parsed, err := urlutil.ParseURL(parts[1], true)
@@ -229,7 +230,7 @@ func (r *requestGenerator) makeSelfContainedRequest(ctx context.Context, data st
 	if err := expressions.ContainsUnresolvedVariables(data); err != nil {
 		// early exit: if there are any unresolved variables in `path` after evaluation
 		// then return early since this will definitely fail
-		return nil, ErrUnresolvedVars.Msgf(data)
+		return nil, errorutil.NewWithTag(elabel.UnresolvedVariablesErrorLabel, UnresolvedErrFmt, data)
 	}
 
 	urlx, err := urlutil.ParseURL(data, true)
@@ -287,6 +288,10 @@ func (r *requestGenerator) generateRawRequest(ctx context.Context, rawRequest st
 		}
 		unsafeReq := &generatedRequest{rawRequest: rawRequestData, meta: generatorValues, original: r.request, interactshURLs: r.interactshURLs}
 		return unsafeReq, nil
+	}
+
+	if err := expressions.ContainsUnresolvedVariables(rawRequestData.FullURL); err != nil {
+		return nil, errorutil.NewWithTag(elabel.UnresolvedVariablesErrorLabel, UnresolvedErrFmt, rawRequestData.FullURL)
 	}
 
 	urlx, err := urlutil.ParseURL(rawRequestData.FullURL, true)

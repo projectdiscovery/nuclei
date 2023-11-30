@@ -17,6 +17,7 @@ import (
 	uncoverlib "github.com/projectdiscovery/uncover"
 	"github.com/projectdiscovery/utils/env"
 	permissionutil "github.com/projectdiscovery/utils/permission"
+	stringsutil "github.com/projectdiscovery/utils/strings"
 	updateutils "github.com/projectdiscovery/utils/update"
 
 	"github.com/logrusorgru/aurora"
@@ -40,6 +41,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/automaticscan"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
+	elabel "github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/errors/label"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/hosterrorscache"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/interactsh"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolinit"
@@ -492,6 +494,7 @@ func (r *Runner) RunEnumeration() error {
 		}
 	}
 	r.progress.Stop()
+	r.displayErrorInfo()
 
 	if executorOpts.InputHelper != nil {
 		_ = executorOpts.InputHelper.Close()
@@ -612,6 +615,17 @@ func (r *Runner) displayExecutionInfo(store *loader.Store) {
 	}
 	if r.hmapInputProvider.Count() > 0 {
 		gologger.Info().Msgf("Targets loaded for current scan: %d", r.hmapInputProvider.Count())
+	}
+}
+
+func (r *Runner) displayErrorInfo() {
+	if !r.options.Verbose {
+		return
+	}
+	errLables := r.options.ErrorLabels
+	// if error label is not provided, display the stats for specific labels
+	if !stringsutil.ContainsAny(elabel.UnresolvedVariablesErrorLabel, errLables...) {
+		stats.Display(elabel.UnresolvedVariablesErrorLabel)
 	}
 }
 

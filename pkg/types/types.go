@@ -96,6 +96,8 @@ type Options struct {
 	TraceLogFile string
 	// ErrorLogFile specifies a file to write with the errors of all requests
 	ErrorLogFile string
+	// ErrorLabels is the list of error labels to match and enable logging
+	ErrorLabels	[]string
 	// ReportingDB is the db for report storage as well as deduplication
 	ReportingDB string
 	// ReportingConfig is the config file for nuclei reporting module
