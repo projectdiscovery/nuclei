@@ -60,7 +60,7 @@ func NewUploadWriter(creds *PDCPCredentials) (*UploadWriter, error) {
 	}
 	u.StandardWriter, err = output.NewWriter(
 		output.WithWriter(u.tempFile),
-		output.WithJson(true, false),
+		output.WithJson(true, true),
 	)
 	if err != nil {
 		return nil, errorutil.NewWithErr(err).Msgf("could not create output writer")
