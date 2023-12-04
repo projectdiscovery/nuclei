@@ -20,7 +20,7 @@ require (
 	github.com/miekg/dns v1.1.57
 	github.com/olekukonko/tablewriter v0.0.5
 	github.com/pkg/errors v0.9.1
-	github.com/projectdiscovery/clistats v0.0.19
+	github.com/projectdiscovery/clistats v0.0.20
 	github.com/projectdiscovery/fastdialer v0.0.46
 	github.com/projectdiscovery/hmap v0.0.27
 	github.com/projectdiscovery/interactsh v1.1.7
