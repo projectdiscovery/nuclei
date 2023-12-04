@@ -48,6 +48,27 @@ type Integration struct {
 	options *Options
 }
 
+type StringArrayCoerced []string
+
+// https://github.com/go-yaml/yaml/issues/100#issuecomment-901604971
+// Allow yaml field to be coerced into a list of strings
+// Field can either be a single string value, or a list of string in YAML
+func (a *StringArrayCoerced) UnmarshalYAML(unmarshal func(interface{}) error) error {
+	var multi []string
+	err := unmarshal(&multi)
+	if err != nil {
+		var single string
+		err := unmarshal(&single)
+		if err != nil {
+			return err
+		}
+		*a = []string{single}
+	} else {
+		*a = multi
+	}
+	return nil
+}
+
 // Options contains the configuration options for jira client
 type Options struct {
 	// Cloud value (optional) is set to true when Jira cloud is used
@@ -76,7 +97,8 @@ type Options struct {
 	// we will create a map of customfield name to the value
 	// that will be used to create the issue
 	CustomFields map[string]interface{} `yaml:"custom-fields" json:"custom_fields"`
-	StatusNot    string                 `yaml:"status-not" json:"status_not"`
+	// Final statuses are used to mark tickets as closed or done
+	StatusNot StringArrayCoerced `yaml:"status-not" json:"status_not"`
 }
 
 // New creates a new issue tracker integration client based on options.
@@ -207,7 +229,11 @@ func (i *Integration) CreateIssue(event *output.ResultEvent) error {
 // FindExistingIssue checks if the issue already exists and returns its ID
 func (i *Integration) FindExistingIssue(event *output.ResultEvent) (string, error) {
 	template := format.GetMatchedTemplateName(event)
-	jql := fmt.Sprintf("summary ~ \"%s\" AND summary ~ \"%s\" AND status != \"%s\" AND project = \"%s\"", template, event.Host, i.options.StatusNot, i.options.ProjectName)
+	statuses := []string{}
+	for _, status := range i.options.StatusNot {
+		statuses = append(statuses, fmt.Sprintf("\"%s\"", status))
+	}
+	jql := fmt.Sprintf("summary ~ \"%s\" AND summary ~ \"%s\" AND status NOT IN (%s) AND project = \"%s\"", template, event.Host, strings.Join(statuses, ","), i.options.ProjectName)
 
 	searchOptions := &jira.SearchOptions{
 		MaxResults: 1, // if any issue exists, then we won't create a new one

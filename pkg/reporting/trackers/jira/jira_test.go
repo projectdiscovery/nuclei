@@ -2,6 +2,7 @@ package jira
 
 import (
 	"github.com/stretchr/testify/assert"
+	"gopkg.in/yaml.v3"
 	"strings"
 	"testing"
 )
@@ -34,4 +35,25 @@ func TestTableCreation(t *testing.T) {
 | d | e |
 `
 	assert.Equal(t, expected, table)
+}
+
+func TestStatusNotCustomUnmarshal(t *testing.T) {
+	type Data struct {
+		StatusNot StringArrayCoerced `yaml:"status-not" json:"status_not"`
+	}
+
+	scenarios := [][]byte{
+		[]byte("status-not: Testing"),
+		[]byte(`status-not:
+        - Testing`),
+		[]byte(`status-not:
+        - Testing
+        - Testing`),
+	}
+
+	for _, scenario := range scenarios {
+		data := Data{}
+		assert.Nil(t, yaml.Unmarshal(scenario, &data))
+		assert.Equal(t, "Testing", data.StatusNot[0])
+	}
 }
