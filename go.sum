@@ -793,8 +793,8 @@ github.com/projectdiscovery/cdncheck v1.0.9 h1:BS15gzj9gb5AVSKqTDzPamfSgStu7nJQO
 github.com/projectdiscovery/cdncheck v1.0.9/go.mod h1:18SSl1w7rMj53CGeRIZTbDoa286a6xZIxGbaiEo4Fxs=
 github.com/projectdiscovery/clistats v0.0.20 h1:5jO5SLiRJ7f0nDV0ndBNmBeesbROouPooH+DGMgoWq4=
 github.com/projectdiscovery/clistats v0.0.20/go.mod h1:GJ2av0KnOvK0AISQnP8hyDclYIji1LVkx2l0pwnzAu4=
-github.com/projectdiscovery/dsl v0.0.32 h1:hhZcqu+FgrF6RrikPdwc1cmYhkCyYXYKNNZL4vcGWEc=
-github.com/projectdiscovery/dsl v0.0.32/go.mod h1:0dxtOiPv0UXD8YpuPieVFN/zisQaL5Sp8OGTRzKVH0A=
+github.com/projectdiscovery/dsl v0.0.33 h1:2iSTfi5s1nKTdG76nq3hb5f5oSEg2K0t4V1Ndy0bWZ8=
+github.com/projectdiscovery/dsl v0.0.33/go.mod h1:62LGScwUP02fKQ+j/mBFjoB/zej1In+AS6ZO8P9+Rx0=
 github.com/projectdiscovery/fastdialer v0.0.46 h1:XoP41jyOBupz4w+hz9WRnvBrml3E0OiNsmfhDPsXiFM=
 github.com/projectdiscovery/fastdialer v0.0.46/go.mod h1:qe6hd6PDUoJhmkAkFGmWIfGWSuezvpClxN80pUAtVfE=
 github.com/projectdiscovery/fasttemplate v0.0.2 h1:h2cISk5xDhlJEinlBQS6RRx0vOlOirB2y3Yu4PJzpiA=
@@ -815,8 +815,8 @@ github.com/projectdiscovery/httpx v1.3.7 h1:g/ZQIBdWWPQLF+niv39b7jRhAkyrcroJJfqb
 github.com/projectdiscovery/httpx v1.3.7/go.mod h1:FqEmL2zWZArgD1vSQ+tqHvmUItPqxYhOgKyfN8GyWMQ=
 github.com/projectdiscovery/interactsh v1.1.7 h1:rK+eKklyM+4qaLS+1MgtHDvrHdAnSTMx/Ezd62pWNL8=
 github.com/projectdiscovery/interactsh v1.1.7/go.mod h1:WYxbcV0fz3LMf83mugCYo5VUsBb4nfIdAVK6GVJhobs=
-github.com/projectdiscovery/mapcidr v1.1.15 h1:rYAgxLvMyxPU0JunE/Y3uSK1n/TcNJHK839d6YM0ms4=
-github.com/projectdiscovery/mapcidr v1.1.15/go.mod h1:s9erRsoZqWcLGhJW+WT1SnbscqzhHRRnSX916xBw5ZM=
+github.com/projectdiscovery/mapcidr v1.1.16 h1:rjj1w5D6hbTsUQXYClLcGdfBEy9bryclgi70t0vBggo=
+github.com/projectdiscovery/mapcidr v1.1.16/go.mod h1:rGqpBhStdwOQ2uS62QM9qPsybwMwIhT7CTd2bxoHs8Q=
 github.com/projectdiscovery/n3iwf v0.0.0-20230523120440-b8cd232ff1f5 h1:L/e8z8yw1pfT6bg35NiN7yd1XKtJap5Nk6lMwQ0RNi8=
 github.com/projectdiscovery/n3iwf v0.0.0-20230523120440-b8cd232ff1f5/go.mod h1:pGW2ncnTxTxHtP9wzcIJAB+3/NMp6IiuQWd2NK7K+oc=
 github.com/projectdiscovery/networkpolicy v0.0.6 h1:yDvm0XCrS9HeemRrBS+J+22surzVczM94W5nHiOy/1o=
