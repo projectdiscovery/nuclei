@@ -12,6 +12,7 @@ headless:
       - action: waitevent
         args:
             event: 'Page.loadEventFired'
+            max-duration: 15s
   
       - action: navigate  
         args:

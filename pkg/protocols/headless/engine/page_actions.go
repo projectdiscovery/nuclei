@@ -22,6 +22,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/utils/vardump"
 	protocolutils "github.com/projectdiscovery/nuclei/v3/pkg/protocols/utils"
 	httputil "github.com/projectdiscovery/nuclei/v3/pkg/protocols/utils/http"
+	contextutil "github.com/projectdiscovery/utils/context"
 	errorutil "github.com/projectdiscovery/utils/errors"
 	fileutil "github.com/projectdiscovery/utils/file"
 	folderutil "github.com/projectdiscovery/utils/folder"
@@ -46,7 +47,7 @@ func (p *Page) ExecuteActions(input *contextargs.Context, actions []*Action, var
 	outData = make(map[string]string)
 	// waitFuncs are function that needs to be executed after navigation
 	// typically used for waitEvent
-	waitFuncs := make([]func(), 0)
+	waitFuncs := make([]func() error, 0)
 
 	// avoid any future panics caused due to go-rod library
 	defer func() {
@@ -63,7 +64,9 @@ func (p *Page) ExecuteActions(input *contextargs.Context, actions []*Action, var
 				// if navigation successful trigger all waitFuncs (if any)
 				for _, waitFunc := range waitFuncs {
 					if waitFunc != nil {
-						waitFunc()
+						if err := waitFunc(); err != nil {
+							return nil, errorutil.NewWithErr(err).Msgf("error occurred while executing waitFunc")
+						}
 					}
 				}
 			}
@@ -88,7 +91,7 @@ func (p *Page) ExecuteActions(input *contextargs.Context, actions []*Action, var
 		case ActionExtract:
 			err = p.ExtractElement(act, outData)
 		case ActionWaitEvent:
-			var waitFunc func()
+			var waitFunc func() error
 			waitFunc, err = p.WaitEvent(act, outData)
 			if waitFunc != nil {
 				waitFuncs = append(waitFuncs, waitFunc)
@@ -565,7 +568,7 @@ func (p *Page) ExtractElement(act *Action, out map[string]string) error {
 }
 
 // WaitEvent waits for an event to happen on the page.
-func (p *Page) WaitEvent(act *Action, out map[string]string /*TODO review unused parameter*/) (func(), error) {
+func (p *Page) WaitEvent(act *Action, out map[string]string /*TODO review unused parameter*/) (func() error, error) {
 	event := p.getActionArgWithDefaultValues(act, "event")
 	if event == "" {
 		return nil, errors.New("event not recognized")
@@ -581,9 +584,25 @@ func (p *Page) WaitEvent(act *Action, out map[string]string /*TODO review unused
 		return nil, errorutil.New("event %v is not a page event", event)
 	}
 	waitEvent = tmp
+	maxDuration := 10 * time.Second // 30 sec is max wait duration for any event
+
+	// allow user to specify max-duration for wait-event
+	if out["max-duration"] != "" {
+		var err error
+		maxDuration, err = time.ParseDuration(out["max-duration"])
+		if err != nil {
+			return nil, errorutil.NewWithErr(err).Msgf("could not parse max-duration")
+		}
+	}
 
 	// Just wait the event to happen
-	waitFunc := p.page.WaitEvent(waitEvent)
+	waitFunc := func() (err error) {
+		// execute actual wait event
+		ctx, cancel := context.WithTimeout(context.Background(), maxDuration)
+		defer cancel()
+		err = contextutil.ExecFunc(ctx, p.page.WaitEvent(waitEvent))
+		return
+	}
 	return waitFunc, nil
 }
 
