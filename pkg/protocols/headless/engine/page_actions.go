@@ -42,14 +42,18 @@ const (
 )
 
 // ExecuteActions executes a list of actions on a page.
-func (p *Page) ExecuteActions(input *contextargs.Context, actions []*Action, variables map[string]interface{}) (map[string]string, error) {
-	outData := make(map[string]string)
-
+func (p *Page) ExecuteActions(input *contextargs.Context, actions []*Action, variables map[string]interface{}) (outData map[string]string, err error) {
 	// waitFuncs are function that needs to be executed after navigation
 	// typically used for waitEvent
 	waitFuncs := make([]func(), 0)
 
-	var err error
+	// avoid any future panics caused due to go-rod library
+	defer func() {
+		if r := recover(); r != nil {
+			err = errorutil.New("panic on headless action: %v", r)
+		}
+	}()
+
 	for _, act := range actions {
 		switch act.ActionType.ActionType {
 		case ActionNavigate:
