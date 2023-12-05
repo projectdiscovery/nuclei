@@ -43,6 +43,7 @@ const (
 
 // ExecuteActions executes a list of actions on a page.
 func (p *Page) ExecuteActions(input *contextargs.Context, actions []*Action, variables map[string]interface{}) (outData map[string]string, err error) {
+	outData = make(map[string]string)
 	// waitFuncs are function that needs to be executed after navigation
 	// typically used for waitEvent
 	waitFuncs := make([]func(), 0)
@@ -652,10 +653,6 @@ func selectorBy(selector string) rod.SelectorType {
 	default:
 		return rod.SelectorTypeText
 	}
-}
-
-func (p *Page) getActionArg(action *Action, arg string) string {
-	return p.getActionArgWithValues(action, arg, nil)
 }
 
 func (p *Page) getActionArgWithDefaultValues(action *Action, arg string) string {
