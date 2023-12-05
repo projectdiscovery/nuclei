@@ -4,6 +4,7 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strconv"
 	"strings"
 	"sync"
@@ -43,11 +44,24 @@ const (
 // ExecuteActions executes a list of actions on a page.
 func (p *Page) ExecuteActions(input *contextargs.Context, actions []*Action, variables map[string]interface{}) (map[string]string, error) {
 	outData := make(map[string]string)
+
+	// waitFuncs are function that needs to be executed after navigation
+	// typically used for waitEvent
+	waitFuncs := make([]func(), 0)
+
 	var err error
 	for _, act := range actions {
 		switch act.ActionType.ActionType {
 		case ActionNavigate:
 			err = p.NavigateURL(act, outData, variables)
+			if err == nil {
+				// if navigation successful trigger all waitFuncs (if any)
+				for _, waitFunc := range waitFuncs {
+					if waitFunc != nil {
+						waitFunc()
+					}
+				}
+			}
 		case ActionScript:
 			err = p.RunScript(act, outData)
 		case ActionClick:
@@ -69,7 +83,11 @@ func (p *Page) ExecuteActions(input *contextargs.Context, actions []*Action, var
 		case ActionExtract:
 			err = p.ExtractElement(act, outData)
 		case ActionWaitEvent:
-			err = p.WaitEvent(act, outData)
+			var waitFunc func()
+			waitFunc, err = p.WaitEvent(act, outData)
+			if waitFunc != nil {
+				waitFuncs = append(waitFuncs, waitFunc)
+			}
 		case ActionFilesInput:
 			if p.options.Options.AllowLocalFileAccess {
 				err = p.FilesInput(act, outData)
@@ -541,38 +559,27 @@ func (p *Page) ExtractElement(act *Action, out map[string]string) error {
 	return nil
 }
 
-type protoEvent struct {
-	event string
-}
-
-// ProtoEvent returns the cdp.Event.Method
-func (p *protoEvent) ProtoEvent() string {
-	return p.event
-}
-
 // WaitEvent waits for an event to happen on the page.
-func (p *Page) WaitEvent(act *Action, out map[string]string /*TODO review unused parameter*/) error {
+func (p *Page) WaitEvent(act *Action, out map[string]string /*TODO review unused parameter*/) (func(), error) {
 	event := p.getActionArgWithDefaultValues(act, "event")
 	if event == "" {
-		return errors.New("event not recognized")
+		return nil, errors.New("event not recognized")
 	}
-	protoEvent := &protoEvent{event: event}
 
-	// Uses another instance in order to be able to chain the timeout only to the wait operation
-	pageCopy := p.page
-	timeout := p.getActionArg(act, "timeout")
-	if timeout != "" {
-		ts, err := strconv.Atoi(timeout)
-		if err != nil {
-			return errors.Wrap(err, "could not get timeout")
-		}
-		if ts > 0 {
-			pageCopy = p.page.Timeout(time.Duration(ts) * time.Second)
-		}
+	var waitEvent proto.Event
+	gotType := proto.GetType(event)
+	if gotType == nil {
+		return nil, errorutil.New("event %v does not exist", event)
 	}
+	tmp, ok := reflect.New(gotType).Interface().(proto.Event)
+	if !ok {
+		return nil, errorutil.New("event %v is not a page event", event)
+	}
+	waitEvent = tmp
+
 	// Just wait the event to happen
-	pageCopy.WaitEvent(protoEvent)()
-	return nil
+	waitFunc := p.page.WaitEvent(waitEvent)
+	return waitFunc, nil
 }
 
 // pageElementBy returns a page element from a variety of inputs.
