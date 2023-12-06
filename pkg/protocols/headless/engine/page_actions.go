@@ -584,12 +584,12 @@ func (p *Page) WaitEvent(act *Action, out map[string]string /*TODO review unused
 		return nil, errorutil.New("event %v is not a page event", event)
 	}
 	waitEvent = tmp
-	maxDuration := 10 * time.Second // 30 sec is max wait duration for any event
+	maxDuration := 10 * time.Second // 10 sec is max wait duration for any event
 
 	// allow user to specify max-duration for wait-event
-	if out["max-duration"] != "" {
+	if value := p.getActionArgWithDefaultValues(act, "max-duration"); value != "" {
 		var err error
-		maxDuration, err = time.ParseDuration(out["max-duration"])
+		maxDuration, err = time.ParseDuration(value)
 		if err != nil {
 			return nil, errorutil.NewWithErr(err).Msgf("could not parse max-duration")
 		}
