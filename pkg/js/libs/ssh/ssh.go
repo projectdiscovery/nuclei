@@ -133,6 +133,8 @@ func connect(host string, port int, user, password, privateKey string) (*ssh.Cli
 	conf := &ssh.ClientConfig{
 		User: user,
 		Auth: []ssh.AuthMethod{},
+		// FIXME: This should be configurable
+		Timeout: 10 * time.Second,
 	}
 	if len(password) > 0 {
 		conf.Auth = append(conf.Auth, ssh.Password(password))
