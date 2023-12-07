@@ -1,4 +1,4 @@
-/** @module ssh */
+/**@module ssh */
 
 /**
  * @typedef {object} HandshakeLog
@@ -13,14 +13,14 @@ const HandshakeLog = {};
 class SSHClient {
     /**
     @method
-    @description Close closes the SSH connection and destroys the client. Returns the success state and error. If error is not nil, state will be false.
+    @description Close closes the SSH connection and destroys the client
     @returns {boolean} - The success state of the operation.
     @throws {error} - The error encountered during the operation.
     @example
     let m = require('nuclei/ssh');
     let c = m.SSHClient();
     let state = c.Connect('localhost', 22, 'user', 'password');
-    c.Close();
+    let result = c.Close();
     */
     Close() {
         // implemented in go
@@ -28,13 +28,13 @@ class SSHClient {
 
     /**
     @method
-    @description Connect tries to connect to provided host and port with provided username and password with ssh. Returns state of connection and error. If error is not nil, state will be false.
+    @description Connect tries to connect to provided host and port with provided username and password with ssh.
     @param {string} host - The host to connect to.
     @param {number} port - The port to connect to.
     @param {string} username - The username for the connection.
     @param {string} password - The password for the connection.
-    @returns {boolean} - The state of the connection.
-    @throws {error} - The error encountered during the connection.
+    @returns {boolean} - The success state of the operation.
+    @throws {error} - The error encountered during the operation.
     @example
     let m = require('nuclei/ssh');
     let c = m.SSHClient();
@@ -46,11 +46,11 @@ class SSHClient {
 
     /**
     @method
-    @description ConnectSSHInfoMode tries to connect to provided host and port with provided host and port. Returns HandshakeLog and error. If error is not nil, state will be false.
+    @description ConnectSSHInfoMode tries to connect to provided host and port with provided host and port
     @param {string} host - The host to connect to.
     @param {number} port - The port to connect to.
     @returns {HandshakeLog} - The HandshakeLog object containing information about the ssh connection.
-    @throws {error} - The error encountered during the connection.
+    @throws {error} - The error encountered during the operation.
     @example
     let m = require('nuclei/ssh');
     let c = m.SSHClient();
@@ -62,17 +62,17 @@ class SSHClient {
 
     /**
     @method
-    @description ConnectWithKey tries to connect to provided host and port with provided username and private_key. Returns state of connection and error. If error is not nil, state will be false.
+    @description ConnectWithKey tries to connect to provided host and port with provided username and private_key.
     @param {string} host - The host to connect to.
     @param {number} port - The port to connect to.
     @param {string} username - The username for the connection.
     @param {string} key - The private key for the connection.
-    @returns {boolean} - The state of the connection.
-    @throws {error} - The error encountered during the connection.
+    @returns {boolean} - The success state of the operation.
+    @throws {error} - The error encountered during the operation.
     @example
     let m = require('nuclei/ssh');
     let c = m.SSHClient();
-    let result = c.ConnectWithKey('localhost', 22, 'user', 'private_key');
+    let result = c.ConnectWithKey('localhost', 22, 'user', 'key');
     */
     ConnectWithKey(host, port, username, key) {
         // implemented in go
@@ -80,16 +80,29 @@ class SSHClient {
 
     /**
     @method
-    @description Run tries to open a new SSH session, then tries to execute the provided command in said session. Returns string and error. If error is not nil, state will be false. The string contains the command output.
+    @description Run tries to open a new SSH session, then tries to execute the provided command in said session
     @param {string} cmd - The command to execute.
     @returns {string} - The output of the command.
-    @throws {error} - The error encountered during the execution of the command.
+    @throws {error} - The error encountered during the operation.
     @example
     let m = require('nuclei/ssh');
     let c = m.SSHClient();
     let result = c.Run('ls');
     */
     Run(cmd) {
+        // implemented in go
+    };
+
+    /**
+    @method
+    @description SetTimeout sets the timeout for the SSH connection in seconds
+    @param {number} sec - The number of seconds for the timeout.
+    @example
+    let m = require('nuclei/ssh');
+    let c = m.SSHClient();
+    c.SetTimeout(30);
+    */
+    SetTimeout(sec) {
         // implemented in go
     };
 };
