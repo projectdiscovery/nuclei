@@ -1,0 +1,69 @@
+{{- range .}}
+{{ if eq .Type "class" -}}
+/**
+{{- range (splitLines .Description) }}
+ * {{ . }}
+{{- end }}
+ */
+export class {{ .Name }} {
+    {{"\n"}}
+    {{- range $property := .Class.Properties }}
+    /**
+    {{- range (splitLines $property.Description) }}
+    * {{ . }}
+    {{- end }}
+    */
+    public {{ $property.Name }}: {{ $property.Type }};
+    {{"\n"}}
+    {{- end }}
+
+    {{- range $method := .Class.Methods }}
+    /**
+    {{- range (splitLines $method.Description) }}
+    * {{ . }}
+    {{- end }}
+    {{ if $method.CanFail }}* @throws {Error} - if the operation fails
+    {{ end }}*/
+    public {{ $method.Name }}({{ range $index, $element := $method.Parameters }}{{ if $index }}, {{ end }}{{ $element.Name }}: {{ $element.Type }}{{ end }}): {{ $method.Returns }} {
+        {{ $method.ReturnStmt }}
+    }
+    {{"\n"}}
+    {{- end }}
+}
+
+{{ else if eq .Type "function" -}}
+/**
+{{- range (splitLines .Description) }}
+ * {{ . }}
+{{- end }}
+{{ if .Function.CanFail }}* @throws {Error} - if the operation fails
+{{ end }} */
+export function {{ .Name }}({{ range $index, $element := .Function.Parameters }}{{ if $index }}, {{ end }}{{ $element.Name }}: {{ $element.Type }}{{ end }}): {{ .Function.Returns }} {
+    {{ .Function.ReturnStmt }}
+}
+
+{{ else if eq .Type "object" -}}
+/**
+{{- range (splitLines .Description) }}
+ * {{ . }}
+{{- end }}
+ */
+export const {{ .Name }}: {
+    {{"\n"}}
+    {{- range $property := .Object.Properties }}
+    /**
+    {{- range (splitLines .Description) }}
+    * {{ . }}
+    {{- end }}
+    */
+    {{ $property.Name }}: {{ $property.Type }},
+    {{"\n"}}    
+    {{- end }}
+} = {
+    {{- range $property := .Object.Properties }}
+    {{ $property.Name }}: null, // TODO: Define default value
+    {{- end }}
+};
+
+{{ end }}
+{{- end }}
