@@ -2,6 +2,7 @@ package tsdocs
 
 import (
 	"go/ast"
+	"strings"
 )
 
 // isExported checks if the given name is exported
@@ -40,6 +41,9 @@ func toTsTypes(t string) string {
 	case "[]byte":
 		return "Uint8Array"
 	default:
+		if strings.HasPrefix(t, "[]") {
+			return strings.TrimPrefix(t, "[]") + "[]"
+		}
 		return t
 	}
 }

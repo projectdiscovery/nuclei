@@ -226,6 +226,11 @@ func (p *EntityParser) extractFunctionFromNode(fn *ast.FuncDecl) (Entity, error)
 
 // extractReturnType extracts the return type from the given function
 func (p *EntityParser) extractReturnType(fn *ast.FuncDecl) (out string) {
+	defer func() {
+		if out == "" {
+			out = "void"
+		}
+	}()
 	var returns []string
 	if fn.Type.Results != nil && len(fn.Type.Results.List) > 0 {
 		for _, result := range fn.Type.Results.List {
@@ -270,6 +275,11 @@ func (p *EntityParser) extractParameters(fn *ast.FuncDecl) []Parameter {
 		name := param.Names[0].Name
 		// get the parameter type
 		typ := exprToString(param.Type)
+		if strings.Contains(typ, ".") {
+			// replace with any
+			// we do not support or encourage passing external structs as parameters
+			typ = "any"
+		}
 		// add the parameter to the list of parameters
 		parameters = append(parameters, Parameter{
 			Name: name,
