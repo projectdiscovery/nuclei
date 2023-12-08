@@ -10,13 +10,10 @@ import (
 	"strings"
 	"text/template"
 
+	"github.com/projectdiscovery/nuclei/v3/pkg/js/devtools/tsdocs"
 	sliceutil "github.com/projectdiscovery/utils/slice"
 	"golang.org/x/tools/go/packages"
 )
-
-const utils = `
-type Result<T, E = Error> = { data: T } | { error: E };
-`
 
 // Define your template
 //
@@ -149,11 +146,14 @@ func main() {
 	// 	panic(err)
 	// }
 
-	all, err := GenerateEntitiesFromFile("../../libs/ssh/ssh.go")
+	ep, err := tsdocs.NewEntityParser("../../../../libs/ssh/ssh.go")
 	if err != nil {
 		panic(err)
 	}
-	err = tmpl.Execute(os.Stdout, all)
+	if err := ep.Parse(); err != nil {
+		panic(err)
+	}
+	err = tmpl.Execute(os.Stdout, ep.GetEntities())
 	if err != nil {
 		panic(err)
 	}

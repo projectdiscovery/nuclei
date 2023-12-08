@@ -15,7 +15,7 @@ import (
 //
 // Internally client uses github.com/zmap/zgrab2/lib/ssh driver.
 type SSHClient struct {
-	Connection *ssh.Client
+	connection *ssh.Client
 }
 
 // Connect tries to connect to provided host and port
@@ -28,7 +28,7 @@ func (c *SSHClient) Connect(host string, port int, username, password string) (b
 	if err != nil {
 		return false, err
 	}
-	c.Connection = conn
+	c.connection = conn
 
 	return true, nil
 }
@@ -43,7 +43,7 @@ func (c *SSHClient) ConnectWithKey(host string, port int, username, key string) 
 	if err != nil {
 		return false, err
 	}
-	c.Connection = conn
+	c.connection = conn
 
 	return true, nil
 }
@@ -68,10 +68,10 @@ func (c *SSHClient) ConnectSSHInfoMode(host string, port int) (*ssh.HandshakeLog
 //
 // The string contains the command output
 func (c *SSHClient) Run(cmd string) (string, error) {
-	if c.Connection == nil {
+	if c.connection == nil {
 		return "", errorutil.New("no connection")
 	}
-	session, err := c.Connection.NewSession()
+	session, err := c.connection.NewSession()
 	if err != nil {
 		return "", err
 	}
@@ -90,7 +90,7 @@ func (c *SSHClient) Run(cmd string) (string, error) {
 // Returns the success state and error. If error is not nil,
 // state will be false
 func (c *SSHClient) Close() (bool, error) {
-	if err := c.Connection.Close(); err != nil {
+	if err := c.connection.Close(); err != nil {
 		return false, err
 	}
 	return true, nil
