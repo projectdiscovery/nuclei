@@ -8,11 +8,13 @@
 export class {{ .Name }} {
     {{"\n"}}
     {{- range $property := .Class.Properties }}
+    {{ if .Description }}
     /**
     {{- range (splitLines $property.Description) }}
     * {{ . }}
     {{- end }}
     */
+    {{ end }}
     public {{ $property.Name }}: {{ $property.Type }};
     {{"\n"}}
     {{- end }}

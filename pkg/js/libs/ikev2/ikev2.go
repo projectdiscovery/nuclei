@@ -1,6 +1,7 @@
 package ikev2
 
 import (
+	"fmt"
 	"io"
 
 	"github.com/projectdiscovery/n3iwf/pkg/ike/message"
@@ -20,7 +21,39 @@ type IKEMessage struct {
 	Version      uint8
 	ExchangeType uint8
 	Flags        uint8
-	Payloads     []IKEPayload
+	payloads     []IKEPayload
+}
+
+// AppendPayload appends a payload to the IKE message
+// payload can be any of the payloads like IKENotification, IKENonce, etc.
+func (m *IKEMessage) AppendPayload(payload any) error {
+	if _, ok := payload.(IKEPayload); !ok {
+		return fmt.Errorf("invalid payload type only types defined in ikev module like IKENotification, IKENonce, etc. are allowed")
+	}
+	m.payloads = append(m.payloads, payload.(IKEPayload))
+	return nil
+}
+
+// Encode encodes the final IKE message
+func (m *IKEMessage) Encode() ([]byte, error) {
+	var payloads message.IKEPayloadContainer
+	for _, payload := range m.payloads {
+		p, err := payload.encode()
+		if err != nil {
+			return nil, err
+		}
+		payloads = append(payloads, p)
+	}
+
+	msg := &message.IKEMessage{
+		InitiatorSPI: m.InitiatorSPI,
+		Version:      m.Version,
+		ExchangeType: m.ExchangeType,
+		Flags:        m.Flags,
+		Payloads:     payloads,
+	}
+	encoded, err := msg.Encode()
+	return encoded, err
 }
 
 // IKEPayload is the IKEv2 payload interface
@@ -74,31 +107,4 @@ func (i *IKENonce) encode() (message.IKEPayload, error) {
 		NonceData: i.NonceData,
 	}
 	return &nonce, nil
-}
-
-// AppendPayload appends a payload to the IKE message
-func (m *IKEMessage) AppendPayload(payload IKEPayload) {
-	m.Payloads = append(m.Payloads, payload)
-}
-
-// Encode encodes the final IKE message
-func (m *IKEMessage) Encode() ([]byte, error) {
-	var payloads message.IKEPayloadContainer
-	for _, payload := range m.Payloads {
-		p, err := payload.encode()
-		if err != nil {
-			return nil, err
-		}
-		payloads = append(payloads, p)
-	}
-
-	msg := &message.IKEMessage{
-		InitiatorSPI: m.InitiatorSPI,
-		Version:      m.Version,
-		ExchangeType: m.ExchangeType,
-		Flags:        m.Flags,
-		Payloads:     payloads,
-	}
-	encoded, err := msg.Encode()
-	return encoded, err
 }

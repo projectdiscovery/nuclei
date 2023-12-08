@@ -1,16 +1,12 @@
 package main
 
 import (
-	"bytes"
 	_ "embed"
-	"fmt"
 	"os"
-	"path/filepath"
 	"strings"
 	"text/template"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/js/devtools/tsdocs"
-	fileutil "github.com/projectdiscovery/utils/file"
 )
 
 // Define your template
@@ -38,34 +34,47 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	_ = tmpl
+	// _ = tmpl
 
-	_ = fileutil.CreateFolder("src")
+	ep, err := tsdocs.NewEntityParser("../../../../libs/ikev2/ikev2.go")
+	if err != nil {
+		panic(err)
+	}
+	if err := ep.Parse(); err != nil {
+		panic(err)
+	}
+	// var buff bytes.Buffer
+	err = tmpl.Execute(os.Stdout, ep.GetEntities())
+	if err != nil {
+		panic(err)
+	}
 
-	filepath.WalkDir("../../../../libs", func(path string, d os.DirEntry, err error) error {
-		if err != nil {
-			return err
-		}
-		if d.IsDir() {
-			return nil
-		}
-		if strings.HasSuffix(path, ".go") {
-			ep, err := tsdocs.NewEntityParser(path)
-			if err != nil {
-				panic(err)
-			}
-			if err := ep.Parse(); err != nil {
-				panic(err)
-			}
-			var buff bytes.Buffer
-			err = tmpl.Execute(&buff, ep.GetEntities())
-			if err != nil {
-				panic(err)
-			}
-			fmt.Printf("Done with %s\n", path)
-			_ = os.WriteFile(fmt.Sprintf("src/%s.ts", strings.TrimSuffix(filepath.Base(path), ".go")), buff.Bytes(), 0755)
-		}
-		return nil
-	})
+	// _ = fileutil.CreateFolder("src")
+
+	// filepath.WalkDir("../../../../libs", func(path string, d os.DirEntry, err error) error {
+	// 	if err != nil {
+	// 		return err
+	// 	}
+	// 	if d.IsDir() {
+	// 		return nil
+	// 	}
+	// 	if strings.HasSuffix(path, ".go") {
+	// 		ep, err := tsdocs.NewEntityParser(path)
+	// 		if err != nil {
+	// 			panic(err)
+	// 		}
+	// 		if err := ep.Parse(); err != nil {
+	// 			panic(err)
+	// 		}
+	// 		var buff bytes.Buffer
+	// 		err = tmpl.Execute(&buff, ep.GetEntities())
+	// 		if err != nil {
+	// 			panic(err)
+	// 		}
+	// 		fmt.Printf("Done with %s\n", path)
+	// 		_ = os.WriteFile(fmt.Sprintf("src/%s.ts", strings.TrimSuffix(filepath.Base(path), ".go")), buff.Bytes(), 0755)
+	// 	}
+	// 	return nil
+	// })
 
 }
