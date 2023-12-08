@@ -1,7 +1,6 @@
 package pdcp
 
 import (
-	"bufio"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -10,7 +9,6 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
-	"strings"
 	"sync/atomic"
 	"time"
 
@@ -84,14 +82,15 @@ type uploadResponse struct {
 func (u *UploadWriter) Upload() {
 	defer u.done.Store(true)
 
-	// start from beginning
-	_, _ = u.tempFile.Seek(0, 0)
-	// skip if file is empty
-	scanner := bufio.NewScanner(u.tempFile)
-	if !scanner.Scan() || (scanner.Scan() && strings.TrimSpace(scanner.Text()) == "") {
+	_ = u.tempFile.Sync()
+	info, err := u.tempFile.Stat()
+	if err != nil {
+		gologger.Error().Msgf("Failed to upload scan results on cloud: %v", err)
+		return
+	}
+	if info.Size() == 0 {
 		gologger.Verbose().Msgf("Scan results upload to cloud skipped, no results found to upload")
 		return
-
 	}
 	_, _ = u.tempFile.Seek(0, 0)
 
