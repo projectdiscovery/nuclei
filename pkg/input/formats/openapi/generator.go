@@ -125,10 +125,10 @@ func generateRequestsFromOp(method, pathURL, requestPath string, op *openapi3.Op
 						// This is a file if format is binary, otherwise field
 						if property, ok := value.Schema.Value.Properties[k]; ok && property.Value.Format == "binary" {
 							if writer, err := multipartWriter.CreateFormFile(k, k); err == nil {
-								writer.Write([]byte(types.ToString(v)))
+								_, _ = writer.Write([]byte(types.ToString(v)))
 							}
 						} else {
-							multipartWriter.WriteField(k, types.ToString(v))
+							_ = multipartWriter.WriteField(k, types.ToString(v))
 						}
 					}
 					multipartWriter.Close()
