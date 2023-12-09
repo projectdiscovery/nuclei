@@ -6,6 +6,21 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/utils"
 )
 
+// InputProvider is an input providing interface for the nuclei execution
+// engine.
+//
+// An example InputProvider implementation is provided in form of hybrid
+// input provider in pkg/core/inputs/hybrid/hmap.go
+type InputProvider interface {
+	// Count returns the number of items for input provider
+	Count() int64
+	// Scan iterates the input and each found item is passed to the
+	// callback consumer.
+	Scan(callback func(value *contextargs.MetaInput) bool)
+	// Set adds item to input provider
+	Set(value string)
+}
+
 type SimpleInputProvider struct {
 	Inputs []*contextargs.MetaInput
 }

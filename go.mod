@@ -74,6 +74,7 @@ require (
 	github.com/h2non/filetype v1.1.3
 	github.com/hirochachacha/go-smb2 v1.1.0
 	github.com/labstack/echo/v4 v4.10.2
+	github.com/leslie-qiwa/flat v0.0.0-20230424180412-f9d1cf014baa
 	github.com/lib/pq v1.10.1
 	github.com/mholt/archiver v3.1.1+incompatible
 	github.com/ory/dockertest/v3 v3.10.0

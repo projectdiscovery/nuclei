@@ -20,6 +20,7 @@ import (
 	"github.com/projectdiscovery/interactsh/pkg/client"
 	"github.com/projectdiscovery/nuclei/v3/internal/runner"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/config"
+	"github.com/projectdiscovery/nuclei/v3/pkg/input/formats/input"
 	"github.com/projectdiscovery/nuclei/v3/pkg/installer"
 	"github.com/projectdiscovery/nuclei/v3/pkg/model/types/severity"
 	"github.com/projectdiscovery/nuclei/v3/pkg/operators/common/dsl"
@@ -285,6 +286,8 @@ on extensive configurability, massive extensibility and ease of use.`)
 	flagSet.CreateGroup("fuzzing", "Fuzzing",
 		flagSet.StringVarP(&options.FuzzingType, "fuzzing-type", "ft", "", "overrides fuzzing type set in template (replace, prefix, postfix, infix)"),
 		flagSet.StringVarP(&options.FuzzingMode, "fuzzing-mode", "fm", "", "overrides fuzzing mode set in template (multiple, single)"),
+		flagSet.StringVarP(&options.InputFile, "input-file", "if", "", "path to file containing raw requests"),
+		flagSet.StringVarP(&options.InputFileMode, "input-mode", "im", "", fmt.Sprintf("mode of input file (%v)", input.Formats())),
 	)
 
 	flagSet.CreateGroup("uncover", "Uncover",

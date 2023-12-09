@@ -270,6 +270,11 @@ type Options struct {
 	DisableRedirects bool
 	// SNI custom hostname
 	SNI string
+	// InputFile specifies a file containing raw requests.
+	// The type of the must be one of the types supported by InputFileMode flag.
+	InputFile string
+	// InputFileMode specifies the mode of input file (jsonl, burp, openapi, swagger, etc)
+	InputFileMode string
 	// DialerTimeout sets the timeout for network requests.
 	DialerTimeout time.Duration
 	// DialerKeepAlive sets the keep alive duration for network requests.

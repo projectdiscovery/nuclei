@@ -1,15 +1,19 @@
 package fuzz
 
 import (
+	"io"
 	"regexp"
 	"strings"
 
 	"github.com/pkg/errors"
+	"github.com/projectdiscovery/gologger"
+	"github.com/projectdiscovery/nuclei/v3/pkg/fuzz/component"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/generators"
 	"github.com/projectdiscovery/retryablehttp-go"
 	errorutil "github.com/projectdiscovery/utils/errors"
+	urlutil "github.com/projectdiscovery/utils/url"
 )
 
 // ExecuteRuleInput is the input for rule Execute function
@@ -34,6 +38,8 @@ type GeneratedRequest struct {
 	InteractURLs []string
 	// DynamicValues contains dynamic values map
 	DynamicValues map[string]interface{}
+	// Component is the component for the request
+	Component component.Component
 }
 
 // Execute executes a fuzzing rule accepting a callback on which
@@ -42,51 +48,93 @@ type GeneratedRequest struct {
 // Input is not thread safe and should not be shared between concurrent
 // goroutines.
 func (rule *Rule) Execute(input *ExecuteRuleInput) error {
-	if input.BaseRequest == nil {
-		return errorutil.NewWithTag("fuzz", "base request is nil for rule %v", rule)
-	}
-	if !rule.isExecutable(input.BaseRequest) {
+	if !rule.isExecutable(input.Input) {
 		return errorutil.NewWithTag("fuzz", "rule is not executable on %v", input.BaseRequest.URL.String())
 	}
+	if input.BaseRequest == nil || input.Input.MetaInput.RawRequest == nil {
+		return errorutil.NewWithTag("fuzz", "base request and raw request is nil for rule %v", rule)
+	}
+	var componentsList []component.Component
+	// Get all the components for the request input
+	// TODO: Convert URL to request structure
+	// to keep supporting old format as well.
+	//
+	// Iterate through all components and try to gather
+	// them from the provided request.
+	for _, componentName := range component.Components {
+		if rule.partType != responsePartType && rule.Part != componentName {
+			continue
+		}
+
+		component := component.New(componentName)
+
+		discovered, err := component.Parse(input.BaseRequest)
+		if err != nil {
+			gologger.Warning().Msgf("Could not parse component %s: %s\n", componentName, err)
+			continue
+		}
+		if !discovered {
+			continue
+		}
+		componentsList = append(componentsList, component)
+	}
+
 	baseValues := input.Values
 	if rule.generator == nil {
-		evaluatedValues, interactURLs := rule.options.Variables.EvaluateWithInteractsh(baseValues, rule.options.Interactsh)
-		input.Values = generators.MergeMaps(evaluatedValues, baseValues, rule.options.Constants)
-		input.InteractURLs = interactURLs
-		err := rule.executeRuleValues(input)
-		return err
-	}
-	iterator := rule.generator.NewIterator()
-	for {
-		values, next := iterator.Value()
-		if !next {
-			return nil
+		for _, component := range componentsList {
+			evaluatedValues, interactURLs := rule.options.Variables.EvaluateWithInteractsh(baseValues, rule.options.Interactsh)
+			input.Values = generators.MergeMaps(evaluatedValues, baseValues, rule.options.Constants)
+			input.InteractURLs = interactURLs
+			err := rule.executeRuleValues(input, component)
+			if err != nil {
+				return err
+			}
 		}
-		evaluatedValues, interactURLs := rule.options.Variables.EvaluateWithInteractsh(generators.MergeMaps(values, baseValues), rule.options.Interactsh)
-		input.InteractURLs = interactURLs
-		input.Values = generators.MergeMaps(values, evaluatedValues, baseValues, rule.options.Constants)
+		return nil
+	}
+mainLoop:
+	for _, component := range componentsList {
+		iterator := rule.generator.NewIterator()
+		for {
+			values, next := iterator.Value()
+			if !next {
+				continue mainLoop
+			}
+			evaluatedValues, interactURLs := rule.options.Variables.EvaluateWithInteractsh(generators.MergeMaps(values, baseValues), rule.options.Interactsh)
+			input.InteractURLs = interactURLs
+			input.Values = generators.MergeMaps(values, evaluatedValues, baseValues, rule.options.Constants)
 
-		if err := rule.executeRuleValues(input); err != nil {
-			return err
+			if err := rule.executeRuleValues(input, component); err != nil {
+				if err == io.EOF {
+					return nil
+				}
+				gologger.Warning().Msgf("Could not execute rule: %s\n", err)
+				return err
+			}
 		}
 	}
+	return nil
 }
 
 // isExecutable returns true if the rule can be executed based on provided input
-func (rule *Rule) isExecutable(req *retryablehttp.Request) bool {
-	if !req.Query().IsEmpty() && rule.partType == queryPartType {
-		return true
+func (rule *Rule) isExecutable(input *contextargs.Context) bool {
+	_, err := urlutil.Parse(input.MetaInput.Input)
+	if input.MetaInput.RawRequest == nil && err != nil {
+		return false
 	}
-	if len(req.Header) > 0 && rule.partType == headersPartType {
-		return true
+	if err != nil {
+		_, err = urlutil.Parse(input.MetaInput.RawRequest.URL)
+		if err != nil {
+			return false
+		}
 	}
-	return false
+	return true
 }
 
 // executeRuleValues executes a rule with a set of values
-func (rule *Rule) executeRuleValues(input *ExecuteRuleInput) error {
+func (rule *Rule) executeRuleValues(input *ExecuteRuleInput, component component.Component) error {
 	for _, payload := range rule.Fuzz {
-		if err := rule.executePartRule(input, payload); err != nil {
+		if err := rule.executePartRule(input, payload, component); err != nil {
 			return err
 		}
 	}

@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/projectdiscovery/nuclei/v3/internal/pdcp"
+	fuzzinput "github.com/projectdiscovery/nuclei/v3/pkg/input/formats/input"
 	"github.com/projectdiscovery/nuclei/v3/pkg/installer"
 	uncoverlib "github.com/projectdiscovery/uncover"
 	"github.com/projectdiscovery/utils/env"
@@ -30,6 +31,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/disk"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/loader"
 	"github.com/projectdiscovery/nuclei/v3/pkg/core"
+	"github.com/projectdiscovery/nuclei/v3/pkg/core/inputs"
 	"github.com/projectdiscovery/nuclei/v3/pkg/core/inputs/hybrid"
 	"github.com/projectdiscovery/nuclei/v3/pkg/external/customtemplates"
 	"github.com/projectdiscovery/nuclei/v3/pkg/input"
@@ -82,6 +84,8 @@ type Runner struct {
 	pprofServer       *http.Server
 	// pdcp auto-save options
 	pdcpUploadErrMsg string
+	// TODO: refactor and remove hmapInputProvider and use inputProvider
+	inputProvider inputs.InputProvider
 }
 
 const pprofServerAddress = "127.0.0.1:8086"
@@ -210,7 +214,7 @@ func New(options *types.Options) (*Runner, error) {
 		}()
 	}
 
-	if (len(options.Templates) == 0 || !options.NewTemplates || (options.TargetsFilePath == "" && !options.Stdin && len(options.Targets) == 0)) && options.UpdateTemplates {
+	if (len(options.Templates) == 0 || !options.NewTemplates || (options.TargetsFilePath == "" && !options.Stdin && len(options.Targets) == 0) && options.InputFile == "") && options.UpdateTemplates {
 		os.Exit(0)
 	}
 
@@ -222,6 +226,15 @@ func New(options *types.Options) (*Runner, error) {
 		return nil, errors.Wrap(err, "could not create input provider")
 	}
 	runner.hmapInputProvider = hmapInput
+
+	// if input file is provided (i.e http proxy dumps or openapi file etc)
+	if options.InputFile != "" && options.InputFileMode != "" {
+		provider, err := fuzzinput.NewInputProvider(options.InputFile, options.InputFileMode)
+		if err != nil {
+			return nil, errors.Wrap(err, "could not create input provider")
+		}
+		runner.inputProvider = provider
+	}
 
 	// Create the output file if asked
 	outputWriter, err := output.NewStandardWriter(options)
@@ -421,9 +434,14 @@ func (r *Runner) RunEnumeration() error {
 	}
 	executorOpts.WorkflowLoader = workflowLoader
 
-	store, err := loader.New(loader.NewConfig(r.options, r.catalog, executorOpts))
+	// If using input-file flags, only load http fuzzing based templates.
+	loaderConfig := loader.NewConfig(r.options, r.catalog, executorOpts)
+	if r.inputProvider != nil {
+		loaderConfig.OnlyLoadHTTPFuzzing = true
+	}
+	store, err := loader.New(loaderConfig)
 	if err != nil {
-		return errors.Wrap(err, "could not load templates from config")
+		return errors.Wrap(err, "Could not create loader.")
 	}
 
 	if r.options.Validate {
@@ -564,7 +582,12 @@ func (r *Runner) executeTemplatesInput(store *loader.Store, engine *core.Engine)
 		return nil, errors.New("no templates provided for scan")
 	}
 
-	results := engine.ExecuteScanWithOpts(finalTemplates, r.hmapInputProvider, r.options.DisableClustering)
+	// pass input provider to engine
+	// TODO: this should be not necessary after r.hmapInputProvider is removed + refactored
+	if r.inputProvider == nil {
+		r.inputProvider = r.hmapInputProvider
+	}
+	results := engine.ExecuteScanWithOpts(finalTemplates, r.inputProvider, r.options.DisableClustering)
 	return results, nil
 }
 
@@ -610,8 +633,14 @@ func (r *Runner) displayExecutionInfo(store *loader.Store) {
 			}
 		}
 	}
-	if r.hmapInputProvider.Count() > 0 {
-		gologger.Info().Msgf("Targets loaded for current scan: %d", r.hmapInputProvider.Count())
+	var inputProvider inputs.InputProvider
+	if r.inputProvider != nil {
+		inputProvider = r.inputProvider
+	} else {
+		inputProvider = r.hmapInputProvider
+	}
+	if inputProvider.Count() > 0 {
+		gologger.Info().Msgf("Targets loaded for current scan: %d", inputProvider.Count())
 	}
 }
 
