@@ -2,6 +2,7 @@ package http
 
 import (
 	"context"
+	"crypto/tls"
 	"net"
 	"regexp"
 	"strings"
@@ -87,10 +88,8 @@ func (r *Request) parseAnnotations(rawRequest string, request *retryablehttp.Req
 	if hosts := reSniAnnotation.FindStringSubmatch(rawRequest); len(hosts) > 0 {
 		value := strings.TrimSpace(hosts[1])
 		value = stringsutil.TrimPrefixAny(value, "http://", "https://")
-		if idxForwardSlash := strings.Index(value, "/"); idxForwardSlash >= 0 {
-			value = value[:idxForwardSlash]
-		}
 
+		var literal bool
 		switch value {
 		case "request.host":
 			value = request.Host
@@ -99,9 +98,15 @@ func (r *Request) parseAnnotations(rawRequest string, request *retryablehttp.Req
 				value = interactshURL
 			}
 			overrides.interactshURLs = append(overrides.interactshURLs, value)
+		default:
+			literal = true
 		}
 		ctx := context.WithValue(request.Context(), fastdialer.SniName, value)
 		request = request.Clone(ctx)
+
+		if literal {
+			request.TLS = &tls.ConnectionState{ServerName: value}
+		}
 		modified = true
 	}
 
