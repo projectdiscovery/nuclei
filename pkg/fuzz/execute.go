@@ -51,7 +51,7 @@ func (rule *Rule) Execute(input *ExecuteRuleInput) error {
 	if !rule.isExecutable(input.Input) {
 		return errorutil.NewWithTag("fuzz", "rule is not executable on %v", input.BaseRequest.URL.String())
 	}
-	if input.BaseRequest == nil || input.Input.MetaInput.RawRequest == nil {
+	if input.BaseRequest == nil && input.Input.MetaInput.RawRequest == nil {
 		return errorutil.NewWithTag("fuzz", "base request and raw request is nil for rule %v", rule)
 	}
 	var componentsList []component.Component
