@@ -12,6 +12,7 @@ import (
 
 var headlessTestcases = []TestCaseInfo{
 	{Path: "protocols/headless/headless-basic.yaml", TestCase: &headlessBasic{}},
+	{Path: "protocols/headless/headless-waitevent.yaml", TestCase: &headlessBasic{}},
 	{Path: "protocols/headless/headless-self-contained.yaml", TestCase: &headlessSelfContained{}},
 	{Path: "protocols/headless/headless-header-action.yaml", TestCase: &headlessHeaderActions{}},
 	{Path: "protocols/headless/headless-extract-values.yaml", TestCase: &headlessExtractValues{}},
