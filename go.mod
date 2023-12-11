@@ -25,7 +25,7 @@ require (
 	github.com/projectdiscovery/hmap v0.0.27
 	github.com/projectdiscovery/interactsh v1.1.7
 	github.com/projectdiscovery/rawhttp v0.1.28
-	github.com/projectdiscovery/retryabledns v1.0.45
+	github.com/projectdiscovery/retryabledns v1.0.46
 	github.com/projectdiscovery/retryablehttp-go v1.0.38
 	github.com/projectdiscovery/yamldoc-go v1.0.4
 	github.com/remeh/sizedwaitgroup v1.0.0
