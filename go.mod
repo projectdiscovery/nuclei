@@ -21,9 +21,9 @@ require (
 	github.com/olekukonko/tablewriter v0.0.5
 	github.com/pkg/errors v0.9.1
 	github.com/projectdiscovery/clistats v0.0.20
-	github.com/projectdiscovery/fastdialer v0.0.46
-	github.com/projectdiscovery/hmap v0.0.27
-	github.com/projectdiscovery/interactsh v1.1.7
+	github.com/projectdiscovery/fastdialer v0.0.47
+	github.com/projectdiscovery/hmap v0.0.28
+	github.com/projectdiscovery/interactsh v1.1.8
 	github.com/projectdiscovery/rawhttp v0.1.28
 	github.com/projectdiscovery/retryabledns v1.0.46
 	github.com/projectdiscovery/retryablehttp-go v1.0.38
@@ -78,7 +78,7 @@ require (
 	github.com/praetorian-inc/fingerprintx v1.1.9
 	github.com/projectdiscovery/dsl v0.0.33
 	github.com/projectdiscovery/fasttemplate v0.0.2
-	github.com/projectdiscovery/goflags v0.1.28
+	github.com/projectdiscovery/goflags v0.1.29
 	github.com/projectdiscovery/gologger v1.1.11
 	github.com/projectdiscovery/gostruct v0.0.2
 	github.com/projectdiscovery/gozero v0.0.1
