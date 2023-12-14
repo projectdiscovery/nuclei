@@ -69,7 +69,7 @@ func (b *Buffer) Hexdump() string {
 
 // Pack uses structs.Pack and packs given data and appends it to the buffer.
 // it packs the data according to the given format.
-func (b *Buffer) Pack(formatStr string, msg []interface{}) error {
+func (b *Buffer) Pack(formatStr string, msg any) error {
 	bin, err := structs.Pack(formatStr, msg)
 	if err != nil {
 		return err

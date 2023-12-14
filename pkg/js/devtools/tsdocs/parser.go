@@ -220,6 +220,10 @@ func (p *EntityParser) extractFunctionFromNode(fn *ast.FuncDecl) (Entity, error)
 		entity.Function.ReturnStmt = "return;"
 	} else if strings.Contains(entity.Function.Returns, "null") {
 		entity.Function.ReturnStmt = "return null;"
+	} else if fn.Recv != nil && exprToString(fn.Recv.List[0].Type) == entity.Function.Returns {
+		entity.Function.ReturnStmt = "return this;"
+	} else {
+		entity.Function.ReturnStmt = "return " + TsDefaultValue(entity.Function.Returns) + ";"
 	}
 	return entity, nil
 }
@@ -246,6 +250,8 @@ func (p *EntityParser) extractReturnType(fn *ast.FuncDecl) (out string) {
 		val = strings.TrimPrefix(val, "*")
 		if val == "error" {
 			out = "void"
+		} else {
+			out = val
 		}
 		return
 	}
@@ -283,7 +289,7 @@ func (p *EntityParser) extractParameters(fn *ast.FuncDecl) []Parameter {
 		// add the parameter to the list of parameters
 		parameters = append(parameters, Parameter{
 			Name: name,
-			Type: typ,
+			Type: toTsTypes(typ),
 		})
 	}
 	return parameters

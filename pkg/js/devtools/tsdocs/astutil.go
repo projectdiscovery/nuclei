@@ -1,6 +1,7 @@
 package tsdocs
 
 import (
+	"fmt"
 	"go/ast"
 	"strings"
 )
@@ -21,14 +22,19 @@ func exprToString(expr ast.Expr) string {
 		return exprToString(t.X)
 	case *ast.ArrayType:
 		return toTsTypes("[]" + exprToString(t.Elt))
+	case *ast.InterfaceType:
+		return "interface{}"
 	// Add more cases to handle other types
 	default:
-		return ""
+		return fmt.Sprintf("%T", expr)
 	}
 }
 
 // toTsTypes converts Go types to TypeScript types
 func toTsTypes(t string) string {
+	if strings.Contains(t, "interface{}") {
+		return "any"
+	}
 	switch t {
 	case "string":
 		return "string"
@@ -40,11 +46,33 @@ func toTsTypes(t string) string {
 		return "boolean"
 	case "[]byte":
 		return "Uint8Array"
+	case "interface{}":
+		return "any"
 	default:
 		if strings.HasPrefix(t, "[]") {
 			return strings.TrimPrefix(t, "[]") + "[]"
 		}
 		return t
+	}
+}
+
+func TsDefaultValue(t string) string {
+	switch t {
+	case "string":
+		return `""`
+	case "number":
+		return `0`
+	case "boolean":
+		return `false`
+	case "Uint8Array":
+		return `new Uint8Array()`
+	case "any":
+		return `undefined`
+	default:
+		if strings.HasPrefix(t, "[]") {
+			return `[]`
+		}
+		return "new " + t + "()"
 	}
 }
 
