@@ -1,7 +1,6 @@
 package ssh
 
 import (
-	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -15,7 +14,13 @@ import (
 //
 // Internally client uses github.com/zmap/zgrab2/lib/ssh driver.
 type SSHClient struct {
-	connection *ssh.Client
+	Connection *ssh.Client
+	timeout    time.Duration
+}
+
+// SetTimeout sets the timeout for the SSH connection in seconds
+func (c *SSHClient) SetTimeout(sec int) {
+	c.timeout = time.Duration(sec) * time.Second
 }
 
 // Connect tries to connect to provided host and port
@@ -24,7 +29,12 @@ type SSHClient struct {
 // Returns state of connection and error. If error is not nil,
 // state will be false
 func (c *SSHClient) Connect(host string, port int, username, password string) (bool, error) {
-	conn, err := connect(host, port, username, password, "")
+	conn, err := connect(&connectOptions{
+		Host:     host,
+		Port:     port,
+		User:     username,
+		Password: password,
+	})
 	if err != nil {
 		return false, err
 	}
@@ -39,7 +49,13 @@ func (c *SSHClient) Connect(host string, port int, username, password string) (b
 // Returns state of connection and error. If error is not nil,
 // state will be false
 func (c *SSHClient) ConnectWithKey(host string, port int, username, key string) (bool, error) {
-	conn, err := connect(host, port, username, "", key)
+	conn, err := connect(&connectOptions{
+		Host:       host,
+		Port:       port,
+		User:       username,
+		PrivateKey: key,
+	})
+
 	if err != nil {
 		return false, err
 	}
@@ -57,7 +73,10 @@ func (c *SSHClient) ConnectWithKey(host string, port int, username, key string) 
 // HandshakeLog is a struct that contains information about the
 // ssh connection
 func (c *SSHClient) ConnectSSHInfoMode(host string, port int) (*ssh.HandshakeLog, error) {
-	return connectSSHInfoMode(host, port)
+	return connectSSHInfoMode(&connectOptions{
+		Host: host,
+		Port: port,
+	})
 }
 
 // Run tries to open a new SSH session, then tries to execute
@@ -96,11 +115,38 @@ func (c *SSHClient) Close() (bool, error) {
 	return true, nil
 }
 
-func connectSSHInfoMode(host string, port int) (*ssh.HandshakeLog, error) {
-	if !protocolstate.IsHostAllowed(host) {
-		// host is not valid according to network policy
-		return nil, protocolstate.ErrHostDenied.Msgf(host)
+// unexported functions
+type connectOptions struct {
+	Host       string
+	Port       int
+	User       string
+	Password   string
+	PrivateKey string
+	Timeout    time.Duration // default 10s
+}
+
+func (c *connectOptions) validate() error {
+	if c.Host == "" {
+		return errorutil.New("host is required")
 	}
+	if c.Port <= 0 {
+		return errorutil.New("port is required")
+	}
+	if !protocolstate.IsHostAllowed(c.Host) {
+		// host is not valid according to network policy
+		return protocolstate.ErrHostDenied.Msgf(c.Host)
+	}
+	if c.Timeout == 0 {
+		c.Timeout = 10 * time.Second
+	}
+	return nil
+}
+
+func connectSSHInfoMode(opts *connectOptions) (*ssh.HandshakeLog, error) {
+	if err := opts.validate(); err != nil {
+		return nil, err
+	}
+
 	data := new(ssh.HandshakeLog)
 
 	sshConfig := ssh.MakeSSHConfig()
@@ -111,7 +157,7 @@ func connectSSHInfoMode(host string, port int) (*ssh.HandshakeLog, error) {
 		data.Banner = strings.TrimSpace(banner)
 		return nil
 	}
-	rhost := fmt.Sprintf("%s:%d", host, port)
+	rhost := fmt.Sprintf("%s:%d", opts.Host, opts.Port)
 	client, err := ssh.Dial("tcp", rhost, sshConfig)
 	if err != nil {
 		return nil, err
@@ -121,31 +167,28 @@ func connectSSHInfoMode(host string, port int) (*ssh.HandshakeLog, error) {
 	return data, nil
 }
 
-func connect(host string, port int, user, password, privateKey string) (*ssh.Client, error) {
-	if !protocolstate.IsHostAllowed(host) {
-		// host is not valid according to network policy
-		return nil, protocolstate.ErrHostDenied.Msgf(host)
-	}
-	if host == "" || port <= 0 {
-		return nil, errors.New("invalid host or port")
+func connect(opts *connectOptions) (*ssh.Client, error) {
+	if err := opts.validate(); err != nil {
+		return nil, err
 	}
 
 	conf := &ssh.ClientConfig{
-		User: user,
-		Auth: []ssh.AuthMethod{},
+		User:    opts.User,
+		Auth:    []ssh.AuthMethod{},
+		Timeout: opts.Timeout,
 	}
-	if len(password) > 0 {
-		conf.Auth = append(conf.Auth, ssh.Password(password))
+	if len(opts.Password) > 0 {
+		conf.Auth = append(conf.Auth, ssh.Password(opts.Password))
 	}
-	if len(privateKey) > 0 {
-		signer, err := ssh.ParsePrivateKey([]byte(privateKey))
+	if len(opts.PrivateKey) > 0 {
+		signer, err := ssh.ParsePrivateKey([]byte(opts.PrivateKey))
 		if err != nil {
 			return nil, err
 		}
 		conf.Auth = append(conf.Auth, ssh.PublicKeys(signer))
 	}
 
-	client, err := ssh.Dial("tcp", fmt.Sprintf("%s:%d", host, port), conf)
+	client, err := ssh.Dial("tcp", fmt.Sprintf("%s:%d", opts.Host, opts.Port), conf)
 	if err != nil {
 		return nil, err
 	}
