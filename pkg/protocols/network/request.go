@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net"
 	"net/url"
+	"os"
 	"strings"
 	"time"
 
@@ -30,7 +31,6 @@ import (
 	templateTypes "github.com/projectdiscovery/nuclei/v3/pkg/templates/types"
 	errorutil "github.com/projectdiscovery/utils/errors"
 	mapsutil "github.com/projectdiscovery/utils/maps"
-	"github.com/projectdiscovery/utils/reader"
 )
 
 var (
@@ -265,7 +265,7 @@ func (request *Request) executeRequestWithPayloads(variables map[string]interfac
 		}
 
 		if input.Read > 0 {
-			buffer, err := reader.ConnReadNWithTimeout(conn, int64(input.Read), DefaultReadTimeout)
+			buffer, err := ConnReadNWithTimeout(conn, int64(input.Read), DefaultReadTimeout)
 			if err != nil {
 				return errorutil.NewWithErr(err).Msgf("could not read response from connection")
 			}
@@ -315,7 +315,7 @@ func (request *Request) executeRequestWithPayloads(variables map[string]interfac
 		bufferSize = -1
 	}
 
-	final, err := reader.ConnReadNWithTimeout(conn, int64(bufferSize), DefaultReadTimeout)
+	final, err := ConnReadNWithTimeout(conn, int64(bufferSize), DefaultReadTimeout)
 	if err != nil {
 		request.options.Output.Request(request.options.TemplatePath, address, request.Type().String(), err)
 		return errors.Wrap(err, "could not read from server")
@@ -411,4 +411,22 @@ func getAddress(toTest string) (string, error) {
 		toTest = parsed.Host
 	}
 	return toTest, nil
+}
+
+func ConnReadNWithTimeout(conn net.Conn, n int64, timeout time.Duration) ([]byte, error) {
+	if timeout == 0 {
+		timeout = DefaultReadTimeout
+	}
+	b := make([]byte, n)
+	_ = conn.SetDeadline(time.Now().Add(timeout))
+	count, err := conn.Read(b)
+	_ = conn.SetDeadline(time.Time{})
+	if err != nil && os.IsTimeout(err) && count > 0 {
+		// in case of timeout with some value read, return the value
+		return b[:count], nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	return b[:count], nil
 }
