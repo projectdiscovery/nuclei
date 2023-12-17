@@ -21,11 +21,11 @@ require (
 	github.com/olekukonko/tablewriter v0.0.5
 	github.com/pkg/errors v0.9.1
 	github.com/projectdiscovery/clistats v0.0.20
-	github.com/projectdiscovery/fastdialer v0.0.46
-	github.com/projectdiscovery/hmap v0.0.27
-	github.com/projectdiscovery/interactsh v1.1.7
+	github.com/projectdiscovery/fastdialer v0.0.48
+	github.com/projectdiscovery/hmap v0.0.28
+	github.com/projectdiscovery/interactsh v1.1.8
 	github.com/projectdiscovery/rawhttp v0.1.28
-	github.com/projectdiscovery/retryabledns v1.0.45
+	github.com/projectdiscovery/retryabledns v1.0.46
 	github.com/projectdiscovery/retryablehttp-go v1.0.38
 	github.com/projectdiscovery/yamldoc-go v1.0.4
 	github.com/remeh/sizedwaitgroup v1.0.0
@@ -78,19 +78,19 @@ require (
 	github.com/praetorian-inc/fingerprintx v1.1.9
 	github.com/projectdiscovery/dsl v0.0.33
 	github.com/projectdiscovery/fasttemplate v0.0.2
-	github.com/projectdiscovery/goflags v0.1.28
+	github.com/projectdiscovery/goflags v0.1.29
 	github.com/projectdiscovery/gologger v1.1.11
 	github.com/projectdiscovery/gostruct v0.0.2
 	github.com/projectdiscovery/gozero v0.0.1
 	github.com/projectdiscovery/httpx v1.3.7
 	github.com/projectdiscovery/mapcidr v1.1.16
 	github.com/projectdiscovery/n3iwf v0.0.0-20230523120440-b8cd232ff1f5
-	github.com/projectdiscovery/ratelimit v0.0.17
+	github.com/projectdiscovery/ratelimit v0.0.19
 	github.com/projectdiscovery/rdap v0.9.1-0.20221108103045-9865884d1917
 	github.com/projectdiscovery/sarif v0.0.1
 	github.com/projectdiscovery/tlsx v1.1.6-0.20231116215000-e842dc367a74
 	github.com/projectdiscovery/uncover v1.0.7
-	github.com/projectdiscovery/utils v0.0.65
+	github.com/projectdiscovery/utils v0.0.67
 	github.com/projectdiscovery/wappalyzergo v0.0.109
 	github.com/redis/go-redis/v9 v9.1.0
 	github.com/ropnop/gokrb5/v8 v8.0.0-20201111231119-729746023c02
