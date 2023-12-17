@@ -31,6 +31,7 @@ import (
 	templateTypes "github.com/projectdiscovery/nuclei/v3/pkg/templates/types"
 	errorutil "github.com/projectdiscovery/utils/errors"
 	mapsutil "github.com/projectdiscovery/utils/maps"
+	"github.com/projectdiscovery/utils/reader"
 )
 
 var (
@@ -416,6 +417,12 @@ func getAddress(toTest string) (string, error) {
 func ConnReadNWithTimeout(conn net.Conn, n int64, timeout time.Duration) ([]byte, error) {
 	if timeout == 0 {
 		timeout = DefaultReadTimeout
+	}
+	if n == -1 {
+		// if n is -1 then read all available data from connection
+		return reader.ConnReadNWithTimeout(conn, -1, timeout)
+	} else if n == 0 {
+		n = 4096 // default buffer size
 	}
 	b := make([]byte, n)
 	_ = conn.SetDeadline(time.Now().Add(timeout))
