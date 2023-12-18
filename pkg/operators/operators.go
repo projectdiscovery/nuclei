@@ -241,24 +241,24 @@ func (operators *Operators) Execute(data map[string]interface{}, match MatchFunc
 		if len(extractorResults) > 0 && !extractor.Internal && extractor.Name != "" {
 			result.Extracts[extractor.Name] = extractorResults
 		}
-	}
 
-	// expose dynamic values to same request matchers
-	if len(result.DynamicValues) > 0 {
-		dataDynamicValues := make(map[string]interface{})
-		for dynName, dynValues := range result.DynamicValues {
-			if len(dynValues) > 1 {
-				for dynIndex, dynValue := range dynValues {
-					dynKeyName := fmt.Sprintf("%s%d", dynName, dynIndex)
-					dataDynamicValues[dynKeyName] = dynValue
+		// expose dynamic values to same request extractors/matchers
+		if len(result.DynamicValues) > 0 {
+			dataDynamicValues := make(map[string]interface{})
+			for dynName, dynValues := range result.DynamicValues {
+				if len(dynValues) > 1 {
+					for dynIndex, dynValue := range dynValues {
+						dynKeyName := fmt.Sprintf("%s%d", dynName, dynIndex)
+						dataDynamicValues[dynKeyName] = dynValue
+					}
+					dataDynamicValues[dynName] = dynValues
+				} else {
+					dataDynamicValues[dynName] = dynValues[0]
 				}
-				dataDynamicValues[dynName] = dynValues
-			} else {
-				dataDynamicValues[dynName] = dynValues[0]
-			}
 
+			}
+			data = generators.MergeMaps(data, dataDynamicValues)
 		}
-		data = generators.MergeMaps(data, dataDynamicValues)
 	}
 
 	for matcherIndex, matcher := range operators.Matchers {
