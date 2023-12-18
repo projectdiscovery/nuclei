@@ -289,6 +289,10 @@ func (operators *Operators) Execute(data map[string]interface{}, match MatchFunc
 	result.Matched = matches
 	result.Extracted = len(result.OutputExtracts) > 0
 
+	if len(result.DynamicValues) > 0 {
+		return result, true
+	}
+
 	// Don't print if we have matchers, and they have not matched, regardless of extractor
 	if len(operators.Matchers) > 0 && !matches {
 		return nil, false
@@ -296,10 +300,6 @@ func (operators *Operators) Execute(data map[string]interface{}, match MatchFunc
 	// Write a final string of output if matcher type is
 	// AND or if we have extractors for the mechanism too.
 	if len(result.Extracts) > 0 || len(result.OutputExtracts) > 0 || matches {
-		return result, true
-	}
-
-	if len(result.DynamicValues) > 0 {
 		return result, true
 	}
 
