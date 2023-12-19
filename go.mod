@@ -97,7 +97,7 @@ require (
 	github.com/sashabaranov/go-openai v1.15.3
 	github.com/stretchr/testify v1.8.4
 	github.com/zmap/zgrab2 v0.1.8-0.20230806160807-97ba87c0e706
-	golang.org/x/term v0.14.0
+	golang.org/x/term v0.15.0
 	gopkg.in/src-d/go-git.v4 v4.13.1
 	gopkg.in/yaml.v3 v3.0.1
 )
@@ -278,10 +278,10 @@ require (
 	go.etcd.io/bbolt v1.3.8 // indirect
 	go.uber.org/zap v1.25.0 // indirect
 	goftp.io/server/v2 v2.0.1 // indirect
-	golang.org/x/crypto v0.15.0 // indirect
+	golang.org/x/crypto v0.17.0 // indirect
 	golang.org/x/exp v0.0.0-20231110203233-9a3e6036ecaa
 	golang.org/x/mod v0.14.0 // indirect
-	golang.org/x/sys v0.14.0 // indirect
+	golang.org/x/sys v0.15.0 // indirect
 	golang.org/x/time v0.3.0 // indirect
 	golang.org/x/tools v0.15.0 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
