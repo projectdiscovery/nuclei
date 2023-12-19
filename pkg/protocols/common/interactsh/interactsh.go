@@ -158,7 +158,13 @@ func (c *Client) processInteractionForRequest(interaction *server.Interaction, d
 	data.Event.InternalEvent["interactsh_ip"] = interaction.RemoteAddress
 	data.Event.Unlock()
 
-	result, matched := data.Operators.Execute(data.Event.InternalEvent, data.MatchFunc, data.ExtractFunc, c.options.Debug || c.options.DebugRequest || c.options.DebugResponse)
+	var result *operators.Result
+	var matched bool
+	if data.Operators != nil {
+		result, matched = data.Operators.Execute(data.Event.InternalEvent, data.MatchFunc, data.ExtractFunc, c.options.Debug || c.options.DebugRequest || c.options.DebugResponse)
+	} else {
+		gologger.Warning().Msgf("No operators found for interactsh interaction %s", interaction.FullId)
+	}
 
 	// for more context in github actions
 	if strings.EqualFold(os.Getenv("GITHUB_ACTIONS"), "true") && c.options.Debug {
