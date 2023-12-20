@@ -1,9 +1,7 @@
 package gitea
 
 import (
-	"crypto/tls"
 	"fmt"
-	"net/http"
 	"net/url"
 	"strings"
 
@@ -48,17 +46,9 @@ func New(options *Options) (*Integration, error) {
 	var opts []gitea.ClientOption
 	opts = append(opts, gitea.SetToken(options.Token))
 
-	// if options.HttpClient != nil {
-	// 	opts = append(opts, gitea.SetHTTPClient(options.HttpClient.HTTPClient))
-	// }
-
-	opts = append(opts, gitea.SetHTTPClient(&http.Client{
-		Transport: &http.Transport{
-			TLSClientConfig: &tls.Config{
-				InsecureSkipVerify: true,
-			},
-		},
-	}))
+	if options.HttpClient != nil {
+		opts = append(opts, gitea.SetHTTPClient(options.HttpClient.HTTPClient))
+	}
 
 	var remote string
 	if options.BaseURL != "" {
