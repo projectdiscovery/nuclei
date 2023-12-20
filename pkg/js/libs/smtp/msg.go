@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"net/textproto"
+	"strings"
 )
 
 // SMTPMessage is a simple smtp message builder
@@ -51,7 +52,7 @@ func (s *SMTPMessage) Auth(username, password string) *SMTPMessage {
 func (s *SMTPMessage) String() string {
 	var buff bytes.Buffer
 	tw := textproto.NewWriter(bufio.NewWriter(&buff))
-	_ = tw.PrintfLine("To: %s", s.to)
+	_ = tw.PrintfLine("To: %s", strings.Join(s.to, ","))
 	if s.sub != "" {
 		_ = tw.PrintfLine("Subject: %s", s.sub)
 	}
