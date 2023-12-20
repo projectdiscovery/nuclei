@@ -69,7 +69,7 @@ func (rule *Rule) executeHeadersPartRule(input *ExecuteRuleInput, payload string
 
 // executeQueryPartRule executes query part rules
 func (rule *Rule) executeQueryPartRule(input *ExecuteRuleInput, payload string) error {
-	requestURL, err := urlutil.Parse(input.Input.MetaInput.Input)
+	requestURL, err := urlutil.Parse(input.BaseRequest.String())
 	if err != nil {
 		return err
 	}
