@@ -47,6 +47,7 @@ require (
 )
 
 require (
+	code.gitea.io/sdk/gitea v0.17.0
 	github.com/Azure/azure-sdk-for-go/sdk/azidentity v1.3.0
 	github.com/Azure/azure-sdk-for-go/sdk/storage/azblob v1.1.0
 	github.com/DataDog/gostackparse v0.6.0
@@ -128,6 +129,7 @@ require (
 	github.com/cloudflare/cfssl v1.6.4 // indirect
 	github.com/cloudflare/circl v1.3.6 // indirect
 	github.com/containerd/continuity v0.4.2 // indirect
+	github.com/davidmz/go-pageant v1.0.2 // indirect
 	github.com/denisbrodbeck/machineid v1.0.1 // indirect
 	github.com/dgryski/go-rendezvous v0.0.0-20200823014737-9f7001d12a5f // indirect
 	github.com/dlclark/regexp2 v1.10.0 // indirect
@@ -142,6 +144,7 @@ require (
 	github.com/gin-contrib/sse v0.1.0 // indirect
 	github.com/gin-gonic/gin v1.9.1 // indirect
 	github.com/go-asn1-ber/asn1-ber v1.5.4 // indirect
+	github.com/go-fed/httpsig v1.1.0 // indirect
 	github.com/go-sourcemap/sourcemap v2.1.3+incompatible // indirect
 	github.com/goccy/go-json v0.10.2 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
