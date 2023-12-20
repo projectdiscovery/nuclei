@@ -19,7 +19,7 @@ type Integration struct {
 	options *Options
 }
 
-// Options contains the configuration options for gitlab issue tracker client
+// Options contains the configuration options for gitea issue tracker client
 type Options struct {
 	// BaseURL (optional) is the self-hosted Gitea application url
 	BaseURL string `yaml:"base-url" validate:"omitempty,url"`
