@@ -6,7 +6,6 @@ import (
 	"net"
 	"net/smtp"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/praetorian-inc/fingerprintx/pkg/plugins"
@@ -48,30 +47,38 @@ func (c *SMTPClient) IsSMTP(host string, port int) (IsSMTPResponse, error) {
 	return resp, nil
 }
 
-func (c *SMTPClient) IsOpenRelay(host string, port int, from string, to string, subj string, msg []byte) (bool, error) {
-	con, err := smtp.Dial(net.JoinHostPort(host, strconv.Itoa(port)))
+func (c *SMTPClient) IsOpenRelay(host string, port int, msg *SMTPMessage) (bool, error) {
+	if !protocolstate.IsHostAllowed(host) {
+		return false, protocolstate.ErrHostDenied.Msgf(host)
+	}
+
+	addr := net.JoinHostPort(host, strconv.Itoa(port))
+	conn, err := protocolstate.Dialer.Dial(context.TODO(), "tcp", addr)
 	if err != nil {
 		return false, err
 	}
-	defer con.Close()
-
-	if err := con.Mail(from); err != nil {
+	defer conn.Close()
+	client, err := smtp.NewClient(conn, host)
+	if err != nil {
 		return false, err
 	}
-	if err := con.Rcpt(to); err != nil {
+	if err := client.Mail(msg.from); err != nil {
+		return false, err
+	}
+	if len(msg.to) == 0 || len(msg.to) > 1 {
+		return false, fmt.Errorf("invalid number of recipients: required 1, got %d", len(msg.to))
+	}
+	if err := client.Rcpt(msg.to[0]); err != nil {
 		return false, err
 	}
 
 	// Send the email body.
-	wc, err := con.Data()
+	wc, err := client.Data()
 	if err != nil {
 		return false, err
 	}
 
-	formattedSubj := subj + " " + net.JoinHostPort(host, strconv.Itoa(port))
-	formattedMsg := fmt.Sprintf("To: %s\r\nSubject: %s\r\n\r\n%s\r\n", to, formattedSubj, msg)
-
-	_, err = fmt.Fprintf(wc, formattedMsg)
+	_, err = wc.Write([]byte(msg.String()))
 	if err != nil {
 		return false, err
 	}
@@ -79,25 +86,29 @@ func (c *SMTPClient) IsOpenRelay(host string, port int, from string, to string, 
 	if err != nil {
 		return false, err
 	}
-
 	// Send the QUIT command and close the connection.
-	err = con.Quit()
+	err = client.Quit()
 	if err != nil {
 		return false, err
 	}
-
 	return true, nil
 }
 
-func (c *SMTPClient) SendMail(addr string, a smtp.Auth, from string, to []string, subj string, msg []byte) (bool, error) {
-
-	// Connect to the server, authenticate, set the sender and recipient,
-	// and send the email all in one step.
-	formattedMsg := fmt.Sprintf("To: %s\r\nSubject: %s\r\n\r\n%s\r\n", strings.Join(to, ","), subj, msg)
-
-	if err := smtp.SendMail(addr, a, from, to, []byte(formattedMsg)); err != nil {
-		return false, err
+// SendMail sends an email using the SMTP protocol.
+func (c *SMTPClient) SendMail(host string, port string, msg *SMTPMessage) (bool, error) {
+	if !protocolstate.IsHostAllowed(host) {
+		return false, protocolstate.ErrHostDenied.Msgf(host)
 	}
 
+	var auth smtp.Auth
+	if msg.user != "" && msg.pass != "" {
+		auth = smtp.PlainAuth("", msg.user, msg.pass, host)
+	}
+
+	// send mail
+	addr := net.JoinHostPort(host, port)
+	if err := smtp.SendMail(addr, auth, msg.from, msg.to, []byte(msg.String())); err != nil {
+		return false, err
+	}
 	return true, nil
 }
