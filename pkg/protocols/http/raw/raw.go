@@ -37,6 +37,7 @@ func Parse(request string, inputURL *urlutil.URL, unsafe, disablePathAutomerge b
 	// can be omitted but makes things clear
 	case rawrequest.Path == "":
 		if !disablePathAutomerge {
+			inputURL.Params.IncludeEquals = true
 			rawrequest.Path = inputURL.GetRelativePath()
 		}
 
@@ -47,6 +48,7 @@ func Parse(request string, inputURL *urlutil.URL, unsafe, disablePathAutomerge b
 			return nil, errorutil.NewWithErr(err).WithTag("raw").Msgf("failed to parse url %v from template", rawrequest.Path)
 		}
 		cloned := inputURL.Clone()
+		cloned.Params.IncludeEquals = true
 		if disablePathAutomerge {
 			cloned.Path = ""
 		}
@@ -59,6 +61,7 @@ func Parse(request string, inputURL *urlutil.URL, unsafe, disablePathAutomerge b
 	case unsafe:
 		prevPath := rawrequest.Path
 		cloned := inputURL.Clone()
+		cloned.Params.IncludeEquals = true
 		unsafeRelativePath := ""
 		if (cloned.Path == "" || cloned.Path == "/") && !strings.HasPrefix(prevPath, "/") {
 			// Edgecase if raw unsafe request is
@@ -90,6 +93,7 @@ func Parse(request string, inputURL *urlutil.URL, unsafe, disablePathAutomerge b
 
 	default:
 		cloned := inputURL.Clone()
+		cloned.Params.IncludeEquals = true
 		if disablePathAutomerge {
 			cloned.Path = ""
 		}
@@ -105,6 +109,7 @@ func Parse(request string, inputURL *urlutil.URL, unsafe, disablePathAutomerge b
 			rawrequest.Headers["Host"] = inputURL.Host
 		}
 		cloned := inputURL.Clone()
+		cloned.Params.IncludeEquals = true
 		cloned.Path = ""
 		_ = cloned.MergePath(rawrequest.Path, true)
 		rawrequest.FullURL = cloned.String()

@@ -21,10 +21,12 @@ func init() {
 			// Types (value type)
 			"IsSMTPResponse": func() lib_smtp.IsSMTPResponse { return lib_smtp.IsSMTPResponse{} },
 			"SMTPClient":     func() lib_smtp.SMTPClient { return lib_smtp.SMTPClient{} },
+			"SMTPMessage":    func() lib_smtp.SMTPMessage { return lib_smtp.SMTPMessage{} },
 
 			// Types (pointer type)
 			"NewIsSMTPResponse": func() *lib_smtp.IsSMTPResponse { return &lib_smtp.IsSMTPResponse{} },
 			"NewSMTPClient":     func() *lib_smtp.SMTPClient { return &lib_smtp.SMTPClient{} },
+			"NewSMTPMessage":    func() *lib_smtp.SMTPMessage { return &lib_smtp.SMTPMessage{} },
 		},
 	).Register()
 }
