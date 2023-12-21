@@ -162,6 +162,8 @@ type Options struct {
 	HeadlessTemplateThreads int
 	// Timeout is the seconds to wait for a response from the server.
 	Timeout int
+	// MaxTimeout is the maximum seconds to wait for a response from the server.
+	MaxTimeout int
 	// Retries is the number of times to retry the request
 	Retries int
 	// Rate-Limit is the maximum number of requests per specified target

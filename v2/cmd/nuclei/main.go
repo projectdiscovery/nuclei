@@ -100,6 +100,23 @@ func main() {
 		}
 	}()
 
+	// max timeout
+	if options.MaxTimeout > 0 {
+		go func() {
+			time.Sleep(time.Duration(options.MaxTimeout) * time.Second)
+			gologger.Info().Msgf("MaxTimeout reached: Exiting\n")
+			nucleiRunner.Close()
+			if options.ShouldSaveResume() {
+				gologger.Info().Msgf("Creating resume file: %s\n", resumeFileName)
+				err := nucleiRunner.SaveResumeConfig(resumeFileName)
+				if err != nil {
+					gologger.Error().Msgf("Couldn't create resume file: %s\n", err)
+				}
+			}
+			os.Exit(1)
+		}()
+	}
+
 	if err := nucleiRunner.RunEnumeration(); err != nil {
 		if options.Validate {
 			gologger.Fatal().Msgf("Could not validate templates: %s\n", err)
@@ -250,6 +267,7 @@ on extensive configurability, massive extensibility and ease of use.`)
 	)
 	flagSet.CreateGroup("optimization", "Optimizations",
 		flagSet.IntVar(&options.Timeout, "timeout", 10, "time to wait in seconds before timeout"),
+		flagSet.IntVar(&options.MaxTimeout, "maxtimeout", 0, "run max timeout"),
 		flagSet.IntVar(&options.Retries, "retries", 1, "number of times to retry a failed request"),
 		flagSet.BoolVarP(&options.LeaveDefaultPorts, "leave-default-ports", "ldp", false, "leave default HTTP/HTTPS ports (eg. host:80,host:443)"),
 		flagSet.IntVarP(&options.MaxHostError, "max-host-error", "mhe", 30, "max errors for a host before skipping from scan"),
