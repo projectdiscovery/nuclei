@@ -4,10 +4,10 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/projectdiscovery/nuclei/v2/pkg/types"
-	"github.com/projectdiscovery/nuclei/v2/pkg/types/scanstrategy"
-	"github.com/projectdiscovery/retryablehttp-go"
-	urlutil "github.com/projectdiscovery/utils/url"
+	"github.com/dumpload/nuclei/v2/pkg/types"
+	"github.com/dumpload/nuclei/v2/pkg/types/scanstrategy"
+	"github.com/dumpload/retryablehttp-go"
+	urlutil "github.com/dumpload/utils/url"
 )
 
 var (

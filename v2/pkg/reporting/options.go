@@ -1,16 +1,16 @@
 package reporting
 
 import (
-	"github.com/projectdiscovery/nuclei/v2/pkg/reporting/exporters/es"
-	"github.com/projectdiscovery/nuclei/v2/pkg/reporting/exporters/jsonexporter"
-	"github.com/projectdiscovery/nuclei/v2/pkg/reporting/exporters/jsonl"
-	"github.com/projectdiscovery/nuclei/v2/pkg/reporting/exporters/markdown"
-	"github.com/projectdiscovery/nuclei/v2/pkg/reporting/exporters/sarif"
-	"github.com/projectdiscovery/nuclei/v2/pkg/reporting/exporters/splunk"
-	"github.com/projectdiscovery/nuclei/v2/pkg/reporting/trackers/github"
-	"github.com/projectdiscovery/nuclei/v2/pkg/reporting/trackers/gitlab"
-	"github.com/projectdiscovery/nuclei/v2/pkg/reporting/trackers/jira"
-	"github.com/projectdiscovery/retryablehttp-go"
+	"github.com/dumpload/nuclei/v2/pkg/reporting/exporters/es"
+	"github.com/dumpload/nuclei/v2/pkg/reporting/exporters/jsonexporter"
+	"github.com/dumpload/nuclei/v2/pkg/reporting/exporters/jsonl"
+	"github.com/dumpload/nuclei/v2/pkg/reporting/exporters/markdown"
+	"github.com/dumpload/nuclei/v2/pkg/reporting/exporters/sarif"
+	"github.com/dumpload/nuclei/v2/pkg/reporting/exporters/splunk"
+	"github.com/dumpload/nuclei/v2/pkg/reporting/trackers/github"
+	"github.com/dumpload/nuclei/v2/pkg/reporting/trackers/gitlab"
+	"github.com/dumpload/nuclei/v2/pkg/reporting/trackers/jira"
+	"github.com/dumpload/retryablehttp-go"
 )
 
 // Options is a configuration file for nuclei reporting module

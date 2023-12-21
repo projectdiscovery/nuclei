@@ -6,12 +6,12 @@ import (
 	"runtime"
 	"strings"
 
-	"github.com/projectdiscovery/gologger"
-	"github.com/projectdiscovery/nuclei/v2/pkg/templates"
-	"github.com/projectdiscovery/uncover"
-	"github.com/projectdiscovery/uncover/sources"
-	mapsutil "github.com/projectdiscovery/utils/maps"
-	stringsutil "github.com/projectdiscovery/utils/strings"
+	"github.com/dumpload/gologger"
+	"github.com/dumpload/nuclei/v2/pkg/templates"
+	"github.com/dumpload/uncover"
+	"github.com/dumpload/uncover/sources"
+	mapsutil "github.com/dumpload/utils/maps"
+	stringsutil "github.com/dumpload/utils/strings"
 )
 
 // returns csv string of uncover supported agents

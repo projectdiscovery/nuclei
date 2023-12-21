@@ -12,7 +12,7 @@ import (
 	"fmt"
 	"os"
 
-	fileutil "github.com/projectdiscovery/utils/file"
+	fileutil "github.com/dumpload/utils/file"
 	"golang.org/x/crypto/ssh"
 )
 

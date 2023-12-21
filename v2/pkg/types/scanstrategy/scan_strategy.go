@@ -1,7 +1,7 @@
 package scanstrategy
 
 import (
-	mapsutil "github.com/projectdiscovery/utils/maps"
+	mapsutil "github.com/dumpload/utils/maps"
 )
 
 // ScanStrategy supported

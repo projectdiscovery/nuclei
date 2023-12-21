@@ -3,11 +3,11 @@ package interactsh
 import (
 	"time"
 
-	"github.com/projectdiscovery/interactsh/pkg/client"
-	"github.com/projectdiscovery/nuclei/v2/pkg/output"
-	"github.com/projectdiscovery/nuclei/v2/pkg/progress"
-	"github.com/projectdiscovery/nuclei/v2/pkg/reporting"
-	"github.com/projectdiscovery/retryablehttp-go"
+	"github.com/dumpload/interactsh/pkg/client"
+	"github.com/dumpload/nuclei/v2/pkg/output"
+	"github.com/dumpload/nuclei/v2/pkg/progress"
+	"github.com/dumpload/nuclei/v2/pkg/reporting"
+	"github.com/dumpload/retryablehttp-go"
 )
 
 // Options contains configuration options for interactsh nuclei integration.

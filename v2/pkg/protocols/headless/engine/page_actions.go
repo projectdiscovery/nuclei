@@ -9,23 +9,23 @@ import (
 	"sync"
 	"time"
 
+	"github.com/dumpload/gologger"
+	"github.com/dumpload/nuclei/v2/pkg/protocols/common/contextargs"
+	"github.com/dumpload/nuclei/v2/pkg/protocols/common/expressions"
+	"github.com/dumpload/nuclei/v2/pkg/protocols/common/generators"
+	"github.com/dumpload/nuclei/v2/pkg/protocols/common/utils/vardump"
+	protocolutils "github.com/dumpload/nuclei/v2/pkg/protocols/utils"
+	httputil "github.com/dumpload/nuclei/v2/pkg/protocols/utils/http"
+	errorutil "github.com/dumpload/utils/errors"
+	fileutil "github.com/dumpload/utils/file"
+	folderutil "github.com/dumpload/utils/folder"
+	stringsutil "github.com/dumpload/utils/strings"
+	urlutil "github.com/dumpload/utils/url"
 	"github.com/go-rod/rod"
 	"github.com/go-rod/rod/lib/input"
 	"github.com/go-rod/rod/lib/proto"
 	"github.com/go-rod/rod/lib/utils"
 	"github.com/pkg/errors"
-	"github.com/projectdiscovery/gologger"
-	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/contextargs"
-	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/expressions"
-	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/generators"
-	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/utils/vardump"
-	protocolutils "github.com/projectdiscovery/nuclei/v2/pkg/protocols/utils"
-	httputil "github.com/projectdiscovery/nuclei/v2/pkg/protocols/utils/http"
-	errorutil "github.com/projectdiscovery/utils/errors"
-	fileutil "github.com/projectdiscovery/utils/file"
-	folderutil "github.com/projectdiscovery/utils/folder"
-	stringsutil "github.com/projectdiscovery/utils/strings"
-	urlutil "github.com/projectdiscovery/utils/url"
 	"github.com/segmentio/ksuid"
 )
 
@@ -371,7 +371,7 @@ func (p *Page) Screenshot(act *Action, out map[string]string) error {
 	}
 	if p.getActionArgWithDefaultValues(act, "mkdir") == "true" && stringsutil.ContainsAny(to, folderutil.UnixPathSeparator, folderutil.WindowsPathSeparator) {
 		// creates new directory if needed based on path `to`
-		// TODO: replace all permission bits with fileutil constants (https://github.com/projectdiscovery/utils/issues/113)
+		// TODO: replace all permission bits with fileutil constants (https://github.com/dumpload/utils/issues/113)
 		if err := os.MkdirAll(filepath.Dir(to), 0700); err != nil {
 			return errorutil.NewWithErr(err).Msgf("failed to create directory while writing screenshot")
 		}

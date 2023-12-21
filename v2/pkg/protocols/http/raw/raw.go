@@ -8,10 +8,10 @@ import (
 	"io"
 	"strings"
 
-	"github.com/projectdiscovery/rawhttp/client"
-	errorutil "github.com/projectdiscovery/utils/errors"
-	stringsutil "github.com/projectdiscovery/utils/strings"
-	urlutil "github.com/projectdiscovery/utils/url"
+	"github.com/dumpload/rawhttp/client"
+	errorutil "github.com/dumpload/utils/errors"
+	stringsutil "github.com/dumpload/utils/strings"
+	urlutil "github.com/dumpload/utils/url"
 )
 
 // Request defines a basic HTTP raw request

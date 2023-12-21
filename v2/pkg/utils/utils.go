@@ -6,11 +6,11 @@ import (
 	"net/url"
 	"strings"
 
-	"github.com/projectdiscovery/nuclei/v2/pkg/catalog"
-	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/config"
-	"github.com/projectdiscovery/nuclei/v2/pkg/utils/yaml"
-	"github.com/projectdiscovery/retryablehttp-go"
-	fileutil "github.com/projectdiscovery/utils/file"
+	"github.com/dumpload/nuclei/v2/pkg/catalog"
+	"github.com/dumpload/nuclei/v2/pkg/catalog/config"
+	"github.com/dumpload/nuclei/v2/pkg/utils/yaml"
+	"github.com/dumpload/retryablehttp-go"
+	fileutil "github.com/dumpload/utils/file"
 )
 
 func IsBlank(value string) bool {

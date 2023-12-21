@@ -12,19 +12,19 @@ import (
 
 	"github.com/go-playground/validator/v10"
 
-	"github.com/projectdiscovery/goflags"
-	"github.com/projectdiscovery/gologger"
-	"github.com/projectdiscovery/gologger/formatter"
-	"github.com/projectdiscovery/gologger/levels"
-	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/config"
-	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/protocolinit"
-	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/utils/vardump"
-	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/headless/engine"
-	"github.com/projectdiscovery/nuclei/v2/pkg/types"
-	fileutil "github.com/projectdiscovery/utils/file"
-	"github.com/projectdiscovery/utils/generic"
-	logutil "github.com/projectdiscovery/utils/log"
-	stringsutil "github.com/projectdiscovery/utils/strings"
+	"github.com/dumpload/goflags"
+	"github.com/dumpload/gologger"
+	"github.com/dumpload/gologger/formatter"
+	"github.com/dumpload/gologger/levels"
+	"github.com/dumpload/nuclei/v2/pkg/catalog/config"
+	"github.com/dumpload/nuclei/v2/pkg/protocols/common/protocolinit"
+	"github.com/dumpload/nuclei/v2/pkg/protocols/common/utils/vardump"
+	"github.com/dumpload/nuclei/v2/pkg/protocols/headless/engine"
+	"github.com/dumpload/nuclei/v2/pkg/types"
+	fileutil "github.com/dumpload/utils/file"
+	"github.com/dumpload/utils/generic"
+	logutil "github.com/dumpload/utils/log"
+	stringsutil "github.com/dumpload/utils/strings"
 )
 
 func ConfigureOptions() error {

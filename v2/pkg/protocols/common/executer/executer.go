@@ -8,12 +8,12 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/projectdiscovery/gologger"
-	"github.com/projectdiscovery/nuclei/v2/pkg/operators/common/dsl"
-	"github.com/projectdiscovery/nuclei/v2/pkg/output"
-	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
-	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/contextargs"
-	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/helpers/writer"
+	"github.com/dumpload/gologger"
+	"github.com/dumpload/nuclei/v2/pkg/operators/common/dsl"
+	"github.com/dumpload/nuclei/v2/pkg/output"
+	"github.com/dumpload/nuclei/v2/pkg/protocols"
+	"github.com/dumpload/nuclei/v2/pkg/protocols/common/contextargs"
+	"github.com/dumpload/nuclei/v2/pkg/protocols/common/helpers/writer"
 )
 
 // Executer executes a group of requests for a protocol
@@ -140,7 +140,7 @@ func (e *Executer) Execute(input *contextargs.Context) (bool, error) {
 	return results.Load(), nil
 }
 
-// Deprecated: Use Execute instead along with outputWriter.callback https://github.com/projectdiscovery/nuclei/issues/4054 will include
+// Deprecated: Use Execute instead along with outputWriter.callback https://github.com/dumpload/nuclei/issues/4054 will include
 // abstraction for this in future.
 func (e *Executer) ExecuteWithResults(input *contextargs.Context, callback protocols.OutputEventCallback) error {
 	dynamicValues := make(map[string]interface{})

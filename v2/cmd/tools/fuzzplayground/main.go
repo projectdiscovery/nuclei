@@ -7,9 +7,9 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/dumpload/retryablehttp-go"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
-	"github.com/projectdiscovery/retryablehttp-go"
 )
 
 func main() {

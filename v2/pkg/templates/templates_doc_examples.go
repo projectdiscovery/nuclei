@@ -3,16 +3,16 @@
 package templates
 
 import (
-	"github.com/projectdiscovery/nuclei/v2/pkg/model"
-	"github.com/projectdiscovery/nuclei/v2/pkg/model/types/severity"
-	"github.com/projectdiscovery/nuclei/v2/pkg/model/types/stringslice"
-	"github.com/projectdiscovery/nuclei/v2/pkg/operators"
-	"github.com/projectdiscovery/nuclei/v2/pkg/operators/extractors"
-	"github.com/projectdiscovery/nuclei/v2/pkg/operators/matchers"
-	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/dns"
-	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/file"
-	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/http"
-	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/network"
+	"github.com/dumpload/nuclei/v2/pkg/model"
+	"github.com/dumpload/nuclei/v2/pkg/model/types/severity"
+	"github.com/dumpload/nuclei/v2/pkg/model/types/stringslice"
+	"github.com/dumpload/nuclei/v2/pkg/operators"
+	"github.com/dumpload/nuclei/v2/pkg/operators/extractors"
+	"github.com/dumpload/nuclei/v2/pkg/operators/matchers"
+	"github.com/dumpload/nuclei/v2/pkg/protocols/dns"
+	"github.com/dumpload/nuclei/v2/pkg/protocols/file"
+	"github.com/dumpload/nuclei/v2/pkg/protocols/http"
+	"github.com/dumpload/nuclei/v2/pkg/protocols/network"
 )
 
 var (

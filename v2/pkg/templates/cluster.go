@@ -5,16 +5,16 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/projectdiscovery/gologger"
-	"github.com/projectdiscovery/nuclei/v2/pkg/model"
-	"github.com/projectdiscovery/nuclei/v2/pkg/operators"
-	"github.com/projectdiscovery/nuclei/v2/pkg/output"
-	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
-	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/contextargs"
-	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/helpers/writer"
-	"github.com/projectdiscovery/nuclei/v2/pkg/templates/types"
-	cryptoutil "github.com/projectdiscovery/utils/crypto"
-	mapsutil "github.com/projectdiscovery/utils/maps"
+	"github.com/dumpload/gologger"
+	"github.com/dumpload/nuclei/v2/pkg/model"
+	"github.com/dumpload/nuclei/v2/pkg/operators"
+	"github.com/dumpload/nuclei/v2/pkg/output"
+	"github.com/dumpload/nuclei/v2/pkg/protocols"
+	"github.com/dumpload/nuclei/v2/pkg/protocols/common/contextargs"
+	"github.com/dumpload/nuclei/v2/pkg/protocols/common/helpers/writer"
+	"github.com/dumpload/nuclei/v2/pkg/templates/types"
+	cryptoutil "github.com/dumpload/utils/crypto"
+	mapsutil "github.com/dumpload/utils/maps"
 )
 
 // Cluster clusters a list of templates into a lesser number if possible based

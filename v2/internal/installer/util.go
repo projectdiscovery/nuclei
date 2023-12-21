@@ -12,9 +12,9 @@ import (
 	"sort"
 
 	"github.com/Masterminds/semver/v3"
-	"github.com/projectdiscovery/gologger"
-	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/config"
-	errorutil "github.com/projectdiscovery/utils/errors"
+	"github.com/dumpload/gologger"
+	"github.com/dumpload/nuclei/v2/pkg/catalog/config"
+	errorutil "github.com/dumpload/utils/errors"
 )
 
 // GetNewTemplatesInVersions returns templates path of all newly added templates

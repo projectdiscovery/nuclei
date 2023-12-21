@@ -7,11 +7,11 @@ import (
 	"os"
 	"strings"
 
-	"github.com/projectdiscovery/gologger"
-	"github.com/projectdiscovery/nuclei/v2/pkg/types"
-	errorutil "github.com/projectdiscovery/utils/errors"
-	fileutil "github.com/projectdiscovery/utils/file"
-	proxyutils "github.com/projectdiscovery/utils/proxy"
+	"github.com/dumpload/gologger"
+	"github.com/dumpload/nuclei/v2/pkg/types"
+	errorutil "github.com/dumpload/utils/errors"
+	fileutil "github.com/dumpload/utils/file"
+	proxyutils "github.com/dumpload/utils/proxy"
 )
 
 // loadProxyServers load list of proxy servers from file or comma separated

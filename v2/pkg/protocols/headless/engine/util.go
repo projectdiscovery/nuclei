@@ -1,7 +1,7 @@
 package engine
 
 import (
-	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/marker"
+	"github.com/dumpload/nuclei/v2/pkg/protocols/common/marker"
 	"github.com/valyala/fasttemplate"
 )
 

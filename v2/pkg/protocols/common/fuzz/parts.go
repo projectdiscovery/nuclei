@@ -6,12 +6,12 @@ import (
 	"strings"
 
 	"github.com/corpix/uarand"
-	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/expressions"
-	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/generators"
-	"github.com/projectdiscovery/nuclei/v2/pkg/types"
-	"github.com/projectdiscovery/retryablehttp-go"
-	sliceutil "github.com/projectdiscovery/utils/slice"
-	urlutil "github.com/projectdiscovery/utils/url"
+	"github.com/dumpload/nuclei/v2/pkg/protocols/common/expressions"
+	"github.com/dumpload/nuclei/v2/pkg/protocols/common/generators"
+	"github.com/dumpload/nuclei/v2/pkg/types"
+	"github.com/dumpload/retryablehttp-go"
+	sliceutil "github.com/dumpload/utils/slice"
+	urlutil "github.com/dumpload/utils/url"
 )
 
 // executePartRule executes part rules based on type

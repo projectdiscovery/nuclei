@@ -9,8 +9,8 @@ import (
 
 	"github.com/julienschmidt/httprouter"
 
-	"github.com/projectdiscovery/nuclei/v2/pkg/testutils"
-	permissionutil "github.com/projectdiscovery/utils/permission"
+	"github.com/dumpload/nuclei/v2/pkg/testutils"
+	permissionutil "github.com/dumpload/utils/permission"
 )
 
 var loaderTestcases = []TestCaseInfo{

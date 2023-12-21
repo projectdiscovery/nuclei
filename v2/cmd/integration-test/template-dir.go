@@ -3,8 +3,8 @@ package main
 import (
 	"os"
 
-	"github.com/projectdiscovery/nuclei/v2/pkg/testutils"
-	errorutil "github.com/projectdiscovery/utils/errors"
+	"github.com/dumpload/nuclei/v2/pkg/testutils"
+	errorutil "github.com/dumpload/utils/errors"
 )
 
 var templatesDirTestCases = []TestCaseInfo{

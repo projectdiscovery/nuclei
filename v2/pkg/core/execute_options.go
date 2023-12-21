@@ -6,12 +6,12 @@ import (
 
 	"github.com/remeh/sizedwaitgroup"
 
-	"github.com/projectdiscovery/nuclei/v2/pkg/output"
-	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/contextargs"
-	"github.com/projectdiscovery/nuclei/v2/pkg/templates"
-	"github.com/projectdiscovery/nuclei/v2/pkg/templates/types"
-	"github.com/projectdiscovery/nuclei/v2/pkg/types/scanstrategy"
-	stringsutil "github.com/projectdiscovery/utils/strings"
+	"github.com/dumpload/nuclei/v2/pkg/output"
+	"github.com/dumpload/nuclei/v2/pkg/protocols/common/contextargs"
+	"github.com/dumpload/nuclei/v2/pkg/templates"
+	"github.com/dumpload/nuclei/v2/pkg/templates/types"
+	"github.com/dumpload/nuclei/v2/pkg/types/scanstrategy"
+	stringsutil "github.com/dumpload/utils/strings"
 )
 
 // Execute takes a list of templates/workflows that have been compiled

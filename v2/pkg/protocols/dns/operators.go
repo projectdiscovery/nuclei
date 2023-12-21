@@ -8,14 +8,14 @@ import (
 
 	"github.com/miekg/dns"
 
-	"github.com/projectdiscovery/nuclei/v2/pkg/model"
-	"github.com/projectdiscovery/nuclei/v2/pkg/operators/extractors"
-	"github.com/projectdiscovery/nuclei/v2/pkg/operators/matchers"
-	"github.com/projectdiscovery/nuclei/v2/pkg/output"
-	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
-	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/generators"
-	"github.com/projectdiscovery/nuclei/v2/pkg/types"
-	"github.com/projectdiscovery/retryabledns"
+	"github.com/dumpload/nuclei/v2/pkg/model"
+	"github.com/dumpload/nuclei/v2/pkg/operators/extractors"
+	"github.com/dumpload/nuclei/v2/pkg/operators/matchers"
+	"github.com/dumpload/nuclei/v2/pkg/output"
+	"github.com/dumpload/nuclei/v2/pkg/protocols"
+	"github.com/dumpload/nuclei/v2/pkg/protocols/common/generators"
+	"github.com/dumpload/nuclei/v2/pkg/types"
+	"github.com/dumpload/retryabledns"
 )
 
 // Match matches a generic data response against a given matcher

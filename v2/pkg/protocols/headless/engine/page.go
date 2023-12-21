@@ -9,11 +9,11 @@ import (
 	"sync"
 	"time"
 
+	"github.com/dumpload/nuclei/v2/pkg/protocols/common/contextargs"
+	"github.com/dumpload/nuclei/v2/pkg/protocols/utils"
+	"github.com/dumpload/nuclei/v2/pkg/types"
 	"github.com/go-rod/rod"
 	"github.com/go-rod/rod/lib/proto"
-	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/contextargs"
-	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/utils"
-	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 )
 
 // Page is a single page in an isolated browser instance

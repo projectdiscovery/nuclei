@@ -13,8 +13,8 @@ import (
 	"time"
 
 	"github.com/DataDog/gostackparse"
-	"github.com/projectdiscovery/gologger"
-	permissionutil "github.com/projectdiscovery/utils/permission"
+	"github.com/dumpload/gologger"
+	permissionutil "github.com/dumpload/utils/permission"
 	"github.com/rs/xid"
 )
 

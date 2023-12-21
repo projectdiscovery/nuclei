@@ -4,8 +4,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/projectdiscovery/goflags"
-	"github.com/projectdiscovery/nuclei/v2/pkg/types"
+	"github.com/dumpload/goflags"
+	"github.com/dumpload/nuclei/v2/pkg/types"
 	"github.com/stretchr/testify/require"
 )
 

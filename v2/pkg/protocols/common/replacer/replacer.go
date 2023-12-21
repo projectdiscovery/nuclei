@@ -3,10 +3,10 @@ package replacer
 import (
 	"strings"
 
-	"github.com/projectdiscovery/fasttemplate"
+	"github.com/dumpload/fasttemplate"
 
-	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/marker"
-	"github.com/projectdiscovery/nuclei/v2/pkg/types"
+	"github.com/dumpload/nuclei/v2/pkg/protocols/common/marker"
+	"github.com/dumpload/nuclei/v2/pkg/types"
 )
 
 // Replace replaces placeholders in template with values on the fly.

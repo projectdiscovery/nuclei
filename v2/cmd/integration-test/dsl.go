@@ -5,8 +5,8 @@ import (
 	"net/http"
 	"net/http/httptest"
 
+	"github.com/dumpload/nuclei/v2/pkg/testutils"
 	"github.com/julienschmidt/httprouter"
-	"github.com/projectdiscovery/nuclei/v2/pkg/testutils"
 )
 
 var dslTestcases = []TestCaseInfo{

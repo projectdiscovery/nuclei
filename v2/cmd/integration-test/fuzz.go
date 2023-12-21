@@ -7,9 +7,9 @@ import (
 	"net/http/httptest"
 	"net/url"
 
+	"github.com/dumpload/nuclei/v2/pkg/output"
+	"github.com/dumpload/nuclei/v2/pkg/testutils"
 	"github.com/julienschmidt/httprouter"
-	"github.com/projectdiscovery/nuclei/v2/pkg/output"
-	"github.com/projectdiscovery/nuclei/v2/pkg/testutils"
 )
 
 var fuzzingTestCases = []TestCaseInfo{

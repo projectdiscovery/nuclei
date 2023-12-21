@@ -11,11 +11,11 @@ import (
 	"github.com/pkg/errors"
 	"golang.org/x/oauth2"
 
-	"github.com/projectdiscovery/nuclei/v2/pkg/output"
-	"github.com/projectdiscovery/nuclei/v2/pkg/reporting/exporters/markdown/util"
-	"github.com/projectdiscovery/nuclei/v2/pkg/reporting/format"
-	"github.com/projectdiscovery/nuclei/v2/pkg/types"
-	"github.com/projectdiscovery/retryablehttp-go"
+	"github.com/dumpload/nuclei/v2/pkg/output"
+	"github.com/dumpload/nuclei/v2/pkg/reporting/exporters/markdown/util"
+	"github.com/dumpload/nuclei/v2/pkg/reporting/format"
+	"github.com/dumpload/nuclei/v2/pkg/types"
+	"github.com/dumpload/retryablehttp-go"
 )
 
 // Integration is a client for an issue tracker integration

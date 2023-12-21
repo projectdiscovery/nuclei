@@ -4,8 +4,8 @@ import (
 	"net"
 	"strings"
 
-	"github.com/projectdiscovery/nuclei/v2/pkg/testutils"
-	osutils "github.com/projectdiscovery/utils/os"
+	"github.com/dumpload/nuclei/v2/pkg/testutils"
+	osutils "github.com/dumpload/utils/os"
 )
 
 var networkTestcases = []TestCaseInfo{

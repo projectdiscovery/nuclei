@@ -11,8 +11,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/projectdiscovery/clistats"
-	"github.com/projectdiscovery/gologger"
+	"github.com/dumpload/clistats"
+	"github.com/dumpload/gologger"
 )
 
 // Progress is an interface implemented by nuclei progress display

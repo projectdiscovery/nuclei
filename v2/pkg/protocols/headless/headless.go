@@ -4,13 +4,13 @@ import (
 	"github.com/corpix/uarand"
 	"github.com/pkg/errors"
 
-	useragent "github.com/projectdiscovery/nuclei/v2/pkg/model/types/userAgent"
-	"github.com/projectdiscovery/nuclei/v2/pkg/operators"
-	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
-	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/fuzz"
-	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/generators"
-	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/headless/engine"
-	fileutil "github.com/projectdiscovery/utils/file"
+	useragent "github.com/dumpload/nuclei/v2/pkg/model/types/userAgent"
+	"github.com/dumpload/nuclei/v2/pkg/operators"
+	"github.com/dumpload/nuclei/v2/pkg/protocols"
+	"github.com/dumpload/nuclei/v2/pkg/protocols/common/fuzz"
+	"github.com/dumpload/nuclei/v2/pkg/protocols/common/generators"
+	"github.com/dumpload/nuclei/v2/pkg/protocols/headless/engine"
+	fileutil "github.com/dumpload/utils/file"
 )
 
 // Request contains a Headless protocol request to be made from a template

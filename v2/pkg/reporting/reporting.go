@@ -3,29 +3,29 @@ package reporting
 import (
 	"os"
 
-	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/config"
-	json_exporter "github.com/projectdiscovery/nuclei/v2/pkg/reporting/exporters/jsonexporter"
-	"github.com/projectdiscovery/nuclei/v2/pkg/reporting/exporters/jsonl"
+	"github.com/dumpload/nuclei/v2/pkg/catalog/config"
+	json_exporter "github.com/dumpload/nuclei/v2/pkg/reporting/exporters/jsonexporter"
+	"github.com/dumpload/nuclei/v2/pkg/reporting/exporters/jsonl"
 
 	"go.uber.org/multierr"
 	"gopkg.in/yaml.v2"
 
 	"errors"
 
-	"github.com/projectdiscovery/nuclei/v2/pkg/model/types/severity"
-	"github.com/projectdiscovery/nuclei/v2/pkg/model/types/stringslice"
-	"github.com/projectdiscovery/nuclei/v2/pkg/output"
-	"github.com/projectdiscovery/nuclei/v2/pkg/reporting/dedupe"
-	"github.com/projectdiscovery/nuclei/v2/pkg/reporting/exporters/es"
-	"github.com/projectdiscovery/nuclei/v2/pkg/reporting/exporters/markdown"
-	"github.com/projectdiscovery/nuclei/v2/pkg/reporting/exporters/sarif"
-	"github.com/projectdiscovery/nuclei/v2/pkg/reporting/exporters/splunk"
-	"github.com/projectdiscovery/nuclei/v2/pkg/reporting/trackers/github"
-	"github.com/projectdiscovery/nuclei/v2/pkg/reporting/trackers/gitlab"
-	"github.com/projectdiscovery/nuclei/v2/pkg/reporting/trackers/jira"
-	errorutil "github.com/projectdiscovery/utils/errors"
-	fileutil "github.com/projectdiscovery/utils/file"
-	sliceutil "github.com/projectdiscovery/utils/slice"
+	"github.com/dumpload/nuclei/v2/pkg/model/types/severity"
+	"github.com/dumpload/nuclei/v2/pkg/model/types/stringslice"
+	"github.com/dumpload/nuclei/v2/pkg/output"
+	"github.com/dumpload/nuclei/v2/pkg/reporting/dedupe"
+	"github.com/dumpload/nuclei/v2/pkg/reporting/exporters/es"
+	"github.com/dumpload/nuclei/v2/pkg/reporting/exporters/markdown"
+	"github.com/dumpload/nuclei/v2/pkg/reporting/exporters/sarif"
+	"github.com/dumpload/nuclei/v2/pkg/reporting/exporters/splunk"
+	"github.com/dumpload/nuclei/v2/pkg/reporting/trackers/github"
+	"github.com/dumpload/nuclei/v2/pkg/reporting/trackers/gitlab"
+	"github.com/dumpload/nuclei/v2/pkg/reporting/trackers/jira"
+	errorutil "github.com/dumpload/utils/errors"
+	fileutil "github.com/dumpload/utils/file"
+	sliceutil "github.com/dumpload/utils/slice"
 )
 
 // Filter filters the received event and decides whether to perform

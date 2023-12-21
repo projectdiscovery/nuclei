@@ -15,10 +15,10 @@ import (
 	"strings"
 	"time"
 
+	"github.com/dumpload/nuclei/v2/pkg/output"
+	"github.com/dumpload/retryablehttp-go"
 	jsoniter "github.com/json-iterator/go"
 	"github.com/pkg/errors"
-	"github.com/projectdiscovery/nuclei/v2/pkg/output"
-	"github.com/projectdiscovery/retryablehttp-go"
 )
 
 // Client is a client for result retrieval from nuclei-cloud API

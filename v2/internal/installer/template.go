@@ -13,14 +13,14 @@ import (
 	"strings"
 
 	"github.com/charmbracelet/glamour"
+	"github.com/dumpload/gologger"
+	"github.com/dumpload/nuclei/v2/pkg/catalog/config"
+	"github.com/dumpload/nuclei/v2/pkg/external/customtemplates"
+	errorutil "github.com/dumpload/utils/errors"
+	fileutil "github.com/dumpload/utils/file"
+	stringsutil "github.com/dumpload/utils/strings"
+	updateutils "github.com/dumpload/utils/update"
 	"github.com/olekukonko/tablewriter"
-	"github.com/projectdiscovery/gologger"
-	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/config"
-	"github.com/projectdiscovery/nuclei/v2/pkg/external/customtemplates"
-	errorutil "github.com/projectdiscovery/utils/errors"
-	fileutil "github.com/projectdiscovery/utils/file"
-	stringsutil "github.com/projectdiscovery/utils/strings"
-	updateutils "github.com/projectdiscovery/utils/update"
 )
 
 const (

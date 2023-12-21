@@ -3,7 +3,7 @@ package httputil
 import (
 	"testing"
 
-	urlutil "github.com/projectdiscovery/utils/url"
+	urlutil "github.com/dumpload/utils/url"
 	"github.com/stretchr/testify/require"
 )
 

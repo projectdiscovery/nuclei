@@ -8,9 +8,9 @@ import (
 	"github.com/pkg/errors"
 	"golang.org/x/net/proxy"
 
-	"github.com/projectdiscovery/fastdialer/fastdialer"
-	"github.com/projectdiscovery/networkpolicy"
-	"github.com/projectdiscovery/nuclei/v2/pkg/types"
+	"github.com/dumpload/fastdialer/fastdialer"
+	"github.com/dumpload/networkpolicy"
+	"github.com/dumpload/nuclei/v2/pkg/types"
 )
 
 // Dialer is a shared fastdialer instance for host DNS resolution

@@ -5,7 +5,7 @@
 package templates
 
 import (
-	"github.com/projectdiscovery/yamldoc-go/encoder"
+	"github.com/dumpload/yamldoc-go/encoder"
 )
 
 var (
@@ -581,7 +581,7 @@ func init() {
 	HTTPRequestDoc.Fields[22].Name = "unsafe"
 	HTTPRequestDoc.Fields[22].Type = "bool"
 	HTTPRequestDoc.Fields[22].Note = ""
-	HTTPRequestDoc.Fields[22].Description = "Unsafe specifies whether to use rawhttp engine for sending Non RFC-Compliant requests.\n\nThis uses the [rawhttp](https://github.com/projectdiscovery/rawhttp) engine to achieve complete\ncontrol over the request, with no normalization performed by the client."
+	HTTPRequestDoc.Fields[22].Description = "Unsafe specifies whether to use rawhttp engine for sending Non RFC-Compliant requests.\n\nThis uses the [rawhttp](https://github.com/dumpload/rawhttp) engine to achieve complete\ncontrol over the request, with no normalization performed by the client."
 	HTTPRequestDoc.Fields[22].Comments[encoder.LineComment] = "Unsafe specifies whether to use rawhttp engine for sending Non RFC-Compliant requests."
 	HTTPRequestDoc.Fields[23].Name = "race"
 	HTTPRequestDoc.Fields[23].Type = "bool"
@@ -1303,7 +1303,7 @@ func init() {
 	ENGINEActionDoc.Fields[1].Name = "name"
 	ENGINEActionDoc.Fields[1].Type = "string"
 	ENGINEActionDoc.Fields[1].Note = ""
-	ENGINEActionDoc.Fields[1].Description = "Name is the name assigned to the headless action.\n\nThis can be used to execute code, for instance in browser\nDOM using script action, and get the result in a variable\nwhich can be matched upon by nuclei. An Example template [here](https://github.com/projectdiscovery/nuclei-templates/blob/main/headless/prototype-pollution-check.yaml)."
+	ENGINEActionDoc.Fields[1].Description = "Name is the name assigned to the headless action.\n\nThis can be used to execute code, for instance in browser\nDOM using script action, and get the result in a variable\nwhich can be matched upon by nuclei. An Example template [here](https://github.com/dumpload/nuclei-templates/blob/main/headless/prototype-pollution-check.yaml)."
 	ENGINEActionDoc.Fields[1].Comments[encoder.LineComment] = "Name is the name assigned to the headless action."
 	ENGINEActionDoc.Fields[2].Name = "description"
 	ENGINEActionDoc.Fields[2].Type = "string"

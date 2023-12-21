@@ -14,15 +14,15 @@ import (
 
 	"github.com/Mzack9999/gcache"
 
-	"github.com/projectdiscovery/gologger"
-	"github.com/projectdiscovery/interactsh/pkg/client"
-	"github.com/projectdiscovery/interactsh/pkg/server"
-	"github.com/projectdiscovery/nuclei/v2/pkg/operators"
-	"github.com/projectdiscovery/nuclei/v2/pkg/output"
-	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/helpers/responsehighlighter"
-	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/helpers/writer"
-	errorutil "github.com/projectdiscovery/utils/errors"
-	stringsutil "github.com/projectdiscovery/utils/strings"
+	"github.com/dumpload/gologger"
+	"github.com/dumpload/interactsh/pkg/client"
+	"github.com/dumpload/interactsh/pkg/server"
+	"github.com/dumpload/nuclei/v2/pkg/operators"
+	"github.com/dumpload/nuclei/v2/pkg/output"
+	"github.com/dumpload/nuclei/v2/pkg/protocols/common/helpers/responsehighlighter"
+	"github.com/dumpload/nuclei/v2/pkg/protocols/common/helpers/writer"
+	errorutil "github.com/dumpload/utils/errors"
+	stringsutil "github.com/dumpload/utils/strings"
 )
 
 // Client is a wrapped client for interactsh server.

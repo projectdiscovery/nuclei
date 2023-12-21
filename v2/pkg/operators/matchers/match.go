@@ -8,11 +8,11 @@ import (
 	"github.com/antchfx/htmlquery"
 	"github.com/antchfx/xmlquery"
 
-	dslRepo "github.com/projectdiscovery/dsl"
-	"github.com/projectdiscovery/gologger"
-	"github.com/projectdiscovery/nuclei/v2/pkg/operators/common/dsl"
-	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/expressions"
-	stringsutil "github.com/projectdiscovery/utils/strings"
+	dslRepo "github.com/dumpload/dsl"
+	"github.com/dumpload/gologger"
+	"github.com/dumpload/nuclei/v2/pkg/operators/common/dsl"
+	"github.com/dumpload/nuclei/v2/pkg/protocols/common/expressions"
+	stringsutil "github.com/dumpload/utils/strings"
 )
 
 var (
@@ -311,7 +311,7 @@ func (matcher *Matcher) MatchXML(corpus string) bool {
 }
 
 // ignoreErr checks if the error is to be ignored or not
-// Reference: https://github.com/projectdiscovery/nuclei/issues/3950
+// Reference: https://github.com/dumpload/nuclei/issues/3950
 func (m *Matcher) ignoreErr(err error) bool {
 	if showDSLErr {
 		return false

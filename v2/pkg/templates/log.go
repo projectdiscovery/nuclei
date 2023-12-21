@@ -4,10 +4,10 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/dumpload/gologger"
+	"github.com/dumpload/nuclei/v2/pkg/model/types/severity"
+	mapsutil "github.com/dumpload/utils/maps"
 	"github.com/logrusorgru/aurora"
-	"github.com/projectdiscovery/gologger"
-	"github.com/projectdiscovery/nuclei/v2/pkg/model/types/severity"
-	mapsutil "github.com/projectdiscovery/utils/maps"
 )
 
 var (

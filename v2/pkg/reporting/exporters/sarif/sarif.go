@@ -7,10 +7,10 @@ import (
 	"path"
 	"sync"
 
+	"github.com/dumpload/nuclei/v2/pkg/catalog/config"
+	"github.com/dumpload/nuclei/v2/pkg/output"
+	"github.com/dumpload/sarif"
 	"github.com/pkg/errors"
-	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/config"
-	"github.com/projectdiscovery/nuclei/v2/pkg/output"
-	"github.com/projectdiscovery/sarif"
 )
 
 // Exporter is an exporter for nuclei sarif output format.
@@ -55,7 +55,7 @@ func (exporter *Exporter) addToolDetails() {
 		},
 		FullName:        "Nuclei v" + config.Version,
 		SemanticVersion: "v" + config.Version,
-		DownloadURI:     "https://github.com/projectdiscovery/nuclei/releases",
+		DownloadURI:     "https://github.com/dumpload/nuclei/releases",
 		Rules:           exporter.rules,
 	}
 	exporter.sarif.RegisterTool(driver)

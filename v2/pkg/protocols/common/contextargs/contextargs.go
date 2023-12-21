@@ -4,10 +4,10 @@ import (
 	"net/http/cookiejar"
 	"strings"
 
-	mapsutil "github.com/projectdiscovery/utils/maps"
-	sliceutil "github.com/projectdiscovery/utils/slice"
-	stringsutil "github.com/projectdiscovery/utils/strings"
-	urlutil "github.com/projectdiscovery/utils/url"
+	mapsutil "github.com/dumpload/utils/maps"
+	sliceutil "github.com/dumpload/utils/slice"
+	stringsutil "github.com/dumpload/utils/strings"
+	urlutil "github.com/dumpload/utils/url"
 )
 
 var (
@@ -63,7 +63,7 @@ func (ctx *Context) hasArgs() bool {
 func (ctx *Context) UseNetworkPort(port string, excludePorts string) error {
 	ignorePorts := reservedPorts
 	if excludePorts != "" {
-		// TODO: add support for service names like http,https,ssh etc once https://github.com/projectdiscovery/netdb is ready
+		// TODO: add support for service names like http,https,ssh etc once https://github.com/dumpload/netdb is ready
 		ignorePorts = sliceutil.Dedupe(strings.Split(excludePorts, ","))
 	}
 	if port == "" {

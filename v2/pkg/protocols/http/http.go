@@ -8,16 +8,16 @@ import (
 	json "github.com/json-iterator/go"
 	"github.com/pkg/errors"
 
-	"github.com/projectdiscovery/nuclei/v2/pkg/operators"
-	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
-	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/expressions"
-	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/fuzz"
-	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/generators"
-	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/http/httpclientpool"
-	httputil "github.com/projectdiscovery/nuclei/v2/pkg/protocols/utils/http"
-	"github.com/projectdiscovery/rawhttp"
-	"github.com/projectdiscovery/retryablehttp-go"
-	fileutil "github.com/projectdiscovery/utils/file"
+	"github.com/dumpload/nuclei/v2/pkg/operators"
+	"github.com/dumpload/nuclei/v2/pkg/protocols"
+	"github.com/dumpload/nuclei/v2/pkg/protocols/common/expressions"
+	"github.com/dumpload/nuclei/v2/pkg/protocols/common/fuzz"
+	"github.com/dumpload/nuclei/v2/pkg/protocols/common/generators"
+	"github.com/dumpload/nuclei/v2/pkg/protocols/http/httpclientpool"
+	httputil "github.com/dumpload/nuclei/v2/pkg/protocols/utils/http"
+	"github.com/dumpload/rawhttp"
+	"github.com/dumpload/retryablehttp-go"
+	fileutil "github.com/dumpload/utils/file"
 )
 
 // Request contains a http request to be made from a template
@@ -169,7 +169,7 @@ type Request struct {
 	// description: |
 	//   Unsafe specifies whether to use rawhttp engine for sending Non RFC-Compliant requests.
 	//
-	//   This uses the [rawhttp](https://github.com/projectdiscovery/rawhttp) engine to achieve complete
+	//   This uses the [rawhttp](https://github.com/dumpload/rawhttp) engine to achieve complete
 	//   control over the request, with no normalization performed by the client.
 	Unsafe bool `yaml:"unsafe,omitempty" json:"unsafe,omitempty" jsonschema:"title=use rawhttp non-strict-rfc client,description=Unsafe specifies whether to use rawhttp engine for sending Non RFC-Compliant requests"`
 	// description: |
@@ -181,7 +181,7 @@ type Request struct {
 	//   ReqCondition automatically assigns numbers to requests and preserves their history.
 	//
 	//   This allows matching on them later for multi-request conditions.
-	// Deprecated: request condition will be detected automatically (https://github.com/projectdiscovery/nuclei/issues/2393)
+	// Deprecated: request condition will be detected automatically (https://github.com/dumpload/nuclei/issues/2393)
 	ReqCondition bool `yaml:"req-condition,omitempty" json:"req-condition,omitempty" jsonschema:"title=preserve request history,description=Automatically assigns numbers to requests and preserves their history"`
 	// description: |
 	//   StopAtFirstMatch stops the execution of the requests and template as soon as a match is found.

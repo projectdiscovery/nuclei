@@ -6,13 +6,13 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/dumpload/gologger"
+	"github.com/dumpload/nuclei/v2/pkg/catalog/config"
+	stringsutil "github.com/dumpload/utils/strings"
+	updateutils "github.com/dumpload/utils/update"
+	urlutil "github.com/dumpload/utils/url"
 	"github.com/logrusorgru/aurora"
 	"github.com/pkg/errors"
-	"github.com/projectdiscovery/gologger"
-	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/config"
-	stringsutil "github.com/projectdiscovery/utils/strings"
-	updateutils "github.com/projectdiscovery/utils/update"
-	urlutil "github.com/projectdiscovery/utils/url"
 )
 
 var deprecatedPathsCounter int

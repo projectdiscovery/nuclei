@@ -9,8 +9,8 @@ import (
 
 	"github.com/logrusorgru/aurora"
 
-	"github.com/projectdiscovery/nuclei/v2/pkg/testutils"
-	sliceutil "github.com/projectdiscovery/utils/slice"
+	"github.com/dumpload/nuclei/v2/pkg/testutils"
+	sliceutil "github.com/dumpload/utils/slice"
 )
 
 type TestCaseInfo struct {

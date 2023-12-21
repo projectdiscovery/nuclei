@@ -12,18 +12,18 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/projectdiscovery/goflags"
-	"github.com/projectdiscovery/gologger"
-	"github.com/projectdiscovery/gologger/levels"
-	"github.com/projectdiscovery/nuclei/v2/pkg/catalog"
-	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/disk"
-	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
-	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/protocolinit"
-	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/protocolstate"
-	"github.com/projectdiscovery/nuclei/v2/pkg/templates"
-	"github.com/projectdiscovery/nuclei/v2/pkg/types"
-	"github.com/projectdiscovery/retryablehttp-go"
-	errorutil "github.com/projectdiscovery/utils/errors"
+	"github.com/dumpload/goflags"
+	"github.com/dumpload/gologger"
+	"github.com/dumpload/gologger/levels"
+	"github.com/dumpload/nuclei/v2/pkg/catalog"
+	"github.com/dumpload/nuclei/v2/pkg/catalog/disk"
+	"github.com/dumpload/nuclei/v2/pkg/protocols"
+	"github.com/dumpload/nuclei/v2/pkg/protocols/common/protocolinit"
+	"github.com/dumpload/nuclei/v2/pkg/protocols/common/protocolstate"
+	"github.com/dumpload/nuclei/v2/pkg/templates"
+	"github.com/dumpload/nuclei/v2/pkg/types"
+	"github.com/dumpload/retryablehttp-go"
+	errorutil "github.com/dumpload/utils/errors"
 	"gopkg.in/yaml.v3"
 )
 
@@ -231,7 +231,7 @@ func logErrMsg(path string, err error, debug bool, errFile *os.File) string {
 }
 
 // enhanceTemplateData enhances template data using templateman
-// ref: https://github.com/projectdiscovery/templateman/blob/main/templateman-rest-api/README.md#enhance-api
+// ref: https://github.com/dumpload/templateman/blob/main/templateman-rest-api/README.md#enhance-api
 func enhanceTemplate(data string) (string, bool, error) {
 	resp, err := retryablehttp.DefaultClient().Post(fmt.Sprintf("%s/enhance", tmBaseUrl), "application/x-yaml", strings.NewReader(data))
 	if err != nil {

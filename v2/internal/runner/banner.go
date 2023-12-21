@@ -3,9 +3,9 @@ package runner
 import (
 	"fmt"
 
-	"github.com/projectdiscovery/gologger"
-	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/config"
-	updateutils "github.com/projectdiscovery/utils/update"
+	"github.com/dumpload/gologger"
+	"github.com/dumpload/nuclei/v2/pkg/catalog/config"
+	updateutils "github.com/dumpload/utils/update"
 )
 
 var banner = fmt.Sprintf(`

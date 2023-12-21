@@ -7,10 +7,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/projectdiscovery/fastdialer/fastdialer"
-	"github.com/projectdiscovery/retryablehttp-go"
-	iputil "github.com/projectdiscovery/utils/ip"
-	stringsutil "github.com/projectdiscovery/utils/strings"
+	"github.com/dumpload/fastdialer/fastdialer"
+	"github.com/dumpload/retryablehttp-go"
+	iputil "github.com/dumpload/utils/ip"
+	stringsutil "github.com/dumpload/utils/strings"
 )
 
 var (

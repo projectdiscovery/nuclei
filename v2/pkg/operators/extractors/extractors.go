@@ -6,9 +6,9 @@ import (
 	"regexp"
 
 	"github.com/Knetic/govaluate"
+	"github.com/dumpload/gologger"
+	fileutil "github.com/dumpload/utils/file"
 	"github.com/itchyny/gojq"
-	"github.com/projectdiscovery/gologger"
-	fileutil "github.com/projectdiscovery/utils/file"
 )
 
 // Extractor is used to extract part of response using a regex.

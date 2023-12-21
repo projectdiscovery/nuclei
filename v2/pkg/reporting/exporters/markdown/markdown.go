@@ -6,13 +6,13 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/projectdiscovery/gologger"
+	"github.com/dumpload/gologger"
 
-	"github.com/projectdiscovery/nuclei/v2/pkg/output"
-	"github.com/projectdiscovery/nuclei/v2/pkg/reporting/exporters/markdown/util"
-	"github.com/projectdiscovery/nuclei/v2/pkg/reporting/format"
-	fileutil "github.com/projectdiscovery/utils/file"
-	stringsutil "github.com/projectdiscovery/utils/strings"
+	"github.com/dumpload/nuclei/v2/pkg/output"
+	"github.com/dumpload/nuclei/v2/pkg/reporting/exporters/markdown/util"
+	"github.com/dumpload/nuclei/v2/pkg/reporting/format"
+	fileutil "github.com/dumpload/utils/file"
+	stringsutil "github.com/dumpload/utils/strings"
 )
 
 const indexFileName = "index.md"

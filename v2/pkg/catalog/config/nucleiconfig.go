@@ -9,10 +9,10 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/projectdiscovery/gologger"
-	errorutil "github.com/projectdiscovery/utils/errors"
-	fileutil "github.com/projectdiscovery/utils/file"
-	folderutil "github.com/projectdiscovery/utils/folder"
+	"github.com/dumpload/gologger"
+	errorutil "github.com/dumpload/utils/errors"
+	fileutil "github.com/dumpload/utils/file"
+	folderutil "github.com/dumpload/utils/folder"
 )
 
 // DefaultConfig is the default nuclei configuration

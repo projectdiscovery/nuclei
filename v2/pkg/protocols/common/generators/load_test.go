@@ -5,8 +5,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/disk"
-	osutils "github.com/projectdiscovery/utils/os"
+	"github.com/dumpload/nuclei/v2/pkg/catalog/disk"
+	osutils "github.com/dumpload/utils/os"
 	"github.com/stretchr/testify/require"
 )
 

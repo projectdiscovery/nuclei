@@ -4,8 +4,8 @@ import (
 	"encoding/json"
 	"time"
 
-	"github.com/projectdiscovery/nuclei/v2/pkg/model/types/severity"
-	"github.com/projectdiscovery/nuclei/v2/pkg/templates/types"
+	"github.com/dumpload/nuclei/v2/pkg/model/types/severity"
+	"github.com/dumpload/nuclei/v2/pkg/templates/types"
 )
 
 // AddScanRequest is a nuclei scan input item.

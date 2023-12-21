@@ -13,11 +13,11 @@ import (
 	"golang.org/x/text/encoding/simplifiedchinese"
 	"golang.org/x/text/transform"
 
-	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/generators"
-	"github.com/projectdiscovery/nuclei/v2/pkg/types"
-	"github.com/projectdiscovery/rawhttp"
-	mapsutil "github.com/projectdiscovery/utils/maps"
-	stringsutil "github.com/projectdiscovery/utils/strings"
+	"github.com/dumpload/nuclei/v2/pkg/protocols/common/generators"
+	"github.com/dumpload/nuclei/v2/pkg/types"
+	"github.com/dumpload/rawhttp"
+	mapsutil "github.com/dumpload/utils/maps"
+	stringsutil "github.com/dumpload/utils/strings"
 )
 
 type redirectedResponse struct {

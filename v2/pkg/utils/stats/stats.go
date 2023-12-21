@@ -4,7 +4,7 @@ import (
 	"sync"
 	"sync/atomic"
 
-	"github.com/projectdiscovery/gologger"
+	"github.com/dumpload/gologger"
 )
 
 // Storage is a storage for storing statistics information

@@ -5,9 +5,9 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/projectdiscovery/nuclei/v2/pkg/model"
-	"github.com/projectdiscovery/nuclei/v2/pkg/model/types/severity"
-	"github.com/projectdiscovery/nuclei/v2/pkg/testutils"
+	"github.com/dumpload/nuclei/v2/pkg/model"
+	"github.com/dumpload/nuclei/v2/pkg/model/types/severity"
+	"github.com/dumpload/nuclei/v2/pkg/testutils"
 )
 
 func TestNetworkCompileMake(t *testing.T) {

@@ -7,12 +7,12 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/projectdiscovery/nuclei/v2/pkg/model"
-	"github.com/projectdiscovery/nuclei/v2/pkg/model/types/severity"
-	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/contextargs"
-	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/generators"
-	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/interactsh"
-	"github.com/projectdiscovery/nuclei/v2/pkg/testutils"
+	"github.com/dumpload/nuclei/v2/pkg/model"
+	"github.com/dumpload/nuclei/v2/pkg/model/types/severity"
+	"github.com/dumpload/nuclei/v2/pkg/protocols/common/contextargs"
+	"github.com/dumpload/nuclei/v2/pkg/protocols/common/generators"
+	"github.com/dumpload/nuclei/v2/pkg/protocols/common/interactsh"
+	"github.com/dumpload/nuclei/v2/pkg/testutils"
 )
 
 func TestMakeRequestFromModal(t *testing.T) {
@@ -96,7 +96,7 @@ func TestMakeRequestFromRawWithPayloads(t *testing.T) {
 		AttackType: generators.AttackTypeHolder{Value: generators.ClusterBombAttack},
 		Raw: []string{`GET /manager/html HTTP/1.1
 Host: {{Hostname}}
-User-Agent: Nuclei - Open-source project (github.com/projectdiscovery/nuclei)
+User-Agent: Nuclei - Open-source project (github.com/dumpload/nuclei)
 Connection: close
 Authorization: Basic {{username + ':' + password}}
 Accept-Encoding: gzip`},
@@ -137,7 +137,7 @@ func TestMakeRequestFromRawPayloadExpressions(t *testing.T) {
 		AttackType: generators.AttackTypeHolder{Value: generators.ClusterBombAttack},
 		Raw: []string{`GET /manager/html HTTP/1.1
 Host: {{Hostname}}
-User-Agent: Nuclei - Open-source project (github.com/projectdiscovery/nuclei)
+User-Agent: Nuclei - Open-source project (github.com/dumpload/nuclei)
 Connection: close
 Authorization: Basic {{base64(username + ':' + password)}}
 Accept-Encoding: gzip`},

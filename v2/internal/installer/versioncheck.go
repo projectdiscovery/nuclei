@@ -7,9 +7,9 @@ import (
 	"os"
 	"runtime"
 
-	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/config"
-	"github.com/projectdiscovery/retryablehttp-go"
-	updateutils "github.com/projectdiscovery/utils/update"
+	"github.com/dumpload/nuclei/v2/pkg/catalog/config"
+	"github.com/dumpload/retryablehttp-go"
+	updateutils "github.com/dumpload/utils/update"
 )
 
 const (

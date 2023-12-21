@@ -1,9 +1,9 @@
 package inputs
 
 import (
-	"github.com/projectdiscovery/httpx/common/httpx"
-	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/contextargs"
-	"github.com/projectdiscovery/nuclei/v2/pkg/utils"
+	"github.com/dumpload/httpx/common/httpx"
+	"github.com/dumpload/nuclei/v2/pkg/protocols/common/contextargs"
+	"github.com/dumpload/nuclei/v2/pkg/utils"
 )
 
 type SimpleInputProvider struct {

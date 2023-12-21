@@ -10,7 +10,7 @@
 //
 //	"Amazon Web Services,Jenkins,Atlassian Jira" -> "amazon,web,services,jenkins,atlassian,jira".
 //
-// Wappalyzergo (https://github.com/projectdiscovery/wappalyzergo) is used for wappalyzer tech
+// Wappalyzergo (https://github.com/dumpload/wappalyzergo) is used for wappalyzer tech
 // detection.
 //
 // The logic is very simple and can be further improved to increase the coverage of

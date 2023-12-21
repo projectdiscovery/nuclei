@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/config"
+	"github.com/dumpload/nuclei/v2/pkg/catalog/config"
 )
 
 const DDMMYYYYhhmmss = "2006-01-02 15:04:05"

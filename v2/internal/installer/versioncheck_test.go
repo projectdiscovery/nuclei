@@ -3,8 +3,8 @@ package installer
 import (
 	"testing"
 
-	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/config"
-	"github.com/projectdiscovery/utils/generic"
+	"github.com/dumpload/nuclei/v2/pkg/catalog/config"
+	"github.com/dumpload/utils/generic"
 	"github.com/stretchr/testify/require"
 )
 

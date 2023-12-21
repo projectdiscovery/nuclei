@@ -4,13 +4,13 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/dumpload/gologger"
+	"github.com/dumpload/hmap/store/hybrid"
+	"github.com/dumpload/httpx/common/httpx"
+	"github.com/dumpload/nuclei/v2/pkg/protocols/common/contextargs"
+	"github.com/dumpload/nuclei/v2/pkg/utils"
+	stringsutil "github.com/dumpload/utils/strings"
 	"github.com/pkg/errors"
-	"github.com/projectdiscovery/gologger"
-	"github.com/projectdiscovery/hmap/store/hybrid"
-	"github.com/projectdiscovery/httpx/common/httpx"
-	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/contextargs"
-	"github.com/projectdiscovery/nuclei/v2/pkg/utils"
-	stringsutil "github.com/projectdiscovery/utils/strings"
 	"github.com/remeh/sizedwaitgroup"
 )
 

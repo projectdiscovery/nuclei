@@ -8,11 +8,11 @@ import (
 	"github.com/andygrunwald/go-jira"
 	"github.com/trivago/tgo/tcontainer"
 
-	"github.com/projectdiscovery/gologger"
-	"github.com/projectdiscovery/nuclei/v2/pkg/output"
-	"github.com/projectdiscovery/nuclei/v2/pkg/reporting/exporters/markdown/util"
-	"github.com/projectdiscovery/nuclei/v2/pkg/reporting/format"
-	"github.com/projectdiscovery/retryablehttp-go"
+	"github.com/dumpload/gologger"
+	"github.com/dumpload/nuclei/v2/pkg/output"
+	"github.com/dumpload/nuclei/v2/pkg/reporting/exporters/markdown/util"
+	"github.com/dumpload/nuclei/v2/pkg/reporting/format"
+	"github.com/dumpload/retryablehttp-go"
 )
 
 type Formatter struct {

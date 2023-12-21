@@ -3,7 +3,7 @@ package input
 import (
 	"testing"
 
-	"github.com/projectdiscovery/hmap/store/hybrid"
+	"github.com/dumpload/hmap/store/hybrid"
 	"github.com/stretchr/testify/require"
 )
 

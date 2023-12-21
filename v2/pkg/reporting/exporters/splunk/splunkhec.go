@@ -11,10 +11,10 @@ import (
 	"time"
 
 	"github.com/corpix/uarand"
+	"github.com/dumpload/nuclei/v2/pkg/output"
+	"github.com/dumpload/nuclei/v2/pkg/protocols/common/protocolstate"
+	"github.com/dumpload/retryablehttp-go"
 	"github.com/pkg/errors"
-	"github.com/projectdiscovery/nuclei/v2/pkg/output"
-	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/protocolstate"
-	"github.com/projectdiscovery/retryablehttp-go"
 )
 
 // Options contains necessary options required for splunk communication

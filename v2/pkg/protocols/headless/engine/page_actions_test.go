@@ -17,11 +17,11 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/contextargs"
-	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/protocolstate"
-	"github.com/projectdiscovery/nuclei/v2/pkg/testutils/testheadless"
-	"github.com/projectdiscovery/nuclei/v2/pkg/types"
-	stringsutil "github.com/projectdiscovery/utils/strings"
+	"github.com/dumpload/nuclei/v2/pkg/protocols/common/contextargs"
+	"github.com/dumpload/nuclei/v2/pkg/protocols/common/protocolstate"
+	"github.com/dumpload/nuclei/v2/pkg/testutils/testheadless"
+	"github.com/dumpload/nuclei/v2/pkg/types"
+	stringsutil "github.com/dumpload/utils/strings"
 )
 
 func TestActionNavigate(t *testing.T) {

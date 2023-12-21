@@ -5,12 +5,12 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/disk"
-	"github.com/projectdiscovery/nuclei/v2/pkg/catalog/loader/filter"
-	"github.com/projectdiscovery/nuclei/v2/pkg/model"
-	"github.com/projectdiscovery/nuclei/v2/pkg/model/types/severity"
-	"github.com/projectdiscovery/nuclei/v2/pkg/model/types/stringslice"
-	"github.com/projectdiscovery/nuclei/v2/pkg/templates"
+	"github.com/dumpload/nuclei/v2/pkg/catalog/disk"
+	"github.com/dumpload/nuclei/v2/pkg/catalog/loader/filter"
+	"github.com/dumpload/nuclei/v2/pkg/model"
+	"github.com/dumpload/nuclei/v2/pkg/model/types/severity"
+	"github.com/dumpload/nuclei/v2/pkg/model/types/stringslice"
+	"github.com/dumpload/nuclei/v2/pkg/templates"
 	"github.com/stretchr/testify/require"
 )
 

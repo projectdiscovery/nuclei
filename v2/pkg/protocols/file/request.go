@@ -13,16 +13,16 @@ import (
 	"github.com/pkg/errors"
 	"github.com/remeh/sizedwaitgroup"
 
-	"github.com/projectdiscovery/gologger"
-	"github.com/projectdiscovery/nuclei/v2/pkg/operators"
-	"github.com/projectdiscovery/nuclei/v2/pkg/operators/matchers"
-	"github.com/projectdiscovery/nuclei/v2/pkg/output"
-	"github.com/projectdiscovery/nuclei/v2/pkg/protocols"
-	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/contextargs"
-	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/helpers/eventcreator"
-	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/helpers/responsehighlighter"
-	templateTypes "github.com/projectdiscovery/nuclei/v2/pkg/templates/types"
-	sliceutil "github.com/projectdiscovery/utils/slice"
+	"github.com/dumpload/gologger"
+	"github.com/dumpload/nuclei/v2/pkg/operators"
+	"github.com/dumpload/nuclei/v2/pkg/operators/matchers"
+	"github.com/dumpload/nuclei/v2/pkg/output"
+	"github.com/dumpload/nuclei/v2/pkg/protocols"
+	"github.com/dumpload/nuclei/v2/pkg/protocols/common/contextargs"
+	"github.com/dumpload/nuclei/v2/pkg/protocols/common/helpers/eventcreator"
+	"github.com/dumpload/nuclei/v2/pkg/protocols/common/helpers/responsehighlighter"
+	templateTypes "github.com/dumpload/nuclei/v2/pkg/templates/types"
+	sliceutil "github.com/dumpload/utils/slice"
 )
 
 var _ protocols.Request = &Request{}

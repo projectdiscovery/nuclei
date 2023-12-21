@@ -6,7 +6,7 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/projectdiscovery/hmap/store/hybrid"
+	"github.com/dumpload/hmap/store/hybrid"
 )
 
 var (

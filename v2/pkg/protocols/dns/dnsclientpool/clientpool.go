@@ -5,9 +5,9 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/dumpload/nuclei/v2/pkg/types"
+	"github.com/dumpload/retryabledns"
 	"github.com/pkg/errors"
-	"github.com/projectdiscovery/nuclei/v2/pkg/types"
-	"github.com/projectdiscovery/retryabledns"
 )
 
 var (

@@ -17,16 +17,16 @@ import (
 	jsoniter "github.com/json-iterator/go"
 	"github.com/logrusorgru/aurora"
 
-	"github.com/projectdiscovery/gologger"
-	"github.com/projectdiscovery/interactsh/pkg/server"
-	"github.com/projectdiscovery/nuclei/v2/internal/colorizer"
-	"github.com/projectdiscovery/nuclei/v2/pkg/model"
-	"github.com/projectdiscovery/nuclei/v2/pkg/model/types/severity"
-	"github.com/projectdiscovery/nuclei/v2/pkg/operators"
-	"github.com/projectdiscovery/nuclei/v2/pkg/types"
-	"github.com/projectdiscovery/nuclei/v2/pkg/utils"
-	fileutil "github.com/projectdiscovery/utils/file"
-	osutils "github.com/projectdiscovery/utils/os"
+	"github.com/dumpload/gologger"
+	"github.com/dumpload/interactsh/pkg/server"
+	"github.com/dumpload/nuclei/v2/internal/colorizer"
+	"github.com/dumpload/nuclei/v2/pkg/model"
+	"github.com/dumpload/nuclei/v2/pkg/model/types/severity"
+	"github.com/dumpload/nuclei/v2/pkg/operators"
+	"github.com/dumpload/nuclei/v2/pkg/types"
+	"github.com/dumpload/nuclei/v2/pkg/utils"
+	fileutil "github.com/dumpload/utils/file"
+	osutils "github.com/dumpload/utils/os"
 )
 
 // Writer is an interface which writes output to somewhere for nuclei events.

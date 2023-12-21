@@ -5,8 +5,8 @@ import (
 	"path/filepath"
 	"strings"
 
+	pkgTypes "github.com/dumpload/nuclei/v2/pkg/types"
 	"github.com/pkg/errors"
-	pkgTypes "github.com/projectdiscovery/nuclei/v2/pkg/types"
 	"github.com/spf13/cast"
 )
 

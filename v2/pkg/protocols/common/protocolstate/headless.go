@@ -3,12 +3,12 @@ package protocolstate
 import (
 	"strings"
 
+	"github.com/dumpload/networkpolicy"
+	errorutil "github.com/dumpload/utils/errors"
+	stringsutil "github.com/dumpload/utils/strings"
+	urlutil "github.com/dumpload/utils/url"
 	"github.com/go-rod/rod"
 	"github.com/go-rod/rod/lib/proto"
-	"github.com/projectdiscovery/networkpolicy"
-	errorutil "github.com/projectdiscovery/utils/errors"
-	stringsutil "github.com/projectdiscovery/utils/strings"
-	urlutil "github.com/projectdiscovery/utils/url"
 	"go.uber.org/multierr"
 )
 

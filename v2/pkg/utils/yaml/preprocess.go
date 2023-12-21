@@ -7,9 +7,9 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/projectdiscovery/nuclei/v2/pkg/templates/extensions"
-	fileutil "github.com/projectdiscovery/utils/file"
-	stringsutil "github.com/projectdiscovery/utils/strings"
+	"github.com/dumpload/nuclei/v2/pkg/templates/extensions"
+	fileutil "github.com/dumpload/utils/file"
+	stringsutil "github.com/dumpload/utils/strings"
 )
 
 var reImportsPattern = regexp.MustCompile(`(?m)# !include:(.+.yaml)`)

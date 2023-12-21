@@ -16,15 +16,15 @@ import (
 	"golang.org/x/net/proxy"
 	"golang.org/x/net/publicsuffix"
 
-	"github.com/projectdiscovery/fastdialer/fastdialer"
-	"github.com/projectdiscovery/fastdialer/fastdialer/ja3/impersonate"
-	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/protocolstate"
-	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/utils"
-	"github.com/projectdiscovery/nuclei/v2/pkg/types"
-	"github.com/projectdiscovery/nuclei/v2/pkg/types/scanstrategy"
-	"github.com/projectdiscovery/rawhttp"
-	"github.com/projectdiscovery/retryablehttp-go"
-	mapsutil "github.com/projectdiscovery/utils/maps"
+	"github.com/dumpload/fastdialer/fastdialer"
+	"github.com/dumpload/fastdialer/fastdialer/ja3/impersonate"
+	"github.com/dumpload/nuclei/v2/pkg/protocols/common/protocolstate"
+	"github.com/dumpload/nuclei/v2/pkg/protocols/utils"
+	"github.com/dumpload/nuclei/v2/pkg/types"
+	"github.com/dumpload/nuclei/v2/pkg/types/scanstrategy"
+	"github.com/dumpload/rawhttp"
+	"github.com/dumpload/retryablehttp-go"
+	mapsutil "github.com/dumpload/utils/maps"
 )
 
 var (

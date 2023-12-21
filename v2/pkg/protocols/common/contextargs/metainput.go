@@ -8,7 +8,7 @@ import (
 	jsoniter "github.com/json-iterator/go"
 )
 
-// MetaInput represents a target with metadata (TODO: replace with https://github.com/projectdiscovery/metainput)
+// MetaInput represents a target with metadata (TODO: replace with https://github.com/dumpload/metainput)
 type MetaInput struct {
 	// Input represent the target
 	Input string `json:"input,omitempty"`

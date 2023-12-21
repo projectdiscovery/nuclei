@@ -1,28 +1,28 @@
 package protocols
 
 import (
-	"github.com/projectdiscovery/ratelimit"
+	"github.com/dumpload/ratelimit"
 
 	"github.com/logrusorgru/aurora"
 
-	"github.com/projectdiscovery/nuclei/v2/pkg/catalog"
-	"github.com/projectdiscovery/nuclei/v2/pkg/input"
-	"github.com/projectdiscovery/nuclei/v2/pkg/model"
-	"github.com/projectdiscovery/nuclei/v2/pkg/operators"
-	"github.com/projectdiscovery/nuclei/v2/pkg/operators/extractors"
-	"github.com/projectdiscovery/nuclei/v2/pkg/operators/matchers"
-	"github.com/projectdiscovery/nuclei/v2/pkg/output"
-	"github.com/projectdiscovery/nuclei/v2/pkg/progress"
-	"github.com/projectdiscovery/nuclei/v2/pkg/projectfile"
-	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/contextargs"
-	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/hosterrorscache"
-	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/interactsh"
-	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/utils/excludematchers"
-	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/variables"
-	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/headless/engine"
-	"github.com/projectdiscovery/nuclei/v2/pkg/reporting"
-	templateTypes "github.com/projectdiscovery/nuclei/v2/pkg/templates/types"
-	"github.com/projectdiscovery/nuclei/v2/pkg/types"
+	"github.com/dumpload/nuclei/v2/pkg/catalog"
+	"github.com/dumpload/nuclei/v2/pkg/input"
+	"github.com/dumpload/nuclei/v2/pkg/model"
+	"github.com/dumpload/nuclei/v2/pkg/operators"
+	"github.com/dumpload/nuclei/v2/pkg/operators/extractors"
+	"github.com/dumpload/nuclei/v2/pkg/operators/matchers"
+	"github.com/dumpload/nuclei/v2/pkg/output"
+	"github.com/dumpload/nuclei/v2/pkg/progress"
+	"github.com/dumpload/nuclei/v2/pkg/projectfile"
+	"github.com/dumpload/nuclei/v2/pkg/protocols/common/contextargs"
+	"github.com/dumpload/nuclei/v2/pkg/protocols/common/hosterrorscache"
+	"github.com/dumpload/nuclei/v2/pkg/protocols/common/interactsh"
+	"github.com/dumpload/nuclei/v2/pkg/protocols/common/utils/excludematchers"
+	"github.com/dumpload/nuclei/v2/pkg/protocols/common/variables"
+	"github.com/dumpload/nuclei/v2/pkg/protocols/headless/engine"
+	"github.com/dumpload/nuclei/v2/pkg/reporting"
+	templateTypes "github.com/dumpload/nuclei/v2/pkg/templates/types"
+	"github.com/dumpload/nuclei/v2/pkg/types"
 )
 
 // Executer is an interface implemented any protocol based request executer.

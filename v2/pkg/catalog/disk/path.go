@@ -6,9 +6,9 @@ import (
 	"path/filepath"
 	"strings"
 
+	fileutil "github.com/dumpload/utils/file"
+	urlutil "github.com/dumpload/utils/url"
 	"github.com/pkg/errors"
-	fileutil "github.com/projectdiscovery/utils/file"
-	urlutil "github.com/projectdiscovery/utils/url"
 )
 
 // ResolvePath resolves the path to an absolute one in various ways.

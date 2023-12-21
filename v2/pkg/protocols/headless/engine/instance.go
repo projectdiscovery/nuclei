@@ -5,9 +5,9 @@ import (
 	"errors"
 	"time"
 
+	"github.com/dumpload/nuclei/v2/pkg/protocols/common/interactsh"
 	"github.com/go-rod/rod"
 	"github.com/go-rod/rod/lib/utils"
-	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/interactsh"
 )
 
 // Instance is an isolated browser instance opened for doing operations with it.

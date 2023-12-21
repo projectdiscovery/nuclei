@@ -1,10 +1,10 @@
 package writer
 
 import (
-	"github.com/projectdiscovery/gologger"
-	"github.com/projectdiscovery/nuclei/v2/pkg/output"
-	"github.com/projectdiscovery/nuclei/v2/pkg/progress"
-	"github.com/projectdiscovery/nuclei/v2/pkg/reporting"
+	"github.com/dumpload/gologger"
+	"github.com/dumpload/nuclei/v2/pkg/output"
+	"github.com/dumpload/nuclei/v2/pkg/progress"
+	"github.com/dumpload/nuclei/v2/pkg/reporting"
 )
 
 // WriteResult is a helper for writing results to the output

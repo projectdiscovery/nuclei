@@ -4,9 +4,9 @@ import (
 	"crypto/rand"
 	"net"
 
+	iputil "github.com/dumpload/utils/ip"
+	randutil "github.com/dumpload/utils/rand"
 	"github.com/pkg/errors"
-	iputil "github.com/projectdiscovery/utils/ip"
-	randutil "github.com/projectdiscovery/utils/rand"
 )
 
 const (

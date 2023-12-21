@@ -7,7 +7,7 @@ import (
 	"strings"
 	"unicode"
 
-	"github.com/projectdiscovery/gologger"
+	"github.com/dumpload/gologger"
 )
 
 // [0-9a-fA-F]{8} {2} 	- hexdump indexes (8 character hex value followed by two spaces)

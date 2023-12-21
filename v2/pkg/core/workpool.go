@@ -3,7 +3,7 @@ package core
 import (
 	"github.com/remeh/sizedwaitgroup"
 
-	"github.com/projectdiscovery/nuclei/v2/pkg/templates/types"
+	"github.com/dumpload/nuclei/v2/pkg/templates/types"
 )
 
 // WorkPool implements an execution pool for executing different

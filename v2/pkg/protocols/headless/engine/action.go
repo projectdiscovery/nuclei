@@ -19,7 +19,7 @@ type Action struct {
 	//
 	//   This can be used to execute code, for instance in browser
 	//   DOM using script action, and get the result in a variable
-	//   which can be matched upon by nuclei. An Example template [here](https://github.com/projectdiscovery/nuclei-templates/blob/main/headless/prototype-pollution-check.yaml).
+	//   which can be matched upon by nuclei. An Example template [here](https://github.com/dumpload/nuclei-templates/blob/main/headless/prototype-pollution-check.yaml).
 	Name string `yaml:"name,omitempty" json:"name,omitempty" jsonschema:"title=name for headless action,description=Name is the name assigned to the headless action"`
 	// description: |
 	//   Description is the optional description of the headless action

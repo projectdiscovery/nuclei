@@ -9,7 +9,7 @@ import (
 	"sync/atomic"
 
 	"github.com/bluele/gcache"
-	"github.com/projectdiscovery/gologger"
+	"github.com/dumpload/gologger"
 )
 
 // CacheInterface defines the signature of the hosterrorscache so that

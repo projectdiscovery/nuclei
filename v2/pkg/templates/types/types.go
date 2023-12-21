@@ -6,9 +6,9 @@ import (
 	"strings"
 
 	"github.com/alecthomas/jsonschema"
+	"github.com/dumpload/goflags"
+	"github.com/dumpload/nuclei/v2/pkg/model/types/stringslice"
 	"github.com/pkg/errors"
-	"github.com/projectdiscovery/goflags"
-	"github.com/projectdiscovery/nuclei/v2/pkg/model/types/stringslice"
 )
 
 // ProtocolType is the type of the request protocol specified

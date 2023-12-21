@@ -5,9 +5,9 @@ import (
 	"net/http/httputil"
 	"strings"
 
+	"github.com/dumpload/nuclei/v2/pkg/protocols/common/protocolstate"
 	"github.com/go-rod/rod"
 	"github.com/go-rod/rod/lib/proto"
-	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/protocolstate"
 )
 
 // routingRuleHandler handles proxy rule for actions related to request/response modification

@@ -17,13 +17,13 @@ import (
 	"github.com/julienschmidt/httprouter"
 	"gopkg.in/yaml.v2"
 
-	"github.com/projectdiscovery/nuclei/v2/pkg/testutils"
-	"github.com/projectdiscovery/retryablehttp-go"
-	errorutil "github.com/projectdiscovery/utils/errors"
-	fileutil "github.com/projectdiscovery/utils/file"
-	logutil "github.com/projectdiscovery/utils/log"
-	sliceutil "github.com/projectdiscovery/utils/slice"
-	stringsutil "github.com/projectdiscovery/utils/strings"
+	"github.com/dumpload/nuclei/v2/pkg/testutils"
+	"github.com/dumpload/retryablehttp-go"
+	errorutil "github.com/dumpload/utils/errors"
+	fileutil "github.com/dumpload/utils/file"
+	logutil "github.com/dumpload/utils/log"
+	sliceutil "github.com/dumpload/utils/slice"
+	stringsutil "github.com/dumpload/utils/strings"
 )
 
 var httpTestcases = []TestCaseInfo{
