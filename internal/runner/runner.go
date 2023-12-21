@@ -7,6 +7,7 @@ import (
 	"net/http"
 	_ "net/http/pprof"
 	"os"
+	"path/filepath"
 	"reflect"
 	"strings"
 	"sync/atomic"
@@ -16,6 +17,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/installer"
 	uncoverlib "github.com/projectdiscovery/uncover"
 	"github.com/projectdiscovery/utils/env"
+	fileutil "github.com/projectdiscovery/utils/file"
 	permissionutil "github.com/projectdiscovery/utils/permission"
 	updateutils "github.com/projectdiscovery/utils/update"
 
@@ -617,6 +619,12 @@ func (r *Runner) displayExecutionInfo(store *loader.Store) {
 
 // SaveResumeConfig to file
 func (r *Runner) SaveResumeConfig(path string) error {
+	dir := filepath.Dir(path)
+	if !fileutil.FolderExists(dir) {
+		if err := os.MkdirAll(dir, os.ModePerm); err != nil {
+			return err
+		}
+	}
 	resumeCfgClone := r.resumeCfg.Clone()
 	resumeCfgClone.ResumeFrom = resumeCfgClone.Current
 	data, _ := json.MarshalIndent(resumeCfgClone, "", "\t")
