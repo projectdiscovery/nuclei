@@ -87,7 +87,7 @@ func (request *Request) ExecuteWithResults(target *contextargs.Context, metadata
 	visitedAddresses := make(mapsutil.Map[string, struct{}])
 
 	if request.Port == "" {
-		// backwords compatibility or for other use cases
+		// backwards compatibility or for other use cases
 		// where port is not provided in template
 		if err := request.executeOnTarget(target, visitedAddresses, metadata, previous, callback); err != nil {
 			return err
