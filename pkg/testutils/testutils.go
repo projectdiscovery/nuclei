@@ -116,8 +116,8 @@ type MockOutputWriter struct {
 }
 
 // NewMockOutputWriter creates a new mock output writer
-func NewMockOutputWriter(omomitTemplate bool) *MockOutputWriter {
-	return &MockOutputWriter{aurora: aurora.NewAurora(false), omitTemplate: omomitTemplate}
+func NewMockOutputWriter(omitTemplate bool) *MockOutputWriter {
+	return &MockOutputWriter{aurora: aurora.NewAurora(false), omitTemplate: omitTemplate}
 }
 
 // Close closes the output writer interface
