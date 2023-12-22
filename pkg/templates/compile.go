@@ -31,7 +31,7 @@ var (
 	ErrCreateTemplateExecutor          = errors.New("cannot create template executer")
 	ErrIncompatibleWithOfflineMatching = errors.New("template can't be used for offline matching")
 	parsedTemplatesCache               *cache.Templates
-	// track how many templates are verfied and by which signer
+	// track how many templates are verified and by which signer
 	SignatureStats = map[string]*atomic.Uint64{}
 )
 
