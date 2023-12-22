@@ -1737,8 +1737,8 @@ func init() {
 	JAVASCRIPTRequestDoc.Fields[7].Name = "threads"
 	JAVASCRIPTRequestDoc.Fields[7].Type = "int"
 	JAVASCRIPTRequestDoc.Fields[7].Note = ""
-	JAVASCRIPTRequestDoc.Fields[7].Description = "Payload concurreny i.e threads for sending requests."
-	JAVASCRIPTRequestDoc.Fields[7].Comments[encoder.LineComment] = "Payload concurreny i.e threads for sending requests."
+	JAVASCRIPTRequestDoc.Fields[7].Description = "Payload concurrency i.e threads for sending requests."
+	JAVASCRIPTRequestDoc.Fields[7].Comments[encoder.LineComment] = "Payload concurrency i.e threads for sending requests."
 
 	JAVASCRIPTRequestDoc.Fields[7].AddExample("Send requests using 10 concurrent threads", 10)
 	JAVASCRIPTRequestDoc.Fields[8].Name = "payloads"
