@@ -29,7 +29,7 @@ jobs:
           go clean -modcache
           go mod tidy
 
-      # Max GH exection time 6H => timeout after that
+      # Max GH execution time 6H => timeout after that
       - name: Running performance with big list
         run: go run -race . -l ../functional-test/targets-150.txt
         working-directory: cmd/nuclei/
