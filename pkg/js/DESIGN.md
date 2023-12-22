@@ -12,7 +12,7 @@ compiler contains abstracted logic for compiling and executing javascript code. 
 
 ## [devtools](./devtools/README.md)
 
-devtools contains development related tools to automate booring tasks like generating bindings, adding jsdoc comments, generating api reference etc.
+devtools contains development related tools to automate boring tasks like generating bindings, adding jsdoc comments, generating api reference etc.
 
 ## [generated](./generated/README.md)
 

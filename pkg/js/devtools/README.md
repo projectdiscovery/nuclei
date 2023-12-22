@@ -1,6 +1,6 @@
 ## devtools
 
-devtools contains tools and scripts to automate booring tasks related to javascript layer/ packages.
+devtools contains tools and scripts to automate boring tasks related to javascript layer/ packages.
 
 ### bindgen
 

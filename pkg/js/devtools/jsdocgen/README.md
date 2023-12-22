@@ -113,4 +113,4 @@ Now we can see the output is much more readable and make sense.
 
 ## Note:
 
-jsdocgen is not perfect and it is not supposed to be, it is intended to **almost** automate boooring stuff but will always require some manual intervention to make it perfect.
+jsdocgen is not perfect and it is not supposed to be, it is intended to **almost** automate boring stuff but will always require some manual intervention to make it perfect.
