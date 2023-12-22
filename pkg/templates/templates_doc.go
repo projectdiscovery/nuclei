@@ -1136,7 +1136,7 @@ func init() {
 	NETWORKRequestDoc.Fields[5].Name = "port"
 	NETWORKRequestDoc.Fields[5].Type = "string"
 	NETWORKRequestDoc.Fields[5].Note = ""
-	NETWORKRequestDoc.Fields[5].Description = "description: |\n   Port is the port to send network requests to. this acts as default port but is overriden if target/input contains\n non-http(s) ports like 80,8080,8081 etc"
+	NETWORKRequestDoc.Fields[5].Description = "description: |\n   Port is the port to send network requests to. this acts as default port but is overridden if target/input contains\n non-http(s) ports like 80,8080,8081 etc"
 	NETWORKRequestDoc.Fields[5].Comments[encoder.LineComment] = " description: |"
 	NETWORKRequestDoc.Fields[6].Name = "exclude-ports"
 	NETWORKRequestDoc.Fields[6].Type = "string"
