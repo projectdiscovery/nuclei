@@ -595,7 +595,7 @@ func testHeadless(t *testing.T, actions []*Action, timeout time.Duration, handle
 	require.Nil(t, err)
 
 	lfa := getBoolFromEnv("LOCAL_FILE_ACCESS", true)
-	rna := getBoolFromEnv("RESTRICED_LOCAL_NETWORK_ACCESS", false)
+	rna := getBoolFromEnv("RESTRICTED_LOCAL_NETWORK_ACCESS", false)
 
 	extractedData, page, err := instance.Run(input, actions, nil, &Options{Timeout: timeout, Options: &types.Options{AllowLocalFileAccess: lfa, RestrictLocalNetworkAccess: rna}}) // allow file access in test
 	assert(page, err, extractedData)
