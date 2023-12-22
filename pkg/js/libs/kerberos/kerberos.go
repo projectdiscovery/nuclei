@@ -57,7 +57,7 @@ func buildKrb5Template(realm, domainController string) string {
 	return builder.String()
 }
 
-func newKerbrosEnumUserOpts(domain, domainController string) (*kerberosEnumUserOpts, error) {
+func newKerberosEnumUserOpts(domain, domainController string) (*kerberosEnumUserOpts, error) {
 	realm := strings.ToUpper(domain)
 	configstring := buildKrb5Template(realm, domainController)
 	Config, err := kconfig.NewFromString(configstring)
@@ -92,7 +92,7 @@ func (c *KerberosClient) EnumerateUser(domain, controller string, username strin
 		return resp, protocolstate.ErrHostDenied.Msgf(domain)
 	}
 
-	opts, err := newKerbrosEnumUserOpts(domain, controller)
+	opts, err := newKerberosEnumUserOpts(domain, controller)
 	if err != nil {
 		return resp, err
 	}
