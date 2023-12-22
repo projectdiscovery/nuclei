@@ -42,4 +42,4 @@ adding these 3 statements takes care of all logic related to multi protocol exec
 ### Exceptions
 - statements 1 & 2 are intentionally skipped in `file` protocol to avoid redundant data
   - file/dir input paths don't contain variables or are used in path (yet) 
-  - since files are processed by scanning each line. adding statement 2 will unintenionally load all file(s) data
+  - since files are processed by scanning each line. adding statement 2 will unintentionally load all file(s) data
