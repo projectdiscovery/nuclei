@@ -94,7 +94,7 @@ module.exports = {
 2. All Function/Class/Method body should be empty with comment 'implemented in go'
 3. ALL MODULE IMPORT PATHS SHOULD BE 'nuclei/<module name>'
 4. ALWAYS replace '[]byte' with Uint8Array and treat as equivalent
-5. IF AND ONLY IF a function returns unknown objects (ex: LDAPResponse etc) only then create a @typedef and its respecitve declaration using const <name> = {}
+5. IF AND ONLY IF a function returns unknown objects (ex: LDAPResponse etc) only then create a @typedef and its respective declaration using const <name> = {}
 6. DONOT create a typedef for built in and known types like string,int,float,[]byte,bool etc
 7. JsDOC comments **must** always start with /** and end with */ and each line should start with * (star)
 --- end instructions ---
