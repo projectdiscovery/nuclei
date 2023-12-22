@@ -344,7 +344,7 @@ func (request *Request) ExecuteWithResults(target *contextargs.Context, dynamicV
 				// Review: should we log error here?
 				// it is technically not error as it is expected to fail
 				// gologger.Warning().Msgf("Could not execute request: %s\n", err)
-				// do not return even if error occured
+				// do not return even if error occurred
 			}
 			// If this was a match, and we want to stop at first match, skip all further requests.
 			shouldStopAtFirstMatch := request.options.Options.StopAtFirstMatch || request.StopAtFirstMatch
@@ -392,7 +392,7 @@ func (request *Request) executeRequestParallel(ctxParent context.Context, hostPo
 					// Review: should we log error here?
 					// it is technically not error as it is expected to fail
 					// gologger.Warning().Msgf("Could not execute request: %s\n", err)
-					// do not return even if error occured
+					// do not return even if error occurred
 				}
 				// If this was a match, and we want to stop at first match, skip all further requests.
 
