@@ -198,7 +198,7 @@ func (h *nonExistentWorkflowList) Execute(nonExistingWorkflowList string) error 
 
 type loadTemplateWithID struct{}
 
-func (h *loadTemplateWithID) Execute(nooop string) error {
+func (h *loadTemplateWithID) Execute(noop string) error {
 	results, err := testutils.RunNucleiBareArgsAndGetResults(debug, nil, "-target", "scanme.sh", "-id", "self-signed-ssl")
 	if err != nil {
 		return errorutil.NewWithErr(err).Msgf("failed to load template with id")
