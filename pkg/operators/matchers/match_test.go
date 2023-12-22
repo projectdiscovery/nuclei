@@ -206,6 +206,6 @@ func TestMatcher_MatchXPath_XML(t *testing.T) {
 	require.False(t, isMatched, "Invalid xpath did not return false")
 
 	// invalid xml
-	isMatched = m.MatchXPath("<h1> not right <q id=2/>notvalid")
+	isMatched = m.MatchXPath("<h1> not right <q id=2/>invalid")
 	require.False(t, isMatched, "Invalid xpath did not return false")
 }
