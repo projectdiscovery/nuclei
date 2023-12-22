@@ -114,7 +114,7 @@ To better understand orchestration we can try to build a template for vhost enum
 
 **for basic vhost enumeration a template should** 
 - do a PTR lookup for given ip
-- get SSL ceritificate for given ip (i.e tls-grab)
+- get SSL certificate for given ip (i.e tls-grab)
   - extract subject_cn from certificate
   - extract subject_alt_names(SAN) from certificate
   - filter out wildcard prefix from above values
