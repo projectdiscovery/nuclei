@@ -24,7 +24,7 @@ func (f *FlowExecutor) requestExecutor(reqMap mapsutil.Map[string, protocols.Req
 		variableMap := f.options.Variables.Evaluate(f.options.GetTemplateCtx(f.input.MetaInput).GetAll())
 		f.options.GetTemplateCtx(f.input.MetaInput).Merge(variableMap) // merge all variables into template context
 
-		// to avoid polling update template variables everytime we execute a protocol
+		// to avoid polling update template variables every time we execute a protocol
 		var m map[string]interface{} = f.options.GetTemplateCtx(f.input.MetaInput).GetAll()
 		_ = f.jsVM.Set("template", m)
 	}()

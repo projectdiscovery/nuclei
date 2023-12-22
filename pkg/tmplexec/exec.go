@@ -137,7 +137,7 @@ func (e *TemplateExecuter) Execute(ctx *scan.ScanContext) (bool, error) {
 	// and map , wg and other types earlier we tried to use (compile once and run multiple times)
 	// but it is causing lot of panic and nil pointer dereference issues
 	// so in compile step earlier we compile it to validate javascript syntax and other things
-	// and while executing we create new instance of flow executor everytime
+	// and while executing we create new instance of flow executor every time
 	if e.options.Flow != "" {
 		flowexec := flow.NewFlowExecutor(e.requests, ctx.Input, e.options, results)
 		if err := flowexec.Compile(); err != nil {
