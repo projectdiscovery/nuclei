@@ -64,7 +64,7 @@ class TestClass {
 };
 
 /**
- * @typdef {object} Testcases
+ * @typedef {object} Testcases
  * @description Testcases is a object containing all the tests.
  */
  const Testcases = {};
