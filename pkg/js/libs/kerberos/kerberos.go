@@ -97,6 +97,7 @@ func (c *KerberosClient) EnumerateUser(domain, controller string, username strin
 		return resp, err
 	}
 	cl := kclient.NewWithPassword(username, opts.realm, "foobar", opts.config, kclient.DisablePAFXFAST(true))
+	defer cl.Destroy()
 
 	req, err := messages.NewASReqForTGT(cl.Credentials.Domain(), cl.Config, cl.Credentials.CName())
 	if err != nil {
@@ -162,6 +163,7 @@ func (c *KerberosClient) GetServiceTicket(domain, controller string, username, p
 		return tgs, err
 	}
 	cl := kclient.NewWithPassword(username, opts.realm, password, opts.config, kclient.DisablePAFXFAST(true))
+	defer cl.Destroy()
 
 	ticket, _, err := cl.GetServiceTicket(spn)
 	if err != nil {
