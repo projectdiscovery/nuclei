@@ -140,7 +140,7 @@ func (e *NucleiEngine) ParseTemplate(data []byte) (*templates.Template, error) {
 	return templates.ParseTemplateFromReader(bytes.NewReader(data), nil, e.executerOpts)
 }
 
-// SignTemplate signs the tempalate using given signer
+// SignTemplate signs the template using given signer
 func (e *NucleiEngine) SignTemplate(tmplSigner *signer.TemplateSigner, data []byte) ([]byte, error) {
 	tmpl, err := e.ParseTemplate(data)
 	if err != nil {

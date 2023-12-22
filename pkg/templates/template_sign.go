@@ -55,7 +55,7 @@ func VerifyTemplateSignature(templatePath string) (bool, error) {
 	return template.Verified, nil
 }
 
-// SignTemplate signs the tempalate using custom signer
+// SignTemplate signs the template using custom signer
 func SignTemplate(templateSigner *signer.TemplateSigner, templatePath string) error {
 	// sign templates requires code files such as javascript bash command to be included
 	// in template hence we first load template and append such resolved file references to content
