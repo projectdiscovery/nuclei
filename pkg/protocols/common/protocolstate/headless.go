@@ -12,7 +12,7 @@ import (
 	"go.uber.org/multierr"
 )
 
-// initalize state of headless protocol
+// initialize state of headless protocol
 
 var (
 	ErrURLDenied         = errorutil.NewWithFmt("headless: url %v dropped by rule: %v")
