@@ -49,7 +49,7 @@
 #  token: test-token
 #  # project-name is the name of the project.
 #  project-name: test-project-name
-#  # issue-type is the name of the created issue type (case sensitive)
+#  # issue-type is the name of the created issue type (case-sensitive)
 #  issue-type: Bug
 #  # SeverityAsLabel (optional) sends the severity as the label of the created issue
 #  # User custom fields for Jira Cloud instead
