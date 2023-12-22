@@ -100,7 +100,7 @@ func (m *MultiProtocol) ExecuteWithResults(ctx *scan.ScanContext) error {
 	// Review: how to handle events of multiple protocols in a single template
 	// currently the outer callback is only executed once (for the last protocol in queue)
 	// due to workflow logic at https://github.com/projectdiscovery/nuclei/blob/main/pkg/protocols/common/executer/executem.go#L150
-	// this causes addition of duplicated / unncessary variables with prefix template_id_all_variables
+	// this causes addition of duplicated / unnecessary variables with prefix template_id_all_variables
 	ctx.LogEvent(finalProtoEvent)
 
 	return nil
