@@ -45,7 +45,7 @@ type TemplateFilters struct {
 	ExcludeSeverities    string   // filter by excluding severities (accepts CSV values of info, low, medium, high, critical)
 	ProtocolTypes        string   // filter by protocol types
 	ExcludeProtocolTypes string   // filter by excluding protocol types
-	Authors              []string // fiter by author
+	Authors              []string // filter by author
 	Tags                 []string // filter by tags present in template
 	ExcludeTags          []string // filter by excluding tags present in template
 	IncludeTags          []string // filter by including tags present in template
