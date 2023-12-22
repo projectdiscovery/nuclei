@@ -12,7 +12,7 @@ import (
 	"os"
 	"strings"
 
-	filutil "github.com/projectdiscovery/utils/file"
+	fileutil "github.com/projectdiscovery/utils/file"
 	"github.com/sashabaranov/go-openai"
 )
 
@@ -65,7 +65,7 @@ func main() {
 	if key != "" {
 		key = finalKey
 	}
-	if keyfile != "" && filutil.FileExists(keyfile) {
+	if keyfile != "" && fileutil.FileExists(keyfile) {
 		data, err := os.ReadFile(keyfile)
 		if err != nil {
 			log.Fatal(err)
