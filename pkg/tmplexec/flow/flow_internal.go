@@ -83,7 +83,7 @@ func (f *FlowExecutor) getProtoRequestCallback(req protocols.Request, matcherSta
 			f.results.CompareAndSwap(false, true)
 			f.lastEvent = result
 			// export dynamic values from operators (i.e internal:true)
-			// add add it to template context
+			// add it to template context
 			// this is a conflicting behaviour with iterate-all
 			if result.HasOperatorResult() {
 				// this is to handle case where there is any operator result (matcher or extractor)
