@@ -13,7 +13,7 @@ http:
         GET /?x=aaa&y=bbb HTTP/1.1
         Host: {{Hostname}}
         Origin: https://example.com
-        X-Forwared-For: 1337
+        X-Forwarded-For: 1337
         Cookie: z=aaa; bb=aaa
         User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_4) AppleWebKit/537.36 (KHTML, like Gecko)
         Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8
@@ -28,7 +28,7 @@ http:
       - part: headers
         type: replace
         mode: multiple
-        keys: ["Origin", "X-Forwared-For"]
+        keys: ["Origin", "X-Forwarded-For"]
         fuzz:
           - "{{reflection}}"
 

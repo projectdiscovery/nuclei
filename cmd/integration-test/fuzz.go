@@ -178,7 +178,7 @@ func (h *FuzzHeaderMultiple) Execute(filePath string) error {
 	router := httprouter.New()
 	router.GET("/", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 		host1 := r.Header.Get("Origin")
-		host2 := r.Header.Get("X-Forwared-For")
+		host2 := r.Header.Get("X-Forwarded-For")
 
 		fmt.Printf("host1: %s, host2: %s\n", host1, host2)
 		if host1 == host2 && host2 == "secret.local" {
