@@ -137,7 +137,7 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 				highlightFormatter = "text"
 			}
 			var buff bytes.Buffer
-			_ = quick.Highlight(&buff, beautifyJavascript(request.Init), "javascript", highlightFormatter, "monokai")
+			_ = quick.Highlight(&buff, beautifyJavaScript(request.Init), "javascript", highlightFormatter, "monokai")
 			prettyPrint(request.TemplateID, buff.String())
 		}
 
@@ -280,7 +280,7 @@ func (request *Request) ExecuteWithResults(target *contextargs.Context, dynamicV
 	templateCtx.Merge(payloadValues)
 
 	if vardump.EnableVarDump {
-		gologger.Debug().Msgf("Javascript Protocol request variables: \n%s\n", vardump.DumpVariables(payloadValues))
+		gologger.Debug().Msgf("JavaScript Protocol request variables: \n%s\n", vardump.DumpVariables(payloadValues))
 	}
 
 	if request.PreCondition != "" {
@@ -293,7 +293,7 @@ func (request *Request) ExecuteWithResults(target *contextargs.Context, dynamicV
 				highlightFormatter = "text"
 			}
 			var buff bytes.Buffer
-			_ = quick.Highlight(&buff, beautifyJavascript(request.PreCondition), "javascript", highlightFormatter, "monokai")
+			_ = quick.Highlight(&buff, beautifyJavaScript(request.PreCondition), "javascript", highlightFormatter, "monokai")
 			prettyPrint(request.TemplateID, buff.String())
 		}
 
@@ -435,10 +435,10 @@ func (request *Request) executeRequestWithPayloads(hostPort string, input *conte
 	request.options.Progress.IncrementRequests()
 
 	requestOptions.Output.Request(requestOptions.TemplateID, hostPort, request.Type().String(), err)
-	gologger.Verbose().Msgf("[%s] Sent Javascript request to %s", request.options.TemplateID, hostPort)
+	gologger.Verbose().Msgf("[%s] Sent JavaScript request to %s", request.options.TemplateID, hostPort)
 
 	if requestOptions.Options.Debug || requestOptions.Options.DebugRequests || requestOptions.Options.StoreResponse {
-		msg := fmt.Sprintf("[%s] Dumped Javascript request for %s:\nVariables:\n %v", requestOptions.TemplateID, input.MetaInput.Input, vardump.DumpVariables(argsCopy.Args))
+		msg := fmt.Sprintf("[%s] Dumped JavaScript request for %s:\nVariables:\n %v", requestOptions.TemplateID, input.MetaInput.Input, vardump.DumpVariables(argsCopy.Args))
 
 		if requestOptions.Options.Debug || requestOptions.Options.DebugRequests {
 			gologger.Debug().Str("address", input.MetaInput.Input).Msg(msg)
@@ -447,7 +447,7 @@ func (request *Request) executeRequestWithPayloads(hostPort string, input *conte
 				highlightFormatter = "text"
 			}
 			var buff bytes.Buffer
-			_ = quick.Highlight(&buff, beautifyJavascript(request.Code), "javascript", highlightFormatter, "monokai")
+			_ = quick.Highlight(&buff, beautifyJavaScript(request.Code), "javascript", highlightFormatter, "monokai")
 			prettyPrint(request.TemplateID, buff.String())
 		}
 		if requestOptions.Options.StoreResponse {
@@ -463,7 +463,7 @@ func (request *Request) executeRequestWithPayloads(hostPort string, input *conte
 	for k, v := range results {
 		data[k] = v
 	}
-	data["request"] = beautifyJavascript(request.Code)
+	data["request"] = beautifyJavaScript(request.Code)
 	data["host"] = input.MetaInput.Input
 	data["matched"] = hostPort
 	data["template-path"] = requestOptions.TemplatePath
@@ -478,7 +478,7 @@ func (request *Request) executeRequestWithPayloads(hostPort string, input *conte
 	data = generators.MergeMaps(data, request.options.GetTemplateCtx(input.MetaInput).GetAll())
 
 	if requestOptions.Options.Debug || requestOptions.Options.DebugRequests || requestOptions.Options.StoreResponse {
-		msg := fmt.Sprintf("[%s] Dumped Javascript response for %s:\n%v", requestOptions.TemplateID, input.MetaInput.Input, vardump.DumpVariables(results))
+		msg := fmt.Sprintf("[%s] Dumped JavaScript response for %s:\n%v", requestOptions.TemplateID, input.MetaInput.Input, vardump.DumpVariables(results))
 		if requestOptions.Options.Debug || requestOptions.Options.DebugRequests {
 			gologger.Debug().Str("address", input.MetaInput.Input).Msg(msg)
 		}
@@ -559,7 +559,7 @@ mainLoop:
 // Definitions not having a name (generated on runtime) are prefixed & suffixed by <>.
 var RequestPartDefinitions = map[string]string{
 	"type":     "Type is the type of request made",
-	"response": "Javascript protocol result response",
+	"response": "JavaScript protocol result response",
 	"host":     "Host is the input to the template",
 	"matched":  "Matched is the input which was matched upon",
 }
@@ -598,7 +598,7 @@ func (request *Request) GetCompiledOperators() []*operators.Operators {
 
 // Type returns the type of the protocol request
 func (request *Request) Type() templateTypes.ProtocolType {
-	return templateTypes.JavascriptProtocol
+	return templateTypes.JavaScriptProtocol
 }
 
 func (request *Request) getPort() string {
@@ -646,7 +646,7 @@ func (request *Request) MakeResultEventItem(wrapped *output.InternalWrappedEvent
 	return data
 }
 
-func beautifyJavascript(code string) string {
+func beautifyJavaScript(code string) string {
 	opts := jsbeautifier.DefaultOptions()
 	beautified, err := jsbeautifier.Beautify(&code, opts)
 	if err != nil {
@@ -663,5 +663,5 @@ func prettyPrint(templateId string, buff string) {
 			final = append(final, "\t"+v)
 		}
 	}
-	gologger.Debug().Msgf(" [%v] Javascript Code:\n\n%v\n\n", templateId, strings.Join(final, "\n"))
+	gologger.Debug().Msgf(" [%v] JavaScript Code:\n\n%v\n\n", templateId, strings.Join(final, "\n"))
 }

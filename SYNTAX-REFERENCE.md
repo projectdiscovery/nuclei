@@ -339,7 +339,7 @@ Code contains code snippets.
 </div>
 <div class="dt">
 
-Javascript contains the javascript request to make in the template.
+JavaScript contains the javascript request to make in the template.
 
 </div>
 
@@ -3574,7 +3574,7 @@ Part Definitions:
 
 
 - <code>type</code> - Type is the type of request made
-- <code>response</code> - Javascript protocol result response
+- <code>response</code> - JavaScript protocol result response
 - <code>host</code> - Host is the input to the template
 - <code>matched</code> - Matched is the input which was matched upon
 

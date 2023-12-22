@@ -78,8 +78,8 @@ func NewFlowExecutor(requests []protocols.Request, input *contextargs.Context, o
 			allprotos[templateTypes.WHOISProtocol.String()] = append(allprotos[templateTypes.WHOISProtocol.String()], req)
 		case templateTypes.CodeProtocol:
 			allprotos[templateTypes.CodeProtocol.String()] = append(allprotos[templateTypes.CodeProtocol.String()], req)
-		case templateTypes.JavascriptProtocol:
-			allprotos[templateTypes.JavascriptProtocol.String()] = append(allprotos[templateTypes.JavascriptProtocol.String()], req)
+		case templateTypes.JavaScriptProtocol:
+			allprotos[templateTypes.JavaScriptProtocol.String()] = append(allprotos[templateTypes.JavaScriptProtocol.String()], req)
 		default:
 			gologger.Error().Msgf("invalid request type %s", req.Type().String())
 		}

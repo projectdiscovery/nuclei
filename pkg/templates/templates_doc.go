@@ -130,8 +130,8 @@ func init() {
 	TemplateDoc.Fields[14].Name = "javascript"
 	TemplateDoc.Fields[14].Type = "[]javascript.Request"
 	TemplateDoc.Fields[14].Note = ""
-	TemplateDoc.Fields[14].Description = "Javascript contains the javascript request to make in the template."
-	TemplateDoc.Fields[14].Comments[encoder.LineComment] = "Javascript contains the javascript request to make in the template."
+	TemplateDoc.Fields[14].Description = "JavaScript contains the javascript request to make in the template."
+	TemplateDoc.Fields[14].Comments[encoder.LineComment] = "JavaScript contains the javascript request to make in the template."
 	TemplateDoc.Fields[15].Name = "self-contained"
 	TemplateDoc.Fields[15].Type = "bool"
 	TemplateDoc.Fields[15].Note = ""
@@ -1687,7 +1687,7 @@ func init() {
 		},
 		{
 			Key:   "response",
-			Value: "Javascript protocol result response",
+			Value: "JavaScript protocol result response",
 		},
 		{
 			Key:   "host",

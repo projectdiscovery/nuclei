@@ -40,7 +40,7 @@ const (
 	// name:code
 	CodeProtocol
 	// name: js
-	JavascriptProtocol
+	JavaScriptProtocol
 	limit
 	InvalidProtocol
 )
@@ -58,7 +58,7 @@ var protocolMappings = map[ProtocolType]string{
 	WebsocketProtocol:  "websocket",
 	WHOISProtocol:      "whois",
 	CodeProtocol:       "code",
-	JavascriptProtocol: "javascript",
+	JavaScriptProtocol: "javascript",
 }
 
 func GetSupportedProtocolTypes() ProtocolTypes {

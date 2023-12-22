@@ -94,7 +94,7 @@ http:
 ```
 **Note:**  this is just a example template with poor matchers. refer 'nuclei-templates' repo for final template
 
-The update template now seems straight forward and easy to understand. we are first checking if target is a wordpress site and then executing bruteforce requests. This is just a simple example of conditional execution and flow accepts any Javascript (ECMAScript 5.1) expression/code so you are free to craft any conditional execution logic you want using for,if and whatnot.
+The update template now seems straight forward and easy to understand. we are first checking if target is a wordpress site and then executing bruteforce requests. This is just a simple example of conditional execution and flow accepts any JavaScript (ECMAScript 5.1) expression/code so you are free to craft any conditional execution logic you want using for,if and whatnot.
 
 ## request execution orchestration
 
@@ -316,4 +316,4 @@ This section contains a brief description of all nuclei JS bindings and their us
   And that's it , this automatically converts any slice/array to map and removes duplicates from it and returns a slice/array of unique values
 
 ------
-> Similar to DSL helper functions . we can either use built in functions available with `Javscript (ECMAScript 5.1)` or use DSL helper functions and its upto user to decide which one to uses
+> Similar to DSL helper functions . we can either use built in functions available with `JavaScript (ECMAScript 5.1)` or use DSL helper functions and its upto user to decide which one to uses

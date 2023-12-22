@@ -244,12 +244,12 @@ func identifyGenDecl(pkg *ast.Package, decl *ast.GenDecl, data *TemplateData) {
 
 			switch spec.Type.(type) {
 			case *ast.InterfaceType:
-				data.PackageInterfaces[spec.Name.Name] = convertCommentsToJavascript(decl.Doc.Text())
+				data.PackageInterfaces[spec.Name.Name] = convertCommentsToJavaScript(decl.Doc.Text())
 
 			case *ast.StructType:
 				data.PackageFuncsExtra[spec.Name.Name] = PackageFuncExtra{
 					Items: make(map[string]PackageFunctionExtra),
-					Doc:   convertCommentsToJavascript(decl.Doc.Text()),
+					Doc:   convertCommentsToJavaScript(decl.Doc.Text()),
 				}
 
 				// Traverse the AST.
@@ -285,7 +285,7 @@ func processFunctionDetails(fn *ast.FuncDecl, ident *ast.Ident, data *TemplateDa
 	extra := PackageFunctionExtra{
 		Name:    fn.Name.Name,
 		Args:    extractArgs(fn),
-		Doc:     convertCommentsToJavascript(fn.Doc.Text()),
+		Doc:     convertCommentsToJavaScript(fn.Doc.Text()),
 		Returns: data.extractReturns(fn),
 	}
 	data.PackageFuncsExtra[ident.Name].Items[fn.Name.Name] = extra
@@ -394,7 +394,7 @@ func (d *TemplateData) collectFuncDecl(decl *ast.FuncDecl) (extra PackageFunctio
 		return
 	}
 	extra.Name = decl.Name.Name
-	extra.Doc = convertCommentsToJavascript(decl.Doc.Text())
+	extra.Doc = convertCommentsToJavaScript(decl.Doc.Text())
 
 	for _, arg := range decl.Type.Params.List {
 		for _, name := range arg.Names {
@@ -405,8 +405,8 @@ func (d *TemplateData) collectFuncDecl(decl *ast.FuncDecl) (extra PackageFunctio
 	return extra
 }
 
-// convertCommentsToJavascript converts comments to javascript comments.
-func convertCommentsToJavascript(comments string) string {
+// convertCommentsToJavaScript converts comments to javascript comments.
+func convertCommentsToJavaScript(comments string) string {
 	suffix := strings.Trim(strings.TrimSuffix(strings.ReplaceAll(comments, "\n", "\n// "), "// "), "\n")
 	return fmt.Sprintf("// %s", suffix)
 }

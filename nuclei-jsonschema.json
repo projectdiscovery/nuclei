@@ -1682,7 +1682,7 @@
           },
           "type": "array",
           "title": "javascript requests to make",
-          "description": "Javascript requests to make for the template"
+          "description": "JavaScript requests to make for the template"
         },
         "workflows": {
           "items": {
