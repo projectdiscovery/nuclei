@@ -243,8 +243,8 @@
         },
         "case-insensitive": {
           "type": "boolean",
-          "title": "use case insensitive extract",
-          "description": "use case insensitive extract"
+          "title": "use case-insensitive extract",
+          "description": "use case-insensitive extract"
         },
         "to": {
           "type": "string",
@@ -368,8 +368,8 @@
         },
         "case-insensitive": {
           "type": "boolean",
-          "title": "use case insensitive match",
-          "description": "use case insensitive match"
+          "title": "use case-insensitive match",
+          "description": "use case-insensitive match"
         },
         "match-all": {
           "type": "boolean",

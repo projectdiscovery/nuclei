@@ -116,7 +116,7 @@ type Extractor struct {
 	// values:
 	//   - false
 	//   - true
-	CaseInsensitive bool `yaml:"case-insensitive,omitempty" json:"case-insensitive,omitempty" jsonschema:"title=use case insensitive extract,description=use case insensitive extract"`
+	CaseInsensitive bool `yaml:"case-insensitive,omitempty" json:"case-insensitive,omitempty" jsonschema:"title=use case-insensitive extract,description=use case-insensitive extract"`
 	// description: |
 	//  ToFile (to) saves extracted requests to file and if file is present values are appended to file.
 	ToFile string `yaml:"to,omitempty" json:"to,omitempty" jsonschema:"title=save extracted values to file,description=save extracted values to file"`

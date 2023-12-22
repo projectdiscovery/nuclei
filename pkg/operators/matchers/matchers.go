@@ -113,7 +113,7 @@ type Matcher struct {
 	// values:
 	//   - false
 	//   - true
-	CaseInsensitive bool `yaml:"case-insensitive,omitempty" json:"case-insensitive,omitempty" jsonschema:"title=use case insensitive match,description=use case insensitive match"`
+	CaseInsensitive bool `yaml:"case-insensitive,omitempty" json:"case-insensitive,omitempty" jsonschema:"title=use case-insensitive match,description=use case-insensitive match"`
 	// description: |
 	//   MatchAll enables matching for all matcher values. Default is false.
 	// values:
