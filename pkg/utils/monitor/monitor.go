@@ -40,7 +40,6 @@ func NewStackMonitor() *Agent {
 type Callback func(dumpID string) error
 
 // RegisterCallback adds a callback to perform additional operations before bailing out.
-// Callbacks should only be
 func (s *Agent) RegisterCallback(callback Callback) {
 	s.lock.Lock()
 	defer s.lock.Unlock()
