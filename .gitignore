@@ -5,6 +5,7 @@ vendor
 dist
 integration_tests/nuclei
 integration_tests/integration-test
+integration_tests/.cache
 cmd/nuclei/main
 cmd/nuclei/nuclei
 cmd/integration-test/nuclei

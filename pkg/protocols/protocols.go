@@ -224,16 +224,14 @@ func MakeDefaultResultEvent(request Request, wrapped *output.InternalWrappedEven
 			data.MatcherName = matcherNames
 			results = append(results, data)
 		}
-	} else if len(wrapped.OperatorsResult.Extracts) > 0 {
+	}
+	if len(wrapped.OperatorsResult.Extracts) > 0 {
 		for k, v := range wrapped.OperatorsResult.Extracts {
 			data := request.MakeResultEventItem(wrapped)
 			data.ExtractorName = k
 			data.ExtractedResults = v
 			results = append(results, data)
 		}
-	} else {
-		data := request.MakeResultEventItem(wrapped)
-		results = append(results, data)
 	}
 	return results
 }
