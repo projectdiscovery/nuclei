@@ -21,8 +21,8 @@ require (
 	github.com/olekukonko/tablewriter v0.0.5
 	github.com/pkg/errors v0.9.1
 	github.com/projectdiscovery/clistats v0.0.20
-	github.com/projectdiscovery/fastdialer v0.0.49
-	github.com/projectdiscovery/hmap v0.0.30
+	github.com/projectdiscovery/fastdialer v0.0.51
+	github.com/projectdiscovery/hmap v0.0.31
 	github.com/projectdiscovery/interactsh v1.1.8
 	github.com/projectdiscovery/rawhttp v0.1.28
 	github.com/projectdiscovery/retryabledns v1.0.48
@@ -90,7 +90,7 @@ require (
 	github.com/projectdiscovery/sarif v0.0.1
 	github.com/projectdiscovery/tlsx v1.1.6-0.20231116215000-e842dc367a74
 	github.com/projectdiscovery/uncover v1.0.7
-	github.com/projectdiscovery/utils v0.0.68
+	github.com/projectdiscovery/utils v0.0.69
 	github.com/projectdiscovery/wappalyzergo v0.0.109
 	github.com/redis/go-redis/v9 v9.1.0
 	github.com/ropnop/gokrb5/v8 v8.0.0-20201111231119-729746023c02
