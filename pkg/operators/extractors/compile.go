@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"runtime"
 	"strings"
 
 	"github.com/Knetic/govaluate"
@@ -94,6 +95,13 @@ func (e *Extractor) CompileExtractors() error {
 			return fmt.Errorf("could not open file %s: %s", e.ToFile, err)
 		}
 		e.outFile = file
+
+		runtime.SetFinalizer(e.outFile, func(f *os.File) {
+			// this will close file when gc finds that this object is not referenced anymore
+			if f != nil {
+				_ = f.Close()
+			}
+		})
 	}
 	return nil
 }

@@ -3,6 +3,7 @@ package extractors
 import (
 	"os"
 	"regexp"
+	"sync"
 
 	"github.com/Knetic/govaluate"
 	"github.com/itchyny/gojq"
@@ -120,6 +121,8 @@ type Extractor struct {
 	ToFile string `yaml:"to,omitempty" json:"to,omitempty" jsonschema:"title=save extracted values to file,description=save extracted values to file"`
 	// outFile is the file to save extracted values to
 	outFile *os.File `yaml:"-" json:"-" jsonschema:"-"`
+	// mutex to lock concurrent writes to file
+	m sync.Mutex
 }
 
 // SaveToFile saves extracted values to file if `to` is present and valid
@@ -127,6 +130,8 @@ func (e *Extractor) SaveToFile(data map[string]struct{}) {
 	if e.outFile == nil {
 		return
 	}
+	e.m.Lock()
+	defer e.m.Unlock()
 	for k := range data {
 		if _, err := e.outFile.WriteString(k + "\n"); err != nil {
 			gologger.Error().Msgf("extractor: could not write to file %s: %s\n", e.ToFile, err)
