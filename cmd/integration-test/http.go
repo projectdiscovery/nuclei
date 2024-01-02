@@ -9,6 +9,7 @@ import (
 	"net/http/httptest"
 	"net/http/httputil"
 	"os"
+	"path/filepath"
 	"reflect"
 	"regexp"
 	"strconv"
@@ -18,6 +19,7 @@ import (
 	"github.com/julienschmidt/httprouter"
 	"gopkg.in/yaml.v2"
 
+	"github.com/projectdiscovery/nuclei/v3/pkg/operators/extractors"
 	"github.com/projectdiscovery/nuclei/v3/pkg/testutils"
 	"github.com/projectdiscovery/retryablehttp-go"
 	errorutil "github.com/projectdiscovery/utils/errors"
@@ -1401,11 +1403,13 @@ func (h *httpSaveExtractorValuesToFile) Execute(filePath string) error {
 		return err
 	}
 
+	targetFile := filepath.Join(extractors.ExtractedResultsDir, "output.txt")
+
 	// remove output.txt file if exists
-	if !fileutil.FileExists("output.txt") {
+	if !fileutil.FileExists(targetFile) {
 		return fmt.Errorf("extractor output file output.txt file does not exist")
 	} else {
-		_ = os.Remove("output.txt")
+		_ = os.Remove(targetFile)
 	}
 	return expectResultsCount(results, 1)
 }

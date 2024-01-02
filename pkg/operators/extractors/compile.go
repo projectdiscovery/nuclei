@@ -16,7 +16,7 @@ import (
 )
 
 const (
-	extractedResultsDir = "extracted"
+	ExtractedResultsDir = "extracted"
 )
 
 // CompileExtractors performs the initial setup operation on an extractor
@@ -84,12 +84,12 @@ func (e *Extractor) CompileExtractors() error {
 			}
 		}
 		base := filepath.Base(filepath.Clean(e.ToFile))
-		if !fileutil.FolderExists(extractedResultsDir) {
-			if err := fileutil.CreateFolder(extractedResultsDir); err != nil {
-				return fmt.Errorf("could not create folder to write extracted results %s: %s", extractedResultsDir, err)
+		if !fileutil.FolderExists(ExtractedResultsDir) {
+			if err := fileutil.CreateFolder(ExtractedResultsDir); err != nil {
+				return fmt.Errorf("could not create folder to write extracted results %s: %s", ExtractedResultsDir, err)
 			}
 		}
-		targetFile := filepath.Join(extractedResultsDir, base)
+		targetFile := filepath.Join(ExtractedResultsDir, base)
 		file, err := os.OpenFile(targetFile, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0600)
 		if err != nil {
 			return fmt.Errorf("could not open file %s: %s", e.ToFile, err)
