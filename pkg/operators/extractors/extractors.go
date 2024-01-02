@@ -2,13 +2,11 @@ package extractors
 
 import (
 	"os"
-	"path/filepath"
 	"regexp"
 
 	"github.com/Knetic/govaluate"
 	"github.com/itchyny/gojq"
 	"github.com/projectdiscovery/gologger"
-	fileutil "github.com/projectdiscovery/utils/file"
 )
 
 // Extractor is used to extract part of response using a regex.
@@ -120,31 +118,17 @@ type Extractor struct {
 	// description: |
 	//  ToFile (to) saves extracted requests to file and if file is present values are appended to file.
 	ToFile string `yaml:"to,omitempty" json:"to,omitempty" jsonschema:"title=save extracted values to file,description=save extracted values to file"`
+	// outFile is the file to save extracted values to
+	outFile *os.File `yaml:"-" json:"-" jsonschema:"-"`
 }
 
 // SaveToFile saves extracted values to file if `to` is present and valid
 func (e *Extractor) SaveToFile(data map[string]struct{}) {
-	if e.ToFile == "" {
+	if e.outFile == nil {
 		return
 	}
-
-	if !fileutil.FileExists(e.ToFile) {
-		baseDir := filepath.Dir(e.ToFile)
-		if baseDir != "." && !fileutil.FolderExists(baseDir) {
-			if err := fileutil.CreateFolder(baseDir); err != nil {
-				gologger.Error().Msgf("extractor: could not create folder %s: %s\n", baseDir, err)
-				return
-			}
-		}
-	}
-	file, err := os.OpenFile(e.ToFile, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0600)
-	if err != nil {
-		gologger.Error().Msgf("extractor: could not open file %s: %s\n", e.ToFile, err)
-		return
-	}
-	defer file.Close()
 	for k := range data {
-		if _, err = file.WriteString(k + "\n"); err != nil {
+		if _, err := e.outFile.WriteString(k + "\n"); err != nil {
 			gologger.Error().Msgf("extractor: could not write to file %s: %s\n", e.ToFile, err)
 			return
 		}
