@@ -1,0 +1,1 @@
+package automaticscan2

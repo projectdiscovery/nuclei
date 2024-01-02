@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/automaticscan2"
 	"net/http"
 	_ "net/http/pprof"
 	"os"
@@ -40,7 +41,6 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/progress"
 	"github.com/projectdiscovery/nuclei/v3/pkg/projectfile"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
-	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/automaticscan"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/hosterrorscache"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/interactsh"
@@ -533,7 +533,7 @@ func (r *Runner) isInputNonHTTP() bool {
 func (r *Runner) executeSmartWorkflowInput(executorOpts protocols.ExecutorOptions, store *loader.Store, engine *core.Engine) (*atomic.Bool, error) {
 	r.progress.Init(r.hmapInputProvider.Count(), 0, 0)
 
-	service, err := automaticscan.New(automaticscan.Options{
+	service, err := automaticscan2.New(automaticscan2.Options{
 		ExecuterOpts: executorOpts,
 		Store:        store,
 		Engine:       engine,
