@@ -364,6 +364,8 @@ type Options struct {
 	EnableCodeTemplates bool
 	// Disables cloud upload
 	EnableCloudUpload bool
+	// DisableExtractorFileWrite disables extracted file write when configured in template
+	DisableExtractorFileWrite bool
 }
 
 // ShouldLoadResume resume file

@@ -69,7 +69,7 @@ func (e *Extractor) CompileExtractors() error {
 	}
 
 	// compile output file
-	if e.ToFile != "" {
+	if e.ToFile != "" && !SkipFileWrite {
 		// check if file is outside of cwd
 		if strings.Contains(e.ToFile, "/") {
 			// when writing to absolute paths or subfolders, lfa is required

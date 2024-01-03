@@ -203,6 +203,7 @@ func NewNucleiEngine(options ...NucleiSDKOptions) (*NucleiEngine, error) {
 		opts: types.DefaultOptions(),
 		mode: singleInstance,
 	}
+	e.opts.DisableExtractorFileWrite = true
 	for _, option := range options {
 		if err := option(e); err != nil {
 			return nil, err

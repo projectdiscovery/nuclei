@@ -227,7 +227,7 @@ type NetworkConfig struct {
 	TrackError        []string // Adds given errors to max host error watchlist
 	DisableMaxHostErr bool     // Disable max host error optimization (Hosts are not skipped even if they are not responding)
 	Interface         string   // Interface to use for network scan
-	
+
 }
 
 // WithNetworkConfig allows setting network config options
@@ -327,6 +327,18 @@ func WithSandboxOptions(allowLocalFileAccess bool, restrictLocalNetworkAccess bo
 func EnableCodeTemplates() NucleiSDKOptions {
 	return func(e *NucleiEngine) error {
 		e.opts.EnableCodeTemplates = true
+		return nil
+	}
+}
+
+// EnableExtractorFileWrite allows writing extracted values to file
+// if configured in template
+func EnableExtractorFileWrite() NucleiSDKOptions {
+	return func(e *NucleiEngine) error {
+		if e.mode == threadSafe {
+			return ErrOptionsNotSupported.Msgf("EnableExtractorFileWrite")
+		}
+		e.opts.DisableExtractorFileWrite = false
 		return nil
 	}
 }

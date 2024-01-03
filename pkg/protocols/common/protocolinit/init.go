@@ -3,6 +3,7 @@ package protocolinit
 import (
 	"github.com/corpix/uarand"
 
+	"github.com/projectdiscovery/nuclei/v3/pkg/operators/extractors"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/dns/dnsclientpool"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http/httpclientpool"
@@ -34,6 +35,8 @@ func Init(options *types.Options) error {
 	if err := rdapclientpool.Init(options); err != nil {
 		return err
 	}
+	// disable extractor file write if configured
+	extractors.SkipFileWrite = options.DisableExtractorFileWrite
 	return nil
 }
 

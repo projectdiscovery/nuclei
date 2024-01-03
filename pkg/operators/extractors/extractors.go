@@ -10,6 +10,11 @@ import (
 	"github.com/projectdiscovery/gologger"
 )
 
+var (
+	// Skips writing to file if set to true
+	SkipFileWrite bool = false
+)
+
 // Extractor is used to extract part of response using a regex.
 type Extractor struct {
 	// description: |
@@ -127,7 +132,7 @@ type Extractor struct {
 
 // SaveToFile saves extracted values to file if `to` is present and valid
 func (e *Extractor) SaveToFile(data map[string]struct{}) {
-	if e.outFile == nil {
+	if e.outFile == nil || SkipFileWrite {
 		return
 	}
 	e.m.Lock()
