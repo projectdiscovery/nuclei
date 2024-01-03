@@ -396,7 +396,7 @@ func (p *Page) Screenshot(act *Action, out map[string]string) error {
 	if err != nil {
 		return errors.Wrap(err, "could not take screenshot")
 	}
-	targetPath := p.getActionArgWithDefaultValues(act, "path")
+	targetPath := p.getActionArgWithDefaultValues(act, "to")
 	targetPath, err = fileutil.CleanPath(targetPath)
 	if err != nil {
 		return errorutil.New("could not clean output screenshot path %s", targetPath)
@@ -424,7 +424,7 @@ func (p *Page) Screenshot(act *Action, out map[string]string) error {
 
 	// actual file path to write
 	filePath := targetPath
-	if !strings.HasSuffix(to, ".png") {
+	if !strings.HasSuffix(filePath, ".png") {
 		filePath += ".png"
 	}
 
