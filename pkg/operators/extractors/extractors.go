@@ -130,12 +130,12 @@ type Extractor struct {
 
 // SaveToFile saves extracted values to file if `to` is present and valid
 func (e *Extractor) SaveToFile(data map[string]struct{}) {
-	if e.outFile == nil || protocolstate.SkipExtractorFileWrite {
-		return
-	}
 	if e.onceFileInit != nil {
 		// this will only run once regardless of how many times it is called
 		e.onceFileInit()
+	}
+	if e.outFile == nil || protocolstate.SkipExtractorFileWrite {
+		return
 	}
 	e.m.Lock()
 	defer e.m.Unlock()

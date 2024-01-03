@@ -85,17 +85,21 @@ func (e *Extractor) CompileExtractors() error {
 					}
 					e.outFile = file
 				} else {
-					gologger.Error().Msgf("extractor: writing to absolute paths or subfolders is not allowed, use -lfa to enable")
-				}
-			}
-			base := filepath.Base(filepath.Clean(e.ToFile))
-			if !fileutil.FolderExists(ExtractedResultsDir) {
-				if err := fileutil.CreateFolder(ExtractedResultsDir); err != nil {
-					gologger.Error().Msgf("extractor: could not create folder to write extracted results %s: %s", ExtractedResultsDir, err)
+					gologger.Error().Msgf("extractor: writing to absolute paths or subfolders(%v) is not allowed, use -lfa to enable", e.ToFile)
 					return
 				}
 			}
-			targetFile := filepath.Join(ExtractedResultsDir, base)
+			targetFile := e.ToFile
+			if !protocolstate.IsLFAAllowed() {
+				base := filepath.Base(filepath.Clean(e.ToFile))
+				if !fileutil.FolderExists(ExtractedResultsDir) {
+					if err := fileutil.CreateFolder(ExtractedResultsDir); err != nil {
+						gologger.Error().Msgf("extractor: could not create folder to write extracted results %s: %s", ExtractedResultsDir, err)
+						return
+					}
+				}
+				targetFile = filepath.Join(ExtractedResultsDir, base)
+			}
 			file, err := os.OpenFile(targetFile, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0600)
 			if err != nil {
 				gologger.Error().Msgf("extractor: could not open file %s: %s", targetFile, err)
