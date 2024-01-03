@@ -1,6 +1,8 @@
 package automaticscan2
 
 import (
+	"github.com/projectdiscovery/nuclei/v3/pkg/output"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/helpers/writer"
 	"github.com/projectdiscovery/nuclei/v3/pkg/scan"
 	"strings"
 	"sync"
@@ -60,7 +62,8 @@ func New(opts Options) (*Service, error) {
 	if len(tagTemplates) == 0 {
 		return nil, errors.New("could not find any templates with tech tag")
 	}
-	gologger.Info().Msgf("Loaded %d templates from the tech tag.\n", len(tagTemplates))
+	tagTemplates, _ = templates.ClusterTemplates(tagTemplates, opts.ExecuterOpts)
+	gologger.Info().Msgf("Loaded %d cluster templates from the tech tag.\n", len(tagTemplates))
 
 	childExecuter := opts.Engine.ChildExecuter()
 
@@ -105,27 +108,43 @@ func (s *Service) Execute() {
 func (s *Service) processInputPair(input *contextargs.MetaInput) {
 	ctxArgs := contextargs.New()
 	ctxArgs.MetaInput = input
-	ctx := scan.NewScanContext(ctxArgs)
 	inputPool := s.engine.WorkPool().InputPool(types.HTTPProtocol)
 
 	successTags := make([]string, 0)
+	successTemplateName := make([]string, 0)
 	var mu sync.Mutex
 	for _, t := range s.techTemplates {
 		inputPool.WaitGroup.Add()
-		tags := t.Info.Tags.ToSlice()
-		func(template *templates.Template, tags []string) {
+		func(template *templates.Template) {
 			defer inputPool.WaitGroup.Done()
-			ok, err := template.Executer.Execute(ctx)
+			ctx := scan.NewScanContext(ctxArgs)
+			ctx.OnResult = func(event *output.InternalWrappedEvent) {
+				if event == nil {
+					// something went wrong
+					return
+				}
+				// If no results were found, and also interactsh is not being used
+				// in that case we can skip it, otherwise we've to show failure in
+				// case of matcher-status flag.
+				if event.HasOperatorResult() || event.UsesInteractsh {
+					writer.WriteResult(event, s.opts.Output, s.opts.Progress, s.opts.IssuesClient)
+				}
+			}
+			results, err := template.Executer.ExecuteWithResults(ctx)
 			if err != nil {
 				gologger.Error().Msgf("error executing template: %s with error: %s\n", template.Info.Name, err)
 				return
 			}
-			if ok {
-				mu.Lock()
-				successTags = append(successTags, tags...)
-				mu.Unlock()
+			if len(results) == 0 {
+				return
 			}
-		}(t, tags)
+			mu.Lock()
+			for _, r := range results {
+				successTags = append(successTags, r.Info.Tags.ToSlice()...)
+				successTemplateName = append(successTemplateName, r.TemplateID)
+			}
+			mu.Unlock()
+		}(t)
 	}
 	inputPool.WaitGroup.Wait()
 
@@ -145,8 +164,17 @@ func (s *Service) processInputPair(input *contextargs.MetaInput) {
 	}
 
 	templatesList := s.store.LoadTemplatesWithTags(s.allTemplates, tags)
-	gologger.Info().Msgf("Executing tags (%v) for host %s (%d templates)", strings.Join(tags, ","), input.Input, len(templatesList))
+	finallyTemplates := make([]*templates.Template, 0)
+	// delete templates which are already executed
 	for _, t := range templatesList {
+		if sliceutil.Contains(successTemplateName, t.ID) {
+			continue
+		}
+		finallyTemplates = append(finallyTemplates, t)
+	}
+	gologger.Info().Msgf("Executing tags (%v) for host %s (%d templates)", strings.Join(tags, ","), input.Input, len(finallyTemplates))
+	finallyTemplates, _ = templates.ClusterTemplates(finallyTemplates, s.opts)
+	for _, t := range finallyTemplates {
 		inputPool.WaitGroup.Add()
 		s.opts.Progress.AddToTotal(int64(t.Executer.Requests()))
 		if s.opts.Options.VerboseVerbose {
