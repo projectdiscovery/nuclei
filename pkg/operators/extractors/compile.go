@@ -73,7 +73,7 @@ func (e *Extractor) CompileExtractors() error {
 	// this will only run once regardless of how many times it is called (even if called concurrently)
 	e.onceFileInit = sync.OnceFunc(func() {
 		// compile output file
-		if e.ToFile != "" && !SkipFileWrite {
+		if e.ToFile != "" && !protocolstate.SkipExtractorFileWrite {
 			// check if file is outside of cwd
 			if strings.Contains(e.ToFile, "/") {
 				// when writing to absolute paths or subfolders, lfa is required

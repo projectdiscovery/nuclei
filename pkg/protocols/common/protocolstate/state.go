@@ -22,6 +22,7 @@ func Init(options *types.Options) error {
 		return nil
 	}
 	lfaAllowed = options.AllowLocalFileAccess
+	SkipExtractorFileWrite = options.DisableExtractorFileWrite
 	opts := fastdialer.DefaultOptions
 	if options.DialerTimeout > 0 {
 		opts.DialerTimeout = options.DialerTimeout

@@ -8,11 +8,7 @@ import (
 	"github.com/Knetic/govaluate"
 	"github.com/itchyny/gojq"
 	"github.com/projectdiscovery/gologger"
-)
-
-var (
-	// Skips writing to file if set to true
-	SkipFileWrite bool = false
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
 )
 
 // Extractor is used to extract part of response using a regex.
@@ -134,7 +130,7 @@ type Extractor struct {
 
 // SaveToFile saves extracted values to file if `to` is present and valid
 func (e *Extractor) SaveToFile(data map[string]struct{}) {
-	if e.outFile == nil || SkipFileWrite {
+	if e.outFile == nil || protocolstate.SkipExtractorFileWrite {
 		return
 	}
 	if e.onceFileInit != nil {
