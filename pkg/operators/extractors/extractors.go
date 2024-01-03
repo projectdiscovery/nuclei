@@ -128,12 +128,18 @@ type Extractor struct {
 	outFile *os.File `yaml:"-" json:"-" jsonschema:"-"`
 	// mutex to lock concurrent writes to file
 	m sync.Mutex
+	// onceFileInit is function to initialize extractor file write on first use
+	onceFileInit func() `yaml:"-" json:"-" jsonschema:"-"`
 }
 
 // SaveToFile saves extracted values to file if `to` is present and valid
 func (e *Extractor) SaveToFile(data map[string]struct{}) {
 	if e.outFile == nil || SkipFileWrite {
 		return
+	}
+	if e.onceFileInit != nil {
+		// this will only run once regardless of how many times it is called
+		e.onceFileInit()
 	}
 	e.m.Lock()
 	defer e.m.Unlock()

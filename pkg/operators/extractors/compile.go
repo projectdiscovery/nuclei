@@ -7,9 +7,11 @@ import (
 	"regexp"
 	"runtime"
 	"strings"
+	"sync"
 
 	"github.com/Knetic/govaluate"
 	"github.com/itchyny/gojq"
+	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/operators/common/dsl"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
 	fileutil "github.com/projectdiscovery/utils/file"
@@ -68,40 +70,47 @@ func (e *Extractor) CompileExtractors() error {
 		}
 	}
 
-	// compile output file
-	if e.ToFile != "" && !SkipFileWrite {
-		// check if file is outside of cwd
-		if strings.Contains(e.ToFile, "/") {
-			// when writing to absolute paths or subfolders, lfa is required
-			if protocolstate.IsLFAAllowed() {
-				file, err := os.OpenFile(e.ToFile, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0600)
-				if err != nil {
-					return fmt.Errorf("could not open file %s: %s", e.ToFile, err)
+	// this will only run once regardless of how many times it is called (even if called concurrently)
+	e.onceFileInit = sync.OnceFunc(func() {
+		// compile output file
+		if e.ToFile != "" && !SkipFileWrite {
+			// check if file is outside of cwd
+			if strings.Contains(e.ToFile, "/") {
+				// when writing to absolute paths or subfolders, lfa is required
+				if protocolstate.IsLFAAllowed() {
+					file, err := os.OpenFile(e.ToFile, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0600)
+					if err != nil {
+						gologger.Error().Msgf("extractor: could not open file %s: %s", e.ToFile, err)
+						return
+					}
+					e.outFile = file
+				} else {
+					gologger.Error().Msgf("extractor: writing to absolute paths or subfolders is not allowed, use -lfa to enable")
 				}
-				e.outFile = file
-			} else {
-				return fmt.Errorf("extractor: writing to absolute paths or subfolders is not allowed, use -lfa to enable")
 			}
-		}
-		base := filepath.Base(filepath.Clean(e.ToFile))
-		if !fileutil.FolderExists(ExtractedResultsDir) {
-			if err := fileutil.CreateFolder(ExtractedResultsDir); err != nil {
-				return fmt.Errorf("could not create folder to write extracted results %s: %s", ExtractedResultsDir, err)
+			base := filepath.Base(filepath.Clean(e.ToFile))
+			if !fileutil.FolderExists(ExtractedResultsDir) {
+				if err := fileutil.CreateFolder(ExtractedResultsDir); err != nil {
+					gologger.Error().Msgf("extractor: could not create folder to write extracted results %s: %s", ExtractedResultsDir, err)
+					return
+				}
 			}
-		}
-		targetFile := filepath.Join(ExtractedResultsDir, base)
-		file, err := os.OpenFile(targetFile, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0600)
-		if err != nil {
-			return fmt.Errorf("could not open file %s: %s", e.ToFile, err)
-		}
-		e.outFile = file
+			targetFile := filepath.Join(ExtractedResultsDir, base)
+			file, err := os.OpenFile(targetFile, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0600)
+			if err != nil {
+				gologger.Error().Msgf("extractor: could not open file %s: %s", targetFile, err)
+				return
+			}
+			e.outFile = file
 
-		runtime.SetFinalizer(e.outFile, func(f *os.File) {
-			// this will close file when gc finds that this object is not referenced anymore
-			if f != nil {
-				_ = f.Close()
-			}
-		})
-	}
+			runtime.SetFinalizer(e.outFile, func(f *os.File) {
+				// this will close file when gc finds that this object is not referenced anymore
+				if f != nil {
+					_ = f.Close()
+				}
+			})
+		}
+	})
+
 	return nil
 }
