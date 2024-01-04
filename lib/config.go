@@ -330,15 +330,3 @@ func EnableCodeTemplates() NucleiSDKOptions {
 		return nil
 	}
 }
-
-// EnableExtractorFileWrite allows writing extracted values to file
-// if configured in template
-func EnableExtractorFileWrite() NucleiSDKOptions {
-	return func(e *NucleiEngine) error {
-		if e.mode == threadSafe {
-			return ErrOptionsNotSupported.Msgf("EnableExtractorFileWrite")
-		}
-		e.opts.DisableExtractorFileWrite = false
-		return nil
-	}
-}

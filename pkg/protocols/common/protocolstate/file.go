@@ -11,8 +11,6 @@ import (
 var (
 	// lfaAllowed means local file access is allowed
 	lfaAllowed bool
-	// SkipExtractorFileWrite skips writing extracted file to disk
-	SkipExtractorFileWrite bool
 )
 
 // Normalizepath normalizes path and returns absolute path

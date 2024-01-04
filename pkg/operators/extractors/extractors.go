@@ -1,14 +1,10 @@
 package extractors
 
 import (
-	"os"
 	"regexp"
-	"sync"
 
 	"github.com/Knetic/govaluate"
 	"github.com/itchyny/gojq"
-	"github.com/projectdiscovery/gologger"
-	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
 )
 
 // Extractor is used to extract part of response using a regex.
@@ -117,32 +113,4 @@ type Extractor struct {
 	//   - false
 	//   - true
 	CaseInsensitive bool `yaml:"case-insensitive,omitempty" json:"case-insensitive,omitempty" jsonschema:"title=use case insensitive extract,description=use case insensitive extract"`
-	// description: |
-	//  ToFile (to) saves extracted requests to file and if file is present values are appended to file.
-	ToFile string `yaml:"to,omitempty" json:"to,omitempty" jsonschema:"title=save extracted values to file,description=save extracted values to file"`
-	// outFile is the file to save extracted values to
-	outFile *os.File `yaml:"-" json:"-" jsonschema:"-"`
-	// mutex to lock concurrent writes to file
-	m sync.Mutex
-	// onceFileInit is function to initialize extractor file write on first use
-	onceFileInit func() `yaml:"-" json:"-" jsonschema:"-"`
-}
-
-// SaveToFile saves extracted values to file if `to` is present and valid
-func (e *Extractor) SaveToFile(data map[string]struct{}) {
-	if e.onceFileInit != nil {
-		// this will only run once regardless of how many times it is called
-		e.onceFileInit()
-	}
-	if e.outFile == nil || protocolstate.SkipExtractorFileWrite {
-		return
-	}
-	e.m.Lock()
-	defer e.m.Unlock()
-	for k := range data {
-		if _, err := e.outFile.WriteString(k + "\n"); err != nil {
-			gologger.Error().Msgf("extractor: could not write to file %s: %s\n", e.ToFile, err)
-			return
-		}
-	}
 }

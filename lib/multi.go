@@ -68,7 +68,6 @@ func NewThreadSafeNucleiEngine(opts ...NucleiSDKOptions) (*ThreadSafeNucleiEngin
 		opts: types.DefaultOptions(),
 		mode: threadSafe,
 	}
-	e.opts.DisableExtractorFileWrite = true
 	for _, option := range opts {
 		if err := option(e); err != nil {
 			return nil, err
