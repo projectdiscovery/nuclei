@@ -32,3 +32,8 @@ func NormalizePath(filePath string) (string, error) {
 	}
 	return "", errorutil.New("path %v is outside nuclei-template directory and -lfa is not enabled", filePath)
 }
+
+// IsLFAAllowed returns true if local file access is allowed
+func IsLFAAllowed() bool {
+	return lfaAllowed
+}
