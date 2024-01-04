@@ -61,7 +61,23 @@ func getStatusCode(data map[string]interface{}) (int, bool) {
 
 // Extract performs extracting operation for an extractor on model and returns true or false.
 func (request *Request) Extract(data map[string]interface{}, extractor *extractors.Extractor) map[string]struct{} {
-	return protocols.MakeDefaultExtractFunc(data, extractor)
+	item, ok := request.getMatchPart(extractor.Part, data)
+	if !ok && !extractors.SupportsMap(extractor) {
+		return nil
+	}
+	switch extractor.GetType() {
+	case extractors.RegexExtractor:
+		return extractor.ExtractRegex(item)
+	case extractors.KValExtractor:
+		return extractor.ExtractKval(data)
+	case extractors.XPathExtractor:
+		return extractor.ExtractXPath(item)
+	case extractors.JSONExtractor:
+		return extractor.ExtractJSON(item)
+	case extractors.DSLExtractor:
+		return extractor.ExtractDSL(data)
+	}
+	return nil
 }
 
 // getMatchPart returns the match part honoring "all" matchers + others.
