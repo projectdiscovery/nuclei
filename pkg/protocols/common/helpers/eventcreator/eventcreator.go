@@ -30,6 +30,14 @@ func CreateEventWithAdditionalOptions(request protocols.Request, outputEvent out
 		if compiledOperator != nil {
 			result, ok := compiledOperator.Execute(outputEvent, request.Match, request.Extract, isResponseDebug)
 			if ok && result != nil {
+				// if result has both extracted values and dynamic values, put dynamic values in data
+				// and remove dynamic values to avoid skipping legitimate event
+				if (len(result.Extracts) > 0 || len(result.OutputExtracts) > 0) && len(result.DynamicValues) > 0 {
+					for k, v := range result.DynamicValues {
+						event.InternalEvent[k] = v
+					}
+					result.DynamicValues = nil
+				}
 				event.OperatorsResult = result
 				if addAdditionalOptions != nil {
 					addAdditionalOptions(event)
