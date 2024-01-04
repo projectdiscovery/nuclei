@@ -227,7 +227,7 @@ type NetworkConfig struct {
 	TrackError        []string // Adds given errors to max host error watchlist
 	DisableMaxHostErr bool     // Disable max host error optimization (Hosts are not skipped even if they are not responding)
 	Interface         string   // Interface to use for network scan
-	
+
 }
 
 // WithNetworkConfig allows setting network config options
