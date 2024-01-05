@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"sync"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
@@ -22,6 +23,9 @@ type ScanContext struct {
 	errors   []error
 	warnings []string
 	events   []*output.InternalWrappedEvent
+
+	// might not be required but better to sync
+	m sync.Mutex
 }
 
 // NewScanContext creates a new scan context using input
@@ -31,11 +35,15 @@ func NewScanContext(input *contextargs.Context) *ScanContext {
 
 // GenerateResult returns final results slice from all events
 func (s *ScanContext) GenerateResult() []*output.ResultEvent {
+	s.m.Lock()
+	defer s.m.Unlock()
 	return aggregateResults(s.events)
 }
 
 // LogEvent logs events to all events and triggeres any callbacks
 func (s *ScanContext) LogEvent(e *output.InternalWrappedEvent) {
+	s.m.Lock()
+	defer s.m.Unlock()
 	if e == nil {
 		// do not log nil events
 		return
@@ -48,6 +56,8 @@ func (s *ScanContext) LogEvent(e *output.InternalWrappedEvent) {
 
 // LogError logs error to all events and triggeres any callbacks
 func (s *ScanContext) LogError(err error) {
+	s.m.Lock()
+	defer s.m.Unlock()
 	if err == nil {
 		return
 	}
@@ -69,6 +79,8 @@ func (s *ScanContext) LogError(err error) {
 
 // LogWarning logs warning to all events
 func (s *ScanContext) LogWarning(format string, args ...any) {
+	s.m.Lock()
+	defer s.m.Unlock()
 	val := fmt.Sprintf(format, args...)
 	s.warnings = append(s.warnings, val)
 

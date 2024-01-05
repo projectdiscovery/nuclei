@@ -141,6 +141,7 @@ func (e *TemplateExecuter) Execute(ctx *scan.ScanContext) (bool, error) {
 	if e.options.Flow != "" {
 		flowexec := flow.NewFlowExecutor(e.requests, ctx, e.options, results)
 		if err := flowexec.Compile(); err != nil {
+			ctx.LogError(err)
 			return false, err
 		}
 		err = flowexec.ExecuteWithResults(ctx)

@@ -1,6 +1,7 @@
 package flow
 
 import (
+	"fmt"
 	"reflect"
 	"sync/atomic"
 
@@ -34,7 +35,7 @@ func (f *FlowExecutor) requestExecutor(reqMap mapsutil.Map[string, protocols.Req
 		// execution logic for http()/dns() etc
 		for index := range f.allProtocols[opts.protoName] {
 			req := f.allProtocols[opts.protoName][index]
-			err := req.ExecuteWithResults(f.ctx.Input, output.InternalEvent(f.options.GetTemplateCtx(f.ctx.Input.MetaInput).GetAll()), nil, f.getProtoRequestCallback(req, matcherStatus, opts))
+			err := req.ExecuteWithResults(f.ctx.Input, output.InternalEvent(f.options.GetTemplateCtx(f.ctx.Input.MetaInput).GetAll()), nil, f.protocolResultCallback(req, matcherStatus, opts))
 			if err != nil {
 				// save all errors in a map with id as key
 				// its less likely that there will be race condition but just in case
@@ -44,7 +45,7 @@ func (f *FlowExecutor) requestExecutor(reqMap mapsutil.Map[string, protocols.Req
 				}
 				err = f.allErrs.Set(opts.protoName+":"+id, err)
 				if err != nil {
-					gologger.Error().Msgf("failed to store flow runtime errors got %v", err)
+					f.ctx.LogError(fmt.Errorf("failed to store flow runtime errors got %v", err))
 				}
 				return matcherStatus.Load()
 			}
@@ -56,32 +57,34 @@ func (f *FlowExecutor) requestExecutor(reqMap mapsutil.Map[string, protocols.Req
 	for _, id := range opts.reqIDS {
 		req, ok := reqMap[id]
 		if !ok {
-			gologger.Error().Msgf("[%v] invalid request id '%s' provided", f.options.TemplateID, id)
+			f.ctx.LogError(fmt.Errorf("[%v] invalid request id '%s' provided", f.options.TemplateID, id))
 			// compile error
 			if err := f.allErrs.Set(opts.protoName+":"+id, ErrInvalidRequestID.Msgf(f.options.TemplateID, id)); err != nil {
-				gologger.Error().Msgf("failed to store flow runtime errors got %v", err)
+				f.ctx.LogError(fmt.Errorf("failed to store flow runtime errors got %v", err))
 			}
 			return matcherStatus.Load()
 		}
-		err := req.ExecuteWithResults(f.ctx.Input, output.InternalEvent(f.options.GetTemplateCtx(f.ctx.Input.MetaInput).GetAll()), nil, f.getProtoRequestCallback(req, matcherStatus, opts))
+		err := req.ExecuteWithResults(f.ctx.Input, output.InternalEvent(f.options.GetTemplateCtx(f.ctx.Input.MetaInput).GetAll()), nil, f.protocolResultCallback(req, matcherStatus, opts))
 		if err != nil {
 			index := id
 			err = f.allErrs.Set(opts.protoName+":"+index, err)
 			if err != nil {
-				gologger.Error().Msgf("failed to store flow runtime errors got %v", err)
+				f.ctx.LogError(fmt.Errorf("failed to store flow runtime errors got %v", err))
 			}
 		}
 	}
 	return matcherStatus.Load()
 }
 
-// getProtoRequestCallback returns a callback that is executed
+// protocolResultCallback returns a callback that is executed
 // after execution of each protocol request
-func (f *FlowExecutor) getProtoRequestCallback(req protocols.Request, matcherStatus *atomic.Bool, opts *ProtoOptions) func(result *output.InternalWrappedEvent) {
+func (f *FlowExecutor) protocolResultCallback(req protocols.Request, matcherStatus *atomic.Bool, opts *ProtoOptions) func(result *output.InternalWrappedEvent) {
 	return func(result *output.InternalWrappedEvent) {
 		if result != nil {
 			f.results.CompareAndSwap(false, true)
-			f.lastEvent = result
+			// Note: flow specific implicit behaviours should be handled here
+			// before logging the event
+			f.ctx.LogEvent(result)
 			// export dynamic values from operators (i.e internal:true)
 			// add add it to template context
 			// this is a conflicting behaviour with iterate-all
@@ -130,7 +133,7 @@ func (f *FlowExecutor) registerBuiltInFunctions() error {
 		default:
 			gologger.DefaultLogger.Print().Msgf("[%v] %v", aurora.BrightCyan("JS"), value)
 		}
-		return goja.Null()
+		return call.Argument(0) // return the same value
 	}); err != nil {
 		return err
 	}

@@ -9,7 +9,6 @@ import (
 
 	"github.com/dop251/goja"
 	"github.com/projectdiscovery/gologger"
-	"github.com/projectdiscovery/nuclei/v3/pkg/output"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/generators"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
@@ -41,9 +40,8 @@ type FlowExecutor struct {
 	options *protocols.ExecutorOptions
 
 	// javascript runtime reference and compiled program
-	jsVM      *goja.Runtime
-	program   *goja.Program                // compiled js program
-	lastEvent *output.InternalWrappedEvent // contains last event that was emitted
+	jsVM    *goja.Runtime
+	program *goja.Program // compiled js program
 
 	// protocol requests and their callback functions
 	allProtocols   map[string][]protocols.Request
@@ -82,7 +80,8 @@ func NewFlowExecutor(requests []protocols.Request, ctx *scan.ScanContext, option
 		case templateTypes.JavascriptProtocol:
 			allprotos[templateTypes.JavascriptProtocol.String()] = append(allprotos[templateTypes.JavascriptProtocol.String()], req)
 		default:
-			gologger.Error().Msgf("invalid request type %s", req.Type().String())
+			ctx.LogError(fmt.Errorf("invalid request type %s", req.Type().String()))
+			return nil
 		}
 	}
 	f := &FlowExecutor{
@@ -119,7 +118,7 @@ func (f *FlowExecutor) Compile() error {
 			if value, err := f.ReadDataFromFile(str); err == nil {
 				allVars[k] = value
 			} else {
-				gologger.Warning().Msgf("could not load file '%s' for variable '%s': %s", str, k, err)
+				f.ctx.LogWarning("could not load file '%s' for variable '%s': %s", str, k, err)
 			}
 		}
 	}
@@ -166,8 +165,8 @@ func (f *FlowExecutor) Compile() error {
 func (f *FlowExecutor) ExecuteWithResults(ctx *scan.ScanContext) error {
 	defer func() {
 		if e := recover(); e != nil {
+			f.ctx.LogError(fmt.Errorf("panic occurred while executing target %v with flow: %v", ctx.Input.MetaInput.Input, e))
 			gologger.Error().Label(f.options.TemplateID).Msgf("panic occurred while executing target %v with flow: %v", ctx.Input.MetaInput.Input, e)
-			panic(e)
 		}
 	}()
 
@@ -193,8 +192,7 @@ func (f *FlowExecutor) ExecuteWithResults(ctx *scan.ScanContext) error {
 		ctx.LogError(runtimeErr)
 		return errorutil.NewWithErr(runtimeErr).Msgf("got following errors while executing flow")
 	}
-	// this is where final result is generated/created
-	ctx.LogEvent(f.lastEvent)
+
 	if value.Export() != nil {
 		f.results.Store(value.ToBoolean())
 	} else {
