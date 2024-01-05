@@ -18,12 +18,12 @@ import (
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/hmap/filekv"
 	"github.com/projectdiscovery/hmap/store/hybrid"
-	"github.com/projectdiscovery/mapcidr"
 	"github.com/projectdiscovery/mapcidr/asn"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/uncover"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
+	"github.com/projectdiscovery/nuclei/v3/pkg/utils/expand"
 	uncoverlib "github.com/projectdiscovery/uncover"
 	fileutil "github.com/projectdiscovery/utils/file"
 	iputil "github.com/projectdiscovery/utils/ip"
@@ -121,10 +121,10 @@ func (i *Input) initializeInputSources(opts *Options) error {
 	for _, target := range options.Targets {
 		switch {
 		case iputil.IsCIDR(target):
-			ips := i.expandCIDRInputValue(target)
+			ips := expand.CIDR(target)
 			i.addTargets(ips)
 		case asn.IsASN(target):
-			ips := i.expandASNInputValue(target)
+			ips := expand.ASN(target)
 			i.addTargets(ips)
 		default:
 			i.Set(target)
@@ -174,10 +174,10 @@ func (i *Input) initializeInputSources(opts *Options) error {
 		for _, target := range options.ExcludeTargets {
 			switch {
 			case iputil.IsCIDR(target):
-				ips := i.expandCIDRInputValue(target)
+				ips := expand.CIDR(target)
 				i.removeTargets(ips)
 			case asn.IsASN(target):
-				ips := i.expandASNInputValue(target)
+				ips := expand.ASN(target)
 				i.removeTargets(ips)
 			default:
 				i.Del(target)
@@ -195,10 +195,10 @@ func (i *Input) scanInputFromReader(reader io.Reader) {
 		item := scanner.Text()
 		switch {
 		case iputil.IsCIDR(item):
-			ips := i.expandCIDRInputValue(item)
+			ips := expand.CIDR(item)
 			i.addTargets(ips)
 		case asn.IsASN(item):
-			ips := i.expandASNInputValue(item)
+			ips := expand.ASN(item)
 			i.addTargets(ips)
 		default:
 			i.Set(item)
@@ -487,26 +487,6 @@ func (i *Input) Scan(callback func(value *contextargs.MetaInput) bool) {
 	} else {
 		i.hostMap.Scan(callbackFunc)
 	}
-}
-
-// expandCIDRInputValue expands CIDR and stores expanded IPs
-func (i *Input) expandCIDRInputValue(value string) []string {
-	var ips []string
-	ipsCh, _ := mapcidr.IPAddressesAsStream(value)
-	for ip := range ipsCh {
-		ips = append(ips, ip)
-	}
-	return ips
-}
-
-// expandASNInputValue expands CIDRs for given ASN and stores expanded IPs
-func (i *Input) expandASNInputValue(value string) []string {
-	var ips []string
-	cidrs, _ := asn.GetCIDRsForASNNum(value)
-	for _, cidr := range cidrs {
-		ips = append(ips, i.expandCIDRInputValue(cidr.String())...)
-	}
-	return ips
 }
 
 func (i *Input) addTargets(targets []string) {
