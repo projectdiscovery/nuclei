@@ -81,7 +81,6 @@ func (f *FlowExecutor) requestExecutor(reqMap mapsutil.Map[string, protocols.Req
 func (f *FlowExecutor) protocolResultCallback(req protocols.Request, matcherStatus *atomic.Bool, opts *ProtoOptions) func(result *output.InternalWrappedEvent) {
 	return func(result *output.InternalWrappedEvent) {
 		if result != nil {
-			f.results.CompareAndSwap(false, true)
 			// Note: flow specific implicit behaviours should be handled here
 			// before logging the event
 			f.ctx.LogEvent(result)
@@ -89,6 +88,7 @@ func (f *FlowExecutor) protocolResultCallback(req protocols.Request, matcherStat
 			// add add it to template context
 			// this is a conflicting behaviour with iterate-all
 			if result.HasOperatorResult() {
+				f.results.CompareAndSwap(false, true)
 				// this is to handle case where there is any operator result (matcher or extractor)
 				matcherStatus.CompareAndSwap(false, result.OperatorsResult.Matched)
 				if !result.OperatorsResult.Matched && !hasMatchers(req.GetCompiledOperators()) {
