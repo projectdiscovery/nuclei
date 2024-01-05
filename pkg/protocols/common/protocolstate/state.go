@@ -51,7 +51,7 @@ func Init(options *types.Options) error {
 	}
 	opts.WithNetworkPolicyOptions = npOptions
 	NetworkPolicy, _ = networkpolicy.New(*npOptions)
-	InitHeadless(options.RestrictLocalNetworkAccess, NetworkPolicy)
+	InitHeadless(options.AllowLocalFileAccess, NetworkPolicy)
 
 	switch {
 	case options.SourceIP != "" && options.Interface != "":
