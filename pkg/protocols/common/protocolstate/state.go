@@ -9,8 +9,10 @@ import (
 	"golang.org/x/net/proxy"
 
 	"github.com/projectdiscovery/fastdialer/fastdialer"
+	"github.com/projectdiscovery/mapcidr/asn"
 	"github.com/projectdiscovery/networkpolicy"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
+	"github.com/projectdiscovery/nuclei/v3/pkg/utils/expand"
 )
 
 // Dialer is a shared fastdialer instance for host DNS resolution
@@ -102,6 +104,15 @@ func Init(options *types.Options) error {
 	if options.RestrictLocalNetworkAccess {
 		opts.Deny = append(networkpolicy.DefaultIPv4DenylistRanges, networkpolicy.DefaultIPv6DenylistRanges...)
 	}
+	for _, excludeTarget := range options.ExcludeTargets {
+		switch {
+		case asn.IsASN(excludeTarget):
+			opts.Deny = append(opts.Deny, expand.ASN(excludeTarget)...)
+		default:
+			opts.Deny = append(opts.Deny, excludeTarget)
+		}
+	}
+
 	opts.WithDialerHistory = true
 	opts.SNIName = options.SNI
 
