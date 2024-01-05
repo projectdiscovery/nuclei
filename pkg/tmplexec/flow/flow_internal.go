@@ -21,11 +21,11 @@ import (
 func (f *FlowExecutor) requestExecutor(reqMap mapsutil.Map[string, protocols.Request], opts *ProtoOptions) bool {
 	defer func() {
 		// evaluate all variables after execution of each protocol
-		variableMap := f.options.Variables.Evaluate(f.options.GetTemplateCtx(f.input.MetaInput).GetAll())
-		f.options.GetTemplateCtx(f.input.MetaInput).Merge(variableMap) // merge all variables into template context
+		variableMap := f.options.Variables.Evaluate(f.options.GetTemplateCtx(f.ctx.Input.MetaInput).GetAll())
+		f.options.GetTemplateCtx(f.ctx.Input.MetaInput).Merge(variableMap) // merge all variables into template context
 
 		// to avoid polling update template variables everytime we execute a protocol
-		var m map[string]interface{} = f.options.GetTemplateCtx(f.input.MetaInput).GetAll()
+		var m map[string]interface{} = f.options.GetTemplateCtx(f.ctx.Input.MetaInput).GetAll()
 		_ = f.jsVM.Set("template", m)
 	}()
 	matcherStatus := &atomic.Bool{} // due to interactsh matcher polling logic this needs to be atomic bool
@@ -34,7 +34,7 @@ func (f *FlowExecutor) requestExecutor(reqMap mapsutil.Map[string, protocols.Req
 		// execution logic for http()/dns() etc
 		for index := range f.allProtocols[opts.protoName] {
 			req := f.allProtocols[opts.protoName][index]
-			err := req.ExecuteWithResults(f.input, output.InternalEvent(f.options.GetTemplateCtx(f.input.MetaInput).GetAll()), nil, f.getProtoRequestCallback(req, matcherStatus, opts))
+			err := req.ExecuteWithResults(f.ctx.Input, output.InternalEvent(f.options.GetTemplateCtx(f.ctx.Input.MetaInput).GetAll()), nil, f.getProtoRequestCallback(req, matcherStatus, opts))
 			if err != nil {
 				// save all errors in a map with id as key
 				// its less likely that there will be race condition but just in case
@@ -63,7 +63,7 @@ func (f *FlowExecutor) requestExecutor(reqMap mapsutil.Map[string, protocols.Req
 			}
 			return matcherStatus.Load()
 		}
-		err := req.ExecuteWithResults(f.input, output.InternalEvent(f.options.GetTemplateCtx(f.input.MetaInput).GetAll()), nil, f.getProtoRequestCallback(req, matcherStatus, opts))
+		err := req.ExecuteWithResults(f.ctx.Input, output.InternalEvent(f.options.GetTemplateCtx(f.ctx.Input.MetaInput).GetAll()), nil, f.getProtoRequestCallback(req, matcherStatus, opts))
 		if err != nil {
 			index := id
 			err = f.allErrs.Set(opts.protoName+":"+index, err)
@@ -95,7 +95,7 @@ func (f *FlowExecutor) getProtoRequestCallback(req protocols.Request, matcherSta
 				}
 				if len(result.OperatorsResult.DynamicValues) > 0 {
 					for k, v := range result.OperatorsResult.DynamicValues {
-						f.options.GetTemplateCtx(f.input.MetaInput).Set(k, v)
+						f.options.GetTemplateCtx(f.ctx.Input.MetaInput).Set(k, v)
 					}
 				}
 			} else if !result.HasOperatorResult() && !hasOperators(req.GetCompiledOperators()) {
@@ -138,7 +138,7 @@ func (f *FlowExecutor) registerBuiltInFunctions() error {
 	if err := f.jsVM.Set("set", func(call goja.FunctionCall) goja.Value {
 		varName := call.Argument(0).Export()
 		varValue := call.Argument(1).Export()
-		f.options.GetTemplateCtx(f.input.MetaInput).Set(types.ToString(varName), varValue)
+		f.options.GetTemplateCtx(f.ctx.Input.MetaInput).Set(types.ToString(varName), varValue)
 		return goja.Null()
 	}); err != nil {
 		return err
@@ -179,7 +179,7 @@ func (f *FlowExecutor) registerBuiltInFunctions() error {
 		return err
 	}
 
-	var m = f.options.GetTemplateCtx(f.input.MetaInput).GetAll()
+	var m = f.options.GetTemplateCtx(f.ctx.Input.MetaInput).GetAll()
 	if m == nil {
 		m = map[string]interface{}{}
 	}

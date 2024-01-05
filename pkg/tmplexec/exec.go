@@ -47,7 +47,7 @@ func NewTemplateExecuter(requests []protocols.Request, options *protocols.Execut
 		// we use a dummy input here because goal of flow executor at this point is to just check
 		// syntax and other things are correct before proceeding to actual execution
 		// during execution new instance of flow will be created as it is tightly coupled with lot of executor options
-		e.engine = flow.NewFlowExecutor(requests, contextargs.NewWithInput("dummy"), options, e.results)
+		e.engine = flow.NewFlowExecutor(requests, scan.NewScanContext(contextargs.NewWithInput("dummy")), options, e.results)
 	} else {
 		// Review:
 		// multiproto engine is only used if there is more than one protocol in template
@@ -139,7 +139,7 @@ func (e *TemplateExecuter) Execute(ctx *scan.ScanContext) (bool, error) {
 	// so in compile step earlier we compile it to validate javascript syntax and other things
 	// and while executing we create new instance of flow executor everytime
 	if e.options.Flow != "" {
-		flowexec := flow.NewFlowExecutor(e.requests, ctx.Input, e.options, results)
+		flowexec := flow.NewFlowExecutor(e.requests, ctx, e.options, results)
 		if err := flowexec.Compile(); err != nil {
 			return false, err
 		}
