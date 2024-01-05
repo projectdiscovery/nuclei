@@ -182,7 +182,7 @@ func (f *FlowExecutor) ExecuteWithResults(ctx *scan.ScanContext) error {
 		return fmt.Errorf("output callback cannot be nil")
 	}
 	// pass flow and execute the js vm and handle errors
-	value, err := f.jsVM.RunProgram(f.program)
+	_, err := f.jsVM.RunProgram(f.program)
 	if err != nil {
 		ctx.LogError(err)
 		return errorutil.NewWithErr(err).Msgf("failed to execute flow\n%v\n", f.options.Flow)
@@ -193,11 +193,6 @@ func (f *FlowExecutor) ExecuteWithResults(ctx *scan.ScanContext) error {
 		return errorutil.NewWithErr(runtimeErr).Msgf("got following errors while executing flow")
 	}
 
-	if value.Export() != nil {
-		f.results.Store(value.ToBoolean())
-	} else {
-		f.results.Store(true)
-	}
 	return nil
 }
 
