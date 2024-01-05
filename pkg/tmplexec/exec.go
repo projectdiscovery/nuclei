@@ -117,6 +117,22 @@ func (e *TemplateExecuter) Execute(ctx *scan.ScanContext) (bool, error) {
 			// something went wrong
 			return
 		}
+		// check for internal true matcher event
+		if event.HasOperatorResult() && event.OperatorsResult.Matched && event.OperatorsResult.Operators != nil {
+			// note all matchers should have internal:true if it is a combination then print it
+			allInternalMatchers := true
+			for _, matcher := range event.OperatorsResult.Operators.Matchers {
+				if allInternalMatchers && !matcher.Internal {
+					allInternalMatchers = false
+					break
+				}
+			}
+			if allInternalMatchers {
+				// this is a internal event and no meant to be printed
+				return
+			}
+		}
+
 		// If no results were found, and also interactsh is not being used
 		// in that case we can skip it, otherwise we've to show failure in
 		// case of matcher-status flag.

@@ -90,6 +90,8 @@ type Result struct {
 
 	// Optional lineCounts for file protocol
 	LineCount string
+	// Operators is reference to operators that generated this result (Read-Only)
+	Operators *Operators
 }
 
 func (result *Result) HasMatch(name string) bool {
@@ -217,6 +219,7 @@ func (operators *Operators) Execute(data map[string]interface{}, match MatchFunc
 		Extracts:      make(map[string][]string),
 		DynamicValues: make(map[string][]string),
 		outputUnique:  make(map[string]struct{}),
+		Operators:     operators,
 	}
 
 	// state variable to check if all extractors are internal
