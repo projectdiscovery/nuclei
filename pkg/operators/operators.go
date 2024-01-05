@@ -196,7 +196,11 @@ func (r *Result) Merge(result *Result) {
 		}
 	}
 	for k, v := range result.DynamicValues {
-		r.DynamicValues[k] = v
+		if _, ok := r.DynamicValues[k]; !ok {
+			r.DynamicValues[k] = v
+		} else {
+			r.DynamicValues[k] = sliceutil.Dedupe(append(r.DynamicValues[k], v...))
+		}
 	}
 	for k, v := range result.PayloadValues {
 		r.PayloadValues[k] = v

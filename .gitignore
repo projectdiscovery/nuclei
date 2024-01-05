@@ -25,3 +25,6 @@ pkg/protocols/headless/engine/.cache
 /bindgen
 /jsdocgen
 /scrapefuncs
+/integration_tests/.cache/
+/integration_tests/.nuclei-config/
+/*.yaml
