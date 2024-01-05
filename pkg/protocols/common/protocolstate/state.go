@@ -31,7 +31,27 @@ func Init(options *types.Options) error {
 	if options.DialerKeepAlive > 0 {
 		opts.DialerKeepAlive = options.DialerKeepAlive
 	}
-	InitHeadless(options.RestrictLocalNetworkAccess, options.AllowLocalFileAccess)
+
+	var expandedDenyList []string
+	for _, excludeTarget := range options.ExcludeTargets {
+		switch {
+		case asn.IsASN(excludeTarget):
+			expandedDenyList = append(expandedDenyList, expand.ASN(excludeTarget)...)
+		default:
+			expandedDenyList = append(expandedDenyList, excludeTarget)
+		}
+	}
+
+	if options.RestrictLocalNetworkAccess {
+		expandedDenyList = append(expandedDenyList, networkpolicy.DefaultIPv4DenylistRanges...)
+		expandedDenyList = append(expandedDenyList, networkpolicy.DefaultIPv6DenylistRanges...)
+	}
+	npOptions := &networkpolicy.Options{
+		DenyList: expandedDenyList,
+	}
+	opts.WithNetworkPolicyOptions = npOptions
+	NetworkPolicy, _ = networkpolicy.New(*npOptions)
+	InitHeadless(options.RestrictLocalNetworkAccess, NetworkPolicy)
 
 	switch {
 	case options.SourceIP != "" && options.Interface != "":
@@ -101,17 +121,8 @@ func Init(options *types.Options) error {
 	if options.ResolversFile != "" {
 		opts.BaseResolvers = options.InternalResolversList
 	}
-	if options.RestrictLocalNetworkAccess {
-		opts.Deny = append(networkpolicy.DefaultIPv4DenylistRanges, networkpolicy.DefaultIPv6DenylistRanges...)
-	}
-	for _, excludeTarget := range options.ExcludeTargets {
-		switch {
-		case asn.IsASN(excludeTarget):
-			opts.Deny = append(opts.Deny, expand.ASN(excludeTarget)...)
-		default:
-			opts.Deny = append(opts.Deny, excludeTarget)
-		}
-	}
+
+	opts.Deny = append(opts.Deny, expandedDenyList...)
 
 	opts.WithDialerHistory = true
 	opts.SNIName = options.SNI
