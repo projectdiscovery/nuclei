@@ -15,6 +15,7 @@ dns:
       - type: word
         words:
           - "ghost.io"
+        internal: true
 
 http:
   - method: GET
