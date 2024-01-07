@@ -66,6 +66,7 @@ require (
 	github.com/docker/go-units v0.5.0
 	github.com/dop251/goja v0.0.0-20230828202809-3dbe69dd2b8e
 	github.com/fatih/structs v1.1.0
+	github.com/getkin/kin-openapi v0.122.0
 	github.com/go-git/go-git/v5 v5.11.0
 	github.com/go-ldap/ldap/v3 v3.4.5
 	github.com/go-pg/pg v8.0.7+incompatible
