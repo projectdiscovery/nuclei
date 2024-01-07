@@ -47,7 +47,7 @@ func NewTemplateExecuter(requests []protocols.Request, options *protocols.Execut
 		// we use a dummy input here because goal of flow executor at this point is to just check
 		// syntax and other things are correct before proceeding to actual execution
 		// during execution new instance of flow will be created as it is tightly coupled with lot of executor options
-		e.engine = flow.NewFlowExecutor(requests, contextargs.NewWithInput("dummy"), options, e.results)
+		e.engine = flow.NewFlowExecutor(requests, scan.NewScanContext(contextargs.NewWithInput("dummy")), options, e.results)
 	} else {
 		// Review:
 		// multiproto engine is only used if there is more than one protocol in template
@@ -117,6 +117,22 @@ func (e *TemplateExecuter) Execute(ctx *scan.ScanContext) (bool, error) {
 			// something went wrong
 			return
 		}
+		// check for internal true matcher event
+		if event.HasOperatorResult() && event.OperatorsResult.Matched && event.OperatorsResult.Operators != nil {
+			// note all matchers should have internal:true if it is a combination then print it
+			allInternalMatchers := true
+			for _, matcher := range event.OperatorsResult.Operators.Matchers {
+				if allInternalMatchers && !matcher.Internal {
+					allInternalMatchers = false
+					break
+				}
+			}
+			if allInternalMatchers {
+				// this is a internal event and no meant to be printed
+				return
+			}
+		}
+
 		// If no results were found, and also interactsh is not being used
 		// in that case we can skip it, otherwise we've to show failure in
 		// case of matcher-status flag.
@@ -139,8 +155,9 @@ func (e *TemplateExecuter) Execute(ctx *scan.ScanContext) (bool, error) {
 	// so in compile step earlier we compile it to validate javascript syntax and other things
 	// and while executing we create new instance of flow executor everytime
 	if e.options.Flow != "" {
-		flowexec := flow.NewFlowExecutor(e.requests, ctx.Input, e.options, results)
+		flowexec := flow.NewFlowExecutor(e.requests, ctx, e.options, results)
 		if err := flowexec.Compile(); err != nil {
+			ctx.LogError(err)
 			return false, err
 		}
 		err = flowexec.ExecuteWithResults(ctx)
