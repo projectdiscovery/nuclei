@@ -90,6 +90,8 @@ type Result struct {
 
 	// Optional lineCounts for file protocol
 	LineCount string
+	// Operators is reference to operators that generated this result (Read-Only)
+	Operators *Operators
 }
 
 func (result *Result) HasMatch(name string) bool {
@@ -194,7 +196,11 @@ func (r *Result) Merge(result *Result) {
 		}
 	}
 	for k, v := range result.DynamicValues {
-		r.DynamicValues[k] = v
+		if _, ok := r.DynamicValues[k]; !ok {
+			r.DynamicValues[k] = v
+		} else {
+			r.DynamicValues[k] = sliceutil.Dedupe(append(r.DynamicValues[k], v...))
+		}
 	}
 	for k, v := range result.PayloadValues {
 		r.PayloadValues[k] = v
@@ -217,6 +223,7 @@ func (operators *Operators) Execute(data map[string]interface{}, match MatchFunc
 		Extracts:      make(map[string][]string),
 		DynamicValues: make(map[string][]string),
 		outputUnique:  make(map[string]struct{}),
+		Operators:     operators,
 	}
 
 	// state variable to check if all extractors are internal
