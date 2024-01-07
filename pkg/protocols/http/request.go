@@ -313,6 +313,7 @@ func (request *Request) executeFuzzingRule(input *contextargs.Context, previous 
 			generatedRequest = generated.request
 			dynamicValues = generated.dynamicValues
 		}
+		input.MetaInput = &contextargs.MetaInput{Input: generated.URL()}
 		for _, rule := range request.Fuzzing {
 			err := rule.Execute(&fuzz.ExecuteRuleInput{
 				Input:       input,

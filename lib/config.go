@@ -226,6 +226,8 @@ type NetworkConfig struct {
 	MaxHostError      int      // Maximum number of host errors to allow before skipping that host
 	TrackError        []string // Adds given errors to max host error watchlist
 	DisableMaxHostErr bool     // Disable max host error optimization (Hosts are not skipped even if they are not responding)
+	Interface         string   // Interface to use for network scan
+	SourceIP          string   // SourceIP sets custom source IP address for network requests
 }
 
 // WithNetworkConfig allows setting network config options
@@ -238,6 +240,8 @@ func WithNetworkConfig(opts NetworkConfig) NucleiSDKOptions {
 		e.opts.Retries = opts.Retries
 		e.opts.LeaveDefaultPorts = opts.LeaveDefaultPorts
 		e.hostErrCache = hosterrorscache.New(opts.MaxHostError, hosterrorscache.DefaultMaxHostsCount, opts.TrackError)
+		e.opts.Interface = opts.Interface
+		e.opts.SourceIP = opts.SourceIP
 		return nil
 	}
 }

@@ -90,6 +90,8 @@ type Result struct {
 
 	// Optional lineCounts for file protocol
 	LineCount string
+	// Operators is reference to operators that generated this result (Read-Only)
+	Operators *Operators
 }
 
 func (result *Result) HasMatch(name string) bool {
@@ -194,7 +196,11 @@ func (r *Result) Merge(result *Result) {
 		}
 	}
 	for k, v := range result.DynamicValues {
-		r.DynamicValues[k] = v
+		if _, ok := r.DynamicValues[k]; !ok {
+			r.DynamicValues[k] = v
+		} else {
+			r.DynamicValues[k] = sliceutil.Dedupe(append(r.DynamicValues[k], v...))
+		}
 	}
 	for k, v := range result.PayloadValues {
 		r.PayloadValues[k] = v
@@ -217,10 +223,17 @@ func (operators *Operators) Execute(data map[string]interface{}, match MatchFunc
 		Extracts:      make(map[string][]string),
 		DynamicValues: make(map[string][]string),
 		outputUnique:  make(map[string]struct{}),
+		Operators:     operators,
 	}
+
+	// state variable to check if all extractors are internal
+	var allInternalExtractors bool = true
 
 	// Start with the extractors first and evaluate them.
 	for _, extractor := range operators.Extractors {
+		if !extractor.Internal && allInternalExtractors {
+			allInternalExtractors = false
+		}
 		var extractorResults []string
 		for match := range extract(data, extractor) {
 			extractorResults = append(extractorResults, match)
@@ -240,6 +253,10 @@ func (operators *Operators) Execute(data map[string]interface{}, match MatchFunc
 		}
 		if len(extractorResults) > 0 && !extractor.Internal && extractor.Name != "" {
 			result.Extracts[extractor.Name] = extractorResults
+		}
+		// update data with whatever was extracted doesn't matter if it is internal or not (skip unless it empty)
+		if len(extractorResults) > 0 {
+			data[extractor.Name] = getExtractedValue(extractorResults)
 		}
 	}
 
@@ -288,7 +305,9 @@ func (operators *Operators) Execute(data map[string]interface{}, match MatchFunc
 
 	result.Matched = matches
 	result.Extracted = len(result.OutputExtracts) > 0
-	if len(result.DynamicValues) > 0 {
+	if len(result.DynamicValues) > 0 && allInternalExtractors {
+		// only return early if all extractors are internal
+		// if some are internal and some are not then followthrough
 		return result, true
 	}
 
@@ -338,4 +357,14 @@ func (operators *Operators) IsEmpty() bool {
 // Len calculates the sum of the number of matchers and extractors
 func (operators *Operators) Len() int {
 	return len(operators.Matchers) + len(operators.Extractors)
+}
+
+// getExtractedValue takes array of extracted values if it only has one value
+// then it is flattened and returned as a string else original type is returned
+func getExtractedValue(values []string) any {
+	if len(values) == 1 {
+		return values[0]
+	} else {
+		return values
+	}
 }
