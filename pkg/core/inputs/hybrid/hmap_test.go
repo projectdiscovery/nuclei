@@ -12,10 +12,11 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
+	"github.com/projectdiscovery/nuclei/v3/pkg/utils/expand"
 	"github.com/stretchr/testify/require"
 )
 
-func Test_expandCIDRInputValue(t *testing.T) {
+func Test_expandCIDR(t *testing.T) {
 	tests := []struct {
 		cidr     string
 		expected []string
@@ -33,7 +34,7 @@ func Test_expandCIDRInputValue(t *testing.T) {
 		require.Nil(t, err, "could not create temporary input file")
 		input := &Input{hostMap: hm}
 
-		ips := input.expandCIDRInputValue(tt.cidr)
+		ips := expand.CIDR(tt.cidr)
 		input.addTargets(ips)
 		// scan
 		got := []string{}
@@ -170,7 +171,7 @@ func Test_expandASNInputValue(t *testing.T) {
 		require.Nil(t, err, "could not create temporary input file")
 		input := &Input{hostMap: hm}
 		// get the IP addresses for ASN number
-		ips := input.expandASNInputValue(tt.asn)
+		ips := expand.ASN(tt.asn)
 		input.addTargets(ips)
 		// scan the hmap
 		got := []string{}

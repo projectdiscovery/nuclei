@@ -22,7 +22,7 @@ var (
 )
 
 const (
-	userProfileURL   = "https://%s/v1/template/user/profile?utm_source=%s"
+	userProfileURL   = "https://%s/v1/user?utm_source=%s"
 	apiKeyEnv        = "PDCP_API_KEY"
 	apiServerEnv     = "PDCP_API_SERVER"
 	ApiKeyHeaderName = "X-Api-Key"
