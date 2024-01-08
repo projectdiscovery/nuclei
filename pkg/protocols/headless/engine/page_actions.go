@@ -19,6 +19,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/expressions"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/generators"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/utils/vardump"
 	protocolutils "github.com/projectdiscovery/nuclei/v3/pkg/protocols/utils"
 	httputil "github.com/projectdiscovery/nuclei/v3/pkg/protocols/utils/http"
@@ -395,6 +396,24 @@ func (p *Page) Screenshot(act *Action, out map[string]string) error {
 	if err != nil {
 		return errors.Wrap(err, "could not take screenshot")
 	}
+	targetPath := p.getActionArgWithDefaultValues(act, "to")
+	targetPath, err = fileutil.CleanPath(targetPath)
+	if err != nil {
+		return errorutil.New("could not clean output screenshot path %s", targetPath)
+	}
+	// allow if targetPath is child of current working directory
+	if !protocolstate.IsLFAAllowed() {
+		cwd, err := os.Getwd()
+		if err != nil {
+			return errorutil.NewWithErr(err).Msgf("could not get current working directory")
+		}
+		if !strings.HasPrefix(targetPath, cwd) {
+			// writing outside of cwd requires -lfa flag
+			return ErrLFAccessDenied
+		}
+	}
+
+	// edgecase create directory if mkdir=true and path contains directory
 	if p.getActionArgWithDefaultValues(act, "mkdir") == "true" && stringsutil.ContainsAny(to, folderutil.UnixPathSeparator, folderutil.WindowsPathSeparator) {
 		// creates new directory if needed based on path `to`
 		// TODO: replace all permission bits with fileutil constants (https://github.com/projectdiscovery/utils/issues/113)
@@ -402,8 +421,10 @@ func (p *Page) Screenshot(act *Action, out map[string]string) error {
 			return errorutil.NewWithErr(err).Msgf("failed to create directory while writing screenshot")
 		}
 	}
-	filePath := to
-	if !strings.HasSuffix(to, ".png") {
+
+	// actual file path to write
+	filePath := targetPath
+	if !strings.HasSuffix(filePath, ".png") {
 		filePath += ".png"
 	}
 

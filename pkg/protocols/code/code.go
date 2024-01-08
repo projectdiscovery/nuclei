@@ -139,8 +139,8 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 		metaSrc.AddVariable(gozerotypes.Variable{Name: name, Value: v})
 	}
 	gOutput, err := request.gozero.Eval(context.Background(), request.src, metaSrc)
-	if err != nil {
-		return err
+	if err != nil && gOutput == nil {
+		return errorutil.NewWithErr(err).Msgf("[%s] Could not execute code on local machine %v", request.options.TemplateID, input.MetaInput.Input)
 	}
 	gologger.Verbose().Msgf("[%s] Executed code on local machine %v", request.options.TemplateID, input.MetaInput.Input)
 

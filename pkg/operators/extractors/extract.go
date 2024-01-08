@@ -30,7 +30,6 @@ func (e *Extractor) ExtractRegex(corpus string) map[string]struct{} {
 			}
 		}
 	}
-	e.SaveToFile(results)
 	return results
 }
 
@@ -58,7 +57,6 @@ func (e *Extractor) ExtractKval(data map[string]interface{}) map[string]struct{}
 			results[itemString] = struct{}{}
 		}
 	}
-	e.SaveToFile(results)
 	return results
 }
 
@@ -96,7 +94,6 @@ func (e *Extractor) ExtractHTML(corpus string) map[string]struct{} {
 			}
 		}
 	}
-	e.SaveToFile(results)
 	return results
 }
 
@@ -127,7 +124,6 @@ func (e *Extractor) ExtractXML(corpus string) map[string]struct{} {
 			}
 		}
 	}
-	e.SaveToFile(results)
 	return results
 }
 
@@ -164,7 +160,6 @@ func (e *Extractor) ExtractJSON(corpus string) map[string]struct{} {
 			}
 		}
 	}
-	e.SaveToFile(results)
 	return results
 }
 
@@ -187,6 +182,5 @@ func (e *Extractor) ExtractDSL(data map[string]interface{}) map[string]struct{} 
 			}
 		}
 	}
-	e.SaveToFile(results)
 	return results
 }
