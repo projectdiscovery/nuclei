@@ -24,9 +24,9 @@ require (
 	github.com/projectdiscovery/fastdialer v0.0.52
 	github.com/projectdiscovery/hmap v0.0.32
 	github.com/projectdiscovery/interactsh v1.1.8
-	github.com/projectdiscovery/rawhttp v0.1.28
+	github.com/projectdiscovery/rawhttp v0.1.33
 	github.com/projectdiscovery/retryabledns v1.0.49
-	github.com/projectdiscovery/retryablehttp-go v1.0.41
+	github.com/projectdiscovery/retryablehttp-go v1.0.42
 	github.com/projectdiscovery/yamldoc-go v1.0.4
 	github.com/remeh/sizedwaitgroup v1.0.0
 	github.com/rs/xid v1.5.0
@@ -78,7 +78,7 @@ require (
 	github.com/praetorian-inc/fingerprintx v1.1.9
 	github.com/projectdiscovery/dsl v0.0.36
 	github.com/projectdiscovery/fasttemplate v0.0.2
-	github.com/projectdiscovery/goflags v0.1.29
+	github.com/projectdiscovery/goflags v0.1.34
 	github.com/projectdiscovery/gologger v1.1.12
 	github.com/projectdiscovery/gostruct v0.0.2
 	github.com/projectdiscovery/gozero v0.0.1
@@ -264,7 +264,7 @@ require (
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/power-devops/perfstat v0.0.0-20210106213030-5aafc221ea8c // indirect
 	github.com/projectdiscovery/blackrock v0.0.1 // indirect
-	github.com/projectdiscovery/networkpolicy v0.0.6
+	github.com/projectdiscovery/networkpolicy v0.0.7
 	github.com/rivo/uniseg v0.4.4 // indirect
 	github.com/saintfish/chardet v0.0.0-20230101081208-5e3ef4b5456d // indirect
 	github.com/tklauser/go-sysconf v0.3.11 // indirect
