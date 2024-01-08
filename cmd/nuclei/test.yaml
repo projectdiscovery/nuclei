@@ -1,0 +1,36 @@
+id: flow_matcher_bug
+info:
+  name: Flow matcher bug
+  author: Levente Kovats
+  severity: medium
+  description: Matches from further redirected responses are lost when executed from Flow
+  reference:
+      - https://docs.projectdiscovery.io/templates/protocols/http/basic-http
+      - https://developer.mozilla.org/en-US/docs/Web/HTTP/Redirections
+
+flow: http();
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}"
+    redirects: true # Follow HTTP redirects
+    
+    matchers:
+      # detects the final page that does not redirect any further
+      - type: status
+        status:
+          - 200
+
+    extractors:
+      # export the original URL because Nuclei output the matched one, which is probably after the redirection(s)
+      - type: kval
+        name: original-URL
+        kval:
+          - host
+        internal: true
+      # export the status code
+      - type: kval
+        name: status
+        kval:
+          - status_code
