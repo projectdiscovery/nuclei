@@ -577,7 +577,12 @@ func testHeadlessSimpleResponse(t *testing.T, response string, actions []*Action
 
 func testHeadless(t *testing.T, actions []*Action, timeout time.Duration, handler func(w http.ResponseWriter, r *http.Request), assert func(page *Page, pageErr error, extractedData map[string]string)) {
 	t.Helper()
-	_ = protocolstate.Init(&types.Options{})
+
+	lfa := getBoolFromEnv("LOCAL_FILE_ACCESS", true)
+	rna := getBoolFromEnv("RESTRICED_LOCAL_NETWORK_ACCESS", false)
+	opts := &types.Options{AllowLocalFileAccess: lfa, RestrictLocalNetworkAccess: rna}
+
+	_ = protocolstate.Init(opts)
 
 	browser, err := New(&types.Options{ShowBrowser: false, UseInstalledChrome: testheadless.HeadlessLocal})
 	require.Nil(t, err, "could not create browser")
@@ -594,10 +599,7 @@ func testHeadless(t *testing.T, actions []*Action, timeout time.Duration, handle
 	input.CookieJar, err = cookiejar.New(nil)
 	require.Nil(t, err)
 
-	lfa := getBoolFromEnv("LOCAL_FILE_ACCESS", true)
-	rna := getBoolFromEnv("RESTRICED_LOCAL_NETWORK_ACCESS", false)
-
-	extractedData, page, err := instance.Run(input, actions, nil, &Options{Timeout: timeout, Options: &types.Options{AllowLocalFileAccess: lfa, RestrictLocalNetworkAccess: rna}}) // allow file access in test
+	extractedData, page, err := instance.Run(input, actions, nil, &Options{Timeout: timeout, Options: opts}) // allow file access in test
 	assert(page, err, extractedData)
 
 	if page != nil {

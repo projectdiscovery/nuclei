@@ -67,7 +67,7 @@ func (t *iterateValuesFlow) Execute(filePath string) error {
 	if err != nil {
 		return err
 	}
-	return expectResultsCount(results, 1)
+	return expectResultsCount(results, 2)
 }
 
 type dnsNsProbe struct{}
@@ -77,7 +77,7 @@ func (t *dnsNsProbe) Execute(filePath string) error {
 	if err != nil {
 		return err
 	}
-	return expectResultsCount(results, 1)
+	return expectResultsCount(results, 2)
 }
 
 func getBase64(input string) string {

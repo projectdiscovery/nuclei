@@ -202,6 +202,8 @@ func (s *Service) processWappalyzerInputPair(input *contextargs.MetaInput) {
 	if len(items) == 0 {
 		return
 	}
+	// Add tags as addition to -as for comprehensive scans. Ref: nuclei/issues/3348
+	items = append(items, s.opts.Options.Tags...)
 	uniqueTags := sliceutil.Dedupe(items)
 
 	templatesList := s.store.LoadTemplatesWithTags(s.allTemplates, uniqueTags)

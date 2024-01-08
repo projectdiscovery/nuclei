@@ -10,6 +10,10 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/operators/common/dsl"
 )
 
+const (
+	ExtractedResultsDir = "extracted"
+)
+
 // CompileExtractors performs the initial setup operation on an extractor
 func (e *Extractor) CompileExtractors() error {
 	// Set up the extractor type

@@ -21,9 +21,9 @@ http:
     extractors:
       - type: regex
         name: emails
-        internal: true
         regex:
           - '[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}'
+        internal: true
 
   - method: GET
     path:
@@ -33,3 +33,9 @@ http:
       - type: word
         words:
           - "Welcome"
+    
+    extractors:
+      - type: dsl
+        name: email
+        dsl:
+          - email

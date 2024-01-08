@@ -17,7 +17,7 @@ import (
 var (
 	ErrURLDenied         = errorutil.NewWithFmt("headless: url %v dropped by rule: %v")
 	ErrHostDenied        = errorutil.NewWithFmt("host %v dropped by network policy")
-	networkPolicy        *networkpolicy.NetworkPolicy
+	NetworkPolicy        *networkpolicy.NetworkPolicy
 	allowLocalFileAccess bool
 )
 
@@ -51,14 +51,11 @@ func FailWithReason(page *rod.Page, e *proto.FetchRequestPaused) error {
 }
 
 // InitHeadless initializes headless protocol state
-func InitHeadless(RestrictLocalNetworkAccess bool, localFileAccess bool) {
+func InitHeadless(localFileAccess bool, np *networkpolicy.NetworkPolicy) {
 	allowLocalFileAccess = localFileAccess
-	if !RestrictLocalNetworkAccess {
-		return
+	if np != nil {
+		NetworkPolicy = np
 	}
-	networkPolicy, _ = networkpolicy.New(networkpolicy.Options{
-		DenyList: append(networkpolicy.DefaultIPv4DenylistRanges, networkpolicy.DefaultIPv6DenylistRanges...),
-	})
 }
 
 // isValidHost checks if the host is valid (only limited to http/https protocols)
@@ -66,7 +63,7 @@ func isValidHost(targetUrl string) bool {
 	if !stringsutil.HasPrefixAny(targetUrl, "http:", "https:") {
 		return true
 	}
-	if networkPolicy == nil {
+	if NetworkPolicy == nil {
 		return true
 	}
 	urlx, err := urlutil.Parse(targetUrl)
@@ -75,15 +72,15 @@ func isValidHost(targetUrl string) bool {
 		return false
 	}
 	targetUrl = urlx.Hostname()
-	_, ok := networkPolicy.ValidateHost(targetUrl)
+	_, ok := NetworkPolicy.ValidateHost(targetUrl)
 	return ok
 }
 
 // IsHostAllowed checks if the host is allowed by network policy
 func IsHostAllowed(targetUrl string) bool {
-	if networkPolicy == nil {
+	if NetworkPolicy == nil {
 		return true
 	}
-	_, ok := networkPolicy.ValidateHost(targetUrl)
+	_, ok := NetworkPolicy.ValidateHost(targetUrl)
 	return ok
 }

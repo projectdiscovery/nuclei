@@ -11,7 +11,7 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-var commonExpectedFields = []string{"Type", "Condition", "Name", "MatchAll", "Negative"}
+var commonExpectedFields = []string{"Type", "Condition", "Name", "MatchAll", "Negative", "Internal"}
 
 // Validate perform initial validation on the matcher structure
 func (matcher *Matcher) Validate() error {

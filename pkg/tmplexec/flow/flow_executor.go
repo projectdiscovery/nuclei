@@ -9,9 +9,7 @@ import (
 
 	"github.com/dop251/goja"
 	"github.com/projectdiscovery/gologger"
-	"github.com/projectdiscovery/nuclei/v3/pkg/output"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
-	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/generators"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
 	"github.com/projectdiscovery/nuclei/v3/pkg/scan"
@@ -38,13 +36,12 @@ type ProtoOptions struct {
 
 // FlowExecutor is a flow executor for executing a flow
 type FlowExecutor struct {
-	input   *contextargs.Context
+	ctx     *scan.ScanContext // scan context (includes target etc)
 	options *protocols.ExecutorOptions
 
 	// javascript runtime reference and compiled program
-	jsVM      *goja.Runtime
-	program   *goja.Program                // compiled js program
-	lastEvent *output.InternalWrappedEvent // contains last event that was emitted
+	jsVM    *goja.Runtime
+	program *goja.Program // compiled js program
 
 	// protocol requests and their callback functions
 	allProtocols   map[string][]protocols.Request
@@ -56,7 +53,9 @@ type FlowExecutor struct {
 }
 
 // NewFlowExecutor creates a new flow executor from a list of requests
-func NewFlowExecutor(requests []protocols.Request, input *contextargs.Context, options *protocols.ExecutorOptions, results *atomic.Bool) *FlowExecutor {
+// Note: Unlike other engine for every target x template flow needs to be compiled and executed everytime
+// unlike other engines where we compile once and execute multiple times
+func NewFlowExecutor(requests []protocols.Request, ctx *scan.ScanContext, options *protocols.ExecutorOptions, results *atomic.Bool) *FlowExecutor {
 	allprotos := make(map[string][]protocols.Request)
 	for _, req := range requests {
 		switch req.Type() {
@@ -81,7 +80,8 @@ func NewFlowExecutor(requests []protocols.Request, input *contextargs.Context, o
 		case templateTypes.JavascriptProtocol:
 			allprotos[templateTypes.JavascriptProtocol.String()] = append(allprotos[templateTypes.JavascriptProtocol.String()], req)
 		default:
-			gologger.Error().Msgf("invalid request type %s", req.Type().String())
+			ctx.LogError(fmt.Errorf("invalid request type %s", req.Type().String()))
+			return nil
 		}
 	}
 	f := &FlowExecutor{
@@ -94,7 +94,7 @@ func NewFlowExecutor(requests []protocols.Request, input *contextargs.Context, o
 		protoFunctions: map[string]func(call goja.FunctionCall) goja.Value{},
 		results:        results,
 		jsVM:           protocolstate.NewJSRuntime(),
-		input:          input,
+		ctx:            ctx,
 	}
 	return f
 }
@@ -105,7 +105,7 @@ func (f *FlowExecutor) Compile() error {
 		f.results = new(atomic.Bool)
 	}
 	// load all variables and evaluate with existing data
-	variableMap := f.options.Variables.Evaluate(f.options.GetTemplateCtx(f.input.MetaInput).GetAll())
+	variableMap := f.options.Variables.Evaluate(f.options.GetTemplateCtx(f.ctx.Input.MetaInput).GetAll())
 	// cli options
 	optionVars := generators.BuildPayloadFromOptions(f.options.Options)
 	// constants
@@ -118,11 +118,11 @@ func (f *FlowExecutor) Compile() error {
 			if value, err := f.ReadDataFromFile(str); err == nil {
 				allVars[k] = value
 			} else {
-				gologger.Warning().Msgf("could not load file '%s' for variable '%s': %s", str, k, err)
+				f.ctx.LogWarning("could not load file '%s' for variable '%s': %s", str, k, err)
 			}
 		}
 	}
-	f.options.GetTemplateCtx(f.input.MetaInput).Merge(allVars) // merge all variables into template context
+	f.options.GetTemplateCtx(f.ctx.Input.MetaInput).Merge(allVars) // merge all variables into template context
 
 	// ---- define callback functions/objects----
 	f.protoFunctions = map[string]func(call goja.FunctionCall) goja.Value{}
@@ -165,24 +165,24 @@ func (f *FlowExecutor) Compile() error {
 func (f *FlowExecutor) ExecuteWithResults(ctx *scan.ScanContext) error {
 	defer func() {
 		if e := recover(); e != nil {
+			f.ctx.LogError(fmt.Errorf("panic occurred while executing target %v with flow: %v", ctx.Input.MetaInput.Input, e))
 			gologger.Error().Label(f.options.TemplateID).Msgf("panic occurred while executing target %v with flow: %v", ctx.Input.MetaInput.Input, e)
-			panic(e)
 		}
 	}()
 
-	f.input = ctx.Input
+	f.ctx.Input = ctx.Input
 	// -----Load all types of variables-----
 	// add all input args to template context
-	if f.input != nil && f.input.HasArgs() {
-		f.input.ForEach(func(key string, value interface{}) {
-			f.options.GetTemplateCtx(f.input.MetaInput).Set(key, value)
+	if f.ctx.Input != nil && f.ctx.Input.HasArgs() {
+		f.ctx.Input.ForEach(func(key string, value interface{}) {
+			f.options.GetTemplateCtx(f.ctx.Input.MetaInput).Set(key, value)
 		})
 	}
 	if ctx.OnResult == nil {
 		return fmt.Errorf("output callback cannot be nil")
 	}
 	// pass flow and execute the js vm and handle errors
-	value, err := f.jsVM.RunProgram(f.program)
+	_, err := f.jsVM.RunProgram(f.program)
 	if err != nil {
 		ctx.LogError(err)
 		return errorutil.NewWithErr(err).Msgf("failed to execute flow\n%v\n", f.options.Flow)
@@ -192,13 +192,7 @@ func (f *FlowExecutor) ExecuteWithResults(ctx *scan.ScanContext) error {
 		ctx.LogError(runtimeErr)
 		return errorutil.NewWithErr(runtimeErr).Msgf("got following errors while executing flow")
 	}
-	// this is where final result is generated/created
-	ctx.LogEvent(f.lastEvent)
-	if value.Export() != nil {
-		f.results.Store(value.ToBoolean())
-	} else {
-		f.results.Store(true)
-	}
+
 	return nil
 }
 
