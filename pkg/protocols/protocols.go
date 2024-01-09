@@ -215,7 +215,17 @@ type Request interface {
 type OutputEventCallback func(result *output.InternalWrappedEvent)
 
 func MakeDefaultResultEvent(request Request, wrapped *output.InternalWrappedEvent) []*output.ResultEvent {
+	// Note: operator result is generated if something was succesfull match/extract/dynamic-extract
+	// but results should not be generated if
+	// 1. no match was found and some dynamic values were extracted
+	// 2. if something was extracted (matchers exist but no match was found)
 	if len(wrapped.OperatorsResult.DynamicValues) > 0 && !wrapped.OperatorsResult.Matched {
+		return nil
+	}
+	// check if something was extracted (except dynamic values)
+	extracted := len(wrapped.OperatorsResult.Extracts) > 0 || len(wrapped.OperatorsResult.OutputExtracts) > 0
+	if extracted && len(wrapped.OperatorsResult.Operators.Matchers) > 0 && !wrapped.OperatorsResult.Matched {
+		// if extracted and matchers exist but no match was found then don't generate result
 		return nil
 	}
 
