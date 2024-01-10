@@ -100,11 +100,15 @@ type partType int
 const (
 	queryPartType partType = iota + 1
 	headersPartType
+	bodyPartType
+	allPartType
 )
 
 var stringToPartType = map[string]partType{
 	"query":   queryPartType,
 	"headers": headersPartType,
+	"body":    bodyPartType,
+	"all":     allPartType,
 }
 
 // modeType is the mode of rule enum declaration

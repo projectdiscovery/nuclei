@@ -1,6 +1,8 @@
 package fuzz
 
 import (
+	"bytes"
+	"io"
 	"regexp"
 	"strings"
 
@@ -78,6 +80,30 @@ func (rule *Rule) isExecutable(req *retryablehttp.Request) bool {
 		return true
 	}
 	if len(req.Header) > 0 && rule.partType == headersPartType {
+		return true
+	}
+	if rule.partType == bodyPartType {
+
+		// clone the body
+		originalBody := req.Request.Body
+
+		defer func() {
+			req.Request.Body = originalBody
+		}()
+
+		bodyBytes, err := io.ReadAll(req.Request.Body)
+		if err != nil {
+			return false
+		}
+		req.Request.Body = io.NopCloser(bytes.NewReader(bodyBytes))
+
+		// read the body to check if not empty
+		strBody := string(bodyBytes)
+		if len(strBody) > 0 {
+			return true
+		}
+	}
+	if rule.partType == allPartType { // allow without any validation (for develpoment)
 		return true
 	}
 	return false
