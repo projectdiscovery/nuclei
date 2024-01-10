@@ -283,6 +283,7 @@ func createReportingOptions(options *types.Options) (*reporting.Options, error) 
 		}
 	}
 
+	reportingOptions.OmitRaw = options.OmitRawRequests
 	return reportingOptions, nil
 }
 
