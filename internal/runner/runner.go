@@ -185,6 +185,7 @@ func New(options *types.Options) (*Runner, error) {
 	if reportingOptions != nil && httpclient != nil {
 		reportingOptions.HttpClient = httpclient
 	}
+	reportingOptions.OmitRaw = options.OmitRawRequests
 
 	if reportingOptions != nil {
 		client, err := reporting.New(reportingOptions, options.ReportingDB)
