@@ -127,7 +127,7 @@ require (
 	github.com/cheggaaa/pb/v3 v3.1.4 // indirect
 	github.com/chenzhuoyu/base64x v0.0.0-20221115062448-fe3a3abad311 // indirect
 	github.com/cloudflare/cfssl v1.6.4 // indirect
-	github.com/cloudflare/circl v1.3.6 // indirect
+	github.com/cloudflare/circl v1.3.7 // indirect
 	github.com/containerd/continuity v0.4.2 // indirect
 	github.com/cyphar/filepath-securejoin v0.2.4 // indirect
 	github.com/denisbrodbeck/machineid v1.0.1 // indirect
