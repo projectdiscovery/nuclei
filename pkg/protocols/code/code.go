@@ -125,15 +125,16 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 
 	var interactshURLs []string
 
-	// inject all template context values as gozero env variables
-	variables := protocolutils.GenerateVariables(input.MetaInput.Input, false, nil)
+	// inject all template context values as gozero env allvars
+	allvars := protocolutils.GenerateVariables(input.MetaInput.Input, false, nil)
 	// add template context values
-	variables = generators.MergeMaps(variables, request.options.GetTemplateCtx(input.MetaInput).GetAll())
+	allvars = generators.MergeMaps(allvars, request.options.GetTemplateCtx(input.MetaInput).GetAll())
 	// optionvars are vars passed from CLI or env variables
 	optionVars := generators.BuildPayloadFromOptions(request.options.Options)
-	variablesMap := request.options.Variables.Evaluate(variables)
-	variables = generators.MergeMaps(variablesMap, variables, optionVars, request.options.Constants)
-	for name, value := range variables {
+	variablesMap := request.options.Variables.Evaluate(allvars)
+	// since we evaluate variables using allvars, give precedence to variablesMap
+	allvars = generators.MergeMaps(allvars, variablesMap, optionVars, request.options.Constants)
+	for name, value := range allvars {
 		v := fmt.Sprint(value)
 		v, interactshURLs = request.options.Interactsh.Replace(v, interactshURLs)
 		metaSrc.AddVariable(gozerotypes.Variable{Name: name, Value: v})
@@ -145,7 +146,7 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 	gologger.Verbose().Msgf("[%s] Executed code on local machine %v", request.options.TemplateID, input.MetaInput.Input)
 
 	if vardump.EnableVarDump {
-		gologger.Debug().Msgf("Code Protocol request variables: \n%s\n", vardump.DumpVariables(variables))
+		gologger.Debug().Msgf("Code Protocol request variables: \n%s\n", vardump.DumpVariables(allvars))
 	}
 
 	if request.options.Options.Debug || request.options.Options.DebugRequests {
