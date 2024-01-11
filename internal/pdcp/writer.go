@@ -16,6 +16,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/config"
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
 	"github.com/projectdiscovery/retryablehttp-go"
+	pdcpauth "github.com/projectdiscovery/utils/auth/pdcp"
 	errorutil "github.com/projectdiscovery/utils/errors"
 	fileutil "github.com/projectdiscovery/utils/file"
 	folderutil "github.com/projectdiscovery/utils/folder"
@@ -32,14 +33,14 @@ var _ output.Writer = &UploadWriter{}
 // server to enable web dashboard and more
 type UploadWriter struct {
 	*output.StandardWriter
-	creds     *PDCPCredentials
+	creds     *pdcpauth.PDCPCredentials
 	tempFile  *os.File
 	done      atomic.Bool
 	uploadURL *url.URL
 }
 
 // NewUploadWriter creates a new upload writer
-func NewUploadWriter(creds *PDCPCredentials) (*UploadWriter, error) {
+func NewUploadWriter(creds *pdcpauth.PDCPCredentials) (*UploadWriter, error) {
 	if creds == nil {
 		return nil, fmt.Errorf("no credentials provided")
 	}
@@ -107,7 +108,7 @@ func (u *UploadWriter) upload() (string, error) {
 	if err != nil {
 		return "", errorutil.NewWithErr(err).Msgf("could not create cloud upload request")
 	}
-	req.Header.Set(ApiKeyHeaderName, u.creds.APIKey)
+	req.Header.Set(pdcpauth.ApiKeyHeaderName, u.creds.APIKey)
 	req.Header.Set("Content-Type", "application/octet-stream")
 	req.Header.Set("Accept", "application/json")
 
@@ -149,7 +150,7 @@ func (u *UploadWriter) Close() {
 }
 
 func getScanDashBoardURL(id string) string {
-	ux, _ := urlutil.Parse(DashBoardURL)
+	ux, _ := urlutil.Parse(pdcpauth.DashBoardURL)
 	ux.Path = "/scans/" + id
 	ux.Update()
 	return ux.String()

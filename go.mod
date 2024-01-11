@@ -90,14 +90,14 @@ require (
 	github.com/projectdiscovery/sarif v0.0.1
 	github.com/projectdiscovery/tlsx v1.1.6-0.20231116215000-e842dc367a74
 	github.com/projectdiscovery/uncover v1.0.7
-	github.com/projectdiscovery/utils v0.0.72
+	github.com/projectdiscovery/utils v0.0.73-0.20240110205148-46f474b2947f
 	github.com/projectdiscovery/wappalyzergo v0.0.109
 	github.com/redis/go-redis/v9 v9.1.0
 	github.com/ropnop/gokrb5/v8 v8.0.0-20201111231119-729746023c02
 	github.com/sashabaranov/go-openai v1.15.3
 	github.com/stretchr/testify v1.8.4
 	github.com/zmap/zgrab2 v0.1.8-0.20230806160807-97ba87c0e706
-	golang.org/x/term v0.15.0
+	golang.org/x/term v0.16.0
 	gopkg.in/src-d/go-git.v4 v4.13.1
 	gopkg.in/yaml.v3 v3.0.1
 )
@@ -286,7 +286,7 @@ require (
 	golang.org/x/crypto v0.17.0 // indirect
 	golang.org/x/exp v0.0.0-20231110203233-9a3e6036ecaa
 	golang.org/x/mod v0.14.0 // indirect
-	golang.org/x/sys v0.15.0 // indirect
+	golang.org/x/sys v0.16.0 // indirect
 	golang.org/x/time v0.3.0 // indirect
 	golang.org/x/tools v0.15.0 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
