@@ -24,6 +24,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
+	elabel "github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/errors/label"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/expressions"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/fuzz"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/generators"
@@ -36,7 +37,9 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http/signerpool"
 	templateTypes "github.com/projectdiscovery/nuclei/v3/pkg/templates/types"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
+	"github.com/projectdiscovery/nuclei/v3/pkg/utils/stats"
 	"github.com/projectdiscovery/rawhttp"
+	errorutil "github.com/projectdiscovery/utils/errors"
 	"github.com/projectdiscovery/utils/reader"
 	sliceutil "github.com/projectdiscovery/utils/slice"
 	stringsutil "github.com/projectdiscovery/utils/strings"
@@ -369,6 +372,9 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 					return true, nil
 				}
 				request.options.Progress.IncrementFailedRequestsBy(int64(generator.Total()))
+				if lb, ok := elabel.Contains(err.Error(), elabel.ErrorLabels); ok {
+					stats.Increment(lb)
+				}
 				return true, err
 			}
 
@@ -463,7 +469,7 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 
 const drainReqSize = int64(8 * 1024)
 
-var errStopExecution = errors.New("stop execution due to unresolved variables")
+var errStopExecution = errorutil.NewWithTag(elabel.UnresolvedVariablesErrorLabel, "stop execution due to unresolved variables")
 
 // executeRequest executes the actual generated request and returns error if occurred
 func (request *Request) executeRequest(input *contextargs.Context, generatedRequest *generatedRequest, previousEvent output.InternalEvent, hasInteractMatchers bool, callback protocols.OutputEventCallback, requestCount int) error {
@@ -539,7 +545,10 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 			}
 		} else { // Check if are there any unresolved variables. If yes, skip unless overridden by user.
 			if varErr := expressions.ContainsUnresolvedVariables(dumpedRequestString); varErr != nil && !request.SkipVariablesCheck {
-				gologger.Warning().Msgf("[%s] Could not make http request for %s: %v\n", request.options.TemplateID, input.MetaInput.Input, varErr)
+				stats.Increment(elabel.UnresolvedVariablesErrorLabel)
+				if _, ok := elabel.Contains(varErr.Error(), request.options.Options.ErrorLabels); ok {
+					gologger.Warning().Msgf("[%s] Could not make http request for %s: %v\n", request.options.TemplateID, input.MetaInput.Input, varErr)
+				}
 				return errStopExecution
 			}
 		}

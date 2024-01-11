@@ -19,6 +19,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
+	elabel "github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/errors/label"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/expressions"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/generators"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/helpers/eventcreator"
@@ -29,6 +30,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/utils/vardump"
 	protocolutils "github.com/projectdiscovery/nuclei/v3/pkg/protocols/utils"
 	templateTypes "github.com/projectdiscovery/nuclei/v3/pkg/templates/types"
+	"github.com/projectdiscovery/nuclei/v3/pkg/utils/stats"
 	errorutil "github.com/projectdiscovery/utils/errors"
 	mapsutil "github.com/projectdiscovery/utils/maps"
 	"github.com/projectdiscovery/utils/reader"
@@ -246,7 +248,11 @@ func (request *Request) executeRequestWithPayloads(variables map[string]interfac
 		reqBuilder.Write(finalData)
 
 		if err := expressions.ContainsUnresolvedVariables(string(finalData)); err != nil {
-			gologger.Warning().Msgf("[%s] Could not make network request for %s: %v\n", request.options.TemplateID, actualAddress, err)
+			request.options.Progress.IncrementFailedRequestsBy(1)
+			stats.Increment(elabel.UnresolvedVariablesErrorLabel)
+			if _, ok := elabel.Contains(err.Error(), request.options.Options.ErrorLabels); ok {
+				gologger.Warning().Msgf("[%s] Could not make network request for %s: %v\n", request.options.TemplateID, actualAddress, err)
+			}
 			return nil
 		}
 
