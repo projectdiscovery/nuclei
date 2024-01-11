@@ -16,6 +16,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/internal/pdcp"
 	"github.com/projectdiscovery/nuclei/v3/pkg/installer"
 	uncoverlib "github.com/projectdiscovery/uncover"
+	pdcpauth "github.com/projectdiscovery/utils/auth/pdcp"
 	"github.com/projectdiscovery/utils/env"
 	fileutil "github.com/projectdiscovery/utils/file"
 	permissionutil "github.com/projectdiscovery/utils/permission"
@@ -351,18 +352,18 @@ func (r *Runner) setupPDCPUpload(writer output.Writer) output.Writer {
 		return writer
 	}
 	color := aurora.NewAurora(!r.options.NoColor)
-	h := &pdcp.PDCPCredHandler{}
+	h := &pdcpauth.PDCPCredHandler{}
 	creds, err := h.GetCreds()
 	if err != nil {
-		if err != pdcp.ErrNoCreds && !HideAutoSaveMsg {
+		if err != pdcpauth.ErrNoCreds && !HideAutoSaveMsg {
 			gologger.Verbose().Msgf("Could not get credentials for cloud upload: %s\n", err)
 		}
-		r.pdcpUploadErrMsg = fmt.Sprintf("[%v] To view results on Cloud Dashboard, Configure API key from %v", color.BrightYellow("WRN"), pdcp.DashBoardURL)
+		r.pdcpUploadErrMsg = fmt.Sprintf("[%v] To view results on Cloud Dashboard, Configure API key from %v", color.BrightYellow("WRN"), pdcpauth.DashBoardURL)
 		return writer
 	}
 	uploadWriter, err := pdcp.NewUploadWriter(creds)
 	if err != nil {
-		r.pdcpUploadErrMsg = fmt.Sprintf("[%v] PDCP (%v) Auto-Save Failed: %s\n", color.BrightYellow("WRN"), pdcp.DashBoardURL, err)
+		r.pdcpUploadErrMsg = fmt.Sprintf("[%v] PDCP (%v) Auto-Save Failed: %s\n", color.BrightYellow("WRN"), pdcpauth.DashBoardURL, err)
 		return writer
 	}
 	return output.NewMultiWriter(writer, uploadWriter)
@@ -592,7 +593,7 @@ func (r *Runner) displayExecutionInfo(store *loader.Store) {
 		if r.pdcpUploadErrMsg != "" {
 			gologger.Print().Msgf("%s", r.pdcpUploadErrMsg)
 		} else {
-			gologger.Info().Msgf("To view results on cloud dashboard, visit %v/scans upon scan completion.", pdcp.DashBoardURL)
+			gologger.Info().Msgf("To view results on cloud dashboard, visit %v/scans upon scan completion.", pdcpauth.DashBoardURL)
 		}
 	}
 
