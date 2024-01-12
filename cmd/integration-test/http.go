@@ -368,6 +368,7 @@ func (h *httpDSLFunctions) Execute(filePath string) error {
 	}
 
 	for _, header := range extracted {
+		header = strings.Trim(header, `"`)
 		parts := strings.Split(header, ": ")
 		index, err := strconv.Atoi(parts[0])
 		if err != nil {
