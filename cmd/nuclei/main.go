@@ -113,17 +113,25 @@ func main() {
 
 	runner.ParseOptions(options)
 
-	if options.HangMonitor {
-		cancel := monitor.NewStackMonitor(10 * time.Second)
-		defer cancel()
-	}
-
 	nucleiRunner, err := runner.New(options)
 	if err != nil {
 		gologger.Fatal().Msgf("Could not create runner: %s\n", err)
 	}
 	if nucleiRunner == nil {
 		return
+	}
+
+	if options.HangMonitor {
+		stackMonitor := monitor.NewStackMonitor()
+		cancel := stackMonitor.Start(10 * time.Second)
+		defer cancel()
+		stackMonitor.RegisterCallback(func(dumpID string) error {
+			resumeFileName := fmt.Sprintf("crash-resume-file-%s.dump", dumpID)
+			nucleiRunner.Close()
+			gologger.Info().Msgf("Creating resume file: %s\n", resumeFileName)
+			err := nucleiRunner.SaveResumeConfig(resumeFileName)
+			return errorutil.NewWithErr(err).Msgf("couldn't create crash resume file")
+		})
 	}
 
 	// Setup graceful exits
