@@ -3,6 +3,7 @@ package code
 import (
 	"context"
 	"fmt"
+	"regexp"
 	"strings"
 	"time"
 
@@ -26,6 +27,14 @@ import (
 	templateTypes "github.com/projectdiscovery/nuclei/v3/pkg/templates/types"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	errorutil "github.com/projectdiscovery/utils/errors"
+)
+
+const (
+	pythonEnvRegex = `os\.getenv\(['"]([^'"]+)['"]\)`
+)
+
+var (
+	pythonEnvRegexCompiled = regexp.MustCompile(pythonEnvRegex)
 )
 
 // Request is a request for the SSL protocol
@@ -125,17 +134,20 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 
 	var interactshURLs []string
 
-	// inject all template context values as gozero env variables
-	variables := protocolutils.GenerateVariables(input.MetaInput.Input, false, nil)
+	// inject all template context values as gozero env allvars
+	allvars := protocolutils.GenerateVariables(input.MetaInput.Input, false, nil)
 	// add template context values
-	variables = generators.MergeMaps(variables, request.options.GetTemplateCtx(input.MetaInput).GetAll())
+	allvars = generators.MergeMaps(allvars, request.options.GetTemplateCtx(input.MetaInput).GetAll())
 	// optionvars are vars passed from CLI or env variables
 	optionVars := generators.BuildPayloadFromOptions(request.options.Options)
-	variablesMap := request.options.Variables.Evaluate(variables)
-	variables = generators.MergeMaps(variablesMap, variables, optionVars, request.options.Constants)
-	for name, value := range variables {
+	variablesMap := request.options.Variables.Evaluate(allvars)
+	// since we evaluate variables using allvars, give precedence to variablesMap
+	allvars = generators.MergeMaps(allvars, variablesMap, optionVars, request.options.Constants)
+	for name, value := range allvars {
 		v := fmt.Sprint(value)
 		v, interactshURLs = request.options.Interactsh.Replace(v, interactshURLs)
+		// if value is updated by interactsh, update allvars to reflect the change downstream
+		allvars[name] = v
 		metaSrc.AddVariable(gozerotypes.Variable{Name: name, Value: v})
 	}
 	gOutput, err := request.gozero.Eval(context.Background(), request.src, metaSrc)
@@ -145,11 +157,11 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 	gologger.Verbose().Msgf("[%s] Executed code on local machine %v", request.options.TemplateID, input.MetaInput.Input)
 
 	if vardump.EnableVarDump {
-		gologger.Debug().Msgf("Code Protocol request variables: \n%s\n", vardump.DumpVariables(variables))
+		gologger.Debug().Msgf("Code Protocol request variables: \n%s\n", vardump.DumpVariables(allvars))
 	}
 
 	if request.options.Options.Debug || request.options.Options.DebugRequests {
-		gologger.Debug().Msgf("[%s] Dumped Executed Source Code for %v\n\n%v\n", request.options.TemplateID, input.MetaInput.Input, request.Source)
+		gologger.Debug().Msgf("[%s] Dumped Executed Source Code for %v\n\n%v\n", request.options.TemplateID, input.MetaInput.Input, interpretEnvVars(request.Source, allvars))
 	}
 
 	dataOutputString := fmtStdout(gOutput.Stdout.String())
@@ -271,4 +283,25 @@ func (request *Request) MakeResultEventItem(wrapped *output.InternalWrappedEvent
 
 func fmtStdout(data string) string {
 	return strings.Trim(data, " \n\r\t")
+}
+
+// interpretEnvVars replaces environment variables in the input string
+func interpretEnvVars(source string, vars map[string]interface{}) string {
+	// bash mode
+	if strings.Contains(source, "$") {
+		for k, v := range vars {
+			source = strings.ReplaceAll(source, "$"+k, fmt.Sprintf("'%s'", v))
+		}
+	}
+	// python mode
+	if strings.Contains(source, "os.getenv") {
+		matches := pythonEnvRegexCompiled.FindAllStringSubmatch(source, -1)
+		for _, match := range matches {
+			if len(match) == 0 {
+				continue
+			}
+			source = strings.ReplaceAll(source, fmt.Sprintf("os.getenv('%s')", match), fmt.Sprintf("'%s'", vars[match[0]]))
+		}
+	}
+	return source
 }
