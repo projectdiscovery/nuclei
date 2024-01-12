@@ -203,3 +203,103 @@ func getBaseNamingContext(opts *ldapSessionOptions, conn *ldap.Conn) (string, er
 	opts.baseDN = defaultNamingContext
 	return opts.baseDN, nil
 }
+
+// KerberoastableUser contains the important fields of the Active Directory
+// kerberoastable user
+type KerberoastableUser struct {
+	SAMAccountName       string
+	ServicePrincipalName string
+	PWDLastSet           string
+	MemberOf             string
+	UserAccountControl   string
+	LastLogon            string
+}
+
+// GetKerberoastableUsers collects all "person" users that have an SPN
+// associated with them. The LDAP filter is built with the same logic as
+// "GetUserSPNs.py", the well-known impacket example by Forta.
+// https://github.com/fortra/impacket/blob/master/examples/GetUserSPNs.py#L297
+//
+// Returns a list of KerberoastableUser, if an error occurs, returns an empty
+// slice and the raised error
+func (c *LdapClient) GetKerberoastableUsers(domain, controller string, username, password string) ([]KerberoastableUser, error) {
+	opts := &ldapSessionOptions{
+		domain:           domain,
+		domainController: controller,
+		username:         username,
+		password:         password,
+	}
+
+	if !protocolstate.IsHostAllowed(domain) {
+		// host is not valid according to network policy
+		return nil, protocolstate.ErrHostDenied.Msgf(domain)
+	}
+
+	conn, err := c.newLdapSession(opts)
+	if err != nil {
+		return nil, err
+	}
+	defer c.close(conn)
+
+	domainParts := strings.Split(domain, ".")
+	if username == "" {
+		err = conn.UnauthenticatedBind("")
+	} else {
+		err = conn.Bind(
+			fmt.Sprintf("%v\\%v", domainParts[0], username),
+			password,
+		)
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	var baseDN strings.Builder
+	for i, part := range domainParts {
+		baseDN.WriteString("DC=")
+		baseDN.WriteString(part)
+		if i != len(domainParts)-1 {
+			baseDN.WriteString(",")
+		}
+	}
+
+	sr := ldap.NewSearchRequest(
+		baseDN.String(),
+		ldap.ScopeWholeSubtree,
+		ldap.NeverDerefAliases,
+		0, 0, false,
+		// (&(is_user)         (!(account_is_disabled))                         (has_SPN))
+		"(&(objectCategory=person)(!(userAccountControl:1.2.840.113556.1.4.803:=2))(servicePrincipalName=*))",
+		[]string{
+			"SAMAccountName",
+			"ServicePrincipalName",
+			"pwdLastSet",
+			"MemberOf",
+			"userAccountControl",
+			"lastLogon",
+		},
+		nil,
+	)
+
+	res, err := conn.Search(sr)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(res.Entries) == 0 {
+		return nil, fmt.Errorf("no kerberoastable user found")
+	}
+
+	var ku []KerberoastableUser
+	for _, usr := range res.Entries {
+		ku = append(ku, KerberoastableUser{
+			SAMAccountName:       usr.GetAttributeValue("sAMAccountName"),
+			ServicePrincipalName: usr.GetAttributeValue("servicePrincipalName"),
+			PWDLastSet:           usr.GetAttributeValue("pwdLastSet"),
+			MemberOf:             usr.GetAttributeValue("MemberOf"),
+			UserAccountControl:   usr.GetAttributeValue("userAccountControl"),
+			LastLogon:            usr.GetAttributeValue("lastLogon"),
+		})
+	}
+	return ku, nil
+}
