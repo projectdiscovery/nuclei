@@ -339,3 +339,11 @@ func WithHeaders(headers []string) NucleiSDKOptions {
 		return nil
 	}
 }
+
+// EnableDebugRequests allows debugging request for the engine
+func EnableDebugRequests() NucleiSDKOptions {
+	return func(e *NucleiEngine) error {
+		e.opts.DebugRequests = true
+		return nil
+	}
+}

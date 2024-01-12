@@ -6,6 +6,8 @@ func main() {
 	ne, err := nuclei.NewNucleiEngine(
 		nuclei.WithTemplateFilters(nuclei.TemplateFilters{Tags: []string{"oast"}}),
 		nuclei.EnableStatsWithOpts(nuclei.StatsOptions{MetricServerPort: 6064}), // optionally enable metrics server for better observability
+		// You can see the requests by commenting out the next line
+		// nuclei.EnableDebugRequests(),
 	)
 	if err != nil {
 		panic(err)
