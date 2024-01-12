@@ -134,6 +134,7 @@ func main() {
 	go func() {
 		for range c {
 			gologger.Info().Msgf("CTRL+C pressed: Exiting\n")
+			gologger.Info().Msgf("Attempting graceful shutdown...")
 			nucleiRunner.Close()
 			if options.ShouldSaveResume() {
 				gologger.Info().Msgf("Creating resume file: %s\n", resumeFileName)

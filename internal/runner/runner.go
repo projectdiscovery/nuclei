@@ -328,7 +328,6 @@ func (r *Runner) runStandardEnumeration(executerOpts protocols.ExecutorOptions, 
 
 // Close releases all the resources and cleans up
 func (r *Runner) Close() {
-	gologger.Info().Msgf("Attempting graceful shutdown...")
 	if r.output != nil {
 		r.output.Close()
 	}
