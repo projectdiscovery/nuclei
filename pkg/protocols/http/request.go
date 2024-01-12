@@ -477,11 +477,12 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 		finalMap["ip"] = input.MetaInput.CustomIP
 	}
 
-	for payloadName, payloadValue := range generatedRequest.dynamicValues {
-		if data, err := expressions.Evaluate(types.ToString(payloadValue), finalMap); err == nil {
-			generatedRequest.dynamicValues[payloadName] = data
-		}
-	}
+	// we should never evaluate all variables of a template
+	// for payloadName, payloadValue := range generatedRequest.dynamicValues {
+	// 	if data, err := expressions.Evaluate(types.ToString(payloadValue), finalMap); err == nil {
+	// 		generatedRequest.dynamicValues[payloadName] = data
+	// 	}
+	// }
 	for payloadName, payloadValue := range generatedRequest.meta {
 		if data, err := expressions.Evaluate(types.ToString(payloadValue), finalMap); err == nil {
 			generatedRequest.meta[payloadName] = data
