@@ -166,7 +166,6 @@ func (f *FlowExecutor) ExecuteWithResults(ctx *scan.ScanContext) error {
 	defer func() {
 		if e := recover(); e != nil {
 			gologger.Error().Label(f.options.TemplateID).Msgf("panic occurred while executing target %v with flow: %v", ctx.Input.MetaInput.Input, e)
-			panic(e)
 		}
 	}()
 

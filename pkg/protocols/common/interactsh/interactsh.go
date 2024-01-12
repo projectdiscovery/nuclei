@@ -151,6 +151,13 @@ func requestShouldStopAtFirstMatch(request *RequestData) bool {
 
 // processInteractionForRequest processes an interaction for a request
 func (c *Client) processInteractionForRequest(interaction *server.Interaction, data *RequestData) bool {
+	var result *operators.Result
+	var matched bool
+	defer func() {
+		if r := recover(); r != nil {
+			gologger.Error().Msgf("panic occurred while processing interaction with result=%v matched=%v err=%v", result, matched, r)
+		}
+	}()
 	data.Event.Lock()
 	data.Event.InternalEvent["interactsh_protocol"] = interaction.Protocol
 	data.Event.InternalEvent["interactsh_request"] = interaction.RawRequest
@@ -158,12 +165,15 @@ func (c *Client) processInteractionForRequest(interaction *server.Interaction, d
 	data.Event.InternalEvent["interactsh_ip"] = interaction.RemoteAddress
 	data.Event.Unlock()
 
-	var result *operators.Result
-	var matched bool
 	if data.Operators != nil {
 		result, matched = data.Operators.Execute(data.Event.InternalEvent, data.MatchFunc, data.ExtractFunc, c.options.Debug || c.options.DebugRequest || c.options.DebugResponse)
 	} else {
-		gologger.Warning().Msgf("No operators found for interactsh interaction %s", interaction.FullId)
+		// this is most likely a bug so error instead of warning
+		var templateID string
+		if data.Event.InternalEvent != nil {
+			templateID = fmt.Sprint(data.Event.InternalEvent[templateIdAttribute])
+		}
+		gologger.Error().Msgf("missing compiled operators for '%v' template", templateID)
 	}
 
 	// for more context in github actions
