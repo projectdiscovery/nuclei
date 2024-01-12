@@ -37,6 +37,7 @@ func NewStackMonitor() *Agent {
 	return &Agent{}
 }
 
+// Callback when crash is detected and stack trace is saved to disk
 type Callback func(dumpID string) error
 
 // RegisterCallback adds a callback to perform additional operations before bailing out.
