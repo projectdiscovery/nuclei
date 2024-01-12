@@ -331,6 +331,9 @@ func (r *Runner) Close() {
 	if r.output != nil {
 		r.output.Close()
 	}
+	if r.issuesClient != nil {
+		r.issuesClient.Close()
+	}
 	if r.projectFile != nil {
 		r.projectFile.Close()
 	}
@@ -341,6 +344,10 @@ func (r *Runner) Close() {
 	}
 	if r.rateLimiter != nil {
 		r.rateLimiter.Stop()
+	}
+	r.progress.Stop()
+	if r.browser != nil {
+		r.browser.Close()
 	}
 }
 
@@ -494,22 +501,14 @@ func (r *Runner) RunEnumeration() error {
 			results.CompareAndSwap(false, true)
 		}
 	}
-	r.progress.Stop()
-
 	if executorOpts.InputHelper != nil {
 		_ = executorOpts.InputHelper.Close()
-	}
-	if r.issuesClient != nil {
-		r.issuesClient.Close()
 	}
 
 	// todo: error propagation without canonical straight error check is required by cloud?
 	// use safe dereferencing to avoid potential panics in case of previous unchecked errors
 	if v := ptrutil.Safe(results); !v.Load() {
 		gologger.Info().Msgf("No results found. Better luck next time!")
-	}
-	if r.browser != nil {
-		r.browser.Close()
 	}
 	// check if a passive scan was requested but no target was provided
 	if r.options.OfflineHTTP && len(r.options.Targets) == 0 && r.options.TargetsFilePath == "" {
