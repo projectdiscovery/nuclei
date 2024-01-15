@@ -2,7 +2,9 @@
 package compiler
 
 import (
+	"context"
 	"runtime/debug"
+	"time"
 
 	"github.com/dop251/goja"
 	"github.com/dop251/goja/parser"
@@ -36,6 +38,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/js/libs/goconsole"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/generators"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
+	contextutil "github.com/projectdiscovery/utils/context"
 )
 
 // Compiler provides a runtime to execute goja runtime
@@ -151,7 +154,13 @@ func (c *Compiler) ExecuteWithOptions(code string, args *ExecuteArgs, opts *Exec
 	args.TemplateCtx = generators.MergeMaps(args.TemplateCtx, args.Args)
 	_ = runtime.Set("template", args.TemplateCtx)
 
-	results, err := runtime.RunString(code)
+	// execute with context and timeout
+	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(JsProtocolTimeout)*time.Second)
+	defer cancel()
+	// execute the script
+	results, err := contextutil.ExecFuncWithTwoReturns(ctx, func() (goja.Value, error) {
+		return runtime.RunString(code)
+	})
 	if err != nil {
 		return nil, err
 	}
