@@ -54,7 +54,10 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, metadata,
 	vars := protocolutils.GenerateVariablesWithContextArgs(input, false)
 	payloads := generators.BuildPayloadFromOptions(request.options.Options)
 	// add templatecontext variables to varMap
-	values := generators.MergeMaps(vars, metadata, payloads, request.options.GetTemplateCtx(input.MetaInput).GetAll())
+	values := generators.MergeMaps(vars, metadata, payloads)
+	if request.options.HasTemplateCtx(input.MetaInput) {
+		values = generators.MergeMaps(values, request.options.GetTemplateCtx(input.MetaInput).GetAll())
+	}
 	variablesMap := request.options.Variables.Evaluate(values)
 	payloads = generators.MergeMaps(variablesMap, payloads, request.options.Constants)
 
@@ -183,7 +186,9 @@ func (request *Request) executeRequestWithPayloads(input *contextargs.Context, p
 	outputEvent := request.responseToDSLMap(responseBody, out["header"], out["status_code"], reqBuilder.String(), input.MetaInput.Input, navigatedURL, page.DumpHistory())
 	// add response fields to template context and merge templatectx variables to output event
 	request.options.AddTemplateVars(input.MetaInput, request.Type(), request.ID, outputEvent)
-	outputEvent = generators.MergeMaps(outputEvent, request.options.GetTemplateCtx(input.MetaInput).GetAll())
+	if request.options.HasTemplateCtx(input.MetaInput) {
+		outputEvent = generators.MergeMaps(outputEvent, request.options.GetTemplateCtx(input.MetaInput).GetAll())
+	}
 	for k, v := range out {
 		outputEvent[k] = v
 	}
