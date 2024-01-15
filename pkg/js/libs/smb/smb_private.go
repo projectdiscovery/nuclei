@@ -35,7 +35,9 @@ func collectSMBv2Metadata(host string, port int, timeout time.Duration) (*plugin
 // getSMBInfo
 func (c *SMBClient) getSMBInfo(conn net.Conn, setupSession, v1 bool) (*zgrabsmb.SMBLog, error) {
 	_ = conn.SetDeadline(time.Now().Add(10 * time.Second))
-	defer conn.SetDeadline(time.Time{})
+	defer func() {
+		_ = conn.SetDeadline(time.Time{})
+	}()
 
 	result, err := zgrabsmb.GetSMBLog(conn, setupSession, v1, false)
 	if err != nil {
