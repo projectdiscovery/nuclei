@@ -157,7 +157,7 @@ func (c *Compiler) ExecuteWithOptions(code string, args *ExecuteArgs, opts *Exec
 	args.TemplateCtx = generators.MergeMaps(args.TemplateCtx, args.Args)
 	_ = runtime.Set("template", args.TemplateCtx)
 
-	if opts.Timeout == 0 || opts.Timeout > 180 {
+	if opts.Timeout <= 0 || opts.Timeout > 180 {
 		// some js scripts can take longer time so allow configuring timeout
 		// from template but keep it within sane limits (180s)
 		opts.Timeout = JsProtocolTimeout
