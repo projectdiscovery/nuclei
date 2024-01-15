@@ -34,6 +34,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http/httpclientpool"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http/signer"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http/signerpool"
+	protocolutil "github.com/projectdiscovery/nuclei/v3/pkg/protocols/utils"
 	templateTypes "github.com/projectdiscovery/nuclei/v3/pkg/templates/types"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	"github.com/projectdiscovery/rawhttp"
@@ -43,7 +44,9 @@ import (
 	urlutil "github.com/projectdiscovery/utils/url"
 )
 
-const defaultMaxWorkers = 150
+const (
+	defaultMaxWorkers = 150
+)
 
 // Type returns the type of the protocol request
 func (request *Request) Type() templateTypes.ProtocolType {
@@ -647,6 +650,10 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 				request.options.Output.WriteStoreDebugData(input.MetaInput.Input, request.options.TemplateID, request.Type().String(), fmt.Sprintf("%s\n%s", msg, dumpedRequestString))
 			}
 		}
+	}
+	// global wrap response body reader
+	if resp != nil && resp.Body != nil {
+		resp.Body = protocolutil.NewLimitResponseBody(resp.Body)
 	}
 	if err != nil {
 		// rawhttp doesn't support draining response bodies.
