@@ -78,14 +78,14 @@ require (
 	github.com/praetorian-inc/fingerprintx v1.1.9
 	github.com/projectdiscovery/dsl v0.0.38
 	github.com/projectdiscovery/fasttemplate v0.0.2
-	github.com/projectdiscovery/goflags v0.1.34
+	github.com/projectdiscovery/goflags v0.1.35
 	github.com/projectdiscovery/gologger v1.1.12
 	github.com/projectdiscovery/gostruct v0.0.2
 	github.com/projectdiscovery/gozero v0.0.1
 	github.com/projectdiscovery/httpx v1.3.7
 	github.com/projectdiscovery/mapcidr v1.1.16
 	github.com/projectdiscovery/n3iwf v0.0.0-20230523120440-b8cd232ff1f5
-	github.com/projectdiscovery/ratelimit v0.0.23
+	github.com/projectdiscovery/ratelimit v0.0.24
 	github.com/projectdiscovery/rdap v0.9.1-0.20221108103045-9865884d1917
 	github.com/projectdiscovery/sarif v0.0.1
 	github.com/projectdiscovery/tlsx v1.1.6-0.20231116215000-e842dc367a74
