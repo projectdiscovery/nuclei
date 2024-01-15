@@ -110,6 +110,11 @@ func (iwe *InternalWrappedEvent) SetOperatorResult(operatorResult *operators.Res
 	iwe.OperatorsResult = operatorResult
 }
 
+type RequestResponsePair struct {
+	Request string
+	Response string
+}
+
 // ResultEvent is a wrapped result event for a single nuclei output.
 type ResultEvent struct {
 	// Template is the relative filename for the template
@@ -149,6 +154,8 @@ type ResultEvent struct {
 	Request string `json:"request,omitempty"`
 	// Response is the optional, dumped response for the match.
 	Response string `json:"response,omitempty"`
+	// Packet is the optional, dumped requests and responses for the match. The request and response are one-to-one.
+	Packet map[int]RequestResponsePair `json:"packet,omitempty"`
 	// Metadata contains any optional metadata for the event
 	Metadata map[string]interface{} `json:"meta,omitempty"`
 	// IP is the IP address for the found result event.
