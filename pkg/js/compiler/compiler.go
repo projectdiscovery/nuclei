@@ -74,6 +74,9 @@ type ExecuteOptions struct {
 	// Callback can be used to register new runtime helper functions
 	// ex: export etc
 	Callback func(runtime *goja.Runtime) error
+
+	/// Timeout for this script execution
+	Timeout int
 }
 
 // ExecuteArgs is the arguments to pass to the script.
@@ -154,8 +157,14 @@ func (c *Compiler) ExecuteWithOptions(code string, args *ExecuteArgs, opts *Exec
 	args.TemplateCtx = generators.MergeMaps(args.TemplateCtx, args.Args)
 	_ = runtime.Set("template", args.TemplateCtx)
 
+	if opts.Timeout == 0 || opts.Timeout > 180 {
+		// some js scripts can take longer time so allow configuring timeout
+		// from template but keep it within sane limits (180s)
+		opts.Timeout = JsProtocolTimeout
+	}
+
 	// execute with context and timeout
-	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(JsProtocolTimeout)*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(opts.Timeout)*time.Second)
 	defer cancel()
 	// execute the script
 	results, err := contextutil.ExecFuncWithTwoReturns(ctx, func() (goja.Value, error) {
