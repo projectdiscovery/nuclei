@@ -89,9 +89,9 @@ func (c *KerberosClient) EnumerateUser(domain, controller string, username strin
 
 	resp := EnumerateUserResponse{}
 
-	if !protocolstate.IsHostAllowed(domain) {
+	if !protocolstate.IsHostAllowed(controller) {
 		// host is not valid according to network policy
-		return resp, protocolstate.ErrHostDenied.Msgf(domain)
+		return resp, protocolstate.ErrHostDenied.Msgf(controller)
 	}
 
 	opts, err := newKerbrosEnumUserOpts(domain, controller)
@@ -156,9 +156,9 @@ type TGS struct {
 func (c *KerberosClient) GetServiceTicket(domain, controller string, username, password string, target, spn string) (TGS, error) {
 	var tgs TGS
 
-	if !protocolstate.IsHostAllowed(domain) {
+	if !protocolstate.IsHostAllowed(controller) {
 		// host is not valid according to network policy
-		return tgs, protocolstate.ErrHostDenied.Msgf(domain)
+		return tgs, protocolstate.ErrHostDenied.Msgf(controller)
 	}
 
 	opts, err := newKerbrosEnumUserOpts(domain, controller)
