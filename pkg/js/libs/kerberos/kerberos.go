@@ -6,15 +6,17 @@ import (
 	"html/template"
 	"strings"
 
+	kclient "github.com/jcmturner/gokrb5/v8/client"
+	kconfig "github.com/jcmturner/gokrb5/v8/config"
+	"github.com/jcmturner/gokrb5/v8/iana/errorcode"
+	"github.com/jcmturner/gokrb5/v8/messages"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
-	kclient "github.com/ropnop/gokrb5/v8/client"
-	kconfig "github.com/ropnop/gokrb5/v8/config"
-	"github.com/ropnop/gokrb5/v8/iana/errorcode"
-	"github.com/ropnop/gokrb5/v8/messages"
 )
 
 // Client is a kerberos client
-type KerberosClient struct{}
+type KerberosClient struct {
+	client *kclient.Client
+}
 
 type kerberosEnumUserOpts struct {
 	realm  string
@@ -107,7 +109,8 @@ func (c *KerberosClient) EnumerateUser(domain, controller string, username strin
 	if err != nil {
 		return resp, err
 	}
-	rb, err := cl.SendToKDC(b, opts.realm)
+	c.client = cl
+	rb, err := c.SendToKDC(b, opts.realm)
 	if err == nil {
 		var ASRep messages.ASRep
 		err = ASRep.Unmarshal(rb)
