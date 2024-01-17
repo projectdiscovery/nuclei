@@ -55,7 +55,7 @@ type FlowExecutor struct {
 // NewFlowExecutor creates a new flow executor from a list of requests
 // Note: Unlike other engine for every target x template flow needs to be compiled and executed everytime
 // unlike other engines where we compile once and execute multiple times
-func NewFlowExecutor(requests []protocols.Request, ctx *scan.ScanContext, options *protocols.ExecutorOptions, results *atomic.Bool) *FlowExecutor {
+func NewFlowExecutor(requests []protocols.Request, ctx *scan.ScanContext, options *protocols.ExecutorOptions, results *atomic.Bool) (*FlowExecutor, error) {
 	allprotos := make(map[string][]protocols.Request)
 	for _, req := range requests {
 		switch req.Type() {
@@ -79,9 +79,11 @@ func NewFlowExecutor(requests []protocols.Request, ctx *scan.ScanContext, option
 			allprotos[templateTypes.CodeProtocol.String()] = append(allprotos[templateTypes.CodeProtocol.String()], req)
 		case templateTypes.JavascriptProtocol:
 			allprotos[templateTypes.JavascriptProtocol.String()] = append(allprotos[templateTypes.JavascriptProtocol.String()], req)
+		case templateTypes.OfflineHTTPProtocol:
+			// offlinehttp is run in passive mode but templates are same so instead of using offlinehttp() we use http() in flow
+			allprotos[templateTypes.HTTPProtocol.String()] = append(allprotos[templateTypes.OfflineHTTPProtocol.String()], req)
 		default:
-			ctx.LogError(fmt.Errorf("invalid request type %s", req.Type().String()))
-			return nil
+			return nil, fmt.Errorf("invalid request type %s", req.Type().String())
 		}
 	}
 	f := &FlowExecutor{
@@ -96,7 +98,7 @@ func NewFlowExecutor(requests []protocols.Request, ctx *scan.ScanContext, option
 		jsVM:           protocolstate.NewJSRuntime(),
 		ctx:            ctx,
 	}
-	return f
+	return f, nil
 }
 
 // Compile compiles js program and registers all functions

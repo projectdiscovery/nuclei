@@ -183,8 +183,9 @@ func (template *Template) compileProtocolRequests(options *protocols.ExecutorOpt
 			requests = append(requests, template.convertRequestToProtocolsRequest(template.RequestsJavascript)...)
 		}
 	}
-	template.Executer = tmplexec.NewTemplateExecuter(requests, options)
-	return nil
+	var err error
+	template.Executer, err = tmplexec.NewTemplateExecuter(requests, options)
+	return err
 }
 
 // convertRequestToProtocolsRequest is a convenience wrapper to convert
@@ -228,8 +229,13 @@ mainLoop:
 	}
 	if len(operatorsList) > 0 {
 		options.Operators = operatorsList
-		template.Executer = tmplexec.NewTemplateExecuter([]protocols.Request{&offlinehttp.Request{}}, options)
-		return nil
+		var err error
+		template.Executer, err = tmplexec.NewTemplateExecuter([]protocols.Request{&offlinehttp.Request{}}, options)
+		if err != nil {
+			// it seems like flow executor cannot be used for offline http matching (ex:http(1) && http(2))
+			return ErrIncompatibleWithOfflineMatching
+		}
+		return err
 	}
 
 	return ErrIncompatibleWithOfflineMatching
