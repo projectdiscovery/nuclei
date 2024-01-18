@@ -419,7 +419,11 @@ func (request *Request) executeRequestWithPayloads(hostPort string, input *conte
 	if err != nil {
 		return err
 	}
-	argsCopy.TemplateCtx = request.options.GetTemplateCtx(input.MetaInput).GetAll()
+	if request.options.HasTemplateCtx(input.MetaInput) {
+		argsCopy.TemplateCtx = request.options.GetTemplateCtx(input.MetaInput).GetAll()
+	} else {
+		argsCopy.TemplateCtx = map[string]interface{}{}
+	}
 
 	var requestData = []byte(request.Code)
 	var interactshURLs []string

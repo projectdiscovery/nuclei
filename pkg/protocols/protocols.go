@@ -125,6 +125,15 @@ func (e *ExecutorOptions) RemoveTemplateCtx(input *contextargs.MetaInput) {
 	}
 }
 
+// HasTemplateCtx returns true if template context exists for given input
+func (e *ExecutorOptions) HasTemplateCtx(input *contextargs.MetaInput) bool {
+	scanId := input.GetScanHash(e.TemplateID)
+	if e.templateCtxStore != nil {
+		return e.templateCtxStore.Has(scanId)
+	}
+	return false
+}
+
 // GetTemplateCtx returns template context for given input
 func (e *ExecutorOptions) GetTemplateCtx(input *contextargs.MetaInput) *contextargs.Context {
 	scanId := input.GetScanHash(e.TemplateID)
@@ -132,6 +141,7 @@ func (e *ExecutorOptions) GetTemplateCtx(input *contextargs.MetaInput) *contexta
 	if !ok {
 		// if template context does not exist create new and add it to store and return it
 		templateCtx = contextargs.New()
+		templateCtx.MetaInput = input
 		_ = e.templateCtxStore.Set(scanId, templateCtx)
 	}
 	return templateCtx
