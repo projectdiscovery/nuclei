@@ -76,7 +76,10 @@ func (r *requestGenerator) Make(ctx context.Context, input *contextargs.Context,
 
 	// add template context values to dynamicValues (this takes care of self-contained and other types of requests)
 	// Note: `iterate-all` and flow are mutually exclusive. flow uses templateCtx and iterate-all uses dynamicValues
-	dynamicValues = generators.MergeMaps(dynamicValues, r.request.options.GetTemplateCtx(input.MetaInput).GetAll())
+	if r.request.options.HasTemplateCtx(input.MetaInput) {
+		// skip creating template context if not available
+		dynamicValues = generators.MergeMaps(dynamicValues, r.request.options.GetTemplateCtx(input.MetaInput).GetAll())
+	}
 	if r.request.SelfContained {
 		return r.makeSelfContainedRequest(ctx, reqData, payloads, dynamicValues)
 	}
