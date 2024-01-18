@@ -127,6 +127,9 @@ func main() {
 		defer cancel()
 		stackMonitor.RegisterCallback(func(dumpID string) error {
 			resumeFileName := fmt.Sprintf("crash-resume-file-%s.dump", dumpID)
+			if options.EnableCloudUpload {
+				gologger.Info().Msgf("Uploading scan results to cloud...")
+			}
 			nucleiRunner.Close()
 			gologger.Info().Msgf("Creating resume file: %s\n", resumeFileName)
 			err := nucleiRunner.SaveResumeConfig(resumeFileName)
@@ -143,6 +146,9 @@ func main() {
 		for range c {
 			gologger.Info().Msgf("CTRL+C pressed: Exiting\n")
 			gologger.Info().Msgf("Attempting graceful shutdown...")
+			if options.EnableCloudUpload {
+				gologger.Info().Msgf("Uploading scan results to cloud...")
+			}
 			nucleiRunner.Close()
 			if options.ShouldSaveResume() {
 				gologger.Info().Msgf("Creating resume file: %s\n", resumeFileName)

@@ -368,7 +368,7 @@ func (r *Runner) setupPDCPUpload(writer output.Writer) output.Writer {
 		r.pdcpUploadErrMsg = fmt.Sprintf("[%v] To view results on Cloud Dashboard, Configure API key from %v", color.BrightYellow("WRN"), pdcpauth.DashBoardURL)
 		return writer
 	}
-	uploadWriter, err := pdcp.NewUploadWriter(creds)
+	uploadWriter, err := pdcp.NewUploadWriter(context.Background(), creds)
 	if err != nil {
 		r.pdcpUploadErrMsg = fmt.Sprintf("[%v] PDCP (%v) Auto-Save Failed: %s\n", color.BrightYellow("WRN"), pdcpauth.DashBoardURL, err)
 		return writer
