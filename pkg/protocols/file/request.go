@@ -248,7 +248,9 @@ func (request *Request) findMatchesWithReader(reader io.Reader, input *contextar
 			dslMap[k] = v
 		}
 		// add template context variables to DSL map
-		dslMap = generators.MergeMaps(dslMap, request.options.GetTemplateCtx(input.MetaInput).GetAll())
+		if request.options.HasTemplateCtx(input.MetaInput) {
+			dslMap = generators.MergeMaps(dslMap, request.options.GetTemplateCtx(input.MetaInput).GetAll())
+		}
 		discardEvent := eventcreator.CreateEvent(request, dslMap, isResponseDebug)
 		newOpResult := discardEvent.OperatorsResult
 		if newOpResult != nil {

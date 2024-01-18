@@ -53,7 +53,9 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, metadata,
 	// optionvars are vars passed from CLI or env variables
 	optionVars := generators.BuildPayloadFromOptions(request.options.Options)
 	// merge with metadata (eg. from workflow context)
-	vars = generators.MergeMaps(vars, metadata, optionVars, request.options.GetTemplateCtx(input.MetaInput).GetAll())
+	if request.options.HasTemplateCtx(input.MetaInput) {
+		vars = generators.MergeMaps(vars, metadata, optionVars, request.options.GetTemplateCtx(input.MetaInput).GetAll())
+	}
 	variablesMap := request.options.Variables.Evaluate(vars)
 	vars = generators.MergeMaps(vars, variablesMap, request.options.Constants)
 
@@ -160,7 +162,9 @@ func (request *Request) execute(input *contextargs.Context, domain string, metad
 		outputEvent[k] = v
 	}
 	// add variables from template context before matching/extraction
-	outputEvent = generators.MergeMaps(outputEvent, request.options.GetTemplateCtx(input.MetaInput).GetAll())
+	if request.options.HasTemplateCtx(input.MetaInput) {
+		outputEvent = generators.MergeMaps(outputEvent, request.options.GetTemplateCtx(input.MetaInput).GetAll())
+	}
 	event := eventcreator.CreateEvent(request, outputEvent, request.options.Options.Debug || request.options.Options.DebugResponse)
 
 	dumpResponse(event, request, request.options, response.String(), question)
