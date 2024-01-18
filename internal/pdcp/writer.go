@@ -22,6 +22,7 @@ import (
 
 const (
 	uploadEndpoint = "/v1/scans/import"
+	appendEndpoint = "/v1/scans/%s/import"
 	flushTimer     = time.Duration(1) * time.Minute
 	MaxChunkSize   = 1024 * 1024 * 4 // 4 MB
 )
@@ -166,7 +167,7 @@ func (u *UploadWriter) uploadChunk(buff *bytes.Buffer) error {
 	// if successful, reset the buffer
 	buff.Reset()
 	// log in verbose mode
-	gologger.Verbose().Msgf("Uploaded results chunk, you can view scan results at %v", getScanDashBoardURL(u.scanID))
+	gologger.Warning().Msgf("Uploaded results chunk, you can view scan results at %v", getScanDashBoardURL(u.scanID))
 	return nil
 }
 
@@ -185,7 +186,7 @@ func (u *UploadWriter) upload(data []byte) error {
 		return errorutil.NewWithErr(err).Msgf("could not get id from response")
 	}
 	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("could not upload results got status code %v", resp.StatusCode)
+		return fmt.Errorf("could not upload results got status code %v on %v", resp.StatusCode, resp.Request.URL.String())
 	}
 	var uploadResp uploadResponse
 	if err := json.Unmarshal(bin, &uploadResp); err != nil {
@@ -204,11 +205,13 @@ func (u *UploadWriter) getRequest(bin []byte) (*retryablehttp.Request, error) {
 	var method, url string
 
 	if u.scanID == "" {
+		u.uploadURL.Path = uploadEndpoint
 		method = http.MethodPost
 		url = u.uploadURL.String()
 	} else {
+		u.uploadURL.Path = fmt.Sprintf(appendEndpoint, u.scanID)
 		method = http.MethodPatch
-		url = fmt.Sprintf("%s/%s", u.uploadURL.String(), u.scanID)
+		url = u.uploadURL.String()
 	}
 	req, err := retryablehttp.NewRequest(method, url, bytes.NewReader(bin))
 	if err != nil {
