@@ -14,6 +14,7 @@ import (
 	"golang.org/x/text/transform"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/generators"
+	protoUtil "github.com/projectdiscovery/nuclei/v3/pkg/protocols/utils"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	"github.com/projectdiscovery/rawhttp"
 	mapsutil "github.com/projectdiscovery/utils/maps"
@@ -64,7 +65,7 @@ func dumpResponseWithRedirectChain(resp *http.Response, body []byte) ([]redirect
 			break
 		}
 		if redirectResp.Body != nil {
-			body, _ = io.ReadAll(redirectResp.Body)
+			body, _ = protoUtil.LimitBodyRead(redirectResp.Body)
 		}
 		respObj := redirectedResponse{
 			headers:      respData,

@@ -97,6 +97,7 @@ func (c *KerberosClient) EnumerateUser(domain, controller string, username strin
 		return resp, err
 	}
 	cl := kclient.NewWithPassword(username, opts.realm, "foobar", opts.config, kclient.DisablePAFXFAST(true))
+	defer cl.Destroy()
 
 	req, err := messages.NewASReqForTGT(cl.Credentials.Domain(), cl.Config, cl.Credentials.CName())
 	if err != nil {
@@ -142,4 +143,51 @@ func asRepToHashcat(asrep messages.ASRep) (string, error) {
 		asrep.CRealm,
 		hex.EncodeToString(asrep.EncPart.Cipher[:16]),
 		hex.EncodeToString(asrep.EncPart.Cipher[16:])), nil
+}
+
+type TGS struct {
+	Ticket messages.Ticket
+	Hash   string
+}
+
+func (c *KerberosClient) GetServiceTicket(domain, controller string, username, password string, target, spn string) (TGS, error) {
+	var tgs TGS
+
+	if !protocolstate.IsHostAllowed(domain) {
+		// host is not valid according to network policy
+		return tgs, protocolstate.ErrHostDenied.Msgf(domain)
+	}
+
+	opts, err := newKerbrosEnumUserOpts(domain, controller)
+	if err != nil {
+		return tgs, err
+	}
+	cl := kclient.NewWithPassword(username, opts.realm, password, opts.config, kclient.DisablePAFXFAST(true))
+	defer cl.Destroy()
+
+	ticket, _, err := cl.GetServiceTicket(spn)
+	if err != nil {
+		return tgs, err
+	}
+
+	hashcat, err := tgsToHashcat(ticket, target)
+	if err != nil {
+		return tgs, err
+	}
+
+	return TGS{
+		Ticket: ticket,
+		Hash:   hashcat,
+	}, nil
+}
+
+func tgsToHashcat(tgs messages.Ticket, username string) (string, error) {
+	return fmt.Sprintf("$krb5tgs$%d$*%s$%s$%s*$%s$%s",
+		tgs.EncPart.EType,
+		username,
+		tgs.Realm,
+		strings.Join(tgs.SName.NameString[:], "/"),
+		hex.EncodeToString(tgs.EncPart.Cipher[:16]),
+		hex.EncodeToString(tgs.EncPart.Cipher[16:]),
+	), nil
 }

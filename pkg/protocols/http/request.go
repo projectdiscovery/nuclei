@@ -34,6 +34,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http/httpclientpool"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http/signer"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http/signerpool"
+	protocolutil "github.com/projectdiscovery/nuclei/v3/pkg/protocols/utils"
 	templateTypes "github.com/projectdiscovery/nuclei/v3/pkg/templates/types"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	"github.com/projectdiscovery/rawhttp"
@@ -43,7 +44,9 @@ import (
 	urlutil "github.com/projectdiscovery/utils/url"
 )
 
-const defaultMaxWorkers = 150
+const (
+	defaultMaxWorkers = 150
+)
 
 // Type returns the type of the protocol request
 func (request *Request) Type() templateTypes.ProtocolType {
@@ -477,11 +480,12 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 		finalMap["ip"] = input.MetaInput.CustomIP
 	}
 
-	for payloadName, payloadValue := range generatedRequest.dynamicValues {
-		if data, err := expressions.Evaluate(types.ToString(payloadValue), finalMap); err == nil {
-			generatedRequest.dynamicValues[payloadName] = data
-		}
-	}
+	// we should never evaluate all variables of a template
+	// for payloadName, payloadValue := range generatedRequest.dynamicValues {
+	// 	if data, err := expressions.Evaluate(types.ToString(payloadValue), finalMap); err == nil {
+	// 		generatedRequest.dynamicValues[payloadName] = data
+	// 	}
+	// }
 	for payloadName, payloadValue := range generatedRequest.meta {
 		if data, err := expressions.Evaluate(types.ToString(payloadValue), finalMap); err == nil {
 			generatedRequest.meta[payloadName] = data
@@ -647,6 +651,10 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 			}
 		}
 	}
+	// global wrap response body reader
+	if resp != nil && resp.Body != nil {
+		resp.Body = protocolutil.NewLimitResponseBody(resp.Body)
+	}
 	if err != nil {
 		// rawhttp doesn't support draining response bodies.
 		if resp != nil && resp.Body != nil && generatedRequest.rawRequest == nil && !generatedRequest.original.Pipeline {
@@ -769,7 +777,9 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 		outputEvent := request.responseToDSLMap(response.resp, input.MetaInput.Input, matchedURL, tostring.UnsafeToString(dumpedRequest), tostring.UnsafeToString(response.fullResponse), tostring.UnsafeToString(response.body), tostring.UnsafeToString(response.headers), duration, generatedRequest.meta)
 		// add response fields to template context and merge templatectx variables to output event
 		request.options.AddTemplateVars(input.MetaInput, request.Type(), request.ID, outputEvent)
-		outputEvent = generators.MergeMaps(outputEvent, request.options.GetTemplateCtx(input.MetaInput).GetAll())
+		if request.options.HasTemplateCtx(input.MetaInput) {
+			outputEvent = generators.MergeMaps(outputEvent, request.options.GetTemplateCtx(input.MetaInput).GetAll())
+		}
 		if i := strings.LastIndex(hostname, ":"); i != -1 {
 			hostname = hostname[:i]
 		}
