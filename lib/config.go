@@ -331,3 +331,11 @@ func EnableCodeTemplates() NucleiSDKOptions {
 		return nil
 	}
 }
+
+// WithHeaders allows setting custom header/cookie to include in all http request in header:value format
+func WithHeaders(headers []string) NucleiSDKOptions {
+	return func(e *NucleiEngine) error {
+		e.opts.CustomHeaders = headers
+		return nil
+	}
+}
