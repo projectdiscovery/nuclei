@@ -20,6 +20,7 @@ func main() {
 		defer sg.Done()
 		err = ne.ExecuteNucleiWithOpts([]string{"scanme.sh"},
 			nuclei.WithTemplateFilters(nuclei.TemplateFilters{ProtocolTypes: "dns"}),
+			nuclei.WithHeaders([]string{"X-Bug-Bounty: pdteam"}),
 		)
 		if err != nil {
 			panic(err)

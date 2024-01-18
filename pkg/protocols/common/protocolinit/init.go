@@ -3,6 +3,7 @@ package protocolinit
 import (
 	"github.com/corpix/uarand"
 
+	"github.com/projectdiscovery/nuclei/v3/pkg/js/compiler"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/dns/dnsclientpool"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http/httpclientpool"
@@ -32,6 +33,9 @@ func Init(options *types.Options) error {
 		return err
 	}
 	if err := rdapclientpool.Init(options); err != nil {
+		return err
+	}
+	if err := compiler.Init(options); err != nil {
 		return err
 	}
 	return nil

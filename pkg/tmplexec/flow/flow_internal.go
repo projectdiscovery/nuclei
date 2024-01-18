@@ -98,7 +98,13 @@ func (f *FlowExecutor) protocolResultCallback(req protocols.Request, matcherStat
 				}
 				if len(result.OperatorsResult.DynamicValues) > 0 {
 					for k, v := range result.OperatorsResult.DynamicValues {
-						f.options.GetTemplateCtx(f.ctx.Input.MetaInput).Set(k, v)
+						// if length of v is 1 then remove slice and convert it to single value
+						if len(v) == 1 {
+							f.options.GetTemplateCtx(f.ctx.Input.MetaInput).Set(k, v[0])
+						} else {
+							// if not let user handle it in flow ex: `for(let val of template.extracted)`
+							f.options.GetTemplateCtx(f.ctx.Input.MetaInput).Set(k, v)
+						}
 					}
 				}
 			} else if !result.HasOperatorResult() && !hasOperators(req.GetCompiledOperators()) {
