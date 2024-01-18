@@ -82,6 +82,11 @@ func NewUploadWriter(ctx context.Context, creds *pdcpauth.PDCPCredentials) (*Upl
 	return u, nil
 }
 
+// SetScanID sets the scan id for the upload writer
+func (u *UploadWriter) SetScanID(id string) {
+	u.scanID = id
+}
+
 func (u *UploadWriter) autoCommit(ctx context.Context, r *io.PipeReader) {
 	reader := bufio.NewReader(r)
 	ch := make(chan string, 4)
