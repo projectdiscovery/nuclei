@@ -55,9 +55,9 @@ func (c *LdapClient) CollectLdapMetadata(domain string, controller string) (LDAP
 		domainController: controller,
 	}
 
-	if !protocolstate.IsHostAllowed(domain) {
+	if !protocolstate.IsHostAllowed(controller) {
 		// host is not valid according to network policy
-		return LDAPMetadata{}, protocolstate.ErrHostDenied.Msgf(domain)
+		return LDAPMetadata{}, protocolstate.ErrHostDenied.Msgf(controller)
 	}
 
 	conn, err := c.newLdapSession(opts)
@@ -230,9 +230,9 @@ func (c *LdapClient) GetKerberoastableUsers(domain, controller string, username,
 		password:         password,
 	}
 
-	if !protocolstate.IsHostAllowed(domain) {
+	if !protocolstate.IsHostAllowed(controller) {
 		// host is not valid according to network policy
-		return nil, protocolstate.ErrHostDenied.Msgf(domain)
+		return nil, protocolstate.ErrHostDenied.Msgf(controller)
 	}
 
 	conn, err := c.newLdapSession(opts)
