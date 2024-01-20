@@ -77,6 +77,35 @@ func (c *LdapClient) Connect(host string, port int, ssl, istls bool) (bool, erro
 	return true, nil
 }
 
+// Search is a method that uses the already Connect()'ed client to query the LDAP
+// server, works for openldap and for Microsoft's Active Directory Ldap
+//
+// accepts whatever filter and returns a list of maps having provided attributes
+// as keys and associated values mirroring the ones returned by ldap
+func (c *LdapClient) Search(filter string, attributes ...string) ([]map[string][]string, error) {
+	res, err := c.Conn.Search(ldap.NewSearchRequest(
+		c.BaseDN, ldap.ScopeWholeSubtree, ldap.NeverDerefAliases,
+		0, 0, false, filter, attributes, nil,
+	))
+	if err != nil {
+		return nil, err
+	}
+
+	if len(res.Entries) == 0 {
+		return nil, fmt.Errorf("no result found in search")
+	}
+
+	var out []map[string][]string
+	for _, r := range res.Entries {
+		app := make(map[string][]string)
+		for _, a := range attributes {
+			app[a] = r.GetAttributeValues(a)
+		}
+		out = append(out, app)
+	}
+	return out, nil
+}
+
 // CollectLdapMetadata collects metadata from ldap server.
 func (c *LdapClient) CollectLdapMetadata(domain string, controller string) (LDAPMetadata, error) {
 	opts := &ldapSessionOptions{
