@@ -1,7 +1,6 @@
 package ldap
 
 import (
-	"context"
 	"crypto/tls"
 	"fmt"
 	"strings"
@@ -135,60 +134,8 @@ func (c *LdapClient) Search(filter string, attributes ...string) ([]map[string][
 	return out, nil
 }
 
-// CollectLdapMetadata collects metadata from ldap server.
-func (c *LdapClient) CollectLdapMetadata(domain string, controller string) (LDAPMetadata, error) {
-	opts := &ldapSessionOptions{
-		domain:           domain,
-		domainController: controller,
-	}
-
-	if !protocolstate.IsHostAllowed(controller) {
-		// host is not valid according to network policy
-		return LDAPMetadata{}, protocolstate.ErrHostDenied.Msgf(controller)
-	}
-
-	conn, err := c.newLdapSession(opts)
-	if err != nil {
-		return LDAPMetadata{}, err
-	}
-	defer c.close(conn)
-
-	return c.collectLdapMetadata(conn, opts)
-}
-
-type ldapSessionOptions struct {
-	domain           string
-	domainController string
-	port             int
-	username         string
-	password         string
-	baseDN           string
-}
-
-func (c *LdapClient) newLdapSession(opts *ldapSessionOptions) (*ldap.Conn, error) {
-	port := opts.port
-	dc := opts.domainController
-	if port == 0 {
-		port = 389
-	}
-
-	conn, err := protocolstate.Dialer.Dial(context.TODO(), "tcp", fmt.Sprintf("%s:%d", dc, port))
-	if err != nil {
-		return nil, err
-	}
-
-	lConn := ldap.NewConn(conn, false)
-	lConn.Start()
-
-	return lConn, nil
-}
-
-func (c *LdapClient) close(conn *ldap.Conn) {
-	conn.Close()
-}
-
-// LDAPMetadata is the metadata for ldap server.
-type LDAPMetadata struct {
+// Metadata is the metadata for ldap server.
+type Metadata struct {
 	BaseDN                        string
 	Domain                        string
 	DefaultNamingContext          string
@@ -198,23 +145,17 @@ type LDAPMetadata struct {
 	DnsHostName                   string
 }
 
-func (c *LdapClient) collectLdapMetadata(lConn *ldap.Conn, opts *ldapSessionOptions) (LDAPMetadata, error) {
-	metadata := LDAPMetadata{}
-
-	var err error
-	if opts.username == "" {
-		err = lConn.UnauthenticatedBind("")
-	} else {
-		err = lConn.Bind(opts.username, opts.password)
+// CollectLdapMetadata collects metadata from ldap server.
+func (c *LdapClient) CollectMetadata(domain string, controller string) (Metadata, error) {
+	if c.Conn == nil {
+		return Metadata{}, fmt.Errorf("no existing connection")
 	}
-	if err != nil {
-		return metadata, err
-	}
+	defer c.Conn.Close()
 
-	baseDN, _ := getBaseNamingContext(opts, lConn)
+	var metadata Metadata
 
-	metadata.BaseDN = baseDN
-	metadata.Domain = parseDC(baseDN)
+	metadata.BaseDN = c.BaseDN
+	metadata.Domain = c.Realm
 
 	srMetadata := ldap.NewSearchRequest(
 		"",
@@ -230,7 +171,7 @@ func (c *LdapClient) collectLdapMetadata(lConn *ldap.Conn, opts *ldapSessionOpti
 			"dnsHostName",
 		},
 		nil)
-	resMetadata, err := lConn.Search(srMetadata)
+	resMetadata, err := c.Conn.Search(srMetadata)
 	if err != nil {
 		return metadata, err
 	}
@@ -254,43 +195,6 @@ func (c *LdapClient) collectLdapMetadata(lConn *ldap.Conn, opts *ldapSessionOpti
 	return metadata, nil
 }
 
-func parseDC(input string) string {
-	parts := strings.Split(strings.ToLower(input), ",")
-
-	for i, part := range parts {
-		parts[i] = strings.TrimPrefix(part, "dc=")
-	}
-
-	return strings.Join(parts, ".")
-}
-
-func getBaseNamingContext(opts *ldapSessionOptions, conn *ldap.Conn) (string, error) {
-	if opts.baseDN != "" {
-		return opts.baseDN, nil
-	}
-	sr := ldap.NewSearchRequest(
-		"",
-		ldap.ScopeBaseObject,
-		ldap.NeverDerefAliases,
-		0, 0, false,
-		"(objectClass=*)",
-		[]string{"defaultNamingContext"},
-		nil)
-	res, err := conn.Search(sr)
-	if err != nil {
-		return "", err
-	}
-	if len(res.Entries) == 0 {
-		return "", fmt.Errorf("error getting metadata: No LDAP responses from server")
-	}
-	defaultNamingContext := res.Entries[0].GetAttributeValue("defaultNamingContext")
-	if defaultNamingContext == "" {
-		return "", fmt.Errorf("error getting metadata: attribute defaultNamingContext missing")
-	}
-	opts.baseDN = defaultNamingContext
-	return opts.baseDN, nil
-}
-
 // KerberoastableUser contains the important fields of the Active Directory
 // kerberoastable user
 type KerberoastableUser struct {
@@ -310,48 +214,8 @@ type KerberoastableUser struct {
 // Returns a list of KerberoastableUser, if an error occurs, returns an empty
 // slice and the raised error
 func (c *LdapClient) GetKerberoastableUsers(domain, controller string, username, password string) ([]KerberoastableUser, error) {
-	opts := &ldapSessionOptions{
-		domain:           domain,
-		domainController: controller,
-		username:         username,
-		password:         password,
-	}
-
-	if !protocolstate.IsHostAllowed(controller) {
-		// host is not valid according to network policy
-		return nil, protocolstate.ErrHostDenied.Msgf(controller)
-	}
-
-	conn, err := c.newLdapSession(opts)
-	if err != nil {
-		return nil, err
-	}
-	defer c.close(conn)
-
-	domainParts := strings.Split(domain, ".")
-	if username == "" {
-		err = conn.UnauthenticatedBind("")
-	} else {
-		err = conn.Bind(
-			fmt.Sprintf("%v\\%v", domainParts[0], username),
-			password,
-		)
-	}
-	if err != nil {
-		return nil, err
-	}
-
-	var baseDN strings.Builder
-	for i, part := range domainParts {
-		baseDN.WriteString("DC=")
-		baseDN.WriteString(part)
-		if i != len(domainParts)-1 {
-			baseDN.WriteString(",")
-		}
-	}
-
 	sr := ldap.NewSearchRequest(
-		baseDN.String(),
+		c.BaseDN,
 		ldap.ScopeWholeSubtree,
 		ldap.NeverDerefAliases,
 		0, 0, false,
@@ -368,7 +232,7 @@ func (c *LdapClient) GetKerberoastableUsers(domain, controller string, username,
 		nil,
 	)
 
-	res, err := conn.Search(sr)
+	res, err := c.Conn.Search(sr)
 	if err != nil {
 		return nil, err
 	}
