@@ -4,15 +4,10 @@ import (
 	"context"
 	"crypto/tls"
 	"fmt"
-	"net"
 	"strings"
-	"time"
 
 	"github.com/go-ldap/ldap/v3"
-	"github.com/praetorian-inc/fingerprintx/pkg/plugins"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
-
-	pluginldap "github.com/praetorian-inc/fingerprintx/pkg/plugins/services/ldap"
 )
 
 // Client is a client for ldap protocol in golang.
@@ -43,29 +38,24 @@ func (c *LdapClient) Connect(host string, port int, ssl, istls bool) (bool, erro
 	}
 
 	var err error
-	var con net.Conn
 	if ssl {
-		con, err = protocolstate.Dialer.DialTLS(context.TODO(), "tcp", fmt.Sprintf("%s:%d", host, port))
+		config := &tls.Config{
+			InsecureSkipVerify: true,
+			ServerName:         host,
+		}
+		c.Conn, err = ldap.DialTLS("tcp", fmt.Sprintf("%s:%d", host, port), config)
 	} else {
-		con, err = protocolstate.Dialer.Dial(context.TODO(), "tcp", fmt.Sprintf("%s:%d", host, port))
+		c.Conn, err = ldap.Dial("tcp", fmt.Sprintf("%s:%d", host, port))
 	}
 	if err != nil {
 		return false, err
 	}
 
-	c.Conn = ldap.NewConn(con, ssl)
 	if istls && !ssl {
 		// Here if it is not a valid ldap server, the StartTLS will return an error,
 		// so, if this check succeeds, there is no need to check if the host is has an LDAP Server:
 		// https://github.com/go-ldap/ldap/blob/cdb0754f666833c3e287503ed52d535a41ba10f6/v3/conn.go#L334
 		if err := c.Conn.StartTLS(&tls.Config{InsecureSkipVerify: true}); err != nil {
-			return false, err
-		}
-	} else {
-		// If the connection is unencrypted or targets LDAPS we check here if the host actually
-		// exposes an actual LDAP server
-		plugin := &pluginldap.LDAPPlugin{}
-		if service, err := plugin.Run(con, 10*time.Second, plugins.Target{Host: host}); err != nil || service == nil {
 			return false, err
 		}
 	}
@@ -74,6 +64,45 @@ func (c *LdapClient) Connect(host string, port int, ssl, istls bool) (bool, erro
 	c.Port = port
 	c.TLS = istls
 	c.UseSSL = ssl
+	return true, nil
+}
+
+func (c *LdapClient) Authenticate(realm string, username, password string) (bool, error) {
+	if c.Conn == nil {
+		return false, fmt.Errorf("no existing connection")
+	}
+
+	c.Realm = realm
+	c.BaseDN = fmt.Sprintf("dc=%s", strings.Join(strings.Split(realm, "."), ",dc="))
+
+	if err := c.Conn.NTLMBind(realm, username, password); err == nil {
+		// if bind with NTLMBind(), there is nothing
+		// else to do, you are authenticated
+		return true, nil
+	}
+
+	switch password {
+	case "":
+		if err := c.Conn.UnauthenticatedBind(username); err != nil {
+			return false, err
+		}
+	default:
+		if err := c.Conn.Bind(username, password); err != nil {
+			return false, err
+		}
+	}
+	return true, nil
+}
+
+func (c *LdapClient) AuthenticateWithNTLMHash(realm string, username, hash string) (bool, error) {
+	if c.Conn == nil {
+		return false, fmt.Errorf("no existing connection")
+	}
+	c.Realm = realm
+	c.BaseDN = fmt.Sprintf("dc=%s", strings.Join(strings.Split(realm, "."), ",dc="))
+	if err := c.Conn.NTLMBindWithHash(realm, username, hash); err != nil {
+		return false, err
+	}
 	return true, nil
 }
 
