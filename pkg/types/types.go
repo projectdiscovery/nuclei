@@ -364,6 +364,8 @@ type Options struct {
 	EnableCodeTemplates bool
 	// Disables cloud upload
 	EnableCloudUpload bool
+	// ScanID is the scan ID to use for cloud upload
+	ScanID string
 }
 
 // ShouldLoadResume resume file

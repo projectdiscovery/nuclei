@@ -264,8 +264,9 @@ STATISTICS:
    -mp, -metrics-port int    nuclei 메트릭스를 노출할 포트 (기본값 9092)
 
 CLOUD:
-   -auth                projectdiscovery cloud (pdcp) api 키 설정
-   -cup, -cloud-upload  스캔 결과를 pdcp 대시보드에 업로드
+   -auth                  projectdiscovery 클라우드 (pdcp) API 키 구성
+   -cup, -cloud-upload    스캔 결과를 pdcp 대시보드에 업로드
+   -sid, -scan-id string  주어진 스캔 ID에 스캔 결과 업로드
 
 
 예시:
