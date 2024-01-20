@@ -2,7 +2,9 @@ package ldap
 
 import (
 	"context"
+	"crypto/tls"
 	"fmt"
+	"net"
 	"strings"
 	"time"
 
@@ -16,35 +18,62 @@ import (
 // Client is a client for ldap protocol in golang.
 //
 // It is a wrapper around the standard library ldap package.
-type LdapClient struct{}
+type LdapClient struct {
+	BaseDN string
+	Realm  string
+	Host   string
+	Conn   *ldap.Conn
+	Port   int
+	UseSSL bool
+	TLS    bool
+}
 
-// IsLdap checks if the given host and port are running ldap server.
-func (c *LdapClient) IsLdap(host string, port int) (bool, error) {
+// Connect is a method for LdapClient that stores information about of the ldap
+// connection, tests it and verifies that the server is a valid ldap server
+//
+// returns the success status
+func (c *LdapClient) Connect(host string, port int, ssl, istls bool) (bool, error) {
+	if c.Conn != nil {
+		return true, nil
+	}
 
 	if !protocolstate.IsHostAllowed(host) {
 		// host is not valid according to network policy
 		return false, protocolstate.ErrHostDenied.Msgf(host)
 	}
 
-	timeout := 10 * time.Second
-
-	conn, err := protocolstate.Dialer.Dial(context.TODO(), "tcp", fmt.Sprintf("%s:%d", host, port))
-
+	var err error
+	var con net.Conn
+	if ssl {
+		con, err = protocolstate.Dialer.DialTLS(context.TODO(), "tcp", fmt.Sprintf("%s:%d", host, port))
+	} else {
+		con, err = protocolstate.Dialer.Dial(context.TODO(), "tcp", fmt.Sprintf("%s:%d", host, port))
+	}
 	if err != nil {
 		return false, err
 	}
-	defer conn.Close()
 
-	_ = conn.SetDeadline(time.Now().Add(timeout))
+	c.Conn = ldap.NewConn(con, ssl)
+	if istls && !ssl {
+		// Here if it is not a valid ldap server, the StartTLS will return an error,
+		// so, if this check succeeds, there is no need to check if the host is has an LDAP Server:
+		// https://github.com/go-ldap/ldap/blob/cdb0754f666833c3e287503ed52d535a41ba10f6/v3/conn.go#L334
+		if err := c.Conn.StartTLS(&tls.Config{InsecureSkipVerify: true}); err != nil {
+			return false, err
+		}
+	} else {
+		// If the connection is unencrypted or targets LDAPS we check here if the host actually
+		// exposes an actual LDAP server
+		plugin := &pluginldap.LDAPPlugin{}
+		if service, err := plugin.Run(con, 10*time.Second, plugins.Target{Host: host}); err != nil || service == nil {
+			return false, err
+		}
+	}
 
-	plugin := &pluginldap.LDAPPlugin{}
-	service, err := plugin.Run(conn, timeout, plugins.Target{Host: host})
-	if err != nil {
-		return false, err
-	}
-	if service == nil {
-		return false, nil
-	}
+	c.Host = host
+	c.Port = port
+	c.TLS = istls
+	c.UseSSL = ssl
 	return true, nil
 }
 
