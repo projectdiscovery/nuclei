@@ -126,10 +126,17 @@ func (c *LdapClient) Search(filter string, attributes ...string) ([]map[string][
 	var out []map[string][]string
 	for _, r := range res.Entries {
 		app := make(map[string][]string)
+		empty := true
 		for _, a := range attributes {
-			app[a] = r.GetAttributeValues(a)
+			v := r.GetAttributeValues(a)
+			if len(v) > 0 {
+				app[a] = v
+				empty = false
+			}
 		}
-		out = append(out, app)
+		if !empty {
+			out = append(out, app)
+		}
 	}
 	return out, nil
 }
