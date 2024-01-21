@@ -145,3 +145,50 @@ func (c *LdapClient) GetADAdmins() ([]ADObject, error) {
 func (c *LdapClient) GetADUserKerberoastable() ([]ADObject, error) {
 	return c.FindADObjects(JoinFilters(FilterIsPerson, FilterAccountEnabled, FilterHasServicePrincipalName))
 }
+
+func decodeSID(b []byte) string {
+	revisionLvl := int(b[0])
+	subAuthorityCount := int(b[1]) & 0xFF
+
+	var authority int
+	for i := 2; i <= 7; i++ {
+		authority = authority | int(b[i])<<(8*(5-(i-2)))
+	}
+
+	var size = 4
+	var offset = 8
+	var subAuthorities []int
+	for i := 0; i < subAuthorityCount; i++ {
+		var subAuthority int
+		for k := 0; k < size; k++ {
+			subAuthority = subAuthority | (int(b[offset+k])&0xFF)<<(8*k)
+		}
+		subAuthorities = append(subAuthorities, subAuthority)
+		offset += size
+	}
+
+	var builder strings.Builder
+	builder.WriteString("S-")
+	builder.WriteString(fmt.Sprintf("%d-", revisionLvl))
+	builder.WriteString(fmt.Sprintf("%d", authority))
+	for _, v := range subAuthorities {
+		builder.WriteString(fmt.Sprintf("-%d", v))
+	}
+	return builder.String()
+}
+
+func (c *LdapClient) GetADDomainSID() (string, error) {
+	r, err := c.Search(FilterServerTrustAccount, "objectSid")
+	if err != nil {
+		return "", err
+	}
+
+	if len(r) < 1 {
+		return "", fmt.Errorf("no result from GetADDomainSID query")
+	}
+
+	if len(r[0]["objectSid"]) < 1 {
+		return "", fmt.Errorf("could not grab DomainSID")
+	}
+	return decodeSID([]byte(r[0]["objectSid"][0])), nil
+}
