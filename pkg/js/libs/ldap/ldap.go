@@ -119,6 +119,7 @@ const (
 	FilterIsGroup                    = "(objectCategory=group)"
 	FilterIsComputer                 = "(objectCategory=computer)"
 	FilterIsAdmin                    = "(adminCount=1)"
+	FilterHasServicePrincipalName    = "(servicePrincipalName=*)"
 	FilterLogonScript                = "(userAccountControl:1.2.840.113556.1.4.803:=1)"        // The logon script will be run.
 	FilterAccountDisabled            = "(userAccountControl:1.2.840.113556.1.4.803:=2)"        // The user account is disabled.
 	FilterAccountEnabled             = "(!(userAccountControl:1.2.840.113556.1.4.803:=2))"     // The user account is enabled.
@@ -254,64 +255,4 @@ func (c *LdapClient) CollectMetadata(domain string, controller string) (Metadata
 		}
 	}
 	return metadata, nil
-}
-
-// KerberoastableUser contains the important fields of the Active Directory
-// kerberoastable user
-type KerberoastableUser struct {
-	SAMAccountName       string
-	ServicePrincipalName string
-	PWDLastSet           string
-	MemberOf             string
-	UserAccountControl   string
-	LastLogon            string
-}
-
-// GetKerberoastableUsers collects all "person" users that have an SPN
-// associated with them. The LDAP filter is built with the same logic as
-// "GetUserSPNs.py", the well-known impacket example by Forta.
-// https://github.com/fortra/impacket/blob/master/examples/GetUserSPNs.py#L297
-//
-// Returns a list of KerberoastableUser, if an error occurs, returns an empty
-// slice and the raised error
-func (c *LdapClient) GetKerberoastableUsers(domain, controller string, username, password string) ([]KerberoastableUser, error) {
-	sr := ldap.NewSearchRequest(
-		c.BaseDN,
-		ldap.ScopeWholeSubtree,
-		ldap.NeverDerefAliases,
-		0, 0, false,
-		// (&(is_user)         (!(account_is_disabled))                         (has_SPN))
-		"(&(objectCategory=person)(!(userAccountControl:1.2.840.113556.1.4.803:=2))(servicePrincipalName=*))",
-		[]string{
-			"SAMAccountName",
-			"ServicePrincipalName",
-			"pwdLastSet",
-			"MemberOf",
-			"userAccountControl",
-			"lastLogon",
-		},
-		nil,
-	)
-
-	res, err := c.Conn.Search(sr)
-	if err != nil {
-		return nil, err
-	}
-
-	if len(res.Entries) == 0 {
-		return nil, fmt.Errorf("no kerberoastable user found")
-	}
-
-	var ku []KerberoastableUser
-	for _, usr := range res.Entries {
-		ku = append(ku, KerberoastableUser{
-			SAMAccountName:       usr.GetAttributeValue("sAMAccountName"),
-			ServicePrincipalName: usr.GetAttributeValue("servicePrincipalName"),
-			PWDLastSet:           usr.GetAttributeValue("pwdLastSet"),
-			MemberOf:             usr.GetAttributeValue("MemberOf"),
-			UserAccountControl:   usr.GetAttributeValue("userAccountControl"),
-			LastLogon:            usr.GetAttributeValue("lastLogon"),
-		})
-	}
-	return ku, nil
 }

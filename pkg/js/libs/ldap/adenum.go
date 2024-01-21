@@ -53,3 +53,39 @@ func (c *LdapClient) FindADObjects(filter string) ([]ADObject, error) {
 	}
 	return objects, nil
 }
+
+func (c *LdapClient) GetADUsers() ([]ADObject, error) {
+	return c.FindADObjects(FilterIsPerson)
+}
+
+func (c *LdapClient) GetADActiveUsers() ([]ADObject, error) {
+	return c.FindADObjects(JoinFilters(FilterIsPerson, FilterAccountEnabled))
+}
+
+func (c *LdapClient) GetADUserWithNeverExpiringPasswords() ([]ADObject, error) {
+	return c.FindADObjects(JoinFilters(FilterIsPerson, FilterDontExpirePassword))
+}
+
+func (c *LdapClient) GetADUserTrustedForDelegation() ([]ADObject, error) {
+	return c.FindADObjects(JoinFilters(FilterIsPerson, FilterTrustedForDelegation))
+}
+
+func (c *LdapClient) GetADUserWithPasswordNotRequired() ([]ADObject, error) {
+	return c.FindADObjects(JoinFilters(FilterIsPerson, FilterPasswordNotRequired))
+}
+
+func (c *LdapClient) GetADGroups() ([]ADObject, error) {
+	return c.FindADObjects(FilterIsGroup)
+}
+
+func (c *LdapClient) GetADDCList() ([]ADObject, error) {
+	return c.FindADObjects(JoinFilters(FilterIsComputer, FilterAccountEnabled, FilterServerTrustAccount))
+}
+
+func (c *LdapClient) GetADAdmins() ([]ADObject, error) {
+	return c.FindADObjects(JoinFilters(FilterIsPerson, FilterAccountEnabled, FilterIsAdmin))
+}
+
+func (c *LdapClient) GetADUserKerberoastable() ([]ADObject, error) {
+	return c.FindADObjects(JoinFilters(FilterIsPerson, FilterAccountEnabled, FilterHasServicePrincipalName))
+}
