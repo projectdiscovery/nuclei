@@ -201,3 +201,7 @@ func (c *LdapClient) CollectMetadata(domain string, controller string) (Metadata
 	}
 	return metadata, nil
 }
+
+func (c *LdapClient) Close() {
+	c.Conn.Close()
+}
