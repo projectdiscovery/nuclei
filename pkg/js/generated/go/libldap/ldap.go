@@ -15,9 +15,11 @@ func init() {
 	module.Set(
 		gojs.Objects{
 			// Functions
-			"JoinFilters":    func(f ...string) string { return lib_ldap.JoinFilters(f...) },
-			"NegativeFilter": func(f string) string { return lib_ldap.NegativeFilter(f) },
-			"DecodeSID":      func(s string) string { return lib_ldap.DecodeSID(s) },
+			"JoinFilters":         func(f ...string) string { return lib_ldap.JoinFilters(f...) },
+			"NegativeFilter":      func(f string) string { return lib_ldap.NegativeFilter(f) },
+			"DecodeSID":           func(s string) string { return lib_ldap.DecodeSID(s) },
+			"DecodeADTimestamp":   func(s string) string { return lib_ldap.DecodeADTimestamp(s) },
+			"DecodeZuluTimestamp": func(s string) string { return lib_ldap.DecodeZuluTimestamp(s) },
 
 			// Var and consts
 			"FilterIsPerson":                   func() string { return lib_ldap.FilterIsPerson },

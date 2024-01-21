@@ -101,8 +101,8 @@ func (c *LdapClient) FindADObjects(filter string) ([]ADObject, error) {
 		objects = append(objects, ADObject{
 			DistinguishedName:    obj.GetAttributeValue("distinguishedName"),
 			SAMAccountName:       obj.GetAttributeValue("sAMAccountName"),
-			PWDLastSet:           obj.GetAttributeValue("pwdLastSet"),
-			LastLogon:            obj.GetAttributeValue("lastLogon"),
+			PWDLastSet:           DecodeADTimestamp(obj.GetAttributeValue("pwdLastSet")),
+			LastLogon:            DecodeADTimestamp(obj.GetAttributeValue("lastLogon")),
 			MemberOf:             obj.GetAttributeValues("memberOf"),
 			ServicePrincipalName: obj.GetAttributeValues("servicePrincipalName"),
 		})
