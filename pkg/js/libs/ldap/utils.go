@@ -2,7 +2,9 @@ package ldap
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
+	"time"
 )
 
 func DecodeSID(s string) string {
@@ -35,4 +37,22 @@ func DecodeSID(s string) string {
 		builder.WriteString(fmt.Sprintf("-%d", v))
 	}
 	return builder.String()
+}
+
+func DecodeADTimestamp(timestamp string) string {
+	adtime, _ := strconv.ParseInt(timestamp, 10, 64)
+	if (adtime == 9223372036854775807) || (adtime == 0) {
+		return "Not Set"
+	}
+	unixtime_int64 := adtime/(10*1000*1000) - 11644473600
+	unixtime := time.Unix(unixtime_int64, 0)
+	return unixtime.Format("2006-01-02 3:4:5 pm")
+}
+
+func DecodeZuluTimestamp(timestamp string) string {
+	zulu, err := time.Parse(time.RFC3339, timestamp)
+	if err != nil {
+		return ""
+	}
+	return zulu.Format("2006-01-02 3:4:5 pm")
 }
