@@ -803,10 +803,10 @@ github.com/projectdiscovery/cdncheck v1.0.9 h1:BS15gzj9gb5AVSKqTDzPamfSgStu7nJQO
 github.com/projectdiscovery/cdncheck v1.0.9/go.mod h1:18SSl1w7rMj53CGeRIZTbDoa286a6xZIxGbaiEo4Fxs=
 github.com/projectdiscovery/clistats v0.0.20 h1:5jO5SLiRJ7f0nDV0ndBNmBeesbROouPooH+DGMgoWq4=
 github.com/projectdiscovery/clistats v0.0.20/go.mod h1:GJ2av0KnOvK0AISQnP8hyDclYIji1LVkx2l0pwnzAu4=
-github.com/projectdiscovery/dsl v0.0.38 h1:wzObLZ4m4fMtPD0RiirnAp5naF43dJymjCmEeZzJLjM=
-github.com/projectdiscovery/dsl v0.0.38/go.mod h1:jYaosMHbna8jGxhClWovGFBNJGM19Go0wbk6FfrV/PA=
-github.com/projectdiscovery/fastdialer v0.0.54 h1:c90JJ2cPlVV9JK/HlgVwiupun0ONa+IXQqwGE1/IMws=
-github.com/projectdiscovery/fastdialer v0.0.54/go.mod h1:l1ktd+P7b68NH/0Xu7/EAx3uoNc4iowoYj6jckuY2+k=
+github.com/projectdiscovery/dsl v0.0.40 h1:bY6aOPEIJ+YYYXX2qRZj1y4VsZlV9VU0oaD+GrR/j6I=
+github.com/projectdiscovery/dsl v0.0.40/go.mod h1:wo6lB5vwKWbTo5qDdJ1q7S1bYthm2mwGZ+MVefJmdZo=
+github.com/projectdiscovery/fastdialer v0.0.55 h1:dcD3La9MsImgQMrBnG0/w5Mu8PRJu2TU1STycKSSodc=
+github.com/projectdiscovery/fastdialer v0.0.55/go.mod h1:DNP62sWCLp0YHXwhlo73iyZODpSZE7dVstt2GNAC7+A=
 github.com/projectdiscovery/fasttemplate v0.0.2 h1:h2cISk5xDhlJEinlBQS6RRx0vOlOirB2y3Yu4PJzpiA=
 github.com/projectdiscovery/fasttemplate v0.0.2/go.mod h1:XYWWVMxnItd+r0GbjA1GCsUopMw1/XusuQxdyAIHMCw=
 github.com/projectdiscovery/freeport v0.0.5 h1:jnd3Oqsl4S8n0KuFkE5Hm8WGDP24ITBvmyw5pFTHS8Q=
@@ -821,8 +821,8 @@ github.com/projectdiscovery/gozero v0.0.1 h1:f08ZnYlbDZV/TNGDvIXV9s/oB/sAI+HWaSb
 github.com/projectdiscovery/gozero v0.0.1/go.mod h1:/dHwbly+1lhOX9UreVure4lEe7K4hIHeu/c/wZGNTDo=
 github.com/projectdiscovery/hmap v0.0.34 h1:Xz/CjuHVw/QCrupScMFkGN0YEIkz+jkAwqbHJ9A0C9I=
 github.com/projectdiscovery/hmap v0.0.34/go.mod h1:FQy913/mK7Tc2BoTpV2kZJMMuZp5FHcclGGMWtK8pBM=
-github.com/projectdiscovery/httpx v1.3.7 h1:g/ZQIBdWWPQLF+niv39b7jRhAkyrcroJJfqbTQDKhyQ=
-github.com/projectdiscovery/httpx v1.3.7/go.mod h1:FqEmL2zWZArgD1vSQ+tqHvmUItPqxYhOgKyfN8GyWMQ=
+github.com/projectdiscovery/httpx v1.3.8 h1:D07kanG/AnZl4hErm4HPw3Clml+R3LZdBvfXxf6c5q8=
+github.com/projectdiscovery/httpx v1.3.8/go.mod h1:ly2a5roeXONX2nIu5xaXCus6jc/4HLVwf3JP9kSaXbQ=
 github.com/projectdiscovery/interactsh v1.1.8 h1:mDD+f/oo2tV4Z1WyUync0tgYeJyuiS89Un64Gm6Pvgk=
 github.com/projectdiscovery/interactsh v1.1.8/go.mod h1:E20ywFb7bL01GcOOk+6VZF48XZ8AZvYvBpULoBUSTbg=
 github.com/projectdiscovery/mapcidr v1.1.16 h1:rjj1w5D6hbTsUQXYClLcGdfBEy9bryclgi70t0vBggo=
@@ -833,8 +833,8 @@ github.com/projectdiscovery/networkpolicy v0.0.7 h1:AwHqBRXBqDQgnWzBMuoJtHBNEYBw
 github.com/projectdiscovery/networkpolicy v0.0.7/go.mod h1:CK0CnFoLF1Nou6mY7P4WODSAxhPN8g8g7XpapgEP8tI=
 github.com/projectdiscovery/ratelimit v0.0.24 h1:ydCzcICK8eSYkCeN5NLikGjGayx66ELQmjpqepGC5Cg=
 github.com/projectdiscovery/ratelimit v0.0.24/go.mod h1:cHow8VY1Dt38/6Cj3b6LmJATnzXrs6838U2GiFYBoXE=
-github.com/projectdiscovery/rawhttp v0.1.33 h1:H+QM7zVq/pprGrQrO0JyCSRwrCYdIHbQ3hueh6P5u/4=
-github.com/projectdiscovery/rawhttp v0.1.33/go.mod h1:3W9ZZr3feIVbK0VQHZv6c5OKqb+tnTdh3cbNOOO8AY8=
+github.com/projectdiscovery/rawhttp v0.1.35 h1:9Hkbu1WLN5coj6+HBaqi26PjMNFnw1XrMvJUS/G40OM=
+github.com/projectdiscovery/rawhttp v0.1.35/go.mod h1:9mS0N3BfOBYwQWgyI+bXBaFVMFBtJVTcZF0FENea7mA=
 github.com/projectdiscovery/rdap v0.9.1-0.20221108103045-9865884d1917 h1:m03X4gBVSorSzvmm0bFa7gDV4QNSOWPL/fgZ4kTXBxk=
 github.com/projectdiscovery/rdap v0.9.1-0.20221108103045-9865884d1917/go.mod h1:JxXtZC9e195awe7EynrcnBJmFoad/BNDzW9mzFkK8Sg=
 github.com/projectdiscovery/retryabledns v1.0.51 h1:bX/apiRGZwhASBAT7o3qmZ0FznuBlHQlIQdCw1TAzcg=
@@ -849,8 +849,8 @@ github.com/projectdiscovery/tlsx v1.1.6-0.20231116215000-e842dc367a74 h1:G0gw+3z
 github.com/projectdiscovery/tlsx v1.1.6-0.20231116215000-e842dc367a74/go.mod h1:YH8el7/6pyZbNed1IibjzbGpeigiCVyvE28g5+LsPAw=
 github.com/projectdiscovery/uncover v1.0.7 h1:ut+2lTuvmftmveqF5RTjMWAgyLj8ltPQC7siFy9sj0A=
 github.com/projectdiscovery/uncover v1.0.7/go.mod h1:HFXgm1sRPuoN0D4oATljPIdmbo/EEh1wVuxQqo/dwFE=
-github.com/projectdiscovery/utils v0.0.74-0.20240115220656-48fef326de18 h1:hQHfr0YlGGODVMQrN3c41itC477xdFDy/3hJbOfjPqY=
-github.com/projectdiscovery/utils v0.0.74-0.20240115220656-48fef326de18/go.mod h1:SEb3ZoGy1nxdnPNXAGhMZNhRcokRkoMEjC6l9H59t1s=
+github.com/projectdiscovery/utils v0.0.75 h1:VroGyPBTyFARP7HYa2lbmZvt40/bCaXu1q+NIhkKEmk=
+github.com/projectdiscovery/utils v0.0.75/go.mod h1:4MBUFfZ9Mm96PiWUj2zJ99sx2AVOpZkGukC6O16+p+o=
 github.com/projectdiscovery/wappalyzergo v0.0.109 h1:BERfwTRn1dvB1tbhyc5m67R8VkC9zbVuPsEq4VEm07k=
 github.com/projectdiscovery/wappalyzergo v0.0.109/go.mod h1:4Z3DKhi75zIPMuA+qSDDWxZvnhL4qTLmDx4dxNMu7MA=
 github.com/projectdiscovery/yamldoc-go v1.0.4 h1:eZoESapnMw6WAHiVgRwNqvbJEfNHEH148uthhFbG5jE=
