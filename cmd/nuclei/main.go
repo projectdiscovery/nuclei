@@ -12,6 +12,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/projectdiscovery/utils/auth/pdcp"
 	_ "github.com/projectdiscovery/utils/pprof"
 
 	"github.com/projectdiscovery/goflags"
@@ -507,6 +508,7 @@ func printVersion() {
 	gologger.Info().Msgf("Nuclei Engine Version: %s", config.Version)
 	gologger.Info().Msgf("Nuclei Config Directory: %s", config.DefaultConfig.GetConfigDir())
 	gologger.Info().Msgf("Nuclei Cache Directory: %s", config.DefaultConfig.GetCacheDir()) // cache dir contains resume files
+	gologger.Info().Msgf("PDCP Directory: %s", pdcp.PDCPDir)
 	os.Exit(0)
 }
 
