@@ -266,8 +266,9 @@ STATISTICS:
    -mp, -metrics-port int    port to expose nuclei metrics on (default 9092)
 
 CLOUD:
-   -auth                configure projectdiscovery cloud (pdcp) api key
-   -cup, -cloud-upload  upload scan results to pdcp dashboard
+   -auth                  configure projectdiscovery cloud (pdcp) api key
+   -cup, -cloud-upload    upload scan results to pdcp dashboard
+   -sid, -scan-id string  upload scan results to given scan id
 
 
 EXAMPLES:
