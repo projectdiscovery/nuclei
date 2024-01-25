@@ -21,11 +21,11 @@ require (
 	github.com/olekukonko/tablewriter v0.0.5
 	github.com/pkg/errors v0.9.1
 	github.com/projectdiscovery/clistats v0.0.20
-	github.com/projectdiscovery/fastdialer v0.0.55
-	github.com/projectdiscovery/hmap v0.0.34
+	github.com/projectdiscovery/fastdialer v0.0.56-0.20240125161703-7ec29729882e
+	github.com/projectdiscovery/hmap v0.0.35
 	github.com/projectdiscovery/interactsh v1.1.8
 	github.com/projectdiscovery/rawhttp v0.1.35
-	github.com/projectdiscovery/retryabledns v1.0.51
+	github.com/projectdiscovery/retryabledns v1.0.52
 	github.com/projectdiscovery/retryablehttp-go v1.0.44
 	github.com/projectdiscovery/yamldoc-go v1.0.4
 	github.com/remeh/sizedwaitgroup v1.0.0
