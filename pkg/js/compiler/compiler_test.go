@@ -4,6 +4,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/dop251/goja"
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/gologger/levels"
 )
@@ -40,7 +41,11 @@ func TestExecuteResultGetSuccess(t *testing.T) {
 
 func TestCompilerCaptureVariables(t *testing.T) {
 	compiler := New()
-	result, err := compiler.ExecuteWithOptions("var a = 1;", NewExecuteArgs(), &ExecuteOptions{CaptureVariables: []string{"a"}})
+	p, err := goja.Compile("", "var a = 1;", false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	result, err := compiler.ExecuteWithOptions(p, NewExecuteArgs(), &ExecuteOptions{CaptureVariables: []string{"a"}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -55,7 +60,11 @@ func TestCompilerCaptureVariables(t *testing.T) {
 
 func TestCompilerCaptureOutput(t *testing.T) {
 	compiler := New()
-	result, err := compiler.ExecuteWithOptions("let obj = {'a':'b'}; obj", NewExecuteArgs(), &ExecuteOptions{CaptureOutput: true})
+	p, err := goja.Compile("", "let obj = {'a':'b'}; obj", false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	result, err := compiler.ExecuteWithOptions(p, NewExecuteArgs(), &ExecuteOptions{CaptureOutput: true})
 	if err != nil {
 		t.Fatal(err)
 	}
