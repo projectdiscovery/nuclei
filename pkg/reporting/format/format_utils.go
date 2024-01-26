@@ -34,7 +34,7 @@ func GetMatchedTemplateName(event *output.ResultEvent) string {
 	return matchedTemplateName
 }
 
-func CreateReportDescription(event *output.ResultEvent, formatter ResultFormatter) string {
+func CreateReportDescription(event *output.ResultEvent, formatter ResultFormatter, omitRaw bool) string {
 	template := GetMatchedTemplateName(event)
 	builder := &bytes.Buffer{}
 	builder.WriteString(fmt.Sprintf("%s: %s matched at %s\n\n", formatter.MakeBold("Details"), formatter.MakeBold(template), event.Host))
@@ -51,20 +51,22 @@ func CreateReportDescription(event *output.ResultEvent, formatter ResultFormatte
 	builder.WriteString("\n\n")
 	builder.WriteString(CreateTemplateInfoTable(&event.Info, formatter))
 
-	if event.Request != "" {
-		builder.WriteString(formatter.CreateCodeBlock("Request", types.ToHexOrString(event.Request), "http"))
-	}
-	if event.Response != "" {
-		var responseString string
-		// If the response is larger than 5 kb, truncate it before writing.
-		maxKbSize := 5 * 1024
-		if len(event.Response) > maxKbSize {
-			responseString = event.Response[:maxKbSize]
-			responseString += ".... Truncated ...."
-		} else {
-			responseString = event.Response
+	if !omitRaw {
+		if event.Request != "" {
+			builder.WriteString(formatter.CreateCodeBlock("Request", types.ToHexOrString(event.Request), "http"))
 		}
-		builder.WriteString(formatter.CreateCodeBlock("Response", responseString, "http"))
+		if event.Response != "" {
+			var responseString string
+			// If the response is larger than 5 kb, truncate it before writing.
+			maxKbSize := 5 * 1024
+			if len(event.Response) > maxKbSize {
+				responseString = event.Response[:maxKbSize]
+				responseString += ".... Truncated ...."
+			} else {
+				responseString = event.Response
+			}
+			builder.WriteString(formatter.CreateCodeBlock("Response", responseString, "http"))
+		}
 	}
 
 	if len(event.ExtractedResults) > 0 || len(event.Metadata) > 0 {
