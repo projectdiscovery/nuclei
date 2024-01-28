@@ -21,3 +21,20 @@ func hasOperators(all []*operators.Operators) bool {
 	}
 	return false
 }
+
+func flatten(v interface{}) interface{} {
+	switch v := v.(type) {
+	case []interface{}:
+		if len(v) == 1 {
+			return v[0]
+		}
+		return v
+	case []string:
+		if len(v) == 1 {
+			return v[0]
+		}
+		return v
+	default:
+		return v
+	}
+}
