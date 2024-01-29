@@ -4,7 +4,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/dop251/goja"
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/gologger/levels"
 )
@@ -36,44 +35,6 @@ func TestExecuteResultGetSuccess(t *testing.T) {
 	}
 	if result.GetSuccess() != true {
 		t.Fatalf("expected true, got=%v", result.GetSuccess())
-	}
-}
-
-func TestCompilerCaptureVariables(t *testing.T) {
-	compiler := New()
-	p, err := goja.Compile("", "var a = 1;", false)
-	if err != nil {
-		t.Fatal(err)
-	}
-	result, err := compiler.ExecuteWithOptions(p, NewExecuteArgs(), &ExecuteOptions{CaptureVariables: []string{"a"}})
-	if err != nil {
-		t.Fatal(err)
-	}
-	gotValue, ok := result["a"]
-	if !ok {
-		t.Fatalf("expected a to be present in the result")
-	}
-	if gotValue.(int64) != 1 {
-		t.Fatalf("expected a to be 1, got=%v", gotValue)
-	}
-}
-
-func TestCompilerCaptureOutput(t *testing.T) {
-	compiler := New()
-	p, err := goja.Compile("", "let obj = {'a':'b'}; obj", false)
-	if err != nil {
-		t.Fatal(err)
-	}
-	result, err := compiler.ExecuteWithOptions(p, NewExecuteArgs(), &ExecuteOptions{CaptureOutput: true})
-	if err != nil {
-		t.Fatal(err)
-	}
-	gotValue, ok := result["a"]
-	if !ok {
-		t.Fatalf("expected a to be present in the result")
-	}
-	if gotValue.(string) != "b" {
-		t.Fatalf("expected a to be b, got=%v", gotValue)
 	}
 }
 

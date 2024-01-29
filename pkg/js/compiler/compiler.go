@@ -3,6 +3,7 @@ package compiler
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/dop251/goja"
@@ -23,19 +24,6 @@ func New() *Compiler {
 
 // ExecuteOptions provides options for executing a script.
 type ExecuteOptions struct {
-	// Pool specifies whether to use a pool of goja runtimes
-	// Can be used to speedup execution but requires
-	// the script to not make any global changes.
-	Pool bool
-
-	// CaptureOutput specifies whether to capture the output
-	// of the script execution.
-	CaptureOutput bool
-
-	// CaptureVariables specifies the variables to capture
-	// from the script execution.
-	CaptureVariables []string
-
 	// Callback can be used to register new runtime helper functions
 	// ex: export etc
 	Callback func(runtime *goja.Runtime) error
@@ -94,8 +82,12 @@ func (c *Compiler) ExecuteWithOptions(program *goja.Program, args *ExecuteArgs, 
 	if args == nil {
 		args = NewExecuteArgs()
 	}
+	// handle nil maps
 	if args.TemplateCtx == nil {
 		args.TemplateCtx = make(map[string]interface{})
+	}
+	if args.Args == nil {
+		args.Args = make(map[string]interface{})
 	}
 	// merge all args into templatectx
 	args.TemplateCtx = generators.MergeMaps(args.TemplateCtx, args.Args)
@@ -110,52 +102,16 @@ func (c *Compiler) ExecuteWithOptions(program *goja.Program, args *ExecuteArgs, 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(opts.Timeout)*time.Second)
 	defer cancel()
 	// execute the script
-	results, err := contextutil.ExecFuncWithTwoReturns(ctx, func() (goja.Value, error) {
+	results, err := contextutil.ExecFuncWithTwoReturns(ctx, func() (val goja.Value, err error) {
+		defer func() {
+			if r := recover(); r != nil {
+				err = fmt.Errorf("panic: %v", r)
+			}
+		}()
 		return executeProgram(program, args, opts)
 	})
 	if err != nil {
 		return nil, err
 	}
-	captured := results.Export()
-
-	// if opts.CaptureOutput {
-	// 	return convertOutputToResult(captured)
-	// }
-	// if len(opts.CaptureVariables) > 0 {
-	// 	return c.captureVariables(runtime, opts.CaptureVariables)
-	// }
-	// success is true by default . since js throws errors on failure
-	// hence output result is always success
-	return ExecuteResult{"response": captured, "success": results.ToBoolean()}, nil
+	return ExecuteResult{"response": results.Export(), "success": results.ToBoolean()}, nil
 }
-
-// // captureVariables captures the variables from the runtime.
-// func (c *Compiler) captureVariables(runtime *goja.Runtime, variables []string) (ExecuteResult, error) {
-// 	results := make(ExecuteResult, len(variables))
-// 	for _, variable := range variables {
-// 		value := runtime.Get(variable)
-// 		if value == nil {
-// 			continue
-// 		}
-// 		results[variable] = value.Export()
-// 	}
-// 	return results, nil
-// }
-
-// func convertOutputToResult(output interface{}) (ExecuteResult, error) {
-// 	marshalled, err := jsoniter.Marshal(output)
-// 	if err != nil {
-// 		return nil, errors.Wrap(err, "could not marshal output")
-// 	}
-
-// 	var outputMap map[string]interface{}
-// 	if err := jsoniter.Unmarshal(marshalled, &outputMap); err != nil {
-// 		var v interface{}
-// 		if unmarshalErr := jsoniter.Unmarshal(marshalled, &v); unmarshalErr != nil {
-// 			return nil, unmarshalErr
-// 		}
-// 		outputMap = map[string]interface{}{"output": v}
-// 		return outputMap, nil
-// 	}
-// 	return outputMap, nil
-// }

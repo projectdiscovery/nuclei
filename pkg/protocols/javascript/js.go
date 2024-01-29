@@ -469,10 +469,7 @@ func (request *Request) executeRequestWithPayloads(hostPort string, input *conte
 		}
 	}
 
-	results, err := request.options.JsCompiler.ExecuteWithOptions(request.scriptCompiled, argsCopy, &compiler.ExecuteOptions{
-		Pool:    false,
-		Timeout: request.Timeout,
-	})
+	results, err := request.options.JsCompiler.ExecuteWithOptions(request.scriptCompiled, argsCopy, &compiler.ExecuteOptions{Timeout: request.Timeout})
 	if err != nil {
 		// shouldn't fail even if it returned error instead create a failure event
 		results = compiler.ExecuteResult{"success": false, "error": err.Error()}

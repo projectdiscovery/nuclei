@@ -31,19 +31,24 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/js/global"
 	"github.com/projectdiscovery/nuclei/v3/pkg/js/libs/goconsole"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
+	"github.com/remeh/sizedwaitgroup"
 )
 
 var (
-	r       *require.Registry
-	regInit = sync.OnceFunc(func() {
+	r                *require.Registry
+	lazyRegistryInit = sync.OnceFunc(func() {
 		r = new(require.Registry) // this can be shared by multiple runtimes
 		// autoregister console node module with default printer it uses gologger backend
 		require.RegisterNativeModule(console.ModuleName, console.RequireWithPrinter(goconsole.NewGoConsolePrinter()))
 	})
+	sg         sizedwaitgroup.SizedWaitGroup
+	lazySgInit = sync.OnceFunc(func() {
+		sg = sizedwaitgroup.New(JsVmConcurrency)
+	})
 )
 
 func getRegistry() *require.Registry {
-	regInit()
+	lazyRegistryInit()
 	return r
 }
 
@@ -54,7 +59,7 @@ var gojapool = &sync.Pool{
 		// by default import below modules every time
 		_ = runtime.Set("console", require.Require(runtime, console.ModuleName))
 
-		// Register embedded scripts
+		// Register embedded javacript helpers
 		if err := global.RegisterNativeScripts(runtime); err != nil {
 			gologger.Error().Msgf("Could not register scripts: %s\n", err)
 		}
@@ -62,7 +67,13 @@ var gojapool = &sync.Pool{
 	},
 }
 
+// executes the actual js program
 func executeProgram(p *goja.Program, args *ExecuteArgs, opts *ExecuteOptions) (result goja.Value, err error) {
+	// its unknown (most likely cannot be done) to limit max js runtimes without making it static
+	// unlike sync.Pool which reacts to GC and its purposes is to reuse objects rather than creating new ones
+	lazySgInit()
+	sg.Add()
+	defer sg.Done()
 	runtime := gojapool.Get().(*goja.Runtime)
 	defer func() {
 		// reset before putting back to pool
