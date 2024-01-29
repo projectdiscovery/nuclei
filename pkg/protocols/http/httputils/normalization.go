@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"compress/gzip"
 	"compress/zlib"
-	"fmt"
 	"io"
 	"net/http"
 	"strings"
@@ -41,8 +40,8 @@ func readNNormalizeRespBody(rc *ResponseChain, body *bytes.Buffer) (err error) {
 			}
 		}
 		if stringsutil.ContainsAny(err.Error(), "unexpected EOF", "read: connection reset by peer", "user canceled") {
-			// keep partial body and continue (skip error) (but write it at end of body for debugging)
-			body.WriteString(fmt.Sprintf("ignoring error: %s\n", err.Error()))
+			// keep partial body and continue (skip error) (add meta header in response for debugging)
+			response.Header.Set("x-nuclei-ignore-error", err.Error())
 			return nil
 		}
 		return errors.Wrap(err, "could not read response body")
