@@ -77,7 +77,7 @@ require (
 	github.com/praetorian-inc/fingerprintx v1.1.9
 	github.com/projectdiscovery/dsl v0.0.40
 	github.com/projectdiscovery/fasttemplate v0.0.2
-	github.com/projectdiscovery/go-smb2 v0.0.0-20240129200032-b4b580e6582b
+	github.com/projectdiscovery/go-smb2 v0.0.0-20240129202741-052cc450c6cb
 	github.com/projectdiscovery/goflags v0.1.35
 	github.com/projectdiscovery/gologger v1.1.12
 	github.com/projectdiscovery/gostruct v0.0.2
