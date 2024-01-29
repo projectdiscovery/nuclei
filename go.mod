@@ -70,7 +70,6 @@ require (
 	github.com/go-pg/pg v8.0.7+incompatible
 	github.com/go-sql-driver/mysql v1.6.0
 	github.com/h2non/filetype v1.1.3
-	github.com/hirochachacha/go-smb2 v1.1.0
 	github.com/labstack/echo/v4 v4.10.2
 	github.com/lib/pq v1.10.1
 	github.com/mholt/archiver v3.1.1+incompatible
@@ -78,6 +77,7 @@ require (
 	github.com/praetorian-inc/fingerprintx v1.1.9
 	github.com/projectdiscovery/dsl v0.0.40
 	github.com/projectdiscovery/fasttemplate v0.0.2
+	github.com/projectdiscovery/go-smb2 v0.0.0-20240129200032-b4b580e6582b
 	github.com/projectdiscovery/goflags v0.1.35
 	github.com/projectdiscovery/gologger v1.1.12
 	github.com/projectdiscovery/gostruct v0.0.2
