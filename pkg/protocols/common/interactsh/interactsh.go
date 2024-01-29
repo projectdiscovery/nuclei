@@ -160,7 +160,7 @@ func (c *Client) processInteractionForRequest(interaction *server.Interaction, d
 	}()
 	data.Event.Lock()
 	data.Event.InternalEvent["interactsh_protocol"] = interaction.Protocol
-	data.Event.InternalEvent["interactsh_request"] = interaction.RawRequest
+	data.Event.InternalEvent["interactsh_request"] = strings.ToLower(interaction.RawRequest)
 	data.Event.InternalEvent["interactsh_response"] = interaction.RawResponse
 	data.Event.InternalEvent["interactsh_ip"] = interaction.RemoteAddress
 	data.Event.Unlock()
