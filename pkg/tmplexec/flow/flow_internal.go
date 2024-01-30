@@ -94,11 +94,12 @@ func (f *FlowExecutor) protocolResultCallback(req protocols.Request, matcherStat
 					for k, v := range result.OperatorsResult.DynamicValues {
 						// if length of v is 1 then remove slice and convert it to single value
 						if len(v) == 1 {
-							f.options.GetTemplateCtx(f.ctx.Input.MetaInput).Set(k, v[0])
-						} else {
-							// if not let user handle it in flow ex: `for(let val of template.extracted)`
-							f.options.GetTemplateCtx(f.ctx.Input.MetaInput).Set(k, v)
+							// add it to flatten keys list so it will be flattened to a string later
+							f.flattenKeys = append(f.flattenKeys, k)
 						}
+						// always preserve extracted value type
+						f.options.GetTemplateCtx(f.ctx.Input.MetaInput).Set(k, v)
+
 					}
 				}
 			} else if !result.HasOperatorResult() && !hasOperators(req.GetCompiledOperators()) {

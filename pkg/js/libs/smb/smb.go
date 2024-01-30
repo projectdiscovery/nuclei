@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/hirochachacha/go-smb2"
 	"github.com/praetorian-inc/fingerprintx/pkg/plugins"
+	"github.com/projectdiscovery/go-smb2"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
 	"github.com/zmap/zgrab2/lib/smb/smb"
 )
@@ -14,7 +14,7 @@ import (
 // SMBClient is a client for SMB servers.
 //
 // Internally client uses github.com/zmap/zgrab2/lib/smb/smb driver.
-// github.com/hirochachacha/go-smb2 driver
+// github.com/projectdiscovery/go-smb2 driver
 type SMBClient struct{}
 
 // ConnectSMBInfoMode tries to connect to provided host and port

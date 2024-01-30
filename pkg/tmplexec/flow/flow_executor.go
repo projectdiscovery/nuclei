@@ -48,6 +48,9 @@ type FlowExecutor struct {
 	// logic related variables
 	results *atomic.Bool
 	allErrs mapsutil.SyncLockMap[string, error]
+	// these are keys whose values are meant to be flatten before executing
+	// a request ex: if dynamic extractor returns ["value"] it will be converted to "value"
+	flattenKeys []string
 }
 
 // NewFlowExecutor creates a new flow executor from a list of requests
@@ -153,6 +156,15 @@ func (f *FlowExecutor) Compile() error {
 				switch value := v.Export().(type) {
 				default:
 					opts.reqIDS = append(opts.reqIDS, types.ToString(value))
+				}
+			}
+			// before executing any protocol function flatten tracked values
+			if len(f.flattenKeys) > 0 {
+				ctx := f.options.GetTemplateCtx(f.ctx.Input.MetaInput)
+				for _, key := range f.flattenKeys {
+					if value, ok := ctx.Get(key); ok {
+						ctx.Set(key, flatten(value))
+					}
 				}
 			}
 			return runtime.ToValue(f.requestExecutor(runtime, reqMap, opts))
