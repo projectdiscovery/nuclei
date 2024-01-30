@@ -100,6 +100,7 @@ func New(options *Options, db string) (Client, error) {
 
 	if options.GitHub != nil {
 		options.GitHub.HttpClient = options.HttpClient
+		options.GitHub.OmitRaw = options.OmitRaw
 		tracker, err := github.New(options.GitHub)
 		if err != nil {
 			return nil, errorutil.NewWithErr(err).Wrap(ErrReportingClientCreation)
@@ -108,6 +109,7 @@ func New(options *Options, db string) (Client, error) {
 	}
 	if options.GitLab != nil {
 		options.GitLab.HttpClient = options.HttpClient
+		options.GitLab.OmitRaw = options.OmitRaw
 		tracker, err := gitlab.New(options.GitLab)
 		if err != nil {
 			return nil, errorutil.NewWithErr(err).Wrap(ErrReportingClientCreation)
@@ -124,6 +126,7 @@ func New(options *Options, db string) (Client, error) {
 	}
 	if options.Jira != nil {
 		options.Jira.HttpClient = options.HttpClient
+		options.Jira.OmitRaw = options.OmitRaw
 		tracker, err := jira.New(options.Jira)
 		if err != nil {
 			return nil, errorutil.NewWithErr(err).Wrap(ErrReportingClientCreation)

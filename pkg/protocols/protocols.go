@@ -125,6 +125,15 @@ func (e *ExecutorOptions) RemoveTemplateCtx(input *contextargs.MetaInput) {
 	}
 }
 
+// HasTemplateCtx returns true if template context exists for given input
+func (e *ExecutorOptions) HasTemplateCtx(input *contextargs.MetaInput) bool {
+	scanId := input.GetScanHash(e.TemplateID)
+	if e.templateCtxStore != nil {
+		return e.templateCtxStore.Has(scanId)
+	}
+	return false
+}
+
 // GetTemplateCtx returns template context for given input
 func (e *ExecutorOptions) GetTemplateCtx(input *contextargs.MetaInput) *contextargs.Context {
 	scanId := input.GetScanHash(e.TemplateID)
@@ -132,6 +141,7 @@ func (e *ExecutorOptions) GetTemplateCtx(input *contextargs.MetaInput) *contexta
 	if !ok {
 		// if template context does not exist create new and add it to store and return it
 		templateCtx = contextargs.New()
+		templateCtx.MetaInput = input
 		_ = e.templateCtxStore.Set(scanId, templateCtx)
 	}
 	return templateCtx
@@ -215,7 +225,17 @@ type Request interface {
 type OutputEventCallback func(result *output.InternalWrappedEvent)
 
 func MakeDefaultResultEvent(request Request, wrapped *output.InternalWrappedEvent) []*output.ResultEvent {
+	// Note: operator result is generated if something was succesfull match/extract/dynamic-extract
+	// but results should not be generated if
+	// 1. no match was found and some dynamic values were extracted
+	// 2. if something was extracted (matchers exist but no match was found)
 	if len(wrapped.OperatorsResult.DynamicValues) > 0 && !wrapped.OperatorsResult.Matched {
+		return nil
+	}
+	// check if something was extracted (except dynamic values)
+	extracted := len(wrapped.OperatorsResult.Extracts) > 0 || len(wrapped.OperatorsResult.OutputExtracts) > 0
+	if extracted && len(wrapped.OperatorsResult.Operators.Matchers) > 0 && !wrapped.OperatorsResult.Matched {
+		// if extracted and matchers exist but no match was found then don't generate result
 		return nil
 	}
 

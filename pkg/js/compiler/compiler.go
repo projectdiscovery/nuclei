@@ -2,7 +2,9 @@
 package compiler
 
 import (
+	"context"
 	"runtime/debug"
+	"time"
 
 	"github.com/dop251/goja"
 	"github.com/dop251/goja/parser"
@@ -36,6 +38,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/js/libs/goconsole"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/generators"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
+	contextutil "github.com/projectdiscovery/utils/context"
 )
 
 // Compiler provides a runtime to execute goja runtime
@@ -71,6 +74,9 @@ type ExecuteOptions struct {
 	// Callback can be used to register new runtime helper functions
 	// ex: export etc
 	Callback func(runtime *goja.Runtime) error
+
+	/// Timeout for this script execution
+	Timeout int
 }
 
 // ExecuteArgs is the arguments to pass to the script.
@@ -151,7 +157,24 @@ func (c *Compiler) ExecuteWithOptions(code string, args *ExecuteArgs, opts *Exec
 	args.TemplateCtx = generators.MergeMaps(args.TemplateCtx, args.Args)
 	_ = runtime.Set("template", args.TemplateCtx)
 
-	results, err := runtime.RunString(code)
+	if opts.Timeout <= 0 || opts.Timeout > 180 {
+		// some js scripts can take longer time so allow configuring timeout
+		// from template but keep it within sane limits (180s)
+		opts.Timeout = JsProtocolTimeout
+	}
+
+	// execute with context and timeout
+	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(opts.Timeout)*time.Second)
+	defer cancel()
+	// execute the script
+	results, err := contextutil.ExecFuncWithTwoReturns(ctx, func() (val goja.Value, err error) {
+		defer func() {
+			if r := recover(); r != nil {
+				err = errors.Errorf("panic: %v", r)
+			}
+		}()
+		return runtime.RunString(code)
+	})
 	if err != nil {
 		return nil, err
 	}

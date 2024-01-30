@@ -14,6 +14,7 @@ var flowTestcases = []TestCaseInfo{
 	{Path: "flow/conditional-flow.yaml", TestCase: &conditionalFlow{}},
 	{Path: "flow/conditional-flow-negative.yaml", TestCase: &conditionalFlowNegative{}},
 	{Path: "flow/iterate-values-flow.yaml", TestCase: &iterateValuesFlow{}},
+	{Path: "flow/iterate-one-value-flow.yaml", TestCase: &iterateOneValueFlow{}},
 	{Path: "flow/dns-ns-probe.yaml", TestCase: &dnsNsProbe{}},
 	{Path: "flow/flow-hide-matcher.yaml", TestCase: &flowHideMatcher{}},
 }
@@ -67,6 +68,16 @@ func (t *iterateValuesFlow) Execute(filePath string) error {
 	if err != nil {
 		return err
 	}
+	return expectResultsCount(results, 2)
+}
+
+type iterateOneValueFlow struct{}
+
+func (t *iterateOneValueFlow) Execute(filePath string) error {
+	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, "https://scanme.sh", debug)
+	if err != nil {
+		return err
+	}
 	return expectResultsCount(results, 1)
 }
 
@@ -77,7 +88,7 @@ func (t *dnsNsProbe) Execute(filePath string) error {
 	if err != nil {
 		return err
 	}
-	return expectResultsCount(results, 1)
+	return expectResultsCount(results, 2)
 }
 
 func getBase64(input string) string {

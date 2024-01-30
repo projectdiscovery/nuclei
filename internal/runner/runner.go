@@ -16,6 +16,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/internal/pdcp"
 	"github.com/projectdiscovery/nuclei/v3/pkg/installer"
 	uncoverlib "github.com/projectdiscovery/uncover"
+	pdcpauth "github.com/projectdiscovery/utils/auth/pdcp"
 	"github.com/projectdiscovery/utils/env"
 	fileutil "github.com/projectdiscovery/utils/file"
 	permissionutil "github.com/projectdiscovery/utils/permission"
@@ -330,6 +331,9 @@ func (r *Runner) Close() {
 	if r.output != nil {
 		r.output.Close()
 	}
+	if r.issuesClient != nil {
+		r.issuesClient.Close()
+	}
 	if r.projectFile != nil {
 		r.projectFile.Close()
 	}
@@ -341,29 +345,40 @@ func (r *Runner) Close() {
 	if r.rateLimiter != nil {
 		r.rateLimiter.Stop()
 	}
+	r.progress.Stop()
+	if r.browser != nil {
+		r.browser.Close()
+	}
 }
 
 // setupPDCPUpload sets up the PDCP upload writer
 // by creating a new writer and returning it
 func (r *Runner) setupPDCPUpload(writer output.Writer) output.Writer {
+	// if scanid is given implicitly consider that scan upload is enabled
+	if r.options.ScanID != "" {
+		r.options.EnableCloudUpload = true
+	}
 	if !(r.options.EnableCloudUpload || EnableCloudUpload) {
 		r.pdcpUploadErrMsg = fmt.Sprintf("[%v] Scan results upload to cloud is disabled.", aurora.BrightYellow("WRN"))
 		return writer
 	}
 	color := aurora.NewAurora(!r.options.NoColor)
-	h := &pdcp.PDCPCredHandler{}
+	h := &pdcpauth.PDCPCredHandler{}
 	creds, err := h.GetCreds()
 	if err != nil {
-		if err != pdcp.ErrNoCreds && !HideAutoSaveMsg {
+		if err != pdcpauth.ErrNoCreds && !HideAutoSaveMsg {
 			gologger.Verbose().Msgf("Could not get credentials for cloud upload: %s\n", err)
 		}
-		r.pdcpUploadErrMsg = fmt.Sprintf("[%v] To view results on Cloud Dashboard, Configure API key from %v", color.BrightYellow("WRN"), pdcp.DashBoardURL)
+		r.pdcpUploadErrMsg = fmt.Sprintf("[%v] To view results on Cloud Dashboard, Configure API key from %v", color.BrightYellow("WRN"), pdcpauth.DashBoardURL)
 		return writer
 	}
-	uploadWriter, err := pdcp.NewUploadWriter(creds)
+	uploadWriter, err := pdcp.NewUploadWriter(context.Background(), creds)
 	if err != nil {
-		r.pdcpUploadErrMsg = fmt.Sprintf("[%v] PDCP (%v) Auto-Save Failed: %s\n", color.BrightYellow("WRN"), pdcp.DashBoardURL, err)
+		r.pdcpUploadErrMsg = fmt.Sprintf("[%v] PDCP (%v) Auto-Save Failed: %s\n", color.BrightYellow("WRN"), pdcpauth.DashBoardURL, err)
 		return writer
+	}
+	if r.options.ScanID != "" {
+		uploadWriter.SetScanID(r.options.ScanID)
 	}
 	return output.NewMultiWriter(writer, uploadWriter)
 }
@@ -493,22 +508,14 @@ func (r *Runner) RunEnumeration() error {
 			results.CompareAndSwap(false, true)
 		}
 	}
-	r.progress.Stop()
-
 	if executorOpts.InputHelper != nil {
 		_ = executorOpts.InputHelper.Close()
-	}
-	if r.issuesClient != nil {
-		r.issuesClient.Close()
 	}
 
 	// todo: error propagation without canonical straight error check is required by cloud?
 	// use safe dereferencing to avoid potential panics in case of previous unchecked errors
 	if v := ptrutil.Safe(results); !v.Load() {
 		gologger.Info().Msgf("No results found. Better luck next time!")
-	}
-	if r.browser != nil {
-		r.browser.Close()
 	}
 	// check if a passive scan was requested but no target was provided
 	if r.options.OfflineHTTP && len(r.options.Targets) == 0 && r.options.TargetsFilePath == "" {
@@ -592,7 +599,7 @@ func (r *Runner) displayExecutionInfo(store *loader.Store) {
 		if r.pdcpUploadErrMsg != "" {
 			gologger.Print().Msgf("%s", r.pdcpUploadErrMsg)
 		} else {
-			gologger.Info().Msgf("To view results on cloud dashboard, visit %v/scans upon scan completion.", pdcp.DashBoardURL)
+			gologger.Info().Msgf("To view results on cloud dashboard, visit %v/scans upon scan completion.", pdcpauth.DashBoardURL)
 		}
 	}
 

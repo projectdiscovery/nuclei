@@ -3,11 +3,10 @@ package smb
 import (
 	"context"
 	"fmt"
-	"net"
 	"time"
 
-	"github.com/hirochachacha/go-smb2"
 	"github.com/praetorian-inc/fingerprintx/pkg/plugins"
+	"github.com/projectdiscovery/go-smb2"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
 	"github.com/zmap/zgrab2/lib/smb/smb"
 )
@@ -15,7 +14,7 @@ import (
 // SMBClient is a client for SMB servers.
 //
 // Internally client uses github.com/zmap/zgrab2/lib/smb/smb driver.
-// github.com/hirochachacha/go-smb2 driver
+// github.com/projectdiscovery/go-smb2 driver
 type SMBClient struct{}
 
 // ConnectSMBInfoMode tries to connect to provided host and port
@@ -24,26 +23,30 @@ type SMBClient struct{}
 // Returns handshake log and error. If error is not nil,
 // state will be false
 func (c *SMBClient) ConnectSMBInfoMode(host string, port int) (*smb.SMBLog, error) {
+	if !protocolstate.IsHostAllowed(host) {
+		// host is not valid according to network policy
+		return nil, protocolstate.ErrHostDenied.Msgf(host)
+	}
 	conn, err := protocolstate.Dialer.Dial(context.TODO(), "tcp", fmt.Sprintf("%s:%d", host, port))
 	if err != nil {
 		return nil, err
 	}
-	defer conn.Close()
+	// try to get SMBv2/v3 info
+	result, err := c.getSMBInfo(conn, true, false)
+	_ = conn.Close() // close regardless of error
+	if err == nil {
+		return result, nil
+	}
 
-	_ = conn.SetDeadline(time.Now().Add(10 * time.Second))
-	setupSession := true
-
-	result, err := smb.GetSMBLog(conn, setupSession, false, false)
+	// try to negotiate SMBv1
+	conn, err = protocolstate.Dialer.Dial(context.TODO(), "tcp", fmt.Sprintf("%s:%d", host, port))
 	if err != nil {
-		conn.Close()
-		conn, err = net.DialTimeout("tcp", fmt.Sprintf("%s:%d", host, port), 10*time.Second)
-		if err != nil {
-			return nil, err
-		}
-		result, err = smb.GetSMBLog(conn, setupSession, true, false)
-		if err != nil {
-			return nil, err
-		}
+		return nil, err
+	}
+	defer conn.Close()
+	result, err = c.getSMBInfo(conn, true, true)
+	if err != nil {
+		return result, nil
 	}
 	return result, nil
 }
@@ -67,6 +70,10 @@ func (c *SMBClient) ListSMBv2Metadata(host string, port int) (*plugins.ServiceSM
 // Credentials cannot be blank. guest or anonymous credentials
 // can be used by providing empty password.
 func (c *SMBClient) ListShares(host string, port int, user, password string) ([]string, error) {
+	if !protocolstate.IsHostAllowed(host) {
+		// host is not valid according to network policy
+		return nil, protocolstate.ErrHostDenied.Msgf(host)
+	}
 	conn, err := protocolstate.Dialer.Dial(context.TODO(), "tcp", fmt.Sprintf("%s:%d", host, port))
 	if err != nil {
 		return nil, err

@@ -4,6 +4,7 @@
 vendor
 dist
 integration_tests/nuclei
+integration_tests/.cache
 integration_tests/integration-test
 cmd/nuclei/main
 cmd/nuclei/nuclei
@@ -25,3 +26,6 @@ pkg/protocols/headless/engine/.cache
 /bindgen
 /jsdocgen
 /scrapefuncs
+/integration_tests/.cache/
+/integration_tests/.nuclei-config/
+/*.yaml
