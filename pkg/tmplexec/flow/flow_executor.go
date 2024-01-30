@@ -221,6 +221,16 @@ func (f *FlowExecutor) ExecuteWithResults(ctx *scan.ScanContext) error {
 	}); err != nil {
 		return err
 	}
+	// also register functions that allow executing protocols from js
+	for proto, fn := range f.protoFunctions {
+		if err := runtime.Set(proto, fn); err != nil {
+			return err
+		}
+	}
+	// register template object
+	if err := runtime.Set("template", f.options.GetTemplateCtx(f.ctx.Input.MetaInput).GetAll()); err != nil {
+		return err
+	}
 
 	// pass flow and execute the js vm and handle errors
 	_, err := runtime.RunProgram(f.program)
