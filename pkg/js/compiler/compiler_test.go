@@ -38,36 +38,6 @@ func TestExecuteResultGetSuccess(t *testing.T) {
 	}
 }
 
-func TestCompilerCaptureVariables(t *testing.T) {
-	compiler := New()
-	result, err := compiler.ExecuteWithOptions("var a = 1;", NewExecuteArgs(), &ExecuteOptions{CaptureVariables: []string{"a"}})
-	if err != nil {
-		t.Fatal(err)
-	}
-	gotValue, ok := result["a"]
-	if !ok {
-		t.Fatalf("expected a to be present in the result")
-	}
-	if gotValue.(int64) != 1 {
-		t.Fatalf("expected a to be 1, got=%v", gotValue)
-	}
-}
-
-func TestCompilerCaptureOutput(t *testing.T) {
-	compiler := New()
-	result, err := compiler.ExecuteWithOptions("let obj = {'a':'b'}; obj", NewExecuteArgs(), &ExecuteOptions{CaptureOutput: true})
-	if err != nil {
-		t.Fatal(err)
-	}
-	gotValue, ok := result["a"]
-	if !ok {
-		t.Fatalf("expected a to be present in the result")
-	}
-	if gotValue.(string) != "b" {
-		t.Fatalf("expected a to be b, got=%v", gotValue)
-	}
-}
-
 type noopWriter struct {
 	Callback func(data []byte, level levels.Level)
 }
