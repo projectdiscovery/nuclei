@@ -167,7 +167,12 @@ func (c *Compiler) ExecuteWithOptions(code string, args *ExecuteArgs, opts *Exec
 	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(opts.Timeout)*time.Second)
 	defer cancel()
 	// execute the script
-	results, err := contextutil.ExecFuncWithTwoReturns(ctx, func() (goja.Value, error) {
+	results, err := contextutil.ExecFuncWithTwoReturns(ctx, func() (val goja.Value, err error) {
+		defer func() {
+			if r := recover(); r != nil {
+				err = errors.Errorf("panic: %v", r)
+			}
+		}()
 		return runtime.RunString(code)
 	})
 	if err != nil {
