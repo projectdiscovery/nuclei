@@ -4,11 +4,13 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"io"
+	"log"
 	"net"
 	"net/url"
 	"time"
 
-	_ "github.com/go-sql-driver/mysql"
+	"github.com/go-sql-driver/mysql"
 	"github.com/praetorian-inc/fingerprintx/pkg/plugins"
 	mysqlplugin "github.com/praetorian-inc/fingerprintx/pkg/plugins/services/mysql"
 	utils "github.com/projectdiscovery/nuclei/v3/pkg/js/utils"
@@ -66,6 +68,24 @@ func (c *MySQLClient) ConnectWithDB(host string, port int, username, password, d
 	return connect(host, port, username, password, dbName)
 }
 
+// ConnectWithDSN connects to MySQL database using given DSN.
+// we override mysql dialer with fastdialer so it respects network policy
+func (c *MySQLClient) ConnectWithDSN(dsn string) (bool, error) {
+	db, err := sql.Open("mysql", dsn)
+	if err != nil {
+		return false, err
+	}
+	defer db.Close()
+	db.SetMaxOpenConns(1)
+	db.SetMaxIdleConns(0)
+
+	_, err = db.Exec("select 1")
+	if err != nil {
+		return false, err
+	}
+	return true, nil
+}
+
 func connect(host string, port int, username, password, dbName string) (bool, error) {
 	if host == "" || port <= 0 {
 		return false, fmt.Errorf("invalid host or port")
@@ -78,7 +98,7 @@ func connect(host string, port int, username, password, dbName string) (bool, er
 
 	target := net.JoinHostPort(host, fmt.Sprintf("%d", port))
 
-	db, err := sql.Open("mysql", fmt.Sprintf("%v:%v@tcp(%v)/%s",
+	db, err := sql.Open("mysql", fmt.Sprintf("%v:%v@tcp(%v)/%s?allowOldPasswords=1",
 		url.PathEscape(username),
 		url.PathEscape(password),
 		target,
@@ -87,6 +107,8 @@ func connect(host string, port int, username, password, dbName string) (bool, er
 		return false, err
 	}
 	defer db.Close()
+	db.SetMaxOpenConns(1)
+	db.SetMaxIdleConns(0)
 
 	_, err = db.Exec("select 1")
 	if err != nil {
@@ -115,6 +137,8 @@ func (c *MySQLClient) ExecuteQuery(host string, port int, username, password, db
 		return "", err
 	}
 	defer db.Close()
+	db.SetMaxOpenConns(1)
+	db.SetMaxIdleConns(0)
 
 	rows, err := db.Query(query)
 	if err != nil {
@@ -125,4 +149,8 @@ func (c *MySQLClient) ExecuteQuery(host string, port int, username, password, db
 		return "", err
 	}
 	return string(resp), nil
+}
+
+func init() {
+	_ = mysql.SetLogger(log.New(io.Discard, "", 0))
 }
