@@ -32,7 +32,7 @@ func putBuffer(buf *bytes.Buffer) {
 }
 
 // Performance Notes:
-// Donot use http.Response once we create ResponseChain from it
+// do not use http.Response once we create ResponseChain from it
 // as this reuses buffers and saves allocations and also drains response
 // body automatically.
 // In required cases it can be used but should never be used for anything
@@ -92,7 +92,7 @@ func (r *ResponseChain) Previous() bool {
 	return false
 }
 
-// Fill fills buffers with response data
+// Fill buffers
 func (r *ResponseChain) Fill() error {
 	r.reset()
 	if r.resp == nil {
@@ -132,7 +132,7 @@ func (r *ResponseChain) Fill() error {
 	return nil
 }
 
-// Close closes the response chain and releases the buffers.
+// Close the response chain and releases the buffers.
 func (r *ResponseChain) Close() {
 	putBuffer(r.headers)
 	putBuffer(r.body)
