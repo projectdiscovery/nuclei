@@ -366,6 +366,8 @@ type Options struct {
 	EnableCloudUpload bool
 	// ScanID is the scan ID to use for cloud upload
 	ScanID string
+	// JsConcurrency is the number of concurrent js routines to run
+	JsConcurrency int
 }
 
 // ShouldLoadResume resume file

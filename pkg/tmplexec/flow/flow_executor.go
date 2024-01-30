@@ -11,7 +11,6 @@ import (
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/generators"
-	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
 	"github.com/projectdiscovery/nuclei/v3/pkg/scan"
 	templateTypes "github.com/projectdiscovery/nuclei/v3/pkg/templates/types"
 
@@ -40,22 +39,24 @@ type FlowExecutor struct {
 	options *protocols.ExecutorOptions
 
 	// javascript runtime reference and compiled program
-	jsVM    *goja.Runtime
 	program *goja.Program // compiled js program
 
 	// protocol requests and their callback functions
 	allProtocols   map[string][]protocols.Request
-	protoFunctions map[string]func(call goja.FunctionCall) goja.Value // reqFunctions contains functions that allow executing requests/protocols from js
+	protoFunctions map[string]func(call goja.FunctionCall, runtime *goja.Runtime) goja.Value // reqFunctions contains functions that allow executing requests/protocols from js
 
 	// logic related variables
 	results *atomic.Bool
 	allErrs mapsutil.SyncLockMap[string, error]
+	// these are keys whose values are meant to be flatten before executing
+	// a request ex: if dynamic extractor returns ["value"] it will be converted to "value"
+	flattenKeys []string
 }
 
 // NewFlowExecutor creates a new flow executor from a list of requests
 // Note: Unlike other engine for every target x template flow needs to be compiled and executed everytime
 // unlike other engines where we compile once and execute multiple times
-func NewFlowExecutor(requests []protocols.Request, ctx *scan.ScanContext, options *protocols.ExecutorOptions, results *atomic.Bool) (*FlowExecutor, error) {
+func NewFlowExecutor(requests []protocols.Request, ctx *scan.ScanContext, options *protocols.ExecutorOptions, results *atomic.Bool, program *goja.Program) (*FlowExecutor, error) {
 	allprotos := make(map[string][]protocols.Request)
 	for _, req := range requests {
 		switch req.Type() {
@@ -93,10 +94,10 @@ func NewFlowExecutor(requests []protocols.Request, ctx *scan.ScanContext, option
 			ReadOnly: atomic.Bool{},
 			Map:      make(map[string]error),
 		},
-		protoFunctions: map[string]func(call goja.FunctionCall) goja.Value{},
+		protoFunctions: map[string]func(call goja.FunctionCall, runtime *goja.Runtime) goja.Value{},
 		results:        results,
-		jsVM:           protocolstate.NewJSRuntime(),
 		ctx:            ctx,
+		program:        program,
 	}
 	return f, nil
 }
@@ -127,7 +128,7 @@ func (f *FlowExecutor) Compile() error {
 	f.options.GetTemplateCtx(f.ctx.Input.MetaInput).Merge(allVars) // merge all variables into template context
 
 	// ---- define callback functions/objects----
-	f.protoFunctions = map[string]func(call goja.FunctionCall) goja.Value{}
+	f.protoFunctions = map[string]func(call goja.FunctionCall, runtime *goja.Runtime) goja.Value{}
 	// iterate over all protocols and generate callback functions for each protocol
 	for p, requests := range f.allProtocols {
 		// for each protocol build a requestMap with reqID and protocol request
@@ -147,7 +148,7 @@ func (f *FlowExecutor) Compile() error {
 		}
 		// ---define hook that allows protocol/request execution from js-----
 		// --- this is the actual callback that is executed when function is invoked in js----
-		f.protoFunctions[proto] = func(call goja.FunctionCall) goja.Value {
+		f.protoFunctions[proto] = func(call goja.FunctionCall, runtime *goja.Runtime) goja.Value {
 			opts := &ProtoOptions{
 				protoName: proto,
 			}
@@ -157,10 +158,19 @@ func (f *FlowExecutor) Compile() error {
 					opts.reqIDS = append(opts.reqIDS, types.ToString(value))
 				}
 			}
-			return f.jsVM.ToValue(f.requestExecutor(reqMap, opts))
+			// before executing any protocol function flatten tracked values
+			if len(f.flattenKeys) > 0 {
+				ctx := f.options.GetTemplateCtx(f.ctx.Input.MetaInput)
+				for _, key := range f.flattenKeys {
+					if value, ok := ctx.Get(key); ok {
+						ctx.Set(key, flatten(value))
+					}
+				}
+			}
+			return runtime.ToValue(f.requestExecutor(runtime, reqMap, opts))
 		}
 	}
-	return f.registerBuiltInFunctions()
+	return nil
 }
 
 // ExecuteWithResults executes the flow and returns results
@@ -180,11 +190,50 @@ func (f *FlowExecutor) ExecuteWithResults(ctx *scan.ScanContext) error {
 			f.options.GetTemplateCtx(f.ctx.Input.MetaInput).Set(key, value)
 		})
 	}
+
+	// get a new runtime from pool
+	runtime := GetJSRuntime(f.options.Options)
+	defer PutJSRuntime(runtime) // put runtime back to pool
+	defer func() {
+		// remove set builtin
+		_ = runtime.GlobalObject().Delete("set")
+		_ = runtime.GlobalObject().Delete("template")
+		for proto := range f.protoFunctions {
+			_ = runtime.GlobalObject().Delete(proto)
+		}
+
+	}()
+	defer func() {
+		if r := recover(); r != nil {
+			f.ctx.LogError(fmt.Errorf("panic occurred while executing flow: %v", r))
+		}
+	}()
+
 	if ctx.OnResult == nil {
 		return fmt.Errorf("output callback cannot be nil")
 	}
+	// before running register set of builtins
+	if err := runtime.Set("set", func(call goja.FunctionCall) goja.Value {
+		varName := call.Argument(0).Export()
+		varValue := call.Argument(1).Export()
+		f.options.GetTemplateCtx(f.ctx.Input.MetaInput).Set(types.ToString(varName), varValue)
+		return goja.Null()
+	}); err != nil {
+		return err
+	}
+	// also register functions that allow executing protocols from js
+	for proto, fn := range f.protoFunctions {
+		if err := runtime.Set(proto, fn); err != nil {
+			return err
+		}
+	}
+	// register template object
+	if err := runtime.Set("template", f.options.GetTemplateCtx(f.ctx.Input.MetaInput).GetAll()); err != nil {
+		return err
+	}
+
 	// pass flow and execute the js vm and handle errors
-	_, err := f.jsVM.RunProgram(f.program)
+	_, err := runtime.RunProgram(f.program)
 	if err != nil {
 		ctx.LogError(err)
 		return errorutil.NewWithErr(err).Msgf("failed to execute flow\n%v\n", f.options.Flow)

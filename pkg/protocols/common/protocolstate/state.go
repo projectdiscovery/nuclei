@@ -1,10 +1,12 @@
 package protocolstate
 
 import (
+	"context"
 	"fmt"
 	"net"
 	"net/url"
 
+	"github.com/go-sql-driver/mysql"
 	"github.com/pkg/errors"
 	"golang.org/x/net/proxy"
 
@@ -133,6 +135,12 @@ func Init(options *types.Options) error {
 		return errors.Wrap(err, "could not create dialer")
 	}
 	Dialer = dialer
+
+	// override dialer in mysql
+	mysql.RegisterDialContext("tcp", func(ctx context.Context, addr string) (net.Conn, error) {
+		return Dialer.Dial(ctx, "tcp", addr)
+	})
+
 	return nil
 }
 

@@ -24,6 +24,6 @@ requests:
 
     matchers:
       - type: word
-        part: interactsh_protocol # Confirms the HTTP Interaction
+        part: interactsh_protocol # Confirms DNS Interaction
         words:
-          - "http"
+          - "dns"
