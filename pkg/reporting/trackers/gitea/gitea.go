@@ -38,6 +38,7 @@ type Options struct {
 	DuplicateIssueCheck bool `yaml:"duplicate-issue-check" default:"false"`
 
 	HttpClient *retryablehttp.Client `yaml:"-"`
+	OmitRaw    bool                  `yaml:"-"`
 }
 
 // New creates a new issue tracker integration client based on options.
@@ -75,7 +76,7 @@ func New(options *Options) (*Integration, error) {
 // CreateIssue creates an issue in the tracker
 func (i *Integration) CreateIssue(event *output.ResultEvent) error {
 	summary := format.Summary(event)
-	description := format.CreateReportDescription(event, util.MarkdownFormatter{})
+	description := format.CreateReportDescription(event, util.MarkdownFormatter{}, i.options.OmitRaw)
 
 	labels := []string{}
 	severityLabel := fmt.Sprintf("Severity: %s", event.Info.SeverityHolder.Severity.String())
