@@ -18,11 +18,21 @@ type LimitResponseBody struct {
 // NewLimitResponseBody wraps response body with a limit reader.
 // thus only allowing MaxBodyRead bytes to be read. i.e 4MB
 func NewLimitResponseBody(body io.ReadCloser) io.ReadCloser {
+	return NewLimitResponseBodyWithSize(body, MaxBodyRead)
+}
+
+// NewLimitResponseBody wraps response body with a limit reader.
+// thus only allowing MaxBodyRead bytes to be read. i.e 4MB
+func NewLimitResponseBodyWithSize(body io.ReadCloser, size int64) io.ReadCloser {
 	if body == nil {
 		return nil
 	}
+	if size == -1 {
+		// stick to default 4MB
+		size = MaxBodyRead
+	}
 	return &LimitResponseBody{
-		Reader: io.LimitReader(body, MaxBodyRead),
+		Reader: io.LimitReader(body, size),
 		Closer: body,
 	}
 }
