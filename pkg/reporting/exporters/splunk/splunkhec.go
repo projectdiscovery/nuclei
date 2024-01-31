@@ -10,11 +10,11 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/corpix/uarand"
 	"github.com/pkg/errors"
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
 	"github.com/projectdiscovery/retryablehttp-go"
+	"github.com/projectdiscovery/useragent"
 )
 
 // Options contains necessary options required for splunk communication
@@ -100,7 +100,8 @@ func (exporter *Exporter) Export(event *output.ResultEvent) error {
 	if len(exporter.authentication) > 0 {
 		req.Header.Add("Authorization", exporter.authentication)
 	}
-	req.Header.Set("User-Agent", uarand.GetRandom())
+	userAgent := useragent.PickRandom()
+	req.Header.Set("User-Agent", userAgent.Raw)
 	req.Header.Add("Content-Type", "application/json")
 
 	d := data{Event: event}

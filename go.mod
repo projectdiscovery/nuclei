@@ -8,7 +8,6 @@ require (
 	github.com/andygrunwald/go-jira v1.16.0
 	github.com/antchfx/htmlquery v1.3.0
 	github.com/bluele/gcache v0.0.2
-	github.com/corpix/uarand v0.2.0
 	github.com/go-playground/validator/v10 v10.14.1
 	github.com/go-rod/rod v0.114.0
 	github.com/gobwas/ws v1.2.1
@@ -52,7 +51,7 @@ require (
 	github.com/DataDog/gostackparse v0.6.0
 	github.com/Masterminds/semver/v3 v3.2.1
 	github.com/Mzack9999/gcache v0.0.0-20230410081825-519e28eab057
-	github.com/antchfx/xmlquery v1.3.15
+	github.com/antchfx/xmlquery v1.3.17
 	github.com/asaskevich/govalidator v0.0.0-20230301143203-a9d515a09cc2
 	github.com/aws/aws-sdk-go-v2 v1.19.0
 	github.com/aws/aws-sdk-go-v2/config v1.18.28
@@ -78,7 +77,7 @@ require (
 	github.com/projectdiscovery/dsl v0.0.41
 	github.com/projectdiscovery/fasttemplate v0.0.2
 	github.com/projectdiscovery/go-smb2 v0.0.0-20240129202741-052cc450c6cb
-	github.com/projectdiscovery/goflags v0.1.36
+	github.com/projectdiscovery/goflags v0.1.37
 	github.com/projectdiscovery/gologger v1.1.12
 	github.com/projectdiscovery/gostruct v0.0.2
 	github.com/projectdiscovery/gozero v0.0.1
@@ -90,6 +89,7 @@ require (
 	github.com/projectdiscovery/sarif v0.0.1
 	github.com/projectdiscovery/tlsx v1.1.6
 	github.com/projectdiscovery/uncover v1.0.7
+	github.com/projectdiscovery/useragent v0.0.33
 	github.com/projectdiscovery/utils v0.0.76
 	github.com/projectdiscovery/wappalyzergo v0.0.109
 	github.com/redis/go-redis/v9 v9.1.0
@@ -129,6 +129,7 @@ require (
 	github.com/cloudflare/cfssl v1.6.4 // indirect
 	github.com/cloudflare/circl v1.3.7 // indirect
 	github.com/containerd/continuity v0.4.2 // indirect
+	github.com/corpix/uarand v0.2.0 // indirect
 	github.com/cyphar/filepath-securejoin v0.2.4 // indirect
 	github.com/denisbrodbeck/machineid v1.0.1 // indirect
 	github.com/dgryski/go-rendezvous v0.0.0-20200823014737-9f7001d12a5f // indirect
@@ -185,6 +186,7 @@ require (
 	github.com/projectdiscovery/asnmap v1.0.6 // indirect
 	github.com/projectdiscovery/cdncheck v1.0.9 // indirect
 	github.com/projectdiscovery/freeport v0.0.5 // indirect
+	github.com/projectdiscovery/stringsutil v0.0.2 // indirect
 	github.com/quic-go/quic-go v0.40.1 // indirect
 	github.com/refraction-networking/utls v1.6.1 // indirect
 	github.com/shoenig/go-m1cpu v0.1.6 // indirect
@@ -224,7 +226,7 @@ require (
 	github.com/alecthomas/template v0.0.0-20190718012654-fb15b899a751 // indirect
 	github.com/alecthomas/units v0.0.0-20211218093645-b94a6e3cc137 // indirect
 	github.com/andybalholm/cascadia v1.3.2 // indirect
-	github.com/antchfx/xpath v1.2.3
+	github.com/antchfx/xpath v1.2.4
 	github.com/aymerick/douceur v0.2.0 // indirect
 	github.com/caddyserver/certmagic v0.19.2 // indirect
 	github.com/cnf/structhash v0.0.0-20201127153200-e1b16c1ebc08 // indirect
