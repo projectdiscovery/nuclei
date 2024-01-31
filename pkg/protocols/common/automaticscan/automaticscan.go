@@ -161,24 +161,24 @@ func (s *Service) executeAutomaticScanOnTarget(input *contextargs.MetaInput) {
 	}
 	finalTags = sliceutil.Dedupe(finalTags)
 
-	gologger.Info().Msgf("[%v] Found %d tags and %d matches on detection templates [wappalyzer: %d, detection: %d]\n", input.Input, len(finalTags), matched, len(tagsFromWappalyzer), len(tagsFromDetectTemplates))
+	gologger.Info().Msgf("Found %d tags and %d matches on detection templates on %v [wappalyzer: %d, detection: %d]\n", len(finalTags), matched, input.Input, len(tagsFromWappalyzer), len(tagsFromDetectTemplates))
 
 	// also include any extra tags passed by user
 	finalTags = append(finalTags, s.opts.Options.Tags...)
 	finalTags = sliceutil.Dedupe(finalTags)
 
 	if len(finalTags) == 0 {
-		gologger.Warning().Msgf("[%v] Skipping automatic scan since no tags were found\n", input.Input)
+		gologger.Warning().Msgf("Skipping automatic scan since no tags were found on %v\n", input.Input)
 		return
 	}
-	gologger.Verbose().Msgf("[%v] Final tags: %+v\n", input.Input, finalTags)
+	gologger.Verbose().Msgf("Final tags identified for %v: %+v\n", input.Input, finalTags)
 
 	finalTemplates, err := LoadTemplatesWithTags(s.ServiceOpts, s.templateDirs, finalTags, false)
 	if err != nil {
-		gologger.Error().Msgf("[%v] Error loading templates: %s\n", input.Input, err)
+		gologger.Error().Msgf("%v Error loading templates: %s\n", input.Input, err)
 		return
 	}
-	gologger.Info().Msgf("[%v] Executing %d templates", input.Input, len(finalTemplates))
+	gologger.Info().Msgf("Executing %d templates on %v", len(finalTemplates), input.Input)
 	eng := core.New(s.opts.Options)
 	execOptions := s.opts.Copy()
 	execOptions.Progress = &testutils.MockProgressClient{} // stats are not supported yet due to centralized logic and cannot be reinitialized
@@ -270,6 +270,12 @@ func (s *Service) getTagsUsingDetectionTemplates(input *contextargs.MetaInput) (
 						}
 						if _, ok := tags[tag]; !ok {
 							tags[tag] = struct{}{}
+						}
+						// matcher names are also relevant in tech detection templates (ex: tech-detect)
+						for k := range event.OperatorsResult.Matches {
+							if _, ok := tags[k]; !ok {
+								tags[k] = struct{}{}
+							}
 						}
 					}
 					m.Unlock()
