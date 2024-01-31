@@ -57,11 +57,11 @@ type Service struct {
 	wappalyzer         *wappalyzer.Wappalyze
 	childExecuter      *core.ChildExecuter
 	httpclient         *retryablehttp.Client
-	results            bool
 	templateDirs       []string // root Template Directories
 	technologyMappings map[string]string
 	techTemplates      []*templates.Template
 	ServiceOpts        Options
+	hasResults         *atomic.Bool
 }
 
 // New takes options and returns a new automatic scan service
@@ -115,16 +115,13 @@ func New(opts Options) (*Service, error) {
 		technologyMappings: mappingData,
 		techTemplates:      techDetectTemplates,
 		ServiceOpts:        opts,
+		hasResults:         &atomic.Bool{},
 	}, nil
 }
 
 // Close closes the service
 func (s *Service) Close() bool {
-	results := s.childExecuter.Close()
-	if results.Load() {
-		s.results = true
-	}
-	return s.results
+	return s.hasResults.Load()
 }
 
 // Execute automatic scan on each target with -bs host concurrency
@@ -150,6 +147,9 @@ func (s *Service) executeAutomaticScanOnTarget(input *contextargs.MetaInput) {
 	tagsFromWappalyzer := s.getTagsUsingWappalyzer(input)
 	// get tags using detection templates
 	tagsFromDetectTemplates, matched := s.getTagsUsingDetectionTemplates(input)
+	if matched > 0 {
+		s.hasResults.Store(true)
+	}
 
 	// create combined final tags
 	finalTags := []string{}
@@ -183,7 +183,8 @@ func (s *Service) executeAutomaticScanOnTarget(input *contextargs.MetaInput) {
 	execOptions := s.opts.Copy()
 	execOptions.Progress = &testutils.MockProgressClient{} // stats are not supported yet due to centralized logic and cannot be reinitialized
 	eng.SetExecuterOptions(execOptions)
-	_ = eng.ExecuteScanWithOpts(finalTemplates, &inputs.SimpleInputProvider{Inputs: []*contextargs.MetaInput{input}}, true)
+	tmp := eng.ExecuteScanWithOpts(finalTemplates, &inputs.SimpleInputProvider{Inputs: []*contextargs.MetaInput{input}}, true)
+	s.hasResults.Store(tmp.Load())
 }
 
 // getTagsUsingWappalyzer returns tags using wappalyzer by fingerprinting target
