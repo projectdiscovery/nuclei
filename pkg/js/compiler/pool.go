@@ -1,7 +1,10 @@
 package compiler
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
+	"reflect"
 	"sync"
 
 	"github.com/dop251/goja"
@@ -29,9 +32,16 @@ import (
 	_ "github.com/projectdiscovery/nuclei/v3/pkg/js/generated/go/libtelnet"
 	_ "github.com/projectdiscovery/nuclei/v3/pkg/js/generated/go/libvnc"
 	"github.com/projectdiscovery/nuclei/v3/pkg/js/global"
+	"github.com/projectdiscovery/nuclei/v3/pkg/js/gojs"
 	"github.com/projectdiscovery/nuclei/v3/pkg/js/libs/goconsole"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
+	stringsutil "github.com/projectdiscovery/utils/strings"
 	"github.com/remeh/sizedwaitgroup"
+)
+
+const (
+	exportToken   = "Export"
+	exportAsToken = "ExportAs"
 )
 
 var (
@@ -41,40 +51,19 @@ var (
 		// autoregister console node module with default printer it uses gologger backend
 		require.RegisterNativeModule(console.ModuleName, console.RequireWithPrinter(goconsole.NewGoConsolePrinter()))
 	})
-	sg         sizedwaitgroup.SizedWaitGroup
+	pooljsc    sizedwaitgroup.SizedWaitGroup
 	lazySgInit = sync.OnceFunc(func() {
-		sg = sizedwaitgroup.New(JsVmConcurrency)
+		pooljsc = sizedwaitgroup.New(PoolingJsVmConcurrency)
 	})
 )
 
-func getRegistry() *require.Registry {
-	lazyRegistryInit()
-	return r
-}
-
 var gojapool = &sync.Pool{
 	New: func() interface{} {
-		runtime := protocolstate.NewJSRuntime()
-		_ = getRegistry().Enable(runtime)
-		// by default import below modules every time
-		_ = runtime.Set("console", require.Require(runtime, console.ModuleName))
-
-		// Register embedded javacript helpers
-		if err := global.RegisterNativeScripts(runtime); err != nil {
-			gologger.Error().Msgf("Could not register scripts: %s\n", err)
-		}
-		return runtime
+		return createNewRuntime()
 	},
 }
 
-// executes the actual js program
-func executeProgram(p *goja.Program, args *ExecuteArgs, opts *ExecuteOptions) (result goja.Value, err error) {
-	// its unknown (most likely cannot be done) to limit max js runtimes at a moment without making it static
-	// unlike sync.Pool which reacts to GC and its purposes is to reuse objects rather than creating new ones
-	lazySgInit()
-	sg.Add()
-	defer sg.Done()
-	runtime := gojapool.Get().(*goja.Runtime)
+func executeWithRuntime(runtime *goja.Runtime, p *goja.Program, args *ExecuteArgs, opts *ExecuteOptions) (result goja.Value, err error) {
 	defer func() {
 		// reset before putting back to pool
 		_ = runtime.GlobalObject().Delete("template") // template ctx
@@ -85,7 +74,6 @@ func executeProgram(p *goja.Program, args *ExecuteArgs, opts *ExecuteOptions) (r
 		if opts != nil && opts.Cleanup != nil {
 			opts.Cleanup(runtime)
 		}
-		gojapool.Put(runtime)
 	}()
 	defer func() {
 		if r := recover(); r != nil {
@@ -109,8 +97,121 @@ func executeProgram(p *goja.Program, args *ExecuteArgs, opts *ExecuteOptions) (r
 	return runtime.RunProgram(p)
 }
 
+// ExecuteProgram executes a compiled program with the default options.
+// it deligates if a particular program should run in a pooled or non-pooled runtime
+func ExecuteProgram(p *goja.Program, args *ExecuteArgs, opts *ExecuteOptions) (result goja.Value, err error) {
+	if opts.Source == nil {
+		// not-recommended anymore
+		return executeWithoutPooling(p, args, opts)
+	}
+	if !stringsutil.ContainsAny(*opts.Source, exportAsToken, exportToken) {
+		// not-recommended anymore
+		return executeWithoutPooling(p, args, opts)
+	}
+	return executeProgram(p, args, opts)
+}
+
+// executes the actual js program
+func executeProgram(p *goja.Program, args *ExecuteArgs, opts *ExecuteOptions) (result goja.Value, err error) {
+	// its unknown (most likely cannot be done) to limit max js runtimes at a moment without making it static
+	// unlike sync.Pool which reacts to GC and its purposes is to reuse objects rather than creating new ones
+	lazySgInit()
+	pooljsc.Add()
+	defer pooljsc.Done()
+	runtime := gojapool.Get().(*goja.Runtime)
+	defer gojapool.Put(runtime)
+	var buff bytes.Buffer
+	opts.exports = make(map[string]interface{})
+
+	defer func() {
+		// remove below functions from runtime
+		_ = runtime.GlobalObject().Delete(exportAsToken)
+		_ = runtime.GlobalObject().Delete(exportToken)
+	}()
+	// register export functions
+	_ = gojs.RegisterFuncWithSignature(runtime, gojs.FuncOpts{
+		Name:        "Export", // we use string instead of const for documentation generation
+		Signatures:  []string{"Export(value any)"},
+		Description: "Converts a given value to a string and is appended to output of script",
+		FuncDecl: func(call goja.FunctionCall, runtime *goja.Runtime) goja.Value {
+			if len(call.Arguments) == 0 {
+				return goja.Null()
+			}
+			for _, arg := range call.Arguments {
+				value := arg.Export()
+				if out := stringify(value); out != "" {
+					buff.WriteString(out)
+				}
+			}
+			return goja.Null()
+		},
+	})
+	// register exportAs function
+	_ = gojs.RegisterFuncWithSignature(runtime, gojs.FuncOpts{
+		Name:        "ExportAs", // Export
+		Signatures:  []string{"ExportAs(key string,value any)"},
+		Description: "Exports given value with specified key and makes it available in DSL and response",
+		FuncDecl: func(call goja.FunctionCall, runtime *goja.Runtime) goja.Value {
+			if len(call.Arguments) != 2 {
+				// this is how goja expects errors to be returned
+				// and internally it is done same way for all errors
+				panic(runtime.ToValue("ExportAs expects 2 arguments"))
+			}
+			key := call.Argument(0).String()
+			value := call.Argument(1).Export()
+			opts.exports[key] = stringify(value)
+			return goja.Null()
+		},
+	})
+	val, err := executeWithRuntime(runtime, p, args, opts)
+	if err != nil {
+		return nil, err
+	}
+	if val.Export() != nil {
+		// append last value to output
+		buff.WriteString(stringify(val.Export()))
+	}
+	// and return it as result
+	return runtime.ToValue(buff.String()), nil
+}
+
 // Internal purposes i.e generating bindings
 func InternalGetGeneratorRuntime() *goja.Runtime {
 	runtime := gojapool.Get().(*goja.Runtime)
 	return runtime
+}
+
+func getRegistry() *require.Registry {
+	lazyRegistryInit()
+	return r
+}
+
+func createNewRuntime() *goja.Runtime {
+	runtime := protocolstate.NewJSRuntime()
+	_ = getRegistry().Enable(runtime)
+	// by default import below modules every time
+	_ = runtime.Set("console", require.Require(runtime, console.ModuleName))
+
+	// Register embedded javacript helpers
+	if err := global.RegisterNativeScripts(runtime); err != nil {
+		gologger.Error().Msgf("Could not register scripts: %s\n", err)
+	}
+	return runtime
+}
+
+// stringify converts a given value to string
+// if its a struct it will be marshalled to json
+func stringify(value interface{}) string {
+	if value == nil {
+		return ""
+	}
+	if reflect.TypeOf(value).Kind() == reflect.Struct {
+		// marshal structs to json automatically
+		bin, err := json.Marshal(value)
+		if err == nil {
+			return string(bin)
+		}
+	}
+	// for everything else stringify
+	return fmt.Sprintf("%v", value)
 }

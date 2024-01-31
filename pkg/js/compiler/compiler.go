@@ -10,6 +10,7 @@ import (
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/generators"
 	contextutil "github.com/projectdiscovery/utils/context"
+	stringsutil "github.com/projectdiscovery/utils/strings"
 )
 
 // Compiler provides a runtime to execute goja runtime
@@ -33,6 +34,11 @@ type ExecuteOptions struct {
 
 	/// Timeout for this script execution
 	Timeout int
+	// Source is original source of the script
+	Source *string
+
+	// Manually exported objects
+	exports map[string]interface{}
 }
 
 // ExecuteArgs is the arguments to pass to the script.
@@ -113,11 +119,19 @@ func (c *Compiler) ExecuteWithOptions(program *goja.Program, args *ExecuteArgs, 
 	if err != nil {
 		return nil, err
 	}
-	return ExecuteResult{"response": results.Export(), "success": results.ToBoolean()}, nil
+	res := ExecuteResult(opts.exports)
+	opts.exports = nil
+	res["response"] = results.Export()
+	res["success"] = results.ToBoolean()
+	return res, nil
 }
 
 // Wraps a script in a function and compiles it.
 func WrapScriptNCompile(script string, strict bool) (*goja.Program, error) {
+	if !stringsutil.ContainsAny(script, exportAsToken, exportToken) {
+		// this will not be run in a pooled runtime
+		return goja.Compile("", script, strict)
+	}
 	val := fmt.Sprintf(`
 		(function() {
 			%s
