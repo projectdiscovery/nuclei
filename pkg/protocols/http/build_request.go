@@ -9,8 +9,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/corpix/uarand"
 	"github.com/pkg/errors"
+	"github.com/projectdiscovery/useragent"
 
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
@@ -381,7 +381,8 @@ func (r *requestGenerator) fillRequest(req *retryablehttp.Request, values map[st
 		req.Body = bodyReader
 	}
 	if !r.request.Unsafe {
-		httputil.SetHeader(req, "User-Agent", uarand.GetRandom())
+		userAgent := useragent.PickRandom()
+		httputil.SetHeader(req, "User-Agent", userAgent.Raw)
 	}
 
 	// Only set these headers on non-raw requests
