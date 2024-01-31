@@ -7,7 +7,6 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/corpix/uarand"
 	"github.com/pkg/errors"
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/config"
@@ -20,6 +19,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/templates"
 	"github.com/projectdiscovery/nuclei/v3/pkg/templates/types"
 	"github.com/projectdiscovery/retryablehttp-go"
+	"github.com/projectdiscovery/useragent"
 	sliceutil "github.com/projectdiscovery/utils/slice"
 	wappalyzer "github.com/projectdiscovery/wappalyzergo"
 	"gopkg.in/yaml.v2"
@@ -155,7 +155,8 @@ func (s *Service) processWappalyzerInputPair(input *contextargs.MetaInput) {
 	if err != nil {
 		return
 	}
-	req.Header.Set("User-Agent", uarand.GetRandom())
+	userAgent := useragent.PickRandom()
+	req.Header.Set("User-Agent", userAgent.Raw)
 
 	resp, err := s.httpclient.Do(req)
 	if err != nil {
