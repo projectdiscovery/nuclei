@@ -61,7 +61,9 @@ type Request struct {
 	// description: |
 	//   Code contains code to execute for the javascript request.
 	Code string `yaml:"code,omitempty" json:"code,omitempty" jsonschema:"title=code to execute in javascript,description=Executes inline javascript code for the request"`
-
+	// description: |
+	//   Timeout in seconds is optional timeout for each  javascript script execution (i.e init, pre-condition, code)
+	Timeout int `yaml:"timeout,omitempty" json:"timeout,omitempty" jsonschema:"title=timeout for javascript execution,description=Timeout in seconds is optional timeout for entire javascript script execution"`
 	// description: |
 	//   StopAtFirstMatch stops processing the request at first match.
 	StopAtFirstMatch bool `yaml:"stop-at-first-match,omitempty" json:"stop-at-first-match,omitempty" jsonschema:"title=stop at first match,description=Stop the execution after a match is found"`
@@ -89,6 +91,10 @@ type Request struct {
 
 	// cache any variables that may be needed for operation.
 	options *protocols.ExecutorOptions `yaml:"-" json:"-"`
+
+	preConditionCompiled *goja.Program `yaml:"-" json:"-"`
+
+	scriptCompiled *goja.Program `yaml:"-" json:"-"`
 }
 
 // Compile compiles the request generators preparing any requests possible.
@@ -141,7 +147,9 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 			prettyPrint(request.TemplateID, buff.String())
 		}
 
-		opts := &compiler.ExecuteOptions{}
+		opts := &compiler.ExecuteOptions{
+			Timeout: request.Timeout,
+		}
 		// register 'export' function to export variables from init code
 		// these are saved in args and are available in pre-condition and request code
 		opts.Callback = func(runtime *goja.Runtime) error {
@@ -192,13 +200,21 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 				},
 			})
 		}
+		opts.Cleanup = func(runtime *goja.Runtime) {
+			_ = runtime.GlobalObject().Delete("set")
+			_ = runtime.GlobalObject().Delete("updatePayload")
+		}
 
 		args := compiler.NewExecuteArgs()
 		allVars := generators.MergeMaps(options.Variables.GetAll(), options.Options.Vars.AsMap(), request.options.Constants)
 		// proceed with whatever args we have
 		args.Args, _ = request.evaluateArgs(allVars, options, true)
 
-		result, err := request.options.JsCompiler.ExecuteWithOptions(request.Init, args, opts)
+		initCompiled, err := goja.Compile("", request.Init, false)
+		if err != nil {
+			return errorutil.NewWithTag(request.TemplateID, "could not compile init code: %s", err)
+		}
+		result, err := request.options.JsCompiler.ExecuteWithOptions(initCompiled, args, opts)
 		if err != nil {
 			return errorutil.NewWithTag(request.TemplateID, "could not execute pre-condition: %s", err)
 		}
@@ -211,6 +227,24 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 				gologger.Debug().Msgf("[%s] Init result: %v\n", request.TemplateID, result["response"])
 			}
 		}
+	}
+
+	// compile pre-condition if any
+	if request.PreCondition != "" {
+		preConditionCompiled, err := goja.Compile("", request.PreCondition, false)
+		if err != nil {
+			return errorutil.NewWithTag(request.TemplateID, "could not compile pre-condition: %s", err)
+		}
+		request.preConditionCompiled = preConditionCompiled
+	}
+
+	// compile actual source code
+	if request.Code != "" {
+		scriptCompiled, err := goja.Compile("", request.Code, false)
+		if err != nil {
+			return errorutil.NewWithTag(request.TemplateID, "could not compile javascript code: %s", err)
+		}
+		request.scriptCompiled = scriptCompiled
 	}
 
 	return nil
@@ -303,7 +337,7 @@ func (request *Request) ExecuteWithResults(target *contextargs.Context, dynamicV
 		}
 		argsCopy.TemplateCtx = templateCtx.GetAll()
 
-		result, err := request.options.JsCompiler.ExecuteWithOptions(request.PreCondition, argsCopy, nil)
+		result, err := request.options.JsCompiler.ExecuteWithOptions(request.preConditionCompiled, argsCopy, &compiler.ExecuteOptions{Timeout: request.Timeout})
 		if err != nil {
 			return errorutil.NewWithTag(request.TemplateID, "could not execute pre-condition: %s", err)
 		}
@@ -415,19 +449,27 @@ func (request *Request) executeRequestWithPayloads(hostPort string, input *conte
 	if err != nil {
 		return err
 	}
-	argsCopy.TemplateCtx = request.options.GetTemplateCtx(input.MetaInput).GetAll()
-
-	var requestData = []byte(request.Code)
-	var interactshURLs []string
-	if request.options.Interactsh != nil {
-		var transformedData string
-		transformedData, interactshURLs = request.options.Interactsh.Replace(string(request.Code), []string{})
-		requestData = []byte(transformedData)
+	if request.options.HasTemplateCtx(input.MetaInput) {
+		argsCopy.TemplateCtx = request.options.GetTemplateCtx(input.MetaInput).GetAll()
+	} else {
+		argsCopy.TemplateCtx = map[string]interface{}{}
 	}
 
-	results, err := request.options.JsCompiler.ExecuteWithOptions(string(requestData), argsCopy, &compiler.ExecuteOptions{
-		Pool: false,
-	})
+	var interactshURLs []string
+	if request.options.Interactsh != nil {
+		if argsCopy.Args != nil {
+			for k, v := range argsCopy.Args {
+				var urls []string
+				v, urls = request.options.Interactsh.Replace(fmt.Sprint(v), []string{})
+				if len(urls) > 0 {
+					interactshURLs = append(interactshURLs, urls...)
+					argsCopy.Args[k] = v
+				}
+			}
+		}
+	}
+
+	results, err := request.options.JsCompiler.ExecuteWithOptions(request.scriptCompiled, argsCopy, &compiler.ExecuteOptions{Timeout: request.Timeout})
 	if err != nil {
 		// shouldn't fail even if it returned error instead create a failure event
 		results = compiler.ExecuteResult{"success": false, "error": err.Error()}

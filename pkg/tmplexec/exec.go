@@ -6,11 +6,11 @@ import (
 	"strings"
 	"sync/atomic"
 
+	"github.com/dop251/goja"
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/operators/common/dsl"
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
-	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/helpers/writer"
 	"github.com/projectdiscovery/nuclei/v3/pkg/scan"
 	"github.com/projectdiscovery/nuclei/v3/pkg/tmplexec/flow"
@@ -24,6 +24,7 @@ type TemplateExecuter struct {
 	options  *protocols.ExecutorOptions
 	engine   TemplateEngine
 	results  *atomic.Bool
+	program  *goja.Program
 }
 
 // Both executer & Executor are correct spellings (its open to interpretation)
@@ -31,7 +32,7 @@ type TemplateExecuter struct {
 var _ protocols.Executer = &TemplateExecuter{}
 
 // NewTemplateExecuter creates a new request TemplateExecuter for list of requests
-func NewTemplateExecuter(requests []protocols.Request, options *protocols.ExecutorOptions) *TemplateExecuter {
+func NewTemplateExecuter(requests []protocols.Request, options *protocols.ExecutorOptions) (*TemplateExecuter, error) {
 	isMultiProto := false
 	lastProto := ""
 	for _, request := range requests {
@@ -47,7 +48,11 @@ func NewTemplateExecuter(requests []protocols.Request, options *protocols.Execut
 		// we use a dummy input here because goal of flow executor at this point is to just check
 		// syntax and other things are correct before proceeding to actual execution
 		// during execution new instance of flow will be created as it is tightly coupled with lot of executor options
-		e.engine = flow.NewFlowExecutor(requests, scan.NewScanContext(contextargs.NewWithInput("dummy")), options, e.results)
+		p, err := goja.Compile("flow.js", options.Flow, false)
+		if err != nil {
+			return nil, fmt.Errorf("could not compile flow: %s", err)
+		}
+		e.program = p
 	} else {
 		// Review:
 		// multiproto engine is only used if there is more than one protocol in template
@@ -58,8 +63,7 @@ func NewTemplateExecuter(requests []protocols.Request, options *protocols.Execut
 			e.engine = generic.NewGenericEngine(requests, options, e.results)
 		}
 	}
-
-	return e
+	return e, nil
 }
 
 // Compile compiles the execution generators preparing any requests possible.
@@ -80,6 +84,10 @@ func (e *TemplateExecuter) Compile() error {
 			}
 			return err
 		}
+	}
+	if e.engine == nil && e.options.Flow != "" {
+		// this is true for flow executor
+		return nil
 	}
 	return e.engine.Compile()
 }
@@ -146,7 +154,7 @@ func (e *TemplateExecuter) Execute(ctx *scan.ScanContext) (bool, error) {
 			}
 		}
 	}
-	var err error
+	var errx error
 
 	// Note: this is required for flow executor
 	// flow executer is tightly coupled with lot of executor options
@@ -155,20 +163,24 @@ func (e *TemplateExecuter) Execute(ctx *scan.ScanContext) (bool, error) {
 	// so in compile step earlier we compile it to validate javascript syntax and other things
 	// and while executing we create new instance of flow executor everytime
 	if e.options.Flow != "" {
-		flowexec := flow.NewFlowExecutor(e.requests, ctx, e.options, results)
+		flowexec, err := flow.NewFlowExecutor(e.requests, ctx, e.options, results, e.program)
+		if err != nil {
+			ctx.LogError(err)
+			return false, fmt.Errorf("could not create flow executor: %s", err)
+		}
 		if err := flowexec.Compile(); err != nil {
 			ctx.LogError(err)
 			return false, err
 		}
-		err = flowexec.ExecuteWithResults(ctx)
+		errx = flowexec.ExecuteWithResults(ctx)
 	} else {
-		err = e.engine.ExecuteWithResults(ctx)
+		errx = e.engine.ExecuteWithResults(ctx)
 	}
 
 	if lastMatcherEvent != nil {
 		writeFailureCallback(lastMatcherEvent, e.options.Options.MatcherStatus)
 	}
-	return results.Load(), err
+	return results.Load(), errx
 }
 
 // ExecuteWithResults executes the protocol requests and returns results instead of writing them.

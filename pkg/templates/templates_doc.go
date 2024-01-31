@@ -1698,7 +1698,7 @@ func init() {
 			Value: "Matched is the input which was matched upon",
 		},
 	}
-	JAVASCRIPTRequestDoc.Fields = make([]encoder.Doc, 9)
+	JAVASCRIPTRequestDoc.Fields = make([]encoder.Doc, 10)
 	JAVASCRIPTRequestDoc.Fields[0].Name = "id"
 	JAVASCRIPTRequestDoc.Fields[0].Type = "string"
 	JAVASCRIPTRequestDoc.Fields[0].Note = ""
@@ -1724,28 +1724,33 @@ func init() {
 	JAVASCRIPTRequestDoc.Fields[4].Note = ""
 	JAVASCRIPTRequestDoc.Fields[4].Description = "Code contains code to execute for the javascript request."
 	JAVASCRIPTRequestDoc.Fields[4].Comments[encoder.LineComment] = "Code contains code to execute for the javascript request."
-	JAVASCRIPTRequestDoc.Fields[5].Name = "stop-at-first-match"
-	JAVASCRIPTRequestDoc.Fields[5].Type = "bool"
+	JAVASCRIPTRequestDoc.Fields[5].Name = "timeout"
+	JAVASCRIPTRequestDoc.Fields[5].Type = "int"
 	JAVASCRIPTRequestDoc.Fields[5].Note = ""
-	JAVASCRIPTRequestDoc.Fields[5].Description = "StopAtFirstMatch stops processing the request at first match."
-	JAVASCRIPTRequestDoc.Fields[5].Comments[encoder.LineComment] = "StopAtFirstMatch stops processing the request at first match."
-	JAVASCRIPTRequestDoc.Fields[6].Name = "attack"
-	JAVASCRIPTRequestDoc.Fields[6].Type = "generators.AttackTypeHolder"
+	JAVASCRIPTRequestDoc.Fields[5].Description = "Timeout in seconds is optional timeout for each  javascript script execution (i.e init, pre-condition, code)"
+	JAVASCRIPTRequestDoc.Fields[5].Comments[encoder.LineComment] = "Timeout in seconds is optional timeout for each  javascript script execution (i.e init, pre-condition, code)"
+	JAVASCRIPTRequestDoc.Fields[6].Name = "stop-at-first-match"
+	JAVASCRIPTRequestDoc.Fields[6].Type = "bool"
 	JAVASCRIPTRequestDoc.Fields[6].Note = ""
-	JAVASCRIPTRequestDoc.Fields[6].Description = "Attack is the type of payload combinations to perform.\n\nSniper is each payload once, pitchfork combines multiple payload sets and clusterbomb generates\npermutations and combinations for all payloads."
-	JAVASCRIPTRequestDoc.Fields[6].Comments[encoder.LineComment] = "Attack is the type of payload combinations to perform."
-	JAVASCRIPTRequestDoc.Fields[7].Name = "threads"
-	JAVASCRIPTRequestDoc.Fields[7].Type = "int"
+	JAVASCRIPTRequestDoc.Fields[6].Description = "StopAtFirstMatch stops processing the request at first match."
+	JAVASCRIPTRequestDoc.Fields[6].Comments[encoder.LineComment] = "StopAtFirstMatch stops processing the request at first match."
+	JAVASCRIPTRequestDoc.Fields[7].Name = "attack"
+	JAVASCRIPTRequestDoc.Fields[7].Type = "generators.AttackTypeHolder"
 	JAVASCRIPTRequestDoc.Fields[7].Note = ""
-	JAVASCRIPTRequestDoc.Fields[7].Description = "Payload concurreny i.e threads for sending requests."
-	JAVASCRIPTRequestDoc.Fields[7].Comments[encoder.LineComment] = "Payload concurreny i.e threads for sending requests."
-
-	JAVASCRIPTRequestDoc.Fields[7].AddExample("Send requests using 10 concurrent threads", 10)
-	JAVASCRIPTRequestDoc.Fields[8].Name = "payloads"
-	JAVASCRIPTRequestDoc.Fields[8].Type = "map[string]interface{}"
+	JAVASCRIPTRequestDoc.Fields[7].Description = "Attack is the type of payload combinations to perform.\n\nSniper is each payload once, pitchfork combines multiple payload sets and clusterbomb generates\npermutations and combinations for all payloads."
+	JAVASCRIPTRequestDoc.Fields[7].Comments[encoder.LineComment] = "Attack is the type of payload combinations to perform."
+	JAVASCRIPTRequestDoc.Fields[8].Name = "threads"
+	JAVASCRIPTRequestDoc.Fields[8].Type = "int"
 	JAVASCRIPTRequestDoc.Fields[8].Note = ""
-	JAVASCRIPTRequestDoc.Fields[8].Description = "Payloads contains any payloads for the current request.\n\nPayloads support both key-values combinations where a list\nof payloads is provided, or optionally a single file can also\nbe provided as payload which will be read on run-time."
-	JAVASCRIPTRequestDoc.Fields[8].Comments[encoder.LineComment] = "Payloads contains any payloads for the current request."
+	JAVASCRIPTRequestDoc.Fields[8].Description = "Payload concurreny i.e threads for sending requests."
+	JAVASCRIPTRequestDoc.Fields[8].Comments[encoder.LineComment] = "Payload concurreny i.e threads for sending requests."
+
+	JAVASCRIPTRequestDoc.Fields[8].AddExample("Send requests using 10 concurrent threads", 10)
+	JAVASCRIPTRequestDoc.Fields[9].Name = "payloads"
+	JAVASCRIPTRequestDoc.Fields[9].Type = "map[string]interface{}"
+	JAVASCRIPTRequestDoc.Fields[9].Note = ""
+	JAVASCRIPTRequestDoc.Fields[9].Description = "Payloads contains any payloads for the current request.\n\nPayloads support both key-values combinations where a list\nof payloads is provided, or optionally a single file can also\nbe provided as payload which will be read on run-time."
+	JAVASCRIPTRequestDoc.Fields[9].Comments[encoder.LineComment] = "Payloads contains any payloads for the current request."
 
 	HTTPSignatureTypeHolderDoc.Type = "http.SignatureTypeHolder"
 	HTTPSignatureTypeHolderDoc.Comments[encoder.LineComment] = " SignatureTypeHolder is used to hold internal type of the signature"

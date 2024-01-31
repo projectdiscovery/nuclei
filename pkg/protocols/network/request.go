@@ -136,7 +136,9 @@ func (request *Request) executeOnTarget(input *contextargs.Context, visited maps
 	}
 	variables := protocolutils.GenerateVariables(address, false, nil)
 	// add template ctx variables to varMap
-	variables = generators.MergeMaps(variables, request.options.GetTemplateCtx(input.MetaInput).GetAll())
+	if request.options.HasTemplateCtx(input.MetaInput) {
+		variables = generators.MergeMaps(variables, request.options.GetTemplateCtx(input.MetaInput).GetAll())
+	}
 	variablesMap := request.options.Variables.Evaluate(variables)
 	variables = generators.MergeMaps(variablesMap, variables, request.options.Constants)
 
@@ -327,7 +329,9 @@ func (request *Request) executeRequestWithPayloads(variables map[string]interfac
 	outputEvent := request.responseToDSLMap(reqBuilder.String(), string(final), response, input.MetaInput.Input, actualAddress)
 	// add response fields to template context and merge templatectx variables to output event
 	request.options.AddTemplateVars(input.MetaInput, request.Type(), request.ID, outputEvent)
-	outputEvent = generators.MergeMaps(outputEvent, request.options.GetTemplateCtx(input.MetaInput).GetAll())
+	if request.options.HasTemplateCtx(input.MetaInput) {
+		outputEvent = generators.MergeMaps(outputEvent, request.options.GetTemplateCtx(input.MetaInput).GetAll())
+	}
 	outputEvent["ip"] = request.dialer.GetDialedIP(hostname)
 	if request.options.StopAtFirstMatch {
 		outputEvent["stop-at-first-match"] = true

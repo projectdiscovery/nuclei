@@ -9,7 +9,6 @@ import (
 	"sync"
 	"sync/atomic"
 
-	"github.com/corpix/uarand"
 	"github.com/logrusorgru/aurora"
 	"github.com/pkg/errors"
 	"github.com/projectdiscovery/gologger"
@@ -28,6 +27,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/testutils"
 	"github.com/projectdiscovery/retryablehttp-go"
 	mapsutil "github.com/projectdiscovery/utils/maps"
+	"github.com/projectdiscovery/useragent"
 	sliceutil "github.com/projectdiscovery/utils/slice"
 	stringsutil "github.com/projectdiscovery/utils/strings"
 	wappalyzer "github.com/projectdiscovery/wappalyzergo"
@@ -194,7 +194,9 @@ func (s *Service) getTagsUsingWappalyzer(input *contextargs.MetaInput) []string 
 	if err != nil {
 		return nil
 	}
-	req.Header.Set("User-Agent", uarand.GetRandom())
+	userAgent := useragent.PickRandom()
+	req.Header.Set("User-Agent", userAgent.Raw)
+
 	resp, err := s.httpclient.Do(req)
 	if err != nil {
 		return nil
