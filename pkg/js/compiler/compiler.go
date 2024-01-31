@@ -67,7 +67,7 @@ func (e ExecuteResult) GetSuccess() bool {
 
 // Execute executes a script with the default options.
 func (c *Compiler) Execute(code string, args *ExecuteArgs) (ExecuteResult, error) {
-	p, err := goja.Compile("", code, false)
+	p, err := WrapScriptNCompile(code, false)
 	if err != nil {
 		return nil, err
 	}
@@ -114,4 +114,14 @@ func (c *Compiler) ExecuteWithOptions(program *goja.Program, args *ExecuteArgs, 
 		return nil, err
 	}
 	return ExecuteResult{"response": results.Export(), "success": results.ToBoolean()}, nil
+}
+
+// Wraps a script in a function and compiles it.
+func WrapScriptNCompile(script string, strict bool) (*goja.Program, error) {
+	val := fmt.Sprintf(`
+		(function() {
+			%s
+		})()
+	`, script)
+	return goja.Compile("", val, strict)
 }

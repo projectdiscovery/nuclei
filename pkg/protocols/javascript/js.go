@@ -210,7 +210,7 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 		// proceed with whatever args we have
 		args.Args, _ = request.evaluateArgs(allVars, options, true)
 
-		initCompiled, err := goja.Compile("", request.Init, false)
+		initCompiled, err := compiler.WrapScriptNCompile(request.Init, false)
 		if err != nil {
 			return errorutil.NewWithTag(request.TemplateID, "could not compile init code: %s", err)
 		}
@@ -231,7 +231,7 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 
 	// compile pre-condition if any
 	if request.PreCondition != "" {
-		preConditionCompiled, err := goja.Compile("", request.PreCondition, false)
+		preConditionCompiled, err := compiler.WrapScriptNCompile(request.PreCondition, false)
 		if err != nil {
 			return errorutil.NewWithTag(request.TemplateID, "could not compile pre-condition: %s", err)
 		}
@@ -240,7 +240,7 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 
 	// compile actual source code
 	if request.Code != "" {
-		scriptCompiled, err := goja.Compile("", request.Code, false)
+		scriptCompiled, err := compiler.WrapScriptNCompile(request.Code, false)
 		if err != nil {
 			return errorutil.NewWithTag(request.TemplateID, "could not compile javascript code: %s", err)
 		}
