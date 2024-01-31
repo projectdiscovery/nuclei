@@ -108,11 +108,11 @@ func ExecuteProgram(p *goja.Program, args *ExecuteArgs, opts *ExecuteOptions) (r
 		// not-recommended anymore
 		return executeWithoutPooling(p, args, opts)
 	}
-	return executeProgram(p, args, opts)
+	return executeWithPoolingProgram(p, args, opts)
 }
 
 // executes the actual js program
-func executeProgram(p *goja.Program, args *ExecuteArgs, opts *ExecuteOptions) (result goja.Value, err error) {
+func executeWithPoolingProgram(p *goja.Program, args *ExecuteArgs, opts *ExecuteOptions) (result goja.Value, err error) {
 	// its unknown (most likely cannot be done) to limit max js runtimes at a moment without making it static
 	// unlike sync.Pool which reacts to GC and its purposes is to reuse objects rather than creating new ones
 	lazySgInit()
@@ -205,9 +205,14 @@ func stringify(value interface{}) string {
 	if value == nil {
 		return ""
 	}
-	if reflect.TypeOf(value).Kind() == reflect.Struct {
-		// marshal structs to json automatically
-		bin, err := json.Marshal(value)
+	kind := reflect.TypeOf(value).Kind()
+	if kind == reflect.Struct || kind == reflect.Ptr && reflect.ValueOf(value).Elem().Kind() == reflect.Struct {
+		// marshal structs or struct pointers to json automatically
+		val := value
+		if kind == reflect.Ptr {
+			val = reflect.ValueOf(value).Elem().Interface()
+		}
+		bin, err := json.Marshal(val)
 		if err == nil {
 			return string(bin)
 		}

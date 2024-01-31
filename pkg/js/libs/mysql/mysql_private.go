@@ -8,8 +8,9 @@ import (
 	"strings"
 )
 
-// DSNOptions defines the data source name (DSN) options required to connect to a MySQL database.
-type DSNOptions struct {
+// MySQLOptions defines the data source name (DSN) options required to connect to a MySQL database.
+// along with other options like Timeout etc
+type MySQLOptions struct {
 	Host     string // Host is the host name or IP address of the MySQL server.
 	Port     int    // Port is the port number on which the MySQL server is listening.
 	Protocol string // Protocol is the protocol used to connect to the MySQL server (ex: "tcp").
@@ -17,10 +18,11 @@ type DSNOptions struct {
 	Password string // Password is the password used to authenticate with the MySQL server.
 	DbName   string // DbName is the name of the database to connect to on the MySQL server.
 	RawQuery string // QueryStr is the query string to append to the DSN (ex: "?tls=skip-verify").
+	Timeout  int    // Timeout is the timeout in seconds for the connection to the MySQL server.
 }
 
 // BuildDSN builds a MySQL data source name (DSN) from the given options.
-func BuildDSN(opts DSNOptions) (string, error) {
+func BuildDSN(opts MySQLOptions) (string, error) {
 	if opts.Host == "" || opts.Port <= 0 {
 		return "", fmt.Errorf("invalid host or port")
 	}

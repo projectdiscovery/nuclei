@@ -57,7 +57,7 @@ func (c *MySQLClient) Connect(host string, port int, username, password string) 
 		// host is not valid according to network policy
 		return false, protocolstate.ErrHostDenied.Msgf(host)
 	}
-	dsn, err := BuildDSN(DSNOptions{
+	dsn, err := BuildDSN(MySQLOptions{
 		Host:     host,
 		Port:     port,
 		DbName:   "INFORMATION_SCHEMA",
@@ -124,7 +124,7 @@ func (c *MySQLClient) ConnectWithDSN(dsn string) (bool, error) {
 	return connectWithDSN(dsn)
 }
 
-func (c *MySQLClient) ExecuteQueryWithOpts(opts DSNOptions, query string) (*utils.SQLResult, error) {
+func (c *MySQLClient) ExecuteQueryWithOpts(opts MySQLOptions, query string) (*utils.SQLResult, error) {
 	if !protocolstate.IsHostAllowed(opts.Host) {
 		// host is not valid according to network policy
 		return nil, protocolstate.ErrHostDenied.Msgf(opts.Host)
@@ -158,15 +158,28 @@ func (c *MySQLClient) ExecuteQueryWithOpts(opts DSNOptions, query string) (*util
 	return data, nil
 }
 
-// ExecuteQuery connects to Mysql database using given credentials and database name.
+// ExecuteQuery connects to Mysql database using given credentials
 // and executes a query on the db.
 func (c *MySQLClient) ExecuteQuery(host string, port int, username, password, query string) (*utils.SQLResult, error) {
-	return c.ExecuteQueryWithOpts(DSNOptions{
+	return c.ExecuteQueryWithOpts(MySQLOptions{
 		Host:     host,
 		Port:     port,
 		Protocol: "tcp",
 		Username: username,
 		Password: password,
+	}, query)
+}
+
+// ExecuteQuery connects to Mysql database using given credentials
+// and executes a query on the db.
+func (c *MySQLClient) ExecuteQueryOnDB(host string, port int, username, password, dbname, query string) (*utils.SQLResult, error) {
+	return c.ExecuteQueryWithOpts(MySQLOptions{
+		Host:     host,
+		Port:     port,
+		Protocol: "tcp",
+		Username: username,
+		Password: password,
+		DbName:   dbname,
 	}, query)
 }
 

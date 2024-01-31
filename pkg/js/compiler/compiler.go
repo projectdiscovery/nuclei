@@ -114,13 +114,18 @@ func (c *Compiler) ExecuteWithOptions(program *goja.Program, args *ExecuteArgs, 
 				err = fmt.Errorf("panic: %v", r)
 			}
 		}()
-		return executeProgram(program, args, opts)
+		return ExecuteProgram(program, args, opts)
 	})
 	if err != nil {
 		return nil, err
 	}
-	res := ExecuteResult(opts.exports)
-	opts.exports = nil
+	var res ExecuteResult
+	if opts.exports != nil {
+		res = ExecuteResult(opts.exports)
+		opts.exports = nil
+	} else {
+		res = NewExecuteResult()
+	}
 	res["response"] = results.Export()
 	res["success"] = results.ToBoolean()
 	return res, nil
