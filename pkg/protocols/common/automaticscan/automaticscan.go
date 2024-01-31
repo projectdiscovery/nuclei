@@ -25,6 +25,7 @@ import (
 	httputil "github.com/projectdiscovery/nuclei/v3/pkg/protocols/utils/http"
 	"github.com/projectdiscovery/nuclei/v3/pkg/scan"
 	"github.com/projectdiscovery/nuclei/v3/pkg/templates"
+	"github.com/projectdiscovery/nuclei/v3/pkg/testutils"
 	"github.com/projectdiscovery/retryablehttp-go"
 	mapsutil "github.com/projectdiscovery/utils/maps"
 	sliceutil "github.com/projectdiscovery/utils/slice"
@@ -178,7 +179,11 @@ func (s *Service) executeAutomaticScanOnTarget(input *contextargs.MetaInput) {
 		return
 	}
 	gologger.Info().Msgf("[%v] Executing %d templates", input.Input, len(finalTemplates))
-	_ = s.engine.ExecuteScanWithOpts(finalTemplates, &inputs.SimpleInputProvider{Inputs: []*contextargs.MetaInput{input}}, true)
+	eng := core.New(s.opts.Options)
+	execOptions := s.opts.Copy()
+	execOptions.Progress = &testutils.MockProgressClient{} // stats are not supported yet due to centralized logic and cannot be reinitialized
+	eng.SetExecuterOptions(execOptions)
+	_ = eng.ExecuteScanWithOpts(finalTemplates, &inputs.SimpleInputProvider{Inputs: []*contextargs.MetaInput{input}}, true)
 }
 
 // getTagsUsingWappalyzer returns tags using wappalyzer by fingerprinting target
