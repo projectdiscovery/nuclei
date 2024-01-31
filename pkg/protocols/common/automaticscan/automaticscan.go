@@ -26,8 +26,8 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/templates"
 	"github.com/projectdiscovery/nuclei/v3/pkg/testutils"
 	"github.com/projectdiscovery/retryablehttp-go"
-	mapsutil "github.com/projectdiscovery/utils/maps"
 	"github.com/projectdiscovery/useragent"
+	mapsutil "github.com/projectdiscovery/utils/maps"
 	sliceutil "github.com/projectdiscovery/utils/slice"
 	stringsutil "github.com/projectdiscovery/utils/strings"
 	wappalyzer "github.com/projectdiscovery/wappalyzergo"
@@ -89,7 +89,7 @@ func New(opts Options) (*Service, error) {
 	}
 
 	// load tech detect templates
-	techDetectTemplates, err := LoadTemplatesWithTags(opts, templateDirs, []string{"tech"}, true)
+	techDetectTemplates, err := LoadTemplatesWithTags(opts, templateDirs, []string{"tech", "detect", "favicon"}, true)
 	if err != nil {
 		return nil, err
 	}
