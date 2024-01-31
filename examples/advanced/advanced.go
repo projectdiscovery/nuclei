@@ -21,6 +21,7 @@ func main() {
 		err = ne.ExecuteNucleiWithOpts([]string{"scanme.sh"},
 			nuclei.WithTemplateFilters(nuclei.TemplateFilters{ProtocolTypes: "dns"}),
 			nuclei.WithHeaders([]string{"X-Bug-Bounty: pdteam"}),
+			nuclei.EnablePassiveMode(),
 		)
 		if err != nil {
 			panic(err)
