@@ -27,8 +27,10 @@ func BuildDSN(opts DSNOptions) (string, error) {
 	if opts.Protocol == "" {
 		opts.Protocol = "tcp"
 	}
-	if opts.DbName != "" {
+	if opts.DbName == "" {
 		opts.DbName = "/"
+	} else {
+		opts.DbName = "/" + opts.DbName
 	}
 	target := net.JoinHostPort(opts.Host, fmt.Sprintf("%d", opts.Port))
 	var dsn strings.Builder
@@ -36,7 +38,7 @@ func BuildDSN(opts DSNOptions) (string, error) {
 	dsn.WriteString("@")
 	dsn.WriteString(fmt.Sprintf("%v(%v)", opts.Protocol, target))
 	if opts.DbName != "" {
-		dsn.WriteString(fmt.Sprintf("/%v", opts.DbName))
+		dsn.WriteString(opts.DbName)
 	}
 	if opts.RawQuery != "" {
 		dsn.WriteString(opts.RawQuery)

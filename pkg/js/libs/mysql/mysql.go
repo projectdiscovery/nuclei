@@ -160,11 +160,10 @@ func (c *MySQLClient) ExecuteQueryWithOpts(opts DSNOptions, query string) (*util
 
 // ExecuteQuery connects to Mysql database using given credentials and database name.
 // and executes a query on the db.
-func (c *MySQLClient) ExecuteQuery(host string, port int, username, password, dbName, query string) (*utils.SQLResult, error) {
+func (c *MySQLClient) ExecuteQuery(host string, port int, username, password, query string) (*utils.SQLResult, error) {
 	return c.ExecuteQueryWithOpts(DSNOptions{
 		Host:     host,
 		Port:     port,
-		DbName:   dbName,
 		Protocol: "tcp",
 		Username: username,
 		Password: password,
