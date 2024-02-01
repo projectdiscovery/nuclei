@@ -5,6 +5,7 @@ import (
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/config"
 	"github.com/projectdiscovery/nuclei/v3/pkg/templates"
+	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	sliceutil "github.com/projectdiscovery/utils/slice"
 )
 
@@ -34,16 +35,30 @@ func getTemplateDirs(opts Options) ([]string, error) {
 
 // LoadTemplatesWithTags loads and returns templates with given tags
 func LoadTemplatesWithTags(opts Options, templateDirs []string, tags []string, logInfo bool) ([]*templates.Template, error) {
-	tagTemplates := opts.Store.LoadTemplatesWithTags(templateDirs, tags)
-	if len(tagTemplates) == 0 {
+	finalTemplates := opts.Store.LoadTemplatesWithTags(templateDirs, tags)
+	if len(finalTemplates) == 0 {
 		return nil, errors.New("could not find any templates with tech tag")
 	}
-	// cluster and reduce requests
-	totalReqBeforeCluster := getRequestCount(tagTemplates) * int(opts.Target.Count())
-	finalTemplates, clusterCount := templates.ClusterTemplates(tagTemplates, opts.ExecuterOpts)
-	totalReqAfterClustering := getRequestCount(finalTemplates) * int(opts.Target.Count())
-	if totalReqAfterClustering < totalReqBeforeCluster && logInfo {
-		gologger.Info().Msgf("Automatic scan tech-detect: Templates clustered: %d (Reduced %d Requests)", clusterCount, totalReqBeforeCluster-totalReqAfterClustering)
+
+	if !opts.ExecuterOpts.Options.DisableClustering {
+		// cluster and reduce requests
+		totalReqBeforeCluster := getRequestCount(finalTemplates) * int(opts.Target.Count())
+		finalTemplates, clusterCount := templates.ClusterTemplates(finalTemplates, opts.ExecuterOpts)
+		totalReqAfterClustering := getRequestCount(finalTemplates) * int(opts.Target.Count())
+		if totalReqAfterClustering < totalReqBeforeCluster && logInfo {
+			gologger.Info().Msgf("Automatic scan tech-detect: Templates clustered: %d (Reduced %d Requests)", clusterCount, totalReqBeforeCluster-totalReqAfterClustering)
+		}
+	}
+
+	// log template loaded if VerboseVerbose flag is set
+	if opts.ExecuterOpts.Options.VerboseVerbose {
+		for _, tpl := range finalTemplates {
+			gologger.Print().Msgf("%s\n", templates.TemplateLogMessage(tpl.ID,
+				types.ToString(tpl.Info.Name),
+				tpl.Info.Authors.ToSlice(),
+				tpl.Info.SeverityHolder.Severity))
+		}
+
 	}
 	return finalTemplates, nil
 }
