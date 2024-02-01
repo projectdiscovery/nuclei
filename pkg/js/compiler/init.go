@@ -6,8 +6,9 @@ import "github.com/projectdiscovery/nuclei/v3/pkg/types"
 
 var (
 	// Per Execution Javascript timeout in seconds
-	JsProtocolTimeout = 10
-	JsVmConcurrency   = 500
+	JsProtocolTimeout       = 10
+	PoolingJsVmConcurrency  = 100
+	NonPoolingVMConcurrency = 20
 )
 
 // Init initializes the javascript protocol
@@ -21,6 +22,7 @@ func Init(opts *types.Options) error {
 		opts.JsConcurrency = 100
 	}
 	JsProtocolTimeout = opts.Timeout
-	JsVmConcurrency = opts.JsConcurrency
+	PoolingJsVmConcurrency = opts.JsConcurrency
+	PoolingJsVmConcurrency -= NonPoolingVMConcurrency
 	return nil
 }

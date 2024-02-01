@@ -151,6 +151,7 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 
 		opts := &compiler.ExecuteOptions{
 			Timeout: request.Timeout,
+			Source:  &request.Init,
 		}
 		// register 'export' function to export variables from init code
 		// these are saved in args and are available in pre-condition and request code
@@ -212,7 +213,7 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 		// proceed with whatever args we have
 		args.Args, _ = request.evaluateArgs(allVars, options, true)
 
-		initCompiled, err := goja.Compile("", request.Init, false)
+		initCompiled, err := compiler.WrapScriptNCompile(request.Init, false)
 		if err != nil {
 			return errorutil.NewWithTag(request.TemplateID, "could not compile init code: %s", err)
 		}
@@ -233,7 +234,7 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 
 	// compile pre-condition if any
 	if request.PreCondition != "" {
-		preConditionCompiled, err := goja.Compile("", request.PreCondition, false)
+		preConditionCompiled, err := compiler.WrapScriptNCompile(request.PreCondition, false)
 		if err != nil {
 			return errorutil.NewWithTag(request.TemplateID, "could not compile pre-condition: %s", err)
 		}
@@ -242,7 +243,7 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 
 	// compile actual source code
 	if request.Code != "" {
-		scriptCompiled, err := goja.Compile("", request.Code, false)
+		scriptCompiled, err := compiler.WrapScriptNCompile(request.Code, false)
 		if err != nil {
 			return errorutil.NewWithTag(request.TemplateID, "could not compile javascript code: %s", err)
 		}
@@ -339,7 +340,8 @@ func (request *Request) ExecuteWithResults(target *contextargs.Context, dynamicV
 		}
 		argsCopy.TemplateCtx = templateCtx.GetAll()
 
-		result, err := request.options.JsCompiler.ExecuteWithOptions(request.preConditionCompiled, argsCopy, &compiler.ExecuteOptions{Timeout: request.Timeout})
+		result, err := request.options.JsCompiler.ExecuteWithOptions(request.preConditionCompiled, argsCopy,
+			&compiler.ExecuteOptions{Timeout: request.Timeout, Source: &request.PreCondition})
 		if err != nil {
 			return errorutil.NewWithTag(request.TemplateID, "could not execute pre-condition: %s", err)
 		}
@@ -471,7 +473,8 @@ func (request *Request) executeRequestWithPayloads(hostPort string, input *conte
 		}
 	}
 
-	results, err := request.options.JsCompiler.ExecuteWithOptions(request.scriptCompiled, argsCopy, &compiler.ExecuteOptions{Timeout: request.Timeout})
+	results, err := request.options.JsCompiler.ExecuteWithOptions(request.scriptCompiled, argsCopy,
+		&compiler.ExecuteOptions{Timeout: request.Timeout, Source: &request.Code})
 	if err != nil {
 		// shouldn't fail even if it returned error instead create a failure event
 		results = compiler.ExecuteResult{"success": false, "error": err.Error()}
