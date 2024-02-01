@@ -31,7 +31,7 @@ type Options struct {
 	ProjectName string `yaml:"project-name" validate:"required"`
 	// IssueLabel is the label of the created issue type
 	IssueLabel string `yaml:"issue-label"`
-	// SeverityAsLabel (optional) sends the severity as the label of the created
+	// SeverityAsLabel (optional) adds the severity as the label of the created
 	// issue.
 	SeverityAsLabel bool `yaml:"severity-as-label"`
 	// DuplicateIssueCheck is a bool to enable duplicate tracking issue check and update the newest
