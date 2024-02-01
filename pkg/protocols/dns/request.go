@@ -75,14 +75,14 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, metadata,
 			}
 			value = generators.MergeMaps(vars, value)
 			swg.Add()
-			go func() {
+			go func(newVars map[string]interface{}) {
 				defer swg.Done()
-				if err := request.execute(input, domain, metadata, previous, value, callback); err != nil {
+				if err := request.execute(input, domain, metadata, previous, newVars, callback); err != nil {
 					m.Lock()
 					multiErr = multierr.Append(multiErr, err)
 					m.Unlock()
 				}
-			}()
+			}(value)
 		}
 		swg.Wait()
 		if multiErr != nil {
