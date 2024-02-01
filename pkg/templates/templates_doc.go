@@ -867,7 +867,7 @@ func init() {
 			Value: "Trace contains trace data for DNS request if enabled",
 		},
 	}
-	DNSRequestDoc.Fields = make([]encoder.Doc, 11)
+	DNSRequestDoc.Fields = make([]encoder.Doc, 12)
 	DNSRequestDoc.Fields[0].Name = "id"
 	DNSRequestDoc.Fields[0].Type = "string"
 	DNSRequestDoc.Fields[0].Note = ""
@@ -927,16 +927,23 @@ func init() {
 	DNSRequestDoc.Fields[8].Note = ""
 	DNSRequestDoc.Fields[8].Description = "Payloads contains any payloads for the current request.\n\nPayloads support both key-values combinations where a list\nof payloads is provided, or optionally a single file can also\nbe provided as payload which will be read on run-time."
 	DNSRequestDoc.Fields[8].Comments[encoder.LineComment] = "Payloads contains any payloads for the current request."
-	DNSRequestDoc.Fields[9].Name = "recursion"
-	DNSRequestDoc.Fields[9].Type = "dns.bool"
+	DNSRequestDoc.Fields[9].Name = "threads"
+	DNSRequestDoc.Fields[9].Type = "int"
 	DNSRequestDoc.Fields[9].Note = ""
-	DNSRequestDoc.Fields[9].Description = "Recursion determines if resolver should recurse all records to get fresh results."
-	DNSRequestDoc.Fields[9].Comments[encoder.LineComment] = "Recursion determines if resolver should recurse all records to get fresh results."
-	DNSRequestDoc.Fields[10].Name = "resolvers"
-	DNSRequestDoc.Fields[10].Type = "[]string"
+	DNSRequestDoc.Fields[9].Description = "Threads to use when sending iterating over payloads"
+	DNSRequestDoc.Fields[9].Comments[encoder.LineComment] = "Threads to use when sending iterating over payloads"
+
+	DNSRequestDoc.Fields[9].AddExample("Send requests using 10 concurrent threads", 10)
+	DNSRequestDoc.Fields[10].Name = "recursion"
+	DNSRequestDoc.Fields[10].Type = "dns.bool"
 	DNSRequestDoc.Fields[10].Note = ""
-	DNSRequestDoc.Fields[10].Description = "Resolvers to use for the dns requests"
-	DNSRequestDoc.Fields[10].Comments[encoder.LineComment] = " Resolvers to use for the dns requests"
+	DNSRequestDoc.Fields[10].Description = "Recursion determines if resolver should recurse all records to get fresh results."
+	DNSRequestDoc.Fields[10].Comments[encoder.LineComment] = "Recursion determines if resolver should recurse all records to get fresh results."
+	DNSRequestDoc.Fields[11].Name = "resolvers"
+	DNSRequestDoc.Fields[11].Type = "[]string"
+	DNSRequestDoc.Fields[11].Note = ""
+	DNSRequestDoc.Fields[11].Description = "Resolvers to use for the dns requests"
+	DNSRequestDoc.Fields[11].Comments[encoder.LineComment] = " Resolvers to use for the dns requests"
 
 	DNSRequestTypeHolderDoc.Type = "DNSRequestTypeHolder"
 	DNSRequestTypeHolderDoc.Comments[encoder.LineComment] = " DNSRequestTypeHolder is used to hold internal type of the DNS type"
@@ -1105,7 +1112,7 @@ func init() {
 			Value: "Full Network protocol data",
 		},
 	}
-	NETWORKRequestDoc.Fields = make([]encoder.Doc, 9)
+	NETWORKRequestDoc.Fields = make([]encoder.Doc, 10)
 	NETWORKRequestDoc.Fields[0].Name = "id"
 	NETWORKRequestDoc.Fields[0].Type = "string"
 	NETWORKRequestDoc.Fields[0].Note = ""
@@ -1128,35 +1135,42 @@ func init() {
 	NETWORKRequestDoc.Fields[3].Note = ""
 	NETWORKRequestDoc.Fields[3].Description = "Payloads contains any payloads for the current request.\n\nPayloads support both key-values combinations where a list\nof payloads is provided, or optionally a single file can also\nbe provided as payload which will be read on run-time."
 	NETWORKRequestDoc.Fields[3].Comments[encoder.LineComment] = "Payloads contains any payloads for the current request."
-	NETWORKRequestDoc.Fields[4].Name = "inputs"
-	NETWORKRequestDoc.Fields[4].Type = "[]network.Input"
+	NETWORKRequestDoc.Fields[4].Name = "threads"
+	NETWORKRequestDoc.Fields[4].Type = "int"
 	NETWORKRequestDoc.Fields[4].Note = ""
-	NETWORKRequestDoc.Fields[4].Description = "Inputs contains inputs for the network socket"
-	NETWORKRequestDoc.Fields[4].Comments[encoder.LineComment] = "Inputs contains inputs for the network socket"
-	NETWORKRequestDoc.Fields[5].Name = "port"
-	NETWORKRequestDoc.Fields[5].Type = "string"
+	NETWORKRequestDoc.Fields[4].Description = "Threads specifies number of threads to use sending requests. This enables Connection Pooling.\n\nConnection: Close attribute must not be used in request while using threads flag, otherwise\npooling will fail and engine will continue to close connections after requests."
+	NETWORKRequestDoc.Fields[4].Comments[encoder.LineComment] = "Threads specifies number of threads to use sending requests. This enables Connection Pooling."
+
+	NETWORKRequestDoc.Fields[4].AddExample("Send requests using 10 concurrent threads", 10)
+	NETWORKRequestDoc.Fields[5].Name = "inputs"
+	NETWORKRequestDoc.Fields[5].Type = "[]network.Input"
 	NETWORKRequestDoc.Fields[5].Note = ""
-	NETWORKRequestDoc.Fields[5].Description = "description: |\n   Port is the port to send network requests to. this acts as default port but is overriden if target/input contains\n non-http(s) ports like 80,8080,8081 etc"
-	NETWORKRequestDoc.Fields[5].Comments[encoder.LineComment] = " description: |"
-	NETWORKRequestDoc.Fields[6].Name = "exclude-ports"
+	NETWORKRequestDoc.Fields[5].Description = "Inputs contains inputs for the network socket"
+	NETWORKRequestDoc.Fields[5].Comments[encoder.LineComment] = "Inputs contains inputs for the network socket"
+	NETWORKRequestDoc.Fields[6].Name = "port"
 	NETWORKRequestDoc.Fields[6].Type = "string"
 	NETWORKRequestDoc.Fields[6].Note = ""
-	NETWORKRequestDoc.Fields[6].Description = "description:	|\n	ExcludePorts is the list of ports to exclude from being scanned . It is intended to be used with `Port` field and contains a list of ports which are ignored/skipped"
-	NETWORKRequestDoc.Fields[6].Comments[encoder.LineComment] = " description:	|"
-	NETWORKRequestDoc.Fields[7].Name = "read-size"
-	NETWORKRequestDoc.Fields[7].Type = "int"
+	NETWORKRequestDoc.Fields[6].Description = "description: |\n   Port is the port to send network requests to. this acts as default port but is overriden if target/input contains\n non-http(s) ports like 80,8080,8081 etc"
+	NETWORKRequestDoc.Fields[6].Comments[encoder.LineComment] = " description: |"
+	NETWORKRequestDoc.Fields[7].Name = "exclude-ports"
+	NETWORKRequestDoc.Fields[7].Type = "string"
 	NETWORKRequestDoc.Fields[7].Note = ""
-	NETWORKRequestDoc.Fields[7].Description = "ReadSize is the size of response to read at the end\n\nDefault value for read-size is 1024."
-	NETWORKRequestDoc.Fields[7].Comments[encoder.LineComment] = "ReadSize is the size of response to read at the end"
-
-	NETWORKRequestDoc.Fields[7].AddExample("", 2048)
-	NETWORKRequestDoc.Fields[8].Name = "read-all"
-	NETWORKRequestDoc.Fields[8].Type = "bool"
+	NETWORKRequestDoc.Fields[7].Description = "description:	|\n	ExcludePorts is the list of ports to exclude from being scanned . It is intended to be used with `Port` field and contains a list of ports which are ignored/skipped"
+	NETWORKRequestDoc.Fields[7].Comments[encoder.LineComment] = " description:	|"
+	NETWORKRequestDoc.Fields[8].Name = "read-size"
+	NETWORKRequestDoc.Fields[8].Type = "int"
 	NETWORKRequestDoc.Fields[8].Note = ""
-	NETWORKRequestDoc.Fields[8].Description = "ReadAll determines if the data stream should be read till the end regardless of the size\n\nDefault value for read-all is false."
-	NETWORKRequestDoc.Fields[8].Comments[encoder.LineComment] = "ReadAll determines if the data stream should be read till the end regardless of the size"
+	NETWORKRequestDoc.Fields[8].Description = "ReadSize is the size of response to read at the end\n\nDefault value for read-size is 1024."
+	NETWORKRequestDoc.Fields[8].Comments[encoder.LineComment] = "ReadSize is the size of response to read at the end"
 
-	NETWORKRequestDoc.Fields[8].AddExample("", false)
+	NETWORKRequestDoc.Fields[8].AddExample("", 2048)
+	NETWORKRequestDoc.Fields[9].Name = "read-all"
+	NETWORKRequestDoc.Fields[9].Type = "bool"
+	NETWORKRequestDoc.Fields[9].Note = ""
+	NETWORKRequestDoc.Fields[9].Description = "ReadAll determines if the data stream should be read till the end regardless of the size\n\nDefault value for read-all is false."
+	NETWORKRequestDoc.Fields[9].Comments[encoder.LineComment] = "ReadAll determines if the data stream should be read till the end regardless of the size"
+
+	NETWORKRequestDoc.Fields[9].AddExample("", false)
 
 	NETWORKInputDoc.Type = "network.Input"
 	NETWORKInputDoc.Comments[encoder.LineComment] = ""
