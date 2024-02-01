@@ -107,6 +107,8 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 		if err != nil {
 			return errors.Wrap(err, "could not parse payloads")
 		}
+		// default to 20 threads for payload requests
+		request.Threads = options.GetThreadsForNPayloadRequests(request.Requests(), request.Threads)
 	}
 
 	if len(request.Matchers) > 0 || len(request.Extractors) > 0 {
