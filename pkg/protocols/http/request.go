@@ -342,14 +342,14 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 		return request.executeRaceRequest(input, dynamicValues, callback)
 	}
 
-	// verify if parallel elaboration was requested
-	if request.Threads > 0 {
-		return request.executeParallelHTTP(input, dynamicValues, callback)
-	}
-
 	// verify if fuzz elaboration was requested
 	if len(request.Fuzzing) > 0 {
 		return request.executeFuzzingRule(input, dynamicValues, callback)
+	}
+
+	// verify if parallel elaboration was requested
+	if request.Threads > 0 {
+		return request.executeParallelHTTP(input, dynamicValues, callback)
 	}
 
 	generator := request.newGenerator(false)
