@@ -8,9 +8,11 @@ import (
 	"net/url"
 	"os"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/pkg/errors"
+	"github.com/remeh/sizedwaitgroup"
 	"go.uber.org/multierr"
 	"golang.org/x/exp/maps"
 
@@ -174,6 +176,9 @@ func (request *Request) executeAddress(variables map[string]interface{}, actualA
 
 	if request.generator != nil {
 		iterator := request.generator.NewIterator()
+		var multiErr error
+		m := &sync.Mutex{}
+		swg := sizedwaitgroup.New(request.Threads)
 
 		for {
 			value, ok := iterator.Value()
@@ -181,9 +186,19 @@ func (request *Request) executeAddress(variables map[string]interface{}, actualA
 				break
 			}
 			value = generators.MergeMaps(value, payloads)
-			if err := request.executeRequestWithPayloads(variables, actualAddress, address, input, shouldUseTLS, value, previous, callback); err != nil {
-				return err
-			}
+			swg.Add()
+			go func(vars map[string]interface{}) {
+				defer swg.Done()
+				if err := request.executeRequestWithPayloads(variables, actualAddress, address, input, shouldUseTLS, vars, previous, callback); err != nil {
+					m.Lock()
+					multiErr = multierr.Append(multiErr, err)
+					m.Unlock()
+				}
+			}(value)
+		}
+		swg.Wait()
+		if multiErr != nil {
+			return multiErr
 		}
 	} else {
 		value := maps.Clone(payloads)

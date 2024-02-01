@@ -388,7 +388,7 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 		}
 	}
 	if len(request.Payloads) > 0 {
-		// default to 20 threads for payload requests
+		// if we have payloads, adjust threads if none specified
 		request.Threads = protocols.GetThreadsForNPayloadRequests(request.Requests(), request.Threads)
 	}
 
