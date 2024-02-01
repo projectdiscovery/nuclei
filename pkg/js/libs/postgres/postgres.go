@@ -59,11 +59,10 @@ func (c *PGClient) Connect(host string, port int, username, password string) (bo
 
 // ExecuteQuery connects to Postgres database using given credentials and database name.
 // and executes a query on the db.
-func (c *PGClient) ExecuteQuery(host string, port int, username, password, dbName, query string) (string, error) {
-
+func (c *PGClient) ExecuteQuery(host string, port int, username, password, dbName, query string) (*utils.SQLResult, error) {
 	if !protocolstate.IsHostAllowed(host) {
 		// host is not valid according to network policy
-		return "", protocolstate.ErrHostDenied.Msgf(host)
+		return nil, protocolstate.ErrHostDenied.Msgf(host)
 	}
 
 	target := net.JoinHostPort(host, fmt.Sprintf("%d", port))
@@ -71,18 +70,18 @@ func (c *PGClient) ExecuteQuery(host string, port int, username, password, dbNam
 	connStr := fmt.Sprintf("postgres://%s:%s@%s/%s?sslmode=disable", username, password, target, dbName)
 	db, err := sql.Open("postgres", connStr)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
 	rows, err := db.Query(query)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	resp, err := utils.UnmarshalSQLRows(rows)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
-	return string(resp), nil
+	return resp, nil
 }
 
 // ConnectWithDB connects to Postgres database using given credentials and database name.
