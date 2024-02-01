@@ -171,7 +171,9 @@ func (s *Service) executeAutomaticScanOnTarget(input *contextargs.MetaInput) {
 		gologger.Warning().Msgf("Skipping automatic scan since no tags were found on %v\n", input.Input)
 		return
 	}
-	gologger.Verbose().Msgf("Final tags identified for %v: %+v\n", input.Input, finalTags)
+	if s.opts.Options.VerboseVerbose {
+		gologger.Print().Msgf("Final tags identified for %v: %+v\n", input.Input, finalTags)
+	}
 
 	finalTemplates, err := LoadTemplatesWithTags(s.ServiceOpts, s.templateDirs, finalTags, false)
 	if err != nil {
@@ -246,7 +248,6 @@ func (s *Service) getTagsUsingDetectionTemplates(input *contextargs.MetaInput) (
 	sg := sizedwaitgroup.New(s.opts.Options.TemplateThreads)
 	counter := atomic.Uint32{}
 
-	// run
 	for _, t := range s.techTemplates {
 		sg.Add()
 		go func(template *templates.Template) {
@@ -256,27 +257,32 @@ func (s *Service) getTagsUsingDetectionTemplates(input *contextargs.MetaInput) (
 				if event == nil {
 					return
 				}
-				if event.HasOperatorResult() && event.OperatorsResult.Matched {
+				if event.HasOperatorResult() {
 					// match found
 					// find unique tags
 					m.Lock()
-					for _, tag := range template.Info.Tags.ToSlice() {
-						// we shouldn't add all tags since tags also contain protocol type tags
-						// and are not just limited to products or technologies
-						// ex:   tags: js,mssql,detect,network
+					for _, v := range event.Results {
+						if v.MatcherName != "" {
+							tags[v.MatcherName] = struct{}{}
+						}
+						for _, tag := range v.Info.Tags.ToSlice() {
+							// we shouldn't add all tags since tags also contain protocol type tags
+							// and are not just limited to products or technologies
+							// ex:   tags: js,mssql,detect,network
 
-						// A good trick for this is check if tag is present in template-id
-						if !strings.Contains(template.ID, tag) {
-							// unlikely this is relevant
-							continue
-						}
-						if _, ok := tags[tag]; !ok {
-							tags[tag] = struct{}{}
-						}
-						// matcher names are also relevant in tech detection templates (ex: tech-detect)
-						for k := range event.OperatorsResult.Matches {
-							if _, ok := tags[k]; !ok {
-								tags[k] = struct{}{}
+							// A good trick for this is check if tag is present in template-id
+							if !strings.Contains(template.ID, tag) && !strings.Contains(strings.ToLower(template.Info.Name), tag) {
+								// unlikely this is relevant
+								continue
+							}
+							if _, ok := tags[tag]; !ok {
+								tags[tag] = struct{}{}
+							}
+							// matcher names are also relevant in tech detection templates (ex: tech-detect)
+							for k := range event.OperatorsResult.Matches {
+								if _, ok := tags[k]; !ok {
+									tags[k] = struct{}{}
+								}
 							}
 						}
 					}
