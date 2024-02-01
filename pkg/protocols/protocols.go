@@ -32,7 +32,12 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 )
 
-var MaxTemplateFileSizeForEncoding = 1024 * 1024
+// Optional Callback to update Thread count in payloads across all requests
+type PayloadThreadSetterCallback func(opts *ExecutorOptions, totalRequests, currentThreads int) int
+
+var (
+	MaxTemplateFileSizeForEncoding = 1024 * 1024
+)
 
 // Executer is an interface implemented any protocol based request executer.
 type Executer interface {
@@ -107,6 +112,25 @@ type ExecutorOptions struct {
 	// JsCompiler is abstracted javascript compiler which adds node modules and provides execution
 	// environment for javascript templates
 	JsCompiler *compiler.Compiler
+	// Optional Callback function to update Thread count in payloads across all protocols
+	// based on given logic. by default nuclei reverts to using value of `-c` when threads count
+	// is not specified or is 0 in template
+	OverrideThreadsCount PayloadThreadSetterCallback
+}
+
+// GetThreadsForPayloadRequests returns the number of threads to use as default for
+// given max-request of payloads
+func (e *ExecutorOptions) GetThreadsForNPayloadRequests(totalRequests int, currentThreads int) int {
+	if e.OverrideThreadsCount != nil {
+		return e.OverrideThreadsCount(e, totalRequests, currentThreads)
+	}
+	if currentThreads != 0 {
+		return currentThreads
+	}
+	if totalRequests <= 0 {
+		return e.Options.TemplateThreads
+	}
+	return totalRequests
 }
 
 // CreateTemplateCtxStore creates template context store (which contains templateCtx for every scan)
