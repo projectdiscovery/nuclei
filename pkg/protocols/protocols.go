@@ -32,7 +32,22 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 )
 
-var MaxTemplateFileSizeForEncoding = 1024 * 1024
+var (
+	MaxTemplateFileSizeForEncoding = 1024 * 1024
+	DefaultThreadsForPayloads      = 20
+)
+
+// GetThreadsForPayloadRequests returns the number of threads to use as default for
+// given max-request of payloads
+func GetThreadsForNPayloadRequests(N int, currentThreads int) int {
+	if currentThreads != 0 {
+		return currentThreads
+	}
+	if N <= 0 {
+		return DefaultThreadsForPayloads
+	}
+	return N
+}
 
 // Executer is an interface implemented any protocol based request executer.
 type Executer interface {

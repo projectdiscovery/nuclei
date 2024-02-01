@@ -5,9 +5,12 @@ import (
 	"fmt"
 	"net/url"
 	"strings"
+	"sync"
 
 	"github.com/miekg/dns"
 	"github.com/pkg/errors"
+	"github.com/remeh/sizedwaitgroup"
+	"go.uber.org/multierr"
 	"golang.org/x/exp/maps"
 
 	"github.com/projectdiscovery/gologger"
@@ -61,6 +64,9 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, metadata,
 
 	if request.generator != nil {
 		iterator := request.generator.NewIterator()
+		swg := sizedwaitgroup.New(request.Threads)
+		var multiErr error
+		m := &sync.Mutex{}
 
 		for {
 			value, ok := iterator.Value()
@@ -68,9 +74,19 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, metadata,
 				break
 			}
 			value = generators.MergeMaps(vars, value)
-			if err := request.execute(input, domain, metadata, previous, value, callback); err != nil {
-				return err
-			}
+			swg.Add()
+			go func() {
+				defer swg.Done()
+				if err := request.execute(input, domain, metadata, previous, value, callback); err != nil {
+					m.Lock()
+					multiErr = multierr.Append(multiErr, err)
+					m.Unlock()
+				}
+			}()
+		}
+		swg.Wait()
+		if multiErr != nil {
+			return multiErr
 		}
 	} else {
 		value := maps.Clone(vars)
