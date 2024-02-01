@@ -6,39 +6,39 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
+	"sync/atomic"
 
+	"github.com/logrusorgru/aurora"
 	"github.com/pkg/errors"
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/config"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/loader"
 	"github.com/projectdiscovery/nuclei/v3/pkg/core"
+	"github.com/projectdiscovery/nuclei/v3/pkg/core/inputs"
+	"github.com/projectdiscovery/nuclei/v3/pkg/output"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/helpers/writer"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http/httpclientpool"
 	httputil "github.com/projectdiscovery/nuclei/v3/pkg/protocols/utils/http"
+	"github.com/projectdiscovery/nuclei/v3/pkg/scan"
 	"github.com/projectdiscovery/nuclei/v3/pkg/templates"
-	"github.com/projectdiscovery/nuclei/v3/pkg/templates/types"
+	"github.com/projectdiscovery/nuclei/v3/pkg/testutils"
 	"github.com/projectdiscovery/retryablehttp-go"
 	"github.com/projectdiscovery/useragent"
+	mapsutil "github.com/projectdiscovery/utils/maps"
 	sliceutil "github.com/projectdiscovery/utils/slice"
+	stringsutil "github.com/projectdiscovery/utils/strings"
 	wappalyzer "github.com/projectdiscovery/wappalyzergo"
+	"github.com/remeh/sizedwaitgroup"
 	"gopkg.in/yaml.v2"
 )
 
-// Service is a service for automatic scan execution
-type Service struct {
-	opts          protocols.ExecutorOptions
-	store         *loader.Store
-	engine        *core.Engine
-	target        core.InputProvider
-	wappalyzer    *wappalyzer.Wappalyze
-	childExecuter *core.ChildExecuter
-	httpclient    *retryablehttp.Client
-
-	results            bool
-	allTemplates       []string
-	technologyMappings map[string]string
-}
+const (
+	mappingFilename = "wappalyzer-mapping.yml"
+	maxDefaultBody  = 4 * 1024 * 1024 // 4MB
+)
 
 // Options contains configuration options for automatic scan service
 type Options struct {
@@ -48,7 +48,21 @@ type Options struct {
 	Target       core.InputProvider
 }
 
-const mappingFilename = "wappalyzer-mapping.yml"
+// Service is a service for automatic scan execution
+type Service struct {
+	opts               protocols.ExecutorOptions
+	store              *loader.Store
+	engine             *core.Engine
+	target             core.InputProvider
+	wappalyzer         *wappalyzer.Wappalyze
+	childExecuter      *core.ChildExecuter
+	httpclient         *retryablehttp.Client
+	templateDirs       []string // root Template Directories
+	technologyMappings map[string]string
+	techTemplates      []*templates.Template
+	ServiceOpts        Options
+	hasResults         *atomic.Bool
+}
 
 // New takes options and returns a new automatic scan service
 func New(opts Options) (*Service, error) {
@@ -57,35 +71,30 @@ func New(opts Options) (*Service, error) {
 		return nil, err
 	}
 
+	// load extra mapping from nuclei-templates for normalization
 	var mappingData map[string]string
-	config := config.DefaultConfig
-
-	mappingFile := filepath.Join(config.TemplatesDirectory, mappingFilename)
+	mappingFile := filepath.Join(config.DefaultConfig.GetTemplateDir(), mappingFilename)
 	if file, err := os.Open(mappingFile); err == nil {
 		_ = yaml.NewDecoder(file).Decode(&mappingData)
 		file.Close()
 	}
-
 	if opts.ExecuterOpts.Options.Verbose {
 		gologger.Verbose().Msgf("Normalized mapping (%d): %v\n", len(mappingData), mappingData)
 	}
-	defaultTemplatesDirectories := []string{config.TemplatesDirectory}
 
-	// adding custom template path if available
-	if len(opts.ExecuterOpts.Options.Templates) > 0 {
-		defaultTemplatesDirectories = append(defaultTemplatesDirectories, opts.ExecuterOpts.Options.Templates...)
+	// get template directories
+	templateDirs, err := getTemplateDirs(opts)
+	if err != nil {
+		return nil, err
 	}
-	// Collect path for default directories we want to look for templates in
-	var allTemplates []string
-	for _, directory := range defaultTemplatesDirectories {
-		templates, err := opts.ExecuterOpts.Catalog.GetTemplatePath(directory)
-		if err != nil {
-			return nil, errors.Wrap(err, "could not get templates in directory")
-		}
-		allTemplates = append(allTemplates, templates...)
+
+	// load tech detect templates
+	techDetectTemplates, err := LoadTemplatesWithTags(opts, templateDirs, []string{"tech", "detect", "favicon"}, true)
+	if err != nil {
+		return nil, err
 	}
+
 	childExecuter := opts.Engine.ChildExecuter()
-
 	httpclient, err := httpclientpool.Get(opts.ExecuterOpts.Options, &httpclientpool.Configuration{
 		Connection: &httpclientpool.ConnectionConfiguration{
 			DisableKeepAlive: httputil.ShouldDisableKeepAlive(opts.ExecuterOpts.Options),
@@ -94,95 +103,119 @@ func New(opts Options) (*Service, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "could not get http client")
 	}
-
 	return &Service{
 		opts:               opts.ExecuterOpts,
 		store:              opts.Store,
 		engine:             opts.Engine,
 		target:             opts.Target,
 		wappalyzer:         wappalyzer,
-		allTemplates:       allTemplates,
+		templateDirs:       templateDirs, // fix this
 		childExecuter:      childExecuter,
 		httpclient:         httpclient,
 		technologyMappings: mappingData,
+		techTemplates:      techDetectTemplates,
+		ServiceOpts:        opts,
+		hasResults:         &atomic.Bool{},
 	}, nil
 }
 
 // Close closes the service
 func (s *Service) Close() bool {
-	results := s.childExecuter.Close()
-	if results.Load() {
-		s.results = true
-	}
-	return s.results
+	return s.hasResults.Load()
 }
 
-// Execute performs the execution of automatic scan on provided input
-func (s *Service) Execute() {
-	if err := s.executeWappalyzerTechDetection(); err != nil {
-		gologger.Error().Msgf("Could not execute wappalyzer based detection: %s", err)
-	}
-}
-
-const maxDefaultBody = 2 * 1024 * 1024
-
-// executeWappalyzerTechDetection implements the logic to run the wappalyzer
-// technologies detection on inputs which returns tech.
-//
-// The returned tags are then used for further execution.
-func (s *Service) executeWappalyzerTechDetection() error {
-	gologger.Info().Msgf("Executing wappalyzer based tech detection on input urls")
-
-	// Iterate through each target making http request and identifying fingerprints
-	inputPool := s.engine.WorkPool().InputPool(types.HTTPProtocol)
-
+// Execute automatic scan on each target with -bs host concurrency
+func (s *Service) Execute() error {
+	gologger.Info().Msgf("Executing Automatic scan on %d target[s]", s.target.Count())
+	// setup host concurrency
+	sg := sizedwaitgroup.New(s.opts.Options.BulkSize)
 	s.target.Scan(func(value *contextargs.MetaInput) bool {
-		inputPool.WaitGroup.Add()
-
+		sg.Add()
 		go func(input *contextargs.MetaInput) {
-			defer inputPool.WaitGroup.Done()
-
-			s.processWappalyzerInputPair(input)
+			defer sg.Done()
+			s.executeAutomaticScanOnTarget(input)
 		}(value)
 		return true
 	})
-	inputPool.WaitGroup.Wait()
+	sg.Wait()
 	return nil
 }
 
-func (s *Service) processWappalyzerInputPair(input *contextargs.MetaInput) {
+// executeAutomaticScanOnTarget executes automatic scan on given target
+func (s *Service) executeAutomaticScanOnTarget(input *contextargs.MetaInput) {
+	// get tags using wappalyzer
+	tagsFromWappalyzer := s.getTagsUsingWappalyzer(input)
+	// get tags using detection templates
+	tagsFromDetectTemplates, matched := s.getTagsUsingDetectionTemplates(input)
+	if matched > 0 {
+		s.hasResults.Store(true)
+	}
+
+	// create combined final tags
+	finalTags := []string{}
+	for _, tags := range append(tagsFromWappalyzer, tagsFromDetectTemplates...) {
+		if stringsutil.EqualFoldAny(tags, "tech", "waf", "favicon") {
+			continue
+		}
+		finalTags = append(finalTags, tags)
+	}
+	finalTags = sliceutil.Dedupe(finalTags)
+
+	gologger.Info().Msgf("Found %d tags and %d matches on detection templates on %v [wappalyzer: %d, detection: %d]\n", len(finalTags), matched, input.Input, len(tagsFromWappalyzer), len(tagsFromDetectTemplates))
+
+	// also include any extra tags passed by user
+	finalTags = append(finalTags, s.opts.Options.Tags...)
+	finalTags = sliceutil.Dedupe(finalTags)
+
+	if len(finalTags) == 0 {
+		gologger.Warning().Msgf("Skipping automatic scan since no tags were found on %v\n", input.Input)
+		return
+	}
+	gologger.Verbose().Msgf("Final tags identified for %v: %+v\n", input.Input, finalTags)
+
+	finalTemplates, err := LoadTemplatesWithTags(s.ServiceOpts, s.templateDirs, finalTags, false)
+	if err != nil {
+		gologger.Error().Msgf("%v Error loading templates: %s\n", input.Input, err)
+		return
+	}
+	gologger.Info().Msgf("Executing %d templates on %v", len(finalTemplates), input.Input)
+	eng := core.New(s.opts.Options)
+	execOptions := s.opts.Copy()
+	execOptions.Progress = &testutils.MockProgressClient{} // stats are not supported yet due to centralized logic and cannot be reinitialized
+	eng.SetExecuterOptions(execOptions)
+	tmp := eng.ExecuteScanWithOpts(finalTemplates, &inputs.SimpleInputProvider{Inputs: []*contextargs.MetaInput{input}}, true)
+	s.hasResults.Store(tmp.Load())
+}
+
+// getTagsUsingWappalyzer returns tags using wappalyzer by fingerprinting target
+// and utilizing the mapping data
+func (s *Service) getTagsUsingWappalyzer(input *contextargs.MetaInput) []string {
 	req, err := retryablehttp.NewRequest(http.MethodGet, input.Input, nil)
 	if err != nil {
-		return
+		return nil
 	}
 	userAgent := useragent.PickRandom()
 	req.Header.Set("User-Agent", userAgent.Raw)
 
 	resp, err := s.httpclient.Do(req)
 	if err != nil {
-		if resp != nil {
-			resp.Body.Close()
-		}
-		return
+		return nil
 	}
-	reader := io.LimitReader(resp.Body, maxDefaultBody)
-	data, err := io.ReadAll(reader)
+	defer resp.Body.Close()
+	data, err := io.ReadAll(io.LimitReader(resp.Body, maxDefaultBody))
 	if err != nil {
-		resp.Body.Close()
-		return
+		return nil
 	}
-	resp.Body.Close()
 
+	// fingerprint headers and body
 	fingerprints := s.wappalyzer.Fingerprint(resp.Header, data)
 	normalized := make(map[string]struct{})
 	for k := range fingerprints {
 		normalized[normalizeAppName(k)] = struct{}{}
 	}
+	gologger.Verbose().Msgf("Found %d fingerprints for %s\n", len(normalized), input.Input)
 
-	if s.opts.Options.Verbose {
-		gologger.Verbose().Msgf("Wappalyzer fingerprints %v for %s\n", normalized, input)
-	}
-
+	// normalize fingerprints using mapping data
 	for k := range normalized {
 		// Replace values with mapping data
 		if value, ok := s.technologyMappings[k]; ok {
@@ -190,7 +223,7 @@ func (s *Service) processWappalyzerInputPair(input *contextargs.MetaInput) {
 			normalized[value] = struct{}{}
 		}
 	}
-
+	// more post processing
 	items := make([]string, 0, len(normalized))
 	for k := range normalized {
 		if strings.Contains(k, " ") {
@@ -200,28 +233,73 @@ func (s *Service) processWappalyzerInputPair(input *contextargs.MetaInput) {
 			items = append(items, strings.ToLower(k))
 		}
 	}
-	if len(items) == 0 {
-		return
-	}
-	// Add tags as addition to -as for comprehensive scans. Ref: nuclei/issues/3348
-	items = append(items, s.opts.Options.Tags...)
-	uniqueTags := sliceutil.Dedupe(items)
-
-	templatesList := s.store.LoadTemplatesWithTags(s.allTemplates, uniqueTags)
-	gologger.Info().Msgf("Executing tags (%v) for host %s (%d templates)", strings.Join(uniqueTags, ","), input, len(templatesList))
-	for _, t := range templatesList {
-		s.opts.Progress.AddToTotal(int64(t.Executer.Requests()))
-
-		if s.opts.Options.VerboseVerbose {
-			gologger.Print().Msgf("%s\n", templates.TemplateLogMessage(t.ID,
-				t.Info.Name,
-				t.Info.Authors.ToSlice(),
-				t.Info.SeverityHolder.Severity))
-		}
-		s.childExecuter.Execute(t, input)
-	}
+	return sliceutil.Dedupe(items)
 }
 
+// getTagsUsingDetectionTemplates returns tags using detection templates
+func (s *Service) getTagsUsingDetectionTemplates(input *contextargs.MetaInput) ([]string, int) {
+	ctxArgs := contextargs.NewWithInput(input.Input)
+
+	// execute tech detection templates on target
+	tags := map[string]struct{}{}
+	m := &sync.Mutex{}
+	sg := sizedwaitgroup.New(s.opts.Options.TemplateThreads)
+	counter := atomic.Uint32{}
+
+	// run
+	for _, t := range s.techTemplates {
+		sg.Add()
+		go func(template *templates.Template) {
+			defer sg.Done()
+			ctx := scan.NewScanContext(ctxArgs)
+			ctx.OnResult = func(event *output.InternalWrappedEvent) {
+				if event == nil {
+					return
+				}
+				if event.HasOperatorResult() && event.OperatorsResult.Matched {
+					// match found
+					// find unique tags
+					m.Lock()
+					for _, tag := range template.Info.Tags.ToSlice() {
+						// we shouldn't add all tags since tags also contain protocol type tags
+						// and are not just limited to products or technologies
+						// ex:   tags: js,mssql,detect,network
+
+						// A good trick for this is check if tag is present in template-id
+						if !strings.Contains(template.ID, tag) {
+							// unlikely this is relevant
+							continue
+						}
+						if _, ok := tags[tag]; !ok {
+							tags[tag] = struct{}{}
+						}
+						// matcher names are also relevant in tech detection templates (ex: tech-detect)
+						for k := range event.OperatorsResult.Matches {
+							if _, ok := tags[k]; !ok {
+								tags[k] = struct{}{}
+							}
+						}
+					}
+					m.Unlock()
+					_ = counter.Add(1)
+
+					// TBD: should we show or hide tech detection results? what about matcher-status flag?
+					_ = writer.WriteResult(event, s.opts.Output, s.opts.Progress, s.opts.IssuesClient)
+				}
+			}
+
+			_, err := template.Executer.ExecuteWithResults(ctx)
+			if err != nil {
+				gologger.Verbose().Msgf("[%s] error executing template: %s\n", aurora.BrightYellow(template.ID), err)
+				return
+			}
+		}(t)
+	}
+	sg.Wait()
+	return mapsutil.GetKeys(tags), int(counter.Load())
+}
+
+// normalizeAppName normalizes app name
 func normalizeAppName(appName string) string {
 	if strings.Contains(appName, ":") {
 		if parts := strings.Split(appName, ":"); len(parts) == 2 {
