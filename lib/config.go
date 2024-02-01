@@ -339,3 +339,11 @@ func WithHeaders(headers []string) NucleiSDKOptions {
 		return nil
 	}
 }
+
+// EnablePassiveMode allows enabling passive HTTP response processing mode
+func EnablePassiveMode() NucleiSDKOptions {
+	return func(e *NucleiEngine) error {
+		e.opts.OfflineHTTP = true
+		return nil
+	}
+}

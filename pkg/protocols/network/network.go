@@ -45,6 +45,15 @@ type Request struct {
 	//   of payloads is provided, or optionally a single file can also
 	//   be provided as payload which will be read on run-time.
 	Payloads map[string]interface{} `yaml:"payloads,omitempty" json:"payloads,omitempty" jsonschema:"title=payloads for the network request,description=Payloads contains any payloads for the current request"`
+	// description: |
+	//   Threads specifies number of threads to use sending requests. This enables Connection Pooling.
+	//
+	//   Connection: Close attribute must not be used in request while using threads flag, otherwise
+	//   pooling will fail and engine will continue to close connections after requests.
+	// examples:
+	//   - name: Send requests using 10 concurrent threads
+	//     value: 10
+	Threads int `yaml:"threads,omitempty" json:"threads,omitempty" jsonschema:"title=threads for sending requests,description=Threads specifies number of threads to use sending requests. This enables Connection Pooling"`
 
 	// description: |
 	//   Inputs contains inputs for the network socket
@@ -219,6 +228,8 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 		if err != nil {
 			return errors.Wrap(err, "could not parse payloads")
 		}
+		// if we have payloads, adjust threads if none specified
+		request.Threads = options.GetThreadsForNPayloadRequests(request.Requests(), request.Threads)
 	}
 
 	// Create a client for the class

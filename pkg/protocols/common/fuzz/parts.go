@@ -8,8 +8,8 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/projectdiscovery/gologger"
+	"github.com/projectdiscovery/useragent"
 
-	"github.com/corpix/uarand"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/expressions"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/generators"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
@@ -143,7 +143,8 @@ func (rule *Rule) buildQueryInput(input *ExecuteRuleInput, parsed *urlutil.URL, 
 		if err != nil {
 			return err
 		}
-		req.Header.Set("User-Agent", uarand.GetRandom())
+		userAgent := useragent.PickRandom()
+		req.Header.Set("User-Agent", userAgent.Raw)
 	} else {
 		req = input.BaseRequest.Clone(context.TODO())
 		req.SetURL(parsed)
