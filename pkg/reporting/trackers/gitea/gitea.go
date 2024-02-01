@@ -109,7 +109,7 @@ func (i *Integration) CreateIssue(event *output.ResultEvent) error {
 		return err
 	}
 
-	_, _, err = i.client.CreateIssueComment(i.options.ProjectOwner, i.options.ProjectName, issue.ID, gitea.CreateIssueCommentOption{
+	_, _, err = i.client.CreateIssueComment(i.options.ProjectOwner, i.options.ProjectName, issue.Index, gitea.CreateIssueCommentOption{
 		Body: description,
 	})
 
