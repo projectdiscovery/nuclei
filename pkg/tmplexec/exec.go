@@ -110,6 +110,12 @@ func (e *TemplateExecuter) Execute(ctx *scan.ScanContext) (bool, error) {
 		// since it is of no use after scan is completed (regardless of success or failure)
 		e.options.RemoveTemplateCtx(ctx.Input.MetaInput)
 	}()
+	defer func() {
+		// try catching unknown panics
+		if r := recover(); r != nil {
+			ctx.LogError(fmt.Errorf("panic: %v", r))
+		}
+	}()
 
 	var lastMatcherEvent *output.InternalWrappedEvent
 	writeFailureCallback := func(event *output.InternalWrappedEvent, matcherStatus bool) {
