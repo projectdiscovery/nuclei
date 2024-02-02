@@ -8,6 +8,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v3/pkg/scan"
+	mapsutil "github.com/projectdiscovery/utils/maps"
 )
 
 // generic engine as name suggests is a generic template
@@ -41,7 +42,7 @@ func (g *Generic) ExecuteWithResults(ctx *scan.ScanContext) error {
 			dynamicValues[key] = value
 		})
 	}
-	previous := make(map[string]interface{})
+	previous := mapsutil.NewSyncLockMap[string, any]()
 
 	for _, req := range g.requests {
 		inputItem := ctx.Input.Clone()
@@ -51,7 +52,8 @@ func (g *Generic) ExecuteWithResults(ctx *scan.ScanContext) error {
 			}
 		}
 
-		err := req.ExecuteWithResults(inputItem, dynamicValues, previous, func(event *output.InternalWrappedEvent) {
+		err := req.ExecuteWithResults(inputItem, dynamicValues, output.InternalEvent(previous.GetAll()), func(event *output.InternalWrappedEvent) {
+			// this callback is not concurrent safe so mutex should be used to synchronize
 			if event == nil {
 				// ideally this should never happen since protocol exits on error and callback is not called
 				return
@@ -63,7 +65,7 @@ func (g *Generic) ExecuteWithResults(ctx *scan.ScanContext) error {
 					builder.WriteString(ID)
 					builder.WriteString("_")
 					builder.WriteString(k)
-					previous[builder.String()] = v
+					_ = previous.Set(builder.String(), v)
 					builder.Reset()
 				}
 			}
