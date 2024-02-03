@@ -208,6 +208,9 @@ type Request struct {
 	// description: |
 	//  DisablePathAutomerge disables merging target url path with raw request path
 	DisablePathAutomerge bool `yaml:"disable-path-automerge,omitempty" json:"disable-path-automerge,omitempty" jsonschema:"title=disable auto merging of path,description=Disable merging target url path with raw request path"`
+	// description: |
+	//   Passive specifies whether the request should be made in passive mode
+	Passive bool `yaml:"passive,omitempty" json:"passive,omitempty" jsonschema:"title=passive mode,description=Passive mode for the request"`
 }
 
 // Options returns executer options for http request

@@ -21,6 +21,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/progress"
 	"github.com/projectdiscovery/nuclei/v3/pkg/projectfile"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/globalmatchers"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/hosterrorscache"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/interactsh"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/utils/excludematchers"
@@ -116,6 +117,8 @@ type ExecutorOptions struct {
 	// based on given logic. by default nuclei reverts to using value of `-c` when threads count
 	// is not specified or is 0 in template
 	OverrideThreadsCount PayloadThreadSetterCallback
+	// GlobalMatchers is the storage for global matchers with http passive templates
+	GlobalMatchers *globalmatchers.Storage
 }
 
 // GetThreadsForPayloadRequests returns the number of threads to use as default for

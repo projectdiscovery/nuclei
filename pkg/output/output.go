@@ -164,6 +164,8 @@ type ResultEvent struct {
 	MatcherStatus bool `json:"matcher-status"`
 	// Lines is the line count for the specified match
 	Lines []int `json:"matched-line,omitempty"`
+	// Passive specifies whether the match was discovered passively in the response
+	Passive bool `json:"passive,omitempty"`
 
 	FileToIndexPosition map[string]int `json:"-"`
 	Error               string         `json:"error,omitempty"`

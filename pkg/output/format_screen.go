@@ -39,6 +39,11 @@ func (w *StandardWriter) formatScreen(output *ResultEvent) []byte {
 			}
 		}
 
+		if output.Passive {
+			builder.WriteString("] [")
+			builder.WriteString(w.aurora.BrightMagenta("passive").String())
+		}
+
 		builder.WriteString("] [")
 		builder.WriteString(w.aurora.BrightBlue(output.Type).String())
 		builder.WriteString("] ")
