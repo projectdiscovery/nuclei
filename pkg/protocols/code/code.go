@@ -1,8 +1,10 @@
 package code
 
 import (
+	"bytes"
 	"context"
 	"fmt"
+	"regexp"
 	"strings"
 	"time"
 
@@ -25,7 +27,17 @@ import (
 	protocolutils "github.com/projectdiscovery/nuclei/v3/pkg/protocols/utils"
 	templateTypes "github.com/projectdiscovery/nuclei/v3/pkg/templates/types"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
+	contextutil "github.com/projectdiscovery/utils/context"
 	errorutil "github.com/projectdiscovery/utils/errors"
+)
+
+const (
+	pythonEnvRegex    = `os\.getenv\(['"]([^'"]+)['"]\)`
+	TimeoutMultiplier = 6 // timeout multiplier for code protocol
+)
+
+var (
+	pythonEnvRegexCompiled = regexp.MustCompile(pythonEnvRegex)
 )
 
 // Request is a request for the SSL protocol
@@ -112,12 +124,17 @@ func (request *Request) GetID() string {
 }
 
 // ExecuteWithResults executes the protocol requests and returns results instead of writing them.
-func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicValues, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
+func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicValues, previous output.InternalEvent, callback protocols.OutputEventCallback) (err error) {
 	metaSrc, err := gozero.NewSourceWithString(input.MetaInput.Input, "")
 	if err != nil {
 		return err
 	}
 	defer func() {
+		// catch any panics just in case
+		if r := recover(); r != nil {
+			gologger.Error().Msgf("[%s] Panic occurred in code protocol: %s\n", request.options.TemplateID, r)
+			err = fmt.Errorf("panic occurred: %s", r)
+		}
 		if err := metaSrc.Cleanup(); err != nil {
 			gologger.Warning().Msgf("%s\n", err)
 		}
@@ -125,31 +142,51 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 
 	var interactshURLs []string
 
-	// inject all template context values as gozero env variables
-	variables := protocolutils.GenerateVariables(input.MetaInput.Input, false, nil)
-	// add template context values
-	variables = generators.MergeMaps(variables, request.options.GetTemplateCtx(input.MetaInput).GetAll())
+	// inject all template context values as gozero env allvars
+	allvars := protocolutils.GenerateVariables(input.MetaInput.Input, false, nil)
+	// add template context values if available
+	if request.options.HasTemplateCtx(input.MetaInput) {
+		allvars = generators.MergeMaps(allvars, request.options.GetTemplateCtx(input.MetaInput).GetAll())
+	}
 	// optionvars are vars passed from CLI or env variables
 	optionVars := generators.BuildPayloadFromOptions(request.options.Options)
-	variablesMap := request.options.Variables.Evaluate(variables)
-	variables = generators.MergeMaps(variablesMap, variables, optionVars, request.options.Constants)
-	for name, value := range variables {
+	variablesMap := request.options.Variables.Evaluate(allvars)
+	// since we evaluate variables using allvars, give precedence to variablesMap
+	allvars = generators.MergeMaps(allvars, variablesMap, optionVars, request.options.Constants)
+	for name, value := range allvars {
 		v := fmt.Sprint(value)
 		v, interactshURLs = request.options.Interactsh.Replace(v, interactshURLs)
+		// if value is updated by interactsh, update allvars to reflect the change downstream
+		allvars[name] = v
 		metaSrc.AddVariable(gozerotypes.Variable{Name: name, Value: v})
 	}
-	gOutput, err := request.gozero.Eval(context.Background(), request.src, metaSrc)
-	if err != nil {
-		return err
+	timeout := TimeoutMultiplier * request.options.Options.Timeout
+	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(timeout)*time.Second)
+	defer cancel()
+	// Note: we use contextutil despite the fact that gozero accepts context as argument
+	gOutput, err := contextutil.ExecFuncWithTwoReturns(ctx, func() (*gozerotypes.Result, error) {
+		return request.gozero.Eval(ctx, request.src, metaSrc)
+	})
+	if gOutput == nil {
+		// write error to stderr buff
+		var buff bytes.Buffer
+		if err != nil {
+			buff.WriteString(err.Error())
+		} else {
+			buff.WriteString("no output something went wrong")
+		}
+		gOutput = &gozerotypes.Result{
+			Stderr: buff,
+		}
 	}
 	gologger.Verbose().Msgf("[%s] Executed code on local machine %v", request.options.TemplateID, input.MetaInput.Input)
 
 	if vardump.EnableVarDump {
-		gologger.Debug().Msgf("Code Protocol request variables: \n%s\n", vardump.DumpVariables(variables))
+		gologger.Debug().Msgf("Code Protocol request variables: \n%s\n", vardump.DumpVariables(allvars))
 	}
 
 	if request.options.Options.Debug || request.options.Options.DebugRequests {
-		gologger.Debug().Msgf("[%s] Dumped Executed Source Code for %v\n\n%v\n", request.options.TemplateID, input.MetaInput.Input, request.Source)
+		gologger.Debug().Msgf("[%s] Dumped Executed Source Code for %v\n\n%v\n", request.options.TemplateID, input.MetaInput.Input, interpretEnvVars(request.Source, allvars))
 	}
 
 	dataOutputString := fmtStdout(gOutput.Stdout.String())
@@ -171,7 +208,9 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 	request.options.AddTemplateVars(input.MetaInput, request.Type(), request.ID, data)
 
 	// add variables from template context before matching/extraction
-	data = generators.MergeMaps(data, request.options.GetTemplateCtx(input.MetaInput).GetAll())
+	if request.options.HasTemplateCtx(input.MetaInput) {
+		data = generators.MergeMaps(data, request.options.GetTemplateCtx(input.MetaInput).GetAll())
+	}
 
 	if request.options.Interactsh != nil {
 		request.options.Interactsh.MakePlaceholders(interactshURLs, data)
@@ -271,4 +310,25 @@ func (request *Request) MakeResultEventItem(wrapped *output.InternalWrappedEvent
 
 func fmtStdout(data string) string {
 	return strings.Trim(data, " \n\r\t")
+}
+
+// interpretEnvVars replaces environment variables in the input string
+func interpretEnvVars(source string, vars map[string]interface{}) string {
+	// bash mode
+	if strings.Contains(source, "$") {
+		for k, v := range vars {
+			source = strings.ReplaceAll(source, "$"+k, fmt.Sprintf("'%s'", v))
+		}
+	}
+	// python mode
+	if strings.Contains(source, "os.getenv") {
+		matches := pythonEnvRegexCompiled.FindAllStringSubmatch(source, -1)
+		for _, match := range matches {
+			if len(match) == 0 {
+				continue
+			}
+			source = strings.ReplaceAll(source, fmt.Sprintf("os.getenv('%s')", match), fmt.Sprintf("'%s'", vars[match[0]]))
+		}
+	}
+	return source
 }

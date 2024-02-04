@@ -22,6 +22,7 @@ dns:
       - type: word
         words:
           - "IN\tNS"
+        internal: true
     extractors:
       - type: regex
         internal: true

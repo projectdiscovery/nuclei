@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"net/http/httputil"
 	"strconv"
 	"strings"
 	"sync"
@@ -32,19 +31,24 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/interactsh"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/tostring"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http/httpclientpool"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http/httputils"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http/signer"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http/signerpool"
+	protocolutil "github.com/projectdiscovery/nuclei/v3/pkg/protocols/utils"
 	templateTypes "github.com/projectdiscovery/nuclei/v3/pkg/templates/types"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	"github.com/projectdiscovery/rawhttp"
 	"github.com/projectdiscovery/retryablehttp-go"
+	convUtil "github.com/projectdiscovery/utils/conversion"
 	"github.com/projectdiscovery/utils/reader"
 	sliceutil "github.com/projectdiscovery/utils/slice"
 	stringsutil "github.com/projectdiscovery/utils/strings"
 	urlutil "github.com/projectdiscovery/utils/url"
 )
 
-const defaultMaxWorkers = 150
+const (
+	defaultMaxWorkers = 150
+)
 
 // Type returns the type of the protocol request
 func (request *Request) Type() templateTypes.ProtocolType {
@@ -313,6 +317,7 @@ func (request *Request) executeFuzzingRule(input *contextargs.Context, previous 
 			generatedRequest = generated.request
 			dynamicValues = generated.dynamicValues
 		}
+		input.MetaInput = &contextargs.MetaInput{Input: generatedRequest.URL.String()}
 		for _, rule := range request.Fuzzing {
 			err := rule.Execute(&fuzz.ExecuteRuleInput{
 				Input:       input,
@@ -347,14 +352,14 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 		return request.executeRaceRequest(input, dynamicValues, callback)
 	}
 
-	// verify if parallel elaboration was requested
-	if request.Threads > 0 {
-		return request.executeParallelHTTP(input, dynamicValues, callback)
-	}
-
 	// verify if fuzz elaboration was requested
 	if len(request.Fuzzing) > 0 {
 		return request.executeFuzzingRule(input, dynamicValues, callback)
+	}
+
+	// verify if parallel elaboration was requested
+	if request.Threads > 0 {
+		return request.executeParallelHTTP(input, dynamicValues, callback)
 	}
 
 	generator := request.newGenerator(false)
@@ -406,7 +411,7 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 						MatchFunc:      request.Match,
 						ExtractFunc:    request.Extract,
 					}
-					allOASTUrls := getInteractshURLsFromEvent(event.InternalEvent)
+					allOASTUrls := httputils.GetInteractshURLSFromEvent(event.InternalEvent)
 					allOASTUrls = append(allOASTUrls, generatedHttpRequest.interactshURLs...)
 					request.options.Interactsh.RequestEvent(sliceutil.Dedupe(allOASTUrls), requestData)
 					gotMatches = request.options.Interactsh.AlreadyMatched(requestData)
@@ -486,11 +491,12 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 		finalMap["ip"] = input.MetaInput.CustomIP
 	}
 
-	for payloadName, payloadValue := range generatedRequest.dynamicValues {
-		if data, err := expressions.Evaluate(types.ToString(payloadValue), finalMap); err == nil {
-			generatedRequest.dynamicValues[payloadName] = data
-		}
-	}
+	// we should never evaluate all variables of a template
+	// for payloadName, payloadValue := range generatedRequest.dynamicValues {
+	// 	if data, err := expressions.Evaluate(types.ToString(payloadValue), finalMap); err == nil {
+	// 		generatedRequest.dynamicValues[payloadName] = data
+	// 	}
+	// }
 	for payloadName, payloadValue := range generatedRequest.meta {
 		if data, err := expressions.Evaluate(types.ToString(payloadValue), finalMap); err == nil {
 			generatedRequest.meta[payloadName] = data
@@ -656,6 +662,10 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 			}
 		}
 	}
+	// global wrap response body reader
+	if resp != nil && resp.Body != nil {
+		resp.Body = protocolutil.NewLimitResponseBody(resp.Body)
+	}
 	if err != nil {
 		// rawhttp doesn't support draining response bodies.
 		if resp != nil && resp.Body != nil && generatedRequest.rawRequest == nil && !generatedRequest.original.Pipeline {
@@ -686,12 +696,6 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 		callback(event)
 		return err
 	}
-	defer func() {
-		if resp.StatusCode != http.StatusSwitchingProtocols {
-			_, _ = io.CopyN(io.Discard, resp.Body, drainReqSize)
-		}
-		resp.Body.Close()
-	}()
 
 	var curlCommand string
 	if !request.Unsafe && resp != nil && generatedRequest.request != nil && resp.Request != nil && !request.Race {
@@ -707,55 +711,39 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 	request.options.Output.Request(request.options.TemplatePath, formedURL, request.Type().String(), err)
 
 	duration := time.Since(timeStart)
-
-	dumpedResponseHeaders, err := httputil.DumpResponse(resp, false)
-	if err != nil {
-		return errors.Wrap(err, "could not dump http response")
+	// define max body read limit
+	maxBodylimit := -1 // stick to default 4MB
+	if request.MaxSize > 0 {
+		maxBodylimit = request.MaxSize
+	} else if request.options.Options.ResponseReadSize != 0 {
+		maxBodylimit = request.options.Options.ResponseReadSize
 	}
 
-	var dumpedResponse []redirectedResponse
-	var gotData []byte
-	// If the status code is HTTP 101, we should not proceed with reading body.
-	if resp.StatusCode != http.StatusSwitchingProtocols {
-		var bodyReader io.Reader
-		if request.MaxSize != 0 {
-			bodyReader = io.LimitReader(resp.Body, int64(request.MaxSize))
-		} else if request.options.Options.ResponseReadSize != 0 {
-			bodyReader = io.LimitReader(resp.Body, int64(request.options.Options.ResponseReadSize))
-		} else {
-			bodyReader = resp.Body
-		}
-		data, err := io.ReadAll(bodyReader)
-		if err != nil {
-			// Ignore body read due to server misconfiguration errors
-			if stringsutil.ContainsAny(err.Error(), "gzip: invalid header") {
-				gologger.Warning().Msgf("[%s] Server sent an invalid gzip header and it was not possible to read the uncompressed body for %s: %s", request.options.TemplateID, formedURL, err.Error())
-			} else if !stringsutil.ContainsAny(err.Error(), "unexpected EOF", "user canceled") { // ignore EOF and random error
-				return errors.Wrap(err, "could not read http body")
+	// respChain is http response chain that reads response body
+	// efficiently by reusing buffers and does all decoding and optimizations
+	respChain := httputils.NewResponseChain(resp, int64(maxBodylimit))
+	defer respChain.Close() // reuse buffers
+
+	// we only intend to log/save the final redirected response
+	// i.e why we have to use sync.Once to ensure it's only done once
+	var errx error
+	onceFunc := sync.OnceFunc(func() {
+		// if nuclei-project is enabled store the response if not previously done
+		if request.options.ProjectFile != nil && !fromCache {
+			if err := request.options.ProjectFile.Set(dumpedRequest, resp, respChain.Body().Bytes()); err != nil {
+				errx = errors.Wrap(err, "could not store in project file")
 			}
 		}
-		gotData = data
-		resp.Body.Close()
+	})
 
-		dumpedResponse, err = dumpResponseWithRedirectChain(resp, data)
-		if err != nil {
-			return errors.Wrap(err, "could not read http response with redirect chain")
+	// evaluate responses continiously until first redirect request in reverse order
+	for respChain.Has() {
+		// fill buffers, read response body and reuse connection
+		if err := respChain.Fill(); err != nil {
+			return errors.Wrap(err, "could not generate response chain")
 		}
-	} else {
-		dumpedResponse = []redirectedResponse{{resp: resp, fullResponse: dumpedResponseHeaders, headers: dumpedResponseHeaders}}
-	}
-
-	// if nuclei-project is enabled store the response if not previously done
-	if request.options.ProjectFile != nil && !fromCache {
-		if err := request.options.ProjectFile.Set(dumpedRequest, resp, gotData); err != nil {
-			return errors.Wrap(err, "could not store in project file")
-		}
-	}
-
-	for _, response := range dumpedResponse {
-		if response.resp == nil {
-			continue // Skip nil responses
-		}
+		// save response to projectfile
+		onceFunc()
 		matchedURL := input.MetaInput.Input
 		if generatedRequest.rawRequest != nil {
 			if generatedRequest.rawRequest.FullURL != "" {
@@ -768,17 +756,19 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 			matchedURL = generatedRequest.request.URL.String()
 		}
 		// Give precedence to the final URL from response
-		if response.resp.Request != nil {
-			if responseURL := response.resp.Request.URL.String(); responseURL != "" {
+		if respChain.Request() != nil {
+			if responseURL := respChain.Request().URL.String(); responseURL != "" {
 				matchedURL = responseURL
 			}
 		}
 		finalEvent := make(output.InternalEvent)
 
-		outputEvent := request.responseToDSLMap(response.resp, input.MetaInput.Input, matchedURL, tostring.UnsafeToString(dumpedRequest), tostring.UnsafeToString(response.fullResponse), tostring.UnsafeToString(response.body), tostring.UnsafeToString(response.headers), duration, generatedRequest.meta)
+		outputEvent := request.responseToDSLMap(respChain.Response(), input.MetaInput.Input, matchedURL, convUtil.String(dumpedRequest), respChain.FullResponse().String(), respChain.Body().String(), respChain.Headers().String(), duration, generatedRequest.meta)
 		// add response fields to template context and merge templatectx variables to output event
 		request.options.AddTemplateVars(input.MetaInput, request.Type(), request.ID, outputEvent)
-		outputEvent = generators.MergeMaps(outputEvent, request.options.GetTemplateCtx(input.MetaInput).GetAll())
+		if request.options.HasTemplateCtx(input.MetaInput) {
+			outputEvent = generators.MergeMaps(outputEvent, request.options.GetTemplateCtx(input.MetaInput).GetAll())
+		}
 		if i := strings.LastIndex(hostname, ":"); i != -1 {
 			hostname = hostname[:i]
 		}
@@ -818,9 +808,9 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 			event.UsesInteractsh = true
 		}
 
-		responseContentType := resp.Header.Get("Content-Type")
-		isResponseTruncated := request.MaxSize > 0 && len(gotData) >= request.MaxSize
-		dumpResponse(event, request, response.fullResponse, formedURL, responseContentType, isResponseTruncated, input.MetaInput.Input)
+		responseContentType := respChain.Response().Header.Get("Content-Type")
+		isResponseTruncated := request.MaxSize > 0 && respChain.Body().Len() >= request.MaxSize
+		dumpResponse(event, request, respChain.FullResponse().Bytes(), formedURL, responseContentType, isResponseTruncated, input.MetaInput.Input)
 
 		callback(event)
 
@@ -828,8 +818,15 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 		if (request.options.Options.StopAtFirstMatch || request.options.StopAtFirstMatch || request.StopAtFirstMatch) && event.HasResults() {
 			return nil
 		}
+		// proceed with previous response
+		// we evaluate operators recursively for each response
+		// until we reach the first redirect response
+		if !respChain.Previous() {
+			break
+		}
 	}
-	return nil
+	// return project file save error if any
+	return errx
 }
 
 // handleSignature of the http request

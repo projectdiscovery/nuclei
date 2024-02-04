@@ -4,6 +4,7 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strconv"
 	"strings"
 	"sync"
@@ -18,9 +19,11 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/expressions"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/generators"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/utils/vardump"
 	protocolutils "github.com/projectdiscovery/nuclei/v3/pkg/protocols/utils"
 	httputil "github.com/projectdiscovery/nuclei/v3/pkg/protocols/utils/http"
+	contextutil "github.com/projectdiscovery/utils/context"
 	errorutil "github.com/projectdiscovery/utils/errors"
 	fileutil "github.com/projectdiscovery/utils/file"
 	folderutil "github.com/projectdiscovery/utils/folder"
@@ -41,13 +44,33 @@ const (
 )
 
 // ExecuteActions executes a list of actions on a page.
-func (p *Page) ExecuteActions(input *contextargs.Context, actions []*Action, variables map[string]interface{}) (map[string]string, error) {
-	outData := make(map[string]string)
-	var err error
+func (p *Page) ExecuteActions(input *contextargs.Context, actions []*Action, variables map[string]interface{}) (outData map[string]string, err error) {
+	outData = make(map[string]string)
+	// waitFuncs are function that needs to be executed after navigation
+	// typically used for waitEvent
+	waitFuncs := make([]func() error, 0)
+
+	// avoid any future panics caused due to go-rod library
+	defer func() {
+		if r := recover(); r != nil {
+			err = errorutil.New("panic on headless action: %v", r)
+		}
+	}()
+
 	for _, act := range actions {
 		switch act.ActionType.ActionType {
 		case ActionNavigate:
 			err = p.NavigateURL(act, outData, variables)
+			if err == nil {
+				// if navigation successful trigger all waitFuncs (if any)
+				for _, waitFunc := range waitFuncs {
+					if waitFunc != nil {
+						if err := waitFunc(); err != nil {
+							return nil, errorutil.NewWithErr(err).Msgf("error occurred while executing waitFunc")
+						}
+					}
+				}
+			}
 		case ActionScript:
 			err = p.RunScript(act, outData)
 		case ActionClick:
@@ -69,7 +92,11 @@ func (p *Page) ExecuteActions(input *contextargs.Context, actions []*Action, var
 		case ActionExtract:
 			err = p.ExtractElement(act, outData)
 		case ActionWaitEvent:
-			err = p.WaitEvent(act, outData)
+			var waitFunc func() error
+			waitFunc, err = p.WaitEvent(act, outData)
+			if waitFunc != nil {
+				waitFuncs = append(waitFuncs, waitFunc)
+			}
 		case ActionFilesInput:
 			if p.options.Options.AllowLocalFileAccess {
 				err = p.FilesInput(act, outData)
@@ -369,6 +396,24 @@ func (p *Page) Screenshot(act *Action, out map[string]string) error {
 	if err != nil {
 		return errors.Wrap(err, "could not take screenshot")
 	}
+	targetPath := p.getActionArgWithDefaultValues(act, "to")
+	targetPath, err = fileutil.CleanPath(targetPath)
+	if err != nil {
+		return errorutil.New("could not clean output screenshot path %s", targetPath)
+	}
+	// allow if targetPath is child of current working directory
+	if !protocolstate.IsLFAAllowed() {
+		cwd, err := os.Getwd()
+		if err != nil {
+			return errorutil.NewWithErr(err).Msgf("could not get current working directory")
+		}
+		if !strings.HasPrefix(targetPath, cwd) {
+			// writing outside of cwd requires -lfa flag
+			return ErrLFAccessDenied
+		}
+	}
+
+	// edgecase create directory if mkdir=true and path contains directory
 	if p.getActionArgWithDefaultValues(act, "mkdir") == "true" && stringsutil.ContainsAny(to, folderutil.UnixPathSeparator, folderutil.WindowsPathSeparator) {
 		// creates new directory if needed based on path `to`
 		// TODO: replace all permission bits with fileutil constants (https://github.com/projectdiscovery/utils/issues/113)
@@ -376,8 +421,10 @@ func (p *Page) Screenshot(act *Action, out map[string]string) error {
 			return errorutil.NewWithErr(err).Msgf("failed to create directory while writing screenshot")
 		}
 	}
-	filePath := to
-	if !strings.HasSuffix(to, ".png") {
+
+	// actual file path to write
+	filePath := targetPath
+	if !strings.HasSuffix(filePath, ".png") {
 		filePath += ".png"
 	}
 
@@ -541,38 +588,43 @@ func (p *Page) ExtractElement(act *Action, out map[string]string) error {
 	return nil
 }
 
-type protoEvent struct {
-	event string
-}
-
-// ProtoEvent returns the cdp.Event.Method
-func (p *protoEvent) ProtoEvent() string {
-	return p.event
-}
-
 // WaitEvent waits for an event to happen on the page.
-func (p *Page) WaitEvent(act *Action, out map[string]string /*TODO review unused parameter*/) error {
+func (p *Page) WaitEvent(act *Action, out map[string]string /*TODO review unused parameter*/) (func() error, error) {
 	event := p.getActionArgWithDefaultValues(act, "event")
 	if event == "" {
-		return errors.New("event not recognized")
+		return nil, errors.New("event not recognized")
 	}
-	protoEvent := &protoEvent{event: event}
 
-	// Uses another instance in order to be able to chain the timeout only to the wait operation
-	pageCopy := p.page
-	timeout := p.getActionArg(act, "timeout")
-	if timeout != "" {
-		ts, err := strconv.Atoi(timeout)
+	var waitEvent proto.Event
+	gotType := proto.GetType(event)
+	if gotType == nil {
+		return nil, errorutil.New("event %v does not exist", event)
+	}
+	tmp, ok := reflect.New(gotType).Interface().(proto.Event)
+	if !ok {
+		return nil, errorutil.New("event %v is not a page event", event)
+	}
+	waitEvent = tmp
+	maxDuration := 10 * time.Second // 10 sec is max wait duration for any event
+
+	// allow user to specify max-duration for wait-event
+	if value := p.getActionArgWithDefaultValues(act, "max-duration"); value != "" {
+		var err error
+		maxDuration, err = time.ParseDuration(value)
 		if err != nil {
-			return errors.Wrap(err, "could not get timeout")
-		}
-		if ts > 0 {
-			pageCopy = p.page.Timeout(time.Duration(ts) * time.Second)
+			return nil, errorutil.NewWithErr(err).Msgf("could not parse max-duration")
 		}
 	}
+
 	// Just wait the event to happen
-	pageCopy.WaitEvent(protoEvent)()
-	return nil
+	waitFunc := func() (err error) {
+		// execute actual wait event
+		ctx, cancel := context.WithTimeout(context.Background(), maxDuration)
+		defer cancel()
+		err = contextutil.ExecFunc(ctx, p.page.WaitEvent(waitEvent))
+		return
+	}
+	return waitFunc, nil
 }
 
 // pageElementBy returns a page element from a variety of inputs.
@@ -641,10 +693,6 @@ func selectorBy(selector string) rod.SelectorType {
 	default:
 		return rod.SelectorTypeText
 	}
-}
-
-func (p *Page) getActionArg(action *Action, arg string) string {
-	return p.getActionArgWithValues(action, arg, nil)
 }
 
 func (p *Page) getActionArgWithDefaultValues(action *Action, arg string) string {

@@ -5,6 +5,8 @@ import (
 	"time"
 
 	"github.com/projectdiscovery/gologger"
+	"github.com/projectdiscovery/ratelimit"
+
 	"github.com/projectdiscovery/nuclei/v3/pkg/model/types/severity"
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
 	"github.com/projectdiscovery/nuclei/v3/pkg/progress"
@@ -13,7 +15,6 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/utils/vardump"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/headless/engine"
 	"github.com/projectdiscovery/nuclei/v3/pkg/templates/types"
-	"github.com/projectdiscovery/ratelimit"
 )
 
 // TemplateSources contains template sources
@@ -220,12 +221,16 @@ func WithVerbosity(opts VerbosityOptions) NucleiSDKOptions {
 // NetworkConfig contains network config options
 // ex: retries , httpx probe , timeout etc
 type NetworkConfig struct {
-	Timeout           int      // Timeout in seconds
-	Retries           int      // Number of retries
-	LeaveDefaultPorts bool     // Leave default ports for http/https
-	MaxHostError      int      // Maximum number of host errors to allow before skipping that host
-	TrackError        []string // Adds given errors to max host error watchlist
-	DisableMaxHostErr bool     // Disable max host error optimization (Hosts are not skipped even if they are not responding)
+	DisableMaxHostErr     bool     // Disable max host error optimization (Hosts are not skipped even if they are not responding)
+	Interface             string   // Interface to use for network scan
+	InternalResolversList []string // Use a list of resolver
+	LeaveDefaultPorts     bool     // Leave default ports for http/https
+	MaxHostError          int      // Maximum number of host errors to allow before skipping that host
+	Retries               int      // Number of retries
+	SourceIP              string   // SourceIP sets custom source IP address for network requests
+	SystemResolvers       bool     // Use system resolvers
+	Timeout               int      // Timeout in seconds
+	TrackError            []string // Adds given errors to max host error watchlist
 }
 
 // WithNetworkConfig allows setting network config options
@@ -238,6 +243,10 @@ func WithNetworkConfig(opts NetworkConfig) NucleiSDKOptions {
 		e.opts.Retries = opts.Retries
 		e.opts.LeaveDefaultPorts = opts.LeaveDefaultPorts
 		e.hostErrCache = hosterrorscache.New(opts.MaxHostError, hosterrorscache.DefaultMaxHostsCount, opts.TrackError)
+		e.opts.Interface = opts.Interface
+		e.opts.SourceIP = opts.SourceIP
+		e.opts.SystemResolvers = opts.SystemResolvers
+		e.opts.InternalResolversList = opts.InternalResolversList
 		return nil
 	}
 }
@@ -324,6 +333,22 @@ func WithSandboxOptions(allowLocalFileAccess bool, restrictLocalNetworkAccess bo
 func EnableCodeTemplates() NucleiSDKOptions {
 	return func(e *NucleiEngine) error {
 		e.opts.EnableCodeTemplates = true
+		return nil
+	}
+}
+
+// WithHeaders allows setting custom header/cookie to include in all http request in header:value format
+func WithHeaders(headers []string) NucleiSDKOptions {
+	return func(e *NucleiEngine) error {
+		e.opts.CustomHeaders = headers
+		return nil
+	}
+}
+
+// EnablePassiveMode allows enabling passive HTTP response processing mode
+func EnablePassiveMode() NucleiSDKOptions {
+	return func(e *NucleiEngine) error {
+		e.opts.OfflineHTTP = true
 		return nil
 	}
 }

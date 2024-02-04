@@ -9,8 +9,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/corpix/uarand"
 	"github.com/pkg/errors"
+	"github.com/projectdiscovery/useragent"
 
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
@@ -76,7 +76,10 @@ func (r *requestGenerator) Make(ctx context.Context, input *contextargs.Context,
 
 	// add template context values to dynamicValues (this takes care of self-contained and other types of requests)
 	// Note: `iterate-all` and flow are mutually exclusive. flow uses templateCtx and iterate-all uses dynamicValues
-	dynamicValues = generators.MergeMaps(dynamicValues, r.request.options.GetTemplateCtx(input.MetaInput).GetAll())
+	if r.request.options.HasTemplateCtx(input.MetaInput) {
+		// skip creating template context if not available
+		dynamicValues = generators.MergeMaps(dynamicValues, r.request.options.GetTemplateCtx(input.MetaInput).GetAll())
+	}
 	if r.request.SelfContained {
 		return r.makeSelfContainedRequest(ctx, reqData, payloads, dynamicValues)
 	}
@@ -378,7 +381,8 @@ func (r *requestGenerator) fillRequest(req *retryablehttp.Request, values map[st
 		req.Body = bodyReader
 	}
 	if !r.request.Unsafe {
-		httputil.SetHeader(req, "User-Agent", uarand.GetRandom())
+		userAgent := useragent.PickRandom()
+		httputil.SetHeader(req, "User-Agent", userAgent.Raw)
 	}
 
 	// Only set these headers on non-raw requests

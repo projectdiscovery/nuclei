@@ -10,6 +10,7 @@ import (
 	"os"
 	"runtime"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/DataDog/gostackparse"
@@ -20,28 +21,44 @@ import (
 
 // Agent is an agent for monitoring hanging programs
 type Agent struct {
-	cancel    context.CancelFunc
 	lastStack []string
+	callbacks []Callback
 
 	goroutineCount   int
 	currentIteration int // number of times we've checked hang
+
+	lock sync.Mutex
 }
 
 const defaultMonitorIteration = 6
 
 // NewStackMonitor returns a new stack monitor instance
-func NewStackMonitor(interval time.Duration) context.CancelFunc {
+func NewStackMonitor() *Agent {
+	return &Agent{}
+}
+
+// Callback when crash is detected and stack trace is saved to disk
+type Callback func(dumpID string) error
+
+// RegisterCallback adds a callback to perform additional operations before bailing out.
+func (s *Agent) RegisterCallback(callback Callback) {
+	s.lock.Lock()
+	defer s.lock.Unlock()
+
+	s.callbacks = append(s.callbacks, callback)
+}
+
+func (s *Agent) Start(interval time.Duration) context.CancelFunc {
 	ctx, cancel := context.WithCancel(context.Background())
 	ticker := time.NewTicker(interval)
 
-	monitor := &Agent{cancel: cancel}
 	go func() {
 		for {
 			select {
 			case <-ctx.Done():
 				ticker.Stop()
 			case <-ticker.C:
-				monitor.monitorWorker()
+				s.monitorWorker(cancel)
 			default:
 				continue
 			}
@@ -51,7 +68,7 @@ func NewStackMonitor(interval time.Duration) context.CancelFunc {
 }
 
 // monitorWorker is a worker for monitoring running goroutines
-func (s *Agent) monitorWorker() {
+func (s *Agent) monitorWorker(cancel context.CancelFunc) {
 	current := runtime.NumGoroutine()
 	if current != s.goroutineCount {
 		s.goroutineCount = current
@@ -77,12 +94,24 @@ func (s *Agent) monitorWorker() {
 			s.currentIteration = 0
 			return
 		}
-		s.cancel()
-		stackTraceFile := fmt.Sprintf("nuclei-stacktrace-%s.dump", xid.New().String())
+
+		cancel()
+		dumpID := xid.New().String()
+		stackTraceFile := fmt.Sprintf("nuclei-stacktrace-%s.dump", dumpID)
 		gologger.Error().Msgf("Detected hanging goroutine (count=%d/%d) = %s\n", current, s.goroutineCount, stackTraceFile)
 		if err := os.WriteFile(stackTraceFile, currentStack, permissionutil.ConfigFilePermission); err != nil {
 			gologger.Error().Msgf("Could not write stack trace for goroutines: %s\n", err)
 		}
+
+		s.lock.Lock()
+		callbacks := s.callbacks
+		s.lock.Unlock()
+		for _, callback := range callbacks {
+			if err := callback(dumpID); err != nil {
+				gologger.Error().Msgf("Stack monitor callback error: %s\n", err)
+			}
+		}
+
 		os.Exit(1) // exit forcefully if we've been stuck
 	}
 }

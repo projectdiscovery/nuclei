@@ -6,10 +6,13 @@ import (
 	"fmt"
 	"net"
 	"net/url"
+	"os"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/pkg/errors"
+	"github.com/remeh/sizedwaitgroup"
 	"go.uber.org/multierr"
 	"golang.org/x/exp/maps"
 
@@ -135,7 +138,9 @@ func (request *Request) executeOnTarget(input *contextargs.Context, visited maps
 	}
 	variables := protocolutils.GenerateVariables(address, false, nil)
 	// add template ctx variables to varMap
-	variables = generators.MergeMaps(variables, request.options.GetTemplateCtx(input.MetaInput).GetAll())
+	if request.options.HasTemplateCtx(input.MetaInput) {
+		variables = generators.MergeMaps(variables, request.options.GetTemplateCtx(input.MetaInput).GetAll())
+	}
 	variablesMap := request.options.Variables.Evaluate(variables)
 	variables = generators.MergeMaps(variablesMap, variables, request.options.Constants)
 
@@ -171,6 +176,9 @@ func (request *Request) executeAddress(variables map[string]interface{}, actualA
 
 	if request.generator != nil {
 		iterator := request.generator.NewIterator()
+		var multiErr error
+		m := &sync.Mutex{}
+		swg := sizedwaitgroup.New(request.Threads)
 
 		for {
 			value, ok := iterator.Value()
@@ -178,9 +186,19 @@ func (request *Request) executeAddress(variables map[string]interface{}, actualA
 				break
 			}
 			value = generators.MergeMaps(value, payloads)
-			if err := request.executeRequestWithPayloads(variables, actualAddress, address, input, shouldUseTLS, value, previous, callback); err != nil {
-				return err
-			}
+			swg.Add()
+			go func(vars map[string]interface{}) {
+				defer swg.Done()
+				if err := request.executeRequestWithPayloads(variables, actualAddress, address, input, shouldUseTLS, vars, previous, callback); err != nil {
+					m.Lock()
+					multiErr = multierr.Append(multiErr, err)
+					m.Unlock()
+				}
+			}(value)
+		}
+		swg.Wait()
+		if multiErr != nil {
+			return multiErr
 		}
 	} else {
 		value := maps.Clone(payloads)
@@ -265,7 +283,7 @@ func (request *Request) executeRequestWithPayloads(variables map[string]interfac
 		}
 
 		if input.Read > 0 {
-			buffer, err := reader.ConnReadNWithTimeout(conn, int64(input.Read), DefaultReadTimeout)
+			buffer, err := ConnReadNWithTimeout(conn, int64(input.Read), DefaultReadTimeout)
 			if err != nil {
 				return errorutil.NewWithErr(err).Msgf("could not read response from connection")
 			}
@@ -315,7 +333,7 @@ func (request *Request) executeRequestWithPayloads(variables map[string]interfac
 		bufferSize = -1
 	}
 
-	final, err := reader.ConnReadNWithTimeout(conn, int64(bufferSize), DefaultReadTimeout)
+	final, err := ConnReadNWithTimeout(conn, int64(bufferSize), DefaultReadTimeout)
 	if err != nil {
 		request.options.Output.Request(request.options.TemplatePath, address, request.Type().String(), err)
 		return errors.Wrap(err, "could not read from server")
@@ -326,7 +344,9 @@ func (request *Request) executeRequestWithPayloads(variables map[string]interfac
 	outputEvent := request.responseToDSLMap(reqBuilder.String(), string(final), response, input.MetaInput.Input, actualAddress)
 	// add response fields to template context and merge templatectx variables to output event
 	request.options.AddTemplateVars(input.MetaInput, request.Type(), request.ID, outputEvent)
-	outputEvent = generators.MergeMaps(outputEvent, request.options.GetTemplateCtx(input.MetaInput).GetAll())
+	if request.options.HasTemplateCtx(input.MetaInput) {
+		outputEvent = generators.MergeMaps(outputEvent, request.options.GetTemplateCtx(input.MetaInput).GetAll())
+	}
 	outputEvent["ip"] = request.dialer.GetDialedIP(hostname)
 	if request.options.StopAtFirstMatch {
 		outputEvent["stop-at-first-match"] = true
@@ -411,4 +431,28 @@ func getAddress(toTest string) (string, error) {
 		toTest = parsed.Host
 	}
 	return toTest, nil
+}
+
+func ConnReadNWithTimeout(conn net.Conn, n int64, timeout time.Duration) ([]byte, error) {
+	if timeout == 0 {
+		timeout = DefaultReadTimeout
+	}
+	if n == -1 {
+		// if n is -1 then read all available data from connection
+		return reader.ConnReadNWithTimeout(conn, -1, timeout)
+	} else if n == 0 {
+		n = 4096 // default buffer size
+	}
+	b := make([]byte, n)
+	_ = conn.SetDeadline(time.Now().Add(timeout))
+	count, err := conn.Read(b)
+	_ = conn.SetDeadline(time.Time{})
+	if err != nil && os.IsTimeout(err) && count > 0 {
+		// in case of timeout with some value read, return the value
+		return b[:count], nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	return b[:count], nil
 }
