@@ -7,6 +7,7 @@ import (
 	"time"
 )
 
+// DecodeSID decodes a SID string
 func DecodeSID(s string) string {
 	b := []byte(s)
 	revisionLvl := int(b[0])
@@ -39,6 +40,7 @@ func DecodeSID(s string) string {
 	return builder.String()
 }
 
+// DecodeADTimestamp decodes an Active Directory timestamp
 func DecodeADTimestamp(timestamp string) string {
 	adtime, _ := strconv.ParseInt(timestamp, 10, 64)
 	if (adtime == 9223372036854775807) || (adtime == 0) {
@@ -49,6 +51,8 @@ func DecodeADTimestamp(timestamp string) string {
 	return unixtime.Format("2006-01-02 3:4:5 pm")
 }
 
+// DecodeZuluTimestamp decodes a Zulu timestamp
+// example: 2021-08-25T14:00:00Z
 func DecodeZuluTimestamp(timestamp string) string {
 	zulu, err := time.Parse(time.RFC3339, timestamp)
 	if err != nil {
