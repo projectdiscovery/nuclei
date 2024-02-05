@@ -15,22 +15,25 @@ func init() {
 	module.Set(
 		gojs.Objects{
 			// Functions
-			"Client": lib_kerberos.NewKerberosClient,
+			"ASRepToHashcat":              lib_kerberos.ASRepToHashcat,
+			"CheckKrbError":               lib_kerberos.CheckKrbError,
+			"NewKerberosClient":           lib_kerberos.NewKerberosClient,
+			"NewKerberosClientFromString": lib_kerberos.NewKerberosClientFromString,
+			"SendToKDC":                   lib_kerberos.SendToKDC,
+			"TGStoHashcat":                lib_kerberos.TGStoHashcat,
 
 			// Var and consts
 
 			// Types (value type)
-			// "Client":                func() lib_kerberos.Client { return lib_kerberos.Client{} },
+			"Client":                lib_kerberos.NewKerberosClient,
 			"EnumerateUserResponse": func() lib_kerberos.EnumerateUserResponse { return lib_kerberos.EnumerateUserResponse{} },
-			"KerberosClient":        func() lib_kerberos.KerberosClient { return lib_kerberos.KerberosClient{} },
-			"ServiceOptions":        func() lib_kerberos.ServiceOptions { return lib_kerberos.ServiceOptions{} },
 			"TGS":                   func() lib_kerberos.TGS { return lib_kerberos.TGS{} },
+			"Config":                func() lib_kerberos.Config { return lib_kerberos.Config{} },
 
 			// Types (pointer type)
-			"NewClient":                func() *lib_kerberos.Client { return &lib_kerberos.Client{} },
-			"NewEnumerateUserResponse": func() *lib_kerberos.EnumerateUserResponse { return &lib_kerberos.EnumerateUserResponse{} },
-			"NewServiceOptions":        func() *lib_kerberos.ServiceOptions { return &lib_kerberos.ServiceOptions{} },
-			"NewTGS":                   func() *lib_kerberos.TGS { return &lib_kerberos.TGS{} },
+			// "NewClient":                func() *lib_kerberos.Client { return &lib_kerberos.Client{} },
+			// "NewEnumerateUserResponse": func() *lib_kerberos.EnumerateUserResponse { return &lib_kerberos.EnumerateUserResponse{} },
+			// "NewTGS":                   func() *lib_kerberos.TGS { return &lib_kerberos.TGS{} },
 		},
 	).Register()
 }
