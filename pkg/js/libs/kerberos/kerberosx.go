@@ -53,7 +53,7 @@ func (c *Config) SetTimeout(timeout int) *Config {
 // DomainController: dc.acme.com (Domain Controller / Active Directory Server)
 // KDC: kdc.acme.com (Key Distribution Center / Authentication Server)
 
-// Updated Package definations and structure
+// Client is kerberos client
 type Client struct {
 	nj         *utils.NucleiJS // helper functions/bindings
 	Krb5Config *kconfig.Config
@@ -71,7 +71,7 @@ type Client struct {
 func NewKerberosClient(call goja.ConstructorCall, runtime *goja.Runtime) *goja.Object {
 	// setup nucleijs utils
 	c := &Client{nj: utils.NewNucleiJS(runtime)}
-	c.nj.ObjectSig = "Client(domain, controller)" // will be included in error messages
+	c.nj.ObjectSig = "Client(domain, {controller})" // will be included in error messages
 
 	// get arguments (type assertion is efficient than reflection)
 	// when accepting type as input like net.Conn we can use utils.GetArg
