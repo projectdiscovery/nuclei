@@ -354,6 +354,10 @@ func (r *Runner) Close() {
 // setupPDCPUpload sets up the PDCP upload writer
 // by creating a new writer and returning it
 func (r *Runner) setupPDCPUpload(writer output.Writer) output.Writer {
+	// if scanid is given implicitly consider that scan upload is enabled
+	if r.options.ScanID != "" {
+		r.options.EnableCloudUpload = true
+	}
 	if !(r.options.EnableCloudUpload || EnableCloudUpload) {
 		r.pdcpUploadErrMsg = fmt.Sprintf("[%v] Scan results upload to cloud is disabled.", aurora.BrightYellow("WRN"))
 		return writer
@@ -368,10 +372,13 @@ func (r *Runner) setupPDCPUpload(writer output.Writer) output.Writer {
 		r.pdcpUploadErrMsg = fmt.Sprintf("[%v] To view results on Cloud Dashboard, Configure API key from %v", color.BrightYellow("WRN"), pdcpauth.DashBoardURL)
 		return writer
 	}
-	uploadWriter, err := pdcp.NewUploadWriter(creds)
+	uploadWriter, err := pdcp.NewUploadWriter(context.Background(), creds)
 	if err != nil {
 		r.pdcpUploadErrMsg = fmt.Sprintf("[%v] PDCP (%v) Auto-Save Failed: %s\n", color.BrightYellow("WRN"), pdcpauth.DashBoardURL, err)
 		return writer
+	}
+	if r.options.ScanID != "" {
+		uploadWriter.SetScanID(r.options.ScanID)
 	}
 	return output.NewMultiWriter(writer, uploadWriter)
 }
@@ -542,7 +549,9 @@ func (r *Runner) executeSmartWorkflowInput(executorOpts protocols.ExecutorOption
 	if err != nil {
 		return nil, errors.Wrap(err, "could not create automatic scan service")
 	}
-	service.Execute()
+	if err := service.Execute(); err != nil {
+		return nil, errors.Wrap(err, "could not execute automatic scan")
+	}
 	result := &atomic.Bool{}
 	result.Store(service.Close())
 	return result, nil
