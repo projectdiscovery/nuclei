@@ -1,7 +1,6 @@
 package kerberos
 
 import (
-	"fmt"
 	"strings"
 
 	"github.com/dop251/goja"
@@ -10,6 +9,7 @@ import (
 	"github.com/jcmturner/gokrb5/v8/iana/errorcode"
 	"github.com/jcmturner/gokrb5/v8/messages"
 	"github.com/projectdiscovery/nuclei/v3/pkg/js/utils"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
 	ConversionUtil "github.com/projectdiscovery/utils/conversion"
 )
 
@@ -62,6 +62,8 @@ type Client struct {
 // Signature: Client(domain, {controller})
 // @param domain: string
 // @param controller: string (optional)
+// When controller is empty or not given krb5 will perform a DNS lookup for the default KDC server
+// and retrieve its address from the DNS server
 func NewKerberosClient(call goja.ConstructorCall, runtime *goja.Runtime) *goja.Object {
 	// setup nucleijs utils
 	c := &Client{nj: utils.NewNucleiJS(runtime)}
@@ -78,6 +80,11 @@ func NewKerberosClient(call goja.ConstructorCall, runtime *goja.Runtime) *goja.O
 	cfg := kconfig.New()
 
 	if controller != "" {
+		// validate controller hostport
+		if !protocolstate.IsHostAllowed(controller) {
+			c.nj.Throw("domain controller address blacklisted by network policy")
+		}
+
 		tmp := strings.Split(controller, ":")
 		if len(tmp) == 1 {
 			tmp = append(tmp, "88")
@@ -124,21 +131,21 @@ func NewKerberosClientFromString(cfg string) (*Client, error) {
 // SetConfig sets additional config for the kerberos client
 // Signature: SetConfig(cfg)
 // @param cfg: @Config
+// Note: as of now ip and timeout overrides are only supported
+// in EnumerateUser due to fastdialer but can be extended to other methods currently
 func (c *Client) SetConfig(cfg *Config) {
+	if cfg == nil {
+		c.nj.Throw("config cannot be nil")
+	}
 	c.config = *cfg
-	fmt.Println(c.config)
 }
 
 // EnumerateUser and attempt to get AS-REP hash by disabling PA-FX-FAST
 // Signature: EnumerateUser(username, {password})
 // @param username: string
-// @param password: string (optional)
-func (c *Client) EnumerateUser(username string, password string) (EnumerateUserResponse, error) {
+func (c *Client) EnumerateUser(username string) (EnumerateUserResponse, error) {
 	c.nj.Require(c.Krb5Config != nil, "Kerberos client not initialized")
-	if password == "" {
-		password = "password"
-
-	}
+	password := "password"
 	// client does not actually attempt connection it manages state here
 	client := kclient.NewWithPassword(username, c.Realm, password, c.Krb5Config, kclient.DisablePAFXFAST(true))
 	defer client.Destroy()
@@ -185,13 +192,37 @@ func (c *Client) EnumerateUser(username string, password string) (EnumerateUserR
 // Signature: GetServiceTicket(User, Pass, Target, SPN)
 // @param User: string
 // @param Pass: string
-// @param Target: string Target domain
 // @param SPN: string Service Principal Name
 func (c *Client) GetServiceTicket(User, Pass, SPN string) (TGS, error) {
 	c.nj.Require(c.Krb5Config != nil, "Kerberos client not initialized")
 	c.nj.Require(User != "", "User cannot be empty")
 	c.nj.Require(Pass != "", "Pass cannot be empty")
 	c.nj.Require(SPN != "", "SPN cannot be empty")
+
+	if len(c.Krb5Config.Realms) > 0 {
+		// this means dc address was given
+		for _, r := range c.Krb5Config.Realms {
+			for _, kdc := range r.KDC {
+				if !protocolstate.IsHostAllowed(kdc) {
+					c.nj.Throw("KDC address blacklisted by network policy")
+				}
+			}
+			for _, kpasswd := range r.KPasswdServer {
+				if !protocolstate.IsHostAllowed(kpasswd) {
+					c.nj.Throw("Kpasswd address blacklisted by network policy")
+				}
+			}
+		}
+	} else {
+		// here net.Dialer is used instead of fastdialer hence get possible addresses
+		// and check if they are allowed by network policy
+		_, kdcs, _ := c.Krb5Config.GetKDCs(c.Realm, true)
+		for _, v := range kdcs {
+			if !protocolstate.IsHostAllowed(v) {
+				c.nj.Throw("KDC address blacklisted by network policy")
+			}
+		}
+	}
 
 	// client does not actually attempt connection it manages state here
 	client := kclient.NewWithPassword(User, c.Realm, Pass, c.Krb5Config, kclient.DisablePAFXFAST(true))
@@ -220,4 +251,59 @@ func (c *Client) GetServiceTicket(User, Pass, SPN string) (TGS, error) {
 	resp.Ticket = ticket
 	resp.Hash = hashcat
 	return resp, nil
+}
+
+// GetASREP returns AS-REP for a given user and password
+// it contains Client's TGT , Principal and Session Key
+// Signature: GetASREP(User, Pass)
+// @param User: string
+// @param Pass: string
+func (c *Client) GetASREP(User, Pass string) messages.ASRep {
+	c.nj.Require(c.Krb5Config != nil, "Kerberos client not initialized")
+	c.nj.Require(User != "", "User cannot be empty")
+	c.nj.Require(Pass != "", "Pass cannot be empty")
+
+	if len(c.Krb5Config.Realms) > 0 {
+		// this means dc address was given
+		for _, r := range c.Krb5Config.Realms {
+			for _, kdc := range r.KDC {
+				if !protocolstate.IsHostAllowed(kdc) {
+					c.nj.Throw("KDC address blacklisted by network policy")
+				}
+			}
+			for _, kpasswd := range r.KPasswdServer {
+				if !protocolstate.IsHostAllowed(kpasswd) {
+					c.nj.Throw("Kpasswd address blacklisted by network policy")
+				}
+			}
+		}
+	} else {
+		// here net.Dialer is used instead of fastdialer hence get possible addresses
+		// and check if they are allowed by network policy
+		_, kdcs, _ := c.Krb5Config.GetKDCs(c.Realm, true)
+		for _, v := range kdcs {
+			if !protocolstate.IsHostAllowed(v) {
+				c.nj.Throw("KDC address blacklisted by network policy")
+			}
+		}
+	}
+
+	// login to get TGT
+	cl := kclient.NewWithPassword(User, c.Realm, Pass, c.Krb5Config, kclient.DisablePAFXFAST(true))
+	defer cl.Destroy()
+
+	// generate ASReq
+	ASReq, err := messages.NewASReqForTGT(cl.Credentials.Domain(), cl.Config, cl.Credentials.CName())
+	c.nj.HandleError(err, "failed to generate TGT request")
+
+	// exchange AS-REQ for AS-REP
+	resp, err := cl.ASExchange(c.Realm, ASReq, 0)
+	c.nj.HandleError(err, "failed to exchange AS-REQ")
+
+	// try to decrypt encrypted parts of the response and TGT
+	key, err := resp.DecryptEncPart(cl.Credentials)
+	if err == nil {
+		_ = resp.Ticket.Decrypt(key)
+	}
+	return resp
 }
