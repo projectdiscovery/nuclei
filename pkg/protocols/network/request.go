@@ -8,9 +8,11 @@ import (
 	"net/url"
 	"os"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/pkg/errors"
+	"github.com/remeh/sizedwaitgroup"
 	"go.uber.org/multierr"
 	"golang.org/x/exp/maps"
 
@@ -136,7 +138,9 @@ func (request *Request) executeOnTarget(input *contextargs.Context, visited maps
 	}
 	variables := protocolutils.GenerateVariables(address, false, nil)
 	// add template ctx variables to varMap
-	variables = generators.MergeMaps(variables, request.options.GetTemplateCtx(input.MetaInput).GetAll())
+	if request.options.HasTemplateCtx(input.MetaInput) {
+		variables = generators.MergeMaps(variables, request.options.GetTemplateCtx(input.MetaInput).GetAll())
+	}
 	variablesMap := request.options.Variables.Evaluate(variables)
 	variables = generators.MergeMaps(variablesMap, variables, request.options.Constants)
 
@@ -172,6 +176,9 @@ func (request *Request) executeAddress(variables map[string]interface{}, actualA
 
 	if request.generator != nil {
 		iterator := request.generator.NewIterator()
+		var multiErr error
+		m := &sync.Mutex{}
+		swg := sizedwaitgroup.New(request.Threads)
 
 		for {
 			value, ok := iterator.Value()
@@ -179,9 +186,19 @@ func (request *Request) executeAddress(variables map[string]interface{}, actualA
 				break
 			}
 			value = generators.MergeMaps(value, payloads)
-			if err := request.executeRequestWithPayloads(variables, actualAddress, address, input, shouldUseTLS, value, previous, callback); err != nil {
-				return err
-			}
+			swg.Add()
+			go func(vars map[string]interface{}) {
+				defer swg.Done()
+				if err := request.executeRequestWithPayloads(variables, actualAddress, address, input, shouldUseTLS, vars, previous, callback); err != nil {
+					m.Lock()
+					multiErr = multierr.Append(multiErr, err)
+					m.Unlock()
+				}
+			}(value)
+		}
+		swg.Wait()
+		if multiErr != nil {
+			return multiErr
 		}
 	} else {
 		value := maps.Clone(payloads)
@@ -327,7 +344,9 @@ func (request *Request) executeRequestWithPayloads(variables map[string]interfac
 	outputEvent := request.responseToDSLMap(reqBuilder.String(), string(final), response, input.MetaInput.Input, actualAddress)
 	// add response fields to template context and merge templatectx variables to output event
 	request.options.AddTemplateVars(input.MetaInput, request.Type(), request.ID, outputEvent)
-	outputEvent = generators.MergeMaps(outputEvent, request.options.GetTemplateCtx(input.MetaInput).GetAll())
+	if request.options.HasTemplateCtx(input.MetaInput) {
+		outputEvent = generators.MergeMaps(outputEvent, request.options.GetTemplateCtx(input.MetaInput).GetAll())
+	}
 	outputEvent["ip"] = request.dialer.GetDialedIP(hostname)
 	if request.options.StopAtFirstMatch {
 		outputEvent["stop-at-first-match"] = true

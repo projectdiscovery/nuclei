@@ -3,6 +3,11 @@ package github
 import (
 	"context"
 	"fmt"
+	"io"
+	"net/http"
+	"net/url"
+	"strings"
+
 	"github.com/google/go-github/github"
 	"github.com/pkg/errors"
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
@@ -11,10 +16,6 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	"github.com/projectdiscovery/retryablehttp-go"
 	"golang.org/x/oauth2"
-	"io"
-	"net/http"
-	"net/url"
-	"strings"
 )
 
 // Integration is a client for an issue tracker integration
@@ -45,6 +46,7 @@ type Options struct {
 	DuplicateIssueCheck bool `yaml:"duplicate-issue-check"`
 
 	HttpClient *retryablehttp.Client `yaml:"-"`
+	OmitRaw    bool                  `yaml:"-"`
 }
 
 // New creates a new issue tracker integration client based on options.
@@ -80,7 +82,7 @@ func New(options *Options) (*Integration, error) {
 // CreateIssue creates an issue in the tracker
 func (i *Integration) CreateIssue(event *output.ResultEvent) (err error) {
 	summary := format.Summary(event)
-	description := format.CreateReportDescription(event, util.MarkdownFormatter{})
+	description := format.CreateReportDescription(event, util.MarkdownFormatter{}, i.options.OmitRaw)
 	labels := []string{}
 	severityLabel := fmt.Sprintf("Severity: %s", event.Info.SeverityHolder.Severity.String())
 	if i.options.SeverityAsLabel && severityLabel != "" {

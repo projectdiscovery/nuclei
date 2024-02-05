@@ -1,6 +1,7 @@
 package code
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"regexp"
@@ -26,11 +27,13 @@ import (
 	protocolutils "github.com/projectdiscovery/nuclei/v3/pkg/protocols/utils"
 	templateTypes "github.com/projectdiscovery/nuclei/v3/pkg/templates/types"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
+	contextutil "github.com/projectdiscovery/utils/context"
 	errorutil "github.com/projectdiscovery/utils/errors"
 )
 
 const (
-	pythonEnvRegex = `os\.getenv\(['"]([^'"]+)['"]\)`
+	pythonEnvRegex    = `os\.getenv\(['"]([^'"]+)['"]\)`
+	TimeoutMultiplier = 6 // timeout multiplier for code protocol
 )
 
 var (
@@ -121,12 +124,17 @@ func (request *Request) GetID() string {
 }
 
 // ExecuteWithResults executes the protocol requests and returns results instead of writing them.
-func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicValues, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
+func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicValues, previous output.InternalEvent, callback protocols.OutputEventCallback) (err error) {
 	metaSrc, err := gozero.NewSourceWithString(input.MetaInput.Input, "")
 	if err != nil {
 		return err
 	}
 	defer func() {
+		// catch any panics just in case
+		if r := recover(); r != nil {
+			gologger.Error().Msgf("[%s] Panic occurred in code protocol: %s\n", request.options.TemplateID, r)
+			err = fmt.Errorf("panic occurred: %s", r)
+		}
 		if err := metaSrc.Cleanup(); err != nil {
 			gologger.Warning().Msgf("%s\n", err)
 		}
@@ -136,8 +144,10 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 
 	// inject all template context values as gozero env allvars
 	allvars := protocolutils.GenerateVariables(input.MetaInput.Input, false, nil)
-	// add template context values
-	allvars = generators.MergeMaps(allvars, request.options.GetTemplateCtx(input.MetaInput).GetAll())
+	// add template context values if available
+	if request.options.HasTemplateCtx(input.MetaInput) {
+		allvars = generators.MergeMaps(allvars, request.options.GetTemplateCtx(input.MetaInput).GetAll())
+	}
 	// optionvars are vars passed from CLI or env variables
 	optionVars := generators.BuildPayloadFromOptions(request.options.Options)
 	variablesMap := request.options.Variables.Evaluate(allvars)
@@ -150,9 +160,24 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 		allvars[name] = v
 		metaSrc.AddVariable(gozerotypes.Variable{Name: name, Value: v})
 	}
-	gOutput, err := request.gozero.Eval(context.Background(), request.src, metaSrc)
-	if err != nil && gOutput == nil {
-		return errorutil.NewWithErr(err).Msgf("[%s] Could not execute code on local machine %v", request.options.TemplateID, input.MetaInput.Input)
+	timeout := TimeoutMultiplier * request.options.Options.Timeout
+	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(timeout)*time.Second)
+	defer cancel()
+	// Note: we use contextutil despite the fact that gozero accepts context as argument
+	gOutput, err := contextutil.ExecFuncWithTwoReturns(ctx, func() (*gozerotypes.Result, error) {
+		return request.gozero.Eval(ctx, request.src, metaSrc)
+	})
+	if gOutput == nil {
+		// write error to stderr buff
+		var buff bytes.Buffer
+		if err != nil {
+			buff.WriteString(err.Error())
+		} else {
+			buff.WriteString("no output something went wrong")
+		}
+		gOutput = &gozerotypes.Result{
+			Stderr: buff,
+		}
 	}
 	gologger.Verbose().Msgf("[%s] Executed code on local machine %v", request.options.TemplateID, input.MetaInput.Input)
 
@@ -183,7 +208,9 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 	request.options.AddTemplateVars(input.MetaInput, request.Type(), request.ID, data)
 
 	// add variables from template context before matching/extraction
-	data = generators.MergeMaps(data, request.options.GetTemplateCtx(input.MetaInput).GetAll())
+	if request.options.HasTemplateCtx(input.MetaInput) {
+		data = generators.MergeMaps(data, request.options.GetTemplateCtx(input.MetaInput).GetAll())
+	}
 
 	if request.options.Interactsh != nil {
 		request.options.Interactsh.MakePlaceholders(interactshURLs, data)
