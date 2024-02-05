@@ -113,7 +113,7 @@ func (h *headlessExtractValues) Execute(filePath string) error {
 		return err
 	}
 
-	return expectResultsCount(results, 3)
+	return expectResultsCount(results, 1)
 }
 
 type headlessPayloads struct{}

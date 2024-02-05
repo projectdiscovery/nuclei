@@ -39,4 +39,5 @@ type Options struct {
 	JSONLExporter *jsonl.Options `yaml:"jsonl"`
 
 	HttpClient *retryablehttp.Client `yaml:"-"`
+	OmitRaw    bool                  `yaml:"-"`
 }

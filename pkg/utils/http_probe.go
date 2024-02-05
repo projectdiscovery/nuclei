@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/corpix/uarand"
 	"github.com/projectdiscovery/httpx/common/httpx"
+	"github.com/projectdiscovery/useragent"
 )
 
 var (
@@ -22,7 +22,8 @@ func ProbeURL(input string, httpxclient *httpx.HTTPX) string {
 		if err != nil {
 			continue
 		}
-		req.Header.Set("User-Agent", uarand.GetRandom())
+		userAgent := useragent.PickRandom()
+		req.Header.Set("User-Agent", userAgent.Raw)
 
 		if _, err = httpxclient.Do(req, httpx.UnsafeOptions{}); err != nil {
 			continue

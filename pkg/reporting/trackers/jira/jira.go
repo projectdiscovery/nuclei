@@ -77,6 +77,7 @@ type Options struct {
 	// that will be used to create the issue
 	CustomFields map[string]interface{} `yaml:"custom-fields" json:"custom_fields"`
 	StatusNot    string                 `yaml:"status-not" json:"status_not"`
+	OmitRaw      bool                   `yaml:"-"`
 }
 
 // New creates a new issue tracker integration client based on options.
@@ -154,7 +155,7 @@ func (i *Integration) CreateNewIssue(event *output.ResultEvent) error {
 		}
 	}
 	fields := &jira.IssueFields{
-		Description: format.CreateReportDescription(event, i),
+		Description: format.CreateReportDescription(event, i, i.options.OmitRaw),
 		Unknowns:    customFields,
 		Type:        jira.IssueType{Name: i.options.IssueType},
 		Project:     jira.Project{Key: i.options.ProjectName},
@@ -164,7 +165,7 @@ func (i *Integration) CreateNewIssue(event *output.ResultEvent) error {
 	if !i.options.Cloud {
 		fields = &jira.IssueFields{
 			Assignee:    &jira.User{Name: i.options.AccountID},
-			Description: format.CreateReportDescription(event, i),
+			Description: format.CreateReportDescription(event, i, i.options.OmitRaw),
 			Type:        jira.IssueType{Name: i.options.IssueType},
 			Project:     jira.Project{Key: i.options.ProjectName},
 			Summary:     summary,
@@ -196,7 +197,7 @@ func (i *Integration) CreateIssue(event *output.ResultEvent) error {
 			return err
 		} else if issueID != "" {
 			_, _, err = i.jira.Issue.AddComment(issueID, &jira.Comment{
-				Body: format.CreateReportDescription(event, i),
+				Body: format.CreateReportDescription(event, i, i.options.OmitRaw),
 			})
 			return err
 		}
