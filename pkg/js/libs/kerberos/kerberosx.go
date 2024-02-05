@@ -13,6 +13,10 @@ import (
 	ConversionUtil "github.com/projectdiscovery/utils/conversion"
 )
 
+// Known Issues:
+// Hardcoded timeout in gokrb5 library
+// TGT / Session Handling not exposed
+
 // EnumerateUserResponse is the response from EnumerateUser
 type EnumerateUserResponse struct {
 	Valid     bool   `json:"valid"`
@@ -204,12 +208,12 @@ func (c *Client) GetServiceTicket(User, Pass, SPN string) (TGS, error) {
 		for _, r := range c.Krb5Config.Realms {
 			for _, kdc := range r.KDC {
 				if !protocolstate.IsHostAllowed(kdc) {
-					c.nj.Throw("KDC address blacklisted by network policy")
+					c.nj.Throw("KDC address %v blacklisted by network policy", kdc)
 				}
 			}
 			for _, kpasswd := range r.KPasswdServer {
 				if !protocolstate.IsHostAllowed(kpasswd) {
-					c.nj.Throw("Kpasswd address blacklisted by network policy")
+					c.nj.Throw("Kpasswd address %v blacklisted by network policy", kpasswd)
 				}
 			}
 		}
@@ -219,7 +223,7 @@ func (c *Client) GetServiceTicket(User, Pass, SPN string) (TGS, error) {
 		_, kdcs, _ := c.Krb5Config.GetKDCs(c.Realm, true)
 		for _, v := range kdcs {
 			if !protocolstate.IsHostAllowed(v) {
-				c.nj.Throw("KDC address blacklisted by network policy")
+				c.nj.Throw("KDC address %v blacklisted by network policy", v)
 			}
 		}
 	}
@@ -253,57 +257,57 @@ func (c *Client) GetServiceTicket(User, Pass, SPN string) (TGS, error) {
 	return resp, nil
 }
 
-// GetASREP returns AS-REP for a given user and password
-// it contains Client's TGT , Principal and Session Key
-// Signature: GetASREP(User, Pass)
-// @param User: string
-// @param Pass: string
-func (c *Client) GetASREP(User, Pass string) messages.ASRep {
-	c.nj.Require(c.Krb5Config != nil, "Kerberos client not initialized")
-	c.nj.Require(User != "", "User cannot be empty")
-	c.nj.Require(Pass != "", "Pass cannot be empty")
+// // GetASREP returns AS-REP for a given user and password
+// // it contains Client's TGT , Principal and Session Key
+// // Signature: GetASREP(User, Pass)
+// // @param User: string
+// // @param Pass: string
+// func (c *Client) GetASREP(User, Pass string) messages.ASRep {
+// 	c.nj.Require(c.Krb5Config != nil, "Kerberos client not initialized")
+// 	c.nj.Require(User != "", "User cannot be empty")
+// 	c.nj.Require(Pass != "", "Pass cannot be empty")
 
-	if len(c.Krb5Config.Realms) > 0 {
-		// this means dc address was given
-		for _, r := range c.Krb5Config.Realms {
-			for _, kdc := range r.KDC {
-				if !protocolstate.IsHostAllowed(kdc) {
-					c.nj.Throw("KDC address blacklisted by network policy")
-				}
-			}
-			for _, kpasswd := range r.KPasswdServer {
-				if !protocolstate.IsHostAllowed(kpasswd) {
-					c.nj.Throw("Kpasswd address blacklisted by network policy")
-				}
-			}
-		}
-	} else {
-		// here net.Dialer is used instead of fastdialer hence get possible addresses
-		// and check if they are allowed by network policy
-		_, kdcs, _ := c.Krb5Config.GetKDCs(c.Realm, true)
-		for _, v := range kdcs {
-			if !protocolstate.IsHostAllowed(v) {
-				c.nj.Throw("KDC address blacklisted by network policy")
-			}
-		}
-	}
+// 	if len(c.Krb5Config.Realms) > 0 {
+// 		// this means dc address was given
+// 		for _, r := range c.Krb5Config.Realms {
+// 			for _, kdc := range r.KDC {
+// 				if !protocolstate.IsHostAllowed(kdc) {
+// 					c.nj.Throw("KDC address blacklisted by network policy")
+// 				}
+// 			}
+// 			for _, kpasswd := range r.KPasswdServer {
+// 				if !protocolstate.IsHostAllowed(kpasswd) {
+// 					c.nj.Throw("Kpasswd address blacklisted by network policy")
+// 				}
+// 			}
+// 		}
+// 	} else {
+// 		// here net.Dialer is used instead of fastdialer hence get possible addresses
+// 		// and check if they are allowed by network policy
+// 		_, kdcs, _ := c.Krb5Config.GetKDCs(c.Realm, true)
+// 		for _, v := range kdcs {
+// 			if !protocolstate.IsHostAllowed(v) {
+// 				c.nj.Throw("KDC address blacklisted by network policy")
+// 			}
+// 		}
+// 	}
 
-	// login to get TGT
-	cl := kclient.NewWithPassword(User, c.Realm, Pass, c.Krb5Config, kclient.DisablePAFXFAST(true))
-	defer cl.Destroy()
+// 	// login to get TGT
+// 	cl := kclient.NewWithPassword(User, c.Realm, Pass, c.Krb5Config, kclient.DisablePAFXFAST(true))
+// 	defer cl.Destroy()
 
-	// generate ASReq
-	ASReq, err := messages.NewASReqForTGT(cl.Credentials.Domain(), cl.Config, cl.Credentials.CName())
-	c.nj.HandleError(err, "failed to generate TGT request")
+// 	// generate ASReq
+// 	ASReq, err := messages.NewASReqForTGT(cl.Credentials.Domain(), cl.Config, cl.Credentials.CName())
+// 	c.nj.HandleError(err, "failed to generate TGT request")
 
-	// exchange AS-REQ for AS-REP
-	resp, err := cl.ASExchange(c.Realm, ASReq, 0)
-	c.nj.HandleError(err, "failed to exchange AS-REQ")
+// 	// exchange AS-REQ for AS-REP
+// 	resp, err := cl.ASExchange(c.Realm, ASReq, 0)
+// 	c.nj.HandleError(err, "failed to exchange AS-REQ")
 
-	// try to decrypt encrypted parts of the response and TGT
-	key, err := resp.DecryptEncPart(cl.Credentials)
-	if err == nil {
-		_ = resp.Ticket.Decrypt(key)
-	}
-	return resp
-}
+// 	// try to decrypt encrypted parts of the response and TGT
+// 	key, err := resp.DecryptEncPart(cl.Credentials)
+// 	if err == nil {
+// 		_ = resp.Ticket.Decrypt(key)
+// 	}
+// 	return resp
+// }
