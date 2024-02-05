@@ -48,6 +48,7 @@ const (
 
 )
 
+// JoinFilters joins multiple filters into a single filter
 func JoinFilters(filters ...string) string {
 	var builder strings.Builder
 	builder.WriteString("(&")
@@ -58,10 +59,12 @@ func JoinFilters(filters ...string) string {
 	return builder.String()
 }
 
+// NegativeFilter returns a negative filter for a given filter
 func NegativeFilter(filter string) string {
 	return fmt.Sprintf("(!%s)", filter)
 }
 
+// ADObject represents an Active Directory object
 type ADObject struct {
 	DistinguishedName    string
 	SAMAccountName       string
@@ -71,7 +74,12 @@ type ADObject struct {
 	ServicePrincipalName []string
 }
 
-func (c *LdapClient) FindADObjects(filter string) ([]ADObject, error) {
+// FindADObjects finds AD objects based on a filter
+// and returns them as a list of ADObject
+// @param filter: string
+// @return []ADObject
+func (c *Client) FindADObjects(filter string) []ADObject {
+	c.nj.Require(c.conn != nil, "no existing connection")
 	sr := ldap.NewSearchRequest(
 		c.BaseDN, ldap.ScopeWholeSubtree,
 		ldap.NeverDerefAliases, 0, 0, false,
@@ -87,14 +95,8 @@ func (c *LdapClient) FindADObjects(filter string) ([]ADObject, error) {
 		nil,
 	)
 
-	res, err := c.Conn.Search(sr)
-	if err != nil {
-		return nil, err
-	}
-
-	if len(res.Entries) == 0 {
-		return nil, fmt.Errorf("no object returned from query")
-	}
+	res, err := c.conn.Search(sr)
+	c.nj.HandleError(err, "ldap search request failed")
 
 	var objects []ADObject
 	for _, obj := range res.Entries {
@@ -107,57 +109,77 @@ func (c *LdapClient) FindADObjects(filter string) ([]ADObject, error) {
 			ServicePrincipalName: obj.GetAttributeValues("servicePrincipalName"),
 		})
 	}
-	return objects, nil
+	return objects
 }
 
-func (c *LdapClient) GetADUsers() ([]ADObject, error) {
+// GetADUsers returns all AD users
+// using FilterIsPerson filter query
+// @return []ADObject
+func (c *Client) GetADUsers() []ADObject {
 	return c.FindADObjects(FilterIsPerson)
 }
 
-func (c *LdapClient) GetADActiveUsers() ([]ADObject, error) {
+// GetADActiveUsers returns all AD users
+// using FilterIsPerson and FilterAccountEnabled filter query
+// @return []ADObject
+func (c *Client) GetADActiveUsers() []ADObject {
 	return c.FindADObjects(JoinFilters(FilterIsPerson, FilterAccountEnabled))
 }
 
-func (c *LdapClient) GetADUserWithNeverExpiringPasswords() ([]ADObject, error) {
+// GetAdUserWithNeverExpiringPasswords returns all AD users
+// using FilterIsPerson and FilterDontExpirePassword filter query
+// @return []ADObject
+func (c *Client) GetADUserWithNeverExpiringPasswords() []ADObject {
 	return c.FindADObjects(JoinFilters(FilterIsPerson, FilterDontExpirePassword))
 }
 
-func (c *LdapClient) GetADUserTrustedForDelegation() ([]ADObject, error) {
+// GetADUserTrustedForDelegation returns all AD users that are trusted for delegation
+// using FilterIsPerson and FilterTrustedForDelegation filter query
+// @return []ADObject
+func (c *Client) GetADUserTrustedForDelegation() []ADObject {
 	return c.FindADObjects(JoinFilters(FilterIsPerson, FilterTrustedForDelegation))
 }
 
-func (c *LdapClient) GetADUserWithPasswordNotRequired() ([]ADObject, error) {
+// GetADUserWithPasswordNotRequired returns all AD users that do not require a password
+// using FilterIsPerson and FilterPasswordNotRequired filter query
+// @return []ADObject
+func (c *Client) GetADUserWithPasswordNotRequired() []ADObject {
 	return c.FindADObjects(JoinFilters(FilterIsPerson, FilterPasswordNotRequired))
 }
 
-func (c *LdapClient) GetADGroups() ([]ADObject, error) {
+// GetADGroups returns all AD groups
+// using FilterIsGroup filter query
+// @return []ADObject
+func (c *Client) GetADGroups() []ADObject {
 	return c.FindADObjects(FilterIsGroup)
 }
 
-func (c *LdapClient) GetADDCList() ([]ADObject, error) {
+// GetADDCList returns all AD domain controllers
+// using FilterIsComputer, FilterAccountEnabled and FilterServerTrustAccount filter query
+// @return []ADObject
+func (c *Client) GetADDCList() []ADObject {
 	return c.FindADObjects(JoinFilters(FilterIsComputer, FilterAccountEnabled, FilterServerTrustAccount))
 }
 
-func (c *LdapClient) GetADAdmins() ([]ADObject, error) {
+// GetADAdmins returns all AD admins
+// using FilterIsPerson, FilterAccountEnabled and FilterIsAdmin filter query
+// @return []ADObject
+func (c *Client) GetADAdmins() []ADObject {
 	return c.FindADObjects(JoinFilters(FilterIsPerson, FilterAccountEnabled, FilterIsAdmin))
 }
 
-func (c *LdapClient) GetADUserKerberoastable() ([]ADObject, error) {
+// GetADUserKerberoastable returns all AD users that are kerberoastable
+// using FilterIsPerson, FilterAccountEnabled and FilterHasServicePrincipalName filter query
+// @return []ADObject
+func (c *Client) GetADUserKerberoastable() []ADObject {
 	return c.FindADObjects(JoinFilters(FilterIsPerson, FilterAccountEnabled, FilterHasServicePrincipalName))
 }
 
-func (c *LdapClient) GetADDomainSID() (string, error) {
-	r, err := c.Search(FilterServerTrustAccount, "objectSid")
-	if err != nil {
-		return "", err
-	}
-
-	if len(r) < 1 {
-		return "", fmt.Errorf("no result from GetADDomainSID query")
-	}
-
-	if len(r[0]["objectSid"]) < 1 {
-		return "", fmt.Errorf("could not grab DomainSID")
-	}
-	return DecodeSID(r[0]["objectSid"][0]), nil
+// GetADDomainSID returns the SID of the AD domain
+// @return string
+func (c *Client) GetADDomainSID() string {
+	r := c.Search(FilterServerTrustAccount, "objectSid")
+	c.nj.Require(len(r) > 0, "no result from GetADDomainSID query")
+	c.nj.Require(len(r[0]["objectSid"]) > 0, "could not grab DomainSID")
+	return DecodeSID(r[0]["objectSid"][0])
 }

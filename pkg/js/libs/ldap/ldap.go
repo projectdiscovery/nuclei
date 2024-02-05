@@ -1,128 +1,194 @@
 package ldap
 
 import (
+	"context"
 	"crypto/tls"
 	"fmt"
+	"net"
+	"net/url"
 	"strings"
 
+	"github.com/dop251/goja"
 	"github.com/go-ldap/ldap/v3"
+	"github.com/projectdiscovery/nuclei/v3/pkg/js/utils"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
 )
 
-// Client is a client for ldap protocol in golang.
-//
-// It is a wrapper around the standard library ldap package.
-type LdapClient struct {
-	BaseDN string
-	Realm  string
-	Host   string
-	Conn   *ldap.Conn
-	Port   int
-	UseSSL bool
-	TLS    bool
+// Client is a client for ldap protocol in nuclei
+type Client struct {
+	Host   string // Hostname
+	Port   int    // Port
+	Realm  string // Realm
+	BaseDN string // BaseDN (generated from Realm)
+
+	// unexported
+	nj   *utils.NucleiJS // nuclei js utils
+	conn *ldap.Conn
+	cfg  Config
 }
 
-// Connect is a method for LdapClient that stores information about of the ldap
-// connection, tests it and verifies that the server is a valid ldap server
-//
-// returns the success status
-func (c *LdapClient) Connect(host string, port int, ssl, istls bool) (bool, error) {
-	if c.Conn != nil {
-		return true, nil
-	}
+// Config is extra configuration for the ldap client
+type Config struct {
+	// Timeout is the timeout for the ldap client in seconds
+	Timeout    int
+	ServerName string // default to host (when using tls)
+	Upgrade    bool   // when true first connects to non-tls and then upgrades to tls
+}
 
-	if !protocolstate.IsHostAllowed(host) {
-		// host is not valid according to network policy
-		return false, protocolstate.ErrHostDenied.Msgf(host)
-	}
+// Constructor for creating a new ldap client
+// The following schemas are supported for url: ldap://, ldaps://, ldapi://,
+// and cldap:// (RFC1798, deprecated but used by Active Directory).
+// ldaps uses TLS/SSL, ldapi uses a Unix domain socket, and cldap uses connectionless LDAP.
+// Signature: Client(ldapUrl,Realm)
+// @param ldapUrl: string
+// @param Realm: string
+// @param Config: Config
+// @return Client
+// @throws error when the ldap url is invalid or connection fails
+func NewClient(call goja.ConstructorCall, runtime *goja.Runtime) *goja.Object {
+	// setup nucleijs utils
+	c := &Client{nj: utils.NewNucleiJS(runtime)}
+	c.nj.ObjectSig = "Client(ldapUrl,Realm,{Config})" // will be included in error messages
 
-	var err error
-	if ssl {
-		config := &tls.Config{
-			InsecureSkipVerify: true,
-			ServerName:         host,
+	// get arguments (type assertion is efficient than reflection)
+	ldapUrl, _ := c.nj.GetArg(call.Arguments, 0).(string)
+	realm, _ := c.nj.GetArg(call.Arguments, 1).(string)
+	c.cfg = utils.GetStructTypeSafe[Config](c.nj, call.Arguments, 2, Config{})
+
+	// validate arguments
+	c.nj.Require(ldapUrl != "", "ldap url cannot be empty")
+	c.nj.Require(realm != "", "realm cannot be empty")
+
+	u, err := url.Parse(ldapUrl)
+	c.nj.HandleError(err, "invalid ldap url supported schemas are ldap://, ldaps://, ldapi://, and cldap://")
+
+	var conn net.Conn
+	if u.Scheme == "ldapi" {
+		if u.Path == "" || u.Path == "/" {
+			u.Path = "/var/run/slapd/ldapi"
 		}
-		c.Conn, err = ldap.DialTLS("tcp", fmt.Sprintf("%s:%d", host, port), config)
+		conn, err = protocolstate.Dialer.Dial(context.TODO(), "unix", u.Path)
+		c.nj.HandleError(err, "failed to connect to ldap server")
 	} else {
-		c.Conn, err = ldap.Dial("tcp", fmt.Sprintf("%s:%d", host, port))
-	}
-	if err != nil {
-		return false, err
-	}
-
-	if istls && !ssl {
-		// Here if it is not a valid ldap server, the StartTLS will return an error,
-		// so, if this check succeeds, there is no need to check if the host is has an LDAP Server:
-		// https://github.com/go-ldap/ldap/blob/cdb0754f666833c3e287503ed52d535a41ba10f6/v3/conn.go#L334
-		if err := c.Conn.StartTLS(&tls.Config{InsecureSkipVerify: true}); err != nil {
-			return false, err
+		host, port, err := net.SplitHostPort(u.Host)
+		if err != nil {
+			// we assume that error is due to missing port
+			host = u.Host
+			port = ""
 		}
+		if u.Scheme == "" {
+			// default to ldap
+			u.Scheme = "ldap"
+		}
+
+		switch u.Scheme {
+		case "cldap":
+			if port == "" {
+				port = ldap.DefaultLdapPort
+			}
+			conn, err = protocolstate.Dialer.Dial(context.TODO(), "udp", net.JoinHostPort(host, port))
+		case "ldap":
+			if port == "" {
+				port = ldap.DefaultLdapPort
+			}
+			conn, err = protocolstate.Dialer.Dial(context.TODO(), "tcp", net.JoinHostPort(host, port))
+		case "ldaps":
+			if port == "" {
+				port = ldap.DefaultLdapsPort
+			}
+			serverName := host
+			if c.cfg.ServerName != "" {
+				serverName = c.cfg.ServerName
+			}
+			conn, err = protocolstate.Dialer.DialTLSWithConfig(context.TODO(), "tcp", net.JoinHostPort(host, port),
+				&tls.Config{InsecureSkipVerify: true, MinVersion: tls.VersionTLS10, ServerName: serverName})
+		default:
+			err = fmt.Errorf("unsupported ldap url schema %v", u.Scheme)
+		}
+		c.nj.HandleError(err, "failed to connect to ldap server")
+	}
+	c.conn = ldap.NewConn(conn, u.Scheme == "ldaps")
+	if u.Scheme != "ldaps" && c.cfg.Upgrade {
+		serverName := u.Hostname()
+		if c.cfg.ServerName != "" {
+			serverName = c.cfg.ServerName
+		}
+		if err := c.conn.StartTLS(&tls.Config{InsecureSkipVerify: true, ServerName: serverName}); err != nil {
+			c.nj.HandleError(err, "failed to upgrade to tls")
+		}
+	} else {
+		c.conn.Start()
 	}
 
-	c.Host = host
-	c.Port = port
-	c.TLS = istls
-	c.UseSSL = ssl
-	return true, nil
+	return utils.LinkConstructor(call, runtime, c)
 }
 
-func (c *LdapClient) Authenticate(realm string, username, password string) (bool, error) {
-	if c.Conn == nil {
-		return false, fmt.Errorf("no existing connection")
+// Authenticate authenticates with the ldap server using the given username and password
+// performs NTLMBind first and then Bind/UnauthenticatedBind if NTLMBind fails
+// Signature: Authenticate(username, password)
+// @param username: string
+// @param password: string (can be empty for unauthenticated bind)
+// @throws error if authentication fails
+func (c *Client) Authenticate(username, password string) {
+	c.nj.Require(c.conn != nil, "no existing connection")
+	if c.BaseDN == "" {
+		c.BaseDN = fmt.Sprintf("dc=%s", strings.Join(strings.Split(c.Realm, "."), ",dc="))
 	}
-
-	c.Realm = realm
-	c.BaseDN = fmt.Sprintf("dc=%s", strings.Join(strings.Split(realm, "."), ",dc="))
-
-	if err := c.Conn.NTLMBind(realm, username, password); err == nil {
+	if err := c.conn.NTLMBind(c.Realm, username, password); err == nil {
 		// if bind with NTLMBind(), there is nothing
 		// else to do, you are authenticated
-		return true, nil
+		return
 	}
 
 	switch password {
 	case "":
-		if err := c.Conn.UnauthenticatedBind(username); err != nil {
-			return false, err
+		if err := c.conn.UnauthenticatedBind(username); err != nil {
+			c.nj.ThrowError(err)
 		}
 	default:
-		if err := c.Conn.Bind(username, password); err != nil {
-			return false, err
+		if err := c.conn.Bind(username, password); err != nil {
+			c.nj.ThrowError(err)
 		}
 	}
-	return true, nil
 }
 
-func (c *LdapClient) AuthenticateWithNTLMHash(realm string, username, hash string) (bool, error) {
-	if c.Conn == nil {
-		return false, fmt.Errorf("no existing connection")
+// AuthenticateWithNTLMHash authenticates with the ldap server using the given username and NTLM hash
+// Signature: AuthenticateWithNTLMHash(username, hash)
+// @param username: string
+// @param hash: string
+// @throws error if authentication fails
+func (c *Client) AuthenticateWithNTLMHash(username, hash string) {
+	c.nj.Require(c.conn != nil, "no existing connection")
+	if c.BaseDN == "" {
+		c.BaseDN = fmt.Sprintf("dc=%s", strings.Join(strings.Split(c.Realm, "."), ",dc="))
 	}
-	c.Realm = realm
-	c.BaseDN = fmt.Sprintf("dc=%s", strings.Join(strings.Split(realm, "."), ",dc="))
-	if err := c.Conn.NTLMBindWithHash(realm, username, hash); err != nil {
-		return false, err
+	if err := c.conn.NTLMBindWithHash(c.Realm, username, hash); err != nil {
+		c.nj.ThrowError(err)
 	}
-	return true, nil
 }
 
-// Search is a method that uses the already Connect()'ed client to query the LDAP
-// server, works for openldap and for Microsoft's Active Directory Ldap
-//
-// accepts whatever filter and returns a list of maps having provided attributes
+// Search accepts whatever filter and returns a list of maps having provided attributes
 // as keys and associated values mirroring the ones returned by ldap
-func (c *LdapClient) Search(filter string, attributes ...string) ([]map[string][]string, error) {
-	res, err := c.Conn.Search(ldap.NewSearchRequest(
-		c.BaseDN, ldap.ScopeWholeSubtree, ldap.NeverDerefAliases,
-		0, 0, false, filter, attributes, nil,
-	))
-	if err != nil {
-		return nil, err
-	}
+// Signature: Search(filter, attributes...)
+// @param filter: string
+// @param attributes: ...string
+// @return []map[string][]string
+func (c *Client) Search(filter string, attributes ...string) []map[string][]string {
+	c.nj.Require(c.conn != nil, "no existing connection")
 
+	res, err := c.conn.Search(
+		ldap.NewSearchRequest(
+			c.BaseDN, ldap.ScopeWholeSubtree, ldap.NeverDerefAliases,
+			0, 0, false, filter, attributes, nil,
+		),
+	)
+	c.nj.HandleError(err, "ldap search request failed")
 	if len(res.Entries) == 0 {
-		return nil, fmt.Errorf("no result found in search")
+		// return empty list
+		return nil
 	}
 
+	// convert ldap.Entry to []map[string][]string
 	var out []map[string][]string
 	for _, r := range res.Entries {
 		app := make(map[string][]string)
@@ -138,7 +204,36 @@ func (c *LdapClient) Search(filter string, attributes ...string) ([]map[string][
 			out = append(out, app)
 		}
 	}
-	return out, nil
+	return out
+}
+
+// AdvancedSearch accepts all values of search request type and return Ldap Entry
+// its up to user to handle the response
+// Signature: AdvancedSearch(Scope, DerefAliases, SizeLimit, TimeLimit, TypesOnly, Filter, Attributes, Controls)
+// @param Scope: int
+// @param DerefAliases: int
+// @param SizeLimit: int
+// @param TimeLimit: int
+// @param TypesOnly: bool
+// @param Filter: string
+// @param Attributes: []string
+// @param Controls: []ldap.Control
+// @return ldap.SearchResult
+func (c *Client) AdvancedSearch(
+	Scope, DerefAliases, SizeLimit, TimeLimit int,
+	TypesOnly bool,
+	Filter string,
+	Attributes []string,
+	Controls []ldap.Control) ldap.SearchResult {
+	c.nj.Require(c.conn != nil, "no existing connection")
+	if c.BaseDN == "" {
+		c.BaseDN = fmt.Sprintf("dc=%s", strings.Join(strings.Split(c.Realm, "."), ",dc="))
+	}
+	req := ldap.NewSearchRequest(c.BaseDN, Scope, DerefAliases, SizeLimit, TimeLimit, TypesOnly, Filter, Attributes, Controls)
+	res, err := c.conn.Search(req)
+	c.nj.HandleError(err, "ldap search request failed")
+	c.nj.Require(res != nil, "ldap search request failed got nil response")
+	return *res
 }
 
 // Metadata is the metadata for ldap server.
@@ -153,16 +248,16 @@ type Metadata struct {
 }
 
 // CollectLdapMetadata collects metadata from ldap server.
-func (c *LdapClient) CollectMetadata(domain string, controller string) (Metadata, error) {
-	if c.Conn == nil {
-		return Metadata{}, fmt.Errorf("no existing connection")
-	}
-	defer c.Conn.Close()
-
+// Signature: CollectMetadata(domain, controller)
+// @return Metadata
+func (c *Client) CollectMetadata() Metadata {
+	c.nj.Require(c.conn != nil, "no existing connection")
 	var metadata Metadata
-
-	metadata.BaseDN = c.BaseDN
 	metadata.Domain = c.Realm
+	if c.BaseDN == "" {
+		c.BaseDN = fmt.Sprintf("dc=%s", strings.Join(strings.Split(c.Realm, "."), ",dc="))
+	}
+	metadata.BaseDN = c.BaseDN
 
 	srMetadata := ldap.NewSearchRequest(
 		"",
@@ -178,10 +273,9 @@ func (c *LdapClient) CollectMetadata(domain string, controller string) (Metadata
 			"dnsHostName",
 		},
 		nil)
-	resMetadata, err := c.Conn.Search(srMetadata)
-	if err != nil {
-		return metadata, err
-	}
+	resMetadata, err := c.conn.Search(srMetadata)
+	c.nj.HandleError(err, "ldap search request failed")
+
 	for _, entry := range resMetadata.Entries {
 		for _, attr := range entry.Attributes {
 			value := entry.GetAttributeValue(attr.Name)
@@ -199,9 +293,10 @@ func (c *LdapClient) CollectMetadata(domain string, controller string) (Metadata
 			}
 		}
 	}
-	return metadata, nil
+	return metadata
 }
 
-func (c *LdapClient) Close() {
-	c.Conn.Close()
+// close the ldap connection
+func (c *Client) Close() {
+	c.conn.Close()
 }

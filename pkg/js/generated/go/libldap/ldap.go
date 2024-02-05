@@ -52,11 +52,11 @@ func init() {
 
 			// Types (value type)
 			"Metadata":   func() lib_ldap.Metadata { return lib_ldap.Metadata{} },
-			"LdapClient": func() lib_ldap.LdapClient { return lib_ldap.LdapClient{} },
+			"LdapClient": lib_ldap.NewClient,
 
 			// Types (pointer type)
-			"NewMetadata":   func() *lib_ldap.Metadata { return &lib_ldap.Metadata{} },
-			"NewLdapClient": func() *lib_ldap.LdapClient { return &lib_ldap.LdapClient{} },
+			// "NewMetadata":   func() *lib_ldap.Metadata { return &lib_ldap.Metadata{} },
+			// "NewLdapClient": func() *lib_ldap.LdapClient { return &lib_ldap.LdapClient{} },
 		},
 	).Register()
 }
