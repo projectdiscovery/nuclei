@@ -150,8 +150,7 @@ func CreateTemplateData(directory string, packagePrefix string) (*TemplateData, 
 // InitNativeScripts initializes the native scripts array
 // with all the exported functions from the runtime
 func (d *TemplateData) InitNativeScripts() {
-	compiler := compiler.New()
-	runtime := compiler.VM()
+	runtime := compiler.InternalGetGeneratorRuntime()
 
 	exports := runtime.Get("exports")
 	if exports == nil {
@@ -346,6 +345,10 @@ func (d *TemplateData) handleStarExpr(v *ast.StarExpr) string {
 }
 
 func (d *TemplateData) collectTypeFromExternal(pkg *types.Package, pkgName, name string) {
+	if pkgName == "goja" {
+		// no need to attempt to collect types from goja ( this is metadata )
+		return
+	}
 	extra := PackageTypeExtra{
 		Fields: make(map[string]string),
 	}

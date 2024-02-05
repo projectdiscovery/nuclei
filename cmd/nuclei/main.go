@@ -12,6 +12,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/projectdiscovery/utils/auth/pdcp"
 	_ "github.com/projectdiscovery/utils/pprof"
 
 	"github.com/projectdiscovery/goflags"
@@ -127,6 +128,9 @@ func main() {
 		defer cancel()
 		stackMonitor.RegisterCallback(func(dumpID string) error {
 			resumeFileName := fmt.Sprintf("crash-resume-file-%s.dump", dumpID)
+			if options.EnableCloudUpload {
+				gologger.Info().Msgf("Uploading scan results to cloud...")
+			}
 			nucleiRunner.Close()
 			gologger.Info().Msgf("Creating resume file: %s\n", resumeFileName)
 			err := nucleiRunner.SaveResumeConfig(resumeFileName)
@@ -143,6 +147,9 @@ func main() {
 		for range c {
 			gologger.Info().Msgf("CTRL+C pressed: Exiting\n")
 			gologger.Info().Msgf("Attempting graceful shutdown...")
+			if options.EnableCloudUpload {
+				gologger.Info().Msgf("Uploading scan results to cloud...")
+			}
 			nucleiRunner.Close()
 			if options.ShouldSaveResume() {
 				gologger.Info().Msgf("Creating resume file: %s\n", resumeFileName)
@@ -312,6 +319,7 @@ on extensive configurability, massive extensibility and ease of use.`)
 		flagSet.IntVarP(&options.TemplateThreads, "concurrency", "c", 25, "maximum number of templates to be executed in parallel"),
 		flagSet.IntVarP(&options.HeadlessBulkSize, "headless-bulk-size", "hbs", 10, "maximum number of headless hosts to be analyzed in parallel per template"),
 		flagSet.IntVarP(&options.HeadlessTemplateThreads, "headless-concurrency", "headc", 10, "maximum number of headless templates to be executed in parallel"),
+		flagSet.IntVarP(&options.JsConcurrency, "js-concurrency", "jsc", 120, "maximum number of javascript runtimes to be executed in parallel"),
 	)
 	flagSet.CreateGroup("optimization", "Optimizations",
 		flagSet.IntVar(&options.Timeout, "timeout", 10, "time to wait in seconds before timeout"),
@@ -380,6 +388,7 @@ on extensive configurability, massive extensibility and ease of use.`)
 	flagSet.CreateGroup("cloud", "Cloud",
 		flagSet.BoolVar(&pdcpauth, "auth", false, "configure projectdiscovery cloud (pdcp) api key"),
 		flagSet.BoolVarP(&options.EnableCloudUpload, "cloud-upload", "cup", false, "upload scan results to pdcp dashboard"),
+		flagSet.StringVarP(&options.ScanID, "scan-id", "sid", "", "upload scan results to given scan id"),
 	)
 
 	flagSet.SetCustomHelpText(`EXAMPLES:
@@ -500,6 +509,7 @@ func printVersion() {
 	gologger.Info().Msgf("Nuclei Engine Version: %s", config.Version)
 	gologger.Info().Msgf("Nuclei Config Directory: %s", config.DefaultConfig.GetConfigDir())
 	gologger.Info().Msgf("Nuclei Cache Directory: %s", config.DefaultConfig.GetCacheDir()) // cache dir contains resume files
+	gologger.Info().Msgf("PDCP Directory: %s", pdcp.PDCPDir)
 	os.Exit(0)
 }
 

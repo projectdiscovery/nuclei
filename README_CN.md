@@ -293,9 +293,10 @@ UNCOVER引擎:
     -si, -stats-inerval int              显示统计信息更新的间隔秒数（默认：5）
     -mp, -metrics-port int               更改metrics服务的端口（默认：9092）
 
-云服务:
-   -auth                配置projectdiscovery云（pdcp）API密钥
-   -cup, -cloud-upload  将扫描结果上传到pdcp仪表板
+云服务：
+   -auth                  配置projectdiscovery云服务（pdcp）API密钥
+   -cup, -cloud-upload    将扫描结果上传到pdcp仪表板
+   -sid, -scan-id string  将扫描结果上传到指定的扫描ID
 
 例子:
 扫描一个单独的URL:
