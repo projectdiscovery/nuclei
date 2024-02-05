@@ -71,7 +71,6 @@ require (
 	github.com/go-sql-driver/mysql v1.6.0
 	github.com/h2non/filetype v1.1.3
 	github.com/hirochachacha/go-smb2 v1.1.0
-	github.com/jcmturner/gokrb5 v8.4.4+incompatible
 	github.com/labstack/echo/v4 v4.10.2
 	github.com/lib/pq v1.10.1
 	github.com/mholt/archiver v3.1.1+incompatible
