@@ -3,6 +3,7 @@ package utils
 import (
 	"fmt"
 	"reflect"
+	"strings"
 	"sync"
 
 	"github.com/dop251/goja"
@@ -43,12 +44,23 @@ func (j *NucleiJS) runtime() *goja.Runtime {
 
 // see: https://arc.net/l/quote/wpenftpc for throwing docs
 
-// ThrowError throws an error in goja runtime
+// ThrowError throws an error in goja runtime if is not nil
 func (j *NucleiJS) ThrowError(err error) {
 	if err == nil {
 		return
 	}
 	panic(j.runtime().ToValue(err.Error()))
+}
+
+// HandleError handles error and throws a
+func (j *NucleiJS) HandleError(err error, msg ...string) {
+	if err == nil {
+		return
+	}
+	if len(msg) == 0 {
+		j.ThrowError(err)
+	}
+	j.Throw(fmt.Sprintf("%s: %s", strings.Join(msg, ":"), err.Error()))
 }
 
 // Throw throws an error in goja runtime
