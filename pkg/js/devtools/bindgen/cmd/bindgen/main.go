@@ -16,14 +16,12 @@ var (
 	dir           string
 	generatedDir  string
 	targetModules string
-	goOnly        bool
 )
 
 func main() {
 	flag.StringVar(&dir, "dir", "libs", "directory to process")
 	flag.StringVar(&generatedDir, "out", "generated", "directory to output generated files")
 	flag.StringVar(&targetModules, "target", "", "target modules to generate")
-	flag.BoolVar(&goOnly, "go", false, "generate only go files")
 	flag.Parse()
 	log.SetFlags(0)
 	if !fileutil.FolderExists(dir) {
@@ -54,12 +52,12 @@ func process() error {
 		}
 
 		prefixed := "lib" + module
-		if !goOnly {
-			err = data.WriteJSTemplate(filepath.Join(generatedDir, "js/"+prefixed), module)
-			if err != nil {
-				return fmt.Errorf("could not write js template: %v", err)
-			}
-		}
+		// if !goOnly {
+		// 	err = data.WriteJSTemplate(filepath.Join(generatedDir, "js/"+prefixed), module)
+		// 	if err != nil {
+		// 		return fmt.Errorf("could not write js template: %v", err)
+		// 	}
+		// }
 		err = data.WriteGoTemplate(path.Join(generatedDir, "go/"+prefixed), module)
 		if err != nil {
 			return fmt.Errorf("could not write go template: %v", err)
