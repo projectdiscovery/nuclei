@@ -77,10 +77,10 @@ func main() {
 		entityList := []tsgen.Entity{}
 		ep, err := tsgen.NewEntityParser(dir)
 		if err != nil {
-			panic(err)
+			panic(fmt.Errorf("could not create entity parser: %s", err))
 		}
 		if err := ep.Parse(); err != nil {
-			panic(err)
+			panic(fmt.Errorf("could not parse entities: %s", err))
 		}
 		entityList = append(entityList, ep.GetEntities()...)
 		entityList = sortEntities(entityList)

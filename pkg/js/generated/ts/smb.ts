@@ -1,17 +1,6 @@
 
 
 /**
- * DetectSMBGhost tries to detect SMBGhost vulnerability
- * by using SMBv3 compression feature.
-* @throws {Error} - if the operation fails
- */
-export function DetectSMBGhost(host: string, port: number): boolean | null {
-    return null;
-}
-
-
-
-/**
  * SMBClient Class
  */
 export class SMBClient {
@@ -55,6 +44,16 @@ export class SMBClient {
     }
     
 
+    /**
+    * DetectSMBGhost tries to detect SMBGhost vulnerability
+    * by using SMBv3 compression feature.
+    * @throws {Error} - if the operation fails
+    */
+    public DetectSMBGhost(host: string, port: number): boolean | null {
+        return null;
+    }
+    
+
 }
 
 
@@ -64,8 +63,6 @@ export class SMBClient {
  */
 export interface HeaderLog {
     
-    Status?: number,
-    
     Command?: number,
     
     Credits?: number,
@@ -73,6 +70,8 @@ export interface HeaderLog {
     Flags?: number,
     
     ProtocolID?: Uint8Array,
+    
+    Status?: number,
 }
 
 
@@ -82,12 +81,6 @@ export interface HeaderLog {
  */
 export interface NegotiationLog {
     
-    ServerGuid?: Uint8Array,
-    
-    Capabilities?: number,
-    
-    SystemTime?: number,
-    
     ServerStartTime?: number,
     
     AuthenticationTypes?: string[],
@@ -95,6 +88,12 @@ export interface NegotiationLog {
     SecurityMode?: number,
     
     DialectRevision?: number,
+    
+    ServerGuid?: Uint8Array,
+    
+    Capabilities?: number,
+    
+    SystemTime?: number,
     
     HeaderLog?: HeaderLog,
 }
@@ -105,8 +104,6 @@ export interface NegotiationLog {
  * SMBCapabilities Interface
  */
 export interface SMBCapabilities {
-    
-    Leasing?: boolean,
     
     LargeMTU?: boolean,
     
@@ -119,6 +116,8 @@ export interface SMBCapabilities {
     Encryption?: boolean,
     
     DFSSupport?: boolean,
+    
+    Leasing?: boolean,
 }
 
 
@@ -154,13 +153,13 @@ export interface SMBLog {
  */
 export interface SMBVersions {
     
+    VerString?: string,
+    
     Major?: number,
     
     Minor?: number,
     
     Revision?: number,
-    
-    VerString?: string,
 }
 
 
@@ -170,14 +169,6 @@ export interface SMBVersions {
  */
 export interface ServiceSMB {
     
-    NetBIOSDomainName?: string,
-    
-    DNSComputerName?: string,
-    
-    DNSDomainName?: string,
-    
-    ForestName?: string,
-    
     SigningEnabled?: boolean,
     
     SigningRequired?: boolean,
@@ -185,6 +176,14 @@ export interface ServiceSMB {
     OSVersion?: string,
     
     NetBIOSComputerName?: string,
+    
+    NetBIOSDomainName?: string,
+    
+    DNSComputerName?: string,
+    
+    DNSDomainName?: string,
+    
+    ForestName?: string,
 }
 
 
@@ -194,11 +193,11 @@ export interface ServiceSMB {
  */
 export interface SessionSetupLog {
     
+    SetupFlags?: number,
+    
     TargetName?: string,
     
     NegotiateFlags?: number,
-    
-    SetupFlags?: number,
     
     HeaderLog?: HeaderLog,
 }

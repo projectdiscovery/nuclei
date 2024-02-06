@@ -87,13 +87,13 @@ export class SSHClient {
  */
 export interface Algorithms {
     
-    Kex?: string,
-    
     HostKey?: string,
     
-    R?: DirectionAlgorithms,
+    Kex?: string,
     
     W?: DirectionAlgorithms,
+    
+    R?: DirectionAlgorithms,
 }
 
 
@@ -103,11 +103,11 @@ export interface Algorithms {
  */
 export interface DirectionAlgorithms {
     
+    Compression?: string,
+    
     Cipher?: string,
     
     MAC?: string,
-    
-    Compression?: string,
 }
 
 
@@ -117,13 +117,13 @@ export interface DirectionAlgorithms {
  */
 export interface EndpointId {
     
-    Comment?: string,
-    
     Raw?: string,
     
     ProtoVersion?: string,
     
     SoftwareVersion?: string,
+    
+    Comment?: string,
 }
 
 
@@ -137,6 +137,8 @@ export interface HandshakeLog {
     
     UserAuth?: string[],
     
+    ServerID?: EndpointId,
+    
     ClientID?: EndpointId,
     
     ServerKex?: KexInitMsg,
@@ -144,8 +146,6 @@ export interface HandshakeLog {
     ClientKex?: KexInitMsg,
     
     AlgorithmSelection?: Algorithms,
-    
-    ServerID?: EndpointId,
 }
 
 
@@ -155,27 +155,21 @@ export interface HandshakeLog {
  */
 export interface KexInitMsg {
     
-    LanguagesServerClient?: string[],
-    
     ServerHostKeyAlgos?: string[],
-    
-    CompressionServerClient?: string[],
-    
-    CompressionClientServer?: string[],
-    
-    Reserved?: number,
-    
-    CiphersServerClient?: string[],
-    
-    MACsServerClient?: string[],
-    
-    CiphersClientServer?: string[],
-    
-    FirstKexFollows?: boolean,
     
     MACsClientServer?: string[],
     
+    LanguagesServerClient?: string[],
+    
+    KexAlgos?: string[],
+    
+    CiphersServerClient?: string[],
+    
     LanguagesClientServer?: string[],
+    
+    FirstKexFollows?: boolean,
+    
+    Reserved?: number,
     
     /**
     * fixed size array of length: [16]
@@ -183,6 +177,12 @@ export interface KexInitMsg {
     
     Cookie?: Uint8Array,
     
-    KexAlgos?: string[],
+    CiphersClientServer?: string[],
+    
+    MACsServerClient?: string[],
+    
+    CompressionClientServer?: string[],
+    
+    CompressionServerClient?: string[],
 }
 

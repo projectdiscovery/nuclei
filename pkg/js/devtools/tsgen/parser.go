@@ -2,6 +2,7 @@ package tsgen
 
 import (
 	"errors"
+	"fmt"
 	"go/ast"
 	"regexp"
 	"strings"
@@ -184,7 +185,7 @@ func (p *EntityParser) Parse() error {
 		// 	continue
 		// }
 		if err := p.scrapeAndCreate(k); err != nil {
-			return err
+			return fmt.Errorf("could not scrape and create new object: %s", err)
 		}
 	}
 
@@ -500,31 +501,31 @@ func (p *EntityParser) extractVarsNConstants() {
 // loadImportedPackages loads all imported packages
 func (p *EntityParser) loadImportedPackages() error {
 	// get all import statements
-	imports := []*ast.ImportSpec{}
-	for _, file := range p.syntax {
-		imports = append(imports, file.Imports...)
-	}
 	// iterate over all imports
-	for _, imp := range imports {
-		// get the package path
-		path := imp.Path.Value
-		// remove the quotes from the path
-		path = path[1 : len(path)-1]
-		// load the package
-		pkg, err := loadPackage(path)
-		if err != nil {
-			return err
-		}
-		importName := path[strings.LastIndex(path, "/")+1:]
-		if imp.Name != nil {
-			importName = imp.Name.Name
-		} else {
-			if !strings.HasSuffix(imp.Path.Value, pkg.Types.Name()+`"`) {
-				importName = pkg.Types.Name()
+	for _, file := range p.syntax {
+		for _, imp := range file.Imports {
+			// get the package path
+			path := imp.Path.Value
+			// remove the quotes from the path
+			path = path[1 : len(path)-1]
+			// load the package
+			pkg, err := loadPackage(path)
+			if err != nil {
+				return err
+			}
+			importName := path[strings.LastIndex(path, "/")+1:]
+			if imp.Name != nil {
+				importName = imp.Name.Name
+			} else {
+				if !strings.HasSuffix(imp.Path.Value, pkg.Types.Name()+`"`) {
+					importName = pkg.Types.Name()
+				}
+			}
+			// add the package to the map
+			if _, ok := p.imports[importName]; !ok {
+				p.imports[importName] = pkg
 			}
 		}
-		// add the package to the map
-		p.imports[importName] = pkg
 	}
 	return nil
 }

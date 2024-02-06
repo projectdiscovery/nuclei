@@ -113,127 +113,6 @@ export function DecodeZuluTimestamp(timestamp: string): string {
 
 
 /**
- * FindADObjects finds AD objects based on a filter
- * and returns them as a list of ADObject
- * @param filter: string
- * @return []ADObject
- */
-export function FindADObjects(filter: string): ADObject[] {
-    return [];
-}
-
-
-
-/**
- * GetADActiveUsers returns all AD users
- * using FilterIsPerson and FilterAccountEnabled filter query
- * @return []ADObject
- */
-export function GetADActiveUsers(): ADObject[] {
-    return [];
-}
-
-
-
-/**
- * GetADAdmins returns all AD admins
- * using FilterIsPerson, FilterAccountEnabled and FilterIsAdmin filter query
- * @return []ADObject
- */
-export function GetADAdmins(): ADObject[] {
-    return [];
-}
-
-
-
-/**
- * GetADDCList returns all AD domain controllers
- * using FilterIsComputer, FilterAccountEnabled and FilterServerTrustAccount filter query
- * @return []ADObject
- */
-export function GetADDCList(): ADObject[] {
-    return [];
-}
-
-
-
-/**
- * GetADDomainSID returns the SID of the AD domain
- * @return string
- */
-export function GetADDomainSID(): string {
-    return "";
-}
-
-
-
-/**
- * GetADGroups returns all AD groups
- * using FilterIsGroup filter query
- * @return []ADObject
- */
-export function GetADGroups(): ADObject[] {
-    return [];
-}
-
-
-
-/**
- * GetADUserKerberoastable returns all AD users that are kerberoastable
- * using FilterIsPerson, FilterAccountEnabled and FilterHasServicePrincipalName filter query
- * @return []ADObject
- */
-export function GetADUserKerberoastable(): ADObject[] {
-    return [];
-}
-
-
-
-/**
- * GetADUserTrustedForDelegation returns all AD users that are trusted for delegation
- * using FilterIsPerson and FilterTrustedForDelegation filter query
- * @return []ADObject
- */
-export function GetADUserTrustedForDelegation(): ADObject[] {
-    return [];
-}
-
-
-
-/**
- * GetAdUserWithNeverExpiringPasswords returns all AD users
- * using FilterIsPerson and FilterDontExpirePassword filter query
- * @return []ADObject
- */
-export function GetADUserWithNeverExpiringPasswords(): ADObject[] {
-    return [];
-}
-
-
-
-/**
- * GetADUserWithPasswordNotRequired returns all AD users that do not require a password
- * using FilterIsPerson and FilterPasswordNotRequired filter query
- * @return []ADObject
- */
-export function GetADUserWithPasswordNotRequired(): ADObject[] {
-    return [];
-}
-
-
-
-/**
- * GetADUsers returns all AD users
- * using FilterIsPerson filter query
- * @return []ADObject
- */
-export function GetADUsers(): ADObject[] {
-    return [];
-}
-
-
-
-/**
  * JoinFilters joins multiple filters into a single filter
  */
 export function JoinFilters(filters: any): string {
@@ -275,6 +154,116 @@ export class Client {
 
     // Constructor of Client
     constructor(public ldapUrl: string, public realm: string, public config?: Config ) {}
+    
+
+    /**
+    * FindADObjects finds AD objects based on a filter
+    * and returns them as a list of ADObject
+    * @param filter: string
+    * @return []ADObject
+    */
+    public FindADObjects(filter: string): ADObject[] {
+        return [];
+    }
+    
+
+    /**
+    * GetADUsers returns all AD users
+    * using FilterIsPerson filter query
+    * @return []ADObject
+    */
+    public GetADUsers(): ADObject[] {
+        return [];
+    }
+    
+
+    /**
+    * GetADActiveUsers returns all AD users
+    * using FilterIsPerson and FilterAccountEnabled filter query
+    * @return []ADObject
+    */
+    public GetADActiveUsers(): ADObject[] {
+        return [];
+    }
+    
+
+    /**
+    * GetAdUserWithNeverExpiringPasswords returns all AD users
+    * using FilterIsPerson and FilterDontExpirePassword filter query
+    * @return []ADObject
+    */
+    public GetADUserWithNeverExpiringPasswords(): ADObject[] {
+        return [];
+    }
+    
+
+    /**
+    * GetADUserTrustedForDelegation returns all AD users that are trusted for delegation
+    * using FilterIsPerson and FilterTrustedForDelegation filter query
+    * @return []ADObject
+    */
+    public GetADUserTrustedForDelegation(): ADObject[] {
+        return [];
+    }
+    
+
+    /**
+    * GetADUserWithPasswordNotRequired returns all AD users that do not require a password
+    * using FilterIsPerson and FilterPasswordNotRequired filter query
+    * @return []ADObject
+    */
+    public GetADUserWithPasswordNotRequired(): ADObject[] {
+        return [];
+    }
+    
+
+    /**
+    * GetADGroups returns all AD groups
+    * using FilterIsGroup filter query
+    * @return []ADObject
+    */
+    public GetADGroups(): ADObject[] {
+        return [];
+    }
+    
+
+    /**
+    * GetADDCList returns all AD domain controllers
+    * using FilterIsComputer, FilterAccountEnabled and FilterServerTrustAccount filter query
+    * @return []ADObject
+    */
+    public GetADDCList(): ADObject[] {
+        return [];
+    }
+    
+
+    /**
+    * GetADAdmins returns all AD admins
+    * using FilterIsPerson, FilterAccountEnabled and FilterIsAdmin filter query
+    * @return []ADObject
+    */
+    public GetADAdmins(): ADObject[] {
+        return [];
+    }
+    
+
+    /**
+    * GetADUserKerberoastable returns all AD users that are kerberoastable
+    * using FilterIsPerson, FilterAccountEnabled and FilterHasServicePrincipalName filter query
+    * @return []ADObject
+    */
+    public GetADUserKerberoastable(): ADObject[] {
+        return [];
+    }
+    
+
+    /**
+    * GetADDomainSID returns the SID of the AD domain
+    * @return string
+    */
+    public GetADDomainSID(): string {
+        return "";
+    }
     
 
     /**
@@ -411,11 +400,11 @@ export interface Entry {
  */
 export interface EntryAttribute {
     
-    ByteValues?: Uint8Array,
-    
     Name?: string,
     
     Values?: string[],
+    
+    ByteValues?: Uint8Array,
 }
 
 
