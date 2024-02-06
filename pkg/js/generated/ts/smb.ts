@@ -64,8 +64,6 @@ export class SMBClient {
  */
 export interface HeaderLog {
     
-    ProtocolID?: Uint8Array,
-    
     Status?: number,
     
     Command?: number,
@@ -73,6 +71,8 @@ export interface HeaderLog {
     Credits?: number,
     
     Flags?: number,
+    
+    ProtocolID?: Uint8Array,
 }
 
 
@@ -81,6 +81,10 @@ export interface HeaderLog {
  * NegotiationLog Interface
  */
 export interface NegotiationLog {
+    
+    ServerGuid?: Uint8Array,
+    
+    Capabilities?: number,
     
     SystemTime?: number,
     
@@ -92,10 +96,6 @@ export interface NegotiationLog {
     
     DialectRevision?: number,
     
-    ServerGuid?: Uint8Array,
-    
-    Capabilities?: number,
-    
     HeaderLog?: HeaderLog,
 }
 
@@ -106,10 +106,6 @@ export interface NegotiationLog {
  */
 export interface SMBCapabilities {
     
-    Encryption?: boolean,
-    
-    DFSSupport?: boolean,
-    
     Leasing?: boolean,
     
     LargeMTU?: boolean,
@@ -119,6 +115,10 @@ export interface SMBCapabilities {
     Persist?: boolean,
     
     DirLeasing?: boolean,
+    
+    Encryption?: boolean,
+    
+    DFSSupport?: boolean,
 }
 
 
@@ -170,8 +170,6 @@ export interface SMBVersions {
  */
 export interface ServiceSMB {
     
-    NetBIOSComputerName?: string,
-    
     NetBIOSDomainName?: string,
     
     DNSComputerName?: string,
@@ -185,6 +183,8 @@ export interface ServiceSMB {
     SigningRequired?: boolean,
     
     OSVersion?: string,
+    
+    NetBIOSComputerName?: string,
 }
 
 
@@ -194,11 +194,11 @@ export interface ServiceSMB {
  */
 export interface SessionSetupLog {
     
-    SetupFlags?: number,
-    
     TargetName?: string,
     
     NegotiateFlags?: number,
+    
+    SetupFlags?: number,
     
     HeaderLog?: HeaderLog,
 }

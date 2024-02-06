@@ -411,11 +411,11 @@ export interface Entry {
  */
 export interface EntryAttribute {
     
+    ByteValues?: Uint8Array,
+    
     Name?: string,
     
     Values?: string[],
-    
-    ByteValues?: Uint8Array,
 }
 
 

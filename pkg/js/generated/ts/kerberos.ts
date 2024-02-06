@@ -196,8 +196,6 @@ export interface Config {
  */
 export interface EncTicketPart {
     
-    RenewTill?: Date,
-    
     CRealm?: string,
     
     AuthTime?: Date,
@@ -206,17 +204,19 @@ export interface EncTicketPart {
     
     EndTime?: Date,
     
-    AuthorizationData?: AuthorizationDataEntry,
-    
-    Flags?: BitString,
-    
-    Key?: EncryptionKey,
+    RenewTill?: Date,
     
     CName?: PrincipalName,
     
     Transited?: TransitedEncoding,
     
     CAddr?: HostAddress,
+    
+    AuthorizationData?: AuthorizationDataEntry,
+    
+    Flags?: BitString,
+    
+    Key?: EncryptionKey,
 }
 
 
@@ -226,11 +226,11 @@ export interface EncTicketPart {
  */
 export interface EncryptedData {
     
+    Cipher?: Uint8Array,
+    
     EType?: number,
     
     KVNO?: number,
-    
-    Cipher?: Uint8Array,
 }
 
 
@@ -240,9 +240,9 @@ export interface EncryptedData {
  */
 export interface EncryptionKey {
     
-    KeyType?: number,
-    
     KeyValue?: Uint8Array,
+    
+    KeyType?: number,
 }
 
 
@@ -278,13 +278,27 @@ export interface HostAddress {
  */
 export interface LibDefaults {
     
-    DNSLookupRealm?: boolean,
+    Canonicalize?: boolean,
     
-    IgnoreAcceptorHostname?: boolean,
-    
-    PermittedEnctypeIDs?: number[],
+    DefaultTktEnctypeIDs?: number[],
     
     RealmTryDomains?: number,
+    
+    VerifyAPReqNofail?: boolean,
+    
+    AllowWeakCrypto?: boolean,
+    
+    PreferredPreauthTypes?: number[],
+    
+    Proxiable?: boolean,
+    
+    DNSCanonicalizeHostname?: boolean,
+    
+    K5LoginAuthoritative?: boolean,
+    
+    NoAddresses?: boolean,
+    
+    PermittedEnctypeIDs?: number[],
     
     /**
     * time in nanoseconds
@@ -292,23 +306,23 @@ export interface LibDefaults {
     
     RenewLifetime?: number,
     
-    Canonicalize?: boolean,
+    /**
+    * time in nanoseconds
+    */
     
-    DefaultTGSEnctypes?: string[],
+    Clockskew?: number,
     
-    DefaultTktEnctypes?: string[],
+    DNSLookupKDC?: boolean,
     
-    DefaultTktEnctypeIDs?: number[],
+    DNSLookupRealm?: boolean,
     
-    DNSCanonicalizeHostname?: boolean,
+    Forwardable?: boolean,
     
-    K5LoginAuthoritative?: boolean,
+    DefaultClientKeytabName?: string,
     
-    RDNS?: boolean,
+    ExtraAddresses?: Uint8Array,
     
-    SafeChecksumType?: number,
-    
-    DefaultKeytabName?: string,
+    K5LoginDirectory?: string,
     
     /**
     * time in nanoseconds
@@ -318,41 +332,27 @@ export interface LibDefaults {
     
     UDPPreferenceLimit?: number,
     
-    PreferredPreauthTypes?: number[],
-    
-    Proxiable?: boolean,
-    
-    DNSLookupKDC?: boolean,
-    
-    Forwardable?: boolean,
-    
-    K5LoginDirectory?: string,
-    
-    NoAddresses?: boolean,
-    
-    PermittedEnctypes?: string[],
-    
-    DefaultClientKeytabName?: string,
-    
-    /**
-    * time in nanoseconds
-    */
-    
-    Clockskew?: number,
-    
-    DefaultRealm?: string,
-    
-    ExtraAddresses?: Uint8Array,
-    
-    VerifyAPReqNofail?: boolean,
-    
-    AllowWeakCrypto?: boolean,
+    DefaultKeytabName?: string,
     
     DefaultTGSEnctypeIDs?: number[],
     
-    KDCTimeSync?: number,
+    PermittedEnctypes?: string[],
+    
+    RDNS?: boolean,
     
     CCacheType?: number,
+    
+    DefaultTktEnctypes?: string[],
+    
+    SafeChecksumType?: number,
+    
+    DefaultRealm?: string,
+    
+    IgnoreAcceptorHostname?: boolean,
+    
+    KDCTimeSync?: number,
+    
+    DefaultTGSEnctypes?: string[],
     
     KDCDefaultOptions?: BitString,
 }
@@ -376,8 +376,6 @@ export interface PrincipalName {
  */
 export interface Realm {
     
-    AdminServer?: string[],
-    
     DefaultDomain?: string,
     
     KDC?: string[],
@@ -387,6 +385,8 @@ export interface Realm {
     MasterKDC?: string[],
     
     Realm?: string,
+    
+    AdminServer?: string[],
 }
 
 

@@ -63,6 +63,8 @@ export interface IsRDPResponse {
  */
 export interface ServiceRDP {
     
+    TargetName?: string,
+    
     NetBIOSComputerName?: string,
     
     NetBIOSDomainName?: string,
@@ -76,7 +78,5 @@ export interface ServiceRDP {
     OSFingerprint?: string,
     
     OSVersion?: string,
-    
-    TargetName?: string,
 }
 

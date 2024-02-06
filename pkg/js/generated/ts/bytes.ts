@@ -37,7 +37,7 @@ export class Buffer {
     * Bytes returns the byte slice of the buffer.
     */
     public Bytes(): Uint8Array {
-        return new Uint8Array();
+        return new Uint8Array(8);
     }
     
 

@@ -117,13 +117,13 @@ export interface DirectionAlgorithms {
  */
 export interface EndpointId {
     
+    Comment?: string,
+    
     Raw?: string,
     
     ProtoVersion?: string,
     
     SoftwareVersion?: string,
-    
-    Comment?: string,
 }
 
 
@@ -155,27 +155,27 @@ export interface HandshakeLog {
  */
 export interface KexInitMsg {
     
-    Reserved?: number,
-    
-    KexAlgos?: string[],
-    
-    MACsClientServer?: string[],
-    
-    CompressionClientServer?: string[],
-    
     LanguagesServerClient?: string[],
-    
-    CiphersClientServer?: string[],
     
     ServerHostKeyAlgos?: string[],
     
-    CiphersServerClient?: string[],
-    
     CompressionServerClient?: string[],
     
-    LanguagesClientServer?: string[],
+    CompressionClientServer?: string[],
+    
+    Reserved?: number,
+    
+    CiphersServerClient?: string[],
+    
+    MACsServerClient?: string[],
+    
+    CiphersClientServer?: string[],
     
     FirstKexFollows?: boolean,
+    
+    MACsClientServer?: string[],
+    
+    LanguagesClientServer?: string[],
     
     /**
     * fixed size array of length: [16]
@@ -183,6 +183,6 @@ export interface KexInitMsg {
     
     Cookie?: Uint8Array,
     
-    MACsServerClient?: string[],
+    KexAlgos?: string[],
 }
 

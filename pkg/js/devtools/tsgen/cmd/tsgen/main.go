@@ -104,14 +104,14 @@ func main() {
 		moduleName := filepath.Base(dir)
 		gologger.Info().Msgf("Writing %s.ts", moduleName)
 		// create appropriate directory if missing
-		_ = fileutil.CreateFolder(filepath.Join(out, moduleName))
-		_ = os.WriteFile(filepath.Join(out, moduleName, moduleName)+".ts", buff.Bytes(), 0755)
+		// _ = fileutil.CreateFolder(filepath.Join(out, moduleName))
+		_ = os.WriteFile(filepath.Join(out, moduleName)+".ts", buff.Bytes(), 0755)
 	}
 
 	// generating index.ts file
 	var buff bytes.Buffer
 	for _, dir := range dirs {
-		buff.WriteString(fmt.Sprintf("export * as %s from './%s/%s';\n", filepath.Base(dir), filepath.Base(dir), filepath.Base(dir)))
+		buff.WriteString(fmt.Sprintf("export * as %s from './%s';\n", filepath.Base(dir), filepath.Base(dir)))
 	}
 	_ = os.WriteFile(filepath.Join(out, "index.ts"), buff.Bytes(), 0755)
 }

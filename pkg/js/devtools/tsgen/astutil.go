@@ -74,7 +74,7 @@ func TsDefaultValue(t string) string {
 	case "boolean":
 		return `false`
 	case "Uint8Array":
-		return `new Uint8Array()`
+		return `new Uint8Array(8)`
 	case "any":
 		return `undefined`
 	case "interface{}":
