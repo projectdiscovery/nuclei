@@ -54,6 +54,8 @@ func NewClient(call goja.ConstructorCall, runtime *goja.Runtime) *goja.Object {
 	ldapUrl, _ := c.nj.GetArg(call.Arguments, 0).(string)
 	realm, _ := c.nj.GetArg(call.Arguments, 1).(string)
 	c.cfg = utils.GetStructTypeSafe[Config](c.nj, call.Arguments, 2, Config{})
+	c.Realm = realm
+	c.BaseDN = fmt.Sprintf("dc=%s", strings.Join(strings.Split(realm, "."), ",dc="))
 
 	// validate arguments
 	c.nj.Require(ldapUrl != "", "ldap url cannot be empty")

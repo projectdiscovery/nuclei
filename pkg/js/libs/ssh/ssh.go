@@ -14,7 +14,7 @@ import (
 //
 // Internally client uses github.com/zmap/zgrab2/lib/ssh driver.
 type SSHClient struct {
-	Connection *ssh.Client
+	connection *ssh.Client
 	timeout    time.Duration
 }
 

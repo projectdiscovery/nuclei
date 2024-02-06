@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	_ "embed"
+	"flag"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -10,6 +11,7 @@ import (
 	"strings"
 	"text/template"
 
+	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/js/devtools/tsdocs"
 	fileutil "github.com/projectdiscovery/utils/file"
 )
@@ -19,7 +21,16 @@ import (
 //go:embed tsmodule.go.tmpl
 var tsTemplate string
 
+var (
+	source string
+	out    string
+)
+
 func main() {
+	flag.StringVar(&source, "d", "", "Directory to parse")
+	flag.StringVar(&out, "out", "src", "Typescript files Output directory")
+	flag.Parse()
+
 	// Create an instance of the template
 	tmpl := template.New("ts")
 	tmpl = tmpl.Funcs(template.FuncMap{
@@ -39,29 +50,16 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	// _ = tmpl
 
-	// ep, err := tsdocs.NewEntityParser("../../../../libs/structs/structs.go")
-	// if err != nil {
-	// 	panic(err)
-	// }
-	// if err := ep.Parse(); err != nil {
-	// 	panic(err)
-	// }
-	// // var buff bytes.Buffer
-	// err = tmpl.Execute(os.Stdout, ep.GetEntities())
-	// if err != nil {
-	// 	panic(err)
-	// }
-
-	_ = fileutil.CreateFolder("src")
+	// Create the output directory
+	_ = fileutil.CreateFolder(out)
 
 	dirs := []string{}
-
-	filepath.WalkDir("../../../../libs", func(path string, d os.DirEntry, err error) error {
+	_ = filepath.WalkDir(source, func(path string, d os.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
+		// only load module directory skip root directory
 		if d.IsDir() && !strings.HasSuffix(path, "libs") {
 			dirs = append(dirs, path)
 		}
@@ -71,7 +69,7 @@ func main() {
 	// walk each directory
 	for _, dir := range dirs {
 		entityList := []tsdocs.Entity{}
-		filepath.WalkDir(dir, func(path string, d os.DirEntry, err error) error {
+		_ = filepath.WalkDir(dir, func(path string, d os.DirEntry, err error) error {
 			if err != nil {
 				return err
 			}
@@ -97,8 +95,11 @@ func main() {
 		if err != nil {
 			panic(err)
 		}
-		fmt.Printf("Done with %s\n", dir)
-		_ = os.WriteFile(fmt.Sprintf("src/%s.ts", filepath.Base(dir)), buff.Bytes(), 0755)
+		moduleName := filepath.Base(dir)
+		gologger.Info().Msgf("Writing %s.ts", moduleName)
+		// create appropriate directory if missing
+		_ = fileutil.CreateFolder(filepath.Join(out, moduleName))
+		_ = os.WriteFile(filepath.Join(out, moduleName, moduleName)+".ts", buff.Bytes(), 0755)
 	}
 
 	// generating index.ts file
@@ -106,7 +107,7 @@ func main() {
 	for _, dir := range dirs {
 		buff.WriteString(fmt.Sprintf("export * as %s from './%s';\n", filepath.Base(dir), filepath.Base(dir)))
 	}
-	_ = os.WriteFile("src/index.ts", buff.Bytes(), 0755)
+	_ = os.WriteFile(filepath.Join(out, "index.ts"), buff.Bytes(), 0755)
 }
 
 func sortEntities(entities []tsdocs.Entity) []tsdocs.Entity {
