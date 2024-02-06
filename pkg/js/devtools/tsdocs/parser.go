@@ -20,6 +20,7 @@ type EntityParser struct {
 	structTypes map[string]Entity
 	imports     map[string]*packages.Package
 	newObjects  map[string]*Entity // new objects to create from external packages
+	vars        []Entity
 	entities    []Entity
 }
 
@@ -45,6 +46,7 @@ func (p *EntityParser) GetEntities() []Entity {
 
 // Parse parses the given file and generates corresponding typescript entities
 func (p *EntityParser) Parse() error {
+	p.extractVarsNConstants()
 	// extract all struct types from the AST
 	p.extractStructTypes()
 	// load all imported packages
@@ -218,6 +220,9 @@ func (p *EntityParser) Parse() error {
 			filtered = append(filtered, v)
 		}
 	}
+
+	// add all vars and constants
+	filtered = append(filtered, p.vars...)
 
 	p.entities = filtered
 	return nil
@@ -431,6 +436,38 @@ func (p *EntityParser) extractStructTypes() {
 			if ok {
 				// Add the struct name to the list of struct names
 				p.structTypes[typeSpec.Name.Name] = Entity{}
+			}
+		}
+		// Continue traversing the AST
+		return true
+	})
+}
+
+// extraGlobalConstant and vars
+func (p *EntityParser) extractVarsNConstants() {
+	p.vars = []Entity{}
+	ast.Inspect(p.root, func(n ast.Node) bool {
+		// Check if the node is a type specification (which includes structs)
+		gen, ok := n.(*ast.GenDecl)
+		if !ok {
+			return true
+		}
+		for _, v := range gen.Specs {
+			switch spec := v.(type) {
+			case *ast.ValueSpec:
+				if !spec.Names[0].IsExported() {
+					continue
+				}
+				if spec.Values == nil || len(spec.Values) == 0 {
+					continue
+				}
+				// get comments or description
+				p.vars = append(p.vars, Entity{
+					Name:        spec.Names[0].Name,
+					Type:        "const",
+					Description: strings.TrimSpace(spec.Comment.Text()),
+					Value:       spec.Values[0].(*ast.BasicLit).Value,
+				})
 			}
 		}
 		// Continue traversing the AST

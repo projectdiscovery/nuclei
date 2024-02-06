@@ -3,7 +3,8 @@ package tsdocs
 // Define a struct to hold information about your TypeScript entities
 type Entity struct {
 	Name          string
-	Type          string // "class", "function", or "object"
+	Value         string
+	Type          string // "class", "function", or "object" or "interface" or "const"
 	Description   string
 	Example       string    // this will be part of description with @example jsdoc tag
 	Class         Class     // if Type == "class"
