@@ -75,26 +75,14 @@ func main() {
 	// walk each directory
 	for _, dir := range dirs {
 		entityList := []tsgen.Entity{}
-		_ = filepath.WalkDir(dir, func(path string, d os.DirEntry, err error) error {
-			if err != nil {
-				return err
-			}
-			if d.IsDir() {
-				return nil
-			}
-			if !strings.HasSuffix(path, ".go") {
-				return nil
-			}
-			ep, err := tsgen.NewEntityParser(path)
-			if err != nil {
-				panic(err)
-			}
-			if err := ep.Parse(); err != nil {
-				panic(err)
-			}
-			entityList = append(entityList, ep.GetEntities()...)
-			return nil
-		})
+		ep, err := tsgen.NewEntityParser(dir)
+		if err != nil {
+			panic(err)
+		}
+		if err := ep.Parse(); err != nil {
+			panic(err)
+		}
+		entityList = append(entityList, ep.GetEntities()...)
 		entityList = sortEntities(entityList)
 		var buff bytes.Buffer
 		err = tmpl.Execute(&buff, entityList)

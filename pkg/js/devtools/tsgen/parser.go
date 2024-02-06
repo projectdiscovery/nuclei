@@ -3,8 +3,6 @@ package tsgen
 import (
 	"errors"
 	"go/ast"
-	"go/parser"
-	"go/token"
 	"regexp"
 	"strings"
 
@@ -16,7 +14,7 @@ import (
 // EntityParser is responsible for parsing a go file and generating
 // corresponding typescript entities.
 type EntityParser struct {
-	root        *ast.File
+	syntax      []*ast.File
 	structTypes map[string]Entity
 	imports     map[string]*packages.Package
 	newObjects  map[string]*Entity // new objects to create from external packages
@@ -25,15 +23,26 @@ type EntityParser struct {
 }
 
 // NewEntityParser creates a new EntityParser
-func NewEntityParser(filePath string) (*EntityParser, error) {
-	fset := token.NewFileSet()
-	// Parse the file given by filePath
-	node, err := parser.ParseFile(fset, filePath, nil, parser.ParseComments)
+func NewEntityParser(dir string) (*EntityParser, error) {
+
+	cfg := &packages.Config{
+		Mode: packages.NeedName | packages.NeedFiles | packages.NeedImports |
+			packages.NeedTypes | packages.NeedSyntax | packages.NeedTypes |
+			packages.NeedModule | packages.NeedTypesInfo | packages.NeedTypesInfo,
+		Tests: false,
+		Dir:   dir,
+	}
+	pkgs, err := packages.Load(cfg, ".")
 	if err != nil {
 		return nil, err
 	}
+	if len(pkgs) == 0 {
+		return nil, errors.New("no packages found")
+	}
+	pkg := pkgs[0]
+
 	return &EntityParser{
-		root:        node,
+		syntax:      pkg.Syntax,
 		structTypes: map[string]Entity{},
 		imports:     map[string]*packages.Package{},
 		newObjects:  map[string]*Entity{},
@@ -54,92 +63,100 @@ func (p *EntityParser) Parse() error {
 		return err
 	}
 
-	// Traverse the AST and find all relevant declarations
-	ast.Inspect(p.root, func(n ast.Node) bool {
-		// look for funtions and methods
-		// and generate entities for them
-		fn, ok := n.(*ast.FuncDecl)
-		if ok {
-			if !isExported(fn.Name.Name) {
-				return false
-			}
-			entity, err := p.extractFunctionFromNode(fn)
-			if err != nil {
-				gologger.Error().Msgf("Could not extract function %s: %s\n", fn.Name.Name, err)
-				return false
-			}
+	for _, file := range p.syntax {
+		// Traverse the AST and find all relevant declarations
+		ast.Inspect(file, func(n ast.Node) bool {
+			// look for funtions and methods
+			// and generate entities for them
+			fn, ok := n.(*ast.FuncDecl)
+			if ok {
+				if !isExported(fn.Name.Name) {
+					return false
+				}
+				entity, err := p.extractFunctionFromNode(fn)
+				if err != nil {
+					gologger.Error().Msgf("Could not extract function %s: %s\n", fn.Name.Name, err)
+					return false
+				}
 
-			if entity.IsConstructor {
-				// add this to the list of entities
+				if entity.IsConstructor {
+					// add this to the list of entities
+					p.entities = append(p.entities, entity)
+					return false
+				}
+
+				// check if function has a receiver
+				if fn.Recv != nil {
+					// get the name of the receiver
+					receiverName := exprToString(fn.Recv.List[0].Type)
+					// check if the receiver is a struct
+					if _, ok := p.structTypes[receiverName]; ok {
+						// add the method to the class
+						method := Method{
+							Name:        entity.Name,
+							Description: strings.ReplaceAll(entity.Description, "Function", "Method"),
+							Parameters:  entity.Function.Parameters,
+							Returns:     entity.Function.Returns,
+							CanFail:     entity.Function.CanFail,
+							ReturnStmt:  entity.Function.ReturnStmt,
+						}
+
+						// add this method to corresponding class
+						allMethods := p.structTypes[receiverName].Class.Methods
+						if allMethods == nil {
+							allMethods = []Method{}
+						}
+						entity = p.structTypes[receiverName]
+						entity.Class.Methods = append(allMethods, method)
+						p.structTypes[receiverName] = entity
+						return false
+					}
+				}
+				// add the function to the list of global entities
 				p.entities = append(p.entities, entity)
 				return false
 			}
 
-			// check if function has a receiver
-			if fn.Recv != nil {
-				// get the name of the receiver
-				receiverName := exprToString(fn.Recv.List[0].Type)
-				// check if the receiver is a struct
-				if _, ok := p.structTypes[receiverName]; ok {
-					// add the method to the class
-					method := Method{
-						Name:        entity.Name,
-						Description: strings.ReplaceAll(entity.Description, "Function", "Method"),
-						Parameters:  entity.Function.Parameters,
-						Returns:     entity.Function.Returns,
-						CanFail:     entity.Function.CanFail,
-						ReturnStmt:  entity.Function.ReturnStmt,
-					}
+			return true
+		})
+	}
 
-					// add this method to corresponding class
-					allMethods := p.structTypes[receiverName].Class.Methods
-					if allMethods == nil {
-						allMethods = []Method{}
-					}
-					entity = p.structTypes[receiverName]
-					entity.Class.Methods = append(allMethods, method)
-					p.structTypes[receiverName] = entity
+	for _, file := range p.syntax {
+		ast.Inspect(file, func(n ast.Node) bool {
+			// logic here to extract all fields and methods from a struct
+			// and add them to the entities slice
+			// TODO: we only support structs and not type aliases
+			typeSpec, ok := n.(*ast.TypeSpec)
+			if ok {
+				if !isExported(typeSpec.Name.Name) {
 					return false
 				}
-			}
-			// add the function to the list of global entities
-			p.entities = append(p.entities, entity)
-			return false
-		}
-
-		// logic here to extract all fields and methods from a struct
-		// and add them to the entities slice
-		// TODO: we only support structs and not type aliases
-		typeSpec, ok := n.(*ast.TypeSpec)
-		if ok {
-			if !isExported(typeSpec.Name.Name) {
+				structType, ok := typeSpec.Type.(*ast.StructType)
+				if !ok {
+					// This is not a struct, so continue traversing the AST
+					return false
+				}
+				entity := Entity{
+					Name:        typeSpec.Name.Name,
+					Type:        "class",
+					Description: Ternary(strings.TrimSpace(typeSpec.Doc.Text()) != "", typeSpec.Doc.Text(), typeSpec.Name.Name+" Class"),
+					Class: Class{
+						Properties: p.extractClassProperties(structType),
+					},
+				}
+				// map struct name to entity and create a new entity if doesn't exist
+				if _, ok := p.structTypes[typeSpec.Name.Name]; ok {
+					entity.Class.Methods = p.structTypes[typeSpec.Name.Name].Class.Methods
+					p.structTypes[typeSpec.Name.Name] = entity
+				} else {
+					p.structTypes[typeSpec.Name.Name] = entity
+				}
 				return false
 			}
-			structType, ok := typeSpec.Type.(*ast.StructType)
-			if !ok {
-				// This is not a struct, so continue traversing the AST
-				return false
-			}
-			entity := Entity{
-				Name:        typeSpec.Name.Name,
-				Type:        "class",
-				Description: Ternary(strings.TrimSpace(typeSpec.Doc.Text()) != "", typeSpec.Doc.Text(), typeSpec.Name.Name+" Class"),
-				Class: Class{
-					Properties: p.extractClassProperties(structType),
-				},
-			}
-			// map struct name to entity and create a new entity if doesn't exist
-			if _, ok := p.structTypes[typeSpec.Name.Name]; ok {
-				entity.Class.Methods = p.structTypes[typeSpec.Name.Name].Class.Methods
-				p.structTypes[typeSpec.Name.Name] = entity
-			} else {
-				p.structTypes[typeSpec.Name.Name] = entity
-			}
-			return false
-		}
-		// Continue traversing the AST
-		return true
-	})
+			// Continue traversing the AST
+			return true
+		})
+	}
 
 	// add all struct types to the list of global entities
 	for k, v := range p.structTypes {
@@ -427,58 +444,66 @@ func (p *EntityParser) handleExternalStruct(typeName string) string {
 
 // extractStructTypes extracts all struct types from the AST
 func (p *EntityParser) extractStructTypes() {
-	ast.Inspect(p.root, func(n ast.Node) bool {
-		// Check if the node is a type specification (which includes structs)
-		typeSpec, ok := n.(*ast.TypeSpec)
-		if ok {
-			// Check if the type specification is a struct type
-			_, ok := typeSpec.Type.(*ast.StructType)
+	for _, file := range p.syntax {
+		ast.Inspect(file, func(n ast.Node) bool {
+			// Check if the node is a type specification (which includes structs)
+			typeSpec, ok := n.(*ast.TypeSpec)
 			if ok {
-				// Add the struct name to the list of struct names
-				p.structTypes[typeSpec.Name.Name] = Entity{}
+				// Check if the type specification is a struct type
+				_, ok := typeSpec.Type.(*ast.StructType)
+				if ok {
+					// Add the struct name to the list of struct names
+					p.structTypes[typeSpec.Name.Name] = Entity{}
+				}
 			}
-		}
-		// Continue traversing the AST
-		return true
-	})
+			// Continue traversing the AST
+			return true
+		})
+	}
+
 }
 
 // extraGlobalConstant and vars
 func (p *EntityParser) extractVarsNConstants() {
 	p.vars = []Entity{}
-	ast.Inspect(p.root, func(n ast.Node) bool {
-		// Check if the node is a type specification (which includes structs)
-		gen, ok := n.(*ast.GenDecl)
-		if !ok {
-			return true
-		}
-		for _, v := range gen.Specs {
-			switch spec := v.(type) {
-			case *ast.ValueSpec:
-				if !spec.Names[0].IsExported() {
-					continue
-				}
-				if spec.Values == nil || len(spec.Values) == 0 {
-					continue
-				}
-				// get comments or description
-				p.vars = append(p.vars, Entity{
-					Name:        spec.Names[0].Name,
-					Type:        "const",
-					Description: strings.TrimSpace(spec.Comment.Text()),
-					Value:       spec.Values[0].(*ast.BasicLit).Value,
-				})
+	for _, file := range p.syntax {
+		ast.Inspect(file, func(n ast.Node) bool {
+			// Check if the node is a type specification (which includes structs)
+			gen, ok := n.(*ast.GenDecl)
+			if !ok {
+				return true
 			}
-		}
-		// Continue traversing the AST
-		return true
-	})
+			for _, v := range gen.Specs {
+				switch spec := v.(type) {
+				case *ast.ValueSpec:
+					if !spec.Names[0].IsExported() {
+						continue
+					}
+					if spec.Values == nil || len(spec.Values) == 0 {
+						continue
+					}
+					// get comments or description
+					p.vars = append(p.vars, Entity{
+						Name:        spec.Names[0].Name,
+						Type:        "const",
+						Description: strings.TrimSpace(spec.Comment.Text()),
+						Value:       spec.Values[0].(*ast.BasicLit).Value,
+					})
+				}
+			}
+			// Continue traversing the AST
+			return true
+		})
+	}
 }
 
 // loadImportedPackages loads all imported packages
 func (p *EntityParser) loadImportedPackages() error {
 	// get all import statements
-	imports := p.root.Imports
+	imports := []*ast.ImportSpec{}
+	for _, file := range p.syntax {
+		imports = append(imports, file.Imports...)
+	}
 	// iterate over all imports
 	for _, imp := range imports {
 		// get the package path
