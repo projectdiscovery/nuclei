@@ -20,11 +20,14 @@ pkg/protocols/common/helpers/deserialization/testdata/ValueObject2.ser
 .gitignore
 pkg/js/devtools/bindgen/cmd/bindgen/bindgen
 pkg/js/devtools/jsdocgen/jsdocgen
+pkg/js/devtools/tsdocs/tsdocs
+pkg/js/devtools/tsdocs/cmd/tsdocs/tsdocs
 *.DS_Store
 pkg/protocols/headless/engine/.cache
 /nuclei
 /bindgen
 /jsdocgen
+/tsdocs
 /scrapefuncs
 /integration_tests/.cache/
 /integration_tests/.nuclei-config/

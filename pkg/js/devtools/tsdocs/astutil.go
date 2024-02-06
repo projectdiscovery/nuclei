@@ -68,6 +68,8 @@ func TsDefaultValue(t string) string {
 		return `new Uint8Array()`
 	case "any":
 		return `undefined`
+	case "interface{}":
+		return `undefined`
 	default:
 		if strings.HasPrefix(t, "[]") {
 			return `[]`

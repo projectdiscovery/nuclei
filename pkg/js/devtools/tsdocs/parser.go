@@ -234,6 +234,9 @@ func (p *EntityParser) extractReturnType(fn *ast.FuncDecl) (out string) {
 		if out == "" {
 			out = "void"
 		}
+		if out == "interface{}" {
+			out = "any"
+		}
 	}()
 	var returns []string
 	if fn.Type.Results != nil && len(fn.Type.Results.List) > 0 {
@@ -361,8 +364,12 @@ func (p *EntityParser) loadImportedPackages() error {
 		if err != nil {
 			return err
 		}
+		importName := path[strings.LastIndex(path, "/")+1:]
+		if imp.Name != nil {
+			importName = imp.Name.Name
+		}
 		// add the package to the map
-		p.imports[path[strings.LastIndex(path, "/")+1:]] = pkg
+		p.imports[importName] = pkg
 	}
 	return nil
 }
