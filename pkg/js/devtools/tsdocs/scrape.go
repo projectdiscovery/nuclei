@@ -83,6 +83,11 @@ func recursiveScrapeType(parentType types.Type, fieldName string, fieldType type
 		return
 	}
 
+	if fieldType.String() == "time.Time" {
+		extObject.builtIn[fieldName] = "Date"
+		return
+	}
+
 	switch t := fieldType.Underlying().(type) {
 	case *types.Pointer:
 		// fmt.Printf("type %v is a pointer\n", fieldType)
@@ -145,6 +150,9 @@ func ConvertExtObjectToEntities(extObj *ExtObject, nestedTypes map[string]Entity
 			description = fmt.Sprintf("fixed size array of length: %v", fieldType[:strings.Index(fieldType, "]")+1])
 			// remove length from type
 			fieldType = "[]" + fieldType[strings.Index(fieldType, "]")+1:]
+		}
+		if strings.Contains(fieldType, "time.Duration") {
+			description = "time in nanoseconds"
 		}
 		px := Property{
 			Name:        fieldName,

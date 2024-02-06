@@ -39,12 +39,7 @@ type Config struct {
 // The following schemas are supported for url: ldap://, ldaps://, ldapi://,
 // and cldap:// (RFC1798, deprecated but used by Active Directory).
 // ldaps uses TLS/SSL, ldapi uses a Unix domain socket, and cldap uses connectionless LDAP.
-// Signature: Client(ldapUrl,Realm)
-// @param ldapUrl: string
-// @param Realm: string
-// @param Config: Config
-// @return Client
-// @throws error when the ldap url is invalid or connection fails
+// Constructor: constructor(public ldapUrl: string, public realm: string, public config?: Config)
 func NewClient(call goja.ConstructorCall, runtime *goja.Runtime) *goja.Object {
 	// setup nucleijs utils
 	c := &Client{nj: utils.NewNucleiJS(runtime)}

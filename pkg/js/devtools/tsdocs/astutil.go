@@ -24,6 +24,8 @@ func exprToString(expr ast.Expr) string {
 		return toTsTypes("[]" + exprToString(t.Elt))
 	case *ast.InterfaceType:
 		return "interface{}"
+	case *ast.MapType:
+		return "Record<" + toTsTypes(exprToString(t.Key)) + ", " + toTsTypes(exprToString(t.Value)) + ">"
 	// Add more cases to handle other types
 	default:
 		return fmt.Sprintf("%T", expr)
@@ -34,6 +36,9 @@ func exprToString(expr ast.Expr) string {
 func toTsTypes(t string) string {
 	if strings.Contains(t, "interface{}") {
 		return "any"
+	}
+	if strings.HasPrefix(t, "map[") {
+		return convertMaptoRecord(t)
 	}
 	switch t {
 	case "string":
@@ -48,9 +53,13 @@ func toTsTypes(t string) string {
 		return "Uint8Array"
 	case "interface{}":
 		return "any"
+	case "time.Duration":
+		return "number"
+	case "time.Time":
+		return "Date"
 	default:
 		if strings.HasPrefix(t, "[]") {
-			return strings.TrimPrefix(t, "[]") + "[]"
+			return toTsTypes(strings.TrimPrefix(t, "[]")) + "[]"
 		}
 		return t
 	}
@@ -71,7 +80,7 @@ func TsDefaultValue(t string) string {
 	case "interface{}":
 		return `undefined`
 	default:
-		if strings.HasPrefix(t, "[]") {
+		if strings.Contains(t, "[]") {
 			return `[]`
 		}
 		return "new " + t + "()"

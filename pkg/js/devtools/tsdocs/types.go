@@ -2,19 +2,21 @@ package tsdocs
 
 // Define a struct to hold information about your TypeScript entities
 type Entity struct {
-	Name        string
-	Type        string // "class", "function", or "object"
-	Description string
-	Example     string    // this will be part of description with @example jsdoc tag
-	Class       Class     // if Type == "class"
-	Function    Function  // if Type == "function"
-	Object      Interface // if Type == "object"
+	Name          string
+	Type          string // "class", "function", or "object"
+	Description   string
+	Example       string    // this will be part of description with @example jsdoc tag
+	Class         Class     // if Type == "class"
+	Function      Function  // if Type == "function"
+	Object        Interface // if Type == "object"
+	IsConstructor bool      // true if this is a constructor function
 }
 
 // Class represents a TypeScript class data structure
 type Class struct {
-	Properties []Property
-	Methods    []Method
+	Properties  []Property
+	Methods     []Method
+	Constructor Function
 }
 
 // Function represents a TypeScript function data structure

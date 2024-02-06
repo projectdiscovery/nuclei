@@ -63,9 +63,7 @@ type Client struct {
 
 // Constructor for KerberosClient
 // if controller is empty a dns lookup for default kdc server will be performed
-// Signature: Client(domain, {controller})
-// @param domain: string
-// @param controller: string (optional)
+// Constructor: constructor(public domain: string, public controller?: string)
 // When controller is empty or not given krb5 will perform a DNS lookup for the default KDC server
 // and retrieve its address from the DNS server
 func NewKerberosClient(call goja.ConstructorCall, runtime *goja.Runtime) *goja.Object {

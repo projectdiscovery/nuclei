@@ -5,12 +5,15 @@ import (
 	"go/ast"
 	"go/parser"
 	"go/token"
+	"regexp"
 	"strings"
 
 	"github.com/projectdiscovery/gologger"
 	sliceutil "github.com/projectdiscovery/utils/slice"
 	"golang.org/x/tools/go/packages"
 )
+
+var ()
 
 // EntityParser is responsible for parsing a go file and generating
 // corresponding typescript entities.
@@ -65,6 +68,13 @@ func (p *EntityParser) Parse() error {
 				gologger.Error().Msgf("Could not extract function %s: %s\n", fn.Name.Name, err)
 				return false
 			}
+
+			if entity.IsConstructor {
+				// add this to the list of entities
+				p.entities = append(p.entities, entity)
+				return false
+			}
+
 			// check if function has a receiver
 			if fn.Recv != nil {
 				// get the name of the receiver
@@ -136,10 +146,13 @@ func (p *EntityParser) Parse() error {
 		if v.Type == "class" && len(v.Class.Methods) > 0 {
 			p.entities = append(p.entities, v)
 		} else if v.Type == "class" && len(v.Class.Methods) == 0 {
+			if k == "Object" {
+				continue
+			}
 			entity := Entity{
 				Name:        k,
 				Type:        "interface",
-				Description: strings.ReplaceAll(v.Description, "Class", "interface"),
+				Description: strings.TrimSpace(strings.ReplaceAll(v.Description, "Class", "interface")),
 				Object: Interface{
 					Properties: v.Class.Properties,
 				},
@@ -150,11 +163,65 @@ func (p *EntityParser) Parse() error {
 
 	// handle external structs
 	for k := range p.newObjects {
+		// if k == "Object" {
+		// 	continue
+		// }
 		if err := p.scrapeAndCreate(k); err != nil {
 			return err
 		}
 	}
 
+	interfaceList := map[string]struct{}{}
+	for _, v := range p.entities {
+		if v.Type == "interface" {
+			interfaceList[v.Name] = struct{}{}
+		}
+	}
+
+	// handle method return types
+	for index, v := range p.entities {
+		if len(v.Class.Methods) > 0 {
+			for i, method := range v.Class.Methods {
+				if !strings.Contains(method.Returns, "null") {
+					x := strings.TrimSpace(method.Returns)
+					if _, ok := interfaceList[x]; ok {
+						// non nullable interface return type detected
+						method.Returns = x + " | null"
+						method.ReturnStmt = "return null;"
+						p.entities[index].Class.Methods[i] = method
+					}
+				}
+			}
+		}
+	}
+
+	// handle constructors
+	for _, v := range p.entities {
+		if v.IsConstructor {
+
+			// correlate it with the class
+		foundStruct:
+			for i, class := range p.entities {
+				if class.Type != "class" {
+					continue foundStruct
+				}
+				if strings.Contains(v.Name, class.Name) {
+					// add constructor to the class
+					p.entities[i].Class.Constructor = v.Function
+					break foundStruct
+				}
+			}
+		}
+	}
+
+	filtered := []Entity{}
+	for _, v := range p.entities {
+		if !v.IsConstructor {
+			filtered = append(filtered, v)
+		}
+	}
+
+	p.entities = filtered
 	return nil
 }
 
@@ -203,6 +270,11 @@ func (p *EntityParser) extractClassProperties(node *ast.StructType) []Property {
 	return properties
 }
 
+var (
+	constructorRe         = `(constructor\([^)]*\))`
+	constructorReCompiled = regexp.MustCompile(constructorRe)
+)
+
 // extractFunctionFromNode extracts a function from the given AST node
 func (p *EntityParser) extractFunctionFromNode(fn *ast.FuncDecl) (Entity, error) {
 	entity := Entity{
@@ -215,6 +287,16 @@ func (p *EntityParser) extractFunctionFromNode(fn *ast.FuncDecl) (Entity, error)
 			CanFail:    checkCanFail(fn),
 		},
 	}
+	// check if it is a constructor
+	if strings.Contains(entity.Function.Returns, "Object") && len(entity.Function.Parameters) == 2 {
+		// this is a constructor defined that accepts something as input
+		// get constructor signature from comments
+		constructorSig := constructorReCompiled.FindString(entity.Description)
+		entity.IsConstructor = true
+		entity.Function = updateFuncWithConstructorSig(constructorSig, entity.Function)
+		return entity, nil
+	}
+
 	// fix/adjust return statement
 	if entity.Function.Returns == "void" {
 		entity.Function.ReturnStmt = "return;"
@@ -242,8 +324,8 @@ func (p *EntityParser) extractReturnType(fn *ast.FuncDecl) (out string) {
 	if fn.Type.Results != nil && len(fn.Type.Results.List) > 0 {
 		for _, result := range fn.Type.Results.List {
 			tmp := exprToString(result.Type)
-			if strings.Contains(tmp, ".") {
-				tmp = p.handleExternalStruct(tmp)
+			if strings.Contains(tmp, ".") && !strings.HasPrefix(tmp, "goja.") {
+				tmp = p.handleExternalStruct(tmp) + " | null" // external object interfaces can always return null
 			}
 			returns = append(returns, tmp)
 		}
@@ -274,6 +356,15 @@ func (p *EntityParser) extractReturnType(fn *ast.FuncDecl) (out string) {
 		}
 	}
 	return "void"
+}
+
+// example: Map[string][]string -> Record<string, string[]>
+func convertMaptoRecord(input string) (out string) {
+	var key, value string
+	input = strings.TrimPrefix(input, "Map[")
+	key = input[:strings.Index(input, "]")]
+	value = input[strings.Index(input, "]")+1:]
+	return "Record<" + toTsTypes(key) + ", " + toTsTypes(value) + ">"
 }
 
 // extractParameters extracts all parameters from the given function
@@ -367,6 +458,10 @@ func (p *EntityParser) loadImportedPackages() error {
 		importName := path[strings.LastIndex(path, "/")+1:]
 		if imp.Name != nil {
 			importName = imp.Name.Name
+		} else {
+			if !strings.HasSuffix(imp.Path.Value, pkg.Types.Name()+`"`) {
+				importName = pkg.Types.Name()
+			}
 		}
 		// add the package to the map
 		p.imports[importName] = pkg
@@ -386,4 +481,35 @@ func loadPackage(pkgPath string) (*packages.Package, error) {
 		return nil, errors.New("no packages found")
 	}
 	return pkgs[0], nil
+}
+
+// exprToString converts an expression to a string
+func updateFuncWithConstructorSig(sig string, f Function) Function {
+	sig = strings.TrimSpace(sig)
+	f.Parameters = []Parameter{}
+	f.CanFail = true
+	f.ReturnStmt = ""
+	f.Returns = ""
+	if sig == "" {
+		return f
+	}
+	// example: constructor(public domain: string, public controller?: string)
+	// remove constructor( and )
+	sig = strings.TrimPrefix(sig, "constructor(")
+	sig = strings.TrimSuffix(sig, ")")
+	// split by comma
+	args := strings.Split(sig, ",")
+	for _, arg := range args {
+		arg = strings.TrimSpace(arg)
+		// check if it is optional
+		typeData := strings.Split(arg, ":")
+		if len(typeData) != 2 {
+			panic("invalid constructor signature")
+		}
+		f.Parameters = append(f.Parameters, Parameter{
+			Name: strings.TrimSpace(typeData[0]),
+			Type: strings.TrimSpace(typeData[1]),
+		})
+	}
+	return f
 }

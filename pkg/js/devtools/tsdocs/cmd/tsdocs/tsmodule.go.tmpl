@@ -15,10 +15,20 @@ export class {{ .Name }} {
     {{- end }}
     */
     {{ end }}
-    public {{ $property.Name }}: {{ $property.Type }};
+    public {{ $property.Name }}?: {{ $property.Type }};
     {{"\n"}}
     {{- end }}
-
+    // Constructor of {{ .Name}}
+    {{- if eq (len .Class.Constructor.Parameters) 0 }}
+    constructor() {}
+    {{- else }}
+    constructor(
+        {{- range $index, $param := .Class.Constructor.Parameters }}
+        {{- if $index }}, {{ end }}{{ $param.Name }}: {{ $param.Type }}
+        {{- end }} ) {}
+    {{"\n"}}
+    {{- end }}
+    
     {{- range $method := .Class.Methods }}
     /**
     {{- range (splitLines $method.Description) }}
