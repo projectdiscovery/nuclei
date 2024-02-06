@@ -336,7 +336,7 @@ func (request *Request) executeRequestWithPayloads(variables map[string]interfac
 	final, err := ConnReadNWithTimeout(conn, int64(bufferSize), DefaultReadTimeout)
 	if err != nil {
 		request.options.Output.Request(request.options.TemplatePath, address, request.Type().String(), err)
-		return errors.Wrap(err, "could not read from server")
+		gologger.Verbose().Msgf("could not read more data from %s: %s", actualAddress, err)
 	}
 	responseBuilder.Write(final)
 
