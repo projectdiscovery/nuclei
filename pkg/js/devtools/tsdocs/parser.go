@@ -13,8 +13,6 @@ import (
 	"golang.org/x/tools/go/packages"
 )
 
-var ()
-
 // EntityParser is responsible for parsing a go file and generating
 // corresponding typescript entities.
 type EntityParser struct {
@@ -316,8 +314,8 @@ func (p *EntityParser) extractReturnType(fn *ast.FuncDecl) (out string) {
 		if out == "" {
 			out = "void"
 		}
-		if out == "interface{}" {
-			out = "any"
+		if strings.Contains(out, "interface{}") {
+			out = strings.ReplaceAll(out, "interface{}", "any")
 		}
 	}()
 	var returns []string

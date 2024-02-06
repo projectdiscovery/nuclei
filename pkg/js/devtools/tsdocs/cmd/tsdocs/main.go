@@ -60,8 +60,14 @@ func main() {
 			return err
 		}
 		// only load module directory skip root directory
-		if d.IsDir() && !strings.HasSuffix(path, "libs") {
-			dirs = append(dirs, path)
+		if d.IsDir() {
+			files, _ := os.ReadDir(path)
+			for _, file := range files {
+				if !file.IsDir() && strings.HasSuffix(file.Name(), ".go") {
+					dirs = append(dirs, path)
+					break
+				}
+			}
 		}
 		return nil
 	})
@@ -105,7 +111,7 @@ func main() {
 	// generating index.ts file
 	var buff bytes.Buffer
 	for _, dir := range dirs {
-		buff.WriteString(fmt.Sprintf("export * as %s from './%s';\n", filepath.Base(dir), filepath.Base(dir)))
+		buff.WriteString(fmt.Sprintf("export * as %s from './%s/%s';\n", filepath.Base(dir), filepath.Base(dir), filepath.Base(dir)))
 	}
 	_ = os.WriteFile(filepath.Join(out, "index.ts"), buff.Bytes(), 0755)
 }
