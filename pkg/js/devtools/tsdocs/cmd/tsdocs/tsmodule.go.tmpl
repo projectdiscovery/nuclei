@@ -1,5 +1,9 @@
 {{- range .}}
-{{ if eq .Type "class" -}}
+
+{{ if eq .Type "const" -}}
+{{ if .Description }}/** {{ .Description }} */{{- end }}
+export const {{ .Name }} = {{ .Value }};
+{{- else if eq .Type "class" -}}
 /**
 {{- range (splitLines .Description) }}
  * {{ . }}
