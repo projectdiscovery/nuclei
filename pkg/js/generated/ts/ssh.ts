@@ -87,9 +87,9 @@ export class SSHClient {
  */
 export interface Algorithms {
     
-    HostKey?: string,
-    
     Kex?: string,
+    
+    HostKey?: string,
     
     W?: DirectionAlgorithms,
     
@@ -103,11 +103,11 @@ export interface Algorithms {
  */
 export interface DirectionAlgorithms {
     
-    Compression?: string,
-    
     Cipher?: string,
     
     MAC?: string,
+    
+    Compression?: string,
 }
 
 
@@ -155,21 +155,15 @@ export interface HandshakeLog {
  */
 export interface KexInitMsg {
     
-    ServerHostKeyAlgos?: string[],
-    
-    MACsClientServer?: string[],
-    
-    LanguagesServerClient?: string[],
-    
     KexAlgos?: string[],
     
-    CiphersServerClient?: string[],
+    CompressionClientServer?: string[],
     
-    LanguagesClientServer?: string[],
+    ServerHostKeyAlgos?: string[],
     
-    FirstKexFollows?: boolean,
+    CiphersClientServer?: string[],
     
-    Reserved?: number,
+    LanguagesServerClient?: string[],
     
     /**
     * fixed size array of length: [16]
@@ -177,12 +171,18 @@ export interface KexInitMsg {
     
     Cookie?: Uint8Array,
     
-    CiphersClientServer?: string[],
+    CiphersServerClient?: string[],
+    
+    MACsClientServer?: string[],
     
     MACsServerClient?: string[],
     
-    CompressionClientServer?: string[],
-    
     CompressionServerClient?: string[],
+    
+    LanguagesClientServer?: string[],
+    
+    FirstKexFollows?: boolean,
+    
+    Reserved?: number,
 }
 

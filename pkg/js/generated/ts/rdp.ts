@@ -63,10 +63,6 @@ export interface IsRDPResponse {
  */
 export interface ServiceRDP {
     
-    ForestName?: string,
-    
-    OSFingerprint?: string,
-    
     OSVersion?: string,
     
     TargetName?: string,
@@ -78,5 +74,9 @@ export interface ServiceRDP {
     DNSComputerName?: string,
     
     DNSDomainName?: string,
+    
+    ForestName?: string,
+    
+    OSFingerprint?: string,
 }
 

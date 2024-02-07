@@ -62,8 +62,8 @@ export class PGClient {
  */
 export interface SQLResult {
     
-    Count?: number,
-    
     Columns?: string[],
+    
+    Count?: number,
 }
 

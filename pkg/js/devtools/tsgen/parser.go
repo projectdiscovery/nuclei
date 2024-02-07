@@ -4,6 +4,8 @@ import (
 	"errors"
 	"fmt"
 	"go/ast"
+	"go/parser"
+	"go/token"
 	"regexp"
 	"strings"
 
@@ -29,9 +31,12 @@ func NewEntityParser(dir string) (*EntityParser, error) {
 	cfg := &packages.Config{
 		Mode: packages.NeedName | packages.NeedFiles | packages.NeedImports |
 			packages.NeedTypes | packages.NeedSyntax | packages.NeedTypes |
-			packages.NeedModule | packages.NeedTypesInfo | packages.NeedTypesInfo,
+			packages.NeedModule | packages.NeedTypesInfo,
 		Tests: false,
 		Dir:   dir,
+		ParseFile: func(fset *token.FileSet, filename string, src []byte) (*ast.File, error) {
+			return parser.ParseFile(fset, filename, src, parser.ParseComments)
+		},
 	}
 	pkgs, err := packages.Load(cfg, ".")
 	if err != nil {
@@ -148,6 +153,7 @@ func (p *EntityParser) Parse() error {
 				// map struct name to entity and create a new entity if doesn't exist
 				if _, ok := p.structTypes[typeSpec.Name.Name]; ok {
 					entity.Class.Methods = p.structTypes[typeSpec.Name.Name].Class.Methods
+					entity.Description = p.structTypes[typeSpec.Name.Name].Description
 					p.structTypes[typeSpec.Name.Name] = entity
 				} else {
 					p.structTypes[typeSpec.Name.Name] = entity
@@ -454,7 +460,10 @@ func (p *EntityParser) extractStructTypes() {
 				_, ok := typeSpec.Type.(*ast.StructType)
 				if ok {
 					// Add the struct name to the list of struct names
-					p.structTypes[typeSpec.Name.Name] = Entity{}
+					p.structTypes[typeSpec.Name.Name] = Entity{
+						Name:        typeSpec.Name.Name,
+						Description: typeSpec.Doc.Text(),
+					}
 				}
 			}
 			// Continue traversing the AST

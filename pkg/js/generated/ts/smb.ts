@@ -63,15 +63,15 @@ export class SMBClient {
  */
 export interface HeaderLog {
     
+    ProtocolID?: Uint8Array,
+    
+    Status?: number,
+    
     Command?: number,
     
     Credits?: number,
     
     Flags?: number,
-    
-    ProtocolID?: Uint8Array,
-    
-    Status?: number,
 }
 
 
@@ -105,6 +105,8 @@ export interface NegotiationLog {
  */
 export interface SMBCapabilities {
     
+    Leasing?: boolean,
+    
     LargeMTU?: boolean,
     
     MultiChan?: boolean,
@@ -116,8 +118,6 @@ export interface SMBCapabilities {
     Encryption?: boolean,
     
     DFSSupport?: boolean,
-    
-    Leasing?: boolean,
 }
 
 
@@ -127,15 +127,15 @@ export interface SMBCapabilities {
  */
 export interface SMBLog {
     
-    SupportV1?: boolean,
-    
-    NativeOs?: string,
-    
     NTLM?: string,
     
     GroupName?: string,
     
     HasNTLM?: boolean,
+    
+    SupportV1?: boolean,
+    
+    NativeOs?: string,
     
     Version?: SMBVersions,
     
@@ -153,13 +153,13 @@ export interface SMBLog {
  */
 export interface SMBVersions {
     
-    VerString?: string,
-    
     Major?: number,
     
     Minor?: number,
     
     Revision?: number,
+    
+    VerString?: string,
 }
 
 
@@ -168,6 +168,8 @@ export interface SMBVersions {
  * ServiceSMB Interface
  */
 export interface ServiceSMB {
+    
+    ForestName?: string,
     
     SigningEnabled?: boolean,
     
@@ -182,8 +184,6 @@ export interface ServiceSMB {
     DNSComputerName?: string,
     
     DNSDomainName?: string,
-    
-    ForestName?: string,
 }
 
 

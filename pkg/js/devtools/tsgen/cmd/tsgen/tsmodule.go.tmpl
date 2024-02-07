@@ -38,8 +38,7 @@ export class {{ .Name }} {
     {{- range (splitLines $method.Description) }}
     * {{ . }}
     {{- end }}
-    {{ if $method.CanFail }}* @throws {Error} - if the operation fails
-    {{ end }}*/
+    */
     public {{ $method.Name }}({{ range $index, $element := $method.Parameters }}{{ if $index }}, {{ end }}{{ $element.Name }}: {{ $element.Type }}{{ end }}): {{ $method.Returns }} {
         {{ $method.ReturnStmt }}
     }
@@ -52,8 +51,7 @@ export class {{ .Name }} {
 {{- range (splitLines .Description) }}
  * {{ . }}
 {{- end }}
-{{ if .Function.CanFail }}* @throws {Error} - if the operation fails
-{{ end }} */
+ */
 export function {{ .Name }}({{ range $index, $element := .Function.Parameters }}{{ if $index }}, {{ end }}{{ $element.Name }}: {{ $element.Type }}{{ end }}): {{ .Function.Returns }} {
     {{ .Function.ReturnStmt }}
 }
