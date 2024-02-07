@@ -20,6 +20,13 @@ import (
 
 // sendtokdc.go deals with actual sending and receiving responses from KDC
 // SendToKDC sends a message to the KDC and returns the response.
+// It first tries to send the message over TCP, and if that fails, it falls back to UDP.(and vice versa)
+// @example
+// ```javascript
+// const kerberos = require('nuclei/kerberos');
+// const client = new kerberos.Client('acme.com');
+// const response = kerberos.SendToKDC(client, 'message');
+// ```
 func SendToKDC(kclient *Client, msg string) (string, error) {
 	if kclient == nil || kclient.nj == nil || kclient.Krb5Config == nil || kclient.Realm == "" {
 		return "", fmt.Errorf("kerberos client is not initialized")

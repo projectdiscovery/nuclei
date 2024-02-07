@@ -20,6 +20,7 @@ func init() {
 			"DecodeZuluTimestamp": lib_ldap.DecodeZuluTimestamp,
 			"JoinFilters":         lib_ldap.JoinFilters,
 			"NegativeFilter":      lib_ldap.NegativeFilter,
+			"NewClient":           lib_ldap.NewClient,
 
 			// Var and consts
 			"FilterAccountDisabled":            lib_ldap.FilterAccountDisabled,
@@ -51,16 +52,11 @@ func init() {
 			"FilterUseDesKeyOnly":              lib_ldap.FilterUseDesKeyOnly,
 			"FilterWorkstationTrustAccount":    lib_ldap.FilterWorkstationTrustAccount,
 
-			// Types (value type)
-			"ADObject": func() lib_ldap.ADObject { return lib_ldap.ADObject{} },
+			// Objects / Classes
+			"ADObject": gojs.GetClassConstructor[lib_ldap.ADObject](&lib_ldap.ADObject{}),
 			"Client":   lib_ldap.NewClient,
-			"Config":   func() lib_ldap.Config { return lib_ldap.Config{} },
-			"Metadata": func() lib_ldap.Metadata { return lib_ldap.Metadata{} },
-
-			// Types (pointer type)
-			"NewADObject": func() *lib_ldap.ADObject { return &lib_ldap.ADObject{} },
-			"NewConfig":   func() *lib_ldap.Config { return &lib_ldap.Config{} },
-			"NewMetadata": func() *lib_ldap.Metadata { return &lib_ldap.Metadata{} },
+			"Config":   gojs.GetClassConstructor[lib_ldap.Config](&lib_ldap.Config{}),
+			"Metadata": gojs.GetClassConstructor[lib_ldap.Metadata](&lib_ldap.Metadata{}),
 		},
 	).Register()
 }

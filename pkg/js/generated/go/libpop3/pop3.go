@@ -18,13 +18,9 @@ func init() {
 
 			// Var and consts
 
-			// Types (value type)
-			"IsPOP3Response": func() lib_pop3.IsPOP3Response { return lib_pop3.IsPOP3Response{} },
-			"Pop3Client":     func() lib_pop3.Pop3Client { return lib_pop3.Pop3Client{} },
-
-			// Types (pointer type)
-			"NewIsPOP3Response": func() *lib_pop3.IsPOP3Response { return &lib_pop3.IsPOP3Response{} },
-			"NewPop3Client":     func() *lib_pop3.Pop3Client { return &lib_pop3.Pop3Client{} },
+			// Objects / Classes
+			"IsPOP3Response": gojs.GetClassConstructor[lib_pop3.IsPOP3Response](&lib_pop3.IsPOP3Response{}),
+			"Pop3Client":     gojs.GetClassConstructor[lib_pop3.Pop3Client](&lib_pop3.Pop3Client{}),
 		},
 	).Register()
 }

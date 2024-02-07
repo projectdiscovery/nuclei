@@ -18,13 +18,9 @@ func init() {
 
 			// Var and consts
 
-			// Types (value type)
-			"IsRsyncResponse": func() lib_rsync.IsRsyncResponse { return lib_rsync.IsRsyncResponse{} },
-			"RsyncClient":     func() lib_rsync.RsyncClient { return lib_rsync.RsyncClient{} },
-
-			// Types (pointer type)
-			"NewIsRsyncResponse": func() *lib_rsync.IsRsyncResponse { return &lib_rsync.IsRsyncResponse{} },
-			"NewRsyncClient":     func() *lib_rsync.RsyncClient { return &lib_rsync.RsyncClient{} },
+			// Objects / Classes
+			"IsRsyncResponse": gojs.GetClassConstructor[lib_rsync.IsRsyncResponse](&lib_rsync.IsRsyncResponse{}),
+			"RsyncClient":     gojs.GetClassConstructor[lib_rsync.RsyncClient](&lib_rsync.RsyncClient{}),
 		},
 	).Register()
 }

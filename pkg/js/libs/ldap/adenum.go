@@ -17,11 +17,11 @@ import (
 //
 // https://learn.microsoft.com/en-us/troubleshoot/windows-server/identity/useraccountcontrol-manipulate-account-properties
 const (
-	FilterIsPerson                   = "(objectCategory=person)"
-	FilterIsGroup                    = "(objectCategory=group)"
-	FilterIsComputer                 = "(objectCategory=computer)"
-	FilterIsAdmin                    = "(adminCount=1)"
-	FilterHasServicePrincipalName    = "(servicePrincipalName=*)"
+	FilterIsPerson                   = "(objectCategory=person)"                               // The object is a person.
+	FilterIsGroup                    = "(objectCategory=group)"                                // The object is a group.
+	FilterIsComputer                 = "(objectCategory=computer)"                             // The object is a computer.
+	FilterIsAdmin                    = "(adminCount=1)"                                        // The object is an admin.
+	FilterHasServicePrincipalName    = "(servicePrincipalName=*)"                              // The object has a service principal name.
 	FilterLogonScript                = "(userAccountControl:1.2.840.113556.1.4.803:=1)"        // The logon script will be run.
 	FilterAccountDisabled            = "(userAccountControl:1.2.840.113556.1.4.803:=2)"        // The user account is disabled.
 	FilterAccountEnabled             = "(!(userAccountControl:1.2.840.113556.1.4.803:=2))"     // The user account is enabled.
@@ -49,6 +49,11 @@ const (
 )
 
 // JoinFilters joins multiple filters into a single filter
+// @example
+// ```javascript
+// const ldap = require('nuclei/ldap');
+// const filter = ldap.JoinFilters(ldap.FilterIsPerson, ldap.FilterAccountEnabled);
+// ```
 func JoinFilters(filters ...string) string {
 	var builder strings.Builder
 	builder.WriteString("(&")
@@ -60,24 +65,42 @@ func JoinFilters(filters ...string) string {
 }
 
 // NegativeFilter returns a negative filter for a given filter
+// @example
+// ```javascript
+// const ldap = require('nuclei/ldap');
+// const filter = ldap.NegativeFilter(ldap.FilterIsPerson);
+// ```
 func NegativeFilter(filter string) string {
 	return fmt.Sprintf("(!%s)", filter)
 }
 
-// ADObject represents an Active Directory object
-type ADObject struct {
-	DistinguishedName    string
-	SAMAccountName       string
-	PWDLastSet           string
-	LastLogon            string
-	MemberOf             []string
-	ServicePrincipalName []string
-}
+type (
+	// ADObject represents an Active Directory object
+	// @example
+	// ```javascript
+	// const ldap = require('nuclei/ldap');
+	// const client = new ldap.Client('ldap://ldap.example.com', 'acme.com');
+	// const users = client.GetADUsers();
+	// log(to_json(users));
+	ADObject struct {
+		DistinguishedName    string
+		SAMAccountName       string
+		PWDLastSet           string
+		LastLogon            string
+		MemberOf             []string
+		ServicePrincipalName []string
+	}
+)
 
 // FindADObjects finds AD objects based on a filter
 // and returns them as a list of ADObject
-// @param filter: string
-// @return []ADObject
+// @example
+// ```javascript
+// const ldap = require('nuclei/ldap');
+// const client = new ldap.Client('ldap://ldap.example.com', 'acme.com');
+// const users = client.FindADObjects(ldap.FilterIsPerson);
+// log(to_json(users));
+// ```
 func (c *Client) FindADObjects(filter string) []ADObject {
 	c.nj.Require(c.conn != nil, "no existing connection")
 	sr := ldap.NewSearchRequest(
@@ -114,69 +137,129 @@ func (c *Client) FindADObjects(filter string) []ADObject {
 
 // GetADUsers returns all AD users
 // using FilterIsPerson filter query
-// @return []ADObject
+// @example
+// ```javascript
+// const ldap = require('nuclei/ldap');
+// const client = new ldap.Client('ldap://ldap.example.com', 'acme.com');
+// const users = client.GetADUsers();
+// log(to_json(users));
+// ```
 func (c *Client) GetADUsers() []ADObject {
 	return c.FindADObjects(FilterIsPerson)
 }
 
 // GetADActiveUsers returns all AD users
 // using FilterIsPerson and FilterAccountEnabled filter query
-// @return []ADObject
+// @example
+// ```javascript
+// const ldap = require('nuclei/ldap');
+// const client = new ldap.Client('ldap://ldap.example.com', 'acme.com');
+// const users = client.GetADActiveUsers();
+// log(to_json(users));
+// ```
 func (c *Client) GetADActiveUsers() []ADObject {
 	return c.FindADObjects(JoinFilters(FilterIsPerson, FilterAccountEnabled))
 }
 
 // GetAdUserWithNeverExpiringPasswords returns all AD users
 // using FilterIsPerson and FilterDontExpirePassword filter query
-// @return []ADObject
+// @example
+// ```javascript
+// const ldap = require('nuclei/ldap');
+// const client = new ldap.Client('ldap://ldap.example.com', 'acme.com');
+// const users = client.GetADUserWithNeverExpiringPasswords();
+// log(to_json(users));
+// ```
 func (c *Client) GetADUserWithNeverExpiringPasswords() []ADObject {
 	return c.FindADObjects(JoinFilters(FilterIsPerson, FilterDontExpirePassword))
 }
 
 // GetADUserTrustedForDelegation returns all AD users that are trusted for delegation
 // using FilterIsPerson and FilterTrustedForDelegation filter query
-// @return []ADObject
+// @example
+// ```javascript
+// const ldap = require('nuclei/ldap');
+// const client = new ldap.Client('ldap://ldap.example.com', 'acme.com');
+// const users = client.GetADUserTrustedForDelegation();
+// log(to_json(users));
+// ```
 func (c *Client) GetADUserTrustedForDelegation() []ADObject {
 	return c.FindADObjects(JoinFilters(FilterIsPerson, FilterTrustedForDelegation))
 }
 
 // GetADUserWithPasswordNotRequired returns all AD users that do not require a password
 // using FilterIsPerson and FilterPasswordNotRequired filter query
-// @return []ADObject
+// @example
+// ```javascript
+// const ldap = require('nuclei/ldap');
+// const client = new ldap.Client('ldap://ldap.example.com', 'acme.com');
+// const users = client.GetADUserWithPasswordNotRequired();
+// log(to_json(users));
+// ```
 func (c *Client) GetADUserWithPasswordNotRequired() []ADObject {
 	return c.FindADObjects(JoinFilters(FilterIsPerson, FilterPasswordNotRequired))
 }
 
 // GetADGroups returns all AD groups
 // using FilterIsGroup filter query
-// @return []ADObject
+// @example
+// ```javascript
+// const ldap = require('nuclei/ldap');
+// const client = new ldap.Client('ldap://ldap.example.com', 'acme.com');
+// const groups = client.GetADGroups();
+// log(to_json(groups));
+// ```
 func (c *Client) GetADGroups() []ADObject {
 	return c.FindADObjects(FilterIsGroup)
 }
 
 // GetADDCList returns all AD domain controllers
 // using FilterIsComputer, FilterAccountEnabled and FilterServerTrustAccount filter query
-// @return []ADObject
+// @example
+// ```javascript
+// const ldap = require('nuclei/ldap');
+// const client = new ldap.Client('ldap://ldap.example.com', 'acme.com');
+// const dcs = client.GetADDCList();
+// log(to_json(dcs));
+// ```
 func (c *Client) GetADDCList() []ADObject {
 	return c.FindADObjects(JoinFilters(FilterIsComputer, FilterAccountEnabled, FilterServerTrustAccount))
 }
 
 // GetADAdmins returns all AD admins
 // using FilterIsPerson, FilterAccountEnabled and FilterIsAdmin filter query
-// @return []ADObject
+// @example
+// ```javascript
+// const ldap = require('nuclei/ldap');
+// const client = new ldap.Client('ldap://ldap.example.com', 'acme.com');
+// const admins = client.GetADAdmins();
+// log(to_json(admins));
+// ```
 func (c *Client) GetADAdmins() []ADObject {
 	return c.FindADObjects(JoinFilters(FilterIsPerson, FilterAccountEnabled, FilterIsAdmin))
 }
 
 // GetADUserKerberoastable returns all AD users that are kerberoastable
 // using FilterIsPerson, FilterAccountEnabled and FilterHasServicePrincipalName filter query
-// @return []ADObject
+// @example
+// ```javascript
+// const ldap = require('nuclei/ldap');
+// const client = new ldap.Client('ldap://ldap.example.com', 'acme.com');
+// const kerberoastable = client.GetADUserKerberoastable();
+// log(to_json(kerberoastable));
+// ```
 func (c *Client) GetADUserKerberoastable() []ADObject {
 	return c.FindADObjects(JoinFilters(FilterIsPerson, FilterAccountEnabled, FilterHasServicePrincipalName))
 }
 
 // GetADDomainSID returns the SID of the AD domain
-// @return string
+// @example
+// ```javascript
+// const ldap = require('nuclei/ldap');
+// const client = new ldap.Client('ldap://ldap.example.com', 'acme.com');
+// const domainSID = client.GetADDomainSID();
+// log(domainSID);
+// ```
 func (c *Client) GetADDomainSID() string {
 	r := c.Search(FilterServerTrustAccount, "objectSid")
 	c.nj.Require(len(r) > 0, "no result from GetADDomainSID query")

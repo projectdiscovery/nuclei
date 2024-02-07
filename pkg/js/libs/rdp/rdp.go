@@ -10,20 +10,41 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
 )
 
-// RDPClient is a client for rdp servers
-type RDPClient struct{}
+type (
+	// RDPClient is a minimal RDP client for nuclei scripts.
+	// @example
+	// ```javascript
+	// const rdp = require('nuclei/rdp');
+	// const client = new rdp.Client();
+	// ```
+	RDPClient struct{}
+)
 
-type IsRDPResponse struct {
-	IsRDP bool
-	OS    string
-}
+type (
+	// IsRDPResponse is the response from the IsRDP function.
+	// this is returned by IsRDP function.
+	// @example
+	// ```javascript
+	// const rdp = require('nuclei/rdp');
+	// const isRDP = rdp.IsRDP('acme.com', 3389);
+	// log(toJSON(isRDP));
+	// ```
+	IsRDPResponse struct {
+		IsRDP bool
+		OS    string
+	}
+)
 
 // IsRDP checks if the given host and port are running rdp server.
-//
 // If connection is successful, it returns true.
 // If connection is unsuccessful, it returns false and error.
-//
 // The Name of the OS is also returned if the connection is successful.
+// @example
+// ```javascript
+// const rdp = require('nuclei/rdp');
+// const isRDP = rdp.IsRDP('acme.com', 3389);
+// log(toJSON(isRDP));
+// ```
 func (c *RDPClient) IsRDP(host string, port int) (IsRDPResponse, error) {
 	resp := IsRDPResponse{}
 
@@ -46,13 +67,30 @@ func (c *RDPClient) IsRDP(host string, port int) (IsRDPResponse, error) {
 	return resp, nil
 }
 
-type CheckRDPAuthResponse struct {
-	PluginInfo *plugins.ServiceRDP
-	Auth       bool
-}
+type (
+	// CheckRDPAuthResponse is the response from the CheckRDPAuth function.
+	// this is returned by CheckRDPAuth function.
+	// @example
+	// ```javascript
+	// const rdp = require('nuclei/rdp');
+	// const checkRDPAuth = rdp.CheckRDPAuth('acme.com', 3389);
+	// log(toJSON(checkRDPAuth));
+	// ```
+	CheckRDPAuthResponse struct {
+		PluginInfo *plugins.ServiceRDP
+		Auth       bool
+	}
+)
 
 // CheckRDPAuth checks if the given host and port are running rdp server
 // with authentication and returns their metadata.
+// If connection is successful, it returns true.
+// @example
+// ```javascript
+// const rdp = require('nuclei/rdp');
+// const checkRDPAuth = rdp.CheckRDPAuth('acme.com', 3389);
+// log(toJSON(checkRDPAuth));
+// ```
 func (c *RDPClient) CheckRDPAuth(host string, port int) (CheckRDPAuthResponse, error) {
 	resp := CheckRDPAuthResponse{}
 
