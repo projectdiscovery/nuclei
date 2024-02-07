@@ -11,18 +11,39 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
 )
 
-// VNCClient is a minimal VNC client for nuclei scripts.
-type VNCClient struct{}
+type (
+	// VNCClient is a minimal VNC client for nuclei scripts.
+	// @example
+	// ```javascript
+	// const vnc = require('nuclei/vnc');
+	// const client = new vnc.Client();
+	// ```
+	VNCClient struct{}
+)
 
-// IsVNCResponse is the response from the IsVNC function.
-type IsVNCResponse struct {
-	IsVNC  bool
-	Banner string
-}
+type (
+	// IsVNCResponse is the response from the IsVNC function.
+	// @example
+	// ```javascript
+	// const vnc = require('nuclei/vnc');
+	// const isVNC = vnc.IsVNC('acme.com', 5900);
+	// log(toJSON(isVNC));
+	// ```
+	IsVNCResponse struct {
+		IsVNC  bool
+		Banner string
+	}
+)
 
 // IsVNC checks if a host is running a VNC server.
 // It returns a boolean indicating if the host is running a VNC server
 // and the banner of the VNC server.
+// @example
+// ```javascript
+// const vnc = require('nuclei/vnc');
+// const isVNC = vnc.IsVNC('acme.com', 5900);
+// log(toJSON(isVNC));
+// ```
 func (c *VNCClient) IsVNC(host string, port int) (IsVNCResponse, error) {
 	resp := IsVNCResponse{}
 

@@ -14,27 +14,41 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
 )
 
-// Client is a client for MS SQL database.
-//
-// Internally client uses denisenkom/go-mssqldb driver.
-type MSSQLClient struct{}
+type (
+	// Client is a client for MS SQL database.
+	// Internally client uses denisenkom/go-mssqldb driver.
+	// @example
+	// ```javascript
+	// const mssql = require('nuclei/mssql');
+	// const client = new mssql.Client();
+	// ```
+	MSSQLClient struct{}
+)
 
 // Connect connects to MS SQL database using given credentials.
-//
 // If connection is successful, it returns true.
 // If connection is unsuccessful, it returns false and error.
-//
 // The connection is closed after the function returns.
+// @example
+// ```javascript
+// const mssql = require('nuclei/mssql');
+// const client = new mssql.Client();
+// const connected = client.Connect('acme.com', 1433, 'username', 'password');
+// ```
 func (c *MSSQLClient) Connect(host string, port int, username, password string) (bool, error) {
 	return connect(host, port, username, password, "master")
 }
 
 // ConnectWithDB connects to MS SQL database using given credentials and database name.
-//
 // If connection is successful, it returns true.
 // If connection is unsuccessful, it returns false and error.
-//
 // The connection is closed after the function returns.
+// @example
+// ```javascript
+// const mssql = require('nuclei/mssql');
+// const client = new mssql.Client();
+// const connected = client.ConnectWithDB('acme.com', 1433, 'username', 'password', 'master');
+// ```
 func (c *MSSQLClient) ConnectWithDB(host string, port int, username, password, dbName string) (bool, error) {
 	return connect(host, port, username, password, dbName)
 }
@@ -82,9 +96,13 @@ func connect(host string, port int, username, password, dbName string) (bool, er
 }
 
 // IsMssql checks if the given host is running MS SQL database.
-//
 // If the host is running MS SQL database, it returns true.
 // If the host is not running MS SQL database, it returns false.
+// @example
+// ```javascript
+// const mssql = require('nuclei/mssql');
+// const isMssql = mssql.IsMssql('acme.com', 1433);
+// ```
 func (c *MSSQLClient) IsMssql(host string, port int) (bool, error) {
 	if !protocolstate.IsHostAllowed(host) {
 		// host is not valid according to network policy

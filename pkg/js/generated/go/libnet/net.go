@@ -20,11 +20,8 @@ func init() {
 
 			// Var and consts
 
-			// Types (value type)
-			"NetConn": func() lib_net.NetConn { return lib_net.NetConn{} },
-
-			// Types (pointer type)
-			"NewNetConn": func() *lib_net.NetConn { return &lib_net.NetConn{} },
+			// Objects / Classes
+			"NetConn": gojs.GetClassConstructor[lib_net.NetConn](&lib_net.NetConn{}),
 		},
 	).Register()
 }

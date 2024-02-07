@@ -24,16 +24,11 @@ func init() {
 
 			// Var and consts
 
-			// Types (value type)
+			// Objects / Classes
 			"Client":                lib_kerberos.NewKerberosClient,
-			"EnumerateUserResponse": func() lib_kerberos.EnumerateUserResponse { return lib_kerberos.EnumerateUserResponse{} },
-			"TGS":                   func() lib_kerberos.TGS { return lib_kerberos.TGS{} },
-			"Config":                func() lib_kerberos.Config { return lib_kerberos.Config{} },
-
-			// Types (pointer type)
-			// "NewClient":                func() *lib_kerberos.Client { return &lib_kerberos.Client{} },
-			// "NewEnumerateUserResponse": func() *lib_kerberos.EnumerateUserResponse { return &lib_kerberos.EnumerateUserResponse{} },
-			// "NewTGS":                   func() *lib_kerberos.TGS { return &lib_kerberos.TGS{} },
+			"Config":                gojs.GetClassConstructor[lib_kerberos.Config](&lib_kerberos.Config{}),
+			"EnumerateUserResponse": gojs.GetClassConstructor[lib_kerberos.EnumerateUserResponse](&lib_kerberos.EnumerateUserResponse{}),
+			"TGS":                   gojs.GetClassConstructor[lib_kerberos.TGS](&lib_kerberos.TGS{}),
 		},
 	).Register()
 }

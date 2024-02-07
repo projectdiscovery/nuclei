@@ -13,35 +13,51 @@ import (
 	ConversionUtil "github.com/projectdiscovery/utils/conversion"
 )
 
-// Known Issues:
-// Hardcoded timeout in gokrb5 library
-// TGT / Session Handling not exposed
+type (
+	// EnumerateUserResponse is the response from EnumerateUser
+	EnumerateUserResponse struct {
+		Valid     bool   `json:"valid"`
+		ASREPHash string `json:"asrep_hash"`
+		Error     string `json:"error"`
+	}
+)
 
-// EnumerateUserResponse is the response from EnumerateUser
-type EnumerateUserResponse struct {
-	Valid     bool   `json:"valid"`
-	ASREPHash string `json:"asrep_hash"`
-	Error     string `json:"error"`
-}
+type (
+	// TGS is the response from GetServiceTicket
+	TGS struct {
+		Ticket messages.Ticket `json:"ticket"`
+		Hash   string          `json:"hash"`
+		ErrMsg string          `json:"error"`
+	}
+)
 
-// TGS is the response from GetServiceTicket
-type TGS struct {
-	Ticket messages.Ticket `json:"ticket"`
-	Hash   string          `json:"hash"`
-	ErrMsg string          `json:"error"`
-}
+type (
+	// Config is extra configuration for the kerberos client
+	Config struct {
+		ip      string
+		timeout int // in seconds
+	}
+)
 
-// Config is extra configuration for the kerberos client
-type Config struct {
-	ip      string
-	timeout int // in seconds
-}
-
+// SetIPAddress sets the IP address for the kerberos client
+// @example
+// ```javascript
+// const kerberos = require('nuclei/kerberos');
+// const cfg = new kerberos.Config();
+// cfg.SetIPAddress('10.10.10.1');
+// ```
 func (c *Config) SetIPAddress(ip string) *Config {
 	c.ip = ip
 	return c
 }
 
+// SetTimeout sets the RW timeout for the kerberos client
+// @example
+// ```javascript
+// const kerberos = require('nuclei/kerberos');
+// const cfg = new kerberos.Config();
+// cfg.SetTimeout(5);
+// ```
 func (c *Config) SetTimeout(timeout int) *Config {
 	c.timeout = timeout
 	return c
@@ -53,19 +69,27 @@ func (c *Config) SetTimeout(timeout int) *Config {
 // DomainController: dc.acme.com (Domain Controller / Active Directory Server)
 // KDC: kdc.acme.com (Key Distribution Center / Authentication Server)
 
-// Client is kerberos client
-type Client struct {
-	nj         *utils.NucleiJS // helper functions/bindings
-	Krb5Config *kconfig.Config
-	Realm      string
-	config     Config
-}
+type (
+	// Known Issues:
+	// Hardcoded timeout in gokrb5 library
+	// TGT / Session Handling not exposed
+	// Client is kerberos client
+	// @example
+	// ```javascript
+	// const kerberos = require('nuclei/kerberos');
+	// // if controller is empty a dns lookup for default kdc server will be performed
+	// const client = new kerberos.Client('acme.com', 'kdc.acme.com');
+	// ```
+	Client struct {
+		nj         *utils.NucleiJS // helper functions/bindings
+		Krb5Config *kconfig.Config
+		Realm      string
+		config     Config
+	}
+)
 
 // Constructor for KerberosClient
-// if controller is empty a dns lookup for default kdc server will be performed
-// Signature: Client(domain, {controller})
-// @param domain: string
-// @param controller: string (optional)
+// Constructor: constructor(public domain: string, public controller?: string)
 // When controller is empty or not given krb5 will perform a DNS lookup for the default KDC server
 // and retrieve its address from the DNS server
 func NewKerberosClient(call goja.ConstructorCall, runtime *goja.Runtime) *goja.Object {
@@ -119,11 +143,15 @@ func NewKerberosClient(call goja.ConstructorCall, runtime *goja.Runtime) *goja.O
 
 // NewKerberosClientFromString creates a new kerberos client from a string
 // by parsing krb5.conf
-// @param cfg: string
-// Example krb5.conf:
+// @example
+// ```javascript
+// const kerberos = require('nuclei/kerberos');
+// const client = kerberos.NewKerberosClientFromString(`
 // [libdefaults]
 // default_realm = ACME.COM
 // dns_lookup_kdc = true
+// `);
+// ```
 func NewKerberosClientFromString(cfg string) (*Client, error) {
 	config, err := kconfig.NewFromString(cfg)
 	if err != nil {
@@ -133,10 +161,17 @@ func NewKerberosClientFromString(cfg string) (*Client, error) {
 }
 
 // SetConfig sets additional config for the kerberos client
-// Signature: SetConfig(cfg)
-// @param cfg: @Config
 // Note: as of now ip and timeout overrides are only supported
 // in EnumerateUser due to fastdialer but can be extended to other methods currently
+// @example
+// ```javascript
+// const kerberos = require('nuclei/kerberos');
+// const client = new kerberos.Client('acme.com', 'kdc.acme.com');
+// const cfg = new kerberos.Config();
+// cfg.SetIPAddress('192.168.100.22');
+// cfg.SetTimeout(5);
+// client.SetConfig(cfg);
+// ```
 func (c *Client) SetConfig(cfg *Config) {
 	if cfg == nil {
 		c.nj.Throw("config cannot be nil")
@@ -145,8 +180,13 @@ func (c *Client) SetConfig(cfg *Config) {
 }
 
 // EnumerateUser and attempt to get AS-REP hash by disabling PA-FX-FAST
-// Signature: EnumerateUser(username, {password})
-// @param username: string
+// @example
+// ```javascript
+// const kerberos = require('nuclei/kerberos');
+// const client = new kerberos.Client('acme.com', 'kdc.acme.com');
+// const resp = client.EnumerateUser('pdtm');
+// log(resp);
+// ```
 func (c *Client) EnumerateUser(username string) (EnumerateUserResponse, error) {
 	c.nj.Require(c.Krb5Config != nil, "Kerberos client not initialized")
 	password := "password"
@@ -192,11 +232,14 @@ func (c *Client) EnumerateUser(username string) (EnumerateUserResponse, error) {
 	return resp, nil
 }
 
-// GetServiceTicket returns a TGS for a given user, password, target and SPN
-// Signature: GetServiceTicket(User, Pass, Target, SPN)
-// @param User: string
-// @param Pass: string
-// @param SPN: string Service Principal Name
+// GetServiceTicket returns a TGS for a given user, password and SPN
+// @example
+// ```javascript
+// const kerberos = require('nuclei/kerberos');
+// const client = new kerberos.Client('acme.com', 'kdc.acme.com');
+// const resp = client.GetServiceTicket('pdtm', 'password', 'HOST/CLIENT1');
+// log(resp);
+// ```
 func (c *Client) GetServiceTicket(User, Pass, SPN string) (TGS, error) {
 	c.nj.Require(c.Krb5Config != nil, "Kerberos client not initialized")
 	c.nj.Require(User != "", "User cannot be empty")

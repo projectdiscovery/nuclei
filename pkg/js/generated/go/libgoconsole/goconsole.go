@@ -19,10 +19,8 @@ func init() {
 
 			// Var and consts
 
-			// Types (value type)
-			"GoConsolePrinter": func() lib_goconsole.GoConsolePrinter { return lib_goconsole.GoConsolePrinter{} },
-
-			// Types (pointer type)
+			// Objects / Classes
+			"GoConsolePrinter": gojs.GetClassConstructor[lib_goconsole.GoConsolePrinter](&lib_goconsole.GoConsolePrinter{}),
 		},
 	).Register()
 }
