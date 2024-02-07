@@ -12,20 +12,30 @@ func init() {
 	logger.Log.SetOutput(io.Discard)
 }
 
-// IKEMessage is the IKEv2 message
-//
-// IKEv2 implements a limited subset of IKEv2 Protocol, specifically
-// the IKE_NOTIFY and IKE_NONCE payloads and the IKE_SA_INIT exchange.
-type IKEMessage struct {
-	InitiatorSPI uint64
-	Version      uint8
-	ExchangeType uint8
-	Flags        uint8
-	payloads     []IKEPayload
-}
+type (
+	// IKEMessage is the IKEv2 message
+	//
+	// IKEv2 implements a limited subset of IKEv2 Protocol, specifically
+	// the IKE_NOTIFY and IKE_NONCE payloads and the IKE_SA_INIT exchange.
+	IKEMessage struct {
+		InitiatorSPI uint64
+		Version      uint8
+		ExchangeType uint8
+		Flags        uint8
+		payloads     []IKEPayload
+	}
+)
 
 // AppendPayload appends a payload to the IKE message
 // payload can be any of the payloads like IKENotification, IKENonce, etc.
+// @example
+// ```javascript
+// const ikev2 = require('nuclei/ikev2');
+// const message = new ikev2.IKEMessage();
+// const nonce = new ikev2.IKENonce();
+// nonce.NonceData = [1, 2, 3];
+// message.AppendPayload(nonce);
+// ```
 func (m *IKEMessage) AppendPayload(payload any) error {
 	if _, ok := payload.(IKEPayload); !ok {
 		return fmt.Errorf("invalid payload type only types defined in ikev module like IKENotification, IKENonce, etc. are allowed")
@@ -35,6 +45,15 @@ func (m *IKEMessage) AppendPayload(payload any) error {
 }
 
 // Encode encodes the final IKE message
+// @example
+// ```javascript
+// const ikev2 = require('nuclei/ikev2');
+// const message = new ikev2.IKEMessage();
+// const nonce = new ikev2.IKENonce();
+// nonce.NonceData = [1, 2, 3];
+// message.AppendPayload(nonce);
+// log(message.Encode());
+// ```
 func (m *IKEMessage) Encode() ([]byte, error) {
 	var payloads message.IKEPayloadContainer
 	for _, payload := range m.payloads {
@@ -57,18 +76,27 @@ func (m *IKEMessage) Encode() ([]byte, error) {
 }
 
 // IKEPayload is the IKEv2 payload interface
-//
 // All the payloads like IKENotification, IKENonce, etc. implement
 // this interface.
 type IKEPayload interface {
 	encode() (message.IKEPayload, error)
 }
 
-// IKEv2Notify is the IKEv2 Notification payload
-type IKENotification struct {
-	NotifyMessageType uint16
-	NotificationData  []byte
-}
+type (
+	// IKEv2Notify is the IKEv2 Notification payload
+	// this implements the IKEPayload interface
+	// @example
+	// ```javascript
+	// const ikev2 = require('nuclei/ikev2');
+	// const notify = new ikev2.IKENotification();
+	// notify.NotifyMessageType = ikev2.IKE_NOTIFY_NO_PROPOSAL_CHOSEN;
+	// notify.NotificationData = [1, 2, 3];
+	// ```
+	IKENotification struct {
+		NotifyMessageType uint16
+		NotificationData  []byte
+	}
+)
 
 // encode encodes the IKEv2 Notification payload
 func (i *IKENotification) encode() (message.IKEPayload, error) {
@@ -96,10 +124,18 @@ const (
 	IKE_FLAGS_InitiatorBitCheck = 0x08
 )
 
-// IKENonce is the IKEv2 Nonce payload
-type IKENonce struct {
-	NonceData []byte
-}
+type (
+	// IKENonce is the IKEv2 Nonce payload
+	// this implements the IKEPayload interface
+	// @example
+	// ```javascript
+	// const ikev2 = require('nuclei/ikev2');
+	// const nonce = new ikev2.IKENonce();
+	// nonce.NonceData = [1, 2, 3];
+	IKENonce struct {
+		NonceData []byte
+	}
+)
 
 // encode encodes the IKEv2 Nonce payload
 func (i *IKENonce) encode() (message.IKEPayload, error) {

@@ -1,7 +1,13 @@
 
 
 /**
- * SSHClient Class
+ * SSHClient is a client for SSH servers.
+ * Internally client uses github.com/zmap/zgrab2/lib/ssh driver.
+ * @example
+ * ```javascript
+ * const ssh = require('nuclei/ssh');
+ * const client = new ssh.Client();
+ * ```
  */
 export class SSHClient {
     
@@ -10,6 +16,12 @@ export class SSHClient {
     constructor() {}
     /**
     * SetTimeout sets the timeout for the SSH connection in seconds
+    * @example
+    * ```javascript
+    * const ssh = require('nuclei/ssh');
+    * const client = new ssh.Client();
+    * client.SetTimeout(10);
+    * ```
     */
     public SetTimeout(sec: number): void {
         return;
@@ -21,7 +33,12 @@ export class SSHClient {
     * with provided username and password with ssh.
     * Returns state of connection and error. If error is not nil,
     * state will be false
-    * @throws {Error} - if the operation fails
+    * @example
+    * ```javascript
+    * const ssh = require('nuclei/ssh');
+    * const client = new ssh.Client();
+    * const connected = client.Connect('acme.com', 22, 'username', 'password');
+    * ```
     */
     public Connect(host: string, port: number, username: string): boolean | null {
         return null;
@@ -33,7 +50,13 @@ export class SSHClient {
     * with provided username and private_key.
     * Returns state of connection and error. If error is not nil,
     * state will be false
-    * @throws {Error} - if the operation fails
+    * @example
+    * ```javascript
+    * const ssh = require('nuclei/ssh');
+    * const client = new ssh.Client();
+    * const privateKey = `-----BEGIN RSA PRIVATE KEY----- ...`;
+    * const connected = client.ConnectWithKey('acme.com', 22, 'username', privateKey);
+    * ```
     */
     public ConnectWithKey(host: string, port: number, username: string): boolean | null {
         return null;
@@ -47,7 +70,13 @@ export class SSHClient {
     * state will be false
     * HandshakeLog is a struct that contains information about the
     * ssh connection
-    * @throws {Error} - if the operation fails
+    * @example
+    * ```javascript
+    * const ssh = require('nuclei/ssh');
+    * const client = new ssh.Client();
+    * const info = client.ConnectSSHInfoMode('acme.com', 22);
+    * log(to_json(info));
+    * ```
     */
     public ConnectSSHInfoMode(host: string, port: number): HandshakeLog | null | null {
         return null;
@@ -60,7 +89,14 @@ export class SSHClient {
     * Returns string and error. If error is not nil,
     * state will be false
     * The string contains the command output
-    * @throws {Error} - if the operation fails
+    * @example
+    * ```javascript
+    * const ssh = require('nuclei/ssh');
+    * const client = new ssh.Client();
+    * client.Connect('acme.com', 22, 'username', 'password');
+    * const output = client.Run('id');
+    * log(output);
+    * ```
     */
     public Run(cmd: string): string | null {
         return null;
@@ -71,7 +107,13 @@ export class SSHClient {
     * Close closes the SSH connection and destroys the client
     * Returns the success state and error. If error is not nil,
     * state will be false
-    * @throws {Error} - if the operation fails
+    * @example
+    * ```javascript
+    * const ssh = require('nuclei/ssh');
+    * const client = new ssh.Client();
+    * client.Connect('acme.com', 22, 'username', 'password');
+    * const closed = client.Close();
+    * ```
     */
     public Close(): boolean | null {
         return null;
@@ -137,6 +179,8 @@ export interface HandshakeLog {
     
     UserAuth?: string[],
     
+    AlgorithmSelection?: Algorithms,
+    
     ServerID?: EndpointId,
     
     ClientID?: EndpointId,
@@ -144,8 +188,6 @@ export interface HandshakeLog {
     ServerKex?: KexInitMsg,
     
     ClientKex?: KexInitMsg,
-    
-    AlgorithmSelection?: Algorithms,
 }
 
 
@@ -155,15 +197,27 @@ export interface HandshakeLog {
  */
 export interface KexInitMsg {
     
-    KexAlgos?: string[],
-    
     CompressionClientServer?: string[],
     
-    ServerHostKeyAlgos?: string[],
+    FirstKexFollows?: boolean,
+    
+    MACsClientServer?: string[],
+    
+    LanguagesClientServer?: string[],
+    
+    LanguagesServerClient?: string[],
+    
+    Reserved?: number,
+    
+    KexAlgos?: string[],
     
     CiphersClientServer?: string[],
     
-    LanguagesServerClient?: string[],
+    CiphersServerClient?: string[],
+    
+    MACsServerClient?: string[],
+    
+    CompressionServerClient?: string[],
     
     /**
     * fixed size array of length: [16]
@@ -171,18 +225,6 @@ export interface KexInitMsg {
     
     Cookie?: Uint8Array,
     
-    CiphersServerClient?: string[],
-    
-    MACsClientServer?: string[],
-    
-    MACsServerClient?: string[],
-    
-    CompressionServerClient?: string[],
-    
-    LanguagesClientServer?: string[],
-    
-    FirstKexFollows?: boolean,
-    
-    Reserved?: number,
+    ServerHostKeyAlgos?: string[],
 }
 

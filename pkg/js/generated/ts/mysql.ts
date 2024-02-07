@@ -2,7 +2,14 @@
 
 /**
  * BuildDSN builds a MySQL data source name (DSN) from the given options.
-* @throws {Error} - if the operation fails
+ * @example
+ * ```javascript
+ * const mysql = require('nuclei/mysql');
+ * const options = new mysql.MySQLOptions();
+ * options.Host = 'acme.com';
+ * options.Port = 3306;
+ * const dsn = mysql.BuildDSN(options);
+ * ```
  */
 export function BuildDSN(opts: MySQLOptions): string | null {
     return null;
@@ -11,7 +18,13 @@ export function BuildDSN(opts: MySQLOptions): string | null {
 
 
 /**
- * MySQLClient Class
+ * MySQLClient is a client for MySQL database.
+ * Internally client uses go-sql-driver/mysql driver.
+ * @example
+ * ```javascript
+ * const mysql = require('nuclei/mysql');
+ * const client = new mysql.Client();
+ * ```
  */
 export class MySQLClient {
     
@@ -22,7 +35,11 @@ export class MySQLClient {
     * IsMySQL checks if the given host is running MySQL database.
     * If the host is running MySQL database, it returns true.
     * If the host is not running MySQL database, it returns false.
-    * @throws {Error} - if the operation fails
+    * @example
+    * ```javascript
+    * const mysql = require('nuclei/mysql');
+    * const isMySQL = mysql.IsMySQL('acme.com', 3306);
+    * ```
     */
     public IsMySQL(host: string, port: number): boolean | null {
         return null;
@@ -34,7 +51,12 @@ export class MySQLClient {
     * If connection is successful, it returns true.
     * If connection is unsuccessful, it returns false and error.
     * The connection is closed after the function returns.
-    * @throws {Error} - if the operation fails
+    * @example
+    * ```javascript
+    * const mysql = require('nuclei/mysql');
+    * const client = new mysql.Client();
+    * const connected = client.Connect('acme.com', 3306, 'username', 'password');
+    * ```
     */
     public Connect(host: string, port: number, username: string): boolean | null {
         return null;
@@ -43,7 +65,12 @@ export class MySQLClient {
 
     /**
     * returns MySQLInfo when fingerpint is successful
-    * @throws {Error} - if the operation fails
+    * @example
+    * ```javascript
+    * const mysql = require('nuclei/mysql');
+    * const info = mysql.FingerprintMySQL('acme.com', 3306);
+    * log(to_json(info));
+    * ```
     */
     public FingerprintMySQL(host: string, port: number): MySQLInfo | null {
         return null;
@@ -53,7 +80,13 @@ export class MySQLClient {
     /**
     * ConnectWithDSN connects to MySQL database using given DSN.
     * we override mysql dialer with fastdialer so it respects network policy
-    * @throws {Error} - if the operation fails
+    * If connection is successful, it returns true.
+    * @example
+    * ```javascript
+    * const mysql = require('nuclei/mysql');
+    * const client = new mysql.Client();
+    * const connected = client.ConnectWithDSN('username:password@tcp(acme.com:3306)/');
+    * ```
     */
     public ConnectWithDSN(dsn: string): boolean | null {
         return null;
@@ -61,8 +94,17 @@ export class MySQLClient {
     
 
     /**
-    * ExecuteQueryWithOpts Method
-    * @throws {Error} - if the operation fails
+    * ExecuteQueryWithOpts connects to Mysql database using given credentials
+    * and executes a query on the db.
+    * @example
+    * ```javascript
+    * const mysql = require('nuclei/mysql');
+    * const options = new mysql.MySQLOptions();
+    * options.Host = 'acme.com';
+    * options.Port = 3306;
+    * const result = mysql.ExecuteQueryWithOpts(options, 'SELECT * FROM users');
+    * log(to_json(result));
+    * ```
     */
     public ExecuteQueryWithOpts(opts: MySQLOptions, query: string): SQLResult | null | null {
         return null;
@@ -72,7 +114,12 @@ export class MySQLClient {
     /**
     * ExecuteQuery connects to Mysql database using given credentials
     * and executes a query on the db.
-    * @throws {Error} - if the operation fails
+    * @example
+    * ```javascript
+    * const mysql = require('nuclei/mysql');
+    * const result = mysql.ExecuteQuery('acme.com', 3306, 'username', 'password', 'SELECT * FROM users');
+    * log(to_json(result));
+    * ```
     */
     public ExecuteQuery(host: string, port: number, username: string): SQLResult | null | null {
         return null;
@@ -82,7 +129,12 @@ export class MySQLClient {
     /**
     * ExecuteQuery connects to Mysql database using given credentials
     * and executes a query on the db.
-    * @throws {Error} - if the operation fails
+    * @example
+    * ```javascript
+    * const mysql = require('nuclei/mysql');
+    * const result = mysql.ExecuteQueryOnDB('acme.com', 3306, 'username', 'password', 'dbname', 'SELECT * FROM users');
+    * log(to_json(result));
+    * ```
     */
     public ExecuteQueryOnDB(host: string, port: number, username: string): SQLResult | null | null {
         return null;
@@ -94,7 +146,8 @@ export class MySQLClient {
 
 
 /**
- * MySQLInfo interface
+ * MySQLInfo contains information about MySQL server.
+ * this is returned when fingerprint is successful
  */
 export interface MySQLInfo {
     
@@ -120,7 +173,15 @@ export interface MySQLInfo {
 
 
 /**
- * MySQLOptions interface
+ * MySQLOptions defines the data source name (DSN) options required to connect to a MySQL database.
+ * along with other options like Timeout etc
+ * @example
+ * ```javascript
+ * const mysql = require('nuclei/mysql');
+ * const options = new mysql.MySQLOptions();
+ * options.Host = 'acme.com';
+ * options.Port = 3306;
+ * ```
  */
 export interface MySQLOptions {
     

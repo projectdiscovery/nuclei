@@ -1,7 +1,12 @@
 
 
 /**
- * RsyncClient Class
+ * RsyncClient is a minimal Rsync client for nuclei scripts.
+ * @example
+ * ```javascript
+ * const rsync = require('nuclei/rsync');
+ * const client = new rsync.Client();
+ * ```
  */
 export class RsyncClient {
     
@@ -10,7 +15,12 @@ export class RsyncClient {
     constructor() {}
     /**
     * IsRsync checks if a host is running a Rsync server.
-    * @throws {Error} - if the operation fails
+    * @example
+    * ```javascript
+    * const rsync = require('nuclei/rsync');
+    * const isRsync = rsync.IsRsync('acme.com', 873);
+    * log(toJSON(isRsync));
+    * ```
     */
     public IsRsync(host: string, port: number): IsRsyncResponse | null {
         return null;
@@ -22,7 +32,14 @@ export class RsyncClient {
 
 
 /**
- * IsRsyncResponse interface
+ * IsRsyncResponse is the response from the IsRsync function.
+ * this is returned by IsRsync function.
+ * @example
+ * ```javascript
+ * const rsync = require('nuclei/rsync');
+ * const isRsync = rsync.IsRsync('acme.com', 873);
+ * log(toJSON(isRsync));
+ * ```
  */
 export interface IsRsyncResponse {
     

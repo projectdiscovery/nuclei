@@ -24,7 +24,7 @@ export class Buffer {
     * @example
     * ```javascript
     * const bytes = require('nuclei/bytes');
-    * const bytes = new bytes.Buffer();
+    * const buffer = new bytes.Buffer();
     * buffer.Write([1, 2, 3]);
     * ```
     */
@@ -38,7 +38,7 @@ export class Buffer {
     * @example
     * ```javascript
     * const bytes = require('nuclei/bytes');
-    * const bytes = new bytes.Buffer();
+    * const buffer = new bytes.Buffer();
     * buffer.WriteString('hello');
     * ```
     */
@@ -52,9 +52,9 @@ export class Buffer {
     * @example
     * ```javascript
     * const bytes = require('nuclei/bytes');
-    * const bytes = new bytes.Buffer();
-    * buffer.Write([1, 2, 3]);
-    * console.log(buffer.Bytes());
+    * const buffer = new bytes.Buffer();
+    * buffer.WriteString('hello');
+    * log(buffer.Bytes());
     * ```
     */
     public Bytes(): Uint8Array {
@@ -67,9 +67,9 @@ export class Buffer {
     * @example
     * ```javascript
     * const bytes = require('nuclei/bytes');
-    * const bytes = new bytes.Buffer();
+    * const buffer = new bytes.Buffer();
     * buffer.WriteString('hello');
-    * console.log(buffer.String());
+    * log(buffer.String());
     * ```
     */
     public String(): string {
@@ -82,9 +82,9 @@ export class Buffer {
     * @example
     * ```javascript
     * const bytes = require('nuclei/bytes');
-    * const bytes = new bytes.Buffer();
+    * const buffer = new bytes.Buffer();
     * buffer.WriteString('hello');
-    * console.log(buffer.Len());
+    * log(buffer.Len());
     * ```
     */
     public Len(): number {
@@ -97,9 +97,9 @@ export class Buffer {
     * @example
     * ```javascript
     * const bytes = require('nuclei/bytes');
-    * const bytes = new bytes.Buffer();
+    * const buffer = new bytes.Buffer();
     * buffer.WriteString('hello');
-    * console.log(buffer.Hex());
+    * log(buffer.Hex());
     * ```
     */
     public Hex(): string {
@@ -112,9 +112,9 @@ export class Buffer {
     * @example
     * ```javascript
     * const bytes = require('nuclei/bytes');
-    * const bytes = new bytes.Buffer();
+    * const buffer = new bytes.Buffer();
     * buffer.WriteString('hello');
-    * console.log(buffer.Hexdump());
+    * log(buffer.Hexdump());
     * ```
     */
     public Hexdump(): string {
@@ -128,7 +128,7 @@ export class Buffer {
     * @example
     * ```javascript
     * const bytes = require('nuclei/bytes');
-    * const bytes = new bytes.Buffer();
+    * const buffer = new bytes.Buffer();
     * buffer.Pack('I', 123);
     * ```
     */

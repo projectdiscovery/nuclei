@@ -15,7 +15,7 @@ export const FilterDontExpirePassword = "(userAccountControl:1.2.840.113556.1.4.
 /** This account doesn't require Kerberos pre-authentication for logging on. */
 export const FilterDontRequirePreauth = "(userAccountControl:1.2.840.113556.1.4.803:=4194304)";
 
-
+/** The object has a service principal name. */
 export const FilterHasServicePrincipalName = "(servicePrincipalName=*)";
 
 /** The home folder is required. */
@@ -24,22 +24,22 @@ export const FilterHomedirRequired = "(userAccountControl:1.2.840.113556.1.4.803
 /** It's a permit to trust an account for a system domain that trusts other domains. */
 export const FilterInterdomainTrustAccount = "(userAccountControl:1.2.840.113556.1.4.803:=2048)";
 
-
+/** The object is an admin. */
 export const FilterIsAdmin = "(adminCount=1)";
 
-
+/** The object is a computer. */
 export const FilterIsComputer = "(objectCategory=computer)";
 
 /** It's an account for users whose primary account is in another domain. */
 export const FilterIsDuplicateAccount = "(userAccountControl:1.2.840.113556.1.4.803:=256)";
 
-
+/** The object is a group. */
 export const FilterIsGroup = "(objectCategory=group)";
 
 /** It's a default account type that represents a typical user. */
 export const FilterIsNormalAccount = "(userAccountControl:1.2.840.113556.1.4.803:=512)";
 
-
+/** The object is a person. */
 export const FilterIsPerson = "(objectCategory=person)";
 
 /** The user is locked out. */
@@ -86,6 +86,12 @@ export const FilterWorkstationTrustAccount = "(userAccountControl:1.2.840.113556
 
 /**
  * DecodeADTimestamp decodes an Active Directory timestamp
+ * @example
+ * ```javascript
+ * const ldap = require('nuclei/ldap');
+ * const timestamp = ldap.DecodeADTimestamp('132036744000000000');
+ * log(timestamp);
+ * ```
  */
 export function DecodeADTimestamp(timestamp: string): string {
     return "";
@@ -95,6 +101,12 @@ export function DecodeADTimestamp(timestamp: string): string {
 
 /**
  * DecodeSID decodes a SID string
+ * @example
+ * ```javascript
+ * const ldap = require('nuclei/ldap');
+ * const sid = ldap.DecodeSID('S-1-5-21-3623811015-3361044348-30300820-1013');
+ * log(sid);
+ * ```
  */
 export function DecodeSID(s: string): string {
     return "";
@@ -104,7 +116,12 @@ export function DecodeSID(s: string): string {
 
 /**
  * DecodeZuluTimestamp decodes a Zulu timestamp
- * example: 2021-08-25T14:00:00Z
+ * @example
+ * ```javascript
+ * const ldap = require('nuclei/ldap');
+ * const timestamp = ldap.DecodeZuluTimestamp('2021-08-25T10:00:00Z');
+ * log(timestamp);
+ * ```
  */
 export function DecodeZuluTimestamp(timestamp: string): string {
     return "";
@@ -114,6 +131,11 @@ export function DecodeZuluTimestamp(timestamp: string): string {
 
 /**
  * JoinFilters joins multiple filters into a single filter
+ * @example
+ * ```javascript
+ * const ldap = require('nuclei/ldap');
+ * const filter = ldap.JoinFilters(ldap.FilterIsPerson, ldap.FilterAccountEnabled);
+ * ```
  */
 export function JoinFilters(filters: any): string {
     return "";
@@ -123,6 +145,11 @@ export function JoinFilters(filters: any): string {
 
 /**
  * NegativeFilter returns a negative filter for a given filter
+ * @example
+ * ```javascript
+ * const ldap = require('nuclei/ldap');
+ * const filter = ldap.NegativeFilter(ldap.FilterIsPerson);
+ * ```
  */
 export function NegativeFilter(filter: string): string {
     return "";
@@ -131,7 +158,22 @@ export function NegativeFilter(filter: string): string {
 
 
 /**
- * Client Class
+ * Client is a client for ldap protocol in nuclei
+ * @example
+ * ```javascript
+ * const ldap = require('nuclei/ldap');
+ * // here ldap.example.com is the ldap server and acme.com is the realm
+ * const client = new ldap.Client('ldap://ldap.example.com', 'acme.com');
+ * ```
+ * @example
+ * ```javascript
+ * const ldap = require('nuclei/ldap');
+ * const cfg = new ldap.Config();
+ * cfg.Timeout = 10;
+ * cfg.ServerName = 'ldap.internal.acme.com';
+ * // optional config can be passed as third argument
+ * const client = new ldap.Client('ldap://ldap.example.com', 'acme.com', cfg);
+ * ```
  */
 export class Client {
     
@@ -159,8 +201,13 @@ export class Client {
     /**
     * FindADObjects finds AD objects based on a filter
     * and returns them as a list of ADObject
-    * @param filter: string
-    * @return []ADObject
+    * @example
+    * ```javascript
+    * const ldap = require('nuclei/ldap');
+    * const client = new ldap.Client('ldap://ldap.example.com', 'acme.com');
+    * const users = client.FindADObjects(ldap.FilterIsPerson);
+    * log(to_json(users));
+    * ```
     */
     public FindADObjects(filter: string): ADObject[] {
         return [];
@@ -170,7 +217,13 @@ export class Client {
     /**
     * GetADUsers returns all AD users
     * using FilterIsPerson filter query
-    * @return []ADObject
+    * @example
+    * ```javascript
+    * const ldap = require('nuclei/ldap');
+    * const client = new ldap.Client('ldap://ldap.example.com', 'acme.com');
+    * const users = client.GetADUsers();
+    * log(to_json(users));
+    * ```
     */
     public GetADUsers(): ADObject[] {
         return [];
@@ -180,7 +233,13 @@ export class Client {
     /**
     * GetADActiveUsers returns all AD users
     * using FilterIsPerson and FilterAccountEnabled filter query
-    * @return []ADObject
+    * @example
+    * ```javascript
+    * const ldap = require('nuclei/ldap');
+    * const client = new ldap.Client('ldap://ldap.example.com', 'acme.com');
+    * const users = client.GetADActiveUsers();
+    * log(to_json(users));
+    * ```
     */
     public GetADActiveUsers(): ADObject[] {
         return [];
@@ -190,7 +249,13 @@ export class Client {
     /**
     * GetAdUserWithNeverExpiringPasswords returns all AD users
     * using FilterIsPerson and FilterDontExpirePassword filter query
-    * @return []ADObject
+    * @example
+    * ```javascript
+    * const ldap = require('nuclei/ldap');
+    * const client = new ldap.Client('ldap://ldap.example.com', 'acme.com');
+    * const users = client.GetADUserWithNeverExpiringPasswords();
+    * log(to_json(users));
+    * ```
     */
     public GetADUserWithNeverExpiringPasswords(): ADObject[] {
         return [];
@@ -200,7 +265,13 @@ export class Client {
     /**
     * GetADUserTrustedForDelegation returns all AD users that are trusted for delegation
     * using FilterIsPerson and FilterTrustedForDelegation filter query
-    * @return []ADObject
+    * @example
+    * ```javascript
+    * const ldap = require('nuclei/ldap');
+    * const client = new ldap.Client('ldap://ldap.example.com', 'acme.com');
+    * const users = client.GetADUserTrustedForDelegation();
+    * log(to_json(users));
+    * ```
     */
     public GetADUserTrustedForDelegation(): ADObject[] {
         return [];
@@ -210,7 +281,13 @@ export class Client {
     /**
     * GetADUserWithPasswordNotRequired returns all AD users that do not require a password
     * using FilterIsPerson and FilterPasswordNotRequired filter query
-    * @return []ADObject
+    * @example
+    * ```javascript
+    * const ldap = require('nuclei/ldap');
+    * const client = new ldap.Client('ldap://ldap.example.com', 'acme.com');
+    * const users = client.GetADUserWithPasswordNotRequired();
+    * log(to_json(users));
+    * ```
     */
     public GetADUserWithPasswordNotRequired(): ADObject[] {
         return [];
@@ -220,7 +297,13 @@ export class Client {
     /**
     * GetADGroups returns all AD groups
     * using FilterIsGroup filter query
-    * @return []ADObject
+    * @example
+    * ```javascript
+    * const ldap = require('nuclei/ldap');
+    * const client = new ldap.Client('ldap://ldap.example.com', 'acme.com');
+    * const groups = client.GetADGroups();
+    * log(to_json(groups));
+    * ```
     */
     public GetADGroups(): ADObject[] {
         return [];
@@ -230,7 +313,13 @@ export class Client {
     /**
     * GetADDCList returns all AD domain controllers
     * using FilterIsComputer, FilterAccountEnabled and FilterServerTrustAccount filter query
-    * @return []ADObject
+    * @example
+    * ```javascript
+    * const ldap = require('nuclei/ldap');
+    * const client = new ldap.Client('ldap://ldap.example.com', 'acme.com');
+    * const dcs = client.GetADDCList();
+    * log(to_json(dcs));
+    * ```
     */
     public GetADDCList(): ADObject[] {
         return [];
@@ -240,7 +329,13 @@ export class Client {
     /**
     * GetADAdmins returns all AD admins
     * using FilterIsPerson, FilterAccountEnabled and FilterIsAdmin filter query
-    * @return []ADObject
+    * @example
+    * ```javascript
+    * const ldap = require('nuclei/ldap');
+    * const client = new ldap.Client('ldap://ldap.example.com', 'acme.com');
+    * const admins = client.GetADAdmins();
+    * log(to_json(admins));
+    * ```
     */
     public GetADAdmins(): ADObject[] {
         return [];
@@ -250,7 +345,13 @@ export class Client {
     /**
     * GetADUserKerberoastable returns all AD users that are kerberoastable
     * using FilterIsPerson, FilterAccountEnabled and FilterHasServicePrincipalName filter query
-    * @return []ADObject
+    * @example
+    * ```javascript
+    * const ldap = require('nuclei/ldap');
+    * const client = new ldap.Client('ldap://ldap.example.com', 'acme.com');
+    * const kerberoastable = client.GetADUserKerberoastable();
+    * log(to_json(kerberoastable));
+    * ```
     */
     public GetADUserKerberoastable(): ADObject[] {
         return [];
@@ -259,7 +360,13 @@ export class Client {
 
     /**
     * GetADDomainSID returns the SID of the AD domain
-    * @return string
+    * @example
+    * ```javascript
+    * const ldap = require('nuclei/ldap');
+    * const client = new ldap.Client('ldap://ldap.example.com', 'acme.com');
+    * const domainSID = client.GetADDomainSID();
+    * log(domainSID);
+    * ```
     */
     public GetADDomainSID(): string {
         return "";
@@ -269,10 +376,12 @@ export class Client {
     /**
     * Authenticate authenticates with the ldap server using the given username and password
     * performs NTLMBind first and then Bind/UnauthenticatedBind if NTLMBind fails
-    * Signature: Authenticate(username, password)
-    * @param username: string
-    * @param password: string (can be empty for unauthenticated bind)
-    * @throws error if authentication fails
+    * @example
+    * ```javascript
+    * const ldap = require('nuclei/ldap');
+    * const client = new ldap.Client('ldap://ldap.example.com', 'acme.com');
+    * client.Authenticate('user', 'password');
+    * ```
     */
     public Authenticate(username: string): void {
         return;
@@ -281,10 +390,12 @@ export class Client {
 
     /**
     * AuthenticateWithNTLMHash authenticates with the ldap server using the given username and NTLM hash
-    * Signature: AuthenticateWithNTLMHash(username, hash)
-    * @param username: string
-    * @param hash: string
-    * @throws error if authentication fails
+    * @example
+    * ```javascript
+    * const ldap = require('nuclei/ldap');
+    * const client = new ldap.Client('ldap://ldap.example.com', 'acme.com');
+    * client.AuthenticateWithNTLMHash('pdtm', 'hash');
+    * ```
     */
     public AuthenticateWithNTLMHash(username: string): void {
         return;
@@ -294,10 +405,12 @@ export class Client {
     /**
     * Search accepts whatever filter and returns a list of maps having provided attributes
     * as keys and associated values mirroring the ones returned by ldap
-    * Signature: Search(filter, attributes...)
-    * @param filter: string
-    * @param attributes: ...string
-    * @return []map[string][]string
+    * @example
+    * ```javascript
+    * const ldap = require('nuclei/ldap');
+    * const client = new ldap.Client('ldap://ldap.example.com', 'acme.com');
+    * const results = client.Search('(objectClass=*)', 'cn', 'mail');
+    * ```
     */
     public Search(filter: string, attributes: any): Record<string, string[]>[] {
         return [];
@@ -307,16 +420,12 @@ export class Client {
     /**
     * AdvancedSearch accepts all values of search request type and return Ldap Entry
     * its up to user to handle the response
-    * Signature: AdvancedSearch(Scope, DerefAliases, SizeLimit, TimeLimit, TypesOnly, Filter, Attributes, Controls)
-    * @param Scope: int
-    * @param DerefAliases: int
-    * @param SizeLimit: int
-    * @param TimeLimit: int
-    * @param TypesOnly: bool
-    * @param Filter: string
-    * @param Attributes: []string
-    * @param Controls: []ldap.Control
-    * @return ldap.SearchResult
+    * @example
+    * ```javascript
+    * const ldap = require('nuclei/ldap');
+    * const client = new ldap.Client('ldap://ldap.example.com', 'acme.com');
+    * const results = client.AdvancedSearch(ldap.ScopeWholeSubtree, ldap.NeverDerefAliases, 0, 0, false, '(objectClass=*)', ['cn', 'mail'], []);
+    * ```
     */
     public AdvancedSearch(Scope: number, TypesOnly: boolean, Filter: string, Attributes: string[], Controls: any): SearchResult | null {
         return null;
@@ -325,8 +434,13 @@ export class Client {
 
     /**
     * CollectLdapMetadata collects metadata from ldap server.
-    * Signature: CollectMetadata(domain, controller)
-    * @return Metadata
+    * @example
+    * ```javascript
+    * const ldap = require('nuclei/ldap');
+    * const client = new ldap.Client('ldap://ldap.example.com', 'acme.com');
+    * const metadata = client.CollectMetadata();
+    * log(to_json(metadata));
+    * ```
     */
     public CollectMetadata(): Metadata | null {
         return null;
@@ -335,6 +449,12 @@ export class Client {
 
     /**
     * close the ldap connection
+    * @example
+    * ```javascript
+    * const ldap = require('nuclei/ldap');
+    * const client = new ldap.Client('ldap://ldap.example.com', 'acme.com');
+    * client.Close();
+    * ```
     */
     public Close(): void {
         return;
@@ -346,7 +466,13 @@ export class Client {
 
 
 /**
- * ADObject interface
+ * ADObject represents an Active Directory object
+ * @example
+ * ```javascript
+ * const ldap = require('nuclei/ldap');
+ * const client = new ldap.Client('ldap://ldap.example.com', 'acme.com');
+ * const users = client.GetADUsers();
+ * log(to_json(users));
  */
 export interface ADObject {
     
@@ -366,7 +492,15 @@ export interface ADObject {
 
 
 /**
- * Config interface
+ * Config is extra configuration for the ldap client
+ * @example
+ * ```javascript
+ * const ldap = require('nuclei/ldap');
+ * const cfg = new ldap.Config();
+ * cfg.Timeout = 10;
+ * cfg.ServerName = 'ldap.internal.acme.com';
+ * cfg.Upgrade = true; // upgrade to tls
+ * ```
  */
 export interface Config {
     
@@ -410,7 +544,8 @@ export interface EntryAttribute {
 
 
 /**
- * Metadata interface
+ * Metadata is the metadata for ldap server.
+ * this is returned by CollectMetadata method
  */
 export interface Metadata {
     

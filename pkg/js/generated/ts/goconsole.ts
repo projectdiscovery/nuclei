@@ -10,7 +10,6 @@ export function NewGoConsolePrinter(): GoConsolePrinter {
 
 
 /**
- * GoConsolePrinter Class
  */
 export class GoConsolePrinter {
     

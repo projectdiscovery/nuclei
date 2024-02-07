@@ -1,7 +1,14 @@
 
 
 /**
- * SMBClient Class
+ * SMBClient is a client for SMB servers.
+ * Internally client uses github.com/zmap/zgrab2/lib/smb/smb driver.
+ * github.com/projectdiscovery/go-smb2 driver
+ * @example
+ * ```javascript
+ * const smb = require('nuclei/smb');
+ * const client = new smb.Client();
+ * ```
  */
 export class SMBClient {
     
@@ -13,7 +20,13 @@ export class SMBClient {
     * and discovery SMB information
     * Returns handshake log and error. If error is not nil,
     * state will be false
-    * @throws {Error} - if the operation fails
+    * @example
+    * ```javascript
+    * const smb = require('nuclei/smb');
+    * const client = new smb.Client();
+    * const info = client.ConnectSMBInfoMode('acme.com', 445);
+    * log(to_json(info));
+    * ```
     */
     public ConnectSMBInfoMode(host: string, port: number): SMBLog | null | null {
         return null;
@@ -25,7 +38,13 @@ export class SMBClient {
     * and list SMBv2 metadata.
     * Returns metadata and error. If error is not nil,
     * state will be false
-    * @throws {Error} - if the operation fails
+    * @example
+    * ```javascript
+    * const smb = require('nuclei/smb');
+    * const client = new smb.Client();
+    * const metadata = client.ListSMBv2Metadata('acme.com', 445);
+    * log(to_json(metadata));
+    * ```
     */
     public ListSMBv2Metadata(host: string, port: number): ServiceSMB | null | null {
         return null;
@@ -37,7 +56,15 @@ export class SMBClient {
     * and list shares by using given credentials.
     * Credentials cannot be blank. guest or anonymous credentials
     * can be used by providing empty password.
-    * @throws {Error} - if the operation fails
+    * @example
+    * ```javascript
+    * const smb = require('nuclei/smb');
+    * const client = new smb.Client();
+    * const shares = client.ListShares('acme.com', 445, 'username', 'password');
+    * 	for (const share of shares) {
+    * 		  log(share);
+    * 	}
+    * ```
     */
     public ListShares(host: string, port: number, user: string): string[] | null {
         return null;
@@ -47,7 +74,12 @@ export class SMBClient {
     /**
     * DetectSMBGhost tries to detect SMBGhost vulnerability
     * by using SMBv3 compression feature.
-    * @throws {Error} - if the operation fails
+    * If the host is vulnerable, it returns true.
+    * @example
+    * ```javascript
+    * const smb = require('nuclei/smb');
+    * const isSMBGhost = smb.DetectSMBGhost('acme.com', 445);
+    * ```
     */
     public DetectSMBGhost(host: string, port: number): boolean | null {
         return null;
@@ -81,12 +113,6 @@ export interface HeaderLog {
  */
 export interface NegotiationLog {
     
-    ServerStartTime?: number,
-    
-    AuthenticationTypes?: string[],
-    
-    SecurityMode?: number,
-    
     DialectRevision?: number,
     
     ServerGuid?: Uint8Array,
@@ -94,6 +120,12 @@ export interface NegotiationLog {
     Capabilities?: number,
     
     SystemTime?: number,
+    
+    ServerStartTime?: number,
+    
+    AuthenticationTypes?: string[],
+    
+    SecurityMode?: number,
     
     HeaderLog?: HeaderLog,
 }
@@ -169,6 +201,8 @@ export interface SMBVersions {
  */
 export interface ServiceSMB {
     
+    DNSDomainName?: string,
+    
     ForestName?: string,
     
     SigningEnabled?: boolean,
@@ -182,8 +216,6 @@ export interface ServiceSMB {
     NetBIOSDomainName?: string,
     
     DNSComputerName?: string,
-    
-    DNSDomainName?: string,
 }
 
 
@@ -193,11 +225,11 @@ export interface ServiceSMB {
  */
 export interface SessionSetupLog {
     
-    SetupFlags?: number,
-    
     TargetName?: string,
     
     NegotiateFlags?: number,
+    
+    SetupFlags?: number,
     
     HeaderLog?: HeaderLog,
 }

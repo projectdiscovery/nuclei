@@ -25,7 +25,9 @@ export const IKE_NOTIFY_USE_TRANSPORT_MODE = 16391;
 export const IKE_VERSION_2 = 0x20;
 
 /**
- * IKEMessage Class
+ * IKEMessage is the IKEv2 message
+ * IKEv2 implements a limited subset of IKEv2 Protocol, specifically
+ * the IKE_NOTIFY and IKE_NONCE payloads and the IKE_SA_INIT exchange.
  */
 export class IKEMessage {
     
@@ -51,7 +53,14 @@ export class IKEMessage {
     /**
     * AppendPayload appends a payload to the IKE message
     * payload can be any of the payloads like IKENotification, IKENonce, etc.
-    * @throws {Error} - if the operation fails
+    * @example
+    * ```javascript
+    * const ikev2 = require('nuclei/ikev2');
+    * const message = new ikev2.IKEMessage();
+    * const nonce = new ikev2.IKENonce();
+    * nonce.NonceData = [1, 2, 3];
+    * message.AppendPayload(nonce);
+    * ```
     */
     public AppendPayload(payload: any): void {
         return;
@@ -60,7 +69,15 @@ export class IKEMessage {
 
     /**
     * Encode encodes the final IKE message
-    * @throws {Error} - if the operation fails
+    * @example
+    * ```javascript
+    * const ikev2 = require('nuclei/ikev2');
+    * const message = new ikev2.IKEMessage();
+    * const nonce = new ikev2.IKENonce();
+    * nonce.NonceData = [1, 2, 3];
+    * message.AppendPayload(nonce);
+    * log(message.Encode());
+    * ```
     */
     public Encode(): Uint8Array | null {
         return null;
@@ -72,7 +89,13 @@ export class IKEMessage {
 
 
 /**
- * IKENonce interface
+ * IKENonce is the IKEv2 Nonce payload
+ * this implements the IKEPayload interface
+ * @example
+ * ```javascript
+ * const ikev2 = require('nuclei/ikev2');
+ * const nonce = new ikev2.IKENonce();
+ * nonce.NonceData = [1, 2, 3];
  */
 export interface IKENonce {
     
@@ -82,7 +105,15 @@ export interface IKENonce {
 
 
 /**
- * IKENotification interface
+ * IKEv2Notify is the IKEv2 Notification payload
+ * this implements the IKEPayload interface
+ * @example
+ * ```javascript
+ * const ikev2 = require('nuclei/ikev2');
+ * const notify = new ikev2.IKENotification();
+ * notify.NotifyMessageType = ikev2.IKE_NOTIFY_NO_PROPOSAL_CHOSEN;
+ * notify.NotificationData = [1, 2, 3];
+ * ```
  */
 export interface IKENotification {
     

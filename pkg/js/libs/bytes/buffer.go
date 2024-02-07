@@ -42,7 +42,7 @@ func NewBuffer(call goja.ConstructorCall, runtime *goja.Runtime) *goja.Object {
 // @example
 // ```javascript
 // const bytes = require('nuclei/bytes');
-// const bytes = new bytes.Buffer();
+// const buffer = new bytes.Buffer();
 // buffer.Write([1, 2, 3]);
 // ```
 func (b *Buffer) Write(data []byte) *Buffer {
@@ -54,7 +54,7 @@ func (b *Buffer) Write(data []byte) *Buffer {
 // @example
 // ```javascript
 // const bytes = require('nuclei/bytes');
-// const bytes = new bytes.Buffer();
+// const buffer = new bytes.Buffer();
 // buffer.WriteString('hello');
 // ```
 func (b *Buffer) WriteString(data string) *Buffer {
@@ -66,9 +66,9 @@ func (b *Buffer) WriteString(data string) *Buffer {
 // @example
 // ```javascript
 // const bytes = require('nuclei/bytes');
-// const bytes = new bytes.Buffer();
-// buffer.Write([1, 2, 3]);
-// console.log(buffer.Bytes());
+// const buffer = new bytes.Buffer();
+// buffer.WriteString('hello');
+// log(buffer.Bytes());
 // ```
 func (b *Buffer) Bytes() []byte {
 	return b.buf
@@ -78,9 +78,9 @@ func (b *Buffer) Bytes() []byte {
 // @example
 // ```javascript
 // const bytes = require('nuclei/bytes');
-// const bytes = new bytes.Buffer();
+// const buffer = new bytes.Buffer();
 // buffer.WriteString('hello');
-// console.log(buffer.String());
+// log(buffer.String());
 // ```
 func (b *Buffer) String() string {
 	return string(b.buf)
@@ -90,9 +90,9 @@ func (b *Buffer) String() string {
 // @example
 // ```javascript
 // const bytes = require('nuclei/bytes');
-// const bytes = new bytes.Buffer();
+// const buffer = new bytes.Buffer();
 // buffer.WriteString('hello');
-// console.log(buffer.Len());
+// log(buffer.Len());
 // ```
 func (b *Buffer) Len() int {
 	return len(b.buf)
@@ -102,9 +102,9 @@ func (b *Buffer) Len() int {
 // @example
 // ```javascript
 // const bytes = require('nuclei/bytes');
-// const bytes = new bytes.Buffer();
+// const buffer = new bytes.Buffer();
 // buffer.WriteString('hello');
-// console.log(buffer.Hex());
+// log(buffer.Hex());
 // ```
 func (b *Buffer) Hex() string {
 	return hex.EncodeToString(b.buf)
@@ -114,9 +114,9 @@ func (b *Buffer) Hex() string {
 // @example
 // ```javascript
 // const bytes = require('nuclei/bytes');
-// const bytes = new bytes.Buffer();
+// const buffer = new bytes.Buffer();
 // buffer.WriteString('hello');
-// console.log(buffer.Hexdump());
+// log(buffer.Hexdump());
 // ```
 func (b *Buffer) Hexdump() string {
 	return hex.Dump(b.buf)
@@ -127,7 +127,7 @@ func (b *Buffer) Hexdump() string {
 // @example
 // ```javascript
 // const bytes = require('nuclei/bytes');
-// const bytes = new bytes.Buffer();
+// const buffer = new bytes.Buffer();
 // buffer.Pack('I', 123);
 // ```
 func (b *Buffer) Pack(formatStr string, msg any) error {

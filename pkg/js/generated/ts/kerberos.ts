@@ -2,7 +2,6 @@
 
 /**
  * ASRepToHashcat converts an AS-REP message to a hashcat format
-* @throws {Error} - if the operation fails
  */
 export function ASRepToHashcat(asrep: any): string | null {
     return null;
@@ -12,7 +11,6 @@ export function ASRepToHashcat(asrep: any): string | null {
 
 /**
  * CheckKrbError checks if the response bytes from the KDC are a KRBError.
-* @throws {Error} - if the operation fails
  */
 export function CheckKrbError(b: Uint8Array): Uint8Array | null {
     return null;
@@ -23,12 +21,15 @@ export function CheckKrbError(b: Uint8Array): Uint8Array | null {
 /**
  * NewKerberosClientFromString creates a new kerberos client from a string
  * by parsing krb5.conf
- * @param cfg: string
- * Example krb5.conf:
+ * @example
+ * ```javascript
+ * const kerberos = require('nuclei/kerberos');
+ * const client = kerberos.NewKerberosClientFromString(`
  * [libdefaults]
  * default_realm = ACME.COM
  * dns_lookup_kdc = true
-* @throws {Error} - if the operation fails
+ * `);
+ * ```
  */
 export function NewKerberosClientFromString(cfg: string): Client | null {
     return null;
@@ -39,7 +40,13 @@ export function NewKerberosClientFromString(cfg: string): Client | null {
 /**
  * sendtokdc.go deals with actual sending and receiving responses from KDC
  * SendToKDC sends a message to the KDC and returns the response.
-* @throws {Error} - if the operation fails
+ * It first tries to send the message over TCP, and if that fails, it falls back to UDP.(and vice versa)
+ * @example
+ * ```javascript
+ * const kerberos = require('nuclei/kerberos');
+ * const client = new kerberos.Client('acme.com');
+ * const response = kerberos.SendToKDC(client, 'message');
+ * ```
  */
 export function SendToKDC(kclient: Client, msg: string): string | null {
     return null;
@@ -49,7 +56,6 @@ export function SendToKDC(kclient: Client, msg: string): string | null {
 
 /**
  * TGStoHashcat converts a TGS to a hashcat format.
-* @throws {Error} - if the operation fails
  */
 export function TGStoHashcat(tgs: any, username: string): string | null {
     return null;
@@ -58,7 +64,16 @@ export function TGStoHashcat(tgs: any, username: string): string | null {
 
 
 /**
- * Client Class
+ * Known Issues:
+ * Hardcoded timeout in gokrb5 library
+ * TGT / Session Handling not exposed
+ * Client is kerberos client
+ * @example
+ * ```javascript
+ * const kerberos = require('nuclei/kerberos');
+ * // if controller is empty a dns lookup for default kdc server will be performed
+ * const client = new kerberos.Client('acme.com', 'kdc.acme.com');
+ * ```
  */
 export class Client {
     
@@ -77,10 +92,17 @@ export class Client {
 
     /**
     * SetConfig sets additional config for the kerberos client
-    * Signature: SetConfig(cfg)
-    * @param cfg: @Config
     * Note: as of now ip and timeout overrides are only supported
     * in EnumerateUser due to fastdialer but can be extended to other methods currently
+    * @example
+    * ```javascript
+    * const kerberos = require('nuclei/kerberos');
+    * const client = new kerberos.Client('acme.com', 'kdc.acme.com');
+    * const cfg = new kerberos.Config();
+    * cfg.SetIPAddress('192.168.100.22');
+    * cfg.SetTimeout(5);
+    * client.SetConfig(cfg);
+    * ```
     */
     public SetConfig(cfg: Config): void {
         return;
@@ -89,9 +111,13 @@ export class Client {
 
     /**
     * EnumerateUser and attempt to get AS-REP hash by disabling PA-FX-FAST
-    * Signature: EnumerateUser(username, {password})
-    * @param username: string
-    * @throws {Error} - if the operation fails
+    * @example
+    * ```javascript
+    * const kerberos = require('nuclei/kerberos');
+    * const client = new kerberos.Client('acme.com', 'kdc.acme.com');
+    * const resp = client.EnumerateUser('pdtm');
+    * log(resp);
+    * ```
     */
     public EnumerateUser(username: string): EnumerateUserResponse | null {
         return null;
@@ -99,12 +125,14 @@ export class Client {
     
 
     /**
-    * GetServiceTicket returns a TGS for a given user, password, target and SPN
-    * Signature: GetServiceTicket(User, Pass, Target, SPN)
-    * @param User: string
-    * @param Pass: string
-    * @param SPN: string Service Principal Name
-    * @throws {Error} - if the operation fails
+    * GetServiceTicket returns a TGS for a given user, password and SPN
+    * @example
+    * ```javascript
+    * const kerberos = require('nuclei/kerberos');
+    * const client = new kerberos.Client('acme.com', 'kdc.acme.com');
+    * const resp = client.GetServiceTicket('pdtm', 'password', 'HOST/CLIENT1');
+    * log(resp);
+    * ```
     */
     public GetServiceTicket(User: string): TGS | null {
         return null;
@@ -116,7 +144,7 @@ export class Client {
 
 
 /**
- * Config Class
+ * Config is extra configuration for the kerberos client
  */
 export class Config {
     
@@ -124,7 +152,13 @@ export class Config {
     // Constructor of Config
     constructor() {}
     /**
-    * SetIPAddress Method
+    * SetIPAddress sets the IP address for the kerberos client
+    * @example
+    * ```javascript
+    * const kerberos = require('nuclei/kerberos');
+    * const cfg = new kerberos.Config();
+    * cfg.SetIPAddress('10.10.10.1');
+    * ```
     */
     public SetIPAddress(ip: string): Config | null {
         return null;
@@ -132,7 +166,13 @@ export class Config {
     
 
     /**
-    * SetTimeout Method
+    * SetTimeout sets the RW timeout for the kerberos client
+    * @example
+    * ```javascript
+    * const kerberos = require('nuclei/kerberos');
+    * const cfg = new kerberos.Config();
+    * cfg.SetTimeout(5);
+    * ```
     */
     public SetTimeout(timeout: number): Config | null {
         return null;
@@ -248,7 +288,7 @@ export interface EncryptionKey {
 
 
 /**
- * EnumerateUserResponse interface
+ * EnumerateUserResponse is the response from EnumerateUser
  */
 export interface EnumerateUserResponse {
     
@@ -266,9 +306,9 @@ export interface EnumerateUserResponse {
  */
 export interface HostAddress {
     
-    AddrType?: number,
-    
     Address?: Uint8Array,
+    
+    AddrType?: number,
 }
 
 
@@ -278,35 +318,29 @@ export interface HostAddress {
  */
 export interface LibDefaults {
     
+    DefaultTGSEnctypes?: string[],
+    
+    DefaultTktEnctypes?: string[],
+    
+    K5LoginDirectory?: string,
+    
+    RealmTryDomains?: number,
+    
+    Canonicalize?: boolean,
+    
+    K5LoginAuthoritative?: boolean,
+    
     NoAddresses?: boolean,
     
     SafeChecksumType?: number,
     
-    ExtraAddresses?: Uint8Array,
+    DefaultClientKeytabName?: string,
+    
+    DNSLookupKDC?: boolean,
     
     IgnoreAcceptorHostname?: boolean,
     
-    VerifyAPReqNofail?: boolean,
-    
-    CCacheType?: number,
-    
-    DefaultClientKeytabName?: string,
-    
-    K5LoginAuthoritative?: boolean,
-    
-    /**
-    * time in nanoseconds
-    */
-    
-    RenewLifetime?: number,
-    
-    DefaultTGSEnctypeIDs?: number[],
-    
-    DefaultTktEnctypeIDs?: number[],
-    
-    DNSLookupRealm?: boolean,
-    
-    PreferredPreauthTypes?: number[],
+    Proxiable?: boolean,
     
     /**
     * time in nanoseconds
@@ -314,25 +348,19 @@ export interface LibDefaults {
     
     TicketLifetime?: number,
     
-    Forwardable?: boolean,
+    DefaultKeytabName?: string,
     
-    PermittedEnctypes?: string[],
+    DefaultTktEnctypeIDs?: number[],
+    
+    Forwardable?: boolean,
     
     PermittedEnctypeIDs?: number[],
     
-    RDNS?: boolean,
+    PreferredPreauthTypes?: number[],
     
-    Canonicalize?: boolean,
+    UDPPreferenceLimit?: number,
     
-    DefaultRealm?: string,
-    
-    DefaultTGSEnctypes?: string[],
-    
-    DefaultTktEnctypes?: string[],
-    
-    DNSCanonicalizeHostname?: boolean,
-    
-    AllowWeakCrypto?: boolean,
+    VerifyAPReqNofail?: boolean,
     
     /**
     * time in nanoseconds
@@ -340,19 +368,31 @@ export interface LibDefaults {
     
     Clockskew?: number,
     
-    K5LoginDirectory?: string,
+    RDNS?: boolean,
+    
+    DNSCanonicalizeHostname?: boolean,
     
     KDCTimeSync?: number,
     
-    Proxiable?: boolean,
+    PermittedEnctypes?: string[],
     
-    RealmTryDomains?: number,
+    DefaultRealm?: string,
     
-    DefaultKeytabName?: string,
+    /**
+    * time in nanoseconds
+    */
     
-    DNSLookupKDC?: boolean,
+    RenewLifetime?: number,
     
-    UDPPreferenceLimit?: number,
+    CCacheType?: number,
+    
+    DefaultTGSEnctypeIDs?: number[],
+    
+    DNSLookupRealm?: boolean,
+    
+    ExtraAddresses?: Uint8Array,
+    
+    AllowWeakCrypto?: boolean,
     
     KDCDefaultOptions?: BitString,
 }
@@ -376,6 +416,10 @@ export interface PrincipalName {
  */
 export interface Realm {
     
+    DefaultDomain?: string,
+    
+    KDC?: string[],
+    
     KPasswdServer?: string[],
     
     MasterKDC?: string[],
@@ -383,16 +427,12 @@ export interface Realm {
     Realm?: string,
     
     AdminServer?: string[],
-    
-    DefaultDomain?: string,
-    
-    KDC?: string[],
 }
 
 
 
 /**
- * TGS interface
+ * TGS is the response from GetServiceTicket
  */
 export interface TGS {
     

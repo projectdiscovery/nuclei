@@ -14,26 +14,53 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
 )
 
-// Client is a client for ldap protocol in nuclei
-type Client struct {
-	Host   string // Hostname
-	Port   int    // Port
-	Realm  string // Realm
-	BaseDN string // BaseDN (generated from Realm)
+type (
+	// Client is a client for ldap protocol in nuclei
+	// @example
+	// ```javascript
+	// const ldap = require('nuclei/ldap');
+	// // here ldap.example.com is the ldap server and acme.com is the realm
+	// const client = new ldap.Client('ldap://ldap.example.com', 'acme.com');
+	// ```
+	// @example
+	// ```javascript
+	// const ldap = require('nuclei/ldap');
+	// const cfg = new ldap.Config();
+	// cfg.Timeout = 10;
+	// cfg.ServerName = 'ldap.internal.acme.com';
+	// // optional config can be passed as third argument
+	// const client = new ldap.Client('ldap://ldap.example.com', 'acme.com', cfg);
+	// ```
+	Client struct {
+		Host   string // Hostname
+		Port   int    // Port
+		Realm  string // Realm
+		BaseDN string // BaseDN (generated from Realm)
 
-	// unexported
-	nj   *utils.NucleiJS // nuclei js utils
-	conn *ldap.Conn
-	cfg  Config
-}
+		// unexported
+		nj   *utils.NucleiJS // nuclei js utils
+		conn *ldap.Conn
+		cfg  Config
+	}
+)
 
-// Config is extra configuration for the ldap client
-type Config struct {
-	// Timeout is the timeout for the ldap client in seconds
-	Timeout    int
-	ServerName string // default to host (when using tls)
-	Upgrade    bool   // when true first connects to non-tls and then upgrades to tls
-}
+type (
+	// Config is extra configuration for the ldap client
+	// @example
+	// ```javascript
+	// const ldap = require('nuclei/ldap');
+	// const cfg = new ldap.Config();
+	// cfg.Timeout = 10;
+	// cfg.ServerName = 'ldap.internal.acme.com';
+	// cfg.Upgrade = true; // upgrade to tls
+	// ```
+	Config struct {
+		// Timeout is the timeout for the ldap client in seconds
+		Timeout    int
+		ServerName string // default to host (when using tls)
+		Upgrade    bool   // when true first connects to non-tls and then upgrades to tls
+	}
+)
 
 // Constructor for creating a new ldap client
 // The following schemas are supported for url: ldap://, ldaps://, ldapi://,
@@ -122,10 +149,12 @@ func NewClient(call goja.ConstructorCall, runtime *goja.Runtime) *goja.Object {
 
 // Authenticate authenticates with the ldap server using the given username and password
 // performs NTLMBind first and then Bind/UnauthenticatedBind if NTLMBind fails
-// Signature: Authenticate(username, password)
-// @param username: string
-// @param password: string (can be empty for unauthenticated bind)
-// @throws error if authentication fails
+// @example
+// ```javascript
+// const ldap = require('nuclei/ldap');
+// const client = new ldap.Client('ldap://ldap.example.com', 'acme.com');
+// client.Authenticate('user', 'password');
+// ```
 func (c *Client) Authenticate(username, password string) {
 	c.nj.Require(c.conn != nil, "no existing connection")
 	if c.BaseDN == "" {
@@ -150,10 +179,12 @@ func (c *Client) Authenticate(username, password string) {
 }
 
 // AuthenticateWithNTLMHash authenticates with the ldap server using the given username and NTLM hash
-// Signature: AuthenticateWithNTLMHash(username, hash)
-// @param username: string
-// @param hash: string
-// @throws error if authentication fails
+// @example
+// ```javascript
+// const ldap = require('nuclei/ldap');
+// const client = new ldap.Client('ldap://ldap.example.com', 'acme.com');
+// client.AuthenticateWithNTLMHash('pdtm', 'hash');
+// ```
 func (c *Client) AuthenticateWithNTLMHash(username, hash string) {
 	c.nj.Require(c.conn != nil, "no existing connection")
 	if c.BaseDN == "" {
@@ -166,10 +197,12 @@ func (c *Client) AuthenticateWithNTLMHash(username, hash string) {
 
 // Search accepts whatever filter and returns a list of maps having provided attributes
 // as keys and associated values mirroring the ones returned by ldap
-// Signature: Search(filter, attributes...)
-// @param filter: string
-// @param attributes: ...string
-// @return []map[string][]string
+// @example
+// ```javascript
+// const ldap = require('nuclei/ldap');
+// const client = new ldap.Client('ldap://ldap.example.com', 'acme.com');
+// const results = client.Search('(objectClass=*)', 'cn', 'mail');
+// ```
 func (c *Client) Search(filter string, attributes ...string) []map[string][]string {
 	c.nj.Require(c.conn != nil, "no existing connection")
 
@@ -206,16 +239,12 @@ func (c *Client) Search(filter string, attributes ...string) []map[string][]stri
 
 // AdvancedSearch accepts all values of search request type and return Ldap Entry
 // its up to user to handle the response
-// Signature: AdvancedSearch(Scope, DerefAliases, SizeLimit, TimeLimit, TypesOnly, Filter, Attributes, Controls)
-// @param Scope: int
-// @param DerefAliases: int
-// @param SizeLimit: int
-// @param TimeLimit: int
-// @param TypesOnly: bool
-// @param Filter: string
-// @param Attributes: []string
-// @param Controls: []ldap.Control
-// @return ldap.SearchResult
+// @example
+// ```javascript
+// const ldap = require('nuclei/ldap');
+// const client = new ldap.Client('ldap://ldap.example.com', 'acme.com');
+// const results = client.AdvancedSearch(ldap.ScopeWholeSubtree, ldap.NeverDerefAliases, 0, 0, false, '(objectClass=*)', ['cn', 'mail'], []);
+// ```
 func (c *Client) AdvancedSearch(
 	Scope, DerefAliases, SizeLimit, TimeLimit int,
 	TypesOnly bool,
@@ -233,20 +262,28 @@ func (c *Client) AdvancedSearch(
 	return *res
 }
 
-// Metadata is the metadata for ldap server.
-type Metadata struct {
-	BaseDN                        string
-	Domain                        string
-	DefaultNamingContext          string
-	DomainFunctionality           string
-	ForestFunctionality           string
-	DomainControllerFunctionality string
-	DnsHostName                   string
-}
+type (
+	// Metadata is the metadata for ldap server.
+	// this is returned by CollectMetadata method
+	Metadata struct {
+		BaseDN                        string
+		Domain                        string
+		DefaultNamingContext          string
+		DomainFunctionality           string
+		ForestFunctionality           string
+		DomainControllerFunctionality string
+		DnsHostName                   string
+	}
+)
 
 // CollectLdapMetadata collects metadata from ldap server.
-// Signature: CollectMetadata(domain, controller)
-// @return Metadata
+// @example
+// ```javascript
+// const ldap = require('nuclei/ldap');
+// const client = new ldap.Client('ldap://ldap.example.com', 'acme.com');
+// const metadata = client.CollectMetadata();
+// log(to_json(metadata));
+// ```
 func (c *Client) CollectMetadata() Metadata {
 	c.nj.Require(c.conn != nil, "no existing connection")
 	var metadata Metadata
@@ -294,6 +331,12 @@ func (c *Client) CollectMetadata() Metadata {
 }
 
 // close the ldap connection
+// @example
+// ```javascript
+// const ldap = require('nuclei/ldap');
+// const client = new ldap.Client('ldap://ldap.example.com', 'acme.com');
+// client.Close();
+// ```
 func (c *Client) Close() {
 	c.conn.Close()
 }
