@@ -132,6 +132,7 @@ type (
 	// const ikev2 = require('nuclei/ikev2');
 	// const nonce = new ikev2.IKENonce();
 	// nonce.NonceData = [1, 2, 3];
+	// ```
 	IKENonce struct {
 		NonceData []byte
 	}
