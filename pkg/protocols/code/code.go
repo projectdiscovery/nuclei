@@ -50,7 +50,7 @@ type Request struct {
 	ID string `yaml:"id,omitempty" json:"id,omitempty" jsonschema:"title=id of the request,description=ID is the optional ID of the Request"`
 	// description: |
 	//   Engine type
-	Engine []string `yaml:"engine,omitempty" jsonschema:"title=engine,description=Engine,enum=python,enum=powershell,enum=command"`
+	Engine []string `yaml:"engine,omitempty" jsonschema:"title=engine,description=Engine"`
 	// description: |
 	//   Engine Arguments
 	Args []string `yaml:"args,omitempty" jsonschema:"title=args,description=Args"`
