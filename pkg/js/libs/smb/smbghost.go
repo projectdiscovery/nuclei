@@ -19,6 +19,12 @@ const (
 
 // DetectSMBGhost tries to detect SMBGhost vulnerability
 // by using SMBv3 compression feature.
+// If the host is vulnerable, it returns true.
+// @example
+// ```javascript
+// const smb = require('nuclei/smb');
+// const isSMBGhost = smb.DetectSMBGhost('acme.com', 445);
+// ```
 func (c *SMBClient) DetectSMBGhost(host string, port int) (bool, error) {
 	if !protocolstate.IsHostAllowed(host) {
 		// host is not valid according to network policy

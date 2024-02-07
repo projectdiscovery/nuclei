@@ -19,10 +19,8 @@ func init() {
 
 			// Var and consts
 
-			// Types (value type)
-			"Buffer": func() lib_bytes.Buffer { return lib_bytes.Buffer{} },
-
-			// Types (pointer type)
+			// Objects / Classes
+			"Buffer": lib_bytes.NewBuffer,
 		},
 	).Register()
 }

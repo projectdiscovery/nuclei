@@ -11,6 +11,11 @@ import (
 // The byte slice must contain not less the amount of data required by the format
 // (len(msg) must more or equal CalcSize(format)).
 // Ex: structs.Unpack(">I", buff[:nb])
+// @example
+// ```javascript
+// const structs = require('nuclei/structs');
+// const result = structs.Unpack('H', [0]);
+// ```
 func Unpack(format string, msg []byte) ([]interface{}, error) {
 	return gostruct.UnPack(buildFormatSliceFromStringFormat(format), msg)
 }
@@ -18,6 +23,11 @@ func Unpack(format string, msg []byte) ([]interface{}, error) {
 // StructsPack returns a byte slice containing the values of msg slice packed according to the given format.
 // The items of msg slice must match the values required by the format exactly.
 // Ex: structs.pack("H", 0)
+// @example
+// ```javascript
+// const structs = require('nuclei/structs');
+// const packed = structs.Pack('H', [0]);
+// ```
 func Pack(formatStr string, msg interface{}) ([]byte, error) {
 	var args []interface{}
 	switch v := msg.(type) {
@@ -44,6 +54,12 @@ func Pack(formatStr string, msg interface{}) ([]byte, error) {
 }
 
 // StructsCalcSize returns the number of bytes needed to pack the values according to the given format.
+// Ex: structs.CalcSize("H")
+// @example
+// ```javascript
+// const structs = require('nuclei/structs');
+// const size = structs.CalcSize('H');
+// ```
 func StructsCalcSize(format string) (int, error) {
 	return gostruct.CalcSize(buildFormatSliceFromStringFormat(format))
 }

@@ -18,13 +18,9 @@ func init() {
 
 			// Var and consts
 
-			// Types (value type)
-			"IsTelnetResponse": func() lib_telnet.IsTelnetResponse { return lib_telnet.IsTelnetResponse{} },
-			"TelnetClient":     func() lib_telnet.TelnetClient { return lib_telnet.TelnetClient{} },
-
-			// Types (pointer type)
-			"NewIsTelnetResponse": func() *lib_telnet.IsTelnetResponse { return &lib_telnet.IsTelnetResponse{} },
-			"NewTelnetClient":     func() *lib_telnet.TelnetClient { return &lib_telnet.TelnetClient{} },
+			// Objects / Classes
+			"IsTelnetResponse": gojs.GetClassConstructor[lib_telnet.IsTelnetResponse](&lib_telnet.IsTelnetResponse{}),
+			"TelnetClient":     gojs.GetClassConstructor[lib_telnet.TelnetClient](&lib_telnet.TelnetClient{}),
 		},
 	).Register()
 }
