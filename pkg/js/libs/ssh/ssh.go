@@ -73,7 +73,7 @@ func (c *SSHClient) ConnectWithKey(host string, port int, username, key string) 
 // HandshakeLog is a struct that contains information about the
 // ssh connection
 func (c *SSHClient) ConnectSSHInfoMode(host string, port int) (*ssh.HandshakeLog, error) {
-	return connectSSHInfoMode(&connectOptions{
+	return memoizedConnectSSHInfoMode(&connectOptions{
 		Host: host,
 		Port: port,
 	})
@@ -142,6 +142,7 @@ func (c *connectOptions) validate() error {
 	return nil
 }
 
+// @memo
 func connectSSHInfoMode(opts *connectOptions) (*ssh.HandshakeLog, error) {
 	if err := opts.validate(); err != nil {
 		return nil, err
