@@ -29,7 +29,7 @@ jobs:
           fi
           go generate pkg/templates/templates.go
           go build -o "cmd/docgen/docgen" cmd/docgen/docgen.go 
-          ./cmd/docgen/docgen ../SYNTAX-REFERENCE.md ../nuclei-jsonschema.json
+          ./cmd/docgen/docgen SYNTAX-REFERENCE.md nuclei-jsonschema.json
           git status -s | wc -l | xargs -I {} echo CHANGES={} >> $GITHUB_OUTPUT
 
       - name: Commit files

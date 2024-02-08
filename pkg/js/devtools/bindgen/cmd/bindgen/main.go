@@ -52,10 +52,12 @@ func process() error {
 		}
 
 		prefixed := "lib" + module
-		err = data.WriteJSTemplate(filepath.Join(generatedDir, "js/"+prefixed), module)
-		if err != nil {
-			return fmt.Errorf("could not write js template: %v", err)
-		}
+		// if !goOnly {
+		// 	err = data.WriteJSTemplate(filepath.Join(generatedDir, "js/"+prefixed), module)
+		// 	if err != nil {
+		// 		return fmt.Errorf("could not write js template: %v", err)
+		// 	}
+		// }
 		err = data.WriteGoTemplate(path.Join(generatedDir, "go/"+prefixed), module)
 		if err != nil {
 			return fmt.Errorf("could not write go template: %v", err)
