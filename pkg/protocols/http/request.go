@@ -105,25 +105,65 @@ func (request *Request) executeRaceRequest(input *contextargs.Context, previous 
 		generatedRequests = append(generatedRequests, generatedRequest)
 	}
 
+	// Stop-at-first-match logic while executing requests
+	// parallely using threads
+	requestErrChan := make(chan error, runtime.NumCPU())
+	spmCtx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	// synchronize callback execution to avoid duplications (due to race situations)
+	m := &sync.Mutex{}
+	wrappedCallback := func(event *output.InternalWrappedEvent) {
+		m.Lock()
+		defer m.Unlock()
+		if spmCtx.Err() != nil {
+			return
+		}
+		callback(event)
+		if event.HasOperatorResult() && (request.options.Options.StopAtFirstMatch || request.StopAtFirstMatch || request.options.StopAtFirstMatch) {
+			// cancel all existing requests
+			cancel()
+		}
+	}
+	var execErr error
+	go func() {
+		gotErr, ok := <-requestErrChan
+		if !ok {
+			return
+		}
+		if gotErr != nil {
+			execErr = multierr.Append(execErr, gotErr)
+		}
+	}()
+
 	wg := sync.WaitGroup{}
-	var requestErr error
-	mutex := &sync.Mutex{}
 	for i := 0; i < request.RaceNumberRequests; i++ {
 		wg.Add(1)
 		go func(httpRequest *generatedRequest) {
 			defer wg.Done()
-			err := request.executeRequest(input, httpRequest, previous, false, callback, 0)
-			mutex.Lock()
-			if err != nil {
-				requestErr = multierr.Append(requestErr, err)
+			defer func() {
+				if r := recover(); r != nil {
+					requestErrChan <- fmt.Errorf("recovered from panic: %v", r)
+				}
+			}()
+
+			select {
+			case <-spmCtx.Done():
+				return
+			case requestErrChan <- request.executeRequest(input, httpRequest, previous, false, wrappedCallback, 0):
+				return
 			}
-			mutex.Unlock()
 		}(generatedRequests[i])
 		request.options.Progress.IncrementRequests()
 	}
 	wg.Wait()
+	close(requestErrChan)
 
-	return requestErr
+	// if context was cancelled due to spm ignore any errors
+	// since result is already sent
+	if spmCtx.Err() != nil {
+		return nil
+	}
+	return execErr
 }
 
 // executeRaceRequest executes parallel requests for a template
@@ -244,8 +284,36 @@ func (request *Request) executeTurboHTTP(input *contextargs.Context, dynamicValu
 	}
 	swg := sizedwaitgroup.New(maxWorkers)
 
-	var requestErr error
-	mutex := &sync.Mutex{}
+	// Stop-at-first-match logic while executing requests
+	// parallely using threads
+	requestErrChan := make(chan error, runtime.NumCPU())
+	spmCtx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	// synchronize callback execution to avoid duplications (due to race situations)
+	m := &sync.Mutex{}
+	wrappedCallback := func(event *output.InternalWrappedEvent) {
+		m.Lock()
+		defer m.Unlock()
+		if spmCtx.Err() != nil {
+			return
+		}
+		callback(event)
+		if event.HasOperatorResult() && (request.options.Options.StopAtFirstMatch || request.StopAtFirstMatch || request.options.StopAtFirstMatch) {
+			// cancel all existing requests
+			cancel()
+		}
+	}
+	var execErr error
+	go func() {
+		gotErr, ok := <-requestErrChan
+		if !ok {
+			return
+		}
+		if gotErr != nil {
+			execErr = multierr.Append(execErr, gotErr)
+		}
+	}()
+
 	for {
 		inputData, payloads, ok := generator.nextValue()
 		if !ok {
@@ -264,18 +332,30 @@ func (request *Request) executeTurboHTTP(input *contextargs.Context, dynamicValu
 		swg.Add()
 		go func(httpRequest *generatedRequest) {
 			defer swg.Done()
+			defer func() {
+				if r := recover(); r != nil {
+					requestErrChan <- fmt.Errorf("recovered from panic: %v", r)
+				}
+			}()
 
-			err := request.executeRequest(input, httpRequest, previous, false, callback, 0)
-			mutex.Lock()
-			if err != nil {
-				requestErr = multierr.Append(requestErr, err)
+			select {
+			case <-spmCtx.Done():
+				return
+			case requestErrChan <- request.executeRequest(input, httpRequest, previous, false, wrappedCallback, 0):
+				return
 			}
-			mutex.Unlock()
 		}(generatedHttpRequest)
 		request.options.Progress.IncrementRequests()
 	}
 	swg.Wait()
-	return requestErr
+	close(requestErrChan)
+
+	// if context was cancelled due to spm ignore any errors
+	// since result is already sent
+	if spmCtx.Err() != nil {
+		return nil
+	}
+	return execErr
 }
 
 // executeFuzzingRule executes fuzzing request for a URL
