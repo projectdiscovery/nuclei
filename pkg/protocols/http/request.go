@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"runtime"
 	"strconv"
 	"strings"
 	"sync"
@@ -127,13 +128,38 @@ func (request *Request) executeRaceRequest(input *contextargs.Context, previous 
 
 // executeRaceRequest executes parallel requests for a template
 func (request *Request) executeParallelHTTP(input *contextargs.Context, dynamicValues output.InternalEvent, callback protocols.OutputEventCallback) error {
-	generator := request.newGenerator(false)
 	// Workers that keeps enqueuing new requests
 	maxWorkers := request.Threads
 	swg := sizedwaitgroup.New(maxWorkers)
 
-	var requestErr error
-	mutex := &sync.Mutex{}
+	// Stop-at-first-match logic while executing requests
+	// parallely using threads
+	requestErrChan := make(chan error, runtime.NumCPU())
+	spmCtx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	wrappedCallback := func(event *output.InternalWrappedEvent) {
+		if spmCtx.Err() != nil {
+			return
+		}
+		callback(event)
+		if event.HasOperatorResult() && (request.options.Options.StopAtFirstMatch || request.StopAtFirstMatch || request.options.StopAtFirstMatch) {
+			// cancel all existing requests
+			cancel()
+		}
+	}
+	var execErr error
+	go func() {
+		gotErr, ok := <-requestErrChan
+		if !ok {
+			return
+		}
+		if gotErr != nil {
+			execErr = multierr.Append(execErr, gotErr)
+		}
+	}()
+
+	// iterate payloads and make requests
+	generator := request.newGenerator(false)
 	for {
 		inputData, payloads, ok := generator.nextValue()
 		if !ok {
@@ -154,21 +180,35 @@ func (request *Request) executeParallelHTTP(input *contextargs.Context, dynamicV
 		swg.Add()
 		go func(httpRequest *generatedRequest) {
 			defer swg.Done()
+			defer func() {
+				if r := recover(); r != nil {
+					requestErrChan <- fmt.Errorf("recovered from panic: %v", r)
+				}
+			}()
 
-			request.options.RateLimiter.Take()
-
-			previous := make(map[string]interface{})
-			err := request.executeRequest(input, httpRequest, previous, false, callback, 0)
-			mutex.Lock()
-			if err != nil {
-				requestErr = multierr.Append(requestErr, err)
+			select {
+			case <-spmCtx.Done():
+				return
+			case requestErrChan <- func() error {
+				// putting ratelimiter here prevents any unnecessary waiting if any
+				request.options.RateLimiter.Take()
+				previous := make(map[string]interface{})
+				return request.executeRequest(input, httpRequest, previous, false, wrappedCallback, 0)
+			}():
+				return
 			}
-			mutex.Unlock()
 		}(generatedHttpRequest)
 		request.options.Progress.IncrementRequests()
 	}
 	swg.Wait()
-	return requestErr
+	close(requestErrChan)
+
+	// if context was cancelled due to spm ignore any errors
+	// since result is already sent
+	if spmCtx.Err() != nil {
+		return nil
+	}
+	return execErr
 }
 
 // executeTurboHTTP executes turbo http request for a URL
