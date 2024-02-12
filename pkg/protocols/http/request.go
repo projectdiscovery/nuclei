@@ -137,7 +137,11 @@ func (request *Request) executeParallelHTTP(input *contextargs.Context, dynamicV
 	requestErrChan := make(chan error, runtime.NumCPU())
 	spmCtx, cancel := context.WithCancel(context.Background())
 	defer cancel()
+	// synchronize callback execution to avoid duplications (due to race situations)
+	m := &sync.Mutex{}
 	wrappedCallback := func(event *output.InternalWrappedEvent) {
+		m.Lock()
+		defer m.Unlock()
 		if spmCtx.Err() != nil {
 			return
 		}
