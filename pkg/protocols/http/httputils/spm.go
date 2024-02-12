@@ -86,6 +86,7 @@ func (h *StopAtFirstMatchHandler[T]) Trigger() {
 func (h *StopAtFirstMatchHandler[T]) MatchCallback(fn func()) {
 	if !h.stopEnabled {
 		fn()
+		return
 	}
 	h.once.Do(fn)
 }
