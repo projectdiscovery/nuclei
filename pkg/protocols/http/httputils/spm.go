@@ -111,6 +111,15 @@ func (h *StopAtFirstMatchHandler[T]) Done() <-chan struct{} {
 	return h.ctx.Done()
 }
 
+// FoundFirstMatch returns true if first match was found
+// in stop at first match mode
+func (h *StopAtFirstMatchHandler[T]) FoundFirstMatch() bool {
+	if h.ctx.Err() != nil && h.stopEnabled {
+		return true
+	}
+	return false
+}
+
 // Acquire acquires a new work
 func (h *StopAtFirstMatchHandler[T]) Acquire() {
 	switch h.poolType {

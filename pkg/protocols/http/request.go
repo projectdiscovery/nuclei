@@ -136,6 +136,10 @@ func (request *Request) executeRaceRequest(input *contextargs.Context, previous 
 					gologger.Verbose().Msgf("[%s] Recovered from panic: %v\n", request.options.TemplateID, r)
 				}
 			}()
+			if spmHandler.FoundFirstMatch() {
+				// stop sending more requests condition is met
+				return
+			}
 
 			select {
 			case <-spmHandler.Done():
@@ -148,7 +152,7 @@ func (request *Request) executeRaceRequest(input *contextargs.Context, previous 
 	}
 	spmHandler.Wait()
 
-	if shouldStop && gotMatches.Load() {
+	if spmHandler.FoundFirstMatch() {
 		// ignore any context cancellation and in-transit execution errors
 		return nil
 	}
@@ -164,7 +168,6 @@ func (request *Request) executeParallelHTTP(input *contextargs.Context, dynamicV
 	// parallely using threads
 	shouldStop := (request.options.Options.StopAtFirstMatch || request.StopAtFirstMatch || request.options.StopAtFirstMatch)
 	spmHandler := httputils.NewBlockingSPMHandler[error](context.Background(), maxWorkers, shouldStop)
-	gotMatches := &atomic.Bool{}
 	// wrappedCallback is a callback that wraps the original callback
 	// to implement stop at first match logic
 	wrappedCallback := func(event *output.InternalWrappedEvent) {
@@ -175,7 +178,6 @@ func (request *Request) executeParallelHTTP(input *contextargs.Context, dynamicV
 		// this will execute match condition such that if stop at first match is enabled
 		// this will be only executed once
 		spmHandler.MatchCallback(func() {
-			gotMatches.Store(true)
 			callback(event)
 		})
 		if shouldStop {
@@ -211,6 +213,9 @@ func (request *Request) executeParallelHTTP(input *contextargs.Context, dynamicV
 					gologger.Verbose().Msgf("[%s] Recovered from panic: %v\n", request.options.TemplateID, r)
 				}
 			}()
+			if spmHandler.FoundFirstMatch() {
+				return
+			}
 
 			select {
 			case <-spmHandler.Done():
@@ -227,7 +232,7 @@ func (request *Request) executeParallelHTTP(input *contextargs.Context, dynamicV
 		request.options.Progress.IncrementRequests()
 	}
 	spmHandler.Wait()
-	if shouldStop && gotMatches.Load() {
+	if spmHandler.FoundFirstMatch() {
 		// ignore any context cancellation and in-transit execution errors
 		return nil
 	}
@@ -268,7 +273,6 @@ func (request *Request) executeTurboHTTP(input *contextargs.Context, dynamicValu
 	// parallely using threads
 	shouldStop := (request.options.Options.StopAtFirstMatch || request.StopAtFirstMatch || request.options.StopAtFirstMatch)
 	spmHandler := httputils.NewBlockingSPMHandler[error](context.Background(), maxWorkers, shouldStop)
-	gotMatches := &atomic.Bool{}
 	// wrappedCallback is a callback that wraps the original callback
 	// to implement stop at first match logic
 	wrappedCallback := func(event *output.InternalWrappedEvent) {
@@ -279,7 +283,6 @@ func (request *Request) executeTurboHTTP(input *contextargs.Context, dynamicValu
 		// this will execute match condition such that if stop at first match is enabled
 		// this will be only executed once
 		spmHandler.MatchCallback(func() {
-			gotMatches.Store(true)
 			callback(event)
 		})
 		if shouldStop {
@@ -311,6 +314,10 @@ func (request *Request) executeTurboHTTP(input *contextargs.Context, dynamicValu
 					gologger.Verbose().Msgf("[%s] Recovered from panic: %v\n", request.options.TemplateID, r)
 				}
 			}()
+			if spmHandler.FoundFirstMatch() {
+				// skip if first match is found
+				return
+			}
 
 			select {
 			case <-spmHandler.Done():
@@ -322,9 +329,7 @@ func (request *Request) executeTurboHTTP(input *contextargs.Context, dynamicValu
 		request.options.Progress.IncrementRequests()
 	}
 	spmHandler.Wait()
-
-	spmHandler.Wait()
-	if shouldStop && gotMatches.Load() {
+	if spmHandler.FoundFirstMatch() {
 		// ignore any context cancellation and in-transit execution errors
 		return nil
 	}
