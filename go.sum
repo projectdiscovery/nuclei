@@ -807,8 +807,8 @@ github.com/projectdiscovery/clistats v0.0.20 h1:5jO5SLiRJ7f0nDV0ndBNmBeesbROouPo
 github.com/projectdiscovery/clistats v0.0.20/go.mod h1:GJ2av0KnOvK0AISQnP8hyDclYIji1LVkx2l0pwnzAu4=
 github.com/projectdiscovery/dsl v0.0.41 h1:lAn+W/Lu6q0xvWJ3QhxUiKWg+p3LL/kALeoZJm23Wk8=
 github.com/projectdiscovery/dsl v0.0.41/go.mod h1:p1FYAyqoiC9eWYoJDQuqARETv6OCYVmZOqOD+e3RPJE=
-github.com/projectdiscovery/fastdialer v0.0.57 h1:4k/JuioxwbPOp3TKejm1lZlgTvXKu1IKlqQP3WAk65A=
-github.com/projectdiscovery/fastdialer v0.0.57/go.mod h1:Ah8GVwZr8X+0EQwMI66yMLTpS5QrDStc68tGtvPEaEw=
+github.com/projectdiscovery/fastdialer v0.0.58 h1:3AclcSKsDWUrzBp+UDy4dJN8HNdxo+i4/nasoAwicoE=
+github.com/projectdiscovery/fastdialer v0.0.58/go.mod h1:zcevoU3wM5Zzhegi9URQy0UEEG/wNE+5c7M53A8F87A=
 github.com/projectdiscovery/fasttemplate v0.0.2 h1:h2cISk5xDhlJEinlBQS6RRx0vOlOirB2y3Yu4PJzpiA=
 github.com/projectdiscovery/fasttemplate v0.0.2/go.mod h1:XYWWVMxnItd+r0GbjA1GCsUopMw1/XusuQxdyAIHMCw=
 github.com/projectdiscovery/freeport v0.0.5 h1:jnd3Oqsl4S8n0KuFkE5Hm8WGDP24ITBvmyw5pFTHS8Q=
@@ -823,8 +823,8 @@ github.com/projectdiscovery/gostruct v0.0.2 h1:s8gP8ApugGM4go1pA+sVlPDXaWqNP5BBD
 github.com/projectdiscovery/gostruct v0.0.2/go.mod h1:H86peL4HKwMXcQQtEa6lmC8FuD9XFt6gkNR0B/Mu5PE=
 github.com/projectdiscovery/gozero v0.0.1 h1:f08ZnYlbDZV/TNGDvIXV9s/oB/sAI+HWaSbW4em4aKM=
 github.com/projectdiscovery/gozero v0.0.1/go.mod h1:/dHwbly+1lhOX9UreVure4lEe7K4hIHeu/c/wZGNTDo=
-github.com/projectdiscovery/hmap v0.0.36 h1:hnaiw+NZKQzoP0TXGjf5QmAtMgmrR0LHtR4xINJXWr0=
-github.com/projectdiscovery/hmap v0.0.36/go.mod h1:q6UNS9PoJqZHq5s3BjFTKdYRTZvmFr1JvhMKjNGdGgo=
+github.com/projectdiscovery/hmap v0.0.37 h1:RNVEhdMcUIeG/oadJAs/cXU17Kcccc5kQU3PMzJWtkw=
+github.com/projectdiscovery/hmap v0.0.37/go.mod h1:zreVGG6K2JSFX3+9PZHYFPOxJBNNJ9NQt1T8aSrc5lw=
 github.com/projectdiscovery/httpx v1.3.9 h1:jDdoGH+5VVU/jI6dnai1DKNw9USPyCcw+tDh4RCVQ2g=
 github.com/projectdiscovery/httpx v1.3.9/go.mod h1:a/a5X6e2NLnS/+b3buFadGUpZSolnVkMA7KZdpCdg58=
 github.com/projectdiscovery/interactsh v1.1.8 h1:mDD+f/oo2tV4Z1WyUync0tgYeJyuiS89Un64Gm6Pvgk=
