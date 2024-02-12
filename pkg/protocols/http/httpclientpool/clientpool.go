@@ -208,11 +208,20 @@ func wrappedGet(options *types.Options, configuration *Configuration) (*retryabl
 		disableKeepAlives = configuration.Connection.DisableKeepAlive
 	}
 
+	unsafeCipherSuites := make([]uint16, 0, len(tls.InsecureCipherSuites())+len(tls.CipherSuites()))
+	for _, suite := range tls.InsecureCipherSuites() {
+		unsafeCipherSuites = append(unsafeCipherSuites, suite.ID)
+	}
+	for _, suite := range tls.CipherSuites() {
+		unsafeCipherSuites = append(unsafeCipherSuites, suite.ID)
+	}
+
 	// Set the base TLS configuration definition
 	tlsConfig := &tls.Config{
 		Renegotiation:      tls.RenegotiateOnceAsClient,
 		InsecureSkipVerify: true,
 		MinVersion:         tls.VersionTLS10,
+		CipherSuites:       unsafeCipherSuites,
 	}
 
 	if options.SNI != "" {
