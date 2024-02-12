@@ -11,6 +11,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/pkg/errors"
@@ -105,65 +106,56 @@ func (request *Request) executeRaceRequest(input *contextargs.Context, previous 
 		generatedRequests = append(generatedRequests, generatedRequest)
 	}
 
-	// Stop-at-first-match logic while executing requests
-	// parallely using threads
-	requestErrChan := make(chan error, runtime.NumCPU())
-	spmCtx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	// synchronize callback execution to avoid duplications (due to race situations)
-	m := &sync.Mutex{}
+	shouldStop := (request.options.Options.StopAtFirstMatch || request.StopAtFirstMatch || request.options.StopAtFirstMatch)
+	spmHandler := httputils.NewNonBlockingSPMHandler[error](ctx, shouldStop)
+	gotMatches := &atomic.Bool{}
+	// wrappedCallback is a callback that wraps the original callback
+	// to implement stop at first match logic
 	wrappedCallback := func(event *output.InternalWrappedEvent) {
-		m.Lock()
-		defer m.Unlock()
-		if spmCtx.Err() != nil {
+		if !event.HasOperatorResult() {
+			callback(event) // not required but we can allow it
 			return
 		}
-		callback(event)
-		if event.HasOperatorResult() && (request.options.Options.StopAtFirstMatch || request.StopAtFirstMatch || request.options.StopAtFirstMatch) {
-			// cancel all existing requests
-			cancel()
+		// this will execute match condition such that if stop at first match is enabled
+		// this will be only executed once
+		spmHandler.MatchCallback(func() {
+			gotMatches.Store(true)
+			callback(event)
+		})
+		if shouldStop {
+			// stop all running requests and exit
+			spmHandler.Trigger()
 		}
 	}
-	var execErr error
-	go func() {
-		gotErr, ok := <-requestErrChan
-		if !ok {
-			return
-		}
-		if gotErr != nil {
-			execErr = multierr.Append(execErr, gotErr)
-		}
-	}()
 
-	wg := sync.WaitGroup{}
 	for i := 0; i < request.RaceNumberRequests; i++ {
-		wg.Add(1)
+		spmHandler.Acquire()
+
+		// execute http request
 		go func(httpRequest *generatedRequest) {
-			defer wg.Done()
+			defer spmHandler.Release()
 			defer func() {
 				if r := recover(); r != nil {
-					requestErrChan <- fmt.Errorf("recovered from panic: %v", r)
+					gologger.Verbose().Msgf("[%s] Recovered from panic: %v\n", request.options.TemplateID, r)
 				}
 			}()
 
 			select {
-			case <-spmCtx.Done():
+			case <-spmHandler.Done():
 				return
-			case requestErrChan <- request.executeRequest(input, httpRequest, previous, false, wrappedCallback, 0):
+			case spmHandler.ResultChan <- request.executeRequest(input, httpRequest, previous, false, wrappedCallback, 0):
 				return
 			}
 		}(generatedRequests[i])
 		request.options.Progress.IncrementRequests()
 	}
-	wg.Wait()
-	close(requestErrChan)
+	spmHandler.Wait()
 
-	// if context was cancelled due to spm ignore any errors
-	// since result is already sent
-	if spmCtx.Err() != nil {
+	if shouldStop && gotMatches.Load() {
+		// ignore any context cancellation and in-transit execution errors
 		return nil
 	}
-	return execErr
+	return multierr.Combine(spmHandler.CombinedResults()...)
 }
 
 // executeRaceRequest executes parallel requests for a template
@@ -460,7 +452,6 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 	if request.Pipeline {
 		return request.executeTurboHTTP(input, dynamicValues, previous, callback)
 	}
-
 	// verify if a basic race condition was requested
 	if request.Race && request.RaceNumberRequests > 0 {
 		return request.executeRaceRequest(input, dynamicValues, callback)
