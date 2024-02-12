@@ -32,3 +32,4 @@ pkg/protocols/headless/engine/.cache
 /integration_tests/.cache/
 /integration_tests/.nuclei-config/
 /*.yaml
+/pkg/protocols/headless/engine/.nuclei-config/

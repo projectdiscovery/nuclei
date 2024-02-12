@@ -124,13 +124,11 @@ func (e *ExecutorOptions) GetThreadsForNPayloadRequests(totalRequests int, curre
 	if e.OverrideThreadsCount != nil {
 		return e.OverrideThreadsCount(e, totalRequests, currentThreads)
 	}
-	if currentThreads != 0 {
+	if currentThreads > 0 {
 		return currentThreads
-	}
-	if totalRequests <= 0 {
+	} else {
 		return e.Options.TemplateThreads
 	}
-	return totalRequests
 }
 
 // CreateTemplateCtxStore creates template context store (which contains templateCtx for every scan)
