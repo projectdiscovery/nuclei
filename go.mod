@@ -20,12 +20,12 @@ require (
 	github.com/olekukonko/tablewriter v0.0.5
 	github.com/pkg/errors v0.9.1
 	github.com/projectdiscovery/clistats v0.0.20
-	github.com/projectdiscovery/fastdialer v0.0.57
-	github.com/projectdiscovery/hmap v0.0.36
+	github.com/projectdiscovery/fastdialer v0.0.58
+	github.com/projectdiscovery/hmap v0.0.38
 	github.com/projectdiscovery/interactsh v1.1.8
 	github.com/projectdiscovery/rawhttp v0.1.35
-	github.com/projectdiscovery/retryabledns v1.0.54
-	github.com/projectdiscovery/retryablehttp-go v1.0.46
+	github.com/projectdiscovery/retryabledns v1.0.55
+	github.com/projectdiscovery/retryablehttp-go v1.0.47
 	github.com/projectdiscovery/yamldoc-go v1.0.4
 	github.com/remeh/sizedwaitgroup v1.0.0
 	github.com/rs/xid v1.5.0
@@ -92,7 +92,7 @@ require (
 	github.com/projectdiscovery/tlsx v1.1.6
 	github.com/projectdiscovery/uncover v1.0.7
 	github.com/projectdiscovery/useragent v0.0.35
-	github.com/projectdiscovery/utils v0.0.77
+	github.com/projectdiscovery/utils v0.0.79-0.20240213211007-7ad393cd3a32
 	github.com/projectdiscovery/wappalyzergo v0.0.109
 	github.com/rbretecher/go-postman-collection v0.9.0
 	github.com/redis/go-redis/v9 v9.1.0
@@ -286,7 +286,7 @@ require (
 	github.com/valyala/bytebufferpool v1.0.0 // indirect
 	github.com/yl2chen/cidranger v1.0.2 // indirect
 	github.com/ysmood/goob v0.4.0 // indirect
-	github.com/ysmood/gson v0.7.3
+	github.com/ysmood/gson v0.7.3 // indirect
 	github.com/ysmood/leakless v0.8.0 // indirect
 	github.com/yusufpapurcu/wmi v1.2.3 // indirect
 	github.com/zmap/rc2 v0.0.0-20190804163417-abaa70531248 // indirect
