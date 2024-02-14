@@ -15,12 +15,13 @@ import (
 	"github.com/pkg/errors"
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/input/formats"
+	httpTypes "github.com/projectdiscovery/nuclei/v3/pkg/input/types"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	"github.com/valyala/fasttemplate"
 )
 
 // GenerateRequestsFromSchema generates http requests from an OpenAPI 3.0 document object
-func GenerateRequestsFromSchema(schema *openapi3.T, callback formats.RawRequestCallback) {
+func GenerateRequestsFromSchema(schema *openapi3.T, callback formats.ParseReqRespCallback) {
 	for _, serverURL := range schema.Servers {
 		pathURL := serverURL.URL
 
@@ -42,7 +43,7 @@ func GenerateRequestsFromSchema(schema *openapi3.T, callback formats.RawRequestC
 //
 // It also accepts an optional requiredOnly flag which if specified, only returns the fields
 // of the structure that are required. If false, all fields are returned.
-func generateRequestsFromOp(method, pathURL, requestPath string, op *openapi3.Operation, requiredOnly bool, callback formats.RawRequestCallback) error {
+func generateRequestsFromOp(method, pathURL, requestPath string, op *openapi3.Operation, requiredOnly bool, callback formats.ParseReqRespCallback) error {
 	req, err := http.NewRequest(method, pathURL+requestPath, nil)
 	if err != nil {
 		return errors.Wrap(err, "could not make request")
@@ -85,11 +86,11 @@ func generateRequestsFromOp(method, pathURL, requestPath string, op *openapi3.Op
 				continue
 			}
 
-			var body string
+			// var body string
 			switch content {
 			case "application/json":
 				if marshalled, err := json.Marshal(example); err == nil {
-					body = string(marshalled)
+					// body = string(marshalled)
 					cloned.Body = io.NopCloser(bytes.NewReader(marshalled))
 					cloned.ContentLength = int64(len(marshalled))
 					cloned.Header.Set("Content-Type", "application/json")
@@ -98,7 +99,7 @@ func generateRequestsFromOp(method, pathURL, requestPath string, op *openapi3.Op
 				exampleVal := mxj.Map(example.(map[string]interface{}))
 
 				if marshalled, err := exampleVal.Xml(); err == nil {
-					body = string(marshalled)
+					// body = string(marshalled)
 					cloned.Body = io.NopCloser(bytes.NewReader(marshalled))
 					cloned.ContentLength = int64(len(marshalled))
 					cloned.Header.Set("Content-Type", "application/xml")
@@ -113,7 +114,7 @@ func generateRequestsFromOp(method, pathURL, requestPath string, op *openapi3.Op
 					}
 					encoded := cloned.Form.Encode()
 					cloned.ContentLength = int64(len(encoded))
-					body = encoded
+					// body = encoded
 					cloned.Body = io.NopCloser(strings.NewReader(encoded))
 					cloned.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 				}
@@ -132,18 +133,19 @@ func generateRequestsFromOp(method, pathURL, requestPath string, op *openapi3.Op
 						}
 					}
 					multipartWriter.Close()
-					body = buffer.String()
+					// body = buffer.String()
 					cloned.Body = io.NopCloser(buffer)
 					cloned.ContentLength = int64(len(buffer.Bytes()))
 					cloned.Header.Set("Content-Type", multipartWriter.FormDataContentType())
 				}
 			case "text/plain":
 				str := types.ToString(example)
-				body = str
+				// body = str
 				cloned.Body = io.NopCloser(strings.NewReader(str))
 				cloned.ContentLength = int64(len(str))
 				cloned.Header.Set("Content-Type", "text/plain")
 			default:
+				gologger.Verbose().Msgf("no correct content type found for body: %s\n", content)
 				// LOG:	return errors.New("no correct content type found for body")
 				continue
 			}
@@ -153,13 +155,11 @@ func generateRequestsFromOp(method, pathURL, requestPath string, op *openapi3.Op
 				return errors.Wrap(err, "could not dump request")
 			}
 
-			callback(&formats.RawRequest{
-				Method:  cloned.Method,
-				URL:     cloned.URL.String(),
-				Headers: cloned.Header,
-				Body:    body,
-				Raw:     string(dumped),
-			})
+			rr, err := httpTypes.ParseRawRequestWithURL(string(dumped), cloned.URL.String())
+			if err != nil {
+				return errors.Wrap(err, "could not parse raw request")
+			}
+			callback(rr)
 			continue
 		}
 	}
@@ -172,12 +172,10 @@ func generateRequestsFromOp(method, pathURL, requestPath string, op *openapi3.Op
 		return errors.Wrap(err, "could not dump request")
 	}
 
-	callback(&formats.RawRequest{
-		Method:  req.Method,
-		URL:     req.URL.String(),
-		Headers: req.Header,
-		Raw:     string(dumped),
-	})
-
+	rr, err := httpTypes.ParseRawRequestWithURL(string(dumped), req.URL.String())
+	if err != nil {
+		return errors.Wrap(err, "could not parse raw request")
+	}
+	callback(rr)
 	return nil
 }

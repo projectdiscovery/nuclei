@@ -51,7 +51,7 @@ func (rule *Rule) Execute(input *ExecuteRuleInput) error {
 	if !rule.isExecutable(input.Input) {
 		return errorutil.NewWithTag("fuzz", "rule is not executable on %v", input.BaseRequest.URL.String())
 	}
-	if input.BaseRequest == nil && input.Input.MetaInput.RawRequest == nil {
+	if input.BaseRequest == nil && input.Input.MetaInput.ReqResp == nil {
 		return errorutil.NewWithTag("fuzz", "base request and raw request is nil for rule %v", rule)
 	}
 	var componentsList []component.Component
@@ -117,13 +117,14 @@ mainLoop:
 }
 
 // isExecutable returns true if the rule can be executed based on provided input
+// TODO: document this with more details
 func (rule *Rule) isExecutable(input *contextargs.Context) bool {
 	_, err := urlutil.Parse(input.MetaInput.Input)
-	if input.MetaInput.RawRequest == nil && err != nil {
+	if input.MetaInput.ReqResp == nil && err != nil {
 		return false
 	}
 	if err != nil {
-		_, err = urlutil.Parse(input.MetaInput.RawRequest.URL)
+		_, err = urlutil.Parse(input.MetaInput.ReqResp.URL.String())
 		if err != nil {
 			return false
 		}

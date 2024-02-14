@@ -1,10 +1,13 @@
 package burp
 
 import (
+	"encoding/base64"
 	"os"
 
 	"github.com/pkg/errors"
 	"github.com/projectdiscovery/nuclei/v3/pkg/input/formats"
+	"github.com/projectdiscovery/nuclei/v3/pkg/input/types"
+	"github.com/projectdiscovery/utils/conversion"
 	"github.com/seh-msft/burpxml"
 )
 
@@ -25,7 +28,7 @@ func (j *BurpFormat) Name() string {
 
 // Parse parses the input and calls the provided callback
 // function for each RawRequest it discovers.
-func (j *BurpFormat) Parse(input string, resultsCb formats.RawRequestCallback) error {
+func (j *BurpFormat) Parse(input string, resultsCb formats.ParseReqRespCallback) error {
 	file, err := os.Open(input)
 	if err != nil {
 		return errors.Wrap(err, "could not open data file")
@@ -40,10 +43,13 @@ func (j *BurpFormat) Parse(input string, resultsCb formats.RawRequestCallback) e
 	// Print the parsed data for verification
 	for _, item := range items.Items {
 		item := item
-
-		rawRequest, err := formats.ParseRawRequest(item.Request.Body, "", item.Url)
+		binx, err := base64.StdEncoding.DecodeString(item.Request.Raw)
 		if err != nil {
-			continue
+			return errors.Wrap(err, "could not decode base64")
+		}
+		rawRequest, err := types.ParseRawRequestWithURL(conversion.String(binx), item.Url)
+		if err != nil {
+			return errors.Wrap(err, "could not parse raw request")
 		}
 		resultsCb(rawRequest) // TODO: Handle false and true from callback
 	}

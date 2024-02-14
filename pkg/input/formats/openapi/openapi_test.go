@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/projectdiscovery/nuclei/v3/pkg/input/formats"
+	"github.com/projectdiscovery/nuclei/v3/pkg/input/types"
 	"github.com/stretchr/testify/require"
 )
 
@@ -41,9 +41,9 @@ func TestOpenAPIParser(t *testing.T) {
 
 	gotMethodsToURLs := make(map[string][]string)
 
-	err := format.Parse(proxifyInputFile, func(request *formats.RawRequest) bool {
-		gotMethodsToURLs[request.Method] = append(gotMethodsToURLs[request.Method],
-			strings.Replace(request.URL, baseURL, "{{baseUrl}}", 1))
+	err := format.Parse(proxifyInputFile, func(rr *types.RequestResponse) bool {
+		gotMethodsToURLs[rr.Request.Method] = append(gotMethodsToURLs[rr.Request.Method],
+			strings.Replace(rr.URL.String(), baseURL, "{{baseUrl}}", 1))
 		return false
 	})
 	if err != nil {

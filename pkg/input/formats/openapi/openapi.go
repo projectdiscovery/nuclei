@@ -23,7 +23,7 @@ func (j *OpenAPIFormat) Name() string {
 
 // Parse parses the input and calls the provided callback
 // function for each RawRequest it discovers.
-func (j *OpenAPIFormat) Parse(input string, resultsCb formats.RawRequestCallback) error {
+func (j *OpenAPIFormat) Parse(input string, resultsCb formats.ParseReqRespCallback) error {
 	loader := openapi3.NewLoader()
 	schema, err := loader.LoadFromFile(input)
 	if err != nil {

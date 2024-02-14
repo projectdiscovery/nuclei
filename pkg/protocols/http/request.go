@@ -301,8 +301,8 @@ func (request *Request) executeFuzzingRule(input *contextargs.Context, previous 
 		// For now we are doing hacky manner of building
 		var generatedRequest *retryablehttp.Request
 		var dynamicValues map[string]interface{}
-		if input.MetaInput.RawRequest != nil {
-			generated, err := input.MetaInput.RawRequest.Request()
+		if input.MetaInput.ReqResp != nil {
+			generated, err := input.MetaInput.ReqResp.BuildRequest()
 			if err != nil {
 				fmt.Printf("could not parse raw request: %s\n", err)
 				continue

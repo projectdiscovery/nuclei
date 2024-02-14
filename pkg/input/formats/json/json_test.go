@@ -3,7 +3,7 @@ package json
 import (
 	"testing"
 
-	"github.com/projectdiscovery/nuclei/v3/pkg/input/formats"
+	"github.com/projectdiscovery/nuclei/v3/pkg/input/types"
 	"github.com/stretchr/testify/require"
 )
 
@@ -42,8 +42,8 @@ func TestJSONFormatterParse(t *testing.T) {
 	proxifyInputFile := "../testdata/ginandjuice.proxify.json"
 
 	var urls []string
-	err := format.Parse(proxifyInputFile, func(request *formats.RawRequest) bool {
-		urls = append(urls, request.URL)
+	err := format.Parse(proxifyInputFile, func(request *types.RequestResponse) bool {
+		urls = append(urls, request.URL.String())
 		return false
 	})
 	if err != nil {

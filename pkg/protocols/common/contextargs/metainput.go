@@ -7,7 +7,7 @@ import (
 	"strings"
 
 	jsoniter "github.com/json-iterator/go"
-	"github.com/projectdiscovery/nuclei/v3/pkg/input/formats"
+	"github.com/projectdiscovery/nuclei/v3/pkg/input/types"
 )
 
 // MetaInput represents a target with metadata (TODO: replace with https://github.com/projectdiscovery/metainput)
@@ -19,8 +19,8 @@ type MetaInput struct {
 	// hash of the input
 	hash string `json:"-"`
 
-	// RawRequest is the raw request for the input
-	RawRequest *formats.RawRequest `json:"raw-request,omitempty"`
+	// ReqResp is the raw request for the input
+	ReqResp *types.RequestResponse `json:"raw-request,omitempty"`
 }
 
 func (metaInput *MetaInput) marshalToBuffer() (bytes.Buffer, error) {
@@ -34,8 +34,8 @@ func (metaInput *MetaInput) ID() string {
 	if metaInput.CustomIP != "" {
 		return fmt.Sprintf("%s-%s", metaInput.Input, metaInput.CustomIP)
 	}
-	if metaInput.RawRequest != nil {
-		return metaInput.RawRequest.ID()
+	if metaInput.ReqResp != nil {
+		return metaInput.ReqResp.ID()
 	}
 	return metaInput.Input
 }
@@ -69,32 +69,18 @@ func (metaInput *MetaInput) Clone() *MetaInput {
 		Input:    metaInput.Input,
 		CustomIP: metaInput.CustomIP,
 	}
-	if metaInput.RawRequest != nil {
-		input.RawRequest = &formats.RawRequest{
-			URL:     metaInput.RawRequest.URL,
-			Headers: cloneMap(metaInput.RawRequest.Headers),
-			Body:    metaInput.RawRequest.Body,
-			Method:  metaInput.RawRequest.Method,
-			Raw:     metaInput.RawRequest.Raw,
-		}
+	if metaInput.ReqResp != nil {
+		input.ReqResp = metaInput.ReqResp.Clone()
 	}
 	return input
-}
-
-func cloneMap(m map[string][]string) map[string][]string {
-	clone := make(map[string][]string)
-	for k, v := range m {
-		clone[k] = v
-	}
-	return clone
 }
 
 func (metaInput *MetaInput) PrettyPrint() string {
 	if metaInput.CustomIP != "" {
 		return fmt.Sprintf("%s [%s]", metaInput.Input, metaInput.CustomIP)
 	}
-	if metaInput.RawRequest != nil {
-		return fmt.Sprintf("%s [%s]", metaInput.RawRequest.URL, metaInput.RawRequest.Method)
+	if metaInput.ReqResp != nil {
+		return fmt.Sprintf("%s [%s]", metaInput.ReqResp.URL.String(), metaInput.ReqResp.Request.Method)
 	}
 	return metaInput.Input
 }
@@ -106,8 +92,8 @@ func (metaInput *MetaInput) GetScanHash(templateId string) string {
 	// and reuse it for all subsequent calls
 	if metaInput.hash == "" {
 		var rawRequest string
-		if metaInput.RawRequest != nil {
-			rawRequest = metaInput.RawRequest.ID()
+		if metaInput.ReqResp != nil {
+			rawRequest = metaInput.ReqResp.ID()
 		}
 		metaInput.hash = getMd5Hash(templateId + ":" + metaInput.Input + ":" + metaInput.CustomIP + rawRequest)
 	}

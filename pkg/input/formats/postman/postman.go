@@ -9,6 +9,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/input/formats"
+	httpTypes "github.com/projectdiscovery/nuclei/v3/pkg/input/types"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	postman "github.com/rbretecher/go-postman-collection"
 )
@@ -30,7 +31,7 @@ func (j *PostmanFormat) Name() string {
 
 // Parse parses the input and calls the provided callback
 // function for each RawRequest it discovers.
-func (j *PostmanFormat) Parse(input string, resultsCb formats.RawRequestCallback) error {
+func (j *PostmanFormat) Parse(input string, resultsCb formats.ParseReqRespCallback) error {
 	file, err := os.Open(input)
 	if err != nil {
 		return errors.Wrap(err, "could not open data file")
@@ -82,13 +83,12 @@ func (j *PostmanFormat) Parse(input string, resultsCb formats.RawRequestCallback
 		if err != nil {
 			return errors.Wrap(err, "could not dump request")
 		}
-		resultsCb(&formats.RawRequest{
-			Method:  string(request.Method),
-			URL:     request.URL.String(),
-			Headers: req.Header,
-			Body:    request.Body.Raw,
-			Raw:     string(dumped),
-		})
+
+		rr, err := httpTypes.ParseRawRequestWithURL(string(dumped), req.URL.String())
+		if err != nil {
+			return errors.Wrap(err, "could not parse raw request")
+		}
+		resultsCb(rr)
 	}
 	return nil
 }

@@ -32,7 +32,7 @@ func (j *SwaggerFormat) Name() string {
 
 // Parse parses the input and calls the provided callback
 // function for each RawRequest it discovers.
-func (j *SwaggerFormat) Parse(input string, resultsCb formats.RawRequestCallback) error {
+func (j *SwaggerFormat) Parse(input string, resultsCb formats.ParseReqRespCallback) error {
 	file, err := os.Open(input)
 	if err != nil {
 		return errors.Wrap(err, "could not open data file")

@@ -3,12 +3,14 @@ package types
 import (
 	"bufio"
 	"bytes"
+	"crypto/sha256"
 	"encoding/json"
 	"fmt"
 	"io"
 	"net/textproto"
 	"strings"
 
+	"github.com/projectdiscovery/retryablehttp-go"
 	"github.com/projectdiscovery/utils/conversion"
 	mapsutil "github.com/projectdiscovery/utils/maps"
 	urlutil "github.com/projectdiscovery/utils/url"
@@ -31,6 +33,55 @@ type RequestResponse struct {
 	Request *HttpRequest `json:"request"`
 	// Response is the response of the request
 	Response *HttpResponse `json:"response"`
+}
+
+// Clone clones the request response
+func (rr RequestResponse) Clone() *RequestResponse {
+	cloned := &RequestResponse{
+		URL: *rr.URL.Clone(),
+	}
+	if rr.Request != nil {
+		cloned.Request = rr.Request.Clone()
+	}
+	if rr.Response != nil {
+		cloned.Response = rr.Response.Clone()
+	}
+	return cloned
+}
+
+// BuildRequest builds a retryablehttp request from the request response
+func (rr *RequestResponse) BuildRequest() (*retryablehttp.Request, error) {
+	urlx := rr.URL.Clone()
+	var body io.Reader = nil
+	if rr.Request.Body != "" {
+		body = strings.NewReader(rr.Request.Body)
+	}
+	req, err := retryablehttp.NewRequestFromURL(rr.Request.Method, urlx, body)
+	if err != nil {
+		return nil, fmt.Errorf("could not create request: %s", err)
+	}
+	rr.Request.Headers.Iterate(func(k, v string) bool {
+		req.Header.Add(k, v)
+		return true
+	})
+	return req, nil
+}
+
+// To be implemented in the future
+// func (rr *RequestResponse) BuildUnsafeRequest()
+
+// ID returns a unique id/hash for request response
+func (rr *RequestResponse) ID() string {
+	var buff bytes.Buffer
+	buff.WriteString(rr.URL.String())
+	if rr.Request != nil {
+		buff.WriteString(rr.Request.ID())
+	}
+	if rr.Response != nil {
+		buff.WriteString(rr.Response.ID())
+	}
+	val := sha256.Sum256(buff.Bytes())
+	return string(val[:])
 }
 
 // MarshalJSON marshals the request response to json
@@ -98,6 +149,22 @@ type HttpRequest struct {
 	Raw string `json:"raw"`
 }
 
+// ID returns a unique id/hash for raw request
+func (hr *HttpRequest) ID() string {
+	val := sha256.Sum256([]byte(hr.Raw))
+	return string(val[:])
+}
+
+// Clone clones the request
+func (hr *HttpRequest) Clone() *HttpRequest {
+	return &HttpRequest{
+		Method:  hr.Method,
+		Headers: hr.Headers.Clone(),
+		Body:    hr.Body,
+		Raw:     hr.Raw,
+	}
+}
+
 type HttpResponse struct {
 	// status code of the response
 	StatusCode int `json:"status_code"`
@@ -109,9 +176,25 @@ type HttpResponse struct {
 	Raw string `json:"raw"`
 }
 
+// Id returns a unique id/hash for raw response
+func (hr *HttpResponse) ID() string {
+	val := sha256.Sum256([]byte(hr.Raw))
+	return string(val[:])
+}
+
+// Clone clones the response
+func (hr *HttpResponse) Clone() *HttpResponse {
+	return &HttpResponse{
+		StatusCode: hr.StatusCode,
+		Headers:    hr.Headers.Clone(),
+		Body:       hr.Body,
+		Raw:        hr.Raw,
+	}
+}
+
 // ParseRawRequest parses a raw request from a string
 // and returns the request and response object
-// Note: it currently does not parse response
+// Note: it currently does not parse response and is meant to be added manually since its a optional field
 func ParseRawRequest(raw string) (rr *RequestResponse, err error) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -183,5 +266,19 @@ func ParseRawRequest(raw string) (rr *RequestResponse, err error) {
 
 	// set raw request
 	rr.Request.Raw = raw
+	return rr, nil
+}
+
+// ParseRawRequestWithURL parses a raw request from a string with given url
+func ParseRawRequestWithURL(raw, url string) (rr *RequestResponse, err error) {
+	rr, err = ParseRawRequest(raw)
+	if err != nil {
+		return nil, err
+	}
+	urlx, err := urlutil.ParseAbsoluteURL(url, false)
+	if err != nil {
+		return nil, err
+	}
+	rr.URL = *urlx
 	return rr, nil
 }

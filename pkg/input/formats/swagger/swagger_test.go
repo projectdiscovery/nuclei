@@ -3,7 +3,7 @@ package swagger
 import (
 	"testing"
 
-	"github.com/projectdiscovery/nuclei/v3/pkg/input/formats"
+	"github.com/projectdiscovery/nuclei/v3/pkg/input/types"
 	"github.com/stretchr/testify/require"
 )
 
@@ -14,8 +14,8 @@ func TestSwaggerAPIParser(t *testing.T) {
 
 	var gotMethodsToURLs []string
 
-	err := format.Parse(proxifyInputFile, func(request *formats.RawRequest) bool {
-		gotMethodsToURLs = append(gotMethodsToURLs, request.URL)
+	err := format.Parse(proxifyInputFile, func(request *types.RequestResponse) bool {
+		gotMethodsToURLs = append(gotMethodsToURLs, request.URL.String())
 		return false
 	})
 	if err != nil {

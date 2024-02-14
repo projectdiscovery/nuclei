@@ -11,6 +11,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/input/formats/openapi"
 	"github.com/projectdiscovery/nuclei/v3/pkg/input/formats/postman"
 	"github.com/projectdiscovery/nuclei/v3/pkg/input/formats/swagger"
+	"github.com/projectdiscovery/nuclei/v3/pkg/input/types"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
 )
 
@@ -58,7 +59,7 @@ func NewInputProvider(inputFile, inputMode string) (*InputProvider, error) {
 	// Do a first pass over the input to identify any errors
 	// and get the count of the input file as well
 	count := int64(0)
-	parseErr := format.Parse(inputFile, func(request *formats.RawRequest) bool {
+	parseErr := format.Parse(inputFile, func(request *types.RequestResponse) bool {
 		count++
 		return false
 	})
@@ -76,9 +77,9 @@ func (i *InputProvider) Count() int64 {
 // Scan iterates the input and each found item is passed to the
 // callback consumer.
 func (i *InputProvider) Scan(callback func(value *contextargs.MetaInput) bool) {
-	err := i.format.Parse(i.inputFile, func(request *formats.RawRequest) bool {
+	err := i.format.Parse(i.inputFile, func(request *types.RequestResponse) bool {
 		return callback(&contextargs.MetaInput{
-			RawRequest: request,
+			ReqResp: request,
 		})
 	})
 	if err != nil {
