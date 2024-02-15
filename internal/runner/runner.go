@@ -474,7 +474,7 @@ func (r *Runner) RunEnumeration() error {
 		}
 		ret := uncover.GetUncoverTargetsFromMetadata(context.TODO(), store.Templates(), r.options.UncoverField, uncoverOpts)
 		for host := range ret {
-			r.inputProvider.SetWithExclusions(host)
+			_ = r.inputProvider.SetWithExclusions(host)
 		}
 	}
 	// list all templates

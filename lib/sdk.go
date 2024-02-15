@@ -110,7 +110,7 @@ func (e *NucleiEngine) GetTemplates() []*templates.Template {
 func (e *NucleiEngine) LoadTargets(targets []string, probeNonHttp bool) {
 	for _, target := range targets {
 		if probeNonHttp {
-			e.inputProvider.SetWithProbe(target, e.httpxClient)
+			_ = e.inputProvider.SetWithProbe(target, e.httpxClient)
 		} else {
 			e.inputProvider.Set(target)
 		}
@@ -122,7 +122,7 @@ func (e *NucleiEngine) LoadTargetsFromReader(reader io.Reader, probeNonHttp bool
 	buff := bufio.NewScanner(reader)
 	for buff.Scan() {
 		if probeNonHttp {
-			e.inputProvider.SetWithProbe(buff.Text(), e.httpxClient)
+			_ = e.inputProvider.SetWithProbe(buff.Text(), e.httpxClient)
 		} else {
 			e.inputProvider.Set(buff.Text())
 		}
