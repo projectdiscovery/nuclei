@@ -1,8 +1,9 @@
 package provider
 
-import "github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
-
-var _ InputProvider = &SimpleInputProvider{}
+import (
+	"github.com/projectdiscovery/nuclei/v3/pkg/input/types"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
+)
 
 // SimpleInputProvider is a simple input provider for nuclei
 // that acts like a No-Op and returns given list of urls as input
@@ -46,7 +47,7 @@ func (s *SimpleInputProvider) Set(value string) {
 }
 
 // SetWithProbe adds an item to the input provider with HTTP probing
-func (s *SimpleInputProvider) SetWithProbe(value string, probe InputLivenessProbe) error {
+func (s *SimpleInputProvider) SetWithProbe(value string, probe types.InputLivenessProbe) error {
 	probedValue, err := probe.ProbeURL(value)
 	if err != nil {
 		return err
@@ -64,4 +65,9 @@ func (s *SimpleInputProvider) SetWithExclusions(value string) error {
 // InputType returns the type of input provider
 func (s *SimpleInputProvider) InputType() string {
 	return "SimpleInputProvider"
+}
+
+// Close the input provider and cleanup any resources
+func (s *SimpleInputProvider) Close() {
+	// no-op
 }

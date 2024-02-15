@@ -1,6 +1,9 @@
 package provider
 
-import "github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
+import (
+	"github.com/projectdiscovery/nuclei/v3/pkg/input/types"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
+)
 
 // TODO: Implement ChunkedInputProvider
 // 1. Lazy loading of input targets
@@ -16,7 +19,7 @@ type ChunkedInputProvider interface {
 	// Set adds item to input provider
 	Set(value string)
 	// SetWithProbe adds item to input provider with http probing
-	SetWithProbe(value string, probe InputLivenessProbe) error
+	SetWithProbe(value string, probe types.InputLivenessProbe) error
 	// SetWithExclusions adds item to input provider if it doesn't match any of the exclusions
 	SetWithExclusions(value string) error
 	// InputType returns the type of input provider

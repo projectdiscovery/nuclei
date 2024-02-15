@@ -4,7 +4,11 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/projectdiscovery/nuclei/v3/pkg/input/provider/http"
+	"github.com/projectdiscovery/nuclei/v3/pkg/input/provider/list"
+	"github.com/projectdiscovery/nuclei/v3/pkg/input/types"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
+	configTypes "github.com/projectdiscovery/nuclei/v3/pkg/types"
 	errorutil "github.com/projectdiscovery/utils/errors"
 )
 
@@ -24,17 +28,20 @@ func IsErrNotImplemented(err error) bool {
 	return false
 }
 
-// InputLivenessProbe is an interface for probing the liveness of an input
-type InputLivenessProbe interface {
-	// ProbeURL probes the scheme for a URL. first HTTPS is tried
-	ProbeURL(input string) (string, error)
-}
+// Validate all Implementations
+var (
+	// SimpleInputProvider is more like a No-Op and returns given list of urls as input
+	_ InputProvider = &SimpleInputProvider{}
+	// HttpInputProvider provides support for formats that contain complete request/response
+	// like burp, openapi, postman,proxify, etc.
+	_ InputProvider = &http.HttpInputProvider{}
+	// ListInputProvider provides support for simple list of urls or files etc
+	_ InputProvider = &list.ListInputProvider{}
+)
 
-// InputProvider is an input providing interface for the nuclei execution
-// engine.
-//
-// An example InputProvider implementation is provided in form of hybrid
-// input provider in pkg/core/inputs/hybrid/hmap.go
+// InputProvider is unified input provider interface that provides
+// processed inputs to nuclei by parsing and providing different
+// formats such as list,openapi,postman,proxify,burp etc.
 type InputProvider interface {
 	// Count returns total targets for input provider
 	Count() int64
@@ -43,9 +50,36 @@ type InputProvider interface {
 	// Set adds item to input provider
 	Set(value string)
 	// SetWithProbe adds item to input provider with http probing
-	SetWithProbe(value string, probe InputLivenessProbe) error
+	SetWithProbe(value string, probe types.InputLivenessProbe) error
 	// SetWithExclusions adds item to input provider if it doesn't match any of the exclusions
 	SetWithExclusions(value string) error
 	// InputType returns the type of input provider
 	InputType() string
+	// Close the input provider and cleanup any resources
+	Close()
+}
+
+// InputOptions contains options for input provider
+type InputOptions struct {
+	// Options for global config
+	opts *configTypes.Options
+	// NotFoundCallback is the callback to call when input is not found
+	// only supported in list input provider
+	NotFoundCallback func(template string) bool
+}
+
+// NewInputProvider creates a new input provider based on the options
+// and returns it
+func NewInputProvider(opts InputOptions) (InputProvider, error) {
+	// check if input provider is supported
+	if strings.EqualFold(opts.opts.InputFileMode, "list") {
+		// create a new list input provider
+		return list.New(&list.Options{
+			Options:          opts.opts,
+			NotFoundCallback: opts.NotFoundCallback,
+		})
+	} else {
+		// use HttpInputProvider
+		return http.NewHttpInputProvider(opts.opts.TargetsFilePath, opts.opts.InputFileMode)
+	}
 }
