@@ -62,7 +62,7 @@ type InputProvider interface {
 // InputOptions contains options for input provider
 type InputOptions struct {
 	// Options for global config
-	opts *configTypes.Options
+	Options *configTypes.Options
 	// NotFoundCallback is the callback to call when input is not found
 	// only supported in list input provider
 	NotFoundCallback func(template string) bool
@@ -72,14 +72,14 @@ type InputOptions struct {
 // and returns it
 func NewInputProvider(opts InputOptions) (InputProvider, error) {
 	// check if input provider is supported
-	if strings.EqualFold(opts.opts.InputFileMode, "list") {
+	if strings.EqualFold(opts.Options.InputFileMode, "list") {
 		// create a new list input provider
 		return list.New(&list.Options{
-			Options:          opts.opts,
+			Options:          opts.Options,
 			NotFoundCallback: opts.NotFoundCallback,
 		})
 	} else {
 		// use HttpInputProvider
-		return http.NewHttpInputProvider(opts.opts.TargetsFilePath, opts.opts.InputFileMode)
+		return http.NewHttpInputProvider(opts.Options.TargetsFilePath, opts.Options.InputFileMode)
 	}
 }

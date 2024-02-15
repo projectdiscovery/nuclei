@@ -15,7 +15,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/config"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/loader"
 	"github.com/projectdiscovery/nuclei/v3/pkg/core"
-	"github.com/projectdiscovery/nuclei/v3/pkg/core/inputs"
+	"github.com/projectdiscovery/nuclei/v3/pkg/input/provider"
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
@@ -45,7 +45,7 @@ type Options struct {
 	ExecuterOpts protocols.ExecutorOptions
 	Store        *loader.Store
 	Engine       *core.Engine
-	Target       inputs.InputProvider
+	Target       provider.InputProvider
 }
 
 // Service is a service for automatic scan execution
@@ -53,7 +53,7 @@ type Service struct {
 	opts               protocols.ExecutorOptions
 	store              *loader.Store
 	engine             *core.Engine
-	target             inputs.InputProvider
+	target             provider.InputProvider
 	wappalyzer         *wappalyzer.Wappalyze
 	childExecuter      *core.ChildExecuter
 	httpclient         *retryablehttp.Client
@@ -129,7 +129,7 @@ func (s *Service) Execute() error {
 	gologger.Info().Msgf("Executing Automatic scan on %d target[s]", s.target.Count())
 	// setup host concurrency
 	sg := sizedwaitgroup.New(s.opts.Options.BulkSize)
-	s.target.Scan(func(value *contextargs.MetaInput) bool {
+	s.target.Iterate(func(value *contextargs.MetaInput) bool {
 		sg.Add()
 		go func(input *contextargs.MetaInput) {
 			defer sg.Done()
@@ -185,7 +185,8 @@ func (s *Service) executeAutomaticScanOnTarget(input *contextargs.MetaInput) {
 	execOptions := s.opts.Copy()
 	execOptions.Progress = &testutils.MockProgressClient{} // stats are not supported yet due to centralized logic and cannot be reinitialized
 	eng.SetExecuterOptions(execOptions)
-	tmp := eng.ExecuteScanWithOpts(finalTemplates, &inputs.SimpleInputProvider{Inputs: []*contextargs.MetaInput{input}}, true)
+
+	tmp := eng.ExecuteScanWithOpts(finalTemplates, provider.NewSimpleInputProviderWithUrls(input.Input), true)
 	s.hasResults.Store(tmp.Load())
 }
 

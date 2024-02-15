@@ -5,11 +5,11 @@ import (
 	"bytes"
 	"io"
 
-	"github.com/projectdiscovery/httpx/common/httpx"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/disk"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/loader"
 	"github.com/projectdiscovery/nuclei/v3/pkg/core"
-	"github.com/projectdiscovery/nuclei/v3/pkg/core/inputs"
+	"github.com/projectdiscovery/nuclei/v3/pkg/input/provider"
+	providerTypes "github.com/projectdiscovery/nuclei/v3/pkg/input/types"
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
 	"github.com/projectdiscovery/nuclei/v3/pkg/parsers"
 	"github.com/projectdiscovery/nuclei/v3/pkg/progress"
@@ -65,8 +65,8 @@ type NucleiEngine struct {
 	catalog          *disk.DiskCatalog
 	rateLimiter      *ratelimit.Limiter
 	store            *loader.Store
-	httpxClient      *httpx.HTTPX
-	inputProvider    *inputs.SimpleInputProvider
+	httpxClient      providerTypes.InputLivenessProbe
+	inputProvider    provider.InputProvider
 	engine           *core.Engine
 	mode             engineMode
 	browserInstance  *engine.Browser

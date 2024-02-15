@@ -14,7 +14,7 @@ import (
 	"time"
 
 	"github.com/projectdiscovery/nuclei/v3/internal/pdcp"
-	fuzzinput "github.com/projectdiscovery/nuclei/v3/pkg/input/formats/input"
+	"github.com/projectdiscovery/nuclei/v3/pkg/input/provider"
 	"github.com/projectdiscovery/nuclei/v3/pkg/installer"
 	uncoverlib "github.com/projectdiscovery/uncover"
 	pdcpauth "github.com/projectdiscovery/utils/auth/pdcp"
@@ -34,8 +34,6 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/disk"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/loader"
 	"github.com/projectdiscovery/nuclei/v3/pkg/core"
-	"github.com/projectdiscovery/nuclei/v3/pkg/core/inputs"
-	"github.com/projectdiscovery/nuclei/v3/pkg/core/inputs/hybrid"
 	"github.com/projectdiscovery/nuclei/v3/pkg/external/customtemplates"
 	"github.com/projectdiscovery/nuclei/v3/pkg/input"
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
@@ -71,24 +69,21 @@ var (
 
 // Runner is a client for running the enumeration process.
 type Runner struct {
-	output            output.Writer
-	interactsh        *interactsh.Client
-	options           *types.Options
-	projectFile       *projectfile.ProjectFile
-	catalog           catalog.Catalog
-	progress          progress.Progress
-	colorizer         aurora.Aurora
-	issuesClient      reporting.Client
-	hmapInputProvider *hybrid.Input
-	browser           *engine.Browser
-	rateLimiter       *ratelimit.Limiter
-	hostErrors        hosterrorscache.CacheInterface
-	resumeCfg         *types.ResumeCfg
-	pprofServer       *http.Server
-	// pdcp auto-save options
+	output           output.Writer
+	interactsh       *interactsh.Client
+	options          *types.Options
+	projectFile      *projectfile.ProjectFile
+	catalog          catalog.Catalog
+	progress         progress.Progress
+	colorizer        aurora.Aurora
+	issuesClient     reporting.Client
+	browser          *engine.Browser
+	rateLimiter      *ratelimit.Limiter
+	hostErrors       hosterrorscache.CacheInterface
+	resumeCfg        *types.ResumeCfg
+	pprofServer      *http.Server
 	pdcpUploadErrMsg string
-	// TODO: refactor and remove hmapInputProvider and use inputProvider
-	inputProvider inputs.InputProvider
+	inputProvider    provider.InputProvider
 }
 
 const pprofServerAddress = "127.0.0.1:8086"
@@ -217,27 +212,16 @@ func New(options *types.Options) (*Runner, error) {
 		}()
 	}
 
-	if (len(options.Templates) == 0 || !options.NewTemplates || (options.TargetsFilePath == "" && !options.Stdin && len(options.Targets) == 0) && options.InputFile == "") && options.UpdateTemplates {
+	if (len(options.Templates) == 0 || !options.NewTemplates || (options.TargetsFilePath == "" && !options.Stdin && len(options.Targets) == 0)) && options.UpdateTemplates {
 		os.Exit(0)
 	}
 
-	// Initialize the input source
-	hmapInput, err := hybrid.New(&hybrid.Options{
-		Options: options,
-	})
+	// create the input provider and load the inputs
+	inputProvider, err := provider.NewInputProvider(provider.InputOptions{Options: options})
 	if err != nil {
 		return nil, errors.Wrap(err, "could not create input provider")
 	}
-	runner.hmapInputProvider = hmapInput
-
-	// if input file is provided (i.e http proxy dumps or openapi file etc)
-	if options.InputFile != "" && options.InputFileMode != "" {
-		provider, err := fuzzinput.NewInputProvider(options.InputFile, options.InputFileMode)
-		if err != nil {
-			return nil, errors.Wrap(err, "could not create input provider")
-		}
-		runner.inputProvider = provider
-	}
+	runner.inputProvider = inputProvider
 
 	// Create the output file if asked
 	outputWriter, err := output.NewStandardWriter(options)
@@ -350,7 +334,9 @@ func (r *Runner) Close() {
 	if r.projectFile != nil {
 		r.projectFile.Close()
 	}
-	r.hmapInputProvider.Close()
+	if r.inputProvider != nil {
+		r.inputProvider.Close()
+	}
 	protocolinit.Close()
 	if r.pprofServer != nil {
 		_ = r.pprofServer.Shutdown(context.Background())
@@ -453,7 +439,7 @@ func (r *Runner) RunEnumeration() error {
 
 	// If using input-file flags, only load http fuzzing based templates.
 	loaderConfig := loader.NewConfig(r.options, r.catalog, executorOpts)
-	if r.inputProvider != nil {
+	if !strings.EqualFold(r.options.InputFileMode, "list") || r.options.FuzzTemplates {
 		loaderConfig.OnlyLoadHTTPFuzzing = true
 	}
 	store, err := loader.New(loaderConfig)
@@ -488,7 +474,7 @@ func (r *Runner) RunEnumeration() error {
 		}
 		ret := uncover.GetUncoverTargetsFromMetadata(context.TODO(), store.Templates(), r.options.UncoverField, uncoverOpts)
 		for host := range ret {
-			r.hmapInputProvider.SetWithExclusions(host)
+			r.inputProvider.SetWithExclusions(host)
 		}
 	}
 	// list all templates
@@ -545,7 +531,7 @@ func (r *Runner) RunEnumeration() error {
 
 func (r *Runner) isInputNonHTTP() bool {
 	var nonURLInput bool
-	r.hmapInputProvider.Scan(func(value *contextargs.MetaInput) bool {
+	r.inputProvider.Iterate(func(value *contextargs.MetaInput) bool {
 		if !strings.Contains(value.Input, "://") {
 			nonURLInput = true
 			return false
@@ -556,13 +542,13 @@ func (r *Runner) isInputNonHTTP() bool {
 }
 
 func (r *Runner) executeSmartWorkflowInput(executorOpts protocols.ExecutorOptions, store *loader.Store, engine *core.Engine) (*atomic.Bool, error) {
-	r.progress.Init(r.hmapInputProvider.Count(), 0, 0)
+	r.progress.Init(r.inputProvider.Count(), 0, 0)
 
 	service, err := automaticscan.New(automaticscan.Options{
 		ExecuterOpts: executorOpts,
 		Store:        store,
 		Engine:       engine,
-		Target:       r.hmapInputProvider,
+		Target:       r.inputProvider,
 	})
 	if err != nil {
 		return nil, errors.Wrap(err, "could not create automatic scan service")
@@ -596,7 +582,7 @@ func (r *Runner) executeTemplatesInput(store *loader.Store, engine *core.Engine)
 	// pass input provider to engine
 	// TODO: this should be not necessary after r.hmapInputProvider is removed + refactored
 	if r.inputProvider == nil {
-		r.inputProvider = r.hmapInputProvider
+		return nil, errors.New("no input provider found")
 	}
 	results := engine.ExecuteScanWithOpts(finalTemplates, r.inputProvider, r.options.DisableClustering)
 	return results, nil
@@ -644,14 +630,9 @@ func (r *Runner) displayExecutionInfo(store *loader.Store) {
 			}
 		}
 	}
-	var inputProvider inputs.InputProvider
-	if r.inputProvider != nil {
-		inputProvider = r.inputProvider
-	} else {
-		inputProvider = r.hmapInputProvider
-	}
-	if inputProvider.Count() > 0 {
-		gologger.Info().Msgf("Targets loaded for current scan: %d", inputProvider.Count())
+
+	if r.inputProvider.Count() > 0 {
+		gologger.Info().Msgf("Targets loaded for current scan: %d", r.inputProvider.Count())
 	}
 }
 

@@ -302,8 +302,8 @@ on extensive configurability, massive extensibility and ease of use.`)
 	flagSet.CreateGroup("fuzzing", "Fuzzing",
 		flagSet.StringVarP(&options.FuzzingType, "fuzzing-type", "ft", "", "overrides fuzzing type set in template (replace, prefix, postfix, infix)"),
 		flagSet.StringVarP(&options.FuzzingMode, "fuzzing-mode", "fm", "", "overrides fuzzing mode set in template (multiple, single)"),
-		flagSet.StringVarP(&options.InputFile, "input-file", "if", "", "path to file containing raw requests"),
-		flagSet.StringVarP(&options.InputFileMode, "input-mode", "im", "", fmt.Sprintf("mode of input file (%v)", input.Formats())),
+		flagSet.StringVarP(&options.InputFileMode, "input-mode", "im", "list", fmt.Sprintf("mode of input file (%v)", input.Formats())),
+		flagSet.BoolVar(&options.FuzzTemplates, "fuzz", false, "enable and run fuzzing templates"),
 	)
 
 	flagSet.CreateGroup("uncover", "Uncover",

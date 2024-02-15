@@ -143,14 +143,6 @@ func ValidateOptions(options *types.Options) error {
 	if options.Validate {
 		validateTemplatePaths(config.DefaultConfig.TemplatesDirectory, options.Templates, options.Workflows)
 	}
-	if options.InputFile != "" {
-		if options.InputFileMode == "" {
-			return errors.New("input-mode is required if input-file is set")
-		}
-		if len(options.Targets) > 0 || options.TargetsFilePath != "" {
-			return errors.New("input-file cannot be used with targets or target-list")
-		}
-	}
 
 	// Verify if any of the client certificate options were set since it requires all three to work properly
 	if options.HasClientCertificates() {

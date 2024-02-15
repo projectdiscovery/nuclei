@@ -15,12 +15,11 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/config"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/disk"
 	"github.com/projectdiscovery/nuclei/v3/pkg/core"
-	"github.com/projectdiscovery/nuclei/v3/pkg/core/inputs"
+	"github.com/projectdiscovery/nuclei/v3/pkg/input/provider"
 	"github.com/projectdiscovery/nuclei/v3/pkg/installer"
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
 	"github.com/projectdiscovery/nuclei/v3/pkg/progress"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
-	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/hosterrorscache"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/interactsh"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolinit"
@@ -29,6 +28,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/reporting"
 	"github.com/projectdiscovery/nuclei/v3/pkg/testutils"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
+	nucleiUtils "github.com/projectdiscovery/nuclei/v3/pkg/utils"
 	"github.com/projectdiscovery/ratelimit"
 )
 
@@ -82,9 +82,7 @@ func (e *NucleiEngine) applyRequiredDefaults() {
 	// and idea is to disable them to avoid false positives
 	e.opts.ExcludeTags = append(e.opts.ExcludeTags, config.ReadIgnoreFile().Tags...)
 
-	e.inputProvider = &inputs.SimpleInputProvider{
-		Inputs: []*contextargs.MetaInput{},
-	}
+	e.inputProvider = provider.NewSimpleInputProvider()
 }
 
 // init
@@ -168,8 +166,10 @@ func (e *NucleiEngine) init() error {
 
 	httpxOptions := httpx.DefaultOptions
 	httpxOptions.Timeout = 5 * time.Second
-	if e.httpxClient, err = httpx.New(&httpxOptions); err != nil {
+	if client, err := httpx.New(&httpxOptions); err != nil {
 		return err
+	} else {
+		e.httpxClient = nucleiUtils.GetInputLivenessChecker(client)
 	}
 
 	// Only Happens once regardless how many times this function is called

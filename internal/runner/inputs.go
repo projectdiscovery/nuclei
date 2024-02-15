@@ -41,7 +41,7 @@ func (r *Runner) initializeTemplatesHTTPInput() (*hybrid.HybridMap, error) {
 	// Probe the non-standard URLs and store them in cache
 	swg := sizedwaitgroup.New(bulkSize)
 	count := int32(0)
-	r.hmapInputProvider.Scan(func(value *contextargs.MetaInput) bool {
+	r.inputProvider.Iterate(func(value *contextargs.MetaInput) bool {
 		if stringsutil.HasPrefixAny(value.Input, "http://", "https://") {
 			return true
 		}
