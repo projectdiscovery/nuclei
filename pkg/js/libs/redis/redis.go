@@ -14,6 +14,11 @@ import (
 
 // GetServerInfo returns the server info for a redis server
 func GetServerInfo(host string, port int) (string, error) {
+	return memoizedgetServerInfo(host, port)
+}
+
+// @memo
+func getServerInfo(host string, port int) (string, error) {
 	if !protocolstate.IsHostAllowed(host) {
 		// host is not valid according to network policy
 		return "", protocolstate.ErrHostDenied.Msgf(host)
@@ -24,6 +29,7 @@ func GetServerInfo(host string, port int) (string, error) {
 		Password: "", // no password set
 		DB:       0,  // use default DB
 	})
+	defer client.Close()
 
 	// Ping the Redis server
 	_, err := client.Ping(context.TODO()).Result()
@@ -42,6 +48,11 @@ func GetServerInfo(host string, port int) (string, error) {
 
 // Connect tries to connect redis server with password
 func Connect(host string, port int, password string) (bool, error) {
+	return memoizedconnect(host, port, password)
+}
+
+// @memo
+func connect(host string, port int, password string) (bool, error) {
 	if !protocolstate.IsHostAllowed(host) {
 		// host is not valid according to network policy
 		return false, protocolstate.ErrHostDenied.Msgf(host)
@@ -52,6 +63,8 @@ func Connect(host string, port int, password string) (bool, error) {
 		Password: password, // no password set
 		DB:       0,        // use default DB
 	})
+	defer client.Close()
+
 	_, err := client.Ping(context.TODO()).Result()
 	if err != nil {
 		return false, err
@@ -67,6 +80,11 @@ func Connect(host string, port int, password string) (bool, error) {
 
 // GetServerInfoAuth returns the server info for a redis server
 func GetServerInfoAuth(host string, port int, password string) (string, error) {
+	return memoizedgetServerInfoAuth(host, port, password)
+}
+
+// @memo
+func getServerInfoAuth(host string, port int, password string) (string, error) {
 	if !protocolstate.IsHostAllowed(host) {
 		// host is not valid according to network policy
 		return "", protocolstate.ErrHostDenied.Msgf(host)
@@ -77,6 +95,7 @@ func GetServerInfoAuth(host string, port int, password string) (string, error) {
 		Password: password, // no password set
 		DB:       0,        // use default DB
 	})
+	defer client.Close()
 
 	// Ping the Redis server
 	_, err := client.Ping(context.TODO()).Result()
@@ -95,6 +114,11 @@ func GetServerInfoAuth(host string, port int, password string) (string, error) {
 
 // IsAuthenticated checks if the redis server requires authentication
 func IsAuthenticated(host string, port int) (bool, error) {
+	return memoizedisAuthenticated(host, port)
+}
+
+// @memo
+func isAuthenticated(host string, port int) (bool, error) {
 	plugin := pluginsredis.REDISPlugin{}
 	timeout := 5 * time.Second
 	conn, err := protocolstate.Dialer.Dial(context.TODO(), "tcp", fmt.Sprintf("%s:%d", host, port))
@@ -122,6 +146,7 @@ func RunLuaScript(host string, port int, password string, script string) (interf
 		Password: password,
 		DB:       0, // use default DB
 	})
+	defer client.Close()
 
 	// Ping the Redis server
 	_, err := client.Ping(context.TODO()).Result()

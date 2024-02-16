@@ -20,6 +20,11 @@ const (
 // DetectSMBGhost tries to detect SMBGhost vulnerability
 // by using SMBv3 compression feature.
 func (c *SMBClient) DetectSMBGhost(host string, port int) (bool, error) {
+	return memoizedDetectSMBGhost(host, port)
+}
+
+// @memo
+func detectSMBGhost(host string, port int) (bool, error) {
 	if !protocolstate.IsHostAllowed(host) {
 		// host is not valid according to network policy
 		return false, protocolstate.ErrHostDenied.Msgf(host)

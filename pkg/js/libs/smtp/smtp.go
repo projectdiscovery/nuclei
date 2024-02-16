@@ -48,6 +48,11 @@ func (c *SMTPClient) IsSMTP(host string, port int) (IsSMTPResponse, error) {
 }
 
 func (c *SMTPClient) IsOpenRelay(host string, port int, msg *SMTPMessage) (bool, error) {
+	return memoizedisOpenRelay(host, port, msg)
+}
+
+// @memo
+func isOpenRelay(host string, port int, msg *SMTPMessage) (bool, error) {
 	if !protocolstate.IsHostAllowed(host) {
 		return false, protocolstate.ErrHostDenied.Msgf(host)
 	}

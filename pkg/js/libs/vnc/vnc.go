@@ -24,6 +24,11 @@ type IsVNCResponse struct {
 // It returns a boolean indicating if the host is running a VNC server
 // and the banner of the VNC server.
 func (c *VNCClient) IsVNC(host string, port int) (IsVNCResponse, error) {
+	return memoizedIsVnc(host, port)
+}
+
+// @memo
+func isVnc(host string, port int) (IsVNCResponse, error) {
 	resp := IsVNCResponse{}
 
 	timeout := 5 * time.Second

@@ -22,6 +22,11 @@ type IsTelnetResponse struct {
 
 // IsTelnet checks if a host is running a Telnet server.
 func (c *TelnetClient) IsTelnet(host string, port int) (IsTelnetResponse, error) {
+	return memoizedIsTelnet(host, port)
+}
+
+// @memo
+func isTelnet(host string, port int) (IsTelnetResponse, error) {
 	resp := IsTelnetResponse{}
 
 	timeout := 5 * time.Second
