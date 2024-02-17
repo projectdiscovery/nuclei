@@ -25,6 +25,11 @@ type IsRDPResponse struct {
 //
 // The Name of the OS is also returned if the connection is successful.
 func (c *RDPClient) IsRDP(host string, port int) (IsRDPResponse, error) {
+	return memoizedisRDP(host, port)
+}
+
+// @memo
+func isRDP(host string, port int) (IsRDPResponse, error) {
 	resp := IsRDPResponse{}
 
 	timeout := 5 * time.Second
@@ -54,6 +59,10 @@ type CheckRDPAuthResponse struct {
 // CheckRDPAuth checks if the given host and port are running rdp server
 // with authentication and returns their metadata.
 func (c *RDPClient) CheckRDPAuth(host string, port int) (CheckRDPAuthResponse, error) {
+	return memoizedcheckRDPAuth(host, port)
+}
+
+func checkRDPAuth(host string, port int) (CheckRDPAuthResponse, error) {
 	resp := CheckRDPAuthResponse{}
 
 	timeout := 5 * time.Second

@@ -48,6 +48,7 @@ func BuildDSN(opts MySQLOptions) (string, error) {
 	return dsn.String(), nil
 }
 
+// @memo
 func connectWithDSN(dsn string) (bool, error) {
 	db, err := sql.Open("mysql", dsn)
 	if err != nil {

@@ -26,6 +26,11 @@ type MySQLClient struct{}
 // If the host is running MySQL database, it returns true.
 // If the host is not running MySQL database, it returns false.
 func (c *MySQLClient) IsMySQL(host string, port int) (bool, error) {
+	return memoizedisMySQL(host, port)
+}
+
+// @memo
+func isMySQL(host string, port int) (bool, error) {
 	if !protocolstate.IsHostAllowed(host) {
 		// host is not valid according to network policy
 		return false, protocolstate.ErrHostDenied.Msgf(host)
@@ -85,6 +90,11 @@ type MySQLInfo struct {
 
 // returns MySQLInfo when fingerpint is successful
 func (c *MySQLClient) FingerprintMySQL(host string, port int) (MySQLInfo, error) {
+	return memoizedfingerprintMySQL(host, port)
+}
+
+// @memo
+func fingerprintMySQL(host string, port int) (MySQLInfo, error) {
 	info := MySQLInfo{}
 	if !protocolstate.IsHostAllowed(host) {
 		// host is not valid according to network policy
@@ -121,7 +131,7 @@ func (c *MySQLClient) FingerprintMySQL(host string, port int) (MySQLInfo, error)
 // ConnectWithDSN connects to MySQL database using given DSN.
 // we override mysql dialer with fastdialer so it respects network policy
 func (c *MySQLClient) ConnectWithDSN(dsn string) (bool, error) {
-	return connectWithDSN(dsn)
+	return memoizedconnectWithDSN(dsn)
 }
 
 func (c *MySQLClient) ExecuteQueryWithOpts(opts MySQLOptions, query string) (*utils.SQLResult, error) {

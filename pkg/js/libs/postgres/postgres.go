@@ -26,6 +26,11 @@ type PGClient struct{}
 // If connection is successful, it returns true.
 // If connection is unsuccessful, it returns false and error.
 func (c *PGClient) IsPostgres(host string, port int) (bool, error) {
+	return memoizedisPostgres(host, port)
+}
+
+// @memo
+func isPostgres(host string, port int) (bool, error) {
 	timeout := 10 * time.Second
 
 	conn, err := protocolstate.Dialer.Dial(context.TODO(), "tcp", fmt.Sprintf("%s:%d", host, port))
@@ -54,12 +59,17 @@ func (c *PGClient) IsPostgres(host string, port int) (bool, error) {
 //
 // The connection is closed after the function returns.
 func (c *PGClient) Connect(host string, port int, username, password string) (bool, error) {
-	return connect(host, port, username, password, "postgres")
+	return memoizedconnect(host, port, username, password, "postgres")
 }
 
 // ExecuteQuery connects to Postgres database using given credentials and database name.
 // and executes a query on the db.
 func (c *PGClient) ExecuteQuery(host string, port int, username, password, dbName, query string) (*utils.SQLResult, error) {
+	return memoizedexecuteQuery(host, port, username, password, dbName, query)
+}
+
+// @memo
+func executeQuery(host string, port int, username, password, dbName, query string) (*utils.SQLResult, error) {
 	if !protocolstate.IsHostAllowed(host) {
 		// host is not valid according to network policy
 		return nil, protocolstate.ErrHostDenied.Msgf(host)
@@ -91,9 +101,10 @@ func (c *PGClient) ExecuteQuery(host string, port int, username, password, dbNam
 //
 // The connection is closed after the function returns.
 func (c *PGClient) ConnectWithDB(host string, port int, username, password, dbName string) (bool, error) {
-	return connect(host, port, username, password, dbName)
+	return memoizedconnect(host, port, username, password, dbName)
 }
 
+// @memo
 func connect(host string, port int, username, password, dbName string) (bool, error) {
 	if host == "" || port <= 0 {
 		return false, fmt.Errorf("invalid host or port")
@@ -112,6 +123,8 @@ func connect(host string, port int, username, password, dbName string) (bool, er
 		Password: password,
 		Database: dbName,
 	})
+	defer db.Close()
+
 	_, err := db.Exec("select 1")
 	if err != nil {
 		switch true {

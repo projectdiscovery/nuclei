@@ -22,6 +22,11 @@ type IsPOP3Response struct {
 
 // IsPOP3 checks if a host is running a POP3 server.
 func (c *Pop3Client) IsPOP3(host string, port int) (IsPOP3Response, error) {
+	return memoizedisPOP3(host, port)
+}
+
+// @memo
+func isPOP3(host string, port int) (IsPOP3Response, error) {
 	resp := IsPOP3Response{}
 
 	timeout := 5 * time.Second
