@@ -103,29 +103,3 @@ func isEmptyDir(dir string) bool {
 	})
 	return !hasFiles
 }
-
-// getUtmSource returns utm_source from environment variable
-func getUtmSource() string {
-	value := ""
-	switch {
-	case os.Getenv("GH_ACTION") != "":
-		value = "ghci"
-	case os.Getenv("TRAVIS") != "":
-		value = "travis"
-	case os.Getenv("CIRCLECI") != "":
-		value = "circleci"
-	case os.Getenv("CI") != "":
-		value = "gitlabci" // this also includes bitbucket
-	case os.Getenv("GITHUB_ACTIONS") != "":
-		value = "ghci"
-	case os.Getenv("AWS_EXECUTION_ENV") != "":
-		value = os.Getenv("AWS_EXECUTION_ENV")
-	case os.Getenv("JENKINS_URL") != "":
-		value = "jenkins"
-	case os.Getenv("FUNCTION_TARGET") != "":
-		value = "gcf"
-	default:
-		value = "unknown"
-	}
-	return value
-}
