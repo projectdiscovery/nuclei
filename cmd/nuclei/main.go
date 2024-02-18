@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/projectdiscovery/utils/auth/pdcp"
+	"github.com/projectdiscovery/utils/env"
 	_ "github.com/projectdiscovery/utils/pprof"
 
 	"github.com/projectdiscovery/goflags"
@@ -180,7 +181,7 @@ func readConfig() *goflags.FlagSet {
 
 	// when true updates nuclei binary to latest version
 	var updateNucleiBinary bool
-	var pdcpauth bool
+	var pdcpauth string
 
 	flagSet := goflags.NewFlagSet()
 	flagSet.CaseSensitive = true
@@ -386,7 +387,7 @@ on extensive configurability, massive extensibility and ease of use.`)
 	)
 
 	flagSet.CreateGroup("cloud", "Cloud",
-		flagSet.BoolVar(&pdcpauth, "auth", false, "configure projectdiscovery cloud (pdcp) api key"),
+		flagSet.DynamicVar(&pdcpauth, "auth", "true", "configure projectdiscovery cloud (pdcp) api key"),
 		flagSet.BoolVarP(&options.EnableCloudUpload, "cloud-upload", "cup", false, "upload scan results to pdcp dashboard"),
 		flagSet.StringVarP(&options.ScanID, "scan-id", "sid", "", "upload scan results to given scan id"),
 	)
@@ -417,8 +418,17 @@ Additional documentation is available at: https://docs.nuclei.sh/getting-started
 	goflags.DisableAutoConfigMigration = true
 	_ = flagSet.Parse()
 
-	if pdcpauth {
+    // api key hierarchy: cli flag > env var > .pdcp/credential file
+	if pdcpauth == "true" {
 		runner.AuthWithPDCP()
+	} else if len(pdcpauth) == 36 {
+		ph := pdcp.PDCPCredHandler{}
+		if _, err := ph.GetCreds(); err == pdcp.ErrNoCreds {
+			apiServer := env.GetEnvOrDefault("PDCP_API_SERVER", pdcp.DefaultApiServer)
+			if validatedCreds, err := ph.ValidateAPIKey(pdcpauth, apiServer, config.BinaryName); err == nil {
+				_ = ph.SaveCreds(validatedCreds)
+			}
+		}
 	}
 
 	gologger.DefaultLogger.SetTimestamp(options.Timestamp, levels.LevelDebug)
