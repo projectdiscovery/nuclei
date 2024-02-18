@@ -118,6 +118,7 @@ func New(options *Options, db string) (Client, error) {
 	}
 	if options.Gitea != nil {
 		options.Gitea.HttpClient = options.HttpClient
+		options.Gitea.OmitRaw = options.OmitRaw
 		tracker, err := gitea.New(options.Gitea)
 		if err != nil {
 			return nil, errorutil.NewWithErr(err).Wrap(ErrReportingClientCreation)
