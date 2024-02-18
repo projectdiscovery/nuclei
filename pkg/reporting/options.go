@@ -7,6 +7,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/reporting/exporters/markdown"
 	"github.com/projectdiscovery/nuclei/v3/pkg/reporting/exporters/sarif"
 	"github.com/projectdiscovery/nuclei/v3/pkg/reporting/exporters/splunk"
+	"github.com/projectdiscovery/nuclei/v3/pkg/reporting/trackers/gitea"
 	"github.com/projectdiscovery/nuclei/v3/pkg/reporting/trackers/github"
 	"github.com/projectdiscovery/nuclei/v3/pkg/reporting/trackers/gitlab"
 	"github.com/projectdiscovery/nuclei/v3/pkg/reporting/trackers/jira"
@@ -23,6 +24,8 @@ type Options struct {
 	GitHub *github.Options `yaml:"github"`
 	// GitLab contains configuration options for GitLab Issue Tracker
 	GitLab *gitlab.Options `yaml:"gitlab"`
+	// Gitea contains configuration options for Gitea Issue Tracker
+	Gitea *gitea.Options `yaml:"gitea"`
 	// Jira contains configuration options for Jira Issue Tracker
 	Jira *jira.Options `yaml:"jira"`
 	// MarkdownExporter contains configuration options for Markdown Exporter Module
