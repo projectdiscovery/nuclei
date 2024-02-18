@@ -33,6 +33,23 @@
 #  # issue-label is the label of the created issue type
 #  issue-label: bug
 #
+# Gitea contains configuration options for a gitea issue tracker
+#gitea:
+#  # base-url is the optional self-hosted Gitea application url (defaults to https://gitea.com)
+#  base-url: https://localhost:8443/
+#  # token is the token for a Gitea account to use
+#  token: test-token
+#  # project-owner is the owner (user or org) of the repository
+#  project-owner: "1234"
+#  # project-name is the name of the repository
+#  project-name: "1234"
+#  # issue-label is a custom label to add to created issues
+#  issue-label: bug
+#  # severity-as-label (optional) adds the severity as a label of the created issue
+#  severity-as-label: true
+#  # duplicate-issue-check (optional) flag to enable duplicate tracking issue check
+#  duplicate-issue-check: false
+#
 # Jira contains configuration options for Jira issue tracker
 #jira:
 #  # cloud is the boolean which tells if Jira instance is running in the cloud or on-prem version is used
