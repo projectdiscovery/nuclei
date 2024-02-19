@@ -1,3 +1,4 @@
+// Warning - This is generated code
 package redis
 
 import (
@@ -8,7 +9,7 @@ import (
 )
 
 func memoizedgetServerInfo(host string, port int) (string, error) {
-	hash := "getServerInfo:" + host + ":" + fmt.Sprint(port)
+	hash := "getServerInfo" + ":" + fmt.Sprint(host) + ":" + fmt.Sprint(port)
 
 	v, err, _ := protocolstate.Memoizer.Do(hash, func() (interface{}, error) {
 		return getServerInfo(host, port)
@@ -20,11 +21,11 @@ func memoizedgetServerInfo(host string, port int) (string, error) {
 		return value, nil
 	}
 
-	return "", errors.New("could not convert cached result to string")
+	return "", errors.New("could not convert cached result")
 }
 
 func memoizedconnect(host string, port int, password string) (bool, error) {
-	hash := "connect:" + host + ":" + fmt.Sprint(port) + ":" + password
+	hash := "connect" + ":" + fmt.Sprint(host) + ":" + fmt.Sprint(port) + ":" + fmt.Sprint(password)
 
 	v, err, _ := protocolstate.Memoizer.Do(hash, func() (interface{}, error) {
 		return connect(host, port, password)
@@ -36,11 +37,11 @@ func memoizedconnect(host string, port int, password string) (bool, error) {
 		return value, nil
 	}
 
-	return false, errors.New("could not convert cached result to bool")
+	return false, errors.New("could not convert cached result")
 }
 
 func memoizedgetServerInfoAuth(host string, port int, password string) (string, error) {
-	hash := "getServerInfo:" + host + ":" + fmt.Sprint(port)
+	hash := "getServerInfoAuth" + ":" + fmt.Sprint(host) + ":" + fmt.Sprint(port) + ":" + fmt.Sprint(password)
 
 	v, err, _ := protocolstate.Memoizer.Do(hash, func() (interface{}, error) {
 		return getServerInfoAuth(host, port, password)
@@ -52,11 +53,11 @@ func memoizedgetServerInfoAuth(host string, port int, password string) (string, 
 		return value, nil
 	}
 
-	return "", errors.New("could not convert cached result to string")
+	return "", errors.New("could not convert cached result")
 }
 
 func memoizedisAuthenticated(host string, port int) (bool, error) {
-	hash := "isAuthenticated:" + host + ":" + fmt.Sprint(port)
+	hash := "isAuthenticated" + ":" + fmt.Sprint(host) + ":" + fmt.Sprint(port)
 
 	v, err, _ := protocolstate.Memoizer.Do(hash, func() (interface{}, error) {
 		return isAuthenticated(host, port)
@@ -68,5 +69,5 @@ func memoizedisAuthenticated(host string, port int) (bool, error) {
 		return value, nil
 	}
 
-	return false, errors.New("could not convert cached result to bool")
+	return false, errors.New("could not convert cached result")
 }

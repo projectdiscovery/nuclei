@@ -100,6 +100,7 @@ func (c *RDPClient) CheckRDPAuth(host string, port int) (CheckRDPAuthResponse, e
 	return memoizedcheckRDPAuth(host, port)
 }
 
+// @memo
 func checkRDPAuth(host string, port int) (CheckRDPAuthResponse, error) {
 	resp := CheckRDPAuthResponse{}
 

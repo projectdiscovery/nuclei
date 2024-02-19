@@ -45,7 +45,7 @@ type (
 // log(toJSON(isVNC));
 // ```
 func (c *VNCClient) IsVNC(host string, port int) (IsVNCResponse, error) {
-	return memoizedIsVnc(host, port)
+	return memoizedisVnc(host, port)
 }
 
 // @memo

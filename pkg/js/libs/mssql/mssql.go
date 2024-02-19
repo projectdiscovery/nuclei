@@ -54,7 +54,7 @@ func (c *MSSQLClient) ConnectWithDB(host string, port int, username, password, d
 }
 
 // @memo
-func connect(host string, port int, username, password, dbName string) (bool, error) {
+func connect(host string, port int, username string, password string, dbName string) (bool, error) {
 	if host == "" || port <= 0 {
 		return false, fmt.Errorf("invalid host or port")
 	}
@@ -108,6 +108,7 @@ func (c *MSSQLClient) IsMssql(host string, port int) (bool, error) {
 	return memoizedisMssql(host, port)
 }
 
+// @memo
 func isMssql(host string, port int) (bool, error) {
 	if !protocolstate.IsHostAllowed(host) {
 		// host is not valid according to network policy

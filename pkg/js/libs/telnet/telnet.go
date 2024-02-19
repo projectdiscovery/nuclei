@@ -44,7 +44,7 @@ type (
 // log(toJSON(isTelnet));
 // ```
 func (c *TelnetClient) IsTelnet(host string, port int) (IsTelnetResponse, error) {
-	return memoizedIsTelnet(host, port)
+	return memoizedisTelnet(host, port)
 }
 
 // @memo

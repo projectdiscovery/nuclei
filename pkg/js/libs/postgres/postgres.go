@@ -91,7 +91,7 @@ func (c *PGClient) ExecuteQuery(host string, port int, username, password, dbNam
 }
 
 // @memo
-func executeQuery(host string, port int, username, password, dbName, query string) (*utils.SQLResult, error) {
+func executeQuery(host string, port int, username string, password string, dbName string, query string) (*utils.SQLResult, error) {
 	if !protocolstate.IsHostAllowed(host) {
 		// host is not valid according to network policy
 		return nil, protocolstate.ErrHostDenied.Msgf(host)
@@ -131,7 +131,7 @@ func (c *PGClient) ConnectWithDB(host string, port int, username, password, dbNa
 }
 
 // @memo
-func connect(host string, port int, username, password, dbName string) (bool, error) {
+func connect(host string, port int, username string, password string, dbName string) (bool, error) {
 	if host == "" || port <= 0 {
 		return false, fmt.Errorf("invalid host or port")
 	}

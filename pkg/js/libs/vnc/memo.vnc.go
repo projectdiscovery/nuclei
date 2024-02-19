@@ -1,3 +1,4 @@
+// Warning - This is generated code
 package vnc
 
 import (
@@ -7,8 +8,8 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
 )
 
-func memoizedIsVnc(host string, port int) (IsVNCResponse, error) {
-	hash := "isVnc:" + host + ":" + fmt.Sprint(port)
+func memoizedisVnc(host string, port int) (IsVNCResponse, error) {
+	hash := "isVnc" + ":" + fmt.Sprint(host) + ":" + fmt.Sprint(port)
 
 	v, err, _ := protocolstate.Memoizer.Do(hash, func() (interface{}, error) {
 		return isVnc(host, port)
@@ -20,5 +21,5 @@ func memoizedIsVnc(host string, port int) (IsVNCResponse, error) {
 		return value, nil
 	}
 
-	return IsVNCResponse{}, errors.New("could not convert cached result to bool")
+	return IsVNCResponse{}, errors.New("could not convert cached result")
 }

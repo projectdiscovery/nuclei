@@ -1,3 +1,4 @@
+// Warning - This is generated code
 package ssh
 
 import (
@@ -5,11 +6,12 @@ import (
 	"fmt"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
+
 	"github.com/zmap/zgrab2/lib/ssh"
 )
 
-func memoizedConnectSSHInfoMode(opts *connectOptions) (*ssh.HandshakeLog, error) {
-	hash := "connectSSHInfoMode:" + fmt.Sprintf("%#v\n", opts)
+func memoizedconnectSSHInfoMode(opts *connectOptions) (*ssh.HandshakeLog, error) {
+	hash := "connectSSHInfoMode" + ":" + fmt.Sprint(opts)
 
 	v, err, _ := protocolstate.Memoizer.Do(hash, func() (interface{}, error) {
 		return connectSSHInfoMode(opts)
@@ -21,5 +23,5 @@ func memoizedConnectSSHInfoMode(opts *connectOptions) (*ssh.HandshakeLog, error)
 		return value, nil
 	}
 
-	return nil, errors.New("could not convert cached ssh handshake log")
+	return nil, errors.New("could not convert cached result")
 }

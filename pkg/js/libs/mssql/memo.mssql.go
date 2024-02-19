@@ -1,14 +1,17 @@
+// Warning - This is generated code
 package mssql
 
 import (
 	"errors"
 	"fmt"
 
+	_ "github.com/denisenkom/go-mssqldb"
+
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
 )
 
-func memoizedconnect(host string, port int, username, password, dbName string) (bool, error) {
-	hash := "connect:" + host + ":" + fmt.Sprint(port) + ":" + username + ":" + password + ":" + dbName
+func memoizedconnect(host string, port int, username string, password string, dbName string) (bool, error) {
+	hash := "connect" + ":" + fmt.Sprint(host) + ":" + fmt.Sprint(port) + ":" + fmt.Sprint(username) + ":" + fmt.Sprint(password) + ":" + fmt.Sprint(dbName)
 
 	v, err, _ := protocolstate.Memoizer.Do(hash, func() (interface{}, error) {
 		return connect(host, port, username, password, dbName)
@@ -24,7 +27,7 @@ func memoizedconnect(host string, port int, username, password, dbName string) (
 }
 
 func memoizedisMssql(host string, port int) (bool, error) {
-	hash := "isMssql:" + host + ":" + fmt.Sprint(port)
+	hash := "isMssql" + ":" + fmt.Sprint(host) + ":" + fmt.Sprint(port)
 
 	v, err, _ := protocolstate.Memoizer.Do(hash, func() (interface{}, error) {
 		return isMssql(host, port)

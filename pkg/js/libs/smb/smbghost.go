@@ -26,7 +26,7 @@ const (
 // const isSMBGhost = smb.DetectSMBGhost('acme.com', 445);
 // ```
 func (c *SMBClient) DetectSMBGhost(host string, port int) (bool, error) {
-	return memoizedDetectSMBGhost(host, port)
+	return memoizeddetectSMBGhost(host, port)
 }
 
 // @memo

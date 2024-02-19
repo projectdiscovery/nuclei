@@ -101,7 +101,7 @@ func (c *SSHClient) ConnectWithKey(host string, port int, username, key string) 
 // log(to_json(info));
 // ```
 func (c *SSHClient) ConnectSSHInfoMode(host string, port int) (*ssh.HandshakeLog, error) {
-	return memoizedConnectSSHInfoMode(&connectOptions{
+	return memoizedconnectSSHInfoMode(&connectOptions{
 		Host: host,
 		Port: port,
 	})

@@ -1,3 +1,4 @@
+// Warning - This is generated code
 package rdp
 
 import (
@@ -8,7 +9,7 @@ import (
 )
 
 func memoizedisRDP(host string, port int) (IsRDPResponse, error) {
-	hash := "isRDP:" + host + ":" + fmt.Sprint(port)
+	hash := "isRDP" + ":" + fmt.Sprint(host) + ":" + fmt.Sprint(port)
 
 	v, err, _ := protocolstate.Memoizer.Do(hash, func() (interface{}, error) {
 		return isRDP(host, port)
@@ -20,11 +21,11 @@ func memoizedisRDP(host string, port int) (IsRDPResponse, error) {
 		return value, nil
 	}
 
-	return IsRDPResponse{}, errors.New("could not convert cached result to IsRDPResponse")
+	return IsRDPResponse{}, errors.New("could not convert cached result")
 }
 
 func memoizedcheckRDPAuth(host string, port int) (CheckRDPAuthResponse, error) {
-	hash := "checkRDPAuth:" + host + ":" + fmt.Sprint(port)
+	hash := "checkRDPAuth" + ":" + fmt.Sprint(host) + ":" + fmt.Sprint(port)
 
 	v, err, _ := protocolstate.Memoizer.Do(hash, func() (interface{}, error) {
 		return checkRDPAuth(host, port)
@@ -36,5 +37,5 @@ func memoizedcheckRDPAuth(host string, port int) (CheckRDPAuthResponse, error) {
 		return value, nil
 	}
 
-	return CheckRDPAuthResponse{}, errors.New("could not convert cached result to CheckRDPAuthResponse")
+	return CheckRDPAuthResponse{}, errors.New("could not convert cached result")
 }

@@ -1,3 +1,4 @@
+// Warning - This is generated code
 package oracle
 
 import (
@@ -8,7 +9,7 @@ import (
 )
 
 func memoizedisOracle(host string, port int) (IsOracleResponse, error) {
-	hash := "isOracle:" + host + ":" + fmt.Sprint(port)
+	hash := "isOracle" + ":" + fmt.Sprint(host) + ":" + fmt.Sprint(port)
 
 	v, err, _ := protocolstate.Memoizer.Do(hash, func() (interface{}, error) {
 		return isOracle(host, port)

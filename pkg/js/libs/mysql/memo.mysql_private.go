@@ -1,4 +1,5 @@
-package smtp
+// Warning - This is generated code
+package mysql
 
 import (
 	"errors"
@@ -7,11 +8,11 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
 )
 
-func memoizedisOpenRelay(host string, port int, msg *SMTPMessage) (bool, error) {
-	hash := "isOpenRelay:" + fmt.Sprint(port) + fmt.Sprintf("%#v\n", msg)
+func memoizedconnectWithDSN(dsn string) (bool, error) {
+	hash := "connectWithDSN" + ":" + fmt.Sprint(dsn)
 
 	v, err, _ := protocolstate.Memoizer.Do(hash, func() (interface{}, error) {
-		return isOpenRelay(host, port, msg)
+		return connectWithDSN(dsn)
 	})
 	if err != nil {
 		return false, err
@@ -20,5 +21,5 @@ func memoizedisOpenRelay(host string, port int, msg *SMTPMessage) (bool, error) 
 		return value, nil
 	}
 
-	return false, errors.New("could not convert cached result to bool")
+	return false, errors.New("could not convert cached result")
 }

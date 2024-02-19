@@ -1,3 +1,4 @@
+// Warning - This is generated code
 package mysql
 
 import (
@@ -7,24 +8,8 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
 )
 
-func memoizedconnectWithDSN(dsn string) (bool, error) {
-	hash := "connectWithDSN:" + dsn
-
-	v, err, _ := protocolstate.Memoizer.Do(hash, func() (interface{}, error) {
-		return connectWithDSN(dsn)
-	})
-	if err != nil {
-		return false, err
-	}
-	if value, ok := v.(bool); ok {
-		return value, nil
-	}
-
-	return false, errors.New("could not convert cached result")
-}
-
 func memoizedisMySQL(host string, port int) (bool, error) {
-	hash := "isMySQL:" + host + ":" + fmt.Sprint(port)
+	hash := "isMySQL" + ":" + fmt.Sprint(host) + ":" + fmt.Sprint(port)
 
 	v, err, _ := protocolstate.Memoizer.Do(hash, func() (interface{}, error) {
 		return isMySQL(host, port)
@@ -40,7 +25,7 @@ func memoizedisMySQL(host string, port int) (bool, error) {
 }
 
 func memoizedfingerprintMySQL(host string, port int) (MySQLInfo, error) {
-	hash := "fingerprintMySQL:" + host + ":" + fmt.Sprint(port)
+	hash := "fingerprintMySQL" + ":" + fmt.Sprint(host) + ":" + fmt.Sprint(port)
 
 	v, err, _ := protocolstate.Memoizer.Do(hash, func() (interface{}, error) {
 		return fingerprintMySQL(host, port)

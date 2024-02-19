@@ -1,3 +1,4 @@
+// Warning - This is generated code
 package rsync
 
 import (
@@ -8,7 +9,7 @@ import (
 )
 
 func memoizedisRsync(host string, port int) (IsRsyncResponse, error) {
-	hash := "isRsync:" + host + ":" + fmt.Sprint(port)
+	hash := "isRsync" + ":" + fmt.Sprint(host) + ":" + fmt.Sprint(port)
 
 	v, err, _ := protocolstate.Memoizer.Do(hash, func() (interface{}, error) {
 		return isRsync(host, port)
@@ -20,5 +21,5 @@ func memoizedisRsync(host string, port int) (IsRsyncResponse, error) {
 		return value, nil
 	}
 
-	return IsRsyncResponse{}, errors.New("could not convert cached result to IsRsyncResponse")
+	return IsRsyncResponse{}, errors.New("could not convert cached result")
 }

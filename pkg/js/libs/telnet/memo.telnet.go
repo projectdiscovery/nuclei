@@ -1,3 +1,4 @@
+// Warning - This is generated code
 package telnet
 
 import (
@@ -7,8 +8,8 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
 )
 
-func memoizedIsTelnet(host string, port int) (IsTelnetResponse, error) {
-	hash := "IsTelnet:" + host + ":" + fmt.Sprint(port)
+func memoizedisTelnet(host string, port int) (IsTelnetResponse, error) {
+	hash := "isTelnet" + ":" + fmt.Sprint(host) + ":" + fmt.Sprint(port)
 
 	v, err, _ := protocolstate.Memoizer.Do(hash, func() (interface{}, error) {
 		return isTelnet(host, port)
@@ -20,5 +21,5 @@ func memoizedIsTelnet(host string, port int) (IsTelnetResponse, error) {
 		return value, nil
 	}
 
-	return IsTelnetResponse{}, errors.New("could not convert cached result to bool")
+	return IsTelnetResponse{}, errors.New("could not convert cached result")
 }

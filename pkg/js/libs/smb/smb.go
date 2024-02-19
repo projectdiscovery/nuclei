@@ -107,7 +107,7 @@ func (c *SMBClient) ListShares(host string, port int, user, password string) ([]
 }
 
 // @memo
-func listShares(host string, port int, user, password string) ([]string, error) {
+func listShares(host string, port int, user string, password string) ([]string, error) {
 	if !protocolstate.IsHostAllowed(host) {
 		// host is not valid according to network policy
 		return nil, protocolstate.ErrHostDenied.Msgf(host)
