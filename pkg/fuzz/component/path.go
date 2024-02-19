@@ -8,28 +8,28 @@ import (
 	"github.com/projectdiscovery/retryablehttp-go"
 )
 
-// URL is a component for a request URL
-type URL struct {
+// Path is a component for a request Path
+type Path struct {
 	value *Value
 
 	req *retryablehttp.Request
 }
 
-var _ Component = &URL{}
+var _ Component = &Path{}
 
-// NewURL creates a new URL component
-func NewURL() *URL {
-	return &URL{}
+// NewPath creates a new URL component
+func NewPath() *Path {
+	return &Path{}
 }
 
 // Name returns the name of the component
-func (q *URL) Name() string {
-	return RequestURLComponent
+func (q *Path) Name() string {
+	return RequestPathComponent
 }
 
 // Parse parses the component and returns the
 // parsed component
-func (q *URL) Parse(req *retryablehttp.Request) (bool, error) {
+func (q *Path) Parse(req *retryablehttp.Request) (bool, error) {
 	q.req = req
 	q.value = NewValue(req.URL.Path)
 
@@ -42,7 +42,7 @@ func (q *URL) Parse(req *retryablehttp.Request) (bool, error) {
 }
 
 // Iterate iterates through the component
-func (q *URL) Iterate(callback func(key string, value interface{})) {
+func (q *Path) Iterate(callback func(key string, value interface{})) {
 	for key, value := range q.value.Parsed() {
 		callback(key, value)
 	}
@@ -50,7 +50,7 @@ func (q *URL) Iterate(callback func(key string, value interface{})) {
 
 // SetValue sets a value in the component
 // for a key
-func (q *URL) SetValue(key string, value string) error {
+func (q *Path) SetValue(key string, value string) error {
 	if !q.value.SetParsedValue(key, value) {
 		return ErrSetValue
 	}
@@ -59,7 +59,7 @@ func (q *URL) SetValue(key string, value string) error {
 
 // Rebuild returns a new request with the
 // component rebuilt
-func (q *URL) Rebuild() (*retryablehttp.Request, error) {
+func (q *Path) Rebuild() (*retryablehttp.Request, error) {
 	encoded, err := q.value.Encode()
 	if err != nil {
 		return nil, errors.Wrap(err, "could not encode query")

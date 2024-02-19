@@ -62,7 +62,7 @@ func (rule *Rule) Execute(input *ExecuteRuleInput) error {
 	// Iterate through all components and try to gather
 	// them from the provided request.
 	for _, componentName := range component.Components {
-		if rule.partType != responsePartType && rule.Part != componentName {
+		if rule.partType != requestPartType && rule.Part != componentName {
 			continue
 		}
 

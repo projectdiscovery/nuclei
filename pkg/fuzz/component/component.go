@@ -17,17 +17,11 @@ type Component interface {
 	// Parse parses the component and returns the
 	// parsed component
 	Parse(req *retryablehttp.Request) (bool, error)
-	// Iterate iterates through the component
-	//
-	// We cannot iterate normally because there
-	// can be multiple nesting. So we need to a do traversal
-	// and get keys with values that can be assigned values dynamically.
-	// Therefore we flatten the value map and iterate over it.
-	//
-	// The mutation layer decides how to change the value and then
-	// the SetValue method is called to set the final string into
-	// the Value. The value container handles arrays, maps, strings etc
-	// and then encodes and converts them into final string.
+	// Iterate iterates over all values of a component
+	// ex in case of query component, it will iterate over each query parameter
+	// depending on the rule if mode is single
+	// request is rebuilt for each value in this callback
+	// and in case of multiple, request will be rebuilt after iteration of all values
 	Iterate(func(key string, value interface{}))
 	// SetValue sets a value in the component
 	// for a key
@@ -45,8 +39,8 @@ const (
 	RequestBodyComponent = "body"
 	// RequestQueryComponent is the name of the request query component
 	RequestQueryComponent = "query"
-	// RequestURLComponent is the name of the request url component
-	RequestURLComponent = "url"
+	// RequestPathComponent is the name of the request url component
+	RequestPathComponent = "path"
 	// RequestHeaderComponent is the name of the request header component
 	RequestHeaderComponent = "headers"
 	// RequestCookieComponent is the name of the request cookie component
@@ -57,7 +51,7 @@ const (
 var Components = []string{
 	RequestBodyComponent,
 	RequestQueryComponent,
-	RequestURLComponent,
+	RequestPathComponent,
 	RequestHeaderComponent,
 	RequestCookieComponent,
 }
@@ -69,8 +63,8 @@ func New(componentType string) Component {
 		return NewBody()
 	case "query":
 		return NewQuery()
-	case "url":
-		return NewURL()
+	case "path":
+		return NewPath()
 	case "headers":
 		return NewHeader()
 	case "cookie":

@@ -28,7 +28,7 @@ type Rule struct {
 	//   query fuzzes the query part of url. More parts will be added later.
 	// values:
 	//   - "query"
-	Part     string `yaml:"part,omitempty" json:"part,omitempty" jsonschema:"title=part of rule,description=Part of request rule to fuzz,enum=query,enum=headers,enum=url,enum=body,enum=cookie,enum=response"`
+	Part     string `yaml:"part,omitempty" json:"part,omitempty" jsonschema:"title=part of rule,description=Part of request rule to fuzz,enum=query,enum=headers,enum=path,enum=body,enum=cookie,enum=request"`
 	partType partType
 	// description: |
 	//   Mode is the mode of fuzzing to perform.
@@ -100,19 +100,19 @@ type partType int
 const (
 	queryPartType partType = iota + 1
 	headersPartType
-	urlPartType
+	pathPartType
 	bodyPartType
 	cookiePartType
-	responsePartType
+	requestPartType
 )
 
 var stringToPartType = map[string]partType{
-	"query":    queryPartType,
-	"headers":  headersPartType,
-	"url":      urlPartType,
-	"body":     bodyPartType,
-	"cookie":   cookiePartType,
-	"response": responsePartType, // response means all of above
+	"query":   queryPartType,
+	"headers": headersPartType,
+	"path":    pathPartType,
+	"body":    bodyPartType,
+	"cookie":  cookiePartType,
+	"request": requestPartType, // request means all request parts
 }
 
 // modeType is the mode of rule enum declaration
