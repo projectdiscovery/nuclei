@@ -10,10 +10,10 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/pkg/errors"
-	"github.com/remeh/sizedwaitgroup"
 	"go.uber.org/multierr"
 	"moul.io/http2curl"
 
@@ -105,36 +105,90 @@ func (request *Request) executeRaceRequest(input *contextargs.Context, previous 
 		generatedRequests = append(generatedRequests, generatedRequest)
 	}
 
-	wg := sync.WaitGroup{}
-	var requestErr error
-	mutex := &sync.Mutex{}
+	shouldStop := (request.options.Options.StopAtFirstMatch || request.StopAtFirstMatch || request.options.StopAtFirstMatch)
+	spmHandler := httputils.NewNonBlockingSPMHandler[error](ctx, shouldStop)
+	gotMatches := &atomic.Bool{}
+	// wrappedCallback is a callback that wraps the original callback
+	// to implement stop at first match logic
+	wrappedCallback := func(event *output.InternalWrappedEvent) {
+		if !event.HasOperatorResult() {
+			callback(event) // not required but we can allow it
+			return
+		}
+		// this will execute match condition such that if stop at first match is enabled
+		// this will be only executed once
+		spmHandler.MatchCallback(func() {
+			gotMatches.Store(true)
+			callback(event)
+		})
+		if shouldStop {
+			// stop all running requests and exit
+			spmHandler.Trigger()
+		}
+	}
+
 	for i := 0; i < request.RaceNumberRequests; i++ {
-		wg.Add(1)
+		spmHandler.Acquire()
+		// execute http request
 		go func(httpRequest *generatedRequest) {
-			defer wg.Done()
-			err := request.executeRequest(input, httpRequest, previous, false, callback, 0)
-			mutex.Lock()
-			if err != nil {
-				requestErr = multierr.Append(requestErr, err)
+			defer spmHandler.Release()
+			defer func() {
+				if r := recover(); r != nil {
+					gologger.Verbose().Msgf("[%s] Recovered from panic: %v\n", request.options.TemplateID, r)
+				}
+			}()
+			if spmHandler.FoundFirstMatch() {
+				// stop sending more requests condition is met
+				return
 			}
-			mutex.Unlock()
+
+			select {
+			case <-spmHandler.Done():
+				return
+			case spmHandler.ResultChan <- request.executeRequest(input, httpRequest, previous, false, wrappedCallback, 0):
+				return
+			}
 		}(generatedRequests[i])
 		request.options.Progress.IncrementRequests()
 	}
-	wg.Wait()
+	spmHandler.Wait()
 
-	return requestErr
+	if spmHandler.FoundFirstMatch() {
+		// ignore any context cancellation and in-transit execution errors
+		return nil
+	}
+	return multierr.Combine(spmHandler.CombinedResults()...)
 }
 
 // executeRaceRequest executes parallel requests for a template
 func (request *Request) executeParallelHTTP(input *contextargs.Context, dynamicValues output.InternalEvent, callback protocols.OutputEventCallback) error {
-	generator := request.newGenerator(false)
 	// Workers that keeps enqueuing new requests
 	maxWorkers := request.Threads
-	swg := sizedwaitgroup.New(maxWorkers)
 
-	var requestErr error
-	mutex := &sync.Mutex{}
+	// Stop-at-first-match logic while executing requests
+	// parallely using threads
+	shouldStop := (request.options.Options.StopAtFirstMatch || request.StopAtFirstMatch || request.options.StopAtFirstMatch)
+	spmHandler := httputils.NewBlockingSPMHandler[error](context.Background(), maxWorkers, shouldStop)
+	// wrappedCallback is a callback that wraps the original callback
+	// to implement stop at first match logic
+	wrappedCallback := func(event *output.InternalWrappedEvent) {
+		if !event.HasOperatorResult() {
+			callback(event) // not required but we can allow it
+			return
+		}
+		// this will execute match condition such that if stop at first match is enabled
+		// this will be only executed once
+		spmHandler.MatchCallback(func() {
+			callback(event)
+		})
+		if shouldStop {
+			// stop all running requests and exit
+			spmHandler.Trigger()
+		}
+	}
+
+	// iterate payloads and make requests
+	generator := request.newGenerator(false)
 	for {
 		inputData, payloads, ok := generator.nextValue()
 		if !ok {
@@ -152,24 +206,38 @@ func (request *Request) executeParallelHTTP(input *contextargs.Context, dynamicV
 		if input.MetaInput.Input == "" {
 			input.MetaInput.Input = generatedHttpRequest.URL()
 		}
-		swg.Add()
+		spmHandler.Acquire()
 		go func(httpRequest *generatedRequest) {
-			defer swg.Done()
-
-			request.options.RateLimiter.Take()
-
-			previous := make(map[string]interface{})
-			err := request.executeRequest(input, httpRequest, previous, false, callback, 0)
-			mutex.Lock()
-			if err != nil {
-				requestErr = multierr.Append(requestErr, err)
+			defer spmHandler.Release()
+			defer func() {
+				if r := recover(); r != nil {
+					gologger.Verbose().Msgf("[%s] Recovered from panic: %v\n", request.options.TemplateID, r)
+				}
+			}()
+			if spmHandler.FoundFirstMatch() {
+				return
 			}
-			mutex.Unlock()
+
+			select {
+			case <-spmHandler.Done():
+				return
+			case spmHandler.ResultChan <- func() error {
+				// putting ratelimiter here prevents any unnecessary waiting if any
+				request.options.RateLimiter.Take()
+				previous := make(map[string]interface{})
+				return request.executeRequest(input, httpRequest, previous, false, wrappedCallback, 0)
+			}():
+				return
+			}
 		}(generatedHttpRequest)
 		request.options.Progress.IncrementRequests()
 	}
-	swg.Wait()
-	return requestErr
+	spmHandler.Wait()
+	if spmHandler.FoundFirstMatch() {
+		// ignore any context cancellation and in-transit execution errors
+		return nil
+	}
+	return multierr.Combine(spmHandler.CombinedResults()...)
 }
 
 // executeTurboHTTP executes turbo http request for a URL
@@ -199,10 +267,31 @@ func (request *Request) executeTurboHTTP(input *contextargs.Context, dynamicValu
 	if pipeOptions.MaxPendingRequests > maxWorkers {
 		maxWorkers = pipeOptions.MaxPendingRequests
 	}
-	swg := sizedwaitgroup.New(maxWorkers)
 
-	var requestErr error
-	mutex := &sync.Mutex{}
+	// Stop-at-first-match logic while executing requests
+	// parallely using threads
+	// Stop-at-first-match logic while executing requests
+	// parallely using threads
+	shouldStop := (request.options.Options.StopAtFirstMatch || request.StopAtFirstMatch || request.options.StopAtFirstMatch)
+	spmHandler := httputils.NewBlockingSPMHandler[error](context.Background(), maxWorkers, shouldStop)
+	// wrappedCallback is a callback that wraps the original callback
+	// to implement stop at first match logic
+	wrappedCallback := func(event *output.InternalWrappedEvent) {
+		if !event.HasOperatorResult() {
+			callback(event) // not required but we can allow it
+			return
+		}
+		// this will execute match condition such that if stop at first match is enabled
+		// this will be only executed once
+		spmHandler.MatchCallback(func() {
+			callback(event)
+		})
+		if shouldStop {
+			// stop all running requests and exit
+			spmHandler.Trigger()
+		}
+	}
+
 	for {
 		inputData, payloads, ok := generator.nextValue()
 		if !ok {
@@ -218,21 +307,34 @@ func (request *Request) executeTurboHTTP(input *contextargs.Context, dynamicValu
 			input.MetaInput.Input = generatedHttpRequest.URL()
 		}
 		generatedHttpRequest.pipelinedClient = pipeClient
-		swg.Add()
+		spmHandler.Acquire()
 		go func(httpRequest *generatedRequest) {
-			defer swg.Done()
-
-			err := request.executeRequest(input, httpRequest, previous, false, callback, 0)
-			mutex.Lock()
-			if err != nil {
-				requestErr = multierr.Append(requestErr, err)
+			defer spmHandler.Release()
+			defer func() {
+				if r := recover(); r != nil {
+					gologger.Verbose().Msgf("[%s] Recovered from panic: %v\n", request.options.TemplateID, r)
+				}
+			}()
+			if spmHandler.FoundFirstMatch() {
+				// skip if first match is found
+				return
 			}
-			mutex.Unlock()
+
+			select {
+			case <-spmHandler.Done():
+				return
+			case spmHandler.ResultChan <- request.executeRequest(input, httpRequest, previous, false, wrappedCallback, 0):
+				return
+			}
 		}(generatedHttpRequest)
 		request.options.Progress.IncrementRequests()
 	}
-	swg.Wait()
-	return requestErr
+	spmHandler.Wait()
+	if spmHandler.FoundFirstMatch() {
+		// ignore any context cancellation and in-transit execution errors
+		return nil
+	}
+	return multierr.Combine(spmHandler.CombinedResults()...)
 }
 
 // executeFuzzingRule executes fuzzing request for a URL
@@ -346,7 +448,6 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 	if request.Pipeline {
 		return request.executeTurboHTTP(input, dynamicValues, previous, callback)
 	}
-
 	// verify if a basic race condition was requested
 	if request.Race && request.RaceNumberRequests > 0 {
 		return request.executeRaceRequest(input, dynamicValues, callback)
