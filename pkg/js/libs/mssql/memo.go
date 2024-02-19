@@ -24,10 +24,10 @@ func memoizedconnect(host string, port int, username, password, dbName string) (
 }
 
 func memoizedisMssql(host string, port int) (bool, error) {
-	hash := "connect:" + host + ":" + fmt.Sprint(port)
+	hash := "isMssql:" + host + ":" + fmt.Sprint(port)
 
 	v, err, _ := protocolstate.Memoizer.Do(hash, func() (interface{}, error) {
-		return connect(host, port)
+		return isMssql(host, port)
 	})
 	if err != nil {
 		return false, err
