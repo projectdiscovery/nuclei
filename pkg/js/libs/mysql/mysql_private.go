@@ -8,20 +8,37 @@ import (
 	"strings"
 )
 
-// MySQLOptions defines the data source name (DSN) options required to connect to a MySQL database.
-// along with other options like Timeout etc
-type MySQLOptions struct {
-	Host     string // Host is the host name or IP address of the MySQL server.
-	Port     int    // Port is the port number on which the MySQL server is listening.
-	Protocol string // Protocol is the protocol used to connect to the MySQL server (ex: "tcp").
-	Username string // Username is the user name used to authenticate with the MySQL server.
-	Password string // Password is the password used to authenticate with the MySQL server.
-	DbName   string // DbName is the name of the database to connect to on the MySQL server.
-	RawQuery string // QueryStr is the query string to append to the DSN (ex: "?tls=skip-verify").
-	Timeout  int    // Timeout is the timeout in seconds for the connection to the MySQL server.
-}
+type (
+	// MySQLOptions defines the data source name (DSN) options required to connect to a MySQL database.
+	// along with other options like Timeout etc
+	// @example
+	// ```javascript
+	// const mysql = require('nuclei/mysql');
+	// const options = new mysql.MySQLOptions();
+	// options.Host = 'acme.com';
+	// options.Port = 3306;
+	// ```
+	MySQLOptions struct {
+		Host     string // Host is the host name or IP address of the MySQL server.
+		Port     int    // Port is the port number on which the MySQL server is listening.
+		Protocol string // Protocol is the protocol used to connect to the MySQL server (ex: "tcp").
+		Username string // Username is the user name used to authenticate with the MySQL server.
+		Password string // Password is the password used to authenticate with the MySQL server.
+		DbName   string // DbName is the name of the database to connect to on the MySQL server.
+		RawQuery string // QueryStr is the query string to append to the DSN (ex: "?tls=skip-verify").
+		Timeout  int    // Timeout is the timeout in seconds for the connection to the MySQL server.
+	}
+)
 
 // BuildDSN builds a MySQL data source name (DSN) from the given options.
+// @example
+// ```javascript
+// const mysql = require('nuclei/mysql');
+// const options = new mysql.MySQLOptions();
+// options.Host = 'acme.com';
+// options.Port = 3306;
+// const dsn = mysql.BuildDSN(options);
+// ```
 func BuildDSN(opts MySQLOptions) (string, error) {
 	if opts.Host == "" || opts.Port <= 0 {
 		return "", fmt.Errorf("invalid host or port")

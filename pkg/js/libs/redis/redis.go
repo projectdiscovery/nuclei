@@ -13,6 +13,11 @@ import (
 )
 
 // GetServerInfo returns the server info for a redis server
+// @example
+// ```javascript
+// const redis = require('nuclei/redis');
+// const info = redis.GetServerInfo('acme.com', 6379);
+// ```
 func GetServerInfo(host string, port int) (string, error) {
 	return memoizedgetServerInfo(host, port)
 }
@@ -47,6 +52,11 @@ func getServerInfo(host string, port int) (string, error) {
 }
 
 // Connect tries to connect redis server with password
+// @example
+// ```javascript
+// const redis = require('nuclei/redis');
+// const connected = redis.Connect('acme.com', 6379, 'password');
+// ```
 func Connect(host string, port int, password string) (bool, error) {
 	return memoizedconnect(host, port, password)
 }
@@ -79,6 +89,11 @@ func connect(host string, port int, password string) (bool, error) {
 }
 
 // GetServerInfoAuth returns the server info for a redis server
+// @example
+// ```javascript
+// const redis = require('nuclei/redis');
+// const info = redis.GetServerInfoAuth('acme.com', 6379, 'password');
+// ```
 func GetServerInfoAuth(host string, port int, password string) (string, error) {
 	return memoizedgetServerInfoAuth(host, port, password)
 }
@@ -113,6 +128,11 @@ func getServerInfoAuth(host string, port int, password string) (string, error) {
 }
 
 // IsAuthenticated checks if the redis server requires authentication
+// @example
+// ```javascript
+// const redis = require('nuclei/redis');
+// const isAuthenticated = redis.IsAuthenticated('acme.com', 6379);
+// ```
 func IsAuthenticated(host string, port int) (bool, error) {
 	return memoizedisAuthenticated(host, port)
 }
@@ -134,7 +154,12 @@ func isAuthenticated(host string, port int) (bool, error) {
 	return true, nil
 }
 
-// RunLuaScript runs a lua script on
+// RunLuaScript runs a lua script on the redis server
+// @example
+// ```javascript
+// const redis = require('nuclei/redis');
+// const result = redis.RunLuaScript('acme.com', 6379, 'password', 'return redis.call("get", KEYS[1])');
+// ```
 func RunLuaScript(host string, port int, password string, script string) (interface{}, error) {
 	if !protocolstate.IsHostAllowed(host) {
 		// host is not valid according to network policy

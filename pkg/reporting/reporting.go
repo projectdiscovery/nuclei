@@ -20,6 +20,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/reporting/exporters/markdown"
 	"github.com/projectdiscovery/nuclei/v3/pkg/reporting/exporters/sarif"
 	"github.com/projectdiscovery/nuclei/v3/pkg/reporting/exporters/splunk"
+	"github.com/projectdiscovery/nuclei/v3/pkg/reporting/trackers/gitea"
 	"github.com/projectdiscovery/nuclei/v3/pkg/reporting/trackers/github"
 	"github.com/projectdiscovery/nuclei/v3/pkg/reporting/trackers/gitlab"
 	"github.com/projectdiscovery/nuclei/v3/pkg/reporting/trackers/jira"
@@ -110,6 +111,15 @@ func New(options *Options, db string) (Client, error) {
 		options.GitLab.HttpClient = options.HttpClient
 		options.GitLab.OmitRaw = options.OmitRaw
 		tracker, err := gitlab.New(options.GitLab)
+		if err != nil {
+			return nil, errorutil.NewWithErr(err).Wrap(ErrReportingClientCreation)
+		}
+		client.trackers = append(client.trackers, tracker)
+	}
+	if options.Gitea != nil {
+		options.Gitea.HttpClient = options.HttpClient
+		options.Gitea.OmitRaw = options.OmitRaw
+		tracker, err := gitea.New(options.Gitea)
 		if err != nil {
 			return nil, errorutil.NewWithErr(err).Wrap(ErrReportingClientCreation)
 		}

@@ -1390,13 +1390,26 @@ Valid values:
 
 <div class="dd">
 
+<code>cookie-reuse</code>  <i>bool</i>
+
+</div>
+<div class="dt">
+
+CookieReuse is an optional setting that enables cookie reuse for
+all requests defined in raw section.
+
+</div>
+
+<hr />
+
+<div class="dd">
+
 <code>disable-cookie</code>  <i>bool</i>
 
 </div>
 <div class="dt">
 
-DisableCookie is an optional setting that disables cookie reuse for
-all requests defined in raw section.
+DisableCookie is an optional setting that disables cookie reuse
 
 </div>
 
@@ -2121,6 +2134,30 @@ be provided as payload which will be read on run-time.
 
 <div class="dd">
 
+<code>threads</code>  <i>int</i>
+
+</div>
+<div class="dt">
+
+Threads to use when sending iterating over payloads
+
+
+
+Examples:
+
+
+```yaml
+# Send requests using 10 concurrent threads
+threads: 10
+```
+
+
+</div>
+
+<hr />
+
+<div class="dd">
+
 <code>recursion</code>  <i>dns.bool</i>
 
 </div>
@@ -2483,6 +2520,33 @@ Payloads contains any payloads for the current request.
 Payloads support both key-values combinations where a list
 of payloads is provided, or optionally a single file can also
 be provided as payload which will be read on run-time.
+
+</div>
+
+<hr />
+
+<div class="dd">
+
+<code>threads</code>  <i>int</i>
+
+</div>
+<div class="dt">
+
+Threads specifies number of threads to use sending requests. This enables Connection Pooling.
+
+Connection: Close attribute must not be used in request while using threads flag, otherwise
+pooling will fail and engine will continue to close connections after requests.
+
+
+
+Examples:
+
+
+```yaml
+# Send requests using 10 concurrent threads
+threads: 10
+```
+
 
 </div>
 
@@ -2881,6 +2945,19 @@ Fuzzing describes schema to fuzz headless requests
 
 <div class="dd">
 
+<code>cookie-reuse</code>  <i>bool</i>
+
+</div>
+<div class="dt">
+
+CookieReuse is an optional setting that enables cookie reuse
+
+</div>
+
+<hr />
+
+<div class="dd">
+
 <code>disable-cookie</code>  <i>bool</i>
 
 </div>
@@ -3222,6 +3299,53 @@ description: |
    - "ztls"
    - "auto"
 	 - "openssl" # reverts to "auto" is openssl is not installed
+
+</div>
+
+<hr />
+
+<div class="dd">
+
+<code>tls_version_enum</code>  <i>bool</i>
+
+</div>
+<div class="dt">
+
+TLS Versions Enum - false if not specified
+Enumerates supported TLS versions
+
+</div>
+
+<hr />
+
+<div class="dd">
+
+<code>tls_cipher_enum</code>  <i>bool</i>
+
+</div>
+<div class="dt">
+
+TLS Ciphers Enum - false if not specified
+Enumerates supported TLS ciphers
+
+</div>
+
+<hr />
+
+<div class="dd">
+
+<code>tls_cipher_types</code>  <i>[]string</i>
+
+</div>
+<div class="dt">
+
+description: |
+  TLS Cipher types to enumerate
+ values:
+   - "insecure" (default)
+   - "weak"
+   - "secure"
+   - "all"
 
 </div>
 
@@ -3642,6 +3766,19 @@ Args contains the arguments to pass to the javascript code.
 <div class="dt">
 
 Code contains code to execute for the javascript request.
+
+</div>
+
+<hr />
+
+<div class="dd">
+
+<code>timeout</code>  <i>int</i>
+
+</div>
+<div class="dt">
+
+Timeout in seconds is optional timeout for each  javascript script execution (i.e init, pre-condition, code)
 
 </div>
 

@@ -8,6 +8,12 @@ import (
 )
 
 // DecodeSID decodes a SID string
+// @example
+// ```javascript
+// const ldap = require('nuclei/ldap');
+// const sid = ldap.DecodeSID('S-1-5-21-3623811015-3361044348-30300820-1013');
+// log(sid);
+// ```
 func DecodeSID(s string) string {
 	b := []byte(s)
 	revisionLvl := int(b[0])
@@ -41,6 +47,12 @@ func DecodeSID(s string) string {
 }
 
 // DecodeADTimestamp decodes an Active Directory timestamp
+// @example
+// ```javascript
+// const ldap = require('nuclei/ldap');
+// const timestamp = ldap.DecodeADTimestamp('132036744000000000');
+// log(timestamp);
+// ```
 func DecodeADTimestamp(timestamp string) string {
 	adtime, _ := strconv.ParseInt(timestamp, 10, 64)
 	if (adtime == 9223372036854775807) || (adtime == 0) {
@@ -52,7 +64,12 @@ func DecodeADTimestamp(timestamp string) string {
 }
 
 // DecodeZuluTimestamp decodes a Zulu timestamp
-// example: 2021-08-25T14:00:00Z
+// @example
+// ```javascript
+// const ldap = require('nuclei/ldap');
+// const timestamp = ldap.DecodeZuluTimestamp('2021-08-25T10:00:00Z');
+// log(timestamp);
+// ```
 func DecodeZuluTimestamp(timestamp string) string {
 	zulu, err := time.Parse(time.RFC3339, timestamp)
 	if err != nil {

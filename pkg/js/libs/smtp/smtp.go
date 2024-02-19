@@ -14,16 +14,37 @@ import (
 	pluginsmtp "github.com/praetorian-inc/fingerprintx/pkg/plugins/services/smtp"
 )
 
-// SMTPClient is a minimal SMTP client for nuclei scripts.
-type SMTPClient struct{}
+type (
+	// SMTPClient is a minimal SMTP client for nuclei scripts.
+	// @example
+	// ```javascript
+	// const smtp = require('nuclei/smtp');
+	// const client = new smtp.Client();
+	// ```
+	SMTPClient struct{}
+)
 
-// IsSMTPResponse is the response from the IsSMTP function.
-type IsSMTPResponse struct {
-	IsSMTP bool
-	Banner string
-}
+type (
+	// IsSMTPResponse is the response from the IsSMTP function.
+	// @example
+	// ```javascript
+	// const smtp = require('nuclei/smtp');
+	// const isSMTP = smtp.IsSMTP('acme.com', 25);
+	// log(toJSON(isSMTP));
+	// ```
+	IsSMTPResponse struct {
+		IsSMTP bool
+		Banner string
+	}
+)
 
 // IsSMTP checks if a host is running a SMTP server.
+// @example
+// ```javascript
+// const smtp = require('nuclei/smtp');
+// const isSMTP = smtp.IsSMTP('acme.com', 25);
+// log(toJSON(isSMTP));
+// ```
 func (c *SMTPClient) IsSMTP(host string, port int) (IsSMTPResponse, error) {
 	resp := IsSMTPResponse{}
 
@@ -47,6 +68,17 @@ func (c *SMTPClient) IsSMTP(host string, port int) (IsSMTPResponse, error) {
 	return resp, nil
 }
 
+// IsOpenRelay checks if a host is an open relay.
+// @example
+// ```javascript
+// const smtp = require('nuclei/smtp');
+// const message = new smtp.SMTPMessage();
+// message.From('xyz@projectdiscovery.io');
+// message.To('xyz2@projectdiscoveyr.io');
+// message.Subject('hello');
+// message.Body('hello');
+// const isRelay = smtp.IsOpenRelay('acme.com', 25, message);
+// ```
 func (c *SMTPClient) IsOpenRelay(host string, port int, msg *SMTPMessage) (bool, error) {
 	return memoizedisOpenRelay(host, port, msg)
 }
@@ -100,6 +132,16 @@ func isOpenRelay(host string, port int, msg *SMTPMessage) (bool, error) {
 }
 
 // SendMail sends an email using the SMTP protocol.
+// @example
+// ```javascript
+// const smtp = require('nuclei/smtp');
+// const message = new smtp.SMTPMessage();
+// message.From('xyz@projectdiscovery.io');
+// message.To('xyz2@projectdiscoveyr.io');
+// message.Subject('hello');
+// message.Body('hello');
+// const isSent = smtp.SendMail('acme.com', 25, message);
+// ```
 func (c *SMTPClient) SendMail(host string, port string, msg *SMTPMessage) (bool, error) {
 	if !protocolstate.IsHostAllowed(host) {
 		return false, protocolstate.ErrHostDenied.Msgf(host)

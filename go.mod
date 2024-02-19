@@ -20,12 +20,12 @@ require (
 	github.com/olekukonko/tablewriter v0.0.5
 	github.com/pkg/errors v0.9.1
 	github.com/projectdiscovery/clistats v0.0.20
-	github.com/projectdiscovery/fastdialer v0.0.57
-	github.com/projectdiscovery/hmap v0.0.37
+	github.com/projectdiscovery/fastdialer v0.0.58
+	github.com/projectdiscovery/hmap v0.0.38
 	github.com/projectdiscovery/interactsh v1.1.8
 	github.com/projectdiscovery/rawhttp v0.1.35
-	github.com/projectdiscovery/retryabledns v1.0.54
-	github.com/projectdiscovery/retryablehttp-go v1.0.46
+	github.com/projectdiscovery/retryabledns v1.0.56
+	github.com/projectdiscovery/retryablehttp-go v1.0.48
 	github.com/projectdiscovery/yamldoc-go v1.0.4
 	github.com/remeh/sizedwaitgroup v1.0.0
 	github.com/rs/xid v1.5.0
@@ -46,6 +46,7 @@ require (
 )
 
 require (
+	code.gitea.io/sdk/gitea v0.17.0
 	github.com/Azure/azure-sdk-for-go/sdk/azidentity v1.3.0
 	github.com/Azure/azure-sdk-for-go/sdk/storage/azblob v1.1.0
 	github.com/DataDog/gostackparse v0.6.0
@@ -74,10 +75,10 @@ require (
 	github.com/mholt/archiver v3.1.1+incompatible
 	github.com/ory/dockertest/v3 v3.10.0
 	github.com/praetorian-inc/fingerprintx v1.1.9
-	github.com/projectdiscovery/dsl v0.0.41
+	github.com/projectdiscovery/dsl v0.0.44
 	github.com/projectdiscovery/fasttemplate v0.0.2
 	github.com/projectdiscovery/go-smb2 v0.0.0-20240129202741-052cc450c6cb
-	github.com/projectdiscovery/goflags v0.1.37
+	github.com/projectdiscovery/goflags v0.1.40
 	github.com/projectdiscovery/gologger v1.1.12
 	github.com/projectdiscovery/gostruct v0.0.2
 	github.com/projectdiscovery/gozero v0.0.1
@@ -89,8 +90,8 @@ require (
 	github.com/projectdiscovery/sarif v0.0.1
 	github.com/projectdiscovery/tlsx v1.1.6
 	github.com/projectdiscovery/uncover v1.0.7
-	github.com/projectdiscovery/useragent v0.0.35
-	github.com/projectdiscovery/utils v0.0.78-0.20240208135631-912b6d8a0e29
+	github.com/projectdiscovery/useragent v0.0.38
+	github.com/projectdiscovery/utils v0.0.80-0.20240219101443-c4081af28448
 	github.com/projectdiscovery/wappalyzergo v0.0.109
 	github.com/redis/go-redis/v9 v9.1.0
 	github.com/sashabaranov/go-openai v1.15.3
@@ -122,6 +123,7 @@ require (
 	github.com/bits-and-blooms/bloom/v3 v3.5.0 // indirect
 	github.com/bytedance/sonic v1.9.1 // indirect
 	github.com/cenkalti/backoff/v4 v4.2.1 // indirect
+	github.com/cespare/xxhash v1.1.0 // indirect
 	github.com/cespare/xxhash/v2 v2.2.0 // indirect
 	github.com/cheggaaa/pb/v3 v3.1.4 // indirect
 	github.com/chenzhuoyu/base64x v0.0.0-20221115062448-fe3a3abad311 // indirect
@@ -130,6 +132,7 @@ require (
 	github.com/containerd/continuity v0.4.2 // indirect
 	github.com/corpix/uarand v0.2.0 // indirect
 	github.com/cyphar/filepath-securejoin v0.2.4 // indirect
+	github.com/davidmz/go-pageant v1.0.2 // indirect
 	github.com/denisbrodbeck/machineid v1.0.1 // indirect
 	github.com/dgryski/go-rendezvous v0.0.0-20200823014737-9f7001d12a5f // indirect
 	github.com/dlclark/regexp2 v1.10.0 // indirect
@@ -143,6 +146,7 @@ require (
 	github.com/gin-contrib/sse v0.1.0 // indirect
 	github.com/gin-gonic/gin v1.9.1 // indirect
 	github.com/go-asn1-ber/asn1-ber v1.5.4 // indirect
+	github.com/go-fed/httpsig v1.1.0 // indirect
 	github.com/go-sourcemap/sourcemap v2.1.3+incompatible // indirect
 	github.com/goccy/go-json v0.10.2 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
@@ -212,7 +216,6 @@ require (
 	github.com/yuin/goldmark-emoji v1.0.1 // indirect
 	github.com/zeebo/blake3 v0.2.3 // indirect
 	golang.org/x/arch v0.3.0 // indirect
-	golang.org/x/sync v0.6.0 // indirect
 	gopkg.in/djherbis/times.v1 v1.3.0 // indirect
 	mellium.im/sasl v0.3.1 // indirect
 )
@@ -289,7 +292,7 @@ require (
 	golang.org/x/mod v0.14.0 // indirect
 	golang.org/x/sys v0.16.0 // indirect
 	golang.org/x/time v0.3.0 // indirect
-	golang.org/x/tools v0.17.0 // indirect
+	golang.org/x/tools v0.17.0
 	google.golang.org/appengine v1.6.7 // indirect
 	google.golang.org/protobuf v1.31.0 // indirect
 	gopkg.in/alecthomas/kingpin.v2 v2.2.6 // indirect

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"compress/gzip"
 	"compress/zlib"
+	"fmt"
 	"io"
 	"net/http"
 	"strings"
@@ -19,11 +20,18 @@ import (
 // and fills body buffer with actual response body.
 func readNNormalizeRespBody(rc *ResponseChain, body *bytes.Buffer) (err error) {
 	response := rc.resp
+	if response == nil {
+		return fmt.Errorf("something went wrong response is nil")
+	}
 	// net/http doesn't automatically decompress the response body if an
 	// encoding has been specified by the user in the request so in case we have to
 	// manually do it.
 
 	origBody := rc.resp.Body
+	if origBody == nil {
+		// skip normalization if body is nil
+		return nil
+	}
 	// wrap with decode if applicable
 	wrapped, err := wrapDecodeReader(response)
 	if err != nil {
@@ -41,6 +49,9 @@ func readNNormalizeRespBody(rc *ResponseChain, body *bytes.Buffer) (err error) {
 		}
 		if stringsutil.ContainsAny(err.Error(), "unexpected EOF", "read: connection reset by peer", "user canceled") {
 			// keep partial body and continue (skip error) (add meta header in response for debugging)
+			if response.Header == nil {
+				response.Header = make(http.Header)
+			}
 			response.Header.Set("x-nuclei-ignore-error", err.Error())
 			return nil
 		}
