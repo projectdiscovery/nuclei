@@ -129,6 +129,22 @@ func (e *NucleiEngine) LoadTargetsFromReader(reader io.Reader, probeNonHttp bool
 	}
 }
 
+// LoadTargetsWithHttpData loads targets that contain http data from file it currently supports
+// multiple formats like burp xml,openapi,postman,swagger,proxify json
+// Note: this is mutually exclusive with LoadTargets and LoadTargetsFromReader
+func (e *NucleiEngine) LoadTargetsWithHttpData(filePath string, filemode string) error {
+	e.opts.TargetsFilePath = filePath
+	e.opts.InputFileMode = filemode
+	httpProvider, err := provider.NewInputProvider(provider.InputOptions{Options: e.opts})
+	if err != nil {
+		e.opts.TargetsFilePath = ""
+		e.opts.InputFileMode = ""
+		return err
+	}
+	e.inputProvider = httpProvider
+	return nil
+}
+
 // GetExecuterOptions returns the nuclei executor options
 func (e *NucleiEngine) GetExecuterOptions() *protocols.ExecutorOptions {
 	return &e.executerOpts
