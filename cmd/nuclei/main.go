@@ -22,7 +22,7 @@ import (
 	"github.com/projectdiscovery/interactsh/pkg/client"
 	"github.com/projectdiscovery/nuclei/v3/internal/runner"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/config"
-	"github.com/projectdiscovery/nuclei/v3/pkg/input/formats/input"
+	"github.com/projectdiscovery/nuclei/v3/pkg/input/provider"
 	"github.com/projectdiscovery/nuclei/v3/pkg/installer"
 	"github.com/projectdiscovery/nuclei/v3/pkg/model/types/severity"
 	"github.com/projectdiscovery/nuclei/v3/pkg/operators/common/dsl"
@@ -303,7 +303,7 @@ on extensive configurability, massive extensibility and ease of use.`)
 	flagSet.CreateGroup("fuzzing", "Fuzzing",
 		flagSet.StringVarP(&options.FuzzingType, "fuzzing-type", "ft", "", "overrides fuzzing type set in template (replace, prefix, postfix, infix)"),
 		flagSet.StringVarP(&options.FuzzingMode, "fuzzing-mode", "fm", "", "overrides fuzzing mode set in template (multiple, single)"),
-		flagSet.StringVarP(&options.InputFileMode, "input-mode", "im", "list", fmt.Sprintf("mode of input file (%v)", input.Formats())),
+		flagSet.StringVarP(&options.InputFileMode, "input-mode", "im", "list", fmt.Sprintf("mode of input file (%v)", provider.SupportedInputFormats())),
 		flagSet.BoolVar(&options.FuzzTemplates, "fuzz", false, "enable and run fuzzing templates"),
 	)
 
@@ -421,7 +421,7 @@ Additional documentation is available at: https://docs.nuclei.sh/getting-started
 	goflags.DisableAutoConfigMigration = true
 	_ = flagSet.Parse()
 
-    // api key hierarchy: cli flag > env var > .pdcp/credential file
+	// api key hierarchy: cli flag > env var > .pdcp/credential file
 	if pdcpauth == "true" {
 		runner.AuthWithPDCP()
 	} else if len(pdcpauth) == 36 {

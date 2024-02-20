@@ -11,6 +11,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/input/formats/openapi"
 	"github.com/projectdiscovery/nuclei/v3/pkg/input/formats/postman"
 	"github.com/projectdiscovery/nuclei/v3/pkg/input/formats/swagger"
+	"github.com/projectdiscovery/nuclei/v3/pkg/input/formats/yaml"
 	"github.com/projectdiscovery/nuclei/v3/pkg/input/types"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
 )
@@ -93,6 +94,7 @@ func (i *HttpInputProvider) Close() {}
 var providersList = []formats.Format{
 	burp.New(),
 	json.New(),
+	yaml.New(),
 	openapi.New(),
 	postman.New(),
 	swagger.New(),

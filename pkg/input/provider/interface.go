@@ -83,3 +83,8 @@ func NewInputProvider(opts InputOptions) (InputProvider, error) {
 		return http.NewHttpInputProvider(opts.Options.TargetsFilePath, opts.Options.InputFileMode)
 	}
 }
+
+// SupportedFormats returns all supported input formats of nuclei
+func SupportedInputFormats() string {
+	return "list, " + http.SupportedFormats()
+}
