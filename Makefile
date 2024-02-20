@@ -42,4 +42,6 @@ jsupdate:
 ts:
 	$(GOBUILD) $(GOFLAGS) -ldflags '$(LDFLAGS)' -o "tsgen" pkg/js/devtools/tsgen/cmd/tsgen/main.go
 	./tsgen -dir pkg/js/libs -out pkg/js/generated/ts
+fuzzplayground:
+	$(GOBUILD) $(GOFLAGS) -ldflags '$(LDFLAGS)' -o "fuzzplayground" cmd/tools/fuzzplayground/main.go
 

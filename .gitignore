@@ -33,3 +33,6 @@ pkg/protocols/headless/engine/.cache
 /*.yaml
 **/*-config
 **/*-cache
+/fuzzplayground
+integration_tests/fuzzplayground
+

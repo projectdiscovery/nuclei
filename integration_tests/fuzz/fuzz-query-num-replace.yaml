@@ -1,0 +1,33 @@
+id: fuzz-query-num
+
+info:
+  name: Fuzz Query Param For IDOR
+  author: pdteam
+  severity: info
+  description: Query Value Fuzzing using Fuzzing Rules
+
+# TBD method and path here should be replaced/removed since we get entire http request from file
+http:
+  - method: POST
+    path:
+      - "{{BaseURL}}"
+
+    payloads:
+      nums:
+        - 200
+        - 201
+    
+    fuzzing:
+      - part: query
+        type: replace
+        mode: multiple
+        values: 
+          - "^[0-9]+$" # only if value is number
+        fuzz:
+          - '{{nums}}'
+
+    matchers:
+      - type: status
+        status: 
+          - 200      
+    

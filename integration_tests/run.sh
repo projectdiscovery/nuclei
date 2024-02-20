@@ -1,7 +1,7 @@
 #!/bin/bash
 
 echo "::group::Build nuclei"
-rm integration-test nuclei 2>/dev/null
+rm integration-test fuzzplayground nuclei 2>/dev/null
 cd ../cmd/nuclei
 go build -race .
 mv nuclei ../../integration_tests/nuclei 
@@ -18,10 +18,41 @@ echo "::group::Installing nuclei templates"
 ./nuclei -update-templates
 echo "::endgroup::"
 
-./integration-test
-if [ $? -eq 0 ]
-then
-  exit 0
+echo "::group::Build Fuzz Playground"
+cd ../cmd/tools/fuzzplayground
+go build .
+mv fuzzplayground ../../../integration_tests/fuzzplayground
+cd ../../../integration_tests
+echo "::endgroup::"
+
+
+if [ -n "$WINDIR" ]; then
+    echo "Running on Windows, using PowerShell commands"
+    powershell.exe -Command "& {
+        # ... PowerShell version of the script ...
+        Start-Process .\fuzzplayground -PassThru | Set-Variable fuzzplaygroundProcess
+        Start-Process .\integration-test -PassThru | Set-Variable integrationTestProcess
+        $integrationTestProcess | Wait-Process
+        if ($fuzzplaygroundProcess -ne $null) {
+            $fuzzplaygroundProcess | Stop-Process
+        }
+        if ($integrationTestProcess.ExitCode -eq 0) {
+            exit 0
+        } else {
+            exit 1
+        }
+    }"
 else
-  exit 1
+    echo "Running on Unix-like environment"
+    ./fuzzplayground &
+    fuzzplayground_pid=$!
+    ./integration-test &
+    integration_test_pid=$!
+    wait $integration_test_pid
+    kill $fuzzplayground_pid
+    if [ $? -eq 0 ]; then
+      exit 0
+    else
+      exit 1
+    fi
 fi

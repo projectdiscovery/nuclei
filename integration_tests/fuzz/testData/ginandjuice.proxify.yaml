@@ -1,17 +1,17 @@
 timestamp: 2024-02-20T19:24:13+05:30
-url: https://ginandjuice.shop/blog/post?postId=3&source=proxify
+url: http://127.0.0.1:8082/blog/post?postId=3&source=proxify
 request:
   header:
     Accept-Encoding: gzip
     Connection: close
     User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 11_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/87.0.4280.88 Safari/537.36
-    host: ginandjuice.shop
+    host: 127.0.0.1:8082
     method: GET
     path: /blog/post
     scheme: https
   raw: |+
     GET /blog/post?postId=3&source=proxify HTTP/1.1
-    Host: ginandjuice.shop
+    Host: 127.0.0.1:8082
     Accept-Encoding: gzip
     Connection: close
     User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 11_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/87.0.4280.88 Safari/537.36
@@ -37,21 +37,64 @@ response:
     X-Frame-Options: SAMEORIGIN
 
 ---
+timestamp: 2024-02-20T19:24:13+05:30
+url: http://127.0.0.1:8082/reset-password
+request:
+  header:
+    Accept-Encoding: gzip
+    Connection: close
+    User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 11_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/87.0.4280.88 Safari/537.36
+    host: 127.0.0.1:8082
+    method: GET
+    path: /blog/post
+    scheme: https
+  raw: |+
+    POST /reset-password HTTP/1.1
+    Host: 127.0.0.1:8082
+    X-Forwarded-For: 127.0.0.1:8082
+    Accept-Encoding: gzip
+    Connection: close
+    Content-Type: application/json
+    Content-Length: 23
+    User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 11_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/87.0.4280.88 Safari/537.36
+    
+    {"password":"12345678"}
+response:
+  header:
+    Content-Encoding: gzip
+    Content-Type: text/html; charset=utf-8
+    Date: Tue, 20 Feb 2024 13:54:13 GMT
+    Set-Cookie: AWSALB=9l3X2bRs5JVQp5cO8o7xLckrdo3FZIQzbS0ga0n4ctfDApb/nn0K6AiSLLAMbG7CCDHqKOj9kQdyj6T2RzBDULszJ+2Oy8KcyuOKhFsCGVTVabnJTkVwhyXLciFt; Expires=Tue, 27 Feb 2024 13:54:13 GMT; Path=/, AWSALBCORS=9l3X2bRs5JVQp5cO8o7xLckrdo3FZIQzbS0ga0n4ctfDApb/nn0K6AiSLLAMbG7CCDHqKOj9kQdyj6T2RzBDULszJ+2Oy8KcyuOKhFsCGVTVabnJTkVwhyXLciFt; Expires=Tue, 27 Feb 2024 13:54:13 GMT; Path=/; SameSite=None; Secure, session=ymwLa8dKmWjLl43BBpQnrp5LkFZraYkp; Secure; HttpOnly; SameSite=None
+    X-Backend: ea6c1d8c-a8e5-4bef-b8db-879bbb13cf62
+    X-Frame-Options: SAMEORIGIN
+  raw: |+
+    HTTP/1.1 200 OK
+    Connection: close
+    Content-Encoding: gzip
+    Content-Type: text/html; charset=utf-8
+    Date: Tue, 20 Feb 2024 13:54:13 GMT
+    Set-Cookie: AWSALB=9l3X2bRs5JVQp5cO8o7xLckrdo3FZIQzbS0ga0n4ctfDApb/nn0K6AiSLLAMbG7CCDHqKOj9kQdyj6T2RzBDULszJ+2Oy8KcyuOKhFsCGVTVabnJTkVwhyXLciFt; Expires=Tue, 27 Feb 2024 13:54:13 GMT; Path=/
+    Set-Cookie: AWSALBCORS=9l3X2bRs5JVQp5cO8o7xLckrdo3FZIQzbS0ga0n4ctfDApb/nn0K6AiSLLAMbG7CCDHqKOj9kQdyj6T2RzBDULszJ+2Oy8KcyuOKhFsCGVTVabnJTkVwhyXLciFt; Expires=Tue, 27 Feb 2024 13:54:13 GMT; Path=/; SameSite=None; Secure
+    Set-Cookie: session=ymwLa8dKmWjLl43BBpQnrp5LkFZraYkp; Secure; HttpOnly; SameSite=None
+    X-Backend: ea6c1d8c-a8e5-4bef-b8db-879bbb13cf62
+    X-Frame-Options: SAMEORIGIN
+
+---
 timestamp: 2024-02-20T19:24:13+05:32
-url: https://ginandjuice.shop/users/3
+url: http://127.0.0.1:8082/users/3
 request:
   header:
     Accept-Encoding: gzip
     Authorization: Bearer 3x4mpl3t0k3n
     Connection: close
     User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 11_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/87.0.4280.88 Safari/537.36
-    host: ginandjuice.shop
+    host: 127.0.0.1:8082
     method: POST
     path: /catalog/product
     scheme: https
   raw: |+
-    POST /catalog/product?productId=3 HTTP/1.1
-    Host: ginandjuice.shop
+    GET /users/3 HTTP/1.1
+    Host: 127.0.0.1:8082
     Authorization: Bearer 3x4mpl3t0k3n
     Accept-Encoding: gzip
     Connection: close

@@ -12,6 +12,10 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/testutils"
 )
 
+const (
+	targetFile = "fuzz/testData/ginandjuice.proxify.yaml"
+)
+
 var fuzzingTestCases = []TestCaseInfo{
 	{Path: "fuzz/fuzz-mode.yaml", TestCase: &fuzzModeOverride{}},
 	{Path: "fuzz/fuzz-type.yaml", TestCase: &fuzzTypeOverride{}},
@@ -19,6 +23,22 @@ var fuzzingTestCases = []TestCaseInfo{
 	{Path: "fuzz/fuzz-headless.yaml", TestCase: &HeadlessFuzzingQuery{}},
 	{Path: "fuzz/fuzz-header-basic.yaml", TestCase: &FuzzHeaderBasic{}},
 	{Path: "fuzz/fuzz-header-multiple.yaml", TestCase: &FuzzHeaderMultiple{}},
+	// for fuzzing we should prioritize adding test case related backend
+	// logic in fuzz playground server instead of adding them here
+	{Path: "fuzz/fuzz-query-num-replace.yaml", TestCase: &genericFuzzTestCase{expectedResults: 2}},
+	{Path: "fuzz/fuzz-header-ssrf.yaml", TestCase: &genericFuzzTestCase{expectedResults: 1}},
+}
+
+type genericFuzzTestCase struct {
+	expectedResults int
+}
+
+func (g *genericFuzzTestCase) Execute(filePath string) error {
+	results, err := testutils.RunNucleiWithArgsAndGetResults(debug, "-t", filePath, "-l", targetFile, "-im", "yaml")
+	if err != nil {
+		return err
+	}
+	return expectResultsCount(results, g.expectedResults)
 }
 
 type httpFuzzQuery struct{}

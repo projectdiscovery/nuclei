@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"io"
+	"net/http"
 	"os/exec"
 	"strconv"
 	"strings"
@@ -23,6 +24,8 @@ func main() {
 	e.GET("/request", requestHandler)
 	e.GET("/email", emailHandler)
 	e.GET("/permissions", permissionsHandler)
+	e.GET("/blog/post", numIdorHandler) // for num based idors like ?id=44
+	e.POST("/reset-password", resetPasword)
 	if err := e.Start("localhost:8082"); err != nil {
 		panic(err)
 	}
@@ -91,4 +94,34 @@ func permissionsHandler(ctx echo.Context) error {
 	data, _ := cmd.CombinedOutput()
 
 	return ctx.HTML(200, fmt.Sprintf(bodyTemplate, string(data)))
+}
+
+func numIdorHandler(ctx echo.Context) error {
+	// validate if any numerical query param is present
+	// if not, return 400 if so, return 200
+	for k := range ctx.QueryParams() {
+		if _, err := strconv.Atoi(ctx.QueryParam(k)); err == nil {
+			return ctx.JSON(200, "Profile Info for user with id "+ctx.QueryParam(k))
+		}
+	}
+	return ctx.JSON(400, "No numerical query param found")
+}
+
+// resetPassword mock
+func resetPasword(c echo.Context) error {
+	var m map[string]interface{}
+	if err := c.Bind(&m); err != nil {
+		return c.JSON(500, "Something went wrong")
+	}
+
+	host := c.Request().Header.Get("X-Forwarded-For")
+	if host == "" {
+		return c.JSON(500, "Something went wrong")
+	}
+	resp, err := http.Get("http://internal." + host + "/update?user=1337&pass=" + m["password"].(string))
+	if err != nil {
+		return c.JSON(500, "Something went wrong")
+	}
+	defer resp.Body.Close()
+	return c.JSON(200, "Password reset successfully")
 }
