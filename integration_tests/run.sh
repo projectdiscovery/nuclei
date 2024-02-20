@@ -30,13 +30,13 @@ if [ -n "$WINDIR" ]; then
     echo "Running on Windows, using PowerShell commands"
     powershell.exe -Command "& {
         # ... PowerShell version of the script ...
-        Start-Process .\fuzzplayground -PassThru | Set-Variable fuzzplaygroundProcess
-        Start-Process .\integration-test -PassThru | Set-Variable integrationTestProcess
-        $integrationTestProcess | Wait-Process
-        if ($fuzzplaygroundProcess -ne $null) {
-            $fuzzplaygroundProcess | Stop-Process
+        \$fuzzplaygroundProcess = Start-Process .\fuzzplayground -PassThru
+        \$integrationTestProcess = Start-Process .\integration-test -PassThru
+        Wait-Process -InputObject \$integrationTestProcess
+        if (\$fuzzplaygroundProcess -ne \$null) {
+            Stop-Process -InputObject \$fuzzplaygroundProcess
         }
-        if ($integrationTestProcess.ExitCode -eq 0) {
+        if (\$integrationTestProcess.ExitCode -eq 0) {
             exit 0
         } else {
             exit 1
