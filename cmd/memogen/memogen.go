@@ -16,13 +16,21 @@ import (
 )
 
 var (
-	path = flag.String("src path", "", "nuclei source path")
+	srcPath = flag.String("src", "", "nuclei source path")
+	tplPath = flag.String("tpl", "function.tpl", "template path")
+	tplSrc  []byte
 )
 
 func main() {
 	flag.Parse()
 
-	err := filepath.Walk(*path, walk)
+	var err error
+	tplSrc, err = os.ReadFile(*tplPath)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	err = filepath.Walk(*srcPath, walk)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -55,8 +63,8 @@ func walk(path string, info fs.FileInfo, err error) error {
 	if !stringsutil.ContainsAnyI(string(data), "@memo") {
 		return nil
 	}
-	out, err := memoize.Src("function.tpl", path, data, "")
-	log.Println(string(out))
+	log.Println("processing:", path)
+	out, err := memoize.Src(string(tplSrc), path, data, "")
 	if err != nil {
 		return err
 	}
