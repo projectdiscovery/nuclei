@@ -9,6 +9,7 @@ import (
 	"io"
 	"net/textproto"
 	"strings"
+	"sync"
 
 	"github.com/projectdiscovery/retryablehttp-go"
 	"github.com/projectdiscovery/utils/conversion"
@@ -33,10 +34,16 @@ type RequestResponse struct {
 	Request *HttpRequest `json:"request"`
 	// Response is the response of the request
 	Response *HttpResponse `json:"response"`
+
+	// unexported / internal fields
+	// lazy build request
+	req    *retryablehttp.Request `json:"-"`
+	reqErr error                  `json:"-"`
+	once   sync.Once              `json:"-"`
 }
 
 // Clone clones the request response
-func (rr RequestResponse) Clone() *RequestResponse {
+func (rr *RequestResponse) Clone() *RequestResponse {
 	cloned := &RequestResponse{
 		URL: *rr.URL.Clone(),
 	}
@@ -51,20 +58,24 @@ func (rr RequestResponse) Clone() *RequestResponse {
 
 // BuildRequest builds a retryablehttp request from the request response
 func (rr *RequestResponse) BuildRequest() (*retryablehttp.Request, error) {
-	urlx := rr.URL.Clone()
-	var body io.Reader = nil
-	if rr.Request.Body != "" {
-		body = strings.NewReader(rr.Request.Body)
-	}
-	req, err := retryablehttp.NewRequestFromURL(rr.Request.Method, urlx, body)
-	if err != nil {
-		return nil, fmt.Errorf("could not create request: %s", err)
-	}
-	rr.Request.Headers.Iterate(func(k, v string) bool {
-		req.Header.Add(k, v)
-		return true
+	rr.once.Do(func() {
+		urlx := rr.URL.Clone()
+		var body io.Reader = nil
+		if rr.Request.Body != "" {
+			body = strings.NewReader(rr.Request.Body)
+		}
+		req, err := retryablehttp.NewRequestFromURL(rr.Request.Method, urlx, body)
+		if err != nil {
+			rr.reqErr = fmt.Errorf("could not create request: %s", err)
+			return
+		}
+		rr.Request.Headers.Iterate(func(k, v string) bool {
+			req.Header.Add(k, v)
+			return true
+		})
+		rr.req = req
 	})
-	return req, nil
+	return rr.req, rr.reqErr
 }
 
 // To be implemented in the future
@@ -85,7 +96,7 @@ func (rr *RequestResponse) ID() string {
 }
 
 // MarshalJSON marshals the request response to json
-func (rr RequestResponse) MarshalJSON() ([]byte, error) {
+func (rr *RequestResponse) MarshalJSON() ([]byte, error) {
 	m := make(map[string]interface{})
 	m["url"] = rr.URL.String()
 	reqBin, err := json.Marshal(rr.Request)
@@ -235,7 +246,6 @@ func ParseRawRequest(raw string) (rr *RequestResponse, err error) {
 	}
 	hostLine = hostLine[sep+2:]
 	rr.URL.Host = hostLine
-	fmt.Println(hostLine)
 
 	// parse headers
 	rr.Request.Headers = mapsutil.NewOrderedMap[string, string]()

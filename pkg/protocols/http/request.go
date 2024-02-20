@@ -19,7 +19,6 @@ import (
 
 	"github.com/projectdiscovery/fastdialer/fastdialer"
 	"github.com/projectdiscovery/gologger"
-	"github.com/projectdiscovery/nuclei/v3/pkg/fuzz"
 	"github.com/projectdiscovery/nuclei/v3/pkg/operators"
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
@@ -38,7 +37,6 @@ import (
 	templateTypes "github.com/projectdiscovery/nuclei/v3/pkg/templates/types"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	"github.com/projectdiscovery/rawhttp"
-	"github.com/projectdiscovery/retryablehttp-go"
 	convUtil "github.com/projectdiscovery/utils/conversion"
 	"github.com/projectdiscovery/utils/reader"
 	sliceutil "github.com/projectdiscovery/utils/slice"
@@ -335,107 +333,6 @@ func (request *Request) executeTurboHTTP(input *contextargs.Context, dynamicValu
 		return nil
 	}
 	return multierr.Combine(spmHandler.CombinedResults()...)
-}
-
-// executeFuzzingRule executes fuzzing request for a URL
-func (request *Request) executeFuzzingRule(input *contextargs.Context, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
-	fuzzRequestCallback := func(gr fuzz.GeneratedRequest) bool {
-		hasInteractMatchers := interactsh.HasMatchers(request.CompiledOperators)
-		hasInteractMarkers := len(gr.InteractURLs) > 0
-		if request.options.HostErrorsCache != nil && request.options.HostErrorsCache.Check(input.MetaInput.Input) {
-			return false
-		}
-		request.options.RateLimiter.Take()
-		req := &generatedRequest{
-			request:        gr.Request,
-			dynamicValues:  gr.DynamicValues,
-			interactshURLs: gr.InteractURLs,
-			original:       request,
-		}
-		var gotMatches bool
-		requestErr := request.executeRequest(input, req, gr.DynamicValues, hasInteractMatchers, func(event *output.InternalWrappedEvent) {
-			if hasInteractMarkers && hasInteractMatchers && request.options.Interactsh != nil {
-				requestData := &interactsh.RequestData{
-					MakeResultFunc: request.MakeResultEvent,
-					Event:          event,
-					Operators:      request.CompiledOperators,
-					MatchFunc:      request.Match,
-					ExtractFunc:    request.Extract,
-				}
-				request.options.Interactsh.RequestEvent(gr.InteractURLs, requestData)
-				gotMatches = request.options.Interactsh.AlreadyMatched(requestData)
-			} else {
-				callback(event)
-			}
-			// Add the extracts to the dynamic values if any.
-			if event.OperatorsResult != nil {
-				gotMatches = event.OperatorsResult.Matched
-			}
-		}, 0)
-		// If a variable is unresolved, skip all further requests
-		if errors.Is(requestErr, errStopExecution) {
-			return false
-		}
-		if requestErr != nil {
-			if request.options.HostErrorsCache != nil {
-				request.options.HostErrorsCache.MarkFailed(input.MetaInput.Input, requestErr)
-			}
-			gologger.Verbose().Msgf("[%s] Error occurred in request: %s\n", request.options.TemplateID, requestErr)
-		}
-		request.options.Progress.IncrementRequests()
-
-		// If this was a match, and we want to stop at first match, skip all further requests.
-		shouldStopAtFirstMatch := request.options.Options.StopAtFirstMatch || request.StopAtFirstMatch
-		if shouldStopAtFirstMatch && gotMatches {
-			return false
-		}
-		return true
-	}
-
-	// Iterate through all requests for template and queue them for fuzzing
-	generator := request.newGenerator(true)
-	for {
-		value, payloads, result := generator.nextValue()
-		if !result {
-			break
-		}
-		// TODO: Support building from raw request instead of input URL
-		// For now we are doing hacky manner of building
-		var generatedRequest *retryablehttp.Request
-		var dynamicValues map[string]interface{}
-		if input.MetaInput.ReqResp != nil {
-			generated, err := input.MetaInput.ReqResp.BuildRequest()
-			if err != nil {
-				fmt.Printf("could not parse raw request: %s\n", err)
-				continue
-			}
-			generatedRequest = generated
-			dynamicValues = payloads
-		} else {
-			generated, err := generator.Make(context.Background(), input, value, payloads, nil)
-			if err != nil {
-				continue
-			}
-			generatedRequest = generated.request
-			dynamicValues = generated.dynamicValues
-		}
-		input.MetaInput = &contextargs.MetaInput{Input: generatedRequest.URL.String()}
-		for _, rule := range request.Fuzzing {
-			err := rule.Execute(&fuzz.ExecuteRuleInput{
-				Input:       input,
-				Callback:    fuzzRequestCallback,
-				Values:      dynamicValues,
-				BaseRequest: generatedRequest,
-			})
-			if err == types.ErrNoMoreRequests {
-				return nil
-			}
-			if err != nil {
-				return errors.Wrap(err, "could not execute rule")
-			}
-		}
-	}
-	return nil
 }
 
 // ExecuteWithResults executes the final request on a URL

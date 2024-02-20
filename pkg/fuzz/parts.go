@@ -15,6 +15,24 @@ func (rule *Rule) executePartRule(input *ExecuteRuleInput, payload string, compo
 	return rule.executePartComponent(input, payload, component)
 }
 
+// checkRuleApplicableOnComponent checks if a rule is applicable on given component
+func (rule *Rule) checkRuleApplicableOnComponent(component component.Component) bool {
+	if rule.Part != component.Name() {
+		return false
+	}
+	foundAny := false
+	component.Iterate(func(key string, value interface{}) {
+		if foundAny {
+			return
+		}
+		if rule.matchKeyOrValue(key, types.ToString(value)) {
+			foundAny = true
+			return
+		}
+	})
+	return foundAny
+}
+
 // executePartComponent executes component part rules
 func (rule *Rule) executePartComponent(input *ExecuteRuleInput, payload string, component component.Component) error {
 	var finalErr error

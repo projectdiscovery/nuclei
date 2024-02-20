@@ -1,6 +1,7 @@
 package fuzz
 
 import (
+	"fmt"
 	"io"
 	"regexp"
 	"strings"
@@ -15,6 +16,21 @@ import (
 	errorutil "github.com/projectdiscovery/utils/errors"
 	urlutil "github.com/projectdiscovery/utils/url"
 )
+
+var (
+	ErrRuleNotApplicable = errorutil.NewWithFmt("rule not applicable : %v")
+)
+
+// IsErrRuleNotApplicable checks if an error is due to rule not applicable
+func IsErrRuleNotApplicable(err error) bool {
+	if err == nil {
+		return false
+	}
+	if strings.Contains(err.Error(), "rule not applicable") {
+		return true
+	}
+	return false
+}
 
 // ExecuteRuleInput is the input for rule Execute function
 type ExecuteRuleInput struct {
@@ -47,41 +63,48 @@ type GeneratedRequest struct {
 //
 // Input is not thread safe and should not be shared between concurrent
 // goroutines.
-func (rule *Rule) Execute(input *ExecuteRuleInput) error {
-	if !rule.isExecutable(input.Input) {
-		return errorutil.NewWithTag("fuzz", "rule is not executable on %v", input.BaseRequest.URL.String())
+func (rule *Rule) Execute(input *ExecuteRuleInput) (err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			err = fmt.Errorf("got panic while executing rule: %v", r)
+		}
+	}()
+	if !rule.isInputURLValid(input.Input) {
+		return ErrRuleNotApplicable.Msgf("invalid input url: %v", input.Input.MetaInput.Input)
 	}
 	if input.BaseRequest == nil && input.Input.MetaInput.ReqResp == nil {
-		return errorutil.NewWithTag("fuzz", "base request and raw request is nil for rule %v", rule)
+		return ErrRuleNotApplicable.Msgf("both base request and reqresp are nil for %v", input.Input.MetaInput.Input)
 	}
-	var componentsList []component.Component
-	// Get all the components for the request input
-	// TODO: Convert URL to request structure
-	// to keep supporting old format as well.
-	//
-	// Iterate through all components and try to gather
-	// them from the provided request.
+
+	var finalComponentList []component.Component
+	// match rule part with component name
 	for _, componentName := range component.Components {
 		if rule.partType != requestPartType && rule.Part != componentName {
 			continue
 		}
-
 		component := component.New(componentName)
-
 		discovered, err := component.Parse(input.BaseRequest)
 		if err != nil {
-			gologger.Warning().Msgf("Could not parse component %s: %s\n", componentName, err)
+			gologger.Verbose().Msgf("Could not parse component %s: %s\n", componentName, err)
 			continue
 		}
 		if !discovered {
 			continue
 		}
-		componentsList = append(componentsList, component)
+		// check rule applicable on this component
+		if !rule.checkRuleApplicableOnComponent(component) {
+			continue
+		}
+		finalComponentList = append(finalComponentList, component)
+	}
+
+	if len(finalComponentList) == 0 {
+		return ErrRuleNotApplicable.Msgf("no component matched on this rule")
 	}
 
 	baseValues := input.Values
 	if rule.generator == nil {
-		for _, component := range componentsList {
+		for _, component := range finalComponentList {
 			evaluatedValues, interactURLs := rule.options.Variables.EvaluateWithInteractsh(baseValues, rule.options.Interactsh)
 			input.Values = generators.MergeMaps(evaluatedValues, baseValues, rule.options.Constants)
 			input.InteractURLs = interactURLs
@@ -93,7 +116,7 @@ func (rule *Rule) Execute(input *ExecuteRuleInput) error {
 		return nil
 	}
 mainLoop:
-	for _, component := range componentsList {
+	for _, component := range finalComponentList {
 		iterator := rule.generator.NewIterator()
 		for {
 			values, next := iterator.Value()
@@ -116,20 +139,13 @@ mainLoop:
 	return nil
 }
 
-// isExecutable returns true if the rule can be executed based on provided input
-// TODO: document this with more details
-func (rule *Rule) isExecutable(input *contextargs.Context) bool {
-	_, err := urlutil.Parse(input.MetaInput.Input)
-	if input.MetaInput.ReqResp == nil && err != nil {
+// isInputURLValid returns true if url is valid after parsing it
+func (rule *Rule) isInputURLValid(input *contextargs.Context) bool {
+	if input == nil || input.MetaInput == nil || input.MetaInput.Input == "" {
 		return false
 	}
-	if err != nil {
-		_, err = urlutil.Parse(input.MetaInput.ReqResp.URL.String())
-		if err != nil {
-			return false
-		}
-	}
-	return true
+	_, err := urlutil.Parse(input.MetaInput.Input)
+	return err == nil
 }
 
 // executeRuleValues executes a rule with a set of values

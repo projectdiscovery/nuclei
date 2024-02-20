@@ -289,22 +289,25 @@ func createReportingOptions(options *types.Options) (*reporting.Options, error) 
 
 // configureOutput configures the output logging levels to be displayed on the screen
 func configureOutput(options *types.Options) {
-	// If the user desires verbose output, show verbose output
-	if options.Verbose || options.Validate {
-		gologger.DefaultLogger.SetMaxLevel(levels.LevelVerbose)
-	}
-	if options.Debug || options.DebugRequests || options.DebugResponse {
-		gologger.DefaultLogger.SetMaxLevel(levels.LevelDebug)
-	}
+	// disable standard logger (ref: https://github.com/golang/go/issues/19895)
+	defer logutil.DisableDefaultLogger()
+
 	if options.NoColor {
 		gologger.DefaultLogger.SetFormatter(formatter.NewCLI(true))
 	}
+	// If the user desires verbose output, show verbose output
+	if options.Verbose || options.Validate {
+		gologger.DefaultLogger.SetMaxLevel(levels.LevelVerbose)
+		return
+	}
+	if options.Debug || options.DebugRequests || options.DebugResponse {
+		gologger.DefaultLogger.SetMaxLevel(levels.LevelDebug)
+		return
+	}
+
 	if options.Silent {
 		gologger.DefaultLogger.SetMaxLevel(levels.LevelSilent)
 	}
-
-	// disable standard logger (ref: https://github.com/golang/go/issues/19895)
-	logutil.DisableDefaultLogger()
 }
 
 // loadResolvers loads resolvers from both user-provided flags and file
