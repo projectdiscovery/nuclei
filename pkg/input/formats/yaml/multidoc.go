@@ -4,11 +4,11 @@ import (
 	"io"
 	"os"
 
-	YamlUtil "github.com/goccy/go-yaml"
 	"github.com/pkg/errors"
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/input/formats"
 	"github.com/projectdiscovery/nuclei/v3/pkg/input/types"
+	YamlUtil "gopkg.in/yaml.v3"
 )
 
 // YamlMultiDocFormat is a Yaml format parser for nuclei
@@ -46,7 +46,7 @@ func (j *YamlMultiDocFormat) Parse(input string, resultsCb formats.ParseReqRespC
 	}
 	defer file.Close()
 
-	decoder := YamlUtil.NewDecoder(file, YamlUtil.UseOrderedMap())
+	decoder := YamlUtil.NewDecoder(file)
 	for {
 		var request proxifyRequest
 		err := decoder.Decode(&request)
