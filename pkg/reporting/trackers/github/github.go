@@ -13,6 +13,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
 	"github.com/projectdiscovery/nuclei/v3/pkg/reporting/exporters/markdown/util"
 	"github.com/projectdiscovery/nuclei/v3/pkg/reporting/format"
+	"github.com/projectdiscovery/nuclei/v3/pkg/reporting/trackers/filters"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	"github.com/projectdiscovery/retryablehttp-go"
 	"golang.org/x/oauth2"
@@ -41,6 +42,10 @@ type Options struct {
 	// SeverityAsLabel (optional) sends the severity as the label of the created
 	// issue.
 	SeverityAsLabel bool `yaml:"severity-as-label"`
+	// AllowList contains a list of allowed events for this tracker
+	AllowList *filters.Filter `yaml:"allow-list"`
+	// DenyList contains a list of denied events for this tracker
+	DenyList *filters.Filter `yaml:"deny-list"`
 	// DuplicateIssueCheck (optional) comments under existing finding issue
 	// instead of creating duplicates for subsequent runs.
 	DuplicateIssueCheck bool `yaml:"duplicate-issue-check"`
@@ -127,6 +132,19 @@ func (i *Integration) CreateIssue(event *output.ResultEvent) (err error) {
 		_, _, err = i.client.Issues.CreateComment(ctx, i.options.Owner, i.options.ProjectName, *existingIssue.Number, req)
 		return err
 	}
+}
+
+// ShouldFilter determines if an issue should be logged to this tracker
+func (i *Integration) ShouldFilter(event *output.ResultEvent) bool {
+	if i.options.AllowList != nil && i.options.AllowList.GetMatch(event) {
+		return true
+	}
+
+	if i.options.DenyList != nil && i.options.DenyList.GetMatch(event) {
+		return true
+	}
+
+	return false
 }
 
 func (i *Integration) findIssueByTitle(ctx context.Context, title string) (*github.Issue, error) {

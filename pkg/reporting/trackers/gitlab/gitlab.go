@@ -8,6 +8,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
 	"github.com/projectdiscovery/nuclei/v3/pkg/reporting/exporters/markdown/util"
 	"github.com/projectdiscovery/nuclei/v3/pkg/reporting/format"
+	"github.com/projectdiscovery/nuclei/v3/pkg/reporting/trackers/filters"
 	"github.com/projectdiscovery/retryablehttp-go"
 )
 
@@ -33,6 +34,10 @@ type Options struct {
 	// SeverityAsLabel (optional) sends the severity as the label of the created
 	// issue.
 	SeverityAsLabel bool `yaml:"severity-as-label"`
+	// AllowList contains a list of allowed events for this tracker
+	AllowList *filters.Filter `yaml:"allow-list"`
+	// DenyList contains a list of denied events for this tracker
+	DenyList *filters.Filter `yaml:"deny-list"`
 	// DuplicateIssueCheck is a bool to enable duplicate tracking issue check and update the newest
 	DuplicateIssueCheck bool `yaml:"duplicate-issue-check" default:"false"`
 
@@ -111,4 +116,17 @@ func (i *Integration) CreateIssue(event *output.ResultEvent) error {
 	})
 
 	return err
+}
+
+// ShouldFilter determines if an issue should be logged to this tracker
+func (i *Integration) ShouldFilter(event *output.ResultEvent) bool {
+	if i.options.AllowList != nil && i.options.AllowList.GetMatch(event) {
+		return true
+	}
+
+	if i.options.DenyList != nil && i.options.DenyList.GetMatch(event) {
+		return true
+	}
+
+	return false
 }

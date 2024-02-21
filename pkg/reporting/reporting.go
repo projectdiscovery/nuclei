@@ -12,7 +12,6 @@ import (
 
 	"errors"
 
-	"github.com/projectdiscovery/nuclei/v3/pkg/model/types/severity"
 	"github.com/projectdiscovery/nuclei/v3/pkg/model/types/stringslice"
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
 	"github.com/projectdiscovery/nuclei/v3/pkg/reporting/dedupe"
@@ -20,62 +19,26 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/reporting/exporters/markdown"
 	"github.com/projectdiscovery/nuclei/v3/pkg/reporting/exporters/sarif"
 	"github.com/projectdiscovery/nuclei/v3/pkg/reporting/exporters/splunk"
+	"github.com/projectdiscovery/nuclei/v3/pkg/reporting/trackers/filters"
 	"github.com/projectdiscovery/nuclei/v3/pkg/reporting/trackers/gitea"
 	"github.com/projectdiscovery/nuclei/v3/pkg/reporting/trackers/github"
 	"github.com/projectdiscovery/nuclei/v3/pkg/reporting/trackers/gitlab"
 	"github.com/projectdiscovery/nuclei/v3/pkg/reporting/trackers/jira"
 	errorutil "github.com/projectdiscovery/utils/errors"
 	fileutil "github.com/projectdiscovery/utils/file"
-	sliceutil "github.com/projectdiscovery/utils/slice"
 )
-
-// Filter filters the received event and decides whether to perform
-// reporting for it or not.
-type Filter struct {
-	Severities severity.Severities     `yaml:"severity"`
-	Tags       stringslice.StringSlice `yaml:"tags"`
-}
 
 var (
 	ErrReportingClientCreation = errors.New("could not create reporting client")
 	ErrExportClientCreation    = errors.New("could not create exporting client")
 )
 
-// GetMatch returns true if a filter matches result event
-func (filter *Filter) GetMatch(event *output.ResultEvent) bool {
-	return isSeverityMatch(event, filter) && isTagMatch(event, filter) // TODO revisit this
-}
-
-func isTagMatch(event *output.ResultEvent, filter *Filter) bool {
-	filterTags := filter.Tags
-	if filterTags.IsEmpty() {
-		return true
-	}
-
-	tags := event.Info.Tags.ToSlice()
-	for _, filterTag := range filterTags.ToSlice() {
-		if sliceutil.Contains(tags, filterTag) {
-			return true
-		}
-	}
-
-	return false
-}
-
-func isSeverityMatch(event *output.ResultEvent, filter *Filter) bool {
-	resultEventSeverity := event.Info.SeverityHolder.Severity // TODO review
-
-	if len(filter.Severities) == 0 {
-		return true
-	}
-
-	return sliceutil.Contains(filter.Severities, resultEventSeverity)
-}
-
 // Tracker is an interface implemented by an issue tracker
 type Tracker interface {
 	// CreateIssue creates an issue in the tracker
 	CreateIssue(event *output.ResultEvent) error
+	// ShouldFilter determines if the event should be filtered out
+	ShouldFilter(event *output.ResultEvent) bool
 }
 
 // Exporter is an interface implemented by an issue exporter
@@ -197,8 +160,8 @@ func CreateConfigIfNotExists() error {
 	values := stringslice.StringSlice{Value: []string{}}
 
 	options := &Options{
-		AllowList:             &Filter{Tags: values},
-		DenyList:              &Filter{Tags: values},
+		AllowList:             &filters.Filter{Tags: values},
+		DenyList:              &filters.Filter{Tags: values},
 		GitHub:                &github.Options{},
 		GitLab:                &gitlab.Options{},
 		Gitea:                 &gitea.Options{},
@@ -240,6 +203,7 @@ func (c *ReportingClient) Close() {
 
 // CreateIssue creates an issue in the tracker
 func (c *ReportingClient) CreateIssue(event *output.ResultEvent) error {
+	// process global allow/deny list
 	if c.options.AllowList != nil && !c.options.AllowList.GetMatch(event) {
 		return nil
 	}
@@ -250,6 +214,10 @@ func (c *ReportingClient) CreateIssue(event *output.ResultEvent) error {
 	unique, err := c.dedupe.Index(event)
 	if unique {
 		for _, tracker := range c.trackers {
+			// process tracker specific allow/deny list
+			if tracker.ShouldFilter(event) {
+				continue
+			}
 			if trackerErr := tracker.CreateIssue(event); trackerErr != nil {
 				err = multierr.Append(err, trackerErr)
 			}
