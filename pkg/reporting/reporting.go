@@ -201,6 +201,7 @@ func CreateConfigIfNotExists() error {
 		DenyList:              &Filter{Tags: values},
 		GitHub:                &github.Options{},
 		GitLab:                &gitlab.Options{},
+		Gitea:                 &gitea.Options{},
 		Jira:                  &jira.Options{},
 		MarkdownExporter:      &markdown.Options{},
 		SarifExporter:         &sarif.Options{},
