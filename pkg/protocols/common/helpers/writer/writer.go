@@ -1,6 +1,8 @@
 package writer
 
 import (
+	"fmt"
+
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
 	"github.com/projectdiscovery/nuclei/v3/pkg/progress"
@@ -8,7 +10,7 @@ import (
 )
 
 // WriteResult is a helper for writing results to the output
-func WriteResult(data *output.InternalWrappedEvent, output output.Writer, progress progress.Progress, issuesClient reporting.Client) bool {
+func WriteResult(data *output.InternalWrappedEvent, outputs output.Writer, progress progress.Progress, issuesClient reporting.Client) bool {
 	// Handle the case where no result found for the template.
 	// In this case, we just show misc information about the failed
 	// match for the template.
@@ -16,8 +18,37 @@ func WriteResult(data *output.InternalWrappedEvent, output output.Writer, progre
 		return false
 	}
 	var matched bool
+	request_response := make([]output.RequestResponse, 0)
+	if types, ok := data.InternalEvent["type"]; ok {
+		switch types.(string) {
+		case "dns":
+			request, request_ok := data.InternalEvent["request"]
+			response, response_ok := data.InternalEvent["raw"]
+			if request_ok && response_ok {
+				request_response = append(request_response, output.RequestResponse{Request: fmt.Sprintf("%v", request), Response: fmt.Sprintf("%v", response)})
+			}
+		case "http":
+			index := 0
+			for {
+				index = index + 1
+				key := fmt.Sprintf("http_%d", index)
+				request, request_ok := data.InternalEvent[fmt.Sprintf("%s_request", key)]
+				response, response_ok := data.InternalEvent[fmt.Sprintf("%s_response", key)]
+				if !request_ok || !response_ok {
+					break
+				}
+				request_response = append(request_response, output.RequestResponse{Request: request.(string), Response: response.(string)})
+				if index > 10 {
+					break
+				}
+			}
+		default:
+
+		}
+	}
 	for _, result := range data.Results {
-		if err := output.Write(result); err != nil {
+		result.RequestResponse = request_response
+		if err := outputs.Write(result); err != nil {
 			gologger.Warning().Msgf("Could not write output event: %s\n", err)
 		}
 		if !matched {

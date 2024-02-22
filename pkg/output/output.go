@@ -61,6 +61,7 @@ type StandardWriter struct {
 	traceFile             io.WriteCloser
 	errorFile             io.WriteCloser
 	severityColors        func(severity.Severity) string
+	storeProcess          bool
 	storeResponse         bool
 	storeResponseDir      string
 	omitTemplate          bool
@@ -110,6 +111,13 @@ func (iwe *InternalWrappedEvent) SetOperatorResult(operatorResult *operators.Res
 	iwe.OperatorsResult = operatorResult
 }
 
+type RequestResponse struct {
+	// Request is the optional, dumped request for the match.
+	Request string `json:"request,omitempty"`
+	// Response is the optional, dumped response for the match.
+	Response string `json:"response,omitempty"`
+}
+
 // ResultEvent is a wrapped result event for a single nuclei output.
 type ResultEvent struct {
 	// Template is the relative filename for the template
@@ -149,6 +157,8 @@ type ResultEvent struct {
 	Request string `json:"request,omitempty"`
 	// Response is the optional, dumped response for the match.
 	Response string `json:"response,omitempty"`
+	// Storage request and response list.
+	RequestResponse []RequestResponse `json:"request_response,omitempty"`
 	// Metadata contains any optional metadata for the event
 	Metadata map[string]interface{} `json:"meta,omitempty"`
 	// IP is the IP address for the found result event.
@@ -220,6 +230,7 @@ func NewStandardWriter(options *types.Options) (*StandardWriter, error) {
 		traceFile:        traceOutput,
 		errorFile:        errorOutput,
 		severityColors:   colorizer.New(auroraColorizer),
+		storeProcess:     options.StoreProcess,
 		storeResponse:    options.StoreResponse,
 		storeResponseDir: options.StoreResponseDir,
 		omitTemplate:     options.OmitTemplate,
@@ -233,7 +244,9 @@ func (w *StandardWriter) Write(event *ResultEvent) error {
 	if event.TemplatePath != "" {
 		event.Template, event.TemplateURL = utils.TemplatePathURL(types.ToString(event.TemplatePath), types.ToString(event.TemplateID))
 	}
-
+	if !w.storeProcess {
+		event.RequestResponse = make([]RequestResponse, 0)
+	}
 	event.Timestamp = time.Now()
 
 	var data []byte
