@@ -68,6 +68,30 @@ func (r *Runner) listAvailableStoreTemplates(store *loader.Store) {
 	}
 }
 
+func (r *Runner) listAvailableStoreTags(store *loader.Store) {
+	gologger.Print().Msgf(
+		"\nListing available %v nuclei tags for %v",
+		config.DefaultConfig.TemplateVersion,
+		config.DefaultConfig.TemplatesDirectory,
+	)
+	tags_set := make(map[string]int)
+	for _, tpl := range store.Templates() {
+		for _, tag := range tpl.Info.Tags.ToSlice() {
+			prev_count, ok := tags_set[tag]
+
+			if !ok {
+				prev_count = 0
+			}
+
+			tags_set[tag] = prev_count + 1
+		}
+	}
+
+	for tag, count := range tags_set {
+		gologger.Silent().Msgf("%s\t%d\n", tag, count)
+	}
+}
+
 func (r *Runner) highlightTemplate(body *[]byte) ([]byte, error) {
 	var buf bytes.Buffer
 	// YAML lexer, true color terminal formatter and monokai style

@@ -478,7 +478,11 @@ func (r *Runner) RunEnumeration() error {
 		r.listAvailableStoreTemplates(store)
 		os.Exit(0)
 	}
-
+	// list all tags
+	if r.options.TagList {
+		r.listAvailableStoreTags(store)
+		os.Exit(0)
+	}
 	// display execution info like version , templates used etc
 	r.displayExecutionInfo(store)
 
