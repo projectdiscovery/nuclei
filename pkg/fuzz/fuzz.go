@@ -72,9 +72,16 @@ type Rule struct {
 	//     value: >
 	//       []string{"{{ssrf}}", "{{interactsh-url}}", "example-value"}
 	Fuzz []string `yaml:"fuzz,omitempty" json:"fuzz,omitempty" jsonschema:"title=payloads of fuzz rule,description=Payloads to perform fuzzing substitutions with"`
-
-	options   *protocols.ExecutorOptions
-	generator *generators.PayloadGenerator
+	// description: |
+	//  replace-regex is regex for regex-replace rule type
+	//  it is only required for replace-regex rule type
+	// examples:
+	//   - type: replace-regex
+	//     replace-regex: "https?://.*"
+	ReplaceRegex string         `yaml:"replace-regex,omitempty" json:"replace-regex,omitempty" jsonschema:"title=replace regex of rule,description=Regex for regex-replace rule type"`
+	replaceRegex *regexp.Regexp `yaml:"-" json:"-"`
+	options      *protocols.ExecutorOptions
+	generator    *generators.PayloadGenerator
 }
 
 // ruleType is the type of rule enum declaration
@@ -85,13 +92,15 @@ const (
 	prefixRuleType
 	postfixRuleType
 	infixRuleType
+	replaceRegexRuleType
 )
 
 var stringToRuleType = map[string]ruleType{
-	"replace": replaceRuleType,
-	"prefix":  prefixRuleType,
-	"postfix": postfixRuleType,
-	"infix":   infixRuleType,
+	"replace":       replaceRuleType,
+	"prefix":        prefixRuleType,
+	"postfix":       postfixRuleType,
+	"infix":         infixRuleType,
+	"replace-regex": replaceRegexRuleType,
 }
 
 // partType is the part of rule enum declaration

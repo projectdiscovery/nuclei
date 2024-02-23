@@ -218,5 +218,19 @@ func (rule *Rule) Compile(generator *generators.PayloadGenerator, options *proto
 		}
 		rule.keysRegex = append(rule.keysRegex, compiled)
 	}
+	if rule.ruleType != replaceRegexRuleType {
+		if rule.ReplaceRegex != "" {
+			return errors.Errorf("replace-regex is only applicable for replace and replace-regex rule types")
+		}
+	} else {
+		if rule.ReplaceRegex == "" {
+			return errors.Errorf("replace-regex is required for replace-regex rule type")
+		}
+		compiled, err := regexp.Compile(rule.ReplaceRegex)
+		if err != nil {
+			return errors.Wrap(err, "could not compile replace regex")
+		}
+		rule.replaceRegex = compiled
+	}
 	return nil
 }

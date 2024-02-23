@@ -6,18 +6,17 @@ info:
   severity: info
   description: Query Value Fuzzing using Fuzzing Rules
 
-# TBD method and path here should be replaced/removed since we get entire http request from file
 http:
-  - filter:
+  - filters:
       - type: dsl
         dsl:
-          - 'len(Query) > 0'
+          - 'len(query) > 0'
     # below filter is related to integration testing 
       - type: word
-        part: Path
+        part: path
         words:
           - /blog/post
-    filter-condition: and
+    filters-condition: and
 
     payloads:
       nums:

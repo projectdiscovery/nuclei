@@ -255,12 +255,15 @@ func (request *Request) filterDataMap(input *contextargs.Context) map[string]int
 	m := make(map[string]interface{})
 	parsed, err := input.MetaInput.URL()
 	if err != nil {
-		m["Host"] = input.MetaInput.Input
+		m["host"] = input.MetaInput.Input
 		return m
 	}
 	m = protocolutils.GenerateVariables(parsed, true, m)
-	m["Path"] = parsed.Path // override existing
-	m["Query"] = parsed.RawQuery
+	for k, v := range m {
+		m[strings.ToLower(k)] = v
+	}
+	m["path"] = parsed.Path // override existing
+	m["query"] = parsed.RawQuery
 	// add request data like headers, body etc
 	if input.MetaInput.ReqResp != nil && input.MetaInput.ReqResp.Request != nil {
 		req := input.MetaInput.ReqResp.Request

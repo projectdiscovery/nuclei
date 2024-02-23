@@ -110,12 +110,13 @@ func (rule *Rule) executeEvaluate(input *ExecuteRuleInput, key, value, payload s
 	firstpass, _ := expressions.Evaluate(payload, values)
 	interactData, interactshURLs := rule.options.Interactsh.Replace(firstpass, interactshURLs)
 	evaluated, _ := expressions.Evaluate(interactData, values)
-	replaced := rule.executeReplaceRule(input, value, evaluated)
+	replaced := rule.executeRuleTypes(input, value, evaluated)
 	return replaced, interactshURLs
 }
 
-// executeReplaceRule executes replacement for a key and value
-func (rule *Rule) executeReplaceRule(input *ExecuteRuleInput, value, replacement string) string {
+// executeRuleTypes executes replacement for a key and value
+// ex: prefix, postfix, infix, replace , replace-regex
+func (rule *Rule) executeRuleTypes(input *ExecuteRuleInput, value, replacement string) string {
 	var builder strings.Builder
 	if rule.ruleType == prefixRuleType || rule.ruleType == postfixRuleType {
 		builder.Grow(len(value) + len(replacement))
@@ -145,6 +146,8 @@ func (rule *Rule) executeReplaceRule(input *ExecuteRuleInput, value, replacement
 		}
 	case replaceRuleType:
 		returnValue = replacement
+	case replaceRegexRuleType:
+		returnValue = rule.replaceRegex.ReplaceAllString(value, replacement)
 	}
 	return returnValue
 }
