@@ -4,13 +4,26 @@ info:
   name: Fuzz Proxy headers
   author: pdteam
   severity: info
-  description: Fuzzing Proxy headers for Potential SSRF
+  description: Fuzzing Proxy headers for Potential SSRF while resetting password
 
-# TBD method and path here should be replaced/removed since we get entire http request from file
 http:
-  - method: POST
-    path:
-      - "{{BaseURL}}"
+  - filter:
+      - type: word
+        part: all_headers
+        words:
+          - "x-forwarded-for"
+          - "x-forwarded-host"
+          - "forwarded"
+          - "x-real-ip"
+          - "x-original-url"
+          - "x-rewrite-url"
+
+      - type: word
+        part: path
+        words:
+          - "reset"
+
+    filter-condition: AND
 
     payloads:
       values:
@@ -20,13 +33,6 @@ http:
       - part: headers
         type: replace
         mode: multiple
-        keys:
-          - "x-forwarded-for"
-          - "x-forwarded-host"
-          - "forwarded"
-          - "x-real-ip"
-          - "x-original-url"
-          - "x-rewrite-url"
         fuzz:
           - '{{values}}'
 

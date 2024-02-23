@@ -81,7 +81,7 @@ response:
 
 ---
 timestamp: 2024-02-20T19:24:13+05:32
-url: http://127.0.0.1:8082/users/3
+url: http://127.0.0.1:8082/user/3
 request:
   header:
     Accept-Encoding: gzip
@@ -93,7 +93,7 @@ request:
     path: /catalog/product
     scheme: https
   raw: |+
-    GET /users/3 HTTP/1.1
+    GET /user/3 HTTP/1.1
     Host: 127.0.0.1:8082
     Authorization: Bearer 3x4mpl3t0k3n
     Accept-Encoding: gzip

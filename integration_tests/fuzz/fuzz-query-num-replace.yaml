@@ -8,9 +8,16 @@ info:
 
 # TBD method and path here should be replaced/removed since we get entire http request from file
 http:
-  - method: POST
-    path:
-      - "{{BaseURL}}"
+  - filter:
+      - type: dsl
+        dsl:
+          - 'len(Query) > 0'
+    # below filter is related to integration testing 
+      - type: word
+        part: Path
+        words:
+          - /blog/post
+    filter-condition: and
 
     payloads:
       nums:
