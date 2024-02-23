@@ -2,6 +2,7 @@ package component
 
 import (
 	"context"
+	"strings"
 
 	"github.com/projectdiscovery/retryablehttp-go"
 )
@@ -63,18 +64,32 @@ func (q *Header) SetValue(key string, value string) error {
 	return nil
 }
 
+// Delete deletes a key from the component
+func (q *Header) Delete(key string) error {
+	if !q.value.Delete(key) {
+		return ErrKeyNotFound
+	}
+	return nil
+}
+
 // Rebuild returns a new request with the
 // component rebuilt
 func (q *Header) Rebuild() (*retryablehttp.Request, error) {
 	cloned := q.req.Clone(context.Background())
 	for key, value := range q.value.parsed {
+		if strings.EqualFold(key, "Host") {
+			cloned.Host = value.(string)
+		}
 		switch v := value.(type) {
 		case []interface{}:
 			for _, vv := range v {
-				cloned.Header.Add(key, vv.(string))
+				if cloned.Header[key] == nil {
+					cloned.Header[key] = make([]string, 0)
+				}
+				cloned.Header[key] = append(cloned.Header[key], vv.(string))
 			}
 		case string:
-			cloned.Header.Set(key, v)
+			cloned.Header[key] = []string{v}
 		}
 	}
 	return cloned, nil

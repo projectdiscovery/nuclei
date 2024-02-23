@@ -150,12 +150,26 @@ func (rule *Rule) isInputURLValid(input *contextargs.Context) bool {
 
 // executeRuleValues executes a rule with a set of values
 func (rule *Rule) executeRuleValues(input *ExecuteRuleInput, component component.Component) error {
-	for _, payload := range rule.Fuzz {
-		if err := rule.executePartRule(input, payload, component); err != nil {
-			return err
+	if len(rule.Fuzz.Value) > 0 {
+		for _, value := range rule.Fuzz.Value {
+			if err := rule.executePartRule(input, ValueOrKeyValue{Value: value}, component); err != nil {
+				return err
+			}
 		}
+		return nil
+	} else if rule.Fuzz.KV != nil {
+		var gotErr error
+		rule.Fuzz.KV.Iterate(func(key, value string) bool {
+			if err := rule.executePartRule(input, ValueOrKeyValue{Key: key, Value: value}, component); err != nil {
+				gotErr = err
+				return false
+			}
+			return true
+		})
+		return gotErr
+	} else {
+		return fmt.Errorf("no fuzz values specified")
 	}
-	return nil
 }
 
 // Compile compiles a fuzzing rule and initializes it for operation

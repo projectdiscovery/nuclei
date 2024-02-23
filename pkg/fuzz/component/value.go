@@ -83,6 +83,15 @@ func (v *Value) SetParsedValue(key string, value string) bool {
 	return true
 }
 
+// Delete removes a key from the parsed value
+func (v *Value) Delete(key string) bool {
+	if _, ok := v.parsed[key]; !ok {
+		return false
+	}
+	delete(v.parsed, key)
+	return true
+}
+
 // Encode encodes the value into a string
 // using the dataformat and encoding
 func (v *Value) Encode() (string, error) {

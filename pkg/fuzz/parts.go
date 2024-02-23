@@ -11,7 +11,7 @@ import (
 )
 
 // executePartRule executes part rules based on type
-func (rule *Rule) executePartRule(input *ExecuteRuleInput, payload string, component component.Component) error {
+func (rule *Rule) executePartRule(input *ExecuteRuleInput, payload ValueOrKeyValue, component component.Component) error {
 	return rule.executePartComponent(input, payload, component)
 }
 
@@ -34,37 +34,84 @@ func (rule *Rule) checkRuleApplicableOnComponent(component component.Component) 
 }
 
 // executePartComponent executes component part rules
-func (rule *Rule) executePartComponent(input *ExecuteRuleInput, payload string, component component.Component) error {
+func (rule *Rule) executePartComponent(input *ExecuteRuleInput, payload ValueOrKeyValue, component component.Component) error {
 	var finalErr error
-	component.Iterate(func(key string, value interface{}) {
-		valueStr := types.ToString(value)
-		if !rule.matchKeyOrValue(key, valueStr) {
-			return
-		}
 
-		var evaluated string
-		evaluated, input.InteractURLs = rule.executeEvaluate(input, key, valueStr, payload, input.InteractURLs)
-		if err := component.SetValue(key, evaluated); err != nil {
-			return
-		}
-
-		if rule.modeType == singleModeType {
-			req, err := component.Rebuild()
-			if err != nil {
-				return
+	if payload.IsKV() {
+		var origKey string
+		var origValue interface{}
+		component.Iterate(func(key string, value interface{}) {
+			if key == payload.Key {
+				origKey = key
+				origValue = value
 			}
-
-			if qerr := rule.buildInput(input, req, input.InteractURLs, component, key, evaluated, valueStr); qerr != nil {
-				finalErr = qerr
-				return
-			}
-			err = component.SetValue(key, valueStr) // change back to previous value for temp
-			if err != nil {
+		})
+		// iterate over given kv instead of component ones
+		func(key, value string) bool {
+			var evaluated string
+			evaluated, input.InteractURLs = rule.executeEvaluate(input, key, "", value, input.InteractURLs)
+			if err := component.SetValue(key, evaluated); err != nil {
 				finalErr = err
+				return false
+			}
+			if rule.modeType == singleModeType {
+				req, err := component.Rebuild()
+				if err != nil {
+					finalErr = err
+					return false
+				}
+
+				if qerr := rule.buildInput(input, req, input.InteractURLs, component, key, evaluated, ""); qerr != nil {
+					finalErr = qerr
+					return false
+				}
+
+				// after building change back to original value to avoid repeating it in furthur requests
+				if origKey != "" {
+					err = component.SetValue(origKey, types.ToString(origValue)) // change back to previous value for temp
+					if err != nil {
+						finalErr = err
+						return false
+					}
+				} else {
+					_ = component.Delete(key) // change back to previous value for temp
+				}
+			}
+			return true
+		}(payload.Key, payload.Value)
+	} else {
+		payloadStr := payload.Value
+		component.Iterate(func(key string, value interface{}) {
+			valueStr := types.ToString(value)
+			if !rule.matchKeyOrValue(key, valueStr) {
 				return
 			}
-		}
-	})
+
+			var evaluated string
+			evaluated, input.InteractURLs = rule.executeEvaluate(input, key, valueStr, payloadStr, input.InteractURLs)
+			if err := component.SetValue(key, evaluated); err != nil {
+				return
+			}
+
+			if rule.modeType == singleModeType {
+				req, err := component.Rebuild()
+				if err != nil {
+					return
+				}
+
+				if qerr := rule.buildInput(input, req, input.InteractURLs, component, key, evaluated, valueStr); qerr != nil {
+					finalErr = qerr
+					return
+				}
+				err = component.SetValue(key, valueStr) // change back to previous value for temp
+				if err != nil {
+					finalErr = err
+					return
+				}
+			}
+		})
+	}
+
 	if finalErr != nil {
 		return finalErr
 	}

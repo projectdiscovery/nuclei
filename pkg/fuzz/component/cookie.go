@@ -66,6 +66,14 @@ func (c *Cookie) SetValue(key string, value string) error {
 	return nil
 }
 
+// Delete deletes a key from the component
+func (c *Cookie) Delete(key string) error {
+	if !c.value.Delete(key) {
+		return ErrKeyNotFound
+	}
+	return nil
+}
+
 // Rebuild returns a new request with the
 // component rebuilt
 func (c *Cookie) Rebuild() (*retryablehttp.Request, error) {

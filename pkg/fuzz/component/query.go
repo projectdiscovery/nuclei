@@ -62,6 +62,14 @@ func (q *Query) SetValue(key string, value string) error {
 	return nil
 }
 
+// Delete deletes a key from the component
+func (q *Query) Delete(key string) error {
+	if !q.value.Delete(key) {
+		return ErrKeyNotFound
+	}
+	return nil
+}
+
 // Rebuild returns a new request with the
 // component rebuilt
 func (q *Query) Rebuild() (*retryablehttp.Request, error) {

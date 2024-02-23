@@ -26,6 +26,7 @@ func main() {
 	e.GET("/permissions", permissionsHandler)
 	e.GET("/blog/post", numIdorHandler) // for num based idors like ?id=44
 	e.POST("/reset-password", resetPasword)
+	e.GET("/host-header-lab", hostHeaderLab)
 	if err := e.Start("localhost:8082"); err != nil {
 		panic(err)
 	}
@@ -124,4 +125,23 @@ func resetPasword(c echo.Context) error {
 	}
 	defer resp.Body.Close()
 	return c.JSON(200, "Password reset successfully")
+}
+
+func hostHeaderLab(c echo.Context) error {
+	// vulnerable app has custom routing and trusts x-forwarded-host
+	// to route to internal services
+	if c.Request().Header.Get("X-Forwarded-Host") != "" {
+		resp, err := http.Get("http://" + c.Request().Header.Get("X-Forwarded-Host"))
+		if err != nil {
+			return c.JSON(500, "Something went wrong")
+		}
+		defer resp.Body.Close()
+		c.Response().Header().Set("Content-Type", resp.Header.Get("Content-Type"))
+		c.Response().WriteHeader(resp.StatusCode)
+		_, err = io.Copy(c.Response().Writer, resp.Body)
+		if err != nil {
+			return c.JSON(500, "Something went wrong")
+		}
+	}
+	return c.JSON(200, "Not a Teapot")
 }

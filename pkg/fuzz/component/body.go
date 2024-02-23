@@ -100,6 +100,14 @@ func (b *Body) SetValue(key string, value string) error {
 	return nil
 }
 
+// Delete deletes a key from the component
+func (b *Body) Delete(key string) error {
+	if !b.value.Delete(key) {
+		return ErrKeyNotFound
+	}
+	return nil
+}
+
 // Rebuild returns a new request with the
 // component rebuilt
 func (b *Body) Rebuild() (*retryablehttp.Request, error) {

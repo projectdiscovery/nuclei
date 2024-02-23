@@ -71,7 +71,10 @@ type Rule struct {
 	//   - name: Examples of fuzz
 	//     value: >
 	//       []string{"{{ssrf}}", "{{interactsh-url}}", "example-value"}
-	Fuzz []string `yaml:"fuzz,omitempty" json:"fuzz,omitempty" jsonschema:"title=payloads of fuzz rule,description=Payloads to perform fuzzing substitutions with"`
+	//      or
+	//       x-header: 1
+	//       x-header: 2
+	Fuzz SliceOrMapSlice `yaml:"fuzz,omitempty" json:"fuzz,omitempty" jsonschema:"title=payloads of fuzz rule,description=Payloads to perform fuzzing substitutions with"`
 	// description: |
 	//  replace-regex is regex for regex-replace rule type
 	//  it is only required for replace-regex rule type

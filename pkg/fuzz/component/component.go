@@ -10,6 +10,9 @@ import (
 // ErrSetValue is a error raised when a value cannot be set
 var ErrSetValue = errors.New("could not set value")
 
+// ErrKeyNotFound is a error raised when a key is not found
+var ErrKeyNotFound = errors.New("key not found")
+
 // Component is a component for a request
 type Component interface {
 	// Name returns the name of the component
@@ -29,6 +32,9 @@ type Component interface {
 	// After calling setValue for mutation, the value must be
 	// called again so as to reset the body to its original state.
 	SetValue(key string, value string) error
+	// Delete deletes a key from the component
+	// If it is applicable
+	Delete(key string) error
 	// Rebuild returns a new request with the
 	// component rebuilt
 	Rebuild() (*retryablehttp.Request, error)

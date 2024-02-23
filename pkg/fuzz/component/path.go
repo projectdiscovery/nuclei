@@ -57,6 +57,14 @@ func (q *Path) SetValue(key string, value string) error {
 	return nil
 }
 
+// Delete deletes a key from the component
+func (q *Path) Delete(key string) error {
+	if !q.value.Delete(key) {
+		return ErrKeyNotFound
+	}
+	return nil
+}
+
 // Rebuild returns a new request with the
 // component rebuilt
 func (q *Path) Rebuild() (*retryablehttp.Request, error) {
