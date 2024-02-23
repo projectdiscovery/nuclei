@@ -8,14 +8,19 @@ package http
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/pkg/errors"
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/fuzz"
+	"github.com/projectdiscovery/nuclei/v3/pkg/operators"
+	"github.com/projectdiscovery/nuclei/v3/pkg/operators/matchers"
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/interactsh"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/utils/vardump"
+	protocolutils "github.com/projectdiscovery/nuclei/v3/pkg/protocols/utils"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	"github.com/projectdiscovery/retryablehttp-go"
 )
@@ -30,12 +35,19 @@ func (request *Request) executeFuzzingRule(input *contextargs.Context, previous 
 	// if it is applicable, we execute all requests
 	// if it is not applicable, we log and fail silently
 
+	// check if target should be fuzzed or not
+	if !request.ShouldFuzzTarget(input) {
+		gologger.Verbose().Msgf("[%s] fuzz: target not applicable for fuzzing\n", request.options.TemplateID)
+		return nil
+	}
+
 	// Iterate through all requests for template and queue them for fuzzing
 	generator := request.newGenerator(true)
 
 	// this will generate next value along with request it is meant to be used with
 	currRequest, payloads, result := generator.nextValue()
-	if !result {
+	if !result && input.MetaInput.ReqResp == nil {
+		// this case is only true if input is not a full http request
 		return fmt.Errorf("no values to generate requests")
 	}
 
@@ -208,4 +220,68 @@ func (request *Request) executeGeneratedFuzzingRequest(gr fuzz.GeneratedRequest,
 		return false
 	}
 	return true
+}
+
+// ShouldFuzzTarget checks if given target should be fuzzed or not using `filter` field in template
+func (request *Request) ShouldFuzzTarget(input *contextargs.Context) bool {
+	if len(request.FuzzingFilter) == 0 {
+		return true
+	}
+	status := []bool{}
+	for index, filter := range request.FuzzingFilter {
+		isMatch, _ := request.Match(request.filterDataMap(input), filter)
+		status = append(status, isMatch)
+		if request.options.Options.MatcherStatus {
+			gologger.Debug().Msgf("[%s] [%s] Filter => %s : %v", input.MetaInput.Target(), request.options.TemplateID, operators.GetMatcherName(filter, index), isMatch)
+		}
+	}
+	if len(status) == 0 {
+		return true
+	}
+	var matched bool
+	if request.fuzzingFilterCondition == matchers.ANDCondition {
+		matched = operators.EvalBoolSlice(status, true)
+	} else {
+		matched = operators.EvalBoolSlice(status, false)
+	}
+	if request.options.Options.MatcherStatus {
+		gologger.Debug().Msgf("[%s] [%s] Final Filter Status =>  %v", input.MetaInput.Target(), request.options.TemplateID, matched)
+	}
+	return matched
+}
+
+// input data map returns map[string]interface{} from input
+func (request *Request) filterDataMap(input *contextargs.Context) map[string]interface{} {
+	m := make(map[string]interface{})
+	parsed, err := input.MetaInput.URL()
+	if err != nil {
+		m["Host"] = input.MetaInput.Input
+		return m
+	}
+	m = protocolutils.GenerateVariables(parsed, true, m)
+	m["Path"] = parsed.Path // override existing
+	m["Query"] = parsed.RawQuery
+	// add request data like headers, body etc
+	if input.MetaInput.ReqResp != nil && input.MetaInput.ReqResp.Request != nil {
+		req := input.MetaInput.ReqResp.Request
+		m["method"] = req.Method
+		m["body"] = req.Body
+
+		sb := &strings.Builder{}
+		req.Headers.Iterate(func(k, v string) bool {
+			k = strings.ToLower(strings.ReplaceAll(strings.TrimSpace(k), "-", "_"))
+			if strings.EqualFold(k, "Cookie") {
+				m["cookie"] = v
+			}
+			sb.WriteString(fmt.Sprintf("%s: %s\n", k, v))
+			return true
+		})
+		m["all_headers"] = sb.String()
+	}
+
+	// dump if svd is enabled
+	if request.options.Options.ShowVarDump {
+		gologger.Debug().Msgf("Fuzz Filter Variables: \n%s\n", vardump.DumpVariables(m))
+	}
+	return m
 }

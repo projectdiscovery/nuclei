@@ -8,6 +8,7 @@ import (
 
 	jsoniter "github.com/json-iterator/go"
 	"github.com/projectdiscovery/nuclei/v3/pkg/input/types"
+	urlutil "github.com/projectdiscovery/utils/url"
 )
 
 // MetaInput represents a target with metadata (TODO: replace with https://github.com/projectdiscovery/metainput)
@@ -27,6 +28,23 @@ func (metaInput *MetaInput) marshalToBuffer() (bytes.Buffer, error) {
 	var b bytes.Buffer
 	err := jsoniter.NewEncoder(&b).Encode(metaInput)
 	return b, err
+}
+
+// Target returns the target of the metainput
+func (metaInput *MetaInput) Target() string {
+	if metaInput.ReqResp != nil && metaInput.ReqResp.URL.URL != nil {
+		return metaInput.ReqResp.URL.String()
+	}
+	return metaInput.Input
+}
+
+// URL returns request url
+func (metaInput *MetaInput) URL() (*urlutil.URL, error) {
+	instance, err := urlutil.ParseAbsoluteURL(metaInput.Target(), false)
+	if err != nil {
+		return nil, err
+	}
+	return instance, nil
 }
 
 // ID returns a unique id/hash for metainput

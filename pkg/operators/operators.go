@@ -287,7 +287,7 @@ func (operators *Operators) Execute(data map[string]interface{}, match MatchFunc
 		}
 		if isMatch, matched := match(data, matcher); isMatch {
 			if isDebug { // matchers without an explicit name or with AND condition should only be made visible if debug is enabled
-				matcherName := getMatcherName(matcher, matcherIndex)
+				matcherName := GetMatcherName(matcher, matcherIndex)
 				result.Matches[matcherName] = matched
 			} else { // if it's a "named" matcher with OR condition, then display it
 				if matcherCondition == matchers.ORCondition && matcher.Name != "" {
@@ -323,7 +323,8 @@ func (operators *Operators) Execute(data map[string]interface{}, match MatchFunc
 	return nil, false
 }
 
-func getMatcherName(matcher *matchers.Matcher, matcherIndex int) string {
+// GetMatcherName returns matchername of given matcher
+func GetMatcherName(matcher *matchers.Matcher, matcherIndex int) string {
 	if matcher.Name != "" {
 		return matcher.Name
 	} else {
@@ -367,4 +368,21 @@ func getExtractedValue(values []string) any {
 	} else {
 		return values
 	}
+}
+
+// EvalBoolSlice evaluates a slice of bools using a logical AND
+func EvalBoolSlice(slice []bool, isAnd bool) bool {
+	if len(slice) == 0 {
+		return false
+	}
+
+	result := slice[0]
+	for _, b := range slice[1:] {
+		if isAnd {
+			result = result && b
+		} else {
+			result = result || b
+		}
+	}
+	return result
 }
