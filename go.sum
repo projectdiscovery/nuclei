@@ -814,8 +814,8 @@ github.com/projectdiscovery/clistats v0.0.20 h1:5jO5SLiRJ7f0nDV0ndBNmBeesbROouPo
 github.com/projectdiscovery/clistats v0.0.20/go.mod h1:GJ2av0KnOvK0AISQnP8hyDclYIji1LVkx2l0pwnzAu4=
 github.com/projectdiscovery/dsl v0.0.44 h1:DoAKyYok83rP6LbGw0DlNI1PdU9mTcIBzxLhgfH9UnU=
 github.com/projectdiscovery/dsl v0.0.44/go.mod h1:+1MWAhhVI/Qap5S4ioepu38ov6euCzdSh5OTjXLv9HI=
-github.com/projectdiscovery/fastdialer v0.0.59 h1:5D0ws7JsYYMC8lm2VKgf91q0kAk6dzqoSHmLIuA2mww=
-github.com/projectdiscovery/fastdialer v0.0.59/go.mod h1:VdYQimFCHafSPP3c+OXgu1DP+FNLJq+U6Xk/ybfJ0/A=
+github.com/projectdiscovery/fastdialer v0.0.60 h1:Bd1rTV73l9ies3pXyBS9XkC/6vjSZWlxyKf+b1ABvyI=
+github.com/projectdiscovery/fastdialer v0.0.60/go.mod h1:u7CVvz5bX/3HZ4w141Yj5PmWVPERsxfXd/Pv8KKTuis=
 github.com/projectdiscovery/fasttemplate v0.0.2 h1:h2cISk5xDhlJEinlBQS6RRx0vOlOirB2y3Yu4PJzpiA=
 github.com/projectdiscovery/fasttemplate v0.0.2/go.mod h1:XYWWVMxnItd+r0GbjA1GCsUopMw1/XusuQxdyAIHMCw=
 github.com/projectdiscovery/freeport v0.0.5 h1:jnd3Oqsl4S8n0KuFkE5Hm8WGDP24ITBvmyw5pFTHS8Q=
