@@ -80,6 +80,38 @@ response:
     X-Frame-Options: SAMEORIGIN
 
 ---
+timestamp: 2024-02-20T19:24:13+06:30
+url: http://127.0.0.1:8082/user/55/profile
+request:
+  header:
+    Accept-Encoding: gzip
+    Connection: close
+    User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 11_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/87.0.4280.88 Safari/537.36
+    host: 127.0.0.1:8082
+    method: GET
+    path: /blog/post
+    scheme: https
+  raw: |+
+    GET /user/55/profile HTTP/1.1
+    Host: 127.0.0.1:8082
+    Accept-Encoding: gzip
+    Connection: close
+    Content-Type: application/json
+    User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 11_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/87.0.4280.88 Safari/537.36
+    
+response:
+  header:
+    Content-Type: application/json; charset=UTF-8
+    Date: Tue, 27 Feb 2024 18:46:44 GMT
+  raw: |+
+    HTTP/1.1 200 OK
+    Content-Type: application/json; charset=UTF-8
+    Date: Tue, 27 Feb 2024 18:46:44 GMT
+    Content-Length: 47
+
+    {"ID":75,"Name":"user","Age":30,"Role":"user"}
+
+---
 timestamp: 2024-02-20T19:24:13+05:32
 url: http://127.0.0.1:8082/host-header-lab
 request:

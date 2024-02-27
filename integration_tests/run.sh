@@ -28,20 +28,7 @@ echo "::endgroup::"
 
 if [ -n "$WINDIR" ]; then
     echo "Running on Windows, using PowerShell commands"
-    powershell.exe -Command "& {
-        # ... PowerShell version of the script ...
-        \$fuzzplaygroundProcess = Start-Process .\fuzzplayground -PassThru
-        \$integrationTestProcess = Start-Process .\integration-test -PassThru
-        Wait-Process -InputObject \$integrationTestProcess
-        if (\$fuzzplaygroundProcess -ne \$null) {
-            Stop-Process -InputObject \$fuzzplaygroundProcess
-        }
-        if (\$integrationTestProcess.ExitCode -eq 0) {
-            exit 0
-        } else {
-            exit 1
-        }
-    }"
+    powershell.exe -File "run_win.ps1"
 else
     echo "Running on Unix-like environment"
     ./fuzzplayground &

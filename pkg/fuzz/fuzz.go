@@ -20,7 +20,7 @@ type Rule struct {
 	//   - "prefix"
 	//   - "postfix"
 	//   - "infix"
-	Type     string `yaml:"type,omitempty" json:"type,omitempty" jsonschema:"title=type of rule,description=Type of fuzzing rule to perform,enum=replace,enum=prefix,enum=postfix,enum=infix"`
+	Type     string `yaml:"type,omitempty" json:"type,omitempty" jsonschema:"title=type of rule,description=Type of fuzzing rule to perform,enum=replace,enum=prefix,enum=postfix,enum=infix,enum=replace-regex"`
 	ruleType ruleType
 	// description: |
 	//   Part is the part of request to fuzz.

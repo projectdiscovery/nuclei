@@ -1,17 +1,40 @@
 package main
 
 import (
+	"database/sql"
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
+	"os"
 	"os/exec"
 	"strconv"
 	"strings"
 
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
+	_ "github.com/mattn/go-sqlite3"
 	"github.com/projectdiscovery/retryablehttp-go"
 )
+
+var (
+	db        *sql.DB
+	tempDBDir string
+)
+
+func init() {
+	dir, err := os.MkdirTemp("", "fuzzplayground-*")
+	if err != nil {
+		panic(err)
+	}
+	tempDBDir = dir
+
+	db, err = sql.Open("sqlite3", fmt.Sprintf("file:%v/test.db?cache=shared&mode=memory", tempDBDir))
+	if err != nil {
+		panic(err)
+	}
+	addDummyUsers(db)
+}
 
 func main() {
 	e := echo.New()
@@ -27,6 +50,7 @@ func main() {
 	e.GET("/blog/post", numIdorHandler) // for num based idors like ?id=44
 	e.POST("/reset-password", resetPasword)
 	e.GET("/host-header-lab", hostHeaderLab)
+	e.GET("/user/:id/profile", userProfile)
 	if err := e.Start("localhost:8082"); err != nil {
 		panic(err)
 	}
@@ -144,4 +168,45 @@ func hostHeaderLab(c echo.Context) error {
 		}
 	}
 	return c.JSON(200, "Not a Teapot")
+}
+
+func userProfile(ctx echo.Context) error {
+	val, _ := url.PathUnescape(ctx.Param("id"))
+	fmt.Printf("Unescaped: %s\n", val)
+	user, err := getUnsanitizedUser(db, val)
+	if err != nil {
+		return ctx.JSON(500, err.Error())
+	}
+	return ctx.JSON(200, user)
+}
+
+type User struct {
+	ID   int
+	Name string
+	Age  int
+	Role string
+}
+
+func addDummyUsers(db *sql.DB) {
+	_, err := db.Exec("CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY, name TEXT, age INTEGER, role TEXT)")
+	if err != nil {
+		panic(err)
+	}
+	_, err = db.Exec("INSERT INTO users (id , name, age, role) VALUES (1,'admin', 30, 'admin')")
+	if err != nil {
+		panic(err)
+	}
+	_, err = db.Exec("INSERT INTO users (id , name, age, role) VALUES (75,'user', 30, 'user')")
+	if err != nil {
+		panic(err)
+	}
+}
+
+func getUnsanitizedUser(db *sql.DB, id string) (User, error) {
+	var user User
+	err := db.QueryRow("SELECT id, name, age, role FROM users WHERE id = "+id).Scan(&user.ID, &user.Name, &user.Age, &user.Role)
+	if err != nil {
+		return user, err
+	}
+	return user, nil
 }

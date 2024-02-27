@@ -84,5 +84,6 @@ func (q *Query) Rebuild() (*retryablehttp.Request, error) {
 	cloned.Params = nil
 	cloned.Params = urlutil.NewOrderedParams()
 	cloned.Params.Decode(encoded)
+	cloned.Update()
 	return cloned, nil
 }

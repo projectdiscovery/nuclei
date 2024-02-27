@@ -2,6 +2,7 @@ package component
 
 import (
 	"context"
+	"strings"
 
 	"github.com/pkg/errors"
 	"github.com/projectdiscovery/nuclei/v3/pkg/fuzz/dataformat"
@@ -73,7 +74,9 @@ func (q *Path) Rebuild() (*retryablehttp.Request, error) {
 		return nil, errors.Wrap(err, "could not encode query")
 	}
 	cloned := q.req.Clone(context.Background())
-	cloned.URL.Path = encoded
-	cloned.Path = encoded
+	cloned.UpdateRelPath(encoded, true)
+	if strings.Contains(cloned.URL.Path, "%") {
+		cloned.URL.Opaque = cloned.URL.Path
+	}
 	return cloned, nil
 }
