@@ -15,6 +15,7 @@ jobs:
         os: [ubuntu-latest, macOS-latest]
 
     runs-on: ${{ matrix.os }}
+    if: github.repository == 'projectdiscovery/nuclei'
     steps:
       - name: Set up Go
         uses: actions/setup-go@v4
