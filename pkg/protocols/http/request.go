@@ -755,7 +755,11 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 	}
 	// global wrap response body reader
 	if resp != nil && resp.Body != nil {
-		resp.Body = protocolutil.NewLimitResponseBody(resp.Body)
+		if request.MaxSize > 0 {
+			resp.Body = protocolutil.NewLimitResponseBodyWithSize(resp.Body, int64(request.MaxSize))
+		} else {
+			resp.Body = protocolutil.NewLimitResponseBody(resp.Body)
+		}
 	}
 	if err != nil {
 		// rawhttp doesn't support draining response bodies.
