@@ -17,6 +17,12 @@ var (
 	ErrInactiveInput  = fmt.Errorf("input is inactive")
 )
 
+const (
+	MultiFormatInputProvider = "MultiFormatInputProvider"
+	ListInputProvider        = "ListInputProvider"
+	SimpleListInputProvider  = "SimpleInputProvider"
+)
+
 // IsErrNotImplemented checks if an error is a not implemented error
 func IsErrNotImplemented(err error) bool {
 	if err == nil {
