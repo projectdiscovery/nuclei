@@ -371,6 +371,10 @@ func (store *Store) LoadWorkflows(workflowsList []string) []*templates.Template 
 			if err != nil {
 				gologger.Warning().Msgf("Could not parse workflow %s: %s\n", workflowPath, err)
 			} else if parsed != nil {
+				// Check for duplicate template IDs
+				if isDuplicateTemplate(loadedWorkflows, parsed) {
+					continue
+				}
 				loadedWorkflows = append(loadedWorkflows, parsed)
 			}
 		}
@@ -397,6 +401,10 @@ func (store *Store) LoadTemplatesWithTags(templatesList, tags []string) []*templ
 				}
 				gologger.Warning().Msgf("Could not parse template %s: %s\n", templatePath, err)
 			} else if parsed != nil {
+				// Check for duplicate template IDs
+				if isDuplicateTemplate(loadedTemplates, parsed) {
+					continue
+				}
 				if len(parsed.RequestsHeadless) > 0 && !store.config.ExecutorOptions.Options.Headless {
 					// donot include headless template in final list if headless flag is not set
 					stats.Increment(parsers.HeadlessFlagWarningStats)
@@ -437,6 +445,19 @@ func (store *Store) LoadTemplatesWithTags(templatesList, tags []string) []*templ
 	})
 
 	return loadedTemplates
+}
+
+func isDuplicateTemplate(loadedTemplates []*templates.Template, parsed *templates.Template) bool {
+	for _, t := range loadedTemplates {
+		if t.ID == parsed.ID {
+			gologger.Warning().Msgf("Duplicate ID '%s' found in '%s'; skipping.", parsed.ID, parsed.Path)
+			if !parsed.Verified {
+				templates.SignatureStats[templates.Unsigned].Add(^uint64(0))
+			}
+			return true
+		}
+	}
+	return false
 }
 
 // IsHTTPBasedProtocolUsed returns true if http/headless protocol is being used for
