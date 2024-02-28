@@ -440,6 +440,8 @@ func (r *Runner) RunEnumeration() error {
 	// If using input-file flags, only load http fuzzing based templates.
 	loaderConfig := loader.NewConfig(r.options, r.catalog, executorOpts)
 	if !strings.EqualFold(r.options.InputFileMode, "list") || r.options.FuzzTemplates {
+		// if input type is not list (implicitly enable fuzzing)
+		r.options.FuzzTemplates = true
 		loaderConfig.OnlyLoadHTTPFuzzing = true
 	}
 	store, err := loader.New(loaderConfig)
@@ -598,6 +600,7 @@ func (r *Runner) displayExecutionInfo(store *loader.Store) {
 		// only print these stats in verbose mode
 		stats.DisplayAsWarning(parsers.HeadlessFlagWarningStats)
 		stats.DisplayAsWarning(parsers.CodeFlagWarningStats)
+		stats.DisplayAsWarning(parsers.FuzzFlagWarningStats)
 		stats.DisplayAsWarning(parsers.TemplatesExecutedStats)
 	}
 	stats.DisplayAsWarning(parsers.UnsignedWarning)

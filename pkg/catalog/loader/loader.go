@@ -418,6 +418,11 @@ func (store *Store) LoadTemplatesWithTags(templatesList, tags []string) []*templ
 					}
 				} else if store.config.OnlyLoadHTTPFuzzing && !templateHasHTTPFuzzing(parsed) {
 					gologger.Warning().Msgf("The template does not contain http fuzzing: '%s'\n", templatePath)
+				} else if parsed.IsFuzzing() && !store.config.ExecutorOptions.Options.FuzzTemplates {
+					stats.Increment(parsers.FuzzFlagWarningStats)
+					if config.DefaultConfig.LogAllEvents {
+						gologger.Print().Msgf("[%v] Fuzz flag is required for fuzzing template '%s'.\n", aurora.Yellow("WRN").String(), templatePath)
+					}
 				} else {
 					loadedTemplates = append(loadedTemplates, parsed)
 				}
