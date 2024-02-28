@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
+	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/fuzz/dataformat"
 	"github.com/projectdiscovery/retryablehttp-go"
 	readerutil "github.com/projectdiscovery/utils/reader"
@@ -66,6 +67,7 @@ func (b *Body) Parse(req *retryablehttp.Request) (bool, error) {
 	}
 	parsed, err := b.parseBody(dataformat.FormDataFormat, req)
 	if err != nil {
+		gologger.Warning().Msgf("Could not parse body as form data: %s\n", err)
 		return b.parseBody(dataformat.RawDataFormat, req)
 	}
 	return parsed, err

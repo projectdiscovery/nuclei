@@ -112,38 +112,160 @@ response:
     {"ID":75,"Name":"user","Age":30,"Role":"user"}
 
 ---
-timestamp: 2024-02-20T19:25:13+06:30
-url: http://127.0.0.1:8082/blog/posts
+timestamp: 2024-02-20T23:25:13+06:30
+url: http://127.0.0.1:8082/user
 request:
   header:
     Accept-Encoding: gzip
     Connection: close
-    User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 11_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/87.0.4280.88 Safari/537.36
-    host: 127.0.0.1:8082
-    Cookie: session=ymwLa8dKmWjLl43BBpQnrp5LkFZraYkp; lang=en
-    method: GET
-    path: /blog/posts
-    scheme: http
-  raw: |+
-    GET /blog/posts HTTP/1.1
-    Host: 127.0.0.1:8082
-    Accept-Encoding: gzip
-    Cookie: session=ymwLa8dKmWjLl43BBpQnrp5LkFZraYkp; lang=en
-    Connection: close
     Content-Type: application/json
     User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 11_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/87.0.4280.88 Safari/537.36
-    
+    host: 127.0.0.1:8082
+    method: POST
+    path: /user
+    scheme: http
+  raw: |+
+    POST /user HTTP/1.1
+    Host: localhost:8082
+    User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 11_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/87.0.4280.88 Safari/537.36
+    Accept: */*
+    Content-Length: 32
+    Connection: close
+    Content-Type: application/json
+
+    {"id": 7 , "name": "pdteam"}
+
 response:
   header:
-    Content-Type: application/json; charset=UTF-8
+    Content-Type: text/plain; charset=UTF-8
     Date: Tue, 27 Feb 2024 18:46:44 GMT
   raw: |+
     HTTP/1.1 200 OK
-    Content-Type: application/json; charset=UTF-8
+    Content-Type: text/plain; charset=UTF-8
     Date: Wed, 28 Feb 2024 13:58:52 GMT
-    Content-Length: 218
+    Content-Length: 25
 
-    [{"ID":1,"Title":"The Joy of Programming","Content":"Programming is like painting a canvas with logic.","Lang":"en"},{"ID":2,"Title":"A Journey Through Code","Content":"Every line of code tells a story.","Lang":"en"}]
+    User updated successfully
+
+---
+timestamp: 2024-02-20T23:26:13+06:30
+url: http://127.0.0.1:8082/user
+request:
+  header:
+    Accept-Encoding: gzip
+    Connection: close
+    Content-Type: application/x-www-form-urlencoded
+    User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 11_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/87.0.4280.88 Safari/537.36
+    host: 127.0.0.1:8082
+    method: POST
+    path: /user
+    scheme: http
+  raw: |+
+    POST /user HTTP/1.1
+    Host: localhost:8082
+    User-Agent: curl/8.1.2
+    Accept: */*
+    Content-Length: 20
+    Connection: close
+    Content-Type: application/x-www-form-urlencoded
+
+    id=7&name=pdteam
+
+response:
+  header:
+    Content-Type: text/plain; charset=UTF-8
+    Date: Tue, 27 Feb 2024 18:46:44 GMT
+  raw: |+
+    HTTP/1.1 200 OK
+    Content-Type: text/plain; charset=UTF-8
+    Date: Wed, 28 Feb 2024 13:58:52 GMT
+    Content-Length: 25
+
+    User updated successfully
+
+---
+timestamp: 2024-02-20T23:26:13+06:30
+url: http://127.0.0.1:8082/user
+request:
+  header:
+    Accept-Encoding: gzip
+    Connection: close
+    Content-Type: multipart/form-data
+    User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 11_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/87.0.4280.88 Safari/537.36
+    host: 127.0.0.1:8082
+    method: POST
+    path: /user
+    scheme: http
+  raw: |+
+    POST /user HTTP/1.1
+    Host: localhost:8082
+    User-Agent: curl/8.1.2
+    Accept: */*
+    Content-Length: 226
+    Connection: close
+    Content-Type: multipart/form-data; boundary=----WebKitFormBoundary7MA4YWxkTrZu0gW
+
+    ------WebKitFormBoundary7MA4YWxkTrZu0gW
+    Content-Disposition: form-data; name="id"
+
+    7
+    ------WebKitFormBoundary7MA4YWxkTrZu0gW
+    Content-Disposition: form-data; name="name"
+
+    pdteam
+    ------WebKitFormBoundary7MA4YWxkTrZu0gW--
+
+response:
+  header:
+    Content-Type: text/plain; charset=UTF-8
+    Date: Tue, 27 Feb 2024 18:46:44 GMT
+  raw: |+
+    HTTP/1.1 200 OK
+    Content-Type: text/plain; charset=UTF-8
+    Date: Wed, 28 Feb 2024 13:58:52 GMT
+    Content-Length: 25
+
+    User updated successfully
+
+---
+timestamp: 2024-02-20T23:26:13+06:30
+url: http://127.0.0.1:8082/user
+request:
+  header:
+    Accept-Encoding: gzip
+    Connection: close
+    Content-Type: application/xml
+    User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 11_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/87.0.4280.88 Safari/537.36
+    host: 127.0.0.1:8082
+    method: POST
+    path: /user
+    scheme: http
+  raw: |+
+   POST /user HTTP/1.1
+    Host: localhost:8082
+    User-Agent: curl/8.1.2
+    Accept: */*
+    Content-Length: 76
+    Connection: close
+    Content-Type: application/xml
+
+    <?xml version="1.0"?>
+    <user>
+    <id>7</id>
+    <name>pdteam'</name>
+    </user>
+
+response:
+  header:
+    Content-Type: text/plain; charset=UTF-8
+    Date: Tue, 27 Feb 2024 18:46:44 GMT
+  raw: |+
+    HTTP/1.1 200 OK
+    Content-Type: text/plain; charset=UTF-8
+    Date: Wed, 28 Feb 2024 13:58:52 GMT
+    Content-Length: 25
+
+    User updated successfully
 
 ---
 timestamp: 2024-02-20T19:24:13+05:32

@@ -281,6 +281,12 @@ func (request *Request) filterDataMap(input *contextargs.Context) map[string]int
 			if strings.EqualFold(k, "Cookie") {
 				m["cookie"] = v
 			}
+			if strings.EqualFold(k, "User_Agent") {
+				m["user_agent"] = v
+			}
+			if strings.EqualFold(k, "content_type") {
+				m["content_type"] = v
+			}
 			sb.WriteString(fmt.Sprintf("%s: %s\n", k, v))
 			return true
 		})

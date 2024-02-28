@@ -2,6 +2,7 @@ package main
 
 import (
 	"database/sql"
+	"encoding/xml"
 	"fmt"
 	"io"
 	"net/http"
@@ -52,6 +53,7 @@ func main() {
 	e.POST("/reset-password", resetPasword)
 	e.GET("/host-header-lab", hostHeaderLab)
 	e.GET("/user/:id/profile", userProfile)
+	e.POST("/user", patchUnsanitizedUserHandler)
 	e.GET("/blog/posts", getPostsHandler)
 	if err := e.Start("localhost:8082"); err != nil {
 		panic(err)
@@ -134,6 +136,44 @@ func numIdorHandler(ctx echo.Context) error {
 	return ctx.JSON(400, "No numerical query param found")
 }
 
+func patchUnsanitizedUserHandler(ctx echo.Context) error {
+	var user User
+
+	contentType := ctx.Request().Header.Get("Content-Type")
+	// manually handle unmarshalling data
+	if strings.Contains(contentType, "application/json") {
+		err := ctx.Bind(&user)
+		if err != nil {
+			return ctx.JSON(500, "Invalid JSON data")
+		}
+	} else if strings.Contains(contentType, "application/x-www-form-urlencoded") {
+		user.Name = ctx.FormValue("name")
+		user.Age, _ = strconv.Atoi(ctx.FormValue("age"))
+		user.Role = ctx.FormValue("role")
+	} else if strings.Contains(contentType, "application/xml") {
+		bin, _ := io.ReadAll(ctx.Request().Body)
+		err := xml.Unmarshal(bin, &user)
+		if err != nil {
+			return ctx.JSON(500, "Invalid XML data")
+		}
+	} else if strings.Contains(contentType, "multipart/form-data") {
+		if err := ctx.Request().ParseMultipartForm(10 << 20); err != nil {
+			return ctx.JSON(500, "File too large")
+		}
+		user.Name = ctx.FormValue("name")
+		user.Age, _ = strconv.Atoi(ctx.FormValue("age"))
+		user.Role = ctx.FormValue("role")
+	} else {
+		return ctx.JSON(500, "Invalid Content-Type")
+	}
+
+	err := patchUnsanitizedUser(db, user)
+	if err != nil {
+		return ctx.JSON(500, err.Error())
+	}
+	return ctx.JSON(200, "User updated successfully")
+}
+
 // resetPassword mock
 func resetPasword(c echo.Context) error {
 	var m map[string]interface{}
@@ -202,6 +242,32 @@ func addDummyUsers(db *sql.DB) {
 	if err != nil {
 		panic(err)
 	}
+}
+
+func patchUnsanitizedUser(db *sql.DB, user User) error {
+	setClauses := ""
+
+	if user.Name != "" {
+		setClauses += "name = '" + user.Name + "', "
+	}
+	if user.Age > 0 {
+		setClauses += "age = " + strconv.Itoa(user.Age) + ", "
+	}
+	if user.Role != "" {
+		setClauses += "role = '" + user.Role + "', "
+	}
+	if setClauses == "" {
+		// No fields to update
+		return nil
+	}
+	setClauses = strings.TrimSuffix(setClauses, ", ")
+
+	query := "UPDATE users SET " + setClauses + " WHERE id = ?"
+	_, err := db.Exec(query, user.ID)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func getUnsanitizedUser(db *sql.DB, id string) (User, error) {
