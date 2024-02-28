@@ -34,11 +34,11 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http/httputils"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http/signer"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http/signerpool"
-	protocolutil "github.com/projectdiscovery/nuclei/v3/pkg/protocols/utils"
 	templateTypes "github.com/projectdiscovery/nuclei/v3/pkg/templates/types"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	"github.com/projectdiscovery/rawhttp"
 	convUtil "github.com/projectdiscovery/utils/conversion"
+	httpUtils "github.com/projectdiscovery/utils/http"
 	"github.com/projectdiscovery/utils/reader"
 	sliceutil "github.com/projectdiscovery/utils/slice"
 	stringsutil "github.com/projectdiscovery/utils/strings"
@@ -47,6 +47,10 @@ import (
 
 const (
 	defaultMaxWorkers = 150
+)
+
+var (
+	MaxBodyRead = int64(1 << 22) // 4MB using shift operator
 )
 
 // Type returns the type of the protocol request
@@ -753,18 +757,7 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 			}
 		}
 	}
-	// define max body read limit
-	maxBodylimit := -1 // stick to default 4MB
-	if request.MaxSize > 0 {
-		maxBodylimit = request.MaxSize
-	} else if request.options.Options.ResponseReadSize != 0 {
-		maxBodylimit = request.options.Options.ResponseReadSize
-	}
 
-	// global wrap response body reader
-	if resp != nil && resp.Body != nil {
-		resp.Body = protocolutil.NewLimitResponseBodyWithSize(resp.Body, int64(maxBodylimit))
-	}
 	if err != nil {
 		// rawhttp doesn't support draining response bodies.
 		if resp != nil && resp.Body != nil && generatedRequest.rawRequest == nil && !generatedRequest.original.Pipeline {
@@ -811,9 +804,18 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 
 	duration := time.Since(timeStart)
 
+	// define max body read limit
+	maxBodylimit := MaxBodyRead // 10MB
+	if request.MaxSize > 0 {
+		maxBodylimit = int64(request.MaxSize)
+	}
+	if request.options.Options.ResponseReadSize != 0 {
+		maxBodylimit = int64(request.options.Options.ResponseReadSize)
+	}
+
 	// respChain is http response chain that reads response body
 	// efficiently by reusing buffers and does all decoding and optimizations
-	respChain := httputils.NewResponseChain(resp, int64(maxBodylimit))
+	respChain := httpUtils.NewResponseChain(resp, maxBodylimit)
 	defer respChain.Close() // reuse buffers
 
 	// we only intend to log/save the final redirected response
