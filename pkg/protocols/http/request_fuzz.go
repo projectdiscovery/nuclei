@@ -37,7 +37,12 @@ func (request *Request) executeFuzzingRule(input *contextargs.Context, previous 
 
 	// check if target should be fuzzed or not
 	if !request.ShouldFuzzTarget(input) {
-		gologger.Verbose().Msgf("[%s] fuzz: target not applicable for fuzzing\n", request.options.TemplateID)
+		urlx, _ := input.MetaInput.URL()
+		if urlx != nil {
+			gologger.Verbose().Msgf("[%s] fuzz: target(%s) not applicable for fuzzing\n", request.options.TemplateID, urlx.String())
+		} else {
+			gologger.Verbose().Msgf("[%s] fuzz: target(%s) not applicable for fuzzing\n", request.options.TemplateID, input.MetaInput.Input)
+		}
 		return nil
 	}
 
@@ -279,7 +284,7 @@ func (request *Request) filterDataMap(input *contextargs.Context) map[string]int
 			sb.WriteString(fmt.Sprintf("%s: %s\n", k, v))
 			return true
 		})
-		m["all_headers"] = sb.String()
+		m["header"] = sb.String()
 	}
 
 	// dump if svd is enabled

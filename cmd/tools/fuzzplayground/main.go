@@ -34,6 +34,7 @@ func init() {
 		panic(err)
 	}
 	addDummyUsers(db)
+	addDummyPosts(db)
 }
 
 func main() {
@@ -51,6 +52,7 @@ func main() {
 	e.POST("/reset-password", resetPasword)
 	e.GET("/host-header-lab", hostHeaderLab)
 	e.GET("/user/:id/profile", userProfile)
+	e.GET("/blog/posts", getPostsHandler)
 	if err := e.Start("localhost:8082"); err != nil {
 		panic(err)
 	}
@@ -209,4 +211,67 @@ func getUnsanitizedUser(db *sql.DB, id string) (User, error) {
 		return user, err
 	}
 	return user, nil
+}
+
+type Posts struct {
+	ID      int
+	Title   string
+	Content string
+	Lang    string
+}
+
+func addDummyPosts(db *sql.DB) {
+	_, err := db.Exec("CREATE TABLE IF NOT EXISTS posts (id INTEGER PRIMARY KEY, title TEXT, content TEXT, lang TEXT)")
+	if err != nil {
+		panic(err)
+	}
+	// Inserting English dummy posts
+	_, err = db.Exec("INSERT INTO posts (id, title, content, lang) VALUES (1, 'The Joy of Programming', 'Programming is like painting a canvas with logic.', 'en')")
+	if err != nil {
+		panic(err)
+	}
+	_, err = db.Exec("INSERT INTO posts (id, title, content, lang) VALUES (2, 'A Journey Through Code', 'Every line of code tells a story.', 'en')")
+	if err != nil {
+		panic(err)
+	}
+	// Inserting a Spanish dummy post
+	_, err = db.Exec("INSERT INTO posts (id, title, content, lang) VALUES (3, 'La belleza del código', 'Cada función es un poema en un mar de algoritmos.', 'es')")
+	if err != nil {
+		panic(err)
+	}
+}
+
+func getPostsHandler(c echo.Context) error {
+	lang, err := c.Cookie("lang")
+	if err != nil {
+		// If the language cookie is missing, default to English
+		lang = new(http.Cookie)
+		lang.Value = "en"
+	}
+	posts, err := getUnsanitizedPostsByLang(db, lang.Value)
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, err.Error())
+	}
+	return c.JSON(http.StatusOK, posts)
+}
+func getUnsanitizedPostsByLang(db *sql.DB, lang string) ([]Posts, error) {
+	var posts []Posts
+	query := "SELECT id, title, content, lang FROM posts WHERE lang = '" + lang + "'"
+	rows, err := db.Query(query)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var post Posts
+		if err := rows.Scan(&post.ID, &post.Title, &post.Content, &post.Lang); err != nil {
+			return nil, err
+		}
+		posts = append(posts, post)
+	}
+	if err = rows.Err(); err != nil {
+		return nil, err
+	}
+	return posts, nil
 }
