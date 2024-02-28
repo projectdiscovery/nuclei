@@ -3,6 +3,7 @@ package httputils
 import (
 	"bytes"
 	"fmt"
+	"io"
 	"net/http"
 	"sync"
 
@@ -137,6 +138,9 @@ func (r *ResponseChain) Close() {
 	putBuffer(r.headers)
 	putBuffer(r.body)
 	putBuffer(r.fullResponse)
+	io.Copy(io.Discard, r.body)
+	r.resp.Body.Close()
+	r.resp = nil
 	r.headers = nil
 	r.body = nil
 	r.fullResponse = nil

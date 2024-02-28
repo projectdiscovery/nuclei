@@ -68,6 +68,7 @@ func (g *Generic) ExecuteWithResults(ctx *scan.ScanContext) error {
 					_ = previous.Set(builder.String(), v)
 					builder.Reset()
 				}
+				builder = nil
 			}
 			if event.HasOperatorResult() {
 				g.results.CompareAndSwap(false, true)

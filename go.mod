@@ -52,6 +52,7 @@ require (
 	github.com/DataDog/gostackparse v0.6.0
 	github.com/Masterminds/semver/v3 v3.2.1
 	github.com/Mzack9999/gcache v0.0.0-20230410081825-519e28eab057
+	github.com/Mzack9999/go-deepcopy v0.0.0-20240228025452-a5a309a58091
 	github.com/antchfx/xmlquery v1.3.17
 	github.com/asaskevich/govalidator v0.0.0-20230301143203-a9d515a09cc2
 	github.com/aws/aws-sdk-go-v2 v1.19.0

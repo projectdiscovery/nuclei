@@ -12,6 +12,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/Mzack9999/go-deepcopy"
 	"github.com/pkg/errors"
 	"go.uber.org/multierr"
 
@@ -73,6 +74,13 @@ var decolorizerRegex = regexp.MustCompile(`\x1B\[[0-9;]*[a-zA-Z]`)
 // InternalEvent is an internal output generation structure for nuclei.
 type InternalEvent map[string]interface{}
 
+type StoreMode uint8
+
+const (
+	Reference StoreMode = iota
+	Value
+)
+
 // InternalWrappedEvent is a wrapped event with operators result added to it.
 type InternalWrappedEvent struct {
 	// Mutex is internal field which is implicitly used
@@ -87,6 +95,33 @@ type InternalWrappedEvent struct {
 	// Only applicable if interactsh is used
 	// This is used to avoid duplicate successful interactsh events
 	InteractshMatched atomic.Bool
+
+	storeMode StoreMode
+}
+
+func (iwe *InternalWrappedEvent) StoreMode() StoreMode {
+	iwe.RLock()
+	defer iwe.RUnlock()
+
+	return iwe.storeMode
+}
+
+func (iwe *InternalWrappedEvent) SetStoreMode(x StoreMode) {
+	iwe.Lock()
+	defer iwe.Unlock()
+
+	iwe.storeMode = x
+}
+
+func (iwe *InternalWrappedEvent) CloneForStore() *InternalWrappedEvent {
+	if iwe.storeMode == Reference {
+		return iwe
+	}
+	iweClone, err := deepcopy.AnythingTyped(iwe)
+	if err != nil {
+		panic(err)
+	}
+	return iweClone
 }
 
 func (iwe *InternalWrappedEvent) HasOperatorResult() bool {

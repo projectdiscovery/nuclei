@@ -15,6 +15,7 @@ import (
 
 	"github.com/pkg/errors"
 	"go.uber.org/multierr"
+	"golang.org/x/exp/maps"
 	"moul.io/http2curl"
 
 	"github.com/projectdiscovery/fastdialer/fastdialer"
@@ -171,6 +172,10 @@ func (request *Request) executeParallelHTTP(input *contextargs.Context, dynamicV
 	// wrappedCallback is a callback that wraps the original callback
 	// to implement stop at first match logic
 	wrappedCallback := func(event *output.InternalWrappedEvent) {
+		// templates with a lot of parallelism would block the GC scavenger from recycling everything down the line from http.response to bytes.buffers
+		// as they are used as reference in ScanContext.events, hence even if causing more allocations, creating a clone is the easiest way to free all the resource tree
+		event.SetStoreMode(output.Value)
+
 		if !event.HasOperatorResult() {
 			callback(event) // not required but we can allow it
 			return
@@ -893,7 +898,7 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 		request.pruneSignatureInternalValues(generatedRequest.meta)
 
 		event := eventcreator.CreateEventWithAdditionalOptions(request, generators.MergeMaps(generatedRequest.dynamicValues, finalEvent), request.options.Options.Debug || request.options.Options.DebugResponse, func(internalWrappedEvent *output.InternalWrappedEvent) {
-			internalWrappedEvent.OperatorsResult.PayloadValues = generatedRequest.meta
+			internalWrappedEvent.OperatorsResult.PayloadValues = maps.Clone(generatedRequest.meta)
 		})
 		if hasInteractMatchers {
 			event.UsesInteractsh = true

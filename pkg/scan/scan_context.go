@@ -51,7 +51,8 @@ func (s *ScanContext) LogEvent(e *output.InternalWrappedEvent) {
 	if s.OnResult != nil {
 		s.OnResult(e)
 	}
-	s.events = append(s.events, e)
+
+	s.events = append(s.events, e.CloneForStore())
 }
 
 // LogError logs error to all events and triggeres any callbacks
