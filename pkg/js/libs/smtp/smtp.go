@@ -188,7 +188,7 @@ func (c *Client) SendMail(msg *SMTPMessage) (bool, error) {
 	// send mail
 	addr := net.JoinHostPort(c.host, c.port)
 	if err := smtp.SendMail(addr, auth, msg.from, msg.to, []byte(msg.String())); err != nil {
-		return false, err
+		c.nj.Throw("failed to send mail with message(%s) got %v", msg.String(), err)
 	}
 	return true, nil
 }
