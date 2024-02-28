@@ -1,32 +1,16 @@
 
 
 /**
- * OracleClient is a minimal Oracle client for nuclei scripts.
+ * IsOracle checks if a host is running an Oracle server
  * @example
  * ```javascript
  * const oracle = require('nuclei/oracle');
- * const client = new oracle.Client();
+ * const isOracle = oracle.IsOracle('acme.com', 1521);
+ * log(toJSON(isOracle));
  * ```
  */
-export class OracleClient {
-    
-
-    // Constructor of OracleClient
-    constructor() {}
-    /**
-    * IsOracle checks if a host is running an Oracle server
-    * @example
-    * ```javascript
-    * const oracle = require('nuclei/oracle');
-    * const isOracle = oracle.IsOracle('acme.com', 1521);
-    * log(toJSON(isOracle));
-    * ```
-    */
-    public IsOracle(host: string, port: number): IsOracleResponse | null {
-        return null;
-    }
-    
-
+export function IsOracle(host: string, port: number): IsOracleResponse | null {
+    return null;
 }
 
 

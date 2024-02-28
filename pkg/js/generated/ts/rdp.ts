@@ -1,51 +1,36 @@
 
 
 /**
- * RDPClient is a minimal RDP client for nuclei scripts.
+ * CheckRDPAuth checks if the given host and port are running rdp server
+ * with authentication and returns their metadata.
+ * If connection is successful, it returns true.
  * @example
  * ```javascript
  * const rdp = require('nuclei/rdp');
- * const client = new rdp.Client();
+ * const checkRDPAuth = rdp.CheckRDPAuth('acme.com', 3389);
+ * log(toJSON(checkRDPAuth));
  * ```
  */
-export class RDPClient {
-    
+export function CheckRDPAuth(host: string, port: number): CheckRDPAuthResponse | null {
+    return null;
+}
 
-    // Constructor of RDPClient
-    constructor() {}
-    /**
-    * IsRDP checks if the given host and port are running rdp server.
-    * If connection is successful, it returns true.
-    * If connection is unsuccessful, it returns false and error.
-    * The Name of the OS is also returned if the connection is successful.
-    * @example
-    * ```javascript
-    * const rdp = require('nuclei/rdp');
-    * const isRDP = rdp.IsRDP('acme.com', 3389);
-    * log(toJSON(isRDP));
-    * ```
-    */
-    public IsRDP(host: string, port: number): IsRDPResponse | null {
-        return null;
-    }
-    
 
-    /**
-    * CheckRDPAuth checks if the given host and port are running rdp server
-    * with authentication and returns their metadata.
-    * If connection is successful, it returns true.
-    * @example
-    * ```javascript
-    * const rdp = require('nuclei/rdp');
-    * const checkRDPAuth = rdp.CheckRDPAuth('acme.com', 3389);
-    * log(toJSON(checkRDPAuth));
-    * ```
-    */
-    public CheckRDPAuth(host: string, port: number): CheckRDPAuthResponse | null {
-        return null;
-    }
-    
 
+/**
+ * IsRDP checks if the given host and port are running rdp server.
+ * If connection is successful, it returns true.
+ * If connection is unsuccessful, it returns false and error.
+ * The Name of the OS is also returned if the connection is successful.
+ * @example
+ * ```javascript
+ * const rdp = require('nuclei/rdp');
+ * const isRDP = rdp.IsRDP('acme.com', 3389);
+ * log(toJSON(isRDP));
+ * ```
+ */
+export function IsRDP(host: string, port: number): IsRDPResponse | null {
+    return null;
 }
 
 
@@ -93,14 +78,6 @@ export interface IsRDPResponse {
  */
 export interface ServiceRDP {
     
-    NetBIOSComputerName?: string,
-    
-    NetBIOSDomainName?: string,
-    
-    DNSComputerName?: string,
-    
-    DNSDomainName?: string,
-    
     ForestName?: string,
     
     OSFingerprint?: string,
@@ -108,5 +85,13 @@ export interface ServiceRDP {
     OSVersion?: string,
     
     TargetName?: string,
+    
+    NetBIOSComputerName?: string,
+    
+    NetBIOSDomainName?: string,
+    
+    DNSComputerName?: string,
+    
+    DNSDomainName?: string,
 }
 

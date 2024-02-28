@@ -7,7 +7,7 @@
  * @example
  * ```javascript
  * const smb = require('nuclei/smb');
- * const client = new smb.Client();
+ * const client = new smb.SMBClient();
  * ```
  */
 export class SMBClient {
@@ -23,7 +23,7 @@ export class SMBClient {
     * @example
     * ```javascript
     * const smb = require('nuclei/smb');
-    * const client = new smb.Client();
+    * const client = new smb.SMBClient();
     * const info = client.ConnectSMBInfoMode('acme.com', 445);
     * log(to_json(info));
     * ```
@@ -41,7 +41,7 @@ export class SMBClient {
     * @example
     * ```javascript
     * const smb = require('nuclei/smb');
-    * const client = new smb.Client();
+    * const client = new smb.SMBClient();
     * const metadata = client.ListSMBv2Metadata('acme.com', 445);
     * log(to_json(metadata));
     * ```
@@ -59,7 +59,7 @@ export class SMBClient {
     * @example
     * ```javascript
     * const smb = require('nuclei/smb');
-    * const client = new smb.Client();
+    * const client = new smb.SMBClient();
     * const shares = client.ListShares('acme.com', 445, 'username', 'password');
     * 	for (const share of shares) {
     * 		  log(share);
@@ -137,6 +137,8 @@ export interface NegotiationLog {
  */
 export interface SMBCapabilities {
     
+    DFSSupport?: boolean,
+    
     Leasing?: boolean,
     
     LargeMTU?: boolean,
@@ -148,8 +150,6 @@ export interface SMBCapabilities {
     DirLeasing?: boolean,
     
     Encryption?: boolean,
-    
-    DFSSupport?: boolean,
 }
 
 
@@ -159,15 +159,15 @@ export interface SMBCapabilities {
  */
 export interface SMBLog {
     
+    SupportV1?: boolean,
+    
+    NativeOs?: string,
+    
     NTLM?: string,
     
     GroupName?: string,
     
     HasNTLM?: boolean,
-    
-    SupportV1?: boolean,
-    
-    NativeOs?: string,
     
     Version?: SMBVersions,
     
@@ -201,6 +201,8 @@ export interface SMBVersions {
  */
 export interface ServiceSMB {
     
+    DNSComputerName?: string,
+    
     DNSDomainName?: string,
     
     ForestName?: string,
@@ -214,8 +216,6 @@ export interface ServiceSMB {
     NetBIOSComputerName?: string,
     
     NetBIOSDomainName?: string,
-    
-    DNSComputerName?: string,
 }
 
 
