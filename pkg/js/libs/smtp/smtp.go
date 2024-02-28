@@ -29,7 +29,8 @@ type (
 	// @example
 	// ```javascript
 	// const smtp = require('nuclei/smtp');
-	// const isSMTP = smtp.IsSMTP('acme.com', 25);
+	// const client = new smtp.Client();
+	// const isSMTP = client.IsSMTP('acme.com', 25);
 	// log(toJSON(isSMTP));
 	// ```
 	IsSMTPResponse struct {
@@ -42,7 +43,8 @@ type (
 // @example
 // ```javascript
 // const smtp = require('nuclei/smtp');
-// const isSMTP = smtp.IsSMTP('acme.com', 25);
+// const client = new smtp.Client();
+// const isSMTP = client.IsSMTP('acme.com', 25);
 // log(toJSON(isSMTP));
 // ```
 func (c *SMTPClient) IsSMTP(host string, port int) (IsSMTPResponse, error) {
