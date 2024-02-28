@@ -47,10 +47,13 @@ func (q *Query) Parse(req *retryablehttp.Request) (bool, error) {
 }
 
 // Iterate iterates through the component
-func (q *Query) Iterate(callback func(key string, value interface{})) {
+func (q *Query) Iterate(callback func(key string, value interface{}) error) error {
 	for key, value := range q.value.Parsed() {
-		callback(key, value)
+		if err := callback(key, value); err != nil {
+			return err
+		}
 	}
+	return nil
 }
 
 // SetValue sets a value in the component

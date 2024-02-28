@@ -24,9 +24,10 @@ func TestBodyComponent(t *testing.T) {
 
 	var keys []string
 	var values []string
-	body.Iterate(func(key string, value interface{}) {
+	_ = body.Iterate(func(key string, value interface{}) error {
 		keys = append(keys, key)
 		values = append(values, value.(string))
+		return nil
 	})
 
 	require.Equal(t, []string{"foo"}, keys, "unexpected keys")

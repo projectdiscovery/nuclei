@@ -2,6 +2,7 @@ package component
 
 import (
 	"errors"
+	"strings"
 
 	"github.com/leslie-qiwa/flat"
 	"github.com/projectdiscovery/retryablehttp-go"
@@ -9,6 +10,13 @@ import (
 
 // ErrSetValue is a error raised when a value cannot be set
 var ErrSetValue = errors.New("could not set value")
+
+func IsErrSetValue(err error) bool {
+	if err == nil {
+		return false
+	}
+	return strings.Contains(err.Error(), "could not set value")
+}
 
 // ErrKeyNotFound is a error raised when a key is not found
 var ErrKeyNotFound = errors.New("key not found")
@@ -25,7 +33,7 @@ type Component interface {
 	// depending on the rule if mode is single
 	// request is rebuilt for each value in this callback
 	// and in case of multiple, request will be rebuilt after iteration of all values
-	Iterate(func(key string, value interface{}))
+	Iterate(func(key string, value interface{}) error) error
 	// SetValue sets a value in the component
 	// for a key
 	//

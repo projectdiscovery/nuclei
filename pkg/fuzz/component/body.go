@@ -93,13 +93,16 @@ func (b *Body) parseBody(decoderName string, req *retryablehttp.Request) (bool, 
 }
 
 // Iterate iterates through the component
-func (b *Body) Iterate(callback func(key string, value interface{})) {
+func (b *Body) Iterate(callback func(key string, value interface{}) error) error {
 	for key, value := range b.value.Parsed() {
 		if strings.HasPrefix(key, "#_") {
 			continue
 		}
-		callback(key, value)
+		if err := callback(key, value); err != nil {
+			return err
+		}
 	}
+	return nil
 }
 
 // SetValue sets a value in the component

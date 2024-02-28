@@ -1,8 +1,10 @@
 package fuzz
 
 import (
+	"io"
 	"strings"
 
+	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/fuzz/component"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/expressions"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/generators"
@@ -21,97 +23,62 @@ func (rule *Rule) checkRuleApplicableOnComponent(component component.Component) 
 		return false
 	}
 	foundAny := false
-	component.Iterate(func(key string, value interface{}) {
-		if foundAny {
-			return
-		}
+	_ = component.Iterate(func(key string, value interface{}) error {
 		if rule.matchKeyOrValue(key, types.ToString(value)) {
 			foundAny = true
-			return
+			return io.EOF
 		}
+		return nil
 	})
 	return foundAny
 }
 
-// executePartComponent executes component part rules
-func (rule *Rule) executePartComponent(input *ExecuteRuleInput, payload ValueOrKeyValue, component component.Component) error {
-	var finalErr error
-
+// executePartComponent executes this rule on a given component and payload
+func (rule *Rule) executePartComponent(input *ExecuteRuleInput, payload ValueOrKeyValue, ruleComponent component.Component) error {
 	if payload.IsKV() {
-		var origKey string
-		var origValue interface{}
-		component.Iterate(func(key string, value interface{}) {
-			if key == payload.Key {
-				origKey = key
-				origValue = value
-			}
-		})
-		// iterate over given kv instead of component ones
-		func(key, value string) bool {
-			var evaluated string
-			evaluated, input.InteractURLs = rule.executeEvaluate(input, key, "", value, input.InteractURLs)
-			if err := component.SetValue(key, evaluated); err != nil {
-				finalErr = err
-				return false
-			}
-			if rule.modeType == singleModeType {
-				req, err := component.Rebuild()
-				if err != nil {
-					finalErr = err
-					return false
-				}
-
-				if qerr := rule.buildInput(input, req, input.InteractURLs, component, key, evaluated, ""); qerr != nil {
-					finalErr = qerr
-					return false
-				}
-
-				// after building change back to original value to avoid repeating it in furthur requests
-				if origKey != "" {
-					err = component.SetValue(origKey, types.ToString(origValue)) // change back to previous value for temp
-					if err != nil {
-						finalErr = err
-						return false
-					}
-				} else {
-					_ = component.Delete(key) // change back to previous value for temp
-				}
-			}
-			return true
-		}(payload.Key, payload.Value)
+		// for kv fuzzing
+		return rule.executePartComponentOnKV(input, payload, ruleComponent)
 	} else {
-		payloadStr := payload.Value
-		component.Iterate(func(key string, value interface{}) {
-			valueStr := types.ToString(value)
-			if !rule.matchKeyOrValue(key, valueStr) {
-				return
-			}
-
-			var evaluated string
-			evaluated, input.InteractURLs = rule.executeEvaluate(input, key, valueStr, payloadStr, input.InteractURLs)
-			if err := component.SetValue(key, evaluated); err != nil {
-				return
-			}
-
-			if rule.modeType == singleModeType {
-				req, err := component.Rebuild()
-				if err != nil {
-					return
-				}
-
-				if qerr := rule.buildInput(input, req, input.InteractURLs, component, key, evaluated, valueStr); qerr != nil {
-					finalErr = qerr
-					return
-				}
-				err = component.SetValue(key, valueStr) // change back to previous value for temp
-				if err != nil {
-					finalErr = err
-					return
-				}
-			}
-		})
+		// for value only fuzzing
+		return rule.executePartComponentOnValues(input, payload.Value, ruleComponent)
 	}
+}
 
+// executePartComponentOnValues executes this rule on a given component and payload
+// this supports both single and multiple [ruleType] modes
+// i.e if component has multiple values, they can be replaced once or all depending on mode
+func (rule *Rule) executePartComponentOnValues(input *ExecuteRuleInput, payloadStr string, ruleComponent component.Component) error {
+	finalErr := ruleComponent.Iterate(func(key string, value interface{}) error {
+		valueStr := types.ToString(value)
+		if !rule.matchKeyOrValue(key, valueStr) {
+			// ignore non-matching keys
+			return nil
+		}
+
+		var evaluated string
+		evaluated, input.InteractURLs = rule.executeEvaluate(input, key, valueStr, payloadStr, input.InteractURLs)
+		if err := ruleComponent.SetValue(key, evaluated); err != nil {
+			gologger.Warning().Msgf("could not set value due to format restriction original(%s, %s[%T]) , new(%s,%s[%T])", key, valueStr, value, key, evaluated, evaluated)
+			return nil
+		}
+
+		if rule.modeType == singleModeType {
+			req, err := ruleComponent.Rebuild()
+			if err != nil {
+				return err
+			}
+
+			if qerr := rule.execWithInput(input, req, input.InteractURLs, ruleComponent); qerr != nil {
+				return qerr
+			}
+			// fmt.Printf("executed with value: %s\n", evaluated)
+			err = ruleComponent.SetValue(key, valueStr) // change back to previous value for temp
+			if err != nil {
+				return err
+			}
+		}
+		return nil
+	})
 	if finalErr != nil {
 		return finalErr
 	}
@@ -119,12 +86,11 @@ func (rule *Rule) executePartComponent(input *ExecuteRuleInput, payload ValueOrK
 	// We do not support analyzers with
 	// multiple payload mode.
 	if rule.modeType == multipleModeType {
-		req, err := component.Rebuild()
+		req, err := ruleComponent.Rebuild()
 		if err != nil {
 			return err
 		}
-
-		if qerr := rule.buildInput(input, req, input.InteractURLs, component, "", "", ""); qerr != nil {
+		if qerr := rule.execWithInput(input, req, input.InteractURLs, ruleComponent); qerr != nil {
 			err = qerr
 			return err
 		}
@@ -132,8 +98,53 @@ func (rule *Rule) executePartComponent(input *ExecuteRuleInput, payload ValueOrK
 	return nil
 }
 
-// buildInput returns created request for a Query Input
-func (rule *Rule) buildInput(input *ExecuteRuleInput, httpReq *retryablehttp.Request, interactURLs []string, component component.Component, key, value, originalValue string) error {
+// executePartComponentOnKV executes this rule on a given component and payload
+// currently only supports single mode
+func (rule *Rule) executePartComponentOnKV(input *ExecuteRuleInput, payload ValueOrKeyValue, ruleComponent component.Component) error {
+	var origKey string
+	var origValue interface{}
+	// when we have a key-value pair, iterate over only 1 value of the component
+	// multiple values (aka multiple mode) not supported for this yet
+	_ = ruleComponent.Iterate(func(key string, value interface{}) error {
+		if key == payload.Key {
+			origKey = key
+			origValue = value
+		}
+		return nil
+	})
+	// iterate over given kv instead of component ones
+	return func(key, value string) error {
+		var evaluated string
+		evaluated, input.InteractURLs = rule.executeEvaluate(input, key, "", value, input.InteractURLs)
+		if err := ruleComponent.SetValue(key, evaluated); err != nil {
+			return err
+		}
+		if rule.modeType == singleModeType {
+			req, err := ruleComponent.Rebuild()
+			if err != nil {
+				return err
+			}
+
+			if qerr := rule.execWithInput(input, req, input.InteractURLs, ruleComponent); qerr != nil {
+				return err
+			}
+
+			// after building change back to original value to avoid repeating it in furthur requests
+			if origKey != "" {
+				err = ruleComponent.SetValue(origKey, types.ToString(origValue)) // change back to previous value for temp
+				if err != nil {
+					return err
+				}
+			} else {
+				_ = ruleComponent.Delete(key) // change back to previous value for temp
+			}
+		}
+		return nil
+	}(payload.Key, payload.Value)
+}
+
+// execWithInput executes a rule with input via callback
+func (rule *Rule) execWithInput(input *ExecuteRuleInput, httpReq *retryablehttp.Request, interactURLs []string, component component.Component) error {
 	request := GeneratedRequest{
 		Request:       httpReq,
 		InteractURLs:  interactURLs,
@@ -149,7 +160,7 @@ func (rule *Rule) buildInput(input *ExecuteRuleInput, httpReq *retryablehttp.Req
 // executeEvaluate executes evaluation of payload on a key and value and
 // returns completed values to be replaced and processed
 // for fuzzing.
-func (rule *Rule) executeEvaluate(input *ExecuteRuleInput, key, value, payload string, interactshURLs []string) (string, []string) {
+func (rule *Rule) executeEvaluate(input *ExecuteRuleInput, _, value, payload string, interactshURLs []string) (string, []string) {
 	// TODO: Handle errors
 	values := generators.MergeMaps(input.Values, map[string]interface{}{
 		"value": value,
@@ -163,7 +174,7 @@ func (rule *Rule) executeEvaluate(input *ExecuteRuleInput, key, value, payload s
 
 // executeRuleTypes executes replacement for a key and value
 // ex: prefix, postfix, infix, replace , replace-regex
-func (rule *Rule) executeRuleTypes(input *ExecuteRuleInput, value, replacement string) string {
+func (rule *Rule) executeRuleTypes(_ *ExecuteRuleInput, value, replacement string) string {
 	var builder strings.Builder
 	if rule.ruleType == prefixRuleType || rule.ruleType == postfixRuleType {
 		builder.Grow(len(value) + len(replacement))

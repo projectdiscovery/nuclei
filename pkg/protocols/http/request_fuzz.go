@@ -29,7 +29,7 @@ import (
 // TODO:
 // 1. use SPMHandler and rewrite stop at first match logic here
 // 2. use scanContext instead of contextargs.Context
-func (request *Request) executeFuzzingRule(input *contextargs.Context, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
+func (request *Request) executeFuzzingRule(input *contextargs.Context, _ output.InternalEvent, callback protocols.OutputEventCallback) error {
 	// methdology:
 	// to check applicablity of rule, we first try to execute it with one value
 	// if it is applicable, we execute all requests
@@ -76,6 +76,9 @@ func (request *Request) executeFuzzingRule(input *contextargs.Context, previous 
 				gologger.Verbose().Msgf("[%s] fuzz: %s\n", request.options.TemplateID, err)
 				return nil
 			}
+			if errors.Is(err, errStopExecution) {
+				return err
+			}
 			gologger.Verbose().Msgf("[%s] fuzz: inital payload request execution failed : %s\n", request.options.TemplateID, err)
 		}
 
@@ -112,6 +115,9 @@ func (request *Request) executeFuzzingRule(input *contextargs.Context, previous 
 			// log and fail silently
 			gologger.Verbose().Msgf("[%s] fuzz: rule not applicable : %s\n", request.options.TemplateID, err)
 			return nil
+		}
+		if errors.Is(err, errStopExecution) {
+			return err
 		}
 		gologger.Verbose().Msgf("[%s] fuzz: inital payload request execution failed : %s\n", request.options.TemplateID, err)
 	}
@@ -162,9 +168,7 @@ func (request *Request) executePayloadUsingRules(input *contextargs.Context, val
 		if err == types.ErrNoMoreRequests {
 			return nil
 		}
-		if err != nil {
-			return errors.Wrap(err, "could not execute rule")
-		}
+		return errors.Wrap(err, "could not execute rule")
 	}
 
 	if !applicable {

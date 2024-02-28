@@ -27,7 +27,7 @@ func TestCookieComponent(t *testing.T) {
 
 	var cookieNames []string
 	var cookieValues []string
-	cookieComponent.Iterate(func(key string, value interface{}) {
+	_ = cookieComponent.Iterate(func(key string, value interface{}) error {
 		cookieNames = append(cookieNames, key)
 		switch v := value.(type) {
 		case string:
@@ -35,6 +35,7 @@ func TestCookieComponent(t *testing.T) {
 		case []string:
 			cookieValues = append(cookieValues, v...)
 		}
+		return nil
 	})
 
 	require.Equal(t, []string{"session"}, cookieNames, "unexpected cookie names")

@@ -131,7 +131,7 @@ mainLoop:
 				if err == io.EOF {
 					return nil
 				}
-				gologger.Warning().Msgf("Could not execute rule: %s\n", err)
+				gologger.Warning().Msgf("[%s] Could not execute rule: %s\n", rule.options.TemplateID, err)
 				return err
 			}
 		}
@@ -149,27 +149,42 @@ func (rule *Rule) isInputURLValid(input *contextargs.Context) bool {
 }
 
 // executeRuleValues executes a rule with a set of values
-func (rule *Rule) executeRuleValues(input *ExecuteRuleInput, component component.Component) error {
+func (rule *Rule) executeRuleValues(input *ExecuteRuleInput, ruleComponent component.Component) error {
+	// if we are only fuzzing values
 	if len(rule.Fuzz.Value) > 0 {
 		for _, value := range rule.Fuzz.Value {
-			if err := rule.executePartRule(input, ValueOrKeyValue{Value: value}, component); err != nil {
+			if err := rule.executePartRule(input, ValueOrKeyValue{Value: value}, ruleComponent); err != nil {
+				if component.IsErrSetValue(err) {
+					// this are errors due to format restrictions
+					// ex: fuzzing string value in a json int field
+					continue
+				}
 				return err
 			}
 		}
 		return nil
-	} else if rule.Fuzz.KV != nil {
+	}
+
+	// if we are fuzzing both keys and values
+	if rule.Fuzz.KV != nil {
 		var gotErr error
 		rule.Fuzz.KV.Iterate(func(key, value string) bool {
-			if err := rule.executePartRule(input, ValueOrKeyValue{Key: key, Value: value}, component); err != nil {
+			if err := rule.executePartRule(input, ValueOrKeyValue{Key: key, Value: value}, ruleComponent); err != nil {
+				if component.IsErrSetValue(err) {
+					// this are errors due to format restrictions
+					// ex: fuzzing string value in a json int field
+					return true
+				}
 				gotErr = err
 				return false
 			}
 			return true
 		})
 		return gotErr
-	} else {
-		return fmt.Errorf("no fuzz values specified")
 	}
+
+	// something else is wrong
+	return fmt.Errorf("no fuzz values specified")
 }
 
 // Compile compiles a fuzzing rule and initializes it for operation

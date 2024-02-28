@@ -272,7 +272,18 @@ func ParseRawRequest(raw string) (rr *RequestResponse, err error) {
 	if err != nil && err != io.EOF {
 		return nil, fmt.Errorf("failed to read body: %s", err)
 	}
-	rr.Request.Body = conversion.String(buff.Bytes())
+	if buff.Len() > 0 {
+		// yaml may include trailing newlines
+		// remove them if present
+		bin := buff.Bytes()
+		if bin[len(bin)-1] == '\n' {
+			bin = bin[:len(bin)-1]
+		}
+		if bin[len(bin)-1] == '\r' || bin[len(bin)-1] == '\n' {
+			bin = bin[:len(bin)-1]
+		}
+		rr.Request.Body = conversion.String(bin)
+	}
 
 	// set raw request
 	rr.Request.Raw = raw

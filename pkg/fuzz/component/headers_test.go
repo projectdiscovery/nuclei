@@ -23,7 +23,7 @@ func TestHeaderComponent(t *testing.T) {
 
 	var keys []string
 	var values []string
-	header.Iterate(func(key string, value interface{}) {
+	_ = header.Iterate(func(key string, value interface{}) error {
 		keys = append(keys, key)
 		switch v := value.(type) {
 		case string:
@@ -31,6 +31,7 @@ func TestHeaderComponent(t *testing.T) {
 		case []string:
 			values = append(values, v...)
 		}
+		return nil
 	})
 
 	require.Equal(t, []string{"User-Agent"}, keys, "unexpected keys")

@@ -228,6 +228,41 @@ response:
     User updated successfully
 
 ---
+---
+timestamp: 2024-02-20T19:25:13+06:30
+url: http://127.0.0.1:8082/blog/posts
+request:
+  header:
+    Accept-Encoding: gzip
+    Connection: close
+    User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 11_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/87.0.4280.88 Safari/537.36
+    host: 127.0.0.1:8082
+    Cookie: session=ymwLa8dKmWjLl43BBpQnrp5LkFZraYkp; lang=en
+    method: GET
+    path: /blog/posts
+    scheme: http
+  raw: |+
+    GET /blog/posts HTTP/1.1
+    Host: 127.0.0.1:8082
+    Accept-Encoding: gzip
+    Cookie: session=ymwLa8dKmWjLl43BBpQnrp5LkFZraYkp; lang=en
+    Connection: close
+    Content-Type: application/json
+    User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 11_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/87.0.4280.88 Safari/537.36
+    
+response:
+  header:
+    Content-Type: application/json; charset=UTF-8
+    Date: Tue, 27 Feb 2024 18:46:44 GMT
+  raw: |+
+    HTTP/1.1 200 OK
+    Content-Type: application/json; charset=UTF-8
+    Date: Wed, 28 Feb 2024 13:58:52 GMT
+    Content-Length: 218
+    
+    [{"ID":1,"Title":"The Joy of Programming","Content":"Programming is like painting a canvas with logic.","Lang":"en"},{"ID":2,"Title":"A Journey Through Code","Content":"Every line of code tells a story.","Lang":"en"}]
+
+---
 timestamp: 2024-02-20T23:26:13+06:30
 url: http://127.0.0.1:8082/user
 request:

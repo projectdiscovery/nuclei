@@ -22,9 +22,10 @@ func TestURLComponent(t *testing.T) {
 
 	var keys []string
 	var values []string
-	urlComponent.Iterate(func(key string, value interface{}) {
+	_ = urlComponent.Iterate(func(key string, value interface{}) error {
 		keys = append(keys, key)
 		values = append(values, value.(string))
+		return nil
 	})
 
 	require.Equal(t, []string{"value"}, keys, "unexpected keys")

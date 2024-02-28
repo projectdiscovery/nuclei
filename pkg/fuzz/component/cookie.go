@@ -47,14 +47,17 @@ func (c *Cookie) Parse(req *retryablehttp.Request) (bool, error) {
 }
 
 // Iterate iterates through the component
-func (c *Cookie) Iterate(callback func(key string, value interface{})) {
+func (c *Cookie) Iterate(callback func(key string, value interface{}) error) error {
 	for key, value := range c.value.Parsed() {
 		// Skip ignored cookies
 		if _, ok := defaultIgnoredCookieKeys[key]; ok {
 			continue
 		}
-		callback(key, value)
+		if err := callback(key, value); err != nil {
+			return err
+		}
 	}
+	return nil
 }
 
 // SetValue sets a value in the component
