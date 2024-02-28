@@ -16,6 +16,7 @@ func init() {
 	RegisterDataFormat(NewXML())
 	RegisterDataFormat(NewRaw())
 	RegisterDataFormat(NewForm())
+	RegisterDataFormat(NewMultiPartForm())
 }
 
 const (
@@ -27,6 +28,8 @@ const (
 	RawDataFormat = "raw"
 	// FormDataFormat is the name of the Form data format
 	FormDataFormat = "form"
+	// MultiPartFormDataFormat is the name of the MultiPartForm data format
+	MultiPartFormDataFormat = "multipart/form-data"
 )
 
 // Get returns the dataformat by name

@@ -150,6 +150,7 @@ func patchUnsanitizedUserHandler(ctx echo.Context) error {
 		user.Name = ctx.FormValue("name")
 		user.Age, _ = strconv.Atoi(ctx.FormValue("age"))
 		user.Role = ctx.FormValue("role")
+		user.ID, _ = strconv.Atoi(ctx.FormValue("id"))
 	} else if strings.Contains(contentType, "application/xml") {
 		bin, _ := io.ReadAll(ctx.Request().Body)
 		err := xml.Unmarshal(bin, &user)
@@ -157,12 +158,10 @@ func patchUnsanitizedUserHandler(ctx echo.Context) error {
 			return ctx.JSON(500, "Invalid XML data")
 		}
 	} else if strings.Contains(contentType, "multipart/form-data") {
-		if err := ctx.Request().ParseMultipartForm(10 << 20); err != nil {
-			return ctx.JSON(500, "File too large")
-		}
 		user.Name = ctx.FormValue("name")
 		user.Age, _ = strconv.Atoi(ctx.FormValue("age"))
 		user.Role = ctx.FormValue("role")
+		user.ID, _ = strconv.Atoi(ctx.FormValue("id"))
 	} else {
 		return ctx.JSON(500, "Invalid Content-Type")
 	}

@@ -64,6 +64,8 @@ func (b *Body) Parse(req *retryablehttp.Request) (bool, error) {
 		return b.parseBody(dataformat.JSONDataFormat, req)
 	case strings.Contains(contentType, "application/xml") && b.value.Parsed() == nil:
 		return b.parseBody(dataformat.XMLDataFormat, req)
+	case strings.Contains(contentType, "multipart/form-data") && b.value.Parsed() == nil:
+		return b.parseBody(dataformat.MultiPartFormDataFormat, req)
 	}
 	parsed, err := b.parseBody(dataformat.FormDataFormat, req)
 	if err != nil {
@@ -76,6 +78,12 @@ func (b *Body) Parse(req *retryablehttp.Request) (bool, error) {
 // parseBody parses a body with a custom decoder
 func (b *Body) parseBody(decoderName string, req *retryablehttp.Request) (bool, error) {
 	decoder := dataformat.Get(decoderName)
+	if decoderName == dataformat.MultiPartFormDataFormat {
+		// set content type to extract boundary
+		if err := decoder.(*dataformat.MultiPartForm).ParseBoundary(req.Header.Get("Content-Type")); err != nil {
+			return false, errors.Wrap(err, "could not parse boundary")
+		}
+	}
 	decoded, err := decoder.Decode(b.value.String())
 	if err != nil {
 		return false, errors.Wrap(err, "could not decode raw")
