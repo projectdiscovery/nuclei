@@ -222,10 +222,11 @@ func userProfile(ctx echo.Context) error {
 }
 
 type User struct {
-	ID   int
-	Name string
-	Age  int
-	Role string
+	XMLName xml.Name `xml:"user"`
+	ID      int      `xml:"id"`
+	Name    string   `xml:"name"`
+	Age     int      `xml:"age"`
+	Role    string   `xml:"role"`
 }
 
 func addDummyUsers(db *sql.DB) {

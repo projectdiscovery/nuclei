@@ -241,7 +241,7 @@ request:
     path: /user
     scheme: http
   raw: |+
-   POST /user HTTP/1.1
+    POST /user HTTP/1.1
     Host: localhost:8082
     User-Agent: curl/8.1.2
     Accept: */*
@@ -252,7 +252,7 @@ request:
     <?xml version="1.0"?>
     <user>
     <id>7</id>
-    <name>pdteam'</name>
+    <name>pdteam</name>
     </user>
 
 response:
