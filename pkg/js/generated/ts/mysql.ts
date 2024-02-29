@@ -209,9 +209,9 @@ export interface MySQLOptions {
  */
 export interface SQLResult {
     
-    Count?: number,
-    
     Columns?: string[],
+    
+    Count?: number,
 }
 
 
@@ -221,10 +221,10 @@ export interface SQLResult {
  */
 export interface ServiceMySQL {
     
+    PacketType?: string,
+    
     ErrorMessage?: string,
     
     ErrorCode?: number,
-    
-    PacketType?: string,
 }
 

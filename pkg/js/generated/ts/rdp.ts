@@ -78,6 +78,8 @@ export interface IsRDPResponse {
  */
 export interface ServiceRDP {
     
+    DNSDomainName?: string,
+    
     ForestName?: string,
     
     OSFingerprint?: string,
@@ -91,7 +93,5 @@ export interface ServiceRDP {
     NetBIOSDomainName?: string,
     
     DNSComputerName?: string,
-    
-    DNSDomainName?: string,
 }
 

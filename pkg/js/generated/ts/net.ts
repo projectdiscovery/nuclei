@@ -115,14 +115,32 @@ export class NetConn {
     
 
     /**
-    * Recv receives data from the connection with a timeout.
+    * RecvFull receives data from the connection with a timeout.
     * If N is 0, it will read all data sent by the server with 8MB limit.
     * it tries to read until N bytes or timeout is reached.
     * @example
     * ```javascript
     * const net = require('nuclei/net');
     * const conn = net.Open('tcp', 'acme.com:80');
+    * const data = conn.RecvFull(1024);
+    * ```
+    */
+    public RecvFull(N: number): Uint8Array | null {
+        return null;
+    }
+    
+
+    /**
+    * Recv is similar to RecvFull but does not guarantee full read instead
+    * it creates a buffer of N bytes and returns whatever is returned by the connection
+    * for reading headers or initial bytes from the server this is usually used.
+    * for reading a fixed number of already known bytes (ex: body based on content-length) use RecvFull.
+    * @example
+    * ```javascript
+    * const net = require('nuclei/net');
+    * const conn = net.Open('tcp', 'acme.com:80');
     * const data = conn.Recv(1024);
+    * log(`Received ${data.length} bytes from the server`)
     * ```
     */
     public Recv(N: number): Uint8Array | null {
@@ -131,26 +149,26 @@ export class NetConn {
     
 
     /**
-    * RecvPartial is similar to Recv but it does not perform full read instead
-    * it creates a buffer of N bytes and returns whatever is returned by the connection
-    * this is usually used when fingerprinting services to get initial bytes from the server.
+    * RecvFullString receives data from the connection with a timeout
+    * output is returned as a string.
+    * If N is 0, it will read all data sent by the server with 8MB limit.
     * @example
     * ```javascript
     * const net = require('nuclei/net');
     * const conn = net.Open('tcp', 'acme.com:80');
-    * const data = conn.RecvPartial(1024);
-    * log(`Received ${data.length} bytes from the server`)
+    * const data = conn.RecvFullString(1024);
     * ```
     */
-    public RecvPartial(N: number): Uint8Array | null {
+    public RecvFullString(N: number): string | null {
         return null;
     }
     
 
     /**
-    * RecvString receives data from the connection with a timeout
-    * output is returned as a string.
-    * If N is 0, it will read all data sent by the server with 8MB limit.
+    * RecvString is similar to RecvFullString but does not guarantee full read, instead
+    * it creates a buffer of N bytes and returns whatever is returned by the connection
+    * for reading headers or initial bytes from the server this is usually used.
+    * for reading a fixed number of already known bytes (ex: body based on content-length) use RecvFullString.
     * @example
     * ```javascript
     * const net = require('nuclei/net');
@@ -164,9 +182,27 @@ export class NetConn {
     
 
     /**
-    * RecvHex receives data from the connection with a timeout
+    * RecvFullHex receives data from the connection with a timeout
     * in hex format.
     * If N is 0,it will read all data sent by the server with 8MB limit.
+    * until N bytes or timeout is reached.
+    * @example
+    * ```javascript
+    * const net = require('nuclei/net');
+    * const conn = net.Open('tcp', 'acme.com:80');
+    * const data = conn.RecvFullHex(1024);
+    * ```
+    */
+    public RecvFullHex(N: number): string | null {
+        return null;
+    }
+    
+
+    /**
+    * RecvHex is similar to RecvFullHex but does not guarantee full read instead
+    * it creates a buffer of N bytes and returns whatever is returned by the connection
+    * for reading headers or initial bytes from the server this is usually used.
+    * for reading a fixed number of already known bytes (ex: body based on content-length) use RecvFull.
     * @example
     * ```javascript
     * const net = require('nuclei/net');

@@ -172,16 +172,16 @@ func (c *NetConn) Send(data string) error {
 	return nil
 }
 
-// Recv receives data from the connection with a timeout.
+// RecvFull receives data from the connection with a timeout.
 // If N is 0, it will read all data sent by the server with 8MB limit.
 // it tries to read until N bytes or timeout is reached.
 // @example
 // ```javascript
 // const net = require('nuclei/net');
 // const conn = net.Open('tcp', 'acme.com:80');
-// const data = conn.Recv(1024);
+// const data = conn.RecvFull(1024);
 // ```
-func (c *NetConn) Recv(N int) ([]byte, error) {
+func (c *NetConn) RecvFull(N int) ([]byte, error) {
 	c.setDeadLine()
 	defer c.unsetDeadLine()
 	if N == 0 {
@@ -195,17 +195,18 @@ func (c *NetConn) Recv(N int) ([]byte, error) {
 	return bin, nil
 }
 
-// RecvPartial is similar to Recv but it does not perform full read instead
+// Recv is similar to RecvFull but does not guarantee full read instead
 // it creates a buffer of N bytes and returns whatever is returned by the connection
-// this is usually used when fingerprinting services to get initial bytes from the server.
+// for reading headers or initial bytes from the server this is usually used.
+// for reading a fixed number of already known bytes (ex: body based on content-length) use RecvFull.
 // @example
 // ```javascript
 // const net = require('nuclei/net');
 // const conn = net.Open('tcp', 'acme.com:80');
-// const data = conn.RecvPartial(1024);
+// const data = conn.Recv(1024);
 // log(`Received ${data.length} bytes from the server`)
 // ```
-func (c *NetConn) RecvPartial(N int) ([]byte, error) {
+func (c *NetConn) Recv(N int) ([]byte, error) {
 	c.setDeadLine()
 	defer c.unsetDeadLine()
 	if N == 0 {
@@ -219,9 +220,27 @@ func (c *NetConn) RecvPartial(N int) ([]byte, error) {
 	return b[:n], nil
 }
 
-// RecvString receives data from the connection with a timeout
+// RecvFullString receives data from the connection with a timeout
 // output is returned as a string.
 // If N is 0, it will read all data sent by the server with 8MB limit.
+// @example
+// ```javascript
+// const net = require('nuclei/net');
+// const conn = net.Open('tcp', 'acme.com:80');
+// const data = conn.RecvFullString(1024);
+// ```
+func (c *NetConn) RecvFullString(N int) (string, error) {
+	bin, err := c.RecvFull(N)
+	if err != nil {
+		return "", err
+	}
+	return string(bin), nil
+}
+
+// RecvString is similar to RecvFullString but does not guarantee full read, instead
+// it creates a buffer of N bytes and returns whatever is returned by the connection
+// for reading headers or initial bytes from the server this is usually used.
+// for reading a fixed number of already known bytes (ex: body based on content-length) use RecvFullString.
 // @example
 // ```javascript
 // const net = require('nuclei/net');
@@ -236,9 +255,28 @@ func (c *NetConn) RecvString(N int) (string, error) {
 	return string(bin), nil
 }
 
-// RecvHex receives data from the connection with a timeout
+// RecvFullHex receives data from the connection with a timeout
 // in hex format.
 // If N is 0,it will read all data sent by the server with 8MB limit.
+// until N bytes or timeout is reached.
+// @example
+// ```javascript
+// const net = require('nuclei/net');
+// const conn = net.Open('tcp', 'acme.com:80');
+// const data = conn.RecvFullHex(1024);
+// ```
+func (c *NetConn) RecvFullHex(N int) (string, error) {
+	bin, err := c.RecvFull(N)
+	if err != nil {
+		return "", err
+	}
+	return hex.Dump(bin), nil
+}
+
+// RecvHex is similar to RecvFullHex but does not guarantee full read instead
+// it creates a buffer of N bytes and returns whatever is returned by the connection
+// for reading headers or initial bytes from the server this is usually used.
+// for reading a fixed number of already known bytes (ex: body based on content-length) use RecvFull.
 // @example
 // ```javascript
 // const net = require('nuclei/net');

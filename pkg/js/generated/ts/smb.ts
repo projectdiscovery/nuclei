@@ -113,6 +113,8 @@ export interface HeaderLog {
  */
 export interface NegotiationLog {
     
+    SecurityMode?: number,
+    
     DialectRevision?: number,
     
     ServerGuid?: Uint8Array,
@@ -124,8 +126,6 @@ export interface NegotiationLog {
     ServerStartTime?: number,
     
     AuthenticationTypes?: string[],
-    
-    SecurityMode?: number,
     
     HeaderLog?: HeaderLog,
 }
@@ -159,8 +159,6 @@ export interface SMBCapabilities {
  */
 export interface SMBLog {
     
-    SupportV1?: boolean,
-    
     NativeOs?: string,
     
     NTLM?: string,
@@ -169,13 +167,15 @@ export interface SMBLog {
     
     HasNTLM?: boolean,
     
-    Version?: SMBVersions,
+    SupportV1?: boolean,
     
     Capabilities?: SMBCapabilities,
     
     NegotiationLog?: NegotiationLog,
     
     SessionSetupLog?: SessionSetupLog,
+    
+    Version?: SMBVersions,
 }
 
 
@@ -201,12 +201,6 @@ export interface SMBVersions {
  */
 export interface ServiceSMB {
     
-    DNSComputerName?: string,
-    
-    DNSDomainName?: string,
-    
-    ForestName?: string,
-    
     SigningEnabled?: boolean,
     
     SigningRequired?: boolean,
@@ -216,6 +210,12 @@ export interface ServiceSMB {
     NetBIOSComputerName?: string,
     
     NetBIOSDomainName?: string,
+    
+    DNSComputerName?: string,
+    
+    DNSDomainName?: string,
+    
+    ForestName?: string,
 }
 
 
@@ -225,11 +225,11 @@ export interface ServiceSMB {
  */
 export interface SessionSetupLog {
     
+    SetupFlags?: number,
+    
     TargetName?: string,
     
     NegotiateFlags?: number,
-    
-    SetupFlags?: number,
     
     HeaderLog?: HeaderLog,
 }
