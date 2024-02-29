@@ -170,6 +170,7 @@ func (c *Client) processInteractionForRequest(interaction *server.Interaction, d
 	data.Event.Unlock()
 
 	if data.Operators != nil {
+		fmt.Printf("processing interaction for request %v\n", interaction.UniqueID)
 		result, matched = data.Operators.Execute(data.Event.InternalEvent, data.MatchFunc, data.ExtractFunc, c.options.Debug || c.options.DebugRequest || c.options.DebugResponse)
 	} else {
 		// this is most likely a bug so error instead of warning
