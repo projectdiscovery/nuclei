@@ -463,7 +463,9 @@ func (r *Runner) RunEnumeration() error {
 				unverifiedTemplates++
 			}
 		}
-		gologger.Fatal().Msgf("Found %d unsigned templates: Program exiting.", unverifiedTemplates)
+		if unverifiedTemplates > 0 {
+			gologger.Fatal().Msgf("Found %d unsigned templates: Program exiting.", unverifiedTemplates)
+		}
 	}
 
 	// TODO: remove below functions after v3 or update warning messages
