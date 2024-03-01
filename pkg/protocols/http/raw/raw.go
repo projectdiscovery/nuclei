@@ -8,6 +8,8 @@ import (
 	"io"
 	"strings"
 
+	"github.com/projectdiscovery/gologger"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/authprovider/authx"
 	"github.com/projectdiscovery/rawhttp/client"
 	errorutil "github.com/projectdiscovery/utils/errors"
 	stringsutil "github.com/projectdiscovery/utils/strings"
@@ -266,4 +268,20 @@ func (r *Request) TryFillCustomHeaders(headers []string) error {
 	}
 
 	return errors.New("no host header found")
+}
+
+// ApplyAuthStrategy applies the auth strategy to the request
+func (r *Request) ApplyAuthStrategy(strategy authx.AuthStrategy) {
+	if strategy == nil {
+		return
+	}
+	switch s := strategy.(type) {
+	case *authx.QueryAuthStrategy:
+	case *authx.CookiesAuthStrategy:
+	case *authx.HeadersAuthStrategy:
+	case *authx.BearerTokenAuthStrategy:
+	case *authx.BasicAuthStrategy:
+	default:
+		gologger.Warning().Msgf("[raw-request] unknown auth strategy: %T", s)
+	}
 }
