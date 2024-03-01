@@ -13,19 +13,19 @@ var (
 
 // QueryAuthStrategy is a strategy for query auth
 type QueryAuthStrategy struct {
-	data *Secret
+	Data *Secret
 }
 
 // NewQueryAuthStrategy creates a new query auth strategy
 func NewQueryAuthStrategy(data *Secret) *QueryAuthStrategy {
-	return &QueryAuthStrategy{data: data}
+	return &QueryAuthStrategy{Data: data}
 }
 
 // Apply applies the query auth strategy to the request
 func (s *QueryAuthStrategy) Apply(req *http.Request) {
 	q := urlutil.NewOrderedParams()
 	q.Decode(req.URL.RawQuery)
-	for _, p := range s.data.Params {
+	for _, p := range s.Data.Params {
 		q.Add(p.Key, p.Value)
 	}
 	req.URL.RawQuery = q.Encode()
@@ -35,7 +35,7 @@ func (s *QueryAuthStrategy) Apply(req *http.Request) {
 func (s *QueryAuthStrategy) ApplyOnRR(req *retryablehttp.Request) {
 	q := urlutil.NewOrderedParams()
 	q.Decode(req.Request.URL.RawQuery)
-	for _, p := range s.data.Params {
+	for _, p := range s.Data.Params {
 		q.Add(p.Key, p.Value)
 	}
 	req.Request.URL.RawQuery = q.Encode()

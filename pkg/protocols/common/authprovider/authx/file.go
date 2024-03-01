@@ -8,6 +8,8 @@ import (
 	"regexp"
 	"strings"
 
+	errorutil "github.com/projectdiscovery/utils/errors"
+	"github.com/projectdiscovery/utils/generic"
 	stringsutil "github.com/projectdiscovery/utils/strings"
 	"gopkg.in/yaml.v3"
 )
@@ -70,7 +72,7 @@ func (s *Secret) GetStrategy() AuthStrategy {
 }
 
 func (s *Secret) Validate() error {
-	if stringsutil.EqualFoldAny(s.Type, SupportedAuthTypes()...) {
+	if !stringsutil.EqualFoldAny(s.Type, SupportedAuthTypes()...) {
 		return fmt.Errorf("invalid type: %s", s.Type)
 	}
 	if len(s.Domains) == 0 && len(s.DomainsRegex) == 0 {
@@ -147,14 +149,16 @@ func (k *KV) Validate() error {
 
 // GetAuthDataFromFile reads the auth data from file
 func GetAuthDataFromFile(file string) (*Authx, error) {
-	if filepath.Ext(file) != ".yml" && filepath.Ext(file) != ".json" {
-		return nil, fmt.Errorf("invalid file extension: supported extensions are .yml and .json")
+	ext := filepath.Ext(file)
+	if !generic.EqualsAny(ext, ".yml", ".yaml", ".json") {
+		return nil, fmt.Errorf("invalid file extension: supported extensions are .yml,.yaml and .json got %s", ext)
 	}
 	bin, err := os.ReadFile(file)
 	if err != nil {
 		return nil, err
 	}
-	if filepath.Ext(file) == ".yml" {
+	fmt.Printf("ext: %s\n", ext)
+	if ext == ".yml" || ext == ".yaml" {
 		return GetAuthDataFromYAML(bin)
 	}
 	return GetAuthDataFromJSON(bin)
@@ -165,7 +169,7 @@ func GetAuthDataFromYAML(data []byte) (*Authx, error) {
 	var auth Authx
 	err := yaml.Unmarshal(data, &auth)
 	if err != nil {
-		return nil, err
+		return nil, errorutil.NewWithErr(err).Msgf("could not unmarshal yaml")
 	}
 	return &auth, nil
 }
@@ -175,7 +179,7 @@ func GetAuthDataFromJSON(data []byte) (*Authx, error) {
 	var auth Authx
 	err := json.Unmarshal(data, &auth)
 	if err != nil {
-		return nil, err
+		return nil, errorutil.NewWithErr(err).Msgf("could not unmarshal json")
 	}
 	return &auth, nil
 }

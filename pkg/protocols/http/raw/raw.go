@@ -3,6 +3,7 @@ package raw
 import (
 	"bufio"
 	"bytes"
+	"encoding/base64"
 	"errors"
 	"fmt"
 	"io"
@@ -277,10 +278,35 @@ func (r *Request) ApplyAuthStrategy(strategy authx.AuthStrategy) {
 	}
 	switch s := strategy.(type) {
 	case *authx.QueryAuthStrategy:
+		parsed, err := urlutil.Parse(r.FullURL)
+		if err != nil {
+			gologger.Error().Msgf("auth strategy failed to parse url: %s got %v", r.FullURL, err)
+			return
+		}
+		_ = parsed
+		for _, p := range s.Data.Params {
+			parsed.Params.Add(p.Key, p.Value)
+		}
 	case *authx.CookiesAuthStrategy:
+		var buff bytes.Buffer
+		for _, cookie := range s.Data.Cookies {
+			buff.WriteString(fmt.Sprintf("%s=%s; ", cookie.Key, cookie.Value))
+		}
+		if buff.Len() > 0 {
+			if val, ok := r.Headers["Cookie"]; ok {
+				r.Headers["Cookie"] = strings.TrimSuffix(strings.TrimSpace(val), ";") + "; " + buff.String()
+			} else {
+				r.Headers["Cookie"] = buff.String()
+			}
+		}
 	case *authx.HeadersAuthStrategy:
+		for _, header := range s.Data.Headers {
+			r.Headers[header.Key] = header.Value
+		}
 	case *authx.BearerTokenAuthStrategy:
+		r.Headers["Authorization"] = "Bearer " + s.Data.Token
 	case *authx.BasicAuthStrategy:
+		r.Headers["Authorization"] = "Basic " + base64.StdEncoding.EncodeToString([]byte(s.Data.Username+":"+s.Data.Password))
 	default:
 		gologger.Warning().Msgf("[raw-request] unknown auth strategy: %T", s)
 	}

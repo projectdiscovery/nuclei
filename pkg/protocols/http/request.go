@@ -561,6 +561,12 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 			}
 		}
 	}
+
+	// === apply auth strategies ===
+	if generatedRequest.request != nil {
+		generatedRequest.ApplyAuth(request.options.AuthProvider)
+	}
+
 	var formedURL string
 	var hostname string
 	timeStart := time.Now()
