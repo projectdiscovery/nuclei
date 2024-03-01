@@ -15,12 +15,12 @@ func init() {
 	module.Set(
 		gojs.Objects{
 			// Functions
+			"IsTelnet": lib_telnet.IsTelnet,
 
 			// Var and consts
 
 			// Objects / Classes
 			"IsTelnetResponse": gojs.GetClassConstructor[lib_telnet.IsTelnetResponse](&lib_telnet.IsTelnetResponse{}),
-			"TelnetClient":     gojs.GetClassConstructor[lib_telnet.TelnetClient](&lib_telnet.TelnetClient{}),
 		},
 	).Register()
 }

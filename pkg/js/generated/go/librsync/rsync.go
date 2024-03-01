@@ -15,12 +15,12 @@ func init() {
 	module.Set(
 		gojs.Objects{
 			// Functions
+			"IsRsync": lib_rsync.IsRsync,
 
 			// Var and consts
 
 			// Objects / Classes
 			"IsRsyncResponse": gojs.GetClassConstructor[lib_rsync.IsRsyncResponse](&lib_rsync.IsRsyncResponse{}),
-			"RsyncClient":     gojs.GetClassConstructor[lib_rsync.RsyncClient](&lib_rsync.RsyncClient{}),
 		},
 	).Register()
 }

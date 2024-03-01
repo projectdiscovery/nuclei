@@ -88,7 +88,7 @@ type (
 	}
 )
 
-// Constructor for KerberosClient
+// Constructor for Kerberos Client
 // Constructor: constructor(public domain: string, public controller?: string)
 // When controller is empty or not given krb5 will perform a DNS lookup for the default KDC server
 // and retrieve its address from the DNS server
