@@ -20,7 +20,7 @@ type (
 	// @example
 	// ```javascript
 	// const mssql = require('nuclei/mssql');
-	// const client = new mssql.Client();
+	// const client = new mssql.MSSQLClient;
 	// ```
 	MSSQLClient struct{}
 )
@@ -32,7 +32,7 @@ type (
 // @example
 // ```javascript
 // const mssql = require('nuclei/mssql');
-// const client = new mssql.Client();
+// const client = new mssql.MSSQLClient;
 // const connected = client.Connect('acme.com', 1433, 'username', 'password');
 // ```
 func (c *MSSQLClient) Connect(host string, port int, username, password string) (bool, error) {
@@ -46,7 +46,7 @@ func (c *MSSQLClient) Connect(host string, port int, username, password string) 
 // @example
 // ```javascript
 // const mssql = require('nuclei/mssql');
-// const client = new mssql.Client();
+// const client = new mssql.MSSQLClient;
 // const connected = client.ConnectWithDB('acme.com', 1433, 'username', 'password', 'master');
 // ```
 func (c *MSSQLClient) ConnectWithDB(host string, port int, username, password, dbName string) (bool, error) {

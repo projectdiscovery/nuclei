@@ -6,7 +6,7 @@
  * @example
  * ```javascript
  * const mssql = require('nuclei/mssql');
- * const client = new mssql.Client();
+ * const client = new mssql.MSSQLClient;
  * ```
  */
 export class MSSQLClient {
@@ -22,7 +22,7 @@ export class MSSQLClient {
     * @example
     * ```javascript
     * const mssql = require('nuclei/mssql');
-    * const client = new mssql.Client();
+    * const client = new mssql.MSSQLClient;
     * const connected = client.Connect('acme.com', 1433, 'username', 'password');
     * ```
     */
@@ -39,7 +39,7 @@ export class MSSQLClient {
     * @example
     * ```javascript
     * const mssql = require('nuclei/mssql');
-    * const client = new mssql.Client();
+    * const client = new mssql.MSSQLClient;
     * const connected = client.ConnectWithDB('acme.com', 1433, 'username', 'password', 'master');
     * ```
     */

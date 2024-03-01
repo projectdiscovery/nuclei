@@ -135,7 +135,7 @@ type Request struct {
 
 	// description: |
 	//   SelfContained specifies if the request is self-contained.
-	SelfContained bool `yaml:"-" json:"-"`
+	SelfContained bool `yaml:"self-contained" json:"self-contained"`
 
 	// description: |
 	//   Signature is the request signature method

@@ -16,7 +16,7 @@ type (
 	// @example
 	// ```javascript
 	// const ssh = require('nuclei/ssh');
-	// const client = new ssh.Client();
+	// const client = new ssh.SSHClient();
 	// ```
 	SSHClient struct {
 		connection *ssh.Client
@@ -28,7 +28,7 @@ type (
 // @example
 // ```javascript
 // const ssh = require('nuclei/ssh');
-// const client = new ssh.Client();
+// const client = new ssh.SSHClient();
 // client.SetTimeout(10);
 // ```
 func (c *SSHClient) SetTimeout(sec int) {
@@ -42,7 +42,7 @@ func (c *SSHClient) SetTimeout(sec int) {
 // @example
 // ```javascript
 // const ssh = require('nuclei/ssh');
-// const client = new ssh.Client();
+// const client = new ssh.SSHClient();
 // const connected = client.Connect('acme.com', 22, 'username', 'password');
 // ```
 func (c *SSHClient) Connect(host string, port int, username, password string) (bool, error) {
@@ -67,7 +67,7 @@ func (c *SSHClient) Connect(host string, port int, username, password string) (b
 // @example
 // ```javascript
 // const ssh = require('nuclei/ssh');
-// const client = new ssh.Client();
+// const client = new ssh.SSHClient();
 // const privateKey = `-----BEGIN RSA PRIVATE KEY----- ...`;
 // const connected = client.ConnectWithKey('acme.com', 22, 'username', privateKey);
 // ```
@@ -96,7 +96,7 @@ func (c *SSHClient) ConnectWithKey(host string, port int, username, key string) 
 // @example
 // ```javascript
 // const ssh = require('nuclei/ssh');
-// const client = new ssh.Client();
+// const client = new ssh.SSHClient();
 // const info = client.ConnectSSHInfoMode('acme.com', 22);
 // log(to_json(info));
 // ```
@@ -115,7 +115,7 @@ func (c *SSHClient) ConnectSSHInfoMode(host string, port int) (*ssh.HandshakeLog
 // @example
 // ```javascript
 // const ssh = require('nuclei/ssh');
-// const client = new ssh.Client();
+// const client = new ssh.SSHClient();
 // client.Connect('acme.com', 22, 'username', 'password');
 // const output = client.Run('id');
 // log(output);
@@ -144,7 +144,7 @@ func (c *SSHClient) Run(cmd string) (string, error) {
 // @example
 // ```javascript
 // const ssh = require('nuclei/ssh');
-// const client = new ssh.Client();
+// const client = new ssh.SSHClient();
 // client.Connect('acme.com', 22, 'username', 'password');
 // const closed = client.Close();
 // ```

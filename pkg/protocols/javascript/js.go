@@ -447,7 +447,7 @@ func (request *Request) executeRequestParallel(ctxParent context.Context, hostPo
 	}
 }
 
-func (request *Request) executeRequestWithPayloads(hostPort string, input *contextargs.Context, hostname string, payload map[string]interface{}, previous output.InternalEvent, callback protocols.OutputEventCallback, requestOptions *protocols.ExecutorOptions) error {
+func (request *Request) executeRequestWithPayloads(hostPort string, input *contextargs.Context, _ string, payload map[string]interface{}, previous output.InternalEvent, callback protocols.OutputEventCallback, requestOptions *protocols.ExecutorOptions) error {
 	payloadValues := generators.MergeMaps(payload, previous)
 	argsCopy, err := request.getArgsCopy(input, payloadValues, requestOptions, false)
 	if err != nil {
@@ -580,7 +580,7 @@ func (request *Request) getArgsCopy(input *contextargs.Context, payloadValues ma
 }
 
 // evaluateArgs evaluates arguments using available payload values and returns a copy of args
-func (request *Request) evaluateArgs(payloadValues map[string]interface{}, requestOptions *protocols.ExecutorOptions, ignoreErrors bool) (map[string]interface{}, error) {
+func (request *Request) evaluateArgs(payloadValues map[string]interface{}, _ *protocols.ExecutorOptions, ignoreErrors bool) (map[string]interface{}, error) {
 	argsCopy := make(map[string]interface{})
 mainLoop:
 	for k, v := range request.Args {
