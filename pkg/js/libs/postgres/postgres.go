@@ -36,6 +36,11 @@ type (
 // const isPostgres = postgres.IsPostgres('acme.com', 5432);
 // ```
 func (c *PGClient) IsPostgres(host string, port int) (bool, error) {
+	return memoizedisPostgres(host, port)
+}
+
+// @memo
+func isPostgres(host string, port int) (bool, error) {
 	timeout := 10 * time.Second
 
 	conn, err := protocolstate.Dialer.Dial(context.TODO(), "tcp", fmt.Sprintf("%s:%d", host, port))
@@ -68,7 +73,7 @@ func (c *PGClient) IsPostgres(host string, port int) (bool, error) {
 // const connected = client.Connect('acme.com', 5432, 'username', 'password');
 // ```
 func (c *PGClient) Connect(host string, port int, username, password string) (bool, error) {
-	return connect(host, port, username, password, "postgres")
+	return memoizedconnect(host, port, username, password, "postgres")
 }
 
 // ExecuteQuery connects to Postgres database using given credentials and database name.
@@ -82,6 +87,11 @@ func (c *PGClient) Connect(host string, port int, username, password string) (bo
 // log(to_json(result));
 // ```
 func (c *PGClient) ExecuteQuery(host string, port int, username, password, dbName, query string) (*utils.SQLResult, error) {
+	return memoizedexecuteQuery(host, port, username, password, dbName, query)
+}
+
+// @memo
+func executeQuery(host string, port int, username string, password string, dbName string, query string) (*utils.SQLResult, error) {
 	if !protocolstate.IsHostAllowed(host) {
 		// host is not valid according to network policy
 		return nil, protocolstate.ErrHostDenied.Msgf(host)
@@ -117,10 +127,11 @@ func (c *PGClient) ExecuteQuery(host string, port int, username, password, dbNam
 // const connected = client.ConnectWithDB('acme.com', 5432, 'username', 'password', 'dbname');
 // ```
 func (c *PGClient) ConnectWithDB(host string, port int, username, password, dbName string) (bool, error) {
-	return connect(host, port, username, password, dbName)
+	return memoizedconnect(host, port, username, password, dbName)
 }
 
-func connect(host string, port int, username, password, dbName string) (bool, error) {
+// @memo
+func connect(host string, port int, username string, password string, dbName string) (bool, error) {
 	if host == "" || port <= 0 {
 		return false, fmt.Errorf("invalid host or port")
 	}
@@ -138,6 +149,8 @@ func connect(host string, port int, username, password, dbName string) (bool, er
 		Password: password,
 		Database: dbName,
 	})
+	defer db.Close()
+
 	_, err := db.Exec("select 1")
 	if err != nil {
 		switch true {

@@ -34,6 +34,11 @@ type (
 // log(toJSON(isRsync));
 // ```
 func IsRsync(host string, port int) (IsRsyncResponse, error) {
+	return memoizedisRsync(host, port)
+}
+
+// @memo
+func isRsync(host string, port int) (IsRsyncResponse, error) {
 	resp := IsRsyncResponse{}
 
 	timeout := 5 * time.Second

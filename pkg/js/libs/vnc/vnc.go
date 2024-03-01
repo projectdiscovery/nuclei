@@ -35,6 +35,11 @@ type (
 // log(toJSON(isVNC));
 // ```
 func IsVNC(host string, port int) (IsVNCResponse, error) {
+	return memoizedisVNC(host, port)
+}
+
+// @memo
+func isVNC(host string, port int) (IsVNCResponse, error) {
 	resp := IsVNCResponse{}
 
 	timeout := 5 * time.Second
