@@ -9,7 +9,9 @@ import (
 
 	"github.com/logrusorgru/aurora"
 
+	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/testutils"
+	"github.com/projectdiscovery/nuclei/v3/pkg/testutils/fuzzplayground"
 	sliceutil "github.com/projectdiscovery/utils/slice"
 )
 
@@ -77,6 +79,18 @@ func main() {
 		debugTests()
 		os.Exit(1)
 	}
+
+	// start fuzz playground server
+	defer fuzzplayground.Cleanup()
+	server := fuzzplayground.GetPlaygroundServer()
+	defer server.Close()
+	go func() {
+		if err := server.Start("localhost:8082"); err != nil {
+			if !strings.Contains(err.Error(), "Server closed") {
+				gologger.Fatal().Msgf("Could not start server: %s\n", err)
+			}
+		}
+	}()
 
 	customTestsList := normalizeSplit(customTests)
 

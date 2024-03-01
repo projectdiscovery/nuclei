@@ -416,7 +416,7 @@ func (store *Store) LoadTemplatesWithTags(templatesList, tags []string) []*templ
 					if config.DefaultConfig.LogAllEvents {
 						gologger.Print().Msgf("[%v] Tampered/Unsigned template at %v.\n", aurora.Yellow("WRN").String(), templatePath)
 					}
-				} else if store.config.OnlyLoadHTTPFuzzing && !templateHasHTTPFuzzing(parsed) {
+				} else if store.config.OnlyLoadHTTPFuzzing && !parsed.IsFuzzing() {
 					gologger.Warning().Msgf("The template does not contain http fuzzing: '%s'\n", templatePath)
 				} else if parsed.IsFuzzing() && !store.config.ExecutorOptions.Options.FuzzTemplates {
 					stats.Increment(parsers.FuzzFlagWarningStats)
@@ -492,13 +492,4 @@ func (s *Store) logErroredTemplates(erred map[string]error) {
 			gologger.Error().Msgf("Could not find template '%s': %s", template, err)
 		}
 	}
-}
-
-func templateHasHTTPFuzzing(template *templates.Template) bool {
-	for _, request := range template.RequestsHTTP {
-		if len(request.Fuzzing) > 0 {
-			return true
-		}
-	}
-	return false
 }

@@ -61,7 +61,7 @@ func (h *httpFuzzQuery) Execute(filePath string) error {
 	ts := httptest.NewTLSServer(router)
 	defer ts.Close()
 
-	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, ts.URL+"/?id=example", debug)
+	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, ts.URL+"/?id=example", debug, "-fuzz")
 	if err != nil {
 		return err
 	}
@@ -80,7 +80,7 @@ func (h *fuzzModeOverride) Execute(filePath string) error {
 	})
 	ts := httptest.NewTLSServer(router)
 	defer ts.Close()
-	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, ts.URL+"/?id=example&name=nuclei", debug, "-fuzzing-mode", "single", "-jsonl")
+	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, ts.URL+"/?id=example&name=nuclei", debug, "-fuzzing-mode", "single", "-jsonl", "-fuzz")
 	if err != nil {
 		return err
 	}
@@ -125,7 +125,7 @@ func (h *fuzzTypeOverride) Execute(filePath string) error {
 	})
 	ts := httptest.NewTLSServer(router)
 	defer ts.Close()
-	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, ts.URL+"?id=example", debug, "-fuzzing-type", "replace", "-jsonl")
+	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, ts.URL+"?id=example", debug, "-fuzzing-type", "replace", "-jsonl", "-fuzz")
 	if err != nil {
 		return err
 	}
@@ -170,7 +170,7 @@ func (h *HeadlessFuzzingQuery) Execute(filePath string) error {
 	ts := httptest.NewTLSServer(router)
 	defer ts.Close()
 
-	got, err := testutils.RunNucleiTemplateAndGetResults(filePath, ts.URL+"?url=https://scanme.sh", debug, "-headless")
+	got, err := testutils.RunNucleiTemplateAndGetResults(filePath, ts.URL+"?url=https://scanme.sh", debug, "-headless", "-fuzz")
 	if err != nil {
 		return err
 	}
@@ -191,7 +191,7 @@ func (h *FuzzHeaderBasic) Execute(filePath string) error {
 	ts := httptest.NewTLSServer(router)
 	defer ts.Close()
 
-	got, err := testutils.RunNucleiTemplateAndGetResults(filePath, ts.URL, debug)
+	got, err := testutils.RunNucleiTemplateAndGetResults(filePath, ts.URL, debug, "-fuzz")
 	if err != nil {
 		return err
 	}
@@ -219,7 +219,7 @@ func (h *FuzzHeaderMultiple) Execute(filePath string) error {
 	ts := httptest.NewTLSServer(router)
 	defer ts.Close()
 
-	got, err := testutils.RunNucleiTemplateAndGetResults(filePath, ts.URL, debug)
+	got, err := testutils.RunNucleiTemplateAndGetResults(filePath, ts.URL, debug, "-fuzz")
 	if err != nil {
 		return err
 	}
