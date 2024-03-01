@@ -128,6 +128,7 @@ requests:
     path:
         - '{{BaseURL}}/.git/config'
     method: GET
+    self-contained: false
 ```
 
 
@@ -987,6 +988,7 @@ matchers-condition: and
 path:
     - '{{BaseURL}}/.git/config'
 method: GET
+self-contained: false
 ```
 
 Part Definitions: 
@@ -1365,6 +1367,19 @@ max-size: 2048
 <div class="dt">
 
 Fuzzing describes schema to fuzz http requests
+
+</div>
+
+<hr />
+
+<div class="dd">
+
+<code>self-contained</code>  <i>bool</i>
+
+</div>
+<div class="dt">
+
+SelfContained specifies if the request is self-contained.
 
 </div>
 

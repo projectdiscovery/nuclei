@@ -914,6 +914,9 @@
       "description": "Method is the HTTP Request Method"
     },
     "http.Request": {
+      "required": [
+        "self-contained"
+      ],
       "properties": {
         "matchers": {
           "items": {
@@ -1042,6 +1045,9 @@
           "type": "array",
           "title": "fuzzin rules for http fuzzing",
           "description": "Fuzzing describes rule schema to fuzz http requests"
+        },
+        "self-contained": {
+          "type": "boolean"
         },
         "signature": {
           "$schema": "http://json-schema.org/draft-04/schema#",
