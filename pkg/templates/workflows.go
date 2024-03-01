@@ -83,11 +83,12 @@ func parseWorkflowTemplate(workflow *workflows.WorkflowTemplate, preprocessor Pr
 		if len(template.RequestsCode) > 0 {
 			if !options.Options.EnableCodeTemplates {
 				gologger.Warning().Msgf("`-code` flag not found, skipping code template from workflow: %v\n", path)
+				continue
 			} else if !template.Verified {
 				// unverfied code templates are not allowed in workflows
 				gologger.Warning().Msgf("skipping unverified code template from workflow: %v\n", path)
+				continue
 			}
-			continue
 		}
 		workflowTemplates = append(workflowTemplates, template)
 	}
