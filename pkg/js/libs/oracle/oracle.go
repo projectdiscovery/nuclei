@@ -33,6 +33,11 @@ type (
 // log(toJSON(isOracle));
 // ```
 func IsOracle(host string, port int) (IsOracleResponse, error) {
+	return memoizedisOracle(host, port)
+}
+
+// @memo
+func isOracle(host string, port int) (IsOracleResponse, error) {
 	resp := IsOracleResponse{}
 
 	timeout := 5 * time.Second
