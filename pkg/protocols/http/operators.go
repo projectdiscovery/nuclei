@@ -121,8 +121,16 @@ func (request *Request) responseToDSLMap(resp *http.Response, host, matched, raw
 	data["host"] = host
 	data["type"] = request.Type().String()
 	data["matched"] = matched
-	data["request"] = rawReq
-	data["response"] = rawResp
+	if hash, err := request.options.Storage.SetString(rawReq); err == nil {
+		data["request"] = hash
+	} else {
+		data["request"] = rawReq
+	}
+	if hash, err := request.options.Storage.SetString(rawResp); err == nil {
+		data["request"] = hash
+	} else {
+		data["response"] = rawResp
+	}
 	data["status_code"] = resp.StatusCode
 	data["body"] = body
 	data["all_headers"] = headers

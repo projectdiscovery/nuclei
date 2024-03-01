@@ -55,6 +55,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	"github.com/projectdiscovery/nuclei/v3/pkg/utils"
 	"github.com/projectdiscovery/nuclei/v3/pkg/utils/stats"
+	"github.com/projectdiscovery/nuclei/v3/pkg/utils/storage"
 	"github.com/projectdiscovery/nuclei/v3/pkg/utils/yaml"
 	"github.com/projectdiscovery/retryablehttp-go"
 	ptrutil "github.com/projectdiscovery/utils/ptr"
@@ -83,6 +84,7 @@ type Runner struct {
 	hostErrors        hosterrorscache.CacheInterface
 	resumeCfg         *types.ResumeCfg
 	pprofServer       *http.Server
+	storage           *storage.Storage
 	// pdcp auto-save options
 	pdcpUploadErrMsg string
 }
@@ -315,6 +317,13 @@ func New(options *types.Options) (*Runner, error) {
 	} else {
 		runner.rateLimiter = ratelimit.NewUnlimited(context.Background())
 	}
+
+	if storage, err := storage.New(); err != nil {
+		gologger.Error().Msgf("Could not create storage: %s", err)
+	} else {
+		runner.storage = storage
+	}
+
 	return runner, nil
 }
 
@@ -348,6 +357,9 @@ func (r *Runner) Close() {
 	r.progress.Stop()
 	if r.browser != nil {
 		r.browser.Close()
+	}
+	if r.storage != nil {
+		r.storage.Close()
 	}
 }
 
@@ -420,6 +432,7 @@ func (r *Runner) RunEnumeration() error {
 		ResumeCfg:       r.resumeCfg,
 		ExcludeMatchers: excludematchers.New(r.options.ExcludeMatchers),
 		InputHelper:     input.NewHelper(),
+		Storage:         r.storage,
 	}
 
 	if r.options.ShouldUseHostError() {

@@ -16,8 +16,9 @@ type ScanContext struct {
 	Input *contextargs.Context
 
 	// callbacks or hooks
-	OnError  func(error)
-	OnResult func(e *output.InternalWrappedEvent)
+	OnError   func(error)
+	OnResult  func(e *output.InternalWrappedEvent)
+	OnWarning func(string)
 
 	// unexported state fields
 	errors   []error
@@ -82,6 +83,11 @@ func (s *ScanContext) LogWarning(format string, args ...any) {
 	s.m.Lock()
 	defer s.m.Unlock()
 	val := fmt.Sprintf(format, args...)
+
+	if s.OnWarning != nil {
+		s.OnWarning(val)
+	}
+
 	s.warnings = append(s.warnings, val)
 
 	for _, e := range s.events {

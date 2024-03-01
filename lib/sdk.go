@@ -21,6 +21,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/templates"
 	"github.com/projectdiscovery/nuclei/v3/pkg/templates/signer"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
+	"github.com/projectdiscovery/nuclei/v3/pkg/utils/storage"
 	"github.com/projectdiscovery/ratelimit"
 	"github.com/projectdiscovery/retryablehttp-go"
 	errorutil "github.com/projectdiscovery/utils/errors"
@@ -71,6 +72,7 @@ type NucleiEngine struct {
 	mode             engineMode
 	browserInstance  *engine.Browser
 	httpClient       *retryablehttp.Client
+	storage          *storage.Storage
 
 	// unexported meta options
 	opts           *types.Options
@@ -169,6 +171,7 @@ func (e *NucleiEngine) Close() {
 	e.customWriter.Close()
 	e.hostErrCache.Close()
 	e.executerOpts.RateLimiter.Stop()
+	e.storage.Close()
 }
 
 // ExecuteWithCallback executes templates on targets and calls callback on each result(only if results are found)
