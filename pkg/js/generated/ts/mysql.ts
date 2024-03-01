@@ -23,7 +23,7 @@ export function BuildDSN(opts: MySQLOptions): string | null {
  * @example
  * ```javascript
  * const mysql = require('nuclei/mysql');
- * const client = new mysql.Client();
+ * const client = new mysql.MySQLClient;
  * ```
  */
 export class MySQLClient {
@@ -54,7 +54,7 @@ export class MySQLClient {
     * @example
     * ```javascript
     * const mysql = require('nuclei/mysql');
-    * const client = new mysql.Client();
+    * const client = new mysql.MySQLClient;
     * const connected = client.Connect('acme.com', 3306, 'username', 'password');
     * ```
     */
@@ -84,7 +84,7 @@ export class MySQLClient {
     * @example
     * ```javascript
     * const mysql = require('nuclei/mysql');
-    * const client = new mysql.Client();
+    * const client = new mysql.MySQLClient;
     * const connected = client.ConnectWithDSN('username:password@tcp(acme.com:3306)/');
     * ```
     */
@@ -209,9 +209,9 @@ export interface MySQLOptions {
  */
 export interface SQLResult {
     
-    Count?: number,
-    
     Columns?: string[],
+    
+    Count?: number,
 }
 
 

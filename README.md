@@ -20,8 +20,6 @@
 <p align="center">
   <a href="#how-it-works">How</a> •
   <a href="#install-nuclei">Install</a> •
-  <a href="#for-security-engineers">For Security Engineers</a> •
-  <a href="#for-developers-and-organizations">For Developers</a> •
   <a href="https://docs.projectdiscovery.io/tools/nuclei/">Documentation</a> •
   <a href="#credits">Credits</a> •
   <a href="https://nuclei.projectdiscovery.io/faq/nuclei/">FAQs</a> •

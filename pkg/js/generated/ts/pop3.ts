@@ -1,32 +1,16 @@
 
 
 /**
- * Pop3Client is a minimal POP3 client for nuclei scripts.
+ * IsPOP3 checks if a host is running a POP3 server.
  * @example
  * ```javascript
  * const pop3 = require('nuclei/pop3');
- * const client = new pop3.Client();
+ * const isPOP3 = pop3.IsPOP3('acme.com', 110);
+ * log(toJSON(isPOP3));
  * ```
  */
-export class Pop3Client {
-    
-
-    // Constructor of Pop3Client
-    constructor() {}
-    /**
-    * IsPOP3 checks if a host is running a POP3 server.
-    * @example
-    * ```javascript
-    * const pop3 = require('nuclei/pop3');
-    * const isPOP3 = pop3.IsPOP3('acme.com', 110);
-    * log(toJSON(isPOP3));
-    * ```
-    */
-    public IsPOP3(host: string, port: number): IsPOP3Response | null {
-        return null;
-    }
-    
-
+export function IsPOP3(host: string, port: number): IsPOP3Response | null {
+    return null;
 }
 
 

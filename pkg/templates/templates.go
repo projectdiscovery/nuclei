@@ -394,6 +394,17 @@ func (template *Template) ImportFileRefs(options *protocols.ExecutorOptions) err
 		}
 	}
 
+	// for javascript protocol code references
+	for _, request := range template.RequestsJavascript {
+		// simple test to check if source is a file or a snippet
+		if len(strings.Split(request.Code, "\n")) == 1 && fileutil.FileExists(request.Code) {
+			if val, ok := loadFile(request.Code); ok {
+				template.ImportedFiles = append(template.ImportedFiles, request.Code)
+				request.Code = val
+			}
+		}
+	}
+
 	// flow code references
 	if template.Flow != "" {
 		if len(template.Flow) > 0 && filepath.Ext(template.Flow) == ".js" && fileutil.FileExists(template.Flow) {
@@ -417,6 +428,20 @@ func (template *Template) ImportFileRefs(options *protocols.ExecutorOptions) err
 					if val, ok := loadFile(request.Source); ok {
 						template.ImportedFiles = append(template.ImportedFiles, request.Source)
 						request.Source = val
+					}
+				}
+			}
+		}
+
+		// for javascript protocol code references
+		for _, req := range template.RequestsQueue {
+			if req.Type() == types.JavascriptProtocol {
+				request := req.(*javascript.Request)
+				// simple test to check if source is a file or a snippet
+				if len(strings.Split(request.Code, "\n")) == 1 && fileutil.FileExists(request.Code) {
+					if val, ok := loadFile(request.Code); ok {
+						template.ImportedFiles = append(template.ImportedFiles, request.Code)
+						request.Code = val
 					}
 				}
 			}
