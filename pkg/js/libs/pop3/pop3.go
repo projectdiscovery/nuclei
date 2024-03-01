@@ -34,6 +34,11 @@ type (
 // log(toJSON(isPOP3));
 // ```
 func IsPOP3(host string, port int) (IsPOP3Response, error) {
+	return memoizedisPoP3(host, port)
+}
+
+// @memo
+func isPoP3(host string, port int) (IsPOP3Response, error) {
 	resp := IsPOP3Response{}
 
 	timeout := 5 * time.Second

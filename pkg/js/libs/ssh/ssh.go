@@ -101,7 +101,7 @@ func (c *SSHClient) ConnectWithKey(host string, port int, username, key string) 
 // log(to_json(info));
 // ```
 func (c *SSHClient) ConnectSSHInfoMode(host string, port int) (*ssh.HandshakeLog, error) {
-	return connectSSHInfoMode(&connectOptions{
+	return memoizedconnectSSHInfoMode(&connectOptions{
 		Host: host,
 		Port: port,
 	})
@@ -182,6 +182,7 @@ func (c *connectOptions) validate() error {
 	return nil
 }
 
+// @memo
 func connectSSHInfoMode(opts *connectOptions) (*ssh.HandshakeLog, error) {
 	if err := opts.validate(); err != nil {
 		return nil, err

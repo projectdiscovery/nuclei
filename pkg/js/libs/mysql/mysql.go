@@ -36,6 +36,11 @@ type (
 // const isMySQL = mysql.IsMySQL('acme.com', 3306);
 // ```
 func (c *MySQLClient) IsMySQL(host string, port int) (bool, error) {
+	return memoizedisMySQL(host, port)
+}
+
+// @memo
+func isMySQL(host string, port int) (bool, error) {
 	if !protocolstate.IsHostAllowed(host) {
 		// host is not valid according to network policy
 		return false, protocolstate.ErrHostDenied.Msgf(host)
@@ -110,6 +115,11 @@ type (
 // log(to_json(info));
 // ```
 func (c *MySQLClient) FingerprintMySQL(host string, port int) (MySQLInfo, error) {
+	return memoizedfingerprintMySQL(host, port)
+}
+
+// @memo
+func fingerprintMySQL(host string, port int) (MySQLInfo, error) {
 	info := MySQLInfo{}
 	if !protocolstate.IsHostAllowed(host) {
 		// host is not valid according to network policy
@@ -153,7 +163,7 @@ func (c *MySQLClient) FingerprintMySQL(host string, port int) (MySQLInfo, error)
 // const connected = client.ConnectWithDSN('username:password@tcp(acme.com:3306)/');
 // ```
 func (c *MySQLClient) ConnectWithDSN(dsn string) (bool, error) {
-	return connectWithDSN(dsn)
+	return memoizedconnectWithDSN(dsn)
 }
 
 // ExecuteQueryWithOpts connects to Mysql database using given credentials

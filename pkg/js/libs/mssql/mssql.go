@@ -36,7 +36,7 @@ type (
 // const connected = client.Connect('acme.com', 1433, 'username', 'password');
 // ```
 func (c *MSSQLClient) Connect(host string, port int, username, password string) (bool, error) {
-	return connect(host, port, username, password, "master")
+	return memoizedconnect(host, port, username, password, "master")
 }
 
 // ConnectWithDB connects to MS SQL database using given credentials and database name.
@@ -50,10 +50,11 @@ func (c *MSSQLClient) Connect(host string, port int, username, password string) 
 // const connected = client.ConnectWithDB('acme.com', 1433, 'username', 'password', 'master');
 // ```
 func (c *MSSQLClient) ConnectWithDB(host string, port int, username, password, dbName string) (bool, error) {
-	return connect(host, port, username, password, dbName)
+	return memoizedconnect(host, port, username, password, dbName)
 }
 
-func connect(host string, port int, username, password, dbName string) (bool, error) {
+// @memo
+func connect(host string, port int, username string, password string, dbName string) (bool, error) {
 	if host == "" || port <= 0 {
 		return false, fmt.Errorf("invalid host or port")
 	}
@@ -104,6 +105,11 @@ func connect(host string, port int, username, password, dbName string) (bool, er
 // const isMssql = mssql.IsMssql('acme.com', 1433);
 // ```
 func (c *MSSQLClient) IsMssql(host string, port int) (bool, error) {
+	return memoizedisMssql(host, port)
+}
+
+// @memo
+func isMssql(host string, port int) (bool, error) {
 	if !protocolstate.IsHostAllowed(host) {
 		// host is not valid according to network policy
 		return false, protocolstate.ErrHostDenied.Msgf(host)
