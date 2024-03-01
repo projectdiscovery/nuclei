@@ -12,16 +12,6 @@ import (
 )
 
 type (
-	// VNCClient is a minimal VNC client for nuclei scripts.
-	// @example
-	// ```javascript
-	// const vnc = require('nuclei/vnc');
-	// const client = new vnc.Client();
-	// ```
-	VNCClient struct{}
-)
-
-type (
 	// IsVNCResponse is the response from the IsVNC function.
 	// @example
 	// ```javascript
@@ -44,12 +34,7 @@ type (
 // const isVNC = vnc.IsVNC('acme.com', 5900);
 // log(toJSON(isVNC));
 // ```
-func (c *VNCClient) IsVNC(host string, port int) (IsVNCResponse, error) {
-	return memoizedisVnc(host, port)
-}
-
-// @memo
-func isVnc(host string, port int) (IsVNCResponse, error) {
+func IsVNC(host string, port int) (IsVNCResponse, error) {
 	resp := IsVNCResponse{}
 
 	timeout := 5 * time.Second

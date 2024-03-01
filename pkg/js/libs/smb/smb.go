@@ -18,7 +18,7 @@ type (
 	// @example
 	// ```javascript
 	// const smb = require('nuclei/smb');
-	// const client = new smb.Client();
+	// const client = new smb.SMBClient();
 	// ```
 	SMBClient struct{}
 )
@@ -30,7 +30,7 @@ type (
 // @example
 // ```javascript
 // const smb = require('nuclei/smb');
-// const client = new smb.Client();
+// const client = new smb.SMBClient();
 // const info = client.ConnectSMBInfoMode('acme.com', 445);
 // log(to_json(info));
 // ```
@@ -75,7 +75,7 @@ func connectSMBInfoMode(host string, port int) (*smb.SMBLog, error) {
 // @example
 // ```javascript
 // const smb = require('nuclei/smb');
-// const client = new smb.Client();
+// const client = new smb.SMBClient();
 // const metadata = client.ListSMBv2Metadata('acme.com', 445);
 // log(to_json(metadata));
 // ```
@@ -94,7 +94,7 @@ func (c *SMBClient) ListSMBv2Metadata(host string, port int) (*plugins.ServiceSM
 // @example
 // ```javascript
 // const smb = require('nuclei/smb');
-// const client = new smb.Client();
+// const client = new smb.SMBClient();
 // const shares = client.ListShares('acme.com', 445, 'username', 'password');
 //
 //	for (const share of shares) {

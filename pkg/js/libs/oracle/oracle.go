@@ -12,16 +12,6 @@ import (
 )
 
 type (
-	// OracleClient is a minimal Oracle client for nuclei scripts.
-	// @example
-	// ```javascript
-	// const oracle = require('nuclei/oracle');
-	// const client = new oracle.Client();
-	// ```
-	OracleClient struct{}
-)
-
-type (
 	// IsOracleResponse is the response from the IsOracle function.
 	// this is returned by IsOracle function.
 	// @example
@@ -42,12 +32,7 @@ type (
 // const isOracle = oracle.IsOracle('acme.com', 1521);
 // log(toJSON(isOracle));
 // ```
-func (c *OracleClient) IsOracle(host string, port int) (IsOracleResponse, error) {
-	return memoizedisOracle(host, port)
-}
-
-// @memo
-func isOracle(host string, port int) (IsOracleResponse, error) {
+func IsOracle(host string, port int) (IsOracleResponse, error) {
 	resp := IsOracleResponse{}
 
 	timeout := 5 * time.Second

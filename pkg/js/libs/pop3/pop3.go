@@ -12,16 +12,6 @@ import (
 )
 
 type (
-	// Pop3Client is a minimal POP3 client for nuclei scripts.
-	// @example
-	// ```javascript
-	// const pop3 = require('nuclei/pop3');
-	// const client = new pop3.Client();
-	// ```
-	Pop3Client struct{}
-)
-
-type (
 	// IsPOP3Response is the response from the IsPOP3 function.
 	// this is returned by IsPOP3 function.
 	// @example
@@ -43,12 +33,7 @@ type (
 // const isPOP3 = pop3.IsPOP3('acme.com', 110);
 // log(toJSON(isPOP3));
 // ```
-func (c *Pop3Client) IsPOP3(host string, port int) (IsPOP3Response, error) {
-	return memoizedisPOP3(host, port)
-}
-
-// @memo
-func isPOP3(host string, port int) (IsPOP3Response, error) {
+func IsPOP3(host string, port int) (IsPOP3Response, error) {
 	resp := IsPOP3Response{}
 
 	timeout := 5 * time.Second

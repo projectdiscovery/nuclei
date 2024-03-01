@@ -11,16 +11,6 @@ import (
 )
 
 type (
-	// RDPClient is a minimal RDP client for nuclei scripts.
-	// @example
-	// ```javascript
-	// const rdp = require('nuclei/rdp');
-	// const client = new rdp.Client();
-	// ```
-	RDPClient struct{}
-)
-
-type (
 	// IsRDPResponse is the response from the IsRDP function.
 	// this is returned by IsRDP function.
 	// @example
@@ -45,12 +35,7 @@ type (
 // const isRDP = rdp.IsRDP('acme.com', 3389);
 // log(toJSON(isRDP));
 // ```
-func (c *RDPClient) IsRDP(host string, port int) (IsRDPResponse, error) {
-	return memoizedisRDP(host, port)
-}
-
-// @memo
-func isRDP(host string, port int) (IsRDPResponse, error) {
+func IsRDP(host string, port int) (IsRDPResponse, error) {
 	resp := IsRDPResponse{}
 
 	timeout := 5 * time.Second
@@ -96,12 +81,7 @@ type (
 // const checkRDPAuth = rdp.CheckRDPAuth('acme.com', 3389);
 // log(toJSON(checkRDPAuth));
 // ```
-func (c *RDPClient) CheckRDPAuth(host string, port int) (CheckRDPAuthResponse, error) {
-	return memoizedcheckRDPAuth(host, port)
-}
-
-// @memo
-func checkRDPAuth(host string, port int) (CheckRDPAuthResponse, error) {
+func CheckRDPAuth(host string, port int) (CheckRDPAuthResponse, error) {
 	resp := CheckRDPAuthResponse{}
 
 	timeout := 5 * time.Second
