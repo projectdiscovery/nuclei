@@ -52,6 +52,23 @@ type Secret struct {
 	Token        string   `json:"token" yaml:"token"` // Bearer Auth token
 }
 
+// GetStrategy returns the auth strategy for the secret
+func (s *Secret) GetStrategy() AuthStrategy {
+	switch {
+	case strings.EqualFold(s.Type, string(BasicAuth)):
+		return NewBasicAuthStrategy(s)
+	case strings.EqualFold(s.Type, string(BearerTokenAuth)):
+		return NewBearerTokenAuthStrategy(s)
+	case strings.EqualFold(s.Type, string(HeadersAuth)):
+		return NewHeadersAuthStrategy(s)
+	case strings.EqualFold(s.Type, string(CookiesAuth)):
+		return NewCookiesAuthStrategy(s)
+	case strings.EqualFold(s.Type, string(QueryAuth)):
+		return NewQueryAuthStrategy(s)
+	}
+	return nil
+}
+
 func (s *Secret) Validate() error {
 	if stringsutil.EqualFoldAny(s.Type, SupportedAuthTypes()...) {
 		return fmt.Errorf("invalid type: %s", s.Type)
