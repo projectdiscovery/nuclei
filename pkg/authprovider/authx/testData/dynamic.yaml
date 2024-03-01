@@ -1,7 +1,6 @@
 id: test-dynamic
 dynamic:
-  - template-id: wordpress-login 
-    # template-path: /path/to/wordpress-login.yaml (optional)
+  - template-path: /path/to/wordpress-login.yaml
     variables:
       - name: username
         value: pdteam

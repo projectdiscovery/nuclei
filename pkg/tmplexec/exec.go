@@ -127,7 +127,16 @@ func (e *TemplateExecuter) Execute(ctx *scan.ScanContext) (bool, error) {
 		}
 	}
 
+	var externalCallback protocols.OutputEventCallback
+	if ctx.OnResult != nil {
+		externalCallback = ctx.OnResult
+	}
+
 	ctx.OnResult = func(event *output.InternalWrappedEvent) {
+		if externalCallback != nil {
+			externalCallback(event)
+		}
+
 		if event == nil {
 			// something went wrong
 			return

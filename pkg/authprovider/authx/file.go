@@ -211,6 +211,19 @@ func GetAuthDataFromFile(file string) (*Authx, error) {
 	return GetAuthDataFromJSON(bin)
 }
 
+// GetTemplateIDsFromSecretFile reads the template IDs from the secret file
+func GetTemplatePathsFromSecretFile(file string) ([]string, error) {
+	auth, err := GetAuthDataFromFile(file)
+	if err != nil {
+		return nil, err
+	}
+	var paths []string
+	for _, dynamic := range auth.Dynamic {
+		paths = append(paths, dynamic.TemplatePath)
+	}
+	return paths, nil
+}
+
 // GetAuthDataFromYAML reads the auth data from yaml
 func GetAuthDataFromYAML(data []byte) (*Authx, error) {
 	var auth Authx

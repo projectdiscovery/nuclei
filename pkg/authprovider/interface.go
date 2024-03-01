@@ -29,19 +29,27 @@ type AuthProvider interface {
 	// LookupURLX looks up a given URL and returns appropriate auth strategy
 	// it accepts pd url struct (i.e urlutil.URL) and returns the auth strategy
 	LookupURLX(*urlutil.URL) authx.AuthStrategy
+	// GetTemplateIDs returns required template IDs for the auth provider
+	// that will be used for dynamic secret fetching (if none, return empty slice)
+	GetTemplateIDs() []string
+	// GetTemplatePaths returns the template path for the auth provider
+	// that will be used for dynamic secret fetching
+	GetTemplatePaths() []string
 }
 
 // AuthProviderOptions contains options for the auth provider
 type AuthProviderOptions struct {
 	// File based auth provider options
 	SecretsFiles []string
+	// LazyFetchSecret is a callback for lazy fetching of dynamic secrets
+	LazyFetchSecret authx.LazyFetchSecret
 }
 
 // NewAuthProvider creates a new auth provider from the given options
 func NewAuthProvider(options *AuthProviderOptions) (AuthProvider, error) {
 	var providers []AuthProvider
 	for _, file := range options.SecretsFiles {
-		provider, err := NewFileAuthProvider(file)
+		provider, err := NewFileAuthProvider(file, options.LazyFetchSecret)
 		if err != nil {
 			return nil, err
 		}

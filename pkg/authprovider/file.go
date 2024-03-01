@@ -21,20 +21,29 @@ type FileAuthProvider struct {
 }
 
 // NewFileAuthProvider creates a new file based auth provider
-func NewFileAuthProvider(path string) (AuthProvider, error) {
+func NewFileAuthProvider(path string, callback authx.LazyFetchSecret) (AuthProvider, error) {
 	store, err := authx.GetAuthDataFromFile(path)
 	if err != nil {
 		return nil, err
 	}
-	if len(store.Secrets) == 0 {
+	if len(store.Secrets) == 0 && len(store.Dynamic) == 0 {
 		return nil, ErrNoSecrets
+	}
+	if len(store.Dynamic) > 0 && callback == nil {
+		return nil, errorutil.New("lazy fetch callback is required for dynamic secrets")
 	}
 	for _, secret := range store.Secrets {
 		if err := secret.Validate(); err != nil {
 			return nil, errorutil.NewWithErr(err).Msgf("invalid secret in file: %s", path)
 		}
 	}
-
+	for i, dynamic := range store.Dynamic {
+		if err := dynamic.Validate(); err != nil {
+			return nil, errorutil.NewWithErr(err).Msgf("invalid dynamic in file: %s", path)
+		}
+		dynamic.SetLazyFetchCallback(callback)
+		store.Dynamic[i] = dynamic
+	}
 	f := &FileAuthProvider{Path: path, store: store}
 	f.init()
 	return f, nil
@@ -60,6 +69,26 @@ func (f *FileAuthProvider) init() {
 				f.domains = make(map[string]authx.AuthStrategy)
 			}
 			f.domains[strings.TrimSpace(domain)] = secret.GetStrategy()
+		}
+	}
+	for _, dynamic := range f.store.Dynamic {
+		if len(dynamic.DomainsRegex) > 0 {
+			for _, domain := range dynamic.DomainsRegex {
+				if f.compiled == nil {
+					f.compiled = make(map[*regexp.Regexp]authx.AuthStrategy)
+				}
+				compiled, err := regexp.Compile(domain)
+				if err != nil {
+					continue
+				}
+				f.compiled[compiled] = &authx.DynamicAuthStrategy{Dynamic: dynamic}
+			}
+		}
+		for _, domain := range dynamic.Domains {
+			if f.domains == nil {
+				f.domains = make(map[string]authx.AuthStrategy)
+			}
+			f.domains[strings.TrimSpace(domain)] = &authx.DynamicAuthStrategy{Dynamic: dynamic}
 		}
 	}
 }
@@ -94,4 +123,26 @@ func (f *FileAuthProvider) LookupURL(u *url.URL) authx.AuthStrategy {
 // LookupURLX looks up a given URL and returns appropriate auth strategy
 func (f *FileAuthProvider) LookupURLX(u *urlutil.URL) authx.AuthStrategy {
 	return f.LookupAddr(u.Host)
+}
+
+// GetTemplateIDs returns required template IDs for the auth provider
+func (f *FileAuthProvider) GetTemplateIDs() []string {
+	res := []string{}
+	for _, dynamic := range f.store.Dynamic {
+		if dynamic.TemplateID != "" {
+			res = append(res, dynamic.TemplateID)
+		}
+	}
+	return res
+}
+
+// GetTemplatePaths returns the template path for the auth provider
+func (f *FileAuthProvider) GetTemplatePaths() []string {
+	res := []string{}
+	for _, dynamic := range f.store.Dynamic {
+		if dynamic.TemplatePath != "" {
+			res = append(res, dynamic.TemplatePath)
+		}
+	}
+	return res
 }

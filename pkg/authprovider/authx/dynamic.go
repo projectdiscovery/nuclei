@@ -26,7 +26,8 @@ type Dynamic struct {
 	TemplateID    string                 `json:"template-id" yaml:"template-id"`
 	TemplatePath  string                 `json:"template-path" yaml:"template-path"`
 	Variables     []KV                   `json:"variables" yaml:"variables"`
-	extracted     map[string]interface{} `json:"-" yaml:"-"` // extracted values from the dynamic secret
+	Input         string                 `json:"input" yaml:"input"` // (optional) target for the dynamic secret
+	Extracted     map[string]interface{} `json:"-" yaml:"-"`         // extracted values from the dynamic secret
 	fetchCallback LazyFetchSecret        `json:"-" yaml:"-"`
 	m             *sync.Mutex            `json:"-" yaml:"-"` // mutex for lazy fetch
 	fetched       bool                   `json:"-" yaml:"-"` // flag to check if the secret has been fetched
@@ -73,17 +74,17 @@ func (d *Dynamic) SetLazyFetchCallback(callback LazyFetchSecret) {
 			d.error = err
 			return err
 		}
-		if len(d.extracted) == 0 {
+		if len(d.Extracted) == 0 {
 			return fmt.Errorf("no extracted values found for dynamic secret")
 		}
 
 		// evaluate headers
 		for i, header := range d.Headers {
 			if strings.Contains(header.Value, "{{") {
-				header.Value = replacer.Replace(header.Value, d.extracted)
+				header.Value = replacer.Replace(header.Value, d.Extracted)
 			}
 			if strings.Contains(header.Key, "{{") {
-				header.Key = replacer.Replace(header.Key, d.extracted)
+				header.Key = replacer.Replace(header.Key, d.Extracted)
 			}
 			d.Headers[i] = header
 		}
@@ -91,13 +92,13 @@ func (d *Dynamic) SetLazyFetchCallback(callback LazyFetchSecret) {
 		// evaluate cookies
 		for i, cookie := range d.Cookies {
 			if strings.Contains(cookie.Value, "{{") {
-				cookie.Value = replacer.Replace(cookie.Value, d.extracted)
+				cookie.Value = replacer.Replace(cookie.Value, d.Extracted)
 			}
 			if strings.Contains(cookie.Key, "{{") {
-				cookie.Key = replacer.Replace(cookie.Key, d.extracted)
+				cookie.Key = replacer.Replace(cookie.Key, d.Extracted)
 			}
 			if strings.Contains(cookie.Raw, "{{") {
-				cookie.Raw = replacer.Replace(cookie.Raw, d.extracted)
+				cookie.Raw = replacer.Replace(cookie.Raw, d.Extracted)
 			}
 			d.Cookies[i] = cookie
 		}
@@ -105,23 +106,23 @@ func (d *Dynamic) SetLazyFetchCallback(callback LazyFetchSecret) {
 		// evaluate query params
 		for i, query := range d.Params {
 			if strings.Contains(query.Value, "{{") {
-				query.Value = replacer.Replace(query.Value, d.extracted)
+				query.Value = replacer.Replace(query.Value, d.Extracted)
 			}
 			if strings.Contains(query.Key, "{{") {
-				query.Key = replacer.Replace(query.Key, d.extracted)
+				query.Key = replacer.Replace(query.Key, d.Extracted)
 			}
 			d.Params[i] = query
 		}
 
 		// check username, password and token
 		if strings.Contains(d.Username, "{{") {
-			d.Username = replacer.Replace(d.Username, d.extracted)
+			d.Username = replacer.Replace(d.Username, d.Extracted)
 		}
 		if strings.Contains(d.Password, "{{") {
-			d.Password = replacer.Replace(d.Password, d.extracted)
+			d.Password = replacer.Replace(d.Password, d.Extracted)
 		}
 		if strings.Contains(d.Token, "{{") {
-			d.Token = replacer.Replace(d.Token, d.extracted)
+			d.Token = replacer.Replace(d.Token, d.Extracted)
 		}
 
 		// now attempt to parse the cookies
