@@ -1,6 +1,7 @@
 package authprovider
 
 import (
+	"net"
 	"net/url"
 	"regexp"
 	"strings"
@@ -64,14 +65,21 @@ func (f *FileAuthProvider) init() {
 }
 
 // LookupAddr looks up a given domain/address and returns appropriate auth strategy
-func (f *FileAuthProvider) LookupAddr(host string) authx.AuthStrategy {
+func (f *FileAuthProvider) LookupAddr(addr string) authx.AuthStrategy {
+	if strings.Contains(addr, ":") {
+		// default normalization for host:port
+		host, port, err := net.SplitHostPort(addr)
+		if err == nil && (port == "80" || port == "443") {
+			addr = host
+		}
+	}
 	for domain, strategy := range f.domains {
-		if strings.EqualFold(domain, host) {
+		if strings.EqualFold(domain, addr) {
 			return strategy
 		}
 	}
 	for compiled, strategy := range f.compiled {
-		if compiled.MatchString(host) {
+		if compiled.MatchString(addr) {
 			return strategy
 		}
 	}
