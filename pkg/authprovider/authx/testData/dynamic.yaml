@@ -1,0 +1,16 @@
+id: test-dynamic
+dynamic:
+  - template-id: wordpress-login 
+    # template-path: /path/to/wordpress-login.yaml (optional)
+    variables:
+      - name: username
+        value: pdteam
+      - name: password
+        value: nuclei-v3.2.0
+    type: Cookies
+    domains:
+      - localhost:8080
+    cookies:
+      - raw: "{{wp-global-cookie}}"
+      - raw: "{{wp-admin-cookie}}"
+      - raw: "{{wp-plugin-cookie}}"

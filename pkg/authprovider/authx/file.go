@@ -37,21 +37,23 @@ func SupportedAuthTypes() []string {
 
 // Authx is a struct for secrets or credentials file
 type Authx struct {
-	ID      string   `json:"id" yaml:"id"`
-	Secrets []Secret `json:"secrets" yaml:"secrets"`
+	ID      string    `json:"id" yaml:"id"`
+	Secrets []Secret  `json:"secrets" yaml:"secrets"`
+	Dynamic []Dynamic `json:"dynamic" yaml:"dynamic"`
 }
 
 // Secret is a struct for secret or credential
 type Secret struct {
-	Type         string   `json:"type" yaml:"type"`
-	Domains      []string `json:"domains" yaml:"domains"`
-	DomainsRegex []string `json:"domains-regex" yaml:"domains-regex"`
-	Headers      []KV     `json:"headers" yaml:"headers"`
-	Cookies      []KV     `json:"cookies" yaml:"cookies"`
-	Params       []KV     `json:"params" yaml:"params"`
-	Username     string   `json:"username" yaml:"username"` // can be either email or username
-	Password     string   `json:"password" yaml:"password"`
-	Token        string   `json:"token" yaml:"token"` // Bearer Auth token
+	Type            string   `json:"type" yaml:"type"`
+	Domains         []string `json:"domains" yaml:"domains"`
+	DomainsRegex    []string `json:"domains-regex" yaml:"domains-regex"`
+	Headers         []KV     `json:"headers" yaml:"headers"`
+	Cookies         []Cookie `json:"cookies" yaml:"cookies"`
+	Params          []KV     `json:"params" yaml:"params"`
+	Username        string   `json:"username" yaml:"username"` // can be either email or username
+	Password        string   `json:"password" yaml:"password"`
+	Token           string   `json:"token" yaml:"token"` // Bearer Auth token
+	skipCookieParse bool     `json:"-" yaml:"-"`         // temporary flag to skip cookie parsing (used in dynamic secrets)
 }
 
 // GetStrategy returns the auth strategy for the secret
@@ -113,6 +115,11 @@ func (s *Secret) Validate() error {
 			return fmt.Errorf("cookies cannot be empty in cookies auth")
 		}
 		for _, cookie := range s.Cookies {
+			if cookie.Raw != "" && !s.skipCookieParse {
+				if err := cookie.Parse(); err != nil {
+					return fmt.Errorf("invalid raw cookie in cookiesAuth: %s", err)
+				}
+			}
 			if err := cookie.Validate(); err != nil {
 				return fmt.Errorf("invalid cookie in cookiesAuth: %s", err)
 			}
@@ -145,6 +152,47 @@ func (k *KV) Validate() error {
 		return fmt.Errorf("value cannot be empty")
 	}
 	return nil
+}
+
+type Cookie struct {
+	Key   string `json:"key" yaml:"key"`
+	Value string `json:"value" yaml:"value"`
+	Raw   string `json:"raw" yaml:"raw"`
+}
+
+func (c *Cookie) Validate() error {
+	if c.Raw != "" {
+		return nil
+	}
+	if c.Key == "" {
+		return fmt.Errorf("key cannot be empty")
+	}
+	if c.Value == "" {
+		return fmt.Errorf("value cannot be empty")
+	}
+	return nil
+}
+
+// Parse parses the cookie
+// in raw the cookie is in format of
+// Set-Cookie: <cookie-name>=<cookie-value>; Expires=<date>; Path=<path>; Domain=<domain_name>; Secure; HttpOnly
+func (c *Cookie) Parse() error {
+	if c.Raw == "" {
+		return fmt.Errorf("raw cookie cannot be empty")
+	}
+	tmp := strings.TrimPrefix(c.Raw, "Set-Cookie: ")
+	slice := strings.Split(tmp, ";")
+	if len(slice) == 0 {
+		return fmt.Errorf("invalid raw cookie no ; found")
+	}
+	// first element is the cookie name and value
+	cookie := strings.Split(slice[0], "=")
+	if len(cookie) == 2 {
+		c.Key = cookie[0]
+		c.Value = cookie[1]
+		return nil
+	}
+	return fmt.Errorf("invalid raw cookie: %s", c.Raw)
 }
 
 // GetAuthDataFromFile reads the auth data from file
