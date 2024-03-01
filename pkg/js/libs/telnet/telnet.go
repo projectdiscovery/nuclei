@@ -34,6 +34,11 @@ type (
 // log(toJSON(isTelnet));
 // ```
 func IsTelnet(host string, port int) (IsTelnetResponse, error) {
+	return memoizedisTelnet(host, port)
+}
+
+// @memo
+func isTelnet(host string, port int) (IsTelnetResponse, error) {
 	resp := IsTelnetResponse{}
 
 	timeout := 5 * time.Second

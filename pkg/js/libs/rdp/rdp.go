@@ -36,6 +36,11 @@ type (
 // log(toJSON(isRDP));
 // ```
 func IsRDP(host string, port int) (IsRDPResponse, error) {
+	return memoizedisRDP(host, port)
+}
+
+// @memo
+func isRDP(host string, port int) (IsRDPResponse, error) {
 	resp := IsRDPResponse{}
 
 	timeout := 5 * time.Second
@@ -82,6 +87,11 @@ type (
 // log(toJSON(checkRDPAuth));
 // ```
 func CheckRDPAuth(host string, port int) (CheckRDPAuthResponse, error) {
+	return memoizedcheckRDPAuth(host, port)
+}
+
+// @memo
+func checkRDPAuth(host string, port int) (CheckRDPAuthResponse, error) {
 	resp := CheckRDPAuthResponse{}
 
 	timeout := 5 * time.Second
