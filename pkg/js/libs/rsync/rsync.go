@@ -12,16 +12,6 @@ import (
 )
 
 type (
-	// RsyncClient is a minimal Rsync client for nuclei scripts.
-	// @example
-	// ```javascript
-	// const rsync = require('nuclei/rsync');
-	// const client = new rsync.Client();
-	// ```
-	RsyncClient struct{}
-)
-
-type (
 	// IsRsyncResponse is the response from the IsRsync function.
 	// this is returned by IsRsync function.
 	// @example
@@ -43,7 +33,7 @@ type (
 // const isRsync = rsync.IsRsync('acme.com', 873);
 // log(toJSON(isRsync));
 // ```
-func (c *RsyncClient) IsRsync(host string, port int) (IsRsyncResponse, error) {
+func IsRsync(host string, port int) (IsRsyncResponse, error) {
 	resp := IsRsyncResponse{}
 
 	timeout := 5 * time.Second

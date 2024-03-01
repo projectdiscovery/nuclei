@@ -22,7 +22,7 @@ type (
 	// @example
 	// ```javascript
 	// const mysql = require('nuclei/mysql');
-	// const client = new mysql.Client();
+	// const client = new mysql.MySQLClient;
 	// ```
 	MySQLClient struct{}
 )
@@ -64,7 +64,7 @@ func (c *MySQLClient) IsMySQL(host string, port int) (bool, error) {
 // @example
 // ```javascript
 // const mysql = require('nuclei/mysql');
-// const client = new mysql.Client();
+// const client = new mysql.MySQLClient;
 // const connected = client.Connect('acme.com', 3306, 'username', 'password');
 // ```
 func (c *MySQLClient) Connect(host string, port int, username, password string) (bool, error) {
@@ -149,7 +149,7 @@ func (c *MySQLClient) FingerprintMySQL(host string, port int) (MySQLInfo, error)
 // @example
 // ```javascript
 // const mysql = require('nuclei/mysql');
-// const client = new mysql.Client();
+// const client = new mysql.MySQLClient;
 // const connected = client.ConnectWithDSN('username:password@tcp(acme.com:3306)/');
 // ```
 func (c *MySQLClient) ConnectWithDSN(dsn string) (bool, error) {

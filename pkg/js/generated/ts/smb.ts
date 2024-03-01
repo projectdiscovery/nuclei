@@ -7,7 +7,7 @@
  * @example
  * ```javascript
  * const smb = require('nuclei/smb');
- * const client = new smb.Client();
+ * const client = new smb.SMBClient();
  * ```
  */
 export class SMBClient {
@@ -23,7 +23,7 @@ export class SMBClient {
     * @example
     * ```javascript
     * const smb = require('nuclei/smb');
-    * const client = new smb.Client();
+    * const client = new smb.SMBClient();
     * const info = client.ConnectSMBInfoMode('acme.com', 445);
     * log(to_json(info));
     * ```
@@ -41,7 +41,7 @@ export class SMBClient {
     * @example
     * ```javascript
     * const smb = require('nuclei/smb');
-    * const client = new smb.Client();
+    * const client = new smb.SMBClient();
     * const metadata = client.ListSMBv2Metadata('acme.com', 445);
     * log(to_json(metadata));
     * ```
@@ -59,7 +59,7 @@ export class SMBClient {
     * @example
     * ```javascript
     * const smb = require('nuclei/smb');
-    * const client = new smb.Client();
+    * const client = new smb.SMBClient();
     * const shares = client.ListShares('acme.com', 445, 'username', 'password');
     * 	for (const share of shares) {
     * 		  log(share);
@@ -113,6 +113,8 @@ export interface HeaderLog {
  */
 export interface NegotiationLog {
     
+    SecurityMode?: number,
+    
     DialectRevision?: number,
     
     ServerGuid?: Uint8Array,
@@ -125,8 +127,6 @@ export interface NegotiationLog {
     
     AuthenticationTypes?: string[],
     
-    SecurityMode?: number,
-    
     HeaderLog?: HeaderLog,
 }
 
@@ -136,6 +136,8 @@ export interface NegotiationLog {
  * SMBCapabilities Interface
  */
 export interface SMBCapabilities {
+    
+    DFSSupport?: boolean,
     
     Leasing?: boolean,
     
@@ -148,8 +150,6 @@ export interface SMBCapabilities {
     DirLeasing?: boolean,
     
     Encryption?: boolean,
-    
-    DFSSupport?: boolean,
 }
 
 
@@ -159,6 +159,8 @@ export interface SMBCapabilities {
  */
 export interface SMBLog {
     
+    NativeOs?: string,
+    
     NTLM?: string,
     
     GroupName?: string,
@@ -167,15 +169,13 @@ export interface SMBLog {
     
     SupportV1?: boolean,
     
-    NativeOs?: string,
-    
-    Version?: SMBVersions,
-    
     Capabilities?: SMBCapabilities,
     
     NegotiationLog?: NegotiationLog,
     
     SessionSetupLog?: SessionSetupLog,
+    
+    Version?: SMBVersions,
 }
 
 
@@ -201,10 +201,6 @@ export interface SMBVersions {
  */
 export interface ServiceSMB {
     
-    DNSDomainName?: string,
-    
-    ForestName?: string,
-    
     SigningEnabled?: boolean,
     
     SigningRequired?: boolean,
@@ -216,6 +212,10 @@ export interface ServiceSMB {
     NetBIOSDomainName?: string,
     
     DNSComputerName?: string,
+    
+    DNSDomainName?: string,
+    
+    ForestName?: string,
 }
 
 
@@ -225,11 +225,11 @@ export interface ServiceSMB {
  */
 export interface SessionSetupLog {
     
+    SetupFlags?: number,
+    
     TargetName?: string,
     
     NegotiateFlags?: number,
-    
-    SetupFlags?: number,
     
     HeaderLog?: HeaderLog,
 }

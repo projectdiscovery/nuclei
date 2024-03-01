@@ -22,7 +22,7 @@ type (
 	// @example
 	// ```javascript
 	// const postgres = require('nuclei/postgres');
-	// const client = new postgres.Client();
+	// const client = new postgres.PGClient;
 	// ```
 	PGClient struct{}
 )
@@ -64,7 +64,7 @@ func (c *PGClient) IsPostgres(host string, port int) (bool, error) {
 // @example
 // ```javascript
 // const postgres = require('nuclei/postgres');
-// const client = new postgres.Client();
+// const client = new postgres.PGClient;
 // const connected = client.Connect('acme.com', 5432, 'username', 'password');
 // ```
 func (c *PGClient) Connect(host string, port int, username, password string) (bool, error) {
@@ -77,7 +77,7 @@ func (c *PGClient) Connect(host string, port int, username, password string) (bo
 // @example
 // ```javascript
 // const postgres = require('nuclei/postgres');
-// const client = new postgres.Client();
+// const client = new postgres.PGClient;
 // const result = client.ExecuteQuery('acme.com', 5432, 'username', 'password', 'dbname', 'select * from users');
 // log(to_json(result));
 // ```
@@ -113,7 +113,7 @@ func (c *PGClient) ExecuteQuery(host string, port int, username, password, dbNam
 // @example
 // ```javascript
 // const postgres = require('nuclei/postgres');
-// const client = new postgres.Client();
+// const client = new postgres.PGClient;
 // const connected = client.ConnectWithDB('acme.com', 5432, 'username', 'password', 'dbname');
 // ```
 func (c *PGClient) ConnectWithDB(host string, port int, username, password, dbName string) (bool, error) {
