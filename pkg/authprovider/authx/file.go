@@ -157,7 +157,6 @@ func GetAuthDataFromFile(file string) (*Authx, error) {
 	if err != nil {
 		return nil, err
 	}
-	fmt.Printf("ext: %s\n", ext)
 	if ext == ".yml" || ext == ".yaml" {
 		return GetAuthDataFromYAML(bin)
 	}

@@ -5,7 +5,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/authprovider/authx"
+	"github.com/projectdiscovery/nuclei/v3/pkg/authprovider/authx"
 	errorutil "github.com/projectdiscovery/utils/errors"
 	urlutil "github.com/projectdiscovery/utils/url"
 )

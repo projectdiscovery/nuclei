@@ -373,6 +373,8 @@ type Options struct {
 	// Fuzz enabled execution of fuzzing templates
 	// Note: when Fuzz is enabled other templates will not be executed
 	FuzzTemplates bool
+	// SecretsFile is file containing secrets for nuclei
+	SecretsFile goflags.StringSlice
 }
 
 // ShouldLoadResume resume file

@@ -395,6 +395,10 @@ on extensive configurability, massive extensibility and ease of use.`)
 		flagSet.StringVarP(&options.ScanID, "scan-id", "sid", "", "upload scan results to given scan id"),
 	)
 
+	flagSet.CreateGroup("Authentication", "Authentication",
+		flagSet.StringSliceVar(&options.SecretsFile, "secrets", nil, "path to file containing secrets for nuclei authenticated scan", goflags.CommaSeparatedStringSliceOptions),
+	)
+
 	flagSet.SetCustomHelpText(`EXAMPLES:
 Run nuclei on single host:
 	$ nuclei -target example.com
@@ -467,6 +471,14 @@ Additional documentation is available at: https://docs.nuclei.sh/getting-started
 	}
 	if options.NewTemplatesDirectory != "" {
 		config.DefaultConfig.SetTemplatesDir(options.NewTemplatesDirectory)
+	}
+
+	if len(options.SecretsFile) > 0 {
+		for _, secretFile := range options.SecretsFile {
+			if !fileutil.FileExists(secretFile) {
+				gologger.Fatal().Msgf("given secrets file '%s' does not exist", options.SecretsFile)
+			}
+		}
 	}
 
 	cleanupOldResumeFiles()

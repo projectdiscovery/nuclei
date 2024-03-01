@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/projectdiscovery/nuclei/v3/internal/pdcp"
+	"github.com/projectdiscovery/nuclei/v3/pkg/authprovider"
 	"github.com/projectdiscovery/nuclei/v3/pkg/input/provider"
 	"github.com/projectdiscovery/nuclei/v3/pkg/installer"
 	uncoverlib "github.com/projectdiscovery/uncover"
@@ -403,6 +404,12 @@ func (r *Runner) RunEnumeration() error {
 		r.options.ExcludedTemplates = append(r.options.ExcludedTemplates, ignoreFile.Files...)
 	}
 
+	// initialize auth provider
+	provider, err := authprovider.NewAuthProvider(&authprovider.AuthProviderOptions{SecretsFiles: r.options.SecretsFile})
+	if err != nil {
+		return errors.Wrap(err, "could not create auth provider")
+	}
+
 	// Create the executor options which will be used throughout the execution
 	// stage by the nuclei engine modules.
 	executorOpts := protocols.ExecutorOptions{
@@ -419,6 +426,7 @@ func (r *Runner) RunEnumeration() error {
 		ResumeCfg:       r.resumeCfg,
 		ExcludeMatchers: excludematchers.New(r.options.ExcludeMatchers),
 		InputHelper:     input.NewHelper(),
+		AuthProvider:    provider,
 	}
 
 	if r.options.ShouldUseHostError() {

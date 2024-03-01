@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"net/url"
 
-	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/authprovider/authx"
+	"github.com/projectdiscovery/nuclei/v3/pkg/authprovider/authx"
 	urlutil "github.com/projectdiscovery/utils/url"
 )
 
@@ -29,4 +29,23 @@ type AuthProvider interface {
 	// LookupURLX looks up a given URL and returns appropriate auth strategy
 	// it accepts pd url struct (i.e urlutil.URL) and returns the auth strategy
 	LookupURLX(*urlutil.URL) authx.AuthStrategy
+}
+
+// AuthProviderOptions contains options for the auth provider
+type AuthProviderOptions struct {
+	// File based auth provider options
+	SecretsFiles []string
+}
+
+// NewAuthProvider creates a new auth provider from the given options
+func NewAuthProvider(options *AuthProviderOptions) (AuthProvider, error) {
+	var providers []AuthProvider
+	for _, file := range options.SecretsFiles {
+		provider, err := NewFileAuthProvider(file)
+		if err != nil {
+			return nil, err
+		}
+		providers = append(providers, provider)
+	}
+	return NewMultiAuthProvider(providers...), nil
 }
