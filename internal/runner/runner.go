@@ -455,19 +455,6 @@ func (r *Runner) RunEnumeration() error {
 		return nil // exit
 	}
 	store.Load()
-
-	if r.options.DisableUnsignedTemplates {
-		unverifiedTemplates := 0
-		for _, template := range store.Templates() {
-			if !template.Verified {
-				unverifiedTemplates++
-			}
-		}
-		if unverifiedTemplates > 0 {
-			gologger.Fatal().Msgf("Found %d unsigned templates: Program exiting.", unverifiedTemplates)
-		}
-	}
-
 	// TODO: remove below functions after v3 or update warning messages
 	disk.PrintDeprecatedPathsMsgIfApplicable(r.options.Silent)
 	templates.PrintDeprecatedProtocolNameMsgIfApplicable(r.options.Silent, r.options.Verbose)

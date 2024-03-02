@@ -69,7 +69,7 @@ func parseWorkflowTemplate(workflow *workflows.WorkflowTemplate, preprocessor Pr
 	}
 
 	var workflowTemplates []*Template
-
+	var unverifiedWorkflowTemplates int
 	for _, path := range paths {
 		template, err := Parse(path, preprocessor, options.Copy())
 		if err != nil {
@@ -80,6 +80,15 @@ func parseWorkflowTemplate(workflow *workflows.WorkflowTemplate, preprocessor Pr
 			gologger.Warning().Msgf("Could not parse workflow template %s: no executer found\n", path)
 			continue
 		}
+
+		if options.Options.DisableUnsignedTemplates {
+			if !template.Verified {
+				unverifiedWorkflowTemplates++
+				SignatureStats[Unsigned].Add(^uint64(0))
+				continue
+			}
+		}
+
 		if len(template.RequestsCode) > 0 {
 			if !options.Options.EnableCodeTemplates {
 				gologger.Warning().Msgf("`-code` flag not found, skipping code template from workflow: %v\n", path)
@@ -91,6 +100,10 @@ func parseWorkflowTemplate(workflow *workflows.WorkflowTemplate, preprocessor Pr
 			}
 		}
 		workflowTemplates = append(workflowTemplates, template)
+	}
+
+	if unverifiedWorkflowTemplates > 0 {
+		gologger.Warning().Msgf("Skipped %d unsigned workflow templates.", unverifiedWorkflowTemplates)
 	}
 
 	finalTemplates, _ := ClusterTemplates(workflowTemplates, options.Copy())
