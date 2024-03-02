@@ -15,12 +15,12 @@ func init() {
 	module.Set(
 		gojs.Objects{
 			// Functions
+			"IsPOP3": lib_pop3.IsPOP3,
 
 			// Var and consts
 
 			// Objects / Classes
 			"IsPOP3Response": gojs.GetClassConstructor[lib_pop3.IsPOP3Response](&lib_pop3.IsPOP3Response{}),
-			"Pop3Client":     gojs.GetClassConstructor[lib_pop3.Pop3Client](&lib_pop3.Pop3Client{}),
 		},
 	).Register()
 }
