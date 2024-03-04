@@ -59,6 +59,5 @@ func (j *SwaggerFormat) Parse(input string, resultsCb formats.ParseReqRespCallba
 	if err != nil {
 		return errors.Wrap(err, "could not resolve openapi schema references")
 	}
-	openapi.GenerateRequestsFromSchema(schema, resultsCb)
-	return nil
+	return openapi.GenerateRequestsFromSchema(schema, resultsCb)
 }

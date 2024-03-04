@@ -21,7 +21,10 @@ import (
 )
 
 // GenerateRequestsFromSchema generates http requests from an OpenAPI 3.0 document object
-func GenerateRequestsFromSchema(schema *openapi3.T, callback formats.ParseReqRespCallback) {
+func GenerateRequestsFromSchema(schema *openapi3.T, callback formats.ParseReqRespCallback) error {
+	if len(schema.Servers) == 0 {
+		return errors.New("no servers found in openapi schema")
+	}
 	for _, serverURL := range schema.Servers {
 		pathURL := serverURL.URL
 
@@ -36,6 +39,7 @@ func GenerateRequestsFromSchema(schema *openapi3.T, callback formats.ParseReqRes
 			}
 		}
 	}
+	return nil
 }
 
 // generateRequestsFromOp generates requests from an operation and some other data
