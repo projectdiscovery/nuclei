@@ -78,7 +78,7 @@ require (
 	github.com/projectdiscovery/dsl v0.0.44
 	github.com/projectdiscovery/fasttemplate v0.0.2
 	github.com/projectdiscovery/go-smb2 v0.0.0-20240129202741-052cc450c6cb
-	github.com/projectdiscovery/goflags v0.1.40
+	github.com/projectdiscovery/goflags v0.1.41
 	github.com/projectdiscovery/gologger v1.1.12
 	github.com/projectdiscovery/gostruct v0.0.2
 	github.com/projectdiscovery/gozero v0.0.1
@@ -90,7 +90,7 @@ require (
 	github.com/projectdiscovery/sarif v0.0.1
 	github.com/projectdiscovery/tlsx v1.1.6
 	github.com/projectdiscovery/uncover v1.0.7
-	github.com/projectdiscovery/useragent v0.0.39
+	github.com/projectdiscovery/useragent v0.0.40
 	github.com/projectdiscovery/utils v0.0.81
 	github.com/projectdiscovery/wappalyzergo v0.0.111
 	github.com/redis/go-redis/v9 v9.1.0
