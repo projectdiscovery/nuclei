@@ -13,7 +13,9 @@ import (
 
 // YamlMultiDocFormat is a Yaml format parser for nuclei
 // input HTTP requests with multiple documents separated by ---
-type YamlMultiDocFormat struct{}
+type YamlMultiDocFormat struct {
+	opts formats.InputFormatOptions
+}
 
 // New creates a new JSON format parser
 func New() *YamlMultiDocFormat {
@@ -35,6 +37,10 @@ type proxifyRequest struct {
 // Name returns the name of the format
 func (j *YamlMultiDocFormat) Name() string {
 	return "yaml"
+}
+
+func (j *YamlMultiDocFormat) SetOptions(options formats.InputFormatOptions) {
+	j.opts = options
 }
 
 // Parse parses the input and calls the provided callback

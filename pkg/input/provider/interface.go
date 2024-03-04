@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/projectdiscovery/nuclei/v3/pkg/input/formats"
 	"github.com/projectdiscovery/nuclei/v3/pkg/input/provider/http"
 	"github.com/projectdiscovery/nuclei/v3/pkg/input/provider/list"
 	"github.com/projectdiscovery/nuclei/v3/pkg/input/types"
@@ -86,7 +87,13 @@ func NewInputProvider(opts InputOptions) (InputProvider, error) {
 		})
 	} else {
 		// use HttpInputProvider
-		return http.NewHttpInputProvider(opts.Options.TargetsFilePath, opts.Options.InputFileMode)
+		return http.NewHttpInputProvider(&http.HttpMultiFormatOptions{
+			InputFile: opts.Options.TargetsFilePath,
+			InputMode: opts.Options.InputFileMode,
+			Options: formats.InputFormatOptions{
+				Variables: opts.Options.Vars.AsMap(),
+			},
+		})
 	}
 }
 

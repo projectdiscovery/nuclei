@@ -25,6 +25,9 @@ func GenerateRequestsFromSchema(schema *openapi3.T, callback formats.ParseReqRes
 	if len(schema.Servers) == 0 {
 		return errors.New("no servers found in openapi schema")
 	}
+	// using these 2 values create parameters and pass them to generateRequestsFromOp
+	// gologger.Error().Msgf("%+v", schema.Components.SecuritySchemes["ApiKeyAuth"].Value)
+	// gologger.Error().Msgf("%+v", schema.Security)
 	for _, serverURL := range schema.Servers {
 		pathURL := serverURL.URL
 

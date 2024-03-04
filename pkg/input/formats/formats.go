@@ -7,6 +7,15 @@ import (
 // ParseReqRespCallback is a callback function for discovered raw requests
 type ParseReqRespCallback func(rr *types.RequestResponse) bool
 
+// InputFormatOptions contains options for the input
+// this can be variables that can be passed or
+// overrides or some other options
+type InputFormatOptions struct {
+	// Variables is list of variables that can be used
+	// while generating requests in given format
+	Variables map[string]interface{}
+}
+
 // Format is an interface implemented by all input formats
 type Format interface {
 	// Name returns the name of the format
@@ -14,4 +23,6 @@ type Format interface {
 	// Parse parses the input and calls the provided callback
 	// function for each RawRequest it discovers.
 	Parse(input string, resultsCb ParseReqRespCallback) error
+	// SetOptions sets the options for the input format
+	SetOptions(options InputFormatOptions)
 }

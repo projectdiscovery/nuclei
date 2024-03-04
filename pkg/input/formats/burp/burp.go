@@ -12,7 +12,9 @@ import (
 )
 
 // BurpFormat is a Burp XML File parser
-type BurpFormat struct{}
+type BurpFormat struct {
+	opts formats.InputFormatOptions
+}
 
 // New creates a new Burp XML File parser
 func New() *BurpFormat {
@@ -24,6 +26,10 @@ var _ formats.Format = &BurpFormat{}
 // Name returns the name of the format
 func (j *BurpFormat) Name() string {
 	return "burp"
+}
+
+func (j *BurpFormat) SetOptions(options formats.InputFormatOptions) {
+	j.opts = options
 }
 
 // Parse parses the input and calls the provided callback

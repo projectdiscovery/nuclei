@@ -13,7 +13,9 @@ import (
 
 // JSONFormat is a JSON format parser for nuclei
 // input HTTP requests
-type JSONFormat struct{}
+type JSONFormat struct {
+	opts formats.InputFormatOptions
+}
 
 // New creates a new JSON format parser
 func New() *JSONFormat {
@@ -35,6 +37,10 @@ type proxifyRequest struct {
 // Name returns the name of the format
 func (j *JSONFormat) Name() string {
 	return "jsonl"
+}
+
+func (j *JSONFormat) SetOptions(options formats.InputFormatOptions) {
+	j.opts = options
 }
 
 // Parse parses the input and calls the provided callback

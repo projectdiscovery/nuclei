@@ -16,7 +16,9 @@ import (
 )
 
 // SwaggerFormat is a Swagger Schema File parser
-type SwaggerFormat struct{}
+type SwaggerFormat struct {
+	opts formats.InputFormatOptions
+}
 
 // New creates a new Swagger format parser
 func New() *SwaggerFormat {
@@ -28,6 +30,10 @@ var _ formats.Format = &SwaggerFormat{}
 // Name returns the name of the format
 func (j *SwaggerFormat) Name() string {
 	return "swagger"
+}
+
+func (j *SwaggerFormat) SetOptions(options formats.InputFormatOptions) {
+	j.opts = options
 }
 
 // Parse parses the input and calls the provided callback

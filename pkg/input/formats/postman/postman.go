@@ -15,7 +15,9 @@ import (
 )
 
 // PostmanFormat is a Postman Collection File parser
-type PostmanFormat struct{}
+type PostmanFormat struct {
+	opts formats.InputFormatOptions
+}
 
 // New creates a new Postman format parser
 func New() *PostmanFormat {
@@ -27,6 +29,10 @@ var _ formats.Format = &PostmanFormat{}
 // Name returns the name of the format
 func (j *PostmanFormat) Name() string {
 	return "postman"
+}
+
+func (j *PostmanFormat) SetOptions(options formats.InputFormatOptions) {
+	j.opts = options
 }
 
 // Parse parses the input and calls the provided callback

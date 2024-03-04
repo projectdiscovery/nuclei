@@ -7,7 +7,9 @@ import (
 )
 
 // OpenAPIFormat is a OpenAPI Schema File parser
-type OpenAPIFormat struct{}
+type OpenAPIFormat struct {
+	opts formats.InputFormatOptions
+}
 
 // New creates a new OpenAPI format parser
 func New() *OpenAPIFormat {
@@ -19,6 +21,10 @@ var _ formats.Format = &OpenAPIFormat{}
 // Name returns the name of the format
 func (j *OpenAPIFormat) Name() string {
 	return "openapi"
+}
+
+func (j *OpenAPIFormat) SetOptions(options formats.InputFormatOptions) {
+	j.opts = options
 }
 
 // Parse parses the input and calls the provided callback
