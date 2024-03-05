@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net"
 	"net/url"
+	"time"
 
 	"github.com/go-sql-driver/mysql"
 	"github.com/pkg/errors"
@@ -15,16 +16,32 @@ import (
 	"github.com/projectdiscovery/networkpolicy"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	"github.com/projectdiscovery/nuclei/v3/pkg/utils/expand"
+	"github.com/projectdiscovery/utils/memguardian"
 )
 
 // Dialer is a shared fastdialer instance for host DNS resolution
-var Dialer *fastdialer.Dialer
+var (
+	Dialer      *fastdialer.Dialer
+	MemGuardian *memguardian.MemGuardian
+)
 
 // Init creates the Dialer instance based on user configuration
 func Init(options *types.Options) error {
 	if Dialer != nil {
 		return nil
 	}
+	if MemGuardian == nil {
+		mg, err := memguardian.New(
+			memguardian.WitInterval(time.Second),
+			memguardian.WithRatioWarning(75),
+		)
+		if err != nil {
+			return err
+		}
+		MemGuardian = mg
+		go MemGuardian.Run(context.TODO())
+	}
+
 	lfaAllowed = options.AllowLocalFileAccess
 	opts := fastdialer.DefaultOptions
 	if options.DialerTimeout > 0 {
@@ -201,5 +218,8 @@ func interfaceAddresses(interfaceName string) ([]net.Addr, error) {
 func Close() {
 	if Dialer != nil {
 		Dialer.Close()
+	}
+	if MemGuardian != nil {
+		MemGuardian.Close()
 	}
 }

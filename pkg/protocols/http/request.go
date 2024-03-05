@@ -29,6 +29,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/helpers/eventcreator"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/helpers/responsehighlighter"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/interactsh"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http/httpclientpool"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http/httputils"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http/signer"
@@ -166,6 +167,10 @@ func (request *Request) executeRaceRequest(input *contextargs.Context, previous 
 func (request *Request) executeParallelHTTP(input *contextargs.Context, dynamicValues output.InternalEvent, callback protocols.OutputEventCallback) error {
 	// Workers that keeps enqueuing new requests
 	maxWorkers := request.Threads
+
+	if protocolstate.MemGuardian.Warning.Load() {
+		maxWorkers = 5
+	}
 
 	// Stop-at-first-match logic while executing requests
 	// parallely using threads
@@ -780,8 +785,8 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 			outputEvent["ip"] = httpclientpool.Dialer.GetDialedIP(hostname)
 		}
 
-		event := &output.InternalWrappedEvent{InternalEvent: outputEvent}
-		if request.CompiledOperators != nil {
+		event := &output.InternalWrappedEvent{}
+		if request.CompiledOperators != nil && request.CompiledOperators.HasDSL() {
 			event.InternalEvent = outputEvent
 		}
 		callback(event)

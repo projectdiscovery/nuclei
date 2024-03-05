@@ -3,6 +3,7 @@ package http
 import (
 	"bytes"
 	"fmt"
+	"log"
 	"strings"
 
 	json "github.com/json-iterator/go"
@@ -13,6 +14,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/expressions"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/fuzz"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/generators"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http/httpclientpool"
 	httputil "github.com/projectdiscovery/nuclei/v3/pkg/protocols/utils/http"
 	"github.com/projectdiscovery/rawhttp"
@@ -388,8 +390,13 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 		}
 	}
 	if len(request.Payloads) > 0 {
+		// specifically for http requests high concurrency and and threads will lead to memory exausthion, hence reduce the maximum parallelism
+		if protocolstate.MemGuardian.Warning.Load() {
+			request.Threads = 5
+		}
 		// if we have payloads, adjust threads if none specified
 		request.Threads = options.GetThreadsForNPayloadRequests(request.Requests(), request.Threads)
+		log.Println("request.Threads:", request.Threads)
 	}
 
 	return nil

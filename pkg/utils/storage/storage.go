@@ -1,10 +1,10 @@
 package storage
 
 import (
-	"crypto/sha1"
-	"encoding/hex"
+	"fmt"
 	"os"
 
+	"github.com/cespare/xxhash/v2"
 	"github.com/projectdiscovery/utils/conversion"
 	"github.com/syndtr/goleveldb/leveldb"
 	"github.com/syndtr/goleveldb/leveldb/opt"
@@ -36,35 +36,26 @@ func (s *Storage) Close() {
 	os.RemoveAll(s.dbPath)
 }
 
-func Hash(v []byte) []byte {
-	hasher := sha1.New()
-	_, _ = hasher.Write(v)
-	return hasher.Sum(nil)
+func HashString(v string) uint64 {
+	return Hash(conversion.Bytes(v))
 }
 
-func HashString(v []byte) string {
-	return hex.EncodeToString(v)
+func Hash(v []byte) uint64 {
+	return xxhash.Sum64(v)
 }
 
-func HashBytes(v string) []byte {
-	hash, _ := hex.DecodeString(v)
-	return hash
-}
-
-func (s *Storage) Get(k string) (string, error) {
-	hash := HashBytes(k)
-
-	v, err := s.storage.Get(hash, nil)
+func (s *Storage) Get(k uint64) (string, error) {
+	v, err := s.storage.Get(conversion.Bytes(fmt.Sprint(k)), nil)
 
 	return conversion.String(v), err
 }
 
-func (s *Storage) SetString(v string) (string, error) {
+func (s *Storage) SetString(v string) (uint64, error) {
 	return s.Set(conversion.Bytes(v))
 }
 
-func (s *Storage) Set(v []byte) (string, error) {
+func (s *Storage) Set(v []byte) (uint64, error) {
 	hash := Hash(v)
 
-	return HashString(hash), s.storage.Put(hash, v, nil)
+	return hash, s.storage.Put(conversion.Bytes(fmt.Sprint(hash)), v, nil)
 }
