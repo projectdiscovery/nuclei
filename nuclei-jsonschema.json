@@ -914,9 +914,6 @@
       "description": "Method is the HTTP Request Method"
     },
     "http.Request": {
-      "required": [
-        "self-contained"
-      ],
       "properties": {
         "matchers": {
           "items": {
