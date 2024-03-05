@@ -1,28 +1,31 @@
 
 
 /**
- * SMTPClient is a minimal SMTP client for nuclei scripts.
+ * Client is a minimal SMTP client for nuclei scripts.
  * @example
  * ```javascript
  * const smtp = require('nuclei/smtp');
- * const client = new smtp.Client();
+ * const client = new smtp.Client('acme.com', 25);
  * ```
  */
-export class SMTPClient {
+export class Client {
     
 
-    // Constructor of SMTPClient
-    constructor() {}
+    // Constructor of Client
+    constructor(public host: string, public port: string ) {}
+    
+
     /**
     * IsSMTP checks if a host is running a SMTP server.
     * @example
     * ```javascript
     * const smtp = require('nuclei/smtp');
-    * const isSMTP = smtp.IsSMTP('acme.com', 25);
-    * log(toJSON(isSMTP));
+    * const client = new smtp.Client('acme.com', 25);
+    * const isSMTP = client.IsSMTP();
+    * log(isSMTP)
     * ```
     */
-    public IsSMTP(host: string, port: number): IsSMTPResponse | null {
+    public IsSMTP(): SMTPResponse | null {
         return null;
     }
     
@@ -37,10 +40,11 @@ export class SMTPClient {
     * message.To('xyz2@projectdiscoveyr.io');
     * message.Subject('hello');
     * message.Body('hello');
-    * const isRelay = smtp.IsOpenRelay('acme.com', 25, message);
+    * const client = new smtp.Client('acme.com', 25);
+    * const isRelay = client.IsOpenRelay(message);
     * ```
     */
-    public IsOpenRelay(host: string, port: number, msg: SMTPMessage): boolean | null {
+    public IsOpenRelay(msg: SMTPMessage): boolean | null {
         return null;
     }
     
@@ -55,10 +59,12 @@ export class SMTPClient {
     * message.To('xyz2@projectdiscoveyr.io');
     * message.Subject('hello');
     * message.Body('hello');
-    * const isSent = smtp.SendMail('acme.com', 25, message);
+    * const client = new smtp.Client('acme.com', 25);
+    * const isSent = client.SendMail(message);
+    * log(isSent)
     * ```
     */
-    public SendMail(host: string, port: string, msg: SMTPMessage): boolean | null {
+    public SendMail(msg: SMTPMessage): boolean | null {
         return null;
     }
     
@@ -174,15 +180,16 @@ export class SMTPMessage {
 
 
 /**
- * IsSMTPResponse is the response from the IsSMTP function.
+ * SMTPResponse is the response from the IsSMTP function.
  * @example
  * ```javascript
  * const smtp = require('nuclei/smtp');
- * const isSMTP = smtp.IsSMTP('acme.com', 25);
- * log(toJSON(isSMTP));
+ * const client = new smtp.Client('acme.com', 25);
+ * const isSMTP = client.IsSMTP();
+ * log(isSMTP)
  * ```
  */
-export interface IsSMTPResponse {
+export interface SMTPResponse {
     
     IsSMTP?: boolean,
     
