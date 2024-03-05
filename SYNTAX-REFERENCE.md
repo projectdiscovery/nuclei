@@ -128,7 +128,6 @@ requests:
     path:
         - '{{BaseURL}}/.git/config'
     method: GET
-    self-contained: false
 ```
 
 
@@ -988,7 +987,6 @@ matchers-condition: and
 path:
     - '{{BaseURL}}/.git/config'
 method: GET
-self-contained: false
 ```
 
 Part Definitions: 
