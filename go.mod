@@ -65,7 +65,7 @@ require (
 	github.com/docker/go-units v0.5.0
 	github.com/dop251/goja v0.0.0-20230828202809-3dbe69dd2b8e
 	github.com/fatih/structs v1.1.0
-	github.com/getkin/kin-openapi v0.122.0
+	github.com/getkin/kin-openapi v0.123.0
 	github.com/go-git/go-git/v5 v5.11.0
 	github.com/go-ldap/ldap/v3 v3.4.5
 	github.com/go-pg/pg v8.0.7+incompatible
@@ -96,7 +96,6 @@ require (
 	github.com/projectdiscovery/useragent v0.0.40
 	github.com/projectdiscovery/utils v0.0.81
 	github.com/projectdiscovery/wappalyzergo v0.0.112
-	github.com/rbretecher/go-postman-collection v0.9.0
 	github.com/redis/go-redis/v9 v9.1.0
 	github.com/sashabaranov/go-openai v1.15.3
 	github.com/seh-msft/burpxml v1.0.1
@@ -151,8 +150,8 @@ require (
 	github.com/gin-gonic/gin v1.9.1 // indirect
 	github.com/go-asn1-ber/asn1-ber v1.5.4 // indirect
 	github.com/go-fed/httpsig v1.1.0 // indirect
-	github.com/go-openapi/jsonpointer v0.19.6 // indirect
-	github.com/go-openapi/swag v0.22.4 // indirect
+	github.com/go-openapi/jsonpointer v0.20.2 // indirect
+	github.com/go-openapi/swag v0.22.9 // indirect
 	github.com/go-sourcemap/sourcemap v2.1.3+incompatible // indirect
 	github.com/goccy/go-json v0.10.2 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
@@ -270,8 +269,8 @@ require (
 	github.com/libdns/libdns v0.2.1 // indirect
 	github.com/lor00x/goldap v0.0.0-20180618054307-a546dffdd1a3 // indirect
 	github.com/lufia/plan9stats v0.0.0-20211012122336-39d0f177ccd0 // indirect
-	github.com/mattn/go-isatty v0.0.19 // indirect
-	github.com/mattn/go-runewidth v0.0.14 // indirect
+	github.com/mattn/go-isatty v0.0.20 // indirect
+	github.com/mattn/go-runewidth v0.0.15 // indirect
 	github.com/mholt/acmez v1.2.0 // indirect
 	github.com/microcosm-cc/bluemonday v1.0.26 // indirect
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
@@ -280,7 +279,7 @@ require (
 	github.com/power-devops/perfstat v0.0.0-20210106213030-5aafc221ea8c // indirect
 	github.com/projectdiscovery/blackrock v0.0.1 // indirect
 	github.com/projectdiscovery/networkpolicy v0.0.7
-	github.com/rivo/uniseg v0.4.4 // indirect
+	github.com/rivo/uniseg v0.4.6 // indirect
 	github.com/saintfish/chardet v0.0.0-20230101081208-5e3ef4b5456d // indirect
 	github.com/tklauser/go-sysconf v0.3.11 // indirect
 	github.com/tklauser/numcpus v0.6.0 // indirect
@@ -299,20 +298,20 @@ require (
 	go.uber.org/zap v1.25.0 // indirect
 	goftp.io/server/v2 v2.0.1 // indirect
 	golang.org/x/crypto v0.19.0 // indirect
-	golang.org/x/exp v0.0.0-20240112132812-db7319d0e0e3
+	golang.org/x/exp v0.0.0-20240119083558-1b970713d09a
 	golang.org/x/mod v0.14.0 // indirect
 	golang.org/x/sys v0.17.0 // indirect
 	golang.org/x/time v0.3.0 // indirect
 	golang.org/x/tools v0.17.0
 	google.golang.org/appengine v1.6.7 // indirect
-	google.golang.org/protobuf v1.31.0 // indirect
+	google.golang.org/protobuf v1.32.0 // indirect
 	gopkg.in/alecthomas/kingpin.v2 v2.2.6 // indirect
 	gopkg.in/corvus-ch/zbase32.v1 v1.0.0 // indirect
 )
 
 require (
 	github.com/Microsoft/go-winio v0.6.1 // indirect
-	github.com/ProtonMail/go-crypto v0.0.0-20230828082145-3c4c8a2d2371 // indirect
+	github.com/ProtonMail/go-crypto v1.1.0-alpha.0-proton // indirect
 	github.com/alecthomas/chroma v0.10.0
 	github.com/aws/aws-sdk-go-v2/feature/ec2/imds v1.13.5 // indirect
 	github.com/aws/aws-sdk-go-v2/internal/configsources v1.1.35 // indirect

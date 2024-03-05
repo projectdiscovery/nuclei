@@ -9,7 +9,6 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/input/formats/burp"
 	"github.com/projectdiscovery/nuclei/v3/pkg/input/formats/json"
 	"github.com/projectdiscovery/nuclei/v3/pkg/input/formats/openapi"
-	"github.com/projectdiscovery/nuclei/v3/pkg/input/formats/postman"
 	"github.com/projectdiscovery/nuclei/v3/pkg/input/formats/swagger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/input/formats/yaml"
 	"github.com/projectdiscovery/nuclei/v3/pkg/input/types"
@@ -107,7 +106,6 @@ var providersList = []formats.Format{
 	json.New(),
 	yaml.New(),
 	openapi.New(),
-	postman.New(),
 	swagger.New(),
 }
 
