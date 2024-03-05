@@ -26,6 +26,11 @@ const (
 // const isSMBGhost = smb.DetectSMBGhost('acme.com', 445);
 // ```
 func (c *SMBClient) DetectSMBGhost(host string, port int) (bool, error) {
+	return memoizeddetectSMBGhost(host, port)
+}
+
+// @memo
+func detectSMBGhost(host string, port int) (bool, error) {
 	if !protocolstate.IsHostAllowed(host) {
 		// host is not valid according to network policy
 		return false, protocolstate.ErrHostDenied.Msgf(host)

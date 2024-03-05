@@ -15,13 +15,14 @@ func init() {
 	module.Set(
 		gojs.Objects{
 			// Functions
+			"CheckRDPAuth": lib_rdp.CheckRDPAuth,
+			"IsRDP":        lib_rdp.IsRDP,
 
 			// Var and consts
 
 			// Objects / Classes
 			"CheckRDPAuthResponse": gojs.GetClassConstructor[lib_rdp.CheckRDPAuthResponse](&lib_rdp.CheckRDPAuthResponse{}),
 			"IsRDPResponse":        gojs.GetClassConstructor[lib_rdp.IsRDPResponse](&lib_rdp.IsRDPResponse{}),
-			"RDPClient":            gojs.GetClassConstructor[lib_rdp.RDPClient](&lib_rdp.RDPClient{}),
 		},
 	).Register()
 }

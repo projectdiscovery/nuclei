@@ -12,6 +12,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
 	"github.com/projectdiscovery/nuclei/v3/pkg/reporting/exporters/markdown/util"
 	"github.com/projectdiscovery/nuclei/v3/pkg/reporting/format"
+	"github.com/projectdiscovery/nuclei/v3/pkg/reporting/trackers/filters"
 	"github.com/projectdiscovery/retryablehttp-go"
 )
 
@@ -69,6 +70,10 @@ type Options struct {
 	// SeverityAsLabel (optional) sends the severity as the label of the created
 	// issue.
 	SeverityAsLabel bool `yaml:"severity-as-label" json:"severity_as_label"`
+	// AllowList contains a list of allowed events for this tracker
+	AllowList *filters.Filter `yaml:"allow-list"`
+	// DenyList contains a list of denied events for this tracker
+	DenyList *filters.Filter `yaml:"deny-list"`
 	// Severity (optional) is the severity of the issue.
 	Severity   []string              `yaml:"severity" json:"severity"`
 	HttpClient *retryablehttp.Client `yaml:"-" json:"-"`
@@ -233,4 +238,17 @@ func (i *Integration) FindExistingIssue(event *output.ResultEvent) (string, erro
 		gologger.Warning().Msgf("Discovered multiple opened issues %s for the host %s: The issue [%s] will be updated.", template, event.Host, chunk[0].ID)
 		return chunk[0].ID, nil
 	}
+}
+
+// ShouldFilter determines if an issue should be logged to this tracker
+func (i *Integration) ShouldFilter(event *output.ResultEvent) bool {
+	if i.options.AllowList != nil && i.options.AllowList.GetMatch(event) {
+		return true
+	}
+
+	if i.options.DenyList != nil && i.options.DenyList.GetMatch(event) {
+		return true
+	}
+
+	return false
 }

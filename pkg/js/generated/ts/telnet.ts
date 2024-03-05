@@ -1,32 +1,16 @@
 
 
 /**
- * TelnetClient is a minimal Telnet client for nuclei scripts.
+ * IsTelnet checks if a host is running a Telnet server.
  * @example
  * ```javascript
  * const telnet = require('nuclei/telnet');
- * const client = new telnet.Client();
+ * const isTelnet = telnet.IsTelnet('acme.com', 23);
+ * log(toJSON(isTelnet));
  * ```
  */
-export class TelnetClient {
-    
-
-    // Constructor of TelnetClient
-    constructor() {}
-    /**
-    * IsTelnet checks if a host is running a Telnet server.
-    * @example
-    * ```javascript
-    * const telnet = require('nuclei/telnet');
-    * const isTelnet = telnet.IsTelnet('acme.com', 23);
-    * log(toJSON(isTelnet));
-    * ```
-    */
-    public IsTelnet(host: string, port: number): IsTelnetResponse | null {
-        return null;
-    }
-    
-
+export function IsTelnet(host: string, port: number): IsTelnetResponse | null {
+    return null;
 }
 
 

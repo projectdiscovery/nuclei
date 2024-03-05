@@ -82,6 +82,7 @@ type (
 	// const client = new ldap.Client('ldap://ldap.example.com', 'acme.com');
 	// const users = client.GetADUsers();
 	// log(to_json(users));
+	// ```
 	ADObject struct {
 		DistinguishedName    string
 		SAMAccountName       string

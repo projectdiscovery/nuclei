@@ -23,8 +23,8 @@ require (
 	github.com/projectdiscovery/fastdialer v0.0.60
 	github.com/projectdiscovery/hmap v0.0.40
 	github.com/projectdiscovery/interactsh v1.1.8
-	github.com/projectdiscovery/rawhttp v0.1.35
-	github.com/projectdiscovery/retryabledns v1.0.57
+	github.com/projectdiscovery/rawhttp v0.1.39
+	github.com/projectdiscovery/retryabledns v1.0.58
 	github.com/projectdiscovery/retryablehttp-go v1.0.49
 	github.com/projectdiscovery/yamldoc-go v1.0.4
 	github.com/remeh/sizedwaitgroup v1.0.0
@@ -79,11 +79,11 @@ require (
 	github.com/projectdiscovery/dsl v0.0.44
 	github.com/projectdiscovery/fasttemplate v0.0.2
 	github.com/projectdiscovery/go-smb2 v0.0.0-20240129202741-052cc450c6cb
-	github.com/projectdiscovery/goflags v0.1.40
+	github.com/projectdiscovery/goflags v0.1.42
 	github.com/projectdiscovery/gologger v1.1.12
 	github.com/projectdiscovery/gostruct v0.0.2
 	github.com/projectdiscovery/gozero v0.0.1
-	github.com/projectdiscovery/httpx v1.3.9
+	github.com/projectdiscovery/httpx v1.5.0
 	github.com/projectdiscovery/mapcidr v1.1.16
 	github.com/projectdiscovery/n3iwf v0.0.0-20230523120440-b8cd232ff1f5
 	github.com/projectdiscovery/ratelimit v0.0.27
@@ -91,9 +91,9 @@ require (
 	github.com/projectdiscovery/sarif v0.0.1
 	github.com/projectdiscovery/tlsx v1.1.6
 	github.com/projectdiscovery/uncover v1.0.7
-	github.com/projectdiscovery/useragent v0.0.39
+	github.com/projectdiscovery/useragent v0.0.40
 	github.com/projectdiscovery/utils v0.0.83-0.20240305000020-ff30de2464cd
-	github.com/projectdiscovery/wappalyzergo v0.0.111
+	github.com/projectdiscovery/wappalyzergo v0.0.112
 	github.com/redis/go-redis/v9 v9.1.0
 	github.com/sashabaranov/go-openai v1.15.3
 	github.com/stretchr/testify v1.8.4
@@ -124,12 +124,12 @@ require (
 	github.com/bits-and-blooms/bloom/v3 v3.5.0 // indirect
 	github.com/bytedance/sonic v1.9.1 // indirect
 	github.com/cenkalti/backoff/v4 v4.2.1 // indirect
+	github.com/cespare/xxhash v1.1.0 // indirect
 	github.com/cheggaaa/pb/v3 v3.1.4 // indirect
 	github.com/chenzhuoyu/base64x v0.0.0-20221115062448-fe3a3abad311 // indirect
 	github.com/cloudflare/cfssl v1.6.4 // indirect
 	github.com/cloudflare/circl v1.3.7 // indirect
 	github.com/containerd/continuity v0.4.2 // indirect
-	github.com/corpix/uarand v0.2.0 // indirect
 	github.com/cyphar/filepath-securejoin v0.2.4 // indirect
 	github.com/davidmz/go-pageant v1.0.2 // indirect
 	github.com/dgryski/go-rendezvous v0.0.0-20200823014737-9f7001d12a5f // indirect
@@ -184,7 +184,7 @@ require (
 	github.com/pierrec/lz4/v4 v4.1.2 // indirect
 	github.com/pjbgf/sha1cd v0.3.0 // indirect
 	github.com/pkg/browser v0.0.0-20210911075715-681adbf594b8 // indirect
-	github.com/projectdiscovery/asnmap v1.0.6 // indirect
+	github.com/projectdiscovery/asnmap v1.1.0 // indirect
 	github.com/projectdiscovery/cdncheck v1.0.9 // indirect
 	github.com/projectdiscovery/freeport v0.0.5 // indirect
 	github.com/projectdiscovery/machineid v0.0.0-20240226150047-2e2c51e35983 // indirect

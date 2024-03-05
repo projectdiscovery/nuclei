@@ -6,7 +6,7 @@
  * @example
  * ```javascript
  * const ssh = require('nuclei/ssh');
- * const client = new ssh.Client();
+ * const client = new ssh.SSHClient();
  * ```
  */
 export class SSHClient {
@@ -19,7 +19,7 @@ export class SSHClient {
     * @example
     * ```javascript
     * const ssh = require('nuclei/ssh');
-    * const client = new ssh.Client();
+    * const client = new ssh.SSHClient();
     * client.SetTimeout(10);
     * ```
     */
@@ -36,7 +36,7 @@ export class SSHClient {
     * @example
     * ```javascript
     * const ssh = require('nuclei/ssh');
-    * const client = new ssh.Client();
+    * const client = new ssh.SSHClient();
     * const connected = client.Connect('acme.com', 22, 'username', 'password');
     * ```
     */
@@ -53,7 +53,7 @@ export class SSHClient {
     * @example
     * ```javascript
     * const ssh = require('nuclei/ssh');
-    * const client = new ssh.Client();
+    * const client = new ssh.SSHClient();
     * const privateKey = `-----BEGIN RSA PRIVATE KEY----- ...`;
     * const connected = client.ConnectWithKey('acme.com', 22, 'username', privateKey);
     * ```
@@ -73,7 +73,7 @@ export class SSHClient {
     * @example
     * ```javascript
     * const ssh = require('nuclei/ssh');
-    * const client = new ssh.Client();
+    * const client = new ssh.SSHClient();
     * const info = client.ConnectSSHInfoMode('acme.com', 22);
     * log(to_json(info));
     * ```
@@ -92,7 +92,7 @@ export class SSHClient {
     * @example
     * ```javascript
     * const ssh = require('nuclei/ssh');
-    * const client = new ssh.Client();
+    * const client = new ssh.SSHClient();
     * client.Connect('acme.com', 22, 'username', 'password');
     * const output = client.Run('id');
     * log(output);
@@ -110,7 +110,7 @@ export class SSHClient {
     * @example
     * ```javascript
     * const ssh = require('nuclei/ssh');
-    * const client = new ssh.Client();
+    * const client = new ssh.SSHClient();
     * client.Connect('acme.com', 22, 'username', 'password');
     * const closed = client.Close();
     * ```
@@ -179,8 +179,6 @@ export interface HandshakeLog {
     
     UserAuth?: string[],
     
-    AlgorithmSelection?: Algorithms,
-    
     ServerID?: EndpointId,
     
     ClientID?: EndpointId,
@@ -188,6 +186,8 @@ export interface HandshakeLog {
     ServerKex?: KexInitMsg,
     
     ClientKex?: KexInitMsg,
+    
+    AlgorithmSelection?: Algorithms,
 }
 
 
@@ -197,27 +197,27 @@ export interface HandshakeLog {
  */
 export interface KexInitMsg {
     
-    CompressionClientServer?: string[],
-    
-    FirstKexFollows?: boolean,
+    CiphersServerClient?: string[],
     
     MACsClientServer?: string[],
     
+    MACsServerClient?: string[],
+    
     LanguagesClientServer?: string[],
-    
-    LanguagesServerClient?: string[],
-    
-    Reserved?: number,
     
     KexAlgos?: string[],
     
     CiphersClientServer?: string[],
     
-    CiphersServerClient?: string[],
+    Reserved?: number,
     
-    MACsServerClient?: string[],
+    CompressionClientServer?: string[],
     
     CompressionServerClient?: string[],
+    
+    LanguagesServerClient?: string[],
+    
+    FirstKexFollows?: boolean,
     
     /**
     * fixed size array of length: [16]

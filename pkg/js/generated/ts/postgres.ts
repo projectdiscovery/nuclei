@@ -6,7 +6,7 @@
  * @example
  * ```javascript
  * const postgres = require('nuclei/postgres');
- * const client = new postgres.Client();
+ * const client = new postgres.PGClient;
  * ```
  */
 export class PGClient {
@@ -37,7 +37,7 @@ export class PGClient {
     * @example
     * ```javascript
     * const postgres = require('nuclei/postgres');
-    * const client = new postgres.Client();
+    * const client = new postgres.PGClient;
     * const connected = client.Connect('acme.com', 5432, 'username', 'password');
     * ```
     */
@@ -53,7 +53,7 @@ export class PGClient {
     * @example
     * ```javascript
     * const postgres = require('nuclei/postgres');
-    * const client = new postgres.Client();
+    * const client = new postgres.PGClient;
     * const result = client.ExecuteQuery('acme.com', 5432, 'username', 'password', 'dbname', 'select * from users');
     * log(to_json(result));
     * ```
@@ -71,7 +71,7 @@ export class PGClient {
     * @example
     * ```javascript
     * const postgres = require('nuclei/postgres');
-    * const client = new postgres.Client();
+    * const client = new postgres.PGClient;
     * const connected = client.ConnectWithDB('acme.com', 5432, 'username', 'password', 'dbname');
     * ```
     */
