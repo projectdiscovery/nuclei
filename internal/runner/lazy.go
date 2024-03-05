@@ -105,7 +105,7 @@ func GetLazyAuthFetchCallback(opts *AuthLazyFetchOptions) authx.LazyFetchSecret 
 				}
 			}
 		}
-		_, err := tmpl.Executer.Execute(ctx)
+		_, err := tmpl.Executer.ExecuteWithResults(ctx)
 		if err != nil {
 			finalErr = err
 		}
