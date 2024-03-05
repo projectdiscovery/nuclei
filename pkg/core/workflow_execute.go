@@ -89,7 +89,7 @@ func (e *Engine) runWorkflowStep(template *workflows.WorkflowTemplate, ctx *scan
 						}
 					}
 				}
-				_, err = executer.Executer.Execute(ctx)
+				_, err = executer.Executer.ExecuteWithResults(ctx)
 			} else {
 				var matched bool
 				matched, err = executer.Executer.Execute(ctx)
