@@ -39,7 +39,9 @@ func Init(options *types.Options) error {
 			return err
 		}
 		MemGuardian = mg
-		go MemGuardian.Run(context.TODO())
+		go func() {
+			_ = MemGuardian.Run(context.TODO())
+		}()
 	}
 
 	lfaAllowed = options.AllowLocalFileAccess
