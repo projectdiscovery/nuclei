@@ -59,6 +59,7 @@ func (e *NucleiEngine) applyRequiredDefaults() {
 		}
 		e.customWriter = mockoutput
 	} else {
+		//FIXME: this is a hack to support callbacks in custom output writer
 		if standardWriter, ok := e.customWriter.(*output.StandardWriter); ok {
 			standardWriter.WriteCallback = func(event *output.ResultEvent) {
 				if len(e.resultCallbacks) > 0 {
