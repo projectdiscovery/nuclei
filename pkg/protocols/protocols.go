@@ -30,7 +30,6 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/scan"
 	templateTypes "github.com/projectdiscovery/nuclei/v3/pkg/templates/types"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
-	"github.com/projectdiscovery/nuclei/v3/pkg/utils/storage"
 )
 
 // Optional Callback to update Thread count in payloads across all requests
@@ -117,7 +116,6 @@ type ExecutorOptions struct {
 	// based on given logic. by default nuclei reverts to using value of `-c` when threads count
 	// is not specified or is 0 in template
 	OverrideThreadsCount PayloadThreadSetterCallback
-	Storage              *storage.Storage
 }
 
 // GetThreadsForPayloadRequests returns the number of threads to use as default for

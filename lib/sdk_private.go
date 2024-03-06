@@ -29,7 +29,6 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/reporting"
 	"github.com/projectdiscovery/nuclei/v3/pkg/testutils"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
-	"github.com/projectdiscovery/nuclei/v3/pkg/utils/storage"
 	"github.com/projectdiscovery/ratelimit"
 )
 
@@ -142,12 +141,6 @@ func (e *NucleiEngine) init() error {
 
 	e.catalog = disk.NewCatalog(config.DefaultConfig.TemplatesDirectory)
 
-	if storage, err := storage.New(); err != nil {
-		return err
-	} else {
-		e.storage = storage
-	}
-
 	e.executerOpts = protocols.ExecutorOptions{
 		Output:          e.customWriter,
 		Options:         e.opts,
@@ -160,7 +153,6 @@ func (e *NucleiEngine) init() error {
 		Colorizer:       aurora.NewAurora(true),
 		ResumeCfg:       types.NewResumeCfg(),
 		Browser:         e.browserInstance,
-		Storage:         e.storage,
 	}
 
 	if e.opts.RateLimitMinute > 0 {
