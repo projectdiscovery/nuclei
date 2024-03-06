@@ -58,6 +58,27 @@ func (e *NucleiEngine) applyRequiredDefaults() {
 			mockoutput.FailureCallback = e.onFailureCallback
 		}
 		e.customWriter = mockoutput
+	} else {
+		if standardWriter, ok := e.customWriter.(*output.StandardWriter); ok {
+			standardWriter.WriteCallback = func(event *output.ResultEvent) {
+				if len(e.resultCallbacks) > 0 {
+					for _, callback := range e.resultCallbacks {
+						if callback != nil {
+							callback(event)
+						}
+					}
+					return
+				}
+				sb := strings.Builder{}
+				sb.WriteString(fmt.Sprintf("[%v] ", event.TemplateID))
+				if event.Matched != "" {
+					sb.WriteString(event.Matched)
+				} else {
+					sb.WriteString(event.Host)
+				}
+				fmt.Println(sb.String())
+			}
+		}
 	}
 	if e.customProgress == nil {
 		e.customProgress = &testutils.MockProgressClient{}
