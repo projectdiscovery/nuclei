@@ -31,7 +31,7 @@ func (t *Templates) Has(template string) (interface{}, error) {
 
 // Store stores a template with data and error
 func (t *Templates) Store(template string, data interface{}, err error) {
-	t.items.Set(template, parsedTemplateErrHolder{template: data, err: err})
+	_ = t.items.Set(template, parsedTemplateErrHolder{template: data, err: err})
 }
 
 // Purge the cache
