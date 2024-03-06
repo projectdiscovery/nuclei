@@ -47,6 +47,11 @@ func init() {
 	SignatureStats[Unsigned] = &atomic.Uint64{}
 }
 
+// Purge the cache
+func PurgeCache() {
+	parsedTemplatesCache.Purge()
+}
+
 // Parse parses a yaml request template file
 // TODO make sure reading from the disk the template parsing happens once: see parsers.ParseTemplate vs templates.Parse
 //

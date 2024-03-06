@@ -1,17 +1,17 @@
 package cache
 
 import (
-	"sync"
+	mapsutil "github.com/projectdiscovery/utils/maps"
 )
 
 // Templates is a cache for caching and storing templates for reuse.
 type Templates struct {
-	items *sync.Map
+	items *mapsutil.SyncLockMap[string, parsedTemplateErrHolder]
 }
 
 // New returns a new templates cache
 func New() *Templates {
-	return &Templates{items: &sync.Map{}}
+	return &Templates{items: mapsutil.NewSyncLockMap[string, parsedTemplateErrHolder]()}
 }
 
 type parsedTemplateErrHolder struct {
@@ -22,18 +22,19 @@ type parsedTemplateErrHolder struct {
 // Has returns true if the cache has a template. The template
 // is returned along with any errors if found.
 func (t *Templates) Has(template string) (interface{}, error) {
-	value, ok := t.items.Load(template)
-	if !ok || value == nil {
-		return nil, nil
-	}
-	templateError, ok := value.(parsedTemplateErrHolder)
+	value, ok := t.items.Get(template)
 	if !ok {
 		return nil, nil
 	}
-	return templateError.template, templateError.err
+	return value.template, value.err
 }
 
 // Store stores a template with data and error
 func (t *Templates) Store(template string, data interface{}, err error) {
-	t.items.Store(template, parsedTemplateErrHolder{template: data, err: err})
+	t.items.Set(template, parsedTemplateErrHolder{template: data, err: err})
+}
+
+// Purge the cache
+func (t *Templates) Purge() {
+	t.items.Clear()
 }
