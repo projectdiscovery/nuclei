@@ -432,7 +432,6 @@ func (r *Runner) RunEnumeration() error {
 		ResumeCfg:       r.resumeCfg,
 		ExcludeMatchers: excludematchers.New(r.options.ExcludeMatchers),
 		InputHelper:     input.NewHelper(),
-		Storage:         r.storage,
 	}
 
 	if r.options.ShouldUseHostError() {

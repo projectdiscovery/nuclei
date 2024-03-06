@@ -40,7 +40,6 @@ func createEphemeralObjects(base *NucleiEngine, opts *types.Options) (*unsafeOpt
 		HostErrorsCache: base.hostErrCache,
 		Colorizer:       aurora.NewAurora(true),
 		ResumeCfg:       types.NewResumeCfg(),
-		Storage:         base.storage,
 	}
 	if opts.RateLimitMinute > 0 {
 		u.executerOpts.RateLimiter = ratelimit.New(context.Background(), uint(opts.RateLimitMinute), time.Minute)
