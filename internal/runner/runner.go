@@ -55,7 +55,6 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	"github.com/projectdiscovery/nuclei/v3/pkg/utils"
 	"github.com/projectdiscovery/nuclei/v3/pkg/utils/stats"
-	"github.com/projectdiscovery/nuclei/v3/pkg/utils/storage"
 	"github.com/projectdiscovery/nuclei/v3/pkg/utils/yaml"
 	"github.com/projectdiscovery/retryablehttp-go"
 	ptrutil "github.com/projectdiscovery/utils/ptr"
@@ -84,7 +83,6 @@ type Runner struct {
 	hostErrors        hosterrorscache.CacheInterface
 	resumeCfg         *types.ResumeCfg
 	pprofServer       *http.Server
-	storage           *storage.Storage
 	// pdcp auto-save options
 	pdcpUploadErrMsg string
 	//general purpose temporary directory
