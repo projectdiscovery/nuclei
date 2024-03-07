@@ -168,7 +168,7 @@ func (request *Request) executeParallelHTTP(input *contextargs.Context, dynamicV
 	// Workers that keeps enqueuing new requests
 	maxWorkers := request.Threads
 
-	if protocolstate.MemGuardian.Warning.Load() {
+	if protocolstate.IsLowOnMemory() {
 		maxWorkers = 5
 	}
 
