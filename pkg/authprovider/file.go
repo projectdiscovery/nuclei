@@ -137,17 +137,6 @@ func (f *FileAuthProvider) LookupURLX(u *urlutil.URL) authx.AuthStrategy {
 	return f.LookupAddr(u.Host)
 }
 
-// GetTemplateIDs returns required template IDs for the auth provider
-func (f *FileAuthProvider) GetTemplateIDs() []string {
-	res := []string{}
-	for _, dynamic := range f.store.Dynamic {
-		if dynamic.TemplateID != "" {
-			res = append(res, dynamic.TemplateID)
-		}
-	}
-	return res
-}
-
 // GetTemplatePaths returns the template path for the auth provider
 func (f *FileAuthProvider) GetTemplatePaths() []string {
 	res := []string{}

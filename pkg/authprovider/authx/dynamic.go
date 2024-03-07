@@ -23,7 +23,6 @@ var (
 // after authenticating with the username and password
 type Dynamic struct {
 	Secret        `yaml:",inline"`       // this is a static secret that will be generated after the dynamic secret is resolved
-	TemplateID    string                 `json:"template-id" yaml:"template-id"`
 	TemplatePath  string                 `json:"template-path" yaml:"template-path"`
 	Variables     []KV                   `json:"variables" yaml:"variables"`
 	Input         string                 `json:"input" yaml:"input"` // (optional) target for the dynamic secret
@@ -49,11 +48,8 @@ func (d *Dynamic) UnmarshalJSON(data []byte) error {
 // Validate validates the dynamic secret
 func (d *Dynamic) Validate() error {
 	d.m = &sync.Mutex{}
-	if d.TemplateID == "" && d.TemplatePath == "" {
-		return errorutil.New("template-id or template-path is required for dynamic secret")
-	}
-	if d.TemplateID != "" && d.TemplatePath != "" {
-		return errorutil.New("only one of template-id or template-path is allowed for dynamic secret")
+	if d.TemplatePath == "" {
+		return errorutil.New(" template-path is required for dynamic secret")
 	}
 	if len(d.Variables) == 0 {
 		return errorutil.New("variables are required for dynamic secret")
@@ -130,7 +126,7 @@ func (d *Dynamic) SetLazyFetchCallback(callback LazyFetchSecret) {
 		for i, cookie := range d.Cookies {
 			if cookie.Raw != "" {
 				if err := cookie.Parse(); err != nil {
-					return fmt.Errorf("[%s] invalid raw cookie in cookiesAuth: %s", d.getIdentifier(), err)
+					return fmt.Errorf("[%s] invalid raw cookie in cookiesAuth: %s", d.TemplatePath, err)
 				}
 				d.Cookies[i] = cookie
 			}
@@ -139,20 +135,12 @@ func (d *Dynamic) SetLazyFetchCallback(callback LazyFetchSecret) {
 	}
 }
 
-func (d *Dynamic) getIdentifier() string {
-	if d.TemplateID != "" {
-		return d.TemplateID
-	}
-	return d.TemplatePath
-}
-
 // GetStrategy returns the auth strategy for the dynamic secret
 func (d *Dynamic) GetStrategy() AuthStrategy {
 	if !d.fetched {
 		d.Fetch()
 	}
 	if d.error != nil {
-		gologger.Error().Msgf("Could not fetch dynamic secret: %s\n", d.error)
 		return nil
 	}
 	return d.Secret.GetStrategy()
@@ -166,6 +154,9 @@ func (d *Dynamic) Fetch() {
 		return
 	}
 	d.error = d.fetchCallback(d)
+	if d.error != nil {
+		gologger.Fatal().Msgf("Could not fetch dynamic secret: %s\n", d.error)
+	}
 }
 
 // Error returns the error if any

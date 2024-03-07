@@ -9,6 +9,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/helpers/writer"
 	"github.com/projectdiscovery/nuclei/v3/pkg/scan"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	errorutil "github.com/projectdiscovery/utils/errors"
@@ -16,6 +17,7 @@ import (
 
 type AuthLazyFetchOptions struct {
 	TemplateStore *loader.Store
+	ExecOpts      protocols.ExecutorOptions
 	OnError       func(error)
 }
 
@@ -104,6 +106,8 @@ func GetLazyAuthFetchCallback(opts *AuthLazyFetchOptions) authx.LazyFetchSecret 
 					finalErr = fmt.Errorf("no match or (dynamic/extracted) values found for template: %s", d.TemplatePath)
 				}
 			}
+			// log result of template in result file/screen
+			_ = writer.WriteResult(e, opts.ExecOpts.Output, opts.ExecOpts.Progress, opts.ExecOpts.IssuesClient)
 		}
 		_, err := tmpl.Executer.ExecuteWithResults(ctx)
 		if err != nil {

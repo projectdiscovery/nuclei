@@ -29,9 +29,6 @@ type AuthProvider interface {
 	// LookupURLX looks up a given URL and returns appropriate auth strategy
 	// it accepts pd url struct (i.e urlutil.URL) and returns the auth strategy
 	LookupURLX(*urlutil.URL) authx.AuthStrategy
-	// GetTemplateIDs returns required template IDs for the auth provider
-	// that will be used for dynamic secret fetching (if none, return empty slice)
-	GetTemplateIDs() []string
 	// GetTemplatePaths returns the template path for the auth provider
 	// that will be used for dynamic secret fetching
 	GetTemplatePaths() []string

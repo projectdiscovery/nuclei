@@ -430,6 +430,7 @@ func (r *Runner) RunEnumeration() error {
 		authOpts := &authprovider.AuthProviderOptions{SecretsFiles: r.options.SecretsFile}
 		authOpts.LazyFetchSecret = GetLazyAuthFetchCallback(&AuthLazyFetchOptions{
 			TemplateStore: authTmplStore,
+			ExecOpts:      executorOpts,
 		})
 		// initialize auth provider
 		provider, err := authprovider.NewAuthProvider(authOpts)

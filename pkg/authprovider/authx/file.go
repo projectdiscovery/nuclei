@@ -19,8 +19,8 @@ type AuthType string
 const (
 	BasicAuth       AuthType = "BasicAuth"
 	BearerTokenAuth AuthType = "BearerToken"
-	HeadersAuth     AuthType = "Headers"
-	CookiesAuth     AuthType = "Cookies"
+	HeadersAuth     AuthType = "Header"
+	CookiesAuth     AuthType = "Cookie"
 	QueryAuth       AuthType = "Query"
 )
 
@@ -37,9 +37,17 @@ func SupportedAuthTypes() []string {
 
 // Authx is a struct for secrets or credentials file
 type Authx struct {
-	ID      string    `json:"id" yaml:"id"`
-	Secrets []Secret  `json:"secrets" yaml:"secrets"`
-	Dynamic []Dynamic `json:"dynamic" yaml:"dynamic"`
+	ID      string       `json:"id" yaml:"id"`
+	Info    AuthFileInfo `json:"info" yaml:"info"`
+	Secrets []Secret     `json:"static" yaml:"static"`
+	Dynamic []Dynamic    `json:"dynamic" yaml:"dynamic"`
+}
+
+type AuthFileInfo struct {
+	Name        string `json:"name" yaml:"name"`
+	Author      string `json:"author" yaml:"author"`
+	Severity    string `json:"severity" yaml:"severity"`
+	Description string `json:"description" yaml:"description"`
 }
 
 // Secret is a struct for secret or credential

@@ -49,14 +49,6 @@ func (m *MultiAuthProvider) LookupURLX(u *urlutil.URL) authx.AuthStrategy {
 	return nil
 }
 
-func (m *MultiAuthProvider) GetTemplateIDs() []string {
-	var res []string
-	for _, provider := range m.Providers {
-		res = append(res, provider.GetTemplateIDs()...)
-	}
-	return res
-}
-
 func (m *MultiAuthProvider) GetTemplatePaths() []string {
 	var res []string
 	for _, provider := range m.Providers {
