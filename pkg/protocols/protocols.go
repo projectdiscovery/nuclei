@@ -119,6 +119,8 @@ type ExecutorOptions struct {
 	OverrideThreadsCount PayloadThreadSetterCallback
 	// AuthProvider is a provider for auth strategies
 	AuthProvider authprovider.AuthProvider
+	//TemporaryDirectory is the directory to store temporary files
+	TemporaryDirectory string
 }
 
 // GetThreadsForPayloadRequests returns the number of threads to use as default for
