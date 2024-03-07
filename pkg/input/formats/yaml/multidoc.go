@@ -3,6 +3,7 @@ package yaml
 import (
 	"io"
 	"os"
+	"strings"
 
 	"github.com/pkg/errors"
 	"github.com/projectdiscovery/gologger"
@@ -61,6 +62,9 @@ func (j *YamlMultiDocFormat) Parse(input string, resultsCb formats.ParseReqRespC
 		}
 		if err != nil {
 			return errors.Wrap(err, "could not decode json file")
+		}
+		if strings.TrimSpace(request.Request.Raw) == "" {
+			continue
 		}
 
 		rawRequest, err := types.ParseRawRequestWithURL(request.Request.Raw, request.URL)

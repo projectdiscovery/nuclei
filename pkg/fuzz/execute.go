@@ -180,6 +180,16 @@ func (rule *Rule) executeRuleValues(input *ExecuteRuleInput, ruleComponent compo
 			}
 			return true
 		})
+		// if mode is multiple now build and execute it
+		if rule.modeType == multipleModeType {
+			req, err := ruleComponent.Rebuild()
+			if err != nil {
+				return err
+			}
+			if gotErr := rule.execWithInput(input, req, input.InteractURLs, ruleComponent); gotErr != nil {
+				return gotErr
+			}
+		}
 		return gotErr
 	}
 

@@ -3,6 +3,7 @@ package burp
 import (
 	"encoding/base64"
 	"os"
+	"strings"
 
 	"github.com/pkg/errors"
 	"github.com/projectdiscovery/nuclei/v3/pkg/input/formats"
@@ -52,6 +53,9 @@ func (j *BurpFormat) Parse(input string, resultsCb formats.ParseReqRespCallback)
 		binx, err := base64.StdEncoding.DecodeString(item.Request.Raw)
 		if err != nil {
 			return errors.Wrap(err, "could not decode base64")
+		}
+		if strings.TrimSpace(conversion.String(binx)) == "" {
+			continue
 		}
 		rawRequest, err := types.ParseRawRequestWithURL(conversion.String(binx), item.Url)
 		if err != nil {
