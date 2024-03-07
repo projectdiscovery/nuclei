@@ -28,7 +28,6 @@ import (
 	protocolUtils "github.com/projectdiscovery/nuclei/v3/pkg/protocols/utils"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	"github.com/projectdiscovery/nuclei/v3/pkg/utils"
-	"github.com/projectdiscovery/nuclei/v3/pkg/utils/storage"
 	fileutil "github.com/projectdiscovery/utils/file"
 	osutils "github.com/projectdiscovery/utils/os"
 )
@@ -76,15 +75,6 @@ type InternalEvent map[string]interface{}
 
 func (ie InternalEvent) Set(k string, v interface{}) {
 	ie[k] = v
-}
-
-func (ie InternalEvent) SetWithStorage(k string, v string, storage *storage.Storage) {
-	if hash, err := storage.SetString(v); err == nil {
-		ie[k] = hash
-	} else {
-		gologger.Print().Msgf("error: %s", err)
-		ie[k] = v
-	}
 }
 
 // InternalWrappedEvent is a wrapped event with operators result added to it.
