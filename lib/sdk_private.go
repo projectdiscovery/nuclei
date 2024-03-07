@@ -8,10 +8,12 @@ import (
 	"time"
 
 	"github.com/logrusorgru/aurora"
+	"github.com/pkg/errors"
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/gologger/levels"
 	"github.com/projectdiscovery/httpx/common/httpx"
 	"github.com/projectdiscovery/nuclei/v3/internal/runner"
+	"github.com/projectdiscovery/nuclei/v3/pkg/authprovider"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/config"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/disk"
 	"github.com/projectdiscovery/nuclei/v3/pkg/core"
@@ -151,6 +153,33 @@ func (e *NucleiEngine) init() error {
 		Colorizer:       aurora.NewAurora(true),
 		ResumeCfg:       types.NewResumeCfg(),
 		Browser:         e.browserInstance,
+	}
+	if len(e.opts.SecretsFile) > 0 {
+		authTmplStore, err := runner.GetAuthTmplStore(*e.opts, e.catalog, e.executerOpts)
+		if err != nil {
+			return errors.Wrap(err, "failed to load dynamic auth templates")
+		}
+		authOpts := &authprovider.AuthProviderOptions{SecretsFiles: e.opts.SecretsFile}
+		authOpts.LazyFetchSecret = runner.GetLazyAuthFetchCallback(&runner.AuthLazyFetchOptions{
+			TemplateStore: authTmplStore,
+			ExecOpts:      e.executerOpts,
+		})
+		// initialize auth provider
+		provider, err := authprovider.NewAuthProvider(authOpts)
+		if err != nil {
+			return errors.Wrap(err, "could not create auth provider")
+		}
+		e.executerOpts.AuthProvider = provider
+	}
+	if e.authprovider != nil {
+		e.executerOpts.AuthProvider = e.authprovider
+	}
+
+	// prefetch secrets
+	if e.executerOpts.AuthProvider != nil && e.opts.PreFetchSecrets {
+		if err := e.executerOpts.AuthProvider.PreFetchSecrets(); err != nil {
+			return errors.Wrap(err, "could not prefetch secrets")
+		}
 	}
 
 	if e.opts.RateLimitMinute > 0 {

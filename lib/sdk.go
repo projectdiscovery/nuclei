@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"io"
 
+	"github.com/projectdiscovery/nuclei/v3/pkg/authprovider"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/disk"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/loader"
 	"github.com/projectdiscovery/nuclei/v3/pkg/core"
@@ -71,6 +72,7 @@ type NucleiEngine struct {
 	mode             engineMode
 	browserInstance  *engine.Browser
 	httpClient       *retryablehttp.Client
+	authprovider     authprovider.AuthProvider
 
 	// unexported meta options
 	opts           *types.Options
@@ -130,7 +132,7 @@ func (e *NucleiEngine) LoadTargetsFromReader(reader io.Reader, probeNonHttp bool
 }
 
 // LoadTargetsWithHttpData loads targets that contain http data from file it currently supports
-// multiple formats like burp xml,openapi,postman,swagger,proxify json
+// multiple formats like burp xml,openapi,swagger,proxify json
 // Note: this is mutually exclusive with LoadTargets and LoadTargetsFromReader
 func (e *NucleiEngine) LoadTargetsWithHttpData(filePath string, filemode string) error {
 	e.opts.TargetsFilePath = filePath
