@@ -317,7 +317,7 @@ func interpretEnvVars(source string, vars map[string]interface{}) string {
 	// bash mode
 	if strings.Contains(source, "$") {
 		for k, v := range vars {
-			source = strings.ReplaceAll(source, "$"+k, fmt.Sprintf("'%s'", v))
+			source = strings.ReplaceAll(source, "$"+k, fmt.Sprintf("%s", v))
 		}
 	}
 	// python mode
