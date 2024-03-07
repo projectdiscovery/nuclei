@@ -138,7 +138,7 @@ func (d *Dynamic) SetLazyFetchCallback(callback LazyFetchSecret) {
 // GetStrategy returns the auth strategy for the dynamic secret
 func (d *Dynamic) GetStrategy() AuthStrategy {
 	if !d.fetched {
-		d.Fetch()
+		_ = d.Fetch(true)
 	}
 	if d.error != nil {
 		return nil
@@ -147,16 +147,18 @@ func (d *Dynamic) GetStrategy() AuthStrategy {
 }
 
 // Fetch fetches the dynamic secret
-func (d *Dynamic) Fetch() {
+// if isFatal is true, it will stop the execution if the secret could not be fetched
+func (d *Dynamic) Fetch(isFatal bool) error {
 	d.m.Lock()
 	defer d.m.Unlock()
 	if d.fetched {
-		return
+		return nil
 	}
 	d.error = d.fetchCallback(d)
-	if d.error != nil {
+	if d.error != nil && isFatal {
 		gologger.Fatal().Msgf("Could not fetch dynamic secret: %s\n", d.error)
 	}
+	return d.error
 }
 
 // Error returns the error if any

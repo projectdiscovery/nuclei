@@ -32,6 +32,9 @@ type AuthProvider interface {
 	// GetTemplatePaths returns the template path for the auth provider
 	// that will be used for dynamic secret fetching
 	GetTemplatePaths() []string
+	// PreFetchSecrets pre-fetches the secrets from the auth provider
+	// instead of lazy fetching
+	PreFetchSecrets() error
 }
 
 // AuthProviderOptions contains options for the auth provider

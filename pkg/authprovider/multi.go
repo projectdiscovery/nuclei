@@ -56,3 +56,12 @@ func (m *MultiAuthProvider) GetTemplatePaths() []string {
 	}
 	return res
 }
+
+func (m *MultiAuthProvider) PreFetchSecrets() error {
+	for _, provider := range m.Providers {
+		if err := provider.PreFetchSecrets(); err != nil {
+			return err
+		}
+	}
+	return nil
+}

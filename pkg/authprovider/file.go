@@ -147,3 +147,22 @@ func (f *FileAuthProvider) GetTemplatePaths() []string {
 	}
 	return res
 }
+
+// PreFetchSecrets pre-fetches the secrets from the auth provider
+func (f *FileAuthProvider) PreFetchSecrets() error {
+	for _, s := range f.domains {
+		if val, ok := s.(*authx.DynamicAuthStrategy); ok {
+			if err := val.Dynamic.Fetch(false); err != nil {
+				return err
+			}
+		}
+	}
+	for _, s := range f.compiled {
+		if val, ok := s.(*authx.DynamicAuthStrategy); ok {
+			if err := val.Dynamic.Fetch(false); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}

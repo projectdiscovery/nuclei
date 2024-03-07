@@ -397,6 +397,7 @@ on extensive configurability, massive extensibility and ease of use.`)
 
 	flagSet.CreateGroup("Authentication", "Authentication",
 		flagSet.StringSliceVar(&options.SecretsFile, "secrets", nil, "path to file containing secrets for nuclei authenticated scan", goflags.CommaSeparatedStringSliceOptions),
+		flagSet.BoolVarP(&options.PreFetchSecrets, "prefetch-secrets", "ps", false, "prefetch secrets from the secrets file"),
 	)
 
 	flagSet.SetCustomHelpText(`EXAMPLES:

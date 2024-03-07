@@ -375,6 +375,8 @@ type Options struct {
 	FuzzTemplates bool
 	// SecretsFile is file containing secrets for nuclei
 	SecretsFile goflags.StringSlice
+	// PreFetchSecrets pre-fetches the secrets from the auth provider
+	PreFetchSecrets bool
 }
 
 // ShouldLoadResume resume file
