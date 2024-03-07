@@ -169,7 +169,7 @@ func (request *Request) executeParallelHTTP(input *contextargs.Context, dynamicV
 	maxWorkers := request.Threads
 
 	if protocolstate.IsLowOnMemory() {
-		maxWorkers = 5
+		maxWorkers = protocolstate.GuardThreads(request.Threads)
 	}
 
 	// Stop-at-first-match logic while executing requests
