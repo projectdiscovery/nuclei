@@ -1,12 +1,13 @@
 id: pd-nuclei-auth-test
 
 info:
-  name: ProjectDiscovery Dev Servers
+  name: ProjectDiscovery Test Dev Servers
   author: pdteam
   description: |
     This is a auth file for ProjectDiscovery dev servers.
     It contains auth data of all projectdiscovery dev servers.
 
+# Note: this is a dummy example file. none of the secrets here are real.
 
 # static secrets
 static:
