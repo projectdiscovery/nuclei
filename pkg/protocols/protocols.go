@@ -116,6 +116,8 @@ type ExecutorOptions struct {
 	// based on given logic. by default nuclei reverts to using value of `-c` when threads count
 	// is not specified or is 0 in template
 	OverrideThreadsCount PayloadThreadSetterCallback
+	//TemporaryDirectory is the directory to store temporary files
+	TemporaryDirectory string
 }
 
 // GetThreadsForPayloadRequests returns the number of threads to use as default for
