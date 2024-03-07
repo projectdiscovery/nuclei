@@ -56,7 +56,7 @@ const (
 	// RequestPathComponent is the name of the request url component
 	RequestPathComponent = "path"
 	// RequestHeaderComponent is the name of the request header component
-	RequestHeaderComponent = "headers"
+	RequestHeaderComponent = "header"
 	// RequestCookieComponent is the name of the request cookie component
 	RequestCookieComponent = "cookie"
 )
@@ -79,7 +79,7 @@ func New(componentType string) Component {
 		return NewQuery()
 	case "path":
 		return NewPath()
-	case "headers":
+	case "header":
 		return NewHeader()
 	case "cookie":
 		return NewCookie()

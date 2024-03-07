@@ -18,7 +18,7 @@ http:
         condition: and
     
     fuzzing:
-      - part: headers
+      - part: header
         type: replace
         mode: single
         fuzz:

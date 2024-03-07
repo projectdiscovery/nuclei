@@ -28,7 +28,7 @@ type Rule struct {
 	//   query fuzzes the query part of url. More parts will be added later.
 	// values:
 	//   - "query"
-	Part     string `yaml:"part,omitempty" json:"part,omitempty" jsonschema:"title=part of rule,description=Part of request rule to fuzz,enum=query,enum=headers,enum=path,enum=body,enum=cookie,enum=request"`
+	Part     string `yaml:"part,omitempty" json:"part,omitempty" jsonschema:"title=part of rule,description=Part of request rule to fuzz,enum=query,enum=header,enum=path,enum=body,enum=cookie,enum=request"`
 	partType partType
 	// description: |
 	//   Mode is the mode of fuzzing to perform.
@@ -120,7 +120,7 @@ const (
 
 var stringToPartType = map[string]partType{
 	"query":   queryPartType,
-	"headers": headersPartType,
+	"header":  headersPartType,
 	"path":    pathPartType,
 	"body":    bodyPartType,
 	"cookie":  cookiePartType,
