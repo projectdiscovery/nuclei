@@ -451,24 +451,6 @@ func (r *Runner) RunEnumeration() error {
 		executorOpts.AuthProvider = provider
 	}
 
-	if len(r.options.SecretsFile) > 0 && !r.options.Validate {
-		authTmplStore, err := GetAuthTmplStore(*r.options, r.catalog, executorOpts)
-		if err != nil {
-			return errors.Wrap(err, "failed to load dynamic auth templates")
-		}
-		authOpts := &authprovider.AuthProviderOptions{SecretsFiles: r.options.SecretsFile}
-		authOpts.LazyFetchSecret = GetLazyAuthFetchCallback(&AuthLazyFetchOptions{
-			TemplateStore: authTmplStore,
-			ExecOpts:      executorOpts,
-		})
-		// initialize auth provider
-		provider, err := authprovider.NewAuthProvider(authOpts)
-		if err != nil {
-			return errors.Wrap(err, "could not create auth provider")
-		}
-		executorOpts.AuthProvider = provider
-	}
-
 	if r.options.ShouldUseHostError() {
 		cache := hosterrorscache.New(r.options.MaxHostError, hosterrorscache.DefaultMaxHostsCount, r.options.TrackError)
 		cache.SetVerbose(r.options.Verbose)
