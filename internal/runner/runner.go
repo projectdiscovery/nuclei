@@ -87,6 +87,8 @@ type Runner struct {
 	storage           *storage.Storage
 	// pdcp auto-save options
 	pdcpUploadErrMsg string
+	//general purpose temporary directory
+	tmpDir string
 }
 
 const pprofServerAddress = "127.0.0.1:8086"
@@ -318,10 +320,8 @@ func New(options *types.Options) (*Runner, error) {
 		runner.rateLimiter = ratelimit.NewUnlimited(context.Background())
 	}
 
-	if storage, err := storage.New(); err != nil {
-		gologger.Error().Msgf("Could not create storage: %s", err)
-	} else {
-		runner.storage = storage
+	if tmpDir, err := os.MkdirTemp("", "nuclei-tmp-*"); err == nil {
+		runner.tmpDir = tmpDir
 	}
 
 	return runner, nil
@@ -358,8 +358,8 @@ func (r *Runner) Close() {
 	if r.browser != nil {
 		r.browser.Close()
 	}
-	if r.storage != nil {
-		r.storage.Close()
+	if r.tmpDir != "" {
+		_ = os.RemoveAll(r.tmpDir)
 	}
 }
 
@@ -419,19 +419,20 @@ func (r *Runner) RunEnumeration() error {
 	// Create the executor options which will be used throughout the execution
 	// stage by the nuclei engine modules.
 	executorOpts := protocols.ExecutorOptions{
-		Output:          r.output,
-		Options:         r.options,
-		Progress:        r.progress,
-		Catalog:         r.catalog,
-		IssuesClient:    r.issuesClient,
-		RateLimiter:     r.rateLimiter,
-		Interactsh:      r.interactsh,
-		ProjectFile:     r.projectFile,
-		Browser:         r.browser,
-		Colorizer:       r.colorizer,
-		ResumeCfg:       r.resumeCfg,
-		ExcludeMatchers: excludematchers.New(r.options.ExcludeMatchers),
-		InputHelper:     input.NewHelper(),
+		Output:             r.output,
+		Options:            r.options,
+		Progress:           r.progress,
+		Catalog:            r.catalog,
+		IssuesClient:       r.issuesClient,
+		RateLimiter:        r.rateLimiter,
+		Interactsh:         r.interactsh,
+		ProjectFile:        r.projectFile,
+		Browser:            r.browser,
+		Colorizer:          r.colorizer,
+		ResumeCfg:          r.resumeCfg,
+		ExcludeMatchers:    excludematchers.New(r.options.ExcludeMatchers),
+		InputHelper:        input.NewHelper(),
+		TemporaryDirectory: r.tmpDir,
 	}
 
 	if r.options.ShouldUseHostError() {

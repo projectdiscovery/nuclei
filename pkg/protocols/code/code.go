@@ -83,7 +83,7 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 
 	var src *gozero.Source
 
-	src, err = gozero.NewSourceWithString(request.Source, request.Pattern)
+	src, err = gozero.NewSourceWithString(request.Source, request.Pattern, request.options.TemporaryDirectory)
 	if err != nil {
 		return err
 	}
@@ -125,7 +125,7 @@ func (request *Request) GetID() string {
 
 // ExecuteWithResults executes the protocol requests and returns results instead of writing them.
 func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicValues, previous output.InternalEvent, callback protocols.OutputEventCallback) (err error) {
-	metaSrc, err := gozero.NewSourceWithString(input.MetaInput.Input, "")
+	metaSrc, err := gozero.NewSourceWithString(input.MetaInput.Input, "", request.options.TemporaryDirectory)
 	if err != nil {
 		return err
 	}
