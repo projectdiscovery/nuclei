@@ -69,6 +69,12 @@ func (f *FileAuthProvider) init() {
 				f.domains = make(map[string]authx.AuthStrategy)
 			}
 			f.domains[strings.TrimSpace(domain)] = secret.GetStrategy()
+			if strings.HasSuffix(domain, ":80") {
+				f.domains[strings.TrimSuffix(domain, ":80")] = secret.GetStrategy()
+			}
+			if strings.HasSuffix(domain, ":443") {
+				f.domains[strings.TrimSuffix(domain, ":443")] = secret.GetStrategy()
+			}
 		}
 	}
 	for _, dynamic := range f.store.Dynamic {
@@ -89,6 +95,12 @@ func (f *FileAuthProvider) init() {
 				f.domains = make(map[string]authx.AuthStrategy)
 			}
 			f.domains[strings.TrimSpace(domain)] = &authx.DynamicAuthStrategy{Dynamic: dynamic}
+			if strings.HasSuffix(domain, ":80") {
+				f.domains[strings.TrimSuffix(domain, ":80")] = &authx.DynamicAuthStrategy{Dynamic: dynamic}
+			}
+			if strings.HasSuffix(domain, ":443") {
+				f.domains[strings.TrimSuffix(domain, ":443")] = &authx.DynamicAuthStrategy{Dynamic: dynamic}
+			}
 		}
 	}
 }
