@@ -2,6 +2,7 @@ package gitlab
 
 import (
 	"fmt"
+	"strconv"
 
 	"github.com/xanzy/go-gitlab"
 
@@ -66,7 +67,7 @@ func New(options *Options) (*Integration, error) {
 }
 
 // CreateIssue creates an issue in the tracker
-func (i *Integration) CreateIssue(event *output.ResultEvent) error {
+func (i *Integration) CreateIssue(event *output.ResultEvent) (*filters.CreateIssueResponse, error) {
 	summary := format.Summary(event)
 	description := format.CreateReportDescription(event, util.MarkdownFormatter{}, i.options.OmitRaw)
 	labels := []string{}
@@ -88,7 +89,7 @@ func (i *Integration) CreateIssue(event *output.ResultEvent) error {
 			Search: &summary,
 		})
 		if err != nil {
-			return err
+			return nil, err
 		}
 		if len(issues) > 0 {
 			issue := issues[0]
@@ -96,7 +97,7 @@ func (i *Integration) CreateIssue(event *output.ResultEvent) error {
 				Body: &description,
 			})
 			if err != nil {
-				return err
+				return nil, err
 			}
 			if issue.State == "closed" {
 				reopen := "reopen"
@@ -105,17 +106,32 @@ func (i *Integration) CreateIssue(event *output.ResultEvent) error {
 				})
 				fmt.Sprintln(resp, err)
 			}
-			return err
+			if err != nil {
+				return nil, err
+			}
+			return &filters.CreateIssueResponse{
+				IssueID:  strconv.FormatInt(int64(issue.ID), 10),
+				IssueURL: issue.WebURL,
+			}, nil
 		}
 	}
-	_, _, err := i.client.Issues.CreateIssue(i.options.ProjectName, &gitlab.CreateIssueOptions{
+	createdIssue, _, err := i.client.Issues.CreateIssue(i.options.ProjectName, &gitlab.CreateIssueOptions{
 		Title:       &summary,
 		Description: &description,
 		Labels:      &customLabels,
 		AssigneeIDs: &assigneeIDs,
 	})
+	if err != nil {
+		return nil, err
+	}
+	return &filters.CreateIssueResponse{
+		IssueID:  strconv.FormatInt(int64(createdIssue.ID), 10),
+		IssueURL: createdIssue.WebURL,
+	}, nil
+}
 
-	return err
+func (i *Integration) Name() string {
+	return "gitlab"
 }
 
 // ShouldFilter determines if an issue should be logged to this tracker

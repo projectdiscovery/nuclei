@@ -128,7 +128,7 @@ func (e *NucleiEngine) init() error {
 		return err
 	}
 	// we don't support reporting config in sdk mode
-	if e.rc, err = reporting.New(&reporting.Options{}, ""); err != nil {
+	if e.rc, err = reporting.New(&reporting.Options{}, "", false); err != nil {
 		return err
 	}
 	e.interactshOpts.IssuesClient = e.rc

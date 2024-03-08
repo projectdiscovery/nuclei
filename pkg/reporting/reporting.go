@@ -35,8 +35,10 @@ var (
 
 // Tracker is an interface implemented by an issue tracker
 type Tracker interface {
+	// Name returns the name of the tracker
+	Name() string
 	// CreateIssue creates an issue in the tracker
-	CreateIssue(event *output.ResultEvent) error
+	CreateIssue(event *output.ResultEvent) (*filters.CreateIssueResponse, error)
 	// ShouldFilter determines if the event should be filtered out
 	ShouldFilter(event *output.ResultEvent) bool
 }
@@ -58,7 +60,7 @@ type ReportingClient struct {
 }
 
 // New creates a new nuclei issue tracker reporting client
-func New(options *Options, db string) (Client, error) {
+func New(options *Options, db string, doNotDedupe bool) (Client, error) {
 	client := &ReportingClient{options: options}
 
 	if options.GitHub != nil {
@@ -142,6 +144,10 @@ func New(options *Options, db string) (Client, error) {
 		client.exporters = append(client.exporters, exporter)
 	}
 
+	if doNotDedupe {
+		return client, nil
+	}
+
 	storage, err := dedupe.New(db)
 	if err != nil {
 		return nil, err
@@ -213,13 +219,21 @@ func (c *ReportingClient) CreateIssue(event *output.ResultEvent) error {
 
 	unique, err := c.dedupe.Index(event)
 	if unique {
+		event.IssueTrackers = make(map[string]output.IssueTrackerMetadata)
+
 		for _, tracker := range c.trackers {
 			// process tracker specific allow/deny list
 			if tracker.ShouldFilter(event) {
 				continue
 			}
-			if trackerErr := tracker.CreateIssue(event); trackerErr != nil {
+			reportData, trackerErr := tracker.CreateIssue(event)
+			if trackerErr != nil {
 				err = multierr.Append(err, trackerErr)
+				continue
+			}
+			event.IssueTrackers[tracker.Name()] = output.IssueTrackerMetadata{
+				IssueID:  reportData.IssueID,
+				IssueURL: reportData.IssueURL,
 			}
 		}
 		for _, exporter := range c.exporters {
