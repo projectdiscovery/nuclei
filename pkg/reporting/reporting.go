@@ -201,7 +201,9 @@ func (c *ReportingClient) RegisterExporter(exporter Exporter) {
 
 // Close closes the issue tracker reporting client
 func (c *ReportingClient) Close() {
-	c.dedupe.Close()
+	if c.dedupe != nil {
+		c.dedupe.Close()
+	}
 	for _, exporter := range c.exporters {
 		exporter.Close()
 	}
@@ -217,7 +219,11 @@ func (c *ReportingClient) CreateIssue(event *output.ResultEvent) error {
 		return nil
 	}
 
-	unique, err := c.dedupe.Index(event)
+	var err error
+	unique := true
+	if c.dedupe != nil {
+		unique, err = c.dedupe.Index(event)
+	}
 	if unique {
 		event.IssueTrackers = make(map[string]output.IssueTrackerMetadata)
 
@@ -250,5 +256,7 @@ func (c *ReportingClient) GetReportingOptions() *Options {
 }
 
 func (c *ReportingClient) Clear() {
-	c.dedupe.Clear()
+	if c.dedupe != nil {
+		c.dedupe.Clear()
+	}
 }
