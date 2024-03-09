@@ -134,6 +134,34 @@ func (i *Integration) Name() string {
 	return "gitlab"
 }
 
+func (i *Integration) CloseIssue(event *output.ResultEvent) error {
+	searchIn := "title"
+	searchState := "all"
+
+	summary := format.Summary(event)
+	issues, _, err := i.client.Issues.ListProjectIssues(i.options.ProjectName, &gitlab.ListProjectIssuesOptions{
+		In:     &searchIn,
+		State:  &searchState,
+		Search: &summary,
+	})
+	if err != nil {
+		return err
+	}
+	if len(issues) <= 0 {
+		return nil
+	}
+
+	issue := issues[0]
+	state := "close"
+	_, _, err = i.client.Issues.UpdateIssue(i.options.ProjectName, issue.IID, &gitlab.UpdateIssueOptions{
+		StateEvent: &state,
+	})
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 // ShouldFilter determines if an issue should be logged to this tracker
 func (i *Integration) ShouldFilter(event *output.ResultEvent) bool {
 	if i.options.AllowList != nil && i.options.AllowList.GetMatch(event) {

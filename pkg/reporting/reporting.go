@@ -39,6 +39,8 @@ type Tracker interface {
 	Name() string
 	// CreateIssue creates an issue in the tracker
 	CreateIssue(event *output.ResultEvent) (*filters.CreateIssueResponse, error)
+	// CloseIssue closes an issue in the tracker
+	CloseIssue(event *output.ResultEvent) error
 	// ShouldFilter determines if the event should be filtered out
 	ShouldFilter(event *output.ResultEvent) bool
 }
@@ -249,6 +251,19 @@ func (c *ReportingClient) CreateIssue(event *output.ResultEvent) error {
 		}
 	}
 	return err
+}
+
+// CloseIssue closes an issue in the tracker
+func (c *ReportingClient) CloseIssue(event *output.ResultEvent) error {
+	for _, tracker := range c.trackers {
+		if tracker.ShouldFilter(event) {
+			continue
+		}
+		if err := tracker.CloseIssue(event); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (c *ReportingClient) GetReportingOptions() *Options {

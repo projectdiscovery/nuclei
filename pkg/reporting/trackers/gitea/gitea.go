@@ -132,6 +132,11 @@ func (i *Integration) CreateIssue(event *output.ResultEvent) (*filters.CreateIss
 	}, nil
 }
 
+func (i *Integration) CloseIssue(event *output.ResultEvent) error {
+	// TODO: Implement
+	return nil
+}
+
 // ShouldFilter determines if an issue should be logged to this tracker
 func (i *Integration) ShouldFilter(event *output.ResultEvent) bool {
 	if i.options.AllowList != nil && i.options.AllowList.GetMatch(event) {

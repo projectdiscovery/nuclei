@@ -122,7 +122,7 @@ func (i *Integration) CreateIssue(event *output.ResultEvent) (*filters.CreateIss
 		}
 		return &filters.CreateIssueResponse{
 			IssueID:  strconv.FormatInt(createdIssue.GetID(), 10),
-			IssueURL: createdIssue.GetURL(),
+			IssueURL: createdIssue.GetHTMLURL(),
 		}, nil
 	} else {
 		if existingIssue.GetState() == "closed" {
@@ -143,9 +143,30 @@ func (i *Integration) CreateIssue(event *output.ResultEvent) (*filters.CreateIss
 		}
 		return &filters.CreateIssueResponse{
 			IssueID:  strconv.FormatInt(existingIssue.GetID(), 10),
-			IssueURL: existingIssue.GetURL(),
+			IssueURL: existingIssue.GetHTMLURL(),
 		}, nil
 	}
+}
+
+func (i *Integration) CloseIssue(event *output.ResultEvent) error {
+	ctx := context.Background()
+	summary := format.Summary(event)
+
+	existingIssue, err := i.findIssueByTitle(ctx, summary)
+	if err != nil && !errors.Is(err, io.EOF) {
+		return err
+	}
+	if existingIssue == nil {
+		return nil
+	}
+
+	stateClosed := "closed"
+	if _, _, err := i.client.Issues.Edit(ctx, i.options.Owner, i.options.ProjectName, *existingIssue.Number, &github.IssueRequest{
+		State: &stateClosed,
+	}); err != nil {
+		return fmt.Errorf("error closing issue %d: %s", *existingIssue.Number, err)
+	}
+	return nil
 }
 
 func (i *Integration) Name() string {

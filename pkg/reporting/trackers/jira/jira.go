@@ -5,6 +5,7 @@ import (
 	"io"
 	"net/url"
 	"strings"
+	"sync"
 
 	"github.com/andygrunwald/go-jira"
 	"github.com/trivago/tgo/tcontainer"
@@ -48,6 +49,9 @@ type Integration struct {
 	Formatter
 	jira    *jira.Client
 	options *Options
+
+	once         *sync.Once
+	transitionID string
 }
 
 // Options contains the configuration options for jira client
@@ -103,7 +107,12 @@ func New(options *Options) (*Integration, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &Integration{jira: jiraClient, options: options}, nil
+	integration := &Integration{
+		jira:    jiraClient,
+		options: options,
+		once:    &sync.Once{},
+	}
+	return integration, nil
 }
 
 func (i *Integration) Name() string {
@@ -232,6 +241,45 @@ func (i *Integration) CreateIssue(event *output.ResultEvent) (*filters.CreateIss
 		}
 	}
 	return i.CreateNewIssue(event)
+}
+
+func (i *Integration) CloseIssue(event *output.ResultEvent) error {
+	if i.options.StatusNot == "" {
+		return nil
+	}
+
+	issue, err := i.FindExistingIssue(event)
+	if err != nil {
+		return err
+	} else if issue.ID != "" {
+		// Lazy load the transitions ID in case it's not set
+		i.once.Do(func() {
+			transitions, _, err := i.jira.Issue.GetTransitions(issue.ID)
+			if err != nil {
+				return
+			}
+			for _, transition := range transitions {
+				if transition.Name == i.options.StatusNot {
+					i.transitionID = transition.ID
+					break
+				}
+			}
+		})
+		if i.transitionID == "" {
+			return nil
+		}
+		transition := jira.CreateTransitionPayload{
+			Transition: jira.TransitionPayload{
+				ID: i.transitionID,
+			},
+		}
+
+		_, err = i.jira.Issue.DoTransitionWithPayload(issue.ID, transition)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // FindExistingIssue checks if the issue already exists and returns its ID
