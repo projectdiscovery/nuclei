@@ -62,7 +62,7 @@ func GenerateRequestsFromSchema(schema *openapi3.T, opts formats.InputFormatOpti
 
 	missingVarMap := make(map[string]string)
 	missingParamValueCallback := func(param *openapi3.Parameter, opts *generateReqOptions) {
-		missingVarMap[param.Name] = fmt.Sprintf("[%s] %s : %s", opts.method, opts.requestPath, param.Description)
+		missingVarMap[param.Name] = fmt.Sprintf("[%s] %s : description = %s", opts.method, opts.requestPath, param.Description)
 	}
 
 	for _, serverURL := range schema.Servers {
@@ -165,7 +165,7 @@ func generateRequestsFromOp(opts *generateReqOptions) error {
 			// missing example value
 			if opts.opts.SkipFormatValidation {
 				gologger.Verbose().Msgf("skipping [%s] %s due to missing value (%v)\n", opts.method, opts.requestPath, value.Name)
-				continue
+				return nil
 			} else if opts.missingParamValueCallback != nil {
 				opts.missingParamValueCallback(value, opts)
 			}
@@ -305,10 +305,10 @@ func GetGlobalParamsForSecurityRequirement(schema *openapi3.T, requirement *open
 	if len(schema.Components.SecuritySchemes) == 0 {
 		return nil, errorutil.NewWithTag("openapi", "security requirements (%+v) without any security schemes found in openapi file", schema.Security)
 	}
+	found := false
 	// this api is protected for each security scheme pull its corresponding scheme
 schemaLabel:
-	for _, security := range schema.Security {
-		found := false
+	for _, security := range *requirement {
 		for name := range security {
 			if scheme, ok := schema.Components.SecuritySchemes[name]; ok {
 				found = true
@@ -321,10 +321,15 @@ schemaLabel:
 				continue schemaLabel
 			}
 		}
-		if !found {
+		if !found && len(security) > 1 {
+			// if this is case then both security schemes are required
 			return nil, errorutil.NewWithTag("openapi", "security requirement (%+v) not found in openapi file", security)
 		}
 	}
+	if !found {
+		return nil, errorutil.NewWithTag("openapi", "security requirement (%+v) not found in openapi file", requirement)
+	}
+
 	return globalParams, nil
 }
 
