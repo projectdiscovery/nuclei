@@ -76,6 +76,14 @@ func (v *Value) SetParsedValue(key string, value string) bool {
 			return false
 		}
 		origValue = parsed
+	case bool:
+		parsed, err := strconv.ParseBool(value)
+		if err != nil {
+			return false
+		}
+		origValue = parsed
+	case nil:
+		origValue = value
 	default:
 		gologger.Error().Msgf("unknown type %T for value %s", v, v)
 	}
