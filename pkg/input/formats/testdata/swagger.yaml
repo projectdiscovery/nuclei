@@ -25,7 +25,7 @@ paths:
           name: userId
           required: true
           type: integer
-          minimum: 1
+          default: 1
           description: Parameter description in Markdown.
         - in: query
           name: test
