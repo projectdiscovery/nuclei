@@ -54,7 +54,7 @@ static:
 
 # dynamic secrets (powered by nuclei-templates)
 dynamic:
-  - template-path: /path/to/wordpress-login.yaml
+  - template: /path/to/wordpress-login.yaml
     variables:
       - name: username
         value: pdteam

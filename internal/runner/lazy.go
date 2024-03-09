@@ -84,7 +84,7 @@ func GetLazyAuthFetchCallback(opts *AuthLazyFetchOptions) authx.LazyFetchSecret 
 				return
 			}
 			if !e.HasOperatorResult() {
-				finalErr = fmt.Errorf("no operator result found for template: %s", d.TemplatePath)
+				finalErr = fmt.Errorf("no result found for template: %s", d.TemplatePath)
 				return
 			}
 			// dynamic values

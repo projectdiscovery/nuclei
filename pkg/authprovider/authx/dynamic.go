@@ -23,7 +23,7 @@ var (
 // after authenticating with the username and password
 type Dynamic struct {
 	Secret        `yaml:",inline"`       // this is a static secret that will be generated after the dynamic secret is resolved
-	TemplatePath  string                 `json:"template-path" yaml:"template-path"`
+	TemplatePath  string                 `json:"template" yaml:"template"`
 	Variables     []KV                   `json:"variables" yaml:"variables"`
 	Input         string                 `json:"input" yaml:"input"` // (optional) target for the dynamic secret
 	Extracted     map[string]interface{} `json:"-" yaml:"-"`         // extracted values from the dynamic secret
