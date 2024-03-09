@@ -91,7 +91,9 @@ func NewInputProvider(opts InputOptions) (InputProvider, error) {
 			InputFile: opts.Options.TargetsFilePath,
 			InputMode: opts.Options.InputFileMode,
 			Options: formats.InputFormatOptions{
-				Variables: opts.Options.Vars.AsMap(),
+				Variables:            opts.Options.Vars.AsMap(),
+				SkipFormatValidation: opts.Options.SkipFormatValidation,
+				RequiredOnly:         opts.Options.FormatUseRequiredOnly,
 			},
 		})
 	}

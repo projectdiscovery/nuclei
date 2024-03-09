@@ -35,5 +35,5 @@ func (j *OpenAPIFormat) Parse(input string, resultsCb formats.ParseReqRespCallba
 	if err != nil {
 		return errors.Wrap(err, "could not decode openapi 3.0 schema")
 	}
-	return GenerateRequestsFromSchema(schema, resultsCb)
+	return GenerateRequestsFromSchema(schema, j.opts, resultsCb)
 }

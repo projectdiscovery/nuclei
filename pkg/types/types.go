@@ -377,6 +377,10 @@ type Options struct {
 	SecretsFile goflags.StringSlice
 	// PreFetchSecrets pre-fetches the secrets from the auth provider
 	PreFetchSecrets bool
+	// FormatUseRequiredOnly only uses required fields when generating requests
+	FormatUseRequiredOnly bool
+	// SkipFormatValidation is used to skip format validation
+	SkipFormatValidation bool
 }
 
 // ShouldLoadResume resume file

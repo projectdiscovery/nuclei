@@ -14,6 +14,13 @@ type InputFormatOptions struct {
 	// Variables is list of variables that can be used
 	// while generating requests in given format
 	Variables map[string]interface{}
+	// SkipFormatValidation is used to skip format validation
+	// while debugging or testing if format is invalid then
+	// requests are skipped instead of creating invalid requests
+	SkipFormatValidation bool
+	// RequiredOnly only uses required fields when generating requests
+	// instead of all fields
+	RequiredOnly bool
 }
 
 // Format is an interface implemented by all input formats
