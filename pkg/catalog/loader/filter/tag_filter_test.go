@@ -85,7 +85,7 @@ func TestTagBasedFilter(t *testing.T) {
 	})
 	t.Run("match-includes", func(t *testing.T) {
 		filter, err := New(&Config{
-			Tags:        []string{"fuzz"},
+			IncludeTags: []string{"fuzz"},
 			ExcludeTags: []string{"fuzz"},
 		})
 		require.Nil(t, err)
