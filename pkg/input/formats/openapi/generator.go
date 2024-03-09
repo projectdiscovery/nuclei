@@ -177,6 +177,8 @@ func generateRequestsFromOp(opts *generateReqOptions) error {
 			paramValue = exampleX
 		}
 		if opts.requiredOnly && !value.Required {
+			// remove them from path if any
+			opts.requestPath = strings.Replace(opts.requestPath, fmt.Sprintf("{%s}", value.Name), "", -1)
 			continue // Skip this parameter if it is not required and we want only required ones
 		}
 
