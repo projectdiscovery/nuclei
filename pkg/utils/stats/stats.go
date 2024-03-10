@@ -1,9 +1,11 @@
 package stats
 
 import (
+	"fmt"
 	"sync"
 	"sync/atomic"
 
+	"github.com/logrusorgru/aurora"
 	"github.com/projectdiscovery/gologger"
 )
 
@@ -42,6 +44,12 @@ func Display(name string) {
 
 func DisplayAsWarning(name string) {
 	Default.DisplayAsWarning(name)
+}
+
+// ForceDisplayWarning forces the display of a warning
+// regardless of current verbosity level
+func ForceDisplayWarning(name string) {
+	Default.ForceDisplayWarning(name)
 }
 
 // GetValue returns the value for a set variable
@@ -102,6 +110,23 @@ func (s *Storage) DisplayAsWarning(name string) {
 		return // don't show for nil stats
 	}
 	gologger.Warning().Label("WRN").Msgf(data.description, dataValue)
+}
+
+// ForceDisplayWarning forces the display of a warning
+// regardless of current verbosity level
+func (s *Storage) ForceDisplayWarning(name string) {
+	s.mutex.RLock()
+	data, ok := s.data[name]
+	s.mutex.RUnlock()
+	if !ok {
+		return
+	}
+
+	dataValue := atomic.LoadInt64(&data.value)
+	if dataValue == 0 {
+		return // don't show for nil stats
+	}
+	gologger.Print().Msgf("[%v] %v", aurora.BrightYellow("WRN"), fmt.Sprintf(data.description, dataValue))
 }
 
 // GetValue returns the value for a set variable

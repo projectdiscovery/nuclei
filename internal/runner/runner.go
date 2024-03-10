@@ -592,7 +592,7 @@ func (r *Runner) displayExecutionInfo(store *loader.Store) {
 		stats.DisplayAsWarning(parsers.TemplatesExecutedStats)
 	}
 	if r.options.DisableUnsignedTemplates {
-		stats.DisplayAsWarning(parsers.SkippedUnsignedStats)
+		stats.ForceDisplayWarning(parsers.SkippedUnsignedStats)
 	} else {
 		stats.DisplayAsWarning(parsers.UnsignedCodeWarning)
 	}
@@ -617,11 +617,18 @@ func (r *Runner) displayExecutionInfo(store *loader.Store) {
 		gologger.Info().Msgf("Workflows loaded for current scan: %d", len(store.Workflows()))
 	}
 	for k, v := range templates.SignatureStats {
-		if v.Load() > 0 {
+		value := v.Load()
+		if k == templates.Unsigned && value > 0 {
+			// adjust skipped unsigned templates via code or -dut flag
+			value = value - uint64(stats.GetValue(parsers.SkippedUnsignedStats))
+			value = value - uint64(stats.GetValue(parsers.UnsignedCodeWarning))
+			value = value - uint64(stats.GetValue(parsers.CodeFlagWarningStats))
+		}
+		if value > 0 {
 			if k != templates.Unsigned {
-				gologger.Info().Msgf("Executing %d signed templates from %s", v.Load(), k)
-			} else if !r.options.Silent && !config.DefaultConfig.HideTemplateSigWarning && !r.options.DisableUnsignedTemplates {
-				gologger.Print().Msgf("[%v] Loaded %d unsigned templates for scan. Use with caution.", aurora.BrightYellow("WRN"), v.Load())
+				gologger.Info().Msgf("Executing %d signed templates from %s", value, k)
+			} else if !r.options.Silent && !config.DefaultConfig.HideTemplateSigWarning {
+				gologger.Print().Msgf("[%v] Loaded %d unsigned templates for scan. Use with caution.", aurora.BrightYellow("WRN"), value)
 			}
 		}
 	}
