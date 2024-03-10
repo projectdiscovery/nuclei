@@ -459,8 +459,8 @@ func (r *Runner) RunEnumeration() error {
 	disk.PrintDeprecatedPathsMsgIfApplicable(r.options.Silent)
 	templates.PrintDeprecatedProtocolNameMsgIfApplicable(r.options.Silent, r.options.Verbose)
 
-	// purge cache once everything is loaded
-	templates.PurgeCache()
+	// purge global caches primarily used for loading templates
+	config.DefaultConfig.PurgeGlobalCache()
 
 	// add the hosts from the metadata queries of loaded templates into input provider
 	if r.options.Uncover && len(r.options.UncoverQuery) == 0 {

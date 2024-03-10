@@ -150,6 +150,7 @@ const (
 
 func init() {
 	parsedTemplatesCache = cache.New()
+	config.DefaultConfig.RegisterGlobalCache(parsedTemplatesCache)
 
 	stats.NewEntry(SyntaxWarningStats, "Found %d templates with syntax warning (use -validate flag for further examination)")
 	stats.NewEntry(SyntaxErrorStats, "Found %d templates with syntax error (use -validate flag for further examination)")
