@@ -386,7 +386,6 @@ func (store *Store) LoadTemplatesWithTags(templatesList, tags []string) []*templ
 	templatePathMap := store.pathFilter.Match(includedTemplates)
 
 	loadedTemplates := make([]*templates.Template, 0, len(templatePathMap))
-	var unverifiedTemplates int
 	for templatePath := range templatePathMap {
 		loaded, err := parsers.LoadTemplate(templatePath, store.tagFilter, tags, store.config.Catalog)
 		if loaded || store.pathFilter.MatchIncluded(templatePath) {
@@ -398,9 +397,9 @@ func (store *Store) LoadTemplatesWithTags(templatesList, tags []string) []*templ
 				}
 				gologger.Warning().Msgf("Could not parse template %s: %s\n", templatePath, err)
 			} else if parsed != nil {
-				if !parsed.Verified {
-					unverifiedTemplates++
-					templates.SignatureStats[templates.Unsigned].Add(^uint64(0))
+				if !parsed.Verified && store.config.ExecutorOptions.Options.DisableUnsignedTemplates {
+					// skip unverified templates when prompted to
+					stats.Increment(parsers.SkippedUnsignedStats)
 					continue
 				}
 				if len(parsed.RequestsHeadless) > 0 && !store.config.ExecutorOptions.Options.Headless {
@@ -417,7 +416,7 @@ func (store *Store) LoadTemplatesWithTags(templatesList, tags []string) []*templ
 					}
 				} else if len(parsed.RequestsCode) > 0 && !parsed.Verified && len(parsed.Workflows) == 0 {
 					// donot include unverified 'Code' protocol custom template in final list
-					stats.Increment(parsers.UnsignedWarning)
+					stats.Increment(parsers.UnsignedCodeWarning)
 					if cfg.DefaultConfig.LogAllEvents {
 						gologger.Print().Msgf("[%v] Tampered/Unsigned template at %v.\n", aurora.Yellow("WRN").String(), templatePath)
 					}
@@ -436,9 +435,6 @@ func (store *Store) LoadTemplatesWithTags(templatesList, tags []string) []*templ
 			}
 			gologger.Warning().Msg(err.Error())
 		}
-	}
-	if unverifiedTemplates > 0 {
-		gologger.Warning().Msgf("Skipped %d unsigned templates.", unverifiedTemplates)
 	}
 
 	sort.SliceStable(loadedTemplates, func(i, j int) bool {

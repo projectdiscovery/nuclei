@@ -6,7 +6,13 @@ import (
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/model"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
+	"github.com/projectdiscovery/nuclei/v3/pkg/utils/stats"
 	"github.com/projectdiscovery/nuclei/v3/pkg/workflows"
+)
+
+const (
+	// Note: we redefine to avoid cyclic dependency but it should be same as parsers.SkippedUnsignedStats
+	SkippedUnsignedStats = "skipped-unsigned-stats" // tracks loading of unsigned templates
 )
 
 // compileWorkflow compiles the workflow for execution
@@ -69,7 +75,6 @@ func parseWorkflowTemplate(workflow *workflows.WorkflowTemplate, preprocessor Pr
 	}
 
 	var workflowTemplates []*Template
-	var unverifiedWorkflowTemplates int
 	for _, path := range paths {
 		template, err := Parse(path, preprocessor, options.Copy())
 		if err != nil {
@@ -81,12 +86,10 @@ func parseWorkflowTemplate(workflow *workflows.WorkflowTemplate, preprocessor Pr
 			continue
 		}
 
-		if options.Options.DisableUnsignedTemplates {
-			if !template.Verified {
-				unverifiedWorkflowTemplates++
-				SignatureStats[Unsigned].Add(^uint64(0))
-				continue
-			}
+		if options.Options.DisableUnsignedTemplates && !template.Verified {
+			// skip unverified templates when prompted to do so
+			stats.Increment(SkippedUnsignedStats)
+			continue
 		}
 
 		if len(template.RequestsCode) > 0 {
@@ -100,10 +103,6 @@ func parseWorkflowTemplate(workflow *workflows.WorkflowTemplate, preprocessor Pr
 			}
 		}
 		workflowTemplates = append(workflowTemplates, template)
-	}
-
-	if unverifiedWorkflowTemplates > 0 {
-		gologger.Warning().Msgf("Skipped %d unsigned workflow templates.", unverifiedWorkflowTemplates)
 	}
 
 	finalTemplates, _ := ClusterTemplates(workflowTemplates, options.Copy())

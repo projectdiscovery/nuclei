@@ -591,7 +591,11 @@ func (r *Runner) displayExecutionInfo(store *loader.Store) {
 		stats.DisplayAsWarning(parsers.CodeFlagWarningStats)
 		stats.DisplayAsWarning(parsers.TemplatesExecutedStats)
 	}
-	stats.DisplayAsWarning(parsers.UnsignedWarning)
+	if r.options.DisableUnsignedTemplates {
+		stats.DisplayAsWarning(parsers.SkippedUnsignedStats)
+	} else {
+		stats.DisplayAsWarning(parsers.UnsignedCodeWarning)
+	}
 
 	cfg := config.DefaultConfig
 
@@ -616,8 +620,8 @@ func (r *Runner) displayExecutionInfo(store *loader.Store) {
 		if v.Load() > 0 {
 			if k != templates.Unsigned {
 				gologger.Info().Msgf("Executing %d signed templates from %s", v.Load(), k)
-			} else if !r.options.Silent && !config.DefaultConfig.HideTemplateSigWarning {
-				gologger.Print().Msgf("[%v] Executing %d unsigned templates. Use with caution.", aurora.BrightYellow("WRN"), v.Load())
+			} else if !r.options.Silent && !config.DefaultConfig.HideTemplateSigWarning && !r.options.DisableUnsignedTemplates {
+				gologger.Print().Msgf("[%v] Loaded %d unsigned templates for scan. Use with caution.", aurora.BrightYellow("WRN"), v.Load())
 			}
 		}
 	}
