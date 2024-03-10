@@ -296,15 +296,17 @@ func configureOutput(options *types.Options) {
 		gologger.DefaultLogger.SetFormatter(formatter.NewCLI(true))
 	}
 	// If the user desires verbose output, show verbose output
-	if options.Verbose || options.Validate {
-		gologger.DefaultLogger.SetMaxLevel(levels.LevelVerbose)
-		return
-	}
 	if options.Debug || options.DebugRequests || options.DebugResponse {
 		gologger.DefaultLogger.SetMaxLevel(levels.LevelDebug)
-		return
 	}
-
+	// Debug takes precedence before verbose
+	// because debug is a lower logging level.
+	if options.Verbose || options.Validate {
+		gologger.DefaultLogger.SetMaxLevel(levels.LevelVerbose)
+	}
+	if options.NoColor {
+		gologger.DefaultLogger.SetFormatter(formatter.NewCLI(true))
+	}
 	if options.Silent {
 		gologger.DefaultLogger.SetMaxLevel(levels.LevelSilent)
 	}
