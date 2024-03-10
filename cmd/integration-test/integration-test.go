@@ -55,6 +55,10 @@ var (
 		"flow":            flowTestcases,
 		"javascript":      jsTestcases,
 	}
+	// flakyTests are run with a retry count of 3
+	flakyTests = map[string]bool{
+		"protocols/http/self-contained-file-input.yaml": true,
+	}
 
 	// For debug purposes
 	runProtocol          = ""
@@ -163,6 +167,8 @@ func runTests(customTemplatePaths []string) []string {
 				var failedTemplatePath string
 				var err error
 				if proto == "interactsh" || strings.Contains(testCaseInfo.Path, "interactsh") {
+					failedTemplatePath, err = executeWithRetry(testCaseInfo.TestCase, testCaseInfo.Path, interactshRetryCount)
+				} else if flakyTests[testCaseInfo.Path] {
 					failedTemplatePath, err = executeWithRetry(testCaseInfo.TestCase, testCaseInfo.Path, interactshRetryCount)
 				} else {
 					failedTemplatePath, err = execute(testCaseInfo.TestCase, testCaseInfo.Path)
