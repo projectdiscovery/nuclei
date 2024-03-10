@@ -1,7 +1,12 @@
 package formats
 
 import (
+	"errors"
+	"os"
+
 	"github.com/projectdiscovery/nuclei/v3/pkg/input/types"
+	fileutil "github.com/projectdiscovery/utils/file"
+	"gopkg.in/yaml.v3"
 )
 
 // ParseReqRespCallback is a callback function for discovered raw requests
@@ -32,4 +37,49 @@ type Format interface {
 	Parse(input string, resultsCb ParseReqRespCallback) error
 	// SetOptions sets the options for the input format
 	SetOptions(options InputFormatOptions)
+}
+
+var (
+	DefaultVarDumpFileName = "required_openapi_vars.yaml"
+	ErrNoVarsDumpFile      = errors.New("no vars dump file found")
+)
+
+// == OpenAPIVarDumpFile ==
+// this file is meant to be used in CLI mode
+// to be more interactive and user-friendly when
+// running nuclei with openapi format
+
+// OpenAPIVarDumpFile is the structure of the required vars dump file
+type OpenAPIVarDumpFile struct {
+	Var []string `yaml:"var"`
+}
+
+// ReadOpenAPIVarDumpFile reads the required vars dump file
+func ReadOpenAPIVarDumpFile() (*OpenAPIVarDumpFile, error) {
+	var vars OpenAPIVarDumpFile
+	if !fileutil.FileExists(DefaultVarDumpFileName) {
+		return nil, ErrNoVarsDumpFile
+	}
+	bin, err := os.ReadFile(DefaultVarDumpFileName)
+	if err != nil {
+		return nil, err
+	}
+	err = yaml.Unmarshal(bin, &vars)
+	if err != nil {
+		return nil, err
+	}
+	return &vars, nil
+}
+
+// WriteOpenAPIVarDumpFile writes the required vars dump file
+func WriteOpenAPIVarDumpFile(vars *OpenAPIVarDumpFile) error {
+	bin, err := yaml.Marshal(vars)
+	if err != nil {
+		return err
+	}
+	err = os.WriteFile(DefaultVarDumpFileName, bin, 0644)
+	if err != nil {
+		return err
+	}
+	return nil
 }

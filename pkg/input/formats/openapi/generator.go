@@ -9,17 +9,20 @@ import (
 	"net/http"
 	"net/http/httputil"
 	"net/url"
+	"os"
 	"strings"
 
 	"github.com/clbanning/mxj/v2"
 	"github.com/getkin/kin-openapi/openapi3"
 	"github.com/pkg/errors"
 	"github.com/projectdiscovery/gologger"
+	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/config"
 	"github.com/projectdiscovery/nuclei/v3/pkg/input/formats"
 	httpTypes "github.com/projectdiscovery/nuclei/v3/pkg/input/types"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	errorutil "github.com/projectdiscovery/utils/errors"
 	"github.com/projectdiscovery/utils/generic"
+	mapsutil "github.com/projectdiscovery/utils/maps"
 	"github.com/valyala/fasttemplate"
 )
 
@@ -92,11 +95,20 @@ func GenerateRequestsFromSchema(schema *openapi3.T, opts formats.InputFormatOpti
 	}
 
 	if len(missingVarMap) > 0 {
-		gologger.Error().Msgf("openapi: failed to generate requests due to below missing variables\n")
-		for k, v := range missingVarMap {
-			gologger.Error().Msgf("%s: %s\n", k, v)
+		gologger.Error().Msgf("openapi: Found %d missing variables, use -skip-format-validation flag to skip requests or update missing variables generated in %s file,you can also specify these vars using -var flag in (key=value) format\n", len(missingVarMap), formats.DefaultVarDumpFileName)
+		gologger.Verbose().Msgf("openapi: missing vars: %+v", mapsutil.GetSortedKeys(missingVarMap))
+		if config.CurrentAppMode == config.AppModeCLI {
+			// generate var dump file
+			vars := &formats.OpenAPIVarDumpFile{}
+			for k := range missingVarMap {
+				vars.Var = append(vars.Var, k+"=")
+			}
+			if err := formats.WriteOpenAPIVarDumpFile(vars); err != nil {
+				gologger.Error().Msgf("openapi: could not write vars dump file: %s\n", err)
+			}
+			// exit with status code 1
+			os.Exit(1)
 		}
-		gologger.Fatal().Msgf("add default/example values in schema file or provide them using -var flag, you can use -skip-format-validation to skip these requests\n")
 	}
 
 	return nil
@@ -161,10 +173,48 @@ func generateRequestsFromOp(opts *generateReqOptions) error {
 		// accept override from global variables
 		if val, ok := opts.opts.Variables[value.Name]; ok {
 			paramValue = val
+		} else if value.Schema.Value.Default != nil {
+			paramValue = value.Schema.Value.Default
+			//  missing example value
+			// if opts.opts.SkipFormatValidation {
+			// 	gologger.Verbose().Msgf("skipping [%s] %s due to missing value (%v)\n", opts.method, opts.requestPath, value.Name)
+			// 	return nil
+			// } else if opts.missingParamValueCallback != nil {
+			// 	opts.missingParamValueCallback(value, opts)
+			// }
+		} else if value.Schema.Value.Example != nil {
+			paramValue = value.Schema.Value.Example
+		} else if value.Schema.Value.Enum != nil && len(value.Schema.Value.Enum) > 0 {
+			paramValue = value.Schema.Value.Enum[0]
 		} else {
+			if !opts.opts.SkipFormatValidation {
+				if opts.missingParamValueCallback != nil {
+					opts.missingParamValueCallback(value, opts)
+				}
+				// skip request if param in path else skip this param only
+				if value.Required {
+					gologger.Verbose().Msgf("skipping request [%s] %s due to missing value (%v)\n", opts.method, opts.requestPath, value.Name)
+					return nil
+				} else {
+					// if it is in path then remove it from path
+					opts.requestPath = strings.Replace(opts.requestPath, fmt.Sprintf("{%s}", value.Name), "", -1)
+					gologger.Verbose().Msgf("skipping optional param (%s)(%v) in request [%s] %s due to missing value (%v)\n", value.Name, value.In, opts.method, opts.requestPath, value.Name)
+					continue
+				}
+			}
 			exampleX, err := generateExampleFromSchema(value.Schema.Value)
 			if err != nil {
-				continue
+				// when failed to generate example
+				// skip request if param in path else skip this param only
+				if value.Required {
+					gologger.Verbose().Msgf("skipping request [%s] %s due to missing value (%v)\n", opts.method, opts.requestPath, value.Name)
+					return nil
+				} else {
+					// if it is in path then remove it from path
+					opts.requestPath = strings.Replace(opts.requestPath, fmt.Sprintf("{%s}", value.Name), "", -1)
+					gologger.Verbose().Msgf("skipping optinal param (%s)(%v) in request [%s] %s due to missing value (%v)\n", value.Name, value.In, opts.method, opts.requestPath, value.Name)
+					continue
+				}
 			}
 			paramValue = exampleX
 		}

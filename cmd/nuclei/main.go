@@ -47,6 +47,9 @@ var (
 )
 
 func main() {
+	// enables CLI specific configs mostly interactive behavior
+	config.CurrentAppMode = config.AppModeCLI
+
 	if err := runner.ConfigureOptions(); err != nil {
 		gologger.Fatal().Msgf("Could not initialize options: %s\n", err)
 	}

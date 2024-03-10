@@ -6,6 +6,20 @@ import (
 	"github.com/Masterminds/semver/v3"
 )
 
+type AppMode string
+
+const (
+	AppModeLibrary AppMode = "library"
+	AppModeCLI     AppMode = "cli"
+)
+
+var (
+	// Global Var to control behaviours specific to cli or library
+	// maybe this should be moved to utils ??
+	// this is overwritten in cmd/nuclei/main.go
+	CurrentAppMode = AppModeLibrary
+)
+
 const (
 	TemplateConfigFileName          = ".templates-config.json"
 	NucleiTemplatesDirName          = "nuclei-templates"
