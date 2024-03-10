@@ -3,6 +3,7 @@ package formats
 import (
 	"errors"
 	"os"
+	"strings"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/input/types"
 	fileutil "github.com/projectdiscovery/utils/file"
@@ -51,7 +52,8 @@ var (
 
 // OpenAPIVarDumpFile is the structure of the required vars dump file
 type OpenAPIVarDumpFile struct {
-	Var []string `yaml:"var"`
+	Var          []string `yaml:"var"`
+	OptionalVars []string `yaml:"-"` // this will be written to the file as comments
 }
 
 // ReadOpenAPIVarDumpFile reads the required vars dump file
@@ -68,18 +70,34 @@ func ReadOpenAPIVarDumpFile() (*OpenAPIVarDumpFile, error) {
 	if err != nil {
 		return nil, err
 	}
+	filtered := []string{}
+	for _, v := range vars.Var {
+		v = strings.TrimSpace(v)
+		if !strings.HasSuffix(v, "=") {
+			filtered = append(filtered, v)
+		}
+	}
+	vars.Var = filtered
 	return &vars, nil
 }
 
 // WriteOpenAPIVarDumpFile writes the required vars dump file
 func WriteOpenAPIVarDumpFile(vars *OpenAPIVarDumpFile) error {
+	f, err := os.OpenFile(DefaultVarDumpFileName, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0644)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
 	bin, err := yaml.Marshal(vars)
 	if err != nil {
 		return err
 	}
-	err = os.WriteFile(DefaultVarDumpFileName, bin, 0644)
-	if err != nil {
-		return err
+	_, _ = f.Write(bin)
+	if len(vars.OptionalVars) > 0 {
+		_, _ = f.WriteString("\n    # Optional variables\n")
+		for _, v := range vars.OptionalVars {
+			_, _ = f.WriteString("    # - " + v + "=\n")
+		}
 	}
-	return nil
+	return f.Sync()
 }

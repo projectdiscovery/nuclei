@@ -63,9 +63,14 @@ func GenerateRequestsFromSchema(schema *openapi3.T, opts formats.InputFormatOpti
 		}
 	}
 
-	missingVarMap := make(map[string]string)
+	missingVarMap := make(map[string]struct{})
+	optionalVarMap := make(map[string]struct{})
 	missingParamValueCallback := func(param *openapi3.Parameter, opts *generateReqOptions) {
-		missingVarMap[param.Name] = fmt.Sprintf("[%s] %s : description = %s", opts.method, opts.requestPath, param.Description)
+		if !param.Required {
+			optionalVarMap[param.Name] = struct{}{}
+			return
+		}
+		missingVarMap[param.Name] = struct{}{}
 	}
 
 	for _, serverURL := range schema.Servers {
@@ -103,6 +108,7 @@ func GenerateRequestsFromSchema(schema *openapi3.T, opts formats.InputFormatOpti
 			for k := range missingVarMap {
 				vars.Var = append(vars.Var, k+"=")
 			}
+			vars.OptionalVars = mapsutil.GetSortedKeys(optionalVarMap)
 			if err := formats.WriteOpenAPIVarDumpFile(vars); err != nil {
 				gologger.Error().Msgf("openapi: could not write vars dump file: %s\n", err)
 			}
@@ -175,13 +181,6 @@ func generateRequestsFromOp(opts *generateReqOptions) error {
 			paramValue = val
 		} else if value.Schema.Value.Default != nil {
 			paramValue = value.Schema.Value.Default
-			//  missing example value
-			// if opts.opts.SkipFormatValidation {
-			// 	gologger.Verbose().Msgf("skipping [%s] %s due to missing value (%v)\n", opts.method, opts.requestPath, value.Name)
-			// 	return nil
-			// } else if opts.missingParamValueCallback != nil {
-			// 	opts.missingParamValueCallback(value, opts)
-			// }
 		} else if value.Schema.Value.Example != nil {
 			paramValue = value.Schema.Value.Example
 		} else if value.Schema.Value.Enum != nil && len(value.Schema.Value.Enum) > 0 {
@@ -193,12 +192,12 @@ func generateRequestsFromOp(opts *generateReqOptions) error {
 				}
 				// skip request if param in path else skip this param only
 				if value.Required {
-					gologger.Verbose().Msgf("skipping request [%s] %s due to missing value (%v)\n", opts.method, opts.requestPath, value.Name)
+					// gologger.Verbose().Msgf("skipping request [%s] %s due to missing value (%v)\n", opts.method, opts.requestPath, value.Name)
 					return nil
 				} else {
 					// if it is in path then remove it from path
 					opts.requestPath = strings.Replace(opts.requestPath, fmt.Sprintf("{%s}", value.Name), "", -1)
-					gologger.Verbose().Msgf("skipping optional param (%s)(%v) in request [%s] %s due to missing value (%v)\n", value.Name, value.In, opts.method, opts.requestPath, value.Name)
+					gologger.Verbose().Msgf("skipping optional param (%s) in (%v) in request [%s] %s due to missing value (%v)\n", value.Name, value.In, opts.method, opts.requestPath, value.Name)
 					continue
 				}
 			}
@@ -212,7 +211,7 @@ func generateRequestsFromOp(opts *generateReqOptions) error {
 				} else {
 					// if it is in path then remove it from path
 					opts.requestPath = strings.Replace(opts.requestPath, fmt.Sprintf("{%s}", value.Name), "", -1)
-					gologger.Verbose().Msgf("skipping optinal param (%s)(%v) in request [%s] %s due to missing value (%v)\n", value.Name, value.In, opts.method, opts.requestPath, value.Name)
+					gologger.Verbose().Msgf("skipping optinal param (%s) in (%v) in request [%s] %s due to missing value (%v)\n", value.Name, value.In, opts.method, opts.requestPath, value.Name)
 					continue
 				}
 			}
