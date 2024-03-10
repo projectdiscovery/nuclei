@@ -45,6 +45,7 @@ func init() {
 		SignatureStats[verifier.Identifier()] = &atomic.Uint64{}
 	}
 	SignatureStats[Unsigned] = &atomic.Uint64{}
+	config.DefaultConfig.RegisterGlobalCache(parsedTemplatesCache)
 }
 
 // Parse parses a yaml request template file
