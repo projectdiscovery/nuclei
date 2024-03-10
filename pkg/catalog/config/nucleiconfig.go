@@ -46,8 +46,7 @@ type Config struct {
 	LatestNucleiIgnoreHash       string `json:"nuclei-latest-ignore-hash,omitempty"`
 
 	// Other AppLevel/Global Settings
-	DisableGlobalCachePurge bool          `json:"-"` // when enabled disables purging of global cache(useful for app as service)
-	registerdCaches         []GlobalCache `json:"-"` // registered global caches
+	registerdCaches []GlobalCache `json:"-"` // registered global caches
 
 	// internal / unexported fields
 	disableUpdates bool   `json:"-"` // disable updates both version check and template updates
@@ -310,11 +309,6 @@ func (c *Config) RegisterGlobalCache(cache GlobalCache) {
 
 // PurgeGlobalCache purges all registered global caches
 func (c *Config) PurgeGlobalCache() {
-	if c.DisableGlobalCachePurge {
-		// useful for apps running nuclei as background process
-		// where we don't want to purge global cache
-		return
-	}
 	for _, cache := range c.registerdCaches {
 		cache.Purge()
 	}
