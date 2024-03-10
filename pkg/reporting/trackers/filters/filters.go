@@ -8,6 +8,13 @@ import (
 	sliceutil "github.com/projectdiscovery/utils/slice"
 )
 
+// CreateIssueResponse is a response to creating an issue
+// in a tracker
+type CreateIssueResponse struct {
+	IssueID  string `json:"issue_id"`
+	IssueURL string `json:"issue_url"`
+}
+
 // Filter filters the received event and decides whether to perform
 // reporting for it or not.
 type Filter struct {

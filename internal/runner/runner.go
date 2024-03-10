@@ -190,7 +190,7 @@ func New(options *types.Options) (*Runner, error) {
 	}
 
 	if reportingOptions != nil {
-		client, err := reporting.New(reportingOptions, options.ReportingDB)
+		client, err := reporting.New(reportingOptions, options.ReportingDB, false)
 		if err != nil {
 			return nil, errors.Wrap(err, "could not create issue reporting client")
 		}
