@@ -161,14 +161,6 @@ func generateRequestsFromOp(opts *generateReqOptions) error {
 		// accept override from global variables
 		if val, ok := opts.opts.Variables[value.Name]; ok {
 			paramValue = val
-		} else if value.Schema.Value.Example == nil && value.Schema.Value.Default == nil && value.Schema.Value.Enum == nil {
-			// missing example value
-			if opts.opts.SkipFormatValidation {
-				gologger.Verbose().Msgf("skipping [%s] %s due to missing value (%v)\n", opts.method, opts.requestPath, value.Name)
-				return nil
-			} else if opts.missingParamValueCallback != nil {
-				opts.missingParamValueCallback(value, opts)
-			}
 		} else {
 			exampleX, err := generateExampleFromSchema(value.Schema.Value)
 			if err != nil {
