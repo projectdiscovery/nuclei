@@ -591,11 +591,9 @@ func (r *Runner) displayExecutionInfo(store *loader.Store) {
 		stats.DisplayAsWarning(parsers.CodeFlagWarningStats)
 		stats.DisplayAsWarning(parsers.TemplatesExecutedStats)
 	}
-	if r.options.DisableUnsignedTemplates {
-		stats.ForceDisplayWarning(parsers.SkippedUnsignedStats)
-	} else {
-		stats.DisplayAsWarning(parsers.UnsignedCodeWarning)
-	}
+
+	stats.DisplayAsWarning(parsers.UnsignedCodeWarning)
+	stats.ForceDisplayWarning(parsers.SkippedUnsignedStats)
 
 	cfg := config.DefaultConfig
 
@@ -621,7 +619,6 @@ func (r *Runner) displayExecutionInfo(store *loader.Store) {
 		if k == templates.Unsigned && value > 0 {
 			// adjust skipped unsigned templates via code or -dut flag
 			value = value - uint64(stats.GetValue(parsers.SkippedUnsignedStats))
-			value = value - uint64(stats.GetValue(parsers.UnsignedCodeWarning))
 			value = value - uint64(stats.GetValue(parsers.CodeFlagWarningStats))
 		}
 		if value > 0 {

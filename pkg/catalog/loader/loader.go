@@ -417,6 +417,8 @@ func (store *Store) LoadTemplatesWithTags(templatesList, tags []string) []*templ
 				} else if len(parsed.RequestsCode) > 0 && !parsed.Verified && len(parsed.Workflows) == 0 {
 					// donot include unverified 'Code' protocol custom template in final list
 					stats.Increment(parsers.UnsignedCodeWarning)
+					// these will be skipped so increment skip counter
+					stats.Increment(parsers.SkippedUnsignedStats)
 					if cfg.DefaultConfig.LogAllEvents {
 						gologger.Print().Msgf("[%v] Tampered/Unsigned template at %v.\n", aurora.Yellow("WRN").String(), templatePath)
 					}
