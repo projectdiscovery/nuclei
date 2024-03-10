@@ -422,7 +422,7 @@ func (store *Store) LoadTemplatesWithTags(templatesList, tags []string) []*templ
 						gologger.Print().Msgf("[%v] Fuzz flag is required for fuzzing template '%s'.\n", aurora.Yellow("WRN").String(), templatePath)
 					}
 				} else if store.config.OnlyLoadHTTPFuzzing && !parsed.IsFuzzing() {
-					gologger.Warning().Msgf("Non-Fuzzing template '%s' cannot be run on list input mode targets\n", templatePath)
+					gologger.Warning().Msgf("Non-Fuzzing template '%s' can only be run on list input mode targets\n", templatePath)
 				} else {
 					loadedTemplates = append(loadedTemplates, parsed)
 				}

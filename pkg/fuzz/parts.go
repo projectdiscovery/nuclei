@@ -4,7 +4,6 @@ import (
 	"io"
 	"strings"
 
-	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/fuzz/component"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/expressions"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/generators"
@@ -58,7 +57,7 @@ func (rule *Rule) executePartComponentOnValues(input *ExecuteRuleInput, payloadS
 		var evaluated string
 		evaluated, input.InteractURLs = rule.executeEvaluate(input, key, valueStr, payloadStr, input.InteractURLs)
 		if err := ruleComponent.SetValue(key, evaluated); err != nil {
-			gologger.Warning().Msgf("could not set value due to format restriction original(%s, %s[%T]) , new(%s,%s[%T])", key, valueStr, value, key, evaluated, evaluated)
+			// gologger.Warning().Msgf("could not set value due to format restriction original(%s, %s[%T]) , new(%s,%s[%T])", key, valueStr, value, key, evaluated, evaluated)
 			return nil
 		}
 
