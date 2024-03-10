@@ -1,8 +1,12 @@
 package reporting
 
 import (
+	"fmt"
 	"os"
+	"strings"
+	"sync/atomic"
 
+	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/config"
 	json_exporter "github.com/projectdiscovery/nuclei/v3/pkg/reporting/exporters/jsonexporter"
 	"github.com/projectdiscovery/nuclei/v3/pkg/reporting/exporters/jsonl"
@@ -59,6 +63,13 @@ type ReportingClient struct {
 	exporters []Exporter
 	options   *Options
 	dedupe    *dedupe.Storage
+
+	stats map[string]*IssueTrackerStats
+}
+
+type IssueTrackerStats struct {
+	Created atomic.Int32
+	Failed  atomic.Int32
 }
 
 // New creates a new nuclei issue tracker reporting client
@@ -150,6 +161,16 @@ func New(options *Options, db string, doNotDedupe bool) (Client, error) {
 		return client, nil
 	}
 
+	client.stats = make(map[string]*IssueTrackerStats)
+	for _, tracker := range client.trackers {
+		trackerName := tracker.Name()
+
+		client.stats[trackerName] = &IssueTrackerStats{
+			Created: atomic.Int32{},
+			Failed:  atomic.Int32{},
+		}
+	}
+
 	storage, err := dedupe.New(db)
 	if err != nil {
 		return nil, err
@@ -203,6 +224,25 @@ func (c *ReportingClient) RegisterExporter(exporter Exporter) {
 
 // Close closes the issue tracker reporting client
 func (c *ReportingClient) Close() {
+	// If we have stats for the trackers, print them
+	if len(c.stats) > 0 {
+		for _, tracker := range c.trackers {
+			trackerName := tracker.Name()
+
+			if stats, ok := c.stats[trackerName]; ok {
+				var msgBuilder strings.Builder
+				msgBuilder.WriteString(fmt.Sprintf("%d %s tickets created successfully", stats.Created.Load(), trackerName))
+				failed := stats.Failed.Load()
+				if failed > 0 {
+					msgBuilder.WriteString(fmt.Sprintf(", %d failed", failed))
+				}
+				gologger.Info().Msgf(msgBuilder.String())
+
+				//.Msgf("Tracker: %s - Created: %d, Failed: %d", trackerName, stats.Created.Load(), stats.Failed.Load())
+			}
+		}
+	}
+
 	if c.dedupe != nil {
 		c.dedupe.Close()
 	}
@@ -234,11 +274,21 @@ func (c *ReportingClient) CreateIssue(event *output.ResultEvent) error {
 			if tracker.ShouldFilter(event) {
 				continue
 			}
+			trackerName := tracker.Name()
+			stats, statsOk := c.stats[trackerName]
+
 			reportData, trackerErr := tracker.CreateIssue(event)
 			if trackerErr != nil {
+				if statsOk {
+					_ = stats.Failed.Add(1)
+				}
 				err = multierr.Append(err, trackerErr)
 				continue
 			}
+			if statsOk {
+				_ = stats.Created.Add(1)
+			}
+
 			event.IssueTrackers[tracker.Name()] = output.IssueTrackerMetadata{
 				IssueID:  reportData.IssueID,
 				IssueURL: reportData.IssueURL,
