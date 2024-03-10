@@ -41,24 +41,24 @@ type Format interface {
 }
 
 var (
-	DefaultVarDumpFileName = "required_openapi_vars.yaml"
-	ErrNoVarsDumpFile      = errors.New("no vars dump file found")
+	DefaultVarDumpFileName = "required_openapi_params.yaml"
+	ErrNoVarsDumpFile      = errors.New("no required params file found")
 )
 
-// == OpenAPIVarDumpFile ==
+// == OpenAPIParamsCfgFile ==
 // this file is meant to be used in CLI mode
 // to be more interactive and user-friendly when
 // running nuclei with openapi format
 
-// OpenAPIVarDumpFile is the structure of the required vars dump file
-type OpenAPIVarDumpFile struct {
+// OpenAPIParamsCfgFile is the structure of the required vars dump file
+type OpenAPIParamsCfgFile struct {
 	Var          []string `yaml:"var"`
 	OptionalVars []string `yaml:"-"` // this will be written to the file as comments
 }
 
 // ReadOpenAPIVarDumpFile reads the required vars dump file
-func ReadOpenAPIVarDumpFile() (*OpenAPIVarDumpFile, error) {
-	var vars OpenAPIVarDumpFile
+func ReadOpenAPIVarDumpFile() (*OpenAPIParamsCfgFile, error) {
+	var vars OpenAPIParamsCfgFile
 	if !fileutil.FileExists(DefaultVarDumpFileName) {
 		return nil, ErrNoVarsDumpFile
 	}
@@ -82,7 +82,7 @@ func ReadOpenAPIVarDumpFile() (*OpenAPIVarDumpFile, error) {
 }
 
 // WriteOpenAPIVarDumpFile writes the required vars dump file
-func WriteOpenAPIVarDumpFile(vars *OpenAPIVarDumpFile) error {
+func WriteOpenAPIVarDumpFile(vars *OpenAPIParamsCfgFile) error {
 	f, err := os.OpenFile(DefaultVarDumpFileName, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0644)
 	if err != nil {
 		return err
@@ -94,7 +94,7 @@ func WriteOpenAPIVarDumpFile(vars *OpenAPIVarDumpFile) error {
 	}
 	_, _ = f.Write(bin)
 	if len(vars.OptionalVars) > 0 {
-		_, _ = f.WriteString("\n    # Optional variables\n")
+		_, _ = f.WriteString("\n    # Optional parameters\n")
 		for _, v := range vars.OptionalVars {
 			_, _ = f.WriteString("    # - " + v + "=\n")
 		}

@@ -100,17 +100,17 @@ func GenerateRequestsFromSchema(schema *openapi3.T, opts formats.InputFormatOpti
 	}
 
 	if len(missingVarMap) > 0 && !opts.SkipFormatValidation {
-		gologger.Error().Msgf("openapi: Found %d missing variables, use -skip-format-validation flag to skip requests or update missing variables generated in %s file,you can also specify these vars using -var flag in (key=value) format\n", len(missingVarMap), formats.DefaultVarDumpFileName)
-		gologger.Verbose().Msgf("openapi: missing vars: %+v", mapsutil.GetSortedKeys(missingVarMap))
+		gologger.Error().Msgf("openapi: Found %d missing parameters, use -skip-format-validation flag to skip requests or update missing parameters generated in %s file,you can also specify these vars using -var flag in (key=value) format\n", len(missingVarMap), formats.DefaultVarDumpFileName)
+		gologger.Verbose().Msgf("openapi: missing params: %+v", mapsutil.GetSortedKeys(missingVarMap))
 		if config.CurrentAppMode == config.AppModeCLI {
 			// generate var dump file
-			vars := &formats.OpenAPIVarDumpFile{}
+			vars := &formats.OpenAPIParamsCfgFile{}
 			for k := range missingVarMap {
 				vars.Var = append(vars.Var, k+"=")
 			}
 			vars.OptionalVars = mapsutil.GetSortedKeys(optionalVarMap)
 			if err := formats.WriteOpenAPIVarDumpFile(vars); err != nil {
-				gologger.Error().Msgf("openapi: could not write vars dump file: %s\n", err)
+				gologger.Error().Msgf("openapi: could not write params file: %s\n", err)
 			}
 			// exit with status code 1
 			os.Exit(1)
