@@ -197,7 +197,7 @@ func generateRequestsFromOp(opts *generateReqOptions) error {
 				} else {
 					// if it is in path then remove it from path
 					opts.requestPath = strings.Replace(opts.requestPath, fmt.Sprintf("{%s}", value.Name), "", -1)
-					gologger.Verbose().Msgf("skipping optional param (%s) in (%v) in request [%s] %s due to missing value (%v)\n", value.Name, value.In, opts.method, opts.requestPath, value.Name)
+					gologger.Verbose().Msgf("openapi: skipping optional param (%s) in (%v) in request [%s] %s due to missing value (%v)\n", value.Name, value.In, opts.method, opts.requestPath, value.Name)
 					continue
 				}
 			}
@@ -206,12 +206,12 @@ func generateRequestsFromOp(opts *generateReqOptions) error {
 				// when failed to generate example
 				// skip request if param in path else skip this param only
 				if value.Required {
-					gologger.Verbose().Msgf("skipping request [%s] %s due to missing value (%v)\n", opts.method, opts.requestPath, value.Name)
+					gologger.Verbose().Msgf("openapi: skipping request [%s] %s due to missing value (%v)\n", opts.method, opts.requestPath, value.Name)
 					return nil
 				} else {
 					// if it is in path then remove it from path
 					opts.requestPath = strings.Replace(opts.requestPath, fmt.Sprintf("{%s}", value.Name), "", -1)
-					gologger.Verbose().Msgf("skipping optinal param (%s) in (%v) in request [%s] %s due to missing value (%v)\n", value.Name, value.In, opts.method, opts.requestPath, value.Name)
+					gologger.Verbose().Msgf("openapi: skipping optinal param (%s) in (%v) in request [%s] %s due to missing value (%v)\n", value.Name, value.In, opts.method, opts.requestPath, value.Name)
 					continue
 				}
 			}
@@ -266,7 +266,7 @@ func generateRequestsFromOp(opts *generateReqOptions) error {
 					cloned.ContentLength = int64(len(marshalled))
 					cloned.Header.Set("Content-Type", "application/xml")
 				} else {
-					gologger.Warning().Msgf("could not encode xml")
+					gologger.Warning().Msgf("openapi: could not encode xml")
 				}
 			case "application/x-www-form-urlencoded":
 				if values, ok := example.(map[string]interface{}); ok {
@@ -307,7 +307,7 @@ func generateRequestsFromOp(opts *generateReqOptions) error {
 				cloned.ContentLength = int64(len(str))
 				cloned.Header.Set("Content-Type", "text/plain")
 			default:
-				gologger.Verbose().Msgf("no correct content type found for body: %s\n", content)
+				gologger.Verbose().Msgf("openapi: no correct content type found for body: %s\n", content)
 				// LOG:	return errors.New("no correct content type found for body")
 				continue
 			}

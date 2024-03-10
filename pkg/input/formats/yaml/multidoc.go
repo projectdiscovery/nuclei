@@ -69,7 +69,7 @@ func (j *YamlMultiDocFormat) Parse(input string, resultsCb formats.ParseReqRespC
 
 		rawRequest, err := types.ParseRawRequestWithURL(request.Request.Raw, request.URL)
 		if err != nil {
-			gologger.Warning().Msgf("Could not parse raw request %s: %s\n", request.URL, err)
+			gologger.Warning().Msgf("multidoc-yaml: Could not parse raw request %s: %s\n", request.URL, err)
 			continue
 		}
 		resultsCb(rawRequest)
