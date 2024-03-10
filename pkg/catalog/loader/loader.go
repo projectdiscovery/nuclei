@@ -398,6 +398,11 @@ func (store *Store) LoadTemplatesWithTags(templatesList, tags []string) []*templ
 				}
 				gologger.Warning().Msgf("Could not parse template %s: %s\n", templatePath, err)
 			} else if parsed != nil {
+				if !parsed.Verified && store.config.ExecutorOptions.Options.DisableUnsignedTemplates {
+					// skip unverified templates when prompted to
+					stats.Increment(parsers.SkippedUnsignedStats)
+					continue
+				}
 				if len(parsed.RequestsHeadless) > 0 && !store.config.ExecutorOptions.Options.Headless {
 					// donot include headless template in final list if headless flag is not set
 					stats.Increment(parsers.HeadlessFlagWarningStats)
@@ -412,7 +417,9 @@ func (store *Store) LoadTemplatesWithTags(templatesList, tags []string) []*templ
 					}
 				} else if len(parsed.RequestsCode) > 0 && !parsed.Verified && len(parsed.Workflows) == 0 {
 					// donot include unverified 'Code' protocol custom template in final list
-					stats.Increment(parsers.UnsignedWarning)
+					stats.Increment(parsers.UnsignedCodeWarning)
+					// these will be skipped so increment skip counter
+					stats.Increment(parsers.SkippedUnsignedStats)
 					if config.DefaultConfig.LogAllEvents {
 						gologger.Print().Msgf("[%v] Tampered/Unsigned template at %v.\n", aurora.Yellow("WRN").String(), templatePath)
 					}
