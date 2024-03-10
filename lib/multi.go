@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/logrusorgru/aurora"
+	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/config"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/loader"
 	"github.com/projectdiscovery/nuclei/v3/pkg/core"
 	"github.com/projectdiscovery/nuclei/v3/pkg/input/provider"
@@ -87,6 +88,7 @@ func (e *ThreadSafeNucleiEngine) GlobalLoadAllTemplates() error {
 // GlobalResultCallback sets a callback function which will be called for each result
 func (e *ThreadSafeNucleiEngine) GlobalResultCallback(callback func(event *output.ResultEvent)) {
 	e.eng.resultCallbacks = []func(*output.ResultEvent){callback}
+	config.DefaultConfig.PurgeGlobalCache()
 }
 
 // ExecuteWithCallback executes templates on targets and calls callback on each result(only if results are found)
