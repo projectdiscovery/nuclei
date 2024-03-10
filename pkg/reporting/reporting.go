@@ -230,15 +230,17 @@ func (c *ReportingClient) Close() {
 			trackerName := tracker.Name()
 
 			if stats, ok := c.stats[trackerName]; ok {
+				created := stats.Created.Load()
+				if created == 0 {
+					continue
+				}
 				var msgBuilder strings.Builder
-				msgBuilder.WriteString(fmt.Sprintf("%d %s tickets created successfully", stats.Created.Load(), trackerName))
+				msgBuilder.WriteString(fmt.Sprintf("%d %s tickets created successfully", created, trackerName))
 				failed := stats.Failed.Load()
 				if failed > 0 {
 					msgBuilder.WriteString(fmt.Sprintf(", %d failed", failed))
 				}
 				gologger.Info().Msgf(msgBuilder.String())
-
-				//.Msgf("Tracker: %s - Created: %d, Failed: %d", trackerName, stats.Created.Load(), stats.Failed.Load())
 			}
 		}
 	}
