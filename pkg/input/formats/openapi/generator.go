@@ -99,7 +99,7 @@ func GenerateRequestsFromSchema(schema *openapi3.T, opts formats.InputFormatOpti
 		}
 	}
 
-	if len(missingVarMap) > 0 {
+	if len(missingVarMap) > 0 && !opts.SkipFormatValidation {
 		gologger.Error().Msgf("openapi: Found %d missing variables, use -skip-format-validation flag to skip requests or update missing variables generated in %s file,you can also specify these vars using -var flag in (key=value) format\n", len(missingVarMap), formats.DefaultVarDumpFileName)
 		gologger.Verbose().Msgf("openapi: missing vars: %+v", mapsutil.GetSortedKeys(missingVarMap))
 		if config.CurrentAppMode == config.AppModeCLI {
