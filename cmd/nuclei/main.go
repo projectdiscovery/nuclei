@@ -216,6 +216,7 @@ on extensive configurability, massive extensibility and ease of use.`)
 		flagSet.StringSliceVarConfigOnly(&options.RemoteTemplateDomainList, "remote-template-domain", []string{"cloud.projectdiscovery.io"}, "allowed domain list to load remote templates from"),
 		flagSet.BoolVar(&options.SignTemplates, "sign", false, "signs the templates with the private key defined in NUCLEI_SIGNATURE_PRIVATE_KEY env variable"),
 		flagSet.BoolVar(&options.EnableCodeTemplates, "code", false, "enable loading code protocol-based templates"),
+		flagSet.BoolVarP(&options.DisableUnsignedTemplates, "disable-unsigned-templates", "dut", false, "disable running unsigned templates or templates with mismatched signature"),
 	)
 
 	flagSet.CreateGroup("filters", "Filtering",
@@ -418,7 +419,7 @@ Additional documentation is available at: https://docs.nuclei.sh/getting-started
 	goflags.DisableAutoConfigMigration = true
 	_ = flagSet.Parse()
 
-    // api key hierarchy: cli flag > env var > .pdcp/credential file
+	// api key hierarchy: cli flag > env var > .pdcp/credential file
 	if pdcpauth == "true" {
 		runner.AuthWithPDCP()
 	} else if len(pdcpauth) == 36 {
