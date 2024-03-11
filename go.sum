@@ -812,8 +812,8 @@ github.com/projectdiscovery/cdncheck v1.0.9 h1:BS15gzj9gb5AVSKqTDzPamfSgStu7nJQO
 github.com/projectdiscovery/cdncheck v1.0.9/go.mod h1:18SSl1w7rMj53CGeRIZTbDoa286a6xZIxGbaiEo4Fxs=
 github.com/projectdiscovery/clistats v0.0.20 h1:5jO5SLiRJ7f0nDV0ndBNmBeesbROouPooH+DGMgoWq4=
 github.com/projectdiscovery/clistats v0.0.20/go.mod h1:GJ2av0KnOvK0AISQnP8hyDclYIji1LVkx2l0pwnzAu4=
-github.com/projectdiscovery/dsl v0.0.44 h1:DoAKyYok83rP6LbGw0DlNI1PdU9mTcIBzxLhgfH9UnU=
-github.com/projectdiscovery/dsl v0.0.44/go.mod h1:+1MWAhhVI/Qap5S4ioepu38ov6euCzdSh5OTjXLv9HI=
+github.com/projectdiscovery/dsl v0.0.46 h1:zBNNzSBA1aakGY44w6KhnjJQx/zO+oW2Wx7TR8xZm/A=
+github.com/projectdiscovery/dsl v0.0.46/go.mod h1:eoZEJFCIT5emI00xj8HTQwHz4YwwGAD+grL3G7CDlfs=
 github.com/projectdiscovery/fastdialer v0.0.61 h1:z5OzP9lRbn6fSIezgReKC3hkzRh+YX41ST9OgkVEm/s=
 github.com/projectdiscovery/fastdialer v0.0.61/go.mod h1:FyxJ0m1MwB69nLmdXYqK32f3a0Pf+5YpC8wBY73baiE=
 github.com/projectdiscovery/fasttemplate v0.0.2 h1:h2cISk5xDhlJEinlBQS6RRx0vOlOirB2y3Yu4PJzpiA=
@@ -832,8 +832,8 @@ github.com/projectdiscovery/gozero v0.0.2-0.20240305085154-99aa5ddb9f98 h1:KKS26
 github.com/projectdiscovery/gozero v0.0.2-0.20240305085154-99aa5ddb9f98/go.mod h1:/dHwbly+1lhOX9UreVure4lEe7K4hIHeu/c/wZGNTDo=
 github.com/projectdiscovery/hmap v0.0.41 h1:8IgTyDce3/2JzcfPVA4H+XpBRFfETULx8td3BMdSYVE=
 github.com/projectdiscovery/hmap v0.0.41/go.mod h1:bCrai6x5Eijqm2U+jtcH0wZX5ZcaZhcvzoMGTZgLAf0=
-github.com/projectdiscovery/httpx v1.5.0 h1:YJziMpdF2G5Iy7sDd1mNSpB5LyohYWZpqk+Oq2TeUQQ=
-github.com/projectdiscovery/httpx v1.5.0/go.mod h1:cB6PODFnhLWL9yBKauqXheesBqVbnwnyvF+J/i4y/VQ=
+github.com/projectdiscovery/httpx v1.6.0 h1:6g4UoSQpsOyZgaK+SMLLnZIAU0eYyTxBUwVl+jtm0JQ=
+github.com/projectdiscovery/httpx v1.6.0/go.mod h1:dzMzOWKfeofaXcXzac3O+YmuY24P0CRnviKGxvol6MM=
 github.com/projectdiscovery/interactsh v1.1.8 h1:mDD+f/oo2tV4Z1WyUync0tgYeJyuiS89Un64Gm6Pvgk=
 github.com/projectdiscovery/interactsh v1.1.8/go.mod h1:E20ywFb7bL01GcOOk+6VZF48XZ8AZvYvBpULoBUSTbg=
 github.com/projectdiscovery/machineid v0.0.0-20240226150047-2e2c51e35983 h1:ZScLodGSezQVwsQDtBSMFp72WDq0nNN+KE/5DHKY5QE=
@@ -842,8 +842,8 @@ github.com/projectdiscovery/mapcidr v1.1.16 h1:rjj1w5D6hbTsUQXYClLcGdfBEy9bryclg
 github.com/projectdiscovery/mapcidr v1.1.16/go.mod h1:rGqpBhStdwOQ2uS62QM9qPsybwMwIhT7CTd2bxoHs8Q=
 github.com/projectdiscovery/n3iwf v0.0.0-20230523120440-b8cd232ff1f5 h1:L/e8z8yw1pfT6bg35NiN7yd1XKtJap5Nk6lMwQ0RNi8=
 github.com/projectdiscovery/n3iwf v0.0.0-20230523120440-b8cd232ff1f5/go.mod h1:pGW2ncnTxTxHtP9wzcIJAB+3/NMp6IiuQWd2NK7K+oc=
-github.com/projectdiscovery/networkpolicy v0.0.7 h1:AwHqBRXBqDQgnWzBMuoJtHBNEYBw+NFp/4qIK688x7o=
-github.com/projectdiscovery/networkpolicy v0.0.7/go.mod h1:CK0CnFoLF1Nou6mY7P4WODSAxhPN8g8g7XpapgEP8tI=
+github.com/projectdiscovery/networkpolicy v0.0.8 h1:XvfBaBwSDNTesSfNQP9VLk3HX9I7x7gHm028TJ5XwI8=
+github.com/projectdiscovery/networkpolicy v0.0.8/go.mod h1:xnjNqhemxUPxU+UD5Jgsc3+K8IVmcqT1SJeo6UzMtkI=
 github.com/projectdiscovery/ratelimit v0.0.27 h1:McTgnl8CtaEPmPtb9JG7EfgaQ1Rhu0pHa0Kf5Kld6Xs=
 github.com/projectdiscovery/ratelimit v0.0.27/go.mod h1:5suG3x1d5+UV4xe2RBE/QCvQkz8CaxPvdwztjab3GzM=
 github.com/projectdiscovery/rawhttp v0.1.40 h1:HSWABDP2gSeyYCskQbcjVXrtBD9aiOPf+qZiemQKlXo=
@@ -988,8 +988,9 @@ github.com/stretchr/testify v1.8.0/go.mod h1:yNjHg4UonilssWZ8iaSj1OCr/vHnekPRkoO
 github.com/stretchr/testify v1.8.1/go.mod h1:w2LPCIKwWwSfY2zedu0+kehJoqGctiVI29o6fzry7u4=
 github.com/stretchr/testify v1.8.2/go.mod h1:w2LPCIKwWwSfY2zedu0+kehJoqGctiVI29o6fzry7u4=
 github.com/stretchr/testify v1.8.3/go.mod h1:sz/lmYIOXD/1dqDmKjjqLyZ2RngseejIcXlSw2iwfAo=
-github.com/stretchr/testify v1.8.4 h1:CcVxjf3Q8PM0mHUKJCdn+eZZtm5yQwehR5yeSVQQcUk=
 github.com/stretchr/testify v1.8.4/go.mod h1:sz/lmYIOXD/1dqDmKjjqLyZ2RngseejIcXlSw2iwfAo=
+github.com/stretchr/testify v1.9.0 h1:HtqpIVDClZ4nwg75+f6Lvsy/wHu+3BoSGCbBAcpTsTg=
+github.com/stretchr/testify v1.9.0/go.mod h1:r2ic/lqez/lEtzL7wO/rwa5dbSLXVDPFyf8C91i36aY=
 github.com/syndtr/goleveldb v1.0.0 h1:fBdIW9lB4Iz0n9khmH8w27SJ3QEJ7+IgjPEwGSZiFdE=
 github.com/syndtr/goleveldb v1.0.0/go.mod h1:ZVVdQEZoIme9iO1Ch2Jdy24qqXrMMOU6lpPAyBWyWuQ=
 github.com/tidwall/assert v0.1.0 h1:aWcKyRBUAdLoVebxo95N7+YZVTFF/ASTr7BN4sLP6XI=
