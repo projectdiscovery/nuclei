@@ -74,8 +74,6 @@ github.com/Mzack9999/gcache v0.0.0-20230410081825-519e28eab057 h1:KFac3SiGbId8ub
 github.com/Mzack9999/gcache v0.0.0-20230410081825-519e28eab057/go.mod h1:iLB2pivrPICvLOuROKmlqURtFIEsoJZaMidQfCG1+D4=
 github.com/Mzack9999/go-http-digest-auth-client v0.6.1-0.20220414142836-eb8883508809 h1:ZbFL+BDfBqegi+/Ssh7im5+aQfBRx6it+kHnC7jaDU8=
 github.com/Mzack9999/go-http-digest-auth-client v0.6.1-0.20220414142836-eb8883508809/go.mod h1:upgc3Zs45jBDnBT4tVRgRcgm26ABpaP7MoTSdgysca4=
-github.com/Mzack9999/ldapserver v1.0.2-0.20211229000134-b44a0d6ad0dd h1:RTWs+wEY9efxTKK5aFic5C5KybqQelGcX+JdM69KoTo=
-github.com/Mzack9999/ldapserver v1.0.2-0.20211229000134-b44a0d6ad0dd/go.mod h1:AqtPw7WNT0O69k+AbPKWVGYeW94TqgMW/g+Ppc8AZr4=
 github.com/Nvveen/Gotty v0.0.0-20120604004816-cd527374f1e5 h1:TngWCqHvy9oXAN6lEVMRuU21PR1EtLVZJmdB18Gu3Rw=
 github.com/Nvveen/Gotty v0.0.0-20120604004816-cd527374f1e5/go.mod h1:lmUJ/7eu/Q8D7ML55dXQrVaamCz2vxCfdQBasLZfHKk=
 github.com/OneOfOne/xxhash v1.2.2 h1:KMrpdQIwFcEqXDklaen+P1axHaj9BSKzvpUUfnHldSE=
@@ -834,8 +832,10 @@ github.com/projectdiscovery/hmap v0.0.41 h1:8IgTyDce3/2JzcfPVA4H+XpBRFfETULx8td3
 github.com/projectdiscovery/hmap v0.0.41/go.mod h1:bCrai6x5Eijqm2U+jtcH0wZX5ZcaZhcvzoMGTZgLAf0=
 github.com/projectdiscovery/httpx v1.6.0 h1:6g4UoSQpsOyZgaK+SMLLnZIAU0eYyTxBUwVl+jtm0JQ=
 github.com/projectdiscovery/httpx v1.6.0/go.mod h1:dzMzOWKfeofaXcXzac3O+YmuY24P0CRnviKGxvol6MM=
-github.com/projectdiscovery/interactsh v1.1.8 h1:mDD+f/oo2tV4Z1WyUync0tgYeJyuiS89Un64Gm6Pvgk=
-github.com/projectdiscovery/interactsh v1.1.8/go.mod h1:E20ywFb7bL01GcOOk+6VZF48XZ8AZvYvBpULoBUSTbg=
+github.com/projectdiscovery/interactsh v1.1.9 h1:b77SaSGrO+DtivmWwqGGY2dmNlQC3Zgmwlaj9L4Oqvc=
+github.com/projectdiscovery/interactsh v1.1.9/go.mod h1:0FRQXCildcTLq7Tsa4BVZAsFCXhpWs4C4quKWigXb5I=
+github.com/projectdiscovery/ldapserver v1.0.2-0.20240219154113-dcc758ebc0cb h1:MGtI4oE12ruWv11ZlPXXd7hl/uAaQZrFvrIDYDeVMd8=
+github.com/projectdiscovery/ldapserver v1.0.2-0.20240219154113-dcc758ebc0cb/go.mod h1:vmgC0DTFCfoCLp0RAfsfYTZZan0QMVs+cmTbH6blfjk=
 github.com/projectdiscovery/machineid v0.0.0-20240226150047-2e2c51e35983 h1:ZScLodGSezQVwsQDtBSMFp72WDq0nNN+KE/5DHKY5QE=
 github.com/projectdiscovery/machineid v0.0.0-20240226150047-2e2c51e35983/go.mod h1:3G3BRKui7nMuDFAZKR/M2hiOLtaOmyukT20g88qRQjI=
 github.com/projectdiscovery/mapcidr v1.1.16 h1:rjj1w5D6hbTsUQXYClLcGdfBEy9bryclgi70t0vBggo=
