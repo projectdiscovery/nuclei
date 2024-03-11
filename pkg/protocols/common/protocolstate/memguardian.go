@@ -25,7 +25,7 @@ func StartActiveMemGuardian() {
 	go func() {
 		for range memTimer.C {
 			if IsLowOnMemory() {
-				GlobalGuardBytesBufferAlloc()
+				_ = GlobalGuardBytesBufferAlloc()
 			} else {
 				GlobalRestoreBytesBufferAlloc()
 			}
