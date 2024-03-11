@@ -408,7 +408,8 @@ func New(config *Config) (*TagFilter, error) {
 			if _, ok := filter.allowedTags[val]; !ok {
 				filter.allowedTags[val] = struct{}{}
 			}
-			delete(filter.block, val)
+			// Note: only tags specified in IncludeTags should be removed from the block list
+			// not normal tags like config.Tags
 		}
 	}
 	for _, tag := range config.IncludeTags {

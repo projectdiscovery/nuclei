@@ -6,7 +6,13 @@ import (
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/model"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
+	"github.com/projectdiscovery/nuclei/v3/pkg/utils/stats"
 	"github.com/projectdiscovery/nuclei/v3/pkg/workflows"
+)
+
+const (
+	// Note: we redefine to avoid cyclic dependency but it should be same as parsers.SkippedUnsignedStats
+	SkippedUnsignedStats = "skipped-unsigned-stats" // tracks loading of unsigned templates
 )
 
 // compileWorkflow compiles the workflow for execution
@@ -69,7 +75,6 @@ func parseWorkflowTemplate(workflow *workflows.WorkflowTemplate, preprocessor Pr
 	}
 
 	var workflowTemplates []*Template
-
 	for _, path := range paths {
 		template, err := Parse(path, preprocessor, options.Copy())
 		if err != nil {
@@ -80,6 +85,13 @@ func parseWorkflowTemplate(workflow *workflows.WorkflowTemplate, preprocessor Pr
 			gologger.Warning().Msgf("Could not parse workflow template %s: no executer found\n", path)
 			continue
 		}
+
+		if options.Options.DisableUnsignedTemplates && !template.Verified {
+			// skip unverified templates when prompted to do so
+			stats.Increment(SkippedUnsignedStats)
+			continue
+		}
+
 		if len(template.RequestsCode) > 0 {
 			if !options.Options.EnableCodeTemplates {
 				gologger.Warning().Msgf("`-code` flag not found, skipping code template from workflow: %v\n", path)

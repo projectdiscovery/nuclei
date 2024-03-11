@@ -45,6 +45,9 @@ type Config struct {
 	LatestNucleiTemplatesVersion string `json:"nuclei-templates-latest-version"`
 	LatestNucleiIgnoreHash       string `json:"nuclei-latest-ignore-hash,omitempty"`
 
+	// Other AppLevel/Global Settings
+	registerdCaches []GlobalCache `json:"-"` // registered global caches
+
 	// internal / unexported fields
 	disableUpdates bool   `json:"-"` // disable updates both version check and template updates
 	homeDir        string `json:"-"` //  User Home Directory
@@ -296,6 +299,19 @@ func (c *Config) WriteTemplatesIndex(index map[string]string) error {
 		_, _ = buff.WriteString(k + "," + v + "\n")
 	}
 	return os.WriteFile(indexFile, buff.Bytes(), 0600)
+}
+
+// RegisterGlobalCache registers a global cache at app level
+// and is available to be purged on demand
+func (c *Config) RegisterGlobalCache(cache GlobalCache) {
+	c.registerdCaches = append(c.registerdCaches, cache)
+}
+
+// PurgeGlobalCache purges all registered global caches
+func (c *Config) PurgeGlobalCache() {
+	for _, cache := range c.registerdCaches {
+		cache.Purge()
+	}
 }
 
 // getTemplatesConfigFilePath returns configDir/.templates-config.json file path

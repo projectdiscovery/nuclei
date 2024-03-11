@@ -34,31 +34,35 @@ import (
 
 // applyRequiredDefaults to options
 func (e *NucleiEngine) applyRequiredDefaults() {
-	if e.customWriter == nil {
-		mockoutput := testutils.NewMockOutputWriter(e.opts.OmitTemplate)
-		mockoutput.WriteCallback = func(event *output.ResultEvent) {
-			if len(e.resultCallbacks) > 0 {
-				for _, callback := range e.resultCallbacks {
-					if callback != nil {
-						callback(event)
-					}
+	mockoutput := testutils.NewMockOutputWriter(e.opts.OmitTemplate)
+	mockoutput.WriteCallback = func(event *output.ResultEvent) {
+		if len(e.resultCallbacks) > 0 {
+			for _, callback := range e.resultCallbacks {
+				if callback != nil {
+					callback(event)
 				}
-				return
 			}
-			sb := strings.Builder{}
-			sb.WriteString(fmt.Sprintf("[%v] ", event.TemplateID))
-			if event.Matched != "" {
-				sb.WriteString(event.Matched)
-			} else {
-				sb.WriteString(event.Host)
-			}
-			fmt.Println(sb.String())
+			return
 		}
-		if e.onFailureCallback != nil {
-			mockoutput.FailureCallback = e.onFailureCallback
+		sb := strings.Builder{}
+		sb.WriteString(fmt.Sprintf("[%v] ", event.TemplateID))
+		if event.Matched != "" {
+			sb.WriteString(event.Matched)
+		} else {
+			sb.WriteString(event.Host)
 		}
+		fmt.Println(sb.String())
+	}
+	if e.onFailureCallback != nil {
+		mockoutput.FailureCallback = e.onFailureCallback
+	}
+
+	if e.customWriter != nil {
+		e.customWriter = output.NewMultiWriter(e.customWriter, mockoutput)
+	} else {
 		e.customWriter = mockoutput
 	}
+
 	if e.customProgress == nil {
 		e.customProgress = &testutils.MockProgressClient{}
 	}
@@ -128,7 +132,7 @@ func (e *NucleiEngine) init() error {
 		return err
 	}
 	// we don't support reporting config in sdk mode
-	if e.rc, err = reporting.New(&reporting.Options{}, ""); err != nil {
+	if e.rc, err = reporting.New(&reporting.Options{}, "", false); err != nil {
 		return err
 	}
 	e.interactshOpts.IssuesClient = e.rc
