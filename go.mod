@@ -22,7 +22,7 @@ require (
 	github.com/projectdiscovery/clistats v0.0.20
 	github.com/projectdiscovery/fastdialer v0.0.61
 	github.com/projectdiscovery/hmap v0.0.41
-	github.com/projectdiscovery/interactsh v1.1.8
+	github.com/projectdiscovery/interactsh v1.1.9
 	github.com/projectdiscovery/rawhttp v0.1.40
 	github.com/projectdiscovery/retryabledns v1.0.58
 	github.com/projectdiscovery/retryablehttp-go v1.0.50
@@ -187,6 +187,7 @@ require (
 	github.com/projectdiscovery/asnmap v1.1.0 // indirect
 	github.com/projectdiscovery/cdncheck v1.0.9 // indirect
 	github.com/projectdiscovery/freeport v0.0.5 // indirect
+	github.com/projectdiscovery/ldapserver v1.0.2-0.20240219154113-dcc758ebc0cb // indirect
 	github.com/projectdiscovery/machineid v0.0.0-20240226150047-2e2c51e35983 // indirect
 	github.com/projectdiscovery/stringsutil v0.0.2 // indirect
 	github.com/quic-go/quic-go v0.40.1 // indirect
@@ -222,7 +223,6 @@ require (
 require (
 	git.mills.io/prologic/smtpd v0.0.0-20210710122116-a525b76c287a // indirect
 	github.com/Mzack9999/go-http-digest-auth-client v0.6.1-0.20220414142836-eb8883508809 // indirect
-	github.com/Mzack9999/ldapserver v1.0.2-0.20211229000134-b44a0d6ad0dd // indirect
 	github.com/PuerkitoBio/goquery v1.8.1 // indirect
 	github.com/akrylysov/pogreb v0.10.2 // indirect
 	github.com/alecthomas/template v0.0.0-20190718012654-fb15b899a751 // indirect
