@@ -95,6 +95,6 @@ func GlobalRestoreBytesBufferAlloc() {
 	if httputil.DefaultBytesBufferAlloc != httputil.GetPoolSize() {
 		delta := httputil.DefaultBytesBufferAlloc - httputil.GetPoolSize()
 		gologger.Debug().Msgf("restoring bytes.buffer pool size to: %d", httputil.DefaultBytesBufferAlloc)
-		httputil.ChangePoolSize(delta)
+		_ = httputil.ChangePoolSize(delta)
 	}
 }
