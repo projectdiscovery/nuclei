@@ -1,7 +1,6 @@
 package protocolstate
 
 import (
-	"log"
 	"sync"
 	"time"
 
@@ -25,7 +24,6 @@ func StartActiveMemGuardian() {
 	memTimer := time.NewTicker(memguardian.DefaultInterval)
 	go func() {
 		for range memTimer.C {
-			log.Println(IsLowOnMemory())
 			if IsLowOnMemory() {
 				GlobalGuardBytesBufferAlloc()
 			} else {
