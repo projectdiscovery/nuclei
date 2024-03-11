@@ -66,7 +66,6 @@ type StandardWriter struct {
 	omitTemplate          bool
 	DisableStdout         bool
 	AddNewLinesOutputFile bool // by default this is only done for stdout
-	WriteCallback         func(o *ResultEvent)
 }
 
 var decolorizerRegex = regexp.MustCompile(`\x1B\[[0-9;]*[a-zA-Z]`)
@@ -230,10 +229,6 @@ func NewStandardWriter(options *types.Options) (*StandardWriter, error) {
 
 // Write writes the event to file and/or screen.
 func (w *StandardWriter) Write(event *ResultEvent) error {
-	if w.WriteCallback != nil {
-		w.WriteCallback(event)
-	}
-
 	// Enrich the result event with extra metadata on the template-path and url.
 	if event.TemplatePath != "" {
 		event.Template, event.TemplateURL = utils.TemplatePathURL(types.ToString(event.TemplatePath), types.ToString(event.TemplateID))
