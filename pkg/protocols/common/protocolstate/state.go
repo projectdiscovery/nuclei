@@ -145,6 +145,8 @@ func Init(options *types.Options) error {
 		return Dialer.Dial(ctx, "tcp", addr)
 	})
 
+	StartActiveMemGuardian()
+
 	return nil
 }
 
@@ -205,4 +207,5 @@ func Close() {
 	if Dialer != nil {
 		Dialer.Close()
 	}
+	StopActiveMemGuardian()
 }

@@ -3,7 +3,6 @@ package http
 import (
 	"bytes"
 	"fmt"
-	"log"
 	"strings"
 
 	json "github.com/json-iterator/go"
@@ -392,11 +391,10 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 	if len(request.Payloads) > 0 {
 		// specifically for http requests high concurrency and and threads will lead to memory exausthion, hence reduce the maximum parallelism
 		if protocolstate.IsLowOnMemory() {
-			request.Threads = protocolstate.GuardThreads(request.Threads)
+			request.Threads = protocolstate.GuardThreadsOrDefault(request.Threads)
 		}
 		// if we have payloads, adjust threads if none specified
 		request.Threads = options.GetThreadsForNPayloadRequests(request.Requests(), request.Threads)
-		log.Println("request.Threads:", request.Threads)
 	}
 
 	return nil

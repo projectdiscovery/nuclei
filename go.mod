@@ -91,7 +91,7 @@ require (
 	github.com/projectdiscovery/tlsx v1.1.6
 	github.com/projectdiscovery/uncover v1.0.7
 	github.com/projectdiscovery/useragent v0.0.40
-	github.com/projectdiscovery/utils v0.0.83-0.20240305000020-ff30de2464cd
+	github.com/projectdiscovery/utils v0.0.84-0.20240311184716-5de745ca783c
 	github.com/projectdiscovery/wappalyzergo v0.0.112
 	github.com/redis/go-redis/v9 v9.1.0
 	github.com/sashabaranov/go-openai v1.15.3
@@ -217,6 +217,7 @@ require (
 	github.com/yuin/goldmark-emoji v1.0.1 // indirect
 	github.com/zeebo/blake3 v0.2.3 // indirect
 	golang.org/x/arch v0.3.0 // indirect
+	golang.org/x/sync v0.6.0 // indirect
 	gopkg.in/djherbis/times.v1 v1.3.0 // indirect
 	mellium.im/sasl v0.3.1 // indirect
 )
