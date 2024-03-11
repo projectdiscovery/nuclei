@@ -114,6 +114,7 @@ func (e *TemplateExecuter) Execute(ctx *scan.ScanContext) (bool, error) {
 		// try catching unknown panics
 		if r := recover(); r != nil {
 			ctx.LogError(fmt.Errorf("panic: %v", r))
+			gologger.Verbose().Msgf("panic: %v", r)
 		}
 	}()
 
