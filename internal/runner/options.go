@@ -290,11 +290,13 @@ func createReportingOptions(options *types.Options) (*reporting.Options, error) 
 // configureOutput configures the output logging levels to be displayed on the screen
 func configureOutput(options *types.Options) {
 	// If the user desires verbose output, show verbose output
-	if options.Verbose || options.Validate {
-		gologger.DefaultLogger.SetMaxLevel(levels.LevelVerbose)
-	}
 	if options.Debug || options.DebugRequests || options.DebugResponse {
 		gologger.DefaultLogger.SetMaxLevel(levels.LevelDebug)
+	}
+	// Debug takes precedence before verbose
+	// because debug is a lower logging level.
+	if options.Verbose || options.Validate {
+		gologger.DefaultLogger.SetMaxLevel(levels.LevelVerbose)
 	}
 	if options.NoColor {
 		gologger.DefaultLogger.SetFormatter(formatter.NewCLI(true))

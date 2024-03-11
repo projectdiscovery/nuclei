@@ -397,22 +397,29 @@ func (store *Store) LoadTemplatesWithTags(templatesList, tags []string) []*templ
 				}
 				gologger.Warning().Msgf("Could not parse template %s: %s\n", templatePath, err)
 			} else if parsed != nil {
+				if !parsed.Verified && store.config.ExecutorOptions.Options.DisableUnsignedTemplates {
+					// skip unverified templates when prompted to
+					stats.Increment(parsers.SkippedUnsignedStats)
+					continue
+				}
 				if len(parsed.RequestsHeadless) > 0 && !store.config.ExecutorOptions.Options.Headless {
 					// donot include headless template in final list if headless flag is not set
 					stats.Increment(parsers.HeadlessFlagWarningStats)
-					if config.DefaultConfig.LogAllEvents {
+					if cfg.DefaultConfig.LogAllEvents {
 						gologger.Print().Msgf("[%v] Headless flag is required for headless template '%s'.\n", aurora.Yellow("WRN").String(), templatePath)
 					}
 				} else if len(parsed.RequestsCode) > 0 && !store.config.ExecutorOptions.Options.EnableCodeTemplates {
 					// donot include 'Code' protocol custom template in final list if code flag is not set
 					stats.Increment(parsers.CodeFlagWarningStats)
-					if config.DefaultConfig.LogAllEvents {
+					if cfg.DefaultConfig.LogAllEvents {
 						gologger.Print().Msgf("[%v] Code flag is required for code protocol template '%s'.\n", aurora.Yellow("WRN").String(), templatePath)
 					}
 				} else if len(parsed.RequestsCode) > 0 && !parsed.Verified && len(parsed.Workflows) == 0 {
 					// donot include unverified 'Code' protocol custom template in final list
-					stats.Increment(parsers.UnsignedWarning)
-					if config.DefaultConfig.LogAllEvents {
+					stats.Increment(parsers.UnsignedCodeWarning)
+					// these will be skipped so increment skip counter
+					stats.Increment(parsers.SkippedUnsignedStats)
+					if cfg.DefaultConfig.LogAllEvents {
 						gologger.Print().Msgf("[%v] Tampered/Unsigned template at %v.\n", aurora.Yellow("WRN").String(), templatePath)
 					}
 				} else {

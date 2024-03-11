@@ -190,7 +190,7 @@ func New(options *types.Options) (*Runner, error) {
 	}
 
 	if reportingOptions != nil {
-		client, err := reporting.New(reportingOptions, options.ReportingDB)
+		client, err := reporting.New(reportingOptions, options.ReportingDB, false)
 		if err != nil {
 			return nil, errors.Wrap(err, "could not create issue reporting client")
 		}
@@ -470,6 +470,9 @@ func (r *Runner) RunEnumeration() error {
 	disk.PrintDeprecatedPathsMsgIfApplicable(r.options.Silent)
 	templates.PrintDeprecatedProtocolNameMsgIfApplicable(r.options.Silent, r.options.Verbose)
 
+	// purge global caches primarily used for loading templates
+	config.DefaultConfig.PurgeGlobalCache()
+
 	// add the hosts from the metadata queries of loaded templates into input provider
 	if r.options.Uncover && len(r.options.UncoverQuery) == 0 {
 		uncoverOpts := &uncoverlib.Options{
@@ -602,7 +605,9 @@ func (r *Runner) displayExecutionInfo(store *loader.Store) {
 		stats.DisplayAsWarning(parsers.CodeFlagWarningStats)
 		stats.DisplayAsWarning(parsers.TemplatesExecutedStats)
 	}
-	stats.DisplayAsWarning(parsers.UnsignedWarning)
+
+	stats.DisplayAsWarning(parsers.UnsignedCodeWarning)
+	stats.ForceDisplayWarning(parsers.SkippedUnsignedStats)
 
 	cfg := config.DefaultConfig
 
@@ -624,11 +629,17 @@ func (r *Runner) displayExecutionInfo(store *loader.Store) {
 		gologger.Info().Msgf("Workflows loaded for current scan: %d", len(store.Workflows()))
 	}
 	for k, v := range templates.SignatureStats {
-		if v.Load() > 0 {
+		value := v.Load()
+		if k == templates.Unsigned && value > 0 {
+			// adjust skipped unsigned templates via code or -dut flag
+			value = value - uint64(stats.GetValue(parsers.SkippedUnsignedStats))
+			value = value - uint64(stats.GetValue(parsers.CodeFlagWarningStats))
+		}
+		if value > 0 {
 			if k != templates.Unsigned {
-				gologger.Info().Msgf("Executing %d signed templates from %s", v.Load(), k)
+				gologger.Info().Msgf("Executing %d signed templates from %s", value, k)
 			} else if !r.options.Silent && !config.DefaultConfig.HideTemplateSigWarning {
-				gologger.Print().Msgf("[%v] Executing %d unsigned templates. Use with caution.", aurora.BrightYellow("WRN"), v.Load())
+				gologger.Print().Msgf("[%v] Loaded %d unsigned templates for scan. Use with caution.", aurora.BrightYellow("WRN"), value)
 			}
 		}
 	}

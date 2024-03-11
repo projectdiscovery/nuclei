@@ -11,5 +11,6 @@ type Client interface {
 	Close()
 	Clear()
 	CreateIssue(event *output.ResultEvent) error
+	CloseIssue(event *output.ResultEvent) error
 	GetReportingOptions() *Options
 }

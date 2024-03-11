@@ -1,8 +1,12 @@
 package reporting
 
 import (
+	"fmt"
 	"os"
+	"strings"
+	"sync/atomic"
 
+	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/config"
 	json_exporter "github.com/projectdiscovery/nuclei/v3/pkg/reporting/exporters/jsonexporter"
 	"github.com/projectdiscovery/nuclei/v3/pkg/reporting/exporters/jsonl"
@@ -35,8 +39,12 @@ var (
 
 // Tracker is an interface implemented by an issue tracker
 type Tracker interface {
+	// Name returns the name of the tracker
+	Name() string
 	// CreateIssue creates an issue in the tracker
-	CreateIssue(event *output.ResultEvent) error
+	CreateIssue(event *output.ResultEvent) (*filters.CreateIssueResponse, error)
+	// CloseIssue closes an issue in the tracker
+	CloseIssue(event *output.ResultEvent) error
 	// ShouldFilter determines if the event should be filtered out
 	ShouldFilter(event *output.ResultEvent) bool
 }
@@ -55,10 +63,17 @@ type ReportingClient struct {
 	exporters []Exporter
 	options   *Options
 	dedupe    *dedupe.Storage
+
+	stats map[string]*IssueTrackerStats
+}
+
+type IssueTrackerStats struct {
+	Created atomic.Int32
+	Failed  atomic.Int32
 }
 
 // New creates a new nuclei issue tracker reporting client
-func New(options *Options, db string) (Client, error) {
+func New(options *Options, db string, doNotDedupe bool) (Client, error) {
 	client := &ReportingClient{options: options}
 
 	if options.GitHub != nil {
@@ -142,6 +157,20 @@ func New(options *Options, db string) (Client, error) {
 		client.exporters = append(client.exporters, exporter)
 	}
 
+	if doNotDedupe {
+		return client, nil
+	}
+
+	client.stats = make(map[string]*IssueTrackerStats)
+	for _, tracker := range client.trackers {
+		trackerName := tracker.Name()
+
+		client.stats[trackerName] = &IssueTrackerStats{
+			Created: atomic.Int32{},
+			Failed:  atomic.Int32{},
+		}
+	}
+
 	storage, err := dedupe.New(db)
 	if err != nil {
 		return nil, err
@@ -195,7 +224,30 @@ func (c *ReportingClient) RegisterExporter(exporter Exporter) {
 
 // Close closes the issue tracker reporting client
 func (c *ReportingClient) Close() {
-	c.dedupe.Close()
+	// If we have stats for the trackers, print them
+	if len(c.stats) > 0 {
+		for _, tracker := range c.trackers {
+			trackerName := tracker.Name()
+
+			if stats, ok := c.stats[trackerName]; ok {
+				created := stats.Created.Load()
+				if created == 0 {
+					continue
+				}
+				var msgBuilder strings.Builder
+				msgBuilder.WriteString(fmt.Sprintf("%d %s tickets created successfully", created, trackerName))
+				failed := stats.Failed.Load()
+				if failed > 0 {
+					msgBuilder.WriteString(fmt.Sprintf(", %d failed", failed))
+				}
+				gologger.Info().Msgf(msgBuilder.String())
+			}
+		}
+	}
+
+	if c.dedupe != nil {
+		c.dedupe.Close()
+	}
 	for _, exporter := range c.exporters {
 		exporter.Close()
 	}
@@ -211,15 +263,37 @@ func (c *ReportingClient) CreateIssue(event *output.ResultEvent) error {
 		return nil
 	}
 
-	unique, err := c.dedupe.Index(event)
+	var err error
+	unique := true
+	if c.dedupe != nil {
+		unique, err = c.dedupe.Index(event)
+	}
 	if unique {
+		event.IssueTrackers = make(map[string]output.IssueTrackerMetadata)
+
 		for _, tracker := range c.trackers {
 			// process tracker specific allow/deny list
 			if tracker.ShouldFilter(event) {
 				continue
 			}
-			if trackerErr := tracker.CreateIssue(event); trackerErr != nil {
+			trackerName := tracker.Name()
+			stats, statsOk := c.stats[trackerName]
+
+			reportData, trackerErr := tracker.CreateIssue(event)
+			if trackerErr != nil {
+				if statsOk {
+					_ = stats.Failed.Add(1)
+				}
 				err = multierr.Append(err, trackerErr)
+				continue
+			}
+			if statsOk {
+				_ = stats.Created.Add(1)
+			}
+
+			event.IssueTrackers[tracker.Name()] = output.IssueTrackerMetadata{
+				IssueID:  reportData.IssueID,
+				IssueURL: reportData.IssueURL,
 			}
 		}
 		for _, exporter := range c.exporters {
@@ -231,10 +305,25 @@ func (c *ReportingClient) CreateIssue(event *output.ResultEvent) error {
 	return err
 }
 
+// CloseIssue closes an issue in the tracker
+func (c *ReportingClient) CloseIssue(event *output.ResultEvent) error {
+	for _, tracker := range c.trackers {
+		if tracker.ShouldFilter(event) {
+			continue
+		}
+		if err := tracker.CloseIssue(event); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func (c *ReportingClient) GetReportingOptions() *Options {
 	return c.options
 }
 
 func (c *ReportingClient) Clear() {
-	c.dedupe.Clear()
+	if c.dedupe != nil {
+		c.dedupe.Clear()
+	}
 }
