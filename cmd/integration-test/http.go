@@ -80,6 +80,44 @@ var httpTestcases = []TestCaseInfo{
 	{Path: "protocols/http/disable-path-automerge.yaml", TestCase: &httpDisablePathAutomerge{}},
 	{Path: "protocols/http/http-preprocessor.yaml", TestCase: &httpPreprocessor{}},
 	{Path: "protocols/http/multi-request.yaml", TestCase: &httpMultiRequest{}},
+	{Path: "protocols/http/http-matcher-extractor-dy-extractor.yaml", TestCase: &httpMatcherExtractorDynamicExtractor{}},
+}
+
+type httpMatcherExtractorDynamicExtractor struct{}
+
+func (h *httpMatcherExtractorDynamicExtractor) Execute(filePath string) error {
+	router := httprouter.New()
+	router.GET("/", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+		html := `<!DOCTYPE html>
+<html lang="en">
+<body>
+    <a href="/domains">Domains</a>
+</body>
+</html>`
+		fmt.Fprint(w, html)
+	})
+	router.GET("/domains", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+		html := `<!DOCTYPE html>
+		<html lang="en">
+		<head>
+			<title>Dynamic Extractor Test</title>
+		</head>
+		<body>
+			<!-- The content of the title tag matches the regex pattern for both the extractor and matcher for 'title' -->
+		</body>
+		</html>
+		`
+		fmt.Fprint(w, html)
+	})
+	ts := httptest.NewServer(router)
+	defer ts.Close()
+
+	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, ts.URL, debug)
+	if err != nil {
+		return err
+	}
+
+	return expectResultsCount(results, 1)
 }
 
 type httpInteractshRequest struct{}
