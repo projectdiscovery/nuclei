@@ -812,8 +812,8 @@ github.com/projectdiscovery/clistats v0.0.20 h1:5jO5SLiRJ7f0nDV0ndBNmBeesbROouPo
 github.com/projectdiscovery/clistats v0.0.20/go.mod h1:GJ2av0KnOvK0AISQnP8hyDclYIji1LVkx2l0pwnzAu4=
 github.com/projectdiscovery/dsl v0.0.46 h1:zBNNzSBA1aakGY44w6KhnjJQx/zO+oW2Wx7TR8xZm/A=
 github.com/projectdiscovery/dsl v0.0.46/go.mod h1:eoZEJFCIT5emI00xj8HTQwHz4YwwGAD+grL3G7CDlfs=
-github.com/projectdiscovery/fastdialer v0.0.61 h1:z5OzP9lRbn6fSIezgReKC3hkzRh+YX41ST9OgkVEm/s=
-github.com/projectdiscovery/fastdialer v0.0.61/go.mod h1:FyxJ0m1MwB69nLmdXYqK32f3a0Pf+5YpC8wBY73baiE=
+github.com/projectdiscovery/fastdialer v0.0.62 h1:Wyba2hD6ZF3S04MgCn380mC+1RXJ+dq14Yq8u2yk7ps=
+github.com/projectdiscovery/fastdialer v0.0.62/go.mod h1:2baj2TRXTw+hHbKTW9IZR4dhpxCGJkq5AKL1ge5gis8=
 github.com/projectdiscovery/fasttemplate v0.0.2 h1:h2cISk5xDhlJEinlBQS6RRx0vOlOirB2y3Yu4PJzpiA=
 github.com/projectdiscovery/fasttemplate v0.0.2/go.mod h1:XYWWVMxnItd+r0GbjA1GCsUopMw1/XusuQxdyAIHMCw=
 github.com/projectdiscovery/freeport v0.0.5 h1:jnd3Oqsl4S8n0KuFkE5Hm8WGDP24ITBvmyw5pFTHS8Q=
@@ -852,8 +852,8 @@ github.com/projectdiscovery/rdap v0.9.1-0.20221108103045-9865884d1917 h1:m03X4gB
 github.com/projectdiscovery/rdap v0.9.1-0.20221108103045-9865884d1917/go.mod h1:JxXtZC9e195awe7EynrcnBJmFoad/BNDzW9mzFkK8Sg=
 github.com/projectdiscovery/retryabledns v1.0.58 h1:ut1FSB9+GZ6zQIlKJFLqIz2RZs81EmkbsHTuIrWfYLE=
 github.com/projectdiscovery/retryabledns v1.0.58/go.mod h1:RobmKoNBgngAVE4H9REQtaLP1pa4TCyypHy1MWHT1mY=
-github.com/projectdiscovery/retryablehttp-go v1.0.50 h1:QiVqNzpDFoTZm2z1oO68FEtl2VTk2kFscPetxmCK2gc=
-github.com/projectdiscovery/retryablehttp-go v1.0.50/go.mod h1:yY/go76Lx/MgJmR+dSg/Xa8wOiXNjmuEdBDVDODKeDk=
+github.com/projectdiscovery/retryablehttp-go v1.0.51 h1:8XMrNC8JrwvySESe2d+XWF9bq4unWqD4PUPEC4Cai8s=
+github.com/projectdiscovery/retryablehttp-go v1.0.51/go.mod h1:6cdh/acYHpeYWg7+Iblh4xBRb87bC118L4G4mpvCMuA=
 github.com/projectdiscovery/sarif v0.0.1 h1:C2Tyj0SGOKbCLgHrx83vaE6YkzXEVrMXYRGLkKCr/us=
 github.com/projectdiscovery/sarif v0.0.1/go.mod h1:cEYlDu8amcPf6b9dSakcz2nNnJsoz4aR6peERwV+wuQ=
 github.com/projectdiscovery/stringsutil v0.0.2 h1:uzmw3IVLJSMW1kEg8eCStG/cGbYYZAja8BH3LqqJXMA=
@@ -864,10 +864,8 @@ github.com/projectdiscovery/uncover v1.0.7 h1:ut+2lTuvmftmveqF5RTjMWAgyLj8ltPQC7
 github.com/projectdiscovery/uncover v1.0.7/go.mod h1:HFXgm1sRPuoN0D4oATljPIdmbo/EEh1wVuxQqo/dwFE=
 github.com/projectdiscovery/useragent v0.0.40 h1:1LUhReSGPkhqsM5n40OOC9dIoNqMGs1dyGFJcOmg2Fo=
 github.com/projectdiscovery/useragent v0.0.40/go.mod h1:EvK1x3s948Gtqb/XOahXcauyejCL/rSgy5d1IAvsKT4=
-github.com/projectdiscovery/utils v0.0.82 h1:U//02floCSFxJluN7MP+rJSwI4Px7o454JL7ukERArI=
-github.com/projectdiscovery/utils v0.0.82/go.mod h1:AbmIvy0TTlsfXxPDEMaNPVrxmqDmYiCnbGqh0TTthE4=
-github.com/projectdiscovery/utils v0.0.83 h1:r7OBAuEwe4lyEwTITbCEZytoxvjk/s0Xra2NT+K4fm4=
-github.com/projectdiscovery/utils v0.0.83/go.mod h1:2XFoaGD5NPUp6liTRHC2tGmMQnIhQSXscpP3zfAG7iE=
+github.com/projectdiscovery/utils v0.0.84-0.20240312214300-d3ba70dbb9ca h1:GY9lUYDlENXPSFPJH01Bm1BfhrUF2jpnUBR+K4VPJIs=
+github.com/projectdiscovery/utils v0.0.84-0.20240312214300-d3ba70dbb9ca/go.mod h1:wzMfHBq2I9oy+DEiMfUYV86g1D7eXKaQsgWnqFpmMtI=
 github.com/projectdiscovery/wappalyzergo v0.0.112 h1:QPpp5jmj1lqLd5mFdFKQ9VvcYhQNqyU9Mr+IB0US2zA=
 github.com/projectdiscovery/wappalyzergo v0.0.112/go.mod h1:hc/o+fgM8KtdpFesjfBTmHTwsR+yBd+4kYZW/DGy/x8=
 github.com/projectdiscovery/yamldoc-go v1.0.4 h1:eZoESapnMw6WAHiVgRwNqvbJEfNHEH148uthhFbG5jE=
@@ -1036,8 +1034,6 @@ github.com/ulikunitz/xz v0.5.8/go.mod h1:nbz6k7qbPmH4IRqmfOplQw/tblSgqTqBwxkY0oW
 github.com/ulikunitz/xz v0.5.9/go.mod h1:nbz6k7qbPmH4IRqmfOplQw/tblSgqTqBwxkY0oWt/14=
 github.com/ulikunitz/xz v0.5.11 h1:kpFauv27b6ynzBNT/Xy+1k+fK4WswhN/6PN5WhFAGw8=
 github.com/ulikunitz/xz v0.5.11/go.mod h1:nbz6k7qbPmH4IRqmfOplQw/tblSgqTqBwxkY0oWt/14=
-github.com/ulule/deepcopier v0.0.0-20200430083143-45decc6639b6 h1:TtyC78WMafNW8QFfv3TeP3yWNDG+uxNkk9vOrnDu6JA=
-github.com/ulule/deepcopier v0.0.0-20200430083143-45decc6639b6/go.mod h1:h8272+G2omSmi30fBXiZDMkmHuOgonplfKIKjQWzlfs=
 github.com/urfave/cli v1.20.0/go.mod h1:70zkFmudgCuE/ngEzBv17Jvp/497gISqfk5gWijbERA=
 github.com/urfave/cli v1.22.1/go.mod h1:Gos4lmkARVdJ6EkW0WaNv/tZAAMe9V7XWyB60NtXRu0=
 github.com/valyala/bytebufferpool v1.0.0 h1:GqA5TC/0021Y/b9FG4Oi9Mr3q7XYx6KllzawFIhcdPw=
