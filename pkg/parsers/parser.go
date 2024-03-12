@@ -2,9 +2,9 @@ package parsers
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"regexp"
-	"strings"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/config"
@@ -14,15 +14,16 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/templates/types"
 	"github.com/projectdiscovery/nuclei/v3/pkg/utils"
 	"github.com/projectdiscovery/nuclei/v3/pkg/utils/stats"
+	errorutil "github.com/projectdiscovery/utils/errors"
 	"gopkg.in/yaml.v2"
 )
 
-const (
-	errMandatoryFieldMissingFmt = "mandatory '%s' field is missing"
-	errInvalidFieldFmt          = "invalid field format for '%s' (allowed format is %s)"
-	warningFieldMissingFmt      = "field '%s' is missing"
-	CouldNotLoadTemplate        = "Could not load template %s: %s"
-	LoadedWithWarnings          = "Loaded template %s: with syntax warning : %s"
+var (
+	ErrMandatoryFieldMissingFmt = errorutil.NewWithFmt("mandatory '%s' field is missing")
+	ErrInvalidField             = errorutil.NewWithFmt("invalid field format for '%s' (allowed format is %s)")
+	ErrWarningFieldMissing      = errorutil.NewWithFmt("field '%s' is missing")
+	ErrCouldNotLoadTemplate     = errorutil.NewWithFmt("Could not load template %s: %s")
+	ErrLoadedWithWarnings       = errorutil.NewWithFmt("Loaded template %s: with syntax warning : %s")
 )
 
 // LoadTemplate returns true if the template is valid and matches the filtering criteria.
@@ -39,19 +40,19 @@ func LoadTemplate(templatePath string, tagFilter *filter.TagFilter, extraTags []
 	validationError := validateTemplateMandatoryFields(template)
 	if validationError != nil {
 		stats.Increment(SyntaxErrorStats)
-		return false, fmt.Errorf(CouldNotLoadTemplate, templatePath, validationError)
+		return false, ErrCouldNotLoadTemplate.Msgf(templatePath, validationError)
 	}
 
 	ret, err := isTemplateInfoMetadataMatch(tagFilter, template, extraTags)
 	if err != nil {
-		return ret, fmt.Errorf(CouldNotLoadTemplate, templatePath, err)
+		return ret, ErrCouldNotLoadTemplate.Msgf(templatePath, err)
 	}
 	// if template loaded then check the template for optional fields to add warnings
 	if ret {
 		validationWarning := validateTemplateOptionalFields(template)
 		if validationWarning != nil {
 			stats.Increment(SyntaxWarningStats)
-			return ret, fmt.Errorf(LoadedWithWarnings, templatePath, validationWarning)
+			return ret, ErrCouldNotLoadTemplate.Msgf(templatePath, validationWarning)
 		}
 	}
 	return ret, nil
@@ -90,24 +91,24 @@ func isTemplateInfoMetadataMatch(tagFilter *filter.TagFilter, template *template
 func validateTemplateMandatoryFields(template *templates.Template) error {
 	info := template.Info
 
-	var errors []string
+	var validateErrors []error
 
 	if utils.IsBlank(info.Name) {
-		errors = append(errors, fmt.Sprintf(errMandatoryFieldMissingFmt, "name"))
+		validateErrors = append(validateErrors, ErrMandatoryFieldMissingFmt.Msgf("name"))
 	}
 
 	if info.Authors.IsEmpty() {
-		errors = append(errors, fmt.Sprintf(errMandatoryFieldMissingFmt, "author"))
+		validateErrors = append(validateErrors, ErrMandatoryFieldMissingFmt.Msgf("author"))
 	}
 
 	if template.ID == "" {
-		errors = append(errors, fmt.Sprintf(errMandatoryFieldMissingFmt, "id"))
+		validateErrors = append(validateErrors, ErrMandatoryFieldMissingFmt.Msgf("id"))
 	} else if !templateIDRegexp.MatchString(template.ID) {
-		errors = append(errors, fmt.Sprintf(errInvalidFieldFmt, "id", templateIDRegexp.String()))
+		validateErrors = append(validateErrors, ErrInvalidField.Msgf("id", templateIDRegexp.String()))
 	}
 
-	if len(errors) > 0 {
-		return fmt.Errorf(strings.Join(errors, ", "))
+	if len(validateErrors) > 0 {
+		return errors.Join(validateErrors...)
 	}
 
 	return nil
@@ -118,14 +119,14 @@ func validateTemplateMandatoryFields(template *templates.Template) error {
 func validateTemplateOptionalFields(template *templates.Template) error {
 	info := template.Info
 
-	var warnings []string
+	var warnings []error
 
 	if template.Type() != types.WorkflowProtocol && utils.IsBlank(info.SeverityHolder.Severity.String()) {
-		warnings = append(warnings, fmt.Sprintf(warningFieldMissingFmt, "severity"))
+		warnings = append(warnings, ErrWarningFieldMissing.Msgf("severity"))
 	}
 
 	if len(warnings) > 0 {
-		return fmt.Errorf(strings.Join(warnings, ", "))
+		return errors.Join(warnings...)
 	}
 
 	return nil
