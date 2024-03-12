@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -825,8 +826,25 @@ func (h *httpPaths) Execute(filepath string) error {
 		}
 	}
 
-	if !reflect.DeepEqual(expected, actual) {
-		return fmt.Errorf("%8v: %v\n%-8v: %v", "expected", expected, "actual", actual)
+	if len(expected) > len(actual) {
+		actualValuesIndex := len(actual) - 1
+		if actualValuesIndex < 0 {
+			actualValuesIndex = 0
+		}
+		return fmt.Errorf("missing values : %v", expected[actualValuesIndex:])
+	} else if len(expected) < len(actual) {
+		return fmt.Errorf("unexpected values : %v", actual[len(expected)-1:])
+	} else {
+		var buff bytes.Buffer
+		// check equality
+		for i := range expected {
+			if expected[i] != actual[i] {
+				buff.WriteString(fmt.Sprintf("expected=%v, actual=%v\n", expected[i], actual[i]))
+			}
+		}
+		if buff.Len() > 0 {
+			return fmt.Errorf(buff.String())
+		}
 	}
 	return nil
 }

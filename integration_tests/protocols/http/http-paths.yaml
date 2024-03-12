@@ -28,7 +28,7 @@ info:
     - "//CFIDE/wizards/common/utils.cfc"
 
 # Test all templates with FullURLs
-requests:
+http:
   - raw:
     # relative path without leading slash with param
     # If relative path does not have `/` prefix it is autocorrected 
