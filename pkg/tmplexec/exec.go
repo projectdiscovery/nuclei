@@ -3,6 +3,7 @@ package tmplexec
 import (
 	"errors"
 	"fmt"
+	"runtime/debug"
 	"strings"
 	"sync/atomic"
 
@@ -34,16 +35,6 @@ var _ protocols.Executer = &TemplateExecuter{}
 
 // NewTemplateExecuter creates a new request TemplateExecuter for list of requests
 func NewTemplateExecuter(requests []protocols.Request, options *protocols.ExecutorOptions) (*TemplateExecuter, error) {
-	isMultiProto := false
-	lastProto := ""
-	for _, request := range requests {
-		if request.Type().String() != lastProto && lastProto != "" {
-			isMultiProto = true
-			break
-		}
-		lastProto = request.Type().String()
-	}
-
 	e := &TemplateExecuter{requests: requests, options: options, results: &atomic.Bool{}}
 	if options.Flow != "" {
 		// we use a dummy input here because goal of flow executor at this point is to just check
@@ -55,13 +46,11 @@ func NewTemplateExecuter(requests []protocols.Request, options *protocols.Execut
 		}
 		e.program = p
 	} else {
-		// Review:
-		// multiproto engine is only used if there is more than one protocol in template
-		// else we use generic engine (should we use multiproto engine for single protocol with multiple requests as well ?)
-		if isMultiProto {
-			e.engine = multiproto.NewMultiProtocol(requests, options, e.results)
-		} else {
+		// only use generic if there is only 1 protocol with only 1 section
+		if len(requests) == 1 {
 			e.engine = generic.NewGenericEngine(requests, options, e.results)
+		} else {
+			e.engine = multiproto.NewMultiProtocol(requests, options, e.results)
 		}
 	}
 	return e, nil
@@ -113,8 +102,9 @@ func (e *TemplateExecuter) Execute(ctx *scan.ScanContext) (bool, error) {
 	defer func() {
 		// try catching unknown panics
 		if r := recover(); r != nil {
-			ctx.LogError(fmt.Errorf("panic: %v", r))
-			gologger.Verbose().Msgf("panic: %v", r)
+			stacktrace := debug.Stack()
+			ctx.LogError(fmt.Errorf("panic: %v\n%s", r, stacktrace))
+			gologger.Verbose().Msgf("panic: %v\n%s", r, stacktrace)
 		}
 	}()
 

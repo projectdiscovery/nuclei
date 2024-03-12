@@ -81,6 +81,17 @@ var httpTestcases = []TestCaseInfo{
 	{Path: "protocols/http/http-preprocessor.yaml", TestCase: &httpPreprocessor{}},
 	{Path: "protocols/http/multi-request.yaml", TestCase: &httpMultiRequest{}},
 	{Path: "protocols/http/http-matcher-extractor-dy-extractor.yaml", TestCase: &httpMatcherExtractorDynamicExtractor{}},
+	{Path: "protocols/http/multi-http-var-sharing.yaml", TestCase: &httpMultiVarSharing{}},
+}
+
+type httpMultiVarSharing struct{}
+
+func (h *httpMultiVarSharing) Execute(filePath string) error {
+	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, "https://scanme.sh", debug)
+	if err != nil {
+		return err
+	}
+	return expectResultsCount(results, 1)
 }
 
 type httpMatcherExtractorDynamicExtractor struct{}
