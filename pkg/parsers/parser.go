@@ -30,7 +30,7 @@ var (
 func LoadTemplate(templatePath string, tagFilter *filter.TagFilter, extraTags []string, catalog catalog.Catalog) (bool, error) {
 	template, templateParseError := ParseTemplate(templatePath, catalog)
 	if templateParseError != nil {
-		return false, fmt.Errorf(CouldNotLoadTemplate, templatePath, templateParseError)
+		return false, ErrCouldNotLoadTemplate.Msgf(templatePath, templateParseError)
 	}
 
 	if len(template.Workflows) > 0 {
