@@ -18,7 +18,6 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/operators"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/offlinehttp"
-	"github.com/projectdiscovery/nuclei/v3/pkg/templates/cache"
 	"github.com/projectdiscovery/nuclei/v3/pkg/templates/signer"
 	"github.com/projectdiscovery/nuclei/v3/pkg/tmplexec"
 	"github.com/projectdiscovery/nuclei/v3/pkg/utils"
@@ -30,7 +29,6 @@ import (
 var (
 	ErrCreateTemplateExecutor          = errors.New("cannot create template executer")
 	ErrIncompatibleWithOfflineMatching = errors.New("template can't be used for offline matching")
-	parsedTemplatesCache               *cache.Templates
 	// track how many templates are verfied and by which signer
 	SignatureStats = map[string]*atomic.Uint64{}
 )
@@ -39,23 +37,16 @@ const (
 	Unsigned = "unsigned"
 )
 
-func init() {
-	parsedTemplatesCache = cache.New()
-	for _, verifier := range signer.DefaultTemplateVerifiers {
-		SignatureStats[verifier.Identifier()] = &atomic.Uint64{}
-	}
-	SignatureStats[Unsigned] = &atomic.Uint64{}
-	config.DefaultConfig.RegisterGlobalCache(parsedTemplatesCache)
-}
-
 // Parse parses a yaml request template file
 // TODO make sure reading from the disk the template parsing happens once: see parsers.ParseTemplate vs templates.Parse
-//
-//nolint:gocritic // this cannot be passed by pointer
 func Parse(filePath string, preprocessor Preprocessor, options protocols.ExecutorOptions) (*Template, error) {
+	parser, ok := options.Parser.(*Parser)
+	if !ok {
+		panic("not a parser")
+	}
 	if !options.DoNotCache {
-		if value, err := parsedTemplatesCache.Has(filePath); value != nil {
-			return value.(*Template), err
+		if value, err := parser.compiledTemplatesCache.Has(filePath); value != nil {
+			return value, err
 		}
 	}
 
@@ -90,7 +81,7 @@ func Parse(filePath string, preprocessor Preprocessor, options protocols.Executo
 	}
 	template.Path = filePath
 	if !options.DoNotCache {
-		parsedTemplatesCache.Store(filePath, template, err)
+		parser.compiledTemplatesCache.Store(filePath, template, err)
 	}
 	return template, nil
 }

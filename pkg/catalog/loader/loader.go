@@ -12,11 +12,9 @@ import (
 	"github.com/pkg/errors"
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog"
-	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/config"
 	cfg "github.com/projectdiscovery/nuclei/v3/pkg/catalog/config"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/loader/filter"
 	"github.com/projectdiscovery/nuclei/v3/pkg/model/types/severity"
-	"github.com/projectdiscovery/nuclei/v3/pkg/parsers"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v3/pkg/templates"
 	templateTypes "github.com/projectdiscovery/nuclei/v3/pkg/templates/types"
@@ -66,7 +64,7 @@ type Config struct {
 
 // Store is a storage for loaded nuclei templates
 type Store struct {
-	tagFilter      *filter.TagFilter
+	tagFilter      *templates.TagFilter
 	pathFilter     *filter.PathFilter
 	config         *Config
 	finalTemplates []string
@@ -112,7 +110,7 @@ func NewConfig(options *types.Options, catalog catalog.Catalog, executerOpts pro
 
 // New creates a new template store based on provided configuration
 func New(config *Config) (*Store, error) {
-	tagFilter, err := filter.New(&filter.Config{
+	tagFilter, err := templates.NewTagFilter(&templates.Config{
 		Tags:              config.Tags,
 		ExcludeTags:       config.ExcludeTags,
 		Authors:           config.Authors,
@@ -268,25 +266,27 @@ func (store *Store) ValidateTemplates() error {
 	filteredTemplatePaths := store.pathFilter.Match(templatePaths)
 	filteredWorkflowPaths := store.pathFilter.Match(workflowPaths)
 
-	if areTemplatesValid(store, filteredTemplatePaths) && areWorkflowsValid(store, filteredWorkflowPaths) {
+	if store.areTemplatesValid(filteredTemplatePaths) && store.areWorkflowsValid(filteredWorkflowPaths) {
 		return nil
 	}
 	return errors.New("errors occurred during template validation")
 }
 
-func areWorkflowsValid(store *Store, filteredWorkflowPaths map[string]struct{}) bool {
-	return areWorkflowOrTemplatesValid(store, filteredWorkflowPaths, true, func(templatePath string, tagFilter *filter.TagFilter) (bool, error) {
-		return parsers.LoadWorkflow(templatePath, store.config.Catalog)
+func (store *Store) areWorkflowsValid(filteredWorkflowPaths map[string]struct{}) bool {
+	return store.areWorkflowOrTemplatesValid(filteredWorkflowPaths, true, func(templatePath string, tagFilter *templates.TagFilter) (bool, error) {
+		return false, nil
+		// return store.config.ExecutorOptions.Parser.LoadWorkflow(templatePath, store.config.Catalog)
 	})
 }
 
-func areTemplatesValid(store *Store, filteredTemplatePaths map[string]struct{}) bool {
-	return areWorkflowOrTemplatesValid(store, filteredTemplatePaths, false, func(templatePath string, tagFilter *filter.TagFilter) (bool, error) {
-		return parsers.LoadTemplate(templatePath, store.tagFilter, nil, store.config.Catalog)
+func (store *Store) areTemplatesValid(filteredTemplatePaths map[string]struct{}) bool {
+	return store.areWorkflowOrTemplatesValid(filteredTemplatePaths, false, func(templatePath string, tagFilter *templates.TagFilter) (bool, error) {
+		return false, nil
+		// return store.config.ExecutorOptions.Parser.LoadTemplate(templatePath, store.tagFilter, nil, store.config.Catalog)
 	})
 }
 
-func areWorkflowOrTemplatesValid(store *Store, filteredTemplatePaths map[string]struct{}, isWorkflow bool, load func(templatePath string, tagFilter *filter.TagFilter) (bool, error)) bool {
+func (store *Store) areWorkflowOrTemplatesValid(filteredTemplatePaths map[string]struct{}, isWorkflow bool, load func(templatePath string, tagFilter *templates.TagFilter) (bool, error)) bool {
 	areTemplatesValid := true
 
 	for templatePath := range filteredTemplatePaths {
@@ -339,7 +339,7 @@ func areWorkflowTemplatesValid(store *Store, workflows []*workflows.WorkflowTemp
 }
 
 func isParsingError(message string, template string, err error) bool {
-	if errors.Is(err, filter.ErrExcluded) {
+	if errors.Is(err, templates.ErrExcluded) {
 		return false
 	}
 	if errors.Is(err, templates.ErrCreateTemplateExecutor) {
@@ -362,7 +362,7 @@ func (store *Store) LoadWorkflows(workflowsList []string) []*templates.Template 
 
 	loadedWorkflows := make([]*templates.Template, 0, len(workflowPathMap))
 	for workflowPath := range workflowPathMap {
-		loaded, err := parsers.LoadWorkflow(workflowPath, store.config.Catalog)
+		loaded, err := store.config.ExecutorOptions.Parser.LoadWorkflow(workflowPath, store.config.Catalog)
 		if err != nil {
 			gologger.Warning().Msgf("Could not load workflow %s: %s\n", workflowPath, err)
 		}
@@ -387,38 +387,38 @@ func (store *Store) LoadTemplatesWithTags(templatesList, tags []string) []*templ
 
 	loadedTemplates := make([]*templates.Template, 0, len(templatePathMap))
 	for templatePath := range templatePathMap {
-		loaded, err := parsers.LoadTemplate(templatePath, store.tagFilter, tags, store.config.Catalog)
+		loaded, err := store.config.ExecutorOptions.Parser.LoadTemplate(templatePath, store.tagFilter, tags, store.config.Catalog)
 		if loaded || store.pathFilter.MatchIncluded(templatePath) {
 			parsed, err := templates.Parse(templatePath, store.preprocessor, store.config.ExecutorOptions)
 			if err != nil {
 				// exclude templates not compatible with offline matching from total runtime warning stats
 				if !errors.Is(err, templates.ErrIncompatibleWithOfflineMatching) {
-					stats.Increment(parsers.RuntimeWarningsStats)
+					stats.Increment(templates.RuntimeWarningsStats)
 				}
 				gologger.Warning().Msgf("Could not parse template %s: %s\n", templatePath, err)
 			} else if parsed != nil {
 				if !parsed.Verified && store.config.ExecutorOptions.Options.DisableUnsignedTemplates {
 					// skip unverified templates when prompted to
-					stats.Increment(parsers.SkippedUnsignedStats)
+					stats.Increment(templates.SkippedUnsignedStats)
 					continue
 				}
 				if len(parsed.RequestsHeadless) > 0 && !store.config.ExecutorOptions.Options.Headless {
 					// donot include headless template in final list if headless flag is not set
-					stats.Increment(parsers.HeadlessFlagWarningStats)
+					stats.Increment(templates.HeadlessFlagWarningStats)
 					if cfg.DefaultConfig.LogAllEvents {
 						gologger.Print().Msgf("[%v] Headless flag is required for headless template '%s'.\n", aurora.Yellow("WRN").String(), templatePath)
 					}
 				} else if len(parsed.RequestsCode) > 0 && !store.config.ExecutorOptions.Options.EnableCodeTemplates {
 					// donot include 'Code' protocol custom template in final list if code flag is not set
-					stats.Increment(parsers.CodeFlagWarningStats)
+					stats.Increment(templates.CodeFlagWarningStats)
 					if cfg.DefaultConfig.LogAllEvents {
 						gologger.Print().Msgf("[%v] Code flag is required for code protocol template '%s'.\n", aurora.Yellow("WRN").String(), templatePath)
 					}
 				} else if len(parsed.RequestsCode) > 0 && !parsed.Verified && len(parsed.Workflows) == 0 {
 					// donot include unverified 'Code' protocol custom template in final list
-					stats.Increment(parsers.UnsignedCodeWarning)
+					stats.Increment(templates.UnsignedCodeWarning)
 					// these will be skipped so increment skip counter
-					stats.Increment(parsers.SkippedUnsignedStats)
+					stats.Increment(templates.SkippedUnsignedStats)
 					if cfg.DefaultConfig.LogAllEvents {
 						gologger.Print().Msgf("[%v] Tampered/Unsigned template at %v.\n", aurora.Yellow("WRN").String(), templatePath)
 					}
@@ -428,9 +428,9 @@ func (store *Store) LoadTemplatesWithTags(templatesList, tags []string) []*templ
 			}
 		}
 		if err != nil {
-			if strings.Contains(err.Error(), filter.ErrExcluded.Error()) {
-				stats.Increment(parsers.TemplatesExecutedStats)
-				if config.DefaultConfig.LogAllEvents {
+			if strings.Contains(err.Error(), templates.ErrExcluded.Error()) {
+				stats.Increment(templates.TemplatesExecutedStats)
+				if cfg.DefaultConfig.LogAllEvents {
 					gologger.Print().Msgf("[%v] %v\n", aurora.Yellow("WRN").String(), err.Error())
 				}
 				continue

@@ -27,6 +27,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http/httpclientpool"
 	"github.com/projectdiscovery/nuclei/v3/pkg/reporting"
+	"github.com/projectdiscovery/nuclei/v3/pkg/templates"
 	"github.com/projectdiscovery/nuclei/v3/pkg/testutils"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	"github.com/projectdiscovery/ratelimit"
@@ -113,6 +114,12 @@ func (e *NucleiEngine) init() error {
 		e.httpClient = httpclient
 	}
 
+	if parser, err := templates.New(); err != nil {
+		return err
+	} else {
+		e.parser = parser
+	}
+
 	_ = protocolstate.Init(e.opts)
 	_ = protocolinit.Init(e.opts)
 	e.applyRequiredDefaults()
@@ -157,6 +164,7 @@ func (e *NucleiEngine) init() error {
 		Colorizer:       aurora.NewAurora(true),
 		ResumeCfg:       types.NewResumeCfg(),
 		Browser:         e.browserInstance,
+		Parser:          e.parser,
 	}
 
 	if e.opts.RateLimitMinute > 0 {

@@ -23,6 +23,7 @@ var (
 		"testcases/redis-pass-brute.yaml",
 		"testcases/ssh-server-fingerprint.yaml",
 	}
+	parser       *templates.Parser
 	executerOpts protocols.ExecutorOptions
 )
 
@@ -40,6 +41,7 @@ func setup() {
 		Browser:      nil,
 		Catalog:      disk.NewCatalog(config.DefaultConfig.TemplatesDirectory),
 		RateLimiter:  ratelimit.New(context.Background(), uint(options.RateLimit), time.Second),
+		Parser:       parser,
 	}
 	workflowLoader, err := parsers.NewLoader(&executerOpts)
 	if err != nil {

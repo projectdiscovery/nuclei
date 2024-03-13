@@ -1,21 +1,22 @@
 package jira
 
 import (
-	"github.com/stretchr/testify/assert"
 	"strings"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 )
 
 func TestLinkCreation(t *testing.T) {
 	jiraIntegration := &Integration{}
 	link := jiraIntegration.CreateLink("ProjectDiscovery", "https://projectdiscovery.io")
-	assert.Equal(t, "[ProjectDiscovery|https://projectdiscovery.io]", link)
+	require.Equal(t, "[ProjectDiscovery|https://projectdiscovery.io]", link)
 }
 
 func TestHorizontalLineCreation(t *testing.T) {
 	jiraIntegration := &Integration{}
 	horizontalLine := jiraIntegration.CreateHorizontalLine()
-	assert.True(t, strings.Contains(horizontalLine, "----"))
+	require.True(t, strings.Contains(horizontalLine, "----"))
 }
 
 func TestTableCreation(t *testing.T) {
@@ -27,11 +28,11 @@ func TestTableCreation(t *testing.T) {
 		{"d", "e"},
 	})
 
-	assert.Nil(t, err)
+	require.Nil(t, err)
 	expected := `| key | value |
 | a | b |
 | c |  |
 | d | e |
 `
-	assert.Equal(t, expected, table)
+	require.Equal(t, expected, table)
 }
