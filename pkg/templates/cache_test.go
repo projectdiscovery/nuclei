@@ -15,8 +15,10 @@ func TestCache(t *testing.T) {
 	require.Nil(t, err, "invalid value for err")
 	require.Nil(t, data, "invalid value for data")
 
-	templates.Store("test", &Template{}, testErr)
+	item := &Template{}
+
+	templates.Store("test", item, testErr)
 	data, err = templates.Has("test")
 	require.Equal(t, testErr, err, "invalid value for err")
-	require.Equal(t, "data", data, "invalid value for data")
+	require.Equal(t, item, data, "invalid value for data")
 }
