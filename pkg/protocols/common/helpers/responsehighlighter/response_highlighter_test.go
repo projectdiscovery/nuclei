@@ -4,9 +4,8 @@ import (
 	"encoding/hex"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
-
 	"github.com/projectdiscovery/nuclei/v3/pkg/operators"
+	"github.com/stretchr/testify/require"
 )
 
 const input = "abcdefghijklmnabcdefghijklmnabcdefghijklmnabcdefghijklmnabcdefghijklmnabcdefghijklmnabcdefghijklmnabcdefghijklmnabcdefghijklmn"
@@ -24,8 +23,8 @@ func TestHexDumpHighlighting(t *testing.T) {
 
 	t.Run("Test highlighting when the snippet is wrapped", func(t *testing.T) {
 		result, err := toHighLightedHexDump(hex.Dump([]byte(input)), "defghij")
-		assert.Nil(t, err)
-		assert.Equal(t, highlightedHexDumpResponse, result.String())
+		require.Nil(t, err)
+		require.Equal(t, highlightedHexDumpResponse, result.String())
 	})
 
 	t.Run("Test highlight when the snippet contains separator character", func(t *testing.T) {
@@ -36,8 +35,8 @@ func TestHexDumpHighlighting(t *testing.T) {
 			"00000000  61 73 64 66 61 73 64 66  61 73 64 \x1b[32m61\x1b[0m \x1b[32m7c\x1b[0m \x1b[32m62\x1b[0m 61 73  |asdfasdfasd\x1b[32ma\x1b[0m\x1b[32m|\x1b[0m\x1b[32mb\x1b[0mas|\n" +
 				"00000010  64 66 61 64 73 64 66 73  7c                       |dfadsdfs||\n"
 
-		assert.Nil(t, err)
-		assert.Equal(t, expected, result.String())
+		require.Nil(t, err)
+		require.Equal(t, expected, result.String())
 	})
 }
 
@@ -59,7 +58,7 @@ func TestHighlight(t *testing.T) {
 
 	t.Run("Test highlighting when the snippet is wrapped", func(t *testing.T) {
 		result := Highlight(&operatorResult, hex.Dump([]byte(input)), false, true)
-		assert.Equal(t, multiSnippetHighlightHexDumpResponse, result)
+		require.Equal(t, multiSnippetHighlightHexDumpResponse, result)
 	})
 
 	t.Run("Test highlighting without hexdump", func(t *testing.T) {
@@ -75,17 +74,17 @@ func TestHighlight(t *testing.T) {
 				"a\x1b[0m\x1b[32mb\x1b[0mc\x1b[32md\x1b[0m\x1b[32me\x1b[0m\x1b[32mf\x1b[0m\x1b[32mg\x1b[0m\x1b[32mh\x1b[0m\x1b[32mi\x1b[0m\x1b[32mj\x1b[0mklmn\x1b[32m" +
 				"a\x1b[0m\x1b[32mb\x1b[0mc\x1b[32md\x1b[0m\x1b[32me\x1b[0m\x1b[32mf\x1b[0m\x1b[32mg\x1b[0m\x1b[32mh\x1b[0m\x1b[32mi\x1b[0m\x1b[32mj\x1b[0mklmn"
 		print(result)
-		assert.Equal(t, expected, result)
+		require.Equal(t, expected, result)
 	})
 
 	t.Run("Test the response is not modified if noColor is true", func(t *testing.T) {
 		result := Highlight(&operatorResult, input, true, false)
-		assert.Equal(t, input, result)
+		require.Equal(t, input, result)
 	})
 
 	t.Run("Test the response is not modified if noColor is true", func(t *testing.T) {
 		result := Highlight(&operatorResult, hex.Dump([]byte(input)), true, true)
-		assert.Equal(t, hex.Dump([]byte(input)), result)
+		require.Equal(t, hex.Dump([]byte(input)), result)
 	})
 }
 
@@ -107,5 +106,5 @@ start ValueToMatch-2.1 end
 			"start \x1b[32mV\x1b[0m\x1b[32ma\x1b[0m\x1b[32ml\x1b[0m\x1b[32mu\x1b[0m\x1b[32me\x1b[0m\x1b[32mT\x1b[0m\x1b[32mo\x1b[0m\x1b[32mM\x1b[0m\x1b[32ma\x1b[0m\x1b[32mt\x1b[0m\x1b[32mc\x1b[0m\x1b[32mh\x1b[0m\x1b[32m-\x1b[0m\x1b[32m1\x1b[0m\x1b[32m.\x1b[0m\x1b[32m2\x1b[0m\x1b[32m.\x1b[0m\x1b[32m3\x1b[0m end\n" +
 			"start \x1b[32mV\x1b[0m\x1b[32ma\x1b[0m\x1b[32ml\x1b[0m\x1b[32mu\x1b[0m\x1b[32me\x1b[0m\x1b[32mT\x1b[0m\x1b[32mo\x1b[0m\x1b[32mM\x1b[0m\x1b[32ma\x1b[0m\x1b[32mt\x1b[0m\x1b[32mc\x1b[0m\x1b[32mh\x1b[0m\x1b[32m-\x1b[0m\x1b[32m2\x1b[0m\x1b[32m.\x1b[0m\x1b[32m1\x1b[0m end \n"
 	result := Highlight(&operatorResult, input, false, false)
-	assert.Equal(t, expected, result)
+	require.Equal(t, expected, result)
 }

@@ -15,6 +15,7 @@ import (
 
 	"github.com/projectdiscovery/nuclei/v3/internal/pdcp"
 	"github.com/projectdiscovery/nuclei/v3/pkg/installer"
+	"github.com/projectdiscovery/nuclei/v3/pkg/pparser"
 	uncoverlib "github.com/projectdiscovery/uncover"
 	pdcpauth "github.com/projectdiscovery/utils/auth/pdcp"
 	"github.com/projectdiscovery/utils/env"
@@ -87,6 +88,7 @@ type Runner struct {
 	pdcpUploadErrMsg string
 	//general purpose temporary directory
 	tmpDir string
+	parser pparser.Parser
 }
 
 const pprofServerAddress = "127.0.0.1:8086"
@@ -148,12 +150,18 @@ func New(options *types.Options) (*Runner, error) {
 		}
 	}
 
-	if options.Validate {
-		parsers.ShouldValidate = true
+	parser, err := templates.New()
+	if err != nil {
+		return nil, err
 	}
 
+	if options.Validate {
+		parser.ShouldValidate = true
+	}
 	// TODO: refactor to pass options reference globally without cycles
-	parsers.NoStrictSyntax = options.NoStrictSyntax
+	parser.NoStrictSyntax = options.NoStrictSyntax
+	runner.parser = parser
+
 	yaml.StrictSyntax = !options.NoStrictSyntax
 
 	if options.Headless {
@@ -431,6 +439,7 @@ func (r *Runner) RunEnumeration() error {
 		ExcludeMatchers:    excludematchers.New(r.options.ExcludeMatchers),
 		InputHelper:        input.NewHelper(),
 		TemporaryDirectory: r.tmpDir,
+		Parser:             r.parser,
 	}
 
 	if r.options.ShouldUseHostError() {
@@ -458,7 +467,7 @@ func (r *Runner) RunEnumeration() error {
 		if err := store.ValidateTemplates(); err != nil {
 			return err
 		}
-		if stats.GetValue(parsers.SyntaxErrorStats) == 0 && stats.GetValue(parsers.SyntaxWarningStats) == 0 && stats.GetValue(parsers.RuntimeWarningsStats) == 0 {
+		if stats.GetValue(templates.SyntaxErrorStats) == 0 && stats.GetValue(templates.SyntaxWarningStats) == 0 && stats.GetValue(templates.RuntimeWarningsStats) == 0 {
 			gologger.Info().Msgf("All templates validated successfully\n")
 		} else {
 			return errors.New("encountered errors while performing template validation")
@@ -469,9 +478,6 @@ func (r *Runner) RunEnumeration() error {
 	// TODO: remove below functions after v3 or update warning messages
 	disk.PrintDeprecatedPathsMsgIfApplicable(r.options.Silent)
 	templates.PrintDeprecatedProtocolNameMsgIfApplicable(r.options.Silent, r.options.Verbose)
-
-	// purge global caches primarily used for loading templates
-	config.DefaultConfig.PurgeGlobalCache()
 
 	// add the hosts from the metadata queries of loaded templates into input provider
 	if r.options.Uncover && len(r.options.UncoverQuery) == 0 {
@@ -596,18 +602,18 @@ func (r *Runner) executeTemplatesInput(store *loader.Store, engine *core.Engine)
 // displayExecutionInfo displays misc info about the nuclei engine execution
 func (r *Runner) displayExecutionInfo(store *loader.Store) {
 	// Display stats for any loaded templates' syntax warnings or errors
-	stats.Display(parsers.SyntaxWarningStats)
-	stats.Display(parsers.SyntaxErrorStats)
-	stats.Display(parsers.RuntimeWarningsStats)
+	stats.Display(templates.SyntaxWarningStats)
+	stats.Display(templates.SyntaxErrorStats)
+	stats.Display(templates.RuntimeWarningsStats)
 	if r.options.Verbose {
 		// only print these stats in verbose mode
-		stats.DisplayAsWarning(parsers.HeadlessFlagWarningStats)
-		stats.DisplayAsWarning(parsers.CodeFlagWarningStats)
-		stats.DisplayAsWarning(parsers.TemplatesExecutedStats)
+		stats.DisplayAsWarning(templates.HeadlessFlagWarningStats)
+		stats.DisplayAsWarning(templates.CodeFlagWarningStats)
+		stats.DisplayAsWarning(templates.TemplatesExecutedStats)
 	}
 
-	stats.DisplayAsWarning(parsers.UnsignedCodeWarning)
-	stats.ForceDisplayWarning(parsers.SkippedUnsignedStats)
+	stats.DisplayAsWarning(templates.UnsignedCodeWarning)
+	stats.ForceDisplayWarning(templates.SkippedUnsignedStats)
 
 	cfg := config.DefaultConfig
 
@@ -632,8 +638,8 @@ func (r *Runner) displayExecutionInfo(store *loader.Store) {
 		value := v.Load()
 		if k == templates.Unsigned && value > 0 {
 			// adjust skipped unsigned templates via code or -dut flag
-			value = value - uint64(stats.GetValue(parsers.SkippedUnsignedStats))
-			value = value - uint64(stats.GetValue(parsers.CodeFlagWarningStats))
+			value = value - uint64(stats.GetValue(templates.SkippedUnsignedStats))
+			value = value - uint64(stats.GetValue(templates.CodeFlagWarningStats))
 		}
 		if value > 0 {
 			if k != templates.Unsigned {
