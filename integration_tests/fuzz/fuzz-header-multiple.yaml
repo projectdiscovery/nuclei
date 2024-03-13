@@ -25,7 +25,7 @@ http:
         - "secret.local"
 
     fuzzing:
-      - part: headers
+      - part: header
         type: replace
         mode: multiple
         keys: ["Origin", "X-Forwared-For"]

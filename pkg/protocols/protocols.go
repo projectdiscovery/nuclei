@@ -10,6 +10,7 @@ import (
 
 	"github.com/logrusorgru/aurora"
 
+	"github.com/projectdiscovery/nuclei/v3/pkg/authprovider"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog"
 	"github.com/projectdiscovery/nuclei/v3/pkg/input"
 	"github.com/projectdiscovery/nuclei/v3/pkg/js/compiler"
@@ -116,6 +117,8 @@ type ExecutorOptions struct {
 	// based on given logic. by default nuclei reverts to using value of `-c` when threads count
 	// is not specified or is 0 in template
 	OverrideThreadsCount PayloadThreadSetterCallback
+	// AuthProvider is a provider for auth strategies
+	AuthProvider authprovider.AuthProvider
 	//TemporaryDirectory is the directory to store temporary files
 	TemporaryDirectory string
 }
