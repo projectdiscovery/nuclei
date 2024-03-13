@@ -236,8 +236,8 @@ on extensive configurability, massive extensibility and ease of use.`)
 		flagSet.StringSliceVarP(&options.IncludeTags, "include-tags", "itags", nil, "tags to be executed even if they are excluded either by default or configuration", goflags.FileNormalizedStringSliceOptions), // TODO show default deny list
 		flagSet.StringSliceVarP(&options.IncludeIds, "template-id", "id", nil, "templates to run based on template ids (comma-separated, file, allow-wildcard)", goflags.FileNormalizedStringSliceOptions),
 		flagSet.StringSliceVarP(&options.ExcludeIds, "exclude-id", "eid", nil, "templates to exclude based on template ids (comma-separated, file)", goflags.FileNormalizedStringSliceOptions),
-		flagSet.StringSliceVarP(&options.IncludeTemplates, "include-templates", "it", nil, "templates to be executed even if they are excluded either by default or configuration", goflags.FileCommaSeparatedStringSliceOptions),
-		flagSet.StringSliceVarP(&options.ExcludedTemplates, "exclude-templates", "et", nil, "template or template directory to exclude (comma-separated, file)", goflags.FileCommaSeparatedStringSliceOptions),
+		flagSet.StringSliceVarP(&options.IncludeTemplates, "include-templates", "it", nil, "path to template file or directory to be executed even if they are excluded either by default or configuration", goflags.FileCommaSeparatedStringSliceOptions),
+		flagSet.StringSliceVarP(&options.ExcludedTemplates, "exclude-templates", "et", nil, "path to template file or directory to exclude (comma-separated, file)", goflags.FileCommaSeparatedStringSliceOptions),
 		flagSet.StringSliceVarP(&options.ExcludeMatchers, "exclude-matchers", "em", nil, "template matchers to exclude in result", goflags.FileCommaSeparatedStringSliceOptions),
 		flagSet.VarP(&options.Severities, "severity", "s", fmt.Sprintf("templates to run based on severity. Possible values: %s", severity.GetSupportedSeverities().String())),
 		flagSet.VarP(&options.ExcludeSeverities, "exclude-severity", "es", fmt.Sprintf("templates to exclude based on severity. Possible values: %s", severity.GetSupportedSeverities().String())),
@@ -313,7 +313,7 @@ on extensive configurability, massive extensibility and ease of use.`)
 	flagSet.CreateGroup("fuzzing", "Fuzzing",
 		flagSet.StringVarP(&options.FuzzingType, "fuzzing-type", "ft", "", "overrides fuzzing type set in template (replace, prefix, postfix, infix)"),
 		flagSet.StringVarP(&options.FuzzingMode, "fuzzing-mode", "fm", "", "overrides fuzzing mode set in template (multiple, single)"),
-		flagSet.BoolVar(&options.FuzzTemplates, "fuzz", false, "enable and run fuzzing templates"),
+		flagSet.BoolVar(&options.FuzzTemplates, "fuzz", false, "enable loading fuzzing templates"),
 	)
 
 	flagSet.CreateGroup("uncover", "Uncover",
@@ -406,7 +406,7 @@ on extensive configurability, massive extensibility and ease of use.`)
 	)
 
 	flagSet.CreateGroup("Authentication", "Authentication",
-		flagSet.StringSliceVar(&options.SecretsFile, "secrets", nil, "path to file containing secrets for nuclei authenticated scan", goflags.CommaSeparatedStringSliceOptions),
+		flagSet.StringSliceVarP(&options.SecretsFile, "secret-file", "sf", nil, "path to config file containing secrets for nuclei authenticated scan", goflags.CommaSeparatedStringSliceOptions),
 		flagSet.BoolVarP(&options.PreFetchSecrets, "prefetch-secrets", "ps", false, "prefetch secrets from the secrets file"),
 	)
 
