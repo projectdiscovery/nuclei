@@ -37,6 +37,13 @@ const (
 	Unsigned = "unsigned"
 )
 
+func init() {
+	for _, verifier := range signer.DefaultTemplateVerifiers {
+		SignatureStats[verifier.Identifier()] = &atomic.Uint64{}
+	}
+	SignatureStats[Unsigned] = &atomic.Uint64{}
+}
+
 // Parse parses a yaml request template file
 // TODO make sure reading from the disk the template parsing happens once: see parsers.ParseTemplate vs templates.Parse
 func Parse(filePath string, preprocessor Preprocessor, options protocols.ExecutorOptions) (*Template, error) {
