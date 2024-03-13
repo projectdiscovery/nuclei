@@ -3,11 +3,9 @@ package templates
 import (
 	"encoding/json"
 	"fmt"
-	"sync/atomic"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/config"
-	"github.com/projectdiscovery/nuclei/v3/pkg/templates/signer"
 	"github.com/projectdiscovery/nuclei/v3/pkg/utils"
 	"github.com/projectdiscovery/nuclei/v3/pkg/utils/stats"
 	"gopkg.in/yaml.v2"
@@ -25,11 +23,6 @@ func New() (*Parser, error) {
 		parsedTemplatesCache:   NewCache(),
 		compiledTemplatesCache: NewCache(),
 	}
-
-	for _, verifier := range signer.DefaultTemplateVerifiers {
-		SignatureStats[verifier.Identifier()] = &atomic.Uint64{}
-	}
-	SignatureStats[Unsigned] = &atomic.Uint64{}
 
 	return p, nil
 }
