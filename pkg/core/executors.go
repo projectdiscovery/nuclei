@@ -5,6 +5,7 @@ import (
 	"sync/atomic"
 
 	"github.com/projectdiscovery/gologger"
+	"github.com/projectdiscovery/nuclei/v3/pkg/input/provider"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
 	"github.com/projectdiscovery/nuclei/v3/pkg/scan"
 	"github.com/projectdiscovery/nuclei/v3/pkg/templates"
@@ -44,7 +45,7 @@ func (e *Engine) executeAllSelfContained(alltemplates []*templates.Template, res
 }
 
 // executeTemplateWithTarget executes a given template on x targets (with a internal targetpool(i.e concurrency))
-func (e *Engine) executeTemplateWithTargets(template *templates.Template, target InputProvider, results *atomic.Bool) {
+func (e *Engine) executeTemplateWithTargets(template *templates.Template, target provider.InputProvider, results *atomic.Bool) {
 	// this is target pool i.e max target to execute
 	wg := e.workPool.InputPool(template.Type())
 
@@ -75,7 +76,7 @@ func (e *Engine) executeTemplateWithTargets(template *templates.Template, target
 		currentInfo.Unlock()
 	}
 
-	target.Scan(func(scannedValue *contextargs.MetaInput) bool {
+	target.Iterate(func(scannedValue *contextargs.MetaInput) bool {
 		// Best effort to track the host progression
 		// skips indexes lower than the minimum in-flight at interruption time
 		var skip bool

@@ -18,11 +18,8 @@ func init() {
 
 			// Var and consts
 
-			// Types (value type)
-			"PGClient": func() lib_postgres.PGClient { return lib_postgres.PGClient{} },
-
-			// Types (pointer type)
-			"NewPGClient": func() *lib_postgres.PGClient { return &lib_postgres.PGClient{} },
+			// Objects / Classes
+			"PGClient": gojs.GetClassConstructor[lib_postgres.PGClient](&lib_postgres.PGClient{}),
 		},
 	).Register()
 }

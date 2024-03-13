@@ -118,6 +118,7 @@ func Init(options *types.Options) error {
 	}
 
 	if options.SystemResolvers {
+		opts.ResolversFile = true
 		opts.EnableFallback = true
 	}
 	if options.ResolversFile != "" {

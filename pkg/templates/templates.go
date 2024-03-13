@@ -191,6 +191,29 @@ func (template *Template) Type() types.ProtocolType {
 	}
 }
 
+// IsFuzzing returns true if the template is a fuzzing template
+func (template *Template) IsFuzzing() bool {
+	if len(template.RequestsHTTP) == 0 && len(template.RequestsHeadless) == 0 {
+		// fuzzing is only supported for http and headless protocols
+		return false
+	}
+	if len(template.RequestsHTTP) > 0 {
+		for _, request := range template.RequestsHTTP {
+			if len(request.Fuzzing) > 0 {
+				return true
+			}
+		}
+	}
+	if len(template.RequestsHeadless) > 0 {
+		for _, request := range template.RequestsHeadless {
+			if len(request.Fuzzing) > 0 {
+				return true
+			}
+		}
+	}
+	return false
+}
+
 // HasCodeProtocol returns true if the template has a code protocol section
 func (template *Template) HasCodeProtocol() bool {
 	return len(template.RequestsCode) > 0
@@ -371,6 +394,17 @@ func (template *Template) ImportFileRefs(options *protocols.ExecutorOptions) err
 		}
 	}
 
+	// for javascript protocol code references
+	for _, request := range template.RequestsJavascript {
+		// simple test to check if source is a file or a snippet
+		if len(strings.Split(request.Code, "\n")) == 1 && fileutil.FileExists(request.Code) {
+			if val, ok := loadFile(request.Code); ok {
+				template.ImportedFiles = append(template.ImportedFiles, request.Code)
+				request.Code = val
+			}
+		}
+	}
+
 	// flow code references
 	if template.Flow != "" {
 		if len(template.Flow) > 0 && filepath.Ext(template.Flow) == ".js" && fileutil.FileExists(template.Flow) {
@@ -394,6 +428,20 @@ func (template *Template) ImportFileRefs(options *protocols.ExecutorOptions) err
 					if val, ok := loadFile(request.Source); ok {
 						template.ImportedFiles = append(template.ImportedFiles, request.Source)
 						request.Source = val
+					}
+				}
+			}
+		}
+
+		// for javascript protocol code references
+		for _, req := range template.RequestsQueue {
+			if req.Type() == types.JavascriptProtocol {
+				request := req.(*javascript.Request)
+				// simple test to check if source is a file or a snippet
+				if len(strings.Split(request.Code, "\n")) == 1 && fileutil.FileExists(request.Code) {
+					if val, ok := loadFile(request.Code); ok {
+						template.ImportedFiles = append(template.ImportedFiles, request.Code)
+						request.Code = val
 					}
 				}
 			}

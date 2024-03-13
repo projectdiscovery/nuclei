@@ -5,9 +5,9 @@ import (
 	"io"
 	"net/url"
 	"os"
-	"runtime"
 	"sync"
 
+	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/config"
 	"github.com/projectdiscovery/retryablehttp-go"
 	updateutils "github.com/projectdiscovery/utils/update"
@@ -55,16 +55,15 @@ func NucleiSDKVersionCheck() {
 
 // getpdtmParams returns encoded query parameters sent to update check endpoint
 func getpdtmParams(isSDK bool) string {
-	params := &url.Values{}
-	params.Add("os", runtime.GOOS)
-	params.Add("arch", runtime.GOARCH)
-	params.Add("go_version", runtime.Version())
-	params.Add("v", config.Version)
-	if isSDK {
-		params.Add("sdk", "true")
+	values, err := url.ParseQuery(updateutils.GetpdtmParams(config.Version))
+	if err != nil {
+		gologger.Verbose().Msgf("error parsing update check params: %v", err)
+		return updateutils.GetpdtmParams(config.Version)
 	}
-	params.Add("utm_source", getUtmSource())
-	return params.Encode()
+	if isSDK {
+		values.Add("sdk", "true")
+	}
+	return values.Encode()
 }
 
 // UpdateIgnoreFile updates default ignore file by downloading latest ignore file

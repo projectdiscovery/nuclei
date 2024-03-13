@@ -11,17 +11,34 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
 )
 
-// Pop3Client is a minimal POP3 client for nuclei scripts.
-type Pop3Client struct{}
-
-// IsPOP3Response is the response from the IsPOP3 function.
-type IsPOP3Response struct {
-	IsPOP3 bool
-	Banner string
-}
+type (
+	// IsPOP3Response is the response from the IsPOP3 function.
+	// this is returned by IsPOP3 function.
+	// @example
+	// ```javascript
+	// const pop3 = require('nuclei/pop3');
+	// const isPOP3 = pop3.IsPOP3('acme.com', 110);
+	// log(toJSON(isPOP3));
+	// ```
+	IsPOP3Response struct {
+		IsPOP3 bool
+		Banner string
+	}
+)
 
 // IsPOP3 checks if a host is running a POP3 server.
-func (c *Pop3Client) IsPOP3(host string, port int) (IsPOP3Response, error) {
+// @example
+// ```javascript
+// const pop3 = require('nuclei/pop3');
+// const isPOP3 = pop3.IsPOP3('acme.com', 110);
+// log(toJSON(isPOP3));
+// ```
+func IsPOP3(host string, port int) (IsPOP3Response, error) {
+	return memoizedisPoP3(host, port)
+}
+
+// @memo
+func isPoP3(host string, port int) (IsPOP3Response, error) {
 	resp := IsPOP3Response{}
 
 	timeout := 5 * time.Second

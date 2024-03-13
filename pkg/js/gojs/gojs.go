@@ -5,6 +5,7 @@ import (
 
 	"github.com/dop251/goja"
 	"github.com/dop251/goja_nodejs/require"
+	"github.com/projectdiscovery/nuclei/v3/pkg/js/utils"
 )
 
 type Objects map[string]interface{}
@@ -74,4 +75,11 @@ func (p *GojaModule) Register() Module {
 	})
 
 	return p
+}
+
+// GetClassConstructor returns a constructor for any given go struct type for goja runtime
+func GetClassConstructor[T any](instance *T) func(call goja.ConstructorCall, runtime *goja.Runtime) *goja.Object {
+	return func(call goja.ConstructorCall, runtime *goja.Runtime) *goja.Object {
+		return utils.LinkConstructor[*T](call, runtime, instance)
+	}
 }

@@ -22,9 +22,8 @@ func init() {
 
 			// Var and consts
 
-			// Types (value type)
+			// Objects / Classes
 
-			// Types (pointer type)
 		},
 	).Register()
 }

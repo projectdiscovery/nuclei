@@ -50,7 +50,7 @@ type Request struct {
 	ID string `yaml:"id,omitempty" json:"id,omitempty" jsonschema:"title=id of the request,description=ID is the optional ID of the Request"`
 	// description: |
 	//   Engine type
-	Engine []string `yaml:"engine,omitempty" jsonschema:"title=engine,description=Engine,enum=python,enum=powershell,enum=command"`
+	Engine []string `yaml:"engine,omitempty" jsonschema:"title=engine,description=Engine"`
 	// description: |
 	//   Engine Arguments
 	Args []string `yaml:"args,omitempty" jsonschema:"title=args,description=Args"`
@@ -83,7 +83,7 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 
 	var src *gozero.Source
 
-	src, err = gozero.NewSourceWithString(request.Source, request.Pattern)
+	src, err = gozero.NewSourceWithString(request.Source, request.Pattern, request.options.TemporaryDirectory)
 	if err != nil {
 		return err
 	}
@@ -125,7 +125,7 @@ func (request *Request) GetID() string {
 
 // ExecuteWithResults executes the protocol requests and returns results instead of writing them.
 func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicValues, previous output.InternalEvent, callback protocols.OutputEventCallback) (err error) {
-	metaSrc, err := gozero.NewSourceWithString(input.MetaInput.Input, "")
+	metaSrc, err := gozero.NewSourceWithString(input.MetaInput.Input, "", request.options.TemporaryDirectory)
 	if err != nil {
 		return err
 	}
@@ -192,6 +192,10 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 	dataOutputString := fmtStdout(gOutput.Stdout.String())
 
 	data := make(output.InternalEvent)
+	// also include all request variables in result event
+	for _, value := range metaSrc.Variables {
+		data[value.Name] = value.Value
+	}
 
 	data["type"] = request.Type().String()
 	data["response"] = dataOutputString // response contains filtered output (eg without trailing \n)
@@ -317,7 +321,7 @@ func interpretEnvVars(source string, vars map[string]interface{}) string {
 	// bash mode
 	if strings.Contains(source, "$") {
 		for k, v := range vars {
-			source = strings.ReplaceAll(source, "$"+k, fmt.Sprintf("'%s'", v))
+			source = strings.ReplaceAll(source, "$"+k, fmt.Sprintf("%s", v))
 		}
 	}
 	// python mode

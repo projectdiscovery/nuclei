@@ -13,6 +13,13 @@ import (
 	stringsutil "github.com/projectdiscovery/utils/strings"
 )
 
+// GlobalCache are global cache that have global
+// scope and are not purged but can be purged
+// via config.DefaultConfig
+type GlobalCache interface {
+	Purge()
+}
+
 var knownConfigFiles = []string{"cves.json", "contributors.json", "TEMPLATES-STATS.json"}
 
 // TemplateFormat
