@@ -99,7 +99,7 @@ func TestLoadTemplate(t *testing.T) {
 
 	for _, tc := range tt {
 		t.Run(tc.name, func(t *testing.T) {
-			p.parsedTemplatesCache.Store(tc.name, tc.template, tc.templateErr)
+			p.parsedTemplatesCache.Store(tc.name, tc.template, nil, tc.templateErr)
 
 			tagFilter, err := NewTagFilter(&tc.filter)
 			require.Nil(t, err)
@@ -141,7 +141,7 @@ func TestLoadTemplate(t *testing.T) {
 						SeverityHolder: severity.Holder{Severity: severity.Medium},
 					},
 				}
-				p.parsedTemplatesCache.Store(name, template, nil)
+				p.parsedTemplatesCache.Store(name, template, nil, nil)
 
 				tagFilter, err := NewTagFilter(&Config{})
 				require.Nil(t, err)
