@@ -131,7 +131,7 @@ func (e *ExecutorOptions) GetThreadsForNPayloadRequests(totalRequests int, curre
 	if currentThreads > 0 {
 		return currentThreads
 	} else {
-		return e.Options.TemplateThreads
+		return e.Options.PayloadConcurrency
 	}
 }
 
