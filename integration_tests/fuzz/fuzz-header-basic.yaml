@@ -28,7 +28,7 @@ http:
         - "'\"><{{first}}"
 
     fuzzing:
-      - part: headers
+      - part: header
         type: replace
         mode: single
         keys: ["Origin"]

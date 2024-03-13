@@ -146,6 +146,7 @@ const (
 	HeadlessFlagWarningStats = "headless-flag-missing-warnings"
 	TemplatesExecutedStats   = "templates-executed"
 	CodeFlagWarningStats     = "code-flag-missing-warnings"
+	FuzzFlagWarningStats     = "fuzz-flag-missing-warnings"
 	// Note: this is redefined in workflows.go to avoid circular dependency, so make sure to keep it in sync
 	SkippedUnsignedStats = "skipped-unsigned-stats" // tracks loading of unsigned templates
 )
@@ -161,6 +162,7 @@ func init() {
 	stats.NewEntry(HeadlessFlagWarningStats, "Excluded %d headless template[s] (disabled as default), use -headless option to run headless templates.")
 	stats.NewEntry(CodeFlagWarningStats, "Excluded %d code template[s] (disabled as default), use -code option to run code templates.")
 	stats.NewEntry(TemplatesExecutedStats, "Excluded %d template[s] with known weak matchers / tags excluded from default run using .nuclei-ignore")
+	stats.NewEntry(FuzzFlagWarningStats, "Excluded %d fuzz template[s] (disabled as default), use -fuzz option to run fuzz templates.")
 	stats.NewEntry(SkippedUnsignedStats, "Skipping %d unsigned template[s]")
 }
 

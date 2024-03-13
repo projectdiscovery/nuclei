@@ -13,6 +13,7 @@ import (
 	"github.com/projectdiscovery/useragent"
 
 	"github.com/projectdiscovery/gologger"
+	"github.com/projectdiscovery/nuclei/v3/pkg/authprovider"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/expressions"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/generators"
@@ -47,6 +48,32 @@ type generatedRequest struct {
 	dynamicValues        map[string]interface{}
 	interactshURLs       []string
 	customCancelFunction context.CancelFunc
+}
+
+// ApplyAuth applies the auth provider to the generated request
+func (g *generatedRequest) ApplyAuth(provider authprovider.AuthProvider) {
+	if provider == nil {
+		return
+	}
+	if g.request != nil {
+		auth := provider.LookupURLX(g.request.URL)
+		if auth != nil {
+			auth.ApplyOnRR(g.request)
+		}
+	}
+	if g.rawRequest != nil {
+		parsed, err := urlutil.ParseAbsoluteURL(g.rawRequest.FullURL, true)
+		if err != nil {
+			gologger.Warning().Msgf("[authprovider] Could not parse URL %s: %s\n", g.rawRequest.FullURL, err)
+			return
+		}
+		auth := provider.LookupURLX(parsed)
+		if auth != nil {
+			// here we need to apply it custom because we don't have a standard/official
+			// rawhttp request format ( which we probably should have )
+			g.rawRequest.ApplyAuthStrategy(auth)
+		}
+	}
 }
 
 func (g *generatedRequest) URL() string {

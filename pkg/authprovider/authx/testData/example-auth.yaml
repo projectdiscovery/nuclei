@@ -1,0 +1,70 @@
+id: pd-nuclei-auth-test
+
+info:
+  name: ProjectDiscovery Test Dev Servers
+  author: pdteam
+  description: |
+    This is a auth file for ProjectDiscovery dev servers.
+    It contains auth data of all projectdiscovery dev servers.
+
+# Note: this is a dummy example file. none of the secrets here are real.
+
+# static secrets
+static:
+  # for header based auth session
+  - type: header
+    domains:
+      - api.projectdiscovery.io
+      - cve.projectdiscovery.io
+      - chaos.projectdiscovery.io
+    headers:
+      - key: x-pdcp-key
+        value: <api-key-here>
+
+  # for query based auth session
+  - type: Query
+    domains:
+      - scanme.sh
+    params:
+      - key: token
+        value: 1a2b3c4d5e6f7g8h9i0j
+
+  # for cookie based auth session
+  - type: Cookie
+    domains:
+      - scanme.sh
+    cookies:
+      - key: PHPSESSID
+        value: 1a2b3c4d5e6f7g8h9i0j
+
+  # for basic auth session
+  - type: BasicAuth
+    domains:
+      - scanme.sh
+    username: test
+    password: test
+
+  # for authorization bearer token
+  - type: BearerToken
+    domains-regex:
+      - .*scanme.sh
+      - .*pdtm.sh
+    token: test
+
+
+# dynamic secrets (powered by nuclei-templates)
+dynamic:
+  - template: /path/to/wordpress-login.yaml
+    variables:
+      - name: username
+        value: pdteam
+      - name: password
+        value: nuclei-v3.2.0
+    type: Cookie
+    domains:
+      - localhost:8080
+    cookies:
+      - raw: "{{wp-global-cookie}}"
+      - raw: "{{wp-admin-cookie}}"
+      - raw: "{{wp-plugin-cookie}}"
+
