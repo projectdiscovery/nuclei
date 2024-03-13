@@ -8,7 +8,7 @@ import (
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/config"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/disk"
-	"github.com/projectdiscovery/nuclei/v3/pkg/parsers"
+	"github.com/projectdiscovery/nuclei/v3/pkg/loader/workflow"
 	"github.com/projectdiscovery/nuclei/v3/pkg/progress"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v3/pkg/templates"
@@ -31,7 +31,7 @@ func setup() {
 	options := testutils.DefaultOptions
 	testutils.Init(options)
 	progressImpl, _ := progress.NewStatsTicker(0, false, false, false, 0)
-	parser, _ = templates.New()
+	parser, _ = templates.NewParser()
 
 	executerOpts = protocols.ExecutorOptions{
 		Output:       testutils.NewMockOutputWriter(options.OmitTemplate),
@@ -44,7 +44,7 @@ func setup() {
 		RateLimiter:  ratelimit.New(context.Background(), uint(options.RateLimit), time.Second),
 		Parser:       parser,
 	}
-	workflowLoader, err := parsers.NewLoader(&executerOpts)
+	workflowLoader, err := workflow.NewLoader(&executerOpts)
 	if err != nil {
 		log.Fatalf("Could not create workflow loader: %s\n", err)
 	}

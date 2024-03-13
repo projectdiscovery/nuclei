@@ -24,7 +24,7 @@ type Parser struct {
 	compiledTemplatesCache *Cache
 }
 
-func New() (*Parser, error) {
+func NewParser() (*Parser, error) {
 	p := &Parser{
 		parsedTemplatesCache:   NewCache(),
 		compiledTemplatesCache: NewCache(),

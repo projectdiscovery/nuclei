@@ -114,7 +114,7 @@ func (e *NucleiEngine) init() error {
 		e.httpClient = httpclient
 	}
 
-	if parser, err := templates.New(); err != nil {
+	if parser, err := templates.NewParser(); err != nil {
 		return err
 	} else {
 		e.parser = parser

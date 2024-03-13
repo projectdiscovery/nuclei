@@ -15,7 +15,7 @@ import (
 
 	"github.com/projectdiscovery/nuclei/v3/internal/pdcp"
 	"github.com/projectdiscovery/nuclei/v3/pkg/installer"
-	"github.com/projectdiscovery/nuclei/v3/pkg/pparser"
+	"github.com/projectdiscovery/nuclei/v3/pkg/loader/parser"
 	uncoverlib "github.com/projectdiscovery/uncover"
 	pdcpauth "github.com/projectdiscovery/utils/auth/pdcp"
 	"github.com/projectdiscovery/utils/env"
@@ -37,8 +37,8 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/core/inputs/hybrid"
 	"github.com/projectdiscovery/nuclei/v3/pkg/external/customtemplates"
 	"github.com/projectdiscovery/nuclei/v3/pkg/input"
+	parsers "github.com/projectdiscovery/nuclei/v3/pkg/loader/workflow"
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
-	"github.com/projectdiscovery/nuclei/v3/pkg/parsers"
 	"github.com/projectdiscovery/nuclei/v3/pkg/progress"
 	"github.com/projectdiscovery/nuclei/v3/pkg/projectfile"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
@@ -88,7 +88,7 @@ type Runner struct {
 	pdcpUploadErrMsg string
 	//general purpose temporary directory
 	tmpDir string
-	parser pparser.Parser
+	parser parser.Parser
 }
 
 const pprofServerAddress = "127.0.0.1:8086"
@@ -150,7 +150,7 @@ func New(options *types.Options) (*Runner, error) {
 		}
 	}
 
-	parser, err := templates.New()
+	parser, err := templates.NewParser()
 	if err != nil {
 		return nil, err
 	}
