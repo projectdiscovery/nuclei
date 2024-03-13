@@ -64,7 +64,6 @@ require (
 	github.com/ditashi/jsbeautifier-go v0.0.0-20141206144643-2520a8026a9c
 	github.com/docker/go-units v0.5.0
 	github.com/dop251/goja v0.0.0-20230828202809-3dbe69dd2b8e
-	github.com/evanphx/json-patch/v5 v5.9.0
 	github.com/fatih/structs v1.1.0
 	github.com/go-git/go-git/v5 v5.11.0
 	github.com/go-ldap/ldap/v3 v3.4.5
@@ -73,6 +72,7 @@ require (
 	github.com/h2non/filetype v1.1.3
 	github.com/hashicorp/go-hclog v1.2.1
 	github.com/hashicorp/go-plugin v1.6.0
+	github.com/hashicorp/terraform-json v0.16.0
 	github.com/labstack/echo/v4 v4.10.2
 	github.com/lib/pq v1.10.1
 	github.com/magodo/terraform-client-go v0.0.0-20230818055703-6975224af6be
@@ -166,7 +166,6 @@ require (
 	github.com/hashicorp/go-version v1.6.0 // indirect
 	github.com/hashicorp/golang-lru/v2 v2.0.6 // indirect
 	github.com/hashicorp/hcl/v2 v2.11.1 // indirect
-	github.com/hashicorp/terraform-json v0.16.0 // indirect
 	github.com/hashicorp/terraform-plugin-go v0.14.3 // indirect
 	github.com/hashicorp/yamux v0.1.1 // indirect
 	github.com/hbakhtiyor/strsim v0.0.0-20190107154042-4d2bbb273edf // indirect
