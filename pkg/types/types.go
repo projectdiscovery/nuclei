@@ -370,6 +370,8 @@ type Options struct {
 	ScanID string
 	// JsConcurrency is the number of concurrent js routines to run
 	JsConcurrency int
+	// PayloadConcurrency is the number of concurrent payloads to run per template
+	PayloadConcurrency int
 }
 
 // ShouldLoadResume resume file
