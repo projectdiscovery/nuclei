@@ -1,4 +1,4 @@
-package parsers
+package workflow
 
 import (
 	"github.com/projectdiscovery/gologger"
