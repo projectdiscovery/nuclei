@@ -12,6 +12,10 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/testutils"
 )
 
+const (
+	targetFile = "fuzz/testData/ginandjuice.proxify.yaml"
+)
+
 var fuzzingTestCases = []TestCaseInfo{
 	{Path: "fuzz/fuzz-mode.yaml", TestCase: &fuzzModeOverride{}},
 	{Path: "fuzz/fuzz-type.yaml", TestCase: &fuzzTypeOverride{}},
@@ -19,6 +23,29 @@ var fuzzingTestCases = []TestCaseInfo{
 	{Path: "fuzz/fuzz-headless.yaml", TestCase: &HeadlessFuzzingQuery{}},
 	{Path: "fuzz/fuzz-header-basic.yaml", TestCase: &FuzzHeaderBasic{}},
 	{Path: "fuzz/fuzz-header-multiple.yaml", TestCase: &FuzzHeaderMultiple{}},
+	// for fuzzing we should prioritize adding test case related backend
+	// logic in fuzz playground server instead of adding them here
+	{Path: "fuzz/fuzz-query-num-replace.yaml", TestCase: &genericFuzzTestCase{expectedResults: 2}},
+	{Path: "fuzz/fuzz-host-header-injection.yaml", TestCase: &genericFuzzTestCase{expectedResults: 1}},
+	{Path: "fuzz/fuzz-path-sqli.yaml", TestCase: &genericFuzzTestCase{expectedResults: 1}},
+	{Path: "fuzz/fuzz-cookie-error-sqli.yaml", TestCase: &genericFuzzTestCase{expectedResults: 1}},
+	{Path: "fuzz/fuzz-body-json-sqli.yaml", TestCase: &genericFuzzTestCase{expectedResults: 1}},
+	{Path: "fuzz/fuzz-body-multipart-form-sqli.yaml", TestCase: &genericFuzzTestCase{expectedResults: 1}},
+	{Path: "fuzz/fuzz-body-params-sqli.yaml", TestCase: &genericFuzzTestCase{expectedResults: 1}},
+	{Path: "fuzz/fuzz-body-xml-sqli.yaml", TestCase: &genericFuzzTestCase{expectedResults: 1}},
+	{Path: "fuzz/fuzz-body-generic-sqli.yaml", TestCase: &genericFuzzTestCase{expectedResults: 4}},
+}
+
+type genericFuzzTestCase struct {
+	expectedResults int
+}
+
+func (g *genericFuzzTestCase) Execute(filePath string) error {
+	results, err := testutils.RunNucleiWithArgsAndGetResults(debug, "-t", filePath, "-l", targetFile, "-im", "yaml")
+	if err != nil {
+		return err
+	}
+	return expectResultsCount(results, g.expectedResults)
 }
 
 type httpFuzzQuery struct{}
@@ -34,7 +61,7 @@ func (h *httpFuzzQuery) Execute(filePath string) error {
 	ts := httptest.NewTLSServer(router)
 	defer ts.Close()
 
-	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, ts.URL+"/?id=example", debug)
+	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, ts.URL+"/?id=example", debug, "-fuzz")
 	if err != nil {
 		return err
 	}
@@ -53,7 +80,7 @@ func (h *fuzzModeOverride) Execute(filePath string) error {
 	})
 	ts := httptest.NewTLSServer(router)
 	defer ts.Close()
-	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, ts.URL+"/?id=example&name=nuclei", debug, "-fuzzing-mode", "single", "-jsonl")
+	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, ts.URL+"/?id=example&name=nuclei", debug, "-fuzzing-mode", "single", "-jsonl", "-fuzz")
 	if err != nil {
 		return err
 	}
@@ -98,7 +125,7 @@ func (h *fuzzTypeOverride) Execute(filePath string) error {
 	})
 	ts := httptest.NewTLSServer(router)
 	defer ts.Close()
-	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, ts.URL+"?id=example", debug, "-fuzzing-type", "replace", "-jsonl")
+	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, ts.URL+"?id=example", debug, "-fuzzing-type", "replace", "-jsonl", "-fuzz")
 	if err != nil {
 		return err
 	}
@@ -143,7 +170,7 @@ func (h *HeadlessFuzzingQuery) Execute(filePath string) error {
 	ts := httptest.NewTLSServer(router)
 	defer ts.Close()
 
-	got, err := testutils.RunNucleiTemplateAndGetResults(filePath, ts.URL+"?url=https://scanme.sh", debug, "-headless")
+	got, err := testutils.RunNucleiTemplateAndGetResults(filePath, ts.URL+"?url=https://scanme.sh", debug, "-headless", "-fuzz")
 	if err != nil {
 		return err
 	}
@@ -164,7 +191,7 @@ func (h *FuzzHeaderBasic) Execute(filePath string) error {
 	ts := httptest.NewTLSServer(router)
 	defer ts.Close()
 
-	got, err := testutils.RunNucleiTemplateAndGetResults(filePath, ts.URL, debug)
+	got, err := testutils.RunNucleiTemplateAndGetResults(filePath, ts.URL, debug, "-fuzz")
 	if err != nil {
 		return err
 	}
@@ -192,7 +219,7 @@ func (h *FuzzHeaderMultiple) Execute(filePath string) error {
 	ts := httptest.NewTLSServer(router)
 	defer ts.Close()
 
-	got, err := testutils.RunNucleiTemplateAndGetResults(filePath, ts.URL, debug)
+	got, err := testutils.RunNucleiTemplateAndGetResults(filePath, ts.URL, debug, "-fuzz")
 	if err != nil {
 		return err
 	}

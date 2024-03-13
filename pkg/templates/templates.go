@@ -197,6 +197,29 @@ func (template *Template) Type() types.ProtocolType {
 	}
 }
 
+// IsFuzzing returns true if the template is a fuzzing template
+func (template *Template) IsFuzzing() bool {
+	if len(template.RequestsHTTP) == 0 && len(template.RequestsHeadless) == 0 {
+		// fuzzing is only supported for http and headless protocols
+		return false
+	}
+	if len(template.RequestsHTTP) > 0 {
+		for _, request := range template.RequestsHTTP {
+			if len(request.Fuzzing) > 0 {
+				return true
+			}
+		}
+	}
+	if len(template.RequestsHeadless) > 0 {
+		for _, request := range template.RequestsHeadless {
+			if len(request.Fuzzing) > 0 {
+				return true
+			}
+		}
+	}
+	return false
+}
+
 // HasCodeProtocol returns true if the template has a code protocol section
 func (template *Template) HasCodeProtocol() bool {
 	return len(template.RequestsCode) > 0

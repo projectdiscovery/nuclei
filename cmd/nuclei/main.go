@@ -22,6 +22,7 @@ import (
 	"github.com/projectdiscovery/interactsh/pkg/client"
 	"github.com/projectdiscovery/nuclei/v3/internal/runner"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/config"
+	"github.com/projectdiscovery/nuclei/v3/pkg/input/provider"
 	"github.com/projectdiscovery/nuclei/v3/pkg/installer"
 	"github.com/projectdiscovery/nuclei/v3/pkg/model/types/severity"
 	"github.com/projectdiscovery/nuclei/v3/pkg/operators/common/dsl"
@@ -46,6 +47,9 @@ var (
 )
 
 func main() {
+	// enables CLI specific configs mostly interactive behavior
+	config.CurrentAppMode = config.AppModeCLI
+
 	if err := runner.ConfigureOptions(); err != nil {
 		gologger.Fatal().Msgf("Could not initialize options: %s\n", err)
 	}
@@ -201,6 +205,12 @@ on extensive configurability, massive extensibility and ease of use.`)
 		flagSet.StringSliceVarP(&options.IPVersion, "ip-version", "iv", nil, "IP version to scan of hostname (4,6) - (default 4)", goflags.CommaSeparatedStringSliceOptions),
 	)
 
+	flagSet.CreateGroup("target-format", "Target-Format",
+		flagSet.StringVarP(&options.InputFileMode, "input-mode", "im", "list", fmt.Sprintf("mode of input file (%v)", provider.SupportedInputFormats())),
+		flagSet.BoolVarP(&options.FormatUseRequiredOnly, "required-only", "ro", false, "use only required fields in input format when generating requests"),
+		flagSet.BoolVarP(&options.SkipFormatValidation, "skip-format-validation", "sfv", false, "skip format validation (like missing vars) when parsing input file"),
+	)
+
 	flagSet.CreateGroup("templates", "Templates",
 		flagSet.BoolVarP(&options.NewTemplates, "new-templates", "nt", false, "run only new templates added in latest nuclei-templates release"),
 		flagSet.StringSliceVarP(&options.NewTemplatesWithVersion, "new-templates-version", "ntv", nil, "run new templates added in specific version", goflags.CommaSeparatedStringSliceOptions),
@@ -226,8 +236,8 @@ on extensive configurability, massive extensibility and ease of use.`)
 		flagSet.StringSliceVarP(&options.IncludeTags, "include-tags", "itags", nil, "tags to be executed even if they are excluded either by default or configuration", goflags.FileNormalizedStringSliceOptions), // TODO show default deny list
 		flagSet.StringSliceVarP(&options.IncludeIds, "template-id", "id", nil, "templates to run based on template ids (comma-separated, file, allow-wildcard)", goflags.FileNormalizedStringSliceOptions),
 		flagSet.StringSliceVarP(&options.ExcludeIds, "exclude-id", "eid", nil, "templates to exclude based on template ids (comma-separated, file)", goflags.FileNormalizedStringSliceOptions),
-		flagSet.StringSliceVarP(&options.IncludeTemplates, "include-templates", "it", nil, "templates to be executed even if they are excluded either by default or configuration", goflags.FileCommaSeparatedStringSliceOptions),
-		flagSet.StringSliceVarP(&options.ExcludedTemplates, "exclude-templates", "et", nil, "template or template directory to exclude (comma-separated, file)", goflags.FileCommaSeparatedStringSliceOptions),
+		flagSet.StringSliceVarP(&options.IncludeTemplates, "include-templates", "it", nil, "path to template file or directory to be executed even if they are excluded either by default or configuration", goflags.FileCommaSeparatedStringSliceOptions),
+		flagSet.StringSliceVarP(&options.ExcludedTemplates, "exclude-templates", "et", nil, "path to template file or directory to exclude (comma-separated, file)", goflags.FileCommaSeparatedStringSliceOptions),
 		flagSet.StringSliceVarP(&options.ExcludeMatchers, "exclude-matchers", "em", nil, "template matchers to exclude in result", goflags.FileCommaSeparatedStringSliceOptions),
 		flagSet.VarP(&options.Severities, "severity", "s", fmt.Sprintf("templates to run based on severity. Possible values: %s", severity.GetSupportedSeverities().String())),
 		flagSet.VarP(&options.ExcludeSeverities, "exclude-severity", "es", fmt.Sprintf("templates to exclude based on severity. Possible values: %s", severity.GetSupportedSeverities().String())),
@@ -304,6 +314,7 @@ on extensive configurability, massive extensibility and ease of use.`)
 	flagSet.CreateGroup("fuzzing", "Fuzzing",
 		flagSet.StringVarP(&options.FuzzingType, "fuzzing-type", "ft", "", "overrides fuzzing type set in template (replace, prefix, postfix, infix)"),
 		flagSet.StringVarP(&options.FuzzingMode, "fuzzing-mode", "fm", "", "overrides fuzzing mode set in template (multiple, single)"),
+		flagSet.BoolVar(&options.FuzzTemplates, "fuzz", false, "enable loading fuzzing templates"),
 	)
 
 	flagSet.CreateGroup("uncover", "Uncover",
@@ -395,6 +406,11 @@ on extensive configurability, massive extensibility and ease of use.`)
 		flagSet.StringVarP(&options.ScanID, "scan-id", "sid", "", "upload scan results to given scan id"),
 	)
 
+	flagSet.CreateGroup("Authentication", "Authentication",
+		flagSet.StringSliceVarP(&options.SecretsFile, "secret-file", "sf", nil, "path to config file containing secrets for nuclei authenticated scan", goflags.CommaSeparatedStringSliceOptions),
+		flagSet.BoolVarP(&options.PreFetchSecrets, "prefetch-secrets", "ps", false, "prefetch secrets from the secrets file"),
+	)
+
 	flagSet.SetCustomHelpText(`EXAMPLES:
 Run nuclei on single host:
 	$ nuclei -target example.com
@@ -467,6 +483,14 @@ Additional documentation is available at: https://docs.nuclei.sh/getting-started
 	}
 	if options.NewTemplatesDirectory != "" {
 		config.DefaultConfig.SetTemplatesDir(options.NewTemplatesDirectory)
+	}
+
+	if len(options.SecretsFile) > 0 {
+		for _, secretFile := range options.SecretsFile {
+			if !fileutil.FileExists(secretFile) {
+				gologger.Fatal().Msgf("given secrets file '%s' does not exist", options.SecretsFile)
+			}
+		}
 	}
 
 	cleanupOldResumeFiles()

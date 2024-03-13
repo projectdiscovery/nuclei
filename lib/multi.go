@@ -8,11 +8,10 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/config"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/loader"
 	"github.com/projectdiscovery/nuclei/v3/pkg/core"
-	"github.com/projectdiscovery/nuclei/v3/pkg/core/inputs"
+	"github.com/projectdiscovery/nuclei/v3/pkg/input/provider"
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
 	"github.com/projectdiscovery/nuclei/v3/pkg/parsers"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
-	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	"github.com/projectdiscovery/ratelimit"
 	errorutil "github.com/projectdiscovery/utils/errors"
@@ -123,14 +122,7 @@ func (e *ThreadSafeNucleiEngine) ExecuteNucleiWithOpts(targets []string, opts ..
 	}
 	store.Load()
 
-	inputProvider := &inputs.SimpleInputProvider{
-		Inputs: []*contextargs.MetaInput{},
-	}
-
-	// load targets
-	for _, target := range targets {
-		inputProvider.Set(target)
-	}
+	inputProvider := provider.NewSimpleInputProviderWithUrls(targets...)
 
 	if len(store.Templates()) == 0 && len(store.Workflows()) == 0 {
 		return ErrNoTemplatesAvailable
