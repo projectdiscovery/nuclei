@@ -16,16 +16,31 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
 )
 
-// PGClient is a client for Postgres database.
-//
-// Internally client uses go-pg/pg driver.
-type PGClient struct{}
+type (
+	// PGClient is a client for Postgres database.
+	// Internally client uses go-pg/pg driver.
+	// @example
+	// ```javascript
+	// const postgres = require('nuclei/postgres');
+	// const client = new postgres.PGClient;
+	// ```
+	PGClient struct{}
+)
 
 // IsPostgres checks if the given host and port are running Postgres database.
-//
 // If connection is successful, it returns true.
 // If connection is unsuccessful, it returns false and error.
+// @example
+// ```javascript
+// const postgres = require('nuclei/postgres');
+// const isPostgres = postgres.IsPostgres('acme.com', 5432);
+// ```
 func (c *PGClient) IsPostgres(host string, port int) (bool, error) {
+	return memoizedisPostgres(host, port)
+}
+
+// @memo
+func isPostgres(host string, port int) (bool, error) {
 	timeout := 10 * time.Second
 
 	conn, err := protocolstate.Dialer.Dial(context.TODO(), "tcp", fmt.Sprintf("%s:%d", host, port))
@@ -48,18 +63,35 @@ func (c *PGClient) IsPostgres(host string, port int) (bool, error) {
 }
 
 // Connect connects to Postgres database using given credentials.
-//
 // If connection is successful, it returns true.
 // If connection is unsuccessful, it returns false and error.
-//
 // The connection is closed after the function returns.
+// @example
+// ```javascript
+// const postgres = require('nuclei/postgres');
+// const client = new postgres.PGClient;
+// const connected = client.Connect('acme.com', 5432, 'username', 'password');
+// ```
 func (c *PGClient) Connect(host string, port int, username, password string) (bool, error) {
-	return connect(host, port, username, password, "postgres")
+	return memoizedconnect(host, port, username, password, "postgres")
 }
 
 // ExecuteQuery connects to Postgres database using given credentials and database name.
 // and executes a query on the db.
+// If connection is successful, it returns the result of the query.
+// @example
+// ```javascript
+// const postgres = require('nuclei/postgres');
+// const client = new postgres.PGClient;
+// const result = client.ExecuteQuery('acme.com', 5432, 'username', 'password', 'dbname', 'select * from users');
+// log(to_json(result));
+// ```
 func (c *PGClient) ExecuteQuery(host string, port int, username, password, dbName, query string) (*utils.SQLResult, error) {
+	return memoizedexecuteQuery(host, port, username, password, dbName, query)
+}
+
+// @memo
+func executeQuery(host string, port int, username string, password string, dbName string, query string) (*utils.SQLResult, error) {
 	if !protocolstate.IsHostAllowed(host) {
 		// host is not valid according to network policy
 		return nil, protocolstate.ErrHostDenied.Msgf(host)
@@ -85,16 +117,21 @@ func (c *PGClient) ExecuteQuery(host string, port int, username, password, dbNam
 }
 
 // ConnectWithDB connects to Postgres database using given credentials and database name.
-//
 // If connection is successful, it returns true.
 // If connection is unsuccessful, it returns false and error.
-//
 // The connection is closed after the function returns.
+// @example
+// ```javascript
+// const postgres = require('nuclei/postgres');
+// const client = new postgres.PGClient;
+// const connected = client.ConnectWithDB('acme.com', 5432, 'username', 'password', 'dbname');
+// ```
 func (c *PGClient) ConnectWithDB(host string, port int, username, password, dbName string) (bool, error) {
-	return connect(host, port, username, password, dbName)
+	return memoizedconnect(host, port, username, password, dbName)
 }
 
-func connect(host string, port int, username, password, dbName string) (bool, error) {
+// @memo
+func connect(host string, port int, username string, password string, dbName string) (bool, error) {
 	if host == "" || port <= 0 {
 		return false, fmt.Errorf("invalid host or port")
 	}
@@ -112,6 +149,8 @@ func connect(host string, port int, username, password, dbName string) (bool, er
 		Password: password,
 		Database: dbName,
 	})
+	defer db.Close()
+
 	_, err := db.Exec("select 1")
 	if err != nil {
 		switch true {

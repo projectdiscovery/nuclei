@@ -3,10 +3,10 @@ package headless
 import (
 	"github.com/pkg/errors"
 
+	"github.com/projectdiscovery/nuclei/v3/pkg/fuzz"
 	useragent "github.com/projectdiscovery/nuclei/v3/pkg/model/types/userAgent"
 	"github.com/projectdiscovery/nuclei/v3/pkg/operators"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
-	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/fuzz"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/generators"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/headless/engine"
 	uagent "github.com/projectdiscovery/useragent"

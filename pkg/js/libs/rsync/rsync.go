@@ -11,17 +11,34 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
 )
 
-// RsyncClient is a minimal Rsync client for nuclei scripts.
-type RsyncClient struct{}
-
-// IsRsyncResponse is the response from the IsRsync function.
-type IsRsyncResponse struct {
-	IsRsync bool
-	Banner  string
-}
+type (
+	// IsRsyncResponse is the response from the IsRsync function.
+	// this is returned by IsRsync function.
+	// @example
+	// ```javascript
+	// const rsync = require('nuclei/rsync');
+	// const isRsync = rsync.IsRsync('acme.com', 873);
+	// log(toJSON(isRsync));
+	// ```
+	IsRsyncResponse struct {
+		IsRsync bool
+		Banner  string
+	}
+)
 
 // IsRsync checks if a host is running a Rsync server.
-func (c *RsyncClient) IsRsync(host string, port int) (IsRsyncResponse, error) {
+// @example
+// ```javascript
+// const rsync = require('nuclei/rsync');
+// const isRsync = rsync.IsRsync('acme.com', 873);
+// log(toJSON(isRsync));
+// ```
+func IsRsync(host string, port int) (IsRsyncResponse, error) {
+	return memoizedisRsync(host, port)
+}
+
+// @memo
+func isRsync(host string, port int) (IsRsyncResponse, error) {
 	resp := IsRsyncResponse{}
 
 	timeout := 5 * time.Second

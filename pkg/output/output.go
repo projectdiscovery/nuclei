@@ -165,8 +165,18 @@ type ResultEvent struct {
 	// Lines is the line count for the specified match
 	Lines []int `json:"matched-line,omitempty"`
 
+	// IssueTrackers is the metadata for issue trackers
+	IssueTrackers map[string]IssueTrackerMetadata `json:"issue_trackers,omitempty"`
+
 	FileToIndexPosition map[string]int `json:"-"`
 	Error               string         `json:"error,omitempty"`
+}
+
+type IssueTrackerMetadata struct {
+	// IssueID is the ID of the issue created
+	IssueID string `json:"id,omitempty"`
+	// IssueURL is the URL of the issue created
+	IssueURL string `json:"url,omitempty"`
 }
 
 // NewStandardWriter creates a new output writer based on user configurations
