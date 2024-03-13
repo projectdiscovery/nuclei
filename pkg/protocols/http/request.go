@@ -454,7 +454,7 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 	}
 
 	// verify if parallel elaboration was requested
-	if request.Threads > 0 {
+	if request.Threads > 0 && len(request.Payloads) > 0 {
 		return request.executeParallelHTTP(input, dynamicValues, callback)
 	}
 
