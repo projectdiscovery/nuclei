@@ -77,8 +77,8 @@ func GenerateRequestsFromSchema(schema *openapi3.T, opts formats.InputFormatOpti
 		pathURL := serverURL.URL
 
 		for path, v := range schema.Paths.Map() {
+			// a path item can have parameters
 			ops := v.Operations()
-
 			requestPath := path
 			for method, ov := range ops {
 				if err := generateRequestsFromOp(&generateReqOptions{
@@ -89,6 +89,7 @@ func GenerateRequestsFromSchema(schema *openapi3.T, opts formats.InputFormatOpti
 					op:                        ov,
 					schema:                    schema,
 					globalParams:              globalParams,
+					reqParams:                 v.Parameters,
 					opts:                      opts,
 					callback:                  callback,
 					missingParamValueCallback: missingParamValueCallback,
@@ -138,6 +139,8 @@ type generateReqOptions struct {
 
 	// global parameters
 	globalParams openapi3.Parameters
+	// requestparams map
+	reqParams openapi3.Parameters
 	// global var map
 	opts formats.InputFormatOptions
 	// missingVar Callback
@@ -155,7 +158,10 @@ func generateRequestsFromOp(opts *generateReqOptions) error {
 		return errors.Wrap(err, "could not make request")
 	}
 
-	reqParams := openapi3.NewParameters()
+	reqParams := opts.reqParams
+	if reqParams == nil {
+		reqParams = openapi3.NewParameters()
+	}
 	// add existing req params
 	reqParams = append(reqParams, opts.op.Parameters...)
 	// check for endpoint specific auth
