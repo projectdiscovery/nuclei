@@ -41,6 +41,8 @@ const (
 	CodeProtocol
 	// name: js
 	JavascriptProtocol
+	// name: cloud
+	CloudProtocol
 	limit
 	InvalidProtocol
 )
@@ -59,6 +61,7 @@ var protocolMappings = map[ProtocolType]string{
 	WHOISProtocol:      "whois",
 	CodeProtocol:       "code",
 	JavascriptProtocol: "javascript",
+	CloudProtocol:      "cloud",
 }
 
 func GetSupportedProtocolTypes() ProtocolTypes {
