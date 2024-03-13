@@ -13,7 +13,6 @@ import (
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/config"
-	cfg "github.com/projectdiscovery/nuclei/v3/pkg/catalog/config"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/loader/filter"
 	"github.com/projectdiscovery/nuclei/v3/pkg/model/types/severity"
 	"github.com/projectdiscovery/nuclei/v3/pkg/parsers"
@@ -62,6 +61,8 @@ type Config struct {
 
 	Catalog         catalog.Catalog
 	ExecutorOptions protocols.ExecutorOptions
+
+	OnlyLoadHTTPFuzzing bool
 }
 
 // Store is a storage for loaded nuclei templates
@@ -111,19 +112,19 @@ func NewConfig(options *types.Options, catalog catalog.Catalog, executerOpts pro
 }
 
 // New creates a new template store based on provided configuration
-func New(config *Config) (*Store, error) {
+func New(cfg *Config) (*Store, error) {
 	tagFilter, err := filter.New(&filter.Config{
-		Tags:              config.Tags,
-		ExcludeTags:       config.ExcludeTags,
-		Authors:           config.Authors,
-		Severities:        config.Severities,
-		ExcludeSeverities: config.ExcludeSeverities,
-		IncludeTags:       config.IncludeTags,
-		IncludeIds:        config.IncludeIds,
-		ExcludeIds:        config.ExcludeIds,
-		Protocols:         config.Protocols,
-		ExcludeProtocols:  config.ExcludeProtocols,
-		IncludeConditions: config.IncludeConditions,
+		Tags:              cfg.Tags,
+		ExcludeTags:       cfg.ExcludeTags,
+		Authors:           cfg.Authors,
+		Severities:        cfg.Severities,
+		ExcludeSeverities: cfg.ExcludeSeverities,
+		IncludeTags:       cfg.IncludeTags,
+		IncludeIds:        cfg.IncludeIds,
+		ExcludeIds:        cfg.ExcludeIds,
+		Protocols:         cfg.Protocols,
+		ExcludeProtocols:  cfg.ExcludeProtocols,
+		IncludeConditions: cfg.IncludeConditions,
 	})
 	if err != nil {
 		return nil, err
@@ -131,23 +132,23 @@ func New(config *Config) (*Store, error) {
 
 	// Create a tag filter based on provided configuration
 	store := &Store{
-		config:    config,
+		config:    cfg,
 		tagFilter: tagFilter,
 		pathFilter: filter.NewPathFilter(&filter.PathFilterConfig{
-			IncludedTemplates: config.IncludeTemplates,
-			ExcludedTemplates: config.ExcludeTemplates,
-		}, config.Catalog),
-		finalTemplates: config.Templates,
-		finalWorkflows: config.Workflows,
+			IncludedTemplates: cfg.IncludeTemplates,
+			ExcludedTemplates: cfg.ExcludeTemplates,
+		}, cfg.Catalog),
+		finalTemplates: cfg.Templates,
+		finalWorkflows: cfg.Workflows,
 	}
 
 	// Do a check to see if we have URLs in templates flag, if so
 	// we need to processs them separately and remove them from the initial list
 	var templatesFinal []string
-	for _, template := range config.Templates {
+	for _, template := range cfg.Templates {
 		// TODO: Add and replace this with urlutil.IsURL() helper
 		if stringsutil.HasPrefixAny(template, httpPrefix, httpsPrefix) {
-			config.TemplateURLs = append(config.TemplateURLs, template)
+			cfg.TemplateURLs = append(cfg.TemplateURLs, template)
 		} else {
 			templatesFinal = append(templatesFinal, template)
 		}
@@ -155,7 +156,7 @@ func New(config *Config) (*Store, error) {
 
 	// fix editor paths
 	remoteTemplates := []string{}
-	for _, v := range config.TemplateURLs {
+	for _, v := range cfg.TemplateURLs {
 		if _, err := urlutil.Parse(v); err == nil {
 			remoteTemplates = append(remoteTemplates, handleTemplatesEditorURLs(v))
 		} else {
@@ -163,12 +164,12 @@ func New(config *Config) (*Store, error) {
 			templatesFinal = append(templatesFinal, v) // something went wrong, treat it as a file
 		}
 	}
-	config.TemplateURLs = remoteTemplates
+	cfg.TemplateURLs = remoteTemplates
 	store.finalTemplates = templatesFinal
 
-	urlBasedTemplatesProvided := len(config.TemplateURLs) > 0 || len(config.WorkflowURLs) > 0
+	urlBasedTemplatesProvided := len(cfg.TemplateURLs) > 0 || len(cfg.WorkflowURLs) > 0
 	if urlBasedTemplatesProvided {
-		remoteTemplates, remoteWorkflows, err := getRemoteTemplatesAndWorkflows(config.TemplateURLs, config.WorkflowURLs, config.RemoteTemplateDomainList)
+		remoteTemplates, remoteWorkflows, err := getRemoteTemplatesAndWorkflows(cfg.TemplateURLs, cfg.WorkflowURLs, cfg.RemoteTemplateDomainList)
 		if err != nil {
 			return store, err
 		}
@@ -186,7 +187,7 @@ func New(config *Config) (*Store, error) {
 	}
 	// Handle a case with no templates or workflows, where we use base directory
 	if len(store.finalTemplates) == 0 && len(store.finalWorkflows) == 0 && !urlBasedTemplatesProvided {
-		store.finalTemplates = []string{cfg.DefaultConfig.TemplatesDirectory}
+		store.finalTemplates = []string{config.DefaultConfig.TemplatesDirectory}
 	}
 
 	return store, nil
@@ -397,6 +398,11 @@ func (store *Store) LoadTemplatesWithTags(templatesList, tags []string) []*templ
 				}
 				gologger.Warning().Msgf("Could not parse template %s: %s\n", templatePath, err)
 			} else if parsed != nil {
+				if !parsed.Verified && store.config.ExecutorOptions.Options.DisableUnsignedTemplates {
+					// skip unverified templates when prompted to
+					stats.Increment(parsers.SkippedUnsignedStats)
+					continue
+				}
 				if len(parsed.RequestsHeadless) > 0 && !store.config.ExecutorOptions.Options.Headless {
 					// donot include headless template in final list if headless flag is not set
 					stats.Increment(parsers.HeadlessFlagWarningStats)
@@ -411,10 +417,19 @@ func (store *Store) LoadTemplatesWithTags(templatesList, tags []string) []*templ
 					}
 				} else if len(parsed.RequestsCode) > 0 && !parsed.Verified && len(parsed.Workflows) == 0 {
 					// donot include unverified 'Code' protocol custom template in final list
-					stats.Increment(parsers.UnsignedWarning)
+					stats.Increment(parsers.UnsignedCodeWarning)
+					// these will be skipped so increment skip counter
+					stats.Increment(parsers.SkippedUnsignedStats)
 					if config.DefaultConfig.LogAllEvents {
 						gologger.Print().Msgf("[%v] Tampered/Unsigned template at %v.\n", aurora.Yellow("WRN").String(), templatePath)
 					}
+				} else if parsed.IsFuzzing() && !store.config.ExecutorOptions.Options.FuzzTemplates {
+					stats.Increment(parsers.FuzzFlagWarningStats)
+					if config.DefaultConfig.LogAllEvents {
+						gologger.Print().Msgf("[%v] Fuzz flag is required for fuzzing template '%s'.\n", aurora.Yellow("WRN").String(), templatePath)
+					}
+				} else if store.config.OnlyLoadHTTPFuzzing && !parsed.IsFuzzing() {
+					gologger.Warning().Msgf("Non-Fuzzing template '%s' can only be run on list input mode targets\n", templatePath)
 				} else {
 					loadedTemplates = append(loadedTemplates, parsed)
 				}

@@ -32,6 +32,19 @@ tidy:
 	$(GOMOD) tidy
 devtools:
 	$(GOBUILD) $(GOFLAGS) -ldflags '$(LDFLAGS)' -o "bindgen" pkg/js/devtools/bindgen/cmd/bindgen/main.go
-	$(GOBUILD) $(GOFLAGS) -ldflags '$(LDFLAGS)' -o "jsdocgen" pkg/js/devtools/jsdocgen/main.go
+	$(GOBUILD) $(GOFLAGS) -ldflags '$(LDFLAGS)' -o "tsgen" pkg/js/devtools/tsgen/cmd/tsgen/main.go
 	$(GOBUILD) $(GOFLAGS) -ldflags '$(LDFLAGS)' -o "scrapefuncs" pkg/js/devtools/scrapefuncs/main.go
+jsupdate:
+	$(GOBUILD) $(GOFLAGS) -ldflags '$(LDFLAGS)' -o "bindgen" pkg/js/devtools/bindgen/cmd/bindgen/main.go
+	$(GOBUILD) $(GOFLAGS) -ldflags '$(LDFLAGS)' -o "tsgen" pkg/js/devtools/tsgen/cmd/tsgen/main.go
+	./bindgen -dir pkg/js/libs -out pkg/js/generated
+	./tsgen -dir pkg/js/libs -out pkg/js/generated/ts
+ts:
+	$(GOBUILD) $(GOFLAGS) -ldflags '$(LDFLAGS)' -o "tsgen" pkg/js/devtools/tsgen/cmd/tsgen/main.go
+	./tsgen -dir pkg/js/libs -out pkg/js/generated/ts
+fuzzplayground:
+	$(GOBUILD) $(GOFLAGS) -ldflags '$(LDFLAGS)' -o "fuzzplayground" cmd/tools/fuzzplayground/main.go
+memogen:
+	$(GOBUILD) $(GOFLAGS) -ldflags '$(LDFLAGS)' -o "memogen" cmd/memogen/memogen.go
+	./memogen -src pkg/js/libs -tpl cmd/memogen/function.tpl
 

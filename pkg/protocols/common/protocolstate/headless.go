@@ -1,6 +1,7 @@
 package protocolstate
 
 import (
+	"net"
 	"strings"
 
 	"github.com/go-rod/rod"
@@ -81,6 +82,24 @@ func IsHostAllowed(targetUrl string) bool {
 	if NetworkPolicy == nil {
 		return true
 	}
+	sepCount := strings.Count(targetUrl, ":")
+	if sepCount > 1 {
+		// most likely a ipv6 address (parse url and validate host)
+		return NetworkPolicy.Validate(targetUrl)
+	}
+	if sepCount == 1 {
+		host, _, _ := net.SplitHostPort(targetUrl)
+		if _, ok := NetworkPolicy.ValidateHost(host); !ok {
+			return false
+		}
+		return true
+		// portInt, _ := strconv.Atoi(port)
+		// fixme:  broken port validation logic in networkpolicy
+		// if !NetworkPolicy.ValidatePort(portInt) {
+		// 	return false
+		// }
+	}
+	// just a hostname or ip without port
 	_, ok := NetworkPolicy.ValidateHost(targetUrl)
 	return ok
 }

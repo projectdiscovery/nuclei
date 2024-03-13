@@ -2,6 +2,101 @@
   "$schema": "http://json-schema.org/draft-04/schema#",
   "$ref": "#/definitions/templates.Template",
   "definitions": {
+    "fuzz.Rule": {
+      "properties": {
+        "type": {
+          "enum": [
+            "replace",
+            "prefix",
+            "postfix",
+            "infix",
+            "replace-regex"
+          ],
+          "type": "string",
+          "title": "type of rule",
+          "description": "Type of fuzzing rule to perform"
+        },
+        "part": {
+          "enum": [
+            "query",
+            "header",
+            "path",
+            "body",
+            "cookie",
+            "request"
+          ],
+          "type": "string",
+          "title": "part of rule",
+          "description": "Part of request rule to fuzz"
+        },
+        "mode": {
+          "enum": [
+            "single",
+            "multiple"
+          ],
+          "type": "string",
+          "title": "mode of rule",
+          "description": "Mode of request rule to fuzz"
+        },
+        "keys": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array",
+          "title": "keys of parameters to fuzz",
+          "description": "Keys of parameters to fuzz"
+        },
+        "keys-regex": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array",
+          "title": "keys regex to fuzz",
+          "description": "Regex of parameter keys to fuzz"
+        },
+        "values": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array",
+          "title": "values regex to fuzz",
+          "description": "Regex of parameter values to fuzz"
+        },
+        "fuzz": {
+          "$schema": "http://json-schema.org/draft-04/schema#",
+          "$ref": "#/definitions/fuzz.SliceOrMapSlice",
+          "title": "payloads of fuzz rule",
+          "description": "Payloads to perform fuzzing substitutions with"
+        },
+        "replace-regex": {
+          "type": "string",
+          "title": "replace regex of rule",
+          "description": "Regex for regex-replace rule type"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object"
+    },
+    "fuzz.SliceOrMapSlice": {
+      "required": [
+        "Value",
+        "KV"
+      ],
+      "properties": {
+        "Value": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "KV": {
+          "$schema": "http://json-schema.org/draft-04/schema#",
+          "$ref": "#/definitions/github.com/projectdiscovery/utils/maps.OrderedMap[string,string]"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object"
+    },
     "model.Classification": {
       "properties": {
         "cve-id": {
@@ -245,11 +340,6 @@
           "type": "boolean",
           "title": "use case insensitive extract",
           "description": "use case insensitive extract"
-        },
-        "to": {
-          "type": "string",
-          "title": "save extracted values to file",
-          "description": "save extracted values to file"
         }
       },
       "additionalProperties": false,
@@ -375,6 +465,11 @@
           "type": "boolean",
           "title": "match all values",
           "description": "match all matcher values ignoring condition"
+        },
+        "internal": {
+          "type": "boolean",
+          "title": "hide matcher from output",
+          "description": "hide matcher from output"
         }
       },
       "additionalProperties": false,
@@ -428,11 +523,6 @@
         },
         "engine": {
           "items": {
-            "enum": [
-              "python",
-              "powershell",
-              "command"
-            ],
             "type": "string"
           },
           "type": "array",
@@ -456,72 +546,6 @@
           "type": "string",
           "title": "source file/snippet",
           "description": "Source snippet"
-        }
-      },
-      "additionalProperties": false,
-      "type": "object"
-    },
-    "fuzz.Rule": {
-      "properties": {
-        "type": {
-          "enum": [
-            "replace",
-            "prefix",
-            "postfix",
-            "infix"
-          ],
-          "type": "string",
-          "title": "type of rule",
-          "description": "Type of fuzzing rule to perform"
-        },
-        "part": {
-          "enum": [
-            "query"
-          ],
-          "type": "string",
-          "title": "part of rule",
-          "description": "Part of request rule to fuzz"
-        },
-        "mode": {
-          "enum": [
-            "single",
-            "multiple"
-          ],
-          "type": "string",
-          "title": "mode of rule",
-          "description": "Mode of request rule to fuzz"
-        },
-        "keys": {
-          "items": {
-            "type": "string"
-          },
-          "type": "array",
-          "title": "keys of parameters to fuzz",
-          "description": "Keys of parameters to fuzz"
-        },
-        "keys-regex": {
-          "items": {
-            "type": "string"
-          },
-          "type": "array",
-          "title": "keys regex to fuzz",
-          "description": "Regex of parameter keys to fuzz"
-        },
-        "values": {
-          "items": {
-            "type": "string"
-          },
-          "type": "array",
-          "title": "values regex to fuzz",
-          "description": "Regex of parameter values to fuzz"
-        },
-        "fuzz": {
-          "items": {
-            "type": "string"
-          },
-          "type": "array",
-          "title": "payloads of fuzz rule",
-          "description": "Payloads to perform fuzzing substitutions with"
         }
       },
       "additionalProperties": false,
@@ -647,6 +671,11 @@
           "type": "object",
           "title": "payloads for the network request",
           "description": "Payloads contains any payloads for the current request"
+        },
+        "threads": {
+          "type": "integer",
+          "title": "threads for sending requests",
+          "description": "Threads specifies number of threads to use sending requests. This enables Connection Pooling"
         },
         "recursion": {
           "type": "boolean",
@@ -821,6 +850,11 @@
           "type": "boolean",
           "title": "optional cookie reuse enable",
           "description": "Optional setting that enables cookie reuse"
+        },
+        "disable-cookie": {
+          "type": "boolean",
+          "title": "optional disable cookie reuse",
+          "description": "Optional setting that disables cookie reuse"
         }
       },
       "additionalProperties": false,
@@ -1038,6 +1072,9 @@
           "title": "fuzzin rules for http fuzzing",
           "description": "Fuzzing describes rule schema to fuzz http requests"
         },
+        "self-contained": {
+          "type": "boolean"
+        },
         "signature": {
           "$schema": "http://json-schema.org/draft-04/schema#",
           "$ref": "#/definitions/http.SignatureTypeHolder",
@@ -1048,6 +1085,11 @@
           "type": "boolean",
           "title": "optional cookie reuse enable",
           "description": "Optional setting that enables cookie reuse"
+        },
+        "disable-cookie": {
+          "type": "boolean",
+          "title": "optional disable cookie reuse",
+          "description": "Optional setting that disables cookie reuse"
         },
         "read-all": {
           "type": "boolean",
@@ -1113,6 +1155,23 @@
           "type": "boolean",
           "title": "disable auto merging of path",
           "description": "Disable merging target url path with raw request path"
+        },
+        "filters": {
+          "items": {
+            "$ref": "#/definitions/matchers.Matcher"
+          },
+          "type": "array",
+          "title": "filter for fuzzing",
+          "description": "Filter is matcher-like field to check if fuzzing should be performed on this request or not"
+        },
+        "filters-condition": {
+          "enum": [
+            "and",
+            "or"
+          ],
+          "type": "string",
+          "title": "condition between the filters",
+          "description": "Conditions between the filters"
         }
       },
       "additionalProperties": false,
@@ -1180,6 +1239,11 @@
           "type": "string",
           "title": "code to execute in javascript",
           "description": "Executes inline javascript code for the request"
+        },
+        "timeout": {
+          "type": "integer",
+          "title": "timeout for javascript execution",
+          "description": "Timeout in seconds is optional timeout for entire javascript script execution"
         },
         "stop-at-first-match": {
           "type": "boolean",
@@ -1275,6 +1339,11 @@
           "type": "object",
           "title": "payloads for the network request",
           "description": "Payloads contains any payloads for the current request"
+        },
+        "threads": {
+          "type": "integer",
+          "title": "threads for sending requests",
+          "description": "Threads specifies number of threads to use sending requests. This enables Connection Pooling"
         },
         "inputs": {
           "items": {
@@ -1410,6 +1479,30 @@
           "type": "string",
           "title": "Scan Mode",
           "description": "Scan Mode - auto if not specified."
+        },
+        "tls_version_enum": {
+          "type": "boolean",
+          "title": "Enumerate Versions",
+          "description": "Enumerate Version - false if not specified"
+        },
+        "tls_cipher_enum": {
+          "type": "boolean",
+          "title": "Enumerate Ciphers",
+          "description": "Enumerate Ciphers - false if not specified"
+        },
+        "tls_cipher_types": {
+          "items": {
+            "enum": [
+              "weak",
+              "secure",
+              "insecure",
+              "all"
+            ],
+            "type": "string"
+          },
+          "type": "array",
+          "title": "TLS Cipher Types",
+          "description": "TLS Cipher Types to enumerate"
         }
       },
       "additionalProperties": false,
@@ -1786,6 +1879,11 @@
           "description": "Subtemplates are ran if the template field Template matches"
         }
       },
+      "additionalProperties": false,
+      "type": "object"
+    },
+    "github.com/projectdiscovery/utils/maps.OrderedMap[string,string]": {
+      "properties": {},
       "additionalProperties": false,
       "type": "object"
     }

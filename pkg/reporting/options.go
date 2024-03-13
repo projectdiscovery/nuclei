@@ -7,6 +7,8 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/reporting/exporters/markdown"
 	"github.com/projectdiscovery/nuclei/v3/pkg/reporting/exporters/sarif"
 	"github.com/projectdiscovery/nuclei/v3/pkg/reporting/exporters/splunk"
+	"github.com/projectdiscovery/nuclei/v3/pkg/reporting/trackers/filters"
+	"github.com/projectdiscovery/nuclei/v3/pkg/reporting/trackers/gitea"
 	"github.com/projectdiscovery/nuclei/v3/pkg/reporting/trackers/github"
 	"github.com/projectdiscovery/nuclei/v3/pkg/reporting/trackers/gitlab"
 	"github.com/projectdiscovery/nuclei/v3/pkg/reporting/trackers/jira"
@@ -16,13 +18,15 @@ import (
 // Options is a configuration file for nuclei reporting module
 type Options struct {
 	// AllowList contains a list of allowed events for reporting module
-	AllowList *Filter `yaml:"allow-list"`
+	AllowList *filters.Filter `yaml:"allow-list"`
 	// DenyList contains a list of denied events for reporting module
-	DenyList *Filter `yaml:"deny-list"`
+	DenyList *filters.Filter `yaml:"deny-list"`
 	// GitHub contains configuration options for GitHub Issue Tracker
 	GitHub *github.Options `yaml:"github"`
 	// GitLab contains configuration options for GitLab Issue Tracker
 	GitLab *gitlab.Options `yaml:"gitlab"`
+	// Gitea contains configuration options for Gitea Issue Tracker
+	Gitea *gitea.Options `yaml:"gitea"`
 	// Jira contains configuration options for Jira Issue Tracker
 	Jira *jira.Options `yaml:"jira"`
 	// MarkdownExporter contains configuration options for Markdown Exporter Module

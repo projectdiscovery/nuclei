@@ -11,17 +11,34 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
 )
 
-// TelnetClient is a minimal Telnet client for nuclei scripts.
-type TelnetClient struct{}
-
-// IsTelnetResponse is the response from the IsTelnet function.
-type IsTelnetResponse struct {
-	IsTelnet bool
-	Banner   string
-}
+type (
+	// IsTelnetResponse is the response from the IsTelnet function.
+	// this is returned by IsTelnet function.
+	// @example
+	// ```javascript
+	// const telnet = require('nuclei/telnet');
+	// const isTelnet = telnet.IsTelnet('acme.com', 23);
+	// log(toJSON(isTelnet));
+	// ```
+	IsTelnetResponse struct {
+		IsTelnet bool
+		Banner   string
+	}
+)
 
 // IsTelnet checks if a host is running a Telnet server.
-func (c *TelnetClient) IsTelnet(host string, port int) (IsTelnetResponse, error) {
+// @example
+// ```javascript
+// const telnet = require('nuclei/telnet');
+// const isTelnet = telnet.IsTelnet('acme.com', 23);
+// log(toJSON(isTelnet));
+// ```
+func IsTelnet(host string, port int) (IsTelnetResponse, error) {
+	return memoizedisTelnet(host, port)
+}
+
+// @memo
+func isTelnet(host string, port int) (IsTelnetResponse, error) {
 	resp := IsTelnetResponse{}
 
 	timeout := 5 * time.Second

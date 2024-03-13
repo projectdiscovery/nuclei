@@ -17,6 +17,11 @@ func WriteResult(data *output.InternalWrappedEvent, output output.Writer, progre
 	}
 	var matched bool
 	for _, result := range data.Results {
+		if issuesClient != nil {
+			if err := issuesClient.CreateIssue(result); err != nil {
+				gologger.Warning().Msgf("Could not create issue on tracker: %s", err)
+			}
+		}
 		if err := output.Write(result); err != nil {
 			gologger.Warning().Msgf("Could not write output event: %s\n", err)
 		}
@@ -24,12 +29,6 @@ func WriteResult(data *output.InternalWrappedEvent, output output.Writer, progre
 			matched = true
 		}
 		progress.IncrementMatched()
-
-		if issuesClient != nil {
-			if err := issuesClient.CreateIssue(result); err != nil {
-				gologger.Warning().Msgf("Could not create issue on tracker: %s", err)
-			}
-		}
 	}
 	return matched
 }

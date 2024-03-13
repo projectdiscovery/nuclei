@@ -270,6 +270,8 @@ type Options struct {
 	DisableRedirects bool
 	// SNI custom hostname
 	SNI string
+	// InputFileMode specifies the mode of input file (jsonl, burp, openapi, swagger, etc)
+	InputFileMode string
 	// DialerTimeout sets the timeout for network requests.
 	DialerTimeout time.Duration
 	// DialerKeepAlive sets the keep alive duration for network requests.
@@ -362,12 +364,27 @@ type Options struct {
 	SignTemplates bool
 	// EnableCodeTemplates enables code templates
 	EnableCodeTemplates bool
+	// DisableUnsignedTemplates disables processing of unsigned templates
+	DisableUnsignedTemplates bool
 	// Disables cloud upload
 	EnableCloudUpload bool
 	// ScanID is the scan ID to use for cloud upload
 	ScanID string
 	// JsConcurrency is the number of concurrent js routines to run
 	JsConcurrency int
+	// Fuzz enabled execution of fuzzing templates
+	// Note: when Fuzz is enabled other templates will not be executed
+	FuzzTemplates bool
+	// SecretsFile is file containing secrets for nuclei
+	SecretsFile goflags.StringSlice
+	// PreFetchSecrets pre-fetches the secrets from the auth provider
+	PreFetchSecrets bool
+	// FormatUseRequiredOnly only uses required fields when generating requests
+	FormatUseRequiredOnly bool
+	// SkipFormatValidation is used to skip format validation
+	SkipFormatValidation bool
+	// PayloadConcurrency is the number of concurrent payloads to run per template
+	PayloadConcurrency int
 }
 
 // ShouldLoadResume resume file

@@ -8,10 +8,11 @@ import (
 	json "github.com/json-iterator/go"
 	"github.com/pkg/errors"
 
+	"github.com/projectdiscovery/nuclei/v3/pkg/fuzz"
 	"github.com/projectdiscovery/nuclei/v3/pkg/operators"
+	"github.com/projectdiscovery/nuclei/v3/pkg/operators/matchers"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/expressions"
-	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/fuzz"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/generators"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http/httpclientpool"
 	httputil "github.com/projectdiscovery/nuclei/v3/pkg/protocols/utils/http"
@@ -135,7 +136,7 @@ type Request struct {
 
 	// description: |
 	//   SelfContained specifies if the request is self-contained.
-	SelfContained bool `yaml:"-" json:"-"`
+	SelfContained bool `yaml:"self-contained,omitempty" json:"self-contained,omitempty"`
 
 	// description: |
 	//   Signature is the request signature method
@@ -208,6 +209,14 @@ type Request struct {
 	// description: |
 	//  DisablePathAutomerge disables merging target url path with raw request path
 	DisablePathAutomerge bool `yaml:"disable-path-automerge,omitempty" json:"disable-path-automerge,omitempty" jsonschema:"title=disable auto merging of path,description=Disable merging target url path with raw request path"`
+	// description: |
+	//   Filter is matcher-like field to check if fuzzing should be performed on this request or not
+	FuzzingFilter []*matchers.Matcher `yaml:"filters,omitempty" json:"filter,omitempty" jsonschema:"title=filter for fuzzing,description=Filter is matcher-like field to check if fuzzing should be performed on this request or not"`
+	// description: |
+	//   Filter condition is the condition to apply on the filter (AND/OR). Default is OR
+	FuzzingFilterCondition string `yaml:"filters-condition,omitempty" json:"filter-condition,omitempty" jsonschema:"title=condition between the filters,description=Conditions between the filters,enum=and,enum=or"`
+	// cached variables that may be used along with request.
+	fuzzingFilterCondition matchers.ConditionType `yaml:"-" json:"-"`
 }
 
 // Options returns executer options for http request
@@ -312,6 +321,20 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 			return errors.Wrap(compileErr, "could not compile operators")
 		}
 		request.CompiledOperators = compiled
+	}
+
+	// === fuzzing filters ===== //
+
+	if request.FuzzingFilterCondition != "" {
+		request.fuzzingFilterCondition = matchers.ConditionTypes[request.FuzzingFilterCondition]
+	} else {
+		request.fuzzingFilterCondition = matchers.ORCondition
+	}
+
+	for _, filter := range request.FuzzingFilter {
+		if err := filter.CompileMatchers(); err != nil {
+			return errors.Wrap(err, "could not compile matcher")
+		}
 	}
 
 	// Resolve payload paths from vars if they exists
