@@ -6,17 +6,18 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/loader/filter"
 	"github.com/projectdiscovery/nuclei/v3/pkg/model"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
+	"github.com/projectdiscovery/nuclei/v3/pkg/templates"
 )
 
 type workflowLoader struct {
 	pathFilter *filter.PathFilter
-	tagFilter  *filter.TagFilter
+	tagFilter  *templates.TagFilter
 	options    *protocols.ExecutorOptions
 }
 
 // NewLoader returns a new workflow loader structure
 func NewLoader(options *protocols.ExecutorOptions) (model.WorkflowLoader, error) {
-	tagFilter, err := filter.New(&filter.Config{
+	tagFilter, err := templates.NewTagFilter(&templates.Config{
 		Authors:           options.Options.Authors,
 		Tags:              options.Options.Tags,
 		ExcludeTags:       options.Options.ExcludeTags,
@@ -50,7 +51,7 @@ func (w *workflowLoader) GetTemplatePathsByTags(templateTags []string) []string 
 
 	loadedTemplates := make([]string, 0, len(templatePathMap))
 	for templatePath := range templatePathMap {
-		loaded, _ := LoadTemplate(templatePath, w.tagFilter, templateTags, w.options.Catalog)
+		loaded, _ := w.options.Parser.LoadTemplate(templatePath, w.tagFilter, templateTags, w.options.Catalog)
 		if loaded {
 			loadedTemplates = append(loadedTemplates, templatePath)
 		}
@@ -67,7 +68,7 @@ func (w *workflowLoader) GetTemplatePaths(templatesList []string, noValidate boo
 
 	loadedTemplates := make([]string, 0, len(templatesPathMap))
 	for templatePath := range templatesPathMap {
-		matched, err := LoadTemplate(templatePath, w.tagFilter, nil, w.options.Catalog)
+		matched, err := w.options.Parser.LoadTemplate(templatePath, w.tagFilter, nil, w.options.Catalog)
 		if err != nil && !matched {
 			gologger.Warning().Msg(err.Error())
 		} else if matched || noValidate {

@@ -71,6 +71,7 @@ type NucleiEngine struct {
 	mode             engineMode
 	browserInstance  *engine.Browser
 	httpClient       *retryablehttp.Client
+	parser           *templates.Parser
 
 	// unexported meta options
 	opts           *types.Options

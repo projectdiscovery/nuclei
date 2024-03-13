@@ -18,6 +18,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/operators/extractors"
 	"github.com/projectdiscovery/nuclei/v3/pkg/operators/matchers"
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
+	"github.com/projectdiscovery/nuclei/v3/pkg/pparser"
 	"github.com/projectdiscovery/nuclei/v3/pkg/progress"
 	"github.com/projectdiscovery/nuclei/v3/pkg/projectfile"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
@@ -118,6 +119,7 @@ type ExecutorOptions struct {
 	OverrideThreadsCount PayloadThreadSetterCallback
 	//TemporaryDirectory is the directory to store temporary files
 	TemporaryDirectory string
+	Parser             pparser.Parser
 }
 
 // GetThreadsForPayloadRequests returns the number of threads to use as default for
