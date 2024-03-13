@@ -128,7 +128,8 @@ func (template *Template) Requests() int {
 		len(template.RequestsWebsocket) +
 		len(template.RequestsWHOIS) +
 		len(template.RequestsCode) +
-		len(template.RequestsJavascript)
+		len(template.RequestsJavascript) +
+		len(template.RequestsCloud)
 }
 
 // compileProtocolRequests compiles all the protocol requests for the template
@@ -182,6 +183,9 @@ func (template *Template) compileProtocolRequests(options *protocols.ExecutorOpt
 		}
 		if len(template.RequestsJavascript) > 0 {
 			requests = append(requests, template.convertRequestToProtocolsRequest(template.RequestsJavascript)...)
+		}
+		if len(template.RequestsCloud) > 0 {
+			requests = append(requests, template.convertRequestToProtocolsRequest(template.RequestsCloud)...)
 		}
 	}
 	var err error

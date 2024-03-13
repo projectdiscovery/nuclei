@@ -44,7 +44,7 @@ type Request struct {
 	Source string `yaml:"source,omitempty" jsonschema:"title=source,description=Source is data source to query"`
 	// description: |
 	//   Engine Arguments
-	Args []string `yaml:"args,omitempty" jsonschema:"title=args,description=Args"`
+	Args map[string]interface{} `yaml:"args,omitempty" jsonschema:"title=args,description=Args"`
 
 	options  *protocols.ExecutorOptions
 	tfClient *TFProviderClient
@@ -93,6 +93,7 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 
 	optionVars := generators.BuildPayloadFromOptions(request.options.Options)
 	variablesMap := request.options.Variables.Evaluate(optionVars)
+	variablesMap = generators.MergeMaps(variablesMap, request.options.Constants, request.Args)
 
 	attr := map[string]interface{}{}
 
@@ -146,7 +147,7 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 	optionVars := generators.BuildPayloadFromOptions(request.options.Options)
 	variablesMap := request.options.Variables.Evaluate(allvars)
 	// since we evaluate variables using allvars, give precedence to variablesMap
-	allvars = generators.MergeMaps(allvars, variablesMap, optionVars, request.options.Constants)
+	allvars = generators.MergeMaps(allvars, variablesMap, optionVars, request.options.Constants, request.Args)
 
 	// get schema of given source
 	attr := map[string]interface{}{}
@@ -185,7 +186,7 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 	}
 
 	if request.options.Options.Debug || request.options.Options.DebugRequests {
-		gologger.Debug().Msgf("[%s] Dumped Executed Source Cloud for %v\n\n%v\n", request.options.TemplateID, input.MetaInput.Input, fmt.Sprintf("%s\n%s\n", request.Source, vardump.DumpVariables(attr)))
+		gologger.Debug().Msgf("[%s] Dumped Executed Source Cloud for %v\n\n%v\n", request.options.TemplateID, input.MetaInput.Input, fmt.Sprintf("%s\n\n%s\n", request.Source, vardump.DumpVariables(attr)))
 	}
 
 	data := make(output.InternalEvent)
