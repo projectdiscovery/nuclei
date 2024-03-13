@@ -19,7 +19,10 @@ var (
 	GENERATORSAttackTypeHolderDoc encoder.Doc
 	HTTPMethodTypeHolderDoc       encoder.Doc
 	FUZZRuleDoc                   encoder.Doc
+	SliceOrMapSliceDoc            encoder.Doc
 	SignatureTypeHolderDoc        encoder.Doc
+	MATCHERSMatcherDoc            encoder.Doc
+	MatcherTypeHolderDoc          encoder.Doc
 	DNSRequestDoc                 encoder.Doc
 	DNSRequestTypeHolderDoc       encoder.Doc
 	FILERequestDoc                encoder.Doc
@@ -456,7 +459,7 @@ func init() {
 			Value: "HTTP response headers in name:value format",
 		},
 	}
-	HTTPRequestDoc.Fields = make([]encoder.Doc, 33)
+	HTTPRequestDoc.Fields = make([]encoder.Doc, 35)
 	HTTPRequestDoc.Fields[0].Name = "path"
 	HTTPRequestDoc.Fields[0].Type = "[]string"
 	HTTPRequestDoc.Fields[0].Note = ""
@@ -650,6 +653,16 @@ func init() {
 	HTTPRequestDoc.Fields[32].Note = ""
 	HTTPRequestDoc.Fields[32].Description = "DisablePathAutomerge disables merging target url path with raw request path"
 	HTTPRequestDoc.Fields[32].Comments[encoder.LineComment] = "DisablePathAutomerge disables merging target url path with raw request path"
+	HTTPRequestDoc.Fields[33].Name = "filters"
+	HTTPRequestDoc.Fields[33].Type = "[]matchers.Matcher"
+	HTTPRequestDoc.Fields[33].Note = ""
+	HTTPRequestDoc.Fields[33].Description = "Filter is matcher-like field to check if fuzzing should be performed on this request or not"
+	HTTPRequestDoc.Fields[33].Comments[encoder.LineComment] = "Filter is matcher-like field to check if fuzzing should be performed on this request or not"
+	HTTPRequestDoc.Fields[34].Name = "filters-condition"
+	HTTPRequestDoc.Fields[34].Type = "string"
+	HTTPRequestDoc.Fields[34].Note = ""
+	HTTPRequestDoc.Fields[34].Description = "Filter condition is the condition to apply on the filter (AND/OR). Default is OR"
+	HTTPRequestDoc.Fields[34].Comments[encoder.LineComment] = "Filter condition is the condition to apply on the filter (AND/OR). Default is OR"
 
 	GENERATORSAttackTypeHolderDoc.Type = "generators.AttackTypeHolder"
 	GENERATORSAttackTypeHolderDoc.Comments[encoder.LineComment] = " AttackTypeHolder is used to hold internal type of the protocol"
@@ -734,7 +747,7 @@ func init() {
 			FieldName: "fuzzing",
 		},
 	}
-	FUZZRuleDoc.Fields = make([]encoder.Doc, 7)
+	FUZZRuleDoc.Fields = make([]encoder.Doc, 8)
 	FUZZRuleDoc.Fields[0].Name = "type"
 	FUZZRuleDoc.Fields[0].Type = "string"
 	FUZZRuleDoc.Fields[0].Note = ""
@@ -785,12 +798,26 @@ func init() {
 
 	FUZZRuleDoc.Fields[5].AddExample("Examples of value regex", []string{"https?://.*"})
 	FUZZRuleDoc.Fields[6].Name = "fuzz"
-	FUZZRuleDoc.Fields[6].Type = "[]string"
+	FUZZRuleDoc.Fields[6].Type = "SliceOrMapSlice"
 	FUZZRuleDoc.Fields[6].Note = ""
-	FUZZRuleDoc.Fields[6].Description = "Fuzz is the list of payloads to perform substitutions with."
-	FUZZRuleDoc.Fields[6].Comments[encoder.LineComment] = "Fuzz is the list of payloads to perform substitutions with."
+	FUZZRuleDoc.Fields[6].Description = "description: |\n   Fuzz is the list of payloads to perform substitutions with.\n examples:\n   - name: Examples of fuzz\n     value: >\n       []string{\"{{ssrf}}\", \"{{interactsh-url}}\", \"example-value\"}\n      or\n       x-header: 1\n       x-header: 2"
+	FUZZRuleDoc.Fields[6].Comments[encoder.LineComment] = " description: |"
+	FUZZRuleDoc.Fields[7].Name = "replace-regex"
+	FUZZRuleDoc.Fields[7].Type = "string"
+	FUZZRuleDoc.Fields[7].Note = ""
+	FUZZRuleDoc.Fields[7].Description = "replace-regex is regex for regex-replace rule type\nit is only required for replace-regex rule type"
+	FUZZRuleDoc.Fields[7].Comments[encoder.LineComment] = "replace-regex is regex for regex-replace rule type"
 
-	FUZZRuleDoc.Fields[6].AddExample("Examples of fuzz", []string{"{{ssrf}}", "{{interactsh-url}}", "example-value"})
+	SliceOrMapSliceDoc.Type = "SliceOrMapSlice"
+	SliceOrMapSliceDoc.Comments[encoder.LineComment] = ""
+	SliceOrMapSliceDoc.Description = ""
+	SliceOrMapSliceDoc.AppearsIn = []encoder.Appearance{
+		{
+			TypeName:  "fuzz.Rule",
+			FieldName: "fuzz",
+		},
+	}
+	SliceOrMapSliceDoc.Fields = make([]encoder.Doc, 0)
 
 	SignatureTypeHolderDoc.Type = "SignatureTypeHolder"
 	SignatureTypeHolderDoc.Comments[encoder.LineComment] = " SignatureTypeHolder is used to hold internal type of the signature"
@@ -802,6 +829,167 @@ func init() {
 		},
 	}
 	SignatureTypeHolderDoc.Fields = make([]encoder.Doc, 0)
+
+	MATCHERSMatcherDoc.Type = "matchers.Matcher"
+	MATCHERSMatcherDoc.Comments[encoder.LineComment] = " Matcher is used to match a part in the output from a protocol."
+	MATCHERSMatcherDoc.Description = "Matcher is used to match a part in the output from a protocol."
+	MATCHERSMatcherDoc.AppearsIn = []encoder.Appearance{
+		{
+			TypeName:  "http.Request",
+			FieldName: "filters",
+		},
+	}
+	MATCHERSMatcherDoc.Fields = make([]encoder.Doc, 16)
+	MATCHERSMatcherDoc.Fields[0].Name = "type"
+	MATCHERSMatcherDoc.Fields[0].Type = "MatcherTypeHolder"
+	MATCHERSMatcherDoc.Fields[0].Note = ""
+	MATCHERSMatcherDoc.Fields[0].Description = "Type is the type of the matcher."
+	MATCHERSMatcherDoc.Fields[0].Comments[encoder.LineComment] = "Type is the type of the matcher."
+	MATCHERSMatcherDoc.Fields[1].Name = "condition"
+	MATCHERSMatcherDoc.Fields[1].Type = "string"
+	MATCHERSMatcherDoc.Fields[1].Note = ""
+	MATCHERSMatcherDoc.Fields[1].Description = "Condition is the optional condition between two matcher variables. By default,\nthe condition is assumed to be OR."
+	MATCHERSMatcherDoc.Fields[1].Comments[encoder.LineComment] = "Condition is the optional condition between two matcher variables. By default,"
+	MATCHERSMatcherDoc.Fields[1].Values = []string{
+		"and",
+		"or",
+	}
+	MATCHERSMatcherDoc.Fields[2].Name = "part"
+	MATCHERSMatcherDoc.Fields[2].Type = "string"
+	MATCHERSMatcherDoc.Fields[2].Note = ""
+	MATCHERSMatcherDoc.Fields[2].Description = "Part is the part of the request response to match data from.\n\nEach protocol exposes a lot of different parts which are well\ndocumented in docs for each request type."
+	MATCHERSMatcherDoc.Fields[2].Comments[encoder.LineComment] = "Part is the part of the request response to match data from."
+
+	MATCHERSMatcherDoc.Fields[2].AddExample("", "body")
+
+	MATCHERSMatcherDoc.Fields[2].AddExample("", "raw")
+	MATCHERSMatcherDoc.Fields[3].Name = "negative"
+	MATCHERSMatcherDoc.Fields[3].Type = "bool"
+	MATCHERSMatcherDoc.Fields[3].Note = ""
+	MATCHERSMatcherDoc.Fields[3].Description = "Negative specifies if the match should be reversed\nIt will only match if the condition is not true."
+	MATCHERSMatcherDoc.Fields[3].Comments[encoder.LineComment] = "Negative specifies if the match should be reversed"
+	MATCHERSMatcherDoc.Fields[4].Name = "name"
+	MATCHERSMatcherDoc.Fields[4].Type = "string"
+	MATCHERSMatcherDoc.Fields[4].Note = ""
+	MATCHERSMatcherDoc.Fields[4].Description = "Name of the matcher. Name should be lowercase and must not contain\nspaces or underscores (_)."
+	MATCHERSMatcherDoc.Fields[4].Comments[encoder.LineComment] = "Name of the matcher. Name should be lowercase and must not contain"
+
+	MATCHERSMatcherDoc.Fields[4].AddExample("", "cookie-matcher")
+	MATCHERSMatcherDoc.Fields[5].Name = "status"
+	MATCHERSMatcherDoc.Fields[5].Type = "[]int"
+	MATCHERSMatcherDoc.Fields[5].Note = ""
+	MATCHERSMatcherDoc.Fields[5].Description = "Status are the acceptable status codes for the response."
+	MATCHERSMatcherDoc.Fields[5].Comments[encoder.LineComment] = "Status are the acceptable status codes for the response."
+
+	MATCHERSMatcherDoc.Fields[5].AddExample("", []int{200, 302})
+	MATCHERSMatcherDoc.Fields[6].Name = "size"
+	MATCHERSMatcherDoc.Fields[6].Type = "[]int"
+	MATCHERSMatcherDoc.Fields[6].Note = ""
+	MATCHERSMatcherDoc.Fields[6].Description = "Size is the acceptable size for the response"
+	MATCHERSMatcherDoc.Fields[6].Comments[encoder.LineComment] = "Size is the acceptable size for the response"
+
+	MATCHERSMatcherDoc.Fields[6].AddExample("", []int{3029, 2042})
+	MATCHERSMatcherDoc.Fields[7].Name = "words"
+	MATCHERSMatcherDoc.Fields[7].Type = "[]string"
+	MATCHERSMatcherDoc.Fields[7].Note = ""
+	MATCHERSMatcherDoc.Fields[7].Description = "Words contains word patterns required to be present in the response part."
+	MATCHERSMatcherDoc.Fields[7].Comments[encoder.LineComment] = "Words contains word patterns required to be present in the response part."
+
+	MATCHERSMatcherDoc.Fields[7].AddExample("Match for Outlook mail protection domain", []string{"mail.protection.outlook.com"})
+
+	MATCHERSMatcherDoc.Fields[7].AddExample("Match for application/json in response headers", []string{"application/json"})
+	MATCHERSMatcherDoc.Fields[8].Name = "regex"
+	MATCHERSMatcherDoc.Fields[8].Type = "[]string"
+	MATCHERSMatcherDoc.Fields[8].Note = ""
+	MATCHERSMatcherDoc.Fields[8].Description = "Regex contains Regular Expression patterns required to be present in the response part."
+	MATCHERSMatcherDoc.Fields[8].Comments[encoder.LineComment] = "Regex contains Regular Expression patterns required to be present in the response part."
+
+	MATCHERSMatcherDoc.Fields[8].AddExample("Match for Linkerd Service via Regex", []string{`(?mi)^Via\\s*?:.*?linkerd.*$`})
+
+	MATCHERSMatcherDoc.Fields[8].AddExample("Match for Open Redirect via Location header", []string{`(?m)^(?:Location\\s*?:\\s*?)(?:https?://|//)?(?:[a-zA-Z0-9\\-_\\.@]*)example\\.com.*$`})
+	MATCHERSMatcherDoc.Fields[9].Name = "binary"
+	MATCHERSMatcherDoc.Fields[9].Type = "[]string"
+	MATCHERSMatcherDoc.Fields[9].Note = ""
+	MATCHERSMatcherDoc.Fields[9].Description = "Binary are the binary patterns required to be present in the response part."
+	MATCHERSMatcherDoc.Fields[9].Comments[encoder.LineComment] = "Binary are the binary patterns required to be present in the response part."
+
+	MATCHERSMatcherDoc.Fields[9].AddExample("Match for Springboot Heapdump Actuator \"JAVA PROFILE\", \"HPROF\", \"Gunzip magic byte\"", []string{"4a4156412050524f46494c45", "4850524f46", "1f8b080000000000"})
+
+	MATCHERSMatcherDoc.Fields[9].AddExample("Match for 7zip files", []string{"377ABCAF271C"})
+	MATCHERSMatcherDoc.Fields[10].Name = "dsl"
+	MATCHERSMatcherDoc.Fields[10].Type = "[]string"
+	MATCHERSMatcherDoc.Fields[10].Note = ""
+	MATCHERSMatcherDoc.Fields[10].Description = "DSL are the dsl expressions that will be evaluated as part of nuclei matching rules.\nA list of these helper functions are available [here](https://nuclei.projectdiscovery.io/templating-guide/helper-functions/)."
+	MATCHERSMatcherDoc.Fields[10].Comments[encoder.LineComment] = "DSL are the dsl expressions that will be evaluated as part of nuclei matching rules."
+
+	MATCHERSMatcherDoc.Fields[10].AddExample("DSL Matcher for package.json file", []string{"contains(body, 'packages') && contains(tolower(all_headers), 'application/octet-stream') && status_code == 200"})
+
+	MATCHERSMatcherDoc.Fields[10].AddExample("DSL Matcher for missing strict transport security header", []string{"!contains(tolower(all_headers), ''strict-transport-security'')"})
+	MATCHERSMatcherDoc.Fields[11].Name = "xpath"
+	MATCHERSMatcherDoc.Fields[11].Type = "[]string"
+	MATCHERSMatcherDoc.Fields[11].Note = ""
+	MATCHERSMatcherDoc.Fields[11].Description = "XPath are the xpath queries expressions that will be evaluated against the response part."
+	MATCHERSMatcherDoc.Fields[11].Comments[encoder.LineComment] = "XPath are the xpath queries expressions that will be evaluated against the response part."
+
+	MATCHERSMatcherDoc.Fields[11].AddExample("XPath Matcher to check a title", []string{"/html/head/title[contains(text(), 'How to Find XPath')]"})
+
+	MATCHERSMatcherDoc.Fields[11].AddExample("XPath Matcher for finding links with target=\"_blank\"", []string{"//a[@target=\"_blank\"]"})
+	MATCHERSMatcherDoc.Fields[12].Name = "encoding"
+	MATCHERSMatcherDoc.Fields[12].Type = "string"
+	MATCHERSMatcherDoc.Fields[12].Note = ""
+	MATCHERSMatcherDoc.Fields[12].Description = "Encoding specifies the encoding for the words field if any."
+	MATCHERSMatcherDoc.Fields[12].Comments[encoder.LineComment] = "Encoding specifies the encoding for the words field if any."
+	MATCHERSMatcherDoc.Fields[12].Values = []string{
+		"hex",
+	}
+	MATCHERSMatcherDoc.Fields[13].Name = "case-insensitive"
+	MATCHERSMatcherDoc.Fields[13].Type = "bool"
+	MATCHERSMatcherDoc.Fields[13].Note = ""
+	MATCHERSMatcherDoc.Fields[13].Description = "CaseInsensitive enables case-insensitive matches. Default is false."
+	MATCHERSMatcherDoc.Fields[13].Comments[encoder.LineComment] = "CaseInsensitive enables case-insensitive matches. Default is false."
+	MATCHERSMatcherDoc.Fields[13].Values = []string{
+		"false",
+		"true",
+	}
+	MATCHERSMatcherDoc.Fields[14].Name = "match-all"
+	MATCHERSMatcherDoc.Fields[14].Type = "bool"
+	MATCHERSMatcherDoc.Fields[14].Note = ""
+	MATCHERSMatcherDoc.Fields[14].Description = "MatchAll enables matching for all matcher values. Default is false."
+	MATCHERSMatcherDoc.Fields[14].Comments[encoder.LineComment] = "MatchAll enables matching for all matcher values. Default is false."
+	MATCHERSMatcherDoc.Fields[14].Values = []string{
+		"false",
+		"true",
+	}
+	MATCHERSMatcherDoc.Fields[15].Name = "internal"
+	MATCHERSMatcherDoc.Fields[15].Type = "bool"
+	MATCHERSMatcherDoc.Fields[15].Note = ""
+	MATCHERSMatcherDoc.Fields[15].Description = "description: |\n  Internal when true hides the matcher from output. Default is false.\n It is meant to be used in multiprotocol / flow templates to create internal matcher condition without printing it in output.\n or other similar use cases.\n values:\n   - false\n   - true"
+	MATCHERSMatcherDoc.Fields[15].Comments[encoder.LineComment] = " description: |"
+
+	MatcherTypeHolderDoc.Type = "MatcherTypeHolder"
+	MatcherTypeHolderDoc.Comments[encoder.LineComment] = " MatcherTypeHolder is used to hold internal type of the matcher"
+	MatcherTypeHolderDoc.Description = "MatcherTypeHolder is used to hold internal type of the matcher"
+	MatcherTypeHolderDoc.AppearsIn = []encoder.Appearance{
+		{
+			TypeName:  "matchers.Matcher",
+			FieldName: "type",
+		},
+	}
+	MatcherTypeHolderDoc.Fields = make([]encoder.Doc, 1)
+	MatcherTypeHolderDoc.Fields[0].Name = ""
+	MatcherTypeHolderDoc.Fields[0].Type = "MatcherType"
+	MatcherTypeHolderDoc.Fields[0].Note = ""
+	MatcherTypeHolderDoc.Fields[0].Description = ""
+	MatcherTypeHolderDoc.Fields[0].Comments[encoder.LineComment] = ""
+	MatcherTypeHolderDoc.Fields[0].EnumFields = []string{
+		"word",
+		"regex",
+		"binary",
+		"status",
+		"size",
+		"dsl",
+		"xpath",
+	}
 
 	DNSRequestDoc.Type = "dns.Request"
 	DNSRequestDoc.Comments[encoder.LineComment] = " Request contains a DNS protocol request to be made from a template"
@@ -1810,7 +1998,10 @@ func GetTemplateDoc() *encoder.FileDoc {
 			&GENERATORSAttackTypeHolderDoc,
 			&HTTPMethodTypeHolderDoc,
 			&FUZZRuleDoc,
+			&SliceOrMapSliceDoc,
 			&SignatureTypeHolderDoc,
+			&MATCHERSMatcherDoc,
+			&MatcherTypeHolderDoc,
 			&DNSRequestDoc,
 			&DNSRequestTypeHolderDoc,
 			&FILERequestDoc,
