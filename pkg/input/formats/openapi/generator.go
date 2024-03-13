@@ -197,7 +197,9 @@ func generateRequestsFromOp(opts *generateReqOptions) error {
 				} else {
 					// if it is in path then remove it from path
 					opts.requestPath = strings.Replace(opts.requestPath, fmt.Sprintf("{%s}", value.Name), "", -1)
-					gologger.Verbose().Msgf("openapi: skipping optional param (%s) in (%v) in request [%s] %s due to missing value (%v)\n", value.Name, value.In, opts.method, opts.requestPath, value.Name)
+					if !opts.opts.RequiredOnly {
+						gologger.Verbose().Msgf("openapi: skipping optional param (%s) in (%v) in request [%s] %s due to missing value (%v)\n", value.Name, value.In, opts.method, opts.requestPath, value.Name)
+					}
 					continue
 				}
 			}
@@ -211,7 +213,9 @@ func generateRequestsFromOp(opts *generateReqOptions) error {
 				} else {
 					// if it is in path then remove it from path
 					opts.requestPath = strings.Replace(opts.requestPath, fmt.Sprintf("{%s}", value.Name), "", -1)
-					gologger.Verbose().Msgf("openapi: skipping optinal param (%s) in (%v) in request [%s] %s due to missing value (%v)\n", value.Name, value.In, opts.method, opts.requestPath, value.Name)
+					if !opts.opts.RequiredOnly {
+						gologger.Verbose().Msgf("openapi: skipping optinal param (%s) in (%v) in request [%s] %s due to missing value (%v)\n", value.Name, value.In, opts.method, opts.requestPath, value.Name)
+					}
 					continue
 				}
 			}
@@ -306,6 +310,22 @@ func generateRequestsFromOp(opts *generateReqOptions) error {
 				cloned.Body = io.NopCloser(strings.NewReader(str))
 				cloned.ContentLength = int64(len(str))
 				cloned.Header.Set("Content-Type", "text/plain")
+			case "application/octet-stream":
+				str := types.ToString(example)
+				if str == "" {
+					// use two strings
+					str = "string1\nstring2"
+				}
+				if value.Schema != nil && generic.EqualsAny(value.Schema.Value.Format, "bindary", "byte") {
+					cloned.Body = io.NopCloser(bytes.NewReader([]byte(str)))
+					cloned.ContentLength = int64(len(str))
+					cloned.Header.Set("Content-Type", "application/octet-stream")
+				} else {
+					// use string placeholder
+					cloned.Body = io.NopCloser(strings.NewReader(str))
+					cloned.ContentLength = int64(len(str))
+					cloned.Header.Set("Content-Type", "text/plain")
+				}
 			default:
 				gologger.Verbose().Msgf("openapi: no correct content type found for body: %s\n", content)
 				// LOG:	return errors.New("no correct content type found for body")
