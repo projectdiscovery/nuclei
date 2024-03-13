@@ -54,8 +54,8 @@ type Request struct {
 func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 	request.options = options
 
-	if request.Provider != "aws" {
-		return errors.New("temporarily only aws provider is allowed")
+	if request.Provider == "" {
+		return errors.New("provider cannot be empty, use any of the available providers in terraform registry (like aws, google, etc.)")
 	}
 	if !fileutil.FileExists(options.Options.PluginPath) {
 		return errors.New("plugin not found pass it using -tf-plugin flag")
