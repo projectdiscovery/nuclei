@@ -97,7 +97,7 @@ func (r *requestGenerator) Make(ctx context.Context, input *contextargs.Context,
 	}
 
 	// Parse target url
-	parsed, err := urlutil.Parse(input.MetaInput.Input)
+	parsed, err := urlutil.ParseAbsoluteURL(input.MetaInput.Input, false)
 	if err != nil {
 		return nil, err
 	}
@@ -153,7 +153,7 @@ func (r *requestGenerator) Make(ctx context.Context, input *contextargs.Context,
 		return r.generateRawRequest(ctx, reqData, parsed, finalVars, payloads)
 	}
 
-	reqURL, err := urlutil.ParseURL(reqData, true)
+	reqURL, err := urlutil.ParseAbsoluteURL(reqData, true)
 	if err != nil {
 		return nil, errorutil.NewWithTag("http", "failed to parse url %v while creating http request", reqData)
 	}
@@ -291,8 +291,7 @@ func (r *requestGenerator) generateRawRequest(ctx context.Context, rawRequest st
 		unsafeReq := &generatedRequest{rawRequest: rawRequestData, meta: generatorValues, original: r.request, interactshURLs: r.interactshURLs}
 		return unsafeReq, nil
 	}
-
-	urlx, err := urlutil.ParseURL(rawRequestData.FullURL, true)
+	urlx, err := urlutil.ParseAbsoluteURL(rawRequestData.FullURL, true)
 	if err != nil {
 		return nil, errorutil.NewWithErr(err).Msgf("failed to create request with url %v got %v", rawRequestData.FullURL, err).WithTag("raw")
 	}
