@@ -372,6 +372,8 @@ type Options struct {
 	JsConcurrency int
 	// PayloadConcurrency is the number of concurrent payloads to run per template
 	PayloadConcurrency int
+	// PluginPath is the path to the plugin to use (temporary)
+	PluginPath string
 }
 
 // ShouldLoadResume resume file

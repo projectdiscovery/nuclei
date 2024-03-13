@@ -288,6 +288,7 @@ on extensive configurability, massive extensibility and ease of use.`)
 		flagSet.IntVarP(&options.ResponseSaveSize, "response-size-save", "rss", 1*1024*1024, "max response size to read in bytes"),
 		flagSet.CallbackVar(resetCallback, "reset", "reset removes all nuclei configuration and data files (including nuclei-templates)"),
 		flagSet.BoolVarP(&options.TlsImpersonate, "tls-impersonate", "tlsi", false, "enable experimental client hello (ja3) tls randomization"),
+		flagSet.StringVar(&options.PluginPath, "tf-plugin", "", "path to terraform provider plugin(temporary solution)"),
 	)
 
 	flagSet.CreateGroup("interactsh", "interactsh",

@@ -11,6 +11,7 @@ import (
 	validate "github.com/go-playground/validator/v10"
 	"github.com/projectdiscovery/nuclei/v3/pkg/model"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/cloud"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/code"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/variables"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/dns"
@@ -117,6 +118,9 @@ type Template struct {
 	// description: |
 	//   Javascript contains the javascript request to make in the template.
 	RequestsJavascript []*javascript.Request `yaml:"javascript,omitempty" json:"javascript,omitempty" jsonschema:"title=javascript requests to make,description=Javascript requests to make for the template"`
+	// description: |
+	//   Cloud contains the cloud request to make in the template.
+	RequestsCloud []*cloud.Request `yaml:"cloud,omitempty" json:"cloud,omitempty" jsonschema:"title=cloud requests to make,description=Cloud requests to make for the template"`
 
 	// description: |
 	//   Workflows is a yaml based workflow declaration code.
@@ -186,6 +190,8 @@ func (template *Template) Type() types.ProtocolType {
 		return types.CodeProtocol
 	case len(template.RequestsJavascript) > 0:
 		return types.JavascriptProtocol
+	case len(template.RequestsCloud) > 0:
+		return types.CloudProtocol
 	default:
 		return types.InvalidProtocol
 	}
@@ -269,6 +275,13 @@ func (template *Template) validateAllRequestIDs() {
 	}
 	if len(template.RequestsJavascript) > 1 {
 		for i, req := range template.RequestsJavascript {
+			if req.ID == "" {
+				req.ID = req.Type().String() + "_" + strconv.Itoa(i+1)
+			}
+		}
+	}
+	if len(template.RequestsCloud) > 1 {
+		for i, req := range template.RequestsCloud {
 			if req.ID == "" {
 				req.ID = req.Type().String() + "_" + strconv.Itoa(i+1)
 			}
@@ -457,6 +470,8 @@ func (template *Template) addRequestsToQueue(keys ...string) {
 			template.RequestsQueue = append(template.RequestsQueue, template.convertRequestToProtocolsRequest(template.RequestsCode)...)
 		case types.JavascriptProtocol.String():
 			template.RequestsQueue = append(template.RequestsQueue, template.convertRequestToProtocolsRequest(template.RequestsJavascript)...)
+		case types.CloudProtocol.String():
+			template.RequestsQueue = append(template.RequestsQueue, template.convertRequestToProtocolsRequest(template.RequestsCloud)...)
 			// for deprecated protocols
 		case "requests":
 			template.RequestsQueue = append(template.RequestsQueue, template.convertRequestToProtocolsRequest(template.RequestsHTTP)...)
@@ -473,7 +488,7 @@ func (template *Template) hasMultipleRequests() bool {
 		len(template.RequestsHTTP) + len(template.RequestsHeadless) +
 		len(template.RequestsNetwork) + len(template.RequestsSSL) +
 		len(template.RequestsWebsocket) + len(template.RequestsWHOIS) +
-		len(template.RequestsCode) + len(template.RequestsJavascript)
+		len(template.RequestsCode) + len(template.RequestsJavascript) + len(template.RequestsCloud)
 	return counter > 1
 }
 
