@@ -383,6 +383,8 @@ type Options struct {
 	FormatUseRequiredOnly bool
 	// SkipFormatValidation is used to skip format validation
 	SkipFormatValidation bool
+	// PayloadConcurrency is the number of concurrent payloads to run per template
+	PayloadConcurrency int
 }
 
 // ShouldLoadResume resume file

@@ -192,6 +192,10 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 	dataOutputString := fmtStdout(gOutput.Stdout.String())
 
 	data := make(output.InternalEvent)
+	// also include all request variables in result event
+	for _, value := range metaSrc.Variables {
+		data[value.Name] = value.Value
+	}
 
 	data["type"] = request.Type().String()
 	data["response"] = dataOutputString // response contains filtered output (eg without trailing \n)

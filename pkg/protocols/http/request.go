@@ -37,6 +37,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	"github.com/projectdiscovery/rawhttp"
 	convUtil "github.com/projectdiscovery/utils/conversion"
+	errorutil "github.com/projectdiscovery/utils/errors"
 	httpUtils "github.com/projectdiscovery/utils/http"
 	"github.com/projectdiscovery/utils/reader"
 	sliceutil "github.com/projectdiscovery/utils/slice"
@@ -360,7 +361,7 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 	}
 
 	// verify if parallel elaboration was requested
-	if request.Threads > 0 {
+	if request.Threads > 0 && len(request.Payloads) > 0 {
 		return request.executeParallelHTTP(input, dynamicValues, callback)
 	}
 
@@ -401,7 +402,7 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 				return true, nil
 			}
 			var gotMatches bool
-			err = request.executeRequest(input, generatedHttpRequest, previous, hasInteractMatchers, func(event *output.InternalWrappedEvent) {
+			execReqErr := request.executeRequest(input, generatedHttpRequest, previous, hasInteractMatchers, func(event *output.InternalWrappedEvent) {
 				// a special case where operators has interactsh matchers and multiple request are made
 				// ex: status_code_2 , interactsh_protocol (from 1st request) etc
 				needsRequestEvent := interactsh.HasMatchers(request.CompiledOperators) && request.NeedsRequestCondition()
@@ -432,14 +433,14 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 			}, generator.currentIndex)
 
 			// If a variable is unresolved, skip all further requests
-			if errors.Is(err, errStopExecution) {
+			if errors.Is(execReqErr, errStopExecution) {
 				return true, nil
 			}
-			if err != nil {
+			if execReqErr != nil {
 				if request.options.HostErrorsCache != nil {
 					request.options.HostErrorsCache.MarkFailed(input.MetaInput.ID(), err)
 				}
-				requestErr = err
+				requestErr = errorutil.NewWithErr(execReqErr).Msgf("got err while executing %v", generatedHttpRequest.URL())
 			}
 			request.options.Progress.IncrementRequests()
 
