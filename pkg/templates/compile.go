@@ -1,6 +1,7 @@
 package templates
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -21,7 +22,6 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/templates/signer"
 	"github.com/projectdiscovery/nuclei/v3/pkg/tmplexec"
 	"github.com/projectdiscovery/nuclei/v3/pkg/utils"
-	"github.com/projectdiscovery/retryablehttp-go"
 	errorutil "github.com/projectdiscovery/utils/errors"
 	stringsutil "github.com/projectdiscovery/utils/strings"
 )
@@ -52,27 +52,28 @@ func Parse(filePath string, preprocessor Preprocessor, options protocols.Executo
 		panic("not a parser")
 	}
 	if !options.DoNotCache {
-		if value, err := parser.compiledTemplatesCache.Has(filePath); value != nil {
+		if value, _, err := parser.compiledTemplatesCache.Has(filePath); value != nil {
 			return value, err
 		}
 	}
 
 	var reader io.ReadCloser
-	if utils.IsURL(filePath) {
-		// use retryablehttp (tls verification is enabled by default in the standard library)
-		resp, err := retryablehttp.DefaultClient().Get(filePath)
-		if err != nil {
-			return nil, err
+	if !options.DoNotCache {
+		_, raw, err := parser.parsedTemplatesCache.Has(filePath)
+		if err == nil && raw != nil {
+			reader = io.NopCloser(bytes.NewReader(raw))
 		}
-		reader = resp.Body
-	} else {
-		var err error
-		reader, err = options.Catalog.OpenFile(filePath)
+	}
+	var err error
+	if reader == nil {
+		reader, err = utils.ReaderFromPathOrURL(filePath, options.Catalog)
 		if err != nil {
 			return nil, err
 		}
 	}
+
 	defer reader.Close()
+
 	options.TemplatePath = filePath
 	template, err := ParseTemplateFromReader(reader, preprocessor, options.Copy())
 	if err != nil {
@@ -88,7 +89,7 @@ func Parse(filePath string, preprocessor Preprocessor, options protocols.Executo
 	}
 	template.Path = filePath
 	if !options.DoNotCache {
-		parser.compiledTemplatesCache.Store(filePath, template, err)
+		parser.compiledTemplatesCache.Store(filePath, template, nil, err)
 	}
 	return template, nil
 }
