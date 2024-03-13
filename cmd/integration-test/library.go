@@ -29,6 +29,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolinit"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
 	"github.com/projectdiscovery/nuclei/v3/pkg/reporting"
+	"github.com/projectdiscovery/nuclei/v3/pkg/templates"
 	"github.com/projectdiscovery/nuclei/v3/pkg/testutils"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	"github.com/projectdiscovery/ratelimit"
@@ -99,6 +100,9 @@ func executeNucleiAsLibrary(templatePath, templateURL string) ([]string, error) 
 	catalog := disk.NewCatalog(path.Join(home, "nuclei-templates"))
 	ratelimiter := ratelimit.New(context.Background(), 150, time.Second)
 	defer ratelimiter.Stop()
+
+	parser, _ := templates.New()
+
 	executerOpts := protocols.ExecutorOptions{
 		Output:          outputWriter,
 		Options:         defaultOpts,
@@ -110,6 +114,7 @@ func executeNucleiAsLibrary(templatePath, templateURL string) ([]string, error) 
 		HostErrorsCache: cache,
 		Colorizer:       aurora.NewAurora(true),
 		ResumeCfg:       types.NewResumeCfg(),
+		Parser:          parser,
 	}
 	engine := core.New(defaultOpts)
 	engine.SetExecuterOptions(executerOpts)
