@@ -3,18 +3,24 @@ package templates
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/config"
 	"github.com/projectdiscovery/nuclei/v3/pkg/utils"
 	"github.com/projectdiscovery/nuclei/v3/pkg/utils/stats"
+	yamlutil "github.com/projectdiscovery/nuclei/v3/pkg/utils/yaml"
+	fileutil "github.com/projectdiscovery/utils/file"
 	"gopkg.in/yaml.v2"
 )
 
 type Parser struct {
-	ShouldValidate         bool
-	NoStrictSyntax         bool
-	parsedTemplatesCache   *Cache
+	ShouldValidate bool
+	NoStrictSyntax bool
+	// this cache can be copied safely between ephemeral instances
+	parsedTemplatesCache *Cache
+	// this cache might potentially contain references to heap objects
+	// it's recommended to always empty it at the end of execution
 	compiledTemplatesCache *Cache
 }
 
@@ -69,12 +75,28 @@ func (p *Parser) LoadTemplate(templatePath string, t any, extraTags []string, ca
 
 // ParseTemplate parses a template and returns a *templates.Template structure
 func (p *Parser) ParseTemplate(templatePath string, catalog catalog.Catalog) (any, error) {
-	if value, err := p.parsedTemplatesCache.Has(templatePath); value != nil {
+	value, _, err := p.parsedTemplatesCache.Has(templatePath)
+	if value != nil {
 		return value, err
 	}
-	data, err := utils.ReadFromPathOrURL(templatePath, catalog)
+
+	reader, err := utils.ReaderFromPathOrURL(templatePath, catalog)
 	if err != nil {
 		return nil, err
+	}
+	defer reader.Close()
+
+	data, err := io.ReadAll(reader)
+	if err != nil {
+		return nil, err
+	}
+
+	// pre-process directives only for local files
+	if fileutil.FileExists(templatePath) && config.GetTemplateFormatFromExt(templatePath) == config.YAML {
+		data, err = yamlutil.PreProcess(data)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	template := &Template{}
@@ -95,7 +117,7 @@ func (p *Parser) ParseTemplate(templatePath string, catalog catalog.Catalog) (an
 		return nil, err
 	}
 
-	p.parsedTemplatesCache.Store(templatePath, template, nil)
+	p.parsedTemplatesCache.Store(templatePath, template, data, nil)
 	return template, nil
 }
 

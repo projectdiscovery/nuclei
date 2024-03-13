@@ -10,11 +10,6 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/workflows"
 )
 
-const (
-	// Note: we redefine to avoid cyclic dependency but it should be same as parsers.SkippedUnsignedStats
-	SkippedUnsignedStats = "skipped-unsigned-stats" // tracks loading of unsigned templates
-)
-
 // compileWorkflow compiles the workflow for execution
 func compileWorkflow(path string, preprocessor Preprocessor, options *protocols.ExecutorOptions, workflow *workflows.Workflow, loader model.WorkflowLoader) {
 	for _, workflow := range workflow.Workflows {
