@@ -1,4 +1,4 @@
-package pparser
+package parser
 
 import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog"
