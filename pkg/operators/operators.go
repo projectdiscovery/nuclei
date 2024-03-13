@@ -315,7 +315,7 @@ func (operators *Operators) Execute(data map[string]interface{}, match MatchFunc
 			if len(result.DynamicValues) > 0 {
 				return result, true
 			}
-			return nil, false
+			return result, false
 		}
 	}
 
@@ -329,11 +329,19 @@ func (operators *Operators) Execute(data map[string]interface{}, match MatchFunc
 
 	// Don't print if we have matchers, and they have not matched, regardless of extractor
 	if len(operators.Matchers) > 0 && !matches {
+		// if dynamic values are present then it is not a failure
+		if len(result.DynamicValues) > 0 {
+			return result, true
+		}
 		return nil, false
 	}
 	// Write a final string of output if matcher type is
 	// AND or if we have extractors for the mechanism too.
 	if len(result.Extracts) > 0 || len(result.OutputExtracts) > 0 || matches {
+		return result, true
+	}
+	// if dynamic values are present then it is not a failure
+	if len(result.DynamicValues) > 0 {
 		return result, true
 	}
 	return nil, false
