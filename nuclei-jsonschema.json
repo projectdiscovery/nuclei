@@ -2,6 +2,101 @@
   "$schema": "http://json-schema.org/draft-04/schema#",
   "$ref": "#/definitions/templates.Template",
   "definitions": {
+    "fuzz.Rule": {
+      "properties": {
+        "type": {
+          "enum": [
+            "replace",
+            "prefix",
+            "postfix",
+            "infix",
+            "replace-regex"
+          ],
+          "type": "string",
+          "title": "type of rule",
+          "description": "Type of fuzzing rule to perform"
+        },
+        "part": {
+          "enum": [
+            "query",
+            "header",
+            "path",
+            "body",
+            "cookie",
+            "request"
+          ],
+          "type": "string",
+          "title": "part of rule",
+          "description": "Part of request rule to fuzz"
+        },
+        "mode": {
+          "enum": [
+            "single",
+            "multiple"
+          ],
+          "type": "string",
+          "title": "mode of rule",
+          "description": "Mode of request rule to fuzz"
+        },
+        "keys": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array",
+          "title": "keys of parameters to fuzz",
+          "description": "Keys of parameters to fuzz"
+        },
+        "keys-regex": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array",
+          "title": "keys regex to fuzz",
+          "description": "Regex of parameter keys to fuzz"
+        },
+        "values": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array",
+          "title": "values regex to fuzz",
+          "description": "Regex of parameter values to fuzz"
+        },
+        "fuzz": {
+          "$schema": "http://json-schema.org/draft-04/schema#",
+          "$ref": "#/definitions/fuzz.SliceOrMapSlice",
+          "title": "payloads of fuzz rule",
+          "description": "Payloads to perform fuzzing substitutions with"
+        },
+        "replace-regex": {
+          "type": "string",
+          "title": "replace regex of rule",
+          "description": "Regex for regex-replace rule type"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object"
+    },
+    "fuzz.SliceOrMapSlice": {
+      "required": [
+        "Value",
+        "KV"
+      ],
+      "properties": {
+        "Value": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "KV": {
+          "$schema": "http://json-schema.org/draft-04/schema#",
+          "$ref": "#/definitions/github.com/projectdiscovery/utils/maps.OrderedMap[string,string]"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object"
+    },
     "model.Classification": {
       "properties": {
         "cve-id": {
@@ -451,72 +546,6 @@
           "type": "string",
           "title": "source file/snippet",
           "description": "Source snippet"
-        }
-      },
-      "additionalProperties": false,
-      "type": "object"
-    },
-    "fuzz.Rule": {
-      "properties": {
-        "type": {
-          "enum": [
-            "replace",
-            "prefix",
-            "postfix",
-            "infix"
-          ],
-          "type": "string",
-          "title": "type of rule",
-          "description": "Type of fuzzing rule to perform"
-        },
-        "part": {
-          "enum": [
-            "query"
-          ],
-          "type": "string",
-          "title": "part of rule",
-          "description": "Part of request rule to fuzz"
-        },
-        "mode": {
-          "enum": [
-            "single",
-            "multiple"
-          ],
-          "type": "string",
-          "title": "mode of rule",
-          "description": "Mode of request rule to fuzz"
-        },
-        "keys": {
-          "items": {
-            "type": "string"
-          },
-          "type": "array",
-          "title": "keys of parameters to fuzz",
-          "description": "Keys of parameters to fuzz"
-        },
-        "keys-regex": {
-          "items": {
-            "type": "string"
-          },
-          "type": "array",
-          "title": "keys regex to fuzz",
-          "description": "Regex of parameter keys to fuzz"
-        },
-        "values": {
-          "items": {
-            "type": "string"
-          },
-          "type": "array",
-          "title": "values regex to fuzz",
-          "description": "Regex of parameter values to fuzz"
-        },
-        "fuzz": {
-          "items": {
-            "type": "string"
-          },
-          "type": "array",
-          "title": "payloads of fuzz rule",
-          "description": "Payloads to perform fuzzing substitutions with"
         }
       },
       "additionalProperties": false,
@@ -1126,6 +1155,23 @@
           "type": "boolean",
           "title": "disable auto merging of path",
           "description": "Disable merging target url path with raw request path"
+        },
+        "filters": {
+          "items": {
+            "$ref": "#/definitions/matchers.Matcher"
+          },
+          "type": "array",
+          "title": "filter for fuzzing",
+          "description": "Filter is matcher-like field to check if fuzzing should be performed on this request or not"
+        },
+        "filters-condition": {
+          "enum": [
+            "and",
+            "or"
+          ],
+          "type": "string",
+          "title": "condition between the filters",
+          "description": "Conditions between the filters"
         }
       },
       "additionalProperties": false,
@@ -1833,6 +1879,11 @@
           "description": "Subtemplates are ran if the template field Template matches"
         }
       },
+      "additionalProperties": false,
+      "type": "object"
+    },
+    "github.com/projectdiscovery/utils/maps.OrderedMap[string,string]": {
+      "properties": {},
       "additionalProperties": false,
       "type": "object"
     }
