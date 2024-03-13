@@ -85,6 +85,32 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 		}
 		request.CompiledOperators = compiled
 	}
+
+	client, err := NewTFProviderClient(options.Options.PluginPath)
+	if err != nil {
+		return errors.Wrap(err, "could not create terraform provider client")
+	}
+
+	optionVars := generators.BuildPayloadFromOptions(request.options.Options)
+	variablesMap := request.options.Variables.Evaluate(optionVars)
+
+	attr := map[string]interface{}{}
+
+	block := client.GetProviderInputSchema()
+	for name, info := range block.Attributes {
+		got := variablesMap[name]
+		if got == nil && info.Required {
+			return fmt.Errorf("required attribute %s not found", name)
+		}
+		attr[name] = got
+	}
+
+	// configure provider
+	if err := client.ConfigureProvider(context.TODO(), attr); err != nil {
+		return errors.Wrap(err, "could not configure provider")
+	}
+
+	request.tfClient = client
 	return nil
 }
 

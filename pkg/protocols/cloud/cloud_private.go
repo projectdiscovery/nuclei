@@ -84,6 +84,10 @@ func (c *TFProviderClient) GetDataSourceType(ctx context.Context, name string) c
 	return configschema.SchemaBlockImpliedType(c.schema.DataSources[name].Block)
 }
 
+func (c *TFProviderClient) GetProviderInputSchema() *tfjson.SchemaBlock {
+	return c.schema.Provider.Block
+}
+
 func (c *TFProviderClient) GetSchema(name string) *tfjson.SchemaBlock {
 	return c.schema.DataSources[name].Block
 }
