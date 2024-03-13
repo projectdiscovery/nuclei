@@ -14,6 +14,8 @@ import (
 	"time"
 
 	"github.com/projectdiscovery/nuclei/v3/internal/pdcp"
+	"github.com/projectdiscovery/nuclei/v3/pkg/authprovider"
+	"github.com/projectdiscovery/nuclei/v3/pkg/input/provider"
 	"github.com/projectdiscovery/nuclei/v3/pkg/installer"
 	uncoverlib "github.com/projectdiscovery/uncover"
 	pdcpauth "github.com/projectdiscovery/utils/auth/pdcp"
@@ -33,7 +35,6 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/disk"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/loader"
 	"github.com/projectdiscovery/nuclei/v3/pkg/core"
-	"github.com/projectdiscovery/nuclei/v3/pkg/core/inputs/hybrid"
 	"github.com/projectdiscovery/nuclei/v3/pkg/external/customtemplates"
 	"github.com/projectdiscovery/nuclei/v3/pkg/input"
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
@@ -69,22 +70,21 @@ var (
 
 // Runner is a client for running the enumeration process.
 type Runner struct {
-	output            output.Writer
-	interactsh        *interactsh.Client
-	options           *types.Options
-	projectFile       *projectfile.ProjectFile
-	catalog           catalog.Catalog
-	progress          progress.Progress
-	colorizer         aurora.Aurora
-	issuesClient      reporting.Client
-	hmapInputProvider *hybrid.Input
-	browser           *engine.Browser
-	rateLimiter       *ratelimit.Limiter
-	hostErrors        hosterrorscache.CacheInterface
-	resumeCfg         *types.ResumeCfg
-	pprofServer       *http.Server
-	// pdcp auto-save options
+	output           output.Writer
+	interactsh       *interactsh.Client
+	options          *types.Options
+	projectFile      *projectfile.ProjectFile
+	catalog          catalog.Catalog
+	progress         progress.Progress
+	colorizer        aurora.Aurora
+	issuesClient     reporting.Client
+	browser          *engine.Browser
+	rateLimiter      *ratelimit.Limiter
+	hostErrors       hosterrorscache.CacheInterface
+	resumeCfg        *types.ResumeCfg
+	pprofServer      *http.Server
 	pdcpUploadErrMsg string
+	inputProvider    provider.InputProvider
 	//general purpose temporary directory
 	tmpDir string
 }
@@ -219,14 +219,12 @@ func New(options *types.Options) (*Runner, error) {
 		os.Exit(0)
 	}
 
-	// Initialize the input source
-	hmapInput, err := hybrid.New(&hybrid.Options{
-		Options: options,
-	})
+	// create the input provider and load the inputs
+	inputProvider, err := provider.NewInputProvider(provider.InputOptions{Options: options})
 	if err != nil {
 		return nil, errors.Wrap(err, "could not create input provider")
 	}
-	runner.hmapInputProvider = hmapInput
+	runner.inputProvider = inputProvider
 
 	// Create the output file if asked
 	outputWriter, err := output.NewStandardWriter(options)
@@ -344,7 +342,9 @@ func (r *Runner) Close() {
 	if r.projectFile != nil {
 		r.projectFile.Close()
 	}
-	r.hmapInputProvider.Close()
+	if r.inputProvider != nil {
+		r.inputProvider.Close()
+	}
 	protocolinit.Close()
 	if r.pprofServer != nil {
 		_ = r.pprofServer.Shutdown(context.Background())
@@ -433,6 +433,24 @@ func (r *Runner) RunEnumeration() error {
 		TemporaryDirectory: r.tmpDir,
 	}
 
+	if len(r.options.SecretsFile) > 0 && !r.options.Validate {
+		authTmplStore, err := GetAuthTmplStore(*r.options, r.catalog, executorOpts)
+		if err != nil {
+			return errors.Wrap(err, "failed to load dynamic auth templates")
+		}
+		authOpts := &authprovider.AuthProviderOptions{SecretsFiles: r.options.SecretsFile}
+		authOpts.LazyFetchSecret = GetLazyAuthFetchCallback(&AuthLazyFetchOptions{
+			TemplateStore: authTmplStore,
+			ExecOpts:      executorOpts,
+		})
+		// initialize auth provider
+		provider, err := authprovider.NewAuthProvider(authOpts)
+		if err != nil {
+			return errors.Wrap(err, "could not create auth provider")
+		}
+		executorOpts.AuthProvider = provider
+	}
+
 	if r.options.ShouldUseHostError() {
 		cache := hosterrorscache.New(r.options.MaxHostError, hosterrorscache.DefaultMaxHostsCount, r.options.TrackError)
 		cache.SetVerbose(r.options.Verbose)
@@ -449,9 +467,16 @@ func (r *Runner) RunEnumeration() error {
 	}
 	executorOpts.WorkflowLoader = workflowLoader
 
-	store, err := loader.New(loader.NewConfig(r.options, r.catalog, executorOpts))
+	// If using input-file flags, only load http fuzzing based templates.
+	loaderConfig := loader.NewConfig(r.options, r.catalog, executorOpts)
+	if !strings.EqualFold(r.options.InputFileMode, "list") || r.options.FuzzTemplates {
+		// if input type is not list (implicitly enable fuzzing)
+		r.options.FuzzTemplates = true
+		loaderConfig.OnlyLoadHTTPFuzzing = true
+	}
+	store, err := loader.New(loaderConfig)
 	if err != nil {
-		return errors.Wrap(err, "could not load templates from config")
+		return errors.Wrap(err, "Could not create loader.")
 	}
 
 	if r.options.Validate {
@@ -484,7 +509,7 @@ func (r *Runner) RunEnumeration() error {
 		}
 		ret := uncover.GetUncoverTargetsFromMetadata(context.TODO(), store.Templates(), r.options.UncoverField, uncoverOpts)
 		for host := range ret {
-			r.hmapInputProvider.SetWithExclusions(host)
+			_ = r.inputProvider.SetWithExclusions(host)
 		}
 	}
 	// list all templates
@@ -495,6 +520,14 @@ func (r *Runner) RunEnumeration() error {
 
 	// display execution info like version , templates used etc
 	r.displayExecutionInfo(store)
+
+	// prefetch secrets if enabled
+	if executorOpts.AuthProvider != nil && r.options.PreFetchSecrets {
+		gologger.Info().Msgf("Pre-fetching secrets from authprovider[s]")
+		if err := executorOpts.AuthProvider.PreFetchSecrets(); err != nil {
+			return errors.Wrap(err, "could not pre-fetch secrets")
+		}
+	}
 
 	// If not explicitly disabled, check if http based protocols
 	// are used, and if inputs are non-http to pre-perform probing
@@ -541,7 +574,7 @@ func (r *Runner) RunEnumeration() error {
 
 func (r *Runner) isInputNonHTTP() bool {
 	var nonURLInput bool
-	r.hmapInputProvider.Scan(func(value *contextargs.MetaInput) bool {
+	r.inputProvider.Iterate(func(value *contextargs.MetaInput) bool {
 		if !strings.Contains(value.Input, "://") {
 			nonURLInput = true
 			return false
@@ -552,13 +585,13 @@ func (r *Runner) isInputNonHTTP() bool {
 }
 
 func (r *Runner) executeSmartWorkflowInput(executorOpts protocols.ExecutorOptions, store *loader.Store, engine *core.Engine) (*atomic.Bool, error) {
-	r.progress.Init(r.hmapInputProvider.Count(), 0, 0)
+	r.progress.Init(r.inputProvider.Count(), 0, 0)
 
 	service, err := automaticscan.New(automaticscan.Options{
 		ExecuterOpts: executorOpts,
 		Store:        store,
 		Engine:       engine,
-		Target:       r.hmapInputProvider,
+		Target:       r.inputProvider,
 	})
 	if err != nil {
 		return nil, errors.Wrap(err, "could not create automatic scan service")
@@ -589,7 +622,12 @@ func (r *Runner) executeTemplatesInput(store *loader.Store, engine *core.Engine)
 		return nil, errors.New("no templates provided for scan")
 	}
 
-	results := engine.ExecuteScanWithOpts(finalTemplates, r.hmapInputProvider, r.options.DisableClustering)
+	// pass input provider to engine
+	// TODO: this should be not necessary after r.hmapInputProvider is removed + refactored
+	if r.inputProvider == nil {
+		return nil, errors.New("no input provider found")
+	}
+	results := engine.ExecuteScanWithOpts(finalTemplates, r.inputProvider, r.options.DisableClustering)
 	return results, nil
 }
 
@@ -603,6 +641,7 @@ func (r *Runner) displayExecutionInfo(store *loader.Store) {
 		// only print these stats in verbose mode
 		stats.DisplayAsWarning(parsers.HeadlessFlagWarningStats)
 		stats.DisplayAsWarning(parsers.CodeFlagWarningStats)
+		stats.DisplayAsWarning(parsers.FuzzFlagWarningStats)
 		stats.DisplayAsWarning(parsers.TemplatesExecutedStats)
 	}
 
@@ -643,8 +682,9 @@ func (r *Runner) displayExecutionInfo(store *loader.Store) {
 			}
 		}
 	}
-	if r.hmapInputProvider.Count() > 0 {
-		gologger.Info().Msgf("Targets loaded for current scan: %d", r.hmapInputProvider.Count())
+
+	if r.inputProvider.Count() > 0 {
+		gologger.Info().Msgf("Targets loaded for current scan: %d", r.inputProvider.Count())
 	}
 }
 

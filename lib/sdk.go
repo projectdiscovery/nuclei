@@ -5,11 +5,12 @@ import (
 	"bytes"
 	"io"
 
-	"github.com/projectdiscovery/httpx/common/httpx"
+	"github.com/projectdiscovery/nuclei/v3/pkg/authprovider"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/disk"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/loader"
 	"github.com/projectdiscovery/nuclei/v3/pkg/core"
-	"github.com/projectdiscovery/nuclei/v3/pkg/core/inputs"
+	"github.com/projectdiscovery/nuclei/v3/pkg/input/provider"
+	providerTypes "github.com/projectdiscovery/nuclei/v3/pkg/input/types"
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
 	"github.com/projectdiscovery/nuclei/v3/pkg/parsers"
 	"github.com/projectdiscovery/nuclei/v3/pkg/progress"
@@ -65,12 +66,13 @@ type NucleiEngine struct {
 	catalog          *disk.DiskCatalog
 	rateLimiter      *ratelimit.Limiter
 	store            *loader.Store
-	httpxClient      *httpx.HTTPX
-	inputProvider    *inputs.SimpleInputProvider
+	httpxClient      providerTypes.InputLivenessProbe
+	inputProvider    provider.InputProvider
 	engine           *core.Engine
 	mode             engineMode
 	browserInstance  *engine.Browser
 	httpClient       *retryablehttp.Client
+	authprovider     authprovider.AuthProvider
 
 	// unexported meta options
 	opts           *types.Options
@@ -110,7 +112,7 @@ func (e *NucleiEngine) GetTemplates() []*templates.Template {
 func (e *NucleiEngine) LoadTargets(targets []string, probeNonHttp bool) {
 	for _, target := range targets {
 		if probeNonHttp {
-			e.inputProvider.SetWithProbe(target, e.httpxClient)
+			_ = e.inputProvider.SetWithProbe(target, e.httpxClient)
 		} else {
 			e.inputProvider.Set(target)
 		}
@@ -122,11 +124,27 @@ func (e *NucleiEngine) LoadTargetsFromReader(reader io.Reader, probeNonHttp bool
 	buff := bufio.NewScanner(reader)
 	for buff.Scan() {
 		if probeNonHttp {
-			e.inputProvider.SetWithProbe(buff.Text(), e.httpxClient)
+			_ = e.inputProvider.SetWithProbe(buff.Text(), e.httpxClient)
 		} else {
 			e.inputProvider.Set(buff.Text())
 		}
 	}
+}
+
+// LoadTargetsWithHttpData loads targets that contain http data from file it currently supports
+// multiple formats like burp xml,openapi,swagger,proxify json
+// Note: this is mutually exclusive with LoadTargets and LoadTargetsFromReader
+func (e *NucleiEngine) LoadTargetsWithHttpData(filePath string, filemode string) error {
+	e.opts.TargetsFilePath = filePath
+	e.opts.InputFileMode = filemode
+	httpProvider, err := provider.NewInputProvider(provider.InputOptions{Options: e.opts})
+	if err != nil {
+		e.opts.TargetsFilePath = ""
+		e.opts.InputFileMode = ""
+		return err
+	}
+	e.inputProvider = httpProvider
+	return nil
 }
 
 // GetExecuterOptions returns the nuclei executor options

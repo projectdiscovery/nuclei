@@ -113,12 +113,17 @@ Usage:
 
 Flags:
 TARGET:
-   -u, -target string[]             target URLs/hosts to scan
-   -l, -list string                 path to file containing a list of target URLs/hosts to scan (one per line)
-   -eh, -exclude-hosts string[]     hosts to exclude to scan from the input list (ip, cidr, hostname)
-   -resume string                   resume scan using resume.cfg (clustering will be disabled)
-   -sa, -scan-all-ips               scan all the IP's associated with dns record
-   -iv, -ip-version string[]        IP version to scan of hostname (4,6) - (default 4)
+   -u, -target string[]          target URLs/hosts to scan
+   -l, -list string              path to file containing a list of target URLs/hosts to scan (one per line)
+   -eh, -exclude-hosts string[]  hosts to exclude to scan from the input list (ip, cidr, hostname)
+   -resume string                resume scan using resume.cfg (clustering will be disabled)
+   -sa, -scan-all-ips            scan all the IP's associated with dns record
+   -iv, -ip-version string[]     IP version to scan of hostname (4,6) - (default 4)
+
+TARGET-FORMAT:
+   -im, -input-mode string        mode of input file (list, burp, jsonl, yaml, openapi, swagger) (default "list")
+   -ro, -required-only            use only required fields in input format when generating requests
+   -sfv, -skip-format-validation  skip format validation (like missing vars) when parsing input file
 
 TEMPLATES:
    -nt, -new-templates                    run only new templates added in latest nuclei-templates release
@@ -134,6 +139,7 @@ TEMPLATES:
    -tl                                    list all available templates
    -sign                                  signs the templates with the private key defined in NUCLEI_SIGNATURE_PRIVATE_KEY env variable
    -code                                  enable loading code protocol-based templates
+   -dut, -disable-unsigned-templates      disable running unsigned templates or templates with mismatched signature
 
 FILTERING:
    -a, -author string[]               templates to run based on authors (comma-separated, file)
@@ -142,8 +148,8 @@ FILTERING:
    -itags, -include-tags string[]     tags to be executed even if they are excluded either by default or configuration
    -id, -template-id string[]         templates to run based on template ids (comma-separated, file, allow-wildcard)
    -eid, -exclude-id string[]         templates to exclude based on template ids (comma-separated, file)
-   -it, -include-templates string[]   templates to be executed even if they are excluded either by default or configuration
-   -et, -exclude-templates string[]   template or template directory to exclude (comma-separated, file)
+   -it, -include-templates string[]   path to template file or directory to be executed even if they are excluded either by default or configuration
+   -et, -exclude-templates string[]   path to template file or directory to exclude (comma-separated, file)
    -em, -exclude-matchers string[]    template matchers to exclude in result
    -s, -severity value[]              templates to run based on severity. Possible values: info, low, medium, high, critical, unknown
    -es, -exclude-severity value[]     templates to exclude based on severity. Possible values: info, low, medium, high, critical, unknown
@@ -215,6 +221,7 @@ INTERACTSH:
 FUZZING:
    -ft, -fuzzing-type string  overrides fuzzing type set in template (replace, prefix, postfix, infix)
    -fm, -fuzzing-mode string  overrides fuzzing mode set in template (multiple, single)
+   -fuzz                      enable loading fuzzing templates
 
 UNCOVER:
    -uc, -uncover                  enable uncover engine
@@ -231,6 +238,8 @@ RATE-LIMIT:
    -c, -concurrency int               maximum number of templates to be executed in parallel (default 25)
    -hbs, -headless-bulk-size int      maximum number of headless hosts to be analyzed in parallel per template (default 10)
    -headc, -headless-concurrency int  maximum number of headless templates to be executed in parallel (default 10)
+   -jsc, -js-concurrency int          maximum number of javascript runtimes to be executed in parallel (default 120)
+   -pc, -payload-concurrency int      max payload concurrency for each template (default 25)
 
 OPTIMIZATIONS:
    -timeout int                     time to wait in seconds before timeout (default 10)
@@ -292,22 +301,26 @@ CLOUD:
    -cup, -cloud-upload    upload scan results to pdcp dashboard
    -sid, -scan-id string  upload scan results to given scan id
 
+AUTHENTICATION:
+   -sf, -secret-file string[]  path to config file containing secrets for nuclei authenticated scan
+   -ps, -prefetch-secrets      prefetch secrets from the secrets file
+
 
 EXAMPLES:
 Run nuclei on single host:
-	$ nuclei -target example.com
+   $ nuclei -target example.com
 
 Run nuclei with specific template directories:
-	$ nuclei -target example.com -t http/cves/ -t ssl
+   $ nuclei -target example.com -t http/cves/ -t ssl
 
 Run nuclei against a list of hosts:
-	$ nuclei -list hosts.txt
+   $ nuclei -list hosts.txt
 
 Run nuclei with a JSON output:
-	$ nuclei -target example.com -json-export output.json
+   $ nuclei -target example.com -json-export output.json
 
 Run nuclei with sorted Markdown outputs (with environment variables):
-	$ MARKDOWN_EXPORT_SORT_MODE=template nuclei -target example.com -markdown-export nuclei_report/
+   $ MARKDOWN_EXPORT_SORT_MODE=template nuclei -target example.com -markdown-export nuclei_report/
 
 Additional documentation is available at: https://docs.nuclei.sh/getting-started/running
 ```
