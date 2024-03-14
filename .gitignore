@@ -30,6 +30,9 @@ pkg/protocols/headless/engine/.cache
 /tsgen
 /scrapefuncs
 /integration_tests/.cache/
-/integration_tests/.nuclei-config/
 /*.yaml
-/pkg/protocols/headless/engine/.nuclei-config/
+**/*-config
+**/*-cache
+/fuzzplayground
+integration_tests/fuzzplayground
+

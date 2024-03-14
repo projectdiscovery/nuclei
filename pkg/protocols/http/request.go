@@ -24,12 +24,11 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/expressions"
-	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/fuzz"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/generators"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/helpers/eventcreator"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/helpers/responsehighlighter"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/interactsh"
-	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/tostring"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http/httpclientpool"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http/httputils"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http/signer"
@@ -168,6 +167,10 @@ func (request *Request) executeRaceRequest(input *contextargs.Context, previous 
 func (request *Request) executeParallelHTTP(input *contextargs.Context, dynamicValues output.InternalEvent, callback protocols.OutputEventCallback) error {
 	// Workers that keeps enqueuing new requests
 	maxWorkers := request.Threads
+
+	if protocolstate.IsLowOnMemory() {
+		maxWorkers = protocolstate.GuardThreadsOrDefault(request.Threads)
+	}
 
 	// Stop-at-first-match logic while executing requests
 	// parallely using threads
@@ -339,98 +342,6 @@ func (request *Request) executeTurboHTTP(input *contextargs.Context, dynamicValu
 		return nil
 	}
 	return multierr.Combine(spmHandler.CombinedResults()...)
-}
-
-// executeFuzzingRule executes fuzzing request for a URL
-func (request *Request) executeFuzzingRule(input *contextargs.Context, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
-	// If request is self-contained we don't need to parse any input.
-	if !request.SelfContained {
-		// If it's not self-contained we parse user provided input
-		if _, err := urlutil.Parse(input.MetaInput.Input); err != nil {
-			return errors.Wrap(err, "could not parse url")
-		}
-	}
-	fuzzRequestCallback := func(gr fuzz.GeneratedRequest) bool {
-		hasInteractMatchers := interactsh.HasMatchers(request.CompiledOperators)
-		hasInteractMarkers := len(gr.InteractURLs) > 0
-		if request.options.HostErrorsCache != nil && request.options.HostErrorsCache.Check(input.MetaInput.Input) {
-			return false
-		}
-		request.options.RateLimiter.Take()
-		req := &generatedRequest{
-			request:        gr.Request,
-			dynamicValues:  gr.DynamicValues,
-			interactshURLs: gr.InteractURLs,
-			original:       request,
-		}
-		var gotMatches bool
-		requestErr := request.executeRequest(input, req, gr.DynamicValues, hasInteractMatchers, func(event *output.InternalWrappedEvent) {
-			if hasInteractMarkers && hasInteractMatchers && request.options.Interactsh != nil {
-				requestData := &interactsh.RequestData{
-					MakeResultFunc: request.MakeResultEvent,
-					Event:          event,
-					Operators:      request.CompiledOperators,
-					MatchFunc:      request.Match,
-					ExtractFunc:    request.Extract,
-				}
-				request.options.Interactsh.RequestEvent(gr.InteractURLs, requestData)
-				gotMatches = request.options.Interactsh.AlreadyMatched(requestData)
-			} else {
-				callback(event)
-			}
-			// Add the extracts to the dynamic values if any.
-			if event.OperatorsResult != nil {
-				gotMatches = event.OperatorsResult.Matched
-			}
-		}, 0)
-		// If a variable is unresolved, skip all further requests
-		if errors.Is(requestErr, errStopExecution) {
-			return false
-		}
-		if requestErr != nil {
-			if request.options.HostErrorsCache != nil {
-				request.options.HostErrorsCache.MarkFailed(input.MetaInput.Input, requestErr)
-			}
-			gologger.Verbose().Msgf("[%s] Error occurred in request: %s\n", request.options.TemplateID, requestErr)
-		}
-		request.options.Progress.IncrementRequests()
-
-		// If this was a match, and we want to stop at first match, skip all further requests.
-		shouldStopAtFirstMatch := request.options.Options.StopAtFirstMatch || request.StopAtFirstMatch
-		if shouldStopAtFirstMatch && gotMatches {
-			return false
-		}
-		return true
-	}
-
-	// Iterate through all requests for template and queue them for fuzzing
-	generator := request.newGenerator(true)
-	for {
-		value, payloads, result := generator.nextValue()
-		if !result {
-			break
-		}
-		generated, err := generator.Make(context.Background(), input, value, payloads, nil)
-		if err != nil {
-			continue
-		}
-		input.MetaInput = &contextargs.MetaInput{Input: generated.URL()}
-		for _, rule := range request.Fuzzing {
-			err = rule.Execute(&fuzz.ExecuteRuleInput{
-				Input:       input,
-				Callback:    fuzzRequestCallback,
-				Values:      generated.dynamicValues,
-				BaseRequest: generated.request,
-			})
-			if err == types.ErrNoMoreRequests {
-				return nil
-			}
-			if err != nil {
-				return errors.Wrap(err, "could not execute rule")
-			}
-		}
-	}
-	return nil
 }
 
 // ExecuteWithResults executes the final request on a URL
@@ -655,6 +566,12 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 			}
 		}
 	}
+
+	// === apply auth strategies ===
+	if generatedRequest.request != nil {
+		generatedRequest.ApplyAuth(request.options.AuthProvider)
+	}
+
 	var formedURL string
 	var hostname string
 	timeStart := time.Now()
@@ -771,7 +688,7 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 		// In case of interactsh markers and request times out, still send
 		// a callback event so in case we receive an interaction, correlation is possible.
 		// Also, to log failed use-cases.
-		outputEvent := request.responseToDSLMap(&http.Response{}, input.MetaInput.Input, formedURL, tostring.UnsafeToString(dumpedRequest), "", "", "", 0, generatedRequest.meta)
+		outputEvent := request.responseToDSLMap(&http.Response{}, input.MetaInput.Input, formedURL, convUtil.String(dumpedRequest), "", "", "", 0, generatedRequest.meta)
 		if i := strings.LastIndex(hostname, ":"); i != -1 {
 			hostname = hostname[:i]
 		}
@@ -782,8 +699,8 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 			outputEvent["ip"] = httpclientpool.Dialer.GetDialedIP(hostname)
 		}
 
-		event := &output.InternalWrappedEvent{InternalEvent: outputEvent}
-		if request.CompiledOperators != nil {
+		event := &output.InternalWrappedEvent{}
+		if request.CompiledOperators != nil && request.CompiledOperators.HasDSL() {
 			event.InternalEvent = outputEvent
 		}
 		callback(event)

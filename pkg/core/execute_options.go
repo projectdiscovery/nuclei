@@ -7,6 +7,7 @@ import (
 	"github.com/remeh/sizedwaitgroup"
 
 	"github.com/projectdiscovery/gologger"
+	"github.com/projectdiscovery/nuclei/v3/pkg/input/provider"
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
 	"github.com/projectdiscovery/nuclei/v3/pkg/templates"
@@ -20,18 +21,18 @@ import (
 //
 // All the execution logic for the templates/workflows happens in this part
 // of the engine.
-func (e *Engine) Execute(templates []*templates.Template, target InputProvider) *atomic.Bool {
+func (e *Engine) Execute(templates []*templates.Template, target provider.InputProvider) *atomic.Bool {
 	return e.ExecuteScanWithOpts(templates, target, false)
 }
 
 // ExecuteWithResults a list of templates with results
-func (e *Engine) ExecuteWithResults(templatesList []*templates.Template, target InputProvider, callback func(*output.ResultEvent)) *atomic.Bool {
+func (e *Engine) ExecuteWithResults(templatesList []*templates.Template, target provider.InputProvider, callback func(*output.ResultEvent)) *atomic.Bool {
 	e.Callback = callback
 	return e.ExecuteScanWithOpts(templatesList, target, false)
 }
 
 // ExecuteScanWithOpts executes scan with given scanStrategy
-func (e *Engine) ExecuteScanWithOpts(templatesList []*templates.Template, target InputProvider, noCluster bool) *atomic.Bool {
+func (e *Engine) ExecuteScanWithOpts(templatesList []*templates.Template, target provider.InputProvider, noCluster bool) *atomic.Bool {
 	results := &atomic.Bool{}
 	selfcontainedWg := &sync.WaitGroup{}
 
@@ -100,7 +101,7 @@ func (e *Engine) ExecuteScanWithOpts(templatesList []*templates.Template, target
 }
 
 // executeTemplateSpray executes scan using template spray strategy where targets are iterated over each template
-func (e *Engine) executeTemplateSpray(templatesList []*templates.Template, target InputProvider) *atomic.Bool {
+func (e *Engine) executeTemplateSpray(templatesList []*templates.Template, target provider.InputProvider) *atomic.Bool {
 	results := &atomic.Bool{}
 
 	// wp is workpool that contains different waitgroups for
@@ -131,11 +132,11 @@ func (e *Engine) executeTemplateSpray(templatesList []*templates.Template, targe
 }
 
 // executeHostSpray executes scan using host spray strategy where templates are iterated over each target
-func (e *Engine) executeHostSpray(templatesList []*templates.Template, target InputProvider) *atomic.Bool {
+func (e *Engine) executeHostSpray(templatesList []*templates.Template, target provider.InputProvider) *atomic.Bool {
 	results := &atomic.Bool{}
 	wp := sizedwaitgroup.New(e.options.BulkSize + e.options.HeadlessBulkSize)
 
-	target.Scan(func(value *contextargs.MetaInput) bool {
+	target.Iterate(func(value *contextargs.MetaInput) bool {
 		wp.Add()
 		go func(targetval *contextargs.MetaInput) {
 			defer wp.Done()

@@ -1,0 +1,535 @@
+timestamp: 2024-02-20T19:24:13+05:30
+url: http://127.0.0.1:8082/blog/post?postId=3&source=proxify
+request:
+  header:
+    Accept-Encoding: gzip
+    Connection: close
+    User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 11_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/87.0.4280.88 Safari/537.36
+    host: 127.0.0.1:8082
+    method: GET
+    path: /blog/post
+    scheme: https
+  raw: |+
+    GET /blog/post?postId=3&source=proxify HTTP/1.1
+    Host: 127.0.0.1:8082
+    Accept-Encoding: gzip
+    Connection: close
+    User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 11_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/87.0.4280.88 Safari/537.36
+
+response:
+  header:
+    Content-Encoding: gzip
+    Content-Type: text/html; charset=utf-8
+    Date: Tue, 20 Feb 2024 13:54:13 GMT
+    Set-Cookie: AWSALB=9l3X2bRs5JVQp5cO8o7xLckrdo3FZIQzbS0ga0n4ctfDApb/nn0K6AiSLLAMbG7CCDHqKOj9kQdyj6T2RzBDULszJ+2Oy8KcyuOKhFsCGVTVabnJTkVwhyXLciFt; Expires=Tue, 27 Feb 2024 13:54:13 GMT; Path=/, AWSALBCORS=9l3X2bRs5JVQp5cO8o7xLckrdo3FZIQzbS0ga0n4ctfDApb/nn0K6AiSLLAMbG7CCDHqKOj9kQdyj6T2RzBDULszJ+2Oy8KcyuOKhFsCGVTVabnJTkVwhyXLciFt; Expires=Tue, 27 Feb 2024 13:54:13 GMT; Path=/; SameSite=None; Secure, session=ymwLa8dKmWjLl43BBpQnrp5LkFZraYkp; Secure; HttpOnly; SameSite=None
+    X-Backend: ea6c1d8c-a8e5-4bef-b8db-879bbb13cf62
+    X-Frame-Options: SAMEORIGIN
+  raw: |+
+    HTTP/1.1 200 OK
+    Connection: close
+    Content-Encoding: gzip
+    Content-Type: text/html; charset=utf-8
+    Date: Tue, 20 Feb 2024 13:54:13 GMT
+    Set-Cookie: AWSALB=9l3X2bRs5JVQp5cO8o7xLckrdo3FZIQzbS0ga0n4ctfDApb/nn0K6AiSLLAMbG7CCDHqKOj9kQdyj6T2RzBDULszJ+2Oy8KcyuOKhFsCGVTVabnJTkVwhyXLciFt; Expires=Tue, 27 Feb 2024 13:54:13 GMT; Path=/
+    Set-Cookie: AWSALBCORS=9l3X2bRs5JVQp5cO8o7xLckrdo3FZIQzbS0ga0n4ctfDApb/nn0K6AiSLLAMbG7CCDHqKOj9kQdyj6T2RzBDULszJ+2Oy8KcyuOKhFsCGVTVabnJTkVwhyXLciFt; Expires=Tue, 27 Feb 2024 13:54:13 GMT; Path=/; SameSite=None; Secure
+    Set-Cookie: session=ymwLa8dKmWjLl43BBpQnrp5LkFZraYkp; Secure; HttpOnly; SameSite=None
+    X-Backend: ea6c1d8c-a8e5-4bef-b8db-879bbb13cf62
+    X-Frame-Options: SAMEORIGIN
+
+---
+timestamp: 2024-02-20T19:24:13+05:30
+url: http://127.0.0.1:8082/reset-password
+request:
+  header:
+    Accept-Encoding: gzip
+    Connection: close
+    User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 11_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/87.0.4280.88 Safari/537.36
+    host: 127.0.0.1:8082
+    method: GET
+    path: /blog/post
+    scheme: https
+  raw: |+
+    POST /reset-password HTTP/1.1
+    Host: 127.0.0.1:8082
+    X-Forwarded-For: 127.0.0.1:8082
+    Accept-Encoding: gzip
+    Connection: close
+    Content-Type: application/json
+    Content-Length: 23
+    User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 11_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/87.0.4280.88 Safari/537.36
+    
+    {"password":"12345678"}
+response:
+  header:
+    Content-Encoding: gzip
+    Content-Type: text/html; charset=utf-8
+    Date: Tue, 20 Feb 2024 13:54:13 GMT
+    Set-Cookie: AWSALB=9l3X2bRs5JVQp5cO8o7xLckrdo3FZIQzbS0ga0n4ctfDApb/nn0K6AiSLLAMbG7CCDHqKOj9kQdyj6T2RzBDULszJ+2Oy8KcyuOKhFsCGVTVabnJTkVwhyXLciFt; Expires=Tue, 27 Feb 2024 13:54:13 GMT; Path=/, AWSALBCORS=9l3X2bRs5JVQp5cO8o7xLckrdo3FZIQzbS0ga0n4ctfDApb/nn0K6AiSLLAMbG7CCDHqKOj9kQdyj6T2RzBDULszJ+2Oy8KcyuOKhFsCGVTVabnJTkVwhyXLciFt; Expires=Tue, 27 Feb 2024 13:54:13 GMT; Path=/; SameSite=None; Secure, session=ymwLa8dKmWjLl43BBpQnrp5LkFZraYkp; Secure; HttpOnly; SameSite=None
+    X-Backend: ea6c1d8c-a8e5-4bef-b8db-879bbb13cf62
+    X-Frame-Options: SAMEORIGIN
+  raw: |+
+    HTTP/1.1 200 OK
+    Connection: close
+    Content-Encoding: gzip
+    Content-Type: text/html; charset=utf-8
+    Date: Tue, 20 Feb 2024 13:54:13 GMT
+    Set-Cookie: AWSALB=9l3X2bRs5JVQp5cO8o7xLckrdo3FZIQzbS0ga0n4ctfDApb/nn0K6AiSLLAMbG7CCDHqKOj9kQdyj6T2RzBDULszJ+2Oy8KcyuOKhFsCGVTVabnJTkVwhyXLciFt; Expires=Tue, 27 Feb 2024 13:54:13 GMT; Path=/
+    Set-Cookie: AWSALBCORS=9l3X2bRs5JVQp5cO8o7xLckrdo3FZIQzbS0ga0n4ctfDApb/nn0K6AiSLLAMbG7CCDHqKOj9kQdyj6T2RzBDULszJ+2Oy8KcyuOKhFsCGVTVabnJTkVwhyXLciFt; Expires=Tue, 27 Feb 2024 13:54:13 GMT; Path=/; SameSite=None; Secure
+    Set-Cookie: session=ymwLa8dKmWjLl43BBpQnrp5LkFZraYkp; Secure; HttpOnly; SameSite=None
+    X-Backend: ea6c1d8c-a8e5-4bef-b8db-879bbb13cf62
+    X-Frame-Options: SAMEORIGIN
+
+---
+timestamp: 2024-02-20T19:24:13+06:30
+url: http://127.0.0.1:8082/user/55/profile
+request:
+  header:
+    Accept-Encoding: gzip
+    Connection: close
+    User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 11_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/87.0.4280.88 Safari/537.36
+    host: 127.0.0.1:8082
+    method: GET
+    path: /blog/post
+    scheme: https
+  raw: |+
+    GET /user/55/profile HTTP/1.1
+    Host: 127.0.0.1:8082
+    Accept-Encoding: gzip
+    Connection: close
+    Content-Type: application/json
+    User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 11_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/87.0.4280.88 Safari/537.36
+    
+response:
+  header:
+    Content-Type: application/json; charset=UTF-8
+    Date: Tue, 27 Feb 2024 18:46:44 GMT
+  raw: |+
+    HTTP/1.1 200 OK
+    Content-Type: application/json; charset=UTF-8
+    Date: Tue, 27 Feb 2024 18:46:44 GMT
+    Content-Length: 47
+
+    {"ID":75,"Name":"user","Age":30,"Role":"user"}
+
+---
+timestamp: 2024-02-20T23:25:13+06:30
+url: http://127.0.0.1:8082/user
+request:
+  header:
+    Accept-Encoding: gzip
+    Connection: close
+    Content-Type: application/json
+    User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 11_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/87.0.4280.88 Safari/537.36
+    host: 127.0.0.1:8082
+    method: POST
+    path: /user
+    scheme: http
+  raw: |+
+    POST /user HTTP/1.1
+    Host: localhost:8082
+    User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 11_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/87.0.4280.88 Safari/537.36
+    Accept: */*
+    Content-Length: 32
+    Connection: close
+    Content-Type: application/json
+
+    {"id": 7 , "name": "pdteam"}
+
+response:
+  header:
+    Content-Type: text/plain; charset=UTF-8
+    Date: Tue, 27 Feb 2024 18:46:44 GMT
+  raw: |+
+    HTTP/1.1 200 OK
+    Content-Type: text/plain; charset=UTF-8
+    Date: Wed, 28 Feb 2024 13:58:52 GMT
+    Content-Length: 25
+
+    User updated successfully
+
+---
+timestamp: 2024-02-20T23:26:13+06:30
+url: http://127.0.0.1:8082/user
+request:
+  header:
+    Accept-Encoding: gzip
+    Connection: close
+    Content-Type: application/x-www-form-urlencoded
+    User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 11_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/87.0.4280.88 Safari/537.36
+    host: 127.0.0.1:8082
+    method: POST
+    path: /user
+    scheme: http
+  raw: |+
+    POST /user HTTP/1.1
+    Host: localhost:8082
+    User-Agent: curl/8.1.2
+    Accept: */*
+    Content-Length: 20
+    Connection: close
+    Content-Type: application/x-www-form-urlencoded
+
+    id=7&name=pdteam
+
+response:
+  header:
+    Content-Type: text/plain; charset=UTF-8
+    Date: Tue, 27 Feb 2024 18:46:44 GMT
+  raw: |+
+    HTTP/1.1 200 OK
+    Content-Type: text/plain; charset=UTF-8
+    Date: Wed, 28 Feb 2024 13:58:52 GMT
+    Content-Length: 25
+
+    User updated successfully
+
+---
+timestamp: 2024-02-20T23:26:13+06:30
+url: http://127.0.0.1:8082/user
+request:
+  header:
+    Accept-Encoding: gzip
+    Connection: close
+    Content-Type: multipart/form-data
+    User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 11_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/87.0.4280.88 Safari/537.36
+    host: 127.0.0.1:8082
+    method: POST
+    path: /user
+    scheme: http
+  raw: |+
+    POST /user HTTP/1.1
+    Host: localhost:8082
+    User-Agent: curl/8.1.2
+    Accept: */*
+    Content-Length: 226
+    Connection: close
+    Content-Type: multipart/form-data; boundary=----WebKitFormBoundary7MA4YWxkTrZu0gW
+
+    ------WebKitFormBoundary7MA4YWxkTrZu0gW
+    Content-Disposition: form-data; name="id"
+
+    7
+    ------WebKitFormBoundary7MA4YWxkTrZu0gW
+    Content-Disposition: form-data; name="name"
+
+    pdteam
+    ------WebKitFormBoundary7MA4YWxkTrZu0gW--
+
+response:
+  header:
+    Content-Type: text/plain; charset=UTF-8
+    Date: Tue, 27 Feb 2024 18:46:44 GMT
+  raw: |+
+    HTTP/1.1 200 OK
+    Content-Type: text/plain; charset=UTF-8
+    Date: Wed, 28 Feb 2024 13:58:52 GMT
+    Content-Length: 25
+
+    User updated successfully
+
+---
+---
+timestamp: 2024-02-20T19:25:13+06:30
+url: http://127.0.0.1:8082/blog/posts
+request:
+  header:
+    Accept-Encoding: gzip
+    Connection: close
+    User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 11_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/87.0.4280.88 Safari/537.36
+    host: 127.0.0.1:8082
+    Cookie: session=ymwLa8dKmWjLl43BBpQnrp5LkFZraYkp; lang=en
+    method: GET
+    path: /blog/posts
+    scheme: http
+  raw: |+
+    GET /blog/posts HTTP/1.1
+    Host: 127.0.0.1:8082
+    Accept-Encoding: gzip
+    Cookie: session=ymwLa8dKmWjLl43BBpQnrp5LkFZraYkp; lang=en
+    Connection: close
+    Content-Type: application/json
+    User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 11_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/87.0.4280.88 Safari/537.36
+    
+response:
+  header:
+    Content-Type: application/json; charset=UTF-8
+    Date: Tue, 27 Feb 2024 18:46:44 GMT
+  raw: |+
+    HTTP/1.1 200 OK
+    Content-Type: application/json; charset=UTF-8
+    Date: Wed, 28 Feb 2024 13:58:52 GMT
+    Content-Length: 218
+    
+    [{"ID":1,"Title":"The Joy of Programming","Content":"Programming is like painting a canvas with logic.","Lang":"en"},{"ID":2,"Title":"A Journey Through Code","Content":"Every line of code tells a story.","Lang":"en"}]
+
+---
+timestamp: 2024-02-20T23:26:13+06:30
+url: http://127.0.0.1:8082/user
+request:
+  header:
+    Accept-Encoding: gzip
+    Connection: close
+    Content-Type: application/xml
+    User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 11_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/87.0.4280.88 Safari/537.36
+    host: 127.0.0.1:8082
+    method: POST
+    path: /user
+    scheme: http
+  raw: |+
+    POST /user HTTP/1.1
+    Host: localhost:8082
+    User-Agent: curl/8.1.2
+    Accept: */*
+    Content-Length: 76
+    Connection: close
+    Content-Type: application/xml
+
+    <?xml version="1.0"?>
+    <user>
+    <id>7</id>
+    <name>pdteam</name>
+    </user>
+
+response:
+  header:
+    Content-Type: text/plain; charset=UTF-8
+    Date: Tue, 27 Feb 2024 18:46:44 GMT
+  raw: |+
+    HTTP/1.1 200 OK
+    Content-Type: text/plain; charset=UTF-8
+    Date: Wed, 28 Feb 2024 13:58:52 GMT
+    Content-Length: 25
+
+    User updated successfully
+
+---
+timestamp: 2024-02-20T19:24:13+05:32
+url: http://127.0.0.1:8082/host-header-lab
+request:
+  header:
+    Accept-Encoding: gzip
+    Authorization: Bearer 3x4mpl3t0k3n
+    Connection: close
+    User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 11_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/87.0.4280.88 Safari/537.36
+    host: 127.0.0.1:8082
+    method: POST
+    path: /catalog/product
+    scheme: https
+  raw: |+
+    GET /host-header-lab HTTP/1.1
+    Host: 127.0.0.1:8082
+    Authorization: Bearer 3x4mpl3t0k3n
+    Accept-Encoding: gzip
+    Connection: close
+    User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 11_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/87.0.4280.88 Safari/537.36
+
+response:
+  header:
+    Content-Encoding: gzip
+    Content-Type: text/html; charset=utf-8
+    Date: Tue, 20 Feb 2024 13:54:13 GMT
+    Set-Cookie: AWSALB=Rzm8ZSSL/yQq1mG1SdGmWAahqexWvOcjIhlNKm0wBnk4jvY3Hdy3mRc+NKoMRNJ2RW+FNbtRk7DX+itnfzjMvKNpwtLWWAafxeKybc+v351g0MsLycRNQF5fG78y; Expires=Tue, 27 Feb 2024 13:54:13 GMT; Path=/, AWSALBCORS=Rzm8ZSSL/yQq1mG1SdGmWAahqexWvOcjIhlNKm0wBnk4jvY3Hdy3mRc+NKoMRNJ2RW+FNbtRk7DX+itnfzjMvKNpwtLWWAafxeKybc+v351g0MsLycRNQF5fG78y; Expires=Tue, 27 Feb 2024 13:54:13 GMT; Path=/; SameSite=None; Secure, session=fFcCUjmQguQy820Y8xrnRypp3KBWSPk6; Secure; HttpOnly; SameSite=None
+    X-Backend: 2235790d-f089-4324-8ac0-f64cc96f2460
+    X-Frame-Options: SAMEORIGIN
+  body: |
+    <!DOCTYPE html>
+    <html>
+        <head>
+            <link href=/resources/labheader/css/scanMeHeader.css rel=stylesheet>
+            <link href=/resources/css/labsScanme.css rel=stylesheet>
+            <meta name="viewport" content="width=device-width, user-scalable=no">
+            <script src="/resources/js/react.development.js"></script>
+            <script src="/resources/js/react-dom.development.js"></script>
+            <script type="text/javascript" src="/resources/js/angular_1-7-7.js"></script>
+            <title>Fruit Overlays - Product - Gin &amp; Juice Shop</title>
+        </head>
+        <body ng-app>
+            <div id="scanMeHeader">
+                <section class="header-description">
+                    <p>
+                        This is a deliberately vulnerable web application designed for testing web&nbsp;vulnerability&nbsp;scanners.
+                        <span class="link" onmouseenter="window.__x1 = 1" onmouseover="window.__x2 = 1" onmousemove="window.__x3 = 1"  onmousedown="window.__x4 = 1" onmouseup="if (window.__x1 && window.__x2 && window.__x3 && window.__x4) location = atob('L3Z1bG5lcmFiaWxpdGllcw==')" onmouseleave="delete window.__x1; delete window.__x2; delete window.__x3; delete window.__x4">Put your scanner to the test!</span>
+                    </p>
+                </section>
+                <section class='scanMeBanner'>
+                    <div class=container>
+                        <a href='/'>
+                            <div class=scanme-logo></div>
+                        </a>
+                        <div class=title-container>
+                            <nav>
+                                <ul class="navigation-header-links primary-links">
+                                    <li>
+                                        <a class="button selected" href="/catalog">Products</a>
+                                    </li>
+                                    <li>
+                                        <a class="button" href="/blog">Blog</a>
+                                    </li>
+                                    <li>
+                                        <a class="button" href="/about">Our story</a>
+                                    </li>
+                                </ul>
+                                <ul class="navigation-header-links secondary-links">
+                                    <li>
+                                        <a class="account-icon" href="/my-account"><svg><use href="/resources/images/icon-account.svg#account-icon"></use></svg></a>
+                                        <ul>
+                                            <li>
+                                                <a class="button" href="/my-account">Log in</a>
+                                            </li>
+                                            <li>
+                                                <a class="button" href="/my-account">My account</a>
+                                            </li>
+                                        </ul>
+                                    </li>
+                                    <li>
+                                        <a class="cart-icon" href="/catalog/cart"><span>0</span><svg><use href="/resources/images/icon-cart.svg#cart-icon"></use></svg></a>
+                                    </li>
+                                    <li class="nav-toggle"><a class="nav-trigger"><span></span><span></span><span></span></a></li>
+                                </ul>
+                            </nav>
+                        </div>
+                    </div>
+                </section>
+            </div>
+            <div theme="ecommerce-product">
+                <section class="maincontainer">
+                    <div class="container is-page">
+                        <header class="notification-header">
+                        </header>
+                        <ul class="breadcrumbs">
+                            <li><a href="/">Home</a></li>
+                            <li><a href="/catalog">Products</a></li>
+                            <li>Fruit Overlays</li>
+                        </ul>
+                        <section class="product">
+                            <div>
+                                <img class="product-image" src="/image/scanme/productcatalog/products/10.png">
+                            </div>
+                            <div>
+                                <h3>Fruit Overlays</h3>
+                                <img class="product-image" src="/image/scanme/productcatalog/products/10.png">
+                                <span class="price-rating">
+                                    <span class="price">
+                                        $92.79
+                                    </span>
+                                    <img src="/resources/images/rating3.png">
+                                </span>
+                                <span class="description">
+                                    <label>Description:</label>
+                                    <p>When it comes to hospitality presentation is key, and nothing looks better than a well-dressed drink. We know gin fans like plenty of fruit in their glasses, some a bit more than they really need, but hey ho, each to their own. But what about fruit not inside your glass, but classily arranged over your glass? In comes Fruitus overlayus, the best way to jazz up any party. The possible colour combinations are endless, just picture that! All you need is a nice selection of small fruits, or maybe even use our Fruit Curliwurlier to add a dash of even more drama, and we will do the rest. This one is a real winner at our Christmas and New year’s outings, give it a go and turn some heads.</p>
+    <p>CONTENTS: 12 cocktail sticks.</p>
+    <p>HOW TO USE: Let your creative juices flow (Pun intended), and spend some time working on your colour coordination, try not to think too much about it, just do it! Pick up one of the Fruitus overlayus sticks and carefully slide the fruit along until there is a small space on either end of the stick. Balance the stick across the rim of the glass. Ta-Da! Your first fruit overlay. Keep going until you have as many overlays as you need. You can always purchase more at any time with a discount on bulk buys.</p>
+                                </span>
+                                <span class="stock-check">
+                                    <form id="stockCheckForm" action="/catalog/product/stock" method="POST">
+                                        <input required type="hidden" name="productId" value="3">
+                                        <select name="storeId">
+                                            <option value="1" >London</option>
+                                            <option value="2" >Paris</option>
+                                            <option value="3" >Milan</option>
+                                        </select>
+                                        <button type="submit" class="button">Check stock</button>
+                                    </form>
+                                    <span id="stockCheckResult"></span>
+                                    <script src="/resources/js/xmlStockCheckPayload.js"></script>
+                                    <script src="/resources/js/stockCheck.js"></script>
+                                </span>
+                                <span class="cart-button">
+                                    <form id=addToCartForm action=/catalog/cart method=POST>
+                                        <input required type=hidden name=productId value=3>
+                                        <input required type=hidden name=redir value=PRODUCT>
+                                        <select class='product-quantity' required name=quantity>
+                                            <option value="1" selected>1</option>
+                                            <option value="2">2</option>
+                                            <option value="3">3</option>
+                                            <option value="4">4</option>
+                                            <option value="5">5</option>
+                                            <option value="6">6</option>
+                                            <option value="7">7</option>
+                                            <option value="8">8</option>
+                                            <option value="9">9</option>
+                                            <option value="10">10</option>
+                                            <option value="11">11</option>
+                                            <option value="12">12</option>
+                                            <option value="13">13</option>
+                                            <option value="14">14</option>
+                                            <option value="15">15</option>
+                                        </select>
+                                        <button type=submit class=button>Add to cart</button>
+                                    </form>
+                                </span>
+                                <span class="view-cart-button">
+                                    <a class="button" href="/catalog/cart">View cart</a>
+                                </span>
+                            </div>
+                        </section>
+                    </div>
+                </section>
+                <div class="footer-wrapper">
+                    <section class="footer">
+                        <div class="footer-left"></div>
+                        <div class="footer-center">
+                            <h2>Never miss a deal - subscribe now</h2>
+                            <p>Join our worldwide community of gin and juice fanatics, for exclusive news on our latest deals, new releases, collaborations, and more.</p>
+                            <script src='/resources/js/subscribeNow.js'></script>
+                            <div id="subscribe" class="form" data-method="post" data-action="/catalog/subscribe">
+                                <input required type=email name=email placeholder="Email address">
+                                <input required type="hidden" name="csrf" value="ALUrIPu21ygHSGadxsA8u70XnVcY4V4k">
+                                <button class="button" type=submit>Subscribe</button>
+                            </div>
+                            <dialog id="coupon-dialog">
+                                <div class="coupon-wrapper">
+                                    <button class="close-button" onclick="closeCouponDialog(event)"></button>
+                                    <div class="coupon-info">
+                                        <h1>20% off everything</h1>
+                                        <div class="coupon-input">
+                                            <h3 id="copyable-coupon">Coupon not found</h3>
+                                            <button id="copy-coupon-button" class="copy-button" onclick="copyCoupon(event)"></button>
+                                            <div id="coupon-copied-tick" class="coupon-copied-tick hidden"></div>
+                                        </div>
+                                        <p>Apply this coupon to your Shopping Cart before placing your order.</p>
+                                    </div>
+                                </div>
+                            </dialog>
+                            <div class="footer-copyright">
+                                <div class="portswigger-logo"></div>
+                                <div>© 2023 PortSwigger Ltd.</div>
+                            </div>
+                        </div>
+                        <div class="footer-right"></div>
+                    </section>
+                    <section class="footer-lower">
+                        <div class="footerNavigation">
+                            <div class="socialLinks">
+                            </div>
+                            <nav>
+                                <ul class="navigation-header-links primary-links">
+                                    <li>
+                                        <a class="button selected" href="/catalog">Products</a>
+                                    </li>
+                                    <li>
+                                        <a class="button" href="/blog">Blog</a>
+                                    </li>
+                                    <li>
+                                        <a class="button" href="/about">Our story</a>
+                                    </li>
+                                </ul>
+                            </nav>
+                        </div>
+                    </section>
+                </div>
+            </div>
+            <script src='/resources/footer/js/scanme.js'></script>
+        </body>
+    </html>
+  raw: |+
+    HTTP/1.1 200 OK
+    Connection: close
+    Content-Encoding: gzip
+    Content-Type: text/html; charset=utf-8
+    Date: Tue, 20 Feb 2024 13:54:13 GMT
+    Set-Cookie: AWSALB=Rzm8ZSSL/yQq1mG1SdGmWAahqexWvOcjIhlNKm0wBnk4jvY3Hdy3mRc+NKoMRNJ2RW+FNbtRk7DX+itnfzjMvKNpwtLWWAafxeKybc+v351g0MsLycRNQF5fG78y; Expires=Tue, 27 Feb 2024 13:54:13 GMT; Path=/
+    Set-Cookie: AWSALBCORS=Rzm8ZSSL/yQq1mG1SdGmWAahqexWvOcjIhlNKm0wBnk4jvY3Hdy3mRc+NKoMRNJ2RW+FNbtRk7DX+itnfzjMvKNpwtLWWAafxeKybc+v351g0MsLycRNQF5fG78y; Expires=Tue, 27 Feb 2024 13:54:13 GMT; Path=/; SameSite=None; Secure
+    Set-Cookie: session=fFcCUjmQguQy820Y8xrnRypp3KBWSPk6; Secure; HttpOnly; SameSite=None
+    X-Backend: 2235790d-f089-4324-8ac0-f64cc96f2460
+    X-Frame-Options: SAMEORIGIN
