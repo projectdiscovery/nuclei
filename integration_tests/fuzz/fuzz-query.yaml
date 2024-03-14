@@ -5,7 +5,7 @@ info:
   author: pdteam
   severity: info
 
-requests:
+http:
   - method: GET
     path:
       - "{{BaseURL}}"
