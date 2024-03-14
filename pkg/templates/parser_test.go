@@ -21,7 +21,7 @@ func TestLoadTemplate(t *testing.T) {
 		name        string
 		template    *Template
 		templateErr error
-		filter      Config
+		filter      TagFilterConfig
 
 		expectedErr error
 		isValid     bool
@@ -79,7 +79,7 @@ func TestLoadTemplate(t *testing.T) {
 			// should be error because the template is loaded
 			expectedErr: errors.New("field 'severity' is missing"),
 			isValid:     true,
-			filter:      Config{IncludeIds: []string{"CVE-2021-27330"}},
+			filter:      TagFilterConfig{IncludeIds: []string{"CVE-2021-27330"}},
 		},
 		{
 			name: "template-without-severity-with-diff-filter-id",
@@ -91,7 +91,7 @@ func TestLoadTemplate(t *testing.T) {
 				},
 			},
 			isValid: false,
-			filter:  Config{IncludeIds: []string{"another-id"}},
+			filter:  TagFilterConfig{IncludeIds: []string{"another-id"}},
 			// no error because the template is not loaded
 			expectedErr: nil,
 		},
@@ -143,7 +143,7 @@ func TestLoadTemplate(t *testing.T) {
 				}
 				p.parsedTemplatesCache.Store(name, template, nil, nil)
 
-				tagFilter, err := NewTagFilter(&Config{})
+				tagFilter, err := NewTagFilter(&TagFilterConfig{})
 				require.Nil(t, err)
 				success, err := p.LoadTemplate(name, tagFilter, nil, catalog)
 				if tc.success {

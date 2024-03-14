@@ -347,7 +347,7 @@ func isConditionMatch(tagFilter *TagFilter, template *Template) bool {
 	return true
 }
 
-type Config struct {
+type TagFilterConfig struct {
 	Tags              []string
 	ExcludeTags       []string
 	Authors           []string
@@ -364,7 +364,7 @@ type Config struct {
 // New returns a tag filter for nuclei tag based execution
 //
 // It takes into account Tags, Severities, ExcludeSeverities, Authors, IncludeTags, ExcludeTags, Conditions.
-func NewTagFilter(config *Config) (*TagFilter, error) {
+func NewTagFilter(config *TagFilterConfig) (*TagFilter, error) {
 	filter := &TagFilter{
 		allowedTags:       make(map[string]struct{}),
 		authors:           make(map[string]struct{}),

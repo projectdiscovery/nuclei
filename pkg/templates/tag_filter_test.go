@@ -34,7 +34,7 @@ func TestTagBasedFilter(t *testing.T) {
 		return dummyTemplate
 	}
 
-	filter, err := NewTagFilter(&Config{
+	filter, err := NewTagFilter(&TagFilterConfig{
 		Tags: []string{"cves", "2021", "jira"},
 	})
 	require.Nil(t, err)
@@ -61,7 +61,7 @@ func TestTagBasedFilter(t *testing.T) {
 	})
 
 	t.Run("not-match-excludes", func(t *testing.T) {
-		filter, err := NewTagFilter(&Config{
+		filter, err := NewTagFilter(&TagFilterConfig{
 			ExcludeTags: []string{"dos"},
 		})
 		require.Nil(t, err)
@@ -71,7 +71,7 @@ func TestTagBasedFilter(t *testing.T) {
 		require.Equal(t, ErrExcluded, err, "could not get correct error")
 	})
 	t.Run("match-includes", func(t *testing.T) {
-		filter, err := NewTagFilter(&Config{
+		filter, err := NewTagFilter(&TagFilterConfig{
 			Tags:        []string{"cves", "fuzz"},
 			ExcludeTags: []string{"dos", "fuzz"},
 			IncludeTags: []string{"fuzz"},
@@ -83,7 +83,7 @@ func TestTagBasedFilter(t *testing.T) {
 		require.True(t, matched, "could not get correct match")
 	})
 	t.Run("match-includes", func(t *testing.T) {
-		filter, err := NewTagFilter(&Config{
+		filter, err := NewTagFilter(&TagFilterConfig{
 			IncludeTags: []string{"fuzz"},
 			ExcludeTags: []string{"fuzz"},
 		})
@@ -94,7 +94,7 @@ func TestTagBasedFilter(t *testing.T) {
 		require.True(t, matched, "could not get correct match")
 	})
 	t.Run("match-author", func(t *testing.T) {
-		filter, err := NewTagFilter(&Config{
+		filter, err := NewTagFilter(&TagFilterConfig{
 			Authors: []string{"pdteam"},
 		})
 		require.Nil(t, err)
@@ -103,7 +103,7 @@ func TestTagBasedFilter(t *testing.T) {
 		require.True(t, matched, "could not get correct match")
 	})
 	t.Run("match-severity", func(t *testing.T) {
-		filter, err := NewTagFilter(&Config{
+		filter, err := NewTagFilter(&TagFilterConfig{
 			Severities: severity.Severities{severity.High},
 		})
 		require.Nil(t, err)
@@ -112,7 +112,7 @@ func TestTagBasedFilter(t *testing.T) {
 		require.True(t, matched, "could not get correct match")
 	})
 	t.Run("match-id", func(t *testing.T) {
-		filter, err := NewTagFilter(&Config{
+		filter, err := NewTagFilter(&TagFilterConfig{
 			IncludeIds: []string{"cve-test"},
 		})
 		require.Nil(t, err)
@@ -121,7 +121,7 @@ func TestTagBasedFilter(t *testing.T) {
 		require.True(t, matched, "could not get correct match")
 	})
 	t.Run("match-exclude-severity", func(t *testing.T) {
-		filter, err := NewTagFilter(&Config{
+		filter, err := NewTagFilter(&TagFilterConfig{
 			ExcludeSeverities: severity.Severities{severity.Low},
 		})
 		require.Nil(t, err)
@@ -133,7 +133,7 @@ func TestTagBasedFilter(t *testing.T) {
 		require.False(t, matched, "could not get correct match")
 	})
 	t.Run("match-exclude-with-tags", func(t *testing.T) {
-		filter, err := NewTagFilter(&Config{
+		filter, err := NewTagFilter(&TagFilterConfig{
 			Tags:        []string{"tag"},
 			ExcludeTags: []string{"another"},
 		})
@@ -143,7 +143,7 @@ func TestTagBasedFilter(t *testing.T) {
 		require.False(t, matched, "could not get correct match")
 	})
 	t.Run("match-conditions", func(t *testing.T) {
-		filter, err := NewTagFilter(&Config{
+		filter, err := NewTagFilter(&TagFilterConfig{
 			Authors:    []string{"pdteam"},
 			Tags:       []string{"jira"},
 			Severities: severity.Severities{severity.High},
@@ -164,7 +164,7 @@ func TestTagBasedFilter(t *testing.T) {
 		require.False(t, matched, "could not get correct match")
 	})
 	t.Run("match-type", func(t *testing.T) {
-		filter, err := NewTagFilter(&Config{
+		filter, err := NewTagFilter(&TagFilterConfig{
 			Protocols: []types.ProtocolType{types.HTTPProtocol},
 		})
 		require.Nil(t, err)
@@ -174,7 +174,7 @@ func TestTagBasedFilter(t *testing.T) {
 		require.True(t, matched, "could not get correct match")
 	})
 	t.Run("match-exclude-id", func(t *testing.T) {
-		filter, err := NewTagFilter(&Config{
+		filter, err := NewTagFilter(&TagFilterConfig{
 			ExcludeIds: []string{"cve-test"},
 		})
 		require.Nil(t, err)
@@ -186,7 +186,7 @@ func TestTagBasedFilter(t *testing.T) {
 		require.False(t, matched, "could not get correct match")
 	})
 	t.Run("match-exclude-type", func(t *testing.T) {
-		filter, err := NewTagFilter(&Config{
+		filter, err := NewTagFilter(&TagFilterConfig{
 			ExcludeProtocols: []types.ProtocolType{types.HTTPProtocol},
 		})
 		require.Nil(t, err)
@@ -268,7 +268,7 @@ func TestTagBasedFilter(t *testing.T) {
 
 func testAdvancedFiltering(t *testing.T, includeConditions []string, template *Template, shouldError, shouldMatch bool) {
 	// basic properties
-	advancedFilter, err := NewTagFilter(&Config{IncludeConditions: includeConditions})
+	advancedFilter, err := NewTagFilter(&TagFilterConfig{IncludeConditions: includeConditions})
 	if shouldError {
 		require.NotNil(t, err)
 		return
