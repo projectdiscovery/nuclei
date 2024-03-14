@@ -16,7 +16,6 @@ import (
 	cfg "github.com/projectdiscovery/nuclei/v3/pkg/catalog/config"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/loader/filter"
 	"github.com/projectdiscovery/nuclei/v3/pkg/model/types/severity"
-	"github.com/projectdiscovery/nuclei/v3/pkg/parsers"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v3/pkg/templates"
 	templateTypes "github.com/projectdiscovery/nuclei/v3/pkg/templates/types"
@@ -114,7 +113,7 @@ func NewConfig(options *types.Options, catalog catalog.Catalog, executerOpts pro
 
 // New creates a new template store based on provided configuration
 func New(cfg *Config) (*Store, error) {
-	tagFilter, err := templates.New(&filter.Config{
+	tagFilter, err := templates.NewTagFilter(&templates.TagFilterConfig{
 		Tags:              cfg.Tags,
 		ExcludeTags:       cfg.ExcludeTags,
 		Authors:           cfg.Authors,
@@ -408,7 +407,7 @@ func (store *Store) LoadTemplatesWithTags(templatesList, tags []string) []*templ
 				}
 				if len(parsed.RequestsHeadless) > 0 && !store.config.ExecutorOptions.Options.Headless {
 					// donot include headless template in final list if headless flag is not set
-					stats.Increment(parsers.HeadlessFlagWarningStats)
+					stats.Increment(templates.HeadlessFlagWarningStats)
 					if config.DefaultConfig.LogAllEvents {
 						gologger.Print().Msgf("[%v] Headless flag is required for headless template '%s'.\n", aurora.Yellow("WRN").String(), templatePath)
 					}

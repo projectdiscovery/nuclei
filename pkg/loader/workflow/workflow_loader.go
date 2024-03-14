@@ -17,7 +17,7 @@ type workflowLoader struct {
 
 // NewLoader returns a new workflow loader structure
 func NewLoader(options *protocols.ExecutorOptions) (model.WorkflowLoader, error) {
-	tagFilter, err := templates.NewTagFilter(&templates.Config{
+	tagFilter, err := templates.NewTagFilter(&templates.TagFilterConfig{
 		Authors:           options.Options.Authors,
 		Tags:              options.Options.Tags,
 		ExcludeTags:       options.Options.ExcludeTags,
