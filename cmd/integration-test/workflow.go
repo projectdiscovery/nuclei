@@ -137,7 +137,7 @@ type workflowSharedCookies struct{}
 
 // Execute executes a test case and returns an error if occurred
 func (h *workflowSharedCookies) Execute(filePath string) error {
-	handleFunc := func(name string, w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+	handleFunc := func(name string, w http.ResponseWriter, _ *http.Request, _ httprouter.Params) {
 		cookie := &http.Cookie{Name: name, Value: name}
 		http.SetCookie(w, cookie)
 	}

@@ -18,13 +18,16 @@ import (
 )
 
 // Dialer is a shared fastdialer instance for host DNS resolution
-var Dialer *fastdialer.Dialer
+var (
+	Dialer *fastdialer.Dialer
+)
 
 // Init creates the Dialer instance based on user configuration
 func Init(options *types.Options) error {
 	if Dialer != nil {
 		return nil
 	}
+
 	lfaAllowed = options.AllowLocalFileAccess
 	opts := fastdialer.DefaultOptions
 	if options.DialerTimeout > 0 {
@@ -142,6 +145,8 @@ func Init(options *types.Options) error {
 		return Dialer.Dial(ctx, "tcp", addr)
 	})
 
+	StartActiveMemGuardian()
+
 	return nil
 }
 
@@ -202,4 +207,5 @@ func Close() {
 	if Dialer != nil {
 		Dialer.Close()
 	}
+	StopActiveMemGuardian()
 }
