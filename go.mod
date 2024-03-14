@@ -102,7 +102,6 @@ require (
 	github.com/stretchr/testify v1.9.0
 	github.com/zmap/zgrab2 v0.1.8-0.20230806160807-97ba87c0e706
 	golang.org/x/term v0.17.0
-	gopkg.in/src-d/go-git.v4 v4.13.1
 	gopkg.in/yaml.v3 v3.0.1
 	moul.io/http2curl v1.0.0
 )
@@ -335,7 +334,6 @@ require (
 	github.com/nwaples/rardecode v1.1.3 // indirect
 	github.com/pierrec/lz4 v2.6.1+incompatible // indirect
 	github.com/sergi/go-diff v1.2.0 // indirect
-	github.com/src-d/gcfg v1.4.0 // indirect
 	github.com/xanzy/ssh-agent v0.3.3 // indirect
 	github.com/xi2/xz v0.0.0-20171230120015-48954b6210f8 // indirect
 	gopkg.in/warnings.v0 v0.1.2 // indirect
