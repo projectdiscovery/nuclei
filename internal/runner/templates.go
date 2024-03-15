@@ -11,18 +11,21 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/loader"
 
 	"github.com/projectdiscovery/gologger"
-	"github.com/projectdiscovery/nuclei/v3/pkg/parsers"
 	"github.com/projectdiscovery/nuclei/v3/pkg/templates"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 )
 
 // log available templates for verbose (-vv)
 func (r *Runner) logAvailableTemplate(tplPath string) {
-	t, err := parsers.ParseTemplate(tplPath, r.catalog)
+	t, err := r.parser.ParseTemplate(tplPath, r.catalog)
+	tpl, ok := t.(*templates.Template)
+	if !ok {
+		panic("not a template")
+	}
 	if err != nil {
 		gologger.Error().Msgf("Could not parse file '%s': %s\n", tplPath, err)
 	} else {
-		r.verboseTemplate(t)
+		r.verboseTemplate(tpl)
 	}
 }
 

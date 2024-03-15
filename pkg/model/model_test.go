@@ -7,7 +7,7 @@ import (
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/model/types/severity"
 	"github.com/projectdiscovery/nuclei/v3/pkg/model/types/stringslice"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v2"
 )
 
@@ -29,10 +29,10 @@ func TestInfoJsonMarshal(t *testing.T) {
 	}
 
 	result, err := json.Marshal(&info)
-	assert.Nil(t, err)
+	require.Nil(t, err)
 
 	expected := `{"name":"Test Template Name","author":["forgedhallpass","ice3man"],"tags":["cve","misc"],"description":"Test description","reference":"Reference1","severity":"high","metadata":{"array_key":["array_value1","array_value2"],"map_key":{"key1":"val1"},"string_key":"string_value"}}`
-	assert.Equal(t, expected, string(result))
+	require.Equal(t, expected, string(result))
 }
 
 func TestInfoYamlMarshal(t *testing.T) {
@@ -53,7 +53,7 @@ func TestInfoYamlMarshal(t *testing.T) {
 	}
 
 	result, err := yaml.Marshal(&info)
-	assert.Nil(t, err)
+	require.Nil(t, err)
 
 	expected := `name: Test Template Name
 author:
@@ -73,7 +73,7 @@ metadata:
     key1: val1
   string_key: string_value
 `
-	assert.Equal(t, expected, string(result))
+	require.Equal(t, expected, string(result))
 }
 
 func TestUnmarshal(t *testing.T) {
@@ -94,13 +94,13 @@ func TestUnmarshal(t *testing.T) {
 		t.Helper()
 		info := Info{}
 		err := yaml.Unmarshal([]byte(yamlPayload), &info)
-		assert.Nil(t, err)
-		assert.Equal(t, info.Name, templateName)
-		assert.Equal(t, info.Authors.ToSlice(), authors)
-		assert.Equal(t, info.Tags.ToSlice(), tags)
-		assert.Equal(t, info.SeverityHolder.Severity, severity.Critical)
-		assert.Equal(t, info.Reference.ToSlice(), references)
-		assert.Equal(t, info.Metadata, dynamicKeysMap)
+		require.Nil(t, err)
+		require.Equal(t, info.Name, templateName)
+		require.Equal(t, info.Authors.ToSlice(), authors)
+		require.Equal(t, info.Tags.ToSlice(), tags)
+		require.Equal(t, info.SeverityHolder.Severity, severity.Critical)
+		require.Equal(t, info.Reference.ToSlice(), references)
+		require.Equal(t, info.Metadata, dynamicKeysMap)
 		return info
 	}
 
@@ -133,5 +133,5 @@ func TestUnmarshal(t *testing.T) {
 
 	info1 := assertUnmarshalledTemplateInfo(t, yamlPayload1)
 	info2 := assertUnmarshalledTemplateInfo(t, yamlPayload2)
-	assert.Equal(t, info1, info2)
+	require.Equal(t, info1, info2)
 }
