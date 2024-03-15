@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestMarkDownHeaderCreation(t *testing.T) {
@@ -21,7 +21,7 @@ func TestMarkDownHeaderCreation(t *testing.T) {
 
 	for _, currentTestCase := range testCases {
 		t.Run(strings.Join(currentTestCase.headers, ","), func(t1 *testing.T) {
-			assert.Equal(t1, CreateTableHeader(currentTestCase.headers...), currentTestCase.expectedValue)
+			require.Equal(t1, CreateTableHeader(currentTestCase.headers...), currentTestCase.expectedValue)
 		})
 	}
 }
@@ -34,8 +34,8 @@ func TestCreateTemplateInfoTableTooManyColumns(t *testing.T) {
 		{"h", "i"},
 	})
 
-	assert.NotNil(t, err)
-	assert.Empty(t, table)
+	require.NotNil(t, err)
+	require.Empty(t, table)
 }
 
 func TestCreateTemplateInfoTable1Column(t *testing.T) {
@@ -48,8 +48,8 @@ func TestCreateTemplateInfoTable1Column(t *testing.T) {
 | c |
 `
 
-	assert.Nil(t, err)
-	assert.Equal(t, expected, table)
+	require.Nil(t, err)
+	require.Equal(t, expected, table)
 }
 
 func TestCreateTemplateInfoTable2Columns(t *testing.T) {
@@ -66,8 +66,8 @@ func TestCreateTemplateInfoTable2Columns(t *testing.T) {
 | d | e |
 `
 
-	assert.Nil(t, err)
-	assert.Equal(t, expected, table)
+	require.Nil(t, err)
+	require.Equal(t, expected, table)
 }
 
 func TestCreateTemplateInfoTable3Columns(t *testing.T) {
@@ -86,6 +86,6 @@ func TestCreateTemplateInfoTable3Columns(t *testing.T) {
 | h | i |  |
 `
 
-	assert.Nil(t, err)
-	assert.Equal(t, expected, table)
+	require.Nil(t, err)
+	require.Equal(t, expected, table)
 }

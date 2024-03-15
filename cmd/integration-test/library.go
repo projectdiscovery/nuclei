@@ -20,14 +20,15 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/loader"
 	"github.com/projectdiscovery/nuclei/v3/pkg/core"
 	"github.com/projectdiscovery/nuclei/v3/pkg/input/provider"
+	parsers "github.com/projectdiscovery/nuclei/v3/pkg/loader/workflow"
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
-	"github.com/projectdiscovery/nuclei/v3/pkg/parsers"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/hosterrorscache"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/interactsh"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolinit"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
 	"github.com/projectdiscovery/nuclei/v3/pkg/reporting"
+	"github.com/projectdiscovery/nuclei/v3/pkg/templates"
 	"github.com/projectdiscovery/nuclei/v3/pkg/testutils"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	"github.com/projectdiscovery/ratelimit"
@@ -98,6 +99,7 @@ func executeNucleiAsLibrary(templatePath, templateURL string) ([]string, error) 
 	catalog := disk.NewCatalog(path.Join(home, "nuclei-templates"))
 	ratelimiter := ratelimit.New(context.Background(), 150, time.Second)
 	defer ratelimiter.Stop()
+
 	executerOpts := protocols.ExecutorOptions{
 		Output:          outputWriter,
 		Options:         defaultOpts,
@@ -109,6 +111,7 @@ func executeNucleiAsLibrary(templatePath, templateURL string) ([]string, error) 
 		HostErrorsCache: cache,
 		Colorizer:       aurora.NewAurora(true),
 		ResumeCfg:       types.NewResumeCfg(),
+		Parser:          templates.NewParser(),
 	}
 	engine := core.New(defaultOpts)
 	engine.SetExecuterOptions(executerOpts)
