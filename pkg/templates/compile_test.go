@@ -37,7 +37,6 @@ func setup() {
 	options := testutils.DefaultOptions
 	testutils.Init(options)
 	progressImpl, _ := progress.NewStatsTicker(0, false, false, false, 0)
-	parser, _ := templates.NewParser()
 
 	executerOpts = protocols.ExecutorOptions{
 		Output:       testutils.NewMockOutputWriter(options.OmitTemplate),
@@ -48,7 +47,7 @@ func setup() {
 		Browser:      nil,
 		Catalog:      disk.NewCatalog(config.DefaultConfig.TemplatesDirectory),
 		RateLimiter:  ratelimit.New(context.Background(), uint(options.RateLimit), time.Second),
-		Parser:       parser,
+		Parser:       templates.NewParser(),
 	}
 	workflowLoader, err := workflow.NewLoader(&executerOpts)
 	if err != nil {

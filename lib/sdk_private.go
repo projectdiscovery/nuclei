@@ -114,11 +114,7 @@ func (e *NucleiEngine) init() error {
 		e.httpClient = httpclient
 	}
 
-	if parser, err := templates.NewParser(); err != nil {
-		return err
-	} else {
-		e.parser = parser
-	}
+	e.parser = templates.NewParser()
 
 	_ = protocolstate.Init(e.opts)
 	_ = protocolinit.Init(e.opts)

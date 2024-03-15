@@ -14,8 +14,7 @@ import (
 
 func TestLoadTemplate(t *testing.T) {
 	catalog := disk.NewCatalog("")
-	p, err := NewParser()
-	require.Nil(t, err)
+	p := NewParser()
 
 	tt := []struct {
 		name        string

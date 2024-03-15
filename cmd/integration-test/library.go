@@ -100,8 +100,6 @@ func executeNucleiAsLibrary(templatePath, templateURL string) ([]string, error) 
 	ratelimiter := ratelimit.New(context.Background(), 150, time.Second)
 	defer ratelimiter.Stop()
 
-	parser, _ := templates.NewParser()
-
 	executerOpts := protocols.ExecutorOptions{
 		Output:          outputWriter,
 		Options:         defaultOpts,
@@ -113,7 +111,7 @@ func executeNucleiAsLibrary(templatePath, templateURL string) ([]string, error) 
 		HostErrorsCache: cache,
 		Colorizer:       aurora.NewAurora(true),
 		ResumeCfg:       types.NewResumeCfg(),
-		Parser:          parser,
+		Parser:          templates.NewParser(),
 	}
 	engine := core.New(defaultOpts)
 	engine.SetExecuterOptions(executerOpts)
