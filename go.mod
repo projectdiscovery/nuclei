@@ -340,3 +340,9 @@ require (
 	github.com/xi2/xz v0.0.0-20171230120015-48954b6210f8 // indirect
 	gopkg.in/warnings.v0 v0.1.2 // indirect
 )
+
+
+// https://go.dev/ref/mod#go-mod-file-retract
+retract (
+	v3.2.0 // retract due to broken js protocol issue
+)
