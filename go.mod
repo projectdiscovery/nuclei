@@ -341,8 +341,5 @@ require (
 	gopkg.in/warnings.v0 v0.1.2 // indirect
 )
 
-
 // https://go.dev/ref/mod#go-mod-file-retract
-retract (
-	v3.2.0 // retract due to broken js protocol issue
-)
+retract v3.2.0 // retract due to broken js protocol issue
