@@ -252,6 +252,13 @@ func (e *ClusterExecuter) Execute(ctx *scan.ScanContext) (bool, error) {
 	previous := make(map[string]interface{})
 	dynamicValues := make(map[string]interface{})
 	err := e.requests.ExecuteWithResults(inputItem, dynamicValues, previous, func(event *output.InternalWrappedEvent) {
+		if event == nil {
+			// unlikely but just in case
+			return
+		}
+		if event.InternalEvent == nil {
+			event.InternalEvent = make(map[string]interface{})
+		}
 		for _, operator := range e.operators {
 			result, matched := operator.operator.Execute(event.InternalEvent, e.requests.Match, e.requests.Extract, e.options.Options.Debug || e.options.Options.DebugResponse)
 			event.InternalEvent["template-id"] = operator.templateID
