@@ -150,10 +150,7 @@ func New(options *types.Options) (*Runner, error) {
 		}
 	}
 
-	parser, err := templates.NewParser()
-	if err != nil {
-		return nil, err
-	}
+	parser := templates.NewParser()
 
 	if options.Validate {
 		parser.ShouldValidate = true
