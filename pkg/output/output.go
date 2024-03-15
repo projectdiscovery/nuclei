@@ -73,6 +73,10 @@ var decolorizerRegex = regexp.MustCompile(`\x1B\[[0-9;]*[a-zA-Z]`)
 // InternalEvent is an internal output generation structure for nuclei.
 type InternalEvent map[string]interface{}
 
+func (ie InternalEvent) Set(k string, v interface{}) {
+	ie[k] = v
+}
+
 // InternalWrappedEvent is a wrapped event with operators result added to it.
 type InternalWrappedEvent struct {
 	// Mutex is internal field which is implicitly used

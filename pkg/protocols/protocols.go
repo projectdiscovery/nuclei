@@ -14,6 +14,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog"
 	"github.com/projectdiscovery/nuclei/v3/pkg/input"
 	"github.com/projectdiscovery/nuclei/v3/pkg/js/compiler"
+	"github.com/projectdiscovery/nuclei/v3/pkg/loader/parser"
 	"github.com/projectdiscovery/nuclei/v3/pkg/model"
 	"github.com/projectdiscovery/nuclei/v3/pkg/operators"
 	"github.com/projectdiscovery/nuclei/v3/pkg/operators/extractors"
@@ -121,6 +122,7 @@ type ExecutorOptions struct {
 	AuthProvider authprovider.AuthProvider
 	//TemporaryDirectory is the directory to store temporary files
 	TemporaryDirectory string
+	Parser             parser.Parser
 }
 
 // GetThreadsForPayloadRequests returns the number of threads to use as default for
