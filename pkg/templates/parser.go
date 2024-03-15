@@ -24,13 +24,13 @@ type Parser struct {
 	compiledTemplatesCache *Cache
 }
 
-func NewParser() (*Parser, error) {
+func NewParser() *Parser {
 	p := &Parser{
 		parsedTemplatesCache:   NewCache(),
 		compiledTemplatesCache: NewCache(),
 	}
 
-	return p, nil
+	return p
 }
 
 // LoadTemplate returns true if the template is valid and matches the filtering criteria.
