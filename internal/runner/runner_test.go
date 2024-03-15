@@ -4,7 +4,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/model/types/severity"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
@@ -15,15 +15,15 @@ func TestCreateReportingOptions(t *testing.T) {
 	options.ReportingConfig = "../../integration_tests/test-issue-tracker-config1.yaml"
 	resultOptions, err := createReportingOptions(&options)
 
-	assert.Nil(t, err)
-	assert.Equal(t, resultOptions.AllowList.Severities, severity.Severities{severity.High, severity.Critical})
-	assert.Equal(t, resultOptions.DenyList.Severities, severity.Severities{severity.Low})
+	require.Nil(t, err)
+	require.Equal(t, resultOptions.AllowList.Severities, severity.Severities{severity.High, severity.Critical})
+	require.Equal(t, resultOptions.DenyList.Severities, severity.Severities{severity.Low})
 
 	options.ReportingConfig = "../../integration_tests/test-issue-tracker-config2.yaml"
 	resultOptions2, err := createReportingOptions(&options)
-	assert.Nil(t, err)
-	assert.Equal(t, resultOptions2.AllowList.Severities, resultOptions.AllowList.Severities)
-	assert.Equal(t, resultOptions2.DenyList.Severities, resultOptions.DenyList.Severities)
+	require.Nil(t, err)
+	require.Equal(t, resultOptions2.AllowList.Severities, resultOptions.AllowList.Severities)
+	require.Equal(t, resultOptions2.DenyList.Severities, resultOptions.DenyList.Severities)
 }
 
 type TestStruct1 struct {
@@ -69,8 +69,8 @@ func TestWalkReflectStructAssignsEnvVars(t *testing.T) {
 
 	Walk(testStruct, expandEndVars)
 
-	assert.Equal(t, "value", testStruct.A)
-	assert.Equal(t, "value2", testStruct.Struct.B)
+	require.Equal(t, "value", testStruct.A)
+	require.Equal(t, "value2", testStruct.Struct.B)
 }
 
 func TestWalkReflectStructHandlesDifferentTypes(t *testing.T) {
@@ -85,9 +85,9 @@ func TestWalkReflectStructHandlesDifferentTypes(t *testing.T) {
 
 	Walk(testStruct, expandEndVars)
 
-	assert.Equal(t, "value", testStruct.A)
-	assert.Equal(t, "2", testStruct.B)
-	assert.Equal(t, "true", testStruct.C)
+	require.Equal(t, "value", testStruct.A)
+	require.Equal(t, "2", testStruct.B)
+	require.Equal(t, "true", testStruct.C)
 }
 
 func TestWalkReflectStructEmpty(t *testing.T) {
@@ -102,9 +102,9 @@ func TestWalkReflectStructEmpty(t *testing.T) {
 
 	Walk(testStruct, expandEndVars)
 
-	assert.Equal(t, "value", testStruct.A)
-	assert.Equal(t, "", testStruct.B)
-	assert.Equal(t, "true", testStruct.C)
+	require.Equal(t, "value", testStruct.A)
+	require.Equal(t, "", testStruct.B)
+	require.Equal(t, "true", testStruct.C)
 }
 
 func TestWalkReflectStructWithNoYamlTag(t *testing.T) {
@@ -119,9 +119,9 @@ func TestWalkReflectStructWithNoYamlTag(t *testing.T) {
 	os.Setenv("GITHUB_USER", "testuser")
 
 	Walk(test, expandEndVars)
-	assert.Equal(t, "testuser", test.A)
-	assert.Equal(t, "testuser", test.B.B, test.B)
-	assert.Equal(t, "$GITHUB_USER", test.C)
+	require.Equal(t, "testuser", test.A)
+	require.Equal(t, "testuser", test.B.B, test.B)
+	require.Equal(t, "$GITHUB_USER", test.C)
 }
 
 func TestWalkReflectStructHandlesNestedStructs(t *testing.T) {
@@ -138,7 +138,7 @@ func TestWalkReflectStructHandlesNestedStructs(t *testing.T) {
 
 	Walk(testStruct, expandEndVars)
 
-	assert.Equal(t, "value", testStruct.A)
-	assert.Equal(t, "2", testStruct.Struct.B)
-	assert.Equal(t, "true", testStruct.Struct.C)
+	require.Equal(t, "value", testStruct.A)
+	require.Equal(t, "2", testStruct.Struct.B)
+	require.Equal(t, "true", testStruct.Struct.C)
 }

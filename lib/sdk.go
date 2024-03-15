@@ -11,8 +11,8 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/core"
 	"github.com/projectdiscovery/nuclei/v3/pkg/input/provider"
 	providerTypes "github.com/projectdiscovery/nuclei/v3/pkg/input/types"
+	"github.com/projectdiscovery/nuclei/v3/pkg/loader/workflow"
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
-	"github.com/projectdiscovery/nuclei/v3/pkg/parsers"
 	"github.com/projectdiscovery/nuclei/v3/pkg/progress"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/hosterrorscache"
@@ -72,6 +72,7 @@ type NucleiEngine struct {
 	mode             engineMode
 	browserInstance  *engine.Browser
 	httpClient       *retryablehttp.Client
+	parser           *templates.Parser
 	authprovider     authprovider.AuthProvider
 
 	// unexported meta options
@@ -86,7 +87,7 @@ type NucleiEngine struct {
 
 // LoadAllTemplates loads all nuclei template based on given options
 func (e *NucleiEngine) LoadAllTemplates() error {
-	workflowLoader, err := parsers.NewLoader(&e.executerOpts)
+	workflowLoader, err := workflow.NewLoader(&e.executerOpts)
 	if err != nil {
 		return errorutil.New("Could not create workflow loader: %s\n", err)
 	}

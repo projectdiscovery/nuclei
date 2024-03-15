@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/go-git/go-git/v5"
+	"github.com/go-git/go-git/v5/plumbing/transport/http"
 	"github.com/google/go-github/github"
 	"github.com/pkg/errors"
 	"github.com/projectdiscovery/gologger"
@@ -15,7 +16,6 @@ import (
 	fileutil "github.com/projectdiscovery/utils/file"
 	folderutil "github.com/projectdiscovery/utils/folder"
 	"golang.org/x/oauth2"
-	"gopkg.in/src-d/go-git.v4/plumbing/transport/http"
 )
 
 var _ Provider = &customTemplateGitHubRepo{}

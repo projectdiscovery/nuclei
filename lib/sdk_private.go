@@ -28,6 +28,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http/httpclientpool"
 	"github.com/projectdiscovery/nuclei/v3/pkg/reporting"
+	"github.com/projectdiscovery/nuclei/v3/pkg/templates"
 	"github.com/projectdiscovery/nuclei/v3/pkg/testutils"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	nucleiUtils "github.com/projectdiscovery/nuclei/v3/pkg/utils"
@@ -113,6 +114,8 @@ func (e *NucleiEngine) init() error {
 		e.httpClient = httpclient
 	}
 
+	e.parser = templates.NewParser()
+
 	_ = protocolstate.Init(e.opts)
 	_ = protocolinit.Init(e.opts)
 	e.applyRequiredDefaults()
@@ -157,6 +160,7 @@ func (e *NucleiEngine) init() error {
 		Colorizer:       aurora.NewAurora(true),
 		ResumeCfg:       types.NewResumeCfg(),
 		Browser:         e.browserInstance,
+		Parser:          e.parser,
 	}
 	if len(e.opts.SecretsFile) > 0 {
 		authTmplStore, err := runner.GetAuthTmplStore(*e.opts, e.catalog, e.executerOpts)
@@ -186,12 +190,14 @@ func (e *NucleiEngine) init() error {
 		}
 	}
 
-	if e.opts.RateLimitMinute > 0 {
-		e.executerOpts.RateLimiter = ratelimit.New(context.Background(), uint(e.opts.RateLimitMinute), time.Minute)
-	} else if e.opts.RateLimit > 0 {
-		e.executerOpts.RateLimiter = ratelimit.New(context.Background(), uint(e.opts.RateLimit), time.Second)
-	} else {
-		e.executerOpts.RateLimiter = ratelimit.NewUnlimited(context.Background())
+	if e.executerOpts.RateLimiter == nil {
+		if e.opts.RateLimitMinute > 0 {
+			e.executerOpts.RateLimiter = ratelimit.New(context.Background(), uint(e.opts.RateLimitMinute), time.Minute)
+		} else if e.opts.RateLimit > 0 {
+			e.executerOpts.RateLimiter = ratelimit.New(context.Background(), uint(e.opts.RateLimit), time.Second)
+		} else {
+			e.executerOpts.RateLimiter = ratelimit.NewUnlimited(context.Background())
+		}
 	}
 
 	e.engine = core.New(e.opts)

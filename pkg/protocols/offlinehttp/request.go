@@ -14,9 +14,9 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/generators"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/helpers/eventcreator"
-	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/tostring"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/utils"
 	templateTypes "github.com/projectdiscovery/nuclei/v3/pkg/templates/types"
+	"github.com/projectdiscovery/utils/conversion"
 )
 
 var _ protocols.Request = &Request{}
@@ -60,7 +60,7 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, metadata 
 				gologger.Error().Msgf("Could not read file path %s: %s\n", data, err)
 				return
 			}
-			dataStr := tostring.UnsafeToString(buffer)
+			dataStr := conversion.String(buffer)
 
 			resp, err := readResponseFromString(dataStr)
 			if err != nil {
@@ -86,7 +86,7 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, metadata 
 				return
 			}
 
-			outputEvent := request.responseToDSLMap(resp, data, data, data, tostring.UnsafeToString(dumpedResponse), tostring.UnsafeToString(body), utils.HeadersToString(resp.Header), 0, nil)
+			outputEvent := request.responseToDSLMap(resp, data, data, data, conversion.String(dumpedResponse), conversion.String(body), utils.HeadersToString(resp.Header), 0, nil)
 			// add response fields to template context and merge templatectx variables to output event
 			request.options.AddTemplateVars(input.MetaInput, request.Type(), request.GetID(), outputEvent)
 			if request.options.HasTemplateCtx(input.MetaInput) {
