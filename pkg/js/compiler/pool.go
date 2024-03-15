@@ -138,8 +138,7 @@ func executeWithPoolingProgram(p *goja.Program, args *ExecuteArgs, opts *Execute
 				return goja.Null()
 			}
 			for _, arg := range call.Arguments {
-				value := arg.Export()
-				if out := stringify(value); out != "" {
+				if out := stringify(arg, runtime); out != "" {
 					buff.WriteString(out)
 				}
 			}
@@ -158,8 +157,8 @@ func executeWithPoolingProgram(p *goja.Program, args *ExecuteArgs, opts *Execute
 				panic(runtime.ToValue("ExportAs expects 2 arguments"))
 			}
 			key := call.Argument(0).String()
-			value := call.Argument(1).Export()
-			opts.exports[key] = stringify(value)
+			value := call.Argument(1)
+			opts.exports[key] = stringify(value, runtime)
 			return goja.Null()
 		},
 	})
@@ -169,7 +168,7 @@ func executeWithPoolingProgram(p *goja.Program, args *ExecuteArgs, opts *Execute
 	}
 	if val.Export() != nil {
 		// append last value to output
-		buff.WriteString(stringify(val.Export()))
+		buff.WriteString(stringify(val, runtime))
 	}
 	// and return it as result
 	return runtime.ToValue(buff.String()), nil
@@ -201,13 +200,26 @@ func createNewRuntime() *goja.Runtime {
 
 // stringify converts a given value to string
 // if its a struct it will be marshalled to json
-func stringify(value interface{}) string {
+func stringify(gojaValue goja.Value, runtime *goja.Runtime) string {
+	value := gojaValue.Export()
 	if value == nil {
 		return ""
 	}
 	kind := reflect.TypeOf(value).Kind()
 	if kind == reflect.Struct || kind == reflect.Ptr && reflect.ValueOf(value).Elem().Kind() == reflect.Struct {
+		// in this case we must use JSON.stringify to convert to string
+		// because json.Marshal() utilizes json tags when marshalling
+		// but goja has custom implementation of json.Marshal() which does not
+		// since we have been using `to_json` in all our examples we must stick to it
 		// marshal structs or struct pointers to json automatically
+		jsonStringify, ok := goja.AssertFunction(runtime.Get("to_json"))
+		if ok {
+			result, err := jsonStringify(goja.Undefined(), gojaValue)
+			if err == nil {
+				return result.String()
+			}
+		}
+		// unlikely but if to_json throwed some error use native json.Marshal
 		val := value
 		if kind == reflect.Ptr {
 			val = reflect.ValueOf(value).Elem().Interface()
