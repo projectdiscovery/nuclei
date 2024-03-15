@@ -64,6 +64,22 @@ func (operators *Operators) Compile() error {
 	return nil
 }
 
+func (operators *Operators) HasDSL() bool {
+	for _, matcher := range operators.Matchers {
+		if len(matcher.DSL) > 0 {
+			return true
+		}
+	}
+
+	for _, extractor := range operators.Extractors {
+		if len(extractor.DSL) > 0 {
+			return true
+		}
+	}
+
+	return false
+}
+
 // GetMatchersCondition returns the condition for the matchers
 func (operators *Operators) GetMatchersCondition() matchers.ConditionType {
 	return operators.matchersCondition
