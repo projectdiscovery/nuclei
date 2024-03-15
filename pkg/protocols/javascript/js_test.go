@@ -23,7 +23,6 @@ var (
 		"testcases/redis-pass-brute.yaml",
 		"testcases/ssh-server-fingerprint.yaml",
 	}
-	parser       *templates.Parser
 	executerOpts protocols.ExecutorOptions
 )
 
