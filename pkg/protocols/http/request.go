@@ -503,6 +503,7 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 				event.InternalEvent = outputEvent
 			}
 			callback(event)
+			return
 		}
 		if event.InternalEvent == nil {
 			event.InternalEvent = outputEvent
