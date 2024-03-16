@@ -493,7 +493,12 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 	// event should never be nil as per existing logic
 	defer func() {
 		if event == nil {
-			event := &output.InternalWrappedEvent{}
+			event := &output.InternalWrappedEvent{
+				InternalEvent: map[string]interface{}{
+					"template-id": request.options.TemplateID,
+					"host":        input.MetaInput.Input,
+				},
+			}
 			if request.CompiledOperators != nil && request.CompiledOperators.HasDSL() {
 				event.InternalEvent = outputEvent
 			}
@@ -501,6 +506,13 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 		}
 		if event.InternalEvent == nil {
 			event.InternalEvent = outputEvent
+		}
+		// make sure templateId is never nil
+		if event.InternalEvent["template-id"] == nil {
+			event.InternalEvent["template-id"] = request.options.TemplateID
+		}
+		if event.InternalEvent["host"] == nil {
+			event.InternalEvent["host"] = input.MetaInput.Input
 		}
 	}()
 
