@@ -33,6 +33,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	nucleiUtils "github.com/projectdiscovery/nuclei/v3/pkg/utils"
 	"github.com/projectdiscovery/ratelimit"
+	sliceutil "github.com/projectdiscovery/utils/slice"
 )
 
 // applyRequiredDefaults to options
@@ -87,7 +88,13 @@ func (e *NucleiEngine) applyRequiredDefaults() {
 	}
 	// these templates are known to have weak matchers
 	// and idea is to disable them to avoid false positives
-	e.opts.ExcludeTags = append(e.opts.ExcludeTags, config.ReadIgnoreFile().Tags...)
+	ignoreFile := config.ReadIgnoreFile(func(iFile *config.IgnoreFile) {
+		// Override ignorefile.Tags with e.opts.FuzzTemplates
+		if e.opts.FuzzTemplates {
+			iFile.Tags = sliceutil.PruneEqual(iFile.Tags, "fuzz")
+		}
+	})
+	e.opts.ExcludeTags = append(e.opts.ExcludeTags, ignoreFile.Tags...)
 
 	e.inputProvider = provider.NewSimpleInputProvider()
 }

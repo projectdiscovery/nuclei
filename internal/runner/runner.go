@@ -23,6 +23,7 @@ import (
 	"github.com/projectdiscovery/utils/env"
 	fileutil "github.com/projectdiscovery/utils/file"
 	permissionutil "github.com/projectdiscovery/utils/permission"
+	sliceutil "github.com/projectdiscovery/utils/slice"
 	updateutils "github.com/projectdiscovery/utils/update"
 
 	"github.com/logrusorgru/aurora"
@@ -414,7 +415,12 @@ func (r *Runner) RunEnumeration() error {
 	}
 	// Exclude ignored file for validation
 	if !r.options.Validate {
-		ignoreFile := config.ReadIgnoreFile()
+		ignoreFile := config.ReadIgnoreFile(func(iFile *config.IgnoreFile) {
+			// Override ignorefile.Tags with r.options.FuzzTemplates
+			if r.options.FuzzTemplates {
+				iFile.Tags = sliceutil.PruneEqual(iFile.Tags, "fuzz")
+			}
+		})
 		r.options.ExcludeTags = append(r.options.ExcludeTags, ignoreFile.Tags...)
 		r.options.ExcludedTemplates = append(r.options.ExcludedTemplates, ignoreFile.Files...)
 	}
