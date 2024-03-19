@@ -11,7 +11,7 @@ import (
 	"github.com/docker/go-units"
 	"github.com/mholt/archiver"
 	"github.com/pkg/errors"
-	"github.com/remeh/sizedwaitgroup"
+	syncutil "github.com/projectdiscovery/utils/sync"
 
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/operators"
@@ -47,7 +47,7 @@ var errEmptyResult = errors.New("Empty result")
 
 // ExecuteWithResults executes the protocol requests and returns results instead of writing them.
 func (request *Request) ExecuteWithResults(input *contextargs.Context, metadata, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
-	wg := sizedwaitgroup.New(request.options.Options.BulkSize)
+	wg, _ := syncutil.New(syncutil.WithSize(request.options.Options.BulkSize))
 	err := request.getInputPaths(input.MetaInput.Input, func(filePath string) {
 		wg.Add()
 		func(filePath string) {

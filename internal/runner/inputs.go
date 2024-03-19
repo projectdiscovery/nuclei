@@ -12,7 +12,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
 	"github.com/projectdiscovery/nuclei/v3/pkg/utils"
 	stringsutil "github.com/projectdiscovery/utils/strings"
-	"github.com/remeh/sizedwaitgroup"
+	syncutil "github.com/projectdiscovery/utils/sync"
 )
 
 const probeBulkSize = 50
@@ -45,7 +45,11 @@ func (r *Runner) initializeTemplatesHTTPInput() (*hybrid.HybridMap, error) {
 	}
 
 	// Probe the non-standard URLs and store them in cache
-	swg := sizedwaitgroup.New(bulkSize)
+	swg, err := syncutil.New(syncutil.WithSize(bulkSize))
+	if err != nil {
+		return nil, errors.Wrap(err, "could not create adaptive waitgroup")
+	}
+
 	count := int32(0)
 	r.inputProvider.Iterate(func(value *contextargs.MetaInput) bool {
 		if stringsutil.HasPrefixAny(value.Input, "http://", "https://") {

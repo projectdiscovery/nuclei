@@ -1,9 +1,8 @@
 package core
 
 import (
-	"github.com/remeh/sizedwaitgroup"
-
 	"github.com/projectdiscovery/nuclei/v3/pkg/templates/types"
+	syncutil "github.com/projectdiscovery/utils/sync"
 )
 
 // WorkPool implements an execution pool for executing different
@@ -12,8 +11,8 @@ import (
 // It also allows Configuration of such requirements. This is used
 // for per-module like separate headless concurrency etc.
 type WorkPool struct {
-	Headless *sizedwaitgroup.SizedWaitGroup
-	Default  *sizedwaitgroup.SizedWaitGroup
+	Headless *syncutil.AdaptiveWaitGroup
+	Default  *syncutil.AdaptiveWaitGroup
 	config   WorkPoolConfig
 }
 
@@ -31,13 +30,13 @@ type WorkPoolConfig struct {
 
 // NewWorkPool returns a new WorkPool instance
 func NewWorkPool(config WorkPoolConfig) *WorkPool {
-	headlessWg := sizedwaitgroup.New(config.HeadlessTypeConcurrency)
-	defaultWg := sizedwaitgroup.New(config.TypeConcurrency)
+	headlessWg, _ := syncutil.New(syncutil.WithSize(config.HeadlessTypeConcurrency))
+	defaultWg, _ := syncutil.New(syncutil.WithSize(config.TypeConcurrency))
 
 	return &WorkPool{
 		config:   config,
-		Headless: &headlessWg,
-		Default:  &defaultWg,
+		Headless: headlessWg,
+		Default:  defaultWg,
 	}
 }
 
@@ -49,7 +48,7 @@ func (w *WorkPool) Wait() {
 
 // InputWorkPool is a work pool per-input
 type InputWorkPool struct {
-	WaitGroup *sizedwaitgroup.SizedWaitGroup
+	WaitGroup *syncutil.AdaptiveWaitGroup
 }
 
 // InputPool returns a work pool for an input type
@@ -60,6 +59,6 @@ func (w *WorkPool) InputPool(templateType types.ProtocolType) *InputWorkPool {
 	} else {
 		count = w.config.InputConcurrency
 	}
-	swg := sizedwaitgroup.New(count)
-	return &InputWorkPool{WaitGroup: &swg}
+	swg, _ := syncutil.New(syncutil.WithSize(count))
+	return &InputWorkPool{WaitGroup: swg}
 }

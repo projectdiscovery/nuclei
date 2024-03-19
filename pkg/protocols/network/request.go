@@ -12,7 +12,7 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
-	"github.com/remeh/sizedwaitgroup"
+	syncutil "github.com/projectdiscovery/utils/sync"
 	"go.uber.org/multierr"
 	"golang.org/x/exp/maps"
 
@@ -178,7 +178,7 @@ func (request *Request) executeAddress(variables map[string]interface{}, actualA
 		iterator := request.generator.NewIterator()
 		var multiErr error
 		m := &sync.Mutex{}
-		swg := sizedwaitgroup.New(request.Threads)
+		swg, _ := syncutil.New(syncutil.WithSize(request.Threads))
 
 		for {
 			value, ok := iterator.Value()

@@ -11,7 +11,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/templates"
 	"github.com/projectdiscovery/nuclei/v3/pkg/templates/types"
 	generalTypes "github.com/projectdiscovery/nuclei/v3/pkg/types"
-	"github.com/remeh/sizedwaitgroup"
+	syncutil "github.com/projectdiscovery/utils/sync"
 )
 
 // Executors are low level executors that deals with template execution on a target
@@ -158,14 +158,14 @@ func (e *Engine) executeTemplatesOnTarget(alltemplates []*templates.Template, ta
 	wp := e.GetWorkPool()
 
 	for _, tpl := range alltemplates {
-		var sg *sizedwaitgroup.SizedWaitGroup
+		var sg *syncutil.AdaptiveWaitGroup
 		if tpl.Type() == types.HeadlessProtocol {
 			sg = wp.Headless
 		} else {
 			sg = wp.Default
 		}
 		sg.Add()
-		go func(template *templates.Template, value *contextargs.MetaInput, wg *sizedwaitgroup.SizedWaitGroup) {
+		go func(template *templates.Template, value *contextargs.MetaInput, wg *syncutil.AdaptiveWaitGroup) {
 			defer wg.Done()
 
 			var match bool
@@ -213,7 +213,7 @@ func (e *ChildExecuter) Close() *atomic.Bool {
 func (e *ChildExecuter) Execute(template *templates.Template, value *contextargs.MetaInput) {
 	templateType := template.Type()
 
-	var wg *sizedwaitgroup.SizedWaitGroup
+	var wg *syncutil.AdaptiveWaitGroup
 	if templateType == types.HeadlessProtocol {
 		wg = e.e.workPool.Headless
 	} else {

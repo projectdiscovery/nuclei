@@ -8,7 +8,7 @@ import (
 	"testing"
 
 	nuclei "github.com/projectdiscovery/nuclei/v3/lib"
-	"github.com/remeh/sizedwaitgroup"
+	syncutil "github.com/projectdiscovery/utils/sync"
 )
 
 // A very simple example on how to use nuclei engine
@@ -42,7 +42,10 @@ func ExampleThreadSafeNucleiEngine() {
 	// setup sizedWaitgroup to handle concurrency
 	// here we are using sizedWaitgroup to limit concurrency to 1
 	// but can be anything in general
-	sg := sizedwaitgroup.New(1)
+	sg, err := syncutil.New(syncutil.WithSize(1))
+	if err != nil {
+		panic(err)
+	}
 
 	// scan 1 = run dns templates on scanme.sh
 	sg.Add()

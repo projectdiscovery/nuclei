@@ -11,12 +11,12 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/utils/vardump"
 	"github.com/projectdiscovery/nuclei/v3/pkg/tmplexec/flow/builtin"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
-	"github.com/remeh/sizedwaitgroup"
+	syncutil "github.com/projectdiscovery/utils/sync"
 )
 
 type jsWaitGroup struct {
 	sync.Once
-	sg sizedwaitgroup.SizedWaitGroup
+	sg *syncutil.AdaptiveWaitGroup
 }
 
 var jsPool = &jsWaitGroup{}
@@ -27,7 +27,7 @@ func GetJSRuntime(opts *types.Options) *goja.Runtime {
 		if opts.JsConcurrency < 100 {
 			opts.JsConcurrency = 100
 		}
-		jsPool.sg = sizedwaitgroup.New(opts.JsConcurrency)
+		jsPool.sg, _ = syncutil.New(syncutil.WithSize(opts.JsConcurrency))
 	})
 	jsPool.sg.Add()
 	return gojapool.Get().(*goja.Runtime)
