@@ -14,7 +14,7 @@ func TestDataformatDecodeEncode_JSON(t *testing.T) {
 	if decoded.DataFormat != "json" {
 		t.Fatal("unexpected data format")
 	}
-	if decoded.Data["foo"] != "bar" {
+	if decoded.Data.Get("foo") != "bar" {
 		t.Fatal("unexpected data")
 	}
 
@@ -37,11 +37,19 @@ func TestDataformatDecodeEncode_XML(t *testing.T) {
 	if decoded.DataFormat != "xml" {
 		t.Fatal("unexpected data format")
 	}
-	if decoded.Data["foo"].(map[string]interface{})["#text"] != "bar" {
-		t.Fatal("unexpected data")
+	fooValue := decoded.Data.Get("foo")
+	if fooValue == nil {
+		t.Fatal("key 'foo' not found")
 	}
-	if decoded.Data["foo"].(map[string]interface{})["-attr"] != "baz" {
-		t.Fatal("unexpected data")
+	fooMap, ok := fooValue.(map[string]interface{})
+	if !ok {
+		t.Fatal("type assertion to map[string]interface{} failed")
+	}
+	if fooMap["#text"] != "bar" {
+		t.Fatal("unexpected data for '#text'")
+	}
+	if fooMap["-attr"] != "baz" {
+		t.Fatal("unexpected data for '-attr'")
 	}
 
 	encoded, err := Encode(decoded.Data, decoded.DataFormat)

@@ -17,7 +17,7 @@ import (
 // all the data values that are used in a request.
 type Value struct {
 	data       string
-	parsed     map[string]interface{}
+	parsed     dataformat.KV
 	dataFormat string
 }
 
@@ -42,27 +42,32 @@ func (v *Value) String() string {
 }
 
 // Parsed returns the parsed value
-func (v *Value) Parsed() map[string]interface{} {
+func (v *Value) Parsed() dataformat.KV {
 	return v.parsed
 }
 
 // SetParsed sets the parsed value map
-func (v *Value) SetParsed(parsed map[string]interface{}, dataFormat string) {
+func (v *Value) SetParsed(data dataformat.KV, dataFormat string) {
+	v.dataFormat = dataFormat
+	if data.OrderedMap != nil {
+		v.parsed = data
+		return
+	}
+	parsed := data.Map
 	flattened, err := flat.Flatten(parsed, flatOpts)
 	if err == nil {
-		v.parsed = flattened
+		v.parsed = dataformat.KVMap(flattened)
 	} else {
-		v.parsed = parsed
+		v.parsed = dataformat.KVMap(parsed)
 	}
-	v.dataFormat = dataFormat
 }
 
 // SetParsedValue sets the parsed value for a key
 // in the parsed map
 func (v *Value) SetParsedValue(key string, value string) bool {
-	origValue, ok := v.parsed[key]
-	if !ok {
-		v.parsed[key] = value
+	origValue := v.parsed.Get(key)
+	if origValue == nil {
+		v.parsed.Set(key, value)
 		return true
 	}
 	// If the value is a list, append to it
@@ -88,8 +93,6 @@ func (v *Value) SetParsedValue(key string, value string) bool {
 			return false
 		}
 		origValue = parsed
-	case nil:
-		origValue = value
 	default:
 		// explicitly check for typed slice
 		if val, ok := IsTypedSlice(v); ok {
@@ -102,30 +105,37 @@ func (v *Value) SetParsedValue(key string, value string) bool {
 			gologger.DefaultLogger.Print().Msgf("[%v] unknown type %T for value %s", aurora.BrightYellow("WARN"), v, v)
 		}
 	}
-	v.parsed[key] = origValue
+	v.parsed.Set(key, origValue)
 	return true
 }
 
 // Delete removes a key from the parsed value
 func (v *Value) Delete(key string) bool {
-	if _, ok := v.parsed[key]; !ok {
-		return false
-	}
-	delete(v.parsed, key)
-	return true
+	return v.parsed.Delete(key)
 }
 
 // Encode encodes the value into a string
 // using the dataformat and encoding
 func (v *Value) Encode() (string, error) {
 	toEncodeStr := v.data
+	if v.parsed.OrderedMap != nil {
+		// flattening orderedmap not supported
+		if v.dataFormat != "" {
+			dataformatStr, err := dataformat.Encode(v.parsed, v.dataFormat)
+			if err != nil {
+				return "", err
+			}
+			toEncodeStr = dataformatStr
+		}
+		return toEncodeStr, nil
+	}
 
-	nested, err := flat.Unflatten(v.parsed, flatOpts)
+	nested, err := flat.Unflatten(v.parsed.Map, flatOpts)
 	if err != nil {
 		return "", err
 	}
 	if v.dataFormat != "" {
-		dataformatStr, err := dataformat.Encode(nested, v.dataFormat)
+		dataformatStr, err := dataformat.Encode(dataformat.KVMap(nested), v.dataFormat)
 		if err != nil {
 			return "", err
 		}

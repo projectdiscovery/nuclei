@@ -42,12 +42,14 @@ func (q *Path) Parse(req *retryablehttp.Request) (bool, error) {
 }
 
 // Iterate iterates through the component
-func (q *Path) Iterate(callback func(key string, value interface{}) error) error {
-	for key, value := range q.value.Parsed() {
-		if err := callback(key, value); err != nil {
-			return err
+func (q *Path) Iterate(callback func(key string, value interface{}) error) (err error) {
+	q.value.parsed.Iterate(func(key string, value any) bool {
+		if errx := callback(key, value); errx != nil {
+			err = errx
+			return false
 		}
-	}
+		return true
+	})
 	return nil
 }
 

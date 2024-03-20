@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/projectdiscovery/gologger"
+	mapsutil "github.com/projectdiscovery/utils/maps"
 	urlutil "github.com/projectdiscovery/utils/url"
 )
 
@@ -46,30 +47,36 @@ func (f *Form) IsType(data string) bool {
 }
 
 // Encode encodes the data into Form format
-func (f *Form) Encode(data map[string]interface{}) (string, error) {
+func (f *Form) Encode(data KV) (string, error) {
 	params := urlutil.NewOrderedParams()
-	for key, value := range data {
-		params.Set(key, fmt.Sprint(value))
-	}
+
+	data.Iterate(func(key string, value any) bool {
+		params.Add(key, fmt.Sprint(value))
+		return true
+	})
 
 	normalized := map[string]map[string]string{}
-	for k := range data {
-		params.Iterate(func(key string, value []string) bool {
-			if strings.HasPrefix(key, k) && reNormalized.MatchString(key) {
-				m := map[string]string{}
-				if normalized[k] != nil {
-					m = normalized[k]
+	// Normalize the data
+	for _, origKey := range data.OrderedMap.GetKeys() {
+		// here origKey is base key without _1, _2 etc.
+		if origKey != "" && !reNormalized.MatchString(origKey) {
+			params.Iterate(func(key string, value []string) bool {
+				if strings.HasPrefix(key, origKey) && reNormalized.MatchString(key) {
+					m := map[string]string{}
+					if normalized[origKey] != nil {
+						m = normalized[origKey]
+					}
+					if len(value) == 1 {
+						m[key] = value[0]
+					} else {
+						m[key] = ""
+					}
+					normalized[origKey] = m
+					params.Del(key)
 				}
-				if len(value) == 1 {
-					m[key] = value[0]
-				} else {
-					m[key] = ""
-				}
-				normalized[k] = m
-				params.Del(key)
-			}
-			return true
-		})
+				return true
+			})
+		}
 	}
 
 	if len(normalized) > 0 {
@@ -97,6 +104,8 @@ func (f *Form) Encode(data map[string]interface{}) (string, error) {
 				}
 			}
 			data[maxIndex] = fmt.Sprint(params.Get(k)) // Use maxIndex which is the last index
+			// remove existing
+			params.Del(k)
 			params.Add(k, data...)
 		}
 	}
@@ -106,27 +115,27 @@ func (f *Form) Encode(data map[string]interface{}) (string, error) {
 }
 
 // Decode decodes the data from Form format
-func (f *Form) Decode(data string) (map[string]interface{}, error) {
+func (f *Form) Decode(data string) (KV, error) {
 	parsed, err := url.ParseQuery(data)
 	if err != nil {
-		return nil, err
+		return KV{}, err
 	}
 
-	values := make(map[string]interface{})
+	values := mapsutil.NewOrderedMap[string, any]()
 	for key, value := range parsed {
 		if len(value) == 1 {
-			values[key] = value[0]
+			values.Set(key, value[0])
 		} else {
 			// in case of multiple query params in form data
 			// last value is considered and previous values are exposed with _1, _2, _3 etc.
 			// note that last value will not be included in _1, _2, _3 etc.
 			for i := 0; i < len(value)-1; i++ {
-				values[key+"_"+strconv.Itoa(i+1)] = value[i]
+				values.Set(key+"_"+strconv.Itoa(i+1), value[i])
 			}
-			values[key] = value[len(value)-1]
+			values.Set(key, value[len(value)-1])
 		}
 	}
-	return values, nil
+	return KVOrderedMap(&values), nil
 }
 
 // Name returns the name of the encoder
