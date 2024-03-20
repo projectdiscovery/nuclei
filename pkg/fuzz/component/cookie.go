@@ -62,7 +62,7 @@ func (c *Cookie) Iterate(callback func(key string, value interface{}) error) (er
 		}
 		return true
 	})
-	return nil
+	return
 }
 
 // SetValue sets a value in the component

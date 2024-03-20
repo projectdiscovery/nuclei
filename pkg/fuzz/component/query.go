@@ -55,7 +55,7 @@ func (q *Query) Iterate(callback func(key string, value interface{}) error) (err
 		}
 		return true
 	})
-	return nil
+	return
 }
 
 // SetValue sets a value in the component

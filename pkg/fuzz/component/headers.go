@@ -46,18 +46,19 @@ func (q *Header) Parse(req *retryablehttp.Request) (bool, error) {
 }
 
 // Iterate iterates through the component
-func (q *Header) Iterate(callback func(key string, value interface{}) error) (err error) {
+func (q *Header) Iterate(callback func(key string, value interface{}) error) (errx error) {
 	q.value.parsed.Iterate(func(key string, value any) bool {
 		// Skip ignored headers
 		if _, ok := defaultIgnoredHeaderKeys[key]; ok {
 			return ok
 		}
 		if err := callback(key, value); err != nil {
+			errx = err
 			return false
 		}
 		return true
 	})
-	return nil
+	return
 }
 
 // SetValue sets a value in the component
