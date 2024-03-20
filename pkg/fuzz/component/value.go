@@ -1,9 +1,11 @@
 package component
 
 import (
+	"reflect"
 	"strconv"
 
 	"github.com/leslie-qiwa/flat"
+	"github.com/logrusorgru/aurora"
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/fuzz/dataformat"
 )
@@ -67,7 +69,11 @@ func (v *Value) SetParsedValue(key string, value string) bool {
 	// otherwise replace it
 	switch v := origValue.(type) {
 	case []interface{}:
-		origValue = append(v, value)
+		// update last value
+		if len(v) > 0 {
+			v[len(v)-1] = value
+		}
+		origValue = v
 	case string:
 		origValue = value
 	case int, int32, int64, float32, float64:
@@ -85,7 +91,16 @@ func (v *Value) SetParsedValue(key string, value string) bool {
 	case nil:
 		origValue = value
 	default:
-		gologger.Error().Msgf("unknown type %T for value %s", v, v)
+		// explicitly check for typed slice
+		if val, ok := IsTypedSlice(v); ok {
+			if len(val) > 0 {
+				val[len(val)-1] = value
+			}
+			origValue = val
+		} else {
+			// make it default warning instead of error
+			gologger.DefaultLogger.Print().Msgf("[%v] unknown type %T for value %s", aurora.BrightYellow("WARN"), v, v)
+		}
 	}
 	v.parsed[key] = origValue
 	return true
@@ -117,4 +132,19 @@ func (v *Value) Encode() (string, error) {
 		toEncodeStr = dataformatStr
 	}
 	return toEncodeStr, nil
+}
+
+// In go, []int, []string are not implictily converted to []interface{}
+// when using type assertion and they need to be handled separately.
+func IsTypedSlice(v interface{}) ([]interface{}, bool) {
+	if reflect.ValueOf(v).Kind() == reflect.Slice {
+		// iterate and convert to []interface{}
+		slice := reflect.ValueOf(v)
+		interfaceSlice := make([]interface{}, slice.Len())
+		for i := 0; i < slice.Len(); i++ {
+			interfaceSlice[i] = slice.Index(i).Interface()
+		}
+		return interfaceSlice, true
+	}
+	return nil, false
 }
