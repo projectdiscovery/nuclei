@@ -78,7 +78,7 @@ require (
 	github.com/mholt/archiver v3.1.1+incompatible
 	github.com/ory/dockertest/v3 v3.10.0
 	github.com/praetorian-inc/fingerprintx v1.1.9
-	github.com/projectdiscovery/dsl v0.0.46
+	github.com/projectdiscovery/dsl v0.0.48
 	github.com/projectdiscovery/fasttemplate v0.0.2
 	github.com/projectdiscovery/go-smb2 v0.0.0-20240129202741-052cc450c6cb
 	github.com/projectdiscovery/goflags v0.1.42
@@ -139,7 +139,7 @@ require (
 	github.com/dgryski/go-rendezvous v0.0.0-20200823014737-9f7001d12a5f // indirect
 	github.com/dlclark/regexp2 v1.11.0 // indirect
 	github.com/docker/cli v24.0.5+incompatible // indirect
-	github.com/docker/docker v24.0.7+incompatible // indirect
+	github.com/docker/docker v24.0.9+incompatible // indirect
 	github.com/docker/go-connections v0.4.0 // indirect
 	github.com/eapache/channels v1.1.0 // indirect
 	github.com/eapache/queue v1.1.0 // indirect
