@@ -132,7 +132,10 @@ type Options struct {
 	Retries int
 	// Rate-Limit is the maximum number of requests per specified target
 	RateLimit int
+	// Rate Limit Duration interval between burst resets
+	RateLimitDuration time.Duration
 	// Rate-Limit is the maximum number of requests per minute for specified target
+	// Deprecated: Use RateLimitDuration - automatically set Rate Limit Duration to 60 seconds
 	RateLimitMinute int
 	// PageTimeout is the maximum time to wait for a page in seconds
 	PageTimeout int

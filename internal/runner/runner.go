@@ -314,9 +314,15 @@ func New(options *types.Options) (*Runner, error) {
 	}
 
 	if options.RateLimitMinute > 0 {
-		runner.rateLimiter = ratelimit.New(context.Background(), uint(options.RateLimitMinute), time.Minute)
-	} else if options.RateLimit > 0 {
-		runner.rateLimiter = ratelimit.New(context.Background(), uint(options.RateLimit), time.Second)
+		gologger.Warning().Msgf("rate limit per minute is deprecated - use rate-limit-duration")
+		options.RateLimit = options.RateLimitMinute
+		options.RateLimitDuration = time.Minute
+	}
+	if options.RateLimitDuration == 0 {
+		options.RateLimitDuration = time.Second
+	}
+	if options.RateLimit > 0 {
+		runner.rateLimiter = ratelimit.New(context.Background(), uint(options.RateLimit), options.RateLimitDuration)
 	} else {
 		runner.rateLimiter = ratelimit.NewUnlimited(context.Background())
 	}

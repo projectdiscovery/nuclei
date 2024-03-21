@@ -192,9 +192,15 @@ func (e *NucleiEngine) init() error {
 
 	if e.executerOpts.RateLimiter == nil {
 		if e.opts.RateLimitMinute > 0 {
-			e.executerOpts.RateLimiter = ratelimit.New(context.Background(), uint(e.opts.RateLimitMinute), time.Minute)
-		} else if e.opts.RateLimit > 0 {
-			e.executerOpts.RateLimiter = ratelimit.New(context.Background(), uint(e.opts.RateLimit), time.Second)
+			gologger.Warning().Msgf("rate limit per minute is deprecated - use rate-limit-duration")
+			e.opts.RateLimit = e.opts.RateLimitMinute
+			e.opts.RateLimitDuration = time.Minute
+		}
+		if e.opts.RateLimitDuration == 0 {
+			e.opts.RateLimitDuration = time.Second
+		}
+		if e.opts.RateLimit > 0 {
+			e.executerOpts.RateLimiter = ratelimit.New(context.Background(), uint(e.opts.RateLimit), e.opts.RateLimitDuration)
 		} else {
 			e.executerOpts.RateLimiter = ratelimit.NewUnlimited(context.Background())
 		}

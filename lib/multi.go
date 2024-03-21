@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/logrusorgru/aurora"
+	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/loader"
 	"github.com/projectdiscovery/nuclei/v3/pkg/core"
 	"github.com/projectdiscovery/nuclei/v3/pkg/input/provider"
@@ -42,9 +43,15 @@ func createEphemeralObjects(base *NucleiEngine, opts *types.Options) (*unsafeOpt
 		Parser:          base.parser,
 	}
 	if opts.RateLimitMinute > 0 {
-		u.executerOpts.RateLimiter = ratelimit.New(context.Background(), uint(opts.RateLimitMinute), time.Minute)
-	} else if opts.RateLimit > 0 {
-		u.executerOpts.RateLimiter = ratelimit.New(context.Background(), uint(opts.RateLimit), time.Second)
+		gologger.Warning().Msgf("rate limit per minute is deprecated - use rate-limit-duration")
+		opts.RateLimit = opts.RateLimitMinute
+		opts.RateLimitDuration = time.Minute
+	}
+	if opts.RateLimitDuration == 0 {
+		opts.RateLimitDuration = time.Second
+	}
+	if opts.RateLimit > 0 {
+		u.executerOpts.RateLimiter = ratelimit.New(context.Background(), uint(opts.RateLimit), opts.RateLimitDuration)
 	} else {
 		u.executerOpts.RateLimiter = ratelimit.NewUnlimited(context.Background())
 	}
