@@ -13,10 +13,12 @@ import (
 	"time"
 
 	"github.com/projectdiscovery/gologger"
+	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/config"
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
 	"github.com/projectdiscovery/retryablehttp-go"
 	pdcpauth "github.com/projectdiscovery/utils/auth/pdcp"
 	errorutil "github.com/projectdiscovery/utils/errors"
+	updateutils "github.com/projectdiscovery/utils/update"
 	urlutil "github.com/projectdiscovery/utils/url"
 )
 
@@ -217,6 +219,8 @@ func (u *UploadWriter) getRequest(bin []byte) (*retryablehttp.Request, error) {
 	if err != nil {
 		return nil, errorutil.NewWithErr(err).Msgf("could not create cloud upload request")
 	}
+	// add pdtm meta params
+	req.URL.RawQuery = updateutils.GetpdtmParams(config.Version)
 	req.Header.Set(pdcpauth.ApiKeyHeaderName, u.creds.APIKey)
 	req.Header.Set("Content-Type", "application/octet-stream")
 	req.Header.Set("Accept", "application/json")

@@ -2,9 +2,12 @@ package component
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 
+	"github.com/projectdiscovery/nuclei/v3/pkg/fuzz/dataformat"
 	"github.com/projectdiscovery/retryablehttp-go"
+	mapsutil "github.com/projectdiscovery/utils/maps"
 )
 
 // Cookie is a component for a request cookie
@@ -35,29 +38,31 @@ func (c *Cookie) Parse(req *retryablehttp.Request) (bool, error) {
 	c.req = req
 	c.value = NewValue("")
 
-	parsedCookies := make(map[string]interface{})
+	parsedCookies := mapsutil.NewOrderedMap[string, any]()
 	for _, cookie := range req.Cookies() {
-		parsedCookies[cookie.Name] = cookie.Value
+		parsedCookies.Set(cookie.Name, cookie.Value)
 	}
-	if len(parsedCookies) == 0 {
+	if parsedCookies.Len() == 0 {
 		return false, nil
 	}
-	c.value.SetParsed(parsedCookies, "")
+	c.value.SetParsed(dataformat.KVOrderedMap(&parsedCookies), "")
 	return true, nil
 }
 
 // Iterate iterates through the component
-func (c *Cookie) Iterate(callback func(key string, value interface{}) error) error {
-	for key, value := range c.value.Parsed() {
+func (c *Cookie) Iterate(callback func(key string, value interface{}) error) (err error) {
+	c.value.parsed.Iterate(func(key string, value any) bool {
 		// Skip ignored cookies
 		if _, ok := defaultIgnoredCookieKeys[key]; ok {
-			continue
+			return ok
 		}
-		if err := callback(key, value); err != nil {
-			return err
+		if errx := callback(key, value); errx != nil {
+			err = errx
+			return false
 		}
-	}
-	return nil
+		return true
+	})
+	return
 }
 
 // SetValue sets a value in the component
@@ -83,13 +88,14 @@ func (c *Cookie) Rebuild() (*retryablehttp.Request, error) {
 	cloned := c.req.Clone(context.Background())
 
 	cloned.Header.Del("Cookie")
-	for key, value := range c.value.Parsed() {
+	c.value.parsed.Iterate(func(key string, value any) bool {
 		cookie := &http.Cookie{
 			Name:  key,
-			Value: value.(string), // Assume the value is always a string for cookies
+			Value: fmt.Sprint(value), // Assume the value is always a string for cookies
 		}
 		cloned.AddCookie(cookie)
-	}
+		return true
+	})
 	return cloned, nil
 }
 

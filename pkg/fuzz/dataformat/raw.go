@@ -17,15 +17,15 @@ func (r *Raw) IsType(data string) bool {
 }
 
 // Encode encodes the data into Raw format
-func (r *Raw) Encode(data map[string]interface{}) (string, error) {
-	return data["value"].(string), nil
+func (r *Raw) Encode(data KV) (string, error) {
+	return data.Get("value").(string), nil
 }
 
 // Decode decodes the data from Raw format
-func (r *Raw) Decode(data string) (map[string]interface{}, error) {
-	return map[string]interface{}{
+func (r *Raw) Decode(data string) (KV, error) {
+	return KVMap(map[string]interface{}{
 		"value": data,
-	}, nil
+	}), nil
 }
 
 // Name returns the name of the encoder
