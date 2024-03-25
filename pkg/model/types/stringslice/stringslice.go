@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/alecthomas/jsonschema"
+	"github.com/invopop/jsonschema"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/utils"
 )
@@ -20,11 +20,9 @@ func New(value interface{}) StringSlice {
 	return StringSlice{Value: value}
 }
 
-func (stringSlice StringSlice) JSONSchemaType() *jsonschema.Type {
-	gotType := &jsonschema.Type{
-		OneOf: []*jsonschema.Type{{Type: "string"}, {Type: "array"}},
-	}
-	return gotType
+func (stringSlice StringSlice) JSONSchemaType() *jsonschema.Schema {
+	schema := jsonschema.Reflect(&stringSlice)
+	return schema
 }
 
 func (stringSlice *StringSlice) IsEmpty() bool {

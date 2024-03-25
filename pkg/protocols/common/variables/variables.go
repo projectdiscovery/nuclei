@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"strings"
 
-	"github.com/alecthomas/jsonschema"
+	"github.com/invopop/jsonschema"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/expressions"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/generators"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/interactsh"
@@ -21,12 +21,12 @@ type Variable struct {
 	utils.InsertionOrderedStringMap `yaml:"-" json:"-"`
 }
 
-func (variables Variable) JSONSchemaType() *jsonschema.Type {
-	gotType := &jsonschema.Type{
+func (variables Variable) JSONSchemaType() *jsonschema.Schema {
+	gotType := &jsonschema.Schema{
 		Type:                 "object",
 		Title:                "variables for the request",
 		Description:          "Additional variables for the request",
-		AdditionalProperties: []byte("true"),
+		AdditionalProperties: &jsonschema.Schema{},
 	}
 	return gotType
 }
