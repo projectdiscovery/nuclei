@@ -403,6 +403,11 @@ func (store *Store) LoadTemplatesWithTags(templatesList, tags []string) []*templ
 					stats.Increment(templates.SkippedUnsignedStats)
 					continue
 				}
+				// if template has request signature like aws then only signed and verified templates are allowed
+				if parsed.UsesRequestSignature() && !parsed.Verified {
+					stats.Increment(templates.SkippedRequestSignatureStats)
+					continue
+				}
 				// DAST only templates
 				if store.config.ExecutorOptions.Options.DAST {
 					// check if the template is a DAST template

@@ -214,6 +214,11 @@ func (template *Template) IsFuzzing() bool {
 	return false
 }
 
+// UsesRequestSignature returns true if the template uses a request signature like AWS
+func (template *Template) UsesRequestSignature() bool {
+	return template.Signature.Value.String() != ""
+}
+
 // HasCodeProtocol returns true if the template has a code protocol section
 func (template *Template) HasCodeProtocol() bool {
 	return len(template.RequestsCode) > 0

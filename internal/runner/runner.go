@@ -659,6 +659,7 @@ func (r *Runner) displayExecutionInfo(store *loader.Store) {
 		stats.DisplayAsWarning(templates.SkippedCodeTmplTamperedStats)
 	}
 	stats.ForceDisplayWarning(templates.SkippedUnsignedStats)
+	stats.ForceDisplayWarning(templates.SkippedRequestSignatureStats)
 
 	cfg := config.DefaultConfig
 
