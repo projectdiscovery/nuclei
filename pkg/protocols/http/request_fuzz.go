@@ -8,6 +8,7 @@ package http
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"strings"
 
 	"github.com/pkg/errors"
@@ -295,6 +296,9 @@ func (request *Request) filterDataMap(input *contextargs.Context) map[string]int
 			return true
 		})
 		m["header"] = sb.String()
+	} else {
+		// add default method value
+		m["method"] = http.MethodGet
 	}
 
 	// dump if svd is enabled
