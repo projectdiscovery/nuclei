@@ -24,13 +24,14 @@ import (
 	protocolutils "github.com/projectdiscovery/nuclei/v3/pkg/protocols/utils"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	"github.com/projectdiscovery/retryablehttp-go"
+	urlutil "github.com/projectdiscovery/utils/url"
 )
 
 // executeFuzzingRule executes fuzzing request for a URL
 // TODO:
 // 1. use SPMHandler and rewrite stop at first match logic here
 // 2. use scanContext instead of contextargs.Context
-func (request *Request) executeFuzzingRule(input *contextargs.Context, _ output.InternalEvent, callback protocols.OutputEventCallback) error {
+func (request *Request) executeFuzzingRule(input *contextargs.Context, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
 	// methdology:
 	// to check applicablity of rule, we first try to execute it with one value
 	// if it is applicable, we execute all requests
@@ -47,29 +48,20 @@ func (request *Request) executeFuzzingRule(input *contextargs.Context, _ output.
 		return nil
 	}
 
-	// Iterate through all requests for template and queue them for fuzzing
-	generator := request.newGenerator(true)
-
-	// this will generate next value along with request it is meant to be used with
-	currRequest, payloads, result := generator.nextValue()
-	if !result && input.MetaInput.ReqResp == nil {
-		// this case is only true if input is not a full http request
-		return fmt.Errorf("no values to generate requests")
+	if input.MetaInput.Input == "" && input.MetaInput.ReqResp == nil {
+		return errors.New("empty input provided for fuzzing")
 	}
 
-	// if it is a full http request obtained from target file
+	// ==== fuzzing when full HTTP request is provided =====
+
 	if input.MetaInput.ReqResp != nil {
-		// Note: in case of full http request, we only need to build it once
-		// and then reuse it for all requests and completely abandon the request
-		// returned by generator
-		_ = currRequest
-		generated, err := input.MetaInput.ReqResp.BuildRequest()
+		baseRequest, err := input.MetaInput.ReqResp.BuildRequest()
 		if err != nil {
 			return errors.Wrap(err, "fuzz: could not build request obtained from target file")
 		}
-		input.MetaInput.Input = generated.URL.String()
+		input.MetaInput.Input = baseRequest.URL.String()
 		// execute with one value first to checks its applicability
-		err = request.executePayloadUsingRules(input, payloads, generated, callback)
+		err = request.executeAllFuzzingRules(input, previous, baseRequest, callback)
 		if err != nil {
 			// in case of any error, return it
 			if fuzz.IsErrRuleNotApplicable(err) {
@@ -80,36 +72,25 @@ func (request *Request) executeFuzzingRule(input *contextargs.Context, _ output.
 			if errors.Is(err, errStopExecution) {
 				return err
 			}
-			gologger.Verbose().Msgf("[%s] fuzz: inital payload request execution failed : %s\n", request.options.TemplateID, err)
-		}
-
-		// if it is applicable, execute all requests
-		for {
-			_, payloads, result := generator.nextValue()
-			if !result {
-				break
-			}
-			err = request.executePayloadUsingRules(input, payloads, generated, callback)
-			if err != nil {
-				// continue to next request since this is payload specific
-				gologger.Verbose().Msgf("[%s] fuzz: payload request execution failed : %s\n", request.options.TemplateID, err)
-				continue
-			}
+			gologger.Verbose().Msgf("[%s] fuzz: payload request execution failed : %s\n", request.options.TemplateID, err)
 		}
 		return nil
 	}
 
 	// ==== fuzzing when only URL is provided =====
 
-	generated, err := generator.Make(context.Background(), input, currRequest, payloads, nil)
+	// we need to use this url instead of input
+	inputx := input.Clone()
+	parsed, err := urlutil.ParseAbsoluteURL(input.MetaInput.Input, true)
+	if err != nil {
+		return errors.Wrap(err, "fuzz: could not parse input url")
+	}
+	baseRequest, err := retryablehttp.NewRequestFromURL(http.MethodGet, parsed, nil)
 	if err != nil {
 		return errors.Wrap(err, "fuzz: could not build request from url")
 	}
-	// we need to use this url instead of input
-	inputx := input.Clone()
-	inputx.MetaInput.Input = generated.request.URL.String()
 	// execute with one value first to checks its applicability
-	err = request.executePayloadUsingRules(inputx, generated.dynamicValues, generated.request, callback)
+	err = request.executeAllFuzzingRules(inputx, previous, baseRequest, callback)
 	if err != nil {
 		// in case of any error, return it
 		if fuzz.IsErrRuleNotApplicable(err) {
@@ -120,34 +101,13 @@ func (request *Request) executeFuzzingRule(input *contextargs.Context, _ output.
 		if errors.Is(err, errStopExecution) {
 			return err
 		}
-		gologger.Verbose().Msgf("[%s] fuzz: inital payload request execution failed : %s\n", request.options.TemplateID, err)
-	}
-
-	// continue to next request since this is payload specific
-	for {
-		currRequest, payloads, result = generator.nextValue()
-		if !result {
-			break
-		}
-		generated, err := generator.Make(context.Background(), input, currRequest, payloads, nil)
-		if err != nil {
-			return errors.Wrap(err, "fuzz: could not build request from url")
-		}
-		// we need to use this url instead of input
-		inputx := input.Clone()
-		inputx.MetaInput.Input = generated.request.URL.String()
-		// execute with one value first to checks its applicability
-		err = request.executePayloadUsingRules(inputx, generated.dynamicValues, generated.request, callback)
-		if err != nil {
-			gologger.Verbose().Msgf("[%s] fuzz: payload request execution failed : %s\n", request.options.TemplateID, err)
-			continue
-		}
+		gologger.Verbose().Msgf("[%s] fuzz: payload request execution failed : %s\n", request.options.TemplateID, err)
 	}
 	return nil
 }
 
-// executePayloadUsingRules executes a payload using rules with given payload i.e values
-func (request *Request) executePayloadUsingRules(input *contextargs.Context, values map[string]interface{}, baseRequest *retryablehttp.Request, callback protocols.OutputEventCallback) error {
+// executeAllFuzzingRules executes all fuzzing rules defined in template for a given base request
+func (request *Request) executeAllFuzzingRules(input *contextargs.Context, values map[string]interface{}, baseRequest *retryablehttp.Request, callback protocols.OutputEventCallback) error {
 	applicable := false
 	for _, rule := range request.Fuzzing {
 		err := rule.Execute(&fuzz.ExecuteRuleInput{
@@ -157,7 +117,7 @@ func (request *Request) executePayloadUsingRules(input *contextargs.Context, val
 				return request.executeGeneratedFuzzingRequest(gr, input, callback)
 			},
 			Values:      values,
-			BaseRequest: baseRequest,
+			BaseRequest: baseRequest.Clone(context.TODO()),
 		})
 		if err == nil {
 			applicable = true
