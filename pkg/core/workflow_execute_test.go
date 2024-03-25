@@ -11,6 +11,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
 	"github.com/projectdiscovery/nuclei/v3/pkg/scan"
+	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	"github.com/projectdiscovery/nuclei/v3/pkg/workflows"
 	"github.com/stretchr/testify/require"
 )
@@ -34,7 +35,7 @@ func TestWorkflowsSimple(t *testing.T) {
 
 func TestWorkflowsSimpleMultiple(t *testing.T) {
 	progressBar, _ := progress.NewStatsTicker(0, false, false, false, 0)
-	cruiseControl, _ := cruisecontrol.New(cruisecontrol.Options{Standard: cruisecontrol.Concurrency{Templates: 10}})
+	cruiseControl, _ := cruisecontrol.New(cruisecontrol.ParseOptionsFrom(types.DefaultOptions()))
 
 	var firstInput, secondInput string
 	workflow := &workflows.Workflow{Options: &protocols.ExecutorOptions{CruiseControl: cruiseControl}, Workflows: []*workflows.WorkflowTemplate{
@@ -62,7 +63,7 @@ func TestWorkflowsSimpleMultiple(t *testing.T) {
 
 func TestWorkflowsSubtemplates(t *testing.T) {
 	progressBar, _ := progress.NewStatsTicker(0, false, false, false, 0)
-	cruiseControl, _ := cruisecontrol.New(cruisecontrol.Options{Standard: cruisecontrol.Concurrency{Templates: 10}})
+	cruiseControl, _ := cruisecontrol.New(cruisecontrol.ParseOptionsFrom(types.DefaultOptions()))
 
 	var firstInput, secondInput string
 	workflow := &workflows.Workflow{Options: &protocols.ExecutorOptions{CruiseControl: cruiseControl}, Workflows: []*workflows.WorkflowTemplate{
@@ -91,7 +92,7 @@ func TestWorkflowsSubtemplates(t *testing.T) {
 
 func TestWorkflowsSubtemplatesNoMatch(t *testing.T) {
 	progressBar, _ := progress.NewStatsTicker(0, false, false, false, 0)
-	cruiseControl, _ := cruisecontrol.New(cruisecontrol.Options{Standard: cruisecontrol.Concurrency{Templates: 10}})
+	cruiseControl, _ := cruisecontrol.New(cruisecontrol.ParseOptionsFrom(types.DefaultOptions()))
 
 	var firstInput, secondInput string
 	workflow := &workflows.Workflow{Options: &protocols.ExecutorOptions{CruiseControl: cruiseControl}, Workflows: []*workflows.WorkflowTemplate{
@@ -118,7 +119,7 @@ func TestWorkflowsSubtemplatesNoMatch(t *testing.T) {
 
 func TestWorkflowsSubtemplatesWithMatcher(t *testing.T) {
 	progressBar, _ := progress.NewStatsTicker(0, false, false, false, 0)
-	cruiseControl, _ := cruisecontrol.New(cruisecontrol.Options{Standard: cruisecontrol.Concurrency{Templates: 10}})
+	cruiseControl, _ := cruisecontrol.New(cruisecontrol.ParseOptionsFrom(types.DefaultOptions()))
 
 	var firstInput, secondInput string
 	workflow := &workflows.Workflow{Options: &protocols.ExecutorOptions{CruiseControl: cruiseControl}, Workflows: []*workflows.WorkflowTemplate{
@@ -150,7 +151,7 @@ func TestWorkflowsSubtemplatesWithMatcher(t *testing.T) {
 
 func TestWorkflowsSubtemplatesWithMatcherNoMatch(t *testing.T) {
 	progressBar, _ := progress.NewStatsTicker(0, false, false, false, 0)
-	cruiseControl, _ := cruisecontrol.New(cruisecontrol.Options{Standard: cruisecontrol.Concurrency{Templates: 10}})
+	cruiseControl, _ := cruisecontrol.New(cruisecontrol.ParseOptionsFrom(types.DefaultOptions()))
 
 	var firstInput, secondInput string
 	workflow := &workflows.Workflow{Options: &protocols.ExecutorOptions{CruiseControl: cruiseControl}, Workflows: []*workflows.WorkflowTemplate{
