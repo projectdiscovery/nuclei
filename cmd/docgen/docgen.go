@@ -32,11 +32,7 @@ func main() {
 	}
 
 	// Generate jsonschema
-	r := &jsonschema.Reflector{
-		PreferYAMLSchema:      true,
-		YAMLEmbeddedStructs:   true,
-		FullyQualifyTypeNames: true,
-	}
+	r := &jsonschema.Reflector{}
 	jsonschemaData := r.Reflect(&templates.Template{})
 
 	var buf bytes.Buffer
