@@ -8,7 +8,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/alecthomas/jsonschema"
+	"github.com/invopop/jsonschema"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/templates"
 )

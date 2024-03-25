@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"strings"
 
-	"github.com/alecthomas/jsonschema"
+	"github.com/invopop/jsonschema"
 	"github.com/pkg/errors"
 )
 
@@ -71,8 +71,8 @@ type Holder struct {
 	Severity Severity `mapping:"true"`
 }
 
-func (severityHolder Holder) JSONSchemaType() *jsonschema.Type {
-	gotType := &jsonschema.Type{
+func (severityHolder Holder) JSONSchemaType() *jsonschema.Schema {
+	gotType := &jsonschema.Schema{
 		Type:        "string",
 		Title:       "severity of the template",
 		Description: "Seriousness of the implications of the template",
