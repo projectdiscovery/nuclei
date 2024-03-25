@@ -1,6 +1,8 @@
 package dataformat
 
-import mapsutil "github.com/projectdiscovery/utils/maps"
+import (
+	mapsutil "github.com/projectdiscovery/utils/maps"
+)
 
 // KV is a key-value struct
 // that is implemented or used by fuzzing package
@@ -12,6 +14,21 @@ import mapsutil "github.com/projectdiscovery/utils/maps"
 type KV struct {
 	Map        map[string]interface{}
 	OrderedMap *mapsutil.OrderedMap[string, any]
+}
+
+// Clones the current state of the KV struct
+func (kv *KV) Clone() KV {
+	newKV := KV{}
+	if kv.OrderedMap == nil {
+		newKV.Map = make(map[string]interface{})
+		for key, value := range kv.Map {
+			newKV.Map[key] = value
+		}
+		return newKV
+	}
+	clonedOrderedMap := kv.OrderedMap.Clone()
+	newKV.OrderedMap = &clonedOrderedMap
+	return newKV
 }
 
 // IsNIL returns true if the KV struct is nil
