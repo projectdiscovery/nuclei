@@ -639,15 +639,25 @@ func (r *Runner) displayExecutionInfo(store *loader.Store) {
 	stats.Display(templates.SyntaxWarningStats)
 	stats.Display(templates.SyntaxErrorStats)
 	stats.Display(templates.RuntimeWarningsStats)
-	if r.options.Verbose {
+	tmplCount := len(store.Templates())
+	workflowCount := len(store.Workflows())
+	if r.options.Verbose || (tmplCount == 0 && workflowCount == 0) {
 		// only print these stats in verbose mode
-		stats.DisplayAsWarning(templates.ExcludedHeadlessTmplStats)
-		stats.DisplayAsWarning(templates.ExcludedCodeTmplStats)
-		stats.DisplayAsWarning(templates.ExludedDastTmplStats)
-		stats.DisplayAsWarning(templates.TemplatesExcludedStats)
+		stats.ForceDisplayWarning(templates.ExcludedHeadlessTmplStats)
+		stats.ForceDisplayWarning(templates.ExcludedCodeTmplStats)
+		stats.ForceDisplayWarning(templates.ExludedDastTmplStats)
+		stats.ForceDisplayWarning(templates.TemplatesExcludedStats)
 	}
 
-	stats.DisplayAsWarning(templates.SkippedCodeTmplTamperedStats)
+	if tmplCount == 0 && workflowCount == 0 {
+		// if dast flag is used print explicit warning
+		if r.options.DAST {
+			gologger.DefaultLogger.Print().Msgf("[%v] No DAST templates found", aurora.BrightYellow("WRN"))
+		}
+		stats.ForceDisplayWarning(templates.SkippedCodeTmplTamperedStats)
+	} else {
+		stats.DisplayAsWarning(templates.SkippedCodeTmplTamperedStats)
+	}
 	stats.ForceDisplayWarning(templates.SkippedUnsignedStats)
 
 	cfg := config.DefaultConfig
@@ -662,7 +672,7 @@ func (r *Runner) displayExecutionInfo(store *loader.Store) {
 		}
 	}
 
-	if len(store.Templates()) > 0 || len(store.Workflows()) > 0 {
+	if tmplCount > 0 || workflowCount > 0 {
 		if len(store.Templates()) > 0 {
 			gologger.Info().Msgf("New templates added in latest release: %d", len(config.DefaultConfig.GetNewAdditions()))
 			gologger.Info().Msgf("Templates loaded for current scan: %d", len(store.Templates()))
