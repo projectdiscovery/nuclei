@@ -6,6 +6,8 @@ import (
 	"io"
 	"mime"
 	"mime/multipart"
+
+	mapsutil "github.com/projectdiscovery/utils/maps"
 )
 
 type MultiPartForm struct {
@@ -28,23 +30,30 @@ func (m *MultiPartForm) IsType(data string) bool {
 }
 
 // Encode encodes the data into MultiPartForm format
-func (m *MultiPartForm) Encode(data map[string]interface{}) (string, error) {
+func (m *MultiPartForm) Encode(data KV) (string, error) {
 	var b bytes.Buffer
 	w := multipart.NewWriter(&b)
 	if err := w.SetBoundary(m.boundary); err != nil {
 		return "", err
 	}
 
-	for key, value := range data {
+	var Itererr error
+	data.Iterate(func(key string, value any) bool {
 		var fw io.Writer
 		var err error
 		// Add field
 		if fw, err = w.CreateFormField(key); err != nil {
-			return "", err
+			Itererr = err
+			return false
 		}
 		if _, err = fw.Write([]byte(value.(string))); err != nil {
-			return "", err
+			Itererr = err
+			return false
 		}
+		return true
+	})
+	if Itererr != nil {
+		return "", Itererr
 	}
 
 	w.Close()
@@ -65,7 +74,7 @@ func (m *MultiPartForm) ParseBoundary(contentType string) error {
 }
 
 // Decode decodes the data from MultiPartForm format
-func (m *MultiPartForm) Decode(data string) (map[string]interface{}, error) {
+func (m *MultiPartForm) Decode(data string) (KV, error) {
 	// Create a buffer from the string data
 	b := bytes.NewBufferString(data)
 	// The boundary parameter should be extracted from the Content-Type header of the HTTP request
@@ -75,18 +84,18 @@ func (m *MultiPartForm) Decode(data string) (map[string]interface{}, error) {
 
 	form, err := r.ReadForm(32 << 20) // 32MB is the max memory used to parse the form
 	if err != nil {
-		return nil, err
+		return KV{}, err
 	}
 	defer func() {
 		_ = form.RemoveAll()
 	}()
 
-	result := make(map[string]interface{})
+	result := mapsutil.NewOrderedMap[string, any]()
 	for key, values := range form.Value {
 		if len(values) > 1 {
-			result[key] = values
+			result.Set(key, values)
 		} else {
-			result[key] = values[0]
+			result.Set(key, values[0])
 		}
 	}
 	for key, files := range form.File {
@@ -94,20 +103,19 @@ func (m *MultiPartForm) Decode(data string) (map[string]interface{}, error) {
 		for _, fileHeader := range files {
 			file, err := fileHeader.Open()
 			if err != nil {
-				return nil, err
+				return KV{}, err
 			}
 			defer file.Close()
 
 			buffer := new(bytes.Buffer)
 			if _, err := buffer.ReadFrom(file); err != nil {
-				return nil, err
+				return KV{}, err
 			}
 			fileContents = append(fileContents, buffer.String())
 		}
-		result[key] = fileContents
+		result.Set(key, fileContents)
 	}
-
-	return result, nil
+	return KVOrderedMap(&result), nil
 }
 
 // Name returns the name of the encoder
