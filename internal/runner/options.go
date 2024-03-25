@@ -31,6 +31,7 @@ import (
 	"github.com/projectdiscovery/utils/generic"
 	logutil "github.com/projectdiscovery/utils/log"
 	stringsutil "github.com/projectdiscovery/utils/strings"
+	structsutil "github.com/projectdiscovery/utils/structs"
 )
 
 const (
@@ -258,7 +259,7 @@ func createReportingOptions(options *types.Options) (*reporting.Options, error) 
 		if err := yaml.DecodeAndValidate(file, reportingOptions); err != nil {
 			return nil, errors.Wrap(err, "could not parse reporting config file")
 		}
-		Walk(reportingOptions, expandEndVars)
+		structsutil.Walk(reportingOptions, expandEndVars)
 	}
 	if options.MarkdownExportDirectory != "" {
 		reportingOptions.MarkdownExporter = &markdown.Options{

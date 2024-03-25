@@ -8,6 +8,7 @@ import (
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/model/types/severity"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
+	structsutil "github.com/projectdiscovery/utils/structs"
 )
 
 func TestCreateReportingOptions(t *testing.T) {
@@ -67,7 +68,7 @@ func TestWalkReflectStructAssignsEnvVars(t *testing.T) {
 	os.Setenv("VAR_EXAMPLE", "value")
 	os.Setenv("VAR_TWO", "value2")
 
-	Walk(testStruct, expandEndVars)
+	structsutil.Walk(testStruct, expandEndVars)
 
 	require.Equal(t, "value", testStruct.A)
 	require.Equal(t, "value2", testStruct.Struct.B)
@@ -83,7 +84,7 @@ func TestWalkReflectStructHandlesDifferentTypes(t *testing.T) {
 	os.Setenv("VAR_TWO", "2")
 	os.Setenv("VAR_THREE", "true")
 
-	Walk(testStruct, expandEndVars)
+	structsutil.Walk(testStruct, expandEndVars)
 
 	require.Equal(t, "value", testStruct.A)
 	require.Equal(t, "2", testStruct.B)
@@ -100,7 +101,7 @@ func TestWalkReflectStructEmpty(t *testing.T) {
 	os.Setenv("VAR_TWO", "2")
 	os.Setenv("VAR_THREE", "true")
 
-	Walk(testStruct, expandEndVars)
+	structsutil.Walk(testStruct, expandEndVars)
 
 	require.Equal(t, "value", testStruct.A)
 	require.Equal(t, "", testStruct.B)
@@ -118,7 +119,7 @@ func TestWalkReflectStructWithNoYamlTag(t *testing.T) {
 
 	os.Setenv("GITHUB_USER", "testuser")
 
-	Walk(test, expandEndVars)
+	structsutil.Walk(test, expandEndVars)
 	require.Equal(t, "testuser", test.A)
 	require.Equal(t, "testuser", test.B.B, test.B)
 	require.Equal(t, "$GITHUB_USER", test.C)
@@ -136,7 +137,7 @@ func TestWalkReflectStructHandlesNestedStructs(t *testing.T) {
 	os.Setenv("VAR_TWO", "2")
 	os.Setenv("VAR_THREE", "true")
 
-	Walk(testStruct, expandEndVars)
+	structsutil.Walk(testStruct, expandEndVars)
 
 	require.Equal(t, "value", testStruct.A)
 	require.Equal(t, "2", testStruct.Struct.B)
