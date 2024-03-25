@@ -34,12 +34,13 @@ func (rule *Rule) checkRuleApplicableOnComponent(component component.Component) 
 
 // executePartComponent executes this rule on a given component and payload
 func (rule *Rule) executePartComponent(input *ExecuteRuleInput, payload ValueOrKeyValue, ruleComponent component.Component) error {
+	// Note: component needs to be cloned because they contain values copied by reference
 	if payload.IsKV() {
 		// for kv fuzzing
-		return rule.executePartComponentOnKV(input, payload, ruleComponent)
+		return rule.executePartComponentOnKV(input, payload, ruleComponent.Clone())
 	} else {
 		// for value only fuzzing
-		return rule.executePartComponentOnValues(input, payload.Value, ruleComponent)
+		return rule.executePartComponentOnValues(input, payload.Value, ruleComponent.Clone())
 	}
 }
 
@@ -47,6 +48,7 @@ func (rule *Rule) executePartComponent(input *ExecuteRuleInput, payload ValueOrK
 // this supports both single and multiple [ruleType] modes
 // i.e if component has multiple values, they can be replaced once or all depending on mode
 func (rule *Rule) executePartComponentOnValues(input *ExecuteRuleInput, payloadStr string, ruleComponent component.Component) error {
+
 	finalErr := ruleComponent.Iterate(func(key string, value interface{}) error {
 		valueStr := types.ToString(value)
 		if !rule.matchKeyOrValue(key, valueStr) {

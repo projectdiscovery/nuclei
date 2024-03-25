@@ -4,7 +4,6 @@ import (
 	"context"
 
 	"github.com/pkg/errors"
-	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/fuzz/dataformat"
 	"github.com/projectdiscovery/retryablehttp-go"
 	urlutil "github.com/projectdiscovery/utils/url"
@@ -83,7 +82,6 @@ func (q *Query) Rebuild() (*retryablehttp.Request, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "could not encode query")
 	}
-	gologger.Info().Msgf("Rebuilding query: %s\n", encoded)
 	cloned := q.req.Clone(context.Background())
 	cloned.URL.RawQuery = encoded
 
