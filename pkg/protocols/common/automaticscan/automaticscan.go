@@ -305,13 +305,3 @@ func (s *Service) getTagsUsingDetectionTemplates(input *contextargs.MetaInput) (
 	sg.Wait()
 	return mapsutil.GetKeys(tags), int(counter.Load())
 }
-
-// normalizeAppName normalizes app name
-func normalizeAppName(appName string) string {
-	if strings.Contains(appName, ":") {
-		if parts := strings.Split(appName, ":"); len(parts) == 2 {
-			appName = parts[0]
-		}
-	}
-	return strings.ToLower(appName)
-}

@@ -46,11 +46,6 @@ func (w *WorkPool) Wait() {
 	w.Headless.Wait()
 }
 
-// InputWorkPool is a work pool per-input
-type InputWorkPool struct {
-	WaitGroup *syncutil.AdaptiveWaitGroup
-}
-
 // InputPool returns a work pool for an input type
 func (w *WorkPool) InputPool(templateType types.ProtocolType) *InputWorkPool {
 	var count int
@@ -61,4 +56,10 @@ func (w *WorkPool) InputPool(templateType types.ProtocolType) *InputWorkPool {
 	}
 	swg, _ := syncutil.New(syncutil.WithSize(count))
 	return &InputWorkPool{WaitGroup: swg}
+}
+
+func (w *WorkPool) Alter(cft WorkPoolConfig) {
+	w.config = cft
+	w.Headless.Resize(cft.HeadlessInputConcurrency)
+	w.Default.Resize(cft.TypeConcurrency)
 }

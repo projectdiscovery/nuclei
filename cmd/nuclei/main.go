@@ -15,6 +15,7 @@ import (
 	"github.com/projectdiscovery/utils/auth/pdcp"
 	"github.com/projectdiscovery/utils/env"
 	_ "github.com/projectdiscovery/utils/pprof"
+	stringsutil "github.com/projectdiscovery/utils/strings"
 
 	"github.com/projectdiscovery/goflags"
 	"github.com/projectdiscovery/gologger"
@@ -192,10 +193,6 @@ func readConfig() *goflags.FlagSet {
 	flagSet.SetDescription(`Nuclei is a fast, template based vulnerability scanner focusing
 on extensive configurability, massive extensibility and ease of use.`)
 
-	/* TODO Important: The defined default values, especially for slice/array types are NOT DEFAULT VALUES, but rather implicit values to which the user input is appended.
-	This can be very confusing and should be addressed
-	*/
-
 	flagSet.CreateGroup("input", "Target",
 		flagSet.StringSliceVarP(&options.Targets, "target", "u", nil, "target URLs/hosts to scan", goflags.StringSliceOptions),
 		flagSet.StringVarP(&options.TargetsFilePath, "list", "l", "", "path to file containing a list of target URLs/hosts to scan (one per line)"),
@@ -336,6 +333,7 @@ on extensive configurability, massive extensibility and ease of use.`)
 		flagSet.IntVarP(&options.JsConcurrency, "js-concurrency", "jsc", 120, "maximum number of javascript runtimes to be executed in parallel"),
 		flagSet.IntVarP(&options.PayloadConcurrency, "payload-concurrency", "pc", 25, "max payload concurrency for each template"),
 	)
+
 	flagSet.CreateGroup("optimization", "Optimizations",
 		flagSet.IntVar(&options.Timeout, "timeout", 10, "time to wait in seconds before timeout"),
 		flagSet.IntVar(&options.Retries, "retries", 1, "number of times to retry a failed request"),
@@ -590,10 +588,10 @@ Note: Make sure you have backup of your custom nuclei-templates before proceedin
 			gologger.Fatal().Msgf("could not read response: %s", err)
 		}
 		resp = strings.TrimSpace(resp)
-		if strings.EqualFold(resp, "y") || strings.EqualFold(resp, "yes") {
+		if stringsutil.EqualFoldAny(resp, "y", "yes") {
 			break
 		}
-		if strings.EqualFold(resp, "n") || strings.EqualFold(resp, "no") || resp == "" {
+		if stringsutil.EqualFoldAny(resp, "n", "no", "") {
 			fmt.Println("Exiting...")
 			os.Exit(0)
 		}

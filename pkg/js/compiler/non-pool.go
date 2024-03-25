@@ -8,7 +8,7 @@ import (
 )
 
 var (
-	ephemeraljsc, _ = syncutil.New(syncutil.WithSize(NonPoolingVMConcurrency))
+	ephemeraljsc    *syncutil.AdaptiveWaitGroup
 	lazyFixedSgInit = sync.OnceFunc(func() {
 		ephemeraljsc, _ = syncutil.New(syncutil.WithSize(NonPoolingVMConcurrency))
 	})
@@ -16,8 +16,15 @@ var (
 
 func executeWithoutPooling(p *goja.Program, args *ExecuteArgs, opts *ExecuteOptions) (result goja.Value, err error) {
 	lazyFixedSgInit()
+	// check if the pool should be resized
+	if ephemeraljsc.Size != NonPoolingVMConcurrency {
+		ephemeraljsc.Resize(NonPoolingVMConcurrency)
+	}
+
 	ephemeraljsc.Add()
 	defer ephemeraljsc.Done()
+
 	runtime := createNewRuntime()
+
 	return executeWithRuntime(runtime, p, args, opts)
 }

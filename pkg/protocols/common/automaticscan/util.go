@@ -1,6 +1,8 @@
 package automaticscan
 
 import (
+	"strings"
+
 	"github.com/pkg/errors"
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/config"
@@ -75,4 +77,14 @@ func getRequestCount(templates []*templates.Template) int {
 		count += template.TotalRequests
 	}
 	return count
+}
+
+// normalizeAppName normalizes app name
+func normalizeAppName(appName string) string {
+	if strings.Contains(appName, ":") {
+		if parts := strings.Split(appName, ":"); len(parts) == 2 {
+			appName = parts[0]
+		}
+	}
+	return strings.ToLower(appName)
 }

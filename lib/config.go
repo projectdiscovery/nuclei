@@ -92,17 +92,13 @@ func WithTemplateFilters(filters TemplateFilters) NucleiSDKOptions {
 	}
 }
 
-// InteractshOpts contains options for interactsh
-type InteractshOpts interactsh.Options
-
 // WithInteractshOptions sets interactsh options
-func WithInteractshOptions(opts InteractshOpts) NucleiSDKOptions {
+func WithInteractshOptions(opts *interactsh.Options) NucleiSDKOptions {
 	return func(e *NucleiEngine) error {
 		if e.mode == threadSafe {
 			return ErrOptionsNotSupported.Msgf("WithInteractshOptions")
 		}
-		optsPtr := &opts
-		e.interactshOpts = (*interactsh.Options)(optsPtr)
+		e.interactshOpts = opts
 		return nil
 	}
 }
