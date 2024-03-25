@@ -79,22 +79,7 @@ func (e *NucleiEngine) applyRequiredDefaults() {
 		e.interactshOpts = interactsh.DefaultOptions(e.customWriter, e.rc, e.customProgress)
 	}
 	if e.cruiseControl == nil {
-		e.cruiseControl, _ = cruisecontrol.New(cruisecontrol.Options{
-			RateLimit: cruisecontrol.RateLimitOptions{
-				MaxTokens: 150,
-				Duration:  time.Second,
-			},
-			Standard: cruisecontrol.Concurrency{
-				Hosts:     e.opts.BulkSize,
-				Templates: e.opts.TemplateThreads,
-			},
-			Headless: cruisecontrol.Concurrency{
-				Hosts:     e.opts.HeadlessBulkSize,
-				Templates: e.opts.HeadlessTemplateThreads,
-			},
-			JavascriptTemplates: e.opts.JsConcurrency,
-			TemplatePayload:     e.opts.PayloadConcurrency,
-		})
+		e.cruiseControl, _ = cruisecontrol.New(cruisecontrol.ParseOptionsFrom(e.opts))
 	}
 	if e.opts.ExcludeTags == nil {
 		e.opts.ExcludeTags = []string{}

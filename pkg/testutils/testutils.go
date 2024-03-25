@@ -82,22 +82,7 @@ type TemplateInfo struct {
 // NewMockExecuterOptions creates a new mock executeroptions struct
 func NewMockExecuterOptions(options *types.Options, info *TemplateInfo) *protocols.ExecutorOptions {
 	progressImpl, _ := progress.NewStatsTicker(0, false, false, false, 0)
-	cruiseControl, _ := cruisecontrol.New(cruisecontrol.Options{
-		RateLimit: cruisecontrol.RateLimitOptions{
-			MaxTokens: options.RateLimit,
-			Duration:  time.Second,
-		},
-		Standard: cruisecontrol.Concurrency{
-			Templates: options.TemplateThreads,
-			Hosts:     options.BulkSize,
-		},
-		Headless: cruisecontrol.Concurrency{
-			Templates: options.HeadlessTemplateThreads,
-			Hosts:     options.HeadlessBulkSize,
-		},
-		JavascriptTemplates: options.JsConcurrency,
-		TemplatePayload:     options.PayloadConcurrency,
-	})
+	cruiseControl, _ := cruisecontrol.New(cruisecontrol.ParseOptionsFrom(options))
 	executerOpts := &protocols.ExecutorOptions{
 		TemplateID:    info.ID,
 		TemplateInfo:  info.Info,

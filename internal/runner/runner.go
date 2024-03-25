@@ -321,17 +321,7 @@ func New(options *types.Options) (*Runner, error) {
 		return nil, err
 	}
 
-	cco := cruisecontrol.Options{
-		RateLimit: cruisecontrol.RateLimitOptions{
-			MaxTokens: options.RateLimit,
-			Duration:  options.RateLimitDuration,
-		},
-		Standard:            cruisecontrol.Concurrency{Templates: options.TemplateThreads, Hosts: options.BulkSize},
-		Headless:            cruisecontrol.Concurrency{Templates: options.HeadlessTemplateThreads, Hosts: options.HeadlessBulkSize},
-		JavascriptTemplates: options.JsConcurrency, TemplatePayload: options.PayloadConcurrency,
-	}
-
-	runner.cruiseControl, err = cruisecontrol.New(cco)
+	runner.cruiseControl, err = cruisecontrol.New(cruisecontrol.ParseOptionsFrom(options))
 	if err != nil {
 		return nil, err
 	}

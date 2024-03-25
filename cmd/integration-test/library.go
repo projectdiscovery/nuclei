@@ -8,7 +8,6 @@ import (
 	"os"
 	"path"
 	"strings"
-	"time"
 
 	"github.com/julienschmidt/httprouter"
 	"github.com/logrusorgru/aurora"
@@ -96,7 +95,7 @@ func executeNucleiAsLibrary(templatePath, templateURL string) ([]string, error) 
 
 	home, _ := os.UserHomeDir()
 	catalog := disk.NewCatalog(path.Join(home, "nuclei-templates"))
-	cruiseControl, _ := cruisecontrol.New(cruisecontrol.Options{RateLimit: cruisecontrol.RateLimitOptions{MaxTokens: 150, Duration: time.Second}})
+	cruiseControl, _ := cruisecontrol.New(cruisecontrol.ParseOptionsFrom(defaultOpts))
 	defer cruiseControl.Close()
 
 	executerOpts := protocols.ExecutorOptions{

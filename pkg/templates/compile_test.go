@@ -7,7 +7,6 @@ import (
 	"net/http/httptest"
 	"os"
 	"testing"
-	"time"
 
 	"github.com/julienschmidt/httprouter"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/config"
@@ -37,12 +36,7 @@ func setup() {
 	testutils.Init(options)
 	progressImpl, _ := progress.NewStatsTicker(0, false, false, false, 0)
 
-	cruiseControl, _ := cruisecontrol.New(cruisecontrol.Options{
-		RateLimit: cruisecontrol.RateLimitOptions{
-			MaxTokens: options.RateLimit,
-			Duration:  time.Second,
-		},
-	})
+	cruiseControl, _ := cruisecontrol.New(cruisecontrol.ParseOptionsFrom(options))
 
 	executerOpts = protocols.ExecutorOptions{
 		Output:        testutils.NewMockOutputWriter(options.OmitTemplate),

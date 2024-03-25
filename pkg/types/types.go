@@ -415,6 +415,7 @@ func (options *Options) HasClientCertificates() bool {
 func DefaultOptions() *Options {
 	return &Options{
 		RateLimit:               150,
+		RateLimitDuration:       time.Second,
 		BulkSize:                25,
 		TemplateThreads:         25,
 		HeadlessBulkSize:        10,
