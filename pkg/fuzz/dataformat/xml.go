@@ -22,13 +22,13 @@ func (x *XML) IsType(data string) bool {
 }
 
 // Encode encodes the data into XML format
-func (x *XML) Encode(data map[string]interface{}) (string, error) {
+func (x *XML) Encode(data KV) (string, error) {
 	var header string
-	if value, ok := data["#_xml_header"]; ok && value != nil {
+	if value := data.Get("#_xml_header"); value != nil {
 		header = value.(string)
-		delete(data, "#_xml_header")
+		data.Delete("#_xml_header")
 	}
-	marshalled, err := mxj.Map(data).Xml()
+	marshalled, err := mxj.Map(data.Map).Xml()
 	if err != nil {
 		return "", err
 	}
@@ -41,7 +41,7 @@ func (x *XML) Encode(data map[string]interface{}) (string, error) {
 var xmlHeader = regexp.MustCompile(`\<\?(.*)\?\>`)
 
 // Decode decodes the data from XML format
-func (x *XML) Decode(data string) (map[string]interface{}, error) {
+func (x *XML) Decode(data string) (KV, error) {
 	var prefixStr string
 	prefix := xmlHeader.FindAllStringSubmatch(data, -1)
 	if len(prefix) > 0 {
@@ -50,10 +50,10 @@ func (x *XML) Decode(data string) (map[string]interface{}, error) {
 
 	decoded, err := mxj.NewMapXml([]byte(data))
 	if err != nil {
-		return nil, err
+		return KV{}, err
 	}
 	decoded["#_xml_header"] = prefixStr
-	return decoded, nil
+	return KVMap(decoded), nil
 }
 
 // Name returns the name of the encoder

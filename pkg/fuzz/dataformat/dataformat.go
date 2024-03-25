@@ -8,6 +8,12 @@ import (
 // dataformats is a list of dataformats
 var dataformats map[string]DataFormat
 
+const (
+	// DefaultKey is the key i.e used when given
+	// data is not of k-v type
+	DefaultKey = "value"
+)
+
 func init() {
 	dataformats = make(map[string]DataFormat)
 
@@ -49,9 +55,9 @@ type DataFormat interface {
 	// Name returns the name of the encoder
 	Name() string
 	// Encode encodes the data into a format
-	Encode(data map[string]interface{}) (string, error)
+	Encode(data KV) (string, error)
 	// Decode decodes the data from a format
-	Decode(input string) (map[string]interface{}, error)
+	Decode(input string) (KV, error)
 }
 
 // Decoded is a decoded data format
@@ -59,7 +65,7 @@ type Decoded struct {
 	// DataFormat is the data format
 	DataFormat string
 	// Data is the decoded data
-	Data map[string]interface{}
+	Data KV
 }
 
 // Decode decodes the data from a format
@@ -81,7 +87,7 @@ func Decode(data string) (*Decoded, error) {
 }
 
 // Encode encodes the data into a format
-func Encode(data map[string]interface{}, dataformat string) (string, error) {
+func Encode(data KV, dataformat string) (string, error) {
 	if dataformat == "" {
 		return "", errors.New("dataformat is required")
 	}

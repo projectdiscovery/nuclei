@@ -37,3 +37,17 @@ func TestFlatMap_FlattenUnflatten(t *testing.T) {
 	}
 	require.Equal(t, data, nested, "unexpected data")
 }
+
+func TestAnySlice(t *testing.T) {
+	data := []any{}
+	data = append(data, []int{1, 2, 3})
+	data = append(data, []string{"foo", "bar"})
+	data = append(data, []bool{true, false})
+	data = append(data, []float64{1.1, 2.2, 3.3})
+
+	for _, d := range data {
+		val, ok := IsTypedSlice(d)
+		require.True(t, ok, "expected slice")
+		require.True(t, val != nil, "expected value but got nil")
+	}
+}
