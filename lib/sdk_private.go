@@ -1,7 +1,6 @@
 package nuclei
 
 import (
-	"context"
 	"fmt"
 	"strings"
 	"sync"
@@ -17,6 +16,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/config"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/disk"
 	"github.com/projectdiscovery/nuclei/v3/pkg/core"
+	"github.com/projectdiscovery/nuclei/v3/pkg/cruisecontrol"
 	"github.com/projectdiscovery/nuclei/v3/pkg/input/provider"
 	"github.com/projectdiscovery/nuclei/v3/pkg/installer"
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
@@ -32,7 +32,6 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/testutils"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	nucleiUtils "github.com/projectdiscovery/nuclei/v3/pkg/utils"
-	"github.com/projectdiscovery/ratelimit"
 )
 
 // applyRequiredDefaults to options
@@ -79,8 +78,23 @@ func (e *NucleiEngine) applyRequiredDefaults() {
 	} else {
 		e.interactshOpts = interactsh.DefaultOptions(e.customWriter, e.rc, e.customProgress)
 	}
-	if e.cruiseControl.RateLimiter == nil {
-		e.cruiseControl.RateLimiter = ratelimit.New(context.Background(), 150, time.Second)
+	if e.cruiseControl == nil {
+		e.cruiseControl, _ = cruisecontrol.New(cruisecontrol.Options{
+			RateLimit: cruisecontrol.RateLimitOptions{
+				MaxTokens: 150,
+				Duration:  time.Second,
+			},
+			Standard: cruisecontrol.Concurrency{
+				Hosts:     e.opts.BulkSize,
+				Templates: e.opts.TemplateThreads,
+			},
+			Headless: cruisecontrol.Concurrency{
+				Hosts:     e.opts.HeadlessBulkSize,
+				Templates: e.opts.HeadlessTemplateThreads,
+			},
+			JavascriptTemplates: e.opts.JsConcurrency,
+			TemplatePayload:     e.opts.PayloadConcurrency,
+		})
 	}
 	if e.opts.ExcludeTags == nil {
 		e.opts.ExcludeTags = []string{}

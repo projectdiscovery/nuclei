@@ -8,12 +8,21 @@ import (
 )
 
 type Options struct {
-	RateLimit RateLimitOptions
+	RateLimit           RateLimitOptions
+	Standard            Concurrency
+	Headless            Concurrency
+	JavascriptTemplates int
+	TemplatePayload     int
 }
 
 type RateLimitOptions struct {
 	MaxTokens int
 	Duration  time.Duration
+}
+
+type Concurrency struct {
+	Templates int
+	Hosts     int
 }
 
 type CruiseControl struct {
@@ -29,6 +38,22 @@ func New(options Options) (*CruiseControl, error) {
 		rateLimiter = ratelimit.New(context.Background(), uint(options.RateLimit.MaxTokens), options.RateLimit.Duration)
 	}
 	return &CruiseControl{options: options, RateLimiter: rateLimiter}, nil
+}
+
+func (c *CruiseControl) Standard() Concurrency {
+	return c.options.Standard
+}
+
+func (c *CruiseControl) Headless() Concurrency {
+	return c.options.Headless
+}
+
+func (c *CruiseControl) Javascript() int {
+	return c.options.JavascriptTemplates
+}
+
+func (c *CruiseControl) Payload() int {
+	return c.options.TemplatePayload
 }
 
 func (c *CruiseControl) Close() {

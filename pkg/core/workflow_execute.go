@@ -28,7 +28,7 @@ func (e *Engine) executeWorkflow(ctx *scan.ScanContext, w *workflows.Workflow) b
 
 	// we can know the nesting level only at runtime, so the best we can do here is increase template threads by one unit in case it's equal to 1 to allow
 	// at least one subtemplate to go through, which it's idempotent to one in-flight template as the parent one is in an idle state
-	templateThreads := w.Options.Options.TemplateThreads
+	templateThreads := w.Options.CruiseControl.Standard().Templates
 	if templateThreads == 1 {
 		templateThreads++
 	}

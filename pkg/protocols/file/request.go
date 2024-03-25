@@ -47,7 +47,7 @@ var errEmptyResult = errors.New("Empty result")
 
 // ExecuteWithResults executes the protocol requests and returns results instead of writing them.
 func (request *Request) ExecuteWithResults(input *contextargs.Context, metadata, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
-	wg, _ := syncutil.New(syncutil.WithSize(request.options.Options.BulkSize))
+	wg, _ := syncutil.New(syncutil.WithSize(request.options.CruiseControl.Standard().Hosts))
 	err := request.getInputPaths(input.MetaInput.Input, func(filePath string) {
 		wg.Add()
 		func(filePath string) {

@@ -87,6 +87,16 @@ func NewMockExecuterOptions(options *types.Options, info *TemplateInfo) *protoco
 			MaxTokens: options.RateLimit,
 			Duration:  time.Second,
 		},
+		Standard: cruisecontrol.Concurrency{
+			Templates: options.TemplateThreads,
+			Hosts:     options.BulkSize,
+		},
+		Headless: cruisecontrol.Concurrency{
+			Templates: options.HeadlessTemplateThreads,
+			Hosts:     options.HeadlessBulkSize,
+		},
+		JavascriptTemplates: options.JsConcurrency,
+		TemplatePayload:     options.PayloadConcurrency,
 	})
 	executerOpts := &protocols.ExecutorOptions{
 		TemplateID:    info.ID,

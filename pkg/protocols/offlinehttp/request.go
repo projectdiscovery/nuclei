@@ -30,7 +30,7 @@ func (request *Request) Type() templateTypes.ProtocolType {
 
 // ExecuteWithResults executes the protocol requests and returns results instead of writing them.
 func (request *Request) ExecuteWithResults(input *contextargs.Context, metadata, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
-	wg, _ := syncutil.New(syncutil.WithSize(request.options.Options.BulkSize))
+	wg, _ := syncutil.New(syncutil.WithSize(request.options.CruiseControl.Headless().Hosts))
 
 	err := request.getInputPaths(input.MetaInput.Input, func(data string) {
 		wg.Add()

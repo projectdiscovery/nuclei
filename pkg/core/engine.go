@@ -26,17 +26,16 @@ func New(options *types.Options) *Engine {
 	engine := &Engine{
 		options: options,
 	}
-	engine.workPool = engine.GetWorkPool()
 	return engine
 }
 
 // GetWorkPool returns a workpool from options
 func (e *Engine) GetWorkPool() *WorkPool {
 	return NewWorkPool(WorkPoolConfig{
-		InputConcurrency:         e.options.BulkSize,
-		TypeConcurrency:          e.options.TemplateThreads,
-		HeadlessInputConcurrency: e.options.HeadlessBulkSize,
-		HeadlessTypeConcurrency:  e.options.HeadlessTemplateThreads,
+		InputConcurrency:         e.executerOpts.CruiseControl.Standard().Hosts,
+		TypeConcurrency:          e.executerOpts.CruiseControl.Standard().Templates,
+		HeadlessInputConcurrency: e.executerOpts.CruiseControl.Headless().Hosts,
+		HeadlessTypeConcurrency:  e.executerOpts.CruiseControl.Headless().Templates,
 	})
 }
 
@@ -44,6 +43,7 @@ func (e *Engine) GetWorkPool() *WorkPool {
 // before using the engine to perform any execution.
 func (e *Engine) SetExecuterOptions(options protocols.ExecutorOptions) {
 	e.executerOpts = options
+	e.workPool = e.GetWorkPool()
 }
 
 // ExecuterOptions returns protocols.ExecutorOptions for nuclei engine.

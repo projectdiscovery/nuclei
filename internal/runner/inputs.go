@@ -30,9 +30,9 @@ func (r *Runner) initializeTemplatesHTTPInput() (*hybrid.HybridMap, error) {
 	}
 	gologger.Info().Msgf("Running httpx on input host")
 
-	var bulkSize = defaultProbeBulkSize
-	if r.options.BulkSize > 0 {
-		bulkSize = r.options.BulkSize
+	bulkSize := r.cruiseControl.Standard().Hosts
+	if bulkSize == 0 {
+		bulkSize = defaultProbeBulkSize
 	}
 
 	httpxOptions := httpx.DefaultOptions

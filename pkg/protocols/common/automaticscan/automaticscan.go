@@ -128,7 +128,7 @@ func (s *Service) Close() bool {
 func (s *Service) Execute() error {
 	gologger.Info().Msgf("Executing Automatic scan on %d target[s]", s.target.Count())
 	// setup host concurrency
-	sg, _ := syncutil.New(syncutil.WithSize(s.opts.Options.BulkSize))
+	sg, _ := syncutil.New(syncutil.WithSize(s.opts.CruiseControl.Standard().Hosts))
 	s.target.Iterate(func(value *contextargs.MetaInput) bool {
 		sg.Add()
 		go func(input *contextargs.MetaInput) {
@@ -246,7 +246,7 @@ func (s *Service) getTagsUsingDetectionTemplates(input *contextargs.MetaInput) (
 	// execute tech detection templates on target
 	tags := map[string]struct{}{}
 	m := &sync.Mutex{}
-	sg, _ := syncutil.New(syncutil.WithSize(s.opts.Options.TemplateThreads))
+	sg, _ := syncutil.New(syncutil.WithSize(s.opts.CruiseControl.Standard().Templates))
 	counter := atomic.Uint32{}
 
 	for _, t := range s.techTemplates {
