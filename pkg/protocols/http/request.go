@@ -230,7 +230,7 @@ func (request *Request) executeParallelHTTP(input *contextargs.Context, dynamicV
 				return
 			case spmHandler.ResultChan <- func() error {
 				// putting ratelimiter here prevents any unnecessary waiting if any
-				request.options.RateLimiter.Take()
+				request.options.CruiseControl.RateLimiter.Take()
 				previous := make(map[string]interface{})
 				return request.executeRequest(input, httpRequest, previous, false, wrappedCallback, 0)
 			}():
@@ -379,7 +379,7 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 		executeFunc := func(data string, payloads, dynamicValue map[string]interface{}) (bool, error) {
 			hasInteractMatchers := interactsh.HasMatchers(request.CompiledOperators)
 
-			request.options.RateLimiter.Take()
+			request.options.CruiseControl.RateLimiter.Take()
 
 			ctx := request.newContext(input)
 			ctxWithTimeout, cancel := context.WithTimeout(ctx, time.Duration(request.options.Options.Timeout)*time.Second)

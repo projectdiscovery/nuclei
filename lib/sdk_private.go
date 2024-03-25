@@ -79,8 +79,8 @@ func (e *NucleiEngine) applyRequiredDefaults() {
 	} else {
 		e.interactshOpts = interactsh.DefaultOptions(e.customWriter, e.rc, e.customProgress)
 	}
-	if e.rateLimiter == nil {
-		e.rateLimiter = ratelimit.New(context.Background(), 150, time.Second)
+	if e.cruiseControl.RateLimiter == nil {
+		e.cruiseControl.RateLimiter = ratelimit.New(context.Background(), 150, time.Second)
 	}
 	if e.opts.ExcludeTags == nil {
 		e.opts.ExcludeTags = []string{}
@@ -154,7 +154,7 @@ func (e *NucleiEngine) init() error {
 		Progress:        e.customProgress,
 		Catalog:         e.catalog,
 		IssuesClient:    e.rc,
-		RateLimiter:     e.rateLimiter,
+		CruiseControl:   e.cruiseControl,
 		Interactsh:      e.interactshClient,
 		HostErrorsCache: e.hostErrCache,
 		Colorizer:       aurora.NewAurora(true),
@@ -187,22 +187,6 @@ func (e *NucleiEngine) init() error {
 	if e.executerOpts.AuthProvider != nil && e.opts.PreFetchSecrets {
 		if err := e.executerOpts.AuthProvider.PreFetchSecrets(); err != nil {
 			return errors.Wrap(err, "could not prefetch secrets")
-		}
-	}
-
-	if e.executerOpts.RateLimiter == nil {
-		if e.opts.RateLimitMinute > 0 {
-			gologger.Warning().Msgf("rate limit per minute is deprecated - use rate-limit-duration")
-			e.opts.RateLimit = e.opts.RateLimitMinute
-			e.opts.RateLimitDuration = time.Minute
-		}
-		if e.opts.RateLimitDuration == 0 {
-			e.opts.RateLimitDuration = time.Second
-		}
-		if e.opts.RateLimit > 0 {
-			e.executerOpts.RateLimiter = ratelimit.New(context.Background(), uint(e.opts.RateLimit), e.opts.RateLimitDuration)
-		} else {
-			e.executerOpts.RateLimiter = ratelimit.NewUnlimited(context.Background())
 		}
 	}
 

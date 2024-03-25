@@ -14,6 +14,7 @@ import (
 
 	"github.com/projectdiscovery/nuclei/v3/internal/pdcp"
 	"github.com/projectdiscovery/nuclei/v3/pkg/authprovider"
+	"github.com/projectdiscovery/nuclei/v3/pkg/cruisecontrol"
 	"github.com/projectdiscovery/nuclei/v3/pkg/input/provider"
 	"github.com/projectdiscovery/nuclei/v3/pkg/installer"
 	"github.com/projectdiscovery/nuclei/v3/pkg/loader/parser"
@@ -26,7 +27,6 @@ import (
 
 	"github.com/logrusorgru/aurora"
 	"github.com/pkg/errors"
-	"github.com/projectdiscovery/ratelimit"
 
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/internal/colorizer"
@@ -84,15 +84,15 @@ type Runner struct {
 	colorizer        aurora.Aurora
 	issuesClient     reporting.Client
 	browser          *engine.Browser
-	rateLimiter      *ratelimit.Limiter
 	hostErrors       hosterrorscache.CacheInterface
 	resumeCfg        *types.ResumeCfg
 	pprofServer      *http.Server
 	pdcpUploadErrMsg string
 	inputProvider    provider.InputProvider
 	//general purpose temporary directory
-	tmpDir string
-	parser parser.Parser
+	tmpDir        string
+	parser        parser.Parser
+	cruiseControl *cruisecontrol.CruiseControl
 }
 
 const pprofServerAddress = "127.0.0.1:8086"
@@ -317,18 +317,20 @@ func New(options *types.Options) (*Runner, error) {
 		runner.interactsh = interactshClient
 	}
 
-	if options.RateLimitMinute > 0 {
-		gologger.Warning().Msgf("rate limit per minute is deprecated - use rate-limit-duration")
-		options.RateLimit = options.RateLimitMinute
-		options.RateLimitDuration = time.Minute
+	if err := options.ParseCruiseControl(); err != nil {
+		return nil, err
 	}
-	if options.RateLimitDuration == 0 {
-		options.RateLimitDuration = time.Second
+
+	cco := cruisecontrol.Options{
+		RateLimit: cruisecontrol.RateLimitOptions{
+			MaxTokens: options.RateLimit,
+			Duration:  options.RateLimitDuration,
+		},
 	}
-	if options.RateLimit > 0 {
-		runner.rateLimiter = ratelimit.New(context.Background(), uint(options.RateLimit), options.RateLimitDuration)
-	} else {
-		runner.rateLimiter = ratelimit.NewUnlimited(context.Background())
+
+	runner.cruiseControl, err = cruisecontrol.New(cco)
+	if err != nil {
+		return nil, err
 	}
 
 	if tmpDir, err := os.MkdirTemp("", "nuclei-tmp-*"); err == nil {
@@ -364,8 +366,8 @@ func (r *Runner) Close() {
 	if r.pprofServer != nil {
 		_ = r.pprofServer.Shutdown(context.Background())
 	}
-	if r.rateLimiter != nil {
-		r.rateLimiter.Stop()
+	if r.cruiseControl != nil {
+		r.cruiseControl.Close()
 	}
 	r.progress.Stop()
 	if r.browser != nil {
@@ -437,7 +439,7 @@ func (r *Runner) RunEnumeration() error {
 		Progress:           r.progress,
 		Catalog:            r.catalog,
 		IssuesClient:       r.issuesClient,
-		RateLimiter:        r.rateLimiter,
+		CruiseControl:      r.cruiseControl,
 		Interactsh:         r.interactsh,
 		ProjectFile:        r.projectFile,
 		Browser:            r.browser,

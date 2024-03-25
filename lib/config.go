@@ -129,7 +129,7 @@ func WithConcurrency(opts Concurrency) NucleiSDKOptions {
 // WithGlobalRateLimit sets global rate (i.e all hosts combined) limit options
 func WithGlobalRateLimit(maxTokens int, duration time.Duration) NucleiSDKOptions {
 	return func(e *NucleiEngine) error {
-		e.rateLimiter = ratelimit.New(context.Background(), uint(maxTokens), duration)
+		e.cruiseControl.RateLimiter = ratelimit.New(context.Background(), uint(maxTokens), duration)
 		return nil
 	}
 }

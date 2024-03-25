@@ -108,6 +108,7 @@ func ParseOptions(options *types.Options) {
 	if options.OfflineHTTP {
 		options.DisableHTTPProbe = true
 	}
+
 }
 
 // validateOptions validates the configuration options passed

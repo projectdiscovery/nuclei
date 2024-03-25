@@ -4,7 +4,6 @@ import (
 	"encoding/base64"
 	"sync/atomic"
 
-	"github.com/projectdiscovery/ratelimit"
 	mapsutil "github.com/projectdiscovery/utils/maps"
 	stringsutil "github.com/projectdiscovery/utils/strings"
 
@@ -12,6 +11,7 @@ import (
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/authprovider"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog"
+	"github.com/projectdiscovery/nuclei/v3/pkg/cruisecontrol"
 	"github.com/projectdiscovery/nuclei/v3/pkg/input"
 	"github.com/projectdiscovery/nuclei/v3/pkg/js/compiler"
 	"github.com/projectdiscovery/nuclei/v3/pkg/loader/parser"
@@ -70,9 +70,8 @@ type ExecutorOptions struct {
 	// IssuesClient is a client for nuclei issue tracker reporting
 	IssuesClient reporting.Client
 	// Progress is a progress client for scan reporting
-	Progress progress.Progress
-	// RateLimiter is a rate-limiter for limiting sent number of requests.
-	RateLimiter *ratelimit.Limiter
+	Progress      progress.Progress
+	CruiseControl *cruisecontrol.CruiseControl
 	// Catalog is a template catalog implementation for nuclei
 	Catalog catalog.Catalog
 	// ProjectFile is the project file for nuclei

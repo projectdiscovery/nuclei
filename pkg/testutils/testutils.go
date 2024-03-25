@@ -1,12 +1,10 @@
 package testutils
 
 import (
-	"context"
 	"encoding/base64"
 	"os"
 	"time"
 
-	"github.com/projectdiscovery/ratelimit"
 	"go.uber.org/multierr"
 
 	"github.com/logrusorgru/aurora"
@@ -14,6 +12,7 @@ import (
 	"github.com/projectdiscovery/gologger/levels"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/config"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/disk"
+	"github.com/projectdiscovery/nuclei/v3/pkg/cruisecontrol"
 	"github.com/projectdiscovery/nuclei/v3/pkg/model"
 	"github.com/projectdiscovery/nuclei/v3/pkg/model/types/severity"
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
@@ -83,18 +82,24 @@ type TemplateInfo struct {
 // NewMockExecuterOptions creates a new mock executeroptions struct
 func NewMockExecuterOptions(options *types.Options, info *TemplateInfo) *protocols.ExecutorOptions {
 	progressImpl, _ := progress.NewStatsTicker(0, false, false, false, 0)
+	cruiseControl, _ := cruisecontrol.New(cruisecontrol.Options{
+		RateLimit: cruisecontrol.RateLimitOptions{
+			MaxTokens: options.RateLimit,
+			Duration:  time.Second,
+		},
+	})
 	executerOpts := &protocols.ExecutorOptions{
-		TemplateID:   info.ID,
-		TemplateInfo: info.Info,
-		TemplatePath: info.Path,
-		Output:       NewMockOutputWriter(options.OmitTemplate),
-		Options:      options,
-		Progress:     progressImpl,
-		ProjectFile:  nil,
-		IssuesClient: nil,
-		Browser:      nil,
-		Catalog:      disk.NewCatalog(config.DefaultConfig.TemplatesDirectory),
-		RateLimiter:  ratelimit.New(context.Background(), uint(options.RateLimit), time.Second),
+		TemplateID:    info.ID,
+		TemplateInfo:  info.Info,
+		TemplatePath:  info.Path,
+		Output:        NewMockOutputWriter(options.OmitTemplate),
+		Options:       options,
+		Progress:      progressImpl,
+		ProjectFile:   nil,
+		IssuesClient:  nil,
+		Browser:       nil,
+		Catalog:       disk.NewCatalog(config.DefaultConfig.TemplatesDirectory),
+		CruiseControl: cruiseControl,
 	}
 	executerOpts.CreateTemplateCtxStore()
 	return executerOpts

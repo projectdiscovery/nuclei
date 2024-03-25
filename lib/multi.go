@@ -1,11 +1,7 @@
 package nuclei
 
 import (
-	"context"
-	"time"
-
 	"github.com/logrusorgru/aurora"
-	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/loader"
 	"github.com/projectdiscovery/nuclei/v3/pkg/core"
 	"github.com/projectdiscovery/nuclei/v3/pkg/input/provider"
@@ -13,7 +9,6 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
-	"github.com/projectdiscovery/ratelimit"
 	errorutil "github.com/projectdiscovery/utils/errors"
 )
 
@@ -35,25 +30,12 @@ func createEphemeralObjects(base *NucleiEngine, opts *types.Options) (*unsafeOpt
 		Progress:        base.customProgress,
 		Catalog:         base.catalog,
 		IssuesClient:    base.rc,
-		RateLimiter:     base.rateLimiter,
+		CruiseControl:   base.cruiseControl,
 		Interactsh:      base.interactshClient,
 		HostErrorsCache: base.hostErrCache,
 		Colorizer:       aurora.NewAurora(true),
 		ResumeCfg:       types.NewResumeCfg(),
 		Parser:          base.parser,
-	}
-	if opts.RateLimitMinute > 0 {
-		gologger.Warning().Msgf("rate limit per minute is deprecated - use rate-limit-duration")
-		opts.RateLimit = opts.RateLimitMinute
-		opts.RateLimitDuration = time.Minute
-	}
-	if opts.RateLimitDuration == 0 {
-		opts.RateLimitDuration = time.Second
-	}
-	if opts.RateLimit > 0 {
-		u.executerOpts.RateLimiter = ratelimit.New(context.Background(), uint(opts.RateLimit), opts.RateLimitDuration)
-	} else {
-		u.executerOpts.RateLimiter = ratelimit.NewUnlimited(context.Background())
 	}
 	u.engine = core.New(opts)
 	u.engine.SetExecuterOptions(u.executerOpts)

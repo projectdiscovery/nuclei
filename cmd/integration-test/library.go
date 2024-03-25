@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"fmt"
 	"log"
 	"net/http"
@@ -19,6 +18,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/disk"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/loader"
 	"github.com/projectdiscovery/nuclei/v3/pkg/core"
+	"github.com/projectdiscovery/nuclei/v3/pkg/cruisecontrol"
 	"github.com/projectdiscovery/nuclei/v3/pkg/input/provider"
 	parsers "github.com/projectdiscovery/nuclei/v3/pkg/loader/workflow"
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
@@ -31,7 +31,6 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/templates"
 	"github.com/projectdiscovery/nuclei/v3/pkg/testutils"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
-	"github.com/projectdiscovery/ratelimit"
 )
 
 var libraryTestcases = []TestCaseInfo{
@@ -97,8 +96,8 @@ func executeNucleiAsLibrary(templatePath, templateURL string) ([]string, error) 
 
 	home, _ := os.UserHomeDir()
 	catalog := disk.NewCatalog(path.Join(home, "nuclei-templates"))
-	ratelimiter := ratelimit.New(context.Background(), 150, time.Second)
-	defer ratelimiter.Stop()
+	cruiseControl, _ := cruisecontrol.New(cruisecontrol.Options{RateLimit: cruisecontrol.RateLimitOptions{MaxTokens: 150, Duration: time.Second}})
+	defer cruiseControl.Close()
 
 	executerOpts := protocols.ExecutorOptions{
 		Output:          outputWriter,
@@ -106,7 +105,7 @@ func executeNucleiAsLibrary(templatePath, templateURL string) ([]string, error) 
 		Progress:        mockProgress,
 		Catalog:         catalog,
 		IssuesClient:    reportingClient,
-		RateLimiter:     ratelimiter,
+		CruiseControl:   cruiseControl,
 		Interactsh:      interactClient,
 		HostErrorsCache: cache,
 		Colorizer:       aurora.NewAurora(true),

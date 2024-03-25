@@ -9,6 +9,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/disk"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/loader"
 	"github.com/projectdiscovery/nuclei/v3/pkg/core"
+	"github.com/projectdiscovery/nuclei/v3/pkg/cruisecontrol"
 	"github.com/projectdiscovery/nuclei/v3/pkg/input/provider"
 	providerTypes "github.com/projectdiscovery/nuclei/v3/pkg/input/types"
 	"github.com/projectdiscovery/nuclei/v3/pkg/loader/workflow"
@@ -22,7 +23,6 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/templates"
 	"github.com/projectdiscovery/nuclei/v3/pkg/templates/signer"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
-	"github.com/projectdiscovery/ratelimit"
 	"github.com/projectdiscovery/retryablehttp-go"
 	errorutil "github.com/projectdiscovery/utils/errors"
 )
@@ -64,7 +64,6 @@ type NucleiEngine struct {
 	// unexported core fields
 	interactshClient *interactsh.Client
 	catalog          *disk.DiskCatalog
-	rateLimiter      *ratelimit.Limiter
 	store            *loader.Store
 	httpxClient      providerTypes.InputLivenessProbe
 	inputProvider    provider.InputProvider
@@ -82,6 +81,7 @@ type NucleiEngine struct {
 	customWriter   output.Writer
 	customProgress progress.Progress
 	rc             reporting.Client
+	cruiseControl  *cruisecontrol.CruiseControl
 	executerOpts   protocols.ExecutorOptions
 }
 
@@ -187,7 +187,7 @@ func (e *NucleiEngine) Close() {
 	e.rc.Close()
 	e.customWriter.Close()
 	e.hostErrCache.Close()
-	e.executerOpts.RateLimiter.Stop()
+	e.cruiseControl.Close()
 }
 
 // ExecuteWithCallback executes templates on targets and calls callback on each result(only if results are found)

@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/projectdiscovery/goflags"
+	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/config"
 	"github.com/projectdiscovery/nuclei/v3/pkg/model/types/severity"
@@ -506,4 +507,16 @@ func (o *Options) GetValidAbsPath(helperFilePath, templatePath string) (string, 
 func isHomeDir(path string) bool {
 	homeDir := folderutil.HomeDirOrDefault("")
 	return strings.HasPrefix(path, homeDir)
+}
+
+func (options *Options) ParseCruiseControl() error {
+	if options.RateLimitMinute > 0 {
+		gologger.Warning().Msgf("rate limit per minute is deprecated - use rate-limit-duration")
+		options.RateLimit = options.RateLimitMinute
+		options.RateLimitDuration = time.Minute
+	}
+	if options.RateLimit > 0 && options.RateLimitDuration == 0 {
+		options.RateLimitDuration = time.Second
+	}
+	return nil
 }
