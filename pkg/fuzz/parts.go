@@ -48,7 +48,6 @@ func (rule *Rule) executePartComponent(input *ExecuteRuleInput, payload ValueOrK
 // this supports both single and multiple [ruleType] modes
 // i.e if component has multiple values, they can be replaced once or all depending on mode
 func (rule *Rule) executePartComponentOnValues(input *ExecuteRuleInput, payloadStr string, ruleComponent component.Component) error {
-
 	finalErr := ruleComponent.Iterate(func(key string, value interface{}) error {
 		valueStr := types.ToString(value)
 		if !rule.matchKeyOrValue(key, valueStr) {

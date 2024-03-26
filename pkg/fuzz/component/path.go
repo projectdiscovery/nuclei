@@ -88,6 +88,6 @@ func (q *Path) Rebuild() (*retryablehttp.Request, error) {
 func (q *Path) Clone() Component {
 	return &Path{
 		value: q.value.Clone(),
-		req:   q.req,
+		req:   q.req.Clone(context.Background()),
 	}
 }

@@ -2,6 +2,7 @@ package dataformat
 
 import (
 	mapsutil "github.com/projectdiscovery/utils/maps"
+	"golang.org/x/exp/maps"
 )
 
 // KV is a key-value struct
@@ -20,10 +21,7 @@ type KV struct {
 func (kv *KV) Clone() KV {
 	newKV := KV{}
 	if kv.OrderedMap == nil {
-		newKV.Map = make(map[string]interface{})
-		for key, value := range kv.Map {
-			newKV.Map[key] = value
-		}
+		newKV.Map = maps.Clone(kv.Map)
 		return newKV
 	}
 	clonedOrderedMap := kv.OrderedMap.Clone()

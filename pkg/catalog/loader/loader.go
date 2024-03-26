@@ -413,9 +413,6 @@ func (store *Store) LoadTemplatesWithTags(templatesList, tags []string) []*templ
 					// check if the template is a DAST template
 					if parsed.IsFuzzing() {
 						loadedTemplates = append(loadedTemplates, parsed)
-					} else {
-						_ = parsed
-						// silently discard non-DAST templates when in DAST mode
 					}
 				} else if len(parsed.RequestsHeadless) > 0 && !store.config.ExecutorOptions.Options.Headless {
 					// donot include headless template in final list if headless flag is not set
