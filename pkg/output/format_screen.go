@@ -64,10 +64,6 @@ func (w *StandardWriter) formatScreen(output *ResultEvent) []byte {
 			item = strings.TrimSpace(item)
 			item = strconv.QuoteToASCII(item)
 			item = strings.ReplaceAll(item, `\"`, `"`)
-			item = strings.ReplaceAll(item, `\\`, `\`)
-			item = strings.ReplaceAll(item, `\'`, "'")
-			item = strings.ReplaceAll(item, `\]`, `]`)
-			item = strings.ReplaceAll(item, `\[`, `[`)
 
 			builder.WriteString(w.aurora.BrightCyan(item).String())
 
