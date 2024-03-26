@@ -298,24 +298,6 @@ func New(options *types.Options) (*Runner, error) {
 	opts.Debug = runner.options.Debug
 	opts.DebugRequest = runner.options.DebugRequests
 	opts.DebugResponse = runner.options.DebugResponse
-	if httpclient != nil {
-		opts.HTTPClient = httpclient
-	}
-	if opts.HTTPClient == nil {
-		httpOpts := retryablehttp.DefaultOptionsSingle
-		httpOpts.Timeout = 20 * time.Second // for stability reasons
-		if options.Timeout > 20 {
-			httpOpts.Timeout = time.Duration(options.Timeout) * time.Second
-		}
-		// in testing it was found most of times when interactsh failed, it was due to failure in registering /polling requests
-		opts.HTTPClient = retryablehttp.NewClient(retryablehttp.DefaultOptionsSingle)
-	}
-	interactshClient, err := interactsh.New(opts)
-	if err != nil {
-		gologger.Error().Msgf("Could not create interactsh client: %s", err)
-	} else {
-		runner.interactsh = interactshClient
-	}
 
 	if err := options.ParseCruiseControl(); err != nil {
 		return nil, err
@@ -324,6 +306,22 @@ func New(options *types.Options) (*Runner, error) {
 	runner.cruiseControl, err = cruisecontrol.New(cruisecontrol.ParseOptionsFrom(options))
 	if err != nil {
 		return nil, err
+	}
+
+	if httpclient != nil {
+		opts.HTTPClient = httpclient
+	}
+	if opts.HTTPClient == nil {
+		httpOpts := retryablehttp.DefaultOptionsSingle
+		httpOpts.Timeout = runner.cruiseControl.Standard().Durations.Timeout
+		// in testing it was found most of times when interactsh failed, it was due to failure in registering /polling requests
+		opts.HTTPClient = retryablehttp.NewClient(retryablehttp.DefaultOptionsSingle)
+	}
+	interactshClient, err := interactsh.New(opts)
+	if err != nil {
+		gologger.Error().Msgf("Could not create interactsh client: %s", err)
+	} else {
+		runner.interactsh = interactshClient
 	}
 
 	if tmpDir, err := os.MkdirTemp("", "nuclei-tmp-*"); err == nil {
@@ -509,9 +507,10 @@ func (r *Runner) RunEnumeration() error {
 	// add the hosts from the metadata queries of loaded templates into input provider
 	if r.options.Uncover && len(r.options.UncoverQuery) == 0 {
 		uncoverOpts := &uncoverlib.Options{
-			Limit:         r.options.UncoverLimit,
-			MaxRetry:      r.options.Retries,
-			Timeout:       r.options.Timeout,
+			Limit:    r.options.UncoverLimit,
+			MaxRetry: r.options.Retries,
+			// todo: timeout should be time.Duration
+			Timeout:       int(r.cruiseControl.Standard().Durations.Timeout.Seconds()),
 			RateLimit:     uint(r.options.UncoverRateLimit),
 			RateLimitUnit: time.Minute, // default unit is minute
 		}

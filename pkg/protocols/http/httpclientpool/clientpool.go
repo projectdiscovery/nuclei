@@ -139,6 +139,7 @@ func GetRawHTTP(options *types.Options) *rawhttp.Client {
 		} else if Dialer != nil {
 			rawHttpOptions.FastDialer = Dialer
 		}
+		// todo: replace with cruisecontrol
 		rawHttpOptions.Timeout = time.Duration(options.Timeout) * time.Second
 		rawHttpClient = rawhttp.NewClient(rawHttpOptions)
 	}
@@ -288,6 +289,7 @@ func wrappedGet(options *types.Options, configuration *Configuration) (*retryabl
 		CheckRedirect: makeCheckRedirectFunc(redirectFlow, maxRedirects),
 	}
 	if !configuration.NoTimeout {
+		// todo: replace with cruisecontrol
 		httpclient.Timeout = time.Duration(options.Timeout) * time.Second
 	}
 	client := retryablehttp.NewWithHTTPClient(httpclient, retryableHttpOptions)

@@ -2,7 +2,6 @@ package runner
 
 import (
 	"sync/atomic"
-	"time"
 
 	"github.com/pkg/errors"
 	"github.com/projectdiscovery/gologger"
@@ -30,14 +29,14 @@ func (r *Runner) initializeTemplatesHTTPInput() (*hybrid.HybridMap, error) {
 	}
 	gologger.Info().Msgf("Running httpx on input host")
 
-	bulkSize := r.cruiseControl.Standard().Hosts
+	bulkSize := r.cruiseControl.Standard().Concurrency.Hosts
 	if bulkSize == 0 {
 		bulkSize = defaultProbeBulkSize
 	}
 
 	httpxOptions := httpx.DefaultOptions
 	httpxOptions.RetryMax = r.options.Retries
-	httpxOptions.Timeout = time.Duration(r.options.Timeout) * time.Second
+	httpxOptions.Timeout = r.cruiseControl.Standard().Durations.Timeout
 	httpxClient, err := httpx.New(&httpxOptions)
 	if err != nil {
 		return nil, errors.Wrap(err, "could not create httpx client")

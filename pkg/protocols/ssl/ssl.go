@@ -152,14 +152,15 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 		Ciphers:           request.CipherSuites,
 		WildcardCertCheck: true,
 		Retries:           request.options.Options.Retries,
-		Timeout:           request.options.Options.Timeout,
-		Fastdialer:        client,
-		ClientHello:       true,
-		ServerHello:       true,
-		DisplayDns:        true,
-		TlsVersionsEnum:   request.TLSVersionsEnum,
-		TlsCiphersEnum:    request.TLSCiphersEnum,
-		TLsCipherLevel:    request.TLSCipherTypes,
+		// todo: timeout should be time.Duration
+		Timeout:         int(request.options.CruiseControl.Standard().Durations.Timeout.Seconds()),
+		Fastdialer:      client,
+		ClientHello:     true,
+		ServerHello:     true,
+		DisplayDns:      true,
+		TlsVersionsEnum: request.TLSVersionsEnum,
+		TlsCiphersEnum:  request.TLSCiphersEnum,
+		TLsCipherLevel:  request.TLSCipherTypes,
 	}
 
 	tlsxService, err := tlsx.New(tlsxOptions)

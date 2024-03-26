@@ -298,10 +298,11 @@ func (i *ListInputProvider) initializeInputSources(opts *Options) error {
 	if options.Uncover && options.UncoverQuery != nil {
 		gologger.Info().Msgf("Running uncover query against: %s", strings.Join(options.UncoverEngine, ","))
 		uncoverOpts := &uncoverlib.Options{
-			Agents:        options.UncoverEngine,
-			Queries:       options.UncoverQuery,
-			Limit:         options.UncoverLimit,
-			MaxRetry:      options.Retries,
+			Agents:   options.UncoverEngine,
+			Queries:  options.UncoverQuery,
+			Limit:    options.UncoverLimit,
+			MaxRetry: options.Retries,
+			// todo: should be replaced with cruisecontrol + Timeout should be time.Duration
 			Timeout:       options.Timeout,
 			RateLimit:     uint(options.UncoverRateLimit),
 			RateLimitUnit: time.Minute, // default unit is minute

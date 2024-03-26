@@ -32,10 +32,10 @@ func New(options *types.Options) *Engine {
 // GetWorkPool returns a workpool from options
 func (e *Engine) GetWorkPool() *WorkPool {
 	return NewWorkPool(WorkPoolConfig{
-		InputConcurrency:         e.executerOpts.CruiseControl.Standard().Hosts,
-		TypeConcurrency:          e.executerOpts.CruiseControl.Standard().Templates,
-		HeadlessInputConcurrency: e.executerOpts.CruiseControl.Headless().Hosts,
-		HeadlessTypeConcurrency:  e.executerOpts.CruiseControl.Headless().Templates,
+		InputConcurrency:         e.executerOpts.CruiseControl.Standard().Concurrency.Hosts,
+		TypeConcurrency:          e.executerOpts.CruiseControl.Standard().Concurrency.Templates,
+		HeadlessInputConcurrency: e.executerOpts.CruiseControl.Headless().Concurrency.Hosts,
+		HeadlessTypeConcurrency:  e.executerOpts.CruiseControl.Headless().Concurrency.Templates,
 	})
 }
 

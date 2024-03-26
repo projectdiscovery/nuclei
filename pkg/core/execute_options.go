@@ -133,7 +133,7 @@ func (e *Engine) executeTemplateSpray(templatesList []*templates.Template, targe
 // executeHostSpray executes scan using host spray strategy where templates are iterated over each target
 func (e *Engine) executeHostSpray(templatesList []*templates.Template, target provider.InputProvider) *atomic.Bool {
 	results := &atomic.Bool{}
-	wp, _ := syncutil.New(syncutil.WithSize(e.executerOpts.CruiseControl.Standard().Hosts + e.executerOpts.CruiseControl.Headless().Hosts))
+	wp, _ := syncutil.New(syncutil.WithSize(e.executerOpts.CruiseControl.Standard().Concurrency.Hosts + e.executerOpts.CruiseControl.Headless().Concurrency.Hosts))
 
 	target.Iterate(func(value *contextargs.MetaInput) bool {
 		wp.Add()

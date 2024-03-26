@@ -3,6 +3,7 @@ package compiler
 import "github.com/projectdiscovery/nuclei/v3/pkg/types"
 
 // jsprotocolInit
+//todo: replace with cruisecontrol
 
 var (
 	// Per Execution Javascript timeout in seconds

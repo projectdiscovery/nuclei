@@ -1,6 +1,10 @@
 package cruisecontrol
 
-import "github.com/projectdiscovery/nuclei/v3/pkg/types"
+import (
+	"time"
+
+	"github.com/projectdiscovery/nuclei/v3/pkg/types"
+)
 
 func ParseOptionsFrom(options *types.Options) Options {
 	opts := Options{
@@ -8,13 +12,25 @@ func ParseOptionsFrom(options *types.Options) Options {
 			MaxTokens: options.RateLimit,
 			Duration:  options.RateLimitDuration,
 		},
-		Standard: Concurrency{
-			Templates: options.TemplateThreads,
-			Hosts:     options.BulkSize,
+		Standard: TypeOptions{
+			Concurrency: Concurrency{
+				Templates: options.TemplateThreads,
+				Hosts:     options.BulkSize,
+			},
+			Durations: Duration{
+				Timeout:     time.Duration(options.Timeout) * time.Second,
+				DialTimeout: options.DialerTimeout,
+			},
 		},
-		Headless: Concurrency{
-			Templates: options.HeadlessTemplateThreads,
-			Hosts:     options.HeadlessBulkSize,
+		Headless: TypeOptions{
+			Concurrency: Concurrency{
+				Templates: options.HeadlessTemplateThreads,
+				Hosts:     options.HeadlessBulkSize,
+			},
+			Durations: Duration{
+				Timeout:     time.Duration(options.PageTimeout) * time.Second,
+				DialTimeout: options.DialerTimeout,
+			},
 		},
 		JavascriptTemplates: options.JsConcurrency,
 		TemplatePayload:     options.PayloadConcurrency,

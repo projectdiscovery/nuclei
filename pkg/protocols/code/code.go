@@ -160,8 +160,8 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 		allvars[name] = v
 		metaSrc.AddVariable(gozerotypes.Variable{Name: name, Value: v})
 	}
-	timeout := TimeoutMultiplier * request.options.Options.Timeout
-	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(timeout)*time.Second)
+	timeout := request.options.CruiseControl.Standard().Durations.Timeout * TimeoutMultiplier
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 	// Note: we use contextutil despite the fact that gozero accepts context as argument
 	gOutput, err := contextutil.ExecFuncWithTwoReturns(ctx, func() (*gozerotypes.Result, error) {

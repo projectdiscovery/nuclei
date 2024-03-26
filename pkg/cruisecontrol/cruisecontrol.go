@@ -9,8 +9,8 @@ import (
 
 type Options struct {
 	RateLimit           RateLimitOptions
-	Standard            Concurrency
-	Headless            Concurrency
+	Standard            TypeOptions
+	Headless            TypeOptions
 	JavascriptTemplates int
 	TemplatePayload     int
 }
@@ -20,9 +20,19 @@ type RateLimitOptions struct {
 	Duration  time.Duration
 }
 
+type TypeOptions struct {
+	Concurrency Concurrency
+	Durations   Duration
+}
+
 type Concurrency struct {
 	Templates int
 	Hosts     int
+}
+
+type Duration struct {
+	DialTimeout time.Duration
+	Timeout     time.Duration
 }
 
 type CruiseControl struct {
@@ -40,11 +50,11 @@ func New(options Options) (*CruiseControl, error) {
 	return &CruiseControl{options: options, RateLimiter: rateLimiter}, nil
 }
 
-func (c *CruiseControl) Standard() Concurrency {
+func (c *CruiseControl) Standard() TypeOptions {
 	return c.options.Standard
 }
 
-func (c *CruiseControl) Headless() Concurrency {
+func (c *CruiseControl) Headless() TypeOptions {
 	return c.options.Headless
 }
 

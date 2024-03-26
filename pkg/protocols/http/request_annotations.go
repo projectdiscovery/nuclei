@@ -118,13 +118,11 @@ func (r *Request) parseAnnotations(rawRequest string, request *retryablehttp.Req
 		if duration := reTimeoutAnnotation.FindStringSubmatch(rawRequest); len(duration) > 0 {
 			value := strings.TrimSpace(duration[1])
 			if parsed, err := time.ParseDuration(value); err == nil {
-				//nolint:govet // cancelled automatically by withTimeout
 				ctx, overrides.cancelFunc = context.WithTimeout(context.Background(), parsed)
 				request = request.Clone(ctx)
 			}
 		} else {
-			//nolint:govet // cancelled automatically by withTimeout
-			ctx, overrides.cancelFunc = context.WithTimeout(context.Background(), time.Duration(r.options.Options.Timeout)*time.Second)
+			ctx, overrides.cancelFunc = context.WithTimeout(context.Background(), r.options.CruiseControl.Standard().Durations.Timeout)
 			request = request.Clone(ctx)
 		}
 	}

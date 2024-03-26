@@ -126,6 +126,7 @@ type ExecutorOptions struct {
 
 // GetThreadsForPayloadRequests returns the number of threads to use as default for
 // given max-request of payloads
+// todo: replace with cruisecontrol
 func (e *ExecutorOptions) GetThreadsForNPayloadRequests(totalRequests int, currentThreads int) int {
 	if e.OverrideThreadsCount != nil {
 		return e.OverrideThreadsCount(e, totalRequests, currentThreads)
