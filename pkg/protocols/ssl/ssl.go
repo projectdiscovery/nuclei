@@ -153,7 +153,7 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 		WildcardCertCheck: true,
 		Retries:           request.options.Options.Retries,
 		// todo: timeout should be time.Duration
-		Timeout:         int(request.options.CruiseControl.Standard().Durations.Timeout.Seconds()),
+		Timeout:         int(request.options.CruiseControl.StandardTimeout()),
 		Fastdialer:      client,
 		ClientHello:     true,
 		ServerHello:     true,

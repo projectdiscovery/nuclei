@@ -36,7 +36,7 @@ func (r *Runner) initializeTemplatesHTTPInput() (*hybrid.HybridMap, error) {
 
 	httpxOptions := httpx.DefaultOptions
 	httpxOptions.RetryMax = r.options.Retries
-	httpxOptions.Timeout = r.cruiseControl.Standard().Durations.Timeout
+	httpxOptions.Timeout = r.cruiseControl.StandardTimeout()
 	httpxClient, err := httpx.New(&httpxOptions)
 	if err != nil {
 		return nil, errors.Wrap(err, "could not create httpx client")

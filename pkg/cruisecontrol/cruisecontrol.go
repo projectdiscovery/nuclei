@@ -83,6 +83,14 @@ func (c *CruiseControl) Payload() int {
 	return c.Settings.TemplatePayload
 }
 
+func (c *CruiseControl) StandardTimeout() time.Duration {
+	return c.Settings.Standard.Durations.Timeout
+}
+
+func (c *CruiseControl) HeadlessTimeout() time.Duration {
+	return c.Settings.Headless.Durations.Timeout
+}
+
 func (c *CruiseControl) DeprecatedPayload(totalRequests, currentThreads int) int {
 	if currentThreads > 0 {
 		return currentThreads

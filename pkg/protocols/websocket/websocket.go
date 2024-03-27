@@ -202,7 +202,7 @@ func (request *Request) executeRequestWithPayloads(target *contextargs.Context, 
 	}
 	websocketDialer := ws.Dialer{
 		Header:    ws.HandshakeHeaderHTTP(header),
-		Timeout:   request.options.CruiseControl.Standard().Durations.Timeout,
+		Timeout:   request.options.CruiseControl.StandardTimeout(),
 		NetDial:   request.dialer.Dial,
 		TLSConfig: tlsConfig,
 	}

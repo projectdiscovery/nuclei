@@ -313,7 +313,7 @@ func New(options *types.Options) (*Runner, error) {
 	}
 	if opts.HTTPClient == nil {
 		httpOpts := retryablehttp.DefaultOptionsSingle
-		httpOpts.Timeout = runner.cruiseControl.Standard().Durations.Timeout
+		httpOpts.Timeout = runner.cruiseControl.StandardTimeout()
 		// in testing it was found most of times when interactsh failed, it was due to failure in registering /polling requests
 		opts.HTTPClient = retryablehttp.NewClient(retryablehttp.DefaultOptionsSingle)
 	}
@@ -510,7 +510,7 @@ func (r *Runner) RunEnumeration() error {
 			Limit:    r.options.UncoverLimit,
 			MaxRetry: r.options.Retries,
 			// todo: timeout should be time.Duration
-			Timeout:       int(r.cruiseControl.Standard().Durations.Timeout.Seconds()),
+			Timeout:       int(r.cruiseControl.StandardTimeout().Seconds()),
 			RateLimit:     uint(r.options.UncoverRateLimit),
 			RateLimitUnit: time.Minute, // default unit is minute
 		}

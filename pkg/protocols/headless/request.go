@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"net/url"
 	"strings"
-	"time"
 
 	"github.com/projectdiscovery/retryablehttp-go"
 
@@ -133,7 +132,7 @@ func (request *Request) executeRequestWithPayloads(input *contextargs.Context, p
 		return errors.Wrap(err, errCouldGetHtmlElement)
 	}
 	options := &engine.Options{
-		Timeout:       time.Duration(request.options.Options.PageTimeout) * time.Second,
+		Timeout:       request.options.CruiseControl.HeadlessTimeout(),
 		DisableCookie: request.DisableCookie,
 		Options:       request.options.Options,
 	}

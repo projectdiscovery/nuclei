@@ -230,7 +230,7 @@ func (request *Request) executeRequestWithPayloads(variables map[string]interfac
 		return errors.Wrap(err, "could not connect to server")
 	}
 	defer conn.Close()
-	_ = conn.SetDeadline(time.Now().Add(request.options.CruiseControl.Standard().Durations.Timeout))
+	_ = conn.SetDeadline(time.Now().Add(request.options.CruiseControl.StandardTimeout()))
 
 	var interactshURLs []string
 

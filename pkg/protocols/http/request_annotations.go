@@ -122,7 +122,7 @@ func (r *Request) parseAnnotations(rawRequest string, request *retryablehttp.Req
 				request = request.Clone(ctx)
 			}
 		} else {
-			ctx, overrides.cancelFunc = context.WithTimeout(context.Background(), r.options.CruiseControl.Standard().Durations.Timeout)
+			ctx, overrides.cancelFunc = context.WithTimeout(context.Background(), r.options.CruiseControl.StandardTimeout())
 			request = request.Clone(ctx)
 		}
 	}

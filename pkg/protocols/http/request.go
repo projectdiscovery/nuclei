@@ -382,7 +382,7 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 			request.options.CruiseControl.RateLimiter.Take()
 
 			ctx := request.newContext(input)
-			ctxWithTimeout, cancel := context.WithTimeout(ctx, request.options.CruiseControl.Standard().Durations.Timeout)
+			ctxWithTimeout, cancel := context.WithTimeout(ctx, request.options.CruiseControl.StandardTimeout())
 			defer cancel()
 			generatedHttpRequest, err := generator.Make(ctxWithTimeout, input, data, payloads, dynamicValue)
 			if err != nil {
