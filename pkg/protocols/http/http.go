@@ -417,7 +417,7 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 			request.Threads = protocolstate.GuardThreadsOrDefault(request.Threads)
 		}
 		// if we have payloads, adjust threads if none specified
-		request.Threads = options.GetThreadsForNPayloadRequests(request.Requests(), request.Threads)
+		request.Threads = options.CruiseControl.DeprecatedPayload(request.Requests(), request.Threads)
 	}
 
 	return nil

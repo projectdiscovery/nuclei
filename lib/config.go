@@ -92,17 +92,13 @@ func WithTemplateFilters(filters TemplateFilters) NucleiSDKOptions {
 	}
 }
 
-// InteractshOpts contains options for interactsh
-type InteractshOpts interactsh.Options
-
 // WithInteractshOptions sets interactsh options
-func WithInteractshOptions(opts InteractshOpts) NucleiSDKOptions {
+func WithInteractshOptions(opts *interactsh.Options) NucleiSDKOptions {
 	return func(e *NucleiEngine) error {
 		if e.mode == threadSafe {
 			return ErrOptionsNotSupported.Msgf("WithInteractshOptions")
 		}
-		optsPtr := &opts
-		e.interactshOpts = (*interactsh.Options)(optsPtr)
+		e.interactshOpts = opts
 		return nil
 	}
 }
@@ -133,7 +129,7 @@ func WithConcurrency(opts Concurrency) NucleiSDKOptions {
 // WithGlobalRateLimit sets global rate (i.e all hosts combined) limit options
 func WithGlobalRateLimit(maxTokens int, duration time.Duration) NucleiSDKOptions {
 	return func(e *NucleiEngine) error {
-		e.rateLimiter = ratelimit.New(context.Background(), uint(maxTokens), duration)
+		e.cruiseControl.RateLimiter = ratelimit.New(context.Background(), uint(maxTokens), duration)
 		return nil
 	}
 }

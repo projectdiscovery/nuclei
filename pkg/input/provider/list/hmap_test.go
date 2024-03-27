@@ -153,6 +153,10 @@ func Test_scanallips_normalizeStoreInputValue(t *testing.T) {
 }
 
 func Test_expandASNInputValue(t *testing.T) {
+	if os.Getenv("PDCP_API_KEY") == "" {
+		return
+	}
+
 	tests := []struct {
 		asn                string
 		expectedOutputFile string

@@ -4,7 +4,6 @@ import (
 	"encoding/base64"
 	"sync/atomic"
 
-	"github.com/projectdiscovery/ratelimit"
 	mapsutil "github.com/projectdiscovery/utils/maps"
 	stringsutil "github.com/projectdiscovery/utils/strings"
 
@@ -12,6 +11,7 @@ import (
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/authprovider"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog"
+	"github.com/projectdiscovery/nuclei/v3/pkg/cruisecontrol"
 	"github.com/projectdiscovery/nuclei/v3/pkg/input"
 	"github.com/projectdiscovery/nuclei/v3/pkg/js/compiler"
 	"github.com/projectdiscovery/nuclei/v3/pkg/loader/parser"
@@ -70,9 +70,8 @@ type ExecutorOptions struct {
 	// IssuesClient is a client for nuclei issue tracker reporting
 	IssuesClient reporting.Client
 	// Progress is a progress client for scan reporting
-	Progress progress.Progress
-	// RateLimiter is a rate-limiter for limiting sent number of requests.
-	RateLimiter *ratelimit.Limiter
+	Progress      progress.Progress
+	CruiseControl *cruisecontrol.CruiseControl
 	// Catalog is a template catalog implementation for nuclei
 	Catalog catalog.Catalog
 	// ProjectFile is the project file for nuclei
@@ -114,28 +113,11 @@ type ExecutorOptions struct {
 	// JsCompiler is abstracted javascript compiler which adds node modules and provides execution
 	// environment for javascript templates
 	JsCompiler *compiler.Compiler
-	// Optional Callback function to update Thread count in payloads across all protocols
-	// based on given logic. by default nuclei reverts to using value of `-c` when threads count
-	// is not specified or is 0 in template
-	OverrideThreadsCount PayloadThreadSetterCallback
 	// AuthProvider is a provider for auth strategies
 	AuthProvider authprovider.AuthProvider
 	//TemporaryDirectory is the directory to store temporary files
 	TemporaryDirectory string
 	Parser             parser.Parser
-}
-
-// GetThreadsForPayloadRequests returns the number of threads to use as default for
-// given max-request of payloads
-func (e *ExecutorOptions) GetThreadsForNPayloadRequests(totalRequests int, currentThreads int) int {
-	if e.OverrideThreadsCount != nil {
-		return e.OverrideThreadsCount(e, totalRequests, currentThreads)
-	}
-	if currentThreads > 0 {
-		return currentThreads
-	} else {
-		return e.Options.PayloadConcurrency
-	}
 }
 
 // CreateTemplateCtxStore creates template context store (which contains templateCtx for every scan)

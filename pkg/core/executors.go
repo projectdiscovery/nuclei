@@ -5,13 +5,13 @@ import (
 	"sync/atomic"
 
 	"github.com/projectdiscovery/gologger"
+	"github.com/projectdiscovery/nuclei/v3/pkg/cruisecontrol"
 	"github.com/projectdiscovery/nuclei/v3/pkg/input/provider"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
 	"github.com/projectdiscovery/nuclei/v3/pkg/scan"
 	"github.com/projectdiscovery/nuclei/v3/pkg/templates"
 	"github.com/projectdiscovery/nuclei/v3/pkg/templates/types"
 	generalTypes "github.com/projectdiscovery/nuclei/v3/pkg/types"
-	"github.com/remeh/sizedwaitgroup"
 )
 
 // Executors are low level executors that deals with template execution on a target
@@ -47,7 +47,7 @@ func (e *Engine) executeAllSelfContained(alltemplates []*templates.Template, res
 // executeTemplateWithTarget executes a given template on x targets (with a internal targetpool(i.e concurrency))
 func (e *Engine) executeTemplateWithTargets(template *templates.Template, target provider.InputProvider, results *atomic.Bool) {
 	// this is target pool i.e max target to execute
-	wg := e.workPool.InputPool(template.Type())
+	wg := e.WorkPool().InputPool(template.Type())
 
 	var (
 		index uint32
@@ -158,14 +158,14 @@ func (e *Engine) executeTemplatesOnTarget(alltemplates []*templates.Template, ta
 	wp := e.GetWorkPool()
 
 	for _, tpl := range alltemplates {
-		var sg *sizedwaitgroup.SizedWaitGroup
+		var sg *cruisecontrol.CruiseControlPool
 		if tpl.Type() == types.HeadlessProtocol {
 			sg = wp.Headless
 		} else {
 			sg = wp.Default
 		}
 		sg.Add()
-		go func(template *templates.Template, value *contextargs.MetaInput, wg *sizedwaitgroup.SizedWaitGroup) {
+		go func(template *templates.Template, value *contextargs.MetaInput, wg *cruisecontrol.CruiseControlPool) {
 			defer wg.Done()
 
 			var match bool
@@ -213,7 +213,7 @@ func (e *ChildExecuter) Close() *atomic.Bool {
 func (e *ChildExecuter) Execute(template *templates.Template, value *contextargs.MetaInput) {
 	templateType := template.Type()
 
-	var wg *sizedwaitgroup.SizedWaitGroup
+	var wg *cruisecontrol.CruiseControlPool
 	if templateType == types.HeadlessProtocol {
 		wg = e.e.workPool.Headless
 	} else {

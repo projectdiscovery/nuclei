@@ -2,8 +2,10 @@ package compiler
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
+	"math"
 	"reflect"
 	"sync"
 
@@ -36,7 +38,8 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/js/libs/goconsole"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
 	stringsutil "github.com/projectdiscovery/utils/strings"
-	"github.com/remeh/sizedwaitgroup"
+	syncutil "github.com/projectdiscovery/utils/sync"
+	"github.com/projectdiscovery/utils/sync/sizedpool"
 )
 
 const (
@@ -51,16 +54,25 @@ var (
 		// autoregister console node module with default printer it uses gologger backend
 		require.RegisterNativeModule(console.ModuleName, console.RequireWithPrinter(goconsole.NewGoConsolePrinter()))
 	})
-	pooljsc    sizedwaitgroup.SizedWaitGroup
+	pooljsc    *syncutil.AdaptiveWaitGroup
 	lazySgInit = sync.OnceFunc(func() {
-		pooljsc = sizedwaitgroup.New(PoolingJsVmConcurrency)
+		pooljsc, _ = syncutil.New(syncutil.WithSize(PoolingJsVmConcurrency))
 	})
+
+	gojapool = &sync.Pool{
+		New: func() interface{} {
+			return createNewRuntime()
+		},
+	}
+	sizedGojaPool *sizedpool.SizedPool[*goja.Runtime]
 )
 
-var gojapool = &sync.Pool{
-	New: func() interface{} {
-		return createNewRuntime()
-	},
+func init() {
+	var err error
+	sizedGojaPool, err = sizedpool.New[*goja.Runtime](sizedpool.WithPool[*goja.Runtime](gojapool), sizedpool.WithSize[*goja.Runtime](math.MaxInt32))
+	if err != nil {
+		panic(err)
+	}
 }
 
 func executeWithRuntime(runtime *goja.Runtime, p *goja.Program, args *ExecuteArgs, opts *ExecuteOptions) (result goja.Value, err error) {
@@ -116,10 +128,20 @@ func executeWithPoolingProgram(p *goja.Program, args *ExecuteArgs, opts *Execute
 	// its unknown (most likely cannot be done) to limit max js runtimes at a moment without making it static
 	// unlike sync.Pool which reacts to GC and its purposes is to reuse objects rather than creating new ones
 	lazySgInit()
+
+	if pooljsc.Size != PoolingJsVmConcurrency {
+		pooljsc.Resize(PoolingJsVmConcurrency)
+	}
+
 	pooljsc.Add()
 	defer pooljsc.Done()
-	runtime := gojapool.Get().(*goja.Runtime)
-	defer gojapool.Put(runtime)
+
+	runtime, err := sizedGojaPool.Get(context.TODO())
+	if err != nil {
+		return nil, err
+	}
+
+	defer sizedGojaPool.Put(runtime)
 	var buff bytes.Buffer
 	opts.exports = make(map[string]interface{})
 
@@ -176,7 +198,10 @@ func executeWithPoolingProgram(p *goja.Program, args *ExecuteArgs, opts *Execute
 
 // Internal purposes i.e generating bindings
 func InternalGetGeneratorRuntime() *goja.Runtime {
-	runtime := gojapool.Get().(*goja.Runtime)
+	runtime, err := sizedGojaPool.Get(context.TODO())
+	if err != nil {
+		panic(err)
+	}
 	return runtime
 }
 

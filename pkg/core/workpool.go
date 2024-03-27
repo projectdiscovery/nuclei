@@ -1,8 +1,7 @@
 package core
 
 import (
-	"github.com/remeh/sizedwaitgroup"
-
+	"github.com/projectdiscovery/nuclei/v3/pkg/cruisecontrol"
 	"github.com/projectdiscovery/nuclei/v3/pkg/templates/types"
 )
 
@@ -12,32 +11,20 @@ import (
 // It also allows Configuration of such requirements. This is used
 // for per-module like separate headless concurrency etc.
 type WorkPool struct {
-	Headless *sizedwaitgroup.SizedWaitGroup
-	Default  *sizedwaitgroup.SizedWaitGroup
-	config   WorkPoolConfig
-}
-
-// WorkPoolConfig is the configuration for work pool
-type WorkPoolConfig struct {
-	// InputConcurrency is the concurrency for inputs values.
-	InputConcurrency int
-	// TypeConcurrency is the concurrency for the request type templates.
-	TypeConcurrency int
-	// HeadlessInputConcurrency is the concurrency for headless inputs values.
-	HeadlessInputConcurrency int
-	// TypeConcurrency is the concurrency for the headless request type templates.
-	HeadlessTypeConcurrency int
+	Headless      *cruisecontrol.CruiseControlPool
+	Default       *cruisecontrol.CruiseControlPool
+	cruiseControl *cruisecontrol.CruiseControl
 }
 
 // NewWorkPool returns a new WorkPool instance
-func NewWorkPool(config WorkPoolConfig) *WorkPool {
-	headlessWg := sizedwaitgroup.New(config.HeadlessTypeConcurrency)
-	defaultWg := sizedwaitgroup.New(config.TypeConcurrency)
+func NewWorkPool(cruiseControl *cruisecontrol.CruiseControl) *WorkPool {
+	headlessPool := cruiseControl.NewPool(cruiseControl.HeadlessTemplates)
+	defaultPool := cruiseControl.NewPool(cruiseControl.StandardTemplates)
 
 	return &WorkPool{
-		config:   config,
-		Headless: &headlessWg,
-		Default:  &defaultWg,
+		cruiseControl: cruiseControl,
+		Headless:      headlessPool,
+		Default:       defaultPool,
 	}
 }
 
@@ -47,19 +34,12 @@ func (w *WorkPool) Wait() {
 	w.Headless.Wait()
 }
 
-// InputWorkPool is a work pool per-input
-type InputWorkPool struct {
-	WaitGroup *sizedwaitgroup.SizedWaitGroup
-}
-
 // InputPool returns a work pool for an input type
-func (w *WorkPool) InputPool(templateType types.ProtocolType) *InputWorkPool {
-	var count int
-	if templateType == types.HeadlessProtocol {
-		count = w.config.HeadlessInputConcurrency
-	} else {
-		count = w.config.InputConcurrency
+func (w *WorkPool) InputPool(templateType types.ProtocolType) *cruisecontrol.CruiseControlPool {
+	switch templateType {
+	case types.HeadlessProtocol:
+		return w.cruiseControl.NewPool(w.cruiseControl.HeadlessHosts)
+	default:
+		return w.cruiseControl.NewPool(w.cruiseControl.StandardHosts)
 	}
-	swg := sizedwaitgroup.New(count)
-	return &InputWorkPool{WaitGroup: &swg}
 }

@@ -1,18 +1,17 @@
 package templates_test
 
 import (
-	"context"
 	"fmt"
 	"log"
 	netHttp "net/http"
 	"net/http/httptest"
 	"os"
 	"testing"
-	"time"
 
 	"github.com/julienschmidt/httprouter"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/config"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/disk"
+	"github.com/projectdiscovery/nuclei/v3/pkg/cruisecontrol"
 	"github.com/projectdiscovery/nuclei/v3/pkg/loader/workflow"
 	"github.com/projectdiscovery/nuclei/v3/pkg/model"
 	"github.com/projectdiscovery/nuclei/v3/pkg/model/types/severity"
@@ -27,7 +26,6 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/templates"
 	"github.com/projectdiscovery/nuclei/v3/pkg/testutils"
 	"github.com/projectdiscovery/nuclei/v3/pkg/workflows"
-	"github.com/projectdiscovery/ratelimit"
 	"github.com/stretchr/testify/require"
 )
 
@@ -38,16 +36,18 @@ func setup() {
 	testutils.Init(options)
 	progressImpl, _ := progress.NewStatsTicker(0, false, false, false, 0)
 
+	cruiseControl, _ := cruisecontrol.New(cruisecontrol.ParseOptionsFrom(options))
+
 	executerOpts = protocols.ExecutorOptions{
-		Output:       testutils.NewMockOutputWriter(options.OmitTemplate),
-		Options:      options,
-		Progress:     progressImpl,
-		ProjectFile:  nil,
-		IssuesClient: nil,
-		Browser:      nil,
-		Catalog:      disk.NewCatalog(config.DefaultConfig.TemplatesDirectory),
-		RateLimiter:  ratelimit.New(context.Background(), uint(options.RateLimit), time.Second),
-		Parser:       templates.NewParser(),
+		Output:        testutils.NewMockOutputWriter(options.OmitTemplate),
+		Options:       options,
+		Progress:      progressImpl,
+		ProjectFile:   nil,
+		IssuesClient:  nil,
+		Browser:       nil,
+		Catalog:       disk.NewCatalog(config.DefaultConfig.TemplatesDirectory),
+		CruiseControl: cruiseControl,
+		Parser:        templates.NewParser(),
 	}
 	workflowLoader, err := workflow.NewLoader(&executerOpts)
 	if err != nil {

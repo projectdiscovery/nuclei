@@ -4,7 +4,7 @@ import (
 	"context"
 	"sync"
 
-	"github.com/remeh/sizedwaitgroup"
+	syncutil "github.com/projectdiscovery/utils/sync"
 )
 
 // WorkPoolType is the type of work pool to use
@@ -26,7 +26,7 @@ type StopAtFirstMatchHandler[T any] struct {
 
 	// work pool and its type
 	poolType WorkPoolType
-	sgPool   sizedwaitgroup.SizedWaitGroup
+	sgPool   *syncutil.AdaptiveWaitGroup
 	wgPool   *sync.WaitGroup
 
 	// internal / unexported
@@ -40,10 +40,11 @@ type StopAtFirstMatchHandler[T any] struct {
 // NewBlockingSPMHandler creates a new stop at first match handler
 func NewBlockingSPMHandler[T any](ctx context.Context, size int, spm bool) *StopAtFirstMatchHandler[T] {
 	ctx1, cancel := context.WithCancel(ctx)
+	sgpool, _ := syncutil.New(syncutil.WithSize(size))
 	s := &StopAtFirstMatchHandler[T]{
 		ResultChan:  make(chan T, 1),
 		poolType:    Blocking,
-		sgPool:      sizedwaitgroup.New(size),
+		sgPool:      sgpool,
 		internalWg:  &sync.WaitGroup{},
 		ctx:         ctx1,
 		cancel:      cancel,

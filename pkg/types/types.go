@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/projectdiscovery/goflags"
+	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/config"
 	"github.com/projectdiscovery/nuclei/v3/pkg/model/types/severity"
@@ -132,7 +133,10 @@ type Options struct {
 	Retries int
 	// Rate-Limit is the maximum number of requests per specified target
 	RateLimit int
+	// Rate Limit Duration interval between burst resets
+	RateLimitDuration time.Duration
 	// Rate-Limit is the maximum number of requests per minute for specified target
+	// Deprecated: Use RateLimitDuration - automatically set Rate Limit Duration to 60 seconds
 	RateLimitMinute int
 	// PageTimeout is the maximum time to wait for a page in seconds
 	PageTimeout int
@@ -411,6 +415,7 @@ func (options *Options) HasClientCertificates() bool {
 func DefaultOptions() *Options {
 	return &Options{
 		RateLimit:               150,
+		RateLimitDuration:       time.Second,
 		BulkSize:                25,
 		TemplateThreads:         25,
 		HeadlessBulkSize:        10,
@@ -503,4 +508,16 @@ func (o *Options) GetValidAbsPath(helperFilePath, templatePath string) (string, 
 func isHomeDir(path string) bool {
 	homeDir := folderutil.HomeDirOrDefault("")
 	return strings.HasPrefix(path, homeDir)
+}
+
+func (options *Options) ParseCruiseControl() error {
+	if options.RateLimitMinute > 0 {
+		gologger.Warning().Msgf("rate limit per minute is deprecated - use rate-limit-duration")
+		options.RateLimit = options.RateLimitMinute
+		options.RateLimitDuration = time.Minute
+	}
+	if options.RateLimit > 0 && options.RateLimitDuration == 0 {
+		options.RateLimitDuration = time.Second
+	}
+	return nil
 }

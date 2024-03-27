@@ -30,8 +30,8 @@ import (
 	mapsutil "github.com/projectdiscovery/utils/maps"
 	sliceutil "github.com/projectdiscovery/utils/slice"
 	stringsutil "github.com/projectdiscovery/utils/strings"
+	syncutil "github.com/projectdiscovery/utils/sync"
 	wappalyzer "github.com/projectdiscovery/wappalyzergo"
-	"github.com/remeh/sizedwaitgroup"
 	"gopkg.in/yaml.v2"
 )
 
@@ -128,7 +128,7 @@ func (s *Service) Close() bool {
 func (s *Service) Execute() error {
 	gologger.Info().Msgf("Executing Automatic scan on %d target[s]", s.target.Count())
 	// setup host concurrency
-	sg := sizedwaitgroup.New(s.opts.Options.BulkSize)
+	sg, _ := syncutil.New(syncutil.WithSize(s.opts.CruiseControl.Standard().Concurrency.Hosts))
 	s.target.Iterate(func(value *contextargs.MetaInput) bool {
 		sg.Add()
 		go func(input *contextargs.MetaInput) {
@@ -246,7 +246,7 @@ func (s *Service) getTagsUsingDetectionTemplates(input *contextargs.MetaInput) (
 	// execute tech detection templates on target
 	tags := map[string]struct{}{}
 	m := &sync.Mutex{}
-	sg := sizedwaitgroup.New(s.opts.Options.TemplateThreads)
+	sg, _ := syncutil.New(syncutil.WithSize(s.opts.CruiseControl.Standard().Concurrency.Templates))
 	counter := atomic.Uint32{}
 
 	for _, t := range s.techTemplates {
@@ -304,14 +304,4 @@ func (s *Service) getTagsUsingDetectionTemplates(input *contextargs.MetaInput) (
 	}
 	sg.Wait()
 	return mapsutil.GetKeys(tags), int(counter.Load())
-}
-
-// normalizeAppName normalizes app name
-func normalizeAppName(appName string) string {
-	if strings.Contains(appName, ":") {
-		if parts := strings.Split(appName, ":"); len(parts) == 2 {
-			appName = parts[0]
-		}
-	}
-	return strings.ToLower(appName)
 }

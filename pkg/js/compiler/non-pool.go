@@ -4,20 +4,27 @@ import (
 	"sync"
 
 	"github.com/dop251/goja"
-	"github.com/remeh/sizedwaitgroup"
+	syncutil "github.com/projectdiscovery/utils/sync"
 )
 
 var (
-	ephemeraljsc    = sizedwaitgroup.New(NonPoolingVMConcurrency)
+	ephemeraljsc    *syncutil.AdaptiveWaitGroup
 	lazyFixedSgInit = sync.OnceFunc(func() {
-		ephemeraljsc = sizedwaitgroup.New(NonPoolingVMConcurrency)
+		ephemeraljsc, _ = syncutil.New(syncutil.WithSize(NonPoolingVMConcurrency))
 	})
 )
 
 func executeWithoutPooling(p *goja.Program, args *ExecuteArgs, opts *ExecuteOptions) (result goja.Value, err error) {
 	lazyFixedSgInit()
+	// check if the pool should be resized
+	if ephemeraljsc.Size != NonPoolingVMConcurrency {
+		ephemeraljsc.Resize(NonPoolingVMConcurrency)
+	}
+
 	ephemeraljsc.Add()
 	defer ephemeraljsc.Done()
+
 	runtime := createNewRuntime()
+
 	return executeWithRuntime(runtime, p, args, opts)
 }

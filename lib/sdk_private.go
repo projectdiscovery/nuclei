@@ -1,7 +1,6 @@
 package nuclei
 
 import (
-	"context"
 	"fmt"
 	"strings"
 	"sync"
@@ -17,6 +16,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/config"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/disk"
 	"github.com/projectdiscovery/nuclei/v3/pkg/core"
+	"github.com/projectdiscovery/nuclei/v3/pkg/cruisecontrol"
 	"github.com/projectdiscovery/nuclei/v3/pkg/input/provider"
 	"github.com/projectdiscovery/nuclei/v3/pkg/installer"
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
@@ -32,7 +32,6 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/testutils"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	nucleiUtils "github.com/projectdiscovery/nuclei/v3/pkg/utils"
-	"github.com/projectdiscovery/ratelimit"
 )
 
 // applyRequiredDefaults to options
@@ -79,8 +78,8 @@ func (e *NucleiEngine) applyRequiredDefaults() {
 	} else {
 		e.interactshOpts = interactsh.DefaultOptions(e.customWriter, e.rc, e.customProgress)
 	}
-	if e.rateLimiter == nil {
-		e.rateLimiter = ratelimit.New(context.Background(), 150, time.Second)
+	if e.cruiseControl == nil {
+		e.cruiseControl, _ = cruisecontrol.New(cruisecontrol.ParseOptionsFrom(e.opts))
 	}
 	if e.opts.ExcludeTags == nil {
 		e.opts.ExcludeTags = []string{}
@@ -154,7 +153,7 @@ func (e *NucleiEngine) init() error {
 		Progress:        e.customProgress,
 		Catalog:         e.catalog,
 		IssuesClient:    e.rc,
-		RateLimiter:     e.rateLimiter,
+		CruiseControl:   e.cruiseControl,
 		Interactsh:      e.interactshClient,
 		HostErrorsCache: e.hostErrCache,
 		Colorizer:       aurora.NewAurora(true),
@@ -187,16 +186,6 @@ func (e *NucleiEngine) init() error {
 	if e.executerOpts.AuthProvider != nil && e.opts.PreFetchSecrets {
 		if err := e.executerOpts.AuthProvider.PreFetchSecrets(); err != nil {
 			return errors.Wrap(err, "could not prefetch secrets")
-		}
-	}
-
-	if e.executerOpts.RateLimiter == nil {
-		if e.opts.RateLimitMinute > 0 {
-			e.executerOpts.RateLimiter = ratelimit.New(context.Background(), uint(e.opts.RateLimitMinute), time.Minute)
-		} else if e.opts.RateLimit > 0 {
-			e.executerOpts.RateLimiter = ratelimit.New(context.Background(), uint(e.opts.RateLimit), time.Second)
-		} else {
-			e.executerOpts.RateLimiter = ratelimit.NewUnlimited(context.Background())
 		}
 	}
 

@@ -8,13 +8,13 @@ import (
 	_ "net/http/pprof"
 	"os"
 	"path/filepath"
-	"reflect"
 	"strings"
 	"sync/atomic"
 	"time"
 
 	"github.com/projectdiscovery/nuclei/v3/internal/pdcp"
 	"github.com/projectdiscovery/nuclei/v3/pkg/authprovider"
+	"github.com/projectdiscovery/nuclei/v3/pkg/cruisecontrol"
 	"github.com/projectdiscovery/nuclei/v3/pkg/input/provider"
 	"github.com/projectdiscovery/nuclei/v3/pkg/installer"
 	"github.com/projectdiscovery/nuclei/v3/pkg/loader/parser"
@@ -27,7 +27,6 @@ import (
 
 	"github.com/logrusorgru/aurora"
 	"github.com/pkg/errors"
-	"github.com/projectdiscovery/ratelimit"
 
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/internal/colorizer"
@@ -69,6 +68,11 @@ var (
 	EnableCloudUpload = false
 )
 
+func init() {
+	HideAutoSaveMsg = env.GetEnvOrDefault("DISABLE_CLOUD_UPLOAD_WRN", false)
+	EnableCloudUpload = env.GetEnvOrDefault("ENABLE_CLOUD_UPLOAD", false)
+}
+
 // Runner is a client for running the enumeration process.
 type Runner struct {
 	output           output.Writer
@@ -80,15 +84,15 @@ type Runner struct {
 	colorizer        aurora.Aurora
 	issuesClient     reporting.Client
 	browser          *engine.Browser
-	rateLimiter      *ratelimit.Limiter
 	hostErrors       hosterrorscache.CacheInterface
 	resumeCfg        *types.ResumeCfg
 	pprofServer      *http.Server
 	pdcpUploadErrMsg string
 	inputProvider    provider.InputProvider
 	//general purpose temporary directory
-	tmpDir string
-	parser parser.Parser
+	tmpDir        string
+	parser        parser.Parser
+	cruiseControl *cruisecontrol.CruiseControl
 }
 
 const pprofServerAddress = "127.0.0.1:8086"
@@ -294,15 +298,22 @@ func New(options *types.Options) (*Runner, error) {
 	opts.Debug = runner.options.Debug
 	opts.DebugRequest = runner.options.DebugRequests
 	opts.DebugResponse = runner.options.DebugResponse
+
+	if err := options.ParseCruiseControl(); err != nil {
+		return nil, err
+	}
+
+	runner.cruiseControl, err = cruisecontrol.New(cruisecontrol.ParseOptionsFrom(options))
+	if err != nil {
+		return nil, err
+	}
+
 	if httpclient != nil {
 		opts.HTTPClient = httpclient
 	}
 	if opts.HTTPClient == nil {
 		httpOpts := retryablehttp.DefaultOptionsSingle
-		httpOpts.Timeout = 20 * time.Second // for stability reasons
-		if options.Timeout > 20 {
-			httpOpts.Timeout = time.Duration(options.Timeout) * time.Second
-		}
+		httpOpts.Timeout = runner.cruiseControl.StandardTimeout()
 		// in testing it was found most of times when interactsh failed, it was due to failure in registering /polling requests
 		opts.HTTPClient = retryablehttp.NewClient(retryablehttp.DefaultOptionsSingle)
 	}
@@ -311,14 +322,6 @@ func New(options *types.Options) (*Runner, error) {
 		gologger.Error().Msgf("Could not create interactsh client: %s", err)
 	} else {
 		runner.interactsh = interactshClient
-	}
-
-	if options.RateLimitMinute > 0 {
-		runner.rateLimiter = ratelimit.New(context.Background(), uint(options.RateLimitMinute), time.Minute)
-	} else if options.RateLimit > 0 {
-		runner.rateLimiter = ratelimit.New(context.Background(), uint(options.RateLimit), time.Second)
-	} else {
-		runner.rateLimiter = ratelimit.NewUnlimited(context.Background())
 	}
 
 	if tmpDir, err := os.MkdirTemp("", "nuclei-tmp-*"); err == nil {
@@ -354,8 +357,8 @@ func (r *Runner) Close() {
 	if r.pprofServer != nil {
 		_ = r.pprofServer.Shutdown(context.Background())
 	}
-	if r.rateLimiter != nil {
-		r.rateLimiter.Stop()
+	if r.cruiseControl != nil {
+		r.cruiseControl.Close()
 	}
 	r.progress.Stop()
 	if r.browser != nil {
@@ -427,7 +430,7 @@ func (r *Runner) RunEnumeration() error {
 		Progress:           r.progress,
 		Catalog:            r.catalog,
 		IssuesClient:       r.issuesClient,
-		RateLimiter:        r.rateLimiter,
+		CruiseControl:      r.cruiseControl,
 		Interactsh:         r.interactsh,
 		ProjectFile:        r.projectFile,
 		Browser:            r.browser,
@@ -504,9 +507,10 @@ func (r *Runner) RunEnumeration() error {
 	// add the hosts from the metadata queries of loaded templates into input provider
 	if r.options.Uncover && len(r.options.UncoverQuery) == 0 {
 		uncoverOpts := &uncoverlib.Options{
-			Limit:         r.options.UncoverLimit,
-			MaxRetry:      r.options.Retries,
-			Timeout:       r.options.Timeout,
+			Limit:    r.options.UncoverLimit,
+			MaxRetry: r.options.Retries,
+			// todo: timeout should be time.Duration
+			Timeout:       int(r.cruiseControl.StandardTimeout().Seconds()),
 			RateLimit:     uint(r.options.UncoverRateLimit),
 			RateLimitUnit: time.Minute, // default unit is minute
 		}
@@ -707,58 +711,4 @@ func (r *Runner) SaveResumeConfig(path string) error {
 	data, _ := json.MarshalIndent(resumeCfgClone, "", "\t")
 
 	return os.WriteFile(path, data, permissionutil.ConfigFilePermission)
-}
-
-type WalkFunc func(reflect.Value, reflect.StructField)
-
-// Walk traverses a struct and executes a callback function on each value in the struct.
-// The interface{} passed to the function should be a pointer to a struct or a struct.
-// WalkFunc is the callback function used for each value in the struct. It is passed the
-// reflect.Value and reflect.Type properties of the value in the struct.
-func Walk(s interface{}, callback WalkFunc) {
-	structValue := reflect.ValueOf(s)
-	if structValue.Kind() == reflect.Ptr {
-		structValue = structValue.Elem()
-	}
-	if structValue.Kind() != reflect.Struct {
-		return
-	}
-	for i := 0; i < structValue.NumField(); i++ {
-		field := structValue.Field(i)
-		fieldType := structValue.Type().Field(i)
-		if !fieldType.IsExported() {
-			continue
-		}
-		if field.Kind() == reflect.Struct {
-			Walk(field.Addr().Interface(), callback)
-		} else if field.Kind() == reflect.Ptr && field.Elem().Kind() == reflect.Struct {
-			Walk(field.Interface(), callback)
-		} else {
-			callback(field, fieldType)
-		}
-	}
-}
-
-// expandEndVars looks for values in a struct tagged with "yaml" and checks if they are prefixed with '$'.
-// If they are, it will try to retrieve the value from the environment and if it exists, it will set the
-// value of the field to that of the environment variable.
-func expandEndVars(f reflect.Value, fieldType reflect.StructField) {
-	if _, ok := fieldType.Tag.Lookup("yaml"); !ok {
-		return
-	}
-	if f.Kind() == reflect.String {
-		str := f.String()
-		if strings.HasPrefix(str, "$") {
-			env := strings.TrimPrefix(str, "$")
-			retrievedEnv := os.Getenv(env)
-			if retrievedEnv != "" {
-				f.SetString(os.Getenv(env))
-			}
-		}
-	}
-}
-
-func init() {
-	HideAutoSaveMsg = env.GetEnvOrDefault("DISABLE_CLOUD_UPLOAD_WRN", false)
-	EnableCloudUpload = env.GetEnvOrDefault("ENABLE_CLOUD_UPLOAD", false)
 }

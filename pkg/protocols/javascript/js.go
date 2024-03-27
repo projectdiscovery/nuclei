@@ -32,8 +32,8 @@ import (
 	templateTypes "github.com/projectdiscovery/nuclei/v3/pkg/templates/types"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	errorutil "github.com/projectdiscovery/utils/errors"
+	syncutil "github.com/projectdiscovery/utils/sync"
 	urlutil "github.com/projectdiscovery/utils/url"
-	"github.com/remeh/sizedwaitgroup"
 )
 
 // Request is a request for the javascript protocol
@@ -108,7 +108,7 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 			return errors.Wrap(err, "could not parse payloads")
 		}
 		// default to 20 threads for payload requests
-		request.Threads = options.GetThreadsForNPayloadRequests(request.Requests(), request.Threads)
+		request.Threads = options.CruiseControl.DeprecatedPayload(request.Requests(), request.Threads)
 	}
 
 	if len(request.Matchers) > 0 || len(request.Extractors) > 0 {
@@ -404,7 +404,7 @@ func (request *Request) executeRequestParallel(ctxParent context.Context, hostPo
 	requestOptions := request.options
 	gotmatches := &atomic.Bool{}
 
-	sg := sizedwaitgroup.New(threads)
+	sg, _ := syncutil.New(syncutil.WithSize(threads))
 	if request.generator != nil {
 		iterator := request.generator.NewIterator()
 		for {

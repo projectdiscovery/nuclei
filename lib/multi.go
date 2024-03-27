@@ -1,9 +1,6 @@
 package nuclei
 
 import (
-	"context"
-	"time"
-
 	"github.com/logrusorgru/aurora"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/loader"
 	"github.com/projectdiscovery/nuclei/v3/pkg/core"
@@ -12,7 +9,6 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
-	"github.com/projectdiscovery/ratelimit"
 	errorutil "github.com/projectdiscovery/utils/errors"
 )
 
@@ -34,19 +30,12 @@ func createEphemeralObjects(base *NucleiEngine, opts *types.Options) (*unsafeOpt
 		Progress:        base.customProgress,
 		Catalog:         base.catalog,
 		IssuesClient:    base.rc,
-		RateLimiter:     base.rateLimiter,
+		CruiseControl:   base.cruiseControl,
 		Interactsh:      base.interactshClient,
 		HostErrorsCache: base.hostErrCache,
 		Colorizer:       aurora.NewAurora(true),
 		ResumeCfg:       types.NewResumeCfg(),
 		Parser:          base.parser,
-	}
-	if opts.RateLimitMinute > 0 {
-		u.executerOpts.RateLimiter = ratelimit.New(context.Background(), uint(opts.RateLimitMinute), time.Minute)
-	} else if opts.RateLimit > 0 {
-		u.executerOpts.RateLimiter = ratelimit.New(context.Background(), uint(opts.RateLimit), time.Second)
-	} else {
-		u.executerOpts.RateLimiter = ratelimit.NewUnlimited(context.Background())
 	}
 	u.engine = core.New(opts)
 	u.engine.SetExecuterOptions(u.executerOpts)

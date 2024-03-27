@@ -80,8 +80,9 @@ func newHttpClient(options *types.Options) (*http.Client, error) {
 
 	httpclient := &http.Client{
 		Transport: transport,
-		Timeout:   time.Duration(options.Timeout*3) * time.Second,
-		Jar:       jar,
+		// todo: replace with cruise control
+		Timeout: time.Duration(options.Timeout*3) * time.Second,
+		Jar:     jar,
 		CheckRedirect: func(req *http.Request, via []*http.Request) error {
 			// the browser should follow redirects not us
 			return http.ErrUseLastResponse
