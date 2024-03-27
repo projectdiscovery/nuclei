@@ -4,6 +4,7 @@ import (
 	"context"
 	"strings"
 
+	"github.com/projectdiscovery/nuclei/v3/pkg/fuzz/dataformat"
 	"github.com/projectdiscovery/retryablehttp-go"
 )
 
@@ -40,22 +41,24 @@ func (q *Header) Parse(req *retryablehttp.Request) (bool, error) {
 		}
 		parsedHeaders[key] = value
 	}
-	q.value.SetParsed(parsedHeaders, "")
+	q.value.SetParsed(dataformat.KVMap(parsedHeaders), "")
 	return true, nil
 }
 
 // Iterate iterates through the component
-func (q *Header) Iterate(callback func(key string, value interface{}) error) error {
-	for key, value := range q.value.Parsed() {
+func (q *Header) Iterate(callback func(key string, value interface{}) error) (errx error) {
+	q.value.parsed.Iterate(func(key string, value any) bool {
 		// Skip ignored headers
 		if _, ok := defaultIgnoredHeaderKeys[key]; ok {
-			continue
+			return ok
 		}
 		if err := callback(key, value); err != nil {
-			return err
+			errx = err
+			return false
 		}
-	}
-	return nil
+		return true
+	})
+	return
 }
 
 // SetValue sets a value in the component
@@ -79,22 +82,23 @@ func (q *Header) Delete(key string) error {
 // component rebuilt
 func (q *Header) Rebuild() (*retryablehttp.Request, error) {
 	cloned := q.req.Clone(context.Background())
-	for key, value := range q.value.parsed {
+	q.value.parsed.Iterate(func(key string, value any) bool {
 		if strings.EqualFold(key, "Host") {
-			cloned.Host = value.(string)
+			return true
 		}
-		switch v := value.(type) {
-		case []interface{}:
+		if vx, ok := IsTypedSlice(value); ok {
+			// convert to []interface{}
+			value = vx
+		}
+		if v, ok := value.([]interface{}); ok {
 			for _, vv := range v {
-				if cloned.Header[key] == nil {
-					cloned.Header[key] = make([]string, 0)
-				}
-				cloned.Header[key] = append(cloned.Header[key], vv.(string))
+				cloned.Header.Add(key, vv.(string))
 			}
-		case string:
-			cloned.Header[key] = []string{v}
+			return true
 		}
-	}
+		cloned.Header.Set(key, value.(string))
+		return true
+	})
 	return cloned, nil
 }
 
