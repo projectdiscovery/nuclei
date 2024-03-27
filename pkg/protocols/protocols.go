@@ -113,29 +113,11 @@ type ExecutorOptions struct {
 	// JsCompiler is abstracted javascript compiler which adds node modules and provides execution
 	// environment for javascript templates
 	JsCompiler *compiler.Compiler
-	// Optional Callback function to update Thread count in payloads across all protocols
-	// based on given logic. by default nuclei reverts to using value of `-c` when threads count
-	// is not specified or is 0 in template
-	OverrideThreadsCount PayloadThreadSetterCallback
 	// AuthProvider is a provider for auth strategies
 	AuthProvider authprovider.AuthProvider
 	//TemporaryDirectory is the directory to store temporary files
 	TemporaryDirectory string
 	Parser             parser.Parser
-}
-
-// GetThreadsForPayloadRequests returns the number of threads to use as default for
-// given max-request of payloads
-// todo: replace with cruisecontrol
-func (e *ExecutorOptions) GetThreadsForNPayloadRequests(totalRequests int, currentThreads int) int {
-	if e.OverrideThreadsCount != nil {
-		return e.OverrideThreadsCount(e, totalRequests, currentThreads)
-	}
-	if currentThreads > 0 {
-		return currentThreads
-	} else {
-		return e.Options.PayloadConcurrency
-	}
 }
 
 // CreateTemplateCtxStore creates template context store (which contains templateCtx for every scan)

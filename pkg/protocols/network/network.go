@@ -229,7 +229,7 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 			return errors.Wrap(err, "could not parse payloads")
 		}
 		// if we have payloads, adjust threads if none specified
-		request.Threads = options.GetThreadsForNPayloadRequests(request.Requests(), request.Threads)
+		request.Threads = options.CruiseControl.DeprecatedPayload(request.Requests(), request.Threads)
 	}
 
 	// Create a client for the class

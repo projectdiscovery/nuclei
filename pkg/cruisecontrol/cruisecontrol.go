@@ -83,6 +83,14 @@ func (c *CruiseControl) Payload() int {
 	return c.Settings.TemplatePayload
 }
 
+func (c *CruiseControl) DeprecatedPayload(totalRequests, currentThreads int) int {
+	if currentThreads > 0 {
+		return currentThreads
+	} else {
+		return c.Settings.TemplatePayload
+	}
+}
+
 func (c *CruiseControl) Close() {
 	if c.RateLimiter != nil {
 		c.RateLimiter.Stop()
