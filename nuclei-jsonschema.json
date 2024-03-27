@@ -197,6 +197,7 @@
           "title": "name of the template",
           "description": "Name should be good short summary that identifies what the template does",
           "examples": [
+            "Nagios Default Credentials Check",
             "example-template",
             "TeamCity - Authentication Bypass"
           ]
@@ -248,6 +249,7 @@
           "title": "description of the template",
           "description": "Description of the template.\nYou can go in-depth here on what the template actually does.\nExample:\nApache Log4j2 \u003c=2.14.1 JNDI features used in configuration, log messages, and parameters do not protect against attacker controlled LDAP and other JNDI related endpoints. An attacker who can control log messages or log message parameters can execute arbitrary code loaded from LDAP servers when message lookup substitution is enabled.",
           "examples": [
+            "Bower is a package manager which stores package information in the bower.json file",
             "Example description of the template"
           ]
         },
@@ -256,6 +258,7 @@
           "title": "impact of the template",
           "description": "Impact of the template.\nYou can go in-depth here on impact of the template.\nExample:\nSuccessful exploitation of this vulnerability can lead to remote code execution, potentially compromising the affected system.",
           "examples": [
+            "Successful exploitation of this vulnerability could allow an attacker to execute arbitrary SQL queries",
             "Impact of the template"
           ]
         },
@@ -786,13 +789,107 @@
       ]
     },
     "Template": {
+      "anyOf": [
+        {
+          "required": [
+            "id",
+            "info",
+            "http"
+          ]
+        },
+        {
+          "required": [
+            "id",
+            "info",
+            "dns"
+          ]
+        },
+        {
+          "required": [
+            "id",
+            "info",
+            "file"
+          ]
+        },
+        {
+          "required": [
+            "id",
+            "info",
+            "tcp"
+          ]
+        },
+        {
+          "required": [
+            "id",
+            "info",
+            "headless"
+          ]
+        },
+        {
+          "required": [
+            "id",
+            "info",
+            "ssl"
+          ]
+        },
+        {
+          "required": [
+            "id",
+            "info",
+            "websocket"
+          ]
+        },
+        {
+          "required": [
+            "id",
+            "info",
+            "whois"
+          ]
+        },
+        {
+          "required": [
+            "id",
+            "info",
+            "code"
+          ]
+        },
+        {
+          "required": [
+            "id",
+            "info",
+            "javascript"
+          ]
+        },
+        {
+          "required": [
+            "id",
+            "info",
+            "requests"
+          ]
+        },
+        {
+          "required": [
+            "id",
+            "info",
+            "network"
+          ]
+        },
+        {
+          "required": [
+            "workflows"
+          ]
+        }
+      ],
       "properties": {
         "id": {
           "type": "string",
           "pattern": "^([a-zA-Z0-9]+[-_])*[a-zA-Z0-9]+$",
           "title": "id of the template",
-          "description": "The Unique ID for the template",
+          "description": "ID is the unique id for the template.\n ### Good IDs \nA good ID uniquely identifies what the requests in the template\nare doing. Let's say you have a template that identifies a git-config\nfile on the webservers, a good name would be `git-config-exposure`. Another\nexample name is `azure-apps-nxdomain-takeover`",
           "examples": [
+            "example-id",
+            "git-config-exposure",
+            "azure-apps-nxdomain-takeover",
             "cve-2021-19520"
           ]
         },
@@ -800,14 +897,16 @@
           "$ref": "#/$defs/Info",
           "type": "object",
           "title": "info for the template",
-          "description": "Info contains metadata for the template"
+          "description": "Info contains the required metadata information about the template\nIt is meant to provide basic but necessary info like name, author , severity\nalong with many other optional fields like metadata, classification etc\nNote: - \nFor a template to be valid name,author,severity of `info` section must be set"
         },
         "flow": {
           "type": "string",
           "title": "template execution flow in js",
-          "description": "Flow contains js code which defines how the template should be executed",
+          "description": "Flow describes how multiple request-blocks/protocols should be combined together and executed\nIt is a javascript code where each protocol is a function and all request-blocks are indexed by their corresponding index in request array\nExample: \n flow: http(1) \u0026\u0026 http(2)\n means that second http request will be executed only if first http request is successful (aka matched)",
           "examples": [
-            "'flow: http(0) \u0026\u0026 http(1)'"
+            "'flow: http(0) \u0026\u0026 http(1)'",
+            "http(1) \u0026\u0026 http(2)",
+            " | # example-vhost-enum\n\tssl(); // -\u003e  execute all ssl protocol requests\n\tdns(); // -\u003e  execute all dns protocol requests\n\tfor (let got of template.domains) { // -\u003e  iterate over 'domains' array variable\n\t\tset('vhost', got); // -\u003e  set 'vhost' variable to current domain\n\t\thttp(); // -\u003e  execute all http protocol requests\n\t}\n"
           ]
         },
         "requests": {
@@ -816,7 +915,8 @@
           },
           "type": "array",
           "title": "http requests to make",
-          "description": "HTTP requests to make for the template"
+          "description": "HTTP requests to make for the template",
+          "deprecated": true
         },
         "http": {
           "items": {
@@ -848,7 +948,8 @@
           },
           "type": "array",
           "title": "network requests to make",
-          "description": "Network requests to make for the template"
+          "description": "Network requests to make for the template",
+          "deprecated": true
         },
         "tcp": {
           "items": {
@@ -917,28 +1018,43 @@
         "self-contained": {
           "type": "boolean",
           "title": "mark requests as self-contained",
-          "description": "Mark Requests for the template as self-contained"
+          "description": "Self-contained marks all requests in this template as independent of input which means input/target is not required for execution of template\nbut other variables defined in template need to be explicitly set using -V flag\nDefault value is false\nNote: self-contained templates only run once regardless of how many targets where provided to nuclei\nExample: \n```yaml\nself-contained: true\n```\nFull example template of self-contained is available at https://cloud.projectdiscovery.io/public/aws-app-enum",
+          "default": false,
+          "examples": [
+            true
+          ]
         },
         "stop-at-first-match": {
           "type": "boolean",
           "title": "stop at first match",
-          "description": "Stop at first match for the template"
+          "description": "stop-at-first-match stops the execution of template as soon as first match/result was found in a template given that template was sending multiple requests\nthis is required in case of default-login , brute-force and even detection templates where multiple requests are sent from template but we want to exit as soon as first match/result was found\nExample: \n```yaml\nstop-at-first-match: true\n```\nFull example template of stop-at-first-match is available at https://cloud.projectdiscovery.io/public/bitbucket-public-repository",
+          "default": false,
+          "examples": [
+            true
+          ]
         },
         "signature": {
           "$ref": "#/$defs/SignatureTypeHolder",
           "title": "signature is the http request signature method",
-          "description": "Signature is the HTTP Request signature Method"
+          "description": "Signature is the HTTP Request signature Method",
+          "deprecated": true
         },
         "variables": {
-          "$ref": "#/$defs/Variable",
           "type": "object",
           "title": "variables for the http request",
-          "description": "Variables contains any variables for the current request"
+          "description": "Variables are the global variables that once defined here can be used anywhere in the template\nVariables are evaluated in the order they are defined so one variable can be referenced in another variable\nVariables are evaluated before sending every requests so one can reference any variables that are available at runtime and they will be evaluate and used when referenced\nExample: \n```yaml\nvariables:\n  oast: {{interact-sh}}\n  payload: \"{{base64(oast)}}\"\n```\nFull example template of variables is available at https://cloud.projectdiscovery.io/public/screenshot\nNote: -\nThese variables can be overridden by -V flag at runtime if needed",
+          "examples": [
+            "\n\tdomain: \"{{FQDN}}\"\n\temail: pdteam@{{domain}}",
+            "\n\toast: \"{{interact-sh}}\"\n\tpayload: \"{{base64(oast)}}\""
+          ]
         },
         "constants": {
           "type": "object",
           "title": "constant for the template",
-          "description": "constants contains any constant for the template"
+          "description": "Constants are the global constants that once defined here can be used anywhere in the template\nIt can be used in same way as variables but only difference is that constants cannot be overridden by -V flag at runtime\nExample: \n```yaml\nconstants:\n  exploit: 'x0x0x0x0x0x0x\n```",
+          "examples": [
+            "\n\texploit: 'x0x0x0x0x0x0x"
+          ]
         }
       },
       "additionalProperties": false,
