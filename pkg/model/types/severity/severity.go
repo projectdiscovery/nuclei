@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"strings"
 
-	"github.com/alecthomas/jsonschema"
+	"github.com/invopop/jsonschema"
 	"github.com/pkg/errors"
 )
 
@@ -71,16 +71,18 @@ type Holder struct {
 	Severity Severity `mapping:"true"`
 }
 
-func (severityHolder Holder) JSONSchemaType() *jsonschema.Type {
-	gotType := &jsonschema.Type{
+// Implement a jsonschema for the severity holder
+func (severityHolder Holder) JSONSchema() *jsonschema.Schema {
+	enums := []interface{}{}
+	for _, severity := range GetSupportedSeverities() {
+		enums = append(enums, severity.String())
+	}
+	return &jsonschema.Schema{
 		Type:        "string",
 		Title:       "severity of the template",
 		Description: "Seriousness of the implications of the template",
+		Enum:        enums,
 	}
-	for _, severity := range GetSupportedSeverities() {
-		gotType.Enum = append(gotType.Enum, severity.String())
-	}
-	return gotType
 }
 
 func (severityHolder *Holder) UnmarshalYAML(unmarshal func(interface{}) error) error {

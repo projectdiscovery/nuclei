@@ -8,7 +8,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/alecthomas/jsonschema"
+	"github.com/invopop/jsonschema"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/templates"
 )
@@ -32,11 +32,7 @@ func main() {
 	}
 
 	// Generate jsonschema
-	r := &jsonschema.Reflector{
-		PreferYAMLSchema:      true,
-		YAMLEmbeddedStructs:   true,
-		FullyQualifyTypeNames: true,
-	}
+	r := &jsonschema.Reflector{}
 	jsonschemaData := r.Reflect(&templates.Template{})
 
 	var buf bytes.Buffer
