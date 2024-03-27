@@ -5,13 +5,13 @@ import (
 	"sync/atomic"
 
 	"github.com/projectdiscovery/gologger"
+	"github.com/projectdiscovery/nuclei/v3/pkg/cruisecontrol"
 	"github.com/projectdiscovery/nuclei/v3/pkg/input/provider"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
 	"github.com/projectdiscovery/nuclei/v3/pkg/scan"
 	"github.com/projectdiscovery/nuclei/v3/pkg/templates"
 	"github.com/projectdiscovery/nuclei/v3/pkg/templates/types"
 	generalTypes "github.com/projectdiscovery/nuclei/v3/pkg/types"
-	syncutil "github.com/projectdiscovery/utils/sync"
 )
 
 // Executors are low level executors that deals with template execution on a target
@@ -158,14 +158,14 @@ func (e *Engine) executeTemplatesOnTarget(alltemplates []*templates.Template, ta
 	wp := e.GetWorkPool()
 
 	for _, tpl := range alltemplates {
-		var sg *syncutil.AdaptiveWaitGroup
+		var sg *cruisecontrol.CruiseControlPool
 		if tpl.Type() == types.HeadlessProtocol {
 			sg = wp.Headless
 		} else {
 			sg = wp.Default
 		}
 		sg.Add()
-		go func(template *templates.Template, value *contextargs.MetaInput, wg *syncutil.AdaptiveWaitGroup) {
+		go func(template *templates.Template, value *contextargs.MetaInput, wg *cruisecontrol.CruiseControlPool) {
 			defer wg.Done()
 
 			var match bool
@@ -213,7 +213,7 @@ func (e *ChildExecuter) Close() *atomic.Bool {
 func (e *ChildExecuter) Execute(template *templates.Template, value *contextargs.MetaInput) {
 	templateType := template.Type()
 
-	var wg *syncutil.AdaptiveWaitGroup
+	var wg *cruisecontrol.CruiseControlPool
 	if templateType == types.HeadlessProtocol {
 		wg = e.e.workPool.Headless
 	} else {

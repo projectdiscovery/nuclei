@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/projectdiscovery/ratelimit"
+	syncutil "github.com/projectdiscovery/utils/sync"
 )
 
 type Options struct {
@@ -36,7 +37,7 @@ type Duration struct {
 }
 
 type CruiseControl struct {
-	options     Options
+	Settings    Options
 	RateLimiter *ratelimit.Limiter
 }
 
@@ -47,25 +48,72 @@ func New(options Options) (*CruiseControl, error) {
 	} else {
 		rateLimiter = ratelimit.New(context.Background(), uint(options.RateLimit.MaxTokens), options.RateLimit.Duration)
 	}
-	return &CruiseControl{options: options, RateLimiter: rateLimiter}, nil
+	return &CruiseControl{Settings: options, RateLimiter: rateLimiter}, nil
 }
 
 func (c *CruiseControl) Standard() TypeOptions {
-	return c.options.Standard
+	return c.Settings.Standard
 }
 
 func (c *CruiseControl) Headless() TypeOptions {
-	return c.options.Headless
+	return c.Settings.Headless
+}
+
+func (c *CruiseControl) HeadlessTemplates() int {
+	return c.Settings.Headless.Concurrency.Templates
+}
+
+func (c *CruiseControl) HeadlessHosts() int {
+	return c.Settings.Headless.Concurrency.Hosts
+}
+
+func (c *CruiseControl) StandardTemplates() int {
+	return c.Settings.Standard.Concurrency.Templates
+}
+
+func (c *CruiseControl) StandardHosts() int {
+	return c.Settings.Standard.Concurrency.Hosts
 }
 
 func (c *CruiseControl) Javascript() int {
-	return c.options.JavascriptTemplates
+	return c.Settings.JavascriptTemplates
 }
 
 func (c *CruiseControl) Payload() int {
-	return c.options.TemplatePayload
+	return c.Settings.TemplatePayload
 }
 
 func (c *CruiseControl) Close() {
-	c.RateLimiter.Stop()
+	if c.RateLimiter != nil {
+		c.RateLimiter.Stop()
+		c.RateLimiter = nil
+	}
+}
+
+func (c *CruiseControl) NewPool(cruiseControlSizeFN func() int) *CruiseControlPool {
+	wg, _ := syncutil.New(syncutil.WithSize(cruiseControlSizeFN()))
+	return &CruiseControlPool{CruiseControlSizeFN: cruiseControlSizeFN, WaitGroup: wg}
+}
+
+type CruiseControlPoolOption func(*CruiseControlPool) error
+
+type CruiseControlPool struct {
+	CruiseControlSizeFN func() int
+	WaitGroup           *syncutil.AdaptiveWaitGroup
+}
+
+func (ccp *CruiseControlPool) Add() {
+	size := ccp.CruiseControlSizeFN()
+	if ccp.WaitGroup.Size != size {
+		ccp.WaitGroup.Resize(size)
+	}
+	ccp.WaitGroup.Add()
+}
+
+func (ccp *CruiseControlPool) Done() {
+	ccp.WaitGroup.Done()
+}
+
+func (ccp *CruiseControlPool) Wait() {
+	ccp.WaitGroup.Wait()
 }

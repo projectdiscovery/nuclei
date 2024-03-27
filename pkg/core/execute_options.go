@@ -5,6 +5,7 @@ import (
 	"sync/atomic"
 
 	"github.com/projectdiscovery/gologger"
+	"github.com/projectdiscovery/nuclei/v3/pkg/cruisecontrol"
 	"github.com/projectdiscovery/nuclei/v3/pkg/input/provider"
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
@@ -110,7 +111,7 @@ func (e *Engine) executeTemplateSpray(templatesList []*templates.Template, targe
 	for _, template := range templatesList {
 		templateType := template.Type()
 
-		var wg *syncutil.AdaptiveWaitGroup
+		var wg *cruisecontrol.CruiseControlPool
 		if templateType == types.HeadlessProtocol {
 			wg = wp.Headless
 		} else {
