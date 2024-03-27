@@ -6,9 +6,23 @@ import (
 	"strings"
 
 	"github.com/invopop/jsonschema"
-
 	"github.com/projectdiscovery/nuclei/v3/pkg/utils"
 )
+
+type StringOrSlice string
+
+func (StringOrSlice) JSONSchema() *jsonschema.Schema {
+	return &jsonschema.Schema{
+		OneOf: []*jsonschema.Schema{
+			{
+				Type: "string",
+			},
+			{
+				Type: "array",
+			},
+		},
+	}
+}
 
 // StringSlice represents a single (in-lined) or multiple string value(s).
 // The unmarshaller does not automatically convert in-lined strings to []string, hence the interface{} type is required.
@@ -16,13 +30,13 @@ type StringSlice struct {
 	Value interface{}
 }
 
-func New(value interface{}) StringSlice {
-	return StringSlice{Value: value}
+// Implement alias for stringslice and reuse it everywhere
+func (stringSlice StringSlice) JSONSchemaAlias() any {
+	return StringOrSlice("")
 }
 
-func (stringSlice StringSlice) JSONSchemaType() *jsonschema.Schema {
-	schema := jsonschema.Reflect(&stringSlice)
-	return schema
+func New(value interface{}) StringSlice {
+	return StringSlice{Value: value}
 }
 
 func (stringSlice *StringSlice) IsEmpty() bool {
