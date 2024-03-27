@@ -47,4 +47,8 @@ fuzzplayground:
 memogen:
 	$(GOBUILD) $(GOFLAGS) -ldflags '$(LDFLAGS)' -o "memogen" cmd/memogen/memogen.go
 	./memogen -src pkg/js/libs -tpl cmd/memogen/function.tpl
+genschema:
+	rm -f nuclei-jsonschema.json docgen 2>/dev/null
+	$(GOBUILD) $(GOFLAGS) -ldflags '$(LDFLAGS)' -o "docgen" cmd/docgen/docgen.go
+	./docgen /dev/null nuclei-jsonschema.json
 
