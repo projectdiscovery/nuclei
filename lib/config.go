@@ -376,10 +376,18 @@ func LoadSecretsFromFile(files []string, prefetch bool) NucleiSDKOptions {
 	}
 }
 
-// EnableFuzzTemplates allows enabling template fuzzing
-func EnableFuzzTemplates() NucleiSDKOptions {
+// DASTMode only run DAST templates
+func DASTMode() NucleiSDKOptions {
 	return func(e *NucleiEngine) error {
-		e.opts.FuzzTemplates = true
+		e.opts.DAST = true
+		return nil
+	}
+}
+
+// SignedTemplatesOnly only run signed templates and disabled loading all unsigned templates
+func SignedTemplatesOnly() NucleiSDKOptions {
+	return func(e *NucleiEngine) error {
+		e.opts.DisableUnsignedTemplates = true
 		return nil
 	}
 }

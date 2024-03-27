@@ -135,6 +135,12 @@ func (variables *Variable) checkForLazyEval() bool {
 				return
 			}
 		}
+		// this is a hotfix and not the best way to do it
+		// will be refactored once we move scan state to scanContext (see: https://github.com/projectdiscovery/nuclei/issues/4631)
+		if strings.Contains(types.ToString(value), "interactsh-url") {
+			variables.LazyEval = true
+			return
+		}
 	})
 	return variables.LazyEval
 }

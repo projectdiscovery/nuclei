@@ -102,6 +102,14 @@ func (q *Header) Rebuild() (*retryablehttp.Request, error) {
 	return cloned, nil
 }
 
+// Clones current state of this component
+func (q *Header) Clone() Component {
+	return &Header{
+		value: q.value.Clone(),
+		req:   q.req.Clone(context.Background()),
+	}
+}
+
 // A list of headers that are essential to the request and
 // must not be fuzzed.
 var defaultIgnoredHeaderKeys = map[string]struct{}{

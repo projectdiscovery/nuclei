@@ -46,6 +46,8 @@ type Component interface {
 	// Rebuild returns a new request with the
 	// component rebuilt
 	Rebuild() (*retryablehttp.Request, error)
+	// Clones current state of this component
+	Clone() Component
 }
 
 const (

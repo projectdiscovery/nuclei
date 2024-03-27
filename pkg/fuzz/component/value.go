@@ -36,6 +36,15 @@ func NewValue(data string) *Value {
 	return v
 }
 
+// Clones current state of this value
+func (v *Value) Clone() *Value {
+	return &Value{
+		data:       v.data,
+		parsed:     v.parsed.Clone(),
+		dataFormat: v.dataFormat,
+	}
+}
+
 // String returns the string representation of the value
 func (v *Value) String() string {
 	return v.data
