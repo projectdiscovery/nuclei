@@ -32,7 +32,9 @@ func main() {
 	}
 
 	// Generate jsonschema
-	r := &jsonschema.Reflector{}
+	r := &jsonschema.Reflector{
+		BaseSchemaID: jsonschema.ID("https://nuclei.projectdiscovery.io/"),
+	}
 	jsonschemaData := r.Reflect(&templates.Template{})
 
 	var buf bytes.Buffer

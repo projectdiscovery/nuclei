@@ -50,7 +50,10 @@ var templateMetadata = []schema.PropertyMetadata{
 	},
 	{
 		PropName:   "signature",
+		RemoveRef:  true,
+		PropType:   "string",
 		Deprecated: true,
+		Example:    schema.PropertyExample("aws"),
 	},
 	{
 		PropName: "self-contained",
@@ -131,13 +134,62 @@ var templateMetadata = []schema.PropertyMetadata{
 			"Example: ",
 			"```yaml",
 			"constants:",
-			`  exploit: 'x0x0x0x0x0x0x`,
+			`  exploit: 'x0x0x0x0x0x0x'`,
 			"```",
 		),
 		Example: schema.PropertyExample(
 			schema.MultiLine(
-				"\n\texploit: 'x0x0x0x0x0x0x",
+				"\n\texploit: 'x0x0x0x0x0x0x'",
 			),
+		),
+	},
+	{
+		PropName: "http",
+		Description: schema.MultiLine(
+			"HTTP is the protocol block for sending HTTP requests",
+			"It is of array type and can contain multiple requests",
+			"Example: ",
+			"```yaml",
+			"http: ",
+			"\t-method: GET",
+			"\t\tpath:",
+			"\t\t  - \"{{BaseURL}}\"",
+			"\t\t",
+			"\t\tmatchers:",
+			"\t\t  - type: status",
+			"\t\t    status:",
+			"\t\t      - 200",
+			"```",
+		),
+		Example: schema.PropertyExample(
+			schema.MultiLine(
+				"\n\t-method: GET",
+				"\t\tpath:",
+				"\t\t  - \"{{BaseURL}}\"",
+				"\t\t",
+				"\t\tmatchers:",
+				"\t\t  - type: status",
+				"\t\t    status:",
+				"\t\t      - 200",
+			),
+		),
+	},
+	{
+		PropName: "requests",
+		Description: schema.MultiLine(
+			"HTTP is the protocol block for sending HTTP requests",
+			"It is of array type and can contain multiple requests",
+			"Example: ",
+			"```yaml",
+			"method: GET",
+			"path:",
+			"  - \"{{BaseURL}}\"",
+			"",
+			"matchers:",
+			"  - type: status",
+			"    status:",
+			"      - 200",
+			"```",
 		),
 	},
 }
@@ -163,6 +215,3 @@ var templateAnyOfRequired = []schema.RequiredCombos{
 	),
 	schema.Require("workflows"),
 }
-
-// contains examples for template
-var templateExamples = schema.PropertyExamples()

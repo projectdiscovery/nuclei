@@ -51,16 +51,17 @@ type SignatureTypeHolder struct {
 	Value SignatureType
 }
 
-func (holder SignatureTypeHolder) JSONSchemaType() *jsonschema.Schema {
-	gotType := &jsonschema.Schema{
+func (signature SignatureTypeHolder) JSONSchema() *jsonschema.Schema {
+	enums := []interface{}{}
+	for _, severity := range GetSupportedSignaturesTypes() {
+		enums = append(enums, severity.String())
+	}
+	return &jsonschema.Schema{
 		Type:        "string",
 		Title:       "type of the signature",
 		Description: "Type of the signature",
+		Enum:        enums,
 	}
-	for _, types := range GetSupportedSignaturesTypes() {
-		gotType.Enum = append(gotType.Enum, types.String())
-	}
-	return gotType
 }
 
 func (holder *SignatureTypeHolder) UnmarshalYAML(unmarshal func(interface{}) error) error {

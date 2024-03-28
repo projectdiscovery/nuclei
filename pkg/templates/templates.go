@@ -64,7 +64,7 @@ type Template struct {
 	//		    http(1)
 	//		 }
 	//
-	Flow string `yaml:"flow,omitempty" json:"flow,omitempty" jsonschema:"title=template execution flow in js,description=Flow contains js code which defines how the template should be executed,type=string,example='flow: http(0) && http(1)'"`
+	Flow string `yaml:"flow,omitempty" json:"flow,omitempty" jsonschema:"title=template execution flow in js,description=Flow contains js code which defines how the template should be executed,type=string"`
 	// description: |
 	//   Requests contains the http request to make in the template.
 	//   WARNING: 'requests' will be deprecated and will be removed in a future release. Please use 'http' instead.
@@ -164,7 +164,6 @@ type Template struct {
 }
 
 func (template Template) JSONSchemaExtend(base *jsonschema.Schema) {
-	base.Examples = templateExamples
 	schema.ExtendSchema(templateMetadata, base)
 	schema.ApplyAnyOfRequired(templateAnyOfRequired, base)
 }
