@@ -224,7 +224,6 @@ type Request struct {
 
 // JSONSchemaExtend extends json schema definations from struct
 func (Request) JSONSchemaExtend(base *jsonschema.Schema) {
-	base.Examples = httpRequestExamples
 	schema.ExtendSchema(httpRequestMetadata, base)
 	schema.ApplyAnyOfRequired(httpRequestAnyOfRequired, base)
 }

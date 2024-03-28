@@ -1,170 +1,166 @@
 {
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://nuclei.projectdiscovery.io/template",
-  "$ref": "#/$defs/Template",
   "$defs": {
     "AttackTypeHolder": {
-      "type": "string",
       "enum": [
         "batteringram",
         "pitchfork",
         "clusterbomb"
       ],
+      "markdownDescription": "Attack is the type of payload combinations to perform",
       "title": "attack is the payload combination",
-      "description": "Attack is the type of payload combinations to perform"
+      "type": "string"
     },
     "Classification": {
+      "additionalProperties": false,
       "properties": {
+        "cpe": {
+          "examples": [
+            "cpe:/a:vendor:product:version"
+          ],
+          "markdownDescription": "CPE for the template",
+          "title": "cpe for the template",
+          "type": "string"
+        },
         "cve-id": {
           "$ref": "#/$defs/StringOrSlice",
-          "title": "cve ids for the template",
-          "description": "CVE IDs for the template"
+          "markdownDescription": "CVE IDs for the template",
+          "title": "cve ids for the template"
+        },
+        "cvss-metrics": {
+          "examples": [
+            "3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H"
+          ],
+          "markdownDescription": "CVSS Metrics for the template",
+          "title": "cvss metrics for the template",
+          "type": "string"
+        },
+        "cvss-score": {
+          "examples": [
+            9.8
+          ],
+          "markdownDescription": "CVSS Score for the template",
+          "title": "cvss score for the template",
+          "type": "number"
         },
         "cwe-id": {
           "$ref": "#/$defs/StringOrSlice",
-          "title": "cwe ids for the template",
-          "description": "CWE IDs for the template"
-        },
-        "cvss-metrics": {
-          "type": "string",
-          "title": "cvss metrics for the template",
-          "description": "CVSS Metrics for the template",
-          "examples": [
-            "3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H"
-          ]
-        },
-        "cvss-score": {
-          "type": "number",
-          "title": "cvss score for the template",
-          "description": "CVSS Score for the template",
-          "examples": [
-            9.8
-          ]
-        },
-        "epss-score": {
-          "type": "number",
-          "title": "epss score for the template",
-          "description": "EPSS Score for the template",
-          "examples": [
-            0.42509
-          ]
+          "markdownDescription": "CWE IDs for the template",
+          "title": "cwe ids for the template"
         },
         "epss-percentile": {
-          "type": "number",
-          "title": "epss percentile for the template",
-          "description": "EPSS Percentile for the template",
           "examples": [
             0.42509
-          ]
+          ],
+          "markdownDescription": "EPSS Percentile for the template",
+          "title": "epss percentile for the template",
+          "type": "number"
         },
-        "cpe": {
-          "type": "string",
-          "title": "cpe for the template",
-          "description": "CPE for the template",
+        "epss-score": {
           "examples": [
-            "cpe:/a:vendor:product:version"
-          ]
+            0.42509
+          ],
+          "markdownDescription": "EPSS Score for the template",
+          "title": "epss score for the template",
+          "type": "number"
         }
       },
-      "additionalProperties": false,
       "type": "object"
     },
     "Extractor": {
+      "additionalProperties": false,
       "properties": {
-        "name": {
-          "type": "string",
-          "title": "name of the extractor",
-          "description": "Name of the extractor"
-        },
-        "type": {
-          "$ref": "#/$defs/ExtractorTypeHolder"
-        },
-        "regex": {
-          "items": {
-            "type": "string"
-          },
-          "type": "array",
-          "title": "regex to extract from part",
-          "description": "Regex to extract from part"
-        },
-        "group": {
-          "type": "integer",
-          "title": "group to extract from regex",
-          "description": "Group to extract from regex"
-        },
-        "kval": {
-          "items": {
-            "type": "string"
-          },
-          "type": "array",
-          "title": "kval pairs to extract from response",
-          "description": "Kval pairs to extract from response"
-        },
-        "json": {
-          "items": {
-            "type": "string"
-          },
-          "type": "array",
-          "title": "json jq expressions to extract data",
-          "description": "JSON JQ expressions to evaluate from response part"
-        },
-        "xpath": {
-          "items": {
-            "type": "string"
-          },
-          "type": "array",
-          "title": "html xpath expressions to extract data",
-          "description": "XPath allows using xpath expressions to extract items from html response"
-        },
         "attribute": {
-          "type": "string",
+          "markdownDescription": "Optional attribute to extract from response XPath",
           "title": "optional attribute to extract from xpath",
-          "description": "Optional attribute to extract from response XPath"
+          "type": "string"
+        },
+        "case-insensitive": {
+          "markdownDescription": "use case insensitive extract",
+          "title": "use case insensitive extract",
+          "type": "boolean"
         },
         "dsl": {
           "items": {
             "type": "string"
           },
-          "type": "array",
+          "markdownDescription": "Optional attribute to extract from response dsl",
           "title": "dsl expressions to extract",
-          "description": "Optional attribute to extract from response dsl"
+          "type": "array"
         },
-        "part": {
-          "type": "string",
-          "title": "part of response to extract data from",
-          "description": "Part of the request response to extract data from"
+        "group": {
+          "markdownDescription": "Group to extract from regex",
+          "title": "group to extract from regex",
+          "type": "integer"
         },
         "internal": {
-          "type": "boolean",
+          "markdownDescription": "Internal when set to true will allow using the value extracted in the next request for some protocols",
           "title": "mark extracted value for internal variable use",
-          "description": "Internal when set to true will allow using the value extracted in the next request for some protocols"
+          "type": "boolean"
         },
-        "case-insensitive": {
-          "type": "boolean",
-          "title": "use case insensitive extract",
-          "description": "use case insensitive extract"
+        "json": {
+          "items": {
+            "type": "string"
+          },
+          "markdownDescription": "JSON JQ expressions to evaluate from response part",
+          "title": "json jq expressions to extract data",
+          "type": "array"
+        },
+        "kval": {
+          "items": {
+            "type": "string"
+          },
+          "markdownDescription": "Kval pairs to extract from response",
+          "title": "kval pairs to extract from response",
+          "type": "array"
+        },
+        "name": {
+          "markdownDescription": "Name of the extractor",
+          "title": "name of the extractor",
+          "type": "string"
+        },
+        "part": {
+          "markdownDescription": "Part of the request response to extract data from",
+          "title": "part of response to extract data from",
+          "type": "string"
+        },
+        "regex": {
+          "items": {
+            "type": "string"
+          },
+          "markdownDescription": "Regex to extract from part",
+          "title": "regex to extract from part",
+          "type": "array"
+        },
+        "type": {
+          "$ref": "#/$defs/ExtractorTypeHolder"
+        },
+        "xpath": {
+          "items": {
+            "type": "string"
+          },
+          "markdownDescription": "XPath allows using xpath expressions to extract items from html response",
+          "title": "html xpath expressions to extract data",
+          "type": "array"
         }
       },
-      "additionalProperties": false,
-      "type": "object",
       "required": [
         "type"
-      ]
+      ],
+      "type": "object"
     },
     "ExtractorTypeHolder": {
+      "additionalProperties": false,
       "properties": {
         "ExtractorType": {
           "type": "integer"
         }
       },
-      "additionalProperties": false,
-      "type": "object",
       "required": [
         "ExtractorType"
-      ]
+      ],
+      "type": "object"
     },
     "HTTPMethodTypeHolder": {
-      "type": "string",
       "enum": [
         "GET",
         "HEAD",
@@ -178,11 +174,11 @@
         "PURGE",
         "DEBUG"
       ],
+      "markdownDescription": "Method is the HTTP Request Method",
       "title": "method is the HTTP request method",
-      "description": "Method is the HTTP Request Method"
+      "type": "string"
     },
     "Holder": {
-      "type": "string",
       "enum": [
         "info",
         "low",
@@ -191,271 +187,277 @@
         "critical",
         "unknown"
       ],
+      "markdownDescription": "Seriousness of the implications of the template",
       "title": "severity of the template",
-      "description": "Seriousness of the implications of the template"
+      "type": "string"
     },
     "Info": {
+      "additionalProperties": false,
+      "examples": [
+        "\n\tname: Example Template\n\tauthor: pdteam\n\tseverity: info\n\tdescription: This is an example template",
+        "\n\tname: example-template\n\tauthor: pdteam\n\tseverity: unknown\n\tdescription: Example description of the template\n\timpact: Impact of the template\n\treference: \n\t  - https://example.com\n\tmetadata: \n\t  max-request: 1\n\ttags: http"
+      ],
       "properties": {
+        "author": {
+          "markdownDescription": "Author is the author of the template",
+          "oneOf": [
+            {
+              "description": "Author of the template without any special characters\nIt can be a single author or comma-separated multiple authors",
+              "examples": [
+                "pdteam"
+              ],
+              "type": "string"
+            },
+            {
+              "description": "Author of the template without any special characters\nIt can be a single author or comma-separated multiple authors",
+              "examples": [
+                "pdteam,mr.robot"
+              ],
+              "type": "array"
+            }
+          ],
+          "title": "author of the template"
+        },
+        "classification": {
+          "$ref": "#/$defs/Classification",
+          "examples": [
+            "\n\tcvss-metrics: CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:C/C:H/I:H/A:H\n\tcvss-score: 10\n\tcve-id: CVE-2021-44228",
+            "\n\tcwe-id: CWE-20,CWE-917"
+          ],
+          "markdownDescription": "Classification contains classification information about the template.\nThis could be any classification information like CWE, CVE, EPSS etc.\nNote - This is autogenerated and updated regularly for CVE templates merged in projectdiscovery/nuclei-templates repository.\nExample:\n```yaml\ncvss-metrics: CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:C/C:H/I:H/A:H\ncvss-score: 10\ncve-id: CVE-2021-44228\ncwe-id: CWE-20,CWE-917\nepss-score: 0.97453\nepss-percentile: 0.99942\ncpe: cpe:2.3:a:apache:log4j:*:*:*:*:*:*:*:*\n```",
+          "title": "classification info for the template",
+          "type": "object"
+        },
+        "description": {
+          "examples": [
+            "Bower is a package manager which stores package information in the bower.json file",
+            "Example description of the template"
+          ],
+          "markdownDescription": "Description of the template.\nYou can go in-depth here on what the template actually does.\nExample:\nApache Log4j2 \u003c=2.14.1 JNDI features used in configuration, log messages, and parameters do not protect against attacker controlled LDAP and other JNDI related endpoints. An attacker who can control log messages or log message parameters can execute arbitrary code loaded from LDAP servers when message lookup substitution is enabled.",
+          "title": "description of the template",
+          "type": "string"
+        },
+        "impact": {
+          "examples": [
+            "Successful exploitation of this vulnerability could allow an attacker to execute arbitrary SQL queries",
+            "Impact of the template"
+          ],
+          "markdownDescription": "Impact of the template.\nYou can go in-depth here on impact of the template.\nExample:\nSuccessful exploitation of this vulnerability can lead to remote code execution, potentially compromising the affected system.",
+          "title": "impact of the template",
+          "type": "string"
+        },
+        "markdownDescription": {
+          "markdownDescription": "Classification contains classification information about the template.\nThis could be any classification information like CWE, CVE, EPSS etc.\nNote - This is autogenerated and updated regularly for CVE templates merged in projectdiscovery/nuclei-templates repository.\nExample:\n```yaml\ncvss-metrics: CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:C/C:H/I:H/A:H\ncvss-score: 10\ncve-id: CVE-2021-44228\ncwe-id: CWE-20,CWE-917\nepss-score: 0.97453\nepss-percentile: 0.99942\ncpe: cpe:2.3:a:apache:log4j:*:*:*:*:*:*:*:*\n```",
+          "type": "string"
+        },
+        "metadata": {
+          "examples": [
+            "\n\tmax-request: 1",
+            "\n\tmax-request: 2\n\tvendor: apache\n\tproduct: log4j2"
+          ],
+          "markdownDescription": "Optional metadata for the template.\nthis could be any useful metadata like Vendor, Product, Version, etc.\nNote - This is autogenerated and updated regularly for templates merged in projectdiscovery/nuclei-templates repository.\nExample:\n```yaml\nVendor: Apache\nProduct: Log4j2\nVersion: \u003c=2.14.1\n```",
+          "title": "additional metadata for the template",
+          "type": "object"
+        },
         "name": {
-          "type": "string",
-          "title": "name of the template",
-          "description": "Name should be good short summary that identifies what the template does",
           "examples": [
             "Nagios Default Credentials Check",
             "example-template",
             "TeamCity - Authentication Bypass"
-          ]
-        },
-        "author": {
-          "oneOf": [
-            {
-              "type": "string",
-              "description": "Author of the template without any special characters\nIt can be a single author or comma-separated multiple authors",
-              "examples": [
-                "pdteam"
-              ]
-            },
-            {
-              "type": "array",
-              "description": "Author of the template without any special characters\nIt can be a single author or comma-separated multiple authors",
-              "examples": [
-                "pdteam,mr.robot"
-              ]
-            }
           ],
-          "title": "author of the template",
-          "description": "Author is the author of the template"
+          "markdownDescription": "Name should be good short summary that identifies what the template does",
+          "title": "name of the template",
+          "type": "string"
+        },
+        "reference": {
+          "$ref": "#/$defs/StringOrSlice",
+          "examples": [
+            "\n\t- https://example.com"
+          ],
+          "markdownDescription": "References for the template.\nThis should contain links relevant to the template.\nExample:\nhttps://logging.apache.org/log4j/2.x/security.html\nhttps://nvd.nist.gov/vuln/detail/CVE-2021-44228",
+          "title": "references for the template",
+          "type": "array"
+        },
+        "remediation": {
+          "examples": [
+            "Change the default administrative username and password of Apache ActiveMQ by editing the file jetty-realm.properties"
+          ],
+          "markdownDescription": "In-depth explanation on how to fix the issues found by the template",
+          "title": "remediation steps for the template",
+          "type": "string"
+        },
+        "severity": {
+          "$ref": "#/$defs/Holder",
+          "examples": [
+            "info"
+          ],
+          "markdownDescription": "Severity of the template.\nsupported values: info, low, medium, high, critical, unknown"
         },
         "tags": {
+          "markdownDescription": "Any tags for the template",
           "oneOf": [
             {
-              "type": "string",
               "description": "Tags for the template separated by commas (No spaces)",
               "examples": [
                 "cve"
-              ]
+              ],
+              "type": "string"
             },
             {
-              "type": "array",
               "description": "Multiple tags for the template separated by commas (No spaces)",
               "examples": [
                 "cve,http",
                 "http,oast",
                 "cve2024,cve"
-              ]
+              ],
+              "type": "array"
             }
           ],
-          "title": "tags of the template",
-          "description": "Any tags for the template"
-        },
-        "description": {
-          "type": "string",
-          "title": "description of the template",
-          "description": "Description of the template.\nYou can go in-depth here on what the template actually does.\nExample:\nApache Log4j2 \u003c=2.14.1 JNDI features used in configuration, log messages, and parameters do not protect against attacker controlled LDAP and other JNDI related endpoints. An attacker who can control log messages or log message parameters can execute arbitrary code loaded from LDAP servers when message lookup substitution is enabled.",
-          "examples": [
-            "Bower is a package manager which stores package information in the bower.json file",
-            "Example description of the template"
-          ]
-        },
-        "impact": {
-          "type": "string",
-          "title": "impact of the template",
-          "description": "Impact of the template.\nYou can go in-depth here on impact of the template.\nExample:\nSuccessful exploitation of this vulnerability can lead to remote code execution, potentially compromising the affected system.",
-          "examples": [
-            "Successful exploitation of this vulnerability could allow an attacker to execute arbitrary SQL queries",
-            "Impact of the template"
-          ]
-        },
-        "reference": {
-          "$ref": "#/$defs/StringOrSlice",
-          "type": "array",
-          "title": "references for the template",
-          "description": "References for the template.\nThis should contain links relevant to the template.\nExample:\nhttps://logging.apache.org/log4j/2.x/security.html\nhttps://nvd.nist.gov/vuln/detail/CVE-2021-44228",
-          "examples": [
-            "\n\t- https://example.com"
-          ]
-        },
-        "severity": {
-          "$ref": "#/$defs/Holder",
-          "description": "Severity of the template.\nsupported values: info, low, medium, high, critical, unknown",
-          "examples": [
-            "info"
-          ]
-        },
-        "metadata": {
-          "type": "object",
-          "title": "additional metadata for the template",
-          "description": "Optional metadata for the template.\nthis could be any useful metadata like Vendor, Product, Version, etc.\nNote - This is autogenerated and updated regularly for templates merged in projectdiscovery/nuclei-templates repository.\nExample:\n```yaml\nVendor: Apache\nProduct: Log4j2\nVersion: \u003c=2.14.1\n```",
-          "examples": [
-            "\n\tmax-request: 1",
-            "\n\tmax-request: 2\n\tvendor: apache\n\tproduct: log4j2"
-          ]
-        },
-        "classification": {
-          "$ref": "#/$defs/Classification",
-          "type": "object",
-          "title": "classification info for the template",
-          "description": "Classification contains classification information about the template.\nThis could be any classification information like CWE, CVE, EPSS etc.\nNote - This is autogenerated and updated regularly for CVE templates merged in projectdiscovery/nuclei-templates repository.\nExample:\n```yaml\ncvss-metrics: CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:C/C:H/I:H/A:H\ncvss-score: 10\ncve-id: CVE-2021-44228\ncwe-id: CWE-20,CWE-917\nepss-score: 0.97453\nepss-percentile: 0.99942\ncpe: cpe:2.3:a:apache:log4j:*:*:*:*:*:*:*:*\n```",
-          "examples": [
-            "\n\tcvss-metrics: CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:C/C:H/I:H/A:H\n\tcvss-score: 10\n\tcve-id: CVE-2021-44228",
-            "\n\tcwe-id: CWE-20,CWE-917"
-          ]
-        },
-        "remediation": {
-          "type": "string",
-          "title": "remediation steps for the template",
-          "description": "In-depth explanation on how to fix the issues found by the template",
-          "examples": [
-            "Change the default administrative username and password of Apache ActiveMQ by editing the file jetty-realm.properties"
-          ]
+          "title": "tags of the template"
         }
       },
-      "additionalProperties": false,
-      "type": "object",
       "required": [
         "name",
         "author"
       ],
-      "examples": [
-        "\n\tname: Example Template\n\tauthor: pdteam\n\tseverity: info\n\tdescription: This is an example template",
-        "\n\tname: example-template\n\tauthor: pdteam\n\tseverity: unknown\n\tdescription: Example description of the template\n\timpact: Impact of the template\n\treference: \n\t  - https://example.com\n\tmetadata: \n\t  max-request: 1\n\ttags: http"
-      ]
+      "type": "object"
     },
     "Matcher": {
+      "additionalProperties": false,
       "properties": {
-        "type": {
-          "$ref": "#/$defs/MatcherTypeHolder",
-          "title": "type of matcher",
-          "description": "Type of the matcher"
-        },
-        "condition": {
-          "type": "string",
-          "enum": [
-            "and",
-            "or"
-          ],
-          "title": "condition between matcher variables",
-          "description": "Condition between the matcher variables"
-        },
-        "part": {
-          "type": "string",
-          "title": "part of response to match",
-          "description": "Part of response to match data from"
-        },
-        "negative": {
-          "type": "boolean",
-          "title": "negative specifies if match reversed",
-          "description": "Negative specifies if the match should be reversed. It will only match if the condition is not true"
-        },
-        "name": {
-          "type": "string",
-          "title": "name of the matcher",
-          "description": "Name of the matcher"
-        },
-        "status": {
-          "items": {
-            "type": "integer"
-          },
-          "type": "array",
-          "title": "status to match",
-          "description": "Status to match for the response"
-        },
-        "size": {
-          "items": {
-            "type": "integer"
-          },
-          "type": "array",
-          "title": "acceptable size for response",
-          "description": "Size is the acceptable size for the response"
-        },
-        "words": {
-          "items": {
-            "type": "string"
-          },
-          "type": "array",
-          "title": "words to match in response",
-          "description": " Words contains word patterns required to be present in the response part"
-        },
-        "regex": {
-          "items": {
-            "type": "string"
-          },
-          "type": "array",
-          "title": "regex to match in response",
-          "description": "Regex contains regex patterns required to be present in the response part"
-        },
         "binary": {
           "items": {
             "type": "string"
           },
-          "type": "array",
+          "markdownDescription": "Binary are the binary patterns required to be present in the response part",
           "title": "binary patterns to match in response",
-          "description": "Binary are the binary patterns required to be present in the response part"
+          "type": "array"
+        },
+        "case-insensitive": {
+          "markdownDescription": "use case insensitive match",
+          "title": "use case insensitive match",
+          "type": "boolean"
+        },
+        "condition": {
+          "enum": [
+            "and",
+            "or"
+          ],
+          "markdownDescription": "Condition between the matcher variables",
+          "title": "condition between matcher variables",
+          "type": "string"
         },
         "dsl": {
           "items": {
             "type": "string"
           },
-          "type": "array",
+          "markdownDescription": "DSL are the dsl expressions that will be evaluated as part of nuclei matching rules",
           "title": "dsl expressions to match in response",
-          "description": "DSL are the dsl expressions that will be evaluated as part of nuclei matching rules"
+          "type": "array"
+        },
+        "encoding": {
+          "enum": [
+            "hex"
+          ],
+          "markdownDescription": "Optional encoding for the word fields",
+          "title": "encoding for word field",
+          "type": "string"
+        },
+        "internal": {
+          "markdownDescription": "hide matcher from output",
+          "title": "hide matcher from output",
+          "type": "boolean"
+        },
+        "match-all": {
+          "markdownDescription": "match all matcher values ignoring condition",
+          "title": "match all values",
+          "type": "boolean"
+        },
+        "name": {
+          "markdownDescription": "Name of the matcher",
+          "title": "name of the matcher",
+          "type": "string"
+        },
+        "negative": {
+          "markdownDescription": "Negative specifies if the match should be reversed. It will only match if the condition is not true",
+          "title": "negative specifies if match reversed",
+          "type": "boolean"
+        },
+        "part": {
+          "markdownDescription": "Part of response to match data from",
+          "title": "part of response to match",
+          "type": "string"
+        },
+        "regex": {
+          "items": {
+            "type": "string"
+          },
+          "markdownDescription": "Regex contains regex patterns required to be present in the response part",
+          "title": "regex to match in response",
+          "type": "array"
+        },
+        "size": {
+          "items": {
+            "type": "integer"
+          },
+          "markdownDescription": "Size is the acceptable size for the response",
+          "title": "acceptable size for response",
+          "type": "array"
+        },
+        "status": {
+          "items": {
+            "type": "integer"
+          },
+          "markdownDescription": "Status to match for the response",
+          "title": "status to match",
+          "type": "array"
+        },
+        "type": {
+          "$ref": "#/$defs/MatcherTypeHolder",
+          "markdownDescription": "Type of the matcher",
+          "title": "type of matcher"
+        },
+        "words": {
+          "items": {
+            "type": "string"
+          },
+          "markdownDescription": " Words contains word patterns required to be present in the response part",
+          "title": "words to match in response",
+          "type": "array"
         },
         "xpath": {
           "items": {
             "type": "string"
           },
-          "type": "array",
+          "markdownDescription": "xpath are the XPath queries that will be evaluated against the response part of nuclei matching rules",
           "title": "xpath queries to match in response",
-          "description": "xpath are the XPath queries that will be evaluated against the response part of nuclei matching rules"
-        },
-        "encoding": {
-          "type": "string",
-          "enum": [
-            "hex"
-          ],
-          "title": "encoding for word field",
-          "description": "Optional encoding for the word fields"
-        },
-        "case-insensitive": {
-          "type": "boolean",
-          "title": "use case insensitive match",
-          "description": "use case insensitive match"
-        },
-        "match-all": {
-          "type": "boolean",
-          "title": "match all values",
-          "description": "match all matcher values ignoring condition"
-        },
-        "internal": {
-          "type": "boolean",
-          "title": "hide matcher from output",
-          "description": "hide matcher from output"
+          "type": "array"
         }
       },
-      "additionalProperties": false,
-      "type": "object",
       "required": [
         "type"
-      ]
+      ],
+      "type": "object"
     },
     "MatcherTypeHolder": {
+      "additionalProperties": false,
       "properties": {
         "MatcherType": {
           "type": "integer"
         }
       },
-      "additionalProperties": false,
-      "type": "object",
       "required": [
         "MatcherType"
-      ]
+      ],
+      "type": "object"
     },
     "OrderedMap[string,string]": {
-      "properties": {},
       "additionalProperties": false,
+      "properties": {},
       "type": "object"
     },
     "Request": {
+      "additionalProperties": false,
       "anyOf": [
         {
           "required": [
@@ -488,83 +490,173 @@
         }
       ],
       "properties": {
-        "matchers": {
-          "items": {
-            "$ref": "#/$defs/Matcher"
-          },
-          "type": "array",
-          "title": "matchers to run on response",
-          "description": "Detection mechanism to identify whether the request was successful by doing pattern matching"
+        "attack": {
+          "$ref": "#/$defs/AttackTypeHolder",
+          "examples": [
+            "batteringram",
+            "pitchfork",
+            "clusterbomb"
+          ],
+          "markdownDescription": "Attack is the type of payload combinations to perform\nbatteringram the same payload into all defined payload positions at once, pitchfork combines multiple payload sets and clusterbomb generates permutations and combinations for all payloads\nExample: \n```yaml\n- attack: clusterbomb\n```\nNote: this is only applicable when 'payloads' are defined"
+        },
+        "body": {
+          "examples": [
+            "key=value\u0026key2=value2"
+          ],
+          "markdownDescription": "Body contains the HTTP body to be sent with the request\nExample: \n```yaml\n- body: \"key=value\u0026key2=value2\"\n```",
+          "title": "body is the http request body",
+          "type": "string"
+        },
+        "cookie-reuse": {
+          "deprecated": true,
+          "examples": [
+            true
+          ],
+          "markdownDescription": "Deprecated: this is default behaviour now use disable-cookie to explicitly disable cookie reuse",
+          "title": "optional cookie reuse enable",
+          "type": "boolean"
+        },
+        "digest-password": {
+          "examples": [
+            "admin"
+          ],
+          "markdownDescription": "DigestPassword specifies the password for digest authentication\nExample: \n```yaml\n- digest-password: admin\n```",
+          "title": "specifies the password for digest authentication",
+          "type": "string"
+        },
+        "digest-username": {
+          "examples": [
+            "admin"
+          ],
+          "markdownDescription": "DigestUsername specifies the username for digest authentication\nExample: \n```yaml\n- digest-username: admin\n```",
+          "title": "specifies the username for digest authentication",
+          "type": "string"
+        },
+        "disable-cookie": {
+          "examples": [
+            true
+          ],
+          "markdownDescription": "Disable Cookie is an optional setting to disable cookie reuse for this request\nExample: \n```yaml\n- disable-cookie: true\n```",
+          "title": "optional disable cookie reuse",
+          "type": "boolean"
+        },
+        "disable-path-automerge": {
+          "examples": [
+            true
+          ],
+          "markdownDescription": "DisablePathAutomerge disables the automatic merging of path/query-params from input/target to path defined in template\nExample: \n```yaml\n- disable-path-automerge: true\n```",
+          "title": "disable auto merging of path",
+          "type": "boolean"
         },
         "extractors": {
           "items": {
             "$ref": "#/$defs/Extractor"
           },
-          "type": "array",
+          "markdownDescription": "Extractors contains the extraction mechanism for the request to identify and extract parts of the response",
           "title": "extractors to run on response",
-          "description": "Extractors contains the extraction mechanism for the request to identify and extract parts of the response"
+          "type": "array"
         },
-        "matchers-condition": {
-          "type": "string",
+        "filter": {
+          "items": {
+            "$ref": "#/$defs/Matcher"
+          },
+          "markdownDescription": "Filter is matcher-like field to check if fuzzing should be performed on this request or not",
+          "title": "filter for fuzzing",
+          "type": "array"
+        },
+        "filter-condition": {
           "enum": [
             "and",
             "or"
           ],
-          "title": "condition between the matchers",
-          "description": "Conditions between the matchers"
+          "markdownDescription": "Conditions between the filters",
+          "title": "condition between the filters",
+          "type": "string"
         },
-        "path": {
+        "fuzzing": {
           "items": {
+            "$ref": "#/$defs/Rule"
+          },
+          "markdownDescription": "Fuzzing or DAST specifies rules for fuzzing requests\nthese rules mutate the input request to generate multiple requests\nFor example, replacing all query param values with sqli payloads",
+          "title": "fuzzin rules for http fuzzing",
+          "type": "array"
+        },
+        "headers": {
+          "additionalProperties": {
             "type": "string"
           },
-          "type": "array",
-          "title": "path(s) for the http request",
-          "description": "Path contains HTTP URL[s] to be sent. Here only Path portion is generally specified and host is templatetized\nExample: \n```yaml\n- path:\n\t{{BaseURL}}/admin\n```",
           "examples": [
-            "\n\t- '{{BaseURL}}'",
-            "\n\t- '{{RootURL}}'",
-            "\n\t- '{{Hostname}}:8080/ca-cert'"
-          ]
+            "User-Agent: Mozilla/5.0",
+            "Authorization: Bearer {{token}}",
+            "X-Forwarded-For: {{Hostname}}",
+            "Origin: {{BaseURL}}",
+            "Referer: {{BaseURL}}/admin"
+          ],
+          "markdownDescription": "Headers contains the HTTP headers to be sent with the request\nExample: \n```yaml\n- headers:\n\tUser-Agent: Mozilla/5.0\n```",
+          "title": "headers to send with the http request",
+          "type": "object"
         },
-        "raw": {
-          "items": {
-            "type": "string"
-          },
-          "type": "array",
-          "description": "Raw contains HTTP Request[s] in raw or request dump format\nExample: \n- raw:\n\t- |\n\t\tGET / HTTP/1.1\n\t\tHost: {{Hostname}}\n\n\n\nNote: If input contains any path/query-params they are automerged unless explicitly disabled using 'disable-path-automerge'",
+        "host-redirects": {
           "examples": [
-            "\n# raw-get-request\n\t- |\n\t\tGET / HTTP/1.1\n\t\tHost: {{Hostname}}\n\n",
-            "\n# raw-post-request\n\t- |\n\t\tPOST / HTTP/1.1\n\t\tHost: {{Hostname}}\n\t\tContent-Type: application/json\n\t\tContent-Length: 13\n\n\n\t\t{\"key\": \"value\"}\n\n"
-          ]
+            true
+          ],
+          "markdownDescription": "HostRedirects specifies whether only redirects to the same host should be followed by the HTTP Client\nWhen set to true, only redirects to the same host are followed\nExample: \n```yaml\n- host-redirects: true\n```",
+          "title": "follow same host http redirects",
+          "type": "boolean"
         },
         "id": {
-          "type": "string",
-          "title": "id for the http request",
-          "description": "Optional ID of this HTTP Request Block\nThis is useful when calling /executing this request block in flow\nBy default, current index in the http array is used as ID\nExample: \n```yaml\n- id: wp-login\n```",
           "examples": [
             "example-http-id"
-          ]
+          ],
+          "markdownDescription": "Optional ID of this HTTP Request Block\nThis is useful when calling /executing this request block in flow\nBy default, current index in the http array is used as ID\nExample: \n```yaml\n- id: wp-login\n```",
+          "title": "id for the http request",
+          "type": "string"
         },
-        "name": {
-          "type": "string",
-          "title": "name for the http request",
-          "description": "Name is the optional name of the request\nIf a name is specified, all the named request in a template can be matched upon\nin a combined manner allowing multi-request based matchers.",
-          "examples": [
-            "example-http-name"
-          ]
+        "iterate-all": {
+          "deprecated": true,
+          "markdownDescription": "Deprecated: use flow to properly specify iteration logic",
+          "title": "iterate all the values",
+          "type": "boolean"
         },
-        "attack": {
-          "$ref": "#/$defs/AttackTypeHolder",
-          "description": "Attack is the type of payload combinations to perform\nbatteringram the same payload into all defined payload positions at once, pitchfork combines multiple payload sets and clusterbomb generates permutations and combinations for all payloads\nExample: \n```yaml\n- attack: clusterbomb\n```\nNote: this is only applicable when 'payloads' are defined",
+        "markdownDescription": {
+          "markdownDescription": "Signature is the HTTP Request signature Method",
+          "type": "string"
+        },
+        "matchers": {
+          "items": {
+            "$ref": "#/$defs/Matcher"
+          },
+          "markdownDescription": "Detection mechanism to identify whether the request was successful by doing pattern matching",
+          "title": "matchers to run on response",
+          "type": "array"
+        },
+        "matchers-condition": {
+          "enum": [
+            "and",
+            "or"
+          ],
+          "markdownDescription": "Conditions between the matchers",
+          "title": "condition between the matchers",
+          "type": "string"
+        },
+        "max-redirects": {
           "examples": [
-            "batteringram",
-            "pitchfork",
-            "clusterbomb"
-          ]
+            10
+          ],
+          "markdownDescription": "MaxRedirects is the maximum number of redirects to follow\nExample: \n```yaml\n- max-redirects: 10\n```",
+          "title": "maximum number of redirects to follow",
+          "type": "integer"
+        },
+        "max-size": {
+          "examples": [
+            1024
+          ],
+          "markdownDescription": "MaxSize is the maximum size of the response body to be read\nExample: \n```yaml\n- max-size: 1024\n```",
+          "title": "maximum http response body size",
+          "type": "integer"
         },
         "method": {
           "$ref": "#/$defs/HTTPMethodTypeHolder",
-          "description": "Method is the HTTP method to be used for the request\nExample: \n```yaml\n- method: GET\n```",
           "examples": [
             "GET",
             "HEAD",
@@ -577,265 +669,191 @@
             "PATCH",
             "PURGE",
             "DEBUG"
-          ]
+          ],
+          "markdownDescription": "Method is the HTTP method to be used for the request\nExample: \n```yaml\n- method: GET\n```"
         },
-        "body": {
-          "type": "string",
-          "title": "body is the http request body",
-          "description": "Body contains the HTTP body to be sent with the request\nExample: \n```yaml\n- body: \"key=value\u0026key2=value2\"\n```",
+        "name": {
           "examples": [
-            "key=value\u0026key2=value2"
-          ]
+            "example-http-name"
+          ],
+          "markdownDescription": "Name is the optional name of the request\nIf a name is specified, all the named request in a template can be matched upon\nin a combined manner allowing multi-request based matchers.",
+          "title": "name for the http request",
+          "type": "string"
+        },
+        "path": {
+          "examples": [
+            "\n\t- '{{BaseURL}}'",
+            "\n\t- '{{RootURL}}'",
+            "\n\t- '{{Hostname}}:8080/ca-cert'"
+          ],
+          "items": {
+            "type": "string"
+          },
+          "markdownDescription": "Path contains HTTP URL[s] to be sent. Here only Path portion is generally specified and host is templatetized\nExample: \n```yaml\n- path:\n\t{{BaseURL}}/admin\n```",
+          "title": "path(s) for the http request",
+          "type": "array"
         },
         "payloads": {
-          "type": "object",
-          "title": "payloads for the http request",
-          "description": "Payloads contains key-value pairs of payloads to be used\nThese payloads when referenced in http request will be iterated appropriately and replaced\nOptionally payload also support loading values from file instead of defining them inline\nExample: \n```yaml\n- payloads:\n\tusername:\n\t\t- admin\n\t\t- root\n\tpassword:\n\t\t- password\n\t\t- admin\n```",
           "examples": [
             "  # inline payloads\n\tusername:\n\t\t- admin\n\t\t- root\n\tpassword:\n\t\t- password\n\t\t- admin\n\n",
             "  # file payloads\n\tusername: /path/to/usernames.txt\n\tpassword: /path/to/passwords.txt\n\n"
-          ]
+          ],
+          "markdownDescription": "Payloads contains key-value pairs of payloads to be used\nThese payloads when referenced in http request will be iterated appropriately and replaced\nOptionally payload also support loading values from file instead of defining them inline\nExample: \n```yaml\n- payloads:\n\tusername:\n\t\t- admin\n\t\t- root\n\tpassword:\n\t\t- password\n\t\t- admin\n```",
+          "title": "payloads for the http request",
+          "type": "object"
         },
-        "headers": {
-          "additionalProperties": {
-            "type": "string"
-          },
-          "type": "object",
-          "title": "headers to send with the http request",
-          "description": "Headers contains the HTTP headers to be sent with the request\nExample: \n```yaml\n- headers:\n\tUser-Agent: Mozilla/5.0\n```",
-          "examples": [
-            "User-Agent: Mozilla/5.0",
-            "Authorization: Bearer {{token}}",
-            "X-Forwarded-For: {{Hostname}}",
-            "Origin: {{BaseURL}}",
-            "Referer: {{BaseURL}}/admin"
-          ]
-        },
-        "race_count": {
-          "type": "integer",
-          "title": "number of times to repeat request in race condition",
-          "description": "RaceCount specifies the number of requests to be sent when attempting race condition attacks\nExample: \n```yaml\n- race: true\n  race_count: 100\n```",
-          "examples": [
-            100
-          ]
-        },
-        "max-redirects": {
-          "type": "integer",
-          "title": "maximum number of redirects to follow",
-          "description": "MaxRedirects is the maximum number of redirects to follow\nExample: \n```yaml\n- max-redirects: 10\n```",
-          "examples": [
-            10
-          ]
-        },
-        "pipeline-concurrent-connections": {
-          "type": "integer",
-          "title": "number of pipelining connections",
-          "description": "PipelineConcurrentConnections specifies the number of concurrent connections to be used for pipelining\nExample: \n```yaml\n- pipeline-concurrent-connections: 10\n  pipeline: true\n```",
-          "examples": [
-            10
-          ]
-        },
-        "pipeline-requests-per-connection": {
-          "type": "integer",
-          "title": "number of requests to send per pipelining connections",
-          "description": "PipelineRequestsPerConnection specifies the number of requests to be sent per connection\nExample: \n```yaml\n- pipeline: true\n  pipeline-requests-per-connection: 10\n```",
-          "examples": [
-            10
-          ]
-        },
-        "threads": {
-          "type": "integer",
-          "title": "threads for sending requests",
-          "description": "Threads specifies concurreny with which requests should be sent\nIt should not be specified unless explicitly behaviour and its value is obtained from -pc (-payload-concurrency) flag\nExample: \n```yaml\n- threads: 10\n```",
-          "examples": [
-            10
-          ]
-        },
-        "max-size": {
-          "type": "integer",
-          "title": "maximum http response body size",
-          "description": "MaxSize is the maximum size of the response body to be read\nExample: \n```yaml\n- max-size: 1024\n```",
-          "examples": [
-            1024
-          ]
-        },
-        "fuzzing": {
-          "items": {
-            "$ref": "#/$defs/Rule"
-          },
-          "type": "array",
-          "title": "fuzzin rules for http fuzzing",
-          "description": "Fuzzing or DAST specifies rules for fuzzing requests\nthese rules mutate the input request to generate multiple requests\nFor example, replacing all query param values with sqli payloads"
-        },
-        "self-contained": {
-          "type": "boolean",
-          "description": "SelfContained specifies whether the request is self-contained or not\nThis means if the request is dependent on input or is self-contained\nExample: \n```yaml\n- self-contained: true\n```",
+        "pipeline": {
           "examples": [
             true
-          ]
+          ],
+          "markdownDescription": "Pipeline defines if the attack should be performed with HTTP 1.1 Pipelining\nAll requests must be idempotent (GET/POST). This can be used for race conditions/billions requests.\nExample: \n```yaml\n- pipeline: true\n```",
+          "title": "perform HTTP 1.1 pipelining",
+          "type": "boolean"
+        },
+        "pipeline-concurrent-connections": {
+          "examples": [
+            10
+          ],
+          "markdownDescription": "PipelineConcurrentConnections specifies the number of concurrent connections to be used for pipelining\nExample: \n```yaml\n- pipeline-concurrent-connections: 10\n  pipeline: true\n```",
+          "title": "number of pipelining connections",
+          "type": "integer"
+        },
+        "pipeline-requests-per-connection": {
+          "examples": [
+            10
+          ],
+          "markdownDescription": "PipelineRequestsPerConnection specifies the number of requests to be sent per connection\nExample: \n```yaml\n- pipeline: true\n  pipeline-requests-per-connection: 10\n```",
+          "title": "number of requests to send per pipelining connections",
+          "type": "integer"
+        },
+        "race": {
+          "examples": [
+            true
+          ],
+          "markdownDescription": "Race determines if all the request have to be attempted at the same time (Race Condition)\nThe actual number of requests that will be sent is determined by the `race_count`  field.\nExample: \n```yaml\n- race: true\n  race_count: 100\n```",
+          "title": "perform race-http request coordination attack",
+          "type": "boolean"
+        },
+        "race_count": {
+          "examples": [
+            100
+          ],
+          "markdownDescription": "RaceCount specifies the number of requests to be sent when attempting race condition attacks\nExample: \n```yaml\n- race: true\n  race_count: 100\n```",
+          "title": "number of times to repeat request in race condition",
+          "type": "integer"
+        },
+        "raw": {
+          "examples": [
+            "\n# raw-get-request\n\t- |\n\t\tGET / HTTP/1.1\n\t\tHost: {{Hostname}}\n\n",
+            "\n# raw-post-request\n\t- |\n\t\tPOST / HTTP/1.1\n\t\tHost: {{Hostname}}\n\t\tContent-Type: application/json\n\t\tContent-Length: 13\n\n\n\t\t{\"key\": \"value\"}\n\n"
+          ],
+          "items": {
+            "type": "string"
+          },
+          "markdownDescription": "Raw contains HTTP Request[s] in raw or request dump format\nExample: \n- raw:\n\t- |\n\t\tGET / HTTP/1.1\n\t\tHost: {{Hostname}}\n\n\n\nNote: If input contains any path/query-params they are automerged unless explicitly disabled using 'disable-path-automerge'",
+          "type": "array"
+        },
+        "read-all": {
+          "examples": [
+            true
+          ],
+          "markdownDescription": "Enables force reading of the entire raw unsafe request body ignoring  any specified content length headers\nExample: \n```yaml\n- read-all: true\n```",
+          "title": "force read all body",
+          "type": "boolean"
+        },
+        "redirects": {
+          "examples": [
+            true
+          ],
+          "markdownDescription": "Redirects specifies whether to follow redirects or not\nThis can be use in conjunction with max-redirects to effectively control the redirects\nExample: \n```yaml\n- redirects: true\n```",
+          "title": "follow http redirects",
+          "type": "boolean"
+        },
+        "req-condition": {
+          "deprecated": true,
+          "markdownDescription": "Deprecated: this is automatically identified and used (https://github.com/projectdiscovery/nuclei/issues/2393)",
+          "title": "preserve request history",
+          "type": "boolean"
+        },
+        "self-contained": {
+          "examples": [
+            true
+          ],
+          "markdownDescription": "SelfContained specifies whether the request is self-contained or not\nThis means if the request is dependent on input or is self-contained\nExample: \n```yaml\n- self-contained: true\n```",
+          "type": "boolean"
         },
         "signature": {
           "$ref": "#/$defs/SignatureTypeHolder",
-          "title": "signature is the http request signature method",
-          "description": "Signature is the HTTP Request signature Method",
-          "deprecated": true
-        },
-        "cookie-reuse": {
-          "type": "boolean",
-          "title": "optional cookie reuse enable",
-          "description": "Deprecated: this is default behaviour now use disable-cookie to explicitly disable cookie reuse",
           "deprecated": true,
-          "examples": [
-            true
-          ]
-        },
-        "disable-cookie": {
-          "type": "boolean",
-          "title": "optional disable cookie reuse",
-          "description": "Disable Cookie is an optional setting to disable cookie reuse for this request\nExample: \n```yaml\n- disable-cookie: true\n```",
-          "examples": [
-            true
-          ]
-        },
-        "read-all": {
-          "type": "boolean",
-          "title": "force read all body",
-          "description": "Enables force reading of the entire raw unsafe request body ignoring  any specified content length headers\nExample: \n```yaml\n- read-all: true\n```",
-          "examples": [
-            true
-          ]
-        },
-        "redirects": {
-          "type": "boolean",
-          "title": "follow http redirects",
-          "description": "Redirects specifies whether to follow redirects or not\nThis can be use in conjunction with max-redirects to effectively control the redirects\nExample: \n```yaml\n- redirects: true\n```",
-          "examples": [
-            true
-          ]
-        },
-        "host-redirects": {
-          "type": "boolean",
-          "title": "follow same host http redirects",
-          "description": "HostRedirects specifies whether only redirects to the same host should be followed by the HTTP Client\nWhen set to true, only redirects to the same host are followed\nExample: \n```yaml\n- host-redirects: true\n```",
-          "examples": [
-            true
-          ]
-        },
-        "pipeline": {
-          "type": "boolean",
-          "title": "perform HTTP 1.1 pipelining",
-          "description": "Pipeline defines if the attack should be performed with HTTP 1.1 Pipelining\nAll requests must be idempotent (GET/POST). This can be used for race conditions/billions requests.\nExample: \n```yaml\n- pipeline: true\n```",
-          "examples": [
-            true
-          ]
-        },
-        "unsafe": {
-          "type": "boolean",
-          "title": "use rawhttp non-strict-rfc client",
-          "description": "Unsafe specifies whether to use rawhttp engine for sending Non RFC-Compliant requests.\nThis uses the [rawhttp](https://github.com/projectdiscovery/rawhttp) engine to achieve complete\ncontrol over the request, with no normalization performed by the client.\nExample: \n```yaml\n- unsafe: true\n```",
-          "examples": [
-            true
-          ]
-        },
-        "race": {
-          "type": "boolean",
-          "title": "perform race-http request coordination attack",
-          "description": "Race determines if all the request have to be attempted at the same time (Race Condition)\nThe actual number of requests that will be sent is determined by the `race_count`  field.\nExample: \n```yaml\n- race: true\n  race_count: 100\n```",
-          "examples": [
-            true
-          ]
-        },
-        "req-condition": {
-          "type": "boolean",
-          "title": "preserve request history",
-          "description": "Deprecated: this is automatically identified and used (https://github.com/projectdiscovery/nuclei/issues/2393)",
-          "deprecated": true
-        },
-        "stop-at-first-match": {
-          "type": "boolean",
-          "title": "stop at first match",
-          "description": "StopAtFirstMatch specifies whether to stop at first match or not\nThis is useful for cases like brute-forcing where we want to stop once we find the first correct login credential\nExample: \n```yaml\n- stop-at-first-match: true\n```"
+          "markdownDescription": "Signature is the HTTP Request signature Method",
+          "title": "signature is the http request signature method"
         },
         "skip-variables-check": {
-          "type": "boolean",
-          "title": "skip variable checks",
-          "description": "SkipVariablesCheck skips the check for unresolved variables in request\nThis is also useful in case where body contains payload in format of {{xyz}}\nExample: \n```yaml\n- skip-variables-check: true\n```",
           "examples": [
             true
-          ]
-        },
-        "iterate-all": {
-          "type": "boolean",
-          "title": "iterate all the values",
-          "description": "Deprecated: use flow to properly specify iteration logic",
-          "deprecated": true
-        },
-        "digest-username": {
-          "type": "string",
-          "title": "specifies the username for digest authentication",
-          "description": "DigestUsername specifies the username for digest authentication\nExample: \n```yaml\n- digest-username: admin\n```",
-          "examples": [
-            "admin"
-          ]
-        },
-        "digest-password": {
-          "type": "string",
-          "title": "specifies the password for digest authentication",
-          "description": "DigestPassword specifies the password for digest authentication\nExample: \n```yaml\n- digest-password: admin\n```",
-          "examples": [
-            "admin"
-          ]
-        },
-        "disable-path-automerge": {
-          "type": "boolean",
-          "title": "disable auto merging of path",
-          "description": "DisablePathAutomerge disables the automatic merging of path/query-params from input/target to path defined in template\nExample: \n```yaml\n- disable-path-automerge: true\n```",
-          "examples": [
-            true
-          ]
-        },
-        "filter": {
-          "items": {
-            "$ref": "#/$defs/Matcher"
-          },
-          "type": "array",
-          "title": "filter for fuzzing",
-          "description": "Filter is matcher-like field to check if fuzzing should be performed on this request or not"
-        },
-        "filter-condition": {
-          "type": "string",
-          "enum": [
-            "and",
-            "or"
           ],
-          "title": "condition between the filters",
-          "description": "Conditions between the filters"
+          "markdownDescription": "SkipVariablesCheck skips the check for unresolved variables in request\nThis is also useful in case where body contains payload in format of {{xyz}}\nExample: \n```yaml\n- skip-variables-check: true\n```",
+          "title": "skip variable checks",
+          "type": "boolean"
+        },
+        "stop-at-first-match": {
+          "markdownDescription": "StopAtFirstMatch specifies whether to stop at first match or not\nThis is useful for cases like brute-forcing where we want to stop once we find the first correct login credential\nExample: \n```yaml\n- stop-at-first-match: true\n```",
+          "title": "stop at first match",
+          "type": "boolean"
+        },
+        "threads": {
+          "examples": [
+            10
+          ],
+          "markdownDescription": "Threads specifies concurreny with which requests should be sent\nIt should not be specified unless explicitly behaviour and its value is obtained from -pc (-payload-concurrency) flag\nExample: \n```yaml\n- threads: 10\n```",
+          "title": "threads for sending requests",
+          "type": "integer"
+        },
+        "unsafe": {
+          "examples": [
+            true
+          ],
+          "markdownDescription": "Unsafe specifies whether to use rawhttp engine for sending Non RFC-Compliant requests.\nThis uses the [rawhttp](https://github.com/projectdiscovery/rawhttp) engine to achieve complete\ncontrol over the request, with no normalization performed by the client.\nExample: \n```yaml\n- unsafe: true\n```",
+          "title": "use rawhttp non-strict-rfc client",
+          "type": "boolean"
         }
       },
-      "additionalProperties": false,
-      "type": "object",
-      "examples": [
-        "method: GET\n\t\tpath:\n\t\t  - \"{{BaseURL}}\"\n\t\t\n\t\tmatchers:\n\t\t  - type: status\n\t\t    status:\n\t\t      - 200",
-        "raw:\n\t\t  - |\n\t\t\t\tGET HTTP/1.1\n\t\t\t\tHost: {{Hostname}}\n\t\t\t\n\t\tmatchers:\n\t\t- type: status\n\t\t  status:\n\t\t    - 200",
-        "method: GET\n\t\tpath:\n\t\t  - \"https://api.stripe.com/v1/charges\"\n\t\t\n\t\tself-contained: true\n\t\theaders:\n\t\t\tAuthorization: 'Basic {{base64(token)}}'\n\t\t\n\t\tmatchers:\n\t\t  - type: word\n\t\t    part: body\n\t\t    words:\n\t\t      - '\"object\":'\n\t\t      - '\"url\":'\n\t\t      - '\"data\":'\n\t\t    condition: and"
-      ]
+      "type": "object"
     },
     "Rule": {
+      "additionalProperties": false,
       "properties": {
-        "type": {
-          "type": "string",
+        "fuzz": {
+          "$ref": "#/$defs/SliceOrMapSlice",
+          "markdownDescription": "Payloads to perform fuzzing substitutions with",
+          "title": "payloads of fuzz rule"
+        },
+        "keys": {
+          "items": {
+            "type": "string"
+          },
+          "markdownDescription": "Keys of parameters to fuzz",
+          "title": "keys of parameters to fuzz",
+          "type": "array"
+        },
+        "keys-regex": {
+          "items": {
+            "type": "string"
+          },
+          "markdownDescription": "Regex of parameter keys to fuzz",
+          "title": "keys regex to fuzz",
+          "type": "array"
+        },
+        "mode": {
           "enum": [
-            "replace",
-            "prefix",
-            "postfix",
-            "infix",
-            "replace-regex"
+            "single",
+            "multiple"
           ],
-          "title": "type of rule",
-          "description": "Type of fuzzing rule to perform"
+          "markdownDescription": "Mode of request rule to fuzz",
+          "title": "mode of rule",
+          "type": "string"
         },
         "part": {
-          "type": "string",
           "enum": [
             "query",
             "header",
@@ -844,82 +862,64 @@
             "cookie",
             "request"
           ],
+          "markdownDescription": "Part of request rule to fuzz",
           "title": "part of rule",
-          "description": "Part of request rule to fuzz"
+          "type": "string"
         },
-        "mode": {
-          "type": "string",
+        "replace-regex": {
+          "markdownDescription": "Regex for regex-replace rule type",
+          "title": "replace regex of rule",
+          "type": "string"
+        },
+        "type": {
           "enum": [
-            "single",
-            "multiple"
+            "replace",
+            "prefix",
+            "postfix",
+            "infix",
+            "replace-regex"
           ],
-          "title": "mode of rule",
-          "description": "Mode of request rule to fuzz"
-        },
-        "keys": {
-          "items": {
-            "type": "string"
-          },
-          "type": "array",
-          "title": "keys of parameters to fuzz",
-          "description": "Keys of parameters to fuzz"
-        },
-        "keys-regex": {
-          "items": {
-            "type": "string"
-          },
-          "type": "array",
-          "title": "keys regex to fuzz",
-          "description": "Regex of parameter keys to fuzz"
+          "markdownDescription": "Type of fuzzing rule to perform",
+          "title": "type of rule",
+          "type": "string"
         },
         "values": {
           "items": {
             "type": "string"
           },
-          "type": "array",
+          "markdownDescription": "Regex of parameter values to fuzz",
           "title": "values regex to fuzz",
-          "description": "Regex of parameter values to fuzz"
-        },
-        "fuzz": {
-          "$ref": "#/$defs/SliceOrMapSlice",
-          "title": "payloads of fuzz rule",
-          "description": "Payloads to perform fuzzing substitutions with"
-        },
-        "replace-regex": {
-          "type": "string",
-          "title": "replace regex of rule",
-          "description": "Regex for regex-replace rule type"
+          "type": "array"
         }
       },
-      "additionalProperties": false,
       "type": "object"
     },
     "SignatureTypeHolder": {
-      "type": "string",
       "enum": [
         "AWS"
       ],
+      "markdownDescription": "Type of the signature",
       "title": "type of the signature",
-      "description": "Type of the signature"
+      "type": "string"
     },
     "SliceOrMapSlice": {
+      "additionalProperties": false,
       "properties": {
+        "KV": {
+          "$ref": "#/$defs/OrderedMap[string,string]"
+        },
         "Value": {
           "items": {
             "type": "string"
           },
           "type": "array"
-        },
-        "KV": {
-          "$ref": "#/$defs/OrderedMap[string,string]"
         }
       },
-      "additionalProperties": false,
-      "type": "object",
       "required": [
         "Value",
         "KV"
-      ]
+      ],
+      "type": "object"
     },
     "StringOrSlice": {
       "oneOf": [
@@ -932,6 +932,7 @@
       ]
     },
     "Template": {
+      "additionalProperties": false,
       "anyOf": [
         {
           "required": [
@@ -1024,229 +1025,243 @@
         }
       ],
       "properties": {
-        "id": {
-          "type": "string",
-          "pattern": "^([a-zA-Z0-9]+[-_])*[a-zA-Z0-9]+$",
-          "title": "id of the template",
-          "description": "ID is the unique id for the template.\n ### Good IDs \nA good ID uniquely identifies what the requests in the template\nare doing. Let's say you have a template that identifies a git-config\nfile on the webservers, a good name would be `git-config-exposure`. Another\nexample name is `azure-apps-nxdomain-takeover`",
-          "examples": [
-            "example-id",
-            "git-config-exposure",
-            "azure-apps-nxdomain-takeover",
-            "cve-2021-19520"
-          ]
-        },
-        "info": {
-          "$ref": "#/$defs/Info",
-          "type": "object",
-          "title": "info for the template",
-          "description": "Info contains the required metadata information about the template\nIt is meant to provide basic but necessary info like name, author , severity\nalong with many other optional fields like metadata, classification etc\nNote: - \nFor a template to be valid name,author,severity of `info` section must be set"
-        },
-        "flow": {
-          "type": "string",
-          "title": "template execution flow in js",
-          "description": "Flow describes how multiple request-blocks/protocols should be combined together and executed\nIt is a javascript code where each protocol is a function and all request-blocks are indexed by their corresponding index in request array\nExample: \n flow: http(1) \u0026\u0026 http(2)\n means that second http request will be executed only if first http request is successful (aka matched)",
-          "examples": [
-            "http(1) \u0026\u0026 http(2)",
-            " | # example-vhost-enum\n\tssl(); // -\u003e  execute all ssl protocol requests\n\tdns(); // -\u003e  execute all dns protocol requests\n\tfor (let got of template.domains) { // -\u003e  iterate over 'domains' array variable\n\t\tset('vhost', got); // -\u003e  set 'vhost' variable to current domain\n\t\thttp(); // -\u003e  execute all http protocol requests\n\t}\n"
-          ]
-        },
-        "requests": {
+        "code": {
           "items": {
             "$ref": "#/$defs/Request"
           },
-          "type": "array",
-          "title": "http requests to make",
-          "description": "HTTP is the protocol block for sending HTTP requests\nIt is of array type and can contain multiple requests\nExample: \n```yaml\nmethod: GET\npath:\n  - \"{{BaseURL}}\"\n\nmatchers:\n  - type: status\n    status:\n      - 200\n```"
+          "markdownDescription": "Code snippets",
+          "title": "code snippets to make",
+          "type": "array"
         },
-        "http": {
-          "items": {
-            "$ref": "#/$defs/Request"
-          },
-          "type": "array",
-          "title": "http requests to make",
-          "description": "HTTP is the protocol block for sending HTTP requests\nIt is of array type and can contain multiple requests\nExample: \n```yaml\nhttp: \n\t-method: GET\n\t\tpath:\n\t\t  - \"{{BaseURL}}\"\n\t\t\n\t\tmatchers:\n\t\t  - type: status\n\t\t    status:\n\t\t      - 200\n```",
+        "constants": {
           "examples": [
-            "\n\t-method: GET\n\t\tpath:\n\t\t  - \"{{BaseURL}}\"\n\t\t\n\t\tmatchers:\n\t\t  - type: status\n\t\t    status:\n\t\t      - 200"
-          ]
+            "\n\texploit: 'x0x0x0x0x0x0x'"
+          ],
+          "markdownDescription": "Constants are the global constants that once defined here can be used anywhere in the template\nIt can be used in same way as variables but only difference is that constants cannot be overridden by -V flag at runtime\nExample: \n```yaml\nconstants:\n  exploit: 'x0x0x0x0x0x0x'\n```",
+          "title": "constant for the template",
+          "type": "object"
         },
         "dns": {
           "items": {
             "$ref": "#/$defs/Request"
           },
-          "type": "array",
+          "markdownDescription": "DNS requests to make for the template",
           "title": "dns requests to make",
-          "description": "DNS requests to make for the template"
+          "type": "array"
         },
         "file": {
           "items": {
             "$ref": "#/$defs/Request"
           },
-          "type": "array",
+          "markdownDescription": "File requests to make for the template",
           "title": "file requests to make",
-          "description": "File requests to make for the template"
+          "type": "array"
         },
-        "network": {
-          "items": {
-            "$ref": "#/$defs/Request"
-          },
-          "type": "array",
-          "title": "network requests to make",
-          "description": "Network requests to make for the template",
-          "deprecated": true
-        },
-        "tcp": {
-          "items": {
-            "$ref": "#/$defs/Request"
-          },
-          "type": "array",
-          "title": "network(tcp) requests to make",
-          "description": "Network requests to make for the template"
+        "flow": {
+          "examples": [
+            "http(1) \u0026\u0026 http(2)",
+            " | # example-vhost-enum\n\tssl(); // -\u003e  execute all ssl protocol requests\n\tdns(); // -\u003e  execute all dns protocol requests\n\tfor (let got of template.domains) { // -\u003e  iterate over 'domains' array variable\n\t\tset('vhost', got); // -\u003e  set 'vhost' variable to current domain\n\t\thttp(); // -\u003e  execute all http protocol requests\n\t}\n"
+          ],
+          "markdownDescription": "Flow describes how multiple request-blocks/protocols should be combined together and executed\nIt is a javascript code where each protocol is a function and all request-blocks are indexed by their corresponding index in request array\nExample: \n flow: http(1) \u0026\u0026 http(2)\n means that second http request will be executed only if first http request is successful (aka matched)",
+          "title": "template execution flow in js",
+          "type": "string"
         },
         "headless": {
           "items": {
             "$ref": "#/$defs/Request"
           },
-          "type": "array",
+          "markdownDescription": "Headless requests to make for the template",
           "title": "headless requests to make",
-          "description": "Headless requests to make for the template"
+          "type": "array"
         },
-        "ssl": {
+        "http": {
+          "examples": [
+            " # http get\n\t- method: GET\n\t\tpath:\n\t\t\t- \"{{BaseURL}}\"\n\t\t\n\t\tmatchers:\n\t\t\t- type: status\n\t\t\t\tstatus:\n\t\t\t\t\t- 200",
+            " # raw get\n\t- raw:\n\t\t\t- |\n\t\t\t\t\tGET HTTP/1.1\n\t\t\t\t\tHost: {{Hostname}}\n\t\t\t\t\n\t\t\tmatchers:\n\t\t\t- type: status\n\t\t\t\tstatus:\n\t\t\t\t\t- 200",
+            " # http self contained\n\t- method: GET\n\t\tpath:\n\t\t  - \"https://api.stripe.com/v1/charges\"\n\t\t\n\t\tself-contained: true\n\t\theaders:\n\t\t\tAuthorization: 'Basic {{base64(token)}}'\n\t\t\n\t\tmatchers:\n\t\t  - type: word\n\t\t    part: body\n\t\t    words:\n\t\t      - '\"object\":'\n\t\t      - '\"url\":'\n\t\t      - '\"data\":'\n\t\t    condition: and"
+          ],
           "items": {
             "$ref": "#/$defs/Request"
           },
-          "type": "array",
-          "title": "ssl requests to make",
-          "description": "SSL requests to make for the template"
+          "markdownDescription": "HTTP is the protocol block for sending HTTP requests\nIt is of array type and can contain multiple requests\nExample: \n```yaml\nhttp: \n\t- method: GET\n\t\tpath:\n\t\t\t- \"{{BaseURL}}\"\n\t\t\n\t\tmatchers:\n\t\t\t- type: status\n\t\t\tstatus:\n\t\t\t\t- 200\n```",
+          "title": "http requests to make",
+          "type": "array"
         },
-        "websocket": {
-          "items": {
-            "$ref": "#/$defs/Request"
-          },
-          "type": "array",
-          "title": "websocket requests to make",
-          "description": "Websocket requests to make for the template"
+        "id": {
+          "examples": [
+            "example-id",
+            "git-config-exposure",
+            "azure-apps-nxdomain-takeover",
+            "cve-2021-19520"
+          ],
+          "markdownDescription": "ID is the unique id for the template.\n ### Good IDs \nA good ID uniquely identifies what the requests in the template\nare doing. Let's say you have a template that identifies a git-config\nfile on the webservers, a good name would be `git-config-exposure`. Another\nexample name is `azure-apps-nxdomain-takeover`",
+          "pattern": "^([a-zA-Z0-9]+[-_])*[a-zA-Z0-9]+$",
+          "title": "id of the template",
+          "type": "string"
         },
-        "whois": {
-          "items": {
-            "$ref": "#/$defs/Request"
-          },
-          "type": "array",
-          "title": "whois requests to make",
-          "description": "WHOIS requests to make for the template"
-        },
-        "code": {
-          "items": {
-            "$ref": "#/$defs/Request"
-          },
-          "type": "array",
-          "title": "code snippets to make",
-          "description": "Code snippets"
+        "info": {
+          "$ref": "#/$defs/Info",
+          "markdownDescription": "Info contains the required metadata information about the template\nIt is meant to provide basic but necessary info like name, author , severity\nalong with many other optional fields like metadata, classification etc\nExample: \n```yaml\ninfo: \n\tname: Example Template\n\tauthor: pdteam\n\tseverity: info\n\tdescription: This is an example template\n```\n\nNote: - \nFor a template to be valid name,author,severity of `info` section must be set",
+          "title": "info for the template",
+          "type": "object"
         },
         "javascript": {
           "items": {
             "$ref": "#/$defs/Request"
           },
-          "type": "array",
+          "markdownDescription": "Javascript requests to make for the template",
           "title": "javascript requests to make",
-          "description": "Javascript requests to make for the template"
+          "type": "array"
+        },
+        "markdownDescription": {
+          "markdownDescription": "HTTP is the protocol block for sending HTTP requests\nIt is of array type and can contain multiple requests\nExample: \n```yaml\nhttp: \n\t- method: GET\n\t\tpath:\n\t\t\t- \"{{BaseURL}}\"\n\t\t\n\t\tmatchers:\n\t\t\t- type: status\n\t\t\tstatus:\n\t\t\t\t- 200\n```",
+          "type": "string"
+        },
+        "network": {
+          "deprecated": true,
+          "items": {
+            "$ref": "#/$defs/Request"
+          },
+          "markdownDescription": "Network requests to make for the template",
+          "title": "network requests to make",
+          "type": "array"
+        },
+        "requests": {
+          "deprecated": true,
+          "examples": [
+            " # http get\n\t- method: GET\n\t\tpath:\n\t\t\t- \"{{BaseURL}}\"\n\t\t\n\t\tmatchers:\n\t\t\t- type: status\n\t\t\t\tstatus:\n\t\t\t\t\t- 200",
+            " # raw get\n\t- raw:\n\t\t\t- |\n\t\t\t\t\tGET HTTP/1.1\n\t\t\t\t\tHost: {{Hostname}}\n\t\t\t\t\n\t\t\tmatchers:\n\t\t\t- type: status\n\t\t\t\tstatus:\n\t\t\t\t\t- 200",
+            " # http self contained\n\t- method: GET\n\t\tpath:\n\t\t  - \"https://api.stripe.com/v1/charges\"\n\t\t\n\t\tself-contained: true\n\t\theaders:\n\t\t\tAuthorization: 'Basic {{base64(token)}}'\n\t\t\n\t\tmatchers:\n\t\t  - type: word\n\t\t    part: body\n\t\t    words:\n\t\t      - '\"object\":'\n\t\t      - '\"url\":'\n\t\t      - '\"data\":'\n\t\t    condition: and"
+          ],
+          "items": {
+            "$ref": "#/$defs/Request"
+          },
+          "markdownDescription": "HTTP is the protocol block for sending HTTP requests\nIt is of array type and can contain multiple requests\nExample: \n```yaml\nrequests: \n\t- method: GET\n\t\tpath:\n\t\t\t- \"{{BaseURL}}\"\n\t\t\n\t\tmatchers:\n\t\t\t- type: status\n\t\t\tstatus:\n\t\t\t\t- 200\n```",
+          "title": "http requests to make",
+          "type": "array"
+        },
+        "self-contained": {
+          "default": false,
+          "examples": [
+            true
+          ],
+          "markdownDescription": "Self-contained marks all requests in this template as independent of input which means input/target is not required for execution of template\nbut other variables defined in template need to be explicitly set using -V flag\nDefault value is false\nNote: self-contained templates only run once regardless of how many targets where provided to nuclei\nExample: \n```yaml\nself-contained: true\n```\nFull example template of self-contained is available at https://cloud.projectdiscovery.io/public/aws-app-enum",
+          "title": "mark requests as self-contained",
+          "type": "boolean"
+        },
+        "signature": {
+          "deprecated": true,
+          "examples": [
+            "aws"
+          ],
+          "markdownDescription": "Signature is the HTTP Request signature Method",
+          "title": "signature is the http request signature method",
+          "type": "string"
+        },
+        "ssl": {
+          "items": {
+            "$ref": "#/$defs/Request"
+          },
+          "markdownDescription": "SSL requests to make for the template",
+          "title": "ssl requests to make",
+          "type": "array"
+        },
+        "stop-at-first-match": {
+          "default": false,
+          "examples": [
+            true
+          ],
+          "markdownDescription": "stop-at-first-match stops the execution of template as soon as first match/result was found in a template given that template was sending multiple requests\nthis is required in case of default-login , brute-force and even detection templates where multiple requests are sent from template but we want to exit as soon as first match/result was found\nExample: \n```yaml\nstop-at-first-match: true\n```\nFull example template of stop-at-first-match is available at https://cloud.projectdiscovery.io/public/bitbucket-public-repository",
+          "title": "stop at first match",
+          "type": "boolean"
+        },
+        "tcp": {
+          "items": {
+            "$ref": "#/$defs/Request"
+          },
+          "markdownDescription": "Network requests to make for the template",
+          "title": "network(tcp) requests to make",
+          "type": "array"
+        },
+        "variables": {
+          "examples": [
+            "\n\tdomain: \"{{FQDN}}\"\n\temail: pdteam@{{domain}}",
+            "\n\toast: \"{{interact-sh}}\"\n\tpayload: \"{{base64(oast)}}\""
+          ],
+          "markdownDescription": "Variables are the global variables that once defined here can be used anywhere in the template\nVariables are evaluated in the order they are defined so one variable can be referenced in another variable\nVariables are evaluated before sending every requests so one can reference any variables that are available at runtime and they will be evaluate and used when referenced\nExample: \n```yaml\nvariables:\n  oast: {{interact-sh}}\n  payload: \"{{base64(oast)}}\"\n```\nFull example template of variables is available at https://cloud.projectdiscovery.io/public/screenshot\nNote: -\nThese variables can be overridden by -V flag at runtime if needed",
+          "title": "variables for the http request",
+          "type": "object"
+        },
+        "websocket": {
+          "items": {
+            "$ref": "#/$defs/Request"
+          },
+          "markdownDescription": "Websocket requests to make for the template",
+          "title": "websocket requests to make",
+          "type": "array"
+        },
+        "whois": {
+          "items": {
+            "$ref": "#/$defs/Request"
+          },
+          "markdownDescription": "WHOIS requests to make for the template",
+          "title": "whois requests to make",
+          "type": "array"
         },
         "workflows": {
           "items": {
             "$ref": "#/$defs/WorkflowTemplate"
           },
-          "type": "array",
+          "markdownDescription": "List of workflows to execute for template",
           "title": "list of workflows to execute",
-          "description": "List of workflows to execute for template"
-        },
-        "self-contained": {
-          "type": "boolean",
-          "title": "mark requests as self-contained",
-          "description": "Self-contained marks all requests in this template as independent of input which means input/target is not required for execution of template\nbut other variables defined in template need to be explicitly set using -V flag\nDefault value is false\nNote: self-contained templates only run once regardless of how many targets where provided to nuclei\nExample: \n```yaml\nself-contained: true\n```\nFull example template of self-contained is available at https://cloud.projectdiscovery.io/public/aws-app-enum",
-          "default": false,
-          "examples": [
-            true
-          ]
-        },
-        "stop-at-first-match": {
-          "type": "boolean",
-          "title": "stop at first match",
-          "description": "stop-at-first-match stops the execution of template as soon as first match/result was found in a template given that template was sending multiple requests\nthis is required in case of default-login , brute-force and even detection templates where multiple requests are sent from template but we want to exit as soon as first match/result was found\nExample: \n```yaml\nstop-at-first-match: true\n```\nFull example template of stop-at-first-match is available at https://cloud.projectdiscovery.io/public/bitbucket-public-repository",
-          "default": false,
-          "examples": [
-            true
-          ]
-        },
-        "signature": {
-          "type": "string",
-          "title": "signature is the http request signature method",
-          "description": "Signature is the HTTP Request signature Method",
-          "deprecated": true,
-          "examples": [
-            "aws"
-          ]
-        },
-        "variables": {
-          "type": "object",
-          "title": "variables for the http request",
-          "description": "Variables are the global variables that once defined here can be used anywhere in the template\nVariables are evaluated in the order they are defined so one variable can be referenced in another variable\nVariables are evaluated before sending every requests so one can reference any variables that are available at runtime and they will be evaluate and used when referenced\nExample: \n```yaml\nvariables:\n  oast: {{interact-sh}}\n  payload: \"{{base64(oast)}}\"\n```\nFull example template of variables is available at https://cloud.projectdiscovery.io/public/screenshot\nNote: -\nThese variables can be overridden by -V flag at runtime if needed",
-          "examples": [
-            "\n\tdomain: \"{{FQDN}}\"\n\temail: pdteam@{{domain}}",
-            "\n\toast: \"{{interact-sh}}\"\n\tpayload: \"{{base64(oast)}}\""
-          ]
-        },
-        "constants": {
-          "type": "object",
-          "title": "constant for the template",
-          "description": "Constants are the global constants that once defined here can be used anywhere in the template\nIt can be used in same way as variables but only difference is that constants cannot be overridden by -V flag at runtime\nExample: \n```yaml\nconstants:\n  exploit: 'x0x0x0x0x0x0x'\n```",
-          "examples": [
-            "\n\texploit: 'x0x0x0x0x0x0x'"
-          ]
+          "type": "array"
         }
       },
-      "additionalProperties": false,
-      "type": "object",
       "required": [
         "id",
         "info"
-      ]
+      ],
+      "type": "object"
     },
     "Variable": {
-      "properties": {},
       "additionalProperties": false,
+      "properties": {},
       "type": "object"
     },
     "WorkflowTemplate": {
+      "additionalProperties": false,
       "properties": {
-        "template": {
-          "type": "string",
-          "title": "template/directory to execute",
-          "description": "Template or directory to execute as part of workflow"
-        },
-        "tags": {
-          "$ref": "#/$defs/StringOrSlice",
-          "title": "tags to execute",
-          "description": "Tags to run template based on"
-        },
         "matchers": {
           "items": {
             "$ref": "#/$defs/Matcher"
           },
-          "type": "array",
+          "markdownDescription": "Matchers perform name based matching to run subtemplates for a workflow",
           "title": "name based template result matchers",
-          "description": "Matchers perform name based matching to run subtemplates for a workflow"
+          "type": "array"
         },
         "subtemplates": {
           "items": {
             "$ref": "#/$defs/WorkflowTemplate"
           },
-          "type": "array",
+          "markdownDescription": "Subtemplates are ran if the template field Template matches",
           "title": "subtemplate based result matchers",
-          "description": "Subtemplates are ran if the template field Template matches"
+          "type": "array"
+        },
+        "tags": {
+          "$ref": "#/$defs/StringOrSlice",
+          "markdownDescription": "Tags to run template based on",
+          "title": "tags to execute"
+        },
+        "template": {
+          "markdownDescription": "Template or directory to execute as part of workflow",
+          "title": "template/directory to execute",
+          "type": "string"
         }
       },
-      "additionalProperties": false,
       "type": "object"
     }
-  }
+  },
+  "$id": "https://nuclei.projectdiscovery.io/template",
+  "$ref": "#/$defs/Template",
+  "$schema": "https://json-schema.org/draft/2020-12/schema"
 }

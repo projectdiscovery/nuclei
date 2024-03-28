@@ -81,6 +81,13 @@ func ExtendSchema(metadata []PropertyMetadata, base *jsonschema.Schema) {
 				prop.Ref = ""
 			}
 			prop.Deprecated = meta.Deprecated
+			// add new property called markdownDescription
+			if prop.Description != "" {
+				base.Properties.Set("markdownDescription", &jsonschema.Schema{
+					Type:        "string",
+					Description: prop.Description,
+				})
+			}
 		}
 	}
 }
