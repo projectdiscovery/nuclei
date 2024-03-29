@@ -11,6 +11,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/progress"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http/httpclientpool"
 	"github.com/projectdiscovery/nuclei/v3/pkg/scan"
 	"github.com/projectdiscovery/nuclei/v3/pkg/templates"
 	"github.com/projectdiscovery/nuclei/v3/pkg/testutils"
@@ -25,17 +26,19 @@ func setup() {
 	progressImpl, _ := progress.NewStatsTicker(0, false, false, false, 0)
 
 	cruiseControl, _ := cruisecontrol.New(cruisecontrol.ParseOptionsFrom(options))
+	httpClientPool, _ := httpclientpool.New(options)
 
 	executerOpts = protocols.ExecutorOptions{
-		Output:        testutils.NewMockOutputWriter(options.OmitTemplate),
-		Options:       options,
-		Progress:      progressImpl,
-		ProjectFile:   nil,
-		IssuesClient:  nil,
-		Browser:       nil,
-		Catalog:       disk.NewCatalog(config.DefaultConfig.TemplatesDirectory),
-		CruiseControl: cruiseControl,
-		Parser:        templates.NewParser(),
+		Output:         testutils.NewMockOutputWriter(options.OmitTemplate),
+		Options:        options,
+		Progress:       progressImpl,
+		ProjectFile:    nil,
+		IssuesClient:   nil,
+		Browser:        nil,
+		Catalog:        disk.NewCatalog(config.DefaultConfig.TemplatesDirectory),
+		CruiseControl:  cruiseControl,
+		HttpClientPool: httpClientPool,
+		Parser:         templates.NewParser(),
 	}
 	workflowLoader, err := workflow.NewLoader(&executerOpts)
 	if err != nil {

@@ -29,7 +29,6 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/helpers/responsehighlighter"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/interactsh"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
-	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http/httpclientpool"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http/httputils"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http/signer"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http/signerpool"
@@ -667,7 +666,7 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 			if input.CookieJar != nil {
 				connConfiguration := request.connConfiguration
 				connConfiguration.Connection.SetCookieJar(input.CookieJar)
-				client, err := httpclientpool.Get(request.options.Options, connConfiguration)
+				client, err := request.options.HttpClientPool.Get(request.options.Options, connConfiguration)
 				if err != nil {
 					return errors.Wrap(err, "could not get http client")
 				}
@@ -725,7 +724,7 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 		if input.MetaInput.CustomIP != "" {
 			outputEvent["ip"] = input.MetaInput.CustomIP
 		} else {
-			outputEvent["ip"] = httpclientpool.Dialer.GetDialedIP(hostname)
+			outputEvent["ip"] = request.options.HttpClientPool.Dialer.GetDialedIP(hostname)
 		}
 		return err
 	}
@@ -811,7 +810,7 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 		if input.MetaInput.CustomIP != "" {
 			outputEvent["ip"] = input.MetaInput.CustomIP
 		} else {
-			outputEvent["ip"] = httpclientpool.Dialer.GetDialedIP(hostname)
+			outputEvent["ip"] = request.options.HttpClientPool.Dialer.GetDialedIP(hostname)
 		}
 		if request.options.Interactsh != nil {
 			request.options.Interactsh.MakePlaceholders(generatedRequest.interactshURLs, outputEvent)

@@ -95,7 +95,7 @@ func New(opts Options) (*Service, error) {
 	}
 
 	childExecuter := opts.Engine.ChildExecuter()
-	httpclient, err := httpclientpool.Get(opts.ExecuterOpts.Options, &httpclientpool.Configuration{
+	httpclient, err := opts.ExecuterOpts.HttpClientPool.Get(opts.ExecuterOpts.Options, &httpclientpool.Configuration{
 		Connection: &httpclientpool.ConnectionConfiguration{
 			DisableKeepAlive: httputil.ShouldDisableKeepAlive(opts.ExecuterOpts.Options),
 		},

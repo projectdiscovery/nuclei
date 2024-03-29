@@ -3,15 +3,15 @@ package httpclientpool
 import (
 	"context"
 	"crypto/tls"
+	"fmt"
 	"net"
 	"net/http"
 	"net/http/cookiejar"
 	"net/url"
-	"strconv"
-	"strings"
 	"sync"
 	"time"
 
+	"github.com/cespare/xxhash/v2"
 	"github.com/pkg/errors"
 	"golang.org/x/net/proxy"
 	"golang.org/x/net/publicsuffix"
@@ -24,38 +24,35 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/types/scanstrategy"
 	"github.com/projectdiscovery/rawhttp"
 	"github.com/projectdiscovery/retryablehttp-go"
+	"github.com/projectdiscovery/utils/conversion"
 	mapsutil "github.com/projectdiscovery/utils/maps"
 )
 
-var (
+type HttpClientPool struct {
 	// Dialer is a copy of the fastdialer from protocolstate
 	Dialer *fastdialer.Dialer
 
 	rawHttpClient     *rawhttp.Client
 	forceMaxRedirects int
 	normalClient      *retryablehttp.Client
-	clientPool        *mapsutil.SyncLockMap[string, *retryablehttp.Client]
-)
+	clientPool        *mapsutil.SyncLockMap[uint64, *retryablehttp.Client]
+}
 
-// Init initializes the clientpool implementation
-func Init(options *types.Options) error {
-	// Don't create clients if already created in the past.
-	if normalClient != nil {
-		return nil
-	}
+func New(options *types.Options) (*HttpClientPool, error) {
+	hcPool := &HttpClientPool{}
 	if options.ShouldFollowHTTPRedirects() {
-		forceMaxRedirects = options.MaxRedirects
+		hcPool.forceMaxRedirects = options.MaxRedirects
 	}
-	clientPool = &mapsutil.SyncLockMap[string, *retryablehttp.Client]{
-		Map: make(mapsutil.Map[string, *retryablehttp.Client]),
+	hcPool.clientPool = &mapsutil.SyncLockMap[uint64, *retryablehttp.Client]{
+		Map: make(mapsutil.Map[uint64, *retryablehttp.Client]),
 	}
 
-	client, err := wrappedGet(options, &Configuration{})
+	client, err := hcPool.wrappedGet(options, &Configuration{})
 	if err != nil {
-		return err
+		return nil, err
 	}
-	normalClient = client
-	return nil
+	hcPool.normalClient = client
+	return hcPool, nil
 }
 
 // ConnectionConfiguration contains the custom configuration options for a connection
@@ -104,23 +101,8 @@ type Configuration struct {
 }
 
 // Hash returns the hash of the configuration to allow client pooling
-func (c *Configuration) Hash() string {
-	builder := &strings.Builder{}
-	builder.Grow(16)
-	builder.WriteString("t")
-	builder.WriteString(strconv.Itoa(c.Threads))
-	builder.WriteString("m")
-	builder.WriteString(strconv.Itoa(c.MaxRedirects))
-	builder.WriteString("n")
-	builder.WriteString(strconv.FormatBool(c.NoTimeout))
-	builder.WriteString("f")
-	builder.WriteString(strconv.Itoa(int(c.RedirectFlow)))
-	builder.WriteString("r")
-	builder.WriteString(strconv.FormatBool(c.DisableCookie))
-	builder.WriteString("c")
-	builder.WriteString(strconv.FormatBool(c.Connection != nil))
-	hash := builder.String()
-	return hash
+func (c *Configuration) Hash() uint64 {
+	return xxhash.Sum64(conversion.Bytes(fmt.Sprint(c.Threads, c.MaxRedirects, c.NoTimeout, c.RedirectFlow, c.DisableCookie)))
 }
 
 // HasStandardOptions checks whether the configuration requires custom settings
@@ -129,41 +111,41 @@ func (c *Configuration) HasStandardOptions() bool {
 }
 
 // GetRawHTTP returns the rawhttp request client
-func GetRawHTTP(options *types.Options) *rawhttp.Client {
-	if rawHttpClient == nil {
+func (hcp *HttpClientPool) GetRawHTTP(options *types.Options) *rawhttp.Client {
+	if hcp.rawHttpClient == nil {
 		rawHttpOptions := rawhttp.DefaultOptions
 		if types.ProxyURL != "" {
 			rawHttpOptions.Proxy = types.ProxyURL
 		} else if types.ProxySocksURL != "" {
 			rawHttpOptions.Proxy = types.ProxySocksURL
-		} else if Dialer != nil {
-			rawHttpOptions.FastDialer = Dialer
+		} else if hcp.Dialer != nil {
+			rawHttpOptions.FastDialer = hcp.Dialer
 		}
 		// todo: replace with cruisecontrol
 		rawHttpOptions.Timeout = time.Duration(options.Timeout) * time.Second
-		rawHttpClient = rawhttp.NewClient(rawHttpOptions)
+		hcp.rawHttpClient = rawhttp.NewClient(rawHttpOptions)
 	}
-	return rawHttpClient
+	return hcp.rawHttpClient
 }
 
 // Get creates or gets a client for the protocol based on custom configuration
-func Get(options *types.Options, configuration *Configuration) (*retryablehttp.Client, error) {
+func (hcp *HttpClientPool) Get(options *types.Options, configuration *Configuration) (*retryablehttp.Client, error) {
 	if configuration.HasStandardOptions() {
-		return normalClient, nil
+		return hcp.normalClient, nil
 	}
-	return wrappedGet(options, configuration)
+	return hcp.wrappedGet(options, configuration)
 }
 
 // wrappedGet wraps a get operation without normal client check
-func wrappedGet(options *types.Options, configuration *Configuration) (*retryablehttp.Client, error) {
+func (hcp *HttpClientPool) wrappedGet(options *types.Options, configuration *Configuration) (*retryablehttp.Client, error) {
 	var err error
 
-	if Dialer == nil {
-		Dialer = protocolstate.Dialer
+	if hcp.Dialer == nil {
+		hcp.Dialer = protocolstate.Dialer
 	}
 
 	hash := configuration.Hash()
-	if client, ok := clientPool.Get(hash); ok {
+	if client, ok := hcp.clientPool.Get(hash); ok {
 		return client, nil
 	}
 
@@ -187,7 +169,7 @@ func wrappedGet(options *types.Options, configuration *Configuration) (*retryabl
 	redirectFlow := configuration.RedirectFlow
 	maxRedirects := configuration.MaxRedirects
 
-	if forceMaxRedirects > 0 {
+	if hcp.forceMaxRedirects > 0 {
 		// by default we enable general redirects following
 		switch {
 		case options.FollowHostRedirects:
@@ -195,7 +177,7 @@ func wrappedGet(options *types.Options, configuration *Configuration) (*retryabl
 		default:
 			redirectFlow = FollowAllRedirect
 		}
-		maxRedirects = forceMaxRedirects
+		maxRedirects = hcp.forceMaxRedirects
 	}
 	if options.DisableRedirects {
 		options.FollowRedirects = false
@@ -228,15 +210,15 @@ func wrappedGet(options *types.Options, configuration *Configuration) (*retryabl
 
 	transport := &http.Transport{
 		ForceAttemptHTTP2: options.ForceAttemptHTTP2,
-		DialContext:       Dialer.Dial,
+		DialContext:       hcp.Dialer.Dial,
 		DialTLSContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
 			if options.TlsImpersonate {
-				return Dialer.DialTLSWithConfigImpersonate(ctx, network, addr, tlsConfig, impersonate.Random, nil)
+				return hcp.Dialer.DialTLSWithConfigImpersonate(ctx, network, addr, tlsConfig, impersonate.Random, nil)
 			}
 			if options.HasClientCertificates() || options.ForceAttemptHTTP2 {
-				return Dialer.DialTLSWithConfig(ctx, network, addr, tlsConfig)
+				return hcp.Dialer.DialTLSWithConfig(ctx, network, addr, tlsConfig)
 			}
-			return Dialer.DialTLS(ctx, network, addr)
+			return hcp.Dialer.DialTLS(ctx, network, addr)
 		},
 		MaxIdleConns:        maxIdleConns,
 		MaxIdleConnsPerHost: maxIdleConnsPerHost,
@@ -300,7 +282,7 @@ func wrappedGet(options *types.Options, configuration *Configuration) (*retryabl
 
 	// Only add to client pool if we don't have a cookie jar in place.
 	if jar == nil {
-		if err := clientPool.Set(hash, client); err != nil {
+		if err := hcp.clientPool.Set(hash, client); err != nil {
 			return nil, err
 		}
 	}

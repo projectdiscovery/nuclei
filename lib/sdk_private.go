@@ -81,6 +81,9 @@ func (e *NucleiEngine) applyRequiredDefaults() {
 	if e.cruiseControl == nil {
 		e.cruiseControl, _ = cruisecontrol.New(cruisecontrol.ParseOptionsFrom(e.opts))
 	}
+	if e.httpclientpool == nil {
+		e.httpclientpool, _ = httpclientpool.New(e.opts)
+	}
 	if e.opts.ExcludeTags == nil {
 		e.opts.ExcludeTags = []string{}
 	}
@@ -105,19 +108,20 @@ func (e *NucleiEngine) init() error {
 		return err
 	}
 
+	e.parser = templates.NewParser()
+
+	_ = protocolstate.Init(e.opts)
+	_ = protocolinit.Init(e.opts)
+	e.applyRequiredDefaults()
+
 	if e.opts.ProxyInternal && types.ProxyURL != "" || types.ProxySocksURL != "" {
-		httpclient, err := httpclientpool.Get(e.opts, &httpclientpool.Configuration{})
+		httpclient, err := e.httpclientpool.Get(e.opts, &httpclientpool.Configuration{})
 		if err != nil {
 			return err
 		}
 		e.httpClient = httpclient
 	}
 
-	e.parser = templates.NewParser()
-
-	_ = protocolstate.Init(e.opts)
-	_ = protocolinit.Init(e.opts)
-	e.applyRequiredDefaults()
 	var err error
 
 	// setup progressbar
@@ -160,6 +164,7 @@ func (e *NucleiEngine) init() error {
 		ResumeCfg:       types.NewResumeCfg(),
 		Browser:         e.browserInstance,
 		Parser:          e.parser,
+		HttpClientPool:  e.httpclientpool,
 	}
 	if len(e.opts.SecretsFile) > 0 {
 		authTmplStore, err := runner.GetAuthTmplStore(*e.opts, e.catalog, e.executerOpts)

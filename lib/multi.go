@@ -36,6 +36,7 @@ func createEphemeralObjects(base *NucleiEngine, opts *types.Options) (*unsafeOpt
 		Colorizer:       aurora.NewAurora(true),
 		ResumeCfg:       types.NewResumeCfg(),
 		Parser:          base.parser,
+		HttpClientPool:  base.httpclientpool,
 	}
 	u.engine = core.New(opts)
 	u.engine.SetExecuterOptions(u.executerOpts)

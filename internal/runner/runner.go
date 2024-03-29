@@ -90,9 +90,10 @@ type Runner struct {
 	pdcpUploadErrMsg string
 	inputProvider    provider.InputProvider
 	//general purpose temporary directory
-	tmpDir        string
-	parser        parser.Parser
-	cruiseControl *cruisecontrol.CruiseControl
+	tmpDir         string
+	parser         parser.Parser
+	cruiseControl  *cruisecontrol.CruiseControl
+	httpclientpool *httpclientpool.HttpClientPool
 }
 
 const pprofServerAddress = "127.0.0.1:8086"
@@ -177,11 +178,16 @@ func New(options *types.Options) (*Runner, error) {
 	}
 
 	runner.catalog = disk.NewCatalog(config.DefaultConfig.TemplatesDirectory)
+	var err error
+	runner.httpclientpool, err = httpclientpool.New(options)
+	if err != nil {
+		return nil, err
+	}
 
 	var httpclient *retryablehttp.Client
 	if options.ProxyInternal && types.ProxyURL != "" || types.ProxySocksURL != "" {
 		var err error
-		httpclient, err = httpclientpool.Get(options, &httpclientpool.Configuration{})
+		httpclient, err = runner.httpclientpool.Get(options, &httpclientpool.Configuration{})
 		if err != nil {
 			return nil, err
 		}
@@ -431,6 +437,7 @@ func (r *Runner) RunEnumeration() error {
 		Catalog:            r.catalog,
 		IssuesClient:       r.issuesClient,
 		CruiseControl:      r.cruiseControl,
+		HttpClientPool:     r.httpclientpool,
 		Interactsh:         r.interactsh,
 		ProjectFile:        r.projectFile,
 		Browser:            r.browser,

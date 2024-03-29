@@ -26,6 +26,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/interactsh"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolinit"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http/httpclientpool"
 	"github.com/projectdiscovery/nuclei/v3/pkg/reporting"
 	"github.com/projectdiscovery/nuclei/v3/pkg/templates"
 	"github.com/projectdiscovery/nuclei/v3/pkg/testutils"
@@ -97,6 +98,7 @@ func executeNucleiAsLibrary(templatePath, templateURL string) ([]string, error) 
 	catalog := disk.NewCatalog(path.Join(home, "nuclei-templates"))
 	cruiseControl, _ := cruisecontrol.New(cruisecontrol.ParseOptionsFrom(defaultOpts))
 	defer cruiseControl.Close()
+	httpclientpool, _ := httpclientpool.New(defaultOpts)
 
 	executerOpts := protocols.ExecutorOptions{
 		Output:          outputWriter,
@@ -110,6 +112,7 @@ func executeNucleiAsLibrary(templatePath, templateURL string) ([]string, error) 
 		Colorizer:       aurora.NewAurora(true),
 		ResumeCfg:       types.NewResumeCfg(),
 		Parser:          templates.NewParser(),
+		HttpClientPool:  httpclientpool,
 	}
 	engine := core.New(defaultOpts)
 	engine.SetExecuterOptions(executerOpts)

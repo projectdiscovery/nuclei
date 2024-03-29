@@ -19,6 +19,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/hosterrorscache"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/interactsh"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/headless/engine"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http/httpclientpool"
 	"github.com/projectdiscovery/nuclei/v3/pkg/reporting"
 	"github.com/projectdiscovery/nuclei/v3/pkg/templates"
 	"github.com/projectdiscovery/nuclei/v3/pkg/templates/signer"
@@ -82,6 +83,7 @@ type NucleiEngine struct {
 	customProgress progress.Progress
 	rc             reporting.Client
 	cruiseControl  *cruisecontrol.CruiseControl
+	httpclientpool *httpclientpool.HttpClientPool
 	executerOpts   protocols.ExecutorOptions
 }
 
