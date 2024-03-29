@@ -207,7 +207,7 @@ func (request *Request) getDnsClient(options *protocols.ExecutorOptions, metadat
 		}
 		dnsClientOptions.Resolvers = request.Resolvers
 	}
-	return request.options.DnsClientPool.Get(options.Options, dnsClientOptions)
+	return options.DnsClientPool.Get(options.Options, dnsClientOptions)
 }
 
 // Requests returns the total number of requests the YAML rule will perform

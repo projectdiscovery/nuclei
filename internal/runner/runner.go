@@ -184,8 +184,21 @@ func New(options *types.Options) (*Runner, error) {
 	}
 
 	runner.catalog = disk.NewCatalog(config.DefaultConfig.TemplatesDirectory)
+
 	var err error
 	runner.httpClientPool, err = httpclientpool.New(options)
+	if err != nil {
+		return nil, err
+	}
+	runner.dnsClientPool, err = dnsclientpool.New(options)
+	if err != nil {
+		return nil, err
+	}
+	runner.signerPool, err = signerpool.New(options)
+	if err != nil {
+		return nil, err
+	}
+	runner.networkClientPool, err = networkclientpool.New(options)
 	if err != nil {
 		return nil, err
 	}
