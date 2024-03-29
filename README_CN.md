@@ -57,7 +57,7 @@ Nuclei使用零误报的定制模板向目标发送请求，同时可以对主�
 
 # 安装Nuclei
 
-Nuclei需要**go1**才能安装成功。执行下列命令安装最新版本的Nuclei
+Nuclei需要 **go1.21** 才能安装成功。执行下列命令安装最新版本的Nuclei
 
 ```sh
 go install -v github.com/projectdiscovery/nuclei/v3/cmd/nuclei@latest
@@ -396,8 +396,8 @@ Nuclei通过增加手动、自动的过程，极大地改变了安全评估的�
 
 Nuclei构建很简单，通过数百名安全研究员的社区模板，Nuclei可以随时扫描来了解安全威胁。Nuclei通常用来用于复测，以确定漏洞是否被修复。
 
-- **CI/CD：**工程师已经支持了CI/CD，可以通过Nuclei使用定制模板来监控模拟环境和生产环境
-- **周期性扫描：**使用Nuclei创建新发现的漏洞模板，通过Nuclei可以周期性扫描消除漏洞
+- **CI/CD：** 工程师已经支持了CI/CD，可以通过Nuclei使用定制模板来监控模拟环境和生产环境
+- **周期性扫描：** 使用Nuclei创建新发现的漏洞模板，通过Nuclei可以周期性扫描消除漏洞
 
 我们有个[讨论组](https://github.com/projectdiscovery/nuclei-templates/discussions/693)，黑客提交自己的模板后可以获得赏金，这可以减少资产的漏洞，并且减少重复。如果你想实行该计划，可以[联系我](mailto:contact@projectdiscovery.io)。我们非常乐意提供帮助，或者在[讨论组](https://github.com/projectdiscovery/nuclei-templates/discussions/693)中发布相关信息。
 
