@@ -12,6 +12,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/dns/dnsclientpool"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http/httpclientpool"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/network/networkclientpool"
 	"github.com/projectdiscovery/nuclei/v3/pkg/scan"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	"github.com/projectdiscovery/nuclei/v3/pkg/workflows"
@@ -24,10 +25,12 @@ var (
 	standardCruiseControl, _ = cruisecontrol.New(cruisecontrol.ParseOptionsFrom(stdOptions))
 	httpClientPool, _        = httpclientpool.New(stdOptions)
 	dnsClientPool, _         = dnsclientpool.New(stdOptions)
+	networkClientPool, _     = networkclientpool.New(stdOptions)
 	execOptions              = &protocols.ExecutorOptions{
-		CruiseControl:  standardCruiseControl,
-		HttpClientPool: httpClientPool,
-		DnsClientPool:  dnsClientPool,
+		CruiseControl:     standardCruiseControl,
+		HttpClientPool:    httpClientPool,
+		DnsClientPool:     dnsClientPool,
+		NetworkClientPool: networkClientPool,
 	}
 )
 

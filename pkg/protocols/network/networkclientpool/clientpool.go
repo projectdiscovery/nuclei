@@ -6,29 +6,23 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 )
 
-var (
+type NetworkClientPool struct {
 	normalClient *fastdialer.Dialer
-)
+}
 
-// Init initializes the clientpool implementation
-func Init(options *types.Options) error {
-	// Don't create clients if already created in the past.
-	if normalClient != nil {
-		return nil
-	}
-	normalClient = protocolstate.Dialer
-	return nil
+func New(options *types.Options) (*NetworkClientPool, error) {
+	return &NetworkClientPool{normalClient: protocolstate.Dialer}, nil
 }
 
 // Configuration contains the custom configuration options for a client
 type Configuration struct{}
 
 // Hash returns the hash of the configuration to allow client pooling
-func (c *Configuration) Hash() string {
-	return ""
+func (c *Configuration) Hash() uint64 {
+	return 0
 }
 
 // Get creates or gets a client for the protocol based on custom configuration
-func Get(options *types.Options, configuration *Configuration /*TODO review unused parameters*/) (*fastdialer.Dialer, error) {
-	return normalClient, nil
+func (ncp *NetworkClientPool) Get(options *types.Options, configuration *Configuration) (*fastdialer.Dialer, error) {
+	return ncp.normalClient, nil
 }

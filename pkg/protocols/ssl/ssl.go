@@ -114,7 +114,7 @@ func (request *Request) CanCluster(other *Request) bool {
 func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 	request.options = options
 
-	client, err := networkclientpool.Get(options.Options, &networkclientpool.Configuration{})
+	client, err := request.options.NetworkClientPool.Get(options.Options, &networkclientpool.Configuration{})
 	if err != nil {
 		return errorutil.NewWithTag("ssl", "could not get network client").Wrap(err)
 	}

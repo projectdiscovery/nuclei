@@ -25,19 +25,20 @@ type unsafeOptions struct {
 func createEphemeralObjects(base *NucleiEngine, opts *types.Options) (*unsafeOptions, error) {
 	u := &unsafeOptions{}
 	u.executerOpts = protocols.ExecutorOptions{
-		Output:          base.customWriter,
-		Options:         opts,
-		Progress:        base.customProgress,
-		Catalog:         base.catalog,
-		IssuesClient:    base.rc,
-		CruiseControl:   base.cruiseControl,
-		Interactsh:      base.interactshClient,
-		HostErrorsCache: base.hostErrCache,
-		Colorizer:       aurora.NewAurora(true),
-		ResumeCfg:       types.NewResumeCfg(),
-		Parser:          base.parser,
-		HttpClientPool:  base.httpclientpool,
-		DnsClientPool:   base.dnsClientPool,
+		Output:            base.customWriter,
+		Options:           opts,
+		Progress:          base.customProgress,
+		Catalog:           base.catalog,
+		IssuesClient:      base.rc,
+		CruiseControl:     base.cruiseControl,
+		Interactsh:        base.interactshClient,
+		HostErrorsCache:   base.hostErrCache,
+		Colorizer:         aurora.NewAurora(true),
+		ResumeCfg:         types.NewResumeCfg(),
+		Parser:            base.parser,
+		HttpClientPool:    base.httpclientpool,
+		DnsClientPool:     base.dnsClientPool,
+		NetworkClientPool: base.networkClientPool,
 	}
 	u.engine = core.New(opts)
 	u.engine.SetExecuterOptions(u.executerOpts)

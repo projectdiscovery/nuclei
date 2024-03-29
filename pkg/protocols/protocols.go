@@ -30,6 +30,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/dns/dnsclientpool"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/headless/engine"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http/httpclientpool"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/network/networkclientpool"
 	"github.com/projectdiscovery/nuclei/v3/pkg/reporting"
 	"github.com/projectdiscovery/nuclei/v3/pkg/scan"
 	templateTypes "github.com/projectdiscovery/nuclei/v3/pkg/templates/types"
@@ -72,10 +73,11 @@ type ExecutorOptions struct {
 	// IssuesClient is a client for nuclei issue tracker reporting
 	IssuesClient reporting.Client
 	// Progress is a progress client for scan reporting
-	Progress       progress.Progress
-	CruiseControl  *cruisecontrol.CruiseControl
-	HttpClientPool *httpclientpool.HttpClientPool
-	DnsClientPool  *dnsclientpool.DnsClientPool
+	Progress          progress.Progress
+	CruiseControl     *cruisecontrol.CruiseControl
+	HttpClientPool    *httpclientpool.HttpClientPool
+	DnsClientPool     *dnsclientpool.DnsClientPool
+	NetworkClientPool *networkclientpool.NetworkClientPool
 	// Catalog is a template catalog implementation for nuclei
 	Catalog catalog.Catalog
 	// ProjectFile is the project file for nuclei

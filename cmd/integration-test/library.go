@@ -28,6 +28,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/dns/dnsclientpool"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http/httpclientpool"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/network/networkclientpool"
 	"github.com/projectdiscovery/nuclei/v3/pkg/reporting"
 	"github.com/projectdiscovery/nuclei/v3/pkg/templates"
 	"github.com/projectdiscovery/nuclei/v3/pkg/testutils"
@@ -101,21 +102,23 @@ func executeNucleiAsLibrary(templatePath, templateURL string) ([]string, error) 
 	defer cruiseControl.Close()
 	httpClientPool, _ := httpclientpool.New(defaultOpts)
 	dnsClientPool, _ := dnsclientpool.New(defaultOpts)
+	networkClientPool, _ := networkclientpool.New(defaultOpts)
 
 	executerOpts := protocols.ExecutorOptions{
-		Output:          outputWriter,
-		Options:         defaultOpts,
-		Progress:        mockProgress,
-		Catalog:         catalog,
-		IssuesClient:    reportingClient,
-		CruiseControl:   cruiseControl,
-		Interactsh:      interactClient,
-		HostErrorsCache: cache,
-		Colorizer:       aurora.NewAurora(true),
-		ResumeCfg:       types.NewResumeCfg(),
-		Parser:          templates.NewParser(),
-		HttpClientPool:  httpClientPool,
-		DnsClientPool:   dnsClientPool,
+		Output:            outputWriter,
+		Options:           defaultOpts,
+		Progress:          mockProgress,
+		Catalog:           catalog,
+		IssuesClient:      reportingClient,
+		CruiseControl:     cruiseControl,
+		Interactsh:        interactClient,
+		HostErrorsCache:   cache,
+		Colorizer:         aurora.NewAurora(true),
+		ResumeCfg:         types.NewResumeCfg(),
+		Parser:            templates.NewParser(),
+		HttpClientPool:    httpClientPool,
+		DnsClientPool:     dnsClientPool,
+		NetworkClientPool: networkClientPool,
 	}
 	engine := core.New(defaultOpts)
 	engine.SetExecuterOptions(executerOpts)

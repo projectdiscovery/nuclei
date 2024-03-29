@@ -21,6 +21,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/dns/dnsclientpool"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/headless/engine"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http/httpclientpool"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/network/networkclientpool"
 	"github.com/projectdiscovery/nuclei/v3/pkg/reporting"
 	"github.com/projectdiscovery/nuclei/v3/pkg/templates"
 	"github.com/projectdiscovery/nuclei/v3/pkg/templates/signer"
@@ -77,16 +78,17 @@ type NucleiEngine struct {
 	authprovider     authprovider.AuthProvider
 
 	// unexported meta options
-	opts           *types.Options
-	interactshOpts *interactsh.Options
-	hostErrCache   *hosterrorscache.Cache
-	customWriter   output.Writer
-	customProgress progress.Progress
-	rc             reporting.Client
-	cruiseControl  *cruisecontrol.CruiseControl
-	httpclientpool *httpclientpool.HttpClientPool
-	dnsClientPool  *dnsclientpool.DnsClientPool
-	executerOpts   protocols.ExecutorOptions
+	opts              *types.Options
+	interactshOpts    *interactsh.Options
+	hostErrCache      *hosterrorscache.Cache
+	customWriter      output.Writer
+	customProgress    progress.Progress
+	rc                reporting.Client
+	cruiseControl     *cruisecontrol.CruiseControl
+	httpclientpool    *httpclientpool.HttpClientPool
+	dnsClientPool     *dnsclientpool.DnsClientPool
+	networkClientPool *networkclientpool.NetworkClientPool
+	executerOpts      protocols.ExecutorOptions
 }
 
 // LoadAllTemplates loads all nuclei template based on given options

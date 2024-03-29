@@ -152,20 +152,21 @@ func (e *NucleiEngine) init() error {
 	e.catalog = disk.NewCatalog(config.DefaultConfig.TemplatesDirectory)
 
 	e.executerOpts = protocols.ExecutorOptions{
-		Output:          e.customWriter,
-		Options:         e.opts,
-		Progress:        e.customProgress,
-		Catalog:         e.catalog,
-		IssuesClient:    e.rc,
-		CruiseControl:   e.cruiseControl,
-		Interactsh:      e.interactshClient,
-		HostErrorsCache: e.hostErrCache,
-		Colorizer:       aurora.NewAurora(true),
-		ResumeCfg:       types.NewResumeCfg(),
-		Browser:         e.browserInstance,
-		Parser:          e.parser,
-		HttpClientPool:  e.httpclientpool,
-		DnsClientPool:   e.dnsClientPool,
+		Output:            e.customWriter,
+		Options:           e.opts,
+		Progress:          e.customProgress,
+		Catalog:           e.catalog,
+		IssuesClient:      e.rc,
+		CruiseControl:     e.cruiseControl,
+		Interactsh:        e.interactshClient,
+		HostErrorsCache:   e.hostErrCache,
+		Colorizer:         aurora.NewAurora(true),
+		ResumeCfg:         types.NewResumeCfg(),
+		Browser:           e.browserInstance,
+		Parser:            e.parser,
+		HttpClientPool:    e.httpclientpool,
+		DnsClientPool:     e.dnsClientPool,
+		NetworkClientPool: e.networkClientPool,
 	}
 	if len(e.opts.SecretsFile) > 0 {
 		authTmplStore, err := runner.GetAuthTmplStore(*e.opts, e.catalog, e.executerOpts)

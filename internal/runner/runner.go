@@ -52,6 +52,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/dns/dnsclientpool"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/headless/engine"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http/httpclientpool"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/network/networkclientpool"
 	"github.com/projectdiscovery/nuclei/v3/pkg/reporting"
 	"github.com/projectdiscovery/nuclei/v3/pkg/templates"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
@@ -91,11 +92,12 @@ type Runner struct {
 	pdcpUploadErrMsg string
 	inputProvider    provider.InputProvider
 	//general purpose temporary directory
-	tmpDir         string
-	parser         parser.Parser
-	cruiseControl  *cruisecontrol.CruiseControl
-	httpClientPool *httpclientpool.HttpClientPool
-	dnsClientPool  *dnsclientpool.DnsClientPool
+	tmpDir            string
+	parser            parser.Parser
+	cruiseControl     *cruisecontrol.CruiseControl
+	httpClientPool    *httpclientpool.HttpClientPool
+	dnsClientPool     *dnsclientpool.DnsClientPool
+	networkClientPool *networkclientpool.NetworkClientPool
 }
 
 const pprofServerAddress = "127.0.0.1:8086"
@@ -441,6 +443,7 @@ func (r *Runner) RunEnumeration() error {
 		CruiseControl:      r.cruiseControl,
 		HttpClientPool:     r.httpClientPool,
 		DnsClientPool:      r.dnsClientPool,
+		NetworkClientPool:  r.networkClientPool,
 		Interactsh:         r.interactsh,
 		ProjectFile:        r.projectFile,
 		Browser:            r.browser,

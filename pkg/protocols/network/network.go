@@ -233,7 +233,7 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 	}
 
 	// Create a client for the class
-	client, err := networkclientpool.Get(options.Options, &networkclientpool.Configuration{})
+	client, err := request.options.NetworkClientPool.Get(options.Options, &networkclientpool.Configuration{})
 	if err != nil {
 		return errors.Wrap(err, "could not get network client")
 	}

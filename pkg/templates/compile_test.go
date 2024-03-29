@@ -25,6 +25,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/dns/dnsclientpool"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http/httpclientpool"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/network/networkclientpool"
 	"github.com/projectdiscovery/nuclei/v3/pkg/templates"
 	"github.com/projectdiscovery/nuclei/v3/pkg/testutils"
 	"github.com/projectdiscovery/nuclei/v3/pkg/workflows"
@@ -41,19 +42,21 @@ func setup() {
 	cruiseControl, _ := cruisecontrol.New(cruisecontrol.ParseOptionsFrom(options))
 	httpClientPool, _ := httpclientpool.New(options)
 	dnsClientPool, _ := dnsclientpool.New(options)
+	networkClientPool, _ := networkclientpool.New(options)
 
 	executerOpts = protocols.ExecutorOptions{
-		Output:         testutils.NewMockOutputWriter(options.OmitTemplate),
-		Options:        options,
-		Progress:       progressImpl,
-		ProjectFile:    nil,
-		IssuesClient:   nil,
-		Browser:        nil,
-		Catalog:        disk.NewCatalog(config.DefaultConfig.TemplatesDirectory),
-		CruiseControl:  cruiseControl,
-		HttpClientPool: httpClientPool,
-		DnsClientPool:  dnsClientPool,
-		Parser:         templates.NewParser(),
+		Output:            testutils.NewMockOutputWriter(options.OmitTemplate),
+		Options:           options,
+		Progress:          progressImpl,
+		ProjectFile:       nil,
+		IssuesClient:      nil,
+		Browser:           nil,
+		Catalog:           disk.NewCatalog(config.DefaultConfig.TemplatesDirectory),
+		CruiseControl:     cruiseControl,
+		HttpClientPool:    httpClientPool,
+		DnsClientPool:     dnsClientPool,
+		NetworkClientPool: networkClientPool,
+		Parser:            templates.NewParser(),
 	}
 	workflowLoader, err := workflow.NewLoader(&executerOpts)
 	if err != nil {
