@@ -26,7 +26,10 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/interactsh"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolinit"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/dns/dnsclientpool"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http/httpclientpool"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http/signerpool"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/network/networkclientpool"
 	"github.com/projectdiscovery/nuclei/v3/pkg/reporting"
 	"github.com/projectdiscovery/nuclei/v3/pkg/templates"
 	"github.com/projectdiscovery/nuclei/v3/pkg/testutils"
@@ -84,6 +87,16 @@ func (e *NucleiEngine) applyRequiredDefaults() {
 	if e.httpclientpool == nil {
 		e.httpclientpool, _ = httpclientpool.New(e.opts)
 	}
+	if e.dnsClientPool == nil {
+		e.dnsClientPool, _ = dnsclientpool.New(e.opts)
+	}
+	if e.networkClientPool == nil {
+		e.networkClientPool, _ = networkclientpool.New(e.opts)
+	}
+	if e.signerPool == nil {
+		e.signerPool, _ = signerpool.New(e.opts)
+	}
+
 	if e.opts.ExcludeTags == nil {
 		e.opts.ExcludeTags = []string{}
 	}
