@@ -132,6 +132,7 @@ type Template struct {
 
 	// description: |
 	//   Signature is the request signature method
+	//   WARNING: 'signature' will be deprecated and will be removed in a future release. Prefer using 'code' protocol for writing cloud checks
 	// values:
 	//   - "AWS"
 	Signature http.SignatureTypeHolder `yaml:"signature,omitempty" json:"signature,omitempty" jsonschema:"title=signature is the http request signature method,description=Signature is the HTTP Request signature Method,enum=AWS,deprecated=true"`
@@ -212,6 +213,11 @@ func (template *Template) IsFuzzing() bool {
 		}
 	}
 	return false
+}
+
+// UsesRequestSignature returns true if the template uses a request signature like AWS
+func (template *Template) UsesRequestSignature() bool {
+	return template.Signature.Value.String() != ""
 }
 
 // HasCodeProtocol returns true if the template has a code protocol section
