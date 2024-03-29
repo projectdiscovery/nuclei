@@ -86,6 +86,10 @@ func parseWorkflowTemplate(workflow *workflows.WorkflowTemplate, preprocessor Pr
 			stats.Increment(SkippedUnsignedStats)
 			continue
 		}
+		if template.UsesRequestSignature() && !template.Verified {
+			stats.Increment(SkippedRequestSignatureStats)
+			continue
+		}
 
 		if len(template.RequestsCode) > 0 {
 			if !options.Options.EnableCodeTemplates {
