@@ -3,7 +3,6 @@ package http
 import (
 	"bytes"
 	"fmt"
-	"log"
 	"strings"
 
 	json "github.com/json-iterator/go"
@@ -289,7 +288,6 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 	}
 	request.connConfiguration = connectionConfiguration
 
-	log.Fatal(options.HttpClientPool)
 	client, err := options.HttpClientPool.Get(options.Options, connectionConfiguration)
 	if err != nil {
 		return errors.Wrap(err, "could not get dns client")
