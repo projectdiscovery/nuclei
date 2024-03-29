@@ -28,6 +28,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/dns/dnsclientpool"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http/httpclientpool"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http/signerpool"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/network/networkclientpool"
 	"github.com/projectdiscovery/nuclei/v3/pkg/reporting"
 	"github.com/projectdiscovery/nuclei/v3/pkg/templates"
@@ -103,6 +104,7 @@ func executeNucleiAsLibrary(templatePath, templateURL string) ([]string, error) 
 	httpClientPool, _ := httpclientpool.New(defaultOpts)
 	dnsClientPool, _ := dnsclientpool.New(defaultOpts)
 	networkClientPool, _ := networkclientpool.New(defaultOpts)
+	signerPool, _ := signerpool.New(defaultOpts)
 
 	executerOpts := protocols.ExecutorOptions{
 		Output:            outputWriter,
@@ -119,6 +121,7 @@ func executeNucleiAsLibrary(templatePath, templateURL string) ([]string, error) 
 		HttpClientPool:    httpClientPool,
 		DnsClientPool:     dnsClientPool,
 		NetworkClientPool: networkClientPool,
+		SignerPool:        signerPool,
 	}
 	engine := core.New(defaultOpts)
 	engine.SetExecuterOptions(executerOpts)

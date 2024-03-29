@@ -52,6 +52,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/dns/dnsclientpool"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/headless/engine"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http/httpclientpool"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http/signerpool"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/network/networkclientpool"
 	"github.com/projectdiscovery/nuclei/v3/pkg/reporting"
 	"github.com/projectdiscovery/nuclei/v3/pkg/templates"
@@ -98,6 +99,7 @@ type Runner struct {
 	httpClientPool    *httpclientpool.HttpClientPool
 	dnsClientPool     *dnsclientpool.DnsClientPool
 	networkClientPool *networkclientpool.NetworkClientPool
+	signerPool        *signerpool.SignerPool
 }
 
 const pprofServerAddress = "127.0.0.1:8086"
@@ -444,6 +446,7 @@ func (r *Runner) RunEnumeration() error {
 		HttpClientPool:     r.httpClientPool,
 		DnsClientPool:      r.dnsClientPool,
 		NetworkClientPool:  r.networkClientPool,
+		SignerPool:         r.signerPool,
 		Interactsh:         r.interactsh,
 		ProjectFile:        r.projectFile,
 		Browser:            r.browser,

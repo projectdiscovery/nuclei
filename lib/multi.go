@@ -39,6 +39,7 @@ func createEphemeralObjects(base *NucleiEngine, opts *types.Options) (*unsafeOpt
 		HttpClientPool:    base.httpclientpool,
 		DnsClientPool:     base.dnsClientPool,
 		NetworkClientPool: base.networkClientPool,
+		SignerPool:        base.signerPool,
 	}
 	u.engine = core.New(opts)
 	u.engine.SetExecuterOptions(u.executerOpts)

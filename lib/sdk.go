@@ -21,6 +21,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/dns/dnsclientpool"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/headless/engine"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http/httpclientpool"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http/signerpool"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/network/networkclientpool"
 	"github.com/projectdiscovery/nuclei/v3/pkg/reporting"
 	"github.com/projectdiscovery/nuclei/v3/pkg/templates"
@@ -88,6 +89,7 @@ type NucleiEngine struct {
 	httpclientpool    *httpclientpool.HttpClientPool
 	dnsClientPool     *dnsclientpool.DnsClientPool
 	networkClientPool *networkclientpool.NetworkClientPool
+	signerPool        *signerpool.SignerPool
 	executerOpts      protocols.ExecutorOptions
 }
 

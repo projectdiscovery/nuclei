@@ -873,7 +873,7 @@ func (request *Request) handleSignature(generatedRequest *generatedRequest) erro
 			AwsID:          types.ToString(allvars["aws-id"]),
 			AwsSecretToken: types.ToString(allvars["aws-secret"]),
 		}
-		awsSigner, err := signerpool.Get(request.options.Options, &signerpool.Configuration{SignerArgs: &awsopts})
+		awsSigner, err := request.options.SignerPool.Get(request.options.Options, &signerpool.Configuration{SignerArgs: &awsopts})
 		if err != nil {
 			return err
 		}

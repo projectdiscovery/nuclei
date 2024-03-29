@@ -6,6 +6,7 @@ import (
 	"github.com/projectdiscovery/rdap"
 )
 
+// todo: this package does not contain potential cross-references, centralize?
 var normalClient *rdap.Client
 
 // Init initializes the client pool implementation
