@@ -1,12 +1,5 @@
 package dsl
 
-import (
-	"fmt"
-	"testing"
-
-	"github.com/stretchr/testify/require"
-)
-
 // func TestDslExpressions(t *testing.T) {
 // 	dslExpressions := map[string]interface{}{
 // 		`resolve("scanme.sh")`:        "128.199.158.128",
@@ -33,16 +26,16 @@ import (
 // 	return actualResult
 // }
 
-func testDslExpressionScenarios(t *testing.T, dslExpressions map[string]interface{}) {
-	for dslExpression, expectedResult := range dslExpressions {
-		t.Run(dslExpression, func(t *testing.T) {
-			actualResult := evaluateExpression(t, dslExpression)
+// func testDslExpressionScenarios(t *testing.T, dslExpressions map[string]interface{}) {
+// 	for dslExpression, expectedResult := range dslExpressions {
+// 		t.Run(dslExpression, func(t *testing.T) {
+// 			actualResult := evaluateExpression(t, dslExpression)
 
-			if expectedResult != nil {
-				require.Equal(t, expectedResult, actualResult)
-			}
+// 			if expectedResult != nil {
+// 				require.Equal(t, expectedResult, actualResult)
+// 			}
 
-			fmt.Printf("%s: \t %v\n", dslExpression, actualResult)
-		})
-	}
-}
+// 			fmt.Printf("%s: \t %v\n", dslExpression, actualResult)
+// 		})
+// 	}
+// }
