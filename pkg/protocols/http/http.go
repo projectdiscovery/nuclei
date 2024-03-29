@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/invopop/jsonschema"
 	json "github.com/json-iterator/go"
 	"github.com/pkg/errors"
 
@@ -17,6 +18,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http/httpclientpool"
 	httputil "github.com/projectdiscovery/nuclei/v3/pkg/protocols/utils/http"
+	"github.com/projectdiscovery/nuclei/v3/pkg/utils/schema"
 	"github.com/projectdiscovery/rawhttp"
 	"github.com/projectdiscovery/retryablehttp-go"
 	fileutil "github.com/projectdiscovery/utils/file"
@@ -58,10 +60,10 @@ type Request struct {
 	//   - "batteringram"
 	//   - "pitchfork"
 	//   - "clusterbomb"
-	AttackType generators.AttackTypeHolder `yaml:"attack,omitempty" json:"attack,omitempty" jsonschema:"title=attack is the payload combination,description=Attack is the type of payload combinations to perform,enum=batteringram,enum=pitchfork,enum=clusterbomb"`
+	AttackType generators.AttackTypeHolder `yaml:"attack,omitempty" json:"attack,omitempty"`
 	// description: |
 	//   Method is the HTTP Request Method.
-	Method HTTPMethodTypeHolder `yaml:"method,omitempty" json:"method,omitempty" jsonschema:"title=method is the http request method,description=Method is the HTTP Request Method,enum=GET,enum=HEAD,enum=POST,enum=PUT,enum=DELETE,enum=CONNECT,enum=OPTIONS,enum=TRACE,enum=PATCH,enum=PURGE"`
+	Method HTTPMethodTypeHolder `yaml:"method,omitempty" json:"method,omitempty"`
 	// description: |
 	//   Body is an optional parameter which contains HTTP Request body.
 	// examples:
@@ -74,14 +76,14 @@ type Request struct {
 	//   Payloads support both key-values combinations where a list
 	//   of payloads is provided, or optionally a single file can also
 	//   be provided as payload which will be read on run-time.
-	Payloads map[string]interface{} `yaml:"payloads,omitempty" json:"payloads,omitempty" jsonschema:"title=payloads for the http request,description=Payloads contains any payloads for the current request"`
+	Payloads map[string]interface{} `yaml:"payloads,omitempty" json:"payloads,omitempty" jsonschema:"type=object,title=payloads for the http request,description=Payloads contains any payloads for the current request"`
 
 	// description: |
 	//   Headers contains HTTP Headers to send with the request.
 	// examples:
 	//   - value: |
 	//       map[string]string{"Content-Type": "application/x-www-form-urlencoded", "Content-Length": "1", "Any-Header": "Any-Value"}
-	Headers map[string]string `yaml:"headers,omitempty" json:"headers,omitempty" jsonschema:"title=headers to send with the http request,description=Headers contains HTTP Headers to send with the request"`
+	Headers map[string]string `yaml:"headers,omitempty" json:"headers,omitempty" jsonschema:"type=object,title=headers to send with the http request,description=Headers contains HTTP Headers to send with the request"`
 	// description: |
 	//   RaceCount is the number of times to send a request in Race Condition Attack.
 	// examples:
@@ -218,6 +220,12 @@ type Request struct {
 	FuzzingFilterCondition string `yaml:"filters-condition,omitempty" json:"filter-condition,omitempty" jsonschema:"title=condition between the filters,description=Conditions between the filters,enum=and,enum=or"`
 	// cached variables that may be used along with request.
 	fuzzingFilterCondition matchers.ConditionType `yaml:"-" json:"-"`
+}
+
+// JSONSchemaExtend extends json schema definations from struct
+func (Request) JSONSchemaExtend(base *jsonschema.Schema) {
+	schema.ExtendSchema(httpRequestMetadata, base)
+	schema.ApplyAnyOfRequired(httpRequestAnyOfRequired, base)
 }
 
 // Options returns executer options for http request

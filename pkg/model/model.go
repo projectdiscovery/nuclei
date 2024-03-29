@@ -4,18 +4,8 @@ import (
 	"github.com/invopop/jsonschema"
 	"github.com/projectdiscovery/nuclei/v3/pkg/model/types/severity"
 	"github.com/projectdiscovery/nuclei/v3/pkg/model/types/stringslice"
+	"github.com/projectdiscovery/nuclei/v3/pkg/utils/schema"
 )
-
-type schemaMetadata struct {
-	PropName string
-	PropType string
-	Example  []interface{}
-	OneOf    []*schemaMetadata
-}
-
-var infoSchemaMetadata = []schemaMetadata{
-	{PropName: "author", OneOf: []*schemaMetadata{{PropType: "string", Example: []interface{}{`pdteam`}}, {PropType: "array", Example: []interface{}{`pdteam,mr.robot`}}}},
-}
 
 // Info contains metadata information about a template
 type Info struct {
@@ -96,25 +86,8 @@ type Info struct {
 
 // JSONSchemaProperty returns the JSON schema property for the Info object.
 func (i Info) JSONSchemaExtend(base *jsonschema.Schema) {
-	// since we are re-using a stringslice and rawStringSlice everywhere, we can extend/edit the schema here
-	// thus allowing us to add examples, descriptions, etc. to the properties
-	for _, metadata := range infoSchemaMetadata {
-		if prop, ok := base.Properties.Get(metadata.PropName); ok {
-			if len(metadata.OneOf) > 0 {
-				for _, oneOf := range metadata.OneOf {
-					prop.OneOf = append(prop.OneOf, &jsonschema.Schema{
-						Type:     oneOf.PropType,
-						Examples: oneOf.Example,
-					})
-				}
-			} else {
-				if metadata.PropType != "" {
-					prop.Type = metadata.PropType
-				}
-				prop.Examples = []interface{}{metadata.Example}
-			}
-		}
-	}
+	base.Examples = infoSectionExamples
+	schema.ExtendSchema(infoSectionMetadata, base)
 }
 
 // Classification contains the vulnerability classification data for a template.

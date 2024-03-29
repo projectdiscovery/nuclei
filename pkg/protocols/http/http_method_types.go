@@ -62,6 +62,14 @@ func GetSupportedHTTPMethodTypes() []HTTPMethodType {
 	return result
 }
 
+func GetHTTPMethods() []interface{} {
+	var result []interface{}
+	for _, method := range GetSupportedHTTPMethodTypes() {
+		result = append(result, method.String())
+	}
+	return result
+}
+
 func toHTTPMethodTypes(valueToMap string) (HTTPMethodType, error) {
 	normalizedValue := normalizeValue(valueToMap)
 	for key, currentValue := range HTTPMethodMapping {
@@ -89,16 +97,17 @@ func (holder HTTPMethodTypeHolder) String() string {
 	return holder.MethodType.String()
 }
 
-func (holder HTTPMethodTypeHolder) JSONSchemaType() *jsonschema.Schema {
-	gotType := &jsonschema.Schema{
-		Type:        "string",
+func (HTTPMethodTypeHolder) JSONSchema() *jsonschema.Schema {
+	enums := []interface{}{}
+	for _, severity := range GetSupportedHTTPMethodTypes() {
+		enums = append(enums, severity.String())
+	}
+	return &jsonschema.Schema{
 		Title:       "method is the HTTP request method",
 		Description: "Method is the HTTP Request Method",
+		Type:        "string",
+		Enum:        enums,
 	}
-	for _, types := range GetSupportedHTTPMethodTypes() {
-		gotType.Enum = append(gotType.Enum, types.String())
-	}
-	return gotType
 }
 
 func (holder *HTTPMethodTypeHolder) UnmarshalYAML(unmarshal func(interface{}) error) error {

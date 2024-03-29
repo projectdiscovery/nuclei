@@ -61,16 +61,17 @@ type AttackTypeHolder struct {
 	Value AttackType `mapping:"true"`
 }
 
-func (holder AttackTypeHolder) JSONSchemaType() *jsonschema.Schema {
-	gotType := &jsonschema.Schema{
+func (AttackTypeHolder) JSONSchema() *jsonschema.Schema {
+	enums := []interface{}{}
+	for _, severity := range GetSupportedAttackTypes() {
+		enums = append(enums, severity.String())
+	}
+	return &jsonschema.Schema{
+		Title:       "attack is the payload combination",
+		Description: "Attack is the type of payload combinations to perform",
 		Type:        "string",
-		Title:       "type of the attack",
-		Description: "Type of the attack",
+		Enum:        enums,
 	}
-	for _, types := range GetSupportedAttackTypes() {
-		gotType.Enum = append(gotType.Enum, types.String())
-	}
-	return gotType
 }
 
 func (holder *AttackTypeHolder) UnmarshalYAML(unmarshal func(interface{}) error) error {
