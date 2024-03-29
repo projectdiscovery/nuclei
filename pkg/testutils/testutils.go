@@ -19,6 +19,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/progress"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolinit"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/dns/dnsclientpool"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http/httpclientpool"
 	protocolUtils "github.com/projectdiscovery/nuclei/v3/pkg/protocols/utils"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
@@ -86,6 +87,7 @@ func NewMockExecuterOptions(options *types.Options, info *TemplateInfo) *protoco
 	progressImpl, _ := progress.NewStatsTicker(0, false, false, false, 0)
 	cruiseControl, _ := cruisecontrol.New(cruisecontrol.ParseOptionsFrom(options))
 	httpClientPool, _ := httpclientpool.New(options)
+	dnsClientPool, _ := dnsclientpool.New(options)
 	executerOpts := &protocols.ExecutorOptions{
 		TemplateID:     info.ID,
 		TemplateInfo:   info.Info,
@@ -99,6 +101,7 @@ func NewMockExecuterOptions(options *types.Options, info *TemplateInfo) *protoco
 		Catalog:        disk.NewCatalog(config.DefaultConfig.TemplatesDirectory),
 		CruiseControl:  cruiseControl,
 		HttpClientPool: httpClientPool,
+		DnsClientPool:  dnsClientPool,
 	}
 	executerOpts.CreateTemplateCtxStore()
 	return executerOpts

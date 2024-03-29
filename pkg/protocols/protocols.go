@@ -27,6 +27,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/interactsh"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/utils/excludematchers"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/variables"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/dns/dnsclientpool"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/headless/engine"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http/httpclientpool"
 	"github.com/projectdiscovery/nuclei/v3/pkg/reporting"
@@ -74,6 +75,7 @@ type ExecutorOptions struct {
 	Progress       progress.Progress
 	CruiseControl  *cruisecontrol.CruiseControl
 	HttpClientPool *httpclientpool.HttpClientPool
+	DnsClientPool  *dnsclientpool.DnsClientPool
 	// Catalog is a template catalog implementation for nuclei
 	Catalog catalog.Catalog
 	// ProjectFile is the project file for nuclei

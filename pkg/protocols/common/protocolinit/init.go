@@ -3,7 +3,6 @@ package protocolinit
 import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/js/compiler"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
-	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/dns/dnsclientpool"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http/signerpool"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/network/networkclientpool"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/whois/rdapclientpool"
@@ -13,9 +12,6 @@ import (
 // Init initializes the client pools for the protocols
 func Init(options *types.Options) error {
 	if err := protocolstate.Init(options); err != nil {
-		return err
-	}
-	if err := dnsclientpool.Init(options); err != nil {
 		return err
 	}
 	if err := signerpool.Init(options); err != nil {

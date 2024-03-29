@@ -10,6 +10,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/progress"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/dns/dnsclientpool"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http/httpclientpool"
 	"github.com/projectdiscovery/nuclei/v3/pkg/scan"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
@@ -22,10 +23,16 @@ var (
 	stdOptions               = &types.Options{TemplateThreads: 10}
 	standardCruiseControl, _ = cruisecontrol.New(cruisecontrol.ParseOptionsFrom(stdOptions))
 	httpClientPool, _        = httpclientpool.New(stdOptions)
+	dnsClientPool, _         = dnsclientpool.New(stdOptions)
+	execOptions              = &protocols.ExecutorOptions{
+		CruiseControl:  standardCruiseControl,
+		HttpClientPool: httpClientPool,
+		DnsClientPool:  dnsClientPool,
+	}
 )
 
 func TestWorkflowsSimple(t *testing.T) {
-	workflow := &workflows.Workflow{Options: &protocols.ExecutorOptions{CruiseControl: standardCruiseControl, HttpClientPool: httpClientPool}, Workflows: []*workflows.WorkflowTemplate{
+	workflow := &workflows.Workflow{Options: execOptions, Workflows: []*workflows.WorkflowTemplate{
 		{Executers: []*workflows.ProtocolExecuterPair{{
 			Executer: &mockExecuter{result: true}, Options: &protocols.ExecutorOptions{Progress: standardProgressBar}},
 		}},
@@ -40,7 +47,7 @@ func TestWorkflowsSimple(t *testing.T) {
 
 func TestWorkflowsSimpleMultiple(t *testing.T) {
 	var firstInput, secondInput string
-	workflow := &workflows.Workflow{Options: &protocols.ExecutorOptions{CruiseControl: standardCruiseControl, HttpClientPool: httpClientPool}, Workflows: []*workflows.WorkflowTemplate{
+	workflow := &workflows.Workflow{Options: execOptions, Workflows: []*workflows.WorkflowTemplate{
 		{Executers: []*workflows.ProtocolExecuterPair{{
 			Executer: &mockExecuter{result: true, executeHook: func(input *contextargs.MetaInput) {
 				firstInput = input.Input
@@ -65,7 +72,7 @@ func TestWorkflowsSimpleMultiple(t *testing.T) {
 
 func TestWorkflowsSubtemplates(t *testing.T) {
 	var firstInput, secondInput string
-	workflow := &workflows.Workflow{Options: &protocols.ExecutorOptions{CruiseControl: standardCruiseControl, HttpClientPool: httpClientPool}, Workflows: []*workflows.WorkflowTemplate{
+	workflow := &workflows.Workflow{Options: execOptions, Workflows: []*workflows.WorkflowTemplate{
 		{Executers: []*workflows.ProtocolExecuterPair{{
 			Executer: &mockExecuter{result: true, executeHook: func(input *contextargs.MetaInput) {
 				firstInput = input.Input
@@ -91,7 +98,7 @@ func TestWorkflowsSubtemplates(t *testing.T) {
 
 func TestWorkflowsSubtemplatesNoMatch(t *testing.T) {
 	var firstInput, secondInput string
-	workflow := &workflows.Workflow{Options: &protocols.ExecutorOptions{CruiseControl: standardCruiseControl, HttpClientPool: httpClientPool}, Workflows: []*workflows.WorkflowTemplate{
+	workflow := &workflows.Workflow{Options: execOptions, Workflows: []*workflows.WorkflowTemplate{
 		{Executers: []*workflows.ProtocolExecuterPair{{
 			Executer: &mockExecuter{result: false, executeHook: func(input *contextargs.MetaInput) {
 				firstInput = input.Input
@@ -115,7 +122,7 @@ func TestWorkflowsSubtemplatesNoMatch(t *testing.T) {
 
 func TestWorkflowsSubtemplatesWithMatcher(t *testing.T) {
 	var firstInput, secondInput string
-	workflow := &workflows.Workflow{Options: &protocols.ExecutorOptions{CruiseControl: standardCruiseControl, HttpClientPool: httpClientPool}, Workflows: []*workflows.WorkflowTemplate{
+	workflow := &workflows.Workflow{Options: execOptions, Workflows: []*workflows.WorkflowTemplate{
 		{Executers: []*workflows.ProtocolExecuterPair{{
 			Executer: &mockExecuter{result: true, executeHook: func(input *contextargs.MetaInput) {
 				firstInput = input.Input
@@ -144,10 +151,9 @@ func TestWorkflowsSubtemplatesWithMatcher(t *testing.T) {
 
 func TestWorkflowsSubtemplatesWithMatcherNoMatch(t *testing.T) {
 	progressBar, _ := progress.NewStatsTicker(0, false, false, false, 0)
-	cruiseControl, _ := cruisecontrol.New(cruisecontrol.ParseOptionsFrom(types.DefaultOptions()))
 
 	var firstInput, secondInput string
-	workflow := &workflows.Workflow{Options: &protocols.ExecutorOptions{CruiseControl: cruiseControl, HttpClientPool: httpClientPool}, Workflows: []*workflows.WorkflowTemplate{
+	workflow := &workflows.Workflow{Options: execOptions, Workflows: []*workflows.WorkflowTemplate{
 		{Executers: []*workflows.ProtocolExecuterPair{{
 			Executer: &mockExecuter{result: true, executeHook: func(input *contextargs.MetaInput) {
 				firstInput = input.Input

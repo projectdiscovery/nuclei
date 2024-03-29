@@ -49,6 +49,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolinit"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/uncover"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/utils/excludematchers"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/dns/dnsclientpool"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/headless/engine"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http/httpclientpool"
 	"github.com/projectdiscovery/nuclei/v3/pkg/reporting"
@@ -93,7 +94,8 @@ type Runner struct {
 	tmpDir         string
 	parser         parser.Parser
 	cruiseControl  *cruisecontrol.CruiseControl
-	httpclientpool *httpclientpool.HttpClientPool
+	httpClientPool *httpclientpool.HttpClientPool
+	dnsClientPool  *dnsclientpool.DnsClientPool
 }
 
 const pprofServerAddress = "127.0.0.1:8086"
@@ -179,7 +181,7 @@ func New(options *types.Options) (*Runner, error) {
 
 	runner.catalog = disk.NewCatalog(config.DefaultConfig.TemplatesDirectory)
 	var err error
-	runner.httpclientpool, err = httpclientpool.New(options)
+	runner.httpClientPool, err = httpclientpool.New(options)
 	if err != nil {
 		return nil, err
 	}
@@ -187,7 +189,7 @@ func New(options *types.Options) (*Runner, error) {
 	var httpclient *retryablehttp.Client
 	if options.ProxyInternal && types.ProxyURL != "" || types.ProxySocksURL != "" {
 		var err error
-		httpclient, err = runner.httpclientpool.Get(options, &httpclientpool.Configuration{})
+		httpclient, err = runner.httpClientPool.Get(options, &httpclientpool.Configuration{})
 		if err != nil {
 			return nil, err
 		}
@@ -437,7 +439,8 @@ func (r *Runner) RunEnumeration() error {
 		Catalog:            r.catalog,
 		IssuesClient:       r.issuesClient,
 		CruiseControl:      r.cruiseControl,
-		HttpClientPool:     r.httpclientpool,
+		HttpClientPool:     r.httpClientPool,
+		DnsClientPool:      r.dnsClientPool,
 		Interactsh:         r.interactsh,
 		ProjectFile:        r.projectFile,
 		Browser:            r.browser,

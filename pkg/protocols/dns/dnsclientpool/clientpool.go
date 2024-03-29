@@ -1,20 +1,22 @@
 package dnsclientpool
 
 import (
-	"strconv"
+	"fmt"
 	"strings"
 	"sync"
 
+	"github.com/cespare/xxhash"
 	"github.com/pkg/errors"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	"github.com/projectdiscovery/retryabledns"
+	"github.com/projectdiscovery/utils/conversion"
 )
 
-var (
+type DnsClientPool struct {
 	poolMutex    *sync.RWMutex
 	normalClient *retryabledns.Client
-	clientPool   map[string]*retryabledns.Client
-)
+	clientPool   map[uint64]*retryabledns.Client
+}
 
 // defaultResolvers contains the list of resolvers known to be trusted.
 var defaultResolvers = []string{
@@ -25,24 +27,22 @@ var defaultResolvers = []string{
 }
 
 // Init initializes the client pool implementation
-func Init(options *types.Options) error {
-	// Don't create clients if already created in the past.
-	if normalClient != nil {
-		return nil
+func New(options *types.Options) (*DnsClientPool, error) {
+	dcPool := &DnsClientPool{
+		poolMutex:  &sync.RWMutex{},
+		clientPool: make(map[uint64]*retryabledns.Client),
 	}
-	poolMutex = &sync.RWMutex{}
-	clientPool = make(map[string]*retryabledns.Client)
 
 	resolvers := defaultResolvers
 	if options.ResolversFile != "" {
 		resolvers = options.InternalResolversList
 	}
 	var err error
-	normalClient, err = retryabledns.New(resolvers, 1)
+	dcPool.normalClient, err = retryabledns.New(resolvers, 1)
 	if err != nil {
-		return errors.Wrap(err, "could not create dns client")
+		return nil, errors.Wrap(err, "could not create dns client")
 	}
-	return nil
+	return dcPool, nil
 }
 
 // Configuration contains the custom configuration options for a client
@@ -54,28 +54,22 @@ type Configuration struct {
 }
 
 // Hash returns the hash of the configuration to allow client pooling
-func (c *Configuration) Hash() string {
-	builder := &strings.Builder{}
-	builder.WriteString("r")
-	builder.WriteString(strconv.Itoa(c.Retries))
-	builder.WriteString("l")
-	builder.WriteString(strings.Join(c.Resolvers, ""))
-	hash := builder.String()
-	return hash
+func (c *Configuration) Hash() uint64 {
+	return xxhash.Sum64(conversion.Bytes(fmt.Sprint(c.Retries, strings.Join(c.Resolvers, ""))))
 }
 
 // Get creates or gets a client for the protocol based on custom configuration
-func Get(options *types.Options, configuration *Configuration) (*retryabledns.Client, error) {
+func (dcp *DnsClientPool) Get(options *types.Options, configuration *Configuration) (*retryabledns.Client, error) {
 	if !(configuration.Retries > 1) && len(configuration.Resolvers) == 0 {
-		return normalClient, nil
+		return dcp.normalClient, nil
 	}
 	hash := configuration.Hash()
-	poolMutex.RLock()
-	if client, ok := clientPool[hash]; ok {
-		poolMutex.RUnlock()
+	dcp.poolMutex.RLock()
+	if client, ok := dcp.clientPool[hash]; ok {
+		dcp.poolMutex.RUnlock()
 		return client, nil
 	}
-	poolMutex.RUnlock()
+	dcp.poolMutex.RUnlock()
 
 	resolvers := defaultResolvers
 	if options.ResolversFile != "" {
@@ -88,8 +82,8 @@ func Get(options *types.Options, configuration *Configuration) (*retryabledns.Cl
 		return nil, errors.Wrap(err, "could not create dns client")
 	}
 
-	poolMutex.Lock()
-	clientPool[hash] = client
-	poolMutex.Unlock()
+	dcp.poolMutex.Lock()
+	dcp.clientPool[hash] = client
+	dcp.poolMutex.Unlock()
 	return client, nil
 }

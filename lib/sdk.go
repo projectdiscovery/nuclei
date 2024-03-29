@@ -18,6 +18,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/hosterrorscache"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/interactsh"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/dns/dnsclientpool"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/headless/engine"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http/httpclientpool"
 	"github.com/projectdiscovery/nuclei/v3/pkg/reporting"
@@ -84,6 +85,7 @@ type NucleiEngine struct {
 	rc             reporting.Client
 	cruiseControl  *cruisecontrol.CruiseControl
 	httpclientpool *httpclientpool.HttpClientPool
+	dnsClientPool  *dnsclientpool.DnsClientPool
 	executerOpts   protocols.ExecutorOptions
 }
 

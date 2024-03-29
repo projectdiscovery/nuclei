@@ -22,6 +22,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/generators"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/variables"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/dns/dnsclientpool"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http/httpclientpool"
 	"github.com/projectdiscovery/nuclei/v3/pkg/templates"
@@ -39,6 +40,7 @@ func setup() {
 
 	cruiseControl, _ := cruisecontrol.New(cruisecontrol.ParseOptionsFrom(options))
 	httpClientPool, _ := httpclientpool.New(options)
+	dnsClientPool, _ := dnsclientpool.New(options)
 
 	executerOpts = protocols.ExecutorOptions{
 		Output:         testutils.NewMockOutputWriter(options.OmitTemplate),
@@ -50,6 +52,7 @@ func setup() {
 		Catalog:        disk.NewCatalog(config.DefaultConfig.TemplatesDirectory),
 		CruiseControl:  cruiseControl,
 		HttpClientPool: httpClientPool,
+		DnsClientPool:  dnsClientPool,
 		Parser:         templates.NewParser(),
 	}
 	workflowLoader, err := workflow.NewLoader(&executerOpts)

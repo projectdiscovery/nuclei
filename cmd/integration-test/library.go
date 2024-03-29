@@ -26,6 +26,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/interactsh"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolinit"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/dns/dnsclientpool"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http/httpclientpool"
 	"github.com/projectdiscovery/nuclei/v3/pkg/reporting"
 	"github.com/projectdiscovery/nuclei/v3/pkg/templates"
@@ -98,7 +99,8 @@ func executeNucleiAsLibrary(templatePath, templateURL string) ([]string, error) 
 	catalog := disk.NewCatalog(path.Join(home, "nuclei-templates"))
 	cruiseControl, _ := cruisecontrol.New(cruisecontrol.ParseOptionsFrom(defaultOpts))
 	defer cruiseControl.Close()
-	httpclientpool, _ := httpclientpool.New(defaultOpts)
+	httpClientPool, _ := httpclientpool.New(defaultOpts)
+	dnsClientPool, _ := dnsclientpool.New(defaultOpts)
 
 	executerOpts := protocols.ExecutorOptions{
 		Output:          outputWriter,
@@ -112,7 +114,8 @@ func executeNucleiAsLibrary(templatePath, templateURL string) ([]string, error) 
 		Colorizer:       aurora.NewAurora(true),
 		ResumeCfg:       types.NewResumeCfg(),
 		Parser:          templates.NewParser(),
-		HttpClientPool:  httpclientpool,
+		HttpClientPool:  httpClientPool,
+		DnsClientPool:   dnsClientPool,
 	}
 	engine := core.New(defaultOpts)
 	engine.SetExecuterOptions(executerOpts)

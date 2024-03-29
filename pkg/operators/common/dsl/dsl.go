@@ -1,16 +1,13 @@
 package dsl
 
 import (
+	"errors"
 	"fmt"
-	"strings"
 
 	"github.com/Knetic/govaluate"
-	"github.com/miekg/dns"
 	"github.com/projectdiscovery/dsl"
 	"github.com/projectdiscovery/gologger"
-	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/dns/dnsclientpool"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
-	sliceutil "github.com/projectdiscovery/utils/slice"
 	stringsutil "github.com/projectdiscovery/utils/strings"
 )
 
@@ -26,77 +23,7 @@ func init() {
 		"(host string) string",
 		"(format string) string",
 	}, false, func(args ...interface{}) (interface{}, error) {
-		argCount := len(args)
-		if argCount == 0 || argCount > 2 {
-			return nil, dsl.ErrInvalidDslFunction
-		}
-		format := "4"
-		var dnsType uint16
-		if len(args) > 1 {
-			format = strings.ToLower(types.ToString(args[1]))
-		}
-
-		switch format {
-		case "4", "a":
-			dnsType = dns.TypeA
-		case "6", "aaaa":
-			dnsType = dns.TypeAAAA
-		case "cname":
-			dnsType = dns.TypeCNAME
-		case "ns":
-			dnsType = dns.TypeNS
-		case "txt":
-			dnsType = dns.TypeTXT
-		case "srv":
-			dnsType = dns.TypeSRV
-		case "ptr":
-			dnsType = dns.TypePTR
-		case "mx":
-			dnsType = dns.TypeMX
-		case "soa":
-			dnsType = dns.TypeSOA
-		case "caa":
-			dnsType = dns.TypeCAA
-		default:
-			return nil, fmt.Errorf("invalid dns type")
-		}
-
-		err := dnsclientpool.Init(&types.Options{})
-		if err != nil {
-			return nil, err
-		}
-		dnsClient, err := dnsclientpool.Get(nil, &dnsclientpool.Configuration{})
-		if err != nil {
-			return nil, err
-		}
-
-		// query
-		rawResp, err := dnsClient.Query(types.ToString(args[0]), dnsType)
-		if err != nil {
-			return nil, err
-		}
-
-		dnsValues := map[uint16][]string{
-			dns.TypeA:     rawResp.A,
-			dns.TypeAAAA:  rawResp.AAAA,
-			dns.TypeCNAME: rawResp.CNAME,
-			dns.TypeNS:    rawResp.NS,
-			dns.TypeTXT:   rawResp.TXT,
-			dns.TypeSRV:   rawResp.SRV,
-			dns.TypePTR:   rawResp.PTR,
-			dns.TypeMX:    rawResp.MX,
-			dns.TypeCAA:   rawResp.CAA,
-			dns.TypeSOA:   rawResp.GetSOARecords(),
-		}
-
-		if values, ok := dnsValues[dnsType]; ok {
-			firstFound, found := sliceutil.FirstNonZero(values)
-			if found {
-				return firstFound, nil
-			}
-		}
-
-		return "", fmt.Errorf("no records found")
+		return nil, errors.New("deprecated - use js protocol")
 	}))
 	_ = dsl.AddFunction(dsl.NewWithMultipleSignatures("getNetworkPort", []string{
 		"(Port string,defaultPort string) string)",
