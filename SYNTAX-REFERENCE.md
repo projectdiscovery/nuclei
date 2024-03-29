@@ -379,6 +379,7 @@ Stop execution once first match is found
 <div class="dt">
 
 Signature is the request signature method
+WARNING: 'signature' will be deprecated and will be removed in a future release. Prefer using 'code' protocol for writing cloud checks
 
 
 Valid values:
