@@ -83,3 +83,11 @@ func (q *Path) Rebuild() (*retryablehttp.Request, error) {
 	}
 	return cloned, nil
 }
+
+// Clones current state to a new component
+func (q *Path) Clone() Component {
+	return &Path{
+		value: q.value.Clone(),
+		req:   q.req.Clone(context.Background()),
+	}
+}

@@ -99,6 +99,14 @@ func (c *Cookie) Rebuild() (*retryablehttp.Request, error) {
 	return cloned, nil
 }
 
+// Clone clones current state of this component
+func (c *Cookie) Clone() Component {
+	return &Cookie{
+		value: c.value.Clone(),
+		req:   c.req.Clone(context.Background()),
+	}
+}
+
 // A list of cookies that are essential to the request and
 // must not be fuzzed.
 var defaultIgnoredCookieKeys = map[string]struct{}{

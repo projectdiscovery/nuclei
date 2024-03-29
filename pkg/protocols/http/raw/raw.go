@@ -283,7 +283,6 @@ func (r *Request) ApplyAuthStrategy(strategy authx.AuthStrategy) {
 			gologger.Error().Msgf("auth strategy failed to parse url: %s got %v", r.FullURL, err)
 			return
 		}
-		_ = parsed
 		for _, p := range s.Data.Params {
 			parsed.Params.Add(p.Key, p.Value)
 		}
