@@ -21,6 +21,8 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolinit"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/dns/dnsclientpool"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http/httpclientpool"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http/signerpool"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/network/networkclientpool"
 	protocolUtils "github.com/projectdiscovery/nuclei/v3/pkg/protocols/utils"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	"github.com/projectdiscovery/nuclei/v3/pkg/utils"
@@ -88,20 +90,24 @@ func NewMockExecuterOptions(options *types.Options, info *TemplateInfo) *protoco
 	cruiseControl, _ := cruisecontrol.New(cruisecontrol.ParseOptionsFrom(options))
 	httpClientPool, _ := httpclientpool.New(options)
 	dnsClientPool, _ := dnsclientpool.New(options)
+	networkClientPool, _ := networkclientpool.New(options)
+	signerPool, _ := signerpool.New(options)
 	executerOpts := &protocols.ExecutorOptions{
-		TemplateID:     info.ID,
-		TemplateInfo:   info.Info,
-		TemplatePath:   info.Path,
-		Output:         NewMockOutputWriter(options.OmitTemplate),
-		Options:        options,
-		Progress:       progressImpl,
-		ProjectFile:    nil,
-		IssuesClient:   nil,
-		Browser:        nil,
-		Catalog:        disk.NewCatalog(config.DefaultConfig.TemplatesDirectory),
-		CruiseControl:  cruiseControl,
-		HttpClientPool: httpClientPool,
-		DnsClientPool:  dnsClientPool,
+		TemplateID:        info.ID,
+		TemplateInfo:      info.Info,
+		TemplatePath:      info.Path,
+		Output:            NewMockOutputWriter(options.OmitTemplate),
+		Options:           options,
+		Progress:          progressImpl,
+		ProjectFile:       nil,
+		IssuesClient:      nil,
+		Browser:           nil,
+		Catalog:           disk.NewCatalog(config.DefaultConfig.TemplatesDirectory),
+		CruiseControl:     cruiseControl,
+		HttpClientPool:    httpClientPool,
+		DnsClientPool:     dnsClientPool,
+		NetworkClientPool: networkClientPool,
+		SignerPool:        signerPool,
 	}
 	executerOpts.CreateTemplateCtxStore()
 	return executerOpts
