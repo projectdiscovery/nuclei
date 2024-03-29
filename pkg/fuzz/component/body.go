@@ -141,3 +141,10 @@ func (b *Body) Rebuild() (*retryablehttp.Request, error) {
 	cloned.Header.Set("Content-Length", strconv.Itoa(len(encoded)))
 	return cloned, nil
 }
+
+func (b *Body) Clone() Component {
+	return &Body{
+		value: b.value.Clone(),
+		req:   b.req.Clone(context.Background()),
+	}
+}

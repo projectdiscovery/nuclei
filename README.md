@@ -221,7 +221,8 @@ INTERACTSH:
 FUZZING:
    -ft, -fuzzing-type string  overrides fuzzing type set in template (replace, prefix, postfix, infix)
    -fm, -fuzzing-mode string  overrides fuzzing mode set in template (multiple, single)
-   -fuzz                      enable loading fuzzing templates
+   -fuzz                      enable loading fuzzing templates (Deprecated: use -dast instead)
+   -dast                      only run DAST templates
 
 UNCOVER:
    -uc, -uncover                  enable uncover engine

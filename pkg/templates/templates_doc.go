@@ -148,7 +148,7 @@ func init() {
 	TemplateDoc.Fields[17].Name = "signature"
 	TemplateDoc.Fields[17].Type = "http.SignatureTypeHolder"
 	TemplateDoc.Fields[17].Note = ""
-	TemplateDoc.Fields[17].Description = "Signature is the request signature method"
+	TemplateDoc.Fields[17].Description = "Signature is the request signature method\nWARNING: 'signature' will be deprecated and will be removed in a future release. Prefer using 'code' protocol for writing cloud checks"
 	TemplateDoc.Fields[17].Comments[encoder.LineComment] = "Signature is the request signature method"
 	TemplateDoc.Fields[17].Values = []string{
 		"AWS",
