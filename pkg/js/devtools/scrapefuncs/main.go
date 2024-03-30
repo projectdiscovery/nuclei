@@ -114,7 +114,15 @@ func main() {
 	// Generate Markdown tables with ## as package name
 	if out != "" {
 		var sb strings.Builder
-		sb.WriteString("# DSL Helper Functions\n\n\n")
+		sb.WriteString(`---
+title: "Javascript Helper Functions"
+description: "Available JS Helper Functions that can be used in global js runtime & protocol specific helpers."
+icon: "function"
+iconType: "solid"
+---
+
+
+`)
 
 		for pkg, funcs := range dslHelpers {
 			sb.WriteString("## " + pkg + "\n\n")
