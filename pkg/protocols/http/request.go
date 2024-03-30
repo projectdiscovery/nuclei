@@ -135,11 +135,6 @@ func (request *Request) executeRaceRequest(input *contextargs.Context, previous 
 		// execute http request
 		go func(httpRequest *generatedRequest) {
 			defer spmHandler.Release()
-			defer func() {
-				if r := recover(); r != nil {
-					gologger.Verbose().Msgf("[%s] Recovered from panic: %v\n", request.options.TemplateID, r)
-				}
-			}()
 			if spmHandler.FoundFirstMatch() {
 				// stop sending more requests condition is met
 				return
@@ -216,11 +211,6 @@ func (request *Request) executeParallelHTTP(input *contextargs.Context, dynamicV
 		spmHandler.Acquire()
 		go func(httpRequest *generatedRequest) {
 			defer spmHandler.Release()
-			defer func() {
-				if r := recover(); r != nil {
-					gologger.Verbose().Msgf("[%s] Recovered from panic: %v\n", request.options.TemplateID, r)
-				}
-			}()
 			if spmHandler.FoundFirstMatch() {
 				return
 			}
@@ -317,11 +307,6 @@ func (request *Request) executeTurboHTTP(input *contextargs.Context, dynamicValu
 		spmHandler.Acquire()
 		go func(httpRequest *generatedRequest) {
 			defer spmHandler.Release()
-			defer func() {
-				if r := recover(); r != nil {
-					gologger.Verbose().Msgf("[%s] Recovered from panic: %v\n", request.options.TemplateID, r)
-				}
-			}()
 			if spmHandler.FoundFirstMatch() {
 				// skip if first match is found
 				return

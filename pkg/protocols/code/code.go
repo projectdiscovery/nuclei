@@ -147,11 +147,6 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 		return err
 	}
 	defer func() {
-		// catch any panics just in case
-		if r := recover(); r != nil {
-			gologger.Error().Msgf("[%s] Panic occurred in code protocol: %s\n", request.options.TemplateID, r)
-			err = fmt.Errorf("panic occurred: %s", r)
-		}
 		if err := metaSrc.Cleanup(); err != nil {
 			gologger.Warning().Msgf("%s\n", err)
 		}
