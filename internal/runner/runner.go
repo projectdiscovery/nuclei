@@ -439,6 +439,11 @@ func (r *Runner) RunEnumeration() error {
 		Parser:             r.parser,
 	}
 
+	if env.GetEnvOrDefault("NUCLEI_ARGS", "") == "req_url_pattern=true" {
+		// Go StdLib style experimental/debug feature switch
+		executorOpts.ExportReqURLPattern = true
+	}
+
 	if len(r.options.SecretsFile) > 0 && !r.options.Validate {
 		authTmplStore, err := GetAuthTmplStore(*r.options, r.catalog, executorOpts)
 		if err != nil {
