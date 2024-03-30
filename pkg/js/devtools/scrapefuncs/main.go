@@ -8,9 +8,11 @@ import (
 	"go/token"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 
 	mapsutil "github.com/projectdiscovery/utils/maps"
+	"golang.org/x/exp/maps"
 )
 
 var (
@@ -30,6 +32,8 @@ var pkg2NameMapping = map[string]string{
 	"global":     "Javascript Runtime",
 	"compiler":   "Javascript Runtime",
 }
+
+var preferredOrder = []string{"Javascript Runtime", "Code Protocol", "JavaScript Protocol"}
 
 func main() {
 	flag.StringVar(&dir, "dir", "pkg/", "directory to process")
@@ -126,12 +130,31 @@ iconType: "solid"
 
 `)
 
-		for pkg, funcs := range dslHelpers {
+		actualKeys := maps.Keys(dslHelpers)
+		sort.Slice(actualKeys, func(i, j int) bool {
+			for _, preferredKey := range preferredOrder {
+				if actualKeys[i] == preferredKey {
+					return true
+				}
+				if actualKeys[j] == preferredKey {
+					return false
+				}
+			}
+			return actualKeys[i] < actualKeys[j]
+		})
+
+		for _, v := range actualKeys {
+			pkg := v
+			funcs := dslHelpers[pkg]
 			sb.WriteString("## " + pkg + "\n\n")
 			sb.WriteString("| Name | Description | Signatures |\n")
 			sb.WriteString("|------|-------------|------------|\n")
 			for _, f := range funcs {
-				sb.WriteString(fmt.Sprintf("| %s | %s | %s |\n", f.Name, f.Description, strings.Join(f.Signatures, ", ")))
+				sigSlice := []string{}
+				for _, sig := range f.Signatures {
+					sigSlice = append(sigSlice, "`"+sig+"`")
+				}
+				sb.WriteString(fmt.Sprintf("| %s | %s | %s |\n", f.Name, f.Description, strings.Join(sigSlice, ", ")))
 			}
 			sb.WriteString("\n")
 		}
