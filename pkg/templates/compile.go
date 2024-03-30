@@ -35,7 +35,8 @@ var (
 )
 
 const (
-	Unsigned = "unsigned"
+	Unsigned   = "unsigned"
+	PDVerifier = "projectdiscovery/nuclei-templates"
 )
 
 func init() {
@@ -272,7 +273,6 @@ func ParseTemplateFromReader(reader io.Reader, preprocessor Preprocessor, option
 			if config.DefaultConfig.LogAllEvents {
 				gologger.DefaultLogger.Print().Msgf("[%v] Template %s is not signed or tampered\n", aurora.Yellow("WRN").String(), template.ID)
 			}
-			SignatureStats[Unsigned].Add(1)
 		}
 		return template, nil
 	}
@@ -293,7 +293,6 @@ func ParseTemplateFromReader(reader io.Reader, preprocessor Preprocessor, option
 		if config.DefaultConfig.LogAllEvents {
 			gologger.DefaultLogger.Print().Msgf("[%v] Template %s is not signed or tampered\n", aurora.Yellow("WRN").String(), template.ID)
 		}
-		SignatureStats[Unsigned].Add(1)
 	}
 
 	generatedConstants := map[string]interface{}{}
@@ -399,7 +398,7 @@ func parseTemplate(data []byte, options protocols.ExecutorOptions) (*Template, e
 	for _, verifier = range signer.DefaultTemplateVerifiers {
 		template.Verified, _ = verifier.Verify(data, template)
 		if template.Verified {
-			SignatureStats[verifier.Identifier()].Add(1)
+			template.TemplateVerifier = verifier.Identifier()
 			break
 		}
 	}
