@@ -72,7 +72,7 @@ func (f *FlowExecutor) requestExecutor(runtime *goja.Runtime, reqMap mapsutil.Ma
 
 // protocolResultCallback returns a callback that is executed
 // after execution of each protocol request
-func (f *FlowExecutor) protocolResultCallback(req protocols.Request, matcherStatus *atomic.Bool, opts *ProtoOptions) func(result *output.InternalWrappedEvent) {
+func (f *FlowExecutor) protocolResultCallback(req protocols.Request, matcherStatus *atomic.Bool, _ *ProtoOptions) func(result *output.InternalWrappedEvent) {
 	return func(result *output.InternalWrappedEvent) {
 		if result != nil {
 			// Note: flow specific implicit behaviours should be handled here
@@ -96,10 +96,14 @@ func (f *FlowExecutor) protocolResultCallback(req protocols.Request, matcherStat
 						if len(v) == 1 {
 							// add it to flatten keys list so it will be flattened to a string later
 							f.flattenKeys = append(f.flattenKeys, k)
+							f.options.GetTemplateCtx(f.ctx.Input.MetaInput).Set(k, v[0])
+						} else {
+							// if there are multiple values then add it to template context
+							f.options.GetTemplateCtx(f.ctx.Input.MetaInput).Set(k, v)
 						}
-						// always preserve extracted value type
-						f.options.GetTemplateCtx(f.ctx.Input.MetaInput).Set(k, v)
-
+						// if extract value count is unknown then flattening may cause type confusion
+						// result in error so in such cases use _slice suffix to be always sure it is a slice
+						f.options.GetTemplateCtx(f.ctx.Input.MetaInput).Set(k+"_slice", v)
 					}
 				}
 			} else if !result.HasOperatorResult() && !hasOperators(req.GetCompiledOperators()) {
