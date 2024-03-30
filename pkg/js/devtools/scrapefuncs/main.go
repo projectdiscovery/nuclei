@@ -38,12 +38,14 @@ func main() {
 
 	dirList := []string{}
 
-	filepath.WalkDir(dir, func(path string, d os.DirEntry, err error) error {
+	if err := filepath.WalkDir(dir, func(path string, d os.DirEntry, err error) error {
 		if d.IsDir() {
 			dirList = append(dirList, path)
 		}
 		return nil
-	})
+	}); err != nil {
+		panic(err)
+	}
 	pkgs := map[string]*ast.Package{}
 
 	for _, dir := range dirList {
