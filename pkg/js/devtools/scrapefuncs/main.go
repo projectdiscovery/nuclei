@@ -31,9 +31,10 @@ var pkg2NameMapping = map[string]string{
 	"javascript": "JavaScript Protocol",
 	"global":     "Javascript Runtime",
 	"compiler":   "Javascript Runtime",
+	"flow":       "Template Flow",
 }
 
-var preferredOrder = []string{"Javascript Runtime", "Code Protocol", "JavaScript Protocol"}
+var preferredOrder = []string{"Javascript Runtime", "Template Flow", "Code Protocol", "JavaScript Protocol"}
 
 func main() {
 	flag.StringVar(&dir, "dir", "pkg/", "directory to process")
