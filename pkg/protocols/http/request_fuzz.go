@@ -69,7 +69,7 @@ func (request *Request) executeFuzzingRule(input *contextargs.Context, previous 
 				gologger.Verbose().Msgf("[%s] fuzz: %s\n", request.options.TemplateID, err)
 				return nil
 			}
-			if errors.Is(err, errStopExecution) {
+			if errors.Is(err, ErrMissingVars) {
 				return err
 			}
 			gologger.Verbose().Msgf("[%s] fuzz: payload request execution failed : %s\n", request.options.TemplateID, err)
@@ -98,7 +98,7 @@ func (request *Request) executeFuzzingRule(input *contextargs.Context, previous 
 			gologger.Verbose().Msgf("[%s] fuzz: rule not applicable : %s\n", request.options.TemplateID, err)
 			return nil
 		}
-		if errors.Is(err, errStopExecution) {
+		if errors.Is(err, ErrMissingVars) {
 			return err
 		}
 		gologger.Verbose().Msgf("[%s] fuzz: payload request execution failed : %s\n", request.options.TemplateID, err)
@@ -173,7 +173,7 @@ func (request *Request) executeGeneratedFuzzingRequest(gr fuzz.GeneratedRequest,
 		}
 	}, 0)
 	// If a variable is unresolved, skip all further requests
-	if errors.Is(requestErr, errStopExecution) {
+	if errors.Is(requestErr, ErrMissingVars) {
 		return false
 	}
 	if requestErr != nil {

@@ -51,6 +51,8 @@ const (
 
 var (
 	MaxBodyRead = int64(1 << 22) // 4MB using shift operator
+	// ErrMissingVars is error occured when variables are missing
+	ErrMissingVars = errors.New("stop execution due to unresolved variables")
 )
 
 // Type returns the type of the protocol request
@@ -437,7 +439,7 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 			}, generator.currentIndex)
 
 			// If a variable is unresolved, skip all further requests
-			if errors.Is(execReqErr, errStopExecution) {
+			if errors.Is(execReqErr, ErrMissingVars) {
 				return true, nil
 			}
 			if execReqErr != nil {
@@ -484,39 +486,18 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 
 const drainReqSize = int64(8 * 1024)
 
-var errStopExecution = errors.New("stop execution due to unresolved variables")
-
 // executeRequest executes the actual generated request and returns error if occurred
-func (request *Request) executeRequest(input *contextargs.Context, generatedRequest *generatedRequest, previousEvent output.InternalEvent, hasInteractMatchers bool, callback protocols.OutputEventCallback, requestCount int) error {
-	outputEvent := output.InternalEvent{}
+func (request *Request) executeRequest(input *contextargs.Context, generatedRequest *generatedRequest, previousEvent output.InternalEvent, hasInteractMatchers bool, callback protocols.OutputEventCallback, requestCount int) (err error) {
 	var event *output.InternalWrappedEvent
-	// event should never be nil as per existing logic
 	defer func() {
-		if event == nil {
-			event := &output.InternalWrappedEvent{
-				InternalEvent: map[string]interface{}{
-					"template-id":    request.options.TemplateID,
-					"host":           input.MetaInput.Input,
-					ReqURLPatternKey: generatedRequest.requestURLPattern,
-				},
+		if event != nil {
+			if event.InternalEvent == nil {
+				event.InternalEvent = make(map[string]interface{})
+				event.InternalEvent["template-id"] = request.options.TemplateID
 			}
-			if request.CompiledOperators != nil && request.CompiledOperators.HasDSL() {
-				event.InternalEvent = outputEvent
-			}
-			callback(event)
-			return
+			// add the request URL pattern to the event
+			event.InternalEvent[ReqURLPatternKey] = generatedRequest.requestURLPattern
 		}
-		if event.InternalEvent == nil {
-			event.InternalEvent = outputEvent
-		}
-		// make sure templateId is never nil
-		if event.InternalEvent["template-id"] == nil {
-			event.InternalEvent["template-id"] = request.options.TemplateID
-		}
-		if event.InternalEvent["host"] == nil {
-			event.InternalEvent["host"] = input.MetaInput.Input
-		}
-		event.InternalEvent[ReqURLPatternKey] = generatedRequest.requestURLPattern
 	}()
 
 	request.setCustomHeaders(generatedRequest)
@@ -529,12 +510,6 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 		finalMap["ip"] = input.MetaInput.CustomIP
 	}
 
-	// we should never evaluate all variables of a template
-	// for payloadName, payloadValue := range generatedRequest.dynamicValues {
-	// 	if data, err := expressions.Evaluate(types.ToString(payloadValue), finalMap); err == nil {
-	// 		generatedRequest.dynamicValues[payloadName] = data
-	// 	}
-	// }
 	for payloadName, payloadValue := range generatedRequest.meta {
 		if data, err := expressions.Evaluate(types.ToString(payloadValue), finalMap); err == nil {
 			generatedRequest.meta[payloadName] = data
@@ -545,7 +520,6 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 		resp          *http.Response
 		fromCache     bool
 		dumpedRequest []byte
-		err           error
 	)
 
 	// Dump request for variables checks
@@ -588,12 +562,12 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 		if ignoreList := GetVariablesNamesSkipList(generatedRequest.original.Signature.Value); ignoreList != nil {
 			if varErr := expressions.ContainsVariablesWithIgnoreList(ignoreList, dumpedRequestString); varErr != nil && !request.SkipVariablesCheck {
 				gologger.Warning().Msgf("[%s] Could not make http request for %s: %v\n", request.options.TemplateID, input.MetaInput.Input, varErr)
-				return errStopExecution
+				return ErrMissingVars
 			}
 		} else { // Check if are there any unresolved variables. If yes, skip unless overridden by user.
 			if varErr := expressions.ContainsUnresolvedVariables(dumpedRequestString); varErr != nil && !request.SkipVariablesCheck {
 				gologger.Warning().Msgf("[%s] Could not make http request for %s: %v\n", request.options.TemplateID, input.MetaInput.Input, varErr)
-				return errStopExecution
+				return ErrMissingVars
 			}
 		}
 	}
@@ -719,7 +693,7 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 		// In case of interactsh markers and request times out, still send
 		// a callback event so in case we receive an interaction, correlation is possible.
 		// Also, to log failed use-cases.
-		outputEvent = request.responseToDSLMap(&http.Response{}, input.MetaInput.Input, formedURL, convUtil.String(dumpedRequest), "", "", "", 0, generatedRequest.meta)
+		outputEvent := request.responseToDSLMap(&http.Response{}, input.MetaInput.Input, formedURL, convUtil.String(dumpedRequest), "", "", "", 0, generatedRequest.meta)
 		if i := strings.LastIndex(hostname, ":"); i != -1 {
 			hostname = hostname[:i]
 		}
@@ -728,6 +702,16 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 			outputEvent["ip"] = input.MetaInput.CustomIP
 		} else {
 			outputEvent["ip"] = httpclientpool.Dialer.GetDialedIP(hostname)
+		}
+
+		if len(generatedRequest.interactshURLs) > 0 {
+			// according to logic we only need to trigger a callback if interactsh was used
+			// and request failed in hope that later on oast interaction will be received
+			event = &output.InternalWrappedEvent{}
+			if request.CompiledOperators != nil && request.CompiledOperators.HasDSL() {
+				event.InternalEvent = outputEvent
+			}
+			callback(event)
 		}
 		return err
 	}
@@ -800,7 +784,7 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 		}
 		finalEvent := make(output.InternalEvent)
 
-		outputEvent = request.responseToDSLMap(respChain.Response(), input.MetaInput.Input, matchedURL, convUtil.String(dumpedRequest), respChain.FullResponse().String(), respChain.Body().String(), respChain.Headers().String(), duration, generatedRequest.meta)
+		outputEvent := request.responseToDSLMap(respChain.Response(), input.MetaInput.Input, matchedURL, convUtil.String(dumpedRequest), respChain.FullResponse().String(), respChain.Body().String(), respChain.Headers().String(), duration, generatedRequest.meta)
 		// add response fields to template context and merge templatectx variables to output event
 		request.options.AddTemplateVars(input.MetaInput, request.Type(), request.ID, outputEvent)
 		if request.options.HasTemplateCtx(input.MetaInput) {
