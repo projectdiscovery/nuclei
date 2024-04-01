@@ -374,7 +374,7 @@ func (r *Runner) setupPDCPUpload(writer output.Writer) output.Writer {
 		r.options.EnableCloudUpload = true
 	}
 	if !(r.options.EnableCloudUpload || EnableCloudUpload) {
-		r.pdcpUploadErrMsg = fmt.Sprintf("[%v] Scan results upload to cloud is disabled.", aurora.BrightYellow("WRN"))
+		r.pdcpUploadErrMsg = fmt.Sprintf("[%v] Scan results upload to cloud is disabled.", r.colorizer.BrightYellow("WRN"))
 		return writer
 	}
 	color := aurora.NewAurora(!r.options.NoColor)
@@ -668,6 +668,7 @@ func (r *Runner) displayExecutionInfo(store *loader.Store) {
 
 	cfg := config.DefaultConfig
 
+	updateutils.Aurora = r.colorizer
 	gologger.Info().Msgf("Current nuclei version: %v %v", config.Version, updateutils.GetVersionDescription(config.Version, cfg.LatestNucleiVersion))
 	gologger.Info().Msgf("Current nuclei-templates version: %v %v", cfg.TemplateVersion, updateutils.GetVersionDescription(cfg.TemplateVersion, cfg.LatestNucleiTemplatesVersion))
 	if !HideAutoSaveMsg {
@@ -690,7 +691,7 @@ func (r *Runner) displayExecutionInfo(store *loader.Store) {
 			value := v.Load()
 			if value > 0 {
 				if k == templates.Unsigned && !r.options.Silent && !config.DefaultConfig.HideTemplateSigWarning {
-					gologger.Print().Msgf("[%v] Executing %d unsigned templates for scan. Use with caution.", aurora.BrightYellow("WRN"), value)
+					gologger.Print().Msgf("[%v] Loading %d unsigned templates for scan. Use with caution.", r.colorizer.BrightYellow("WRN"), value)
 				} else {
 					gologger.Info().Msgf("Executing %d signed templates from %s", value, k)
 				}
