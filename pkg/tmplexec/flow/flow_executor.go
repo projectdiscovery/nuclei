@@ -8,7 +8,6 @@ import (
 	"sync/atomic"
 
 	"github.com/dop251/goja"
-	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/generators"
 	"github.com/projectdiscovery/nuclei/v3/pkg/scan"
@@ -175,13 +174,6 @@ func (f *FlowExecutor) Compile() error {
 
 // ExecuteWithResults executes the flow and returns results
 func (f *FlowExecutor) ExecuteWithResults(ctx *scan.ScanContext) error {
-	defer func() {
-		if e := recover(); e != nil {
-			f.ctx.LogError(fmt.Errorf("panic occurred while executing target %v with flow: %v", ctx.Input.MetaInput.Input, e))
-			gologger.Error().Label(f.options.TemplateID).Msgf("panic occurred while executing target %v with flow: %v", ctx.Input.MetaInput.Input, e)
-		}
-	}()
-
 	f.ctx.Input = ctx.Input
 	// -----Load all types of variables-----
 	// add all input args to template context

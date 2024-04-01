@@ -64,11 +64,6 @@ type GeneratedRequest struct {
 // Input is not thread safe and should not be shared between concurrent
 // goroutines.
 func (rule *Rule) Execute(input *ExecuteRuleInput) (err error) {
-	defer func() {
-		if r := recover(); r != nil {
-			err = fmt.Errorf("got panic while executing rule: %v", r)
-		}
-	}()
 	if !rule.isInputURLValid(input.Input) {
 		return ErrRuleNotApplicable.Msgf("invalid input url: %v", input.Input.MetaInput.Input)
 	}

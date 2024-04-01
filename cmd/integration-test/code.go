@@ -23,6 +23,7 @@ var codeTestCases = []TestCaseInfo{
 	{Path: "protocols/code/py-nosig.yaml", TestCase: &codePyNoSig{}, DisableOn: isCodeDisabled},
 	{Path: "protocols/code/py-interactsh.yaml", TestCase: &codeSnippet{}, DisableOn: isCodeDisabled},
 	{Path: "protocols/code/ps1-snippet.yaml", TestCase: &codeSnippet{}, DisableOn: func() bool { return !osutils.IsWindows() || isCodeDisabled() }},
+	{Path: "protocols/code/pre-condition.yaml", TestCase: &codePreCondition{}, DisableOn: isCodeDisabled},
 }
 
 const (
@@ -92,6 +93,22 @@ func (h *codeSnippet) Execute(filePath string) error {
 		return err
 	}
 	return expectResultsCount(results, 1)
+}
+
+type codePreCondition struct{}
+
+// Execute executes a test case and returns an error if occurred
+func (h *codePreCondition) Execute(filePath string) error {
+	results, err := testutils.RunNucleiArgsWithEnvAndGetResults(debug, getEnvValues(), "-t", filePath, "-u", "input", "-code")
+	if err != nil {
+		return err
+	}
+	if osutils.IsLinux() {
+		return expectResultsCount(results, 1)
+	} else {
+		return expectResultsCount(results, 0)
+
+	}
 }
 
 type codeFile struct{}

@@ -13,7 +13,6 @@ import (
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/config"
-	cfg "github.com/projectdiscovery/nuclei/v3/pkg/catalog/config"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/loader/filter"
 	"github.com/projectdiscovery/nuclei/v3/pkg/model/types/severity"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
@@ -387,6 +386,21 @@ func (store *Store) LoadTemplatesWithTags(templatesList, tags []string) []*templ
 	templatePathMap := store.pathFilter.Match(includedTemplates)
 
 	loadedTemplates := make([]*templates.Template, 0, len(templatePathMap))
+
+	loadTemplate := func(tmpl *templates.Template) {
+		loadedTemplates = append(loadedTemplates, tmpl)
+		// increment signed/unsigned counters
+		if tmpl.Verified {
+			if tmpl.TemplateVerifier == "" {
+				templates.SignatureStats[templates.PDVerifier].Add(1)
+			} else {
+				templates.SignatureStats[tmpl.TemplateVerifier].Add(1)
+			}
+		} else {
+			templates.SignatureStats[templates.Unsigned].Add(1)
+		}
+	}
+
 	for templatePath := range templatePathMap {
 		loaded, err := store.config.ExecutorOptions.Parser.LoadTemplate(templatePath, store.tagFilter, tags, store.config.Catalog)
 		if loaded || store.pathFilter.MatchIncluded(templatePath) {
@@ -412,7 +426,7 @@ func (store *Store) LoadTemplatesWithTags(templatesList, tags []string) []*templ
 				if store.config.ExecutorOptions.Options.DAST {
 					// check if the template is a DAST template
 					if parsed.IsFuzzing() {
-						loadedTemplates = append(loadedTemplates, parsed)
+						loadTemplate(parsed)
 					}
 				} else if len(parsed.RequestsHeadless) > 0 && !store.config.ExecutorOptions.Options.Headless {
 					// donot include headless template in final list if headless flag is not set
@@ -440,14 +454,14 @@ func (store *Store) LoadTemplatesWithTags(templatesList, tags []string) []*templ
 						gologger.Print().Msgf("[%v] -dast flag is required for DAST template '%s'.\n", aurora.Yellow("WRN").String(), templatePath)
 					}
 				} else {
-					loadedTemplates = append(loadedTemplates, parsed)
+					loadTemplate(parsed)
 				}
 			}
 		}
 		if err != nil {
 			if strings.Contains(err.Error(), templates.ErrExcluded.Error()) {
 				stats.Increment(templates.TemplatesExcludedStats)
-				if cfg.DefaultConfig.LogAllEvents {
+				if config.DefaultConfig.LogAllEvents {
 					gologger.Print().Msgf("[%v] %v\n", aurora.Yellow("WRN").String(), err.Error())
 				}
 				continue

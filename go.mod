@@ -97,7 +97,6 @@ require (
 	github.com/projectdiscovery/utils v0.0.85
 	github.com/projectdiscovery/wappalyzergo v0.0.112
 	github.com/redis/go-redis/v9 v9.1.0
-	github.com/sashabaranov/go-openai v1.15.3
 	github.com/seh-msft/burpxml v1.0.1
 	github.com/stretchr/testify v1.9.0
 	github.com/zmap/zgrab2 v0.1.8-0.20230806160807-97ba87c0e706
@@ -205,6 +204,7 @@ require (
 	github.com/projectdiscovery/stringsutil v0.0.2 // indirect
 	github.com/quic-go/quic-go v0.40.1 // indirect
 	github.com/refraction-networking/utls v1.6.1 // indirect
+	github.com/sashabaranov/go-openai v1.15.3 // indirect
 	github.com/shirou/gopsutil v3.21.11+incompatible // indirect
 	github.com/shoenig/go-m1cpu v0.1.6 // indirect
 	github.com/sirupsen/logrus v1.9.3 // indirect
