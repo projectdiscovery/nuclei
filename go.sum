@@ -885,6 +885,8 @@ github.com/projectdiscovery/useragent v0.0.40 h1:1LUhReSGPkhqsM5n40OOC9dIoNqMGs1
 github.com/projectdiscovery/useragent v0.0.40/go.mod h1:EvK1x3s948Gtqb/XOahXcauyejCL/rSgy5d1IAvsKT4=
 github.com/projectdiscovery/utils v0.0.87-0.20240401150204-e67654fe2e79 h1:daCfWQnQ1tmbOEfm7llxr2YjBF6yjTqS3y3E+GiTO5I=
 github.com/projectdiscovery/utils v0.0.87-0.20240401150204-e67654fe2e79/go.mod h1:jGK450sL9AVDTjaPwEs9za8NVeEC9xE97IWNoK138kI=
+github.com/projectdiscovery/utils v0.0.87 h1:9+RiTEhpUB/vk6XJUVpysNWJ2aCTD7WuyoyAcNnbIzk=
+github.com/projectdiscovery/utils v0.0.87/go.mod h1:jGK450sL9AVDTjaPwEs9za8NVeEC9xE97IWNoK138kI=
 github.com/projectdiscovery/wappalyzergo v0.0.116 h1:xy+mBpwbYo/0PSzmJOQ/RXHomEh0D3nDBcbCxsW69m8=
 github.com/projectdiscovery/wappalyzergo v0.0.116/go.mod h1:hc/o+fgM8KtdpFesjfBTmHTwsR+yBd+4kYZW/DGy/x8=
 github.com/projectdiscovery/yamldoc-go v1.0.4 h1:eZoESapnMw6WAHiVgRwNqvbJEfNHEH148uthhFbG5jE=
