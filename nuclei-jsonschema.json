@@ -610,22 +610,22 @@
           "title": "disable auto merging of path",
           "description": "Disable merging target url path with raw request path"
         },
-        "filter": {
+        "pre-condition": {
           "items": {
             "$ref": "#/$defs/Matcher"
           },
           "type": "array",
-          "title": "filter for fuzzing",
-          "description": "Filter is matcher-like field to check if fuzzing should be performed on this request or not"
+          "title": "pre-condition for fuzzing/dast",
+          "description": "PreCondition is matcher-like field to check if fuzzing should be performed on this request or not"
         },
-        "filter-condition": {
+        "pre-condition-operator": {
           "type": "string",
           "enum": [
             "and",
             "or"
           ],
           "title": "condition between the filters",
-          "description": "Conditions between the filters"
+          "description": "Operator to use between multiple per-conditions"
         }
       },
       "additionalProperties": false,
