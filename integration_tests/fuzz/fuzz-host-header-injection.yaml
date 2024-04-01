@@ -10,7 +10,7 @@ variables:
   domain: "oast.fun"
 
 http:
-  - filters:
+  - pre-condition:
       - type: dsl
         dsl:
           - 'method == "GET"'

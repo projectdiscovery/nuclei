@@ -207,11 +207,6 @@ func (hr *HttpResponse) Clone() *HttpResponse {
 // and returns the request and response object
 // Note: it currently does not parse response and is meant to be added manually since its a optional field
 func ParseRawRequest(raw string) (rr *RequestResponse, err error) {
-	defer func() {
-		if r := recover(); r != nil {
-			err = fmt.Errorf("panic: %v", r)
-		}
-	}()
 	protoReader := textproto.NewReader(bufio.NewReader(strings.NewReader(raw)))
 	methodLine, err := protoReader.ReadLine()
 	if err != nil {

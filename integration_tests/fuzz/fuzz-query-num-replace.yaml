@@ -7,7 +7,7 @@ info:
   description: Query Value Fuzzing using Fuzzing Rules
 
 http:
-  - filters:
+  - pre-condition:
       - type: dsl
         dsl:
           - 'len(query) > 0'
@@ -16,7 +16,7 @@ http:
         part: path
         words:
           - /blog/post
-    filters-condition: and
+    pre-condition-operator: and
 
     payloads:
       nums:

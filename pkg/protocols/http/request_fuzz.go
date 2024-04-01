@@ -194,11 +194,11 @@ func (request *Request) executeGeneratedFuzzingRequest(gr fuzz.GeneratedRequest,
 
 // ShouldFuzzTarget checks if given target should be fuzzed or not using `filter` field in template
 func (request *Request) ShouldFuzzTarget(input *contextargs.Context) bool {
-	if len(request.FuzzingFilter) == 0 {
+	if len(request.FuzzPreCondition) == 0 {
 		return true
 	}
 	status := []bool{}
-	for index, filter := range request.FuzzingFilter {
+	for index, filter := range request.FuzzPreCondition {
 		isMatch, _ := request.Match(request.filterDataMap(input), filter)
 		status = append(status, isMatch)
 		if request.options.Options.MatcherStatus {
@@ -209,7 +209,7 @@ func (request *Request) ShouldFuzzTarget(input *contextargs.Context) bool {
 		return true
 	}
 	var matched bool
-	if request.fuzzingFilterCondition == matchers.ANDCondition {
+	if request.fuzzPreConditionOperator == matchers.ANDCondition {
 		matched = operators.EvalBoolSlice(status, true)
 	} else {
 		matched = operators.EvalBoolSlice(status, false)

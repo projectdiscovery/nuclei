@@ -10,7 +10,7 @@ info:
     and performs fuzzing on the value of every key
 
 http:
-  - filters:
+  - pre-condition:
       - type: dsl
         dsl:
           - method != "GET"
