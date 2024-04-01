@@ -153,11 +153,6 @@ func requestShouldStopAtFirstMatch(request *RequestData) bool {
 func (c *Client) processInteractionForRequest(interaction *server.Interaction, data *RequestData) bool {
 	var result *operators.Result
 	var matched bool
-	defer func() {
-		if r := recover(); r != nil {
-			gologger.Error().Msgf("panic occurred while processing interaction with result=%v matched=%v err=%v", result, matched, r)
-		}
-	}()
 	data.Event.Lock()
 	data.Event.InternalEvent["interactsh_protocol"] = interaction.Protocol
 	if strings.EqualFold(interaction.Protocol, "dns") {
