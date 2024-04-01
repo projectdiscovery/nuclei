@@ -18,6 +18,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/js/compiler"
 	"github.com/projectdiscovery/nuclei/v3/pkg/operators"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/generators"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/offlinehttp"
 	"github.com/projectdiscovery/nuclei/v3/pkg/templates/signer"
 	"github.com/projectdiscovery/nuclei/v3/pkg/tmplexec"
@@ -295,14 +296,22 @@ func ParseTemplateFromReader(reader io.Reader, preprocessor Preprocessor, option
 		SignatureStats[Unsigned].Add(1)
 	}
 
+	generatedConstants := map[string]interface{}{}
 	// ==== execute preprocessors ======
 	for _, v := range allPreprocessors {
-		data = v.Process(data)
+		var replaced map[string]interface{}
+		data, replaced = v.ProcessNReturnData(data)
+		// preprocess kind of act like a constant and are generated while loading
+		// and stay constant for the template lifecycle
+		generatedConstants = generators.MergeMaps(generatedConstants, replaced)
 	}
 	reParsed, err := parseTemplate(data, options)
 	if err != nil {
 		return nil, err
 	}
+	// add generated constants to constants map and executer options
+	reParsed.Constants = generators.MergeMaps(reParsed.Constants, generatedConstants)
+	reParsed.Options.Constants = reParsed.Constants
 	reParsed.Verified = isVerified
 	return reParsed, nil
 }

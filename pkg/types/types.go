@@ -372,9 +372,6 @@ type Options struct {
 	ScanID string
 	// JsConcurrency is the number of concurrent js routines to run
 	JsConcurrency int
-	// Fuzz enabled execution of fuzzing templates
-	// Note: when Fuzz is enabled other templates will not be executed
-	FuzzTemplates bool
 	// SecretsFile is file containing secrets for nuclei
 	SecretsFile goflags.StringSlice
 	// PreFetchSecrets pre-fetches the secrets from the auth provider
@@ -385,6 +382,8 @@ type Options struct {
 	SkipFormatValidation bool
 	// PayloadConcurrency is the number of concurrent payloads to run per template
 	PayloadConcurrency int
+	// Dast only runs DAST templates
+	DAST bool
 }
 
 // ShouldLoadResume resume file

@@ -61,8 +61,6 @@ type Config struct {
 
 	Catalog         catalog.Catalog
 	ExecutorOptions protocols.ExecutorOptions
-
-	OnlyLoadHTTPFuzzing bool
 }
 
 // Store is a storage for loaded nuclei templates
@@ -405,33 +403,42 @@ func (store *Store) LoadTemplatesWithTags(templatesList, tags []string) []*templ
 					stats.Increment(templates.SkippedUnsignedStats)
 					continue
 				}
-				if len(parsed.RequestsHeadless) > 0 && !store.config.ExecutorOptions.Options.Headless {
+				// if template has request signature like aws then only signed and verified templates are allowed
+				if parsed.UsesRequestSignature() && !parsed.Verified {
+					stats.Increment(templates.SkippedRequestSignatureStats)
+					continue
+				}
+				// DAST only templates
+				if store.config.ExecutorOptions.Options.DAST {
+					// check if the template is a DAST template
+					if parsed.IsFuzzing() {
+						loadedTemplates = append(loadedTemplates, parsed)
+					}
+				} else if len(parsed.RequestsHeadless) > 0 && !store.config.ExecutorOptions.Options.Headless {
 					// donot include headless template in final list if headless flag is not set
-					stats.Increment(templates.HeadlessFlagWarningStats)
+					stats.Increment(templates.ExcludedHeadlessTmplStats)
 					if config.DefaultConfig.LogAllEvents {
 						gologger.Print().Msgf("[%v] Headless flag is required for headless template '%s'.\n", aurora.Yellow("WRN").String(), templatePath)
 					}
 				} else if len(parsed.RequestsCode) > 0 && !store.config.ExecutorOptions.Options.EnableCodeTemplates {
 					// donot include 'Code' protocol custom template in final list if code flag is not set
-					stats.Increment(templates.CodeFlagWarningStats)
+					stats.Increment(templates.ExcludedCodeTmplStats)
 					if config.DefaultConfig.LogAllEvents {
 						gologger.Print().Msgf("[%v] Code flag is required for code protocol template '%s'.\n", aurora.Yellow("WRN").String(), templatePath)
 					}
 				} else if len(parsed.RequestsCode) > 0 && !parsed.Verified && len(parsed.Workflows) == 0 {
 					// donot include unverified 'Code' protocol custom template in final list
-					stats.Increment(templates.UnsignedCodeWarning)
+					stats.Increment(templates.SkippedCodeTmplTamperedStats)
 					// these will be skipped so increment skip counter
 					stats.Increment(templates.SkippedUnsignedStats)
 					if config.DefaultConfig.LogAllEvents {
 						gologger.Print().Msgf("[%v] Tampered/Unsigned template at %v.\n", aurora.Yellow("WRN").String(), templatePath)
 					}
-				} else if parsed.IsFuzzing() && !store.config.ExecutorOptions.Options.FuzzTemplates {
-					stats.Increment(templates.FuzzFlagWarningStats)
+				} else if parsed.IsFuzzing() && !store.config.ExecutorOptions.Options.DAST {
+					stats.Increment(templates.ExludedDastTmplStats)
 					if config.DefaultConfig.LogAllEvents {
-						gologger.Print().Msgf("[%v] Fuzz flag is required for fuzzing template '%s'.\n", aurora.Yellow("WRN").String(), templatePath)
+						gologger.Print().Msgf("[%v] -dast flag is required for DAST template '%s'.\n", aurora.Yellow("WRN").String(), templatePath)
 					}
-				} else if store.config.OnlyLoadHTTPFuzzing && !parsed.IsFuzzing() {
-					gologger.Warning().Msgf("Non-Fuzzing template '%s' can only be run on list input mode targets\n", templatePath)
 				} else {
 					loadedTemplates = append(loadedTemplates, parsed)
 				}
@@ -439,7 +446,7 @@ func (store *Store) LoadTemplatesWithTags(templatesList, tags []string) []*templ
 		}
 		if err != nil {
 			if strings.Contains(err.Error(), templates.ErrExcluded.Error()) {
-				stats.Increment(templates.TemplatesExecutedStats)
+				stats.Increment(templates.TemplatesExcludedStats)
 				if cfg.DefaultConfig.LogAllEvents {
 					gologger.Print().Msgf("[%v] %v\n", aurora.Yellow("WRN").String(), err.Error())
 				}
