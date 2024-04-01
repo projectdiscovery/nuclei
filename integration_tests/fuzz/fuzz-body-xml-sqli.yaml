@@ -10,7 +10,7 @@ info:
     Note: this is example template, and payloads/matchers need to be modified appropriately.
 
 http:
-  - filters:
+  - pre-condition:
       - type: dsl
         dsl:
           - method != "GET"

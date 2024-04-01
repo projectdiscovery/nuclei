@@ -688,14 +688,9 @@ func (r *Runner) displayExecutionInfo(store *loader.Store) {
 		}
 		for k, v := range templates.SignatureStats {
 			value := v.Load()
-			if k == templates.Unsigned && value > 0 {
-				// adjust skipped unsigned templates via code or -dut flag
-				value = value - uint64(stats.GetValue(templates.SkippedUnsignedStats))
-				value = value - uint64(stats.GetValue(templates.ExcludedCodeTmplStats))
-			}
 			if value > 0 {
 				if k == templates.Unsigned && !r.options.Silent && !config.DefaultConfig.HideTemplateSigWarning {
-					gologger.Print().Msgf("[%v] Loading %d unsigned templates for scan. Use with caution.", aurora.BrightYellow("WRN"), value)
+					gologger.Print().Msgf("[%v] Executing %d unsigned templates for scan. Use with caution.", aurora.BrightYellow("WRN"), value)
 				} else {
 					gologger.Info().Msgf("Executing %d signed templates from %s", value, k)
 				}

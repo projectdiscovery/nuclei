@@ -154,7 +154,8 @@ type Template struct {
 
 	// Verified defines if the template signature is digitally verified
 	Verified bool `yaml:"-" json:"-"`
-
+	// TemplateVerifier is identifier verifier used to verify the template (default nuclei-templates have projectdiscovery/nuclei-templates)
+	TemplateVerifier string `yaml:"-" json:"-"`
 	// RequestsQueue contains all template requests in order (both protocol & request order)
 	RequestsQueue []protocols.Request `yaml:"-" json:"-"`
 

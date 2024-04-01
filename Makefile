@@ -47,4 +47,7 @@ fuzzplayground:
 memogen:
 	$(GOBUILD) $(GOFLAGS) -ldflags '$(LDFLAGS)' -o "memogen" cmd/memogen/memogen.go
 	./memogen -src pkg/js/libs -tpl cmd/memogen/function.tpl
-
+dsl-docs:
+	rm -f dsl.md scrapefuncs 2>/dev/null
+	$(GOBUILD) $(GOFLAGS) -ldflags '$(LDFLAGS)' -o "scrapefuncs" pkg/js/devtools/scrapefuncs/main.go
+	./scrapefuncs -out dsl.md

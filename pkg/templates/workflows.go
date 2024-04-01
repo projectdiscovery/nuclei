@@ -101,6 +101,17 @@ func parseWorkflowTemplate(workflow *workflows.WorkflowTemplate, preprocessor Pr
 				continue
 			}
 		}
+
+		// increment signed/unsigned counters
+		if template.Verified {
+			if template.TemplateVerifier == "" {
+				SignatureStats[PDVerifier].Add(1)
+			} else {
+				SignatureStats[template.TemplateVerifier].Add(1)
+			}
+		} else {
+			SignatureStats[Unsigned].Add(1)
+		}
 		workflowTemplates = append(workflowTemplates, template)
 	}
 

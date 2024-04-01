@@ -2,7 +2,6 @@ package dataformat
 
 import (
 	"fmt"
-	"net/url"
 	"regexp"
 	"strconv"
 	"strings"
@@ -116,13 +115,11 @@ func (f *Form) Encode(data KV) (string, error) {
 
 // Decode decodes the data from Form format
 func (f *Form) Decode(data string) (KV, error) {
-	parsed, err := url.ParseQuery(data)
-	if err != nil {
-		return KV{}, err
-	}
+	ordered_params := urlutil.NewOrderedParams()
+	ordered_params.Merge(data)
 
 	values := mapsutil.NewOrderedMap[string, any]()
-	for key, value := range parsed {
+	ordered_params.Iterate(func(key string, value []string) bool {
 		if len(value) == 1 {
 			values.Set(key, value[0])
 		} else {
@@ -134,7 +131,8 @@ func (f *Form) Decode(data string) (KV, error) {
 			}
 			values.Set(key, value[len(value)-1])
 		}
-	}
+		return true
+	})
 	return KVOrderedMap(&values), nil
 }
 
