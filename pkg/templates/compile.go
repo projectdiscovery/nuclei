@@ -15,6 +15,7 @@ import (
 
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/config"
+	"github.com/projectdiscovery/nuclei/v3/pkg/cruisecontrol"
 	"github.com/projectdiscovery/nuclei/v3/pkg/js/compiler"
 	"github.com/projectdiscovery/nuclei/v3/pkg/operators"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
@@ -362,7 +363,7 @@ func parseTemplate(data []byte, options protocols.ExecutorOptions) (*Template, e
 
 	// initialize the js compiler if missing
 	if options.JsCompiler == nil {
-		options.JsCompiler = GetJsCompiler()
+		options.JsCompiler = GetJsCompiler(WithCruiseControl(options.CruiseControl))
 	}
 
 	template.Options = &options
@@ -411,12 +412,26 @@ func parseTemplate(data []byte, options protocols.ExecutorOptions) (*Template, e
 
 var (
 	jsCompiler     *compiler.Compiler
-	jsCompilerOnce = sync.OnceFunc(func() {
-		jsCompiler = compiler.New()
-	})
+	bufferOptions  []JsCompilerOption
+	jsCompilerOnce sync.Once
 )
 
-func GetJsCompiler() *compiler.Compiler {
-	jsCompilerOnce()
+type JsCompilerOption func(c *compiler.Compiler) error
+
+func WithCruiseControl(cruisControl *cruisecontrol.CruiseControl) JsCompilerOption {
+	return func(e *compiler.Compiler) error {
+		e.CruisControl = cruisControl
+		return nil
+	}
+}
+
+func GetJsCompiler(options ...JsCompilerOption) *compiler.Compiler {
+	jsCompilerOnce.Do(func() {
+		jsCompiler, _ = compiler.New()
+		for _, option := range options {
+			option(jsCompiler)
+		}
+	})
+
 	return jsCompiler
 }

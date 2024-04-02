@@ -8,6 +8,7 @@ import (
 
 	"github.com/dop251/goja"
 
+	"github.com/projectdiscovery/nuclei/v3/pkg/cruisecontrol"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/generators"
 	contextutil "github.com/projectdiscovery/utils/context"
 	stringsutil "github.com/projectdiscovery/utils/strings"
@@ -16,11 +17,18 @@ import (
 // Compiler provides a runtime to execute goja runtime
 // based javascript scripts efficiently while also
 // providing them access to custom modules defined in libs/.
-type Compiler struct{}
+type Compiler struct {
+	CruisControl *cruisecontrol.CruiseControl
+	JsPool       *JsPool
+}
 
 // New creates a new compiler for the goja runtime.
-func New() *Compiler {
-	return &Compiler{}
+func New() (*Compiler, error) {
+	jspool, err := NewPool()
+	if err != nil {
+		return nil, err
+	}
+	return &Compiler{JsPool: jspool}, nil
 }
 
 // ExecuteOptions provides options for executing a script.
@@ -114,7 +122,7 @@ func (c *Compiler) ExecuteWithOptions(program *goja.Program, args *ExecuteArgs, 
 				err = fmt.Errorf("panic: %v", r)
 			}
 		}()
-		return ExecuteProgram(program, args, opts)
+		return c.JsPool.ExecuteProgram(program, args, opts)
 	})
 	if err != nil {
 		return nil, err

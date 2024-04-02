@@ -6,6 +6,7 @@ import (
 
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/gologger/levels"
+	"github.com/stretchr/testify/require"
 )
 
 func TestNewCompilerConsoleDebug(t *testing.T) {
@@ -17,8 +18,9 @@ func TestNewCompilerConsoleDebug(t *testing.T) {
 		},
 	})
 
-	compiler := New()
-	_, err := compiler.Execute("console.log('hello world');", NewExecuteArgs())
+	compiler, err := New()
+	require.Nil(t, err)
+	_, err = compiler.Execute("console.log('hello world');", NewExecuteArgs())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -28,7 +30,8 @@ func TestNewCompilerConsoleDebug(t *testing.T) {
 }
 
 func TestExecuteResultGetSuccess(t *testing.T) {
-	compiler := New()
+	compiler, err := New()
+	require.Nil(t, err)
 	result, err := compiler.Execute("1+1 == 2", NewExecuteArgs())
 	if err != nil {
 		t.Fatal(err)
