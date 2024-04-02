@@ -204,6 +204,10 @@ func New(options *types.Options) (*Runner, error) {
 	if err != nil {
 		return nil, err
 	}
+	runner.rdapClientPool, err = rdapclientpool.New(options)
+	if err != nil {
+		return nil, err
+	}
 
 	var httpclient *retryablehttp.Client
 	if options.ProxyInternal && types.ProxyURL != "" || types.ProxySocksURL != "" {
