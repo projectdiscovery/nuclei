@@ -173,7 +173,7 @@ func (e *TemplateExecuter) Execute(ctx *scan.ScanContext) (bool, error) {
 	if lastMatcherEvent != nil {
 		writeFailureCallback(lastMatcherEvent, e.options.Options.MatcherStatus)
 	}
-	return executed.Load(), errx
+	return executed.Load() || matched.Load(), errx
 }
 
 // ExecuteWithResults executes the protocol requests and returns results instead of writing them.
