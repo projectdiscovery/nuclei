@@ -412,7 +412,6 @@ func parseTemplate(data []byte, options protocols.ExecutorOptions) (*Template, e
 
 var (
 	jsCompiler     *compiler.Compiler
-	bufferOptions  []JsCompilerOption
 	jsCompilerOnce sync.Once
 )
 
@@ -429,7 +428,9 @@ func GetJsCompiler(options ...JsCompilerOption) *compiler.Compiler {
 	jsCompilerOnce.Do(func() {
 		jsCompiler, _ = compiler.New()
 		for _, option := range options {
-			option(jsCompiler)
+			if err := option(jsCompiler); err != nil {
+				panic(err)
+			}
 		}
 	})
 
