@@ -30,6 +30,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http/httpclientpool"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http/signerpool"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/network/networkclientpool"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/whois/rdapclientpool"
 	"github.com/projectdiscovery/nuclei/v3/pkg/reporting"
 	"github.com/projectdiscovery/nuclei/v3/pkg/templates"
 	"github.com/projectdiscovery/nuclei/v3/pkg/testutils"
@@ -105,6 +106,7 @@ func executeNucleiAsLibrary(templatePath, templateURL string) ([]string, error) 
 	dnsClientPool, _ := dnsclientpool.New(defaultOpts)
 	networkClientPool, _ := networkclientpool.New(defaultOpts)
 	signerPool, _ := signerpool.New(defaultOpts)
+	radpClientPool, _ := rdapclientpool.New(defaultOpts)
 
 	executerOpts := protocols.ExecutorOptions{
 		Output:            outputWriter,
@@ -122,6 +124,7 @@ func executeNucleiAsLibrary(templatePath, templateURL string) ([]string, error) 
 		DnsClientPool:     dnsClientPool,
 		NetworkClientPool: networkClientPool,
 		SignerPool:        signerPool,
+		RdapClientPool:    radpClientPool,
 	}
 	engine := core.New(defaultOpts)
 	engine.SetExecuterOptions(executerOpts)

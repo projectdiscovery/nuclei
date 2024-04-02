@@ -24,6 +24,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http/signerpool"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/network/networkclientpool"
 	protocolUtils "github.com/projectdiscovery/nuclei/v3/pkg/protocols/utils"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/whois/rdapclientpool"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	"github.com/projectdiscovery/nuclei/v3/pkg/utils"
 )
@@ -92,6 +93,7 @@ func NewMockExecuterOptions(options *types.Options, info *TemplateInfo) *protoco
 	dnsClientPool, _ := dnsclientpool.New(options)
 	networkClientPool, _ := networkclientpool.New(options)
 	signerPool, _ := signerpool.New(options)
+	rdapClientPool, _ := rdapclientpool.New(options)
 	executerOpts := &protocols.ExecutorOptions{
 		TemplateID:        info.ID,
 		TemplateInfo:      info.Info,
@@ -108,6 +110,7 @@ func NewMockExecuterOptions(options *types.Options, info *TemplateInfo) *protoco
 		DnsClientPool:     dnsClientPool,
 		NetworkClientPool: networkClientPool,
 		SignerPool:        signerPool,
+		RdapClientPool:    rdapClientPool,
 	}
 	executerOpts.CreateTemplateCtxStore()
 	return executerOpts

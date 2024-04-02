@@ -181,6 +181,7 @@ func (e *NucleiEngine) init() error {
 		DnsClientPool:     e.dnsClientPool,
 		NetworkClientPool: e.networkClientPool,
 		SignerPool:        e.signerPool,
+		RdapClientPool:    e.rdapClientPool,
 	}
 	if len(e.opts.SecretsFile) > 0 {
 		authTmplStore, err := runner.GetAuthTmplStore(*e.opts, e.catalog, e.executerOpts)

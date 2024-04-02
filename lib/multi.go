@@ -40,6 +40,7 @@ func createEphemeralObjects(base *NucleiEngine, opts *types.Options) (*unsafeOpt
 		DnsClientPool:     base.dnsClientPool,
 		NetworkClientPool: base.networkClientPool,
 		SignerPool:        base.signerPool,
+		RdapClientPool:    base.rdapClientPool,
 	}
 	u.engine = core.New(opts)
 	u.engine.SetExecuterOptions(u.executerOpts)

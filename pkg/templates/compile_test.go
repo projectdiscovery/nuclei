@@ -27,6 +27,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http/httpclientpool"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http/signerpool"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/network/networkclientpool"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/whois/rdapclientpool"
 	"github.com/projectdiscovery/nuclei/v3/pkg/templates"
 	"github.com/projectdiscovery/nuclei/v3/pkg/testutils"
 	"github.com/projectdiscovery/nuclei/v3/pkg/workflows"
@@ -45,6 +46,7 @@ func setup() {
 	dnsClientPool, _ := dnsclientpool.New(options)
 	networkClientPool, _ := networkclientpool.New(options)
 	signerPool, _ := signerpool.New(options)
+	rdapClientPool, _ := rdapclientpool.New(options)
 
 	executerOpts = protocols.ExecutorOptions{
 		Output:            testutils.NewMockOutputWriter(options.OmitTemplate),
@@ -59,6 +61,7 @@ func setup() {
 		DnsClientPool:     dnsClientPool,
 		NetworkClientPool: networkClientPool,
 		SignerPool:        signerPool,
+		RdapClientPool:    rdapClientPool,
 		Parser:            templates.NewParser(),
 	}
 	workflowLoader, err := workflow.NewLoader(&executerOpts)

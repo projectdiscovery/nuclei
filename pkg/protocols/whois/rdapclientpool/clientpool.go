@@ -6,34 +6,29 @@ import (
 	"github.com/projectdiscovery/rdap"
 )
 
-// todo: this package does not contain potential cross-references, centralize?
-var normalClient *rdap.Client
+type RdapClientPool struct {
+	normalClient *rdap.Client
+}
 
-// Init initializes the client pool implementation
-func Init(options *types.Options) error {
-	// Don't create clients if already created in the past.
-	if normalClient != nil {
-		return nil
-	}
-
-	normalClient = &rdap.Client{}
+func New(options *types.Options) (*RdapClientPool, error) {
+	normalClient := &rdap.Client{}
 	if options.Verbose || options.Debug || options.DebugRequests || options.DebugResponse {
 		normalClient.Verbose = func(text string) {
 			gologger.Debug().Msgf("rdap: %s", text)
 		}
 	}
-	return nil
+	return &RdapClientPool{normalClient: normalClient}, nil
 }
 
 // Configuration contains the custom configuration options for a client - placeholder
 type Configuration struct{}
 
 // Hash returns the hash of the configuration to allow client pooling - placeholder
-func (c *Configuration) Hash() string {
-	return ""
+func (c *Configuration) Hash() uint64 {
+	return 0
 }
 
 // Get creates or gets a client for the protocol based on custom configuration
-func Get(options *types.Options, configuration *Configuration) (*rdap.Client, error) {
-	return normalClient, nil
+func (rcp *RdapClientPool) Get(options *types.Options, configuration *Configuration) (*rdap.Client, error) {
+	return rcp.normalClient, nil
 }
