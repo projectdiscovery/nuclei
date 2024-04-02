@@ -94,7 +94,7 @@ require (
 	github.com/projectdiscovery/tlsx v1.1.6
 	github.com/projectdiscovery/uncover v1.0.7
 	github.com/projectdiscovery/useragent v0.0.40
-	github.com/projectdiscovery/utils v0.0.85
+	github.com/projectdiscovery/utils v0.0.87
 	github.com/projectdiscovery/wappalyzergo v0.0.116
 	github.com/redis/go-redis/v9 v9.1.0
 	github.com/seh-msft/burpxml v1.0.1
@@ -228,6 +228,7 @@ require (
 	github.com/ysmood/got v0.34.1 // indirect
 	github.com/yuin/goldmark v1.5.4 // indirect
 	github.com/yuin/goldmark-emoji v1.0.1 // indirect
+	github.com/zcalusic/sysinfo v1.0.2 // indirect
 	github.com/zeebo/blake3 v0.2.3 // indirect
 	golang.org/x/arch v0.3.0 // indirect
 	golang.org/x/sync v0.6.0 // indirect
