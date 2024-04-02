@@ -3,7 +3,6 @@ package tmplexec
 import (
 	"errors"
 	"fmt"
-	"runtime/debug"
 	"strings"
 	"sync/atomic"
 
@@ -98,14 +97,6 @@ func (e *TemplateExecuter) Execute(ctx *scan.ScanContext) (bool, error) {
 		// it is essential to remove template context of `Scan i.e template x input pair`
 		// since it is of no use after scan is completed (regardless of success or failure)
 		e.options.RemoveTemplateCtx(ctx.Input.MetaInput)
-	}()
-	defer func() {
-		// try catching unknown panics
-		if r := recover(); r != nil {
-			stacktrace := debug.Stack()
-			ctx.LogError(fmt.Errorf("panic: %v\n%s", r, stacktrace))
-			gologger.Verbose().Msgf("panic: %v\n%s", r, stacktrace)
-		}
 	}()
 
 	var lastMatcherEvent *output.InternalWrappedEvent

@@ -126,6 +126,9 @@ type ExecutorOptions struct {
 	//TemporaryDirectory is the directory to store temporary files
 	TemporaryDirectory string
 	Parser             parser.Parser
+	// ExportReqURLPattern exports the request URL pattern
+	// in ResultEvent it contains the exact url pattern (ex: {{BaseURL}}/{{randstr}}/xyz) used in the request
+	ExportReqURLPattern bool
 }
 
 // CreateTemplateCtxStore creates template context store (which contains templateCtx for every scan)

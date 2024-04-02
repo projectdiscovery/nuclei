@@ -402,7 +402,7 @@ func (r *Runner) setupPDCPUpload(writer output.Writer) output.Writer {
 		r.options.EnableCloudUpload = true
 	}
 	if !(r.options.EnableCloudUpload || EnableCloudUpload) {
-		r.pdcpUploadErrMsg = fmt.Sprintf("[%v] Scan results upload to cloud is disabled.", aurora.BrightYellow("WRN"))
+		r.pdcpUploadErrMsg = fmt.Sprintf("[%v] Scan results upload to cloud is disabled.", r.colorizer.BrightYellow("WRN"))
 		return writer
 	}
 	color := aurora.NewAurora(!r.options.NoColor)
@@ -469,6 +469,11 @@ func (r *Runner) RunEnumeration() error {
 		InputHelper:        input.NewHelper(),
 		TemporaryDirectory: r.tmpDir,
 		Parser:             r.parser,
+	}
+
+	if env.GetEnvOrDefault("NUCLEI_ARGS", "") == "req_url_pattern=true" {
+		// Go StdLib style experimental/debug feature switch
+		executorOpts.ExportReqURLPattern = true
 	}
 
 	if len(r.options.SecretsFile) > 0 && !r.options.Validate {
@@ -696,6 +701,7 @@ func (r *Runner) displayExecutionInfo(store *loader.Store) {
 
 	cfg := config.DefaultConfig
 
+	updateutils.Aurora = r.colorizer
 	gologger.Info().Msgf("Current nuclei version: %v %v", config.Version, updateutils.GetVersionDescription(config.Version, cfg.LatestNucleiVersion))
 	gologger.Info().Msgf("Current nuclei-templates version: %v %v", cfg.TemplateVersion, updateutils.GetVersionDescription(cfg.TemplateVersion, cfg.LatestNucleiTemplatesVersion))
 	if !HideAutoSaveMsg {
@@ -716,14 +722,9 @@ func (r *Runner) displayExecutionInfo(store *loader.Store) {
 		}
 		for k, v := range templates.SignatureStats {
 			value := v.Load()
-			if k == templates.Unsigned && value > 0 {
-				// adjust skipped unsigned templates via code or -dut flag
-				value = value - uint64(stats.GetValue(templates.SkippedUnsignedStats))
-				value = value - uint64(stats.GetValue(templates.ExcludedCodeTmplStats))
-			}
 			if value > 0 {
 				if k == templates.Unsigned && !r.options.Silent && !config.DefaultConfig.HideTemplateSigWarning {
-					gologger.Print().Msgf("[%v] Loading %d unsigned templates for scan. Use with caution.", aurora.BrightYellow("WRN"), value)
+					gologger.Print().Msgf("[%v] Loading %d unsigned templates for scan. Use with caution.", r.colorizer.BrightYellow("WRN"), value)
 				} else {
 					gologger.Info().Msgf("Executing %d signed templates from %s", value, k)
 				}
