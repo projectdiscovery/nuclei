@@ -394,8 +394,6 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 			}
 			var gotMatches bool
 			execReqErr := request.executeRequest(input, generatedHttpRequest, previous, hasInteractMatchers, func(event *output.InternalWrappedEvent) {
-				gologger.Error().Msgf("event is %+v", event)
-				gologger.Error().Msgf("internal event is %+v", event.InternalEvent)
 				// a special case where operators has interactsh matchers and multiple request are made
 				// ex: status_code_2 , interactsh_protocol (from 1st request) etc
 				needsRequestEvent := interactsh.HasMatchers(request.CompiledOperators) && request.NeedsRequestCondition()
@@ -481,7 +479,7 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 		// validateNFixEvent performs necessary validation on generated event
 		// and attempts to fix it , this includes things like making sure
 		// `template-id` is set , `request-url-pattern` is set etc
-		request.validateNFixEvent(generatedRequest, event)
+		request.validateNFixEvent(input, generatedRequest, err, event)
 		processEvent(event)
 	}
 
@@ -845,7 +843,7 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 
 // validateNFixEvent validates and fixes the event
 // it adds any missing template-id and request-url-pattern
-func (request *Request) validateNFixEvent(gr *generatedRequest, event *output.InternalWrappedEvent) {
+func (request *Request) validateNFixEvent(input *contextargs.Context, gr *generatedRequest, err error, event *output.InternalWrappedEvent) {
 	if event != nil {
 		if event.InternalEvent == nil {
 			event.InternalEvent = make(map[string]interface{})
@@ -853,6 +851,24 @@ func (request *Request) validateNFixEvent(gr *generatedRequest, event *output.In
 		}
 		// add the request URL pattern to the event
 		event.InternalEvent[ReqURLPatternKey] = gr.requestURLPattern
+		if event.InternalEvent["host"] == nil {
+			event.InternalEvent["host"] = input.MetaInput.Input
+		}
+		if event.InternalEvent["template-id"] == nil {
+			event.InternalEvent["template-id"] = request.options.TemplateID
+		}
+		if event.InternalEvent["type"] == nil {
+			event.InternalEvent["type"] = request.Type().String()
+		}
+		if event.InternalEvent["template-path"] == nil {
+			event.InternalEvent["template-path"] = request.options.TemplatePath
+		}
+		if event.InternalEvent["template-info"] == nil {
+			event.InternalEvent["template-info"] = request.options.TemplateInfo
+		}
+		if err != nil {
+			event.InternalEvent["error"] = err.Error()
+		}
 	}
 }
 
