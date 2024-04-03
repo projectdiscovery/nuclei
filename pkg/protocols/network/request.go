@@ -12,7 +12,6 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
-	"github.com/remeh/sizedwaitgroup"
 	"go.uber.org/multierr"
 	"golang.org/x/exp/maps"
 
@@ -34,6 +33,7 @@ import (
 	errorutil "github.com/projectdiscovery/utils/errors"
 	mapsutil "github.com/projectdiscovery/utils/maps"
 	"github.com/projectdiscovery/utils/reader"
+	syncutil "github.com/projectdiscovery/utils/sync"
 )
 
 var (
@@ -178,7 +178,10 @@ func (request *Request) executeAddress(variables map[string]interface{}, actualA
 		iterator := request.generator.NewIterator()
 		var multiErr error
 		m := &sync.Mutex{}
-		swg := sizedwaitgroup.New(request.Threads)
+		swg, err := syncutil.New(syncutil.WithSize(request.Threads))
+		if err != nil {
+			return err
+		}
 
 		for {
 			value, ok := iterator.Value()
