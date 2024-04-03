@@ -57,3 +57,28 @@ func (w *WorkPool) InputPool(templateType types.ProtocolType) *syncutil.Adaptive
 	swg, _ := syncutil.New(syncutil.WithSize(count))
 	return swg
 }
+
+func (w *WorkPool) RefreshWithConfig(config WorkPoolConfig) {
+	if w.config.TypeConcurrency != config.TypeConcurrency {
+		w.config.TypeConcurrency = config.TypeConcurrency
+	}
+	if w.config.HeadlessTypeConcurrency != config.HeadlessTypeConcurrency {
+		w.config.HeadlessTypeConcurrency = config.HeadlessTypeConcurrency
+	}
+	if w.config.InputConcurrency != config.InputConcurrency {
+		w.config.InputConcurrency = config.InputConcurrency
+	}
+	if w.config.HeadlessInputConcurrency != config.HeadlessInputConcurrency {
+		w.config.HeadlessInputConcurrency = config.HeadlessInputConcurrency
+	}
+	w.Refresh()
+}
+
+func (w *WorkPool) Refresh() {
+	if w.Default.Size != w.config.TypeConcurrency {
+		w.Default.Resize(w.config.TypeConcurrency)
+	}
+	if w.Headless.Size != w.config.HeadlessTypeConcurrency {
+		w.Headless.Resize(w.config.HeadlessTypeConcurrency)
+	}
+}
