@@ -32,8 +32,8 @@ import (
 	templateTypes "github.com/projectdiscovery/nuclei/v3/pkg/templates/types"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	errorutil "github.com/projectdiscovery/utils/errors"
+	syncutil "github.com/projectdiscovery/utils/sync"
 	urlutil "github.com/projectdiscovery/utils/url"
-	"github.com/remeh/sizedwaitgroup"
 )
 
 // Request is a request for the javascript protocol
@@ -404,7 +404,8 @@ func (request *Request) executeRequestParallel(ctxParent context.Context, hostPo
 	requestOptions := request.options
 	gotmatches := &atomic.Bool{}
 
-	sg := sizedwaitgroup.New(threads)
+	sg, _ := syncutil.New(syncutil.WithSize(threads))
+
 	if request.generator != nil {
 		iterator := request.generator.NewIterator()
 		for {

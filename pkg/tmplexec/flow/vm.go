@@ -1,6 +1,7 @@
 package flow
 
 import (
+	"context"
 	"reflect"
 	"sync"
 
@@ -12,33 +13,10 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/utils/vardump"
 	"github.com/projectdiscovery/nuclei/v3/pkg/tmplexec/flow/builtin"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
-	"github.com/remeh/sizedwaitgroup"
+	"github.com/projectdiscovery/utils/sync/sizedpool"
 )
 
-type jsWaitGroup struct {
-	sync.Once
-	sg sizedwaitgroup.SizedWaitGroup
-}
-
-var jsPool = &jsWaitGroup{}
-
-// GetJSRuntime returns a new JS runtime from pool
-func GetJSRuntime(opts *types.Options) *goja.Runtime {
-	jsPool.Do(func() {
-		if opts.JsConcurrency < 100 {
-			opts.JsConcurrency = 100
-		}
-		jsPool.sg = sizedwaitgroup.New(opts.JsConcurrency)
-	})
-	jsPool.sg.Add()
-	return gojapool.Get().(*goja.Runtime)
-}
-
-// PutJSRuntime returns a JS runtime to pool
-func PutJSRuntime(runtime *goja.Runtime) {
-	defer jsPool.sg.Done()
-	gojapool.Put(runtime)
-}
+var jsOnce sync.Once
 
 // js runtime pool using sync.Pool
 var gojapool = &sync.Pool{
@@ -49,8 +27,29 @@ var gojapool = &sync.Pool{
 	},
 }
 
-func registerBuiltins(runtime *goja.Runtime) {
+var sizedgojapool *sizedpool.SizedPool[*goja.Runtime]
 
+// GetJSRuntime returns a new JS runtime from pool
+func GetJSRuntime(opts *types.Options) *goja.Runtime {
+	jsOnce.Do(func() {
+		if opts.JsConcurrency < 100 {
+			opts.JsConcurrency = 100
+		}
+		sizedgojapool, _ = sizedpool.New[*goja.Runtime](
+			sizedpool.WithPool[*goja.Runtime](gojapool),
+			sizedpool.WithSize[*goja.Runtime](int64(opts.JsConcurrency)),
+		)
+	})
+	runtime, _ := sizedgojapool.Get(context.TODO())
+	return runtime
+}
+
+// PutJSRuntime returns a JS runtime to pool
+func PutJSRuntime(runtime *goja.Runtime) {
+	sizedgojapool.Put(runtime)
+}
+
+func registerBuiltins(runtime *goja.Runtime) {
 	_ = gojs.RegisterFuncWithSignature(runtime, gojs.FuncOpts{
 		Name:        "log",
 		Description: "Logs a given object/message to stdout (only for debugging purposes)",

@@ -9,7 +9,6 @@ import (
 
 	"github.com/miekg/dns"
 	"github.com/pkg/errors"
-	"github.com/remeh/sizedwaitgroup"
 	"go.uber.org/multierr"
 	"golang.org/x/exp/maps"
 
@@ -27,6 +26,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/utils"
 	"github.com/projectdiscovery/retryabledns"
 	iputil "github.com/projectdiscovery/utils/ip"
+	syncutil "github.com/projectdiscovery/utils/sync"
 )
 
 var _ protocols.Request = &Request{}
@@ -64,7 +64,10 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, metadata,
 
 	if request.generator != nil {
 		iterator := request.generator.NewIterator()
-		swg := sizedwaitgroup.New(request.Threads)
+		swg, err := syncutil.New(syncutil.WithSize(request.Threads))
+		if err != nil {
+			return err
+		}
 		var multiErr error
 		m := &sync.Mutex{}
 

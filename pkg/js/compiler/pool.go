@@ -36,7 +36,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/js/libs/goconsole"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
 	stringsutil "github.com/projectdiscovery/utils/strings"
-	"github.com/remeh/sizedwaitgroup"
+	syncutil "github.com/projectdiscovery/utils/sync"
 )
 
 const (
@@ -51,9 +51,9 @@ var (
 		// autoregister console node module with default printer it uses gologger backend
 		require.RegisterNativeModule(console.ModuleName, console.RequireWithPrinter(goconsole.NewGoConsolePrinter()))
 	})
-	pooljsc    sizedwaitgroup.SizedWaitGroup
+	pooljsc    *syncutil.AdaptiveWaitGroup
 	lazySgInit = sync.OnceFunc(func() {
-		pooljsc = sizedwaitgroup.New(PoolingJsVmConcurrency)
+		pooljsc, _ = syncutil.New(syncutil.WithSize(PoolingJsVmConcurrency))
 	})
 )
 
