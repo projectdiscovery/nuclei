@@ -100,6 +100,11 @@ func executeWithRuntime(runtime *goja.Runtime, p *goja.Program, args *ExecuteArg
 // ExecuteProgram executes a compiled program with the default options.
 // it deligates if a particular program should run in a pooled or non-pooled runtime
 func ExecuteProgram(p *goja.Program, args *ExecuteArgs, opts *ExecuteOptions) (result goja.Value, err error) {
+	// resize check point
+	if pooljsc.Size != PoolingJsVmConcurrency {
+		pooljsc.Resize(PoolingJsVmConcurrency)
+	}
+
 	if opts.Source == nil {
 		// not-recommended anymore
 		return executeWithoutPooling(p, args, opts)
