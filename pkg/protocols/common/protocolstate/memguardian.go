@@ -38,7 +38,9 @@ func StopActiveMemGuardian() {
 		return
 	}
 
-	memTimer.Stop()
+	if memTimer != nil {
+		memTimer.Stop()
+	}
 }
 
 func IsLowOnMemory() bool {
