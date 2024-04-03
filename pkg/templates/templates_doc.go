@@ -148,7 +148,7 @@ func init() {
 	TemplateDoc.Fields[17].Name = "signature"
 	TemplateDoc.Fields[17].Type = "http.SignatureTypeHolder"
 	TemplateDoc.Fields[17].Note = ""
-	TemplateDoc.Fields[17].Description = "Signature is the request signature method"
+	TemplateDoc.Fields[17].Description = "Signature is the request signature method\nWARNING: 'signature' will be deprecated and will be removed in a future release. Prefer using 'code' protocol for writing cloud checks"
 	TemplateDoc.Fields[17].Comments[encoder.LineComment] = "Signature is the request signature method"
 	TemplateDoc.Fields[17].Values = []string{
 		"AWS",
@@ -653,16 +653,16 @@ func init() {
 	HTTPRequestDoc.Fields[32].Note = ""
 	HTTPRequestDoc.Fields[32].Description = "DisablePathAutomerge disables merging target url path with raw request path"
 	HTTPRequestDoc.Fields[32].Comments[encoder.LineComment] = "DisablePathAutomerge disables merging target url path with raw request path"
-	HTTPRequestDoc.Fields[33].Name = "filters"
+	HTTPRequestDoc.Fields[33].Name = "pre-condition"
 	HTTPRequestDoc.Fields[33].Type = "[]matchers.Matcher"
 	HTTPRequestDoc.Fields[33].Note = ""
-	HTTPRequestDoc.Fields[33].Description = "Filter is matcher-like field to check if fuzzing should be performed on this request or not"
-	HTTPRequestDoc.Fields[33].Comments[encoder.LineComment] = "Filter is matcher-like field to check if fuzzing should be performed on this request or not"
-	HTTPRequestDoc.Fields[34].Name = "filters-condition"
+	HTTPRequestDoc.Fields[33].Description = "Fuzz PreCondition is matcher-like field to check if fuzzing should be performed on this request or not"
+	HTTPRequestDoc.Fields[33].Comments[encoder.LineComment] = "Fuzz PreCondition is matcher-like field to check if fuzzing should be performed on this request or not"
+	HTTPRequestDoc.Fields[34].Name = "pre-condition-operator"
 	HTTPRequestDoc.Fields[34].Type = "string"
 	HTTPRequestDoc.Fields[34].Note = ""
-	HTTPRequestDoc.Fields[34].Description = "Filter condition is the condition to apply on the filter (AND/OR). Default is OR"
-	HTTPRequestDoc.Fields[34].Comments[encoder.LineComment] = "Filter condition is the condition to apply on the filter (AND/OR). Default is OR"
+	HTTPRequestDoc.Fields[34].Description = "FuzzPreConditionOperator is the operator between multiple PreConditions for fuzzing Default is OR"
+	HTTPRequestDoc.Fields[34].Comments[encoder.LineComment] = "FuzzPreConditionOperator is the operator between multiple PreConditions for fuzzing Default is OR"
 
 	GENERATORSAttackTypeHolderDoc.Type = "generators.AttackTypeHolder"
 	GENERATORSAttackTypeHolderDoc.Comments[encoder.LineComment] = " AttackTypeHolder is used to hold internal type of the protocol"
@@ -836,7 +836,7 @@ func init() {
 	MATCHERSMatcherDoc.AppearsIn = []encoder.Appearance{
 		{
 			TypeName:  "http.Request",
-			FieldName: "filters",
+			FieldName: "pre-condition",
 		},
 	}
 	MATCHERSMatcherDoc.Fields = make([]encoder.Doc, 16)
@@ -1851,7 +1851,7 @@ func init() {
 			Value: "Matched is the input which was matched upon",
 		},
 	}
-	CODERequestDoc.Fields = make([]encoder.Doc, 5)
+	CODERequestDoc.Fields = make([]encoder.Doc, 6)
 	CODERequestDoc.Fields[0].Name = "id"
 	CODERequestDoc.Fields[0].Type = "string"
 	CODERequestDoc.Fields[0].Note = ""
@@ -1862,21 +1862,26 @@ func init() {
 	CODERequestDoc.Fields[1].Note = ""
 	CODERequestDoc.Fields[1].Description = "Engine type"
 	CODERequestDoc.Fields[1].Comments[encoder.LineComment] = "Engine type"
-	CODERequestDoc.Fields[2].Name = "args"
-	CODERequestDoc.Fields[2].Type = "[]string"
+	CODERequestDoc.Fields[2].Name = "pre-condition"
+	CODERequestDoc.Fields[2].Type = "string"
 	CODERequestDoc.Fields[2].Note = ""
-	CODERequestDoc.Fields[2].Description = "Engine Arguments"
-	CODERequestDoc.Fields[2].Comments[encoder.LineComment] = "Engine Arguments"
-	CODERequestDoc.Fields[3].Name = "pattern"
-	CODERequestDoc.Fields[3].Type = "string"
+	CODERequestDoc.Fields[2].Description = "PreCondition is a condition which is evaluated before sending the request."
+	CODERequestDoc.Fields[2].Comments[encoder.LineComment] = "PreCondition is a condition which is evaluated before sending the request."
+	CODERequestDoc.Fields[3].Name = "args"
+	CODERequestDoc.Fields[3].Type = "[]string"
 	CODERequestDoc.Fields[3].Note = ""
-	CODERequestDoc.Fields[3].Description = "Pattern preferred for file name"
-	CODERequestDoc.Fields[3].Comments[encoder.LineComment] = "Pattern preferred for file name"
-	CODERequestDoc.Fields[4].Name = "source"
+	CODERequestDoc.Fields[3].Description = "Engine Arguments"
+	CODERequestDoc.Fields[3].Comments[encoder.LineComment] = "Engine Arguments"
+	CODERequestDoc.Fields[4].Name = "pattern"
 	CODERequestDoc.Fields[4].Type = "string"
 	CODERequestDoc.Fields[4].Note = ""
-	CODERequestDoc.Fields[4].Description = "Source File/Snippet"
-	CODERequestDoc.Fields[4].Comments[encoder.LineComment] = "Source File/Snippet"
+	CODERequestDoc.Fields[4].Description = "Pattern preferred for file name"
+	CODERequestDoc.Fields[4].Comments[encoder.LineComment] = "Pattern preferred for file name"
+	CODERequestDoc.Fields[5].Name = "source"
+	CODERequestDoc.Fields[5].Type = "string"
+	CODERequestDoc.Fields[5].Note = ""
+	CODERequestDoc.Fields[5].Description = "Source File/Snippet"
+	CODERequestDoc.Fields[5].Comments[encoder.LineComment] = "Source File/Snippet"
 
 	JAVASCRIPTRequestDoc.Type = "javascript.Request"
 	JAVASCRIPTRequestDoc.Comments[encoder.LineComment] = " Request is a request for the javascript protocol"

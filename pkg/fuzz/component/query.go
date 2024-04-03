@@ -47,13 +47,15 @@ func (q *Query) Parse(req *retryablehttp.Request) (bool, error) {
 }
 
 // Iterate iterates through the component
-func (q *Query) Iterate(callback func(key string, value interface{}) error) error {
-	for key, value := range q.value.Parsed() {
+func (q *Query) Iterate(callback func(key string, value interface{}) error) (errx error) {
+	q.value.parsed.Iterate(func(key string, value interface{}) bool {
 		if err := callback(key, value); err != nil {
-			return err
+			errx = err
+			return false
 		}
-	}
-	return nil
+		return true
+	})
+	return
 }
 
 // SetValue sets a value in the component
@@ -89,4 +91,12 @@ func (q *Query) Rebuild() (*retryablehttp.Request, error) {
 	cloned.Params.Decode(encoded)
 	cloned.Update()
 	return cloned, nil
+}
+
+// Clones current state to a new component
+func (q *Query) Clone() Component {
+	return &Query{
+		value: q.value.Clone(),
+		req:   q.req.Clone(context.Background()),
+	}
 }

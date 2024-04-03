@@ -59,8 +59,12 @@ func (w *StandardWriter) formatScreen(output *ResultEvent) []byte {
 
 		for i, item := range output.ExtractedResults {
 			// trim trailing space
+			// quote non-ascii and non printable characters and then
+			// unquote quotes (`"`) for readability
 			item = strings.TrimSpace(item)
-			item = strings.ReplaceAll(item, "\n", "\\n") // only replace newlines
+			item = strconv.QuoteToASCII(item)
+			item = strings.ReplaceAll(item, `\"`, `"`)
+
 			builder.WriteString(w.aurora.BrightCyan(item).String())
 
 			if i != len(output.ExtractedResults)-1 {

@@ -186,6 +186,7 @@ func readConfig() *goflags.FlagSet {
 	// when true updates nuclei binary to latest version
 	var updateNucleiBinary bool
 	var pdcpauth string
+	var fuzzFlag bool
 
 	flagSet := goflags.NewFlagSet()
 	flagSet.CaseSensitive = true
@@ -313,7 +314,8 @@ on extensive configurability, massive extensibility and ease of use.`)
 	flagSet.CreateGroup("fuzzing", "Fuzzing",
 		flagSet.StringVarP(&options.FuzzingType, "fuzzing-type", "ft", "", "overrides fuzzing type set in template (replace, prefix, postfix, infix)"),
 		flagSet.StringVarP(&options.FuzzingMode, "fuzzing-mode", "fm", "", "overrides fuzzing mode set in template (multiple, single)"),
-		flagSet.BoolVar(&options.FuzzTemplates, "fuzz", false, "enable loading fuzzing templates"),
+		flagSet.BoolVar(&fuzzFlag, "fuzz", false, "enable loading fuzzing templates (Deprecated: use -dast instead)"),
+		flagSet.BoolVar(&options.DAST, "dast", false, "enable / run dast (fuzz) nuclei templates"),
 	)
 
 	flagSet.CreateGroup("uncover", "Uncover",
@@ -435,6 +437,12 @@ Additional documentation is available at: https://docs.nuclei.sh/getting-started
 	// and hence it will be attempted in config package during init
 	goflags.DisableAutoConfigMigration = true
 	_ = flagSet.Parse()
+
+	// when fuzz flag is enabled, set the dast flag to true
+	if fuzzFlag {
+		// backwards compatibility for fuzz flag
+		options.DAST = true
+	}
 
 	// api key hierarchy: cli flag > env var > .pdcp/credential file
 	if pdcpauth == "true" {
