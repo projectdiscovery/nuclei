@@ -59,6 +59,14 @@ func Cluster(list []*Template) [][]*Template {
 			final = append(final, []*Template{template})
 			continue
 		}
+
+		// it is not possible to cluster flow and multiprotocol due to dependent execution
+		if template.Flow != "" || template.Options.IsMultiProtocol {
+			_ = skip.Set(key, struct{}{})
+			final = append(final, []*Template{template})
+			continue
+		}
+
 		_ = skip.Set(key, struct{}{})
 
 		var templateType types.ProtocolType
@@ -78,6 +86,13 @@ func Cluster(list []*Template) [][]*Template {
 			otherKey := other.Path
 
 			if skip.Has(otherKey) {
+				continue
+			}
+
+			// it is not possible to cluster flow and multiprotocol due to dependent execution
+			if other.Flow != "" || other.Options.IsMultiProtocol {
+				_ = skip.Set(otherKey, struct{}{})
+				final = append(final, []*Template{other})
 				continue
 			}
 
