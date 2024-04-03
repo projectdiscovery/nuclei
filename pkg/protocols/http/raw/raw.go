@@ -85,7 +85,7 @@ func Parse(request string, inputURL *urlutil.URL, unsafe, disablePathAutomerge b
 			// Edgecase if raw request is
 			// GET / HTTP/1.1
 			//use case: https://github.com/projectdiscovery/nuclei/issues/4921
-			if rawrequest.Path == "/" {
+			if rawrequest.Path == "/" && cloned.Path != "" {
 				rawrequest.Path = ""
 			}
 
