@@ -8,6 +8,7 @@ import (
 	"sync"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/disk"
+	"github.com/projectdiscovery/nuclei/v3/pkg/cruisecontrol"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
 	"github.com/projectdiscovery/nuclei/v3/pkg/templates/extensions"
@@ -86,10 +87,15 @@ func SignTemplate(templateSigner *signer.TemplateSigner, templatePath string) er
 
 func getTemplate(templatePath string) (*Template, []byte, error) {
 	catalog := disk.NewCatalog(filepath.Dir(templatePath))
+	cc, err := cruisecontrol.New(cruisecontrol.ParseOptionsFrom(defaultOpts))
+	if err != nil {
+		return nil, nil, err
+	}
 	executerOpts := protocols.ExecutorOptions{
-		Catalog:      catalog,
-		Options:      defaultOpts,
-		TemplatePath: templatePath,
+		Catalog:       catalog,
+		Options:       defaultOpts,
+		TemplatePath:  templatePath,
+		CruiseControl: cc,
 	}
 	bin, err := os.ReadFile(templatePath)
 	if err != nil {
