@@ -20,7 +20,7 @@ info:
 
 
 # Test all unsafe URL Handling Edgecases
-requests:
+http:
   - raw:
     # relative path without leading slash
       - |+
