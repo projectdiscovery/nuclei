@@ -143,6 +143,16 @@ func (h *StopAtFirstMatchHandler[T]) Release() {
 	}
 }
 
+func (h *StopAtFirstMatchHandler[T]) Resize(size int) {
+	if h.sgPool.Size != size {
+		h.sgPool.Resize(size)
+	}
+}
+
+func (h *StopAtFirstMatchHandler[T]) Size() int {
+	return h.sgPool.Size
+}
+
 // Wait waits for all work to be done
 func (h *StopAtFirstMatchHandler[T]) Wait() {
 	switch h.poolType {
