@@ -128,6 +128,17 @@ type ExecutorOptions struct {
 	ExportReqURLPattern bool
 }
 
+// todo: centralizing components is not feasible with current clogged architecture
+// a possible approach could be an internal event bus with pub-subs? This would be less invasive than
+// reworking dep injection from scratch
+func (eo *ExecutorOptions) RateLimitTake() {
+	if eo.RateLimiter.GetLimit() != uint(eo.Options.RateLimit) {
+		eo.RateLimiter.SetLimit(uint(eo.Options.RateLimit))
+		eo.RateLimiter.SetDuration(eo.Options.RateLimitDuration)
+	}
+	eo.RateLimiter.Take()
+}
+
 // GetThreadsForPayloadRequests returns the number of threads to use as default for
 // given max-request of payloads
 func (e *ExecutorOptions) GetThreadsForNPayloadRequests(totalRequests int, currentThreads int) int {
