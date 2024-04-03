@@ -9,7 +9,7 @@ variables:
   a1: "value"
   a2: "{{base64('{{Host}}')}}"
 
-requests:
+http:
   - raw:
       - |
         GET / HTTP/1.1

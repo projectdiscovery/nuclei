@@ -4,11 +4,11 @@ import (
 	"bytes"
 	"io"
 	"mime/multipart"
-	"net/url"
 	"strings"
 	"testing"
 
 	"github.com/projectdiscovery/retryablehttp-go"
+	urlutil "github.com/projectdiscovery/utils/url"
 	"github.com/stretchr/testify/require"
 )
 
@@ -80,7 +80,7 @@ func TestBodyXMLComponent(t *testing.T) {
 }
 
 func TestBodyFormComponent(t *testing.T) {
-	formData := url.Values{}
+	formData := urlutil.NewOrderedParams()
 	formData.Set("key1", "value1")
 	formData.Set("key2", "value2")
 

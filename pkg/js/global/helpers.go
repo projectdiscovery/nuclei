@@ -38,3 +38,40 @@ func registerAdditionalHelpers(runtime *goja.Runtime) {
 		},
 	})
 }
+
+func init() {
+	// these are dummy functions we use trigger documentation generation
+	// actual definations are in exports.js
+	_ = gojs.RegisterFuncWithSignature(nil, gojs.FuncOpts{
+		Name: "to_json",
+		Signatures: []string{
+			"to_json(any) object",
+		},
+		Description: "Converts a given object to JSON",
+	})
+
+	_ = gojs.RegisterFuncWithSignature(nil, gojs.FuncOpts{
+		Name: "dump_json",
+		Signatures: []string{
+			"dump_json(any)",
+		},
+		Description: "Prints a given object as JSON in console",
+	})
+
+	_ = gojs.RegisterFuncWithSignature(nil, gojs.FuncOpts{
+		Name: "to_array",
+		Signatures: []string{
+			"to_array(any) array",
+		},
+		Description: "Sets/Updates objects prototype to array to enable Array.XXX functions",
+	})
+
+	_ = gojs.RegisterFuncWithSignature(nil, gojs.FuncOpts{
+		Name: "hex_to_ascii",
+		Signatures: []string{
+			"hex_to_ascii(string) string",
+		},
+		Description: "Converts a given hex string to ascii",
+	})
+
+}

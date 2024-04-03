@@ -6,7 +6,7 @@ info:
   severity: info
 
 self-contained: true
-requests:
+http:
   - raw:
       - |
         GET / HTTP/1.1

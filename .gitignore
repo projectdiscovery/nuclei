@@ -35,4 +35,6 @@ pkg/protocols/headless/engine/.cache
 **/*-cache
 /fuzzplayground
 integration_tests/fuzzplayground
+/dsl.md
+
 

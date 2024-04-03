@@ -30,16 +30,16 @@ func (j *JSON) IsType(data string) bool {
 }
 
 // Encode encodes the data into JSON format
-func (j *JSON) Encode(data map[string]interface{}) (string, error) {
-	encoded, err := jsoniter.Marshal(data)
+func (j *JSON) Encode(data KV) (string, error) {
+	encoded, err := jsoniter.Marshal(data.Map)
 	return string(encoded), err
 }
 
 // Decode decodes the data from JSON format
-func (j *JSON) Decode(data string) (map[string]interface{}, error) {
+func (j *JSON) Decode(data string) (KV, error) {
 	var decoded map[string]interface{}
 	err := jsoniter.Unmarshal([]byte(data), &decoded)
-	return decoded, err
+	return KVMap(decoded), err
 }
 
 // Name returns the name of the encoder

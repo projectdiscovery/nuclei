@@ -53,8 +53,8 @@ func (exporter *Exporter) addToolDetails() {
 		FullDescription: &sarif.MultiformatMessageString{
 			Text: "Fast and customizable vulnerability scanner based on simple YAML based DSL",
 		},
-		FullName:        "Nuclei v" + config.Version,
-		SemanticVersion: "v" + config.Version,
+		FullName:        "Nuclei " + config.Version,
+		SemanticVersion: config.Version,
 		DownloadURI:     "https://github.com/projectdiscovery/nuclei/releases",
 		Rules:           exporter.rules,
 	}
