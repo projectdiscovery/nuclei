@@ -5,19 +5,22 @@ import (
 	"sync"
 
 	"github.com/dop251/goja"
+	"github.com/projectdiscovery/nuclei/v3/pkg/cruisecontrol"
 	syncutil "github.com/projectdiscovery/utils/sync"
 	"github.com/projectdiscovery/utils/sync/sizedpool"
 )
 
 type JsPool struct {
+	CruiseControl *cruisecontrol.CruiseControl
+
 	ephemeraljsc  *syncutil.AdaptiveWaitGroup
 	pooljsc       *syncutil.AdaptiveWaitGroup
 	sizedGojaPool *sizedpool.SizedPool[*goja.Runtime]
 }
 
-func NewPool() (*JsPool, error) {
-	ephemeraljsc, _ := syncutil.New(syncutil.WithSize(NonPoolingVMConcurrency))
-	pooljsc, _ := syncutil.New(syncutil.WithSize(PoolingJsVmConcurrency))
+func NewPool(cruiseControl *cruisecontrol.CruiseControl) (*JsPool, error) {
+	ephemeraljsc, _ := syncutil.New(syncutil.WithSize(cruiseControl.Settings.Javascript.Concurrency.NotPooled))
+	pooljsc, _ := syncutil.New(syncutil.WithSize(cruiseControl.Settings.Javascript.Concurrency.Pooled))
 	gojapool := &sync.Pool{
 		New: func() interface{} {
 			return createNewRuntime()
@@ -30,5 +33,5 @@ func NewPool() (*JsPool, error) {
 		return nil, err
 	}
 
-	return &JsPool{ephemeraljsc: ephemeraljsc, pooljsc: pooljsc, sizedGojaPool: sizedGojaPool}, nil
+	return &JsPool{CruiseControl: cruiseControl, ephemeraljsc: ephemeraljsc, pooljsc: pooljsc, sizedGojaPool: sizedGojaPool}, nil
 }

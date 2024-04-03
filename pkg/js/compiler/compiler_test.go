@@ -6,6 +6,8 @@ import (
 
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/gologger/levels"
+	"github.com/projectdiscovery/nuclei/v3/pkg/cruisecontrol"
+	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	"github.com/stretchr/testify/require"
 )
 
@@ -18,7 +20,10 @@ func TestNewCompilerConsoleDebug(t *testing.T) {
 		},
 	})
 
-	compiler, err := New()
+	cc, err := cruisecontrol.New(cruisecontrol.ParseOptionsFrom(types.DefaultOptions()))
+	require.Nil(t, err)
+
+	compiler, err := New(cc)
 	require.Nil(t, err)
 	_, err = compiler.Execute("console.log('hello world');", NewExecuteArgs())
 	if err != nil {
@@ -30,7 +35,9 @@ func TestNewCompilerConsoleDebug(t *testing.T) {
 }
 
 func TestExecuteResultGetSuccess(t *testing.T) {
-	compiler, err := New()
+	cc, err := cruisecontrol.New(cruisecontrol.ParseOptionsFrom(types.DefaultOptions()))
+	require.Nil(t, err)
+	compiler, err := New(cc)
 	require.Nil(t, err)
 	result, err := compiler.Execute("1+1 == 2", NewExecuteArgs())
 	if err != nil {

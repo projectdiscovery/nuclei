@@ -9,7 +9,6 @@ import (
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/disk"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
-	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolinit"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
 	"github.com/projectdiscovery/nuclei/v3/pkg/templates/extensions"
 	"github.com/projectdiscovery/nuclei/v3/pkg/templates/signer"
@@ -26,7 +25,6 @@ var (
 	defaultOpts *types.Options = types.DefaultOptions()
 	initOnce                   = sync.OnceFunc(func() {
 		_ = protocolstate.Init(defaultOpts)
-		_ = protocolinit.Init(defaultOpts)
 	})
 	ErrNotATemplate = errorutil.NewWithTag("signer", "given filePath is not a template")
 )

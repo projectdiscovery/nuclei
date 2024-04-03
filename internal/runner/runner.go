@@ -46,7 +46,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/hosterrorscache"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/interactsh"
-	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolinit"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/uncover"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/utils/excludematchers"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/dns/dnsclientpool"
@@ -384,7 +384,7 @@ func (r *Runner) Close() {
 	if r.inputProvider != nil {
 		r.inputProvider.Close()
 	}
-	protocolinit.Close()
+	protocolstate.Close()
 	if r.pprofServer != nil {
 		_ = r.pprofServer.Shutdown(context.Background())
 	}

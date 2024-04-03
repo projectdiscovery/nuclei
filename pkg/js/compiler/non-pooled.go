@@ -6,8 +6,8 @@ import (
 
 func (jsp *JsPool) executeWithoutPooling(p *goja.Program, args *ExecuteArgs, opts *ExecuteOptions) (result goja.Value, err error) {
 	// check if the pool should be resized
-	if jsp.ephemeraljsc.Size != NonPoolingVMConcurrency {
-		jsp.ephemeraljsc.Resize(NonPoolingVMConcurrency)
+	if jsp.ephemeraljsc.Size != jsp.CruiseControl.Settings.Javascript.Concurrency.NotPooled {
+		jsp.ephemeraljsc.Resize(jsp.CruiseControl.Settings.Javascript.Concurrency.NotPooled)
 	}
 
 	jsp.ephemeraljsc.Add()

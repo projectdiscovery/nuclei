@@ -24,7 +24,6 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/hosterrorscache"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/interactsh"
-	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolinit"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/dns/dnsclientpool"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http/httpclientpool"
@@ -80,7 +79,6 @@ func executeNucleiAsLibrary(templatePath, templateURL string) ([]string, error) 
 
 	defaultOpts := types.DefaultOptions()
 	_ = protocolstate.Init(defaultOpts)
-	_ = protocolinit.Init(defaultOpts)
 
 	defaultOpts.Templates = goflags.StringSlice{templatePath}
 	defaultOpts.ExcludeTags = config.ReadIgnoreFile().Tags

@@ -95,8 +95,8 @@ func (jsp *JsPool) executeWithPoolingProgram(p *goja.Program, args *ExecuteArgs,
 	// its unknown (most likely cannot be done) to limit max js runtimes at a moment without making it static
 	// unlike sync.Pool which reacts to GC and its purposes is to reuse objects rather than creating new ones
 
-	if jsp.pooljsc.Size != PoolingJsVmConcurrency {
-		jsp.pooljsc.Resize(PoolingJsVmConcurrency)
+	if jsp.pooljsc.Size != jsp.CruiseControl.Settings.Javascript.Concurrency.Pooled {
+		jsp.pooljsc.Resize(jsp.CruiseControl.Settings.Javascript.Concurrency.Pooled)
 	}
 
 	jsp.pooljsc.Add()
@@ -164,12 +164,7 @@ func (jsp *JsPool) executeWithPoolingProgram(p *goja.Program, args *ExecuteArgs,
 
 // Internal purposes i.e generating bindings
 func InternalGetGeneratorRuntime() *goja.Runtime {
-	jsPool, _ := NewPool()
-	runtime, err := jsPool.sizedGojaPool.Get(context.TODO())
-	if err != nil {
-		panic(err)
-	}
-	return runtime
+	return createNewRuntime()
 }
 
 func createNewRuntime() *goja.Runtime {

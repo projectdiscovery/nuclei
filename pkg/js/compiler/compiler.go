@@ -18,13 +18,12 @@ import (
 // based javascript scripts efficiently while also
 // providing them access to custom modules defined in libs/.
 type Compiler struct {
-	CruisControl *cruisecontrol.CruiseControl
-	JsPool       *JsPool
+	JsPool *JsPool
 }
 
 // New creates a new compiler for the goja runtime.
-func New() (*Compiler, error) {
-	jspool, err := NewPool()
+func New(cruiseControl *cruisecontrol.CruiseControl) (*Compiler, error) {
+	jspool, err := NewPool(cruiseControl)
 	if err != nil {
 		return nil, err
 	}
@@ -109,7 +108,7 @@ func (c *Compiler) ExecuteWithOptions(program *goja.Program, args *ExecuteArgs, 
 	if opts.Timeout <= 0 || opts.Timeout > 180 {
 		// some js scripts can take longer time so allow configuring timeout
 		// from template but keep it within sane limits (180s)
-		opts.Timeout = JsProtocolTimeout
+		opts.Timeout = int(c.JsPool.CruiseControl.Settings.Javascript.Durations.Timeout.Seconds())
 	}
 
 	// execute with context and timeout

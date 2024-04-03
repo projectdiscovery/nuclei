@@ -18,7 +18,6 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/disk"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
-	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolinit"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
 	"github.com/projectdiscovery/nuclei/v3/pkg/templates"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
@@ -70,9 +69,6 @@ func init() {
 	defaultOpts.Headless = true
 	defaultOpts.EnableCodeTemplates = true
 	if err := protocolstate.Init(defaultOpts); err != nil {
-		gologger.Fatal().Msgf("Could not initialize protocol state: %s\n", err)
-	}
-	if err := protocolinit.Init(defaultOpts); err != nil {
 		gologger.Fatal().Msgf("Could not initialize protocol state: %s\n", err)
 	}
 }

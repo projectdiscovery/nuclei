@@ -18,7 +18,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
 	"github.com/projectdiscovery/nuclei/v3/pkg/progress"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
-	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolinit"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/dns/dnsclientpool"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http/httpclientpool"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http/signerpool"
@@ -31,7 +31,7 @@ import (
 
 // Init initializes the protocols and their configurations
 func Init(options *types.Options) {
-	_ = protocolinit.Init(options)
+	_ = protocolstate.Init(options)
 }
 
 // DefaultOptions is the default options structure for nuclei during mocking.

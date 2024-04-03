@@ -24,7 +24,6 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/hosterrorscache"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/interactsh"
-	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolinit"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/dns/dnsclientpool"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http/httpclientpool"
@@ -124,7 +123,6 @@ func (e *NucleiEngine) init() error {
 	e.parser = templates.NewParser()
 
 	_ = protocolstate.Init(e.opts)
-	_ = protocolinit.Init(e.opts)
 	e.applyRequiredDefaults()
 
 	if e.opts.ProxyInternal && types.ProxyURL != "" || types.ProxySocksURL != "" {

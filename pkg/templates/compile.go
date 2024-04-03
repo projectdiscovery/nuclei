@@ -363,7 +363,7 @@ func parseTemplate(data []byte, options protocols.ExecutorOptions) (*Template, e
 
 	// initialize the js compiler if missing
 	if options.JsCompiler == nil {
-		options.JsCompiler = GetJsCompiler(WithCruiseControl(options.CruiseControl))
+		options.JsCompiler = GetJsCompiler(options.CruiseControl)
 	}
 
 	template.Options = &options
@@ -415,23 +415,9 @@ var (
 	jsCompilerOnce sync.Once
 )
 
-type JsCompilerOption func(c *compiler.Compiler) error
-
-func WithCruiseControl(cruisControl *cruisecontrol.CruiseControl) JsCompilerOption {
-	return func(e *compiler.Compiler) error {
-		e.CruisControl = cruisControl
-		return nil
-	}
-}
-
-func GetJsCompiler(options ...JsCompilerOption) *compiler.Compiler {
+func GetJsCompiler(cruiseControl *cruisecontrol.CruiseControl) *compiler.Compiler {
 	jsCompilerOnce.Do(func() {
-		jsCompiler, _ = compiler.New()
-		for _, option := range options {
-			if err := option(jsCompiler); err != nil {
-				panic(err)
-			}
-		}
+		jsCompiler, _ = compiler.New(cruiseControl)
 	})
 
 	return jsCompiler
