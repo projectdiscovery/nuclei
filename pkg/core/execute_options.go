@@ -4,8 +4,6 @@ import (
 	"sync"
 	"sync/atomic"
 
-	"github.com/remeh/sizedwaitgroup"
-
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/input/provider"
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
@@ -14,6 +12,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/templates/types"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types/scanstrategy"
 	stringsutil "github.com/projectdiscovery/utils/strings"
+	syncutil "github.com/projectdiscovery/utils/sync"
 )
 
 // Execute takes a list of templates/workflows that have been compiled
@@ -111,7 +110,7 @@ func (e *Engine) executeTemplateSpray(templatesList []*templates.Template, targe
 	for _, template := range templatesList {
 		templateType := template.Type()
 
-		var wg *sizedwaitgroup.SizedWaitGroup
+		var wg *syncutil.AdaptiveWaitGroup
 		if templateType == types.HeadlessProtocol {
 			wg = wp.Headless
 		} else {
@@ -134,7 +133,7 @@ func (e *Engine) executeTemplateSpray(templatesList []*templates.Template, targe
 // executeHostSpray executes scan using host spray strategy where templates are iterated over each target
 func (e *Engine) executeHostSpray(templatesList []*templates.Template, target provider.InputProvider) *atomic.Bool {
 	results := &atomic.Bool{}
-	wp := sizedwaitgroup.New(e.options.BulkSize + e.options.HeadlessBulkSize)
+	wp, _ := syncutil.New(syncutil.WithSize(e.options.BulkSize + e.options.HeadlessBulkSize))
 
 	target.Iterate(func(value *contextargs.MetaInput) bool {
 		wp.Add()
