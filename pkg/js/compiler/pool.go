@@ -55,6 +55,12 @@ var (
 	lazySgInit = sync.OnceFunc(func() {
 		pooljsc, _ = syncutil.New(syncutil.WithSize(PoolingJsVmConcurrency))
 	})
+	sgResizeCheck = func() {
+		// resize check point
+		if pooljsc.Size != PoolingJsVmConcurrency {
+			pooljsc.Resize(PoolingJsVmConcurrency)
+		}
+	}
 )
 
 var gojapool = &sync.Pool{
@@ -100,11 +106,6 @@ func executeWithRuntime(runtime *goja.Runtime, p *goja.Program, args *ExecuteArg
 // ExecuteProgram executes a compiled program with the default options.
 // it deligates if a particular program should run in a pooled or non-pooled runtime
 func ExecuteProgram(p *goja.Program, args *ExecuteArgs, opts *ExecuteOptions) (result goja.Value, err error) {
-	// resize check point
-	if pooljsc.Size != PoolingJsVmConcurrency {
-		pooljsc.Resize(PoolingJsVmConcurrency)
-	}
-
 	if opts.Source == nil {
 		// not-recommended anymore
 		return executeWithoutPooling(p, args, opts)
@@ -121,6 +122,8 @@ func executeWithPoolingProgram(p *goja.Program, args *ExecuteArgs, opts *Execute
 	// its unknown (most likely cannot be done) to limit max js runtimes at a moment without making it static
 	// unlike sync.Pool which reacts to GC and its purposes is to reuse objects rather than creating new ones
 	lazySgInit()
+	sgResizeCheck()
+
 	pooljsc.Add()
 	defer pooljsc.Done()
 	runtime := gojapool.Get().(*goja.Runtime)
