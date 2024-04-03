@@ -5,7 +5,7 @@ info:
   author: pdteam
   severity: info
 
-requests:
+http:
   - raw:
       - |
         GET /?test={{randstr}} HTTP/1.1

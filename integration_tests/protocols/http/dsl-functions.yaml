@@ -5,7 +5,7 @@ info:
   author: pdteam
   severity: info
 
-requests:
+http:
   - raw:
       # Note for the integration test: dsl expression should not contain commas
       - |
