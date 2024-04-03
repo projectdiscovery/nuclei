@@ -108,8 +108,10 @@ func (e *Engine) executeTemplateSpray(templatesList []*templates.Template, targe
 	wp := e.GetWorkPool()
 
 	for _, template := range templatesList {
-		templateType := template.Type()
+		// resize check point - nop if there are no changes
+		wp.RefreshWithConfig(e.GetWorkPoolConfig())
 
+		templateType := template.Type()
 		var wg *syncutil.AdaptiveWaitGroup
 		if templateType == types.HeadlessProtocol {
 			wg = wp.Headless

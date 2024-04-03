@@ -158,6 +158,9 @@ func (e *Engine) executeTemplatesOnTarget(alltemplates []*templates.Template, ta
 	wp := e.GetWorkPool()
 
 	for _, tpl := range alltemplates {
+		// resize check point - nop if there are no changes
+		wp.RefreshWithConfig(e.GetWorkPoolConfig())
+
 		var sg *syncutil.AdaptiveWaitGroup
 		if tpl.Type() == types.HeadlessProtocol {
 			sg = wp.Headless
@@ -212,6 +215,9 @@ func (e *ChildExecuter) Close() *atomic.Bool {
 // Execute executes a template and URLs
 func (e *ChildExecuter) Execute(template *templates.Template, value *contextargs.MetaInput) {
 	templateType := template.Type()
+
+	// resize check point - nop if there are no changes
+	e.e.workPool.RefreshWithConfig(e.e.GetWorkPoolConfig())
 
 	var wg *syncutil.AdaptiveWaitGroup
 	if templateType == types.HeadlessProtocol {
