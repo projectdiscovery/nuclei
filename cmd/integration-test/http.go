@@ -82,6 +82,8 @@ var httpTestcases = []TestCaseInfo{
 	{Path: "protocols/http/multi-request.yaml", TestCase: &httpMultiRequest{}},
 	{Path: "protocols/http/http-matcher-extractor-dy-extractor.yaml", TestCase: &httpMatcherExtractorDynamicExtractor{}},
 	{Path: "protocols/http/multi-http-var-sharing.yaml", TestCase: &httpMultiVarSharing{}},
+	{Path: "protocols/http/raw-path-single-slash.yaml", TestCase: &httpRawPathSingleSlash{}},
+	{Path: "protocols/http/raw-unsafe-path-single-slash.yaml", TestCase: &httpRawUnsafePathSingleSlash{}},
 }
 
 type httpMultiVarSharing struct{}
@@ -1559,4 +1561,54 @@ func (h *httpMultiRequest) Execute(filePath string) error {
 	}
 
 	return expectResultsCount(results, 1)
+}
+
+type httpRawPathSingleSlash struct{}
+
+func (h *httpRawPathSingleSlash) Execute(filepath string) error {
+	expectedPath := "/index.php"
+	results, err := testutils.RunNucleiBinaryAndGetCombinedOutput(debug, []string{"-t", filepath, "-u", "scanme.sh/index.php", "-debug-req"})
+	if err != nil {
+		return err
+	}
+
+	var actual string
+	for _, v := range strings.Split(results, "\n") {
+		if strings.Contains(v, "GET") {
+			parts := strings.Fields(v)
+			if len(parts) == 3 {
+				actual = parts[1]
+			}
+		}
+	}
+
+	if actual != expectedPath {
+		return fmt.Errorf("expected: %v\n\nactual: %v", expectedPath, actual)
+	}
+	return nil
+}
+
+type httpRawUnsafePathSingleSlash struct{}
+
+func (h *httpRawUnsafePathSingleSlash) Execute(filepath string) error {
+	expectedPath := "/index.php"
+	results, err := testutils.RunNucleiBinaryAndGetCombinedOutput(debug, []string{"-t", filepath, "-u", "scanme.sh/index.php", "-debug-req"})
+	if err != nil {
+		return err
+	}
+
+	var actual string
+	for _, v := range strings.Split(results, "\n") {
+		if strings.Contains(v, "GET") {
+			parts := strings.Fields(v)
+			if len(parts) == 3 {
+				actual = parts[1]
+			}
+		}
+	}
+
+	if actual != expectedPath {
+		return fmt.Errorf("expected: %v\n\nactual: %v", expectedPath, actual)
+	}
+	return nil
 }
