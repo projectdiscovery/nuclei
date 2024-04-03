@@ -174,6 +174,9 @@ func (request *Request) executeAddress(variables map[string]interface{}, actualA
 		return err
 	}
 
+	// if request threads matches global payload concurrency we follow it
+	shouldFollowGlobal := request.Threads == request.options.Options.PayloadConcurrency
+
 	if request.generator != nil {
 		iterator := request.generator.NewIterator()
 		var multiErr error
@@ -188,6 +191,12 @@ func (request *Request) executeAddress(variables map[string]interface{}, actualA
 			if !ok {
 				break
 			}
+
+			// resize check point - nop if there are no changes
+			if shouldFollowGlobal && swg.Size != request.options.Options.PayloadConcurrency {
+				swg.Resize(request.options.Options.PayloadConcurrency)
+			}
+
 			value = generators.MergeMaps(value, payloads)
 			swg.Add()
 			go func(vars map[string]interface{}) {

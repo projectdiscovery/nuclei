@@ -404,6 +404,9 @@ func (request *Request) executeRequestParallel(ctxParent context.Context, hostPo
 	requestOptions := request.options
 	gotmatches := &atomic.Bool{}
 
+	// if request threads matches global payload concurrency we follow it
+	shouldFollowGlobal := threads == request.options.Options.PayloadConcurrency
+
 	sg, _ := syncutil.New(syncutil.WithSize(threads))
 
 	if request.generator != nil {
@@ -413,6 +416,12 @@ func (request *Request) executeRequestParallel(ctxParent context.Context, hostPo
 			if !ok {
 				break
 			}
+
+			// resize check point - nop if there are no changes
+			if shouldFollowGlobal && sg.Size != request.options.Options.PayloadConcurrency {
+				sg.Resize(request.options.Options.PayloadConcurrency)
+			}
+
 			sg.Add()
 			go func() {
 				defer sg.Done()
