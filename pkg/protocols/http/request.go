@@ -472,18 +472,16 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 const drainReqSize = int64(8 * 1024)
 
 // executeRequest executes the actual generated request and returns error if occurred
-func (request *Request) executeRequest(input *contextargs.Context, generatedRequest *generatedRequest, previousEvent output.InternalEvent, hasInteractMatchers bool, callback protocols.OutputEventCallback, requestCount int) (err error) {
-	var event *output.InternalWrappedEvent
-	defer func() {
-		if event != nil {
-			if event.InternalEvent == nil {
-				event.InternalEvent = make(map[string]interface{})
-				event.InternalEvent["template-id"] = request.options.TemplateID
-			}
-			// add the request URL pattern to the event
-			event.InternalEvent[ReqURLPatternKey] = generatedRequest.requestURLPattern
-		}
-	}()
+func (request *Request) executeRequest(input *contextargs.Context, generatedRequest *generatedRequest, previousEvent output.InternalEvent, hasInteractMatchers bool, processEvent protocols.OutputEventCallback, requestCount int) (err error) {
+
+	// wrap one more callback for validation and fixing event
+	callback := func(event *output.InternalWrappedEvent) {
+		// validateNFixEvent performs necessary validation on generated event
+		// and attempts to fix it , this includes things like making sure
+		// `template-id` is set , `request-url-pattern` is set etc
+		request.validateNFixEvent(input, generatedRequest, err, event)
+		processEvent(event)
+	}
 
 	request.setCustomHeaders(generatedRequest)
 
@@ -692,7 +690,7 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 		if len(generatedRequest.interactshURLs) > 0 {
 			// according to logic we only need to trigger a callback if interactsh was used
 			// and request failed in hope that later on oast interaction will be received
-			event = &output.InternalWrappedEvent{}
+			event := &output.InternalWrappedEvent{}
 			if request.CompiledOperators != nil && request.CompiledOperators.HasDSL() {
 				event.InternalEvent = outputEvent
 			}
@@ -807,7 +805,7 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 		// prune signature internal values if any
 		request.pruneSignatureInternalValues(generatedRequest.meta)
 
-		event = eventcreator.CreateEventWithAdditionalOptions(request, generators.MergeMaps(generatedRequest.dynamicValues, finalEvent), request.options.Options.Debug || request.options.Options.DebugResponse, func(internalWrappedEvent *output.InternalWrappedEvent) {
+		event := eventcreator.CreateEventWithAdditionalOptions(request, generators.MergeMaps(generatedRequest.dynamicValues, finalEvent), request.options.Options.Debug || request.options.Options.DebugResponse, func(internalWrappedEvent *output.InternalWrappedEvent) {
 			internalWrappedEvent.OperatorsResult.PayloadValues = generatedRequest.meta
 		})
 		if hasInteractMatchers {
@@ -841,6 +839,37 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 	}
 	// return project file save error if any
 	return errx
+}
+
+// validateNFixEvent validates and fixes the event
+// it adds any missing template-id and request-url-pattern
+func (request *Request) validateNFixEvent(input *contextargs.Context, gr *generatedRequest, err error, event *output.InternalWrappedEvent) {
+	if event != nil {
+		if event.InternalEvent == nil {
+			event.InternalEvent = make(map[string]interface{})
+			event.InternalEvent["template-id"] = request.options.TemplateID
+		}
+		// add the request URL pattern to the event
+		event.InternalEvent[ReqURLPatternKey] = gr.requestURLPattern
+		if event.InternalEvent["host"] == nil {
+			event.InternalEvent["host"] = input.MetaInput.Input
+		}
+		if event.InternalEvent["template-id"] == nil {
+			event.InternalEvent["template-id"] = request.options.TemplateID
+		}
+		if event.InternalEvent["type"] == nil {
+			event.InternalEvent["type"] = request.Type().String()
+		}
+		if event.InternalEvent["template-path"] == nil {
+			event.InternalEvent["template-path"] = request.options.TemplatePath
+		}
+		if event.InternalEvent["template-info"] == nil {
+			event.InternalEvent["template-info"] = request.options.TemplateInfo
+		}
+		if err != nil {
+			event.InternalEvent["error"] = err.Error()
+		}
+	}
 }
 
 // handleSignature of the http request
