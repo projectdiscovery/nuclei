@@ -6,7 +6,7 @@ info:
   severity: info
   tags: fuzz
 
-requests:
+http:
   - method: GET
     path:
       - "{{BaseURL}}"

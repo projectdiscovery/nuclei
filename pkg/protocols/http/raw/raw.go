@@ -82,6 +82,13 @@ func Parse(request string, inputURL *urlutil.URL, unsafe, disablePathAutomerge b
 				}
 			}
 		} else {
+			// Edgecase if raw request is
+			// GET / HTTP/1.1
+			//use case: https://github.com/projectdiscovery/nuclei/issues/4921
+			if rawrequest.Path == "/" && cloned.Path != "" {
+				rawrequest.Path = ""
+			}
+
 			if disablePathAutomerge {
 				cloned.Path = ""
 			}
@@ -97,6 +104,13 @@ func Parse(request string, inputURL *urlutil.URL, unsafe, disablePathAutomerge b
 	default:
 		cloned := inputURL.Clone()
 		cloned.Params.IncludeEquals = true
+		// Edgecase if raw request is
+		// GET / HTTP/1.1
+		//use case: https://github.com/projectdiscovery/nuclei/issues/4921
+		if rawrequest.Path == "/" {
+			rawrequest.Path = ""
+		}
+
 		if disablePathAutomerge {
 			cloned.Path = ""
 		}
@@ -283,7 +297,6 @@ func (r *Request) ApplyAuthStrategy(strategy authx.AuthStrategy) {
 			gologger.Error().Msgf("auth strategy failed to parse url: %s got %v", r.FullURL, err)
 			return
 		}
-		_ = parsed
 		for _, p := range s.Data.Params {
 			parsed.Params.Add(p.Key, p.Value)
 		}

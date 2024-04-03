@@ -171,6 +171,9 @@ type ResultEvent struct {
 
 	// IssueTrackers is the metadata for issue trackers
 	IssueTrackers map[string]IssueTrackerMetadata `json:"issue_trackers,omitempty"`
+	// ReqURLPattern when enabled contains base URL pattern that was used to generate the request
+	// must be enabled by setting protocols.ExecuterOptions.ExportReqURLPattern to true
+	ReqURLPattern string `json:"req_url_pattern,omitempty"`
 
 	FileToIndexPosition map[string]int `json:"-"`
 	Error               string         `json:"error,omitempty"`

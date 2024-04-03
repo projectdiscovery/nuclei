@@ -5,7 +5,7 @@ info:
   author: pdteam
   severity: info
 
-requests:
+http:
   - raw:
       - |
         GET /?action=curltest&url={{interactsh-url}} HTTP/1.1

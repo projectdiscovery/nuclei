@@ -123,6 +123,9 @@ type ExecutorOptions struct {
 	//TemporaryDirectory is the directory to store temporary files
 	TemporaryDirectory string
 	Parser             parser.Parser
+	// ExportReqURLPattern exports the request URL pattern
+	// in ResultEvent it contains the exact url pattern (ex: {{BaseURL}}/{{randstr}}/xyz) used in the request
+	ExportReqURLPattern bool
 }
 
 // GetThreadsForPayloadRequests returns the number of threads to use as default for

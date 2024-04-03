@@ -5,7 +5,7 @@ info:
   author: pdteam
   severity: info
 
-requests:
+http:
   - raw:
       - |
         GET /api/geoping/{{interactsh-url}} HTTP/1.1

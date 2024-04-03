@@ -96,10 +96,12 @@ func (f *FlowExecutor) protocolResultCallback(req protocols.Request, matcherStat
 						if len(v) == 1 {
 							// add it to flatten keys list so it will be flattened to a string later
 							f.flattenKeys = append(f.flattenKeys, k)
+							// flatten and convert it to string
+							f.options.GetTemplateCtx(f.ctx.Input.MetaInput).Set(k, v[0])
+						} else {
+							// keep it as slice
+							f.options.GetTemplateCtx(f.ctx.Input.MetaInput).Set(k, v)
 						}
-						// always preserve extracted value type
-						f.options.GetTemplateCtx(f.ctx.Input.MetaInput).Set(k, v)
-
 					}
 				}
 			} else if !result.HasOperatorResult() && !hasOperators(req.GetCompiledOperators()) {

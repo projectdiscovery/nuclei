@@ -374,7 +374,7 @@ func (r *Runner) setupPDCPUpload(writer output.Writer) output.Writer {
 		r.options.EnableCloudUpload = true
 	}
 	if !(r.options.EnableCloudUpload || EnableCloudUpload) {
-		r.pdcpUploadErrMsg = fmt.Sprintf("[%v] Scan results upload to cloud is disabled.", aurora.BrightYellow("WRN"))
+		r.pdcpUploadErrMsg = fmt.Sprintf("[%v] Scan results upload to cloud is disabled.", r.colorizer.BrightYellow("WRN"))
 		return writer
 	}
 	color := aurora.NewAurora(!r.options.NoColor)
@@ -439,6 +439,11 @@ func (r *Runner) RunEnumeration() error {
 		Parser:             r.parser,
 	}
 
+	if env.GetEnvOrDefault("NUCLEI_ARGS", "") == "req_url_pattern=true" {
+		// Go StdLib style experimental/debug feature switch
+		executorOpts.ExportReqURLPattern = true
+	}
+
 	if len(r.options.SecretsFile) > 0 && !r.options.Validate {
 		authTmplStore, err := GetAuthTmplStore(*r.options, r.catalog, executorOpts)
 		if err != nil {
@@ -475,10 +480,9 @@ func (r *Runner) RunEnumeration() error {
 
 	// If using input-file flags, only load http fuzzing based templates.
 	loaderConfig := loader.NewConfig(r.options, r.catalog, executorOpts)
-	if !strings.EqualFold(r.options.InputFileMode, "list") || r.options.FuzzTemplates {
+	if !strings.EqualFold(r.options.InputFileMode, "list") || r.options.DAST {
 		// if input type is not list (implicitly enable fuzzing)
-		r.options.FuzzTemplates = true
-		loaderConfig.OnlyLoadHTTPFuzzing = true
+		r.options.DAST = true
 	}
 	store, err := loader.New(loaderConfig)
 	if err != nil {
@@ -640,22 +644,31 @@ func (r *Runner) displayExecutionInfo(store *loader.Store) {
 	stats.Display(templates.SyntaxWarningStats)
 	stats.Display(templates.SyntaxErrorStats)
 	stats.Display(templates.RuntimeWarningsStats)
-	if r.options.Verbose {
+	tmplCount := len(store.Templates())
+	workflowCount := len(store.Workflows())
+	if r.options.Verbose || (tmplCount == 0 && workflowCount == 0) {
 		// only print these stats in verbose mode
-		stats.DisplayAsWarning(templates.HeadlessFlagWarningStats)
-		stats.DisplayAsWarning(templates.CodeFlagWarningStats)
-		stats.DisplayAsWarning(templates.TemplatesExecutedStats)
-		stats.DisplayAsWarning(templates.HeadlessFlagWarningStats)
-		stats.DisplayAsWarning(templates.CodeFlagWarningStats)
-		stats.DisplayAsWarning(templates.FuzzFlagWarningStats)
-		stats.DisplayAsWarning(templates.TemplatesExecutedStats)
+		stats.ForceDisplayWarning(templates.ExcludedHeadlessTmplStats)
+		stats.ForceDisplayWarning(templates.ExcludedCodeTmplStats)
+		stats.ForceDisplayWarning(templates.ExludedDastTmplStats)
+		stats.ForceDisplayWarning(templates.TemplatesExcludedStats)
 	}
 
-	stats.DisplayAsWarning(templates.UnsignedCodeWarning)
+	if tmplCount == 0 && workflowCount == 0 {
+		// if dast flag is used print explicit warning
+		if r.options.DAST {
+			gologger.DefaultLogger.Print().Msgf("[%v] No DAST templates found", aurora.BrightYellow("WRN"))
+		}
+		stats.ForceDisplayWarning(templates.SkippedCodeTmplTamperedStats)
+	} else {
+		stats.DisplayAsWarning(templates.SkippedCodeTmplTamperedStats)
+	}
 	stats.ForceDisplayWarning(templates.SkippedUnsignedStats)
+	stats.ForceDisplayWarning(templates.SkippedRequestSignatureStats)
 
 	cfg := config.DefaultConfig
 
+	updateutils.Aurora = r.colorizer
 	gologger.Info().Msgf("Current nuclei version: %v %v", config.Version, updateutils.GetVersionDescription(config.Version, cfg.LatestNucleiVersion))
 	gologger.Info().Msgf("Current nuclei-templates version: %v %v", cfg.TemplateVersion, updateutils.GetVersionDescription(cfg.TemplateVersion, cfg.LatestNucleiTemplatesVersion))
 	if !HideAutoSaveMsg {
@@ -666,25 +679,22 @@ func (r *Runner) displayExecutionInfo(store *loader.Store) {
 		}
 	}
 
-	if len(store.Templates()) > 0 {
-		gologger.Info().Msgf("New templates added in latest release: %d", len(config.DefaultConfig.GetNewAdditions()))
-		gologger.Info().Msgf("Templates loaded for current scan: %d", len(store.Templates()))
-	}
-	if len(store.Workflows()) > 0 {
-		gologger.Info().Msgf("Workflows loaded for current scan: %d", len(store.Workflows()))
-	}
-	for k, v := range templates.SignatureStats {
-		value := v.Load()
-		if k == templates.Unsigned && value > 0 {
-			// adjust skipped unsigned templates via code or -dut flag
-			value = value - uint64(stats.GetValue(templates.SkippedUnsignedStats))
-			value = value - uint64(stats.GetValue(templates.CodeFlagWarningStats))
+	if tmplCount > 0 || workflowCount > 0 {
+		if len(store.Templates()) > 0 {
+			gologger.Info().Msgf("New templates added in latest release: %d", len(config.DefaultConfig.GetNewAdditions()))
+			gologger.Info().Msgf("Templates loaded for current scan: %d", len(store.Templates()))
 		}
-		if value > 0 {
-			if k != templates.Unsigned {
-				gologger.Info().Msgf("Executing %d signed templates from %s", value, k)
-			} else if !r.options.Silent && !config.DefaultConfig.HideTemplateSigWarning {
-				gologger.Print().Msgf("[%v] Loaded %d unsigned templates for scan. Use with caution.", aurora.BrightYellow("WRN"), value)
+		if len(store.Workflows()) > 0 {
+			gologger.Info().Msgf("Workflows loaded for current scan: %d", len(store.Workflows()))
+		}
+		for k, v := range templates.SignatureStats {
+			value := v.Load()
+			if value > 0 {
+				if k == templates.Unsigned && !r.options.Silent && !config.DefaultConfig.HideTemplateSigWarning {
+					gologger.Print().Msgf("[%v] Loading %d unsigned templates for scan. Use with caution.", r.colorizer.BrightYellow("WRN"), value)
+				} else {
+					gologger.Info().Msgf("Executing %d signed templates from %s", value, k)
+				}
 			}
 		}
 	}
