@@ -8,7 +8,7 @@ info:
 constants:
   test: test-in-template
 
-requests:
+http:
   - method: GET
     path:
       - "{{BaseURL}}?p={{test}}"
