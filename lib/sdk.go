@@ -215,6 +215,14 @@ func (e *NucleiEngine) ExecuteWithCallback(callback ...func(event *output.Result
 	return nil
 }
 
+func (e *NucleiEngine) Options() *types.Options {
+	return e.opts
+}
+
+func (e *NucleiEngine) Engine() *core.Engine {
+	return e.engine
+}
+
 // NewNucleiEngine creates a new nuclei engine instance
 func NewNucleiEngine(options ...NucleiSDKOptions) (*NucleiEngine, error) {
 	// default options
