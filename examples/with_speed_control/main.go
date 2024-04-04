@@ -43,10 +43,10 @@ func main() {
 			panic("wrong initial rate limit")
 		}
 		time.Sleep(10 * time.Second)
-		ne.Options().RateLimit = 5
+		ne.Options().RateLimit = 1000
 		time.Sleep(10 * time.Second)
 		finalRate := ne.GetExecuterOptions().RateLimiter.GetLimit()
-		if finalRate != 5 {
+		if finalRate != 1000 {
 			panic("wrong final rate limit")
 		}
 	}()
@@ -81,13 +81,13 @@ func main() {
 			panic("wrong initial payload concurrency")
 		}
 		time.Sleep(10 * time.Second)
-		ne.Options().PayloadConcurrency = 5
+		ne.Options().PayloadConcurrency = 100
 		time.Sleep(10 * time.Second)
 
 		// the ongoing and next payload iterations will retrieve parallelism from this function
 		// it should have the new set value, that will be cascade applied to all running adaptive wait groups
 		finalPayloadConcurrency := ne.GetExecuterOptions().GetThreadsForNPayloadRequests(100, 0)
-		if finalPayloadConcurrency != 5 {
+		if finalPayloadConcurrency != 100 {
 			panic("wrong initial payload concurrency")
 		}
 	}()
