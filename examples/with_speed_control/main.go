@@ -10,7 +10,10 @@ import (
 
 func main() {
 	ne, err := nuclei.NewNucleiEngine(
-		nuclei.WithTemplateFilters(nuclei.TemplateFilters{IDs: []string{"header-command-injection"}}),
+		nuclei.WithTemplateFilters(nuclei.TemplateFilters{
+			IDs:         []string{"header-command-injection"},
+			IncludeTags: []string{"fuzz"},
+		}),
 		nuclei.EnableStatsWithOpts(nuclei.StatsOptions{MetricServerPort: 6064}),
 		nuclei.WithGlobalRateLimit(1, time.Second),
 		nuclei.WithConcurrency(nuclei.Concurrency{
