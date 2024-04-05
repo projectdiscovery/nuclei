@@ -30,6 +30,25 @@ type SliceOrMapSlice struct {
 	KV    *mapsutil.OrderedMap[string, string]
 }
 
+func (v SliceOrMapSlice) JSONSchemaExtend(schema *jsonschema.Schema) *jsonschema.Schema {
+	schema = &jsonschema.Schema{
+		Title:       schema.Title,
+		Description: schema.Description,
+		Type:        "array",
+		Items: &jsonschema.Schema{
+			OneOf: []*jsonschema.Schema{
+				{
+					Type: "string",
+				},
+				{
+					Type: "object",
+				},
+			},
+		},
+	}
+	return schema
+}
+
 func (v SliceOrMapSlice) JSONSchema() *jsonschema.Schema {
 	gotType := &jsonschema.Schema{
 		Title:       "Payloads of Fuzz Rule",
