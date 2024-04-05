@@ -35,7 +35,7 @@ func main() {
 
 func initializeNucleiEngine() (*nuclei.NucleiEngine, error) {
 	return nuclei.NewNucleiEngine(
-		nuclei.WithTemplateFilters(nuclei.TemplateFilters{ProtocolTypes: "http"}),
+		nuclei.WithTemplateFilters(nuclei.TemplateFilters{Tags: []string{"oast"}}),
 		nuclei.EnableStatsWithOpts(nuclei.StatsOptions{MetricServerPort: 6064}),
 		nuclei.WithGlobalRateLimit(1, time.Second),
 		nuclei.WithConcurrency(nuclei.Concurrency{
