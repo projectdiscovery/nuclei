@@ -217,7 +217,7 @@ func (e *ChildExecuter) Execute(template *templates.Template, value *contextargs
 	templateType := template.Type()
 
 	// resize check point - nop if there are no changes
-	e.e.workPool.RefreshWithConfig(e.e.GetWorkPoolConfig())
+	e.e.WorkPool().RefreshWithConfig(e.e.GetWorkPoolConfig())
 
 	var wg *syncutil.AdaptiveWaitGroup
 	if templateType == types.HeadlessProtocol {

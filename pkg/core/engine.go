@@ -58,5 +58,7 @@ func (e *Engine) ExecuterOptions() protocols.ExecutorOptions {
 
 // WorkPool returns the worker pool for the engine
 func (e *Engine) WorkPool() *WorkPool {
+	// resize check point - nop if there are no changes
+	e.workPool.RefreshWithConfig(e.GetWorkPoolConfig())
 	return e.workPool
 }
