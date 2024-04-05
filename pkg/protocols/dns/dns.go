@@ -60,7 +60,7 @@ type Request struct {
 	// examples:
 	//   - name: Use a retry of 100 to 150 generally
 	//     value: 100
-	TraceMaxRecursion int `yaml:"trace-max-recursion,omitempty"  jsonschema:"title=trace-max-recursion level for dns request,description=TraceMaxRecursion is the number of max recursion allowed for trace operations"`
+	TraceMaxRecursion int `yaml:"trace-max-recursion,omitempty" json:"trace-max-recursion,omitempty"  jsonschema:"title=trace-max-recursion level for dns request,description=TraceMaxRecursion is the number of max recursion allowed for trace operations"`
 
 	// description: |
 	//   Attack is the type of payload combinations to perform.
@@ -83,7 +83,7 @@ type Request struct {
 	Threads   int `yaml:"threads,omitempty" json:"threads,omitempty" jsonschema:"title=threads for sending requests,description=Threads specifies number of threads to use sending requests. This enables Connection Pooling"`
 	generator *generators.PayloadGenerator
 
-	CompiledOperators *operators.Operators `yaml:"-"`
+	CompiledOperators *operators.Operators `yaml:"-" json:"-"`
 	dnsClient         *retryabledns.Client
 	options           *protocols.ExecutorOptions
 
