@@ -454,5 +454,5 @@ func (request *Request) Requests() int {
 var PayloadAutoConcurrencyThreshold int
 
 func init() {
-	PayloadAutoConcurrencyThreshold = env.GetEnvOrDefault[int]("NUCLEI_PAYLOAD_AUTO_CONCURRENCY_THRESHOLD", 10)
+	PayloadAutoConcurrencyThreshold = env.GetEnvOrDefault[int]("NUCLEI_PAYLOAD_AUTO_CONCURRENCY_THRESHOLD", 100)
 }
