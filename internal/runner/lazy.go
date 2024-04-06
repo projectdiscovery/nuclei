@@ -21,7 +21,7 @@ type AuthLazyFetchOptions struct {
 	OnError       func(error)
 }
 
-// GetAuthTemlStore create new loader for loading auth templates
+// GetAuthTmplStore create new loader for loading auth templates
 func GetAuthTmplStore(opts types.Options, catalog catalog.Catalog, execOpts protocols.ExecutorOptions) (*loader.Store, error) {
 	tmpls := []string{}
 	for _, file := range opts.SecretsFile {
