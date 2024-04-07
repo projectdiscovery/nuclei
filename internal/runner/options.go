@@ -25,6 +25,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/reporting/exporters/jsonl"
 	"github.com/projectdiscovery/nuclei/v3/pkg/reporting/exporters/markdown"
 	"github.com/projectdiscovery/nuclei/v3/pkg/reporting/exporters/sarif"
+	"github.com/projectdiscovery/nuclei/v3/pkg/testing"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	"github.com/projectdiscovery/nuclei/v3/pkg/utils/yaml"
 	fileutil "github.com/projectdiscovery/utils/file"
@@ -49,6 +50,8 @@ func ConfigureOptions() error {
 	goflags.FileCommaSeparatedStringSliceOptions.IsFromFile = isFromFileFunc
 	return nil
 }
+
+var proxyServer *testing.ProxyServer
 
 // ParseOptions parses the command line flags provided by a user
 func ParseOptions(options *types.Options) {
@@ -82,6 +85,19 @@ func ParseOptions(options *types.Options) {
 	// invalid options have been used, exit.
 	if err := ValidateOptions(options); err != nil {
 		gologger.Fatal().Msgf("Program exiting: %s\n", err)
+	}
+	if options.AutogenerateTests {
+		ps, err := testing.NewProxyServer()
+		if err != nil {
+			gologger.Fatal().Msgf("Could not create proxy server: %s\n", err)
+		}
+		proxyServer = ps
+
+		// Add the proxy server to the options
+		proxyURL := fmt.Sprintf("http://%s", proxyServer.ListenAddr)
+		options.Proxy = goflags.StringSlice([]string{proxyURL})
+		types.ProxyURL = proxyURL
+		gologger.Info().Msgf("Using %s as proxy server for automatic test-generation\n", proxyServer.ListenAddr)
 	}
 
 	// Load the resolvers if user asked for them

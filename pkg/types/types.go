@@ -258,6 +258,12 @@ type Options struct {
 	AllowLocalFileAccess bool
 	// RestrictLocalNetworkAccess restricts local network access from templates requests
 	RestrictLocalNetworkAccess bool
+	// AutogenerateTests enables autogeneration of tests for templates (currently http)
+	// by using a type of proxy and recording requests and responses, generating test
+	// cases from them.
+	AutogenerateTests bool
+	// RunNucleiTests enables running nuclei tests
+	RunNucleiTests bool
 	// ShowMatchLine enables display of match line number
 	ShowMatchLine bool
 	// EnablePprof enables exposing pprof runtime information with a webserver.

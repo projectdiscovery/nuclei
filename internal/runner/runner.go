@@ -18,6 +18,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/input/provider"
 	"github.com/projectdiscovery/nuclei/v3/pkg/installer"
 	"github.com/projectdiscovery/nuclei/v3/pkg/loader/parser"
+	"github.com/projectdiscovery/nuclei/v3/pkg/testing"
 	uncoverlib "github.com/projectdiscovery/uncover"
 	pdcpauth "github.com/projectdiscovery/utils/auth/pdcp"
 	"github.com/projectdiscovery/utils/env"
@@ -338,6 +339,9 @@ func (r *Runner) runStandardEnumeration(executerOpts protocols.ExecutorOptions, 
 
 // Close releases all the resources and cleans up
 func (r *Runner) Close() {
+	if proxyServer != nil {
+		proxyServer.Close()
+	}
 	if r.output != nil {
 		r.output.Close()
 	}
@@ -501,6 +505,14 @@ func (r *Runner) RunEnumeration() error {
 		return nil // exit
 	}
 	store.Load()
+
+	if len(store.Templates()) > 1 && r.options.AutogenerateTests {
+		return errors.New("autogenerate-tests flag can only be used with a single template")
+	}
+	if r.inputProvider.Count() > 1 && r.options.AutogenerateTests {
+		return errors.New("autogenerate-tests flag can only be used with a single input")
+	}
+
 	// TODO: remove below functions after v3 or update warning messages
 	disk.PrintDeprecatedPathsMsgIfApplicable(r.options.Silent)
 	templates.PrintDeprecatedProtocolNameMsgIfApplicable(r.options.Silent, r.options.Verbose)
@@ -560,6 +572,31 @@ func (r *Runner) RunEnumeration() error {
 		matched := r.interactsh.Close()
 		if matched {
 			results.CompareAndSwap(false, true)
+		}
+	}
+	if r.options.AutogenerateTests && proxyServer != nil {
+		if !results.Load() {
+			return errors.New("no results found to autogenerate tests")
+		}
+
+		intercepted := proxyServer.Intercepted()
+		if len(intercepted) == 0 {
+			return errors.New("no intercepted requests")
+		}
+		gologger.Verbose().Msgf("Intercepted requests and responses (%d)", len(intercepted))
+		for _, pair := range intercepted {
+			if r.options.Debug {
+				fmt.Printf("Pair: %+v\n", pair)
+			}
+		}
+		var gotInput string
+		r.inputProvider.Iterate(func(value *contextargs.MetaInput) bool {
+			gotInput = value.Input
+			return false
+		})
+		err := testing.GenerateTestsFromPair(intercepted, store.Templates()[0], gotInput)
+		if err != nil {
+			return errors.Wrap(err, "could not generate tests from intercepted requests")
 		}
 	}
 	if executorOpts.InputHelper != nil {
