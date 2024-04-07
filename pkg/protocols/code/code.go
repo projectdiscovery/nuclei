@@ -48,25 +48,25 @@ var (
 type Request struct {
 	// Operators for the current request go here.
 	operators.Operators `yaml:",inline,omitempty"`
-	CompiledOperators   *operators.Operators `yaml:"-"`
+	CompiledOperators   *operators.Operators `yaml:"-" json:"-"`
 
 	// ID is the optional id of the request
 	ID string `yaml:"id,omitempty" json:"id,omitempty" jsonschema:"title=id of the request,description=ID is the optional ID of the Request"`
 	// description: |
 	//   Engine type
-	Engine []string `yaml:"engine,omitempty" jsonschema:"title=engine,description=Engine"`
+	Engine []string `yaml:"engine,omitempty" json:"engine,omitempty" jsonschema:"title=engine,description=Engine"`
 	// description: |
 	//   PreCondition is a condition which is evaluated before sending the request.
 	PreCondition string `yaml:"pre-condition,omitempty" json:"pre-condition,omitempty" jsonschema:"title=pre-condition for the request,description=PreCondition is a condition which is evaluated before sending the request"`
 	// description: |
 	//   Engine Arguments
-	Args []string `yaml:"args,omitempty" jsonschema:"title=args,description=Args"`
+	Args []string `yaml:"args,omitempty" json:"args,omitempty" jsonschema:"title=args,description=Args"`
 	// description: |
 	//   Pattern preferred for file name
-	Pattern string `yaml:"pattern,omitempty" jsonschema:"title=pattern,description=Pattern"`
+	Pattern string `yaml:"pattern,omitempty" json:"pattern,omitempty" jsonschema:"title=pattern,description=Pattern"`
 	// description: |
 	//   Source File/Snippet
-	Source string `yaml:"source,omitempty" jsonschema:"title=source file/snippet,description=Source snippet"`
+	Source string `yaml:"source,omitempty" json:"source,omitempty" jsonschema:"title=source file/snippet,description=Source snippet"`
 
 	options              *protocols.ExecutorOptions `yaml:"-" json:"-"`
 	preConditionCompiled *goja.Program              `yaml:"-" json:"-"`

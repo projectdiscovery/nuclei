@@ -92,7 +92,7 @@ func (holder DNSRequestTypeHolder) String() string {
 	return holder.DNSRequestType.String()
 }
 
-func (holder DNSRequestTypeHolder) JSONSchemaType() *jsonschema.Schema {
+func (holder DNSRequestTypeHolder) JSONSchema() *jsonschema.Schema {
 	gotType := &jsonschema.Schema{
 		Type:        "string",
 		Title:       "type of DNS request to make",
