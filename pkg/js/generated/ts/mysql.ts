@@ -209,9 +209,9 @@ export interface MySQLOptions {
  */
 export interface SQLResult {
     
-    Columns?: string[],
-    
     Count?: number,
+    
+    Columns?: string[],
 }
 
 

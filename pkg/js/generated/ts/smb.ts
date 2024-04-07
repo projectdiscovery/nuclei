@@ -137,10 +137,6 @@ export interface NegotiationLog {
  */
 export interface SMBCapabilities {
     
-    DFSSupport?: boolean,
-    
-    Leasing?: boolean,
-    
     LargeMTU?: boolean,
     
     MultiChan?: boolean,
@@ -150,6 +146,10 @@ export interface SMBCapabilities {
     DirLeasing?: boolean,
     
     Encryption?: boolean,
+    
+    DFSSupport?: boolean,
+    
+    Leasing?: boolean,
 }
 
 
@@ -159,6 +159,8 @@ export interface SMBCapabilities {
  */
 export interface SMBLog {
     
+    SupportV1?: boolean,
+    
     NativeOs?: string,
     
     NTLM?: string,
@@ -167,15 +169,13 @@ export interface SMBLog {
     
     HasNTLM?: boolean,
     
-    SupportV1?: boolean,
+    Version?: SMBVersions,
     
     Capabilities?: SMBCapabilities,
     
     NegotiationLog?: NegotiationLog,
     
     SessionSetupLog?: SessionSetupLog,
-    
-    Version?: SMBVersions,
 }
 
 
@@ -185,13 +185,13 @@ export interface SMBLog {
  */
 export interface SMBVersions {
     
+    VerString?: string,
+    
     Major?: number,
     
     Minor?: number,
     
     Revision?: number,
-    
-    VerString?: string,
 }
 
 
@@ -200,10 +200,6 @@ export interface SMBVersions {
  * ServiceSMB Interface
  */
 export interface ServiceSMB {
-    
-    SigningEnabled?: boolean,
-    
-    SigningRequired?: boolean,
     
     OSVersion?: string,
     
@@ -216,6 +212,10 @@ export interface ServiceSMB {
     DNSDomainName?: string,
     
     ForestName?: string,
+    
+    SigningEnabled?: boolean,
+    
+    SigningRequired?: boolean,
 }
 
 
@@ -225,11 +225,11 @@ export interface ServiceSMB {
  */
 export interface SessionSetupLog {
     
+    NegotiateFlags?: number,
+    
     SetupFlags?: number,
     
     TargetName?: string,
-    
-    NegotiateFlags?: number,
     
     HeaderLog?: HeaderLog,
 }
