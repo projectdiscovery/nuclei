@@ -280,8 +280,7 @@ func (request *Request) GetID() string {
 }
 
 // ExecuteWithResults executes the protocol requests and returns results instead of writing them.
-func (request *Request) ExecuteWithResults(target *contextargs.Context, dynamicValues, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
-
+func (request *Request) ExecuteWithResults(target *contextargs.Context, dynamicValues, previous output.InternalEvent, onResult protocols.OutputEventCallback) error {
 	input := target.Clone()
 	// use network port updates input with new port requested in template file
 	// and it is ignored if input port is not standard http(s) ports like 80,8080,8081 etc
@@ -360,7 +359,7 @@ func (request *Request) ExecuteWithResults(target *contextargs.Context, dynamicV
 	}
 
 	if request.generator != nil && request.Threads > 1 {
-		request.executeRequestParallel(context.Background(), hostPort, hostname, input, payloadValues, callback)
+		request.executeRequestParallel(context.Background(), hostPort, hostname, input, payloadValues, onResult)
 		return nil
 	}
 
@@ -374,19 +373,21 @@ func (request *Request) ExecuteWithResults(target *contextargs.Context, dynamicV
 				return nil
 			}
 
-			if err := request.executeRequestWithPayloads(hostPort, input, hostname, value, payloadValues, func(result *output.InternalWrappedEvent) {
-				if result.OperatorsResult != nil && result.OperatorsResult.Matched {
-					gotMatches = true
-					request.options.Progress.IncrementMatched()
-				}
-				callback(result)
-			}, requestOptions); err != nil {
+			event, err := request.executeRequestWithPayloads(hostPort, input, hostname, value, payloadValues, requestOptions)
+			if err != nil {
 				_ = err
 				// Review: should we log error here?
 				// it is technically not error as it is expected to fail
 				// gologger.Warning().Msgf("Could not execute request: %s\n", err)
 				// do not return even if error occured
 			}
+
+			if event.OperatorsResult != nil && event.OperatorsResult.Matched {
+				gotMatches = true
+				request.options.Progress.IncrementMatched()
+			}
+			onResult(event)
+
 			// If this was a match, and we want to stop at first match, skip all further requests.
 			shouldStopAtFirstMatch := request.options.Options.StopAtFirstMatch || request.StopAtFirstMatch
 			if shouldStopAtFirstMatch && gotMatches {
@@ -394,10 +395,12 @@ func (request *Request) ExecuteWithResults(target *contextargs.Context, dynamicV
 			}
 		}
 	}
-	return request.executeRequestWithPayloads(hostPort, input, hostname, nil, payloadValues, callback, requestOptions)
+	event, err := request.executeRequestWithPayloads(hostPort, input, hostname, nil, payloadValues, requestOptions)
+	onResult(event)
+	return err
 }
 
-func (request *Request) executeRequestParallel(ctxParent context.Context, hostPort, hostname string, input *contextargs.Context, payloadValues map[string]interface{}, callback protocols.OutputEventCallback) {
+func (request *Request) executeRequestParallel(ctxParent context.Context, hostPort, hostname string, input *contextargs.Context, payloadValues map[string]interface{}, onResult protocols.OutputEventCallback) {
 	threads := request.Threads
 	if threads == 0 {
 		threads = 1
@@ -423,20 +426,21 @@ func (request *Request) executeRequestParallel(ctxParent context.Context, hostPo
 					return
 				}
 				shouldStopAtFirstMatch := request.options.Options.StopAtFirstMatch || request.StopAtFirstMatch
-				if err := request.executeRequestWithPayloads(hostPort, input, hostname, value, payloadValues, func(result *output.InternalWrappedEvent) {
-					if result.OperatorsResult != nil && result.OperatorsResult.Matched {
-						gotmatches.Store(true)
-					}
-					callback(result)
-				}, requestOptions); err != nil {
+				event, err := request.executeRequestWithPayloads(hostPort, input, hostname, value, payloadValues, requestOptions)
+				if err != nil {
 					_ = err
 					// Review: should we log error here?
 					// it is technically not error as it is expected to fail
 					// gologger.Warning().Msgf("Could not execute request: %s\n", err)
 					// do not return even if error occured
 				}
-				// If this was a match, and we want to stop at first match, skip all further requests.
 
+				if event.OperatorsResult != nil && event.OperatorsResult.Matched {
+					gotmatches.Store(true)
+				}
+				onResult(event)
+
+				// If this was a match, and we want to stop at first match, skip all further requests.
 				if shouldStopAtFirstMatch && gotmatches.Load() {
 					cancel()
 					return
@@ -450,11 +454,11 @@ func (request *Request) executeRequestParallel(ctxParent context.Context, hostPo
 	}
 }
 
-func (request *Request) executeRequestWithPayloads(hostPort string, input *contextargs.Context, _ string, payload map[string]interface{}, previous output.InternalEvent, callback protocols.OutputEventCallback, requestOptions *protocols.ExecutorOptions) error {
+func (request *Request) executeRequestWithPayloads(hostPort string, input *contextargs.Context, _ string, payload map[string]interface{}, previous output.InternalEvent, requestOptions *protocols.ExecutorOptions) (*output.InternalWrappedEvent, error) {
 	payloadValues := generators.MergeMaps(payload, previous)
 	argsCopy, err := request.getArgsCopy(input, payloadValues, requestOptions, false)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	if request.options.HasTemplateCtx(input.MetaInput) {
 		argsCopy.TemplateCtx = request.options.GetTemplateCtx(input.MetaInput).GetAll()
@@ -541,22 +545,21 @@ func (request *Request) executeRequestWithPayloads(hostPort string, input *conte
 		event := eventcreator.CreateEventWithAdditionalOptions(request, generators.MergeMaps(data, payloadValues), request.options.Options.Debug || request.options.Options.DebugResponse, func(wrappedEvent *output.InternalWrappedEvent) {
 			wrappedEvent.OperatorsResult.PayloadValues = payload
 		})
-		callback(event)
-		return err
+		return event, err
 	}
 
 	if request.options.Interactsh != nil {
 		request.options.Interactsh.MakePlaceholders(interactshURLs, data)
 	}
 
-	var event *output.InternalWrappedEvent
-	if len(interactshURLs) == 0 {
-		event = eventcreator.CreateEventWithAdditionalOptions(request, generators.MergeMaps(data, payloadValues), request.options.Options.Debug || request.options.Options.DebugResponse, func(wrappedEvent *output.InternalWrappedEvent) {
+	switch {
+	case len(interactshURLs) == 0:
+		event := eventcreator.CreateEventWithAdditionalOptions(request, generators.MergeMaps(data, payloadValues), request.options.Options.Debug || request.options.Options.DebugResponse, func(wrappedEvent *output.InternalWrappedEvent) {
 			wrappedEvent.OperatorsResult.PayloadValues = payload
 		})
-		callback(event)
-	} else if request.options.Interactsh != nil {
-		event = &output.InternalWrappedEvent{InternalEvent: data, UsesInteractsh: true}
+		return event, nil
+	case request.options.Interactsh != nil:
+		event := &output.InternalWrappedEvent{InternalEvent: data, UsesInteractsh: true}
 		request.options.Interactsh.RequestEvent(interactshURLs, &interactsh.RequestData{
 			MakeResultFunc: request.MakeResultEvent,
 			Event:          event,
@@ -564,8 +567,11 @@ func (request *Request) executeRequestWithPayloads(hostPort string, input *conte
 			MatchFunc:      request.Match,
 			ExtractFunc:    request.Extract,
 		})
+	default:
+		return nil, nil
 	}
-	return nil
+
+	return nil, nil //todo: just to avoid cache compile error
 }
 
 func (request *Request) getArgsCopy(input *contextargs.Context, payloadValues map[string]interface{}, requestOptions *protocols.ExecutorOptions, ignoreErrors bool) (*compiler.ExecuteArgs, error) {
