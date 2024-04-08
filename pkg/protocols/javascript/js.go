@@ -526,6 +526,7 @@ func (request *Request) executeRequestWithPayloads(hostPort string, input *conte
 	if input.MetaInput.CustomIP != "" {
 		data["ip"] = input.MetaInput.CustomIP
 	} else {
+		// context: https://github.com/projectdiscovery/nuclei/issues/5021
 		hostname := input.MetaInput.Input
 		if strings.Contains(hostname, ":") {
 			host, _, err := net.SplitHostPort(hostname)
@@ -542,6 +543,22 @@ func (request *Request) executeRequestWithPayloads(hostPort string, input *conte
 		// if input itself was an ip, use it
 		if iputil.IsIP(hostname) {
 			data["ip"] = hostname
+		}
+
+		// if ip is not found,this is because ssh and other protocols do not use fastdialer
+		// although its not perfect due to its use case dial and get ip
+		dnsData, err := protocolstate.Dialer.GetDNSData(hostname)
+		if err == nil {
+			for _, v := range dnsData.A {
+				data["ip"] = v
+				break
+			}
+			if data["ip"] == "" {
+				for _, v := range dnsData.AAAA {
+					data["ip"] = v
+					break
+				}
+			}
 		}
 	}
 
