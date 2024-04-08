@@ -580,14 +580,16 @@ func (r *Runner) RunEnumeration() error {
 		return err
 	}
 
+	var isInteractMatcher bool
 	if r.interactsh != nil {
 		matched := r.interactsh.Close()
 		if matched {
 			results.CompareAndSwap(false, true)
+			isInteractMatcher = true
 		}
 	}
 	if r.options.AutogenerateTests && proxyServer != nil {
-		if err := r.handleTestAutogenerate(results, store); err != nil {
+		if err := r.handleTestAutogenerate(results, isInteractMatcher, store); err != nil {
 			return err
 		}
 	}
@@ -651,10 +653,31 @@ func (r *Runner) runNucleiTests(store *loader.Store, engine *core.Engine) error 
 			return errors.Errorf("no template found for path %s", templatePath)
 		}
 
+		// If we have interactsh matcher, we need to handle it separately
+		// by creating a new interactsh client and closing it after the test
+		// waiting for callbacks.
+		// TODO: Parallelize
+		if testTemplate.IsInteractshMatcher {
+			interactClient, err := interactsh.New(interactsh.DefaultOptions(r.output, r.issuesClient, r.progress))
+			if err != nil {
+				testServer.Close()
+				return errors.Wrap(err, "could not create interactsh client")
+			}
+			template.Options.Interactsh = interactClient
+		}
+
 		results := engine.ExecuteScanWithOpts([]*templates.Template{template}, provider.NewSimpleInputProviderWithUrls(testServer.URL), r.options.DisableClustering)
-		if !results.Load() {
+		if !results.Load() && !testTemplate.IsInteractshMatcher {
 			testServer.Close()
 			return errors.Errorf("no results found for template %s", template.ID)
+		}
+
+		if testTemplate.IsInteractshMatcher {
+			matched := template.Options.Interactsh.Close()
+			if !matched {
+				testServer.Close()
+				return errors.Errorf("no results found for template %s", template.ID)
+			}
 		}
 	}
 	gologger.Info().Msgf("All tests passed successfully")
@@ -662,7 +685,7 @@ func (r *Runner) runNucleiTests(store *loader.Store, engine *core.Engine) error 
 	return nil
 }
 
-func (r *Runner) handleTestAutogenerate(results *atomic.Bool, store *loader.Store) error {
+func (r *Runner) handleTestAutogenerate(results *atomic.Bool, isInteractMatcher bool, store *loader.Store) error {
 	if !results.Load() {
 		return errors.New("no results found to autogenerate tests")
 	}
@@ -682,7 +705,7 @@ func (r *Runner) handleTestAutogenerate(results *atomic.Bool, store *loader.Stor
 		gotInput = value.Input
 		return false
 	})
-	err := testing.GenerateTestsFromPair(intercepted, store.Templates()[0], gotInput)
+	err := testing.GenerateTestsFromPair(intercepted, store.Templates()[0], gotInput, isInteractMatcher)
 	if err != nil {
 		return errors.Wrap(err, "could not generate tests from intercepted requests")
 	}

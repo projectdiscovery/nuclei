@@ -2,14 +2,17 @@ package testing
 
 import (
 	"bufio"
+	"context"
 	"fmt"
 	"io"
 	"net/http"
+	"net/http/httputil"
 	"net/url"
 	"os"
 	"path/filepath"
 	"regexp"
 	"strings"
+	"time"
 
 	"github.com/pkg/errors"
 	"github.com/projectdiscovery/gologger"
@@ -21,8 +24,9 @@ import (
 
 // NucleiTestTemplate is a template for testing nuclei templates
 type NucleiTestTemplate struct {
-	Requests   []RequestResponsePair `yaml:"requests"`
-	TemplateID string                `yaml:"template_id"`
+	Requests            []RequestResponsePair `yaml:"requests"`
+	TemplateID          string                `yaml:"template_id"`
+	IsInteractshMatcher bool                  `yaml:"is_interactsh_matcher,omitempty"`
 }
 
 type internalRouteDetails struct {
@@ -37,12 +41,12 @@ type internalRouteDetails struct {
 func (n *NucleiTestTemplate) MockServer() (http.HandlerFunc, error) {
 	requestPathToMethods := make(map[string][]internalRouteDetails)
 	for _, reqResp := range n.Requests {
-		parsed, err := types.ParseRawRequest(reqResp.Request)
+		parsed, err := types.ParseRawRequest(strings.TrimLeft(reqResp.Request, "\r\n"))
 		if err != nil {
 			return nil, errors.Wrap(err, "could not parse request")
 		}
 
-		parsedResponse, err := http.ReadResponse(bufio.NewReader(strings.NewReader(reqResp.Response)), nil)
+		parsedResponse, err := http.ReadResponse(bufio.NewReader(strings.NewReader(strings.TrimLeft(reqResp.Response, "\r\n"))), nil)
 		if err != nil {
 			return nil, errors.Wrap(err, "could not parse response")
 		}
@@ -79,7 +83,27 @@ func (n *NucleiTestTemplate) MockServer() (http.HandlerFunc, error) {
 				continue
 			}
 
+			if n.IsInteractshMatcher {
+				dumped, _ := httputil.DumpRequest(r, true)
+				decoded, _ := url.QueryUnescape(string(dumped))
+
+				for _, url := range extractURLs(decoded) {
+					if !isAllowedDomain(url) {
+						continue
+					}
+
+					go func(url string) {
+						if err := doCallbackToInteractsh(url); err != nil {
+							gologger.Warning().Msgf("[test-server] Could not send request to interactsh: %s", err)
+						}
+					}(url)
+				}
+			}
 			for k, v := range route.ResponseHeaders {
+				// Ignore certain headers
+				if k == "Content-Encoding" {
+					continue
+				}
 				w.Header()[k] = v
 			}
 
@@ -108,7 +132,7 @@ func ReadNucleiTestTemplate(path string) (*NucleiTestTemplate, error) {
 
 // GenerateTestsFromPair generates a test from a pair of request and response
 // and a template object
-func GenerateTestsFromPair(pair []RequestResponsePair, template *templates.Template, target string) error {
+func GenerateTestsFromPair(pair []RequestResponsePair, template *templates.Template, target string, isInteractshMatcher bool) error {
 	host := target
 
 	if strings.HasPrefix(target, "http://") || strings.HasPrefix(target, "https://") {
@@ -122,7 +146,8 @@ func GenerateTestsFromPair(pair []RequestResponsePair, template *templates.Templ
 	}
 
 	testTemplate := NucleiTestTemplate{
-		TemplateID: template.ID,
+		TemplateID:          template.ID,
+		IsInteractshMatcher: isInteractshMatcher,
 	}
 	for _, reqResp := range pair {
 		testTemplate.Requests = append(testTemplate.Requests, RequestResponsePair{
@@ -174,4 +199,54 @@ func redactUserInput(input string, value string) string {
 		value = strings.ReplaceAll(value, ip, "127.0.0.1")
 	}
 	return strings.ReplaceAll(value, input, redactedTestDomain)
+}
+
+func extractURLs(text string) []string {
+	matches := domainRegex.FindAllString(text, -1)
+
+	for i, match := range matches {
+		if !strings.HasPrefix(match, "http://") && !strings.HasPrefix(match, "https://") {
+			matches[i] = "http://" + match
+		}
+	}
+	return matches
+}
+
+var domainRegex = regexp.MustCompile(`(?:https?:\/\/)?[A-Za-z0-9-_\.]+oast\.(?:pro|today|live|site|online|fun|me)`)
+
+func isAllowedDomain(urlString string) bool {
+	domainsEnabled := true
+	if !domainsEnabled {
+		return true
+	}
+
+	allowedDomains := []string{"oast.pro", "oast.today", "oast.live", "oast.site", "oast.online", "oast.fun", "oast.me"}
+	u, err := url.Parse(urlString)
+	if err != nil {
+		return false
+	}
+	for _, domain := range allowedDomains {
+		if strings.HasSuffix(u.Hostname(), domain) {
+			return true
+		}
+	}
+	return false
+}
+
+func doCallbackToInteractsh(URL string) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	req, err := http.NewRequestWithContext(ctx, "GET", URL, nil)
+	if err != nil {
+		return err
+	}
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	_, err = io.ReadAll(resp.Body)
+	return err
 }
