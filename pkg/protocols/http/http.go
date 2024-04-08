@@ -436,24 +436,25 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 		}
 	}
 	if len(request.Payloads) > 0 {
-		// due to limitation of https://github.com/projectdiscovery/nuclei/issues/5015
-		// use of dynamic extractor is not allowed with payloads and will be executed via normal engine
-		// without parallelism by forcing threads value to 0
+		// Due to a known issue (https://github.com/projectdiscovery/nuclei/issues/5015),
+		// dynamic extractors cannot be used with payloads. To address this,
+		// execution is handled by the standard engine without concurrency,
+		// achieved by setting the thread count to 0.
 
 		// this limitation will be removed once we have a better way to handle dynamic extractors with payloads
-		hasMultiReqests := false
+		hasMultipleRequests := false
 		if len(request.Raw)+len(request.Path) > 1 {
-			hasMultiReqests = true
+			hasMultipleRequests = true
 		}
 		// look for dynamic extractor ( internal: true with named extractor)
-		hasNamedExtractor := false
+		hasNamedInternalExtractor := false
 		for _, extractor := range request.Extractors {
 			if extractor.Internal && extractor.Name != "" {
-				hasNamedExtractor = true
+				hasNamedInternalExtractor = true
 				break
 			}
 		}
-		if hasNamedExtractor && hasMultiReqests {
+		if hasNamedInternalExtractor && hasMultipleRequests {
 			gologger.Warning().Label(options.TemplateID).Msgf("Setting thread count to 0 because dynamic extractors are not supported with payloads yet")
 			request.Threads = 0
 		} else {
