@@ -88,10 +88,6 @@ func (n *NucleiTestTemplate) MockServer() (http.HandlerFunc, error) {
 				decoded, _ := url.QueryUnescape(string(dumped))
 
 				for _, url := range extractURLs(decoded) {
-					if !isAllowedDomain(url) {
-						continue
-					}
-
 					go func(url string) {
 						if err := doCallbackToInteractsh(url); err != nil {
 							gologger.Warning().Msgf("[test-server] Could not send request to interactsh: %s", err)
@@ -213,25 +209,6 @@ func extractURLs(text string) []string {
 }
 
 var domainRegex = regexp.MustCompile(`(?:https?:\/\/)?[A-Za-z0-9-_\.]+oast\.(?:pro|today|live|site|online|fun|me)`)
-
-func isAllowedDomain(urlString string) bool {
-	domainsEnabled := true
-	if !domainsEnabled {
-		return true
-	}
-
-	allowedDomains := []string{"oast.pro", "oast.today", "oast.live", "oast.site", "oast.online", "oast.fun", "oast.me"}
-	u, err := url.Parse(urlString)
-	if err != nil {
-		return false
-	}
-	for _, domain := range allowedDomains {
-		if strings.HasSuffix(u.Hostname(), domain) {
-			return true
-		}
-	}
-	return false
-}
 
 func doCallbackToInteractsh(URL string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
