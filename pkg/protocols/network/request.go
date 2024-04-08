@@ -85,13 +85,17 @@ func (request *Request) getOpenPorts(target *contextargs.Context) ([]string, err
 }
 
 // ExecuteWithResults executes the protocol requests and returns results instead of writing them.
-func (request *Request) ExecuteWithResults(target *contextargs.Context, metadata, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
+func (request *Request) ExecuteWithResults(target *contextargs.Context, metadata, previous output.InternalEvent, onResult protocols.OutputEventCallback) error {
 	visitedAddresses := make(mapsutil.Map[string, struct{}])
 
 	if request.Port == "" {
 		// backwords compatibility or for other use cases
 		// where port is not provided in template
-		if err := request.executeOnTarget(target, visitedAddresses, metadata, previous, callback); err != nil {
+		events, err := request.executeOnTarget(target, visitedAddresses, metadata, previous)
+		for _, event := range events {
+			onResult(event)
+		}
+		if err != nil {
 			return err
 		}
 	}
@@ -114,7 +118,11 @@ func (request *Request) ExecuteWithResults(target *contextargs.Context, metadata
 		if err := input.UseNetworkPort(port, request.ExcludePorts); err != nil {
 			gologger.Debug().Msgf("Could not network port from constants: %s\n", err)
 		}
-		if err := request.executeOnTarget(input, visitedAddresses, metadata, previous, callback); err != nil {
+		events, err := request.executeOnTarget(input, visitedAddresses, metadata, previous)
+		for _, event := range events {
+			onResult(event)
+		}
+		if err != nil {
 			return err
 		}
 	}
@@ -122,7 +130,7 @@ func (request *Request) ExecuteWithResults(target *contextargs.Context, metadata
 	return nil
 }
 
-func (request *Request) executeOnTarget(input *contextargs.Context, visited mapsutil.Map[string, struct{}], metadata, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
+func (request *Request) executeOnTarget(input *contextargs.Context, visited mapsutil.Map[string, struct{}], metadata, previous output.InternalEvent) ([]*output.InternalWrappedEvent, error) {
 	var address string
 	var err error
 
@@ -134,7 +142,7 @@ func (request *Request) executeOnTarget(input *contextargs.Context, visited maps
 	if err != nil {
 		request.options.Output.Request(request.options.TemplatePath, input.MetaInput.Input, request.Type().String(), err)
 		request.options.Progress.IncrementFailedRequestsBy(1)
-		return errors.Wrap(err, "could not get address from url")
+		return nil, errors.Wrap(err, "could not get address from url")
 	}
 	variables := protocolutils.GenerateVariables(address, false, nil)
 	// add template ctx variables to varMap
@@ -144,6 +152,8 @@ func (request *Request) executeOnTarget(input *contextargs.Context, visited maps
 	variablesMap := request.options.Variables.Evaluate(variables)
 	variables = generators.MergeMaps(variablesMap, variables, request.options.Constants)
 
+	var events []*output.InternalWrappedEvent
+
 	for _, kv := range request.addresses {
 		actualAddress := replacer.Replace(kv.address, variables)
 
@@ -152,18 +162,20 @@ func (request *Request) executeOnTarget(input *contextargs.Context, visited maps
 		}
 		visited.Set(actualAddress, struct{}{})
 
-		if err := request.executeAddress(variables, actualAddress, address, input, kv.tls, previous, callback); err != nil {
+		evs, err := request.executeAddress(variables, actualAddress, address, input, kv.tls, previous)
+		if err != nil {
 			outputEvent := request.responseToDSLMap("", "", "", address, "")
-			callback(&output.InternalWrappedEvent{InternalEvent: outputEvent})
+			events = append(events, &output.InternalWrappedEvent{InternalEvent: outputEvent})
 			gologger.Warning().Msgf("[%v] Could not make network request for (%s) : %s\n", request.options.TemplateID, actualAddress, err)
 			continue
 		}
+		events = append(events, evs...)
 	}
-	return nil
+	return events, nil
 }
 
 // executeAddress executes the request for an address
-func (request *Request) executeAddress(variables map[string]interface{}, actualAddress, address string, input *contextargs.Context, shouldUseTLS bool, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
+func (request *Request) executeAddress(variables map[string]interface{}, actualAddress, address string, input *contextargs.Context, shouldUseTLS bool, previous output.InternalEvent) ([]*output.InternalWrappedEvent, error) {
 	variables = generators.MergeMaps(variables, map[string]interface{}{"Hostname": address})
 	payloads := generators.BuildPayloadFromOptions(request.options.Options)
 
@@ -171,12 +183,15 @@ func (request *Request) executeAddress(variables map[string]interface{}, actualA
 		err := errors.New("no port provided in network protocol request")
 		request.options.Output.Request(request.options.TemplatePath, address, request.Type().String(), err)
 		request.options.Progress.IncrementFailedRequestsBy(1)
-		return err
+		return nil, err
 	}
 
 	if request.generator != nil {
 		iterator := request.generator.NewIterator()
-		var multiErr error
+		var (
+			multiErr error
+			events   []*output.InternalWrappedEvent
+		)
 		m := &sync.Mutex{}
 		swg := sizedwaitgroup.New(request.Threads)
 
@@ -189,27 +204,27 @@ func (request *Request) executeAddress(variables map[string]interface{}, actualA
 			swg.Add()
 			go func(vars map[string]interface{}) {
 				defer swg.Done()
-				if err := request.executeRequestWithPayloads(variables, actualAddress, address, input, shouldUseTLS, vars, previous, callback); err != nil {
-					m.Lock()
+				ev, err := request.executeRequestWithPayloads(variables, actualAddress, address, input, shouldUseTLS, vars, previous)
+				m.Lock()
+				if err != nil {
 					multiErr = multierr.Append(multiErr, err)
-					m.Unlock()
+				} else {
+					events = append(events, ev)
 				}
+				m.Unlock()
 			}(value)
 		}
 		swg.Wait()
-		if multiErr != nil {
-			return multiErr
-		}
+
+		return events, multiErr
 	} else {
 		value := maps.Clone(payloads)
-		if err := request.executeRequestWithPayloads(variables, actualAddress, address, input, shouldUseTLS, value, previous, callback); err != nil {
-			return err
-		}
+		ev, err := request.executeRequestWithPayloads(variables, actualAddress, address, input, shouldUseTLS, value, previous)
+		return []*output.InternalWrappedEvent{ev}, err
 	}
-	return nil
 }
 
-func (request *Request) executeRequestWithPayloads(variables map[string]interface{}, actualAddress, address string, input *contextargs.Context, shouldUseTLS bool, payloads map[string]interface{}, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
+func (request *Request) executeRequestWithPayloads(variables map[string]interface{}, actualAddress, address string, input *contextargs.Context, shouldUseTLS bool, payloads map[string]interface{}, previous output.InternalEvent) (*output.InternalWrappedEvent, error) {
 	var (
 		hostname string
 		conn     net.Conn
@@ -227,7 +242,7 @@ func (request *Request) executeRequestWithPayloads(variables map[string]interfac
 	if err != nil {
 		request.options.Output.Request(request.options.TemplatePath, address, request.Type().String(), err)
 		request.options.Progress.IncrementFailedRequestsBy(1)
-		return errors.Wrap(err, "could not connect to server")
+		return nil, errors.Wrap(err, "could not connect to server")
 	}
 	defer conn.Close()
 	_ = conn.SetDeadline(time.Now().Add(time.Duration(request.options.Options.Timeout) * time.Second))
@@ -257,14 +272,14 @@ func (request *Request) executeRequestWithPayloads(variables map[string]interfac
 		if err != nil {
 			request.options.Output.Request(request.options.TemplatePath, address, request.Type().String(), err)
 			request.options.Progress.IncrementFailedRequestsBy(1)
-			return errors.Wrap(err, "could not evaluate template expressions")
+			return nil, errors.Wrap(err, "could not evaluate template expressions")
 		}
 
 		reqBuilder.Write(finalData)
 
 		if err := expressions.ContainsUnresolvedVariables(string(finalData)); err != nil {
 			gologger.Warning().Msgf("[%s] Could not make network request for %s: %v\n", request.options.TemplateID, actualAddress, err)
-			return nil
+			return nil, err
 		}
 
 		if input.Type.GetType() == hexType {
@@ -272,20 +287,20 @@ func (request *Request) executeRequestWithPayloads(variables map[string]interfac
 			if err != nil {
 				request.options.Output.Request(request.options.TemplatePath, address, request.Type().String(), err)
 				request.options.Progress.IncrementFailedRequestsBy(1)
-				return errors.Wrap(err, "could not write request to server")
+				return nil, errors.Wrap(err, "could not write request to server")
 			}
 		}
 
 		if _, err := conn.Write(finalData); err != nil {
 			request.options.Output.Request(request.options.TemplatePath, address, request.Type().String(), err)
 			request.options.Progress.IncrementFailedRequestsBy(1)
-			return errors.Wrap(err, "could not write request to server")
+			return nil, errors.Wrap(err, "could not write request to server")
 		}
 
 		if input.Read > 0 {
 			buffer, err := ConnReadNWithTimeout(conn, int64(input.Read), DefaultReadTimeout)
 			if err != nil {
-				return errorutil.NewWithErr(err).Msgf("could not read response from connection")
+				return nil, errorutil.NewWithErr(err).Msgf("could not read response from connection")
 			}
 
 			responseBuilder.Write(buffer)
@@ -365,12 +380,16 @@ func (request *Request) executeRequestWithPayloads(variables map[string]interfac
 	}
 
 	var event *output.InternalWrappedEvent
-	if len(interactshURLs) == 0 {
+
+	switch {
+	case len(interactshURLs) == 0:
 		event = eventcreator.CreateEventWithAdditionalOptions(request, generators.MergeMaps(payloads, outputEvent), request.options.Options.Debug || request.options.Options.DebugResponse, func(wrappedEvent *output.InternalWrappedEvent) {
 			wrappedEvent.OperatorsResult.PayloadValues = payloads
 		})
-		callback(event)
-	} else if request.options.Interactsh != nil {
+		event.UsesInteractsh = len(interactshURLs) > 0
+		dumpResponse(event, request, response, actualAddress, address)
+		return event, nil
+	case request.options.Interactsh != nil:
 		event = &output.InternalWrappedEvent{InternalEvent: outputEvent}
 		request.options.Interactsh.RequestEvent(interactshURLs, &interactsh.RequestData{
 			MakeResultFunc: request.MakeResultEvent,
@@ -379,14 +398,13 @@ func (request *Request) executeRequestWithPayloads(variables map[string]interfac
 			MatchFunc:      request.Match,
 			ExtractFunc:    request.Extract,
 		})
+		event.UsesInteractsh = len(interactshURLs) > 0
+		dumpResponse(event, request, response, actualAddress, address)
+		return nil, nil
+	default:
+		dumpResponse(event, request, response, actualAddress, address)
+		return nil, nil
 	}
-	if len(interactshURLs) > 0 {
-		event.UsesInteractsh = true
-	}
-
-	dumpResponse(event, request, response, actualAddress, address)
-
-	return nil
 }
 
 func dumpResponse(event *output.InternalWrappedEvent, request *Request, response string, actualAddress, address string) {
