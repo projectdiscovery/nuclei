@@ -44,6 +44,9 @@ var (
 	pythonEnvRegexCompiled = regexp.MustCompile(pythonEnvRegex)
 )
 
+// Ensure that Request satisfies the protocols.Request interface
+var _ protocols.Request = &Request{}
+
 // Request is a request for the SSL protocol
 type Request struct {
 	// Operators for the current request go here.

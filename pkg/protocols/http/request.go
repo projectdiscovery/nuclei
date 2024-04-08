@@ -55,6 +55,9 @@ var (
 	ErrMissingVars = errors.New("stop execution due to unresolved variables")
 )
 
+// Ensure that Request satisfies the protocols.Request interface
+var _ protocols.Request = &Request{}
+
 // Type returns the type of the protocol request
 func (request *Request) Type() templateTypes.ProtocolType {
 	return templateTypes.HTTPProtocol

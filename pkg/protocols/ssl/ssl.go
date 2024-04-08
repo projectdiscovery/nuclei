@@ -35,6 +35,9 @@ import (
 	urlutil "github.com/projectdiscovery/utils/url"
 )
 
+// Ensure that Request satisfies the protocols.Request interface
+var _ protocols.Request = &Request{}
+
 // Request is a request for the SSL protocol
 type Request struct {
 	// Operators for the current request go here.
