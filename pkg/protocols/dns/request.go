@@ -29,8 +29,6 @@ import (
 	iputil "github.com/projectdiscovery/utils/ip"
 )
 
-var _ protocols.Request = &Request{}
-
 // Type returns the type of the protocol request
 func (request *Request) Type() templateTypes.ProtocolType {
 	return templateTypes.DNSProtocol

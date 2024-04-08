@@ -16,6 +16,8 @@ import (
 	fileutil "github.com/projectdiscovery/utils/file"
 )
 
+var _ protocols.Request = &Request{}
+
 // Request contains a DNS protocol request to be made from a template
 type Request struct {
 	// Operators for the current request go here.
