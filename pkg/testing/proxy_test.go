@@ -1,10 +1,10 @@
 package testing
 
 import (
-	"bytes"
 	"fmt"
 	"io"
 	"net/http"
+	"net/http/httptest"
 	"net/url"
 	"testing"
 
@@ -12,30 +12,74 @@ import (
 	"github.com/projectdiscovery/gologger/levels"
 )
 
-func Test_Proxy(t *testing.T) {
+func Test_Proxy_Template(t *testing.T) {
 	gologger.DefaultLogger.SetMaxLevel(levels.LevelVerbose)
 
-	ps, err := NewProxyServer()
+	pairs, err := doIntercept()
 	if err != nil {
 		t.Fatal(err)
 	}
+	fmt.Printf("Intercepted: %+v\n", len(pairs))
+
+	tmpl := &NucleiTestTemplate{
+		Requests:   pairs,
+		TemplateID: "test-template",
+	}
+	handler, err := tmpl.MockServer()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	t.Run("valid_mock_server", func(t *testing.T) {
+		w := httptest.NewRecorder()
+		req, err := http.NewRequest("GET", "http://scanme.sh/demo", nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		req.Header.Set("X-Custom-Header", "myvalue")
+		handler.ServeHTTP(w, req)
+
+		resp := w.Result()
+		if resp.StatusCode != 200 {
+			t.Fatalf("expected 200, got %d", resp.StatusCode)
+		}
+	})
+	t.Run("invalid_mock_server", func(t *testing.T) {
+		w := httptest.NewRecorder()
+		req, err := http.NewRequest("GET", "http://scanme.sh/", nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		handler.ServeHTTP(w, req)
+
+		resp := w.Result()
+		if resp.StatusCode != 404 {
+			t.Fatalf("expected 404, got %d", resp.StatusCode)
+		}
+	})
+}
+
+func doIntercept() ([]RequestResponsePair, error) {
+	ps, err := NewProxyServer()
+	if err != nil {
+		return nil, err
+	}
+	defer ps.Close()
 
 	// Make a http request by using the proxy server
 	// and check the intercepted requests and responses
 	// to see if the request was intercepted and correctly
 	// logged.
-	var jsonStr = []byte(`{"title":"Buy cheese and bread for breakfast."}`)
-	req, err := http.NewRequest("POST", "http://scanme.sh", bytes.NewBuffer(jsonStr))
+	req, err := http.NewRequest("GET", "http://scanme.sh/demo", nil)
 	if err != nil {
-		t.Fatal(err)
+		return nil, err
 	}
 	req.Header.Set("X-Custom-Header", "myvalue")
-	req.Header.Set("Content-Type", "application/json")
 
 	proxyURL := "http://" + ps.ListenAddr
 	parsed, err := url.Parse(proxyURL)
 	if err != nil {
-		t.Fatal(err)
+		return nil, err
 	}
 	fmt.Printf("Proxy URL: %s\n", parsed.String())
 
@@ -46,20 +90,18 @@ func Test_Proxy(t *testing.T) {
 	}
 	resp, err := client.Do(req)
 	if err != nil {
-		t.Fatal(err)
+		return nil, err
 	}
+	defer resp.Body.Close()
 
-	data, err := io.ReadAll(resp.Body)
+	_, err = io.ReadAll(resp.Body)
 	if err != nil {
-		t.Fatal(err)
+		return nil, err
 	}
-	_ = data
-	ps.Close()
 
 	intercepted := ps.Intercepted()
 	if len(intercepted) == 0 {
-		t.Fatal("no intercepted requests")
+		return nil, fmt.Errorf("no requests were intercepted")
 	}
-	fmt.Printf("Intercepted: %+v\n", intercepted)
-
+	return intercepted, nil
 }

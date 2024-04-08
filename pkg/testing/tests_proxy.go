@@ -1,14 +1,19 @@
 package testing
 
 import (
+	"bufio"
 	"fmt"
+	"io"
+	"net/http"
 	"net/url"
 	"os"
 	"path/filepath"
 	"regexp"
 	"strings"
 
+	"github.com/pkg/errors"
 	"github.com/projectdiscovery/gologger"
+	"github.com/projectdiscovery/nuclei/v3/pkg/input/types"
 	"github.com/projectdiscovery/nuclei/v3/pkg/templates"
 
 	"github.com/goccy/go-yaml"
@@ -18,6 +23,87 @@ import (
 type NucleiTestTemplate struct {
 	Requests   []RequestResponsePair `yaml:"requests"`
 	TemplateID string                `yaml:"template_id"`
+}
+
+type internalRouteDetails struct {
+	Method string
+
+	ResponseStatus  int
+	ResponseHeaders map[string][]string
+	ResponseBody    string
+}
+
+// MockServer creates a mock server from the test template
+func (n *NucleiTestTemplate) MockServer() (http.HandlerFunc, error) {
+	requestPathToMethods := make(map[string][]internalRouteDetails)
+	for _, reqResp := range n.Requests {
+		parsed, err := types.ParseRawRequest(reqResp.Request)
+		if err != nil {
+			return nil, errors.Wrap(err, "could not parse request")
+		}
+
+		parsedResponse, err := http.ReadResponse(bufio.NewReader(strings.NewReader(reqResp.Response)), nil)
+		if err != nil {
+			return nil, errors.Wrap(err, "could not parse response")
+		}
+
+		data, err := io.ReadAll(parsedResponse.Body)
+		if err != nil {
+			_ = parsedResponse.Body.Close()
+			return nil, err
+		}
+		_ = parsedResponse.Body.Close()
+
+		if _, ok := requestPathToMethods[parsed.URL.Path]; !ok {
+			requestPathToMethods[parsed.URL.Path] = []internalRouteDetails{}
+		}
+
+		requestPathToMethods[parsed.URL.Path] = append(requestPathToMethods[parsed.URL.Path], internalRouteDetails{
+			Method: parsed.Request.Method,
+
+			ResponseStatus:  parsedResponse.StatusCode,
+			ResponseHeaders: parsedResponse.Header,
+			ResponseBody:    string(data),
+		})
+	}
+
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		routeDetails, ok := requestPathToMethods[r.URL.Path]
+		if !ok {
+			http.NotFound(w, r)
+			return
+		}
+
+		for _, route := range routeDetails {
+			if route.Method != r.Method {
+				continue
+			}
+
+			for k, v := range route.ResponseHeaders {
+				w.Header()[k] = v
+			}
+
+			w.WriteHeader(route.ResponseStatus)
+			_, _ = w.Write([]byte(route.ResponseBody))
+			return
+		}
+	}), nil
+}
+
+// ReadNucleiTestTemplate reads a nuclei test template from a file
+func ReadNucleiTestTemplate(path string) (*NucleiTestTemplate, error) {
+	file, err := os.Open(path)
+	if err != nil {
+		return nil, err
+	}
+	defer file.Close()
+
+	var testTemplate NucleiTestTemplate
+	dec := yaml.NewDecoder(file)
+	if err := dec.Decode(&testTemplate); err != nil {
+		return nil, err
+	}
+	return &testTemplate, nil
 }
 
 // GenerateTestsFromPair generates a test from a pair of request and response
