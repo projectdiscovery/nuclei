@@ -89,7 +89,7 @@ func (holder HTTPMethodTypeHolder) String() string {
 	return holder.MethodType.String()
 }
 
-func (holder HTTPMethodTypeHolder) JSONSchemaType() *jsonschema.Schema {
+func (holder HTTPMethodTypeHolder) JSONSchema() *jsonschema.Schema {
 	gotType := &jsonschema.Schema{
 		Type:        "string",
 		Title:       "method is the HTTP request method",

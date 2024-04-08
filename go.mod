@@ -20,12 +20,12 @@ require (
 	github.com/olekukonko/tablewriter v0.0.5
 	github.com/pkg/errors v0.9.1
 	github.com/projectdiscovery/clistats v0.0.20
-	github.com/projectdiscovery/fastdialer v0.0.64
+	github.com/projectdiscovery/fastdialer v0.0.66
 	github.com/projectdiscovery/hmap v0.0.41
 	github.com/projectdiscovery/interactsh v1.1.9
-	github.com/projectdiscovery/rawhttp v0.1.41
+	github.com/projectdiscovery/rawhttp v0.1.44
 	github.com/projectdiscovery/retryabledns v1.0.58
-	github.com/projectdiscovery/retryablehttp-go v1.0.54
+	github.com/projectdiscovery/retryablehttp-go v1.0.55
 	github.com/projectdiscovery/yamldoc-go v1.0.4
 	github.com/remeh/sizedwaitgroup v1.0.0
 	github.com/rs/xid v1.5.0
@@ -78,7 +78,7 @@ require (
 	github.com/mholt/archiver v3.1.1+incompatible
 	github.com/ory/dockertest/v3 v3.10.0
 	github.com/praetorian-inc/fingerprintx v1.1.9
-	github.com/projectdiscovery/dsl v0.0.50
+	github.com/projectdiscovery/dsl v0.0.51
 	github.com/projectdiscovery/fasttemplate v0.0.2
 	github.com/projectdiscovery/go-smb2 v0.0.0-20240129202741-052cc450c6cb
 	github.com/projectdiscovery/goflags v0.1.46
@@ -94,7 +94,7 @@ require (
 	github.com/projectdiscovery/tlsx v1.1.6
 	github.com/projectdiscovery/uncover v1.0.7
 	github.com/projectdiscovery/useragent v0.0.40
-	github.com/projectdiscovery/utils v0.0.87
+	github.com/projectdiscovery/utils v0.0.88
 	github.com/projectdiscovery/wappalyzergo v0.0.116
 	github.com/redis/go-redis/v9 v9.1.0
 	github.com/seh-msft/burpxml v1.0.1

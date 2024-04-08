@@ -61,7 +61,7 @@ type UserAgentHolder struct {
 	Value UserAgent `mapping:"true"`
 }
 
-func (userAgentHolder UserAgentHolder) JSONSchemaType() *jsonschema.Schema {
+func (userAgentHolder UserAgentHolder) JSONSchema() *jsonschema.Schema {
 	gotType := &jsonschema.Schema{
 		Type:        "string",
 		Title:       "userAgent for the headless",

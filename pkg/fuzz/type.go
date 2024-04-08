@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"github.com/invopop/jsonschema"
 	mapsutil "github.com/projectdiscovery/utils/maps"
 	"gopkg.in/yaml.v2"
 )
@@ -27,6 +28,44 @@ func (v *ValueOrKeyValue) IsKV() bool {
 type SliceOrMapSlice struct {
 	Value []string
 	KV    *mapsutil.OrderedMap[string, string]
+}
+
+func (v SliceOrMapSlice) JSONSchemaExtend(schema *jsonschema.Schema) *jsonschema.Schema {
+	schema = &jsonschema.Schema{
+		Title:       schema.Title,
+		Description: schema.Description,
+		Type:        "array",
+		Items: &jsonschema.Schema{
+			OneOf: []*jsonschema.Schema{
+				{
+					Type: "string",
+				},
+				{
+					Type: "object",
+				},
+			},
+		},
+	}
+	return schema
+}
+
+func (v SliceOrMapSlice) JSONSchema() *jsonschema.Schema {
+	gotType := &jsonschema.Schema{
+		Title:       "Payloads of Fuzz Rule",
+		Description: "Payloads to perform fuzzing substitutions with.",
+		Type:        "array",
+		Items: &jsonschema.Schema{
+			OneOf: []*jsonschema.Schema{
+				{
+					Type: "string",
+				},
+				{
+					Type: "object",
+				},
+			},
+		},
+	}
+	return gotType
 }
 
 // UnmarshalJSON implements json.Unmarshaler interface.

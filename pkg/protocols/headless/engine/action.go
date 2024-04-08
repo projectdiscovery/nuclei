@@ -1,6 +1,10 @@
 package engine
 
-import "strings"
+import (
+	"strings"
+
+	"github.com/invopop/jsonschema"
+)
 
 // Action is an action taken by the browser to reach a navigation
 //
@@ -27,6 +31,29 @@ type Action struct {
 	// description: |
 	//   Action is the type of the action to perform.
 	ActionType ActionTypeHolder `yaml:"action" json:"action" jsonschema:"title=action to perform,description=Type of actions to perform,enum=navigate,enum=script,enum=click,enum=rightclick,enum=text,enum=screenshot,enum=time,enum=select,enum=files,enum=waitload,enum=getresource,enum=extract,enum=setmethod,enum=addheader,enum=setheader,enum=deleteheader,enum=setbody,enum=waitevent,enum=keyboard,enum=debug,enum=sleep"`
+}
+
+func (a Action) JSONSchemaExtend(schema *jsonschema.Schema) {
+	argsSchema, ok := schema.Properties.Get("args")
+	if !ok {
+		return
+	}
+	argsSchema.PatternProperties = map[string]*jsonschema.Schema{
+		".*": {
+			OneOf: []*jsonschema.Schema{
+				{
+					Type: "string",
+				},
+				{
+					Type: "integer",
+				},
+				{
+					Type: "boolean",
+				},
+			},
+		},
+	}
+	argsSchema.Ref = ""
 }
 
 // String returns the string representation of an action
