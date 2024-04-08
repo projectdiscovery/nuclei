@@ -94,18 +94,33 @@ func (f *Form) Encode(data KV) (string, error) {
 					}
 				}
 			}
-			data := make([]string, maxIndex+1) // Ensure the slice is large enough
-			for key, value := range v {
-				matches := reNormalized.FindStringSubmatch(key)
-				if len(matches) == 2 {
-					dataIdx, _ := strconv.Atoi(matches[1]) // Error already checked above
-					data[dataIdx-1] = value                // Use dataIdx-1 since slice is 0-indexed
+			if maxIndex >= 0 { // Ensure the slice is only created if maxIndex is valid
+				data := make([]string, maxIndex+1) // Ensure the slice is large enough
+				for key, value := range v {
+					matches := reNormalized.FindStringSubmatch(key)
+					if len(matches) == 2 {
+						dataIdx, err := strconv.Atoi(matches[1]) // Error already checked above
+						if err != nil {
+							gologger.Verbose().Msgf("error converting data index to integer: %v", err)
+							continue
+						}
+						// Validate dataIdx to avoid index out of range errors
+						if dataIdx > 0 && dataIdx <= len(data) {
+							data[dataIdx-1] = value // Use dataIdx-1 since slice is 0-indexed
+						} else {
+							gologger.Verbose().Msgf("data index out of range: %d", dataIdx)
+						}
+					}
+				}
+				if len(params.Get(k)) > 0 {
+					data[maxIndex] = fmt.Sprint(params.Get(k)) // Use maxIndex which is the last index
+				}
+				// remove existing
+				params.Del(k)
+				if len(data) > 0 {
+					params.Add(k, data...)
 				}
 			}
-			data[maxIndex] = fmt.Sprint(params.Get(k)) // Use maxIndex which is the last index
-			// remove existing
-			params.Del(k)
-			params.Add(k, data...)
 		}
 	}
 
