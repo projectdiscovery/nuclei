@@ -20,10 +20,10 @@ require (
 	github.com/olekukonko/tablewriter v0.0.5
 	github.com/pkg/errors v0.9.1
 	github.com/projectdiscovery/clistats v0.0.20
-	github.com/projectdiscovery/fastdialer v0.0.64
+	github.com/projectdiscovery/fastdialer v0.0.65
 	github.com/projectdiscovery/hmap v0.0.41
 	github.com/projectdiscovery/interactsh v1.1.9
-	github.com/projectdiscovery/rawhttp v0.1.41
+	github.com/projectdiscovery/rawhttp v0.1.44
 	github.com/projectdiscovery/retryabledns v1.0.58
 	github.com/projectdiscovery/retryablehttp-go v1.0.54
 	github.com/projectdiscovery/yamldoc-go v1.0.4
