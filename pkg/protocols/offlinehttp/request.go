@@ -29,7 +29,7 @@ func (request *Request) Type() templateTypes.ProtocolType {
 }
 
 // ExecuteWithResults executes the protocol requests and returns results instead of writing them.
-func (request *Request) ExecuteWithResults(input *contextargs.Context, metadata /*TODO review unused parameter*/, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
+func (request *Request) ExecuteWithResults(input *contextargs.Context, metadata, previous output.InternalEvent, onResult protocols.OutputEventCallback) error {
 	wg := sizedwaitgroup.New(request.options.Options.BulkSize)
 
 	err := request.getInputPaths(input.MetaInput.Input, func(data string) {
@@ -98,7 +98,9 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, metadata 
 			}
 
 			event := eventcreator.CreateEvent(request, outputEvent, request.options.Options.Debug || request.options.Options.DebugResponse)
-			callback(event)
+
+			// send the result to the caller
+			onResult(event)
 		}(data)
 	})
 	wg.Wait()

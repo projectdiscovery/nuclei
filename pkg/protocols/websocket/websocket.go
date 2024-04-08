@@ -140,7 +140,7 @@ func (request *Request) GetID() string {
 }
 
 // ExecuteWithResults executes the protocol requests and returns results instead of writing them.
-func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicValues, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
+func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicValues, previous output.InternalEvent, onResult protocols.OutputEventCallback) error {
 	hostname, err := getAddress(input.MetaInput.Input)
 	if err != nil {
 		return err
@@ -154,27 +154,33 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 			if !ok {
 				break
 			}
-			if err := request.executeRequestWithPayloads(input, hostname, value, previous, callback); err != nil {
+			event, err := request.executeRequestWithPayloads(input, hostname, value, previous)
+			if err != nil {
 				return err
 			}
+			// send the result to the caller
+			onResult(event)
 		}
 	} else {
 		value := make(map[string]interface{})
-		if err := request.executeRequestWithPayloads(input, hostname, value, previous, callback); err != nil {
+		event, err := request.executeRequestWithPayloads(input, hostname, value, previous)
+		if err != nil {
 			return err
 		}
+		// send the result to the caller
+		onResult(event)
 	}
 	return nil
 }
 
 // ExecuteWithResults executes the protocol requests and returns results instead of writing them.
-func (request *Request) executeRequestWithPayloads(target *contextargs.Context, hostname string, dynamicValues, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
+func (request *Request) executeRequestWithPayloads(target *contextargs.Context, hostname string, dynamicValues, previous output.InternalEvent) (*output.InternalWrappedEvent, error) {
 	header := http.Header{}
 	input := target.MetaInput.Input
 
 	parsed, err := urlutil.Parse(input)
 	if err != nil {
-		return errors.Wrap(err, parseUrlErrorMessage)
+		return nil, errors.Wrap(err, parseUrlErrorMessage)
 	}
 	defaultVars := protocolutils.GenerateVariables(parsed, false, nil)
 	optionVars := generators.BuildPayloadFromOptions(request.options.Options)
@@ -188,7 +194,7 @@ func (request *Request) executeRequestWithPayloads(target *contextargs.Context, 
 		if dataErr != nil {
 			requestOptions.Output.Request(requestOptions.TemplateID, input, request.Type().String(), dataErr)
 			requestOptions.Progress.IncrementFailedRequestsBy(1)
-			return errors.Wrap(dataErr, evaluateTemplateExpressionErrorMessage)
+			return nil, errors.Wrap(dataErr, evaluateTemplateExpressionErrorMessage)
 		}
 		header.Set(key, string(finalData))
 	}
@@ -215,7 +221,7 @@ func (request *Request) executeRequestWithPayloads(target *contextargs.Context, 
 	if dataErr != nil {
 		requestOptions.Output.Request(requestOptions.TemplateID, input, request.Type().String(), dataErr)
 		requestOptions.Progress.IncrementFailedRequestsBy(1)
-		return errors.Wrap(dataErr, evaluateTemplateExpressionErrorMessage)
+		return nil, errors.Wrap(dataErr, evaluateTemplateExpressionErrorMessage)
 	}
 
 	addressToDial := string(finalAddress)
@@ -223,7 +229,7 @@ func (request *Request) executeRequestWithPayloads(target *contextargs.Context, 
 	if err != nil {
 		requestOptions.Output.Request(requestOptions.TemplateID, input, request.Type().String(), err)
 		requestOptions.Progress.IncrementFailedRequestsBy(1)
-		return errors.Wrap(err, parseUrlErrorMessage)
+		return nil, errors.Wrap(err, parseUrlErrorMessage)
 	}
 	parsedAddress.Path = path.Join(parsedAddress.Path, parsed.Path)
 	addressToDial = parsedAddress.String()
@@ -232,7 +238,7 @@ func (request *Request) executeRequestWithPayloads(target *contextargs.Context, 
 	if err != nil {
 		requestOptions.Output.Request(requestOptions.TemplateID, input, request.Type().String(), err)
 		requestOptions.Progress.IncrementFailedRequestsBy(1)
-		return errors.Wrap(err, "could not connect to server")
+		return nil, errors.Wrap(err, "could not connect to server")
 	}
 	defer conn.Close()
 
@@ -245,7 +251,7 @@ func (request *Request) executeRequestWithPayloads(target *contextargs.Context, 
 	if err != nil {
 		requestOptions.Output.Request(requestOptions.TemplateID, input, request.Type().String(), err)
 		requestOptions.Progress.IncrementFailedRequestsBy(1)
-		return errors.Wrap(err, "could not read write response")
+		return nil, errors.Wrap(err, "could not read write response")
 	}
 	requestOptions.Progress.IncrementRequests()
 
@@ -287,8 +293,7 @@ func (request *Request) executeRequestWithPayloads(target *contextargs.Context, 
 		gologger.Print().Msgf("%s", responsehighlighter.Highlight(event.OperatorsResult, responseOutput, requestOptions.Options.NoColor, false))
 	}
 
-	callback(event)
-	return nil
+	return event, nil
 }
 
 func (request *Request) readWriteInputWebsocket(conn net.Conn, payloadValues map[string]interface{}, input string, respBuilder *strings.Builder) (events map[string]interface{}, req string, err error) {

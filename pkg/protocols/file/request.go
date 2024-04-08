@@ -46,7 +46,7 @@ type FileMatch struct {
 var errEmptyResult = errors.New("Empty result")
 
 // ExecuteWithResults executes the protocol requests and returns results instead of writing them.
-func (request *Request) ExecuteWithResults(input *contextargs.Context, metadata, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
+func (request *Request) ExecuteWithResults(input *contextargs.Context, metadata, previous output.InternalEvent, onResult protocols.OutputEventCallback) error {
 	wg := sizedwaitgroup.New(request.options.Options.BulkSize)
 	err := request.getInputPaths(input.MetaInput.Input, func(filePath string) {
 		wg.Add()
@@ -78,7 +78,9 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, metadata,
 						}
 						defer file.Close()
 						dumpResponse(event, request.options, fileMatches, filePath)
-						callback(event)
+
+						// send the result to the caller
+						onResult(event)
 						// file elaborated and matched
 						request.options.Progress.IncrementRequests()
 						return nil
@@ -130,7 +132,9 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, metadata,
 						return
 					}
 					dumpResponse(event, request.options, fileMatches, filePath)
-					callback(event)
+
+					// send the result to the caller
+					onResult(event)
 					// file elaborated and matched
 					request.options.Progress.IncrementRequests()
 				}
@@ -150,7 +154,9 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, metadata,
 					return
 				}
 				dumpResponse(event, request.options, fileMatches, filePath)
-				callback(event)
+
+				// send the result to the caller
+				onResult(event)
 				// file elaborated and matched
 				request.options.Progress.IncrementRequests()
 			}

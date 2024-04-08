@@ -196,7 +196,7 @@ func (request *Request) GetID() string {
 }
 
 // ExecuteWithResults executes the protocol requests and returns results instead of writing them.
-func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicValues, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
+func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicValues, previous output.InternalEvent, onResult protocols.OutputEventCallback) error {
 	hostPort, err := getAddress(input.MetaInput.Input)
 	if err != nil {
 		return err
@@ -340,7 +340,9 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 			request.options.Output.WriteStoreDebugData(input.MetaInput.Input, request.options.TemplateID, request.Type().String(), fmt.Sprintf("%s\n%s", msg, jsonDataString))
 		}
 	}
-	callback(event)
+	// send the result to the caller
+	onResult(event)
+
 	return nil
 }
 
