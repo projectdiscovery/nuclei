@@ -21,7 +21,7 @@ type Variable struct {
 	utils.InsertionOrderedStringMap `yaml:"-" json:"-"`
 }
 
-func (variables Variable) JSONSchemaType() *jsonschema.Schema {
+func (variables Variable) JSONSchema() *jsonschema.Schema {
 	gotType := &jsonschema.Schema{
 		Type:                 "object",
 		Title:                "variables for the request",

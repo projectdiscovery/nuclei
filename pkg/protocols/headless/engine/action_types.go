@@ -171,7 +171,7 @@ type ActionTypeHolder struct {
 func (holder ActionTypeHolder) String() string {
 	return holder.ActionType.String()
 }
-func (holder ActionTypeHolder) JSONSchemaType() *jsonschema.Schema {
+func (holder ActionTypeHolder) JSONSchema() *jsonschema.Schema {
 	gotType := &jsonschema.Schema{
 		Type:        "string",
 		Title:       "action to perform",

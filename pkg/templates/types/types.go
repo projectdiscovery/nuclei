@@ -92,7 +92,7 @@ type TypeHolder struct {
 	ProtocolType ProtocolType `mapping:"true"`
 }
 
-func (holder TypeHolder) JSONSchemaType() *jsonschema.Schema {
+func (holder TypeHolder) JSONSchema() *jsonschema.Schema {
 	gotType := &jsonschema.Schema{
 		Type:        "string",
 		Title:       "type of the protocol",
