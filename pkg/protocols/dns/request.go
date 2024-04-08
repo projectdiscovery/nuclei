@@ -36,8 +36,9 @@ func (request *Request) Type() templateTypes.ProtocolType {
 	return templateTypes.DNSProtocol
 }
 
-// ExecuteWithResults executes the protocol requests and returns results instead of writing them.
-func (request *Request) ExecuteWithResults(input *contextargs.Context, metadata, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
+// ExecuteWithResults executes the protocol requests and invokes the callback for each result
+// todo: in order to avoid nested callback hell the onResult invocation happens within this closure
+func (request *Request) ExecuteWithResults(input *contextargs.Context, metadata, previous output.InternalEvent, onResult protocols.OutputEventCallback) error {
 	// Parse the URL and return domain if URL.
 	var domain string
 	if utils.IsURL(input.MetaInput.Input) {
@@ -77,11 +78,15 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, metadata,
 			swg.Add()
 			go func(newVars map[string]interface{}) {
 				defer swg.Done()
-				if err := request.execute(input, domain, metadata, previous, newVars, callback); err != nil {
+
+				event, err := request.execute(input, domain, metadata, previous, newVars)
+				if err != nil {
 					m.Lock()
 					multiErr = multierr.Append(multiErr, err)
 					m.Unlock()
 				}
+				// send the result to the caller
+				onResult(event)
 			}(value)
 		}
 		swg.Wait()
@@ -90,13 +95,17 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, metadata,
 		}
 	} else {
 		value := maps.Clone(vars)
-		return request.execute(input, domain, metadata, previous, value, callback)
+		event, err := request.execute(input, domain, metadata, previous, value)
+		if err != nil {
+			return err
+		}
+		// send the result to the caller
+		onResult(event)
 	}
 	return nil
 }
 
-func (request *Request) execute(input *contextargs.Context, domain string, metadata, previous output.InternalEvent, vars map[string]interface{}, callback protocols.OutputEventCallback) error {
-
+func (request *Request) execute(input *contextargs.Context, domain string, metadata, previous output.InternalEvent, vars map[string]interface{}) (*output.InternalWrappedEvent, error) {
 	if vardump.EnableVarDump {
 		gologger.Debug().Msgf("DNS Protocol request variables: \n%s\n", vardump.DumpVariables(vars))
 	}
@@ -106,14 +115,14 @@ func (request *Request) execute(input *contextargs.Context, domain string, metad
 	if err != nil {
 		request.options.Output.Request(request.options.TemplatePath, domain, request.Type().String(), err)
 		request.options.Progress.IncrementFailedRequestsBy(1)
-		return errors.Wrap(err, "could not build request")
+		return nil, errors.Wrap(err, "could not build request")
 	}
 
 	dnsClient := request.dnsClient
 	if varErr := expressions.ContainsUnresolvedVariables(request.Resolvers...); varErr != nil {
 		if dnsClient, varErr = request.getDnsClient(request.options, metadata); varErr != nil {
 			gologger.Warning().Msgf("[%s] Could not make dns request for %s: %v\n", request.options.TemplateID, domain, varErr)
-			return nil
+			return nil, nil // todo: return error?
 		}
 	}
 	question := domain
@@ -127,7 +136,7 @@ func (request *Request) execute(input *contextargs.Context, domain string, metad
 	requestString := compiledRequest.String()
 	if varErr := expressions.ContainsUnresolvedVariables(requestString); varErr != nil {
 		gologger.Warning().Msgf("[%s] Could not make dns request for %s: %v\n", request.options.TemplateID, question, varErr)
-		return nil
+		return nil, nil // todo: return error?
 	}
 	if request.options.Options.Debug || request.options.Options.DebugRequests || request.options.Options.StoreResponse {
 		msg := fmt.Sprintf("[%s] Dumped DNS request for %s", request.options.TemplateID, question)
@@ -151,7 +160,7 @@ func (request *Request) execute(input *contextargs.Context, domain string, metad
 		request.options.Progress.IncrementRequests()
 	}
 	if response == nil {
-		return errors.Wrap(err, "could not send dns request")
+		return nil, errors.Wrap(err, "could not send dns request")
 	}
 
 	request.options.Output.Request(request.options.TemplatePath, domain, request.Type().String(), err)
@@ -188,8 +197,7 @@ func (request *Request) execute(input *contextargs.Context, domain string, metad
 		dumpTraceData(event, request.options, traceToString(traceData, true), question)
 	}
 
-	callback(event)
-	return nil
+	return event, nil
 }
 
 func (request *Request) parseDNSInput(host string) (string, error) {
