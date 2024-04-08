@@ -282,6 +282,7 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 	} else {
 		data["ip"] = request.dialer.GetDialedIP(hostname)
 	}
+	data["Port"] = port
 	data["template-path"] = requestOptions.TemplatePath
 	data["template-id"] = requestOptions.TemplateID
 	data["template-info"] = requestOptions.TemplateInfo
@@ -404,6 +405,9 @@ func (request *Request) MakeResultEventItem(wrapped *output.InternalWrappedEvent
 	// like 8443 etc
 	if fields.Port == "80" {
 		fields.Port = "443"
+	}
+	if types.ToString(wrapped.InternalEvent["Port"]) != "" {
+		fields.Port = types.ToString(wrapped.InternalEvent["Port"])
 	}
 	data := &output.ResultEvent{
 		TemplateID:       types.ToString(wrapped.InternalEvent["template-id"]),

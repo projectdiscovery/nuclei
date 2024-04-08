@@ -51,7 +51,7 @@ type SignatureTypeHolder struct {
 	Value SignatureType
 }
 
-func (holder SignatureTypeHolder) JSONSchemaType() *jsonschema.Schema {
+func (holder SignatureTypeHolder) JSONSchema() *jsonschema.Schema {
 	gotType := &jsonschema.Schema{
 		Type:        "string",
 		Title:       "type of the signature",

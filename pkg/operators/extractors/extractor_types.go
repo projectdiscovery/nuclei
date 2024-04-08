@@ -72,7 +72,7 @@ type ExtractorTypeHolder struct {
 	ExtractorType ExtractorType `mapping:"true"`
 }
 
-func (holder ExtractorTypeHolder) JSONSchemaType() *jsonschema.Schema {
+func (holder ExtractorTypeHolder) JSONSchema() *jsonschema.Schema {
 	gotType := &jsonschema.Schema{
 		Type:        "string",
 		Title:       "type of the extractor",
