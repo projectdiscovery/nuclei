@@ -66,7 +66,7 @@ func (holder NetworkInputTypeHolder) String() string {
 	return holder.NetworkInputType.String()
 }
 
-func (holder NetworkInputTypeHolder) JSONSchemaType() *jsonschema.Schema {
+func (holder NetworkInputTypeHolder) JSONSchema() *jsonschema.Schema {
 	gotType := &jsonschema.Schema{
 		Type:        "string",
 		Title:       "type is the type of input data",

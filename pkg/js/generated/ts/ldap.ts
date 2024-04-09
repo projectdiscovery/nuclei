@@ -359,6 +359,22 @@ export class Client {
     
 
     /**
+    * GetADUserAsRepRoastable returns all AD users that are AsRepRoastable
+    * using FilterIsPerson, and FilterDontRequirePreauth filter query
+    * @example
+    * ```javascript
+    * const ldap = require('nuclei/ldap');
+    * const client = new ldap.Client('ldap://ldap.example.com', 'acme.com');
+    * const AsRepRoastable = client.GetADUserAsRepRoastable();
+    * log(to_json(AsRepRoastable));
+    * ```
+    */
+    public GetADUserAsRepRoastable(): ADObject[] {
+        return [];
+    }
+    
+
+    /**
     * GetADDomainSID returns the SID of the AD domain
     * @example
     * ```javascript

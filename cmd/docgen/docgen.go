@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"log"
 	"os"
+	"reflect"
 	"regexp"
 	"strings"
 
@@ -33,6 +34,12 @@ func main() {
 
 	// Generate jsonschema
 	r := &jsonschema.Reflector{}
+	r.Namer = func(r reflect.Type) string {
+		if r.Kind() == reflect.Slice {
+			return ""
+		}
+		return r.String()
+	}
 	jsonschemaData := r.Reflect(&templates.Template{})
 
 	var buf bytes.Buffer
