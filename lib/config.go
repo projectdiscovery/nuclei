@@ -116,6 +116,7 @@ type Concurrency struct {
 	HeadlessTemplateConcurrency   int // number of templates to run concurrently for headless templates (per host in host-spray mode)
 	JavascriptTemplateConcurrency int // number of templates to run concurrently for javascript templates (per host in host-spray mode)
 	TemplatePayloadConcurrency    int // max concurrent payloads to run for a template (a good default is 25)
+	ProbeConcurrency              int // max concurrent http probes to run (a good default is 50)
 }
 
 // WithConcurrency sets concurrency options
@@ -151,6 +152,11 @@ func WithConcurrency(opts Concurrency) NucleiSDKOptions {
 			return errors.New("payload concurrency must be at least 1")
 		} else {
 			e.opts.PayloadConcurrency = opts.TemplatePayloadConcurrency
+		}
+		if opts.ProbeConcurrency <= 0 {
+			return errors.New("probe concurrency must be at least 1")
+		} else {
+			e.opts.ProbeConcurrency = opts.ProbeConcurrency
 		}
 		return nil
 	}

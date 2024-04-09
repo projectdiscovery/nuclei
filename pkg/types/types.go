@@ -385,6 +385,8 @@ type Options struct {
 	SkipFormatValidation bool
 	// PayloadConcurrency is the number of concurrent payloads to run per template
 	PayloadConcurrency int
+	// ProbeConcurrency is the number of concurrent http probes to run with httpx
+	ProbeConcurrency int
 	// Dast only runs DAST templates
 	DAST bool
 }
