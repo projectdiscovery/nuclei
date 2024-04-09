@@ -190,7 +190,7 @@ func (request *Request) execute(input *contextargs.Context, domain string, metad
 	}
 	event := eventcreator.CreateEvent(request, outputEvent, request.options.Options.Debug || request.options.Options.DebugResponse)
 
-	dumpResponse(event, request, request.options, response.String(), question)
+	dumpResponse(event, request, response.String(), question)
 	if request.Trace {
 		dumpTraceData(event, request.options, traceToString(traceData, true), question)
 	}
@@ -216,7 +216,7 @@ func (request *Request) parseDNSInput(host string) (string, error) {
 	return host, nil
 }
 
-func dumpResponse(event *output.InternalWrappedEvent, request *Request, requestOptions *protocols.ExecutorOptions, response, domain string) {
+func dumpResponse(event *output.InternalWrappedEvent, request *Request, response, domain string) {
 	cliOptions := request.options.Options
 	if cliOptions.Debug || cliOptions.DebugResponse || cliOptions.StoreResponse {
 		hexDump := false
