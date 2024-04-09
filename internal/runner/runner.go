@@ -314,7 +314,7 @@ func New(options *types.Options) (*Runner, error) {
 	}
 
 	if options.RateLimitMinute > 0 {
-		gologger.Print().Msgf("[%v] %v", aurora.BrightYellow("WRN"), fmt.Sprintf("rate limit per minute is deprecated - use rate-limit-duration"))
+		gologger.Print().Msgf("[%v] %v", aurora.BrightYellow("WRN"), "rate limit per minute is deprecated - use rate-limit-duration")
 		options.RateLimit = options.RateLimitMinute
 		options.RateLimitDuration = time.Minute
 	}
