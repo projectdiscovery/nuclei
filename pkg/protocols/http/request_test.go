@@ -84,13 +84,13 @@ Disallow: /c`))
 		metadata := make(output.InternalEvent)
 		previous := make(output.InternalEvent)
 		ctxArgs := contextargs.NewWithInput(ts.URL)
-		err := request.ExecuteWithResults(ctxArgs, metadata, previous, func(event *output.InternalWrappedEvent) {
-			if event.OperatorsResult != nil && event.OperatorsResult.Matched {
+		for event := range request.ExecuteWithResults(ctxArgs, metadata, previous) {
+			require.Nil(t, event.Error, "could not execute network request")
+			if event.Event.OperatorsResult != nil && event.Event.OperatorsResult.Matched {
 				matchCount++
 			}
-			finalEvent = event
-		})
-		require.Nil(t, err, "could not execute network request")
+			finalEvent = event.Event
+		}
 	})
 	require.NotNil(t, finalEvent, "could not get event output from request")
 	require.Equal(t, 3, matchCount, "could not get correct match count")
@@ -160,12 +160,13 @@ func TestDisableTE(t *testing.T) {
 		metadata := make(output.InternalEvent)
 		previous := make(output.InternalEvent)
 		ctxArgs := contextargs.NewWithInput(ts.URL)
-		err := request.ExecuteWithResults(ctxArgs, metadata, previous, func(event *output.InternalWrappedEvent) {
-			if event.OperatorsResult != nil && event.OperatorsResult.Matched {
+		for event := range request.ExecuteWithResults(ctxArgs, metadata, previous) {
+			require.Nil(t, event.Error, "could not execute network request")
+			if event.Event.OperatorsResult != nil && event.Event.OperatorsResult.Matched {
 				matchCount++
 			}
-			finalEvent = event
-		})
+			finalEvent = event.Event
+		}
 		require.Nil(t, err, "could not execute network request")
 	})
 
@@ -173,12 +174,13 @@ func TestDisableTE(t *testing.T) {
 		metadata := make(output.InternalEvent)
 		previous := make(output.InternalEvent)
 		ctxArgs := contextargs.NewWithInput(ts.URL)
-		err := request2.ExecuteWithResults(ctxArgs, metadata, previous, func(event *output.InternalWrappedEvent) {
-			if event.OperatorsResult != nil && event.OperatorsResult.Matched {
+		for event := range request2.ExecuteWithResults(ctxArgs, metadata, previous) {
+			require.Nil(t, event.Error, "could not execute network request")
+			if event.Event.OperatorsResult != nil && event.Event.OperatorsResult.Matched {
 				matchCount++
 			}
-			finalEvent = event
-		})
+			finalEvent = event.Event
+		}
 		require.Nil(t, err, "could not execute network request")
 	})
 
@@ -243,12 +245,13 @@ func TestReqURLPattern(t *testing.T) {
 		metadata := make(output.InternalEvent)
 		previous := make(output.InternalEvent)
 		ctxArgs := contextargs.NewWithInput(ts.URL)
-		err := request.ExecuteWithResults(ctxArgs, metadata, previous, func(event *output.InternalWrappedEvent) {
-			if event.OperatorsResult != nil && event.OperatorsResult.Matched {
+		for event := range request.ExecuteWithResults(ctxArgs, metadata, previous) {
+			require.Nil(t, event.Error, "could not execute network request")
+			if event.Event.OperatorsResult != nil && event.Event.OperatorsResult.Matched {
 				matchCount++
 			}
-			finalEvent = event
-		})
+			finalEvent = event.Event
+		}
 		require.Nil(t, err, "could not execute network request")
 	})
 	require.NotNil(t, finalEvent, "could not get event output from request")

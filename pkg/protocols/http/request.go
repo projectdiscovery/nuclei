@@ -15,6 +15,7 @@ import (
 
 	"github.com/pkg/errors"
 	"go.uber.org/multierr"
+	"golang.org/x/sync/errgroup"
 	"moul.io/http2curl"
 
 	"github.com/projectdiscovery/fastdialer/fastdialer"
@@ -335,141 +336,159 @@ func (request *Request) executeTurboHTTP(input *contextargs.Context, dynamicValu
 }
 
 // ExecuteWithResults executes the final request on a URL
-func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicValues, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
-	if request.Pipeline || request.Race && request.RaceNumberRequests > 0 || request.Threads > 0 {
-		variablesMap := request.options.Variables.Evaluate(generators.MergeMaps(dynamicValues, previous))
-		dynamicValues = generators.MergeMaps(variablesMap, dynamicValues, request.options.Constants)
-	}
-	// verify if pipeline was requested
-	if request.Pipeline {
-		return request.executeTurboHTTP(input, dynamicValues, previous, callback)
-	}
-	// verify if a basic race condition was requested
-	if request.Race && request.RaceNumberRequests > 0 {
-		return request.executeRaceRequest(input, dynamicValues, callback)
+func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicValues, previous output.InternalEvent) <-chan protocols.Result {
+	results := make(chan protocols.Result)
+	var errGroup errgroup.Group
+
+	onResult := func(event *output.InternalWrappedEvent) {
+		results <- protocols.Result{Event: event}
 	}
 
-	// verify if fuzz elaboration was requested
-	if len(request.Fuzzing) > 0 {
-		return request.executeFuzzingRule(input, dynamicValues, callback)
-	}
+	errGroup.Go(func() error {
+		if request.Pipeline || request.Race && request.RaceNumberRequests > 0 || request.Threads > 0 {
+			variablesMap := request.options.Variables.Evaluate(generators.MergeMaps(dynamicValues, previous))
+			dynamicValues = generators.MergeMaps(variablesMap, dynamicValues, request.options.Constants)
+		}
+		// verify if pipeline was requested
+		if request.Pipeline {
+			return request.executeTurboHTTP(input, dynamicValues, previous, onResult)
+		}
+		// verify if a basic race condition was requested
+		if request.Race && request.RaceNumberRequests > 0 {
+			return request.executeRaceRequest(input, dynamicValues, onResult)
+		}
 
-	// verify if parallel elaboration was requested
-	if request.Threads > 0 && len(request.Payloads) > 0 {
-		return request.executeParallelHTTP(input, dynamicValues, callback)
-	}
+		// verify if fuzz elaboration was requested
+		if len(request.Fuzzing) > 0 {
+			return request.executeFuzzingRule(input, dynamicValues, onResult)
+		}
 
-	generator := request.newGenerator(false)
+		// verify if parallel elaboration was requested
+		if request.Threads > 0 && len(request.Payloads) > 0 {
+			return request.executeParallelHTTP(input, dynamicValues, onResult)
+		}
 
-	var gotDynamicValues map[string][]string
-	var requestErr error
+		generator := request.newGenerator(false)
 
-	for {
-		// returns two values, error and skip, which skips the execution for the request instance.
-		executeFunc := func(data string, payloads, dynamicValue map[string]interface{}) (bool, error) {
-			hasInteractMatchers := interactsh.HasMatchers(request.CompiledOperators)
+		var gotDynamicValues map[string][]string
+		var requestErr error
 
-			request.options.RateLimiter.Take()
+		for {
+			// returns two values, error and skip, which skips the execution for the request instance.
+			executeFunc := func(data string, payloads, dynamicValue map[string]interface{}) (bool, error) {
+				hasInteractMatchers := interactsh.HasMatchers(request.CompiledOperators)
 
-			ctx := request.newContext(input)
-			ctxWithTimeout, cancel := context.WithTimeout(ctx, time.Duration(request.options.Options.Timeout)*time.Second)
-			defer cancel()
-			generatedHttpRequest, err := generator.Make(ctxWithTimeout, input, data, payloads, dynamicValue)
-			if err != nil {
-				if err == types.ErrNoMoreRequests {
+				request.options.RateLimiter.Take()
+
+				ctx := request.newContext(input)
+				ctxWithTimeout, cancel := context.WithTimeout(ctx, time.Duration(request.options.Options.Timeout)*time.Second)
+				defer cancel()
+				generatedHttpRequest, err := generator.Make(ctxWithTimeout, input, data, payloads, dynamicValue)
+				if err != nil {
+					if err == types.ErrNoMoreRequests {
+						return true, nil
+					}
+					request.options.Progress.IncrementFailedRequestsBy(int64(generator.Total()))
+					return true, err
+				}
+
+				if generatedHttpRequest.customCancelFunction != nil {
+					defer generatedHttpRequest.customCancelFunction()
+				}
+
+				hasInteractMarkers := interactsh.HasMarkers(data) || len(generatedHttpRequest.interactshURLs) > 0
+				if input.MetaInput.Input == "" {
+					input.MetaInput.Input = generatedHttpRequest.URL()
+				}
+				// Check if hosts keep erroring
+				if request.options.HostErrorsCache != nil && request.options.HostErrorsCache.Check(input.MetaInput.ID()) {
 					return true, nil
 				}
-				request.options.Progress.IncrementFailedRequestsBy(int64(generator.Total()))
-				return true, err
-			}
-
-			if generatedHttpRequest.customCancelFunction != nil {
-				defer generatedHttpRequest.customCancelFunction()
-			}
-
-			hasInteractMarkers := interactsh.HasMarkers(data) || len(generatedHttpRequest.interactshURLs) > 0
-			if input.MetaInput.Input == "" {
-				input.MetaInput.Input = generatedHttpRequest.URL()
-			}
-			// Check if hosts keep erroring
-			if request.options.HostErrorsCache != nil && request.options.HostErrorsCache.Check(input.MetaInput.ID()) {
-				return true, nil
-			}
-			var gotMatches bool
-			execReqErr := request.executeRequest(input, generatedHttpRequest, previous, hasInteractMatchers, func(event *output.InternalWrappedEvent) {
-				// a special case where operators has interactsh matchers and multiple request are made
-				// ex: status_code_2 , interactsh_protocol (from 1st request) etc
-				needsRequestEvent := interactsh.HasMatchers(request.CompiledOperators) && request.NeedsRequestCondition()
-				if (hasInteractMarkers || needsRequestEvent) && request.options.Interactsh != nil {
-					requestData := &interactsh.RequestData{
-						MakeResultFunc: request.MakeResultEvent,
-						Event:          event,
-						Operators:      request.CompiledOperators,
-						MatchFunc:      request.Match,
-						ExtractFunc:    request.Extract,
+				var gotMatches bool
+				execReqErr := request.executeRequest(input, generatedHttpRequest, previous, hasInteractMatchers, func(event *output.InternalWrappedEvent) {
+					// a special case where operators has interactsh matchers and multiple request are made
+					// ex: status_code_2 , interactsh_protocol (from 1st request) etc
+					needsRequestEvent := interactsh.HasMatchers(request.CompiledOperators) && request.NeedsRequestCondition()
+					if (hasInteractMarkers || needsRequestEvent) && request.options.Interactsh != nil {
+						requestData := &interactsh.RequestData{
+							MakeResultFunc: request.MakeResultEvent,
+							Event:          event,
+							Operators:      request.CompiledOperators,
+							MatchFunc:      request.Match,
+							ExtractFunc:    request.Extract,
+						}
+						allOASTUrls := httputils.GetInteractshURLSFromEvent(event.InternalEvent)
+						allOASTUrls = append(allOASTUrls, generatedHttpRequest.interactshURLs...)
+						request.options.Interactsh.RequestEvent(sliceutil.Dedupe(allOASTUrls), requestData)
+						gotMatches = request.options.Interactsh.AlreadyMatched(requestData)
 					}
-					allOASTUrls := httputils.GetInteractshURLSFromEvent(event.InternalEvent)
-					allOASTUrls = append(allOASTUrls, generatedHttpRequest.interactshURLs...)
-					request.options.Interactsh.RequestEvent(sliceutil.Dedupe(allOASTUrls), requestData)
-					gotMatches = request.options.Interactsh.AlreadyMatched(requestData)
-				}
-				// Add the extracts to the dynamic values if any.
-				if event.OperatorsResult != nil {
-					gotMatches = event.OperatorsResult.Matched
-					gotDynamicValues = generators.MergeMapsMany(event.OperatorsResult.DynamicValues, dynamicValues, gotDynamicValues)
-				}
-				// Note: This is a race condition prone zone i.e when request has interactsh_matchers
-				// Interactsh.RequestEvent tries to access/update output.InternalWrappedEvent depending on logic
-				// to avoid conflicts with `callback` mutex is used here and in Interactsh.RequestEvent
-				// Note: this only happens if requests > 1 and interactsh matcher is used
-				// TODO: interactsh logic in nuclei needs to be refactored to avoid such situations
-				callback(event)
-			}, generator.currentIndex)
+					// Add the extracts to the dynamic values if any.
+					if event.OperatorsResult != nil {
+						gotMatches = event.OperatorsResult.Matched
+						gotDynamicValues = generators.MergeMapsMany(event.OperatorsResult.DynamicValues, dynamicValues, gotDynamicValues)
+					}
+					// Note: This is a race condition prone zone i.e when request has interactsh_matchers
+					// Interactsh.RequestEvent tries to access/update output.InternalWrappedEvent depending on logic
+					// to avoid conflicts with `callback` mutex is used here and in Interactsh.RequestEvent
+					// Note: this only happens if requests > 1 and interactsh matcher is used
+					// TODO: interactsh logic in nuclei needs to be refactored to avoid such situations
+					onResult(event)
+				}, generator.currentIndex)
 
-			// If a variable is unresolved, skip all further requests
-			if errors.Is(execReqErr, ErrMissingVars) {
-				return true, nil
-			}
-			if execReqErr != nil {
-				if request.options.HostErrorsCache != nil {
-					request.options.HostErrorsCache.MarkFailed(input.MetaInput.ID(), err)
+				// If a variable is unresolved, skip all further requests
+				if errors.Is(execReqErr, ErrMissingVars) {
+					return true, nil
 				}
-				requestErr = errorutil.NewWithErr(execReqErr).Msgf("got err while executing %v", generatedHttpRequest.URL())
-			}
-			request.options.Progress.IncrementRequests()
-
-			// If this was a match, and we want to stop at first match, skip all further requests.
-			shouldStopAtFirstMatch := generatedHttpRequest.original.options.Options.StopAtFirstMatch || generatedHttpRequest.original.options.StopAtFirstMatch || request.StopAtFirstMatch
-			if shouldStopAtFirstMatch && gotMatches {
-				return true, nil
-			}
-			return false, nil
-		}
-
-		inputData, payloads, ok := generator.nextValue()
-		if !ok {
-			break
-		}
-		var gotErr error
-		var skip bool
-		if len(gotDynamicValues) > 0 {
-			operators.MakeDynamicValuesCallback(gotDynamicValues, request.IterateAll, func(data map[string]interface{}) bool {
-				if skip, gotErr = executeFunc(inputData, payloads, data); skip || gotErr != nil {
-					return true
+				if execReqErr != nil {
+					if request.options.HostErrorsCache != nil {
+						request.options.HostErrorsCache.MarkFailed(input.MetaInput.ID(), err)
+					}
+					requestErr = errorutil.NewWithErr(execReqErr).Msgf("got err while executing %v", generatedHttpRequest.URL())
 				}
-				return false
-			})
-		} else {
-			skip, gotErr = executeFunc(inputData, payloads, dynamicValues)
+				request.options.Progress.IncrementRequests()
+
+				// If this was a match, and we want to stop at first match, skip all further requests.
+				shouldStopAtFirstMatch := generatedHttpRequest.original.options.Options.StopAtFirstMatch || generatedHttpRequest.original.options.StopAtFirstMatch || request.StopAtFirstMatch
+				if shouldStopAtFirstMatch && gotMatches {
+					return true, nil
+				}
+				return false, nil
+			}
+
+			inputData, payloads, ok := generator.nextValue()
+			if !ok {
+				break
+			}
+			var gotErr error
+			var skip bool
+			if len(gotDynamicValues) > 0 {
+				operators.MakeDynamicValuesCallback(gotDynamicValues, request.IterateAll, func(data map[string]interface{}) bool {
+					if skip, gotErr = executeFunc(inputData, payloads, data); skip || gotErr != nil {
+						return true
+					}
+					return false
+				})
+			} else {
+				skip, gotErr = executeFunc(inputData, payloads, dynamicValues)
+			}
+			if gotErr != nil && requestErr == nil {
+				requestErr = gotErr
+			}
+			if skip || gotErr != nil {
+				break
+			}
 		}
-		if gotErr != nil && requestErr == nil {
-			requestErr = gotErr
+		return requestErr
+	})
+
+	go func() {
+		defer close(results)
+		if err := errGroup.Wait(); err != nil {
+			results <- protocols.Result{Error: err}
 		}
-		if skip || gotErr != nil {
-			break
-		}
-	}
-	return requestErr
+	}()
+
+	return results
 }
 
 const drainReqSize = int64(8 * 1024)

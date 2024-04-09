@@ -15,6 +15,7 @@ import (
 	"github.com/remeh/sizedwaitgroup"
 	"go.uber.org/multierr"
 	"golang.org/x/exp/maps"
+	"golang.org/x/sync/errgroup"
 
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/operators"
@@ -85,49 +86,65 @@ func (request *Request) getOpenPorts(target *contextargs.Context) ([]string, err
 }
 
 // ExecuteWithResults executes the protocol requests and returns results instead of writing them.
-func (request *Request) ExecuteWithResults(target *contextargs.Context, metadata, previous output.InternalEvent, onResult protocols.OutputEventCallback) error {
-	visitedAddresses := make(mapsutil.Map[string, struct{}])
-
-	if request.Port == "" {
-		// backwords compatibility or for other use cases
-		// where port is not provided in template
-		events, err := request.executeOnTarget(target, visitedAddresses, metadata, previous)
+func (request *Request) ExecuteWithResults(target *contextargs.Context, metadata, previous output.InternalEvent) <-chan protocols.Result {
+	results := make(chan protocols.Result)
+	onResult := func(events ...*output.InternalWrappedEvent) {
 		for _, event := range events {
-			onResult(event)
+			results <- protocols.Result{Event: event}
 		}
-		if err != nil {
+	}
+
+	var errGroup errgroup.Group
+
+	errGroup.Go(func() error {
+		visitedAddresses := make(mapsutil.Map[string, struct{}])
+
+		if request.Port == "" {
+			// backwords compatibility or for other use cases
+			// where port is not provided in template
+			events, err := request.executeOnTarget(target, visitedAddresses, metadata, previous)
+			onResult(events...)
+			if err != nil {
+				return err
+			}
+		}
+
+		// get open ports from list of ports provided in template
+		ports, err := request.getOpenPorts(target)
+		if len(ports) == 0 {
 			return err
 		}
-	}
-
-	// get open ports from list of ports provided in template
-	ports, err := request.getOpenPorts(target)
-	if len(ports) == 0 {
-		return err
-	}
-	if err != nil {
-		// TODO: replace this after scan context is implemented
-		gologger.Verbose().Msgf("[%v] got errors while checking open ports: %s\n", request.options.TemplateID, err)
-	}
-
-	for _, port := range ports {
-		input := target.Clone()
-		// use network port updates input with new port requested in template file
-		// and it is ignored if input port is not standard http(s) ports like 80,8080,8081 etc
-		// idea is to reduce redundant dials to http ports
-		if err := input.UseNetworkPort(port, request.ExcludePorts); err != nil {
-			gologger.Debug().Msgf("Could not network port from constants: %s\n", err)
-		}
-		events, err := request.executeOnTarget(input, visitedAddresses, metadata, previous)
-		for _, event := range events {
-			onResult(event)
-		}
 		if err != nil {
-			return err
+			// TODO: replace this after scan context is implemented
+			gologger.Verbose().Msgf("[%v] got errors while checking open ports: %s\n", request.options.TemplateID, err)
 		}
-	}
 
-	return nil
+		for _, port := range ports {
+			input := target.Clone()
+			// use network port updates input with new port requested in template file
+			// and it is ignored if input port is not standard http(s) ports like 80,8080,8081 etc
+			// idea is to reduce redundant dials to http ports
+			if err := input.UseNetworkPort(port, request.ExcludePorts); err != nil {
+				gologger.Debug().Msgf("Could not network port from constants: %s\n", err)
+			}
+			events, err := request.executeOnTarget(input, visitedAddresses, metadata, previous)
+			onResult(events...)
+			if err != nil {
+				return err
+			}
+		}
+
+		return nil
+	})
+
+	go func() {
+		defer close(results)
+		if err := errGroup.Wait(); err != nil {
+			results <- protocols.Result{Error: err}
+		}
+	}()
+
+	return results
 }
 
 func (request *Request) executeOnTarget(input *contextargs.Context, visited mapsutil.Map[string, struct{}], metadata, previous output.InternalEvent) ([]*output.InternalWrappedEvent, error) {

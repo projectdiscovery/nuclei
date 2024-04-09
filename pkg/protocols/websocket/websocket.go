@@ -15,6 +15,7 @@ import (
 	"github.com/gobwas/ws"
 	"github.com/gobwas/ws/wsutil"
 	"github.com/pkg/errors"
+	"golang.org/x/sync/errgroup"
 
 	"github.com/projectdiscovery/fastdialer/fastdialer"
 	"github.com/projectdiscovery/gologger"
@@ -140,20 +141,39 @@ func (request *Request) GetID() string {
 }
 
 // ExecuteWithResults executes the protocol requests and returns results instead of writing them.
-func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicValues, previous output.InternalEvent, onResult protocols.OutputEventCallback) error {
-	hostname, err := getAddress(input.MetaInput.Input)
-	if err != nil {
-		return err
+func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicValues, previous output.InternalEvent) <-chan protocols.Result {
+	results := make(chan protocols.Result)
+	onResult := func(events ...*output.InternalWrappedEvent) {
+		for _, event := range events {
+			results <- protocols.Result{Event: event}
+		}
 	}
 
-	if request.generator != nil {
-		iterator := request.generator.NewIterator()
+	var errGroup errgroup.Group
 
-		for {
-			value, ok := iterator.Value()
-			if !ok {
-				break
+	errGroup.Go(func() error {
+		hostname, err := getAddress(input.MetaInput.Input)
+		if err != nil {
+			return err
+		}
+
+		if request.generator != nil {
+			iterator := request.generator.NewIterator()
+
+			for {
+				value, ok := iterator.Value()
+				if !ok {
+					break
+				}
+				event, err := request.executeRequestWithPayloads(input, hostname, value, previous)
+				if err != nil {
+					return err
+				}
+				// send the result to the caller
+				onResult(event)
 			}
+		} else {
+			value := make(map[string]interface{})
 			event, err := request.executeRequestWithPayloads(input, hostname, value, previous)
 			if err != nil {
 				return err
@@ -161,16 +181,17 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 			// send the result to the caller
 			onResult(event)
 		}
-	} else {
-		value := make(map[string]interface{})
-		event, err := request.executeRequestWithPayloads(input, hostname, value, previous)
-		if err != nil {
-			return err
+		return nil
+	})
+
+	go func() {
+		defer close(results)
+		if err := errGroup.Wait(); err != nil {
+			results <- protocols.Result{Error: err}
 		}
-		// send the result to the caller
-		onResult(event)
-	}
-	return nil
+	}()
+
+	return results
 }
 
 // ExecuteWithResults executes the protocol requests and returns results instead of writing them.

@@ -7,6 +7,7 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/remeh/sizedwaitgroup"
+	"golang.org/x/sync/errgroup"
 
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
@@ -19,6 +20,7 @@ import (
 	"github.com/projectdiscovery/utils/conversion"
 )
 
+// ensure that Request implements protocols.Request interface
 var _ protocols.Request = &Request{}
 
 const maxSize = 5 * 1024 * 1024
@@ -29,86 +31,106 @@ func (request *Request) Type() templateTypes.ProtocolType {
 }
 
 // ExecuteWithResults executes the protocol requests and returns results instead of writing them.
-func (request *Request) ExecuteWithResults(input *contextargs.Context, metadata, previous output.InternalEvent, onResult protocols.OutputEventCallback) error {
-	wg := sizedwaitgroup.New(request.options.Options.BulkSize)
-
-	err := request.getInputPaths(input.MetaInput.Input, func(data string) {
-		wg.Add()
-
-		go func(data string) {
-			defer wg.Done()
-
-			file, err := os.Open(data)
-			if err != nil {
-				gologger.Error().Msgf("Could not open file path %s: %s\n", data, err)
-				return
-			}
-			defer file.Close()
-
-			stat, err := file.Stat()
-			if err != nil {
-				gologger.Error().Msgf("Could not stat file path %s: %s\n", data, err)
-				return
-			}
-			if stat.Size() >= int64(maxSize) {
-				gologger.Verbose().Msgf("Could not process path %s: exceeded max size\n", data)
-				return
-			}
-
-			buffer, err := io.ReadAll(file)
-			if err != nil {
-				gologger.Error().Msgf("Could not read file path %s: %s\n", data, err)
-				return
-			}
-			dataStr := conversion.String(buffer)
-
-			resp, err := readResponseFromString(dataStr)
-			if err != nil {
-				gologger.Error().Msgf("Could not read raw response %s: %s\n", data, err)
-				return
-			}
-
-			if request.options.Options.Debug || request.options.Options.DebugRequests {
-				gologger.Info().Msgf("[%s] Dumped offline-http request for %s", request.options.TemplateID, data)
-				gologger.Print().Msgf("%s", dataStr)
-			}
-			gologger.Verbose().Msgf("[%s] Sent OFFLINE-HTTP request to %s", request.options.TemplateID, data)
-
-			dumpedResponse, err := httputil.DumpResponse(resp, true)
-			if err != nil {
-				gologger.Error().Msgf("Could not dump raw http response %s: %s\n", data, err)
-				return
-			}
-
-			body, err := io.ReadAll(resp.Body)
-			if err != nil {
-				gologger.Error().Msgf("Could not read raw http response body %s: %s\n", data, err)
-				return
-			}
-
-			outputEvent := request.responseToDSLMap(resp, data, data, data, conversion.String(dumpedResponse), conversion.String(body), utils.HeadersToString(resp.Header), 0, nil)
-			// add response fields to template context and merge templatectx variables to output event
-			request.options.AddTemplateVars(input.MetaInput, request.Type(), request.GetID(), outputEvent)
-			if request.options.HasTemplateCtx(input.MetaInput) {
-				outputEvent = generators.MergeMaps(outputEvent, request.options.GetTemplateCtx(input.MetaInput).GetAll())
-			}
-			outputEvent["ip"] = ""
-			for k, v := range previous {
-				outputEvent[k] = v
-			}
-
-			event := eventcreator.CreateEvent(request, outputEvent, request.options.Options.Debug || request.options.Options.DebugResponse)
-
-			// send the result to the caller
-			onResult(event)
-		}(data)
-	})
-	wg.Wait()
-	if err != nil {
-		request.options.Output.Request(request.options.TemplatePath, input.MetaInput.Input, "file", err)
-		request.options.Progress.IncrementFailedRequestsBy(1)
-		return errors.Wrap(err, "could not send file request")
+func (request *Request) ExecuteWithResults(input *contextargs.Context, metadata, previous output.InternalEvent) <-chan protocols.Result {
+	results := make(chan protocols.Result)
+	onResult := func(events ...*output.InternalWrappedEvent) {
+		for _, event := range events {
+			results <- protocols.Result{Event: event}
+		}
 	}
-	request.options.Progress.IncrementRequests()
-	return nil
+
+	var errGroup errgroup.Group
+
+	errGroup.Go(func() error {
+		wg := sizedwaitgroup.New(request.options.Options.BulkSize)
+
+		err := request.getInputPaths(input.MetaInput.Input, func(data string) {
+			wg.Add()
+
+			go func(data string) {
+				defer wg.Done()
+
+				file, err := os.Open(data)
+				if err != nil {
+					gologger.Error().Msgf("Could not open file path %s: %s\n", data, err)
+					return
+				}
+				defer file.Close()
+
+				stat, err := file.Stat()
+				if err != nil {
+					gologger.Error().Msgf("Could not stat file path %s: %s\n", data, err)
+					return
+				}
+				if stat.Size() >= int64(maxSize) {
+					gologger.Verbose().Msgf("Could not process path %s: exceeded max size\n", data)
+					return
+				}
+
+				buffer, err := io.ReadAll(file)
+				if err != nil {
+					gologger.Error().Msgf("Could not read file path %s: %s\n", data, err)
+					return
+				}
+				dataStr := conversion.String(buffer)
+
+				resp, err := readResponseFromString(dataStr)
+				if err != nil {
+					gologger.Error().Msgf("Could not read raw response %s: %s\n", data, err)
+					return
+				}
+
+				if request.options.Options.Debug || request.options.Options.DebugRequests {
+					gologger.Info().Msgf("[%s] Dumped offline-http request for %s", request.options.TemplateID, data)
+					gologger.Print().Msgf("%s", dataStr)
+				}
+				gologger.Verbose().Msgf("[%s] Sent OFFLINE-HTTP request to %s", request.options.TemplateID, data)
+
+				dumpedResponse, err := httputil.DumpResponse(resp, true)
+				if err != nil {
+					gologger.Error().Msgf("Could not dump raw http response %s: %s\n", data, err)
+					return
+				}
+
+				body, err := io.ReadAll(resp.Body)
+				if err != nil {
+					gologger.Error().Msgf("Could not read raw http response body %s: %s\n", data, err)
+					return
+				}
+
+				outputEvent := request.responseToDSLMap(resp, data, data, data, conversion.String(dumpedResponse), conversion.String(body), utils.HeadersToString(resp.Header), 0, nil)
+				// add response fields to template context and merge templatectx variables to output event
+				request.options.AddTemplateVars(input.MetaInput, request.Type(), request.GetID(), outputEvent)
+				if request.options.HasTemplateCtx(input.MetaInput) {
+					outputEvent = generators.MergeMaps(outputEvent, request.options.GetTemplateCtx(input.MetaInput).GetAll())
+				}
+				outputEvent["ip"] = ""
+				for k, v := range previous {
+					outputEvent[k] = v
+				}
+
+				event := eventcreator.CreateEvent(request, outputEvent, request.options.Options.Debug || request.options.Options.DebugResponse)
+
+				// send the result to the caller
+				onResult(event)
+			}(data)
+		})
+		wg.Wait()
+		if err != nil {
+			request.options.Output.Request(request.options.TemplatePath, input.MetaInput.Input, "file", err)
+			request.options.Progress.IncrementFailedRequestsBy(1)
+			return errors.Wrap(err, "could not send file request")
+		}
+		request.options.Progress.IncrementRequests()
+		return nil
+	})
+
+	go func() {
+		defer close(results)
+		if err := errGroup.Wait(); err != nil {
+			results <- protocols.Result{Error: err}
+		}
+	}()
+
+	return results
 }

@@ -66,10 +66,10 @@ func TestNetworkExecuteWithResults(t *testing.T) {
 		metadata := make(output.InternalEvent)
 		previous := make(output.InternalEvent)
 		ctxArgs := contextargs.NewWithInput(parsed.Host)
-		err := request.ExecuteWithResults(ctxArgs, metadata, previous, func(event *output.InternalWrappedEvent) {
-			finalEvent = event
-		})
-		require.Nil(t, err, "could not execute network request")
+		for event := range request.ExecuteWithResults(ctxArgs, metadata, previous) {
+			require.Nil(t, err, "could not execute network request")
+			finalEvent = event.Event
+		}
 	})
 	require.NotNil(t, finalEvent, "could not get event output from request")
 	require.Equal(t, 1, len(finalEvent.Results), "could not get correct number of results")
@@ -82,10 +82,10 @@ func TestNetworkExecuteWithResults(t *testing.T) {
 		metadata := make(output.InternalEvent)
 		previous := make(output.InternalEvent)
 		ctxArgs := contextargs.NewWithInput("127.0.0.1:11211")
-		err := request.ExecuteWithResults(ctxArgs, metadata, previous, func(event *output.InternalWrappedEvent) {
-			finalEvent = event
-		})
-		require.Nil(t, err, "could not execute network request")
+		for event := range request.ExecuteWithResults(ctxArgs, metadata, previous) {
+			require.Nil(t, err, "could not execute network request")
+			finalEvent = event.Event
+		}
 	})
 	require.Nil(t, finalEvent.Results, "could not get event output from request")
 
@@ -96,9 +96,10 @@ func TestNetworkExecuteWithResults(t *testing.T) {
 		metadata := make(output.InternalEvent)
 		previous := make(output.InternalEvent)
 		ctxArgs := contextargs.NewWithInput(parsed.Host)
-		err := request.ExecuteWithResults(ctxArgs, metadata, previous, func(event *output.InternalWrappedEvent) {
-			finalEvent = event
-		})
+		for event := range request.ExecuteWithResults(ctxArgs, metadata, previous) {
+			require.Nil(t, err, "could not execute network request")
+			finalEvent = event.Event
+		}
 		require.Nil(t, err, "could not execute network request")
 	})
 	require.NotNil(t, finalEvent, "could not get event output from request")

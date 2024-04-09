@@ -8,6 +8,7 @@ import (
 	jsoniter "github.com/json-iterator/go"
 	"github.com/pkg/errors"
 	"github.com/projectdiscovery/rdap"
+	"golang.org/x/sync/errgroup"
 
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/operators"
@@ -89,67 +90,88 @@ func (request *Request) GetID() string {
 }
 
 // ExecuteWithResults executes the protocol requests and returns results instead of writing them.
-func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicValues, previous output.InternalEvent, onResult protocols.OutputEventCallback) error {
-	// generate variables
-	defaultVars := protocolutils.GenerateVariables(input.MetaInput.Input, false, nil)
-	optionVars := generators.BuildPayloadFromOptions(request.options.Options)
-	// add templatectx variables to varMap
-	vars := request.options.Variables.Evaluate(generators.MergeMaps(defaultVars, optionVars, dynamicValues, request.options.GetTemplateCtx(input.MetaInput).GetAll()))
-
-	variables := generators.MergeMaps(vars, defaultVars, optionVars, dynamicValues, request.options.Constants)
-
-	if vardump.EnableVarDump {
-		gologger.Debug().Msgf("Whois Protocol request variables: \n%s\n", vardump.DumpVariables(variables))
-	}
-
-	// and replace placeholders
-	query := replacer.Replace(request.Query, variables)
-	// build an rdap request
-	rdapReq := rdap.NewAutoRequest(query)
-	rdapReq.Server = request.parsedServerURL
-	res, err := request.client.Do(rdapReq)
-	if err != nil {
-		return errors.Wrap(err, "could not make whois request")
-	}
-	gologger.Verbose().Msgf("Sent WHOIS request to %s", query)
-	if request.options.Options.Debug || request.options.Options.DebugRequests {
-		gologger.Debug().Msgf("[%s] Dumped WHOIS request for %s", request.options.TemplateID, query)
-	}
-
-	data := make(map[string]interface{})
-	var response interface{}
-	switch rdapReq.Type {
-	case rdap.DomainRequest:
-		// convert the rdap response to a whois style response (for domain request type only)
-		whoisResp := res.ToWhoisStyleResponse()
-		for k, v := range whoisResp.Data {
-			data[strings.ToLower(k)] = strings.Join(v, ",")
+func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicValues, previous output.InternalEvent) <-chan protocols.Result {
+	results := make(chan protocols.Result)
+	onResult := func(events ...*output.InternalWrappedEvent) {
+		for _, event := range events {
+			results <- protocols.Result{Event: event}
 		}
-		response = whoisResp
-	default:
-		response = res.Object
-	}
-	jsonData, _ := jsoniter.Marshal(response)
-	jsonDataString := string(jsonData)
-
-	data["type"] = request.Type().String()
-	data["host"] = query
-	data["response"] = jsonDataString
-
-	// add response fields to template context and merge templatectx variables to output event
-	request.options.AddTemplateVars(input.MetaInput, request.Type(), request.ID, data)
-	data = generators.MergeMaps(data, request.options.GetTemplateCtx(input.MetaInput).GetAll())
-
-	event := eventcreator.CreateEvent(request, data, request.options.Options.Debug || request.options.Options.DebugResponse)
-	if request.options.Options.Debug || request.options.Options.DebugResponse {
-		gologger.Debug().Msgf("[%s] Dumped WHOIS response for %s", request.options.TemplateID, query)
-		gologger.Print().Msgf("%s", responsehighlighter.Highlight(event.OperatorsResult, jsonDataString, request.options.Options.NoColor, false))
 	}
 
-	// send the result to the caller
-	onResult(event)
+	var errGroup errgroup.Group
 
-	return nil
+	errGroup.Go(func() error {
+		// generate variables
+		defaultVars := protocolutils.GenerateVariables(input.MetaInput.Input, false, nil)
+		optionVars := generators.BuildPayloadFromOptions(request.options.Options)
+		// add templatectx variables to varMap
+		vars := request.options.Variables.Evaluate(generators.MergeMaps(defaultVars, optionVars, dynamicValues, request.options.GetTemplateCtx(input.MetaInput).GetAll()))
+
+		variables := generators.MergeMaps(vars, defaultVars, optionVars, dynamicValues, request.options.Constants)
+
+		if vardump.EnableVarDump {
+			gologger.Debug().Msgf("Whois Protocol request variables: \n%s\n", vardump.DumpVariables(variables))
+		}
+
+		// and replace placeholders
+		query := replacer.Replace(request.Query, variables)
+		// build an rdap request
+		rdapReq := rdap.NewAutoRequest(query)
+		rdapReq.Server = request.parsedServerURL
+		res, err := request.client.Do(rdapReq)
+		if err != nil {
+			return errors.Wrap(err, "could not make whois request")
+		}
+		gologger.Verbose().Msgf("Sent WHOIS request to %s", query)
+		if request.options.Options.Debug || request.options.Options.DebugRequests {
+			gologger.Debug().Msgf("[%s] Dumped WHOIS request for %s", request.options.TemplateID, query)
+		}
+
+		data := make(map[string]interface{})
+		var response interface{}
+		switch rdapReq.Type {
+		case rdap.DomainRequest:
+			// convert the rdap response to a whois style response (for domain request type only)
+			whoisResp := res.ToWhoisStyleResponse()
+			for k, v := range whoisResp.Data {
+				data[strings.ToLower(k)] = strings.Join(v, ",")
+			}
+			response = whoisResp
+		default:
+			response = res.Object
+		}
+		jsonData, _ := jsoniter.Marshal(response)
+		jsonDataString := string(jsonData)
+
+		data["type"] = request.Type().String()
+		data["host"] = query
+		data["response"] = jsonDataString
+
+		// add response fields to template context and merge templatectx variables to output event
+		request.options.AddTemplateVars(input.MetaInput, request.Type(), request.ID, data)
+		data = generators.MergeMaps(data, request.options.GetTemplateCtx(input.MetaInput).GetAll())
+
+		event := eventcreator.CreateEvent(request, data, request.options.Options.Debug || request.options.Options.DebugResponse)
+		if request.options.Options.Debug || request.options.Options.DebugResponse {
+			gologger.Debug().Msgf("[%s] Dumped WHOIS response for %s", request.options.TemplateID, query)
+			gologger.Print().Msgf("%s", responsehighlighter.Highlight(event.OperatorsResult, jsonDataString, request.options.Options.NoColor, false))
+		}
+
+		// send the result to the caller
+		onResult(event)
+
+		return nil
+	})
+
+	go func() {
+		defer close(results)
+
+		if err := errGroup.Wait(); err != nil {
+			results <- protocols.Result{Error: err}
+		}
+	}()
+
+	return results
 }
 
 // Match performs matching operation for a matcher on model and returns:

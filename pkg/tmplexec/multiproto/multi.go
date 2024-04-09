@@ -47,7 +47,7 @@ func (m *MultiProtocol) ExecuteWithResults(ctx *scan.ScanContext) error {
 	// put all readonly args into template context
 	m.options.GetTemplateCtx(ctx.Input.MetaInput).Merge(m.readOnlyArgs)
 	// callback to process results from all protocols
-	multiProtoCallback := func(event *output.InternalWrappedEvent) {
+	multiProtoOnResult := func(event *output.InternalWrappedEvent) {
 		if event == nil {
 			return
 		}
@@ -91,11 +91,13 @@ func (m *MultiProtocol) ExecuteWithResults(ctx *scan.ScanContext) error {
 	// execute all protocols in the queue
 	for _, req := range m.requests {
 		values := m.options.GetTemplateCtx(ctx.Input.MetaInput).GetAll()
-		err := req.ExecuteWithResults(ctx.Input, output.InternalEvent(values), nil, multiProtoCallback)
-		// if error skip execution of next protocols
-		if err != nil {
-			ctx.LogError(err)
-			return err
+		for event := range req.ExecuteWithResults(ctx.Input, output.InternalEvent(values), nil) {
+			// if error skip execution of next protocols
+			if event.Error != nil {
+				ctx.LogError(event.Error)
+				return event.Error
+			}
+			multiProtoOnResult(event.Event)
 		}
 	}
 	return nil

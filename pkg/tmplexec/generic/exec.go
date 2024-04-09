@@ -52,16 +52,26 @@ func (g *Generic) ExecuteWithResults(ctx *scan.ScanContext) error {
 			}
 		}
 
-		err := req.ExecuteWithResults(inputItem, dynamicValues, output.InternalEvent(previous.GetAll()), func(event *output.InternalWrappedEvent) {
-			// this callback is not concurrent safe so mutex should be used to synchronize
-			if event == nil {
-				// ideally this should never happen since protocol exits on error and callback is not called
-				return
+		for event := range req.ExecuteWithResults(inputItem, dynamicValues, output.InternalEvent(previous.GetAll())) {
+			if event.Error != nil {
+				ctx.LogError(event.Error)
+				if g.options.HostErrorsCache != nil {
+					g.options.HostErrorsCache.MarkFailed(ctx.Input.MetaInput.ID(), event.Error)
+				}
+				gologger.Warning().Msgf("[%s] Could not execute request for %s: %s\n", g.options.TemplateID, ctx.Input.MetaInput.PrettyPrint(), event.Error)
+				break
 			}
+
+			// this callback is not concurrent safe so mutex should be used to synchronize
+			if event.Event == nil {
+				// ideally this should never happen since protocol exits on error and callback is not called
+				continue
+			}
+
 			ID := req.GetID()
 			if ID != "" {
 				builder := &strings.Builder{}
-				for k, v := range event.InternalEvent {
+				for k, v := range event.Event.InternalEvent {
 					builder.WriteString(ID)
 					builder.WriteString("_")
 					builder.WriteString(k)
@@ -69,20 +79,14 @@ func (g *Generic) ExecuteWithResults(ctx *scan.ScanContext) error {
 					builder.Reset()
 				}
 			}
-			if event.HasOperatorResult() {
+			if event.Event.HasOperatorResult() {
 				g.results.CompareAndSwap(false, true)
 			}
 			// for ExecuteWithResults : this callback will execute user defined callback and some error handling
 			// for Execute : this callback will print the result to output
-			ctx.LogEvent(event)
-		})
-		if err != nil {
-			ctx.LogError(err)
-			if g.options.HostErrorsCache != nil {
-				g.options.HostErrorsCache.MarkFailed(ctx.Input.MetaInput.ID(), err)
-			}
-			gologger.Warning().Msgf("[%s] Could not execute request for %s: %s\n", g.options.TemplateID, ctx.Input.MetaInput.PrettyPrint(), err)
+			ctx.LogEvent(event.Event)
 		}
+
 		// If a match was found and stop at first match is set, break out of the loop and return
 		if g.results.Load() && (g.options.StopAtFirstMatch || g.options.Options.StopAtFirstMatch) {
 			break

@@ -100,6 +100,7 @@ require (
 	github.com/seh-msft/burpxml v1.0.1
 	github.com/stretchr/testify v1.9.0
 	github.com/zmap/zgrab2 v0.1.8-0.20230806160807-97ba87c0e706
+	golang.org/x/sync v0.6.0
 	golang.org/x/term v0.17.0
 	gopkg.in/yaml.v3 v3.0.1
 	moul.io/http2curl v1.0.0
@@ -231,7 +232,6 @@ require (
 	github.com/zcalusic/sysinfo v1.0.2 // indirect
 	github.com/zeebo/blake3 v0.2.3 // indirect
 	golang.org/x/arch v0.3.0 // indirect
-	golang.org/x/sync v0.6.0 // indirect
 	gopkg.in/djherbis/times.v1 v1.3.0 // indirect
 	mellium.im/sasl v0.3.1 // indirect
 )

@@ -34,6 +34,7 @@ import (
 	errorutil "github.com/projectdiscovery/utils/errors"
 	urlutil "github.com/projectdiscovery/utils/url"
 	"github.com/remeh/sizedwaitgroup"
+	"golang.org/x/sync/errgroup"
 )
 
 // Ensure that Request satisfies the protocols.Request interface
@@ -280,127 +281,148 @@ func (request *Request) GetID() string {
 }
 
 // ExecuteWithResults executes the protocol requests and returns results instead of writing them.
-func (request *Request) ExecuteWithResults(target *contextargs.Context, dynamicValues, previous output.InternalEvent, onResult protocols.OutputEventCallback) error {
-	input := target.Clone()
-	// use network port updates input with new port requested in template file
-	// and it is ignored if input port is not standard http(s) ports like 80,8080,8081 etc
-	// idea is to reduce redundant dials to http ports
-	if err := input.UseNetworkPort(request.getPort(), request.getExcludePorts()); err != nil {
-		gologger.Debug().Msgf("Could not network port from constants: %s\n", err)
+func (request *Request) ExecuteWithResults(target *contextargs.Context, dynamicValues, previous output.InternalEvent) <-chan protocols.Result {
+	results := make(chan protocols.Result)
+	onResult := func(events ...*output.InternalWrappedEvent) {
+		for _, event := range events {
+			results <- protocols.Result{Event: event}
+		}
 	}
 
-	hostPort, err := getAddress(input.MetaInput.Input)
-	if err != nil {
-		request.options.Progress.IncrementFailedRequestsBy(1)
-		return err
-	}
-	hostname, port, _ := net.SplitHostPort(hostPort)
-	if hostname == "" {
-		hostname = hostPort
-	}
+	var errGroup errgroup.Group
 
-	requestOptions := request.options
-	templateCtx := request.options.GetTemplateCtx(input.MetaInput)
-
-	payloadValues := generators.BuildPayloadFromOptions(request.options.Options)
-	for k, v := range dynamicValues {
-		payloadValues[k] = v
-	}
-
-	payloadValues["Hostname"] = hostPort
-	payloadValues["Host"] = hostname
-	payloadValues["Port"] = port
-
-	hostnameVariables := protocolutils.GenerateDNSVariables(hostname)
-	values := generators.MergeMaps(payloadValues, hostnameVariables, request.options.Constants, templateCtx.GetAll())
-	variablesMap := request.options.Variables.Evaluate(values)
-	payloadValues = generators.MergeMaps(variablesMap, payloadValues, request.options.Constants, hostnameVariables)
-	// export all variables to template context
-	templateCtx.Merge(payloadValues)
-
-	if vardump.EnableVarDump {
-		gologger.Debug().Msgf("Javascript Protocol request variables: \n%s\n", vardump.DumpVariables(payloadValues))
-	}
-
-	if request.PreCondition != "" {
-		payloads := generators.MergeMaps(payloadValues, previous)
-
-		if request.options.Options.Debug || request.options.Options.DebugRequests {
-			gologger.Debug().Msgf("[%s] Executing Precondition for request\n", request.TemplateID)
-			var highlightFormatter = "terminal256"
-			if requestOptions.Options.NoColor {
-				highlightFormatter = "text"
-			}
-			var buff bytes.Buffer
-			_ = quick.Highlight(&buff, beautifyJavascript(request.PreCondition), "javascript", highlightFormatter, "monokai")
-			prettyPrint(request.TemplateID, buff.String())
+	errGroup.Go(func() error {
+		input := target.Clone()
+		// use network port updates input with new port requested in template file
+		// and it is ignored if input port is not standard http(s) ports like 80,8080,8081 etc
+		// idea is to reduce redundant dials to http ports
+		if err := input.UseNetworkPort(request.getPort(), request.getExcludePorts()); err != nil {
+			gologger.Debug().Msgf("Could not network port from constants: %s\n", err)
 		}
 
-		argsCopy, err := request.getArgsCopy(input, payloads, requestOptions, true)
+		hostPort, err := getAddress(input.MetaInput.Input)
 		if err != nil {
+			request.options.Progress.IncrementFailedRequestsBy(1)
 			return err
 		}
-		argsCopy.TemplateCtx = templateCtx.GetAll()
-
-		result, err := request.options.JsCompiler.ExecuteWithOptions(request.preConditionCompiled, argsCopy,
-			&compiler.ExecuteOptions{Timeout: request.Timeout, Source: &request.PreCondition})
-		if err != nil {
-			return errorutil.NewWithTag(request.TemplateID, "could not execute pre-condition: %s", err)
+		hostname, port, _ := net.SplitHostPort(hostPort)
+		if hostname == "" {
+			hostname = hostPort
 		}
-		if !result.GetSuccess() || types.ToString(result["error"]) != "" {
-			gologger.Warning().Msgf("[%s] Precondition for request %s was not satisfied\n", request.TemplateID, request.PreCondition)
-			request.options.Progress.IncrementFailedRequestsBy(1)
+
+		requestOptions := request.options
+		templateCtx := request.options.GetTemplateCtx(input.MetaInput)
+
+		payloadValues := generators.BuildPayloadFromOptions(request.options.Options)
+		for k, v := range dynamicValues {
+			payloadValues[k] = v
+		}
+
+		payloadValues["Hostname"] = hostPort
+		payloadValues["Host"] = hostname
+		payloadValues["Port"] = port
+
+		hostnameVariables := protocolutils.GenerateDNSVariables(hostname)
+		values := generators.MergeMaps(payloadValues, hostnameVariables, request.options.Constants, templateCtx.GetAll())
+		variablesMap := request.options.Variables.Evaluate(values)
+		payloadValues = generators.MergeMaps(variablesMap, payloadValues, request.options.Constants, hostnameVariables)
+		// export all variables to template context
+		templateCtx.Merge(payloadValues)
+
+		if vardump.EnableVarDump {
+			gologger.Debug().Msgf("Javascript Protocol request variables: \n%s\n", vardump.DumpVariables(payloadValues))
+		}
+
+		if request.PreCondition != "" {
+			payloads := generators.MergeMaps(payloadValues, previous)
+
+			if request.options.Options.Debug || request.options.Options.DebugRequests {
+				gologger.Debug().Msgf("[%s] Executing Precondition for request\n", request.TemplateID)
+				var highlightFormatter = "terminal256"
+				if requestOptions.Options.NoColor {
+					highlightFormatter = "text"
+				}
+				var buff bytes.Buffer
+				_ = quick.Highlight(&buff, beautifyJavascript(request.PreCondition), "javascript", highlightFormatter, "monokai")
+				prettyPrint(request.TemplateID, buff.String())
+			}
+
+			argsCopy, err := request.getArgsCopy(input, payloads, requestOptions, true)
+			if err != nil {
+				return err
+			}
+			argsCopy.TemplateCtx = templateCtx.GetAll()
+
+			result, err := request.options.JsCompiler.ExecuteWithOptions(request.preConditionCompiled, argsCopy,
+				&compiler.ExecuteOptions{Timeout: request.Timeout, Source: &request.PreCondition})
+			if err != nil {
+				return errorutil.NewWithTag(request.TemplateID, "could not execute pre-condition: %s", err)
+			}
+			if !result.GetSuccess() || types.ToString(result["error"]) != "" {
+				gologger.Warning().Msgf("[%s] Precondition for request %s was not satisfied\n", request.TemplateID, request.PreCondition)
+				request.options.Progress.IncrementFailedRequestsBy(1)
+				return nil
+			}
+			if request.options.Options.Debug || request.options.Options.DebugRequests {
+				request.options.Progress.IncrementRequests()
+				gologger.Debug().Msgf("[%s] Precondition for request was satisfied\n", request.TemplateID)
+			}
+		}
+
+		if request.generator != nil && request.Threads > 1 {
+			events := request.executeRequestParallel(context.Background(), hostPort, hostname, input, payloadValues)
+			onResult(events...)
 			return nil
 		}
-		if request.options.Options.Debug || request.options.Options.DebugRequests {
-			request.options.Progress.IncrementRequests()
-			gologger.Debug().Msgf("[%s] Precondition for request was satisfied\n", request.TemplateID)
-		}
-	}
 
-	if request.generator != nil && request.Threads > 1 {
-		request.executeRequestParallel(context.Background(), hostPort, hostname, input, payloadValues, onResult)
-		return nil
-	}
+		var gotMatches bool
+		if request.generator != nil {
+			iterator := request.generator.NewIterator()
 
-	var gotMatches bool
-	if request.generator != nil {
-		iterator := request.generator.NewIterator()
+			for {
+				value, ok := iterator.Value()
+				if !ok {
+					return nil
+				}
 
-		for {
-			value, ok := iterator.Value()
-			if !ok {
-				return nil
-			}
+				event, err := request.executeRequestWithPayloads(hostPort, input, hostname, value, payloadValues, requestOptions)
+				if err != nil {
+					_ = err
+					// Review: should we log error here?
+					// it is technically not error as it is expected to fail
+					// gologger.Warning().Msgf("Could not execute request: %s\n", err)
+					// do not return even if error occured
+				}
 
-			event, err := request.executeRequestWithPayloads(hostPort, input, hostname, value, payloadValues, requestOptions)
-			if err != nil {
-				_ = err
-				// Review: should we log error here?
-				// it is technically not error as it is expected to fail
-				// gologger.Warning().Msgf("Could not execute request: %s\n", err)
-				// do not return even if error occured
-			}
+				if event.OperatorsResult != nil && event.OperatorsResult.Matched {
+					gotMatches = true
+					request.options.Progress.IncrementMatched()
+				}
+				onResult(event)
 
-			if event.OperatorsResult != nil && event.OperatorsResult.Matched {
-				gotMatches = true
-				request.options.Progress.IncrementMatched()
-			}
-			onResult(event)
-
-			// If this was a match, and we want to stop at first match, skip all further requests.
-			shouldStopAtFirstMatch := request.options.Options.StopAtFirstMatch || request.StopAtFirstMatch
-			if shouldStopAtFirstMatch && gotMatches {
-				return nil
+				// If this was a match, and we want to stop at first match, skip all further requests.
+				shouldStopAtFirstMatch := request.options.Options.StopAtFirstMatch || request.StopAtFirstMatch
+				if shouldStopAtFirstMatch && gotMatches {
+					return nil
+				}
 			}
 		}
-	}
-	event, err := request.executeRequestWithPayloads(hostPort, input, hostname, nil, payloadValues, requestOptions)
-	onResult(event)
-	return err
+		event, err := request.executeRequestWithPayloads(hostPort, input, hostname, nil, payloadValues, requestOptions)
+		onResult(event)
+		return err
+	})
+
+	go func() {
+		defer close(results)
+		if err := errGroup.Wait(); err != nil {
+			results <- protocols.Result{Error: err}
+		}
+	}()
+
+	return results
 }
 
-func (request *Request) executeRequestParallel(ctxParent context.Context, hostPort, hostname string, input *contextargs.Context, payloadValues map[string]interface{}, onResult protocols.OutputEventCallback) {
+func (request *Request) executeRequestParallel(ctxParent context.Context, hostPort, hostname string, input *contextargs.Context, payloadValues map[string]interface{}) (events []*output.InternalWrappedEvent) {
 	threads := request.Threads
 	if threads == 0 {
 		threads = 1
@@ -438,7 +460,7 @@ func (request *Request) executeRequestParallel(ctxParent context.Context, hostPo
 				if event.OperatorsResult != nil && event.OperatorsResult.Matched {
 					gotmatches.Store(true)
 				}
-				onResult(event)
+				events = append(events, event)
 
 				// If this was a match, and we want to stop at first match, skip all further requests.
 				if shouldStopAtFirstMatch && gotmatches.Load() {
@@ -452,6 +474,8 @@ func (request *Request) executeRequestParallel(ctxParent context.Context, hostPo
 	if gotmatches.Load() {
 		request.options.Progress.IncrementMatched()
 	}
+
+	return
 }
 
 func (request *Request) executeRequestWithPayloads(hostPort string, input *contextargs.Context, _ string, payload map[string]interface{}, previous output.InternalEvent, requestOptions *protocols.ExecutorOptions) (*output.InternalWrappedEvent, error) {

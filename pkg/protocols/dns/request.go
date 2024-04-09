@@ -12,6 +12,7 @@ import (
 	"github.com/remeh/sizedwaitgroup"
 	"go.uber.org/multierr"
 	"golang.org/x/exp/maps"
+	"golang.org/x/sync/errgroup"
 
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
@@ -36,71 +37,91 @@ func (request *Request) Type() templateTypes.ProtocolType {
 
 // ExecuteWithResults executes the protocol requests and invokes the callback for each result
 // todo: in order to avoid nested callback hell the onResult invocation happens within this closure
-func (request *Request) ExecuteWithResults(input *contextargs.Context, metadata, previous output.InternalEvent, onResult protocols.OutputEventCallback) error {
-	// Parse the URL and return domain if URL.
-	var domain string
-	if utils.IsURL(input.MetaInput.Input) {
-		domain = extractDomain(input.MetaInput.Input)
-	} else {
-		domain = input.MetaInput.Input
+func (request *Request) ExecuteWithResults(input *contextargs.Context, metadata, previous output.InternalEvent) <-chan protocols.Result {
+	results := make(chan protocols.Result)
+	onResult := func(event *output.InternalWrappedEvent) {
+		results <- protocols.Result{Event: event}
 	}
 
-	var err error
-	domain, err = request.parseDNSInput(domain)
-	if err != nil {
-		return errors.Wrap(err, "could not build request")
-	}
+	var errGroup errgroup.Group
 
-	vars := protocolutils.GenerateDNSVariables(domain)
-	// optionvars are vars passed from CLI or env variables
-	optionVars := generators.BuildPayloadFromOptions(request.options.Options)
-	// merge with metadata (eg. from workflow context)
-	if request.options.HasTemplateCtx(input.MetaInput) {
-		vars = generators.MergeMaps(vars, metadata, optionVars, request.options.GetTemplateCtx(input.MetaInput).GetAll())
-	}
-	variablesMap := request.options.Variables.Evaluate(vars)
-	vars = generators.MergeMaps(vars, variablesMap, request.options.Constants)
-
-	if request.generator != nil {
-		iterator := request.generator.NewIterator()
-		swg := sizedwaitgroup.New(request.Threads)
-		var multiErr error
-		m := &sync.Mutex{}
-
-		for {
-			value, ok := iterator.Value()
-			if !ok {
-				break
-			}
-			value = generators.MergeMaps(vars, value)
-			swg.Add()
-			go func(newVars map[string]interface{}) {
-				defer swg.Done()
-
-				event, err := request.execute(input, domain, metadata, previous, newVars)
-				if err != nil {
-					m.Lock()
-					multiErr = multierr.Append(multiErr, err)
-					m.Unlock()
-				}
-				// send the result to the caller
-				onResult(event)
-			}(value)
+	errGroup.Go(func() error {
+		// Parse the URL and return domain if URL.
+		var domain string
+		if utils.IsURL(input.MetaInput.Input) {
+			domain = extractDomain(input.MetaInput.Input)
+		} else {
+			domain = input.MetaInput.Input
 		}
-		swg.Wait()
-		if multiErr != nil {
-			return multiErr
-		}
-	} else {
-		value := maps.Clone(vars)
-		event, err := request.execute(input, domain, metadata, previous, value)
+
+		var err error
+		domain, err = request.parseDNSInput(domain)
 		if err != nil {
-			return err
+			return errors.Wrap(err, "could not build request")
 		}
-		// send the result to the caller
-		onResult(event)
-	}
-	return nil
+
+		vars := protocolutils.GenerateDNSVariables(domain)
+		// optionvars are vars passed from CLI or env variables
+		optionVars := generators.BuildPayloadFromOptions(request.options.Options)
+		// merge with metadata (eg. from workflow context)
+		if request.options.HasTemplateCtx(input.MetaInput) {
+			vars = generators.MergeMaps(vars, metadata, optionVars, request.options.GetTemplateCtx(input.MetaInput).GetAll())
+		}
+		variablesMap := request.options.Variables.Evaluate(vars)
+		vars = generators.MergeMaps(vars, variablesMap, request.options.Constants)
+
+		if request.generator != nil {
+			iterator := request.generator.NewIterator()
+			swg := sizedwaitgroup.New(request.Threads)
+			var multiErr error
+			m := &sync.Mutex{}
+
+			for {
+				value, ok := iterator.Value()
+				if !ok {
+					break
+				}
+				value = generators.MergeMaps(vars, value)
+				swg.Add()
+				go func(newVars map[string]interface{}) {
+					defer swg.Done()
+
+					event, err := request.execute(input, domain, metadata, previous, newVars)
+					if err != nil {
+						m.Lock()
+						multiErr = multierr.Append(multiErr, err)
+						m.Unlock()
+					}
+					// send the result to the caller
+					results <- protocols.Result{Event: event}
+				}(value)
+			}
+			swg.Wait()
+			if multiErr != nil {
+				return multiErr
+			}
+		} else {
+			value := maps.Clone(vars)
+			event, err := request.execute(input, domain, metadata, previous, value)
+			if err != nil {
+				return err
+			}
+			// send the result to the caller
+			onResult(event)
+		}
+
+		return nil
+	})
+
+	go func() {
+		defer close(results)
+
+		if err := errGroup.Wait(); err != nil {
+			results <- protocols.Result{Error: err}
+		}
+	}()
+
+	return results
 }
 
 func (request *Request) execute(input *contextargs.Context, domain string, metadata, previous output.InternalEvent, vars map[string]interface{}) (*output.InternalWrappedEvent, error) {

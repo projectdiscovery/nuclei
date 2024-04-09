@@ -10,6 +10,7 @@ import (
 
 	"github.com/pkg/errors"
 	"golang.org/x/exp/maps"
+	"golang.org/x/sync/errgroup"
 
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/fuzz"
@@ -38,68 +39,86 @@ func (request *Request) Type() templateTypes.ProtocolType {
 }
 
 // ExecuteWithResults executes the protocol requests and returns results instead of writing them.
-func (request *Request) ExecuteWithResults(input *contextargs.Context, metadata, previous output.InternalEvent, onResult protocols.OutputEventCallback) error {
-	if request.SelfContained {
-		url, err := extractBaseURLFromActions(request.Steps)
-		if err != nil {
+func (request *Request) ExecuteWithResults(input *contextargs.Context, metadata, previous output.InternalEvent) <-chan protocols.Result {
+	results := make(chan protocols.Result)
+	onResult := func(events ...*output.InternalWrappedEvent) {
+		for _, event := range events {
+			results <- protocols.Result{Event: event}
+		}
+	}
+
+	var errGroup errgroup.Group
+
+	errGroup.Go(func() error {
+		if request.SelfContained {
+			url, err := extractBaseURLFromActions(request.Steps)
+			if err != nil {
+				return err
+			}
+			input = contextargs.NewWithInput(url)
+		}
+
+		if request.options.Browser.UserAgent() == "" {
+			request.options.Browser.SetUserAgent(request.compiledUserAgent)
+		}
+
+		vars := protocolutils.GenerateVariablesWithContextArgs(input, false)
+		payloads := generators.BuildPayloadFromOptions(request.options.Options)
+		// add templatecontext variables to varMap
+		values := generators.MergeMaps(vars, metadata, payloads)
+		if request.options.HasTemplateCtx(input.MetaInput) {
+			values = generators.MergeMaps(values, request.options.GetTemplateCtx(input.MetaInput).GetAll())
+		}
+		variablesMap := request.options.Variables.Evaluate(values)
+		payloads = generators.MergeMaps(variablesMap, payloads, request.options.Constants)
+
+		// check for operator matches by wrapping callback
+		gotmatches := false
+		// verify if fuzz elaboration was requested
+		if len(request.Fuzzing) > 0 {
+			events, err := request.executeFuzzingRule(input, payloads)
+			onResult(events...)
 			return err
 		}
-		input = contextargs.NewWithInput(url)
-	}
-
-	if request.options.Browser.UserAgent() == "" {
-		request.options.Browser.SetUserAgent(request.compiledUserAgent)
-	}
-
-	vars := protocolutils.GenerateVariablesWithContextArgs(input, false)
-	payloads := generators.BuildPayloadFromOptions(request.options.Options)
-	// add templatecontext variables to varMap
-	values := generators.MergeMaps(vars, metadata, payloads)
-	if request.options.HasTemplateCtx(input.MetaInput) {
-		values = generators.MergeMaps(values, request.options.GetTemplateCtx(input.MetaInput).GetAll())
-	}
-	variablesMap := request.options.Variables.Evaluate(values)
-	payloads = generators.MergeMaps(variablesMap, payloads, request.options.Constants)
-
-	// check for operator matches by wrapping callback
-	gotmatches := false
-	// verify if fuzz elaboration was requested
-	if len(request.Fuzzing) > 0 {
-		events, err := request.executeFuzzingRule(input, payloads)
-		for _, event := range events {
-			onResult(event)
-		}
-		return err
-	}
-	if request.generator != nil {
-		iterator := request.generator.NewIterator()
-		for {
-			value, ok := iterator.Value()
-			if !ok {
-				break
+		if request.generator != nil {
+			iterator := request.generator.NewIterator()
+			for {
+				value, ok := iterator.Value()
+				if !ok {
+					break
+				}
+				if gotmatches && (request.StopAtFirstMatch || request.options.Options.StopAtFirstMatch || request.options.StopAtFirstMatch) {
+					return nil
+				}
+				value = generators.MergeMaps(value, payloads)
+				event, err := request.executeRequestWithPayloads(input, value)
+				results <- protocols.Result{Event: event}
+				if event != nil && event.OperatorsResult != nil {
+					gotmatches = event.OperatorsResult.Matched
+				}
+				if err != nil {
+					return err
+				}
 			}
-			if gotmatches && (request.StopAtFirstMatch || request.options.Options.StopAtFirstMatch || request.options.StopAtFirstMatch) {
-				return nil
-			}
-			value = generators.MergeMaps(value, payloads)
+		} else {
+			value := maps.Clone(payloads)
 			event, err := request.executeRequestWithPayloads(input, value)
 			onResult(event)
-			if event != nil && event.OperatorsResult != nil {
-				gotmatches = event.OperatorsResult.Matched
-			}
 			if err != nil {
 				return err
 			}
 		}
-	} else {
-		value := maps.Clone(payloads)
-		event, err := request.executeRequestWithPayloads(input, value)
-		onResult(event)
-		if err != nil {
-			return err
+		return nil
+	})
+
+	go func() {
+		defer close(results)
+		if err := errGroup.Wait(); err != nil {
+			results <- protocols.Result{Error: err}
 		}
-	}
-	return nil
+	}()
+
+	return results
 }
 
 // This function extracts the base URL from actions.

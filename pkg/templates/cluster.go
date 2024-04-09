@@ -266,39 +266,40 @@ func (e *ClusterExecuter) Execute(ctx *scan.ScanContext) (bool, error) {
 	}
 	previous := make(map[string]interface{})
 	dynamicValues := make(map[string]interface{})
-	err := e.requests.ExecuteWithResults(inputItem, dynamicValues, previous, func(event *output.InternalWrappedEvent) {
-		if event == nil {
-			// unlikely but just in case
-			return
+	for event := range e.requests.ExecuteWithResults(inputItem, dynamicValues, previous) {
+		if event.Error != nil && e.options.HostErrorsCache != nil {
+			e.options.HostErrorsCache.MarkFailed(ctx.Input.MetaInput.Input, event.Error)
+			return results, nil
 		}
-		if event.InternalEvent == nil {
-			event.InternalEvent = make(map[string]interface{})
+		if event.Event == nil {
+			// unlikely but just in case
+			continue
+		}
+		if event.Event.InternalEvent == nil {
+			event.Event.InternalEvent = make(map[string]interface{})
 		}
 		for _, operator := range e.operators {
-			result, matched := operator.operator.Execute(event.InternalEvent, e.requests.Match, e.requests.Extract, e.options.Options.Debug || e.options.Options.DebugResponse)
-			event.InternalEvent["template-id"] = operator.templateID
-			event.InternalEvent["template-path"] = operator.templatePath
-			event.InternalEvent["template-info"] = operator.templateInfo
+			result, matched := operator.operator.Execute(event.Event.InternalEvent, e.requests.Match, e.requests.Extract, e.options.Options.Debug || e.options.Options.DebugResponse)
+			event.Event.InternalEvent["template-id"] = operator.templateID
+			event.Event.InternalEvent["template-path"] = operator.templatePath
+			event.Event.InternalEvent["template-info"] = operator.templateInfo
 
 			if result == nil && !matched && e.options.Options.MatcherStatus {
-				if err := e.options.Output.WriteFailure(event); err != nil {
+				if err := e.options.Output.WriteFailure(event.Event); err != nil {
 					gologger.Warning().Msgf("Could not write failure event to output: %s\n", err)
 				}
 				continue
 			}
 			if matched && result != nil {
-				event.OperatorsResult = result
-				event.Results = e.requests.MakeResultEvent(event)
+				event.Event.OperatorsResult = result
+				event.Event.Results = e.requests.MakeResultEvent(event.Event)
 				results = true
 
-				_ = writer.WriteResult(event, e.options.Output, e.options.Progress, e.options.IssuesClient)
+				_ = writer.WriteResult(event.Event, e.options.Output, e.options.Progress, e.options.IssuesClient)
 			}
 		}
-	})
-	if err != nil && e.options.HostErrorsCache != nil {
-		e.options.HostErrorsCache.MarkFailed(ctx.Input.MetaInput.Input, err)
 	}
-	return results, err
+	return results, nil
 }
 
 // ExecuteWithResults executes the protocol requests and returns results instead of writing them.
@@ -312,25 +313,35 @@ func (e *ClusterExecuter) ExecuteWithResults(ctx *scan.ScanContext) ([]*output.R
 			return nil, nil
 		}
 	}
-	err := e.requests.ExecuteWithResults(inputItem, dynamicValues, nil, func(event *output.InternalWrappedEvent) {
+
+	var eventErr error
+	for event := range e.requests.ExecuteWithResults(inputItem, dynamicValues, nil) {
+		if event.Error != nil {
+			eventErr = event.Error
+			break
+		}
+		if event.Event == nil {
+			continue
+		}
 		for _, operator := range e.operators {
-			result, matched := operator.operator.Execute(event.InternalEvent, e.requests.Match, e.requests.Extract, e.options.Options.Debug || e.options.Options.DebugResponse)
+			result, matched := operator.operator.Execute(event.Event.InternalEvent, e.requests.Match, e.requests.Extract, e.options.Options.Debug || e.options.Options.DebugResponse)
 			if matched && result != nil {
-				event.OperatorsResult = result
-				event.InternalEvent["template-id"] = operator.templateID
-				event.InternalEvent["template-path"] = operator.templatePath
-				event.InternalEvent["template-info"] = operator.templateInfo
-				event.Results = e.requests.MakeResultEvent(event)
-				scanCtx.LogEvent(event)
+				event.Event.OperatorsResult = result
+				event.Event.InternalEvent["template-id"] = operator.templateID
+				event.Event.InternalEvent["template-path"] = operator.templatePath
+				event.Event.InternalEvent["template-info"] = operator.templateInfo
+				event.Event.Results = e.requests.MakeResultEvent(event.Event)
+				scanCtx.LogEvent(event.Event)
 			}
 		}
-	})
-	if err != nil {
-		ctx.LogError(err)
 	}
 
-	if err != nil && e.options.HostErrorsCache != nil {
-		e.options.HostErrorsCache.MarkFailed(ctx.Input.MetaInput.Input, err)
+	if eventErr != nil {
+		ctx.LogError(eventErr)
+		if e.options.HostErrorsCache != nil {
+			e.options.HostErrorsCache.MarkFailed(ctx.Input.MetaInput.Input, eventErr)
+		}
 	}
-	return scanCtx.GenerateResult(), err
+
+	return scanCtx.GenerateResult(), eventErr
 }

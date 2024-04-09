@@ -29,19 +29,22 @@ func (f *FlowExecutor) requestExecutor(runtime *goja.Runtime, reqMap mapsutil.Ma
 		// execution logic for http()/dns() etc
 		for index := range f.allProtocols[opts.protoName] {
 			req := f.allProtocols[opts.protoName][index]
-			err := req.ExecuteWithResults(f.ctx.Input, output.InternalEvent(f.options.GetTemplateCtx(f.ctx.Input.MetaInput).GetAll()), nil, f.protocolResultCallback(req, matcherStatus, opts))
-			if err != nil {
-				// save all errors in a map with id as key
-				// its less likely that there will be race condition but just in case
-				id := req.GetID()
-				if id == "" {
-					id, _ = reqMap.GetKeyWithValue(req)
+			protocolResultCallback := f.protocolResultCallback(req, matcherStatus)
+			for event := range req.ExecuteWithResults(f.ctx.Input, output.InternalEvent(f.options.GetTemplateCtx(f.ctx.Input.MetaInput).GetAll()), nil) {
+				if event.Error != nil {
+					// save all errors in a map with id as key
+					// its less likely that there will be race condition but just in case
+					id := req.GetID()
+					if id == "" {
+						id, _ = reqMap.GetKeyWithValue(req)
+					}
+					err := f.allErrs.Set(opts.protoName+":"+id, event.Error)
+					if err != nil {
+						f.ctx.LogError(fmt.Errorf("failed to store flow runtime errors got %v", err))
+					}
+					return matcherStatus.Load()
 				}
-				err = f.allErrs.Set(opts.protoName+":"+id, err)
-				if err != nil {
-					f.ctx.LogError(fmt.Errorf("failed to store flow runtime errors got %v", err))
-				}
-				return matcherStatus.Load()
+				protocolResultCallback(event.Event)
 			}
 		}
 		return matcherStatus.Load()
@@ -58,13 +61,17 @@ func (f *FlowExecutor) requestExecutor(runtime *goja.Runtime, reqMap mapsutil.Ma
 			}
 			return matcherStatus.Load()
 		}
-		err := req.ExecuteWithResults(f.ctx.Input, output.InternalEvent(f.options.GetTemplateCtx(f.ctx.Input.MetaInput).GetAll()), nil, f.protocolResultCallback(req, matcherStatus, opts))
-		if err != nil {
-			index := id
-			err = f.allErrs.Set(opts.protoName+":"+index, err)
-			if err != nil {
-				f.ctx.LogError(fmt.Errorf("failed to store flow runtime errors got %v", err))
+		protocolResultCallback := f.protocolResultCallback(req, matcherStatus)
+		for event := range req.ExecuteWithResults(f.ctx.Input, output.InternalEvent(f.options.GetTemplateCtx(f.ctx.Input.MetaInput).GetAll()), nil) {
+			if event.Error != nil {
+				index := id
+				err := f.allErrs.Set(opts.protoName+":"+index, event.Error)
+				if err != nil {
+					f.ctx.LogError(fmt.Errorf("failed to store flow runtime errors got %v", err))
+				}
+				break
 			}
+			protocolResultCallback(event.Event)
 		}
 	}
 	return matcherStatus.Load()
@@ -72,7 +79,7 @@ func (f *FlowExecutor) requestExecutor(runtime *goja.Runtime, reqMap mapsutil.Ma
 
 // protocolResultCallback returns a callback that is executed
 // after execution of each protocol request
-func (f *FlowExecutor) protocolResultCallback(req protocols.Request, matcherStatus *atomic.Bool, opts *ProtoOptions) func(result *output.InternalWrappedEvent) {
+func (f *FlowExecutor) protocolResultCallback(req protocols.Request, matcherStatus *atomic.Bool) func(result *output.InternalWrappedEvent) {
 	return func(result *output.InternalWrappedEvent) {
 		if result != nil {
 			// Note: flow specific implicit behaviours should be handled here

@@ -242,7 +242,7 @@ type Request interface {
 	// Extract performs extracting operation for an extractor on model and returns true or false.
 	Extract(data map[string]interface{}, matcher *extractors.Extractor) map[string]struct{}
 	// ExecuteWithResults executes the protocol requests and returns results instead of writing them.
-	ExecuteWithResults(input *contextargs.Context, dynamicValues, previous output.InternalEvent, callback OutputEventCallback) error
+	ExecuteWithResults(input *contextargs.Context, dynamicValues, previous output.InternalEvent) <-chan Result
 	// MakeResultEventItem creates a result event from internal wrapped event. Intended to be used by MakeResultEventItem internally
 	MakeResultEventItem(wrapped *output.InternalWrappedEvent) *output.ResultEvent
 	// MakeResultEvent creates a flat list of result events from an internal wrapped event, based on successful matchers and extracted data
@@ -251,6 +251,11 @@ type Request interface {
 	GetCompiledOperators() []*operators.Operators
 	// Type returns the type of the protocol request
 	Type() templateTypes.ProtocolType
+}
+
+type Result struct {
+	Event *output.InternalWrappedEvent
+	Error error
 }
 
 // OutputEventCallback is a callback event for any results found during scanning.

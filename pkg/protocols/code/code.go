@@ -12,6 +12,7 @@ import (
 	"github.com/ditashi/jsbeautifier-go/jsbeautifier"
 	"github.com/dop251/goja"
 	"github.com/pkg/errors"
+	"golang.org/x/sync/errgroup"
 
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/gozero"
@@ -144,163 +145,182 @@ func (request *Request) GetID() string {
 }
 
 // ExecuteWithResults executes the protocol requests and returns results instead of writing them.
-func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicValues, previous output.InternalEvent, onResult protocols.OutputEventCallback) (err error) {
-	metaSrc, err := gozero.NewSourceWithString(input.MetaInput.Input, "", request.options.TemporaryDirectory)
-	if err != nil {
-		return err
+func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicValues, previous output.InternalEvent) <-chan protocols.Result {
+	results := make(chan protocols.Result)
+	onResult := func(event *output.InternalWrappedEvent) {
+		results <- protocols.Result{Event: event}
 	}
-	defer func() {
-		if err := metaSrc.Cleanup(); err != nil {
-			gologger.Warning().Msgf("%s\n", err)
+
+	var errorGroup errgroup.Group
+
+	errorGroup.Go(func() error {
+		metaSrc, err := gozero.NewSourceWithString(input.MetaInput.Input, "", request.options.TemporaryDirectory)
+		if err != nil {
+			return err
+		}
+		defer func() {
+			if err := metaSrc.Cleanup(); err != nil {
+				gologger.Warning().Msgf("%s\n", err)
+			}
+		}()
+
+		var interactshURLs []string
+
+		// inject all template context values as gozero env allvars
+		allvars := protocolutils.GenerateVariables(input.MetaInput.Input, false, nil)
+		// add template context values if available
+		if request.options.HasTemplateCtx(input.MetaInput) {
+			allvars = generators.MergeMaps(allvars, request.options.GetTemplateCtx(input.MetaInput).GetAll())
+		}
+		// optionvars are vars passed from CLI or env variables
+		optionVars := generators.BuildPayloadFromOptions(request.options.Options)
+		variablesMap := request.options.Variables.Evaluate(allvars)
+		// since we evaluate variables using allvars, give precedence to variablesMap
+		allvars = generators.MergeMaps(allvars, variablesMap, optionVars, request.options.Constants)
+		for name, value := range allvars {
+			v := fmt.Sprint(value)
+			v, interactshURLs = request.options.Interactsh.Replace(v, interactshURLs)
+			// if value is updated by interactsh, update allvars to reflect the change downstream
+			allvars[name] = v
+			metaSrc.AddVariable(gozerotypes.Variable{Name: name, Value: v})
+		}
+
+		// set timeout using multiplier
+		timeout := TimeoutMultiplier * request.options.Options.Timeout
+
+		if request.PreCondition != "" {
+			if request.options.Options.Debug || request.options.Options.DebugRequests {
+				gologger.Debug().Msgf("[%s] Executing Precondition for Code request\n", request.TemplateID)
+				var highlightFormatter = "terminal256"
+				if request.options.Options.NoColor {
+					highlightFormatter = "text"
+				}
+				var buff bytes.Buffer
+				_ = quick.Highlight(&buff, beautifyJavascript(request.PreCondition), "javascript", highlightFormatter, "monokai")
+				prettyPrint(request.TemplateID, buff.String())
+			}
+
+			args := compiler.NewExecuteArgs()
+			args.TemplateCtx = allvars
+
+			result, err := request.options.JsCompiler.ExecuteWithOptions(request.preConditionCompiled, args,
+				&compiler.ExecuteOptions{
+					Timeout:  timeout,
+					Source:   &request.PreCondition,
+					Callback: registerPreConditionFunctions,
+					Cleanup:  cleanUpPreConditionFunctions,
+				})
+			if err != nil {
+				return errorutil.NewWithTag(request.TemplateID, "could not execute pre-condition: %s", err)
+			}
+			if !result.GetSuccess() || types.ToString(result["error"]) != "" {
+				gologger.Warning().Msgf("[%s] Precondition for request %s was not satisfied\n", request.TemplateID, request.PreCondition)
+				request.options.Progress.IncrementFailedRequestsBy(1)
+				return nil
+			}
+			if request.options.Options.Debug || request.options.Options.DebugRequests {
+				gologger.Debug().Msgf("[%s] Precondition for request was satisfied\n", request.TemplateID)
+			}
+		}
+
+		ctx, cancel := context.WithTimeout(context.Background(), time.Duration(timeout)*time.Second)
+		defer cancel()
+		// Note: we use contextutil despite the fact that gozero accepts context as argument
+		gOutput, err := contextutil.ExecFuncWithTwoReturns(ctx, func() (*gozerotypes.Result, error) {
+			return request.gozero.Eval(ctx, request.src, metaSrc)
+		})
+		if gOutput == nil {
+			// write error to stderr buff
+			var buff bytes.Buffer
+			if err != nil {
+				buff.WriteString(err.Error())
+			} else {
+				buff.WriteString("no output something went wrong")
+			}
+			gOutput = &gozerotypes.Result{
+				Stderr: buff,
+			}
+		}
+		gologger.Verbose().Msgf("[%s] Executed code on local machine %v", request.options.TemplateID, input.MetaInput.Input)
+
+		if vardump.EnableVarDump {
+			gologger.Debug().Msgf("Code Protocol request variables: \n%s\n", vardump.DumpVariables(allvars))
+		}
+
+		if request.options.Options.Debug || request.options.Options.DebugRequests {
+			gologger.Debug().Msgf("[%s] Dumped Executed Source Code for %v\n\n%v\n", request.options.TemplateID, input.MetaInput.Input, interpretEnvVars(request.Source, allvars))
+		}
+
+		dataOutputString := fmtStdout(gOutput.Stdout.String())
+
+		data := make(output.InternalEvent)
+		// also include all request variables in result event
+		for _, value := range metaSrc.Variables {
+			data[value.Name] = value.Value
+		}
+
+		data["type"] = request.Type().String()
+		data["response"] = dataOutputString // response contains filtered output (eg without trailing \n)
+		data["input"] = input.MetaInput.Input
+		data["template-path"] = request.options.TemplatePath
+		data["template-id"] = request.options.TemplateID
+		data["template-info"] = request.options.TemplateInfo
+		if gOutput.Stderr.Len() > 0 {
+			data["stderr"] = fmtStdout(gOutput.Stderr.String())
+		}
+
+		// expose response variables in proto_var format
+		// this is no-op if the template is not a multi protocol template
+		request.options.AddTemplateVars(input.MetaInput, request.Type(), request.ID, data)
+
+		// add variables from template context before matching/extraction
+		if request.options.HasTemplateCtx(input.MetaInput) {
+			data = generators.MergeMaps(data, request.options.GetTemplateCtx(input.MetaInput).GetAll())
+		}
+
+		if request.options.Interactsh != nil {
+			request.options.Interactsh.MakePlaceholders(interactshURLs, data)
+		}
+
+		// todo #1: interactsh async callback should be eliminated as it lead to ton of code duplication
+		// todo #2: various structs InternalWrappedEvent, InternalEvent should be unwrapped and merged into minimal callbacks and a unique struct (eg. event?)
+		event := eventcreator.CreateEvent(request, data, request.options.Options.Debug || request.options.Options.DebugResponse)
+		if request.options.Interactsh != nil {
+			event.UsesInteractsh = true
+			request.options.Interactsh.RequestEvent(interactshURLs, &interactsh.RequestData{
+				MakeResultFunc: request.MakeResultEvent,
+				Event:          event,
+				Operators:      request.CompiledOperators,
+				MatchFunc:      request.Match,
+				ExtractFunc:    request.Extract,
+			})
+		}
+
+		if request.options.Options.Debug || request.options.Options.DebugResponse || request.options.Options.StoreResponse {
+			msg := fmt.Sprintf("[%s] Dumped Code Execution for %s\n\n", request.options.TemplateID, input.MetaInput.Input)
+			if request.options.Options.Debug || request.options.Options.DebugResponse {
+				gologger.Debug().Msg(msg)
+				gologger.Print().Msgf("%s\n\n", responsehighlighter.Highlight(event.OperatorsResult, dataOutputString, request.options.Options.NoColor, false))
+			}
+			if request.options.Options.StoreResponse {
+				request.options.Output.WriteStoreDebugData(input.MetaInput.Input, request.options.TemplateID, request.Type().String(), fmt.Sprintf("%s\n%s", msg, dataOutputString))
+			}
+		}
+
+		onResult(event)
+
+		return nil
+	})
+
+	go func() {
+		defer close(results)
+
+		if err := errorGroup.Wait(); err != nil {
+			results <- protocols.Result{Error: err}
 		}
 	}()
 
-	var interactshURLs []string
-
-	// inject all template context values as gozero env allvars
-	allvars := protocolutils.GenerateVariables(input.MetaInput.Input, false, nil)
-	// add template context values if available
-	if request.options.HasTemplateCtx(input.MetaInput) {
-		allvars = generators.MergeMaps(allvars, request.options.GetTemplateCtx(input.MetaInput).GetAll())
-	}
-	// optionvars are vars passed from CLI or env variables
-	optionVars := generators.BuildPayloadFromOptions(request.options.Options)
-	variablesMap := request.options.Variables.Evaluate(allvars)
-	// since we evaluate variables using allvars, give precedence to variablesMap
-	allvars = generators.MergeMaps(allvars, variablesMap, optionVars, request.options.Constants)
-	for name, value := range allvars {
-		v := fmt.Sprint(value)
-		v, interactshURLs = request.options.Interactsh.Replace(v, interactshURLs)
-		// if value is updated by interactsh, update allvars to reflect the change downstream
-		allvars[name] = v
-		metaSrc.AddVariable(gozerotypes.Variable{Name: name, Value: v})
-	}
-
-	// set timeout using multiplier
-	timeout := TimeoutMultiplier * request.options.Options.Timeout
-
-	if request.PreCondition != "" {
-		if request.options.Options.Debug || request.options.Options.DebugRequests {
-			gologger.Debug().Msgf("[%s] Executing Precondition for Code request\n", request.TemplateID)
-			var highlightFormatter = "terminal256"
-			if request.options.Options.NoColor {
-				highlightFormatter = "text"
-			}
-			var buff bytes.Buffer
-			_ = quick.Highlight(&buff, beautifyJavascript(request.PreCondition), "javascript", highlightFormatter, "monokai")
-			prettyPrint(request.TemplateID, buff.String())
-		}
-
-		args := compiler.NewExecuteArgs()
-		args.TemplateCtx = allvars
-
-		result, err := request.options.JsCompiler.ExecuteWithOptions(request.preConditionCompiled, args,
-			&compiler.ExecuteOptions{
-				Timeout:  timeout,
-				Source:   &request.PreCondition,
-				Callback: registerPreConditionFunctions,
-				Cleanup:  cleanUpPreConditionFunctions,
-			})
-		if err != nil {
-			return errorutil.NewWithTag(request.TemplateID, "could not execute pre-condition: %s", err)
-		}
-		if !result.GetSuccess() || types.ToString(result["error"]) != "" {
-			gologger.Warning().Msgf("[%s] Precondition for request %s was not satisfied\n", request.TemplateID, request.PreCondition)
-			request.options.Progress.IncrementFailedRequestsBy(1)
-			return nil
-		}
-		if request.options.Options.Debug || request.options.Options.DebugRequests {
-			gologger.Debug().Msgf("[%s] Precondition for request was satisfied\n", request.TemplateID)
-		}
-	}
-
-	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(timeout)*time.Second)
-	defer cancel()
-	// Note: we use contextutil despite the fact that gozero accepts context as argument
-	gOutput, err := contextutil.ExecFuncWithTwoReturns(ctx, func() (*gozerotypes.Result, error) {
-		return request.gozero.Eval(ctx, request.src, metaSrc)
-	})
-	if gOutput == nil {
-		// write error to stderr buff
-		var buff bytes.Buffer
-		if err != nil {
-			buff.WriteString(err.Error())
-		} else {
-			buff.WriteString("no output something went wrong")
-		}
-		gOutput = &gozerotypes.Result{
-			Stderr: buff,
-		}
-	}
-	gologger.Verbose().Msgf("[%s] Executed code on local machine %v", request.options.TemplateID, input.MetaInput.Input)
-
-	if vardump.EnableVarDump {
-		gologger.Debug().Msgf("Code Protocol request variables: \n%s\n", vardump.DumpVariables(allvars))
-	}
-
-	if request.options.Options.Debug || request.options.Options.DebugRequests {
-		gologger.Debug().Msgf("[%s] Dumped Executed Source Code for %v\n\n%v\n", request.options.TemplateID, input.MetaInput.Input, interpretEnvVars(request.Source, allvars))
-	}
-
-	dataOutputString := fmtStdout(gOutput.Stdout.String())
-
-	data := make(output.InternalEvent)
-	// also include all request variables in result event
-	for _, value := range metaSrc.Variables {
-		data[value.Name] = value.Value
-	}
-
-	data["type"] = request.Type().String()
-	data["response"] = dataOutputString // response contains filtered output (eg without trailing \n)
-	data["input"] = input.MetaInput.Input
-	data["template-path"] = request.options.TemplatePath
-	data["template-id"] = request.options.TemplateID
-	data["template-info"] = request.options.TemplateInfo
-	if gOutput.Stderr.Len() > 0 {
-		data["stderr"] = fmtStdout(gOutput.Stderr.String())
-	}
-
-	// expose response variables in proto_var format
-	// this is no-op if the template is not a multi protocol template
-	request.options.AddTemplateVars(input.MetaInput, request.Type(), request.ID, data)
-
-	// add variables from template context before matching/extraction
-	if request.options.HasTemplateCtx(input.MetaInput) {
-		data = generators.MergeMaps(data, request.options.GetTemplateCtx(input.MetaInput).GetAll())
-	}
-
-	if request.options.Interactsh != nil {
-		request.options.Interactsh.MakePlaceholders(interactshURLs, data)
-	}
-
-	// todo #1: interactsh async callback should be eliminated as it lead to ton of code duplication
-	// todo #2: various structs InternalWrappedEvent, InternalEvent should be unwrapped and merged into minimal callbacks and a unique struct (eg. event?)
-	event := eventcreator.CreateEvent(request, data, request.options.Options.Debug || request.options.Options.DebugResponse)
-	if request.options.Interactsh != nil {
-		event.UsesInteractsh = true
-		request.options.Interactsh.RequestEvent(interactshURLs, &interactsh.RequestData{
-			MakeResultFunc: request.MakeResultEvent,
-			Event:          event,
-			Operators:      request.CompiledOperators,
-			MatchFunc:      request.Match,
-			ExtractFunc:    request.Extract,
-		})
-	}
-
-	if request.options.Options.Debug || request.options.Options.DebugResponse || request.options.Options.StoreResponse {
-		msg := fmt.Sprintf("[%s] Dumped Code Execution for %s\n\n", request.options.TemplateID, input.MetaInput.Input)
-		if request.options.Options.Debug || request.options.Options.DebugResponse {
-			gologger.Debug().Msg(msg)
-			gologger.Print().Msgf("%s\n\n", responsehighlighter.Highlight(event.OperatorsResult, dataOutputString, request.options.Options.NoColor, false))
-		}
-		if request.options.Options.StoreResponse {
-			request.options.Output.WriteStoreDebugData(input.MetaInput.Input, request.options.TemplateID, request.Type().String(), fmt.Sprintf("%s\n%s", msg, dataOutputString))
-		}
-	}
-
-	onResult(event)
-
-	return nil
+	return results
 }
 
 // RequestPartDefinitions contains a mapping of request part definitions and their

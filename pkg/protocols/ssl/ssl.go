@@ -8,6 +8,7 @@ import (
 	"github.com/fatih/structs"
 	jsoniter "github.com/json-iterator/go"
 	"github.com/pkg/errors"
+	"golang.org/x/sync/errgroup"
 
 	"github.com/projectdiscovery/fastdialer/fastdialer"
 	"github.com/projectdiscovery/gologger"
@@ -199,154 +200,175 @@ func (request *Request) GetID() string {
 }
 
 // ExecuteWithResults executes the protocol requests and returns results instead of writing them.
-func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicValues, previous output.InternalEvent, onResult protocols.OutputEventCallback) error {
-	hostPort, err := getAddress(input.MetaInput.Input)
-	if err != nil {
-		return err
-	}
-	hostname, port, _ := net.SplitHostPort(hostPort)
+func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicValues, previous output.InternalEvent) <-chan protocols.Result {
+	results := make(chan protocols.Result)
 
-	requestOptions := request.options
-	payloadValues := generators.BuildPayloadFromOptions(request.options.Options)
-	for k, v := range dynamicValues {
-		payloadValues[k] = v
-	}
-
-	payloadValues["Hostname"] = hostPort
-	payloadValues["Host"] = hostname
-	payloadValues["Port"] = port
-
-	hostnameVariables := protocolutils.GenerateDNSVariables(hostname)
-	// add template context variables to varMap
-	values := generators.MergeMaps(payloadValues, hostnameVariables)
-	if request.options.HasTemplateCtx(input.MetaInput) {
-		values = generators.MergeMaps(values, request.options.GetTemplateCtx(input.MetaInput).GetAll())
-	}
-
-	variablesMap := request.options.Variables.Evaluate(values)
-	payloadValues = generators.MergeMaps(variablesMap, payloadValues, request.options.Constants)
-
-	if vardump.EnableVarDump {
-		gologger.Debug().Msgf("SSL Protocol request variables: \n%s\n", vardump.DumpVariables(payloadValues))
-	}
-
-	finalAddress, dataErr := expressions.EvaluateByte([]byte(request.Address), payloadValues)
-	if dataErr != nil {
-		requestOptions.Output.Request(requestOptions.TemplateID, input.MetaInput.Input, request.Type().String(), dataErr)
-		requestOptions.Progress.IncrementFailedRequestsBy(1)
-		return errors.Wrap(dataErr, "could not evaluate template expressions")
-	}
-	addressToDial := string(finalAddress)
-	host, port, err := net.SplitHostPort(addressToDial)
-	if err != nil {
-		return errorutil.NewWithErr(err).Msgf("could not split input host port")
-	}
-
-	var hostIp string
-	if input.MetaInput.CustomIP != "" {
-		hostIp = input.MetaInput.CustomIP
-	} else {
-		hostIp = host
-	}
-
-	response, err := request.tlsx.Connect(host, hostIp, port)
-	if err != nil {
-		requestOptions.Output.Request(requestOptions.TemplateID, input.MetaInput.Input, request.Type().String(), err)
-		requestOptions.Progress.IncrementFailedRequestsBy(1)
-		return errorutil.NewWithTag(request.TemplateID, "could not connect to server").Wrap(err)
-	}
-
-	requestOptions.Output.Request(requestOptions.TemplateID, hostPort, request.Type().String(), err)
-	gologger.Verbose().Msgf("[%s] Sent SSL request to %s", request.options.TemplateID, hostPort)
-
-	if requestOptions.Options.Debug || requestOptions.Options.DebugRequests || requestOptions.Options.StoreResponse {
-		msg := fmt.Sprintf("[%s] Dumped SSL request for %s", requestOptions.TemplateID, input.MetaInput.Input)
-		if requestOptions.Options.Debug || requestOptions.Options.DebugRequests {
-			gologger.Debug().Str("address", input.MetaInput.Input).Msg(msg)
-		}
-		if requestOptions.Options.StoreResponse {
-			request.options.Output.WriteStoreDebugData(input.MetaInput.Input, request.options.TemplateID, request.Type().String(), msg)
+	onResult := func(events ...*output.InternalWrappedEvent) {
+		for _, event := range events {
+			results <- protocols.Result{Event: event}
 		}
 	}
 
-	jsonData, _ := jsoniter.Marshal(response)
-	jsonDataString := string(jsonData)
+	var errGroup errgroup.Group
 
-	data := make(map[string]interface{})
-	for k, v := range payloadValues {
-		data[k] = v
-	}
-	data["type"] = request.Type().String()
-	data["response"] = jsonDataString
-	data["host"] = input.MetaInput.Input
-	data["matched"] = addressToDial
-	if input.MetaInput.CustomIP != "" {
-		data["ip"] = hostIp
-	} else {
-		data["ip"] = request.dialer.GetDialedIP(hostname)
-	}
-	data["template-path"] = requestOptions.TemplatePath
-	data["template-id"] = requestOptions.TemplateID
-	data["template-info"] = requestOptions.TemplateInfo
-
-	// if response is not struct compatible, error out
-	if !structs.IsStruct(response) {
-		return errorutil.NewWithTag("ssl", "response cannot be parsed into a struct: %v", response)
-	}
-
-	// Convert response to key value pairs and first cert chain item as well
-	responseParsed := structs.New(response)
-	for _, f := range responseParsed.Fields() {
-		if !f.IsExported() {
-			// if field is not exported f.IsZero() , f.Value() will panic
-			continue
+	errGroup.Go(func() error {
+		hostPort, err := getAddress(input.MetaInput.Input)
+		if err != nil {
+			return err
 		}
-		tag := protocolutils.CleanStructFieldJSONTag(f.Tag("json"))
-		if tag == "" || f.IsZero() {
-			continue
-		}
-		request.options.AddTemplateVar(input.MetaInput, request.Type(), request.ID, tag, f.Value())
-		data[tag] = f.Value()
-	}
+		hostname, port, _ := net.SplitHostPort(hostPort)
 
-	// if certificate response is not struct compatible, error out
-	if !structs.IsStruct(response.CertificateResponse) {
-		return errorutil.NewWithTag("ssl", "certificate response cannot be parsed into a struct: %v", response.CertificateResponse)
-	}
+		requestOptions := request.options
+		payloadValues := generators.BuildPayloadFromOptions(request.options.Options)
+		for k, v := range dynamicValues {
+			payloadValues[k] = v
+		}
 
-	responseParsed = structs.New(response.CertificateResponse)
-	for _, f := range responseParsed.Fields() {
-		if !f.IsExported() {
-			// if field is not exported f.IsZero() , f.Value() will panic
-			continue
-		}
-		tag := protocolutils.CleanStructFieldJSONTag(f.Tag("json"))
-		if tag == "" || f.IsZero() {
-			continue
-		}
-		request.options.AddTemplateVar(input.MetaInput, request.Type(), request.ID, tag, f.Value())
-		data[tag] = f.Value()
-	}
+		payloadValues["Hostname"] = hostPort
+		payloadValues["Host"] = hostname
+		payloadValues["Port"] = port
 
-	// add response fields ^ to template context and merge templatectx variables to output event
-	if request.options.HasTemplateCtx(input.MetaInput) {
-		data = generators.MergeMaps(data, request.options.GetTemplateCtx(input.MetaInput).GetAll())
-	}
-	event := eventcreator.CreateEvent(request, data, requestOptions.Options.Debug || requestOptions.Options.DebugResponse)
-	if requestOptions.Options.Debug || requestOptions.Options.DebugResponse || requestOptions.Options.StoreResponse {
-		msg := fmt.Sprintf("[%s] Dumped SSL response for %s", requestOptions.TemplateID, input.MetaInput.Input)
-		if requestOptions.Options.Debug || requestOptions.Options.DebugResponse {
-			gologger.Debug().Msg(msg)
-			gologger.Print().Msgf("%s", responsehighlighter.Highlight(event.OperatorsResult, jsonDataString, requestOptions.Options.NoColor, false))
+		hostnameVariables := protocolutils.GenerateDNSVariables(hostname)
+		// add template context variables to varMap
+		values := generators.MergeMaps(payloadValues, hostnameVariables)
+		if request.options.HasTemplateCtx(input.MetaInput) {
+			values = generators.MergeMaps(values, request.options.GetTemplateCtx(input.MetaInput).GetAll())
 		}
-		if requestOptions.Options.StoreResponse {
-			request.options.Output.WriteStoreDebugData(input.MetaInput.Input, request.options.TemplateID, request.Type().String(), fmt.Sprintf("%s\n%s", msg, jsonDataString))
-		}
-	}
-	// send the result to the caller
-	onResult(event)
 
-	return nil
+		variablesMap := request.options.Variables.Evaluate(values)
+		payloadValues = generators.MergeMaps(variablesMap, payloadValues, request.options.Constants)
+
+		if vardump.EnableVarDump {
+			gologger.Debug().Msgf("SSL Protocol request variables: \n%s\n", vardump.DumpVariables(payloadValues))
+		}
+
+		finalAddress, dataErr := expressions.EvaluateByte([]byte(request.Address), payloadValues)
+		if dataErr != nil {
+			requestOptions.Output.Request(requestOptions.TemplateID, input.MetaInput.Input, request.Type().String(), dataErr)
+			requestOptions.Progress.IncrementFailedRequestsBy(1)
+			return errors.Wrap(dataErr, "could not evaluate template expressions")
+		}
+		addressToDial := string(finalAddress)
+		host, port, err := net.SplitHostPort(addressToDial)
+		if err != nil {
+			return errorutil.NewWithErr(err).Msgf("could not split input host port")
+		}
+
+		var hostIp string
+		if input.MetaInput.CustomIP != "" {
+			hostIp = input.MetaInput.CustomIP
+		} else {
+			hostIp = host
+		}
+
+		response, err := request.tlsx.Connect(host, hostIp, port)
+		if err != nil {
+			requestOptions.Output.Request(requestOptions.TemplateID, input.MetaInput.Input, request.Type().String(), err)
+			requestOptions.Progress.IncrementFailedRequestsBy(1)
+			return errorutil.NewWithTag(request.TemplateID, "could not connect to server").Wrap(err)
+		}
+
+		requestOptions.Output.Request(requestOptions.TemplateID, hostPort, request.Type().String(), err)
+		gologger.Verbose().Msgf("[%s] Sent SSL request to %s", request.options.TemplateID, hostPort)
+
+		if requestOptions.Options.Debug || requestOptions.Options.DebugRequests || requestOptions.Options.StoreResponse {
+			msg := fmt.Sprintf("[%s] Dumped SSL request for %s", requestOptions.TemplateID, input.MetaInput.Input)
+			if requestOptions.Options.Debug || requestOptions.Options.DebugRequests {
+				gologger.Debug().Str("address", input.MetaInput.Input).Msg(msg)
+			}
+			if requestOptions.Options.StoreResponse {
+				request.options.Output.WriteStoreDebugData(input.MetaInput.Input, request.options.TemplateID, request.Type().String(), msg)
+			}
+		}
+
+		jsonData, _ := jsoniter.Marshal(response)
+		jsonDataString := string(jsonData)
+
+		data := make(map[string]interface{})
+		for k, v := range payloadValues {
+			data[k] = v
+		}
+		data["type"] = request.Type().String()
+		data["response"] = jsonDataString
+		data["host"] = input.MetaInput.Input
+		data["matched"] = addressToDial
+		if input.MetaInput.CustomIP != "" {
+			data["ip"] = hostIp
+		} else {
+			data["ip"] = request.dialer.GetDialedIP(hostname)
+		}
+		data["template-path"] = requestOptions.TemplatePath
+		data["template-id"] = requestOptions.TemplateID
+		data["template-info"] = requestOptions.TemplateInfo
+
+		// if response is not struct compatible, error out
+		if !structs.IsStruct(response) {
+			return errorutil.NewWithTag("ssl", "response cannot be parsed into a struct: %v", response)
+		}
+
+		// Convert response to key value pairs and first cert chain item as well
+		responseParsed := structs.New(response)
+		for _, f := range responseParsed.Fields() {
+			if !f.IsExported() {
+				// if field is not exported f.IsZero() , f.Value() will panic
+				continue
+			}
+			tag := protocolutils.CleanStructFieldJSONTag(f.Tag("json"))
+			if tag == "" || f.IsZero() {
+				continue
+			}
+			request.options.AddTemplateVar(input.MetaInput, request.Type(), request.ID, tag, f.Value())
+			data[tag] = f.Value()
+		}
+
+		// if certificate response is not struct compatible, error out
+		if !structs.IsStruct(response.CertificateResponse) {
+			return errorutil.NewWithTag("ssl", "certificate response cannot be parsed into a struct: %v", response.CertificateResponse)
+		}
+
+		responseParsed = structs.New(response.CertificateResponse)
+		for _, f := range responseParsed.Fields() {
+			if !f.IsExported() {
+				// if field is not exported f.IsZero() , f.Value() will panic
+				continue
+			}
+			tag := protocolutils.CleanStructFieldJSONTag(f.Tag("json"))
+			if tag == "" || f.IsZero() {
+				continue
+			}
+			request.options.AddTemplateVar(input.MetaInput, request.Type(), request.ID, tag, f.Value())
+			data[tag] = f.Value()
+		}
+
+		// add response fields ^ to template context and merge templatectx variables to output event
+		if request.options.HasTemplateCtx(input.MetaInput) {
+			data = generators.MergeMaps(data, request.options.GetTemplateCtx(input.MetaInput).GetAll())
+		}
+		event := eventcreator.CreateEvent(request, data, requestOptions.Options.Debug || requestOptions.Options.DebugResponse)
+		if requestOptions.Options.Debug || requestOptions.Options.DebugResponse || requestOptions.Options.StoreResponse {
+			msg := fmt.Sprintf("[%s] Dumped SSL response for %s", requestOptions.TemplateID, input.MetaInput.Input)
+			if requestOptions.Options.Debug || requestOptions.Options.DebugResponse {
+				gologger.Debug().Msg(msg)
+				gologger.Print().Msgf("%s", responsehighlighter.Highlight(event.OperatorsResult, jsonDataString, requestOptions.Options.NoColor, false))
+			}
+			if requestOptions.Options.StoreResponse {
+				request.options.Output.WriteStoreDebugData(input.MetaInput.Input, request.options.TemplateID, request.Type().String(), fmt.Sprintf("%s\n%s", msg, jsonDataString))
+			}
+		}
+		// send the result to the caller
+		onResult(event)
+
+		return nil
+	})
+
+	go func() {
+		defer close(results)
+		if err := errGroup.Wait(); err != nil {
+			results <- protocols.Result{Error: err}
+		}
+	}()
+
+	return results
 }
 
 // RequestPartDefinitions contains a mapping of request part definitions and their

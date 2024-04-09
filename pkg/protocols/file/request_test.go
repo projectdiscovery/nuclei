@@ -68,10 +68,10 @@ func TestFileExecuteWithResults(t *testing.T) {
 		metadata := make(output.InternalEvent)
 		previous := make(output.InternalEvent)
 		ctxArgs := contextargs.NewWithInput(tempDir)
-		err := request.ExecuteWithResults(ctxArgs, metadata, previous, func(event *output.InternalWrappedEvent) {
-			finalEvent = event
-		})
-		require.Nil(t, err, "could not execute file request")
+		for event := range request.ExecuteWithResults(ctxArgs, metadata, previous) {
+			finalEvent = event.Event
+			require.Nil(t, event.Error, "could not execute file request")
+		}
 	})
 	require.NotNil(t, finalEvent, "could not get event output from request")
 	require.Equal(t, 1, len(finalEvent.Results), "could not get correct number of results")
