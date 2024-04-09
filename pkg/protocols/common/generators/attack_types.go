@@ -61,7 +61,7 @@ type AttackTypeHolder struct {
 	Value AttackType `mapping:"true"`
 }
 
-func (holder AttackTypeHolder) JSONSchemaType() *jsonschema.Schema {
+func (holder AttackTypeHolder) JSONSchema() *jsonschema.Schema {
 	gotType := &jsonschema.Schema{
 		Type:        "string",
 		Title:       "type of the attack",
