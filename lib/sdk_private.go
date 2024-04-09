@@ -192,11 +192,16 @@ func (e *NucleiEngine) init() error {
 
 	if e.executerOpts.RateLimiter == nil {
 		if e.opts.RateLimitMinute > 0 {
-			e.executerOpts.RateLimiter = ratelimit.New(context.Background(), uint(e.opts.RateLimitMinute), time.Minute)
-		} else if e.opts.RateLimit > 0 {
-			e.executerOpts.RateLimiter = ratelimit.New(context.Background(), uint(e.opts.RateLimit), time.Second)
-		} else {
+			e.opts.RateLimit = e.opts.RateLimitMinute
+			e.opts.RateLimitDuration = time.Minute
+		}
+		if e.opts.RateLimit > 0 && e.opts.RateLimitDuration == 0 {
+			e.opts.RateLimitDuration = time.Second
+		}
+		if e.opts.RateLimit == 0 && e.opts.RateLimitDuration == 0 {
 			e.executerOpts.RateLimiter = ratelimit.NewUnlimited(context.Background())
+		} else {
+			e.executerOpts.RateLimiter = ratelimit.New(context.Background(), uint(e.opts.RateLimit), e.opts.RateLimitDuration)
 		}
 	}
 

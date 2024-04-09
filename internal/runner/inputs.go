@@ -12,15 +12,14 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
 	"github.com/projectdiscovery/nuclei/v3/pkg/utils"
 	stringsutil "github.com/projectdiscovery/utils/strings"
-	"github.com/remeh/sizedwaitgroup"
+	syncutil "github.com/projectdiscovery/utils/sync"
 )
 
-const probeBulkSize = 50
+var GlobalProbeBulkSize = 50
 
 // initializeTemplatesHTTPInput initializes the http form of input
 // for any loaded http templates if input is in non-standard format.
 func (r *Runner) initializeTemplatesHTTPInput() (*hybrid.HybridMap, error) {
-
 	hm, err := hybrid.New(hybrid.DefaultDiskOptions)
 	if err != nil {
 		return nil, errors.Wrap(err, "could not create temporary input file")
@@ -31,8 +30,8 @@ func (r *Runner) initializeTemplatesHTTPInput() (*hybrid.HybridMap, error) {
 	}
 	gologger.Info().Msgf("Running httpx on input host")
 
-	var bulkSize = probeBulkSize
-	if r.options.BulkSize > probeBulkSize {
+	var bulkSize = GlobalProbeBulkSize
+	if r.options.BulkSize > GlobalProbeBulkSize {
 		bulkSize = r.options.BulkSize
 	}
 
@@ -44,12 +43,21 @@ func (r *Runner) initializeTemplatesHTTPInput() (*hybrid.HybridMap, error) {
 		return nil, errors.Wrap(err, "could not create httpx client")
 	}
 
+	shouldFollowGlobalProbeBulkSize := bulkSize == GlobalProbeBulkSize
+
 	// Probe the non-standard URLs and store them in cache
-	swg := sizedwaitgroup.New(bulkSize)
-	count := int32(0)
+	swg, err := syncutil.New(syncutil.WithSize(bulkSize))
+	if err != nil {
+		return nil, errors.Wrap(err, "could not create adaptive group")
+	}
+	var count atomic.Int32
 	r.inputProvider.Iterate(func(value *contextargs.MetaInput) bool {
 		if stringsutil.HasPrefixAny(value.Input, "http://", "https://") {
 			return true
+		}
+
+		if shouldFollowGlobalProbeBulkSize && swg.Size != GlobalProbeBulkSize {
+			swg.Resize(GlobalProbeBulkSize)
 		}
 
 		swg.Add()
@@ -57,7 +65,7 @@ func (r *Runner) initializeTemplatesHTTPInput() (*hybrid.HybridMap, error) {
 			defer swg.Done()
 
 			if result := utils.ProbeURL(input.Input, httpxClient); result != "" {
-				atomic.AddInt32(&count, 1)
+				count.Add(1)
 				_ = hm.Set(input.Input, []byte(result))
 			}
 		}(value)
@@ -65,6 +73,6 @@ func (r *Runner) initializeTemplatesHTTPInput() (*hybrid.HybridMap, error) {
 	})
 	swg.Wait()
 
-	gologger.Info().Msgf("Found %d URL from httpx", atomic.LoadInt32(&count))
+	gologger.Info().Msgf("Found %d URL from httpx", count.Load())
 	return hm, nil
 }
