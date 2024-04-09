@@ -30,14 +30,19 @@ func New(options *types.Options) *Engine {
 	return engine
 }
 
-// GetWorkPool returns a workpool from options
-func (e *Engine) GetWorkPool() *WorkPool {
-	return NewWorkPool(WorkPoolConfig{
+func (e *Engine) GetWorkPoolConfig() WorkPoolConfig {
+	config := WorkPoolConfig{
 		InputConcurrency:         e.options.BulkSize,
 		TypeConcurrency:          e.options.TemplateThreads,
 		HeadlessInputConcurrency: e.options.HeadlessBulkSize,
 		HeadlessTypeConcurrency:  e.options.HeadlessTemplateThreads,
-	})
+	}
+	return config
+}
+
+// GetWorkPool returns a workpool from options
+func (e *Engine) GetWorkPool() *WorkPool {
+	return NewWorkPool(e.GetWorkPoolConfig())
 }
 
 // SetExecuterOptions sets the executer options for the engine. This is required
@@ -53,5 +58,7 @@ func (e *Engine) ExecuterOptions() protocols.ExecutorOptions {
 
 // WorkPool returns the worker pool for the engine
 func (e *Engine) WorkPool() *WorkPool {
+	// resize check point - nop if there are no changes
+	e.workPool.RefreshWithConfig(e.GetWorkPoolConfig())
 	return e.workPool
 }
