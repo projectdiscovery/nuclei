@@ -45,6 +45,7 @@ func initializeNucleiEngine() (*nuclei.NucleiEngine, error) {
 			HeadlessTemplateConcurrency:   1,
 			JavascriptTemplateConcurrency: 1,
 			TemplatePayloadConcurrency:    1,
+			ProbeConcurrency:              1,
 		}),
 	)
 }
