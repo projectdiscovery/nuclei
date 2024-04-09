@@ -145,7 +145,7 @@ func (request *Request) executeGeneratedFuzzingRequest(gr fuzz.GeneratedRequest,
 	if request.options.HostErrorsCache != nil && request.options.HostErrorsCache.Check(input.MetaInput.Input) {
 		return false
 	}
-	request.options.RateLimiter.Take()
+	request.options.RateLimitTake()
 	req := &generatedRequest{
 		request:        gr.Request,
 		dynamicValues:  gr.DynamicValues,

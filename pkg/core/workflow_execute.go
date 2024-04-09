@@ -5,13 +5,12 @@ import (
 	"net/http/cookiejar"
 	"sync/atomic"
 
-	"github.com/remeh/sizedwaitgroup"
-
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
 	"github.com/projectdiscovery/nuclei/v3/pkg/scan"
 	"github.com/projectdiscovery/nuclei/v3/pkg/workflows"
+	syncutil "github.com/projectdiscovery/utils/sync"
 )
 
 const workflowStepExecutionError = "[%s] Could not execute workflow step: %s\n"
@@ -32,7 +31,7 @@ func (e *Engine) executeWorkflow(ctx *scan.ScanContext, w *workflows.Workflow) b
 	if templateThreads == 1 {
 		templateThreads++
 	}
-	swg := sizedwaitgroup.New(templateThreads)
+	swg, _ := syncutil.New(syncutil.WithSize(templateThreads))
 
 	for _, template := range w.Workflows {
 		swg.Add()
@@ -40,7 +39,7 @@ func (e *Engine) executeWorkflow(ctx *scan.ScanContext, w *workflows.Workflow) b
 		func(template *workflows.WorkflowTemplate) {
 			defer swg.Done()
 
-			if err := e.runWorkflowStep(template, ctx, results, &swg, w); err != nil {
+			if err := e.runWorkflowStep(template, ctx, results, swg, w); err != nil {
 				gologger.Warning().Msgf(workflowStepExecutionError, template.Template, err)
 			}
 		}(template)
@@ -51,7 +50,7 @@ func (e *Engine) executeWorkflow(ctx *scan.ScanContext, w *workflows.Workflow) b
 
 // runWorkflowStep runs a workflow step for the workflow. It executes the workflow
 // in a recursive manner running all subtemplates and matchers.
-func (e *Engine) runWorkflowStep(template *workflows.WorkflowTemplate, ctx *scan.ScanContext, results *atomic.Bool, swg *sizedwaitgroup.SizedWaitGroup, w *workflows.Workflow) error {
+func (e *Engine) runWorkflowStep(template *workflows.WorkflowTemplate, ctx *scan.ScanContext, results *atomic.Bool, swg *syncutil.AdaptiveWaitGroup, w *workflows.Workflow) error {
 	var firstMatched bool
 	var err error
 	var mainErr error
