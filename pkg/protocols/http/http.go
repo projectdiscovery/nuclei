@@ -5,9 +5,11 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/invopop/jsonschema"
 	json "github.com/json-iterator/go"
 	"github.com/pkg/errors"
 
+	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/fuzz"
 	"github.com/projectdiscovery/nuclei/v3/pkg/operators"
 	"github.com/projectdiscovery/nuclei/v3/pkg/operators/matchers"
@@ -219,6 +221,29 @@ type Request struct {
 	fuzzPreConditionOperator matchers.ConditionType `yaml:"-" json:"-"`
 }
 
+func (e Request) JSONSchemaExtend(schema *jsonschema.Schema) {
+	headersSchema, ok := schema.Properties.Get("headers")
+	if !ok {
+		return
+	}
+	headersSchema.PatternProperties = map[string]*jsonschema.Schema{
+		".*": {
+			OneOf: []*jsonschema.Schema{
+				{
+					Type: "string",
+				},
+				{
+					Type: "integer",
+				},
+				{
+					Type: "boolean",
+				},
+			},
+		},
+	}
+	headersSchema.Ref = ""
+}
+
 // Options returns executer options for http request
 func (r *Request) Options() *protocols.ExecutorOptions {
 	return r.options
@@ -411,12 +436,34 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 		}
 	}
 	if len(request.Payloads) > 0 {
-		// specifically for http requests high concurrency and and threads will lead to memory exausthion, hence reduce the maximum parallelism
-		if protocolstate.IsLowOnMemory() {
-			request.Threads = protocolstate.GuardThreadsOrDefault(request.Threads)
+		// Due to a known issue (https://github.com/projectdiscovery/nuclei/issues/5015),
+		// dynamic extractors cannot be used with payloads. To address this,
+		// execution is handled by the standard engine without concurrency,
+		// achieved by setting the thread count to 0.
+
+		// this limitation will be removed once we have a better way to handle dynamic extractors with payloads
+		hasMultipleRequests := false
+		if len(request.Raw)+len(request.Path) > 1 {
+			hasMultipleRequests = true
 		}
-		// if we have payloads, adjust threads if none specified
-		request.Threads = options.GetThreadsForNPayloadRequests(request.Requests(), request.Threads)
+		// look for dynamic extractor ( internal: true with named extractor)
+		hasNamedInternalExtractor := false
+		for _, extractor := range request.Extractors {
+			if extractor.Internal && extractor.Name != "" {
+				hasNamedInternalExtractor = true
+				break
+			}
+		}
+		if hasNamedInternalExtractor && hasMultipleRequests {
+			gologger.Warning().Label(options.TemplateID).Msgf("Setting thread count to 0 because dynamic extractors are not supported with payloads yet")
+			request.Threads = 0
+		} else {
+			// specifically for http requests high concurrency and and threads will lead to memory exausthion, hence reduce the maximum parallelism
+			if protocolstate.IsLowOnMemory() {
+				request.Threads = protocolstate.GuardThreadsOrDefault(request.Threads)
+			}
+			request.Threads = options.GetThreadsForNPayloadRequests(request.Requests(), request.Threads)
+		}
 	}
 
 	return nil

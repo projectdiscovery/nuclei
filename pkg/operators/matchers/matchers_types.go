@@ -82,7 +82,7 @@ func (t MatcherTypeHolder) String() string {
 	return t.MatcherType.String()
 }
 
-func (holder MatcherTypeHolder) JSONSchemaType() *jsonschema.Schema {
+func (holder MatcherTypeHolder) JSONSchema() *jsonschema.Schema {
 	gotType := &jsonschema.Schema{
 		Type:        "string",
 		Title:       "type of the matcher",
