@@ -3,9 +3,6 @@ package interactsh
 import (
 	"bytes"
 	"fmt"
-	"io"
-	"log"
-	"net/http"
 	"os"
 	"regexp"
 	"strings"
@@ -316,16 +313,16 @@ func (c *Client) NewURLWithData(data string) (string, error) {
 	_ = c.interactshURLs.SetWithExpire(url, data, defaultInteractionDuration)
 
 	// simulate a request to trigger deferred events
-	go func() {
-		for {
-			r, err := http.Get("http://" + url)
-			if err != nil {
-				log.Fatal(err)
-			}
-			io.Copy(io.Discard, r.Body)
-			r.Body.Close()
-		}
-	}()
+	// go func() {
+	// 	for {
+	// 		r, err := http.Get("http://" + url)
+	// 		if err != nil {
+	// 			log.Fatal(err)
+	// 		}
+	// 		io.Copy(io.Discard, r.Body)
+	// 		r.Body.Close()
+	// 	}
+	// }()
 
 	return url, nil
 }
