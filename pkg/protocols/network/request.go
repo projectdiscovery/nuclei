@@ -12,7 +12,6 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
-	"github.com/remeh/sizedwaitgroup"
 	"go.uber.org/multierr"
 	"golang.org/x/exp/maps"
 	"golang.org/x/sync/errgroup"
@@ -35,6 +34,7 @@ import (
 	errorutil "github.com/projectdiscovery/utils/errors"
 	mapsutil "github.com/projectdiscovery/utils/maps"
 	"github.com/projectdiscovery/utils/reader"
+	syncutil "github.com/projectdiscovery/utils/sync"
 )
 
 var (
@@ -203,6 +203,9 @@ func (request *Request) executeAddress(variables map[string]interface{}, actualA
 		return nil, err
 	}
 
+	// if request threads matches global payload concurrency we follow it
+	shouldFollowGlobal := request.Threads == request.options.Options.PayloadConcurrency
+
 	if request.generator != nil {
 		iterator := request.generator.NewIterator()
 		var (
@@ -210,13 +213,22 @@ func (request *Request) executeAddress(variables map[string]interface{}, actualA
 			events   []*output.InternalWrappedEvent
 		)
 		m := &sync.Mutex{}
-		swg := sizedwaitgroup.New(request.Threads)
+		swg, err := syncutil.New(syncutil.WithSize(request.Threads))
+		if err != nil {
+			return err
+		}
 
 		for {
 			value, ok := iterator.Value()
 			if !ok {
 				break
 			}
+
+			// resize check point - nop if there are no changes
+			if shouldFollowGlobal && swg.Size != request.options.Options.PayloadConcurrency {
+				swg.Resize(request.options.Options.PayloadConcurrency)
+			}
+
 			value = generators.MergeMaps(value, payloads)
 			swg.Add()
 			go func(vars map[string]interface{}) {
