@@ -11,7 +11,6 @@ import (
 	"github.com/docker/go-units"
 	"github.com/mholt/archiver"
 	"github.com/pkg/errors"
-	"github.com/remeh/sizedwaitgroup"
 	"golang.org/x/sync/errgroup"
 
 	"github.com/projectdiscovery/gologger"
@@ -25,6 +24,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/helpers/responsehighlighter"
 	templateTypes "github.com/projectdiscovery/nuclei/v3/pkg/templates/types"
 	sliceutil "github.com/projectdiscovery/utils/slice"
+	syncutil "github.com/projectdiscovery/utils/sync"
 )
 
 var _ protocols.Request = &Request{}
@@ -56,8 +56,11 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, metadata,
 	var errGroup errgroup.Group
 
 	errGroup.Go(func() error {
-		wg := sizedwaitgroup.New(request.options.Options.BulkSize)
-		err := request.getInputPaths(input.MetaInput.Input, func(filePath string) {
+		wg, err := syncutil.New(syncutil.WithSize(request.options.Options.BulkSize))
+		if err != nil {
+			return err
+		}
+		err = request.getInputPaths(input.MetaInput.Input, func(filePath string) {
 			wg.Add()
 			func(filePath string) {
 				defer wg.Done()

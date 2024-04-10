@@ -6,7 +6,6 @@ import (
 	"os"
 
 	"github.com/pkg/errors"
-	"github.com/remeh/sizedwaitgroup"
 	"golang.org/x/sync/errgroup"
 
 	"github.com/projectdiscovery/gologger"
@@ -18,6 +17,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/utils"
 	templateTypes "github.com/projectdiscovery/nuclei/v3/pkg/templates/types"
 	"github.com/projectdiscovery/utils/conversion"
+	syncutil "github.com/projectdiscovery/utils/sync"
 )
 
 // ensure that Request implements protocols.Request interface
@@ -42,9 +42,12 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, metadata,
 	var errGroup errgroup.Group
 
 	errGroup.Go(func() error {
-		wg := sizedwaitgroup.New(request.options.Options.BulkSize)
+		wg, err := syncutil.New(syncutil.WithSize(request.options.Options.BulkSize))
+		if err != nil {
+			return err
+		}
 
-		err := request.getInputPaths(input.MetaInput.Input, func(data string) {
+		err = request.getInputPaths(input.MetaInput.Input, func(data string) {
 			wg.Add()
 
 			go func(data string) {
