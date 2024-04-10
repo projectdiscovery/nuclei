@@ -215,7 +215,7 @@ func (request *Request) executeAddress(variables map[string]interface{}, actualA
 		m := &sync.Mutex{}
 		swg, err := syncutil.New(syncutil.WithSize(request.Threads))
 		if err != nil {
-			return err
+			return nil, err
 		}
 
 		for {
