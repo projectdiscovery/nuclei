@@ -91,8 +91,20 @@ type InternalWrappedEvent struct {
 	// Only applicable if interactsh is used
 	// This is used to avoid duplicate successful interactsh events
 	InteractshMatched atomic.Bool
+
+	// DeferredEvents are events that are deferred until the first eviction from cache
+	DeferredEvents []func()
 }
 
+// AddDeferEvent adds a deferred event to execute after the cache eviction
+func (iwe *InternalWrappedEvent) AddDeferEvent(f func()) {
+	iwe.Lock()
+	defer iwe.Unlock()
+
+	iwe.DeferredEvents = append(iwe.DeferredEvents, f)
+}
+
+// HasOperatorResult checks if the wrapped event has an operator result
 func (iwe *InternalWrappedEvent) HasOperatorResult() bool {
 	iwe.RLock()
 	defer iwe.RUnlock()
@@ -100,6 +112,7 @@ func (iwe *InternalWrappedEvent) HasOperatorResult() bool {
 	return iwe.OperatorsResult != nil
 }
 
+// HasResults checks if the wrapped event has results
 func (iwe *InternalWrappedEvent) HasResults() bool {
 	iwe.RLock()
 	defer iwe.RUnlock()
@@ -107,6 +120,7 @@ func (iwe *InternalWrappedEvent) HasResults() bool {
 	return len(iwe.Results) > 0
 }
 
+// SetOperatorResult sets the operator result for the wrapped event
 func (iwe *InternalWrappedEvent) SetOperatorResult(operatorResult *operators.Result) {
 	iwe.Lock()
 	defer iwe.Unlock()

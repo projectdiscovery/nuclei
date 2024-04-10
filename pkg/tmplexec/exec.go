@@ -105,11 +105,18 @@ func (e *TemplateExecuter) Execute(ctx *scan.ScanContext) (bool, error) {
 
 	var lastMatcherEvent *output.InternalWrappedEvent
 	writeFailureCallback := func(event *output.InternalWrappedEvent, matcherStatus bool) {
-		if !matched.Load() && matcherStatus {
+		// in case of interactsh matcher we have no other option than deferring the failure write
+		// to the very end of the event life (interactsh eviction) assuming that if there is a match
+		// it will happen between now and interactsh eviction time
+		f := func() {
 			if err := e.options.Output.WriteFailure(event); err != nil {
 				gologger.Warning().Msgf("Could not write failure event to output: %s\n", err)
 			}
-			executed.CompareAndSwap(false, true)
+		}
+		if event.UsesInteractsh {
+			event.AddDeferEvent(f)
+		} else {
+			f()
 		}
 	}
 
