@@ -408,6 +408,7 @@ func (request *Request) executeRequestWithPayloads(variables map[string]interfac
 		return event, nil
 	case request.options.Interactsh != nil:
 		event = &output.InternalWrappedEvent{InternalEvent: outputEvent}
+		event.UsesInteractsh = len(interactshURLs) > 0
 		request.options.Interactsh.RequestEvent(interactshURLs, &interactsh.RequestData{
 			MakeResultFunc: request.MakeResultEvent,
 			Event:          event,
@@ -415,7 +416,6 @@ func (request *Request) executeRequestWithPayloads(variables map[string]interfac
 			MatchFunc:      request.Match,
 			ExtractFunc:    request.Extract,
 		})
-		event.UsesInteractsh = len(interactshURLs) > 0
 		dumpResponse(event, request, response, actualAddress, address)
 		return nil, nil
 	default:

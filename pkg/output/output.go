@@ -91,6 +91,15 @@ type InternalWrappedEvent struct {
 	// Only applicable if interactsh is used
 	// This is used to avoid duplicate successful interactsh events
 	InteractshMatched atomic.Bool
+
+	DeferredEvents []func()
+}
+
+func (iwe *InternalWrappedEvent) DeferEvent(f func()) {
+	iwe.Lock()
+	defer iwe.Unlock()
+
+	iwe.DeferredEvents = append(iwe.DeferredEvents, f)
 }
 
 func (iwe *InternalWrappedEvent) HasOperatorResult() bool {

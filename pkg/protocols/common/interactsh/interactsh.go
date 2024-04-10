@@ -3,6 +3,9 @@ package interactsh
 import (
 	"bytes"
 	"fmt"
+	"io"
+	"log"
+	"net/http"
 	"os"
 	"regexp"
 	"strings"
@@ -56,7 +59,12 @@ type Client struct {
 
 // New returns a new interactsh server client
 func New(options *Options) (*Client, error) {
-	requestsCache := gcache.New[string, *RequestData](options.CacheSize).LRU().Build()
+	requestsCache := gcache.New[string, *RequestData](options.CacheSize).LRU().EvictedFunc(func(k string, v *RequestData) {
+		for _, f := range v.Event.DeferredEvents {
+			f()
+		}
+		v.Event.DeferredEvents = nil
+	}).Build()
 	interactionsCache := gcache.New[string, []*server.Interaction](defaultMaxInteractionsCount).LRU().Build()
 	matchedTemplateCache := gcache.New[string, bool](defaultMaxInteractionsCount).LRU().Build()
 	interactshURLCache := gcache.New[string, string](defaultMaxInteractionsCount).LRU().Build()
@@ -184,7 +192,11 @@ func (c *Client) processInteractionForRequest(interaction *server.Interaction, d
 	if !matched || result == nil {
 		return false
 	}
-	c.requests.Remove(interaction.UniqueID)
+
+	defer func() {
+		data.Event.DeferredEvents = nil
+		c.requests.Remove(interaction.UniqueID)
+	}()
 
 	if data.Event.OperatorsResult != nil {
 		data.Event.OperatorsResult.Merge(result)
@@ -251,7 +263,21 @@ func (c *Client) Close() bool {
 		c.interactsh.Close()
 	}
 
+	// manually remove to trigger deferred events
+	events := make(map[*RequestData]struct{})
+	for _, key := range c.requests.Keys(false) {
+		event, err := c.requests.Get(key)
+		if err != nil {
+			continue
+		}
+		if _, ok := events[event]; ok {
+			continue
+		}
+		events[event] = struct{}{}
+		c.requests.Remove(key)
+	}
 	c.requests.Purge()
+
 	c.interactions.Purge()
 	c.matchedTemplates.Purge()
 	c.interactshURLs.Purge()
@@ -288,6 +314,19 @@ func (c *Client) NewURLWithData(data string) (string, error) {
 		return "", errors.New("empty interactsh url")
 	}
 	_ = c.interactshURLs.SetWithExpire(url, data, defaultInteractionDuration)
+
+	// simulate a request to trigger deferred events
+	go func() {
+		for {
+			r, err := http.Get("http://" + url)
+			if err != nil {
+				log.Fatal(err)
+			}
+			io.Copy(io.Discard, r.Body)
+			r.Body.Close()
+		}
+	}()
+
 	return url, nil
 }
 

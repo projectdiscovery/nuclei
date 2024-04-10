@@ -106,9 +106,18 @@ func (e *TemplateExecuter) Execute(ctx *scan.ScanContext) (bool, error) {
 	var lastMatcherEvent *output.InternalWrappedEvent
 	writeFailureCallback := func(event *output.InternalWrappedEvent, matcherStatus bool) {
 		if !matched.Load() && matcherStatus {
-			if err := e.options.Output.WriteFailure(event); err != nil {
-				gologger.Warning().Msgf("Could not write failure event to output: %s\n", err)
+			// in case of interactsh we cannot do anything else than deferring the failure write
+			f := func() {
+				if err := e.options.Output.WriteFailure(event); err != nil {
+					gologger.Warning().Msgf("Could not write failure event to output: %s\n", err)
+				}
 			}
+			if event.UsesInteractsh {
+				event.DeferEvent(f)
+			} else {
+				f()
+			}
+
 			executed.CompareAndSwap(false, true)
 		}
 	}

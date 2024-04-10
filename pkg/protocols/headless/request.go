@@ -228,6 +228,7 @@ func (request *Request) executeRequestWithPayloads(input *contextargs.Context, p
 		return event, nil
 	case request.options.Interactsh != nil:
 		event := &output.InternalWrappedEvent{InternalEvent: outputEvent}
+		event.UsesInteractsh = len(page.InteractshURLs) > 0
 		request.options.Interactsh.RequestEvent(page.InteractshURLs, &interactsh.RequestData{
 			MakeResultFunc: request.MakeResultEvent,
 			Event:          event,
@@ -235,7 +236,6 @@ func (request *Request) executeRequestWithPayloads(input *contextargs.Context, p
 			MatchFunc:      request.Match,
 			ExtractFunc:    request.Extract,
 		})
-		event.UsesInteractsh = len(page.InteractshURLs) > 0
 		dumpResponse(event, request.options, responseBody, input.MetaInput.Input)
 	default:
 		dumpResponse(nil, request.options, responseBody, input.MetaInput.Input)
