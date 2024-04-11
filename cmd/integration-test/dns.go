@@ -5,7 +5,8 @@ import (
 )
 
 var dnsTestCases = []TestCaseInfo{
-	{Path: "protocols/dns/basic.yaml", TestCase: &dnsBasic{}},
+	{Path: "protocols/dns/a.yaml", TestCase: &dnsA{}},
+	{Path: "protocols/dns/aaaa.yaml", TestCase: &dnsAAAA{}},
 	{Path: "protocols/dns/ptr.yaml", TestCase: &dnsPtr{}},
 	{Path: "protocols/dns/caa.yaml", TestCase: &dnsCAA{}},
 	{Path: "protocols/dns/tlsa.yaml", TestCase: &dnsTLSA{}},
@@ -14,10 +15,21 @@ var dnsTestCases = []TestCaseInfo{
 	{Path: "protocols/dns/dsl-matcher-variable.yaml", TestCase: &dnsDSLMatcherVariable{}},
 }
 
-type dnsBasic struct{}
+type dnsA struct{}
 
 // Execute executes a test case and returns an error if occurred
-func (h *dnsBasic) Execute(filePath string) error {
+func (h *dnsA) Execute(filePath string) error {
+	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, "one.one.one.one", debug)
+	if err != nil {
+		return err
+	}
+	return expectResultsCount(results, 1)
+}
+
+type dnsAAAA struct{}
+
+// Execute executes a test case and returns an error if occurred
+func (h *dnsAAAA) Execute(filePath string) error {
 	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, "one.one.one.one", debug)
 	if err != nil {
 		return err
