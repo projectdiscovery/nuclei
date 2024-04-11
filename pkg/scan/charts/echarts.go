@@ -2,6 +2,7 @@ package charts
 
 import (
 	"fmt"
+	"os"
 	"sort"
 	"time"
 
@@ -21,6 +22,15 @@ const (
 func (s *ScanEventsCharts) AllCharts(c echo.Context) error {
 	page := s.allCharts(c)
 	return page.Render(c.Response().Writer)
+}
+
+func (s *ScanEventsCharts) GenerateHTML(filePath string) error {
+	page := s.allCharts(nil)
+	output, err := os.Create(filePath)
+	if err != nil {
+		return err
+	}
+	return page.Render(output)
 }
 
 // AllCharts generates all the charts for the scan events and returns a page component
@@ -196,9 +206,13 @@ func (s *ScanEventsCharts) requestsVSInterval(c echo.Context) *charts.Line {
 		return s.data[i].Time.Before(s.data[j].Time)
 	})
 
-	interval, err := time.ParseDuration(c.QueryParam("interval"))
-	if err != nil || interval <= 0 {
-		interval = 5 * time.Second // Default interval
+	var interval time.Duration
+
+	if c != nil {
+		interval, _ = time.ParseDuration(c.QueryParam("interval"))
+	}
+	if interval <= 3 {
+		interval = 5 * time.Second
 	}
 
 	data := []opts.LineData{}
@@ -261,9 +275,12 @@ func (s *ScanEventsCharts) concurrencyVsTime(c echo.Context) *charts.Line {
 		return dataset[i].Time.Before(dataset[j].Time)
 	})
 
-	interval, err := time.ParseDuration(c.QueryParam("interval"))
-	if err != nil || interval <= 0 {
-		interval = 5 * time.Second // Default interval
+	var interval time.Duration
+	if c != nil {
+		interval, _ = time.ParseDuration(c.QueryParam("interval"))
+	}
+	if interval <= 3 {
+		interval = 5 * time.Second
 	}
 
 	// create array with time interval as x-axis and worker count as y-axis
