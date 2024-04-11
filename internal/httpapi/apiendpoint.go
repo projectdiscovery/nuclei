@@ -5,16 +5,18 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/projectdiscovery/nuclei/v3/pkg/js/compiler"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 )
 
 type Concurrency struct {
-	BulkSize           int
-	Threads            int
-	RateLimit          int
-	RateLimitDuration  string
-	PayloadConcurrency int
-	ProbeConcurrency   int
+	BulkSize              int
+	Threads               int
+	RateLimit             int
+	RateLimitDuration     string
+	PayloadConcurrency    int
+	ProbeConcurrency      int
+	JavascriptConcurrency int
 }
 
 // Server represents the HTTP server that handles the concurrency settings endpoints.
@@ -55,12 +57,13 @@ func (s *Server) handleConcurrency(w http.ResponseWriter, r *http.Request) {
 // GetSettings handles GET requests and returns the current concurrency settings
 func (s *Server) getSettings(w http.ResponseWriter, _ *http.Request) {
 	concurrencySettings := Concurrency{
-		BulkSize:           s.config.BulkSize,
-		Threads:            s.config.TemplateThreads,
-		RateLimit:          s.config.RateLimit,
-		RateLimitDuration:  s.config.RateLimitDuration.String(),
-		PayloadConcurrency: s.config.PayloadConcurrency,
-		ProbeConcurrency:   s.config.ProbeConcurrency,
+		BulkSize:              s.config.BulkSize,
+		Threads:               s.config.TemplateThreads,
+		RateLimit:             s.config.RateLimit,
+		RateLimitDuration:     s.config.RateLimitDuration.String(),
+		PayloadConcurrency:    s.config.PayloadConcurrency,
+		ProbeConcurrency:      s.config.ProbeConcurrency,
+		JavascriptConcurrency: compiler.PoolingJsVmConcurrency,
 	}
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(concurrencySettings); err != nil {
@@ -99,6 +102,10 @@ func (s *Server) updateSettings(w http.ResponseWriter, r *http.Request) {
 	}
 	if newSettings.ProbeConcurrency > 0 {
 		s.config.ProbeConcurrency = newSettings.ProbeConcurrency
+	}
+	if newSettings.JavascriptConcurrency > 0 {
+		compiler.PoolingJsVmConcurrency = newSettings.JavascriptConcurrency
+		s.config.JsConcurrency = newSettings.JavascriptConcurrency // no-op on speed change
 	}
 
 	w.WriteHeader(http.StatusOK)
