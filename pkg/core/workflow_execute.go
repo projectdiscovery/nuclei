@@ -138,7 +138,9 @@ func (e *Engine) runWorkflowStep(template *workflows.WorkflowTemplate, ctx *scan
 						go func(subtemplate *workflows.WorkflowTemplate) {
 							defer swg.Done()
 
-							if err := e.runWorkflowStep(subtemplate, ctx, results, swg, w); err != nil {
+							// create a new context with the same input but with unset callbacks
+							subCtx := scan.NewScanContext(ctx.Input)
+							if err := e.runWorkflowStep(subtemplate, subCtx, results, swg, w); err != nil {
 								gologger.Warning().Msgf(workflowStepExecutionError, subtemplate.Template, err)
 							}
 						}(subtemplate)
@@ -162,7 +164,9 @@ func (e *Engine) runWorkflowStep(template *workflows.WorkflowTemplate, ctx *scan
 			swg.Add()
 
 			go func(template *workflows.WorkflowTemplate) {
-				if err := e.runWorkflowStep(template, ctx, results, swg, w); err != nil {
+				// create a new context with the same input but with unset callbacks
+				subCtx := scan.NewScanContext(ctx.Input)
+				if err := e.runWorkflowStep(template, subCtx, results, swg, w); err != nil {
 					gologger.Warning().Msgf(workflowStepExecutionError, template.Template, err)
 				}
 				swg.Done()
