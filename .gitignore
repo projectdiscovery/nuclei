@@ -38,5 +38,6 @@ integration_tests/fuzzplayground
 /dsl.md
 /nuclei-stats
 /nuclei-stats-*
+/scan-charts
 
 
