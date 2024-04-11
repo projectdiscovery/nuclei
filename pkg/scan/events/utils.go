@@ -1,10 +1,7 @@
 package events
 
 import (
-	"encoding/json"
 	"time"
-
-	"github.com/projectdiscovery/nuclei/v3/pkg/model"
 )
 
 type ScanEventWorker interface {
@@ -13,57 +10,27 @@ type ScanEventWorker interface {
 }
 
 // Track scan start / finish status
-type ScanStatus int
+type ScanStatus string
 
 const (
-	ScanStarted ScanStatus = iota
-	ScanFinished
+	ScanStarted  ScanStatus = "scan_start"
+	ScanFinished ScanStatus = "scan_end"
 )
 
 const (
-	configFile = "config.json"
-	eventsFile = "events.jsonl"
+	ConfigFile = "config.json"
+	EventsFile = "events.jsonl"
 )
 
 // ScanEvent represents a single scan event with its metadata
 type ScanEvent struct {
-	Target       string
-	TemplateInfo model.Info
-	Time         time.Time
-	EventType    ScanStatus
-}
-
-// MarshalJSON implements the json.Marshaler interface
-func (s ScanEvent) MarshalJSON() ([]byte, error) {
-	m := make(map[string]interface{})
-	m["target"] = s.Target
-	m["template"] = s.TemplateInfo
-	m["time"] = s.Time
-	if s.EventType == ScanStarted {
-		m["event"] = "scan-start"
-	} else {
-		m["event"] = "scan-end"
-	}
-	return json.Marshal(m)
-}
-
-// UnmarshalJSON implements the json.Unmarshaler interface
-func (s *ScanEvent) UnmarshalJSON(data []byte) error {
-	var m map[string]interface{}
-	if err := json.Unmarshal(data, &m); err != nil {
-		return err
-	}
-	s.Target = m["target"].(string)
-	s.TemplateInfo = m["template"].(model.Info)
-	if t, ok := m["time"].(string); ok {
-		s.Time, _ = time.Parse(time.RFC3339, t)
-	}
-	if m["event"] == "scan-start" {
-		s.EventType = ScanStarted
-	} else {
-		s.EventType = ScanFinished
-	}
-	return nil
+	Target       string     `json:"target" yaml:"target"`
+	TemplateType string     `json:"template_type" yaml:"template_type"`
+	TemplateID   string     `json:"template_id" yaml:"template_id"`
+	TemplatePath string     `json:"template_path" yaml:"template_path"`
+	MaxRequests  int        `json:"max_requests" yaml:"max_requests"`
+	Time         time.Time  `json:"time" yaml:"time"`
+	EventType    ScanStatus `json:"event_type" yaml:"event_type"`
 }
 
 // ScanConfig is only in context of scan event analysis

@@ -1,3 +1,6 @@
+//go:build stats
+// +build stats
+
 package events
 
 import (
@@ -36,7 +39,7 @@ func InitWithConfig(config *ScanConfig, statsDirectory string) {
 	if err != nil {
 		panic(err)
 	}
-	err = os.WriteFile(filepath.Join(dirName, configFile), bin, 0755)
+	err = os.WriteFile(filepath.Join(dirName, ConfigFile), bin, 0755)
 	if err != nil {
 		panic(err)
 	}
@@ -49,7 +52,7 @@ func InitWithConfig(config *ScanConfig, statsDirectory string) {
 
 // initEventsFile initializes the events file for the worker
 func (s *ScanStatsWorker) initEventsFile() error {
-	f, err := os.Create(filepath.Join(s.directory, eventsFile))
+	f, err := os.Create(filepath.Join(s.directory, EventsFile))
 	if err != nil {
 		return err
 	}

@@ -99,16 +99,22 @@ func (e *TemplateExecuter) Execute(ctx *scan.ScanContext) (bool, error) {
 	// Note: this is no-op (empty functions) when nuclei is built in normal or without -tags=stats
 	events.AddScanEvent(events.ScanEvent{
 		Target:       ctx.Input.MetaInput.Input,
-		TemplateInfo: e.options.TemplateInfo,
 		Time:         time.Now(),
 		EventType:    events.ScanStarted,
+		TemplateType: e.getTemplateType(),
+		TemplateID:   e.options.TemplateID,
+		TemplatePath: e.options.TemplatePath,
+		MaxRequests:  e.Requests(),
 	})
 	defer func() {
 		events.AddScanEvent(events.ScanEvent{
 			Target:       ctx.Input.MetaInput.Input,
-			TemplateInfo: e.options.TemplateInfo,
 			Time:         time.Now(),
 			EventType:    events.ScanFinished,
+			TemplateType: e.getTemplateType(),
+			TemplateID:   e.options.TemplateID,
+			TemplatePath: e.options.TemplatePath,
+			MaxRequests:  e.Requests(),
 		})
 	}()
 	// ==== end of stats ====
@@ -202,4 +208,18 @@ func (e *TemplateExecuter) ExecuteWithResults(ctx *scan.ScanContext) ([]*output.
 	err := e.engine.ExecuteWithResults(ctx)
 	ctx.LogError(err)
 	return ctx.GenerateResult(), err
+}
+
+// getTemplateType returns the template type of the template
+func (e *TemplateExecuter) getTemplateType() string {
+	if len(e.requests) == 0 {
+		return "null"
+	}
+	if e.options.Flow != "" {
+		return "flow"
+	}
+	if len(e.requests) > 1 {
+		return "multiprotocol"
+	}
+	return e.requests[0].Type().String()
 }
