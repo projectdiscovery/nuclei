@@ -10,13 +10,13 @@ import (
 )
 
 type Concurrency struct {
-	BulkSize              int
-	Threads               int
-	RateLimit             int
-	RateLimitDuration     string
-	PayloadConcurrency    int
-	ProbeConcurrency      int
-	JavascriptConcurrency int
+	BulkSize              int    `json:"bulk_size"`
+	Threads               int    `json:"threads"`
+	RateLimit             int    `json:"rate_limit"`
+	RateLimitDuration     string `json:"rate_limit_duration"`
+	PayloadConcurrency    int    `json:"payload_concurrency"`
+	ProbeConcurrency      int    `json:"probe_concurrency"`
+	JavascriptConcurrency int    `json:"javascript_concurrency"`
 }
 
 // Server represents the HTTP server that handles the concurrency settings endpoints.
