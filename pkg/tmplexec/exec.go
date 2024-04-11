@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strings"
 	"sync/atomic"
+	"time"
 
 	"github.com/dop251/goja"
 	"github.com/projectdiscovery/gologger"
@@ -14,6 +15,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/helpers/writer"
 	"github.com/projectdiscovery/nuclei/v3/pkg/scan"
+	"github.com/projectdiscovery/nuclei/v3/pkg/scan/events"
 	"github.com/projectdiscovery/nuclei/v3/pkg/tmplexec/flow"
 	"github.com/projectdiscovery/nuclei/v3/pkg/tmplexec/generic"
 	"github.com/projectdiscovery/nuclei/v3/pkg/tmplexec/multiproto"
@@ -92,6 +94,25 @@ func (e *TemplateExecuter) Requests() int {
 
 // Execute executes the protocol group and returns true or false if results were found.
 func (e *TemplateExecuter) Execute(ctx *scan.ScanContext) (bool, error) {
+
+	// === when nuclei is built with -tags=stats ===
+	// Note: this is no-op (empty functions) when nuclei is built in normal or without -tags=stats
+	events.AddScanEvent(events.ScanEvent{
+		Target:       ctx.Input.MetaInput.Input,
+		TemplateInfo: e.options.TemplateInfo,
+		Time:         time.Now(),
+		EventType:    events.ScanStarted,
+	})
+	defer func() {
+		events.AddScanEvent(events.ScanEvent{
+			Target:       ctx.Input.MetaInput.Input,
+			TemplateInfo: e.options.TemplateInfo,
+			Time:         time.Now(),
+			EventType:    events.ScanFinished,
+		})
+	}()
+	// ==== end of stats ====
+
 	// executed contains status of execution if it was successfully executed or not
 	// doesn't matter if it was matched or not
 	executed := &atomic.Bool{}
