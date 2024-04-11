@@ -1,4 +1,4 @@
-id: dns-a-query-example
+id: basic-dns-a-example
 
 info:
   name: Test DNS A Query Template
@@ -7,11 +7,12 @@ info:
 
 dns:
   - name: "{{FQDN}}"
-    type: A
+    type: SRV
     class: inet
     recursion: true
     retries: 3
     matchers:
       - type: word
+        part: all
         words:
-          - "1.1.1.1"
+          - "SRV"
