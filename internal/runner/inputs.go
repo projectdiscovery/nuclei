@@ -10,6 +10,7 @@ import (
 	"github.com/projectdiscovery/httpx/common/httpx"
 	"github.com/projectdiscovery/nuclei/v3/pkg/input/provider"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
 	"github.com/projectdiscovery/nuclei/v3/pkg/utils"
 	stringsutil "github.com/projectdiscovery/utils/strings"
 	syncutil "github.com/projectdiscovery/utils/sync"
@@ -38,6 +39,7 @@ func (r *Runner) initializeTemplatesHTTPInput() (*hybrid.HybridMap, error) {
 	httpxOptions := httpx.DefaultOptions
 	httpxOptions.RetryMax = r.options.Retries
 	httpxOptions.Timeout = time.Duration(r.options.Timeout) * time.Second
+	httpxOptions.NetworkPolicy = protocolstate.NetworkPolicy
 	httpxClient, err := httpx.New(&httpxOptions)
 	if err != nil {
 		return nil, errors.Wrap(err, "could not create httpx client")
