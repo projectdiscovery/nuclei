@@ -5,6 +5,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 
 	"github.com/julienschmidt/httprouter"
 
@@ -16,6 +17,7 @@ var workflowTestcases = []TestCaseInfo{
 	{Path: "workflow/condition-matched.yaml", TestCase: &workflowConditionMatched{}},
 	{Path: "workflow/condition-unmatched.yaml", TestCase: &workflowConditionUnmatch{}},
 	{Path: "workflow/matcher-name.yaml", TestCase: &workflowMatcherName{}},
+	{Path: "workflow/complex-conditions.yaml", TestCase: &workflowComplexConditions{}},
 	{Path: "workflow/http-value-share-workflow.yaml", TestCase: &workflowHttpKeyValueShare{}},
 	{Path: "workflow/dns-value-share-workflow.yaml", TestCase: &workflowDnsKeyValueShare{}},
 	{Path: "workflow/shared-cookie.yaml", TestCase: &workflowSharedCookies{}},
@@ -95,6 +97,30 @@ func (h *workflowMatcherName) Execute(filePath string) error {
 	}
 
 	return expectResultsCount(results, 1)
+}
+
+type workflowComplexConditions struct{}
+
+// Execute executes a test case and returns an error if occurred
+func (h *workflowComplexConditions) Execute(filePath string) error {
+	router := httprouter.New()
+	router.GET("/", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+		fmt.Fprintf(w, "This is test matcher text")
+	})
+	ts := httptest.NewServer(router)
+	defer ts.Close()
+
+	results, err := testutils.RunNucleiWorkflowAndGetResults(filePath, ts.URL, debug)
+	if err != nil {
+		return err
+	}
+
+	for _, result := range results {
+		if !strings.Contains(result, "test-matcher-3") {
+			return fmt.Errorf("incorrect result: the \"basic-get-third:test-matcher-3\" and only that should be matched!\nResults:\n\t%s", strings.Join(results, "\n\t"))
+		}
+	}
+	return expectResultsCount(results, 2)
 }
 
 type workflowHttpKeyValueShare struct{}
