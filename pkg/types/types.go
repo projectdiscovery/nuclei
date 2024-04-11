@@ -422,6 +422,7 @@ func DefaultOptions() *Options {
 		TemplateThreads:         25,
 		HeadlessBulkSize:        10,
 		HeadlessTemplateThreads: 10,
+		ProbeConcurrency:        50,
 		Timeout:                 5,
 		Retries:                 1,
 		MaxHostError:            30,

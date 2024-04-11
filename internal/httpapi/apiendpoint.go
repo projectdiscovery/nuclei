@@ -14,6 +14,7 @@ type Concurrency struct {
 	RateLimit          int
 	RateLimitDuration  string
 	PayloadConcurrency int
+	ProbeConcurrency   int
 }
 
 // Server represents the HTTP server that handles the concurrency settings endpoints.
@@ -59,6 +60,7 @@ func (s *Server) getSettings(w http.ResponseWriter, _ *http.Request) {
 		RateLimit:          s.config.RateLimit,
 		RateLimitDuration:  s.config.RateLimitDuration.String(),
 		PayloadConcurrency: s.config.PayloadConcurrency,
+		ProbeConcurrency:   s.config.ProbeConcurrency,
 	}
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(concurrencySettings); err != nil {
@@ -94,6 +96,9 @@ func (s *Server) updateSettings(w http.ResponseWriter, r *http.Request) {
 	}
 	if newSettings.PayloadConcurrency > 0 {
 		s.config.PayloadConcurrency = newSettings.PayloadConcurrency
+	}
+	if newSettings.ProbeConcurrency > 0 {
+		s.config.ProbeConcurrency = newSettings.ProbeConcurrency
 	}
 
 	w.WriteHeader(http.StatusOK)
