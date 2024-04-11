@@ -1,17 +1,18 @@
-id: dns-a-query-example
+id: dns-txt-query-example
 
 info:
-  name: Test DNS A Query Template
+  name: Test DNS TXT Query Template
   author: pdteam
   severity: info
 
 dns:
   - name: "{{FQDN}}"
-    type: A
+    type: TXT
     class: inet
     recursion: true
     retries: 3
     matchers:
       - type: word
+        part: all
         words:
-          - "1.1.1.1"
+          - "TXT"

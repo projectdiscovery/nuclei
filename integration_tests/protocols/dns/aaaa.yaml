@@ -1,4 +1,4 @@
-id: basic-dns-aaaa-example
+id: dns-aaaa-query-example
 
 info:
   name: Test DNS AAAA Query Template

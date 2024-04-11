@@ -1,17 +1,18 @@
-id: dns-a-query-example
+id: dns-cname-query-example
 
 info:
-  name: Test DNS A Query Template
+  name: Test DNS CNAME Query Template
   author: pdteam
   severity: info
 
 dns:
   - name: "{{FQDN}}"
-    type: A
+    type: CNAME
     class: inet
     recursion: true
     retries: 3
     matchers:
       - type: word
+        part: all
         words:
-          - "1.1.1.1"
+          - "CNAME"

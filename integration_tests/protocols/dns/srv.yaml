@@ -1,17 +1,18 @@
 id: dns-a-query-example
 
 info:
-  name: Test DNS A Query Template
+  name: Test DNS SRV Query Template
   author: pdteam
   severity: info
 
 dns:
   - name: "{{FQDN}}"
-    type: A
+    type: SRV
     class: inet
     recursion: true
     retries: 3
     matchers:
       - type: word
+        part: all
         words:
-          - "1.1.1.1"
+          - "SRV"
