@@ -124,7 +124,7 @@ func Init(options *types.Options) error {
 		opts.ResolversFile = true
 		opts.EnableFallback = true
 	}
-	if options.ResolversFile != "" || len(options.InternalResolversList) > 0 {
+	if len(options.InternalResolversList) > 0 {
 		opts.BaseResolvers = options.InternalResolversList
 	}
 
