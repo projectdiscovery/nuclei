@@ -16,6 +16,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/expressions"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/generators"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/interactsh"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http/httpclientpool"
 	httputil "github.com/projectdiscovery/nuclei/v3/pkg/protocols/utils/http"
@@ -454,11 +455,14 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 				break
 			}
 		}
+		usesInteractsh := interactsh.HasMatchers(request.CompiledOperators)
 		if hasNamedInternalExtractor && hasMultipleRequests {
 			gologger.Warning().Label(options.TemplateID).Msgf("Setting thread count to 0 because dynamic extractors are not supported with payloads yet")
 			request.Threads = 0
-		} else {
-			// specifically for http requests high concurrency and and threads will lead to memory exausthion, hence reduce the maximum parallelism
+		} else if usesInteractsh {
+			gologger.Warning().Label(options.TemplateID).Msgf("Setting thread count to 0 because interactsh is not supported with threads and payloads yet")
+			request.Threads = 0
+		} else { // specifically for http requests high concurrency and and threads will lead to memory exausthion, hence reduce the maximum parallelism
 			if protocolstate.IsLowOnMemory() {
 				request.Threads = protocolstate.GuardThreadsOrDefault(request.Threads)
 			}
