@@ -48,7 +48,7 @@ func (h *networkBasic) Execute(filePath string) error {
 	})
 	defer ts.Close()
 
-	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, ts.URL, debug)
+	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, ts.URL, debug, "-response-read-timeout")
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Could not run nuclei: %s\n", err)
 		return err
@@ -91,7 +91,7 @@ func (h *networkMultiStep) Execute(filePath string) error {
 	})
 	defer ts.Close()
 
-	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, ts.URL, debug)
+	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, ts.URL, debug, "-response-read-timeout")
 	if err != nil {
 		return err
 	}
@@ -119,7 +119,7 @@ func (h *networkRequestSelContained) Execute(filePath string) error {
 		_, _ = conn.Write([]byte("Authentication successful"))
 	})
 	defer ts.Close()
-	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, "", debug)
+	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, "", debug, "-response-read-timeout")
 	if err != nil {
 		return err
 	}
@@ -147,7 +147,7 @@ func (h *networkVariables) Execute(filePath string) error {
 	})
 	defer ts.Close()
 
-	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, ts.URL, debug)
+	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, ts.URL, debug, "-response-read-timeout")
 	if err != nil {
 		return err
 	}
@@ -174,7 +174,7 @@ func (n *networkPort) Execute(filePath string) error {
 	})
 	defer ts.Close()
 
-	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, ts.URL, debug)
+	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, ts.URL, debug, "-response-read-timeout")
 	if err != nil {
 		return err
 	}
@@ -184,7 +184,7 @@ func (n *networkPort) Execute(filePath string) error {
 	}
 
 	// even though we passed port 443 in url it is ignored and port 23846 is used
-	results, err = testutils.RunNucleiTemplateAndGetResults(filePath, strings.ReplaceAll(ts.URL, "23846", "443"), debug)
+	results, err = testutils.RunNucleiTemplateAndGetResults(filePath, strings.ReplaceAll(ts.URL, "23846", "443"), debug, "-response-read-timeout")
 	if err != nil {
 		return err
 	}
@@ -209,7 +209,7 @@ func (n *networkPort) Execute(filePath string) error {
 
 	// even though we passed port 443 in url it is ignored and port 23846 is used
 	// instead of hardcoded port 23846 in template
-	results, err = testutils.RunNucleiTemplateAndGetResults(filePath, ts2.URL, debug)
+	results, err = testutils.RunNucleiTemplateAndGetResults(filePath, ts2.URL, debug, "-response-read-timeout")
 	if err != nil {
 		return err
 	}
@@ -221,7 +221,7 @@ type networkhttps struct{}
 
 // Execute executes a test case and returns an error if occurred
 func (h *networkhttps) Execute(filePath string) error {
-	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, "scanme.sh", debug)
+	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, "scanme.sh", debug, "-response-read-timeout")
 	if err != nil {
 		return err
 	}
