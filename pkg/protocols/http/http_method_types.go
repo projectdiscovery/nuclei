@@ -5,7 +5,7 @@ import (
 	"errors"
 	"strings"
 
-	"github.com/alecthomas/jsonschema"
+	"github.com/invopop/jsonschema"
 )
 
 // HTTPMethodType is the type of the method specified
@@ -89,8 +89,8 @@ func (holder HTTPMethodTypeHolder) String() string {
 	return holder.MethodType.String()
 }
 
-func (holder HTTPMethodTypeHolder) JSONSchemaType() *jsonschema.Type {
-	gotType := &jsonschema.Type{
+func (holder HTTPMethodTypeHolder) JSONSchema() *jsonschema.Schema {
+	gotType := &jsonschema.Schema{
 		Type:        "string",
 		Title:       "method is the HTTP request method",
 		Description: "Method is the HTTP Request Method",

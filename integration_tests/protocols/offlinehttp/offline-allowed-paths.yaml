@@ -6,7 +6,7 @@ info:
   severity: info
   description: offline-allowed-paths
 
-requests:
+http:
   - path:
       - "{{BaseURL}}"
       - "{{BaseURL}}/"

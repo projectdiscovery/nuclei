@@ -5,7 +5,7 @@ import (
 	"errors"
 	"strings"
 
-	"github.com/alecthomas/jsonschema"
+	"github.com/invopop/jsonschema"
 )
 
 // DNSRequestType is the type of the method specified
@@ -92,8 +92,8 @@ func (holder DNSRequestTypeHolder) String() string {
 	return holder.DNSRequestType.String()
 }
 
-func (holder DNSRequestTypeHolder) JSONSchemaType() *jsonschema.Type {
-	gotType := &jsonschema.Type{
+func (holder DNSRequestTypeHolder) JSONSchema() *jsonschema.Schema {
+	gotType := &jsonschema.Schema{
 		Type:        "string",
 		Title:       "type of DNS request to make",
 		Description: "Type is the type of DNS request to make",

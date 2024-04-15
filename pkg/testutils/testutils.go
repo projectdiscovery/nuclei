@@ -54,6 +54,7 @@ var DefaultOptions = &types.Options{
 	Timeout:                    5,
 	Retries:                    1,
 	RateLimit:                  150,
+	RateLimitDuration:          time.Second,
 	ProjectPath:                "",
 	Severities:                 severity.Severities{},
 	Targets:                    []string{},

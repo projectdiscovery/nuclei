@@ -379,6 +379,7 @@ Stop execution once first match is found
 <div class="dt">
 
 Signature is the request signature method
+WARNING: 'signature' will be deprecated and will be removed in a future release. Prefer using 'code' protocol for writing cloud checks
 
 
 Valid values:
@@ -1613,12 +1614,12 @@ DisablePathAutomerge disables merging target url path with raw request path
 
 <div class="dd">
 
-<code>filters</code>  <i>[]<a href="#matchersmatcher">matchers.Matcher</a></i>
+<code>pre-condition</code>  <i>[]<a href="#matchersmatcher">matchers.Matcher</a></i>
 
 </div>
 <div class="dt">
 
-Filter is matcher-like field to check if fuzzing should be performed on this request or not
+Fuzz PreCondition is matcher-like field to check if fuzzing should be performed on this request or not
 
 </div>
 
@@ -1626,12 +1627,12 @@ Filter is matcher-like field to check if fuzzing should be performed on this req
 
 <div class="dd">
 
-<code>filters-condition</code>  <i>string</i>
+<code>pre-condition-operator</code>  <i>string</i>
 
 </div>
 <div class="dt">
 
-Filter condition is the condition to apply on the filter (AND/OR). Default is OR
+FuzzPreConditionOperator is the operator between multiple PreConditions for fuzzing Default is OR
 
 </div>
 
@@ -1981,7 +1982,7 @@ Matcher is used to match a part in the output from a protocol.
 Appears in:
 
 
-- <code><a href="#httprequest">http.Request</a>.filters</code>
+- <code><a href="#httprequest">http.Request</a>.pre-condition</code>
 
 
 
@@ -4149,6 +4150,19 @@ ID is the optional id of the request
 <div class="dt">
 
 Engine type
+
+</div>
+
+<hr />
+
+<div class="dd">
+
+<code>pre-condition</code>  <i>string</i>
+
+</div>
+<div class="dt">
+
+PreCondition is a condition which is evaluated before sending the request.
 
 </div>
 

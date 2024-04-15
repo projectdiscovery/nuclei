@@ -3,7 +3,6 @@ package tmplexec
 import (
 	"errors"
 	"fmt"
-	"runtime/debug"
 	"strings"
 	"sync/atomic"
 
@@ -93,28 +92,24 @@ func (e *TemplateExecuter) Requests() int {
 
 // Execute executes the protocol group and returns true or false if results were found.
 func (e *TemplateExecuter) Execute(ctx *scan.ScanContext) (bool, error) {
-	results := &atomic.Bool{}
+	// executed contains status of execution if it was successfully executed or not
+	// doesn't matter if it was matched or not
+	executed := &atomic.Bool{}
+	// matched in this case means something was exported / written to output
+	matched := &atomic.Bool{}
 	defer func() {
 		// it is essential to remove template context of `Scan i.e template x input pair`
 		// since it is of no use after scan is completed (regardless of success or failure)
 		e.options.RemoveTemplateCtx(ctx.Input.MetaInput)
 	}()
-	defer func() {
-		// try catching unknown panics
-		if r := recover(); r != nil {
-			stacktrace := debug.Stack()
-			ctx.LogError(fmt.Errorf("panic: %v\n%s", r, stacktrace))
-			gologger.Verbose().Msgf("panic: %v\n%s", r, stacktrace)
-		}
-	}()
 
 	var lastMatcherEvent *output.InternalWrappedEvent
 	writeFailureCallback := func(event *output.InternalWrappedEvent, matcherStatus bool) {
-		if !results.Load() && matcherStatus {
+		if !matched.Load() && matcherStatus {
 			if err := e.options.Output.WriteFailure(event); err != nil {
 				gologger.Warning().Msgf("Could not write failure event to output: %s\n", err)
 			}
-			results.CompareAndSwap(false, true)
+			executed.CompareAndSwap(false, true)
 		}
 	}
 
@@ -142,11 +137,11 @@ func (e *TemplateExecuter) Execute(ctx *scan.ScanContext) (bool, error) {
 		// If no results were found, and also interactsh is not being used
 		// in that case we can skip it, otherwise we've to show failure in
 		// case of matcher-status flag.
-		if !event.HasOperatorResult() && !event.UsesInteractsh {
+		if !event.HasOperatorResult() && event.InternalEvent != nil {
 			lastMatcherEvent = event
 		} else {
 			if writer.WriteResult(event, e.options.Output, e.options.Progress, e.options.IssuesClient) {
-				results.CompareAndSwap(false, true)
+				matched.Store(true)
 			} else {
 				lastMatcherEvent = event
 			}
@@ -161,7 +156,7 @@ func (e *TemplateExecuter) Execute(ctx *scan.ScanContext) (bool, error) {
 	// so in compile step earlier we compile it to validate javascript syntax and other things
 	// and while executing we create new instance of flow executor everytime
 	if e.options.Flow != "" {
-		flowexec, err := flow.NewFlowExecutor(e.requests, ctx, e.options, results, e.program)
+		flowexec, err := flow.NewFlowExecutor(e.requests, ctx, e.options, executed, e.program)
 		if err != nil {
 			ctx.LogError(err)
 			return false, fmt.Errorf("could not create flow executor: %s", err)
@@ -178,7 +173,7 @@ func (e *TemplateExecuter) Execute(ctx *scan.ScanContext) (bool, error) {
 	if lastMatcherEvent != nil {
 		writeFailureCallback(lastMatcherEvent, e.options.Options.MatcherStatus)
 	}
-	return results.Load(), errx
+	return executed.Load() || matched.Load(), errx
 }
 
 // ExecuteWithResults executes the protocol requests and returns results instead of writing them.

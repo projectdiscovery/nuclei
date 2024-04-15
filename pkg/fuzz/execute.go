@@ -11,6 +11,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/fuzz/component"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/expressions"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/generators"
 	"github.com/projectdiscovery/retryablehttp-go"
 	errorutil "github.com/projectdiscovery/utils/errors"
@@ -64,11 +65,6 @@ type GeneratedRequest struct {
 // Input is not thread safe and should not be shared between concurrent
 // goroutines.
 func (rule *Rule) Execute(input *ExecuteRuleInput) (err error) {
-	defer func() {
-		if r := recover(); r != nil {
-			err = fmt.Errorf("got panic while executing rule: %v", r)
-		}
-	}()
 	if !rule.isInputURLValid(input.Input) {
 		return ErrRuleNotApplicable.Msgf("invalid input url: %v", input.Input.MetaInput.Input)
 	}
@@ -105,8 +101,11 @@ func (rule *Rule) Execute(input *ExecuteRuleInput) (err error) {
 	baseValues := input.Values
 	if rule.generator == nil {
 		for _, component := range finalComponentList {
+			// get vars from variables while replacing interactsh urls
 			evaluatedValues, interactURLs := rule.options.Variables.EvaluateWithInteractsh(baseValues, rule.options.Interactsh)
-			input.Values = generators.MergeMaps(evaluatedValues, baseValues, rule.options.Constants)
+			input.Values = generators.MergeMaps(evaluatedValues, baseValues, rule.options.Options.Vars.AsMap(), rule.options.Constants)
+			// evaluate all vars with interactsh
+			input.Values, interactURLs = rule.evaluateVarsWithInteractsh(input.Values, interactURLs)
 			input.InteractURLs = interactURLs
 			err := rule.executeRuleValues(input, component)
 			if err != nil {
@@ -123,9 +122,12 @@ mainLoop:
 			if !next {
 				continue mainLoop
 			}
+			// get vars from variables while replacing interactsh urls
 			evaluatedValues, interactURLs := rule.options.Variables.EvaluateWithInteractsh(generators.MergeMaps(values, baseValues), rule.options.Interactsh)
+			input.Values = generators.MergeMaps(values, evaluatedValues, baseValues, rule.options.Options.Vars.AsMap(), rule.options.Constants)
+			// evaluate all vars with interactsh
+			input.Values, interactURLs = rule.evaluateVarsWithInteractsh(input.Values, interactURLs)
 			input.InteractURLs = interactURLs
-			input.Values = generators.MergeMaps(values, evaluatedValues, baseValues, rule.options.Constants)
 
 			if err := rule.executeRuleValues(input, component); err != nil {
 				if err == io.EOF {
@@ -137,6 +139,33 @@ mainLoop:
 		}
 	}
 	return nil
+}
+
+// evaluateVarsWithInteractsh evaluates the variables with Interactsh URLs and updates them accordingly.
+func (rule *Rule) evaluateVarsWithInteractsh(data map[string]interface{}, interactshUrls []string) (map[string]interface{}, []string) {
+	// Check if Interactsh options are configured
+	if rule.options.Interactsh != nil {
+		// Iterate through the data to replace and evaluate variables with Interactsh URLs
+		for k, v := range data {
+			// Replace variables with Interactsh URLs and collect new URLs
+			got, oastUrls := rule.options.Interactsh.Replace(fmt.Sprint(v), interactshUrls)
+
+			// Append new OAST URLs if any
+			if len(oastUrls) > 0 {
+				interactshUrls = append(interactshUrls, oastUrls...)
+			}
+			// Evaluate the replaced data
+			evaluatedData, err := expressions.Evaluate(got, data)
+			if err == nil {
+				// Update the data if there is a change after evaluation
+				if evaluatedData != got {
+					data[k] = evaluatedData
+				}
+			}
+		}
+	}
+	// Return the updated data and Interactsh URLs without any error
+	return data, interactshUrls
 }
 
 // isInputURLValid returns true if url is valid after parsing it

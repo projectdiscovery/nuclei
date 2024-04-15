@@ -5,7 +5,7 @@ info:
   author: pdteam
   severity: info
 
-requests:
+http:
   - raw:
       - |
         @timeout: 5s

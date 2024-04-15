@@ -5,7 +5,7 @@ import (
 	"errors"
 	"strings"
 
-	"github.com/alecthomas/jsonschema"
+	"github.com/invopop/jsonschema"
 )
 
 // ActionType defines the action type for a browser action
@@ -171,8 +171,8 @@ type ActionTypeHolder struct {
 func (holder ActionTypeHolder) String() string {
 	return holder.ActionType.String()
 }
-func (holder ActionTypeHolder) JSONSchemaType() *jsonschema.Type {
-	gotType := &jsonschema.Type{
+func (holder ActionTypeHolder) JSONSchema() *jsonschema.Schema {
+	gotType := &jsonschema.Schema{
 		Type:        "string",
 		Title:       "action to perform",
 		Description: "Type of actions to perform",

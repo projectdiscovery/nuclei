@@ -8,11 +8,15 @@ import (
 	"strings"
 	"time"
 
+	"github.com/alecthomas/chroma/quick"
+	"github.com/ditashi/jsbeautifier-go/jsbeautifier"
+	"github.com/dop251/goja"
 	"github.com/pkg/errors"
 
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/gozero"
 	gozerotypes "github.com/projectdiscovery/gozero/types"
+	"github.com/projectdiscovery/nuclei/v3/pkg/js/compiler"
 	"github.com/projectdiscovery/nuclei/v3/pkg/operators"
 	"github.com/projectdiscovery/nuclei/v3/pkg/operators/extractors"
 	"github.com/projectdiscovery/nuclei/v3/pkg/operators/matchers"
@@ -44,26 +48,30 @@ var (
 type Request struct {
 	// Operators for the current request go here.
 	operators.Operators `yaml:",inline,omitempty"`
-	CompiledOperators   *operators.Operators `yaml:"-"`
+	CompiledOperators   *operators.Operators `yaml:"-" json:"-"`
 
 	// ID is the optional id of the request
 	ID string `yaml:"id,omitempty" json:"id,omitempty" jsonschema:"title=id of the request,description=ID is the optional ID of the Request"`
 	// description: |
 	//   Engine type
-	Engine []string `yaml:"engine,omitempty" jsonschema:"title=engine,description=Engine"`
+	Engine []string `yaml:"engine,omitempty" json:"engine,omitempty" jsonschema:"title=engine,description=Engine"`
+	// description: |
+	//   PreCondition is a condition which is evaluated before sending the request.
+	PreCondition string `yaml:"pre-condition,omitempty" json:"pre-condition,omitempty" jsonschema:"title=pre-condition for the request,description=PreCondition is a condition which is evaluated before sending the request"`
 	// description: |
 	//   Engine Arguments
-	Args []string `yaml:"args,omitempty" jsonschema:"title=args,description=Args"`
+	Args []string `yaml:"args,omitempty" json:"args,omitempty" jsonschema:"title=args,description=Args"`
 	// description: |
 	//   Pattern preferred for file name
-	Pattern string `yaml:"pattern,omitempty" jsonschema:"title=pattern,description=Pattern"`
+	Pattern string `yaml:"pattern,omitempty" json:"pattern,omitempty" jsonschema:"title=pattern,description=Pattern"`
 	// description: |
 	//   Source File/Snippet
-	Source string `yaml:"source,omitempty" jsonschema:"title=source file/snippet,description=Source snippet"`
+	Source string `yaml:"source,omitempty" json:"source,omitempty" jsonschema:"title=source file/snippet,description=Source snippet"`
 
-	options *protocols.ExecutorOptions
-	gozero  *gozero.Gozero
-	src     *gozero.Source
+	options              *protocols.ExecutorOptions `yaml:"-" json:"-"`
+	preConditionCompiled *goja.Program              `yaml:"-" json:"-"`
+	gozero               *gozero.Gozero             `yaml:"-" json:"-"`
+	src                  *gozero.Source             `yaml:"-" json:"-"`
 }
 
 // Compile compiles the request generators preparing any requests possible.
@@ -110,6 +118,15 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 		}
 		request.CompiledOperators = compiled
 	}
+
+	// compile pre-condition if any
+	if request.PreCondition != "" {
+		preConditionCompiled, err := compiler.WrapScriptNCompile(request.PreCondition, false)
+		if err != nil {
+			return errorutil.NewWithTag(request.TemplateID, "could not compile pre-condition: %s", err)
+		}
+		request.preConditionCompiled = preConditionCompiled
+	}
 	return nil
 }
 
@@ -130,11 +147,6 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 		return err
 	}
 	defer func() {
-		// catch any panics just in case
-		if r := recover(); r != nil {
-			gologger.Error().Msgf("[%s] Panic occurred in code protocol: %s\n", request.options.TemplateID, r)
-			err = fmt.Errorf("panic occurred: %s", r)
-		}
 		if err := metaSrc.Cleanup(); err != nil {
 			gologger.Warning().Msgf("%s\n", err)
 		}
@@ -160,7 +172,45 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 		allvars[name] = v
 		metaSrc.AddVariable(gozerotypes.Variable{Name: name, Value: v})
 	}
+
+	// set timeout using multiplier
 	timeout := TimeoutMultiplier * request.options.Options.Timeout
+
+	if request.PreCondition != "" {
+		if request.options.Options.Debug || request.options.Options.DebugRequests {
+			gologger.Debug().Msgf("[%s] Executing Precondition for Code request\n", request.TemplateID)
+			var highlightFormatter = "terminal256"
+			if request.options.Options.NoColor {
+				highlightFormatter = "text"
+			}
+			var buff bytes.Buffer
+			_ = quick.Highlight(&buff, beautifyJavascript(request.PreCondition), "javascript", highlightFormatter, "monokai")
+			prettyPrint(request.TemplateID, buff.String())
+		}
+
+		args := compiler.NewExecuteArgs()
+		args.TemplateCtx = allvars
+
+		result, err := request.options.JsCompiler.ExecuteWithOptions(request.preConditionCompiled, args,
+			&compiler.ExecuteOptions{
+				Timeout:  timeout,
+				Source:   &request.PreCondition,
+				Callback: registerPreConditionFunctions,
+				Cleanup:  cleanUpPreConditionFunctions,
+			})
+		if err != nil {
+			return errorutil.NewWithTag(request.TemplateID, "could not execute pre-condition: %s", err)
+		}
+		if !result.GetSuccess() || types.ToString(result["error"]) != "" {
+			gologger.Warning().Msgf("[%s] Precondition for request %s was not satisfied\n", request.TemplateID, request.PreCondition)
+			request.options.Progress.IncrementFailedRequestsBy(1)
+			return nil
+		}
+		if request.options.Options.Debug || request.options.Options.DebugRequests {
+			gologger.Debug().Msgf("[%s] Precondition for request was satisfied\n", request.TemplateID)
+		}
+	}
+
 	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(timeout)*time.Second)
 	defer cancel()
 	// Note: we use contextutil despite the fact that gozero accepts context as argument
@@ -335,4 +385,24 @@ func interpretEnvVars(source string, vars map[string]interface{}) string {
 		}
 	}
 	return source
+}
+
+func beautifyJavascript(code string) string {
+	opts := jsbeautifier.DefaultOptions()
+	beautified, err := jsbeautifier.Beautify(&code, opts)
+	if err != nil {
+		return code
+	}
+	return beautified
+}
+
+func prettyPrint(templateId string, buff string) {
+	lines := strings.Split(buff, "\n")
+	final := []string{}
+	for _, v := range lines {
+		if v != "" {
+			final = append(final, "\t"+v)
+		}
+	}
+	gologger.Debug().Msgf(" [%v] Pre-condition Code:\n\n%v\n\n", templateId, strings.Join(final, "\n"))
 }

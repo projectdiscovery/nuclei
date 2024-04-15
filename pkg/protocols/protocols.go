@@ -34,9 +34,6 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 )
 
-// Optional Callback to update Thread count in payloads across all requests
-type PayloadThreadSetterCallback func(opts *ExecutorOptions, totalRequests, currentThreads int) int
-
 var (
 	MaxTemplateFileSizeForEncoding = 1024 * 1024
 )
@@ -114,28 +111,35 @@ type ExecutorOptions struct {
 	// JsCompiler is abstracted javascript compiler which adds node modules and provides execution
 	// environment for javascript templates
 	JsCompiler *compiler.Compiler
-	// Optional Callback function to update Thread count in payloads across all protocols
-	// based on given logic. by default nuclei reverts to using value of `-c` when threads count
-	// is not specified or is 0 in template
-	OverrideThreadsCount PayloadThreadSetterCallback
 	// AuthProvider is a provider for auth strategies
 	AuthProvider authprovider.AuthProvider
 	//TemporaryDirectory is the directory to store temporary files
 	TemporaryDirectory string
 	Parser             parser.Parser
+	// ExportReqURLPattern exports the request URL pattern
+	// in ResultEvent it contains the exact url pattern (ex: {{BaseURL}}/{{randstr}}/xyz) used in the request
+	ExportReqURLPattern bool
+}
+
+// todo: centralizing components is not feasible with current clogged architecture
+// a possible approach could be an internal event bus with pub-subs? This would be less invasive than
+// reworking dep injection from scratch
+func (eo *ExecutorOptions) RateLimitTake() {
+	if eo.RateLimiter.GetLimit() != uint(eo.Options.RateLimit) {
+		eo.RateLimiter.SetLimit(uint(eo.Options.RateLimit))
+		eo.RateLimiter.SetDuration(eo.Options.RateLimitDuration)
+	}
+	eo.RateLimiter.Take()
 }
 
 // GetThreadsForPayloadRequests returns the number of threads to use as default for
 // given max-request of payloads
 func (e *ExecutorOptions) GetThreadsForNPayloadRequests(totalRequests int, currentThreads int) int {
-	if e.OverrideThreadsCount != nil {
-		return e.OverrideThreadsCount(e, totalRequests, currentThreads)
-	}
 	if currentThreads > 0 {
 		return currentThreads
-	} else {
-		return e.Options.PayloadConcurrency
 	}
+
+	return e.Options.PayloadConcurrency
 }
 
 // CreateTemplateCtxStore creates template context store (which contains templateCtx for every scan)

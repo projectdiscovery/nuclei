@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/alecthomas/jsonschema"
+	"github.com/invopop/jsonschema"
 	"github.com/pkg/errors"
 	"github.com/projectdiscovery/goflags"
 	"github.com/projectdiscovery/nuclei/v3/pkg/model/types/stringslice"
@@ -92,8 +92,8 @@ type TypeHolder struct {
 	ProtocolType ProtocolType `mapping:"true"`
 }
 
-func (holder TypeHolder) JSONSchemaType() *jsonschema.Type {
-	gotType := &jsonschema.Type{
+func (holder TypeHolder) JSONSchema() *jsonschema.Schema {
+	gotType := &jsonschema.Schema{
 		Type:        "string",
 		Title:       "type of the protocol",
 		Description: "Type of the protocol",

@@ -11,3 +11,7 @@ func NewRawStringSlice(value interface{}) *RawStringSlice {
 func (rawStringSlice *RawStringSlice) Normalize(value string) string {
 	return value
 }
+
+func (rawStringSlice RawStringSlice) JSONSchemaAlias() any {
+	return StringOrSlice("")
+}

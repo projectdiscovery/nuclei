@@ -1,271 +1,269 @@
 {
-  "$schema": "http://json-schema.org/draft-04/schema#",
-  "$ref": "#/definitions/templates.Template",
-  "definitions": {
-    "fuzz.Rule": {
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://templates.-template",
+  "$ref": "#/$defs/templates.Template",
+  "$defs": {
+    "code.Request": {
       "properties": {
-        "type": {
-          "enum": [
-            "replace",
-            "prefix",
-            "postfix",
-            "infix",
-            "replace-regex"
-          ],
-          "type": "string",
-          "title": "type of rule",
-          "description": "Type of fuzzing rule to perform"
+        "matchers": {
+          "items": {
+            "$ref": "#/$defs/matchers.Matcher"
+          },
+          "type": "array",
+          "title": "matchers to run on response",
+          "description": "Detection mechanism to identify whether the request was successful by doing pattern matching"
         },
-        "part": {
-          "enum": [
-            "query",
-            "header",
-            "path",
-            "body",
-            "cookie",
-            "request"
-          ],
-          "type": "string",
-          "title": "part of rule",
-          "description": "Part of request rule to fuzz"
+        "extractors": {
+          "items": {
+            "$ref": "#/$defs/extractors.Extractor"
+          },
+          "type": "array",
+          "title": "extractors to run on response",
+          "description": "Extractors contains the extraction mechanism for the request to identify and extract parts of the response"
         },
-        "mode": {
-          "enum": [
-            "single",
-            "multiple"
-          ],
+        "matchers-condition": {
           "type": "string",
-          "title": "mode of rule",
-          "description": "Mode of request rule to fuzz"
+          "enum": [
+            "and",
+            "or"
+          ],
+          "title": "condition between the matchers",
+          "description": "Conditions between the matchers"
         },
-        "keys": {
+        "id": {
+          "type": "string",
+          "title": "id of the request",
+          "description": "ID is the optional ID of the Request"
+        },
+        "engine": {
           "items": {
             "type": "string"
           },
           "type": "array",
-          "title": "keys of parameters to fuzz",
-          "description": "Keys of parameters to fuzz"
+          "title": "engine",
+          "description": "Engine"
         },
-        "keys-regex": {
-          "items": {
-            "type": "string"
-          },
-          "type": "array",
-          "title": "keys regex to fuzz",
-          "description": "Regex of parameter keys to fuzz"
-        },
-        "values": {
-          "items": {
-            "type": "string"
-          },
-          "type": "array",
-          "title": "values regex to fuzz",
-          "description": "Regex of parameter values to fuzz"
-        },
-        "fuzz": {
-          "$schema": "http://json-schema.org/draft-04/schema#",
-          "$ref": "#/definitions/fuzz.SliceOrMapSlice",
-          "title": "payloads of fuzz rule",
-          "description": "Payloads to perform fuzzing substitutions with"
-        },
-        "replace-regex": {
+        "pre-condition": {
           "type": "string",
-          "title": "replace regex of rule",
-          "description": "Regex for regex-replace rule type"
+          "title": "pre-condition for the request",
+          "description": "PreCondition is a condition which is evaluated before sending the request"
+        },
+        "args": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array",
+          "title": "args",
+          "description": "Args"
+        },
+        "pattern": {
+          "type": "string",
+          "title": "pattern",
+          "description": "Pattern"
+        },
+        "source": {
+          "type": "string",
+          "title": "source file/snippet",
+          "description": "Source snippet"
         }
       },
       "additionalProperties": false,
       "type": "object"
     },
-    "fuzz.SliceOrMapSlice": {
-      "required": [
-        "Value",
-        "KV"
+    "dns.DNSRequestTypeHolder": {
+      "type": "string",
+      "enum": [
+        "A",
+        "NS",
+        "DS",
+        "CNAME",
+        "SOA",
+        "PTR",
+        "MX",
+        "TXT",
+        "AAAA",
+        "CAA",
+        "TLSA",
+        "ANY"
       ],
+      "title": "type of DNS request to make",
+      "description": "Type is the type of DNS request to make"
+    },
+    "dns.Request": {
       "properties": {
-        "Value": {
+        "matchers": {
           "items": {
-            "type": "string"
+            "$ref": "#/$defs/matchers.Matcher"
           },
-          "type": "array"
+          "type": "array",
+          "title": "matchers to run on response",
+          "description": "Detection mechanism to identify whether the request was successful by doing pattern matching"
         },
-        "KV": {
-          "$schema": "http://json-schema.org/draft-04/schema#",
-          "$ref": "#/definitions/github.com/projectdiscovery/utils/maps.OrderedMap[string,string]"
-        }
-      },
-      "additionalProperties": false,
-      "type": "object"
-    },
-    "model.Classification": {
-      "properties": {
-        "cve-id": {
-          "$ref": "#/definitions/stringslice.StringSlice",
-          "title": "cve ids for the template",
-          "description": "CVE IDs for the template"
+        "extractors": {
+          "items": {
+            "$ref": "#/$defs/extractors.Extractor"
+          },
+          "type": "array",
+          "title": "extractors to run on response",
+          "description": "Extractors contains the extraction mechanism for the request to identify and extract parts of the response"
         },
-        "cwe-id": {
-          "$ref": "#/definitions/stringslice.StringSlice",
-          "title": "cwe ids for the template",
-          "description": "CWE IDs for the template"
-        },
-        "cvss-metrics": {
+        "matchers-condition": {
           "type": "string",
-          "title": "cvss metrics for the template",
-          "description": "CVSS Metrics for the template",
-          "examples": [
-            "3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H"
-          ]
+          "enum": [
+            "and",
+            "or"
+          ],
+          "title": "condition between the matchers",
+          "description": "Conditions between the matchers"
         },
-        "cvss-score": {
-          "type": "number",
-          "title": "cvss score for the template",
-          "description": "CVSS Score for the template"
-        },
-        "epss-score": {
-          "type": "number",
-          "title": "epss score for the template",
-          "description": "EPSS Score for the template"
-        },
-        "epss-percentile": {
-          "type": "number",
-          "title": "epss percentile for the template",
-          "description": "EPSS Percentile for the template"
-        },
-        "cpe": {
+        "id": {
           "type": "string",
-          "title": "cpe for the template",
-          "description": "CPE for the template",
-          "examples": [
-            "cpe:/a:vendor:product:version"
-          ]
-        }
-      },
-      "additionalProperties": false,
-      "type": "object"
-    },
-    "model.Info": {
-      "properties": {
+          "title": "id of the dns request",
+          "description": "ID is the optional ID of the DNS Request"
+        },
         "name": {
           "type": "string",
-          "title": "name of the template",
-          "description": "Name is a short summary of what the template does",
-          "examples": [
-            "Nagios Default Credentials Check"
-          ]
+          "title": "hostname to make dns request for",
+          "description": "Name is the Hostname to make DNS request for"
         },
-        "author": {
-          "$schema": "http://json-schema.org/draft-04/schema#",
-          "$ref": "#/definitions/stringslice.StringSlice",
-          "title": "author of the template",
-          "description": "Author is the author of the template"
+        "type": {
+          "$ref": "#/$defs/dns.DNSRequestTypeHolder",
+          "title": "type of dns request to make",
+          "description": "Type is the type of DNS request to make"
         },
-        "tags": {
-          "$ref": "#/definitions/stringslice.StringSlice",
-          "title": "tags of the template",
-          "description": "Any tags for the template"
+        "class": {
+          "type": "string",
+          "enum": [
+            "inet",
+            "csnet",
+            "chaos",
+            "hesiod",
+            "none",
+            "any"
+          ],
+          "title": "class of DNS request",
+          "description": "Class is the class of the DNS request"
+        },
+        "retries": {
+          "type": "integer",
+          "title": "retries for dns request",
+          "description": "Retries is the number of retries for the DNS request"
+        },
+        "trace": {
+          "type": "boolean",
+          "title": "trace operation",
+          "description": "Trace performs a trace operation for the target."
+        },
+        "trace-max-recursion": {
+          "type": "integer",
+          "title": "trace-max-recursion level for dns request",
+          "description": "TraceMaxRecursion is the number of max recursion allowed for trace operations"
+        },
+        "attack": {
+          "$ref": "#/$defs/generators.AttackTypeHolder",
+          "title": "attack is the payload combination",
+          "description": "Attack is the type of payload combinations to perform"
+        },
+        "payloads": {
+          "$ref": "#/$defs/map[string]interface {}",
+          "title": "payloads for the network request",
+          "description": "Payloads contains any payloads for the current request"
+        },
+        "threads": {
+          "type": "integer",
+          "title": "threads for sending requests",
+          "description": "Threads specifies number of threads to use sending requests. This enables Connection Pooling"
+        },
+        "recursion": {
+          "type": "boolean",
+          "title": "recurse all servers",
+          "description": "Recursion determines if resolver should recurse all records to get fresh results"
+        },
+        "resolvers": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array",
+          "title": "Resolvers",
+          "description": "Define resolvers to use within the template"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object"
+    },
+    "engine.Action": {
+      "properties": {
+        "args": {
+          "patternProperties": {
+            ".*": {
+              "oneOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "boolean"
+                }
+              ]
+            }
+          },
+          "title": "arguments for headless action",
+          "description": "Args contain arguments for the headless action"
+        },
+        "name": {
+          "type": "string",
+          "title": "name for headless action",
+          "description": "Name is the name assigned to the headless action"
         },
         "description": {
           "type": "string",
-          "title": "description of the template",
-          "description": "In-depth explanation on what the template does",
-          "examples": [
-            "Bower is a package manager which stores package information in the bower.json file"
-          ]
+          "title": "description for headless action",
+          "description": "Description of the headless action"
         },
-        "impact": {
-          "type": "string",
-          "title": "impact of the template",
-          "description": "In-depth explanation on the impact of the issue found by the template",
-          "examples": [
-            "Successful exploitation of this vulnerability could allow an attacker to execute arbitrary SQL queries"
-          ]
-        },
-        "reference": {
-          "$schema": "http://json-schema.org/draft-04/schema#",
-          "$ref": "#/definitions/stringslice.RawStringSlice",
-          "title": "references for the template",
-          "description": "Links relevant to the template"
-        },
-        "severity": {
-          "$schema": "http://json-schema.org/draft-04/schema#",
-          "$ref": "#/definitions/severity.Holder"
-        },
-        "metadata": {
-          "patternProperties": {
-            ".*": {
-              "additionalProperties": true
-            }
-          },
-          "type": "object",
-          "title": "additional metadata for the template",
-          "description": "Additional metadata fields for the template"
-        },
-        "classification": {
-          "$schema": "http://json-schema.org/draft-04/schema#",
-          "$ref": "#/definitions/model.Classification",
-          "title": "classification info for the template",
-          "description": "Classification information for the template"
-        },
-        "remediation": {
-          "type": "string",
-          "title": "remediation steps for the template",
-          "description": "In-depth explanation on how to fix the issues found by the template",
-          "examples": [
-            "Change the default administrative username and password of Apache ActiveMQ by editing the file jetty-realm.properties"
-          ]
+        "action": {
+          "$ref": "#/$defs/engine.ActionTypeHolder",
+          "title": "action to perform",
+          "description": "Type of actions to perform"
         }
       },
       "additionalProperties": false,
-      "type": "object"
-    },
-    "severity.Holder": {
-      "enum": [
-        "info",
-        "low",
-        "medium",
-        "high",
-        "critical",
-        "unknown"
-      ],
-      "type": "string",
-      "title": "severity of the template",
-      "description": "Seriousness of the implications of the template"
-    },
-    "stringslice.RawStringSlice": {
-      "oneOf": [
-        {
-          "type": "string"
-        },
-        {
-          "type": "array"
-        }
+      "type": "object",
+      "required": [
+        "action"
       ]
     },
-    "stringslice.StringSlice": {
-      "oneOf": [
-        {
-          "type": "string"
-        },
-        {
-          "type": "array"
-        }
-      ]
-    },
-    "userAgent.UserAgentHolder": {
-      "enum": [
-        "off",
-        "default",
-        "custom"
-      ],
+    "engine.ActionTypeHolder": {
       "type": "string",
-      "title": "userAgent for the headless",
-      "description": "userAgent for the headless http request"
+      "enum": [
+        "navigate",
+        "script",
+        "click",
+        "rightclick",
+        "text",
+        "screenshot",
+        "time",
+        "select",
+        "files",
+        "waitload",
+        "getresource",
+        "extract",
+        "setmethod",
+        "addheader",
+        "setheader",
+        "deleteheader",
+        "setbody",
+        "waitevent",
+        "keyboard",
+        "debug",
+        "sleep",
+        "waitvisible"
+      ],
+      "title": "action to perform",
+      "description": "Type of actions to perform"
     },
     "extractors.Extractor": {
-      "required": [
-        "type"
-      ],
       "properties": {
         "name": {
           "type": "string",
@@ -273,8 +271,7 @@
           "description": "Name of the extractor"
         },
         "type": {
-          "$schema": "http://json-schema.org/draft-04/schema#",
-          "$ref": "#/definitions/extractors.ExtractorTypeHolder"
+          "$ref": "#/$defs/extractors.ExtractorTypeHolder"
         },
         "regex": {
           "items": {
@@ -343,9 +340,13 @@
         }
       },
       "additionalProperties": false,
-      "type": "object"
+      "type": "object",
+      "required": [
+        "type"
+      ]
     },
     "extractors.ExtractorTypeHolder": {
+      "type": "string",
       "enum": [
         "regex",
         "kval",
@@ -353,352 +354,14 @@
         "json",
         "dsl"
       ],
-      "type": "string",
       "title": "type of the extractor",
       "description": "Type of the extractor"
-    },
-    "matchers.Matcher": {
-      "required": [
-        "type"
-      ],
-      "properties": {
-        "type": {
-          "$schema": "http://json-schema.org/draft-04/schema#",
-          "$ref": "#/definitions/matchers.MatcherTypeHolder",
-          "title": "type of matcher",
-          "description": "Type of the matcher"
-        },
-        "condition": {
-          "enum": [
-            "and",
-            "or"
-          ],
-          "type": "string",
-          "title": "condition between matcher variables",
-          "description": "Condition between the matcher variables"
-        },
-        "part": {
-          "type": "string",
-          "title": "part of response to match",
-          "description": "Part of response to match data from"
-        },
-        "negative": {
-          "type": "boolean",
-          "title": "negative specifies if match reversed",
-          "description": "Negative specifies if the match should be reversed. It will only match if the condition is not true"
-        },
-        "name": {
-          "type": "string",
-          "title": "name of the matcher",
-          "description": "Name of the matcher"
-        },
-        "status": {
-          "items": {
-            "type": "integer"
-          },
-          "type": "array",
-          "title": "status to match",
-          "description": "Status to match for the response"
-        },
-        "size": {
-          "items": {
-            "type": "integer"
-          },
-          "type": "array",
-          "title": "acceptable size for response",
-          "description": "Size is the acceptable size for the response"
-        },
-        "words": {
-          "items": {
-            "type": "string"
-          },
-          "type": "array",
-          "title": "words to match in response",
-          "description": " Words contains word patterns required to be present in the response part"
-        },
-        "regex": {
-          "items": {
-            "type": "string"
-          },
-          "type": "array",
-          "title": "regex to match in response",
-          "description": "Regex contains regex patterns required to be present in the response part"
-        },
-        "binary": {
-          "items": {
-            "type": "string"
-          },
-          "type": "array",
-          "title": "binary patterns to match in response",
-          "description": "Binary are the binary patterns required to be present in the response part"
-        },
-        "dsl": {
-          "items": {
-            "type": "string"
-          },
-          "type": "array",
-          "title": "dsl expressions to match in response",
-          "description": "DSL are the dsl expressions that will be evaluated as part of nuclei matching rules"
-        },
-        "xpath": {
-          "items": {
-            "type": "string"
-          },
-          "type": "array",
-          "title": "xpath queries to match in response",
-          "description": "xpath are the XPath queries that will be evaluated against the response part of nuclei matching rules"
-        },
-        "encoding": {
-          "enum": [
-            "hex"
-          ],
-          "type": "string",
-          "title": "encoding for word field",
-          "description": "Optional encoding for the word fields"
-        },
-        "case-insensitive": {
-          "type": "boolean",
-          "title": "use case insensitive match",
-          "description": "use case insensitive match"
-        },
-        "match-all": {
-          "type": "boolean",
-          "title": "match all values",
-          "description": "match all matcher values ignoring condition"
-        },
-        "internal": {
-          "type": "boolean",
-          "title": "hide matcher from output",
-          "description": "hide matcher from output"
-        }
-      },
-      "additionalProperties": false,
-      "type": "object"
-    },
-    "matchers.MatcherTypeHolder": {
-      "enum": [
-        "word",
-        "regex",
-        "binary",
-        "status",
-        "size",
-        "dsl",
-        "xpath"
-      ],
-      "type": "string",
-      "title": "type of the matcher",
-      "description": "Type of the matcher"
-    },
-    "code.Request": {
-      "properties": {
-        "matchers": {
-          "items": {
-            "$ref": "#/definitions/matchers.Matcher"
-          },
-          "type": "array",
-          "title": "matchers to run on response",
-          "description": "Detection mechanism to identify whether the request was successful by doing pattern matching"
-        },
-        "extractors": {
-          "items": {
-            "$ref": "#/definitions/extractors.Extractor"
-          },
-          "type": "array",
-          "title": "extractors to run on response",
-          "description": "Extractors contains the extraction mechanism for the request to identify and extract parts of the response"
-        },
-        "matchers-condition": {
-          "enum": [
-            "and",
-            "or"
-          ],
-          "type": "string",
-          "title": "condition between the matchers",
-          "description": "Conditions between the matchers"
-        },
-        "id": {
-          "type": "string",
-          "title": "id of the request",
-          "description": "ID is the optional ID of the Request"
-        },
-        "engine": {
-          "items": {
-            "type": "string"
-          },
-          "type": "array",
-          "title": "engine",
-          "description": "Engine"
-        },
-        "args": {
-          "items": {
-            "type": "string"
-          },
-          "type": "array",
-          "title": "args",
-          "description": "Args"
-        },
-        "pattern": {
-          "type": "string",
-          "title": "pattern",
-          "description": "Pattern"
-        },
-        "source": {
-          "type": "string",
-          "title": "source file/snippet",
-          "description": "Source snippet"
-        }
-      },
-      "additionalProperties": false,
-      "type": "object"
-    },
-    "generators.AttackTypeHolder": {
-      "enum": [
-        "batteringram",
-        "pitchfork",
-        "clusterbomb"
-      ],
-      "type": "string",
-      "title": "type of the attack",
-      "description": "Type of the attack"
-    },
-    "variables.Variable": {
-      "additionalProperties": true,
-      "type": "object",
-      "title": "variables for the request",
-      "description": "Additional variables for the request"
-    },
-    "dns.DNSRequestTypeHolder": {
-      "enum": [
-        "A",
-        "NS",
-        "DS",
-        "CNAME",
-        "SOA",
-        "PTR",
-        "MX",
-        "TXT",
-        "AAAA",
-        "CAA",
-        "TLSA",
-        "ANY"
-      ],
-      "type": "string",
-      "title": "type of DNS request to make",
-      "description": "Type is the type of DNS request to make"
-    },
-    "dns.Request": {
-      "properties": {
-        "matchers": {
-          "items": {
-            "$ref": "#/definitions/matchers.Matcher"
-          },
-          "type": "array",
-          "title": "matchers to run on response",
-          "description": "Detection mechanism to identify whether the request was successful by doing pattern matching"
-        },
-        "extractors": {
-          "items": {
-            "$ref": "#/definitions/extractors.Extractor"
-          },
-          "type": "array",
-          "title": "extractors to run on response",
-          "description": "Extractors contains the extraction mechanism for the request to identify and extract parts of the response"
-        },
-        "matchers-condition": {
-          "enum": [
-            "and",
-            "or"
-          ],
-          "type": "string",
-          "title": "condition between the matchers",
-          "description": "Conditions between the matchers"
-        },
-        "id": {
-          "type": "string",
-          "title": "id of the dns request",
-          "description": "ID is the optional ID of the DNS Request"
-        },
-        "name": {
-          "type": "string",
-          "title": "hostname to make dns request for",
-          "description": "Name is the Hostname to make DNS request for"
-        },
-        "type": {
-          "$schema": "http://json-schema.org/draft-04/schema#",
-          "$ref": "#/definitions/dns.DNSRequestTypeHolder",
-          "title": "type of dns request to make",
-          "description": "Type is the type of DNS request to make"
-        },
-        "class": {
-          "enum": [
-            "inet",
-            "csnet",
-            "chaos",
-            "hesiod",
-            "none",
-            "any"
-          ],
-          "type": "string",
-          "title": "class of DNS request",
-          "description": "Class is the class of the DNS request"
-        },
-        "retries": {
-          "type": "integer",
-          "title": "retries for dns request",
-          "description": "Retries is the number of retries for the DNS request"
-        },
-        "trace": {
-          "type": "boolean",
-          "title": "trace operation",
-          "description": "Trace performs a trace operation for the target."
-        },
-        "trace-max-recursion": {
-          "type": "integer",
-          "title": "trace-max-recursion level for dns request",
-          "description": "TraceMaxRecursion is the number of max recursion allowed for trace operations"
-        },
-        "attack": {
-          "$ref": "#/definitions/generators.AttackTypeHolder",
-          "title": "attack is the payload combination",
-          "description": "Attack is the type of payload combinations to perform"
-        },
-        "payloads": {
-          "patternProperties": {
-            ".*": {
-              "additionalProperties": true
-            }
-          },
-          "type": "object",
-          "title": "payloads for the network request",
-          "description": "Payloads contains any payloads for the current request"
-        },
-        "threads": {
-          "type": "integer",
-          "title": "threads for sending requests",
-          "description": "Threads specifies number of threads to use sending requests. This enables Connection Pooling"
-        },
-        "recursion": {
-          "type": "boolean",
-          "title": "recurse all servers",
-          "description": "Recursion determines if resolver should recurse all records to get fresh results"
-        },
-        "resolvers": {
-          "items": {
-            "type": "string"
-          },
-          "type": "array",
-          "title": "Resolvers",
-          "description": "Define resolvers to use within the template"
-        }
-      },
-      "additionalProperties": false,
-      "type": "object"
     },
     "file.Request": {
       "properties": {
         "matchers": {
           "items": {
-            "$ref": "#/definitions/matchers.Matcher"
+            "$ref": "#/$defs/matchers.Matcher"
           },
           "type": "array",
           "title": "matchers to run on response",
@@ -706,18 +369,18 @@
         },
         "extractors": {
           "items": {
-            "$ref": "#/definitions/extractors.Extractor"
+            "$ref": "#/$defs/extractors.Extractor"
           },
           "type": "array",
           "title": "extractors to run on response",
           "description": "Extractors contains the extraction mechanism for the request to identify and extract parts of the response"
         },
         "matchers-condition": {
+          "type": "string",
           "enum": [
             "and",
             "or"
           ],
-          "type": "string",
           "title": "condition between the matchers",
           "description": "Conditions between the matchers"
         },
@@ -766,6 +429,105 @@
       "additionalProperties": false,
       "type": "object"
     },
+    "fuzz.Rule": {
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "replace",
+            "prefix",
+            "postfix",
+            "infix",
+            "replace-regex"
+          ],
+          "title": "type of rule",
+          "description": "Type of fuzzing rule to perform"
+        },
+        "part": {
+          "type": "string",
+          "enum": [
+            "query",
+            "header",
+            "path",
+            "body",
+            "cookie",
+            "request"
+          ],
+          "title": "part of rule",
+          "description": "Part of request rule to fuzz"
+        },
+        "mode": {
+          "type": "string",
+          "enum": [
+            "single",
+            "multiple"
+          ],
+          "title": "mode of rule",
+          "description": "Mode of request rule to fuzz"
+        },
+        "keys": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array",
+          "title": "keys of parameters to fuzz",
+          "description": "Keys of parameters to fuzz"
+        },
+        "keys-regex": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array",
+          "title": "keys regex to fuzz",
+          "description": "Regex of parameter keys to fuzz"
+        },
+        "values": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array",
+          "title": "values regex to fuzz",
+          "description": "Regex of parameter values to fuzz"
+        },
+        "fuzz": {
+          "$ref": "#/$defs/fuzz.SliceOrMapSlice",
+          "title": "payloads of fuzz rule",
+          "description": "Payloads to perform fuzzing substitutions with"
+        },
+        "replace-regex": {
+          "type": "string",
+          "title": "replace regex of rule",
+          "description": "Regex for regex-replace rule type"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object"
+    },
+    "fuzz.SliceOrMapSlice": {
+      "items": {
+        "oneOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "object"
+          }
+        ]
+      },
+      "type": "array",
+      "title": "Payloads of Fuzz Rule",
+      "description": "Payloads to perform fuzzing substitutions with."
+    },
+    "generators.AttackTypeHolder": {
+      "type": "string",
+      "enum": [
+        "batteringram",
+        "pitchfork",
+        "clusterbomb"
+      ],
+      "title": "type of the attack",
+      "description": "Type of the attack"
+    },
     "headless.Request": {
       "properties": {
         "id": {
@@ -774,32 +536,25 @@
           "description": "Optional ID of the headless request"
         },
         "attack": {
-          "$ref": "#/definitions/generators.AttackTypeHolder",
+          "$ref": "#/$defs/generators.AttackTypeHolder",
           "title": "attack is the payload combination",
           "description": "Attack is the type of payload combinations to perform"
         },
         "payloads": {
-          "patternProperties": {
-            ".*": {
-              "additionalProperties": true
-            }
-          },
-          "type": "object",
+          "$ref": "#/$defs/map[string]interface {}",
           "title": "payloads for the headless request",
           "description": "Payloads contains any payloads for the current request"
         },
         "steps": {
           "items": {
-            "$schema": "http://json-schema.org/draft-04/schema#",
-            "$ref": "#/definitions/engine.Action"
+            "$ref": "#/$defs/engine.Action"
           },
           "type": "array",
           "title": "list of actions for headless request",
           "description": "List of actions to run for headless request"
         },
         "user_agent": {
-          "$schema": "http://json-schema.org/draft-04/schema#",
-          "$ref": "#/definitions/userAgent.UserAgentHolder",
+          "$ref": "#/$defs/userAgent.UserAgentHolder",
           "title": "user agent for the headless request",
           "description": "User agent for the headless request"
         },
@@ -815,7 +570,7 @@
         },
         "matchers": {
           "items": {
-            "$ref": "#/definitions/matchers.Matcher"
+            "$ref": "#/$defs/matchers.Matcher"
           },
           "type": "array",
           "title": "matchers to run on response",
@@ -823,24 +578,24 @@
         },
         "extractors": {
           "items": {
-            "$ref": "#/definitions/extractors.Extractor"
+            "$ref": "#/$defs/extractors.Extractor"
           },
           "type": "array",
           "title": "extractors to run on response",
           "description": "Extractors contains the extraction mechanism for the request to identify and extract parts of the response"
         },
         "matchers-condition": {
+          "type": "string",
           "enum": [
             "and",
             "or"
           ],
-          "type": "string",
           "title": "condition between the matchers",
           "description": "Conditions between the matchers"
         },
         "fuzzing": {
           "items": {
-            "$ref": "#/definitions/fuzz.Rule"
+            "$ref": "#/$defs/fuzz.Rule"
           },
           "type": "array",
           "title": "fuzzin rules for http fuzzing",
@@ -860,71 +615,8 @@
       "additionalProperties": false,
       "type": "object"
     },
-    "engine.Action": {
-      "required": [
-        "action"
-      ],
-      "properties": {
-        "args": {
-          "patternProperties": {
-            ".*": {
-              "type": "string"
-            }
-          },
-          "type": "object",
-          "title": "arguments for headless action",
-          "description": "Args contain arguments for the headless action"
-        },
-        "name": {
-          "type": "string",
-          "title": "name for headless action",
-          "description": "Name is the name assigned to the headless action"
-        },
-        "description": {
-          "type": "string",
-          "title": "description for headless action",
-          "description": "Description of the headless action"
-        },
-        "action": {
-          "$schema": "http://json-schema.org/draft-04/schema#",
-          "$ref": "#/definitions/engine.ActionTypeHolder",
-          "title": "action to perform",
-          "description": "Type of actions to perform"
-        }
-      },
-      "additionalProperties": false,
-      "type": "object"
-    },
-    "engine.ActionTypeHolder": {
-      "enum": [
-        "navigate",
-        "script",
-        "click",
-        "rightclick",
-        "text",
-        "screenshot",
-        "time",
-        "select",
-        "files",
-        "waitload",
-        "getresource",
-        "extract",
-        "setmethod",
-        "addheader",
-        "setheader",
-        "deleteheader",
-        "setbody",
-        "waitevent",
-        "keyboard",
-        "debug",
-        "sleep",
-        "waitvisible"
-      ],
-      "type": "string",
-      "title": "action to perform",
-      "description": "Type of actions to perform"
-    },
     "http.HTTPMethodTypeHolder": {
+      "type": "string",
       "enum": [
         "GET",
         "HEAD",
@@ -938,7 +630,6 @@
         "PURGE",
         "DEBUG"
       ],
-      "type": "string",
       "title": "method is the HTTP request method",
       "description": "Method is the HTTP Request Method"
     },
@@ -946,8 +637,7 @@
       "properties": {
         "matchers": {
           "items": {
-            "$schema": "http://json-schema.org/draft-04/schema#",
-            "$ref": "#/definitions/matchers.Matcher"
+            "$ref": "#/$defs/matchers.Matcher"
           },
           "type": "array",
           "title": "matchers to run on response",
@@ -955,19 +645,18 @@
         },
         "extractors": {
           "items": {
-            "$schema": "http://json-schema.org/draft-04/schema#",
-            "$ref": "#/definitions/extractors.Extractor"
+            "$ref": "#/$defs/extractors.Extractor"
           },
           "type": "array",
           "title": "extractors to run on response",
           "description": "Extractors contains the extraction mechanism for the request to identify and extract parts of the response"
         },
         "matchers-condition": {
+          "type": "string",
           "enum": [
             "and",
             "or"
           ],
-          "type": "string",
           "title": "condition between the matchers",
           "description": "Conditions between the matchers"
         },
@@ -997,14 +686,12 @@
           "description": "Optional name for the HTTP Request"
         },
         "attack": {
-          "$schema": "http://json-schema.org/draft-04/schema#",
-          "$ref": "#/definitions/generators.AttackTypeHolder",
+          "$ref": "#/$defs/generators.AttackTypeHolder",
           "title": "attack is the payload combination",
           "description": "Attack is the type of payload combinations to perform"
         },
         "method": {
-          "$schema": "http://json-schema.org/draft-04/schema#",
-          "$ref": "#/definitions/http.HTTPMethodTypeHolder",
+          "$ref": "#/$defs/http.HTTPMethodTypeHolder",
           "title": "method is the http request method",
           "description": "Method is the HTTP Request Method"
         },
@@ -1014,22 +701,26 @@
           "description": "Body is an optional parameter which contains HTTP Request body"
         },
         "payloads": {
-          "patternProperties": {
-            ".*": {
-              "additionalProperties": true
-            }
-          },
-          "type": "object",
+          "$ref": "#/$defs/map[string]interface {}",
           "title": "payloads for the http request",
           "description": "Payloads contains any payloads for the current request"
         },
         "headers": {
           "patternProperties": {
             ".*": {
-              "type": "string"
+              "oneOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "boolean"
+                }
+              ]
             }
           },
-          "type": "object",
           "title": "headers to send with the http request",
           "description": "Headers contains HTTP Headers to send with the request"
         },
@@ -1065,8 +756,7 @@
         },
         "fuzzing": {
           "items": {
-            "$schema": "http://json-schema.org/draft-04/schema#",
-            "$ref": "#/definitions/fuzz.Rule"
+            "$ref": "#/$defs/fuzz.Rule"
           },
           "type": "array",
           "title": "fuzzin rules for http fuzzing",
@@ -1076,8 +766,7 @@
           "type": "boolean"
         },
         "signature": {
-          "$schema": "http://json-schema.org/draft-04/schema#",
-          "$ref": "#/definitions/http.SignatureTypeHolder",
+          "$ref": "#/$defs/http.SignatureTypeHolder",
           "title": "signature is the http request signature method",
           "description": "Signature is the HTTP Request signature Method"
         },
@@ -1156,32 +845,32 @@
           "title": "disable auto merging of path",
           "description": "Disable merging target url path with raw request path"
         },
-        "filters": {
+        "pre-condition": {
           "items": {
-            "$ref": "#/definitions/matchers.Matcher"
+            "$ref": "#/$defs/matchers.Matcher"
           },
           "type": "array",
-          "title": "filter for fuzzing",
-          "description": "Filter is matcher-like field to check if fuzzing should be performed on this request or not"
+          "title": "pre-condition for fuzzing/dast",
+          "description": "PreCondition is matcher-like field to check if fuzzing should be performed on this request or not"
         },
-        "filters-condition": {
+        "pre-condition-operator": {
+          "type": "string",
           "enum": [
             "and",
             "or"
           ],
-          "type": "string",
           "title": "condition between the filters",
-          "description": "Conditions between the filters"
+          "description": "Operator to use between multiple per-conditions"
         }
       },
       "additionalProperties": false,
       "type": "object"
     },
     "http.SignatureTypeHolder": {
+      "type": "string",
       "enum": [
         "AWS"
       ],
-      "type": "string",
       "title": "type of the signature",
       "description": "Type of the signature"
     },
@@ -1189,7 +878,7 @@
       "properties": {
         "matchers": {
           "items": {
-            "$ref": "#/definitions/matchers.Matcher"
+            "$ref": "#/$defs/matchers.Matcher"
           },
           "type": "array",
           "title": "matchers to run on response",
@@ -1197,18 +886,18 @@
         },
         "extractors": {
           "items": {
-            "$ref": "#/definitions/extractors.Extractor"
+            "$ref": "#/$defs/extractors.Extractor"
           },
           "type": "array",
           "title": "extractors to run on response",
           "description": "Extractors contains the extraction mechanism for the request to identify and extract parts of the response"
         },
         "matchers-condition": {
+          "type": "string",
           "enum": [
             "and",
             "or"
           ],
-          "type": "string",
           "title": "condition between the matchers",
           "description": "Conditions between the matchers"
         },
@@ -1228,12 +917,7 @@
           "description": "PreCondition is a condition which is evaluated before sending the request"
         },
         "args": {
-          "patternProperties": {
-            ".*": {
-              "additionalProperties": true
-            }
-          },
-          "type": "object"
+          "$ref": "#/$defs/map[string]interface {}"
         },
         "code": {
           "type": "string",
@@ -1251,7 +935,7 @@
           "description": "Stop the execution after a match is found"
         },
         "attack": {
-          "$ref": "#/definitions/generators.AttackTypeHolder",
+          "$ref": "#/$defs/generators.AttackTypeHolder",
           "title": "attack is the payload combination",
           "description": "Attack is the type of payload combinations to perform"
         },
@@ -1261,12 +945,7 @@
           "description": "Threads specifies number of threads to use sending requests. This enables Connection Pooling"
         },
         "payloads": {
-          "patternProperties": {
-            ".*": {
-              "additionalProperties": true
-            }
-          },
-          "type": "object",
+          "$ref": "#/$defs/map[string]interface {}",
           "title": "payloads for the webosocket request",
           "description": "Payloads contains any payloads for the current request"
         }
@@ -1274,16 +953,304 @@
       "additionalProperties": false,
       "type": "object"
     },
+    "map[string]interface {}": {
+      "type": "object"
+    },
+    "map[string]string": {
+      "additionalProperties": {
+        "type": "string"
+      },
+      "type": "object"
+    },
+    "matchers.Matcher": {
+      "properties": {
+        "type": {
+          "$ref": "#/$defs/matchers.MatcherTypeHolder",
+          "title": "type of matcher",
+          "description": "Type of the matcher"
+        },
+        "condition": {
+          "type": "string",
+          "enum": [
+            "and",
+            "or"
+          ],
+          "title": "condition between matcher variables",
+          "description": "Condition between the matcher variables"
+        },
+        "part": {
+          "type": "string",
+          "title": "part of response to match",
+          "description": "Part of response to match data from"
+        },
+        "negative": {
+          "type": "boolean",
+          "title": "negative specifies if match reversed",
+          "description": "Negative specifies if the match should be reversed. It will only match if the condition is not true"
+        },
+        "name": {
+          "type": "string",
+          "title": "name of the matcher",
+          "description": "Name of the matcher"
+        },
+        "status": {
+          "items": {
+            "type": "integer"
+          },
+          "type": "array",
+          "title": "status to match",
+          "description": "Status to match for the response"
+        },
+        "size": {
+          "items": {
+            "type": "integer"
+          },
+          "type": "array",
+          "title": "acceptable size for response",
+          "description": "Size is the acceptable size for the response"
+        },
+        "words": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array",
+          "title": "words to match in response",
+          "description": " Words contains word patterns required to be present in the response part"
+        },
+        "regex": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array",
+          "title": "regex to match in response",
+          "description": "Regex contains regex patterns required to be present in the response part"
+        },
+        "binary": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array",
+          "title": "binary patterns to match in response",
+          "description": "Binary are the binary patterns required to be present in the response part"
+        },
+        "dsl": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array",
+          "title": "dsl expressions to match in response",
+          "description": "DSL are the dsl expressions that will be evaluated as part of nuclei matching rules"
+        },
+        "xpath": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array",
+          "title": "xpath queries to match in response",
+          "description": "xpath are the XPath queries that will be evaluated against the response part of nuclei matching rules"
+        },
+        "encoding": {
+          "type": "string",
+          "enum": [
+            "hex"
+          ],
+          "title": "encoding for word field",
+          "description": "Optional encoding for the word fields"
+        },
+        "case-insensitive": {
+          "type": "boolean",
+          "title": "use case insensitive match",
+          "description": "use case insensitive match"
+        },
+        "match-all": {
+          "type": "boolean",
+          "title": "match all values",
+          "description": "match all matcher values ignoring condition"
+        },
+        "internal": {
+          "type": "boolean",
+          "title": "hide matcher from output",
+          "description": "hide matcher from output"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "type"
+      ]
+    },
+    "matchers.MatcherTypeHolder": {
+      "type": "string",
+      "enum": [
+        "word",
+        "regex",
+        "binary",
+        "status",
+        "size",
+        "dsl",
+        "xpath"
+      ],
+      "title": "type of the matcher",
+      "description": "Type of the matcher"
+    },
+    "model.Classification": {
+      "properties": {
+        "cve-id": {
+          "$ref": "#/$defs/stringslice.StringOrSlice",
+          "title": "cve ids for the template",
+          "description": "CVE IDs for the template"
+        },
+        "cwe-id": {
+          "$ref": "#/$defs/stringslice.StringOrSlice",
+          "title": "cwe ids for the template",
+          "description": "CWE IDs for the template"
+        },
+        "cvss-metrics": {
+          "type": "string",
+          "title": "cvss metrics for the template",
+          "description": "CVSS Metrics for the template",
+          "examples": [
+            "3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H"
+          ]
+        },
+        "cvss-score": {
+          "type": "number",
+          "title": "cvss score for the template",
+          "description": "CVSS Score for the template",
+          "examples": [
+            9.8
+          ]
+        },
+        "epss-score": {
+          "type": "number",
+          "title": "epss score for the template",
+          "description": "EPSS Score for the template",
+          "examples": [
+            0.42509
+          ]
+        },
+        "epss-percentile": {
+          "type": "number",
+          "title": "epss percentile for the template",
+          "description": "EPSS Percentile for the template",
+          "examples": [
+            0.42509
+          ]
+        },
+        "cpe": {
+          "type": "string",
+          "title": "cpe for the template",
+          "description": "CPE for the template",
+          "examples": [
+            "cpe:/a:vendor:product:version"
+          ]
+        }
+      },
+      "additionalProperties": false,
+      "type": "object"
+    },
+    "model.Info": {
+      "properties": {
+        "name": {
+          "type": "string",
+          "title": "name of the template",
+          "description": "Name is a short summary of what the template does",
+          "examples": [
+            "Nagios Default Credentials Check"
+          ]
+        },
+        "author": {
+          "$ref": "#/$defs/stringslice.StringOrSlice",
+          "oneOf": [
+            {
+              "type": "string",
+              "examples": [
+                "pdteam"
+              ]
+            },
+            {
+              "type": "array",
+              "examples": [
+                "pdteam,mr.robot"
+              ]
+            }
+          ],
+          "title": "author of the template",
+          "description": "Author is the author of the template"
+        },
+        "tags": {
+          "$ref": "#/$defs/stringslice.StringOrSlice",
+          "title": "tags of the template",
+          "description": "Any tags for the template"
+        },
+        "description": {
+          "type": "string",
+          "title": "description of the template",
+          "description": "In-depth explanation on what the template does",
+          "examples": [
+            "Bower is a package manager which stores package information in the bower.json file"
+          ]
+        },
+        "impact": {
+          "type": "string",
+          "title": "impact of the template",
+          "description": "In-depth explanation on the impact of the issue found by the template",
+          "examples": [
+            "Successful exploitation of this vulnerability could allow an attacker to execute arbitrary SQL queries"
+          ]
+        },
+        "reference": {
+          "$ref": "#/$defs/stringslice.StringOrSlice",
+          "title": "references for the template",
+          "description": "Links relevant to the template"
+        },
+        "severity": {
+          "$ref": "#/$defs/severity.Holder"
+        },
+        "metadata": {
+          "$ref": "#/$defs/map[string]interface {}",
+          "type": "object",
+          "title": "additional metadata for the template",
+          "description": "Additional metadata fields for the template"
+        },
+        "classification": {
+          "$ref": "#/$defs/model.Classification",
+          "type": "object",
+          "title": "classification info for the template",
+          "description": "Classification information for the template"
+        },
+        "remediation": {
+          "type": "string",
+          "title": "remediation steps for the template",
+          "description": "In-depth explanation on how to fix the issues found by the template",
+          "examples": [
+            "Change the default administrative username and password of Apache ActiveMQ by editing the file jetty-realm.properties"
+          ]
+        }
+      },
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "name",
+        "author"
+      ]
+    },
     "network.Input": {
       "properties": {
         "data": {
-          "type": "string",
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "integer"
+            }
+          ],
           "title": "data to send as input",
           "description": "Data is the data to send as the input"
         },
         "type": {
-          "$schema": "http://json-schema.org/draft-04/schema#",
-          "$ref": "#/definitions/network.NetworkInputTypeHolder",
+          "$ref": "#/$defs/network.NetworkInputTypeHolder",
           "title": "type is the type of input data",
           "description": "Type of input specified in data field"
         },
@@ -1302,11 +1269,11 @@
       "type": "object"
     },
     "network.NetworkInputTypeHolder": {
+      "type": "string",
       "enum": [
         "hex",
         "text"
       ],
-      "type": "string",
       "title": "type is the type of input data",
       "description": "description=Type of input specified in data field"
     },
@@ -1326,17 +1293,12 @@
           "description": "Host to send network requests to"
         },
         "attack": {
-          "$ref": "#/definitions/generators.AttackTypeHolder",
+          "$ref": "#/$defs/generators.AttackTypeHolder",
           "title": "attack is the payload combination",
           "description": "Attack is the type of payload combinations to perform"
         },
         "payloads": {
-          "patternProperties": {
-            ".*": {
-              "additionalProperties": true
-            }
-          },
-          "type": "object",
+          "$ref": "#/$defs/map[string]interface {}",
           "title": "payloads for the network request",
           "description": "Payloads contains any payloads for the current request"
         },
@@ -1347,15 +1309,21 @@
         },
         "inputs": {
           "items": {
-            "$schema": "http://json-schema.org/draft-04/schema#",
-            "$ref": "#/definitions/network.Input"
+            "$ref": "#/$defs/network.Input"
           },
           "type": "array",
           "title": "inputs for the network request",
           "description": "Inputs contains any input/output for the current request"
         },
         "port": {
-          "type": "string",
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "integer"
+            }
+          ],
           "title": "port to send requests to",
           "description": "Port to send network requests to"
         },
@@ -1376,7 +1344,7 @@
         },
         "matchers": {
           "items": {
-            "$ref": "#/definitions/matchers.Matcher"
+            "$ref": "#/$defs/matchers.Matcher"
           },
           "type": "array",
           "title": "matchers to run on response",
@@ -1384,18 +1352,18 @@
         },
         "extractors": {
           "items": {
-            "$ref": "#/definitions/extractors.Extractor"
+            "$ref": "#/$defs/extractors.Extractor"
           },
           "type": "array",
           "title": "extractors to run on response",
           "description": "Extractors contains the extraction mechanism for the request to identify and extract parts of the response"
         },
         "matchers-condition": {
+          "type": "string",
           "enum": [
             "and",
             "or"
           ],
-          "type": "string",
           "title": "condition between the matchers",
           "description": "Conditions between the matchers"
         }
@@ -1403,11 +1371,24 @@
       "additionalProperties": false,
       "type": "object"
     },
+    "severity.Holder": {
+      "type": "string",
+      "enum": [
+        "info",
+        "low",
+        "medium",
+        "high",
+        "critical",
+        "unknown"
+      ],
+      "title": "severity of the template",
+      "description": "Seriousness of the implications of the template"
+    },
     "ssl.Request": {
       "properties": {
         "matchers": {
           "items": {
-            "$ref": "#/definitions/matchers.Matcher"
+            "$ref": "#/$defs/matchers.Matcher"
           },
           "type": "array",
           "title": "matchers to run on response",
@@ -1415,18 +1396,18 @@
         },
         "extractors": {
           "items": {
-            "$ref": "#/definitions/extractors.Extractor"
+            "$ref": "#/$defs/extractors.Extractor"
           },
           "type": "array",
           "title": "extractors to run on response",
           "description": "Extractors contains the extraction mechanism for the request to identify and extract parts of the response"
         },
         "matchers-condition": {
+          "type": "string",
           "enum": [
             "and",
             "or"
           ],
-          "type": "string",
           "title": "condition between the matchers",
           "description": "Conditions between the matchers"
         },
@@ -1441,6 +1422,7 @@
           "description": "Address contains address for the request"
         },
         "min_version": {
+          "type": "string",
           "enum": [
             "sslv3",
             "tls10",
@@ -1448,11 +1430,11 @@
             "tls12",
             "tls13"
           ],
-          "type": "string",
           "title": "Min. TLS version",
           "description": "Minimum tls version - automatic if not specified."
         },
         "max_version": {
+          "type": "string",
           "enum": [
             "sslv3",
             "tls10",
@@ -1460,7 +1442,6 @@
             "tls12",
             "tls13"
           ],
-          "type": "string",
           "title": "Max. TLS version",
           "description": "Max tls version - automatic if not specified."
         },
@@ -1471,12 +1452,12 @@
           "type": "array"
         },
         "scan_mode": {
+          "type": "string",
           "enum": [
             "ctls",
             "ztls",
             "auto"
           ],
-          "type": "string",
           "title": "Scan Mode",
           "description": "Scan Mode - auto if not specified."
         },
@@ -1492,13 +1473,13 @@
         },
         "tls_cipher_types": {
           "items": {
+            "type": "string",
             "enum": [
               "weak",
               "secure",
               "insecure",
               "all"
-            ],
-            "type": "string"
+            ]
           },
           "type": "array",
           "title": "TLS Cipher Types",
@@ -1507,6 +1488,196 @@
       },
       "additionalProperties": false,
       "type": "object"
+    },
+    "stringslice.StringOrSlice": {
+      "oneOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "array"
+        }
+      ]
+    },
+    "templates.Template": {
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^([a-zA-Z0-9]+[-_])*[a-zA-Z0-9]+$",
+          "title": "id of the template",
+          "description": "The Unique ID for the template",
+          "examples": [
+            "cve-2021-19520"
+          ]
+        },
+        "info": {
+          "$ref": "#/$defs/model.Info",
+          "type": "object",
+          "title": "info for the template",
+          "description": "Info contains metadata for the template"
+        },
+        "flow": {
+          "type": "string",
+          "title": "template execution flow in js",
+          "description": "Flow contains js code which defines how the template should be executed",
+          "examples": [
+            "'flow: http(0) \u0026\u0026 http(1)'"
+          ]
+        },
+        "requests": {
+          "items": {
+            "$ref": "#/$defs/http.Request"
+          },
+          "type": "array",
+          "title": "http requests to make",
+          "description": "HTTP requests to make for the template"
+        },
+        "http": {
+          "items": {
+            "$ref": "#/$defs/http.Request"
+          },
+          "type": "array",
+          "title": "http requests to make",
+          "description": "HTTP requests to make for the template"
+        },
+        "dns": {
+          "items": {
+            "$ref": "#/$defs/dns.Request"
+          },
+          "type": "array",
+          "title": "dns requests to make",
+          "description": "DNS requests to make for the template"
+        },
+        "file": {
+          "items": {
+            "$ref": "#/$defs/file.Request"
+          },
+          "type": "array",
+          "title": "file requests to make",
+          "description": "File requests to make for the template"
+        },
+        "network": {
+          "items": {
+            "$ref": "#/$defs/network.Request"
+          },
+          "type": "array",
+          "title": "network requests to make",
+          "description": "Network requests to make for the template"
+        },
+        "tcp": {
+          "items": {
+            "$ref": "#/$defs/network.Request"
+          },
+          "type": "array",
+          "title": "network(tcp) requests to make",
+          "description": "Network requests to make for the template"
+        },
+        "headless": {
+          "items": {
+            "$ref": "#/$defs/headless.Request"
+          },
+          "type": "array",
+          "title": "headless requests to make",
+          "description": "Headless requests to make for the template"
+        },
+        "ssl": {
+          "items": {
+            "$ref": "#/$defs/ssl.Request"
+          },
+          "type": "array",
+          "title": "ssl requests to make",
+          "description": "SSL requests to make for the template"
+        },
+        "websocket": {
+          "items": {
+            "$ref": "#/$defs/websocket.Request"
+          },
+          "type": "array",
+          "title": "websocket requests to make",
+          "description": "Websocket requests to make for the template"
+        },
+        "whois": {
+          "items": {
+            "$ref": "#/$defs/whois.Request"
+          },
+          "type": "array",
+          "title": "whois requests to make",
+          "description": "WHOIS requests to make for the template"
+        },
+        "code": {
+          "items": {
+            "$ref": "#/$defs/code.Request"
+          },
+          "type": "array",
+          "title": "code snippets to make",
+          "description": "Code snippets"
+        },
+        "javascript": {
+          "items": {
+            "$ref": "#/$defs/javascript.Request"
+          },
+          "type": "array",
+          "title": "javascript requests to make",
+          "description": "Javascript requests to make for the template"
+        },
+        "workflows": {
+          "items": {
+            "$ref": "#/$defs/workflows.WorkflowTemplate"
+          },
+          "type": "array",
+          "title": "list of workflows to execute",
+          "description": "List of workflows to execute for template"
+        },
+        "self-contained": {
+          "type": "boolean",
+          "title": "mark requests as self-contained",
+          "description": "Mark Requests for the template as self-contained"
+        },
+        "stop-at-first-match": {
+          "type": "boolean",
+          "title": "stop at first match",
+          "description": "Stop at first match for the template"
+        },
+        "signature": {
+          "$ref": "#/$defs/http.SignatureTypeHolder",
+          "title": "signature is the http request signature method",
+          "description": "Signature is the HTTP Request signature Method"
+        },
+        "variables": {
+          "$ref": "#/$defs/variables.Variable",
+          "type": "object",
+          "title": "variables for the http request",
+          "description": "Variables contains any variables for the current request"
+        },
+        "constants": {
+          "$ref": "#/$defs/map[string]interface {}",
+          "type": "object",
+          "title": "constant for the template",
+          "description": "constants contains any constant for the template"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "id",
+        "info"
+      ]
+    },
+    "userAgent.UserAgentHolder": {
+      "type": "string",
+      "enum": [
+        "off",
+        "default",
+        "custom"
+      ],
+      "title": "userAgent for the headless",
+      "description": "userAgent for the headless http request"
+    },
+    "variables.Variable": {
+      "additionalProperties": true,
+      "type": "object",
+      "title": "variables for the request",
+      "description": "Additional variables for the request"
     },
     "websocket.Input": {
       "properties": {
@@ -1528,7 +1699,7 @@
       "properties": {
         "matchers": {
           "items": {
-            "$ref": "#/definitions/matchers.Matcher"
+            "$ref": "#/$defs/matchers.Matcher"
           },
           "type": "array",
           "title": "matchers to run on response",
@@ -1536,18 +1707,18 @@
         },
         "extractors": {
           "items": {
-            "$ref": "#/definitions/extractors.Extractor"
+            "$ref": "#/$defs/extractors.Extractor"
           },
           "type": "array",
           "title": "extractors to run on response",
           "description": "Extractors contains the extraction mechanism for the request to identify and extract parts of the response"
         },
         "matchers-condition": {
+          "type": "string",
           "enum": [
             "and",
             "or"
           ],
-          "type": "string",
           "title": "condition between the matchers",
           "description": "Conditions between the matchers"
         },
@@ -1563,35 +1734,24 @@
         },
         "inputs": {
           "items": {
-            "$schema": "http://json-schema.org/draft-04/schema#",
-            "$ref": "#/definitions/websocket.Input"
+            "$ref": "#/$defs/websocket.Input"
           },
           "type": "array",
           "title": "inputs for the websocket request",
           "description": "Inputs contains any input/output for the current request"
         },
         "headers": {
-          "patternProperties": {
-            ".*": {
-              "type": "string"
-            }
-          },
-          "type": "object",
+          "$ref": "#/$defs/map[string]string",
           "title": "headers contains the request headers",
           "description": "Headers contains headers for the request"
         },
         "attack": {
-          "$ref": "#/definitions/generators.AttackTypeHolder",
+          "$ref": "#/$defs/generators.AttackTypeHolder",
           "title": "attack is the payload combination",
           "description": "Attack is the type of payload combinations to perform"
         },
         "payloads": {
-          "patternProperties": {
-            ".*": {
-              "additionalProperties": true
-            }
-          },
-          "type": "object",
+          "$ref": "#/$defs/map[string]interface {}",
           "title": "payloads for the websocket request",
           "description": "Payloads contains any payloads for the current request"
         }
@@ -1603,7 +1763,7 @@
       "properties": {
         "matchers": {
           "items": {
-            "$ref": "#/definitions/matchers.Matcher"
+            "$ref": "#/$defs/matchers.Matcher"
           },
           "type": "array",
           "title": "matchers to run on response",
@@ -1611,18 +1771,18 @@
         },
         "extractors": {
           "items": {
-            "$ref": "#/definitions/extractors.Extractor"
+            "$ref": "#/$defs/extractors.Extractor"
           },
           "type": "array",
           "title": "extractors to run on response",
           "description": "Extractors contains the extraction mechanism for the request to identify and extract parts of the response"
         },
         "matchers-condition": {
+          "type": "string",
           "enum": [
             "and",
             "or"
           ],
-          "type": "string",
           "title": "condition between the matchers",
           "description": "Conditions between the matchers"
         },
@@ -1645,201 +1805,25 @@
       "additionalProperties": false,
       "type": "object"
     },
-    "templates.Template": {
-      "required": [
-        "id",
-        "info"
-      ],
-      "properties": {
-        "id": {
-          "pattern": "^([a-zA-Z0-9]+[-_])*[a-zA-Z0-9]+$",
-          "type": "string",
-          "title": "id of the template",
-          "description": "The Unique ID for the template",
-          "examples": [
-            "cve-2021-19520"
-          ]
-        },
-        "info": {
-          "$schema": "http://json-schema.org/draft-04/schema#",
-          "$ref": "#/definitions/model.Info",
-          "title": "info for the template",
-          "description": "Info contains metadata for the template"
-        },
-        "flow": {
-          "type": "string",
-          "title": "template execution flow in js",
-          "description": "Flow contains js code which defines how the template should be executed"
-        },
-        "requests": {
-          "items": {
-            "$schema": "http://json-schema.org/draft-04/schema#",
-            "$ref": "#/definitions/http.Request"
-          },
-          "type": "array",
-          "title": "http requests to make",
-          "description": "HTTP requests to make for the template"
-        },
-        "http": {
-          "items": {
-            "$ref": "#/definitions/http.Request"
-          },
-          "type": "array",
-          "title": "http requests to make",
-          "description": "HTTP requests to make for the template"
-        },
-        "dns": {
-          "items": {
-            "$schema": "http://json-schema.org/draft-04/schema#",
-            "$ref": "#/definitions/dns.Request"
-          },
-          "type": "array",
-          "title": "dns requests to make",
-          "description": "DNS requests to make for the template"
-        },
-        "file": {
-          "items": {
-            "$schema": "http://json-schema.org/draft-04/schema#",
-            "$ref": "#/definitions/file.Request"
-          },
-          "type": "array",
-          "title": "file requests to make",
-          "description": "File requests to make for the template"
-        },
-        "network": {
-          "items": {
-            "$schema": "http://json-schema.org/draft-04/schema#",
-            "$ref": "#/definitions/network.Request"
-          },
-          "type": "array",
-          "title": "network requests to make",
-          "description": "Network requests to make for the template"
-        },
-        "tcp": {
-          "items": {
-            "$ref": "#/definitions/network.Request"
-          },
-          "type": "array",
-          "title": "network(tcp) requests to make",
-          "description": "Network requests to make for the template"
-        },
-        "headless": {
-          "items": {
-            "$schema": "http://json-schema.org/draft-04/schema#",
-            "$ref": "#/definitions/headless.Request"
-          },
-          "type": "array",
-          "title": "headless requests to make",
-          "description": "Headless requests to make for the template"
-        },
-        "ssl": {
-          "items": {
-            "$schema": "http://json-schema.org/draft-04/schema#",
-            "$ref": "#/definitions/ssl.Request"
-          },
-          "type": "array",
-          "title": "ssl requests to make",
-          "description": "SSL requests to make for the template"
-        },
-        "websocket": {
-          "items": {
-            "$schema": "http://json-schema.org/draft-04/schema#",
-            "$ref": "#/definitions/websocket.Request"
-          },
-          "type": "array",
-          "title": "websocket requests to make",
-          "description": "Websocket requests to make for the template"
-        },
-        "whois": {
-          "items": {
-            "$schema": "http://json-schema.org/draft-04/schema#",
-            "$ref": "#/definitions/whois.Request"
-          },
-          "type": "array",
-          "title": "whois requests to make",
-          "description": "WHOIS requests to make for the template"
-        },
-        "code": {
-          "items": {
-            "$schema": "http://json-schema.org/draft-04/schema#",
-            "$ref": "#/definitions/code.Request"
-          },
-          "type": "array",
-          "title": "code snippets to make",
-          "description": "Code snippets"
-        },
-        "javascript": {
-          "items": {
-            "$schema": "http://json-schema.org/draft-04/schema#",
-            "$ref": "#/definitions/javascript.Request"
-          },
-          "type": "array",
-          "title": "javascript requests to make",
-          "description": "Javascript requests to make for the template"
-        },
-        "workflows": {
-          "items": {
-            "$schema": "http://json-schema.org/draft-04/schema#",
-            "$ref": "#/definitions/workflows.WorkflowTemplate"
-          },
-          "type": "array",
-          "title": "list of workflows to execute",
-          "description": "List of workflows to execute for template"
-        },
-        "self-contained": {
-          "type": "boolean",
-          "title": "mark requests as self-contained",
-          "description": "Mark Requests for the template as self-contained"
-        },
-        "stop-at-first-match": {
-          "type": "boolean",
-          "title": "stop at first match",
-          "description": "Stop at first match for the template"
-        },
-        "signature": {
-          "$ref": "#/definitions/http.SignatureTypeHolder",
-          "title": "signature is the http request signature method",
-          "description": "Signature is the HTTP Request signature Method"
-        },
-        "variables": {
-          "$schema": "http://json-schema.org/draft-04/schema#",
-          "$ref": "#/definitions/variables.Variable",
-          "title": "variables for the http request",
-          "description": "Variables contains any variables for the current request"
-        },
-        "constants": {
-          "patternProperties": {
-            ".*": {
-              "additionalProperties": true
-            }
-          },
-          "type": "object",
-          "title": "constant for the template",
-          "description": "constants contains any constant for the template"
-        }
-      },
-      "additionalProperties": false,
-      "type": "object"
-    },
     "workflows.Matcher": {
       "properties": {
         "name": {
-          "$ref": "#/definitions/stringslice.StringSlice",
+          "$ref": "#/$defs/stringslice.StringOrSlice",
           "title": "name of items to match",
           "description": "Name of items to match"
         },
         "condition": {
+          "type": "string",
           "enum": [
             "and",
             "or"
           ],
-          "type": "string",
           "title": "condition between names",
           "description": "Condition between the names"
         },
         "subtemplates": {
           "items": {
-            "$ref": "#/definitions/workflows.WorkflowTemplate"
+            "$ref": "#/$defs/workflows.WorkflowTemplate"
           },
           "type": "array",
           "title": "templates to run after match",
@@ -1857,14 +1841,13 @@
           "description": "Template or directory to execute as part of workflow"
         },
         "tags": {
-          "$ref": "#/definitions/stringslice.StringSlice",
+          "$ref": "#/$defs/stringslice.StringOrSlice",
           "title": "tags to execute",
           "description": "Tags to run template based on"
         },
         "matchers": {
           "items": {
-            "$schema": "http://json-schema.org/draft-04/schema#",
-            "$ref": "#/definitions/workflows.Matcher"
+            "$ref": "#/$defs/workflows.Matcher"
           },
           "type": "array",
           "title": "name based template result matchers",
@@ -1872,18 +1855,13 @@
         },
         "subtemplates": {
           "items": {
-            "$ref": "#/definitions/workflows.WorkflowTemplate"
+            "$ref": "#/$defs/workflows.WorkflowTemplate"
           },
           "type": "array",
           "title": "subtemplate based result matchers",
           "description": "Subtemplates are ran if the template field Template matches"
         }
       },
-      "additionalProperties": false,
-      "type": "object"
-    },
-    "github.com/projectdiscovery/utils/maps.OrderedMap[string,string]": {
-      "properties": {},
       "additionalProperties": false,
       "type": "object"
     }
