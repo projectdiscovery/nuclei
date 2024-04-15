@@ -277,7 +277,7 @@ func (r *requestGenerator) makeSelfContainedRequest(ctx context.Context, data st
 			return nil, fmt.Errorf("malformed request supplied")
 		}
 
-		if err := expressions.ContainsUnresolvedVariables(parts[1]); err != nil {
+		if err := expressions.ContainsUnresolvedVariables(parts[1]); err != nil && !r.request.SkipVariablesCheck {
 			return nil, ErrUnresolvedVars.Msgf(parts[1])
 		}
 
@@ -296,7 +296,7 @@ func (r *requestGenerator) makeSelfContainedRequest(ctx context.Context, data st
 		}
 		return r.generateRawRequest(ctx, data, parsed, values, payloads)
 	}
-	if err := expressions.ContainsUnresolvedVariables(data); err != nil {
+	if err := expressions.ContainsUnresolvedVariables(data); err != nil && !r.request.SkipVariablesCheck {
 		// early exit: if there are any unresolved variables in `path` after evaluation
 		// then return early since this will definitely fail
 		return nil, ErrUnresolvedVars.Msgf(data)
