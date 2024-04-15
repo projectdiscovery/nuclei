@@ -57,10 +57,17 @@ type Client struct {
 // New returns a new interactsh server client
 func New(options *Options) (*Client, error) {
 	requestsCache := gcache.New[string, *RequestData](options.CacheSize).LRU().EvictedFunc(func(k string, v *RequestData) {
-		for _, f := range v.Event.DeferredEvents {
+		v.Event.RLock()
+		events := v.Event.DeferredEvents
+		defer v.Event.RUnlock()
+
+		for _, f := range events {
 			f()
 		}
+
+		v.Event.Lock()
 		v.Event.DeferredEvents = nil
+		v.Event.Unlock()
 	}).Build()
 	interactionsCache := gcache.New[string, []*server.Interaction](defaultMaxInteractionsCount).LRU().Build()
 	matchedTemplateCache := gcache.New[string, bool](defaultMaxInteractionsCount).LRU().Build()
@@ -192,7 +199,9 @@ func (c *Client) processInteractionForRequest(interaction *server.Interaction, d
 
 	defer func() {
 		// invalidate all deferred events as a new result has arrived
+		data.Event.Lock()
 		data.Event.DeferredEvents = nil
+		data.Event.Unlock()
 		c.requests.Remove(interaction.UniqueID)
 	}()
 
