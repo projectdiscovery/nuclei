@@ -66,8 +66,8 @@ type Options struct {
 	IncludeIds goflags.StringSlice
 	// ExcludeIds contains templates ids to not be executed
 	ExcludeIds goflags.StringSlice
-
-	InternalResolversList []string // normalized from resolvers flag as well as file provided.
+	// InternalResolversList is the list of internal resolvers to use
+	InternalResolversList []string
 	// ProjectPath allows nuclei to use a user defined project folder
 	ProjectPath string
 	// InteractshURL is the URL for the interactsh server.
