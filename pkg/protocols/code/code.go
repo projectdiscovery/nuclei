@@ -160,6 +160,8 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 	if request.options.HasTemplateCtx(input.MetaInput) {
 		allvars = generators.MergeMaps(allvars, request.options.GetTemplateCtx(input.MetaInput).GetAll())
 	}
+	// add dynamic and previous variables
+	allvars = generators.MergeMaps(allvars, dynamicValues, previous)
 	// optionvars are vars passed from CLI or env variables
 	optionVars := generators.BuildPayloadFromOptions(request.options.Options)
 	variablesMap := request.options.Variables.Evaluate(allvars)
