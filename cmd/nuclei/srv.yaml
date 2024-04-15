@@ -1,0 +1,18 @@
+id: basic-dns-a-example
+
+info:
+  name: Test DNS A Query Template
+  author: pdteam
+  severity: info
+
+dns:
+  - name: "{{FQDN}}"
+    type: SRV
+    class: inet
+    recursion: true
+    retries: 3
+    matchers:
+      - type: word
+        part: all
+        words:
+          - "SRV"

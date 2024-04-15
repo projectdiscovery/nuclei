@@ -1,0 +1,17 @@
+id: dns-aaaa-query-example
+
+info:
+  name: Test DNS AAAA Query Template
+  author: pdteam
+  severity: info
+
+dns:
+  - name: "{{FQDN}}"
+    type: AAAA
+    class: inet
+    recursion: true
+    retries: 3
+    matchers:
+      - type: word
+        words:
+          - "2606:4700:4700::1001"
