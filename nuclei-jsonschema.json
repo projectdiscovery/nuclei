@@ -84,7 +84,8 @@
         "AAAA",
         "CAA",
         "TLSA",
-        "ANY"
+        "ANY",
+        "SRV"
       ],
       "title": "type of DNS request to make",
       "description": "Type is the type of DNS request to make"
