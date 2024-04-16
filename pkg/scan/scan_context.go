@@ -10,6 +10,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
 )
 
+
 type ScanContextOption func(*ScanContext)
 
 func WithEvents() ScanContextOption {
