@@ -82,18 +82,18 @@ type NucleiEngine struct {
 	customWriter   output.Writer
 	customProgress progress.Progress
 	rc             reporting.Client
-	executerOpts   protocols.ExecutorOptions
+	executerOpts   *protocols.ExecutorOptions
 }
 
 // LoadAllTemplates loads all nuclei template based on given options
 func (e *NucleiEngine) LoadAllTemplates() error {
-	workflowLoader, err := workflow.NewLoader(&e.executerOpts)
+	workflowLoader, err := workflow.NewLoader(e.executerOpts)
 	if err != nil {
 		return errorutil.New("Could not create workflow loader: %s\n", err)
 	}
 	e.executerOpts.WorkflowLoader = workflowLoader
 
-	e.store, err = loader.New(loader.NewConfig(e.opts, e.catalog, e.executerOpts))
+	e.store, err = loader.New(loader.NewConfig(e.opts, e.catalog, *e.executerOpts))
 	if err != nil {
 		return errorutil.New("Could not create loader client: %s\n", err)
 	}
@@ -150,13 +150,13 @@ func (e *NucleiEngine) LoadTargetsWithHttpData(filePath string, filemode string)
 
 // GetExecuterOptions returns the nuclei executor options
 func (e *NucleiEngine) GetExecuterOptions() *protocols.ExecutorOptions {
-	return &e.executerOpts
+	return e.executerOpts
 }
 
 // ParseTemplate parses a template from given data
 // template verification status can be accessed from template.Verified
 func (e *NucleiEngine) ParseTemplate(data []byte) (*templates.Template, error) {
-	return templates.ParseTemplateFromReader(bytes.NewReader(data), nil, e.executerOpts)
+	return templates.ParseTemplateFromReader(bytes.NewReader(data), nil, *e.executerOpts)
 }
 
 // SignTemplate signs the tempalate using given signer
@@ -235,8 +235,14 @@ func NewNucleiEngine(options ...NucleiSDKOptions) (*NucleiEngine, error) {
 			return nil, err
 		}
 	}
-	if err := e.init(); err != nil {
-		return nil, err
-	}
+	// let this happen with Init()
+	// if err := e.init(); err != nil {
+	// 	return nil, err
+	// }
 	return e, nil
+}
+
+// Init allows us to Init the engine after manipulating the executorOpts
+func (e *NucleiEngine) Init(execOpts *protocols.ExecutorOptions) error {
+	return e.init(execOpts)
 }

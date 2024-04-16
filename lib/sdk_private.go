@@ -15,7 +15,6 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/internal/runner"
 	"github.com/projectdiscovery/nuclei/v3/pkg/authprovider"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/config"
-	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/disk"
 	"github.com/projectdiscovery/nuclei/v3/pkg/core"
 	"github.com/projectdiscovery/nuclei/v3/pkg/input/provider"
 	"github.com/projectdiscovery/nuclei/v3/pkg/installer"
@@ -93,7 +92,7 @@ func (e *NucleiEngine) applyRequiredDefaults() {
 }
 
 // init
-func (e *NucleiEngine) init() error {
+func (e *NucleiEngine) init(execOpts *protocols.ExecutorOptions) error {
 	if e.opts.Verbose {
 		gologger.DefaultLogger.SetMaxLevel(levels.LevelVerbose)
 	} else if e.opts.Debug {
@@ -146,31 +145,32 @@ func (e *NucleiEngine) init() error {
 		return err
 	}
 
-	e.catalog = disk.NewCatalog(config.DefaultConfig.TemplatesDirectory)
+	// e.catalog = disk.NewCatalog(config.DefaultConfig.TemplatesDirectory)
 
-	e.executerOpts = protocols.ExecutorOptions{
-		Output:          e.customWriter,
-		Options:         e.opts,
-		Progress:        e.customProgress,
-		Catalog:         e.catalog,
-		IssuesClient:    e.rc,
-		RateLimiter:     e.rateLimiter,
-		Interactsh:      e.interactshClient,
-		HostErrorsCache: e.hostErrCache,
-		Colorizer:       aurora.NewAurora(true),
-		ResumeCfg:       types.NewResumeCfg(),
-		Browser:         e.browserInstance,
-		Parser:          e.parser,
-	}
+	execOpts.Output = e.customWriter
+	execOpts.Options = e.opts
+	execOpts.Progress = e.customProgress
+	// execOpts.Catalog = e.catalog
+	execOpts.IssuesClient = e.rc
+	execOpts.RateLimiter = e.rateLimiter
+	execOpts.Interactsh = e.interactshClient
+	execOpts.HostErrorsCache = e.hostErrCache
+	execOpts.Colorizer = aurora.NewAurora(true)
+	execOpts.ResumeCfg = types.NewResumeCfg()
+	execOpts.Browser = e.browserInstance
+	execOpts.Parser = e.parser
+
+	e.executerOpts = execOpts
+
 	if len(e.opts.SecretsFile) > 0 {
-		authTmplStore, err := runner.GetAuthTmplStore(*e.opts, e.catalog, e.executerOpts)
+		authTmplStore, err := runner.GetAuthTmplStore(*e.opts, e.catalog, *e.executerOpts)
 		if err != nil {
 			return errors.Wrap(err, "failed to load dynamic auth templates")
 		}
 		authOpts := &authprovider.AuthProviderOptions{SecretsFiles: e.opts.SecretsFile}
 		authOpts.LazyFetchSecret = runner.GetLazyAuthFetchCallback(&runner.AuthLazyFetchOptions{
 			TemplateStore: authTmplStore,
-			ExecOpts:      e.executerOpts,
+			ExecOpts:      *e.executerOpts,
 		})
 		// initialize auth provider
 		provider, err := authprovider.NewAuthProvider(authOpts)
@@ -206,7 +206,7 @@ func (e *NucleiEngine) init() error {
 	}
 
 	e.engine = core.New(e.opts)
-	e.engine.SetExecuterOptions(e.executerOpts)
+	e.engine.SetExecuterOptions(*e.executerOpts)
 
 	httpxOptions := httpx.DefaultOptions
 	httpxOptions.Timeout = 5 * time.Second
