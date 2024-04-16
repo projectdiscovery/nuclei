@@ -427,6 +427,7 @@ func DefaultOptions() *Options {
 		MaxHostError:            30,
 		ResponseReadSize:        10 * 1024 * 1024,
 		ResponseSaveSize:        1024 * 1024,
+		ResponseReadTimeout:     5 * time.Second,
 	}
 }
 
