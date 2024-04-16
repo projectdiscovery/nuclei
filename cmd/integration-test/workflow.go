@@ -3,12 +3,15 @@ package main
 import (
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 
 	"github.com/julienschmidt/httprouter"
 
+	"github.com/projectdiscovery/nuclei/v3/pkg/templates"
+	"github.com/projectdiscovery/nuclei/v3/pkg/templates/signer"
 	"github.com/projectdiscovery/nuclei/v3/pkg/testutils"
 )
 
@@ -20,7 +23,35 @@ var workflowTestcases = []TestCaseInfo{
 	{Path: "workflow/complex-conditions.yaml", TestCase: &workflowComplexConditions{}},
 	{Path: "workflow/http-value-share-workflow.yaml", TestCase: &workflowHttpKeyValueShare{}},
 	{Path: "workflow/dns-value-share-workflow.yaml", TestCase: &workflowDnsKeyValueShare{}},
+	{Path: "workflow/code-value-share-workflow.yaml", TestCase: &workflowCodeKeyValueShare{}, DisableOn: isCodeDisabled}, // isCodeDisabled declared in code.go
+	{Path: "workflow/multiprotocol-value-share-workflow.yaml", TestCase: &workflowMultiProtocolKeyValueShare{}},
 	{Path: "workflow/shared-cookie.yaml", TestCase: &workflowSharedCookies{}},
+}
+
+func init() {
+	// sign code templates (unless they are disabled)
+	if !isCodeDisabled() {
+		// allow local file access to load content of file references in template
+		// in order to sign them for testing purposes
+		templates.TemplateSignerLFA()
+
+		// testCertFile and testKeyFile are declared in code.go
+		tsigner, err := signer.NewTemplateSignerFromFiles(testCertFile, testKeyFile)
+		if err != nil {
+			panic(err)
+		}
+
+		// only the code templates are necessary to be signed
+		var templatesToSign = []string{
+			"workflow/code-template-1.yaml",
+			"workflow/code-template-2.yaml",
+		}
+		for _, templatePath := range templatesToSign {
+			if err := templates.SignTemplate(tsigner, templatePath); err != nil {
+				log.Fatalf("Could not sign template %v got: %s\n", templatePath, err)
+			}
+		}
+	}
 }
 
 type workflowBasic struct{}
@@ -157,6 +188,45 @@ func (h *workflowDnsKeyValueShare) Execute(filePath string) error {
 
 	// no results - ensure that the variable sharing works
 	return expectResultsCount(results, 1)
+}
+
+type workflowCodeKeyValueShare struct{}
+
+// Execute executes a test case and returns an error if occurred
+func (h *workflowCodeKeyValueShare) Execute(filePath string) error {
+	// provide the Certificate File that the code templates are signed with
+	certEnvVar := signer.CertEnvVarName + "=" + testCertFile
+
+	results, err := testutils.RunNucleiArgsWithEnvAndGetResults(debug, []string{certEnvVar}, "-workflows", filePath, "-target", "input", "-code")
+	if err != nil {
+		return err
+	}
+
+	return expectResultsCount(results, 1)
+}
+
+type workflowMultiProtocolKeyValueShare struct{}
+
+// Execute executes a test case and returns an error if occurred
+func (h *workflowMultiProtocolKeyValueShare) Execute(filePath string) error {
+	router := httprouter.New()
+	// the response of path1 contains a domain that will be extracted and shared with the second template
+	router.GET("/path1", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+		fmt.Fprintf(w, "href=\"blog.projectdiscovery.io\"")
+	})
+	// path2 responds with the value of the "extracted" query parameter, e.g.: /path2?extracted=blog.projectdiscovery.io => blog.projectdiscovery.io
+	router.GET("/path2", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+		fmt.Fprintf(w, "%s", r.URL.Query().Get("extracted"))
+	})
+	ts := httptest.NewServer(router)
+	defer ts.Close()
+
+	results, err := testutils.RunNucleiWorkflowAndGetResults(filePath, ts.URL, debug)
+	if err != nil {
+		return err
+	}
+
+	return expectResultsCount(results, 2)
 }
 
 type workflowSharedCookies struct{}
