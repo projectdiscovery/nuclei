@@ -46,6 +46,12 @@ func (m *MultiProtocol) Compile() error {
 func (m *MultiProtocol) ExecuteWithResults(ctx *scan.ScanContext) error {
 	// put all readonly args into template context
 	m.options.GetTemplateCtx(ctx.Input.MetaInput).Merge(m.readOnlyArgs)
+
+	// add all input args to template context
+	ctx.Input.ForEach(func(key string, value interface{}) {
+		m.options.GetTemplateCtx(ctx.Input.MetaInput).Set(key, value)
+	})
+
 	// callback to process results from all protocols
 	multiProtoCallback := func(event *output.InternalWrappedEvent) {
 		if event == nil {
