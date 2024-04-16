@@ -329,6 +329,7 @@ require (
 	github.com/aws/smithy-go v1.13.5 // indirect
 	github.com/dop251/goja_nodejs v0.0.0-20230821135201-94e508132562
 	github.com/emirpasic/gods v1.18.1 // indirect
+	github.com/go-echarts/go-echarts/v2 v2.3.3
 	github.com/go-git/gcfg v1.5.1-0.20230307220236-3a3c6141e376 // indirect
 	github.com/go-git/go-billy/v5 v5.5.0 // indirect
 	github.com/golang-jwt/jwt v3.2.2+incompatible // indirect
@@ -348,3 +349,5 @@ require (
 
 // https://go.dev/ref/mod#go-mod-file-retract
 retract v3.2.0 // retract due to broken js protocol issue
+
+replace github.com/go-echarts/go-echarts/v2 => github.com/tarunKoyalwar/go-echarts/v2 v2.1.1
