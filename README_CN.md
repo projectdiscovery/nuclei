@@ -23,8 +23,8 @@
   <a href="#对于安全工程师">对于安全工程师</a> •
   <a href="#对于开发和组织">对于开发者</a> •
   <a href="https://nuclei.projectdiscovery.io/nuclei/get-started/">文档</a> •
-  <a href="#c致谢">致谢</a> •
-  <a href="https://nuclei.projectdiscovery.io/faq/nuclei/">常见问题</a> •
+  <a href="#致谢">致谢</a> •
+  <a href="https://docs.projectdiscovery.io/tools/nuclei/faq">常见问题</a> •
   <a href="https://discord.gg/projectdiscovery">加入Discord</a>
 </p>
 
@@ -39,7 +39,7 @@
 
 Nuclei使用零误报的定制模板向目标发送请求，同时可以对主机进行批量快速扫描。Nuclei提供TCP、DNS、HTTP、FILE等各类协议的扫描，通过强大且灵活的模板，可以使用Nuclei模拟各种安全检查。
 
-我们的[模板仓库](https://github.com/projectdiscovery/nuclei-templates)包含**超过300**安全研究员和工程师提供的模板。
+我们的[模板仓库](https://github.com/projectdiscovery/nuclei-templates)包含**超过300名**安全研究员和工程师提供的模板。
 
 
 
@@ -439,7 +439,7 @@ Nuclei构建很简单，通过数百名安全研究员的社区模板，Nuclei�
 </a>
 </p>
 
-另外您可以其他类似的开源项目：
+另外您可以了解其他类似的开源项目：
 
 [FFuF](https://github.com/ffuf/ffuf), [Qsfuzz](https://github.com/ameenmaali/qsfuzz), [Inception](https://github.com/proabiral/inception), [Snallygaster](https://github.com/hannob/snallygaster), [Gofingerprint](https://github.com/Static-Flow/gofingerprint), [Sn1per](https://github.com/1N3/Sn1per/tree/master/templates), [Google tsunami](https://github.com/google/tsunami-security-scanner), [Jaeles](https://github.com/jaeles-project/jaeles), [ChopChop](https://github.com/michelin/ChopChop)
 
