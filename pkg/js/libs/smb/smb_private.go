@@ -6,9 +6,9 @@ import (
 	"net"
 	"time"
 
+	"github.com/effluxio/nuclei/v3/pkg/protocols/common/protocolstate"
 	"github.com/praetorian-inc/fingerprintx/pkg/plugins"
 	"github.com/praetorian-inc/fingerprintx/pkg/plugins/services/smb"
-	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
 	zgrabsmb "github.com/zmap/zgrab2/lib/smb/smb"
 )
 

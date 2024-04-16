@@ -9,11 +9,11 @@ import (
 	"sync"
 	"time"
 
+	"github.com/effluxio/nuclei/v3/pkg/protocols/common/contextargs"
+	"github.com/effluxio/nuclei/v3/pkg/protocols/utils"
+	"github.com/effluxio/nuclei/v3/pkg/types"
 	"github.com/go-rod/rod"
 	"github.com/go-rod/rod/lib/proto"
-	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
-	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/utils"
-	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 )
 
 // Page is a single page in an isolated browser instance

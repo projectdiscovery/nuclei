@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"sync"
 
-	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/config"
+	"github.com/effluxio/nuclei/v3/pkg/catalog/config"
 	"github.com/rs/xid"
 )
 

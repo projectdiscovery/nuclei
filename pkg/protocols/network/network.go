@@ -6,12 +6,12 @@ import (
 
 	"github.com/pkg/errors"
 
+	"github.com/effluxio/nuclei/v3/pkg/operators"
+	"github.com/effluxio/nuclei/v3/pkg/protocols"
+	"github.com/effluxio/nuclei/v3/pkg/protocols/common/expressions"
+	"github.com/effluxio/nuclei/v3/pkg/protocols/common/generators"
+	"github.com/effluxio/nuclei/v3/pkg/protocols/network/networkclientpool"
 	"github.com/projectdiscovery/fastdialer/fastdialer"
-	"github.com/projectdiscovery/nuclei/v3/pkg/operators"
-	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
-	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/expressions"
-	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/generators"
-	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/network/networkclientpool"
 	errorutil "github.com/projectdiscovery/utils/errors"
 	fileutil "github.com/projectdiscovery/utils/file"
 )

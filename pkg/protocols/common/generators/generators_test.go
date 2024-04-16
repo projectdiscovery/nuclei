@@ -5,8 +5,8 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/disk"
-	"github.com/projectdiscovery/nuclei/v3/pkg/types"
+	"github.com/effluxio/nuclei/v3/pkg/catalog/disk"
+	"github.com/effluxio/nuclei/v3/pkg/types"
 )
 
 func TestBatteringRamGenerator(t *testing.T) {

@@ -6,11 +6,11 @@ import (
 	"sort"
 	"time"
 
+	"github.com/effluxio/nuclei/v3/pkg/scan/events"
 	"github.com/go-echarts/go-echarts/v2/charts"
 	"github.com/go-echarts/go-echarts/v2/components"
 	"github.com/go-echarts/go-echarts/v2/opts"
 	"github.com/labstack/echo/v4"
-	"github.com/projectdiscovery/nuclei/v3/pkg/scan/events"
 	sliceutil "github.com/projectdiscovery/utils/slice"
 )
 

@@ -10,8 +10,8 @@ import (
 	"time"
 
 	_ "github.com/denisenkom/go-mssqldb"
+	"github.com/effluxio/nuclei/v3/pkg/protocols/common/protocolstate"
 	"github.com/praetorian-inc/fingerprintx/pkg/plugins/services/mssql"
-	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
 )
 
 type (

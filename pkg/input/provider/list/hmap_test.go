@@ -7,12 +7,12 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/effluxio/nuclei/v3/pkg/protocols/common/contextargs"
+	"github.com/effluxio/nuclei/v3/pkg/protocols/common/protocolstate"
+	"github.com/effluxio/nuclei/v3/pkg/types"
+	"github.com/effluxio/nuclei/v3/pkg/utils/expand"
 	"github.com/miekg/dns"
 	"github.com/projectdiscovery/hmap/store/hybrid"
-	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
-	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
-	"github.com/projectdiscovery/nuclei/v3/pkg/types"
-	"github.com/projectdiscovery/nuclei/v3/pkg/utils/expand"
 	"github.com/stretchr/testify/require"
 )
 

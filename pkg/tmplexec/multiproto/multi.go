@@ -4,10 +4,10 @@ import (
 	"strconv"
 	"sync/atomic"
 
-	"github.com/projectdiscovery/nuclei/v3/pkg/output"
-	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
-	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/generators"
-	"github.com/projectdiscovery/nuclei/v3/pkg/scan"
+	"github.com/effluxio/nuclei/v3/pkg/output"
+	"github.com/effluxio/nuclei/v3/pkg/protocols"
+	"github.com/effluxio/nuclei/v3/pkg/protocols/common/generators"
+	"github.com/effluxio/nuclei/v3/pkg/scan"
 )
 
 // Mutliprotocol is a template executer engine that executes multiple protocols

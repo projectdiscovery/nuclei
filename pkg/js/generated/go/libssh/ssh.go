@@ -1,10 +1,10 @@
 package ssh
 
 import (
-	lib_ssh "github.com/projectdiscovery/nuclei/v3/pkg/js/libs/ssh"
+	lib_ssh "github.com/effluxio/nuclei/v3/pkg/js/libs/ssh"
 
 	"github.com/dop251/goja"
-	"github.com/projectdiscovery/nuclei/v3/pkg/js/gojs"
+	"github.com/effluxio/nuclei/v3/pkg/js/gojs"
 )
 
 var (

@@ -4,14 +4,14 @@ import (
 	"context"
 	"time"
 
+	"github.com/effluxio/nuclei/v3/pkg/catalog/loader"
+	"github.com/effluxio/nuclei/v3/pkg/core"
+	"github.com/effluxio/nuclei/v3/pkg/input/provider"
+	"github.com/effluxio/nuclei/v3/pkg/loader/workflow"
+	"github.com/effluxio/nuclei/v3/pkg/output"
+	"github.com/effluxio/nuclei/v3/pkg/protocols"
+	"github.com/effluxio/nuclei/v3/pkg/types"
 	"github.com/logrusorgru/aurora"
-	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/loader"
-	"github.com/projectdiscovery/nuclei/v3/pkg/core"
-	"github.com/projectdiscovery/nuclei/v3/pkg/input/provider"
-	"github.com/projectdiscovery/nuclei/v3/pkg/loader/workflow"
-	"github.com/projectdiscovery/nuclei/v3/pkg/output"
-	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
-	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	"github.com/projectdiscovery/ratelimit"
 	errorutil "github.com/projectdiscovery/utils/errors"
 )
@@ -78,7 +78,7 @@ func NewThreadSafeNucleiEngine(opts ...NucleiSDKOptions) (*ThreadSafeNucleiEngin
 			return nil, err
 		}
 	}
-	if err := e.init(); err != nil {
+	if err := e.init(e.executerOpts); err != nil {
 		return nil, err
 	}
 	return &ThreadSafeNucleiEngine{eng: e}, nil

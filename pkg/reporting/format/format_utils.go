@@ -6,12 +6,12 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/config"
-	"github.com/projectdiscovery/nuclei/v3/pkg/model"
-	"github.com/projectdiscovery/nuclei/v3/pkg/output"
-	"github.com/projectdiscovery/nuclei/v3/pkg/reporting/exporters/markdown/util"
-	"github.com/projectdiscovery/nuclei/v3/pkg/types"
-	"github.com/projectdiscovery/nuclei/v3/pkg/utils"
+	"github.com/effluxio/nuclei/v3/pkg/catalog/config"
+	"github.com/effluxio/nuclei/v3/pkg/model"
+	"github.com/effluxio/nuclei/v3/pkg/output"
+	"github.com/effluxio/nuclei/v3/pkg/reporting/exporters/markdown/util"
+	"github.com/effluxio/nuclei/v3/pkg/types"
+	"github.com/effluxio/nuclei/v3/pkg/utils"
 )
 
 // Summary returns a formatted built one line summary of the event

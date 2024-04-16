@@ -1,10 +1,10 @@
 package smtp
 
 import (
-	lib_smtp "github.com/projectdiscovery/nuclei/v3/pkg/js/libs/smtp"
+	lib_smtp "github.com/effluxio/nuclei/v3/pkg/js/libs/smtp"
 
 	"github.com/dop251/goja"
-	"github.com/projectdiscovery/nuclei/v3/pkg/js/gojs"
+	"github.com/effluxio/nuclei/v3/pkg/js/gojs"
 )
 
 var (

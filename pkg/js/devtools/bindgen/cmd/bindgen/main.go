@@ -7,8 +7,8 @@ import (
 	"path"
 	"path/filepath"
 
+	generator "github.com/effluxio/nuclei/v3/pkg/js/devtools/bindgen"
 	"github.com/pkg/errors"
-	generator "github.com/projectdiscovery/nuclei/v3/pkg/js/devtools/bindgen"
 	fileutil "github.com/projectdiscovery/utils/file"
 )
 
@@ -46,7 +46,7 @@ func process() error {
 	for _, module := range modules {
 		log.Printf("[module] Generating %s", module)
 
-		data, err := generator.CreateTemplateData(filepath.Join(dir, module), "github.com/projectdiscovery/nuclei/v3/pkg/js/libs/")
+		data, err := generator.CreateTemplateData(filepath.Join(dir, module), "github.com/effluxio/nuclei/v3/pkg/js/libs/")
 		if err != nil {
 			return fmt.Errorf("could not create template data: %v", err)
 		}

@@ -6,8 +6,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/config"
-	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/disk"
+	"github.com/effluxio/nuclei/v3/pkg/catalog/config"
+	"github.com/effluxio/nuclei/v3/pkg/catalog/disk"
 	osutils "github.com/projectdiscovery/utils/os"
 	"github.com/stretchr/testify/require"
 )

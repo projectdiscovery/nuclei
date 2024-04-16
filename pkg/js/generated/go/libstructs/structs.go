@@ -1,10 +1,10 @@
 package structs
 
 import (
-	lib_structs "github.com/projectdiscovery/nuclei/v3/pkg/js/libs/structs"
+	lib_structs "github.com/effluxio/nuclei/v3/pkg/js/libs/structs"
 
 	"github.com/dop251/goja"
-	"github.com/projectdiscovery/nuclei/v3/pkg/js/gojs"
+	"github.com/effluxio/nuclei/v3/pkg/js/gojs"
 )
 
 var (

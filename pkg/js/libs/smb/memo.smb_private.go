@@ -9,7 +9,7 @@ import (
 
 	"github.com/praetorian-inc/fingerprintx/pkg/plugins"
 
-	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
+	"github.com/effluxio/nuclei/v3/pkg/protocols/common/protocolstate"
 )
 
 func memoizedcollectSMBv2Metadata(host string, port int, timeout time.Duration) (*plugins.ServiceSMB, error) {

@@ -6,9 +6,9 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/effluxio/nuclei/v3/pkg/catalog/config"
+	"github.com/effluxio/nuclei/v3/pkg/types"
 	"github.com/projectdiscovery/gologger"
-	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/config"
-	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	errorutil "github.com/projectdiscovery/utils/errors"
 	"github.com/xanzy/go-gitlab"
 )

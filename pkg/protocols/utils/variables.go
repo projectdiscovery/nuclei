@@ -5,9 +5,9 @@ import (
 	"path"
 	"strings"
 
+	"github.com/effluxio/nuclei/v3/pkg/protocols/common/contextargs"
+	"github.com/effluxio/nuclei/v3/pkg/protocols/common/generators"
 	"github.com/projectdiscovery/gologger"
-	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
-	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/generators"
 	maputil "github.com/projectdiscovery/utils/maps"
 	urlutil "github.com/projectdiscovery/utils/url"
 	"github.com/weppos/publicsuffix-go/publicsuffix"

@@ -1,6 +1,6 @@
 package compiler
 
-import "github.com/projectdiscovery/nuclei/v3/pkg/types"
+import "github.com/effluxio/nuclei/v3/pkg/types"
 
 // jsprotocolInit
 

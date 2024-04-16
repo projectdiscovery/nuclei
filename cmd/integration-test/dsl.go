@@ -5,8 +5,8 @@ import (
 	"net/http"
 	"net/http/httptest"
 
+	"github.com/effluxio/nuclei/v3/pkg/testutils"
 	"github.com/julienschmidt/httprouter"
-	"github.com/projectdiscovery/nuclei/v3/pkg/testutils"
 )
 
 var dslTestcases = []TestCaseInfo{

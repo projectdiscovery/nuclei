@@ -10,11 +10,11 @@ import (
 	"github.com/andygrunwald/go-jira"
 	"github.com/trivago/tgo/tcontainer"
 
+	"github.com/effluxio/nuclei/v3/pkg/output"
+	"github.com/effluxio/nuclei/v3/pkg/reporting/exporters/markdown/util"
+	"github.com/effluxio/nuclei/v3/pkg/reporting/format"
+	"github.com/effluxio/nuclei/v3/pkg/reporting/trackers/filters"
 	"github.com/projectdiscovery/gologger"
-	"github.com/projectdiscovery/nuclei/v3/pkg/output"
-	"github.com/projectdiscovery/nuclei/v3/pkg/reporting/exporters/markdown/util"
-	"github.com/projectdiscovery/nuclei/v3/pkg/reporting/format"
-	"github.com/projectdiscovery/nuclei/v3/pkg/reporting/trackers/filters"
 	"github.com/projectdiscovery/retryablehttp-go"
 )
 

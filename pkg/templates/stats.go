@@ -1,6 +1,6 @@
 package templates
 
-import "github.com/projectdiscovery/nuclei/v3/pkg/utils/stats"
+import "github.com/effluxio/nuclei/v3/pkg/utils/stats"
 
 func init() {
 	stats.NewEntry(SyntaxWarningStats, "Found %d templates with syntax warning (use -validate flag for further examination)")

@@ -1,9 +1,9 @@
 package core
 
 import (
-	"github.com/projectdiscovery/nuclei/v3/pkg/output"
-	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
-	"github.com/projectdiscovery/nuclei/v3/pkg/types"
+	"github.com/effluxio/nuclei/v3/pkg/output"
+	"github.com/effluxio/nuclei/v3/pkg/protocols"
+	"github.com/effluxio/nuclei/v3/pkg/types"
 )
 
 // Engine is an executer for running Nuclei Templates/Workflows.

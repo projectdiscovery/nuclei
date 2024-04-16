@@ -9,12 +9,12 @@ import (
 	"strings"
 
 	"github.com/Knetic/govaluate"
+	"github.com/effluxio/nuclei/v3/pkg/model/types/severity"
+	"github.com/effluxio/nuclei/v3/pkg/operators/common/dsl"
+	"github.com/effluxio/nuclei/v3/pkg/operators/extractors"
+	"github.com/effluxio/nuclei/v3/pkg/operators/matchers"
+	"github.com/effluxio/nuclei/v3/pkg/templates/types"
 	"github.com/projectdiscovery/gologger"
-	"github.com/projectdiscovery/nuclei/v3/pkg/model/types/severity"
-	"github.com/projectdiscovery/nuclei/v3/pkg/operators/common/dsl"
-	"github.com/projectdiscovery/nuclei/v3/pkg/operators/extractors"
-	"github.com/projectdiscovery/nuclei/v3/pkg/operators/matchers"
-	"github.com/projectdiscovery/nuclei/v3/pkg/templates/types"
 	sliceutil "github.com/projectdiscovery/utils/slice"
 )
 

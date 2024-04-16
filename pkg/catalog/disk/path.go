@@ -6,8 +6,8 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/effluxio/nuclei/v3/pkg/catalog/config"
 	"github.com/pkg/errors"
-	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/config"
 	fileutil "github.com/projectdiscovery/utils/file"
 	urlutil "github.com/projectdiscovery/utils/url"
 )

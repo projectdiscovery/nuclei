@@ -3,8 +3,8 @@ package templates
 import (
 	"errors"
 
-	"github.com/projectdiscovery/nuclei/v3/pkg/templates/types"
-	"github.com/projectdiscovery/nuclei/v3/pkg/utils"
+	"github.com/effluxio/nuclei/v3/pkg/templates/types"
+	"github.com/effluxio/nuclei/v3/pkg/utils"
 )
 
 // validateTemplateMandatoryFields validates the mandatory fields of a template

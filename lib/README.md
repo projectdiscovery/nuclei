@@ -13,7 +13,7 @@ go get -u github.com/projectdiscovery/nuclei/v3/lib
 Or add below import to your go file and let IDE handle the rest:
 
 ```go
-import nuclei "github.com/projectdiscovery/nuclei/v3/lib"
+import nuclei "github.com/effluxio/nuclei/v3/lib"
 ```
 
 ## Basic Example of using Nuclei Library/SDK

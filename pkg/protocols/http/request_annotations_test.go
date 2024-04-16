@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http/httpclientpool"
+	"github.com/effluxio/nuclei/v3/pkg/protocols/http/httpclientpool"
 	"github.com/projectdiscovery/retryablehttp-go"
 	"github.com/stretchr/testify/require"
 )

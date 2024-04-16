@@ -4,10 +4,10 @@ import (
 	"strings"
 	"sync/atomic"
 
+	"github.com/effluxio/nuclei/v3/pkg/output"
+	"github.com/effluxio/nuclei/v3/pkg/protocols"
+	"github.com/effluxio/nuclei/v3/pkg/scan"
 	"github.com/projectdiscovery/gologger"
-	"github.com/projectdiscovery/nuclei/v3/pkg/output"
-	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
-	"github.com/projectdiscovery/nuclei/v3/pkg/scan"
 	mapsutil "github.com/projectdiscovery/utils/maps"
 )
 

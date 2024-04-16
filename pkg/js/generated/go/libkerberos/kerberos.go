@@ -1,10 +1,10 @@
 package kerberos
 
 import (
-	lib_kerberos "github.com/projectdiscovery/nuclei/v3/pkg/js/libs/kerberos"
+	lib_kerberos "github.com/effluxio/nuclei/v3/pkg/js/libs/kerberos"
 
 	"github.com/dop251/goja"
-	"github.com/projectdiscovery/nuclei/v3/pkg/js/gojs"
+	"github.com/effluxio/nuclei/v3/pkg/js/gojs"
 )
 
 var (

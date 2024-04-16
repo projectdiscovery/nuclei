@@ -4,14 +4,14 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/effluxio/nuclei/v3/pkg/input/provider"
+	"github.com/effluxio/nuclei/v3/pkg/protocols/common/contextargs"
+	"github.com/effluxio/nuclei/v3/pkg/protocols/common/protocolstate"
+	"github.com/effluxio/nuclei/v3/pkg/utils"
 	"github.com/pkg/errors"
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/hmap/store/hybrid"
 	"github.com/projectdiscovery/httpx/common/httpx"
-	"github.com/projectdiscovery/nuclei/v3/pkg/input/provider"
-	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
-	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
-	"github.com/projectdiscovery/nuclei/v3/pkg/utils"
 	stringsutil "github.com/projectdiscovery/utils/strings"
 	syncutil "github.com/projectdiscovery/utils/sync"
 )

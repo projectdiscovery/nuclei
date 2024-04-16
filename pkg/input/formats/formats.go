@@ -5,7 +5,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/projectdiscovery/nuclei/v3/pkg/input/types"
+	"github.com/effluxio/nuclei/v3/pkg/input/types"
 	fileutil "github.com/projectdiscovery/utils/file"
 	"gopkg.in/yaml.v3"
 )

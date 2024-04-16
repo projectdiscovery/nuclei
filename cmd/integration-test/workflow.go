@@ -10,9 +10,9 @@ import (
 
 	"github.com/julienschmidt/httprouter"
 
-	"github.com/projectdiscovery/nuclei/v3/pkg/templates"
-	"github.com/projectdiscovery/nuclei/v3/pkg/templates/signer"
-	"github.com/projectdiscovery/nuclei/v3/pkg/testutils"
+	"github.com/effluxio/nuclei/v3/pkg/templates"
+	"github.com/effluxio/nuclei/v3/pkg/templates/signer"
+	"github.com/effluxio/nuclei/v3/pkg/testutils"
 )
 
 var workflowTestcases = []TestCaseInfo{

@@ -5,7 +5,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
+	"github.com/effluxio/nuclei/v3/pkg/protocols/common/protocolstate"
 	errorutil "github.com/projectdiscovery/utils/errors"
 	"github.com/zmap/zgrab2/lib/ssh"
 )

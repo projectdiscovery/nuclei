@@ -4,10 +4,10 @@ import (
 	"reflect"
 	"strconv"
 
+	"github.com/effluxio/nuclei/v3/pkg/fuzz/dataformat"
 	"github.com/leslie-qiwa/flat"
 	"github.com/logrusorgru/aurora"
 	"github.com/projectdiscovery/gologger"
-	"github.com/projectdiscovery/nuclei/v3/pkg/fuzz/dataformat"
 )
 
 // Value is a value component containing a single

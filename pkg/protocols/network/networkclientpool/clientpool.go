@@ -1,9 +1,9 @@
 package networkclientpool
 
 import (
+	"github.com/effluxio/nuclei/v3/pkg/protocols/common/protocolstate"
+	"github.com/effluxio/nuclei/v3/pkg/types"
 	"github.com/projectdiscovery/fastdialer/fastdialer"
-	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
-	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 )
 
 var (

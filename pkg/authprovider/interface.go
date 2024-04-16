@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"net/url"
 
-	"github.com/projectdiscovery/nuclei/v3/pkg/authprovider/authx"
+	"github.com/effluxio/nuclei/v3/pkg/authprovider/authx"
 	urlutil "github.com/projectdiscovery/utils/url"
 )
 

@@ -6,8 +6,8 @@ import (
 	"runtime"
 	"strings"
 
+	"github.com/effluxio/nuclei/v3/pkg/templates"
 	"github.com/projectdiscovery/gologger"
-	"github.com/projectdiscovery/nuclei/v3/pkg/templates"
 	"github.com/projectdiscovery/uncover"
 	"github.com/projectdiscovery/uncover/sources"
 	mapsutil "github.com/projectdiscovery/utils/maps"

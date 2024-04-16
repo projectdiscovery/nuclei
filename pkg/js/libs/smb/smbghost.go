@@ -8,8 +8,8 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/projectdiscovery/nuclei/v3/pkg/js/libs/structs"
-	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
+	"github.com/effluxio/nuclei/v3/pkg/js/libs/structs"
+	"github.com/effluxio/nuclei/v3/pkg/protocols/common/protocolstate"
 	"github.com/projectdiscovery/utils/reader"
 )
 

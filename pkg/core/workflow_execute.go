@@ -5,11 +5,11 @@ import (
 	"net/http/cookiejar"
 	"sync/atomic"
 
+	"github.com/effluxio/nuclei/v3/pkg/output"
+	"github.com/effluxio/nuclei/v3/pkg/protocols/common/contextargs"
+	"github.com/effluxio/nuclei/v3/pkg/scan"
+	"github.com/effluxio/nuclei/v3/pkg/workflows"
 	"github.com/projectdiscovery/gologger"
-	"github.com/projectdiscovery/nuclei/v3/pkg/output"
-	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
-	"github.com/projectdiscovery/nuclei/v3/pkg/scan"
-	"github.com/projectdiscovery/nuclei/v3/pkg/workflows"
 	syncutil "github.com/projectdiscovery/utils/sync"
 )
 

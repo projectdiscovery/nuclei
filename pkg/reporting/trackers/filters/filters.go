@@ -1,9 +1,9 @@
 package filters
 
 import (
-	"github.com/projectdiscovery/nuclei/v3/pkg/model/types/severity"
-	"github.com/projectdiscovery/nuclei/v3/pkg/model/types/stringslice"
-	"github.com/projectdiscovery/nuclei/v3/pkg/output"
+	"github.com/effluxio/nuclei/v3/pkg/model/types/severity"
+	"github.com/effluxio/nuclei/v3/pkg/model/types/stringslice"
+	"github.com/effluxio/nuclei/v3/pkg/output"
 
 	sliceutil "github.com/projectdiscovery/utils/slice"
 )

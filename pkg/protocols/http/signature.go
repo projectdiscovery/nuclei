@@ -7,7 +7,7 @@ import (
 	"github.com/invopop/jsonschema"
 	"github.com/pkg/errors"
 
-	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http/signer"
+	"github.com/effluxio/nuclei/v3/pkg/protocols/http/signer"
 )
 
 // SignatureType is the type of signature

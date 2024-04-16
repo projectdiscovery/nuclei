@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/effluxio/nuclei/v3/pkg/input/types"
 	"github.com/projectdiscovery/httpx/common/httpx"
-	"github.com/projectdiscovery/nuclei/v3/pkg/input/types"
 	"github.com/projectdiscovery/useragent"
 )
 

@@ -3,9 +3,9 @@ package main
 import (
 	"flag"
 
+	"github.com/effluxio/nuclei/v3/pkg/testutils/fuzzplayground"
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/projectdiscovery/gologger"
-	"github.com/projectdiscovery/nuclei/v3/pkg/testutils/fuzzplayground"
 )
 
 var (

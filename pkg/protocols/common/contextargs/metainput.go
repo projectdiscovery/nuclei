@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/effluxio/nuclei/v3/pkg/input/types"
 	jsoniter "github.com/json-iterator/go"
-	"github.com/projectdiscovery/nuclei/v3/pkg/input/types"
 	urlutil "github.com/projectdiscovery/utils/url"
 )
 

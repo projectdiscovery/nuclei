@@ -3,15 +3,15 @@ package runner
 import (
 	"fmt"
 
-	"github.com/projectdiscovery/nuclei/v3/pkg/authprovider/authx"
-	"github.com/projectdiscovery/nuclei/v3/pkg/catalog"
-	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/loader"
-	"github.com/projectdiscovery/nuclei/v3/pkg/output"
-	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
-	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
-	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/helpers/writer"
-	"github.com/projectdiscovery/nuclei/v3/pkg/scan"
-	"github.com/projectdiscovery/nuclei/v3/pkg/types"
+	"github.com/effluxio/nuclei/v3/pkg/authprovider/authx"
+	"github.com/effluxio/nuclei/v3/pkg/catalog"
+	"github.com/effluxio/nuclei/v3/pkg/catalog/loader"
+	"github.com/effluxio/nuclei/v3/pkg/output"
+	"github.com/effluxio/nuclei/v3/pkg/protocols"
+	"github.com/effluxio/nuclei/v3/pkg/protocols/common/contextargs"
+	"github.com/effluxio/nuclei/v3/pkg/protocols/common/helpers/writer"
+	"github.com/effluxio/nuclei/v3/pkg/scan"
+	"github.com/effluxio/nuclei/v3/pkg/types"
 	errorutil "github.com/projectdiscovery/utils/errors"
 )
 

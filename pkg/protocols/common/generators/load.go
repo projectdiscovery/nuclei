@@ -5,8 +5,8 @@ import (
 	"io"
 	"strings"
 
+	pkgTypes "github.com/effluxio/nuclei/v3/pkg/types"
 	"github.com/pkg/errors"
-	pkgTypes "github.com/projectdiscovery/nuclei/v3/pkg/types"
 	"github.com/spf13/cast"
 )
 

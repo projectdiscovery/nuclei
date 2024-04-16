@@ -8,7 +8,7 @@ import (
 
 	"github.com/dop251/goja"
 
-	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/generators"
+	"github.com/effluxio/nuclei/v3/pkg/protocols/common/generators"
 	contextutil "github.com/projectdiscovery/utils/context"
 	stringsutil "github.com/projectdiscovery/utils/strings"
 )

@@ -6,10 +6,10 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/effluxio/nuclei/v3/pkg/catalog/config"
 	"github.com/logrusorgru/aurora"
 	"github.com/pkg/errors"
 	"github.com/projectdiscovery/gologger"
-	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/config"
 	stringsutil "github.com/projectdiscovery/utils/strings"
 	updateutils "github.com/projectdiscovery/utils/update"
 	urlutil "github.com/projectdiscovery/utils/url"

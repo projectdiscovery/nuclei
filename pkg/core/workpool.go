@@ -1,7 +1,7 @@
 package core
 
 import (
-	"github.com/projectdiscovery/nuclei/v3/pkg/templates/types"
+	"github.com/effluxio/nuclei/v3/pkg/templates/types"
 	syncutil "github.com/projectdiscovery/utils/sync"
 )
 

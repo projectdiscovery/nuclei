@@ -4,8 +4,8 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
-	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/generators"
+	"github.com/effluxio/nuclei/v3/pkg/protocols"
+	"github.com/effluxio/nuclei/v3/pkg/protocols/common/generators"
 )
 
 // Rule is a single rule which describes how to fuzz the request

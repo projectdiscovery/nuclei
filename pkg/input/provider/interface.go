@@ -5,14 +5,14 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/effluxio/nuclei/v3/pkg/input/formats"
+	"github.com/effluxio/nuclei/v3/pkg/input/provider/http"
+	"github.com/effluxio/nuclei/v3/pkg/input/provider/list"
+	"github.com/effluxio/nuclei/v3/pkg/input/types"
+	"github.com/effluxio/nuclei/v3/pkg/protocols/common/contextargs"
+	"github.com/effluxio/nuclei/v3/pkg/protocols/common/generators"
+	configTypes "github.com/effluxio/nuclei/v3/pkg/types"
 	"github.com/projectdiscovery/gologger"
-	"github.com/projectdiscovery/nuclei/v3/pkg/input/formats"
-	"github.com/projectdiscovery/nuclei/v3/pkg/input/provider/http"
-	"github.com/projectdiscovery/nuclei/v3/pkg/input/provider/list"
-	"github.com/projectdiscovery/nuclei/v3/pkg/input/types"
-	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
-	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/generators"
-	configTypes "github.com/projectdiscovery/nuclei/v3/pkg/types"
 	errorutil "github.com/projectdiscovery/utils/errors"
 )
 

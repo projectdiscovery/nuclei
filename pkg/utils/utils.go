@@ -6,7 +6,7 @@ import (
 	"net/url"
 	"strings"
 
-	"github.com/projectdiscovery/nuclei/v3/pkg/catalog"
+	"github.com/effluxio/nuclei/v3/pkg/catalog"
 	"github.com/projectdiscovery/retryablehttp-go"
 )
 

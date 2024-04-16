@@ -7,14 +7,14 @@ import (
 
 	"github.com/pkg/errors"
 
+	"github.com/effluxio/nuclei/v3/pkg/output"
+	"github.com/effluxio/nuclei/v3/pkg/protocols"
+	"github.com/effluxio/nuclei/v3/pkg/protocols/common/contextargs"
+	"github.com/effluxio/nuclei/v3/pkg/protocols/common/generators"
+	"github.com/effluxio/nuclei/v3/pkg/protocols/common/helpers/eventcreator"
+	"github.com/effluxio/nuclei/v3/pkg/protocols/utils"
+	templateTypes "github.com/effluxio/nuclei/v3/pkg/templates/types"
 	"github.com/projectdiscovery/gologger"
-	"github.com/projectdiscovery/nuclei/v3/pkg/output"
-	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
-	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
-	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/generators"
-	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/helpers/eventcreator"
-	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/utils"
-	templateTypes "github.com/projectdiscovery/nuclei/v3/pkg/templates/types"
 	"github.com/projectdiscovery/utils/conversion"
 	syncutil "github.com/projectdiscovery/utils/sync"
 )

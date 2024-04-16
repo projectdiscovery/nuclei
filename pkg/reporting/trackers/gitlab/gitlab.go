@@ -6,10 +6,10 @@ import (
 
 	"github.com/xanzy/go-gitlab"
 
-	"github.com/projectdiscovery/nuclei/v3/pkg/output"
-	"github.com/projectdiscovery/nuclei/v3/pkg/reporting/exporters/markdown/util"
-	"github.com/projectdiscovery/nuclei/v3/pkg/reporting/format"
-	"github.com/projectdiscovery/nuclei/v3/pkg/reporting/trackers/filters"
+	"github.com/effluxio/nuclei/v3/pkg/output"
+	"github.com/effluxio/nuclei/v3/pkg/reporting/exporters/markdown/util"
+	"github.com/effluxio/nuclei/v3/pkg/reporting/format"
+	"github.com/effluxio/nuclei/v3/pkg/reporting/trackers/filters"
 	"github.com/projectdiscovery/retryablehttp-go"
 )
 

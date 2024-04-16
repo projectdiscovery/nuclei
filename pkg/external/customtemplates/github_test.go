@@ -6,9 +6,9 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/effluxio/nuclei/v3/pkg/catalog/config"
+	"github.com/effluxio/nuclei/v3/pkg/testutils"
 	"github.com/projectdiscovery/gologger"
-	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/config"
-	"github.com/projectdiscovery/nuclei/v3/pkg/testutils"
 	"github.com/stretchr/testify/require"
 )
 

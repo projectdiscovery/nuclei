@@ -6,13 +6,13 @@ import (
 	"strings"
 
 	"github.com/alecthomas/chroma/quick"
+	"github.com/effluxio/nuclei/v3/pkg/catalog/config"
+	"github.com/effluxio/nuclei/v3/pkg/catalog/loader"
 	"github.com/logrusorgru/aurora"
-	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/config"
-	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/loader"
 
+	"github.com/effluxio/nuclei/v3/pkg/templates"
+	"github.com/effluxio/nuclei/v3/pkg/types"
 	"github.com/projectdiscovery/gologger"
-	"github.com/projectdiscovery/nuclei/v3/pkg/templates"
-	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 )
 
 // log available templates for verbose (-vv)

@@ -1,9 +1,9 @@
 package signer
 
 import (
+	"github.com/effluxio/nuclei/v3/pkg/catalog/config"
+	"github.com/effluxio/nuclei/v3/pkg/keys"
 	"github.com/projectdiscovery/gologger"
-	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/config"
-	"github.com/projectdiscovery/nuclei/v3/pkg/keys"
 	errorutil "github.com/projectdiscovery/utils/errors"
 )
 

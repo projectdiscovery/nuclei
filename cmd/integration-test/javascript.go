@@ -4,8 +4,8 @@ import (
 	"log"
 	"time"
 
+	"github.com/effluxio/nuclei/v3/pkg/testutils"
 	"github.com/ory/dockertest/v3"
-	"github.com/projectdiscovery/nuclei/v3/pkg/testutils"
 	osutils "github.com/projectdiscovery/utils/os"
 	"go.uber.org/multierr"
 )

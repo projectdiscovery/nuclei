@@ -5,8 +5,8 @@ import (
 	"path/filepath"
 	"strings"
 
+	templateTypes "github.com/effluxio/nuclei/v3/pkg/templates/types"
 	"github.com/projectdiscovery/hmap/store/hybrid"
-	templateTypes "github.com/projectdiscovery/nuclei/v3/pkg/templates/types"
 	fileutil "github.com/projectdiscovery/utils/file"
 	"github.com/projectdiscovery/utils/ports"
 	stringsutil "github.com/projectdiscovery/utils/strings"

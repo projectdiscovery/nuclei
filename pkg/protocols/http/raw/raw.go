@@ -9,8 +9,8 @@ import (
 	"io"
 	"strings"
 
+	"github.com/effluxio/nuclei/v3/pkg/authprovider/authx"
 	"github.com/projectdiscovery/gologger"
-	"github.com/projectdiscovery/nuclei/v3/pkg/authprovider/authx"
 	"github.com/projectdiscovery/rawhttp/client"
 	errorutil "github.com/projectdiscovery/utils/errors"
 	stringsutil "github.com/projectdiscovery/utils/strings"

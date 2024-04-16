@@ -1,7 +1,7 @@
 package main
 
 import (
-	nuclei "github.com/projectdiscovery/nuclei/v3/lib"
+	nuclei "github.com/effluxio/nuclei/v3/lib"
 	syncutil "github.com/projectdiscovery/utils/sync"
 )
 

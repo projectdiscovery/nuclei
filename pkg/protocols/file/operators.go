@@ -3,13 +3,13 @@ package file
 import (
 	"time"
 
-	"github.com/projectdiscovery/nuclei/v3/pkg/model"
-	"github.com/projectdiscovery/nuclei/v3/pkg/operators"
-	"github.com/projectdiscovery/nuclei/v3/pkg/operators/extractors"
-	"github.com/projectdiscovery/nuclei/v3/pkg/operators/matchers"
-	"github.com/projectdiscovery/nuclei/v3/pkg/output"
-	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
-	"github.com/projectdiscovery/nuclei/v3/pkg/types"
+	"github.com/effluxio/nuclei/v3/pkg/model"
+	"github.com/effluxio/nuclei/v3/pkg/operators"
+	"github.com/effluxio/nuclei/v3/pkg/operators/extractors"
+	"github.com/effluxio/nuclei/v3/pkg/operators/matchers"
+	"github.com/effluxio/nuclei/v3/pkg/output"
+	"github.com/effluxio/nuclei/v3/pkg/protocols"
+	"github.com/effluxio/nuclei/v3/pkg/types"
 )
 
 // Match matches a generic data response again a given matcher

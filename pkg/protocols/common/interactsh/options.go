@@ -3,10 +3,10 @@ package interactsh
 import (
 	"time"
 
+	"github.com/effluxio/nuclei/v3/pkg/output"
+	"github.com/effluxio/nuclei/v3/pkg/progress"
+	"github.com/effluxio/nuclei/v3/pkg/reporting"
 	"github.com/projectdiscovery/interactsh/pkg/client"
-	"github.com/projectdiscovery/nuclei/v3/pkg/output"
-	"github.com/projectdiscovery/nuclei/v3/pkg/progress"
-	"github.com/projectdiscovery/nuclei/v3/pkg/reporting"
 	"github.com/projectdiscovery/retryablehttp-go"
 )
 

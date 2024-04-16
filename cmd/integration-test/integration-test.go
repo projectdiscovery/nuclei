@@ -9,9 +9,9 @@ import (
 
 	"github.com/logrusorgru/aurora"
 
+	"github.com/effluxio/nuclei/v3/pkg/testutils"
+	"github.com/effluxio/nuclei/v3/pkg/testutils/fuzzplayground"
 	"github.com/projectdiscovery/gologger"
-	"github.com/projectdiscovery/nuclei/v3/pkg/testutils"
-	"github.com/projectdiscovery/nuclei/v3/pkg/testutils/fuzzplayground"
 	sliceutil "github.com/projectdiscovery/utils/slice"
 )
 

@@ -4,10 +4,10 @@ import (
 	"io"
 	"strings"
 
-	"github.com/projectdiscovery/nuclei/v3/pkg/fuzz/component"
-	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/expressions"
-	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/generators"
-	"github.com/projectdiscovery/nuclei/v3/pkg/types"
+	"github.com/effluxio/nuclei/v3/pkg/fuzz/component"
+	"github.com/effluxio/nuclei/v3/pkg/protocols/common/expressions"
+	"github.com/effluxio/nuclei/v3/pkg/protocols/common/generators"
+	"github.com/effluxio/nuclei/v3/pkg/types"
 	"github.com/projectdiscovery/retryablehttp-go"
 )
 

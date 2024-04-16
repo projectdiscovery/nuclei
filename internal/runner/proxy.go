@@ -7,8 +7,8 @@ import (
 	"os"
 	"strings"
 
+	"github.com/effluxio/nuclei/v3/pkg/types"
 	"github.com/projectdiscovery/gologger"
-	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	errorutil "github.com/projectdiscovery/utils/errors"
 	fileutil "github.com/projectdiscovery/utils/file"
 	proxyutils "github.com/projectdiscovery/utils/proxy"

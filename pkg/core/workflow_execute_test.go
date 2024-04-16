@@ -3,15 +3,15 @@ package core
 import (
 	"testing"
 
-	"github.com/projectdiscovery/nuclei/v3/pkg/model/types/stringslice"
-	"github.com/projectdiscovery/nuclei/v3/pkg/operators"
-	"github.com/projectdiscovery/nuclei/v3/pkg/output"
-	"github.com/projectdiscovery/nuclei/v3/pkg/progress"
-	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
-	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
-	"github.com/projectdiscovery/nuclei/v3/pkg/scan"
-	"github.com/projectdiscovery/nuclei/v3/pkg/types"
-	"github.com/projectdiscovery/nuclei/v3/pkg/workflows"
+	"github.com/effluxio/nuclei/v3/pkg/model/types/stringslice"
+	"github.com/effluxio/nuclei/v3/pkg/operators"
+	"github.com/effluxio/nuclei/v3/pkg/output"
+	"github.com/effluxio/nuclei/v3/pkg/progress"
+	"github.com/effluxio/nuclei/v3/pkg/protocols"
+	"github.com/effluxio/nuclei/v3/pkg/protocols/common/contextargs"
+	"github.com/effluxio/nuclei/v3/pkg/scan"
+	"github.com/effluxio/nuclei/v3/pkg/types"
+	"github.com/effluxio/nuclei/v3/pkg/workflows"
 	"github.com/stretchr/testify/require"
 )
 

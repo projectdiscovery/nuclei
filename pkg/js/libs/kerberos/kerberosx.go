@@ -4,12 +4,12 @@ import (
 	"strings"
 
 	"github.com/dop251/goja"
+	"github.com/effluxio/nuclei/v3/pkg/js/utils"
+	"github.com/effluxio/nuclei/v3/pkg/protocols/common/protocolstate"
 	kclient "github.com/jcmturner/gokrb5/v8/client"
 	kconfig "github.com/jcmturner/gokrb5/v8/config"
 	"github.com/jcmturner/gokrb5/v8/iana/errorcode"
 	"github.com/jcmturner/gokrb5/v8/messages"
-	"github.com/projectdiscovery/nuclei/v3/pkg/js/utils"
-	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
 	ConversionUtil "github.com/projectdiscovery/utils/conversion"
 )
 

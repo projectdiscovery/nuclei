@@ -9,9 +9,9 @@ import (
 	"strings"
 
 	"github.com/dop251/goja"
+	"github.com/effluxio/nuclei/v3/pkg/js/utils"
+	"github.com/effluxio/nuclei/v3/pkg/protocols/common/protocolstate"
 	"github.com/go-ldap/ldap/v3"
-	"github.com/projectdiscovery/nuclei/v3/pkg/js/utils"
-	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
 )
 
 type (

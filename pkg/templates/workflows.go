@@ -3,11 +3,11 @@ package templates
 import (
 	"github.com/pkg/errors"
 
+	"github.com/effluxio/nuclei/v3/pkg/model"
+	"github.com/effluxio/nuclei/v3/pkg/protocols"
+	"github.com/effluxio/nuclei/v3/pkg/utils/stats"
+	"github.com/effluxio/nuclei/v3/pkg/workflows"
 	"github.com/projectdiscovery/gologger"
-	"github.com/projectdiscovery/nuclei/v3/pkg/model"
-	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
-	"github.com/projectdiscovery/nuclei/v3/pkg/utils/stats"
-	"github.com/projectdiscovery/nuclei/v3/pkg/workflows"
 )
 
 // compileWorkflow compiles the workflow for execution

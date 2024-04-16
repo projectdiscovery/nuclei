@@ -4,7 +4,7 @@ import (
 	"encoding/base64"
 
 	"github.com/dop251/goja"
-	"github.com/projectdiscovery/nuclei/v3/pkg/js/gojs"
+	"github.com/effluxio/nuclei/v3/pkg/js/gojs"
 )
 
 func registerAdditionalHelpers(runtime *goja.Runtime) {

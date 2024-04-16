@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/config"
-	"github.com/projectdiscovery/nuclei/v3/pkg/testutils"
+	"github.com/effluxio/nuclei/v3/pkg/catalog/config"
+	"github.com/effluxio/nuclei/v3/pkg/testutils"
 )
 
 func getTemplatePath() string {

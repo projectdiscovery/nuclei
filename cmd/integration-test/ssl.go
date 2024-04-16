@@ -4,7 +4,7 @@ import (
 	"crypto/tls"
 	"net"
 
-	"github.com/projectdiscovery/nuclei/v3/pkg/testutils"
+	"github.com/effluxio/nuclei/v3/pkg/testutils"
 )
 
 var sslTestcases = []TestCaseInfo{

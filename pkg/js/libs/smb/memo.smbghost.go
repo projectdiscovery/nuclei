@@ -5,7 +5,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
+	"github.com/effluxio/nuclei/v3/pkg/protocols/common/protocolstate"
 )
 
 func memoizeddetectSMBGhost(host string, port int) (bool, error) {

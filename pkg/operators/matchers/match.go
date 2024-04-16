@@ -8,10 +8,10 @@ import (
 	"github.com/antchfx/htmlquery"
 	"github.com/antchfx/xmlquery"
 
+	"github.com/effluxio/nuclei/v3/pkg/operators/common/dsl"
+	"github.com/effluxio/nuclei/v3/pkg/protocols/common/expressions"
 	dslRepo "github.com/projectdiscovery/dsl"
 	"github.com/projectdiscovery/gologger"
-	"github.com/projectdiscovery/nuclei/v3/pkg/operators/common/dsl"
-	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/expressions"
 	stringsutil "github.com/projectdiscovery/utils/strings"
 )
 

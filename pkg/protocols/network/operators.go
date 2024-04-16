@@ -3,14 +3,14 @@ package network
 import (
 	"time"
 
-	"github.com/projectdiscovery/nuclei/v3/pkg/model"
-	"github.com/projectdiscovery/nuclei/v3/pkg/operators"
-	"github.com/projectdiscovery/nuclei/v3/pkg/operators/extractors"
-	"github.com/projectdiscovery/nuclei/v3/pkg/operators/matchers"
-	"github.com/projectdiscovery/nuclei/v3/pkg/output"
-	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
-	protocolutils "github.com/projectdiscovery/nuclei/v3/pkg/protocols/utils"
-	"github.com/projectdiscovery/nuclei/v3/pkg/types"
+	"github.com/effluxio/nuclei/v3/pkg/model"
+	"github.com/effluxio/nuclei/v3/pkg/operators"
+	"github.com/effluxio/nuclei/v3/pkg/operators/extractors"
+	"github.com/effluxio/nuclei/v3/pkg/operators/matchers"
+	"github.com/effluxio/nuclei/v3/pkg/output"
+	"github.com/effluxio/nuclei/v3/pkg/protocols"
+	protocolutils "github.com/effluxio/nuclei/v3/pkg/protocols/utils"
+	"github.com/effluxio/nuclei/v3/pkg/types"
 )
 
 // Match matches a generic data response again a given matcher
@@ -100,13 +100,13 @@ func (request *Request) MakeResultEventItem(wrapped *output.InternalWrappedEvent
 		fields.Ip = types.ToString(wrapped.InternalEvent["ip"])
 	}
 	data := &output.ResultEvent{
-		TemplateID:   types.ToString(wrapped.InternalEvent["template-id"]),
-		TemplatePath: types.ToString(wrapped.InternalEvent["template-path"]),
-		Info:         wrapped.InternalEvent["template-info"].(model.Info),
-		Type:         types.ToString(wrapped.InternalEvent["type"]),
-		Host:         fields.Host,
-		Port:         fields.Port,
-		URL:          fields.URL,
+		TemplateID:       types.ToString(wrapped.InternalEvent["template-id"]),
+		TemplatePath:     types.ToString(wrapped.InternalEvent["template-path"]),
+		Info:             wrapped.InternalEvent["template-info"].(model.Info),
+		Type:             types.ToString(wrapped.InternalEvent["type"]),
+		Host:             fields.Host,
+		Port:             fields.Port,
+		URL:              fields.URL,
 		Matched:          types.ToString(wrapped.InternalEvent["matched"]),
 		ExtractedResults: wrapped.OperatorsResult.OutputExtracts,
 		Metadata:         wrapped.OperatorsResult.PayloadValues,

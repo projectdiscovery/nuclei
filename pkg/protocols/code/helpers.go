@@ -4,7 +4,7 @@ import (
 	goruntime "runtime"
 
 	"github.com/dop251/goja"
-	"github.com/projectdiscovery/nuclei/v3/pkg/js/gojs"
+	"github.com/effluxio/nuclei/v3/pkg/js/gojs"
 	osutils "github.com/projectdiscovery/utils/os"
 )
 

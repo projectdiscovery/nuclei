@@ -6,9 +6,9 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/effluxio/nuclei/v3/pkg/protocols/common/protocolstate"
 	"github.com/praetorian-inc/fingerprintx/pkg/plugins"
 	"github.com/praetorian-inc/fingerprintx/pkg/plugins/services/oracledb"
-	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
 )
 
 type (

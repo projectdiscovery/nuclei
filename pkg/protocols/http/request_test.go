@@ -8,15 +8,15 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/projectdiscovery/nuclei/v3/pkg/model"
-	"github.com/projectdiscovery/nuclei/v3/pkg/model/types/severity"
-	"github.com/projectdiscovery/nuclei/v3/pkg/operators"
-	"github.com/projectdiscovery/nuclei/v3/pkg/operators/extractors"
-	"github.com/projectdiscovery/nuclei/v3/pkg/operators/matchers"
-	"github.com/projectdiscovery/nuclei/v3/pkg/output"
-	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
-	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/interactsh"
-	"github.com/projectdiscovery/nuclei/v3/pkg/testutils"
+	"github.com/effluxio/nuclei/v3/pkg/model"
+	"github.com/effluxio/nuclei/v3/pkg/model/types/severity"
+	"github.com/effluxio/nuclei/v3/pkg/operators"
+	"github.com/effluxio/nuclei/v3/pkg/operators/extractors"
+	"github.com/effluxio/nuclei/v3/pkg/operators/matchers"
+	"github.com/effluxio/nuclei/v3/pkg/output"
+	"github.com/effluxio/nuclei/v3/pkg/protocols/common/contextargs"
+	"github.com/effluxio/nuclei/v3/pkg/protocols/common/interactsh"
+	"github.com/effluxio/nuclei/v3/pkg/testutils"
 )
 
 func TestHTTPExtractMultipleReuse(t *testing.T) {
