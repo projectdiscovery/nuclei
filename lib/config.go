@@ -10,6 +10,7 @@ import (
 	"github.com/projectdiscovery/ratelimit"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/authprovider"
+	"github.com/projectdiscovery/nuclei/v3/pkg/catalog"
 	"github.com/projectdiscovery/nuclei/v3/pkg/model/types/severity"
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
 	"github.com/projectdiscovery/nuclei/v3/pkg/progress"
@@ -422,6 +423,14 @@ func DASTMode() NucleiSDKOptions {
 func SignedTemplatesOnly() NucleiSDKOptions {
 	return func(e *NucleiEngine) error {
 		e.opts.DisableUnsignedTemplates = true
+		return nil
+	}
+}
+
+// UseSuppliedCatalog uses a supplied catalog
+func UseSuppliedCatalog(cat catalog.Catalog) NucleiSDKOptions {
+	return func(e *NucleiEngine) error {
+		e.catalog = cat
 		return nil
 	}
 }
