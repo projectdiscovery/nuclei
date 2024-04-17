@@ -27,13 +27,15 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/generators"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/helpers/eventcreator"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/interactsh"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/utils/vardump"
 	protocolutils "github.com/projectdiscovery/nuclei/v3/pkg/protocols/utils"
 	templateTypes "github.com/projectdiscovery/nuclei/v3/pkg/templates/types"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	errorutil "github.com/projectdiscovery/utils/errors"
+	iputil "github.com/projectdiscovery/utils/ip"
+	syncutil "github.com/projectdiscovery/utils/sync"
 	urlutil "github.com/projectdiscovery/utils/url"
-	"github.com/remeh/sizedwaitgroup"
 )
 
 // Request is a request for the javascript protocol
@@ -404,7 +406,11 @@ func (request *Request) executeRequestParallel(ctxParent context.Context, hostPo
 	requestOptions := request.options
 	gotmatches := &atomic.Bool{}
 
-	sg := sizedwaitgroup.New(threads)
+	// if request threads matches global payload concurrency we follow it
+	shouldFollowGlobal := threads == request.options.Options.PayloadConcurrency
+
+	sg, _ := syncutil.New(syncutil.WithSize(threads))
+
 	if request.generator != nil {
 		iterator := request.generator.NewIterator()
 		for {
@@ -412,6 +418,12 @@ func (request *Request) executeRequestParallel(ctxParent context.Context, hostPo
 			if !ok {
 				break
 			}
+
+			// resize check point - nop if there are no changes
+			if shouldFollowGlobal && sg.Size != request.options.Options.PayloadConcurrency {
+				sg.Resize(request.options.Options.PayloadConcurrency)
+			}
+
 			sg.Add()
 			go func() {
 				defer sg.Done()
@@ -518,6 +530,46 @@ func (request *Request) executeRequestWithPayloads(hostPort string, input *conte
 	data["template-info"] = requestOptions.TemplateInfo
 	if request.StopAtFirstMatch || request.options.StopAtFirstMatch {
 		data["stop-at-first-match"] = true
+	}
+
+	// add ip address to data
+	if input.MetaInput.CustomIP != "" {
+		data["ip"] = input.MetaInput.CustomIP
+	} else {
+		// context: https://github.com/projectdiscovery/nuclei/issues/5021
+		hostname := input.MetaInput.Input
+		if strings.Contains(hostname, ":") {
+			host, _, err := net.SplitHostPort(hostname)
+			if err == nil {
+				hostname = host
+			} else {
+				// naive way
+				if !strings.Contains(hostname, "]") {
+					hostname = hostname[:strings.LastIndex(hostname, ":")]
+				}
+			}
+		}
+		data["ip"] = protocolstate.Dialer.GetDialedIP(hostname)
+		// if input itself was an ip, use it
+		if iputil.IsIP(hostname) {
+			data["ip"] = hostname
+		}
+
+		// if ip is not found,this is because ssh and other protocols do not use fastdialer
+		// although its not perfect due to its use case dial and get ip
+		dnsData, err := protocolstate.Dialer.GetDNSData(hostname)
+		if err == nil {
+			for _, v := range dnsData.A {
+				data["ip"] = v
+				break
+			}
+			if data["ip"] == "" {
+				for _, v := range dnsData.AAAA {
+					data["ip"] = v
+					break
+				}
+			}
+		}
 	}
 
 	// add and get values from templatectx

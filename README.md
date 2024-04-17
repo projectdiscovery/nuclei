@@ -22,7 +22,7 @@
   <a href="#install-nuclei">Install</a> •
   <a href="https://docs.projectdiscovery.io/tools/nuclei/">Documentation</a> •
   <a href="#credits">Credits</a> •
-  <a href="https://nuclei.projectdiscovery.io/faq/nuclei/">FAQs</a> •
+  <a href="https://docs.projectdiscovery.io/tools/nuclei/faq">FAQs</a> •
   <a href="https://discord.gg/projectdiscovery">Join Discord</a>
 </p>
 

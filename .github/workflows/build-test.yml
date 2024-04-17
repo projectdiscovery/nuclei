@@ -66,3 +66,7 @@ jobs:
       - name: Example SDK Advanced
         run: go run .
         working-directory: examples/advanced/
+
+      - name: Example SDK with speed control
+        run: go run .
+        working-directory: examples/with_speed_control/

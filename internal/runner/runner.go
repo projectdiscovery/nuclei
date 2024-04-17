@@ -20,6 +20,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/installer"
 	"github.com/projectdiscovery/nuclei/v3/pkg/loader/parser"
 	"github.com/projectdiscovery/nuclei/v3/pkg/testing"
+	"github.com/projectdiscovery/nuclei/v3/pkg/scan/events"
 	uncoverlib "github.com/projectdiscovery/uncover"
 	pdcpauth "github.com/projectdiscovery/utils/auth/pdcp"
 	"github.com/projectdiscovery/utils/env"
@@ -316,11 +317,17 @@ func New(options *types.Options) (*Runner, error) {
 	}
 
 	if options.RateLimitMinute > 0 {
-		runner.rateLimiter = ratelimit.New(context.Background(), uint(options.RateLimitMinute), time.Minute)
-	} else if options.RateLimit > 0 {
-		runner.rateLimiter = ratelimit.New(context.Background(), uint(options.RateLimit), time.Second)
-	} else {
+		gologger.Print().Msgf("[%v] %v", aurora.BrightYellow("WRN"), "rate limit per minute is deprecated - use rate-limit-duration")
+		options.RateLimit = options.RateLimitMinute
+		options.RateLimitDuration = time.Minute
+	}
+	if options.RateLimit > 0 && options.RateLimitDuration == 0 {
+		options.RateLimitDuration = time.Second
+	}
+	if options.RateLimit == 0 && options.RateLimitDuration == 0 {
 		runner.rateLimiter = ratelimit.NewUnlimited(context.Background())
+	} else {
+		runner.rateLimiter = ratelimit.New(context.Background(), uint(options.RateLimit), options.RateLimitDuration)
 	}
 
 	if tmpDir, err := os.MkdirTemp("", "nuclei-tmp-*"); err == nil {
@@ -570,6 +577,20 @@ func (r *Runner) RunEnumeration() error {
 		}
 		executorOpts.InputHelper.InputsHTTP = inputHelpers
 	}
+
+	// initialize stats worker ( this is no-op unless nuclei is built with stats build tag)
+	// during execution a directory with 2 files will be created in the current directory
+	// config.json - containing below info
+	// events.jsonl - containing all start and end times of all templates
+	events.InitWithConfig(&events.ScanConfig{
+		Name:                "nuclei-stats", // make this configurable
+		TargetCount:         int(r.inputProvider.Count()),
+		TemplatesCount:      len(store.Templates()) + len(store.Workflows()),
+		TemplateConcurrency: r.options.TemplateThreads,
+		PayloadConcurrency:  r.options.PayloadConcurrency,
+		JsConcurrency:       r.options.JsConcurrency,
+		Retries:             r.options.Retries,
+	}, "")
 
 	enumeration := false
 	var results *atomic.Bool

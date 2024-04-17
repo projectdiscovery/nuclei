@@ -1,0 +1,12 @@
+id: code-value-sharing-workflow
+
+info:
+  name: Code Value Sharing Workflow
+  author: tovask
+  severity: info
+  tags: code
+
+workflows:
+  - template: workflow/code-template-1.yaml
+    subtemplates:
+      - template: workflow/code-template-2.yaml

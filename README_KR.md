@@ -23,7 +23,7 @@
   <a href="#개발자를-위한">개발자를 위한</a> •
   <a href="https://nuclei.projectdiscovery.io/nuclei/get-started/">문서</a> •
   <a href="#credits">Credits</a> •
-  <a href="https://nuclei.projectdiscovery.io/faq/nuclei/">FAQs</a> •
+  <a href="https://docs.projectdiscovery.io/tools/nuclei/faq">FAQs</a> •
   <a href="https://discord.gg/projectdiscovery"> Discord 참가</a>
 </p>
 

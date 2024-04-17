@@ -6,7 +6,6 @@ import (
 	"os"
 
 	"github.com/pkg/errors"
-	"github.com/remeh/sizedwaitgroup"
 
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
@@ -17,6 +16,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/utils"
 	templateTypes "github.com/projectdiscovery/nuclei/v3/pkg/templates/types"
 	"github.com/projectdiscovery/utils/conversion"
+	syncutil "github.com/projectdiscovery/utils/sync"
 )
 
 var _ protocols.Request = &Request{}
@@ -29,10 +29,13 @@ func (request *Request) Type() templateTypes.ProtocolType {
 }
 
 // ExecuteWithResults executes the protocol requests and returns results instead of writing them.
-func (request *Request) ExecuteWithResults(input *contextargs.Context, metadata /*TODO review unused parameter*/, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
-	wg := sizedwaitgroup.New(request.options.Options.BulkSize)
+func (request *Request) ExecuteWithResults(input *contextargs.Context, metadata, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
+	wg, err := syncutil.New(syncutil.WithSize(request.options.Options.BulkSize))
+	if err != nil {
+		return err
+	}
 
-	err := request.getInputPaths(input.MetaInput.Input, func(data string) {
+	err = request.getInputPaths(input.MetaInput.Input, func(data string) {
 		wg.Add()
 
 		go func(data string) {
