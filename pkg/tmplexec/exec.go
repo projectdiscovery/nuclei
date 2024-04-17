@@ -205,9 +205,23 @@ func (e *TemplateExecuter) Execute(ctx *scan.ScanContext) (bool, error) {
 
 // ExecuteWithResults executes the protocol requests and returns results instead of writing them.
 func (e *TemplateExecuter) ExecuteWithResults(ctx *scan.ScanContext) ([]*output.ResultEvent, error) {
-	err := e.engine.ExecuteWithResults(ctx)
-	ctx.LogError(err)
-	return ctx.GenerateResult(), err
+	var errx error
+	if e.options.Flow != "" {
+		flowexec, err := flow.NewFlowExecutor(e.requests, ctx, e.options, e.results, e.program)
+		if err != nil {
+			ctx.LogError(err)
+			return nil, fmt.Errorf("could not create flow executor: %s", err)
+		}
+		if err := flowexec.Compile(); err != nil {
+			ctx.LogError(err)
+			return nil, err
+		}
+		errx = flowexec.ExecuteWithResults(ctx)
+	} else {
+		errx = e.engine.ExecuteWithResults(ctx)
+	}
+	ctx.LogError(errx)
+	return ctx.GenerateResult(), errx
 }
 
 // getTemplateType returns the template type of the template
