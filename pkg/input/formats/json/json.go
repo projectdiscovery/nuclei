@@ -28,9 +28,10 @@ var _ formats.Format = &JSONFormat{}
 type proxifyRequest struct {
 	URL     string `json:"url"`
 	Request struct {
-		Header map[string]string `json:"header"`
-		Body   string            `json:"body"`
-		Raw    string            `json:"raw"`
+		Header   map[string]string `json:"header"`
+		Body     string            `json:"body"`
+		Raw      string            `json:"raw"`
+		Endpoint string            `json:"endpoint"`
 	} `json:"request"`
 }
 
@@ -63,6 +64,9 @@ func (j *JSONFormat) Parse(input string, resultsCb formats.ParseReqRespCallback)
 			return errors.Wrap(err, "could not decode json file")
 		}
 
+		if request.URL == "" && request.Request.Endpoint != "" {
+			request.URL = request.Request.Endpoint
+		}
 		rawRequest, err := types.ParseRawRequestWithURL(request.Request.Raw, request.URL)
 		if err != nil {
 			gologger.Warning().Msgf("jsonl: Could not parse raw request %s: %s\n", request.URL, err)
