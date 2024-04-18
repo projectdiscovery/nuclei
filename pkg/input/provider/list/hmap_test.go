@@ -13,6 +13,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	"github.com/projectdiscovery/nuclei/v3/pkg/utils/expand"
+	"github.com/projectdiscovery/utils/auth/pdcp"
 	"github.com/stretchr/testify/require"
 )
 
@@ -153,6 +154,13 @@ func Test_scanallips_normalizeStoreInputValue(t *testing.T) {
 }
 
 func Test_expandASNInputValue(t *testing.T) {
+	// skip this test if pdcp keys are not present
+	h := pdcp.PDCPCredHandler{}
+	creds, err := h.GetCreds()
+	if err != nil || creds == nil || creds.APIKey == "" {
+		t.Logf("Skipping asnmap test as pdcp keys are not present")
+		t.SkipNow()
+	}
 	tests := []struct {
 		asn                string
 		expectedOutputFile string
