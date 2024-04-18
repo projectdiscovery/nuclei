@@ -415,6 +415,11 @@ on extensive configurability, massive extensibility and ease of use.`)
 		flagSet.BoolVarP(&options.PreFetchSecrets, "prefetch-secrets", "ps", false, "prefetch secrets from the secrets file"),
 	)
 
+	flagSet.CreateGroup("tests", "Tests",
+		flagSet.BoolVarP(&options.AutogenerateTests, "autogenerate-tests", "agt", false, "enable autogeneration of nuclei test-cases (http only now)"),
+		flagSet.BoolVarP(&options.RunNucleiTests, "run-tests", "rts", false, "run generated nuclei test-cases"),
+	)
+
 	flagSet.SetCustomHelpText(`EXAMPLES:
 Run nuclei on single host:
 	$ nuclei -target example.com

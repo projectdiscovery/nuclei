@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"net/http/httptest"
 	_ "net/http/pprof"
 	"os"
 	"path/filepath"
@@ -18,6 +19,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/input/provider"
 	"github.com/projectdiscovery/nuclei/v3/pkg/installer"
 	"github.com/projectdiscovery/nuclei/v3/pkg/loader/parser"
+	"github.com/projectdiscovery/nuclei/v3/pkg/testing"
 	"github.com/projectdiscovery/nuclei/v3/pkg/scan/events"
 	uncoverlib "github.com/projectdiscovery/uncover"
 	pdcpauth "github.com/projectdiscovery/utils/auth/pdcp"
@@ -345,6 +347,9 @@ func (r *Runner) runStandardEnumeration(executerOpts protocols.ExecutorOptions, 
 
 // Close releases all the resources and cleans up
 func (r *Runner) Close() {
+	if proxyServer != nil {
+		proxyServer.Close()
+	}
 	if r.output != nil {
 		r.output.Close()
 	}
@@ -508,6 +513,14 @@ func (r *Runner) RunEnumeration() error {
 		return nil // exit
 	}
 	store.Load()
+
+	if len(store.Templates()) > 1 && r.options.AutogenerateTests {
+		return errors.New("autogenerate-tests flag can only be used with a single template")
+	}
+	if r.inputProvider.Count() > 1 && r.options.AutogenerateTests {
+		return errors.New("autogenerate-tests flag can only be used with a single input")
+	}
+
 	// TODO: remove below functions after v3 or update warning messages
 	disk.PrintDeprecatedPathsMsgIfApplicable(r.options.Silent)
 	templates.PrintDeprecatedProtocolNameMsgIfApplicable(r.options.Silent, r.options.Verbose)
@@ -534,6 +547,17 @@ func (r *Runner) RunEnumeration() error {
 
 	// display execution info like version , templates used etc
 	r.displayExecutionInfo(store)
+
+	// If prompted, we need to run the tests for all the loaded
+	// templates by first trying to detect test definitions and then
+	// executing them with the relevant inputs.
+	if r.options.RunNucleiTests {
+		gologger.Info().Msgf("Running nuclei-templates mock-generated tests")
+		if err := r.runNucleiTests(store, executorEngine); err != nil {
+			return errors.Wrap(err, "could not run nuclei tests")
+		}
+		return nil
+	}
 
 	// prefetch secrets if enabled
 	if executorOpts.AuthProvider != nil && r.options.PreFetchSecrets {
@@ -577,10 +601,17 @@ func (r *Runner) RunEnumeration() error {
 		return err
 	}
 
+	var isInteractMatcher bool
 	if r.interactsh != nil {
 		matched := r.interactsh.Close()
 		if matched {
 			results.CompareAndSwap(false, true)
+			isInteractMatcher = true
+		}
+	}
+	if r.options.AutogenerateTests && proxyServer != nil {
+		if err := r.handleTestAutogenerate(results, isInteractMatcher, store); err != nil {
+			return err
 		}
 	}
 	if executorOpts.InputHelper != nil {
@@ -598,6 +629,108 @@ func (r *Runner) RunEnumeration() error {
 	}
 
 	return err
+}
+
+func (r *Runner) runNucleiTests(store *loader.Store, engine *core.Engine) error {
+	// For each loaded template, check to see if there's
+	// a corresponding test file for that template with extension
+	// .nuclei_test
+	testFiles := make(map[string]string)
+	templatePathToTemplates := make(map[string]*templates.Template)
+
+	for _, template := range store.Templates() {
+		testFile := fmt.Sprintf("%s.nuclei_test", template.Path)
+		if !fileutil.FileExists(testFile) {
+			continue
+		}
+		testFiles[template.Path] = testFile
+		templatePathToTemplates[template.Path] = template
+
+		gologger.Verbose().Msgf("Found test file for template %s: %s", template.ID, filepath.Base(testFile))
+	}
+
+	if len(testFiles) == 0 {
+		gologger.Info().Msgf("No test files found for nuclei-templates")
+		return nil
+	}
+
+	gologger.Info().Msgf("Loaded %d test files for nuclei-templates", len(testFiles))
+
+	for templatePath, testFile := range testFiles {
+		testTemplate, err := testing.ReadNucleiTestTemplate(testFile)
+		if err != nil {
+			return errors.Wrap(err, "could not read nuclei test template")
+		}
+
+		mockHandler, err := testTemplate.MockServer()
+		if err != nil {
+			return errors.Wrap(err, "could not create mock handler for template")
+		}
+
+		testServer := httptest.NewServer(mockHandler)
+		template, ok := templatePathToTemplates[templatePath]
+		if !ok {
+			testServer.Close()
+			return errors.Errorf("no template found for path %s", templatePath)
+		}
+
+		// If we have interactsh matcher, we need to handle it separately
+		// by creating a new interactsh client and closing it after the test
+		// waiting for callbacks.
+		// TODO: Parallelize
+		if testTemplate.IsInteractshMatcher {
+			interactClient, err := interactsh.New(interactsh.DefaultOptions(r.output, r.issuesClient, r.progress))
+			if err != nil {
+				testServer.Close()
+				return errors.Wrap(err, "could not create interactsh client")
+			}
+			template.Options.Interactsh = interactClient
+		}
+
+		results := engine.ExecuteScanWithOpts([]*templates.Template{template}, provider.NewSimpleInputProviderWithUrls(testServer.URL), r.options.DisableClustering)
+		if !results.Load() && !testTemplate.IsInteractshMatcher {
+			testServer.Close()
+			return errors.Errorf("no results found for template %s", template.ID)
+		}
+
+		if testTemplate.IsInteractshMatcher {
+			matched := template.Options.Interactsh.Close()
+			if !matched {
+				testServer.Close()
+				return errors.Errorf("no results found for template %s", template.ID)
+			}
+		}
+	}
+	gologger.Info().Msgf("All tests passed successfully")
+
+	return nil
+}
+
+func (r *Runner) handleTestAutogenerate(results *atomic.Bool, isInteractMatcher bool, store *loader.Store) error {
+	if !results.Load() {
+		return errors.New("no results found to autogenerate tests")
+	}
+
+	intercepted := proxyServer.Intercepted()
+	if len(intercepted) == 0 {
+		return errors.New("no intercepted requests")
+	}
+	gologger.Verbose().Msgf("Intercepted requests and responses (%d)", len(intercepted))
+	for _, pair := range intercepted {
+		if r.options.Debug {
+			fmt.Printf("Pair: %+v\n", pair)
+		}
+	}
+	var gotInput string
+	r.inputProvider.Iterate(func(value *contextargs.MetaInput) bool {
+		gotInput = value.Input
+		return false
+	})
+	err := testing.GenerateTestsFromPair(intercepted, store.Templates()[0], gotInput, isInteractMatcher)
+	if err != nil {
+		return errors.Wrap(err, "could not generate tests from intercepted requests")
+	}
+	return nil
 }
 
 func (r *Runner) isInputNonHTTP() bool {
