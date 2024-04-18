@@ -427,8 +427,8 @@ func SignedTemplatesOnly() NucleiSDKOptions {
 	}
 }
 
-// UseSuppliedCatalog uses a supplied catalog
-func UseSuppliedCatalog(cat catalog.Catalog) NucleiSDKOptions {
+// WithCatalog uses a supplied catalog
+func WithCatalog(cat catalog.Catalog) NucleiSDKOptions {
 	return func(e *NucleiEngine) error {
 		e.catalog = cat
 		return nil
