@@ -220,7 +220,9 @@ func (e *TemplateExecuter) ExecuteWithResults(ctx *scan.ScanContext) ([]*output.
 	} else {
 		errx = e.engine.ExecuteWithResults(ctx)
 	}
-	ctx.LogError(errx)
+	if errx != nil {
+		ctx.LogError(errx)
+	}
 	return ctx.GenerateResult(), errx
 }
 
