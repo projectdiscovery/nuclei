@@ -83,6 +83,9 @@ func (q *Header) Delete(key string) error {
 func (q *Header) Rebuild() (*retryablehttp.Request, error) {
 	cloned := q.req.Clone(context.Background())
 	q.value.parsed.Iterate(func(key string, value any) bool {
+		if strings.TrimSpace(key) == "" {
+			return true
+		}
 		if strings.EqualFold(key, "Host") {
 			return true
 		}
