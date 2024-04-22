@@ -211,6 +211,14 @@ func (rule *Rule) executeRuleValues(input *ExecuteRuleInput, ruleComponent compo
 		})
 		// if mode is multiple now build and execute it
 		if rule.modeType == multipleModeType {
+			rule.Fuzz.KV.Iterate(func(key, value string) bool {
+				var evaluated string
+				evaluated, input.InteractURLs = rule.executeEvaluate(input, key, "", value, input.InteractURLs)
+				if err := ruleComponent.SetValue(key, evaluated); err != nil {
+					return true
+				}
+				return true
+			})
 			req, err := ruleComponent.Rebuild()
 			if err != nil {
 				return err
