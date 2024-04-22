@@ -9,7 +9,6 @@ import (
 	json "github.com/json-iterator/go"
 	"github.com/pkg/errors"
 
-	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/fuzz"
 	"github.com/projectdiscovery/nuclei/v3/pkg/operators"
 	"github.com/projectdiscovery/nuclei/v3/pkg/operators/matchers"
@@ -19,6 +18,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http/httpclientpool"
 	httputil "github.com/projectdiscovery/nuclei/v3/pkg/protocols/utils/http"
+	"github.com/projectdiscovery/nuclei/v3/pkg/utils/stats"
 	"github.com/projectdiscovery/rawhttp"
 	"github.com/projectdiscovery/retryablehttp-go"
 	fileutil "github.com/projectdiscovery/utils/file"
@@ -455,7 +455,7 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 			}
 		}
 		if hasNamedInternalExtractor && hasMultipleRequests {
-			gologger.Warning().Label(options.TemplateID).Msgf("Setting thread count to 0 because dynamic extractors are not supported with payloads yet")
+			stats.Increment(SetThreadToCountZero)
 			request.Threads = 0
 		} else {
 			// specifically for http requests high concurrency and and threads will lead to memory exausthion, hence reduce the maximum parallelism
@@ -489,4 +489,12 @@ func (request *Request) Requests() int {
 		return requests
 	}
 	return len(request.Path)
+}
+
+const (
+	SetThreadToCountZero = "set-thread-count-to-zero"
+)
+
+func init() {
+	stats.NewEntry(SetThreadToCountZero, "Setting thread count to 0 for %d templates, dynamic extractors are not supported with payloads yet")
 }
