@@ -1,0 +1,27 @@
+id: fuzz-multi-mode-test
+
+info:
+  name: multi-mode fuzzing test
+  author: pdteam
+  severity: info
+
+http:
+  - payloads:
+      inject:
+        - nuclei-v1
+        - nuclei-v2
+        - nuclei-v3
+
+    fuzzing:
+      - part: header
+        type: replace
+        mode: multiple
+        fuzz:
+          X-Client-Id: "{{inject}}"
+          X-Secret-Id: "{{inject}}"
+          
+    matchers-condition: or
+    matchers:
+      - type: word
+        words:
+          - "nuclei-v3"
