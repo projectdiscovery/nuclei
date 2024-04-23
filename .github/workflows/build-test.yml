@@ -42,6 +42,7 @@ jobs:
       - name: Test
         env:
           GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
+          PDCP_API_KEY: "${{ secrets.PDCP_API_KEY }}"
         run: go test ./...
 
       - name: Integration Tests
@@ -49,6 +50,7 @@ jobs:
         env:
           GH_ACTION: true
           GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
+          PDCP_API_KEY: "${{ secrets.PDCP_API_KEY }}"
         run: |
           chmod +x run.sh
           bash run.sh ${{ matrix.os }}
