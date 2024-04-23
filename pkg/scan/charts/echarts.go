@@ -38,16 +38,18 @@ func (s *ScanEventsCharts) allCharts(c echo.Context) *components.Page {
 	page := components.NewPage()
 	page.PageTitle = "Nuclei Charts"
 	line1 := s.totalRequestsOverTime(c)
-	line1.SetSpacerHeight(SpacerHeight)
+	// line1.SetSpacerHeight(SpacerHeight)
 	kline := s.topSlowTemplates(c)
-	kline.SetSpacerHeight(SpacerHeight)
+	// kline.SetSpacerHeight(SpacerHeight)
 	line2 := s.requestsVSInterval(c)
-	line2.SetSpacerHeight(SpacerHeight)
+	// line2.SetSpacerHeight(SpacerHeight)
 	line3 := s.concurrencyVsTime(c)
-	line3.SetSpacerHeight(SpacerHeight)
+	// line3.SetSpacerHeight(SpacerHeight)
 	page.AddCharts(line1, kline, line2, line3)
-	page.Validate()
 	page.SetLayout(components.PageCenterLayout)
+	page.Theme = "dark"
+	page.Validate()
+
 	return page
 }
 
@@ -59,7 +61,12 @@ func (s *ScanEventsCharts) TotalRequestsOverTime(c echo.Context) error {
 // totalRequestsOverTime generates a line chart showing total requests count over time
 func (s *ScanEventsCharts) totalRequestsOverTime(c echo.Context) *charts.Line {
 	line := charts.NewLine()
-	line.SetCaption("Chart Shows Total Requests Count Over Time (for each/all Protocols)")
+	line.SetGlobalOptions(
+		charts.WithTitleOpts(opts.Title{
+			Title:    "Nuclei: Total Requests vs Time",
+			Subtitle: "Chart Shows Total Requests Count Over Time (for each/all Protocols)",
+		}),
+	)
 
 	var startTime time.Time = time.Now()
 	var endTime time.Time
@@ -120,8 +127,12 @@ func (s *ScanEventsCharts) TopSlowTemplates(c echo.Context) error {
 // topSlowTemplates generates a Kline chart showing the top slow templates by time taken
 func (s *ScanEventsCharts) topSlowTemplates(c echo.Context) *charts.Kline {
 	kline := charts.NewKLine()
-	kline.SetCaption(fmt.Sprintf("Chart Shows Top Slow Templates (by time taken) (Top %v)", TopK))
-
+	kline.SetGlobalOptions(
+		charts.WithTitleOpts(opts.Title{
+			Title:    "Nuclei: Top Slow Templates",
+			Subtitle: fmt.Sprintf("Chart Shows Top Slow Templates (by time taken) (Top %v)", TopK),
+		}),
+	)
 	ids := map[string][]int64{}
 	var startTime time.Time = time.Now()
 	for _, event := range s.data {
@@ -200,7 +211,12 @@ func (s *ScanEventsCharts) RequestsVSInterval(c echo.Context) error {
 // requestsVSInterval generates a line chart showing requests per second over time
 func (s *ScanEventsCharts) requestsVSInterval(c echo.Context) *charts.Line {
 	line := charts.NewLine()
-	line.SetCaption("Chart Shows RPS (Requests Per Second) Over Time")
+	line.SetGlobalOptions(
+		charts.WithTitleOpts(opts.Title{
+			Title:    "Nuclei: Requests Per Second vs Time",
+			Subtitle: "Chart Shows RPS (Requests Per Second) Over Time",
+		}),
+	)
 
 	sort.Slice(s.data, func(i, j int) bool {
 		return s.data[i].Time.Before(s.data[j].Time)
@@ -267,7 +283,12 @@ func (s *ScanEventsCharts) ConcurrencyVsTime(c echo.Context) error {
 // concurrencyVsTime generates a line chart showing concurrency (total workers) over time
 func (s *ScanEventsCharts) concurrencyVsTime(c echo.Context) *charts.Line {
 	line := charts.NewLine()
-	line.SetCaption("Chart Shows Concurrency (Total Workers) Over Time")
+	line.SetGlobalOptions(
+		charts.WithTitleOpts(opts.Title{
+			Title:    "Nuclei: Concurrency vs Time",
+			Subtitle: "Chart Shows Concurrency (Total Workers) Over Time",
+		}),
+	)
 
 	dataset := sliceutil.Clone(s.data)
 
