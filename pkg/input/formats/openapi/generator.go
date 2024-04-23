@@ -179,6 +179,10 @@ func generateRequestsFromOp(opts *generateReqOptions) error {
 	for _, parameter := range reqParams {
 		value := parameter.Value
 
+		if value.Schema == nil || value.Schema.Value == nil {
+			continue
+		}
+
 		// paramValue or default value to use
 		var paramValue interface{}
 
