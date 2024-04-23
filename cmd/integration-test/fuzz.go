@@ -18,6 +18,7 @@ const (
 
 var fuzzingTestCases = []TestCaseInfo{
 	{Path: "fuzz/fuzz-mode.yaml", TestCase: &fuzzModeOverride{}},
+	{Path: "fuzz/fuzz-multi-mode.yaml", TestCase: &fuzzMultipleMode{}},
 	{Path: "fuzz/fuzz-type.yaml", TestCase: &fuzzTypeOverride{}},
 	{Path: "fuzz/fuzz-query.yaml", TestCase: &httpFuzzQuery{}},
 	{Path: "fuzz/fuzz-headless.yaml", TestCase: &HeadlessFuzzingQuery{}},
@@ -173,4 +174,30 @@ func (h *HeadlessFuzzingQuery) Execute(filePath string) error {
 		return err
 	}
 	return expectResultsCount(got, 2)
+}
+
+type fuzzMultipleMode struct{}
+
+// Execute executes a test case and returns an error if occurred
+func (h *fuzzMultipleMode) Execute(filePath string) error {
+	router := httprouter.New()
+	router.GET("/", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+		xClientId := r.Header.Get("X-Client-Id")
+		xSecretId := r.Header.Get("X-Secret-Id")
+		if xClientId != "nuclei-v3" || xSecretId != "nuclei-v3" {
+			w.WriteHeader(http.StatusUnauthorized)
+			return
+		}
+		w.Header().Set("Content-Type", "text/html")
+		resp := fmt.Sprintf("<html><body><h1>This is multi-mode fuzzing test: %v <h1></body></html>", xClientId)
+		fmt.Fprint(w, resp)
+	})
+	ts := httptest.NewTLSServer(router)
+	defer ts.Close()
+
+	got, err := testutils.RunNucleiTemplateAndGetResults(filePath, ts.URL+"?url=https://scanme.sh", debug, "-jsonl", "-fuzz")
+	if err != nil {
+		return err
+	}
+	return expectResultsCount(got, 1)
 }
