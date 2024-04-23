@@ -52,6 +52,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/uncover"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/utils/excludematchers"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/headless/engine"
+	httpProtocol "github.com/projectdiscovery/nuclei/v3/pkg/protocols/http"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http/httpclientpool"
 	"github.com/projectdiscovery/nuclei/v3/pkg/reporting"
 	"github.com/projectdiscovery/nuclei/v3/pkg/templates"
@@ -684,6 +685,7 @@ func (r *Runner) displayExecutionInfo(store *loader.Store) {
 	} else {
 		stats.DisplayAsWarning(templates.SkippedCodeTmplTamperedStats)
 	}
+	stats.DisplayAsWarning(httpProtocol.SetThreadToCountZero)
 	stats.ForceDisplayWarning(templates.SkippedUnsignedStats)
 	stats.ForceDisplayWarning(templates.SkippedRequestSignatureStats)
 
