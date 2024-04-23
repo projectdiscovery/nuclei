@@ -6,7 +6,7 @@ import (
 	"io"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/authprovider"
-	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/disk"
+	"github.com/projectdiscovery/nuclei/v3/pkg/catalog"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/loader"
 	"github.com/projectdiscovery/nuclei/v3/pkg/core"
 	"github.com/projectdiscovery/nuclei/v3/pkg/input/provider"
@@ -63,7 +63,7 @@ type NucleiEngine struct {
 
 	// unexported core fields
 	interactshClient *interactsh.Client
-	catalog          *disk.DiskCatalog
+	catalog          catalog.Catalog
 	rateLimiter      *ratelimit.Limiter
 	store            *loader.Store
 	httpxClient      providerTypes.InputLivenessProbe
