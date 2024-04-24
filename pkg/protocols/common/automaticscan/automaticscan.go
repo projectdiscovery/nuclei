@@ -256,6 +256,10 @@ func (s *Service) getTagsUsingDetectionTemplates(input *contextargs.MetaInput) (
 		sg.Add()
 		go func(template *templates.Template) {
 			defer sg.Done()
+            if template.Executer == nil {
+                gologger.Verbose().Msgf("[%s] no executer available for template\n", aurora.BrightYellow(template.ID))
+                return
+            }
 			ctx := scan.NewScanContext(ctxArgs)
 			ctx.OnResult = func(event *output.InternalWrappedEvent) {
 				if event == nil {
