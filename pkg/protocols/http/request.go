@@ -50,7 +50,7 @@ const (
 )
 
 var (
-	MaxBodyRead = int64(1 << 22) // 4MB using shift operator
+	MaxBodyRead = int64(10 * 1024 * 1024) // 10MB
 	// ErrMissingVars is error occured when variables are missing
 	ErrMissingVars = errors.New("stop execution due to unresolved variables")
 )
