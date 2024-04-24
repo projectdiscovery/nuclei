@@ -34,7 +34,10 @@ const defaultMonitorIteration = 6
 
 // NewStackMonitor returns a new stack monitor instance
 func NewStackMonitor() *Agent {
-	return &Agent{}
+	return &Agent{
+		goroutineCount:   0,
+		currentIteration: 0,
+	}
 }
 
 // Callback when crash is detected and stack trace is saved to disk
@@ -57,10 +60,9 @@ func (s *Agent) Start(interval time.Duration) context.CancelFunc {
 			select {
 			case <-ctx.Done():
 				ticker.Stop()
+				return
 			case <-ticker.C:
 				s.monitorWorker(cancel)
-			default:
-				continue
 			}
 		}
 	}()
@@ -104,9 +106,8 @@ func (s *Agent) monitorWorker(cancel context.CancelFunc) {
 		}
 
 		s.lock.Lock()
-		callbacks := s.callbacks
-		s.lock.Unlock()
-		for _, callback := range callbacks {
+		defer s.lock.Unlock()
+		for _, callback := range s.callbacks {
 			if err := callback(dumpID); err != nil {
 				gologger.Error().Msgf("Stack monitor callback error: %s\n", err)
 			}
