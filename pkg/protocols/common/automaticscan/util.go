@@ -22,7 +22,8 @@ func getTemplateDirs(opts Options) ([]string, error) {
 	for _, directory := range defaultTemplatesDirectories {
 		templates, err := opts.ExecuterOpts.Catalog.GetTemplatePath(directory)
 		if err != nil {
-			return nil, errors.Wrap(err, "could not get templates in directory")
+			gologger.Error().Msgf("Could not get templates in directory: %s\n", directory)
+			continue
 		}
 		allTemplates = append(allTemplates, templates...)
 	}
