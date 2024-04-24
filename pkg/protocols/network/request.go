@@ -36,12 +36,6 @@ import (
 	syncutil "github.com/projectdiscovery/utils/sync"
 )
 
-var (
-	// TODO: make this configurable
-	// DefaultReadTimeout is the default read timeout for network requests
-	DefaultReadTimeout = time.Duration(5) * time.Second
-)
-
 var _ protocols.Request = &Request{}
 
 // Type returns the type of the protocol request
@@ -295,7 +289,7 @@ func (request *Request) executeRequestWithPayloads(variables map[string]interfac
 		}
 
 		if input.Read > 0 {
-			buffer, err := ConnReadNWithTimeout(conn, int64(input.Read), DefaultReadTimeout)
+			buffer, err := ConnReadNWithTimeout(conn, int64(input.Read), request.options.Options.ResponseReadTimeout)
 			if err != nil {
 				return errorutil.NewWithErr(err).Msgf("could not read response from connection")
 			}
@@ -345,7 +339,7 @@ func (request *Request) executeRequestWithPayloads(variables map[string]interfac
 		bufferSize = -1
 	}
 
-	final, err := ConnReadNWithTimeout(conn, int64(bufferSize), DefaultReadTimeout)
+	final, err := ConnReadNWithTimeout(conn, int64(bufferSize), request.options.Options.ResponseReadTimeout)
 	if err != nil {
 		request.options.Output.Request(request.options.TemplatePath, address, request.Type().String(), err)
 		gologger.Verbose().Msgf("could not read more data from %s: %s", actualAddress, err)
@@ -446,9 +440,6 @@ func getAddress(toTest string) (string, error) {
 }
 
 func ConnReadNWithTimeout(conn net.Conn, n int64, timeout time.Duration) ([]byte, error) {
-	if timeout == 0 {
-		timeout = DefaultReadTimeout
-	}
 	if n == -1 {
 		// if n is -1 then read all available data from connection
 		return reader.ConnReadNWithTimeout(conn, -1, timeout)
