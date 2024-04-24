@@ -5,6 +5,7 @@ import (
 	"sync"
 
 	syncutil "github.com/projectdiscovery/utils/sync"
+	"golang.org/x/exp/maps"
 )
 
 // WorkPoolType is the type of work pool to use
@@ -19,7 +20,7 @@ const (
 
 // StopAtFirstMatchHandler is a handler that executes
 // request and stops on first match
-type StopAtFirstMatchHandler[T any] struct {
+type StopAtFirstMatchHandler[T comparable] struct {
 	once sync.Once
 	// Result Channel
 	ResultChan chan T
@@ -33,12 +34,14 @@ type StopAtFirstMatchHandler[T any] struct {
 	ctx         context.Context
 	cancel      context.CancelFunc
 	internalWg  *sync.WaitGroup
-	results     []T
+	results     map[T]struct{}
+	onResult    func(T)
 	stopEnabled bool
+	maxResults  int
 }
 
 // NewBlockingSPMHandler creates a new stop at first match handler
-func NewBlockingSPMHandler[T any](ctx context.Context, size int, spm bool) *StopAtFirstMatchHandler[T] {
+func NewBlockingSPMHandler[T comparable](ctx context.Context, size int, maxResults int, spm bool) *StopAtFirstMatchHandler[T] {
 	ctx1, cancel := context.WithCancel(ctx)
 
 	awg, _ := syncutil.New(syncutil.WithSize(size))
@@ -51,6 +54,8 @@ func NewBlockingSPMHandler[T any](ctx context.Context, size int, spm bool) *Stop
 		ctx:         ctx1,
 		cancel:      cancel,
 		stopEnabled: spm,
+		results:     make(map[T]struct{}),
+		maxResults:  maxResults,
 	}
 	s.internalWg.Add(1)
 	go s.run(ctx)
@@ -58,7 +63,7 @@ func NewBlockingSPMHandler[T any](ctx context.Context, size int, spm bool) *Stop
 }
 
 // NewNonBlockingSPMHandler creates a new stop at first match handler
-func NewNonBlockingSPMHandler[T any](ctx context.Context, spm bool) *StopAtFirstMatchHandler[T] {
+func NewNonBlockingSPMHandler[T comparable](ctx context.Context, maxResults int, spm bool) *StopAtFirstMatchHandler[T] {
 	ctx1, cancel := context.WithCancel(ctx)
 	s := &StopAtFirstMatchHandler[T]{
 		ResultChan:  make(chan T, 1),
@@ -68,6 +73,8 @@ func NewNonBlockingSPMHandler[T any](ctx context.Context, spm bool) *StopAtFirst
 		ctx:         ctx1,
 		cancel:      cancel,
 		stopEnabled: spm,
+		results:     make(map[T]struct{}),
+		maxResults:  maxResults,
 	}
 	s.internalWg.Add(1)
 	go s.run(ctx)
@@ -79,6 +86,25 @@ func NewNonBlockingSPMHandler[T any](ctx context.Context, spm bool) *StopAtFirst
 func (h *StopAtFirstMatchHandler[T]) Trigger() {
 	if h.stopEnabled {
 		h.cancel()
+	}
+}
+
+// Cancel cancels spm context
+func (h *StopAtFirstMatchHandler[T]) Cancel() {
+	h.cancel()
+}
+
+// SetOnResult callback
+// this is not thread safe
+func (h *StopAtFirstMatchHandler[T]) SetOnResultCallback(fn func(T)) {
+	if h.onResult != nil {
+		tmp := h.onResult
+		h.onResult = func(t T) {
+			tmp(t)
+			fn(t)
+		}
+	} else {
+		h.onResult = fn
 	}
 }
 
@@ -104,7 +130,14 @@ func (h *StopAtFirstMatchHandler[T]) run(ctx context.Context) {
 			if !ok {
 				return
 			}
-			h.results = append(h.results, val)
+			if h.onResult != nil {
+				h.onResult(val)
+			}
+			if len(h.results) >= h.maxResults {
+				// skip or do not store the result
+				continue
+			}
+			h.results[val] = struct{}{}
 		}
 	}
 }
@@ -112,6 +145,11 @@ func (h *StopAtFirstMatchHandler[T]) run(ctx context.Context) {
 // Done returns a channel with the context done signal when stop at first match is detected
 func (h *StopAtFirstMatchHandler[T]) Done() <-chan struct{} {
 	return h.ctx.Done()
+}
+
+// Cancelled returns true if the context is cancelled
+func (h *StopAtFirstMatchHandler[T]) Cancelled() bool {
+	return h.ctx.Err() != nil
 }
 
 // FoundFirstMatch returns true if first match was found
@@ -168,5 +206,5 @@ func (h *StopAtFirstMatchHandler[T]) Wait() {
 
 // CombinedResults returns the combined results
 func (h *StopAtFirstMatchHandler[T]) CombinedResults() []T {
-	return h.results
+	return maps.Keys(h.results)
 }
