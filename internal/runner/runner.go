@@ -32,6 +32,7 @@ import (
 
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/internal/colorizer"
+	"github.com/projectdiscovery/nuclei/v3/internal/httpapi"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/config"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/disk"
@@ -89,8 +90,9 @@ type Runner struct {
 	pdcpUploadErrMsg string
 	inputProvider    provider.InputProvider
 	//general purpose temporary directory
-	tmpDir string
-	parser parser.Parser
+	tmpDir          string
+	parser          parser.Parser
+	httpApiEndpoint *httpapi.Server
 }
 
 const pprofServerAddress = "127.0.0.1:8086"
@@ -219,6 +221,17 @@ func New(options *types.Options) (*Runner, error) {
 		runner.pprofServer = server
 		go func() {
 			_ = server.ListenAndServe()
+		}()
+	}
+
+	if options.HttpApiEndpoint != "" {
+		apiServer := httpapi.New(options.HttpApiEndpoint, options)
+		gologger.Info().Msgf("Listening api endpoint on: %s", options.HttpApiEndpoint)
+		runner.httpApiEndpoint = apiServer
+		go func() {
+			if err := apiServer.Start(); err != nil {
+				gologger.Error().Msgf("Failed to start API server: %s", err)
+			}
 		}()
 	}
 
