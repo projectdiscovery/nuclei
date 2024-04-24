@@ -1,6 +1,7 @@
 package core
 
 import (
+	"context"
 	"sync"
 	"sync/atomic"
 
@@ -45,7 +46,7 @@ func (e *Engine) executeAllSelfContained(alltemplates []*templates.Template, res
 }
 
 // executeTemplateWithTarget executes a given template on x targets (with a internal targetpool(i.e concurrency))
-func (e *Engine) executeTemplateWithTargets(template *templates.Template, target provider.InputProvider, results *atomic.Bool) {
+func (e *Engine) executeTemplateWithTargets(ctx context.Context, template *templates.Template, target provider.InputProvider, results *atomic.Bool) {
 	// this is target pool i.e max target to execute
 	wg := e.workPool.InputPool(template.Type())
 
@@ -77,6 +78,12 @@ func (e *Engine) executeTemplateWithTargets(template *templates.Template, target
 	}
 
 	target.Iterate(func(scannedValue *contextargs.MetaInput) bool {
+		select {
+		case <-ctx.Done():
+			return false // exit
+		default:
+		}
+
 		// Best effort to track the host progression
 		// skips indexes lower than the minimum in-flight at interruption time
 		var skip bool
@@ -149,7 +156,7 @@ func (e *Engine) executeTemplateWithTargets(template *templates.Template, target
 }
 
 // executeTemplatesOnTarget execute given templates on given single target
-func (e *Engine) executeTemplatesOnTarget(alltemplates []*templates.Template, target *contextargs.MetaInput, results *atomic.Bool) {
+func (e *Engine) executeTemplatesOnTarget(ctx context.Context, alltemplates []*templates.Template, target *contextargs.MetaInput, results *atomic.Bool) {
 	// all templates are executed on single target
 
 	// wp is workpool that contains different waitgroups for
@@ -158,6 +165,12 @@ func (e *Engine) executeTemplatesOnTarget(alltemplates []*templates.Template, ta
 	wp := e.GetWorkPool()
 
 	for _, tpl := range alltemplates {
+		select {
+		case <-ctx.Done():
+			return
+		default:
+		}
+
 		// resize check point - nop if there are no changes
 		wp.RefreshWithConfig(e.GetWorkPoolConfig())
 
