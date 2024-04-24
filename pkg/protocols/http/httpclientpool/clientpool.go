@@ -37,7 +37,7 @@ var (
 	clientPool        *mapsutil.SyncLockMap[string, *retryablehttp.Client]
 	// ResponseHeaderTimeout is the timeout for response headers
 	// to be read from the server (this prevents infinite hang started by server if any)
-	ResponseHeaderTimeout = time.Duration(8) * time.Second
+	ResponseHeaderTimeout = time.Duration(5) * time.Second
 	// HttpTimeoutMultiplier is the multiplier for the http timeout
 	HttpTimeoutMultiplier = 3
 )
