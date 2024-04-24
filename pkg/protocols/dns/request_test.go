@@ -38,7 +38,7 @@ func TestDNSExecuteWithResults(t *testing.T) {
 				Name:  "test",
 				Part:  "raw",
 				Type:  matchers.MatcherTypeHolder{MatcherType: matchers.WordsMatcher},
-				Words: []string{"93.184.216.34"},
+				Words: []string{"93.184.215.14"},
 			}},
 			Extractors: []*extractors.Extractor{{
 				Part:  "raw",
@@ -65,7 +65,7 @@ func TestDNSExecuteWithResults(t *testing.T) {
 	require.Equal(t, 1, len(finalEvent.Results), "could not get correct number of results")
 	require.Equal(t, "test", finalEvent.Results[0].MatcherName, "could not get correct matcher name of results")
 	require.Equal(t, 1, len(finalEvent.Results[0].ExtractedResults), "could not get correct number of extracted results")
-	require.Equal(t, "93.184.216.34", finalEvent.Results[0].ExtractedResults[0], "could not get correct extracted results")
+	require.Equal(t, "93.184.215.14", finalEvent.Results[0].ExtractedResults[0], "could not get correct extracted results")
 	finalEvent = nil
 
 	t.Run("url-to-domain", func(t *testing.T) {
@@ -80,6 +80,6 @@ func TestDNSExecuteWithResults(t *testing.T) {
 	require.Equal(t, 1, len(finalEvent.Results), "could not get correct number of results")
 	require.Equal(t, "test", finalEvent.Results[0].MatcherName, "could not get correct matcher name of results")
 	require.Equal(t, 1, len(finalEvent.Results[0].ExtractedResults), "could not get correct number of extracted results")
-	require.Equal(t, "93.184.216.34", finalEvent.Results[0].ExtractedResults[0], "could not get correct extracted results")
+	require.Equal(t, "93.184.215.14", finalEvent.Results[0].ExtractedResults[0], "could not get correct extracted results")
 	finalEvent = nil
 }
