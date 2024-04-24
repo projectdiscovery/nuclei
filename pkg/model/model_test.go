@@ -80,7 +80,7 @@ func TestUnmarshal(t *testing.T) {
 	templateName := "Test Template"
 	authors := []string{"forgedhallpass", "ice3man"}
 	tags := []string{"cve", "misc"}
-	references := []string{"http://test.com", "http://domain.com"}
+	references := []string{"http://test.com", "http://Domain.com"}
 
 	dynamicKey1 := "customDynamicKey1"
 	dynamicKey2 := "customDynamicKey2"
@@ -109,7 +109,7 @@ func TestUnmarshal(t *testing.T) {
   author: ` + strings.Join(authors, ", ") + `
   tags: ` + strings.Join(tags, ", ") + `
   severity: critical
-  reference: ` + strings.Join(references, ", ") + `
+  reference: ` + strings.Join(references, ",") + `
   metadata:
      ` + dynamicKey1 + `: ` + dynamicKeysMap[dynamicKey1].(string) + `
      ` + dynamicKey2 + `: ` + dynamicKeysMap[dynamicKey2].(string) + `
