@@ -391,6 +391,8 @@ type Options struct {
 	ProbeConcurrency int
 	// Dast only runs DAST templates
 	DAST bool
+	// HttpApiEndpoint is the experimental http api endpoint
+	HttpApiEndpoint string
 }
 
 // ShouldLoadResume resume file

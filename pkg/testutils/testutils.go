@@ -55,6 +55,7 @@ var DefaultOptions = &types.Options{
 	Retries:                    1,
 	RateLimit:                  150,
 	RateLimitDuration:          time.Second,
+	ProbeConcurrency:           50,
 	ProjectPath:                "",
 	Severities:                 severity.Severities{},
 	Targets:                    []string{},
