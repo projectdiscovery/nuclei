@@ -349,5 +349,3 @@ require (
 
 // https://go.dev/ref/mod#go-mod-file-retract
 retract v3.2.0 // retract due to broken js protocol issue
-
-replace github.com/go-echarts/go-echarts/v2 => github.com/tarunKoyalwar/go-echarts/v2 v2.1.1
