@@ -79,13 +79,13 @@ func (c *Compiler) Execute(code string, args *ExecuteArgs) (ExecuteResult, error
 	if err != nil {
 		return nil, err
 	}
-	return c.ExecuteWithOptions(p, args, &ExecuteOptions{})
+	return c.ExecuteWithOptions(p, args, &ExecuteOptions{Context: context.Background()})
 }
 
 // ExecuteWithOptions executes a script with the provided options.
 func (c *Compiler) ExecuteWithOptions(program *goja.Program, args *ExecuteArgs, opts *ExecuteOptions) (ExecuteResult, error) {
 	if opts == nil {
-		opts = &ExecuteOptions{}
+		opts = &ExecuteOptions{Context: context.Background()}
 	}
 	if args == nil {
 		args = NewExecuteArgs()
