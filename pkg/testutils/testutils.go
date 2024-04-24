@@ -72,6 +72,7 @@ var DefaultOptions = &types.Options{
 	InteractionsPollDuration:   5,
 	GitHubTemplateRepo:         []string{},
 	GitHubToken:                "",
+	ResponseReadTimeout:        time.Second * 5,
 }
 
 // TemplateInfo contains info for a mock executed template.

@@ -289,6 +289,8 @@ type Options struct {
 	ResponseReadSize int
 	// ResponseSaveSize is the maximum size of response to save
 	ResponseSaveSize int
+	// ResponseReadTimeout is response read timeout in seconds
+	ResponseReadTimeout time.Duration
 	// Health Check
 	HealthCheck bool
 	// Time to wait between each input read operation before closing the stream
@@ -427,6 +429,7 @@ func DefaultOptions() *Options {
 		MaxHostError:            30,
 		ResponseReadSize:        10 * 1024 * 1024,
 		ResponseSaveSize:        1024 * 1024,
+		ResponseReadTimeout:     5 * time.Second,
 	}
 }
 
