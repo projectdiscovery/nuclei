@@ -202,6 +202,12 @@ func (request *Request) executeParallelHTTP(input *contextargs.Context, dynamicV
 			break
 		}
 
+		select {
+		case <-input.Context().Done():
+			return input.Context().Err()
+		default:
+		}
+
 		// resize check point - nop if there are no changes
 		if shouldFollowGlobal && spmHandler.Size() != request.options.Options.PayloadConcurrency {
 			spmHandler.Resize(request.options.Options.PayloadConcurrency)
@@ -305,6 +311,13 @@ func (request *Request) executeTurboHTTP(input *contextargs.Context, dynamicValu
 		if !ok {
 			break
 		}
+
+		select {
+		case <-input.Context().Done():
+			return input.Context().Err()
+		default:
+		}
+
 		ctx := request.newContext(input)
 		generatedHttpRequest, err := generator.Make(ctx, input, inputData, payloads, dynamicValues)
 		if err != nil {
@@ -380,6 +393,7 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 			ctx := request.newContext(input)
 			ctxWithTimeout, cancel := context.WithTimeout(ctx, time.Duration(request.options.Options.Timeout)*time.Second)
 			defer cancel()
+
 			generatedHttpRequest, err := generator.Make(ctxWithTimeout, input, data, payloads, dynamicValue)
 			if err != nil {
 				if err == types.ErrNoMoreRequests {
@@ -456,6 +470,13 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 		if !ok {
 			break
 		}
+
+		select {
+		case <-input.Context().Done():
+			return input.Context().Err()
+		default:
+		}
+
 		var gotErr error
 		var skip bool
 		if len(gotDynamicValues) > 0 {
@@ -981,7 +1002,7 @@ func (request *Request) pruneSignatureInternalValues(maps ...map[string]interfac
 
 func (request *Request) newContext(input *contextargs.Context) context.Context {
 	if input.MetaInput.CustomIP != "" {
-		return context.WithValue(context.Background(), fastdialer.IP, input.MetaInput.CustomIP)
+		return context.WithValue(input.Context(), fastdialer.IP, input.MetaInput.CustomIP)
 	}
-	return context.Background()
+	return input.Context()
 }

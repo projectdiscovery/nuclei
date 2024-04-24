@@ -18,14 +18,14 @@ import (
 // Executors are low level executors that deals with template execution on a target
 
 // executeAllSelfContained executes all self contained templates that do not use `target`
-func (e *Engine) executeAllSelfContained(alltemplates []*templates.Template, results *atomic.Bool, sg *sync.WaitGroup) {
+func (e *Engine) executeAllSelfContained(ctx context.Context, alltemplates []*templates.Template, results *atomic.Bool, sg *sync.WaitGroup) {
 	for _, v := range alltemplates {
 		sg.Add(1)
 		go func(template *templates.Template) {
 			defer sg.Done()
 			var err error
 			var match bool
-			ctx := scan.NewScanContext(contextargs.New())
+			ctx := scan.NewScanContext(ctx, contextargs.New(ctx))
 			if e.Callback != nil {
 				if results, err := template.Executer.ExecuteWithResults(ctx); err != nil {
 					for _, result := range results {
@@ -121,9 +121,9 @@ func (e *Engine) executeTemplateWithTargets(ctx context.Context, template *templ
 
 			var match bool
 			var err error
-			ctxArgs := contextargs.New()
+			ctxArgs := contextargs.New(ctx)
 			ctxArgs.MetaInput = value
-			ctx := scan.NewScanContext(ctxArgs)
+			ctx := scan.NewScanContext(ctx, ctxArgs)
 			switch template.Type() {
 			case types.WorkflowProtocol:
 				match = e.executeWorkflow(ctx, template.CompiledWorkflow)
@@ -186,9 +186,9 @@ func (e *Engine) executeTemplatesOnTarget(ctx context.Context, alltemplates []*t
 
 			var match bool
 			var err error
-			ctxArgs := contextargs.New()
+			ctxArgs := contextargs.New(ctx)
 			ctxArgs.MetaInput = value
-			ctx := scan.NewScanContext(ctxArgs)
+			ctx := scan.NewScanContext(ctx, ctxArgs)
 			switch template.Type() {
 			case types.WorkflowProtocol:
 				match = e.executeWorkflow(ctx, template.CompiledWorkflow)
@@ -243,9 +243,11 @@ func (e *ChildExecuter) Execute(template *templates.Template, value *contextargs
 	go func(tpl *templates.Template) {
 		defer wg.Done()
 
-		ctxArgs := contextargs.New()
+		// TODO: Workflows are a no-op for now. We need to
+		// implement them in the future with context cancellation
+		ctxArgs := contextargs.New(context.Background())
 		ctxArgs.MetaInput = value
-		ctx := scan.NewScanContext(ctxArgs)
+		ctx := scan.NewScanContext(context.Background(), ctxArgs)
 		match, err := template.Executer.Execute(ctx)
 		if err != nil {
 			gologger.Warning().Msgf("[%s] Could not execute step: %s\n", e.e.executerOpts.Colorizer.BrightBlue(template.ID), err)

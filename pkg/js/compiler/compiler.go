@@ -37,6 +37,8 @@ type ExecuteOptions struct {
 	// Source is original source of the script
 	Source *string
 
+	Context context.Context
+
 	// Manually exported objects
 	exports map[string]interface{}
 }
@@ -105,7 +107,7 @@ func (c *Compiler) ExecuteWithOptions(program *goja.Program, args *ExecuteArgs, 
 	}
 
 	// execute with context and timeout
-	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(opts.Timeout)*time.Second)
+	ctx, cancel := context.WithTimeout(opts.Context, time.Duration(opts.Timeout)*time.Second)
 	defer cancel()
 	// execute the script
 	results, err := contextutil.ExecFuncWithTwoReturns(ctx, func() (val goja.Value, err error) {

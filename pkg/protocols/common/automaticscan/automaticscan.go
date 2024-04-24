@@ -245,7 +245,9 @@ func (s *Service) getTagsUsingWappalyzer(input *contextargs.MetaInput) []string 
 
 // getTagsUsingDetectionTemplates returns tags using detection templates
 func (s *Service) getTagsUsingDetectionTemplates(input *contextargs.MetaInput) ([]string, int) {
-	ctxArgs := contextargs.NewWithInput(input.Input)
+	ctx := context.Background()
+
+	ctxArgs := contextargs.NewWithInput(ctx, input.Input)
 
 	// execute tech detection templates on target
 	tags := map[string]struct{}{}
@@ -257,7 +259,7 @@ func (s *Service) getTagsUsingDetectionTemplates(input *contextargs.MetaInput) (
 		sg.Add()
 		go func(template *templates.Template) {
 			defer sg.Done()
-			ctx := scan.NewScanContext(ctxArgs)
+			ctx := scan.NewScanContext(ctx, ctxArgs)
 			ctx.OnResult = func(event *output.InternalWrappedEvent) {
 				if event == nil {
 					return

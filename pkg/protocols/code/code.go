@@ -199,6 +199,7 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 				Source:   &request.PreCondition,
 				Callback: registerPreConditionFunctions,
 				Cleanup:  cleanUpPreConditionFunctions,
+				Context:  input.Context(),
 			})
 		if err != nil {
 			return errorutil.NewWithTag(request.TemplateID, "could not execute pre-condition: %s", err)

@@ -1,6 +1,7 @@
 package dns
 
 import (
+	"context"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -54,7 +55,7 @@ func TestDNSExecuteWithResults(t *testing.T) {
 	t.Run("domain-valid", func(t *testing.T) {
 		metadata := make(output.InternalEvent)
 		previous := make(output.InternalEvent)
-		ctxArgs := contextargs.NewWithInput("example.com")
+		ctxArgs := contextargs.NewWithInput(context.Background(), "example.com")
 		err := request.ExecuteWithResults(ctxArgs, metadata, previous, func(event *output.InternalWrappedEvent) {
 			finalEvent = event
 		})
@@ -70,7 +71,7 @@ func TestDNSExecuteWithResults(t *testing.T) {
 	t.Run("url-to-domain", func(t *testing.T) {
 		metadata := make(output.InternalEvent)
 		previous := make(output.InternalEvent)
-		err := request.ExecuteWithResults(contextargs.NewWithInput("https://example.com"), metadata, previous, func(event *output.InternalWrappedEvent) {
+		err := request.ExecuteWithResults(contextargs.NewWithInput(context.Background(), "https://example.com"), metadata, previous, func(event *output.InternalWrappedEvent) {
 			finalEvent = event
 		})
 		require.Nil(t, err, "could not execute dns request")

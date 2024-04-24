@@ -1,6 +1,7 @@
 package protocols
 
 import (
+	"context"
 	"encoding/base64"
 	"sync/atomic"
 
@@ -173,7 +174,7 @@ func (e *ExecutorOptions) GetTemplateCtx(input *contextargs.MetaInput) *contexta
 	templateCtx, ok := e.templateCtxStore.Get(scanId)
 	if !ok {
 		// if template context does not exist create new and add it to store and return it
-		templateCtx = contextargs.New()
+		templateCtx = contextargs.New(context.Background())
 		templateCtx.MetaInput = input
 		_ = e.templateCtxStore.Set(scanId, templateCtx)
 	}
