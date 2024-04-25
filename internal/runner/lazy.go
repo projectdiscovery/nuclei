@@ -1,6 +1,7 @@
 package runner
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/authprovider/authx"
@@ -71,7 +72,8 @@ func GetLazyAuthFetchCallback(opts *AuthLazyFetchOptions) authx.LazyFetchSecret 
 		tmpl := tmpls[0]
 		// add args to tmpl here
 		vars := map[string]interface{}{}
-		ctx := scan.NewScanContext(contextargs.NewWithInput(d.Input))
+		mainCtx := context.Background()
+		ctx := scan.NewScanContext(mainCtx, contextargs.NewWithInput(mainCtx, d.Input))
 		for _, v := range d.Variables {
 			vars[v.Key] = v.Value
 			ctx.Input.Add(v.Key, v.Value)

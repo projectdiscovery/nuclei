@@ -1,6 +1,7 @@
 package core
 
 import (
+	"context"
 	"sync"
 	"sync/atomic"
 
@@ -17,14 +18,14 @@ import (
 // Executors are low level executors that deals with template execution on a target
 
 // executeAllSelfContained executes all self contained templates that do not use `target`
-func (e *Engine) executeAllSelfContained(alltemplates []*templates.Template, results *atomic.Bool, sg *sync.WaitGroup) {
+func (e *Engine) executeAllSelfContained(ctx context.Context, alltemplates []*templates.Template, results *atomic.Bool, sg *sync.WaitGroup) {
 	for _, v := range alltemplates {
 		sg.Add(1)
 		go func(template *templates.Template) {
 			defer sg.Done()
 			var err error
 			var match bool
-			ctx := scan.NewScanContext(contextargs.New())
+			ctx := scan.NewScanContext(ctx, contextargs.New(ctx))
 			if e.Callback != nil {
 				if results, err := template.Executer.ExecuteWithResults(ctx); err != nil {
 					for _, result := range results {
@@ -45,7 +46,7 @@ func (e *Engine) executeAllSelfContained(alltemplates []*templates.Template, res
 }
 
 // executeTemplateWithTarget executes a given template on x targets (with a internal targetpool(i.e concurrency))
-func (e *Engine) executeTemplateWithTargets(template *templates.Template, target provider.InputProvider, results *atomic.Bool) {
+func (e *Engine) executeTemplateWithTargets(ctx context.Context, template *templates.Template, target provider.InputProvider, results *atomic.Bool) {
 	// this is target pool i.e max target to execute
 	wg := e.workPool.InputPool(template.Type())
 
@@ -77,6 +78,12 @@ func (e *Engine) executeTemplateWithTargets(template *templates.Template, target
 	}
 
 	target.Iterate(func(scannedValue *contextargs.MetaInput) bool {
+		select {
+		case <-ctx.Done():
+			return false // exit
+		default:
+		}
+
 		// Best effort to track the host progression
 		// skips indexes lower than the minimum in-flight at interruption time
 		var skip bool
@@ -114,9 +121,9 @@ func (e *Engine) executeTemplateWithTargets(template *templates.Template, target
 
 			var match bool
 			var err error
-			ctxArgs := contextargs.New()
+			ctxArgs := contextargs.New(ctx)
 			ctxArgs.MetaInput = value
-			ctx := scan.NewScanContext(ctxArgs)
+			ctx := scan.NewScanContext(ctx, ctxArgs)
 			switch template.Type() {
 			case types.WorkflowProtocol:
 				match = e.executeWorkflow(ctx, template.CompiledWorkflow)
@@ -149,7 +156,7 @@ func (e *Engine) executeTemplateWithTargets(template *templates.Template, target
 }
 
 // executeTemplatesOnTarget execute given templates on given single target
-func (e *Engine) executeTemplatesOnTarget(alltemplates []*templates.Template, target *contextargs.MetaInput, results *atomic.Bool) {
+func (e *Engine) executeTemplatesOnTarget(ctx context.Context, alltemplates []*templates.Template, target *contextargs.MetaInput, results *atomic.Bool) {
 	// all templates are executed on single target
 
 	// wp is workpool that contains different waitgroups for
@@ -158,6 +165,12 @@ func (e *Engine) executeTemplatesOnTarget(alltemplates []*templates.Template, ta
 	wp := e.GetWorkPool()
 
 	for _, tpl := range alltemplates {
+		select {
+		case <-ctx.Done():
+			return
+		default:
+		}
+
 		// resize check point - nop if there are no changes
 		wp.RefreshWithConfig(e.GetWorkPoolConfig())
 
@@ -173,9 +186,9 @@ func (e *Engine) executeTemplatesOnTarget(alltemplates []*templates.Template, ta
 
 			var match bool
 			var err error
-			ctxArgs := contextargs.New()
+			ctxArgs := contextargs.New(ctx)
 			ctxArgs.MetaInput = value
-			ctx := scan.NewScanContext(ctxArgs)
+			ctx := scan.NewScanContext(ctx, ctxArgs)
 			switch template.Type() {
 			case types.WorkflowProtocol:
 				match = e.executeWorkflow(ctx, template.CompiledWorkflow)
@@ -230,9 +243,11 @@ func (e *ChildExecuter) Execute(template *templates.Template, value *contextargs
 	go func(tpl *templates.Template) {
 		defer wg.Done()
 
-		ctxArgs := contextargs.New()
+		// TODO: Workflows are a no-op for now. We need to
+		// implement them in the future with context cancellation
+		ctxArgs := contextargs.New(context.Background())
 		ctxArgs.MetaInput = value
-		ctx := scan.NewScanContext(ctxArgs)
+		ctx := scan.NewScanContext(context.Background(), ctxArgs)
 		match, err := template.Executer.Execute(ctx)
 		if err != nil {
 			gologger.Warning().Msgf("[%s] Could not execute step: %s\n", e.e.executerOpts.Colorizer.BrightBlue(template.ID), err)

@@ -80,6 +80,12 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, metadata,
 				break
 			}
 
+			select {
+			case <-input.Context().Done():
+				return input.Context().Err()
+			default:
+			}
+
 			// resize check point - nop if there are no changes
 			if shouldFollowGlobal && swg.Size != request.options.Options.PayloadConcurrency {
 				swg.Resize(request.options.Options.PayloadConcurrency)

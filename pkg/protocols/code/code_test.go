@@ -3,6 +3,7 @@
 package code
 
 import (
+	"context"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -31,7 +32,7 @@ func TestCodeProtocol(t *testing.T) {
 	require.Nil(t, err, "could not compile code request")
 
 	var gotEvent output.InternalEvent
-	ctxArgs := contextargs.NewWithInput("")
+	ctxArgs := contextargs.NewWithInput(context.Background(), "")
 	err = request.ExecuteWithResults(ctxArgs, nil, nil, func(event *output.InternalWrappedEvent) {
 		gotEvent = event.InternalEvent
 	})
