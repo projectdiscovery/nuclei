@@ -1,6 +1,7 @@
 package core
 
 import (
+	"context"
 	"testing"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/model/types/stringslice"
@@ -25,8 +26,8 @@ func TestWorkflowsSimple(t *testing.T) {
 	}}
 
 	engine := &Engine{}
-	input := contextargs.NewWithInput("https://test.com")
-	ctx := scan.NewScanContext(input)
+	input := contextargs.NewWithInput(context.Background(), "https://test.com")
+	ctx := scan.NewScanContext(context.Background(), input)
 	matched := engine.executeWorkflow(ctx, workflow)
 	require.True(t, matched, "could not get correct match value")
 }
@@ -49,8 +50,8 @@ func TestWorkflowsSimpleMultiple(t *testing.T) {
 	}}
 
 	engine := &Engine{}
-	input := contextargs.NewWithInput("https://test.com")
-	ctx := scan.NewScanContext(input)
+	input := contextargs.NewWithInput(context.Background(), "https://test.com")
+	ctx := scan.NewScanContext(context.Background(), input)
 	matched := engine.executeWorkflow(ctx, workflow)
 	require.True(t, matched, "could not get correct match value")
 
@@ -77,8 +78,8 @@ func TestWorkflowsSubtemplates(t *testing.T) {
 	}}
 
 	engine := &Engine{}
-	input := contextargs.NewWithInput("https://test.com")
-	ctx := scan.NewScanContext(input)
+	input := contextargs.NewWithInput(context.Background(), "https://test.com")
+	ctx := scan.NewScanContext(context.Background(), input)
 	matched := engine.executeWorkflow(ctx, workflow)
 	require.True(t, matched, "could not get correct match value")
 
@@ -103,8 +104,8 @@ func TestWorkflowsSubtemplatesNoMatch(t *testing.T) {
 	}}
 
 	engine := &Engine{}
-	input := contextargs.NewWithInput("https://test.com")
-	ctx := scan.NewScanContext(input)
+	input := contextargs.NewWithInput(context.Background(), "https://test.com")
+	ctx := scan.NewScanContext(context.Background(), input)
 	matched := engine.executeWorkflow(ctx, workflow)
 	require.False(t, matched, "could not get correct match value")
 
@@ -134,8 +135,8 @@ func TestWorkflowsSubtemplatesWithMatcher(t *testing.T) {
 	}}
 
 	engine := &Engine{}
-	input := contextargs.NewWithInput("https://test.com")
-	ctx := scan.NewScanContext(input)
+	input := contextargs.NewWithInput(context.Background(), "https://test.com")
+	ctx := scan.NewScanContext(context.Background(), input)
 	matched := engine.executeWorkflow(ctx, workflow)
 	require.True(t, matched, "could not get correct match value")
 
@@ -165,8 +166,8 @@ func TestWorkflowsSubtemplatesWithMatcherNoMatch(t *testing.T) {
 	}}
 
 	engine := &Engine{}
-	input := contextargs.NewWithInput("https://test.com")
-	ctx := scan.NewScanContext(input)
+	input := contextargs.NewWithInput(context.Background(), "https://test.com")
+	ctx := scan.NewScanContext(context.Background(), input)
 	matched := engine.executeWorkflow(ctx, workflow)
 	require.False(t, matched, "could not get correct match value")
 

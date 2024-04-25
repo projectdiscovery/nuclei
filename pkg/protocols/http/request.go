@@ -47,10 +47,13 @@ import (
 
 const (
 	defaultMaxWorkers = 150
+	// max unique errors to store & combine
+	// when executing requests in parallel
+	maxErrorsWhenParallel = 3
 )
 
 var (
-	MaxBodyRead = int64(1 << 22) // 4MB using shift operator
+	MaxBodyRead = int64(10 * 1024 * 1024) // 10MB
 	// ErrMissingVars is error occured when variables are missing
 	ErrMissingVars = errors.New("stop execution due to unresolved variables")
 )
@@ -111,7 +114,7 @@ func (request *Request) executeRaceRequest(input *contextargs.Context, previous 
 	}
 
 	shouldStop := (request.options.Options.StopAtFirstMatch || request.StopAtFirstMatch || request.options.StopAtFirstMatch)
-	spmHandler := httputils.NewNonBlockingSPMHandler[error](ctx, shouldStop)
+	spmHandler := httputils.NewNonBlockingSPMHandler[error](ctx, maxErrorsWhenParallel, shouldStop)
 	gotMatches := &atomic.Bool{}
 	// wrappedCallback is a callback that wraps the original callback
 	// to implement stop at first match logic
@@ -132,12 +135,29 @@ func (request *Request) executeRaceRequest(input *contextargs.Context, previous 
 		}
 	}
 
+	// look for unresponsive hosts and cancel inflight requests as well
+	spmHandler.SetOnResultCallback(func(err error) {
+		if err == nil {
+			return
+		}
+		// marks thsi host as unresponsive if applicable
+		request.markUnresponsiveHost(input, err)
+		if request.isUnresponsiveHost(input) {
+			// stop all inflight requests
+			spmHandler.Cancel()
+		}
+	})
+
 	for i := 0; i < request.RaceNumberRequests; i++ {
+		if spmHandler.FoundFirstMatch() || request.isUnresponsiveHost(input) {
+			// stop sending more requests condition is met
+			break
+		}
 		spmHandler.Acquire()
 		// execute http request
 		go func(httpRequest *generatedRequest) {
 			defer spmHandler.Release()
-			if spmHandler.FoundFirstMatch() {
+			if spmHandler.FoundFirstMatch() || request.isUnresponsiveHost(input) {
 				// stop sending more requests condition is met
 				return
 			}
@@ -165,6 +185,9 @@ func (request *Request) executeParallelHTTP(input *contextargs.Context, dynamicV
 	// Workers that keeps enqueuing new requests
 	maxWorkers := request.Threads
 
+	// if request threads matches global payload concurrency we follow it
+	shouldFollowGlobal := maxWorkers == request.options.Options.PayloadConcurrency
+
 	if protocolstate.IsLowOnMemory() {
 		maxWorkers = protocolstate.GuardThreadsOrDefault(request.Threads)
 	}
@@ -172,7 +195,7 @@ func (request *Request) executeParallelHTTP(input *contextargs.Context, dynamicV
 	// Stop-at-first-match logic while executing requests
 	// parallely using threads
 	shouldStop := (request.options.Options.StopAtFirstMatch || request.StopAtFirstMatch || request.options.StopAtFirstMatch)
-	spmHandler := httputils.NewBlockingSPMHandler[error](context.Background(), maxWorkers, shouldStop)
+	spmHandler := httputils.NewBlockingSPMHandler[error](context.Background(), maxWorkers, maxErrorsWhenParallel, shouldStop)
 	// wrappedCallback is a callback that wraps the original callback
 	// to implement stop at first match logic
 	wrappedCallback := func(event *output.InternalWrappedEvent) {
@@ -191,6 +214,19 @@ func (request *Request) executeParallelHTTP(input *contextargs.Context, dynamicV
 		}
 	}
 
+	// look for unresponsive hosts and cancel inflight requests as well
+	spmHandler.SetOnResultCallback(func(err error) {
+		if err == nil {
+			return
+		}
+		// marks thsi host as unresponsive if applicable
+		request.markUnresponsiveHost(input, err)
+		if request.isUnresponsiveHost(input) {
+			// stop all inflight requests
+			spmHandler.Cancel()
+		}
+	})
+
 	// iterate payloads and make requests
 	generator := request.newGenerator(false)
 	for {
@@ -198,6 +234,23 @@ func (request *Request) executeParallelHTTP(input *contextargs.Context, dynamicV
 		if !ok {
 			break
 		}
+
+		select {
+		case <-input.Context().Done():
+			return input.Context().Err()
+		default:
+		}
+
+		// resize check point - nop if there are no changes
+		if shouldFollowGlobal && spmHandler.Size() != request.options.Options.PayloadConcurrency {
+			spmHandler.Resize(request.options.Options.PayloadConcurrency)
+		}
+
+		// break if stop at first match is found or host is unresponsive
+		if spmHandler.FoundFirstMatch() || request.isUnresponsiveHost(input) {
+			break
+		}
+
 		ctx := request.newContext(input)
 		generatedHttpRequest, err := generator.Make(ctx, input, inputData, payloads, dynamicValues)
 		if err != nil {
@@ -213,19 +266,21 @@ func (request *Request) executeParallelHTTP(input *contextargs.Context, dynamicV
 		spmHandler.Acquire()
 		go func(httpRequest *generatedRequest) {
 			defer spmHandler.Release()
-			if spmHandler.FoundFirstMatch() {
+			if spmHandler.FoundFirstMatch() || request.isUnresponsiveHost(input) || spmHandler.Cancelled() {
+				return
+			}
+			// putting ratelimiter here prevents any unnecessary waiting if any
+			request.options.RateLimitTake()
+
+			// after ratelimit take, check if we need to stop
+			if spmHandler.FoundFirstMatch() || request.isUnresponsiveHost(input) || spmHandler.Cancelled() {
 				return
 			}
 
 			select {
 			case <-spmHandler.Done():
 				return
-			case spmHandler.ResultChan <- func() error {
-				// putting ratelimiter here prevents any unnecessary waiting if any
-				request.options.RateLimiter.Take()
-				previous := make(map[string]interface{})
-				return request.executeRequest(input, httpRequest, previous, false, wrappedCallback, 0)
-			}():
+			case spmHandler.ResultChan <- request.executeRequest(input, httpRequest, make(map[string]interface{}), false, wrappedCallback, 0):
 				return
 			}
 		}(generatedHttpRequest)
@@ -269,10 +324,8 @@ func (request *Request) executeTurboHTTP(input *contextargs.Context, dynamicValu
 
 	// Stop-at-first-match logic while executing requests
 	// parallely using threads
-	// Stop-at-first-match logic while executing requests
-	// parallely using threads
 	shouldStop := (request.options.Options.StopAtFirstMatch || request.StopAtFirstMatch || request.options.StopAtFirstMatch)
-	spmHandler := httputils.NewBlockingSPMHandler[error](context.Background(), maxWorkers, shouldStop)
+	spmHandler := httputils.NewBlockingSPMHandler[error](context.Background(), maxWorkers, maxErrorsWhenParallel, shouldStop)
 	// wrappedCallback is a callback that wraps the original callback
 	// to implement stop at first match logic
 	wrappedCallback := func(event *output.InternalWrappedEvent) {
@@ -291,11 +344,36 @@ func (request *Request) executeTurboHTTP(input *contextargs.Context, dynamicValu
 		}
 	}
 
+	// look for unresponsive hosts and cancel inflight requests as well
+	spmHandler.SetOnResultCallback(func(err error) {
+		if err == nil {
+			return
+		}
+		// marks thsi host as unresponsive if applicable
+		request.markUnresponsiveHost(input, err)
+		if request.isUnresponsiveHost(input) {
+			// stop all inflight requests
+			spmHandler.Cancel()
+		}
+	})
+
 	for {
 		inputData, payloads, ok := generator.nextValue()
 		if !ok {
 			break
 		}
+
+		select {
+		case <-input.Context().Done():
+			return input.Context().Err()
+		default:
+		}
+
+		if spmHandler.FoundFirstMatch() || request.isUnresponsiveHost(input) || spmHandler.Cancelled() {
+			// skip if first match is found
+			break
+		}
+
 		ctx := request.newContext(input)
 		generatedHttpRequest, err := generator.Make(ctx, input, inputData, payloads, dynamicValues)
 		if err != nil {
@@ -309,11 +387,10 @@ func (request *Request) executeTurboHTTP(input *contextargs.Context, dynamicValu
 		spmHandler.Acquire()
 		go func(httpRequest *generatedRequest) {
 			defer spmHandler.Release()
-			if spmHandler.FoundFirstMatch() {
+			if spmHandler.FoundFirstMatch() || request.isUnresponsiveHost(input) {
 				// skip if first match is found
 				return
 			}
-
 			select {
 			case <-spmHandler.Done():
 				return
@@ -366,11 +443,12 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 		executeFunc := func(data string, payloads, dynamicValue map[string]interface{}) (bool, error) {
 			hasInteractMatchers := interactsh.HasMatchers(request.CompiledOperators)
 
-			request.options.RateLimiter.Take()
+			request.options.RateLimitTake()
 
 			ctx := request.newContext(input)
-			ctxWithTimeout, cancel := context.WithTimeout(ctx, time.Duration(request.options.Options.Timeout)*time.Second)
+			ctxWithTimeout, cancel := context.WithTimeout(ctx, httpclientpool.GetHttpTimeout(request.options.Options))
 			defer cancel()
+
 			generatedHttpRequest, err := generator.Make(ctxWithTimeout, input, data, payloads, dynamicValue)
 			if err != nil {
 				if err == types.ErrNoMoreRequests {
@@ -389,7 +467,7 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 				input.MetaInput.Input = generatedHttpRequest.URL()
 			}
 			// Check if hosts keep erroring
-			if request.options.HostErrorsCache != nil && request.options.HostErrorsCache.Check(input.MetaInput.ID()) {
+			if request.isUnresponsiveHost(input) {
 				return true, nil
 			}
 			var gotMatches bool
@@ -428,12 +506,13 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 				return true, nil
 			}
 			if execReqErr != nil {
-				if request.options.HostErrorsCache != nil {
-					request.options.HostErrorsCache.MarkFailed(input.MetaInput.ID(), err)
-				}
+				// if applicable mark the host as unresponsive
+				request.markUnresponsiveHost(input, execReqErr)
 				requestErr = errorutil.NewWithErr(execReqErr).Msgf("got err while executing %v", generatedHttpRequest.URL())
+				request.options.Progress.IncrementFailedRequestsBy(1)
+			} else {
+				request.options.Progress.IncrementRequests()
 			}
-			request.options.Progress.IncrementRequests()
 
 			// If this was a match, and we want to stop at first match, skip all further requests.
 			shouldStopAtFirstMatch := generatedHttpRequest.original.options.Options.StopAtFirstMatch || generatedHttpRequest.original.options.StopAtFirstMatch || request.StopAtFirstMatch
@@ -447,6 +526,13 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 		if !ok {
 			break
 		}
+
+		select {
+		case <-input.Context().Done():
+			return input.Context().Err()
+		default:
+		}
+
 		var gotErr error
 		var skip bool
 		if len(gotDynamicValues) > 0 {
@@ -473,6 +559,10 @@ const drainReqSize = int64(8 * 1024)
 
 // executeRequest executes the actual generated request and returns error if occurred
 func (request *Request) executeRequest(input *contextargs.Context, generatedRequest *generatedRequest, previousEvent output.InternalEvent, hasInteractMatchers bool, processEvent protocols.OutputEventCallback, requestCount int) (err error) {
+	// Check if hosts keep erroring
+	if request.isUnresponsiveHost(input) {
+		return fmt.Errorf("hostErrorsCache : host %s is unresponsive", input.MetaInput.Input)
+	}
 
 	// wrap one more callback for validation and fixing event
 	callback := func(event *output.InternalWrappedEvent) {
@@ -972,7 +1062,25 @@ func (request *Request) pruneSignatureInternalValues(maps ...map[string]interfac
 
 func (request *Request) newContext(input *contextargs.Context) context.Context {
 	if input.MetaInput.CustomIP != "" {
-		return context.WithValue(context.Background(), fastdialer.IP, input.MetaInput.CustomIP)
+		return context.WithValue(input.Context(), fastdialer.IP, input.MetaInput.CustomIP)
 	}
-	return context.Background()
+	return input.Context()
+}
+
+// markUnresponsiveHost checks if the error is a unreponsive host error and marks it
+func (request *Request) markUnresponsiveHost(input *contextargs.Context, err error) {
+	if err == nil {
+		return
+	}
+	if request.options.HostErrorsCache != nil {
+		request.options.HostErrorsCache.MarkFailed(input.MetaInput.ID(), err)
+	}
+}
+
+// isUnresponsiveHost checks if the error is a unreponsive based on its execution history
+func (request *Request) isUnresponsiveHost(input *contextargs.Context) bool {
+	if request.options.HostErrorsCache != nil {
+		return request.options.HostErrorsCache.Check(input.MetaInput.ID())
+	}
+	return false
 }

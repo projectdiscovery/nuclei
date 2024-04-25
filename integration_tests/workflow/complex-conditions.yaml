@@ -1,0 +1,23 @@
+id: complex-conditions-workflow
+
+info:
+  name: Complex Conditions Workflow
+  author: tovask
+  severity: info
+  description: Workflow to test a complex scenario, e.g. race conditions when evaluating the results of the templates
+
+workflows:
+  - template: workflow/match-1.yaml
+    subtemplates:
+      - template: workflow/nomatch-1.yaml
+        subtemplates:
+          - template: workflow/match-2.yaml
+  - template: workflow/match-3.yaml
+  - template: workflow/match-2.yaml
+    matchers: 
+      - name: test-matcher
+        subtemplates:
+          - template: workflow/nomatch-1.yaml
+            subtemplates:
+              - template: workflow/match-1.yaml
+  - template: workflow/match-3.yaml

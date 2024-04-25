@@ -3,10 +3,11 @@ package nuclei
 import (
 	"bufio"
 	"bytes"
+	"context"
 	"io"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/authprovider"
-	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/disk"
+	"github.com/projectdiscovery/nuclei/v3/pkg/catalog"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/loader"
 	"github.com/projectdiscovery/nuclei/v3/pkg/core"
 	"github.com/projectdiscovery/nuclei/v3/pkg/input/provider"
@@ -63,7 +64,7 @@ type NucleiEngine struct {
 
 	// unexported core fields
 	interactshClient *interactsh.Client
-	catalog          *disk.DiskCatalog
+	catalog          catalog.Catalog
 	rateLimiter      *ratelimit.Limiter
 	store            *loader.Store
 	httpxClient      providerTypes.InputLivenessProbe
@@ -210,9 +211,17 @@ func (e *NucleiEngine) ExecuteWithCallback(callback ...func(event *output.Result
 	}
 	e.resultCallbacks = append(e.resultCallbacks, filtered...)
 
-	_ = e.engine.ExecuteScanWithOpts(e.store.Templates(), e.inputProvider, false)
+	_ = e.engine.ExecuteScanWithOpts(context.Background(), e.store.Templates(), e.inputProvider, false)
 	defer e.engine.WorkPool().Wait()
 	return nil
+}
+
+func (e *NucleiEngine) Options() *types.Options {
+	return e.opts
+}
+
+func (e *NucleiEngine) Engine() *core.Engine {
+	return e.engine
 }
 
 // NewNucleiEngine creates a new nuclei engine instance

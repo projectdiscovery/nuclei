@@ -275,6 +275,8 @@ func questionTypeToInt(questionType string) uint16 {
 		question = dns.TypeTLSA
 	case "ANY":
 		question = dns.TypeANY
+	case "SRV":
+		question = dns.TypeSRV
 	}
 	return question
 }

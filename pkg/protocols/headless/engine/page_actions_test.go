@@ -1,6 +1,7 @@
 package engine
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"math/rand"
@@ -595,7 +596,7 @@ func testHeadless(t *testing.T, actions []*Action, timeout time.Duration, handle
 	ts := httptest.NewServer(http.HandlerFunc(handler))
 	defer ts.Close()
 
-	input := contextargs.NewWithInput(ts.URL)
+	input := contextargs.NewWithInput(context.Background(), ts.URL)
 	input.CookieJar, err = cookiejar.New(nil)
 	require.Nil(t, err)
 
@@ -674,7 +675,7 @@ func TestBlockedHeadlessURLS(t *testing.T) {
 			{ActionType: ActionTypeHolder{ActionType: ActionWaitLoad}},
 		}
 
-		data, page, err := instance.Run(contextargs.NewWithInput(ts.URL), actions, nil, &Options{Timeout: 20 * time.Second, Options: opts}) // allow file access in test
+		data, page, err := instance.Run(contextargs.NewWithInput(context.Background(), ts.URL), actions, nil, &Options{Timeout: 20 * time.Second, Options: opts}) // allow file access in test
 		require.Error(t, err, "expected error for url %s got %v", testcase, data)
 		require.True(t, stringsutil.ContainsAny(err.Error(), "net::ERR_ACCESS_DENIED", "failed to parse url", "Cannot navigate to invalid URL", "net::ERR_ABORTED", "net::ERR_INVALID_URL"), "found different error %v for testcases %v", err, testcase)
 		require.Len(t, data, 0, "expected no data for url %s got %v", testcase, data)

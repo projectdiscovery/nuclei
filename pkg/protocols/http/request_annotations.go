@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/projectdiscovery/fastdialer/fastdialer"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http/httpclientpool"
 	"github.com/projectdiscovery/retryablehttp-go"
 	iputil "github.com/projectdiscovery/utils/ip"
 	stringsutil "github.com/projectdiscovery/utils/strings"
@@ -124,7 +125,7 @@ func (r *Request) parseAnnotations(rawRequest string, request *retryablehttp.Req
 			}
 		} else {
 			//nolint:govet // cancelled automatically by withTimeout
-			ctx, overrides.cancelFunc = context.WithTimeout(context.Background(), time.Duration(r.options.Options.Timeout)*time.Second)
+			ctx, overrides.cancelFunc = context.WithTimeout(context.Background(), httpclientpool.GetHttpTimeout(r.options.Options))
 			request = request.Clone(ctx)
 		}
 	}

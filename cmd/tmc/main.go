@@ -266,7 +266,7 @@ func enhanceTemplate(data string) (string, bool, error) {
 	return data, false, errorutil.New("template enhance failed")
 }
 
-// formatTemplateData formats template data using templateman format api
+// formatTemplate formats template data using templateman format api
 func formatTemplate(data string) (string, bool, error) {
 	resp, err := retryablehttp.DefaultClient().Post(fmt.Sprintf("%s/format", tmBaseUrl), "application/x-yaml", strings.NewReader(data))
 	if err != nil {

@@ -12,7 +12,6 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
-	"github.com/remeh/sizedwaitgroup"
 	"go.uber.org/multierr"
 	"golang.org/x/exp/maps"
 
@@ -34,12 +33,7 @@ import (
 	errorutil "github.com/projectdiscovery/utils/errors"
 	mapsutil "github.com/projectdiscovery/utils/maps"
 	"github.com/projectdiscovery/utils/reader"
-)
-
-var (
-	// TODO: make this configurable
-	// DefaultReadTimeout is the default read timeout for network requests
-	DefaultReadTimeout = time.Duration(5) * time.Second
+	syncutil "github.com/projectdiscovery/utils/sync"
 )
 
 var _ protocols.Request = &Request{}
@@ -145,6 +139,12 @@ func (request *Request) executeOnTarget(input *contextargs.Context, visited maps
 	variables = generators.MergeMaps(variablesMap, variables, request.options.Constants)
 
 	for _, kv := range request.addresses {
+		select {
+		case <-input.Context().Done():
+			return input.Context().Err()
+		default:
+		}
+
 		actualAddress := replacer.Replace(kv.address, variables)
 
 		if visited.Has(actualAddress) && !request.options.Options.DisableClustering {
@@ -174,17 +174,35 @@ func (request *Request) executeAddress(variables map[string]interface{}, actualA
 		return err
 	}
 
+	// if request threads matches global payload concurrency we follow it
+	shouldFollowGlobal := request.Threads == request.options.Options.PayloadConcurrency
+
 	if request.generator != nil {
 		iterator := request.generator.NewIterator()
 		var multiErr error
 		m := &sync.Mutex{}
-		swg := sizedwaitgroup.New(request.Threads)
+		swg, err := syncutil.New(syncutil.WithSize(request.Threads))
+		if err != nil {
+			return err
+		}
 
 		for {
 			value, ok := iterator.Value()
 			if !ok {
 				break
 			}
+
+			select {
+			case <-input.Context().Done():
+				return input.Context().Err()
+			default:
+			}
+
+			// resize check point - nop if there are no changes
+			if shouldFollowGlobal && swg.Size != request.options.Options.PayloadConcurrency {
+				swg.Resize(request.options.Options.PayloadConcurrency)
+			}
+
 			value = generators.MergeMaps(value, payloads)
 			swg.Add()
 			go func(vars map[string]interface{}) {
@@ -283,7 +301,7 @@ func (request *Request) executeRequestWithPayloads(variables map[string]interfac
 		}
 
 		if input.Read > 0 {
-			buffer, err := ConnReadNWithTimeout(conn, int64(input.Read), DefaultReadTimeout)
+			buffer, err := ConnReadNWithTimeout(conn, int64(input.Read), request.options.Options.ResponseReadTimeout)
 			if err != nil {
 				return errorutil.NewWithErr(err).Msgf("could not read response from connection")
 			}
@@ -333,7 +351,7 @@ func (request *Request) executeRequestWithPayloads(variables map[string]interfac
 		bufferSize = -1
 	}
 
-	final, err := ConnReadNWithTimeout(conn, int64(bufferSize), DefaultReadTimeout)
+	final, err := ConnReadNWithTimeout(conn, int64(bufferSize), request.options.Options.ResponseReadTimeout)
 	if err != nil {
 		request.options.Output.Request(request.options.TemplatePath, address, request.Type().String(), err)
 		gologger.Verbose().Msgf("could not read more data from %s: %s", actualAddress, err)
@@ -434,9 +452,6 @@ func getAddress(toTest string) (string, error) {
 }
 
 func ConnReadNWithTimeout(conn net.Conn, n int64, timeout time.Duration) ([]byte, error) {
-	if timeout == 0 {
-		timeout = DefaultReadTimeout
-	}
 	if n == -1 {
 		// if n is -1 then read all available data from connection
 		return reader.ConnReadNWithTimeout(conn, -1, timeout)

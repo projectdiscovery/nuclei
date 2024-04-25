@@ -36,7 +36,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/js/libs/goconsole"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
 	stringsutil "github.com/projectdiscovery/utils/strings"
-	"github.com/remeh/sizedwaitgroup"
+	syncutil "github.com/projectdiscovery/utils/sync"
 )
 
 const (
@@ -51,10 +51,16 @@ var (
 		// autoregister console node module with default printer it uses gologger backend
 		require.RegisterNativeModule(console.ModuleName, console.RequireWithPrinter(goconsole.NewGoConsolePrinter()))
 	})
-	pooljsc    sizedwaitgroup.SizedWaitGroup
+	pooljsc    *syncutil.AdaptiveWaitGroup
 	lazySgInit = sync.OnceFunc(func() {
-		pooljsc = sizedwaitgroup.New(PoolingJsVmConcurrency)
+		pooljsc, _ = syncutil.New(syncutil.WithSize(PoolingJsVmConcurrency))
 	})
+	sgResizeCheck = func() {
+		// resize check point
+		if pooljsc.Size != PoolingJsVmConcurrency {
+			pooljsc.Resize(PoolingJsVmConcurrency)
+		}
+	}
 )
 
 var gojapool = &sync.Pool{
@@ -116,6 +122,8 @@ func executeWithPoolingProgram(p *goja.Program, args *ExecuteArgs, opts *Execute
 	// its unknown (most likely cannot be done) to limit max js runtimes at a moment without making it static
 	// unlike sync.Pool which reacts to GC and its purposes is to reuse objects rather than creating new ones
 	lazySgInit()
+	sgResizeCheck()
+
 	pooljsc.Add()
 	defer pooljsc.Done()
 	runtime := gojapool.Get().(*goja.Runtime)
