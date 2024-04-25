@@ -40,6 +40,9 @@ func (insertionOrderedStringMap *InsertionOrderedStringMap) UnmarshalYAML(unmars
 	}
 	insertionOrderedStringMap.values = make(map[string]interface{})
 	for _, v := range data {
+		if v.Key == nil {
+			continue
+		}
 		insertionOrderedStringMap.Set(v.Key.(string), toString(v.Value))
 	}
 	return nil

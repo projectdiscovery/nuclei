@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strings"
 	"sync/atomic"
+	"time"
 
 	"github.com/dop251/goja"
 	"github.com/projectdiscovery/gologger"
@@ -14,6 +15,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/helpers/writer"
 	"github.com/projectdiscovery/nuclei/v3/pkg/scan"
+	"github.com/projectdiscovery/nuclei/v3/pkg/scan/events"
 	"github.com/projectdiscovery/nuclei/v3/pkg/tmplexec/flow"
 	"github.com/projectdiscovery/nuclei/v3/pkg/tmplexec/generic"
 	"github.com/projectdiscovery/nuclei/v3/pkg/tmplexec/multiproto"
@@ -92,6 +94,31 @@ func (e *TemplateExecuter) Requests() int {
 
 // Execute executes the protocol group and returns true or false if results were found.
 func (e *TemplateExecuter) Execute(ctx *scan.ScanContext) (bool, error) {
+
+	// === when nuclei is built with -tags=stats ===
+	// Note: this is no-op (empty functions) when nuclei is built in normal or without -tags=stats
+	events.AddScanEvent(events.ScanEvent{
+		Target:       ctx.Input.MetaInput.Input,
+		Time:         time.Now(),
+		EventType:    events.ScanStarted,
+		TemplateType: e.getTemplateType(),
+		TemplateID:   e.options.TemplateID,
+		TemplatePath: e.options.TemplatePath,
+		MaxRequests:  e.Requests(),
+	})
+	defer func() {
+		events.AddScanEvent(events.ScanEvent{
+			Target:       ctx.Input.MetaInput.Input,
+			Time:         time.Now(),
+			EventType:    events.ScanFinished,
+			TemplateType: e.getTemplateType(),
+			TemplateID:   e.options.TemplateID,
+			TemplatePath: e.options.TemplatePath,
+			MaxRequests:  e.Requests(),
+		})
+	}()
+	// ==== end of stats ====
+
 	// executed contains status of execution if it was successfully executed or not
 	// doesn't matter if it was matched or not
 	executed := &atomic.Bool{}
@@ -178,7 +205,37 @@ func (e *TemplateExecuter) Execute(ctx *scan.ScanContext) (bool, error) {
 
 // ExecuteWithResults executes the protocol requests and returns results instead of writing them.
 func (e *TemplateExecuter) ExecuteWithResults(ctx *scan.ScanContext) ([]*output.ResultEvent, error) {
-	err := e.engine.ExecuteWithResults(ctx)
-	ctx.LogError(err)
-	return ctx.GenerateResult(), err
+	var errx error
+	if e.options.Flow != "" {
+		flowexec, err := flow.NewFlowExecutor(e.requests, ctx, e.options, e.results, e.program)
+		if err != nil {
+			ctx.LogError(err)
+			return nil, fmt.Errorf("could not create flow executor: %s", err)
+		}
+		if err := flowexec.Compile(); err != nil {
+			ctx.LogError(err)
+			return nil, err
+		}
+		errx = flowexec.ExecuteWithResults(ctx)
+	} else {
+		errx = e.engine.ExecuteWithResults(ctx)
+	}
+	if errx != nil {
+		ctx.LogError(errx)
+	}
+	return ctx.GenerateResult(), errx
+}
+
+// getTemplateType returns the template type of the template
+func (e *TemplateExecuter) getTemplateType() string {
+	if len(e.requests) == 0 {
+		return "null"
+	}
+	if e.options.Flow != "" {
+		return "flow"
+	}
+	if len(e.requests) > 1 {
+		return "multiprotocol"
+	}
+	return e.requests[0].Type().String()
 }

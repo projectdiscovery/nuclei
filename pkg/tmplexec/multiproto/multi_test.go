@@ -54,8 +54,8 @@ func TestMultiProtoWithDynamicExtractor(t *testing.T) {
 	err = Template.Executer.Compile()
 	require.Nil(t, err, "could not compile template")
 
-	input := contextargs.NewWithInput("blog.projectdiscovery.io")
-	ctx := scan.NewScanContext(input)
+	input := contextargs.NewWithInput(context.Background(), "blog.projectdiscovery.io")
+	ctx := scan.NewScanContext(context.Background(), input)
 	gotresults, err := Template.Executer.Execute(ctx)
 	require.Nil(t, err, "could not execute template")
 	require.True(t, gotresults)
@@ -71,8 +71,8 @@ func TestMultiProtoWithProtoPrefix(t *testing.T) {
 	err = Template.Executer.Compile()
 	require.Nil(t, err, "could not compile template")
 
-	input := contextargs.NewWithInput("blog.projectdiscovery.io")
-	ctx := scan.NewScanContext(input)
+	input := contextargs.NewWithInput(context.Background(), "blog.projectdiscovery.io")
+	ctx := scan.NewScanContext(context.Background(), input)
 	gotresults, err := Template.Executer.Execute(ctx)
 	require.Nil(t, err, "could not execute template")
 	require.True(t, gotresults)
