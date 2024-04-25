@@ -226,7 +226,11 @@ func (f *FlowExecutor) ExecuteWithResults(ctx *scan.ScanContext) error {
 		}
 	}
 	// register template object
-	if err := runtime.Set("template", f.options.GetTemplateCtx(f.ctx.Input.MetaInput).GetAll()); err != nil {
+	tmplObj := f.options.GetTemplateCtx(f.ctx.Input.MetaInput).GetAll()
+	if tmplObj == nil {
+		tmplObj = map[string]interface{}{}
+	}
+	if err := runtime.Set("template", tmplObj); err != nil {
 		return err
 	}
 
