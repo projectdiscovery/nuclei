@@ -2,6 +2,7 @@ package nuclei
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	"github.com/projectdiscovery/goflags"
@@ -9,6 +10,7 @@ import (
 	"github.com/projectdiscovery/ratelimit"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/authprovider"
+	"github.com/projectdiscovery/nuclei/v3/pkg/catalog"
 	"github.com/projectdiscovery/nuclei/v3/pkg/model/types/severity"
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
 	"github.com/projectdiscovery/nuclei/v3/pkg/progress"
@@ -115,17 +117,48 @@ type Concurrency struct {
 	HeadlessTemplateConcurrency   int // number of templates to run concurrently for headless templates (per host in host-spray mode)
 	JavascriptTemplateConcurrency int // number of templates to run concurrently for javascript templates (per host in host-spray mode)
 	TemplatePayloadConcurrency    int // max concurrent payloads to run for a template (a good default is 25)
+	ProbeConcurrency              int // max concurrent http probes to run (a good default is 50)
 }
 
 // WithConcurrency sets concurrency options
 func WithConcurrency(opts Concurrency) NucleiSDKOptions {
 	return func(e *NucleiEngine) error {
-		e.opts.TemplateThreads = opts.TemplateConcurrency
-		e.opts.BulkSize = opts.HostConcurrency
-		e.opts.HeadlessBulkSize = opts.HeadlessHostConcurrency
-		e.opts.HeadlessTemplateThreads = opts.HeadlessTemplateConcurrency
-		e.opts.JsConcurrency = opts.JavascriptTemplateConcurrency
-		e.opts.PayloadConcurrency = opts.TemplatePayloadConcurrency
+		// minimum required is 1
+		if opts.TemplateConcurrency <= 0 {
+			return errors.New("template threads must be at least 1")
+		} else {
+			e.opts.TemplateThreads = opts.TemplateConcurrency
+		}
+		if opts.HostConcurrency <= 0 {
+			return errors.New("host concurrency must be at least 1")
+		} else {
+			e.opts.BulkSize = opts.HostConcurrency
+		}
+		if opts.HeadlessHostConcurrency <= 0 {
+			return errors.New("headless host concurrency must be at least 1")
+		} else {
+			e.opts.HeadlessBulkSize = opts.HeadlessHostConcurrency
+		}
+		if opts.HeadlessTemplateConcurrency <= 0 {
+			return errors.New("headless template threads must be at least 1")
+		} else {
+			e.opts.HeadlessTemplateThreads = opts.HeadlessTemplateConcurrency
+		}
+		if opts.JavascriptTemplateConcurrency <= 0 {
+			return errors.New("js must be at least 1")
+		} else {
+			e.opts.JsConcurrency = opts.JavascriptTemplateConcurrency
+		}
+		if opts.TemplatePayloadConcurrency <= 0 {
+			return errors.New("payload concurrency must be at least 1")
+		} else {
+			e.opts.PayloadConcurrency = opts.TemplatePayloadConcurrency
+		}
+		if opts.ProbeConcurrency <= 0 {
+			return errors.New("probe concurrency must be at least 1")
+		} else {
+			e.opts.ProbeConcurrency = opts.ProbeConcurrency
+		}
 		return nil
 	}
 }
@@ -133,7 +166,9 @@ func WithConcurrency(opts Concurrency) NucleiSDKOptions {
 // WithGlobalRateLimit sets global rate (i.e all hosts combined) limit options
 func WithGlobalRateLimit(maxTokens int, duration time.Duration) NucleiSDKOptions {
 	return func(e *NucleiEngine) error {
-		e.rateLimiter = ratelimit.New(context.Background(), uint(maxTokens), duration)
+		e.opts.RateLimit = maxTokens
+		e.opts.RateLimitDuration = duration
+		e.rateLimiter = ratelimit.New(context.Background(), uint(e.opts.RateLimit), e.opts.RateLimitDuration)
 		return nil
 	}
 }
@@ -280,7 +315,7 @@ func WithScanStrategy(strategy string) NucleiSDKOptions {
 // OutputWriter
 type OutputWriter output.Writer
 
-// UseWriter allows setting custom output writer
+// UseOutputWriter allows setting custom output writer
 // by default a mock writer is used with user defined callback
 // if outputWriter is used callback will be ignored
 func UseOutputWriter(writer OutputWriter) NucleiSDKOptions {
@@ -388,6 +423,14 @@ func DASTMode() NucleiSDKOptions {
 func SignedTemplatesOnly() NucleiSDKOptions {
 	return func(e *NucleiEngine) error {
 		e.opts.DisableUnsignedTemplates = true
+		return nil
+	}
+}
+
+// WithCatalog uses a supplied catalog
+func WithCatalog(cat catalog.Catalog) NucleiSDKOptions {
+	return func(e *NucleiEngine) error {
+		e.catalog = cat
 		return nil
 	}
 }

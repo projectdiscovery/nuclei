@@ -5,7 +5,12 @@ import (
 )
 
 var dnsTestCases = []TestCaseInfo{
-	{Path: "protocols/dns/basic.yaml", TestCase: &dnsBasic{}},
+	{Path: "protocols/dns/a.yaml", TestCase: &dnsBasic{}},
+	{Path: "protocols/dns/aaaa.yaml", TestCase: &dnsBasic{}},
+	{Path: "protocols/dns/cname.yaml", TestCase: &dnsBasic{}},
+	{Path: "protocols/dns/srv.yaml", TestCase: &dnsBasic{}},
+	{Path: "protocols/dns/ns.yaml", TestCase: &dnsBasic{}},
+	{Path: "protocols/dns/txt.yaml", TestCase: &dnsBasic{}},
 	{Path: "protocols/dns/ptr.yaml", TestCase: &dnsPtr{}},
 	{Path: "protocols/dns/caa.yaml", TestCase: &dnsCAA{}},
 	{Path: "protocols/dns/tlsa.yaml", TestCase: &dnsTLSA{}},

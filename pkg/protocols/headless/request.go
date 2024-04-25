@@ -44,7 +44,7 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, metadata,
 		if err != nil {
 			return err
 		}
-		input = contextargs.NewWithInput(url)
+		input = contextargs.NewWithInput(input.Context(), url)
 	}
 
 	if request.options.Browser.UserAgent() == "" {

@@ -42,6 +42,7 @@ jobs:
       - name: Test
         env:
           GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
+          PDCP_API_KEY: "${{ secrets.PDCP_API_KEY }}"
         run: go test ./...
 
       - name: Integration Tests
@@ -49,6 +50,7 @@ jobs:
         env:
           GH_ACTION: true
           GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
+          PDCP_API_KEY: "${{ secrets.PDCP_API_KEY }}"
         run: |
           chmod +x run.sh
           bash run.sh ${{ matrix.os }}
@@ -66,3 +68,7 @@ jobs:
       - name: Example SDK Advanced
         run: go run .
         working-directory: examples/advanced/
+
+      - name: Example SDK with speed control
+        run: go run .
+        working-directory: examples/with_speed_control/

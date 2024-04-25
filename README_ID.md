@@ -24,7 +24,7 @@
   <a href="#untuk-pengembang-dan-organisasi">Untuk Pengembang</a> •
   <a href="https://nuclei.projectdiscovery.io/nuclei/get-started/">Dokumentasi</a> •
   <a href="#kredit">Kredit</a> •
-  <a href="https://nuclei.projectdiscovery.io/faq/nuclei/">Tanya Jawab</a> •
+  <a href="https://docs.projectdiscovery.io/tools/nuclei/faq">Tanya Jawab</a> •
   <a href="https://discord.gg/projectdiscovery">Gabung Discord</a>
 </p>
 

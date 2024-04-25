@@ -42,11 +42,16 @@ func createEphemeralObjects(base *NucleiEngine, opts *types.Options) (*unsafeOpt
 		Parser:          base.parser,
 	}
 	if opts.RateLimitMinute > 0 {
-		u.executerOpts.RateLimiter = ratelimit.New(context.Background(), uint(opts.RateLimitMinute), time.Minute)
-	} else if opts.RateLimit > 0 {
-		u.executerOpts.RateLimiter = ratelimit.New(context.Background(), uint(opts.RateLimit), time.Second)
-	} else {
+		opts.RateLimit = opts.RateLimitMinute
+		opts.RateLimitDuration = time.Minute
+	}
+	if opts.RateLimit > 0 && opts.RateLimitDuration == 0 {
+		opts.RateLimitDuration = time.Second
+	}
+	if opts.RateLimit == 0 && opts.RateLimitDuration == 0 {
 		u.executerOpts.RateLimiter = ratelimit.NewUnlimited(context.Background())
+	} else {
+		u.executerOpts.RateLimiter = ratelimit.New(context.Background(), uint(opts.RateLimit), opts.RateLimitDuration)
 	}
 	u.engine = core.New(opts)
 	u.engine.SetExecuterOptions(u.executerOpts)
@@ -133,7 +138,7 @@ func (e *ThreadSafeNucleiEngine) ExecuteNucleiWithOpts(targets []string, opts ..
 	engine := core.New(tmpEngine.opts)
 	engine.SetExecuterOptions(unsafeOpts.executerOpts)
 
-	_ = engine.ExecuteScanWithOpts(store.Templates(), inputProvider, false)
+	_ = engine.ExecuteScanWithOpts(context.Background(), store.Templates(), inputProvider, false)
 
 	engine.WorkPool().Wait()
 	return nil

@@ -2750,6 +2750,8 @@ Enum Values:
   - <code>TLSA</code>
 
   - <code>ANY</code>
+
+  - <code>SRV</code>
 </div>
 
 <hr />
