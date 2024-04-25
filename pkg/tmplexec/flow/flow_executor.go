@@ -174,6 +174,12 @@ func (f *FlowExecutor) Compile() error {
 
 // ExecuteWithResults executes the flow and returns results
 func (f *FlowExecutor) ExecuteWithResults(ctx *scan.ScanContext) error {
+	select {
+	case <-ctx.Context().Done():
+		return ctx.Context().Err()
+	default:
+	}
+
 	f.ctx.Input = ctx.Input
 	// -----Load all types of variables-----
 	// add all input args to template context

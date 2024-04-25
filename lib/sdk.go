@@ -3,6 +3,7 @@ package nuclei
 import (
 	"bufio"
 	"bytes"
+	"context"
 	"io"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/authprovider"
@@ -210,7 +211,7 @@ func (e *NucleiEngine) ExecuteWithCallback(callback ...func(event *output.Result
 	}
 	e.resultCallbacks = append(e.resultCallbacks, filtered...)
 
-	_ = e.engine.ExecuteScanWithOpts(e.store.Templates(), e.inputProvider, false)
+	_ = e.engine.ExecuteScanWithOpts(context.Background(), e.store.Templates(), e.inputProvider, false)
 	defer e.engine.WorkPool().Wait()
 	return nil
 }

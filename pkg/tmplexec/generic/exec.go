@@ -45,6 +45,12 @@ func (g *Generic) ExecuteWithResults(ctx *scan.ScanContext) error {
 	previous := mapsutil.NewSyncLockMap[string, any]()
 
 	for _, req := range g.requests {
+		select {
+		case <-ctx.Context().Done():
+			return ctx.Context().Err()
+		default:
+		}
+
 		inputItem := ctx.Input.Clone()
 		if g.options.InputHelper != nil && ctx.Input.MetaInput.Input != "" {
 			if inputItem.MetaInput.Input = g.options.InputHelper.Transform(inputItem.MetaInput.Input, req.Type()); inputItem.MetaInput.Input == "" {
