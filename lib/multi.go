@@ -138,7 +138,7 @@ func (e *ThreadSafeNucleiEngine) ExecuteNucleiWithOpts(targets []string, opts ..
 	engine := core.New(tmpEngine.opts)
 	engine.SetExecuterOptions(unsafeOpts.executerOpts)
 
-	_ = engine.ExecuteScanWithOpts(store.Templates(), inputProvider, false)
+	_ = engine.ExecuteScanWithOpts(context.Background(), store.Templates(), inputProvider, false)
 
 	engine.WorkPool().Wait()
 	return nil

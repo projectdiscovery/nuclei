@@ -1,6 +1,7 @@
 package http
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -83,7 +84,7 @@ Disallow: /c`))
 	t.Run("test", func(t *testing.T) {
 		metadata := make(output.InternalEvent)
 		previous := make(output.InternalEvent)
-		ctxArgs := contextargs.NewWithInput(ts.URL)
+		ctxArgs := contextargs.NewWithInput(context.Background(), ts.URL)
 		err := request.ExecuteWithResults(ctxArgs, metadata, previous, func(event *output.InternalWrappedEvent) {
 			if event.OperatorsResult != nil && event.OperatorsResult.Matched {
 				matchCount++
@@ -159,7 +160,7 @@ func TestDisableTE(t *testing.T) {
 	t.Run("test", func(t *testing.T) {
 		metadata := make(output.InternalEvent)
 		previous := make(output.InternalEvent)
-		ctxArgs := contextargs.NewWithInput(ts.URL)
+		ctxArgs := contextargs.NewWithInput(context.Background(), ts.URL)
 		err := request.ExecuteWithResults(ctxArgs, metadata, previous, func(event *output.InternalWrappedEvent) {
 			if event.OperatorsResult != nil && event.OperatorsResult.Matched {
 				matchCount++
@@ -172,7 +173,7 @@ func TestDisableTE(t *testing.T) {
 	t.Run("test2", func(t *testing.T) {
 		metadata := make(output.InternalEvent)
 		previous := make(output.InternalEvent)
-		ctxArgs := contextargs.NewWithInput(ts.URL)
+		ctxArgs := contextargs.NewWithInput(context.Background(), ts.URL)
 		err := request2.ExecuteWithResults(ctxArgs, metadata, previous, func(event *output.InternalWrappedEvent) {
 			if event.OperatorsResult != nil && event.OperatorsResult.Matched {
 				matchCount++
@@ -242,7 +243,7 @@ func TestReqURLPattern(t *testing.T) {
 	t.Run("test", func(t *testing.T) {
 		metadata := make(output.InternalEvent)
 		previous := make(output.InternalEvent)
-		ctxArgs := contextargs.NewWithInput(ts.URL)
+		ctxArgs := contextargs.NewWithInput(context.Background(), ts.URL)
 		err := request.ExecuteWithResults(ctxArgs, metadata, previous, func(event *output.InternalWrappedEvent) {
 			if event.OperatorsResult != nil && event.OperatorsResult.Matched {
 				matchCount++

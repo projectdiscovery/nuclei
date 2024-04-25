@@ -139,6 +139,12 @@ func (request *Request) executeOnTarget(input *contextargs.Context, visited maps
 	variables = generators.MergeMaps(variablesMap, variables, request.options.Constants)
 
 	for _, kv := range request.addresses {
+		select {
+		case <-input.Context().Done():
+			return input.Context().Err()
+		default:
+		}
+
 		actualAddress := replacer.Replace(kv.address, variables)
 
 		if visited.Has(actualAddress) && !request.options.Options.DisableClustering {
@@ -184,6 +190,12 @@ func (request *Request) executeAddress(variables map[string]interface{}, actualA
 			value, ok := iterator.Value()
 			if !ok {
 				break
+			}
+
+			select {
+			case <-input.Context().Done():
+				return input.Context().Err()
+			default:
 			}
 
 			// resize check point - nop if there are no changes

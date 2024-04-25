@@ -128,7 +128,7 @@ func executeNucleiAsLibrary(templatePath, templateURL string) ([]string, error) 
 	}
 	store.Load()
 
-	_ = engine.Execute(store.Templates(), provider.NewSimpleInputProviderWithUrls(templateURL))
+	_ = engine.Execute(context.Background(), store.Templates(), provider.NewSimpleInputProviderWithUrls(templateURL))
 	engine.WorkPool().Wait() // Wait for the scan to finish
 
 	return results, nil

@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"context"
 	"reflect"
 	"testing"
 
@@ -49,7 +50,7 @@ func TestHTTPVariables(t *testing.T) {
 	require.Equal(t, values["Hostname"], "foobar.com", "incorrect hostname")
 
 	baseURL = "http://scanme.sh"
-	ctxArgs := contextargs.NewWithInput(baseURL)
+	ctxArgs := contextargs.NewWithInput(context.Background(), baseURL)
 	ctxArgs.MetaInput.CustomIP = "1.2.3.4"
 	values = GenerateVariablesWithContextArgs(ctxArgs, true)
 

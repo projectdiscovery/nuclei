@@ -110,9 +110,21 @@ func (request *Request) executeFuzzingRule(input *contextargs.Context, previous 
 func (request *Request) executeAllFuzzingRules(input *contextargs.Context, values map[string]interface{}, baseRequest *retryablehttp.Request, callback protocols.OutputEventCallback) error {
 	applicable := false
 	for _, rule := range request.Fuzzing {
+		select {
+		case <-input.Context().Done():
+			return input.Context().Err()
+		default:
+		}
+
 		err := rule.Execute(&fuzz.ExecuteRuleInput{
 			Input: input,
 			Callback: func(gr fuzz.GeneratedRequest) bool {
+				select {
+				case <-input.Context().Done():
+					return false
+				default:
+				}
+
 				// TODO: replace this after scanContext Refactor
 				return request.executeGeneratedFuzzingRequest(gr, input, callback)
 			},
