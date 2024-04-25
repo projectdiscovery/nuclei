@@ -10,7 +10,6 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
 )
 
-
 type ScanContextOption func(*ScanContext)
 
 func WithEvents() ScanContextOption {
@@ -20,7 +19,8 @@ func WithEvents() ScanContextOption {
 }
 
 type ScanContext struct {
-	context.Context
+	ctx context.Context
+
 	// exported / configurable fields
 	Input *contextargs.Context
 
@@ -43,8 +43,13 @@ type ScanContext struct {
 }
 
 // NewScanContext creates a new scan context using input
-func NewScanContext(input *contextargs.Context) *ScanContext {
-	return &ScanContext{Input: input}
+func NewScanContext(ctx context.Context, input *contextargs.Context) *ScanContext {
+	return &ScanContext{ctx: ctx, Input: input}
+}
+
+// Context returns the context of the scan
+func (s *ScanContext) Context() context.Context {
+	return s.ctx
 }
 
 // GenerateResult returns final results slice from all events
