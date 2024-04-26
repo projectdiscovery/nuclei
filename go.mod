@@ -100,6 +100,7 @@ require (
 	github.com/seh-msft/burpxml v1.0.1
 	github.com/stretchr/testify v1.9.0
 	github.com/zmap/zgrab2 v0.1.8-0.20230806160807-97ba87c0e706
+	go.uber.org/goleak v1.3.0
 	golang.org/x/term v0.19.0
 	gopkg.in/yaml.v3 v3.0.1
 	moul.io/http2curl v1.0.0

@@ -1,13 +1,15 @@
-package nuclei_test
+package sdk_test
 
 import (
 	"testing"
 
 	nuclei "github.com/projectdiscovery/nuclei/v3/lib"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/goleak"
 )
 
 func TestSimpleNuclei(t *testing.T) {
+	defer goleak.VerifyNone(t)
 	ne, err := nuclei.NewNucleiEngine(
 		nuclei.WithTemplateFilters(nuclei.TemplateFilters{ProtocolTypes: "dns"}),
 		nuclei.EnableStatsWithOpts(nuclei.StatsOptions{JSON: true}),
@@ -21,6 +23,7 @@ func TestSimpleNuclei(t *testing.T) {
 }
 
 func TestSimpleNucleiRemote(t *testing.T) {
+	defer goleak.VerifyNone(t)
 	ne, err := nuclei.NewNucleiEngine(
 		nuclei.WithTemplatesOrWorkflows(
 			nuclei.TemplateSources{
@@ -39,6 +42,7 @@ func TestSimpleNucleiRemote(t *testing.T) {
 }
 
 func TestThreadSafeNuclei(t *testing.T) {
+	defer goleak.VerifyNone(t)
 	// create nuclei engine with options
 	ne, err := nuclei.NewThreadSafeNucleiEngine()
 	require.Nil(t, err)
@@ -57,4 +61,8 @@ func TestThreadSafeNuclei(t *testing.T) {
 
 	// wait for all scans to finish
 	defer ne.Close()
+}
+
+func TestMain(m *testing.M) {
+	goleak.VerifyTestMain(m)
 }
