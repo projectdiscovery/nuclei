@@ -219,7 +219,7 @@ func GetAuthDataFromFile(file string) (*Authx, error) {
 	return GetAuthDataFromJSON(bin)
 }
 
-// GetTemplateIDsFromSecretFile reads the template IDs from the secret file
+// GetTemplatePathsFromSecretFile reads the template IDs from the secret file
 func GetTemplatePathsFromSecretFile(file string) ([]string, error) {
 	auth, err := GetAuthDataFromFile(file)
 	if err != nil {
