@@ -99,8 +99,8 @@ require (
 	github.com/redis/go-redis/v9 v9.1.0
 	github.com/seh-msft/burpxml v1.0.1
 	github.com/stretchr/testify v1.9.0
+	github.com/tarunKoyalwar/goleak v0.0.0-20240426214851-746d64600adc
 	github.com/zmap/zgrab2 v0.1.8-0.20230806160807-97ba87c0e706
-	go.uber.org/goleak v1.3.0
 	golang.org/x/term v0.19.0
 	gopkg.in/yaml.v3 v3.0.1
 	moul.io/http2curl v1.0.0
@@ -180,6 +180,7 @@ require (
 	github.com/klauspost/compress v1.17.6 // indirect
 	github.com/klauspost/pgzip v1.2.6 // indirect
 	github.com/kylelemons/godebug v1.1.0 // indirect
+	github.com/logrusorgru/aurora/v4 v4.0.0 // indirect
 	github.com/lucasb-eyer/go-colorful v1.2.0 // indirect
 	github.com/mackerelio/go-osstat v0.2.4 // indirect
 	github.com/mailru/easyjson v0.7.7 // indirect
@@ -233,6 +234,7 @@ require (
 	github.com/yuin/goldmark-emoji v1.0.1 // indirect
 	github.com/zcalusic/sysinfo v1.0.2 // indirect
 	github.com/zeebo/blake3 v0.2.3 // indirect
+	go.uber.org/goleak v1.3.0 // indirect
 	golang.org/x/arch v0.3.0 // indirect
 	golang.org/x/sync v0.6.0 // indirect
 	gopkg.in/djherbis/times.v1 v1.3.0 // indirect
