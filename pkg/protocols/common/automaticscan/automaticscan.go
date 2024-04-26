@@ -156,7 +156,6 @@ func (s *Service) executeAutomaticScanOnTarget(input *contextargs.MetaInput) {
 
 	// create combined final tags
 	finalTags := []string{}
-	finalTags = append(finalTags, s.opts.Options.Tags...)
 	for _, tags := range append(tagsFromWappalyzer, tagsFromDetectTemplates...) {
 		if stringsutil.EqualFoldAny(tags, "tech", "waf", "favicon") {
 			continue
