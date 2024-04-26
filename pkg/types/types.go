@@ -28,6 +28,8 @@ type Options struct {
 	// can be specified with -l flag and -tags can be used in combination with
 	// the -l flag.
 	Tags goflags.StringSlice
+	// ExtraTags Tags to be used with the as option.
+	ExtraTags goflags.StringSlice
 	// ExcludeTags is the list of tags to exclude
 	ExcludeTags goflags.StringSlice
 	// Workflows specifies any workflows to run by nuclei

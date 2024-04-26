@@ -167,7 +167,7 @@ func (s *Service) executeAutomaticScanOnTarget(input *contextargs.MetaInput) {
 	gologger.Info().Msgf("Found %d tags and %d matches on detection templates on %v [wappalyzer: %d, detection: %d]\n", len(finalTags), matched, input.Input, len(tagsFromWappalyzer), len(tagsFromDetectTemplates))
 
 	// also include any extra tags passed by user
-	finalTags = append(finalTags, s.opts.Options.Tags...)
+	finalTags = append(finalTags, s.opts.Options.ExtraTags...)
 	finalTags = sliceutil.Dedupe(finalTags)
 
 	if len(finalTags) == 0 {

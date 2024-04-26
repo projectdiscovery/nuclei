@@ -47,6 +47,7 @@ type Config struct {
 	RemoteTemplateDomainList []string
 
 	Tags              []string
+	ExtraTags         []string
 	ExcludeTags       []string
 	Protocols         templateTypes.ProtocolTypes
 	ExcludeProtocols  templateTypes.ProtocolTypes
@@ -90,6 +91,7 @@ func NewConfig(options *types.Options, catalog catalog.Catalog, executerOpts pro
 		WorkflowURLs:             options.WorkflowURLs,
 		ExcludeTemplates:         options.ExcludedTemplates,
 		Tags:                     options.Tags,
+		ExtraTags:                options.ExtraTags,
 		ExcludeTags:              options.ExcludeTags,
 		IncludeTemplates:         options.IncludeTemplates,
 		Authors:                  options.Authors,
