@@ -21,7 +21,7 @@ func StartActiveMemGuardian() {
 		return
 	}
 
-	memTimer := time.NewTicker(memguardian.DefaultInterval)
+	memTimer = time.NewTicker(memguardian.DefaultInterval)
 	go func() {
 		for range memTimer.C {
 			if IsLowOnMemory() {
@@ -38,7 +38,9 @@ func StopActiveMemGuardian() {
 		return
 	}
 
-	memTimer.Stop()
+	if memTimer != nil {
+		memTimer.Stop()
+	}
 }
 
 func IsLowOnMemory() bool {

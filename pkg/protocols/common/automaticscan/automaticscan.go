@@ -56,7 +56,6 @@ type Service struct {
 	engine             *core.Engine
 	target             provider.InputProvider
 	wappalyzer         *wappalyzer.Wappalyze
-	childExecuter      *core.ChildExecuter
 	httpclient         *retryablehttp.Client
 	templateDirs       []string // root Template Directories
 	technologyMappings map[string]string
@@ -95,7 +94,6 @@ func New(opts Options) (*Service, error) {
 		return nil, err
 	}
 
-	childExecuter := opts.Engine.ChildExecuter()
 	httpclient, err := httpclientpool.Get(opts.ExecuterOpts.Options, &httpclientpool.Configuration{
 		Connection: &httpclientpool.ConnectionConfiguration{
 			DisableKeepAlive: httputil.ShouldDisableKeepAlive(opts.ExecuterOpts.Options),
@@ -111,7 +109,6 @@ func New(opts Options) (*Service, error) {
 		target:             opts.Target,
 		wappalyzer:         wappalyzer,
 		templateDirs:       templateDirs, // fix this
-		childExecuter:      childExecuter,
 		httpclient:         httpclient,
 		technologyMappings: mappingData,
 		techTemplates:      techDetectTemplates,
