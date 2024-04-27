@@ -95,7 +95,7 @@ func (e *ThreadSafeNucleiEngine) GlobalResultCallback(callback func(event *outpu
 	e.eng.resultCallbacks = []func(*output.ResultEvent){callback}
 }
 
-// ExecuteWithCallback executes templates on targets and calls callback on each result(only if results are found)
+// ExecuteNucleiWithOpts executes templates on targets and calls callback on each result(only if results are found)
 // This method can be called concurrently and it will use some global resources but can be runned parallelly
 // by invoking this method with different options and targets
 // Note: Not all options are thread-safe. this method will throw error if you try to use non-thread-safe options
