@@ -229,6 +229,48 @@ func (store *Store) ReadTemplateFromURI(uri string, remote bool) ([]byte, error)
 	}
 }
 
+// Update tagFilter
+func (store *Store) UpdateTagFilter(tags, cfg *Config) (err error) {
+	tagFilter, err := templates.NewTagFilter(&templates.TagFilterConfig{
+		Tags:              cfg.Tags,
+		ExcludeTags:       cfg.ExcludeTags,
+		Authors:           cfg.Authors,
+		Severities:        cfg.Severities,
+		ExcludeSeverities: cfg.ExcludeSeverities,
+		IncludeTags:       cfg.IncludeTags,
+		IncludeIds:        cfg.IncludeIds,
+		ExcludeIds:        cfg.ExcludeIds,
+		Protocols:         cfg.Protocols,
+		ExcludeProtocols:  cfg.ExcludeProtocols,
+		IncludeConditions: cfg.IncludeConditions,
+	})
+	if err != nil {
+		return err
+	}
+	store.tagFilter = tagFilter
+	return
+}
+func (store *Store) ClearFilter() (err error) {
+	tagFilter, err := templates.NewTagFilter(&templates.TagFilterConfig{
+		Tags:              nil,
+		ExcludeTags:       nil,
+		Authors:           nil,
+		Severities:        nil,
+		ExcludeSeverities: nil,
+		IncludeTags:       nil,
+		IncludeIds:        nil,
+		ExcludeIds:        nil,
+		Protocols:         nil,
+		ExcludeProtocols:  nil,
+		IncludeConditions: nil,
+	})
+	if err != nil {
+		return err
+	}
+	store.tagFilter = tagFilter
+	return
+}
+
 // Templates returns all the templates in the store
 func (store *Store) Templates() []*templates.Template {
 	return store.templates

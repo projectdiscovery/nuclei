@@ -1,12 +1,14 @@
 package automaticscan
 
 import (
+	"fmt"
 	"github.com/pkg/errors"
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/config"
 	"github.com/projectdiscovery/nuclei/v3/pkg/templates"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	sliceutil "github.com/projectdiscovery/utils/slice"
+	"strings"
 )
 
 // getTemplateDirs returns template directories for given input
@@ -35,10 +37,20 @@ func getTemplateDirs(opts Options) ([]string, error) {
 }
 
 // LoadTemplatesWithTags loads and returns templates with given tags
-func LoadTemplatesWithTags(opts Options, templateDirs []string, tags []string, logInfo bool) ([]*templates.Template, error) {
-	finalTemplates := opts.Store.LoadTemplatesWithTags(templateDirs, tags)
-	if len(finalTemplates) == 0 {
-		return nil, errors.New("could not find any templates with tech tag")
+func LoadTemplatesWithTags(opts Options, templateDirs []string, tags []string, useIncludeID, logInfo bool) ([]*templates.Template, error) {
+	newOpt := opts
+	err := newOpt.Store.ClearFilter()
+	if err != nil {
+		return nil, err
+	}
+
+	finalTemplates := newOpt.Store.LoadTemplatesWithTags(templateDirs, tags)
+	if len(finalTemplates) == 0 && !useIncludeID {
+		return nil, errors.New(fmt.Sprintf("could not find any templates with %s tag", strings.Join(tags, ",")))
+	}
+	if useIncludeID {
+		includeTemplates := opts.Store.Templates()
+		finalTemplates = append(finalTemplates, includeTemplates...)
 	}
 
 	if !opts.ExecuterOpts.Options.DisableClustering {
