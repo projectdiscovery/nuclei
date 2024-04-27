@@ -1,6 +1,7 @@
 package protocolstate
 
 import (
+	"context"
 	"sync"
 	"time"
 
@@ -14,6 +15,7 @@ var (
 	MaxThreadsOnLowMemory          = env.GetEnvOrDefault("MEMGUARDIAN_THREADS", 0)
 	MaxBytesBufferAllocOnLowMemory = env.GetEnvOrDefault("MEMGUARDIAN_ALLOC", 0)
 	memTimer                       *time.Ticker
+	cancelFunc                     context.CancelFunc
 )
 
 func StartActiveMemGuardian() {
@@ -22,12 +24,19 @@ func StartActiveMemGuardian() {
 	}
 
 	memTimer = time.NewTicker(memguardian.DefaultInterval)
+	var ctx context.Context
+	ctx, cancelFunc = context.WithCancel(context.Background())
 	go func() {
-		for range memTimer.C {
-			if IsLowOnMemory() {
-				_ = GlobalGuardBytesBufferAlloc()
-			} else {
-				GlobalRestoreBytesBufferAlloc()
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-memTimer.C:
+				if IsLowOnMemory() {
+					_ = GlobalGuardBytesBufferAlloc()
+				} else {
+					GlobalRestoreBytesBufferAlloc()
+				}
 			}
 		}
 	}()
@@ -40,6 +49,7 @@ func StopActiveMemGuardian() {
 
 	if memTimer != nil {
 		memTimer.Stop()
+		cancelFunc()
 	}
 }
 
