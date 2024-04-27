@@ -394,7 +394,7 @@ func EnablePassiveMode() NucleiSDKOptions {
 	}
 }
 
-// WithAuthOptions allows setting a custom authprovider implementation
+// WithAuthProvider allows setting a custom authprovider implementation
 func WithAuthProvider(provider authprovider.AuthProvider) NucleiSDKOptions {
 	return func(e *NucleiEngine) error {
 		e.authprovider = provider

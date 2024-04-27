@@ -166,12 +166,12 @@ func (c *Config) GetTemplateIndexFilePath() string {
 	return filepath.Join(c.TemplatesDirectory, NucleiTemplatesIndexFileName)
 }
 
-// GetTemplatesConfigFilePath returns checksum file path of nuclei templates
+// GetChecksumFilePath returns checksum file path of nuclei templates
 func (c *Config) GetChecksumFilePath() string {
 	return filepath.Join(c.TemplatesDirectory, NucleiTemplatesCheckSumFileName)
 }
 
-// GetCLIOptsConfigFilePath returns the nuclei cli config file path
+// GetFlagsConfigFilePath returns the nuclei cli config file path
 func (c *Config) GetFlagsConfigFilePath() string {
 	return filepath.Join(c.configDir, CLIConfigFileName)
 }
