@@ -188,7 +188,9 @@ func (s *Service) executeAutomaticScanOnTarget(input *contextargs.MetaInput) {
 		return
 	}
 	finalTemplates = sliceutil.Dedupe(finalTemplates)
+
 	gologger.Info().Msgf("Executing %d templates on %v", len(finalTemplates), input.Input)
+
 	eng := core.New(s.opts.Options)
 	execOptions := s.opts.Copy()
 	execOptions.Progress = &testutils.MockProgressClient{} // stats are not supported yet due to centralized logic and cannot be reinitialized

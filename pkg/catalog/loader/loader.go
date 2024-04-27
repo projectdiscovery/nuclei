@@ -229,27 +229,7 @@ func (store *Store) ReadTemplateFromURI(uri string, remote bool) ([]byte, error)
 	}
 }
 
-// Update tagFilter
-func (store *Store) UpdateTagFilter(tags, cfg *Config) (err error) {
-	tagFilter, err := templates.NewTagFilter(&templates.TagFilterConfig{
-		Tags:              cfg.Tags,
-		ExcludeTags:       cfg.ExcludeTags,
-		Authors:           cfg.Authors,
-		Severities:        cfg.Severities,
-		ExcludeSeverities: cfg.ExcludeSeverities,
-		IncludeTags:       cfg.IncludeTags,
-		IncludeIds:        cfg.IncludeIds,
-		ExcludeIds:        cfg.ExcludeIds,
-		Protocols:         cfg.Protocols,
-		ExcludeProtocols:  cfg.ExcludeProtocols,
-		IncludeConditions: cfg.IncludeConditions,
-	})
-	if err != nil {
-		return err
-	}
-	store.tagFilter = tagFilter
-	return
-}
+// ClearFilter
 func (store *Store) ClearFilter() (err error) {
 	tagFilter, err := templates.NewTagFilter(&templates.TagFilterConfig{
 		Tags:              nil,

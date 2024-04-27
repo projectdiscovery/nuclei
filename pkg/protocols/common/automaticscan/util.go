@@ -38,13 +38,12 @@ func getTemplateDirs(opts Options) ([]string, error) {
 
 // LoadTemplatesWithTags loads and returns templates with given tags
 func LoadTemplatesWithTags(opts Options, templateDirs []string, tags []string, useIncludeID, logInfo bool) ([]*templates.Template, error) {
-	newOpt := opts
-	err := newOpt.Store.ClearFilter()
+	err := opts.Store.ClearFilter()
 	if err != nil {
 		return nil, err
 	}
 
-	finalTemplates := newOpt.Store.LoadTemplatesWithTags(templateDirs, tags)
+	finalTemplates := opts.Store.LoadTemplatesWithTags(templateDirs, tags)
 	if len(finalTemplates) == 0 && !useIncludeID {
 		return nil, errors.New(fmt.Sprintf("could not find any templates with %s tag", strings.Join(tags, ",")))
 	}
