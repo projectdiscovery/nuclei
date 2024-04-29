@@ -343,7 +343,6 @@ github.com/go-asn1-ber/asn1-ber v1.5.4 h1:vXT6d/FNDiELJnLb6hGNa309LMsrCoYFvpwHDF
 github.com/go-asn1-ber/asn1-ber v1.5.4/go.mod h1:hEBeB/ic+5LoWskz+yKT7vGhhPYkProFKoKdwZRWMe0=
 github.com/go-echarts/go-echarts/v2 v2.3.3 h1:uImZAk6qLkC6F9ju6mZ5SPBqTyK8xjZKwSmwnCg4bxg=
 github.com/go-echarts/go-echarts/v2 v2.3.3/go.mod h1:56YlvzhW/a+du15f3S2qUGNDfKnFOeJSThBIrVFHDtI=
-github.com/go-echarts/go-echarts/v2 v2.3.3/go.mod h1:56YlvzhW/a+du15f3S2qUGNDfKnFOeJSThBIrVFHDtI=
 github.com/go-fed/httpsig v1.1.0 h1:9M+hb0jkEICD8/cAiNqEB66R87tTINszBRTjwjQzWcI=
 github.com/go-fed/httpsig v1.1.0/go.mod h1:RCMrTZvN1bJYtofsG4rd5NaO5obxQ5xBkdiS7xsT7bM=
 github.com/go-git/gcfg v1.5.1-0.20230307220236-3a3c6141e376 h1:+zs/tPmkDkHx3U66DAb0lQFJrpS6731Oaa12ikc+DiI=
@@ -871,8 +870,8 @@ github.com/projectdiscovery/networkpolicy v0.0.8 h1:XvfBaBwSDNTesSfNQP9VLk3HX9I7
 github.com/projectdiscovery/networkpolicy v0.0.8/go.mod h1:xnjNqhemxUPxU+UD5Jgsc3+K8IVmcqT1SJeo6UzMtkI=
 github.com/projectdiscovery/ratelimit v0.0.38 h1:TCcXXjL3LwB+Es1dtW50FSoQsAQBHH0PqQ2VGZhp50U=
 github.com/projectdiscovery/ratelimit v0.0.38/go.mod h1:ig2wgB2qY2YKFKu0Lm1R/AxjXsGyFceEvC+ATAMOFgc=
-github.com/projectdiscovery/rawhttp v0.1.45 h1:5jssUybhRz2ljI3bW4kUO9MTvZ37ArG8pISYtgqzwBg=
-github.com/projectdiscovery/rawhttp v0.1.45/go.mod h1:oLWuZkyKi4rddPoLEN3TeAqyLvFNfr3dxmzV2kwpPvs=
+github.com/projectdiscovery/rawhttp v0.1.47 h1:bjhZBK+7iuvcu0QTRJjdS4wP747+33Sd5gfgc4V9AWU=
+github.com/projectdiscovery/rawhttp v0.1.47/go.mod h1:2XA7xODWEGoHpEB8qzgqsV8yVL3cg5G63ZaT9ALwU4g=
 github.com/projectdiscovery/rdap v0.9.1-0.20221108103045-9865884d1917 h1:m03X4gBVSorSzvmm0bFa7gDV4QNSOWPL/fgZ4kTXBxk=
 github.com/projectdiscovery/rdap v0.9.1-0.20221108103045-9865884d1917/go.mod h1:JxXtZC9e195awe7EynrcnBJmFoad/BNDzW9mzFkK8Sg=
 github.com/projectdiscovery/retryabledns v1.0.58 h1:ut1FSB9+GZ6zQIlKJFLqIz2RZs81EmkbsHTuIrWfYLE=
