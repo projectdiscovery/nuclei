@@ -2,8 +2,6 @@ module github.com/projectdiscovery/nuclei/v3
 
 go 1.21
 
-replace github.com/projectdiscovery/utils => /Users/ice3man/hack/tt/utils
-
 require (
 	github.com/Knetic/govaluate v3.0.1-0.20171022003610-9aa49832a739+incompatible
 	github.com/andygrunwald/go-jira v1.16.0
@@ -96,7 +94,7 @@ require (
 	github.com/projectdiscovery/tlsx v1.1.6
 	github.com/projectdiscovery/uncover v1.0.7
 	github.com/projectdiscovery/useragent v0.0.47
-	github.com/projectdiscovery/utils v0.0.92-0.20240427201850-f32137d057ad
+	github.com/projectdiscovery/utils v0.0.92-0.20240429121553-f9776e1f163a
 	github.com/projectdiscovery/wappalyzergo v0.0.116
 	github.com/redis/go-redis/v9 v9.1.0
 	github.com/seh-msft/burpxml v1.0.1
