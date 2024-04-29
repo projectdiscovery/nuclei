@@ -4,6 +4,7 @@ import (
 	"os"
 	"os/exec"
 	"testing"
+	"time"
 
 	nuclei "github.com/projectdiscovery/nuclei/v3/lib"
 	"github.com/projectdiscovery/utils/env"
@@ -14,14 +15,16 @@ import (
 var knownLeaks = []goleak.Option{
 	// prettyify the output and generate dependency graph and more details instead of just stack output
 	goleak.Pretty(),
-	// this is not a leak but idle http connection that is not closed yet by transport
-	goleak.IgnoreAnyFunction("net/http.(*persistConn).readLoop"),
-	goleak.IgnoreAnyFunction("net/http.(*persistConn).writeLoop"),
 }
 
 func TestSimpleNuclei(t *testing.T) {
 	fn := func() {
-		defer goleak.VerifyNone(t, knownLeaks...)
+		defer func() {
+			// resources like leveldb have a delay to commit in-memory resources
+			// to disk, typically 1-2 seconds, so we wait for 2 seconds
+			time.Sleep(2 * time.Second)
+			goleak.VerifyNone(t, knownLeaks...)
+		}()
 		ne, err := nuclei.NewNucleiEngine(
 			nuclei.WithTemplateFilters(nuclei.TemplateFilters{ProtocolTypes: "dns"}),
 			nuclei.EnableStatsWithOpts(nuclei.StatsOptions{JSON: true}),
@@ -50,7 +53,12 @@ func TestSimpleNuclei(t *testing.T) {
 
 func TestSimpleNucleiRemote(t *testing.T) {
 	fn := func() {
-		defer goleak.VerifyNone(t, knownLeaks...)
+		defer func() {
+			// resources like leveldb have a delay to commit in-memory resources
+			// to disk, typically 1-2 seconds, so we wait for 2 seconds
+			time.Sleep(2 * time.Second)
+			goleak.VerifyNone(t, knownLeaks...)
+		}()
 		ne, err := nuclei.NewNucleiEngine(
 			nuclei.WithTemplatesOrWorkflows(
 				nuclei.TemplateSources{
@@ -82,7 +90,12 @@ func TestSimpleNucleiRemote(t *testing.T) {
 
 func TestThreadSafeNuclei(t *testing.T) {
 	fn := func() {
-		defer goleak.VerifyNone(t, knownLeaks...)
+		defer func() {
+			// resources like leveldb have a delay to commit in-memory resources
+			// to disk, typically 1-2 seconds, so we wait for 2 seconds
+			time.Sleep(2 * time.Second)
+			goleak.VerifyNone(t, knownLeaks...)
+		}()
 		// create nuclei engine with options
 		ne, err := nuclei.NewThreadSafeNucleiEngine()
 		require.Nil(t, err)
