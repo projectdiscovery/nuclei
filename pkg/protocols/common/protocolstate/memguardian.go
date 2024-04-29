@@ -18,14 +18,13 @@ var (
 	cancelFunc                     context.CancelFunc
 )
 
-func StartActiveMemGuardian() {
+func StartActiveMemGuardian(ctx context.Context) {
 	if memguardian.DefaultMemGuardian == nil {
 		return
 	}
 
 	memTimer = time.NewTicker(memguardian.DefaultInterval)
-	var ctx context.Context
-	ctx, cancelFunc = context.WithCancel(context.Background())
+	ctx, cancelFunc = context.WithCancel(ctx)
 	go func() {
 		for {
 			select {
