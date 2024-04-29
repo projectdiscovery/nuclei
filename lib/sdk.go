@@ -189,6 +189,9 @@ func (e *NucleiEngine) Close() {
 	e.customWriter.Close()
 	e.hostErrCache.Close()
 	e.executerOpts.RateLimiter.Stop()
+	if e.rateLimiter != nil {
+		e.rateLimiter.Stop()
+	}
 }
 
 // ExecuteWithCallback executes templates on targets and calls callback on each result(only if results are found)

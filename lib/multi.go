@@ -112,6 +112,12 @@ func (e *ThreadSafeNucleiEngine) ExecuteNucleiWithOpts(targets []string, opts ..
 	if err != nil {
 		return err
 	}
+	// cleanup and stop all resources
+	defer func() {
+		if unsafeOpts.executerOpts.RateLimiter != nil {
+			unsafeOpts.executerOpts.RateLimiter.Stop()
+		}
+	}()
 
 	// load templates
 	workflowLoader, err := workflow.NewLoader(&unsafeOpts.executerOpts)
