@@ -15,6 +15,9 @@ import (
 var knownLeaks = []goleak.Option{
 	// prettyify the output and generate dependency graph and more details instead of just stack output
 	goleak.Pretty(),
+	// net/http transport maintains idle connections which are closed with cooldown
+	// hence they don't count as leaks
+	goleak.IgnoreAnyFunction("net/http.(*http2ClientConn).readLoop"),
 }
 
 func TestSimpleNuclei(t *testing.T) {
