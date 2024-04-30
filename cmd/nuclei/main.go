@@ -658,7 +658,7 @@ func findProfilePathById(profileId, templatesDir string) string {
 		}
 		return nil
 	})
-	if err != nil && err.Error() == "FOUND" {
+	if err != nil && err.Error() != "FOUND" {
 		gologger.Error().Msgf("%s\n", err)
 	}
 	return profilePath
