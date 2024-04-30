@@ -58,6 +58,22 @@ func createEphemeralObjects(base *NucleiEngine, opts *types.Options) (*unsafeOpt
 	return u, nil
 }
 
+// closeEphemeralObjects closes all resources used by ephemeral nuclei objects/instances/types
+func closeEphemeralObjects(u *unsafeOptions) {
+	if u.executerOpts.RateLimiter != nil {
+		u.executerOpts.RateLimiter.Stop()
+	}
+	// dereference all objects that were inherited from base nuclei engine
+	// since these are meant to be closed globally by base nuclei engine
+	u.executerOpts.Output = nil
+	u.executerOpts.IssuesClient = nil
+	u.executerOpts.Interactsh = nil
+	u.executerOpts.HostErrorsCache = nil
+	u.executerOpts.Progress = nil
+	u.executerOpts.Catalog = nil
+	u.executerOpts.Parser = nil
+}
+
 // ThreadSafeNucleiEngine is a tweaked version of nuclei.Engine whose methods are thread-safe
 // and can be used concurrently. Non-thread-safe methods start with Global prefix
 type ThreadSafeNucleiEngine struct {
@@ -107,11 +123,14 @@ func (e *ThreadSafeNucleiEngine) ExecuteNucleiWithOpts(targets []string, opts ..
 			return err
 		}
 	}
+	defer tmpEngine.Close()
 	// create ephemeral nuclei objects/instances/types using base nuclei engine
 	unsafeOpts, err := createEphemeralObjects(e.eng, tmpEngine.opts)
 	if err != nil {
 		return err
 	}
+	// cleanup and stop all resources
+	defer closeEphemeralObjects(unsafeOpts)
 
 	// load templates
 	workflowLoader, err := workflow.NewLoader(&unsafeOpts.executerOpts)

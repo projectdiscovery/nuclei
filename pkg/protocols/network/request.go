@@ -200,7 +200,11 @@ func (request *Request) executeAddress(variables map[string]interface{}, actualA
 
 			// resize check point - nop if there are no changes
 			if shouldFollowGlobal && swg.Size != request.options.Options.PayloadConcurrency {
-				swg.Resize(request.options.Options.PayloadConcurrency)
+				if err := swg.Resize(input.Context(), request.options.Options.PayloadConcurrency); err != nil {
+					m.Lock()
+					multiErr = multierr.Append(multiErr, err)
+					m.Unlock()
+				}
 			}
 
 			value = generators.MergeMaps(value, payloads)
