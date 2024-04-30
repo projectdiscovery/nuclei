@@ -68,7 +68,7 @@ func (rule *Rule) executePartComponentOnValues(input *ExecuteRuleInput, payloadS
 				return err
 			}
 
-			if qerr := rule.execWithInput(input, req, input.InteractURLs, ruleComponent); qerr != nil {
+			if qerr := rule.execWithInput(input, req, input.InteractURLs, ruleComponent, key); qerr != nil {
 				return qerr
 			}
 			// fmt.Printf("executed with value: %s\n", evaluated)
@@ -90,7 +90,7 @@ func (rule *Rule) executePartComponentOnValues(input *ExecuteRuleInput, payloadS
 		if err != nil {
 			return err
 		}
-		if qerr := rule.execWithInput(input, req, input.InteractURLs, ruleComponent); qerr != nil {
+		if qerr := rule.execWithInput(input, req, input.InteractURLs, ruleComponent, ""); qerr != nil {
 			err = qerr
 			return err
 		}
@@ -125,7 +125,7 @@ func (rule *Rule) executePartComponentOnKV(input *ExecuteRuleInput, payload Valu
 				return err
 			}
 
-			if qerr := rule.execWithInput(input, req, input.InteractURLs, ruleComponent); qerr != nil {
+			if qerr := rule.execWithInput(input, req, input.InteractURLs, ruleComponent, key); qerr != nil {
 				return err
 			}
 
@@ -144,12 +144,13 @@ func (rule *Rule) executePartComponentOnKV(input *ExecuteRuleInput, payload Valu
 }
 
 // execWithInput executes a rule with input via callback
-func (rule *Rule) execWithInput(input *ExecuteRuleInput, httpReq *retryablehttp.Request, interactURLs []string, component component.Component) error {
+func (rule *Rule) execWithInput(input *ExecuteRuleInput, httpReq *retryablehttp.Request, interactURLs []string, component component.Component, parameter string) error {
 	request := GeneratedRequest{
 		Request:       httpReq,
 		InteractURLs:  interactURLs,
 		DynamicValues: input.Values,
 		Component:     component,
+		Parameter:     parameter,
 	}
 	if !input.Callback(request) {
 		return types.ErrNoMoreRequests
