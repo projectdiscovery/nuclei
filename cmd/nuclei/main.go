@@ -42,9 +42,10 @@ import (
 )
 
 var (
-	cfgFile    string
-	memProfile string // optional profile file path
-	options    = &types.Options{}
+	cfgFile         string
+	templateProfile string
+	memProfile      string // optional profile file path
+	options         = &types.Options{}
 )
 
 func main() {
@@ -270,6 +271,7 @@ on extensive configurability, massive extensibility and ease of use.`)
 
 	flagSet.CreateGroup("configs", "Configurations",
 		flagSet.StringVar(&cfgFile, "config", "", "path to the nuclei configuration file"),
+		flagSet.StringVar(&templateProfile, "profile", "", "template profile config file to run"),
 		flagSet.BoolVarP(&options.FollowRedirects, "follow-redirects", "fr", false, "enable following redirects for http templates"),
 		flagSet.BoolVarP(&options.FollowHostRedirects, "follow-host-redirects", "fhr", false, "follow redirects on the same host"),
 		flagSet.IntVarP(&options.MaxRedirects, "max-redirects", "mr", 10, "max number of redirects to follow for http templates"),
@@ -497,6 +499,25 @@ Additional documentation is available at: https://docs.nuclei.sh/getting-started
 		config.DefaultConfig.SetTemplatesDir(options.NewTemplatesDirectory)
 	}
 
+	if templateProfile != "" {
+		if filepath.Ext(templateProfile) == "" {
+			if tp := findProfilePathById(templateProfile, filepath.Join(config.DefaultConfig.GetTemplateDir(), "profiles")); tp != "" {
+				templateProfile = tp
+			} else {
+				gologger.Fatal().Msgf("'%s' is not a prfile-id or profile path", templateProfile)
+			}
+		}
+		if !filepath.IsAbs(templateProfile) {
+			templateProfile = filepath.Join(config.DefaultConfig.GetTemplateDir(), templateProfile)
+		}
+		if !fileutil.FileExists(templateProfile) {
+			gologger.Fatal().Msgf("given template profile file '%s' does not exist", templateProfile)
+		}
+		if err := flagSet.MergeConfigFile(templateProfile); err != nil {
+			gologger.Fatal().Msgf("Could not read template profile: %s\n", err)
+		}
+	}
+
 	if len(options.SecretsFile) > 0 {
 		for _, secretFile := range options.SecretsFile {
 			if !fileutil.FileExists(secretFile) {
@@ -620,6 +641,27 @@ Note: Make sure you have backup of your custom nuclei-templates before proceedin
 	}
 	gologger.Info().Msgf("Successfully deleted all nuclei configurations files and nuclei-templates")
 	os.Exit(0)
+}
+
+func findProfilePathById(profileId, templatesDir string) string {
+	var profilePath string
+	err := filepath.WalkDir(templatesDir, func(iterItem string, d fs.DirEntry, err error) error {
+		ext := filepath.Ext(iterItem)
+		isYaml := ext == extensions.YAML || ext == extensions.YML
+		if err != nil || d.IsDir() || !isYaml {
+			// skip non yaml files
+			return nil
+		}
+		if strings.TrimSuffix(filepath.Base(iterItem), ext) == profileId {
+			profilePath = iterItem
+			return fmt.Errorf("FOUND")
+		}
+		return nil
+	})
+	if err != nil && err.Error() == "FOUND" {
+		gologger.Error().Msgf("%s\n", err)
+	}
+	return profilePath
 }
 
 func init() {
