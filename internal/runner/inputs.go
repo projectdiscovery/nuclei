@@ -1,6 +1,7 @@
 package runner
 
 import (
+	"context"
 	"sync/atomic"
 	"time"
 
@@ -50,7 +51,9 @@ func (r *Runner) initializeTemplatesHTTPInput() (*hybrid.HybridMap, error) {
 		}
 
 		if r.options.ProbeConcurrency > 0 && swg.Size != r.options.ProbeConcurrency {
-			swg.Resize(r.options.ProbeConcurrency)
+			if err := swg.Resize(context.Background(), r.options.ProbeConcurrency); err != nil {
+				gologger.Error().Msgf("Could not resize workpool: %s\n", err)
+			}
 		}
 
 		swg.Add()

@@ -43,6 +43,13 @@ func (i *inputLivenessChecker) ProbeURL(input string) (string, error) {
 	return ProbeURL(input, i.client), nil
 }
 
+func (i *inputLivenessChecker) Close() error {
+	if i.client.Dialer != nil {
+		i.client.Dialer.Close()
+	}
+	return nil
+}
+
 // GetInputLivenessChecker returns a new input liveness checker using provided httpx client
 func GetInputLivenessChecker(client *httpx.HTTPX) types.InputLivenessProbe {
 	x := &inputLivenessChecker{client: client}

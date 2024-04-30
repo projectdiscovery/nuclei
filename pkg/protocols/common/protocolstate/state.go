@@ -148,7 +148,7 @@ func Init(options *types.Options) error {
 		return Dialer.Dial(ctx, "tcp", addr)
 	})
 
-	StartActiveMemGuardian()
+	StartActiveMemGuardian(context.Background())
 
 	return nil
 }

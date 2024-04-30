@@ -12,6 +12,7 @@ import (
 	"sync"
 
 	"github.com/projectdiscovery/retryablehttp-go"
+	"github.com/projectdiscovery/useragent"
 	"github.com/projectdiscovery/utils/conversion"
 	mapsutil "github.com/projectdiscovery/utils/maps"
 	urlutil "github.com/projectdiscovery/utils/url"
@@ -73,6 +74,10 @@ func (rr *RequestResponse) BuildRequest() (*retryablehttp.Request, error) {
 			req.Header.Add(k, v)
 			return true
 		})
+		if req.Header.Get("User-Agent") == "" {
+			userAgent := useragent.PickRandom()
+			req.Header.Set("User-Agent", userAgent.Raw)
+		}
 		rr.req = req
 	})
 	return rr.req, rr.reqErr

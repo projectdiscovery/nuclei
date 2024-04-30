@@ -24,6 +24,7 @@ import (
 	protocolutils "github.com/projectdiscovery/nuclei/v3/pkg/protocols/utils"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	"github.com/projectdiscovery/retryablehttp-go"
+	"github.com/projectdiscovery/useragent"
 	urlutil "github.com/projectdiscovery/utils/url"
 )
 
@@ -89,6 +90,9 @@ func (request *Request) executeFuzzingRule(input *contextargs.Context, previous 
 	if err != nil {
 		return errors.Wrap(err, "fuzz: could not build request from url")
 	}
+	userAgent := useragent.PickRandom()
+	baseRequest.Header.Set("User-Agent", userAgent.Raw)
+
 	// execute with one value first to checks its applicability
 	err = request.executeAllFuzzingRules(inputx, previous, baseRequest, callback)
 	if err != nil {
