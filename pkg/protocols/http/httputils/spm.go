@@ -181,10 +181,11 @@ func (h *StopAtFirstMatchHandler[T]) Release() {
 	}
 }
 
-func (h *StopAtFirstMatchHandler[T]) Resize(size int) {
+func (h *StopAtFirstMatchHandler[T]) Resize(ctx context.Context, size int) error {
 	if h.sgPool.Size != size {
-		h.sgPool.Resize(size)
+		return h.sgPool.Resize(ctx, size)
 	}
+	return nil
 }
 
 func (h *StopAtFirstMatchHandler[T]) Size() int {

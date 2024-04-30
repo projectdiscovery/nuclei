@@ -1,6 +1,9 @@
 package core
 
 import (
+	"context"
+
+	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/templates/types"
 	syncutil "github.com/projectdiscovery/utils/sync"
 )
@@ -71,14 +74,18 @@ func (w *WorkPool) RefreshWithConfig(config WorkPoolConfig) {
 	if w.config.HeadlessInputConcurrency != config.HeadlessInputConcurrency {
 		w.config.HeadlessInputConcurrency = config.HeadlessInputConcurrency
 	}
-	w.Refresh()
+	w.Refresh(context.Background())
 }
 
-func (w *WorkPool) Refresh() {
+func (w *WorkPool) Refresh(ctx context.Context) {
 	if w.Default.Size != w.config.TypeConcurrency {
-		w.Default.Resize(w.config.TypeConcurrency)
+		if err := w.Default.Resize(ctx, w.config.TypeConcurrency); err != nil {
+			gologger.Warning().Msgf("Could not resize workpool: %s\n", err)
+		}
 	}
 	if w.Headless.Size != w.config.HeadlessTypeConcurrency {
-		w.Headless.Resize(w.config.HeadlessTypeConcurrency)
+		if err := w.Headless.Resize(ctx, w.config.HeadlessTypeConcurrency); err != nil {
+			gologger.Warning().Msgf("Could not resize workpool: %s\n", err)
+		}
 	}
 }

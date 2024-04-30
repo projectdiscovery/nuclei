@@ -2,6 +2,7 @@ package compiler
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"reflect"
@@ -55,10 +56,12 @@ var (
 	lazySgInit = sync.OnceFunc(func() {
 		pooljsc, _ = syncutil.New(syncutil.WithSize(PoolingJsVmConcurrency))
 	})
-	sgResizeCheck = func() {
+	sgResizeCheck = func(ctx context.Context) {
 		// resize check point
 		if pooljsc.Size != PoolingJsVmConcurrency {
-			pooljsc.Resize(PoolingJsVmConcurrency)
+			if err := pooljsc.Resize(ctx, PoolingJsVmConcurrency); err != nil {
+				gologger.Warning().Msgf("Could not resize workpool: %s\n", err)
+			}
 		}
 	}
 )
@@ -122,7 +125,7 @@ func executeWithPoolingProgram(p *goja.Program, args *ExecuteArgs, opts *Execute
 	// its unknown (most likely cannot be done) to limit max js runtimes at a moment without making it static
 	// unlike sync.Pool which reacts to GC and its purposes is to reuse objects rather than creating new ones
 	lazySgInit()
-	sgResizeCheck()
+	sgResizeCheck(opts.Context)
 
 	pooljsc.Add()
 	defer pooljsc.Done()
