@@ -11,6 +11,7 @@ import (
 	"github.com/projectdiscovery/uncover"
 	"github.com/projectdiscovery/uncover/sources"
 	mapsutil "github.com/projectdiscovery/utils/maps"
+	sliceutil "github.com/projectdiscovery/utils/slice"
 	stringsutil "github.com/projectdiscovery/utils/strings"
 )
 
@@ -84,8 +85,20 @@ func GetUncoverTargetsFromMetadata(ctx context.Context, templates []*templates.T
 			if queriesMap[engine] == nil {
 				queriesMap[engine] = []string{}
 			}
-			queriesMap[engine] = append(queriesMap[engine], fmt.Sprint(v))
+			switch v := v.(type) {
+			case []interface{}:
+				qs := queriesMap[engine]
+				for _, vv := range v {
+					qs = append(qs, fmt.Sprint(vv))
+				}
+				queriesMap[engine] = qs
+			default:
+				queriesMap[engine] = append(queriesMap[engine], fmt.Sprint(v))
+			}
 		}
+	}
+	for engine, queries := range queriesMap {
+		queriesMap[engine] = sliceutil.Dedupe(queries)
 	}
 	keys := mapsutil.GetKeys(queriesMap)
 	gologger.Info().Msgf("Running uncover queries from template against: %s", strings.Join(keys, ","))
