@@ -271,7 +271,8 @@ on extensive configurability, massive extensibility and ease of use.`)
 
 	flagSet.CreateGroup("configs", "Configurations",
 		flagSet.StringVar(&cfgFile, "config", "", "path to the nuclei configuration file"),
-		flagSet.StringVar(&templateProfile, "profile", "", "template profile config file to run"),
+		flagSet.StringVarP(&templateProfile, "profile", "tp", "", "template profile config file to run"),
+		flagSet.BoolVarP(&options.ListTemplateProfiles, "profile-list", "tpl", false, "list community template profiles"),
 		flagSet.BoolVarP(&options.FollowRedirects, "follow-redirects", "fr", false, "enable following redirects for http templates"),
 		flagSet.BoolVarP(&options.FollowHostRedirects, "follow-host-redirects", "fhr", false, "follow redirects on the same host"),
 		flagSet.IntVarP(&options.MaxRedirects, "max-redirects", "mr", 10, "max number of redirects to follow for http templates"),
@@ -499,16 +500,20 @@ Additional documentation is available at: https://docs.nuclei.sh/getting-started
 		config.DefaultConfig.SetTemplatesDir(options.NewTemplatesDirectory)
 	}
 
+	defaultProfilesPath := filepath.Join(config.DefaultConfig.GetTemplateDir(), "profiles")
 	if templateProfile != "" {
 		if filepath.Ext(templateProfile) == "" {
-			if tp := findProfilePathById(templateProfile, filepath.Join(config.DefaultConfig.GetTemplateDir(), "profiles")); tp != "" {
+			if tp := findProfilePathById(templateProfile, defaultProfilesPath); tp != "" {
 				templateProfile = tp
 			} else {
-				gologger.Fatal().Msgf("'%s' is not a prfile-id or profile path", templateProfile)
+				gologger.Fatal().Msgf("'%s' is not a profile-id or profile path", templateProfile)
 			}
 		}
 		if !filepath.IsAbs(templateProfile) {
-			templateProfile = filepath.Join(config.DefaultConfig.GetTemplateDir(), templateProfile)
+			if filepath.Dir(templateProfile) == "profiles" {
+				defaultProfilesPath = filepath.Join(config.DefaultConfig.GetTemplateDir())
+			}
+			templateProfile = filepath.Join(defaultProfilesPath, templateProfile)
 		}
 		if !fileutil.FileExists(templateProfile) {
 			gologger.Fatal().Msgf("given template profile file '%s' does not exist", templateProfile)
