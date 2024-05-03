@@ -513,7 +513,12 @@ Additional documentation is available at: https://docs.nuclei.sh/getting-started
 			if filepath.Dir(templateProfile) == "profiles" {
 				defaultProfilesPath = filepath.Join(config.DefaultConfig.GetTemplateDir())
 			}
-			templateProfile = filepath.Join(defaultProfilesPath, templateProfile)
+			relToCurrentDir := filepath.Join(".", templateProfile)
+			if fileutil.FileExists(relToCurrentDir) {
+				templateProfile = relToCurrentDir
+			} else {
+				templateProfile = filepath.Join(defaultProfilesPath, templateProfile)
+			}
 		}
 		if !fileutil.FileExists(templateProfile) {
 			gologger.Fatal().Msgf("given template profile file '%s' does not exist", templateProfile)
