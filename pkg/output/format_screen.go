@@ -109,7 +109,7 @@ func (w *StandardWriter) formatScreen(output *ResultEvent) []byte {
 
 	// If it is a fuzzing output, enrich with additional
 	// metadata for the match.
-	if output.IsFuzzingResult {
+	if output.IsFuzzingResult && output.FuzzingParameter != "" {
 		builder.WriteString(" [")
 		builder.WriteString(output.FuzzingPosition)
 		builder.WriteRune(':')
