@@ -3,22 +3,12 @@
 package errkit
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"strings"
 
 	"github.com/projectdiscovery/utils/env"
-)
-
-// ErrClass is class of error it could be network, logic etc
-var ErrClass string
-
-var (
-	// MaxErrorDepth is the maximum depth of errors to be unwrapped or maintained
-	// all errors beyond this depth will be ignored
-	MaxErrorDepth = env.GetEnvOrDefault("MAX_ERROR_DEPTH", 3)
-	// ErrorSeperator is the seperator used to join errors
-	ErrorSeperator = env.GetEnvOrDefault("ERROR_SEPERATOR", "; ")
 )
 
 const (
@@ -57,14 +47,20 @@ const (
 	ErrClassUnknown = "unknown-class"
 )
 
-var _ error = &ErrorX{}
+var (
+	// MaxErrorDepth is the maximum depth of errors to be unwrapped or maintained
+	// all errors beyond this depth will be ignored
+	MaxErrorDepth = env.GetEnvOrDefault("MAX_ERROR_DEPTH", 3)
+	// ErrorSeperator is the seperator used to join errors
+	ErrorSeperator = env.GetEnvOrDefault("ERROR_SEPERATOR", "; ")
+)
 
 // ErrorX is a custom error type that can handle all known types of errors
 // wrapping and joining strategies including custom ones and it supports error class
 // which can be shown to client/users in more meaningful way
 type ErrorX struct {
-	Class  string  `json:"class"`
-	Errors []error `json:"errors"`
+	class string
+	errs  []error
 }
 
 // Build returns the object as error interface
@@ -74,23 +70,48 @@ func (e *ErrorX) Build() error {
 
 // Unwrap returns the underlying error
 func (e *ErrorX) Unwrap() []error {
-	return e.Errors
+	return e.errs
+}
+
+// Is checks if current error contains given error
+func (e *ErrorX) Is(err error) bool {
+	x := &ErrorX{}
+	parseError(x, err)
+	// even one submatch is enough
+	for _, orig := range e.errs {
+		for _, match := range x.errs {
+			if errors.Is(orig, match) {
+				return true
+			}
+		}
+	}
+
+	return false
+}
+
+// MarshalJSON returns the json representation of the error
+func (e *ErrorX) MarshalJSON() ([]byte, error) {
+	m := map[string]interface{}{
+		"class":  e.class,
+		"errors": e.errs,
+	}
+	return json.Marshal(m)
 }
 
 // Error returns the error string
 func (e *ErrorX) Error() string {
 	var sb strings.Builder
-	if e.Class != "" {
+	if e.class != "" {
 		sb.WriteString("class=")
-		index := strings.LastIndex(e.Class, ",")
+		index := strings.LastIndex(e.class, ",")
 		if index != -1 {
-			sb.WriteString(e.Class[:index])
+			sb.WriteString(e.class[:index])
 		} else {
-			sb.WriteString(e.Class)
+			sb.WriteString(e.class)
 		}
 		sb.WriteString(" ")
 	}
-	for _, err := range e.Errors {
+	for _, err := range e.errs {
 		sb.WriteString(err.Error())
 		sb.WriteString(ErrorSeperator)
 	}
@@ -99,10 +120,15 @@ func (e *ErrorX) Error() string {
 
 // Cause return the original error that caused this without any wrapping
 func (e *ErrorX) Cause() error {
-	if len(e.Errors) > 0 {
-		return e.Errors[0]
+	if len(e.errs) > 0 {
+		return e.errs[0]
 	}
 	return nil
+}
+
+// Class returns the class of the error
+func (e *ErrorX) Class() string {
+	return e.class
 }
 
 // FromError parses a given error to understand the error class
@@ -118,7 +144,7 @@ func FromError(err error) *ErrorX {
 
 // New creates a new error with the given message
 func New(format string, args ...interface{}) *ErrorX {
-	return &ErrorX{Errors: []error{fmt.Errorf(format, args...)}}
+	return &ErrorX{errs: []error{fmt.Errorf(format, args...)}}
 }
 
 // Msgf adds a message to the error
@@ -126,41 +152,19 @@ func (e *ErrorX) Msgf(format string, args ...interface{}) {
 	if e == nil {
 		return
 	}
-	e.Errors = append(e.Errors, fmt.Errorf(format, args...))
+	e.errs = append(e.errs, fmt.Errorf(format, args...))
 }
 
 // SetClass sets the class of the error
 // if underlying error class was already set, then it is given preference
 // when generating final error msg
 func (e *ErrorX) SetClass(class string) *ErrorX {
-	if e.Class != "" {
-		e.Class = class + "," + e.Class
+	if e.class != "" {
+		e.class = class + "," + e.class
 	} else {
-		e.Class = class
+		e.class = class
 	}
 	return e
-}
-
-// Wrap wraps the given error with the message
-func Wrap(err error, message string) error {
-	if err == nil {
-		return nil
-	}
-	x := &ErrorX{}
-	parseError(x, err)
-	x.Msgf(message)
-	return x
-}
-
-// Wrapf wraps the given error with the message
-func Wrapf(err error, format string, args ...interface{}) error {
-	if err == nil {
-		return nil
-	}
-	x := &ErrorX{}
-	parseError(x, err)
-	x.Msgf(format, args...)
-	return x
 }
 
 // parseError recursively parses all known types of errors
@@ -171,20 +175,24 @@ func parseError(to *ErrorX, err error) {
 	if to == nil {
 		to = &ErrorX{}
 	}
-	if len(to.Errors) >= MaxErrorDepth {
+	if len(to.errs) >= MaxErrorDepth {
 		return
 	}
 
 	switch v := err.(type) {
 	case *ErrorX:
-		to.Errors = append(to.Errors, v.Errors...)
-		to.Class += "," + v.Class
+		to.errs = append(to.errs, v.errs...)
+		if to.class == "" {
+			to.class = v.class
+		} else {
+			to.class += "," + v.class
+		}
 	case JoinedError:
-		to.Errors = append(to.Errors, v.Unwrap()...)
+		to.errs = append(to.errs, v.Unwrap()...)
 	case WrappedError:
-		to.Errors = append(to.Errors, v.Unwrap())
+		to.errs = append(to.errs, v.Unwrap())
 	case CauseError:
-		to.Errors = append(to.Errors, v.Cause())
+		to.errs = append(to.errs, v.Cause())
 		remaining := strings.Replace(err.Error(), v.Cause().Error(), "", -1)
 		parseError(to, errors.New(remaining))
 	default:
@@ -214,35 +222,8 @@ func parseError(to *ErrorX, err error) {
 	}
 }
 
-// Combine combines multiple errors into a single error
-func Combine(errs ...error) error {
-	if len(errs) == 0 {
-		return nil
-	}
-	x := &ErrorX{}
-	for _, err := range errs {
-		if err == nil {
-			continue
-		}
-		parseError(x, err)
-	}
-	return x
-}
-
-// JoinedError is implemented by errors that are joined by Join
-type JoinedError interface {
-	// Unwrap returns the underlying error
-	Unwrap() []error
-}
-
 // WrappedError is implemented by errors that are wrapped
 type WrappedError interface {
 	// Unwrap returns the underlying error
 	Unwrap() error
-}
-
-// CauseError is implemented by errors that have a cause
-type CauseError interface {
-	// Cause return the original error that caused this without any wrapping
-	Cause() error
 }
