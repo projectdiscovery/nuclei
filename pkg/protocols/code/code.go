@@ -31,6 +31,7 @@ import (
 	protocolutils "github.com/projectdiscovery/nuclei/v3/pkg/protocols/utils"
 	templateTypes "github.com/projectdiscovery/nuclei/v3/pkg/templates/types"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
+	"github.com/projectdiscovery/nuclei/v3/pkg/types/errkit"
 	contextutil "github.com/projectdiscovery/utils/context"
 	errorutil "github.com/projectdiscovery/utils/errors"
 )
@@ -41,7 +42,10 @@ const (
 )
 
 var (
+	// pythonEnvRegexCompiled is the compiled regex for python environment variables
 	pythonEnvRegexCompiled = regexp.MustCompile(pythonEnvRegex)
+	// ErrCodeExecutionDeadline is the error returned when alloted time for script execution exceeds
+	ErrCodeExecutionDeadline = errkit.New("code execution deadline exceeded").SetClass(errkit.ErrClassDeadline).Build()
 )
 
 // Request is a request for the SSL protocol
@@ -214,7 +218,7 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 		}
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(timeout)*time.Second)
+	ctx, cancel := context.WithTimeoutCause(context.Background(), time.Duration(timeout)*time.Second, ErrCodeExecutionDeadline)
 	defer cancel()
 	// Note: we use contextutil despite the fact that gozero accepts context as argument
 	gOutput, err := contextutil.ExecFuncWithTwoReturns(ctx, func() (*gozerotypes.Result, error) {

@@ -35,6 +35,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http/signerpool"
 	templateTypes "github.com/projectdiscovery/nuclei/v3/pkg/templates/types"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
+	"github.com/projectdiscovery/nuclei/v3/pkg/types/errkit"
 	"github.com/projectdiscovery/rawhttp"
 	convUtil "github.com/projectdiscovery/utils/conversion"
 	errorutil "github.com/projectdiscovery/utils/errors"
@@ -55,7 +56,9 @@ const (
 var (
 	MaxBodyRead = int64(10 * 1024 * 1024) // 10MB
 	// ErrMissingVars is error occured when variables are missing
-	ErrMissingVars = errors.New("stop execution due to unresolved variables")
+	ErrMissingVars = errkit.New("stop execution due to unresolved variables").SetClass(errkit.ErrClassTemplateLogic).Build()
+	// ErrHttpEngineRequestDeadline is error occured when request deadline set by http request engine is exceeded
+	ErrHttpEngineRequestDeadline = errkit.New("http request engine deadline exceeded").SetClass(errkit.ErrClassDeadline).Build()
 )
 
 // Type returns the type of the protocol request
@@ -448,7 +451,7 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 			request.options.RateLimitTake()
 
 			ctx := request.newContext(input)
-			ctxWithTimeout, cancel := context.WithTimeout(ctx, httpclientpool.GetHttpTimeout(request.options.Options))
+			ctxWithTimeout, cancel := context.WithTimeoutCause(ctx, httpclientpool.GetHttpTimeout(request.options.Options), ErrHttpEngineRequestDeadline)
 			defer cancel()
 
 			generatedHttpRequest, err := generator.Make(ctxWithTimeout, input, data, payloads, dynamicValue)

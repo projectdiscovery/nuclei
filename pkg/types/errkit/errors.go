@@ -103,12 +103,7 @@ func (e *ErrorX) Error() string {
 	var sb strings.Builder
 	if e.class != "" {
 		sb.WriteString("class=")
-		index := strings.LastIndex(e.class, ",")
-		if index != -1 {
-			sb.WriteString(e.class[:index])
-		} else {
-			sb.WriteString(e.class)
-		}
+		sb.WriteString(e.getOriginClass())
 		sb.WriteString(" ")
 	}
 	for _, err := range e.errs {
@@ -126,9 +121,20 @@ func (e *ErrorX) Cause() error {
 	return nil
 }
 
+// getOriginClass returns the class that was first set
+func (e *ErrorX) getOriginClass() string {
+	index := strings.LastIndex(e.class, ",")
+	if index != -1 {
+		return e.class[:index]
+	} else {
+		return e.class
+	}
+}
+
 // Class returns the class of the error
+// if multiple classes are present, it returns the first one
 func (e *ErrorX) Class() string {
-	return e.class
+	return e.getOriginClass()
 }
 
 // FromError parses a given error to understand the error class
@@ -196,11 +202,12 @@ func parseError(to *ErrorX, err error) {
 		remaining := strings.Replace(err.Error(), v.Cause().Error(), "", -1)
 		parseError(to, errors.New(remaining))
 	default:
+		// try assigning to enriched error
 		if strings.Contains(err.Error(), DelimArrow) {
 			// Split the error by arrow delim
 			parts := strings.Split(err.Error(), DelimArrow)
-			for _, part := range parts {
-				part = strings.TrimSpace(part)
+			for i := len(parts) - 1; i >= 0; i-- {
+				part := strings.TrimSpace(parts[i])
 				parseError(to, errors.New(part))
 			}
 		} else if strings.Contains(err.Error(), DelimSemiColon) {
@@ -218,6 +225,9 @@ func parseError(to *ErrorX, err error) {
 				part = strings.TrimSpace(part)
 				parseError(to, errors.New(part))
 			}
+		} else {
+			// this cannot be furthur unwrapped
+			to.errs = append(to.errs, err)
 		}
 	}
 }

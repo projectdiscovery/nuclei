@@ -10,6 +10,7 @@ import (
 
 	"github.com/bluele/gcache"
 	"github.com/projectdiscovery/gologger"
+	"github.com/projectdiscovery/nuclei/v3/pkg/types/errkit"
 )
 
 // CacheInterface defines the signature of the hosterrorscache so that
@@ -128,15 +129,28 @@ var reCheckError = regexp.MustCompile(`(no address found for host|Client\.Timeou
 
 // checkError checks if an error represents a type that should be
 // added to the host skipping table.
+// it first parses error and extracts the cause and checks for blacklisted
+// or common errors that should be skipped
 func (c *Cache) checkError(err error) bool {
 	if err == nil {
 		return false
 	}
-	errString := err.Error()
-	for _, msg := range c.TrackError {
-		if strings.Contains(errString, msg) {
-			return true
+	// parse error for furthur processing
+	errX := errkit.FromError(err)
+	switch errX.Class() {
+	case errkit.ErrClassTemplateLogic:
+		// these are errors that are not related to the target
+		// and are due to template logic
+		return false
+
+	default:
+		tmp := errX.Cause()
+		cause := tmp.Error()
+		for _, msg := range c.TrackError {
+			if strings.Contains(cause, msg) {
+				return true
+			}
 		}
+		return reCheckError.MatchString(cause)
 	}
-	return reCheckError.MatchString(errString)
 }
