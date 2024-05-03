@@ -106,5 +106,21 @@ func (w *StandardWriter) formatScreen(output *ResultEvent) []byte {
 		}
 		builder.WriteString("]")
 	}
+
+	// If it is a fuzzing output, enrich with additional
+	// metadata for the match.
+	if output.IsFuzzingResult {
+		if output.FuzzingParameter != "" {
+			builder.WriteString(" [")
+			builder.WriteString(output.FuzzingPosition)
+			builder.WriteRune(':')
+			builder.WriteString(w.aurora.BrightMagenta(output.FuzzingParameter).String())
+			builder.WriteString("]")
+		}
+
+		builder.WriteString(" [")
+		builder.WriteString(output.FuzzingMethod)
+		builder.WriteString("]")
+	}
 	return builder.Bytes()
 }
