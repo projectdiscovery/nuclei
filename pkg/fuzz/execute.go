@@ -1,6 +1,7 @@
 package fuzz
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 	"regexp"
@@ -45,6 +46,8 @@ type ExecuteRuleInput struct {
 	Values map[string]interface{}
 	// BaseRequest is the base http request for fuzzing rule
 	BaseRequest *retryablehttp.Request
+	// DisplayFuzzPoints is a flag to display fuzz points
+	DisplayFuzzPoints bool
 }
 
 // GeneratedRequest is a single generated request for rule
@@ -76,8 +79,9 @@ func (rule *Rule) Execute(input *ExecuteRuleInput) (err error) {
 
 	var finalComponentList []component.Component
 	// match rule part with component name
+	displayDebugFuzzPoints := make(map[string]map[string]string)
 	for _, componentName := range component.Components {
-		if rule.partType != requestPartType && rule.Part != componentName {
+		if !(rule.Part == componentName || rule.partType == requestPartType) {
 			continue
 		}
 		component := component.New(componentName)
@@ -89,11 +93,25 @@ func (rule *Rule) Execute(input *ExecuteRuleInput) (err error) {
 		if !discovered {
 			continue
 		}
+
 		// check rule applicable on this component
 		if !rule.checkRuleApplicableOnComponent(component) {
 			continue
 		}
+		// Debugging display for fuzz points
+		if input.DisplayFuzzPoints {
+			displayDebugFuzzPoints[componentName] = make(map[string]string)
+			component.Iterate(func(key string, value interface{}) error {
+				displayDebugFuzzPoints[componentName][key] = fmt.Sprintf("%v", value)
+				return nil
+			})
+		}
 		finalComponentList = append(finalComponentList, component)
+	}
+	if len(displayDebugFuzzPoints) > 0 {
+		gologger.Info().Msgf("Fuzz points for %s\n", rule.options.TemplateID)
+		marshalled, _ := json.MarshalIndent(displayDebugFuzzPoints, "", "  ")
+		gologger.Silent().Msgf("%s\n", string(marshalled))
 	}
 
 	if len(finalComponentList) == 0 {

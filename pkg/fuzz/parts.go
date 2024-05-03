@@ -18,7 +18,7 @@ func (rule *Rule) executePartRule(input *ExecuteRuleInput, payload ValueOrKeyVal
 
 // checkRuleApplicableOnComponent checks if a rule is applicable on given component
 func (rule *Rule) checkRuleApplicableOnComponent(component component.Component) bool {
-	if rule.Part != component.Name() {
+	if rule.Part != component.Name() && rule.partType != requestPartType {
 		return false
 	}
 	foundAny := false

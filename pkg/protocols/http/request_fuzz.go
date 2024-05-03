@@ -121,7 +121,8 @@ func (request *Request) executeAllFuzzingRules(input *contextargs.Context, value
 		}
 
 		err := rule.Execute(&fuzz.ExecuteRuleInput{
-			Input: input,
+			Input:             input,
+			DisplayFuzzPoints: request.options.Options.DisplayFuzzPoints,
 			Callback: func(gr fuzz.GeneratedRequest) bool {
 				select {
 				case <-input.Context().Done():
@@ -140,6 +141,7 @@ func (request *Request) executeAllFuzzingRules(input *contextargs.Context, value
 			continue
 		}
 		if fuzz.IsErrRuleNotApplicable(err) {
+			gologger.Verbose().Msgf("[%s] fuzz: rule not applicable : %s\n", request.options.TemplateID, err)
 			continue
 		}
 		if err == types.ErrNoMoreRequests {
