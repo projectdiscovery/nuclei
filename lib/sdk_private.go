@@ -35,6 +35,8 @@ import (
 	"github.com/projectdiscovery/ratelimit"
 )
 
+var sharedInit sync.Once = sync.Once{}
+
 // applyRequiredDefaults to options
 func (e *NucleiEngine) applyRequiredDefaults() {
 	mockoutput := testutils.NewMockOutputWriter(e.opts.OmitTemplate)
@@ -116,8 +118,11 @@ func (e *NucleiEngine) init() error {
 
 	e.parser = templates.NewParser()
 
-	_ = protocolstate.Init(e.opts)
-	_ = protocolinit.Init(e.opts)
+	sharedInit.Do(func() {
+		_ = protocolstate.Init(e.opts)
+		_ = protocolinit.Init(e.opts)
+	})
+
 	e.applyRequiredDefaults()
 	var err error
 

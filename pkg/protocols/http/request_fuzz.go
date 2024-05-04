@@ -24,6 +24,7 @@ import (
 	protocolutils "github.com/projectdiscovery/nuclei/v3/pkg/protocols/utils"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	"github.com/projectdiscovery/retryablehttp-go"
+	"github.com/projectdiscovery/useragent"
 	urlutil "github.com/projectdiscovery/utils/url"
 )
 
@@ -89,6 +90,9 @@ func (request *Request) executeFuzzingRule(input *contextargs.Context, previous 
 	if err != nil {
 		return errors.Wrap(err, "fuzz: could not build request from url")
 	}
+	userAgent := useragent.PickRandom()
+	baseRequest.Header.Set("User-Agent", userAgent.Raw)
+
 	// execute with one value first to checks its applicability
 	err = request.executeAllFuzzingRules(inputx, previous, baseRequest, callback)
 	if err != nil {
@@ -166,6 +170,13 @@ func (request *Request) executeGeneratedFuzzingRequest(gr fuzz.GeneratedRequest,
 	}
 	var gotMatches bool
 	requestErr := request.executeRequest(input, req, gr.DynamicValues, hasInteractMatchers, func(event *output.InternalWrappedEvent) {
+		for _, result := range event.Results {
+			result.IsFuzzingResult = true
+			result.FuzzingMethod = gr.Request.Method
+			result.FuzzingParameter = gr.Parameter
+			result.FuzzingPosition = gr.Component.Name()
+		}
+
 		if hasInteractMarkers && hasInteractMatchers && request.options.Interactsh != nil {
 			requestData := &interactsh.RequestData{
 				MakeResultFunc: request.MakeResultEvent,

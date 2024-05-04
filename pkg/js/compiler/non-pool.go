@@ -8,7 +8,7 @@ import (
 )
 
 var (
-	ephemeraljsc, _ = syncutil.New(syncutil.WithSize(NonPoolingVMConcurrency))
+	ephemeraljsc    *syncutil.AdaptiveWaitGroup
 	lazyFixedSgInit = sync.OnceFunc(func() {
 		ephemeraljsc, _ = syncutil.New(syncutil.WithSize(NonPoolingVMConcurrency))
 	})
