@@ -3,7 +3,6 @@ package list
 import (
 	"net"
 	"os"
-	"runtime"
 	"strconv"
 	"strings"
 	"testing"
@@ -70,7 +69,7 @@ func (m *mockDnsHandler) ServeDNS(w dns.ResponseWriter, r *dns.Msg) {
 		msg.Authoritative = true
 		domain := msg.Question[0].Name
 		msg.Answer = append(msg.Answer, &dns.AAAA{
-			Hdr:  dns.RR_Header{Name: domain, Rrtype: dns.TypeA, Class: dns.ClassINET, Ttl: 60},
+			Hdr:  dns.RR_Header{Name: domain, Rrtype: dns.TypeAAAA, Class: dns.ClassINET, Ttl: 60},
 			AAAA: net.ParseIP("2400:6180:0:d0::91:1001"),
 		})
 	}
@@ -78,9 +77,6 @@ func (m *mockDnsHandler) ServeDNS(w dns.ResponseWriter, r *dns.Msg) {
 }
 
 func Test_scanallips_normalizeStoreInputValue(t *testing.T) {
-	if runtime.GOOS == "windows" {
-		t.Skip("Skipping test see: https://github.com/projectdiscovery/nuclei/issues/5097")
-	}
 	srv := &dns.Server{Addr: ":" + strconv.Itoa(61234), Net: "udp"}
 	srv.Handler = &mockDnsHandler{}
 

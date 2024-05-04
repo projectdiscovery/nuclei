@@ -175,6 +175,14 @@ type ResultEvent struct {
 	// must be enabled by setting protocols.ExecuterOptions.ExportReqURLPattern to true
 	ReqURLPattern string `json:"req_url_pattern,omitempty"`
 
+	// Fields related to HTTP Fuzzing functionality of nuclei.
+	// The output contains additional fields when the result is
+	// for a fuzzing template.
+	IsFuzzingResult  bool   `json:"is_fuzzing_result,omitempty"`
+	FuzzingMethod    string `json:"fuzzing_method,omitempty"`
+	FuzzingParameter string `json:"fuzzing_parameter,omitempty"`
+	FuzzingPosition  string `json:"fuzzing_position,omitempty"`
+
 	FileToIndexPosition map[string]int `json:"-"`
 	Error               string         `json:"error,omitempty"`
 }

@@ -18,6 +18,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/hosterrorscache"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/interactsh"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/headless/engine"
 	"github.com/projectdiscovery/nuclei/v3/pkg/reporting"
 	"github.com/projectdiscovery/nuclei/v3/pkg/templates"
@@ -184,11 +185,38 @@ func (e *NucleiEngine) SignTemplate(tmplSigner *signer.TemplateSigner, data []by
 
 // Close all resources used by nuclei engine
 func (e *NucleiEngine) Close() {
-	e.interactshClient.Close()
-	e.rc.Close()
-	e.customWriter.Close()
-	e.hostErrCache.Close()
-	e.executerOpts.RateLimiter.Stop()
+	if e.interactshClient != nil {
+		e.interactshClient.Close()
+	}
+	if e.rc != nil {
+		e.rc.Close()
+	}
+	if e.customWriter != nil {
+		e.customWriter.Close()
+	}
+	if e.customProgress != nil {
+		e.customProgress.Stop()
+	}
+	if e.hostErrCache != nil {
+		e.hostErrCache.Close()
+	}
+	if e.executerOpts.RateLimiter != nil {
+		e.executerOpts.RateLimiter.Stop()
+	}
+	if e.rateLimiter != nil {
+		e.rateLimiter.Stop()
+	}
+	// close global shared resources
+	protocolstate.Close()
+	if e.inputProvider != nil {
+		e.inputProvider.Close()
+	}
+	if e.browserInstance != nil {
+		e.browserInstance.Close()
+	}
+	if e.httpxClient != nil {
+		_ = e.httpxClient.Close()
+	}
 }
 
 // ExecuteWithCallback executes templates on targets and calls callback on each result(only if results are found)

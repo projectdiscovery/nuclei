@@ -57,6 +57,8 @@ type GeneratedRequest struct {
 	DynamicValues map[string]interface{}
 	// Component is the component for the request
 	Component component.Component
+	// Parameter being fuzzed
+	Parameter string
 }
 
 // Execute executes a fuzzing rule accepting a callback on which
@@ -223,7 +225,7 @@ func (rule *Rule) executeRuleValues(input *ExecuteRuleInput, ruleComponent compo
 			if err != nil {
 				return err
 			}
-			if gotErr := rule.execWithInput(input, req, input.InteractURLs, ruleComponent); gotErr != nil {
+			if gotErr := rule.execWithInput(input, req, input.InteractURLs, ruleComponent, ""); gotErr != nil {
 				return gotErr
 			}
 		}
