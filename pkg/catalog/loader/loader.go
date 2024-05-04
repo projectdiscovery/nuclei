@@ -288,6 +288,7 @@ func (store *Store) LoadTemplatesOnlyMetadata() error {
 	for templatePath := range validPaths {
 		template, _, _ := templatesCache.Has(templatePath)
 		if template != nil {
+			template.Path = templatePath
 			store.templates = append(store.templates, template)
 		}
 	}
