@@ -3,9 +3,11 @@ package runner
 import (
 	"bytes"
 	"path/filepath"
+	"sort"
 	"strings"
 
 	"github.com/alecthomas/chroma/quick"
+	jsoniter "github.com/json-iterator/go"
 	"github.com/logrusorgru/aurora"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/config"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/loader"
@@ -67,6 +69,40 @@ func (r *Runner) listAvailableStoreTemplates(store *loader.Store) {
 			}
 		} else {
 			r.verboseTemplate(tpl)
+		}
+	}
+}
+
+func (r *Runner) listAvailableStoreTags(store *loader.Store) {
+	gologger.Print().Msgf(
+		"\nListing available %v nuclei tags for %v",
+		config.DefaultConfig.TemplateVersion,
+		config.DefaultConfig.TemplatesDirectory,
+	)
+	tagsMap := make(map[string]int)
+	for _, tpl := range store.Templates() {
+		for _, tag := range tpl.Info.Tags.ToSlice() {
+			tagsMap[tag]++
+		}
+	}
+	type kv struct {
+		Key   string `json:"tag"`
+		Value int    `json:"count"`
+	}
+	var tagsList []kv
+	for k, v := range tagsMap {
+		tagsList = append(tagsList, kv{k, v})
+	}
+	sort.Slice(tagsList, func(i, j int) bool {
+		return tagsList[i].Value > tagsList[j].Value
+	})
+
+	for _, tag := range tagsList {
+		if r.options.JSONL {
+			marshalled, _ := jsoniter.Marshal(tag)
+			gologger.Silent().Msgf("%s\n", string(marshalled))
+		} else {
+			gologger.Silent().Msgf("%s (%d)\n", tag.Key, tag.Value)
 		}
 	}
 }
