@@ -513,9 +513,9 @@ Additional documentation is available at: https://docs.nuclei.sh/getting-started
 			if filepath.Dir(templateProfile) == "profiles" {
 				defaultProfilesPath = filepath.Join(config.DefaultConfig.GetTemplateDir())
 			}
-			relToCurrentDir := filepath.Join(".", templateProfile)
-			if fileutil.FileExists(relToCurrentDir) {
-				templateProfile = relToCurrentDir
+			currentDir, err := os.Getwd()
+			if err == nil && fileutil.FileExists(filepath.Join(currentDir, templateProfile)) {
+				templateProfile = filepath.Join(currentDir, templateProfile)
 			} else {
 				templateProfile = filepath.Join(defaultProfilesPath, templateProfile)
 			}

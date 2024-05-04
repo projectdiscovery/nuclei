@@ -37,6 +37,7 @@ var (
 		"dns":             dnsTestCases,
 		"workflow":        workflowTestcases,
 		"loader":          loaderTestcases,
+		"profile-loader":  profileLoaderTestcases,
 		"websocket":       websocketTestCases,
 		"headless":        headlessTestcases,
 		"whois":           whoisTestCases,
