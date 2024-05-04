@@ -225,6 +225,8 @@ type Options struct {
 	TemplateDisplay bool
 	// TemplateList lists available templates
 	TemplateList bool
+	// TemplateList lists available tags
+	TagList bool
 	// HangMonitor enables nuclei hang monitoring
 	HangMonitor bool
 	// Stdin specifies whether stdin input was given to the process
