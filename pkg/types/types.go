@@ -393,6 +393,8 @@ type Options struct {
 	DAST bool
 	// HttpApiEndpoint is the experimental http api endpoint
 	HttpApiEndpoint string
+	// ListTemplateProfiles lists all available template profiles
+	ListTemplateProfiles bool
 }
 
 // ShouldLoadResume resume file
