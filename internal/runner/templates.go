@@ -86,8 +86,8 @@ func (r *Runner) listAvailableStoreTags(store *loader.Store) {
 		}
 	}
 	type kv struct {
-		Key   string `json:"key"`
-		Value int    `json:"value"`
+		Key   string `json:"tag"`
+		Value int    `json:"count"`
 	}
 	var tagsList []kv
 	for k, v := range tagsMap {
