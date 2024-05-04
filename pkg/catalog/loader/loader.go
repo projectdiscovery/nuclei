@@ -255,6 +255,45 @@ func init() {
 	templateIDPathMap = make(map[string]string)
 }
 
+// LoadTemplatesOnlyMetadata loads only the metadata of the templates
+func (store *Store) LoadTemplatesOnlyMetadata() error {
+	templatePaths, errs := store.config.Catalog.GetTemplatesPath(store.finalTemplates)
+	store.logErroredTemplates(errs)
+
+	filteredTemplatePaths := store.pathFilter.Match(templatePaths)
+
+	validPaths := make(map[string]struct{})
+	for templatePath := range filteredTemplatePaths {
+		loaded, err := store.config.ExecutorOptions.Parser.LoadTemplate(templatePath, store.tagFilter, nil, store.config.Catalog)
+		if loaded || store.pathFilter.MatchIncluded(templatePath) {
+			validPaths[templatePath] = struct{}{}
+		}
+		if err != nil {
+			if strings.Contains(err.Error(), templates.ErrExcluded.Error()) {
+				stats.Increment(templates.TemplatesExcludedStats)
+				if config.DefaultConfig.LogAllEvents {
+					gologger.Print().Msgf("[%v] %v\n", aurora.Yellow("WRN").String(), err.Error())
+				}
+				continue
+			}
+			gologger.Warning().Msg(err.Error())
+		}
+	}
+	parserItem, ok := store.config.ExecutorOptions.Parser.(*templates.Parser)
+	if !ok {
+		return errors.New("invalid parser")
+	}
+	templatesCache := parserItem.Cache()
+
+	for templatePath := range validPaths {
+		template, _, _ := templatesCache.Has(templatePath)
+		if template != nil {
+			store.templates = append(store.templates, template)
+		}
+	}
+	return nil
+}
+
 // ValidateTemplates takes a list of templates and validates them
 // erroring out on discovering any faulty templates.
 func (store *Store) ValidateTemplates() error {
