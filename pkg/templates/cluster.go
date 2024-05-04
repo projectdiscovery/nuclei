@@ -59,6 +59,14 @@ func Cluster(list []*Template) [][]*Template {
 			final = append(final, []*Template{template})
 			continue
 		}
+
+		// it is not possible to cluster flow and multiprotocol due to dependent execution
+		if template.Flow != "" || template.Options.IsMultiProtocol {
+			_ = skip.Set(key, struct{}{})
+			final = append(final, []*Template{template})
+			continue
+		}
+
 		_ = skip.Set(key, struct{}{})
 
 		var templateType types.ProtocolType
@@ -78,6 +86,13 @@ func Cluster(list []*Template) [][]*Template {
 			otherKey := other.Path
 
 			if skip.Has(otherKey) {
+				continue
+			}
+
+			// it is not possible to cluster flow and multiprotocol due to dependent execution
+			if other.Flow != "" || other.Options.IsMultiProtocol {
+				_ = skip.Set(otherKey, struct{}{})
+				final = append(final, []*Template{other})
 				continue
 			}
 
@@ -252,6 +267,13 @@ func (e *ClusterExecuter) Execute(ctx *scan.ScanContext) (bool, error) {
 	previous := make(map[string]interface{})
 	dynamicValues := make(map[string]interface{})
 	err := e.requests.ExecuteWithResults(inputItem, dynamicValues, previous, func(event *output.InternalWrappedEvent) {
+		if event == nil {
+			// unlikely but just in case
+			return
+		}
+		if event.InternalEvent == nil {
+			event.InternalEvent = make(map[string]interface{})
+		}
 		for _, operator := range e.operators {
 			result, matched := operator.operator.Execute(event.InternalEvent, e.requests.Match, e.requests.Extract, e.options.Options.Debug || e.options.Options.DebugResponse)
 			event.InternalEvent["template-id"] = operator.templateID
@@ -281,7 +303,7 @@ func (e *ClusterExecuter) Execute(ctx *scan.ScanContext) (bool, error) {
 
 // ExecuteWithResults executes the protocol requests and returns results instead of writing them.
 func (e *ClusterExecuter) ExecuteWithResults(ctx *scan.ScanContext) ([]*output.ResultEvent, error) {
-	scanCtx := scan.NewScanContext(ctx.Input)
+	scanCtx := scan.NewScanContext(ctx.Context(), ctx.Input)
 	dynamicValues := make(map[string]interface{})
 
 	inputItem := ctx.Input.Clone()

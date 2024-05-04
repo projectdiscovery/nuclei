@@ -1,18 +1,19 @@
 package core
 
 import (
+	"context"
 	"sync"
 	"sync/atomic"
 
-	"github.com/remeh/sizedwaitgroup"
-
 	"github.com/projectdiscovery/gologger"
+	"github.com/projectdiscovery/nuclei/v3/pkg/input/provider"
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
 	"github.com/projectdiscovery/nuclei/v3/pkg/templates"
 	"github.com/projectdiscovery/nuclei/v3/pkg/templates/types"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types/scanstrategy"
 	stringsutil "github.com/projectdiscovery/utils/strings"
+	syncutil "github.com/projectdiscovery/utils/sync"
 )
 
 // Execute takes a list of templates/workflows that have been compiled
@@ -20,18 +21,18 @@ import (
 //
 // All the execution logic for the templates/workflows happens in this part
 // of the engine.
-func (e *Engine) Execute(templates []*templates.Template, target InputProvider) *atomic.Bool {
-	return e.ExecuteScanWithOpts(templates, target, false)
+func (e *Engine) Execute(ctx context.Context, templates []*templates.Template, target provider.InputProvider) *atomic.Bool {
+	return e.ExecuteScanWithOpts(ctx, templates, target, false)
 }
 
 // ExecuteWithResults a list of templates with results
-func (e *Engine) ExecuteWithResults(templatesList []*templates.Template, target InputProvider, callback func(*output.ResultEvent)) *atomic.Bool {
+func (e *Engine) ExecuteWithResults(ctx context.Context, templatesList []*templates.Template, target provider.InputProvider, callback func(*output.ResultEvent)) *atomic.Bool {
 	e.Callback = callback
-	return e.ExecuteScanWithOpts(templatesList, target, false)
+	return e.ExecuteScanWithOpts(ctx, templatesList, target, false)
 }
 
 // ExecuteScanWithOpts executes scan with given scanStrategy
-func (e *Engine) ExecuteScanWithOpts(templatesList []*templates.Template, target InputProvider, noCluster bool) *atomic.Bool {
+func (e *Engine) ExecuteScanWithOpts(ctx context.Context, templatesList []*templates.Template, target provider.InputProvider, noCluster bool) *atomic.Bool {
 	results := &atomic.Bool{}
 	selfcontainedWg := &sync.WaitGroup{}
 
@@ -83,14 +84,14 @@ func (e *Engine) ExecuteScanWithOpts(templatesList []*templates.Template, target
 	}
 
 	// Execute All SelfContained in parallel
-	e.executeAllSelfContained(selfContained, results, selfcontainedWg)
+	e.executeAllSelfContained(ctx, selfContained, results, selfcontainedWg)
 
 	strategyResult := &atomic.Bool{}
 	switch e.options.ScanStrategy {
 	case scanstrategy.TemplateSpray.String():
-		strategyResult = e.executeTemplateSpray(filtered, target)
+		strategyResult = e.executeTemplateSpray(ctx, filtered, target)
 	case scanstrategy.HostSpray.String():
-		strategyResult = e.executeHostSpray(filtered, target)
+		strategyResult = e.executeHostSpray(ctx, filtered, target)
 	}
 
 	results.CompareAndSwap(false, strategyResult.Load())
@@ -100,7 +101,7 @@ func (e *Engine) ExecuteScanWithOpts(templatesList []*templates.Template, target
 }
 
 // executeTemplateSpray executes scan using template spray strategy where targets are iterated over each template
-func (e *Engine) executeTemplateSpray(templatesList []*templates.Template, target InputProvider) *atomic.Bool {
+func (e *Engine) executeTemplateSpray(ctx context.Context, templatesList []*templates.Template, target provider.InputProvider) *atomic.Bool {
 	results := &atomic.Bool{}
 
 	// wp is workpool that contains different waitgroups for
@@ -108,9 +109,17 @@ func (e *Engine) executeTemplateSpray(templatesList []*templates.Template, targe
 	wp := e.GetWorkPool()
 
 	for _, template := range templatesList {
-		templateType := template.Type()
+		select {
+		case <-ctx.Done():
+			return results
+		default:
+		}
 
-		var wg *sizedwaitgroup.SizedWaitGroup
+		// resize check point - nop if there are no changes
+		wp.RefreshWithConfig(e.GetWorkPoolConfig())
+
+		templateType := template.Type()
+		var wg *syncutil.AdaptiveWaitGroup
 		if templateType == types.HeadlessProtocol {
 			wg = wp.Headless
 		} else {
@@ -123,7 +132,7 @@ func (e *Engine) executeTemplateSpray(templatesList []*templates.Template, targe
 			// All other request types are executed here
 			// Note: executeTemplateWithTargets creates goroutines and blocks
 			// given template is executed on all targets
-			e.executeTemplateWithTargets(tpl, target, results)
+			e.executeTemplateWithTargets(ctx, tpl, target, results)
 		}(template)
 	}
 	wp.Wait()
@@ -131,15 +140,21 @@ func (e *Engine) executeTemplateSpray(templatesList []*templates.Template, targe
 }
 
 // executeHostSpray executes scan using host spray strategy where templates are iterated over each target
-func (e *Engine) executeHostSpray(templatesList []*templates.Template, target InputProvider) *atomic.Bool {
+func (e *Engine) executeHostSpray(ctx context.Context, templatesList []*templates.Template, target provider.InputProvider) *atomic.Bool {
 	results := &atomic.Bool{}
-	wp := sizedwaitgroup.New(e.options.BulkSize + e.options.HeadlessBulkSize)
+	wp, _ := syncutil.New(syncutil.WithSize(e.options.BulkSize + e.options.HeadlessBulkSize))
 
-	target.Scan(func(value *contextargs.MetaInput) bool {
+	target.Iterate(func(value *contextargs.MetaInput) bool {
+		select {
+		case <-ctx.Done():
+			return false
+		default:
+		}
+
 		wp.Add()
 		go func(targetval *contextargs.MetaInput) {
 			defer wp.Done()
-			e.executeTemplatesOnTarget(templatesList, targetval, results)
+			e.executeTemplatesOnTarget(ctx, templatesList, targetval, results)
 		}(value)
 		return true
 	})

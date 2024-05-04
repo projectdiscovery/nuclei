@@ -44,14 +44,27 @@ func (m *MultiProtocol) Compile() error {
 
 // ExecuteWithResults executes the template and returns results
 func (m *MultiProtocol) ExecuteWithResults(ctx *scan.ScanContext) error {
+	select {
+	case <-ctx.Context().Done():
+		return ctx.Context().Err()
+	default:
+	}
+
 	// put all readonly args into template context
 	m.options.GetTemplateCtx(ctx.Input.MetaInput).Merge(m.readOnlyArgs)
-	var finalProtoEvent *output.InternalWrappedEvent
+
+	// add all input args to template context
+	ctx.Input.ForEach(func(key string, value interface{}) {
+		m.options.GetTemplateCtx(ctx.Input.MetaInput).Set(key, value)
+	})
+
 	// callback to process results from all protocols
 	multiProtoCallback := func(event *output.InternalWrappedEvent) {
-		if event != nil {
-			finalProtoEvent = event
+		if event == nil {
+			return
 		}
+		// log event and generate result for the event
+		ctx.LogEvent(event)
 		// export dynamic values from operators (i.e internal:true)
 		if event.OperatorsResult != nil && len(event.OperatorsResult.DynamicValues) > 0 {
 			for k, v := range event.OperatorsResult.DynamicValues {
@@ -89,6 +102,12 @@ func (m *MultiProtocol) ExecuteWithResults(ctx *scan.ScanContext) error {
 
 	// execute all protocols in the queue
 	for _, req := range m.requests {
+		select {
+		case <-ctx.Context().Done():
+			return ctx.Context().Err()
+		default:
+		}
+
 		values := m.options.GetTemplateCtx(ctx.Input.MetaInput).GetAll()
 		err := req.ExecuteWithResults(ctx.Input, output.InternalEvent(values), nil, multiProtoCallback)
 		// if error skip execution of next protocols
@@ -97,12 +116,6 @@ func (m *MultiProtocol) ExecuteWithResults(ctx *scan.ScanContext) error {
 			return err
 		}
 	}
-	// Review: how to handle events of multiple protocols in a single template
-	// currently the outer callback is only executed once (for the last protocol in queue)
-	// due to workflow logic at https://github.com/projectdiscovery/nuclei/blob/main/pkg/protocols/common/executer/executem.go#L150
-	// this causes addition of duplicated / unncessary variables with prefix template_id_all_variables
-	ctx.LogEvent(finalProtoEvent)
-
 	return nil
 }
 

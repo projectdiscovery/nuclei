@@ -1,0 +1,39 @@
+id: fuzz-query-num
+
+info:
+  name: Fuzz Query Param For IDOR
+  author: pdteam
+  severity: info
+  description: Query Value Fuzzing using Fuzzing Rules
+
+http:
+  - pre-condition:
+      - type: dsl
+        dsl:
+          - 'len(query) > 0'
+    # below filter is related to integration testing 
+      - type: word
+        part: path
+        words:
+          - /blog/post
+    pre-condition-operator: and
+
+    payloads:
+      nums:
+        - 200
+        - 201
+    
+    fuzzing:
+      - part: query
+        type: replace
+        mode: multiple
+        values: 
+          - "^[0-9]+$" # only if value is number
+        fuzz:
+          - '{{nums}}'
+
+    matchers:
+      - type: status
+        status: 
+          - 200      
+    

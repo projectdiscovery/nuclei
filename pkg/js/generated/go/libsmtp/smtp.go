@@ -15,13 +15,14 @@ func init() {
 	module.Set(
 		gojs.Objects{
 			// Functions
+			"NewSMTPClient": lib_smtp.NewSMTPClient,
 
 			// Var and consts
 
 			// Objects / Classes
-			"IsSMTPResponse": gojs.GetClassConstructor[lib_smtp.IsSMTPResponse](&lib_smtp.IsSMTPResponse{}),
-			"SMTPClient":     gojs.GetClassConstructor[lib_smtp.SMTPClient](&lib_smtp.SMTPClient{}),
-			"SMTPMessage":    gojs.GetClassConstructor[lib_smtp.SMTPMessage](&lib_smtp.SMTPMessage{}),
+			"Client":       lib_smtp.NewSMTPClient,
+			"SMTPMessage":  gojs.GetClassConstructor[lib_smtp.SMTPMessage](&lib_smtp.SMTPMessage{}),
+			"SMTPResponse": gojs.GetClassConstructor[lib_smtp.SMTPResponse](&lib_smtp.SMTPResponse{}),
 		},
 	).Register()
 }

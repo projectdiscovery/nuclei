@@ -4,13 +4,13 @@ import (
 	"sync"
 
 	"github.com/dop251/goja"
-	"github.com/remeh/sizedwaitgroup"
+	syncutil "github.com/projectdiscovery/utils/sync"
 )
 
 var (
-	ephemeraljsc    = sizedwaitgroup.New(NonPoolingVMConcurrency)
+	ephemeraljsc    *syncutil.AdaptiveWaitGroup
 	lazyFixedSgInit = sync.OnceFunc(func() {
-		ephemeraljsc = sizedwaitgroup.New(NonPoolingVMConcurrency)
+		ephemeraljsc, _ = syncutil.New(syncutil.WithSize(NonPoolingVMConcurrency))
 	})
 )
 

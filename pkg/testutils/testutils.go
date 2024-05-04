@@ -54,6 +54,8 @@ var DefaultOptions = &types.Options{
 	Timeout:                    5,
 	Retries:                    1,
 	RateLimit:                  150,
+	RateLimitDuration:          time.Second,
+	ProbeConcurrency:           50,
 	ProjectPath:                "",
 	Severities:                 severity.Severities{},
 	Targets:                    []string{},
@@ -71,6 +73,7 @@ var DefaultOptions = &types.Options{
 	InteractionsPollDuration:   5,
 	GitHubTemplateRepo:         []string{},
 	GitHubToken:                "",
+	ResponseReadTimeout:        time.Second * 5,
 }
 
 // TemplateInfo contains info for a mock executed template.

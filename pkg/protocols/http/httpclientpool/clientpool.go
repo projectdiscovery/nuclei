@@ -35,7 +35,17 @@ var (
 	forceMaxRedirects int
 	normalClient      *retryablehttp.Client
 	clientPool        *mapsutil.SyncLockMap[string, *retryablehttp.Client]
+	// ResponseHeaderTimeout is the timeout for response headers
+	// to be read from the server (this prevents infinite hang started by server if any)
+	ResponseHeaderTimeout = time.Duration(5) * time.Second
+	// HttpTimeoutMultiplier is the multiplier for the http timeout
+	HttpTimeoutMultiplier = 3
 )
+
+// GetHttpTimeout returns the http timeout for the client
+func GetHttpTimeout(opts *types.Options) time.Duration {
+	return time.Duration(opts.Timeout*HttpTimeoutMultiplier) * time.Second
+}
 
 // Init initializes the clientpool implementation
 func Init(options *types.Options) error {
@@ -139,7 +149,7 @@ func GetRawHTTP(options *types.Options) *rawhttp.Client {
 		} else if Dialer != nil {
 			rawHttpOptions.FastDialer = Dialer
 		}
-		rawHttpOptions.Timeout = time.Duration(options.Timeout) * time.Second
+		rawHttpOptions.Timeout = GetHttpTimeout(options)
 		rawHttpClient = rawhttp.NewClient(rawHttpOptions)
 	}
 	return rawHttpClient
@@ -237,11 +247,12 @@ func wrappedGet(options *types.Options, configuration *Configuration) (*retryabl
 			}
 			return Dialer.DialTLS(ctx, network, addr)
 		},
-		MaxIdleConns:        maxIdleConns,
-		MaxIdleConnsPerHost: maxIdleConnsPerHost,
-		MaxConnsPerHost:     maxConnsPerHost,
-		TLSClientConfig:     tlsConfig,
-		DisableKeepAlives:   disableKeepAlives,
+		MaxIdleConns:          maxIdleConns,
+		MaxIdleConnsPerHost:   maxIdleConnsPerHost,
+		MaxConnsPerHost:       maxConnsPerHost,
+		TLSClientConfig:       tlsConfig,
+		DisableKeepAlives:     disableKeepAlives,
+		ResponseHeaderTimeout: ResponseHeaderTimeout,
 	}
 
 	if types.ProxyURL != "" {
@@ -288,7 +299,7 @@ func wrappedGet(options *types.Options, configuration *Configuration) (*retryabl
 		CheckRedirect: makeCheckRedirectFunc(redirectFlow, maxRedirects),
 	}
 	if !configuration.NoTimeout {
-		httpclient.Timeout = time.Duration(options.Timeout) * time.Second
+		httpclient.Timeout = GetHttpTimeout(options)
 	}
 	client := retryablehttp.NewWithHTTPClient(httpclient, retryableHttpOptions)
 	if jar != nil {

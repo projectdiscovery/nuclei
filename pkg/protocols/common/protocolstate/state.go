@@ -18,13 +18,16 @@ import (
 )
 
 // Dialer is a shared fastdialer instance for host DNS resolution
-var Dialer *fastdialer.Dialer
+var (
+	Dialer *fastdialer.Dialer
+)
 
 // Init creates the Dialer instance based on user configuration
 func Init(options *types.Options) error {
 	if Dialer != nil {
 		return nil
 	}
+
 	lfaAllowed = options.AllowLocalFileAccess
 	opts := fastdialer.DefaultOptions
 	if options.DialerTimeout > 0 {
@@ -121,7 +124,7 @@ func Init(options *types.Options) error {
 		opts.ResolversFile = true
 		opts.EnableFallback = true
 	}
-	if options.ResolversFile != "" {
+	if len(options.InternalResolversList) > 0 {
 		opts.BaseResolvers = options.InternalResolversList
 	}
 
@@ -129,6 +132,9 @@ func Init(options *types.Options) error {
 
 	opts.WithDialerHistory = true
 	opts.SNIName = options.SNI
+	// this instance is used in javascript protocol libraries and
+	// dial history is required to get dialed ip of a host
+	opts.WithDialerHistory = true
 
 	// fastdialer now by default fallbacks to ztls when there are tls related errors
 	dialer, err := fastdialer.NewDialer(opts)
@@ -141,6 +147,8 @@ func Init(options *types.Options) error {
 	mysql.RegisterDialContext("tcp", func(ctx context.Context, addr string) (net.Conn, error) {
 		return Dialer.Dial(ctx, "tcp", addr)
 	})
+
+	StartActiveMemGuardian(context.Background())
 
 	return nil
 }
@@ -202,4 +210,5 @@ func Close() {
 	if Dialer != nil {
 		Dialer.Close()
 	}
+	StopActiveMemGuardian()
 }

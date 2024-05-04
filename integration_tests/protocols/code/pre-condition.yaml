@@ -1,0 +1,26 @@
+id: pre-condition-code
+
+info:
+  name: example code template
+  author: pdteam
+  severity: info
+
+
+self-contained: true
+
+variables:
+  OAST: "{{interactsh-url}}"
+
+code:
+  - pre-condition: IsLinux()
+    engine:
+      - sh
+      - bash
+    source: |
+      echo "$OAST" | base64
+    
+    matchers:
+      - type: dsl
+        dsl:
+          - true
+# digest: 490a004630440220192fb8f704b078c2885047b85ac1a0491be86485c033a976d201599683a35aab0220604b1c3781e9d97079d0e5c23c18e6a2d87493c8e2b930536e692ee7d06e9247:4a3eb6b4988d95847d4203be25ed1d46

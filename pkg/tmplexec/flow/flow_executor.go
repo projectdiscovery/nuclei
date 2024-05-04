@@ -8,7 +8,6 @@ import (
 	"sync/atomic"
 
 	"github.com/dop251/goja"
-	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/generators"
 	"github.com/projectdiscovery/nuclei/v3/pkg/scan"
@@ -175,12 +174,11 @@ func (f *FlowExecutor) Compile() error {
 
 // ExecuteWithResults executes the flow and returns results
 func (f *FlowExecutor) ExecuteWithResults(ctx *scan.ScanContext) error {
-	defer func() {
-		if e := recover(); e != nil {
-			f.ctx.LogError(fmt.Errorf("panic occurred while executing target %v with flow: %v", ctx.Input.MetaInput.Input, e))
-			gologger.Error().Label(f.options.TemplateID).Msgf("panic occurred while executing target %v with flow: %v", ctx.Input.MetaInput.Input, e)
-		}
-	}()
+	select {
+	case <-ctx.Context().Done():
+		return ctx.Context().Err()
+	default:
+	}
 
 	f.ctx.Input = ctx.Input
 	// -----Load all types of variables-----
@@ -228,7 +226,11 @@ func (f *FlowExecutor) ExecuteWithResults(ctx *scan.ScanContext) error {
 		}
 	}
 	// register template object
-	if err := runtime.Set("template", f.options.GetTemplateCtx(f.ctx.Input.MetaInput).GetAll()); err != nil {
+	tmplObj := f.options.GetTemplateCtx(f.ctx.Input.MetaInput).GetAll()
+	if tmplObj == nil {
+		tmplObj = map[string]interface{}{}
+	}
+	if err := runtime.Set("template", tmplObj); err != nil {
 		return err
 	}
 

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strings"
 	"sync/atomic"
+	"time"
 
 	"github.com/dop251/goja"
 	"github.com/projectdiscovery/gologger"
@@ -14,6 +15,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/helpers/writer"
 	"github.com/projectdiscovery/nuclei/v3/pkg/scan"
+	"github.com/projectdiscovery/nuclei/v3/pkg/scan/events"
 	"github.com/projectdiscovery/nuclei/v3/pkg/tmplexec/flow"
 	"github.com/projectdiscovery/nuclei/v3/pkg/tmplexec/generic"
 	"github.com/projectdiscovery/nuclei/v3/pkg/tmplexec/multiproto"
@@ -34,16 +36,6 @@ var _ protocols.Executer = &TemplateExecuter{}
 
 // NewTemplateExecuter creates a new request TemplateExecuter for list of requests
 func NewTemplateExecuter(requests []protocols.Request, options *protocols.ExecutorOptions) (*TemplateExecuter, error) {
-	isMultiProto := false
-	lastProto := ""
-	for _, request := range requests {
-		if request.Type().String() != lastProto && lastProto != "" {
-			isMultiProto = true
-			break
-		}
-		lastProto = request.Type().String()
-	}
-
 	e := &TemplateExecuter{requests: requests, options: options, results: &atomic.Bool{}}
 	if options.Flow != "" {
 		// we use a dummy input here because goal of flow executor at this point is to just check
@@ -55,13 +47,11 @@ func NewTemplateExecuter(requests []protocols.Request, options *protocols.Execut
 		}
 		e.program = p
 	} else {
-		// Review:
-		// multiproto engine is only used if there is more than one protocol in template
-		// else we use generic engine (should we use multiproto engine for single protocol with multiple requests as well ?)
-		if isMultiProto {
-			e.engine = multiproto.NewMultiProtocol(requests, options, e.results)
-		} else {
+		// only use generic if there is only 1 protocol with only 1 section
+		if len(requests) == 1 {
 			e.engine = generic.NewGenericEngine(requests, options, e.results)
+		} else {
+			e.engine = multiproto.NewMultiProtocol(requests, options, e.results)
 		}
 	}
 	return e, nil
@@ -104,26 +94,49 @@ func (e *TemplateExecuter) Requests() int {
 
 // Execute executes the protocol group and returns true or false if results were found.
 func (e *TemplateExecuter) Execute(ctx *scan.ScanContext) (bool, error) {
-	results := &atomic.Bool{}
+
+	// === when nuclei is built with -tags=stats ===
+	// Note: this is no-op (empty functions) when nuclei is built in normal or without -tags=stats
+	events.AddScanEvent(events.ScanEvent{
+		Target:       ctx.Input.MetaInput.Input,
+		Time:         time.Now(),
+		EventType:    events.ScanStarted,
+		TemplateType: e.getTemplateType(),
+		TemplateID:   e.options.TemplateID,
+		TemplatePath: e.options.TemplatePath,
+		MaxRequests:  e.Requests(),
+	})
+	defer func() {
+		events.AddScanEvent(events.ScanEvent{
+			Target:       ctx.Input.MetaInput.Input,
+			Time:         time.Now(),
+			EventType:    events.ScanFinished,
+			TemplateType: e.getTemplateType(),
+			TemplateID:   e.options.TemplateID,
+			TemplatePath: e.options.TemplatePath,
+			MaxRequests:  e.Requests(),
+		})
+	}()
+	// ==== end of stats ====
+
+	// executed contains status of execution if it was successfully executed or not
+	// doesn't matter if it was matched or not
+	executed := &atomic.Bool{}
+	// matched in this case means something was exported / written to output
+	matched := &atomic.Bool{}
 	defer func() {
 		// it is essential to remove template context of `Scan i.e template x input pair`
 		// since it is of no use after scan is completed (regardless of success or failure)
 		e.options.RemoveTemplateCtx(ctx.Input.MetaInput)
 	}()
-	defer func() {
-		// try catching unknown panics
-		if r := recover(); r != nil {
-			ctx.LogError(fmt.Errorf("panic: %v", r))
-		}
-	}()
 
 	var lastMatcherEvent *output.InternalWrappedEvent
 	writeFailureCallback := func(event *output.InternalWrappedEvent, matcherStatus bool) {
-		if !results.Load() && matcherStatus {
+		if !matched.Load() && matcherStatus {
 			if err := e.options.Output.WriteFailure(event); err != nil {
 				gologger.Warning().Msgf("Could not write failure event to output: %s\n", err)
 			}
-			results.CompareAndSwap(false, true)
+			executed.CompareAndSwap(false, true)
 		}
 	}
 
@@ -151,11 +164,11 @@ func (e *TemplateExecuter) Execute(ctx *scan.ScanContext) (bool, error) {
 		// If no results were found, and also interactsh is not being used
 		// in that case we can skip it, otherwise we've to show failure in
 		// case of matcher-status flag.
-		if !event.HasOperatorResult() && !event.UsesInteractsh {
+		if !event.HasOperatorResult() && event.InternalEvent != nil {
 			lastMatcherEvent = event
 		} else {
 			if writer.WriteResult(event, e.options.Output, e.options.Progress, e.options.IssuesClient) {
-				results.CompareAndSwap(false, true)
+				matched.Store(true)
 			} else {
 				lastMatcherEvent = event
 			}
@@ -170,7 +183,7 @@ func (e *TemplateExecuter) Execute(ctx *scan.ScanContext) (bool, error) {
 	// so in compile step earlier we compile it to validate javascript syntax and other things
 	// and while executing we create new instance of flow executor everytime
 	if e.options.Flow != "" {
-		flowexec, err := flow.NewFlowExecutor(e.requests, ctx, e.options, results, e.program)
+		flowexec, err := flow.NewFlowExecutor(e.requests, ctx, e.options, executed, e.program)
 		if err != nil {
 			ctx.LogError(err)
 			return false, fmt.Errorf("could not create flow executor: %s", err)
@@ -187,12 +200,42 @@ func (e *TemplateExecuter) Execute(ctx *scan.ScanContext) (bool, error) {
 	if lastMatcherEvent != nil {
 		writeFailureCallback(lastMatcherEvent, e.options.Options.MatcherStatus)
 	}
-	return results.Load(), errx
+	return executed.Load() || matched.Load(), errx
 }
 
 // ExecuteWithResults executes the protocol requests and returns results instead of writing them.
 func (e *TemplateExecuter) ExecuteWithResults(ctx *scan.ScanContext) ([]*output.ResultEvent, error) {
-	err := e.engine.ExecuteWithResults(ctx)
-	ctx.LogError(err)
-	return ctx.GenerateResult(), err
+	var errx error
+	if e.options.Flow != "" {
+		flowexec, err := flow.NewFlowExecutor(e.requests, ctx, e.options, e.results, e.program)
+		if err != nil {
+			ctx.LogError(err)
+			return nil, fmt.Errorf("could not create flow executor: %s", err)
+		}
+		if err := flowexec.Compile(); err != nil {
+			ctx.LogError(err)
+			return nil, err
+		}
+		errx = flowexec.ExecuteWithResults(ctx)
+	} else {
+		errx = e.engine.ExecuteWithResults(ctx)
+	}
+	if errx != nil {
+		ctx.LogError(errx)
+	}
+	return ctx.GenerateResult(), errx
+}
+
+// getTemplateType returns the template type of the template
+func (e *TemplateExecuter) getTemplateType() string {
+	if len(e.requests) == 0 {
+		return "null"
+	}
+	if e.options.Flow != "" {
+		return "flow"
+	}
+	if len(e.requests) > 1 {
+		return "multiprotocol"
+	}
+	return e.requests[0].Type().String()
 }

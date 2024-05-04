@@ -34,6 +34,13 @@ func GetMatchedTemplateName(event *output.ResultEvent) string {
 	return matchedTemplateName
 }
 
+type reportMetadataEditorHook func(event *output.ResultEvent, formatter ResultFormatter) string
+
+var (
+	// ReportGenerationMetadataHooks are the hooks for adding metadata to the report
+	ReportGenerationMetadataHooks []reportMetadataEditorHook
+)
+
 func CreateReportDescription(event *output.ResultEvent, formatter ResultFormatter, omitRaw bool) string {
 	template := GetMatchedTemplateName(event)
 	builder := &bytes.Buffer{}
@@ -46,6 +53,12 @@ func CreateReportDescription(event *output.ResultEvent, formatter ResultFormatte
 	attributes.ForEach(func(key string, data interface{}) {
 		builder.WriteString(fmt.Sprintf("%s: %s\n\n", formatter.MakeBold(key), types.ToString(data)))
 	})
+
+	if len(ReportGenerationMetadataHooks) > 0 {
+		for _, hook := range ReportGenerationMetadataHooks {
+			builder.WriteString(hook(event, formatter))
+		}
+	}
 
 	builder.WriteString(formatter.MakeBold("Template Information"))
 	builder.WriteString("\n\n")

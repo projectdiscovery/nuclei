@@ -1,0 +1,36 @@
+id: multi-http-var-sharing
+
+info:
+  name: Multi HTTP var sharing
+  author: pdteam
+  severity: info
+  description: |
+    A template which has multiple HTTP requests block and variables are shared between them
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}"
+
+    matchers:
+      - type: word
+        words:
+          - "This is test matcher text"
+        negative: true
+        internal: true
+
+    extractors:
+      - type: dsl
+        name: ffff
+        dsl:
+          - status_code
+        internal: true
+
+  - method: GET
+    path:
+      - "{{BaseURL}}/{{ffff}}"
+    
+    matchers:
+      - type: status
+        status: 
+          - 200

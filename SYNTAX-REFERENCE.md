@@ -379,6 +379,7 @@ Stop execution once first match is found
 <div class="dt">
 
 Signature is the request signature method
+WARNING: 'signature' will be deprecated and will be removed in a future release. Prefer using 'code' protocol for writing cloud checks
 
 
 Valid values:
@@ -1372,6 +1373,19 @@ Fuzzing describes schema to fuzz http requests
 
 <div class="dd">
 
+<code>self-contained</code>  <i>bool</i>
+
+</div>
+<div class="dt">
+
+SelfContained specifies if the request is self-contained.
+
+</div>
+
+<hr />
+
+<div class="dd">
+
 <code>signature</code>  <i><a href="#signaturetypeholder">SignatureTypeHolder</a></i>
 
 </div>
@@ -1593,6 +1607,32 @@ DigestAuthPassword specifies the password for digest authentication
 <div class="dt">
 
 DisablePathAutomerge disables merging target url path with raw request path
+
+</div>
+
+<hr />
+
+<div class="dd">
+
+<code>pre-condition</code>  <i>[]<a href="#matchersmatcher">matchers.Matcher</a></i>
+
+</div>
+<div class="dt">
+
+Fuzz PreCondition is matcher-like field to check if fuzzing should be performed on this request or not
+
+</div>
+
+<hr />
+
+<div class="dd">
+
+<code>pre-condition-operator</code>  <i>string</i>
+
+</div>
+<div class="dt">
+
+FuzzPreConditionOperator is the operator between multiple PreConditions for fuzzing Default is OR
 
 </div>
 
@@ -1872,30 +1912,51 @@ values:
 
 <div class="dd">
 
-<code>fuzz</code>  <i>[]string</i>
+<code>fuzz</code>  <i><a href="#sliceormapslice">SliceOrMapSlice</a></i>
 
 </div>
 <div class="dt">
 
-Fuzz is the list of payloads to perform substitutions with.
-
-
-
-Examples:
-
-
-```yaml
-# Examples of fuzz
-fuzz:
-    - '{{ssrf}}'
-    - '{{interactsh-url}}'
-    - example-value
-```
-
+description: |
+   Fuzz is the list of payloads to perform substitutions with.
+ examples:
+   - name: Examples of fuzz
+     value: >
+       []string{"{{ssrf}}", "{{interactsh-url}}", "example-value"}
+      or
+       x-header: 1
+       x-header: 2
 
 </div>
 
 <hr />
+
+<div class="dd">
+
+<code>replace-regex</code>  <i>string</i>
+
+</div>
+<div class="dt">
+
+replace-regex is regex for regex-replace rule type
+it is only required for replace-regex rule type
+
+</div>
+
+<hr />
+
+
+
+
+
+## SliceOrMapSlice
+
+Appears in:
+
+
+- <code><a href="#fuzzrule">fuzz.Rule</a>.fuzz</code>
+
+
 
 
 
@@ -1910,6 +1971,459 @@ Appears in:
 - <code><a href="#httprequest">http.Request</a>.signature</code>
 
 
+
+
+
+
+
+## matchers.Matcher
+Matcher is used to match a part in the output from a protocol.
+
+Appears in:
+
+
+- <code><a href="#httprequest">http.Request</a>.pre-condition</code>
+
+
+
+
+
+<hr />
+
+<div class="dd">
+
+<code>type</code>  <i><a href="#matchertypeholder">MatcherTypeHolder</a></i>
+
+</div>
+<div class="dt">
+
+Type is the type of the matcher.
+
+</div>
+
+<hr />
+
+<div class="dd">
+
+<code>condition</code>  <i>string</i>
+
+</div>
+<div class="dt">
+
+Condition is the optional condition between two matcher variables. By default,
+the condition is assumed to be OR.
+
+
+Valid values:
+
+
+  - <code>and</code>
+
+  - <code>or</code>
+</div>
+
+<hr />
+
+<div class="dd">
+
+<code>part</code>  <i>string</i>
+
+</div>
+<div class="dt">
+
+Part is the part of the request response to match data from.
+
+Each protocol exposes a lot of different parts which are well
+documented in docs for each request type.
+
+
+
+Examples:
+
+
+```yaml
+part: body
+```
+
+```yaml
+part: raw
+```
+
+
+</div>
+
+<hr />
+
+<div class="dd">
+
+<code>negative</code>  <i>bool</i>
+
+</div>
+<div class="dt">
+
+Negative specifies if the match should be reversed
+It will only match if the condition is not true.
+
+</div>
+
+<hr />
+
+<div class="dd">
+
+<code>name</code>  <i>string</i>
+
+</div>
+<div class="dt">
+
+Name of the matcher. Name should be lowercase and must not contain
+spaces or underscores (_).
+
+
+
+Examples:
+
+
+```yaml
+name: cookie-matcher
+```
+
+
+</div>
+
+<hr />
+
+<div class="dd">
+
+<code>status</code>  <i>[]int</i>
+
+</div>
+<div class="dt">
+
+Status are the acceptable status codes for the response.
+
+
+
+Examples:
+
+
+```yaml
+status:
+    - 200
+    - 302
+```
+
+
+</div>
+
+<hr />
+
+<div class="dd">
+
+<code>size</code>  <i>[]int</i>
+
+</div>
+<div class="dt">
+
+Size is the acceptable size for the response
+
+
+
+Examples:
+
+
+```yaml
+size:
+    - 3029
+    - 2042
+```
+
+
+</div>
+
+<hr />
+
+<div class="dd">
+
+<code>words</code>  <i>[]string</i>
+
+</div>
+<div class="dt">
+
+Words contains word patterns required to be present in the response part.
+
+
+
+Examples:
+
+
+```yaml
+# Match for Outlook mail protection domain
+words:
+    - mail.protection.outlook.com
+```
+
+```yaml
+# Match for application/json in response headers
+words:
+    - application/json
+```
+
+
+</div>
+
+<hr />
+
+<div class="dd">
+
+<code>regex</code>  <i>[]string</i>
+
+</div>
+<div class="dt">
+
+Regex contains Regular Expression patterns required to be present in the response part.
+
+
+
+Examples:
+
+
+```yaml
+# Match for Linkerd Service via Regex
+regex:
+    - (?mi)^Via\\s*?:.*?linkerd.*$
+```
+
+```yaml
+# Match for Open Redirect via Location header
+regex:
+    - (?m)^(?:Location\\s*?:\\s*?)(?:https?://|//)?(?:[a-zA-Z0-9\\-_\\.@]*)example\\.com.*$
+```
+
+
+</div>
+
+<hr />
+
+<div class="dd">
+
+<code>binary</code>  <i>[]string</i>
+
+</div>
+<div class="dt">
+
+Binary are the binary patterns required to be present in the response part.
+
+
+
+Examples:
+
+
+```yaml
+# Match for Springboot Heapdump Actuator "JAVA PROFILE", "HPROF", "Gunzip magic byte"
+binary:
+    - 4a4156412050524f46494c45
+    - 4850524f46
+    - 1f8b080000000000
+```
+
+```yaml
+# Match for 7zip files
+binary:
+    - 377ABCAF271C
+```
+
+
+</div>
+
+<hr />
+
+<div class="dd">
+
+<code>dsl</code>  <i>[]string</i>
+
+</div>
+<div class="dt">
+
+DSL are the dsl expressions that will be evaluated as part of nuclei matching rules.
+A list of these helper functions are available [here](https://nuclei.projectdiscovery.io/templating-guide/helper-functions/).
+
+
+
+Examples:
+
+
+```yaml
+# DSL Matcher for package.json file
+dsl:
+    - contains(body, 'packages') && contains(tolower(all_headers), 'application/octet-stream') && status_code == 200
+```
+
+```yaml
+# DSL Matcher for missing strict transport security header
+dsl:
+    - '!contains(tolower(all_headers), ''''strict-transport-security'''')'
+```
+
+
+</div>
+
+<hr />
+
+<div class="dd">
+
+<code>xpath</code>  <i>[]string</i>
+
+</div>
+<div class="dt">
+
+XPath are the xpath queries expressions that will be evaluated against the response part.
+
+
+
+Examples:
+
+
+```yaml
+# XPath Matcher to check a title
+xpath:
+    - /html/head/title[contains(text(), 'How to Find XPath')]
+```
+
+```yaml
+# XPath Matcher for finding links with target="_blank"
+xpath:
+    - //a[@target="_blank"]
+```
+
+
+</div>
+
+<hr />
+
+<div class="dd">
+
+<code>encoding</code>  <i>string</i>
+
+</div>
+<div class="dt">
+
+Encoding specifies the encoding for the words field if any.
+
+
+Valid values:
+
+
+  - <code>hex</code>
+</div>
+
+<hr />
+
+<div class="dd">
+
+<code>case-insensitive</code>  <i>bool</i>
+
+</div>
+<div class="dt">
+
+CaseInsensitive enables case-insensitive matches. Default is false.
+
+
+Valid values:
+
+
+  - <code>false</code>
+
+  - <code>true</code>
+</div>
+
+<hr />
+
+<div class="dd">
+
+<code>match-all</code>  <i>bool</i>
+
+</div>
+<div class="dt">
+
+MatchAll enables matching for all matcher values. Default is false.
+
+
+Valid values:
+
+
+  - <code>false</code>
+
+  - <code>true</code>
+</div>
+
+<hr />
+
+<div class="dd">
+
+<code>internal</code>  <i>bool</i>
+
+</div>
+<div class="dt">
+
+description: |
+  Internal when true hides the matcher from output. Default is false.
+ It is meant to be used in multiprotocol / flow templates to create internal matcher condition without printing it in output.
+ or other similar use cases.
+ values:
+   - false
+   - true
+
+</div>
+
+<hr />
+
+
+
+
+
+## MatcherTypeHolder
+MatcherTypeHolder is used to hold internal type of the matcher
+
+Appears in:
+
+
+- <code><a href="#matchersmatcher">matchers.Matcher</a>.type</code>
+
+
+
+
+
+<hr />
+
+<div class="dd">
+
+<code></code>  <i>MatcherType</i>
+
+</div>
+<div class="dt">
+
+
+
+
+Enum Values:
+
+
+  - <code>word</code>
+
+  - <code>regex</code>
+
+  - <code>binary</code>
+
+  - <code>status</code>
+
+  - <code>size</code>
+
+  - <code>dsl</code>
+
+  - <code>xpath</code>
+</div>
+
+<hr />
 
 
 
@@ -2236,6 +2750,8 @@ Enum Values:
   - <code>TLSA</code>
 
   - <code>ANY</code>
+
+  - <code>SRV</code>
 </div>
 
 <hr />
@@ -3636,6 +4152,19 @@ ID is the optional id of the request
 <div class="dt">
 
 Engine type
+
+</div>
+
+<hr />
+
+<div class="dd">
+
+<code>pre-condition</code>  <i>string</i>
+
+</div>
+<div class="dt">
+
+PreCondition is a condition which is evaluated before sending the request.
 
 </div>
 

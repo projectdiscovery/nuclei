@@ -5,7 +5,7 @@ import (
 	"errors"
 	"strings"
 
-	"github.com/alecthomas/jsonschema"
+	"github.com/invopop/jsonschema"
 )
 
 // ExtractorType is the type of the extractor specified
@@ -72,8 +72,8 @@ type ExtractorTypeHolder struct {
 	ExtractorType ExtractorType `mapping:"true"`
 }
 
-func (holder ExtractorTypeHolder) JSONSchemaType() *jsonschema.Type {
-	gotType := &jsonschema.Type{
+func (holder ExtractorTypeHolder) JSONSchema() *jsonschema.Schema {
+	gotType := &jsonschema.Schema{
 		Type:        "string",
 		Title:       "type of the extractor",
 		Description: "Type of the extractor",

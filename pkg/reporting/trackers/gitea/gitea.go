@@ -3,6 +3,7 @@ package gitea
 import (
 	"fmt"
 	"net/url"
+	"strconv"
 	"strings"
 
 	"code.gitea.io/sdk/gitea"
@@ -10,6 +11,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
 	"github.com/projectdiscovery/nuclei/v3/pkg/reporting/exporters/markdown/util"
 	"github.com/projectdiscovery/nuclei/v3/pkg/reporting/format"
+	"github.com/projectdiscovery/nuclei/v3/pkg/reporting/trackers/filters"
 	"github.com/projectdiscovery/retryablehttp-go"
 )
 
@@ -34,6 +36,10 @@ type Options struct {
 	// SeverityAsLabel (optional) adds the severity as the label of the created
 	// issue.
 	SeverityAsLabel bool `yaml:"severity-as-label"`
+	// AllowList contains a list of allowed events for this tracker
+	AllowList *filters.Filter `yaml:"allow-list"`
+	// DenyList contains a list of denied events for this tracker
+	DenyList *filters.Filter `yaml:"deny-list"`
 	// DuplicateIssueCheck is a bool to enable duplicate tracking issue check and update the newest
 	DuplicateIssueCheck bool `yaml:"duplicate-issue-check" default:"false"`
 
@@ -74,7 +80,7 @@ func New(options *Options) (*Integration, error) {
 }
 
 // CreateIssue creates an issue in the tracker
-func (i *Integration) CreateIssue(event *output.ResultEvent) error {
+func (i *Integration) CreateIssue(event *output.ResultEvent) (*filters.CreateIssueResponse, error) {
 	summary := format.Summary(event)
 	description := format.CreateReportDescription(event, util.MarkdownFormatter{}, i.options.OmitRaw)
 
@@ -88,32 +94,60 @@ func (i *Integration) CreateIssue(event *output.ResultEvent) error {
 	}
 	customLabels, err := i.getLabelIDsByNames(labels)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	var issue *gitea.Issue
 	if i.options.DuplicateIssueCheck {
 		issue, err = i.findIssueByTitle(summary)
 		if err != nil {
-			return err
+			return nil, err
 		}
 	}
 
 	if issue == nil {
-		_, _, err = i.client.CreateIssue(i.options.ProjectOwner, i.options.ProjectName, gitea.CreateIssueOption{
+		createdIssue, _, err := i.client.CreateIssue(i.options.ProjectOwner, i.options.ProjectName, gitea.CreateIssueOption{
 			Title:  summary,
 			Body:   description,
 			Labels: customLabels,
 		})
-
-		return err
+		if err != nil {
+			return nil, err
+		}
+		return &filters.CreateIssueResponse{
+			IssueID:  strconv.FormatInt(createdIssue.Index, 10),
+			IssueURL: createdIssue.URL,
+		}, nil
 	}
 
 	_, _, err = i.client.CreateIssueComment(i.options.ProjectOwner, i.options.ProjectName, issue.Index, gitea.CreateIssueCommentOption{
 		Body: description,
 	})
+	if err != nil {
+		return nil, err
+	}
+	return &filters.CreateIssueResponse{
+		IssueID:  strconv.FormatInt(issue.Index, 10),
+		IssueURL: issue.URL,
+	}, nil
+}
 
-	return err
+func (i *Integration) CloseIssue(event *output.ResultEvent) error {
+	// TODO: Implement
+	return nil
+}
+
+// ShouldFilter determines if an issue should be logged to this tracker
+func (i *Integration) ShouldFilter(event *output.ResultEvent) bool {
+	if i.options.AllowList != nil && i.options.AllowList.GetMatch(event) {
+		return true
+	}
+
+	if i.options.DenyList != nil && i.options.DenyList.GetMatch(event) {
+		return true
+	}
+
+	return false
 }
 
 func (i *Integration) findIssueByTitle(title string) (*gitea.Issue, error) {
@@ -173,4 +207,8 @@ func (i *Integration) getLabelIDsByNames(labels []string) ([]int64, error) {
 	}
 
 	return ids, nil
+}
+
+func (i *Integration) Name() string {
+	return "gitea"
 }

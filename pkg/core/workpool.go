@@ -1,9 +1,11 @@
 package core
 
 import (
-	"github.com/remeh/sizedwaitgroup"
+	"context"
 
+	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/templates/types"
+	syncutil "github.com/projectdiscovery/utils/sync"
 )
 
 // WorkPool implements an execution pool for executing different
@@ -12,8 +14,8 @@ import (
 // It also allows Configuration of such requirements. This is used
 // for per-module like separate headless concurrency etc.
 type WorkPool struct {
-	Headless *sizedwaitgroup.SizedWaitGroup
-	Default  *sizedwaitgroup.SizedWaitGroup
+	Headless *syncutil.AdaptiveWaitGroup
+	Default  *syncutil.AdaptiveWaitGroup
 	config   WorkPoolConfig
 }
 
@@ -31,13 +33,13 @@ type WorkPoolConfig struct {
 
 // NewWorkPool returns a new WorkPool instance
 func NewWorkPool(config WorkPoolConfig) *WorkPool {
-	headlessWg := sizedwaitgroup.New(config.HeadlessTypeConcurrency)
-	defaultWg := sizedwaitgroup.New(config.TypeConcurrency)
+	headlessWg, _ := syncutil.New(syncutil.WithSize(config.HeadlessTypeConcurrency))
+	defaultWg, _ := syncutil.New(syncutil.WithSize(config.TypeConcurrency))
 
 	return &WorkPool{
 		config:   config,
-		Headless: &headlessWg,
-		Default:  &defaultWg,
+		Headless: headlessWg,
+		Default:  defaultWg,
 	}
 }
 
@@ -47,19 +49,43 @@ func (w *WorkPool) Wait() {
 	w.Headless.Wait()
 }
 
-// InputWorkPool is a work pool per-input
-type InputWorkPool struct {
-	WaitGroup *sizedwaitgroup.SizedWaitGroup
-}
-
 // InputPool returns a work pool for an input type
-func (w *WorkPool) InputPool(templateType types.ProtocolType) *InputWorkPool {
+func (w *WorkPool) InputPool(templateType types.ProtocolType) *syncutil.AdaptiveWaitGroup {
 	var count int
 	if templateType == types.HeadlessProtocol {
 		count = w.config.HeadlessInputConcurrency
 	} else {
 		count = w.config.InputConcurrency
 	}
-	swg := sizedwaitgroup.New(count)
-	return &InputWorkPool{WaitGroup: &swg}
+	swg, _ := syncutil.New(syncutil.WithSize(count))
+	return swg
+}
+
+func (w *WorkPool) RefreshWithConfig(config WorkPoolConfig) {
+	if w.config.TypeConcurrency != config.TypeConcurrency {
+		w.config.TypeConcurrency = config.TypeConcurrency
+	}
+	if w.config.HeadlessTypeConcurrency != config.HeadlessTypeConcurrency {
+		w.config.HeadlessTypeConcurrency = config.HeadlessTypeConcurrency
+	}
+	if w.config.InputConcurrency != config.InputConcurrency {
+		w.config.InputConcurrency = config.InputConcurrency
+	}
+	if w.config.HeadlessInputConcurrency != config.HeadlessInputConcurrency {
+		w.config.HeadlessInputConcurrency = config.HeadlessInputConcurrency
+	}
+	w.Refresh(context.Background())
+}
+
+func (w *WorkPool) Refresh(ctx context.Context) {
+	if w.Default.Size != w.config.TypeConcurrency {
+		if err := w.Default.Resize(ctx, w.config.TypeConcurrency); err != nil {
+			gologger.Warning().Msgf("Could not resize workpool: %s\n", err)
+		}
+	}
+	if w.Headless.Size != w.config.HeadlessTypeConcurrency {
+		if err := w.Headless.Resize(ctx, w.config.HeadlessTypeConcurrency); err != nil {
+			gologger.Warning().Msgf("Could not resize workpool: %s\n", err)
+		}
+	}
 }

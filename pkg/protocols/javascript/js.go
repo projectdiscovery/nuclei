@@ -27,13 +27,15 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/generators"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/helpers/eventcreator"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/interactsh"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/utils/vardump"
 	protocolutils "github.com/projectdiscovery/nuclei/v3/pkg/protocols/utils"
 	templateTypes "github.com/projectdiscovery/nuclei/v3/pkg/templates/types"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	errorutil "github.com/projectdiscovery/utils/errors"
+	iputil "github.com/projectdiscovery/utils/ip"
+	syncutil "github.com/projectdiscovery/utils/sync"
 	urlutil "github.com/projectdiscovery/utils/url"
-	"github.com/remeh/sizedwaitgroup"
 )
 
 // Request is a request for the javascript protocol
@@ -152,6 +154,7 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 		opts := &compiler.ExecuteOptions{
 			Timeout: request.Timeout,
 			Source:  &request.Init,
+			Context: context.Background(),
 		}
 		// register 'export' function to export variables from init code
 		// these are saved in args and are available in pre-condition and request code
@@ -341,7 +344,7 @@ func (request *Request) ExecuteWithResults(target *contextargs.Context, dynamicV
 		argsCopy.TemplateCtx = templateCtx.GetAll()
 
 		result, err := request.options.JsCompiler.ExecuteWithOptions(request.preConditionCompiled, argsCopy,
-			&compiler.ExecuteOptions{Timeout: request.Timeout, Source: &request.PreCondition})
+			&compiler.ExecuteOptions{Timeout: request.Timeout, Source: &request.PreCondition, Context: target.Context()})
 		if err != nil {
 			return errorutil.NewWithTag(request.TemplateID, "could not execute pre-condition: %s", err)
 		}
@@ -369,6 +372,12 @@ func (request *Request) ExecuteWithResults(target *contextargs.Context, dynamicV
 			value, ok := iterator.Value()
 			if !ok {
 				return nil
+			}
+
+			select {
+			case <-input.Context().Done():
+				return input.Context().Err()
+			default:
 			}
 
 			if err := request.executeRequestWithPayloads(hostPort, input, hostname, value, payloadValues, func(result *output.InternalWrappedEvent) {
@@ -404,7 +413,11 @@ func (request *Request) executeRequestParallel(ctxParent context.Context, hostPo
 	requestOptions := request.options
 	gotmatches := &atomic.Bool{}
 
-	sg := sizedwaitgroup.New(threads)
+	// if request threads matches global payload concurrency we follow it
+	shouldFollowGlobal := threads == request.options.Options.PayloadConcurrency
+
+	sg, _ := syncutil.New(syncutil.WithSize(threads))
+
 	if request.generator != nil {
 		iterator := request.generator.NewIterator()
 		for {
@@ -412,6 +425,20 @@ func (request *Request) executeRequestParallel(ctxParent context.Context, hostPo
 			if !ok {
 				break
 			}
+
+			select {
+			case <-input.Context().Done():
+				return
+			default:
+			}
+
+			// resize check point - nop if there are no changes
+			if shouldFollowGlobal && sg.Size != request.options.Options.PayloadConcurrency {
+				if err := sg.Resize(ctxParent, request.options.Options.PayloadConcurrency); err != nil {
+					gologger.Warning().Msgf("Could not resize workpool: %s\n", err)
+				}
+			}
+
 			sg.Add()
 			go func() {
 				defer sg.Done()
@@ -447,7 +474,7 @@ func (request *Request) executeRequestParallel(ctxParent context.Context, hostPo
 	}
 }
 
-func (request *Request) executeRequestWithPayloads(hostPort string, input *contextargs.Context, hostname string, payload map[string]interface{}, previous output.InternalEvent, callback protocols.OutputEventCallback, requestOptions *protocols.ExecutorOptions) error {
+func (request *Request) executeRequestWithPayloads(hostPort string, input *contextargs.Context, _ string, payload map[string]interface{}, previous output.InternalEvent, callback protocols.OutputEventCallback, requestOptions *protocols.ExecutorOptions) error {
 	payloadValues := generators.MergeMaps(payload, previous)
 	argsCopy, err := request.getArgsCopy(input, payloadValues, requestOptions, false)
 	if err != nil {
@@ -474,7 +501,7 @@ func (request *Request) executeRequestWithPayloads(hostPort string, input *conte
 	}
 
 	results, err := request.options.JsCompiler.ExecuteWithOptions(request.scriptCompiled, argsCopy,
-		&compiler.ExecuteOptions{Timeout: request.Timeout, Source: &request.Code})
+		&compiler.ExecuteOptions{Timeout: request.Timeout, Source: &request.Code, Context: input.Context()})
 	if err != nil {
 		// shouldn't fail even if it returned error instead create a failure event
 		results = compiler.ExecuteResult{"success": false, "error": err.Error()}
@@ -518,6 +545,46 @@ func (request *Request) executeRequestWithPayloads(hostPort string, input *conte
 	data["template-info"] = requestOptions.TemplateInfo
 	if request.StopAtFirstMatch || request.options.StopAtFirstMatch {
 		data["stop-at-first-match"] = true
+	}
+
+	// add ip address to data
+	if input.MetaInput.CustomIP != "" {
+		data["ip"] = input.MetaInput.CustomIP
+	} else {
+		// context: https://github.com/projectdiscovery/nuclei/issues/5021
+		hostname := input.MetaInput.Input
+		if strings.Contains(hostname, ":") {
+			host, _, err := net.SplitHostPort(hostname)
+			if err == nil {
+				hostname = host
+			} else {
+				// naive way
+				if !strings.Contains(hostname, "]") {
+					hostname = hostname[:strings.LastIndex(hostname, ":")]
+				}
+			}
+		}
+		data["ip"] = protocolstate.Dialer.GetDialedIP(hostname)
+		// if input itself was an ip, use it
+		if iputil.IsIP(hostname) {
+			data["ip"] = hostname
+		}
+
+		// if ip is not found,this is because ssh and other protocols do not use fastdialer
+		// although its not perfect due to its use case dial and get ip
+		dnsData, err := protocolstate.Dialer.GetDNSData(hostname)
+		if err == nil {
+			for _, v := range dnsData.A {
+				data["ip"] = v
+				break
+			}
+			if data["ip"] == "" {
+				for _, v := range dnsData.AAAA {
+					data["ip"] = v
+					break
+				}
+			}
+		}
 	}
 
 	// add and get values from templatectx
@@ -580,7 +647,7 @@ func (request *Request) getArgsCopy(input *contextargs.Context, payloadValues ma
 }
 
 // evaluateArgs evaluates arguments using available payload values and returns a copy of args
-func (request *Request) evaluateArgs(payloadValues map[string]interface{}, requestOptions *protocols.ExecutorOptions, ignoreErrors bool) (map[string]interface{}, error) {
+func (request *Request) evaluateArgs(payloadValues map[string]interface{}, _ *protocols.ExecutorOptions, ignoreErrors bool) (map[string]interface{}, error) {
 	argsCopy := make(map[string]interface{})
 mainLoop:
 	for k, v := range request.Args {

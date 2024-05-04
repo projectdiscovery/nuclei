@@ -231,7 +231,7 @@ func logErrMsg(path string, err error, debug bool, errFile *os.File) string {
 	return msg
 }
 
-// enhanceTemplateData enhances template data using templateman
+// enhanceTemplate enhances template data using templateman
 // ref: https://github.com/projectdiscovery/templateman/blob/main/templateman-rest-api/README.md#enhance-api
 func enhanceTemplate(data string) (string, bool, error) {
 	resp, err := retryablehttp.DefaultClient().Post(fmt.Sprintf("%s/enhance", tmBaseUrl), "application/x-yaml", strings.NewReader(data))
@@ -266,7 +266,7 @@ func enhanceTemplate(data string) (string, bool, error) {
 	return data, false, errorutil.New("template enhance failed")
 }
 
-// formatTemplateData formats template data using templateman format api
+// formatTemplate formats template data using templateman format api
 func formatTemplate(data string) (string, bool, error) {
 	resp, err := retryablehttp.DefaultClient().Post(fmt.Sprintf("%s/format", tmBaseUrl), "application/x-yaml", strings.NewReader(data))
 	if err != nil {

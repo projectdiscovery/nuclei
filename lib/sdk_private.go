@@ -8,57 +8,66 @@ import (
 	"time"
 
 	"github.com/logrusorgru/aurora"
+	"github.com/pkg/errors"
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/gologger/levels"
 	"github.com/projectdiscovery/httpx/common/httpx"
 	"github.com/projectdiscovery/nuclei/v3/internal/runner"
+	"github.com/projectdiscovery/nuclei/v3/pkg/authprovider"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/config"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/disk"
 	"github.com/projectdiscovery/nuclei/v3/pkg/core"
-	"github.com/projectdiscovery/nuclei/v3/pkg/core/inputs"
+	"github.com/projectdiscovery/nuclei/v3/pkg/input/provider"
 	"github.com/projectdiscovery/nuclei/v3/pkg/installer"
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
 	"github.com/projectdiscovery/nuclei/v3/pkg/progress"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
-	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/hosterrorscache"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/interactsh"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolinit"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http/httpclientpool"
 	"github.com/projectdiscovery/nuclei/v3/pkg/reporting"
+	"github.com/projectdiscovery/nuclei/v3/pkg/templates"
 	"github.com/projectdiscovery/nuclei/v3/pkg/testutils"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
+	nucleiUtils "github.com/projectdiscovery/nuclei/v3/pkg/utils"
 	"github.com/projectdiscovery/ratelimit"
 )
 
+var sharedInit sync.Once = sync.Once{}
+
 // applyRequiredDefaults to options
 func (e *NucleiEngine) applyRequiredDefaults() {
-	if e.customWriter == nil {
-		mockoutput := testutils.NewMockOutputWriter(e.opts.OmitTemplate)
-		mockoutput.WriteCallback = func(event *output.ResultEvent) {
-			if len(e.resultCallbacks) > 0 {
-				for _, callback := range e.resultCallbacks {
-					if callback != nil {
-						callback(event)
-					}
+	mockoutput := testutils.NewMockOutputWriter(e.opts.OmitTemplate)
+	mockoutput.WriteCallback = func(event *output.ResultEvent) {
+		if len(e.resultCallbacks) > 0 {
+			for _, callback := range e.resultCallbacks {
+				if callback != nil {
+					callback(event)
 				}
-				return
 			}
-			sb := strings.Builder{}
-			sb.WriteString(fmt.Sprintf("[%v] ", event.TemplateID))
-			if event.Matched != "" {
-				sb.WriteString(event.Matched)
-			} else {
-				sb.WriteString(event.Host)
-			}
-			fmt.Println(sb.String())
+			return
 		}
-		if e.onFailureCallback != nil {
-			mockoutput.FailureCallback = e.onFailureCallback
+		sb := strings.Builder{}
+		sb.WriteString(fmt.Sprintf("[%v] ", event.TemplateID))
+		if event.Matched != "" {
+			sb.WriteString(event.Matched)
+		} else {
+			sb.WriteString(event.Host)
 		}
+		fmt.Println(sb.String())
+	}
+	if e.onFailureCallback != nil {
+		mockoutput.FailureCallback = e.onFailureCallback
+	}
+
+	if e.customWriter != nil {
+		e.customWriter = output.NewMultiWriter(e.customWriter, mockoutput)
+	} else {
 		e.customWriter = mockoutput
 	}
+
 	if e.customProgress == nil {
 		e.customProgress = &testutils.MockProgressClient{}
 	}
@@ -82,9 +91,7 @@ func (e *NucleiEngine) applyRequiredDefaults() {
 	// and idea is to disable them to avoid false positives
 	e.opts.ExcludeTags = append(e.opts.ExcludeTags, config.ReadIgnoreFile().Tags...)
 
-	e.inputProvider = &inputs.SimpleInputProvider{
-		Inputs: []*contextargs.MetaInput{},
-	}
+	e.inputProvider = provider.NewSimpleInputProvider()
 }
 
 // init
@@ -109,8 +116,13 @@ func (e *NucleiEngine) init() error {
 		e.httpClient = httpclient
 	}
 
-	_ = protocolstate.Init(e.opts)
-	_ = protocolinit.Init(e.opts)
+	e.parser = templates.NewParser()
+
+	sharedInit.Do(func() {
+		_ = protocolstate.Init(e.opts)
+		_ = protocolinit.Init(e.opts)
+	})
+
 	e.applyRequiredDefaults()
 	var err error
 
@@ -128,7 +140,7 @@ func (e *NucleiEngine) init() error {
 		return err
 	}
 	// we don't support reporting config in sdk mode
-	if e.rc, err = reporting.New(&reporting.Options{}, ""); err != nil {
+	if e.rc, err = reporting.New(&reporting.Options{}, "", false); err != nil {
 		return err
 	}
 	e.interactshOpts.IssuesClient = e.rc
@@ -139,7 +151,9 @@ func (e *NucleiEngine) init() error {
 		return err
 	}
 
-	e.catalog = disk.NewCatalog(config.DefaultConfig.TemplatesDirectory)
+	if e.catalog == nil {
+		e.catalog = disk.NewCatalog(config.DefaultConfig.TemplatesDirectory)
+	}
 
 	e.executerOpts = protocols.ExecutorOptions{
 		Output:          e.customWriter,
@@ -153,14 +167,49 @@ func (e *NucleiEngine) init() error {
 		Colorizer:       aurora.NewAurora(true),
 		ResumeCfg:       types.NewResumeCfg(),
 		Browser:         e.browserInstance,
+		Parser:          e.parser,
+	}
+	if len(e.opts.SecretsFile) > 0 {
+		authTmplStore, err := runner.GetAuthTmplStore(*e.opts, e.catalog, e.executerOpts)
+		if err != nil {
+			return errors.Wrap(err, "failed to load dynamic auth templates")
+		}
+		authOpts := &authprovider.AuthProviderOptions{SecretsFiles: e.opts.SecretsFile}
+		authOpts.LazyFetchSecret = runner.GetLazyAuthFetchCallback(&runner.AuthLazyFetchOptions{
+			TemplateStore: authTmplStore,
+			ExecOpts:      e.executerOpts,
+		})
+		// initialize auth provider
+		provider, err := authprovider.NewAuthProvider(authOpts)
+		if err != nil {
+			return errors.Wrap(err, "could not create auth provider")
+		}
+		e.executerOpts.AuthProvider = provider
+	}
+	if e.authprovider != nil {
+		e.executerOpts.AuthProvider = e.authprovider
 	}
 
-	if e.opts.RateLimitMinute > 0 {
-		e.executerOpts.RateLimiter = ratelimit.New(context.Background(), uint(e.opts.RateLimitMinute), time.Minute)
-	} else if e.opts.RateLimit > 0 {
-		e.executerOpts.RateLimiter = ratelimit.New(context.Background(), uint(e.opts.RateLimit), time.Second)
-	} else {
-		e.executerOpts.RateLimiter = ratelimit.NewUnlimited(context.Background())
+	// prefetch secrets
+	if e.executerOpts.AuthProvider != nil && e.opts.PreFetchSecrets {
+		if err := e.executerOpts.AuthProvider.PreFetchSecrets(); err != nil {
+			return errors.Wrap(err, "could not prefetch secrets")
+		}
+	}
+
+	if e.executerOpts.RateLimiter == nil {
+		if e.opts.RateLimitMinute > 0 {
+			e.opts.RateLimit = e.opts.RateLimitMinute
+			e.opts.RateLimitDuration = time.Minute
+		}
+		if e.opts.RateLimit > 0 && e.opts.RateLimitDuration == 0 {
+			e.opts.RateLimitDuration = time.Second
+		}
+		if e.opts.RateLimit == 0 && e.opts.RateLimitDuration == 0 {
+			e.executerOpts.RateLimiter = ratelimit.NewUnlimited(context.Background())
+		} else {
+			e.executerOpts.RateLimiter = ratelimit.New(context.Background(), uint(e.opts.RateLimit), e.opts.RateLimitDuration)
+		}
 	}
 
 	e.engine = core.New(e.opts)
@@ -168,8 +217,10 @@ func (e *NucleiEngine) init() error {
 
 	httpxOptions := httpx.DefaultOptions
 	httpxOptions.Timeout = 5 * time.Second
-	if e.httpxClient, err = httpx.New(&httpxOptions); err != nil {
+	if client, err := httpx.New(&httpxOptions); err != nil {
 		return err
+	} else {
+		e.httpxClient = nucleiUtils.GetInputLivenessChecker(client)
 	}
 
 	// Only Happens once regardless how many times this function is called

@@ -3,7 +3,7 @@ package replacer
 import (
 	"testing"
 
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestReplacerReplace(t *testing.T) {
@@ -77,7 +77,7 @@ func TestReplacerReplace(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			assert.Equal(t, test.expected, Replace(test.template, test.values))
+			require.Equal(t, test.expected, Replace(test.template, test.values))
 		})
 	}
 }
@@ -135,7 +135,7 @@ func TestReplacerReplaceOne(t *testing.T) {
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			assert.Equal(t, test.expected, ReplaceOne(test.template, test.key, test.value))
+			require.Equal(t, test.expected, ReplaceOne(test.template, test.key, test.value))
 		})
 	}
 }

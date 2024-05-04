@@ -9,7 +9,6 @@ import (
 
 	"github.com/miekg/dns"
 	"github.com/pkg/errors"
-	"github.com/remeh/sizedwaitgroup"
 	"go.uber.org/multierr"
 	"golang.org/x/exp/maps"
 
@@ -27,6 +26,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/utils"
 	"github.com/projectdiscovery/retryabledns"
 	iputil "github.com/projectdiscovery/utils/ip"
+	syncutil "github.com/projectdiscovery/utils/sync"
 )
 
 var _ protocols.Request = &Request{}
@@ -62,9 +62,15 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, metadata,
 	variablesMap := request.options.Variables.Evaluate(vars)
 	vars = generators.MergeMaps(vars, variablesMap, request.options.Constants)
 
+	// if request threads matches global payload concurrency we follow it
+	shouldFollowGlobal := request.Threads == request.options.Options.PayloadConcurrency
+
 	if request.generator != nil {
 		iterator := request.generator.NewIterator()
-		swg := sizedwaitgroup.New(request.Threads)
+		swg, err := syncutil.New(syncutil.WithSize(request.Threads))
+		if err != nil {
+			return err
+		}
 		var multiErr error
 		m := &sync.Mutex{}
 
@@ -73,6 +79,20 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, metadata,
 			if !ok {
 				break
 			}
+
+			select {
+			case <-input.Context().Done():
+				return input.Context().Err()
+			default:
+			}
+
+			// resize check point - nop if there are no changes
+			if shouldFollowGlobal && swg.Size != request.options.Options.PayloadConcurrency {
+				if err := swg.Resize(input.Context(), request.options.Options.PayloadConcurrency); err != nil {
+					return err
+				}
+			}
+
 			value = generators.MergeMaps(vars, value)
 			swg.Add()
 			go func(newVars map[string]interface{}) {
@@ -140,7 +160,7 @@ func (request *Request) execute(input *contextargs.Context, domain string, metad
 		}
 	}
 
-	request.options.RateLimiter.Take()
+	request.options.RateLimitTake()
 
 	// Send the request to the target servers
 	response, err := dnsClient.Do(compiledRequest)

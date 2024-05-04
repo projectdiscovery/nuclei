@@ -59,8 +59,12 @@ func (w *StandardWriter) formatScreen(output *ResultEvent) []byte {
 
 		for i, item := range output.ExtractedResults {
 			// trim trailing space
+			// quote non-ascii and non printable characters and then
+			// unquote quotes (`"`) for readability
 			item = strings.TrimSpace(item)
 			item = strconv.QuoteToASCII(item)
+			item = strings.ReplaceAll(item, `\"`, `"`)
+
 			builder.WriteString(w.aurora.BrightCyan(item).String())
 
 			if i != len(output.ExtractedResults)-1 {
@@ -100,6 +104,22 @@ func (w *StandardWriter) formatScreen(output *ResultEvent) []byte {
 			builder.WriteRune('=')
 			builder.WriteString(w.aurora.BrightYellow(strconv.QuoteToASCII(types.ToString(value))).String())
 		}
+		builder.WriteString("]")
+	}
+
+	// If it is a fuzzing output, enrich with additional
+	// metadata for the match.
+	if output.IsFuzzingResult {
+		if output.FuzzingParameter != "" {
+			builder.WriteString(" [")
+			builder.WriteString(output.FuzzingPosition)
+			builder.WriteRune(':')
+			builder.WriteString(w.aurora.BrightMagenta(output.FuzzingParameter).String())
+			builder.WriteString("]")
+		}
+
+		builder.WriteString(" [")
+		builder.WriteString(output.FuzzingMethod)
 		builder.WriteString("]")
 	}
 	return builder.Bytes()

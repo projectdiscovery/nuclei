@@ -8,7 +8,7 @@ import (
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/config"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/disk"
-	"github.com/projectdiscovery/nuclei/v3/pkg/parsers"
+	"github.com/projectdiscovery/nuclei/v3/pkg/loader/workflow"
 	"github.com/projectdiscovery/nuclei/v3/pkg/progress"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
@@ -35,8 +35,9 @@ func setup() {
 		Browser:      nil,
 		Catalog:      disk.NewCatalog(config.DefaultConfig.TemplatesDirectory),
 		RateLimiter:  ratelimit.New(context.Background(), uint(options.RateLimit), time.Second),
+		Parser:       templates.NewParser(),
 	}
-	workflowLoader, err := parsers.NewLoader(&executerOpts)
+	workflowLoader, err := workflow.NewLoader(&executerOpts)
 	if err != nil {
 		log.Fatalf("Could not create workflow loader: %s\n", err)
 	}
@@ -53,8 +54,8 @@ func TestMultiProtoWithDynamicExtractor(t *testing.T) {
 	err = Template.Executer.Compile()
 	require.Nil(t, err, "could not compile template")
 
-	input := contextargs.NewWithInput("blog.projectdiscovery.io")
-	ctx := scan.NewScanContext(input)
+	input := contextargs.NewWithInput(context.Background(), "blog.projectdiscovery.io")
+	ctx := scan.NewScanContext(context.Background(), input)
 	gotresults, err := Template.Executer.Execute(ctx)
 	require.Nil(t, err, "could not execute template")
 	require.True(t, gotresults)
@@ -70,8 +71,8 @@ func TestMultiProtoWithProtoPrefix(t *testing.T) {
 	err = Template.Executer.Compile()
 	require.Nil(t, err, "could not compile template")
 
-	input := contextargs.NewWithInput("blog.projectdiscovery.io")
-	ctx := scan.NewScanContext(input)
+	input := contextargs.NewWithInput(context.Background(), "blog.projectdiscovery.io")
+	ctx := scan.NewScanContext(context.Background(), input)
 	gotresults, err := Template.Executer.Execute(ctx)
 	require.Nil(t, err, "could not execute template")
 	require.True(t, gotresults)
