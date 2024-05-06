@@ -416,6 +416,9 @@ func (r *Runner) setupPDCPUpload(writer output.Writer) output.Writer {
 	if r.options.ScanID != "" {
 		uploadWriter.SetScanID(r.options.ScanID)
 	}
+	if r.options.ScanName != "" {
+		uploadWriter.SetScanName(r.options.ScanName)
+	}
 	return output.NewMultiWriter(writer, uploadWriter)
 }
 

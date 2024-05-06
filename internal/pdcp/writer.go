@@ -90,6 +90,11 @@ func (u *UploadWriter) SetScanID(id string) {
 	u.scanID = id
 }
 
+// SetScanName sets the scan name for the upload writer
+func (u *UploadWriter) SetScanName(name string) {
+	u.uploadURL.RawQuery = "name=" + url.QueryEscape(name)
+}
+
 func (u *UploadWriter) autoCommit(ctx context.Context, r *io.PipeReader) {
 	reader := bufio.NewReader(r)
 	ch := make(chan string, 4)
