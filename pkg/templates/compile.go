@@ -16,6 +16,7 @@ import (
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/config"
 	"github.com/projectdiscovery/nuclei/v3/pkg/js/compiler"
+	"github.com/projectdiscovery/nuclei/v3/pkg/model/types/severity"
 	"github.com/projectdiscovery/nuclei/v3/pkg/operators"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/generators"
@@ -339,6 +340,16 @@ func parseTemplate(data []byte, options protocols.ExecutorOptions) (*Template, e
 	}
 	if template.Info.Authors.IsEmpty() {
 		return nil, errors.New("no template author field provided")
+	}
+
+	// use default unknown severity
+	if template.Info.SeverityHolder.Severity == severity.Undefined {
+		// set unknown severity with counter and forced warning
+		template.Info.SeverityHolder.Severity = severity.Unknown
+		if options.Options.Validate {
+			// when validating return error
+			return nil, errors.New("no template severity field provided")
+		}
 	}
 
 	// Setting up variables regarding template metadata
