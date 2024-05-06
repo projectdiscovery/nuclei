@@ -343,12 +343,14 @@ func parseTemplate(data []byte, options protocols.ExecutorOptions) (*Template, e
 	}
 
 	// use default unknown severity
-	if template.Info.SeverityHolder.Severity == severity.Undefined {
-		// set unknown severity with counter and forced warning
-		template.Info.SeverityHolder.Severity = severity.Unknown
-		if options.Options.Validate {
-			// when validating return error
-			return nil, errors.New("no template severity field provided")
+	if len(template.Workflows) == 0 {
+		if template.Info.SeverityHolder.Severity == severity.Undefined {
+			// set unknown severity with counter and forced warning
+			template.Info.SeverityHolder.Severity = severity.Unknown
+			if options.Options.Validate {
+				// when validating return error
+				return nil, errors.New("no template severity field provided")
+			}
 		}
 	}
 
