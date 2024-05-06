@@ -111,11 +111,11 @@ func (e *ThreadSafeNucleiEngine) GlobalResultCallback(callback func(event *outpu
 	e.eng.resultCallbacks = []func(*output.ResultEvent){callback}
 }
 
-// ExecuteNucleiWithOpts executes templates on targets and calls callback on each result(only if results are found)
+// ExecuteNucleiWithOptsCtx executes templates on targets and calls callback on each result(only if results are found)
 // This method can be called concurrently and it will use some global resources but can be runned parallelly
 // by invoking this method with different options and targets
 // Note: Not all options are thread-safe. this method will throw error if you try to use non-thread-safe options
-func (e *ThreadSafeNucleiEngine) ExecuteNucleiWithOpts(targets []string, opts ...NucleiSDKOptions) error {
+func (e *ThreadSafeNucleiEngine) ExecuteNucleiWithOptsCtx(ctx context.Context, targets []string, opts ...NucleiSDKOptions) error {
 	baseOpts := *e.eng.opts
 	tmpEngine := &NucleiEngine{opts: &baseOpts, mode: threadSafe}
 	for _, option := range opts {
@@ -161,6 +161,12 @@ func (e *ThreadSafeNucleiEngine) ExecuteNucleiWithOpts(targets []string, opts ..
 
 	engine.WorkPool().Wait()
 	return nil
+}
+
+// ExecuteNucleiWithOpts is same as ExecuteNucleiWithOptsCtx but with default context
+// This is a placeholder and will be deprecated in future major release
+func (e *ThreadSafeNucleiEngine) ExecuteNucleiWithOpts(targets []string, opts ...NucleiSDKOptions) error {
+	return e.ExecuteNucleiWithOptsCtx(context.Background(), targets, opts...)
 }
 
 // Close all resources used by nuclei engine
