@@ -146,6 +146,11 @@ func (c *Cache) checkError(err error) bool {
 	default:
 		tmp := errX.Cause()
 		cause := tmp.Error()
+		if strings.Contains(cause, "ReadStatusLine:") && strings.Contains(cause, "read: connection reset by peer") {
+			// this is a FP and should not be counted as a host error
+			// because server closes connection when it reads corrupted bytes which we send via rawhttp
+			return false
+		}
 		for _, msg := range c.TrackError {
 			if strings.Contains(cause, msg) {
 				return true

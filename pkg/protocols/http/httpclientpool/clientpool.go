@@ -38,7 +38,7 @@ var (
 	// MaxResponseHeaderTimeout is the timeout for response headers
 	// to be read from the server (this prevents infinite hang started by server if any)
 	// Note: this will be overridden temporarily when using @timeout request annotation
-	MaxResponseHeaderTimeout = time.Duration(5) * time.Second
+	MaxResponseHeaderTimeout = time.Duration(8) * time.Second
 	// HttpTimeoutMultiplier is the multiplier for the http timeout
 	HttpTimeoutMultiplier = 3
 )
