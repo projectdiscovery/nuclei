@@ -131,6 +131,8 @@ func (r *Request) parseAnnotations(rawRequest string, request *retryablehttp.Req
 			if parsed, err := time.ParseDuration(value); err == nil {
 				//nolint:govet // cancelled automatically by withTimeout
 				ctx, overrides.cancelFunc = context.WithTimeoutCause(context.Background(), parsed, ErrTimeoutAnnotationDeadline)
+				// add timeout value to context
+				ctx = context.WithValue(ctx, httpclientpool.WithCustomTimeout{}, httpclientpool.WithCustomTimeout{Timeout: parsed})
 				request = request.Clone(ctx)
 			}
 		} else {

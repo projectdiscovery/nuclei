@@ -716,17 +716,34 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 			if errSignature := request.handleSignature(generatedRequest); errSignature != nil {
 				return errSignature
 			}
-
 			httpclient := request.httpClient
+
+			// this will be assigned/updated if this specific request has a custom configuration
+			var modifiedConfig *httpclientpool.Configuration
+
+			// check for cookie related configuration
 			if input.CookieJar != nil {
 				connConfiguration := request.connConfiguration
 				connConfiguration.Connection.SetCookieJar(input.CookieJar)
-				client, err := httpclientpool.Get(request.options.Options, connConfiguration)
+				modifiedConfig = connConfiguration
+			}
+			// check for request updatedTimeout annotation
+			updatedTimeout, ok := generatedRequest.request.Context().Value(httpclientpool.WithCustomTimeout{}).(httpclientpool.WithCustomTimeout)
+			if ok {
+				if modifiedConfig == nil {
+					modifiedConfig = request.connConfiguration
+				}
+				modifiedConfig.ResponseHeaderTimeout = updatedTimeout.Timeout
+			}
+
+			if modifiedConfig != nil {
+				client, err := httpclientpool.Get(request.options.Options, modifiedConfig)
 				if err != nil {
 					return errors.Wrap(err, "could not get http client")
 				}
 				httpclient = client
 			}
+
 			resp, err = httpclient.Do(generatedRequest.request)
 		}
 	}

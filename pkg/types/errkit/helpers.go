@@ -1,5 +1,17 @@
 package errkit
 
+import "errors"
+
+// Proxy to StdLib errors.Is
+func Is(err error, target error) bool {
+	return errors.Is(err, target)
+}
+
+// Proxy to StdLib errors.As
+func As(err error, target interface{}) bool {
+	return errors.As(err, target)
+}
+
 // Combine combines multiple errors into a single error
 func Combine(errs ...error) error {
 	if len(errs) == 0 {
