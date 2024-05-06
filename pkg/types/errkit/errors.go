@@ -14,6 +14,8 @@ import (
 const (
 	// DelimArrow is delim used by projectdiscovery/utils to join errors
 	DelimArrow = "<-"
+	// DelimArrowSerialized
+	DelimArrowSerialized = "\u003c-"
 	// DelimSemiColon is standard delim popularly used to join errors
 	DelimSemiColon = "; "
 	// DelimMultiLine is delim used to join errors in multiline format
@@ -202,24 +204,32 @@ func parseError(to *ErrorX, err error) {
 		remaining := strings.Replace(err.Error(), v.Cause().Error(), "", -1)
 		parseError(to, errors.New(remaining))
 	default:
+		errString := err.Error()
 		// try assigning to enriched error
-		if strings.Contains(err.Error(), DelimArrow) {
+		if strings.Contains(errString, DelimArrow) {
 			// Split the error by arrow delim
-			parts := strings.Split(err.Error(), DelimArrow)
+			parts := strings.Split(errString, DelimArrow)
 			for i := len(parts) - 1; i >= 0; i-- {
 				part := strings.TrimSpace(parts[i])
 				parseError(to, errors.New(part))
 			}
-		} else if strings.Contains(err.Error(), DelimSemiColon) {
+		} else if strings.Contains(errString, DelimArrowSerialized) {
+			// Split the error by arrow delim
+			parts := strings.Split(errString, DelimArrowSerialized)
+			for i := len(parts) - 1; i >= 0; i-- {
+				part := strings.TrimSpace(parts[i])
+				parseError(to, errors.New(part))
+			}
+		} else if strings.Contains(errString, DelimSemiColon) {
 			// Split the error by semi-colon delim
-			parts := strings.Split(err.Error(), DelimSemiColon)
+			parts := strings.Split(errString, DelimSemiColon)
 			for _, part := range parts {
 				part = strings.TrimSpace(part)
 				parseError(to, errors.New(part))
 			}
-		} else if strings.Contains(err.Error(), MultiLineErrPrefix) {
+		} else if strings.Contains(errString, MultiLineErrPrefix) {
 			// remove prefix
-			msg := strings.ReplaceAll(err.Error(), MultiLineErrPrefix, "")
+			msg := strings.ReplaceAll(errString, MultiLineErrPrefix, "")
 			parts := strings.Split(msg, DelimMultiLine)
 			for _, part := range parts {
 				part = strings.TrimSpace(part)

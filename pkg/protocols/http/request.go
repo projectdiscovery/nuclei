@@ -698,7 +698,16 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 			inputUrl = url.String()
 		}
 		formedURL = fmt.Sprintf("%s%s", inputUrl, generatedRequest.rawRequest.Path)
-		resp, err = generatedRequest.original.rawhttpClient.DoRawWithOptions(generatedRequest.rawRequest.Method, inputUrl, generatedRequest.rawRequest.Path, generators.ExpandMapValues(generatedRequest.rawRequest.Headers), io.NopCloser(strings.NewReader(generatedRequest.rawRequest.Data)), &options)
+
+		// send rawhttp request and get response
+		resp, err = httpclientpool.SendRawRequest(generatedRequest.original.rawhttpClient, &httpclientpool.RawHttpRequestOpts{
+			Method:  generatedRequest.rawRequest.Method,
+			URL:     inputUrl,
+			Path:    generatedRequest.rawRequest.Path,
+			Headers: generators.ExpandMapValues(generatedRequest.rawRequest.Headers),
+			Body:    io.NopCloser(strings.NewReader(generatedRequest.rawRequest.Data)),
+			Options: &options,
+		})
 	} else {
 		//** For Normal requests **//
 		hostname = generatedRequest.request.URL.Host

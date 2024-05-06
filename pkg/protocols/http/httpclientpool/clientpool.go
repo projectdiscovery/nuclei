@@ -38,7 +38,7 @@ var (
 	// MaxResponseHeaderTimeout is the timeout for response headers
 	// to be read from the server (this prevents infinite hang started by server if any)
 	// Note: this will be overridden temporarily when using @timeout request annotation
-	MaxResponseHeaderTimeout = time.Duration(8) * time.Second
+	MaxResponseHeaderTimeout = time.Duration(10) * time.Second
 	// HttpTimeoutMultiplier is the multiplier for the http timeout
 	HttpTimeoutMultiplier = 3
 )
@@ -53,6 +53,9 @@ func Init(options *types.Options) error {
 	// Don't create clients if already created in the past.
 	if normalClient != nil {
 		return nil
+	}
+	if options.Timeout > 10 {
+		MaxResponseHeaderTimeout = time.Duration(options.Timeout) * time.Second
 	}
 	if options.ShouldFollowHTTPRedirects() {
 		forceMaxRedirects = options.MaxRedirects
@@ -187,6 +190,9 @@ func wrappedGet(options *types.Options, configuration *Configuration) (*retryabl
 	maxIdleConns := 0
 	maxConnsPerHost := 0
 	maxIdleConnsPerHost := -1
+	// do not split given timeout into chunks for retry
+	// because this won't work on slow hosts
+	retryableHttpOptions.NoAdjustTimeout = true
 
 	if configuration.Threads > 0 || options.ScanStrategy == scanstrategy.HostSpray.String() {
 		// Single host
