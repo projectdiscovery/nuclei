@@ -109,9 +109,8 @@ func (rule *Rule) Execute(input *ExecuteRuleInput) (err error) {
 		finalComponentList = append(finalComponentList, component)
 	}
 	if len(displayDebugFuzzPoints) > 0 {
-		gologger.Info().Msgf("Fuzz points for %s\n", rule.options.TemplateID)
 		marshalled, _ := json.MarshalIndent(displayDebugFuzzPoints, "", "  ")
-		gologger.Silent().Msgf("%s\n", string(marshalled))
+		gologger.Info().Msgf("[%s] Fuzz points for %s [%s]\n%s\n", rule.options.TemplateID, input.Input.MetaInput.Input, input.BaseRequest.Method, string(marshalled))
 	}
 
 	if len(finalComponentList) == 0 {
@@ -243,7 +242,7 @@ func (rule *Rule) executeRuleValues(input *ExecuteRuleInput, ruleComponent compo
 			if err != nil {
 				return err
 			}
-			if gotErr := rule.execWithInput(input, req, input.InteractURLs, ruleComponent, ""); gotErr != nil {
+			if gotErr := rule.execWithInput(input, req, input.InteractURLs, ruleComponent, "", ""); gotErr != nil {
 				return gotErr
 			}
 		}

@@ -2,6 +2,7 @@ package fuzz
 
 import (
 	"io"
+	"strconv"
 	"strings"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/fuzz/component"
@@ -68,7 +69,7 @@ func (rule *Rule) executePartComponentOnValues(input *ExecuteRuleInput, payloadS
 				return err
 			}
 
-			if qerr := rule.execWithInput(input, req, input.InteractURLs, ruleComponent, key); qerr != nil {
+			if qerr := rule.execWithInput(input, req, input.InteractURLs, ruleComponent, key, valueStr); qerr != nil {
 				return qerr
 			}
 			// fmt.Printf("executed with value: %s\n", evaluated)
@@ -90,7 +91,7 @@ func (rule *Rule) executePartComponentOnValues(input *ExecuteRuleInput, payloadS
 		if err != nil {
 			return err
 		}
-		if qerr := rule.execWithInput(input, req, input.InteractURLs, ruleComponent, ""); qerr != nil {
+		if qerr := rule.execWithInput(input, req, input.InteractURLs, ruleComponent, "", ""); qerr != nil {
 			err = qerr
 			return err
 		}
@@ -125,7 +126,7 @@ func (rule *Rule) executePartComponentOnKV(input *ExecuteRuleInput, payload Valu
 				return err
 			}
 
-			if qerr := rule.execWithInput(input, req, input.InteractURLs, ruleComponent, key); qerr != nil {
+			if qerr := rule.execWithInput(input, req, input.InteractURLs, ruleComponent, key, value); qerr != nil {
 				return err
 			}
 
@@ -144,7 +145,10 @@ func (rule *Rule) executePartComponentOnKV(input *ExecuteRuleInput, payload Valu
 }
 
 // execWithInput executes a rule with input via callback
-func (rule *Rule) execWithInput(input *ExecuteRuleInput, httpReq *retryablehttp.Request, interactURLs []string, component component.Component, parameter string) error {
+func (rule *Rule) execWithInput(input *ExecuteRuleInput, httpReq *retryablehttp.Request, interactURLs []string, component component.Component, parameter, parameterValue string) error {
+	if _, err := strconv.Atoi(parameter); err == nil || (parameter == "" && parameterValue != "") {
+		parameter = parameterValue
+	}
 	request := GeneratedRequest{
 		Request:       httpReq,
 		InteractURLs:  interactURLs,
