@@ -16,6 +16,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/generators"
 	"github.com/projectdiscovery/retryablehttp-go"
 	errorutil "github.com/projectdiscovery/utils/errors"
+	sliceutil "github.com/projectdiscovery/utils/slice"
 	urlutil "github.com/projectdiscovery/utils/url"
 )
 
@@ -81,7 +82,7 @@ func (rule *Rule) Execute(input *ExecuteRuleInput) (err error) {
 	// match rule part with component name
 	displayDebugFuzzPoints := make(map[string]map[string]string)
 	for _, componentName := range component.Components {
-		if !(rule.Part == componentName || rule.partType == requestPartType) {
+		if !(rule.Part == componentName || sliceutil.Contains(rule.Parts, componentName) || rule.partType == requestPartType) {
 			continue
 		}
 		component := component.New(componentName)
@@ -278,8 +279,9 @@ func (rule *Rule) Compile(generator *generators.PayloadGenerator, options *proto
 		} else {
 			rule.partType = valueType
 		}
-	} else {
-		rule.partType = queryPartType
+	}
+	if rule.Part == "" && len(rule.Parts) == 0 {
+		return errors.Errorf("no part specified for rule")
 	}
 
 	if rule.Type != "" {

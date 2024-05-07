@@ -10,6 +10,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/generators"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	"github.com/projectdiscovery/retryablehttp-go"
+	sliceutil "github.com/projectdiscovery/utils/slice"
 )
 
 // executePartRule executes part rules based on type
@@ -19,7 +20,7 @@ func (rule *Rule) executePartRule(input *ExecuteRuleInput, payload ValueOrKeyVal
 
 // checkRuleApplicableOnComponent checks if a rule is applicable on given component
 func (rule *Rule) checkRuleApplicableOnComponent(component component.Component) bool {
-	if rule.Part != component.Name() && rule.partType != requestPartType {
+	if rule.Part != component.Name() && !sliceutil.Contains(rule.Parts, component.Name()) && rule.partType != requestPartType {
 		return false
 	}
 	foundAny := false
