@@ -102,7 +102,7 @@ func (rule *Rule) Execute(input *ExecuteRuleInput) (err error) {
 		// Debugging display for fuzz points
 		if input.DisplayFuzzPoints {
 			displayDebugFuzzPoints[componentName] = make(map[string]string)
-			component.Iterate(func(key string, value interface{}) error {
+			_ = component.Iterate(func(key string, value interface{}) error {
 				displayDebugFuzzPoints[componentName][key] = fmt.Sprintf("%v", value)
 				return nil
 			})

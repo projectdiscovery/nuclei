@@ -60,7 +60,7 @@ func TestURLComponent_NestedPaths(t *testing.T) {
 
 	isSet := false
 
-	path.Iterate(func(key string, value interface{}) error {
+	_ = path.Iterate(func(key string, value interface{}) error {
 		if !isSet && value.(string) == "/user/753" {
 			isSet = true
 			if setErr := path.SetValue(key, "/user/753'"); setErr != nil {
