@@ -442,7 +442,7 @@ func (r *Runner) RunEnumeration() error {
 		r.options.ExcludedTemplates = append(r.options.ExcludedTemplates, ignoreFile.Files...)
 	}
 
-	fuzzFreqCache := frequency.New(frequency.DefaultMaxTrackCount, frequency.DefaultParamOccurenceThreshold)
+	fuzzFreqCache := frequency.New(frequency.DefaultMaxTrackCount, r.options.FuzzParamFrequency)
 	r.fuzzFrequencyCache = fuzzFreqCache
 
 	// Create the executor options which will be used throughout the execution
