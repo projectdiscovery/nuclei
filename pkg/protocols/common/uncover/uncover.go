@@ -110,8 +110,11 @@ func GetUncoverTargetsFromMetadata(ctx context.Context, templates []*templates.T
 		// TODO: add support for map[engine]queries in uncover
 		// Note below implementation is intentionally sequential to avoid burning all the API keys
 		counter := 0
-
+	outerLoop:
 		for eng, queries := range queriesMap {
+			if opts.Limit > 0 && counter >= opts.Limit {
+				break
+			}
 			// create new uncover options for each engine
 			uncoverOpts := &uncover.Options{
 				Agents:        []string{eng},
@@ -127,18 +130,20 @@ func GetUncoverTargetsFromMetadata(ctx context.Context, templates []*templates.T
 				gologger.Error().Msgf("Could not get targets using %v engine from uncover: %s", eng, err)
 				return
 			}
+
+		innerLoop:
 			for {
 				select {
 				case <-ctx.Done():
 					return
 				case res, ok := <-ch:
 					if !ok {
-						return
+						continue outerLoop
 					}
 					result <- res
 					counter++
 					if opts.Limit > 0 && counter >= opts.Limit {
-						return
+						break innerLoop
 					}
 				}
 			}
