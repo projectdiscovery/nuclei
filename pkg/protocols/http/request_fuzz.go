@@ -179,6 +179,7 @@ func (request *Request) executeGeneratedFuzzingRequest(gr fuzz.GeneratedRequest,
 			result.FuzzingPosition = gr.Component.Name()
 		}
 
+		setInteractshCallback := false
 		if hasInteractMarkers && hasInteractMatchers && request.options.Interactsh != nil {
 			requestData := &interactsh.RequestData{
 				MakeResultFunc: request.MakeResultEvent,
@@ -186,7 +187,10 @@ func (request *Request) executeGeneratedFuzzingRequest(gr fuzz.GeneratedRequest,
 				Operators:      request.CompiledOperators,
 				MatchFunc:      request.Match,
 				ExtractFunc:    request.Extract,
+				Parameter:      gr.Parameter,
+				Request:        gr.Request,
 			}
+			setInteractshCallback = true
 			request.options.Interactsh.RequestEvent(gr.InteractURLs, requestData)
 			gotMatches = request.options.Interactsh.AlreadyMatched(requestData)
 		} else {
@@ -195,6 +199,13 @@ func (request *Request) executeGeneratedFuzzingRequest(gr fuzz.GeneratedRequest,
 		// Add the extracts to the dynamic values if any.
 		if event.OperatorsResult != nil {
 			gotMatches = event.OperatorsResult.Matched
+		}
+		if request.options.FuzzParamsFrequency != nil && !setInteractshCallback {
+			if !gotMatches {
+				request.options.FuzzParamsFrequency.MarkParameter(gr.Parameter, gr.Request.URL.String(), request.options.TemplateID)
+			} else {
+				request.options.FuzzParamsFrequency.UnmarkParameter(gr.Parameter, gr.Request.URL.String(), request.options.TemplateID)
+			}
 		}
 	}, 0)
 	// If a variable is unresolved, skip all further requests

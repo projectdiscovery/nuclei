@@ -147,8 +147,21 @@ func (rule *Rule) executePartComponentOnKV(input *ExecuteRuleInput, payload Valu
 
 // execWithInput executes a rule with input via callback
 func (rule *Rule) execWithInput(input *ExecuteRuleInput, httpReq *retryablehttp.Request, interactURLs []string, component component.Component, parameter, parameterValue string) error {
+	// If the parameter is a number, replace it with the parameter value
+	// or if the parameter is empty and the parameter value is not empty
+	// replace it with the parameter value
 	if _, err := strconv.Atoi(parameter); err == nil || (parameter == "" && parameterValue != "") {
 		parameter = parameterValue
+	}
+	// If the parameter is frequent, skip it if the option is enabled
+	if rule.options.FuzzParamsFrequency != nil {
+		if rule.options.FuzzParamsFrequency.IsParameterFrequent(
+			parameter,
+			httpReq.URL.String(),
+			rule.options.TemplateID,
+		) {
+			return nil
+		}
 	}
 	request := GeneratedRequest{
 		Request:       httpReq,
