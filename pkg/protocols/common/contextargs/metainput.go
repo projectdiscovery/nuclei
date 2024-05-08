@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"crypto/md5"
 	"fmt"
+	"net"
 	"strings"
 
 	jsoniter "github.com/json-iterator/go"
@@ -45,6 +46,41 @@ func (metaInput *MetaInput) URL() (*urlutil.URL, error) {
 		return nil, err
 	}
 	return instance, nil
+}
+
+// Port returns the port of the target
+// if port is not present then empty string is returned
+func (metaInput *MetaInput) Port() string {
+	target, err := urlutil.ParseAbsoluteURL(metaInput.Input, false)
+	if err != nil {
+		return ""
+	}
+	return target.Port()
+}
+
+// Address return the remote address of target
+// Note: it does not resolve the domain to ip
+func (metaInput *MetaInput) Address() string {
+	target, err := urlutil.ParseAbsoluteURL(metaInput.Input, false)
+	if err != nil {
+		return ""
+	}
+	host := target.Hostname()
+	port := target.Port()
+	if metaInput.CustomIP != "" {
+		host = metaInput.CustomIP
+	}
+	if port == "" {
+		switch target.Scheme {
+		case urlutil.HTTP:
+			port = "80"
+		case urlutil.HTTPS:
+			port = "443"
+		default:
+			port = "80"
+		}
+	}
+	return net.JoinHostPort(host, port)
 }
 
 // ID returns a unique id/hash for metainput
