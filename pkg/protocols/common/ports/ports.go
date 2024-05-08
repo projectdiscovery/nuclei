@@ -44,13 +44,8 @@ func NewPortsCache(dialer *fastdialer.Dialer, size int) *PortsCache {
 	return p
 }
 
-// Do performs a check for open ports
-func (p *PortsCache) Do(ctx context.Context, input *contextargs.Context) error {
-	address := input.MetaInput.Address()
-	if address == "" {
-		// assume port is open is given info is not present/enough
-		return nil
-	}
+// Do performs a check for open ports and caches the result
+func (p *PortsCache) Do(ctx context.Context, address string) error {
 	// check if it exists in cache
 	if value, err := p.cache.GetIFPresent(address); !errors.Is(err, gcache.KeyNotFoundError) {
 		switch value {
@@ -65,11 +60,11 @@ func (p *PortsCache) Do(ctx context.Context, input *contextargs.Context) error {
 	code, _, _ := p.group.Do(address, func() (interface{}, error) {
 		conn, err := p.dialer.Dial(ctx, "tcp", address)
 		if err != nil {
-			p.cache.Set(address, Closed)
+			_ = p.cache.Set(address, Closed)
 			return Closed, nil
 		}
 		_ = conn.Close()
-		p.cache.Set(address, Open)
+		_ = p.cache.Set(address, Open)
 		return Open, nil
 	})
 
@@ -79,6 +74,16 @@ func (p *PortsCache) Do(ctx context.Context, input *contextargs.Context) error {
 		}
 	}
 	return nil
+}
+
+// Do performs a check for open ports
+func (p *PortsCache) DoInput(ctx context.Context, input *contextargs.Context) error {
+	address := input.MetaInput.Address()
+	if address == "" {
+		// assume port is open is given info is not present/enough
+		return nil
+	}
+	return p.Do(ctx, address)
 }
 
 // Close closes the ports cache and releases any allocated resources
@@ -99,10 +104,18 @@ func Close() {
 	}
 }
 
-// IsPortOpen checks if a port is open or not
-func IsPortOpen(input *contextargs.Context) error {
+// InputPortStatus checks for cached status of input port
+func InputPortStatus(input *contextargs.Context) error {
 	if portsCacher == nil {
 		return nil
 	}
-	return portsCacher.Do(input.Context(), input)
+	return portsCacher.DoInput(input.Context(), input)
+}
+
+// CheckPortStatus checks for cached status of remote port
+func CheckPortStatus(ctx context.Context, address string) error {
+	if portsCacher == nil {
+		return nil
+	}
+	return portsCacher.Do(ctx, address)
 }
