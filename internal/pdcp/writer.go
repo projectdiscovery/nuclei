@@ -9,6 +9,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"regexp"
 	"sync/atomic"
 	"time"
 
@@ -27,9 +28,13 @@ const (
 	appendEndpoint = "/v1/scans/%s/import"
 	flushTimer     = time.Duration(1) * time.Minute
 	MaxChunkSize   = 1024 * 1024 * 4 // 4 MB
+	xidRe          = `^[a-z0-9]{20}$`
 )
 
-var _ output.Writer = &UploadWriter{}
+var (
+	xidRegex               = regexp.MustCompile(xidRe)
+	_        output.Writer = &UploadWriter{}
+)
 
 // UploadWriter is a writer that uploads its output to pdcp
 // server to enable web dashboard and more
@@ -87,8 +92,12 @@ func NewUploadWriter(ctx context.Context, creds *pdcpauth.PDCPCredentials) (*Upl
 }
 
 // SetScanID sets the scan id for the upload writer
-func (u *UploadWriter) SetScanID(id string) {
+func (u *UploadWriter) SetScanID(id string) error {
+	if !xidRegex.MatchString(id) {
+		return fmt.Errorf("invalid scan id provided")
+	}
 	u.scanID = id
+	return nil
 }
 
 // SetScanName sets the scan name for the upload writer
