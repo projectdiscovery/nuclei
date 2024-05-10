@@ -414,9 +414,8 @@ func (r *Runner) setupPDCPUpload(writer output.Writer) output.Writer {
 		return writer
 	}
 	if r.options.ScanID != "" {
-		if err := uploadWriter.SetScanID(r.options.ScanID); err != nil {
-			gologger.Fatal().Msgf("failed to set scan id: %s", err)
-		}
+		// ignore and use empty scan id if invalid
+		_ = uploadWriter.SetScanID(r.options.ScanID)
 	}
 	if r.options.ScanName != "" {
 		uploadWriter.SetScanName(r.options.ScanName)
