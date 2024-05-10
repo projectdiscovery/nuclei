@@ -162,7 +162,7 @@ func (e *Engine) executeTemplatesOnTarget(ctx context.Context, alltemplates []*t
 	// wp is workpool that contains different waitgroups for
 	// headless and non-headless templates
 	// global waitgroup should not be used here
-	wp := e.WorkPool()
+	wp := e.GetWorkPool()
 
 	for _, tpl := range alltemplates {
 		select {
