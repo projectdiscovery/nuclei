@@ -26,6 +26,14 @@ func (severities *Severities) Set(values string) error {
 	return nil
 }
 
+func (severities Severities) MarshalYAML() (interface{}, error) {
+	var stringSeverities = make([]string, 0, len(severities))
+	for _, severity := range severities {
+		stringSeverities = append(stringSeverities, severity.String())
+	}
+	return stringSeverities, nil
+}
+
 func (severities *Severities) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	var stringSliceValue stringslice.StringSlice
 	if err := unmarshal(&stringSliceValue); err != nil {

@@ -276,6 +276,7 @@ func (c *ReportingClient) CreateIssue(event *output.ResultEvent) error {
 			if tracker.ShouldFilter(event) {
 				continue
 			}
+
 			trackerName := tracker.Name()
 			stats, statsOk := c.stats[trackerName]
 
