@@ -41,6 +41,7 @@ type UploadWriter struct {
 	cancel    context.CancelFunc
 	done      chan struct{}
 	scanID    string
+	scanName  string
 	counter   atomic.Int32
 }
 
@@ -92,7 +93,7 @@ func (u *UploadWriter) SetScanID(id string) {
 
 // SetScanName sets the scan name for the upload writer
 func (u *UploadWriter) SetScanName(name string) {
-	u.uploadURL.RawQuery = "name=" + url.QueryEscape(name)
+	u.scanName = name
 }
 
 func (u *UploadWriter) autoCommit(ctx context.Context, r *io.PipeReader) {
@@ -225,7 +226,13 @@ func (u *UploadWriter) getRequest(bin []byte) (*retryablehttp.Request, error) {
 		return nil, errorutil.NewWithErr(err).Msgf("could not create cloud upload request")
 	}
 	// add pdtm meta params
-	req.URL.RawQuery = updateutils.GetpdtmParams(config.Version)
+	req.URL.Params.Merge(updateutils.GetpdtmParams(config.Version))
+	// if it is upload endpoint also include name if it exists
+	if u.scanName != "" && req.URL.Path == uploadEndpoint {
+		req.URL.Params.Add("name", u.scanName)
+	}
+	req.URL.Update()
+
 	req.Header.Set(pdcpauth.ApiKeyHeaderName, u.creds.APIKey)
 	req.Header.Set("Content-Type", "application/octet-stream")
 	req.Header.Set("Accept", "application/json")
