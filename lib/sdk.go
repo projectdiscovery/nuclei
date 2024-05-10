@@ -219,8 +219,9 @@ func (e *NucleiEngine) Close() {
 	}
 }
 
-// ExecuteWithCallback executes templates on targets and calls callback on each result(only if results are found)
-func (e *NucleiEngine) ExecuteWithCallback(callback ...func(event *output.ResultEvent)) error {
+// ExecuteCallbackWithCtx executes templates on targets and calls callback on each result(only if results are found)
+// enable matcher-status option if you expect this callback to be called for all results regardless if it matched or not
+func (e *NucleiEngine) ExecuteCallbackWithCtx(ctx context.Context, callback ...func(event *output.ResultEvent)) error {
 	if !e.templatesLoaded {
 		_ = e.LoadAllTemplates()
 	}
@@ -244,10 +245,18 @@ func (e *NucleiEngine) ExecuteWithCallback(callback ...func(event *output.Result
 	return nil
 }
 
+// ExecuteWithCallback is same as ExecuteCallbackWithCtx but with default context
+// Note this is deprecated and will be removed in future major release
+func (e *NucleiEngine) ExecuteWithCallback(callback ...func(event *output.ResultEvent)) error {
+	return e.ExecuteCallbackWithCtx(context.Background(), callback...)
+}
+
+// Options return nuclei Type Options
 func (e *NucleiEngine) Options() *types.Options {
 	return e.opts
 }
 
+// Engine returns core Executer of nuclei
 func (e *NucleiEngine) Engine() *core.Engine {
 	return e.engine
 }
