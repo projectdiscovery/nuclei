@@ -414,7 +414,11 @@ func (r *Runner) setupPDCPUpload(writer output.Writer) output.Writer {
 		return writer
 	}
 	if r.options.ScanID != "" {
-		uploadWriter.SetScanID(r.options.ScanID)
+		// ignore and use empty scan id if invalid
+		_ = uploadWriter.SetScanID(r.options.ScanID)
+	}
+	if r.options.ScanName != "" {
+		uploadWriter.SetScanName(r.options.ScanName)
 	}
 	return output.NewMultiWriter(writer, uploadWriter)
 }
@@ -510,6 +514,23 @@ func (r *Runner) RunEnumeration() error {
 		return errors.Wrap(err, "Could not create loader.")
 	}
 
+	// list all templates or tags as specified by user.
+	// This uses a separate parser to reduce time taken as
+	// normally nuclei does a lot of compilation and stuff
+	// for templates, which we don't want for these simp
+	if r.options.TemplateList || r.options.TemplateDisplay || r.options.TagList {
+		if err := store.LoadTemplatesOnlyMetadata(); err != nil {
+			return err
+		}
+
+		if r.options.TagList {
+			r.listAvailableStoreTags(store)
+		} else {
+			r.listAvailableStoreTemplates(store)
+		}
+		os.Exit(0)
+	}
+
 	if r.options.Validate {
 		if err := store.ValidateTemplates(); err != nil {
 			return err
@@ -540,12 +561,6 @@ func (r *Runner) RunEnumeration() error {
 			_ = r.inputProvider.SetWithExclusions(host)
 		}
 	}
-	// list all templates
-	if r.options.TemplateList || r.options.TemplateDisplay {
-		r.listAvailableStoreTemplates(store)
-		os.Exit(0)
-	}
-
 	// display execution info like version , templates used etc
 	r.displayExecutionInfo(store)
 

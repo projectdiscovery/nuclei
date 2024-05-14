@@ -170,6 +170,13 @@ func (request *Request) executeGeneratedFuzzingRequest(gr fuzz.GeneratedRequest,
 	}
 	var gotMatches bool
 	requestErr := request.executeRequest(input, req, gr.DynamicValues, hasInteractMatchers, func(event *output.InternalWrappedEvent) {
+		for _, result := range event.Results {
+			result.IsFuzzingResult = true
+			result.FuzzingMethod = gr.Request.Method
+			result.FuzzingParameter = gr.Parameter
+			result.FuzzingPosition = gr.Component.Name()
+		}
+
 		if hasInteractMarkers && hasInteractMatchers && request.options.Interactsh != nil {
 			requestData := &interactsh.RequestData{
 				MakeResultFunc: request.MakeResultEvent,

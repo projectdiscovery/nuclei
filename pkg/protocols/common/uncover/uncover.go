@@ -11,6 +11,7 @@ import (
 	"github.com/projectdiscovery/uncover"
 	"github.com/projectdiscovery/uncover/sources"
 	mapsutil "github.com/projectdiscovery/utils/maps"
+	sliceutil "github.com/projectdiscovery/utils/slice"
 	stringsutil "github.com/projectdiscovery/utils/strings"
 )
 
@@ -84,8 +85,20 @@ func GetUncoverTargetsFromMetadata(ctx context.Context, templates []*templates.T
 			if queriesMap[engine] == nil {
 				queriesMap[engine] = []string{}
 			}
-			queriesMap[engine] = append(queriesMap[engine], fmt.Sprint(v))
+			switch v := v.(type) {
+			case []interface{}:
+				qs := queriesMap[engine]
+				for _, vv := range v {
+					qs = append(qs, fmt.Sprint(vv))
+				}
+				queriesMap[engine] = qs
+			default:
+				queriesMap[engine] = append(queriesMap[engine], fmt.Sprint(v))
+			}
 		}
+	}
+	for engine, queries := range queriesMap {
+		queriesMap[engine] = sliceutil.Dedupe(queries)
 	}
 	keys := mapsutil.GetKeys(queriesMap)
 	gologger.Info().Msgf("Running uncover queries from template against: %s", strings.Join(keys, ","))
@@ -97,8 +110,11 @@ func GetUncoverTargetsFromMetadata(ctx context.Context, templates []*templates.T
 		// TODO: add support for map[engine]queries in uncover
 		// Note below implementation is intentionally sequential to avoid burning all the API keys
 		counter := 0
-
+	outerLoop:
 		for eng, queries := range queriesMap {
+			if opts.Limit > 0 && counter >= opts.Limit {
+				break
+			}
 			// create new uncover options for each engine
 			uncoverOpts := &uncover.Options{
 				Agents:        []string{eng},
@@ -114,18 +130,20 @@ func GetUncoverTargetsFromMetadata(ctx context.Context, templates []*templates.T
 				gologger.Error().Msgf("Could not get targets using %v engine from uncover: %s", eng, err)
 				return
 			}
+
+		innerLoop:
 			for {
 				select {
 				case <-ctx.Done():
 					return
 				case res, ok := <-ch:
 					if !ok {
-						return
+						continue outerLoop
 					}
 					result <- res
 					counter++
 					if opts.Limit > 0 && counter >= opts.Limit {
-						return
+						break innerLoop
 					}
 				}
 			}

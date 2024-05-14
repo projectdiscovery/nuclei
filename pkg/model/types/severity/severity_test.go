@@ -74,3 +74,12 @@ func TestMarshalJSON(t *testing.T) {
 	}
 	require.Equal(t, "[\"low\",\"medium\"]", string(data), "could not marshal json")
 }
+
+func TestSeveritiesMarshalYaml(t *testing.T) {
+	unmarshalled := Severities{Low, Medium}
+	marshalled, err := yaml.Marshal(unmarshalled)
+	if err != nil {
+		panic(err)
+	}
+	require.Equal(t, "- low\n- medium\n", string(marshalled), "could not marshal yaml")
+}

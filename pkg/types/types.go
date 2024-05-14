@@ -225,6 +225,8 @@ type Options struct {
 	TemplateDisplay bool
 	// TemplateList lists available templates
 	TemplateList bool
+	// TemplateList lists available tags
+	TagList bool
 	// HangMonitor enables nuclei hang monitoring
 	HangMonitor bool
 	// Stdin specifies whether stdin input was given to the process
@@ -375,6 +377,8 @@ type Options struct {
 	EnableCloudUpload bool
 	// ScanID is the scan ID to use for cloud upload
 	ScanID string
+	// ScanName is the name of the scan to be uploaded
+	ScanName string
 	// JsConcurrency is the number of concurrent js routines to run
 	JsConcurrency int
 	// SecretsFile is file containing secrets for nuclei
@@ -393,6 +397,8 @@ type Options struct {
 	DAST bool
 	// HttpApiEndpoint is the experimental http api endpoint
 	HttpApiEndpoint string
+	// ListTemplateProfiles lists all available template profiles
+	ListTemplateProfiles bool
 }
 
 // ShouldLoadResume resume file
