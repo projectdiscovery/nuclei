@@ -123,7 +123,7 @@ func (e *ThreadSafeNucleiEngine) ExecuteNucleiWithOptsCtx(ctx context.Context, t
 			return err
 		}
 	}
-	defer tmpEngine.Close()
+	defer tmpEngine.closeInternal()
 	// create ephemeral nuclei objects/instances/types using base nuclei engine
 	unsafeOpts, err := createEphemeralObjects(e.eng, tmpEngine.opts)
 	if err != nil {
