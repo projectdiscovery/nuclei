@@ -777,7 +777,7 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 		if input.MetaInput.CustomIP != "" {
 			outputEvent["ip"] = input.MetaInput.CustomIP
 		} else {
-			outputEvent["ip"] = httpclientpool.Dialer.GetDialedIP(hostname)
+			outputEvent["ip"] = protocolstate.Dialer.GetDialedIP(hostname)
 		}
 
 		if len(generatedRequest.interactshURLs) > 0 {
@@ -873,7 +873,7 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 		if input.MetaInput.CustomIP != "" {
 			outputEvent["ip"] = input.MetaInput.CustomIP
 		} else {
-			outputEvent["ip"] = httpclientpool.Dialer.GetDialedIP(hostname)
+			outputEvent["ip"] = protocolstate.Dialer.GetDialedIP(hostname)
 		}
 		if request.options.Interactsh != nil {
 			request.options.Interactsh.MakePlaceholders(generatedRequest.interactshURLs, outputEvent)

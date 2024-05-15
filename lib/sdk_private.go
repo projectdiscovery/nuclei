@@ -35,7 +35,7 @@ import (
 	"github.com/projectdiscovery/ratelimit"
 )
 
-var sharedInit sync.Once = sync.Once{}
+var sharedInit *sync.Once
 
 // applyRequiredDefaults to options
 func (e *NucleiEngine) applyRequiredDefaults() {
@@ -117,6 +117,10 @@ func (e *NucleiEngine) init() error {
 	}
 
 	e.parser = templates.NewParser()
+
+	if sharedInit == nil || protocolstate.ShouldInit() {
+		sharedInit = &sync.Once{}
+	}
 
 	sharedInit.Do(func() {
 		_ = protocolstate.Init(e.opts)
