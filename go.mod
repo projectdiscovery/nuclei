@@ -94,12 +94,12 @@ require (
 	github.com/projectdiscovery/tlsx v1.1.6
 	github.com/projectdiscovery/uncover v1.0.7
 	github.com/projectdiscovery/useragent v0.0.49
-	github.com/projectdiscovery/utils v0.0.92
+	github.com/projectdiscovery/utils v0.0.93-0.20240515205400-37bc84ef0c3f
 	github.com/projectdiscovery/wappalyzergo v0.0.122
 	github.com/redis/go-redis/v9 v9.1.0
 	github.com/seh-msft/burpxml v1.0.1
 	github.com/stretchr/testify v1.9.0
-	github.com/tarunKoyalwar/goleak v0.0.0-20240426214851-746d64600adc
+	github.com/tarunKoyalwar/goleak v0.0.0-20240429141123-0efa90dbdcf9
 	github.com/zmap/zgrab2 v0.1.8-0.20230806160807-97ba87c0e706
 	golang.org/x/term v0.19.0
 	gopkg.in/yaml.v3 v3.0.1
@@ -350,3 +350,5 @@ require (
 
 // https://go.dev/ref/mod#go-mod-file-retract
 retract v3.2.0 // retract due to broken js protocol issue
+
+replace github.com/projectdiscovery/fastdialer => /Users/tarun/Codebase/fastdialer

@@ -31,8 +31,8 @@ import (
 	protocolutils "github.com/projectdiscovery/nuclei/v3/pkg/protocols/utils"
 	templateTypes "github.com/projectdiscovery/nuclei/v3/pkg/templates/types"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
-	"github.com/projectdiscovery/nuclei/v3/pkg/types/errkit"
 	contextutil "github.com/projectdiscovery/utils/context"
+	"github.com/projectdiscovery/utils/errkit"
 	errorutil "github.com/projectdiscovery/utils/errors"
 )
 
@@ -45,7 +45,7 @@ var (
 	// pythonEnvRegexCompiled is the compiled regex for python environment variables
 	pythonEnvRegexCompiled = regexp.MustCompile(pythonEnvRegex)
 	// ErrCodeExecutionDeadline is the error returned when alloted time for script execution exceeds
-	ErrCodeExecutionDeadline = errkit.New("code execution deadline exceeded").SetClass(errkit.ErrClassDeadline).Build()
+	ErrCodeExecutionDeadline = errkit.New("code execution deadline exceeded").SetKind(errkit.ErrKindDeadline).Build()
 )
 
 // Request is a request for the SSL protocol

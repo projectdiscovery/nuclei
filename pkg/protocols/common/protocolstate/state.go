@@ -118,7 +118,7 @@ func Init(options *types.Options) error {
 		if err != nil {
 			return err
 		}
-		opts.ProxyDialer = &dialer
+		opts.ProxyDialer = dialer
 	}
 
 	if options.SystemResolvers {

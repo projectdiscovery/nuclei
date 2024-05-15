@@ -9,14 +9,14 @@ import (
 	"github.com/dop251/goja"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/generators"
-	"github.com/projectdiscovery/nuclei/v3/pkg/types/errkit"
 	contextutil "github.com/projectdiscovery/utils/context"
+	"github.com/projectdiscovery/utils/errkit"
 	stringsutil "github.com/projectdiscovery/utils/strings"
 )
 
 var (
 	// ErrJSExecDeadline is the error returned when alloted time for script execution exceeds
-	ErrJSExecDeadline = errkit.New("js engine execution deadline exceeded").SetClass(errkit.ErrClassDeadline).Build()
+	ErrJSExecDeadline = errkit.New("js engine execution deadline exceeded").SetKind(errkit.ErrKindDeadline).Build()
 )
 
 // Compiler provides a runtime to execute goja runtime

@@ -10,7 +10,8 @@ import (
 
 	"github.com/bluele/gcache"
 	"github.com/projectdiscovery/gologger"
-	"github.com/projectdiscovery/nuclei/v3/pkg/types/errkit"
+	"github.com/projectdiscovery/nuclei/v3/pkg/types/nucleierr"
+	"github.com/projectdiscovery/utils/errkit"
 )
 
 // CacheInterface defines the signature of the hosterrorscache so that
@@ -135,15 +136,24 @@ func (c *Cache) checkError(err error) bool {
 	if err == nil {
 		return false
 	}
-	// parse error for furthur processing
-	errX := errkit.FromError(err)
-	switch errX.Class() {
-	case errkit.ErrClassTemplateLogic:
+	kind := errkit.GetErrorKind(err, nucleierr.ErrTemplateLogic)
+	switch kind {
+	case nucleierr.ErrTemplateLogic:
 		// these are errors that are not related to the target
 		// and are due to template logic
 		return false
-
+	case errkit.ErrKindNetworkTemporary:
+		// these should not be counted as host errors
+		return false
+	case errkit.ErrKindNetworkPermanent:
+		// these should be counted as host errors
+		return true
+	case errkit.ErrKindDeadline:
+		// these should not be counted as host errors
+		return false
 	default:
+		// parse error for furthur processing
+		errX := errkit.FromError(err)
 		tmp := errX.Cause()
 		cause := tmp.Error()
 		if strings.Contains(cause, "ReadStatusLine:") && strings.Contains(cause, "read: connection reset by peer") {

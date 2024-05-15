@@ -10,8 +10,9 @@ import (
 
 	"github.com/projectdiscovery/fastdialer/fastdialer"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http/httpclientpool"
-	"github.com/projectdiscovery/nuclei/v3/pkg/types/errkit"
+	"github.com/projectdiscovery/nuclei/v3/pkg/types/nucleierr"
 	"github.com/projectdiscovery/retryablehttp-go"
+	"github.com/projectdiscovery/utils/errkit"
 	iputil "github.com/projectdiscovery/utils/ip"
 	stringsutil "github.com/projectdiscovery/utils/strings"
 )
@@ -33,10 +34,10 @@ var (
 	// which was alloted using @timeout annotation this usually means that vulnerability was not found
 	// in rare case it could also happen due to network congestion
 	// the assigned class is TemplateLogic since this in almost every case means that server is not vulnerable
-	ErrTimeoutAnnotationDeadline = errkit.New("timeout annotation deadline exceeded").SetClass(errkit.ErrClassTemplateLogic).Build()
+	ErrTimeoutAnnotationDeadline = errkit.New("timeout annotation deadline exceeded").SetKind(nucleierr.ErrTemplateLogic).Build()
 	// ErrRequestTimeoutDeadline is the error returned when a specific amount of time was exceeded for a request
 	// this happens when the request execution exceeds alloted time
-	ErrRequestTimeoutDeadline = errkit.New("request timeout deadline exceeded when notimeout is set").SetClass(errkit.ErrClassDeadline).Build()
+	ErrRequestTimeoutDeadline = errkit.New("request timeout deadline exceeded when notimeout is set").SetKind(errkit.ErrKindDeadline).Build()
 )
 
 type flowMark int

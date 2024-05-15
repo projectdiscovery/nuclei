@@ -35,9 +35,10 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http/signerpool"
 	templateTypes "github.com/projectdiscovery/nuclei/v3/pkg/templates/types"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
-	"github.com/projectdiscovery/nuclei/v3/pkg/types/errkit"
+	"github.com/projectdiscovery/nuclei/v3/pkg/types/nucleierr"
 	"github.com/projectdiscovery/rawhttp"
 	convUtil "github.com/projectdiscovery/utils/conversion"
+	"github.com/projectdiscovery/utils/errkit"
 	errorutil "github.com/projectdiscovery/utils/errors"
 	httpUtils "github.com/projectdiscovery/utils/http"
 	"github.com/projectdiscovery/utils/reader"
@@ -56,9 +57,9 @@ const (
 var (
 	MaxBodyRead = int64(10 * 1024 * 1024) // 10MB
 	// ErrMissingVars is error occured when variables are missing
-	ErrMissingVars = errkit.New("stop execution due to unresolved variables").SetClass(errkit.ErrClassTemplateLogic).Build()
+	ErrMissingVars = errkit.New("stop execution due to unresolved variables").SetKind(nucleierr.ErrTemplateLogic).Build()
 	// ErrHttpEngineRequestDeadline is error occured when request deadline set by http request engine is exceeded
-	ErrHttpEngineRequestDeadline = errkit.New("http request engine deadline exceeded").SetClass(errkit.ErrClassDeadline).Build()
+	ErrHttpEngineRequestDeadline = errkit.New("http request engine deadline exceeded").SetKind(errkit.ErrKindDeadline).Build()
 )
 
 // Type returns the type of the protocol request

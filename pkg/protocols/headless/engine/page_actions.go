@@ -23,8 +23,8 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/utils/vardump"
 	protocolutils "github.com/projectdiscovery/nuclei/v3/pkg/protocols/utils"
 	httputil "github.com/projectdiscovery/nuclei/v3/pkg/protocols/utils/http"
-	"github.com/projectdiscovery/nuclei/v3/pkg/types/errkit"
 	contextutil "github.com/projectdiscovery/utils/context"
+	"github.com/projectdiscovery/utils/errkit"
 	errorutil "github.com/projectdiscovery/utils/errors"
 	fileutil "github.com/projectdiscovery/utils/file"
 	folderutil "github.com/projectdiscovery/utils/folder"
@@ -37,7 +37,7 @@ var (
 	errinvalidArguments = errorutil.New("invalid arguments provided")
 	ErrLFAccessDenied   = errorutil.New("Use -allow-local-file-access flag to enable local file access")
 	// ErrActionExecDealine is the error returned when alloted time for action execution exceeds
-	ErrActionExecDealine = errkit.New("headless action execution deadline exceeded").SetClass(errkit.ErrClassDeadline).Build()
+	ErrActionExecDealine = errkit.New("headless action execution deadline exceeded").SetKind(errkit.ErrKindDeadline).Build()
 )
 
 const (

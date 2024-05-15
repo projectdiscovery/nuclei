@@ -4,6 +4,7 @@ import (
 	"encoding/base64"
 	"fmt"
 	"io"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -27,7 +28,9 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/operators"
 	protocolUtils "github.com/projectdiscovery/nuclei/v3/pkg/protocols/utils"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
+	"github.com/projectdiscovery/nuclei/v3/pkg/types/nucleierr"
 	"github.com/projectdiscovery/nuclei/v3/pkg/utils"
+	"github.com/projectdiscovery/utils/errkit"
 	fileutil "github.com/projectdiscovery/utils/file"
 	osutils "github.com/projectdiscovery/utils/os"
 )
@@ -299,10 +302,12 @@ func (w *StandardWriter) Write(event *ResultEvent) error {
 
 // JSONLogRequest is a trace/error log request written to file
 type JSONLogRequest struct {
-	Template string `json:"template"`
-	Input    string `json:"input"`
-	Error    string `json:"error"`
-	Type     string `json:"type"`
+	Template string      `json:"template"`
+	Type     string      `json:"type"`
+	Input    string      `json:"input"`
+	Error    string      `json:"error"`
+	Kind     string      `json:"kind"`
+	Attrs    interface{} `json:"attrs,omitempty"`
 }
 
 // Request writes a log the requests trace log
@@ -314,11 +319,17 @@ func (w *StandardWriter) Request(templatePath, input, requestType string, reques
 		Template: templatePath,
 		Input:    input,
 		Type:     requestType,
+		Kind:     errkit.ErrKindUnknown.String(),
 	}
-	if unwrappedErr := utils.UnwrapError(requestErr); unwrappedErr != nil {
-		request.Error = unwrappedErr.Error()
-	} else {
+	errX := errkit.FromError(requestErr)
+	if errX == nil {
 		request.Error = "none"
+	} else {
+		request.Error = errX.Cause().Error()
+		request.Kind = errkit.GetErrorKind(requestErr, nucleierr.ErrTemplateLogic).String()
+		if len(errX.Attrs()) > 0 {
+			request.Attrs = slog.GroupValue(errX.Attrs()...)
+		}
 	}
 
 	data, err := jsoniter.Marshal(request)
