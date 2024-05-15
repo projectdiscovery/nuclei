@@ -180,6 +180,7 @@ func interfaceAddress(interfaceName string) (net.IP, error) {
 		if ipnet, ok := addr.(*net.IPNet); ok && !ipnet.IP.IsLoopback() {
 			if ipnet.IP.To4() != nil {
 				address = ipnet.IP
+				break
 			}
 		}
 	}
