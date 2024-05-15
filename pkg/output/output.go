@@ -30,6 +30,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/utils"
 	fileutil "github.com/projectdiscovery/utils/file"
 	osutils "github.com/projectdiscovery/utils/os"
+	unitutils "github.com/projectdiscovery/utils/unit"
 )
 
 // Writer is an interface which writes output to somewhere for nuclei events.
@@ -411,7 +412,7 @@ func (w *StandardWriter) WriteFailure(wrappedEvent *InternalWrappedEvent) error 
 	return w.Write(data)
 }
 
-var maxTemplateFileSizeForEncoding = 1024 * 1024
+var maxTemplateFileSizeForEncoding = unitutils.Mega
 
 func (w *StandardWriter) encodeTemplate(templatePath string) string {
 	data, err := os.ReadFile(templatePath)

@@ -16,6 +16,7 @@ import (
 	"github.com/DataDog/gostackparse"
 	"github.com/projectdiscovery/gologger"
 	permissionutil "github.com/projectdiscovery/utils/permission"
+	unitutils "github.com/projectdiscovery/utils/unit"
 	"github.com/rs/xid"
 )
 
@@ -118,7 +119,7 @@ func (s *Agent) monitorWorker(cancel context.CancelFunc) {
 
 // getStack returns full stack trace of the program
 var getStack = func(all bool) []byte {
-	for i := 1024 * 1024; ; i *= 2 {
+	for i := unitutils.Mega; ; i *= 2 {
 		buf := make([]byte, i)
 		if n := runtime.Stack(buf, all); n < i {
 			return buf[:n-1]

@@ -23,6 +23,7 @@ import (
 	protocolUtils "github.com/projectdiscovery/nuclei/v3/pkg/protocols/utils"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	"github.com/projectdiscovery/nuclei/v3/pkg/utils"
+	unitutils "github.com/projectdiscovery/utils/unit"
 )
 
 // Init initializes the protocols and their configurations
@@ -201,7 +202,7 @@ func (m *MockOutputWriter) WriteFailure(wrappedEvent *output.InternalWrappedEven
 	return m.Write(data)
 }
 
-var maxTemplateFileSizeForEncoding = 1024 * 1024
+var maxTemplateFileSizeForEncoding = unitutils.Mega
 
 func (w *MockOutputWriter) encodeTemplate(templatePath string) string {
 	data, err := os.ReadFile(templatePath)
