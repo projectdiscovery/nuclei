@@ -23,6 +23,7 @@ import (
 	logutil "github.com/projectdiscovery/utils/log"
 	sliceutil "github.com/projectdiscovery/utils/slice"
 	stringsutil "github.com/projectdiscovery/utils/strings"
+	unitutils "github.com/projectdiscovery/utils/unit"
 )
 
 var httpTestcases = []TestCaseInfo{
@@ -509,7 +510,7 @@ func (h *httpPostMultipartBody) Execute(filePath string) error {
 	var routerErr error
 
 	router.POST("/", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-		if err := r.ParseMultipartForm(1 * 1024); err != nil {
+		if err := r.ParseMultipartForm(unitutils.Mega); err != nil {
 			routerErr = err
 			return
 		}
