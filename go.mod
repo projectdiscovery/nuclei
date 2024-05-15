@@ -99,7 +99,7 @@ require (
 	github.com/redis/go-redis/v9 v9.1.0
 	github.com/seh-msft/burpxml v1.0.1
 	github.com/stretchr/testify v1.9.0
-	github.com/tarunKoyalwar/goleak v0.0.0-20240426214851-746d64600adc
+	github.com/tarunKoyalwar/goleak v0.0.0-20240429141123-0efa90dbdcf9
 	github.com/zmap/zgrab2 v0.1.8-0.20230806160807-97ba87c0e706
 	golang.org/x/term v0.19.0
 	gopkg.in/yaml.v3 v3.0.1
