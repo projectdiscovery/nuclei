@@ -19,6 +19,7 @@ import (
 	"github.com/projectdiscovery/retryablehttp-go"
 	pdcpauth "github.com/projectdiscovery/utils/auth/pdcp"
 	errorutil "github.com/projectdiscovery/utils/errors"
+	unitutils "github.com/projectdiscovery/utils/unit"
 	updateutils "github.com/projectdiscovery/utils/update"
 	urlutil "github.com/projectdiscovery/utils/url"
 )
@@ -26,8 +27,8 @@ import (
 const (
 	uploadEndpoint = "/v1/scans/import"
 	appendEndpoint = "/v1/scans/%s/import"
-	flushTimer     = time.Duration(1) * time.Minute
-	MaxChunkSize   = 1024 * 1024 * 4 // 4 MB
+	flushTimer     = time.Minute
+	MaxChunkSize   = 4 * unitutils.Mega // 4 MB
 	xidRe          = `^[a-z0-9]{20}$`
 )
 
