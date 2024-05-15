@@ -22,6 +22,10 @@ var (
 	Dialer *fastdialer.Dialer
 )
 
+func ShouldInit() bool {
+	return Dialer == nil
+}
+
 // Init creates the Dialer instance based on user configuration
 func Init(options *types.Options) error {
 	if Dialer != nil {
@@ -210,5 +214,6 @@ func Close() {
 	if Dialer != nil {
 		Dialer.Close()
 	}
+	Dialer = nil
 	StopActiveMemGuardian()
 }
