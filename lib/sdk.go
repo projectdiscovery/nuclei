@@ -183,8 +183,7 @@ func (e *NucleiEngine) SignTemplate(tmplSigner *signer.TemplateSigner, data []by
 	return buff.Bytes(), err
 }
 
-// Close all resources used by nuclei engine
-func (e *NucleiEngine) Close() {
+func (e *NucleiEngine) closeInternal() {
 	if e.interactshClient != nil {
 		e.interactshClient.Close()
 	}
@@ -215,7 +214,11 @@ func (e *NucleiEngine) Close() {
 	if e.httpxClient != nil {
 		_ = e.httpxClient.Close()
 	}
-	// close global shared resources
+}
+
+// Close all resources used by nuclei engine
+func (e *NucleiEngine) Close() {
+	e.closeInternal()
 	protocolinit.Close()
 }
 
