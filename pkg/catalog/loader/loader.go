@@ -24,6 +24,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/workflows"
 	"github.com/projectdiscovery/retryablehttp-go"
 	errorutil "github.com/projectdiscovery/utils/errors"
+	sliceutil "github.com/projectdiscovery/utils/slice"
 	stringsutil "github.com/projectdiscovery/utils/strings"
 	urlutil "github.com/projectdiscovery/utils/url"
 )
@@ -426,10 +427,10 @@ func (store *Store) LoadTemplatesWithTags(templatesList, tags []string) []*templ
 	store.logErroredTemplates(errs)
 	templatePathMap := store.pathFilter.Match(includedTemplates)
 
-	loadedTemplates := make([]*templates.Template, 0, len(templatePathMap))
+	loadedTemplates := sliceutil.NewSyncSlice[*templates.Template]()
 
 	loadTemplate := func(tmpl *templates.Template) {
-		loadedTemplates = append(loadedTemplates, tmpl)
+		loadedTemplates.Append(tmpl)
 		// increment signed/unsigned counters
 		if tmpl.Verified {
 			if tmpl.TemplateVerifier == "" {
@@ -520,11 +521,11 @@ func (store *Store) LoadTemplatesWithTags(templatesList, tags []string) []*templ
 
 	wgLoadTemplates.Wait()
 
-	sort.SliceStable(loadedTemplates, func(i, j int) bool {
-		return loadedTemplates[i].Path < loadedTemplates[j].Path
+	sort.SliceStable(loadedTemplates.Slice, func(i, j int) bool {
+		return loadedTemplates.Slice[i].Path < loadedTemplates.Slice[j].Path
 	})
 
-	return loadedTemplates
+	return loadedTemplates.Slice
 }
 
 // IsHTTPBasedProtocolUsed returns true if http/headless protocol is being used for
