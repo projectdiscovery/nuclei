@@ -94,7 +94,7 @@ require (
 	github.com/projectdiscovery/tlsx v1.1.6
 	github.com/projectdiscovery/uncover v1.0.7
 	github.com/projectdiscovery/useragent v0.0.49
-	github.com/projectdiscovery/utils v0.0.94-0.20240515132152-3908d4bb5d2c
+	github.com/projectdiscovery/utils v0.0.94-0.20240516124025-c3cf7603d51e
 	github.com/projectdiscovery/wappalyzergo v0.0.122
 	github.com/redis/go-redis/v9 v9.1.0
 	github.com/seh-msft/burpxml v1.0.1
