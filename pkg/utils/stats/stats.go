@@ -64,7 +64,7 @@ func New() *Storage {
 
 // NewEntry creates a new entry in the storage object
 func (s *Storage) NewEntry(name, description string) {
-	s.data.Set(name, &storageDataItem{description: description, value: atomic.Int64{}})
+	_ = s.data.Set(name, &storageDataItem{description: description, value: atomic.Int64{}})
 }
 
 // Increment increments the value for a name string
