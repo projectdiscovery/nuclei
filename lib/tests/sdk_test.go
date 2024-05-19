@@ -29,7 +29,7 @@ func TestSimpleNuclei(t *testing.T) {
 			goleak.VerifyNone(t, knownLeaks...)
 		}()
 		ne, err := nuclei.NewNucleiEngine(
-			nuclei.WithTemplateFilters(nuclei.TemplateFilters{ProtocolTypes: "dns"}),
+			nuclei.WithTemplateFilters(nuclei.TemplateFilters{ProtocolTypes: "dns"}), // filter dns templates
 			nuclei.EnableStatsWithOpts(nuclei.StatsOptions{JSON: true}),
 		)
 		require.Nil(t, err)
