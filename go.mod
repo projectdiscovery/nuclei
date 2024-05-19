@@ -22,7 +22,7 @@ require (
 	github.com/projectdiscovery/clistats v0.0.20
 	github.com/projectdiscovery/fastdialer v0.0.71
 	github.com/projectdiscovery/hmap v0.0.42
-	github.com/projectdiscovery/interactsh v1.1.10-0.20240515133408-b67f74cdd23a
+	github.com/projectdiscovery/interactsh v1.1.10-0.20240519152711-6a0cb98b1663
 	github.com/projectdiscovery/rawhttp v0.1.49
 	github.com/projectdiscovery/retryabledns v1.0.59
 	github.com/projectdiscovery/retryablehttp-go v1.0.60
@@ -85,7 +85,7 @@ require (
 	github.com/projectdiscovery/gologger v1.1.12
 	github.com/projectdiscovery/gostruct v0.0.2
 	github.com/projectdiscovery/gozero v0.0.2
-	github.com/projectdiscovery/httpx v1.3.8-0.20240516071945-5956d6a77df7
+	github.com/projectdiscovery/httpx v1.6.1
 	github.com/projectdiscovery/mapcidr v1.1.34
 	github.com/projectdiscovery/n3iwf v0.0.0-20230523120440-b8cd232ff1f5
 	github.com/projectdiscovery/ratelimit v0.0.40
