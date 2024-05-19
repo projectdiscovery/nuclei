@@ -325,7 +325,11 @@ func (w *StandardWriter) Request(templatePath, input, requestType string, reques
 	if errX == nil {
 		request.Error = "none"
 	} else {
-		request.Error = errX.Cause().Error()
+		cause := errX.Cause()
+		if cause == nil {
+			cause = errX
+		}
+		request.Error = cause.Error()
 		request.Kind = errkit.GetErrorKind(requestErr, nucleierr.ErrTemplateLogic).String()
 		if len(errX.Attrs()) > 0 {
 			request.Attrs = slog.GroupValue(errX.Attrs()...)

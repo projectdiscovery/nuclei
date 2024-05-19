@@ -18,7 +18,6 @@ import (
 
 	"github.com/projectdiscovery/fastdialer/fastdialer"
 	"github.com/projectdiscovery/fastdialer/fastdialer/ja3/impersonate"
-	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/ports"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/utils"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
@@ -255,18 +254,8 @@ func wrappedGet(options *types.Options, configuration *Configuration) (*retryabl
 
 	transport := &http.Transport{
 		ForceAttemptHTTP2: options.ForceAttemptHTTP2,
-		DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
-			// use ports-cache
-			if err := ports.CheckPortStatus(ctx, addr); err != nil {
-				return nil, errors.Wrapf(err, "failed to connect : %v", addr)
-			}
-			return Dialer.Dial(ctx, network, addr)
-		},
+		DialContext:       Dialer.Dial,
 		DialTLSContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
-			// use ports-cache
-			if err := ports.CheckPortStatus(ctx, addr); err != nil {
-				return nil, errors.Wrapf(err, "failed to connect : %v", addr)
-			}
 			if options.TlsImpersonate {
 				return Dialer.DialTLSWithConfigImpersonate(ctx, network, addr, tlsConfig, impersonate.Random, nil)
 			}

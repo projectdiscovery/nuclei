@@ -20,8 +20,8 @@ require (
 	github.com/olekukonko/tablewriter v0.0.5
 	github.com/pkg/errors v0.9.1
 	github.com/projectdiscovery/clistats v0.0.20
-	github.com/projectdiscovery/fastdialer v0.0.71
-	github.com/projectdiscovery/hmap v0.0.41
+	github.com/projectdiscovery/fastdialer v0.0.73-0.20240519190316-2c82ca0131ff
+	github.com/projectdiscovery/hmap v0.0.42
 	github.com/projectdiscovery/interactsh v1.1.9
 	github.com/projectdiscovery/rawhttp v0.1.47
 	github.com/projectdiscovery/retryabledns v1.0.59
@@ -94,7 +94,7 @@ require (
 	github.com/projectdiscovery/tlsx v1.1.6
 	github.com/projectdiscovery/uncover v1.0.7
 	github.com/projectdiscovery/useragent v0.0.49
-	github.com/projectdiscovery/utils v0.0.93-0.20240515205400-37bc84ef0c3f
+	github.com/projectdiscovery/utils v0.0.93-0.20240519190012-c4bf7513228c
 	github.com/projectdiscovery/wappalyzergo v0.0.122
 	github.com/redis/go-redis/v9 v9.1.0
 	github.com/seh-msft/burpxml v1.0.1
@@ -350,5 +350,3 @@ require (
 
 // https://go.dev/ref/mod#go-mod-file-retract
 retract v3.2.0 // retract due to broken js protocol issue
-
-replace github.com/projectdiscovery/fastdialer => /Users/tarun/Codebase/fastdialer

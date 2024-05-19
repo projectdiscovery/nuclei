@@ -13,7 +13,6 @@ import (
 	"github.com/projectdiscovery/fastdialer/fastdialer"
 	"github.com/projectdiscovery/mapcidr/asn"
 	"github.com/projectdiscovery/networkpolicy"
-	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/ports"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	"github.com/projectdiscovery/nuclei/v3/pkg/utils/expand"
 )
@@ -118,7 +117,7 @@ func Init(options *types.Options) error {
 		if err != nil {
 			return err
 		}
-		opts.ProxyDialer = dialer
+		opts.ProxyDialer = &dialer
 	}
 
 	if options.SystemResolvers {
@@ -143,15 +142,6 @@ func Init(options *types.Options) error {
 		return errors.Wrap(err, "could not create dialer")
 	}
 	Dialer = dialer
-
-	// size of the ports cache
-	portsCacheSize := 1000
-	if options.BulkSize < 5000 && options.BulkSize > 1000 && options.ScanStrategy != "host-spray" {
-		// 5000 is acceptable for host-spray
-		portsCacheSize = options.BulkSize
-	}
-	// add dialer to ports-cache
-	ports.Init(Dialer, portsCacheSize)
 
 	// override dialer in mysql
 	mysql.RegisterDialContext("tcp", func(ctx context.Context, addr string) (net.Conn, error) {
