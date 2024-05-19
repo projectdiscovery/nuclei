@@ -93,7 +93,7 @@ require (
 	github.com/projectdiscovery/sarif v0.0.1
 	github.com/projectdiscovery/tlsx v1.1.6
 	github.com/projectdiscovery/uncover v1.0.7
-	github.com/projectdiscovery/useragent v0.0.49
+	github.com/projectdiscovery/useragent v0.0.52
 	github.com/projectdiscovery/utils v0.0.93
 	github.com/projectdiscovery/wappalyzergo v0.1.0
 	github.com/redis/go-redis/v9 v9.1.0
@@ -203,7 +203,6 @@ require (
 	github.com/projectdiscovery/freeport v0.0.5 // indirect
 	github.com/projectdiscovery/ldapserver v1.0.2-0.20240219154113-dcc758ebc0cb // indirect
 	github.com/projectdiscovery/machineid v0.0.0-20240226150047-2e2c51e35983 // indirect
-	github.com/projectdiscovery/stringsutil v0.0.2 // indirect
 	github.com/quic-go/quic-go v0.42.0 // indirect
 	github.com/refraction-networking/utls v1.6.1 // indirect
 	github.com/sashabaranov/go-openai v1.15.3 // indirect
