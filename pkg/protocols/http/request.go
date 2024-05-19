@@ -114,7 +114,13 @@ func (request *Request) executeRaceRequest(input *contextargs.Context, previous 
 	}
 
 	shouldStop := (request.options.Options.StopAtFirstMatch || request.StopAtFirstMatch || request.options.StopAtFirstMatch)
-	spmHandler := httputils.NewNonBlockingSPMHandler[error](ctx, maxErrorsWhenParallel, shouldStop)
+
+	childCtx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	spmHandler := httputils.NewNonBlockingSPMHandler[error](childCtx, maxErrorsWhenParallel, shouldStop)
+	defer spmHandler.Cancel()
+
 	gotMatches := &atomic.Bool{}
 	// wrappedCallback is a callback that wraps the original callback
 	// to implement stop at first match logic
@@ -195,7 +201,13 @@ func (request *Request) executeParallelHTTP(input *contextargs.Context, dynamicV
 	// Stop-at-first-match logic while executing requests
 	// parallely using threads
 	shouldStop := (request.options.Options.StopAtFirstMatch || request.StopAtFirstMatch || request.options.StopAtFirstMatch)
-	spmHandler := httputils.NewBlockingSPMHandler[error](context.Background(), maxWorkers, maxErrorsWhenParallel, shouldStop)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	spmHandler := httputils.NewBlockingSPMHandler[error](ctx, maxWorkers, maxErrorsWhenParallel, shouldStop)
+	defer spmHandler.Cancel()
+
 	// wrappedCallback is a callback that wraps the original callback
 	// to implement stop at first match logic
 	wrappedCallback := func(event *output.InternalWrappedEvent) {
@@ -327,7 +339,13 @@ func (request *Request) executeTurboHTTP(input *contextargs.Context, dynamicValu
 	// Stop-at-first-match logic while executing requests
 	// parallely using threads
 	shouldStop := (request.options.Options.StopAtFirstMatch || request.StopAtFirstMatch || request.options.StopAtFirstMatch)
-	spmHandler := httputils.NewBlockingSPMHandler[error](context.Background(), maxWorkers, maxErrorsWhenParallel, shouldStop)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	spmHandler := httputils.NewBlockingSPMHandler[error](ctx, maxWorkers, maxErrorsWhenParallel, shouldStop)
+	defer spmHandler.Cancel()
+
 	// wrappedCallback is a callback that wraps the original callback
 	// to implement stop at first match logic
 	wrappedCallback := func(event *output.InternalWrappedEvent) {
