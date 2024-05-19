@@ -39,5 +39,5 @@ integration_tests/fuzzplayground
 /nuclei-stats
 /nuclei-stats-*
 /scan-charts
-/debug-*
+/**/debug-*
 
