@@ -368,7 +368,7 @@ func makeCheckRedirectFunc(redirectType RedirectFlow, maxRedirects int) checkRed
 	}
 }
 
-func checkMaxRedirects(req *http.Request, via []*http.Request, maxRedirects int) error {
+func checkMaxRedirects(_ *http.Request, via []*http.Request, maxRedirects int) error {
 	if maxRedirects == 0 {
 		if len(via) > defaultMaxRedirects {
 			return http.ErrUseLastResponse
