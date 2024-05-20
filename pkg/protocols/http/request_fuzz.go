@@ -6,7 +6,6 @@ package http
 //		-> request.executeGeneratedFuzzingRequest [execute final generated fuzzing request and get result]
 
 import (
-	"context"
 	"fmt"
 	"net/http"
 	"strings"
@@ -133,7 +132,7 @@ func (request *Request) executeAllFuzzingRules(input *contextargs.Context, value
 				return request.executeGeneratedFuzzingRequest(gr, input, callback)
 			},
 			Values:      values,
-			BaseRequest: baseRequest.Clone(context.TODO()),
+			BaseRequest: baseRequest.Clone(input.Context()),
 		})
 		if err == nil {
 			applicable = true

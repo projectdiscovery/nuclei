@@ -1,7 +1,6 @@
 package network
 
 import (
-	"context"
 	"encoding/hex"
 	"fmt"
 	"net"
@@ -64,7 +63,7 @@ func (request *Request) getOpenPorts(target *contextargs.Context) ([]string, err
 			errs = append(errs, err)
 			continue
 		}
-		conn, err := protocolstate.Dialer.Dial(context.TODO(), "tcp", addr)
+		conn, err := protocolstate.Dialer.Dial(target.Context(), "tcp", addr)
 		if err != nil {
 			errs = append(errs, err)
 			continue
@@ -242,9 +241,9 @@ func (request *Request) executeRequestWithPayloads(variables map[string]interfac
 	}
 
 	if shouldUseTLS {
-		conn, err = request.dialer.DialTLS(context.Background(), "tcp", actualAddress)
+		conn, err = request.dialer.DialTLS(input.Context(), "tcp", actualAddress)
 	} else {
-		conn, err = request.dialer.Dial(context.Background(), "tcp", actualAddress)
+		conn, err = request.dialer.Dial(input.Context(), "tcp", actualAddress)
 	}
 	if err != nil {
 		request.options.Output.Request(request.options.TemplatePath, address, request.Type().String(), err)

@@ -360,7 +360,7 @@ func (request *Request) ExecuteWithResults(target *contextargs.Context, dynamicV
 	}
 
 	if request.generator != nil && request.Threads > 1 {
-		request.executeRequestParallel(context.Background(), hostPort, hostname, input, payloadValues, callback)
+		request.executeRequestParallel(target.Context(), hostPort, hostname, input, payloadValues, callback)
 		return nil
 	}
 

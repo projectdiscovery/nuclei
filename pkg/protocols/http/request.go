@@ -199,7 +199,7 @@ func (request *Request) executeParallelHTTP(input *contextargs.Context, dynamicV
 	// Stop-at-first-match logic while executing requests
 	// parallely using threads
 	shouldStop := (request.options.Options.StopAtFirstMatch || request.StopAtFirstMatch || request.options.StopAtFirstMatch)
-	spmHandler := httputils.NewBlockingSPMHandler[error](context.Background(), maxWorkers, maxErrorsWhenParallel, shouldStop)
+	spmHandler := httputils.NewBlockingSPMHandler[error](input.Context(), maxWorkers, maxErrorsWhenParallel, shouldStop)
 	// wrappedCallback is a callback that wraps the original callback
 	// to implement stop at first match logic
 	wrappedCallback := func(event *output.InternalWrappedEvent) {
@@ -331,7 +331,7 @@ func (request *Request) executeTurboHTTP(input *contextargs.Context, dynamicValu
 	// Stop-at-first-match logic while executing requests
 	// parallely using threads
 	shouldStop := (request.options.Options.StopAtFirstMatch || request.StopAtFirstMatch || request.options.StopAtFirstMatch)
-	spmHandler := httputils.NewBlockingSPMHandler[error](context.Background(), maxWorkers, maxErrorsWhenParallel, shouldStop)
+	spmHandler := httputils.NewBlockingSPMHandler[error](input.Context(), maxWorkers, maxErrorsWhenParallel, shouldStop)
 	// wrappedCallback is a callback that wraps the original callback
 	// to implement stop at first match logic
 	wrappedCallback := func(event *output.InternalWrappedEvent) {

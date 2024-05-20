@@ -131,7 +131,7 @@ func (r *Request) parseAnnotations(rawRequest string, request *retryablehttp.Req
 			value := strings.TrimSpace(duration[1])
 			if parsed, err := time.ParseDuration(value); err == nil {
 				//nolint:govet // cancelled automatically by withTimeout
-				ctx, overrides.cancelFunc = context.WithTimeoutCause(context.Background(), parsed, ErrTimeoutAnnotationDeadline)
+				ctx, overrides.cancelFunc = context.WithTimeoutCause(request.Context(), parsed, ErrTimeoutAnnotationDeadline)
 				// add timeout value to context
 				ctx = context.WithValue(ctx, httpclientpool.WithCustomTimeout{}, httpclientpool.WithCustomTimeout{Timeout: parsed})
 				request = request.Clone(ctx)
@@ -139,7 +139,7 @@ func (r *Request) parseAnnotations(rawRequest string, request *retryablehttp.Req
 		} else {
 			//nolint:govet // cancelled automatically by withTimeout
 			// not sure about relevance ?
-			ctx, overrides.cancelFunc = context.WithTimeoutCause(context.Background(), httpclientpool.GetHttpTimeout(r.options.Options), ErrRequestTimeoutDeadline)
+			ctx, overrides.cancelFunc = context.WithTimeoutCause(request.Context(), httpclientpool.GetHttpTimeout(r.options.Options), ErrRequestTimeoutDeadline)
 			request = request.Clone(ctx)
 		}
 	}

@@ -218,7 +218,7 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 		}
 	}
 
-	ctx, cancel := context.WithTimeoutCause(context.Background(), time.Duration(timeout)*time.Second, ErrCodeExecutionDeadline)
+	ctx, cancel := context.WithTimeoutCause(input.Context(), time.Duration(timeout)*time.Second, ErrCodeExecutionDeadline)
 	defer cancel()
 	// Note: we use contextutil despite the fact that gozero accepts context as argument
 	gOutput, err := contextutil.ExecFuncWithTwoReturns(ctx, func() (*gozerotypes.Result, error) {
