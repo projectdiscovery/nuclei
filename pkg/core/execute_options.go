@@ -10,10 +10,10 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
 	"github.com/projectdiscovery/nuclei/v3/pkg/templates"
+	"github.com/projectdiscovery/nuclei/v3/pkg/templates/types"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types/scanstrategy"
 	stringsutil "github.com/projectdiscovery/utils/strings"
 	syncutil "github.com/projectdiscovery/utils/sync"
-	"github.com/remeh/sizedwaitgroup"
 )
 
 // Execute takes a list of templates/workflows that have been compiled
@@ -106,40 +106,36 @@ func (e *Engine) executeTemplateSpray(ctx context.Context, templatesList []*temp
 
 	// wp is workpool that contains different waitgroups for
 	// headless and non-headless templates
-	// wp := e.GetWorkPool()
-	sg := sizedwaitgroup.New(e.options.TemplateThreads)
+	wp := e.GetWorkPool()
 
 	for _, template := range templatesList {
-		// select {
-		// case <-ctx.Done():
-		// 	return results
-		// default:
-		// }
+		select {
+		case <-ctx.Done():
+			return results
+		default:
+		}
 
 		// resize check point - nop if there are no changes
-		// wp.RefreshWithConfig(e.GetWorkPoolConfig())
+		wp.RefreshWithConfig(e.GetWorkPoolConfig())
 
-		// templateType := template.Type()
-		// var wg *syncutil.AdaptiveWaitGroup
-		// if templateType == types.HeadlessProtocol {
-		// 	wg = wp.Headless
-		// } else {
-		// 	wg = wp.Default
-		// }
+		templateType := template.Type()
+		var wg *syncutil.AdaptiveWaitGroup
+		if templateType == types.HeadlessProtocol {
+			wg = wp.Headless
+		} else {
+			wg = wp.Default
+		}
 
-		sg.Add()
-		go func(ctx1 context.Context, tpl *templates.Template, tx provider.InputProvider, res *atomic.Bool) {
-			defer sg.Done()
+		wg.Add()
+		go func(tpl *templates.Template) {
+			defer wg.Done()
 			// All other request types are executed here
 			// Note: executeTemplateWithTargets creates goroutines and blocks
 			// given template is executed on all targets
-			e.executeTemplateWithTargets(ctx1, tpl, tx, res)
-			// gologger.Error().Msgf("executing template %s done", tpl.ID)
-		}(ctx, template, target, results)
+			e.executeTemplateWithTargets(ctx, tpl, target, results)
+		}(template)
 	}
-	// gologger.Error().Msgf("executing last set of templates")
-	sg.Wait()
-	// gologger.Error().Msgf("executing last set of templates done")
+	wp.Wait()
 	return results
 }
 
