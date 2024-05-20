@@ -8,6 +8,8 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/generators"
 	"github.com/projectdiscovery/nuclei/v3/pkg/scan"
+	"github.com/projectdiscovery/nuclei/v3/pkg/templates/types"
+	stringsutil "github.com/projectdiscovery/utils/strings"
 )
 
 // Mutliprotocol is a template executer engine that executes multiple protocols
@@ -110,9 +112,19 @@ func (m *MultiProtocol) ExecuteWithResults(ctx *scan.ScanContext) error {
 
 		values := m.options.GetTemplateCtx(ctx.Input.MetaInput).GetAll()
 		err := req.ExecuteWithResults(ctx.Input, output.InternalEvent(values), nil, multiProtoCallback)
-		// if error skip execution of next protocols
+		// in case of fatal error skip execution of next protocols
 		if err != nil {
+			// always log errors
 			ctx.LogError(err)
+
+			// for some classes of protocols (i.e ssl) errors like tls handshake are a legitimate behavior so we don't stop execution
+			// connection failures are already tracked by the internal host error cache
+			// we use strings comparison as the error is not formalized into instance within the standard library
+			// within a flow instead we consider ssl errors as fatal, since a specific logic was requested
+			if req.Type() == types.SSLProtocol && stringsutil.ContainsAnyI(err.Error(), "protocol version not supported", "could not do tls handshake") {
+				continue
+			}
+
 			return err
 		}
 	}
