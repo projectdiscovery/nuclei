@@ -152,12 +152,14 @@ func (request *Request) executeOnTarget(input *contextargs.Context, visited maps
 		}
 		visited.Set(actualAddress, struct{}{})
 
+		// gologger.Verbose().Msgf("[%v] Making network request to %s\n", request.options.TemplateID, actualAddress)
 		if err := request.executeAddress(variables, actualAddress, address, input, kv.tls, previous, callback); err != nil {
 			outputEvent := request.responseToDSLMap("", "", "", address, "")
 			callback(&output.InternalWrappedEvent{InternalEvent: outputEvent})
 			gologger.Warning().Msgf("[%v] Could not make network request for (%s) : %s\n", request.options.TemplateID, actualAddress, err)
 			continue
 		}
+		// gologger.Verbose().Msgf("[%v] Network request to %s done\n", request.options.TemplateID, actualAddress)
 	}
 	return nil
 }
@@ -175,7 +177,7 @@ func (request *Request) executeAddress(variables map[string]interface{}, actualA
 	}
 
 	// if request threads matches global payload concurrency we follow it
-	shouldFollowGlobal := request.Threads == request.options.Options.PayloadConcurrency
+	// shouldFollowGlobal := request.Threads == request.options.Options.PayloadConcurrency
 
 	if request.generator != nil {
 		iterator := request.generator.NewIterator()
@@ -198,14 +200,14 @@ func (request *Request) executeAddress(variables map[string]interface{}, actualA
 			default:
 			}
 
-			// resize check point - nop if there are no changes
-			if shouldFollowGlobal && swg.Size != request.options.Options.PayloadConcurrency {
-				if err := swg.Resize(input.Context(), request.options.Options.PayloadConcurrency); err != nil {
-					m.Lock()
-					multiErr = multierr.Append(multiErr, err)
-					m.Unlock()
-				}
-			}
+			// // resize check point - nop if there are no changes
+			// if shouldFollowGlobal && swg.Size != request.options.Options.PayloadConcurrency {
+			// 	if err := swg.Resize(input.Context(), request.options.Options.PayloadConcurrency); err != nil {
+			// 		m.Lock()
+			// 		multiErr = multierr.Append(multiErr, err)
+			// 		m.Unlock()
+			// 	}
+			// }
 
 			value = generators.MergeMaps(value, payloads)
 			swg.Add()
