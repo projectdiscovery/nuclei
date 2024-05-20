@@ -20,7 +20,7 @@ require (
 	github.com/olekukonko/tablewriter v0.0.5
 	github.com/pkg/errors v0.9.1
 	github.com/projectdiscovery/clistats v0.0.20
-	github.com/projectdiscovery/fastdialer v0.0.71
+	github.com/projectdiscovery/fastdialer v0.0.72
 	github.com/projectdiscovery/hmap v0.0.42
 	github.com/projectdiscovery/interactsh v1.1.10-0.20240519152711-6a0cb98b1663
 	github.com/projectdiscovery/rawhttp v0.1.50
