@@ -13,6 +13,7 @@ var sslTestcases = []TestCaseInfo{
 	{Path: "protocols/ssl/custom-cipher.yaml", TestCase: &sslCustomCipher{}},
 	{Path: "protocols/ssl/custom-version.yaml", TestCase: &sslCustomVersion{}},
 	{Path: "protocols/ssl/ssl-with-vars.yaml", TestCase: &sslWithVars{}},
+	{Path: "protocols/ssl/multi-req.yaml", TestCase: &sslMultiReq{}},
 }
 
 type sslBasic struct{}
@@ -117,4 +118,24 @@ func (h *sslWithVars) Execute(filePath string) error {
 	}
 
 	return expectResultsCount(results, 1)
+}
+
+type sslMultiReq struct{}
+
+func (h *sslMultiReq) Execute(filePath string) error {
+	ts := testutils.NewTCPServer(&tls.Config{}, defaultStaticPort, func(conn net.Conn) {
+		defer conn.Close()
+		data := make([]byte, 4)
+		if _, err := conn.Read(data); err != nil {
+			return
+		}
+	})
+	defer ts.Close()
+
+	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, ts.URL, debug, "-V")
+	if err != nil {
+		return err
+	}
+
+	return expectResultsCount(results, 2)
 }
