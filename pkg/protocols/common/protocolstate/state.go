@@ -210,6 +210,7 @@ func interfaceAddresses(interfaceName string) ([]net.Addr, error) {
 func Close() {
 	if Dialer != nil {
 		Dialer.Close()
+		Dialer = nil
 	}
 	StopActiveMemGuardian()
 }
