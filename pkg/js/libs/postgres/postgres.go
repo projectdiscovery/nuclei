@@ -105,6 +105,7 @@ func executeQuery(host string, port int, username string, password string, dbNam
 	if err != nil {
 		return nil, err
 	}
+	defer db.Close()
 
 	rows, err := db.Query(query)
 	if err != nil {
@@ -144,15 +145,19 @@ func connect(host string, port int, username string, password string, dbName str
 
 	target := net.JoinHostPort(host, fmt.Sprintf("%d", port))
 
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	db := pg.Connect(&pg.Options{
-		Addr:     target,
-		User:     username,
-		Password: password,
-		Database: dbName,
+		Addr:               target,
+		User:               username,
+		Password:           password,
+		Database:           dbName,
 		Dialer: func(network, addr string) (net.Conn, error) {
 			return protocolstate.Dialer.Dial(context.Background(), network, addr)
 		},
-	})
+		IdleCheckFrequency: -1,
+	}).WithContext(ctx).WithTimeout(10 * time.Second)
 	defer db.Close()
 
 	_, err := db.Exec("select 1")

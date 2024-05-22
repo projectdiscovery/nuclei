@@ -123,9 +123,11 @@ func (h *StopAtFirstMatchHandler[T]) MatchCallback(fn func()) {
 // run runs the internal handler
 func (h *StopAtFirstMatchHandler[T]) run(ctx context.Context) {
 	defer h.internalWg.Done()
+
 	for {
 		select {
 		case <-ctx.Done():
+			return
 		case val, ok := <-h.ResultChan:
 			if !ok {
 				return
