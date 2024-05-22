@@ -49,17 +49,13 @@ var (
 )
 
 func main() {
-	run()
-}
-
-func run(args ...string) {
 	// enables CLI specific configs mostly interactive behavior
 	config.CurrentAppMode = config.AppModeCLI
 
 	if err := runner.ConfigureOptions(); err != nil {
 		gologger.Fatal().Msgf("Could not initialize options: %s\n", err)
 	}
-	_ = readConfig(args...)
+	_ = readConfig()
 
 	if options.ListDslSignatures {
 		gologger.Info().Msgf("The available custom DSL functions are:")
@@ -187,7 +183,7 @@ func run(args ...string) {
 	}
 }
 
-func readConfig(args ...string) *goflags.FlagSet {
+func readConfig() *goflags.FlagSet {
 
 	// when true updates nuclei binary to latest version
 	var updateNucleiBinary bool
@@ -450,7 +446,7 @@ Additional documentation is available at: https://docs.nuclei.sh/getting-started
 	// ex: config.yaml moved to platform standard config dir from linux specific config dir
 	// and hence it will be attempted in config package during init
 	goflags.DisableAutoConfigMigration = true
-	_ = flagSet.Parse(args...)
+	_ = flagSet.Parse()
 
 	// when fuzz flag is enabled, set the dast flag to true
 	if fuzzFlag {

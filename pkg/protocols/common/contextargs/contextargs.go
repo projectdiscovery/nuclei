@@ -181,3 +181,20 @@ func (ctx *Context) Clone() *Context {
 	}
 	return newCtx
 }
+
+// GetCopyIfHostOutdated returns a new contextargs if the host is outdated
+func GetCopyIfHostOutdated(ctx *Context, url string) *Context {
+	if ctx.MetaInput.Input == "" {
+		newctx := ctx.Clone()
+		newctx.MetaInput.Input = url
+		return newctx
+	}
+	orig, _ := urlutil.Parse(ctx.MetaInput.Input)
+	newURL, _ := urlutil.Parse(url)
+	if orig != nil && newURL != nil && orig.Host != newURL.Host {
+		newCtx := ctx.Clone()
+		newCtx.MetaInput.Input = newURL.Host
+		return newCtx
+	}
+	return ctx
+}

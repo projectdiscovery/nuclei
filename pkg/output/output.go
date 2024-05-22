@@ -341,10 +341,14 @@ func (w *StandardWriter) Request(templatePath, input, requestType string, reques
 	if errX == nil {
 		request.Error = "none"
 	} else {
-		cause := errX.Cause()
+		var cause error
+		if len(errX.Errors()) > 1 {
+			cause = errX.Errors()[0]
+		}
 		if cause == nil {
 			cause = errX
 		}
+		cause = tryParseCause(cause)
 		request.Error = cause.Error()
 		request.Kind = errkit.GetErrorKind(requestErr, nucleierr.ErrTemplateLogic).String()
 		if len(errX.Attrs()) > 0 {
@@ -485,4 +489,25 @@ func (w *StandardWriter) WriteStoreDebugData(host, templateID, eventType string,
 		f.Close()
 	}
 
+}
+
+// tryParseCause tries to parse the cause of given error
+// this is legacy support due to use of errorutil in existing libraries
+// but this should not be required once all libraries are updated
+func tryParseCause(err error) error {
+	if err == nil {
+		return nil
+	}
+	msg := err.Error()
+	if strings.HasPrefix(msg, "ReadStatusLine:") {
+		// last index is actual error (from rawhttp)
+		parts := strings.Split(msg, ":")
+		return errkit.New(strings.TrimSpace(parts[len(parts)-1]))
+	}
+	if strings.Contains(msg, "read ") {
+		// same here
+		parts := strings.Split(msg, ":")
+		return errkit.New(strings.TrimSpace(parts[len(parts)-1]))
+	}
+	return err
 }

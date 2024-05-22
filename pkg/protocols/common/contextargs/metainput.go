@@ -64,7 +64,7 @@ func (metaInput *MetaInput) Port() string {
 // it is meant to be used by hosterrorsCache if invalid metainput
 // is provided then it uses a random ksuid as hostname to avoid skipping valid targets
 func (metaInput *MetaInput) Address() string {
-	var hostname string
+	var hostname, port string
 	target, err := urlutil.ParseAbsoluteURL(metaInput.Target(), false)
 	if err != nil {
 		err = nil
@@ -75,19 +75,26 @@ func (metaInput *MetaInput) Address() string {
 		}
 	} else {
 		hostname = target.Hostname()
+		port = target.Port()
+		if port == "" {
+			switch target.Scheme {
+			case urlutil.HTTP:
+				port = "80"
+			case urlutil.HTTPS:
+				port = "443"
+			default:
+				port = "80"
+			}
+		}
 	}
-	port := target.Port()
 	if metaInput.CustomIP != "" {
 		hostname = metaInput.CustomIP
 	}
 	if port == "" {
-		switch target.Scheme {
-		case urlutil.HTTP:
+		if strings.HasPrefix(hostname, "http://") {
 			port = "80"
-		case urlutil.HTTPS:
+		} else if strings.HasPrefix(hostname, "https://") {
 			port = "443"
-		default:
-			port = "80"
 		}
 	}
 	return net.JoinHostPort(hostname, port)

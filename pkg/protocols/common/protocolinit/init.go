@@ -13,10 +13,6 @@ import (
 
 // Init initializes the client pools for the protocols
 func Init(options *types.Options) error {
-
-	if err := protocolstate.Init(options); err != nil {
-		return err
-	}
 	if err := dnsclientpool.Init(options); err != nil {
 		return err
 	}

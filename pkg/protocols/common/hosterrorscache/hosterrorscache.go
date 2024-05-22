@@ -25,6 +25,10 @@ type CacheInterface interface {
 	MarkFailed(ctx *contextargs.Context, err error) // record a failure (and cause) for the host
 }
 
+var (
+	_ CacheInterface = (*Cache)(nil)
+)
+
 // Cache is a cache for host based errors. It allows skipping
 // certain hosts based on an error threshold.
 //
@@ -38,8 +42,10 @@ type Cache struct {
 }
 
 type cacheItem struct {
-	errors atomic.Int32
 	sync.Once
+	errors         atomic.Int32
+	isPermanentErr bool
+	cause          error // optional cause
 }
 
 const DefaultMaxHostsCount = 10000
@@ -110,6 +116,11 @@ func (c *Cache) Check(ctx *contextargs.Context) bool {
 		return false
 	}
 	existingCacheItemValue := existingCacheItem.(*cacheItem)
+	if existingCacheItemValue.isPermanentErr {
+		// skipping permanent errors is expected so verbose instead of info
+		gologger.Verbose().Msgf("Skipped %s from target list as found unresponsive permanently: %s", finalValue, existingCacheItemValue.cause)
+		return true
+	}
 
 	if existingCacheItemValue.errors.Load() >= int32(c.MaxHostError) {
 		existingCacheItemValue.Do(func() {
@@ -130,6 +141,13 @@ func (c *Cache) MarkFailed(ctx *contextargs.Context, err error) {
 	if err != nil || existingCacheItem == nil {
 		newItem := &cacheItem{errors: atomic.Int32{}}
 		newItem.errors.Store(1)
+		if errkit.IsKind(err, errkit.ErrKindNetworkPermanent) {
+			// skip this address altogether
+			// permanent errors are always permanent hence this is created once
+			// and never updated so no need to synchronize
+			newItem.isPermanentErr = true
+			newItem.cause = err
+		}
 		_ = c.failedTargets.Set(finalValue, newItem)
 		return
 	}
