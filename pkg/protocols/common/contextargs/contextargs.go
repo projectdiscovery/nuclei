@@ -37,6 +37,13 @@ func New(ctx context.Context) *Context {
 	return NewWithInput(ctx, "")
 }
 
+// NewWithMetaInput creates a new contextargs instance with meta input
+func NewWithMetaInput(ctx context.Context, input *MetaInput) *Context {
+	n := New(ctx)
+	n.MetaInput = input
+	return n
+}
+
 // Create a new contextargs instance with input string
 func NewWithInput(ctx context.Context, input string) *Context {
 	jar, err := cookiejar.New(nil)

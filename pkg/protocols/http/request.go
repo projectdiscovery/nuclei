@@ -1105,14 +1105,14 @@ func (request *Request) markUnresponsiveHost(input *contextargs.Context, err err
 		return
 	}
 	if request.options.HostErrorsCache != nil {
-		request.options.HostErrorsCache.MarkFailed(input.MetaInput.ID(), err)
+		request.options.HostErrorsCache.MarkFailed(input, err)
 	}
 }
 
 // isUnresponsiveHost checks if the error is a unreponsive based on its execution history
 func (request *Request) isUnresponsiveHost(input *contextargs.Context) bool {
 	if request.options.HostErrorsCache != nil {
-		return request.options.HostErrorsCache.Check(input.MetaInput.ID())
+		return request.options.HostErrorsCache.Check(input)
 	}
 	return false
 }

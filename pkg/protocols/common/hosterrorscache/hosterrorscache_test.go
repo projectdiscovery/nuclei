@@ -1,11 +1,13 @@
 package hosterrorscache
 
 import (
+	"context"
 	"fmt"
 	"sync"
 	"sync/atomic"
 	"testing"
 
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
 	"github.com/stretchr/testify/require"
 )
 
@@ -13,8 +15,8 @@ func TestCacheCheck(t *testing.T) {
 	cache := New(3, DefaultMaxHostsCount, nil)
 
 	for i := 0; i < 100; i++ {
-		cache.MarkFailed("test", fmt.Errorf("could not resolve host"))
-		got := cache.Check("test")
+		cache.MarkFailed(newCtxArgs("test"), fmt.Errorf("could not resolve host"))
+		got := cache.Check(newCtxArgs("test"))
 		if i < 2 {
 			// till 3 the host is not flagged to skip
 			require.False(t, got)
@@ -24,7 +26,7 @@ func TestCacheCheck(t *testing.T) {
 		}
 	}
 
-	value := cache.Check("test")
+	value := cache.Check(newCtxArgs("test"))
 	require.Equal(t, true, value, "could not get checked value")
 }
 
@@ -32,8 +34,8 @@ func TestTrackErrors(t *testing.T) {
 	cache := New(3, DefaultMaxHostsCount, []string{"custom error"})
 
 	for i := 0; i < 100; i++ {
-		cache.MarkFailed("custom", fmt.Errorf("got: nested: custom error"))
-		got := cache.Check("custom")
+		cache.MarkFailed(newCtxArgs("custom"), fmt.Errorf("got: nested: custom error"))
+		got := cache.Check(newCtxArgs("custom"))
 		if i < 2 {
 			// till 3 the host is not flagged to skip
 			require.False(t, got)
@@ -42,7 +44,7 @@ func TestTrackErrors(t *testing.T) {
 			require.True(t, got)
 		}
 	}
-	value := cache.Check("custom")
+	value := cache.Check(newCtxArgs("custom"))
 	require.Equal(t, true, value, "could not get checked value")
 }
 
@@ -82,7 +84,7 @@ func TestCacheMarkFailed(t *testing.T) {
 
 	for _, test := range tests {
 		normalizedCacheValue := cache.normalizeCacheValue(test.host)
-		cache.MarkFailed(test.host, fmt.Errorf("no address found for host"))
+		cache.MarkFailed(newCtxArgs(test.host), fmt.Errorf("no address found for host"))
 		failedTarget, err := cache.failedTargets.Get(normalizedCacheValue)
 		require.Nil(t, err)
 		require.NotNil(t, failedTarget)
@@ -120,14 +122,14 @@ func TestCacheMarkFailedConcurrent(t *testing.T) {
 			wg.Add(1)
 			go func() {
 				defer wg.Done()
-				cache.MarkFailed(currentTest.host, fmt.Errorf("could not resolve host"))
+				cache.MarkFailed(newCtxArgs(currentTest.host), fmt.Errorf("could not resolve host"))
 			}()
 		}
 	}
 	wg.Wait()
 
 	for _, test := range tests {
-		require.True(t, cache.Check(test.host))
+		require.True(t, cache.Check(newCtxArgs(test.host)))
 
 		normalizedCacheValue := cache.normalizeCacheValue(test.host)
 		failedTarget, err := cache.failedTargets.Get(normalizedCacheValue)
@@ -138,4 +140,9 @@ func TestCacheMarkFailedConcurrent(t *testing.T) {
 		require.True(t, ok)
 		require.EqualValues(t, test.expected, value.errors.Load())
 	}
+}
+
+func newCtxArgs(value string) *contextargs.Context {
+	ctx := contextargs.NewWithInput(context.TODO(), value)
+	return ctx
 }
