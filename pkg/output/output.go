@@ -33,6 +33,7 @@ import (
 	"github.com/projectdiscovery/utils/errkit"
 	fileutil "github.com/projectdiscovery/utils/file"
 	osutils "github.com/projectdiscovery/utils/os"
+	urlutil "github.com/projectdiscovery/utils/url"
 )
 
 // Writer is an interface which writes output to somewhere for nuclei events.
@@ -305,6 +306,7 @@ type JSONLogRequest struct {
 	Template string      `json:"template"`
 	Type     string      `json:"type"`
 	Input    string      `json:"input"`
+	Address  string      `json:"address"`
 	Error    string      `json:"error"`
 	Kind     string      `json:"kind"`
 	Attrs    interface{} `json:"attrs,omitempty"`
@@ -321,6 +323,20 @@ func (w *StandardWriter) Request(templatePath, input, requestType string, reques
 		Type:     requestType,
 		Kind:     errkit.ErrKindUnknown.String(),
 	}
+	parsed, _ := urlutil.ParseAbsoluteURL(input, false)
+	if parsed != nil {
+		request.Address = parsed.Hostname()
+		port := parsed.Port()
+		if port == "" {
+			switch parsed.Scheme {
+			case urlutil.HTTP:
+				port = "80"
+			case urlutil.HTTPS:
+				port = "443"
+			}
+		}
+		request.Address += ":" + port
+	}
 	errX := errkit.FromError(requestErr)
 	if errX == nil {
 		request.Error = "none"
@@ -335,7 +351,10 @@ func (w *StandardWriter) Request(templatePath, input, requestType string, reques
 			request.Attrs = slog.GroupValue(errX.Attrs()...)
 		}
 	}
-
+	// check if address slog attr is avaiable in error if set use it
+	if val := errkit.GetAttrValue(requestErr, "address"); val.Any() != nil {
+		request.Address = val.String()
+	}
 	data, err := jsoniter.Marshal(request)
 	if err != nil {
 		return
