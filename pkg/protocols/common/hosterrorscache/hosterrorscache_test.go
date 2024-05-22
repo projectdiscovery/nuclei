@@ -75,15 +75,17 @@ func TestCacheMarkFailed(t *testing.T) {
 
 	tests := []struct {
 		host     string
-		expected int
+		expected int32
 	}{
 		{"http://example.com:80", 1},
 		{"example.com:80", 2},
-		{"example.com", 1},
+		// earlier if port is not provided then port was omitted
+		// but from now it will default to appropriate http scheme based port with 80 as default
+		{"example.com:443", 1},
 	}
 
 	for _, test := range tests {
-		normalizedCacheValue := cache.normalizeCacheValue(test.host)
+		normalizedCacheValue := cache.GetKeyFromContext(newCtxArgs(test.host), nil)
 		cache.MarkFailed(newCtxArgs(test.host), fmt.Errorf("no address found for host"))
 		failedTarget, err := cache.failedTargets.Get(normalizedCacheValue)
 		require.Nil(t, err)
@@ -104,7 +106,7 @@ func TestCacheMarkFailedConcurrent(t *testing.T) {
 	}{
 		{"http://example.com:80", 200},
 		{"example.com:80", 200},
-		{"example.com", 100},
+		{"example.com:443", 100},
 	}
 
 	// the cache is not atomic during items creation, so we pre-create them with counter to zero

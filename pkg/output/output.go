@@ -308,7 +308,7 @@ type JSONLogRequest struct {
 	Input    string      `json:"input"`
 	Address  string      `json:"address"`
 	Error    string      `json:"error"`
-	Kind     string      `json:"kind"`
+	Kind     string      `json:"kind,omitempty"`
 	Attrs    interface{} `json:"attrs,omitempty"`
 }
 
@@ -321,7 +321,6 @@ func (w *StandardWriter) Request(templatePath, input, requestType string, reques
 		Template: templatePath,
 		Input:    input,
 		Type:     requestType,
-		Kind:     errkit.ErrKindUnknown.String(),
 	}
 	parsed, _ := urlutil.ParseAbsoluteURL(input, false)
 	if parsed != nil {
@@ -341,6 +340,7 @@ func (w *StandardWriter) Request(templatePath, input, requestType string, reques
 	if errX == nil {
 		request.Error = "none"
 	} else {
+		request.Kind = errkit.ErrKindUnknown.String()
 		var cause error
 		if len(errX.Errors()) > 1 {
 			cause = errX.Errors()[0]

@@ -67,7 +67,6 @@ func (metaInput *MetaInput) Address() string {
 	var hostname, port string
 	target, err := urlutil.ParseAbsoluteURL(metaInput.Target(), false)
 	if err != nil {
-		err = nil
 		if metaInput.CustomIP == "" {
 			// since this is used in hosterrorscache we add a random id
 			// which will never be used to avoid skipping valid targets
