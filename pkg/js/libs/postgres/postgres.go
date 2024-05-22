@@ -9,10 +9,11 @@ import (
 	"time"
 
 	"github.com/go-pg/pg"
-	_ "github.com/lib/pq"
 	"github.com/praetorian-inc/fingerprintx/pkg/plugins"
 	postgres "github.com/praetorian-inc/fingerprintx/pkg/plugins/services/postgresql"
 	utils "github.com/projectdiscovery/nuclei/v3/pkg/js/utils"
+	"github.com/projectdiscovery/nuclei/v3/pkg/js/utils/pgwrap"
+	_ "github.com/projectdiscovery/nuclei/v3/pkg/js/utils/pgwrap"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
 )
 
@@ -100,7 +101,7 @@ func executeQuery(host string, port int, username string, password string, dbNam
 	target := net.JoinHostPort(host, fmt.Sprintf("%d", port))
 
 	connStr := fmt.Sprintf("postgres://%s:%s@%s/%s?sslmode=disable", username, password, target, dbName)
-	db, err := sql.Open("postgres", connStr)
+	db, err := sql.Open(pgwrap.PGWrapDriver, connStr)
 	if err != nil {
 		return nil, err
 	}
@@ -148,6 +149,9 @@ func connect(host string, port int, username string, password string, dbName str
 		User:     username,
 		Password: password,
 		Database: dbName,
+		Dialer: func(network, addr string) (net.Conn, error) {
+			return protocolstate.Dialer.Dial(context.Background(), network, addr)
+		},
 	})
 	defer db.Close()
 

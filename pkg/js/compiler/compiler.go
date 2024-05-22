@@ -125,6 +125,9 @@ func (c *Compiler) ExecuteWithOptions(program *goja.Program, args *ExecuteArgs, 
 		return ExecuteProgram(program, args, opts)
 	})
 	if err != nil {
+		if val, ok := err.(*goja.Exception); ok {
+			err = val.Unwrap()
+		}
 		return nil, err
 	}
 	var res ExecuteResult
