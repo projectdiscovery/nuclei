@@ -142,7 +142,10 @@ func main() {
 			nucleiRunner.Close()
 			gologger.Info().Msgf("Creating resume file: %s\n", resumeFileName)
 			err := nucleiRunner.SaveResumeConfig(resumeFileName)
-			return errorutil.NewWithErr(err).Msgf("couldn't create crash resume file")
+			if err != nil {
+				return errorutil.NewWithErr(err).Msgf("couldn't create crash resume file")
+			}
+			return nil
 		})
 	}
 

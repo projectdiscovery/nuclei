@@ -29,6 +29,7 @@ func ProbeURL(input string, httpxclient *httpx.HTTPX) string {
 		if _, err = httpxclient.Do(req, httpx.UnsafeOptions{}); err != nil {
 			continue
 		}
+
 		return formedURL
 	}
 	return ""
