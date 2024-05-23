@@ -20,12 +20,12 @@ require (
 	github.com/olekukonko/tablewriter v0.0.5
 	github.com/pkg/errors v0.9.1
 	github.com/projectdiscovery/clistats v0.0.20
-	github.com/projectdiscovery/fastdialer v0.0.71
-	github.com/projectdiscovery/hmap v0.0.42
-	github.com/projectdiscovery/interactsh v1.1.9
-	github.com/projectdiscovery/rawhttp v0.1.47
-	github.com/projectdiscovery/retryabledns v1.0.59
-	github.com/projectdiscovery/retryablehttp-go v1.0.60
+	github.com/projectdiscovery/fastdialer v0.0.72
+	github.com/projectdiscovery/hmap v0.0.43
+	github.com/projectdiscovery/interactsh v1.1.10-0.20240519152711-6a0cb98b1663
+	github.com/projectdiscovery/rawhttp v0.1.50
+	github.com/projectdiscovery/retryabledns v1.0.60
+	github.com/projectdiscovery/retryablehttp-go v1.0.61
 	github.com/projectdiscovery/yamldoc-go v1.0.4
 	github.com/remeh/sizedwaitgroup v1.0.0
 	github.com/rs/xid v1.5.0
@@ -38,9 +38,9 @@ require (
 	github.com/weppos/publicsuffix-go v0.30.2-0.20230730094716-a20f9abcc222
 	github.com/xanzy/go-gitlab v0.84.0
 	go.uber.org/multierr v1.11.0
-	golang.org/x/net v0.24.0
+	golang.org/x/net v0.25.0
 	golang.org/x/oauth2 v0.11.0
-	golang.org/x/text v0.14.0
+	golang.org/x/text v0.15.0
 	gopkg.in/yaml.v2 v2.4.0
 )
 
@@ -78,30 +78,30 @@ require (
 	github.com/mholt/archiver v3.1.1+incompatible
 	github.com/ory/dockertest/v3 v3.10.0
 	github.com/praetorian-inc/fingerprintx v1.1.9
-	github.com/projectdiscovery/dsl v0.0.52
+	github.com/projectdiscovery/dsl v0.0.56
 	github.com/projectdiscovery/fasttemplate v0.0.2
 	github.com/projectdiscovery/go-smb2 v0.0.0-20240129202741-052cc450c6cb
-	github.com/projectdiscovery/goflags v0.1.50
+	github.com/projectdiscovery/goflags v0.1.52
 	github.com/projectdiscovery/gologger v1.1.12
 	github.com/projectdiscovery/gostruct v0.0.2
 	github.com/projectdiscovery/gozero v0.0.2
-	github.com/projectdiscovery/httpx v1.6.0
+	github.com/projectdiscovery/httpx v1.6.1
 	github.com/projectdiscovery/mapcidr v1.1.34
 	github.com/projectdiscovery/n3iwf v0.0.0-20230523120440-b8cd232ff1f5
-	github.com/projectdiscovery/ratelimit v0.0.39
+	github.com/projectdiscovery/ratelimit v0.0.42
 	github.com/projectdiscovery/rdap v0.9.1-0.20221108103045-9865884d1917
 	github.com/projectdiscovery/sarif v0.0.1
 	github.com/projectdiscovery/tlsx v1.1.6
 	github.com/projectdiscovery/uncover v1.0.7
-	github.com/projectdiscovery/useragent v0.0.49
-	github.com/projectdiscovery/utils v0.0.94-0.20240516124025-c3cf7603d51e
-	github.com/projectdiscovery/wappalyzergo v0.0.122
+	github.com/projectdiscovery/useragent v0.0.52
+	github.com/projectdiscovery/utils v0.0.95-0.20240522204248-10ef59b98abe
+	github.com/projectdiscovery/wappalyzergo v0.1.0
 	github.com/redis/go-redis/v9 v9.1.0
 	github.com/seh-msft/burpxml v1.0.1
 	github.com/stretchr/testify v1.9.0
 	github.com/tarunKoyalwar/goleak v0.0.0-20240429141123-0efa90dbdcf9
 	github.com/zmap/zgrab2 v0.1.8-0.20230806160807-97ba87c0e706
-	golang.org/x/term v0.19.0
+	golang.org/x/term v0.20.0
 	gopkg.in/yaml.v3 v3.0.1
 	moul.io/http2curl v1.0.0
 )
@@ -203,7 +203,6 @@ require (
 	github.com/projectdiscovery/freeport v0.0.5 // indirect
 	github.com/projectdiscovery/ldapserver v1.0.2-0.20240219154113-dcc758ebc0cb // indirect
 	github.com/projectdiscovery/machineid v0.0.0-20240226150047-2e2c51e35983 // indirect
-	github.com/projectdiscovery/stringsutil v0.0.2 // indirect
 	github.com/quic-go/quic-go v0.42.0 // indirect
 	github.com/refraction-networking/utls v1.6.1 // indirect
 	github.com/sashabaranov/go-openai v1.15.3 // indirect
@@ -303,10 +302,10 @@ require (
 	go.etcd.io/bbolt v1.3.8 // indirect
 	go.uber.org/zap v1.25.0 // indirect
 	goftp.io/server/v2 v2.0.1 // indirect
-	golang.org/x/crypto v0.22.0 // indirect
+	golang.org/x/crypto v0.23.0 // indirect
 	golang.org/x/exp v0.0.0-20240119083558-1b970713d09a
 	golang.org/x/mod v0.14.0 // indirect
-	golang.org/x/sys v0.19.0 // indirect
+	golang.org/x/sys v0.20.0 // indirect
 	golang.org/x/time v0.5.0 // indirect
 	golang.org/x/tools v0.17.0
 	google.golang.org/appengine v1.6.7 // indirect
