@@ -107,7 +107,7 @@ func (e *Engine) executeTemplateWithTargets(ctx context.Context, template *templ
 		currentInfo.Unlock()
 
 		// Skip if the host has had errors
-		if e.executerOpts.HostErrorsCache != nil && e.executerOpts.HostErrorsCache.Check(scannedValue.ID()) {
+		if e.executerOpts.HostErrorsCache != nil && e.executerOpts.HostErrorsCache.Check(contextargs.NewWithMetaInput(ctx, scannedValue)) {
 			return true
 		}
 
