@@ -5,7 +5,7 @@ import (
 	"errors"
 	"fmt"
 
-	_ "github.com/lib/pq"
+	_ "github.com/projectdiscovery/nuclei/v3/pkg/js/utils/pgwrap"
 
 	utils "github.com/projectdiscovery/nuclei/v3/pkg/js/utils"
 
