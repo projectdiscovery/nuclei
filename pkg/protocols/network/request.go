@@ -1,7 +1,6 @@
 package network
 
 import (
-	"context"
 	"encoding/hex"
 	"fmt"
 	"net"
@@ -64,7 +63,7 @@ func (request *Request) getOpenPorts(target *contextargs.Context) ([]string, err
 			errs = append(errs, err)
 			continue
 		}
-		conn, err := protocolstate.Dialer.Dial(context.TODO(), "tcp", addr)
+		conn, err := protocolstate.Dialer.Dial(target.Context(), "tcp", addr)
 		if err != nil {
 			errs = append(errs, err)
 			continue
@@ -119,6 +118,10 @@ func (request *Request) ExecuteWithResults(target *contextargs.Context, metadata
 func (request *Request) executeOnTarget(input *contextargs.Context, visited mapsutil.Map[string, struct{}], metadata, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
 	var address string
 	var err error
+	if request.isUnresponsiveAddress(input) {
+		// skip on unresponsive address no need to continue
+		return nil
+	}
 
 	if request.SelfContained {
 		address = ""
@@ -173,6 +176,8 @@ func (request *Request) executeAddress(variables map[string]interface{}, actualA
 		request.options.Progress.IncrementFailedRequestsBy(1)
 		return err
 	}
+	updatedTarget := input.Clone()
+	updatedTarget.MetaInput.Input = actualAddress
 
 	// if request threads matches global payload concurrency we follow it
 	shouldFollowGlobal := request.Threads == request.options.Options.PayloadConcurrency
@@ -206,11 +211,19 @@ func (request *Request) executeAddress(variables map[string]interface{}, actualA
 					m.Unlock()
 				}
 			}
+			if request.isUnresponsiveAddress(updatedTarget) {
+				// skip on unresponsive address no need to continue
+				return nil
+			}
 
 			value = generators.MergeMaps(value, payloads)
 			swg.Add()
 			go func(vars map[string]interface{}) {
 				defer swg.Done()
+				if request.isUnresponsiveAddress(updatedTarget) {
+					// skip on unresponsive address no need to continue
+					return
+				}
 				if err := request.executeRequestWithPayloads(variables, actualAddress, address, input, shouldUseTLS, vars, previous, callback); err != nil {
 					m.Lock()
 					multiErr = multierr.Append(multiErr, err)
@@ -240,13 +253,22 @@ func (request *Request) executeRequestWithPayloads(variables map[string]interfac
 	if host, _, err := net.SplitHostPort(actualAddress); err == nil {
 		hostname = host
 	}
+	updatedTarget := input.Clone()
+	updatedTarget.MetaInput.Input = actualAddress
+
+	if request.isUnresponsiveAddress(updatedTarget) {
+		// skip on unresponsive address no need to continue
+		return nil
+	}
 
 	if shouldUseTLS {
-		conn, err = request.dialer.DialTLS(context.Background(), "tcp", actualAddress)
+		conn, err = request.dialer.DialTLS(input.Context(), "tcp", actualAddress)
 	} else {
-		conn, err = request.dialer.Dial(context.Background(), "tcp", actualAddress)
+		conn, err = request.dialer.Dial(input.Context(), "tcp", actualAddress)
 	}
 	if err != nil {
+		// adds it to unresponsive address list if applicable
+		request.markUnresponsiveAddress(updatedTarget, err)
 		request.options.Output.Request(request.options.TemplatePath, address, request.Type().String(), err)
 		request.options.Progress.IncrementFailedRequestsBy(1)
 		return errors.Wrap(err, "could not connect to server")
@@ -474,4 +496,22 @@ func ConnReadNWithTimeout(conn net.Conn, n int64, timeout time.Duration) ([]byte
 		return nil, err
 	}
 	return b[:count], nil
+}
+
+// markUnresponsiveAddress checks if the error is a unreponsive host error and marks it
+func (request *Request) markUnresponsiveAddress(input *contextargs.Context, err error) {
+	if err == nil {
+		return
+	}
+	if request.options.HostErrorsCache != nil {
+		request.options.HostErrorsCache.MarkFailed(input, err)
+	}
+}
+
+// isUnresponsiveAddress checks if the error is a unreponsive based on its execution history
+func (request *Request) isUnresponsiveAddress(input *contextargs.Context) bool {
+	if request.options.HostErrorsCache != nil {
+		return request.options.HostErrorsCache.Check(input)
+	}
+	return false
 }

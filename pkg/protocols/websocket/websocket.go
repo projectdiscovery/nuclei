@@ -1,7 +1,6 @@
 package websocket
 
 import (
-	"context"
 	"crypto/tls"
 	"fmt"
 	"io"
@@ -228,7 +227,7 @@ func (request *Request) executeRequestWithPayloads(target *contextargs.Context, 
 	parsedAddress.Path = path.Join(parsedAddress.Path, parsed.Path)
 	addressToDial = parsedAddress.String()
 
-	conn, readBuffer, _, err := websocketDialer.Dial(context.Background(), addressToDial)
+	conn, readBuffer, _, err := websocketDialer.Dial(target.Context(), addressToDial)
 	if err != nil {
 		requestOptions.Output.Request(requestOptions.TemplateID, input, request.Type().String(), err)
 		requestOptions.Progress.IncrementFailedRequestsBy(1)

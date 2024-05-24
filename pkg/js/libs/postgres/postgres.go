@@ -9,10 +9,11 @@ import (
 	"time"
 
 	"github.com/go-pg/pg"
-	_ "github.com/lib/pq"
 	"github.com/praetorian-inc/fingerprintx/pkg/plugins"
 	postgres "github.com/praetorian-inc/fingerprintx/pkg/plugins/services/postgresql"
 	utils "github.com/projectdiscovery/nuclei/v3/pkg/js/utils"
+	"github.com/projectdiscovery/nuclei/v3/pkg/js/utils/pgwrap"
+	_ "github.com/projectdiscovery/nuclei/v3/pkg/js/utils/pgwrap"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
 )
 
@@ -100,10 +101,11 @@ func executeQuery(host string, port int, username string, password string, dbNam
 	target := net.JoinHostPort(host, fmt.Sprintf("%d", port))
 
 	connStr := fmt.Sprintf("postgres://%s:%s@%s/%s?sslmode=disable", username, password, target, dbName)
-	db, err := sql.Open("postgres", connStr)
+	db, err := sql.Open(pgwrap.PGWrapDriver, connStr)
 	if err != nil {
 		return nil, err
 	}
+	defer db.Close()
 
 	rows, err := db.Query(query)
 	if err != nil {
@@ -143,12 +145,19 @@ func connect(host string, port int, username string, password string, dbName str
 
 	target := net.JoinHostPort(host, fmt.Sprintf("%d", port))
 
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	db := pg.Connect(&pg.Options{
-		Addr:     target,
-		User:     username,
-		Password: password,
-		Database: dbName,
-	})
+		Addr:               target,
+		User:               username,
+		Password:           password,
+		Database:           dbName,
+		Dialer: func(network, addr string) (net.Conn, error) {
+			return protocolstate.Dialer.Dial(context.Background(), network, addr)
+		},
+		IdleCheckFrequency: -1,
+	}).WithContext(ctx).WithTimeout(10 * time.Second)
 	defer db.Close()
 
 	_, err := db.Exec("select 1")

@@ -32,6 +32,7 @@ import (
 	protocolutils "github.com/projectdiscovery/nuclei/v3/pkg/protocols/utils"
 	templateTypes "github.com/projectdiscovery/nuclei/v3/pkg/templates/types"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
+	"github.com/projectdiscovery/utils/errkit"
 	errorutil "github.com/projectdiscovery/utils/errors"
 	iputil "github.com/projectdiscovery/utils/ip"
 	syncutil "github.com/projectdiscovery/utils/sync"
@@ -360,7 +361,7 @@ func (request *Request) ExecuteWithResults(target *contextargs.Context, dynamicV
 	}
 
 	if request.generator != nil && request.Threads > 1 {
-		request.executeRequestParallel(context.Background(), hostPort, hostname, input, payloadValues, callback)
+		request.executeRequestParallel(target.Context(), hostPort, hostname, input, payloadValues, callback)
 		return nil
 	}
 
@@ -387,11 +388,10 @@ func (request *Request) ExecuteWithResults(target *contextargs.Context, dynamicV
 				}
 				callback(result)
 			}, requestOptions); err != nil {
-				_ = err
-				// Review: should we log error here?
-				// it is technically not error as it is expected to fail
-				// gologger.Warning().Msgf("Could not execute request: %s\n", err)
-				// do not return even if error occured
+				if errkit.IsNetworkPermanentErr(err) {
+					// gologger.Verbose().Msgf("Could not execute request: %s\n", err)
+					return err
+				}
 			}
 			// If this was a match, and we want to stop at first match, skip all further requests.
 			shouldStopAtFirstMatch := request.options.Options.StopAtFirstMatch || request.StopAtFirstMatch
@@ -408,8 +408,8 @@ func (request *Request) executeRequestParallel(ctxParent context.Context, hostPo
 	if threads == 0 {
 		threads = 1
 	}
-	ctx, cancel := context.WithCancel(ctxParent)
-	defer cancel()
+	ctx, cancel := context.WithCancelCause(ctxParent)
+	defer cancel(nil)
 	requestOptions := request.options
 	gotmatches := &atomic.Bool{}
 
@@ -453,16 +453,15 @@ func (request *Request) executeRequestParallel(ctxParent context.Context, hostPo
 					}
 					callback(result)
 				}, requestOptions); err != nil {
-					_ = err
-					// Review: should we log error here?
-					// it is technically not error as it is expected to fail
-					// gologger.Warning().Msgf("Could not execute request: %s\n", err)
-					// do not return even if error occured
+					if errkit.IsNetworkPermanentErr(err) {
+						cancel(err)
+						return
+					}
 				}
 				// If this was a match, and we want to stop at first match, skip all further requests.
 
 				if shouldStopAtFirstMatch && gotmatches.Load() {
-					cancel()
+					cancel(nil)
 					return
 				}
 			}()
@@ -507,7 +506,6 @@ func (request *Request) executeRequestWithPayloads(hostPort string, input *conte
 		results = compiler.ExecuteResult{"success": false, "error": err.Error()}
 	}
 	request.options.Progress.IncrementRequests()
-
 	requestOptions.Output.Request(requestOptions.TemplateID, hostPort, request.Type().String(), err)
 	gologger.Verbose().Msgf("[%s] Sent Javascript request to %s", request.options.TemplateID, hostPort)
 

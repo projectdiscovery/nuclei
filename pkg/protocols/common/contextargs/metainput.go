@@ -4,11 +4,13 @@ import (
 	"bytes"
 	"crypto/md5"
 	"fmt"
+	"net"
 	"strings"
 
 	jsoniter "github.com/json-iterator/go"
 	"github.com/projectdiscovery/nuclei/v3/pkg/input/types"
 	urlutil "github.com/projectdiscovery/utils/url"
+	"github.com/segmentio/ksuid"
 )
 
 // MetaInput represents a target with metadata (TODO: replace with https://github.com/projectdiscovery/metainput)
@@ -45,6 +47,56 @@ func (metaInput *MetaInput) URL() (*urlutil.URL, error) {
 		return nil, err
 	}
 	return instance, nil
+}
+
+// Port returns the port of the target
+// if port is not present then empty string is returned
+func (metaInput *MetaInput) Port() string {
+	target, err := urlutil.ParseAbsoluteURL(metaInput.Input, false)
+	if err != nil {
+		return ""
+	}
+	return target.Port()
+}
+
+// Address return the remote address of target
+// Note: it does not resolve the domain to ip
+// it is meant to be used by hosterrorsCache if invalid metainput
+// is provided then it uses a random ksuid as hostname to avoid skipping valid targets
+func (metaInput *MetaInput) Address() string {
+	var hostname, port string
+	target, err := urlutil.ParseAbsoluteURL(metaInput.Target(), false)
+	if err != nil {
+		if metaInput.CustomIP == "" {
+			// since this is used in hosterrorscache we add a random id
+			// which will never be used to avoid skipping valid targets
+			hostname = fmt.Sprintf("invalid-%s", ksuid.New().String())
+		}
+	} else {
+		hostname = target.Hostname()
+		port = target.Port()
+		if port == "" {
+			switch target.Scheme {
+			case urlutil.HTTP:
+				port = "80"
+			case urlutil.HTTPS:
+				port = "443"
+			default:
+				port = "80"
+			}
+		}
+	}
+	if metaInput.CustomIP != "" {
+		hostname = metaInput.CustomIP
+	}
+	if port == "" {
+		if strings.HasPrefix(hostname, "http://") {
+			port = "80"
+		} else if strings.HasPrefix(hostname, "https://") {
+			port = "443"
+		}
+	}
+	return net.JoinHostPort(hostname, port)
 }
 
 // ID returns a unique id/hash for metainput
