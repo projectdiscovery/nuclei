@@ -20,12 +20,12 @@ require (
 	github.com/olekukonko/tablewriter v0.0.5
 	github.com/pkg/errors v0.9.1
 	github.com/projectdiscovery/clistats v0.0.20
-	github.com/projectdiscovery/fastdialer v0.0.73-0.20240522204742-2c8e7b142f20
+	github.com/projectdiscovery/fastdialer v0.1.0
 	github.com/projectdiscovery/hmap v0.0.43
 	github.com/projectdiscovery/interactsh v1.1.9
 	github.com/projectdiscovery/rawhttp v0.1.49
 	github.com/projectdiscovery/retryabledns v1.0.60
-	github.com/projectdiscovery/retryablehttp-go v1.0.62-0.20240522205649-965049d3ad29
+	github.com/projectdiscovery/retryablehttp-go v1.0.62
 	github.com/projectdiscovery/yamldoc-go v1.0.4
 	github.com/remeh/sizedwaitgroup v1.0.0
 	github.com/rs/xid v1.5.0
@@ -94,7 +94,7 @@ require (
 	github.com/projectdiscovery/tlsx v1.1.6
 	github.com/projectdiscovery/uncover v1.0.7
 	github.com/projectdiscovery/useragent v0.0.52
-	github.com/projectdiscovery/utils v0.0.95-0.20240522204248-10ef59b98abe
+	github.com/projectdiscovery/utils v0.1.0
 	github.com/projectdiscovery/wappalyzergo v0.1.0
 	github.com/redis/go-redis/v9 v9.1.0
 	github.com/seh-msft/burpxml v1.0.1
@@ -203,8 +203,7 @@ require (
 	github.com/projectdiscovery/freeport v0.0.5 // indirect
 	github.com/projectdiscovery/ldapserver v1.0.2-0.20240219154113-dcc758ebc0cb // indirect
 	github.com/projectdiscovery/machineid v0.0.0-20240226150047-2e2c51e35983 // indirect
-	github.com/quic-go/quic-go v0.42.0 // indirect
-	github.com/refraction-networking/utls v1.6.1 // indirect
+	github.com/refraction-networking/utls v1.6.6 // indirect
 	github.com/sashabaranov/go-openai v1.15.3 // indirect
 	github.com/shirou/gopsutil v3.21.11+incompatible // indirect
 	github.com/shoenig/go-m1cpu v0.1.6 // indirect
