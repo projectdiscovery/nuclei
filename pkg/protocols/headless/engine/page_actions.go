@@ -24,6 +24,7 @@ import (
 	protocolutils "github.com/projectdiscovery/nuclei/v3/pkg/protocols/utils"
 	httputil "github.com/projectdiscovery/nuclei/v3/pkg/protocols/utils/http"
 	contextutil "github.com/projectdiscovery/utils/context"
+	"github.com/projectdiscovery/utils/errkit"
 	errorutil "github.com/projectdiscovery/utils/errors"
 	fileutil "github.com/projectdiscovery/utils/file"
 	folderutil "github.com/projectdiscovery/utils/folder"
@@ -35,6 +36,8 @@ import (
 var (
 	errinvalidArguments = errorutil.New("invalid arguments provided")
 	ErrLFAccessDenied   = errorutil.New("Use -allow-local-file-access flag to enable local file access")
+	// ErrActionExecDealine is the error returned when alloted time for action execution exceeds
+	ErrActionExecDealine = errkit.New("headless action execution deadline exceeded").SetKind(errkit.ErrKindDeadline).Build()
 )
 
 const (
@@ -619,7 +622,7 @@ func (p *Page) WaitEvent(act *Action, out map[string]string) (func() error, erro
 	// Just wait the event to happen
 	waitFunc := func() (err error) {
 		// execute actual wait event
-		ctx, cancel := context.WithTimeout(context.Background(), maxDuration)
+		ctx, cancel := context.WithTimeoutCause(context.Background(), maxDuration, ErrActionExecDealine)
 		defer cancel()
 		err = contextutil.ExecFunc(ctx, p.page.WaitEvent(waitEvent))
 		return
