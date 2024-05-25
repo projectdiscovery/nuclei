@@ -31,9 +31,10 @@ var (
 	forceMaxRedirects int
 	normalClient      *retryablehttp.Client
 	clientPool        *mapsutil.SyncLockMap[string, *retryablehttp.Client]
-	// ResponseHeaderTimeout is the timeout for response headers
+	// MaxResponseHeaderTimeout is the timeout for response headers
 	// to be read from the server (this prevents infinite hang started by server if any)
-	ResponseHeaderTimeout = time.Duration(5) * time.Second
+	// Note: this will be overridden temporarily when using @timeout request annotation
+	MaxResponseHeaderTimeout = time.Duration(10) * time.Second
 	// HttpTimeoutMultiplier is the multiplier for the http timeout
 	HttpTimeoutMultiplier = 3
 )
@@ -48,6 +49,9 @@ func Init(options *types.Options) error {
 	// Don't create clients if already created in the past.
 	if normalClient != nil {
 		return nil
+	}
+	if options.Timeout > 10 {
+		MaxResponseHeaderTimeout = time.Duration(options.Timeout) * time.Second
 	}
 	if options.ShouldFollowHTTPRedirects() {
 		forceMaxRedirects = options.MaxRedirects
@@ -107,6 +111,8 @@ type Configuration struct {
 	RedirectFlow RedirectFlow
 	// Connection defines custom connection configuration
 	Connection *ConnectionConfiguration
+	// ResponseHeaderTimeout is the timeout for response body to be read from the server
+	ResponseHeaderTimeout time.Duration
 }
 
 // Hash returns the hash of the configuration to allow client pooling
@@ -125,13 +131,15 @@ func (c *Configuration) Hash() string {
 	builder.WriteString(strconv.FormatBool(c.DisableCookie))
 	builder.WriteString("c")
 	builder.WriteString(strconv.FormatBool(c.Connection != nil))
+	builder.WriteString("r")
+	builder.WriteString(strconv.FormatInt(int64(c.ResponseHeaderTimeout.Seconds()), 10))
 	hash := builder.String()
 	return hash
 }
 
 // HasStandardOptions checks whether the configuration requires custom settings
 func (c *Configuration) HasStandardOptions() bool {
-	return c.Threads == 0 && c.MaxRedirects == 0 && c.RedirectFlow == DontFollowRedirect && c.DisableCookie && c.Connection == nil && !c.NoTimeout
+	return c.Threads == 0 && c.MaxRedirects == 0 && c.RedirectFlow == DontFollowRedirect && c.DisableCookie && c.Connection == nil && !c.NoTimeout && c.ResponseHeaderTimeout == 0
 }
 
 // GetRawHTTP returns the rawhttp request client
@@ -174,6 +182,9 @@ func wrappedGet(options *types.Options, configuration *Configuration) (*retryabl
 	maxIdleConns := 0
 	maxConnsPerHost := 0
 	maxIdleConnsPerHost := -1
+	// do not split given timeout into chunks for retry
+	// because this won't work on slow hosts
+	retryableHttpOptions.NoAdjustTimeout = true
 
 	if configuration.Threads > 0 || options.ScanStrategy == scanstrategy.HostSpray.String() {
 		// Single host
@@ -227,6 +238,12 @@ func wrappedGet(options *types.Options, configuration *Configuration) (*retryabl
 		return nil, errors.Wrap(err, "could not create client certificate")
 	}
 
+	// responseHeaderTimeout is max timeout for response headers to be read
+	responseHeaderTimeout := MaxResponseHeaderTimeout
+	if configuration.ResponseHeaderTimeout != 0 {
+		responseHeaderTimeout = configuration.ResponseHeaderTimeout
+	}
+
 	transport := &http.Transport{
 		ForceAttemptHTTP2: options.ForceAttemptHTTP2,
 		DialContext:       protocolstate.Dialer.Dial,
@@ -244,7 +261,7 @@ func wrappedGet(options *types.Options, configuration *Configuration) (*retryabl
 		MaxConnsPerHost:       maxConnsPerHost,
 		TLSClientConfig:       tlsConfig,
 		DisableKeepAlives:     disableKeepAlives,
-		ResponseHeaderTimeout: ResponseHeaderTimeout,
+		ResponseHeaderTimeout: responseHeaderTimeout,
 	}
 
 	if types.ProxyURL != "" {
@@ -343,7 +360,7 @@ func makeCheckRedirectFunc(redirectType RedirectFlow, maxRedirects int) checkRed
 	}
 }
 
-func checkMaxRedirects(req *http.Request, via []*http.Request, maxRedirects int) error {
+func checkMaxRedirects(_ *http.Request, via []*http.Request, maxRedirects int) error {
 	if maxRedirects == 0 {
 		if len(via) > defaultMaxRedirects {
 			return http.ErrUseLastResponse

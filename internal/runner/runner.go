@@ -359,6 +359,10 @@ func (r *Runner) runStandardEnumeration(executerOpts protocols.ExecutorOptions, 
 
 // Close releases all the resources and cleans up
 func (r *Runner) Close() {
+	// dump hosterrors cache
+	if r.hostErrors != nil {
+		r.hostErrors.Close()
+	}
 	if r.output != nil {
 		r.output.Close()
 	}
@@ -464,7 +468,7 @@ func (r *Runner) RunEnumeration() error {
 		Parser:             r.parser,
 	}
 
-	if env.GetEnvOrDefault("NUCLEI_ARGS", "") == "req_url_pattern=true" {
+	if config.DefaultConfig.IsDebugArgEnabled(config.DebugExportURLPattern) {
 		// Go StdLib style experimental/debug feature switch
 		executorOpts.ExportReqURLPattern = true
 	}
