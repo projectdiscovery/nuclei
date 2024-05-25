@@ -98,7 +98,7 @@ func (e *Engine) runWorkflowStep(template *workflows.WorkflowTemplate, ctx *scan
 			}
 			if err != nil {
 				if w.Options.HostErrorsCache != nil {
-					w.Options.HostErrorsCache.MarkFailed(ctx.Input.MetaInput.ID(), err)
+					w.Options.HostErrorsCache.MarkFailed(ctx.Input, err)
 				}
 				if len(template.Executers) == 1 {
 					mainErr = err

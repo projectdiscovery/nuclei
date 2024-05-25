@@ -296,7 +296,7 @@ func (e *ClusterExecuter) Execute(ctx *scan.ScanContext) (bool, error) {
 		}
 	})
 	if err != nil && e.options.HostErrorsCache != nil {
-		e.options.HostErrorsCache.MarkFailed(ctx.Input.MetaInput.Input, err)
+		e.options.HostErrorsCache.MarkFailed(ctx.Input, err)
 	}
 	return results, err
 }
@@ -330,7 +330,7 @@ func (e *ClusterExecuter) ExecuteWithResults(ctx *scan.ScanContext) ([]*output.R
 	}
 
 	if err != nil && e.options.HostErrorsCache != nil {
-		e.options.HostErrorsCache.MarkFailed(ctx.Input.MetaInput.Input, err)
+		e.options.HostErrorsCache.MarkFailed(ctx.Input, err)
 	}
 	return scanCtx.GenerateResult(), err
 }

@@ -10,7 +10,13 @@ import (
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/generators"
 	contextutil "github.com/projectdiscovery/utils/context"
+	"github.com/projectdiscovery/utils/errkit"
 	stringsutil "github.com/projectdiscovery/utils/strings"
+)
+
+var (
+	// ErrJSExecDeadline is the error returned when alloted time for script execution exceeds
+	ErrJSExecDeadline = errkit.New("js engine execution deadline exceeded").SetKind(errkit.ErrKindDeadline).Build()
 )
 
 // Compiler provides a runtime to execute goja runtime
@@ -107,7 +113,7 @@ func (c *Compiler) ExecuteWithOptions(program *goja.Program, args *ExecuteArgs, 
 	}
 
 	// execute with context and timeout
-	ctx, cancel := context.WithTimeout(opts.Context, time.Duration(opts.Timeout)*time.Second)
+	ctx, cancel := context.WithTimeoutCause(opts.Context, time.Duration(opts.Timeout)*time.Second, ErrJSExecDeadline)
 	defer cancel()
 	// execute the script
 	results, err := contextutil.ExecFuncWithTwoReturns(ctx, func() (val goja.Value, err error) {
@@ -119,6 +125,9 @@ func (c *Compiler) ExecuteWithOptions(program *goja.Program, args *ExecuteArgs, 
 		return ExecuteProgram(program, args, opts)
 	})
 	if err != nil {
+		if val, ok := err.(*goja.Exception); ok {
+			err = val.Unwrap()
+		}
 		return nil, err
 	}
 	var res ExecuteResult
