@@ -4,6 +4,7 @@ import (
 	"encoding/base64"
 	"fmt"
 	"io"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -27,10 +28,13 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/operators"
 	protocolUtils "github.com/projectdiscovery/nuclei/v3/pkg/protocols/utils"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
+	"github.com/projectdiscovery/nuclei/v3/pkg/types/nucleierr"
 	"github.com/projectdiscovery/nuclei/v3/pkg/utils"
+	"github.com/projectdiscovery/utils/errkit"
 	fileutil "github.com/projectdiscovery/utils/file"
 	osutils "github.com/projectdiscovery/utils/os"
 	unitutils "github.com/projectdiscovery/utils/unit"
+	urlutil "github.com/projectdiscovery/utils/url"
 )
 
 // Writer is an interface which writes output to somewhere for nuclei events.
@@ -300,10 +304,13 @@ func (w *StandardWriter) Write(event *ResultEvent) error {
 
 // JSONLogRequest is a trace/error log request written to file
 type JSONLogRequest struct {
-	Template string `json:"template"`
-	Input    string `json:"input"`
-	Error    string `json:"error"`
-	Type     string `json:"type"`
+	Template string      `json:"template"`
+	Type     string      `json:"type"`
+	Input    string      `json:"input"`
+	Address  string      `json:"address"`
+	Error    string      `json:"error"`
+	Kind     string      `json:"kind,omitempty"`
+	Attrs    interface{} `json:"attrs,omitempty"`
 }
 
 // Request writes a log the requests trace log
@@ -316,12 +323,43 @@ func (w *StandardWriter) Request(templatePath, input, requestType string, reques
 		Input:    input,
 		Type:     requestType,
 	}
-	if unwrappedErr := utils.UnwrapError(requestErr); unwrappedErr != nil {
-		request.Error = unwrappedErr.Error()
-	} else {
-		request.Error = "none"
+	parsed, _ := urlutil.ParseAbsoluteURL(input, false)
+	if parsed != nil {
+		request.Address = parsed.Hostname()
+		port := parsed.Port()
+		if port == "" {
+			switch parsed.Scheme {
+			case urlutil.HTTP:
+				port = "80"
+			case urlutil.HTTPS:
+				port = "443"
+			}
+		}
+		request.Address += ":" + port
 	}
-
+	errX := errkit.FromError(requestErr)
+	if errX == nil {
+		request.Error = "none"
+	} else {
+		request.Kind = errkit.ErrKindUnknown.String()
+		var cause error
+		if len(errX.Errors()) > 1 {
+			cause = errX.Errors()[0]
+		}
+		if cause == nil {
+			cause = errX
+		}
+		cause = tryParseCause(cause)
+		request.Error = cause.Error()
+		request.Kind = errkit.GetErrorKind(requestErr, nucleierr.ErrTemplateLogic).String()
+		if len(errX.Attrs()) > 0 {
+			request.Attrs = slog.GroupValue(errX.Attrs()...)
+		}
+	}
+	// check if address slog attr is avaiable in error if set use it
+	if val := errkit.GetAttrValue(requestErr, "address"); val.Any() != nil {
+		request.Address = val.String()
+	}
 	data, err := jsoniter.Marshal(request)
 	if err != nil {
 		return
@@ -452,4 +490,25 @@ func (w *StandardWriter) WriteStoreDebugData(host, templateID, eventType string,
 		f.Close()
 	}
 
+}
+
+// tryParseCause tries to parse the cause of given error
+// this is legacy support due to use of errorutil in existing libraries
+// but this should not be required once all libraries are updated
+func tryParseCause(err error) error {
+	if err == nil {
+		return nil
+	}
+	msg := err.Error()
+	if strings.HasPrefix(msg, "ReadStatusLine:") {
+		// last index is actual error (from rawhttp)
+		parts := strings.Split(msg, ":")
+		return errkit.New(strings.TrimSpace(parts[len(parts)-1]))
+	}
+	if strings.Contains(msg, "read ") {
+		// same here
+		parts := strings.Split(msg, ":")
+		return errkit.New(strings.TrimSpace(parts[len(parts)-1]))
+	}
+	return err
 }
