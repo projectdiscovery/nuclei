@@ -75,7 +75,6 @@ var DefaultOptions = &types.Options{
 	InteractionsPollDuration:   5,
 	GitHubTemplateRepo:         []string{},
 	GitHubToken:                "",
-	ResponseReadTimeout:        time.Second * 5,
 }
 
 // TemplateInfo contains info for a mock executed template.
@@ -89,17 +88,18 @@ type TemplateInfo struct {
 func NewMockExecuterOptions(options *types.Options, info *TemplateInfo) *protocols.ExecutorOptions {
 	progressImpl, _ := progress.NewStatsTicker(0, false, false, false, 0)
 	executerOpts := &protocols.ExecutorOptions{
-		TemplateID:   info.ID,
-		TemplateInfo: info.Info,
-		TemplatePath: info.Path,
-		Output:       NewMockOutputWriter(options.OmitTemplate),
-		Options:      options,
-		Progress:     progressImpl,
-		ProjectFile:  nil,
-		IssuesClient: nil,
-		Browser:      nil,
-		Catalog:      disk.NewCatalog(config.DefaultConfig.TemplatesDirectory),
-		RateLimiter:  ratelimit.New(context.Background(), uint(options.RateLimit), time.Second),
+		TemplateID:      info.ID,
+		TemplateInfo:    info.Info,
+		TemplatePath:    info.Path,
+		Output:          NewMockOutputWriter(options.OmitTemplate),
+		Options:         options,
+		Progress:        progressImpl,
+		ProjectFile:     nil,
+		IssuesClient:    nil,
+		Browser:         nil,
+		Catalog:         disk.NewCatalog(config.DefaultConfig.TemplatesDirectory),
+		RateLimiter:     ratelimit.New(context.Background(), uint(options.RateLimit), time.Second),
+		TimeoutVariants: options.BuildTimeoutVariants(),
 	}
 	executerOpts.CreateTemplateCtxStore()
 	return executerOpts

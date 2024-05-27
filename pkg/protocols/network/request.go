@@ -327,7 +327,7 @@ func (request *Request) executeRequestWithPayloads(variables map[string]interfac
 		}
 
 		if input.Read > 0 {
-			buffer, err := ConnReadNWithTimeout(conn, int64(input.Read), request.options.Options.ResponseReadTimeout)
+			buffer, err := ConnReadNWithTimeout(conn, int64(input.Read), request.options.TimeoutVariants.ResponseReadTimeout)
 			if err != nil {
 				return errorutil.NewWithErr(err).Msgf("could not read response from connection")
 			}
@@ -377,7 +377,7 @@ func (request *Request) executeRequestWithPayloads(variables map[string]interfac
 		bufferSize = -1
 	}
 
-	final, err := ConnReadNWithTimeout(conn, int64(bufferSize), request.options.Options.ResponseReadTimeout)
+	final, err := ConnReadNWithTimeout(conn, int64(bufferSize), request.options.TimeoutVariants.ResponseReadTimeout)
 	if err != nil {
 		request.options.Output.Request(request.options.TemplatePath, address, request.Type().String(), err)
 		gologger.Verbose().Msgf("could not read more data from %s: %s", actualAddress, err)

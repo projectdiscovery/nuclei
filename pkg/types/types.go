@@ -277,8 +277,6 @@ type Options struct {
 	SNI string
 	// InputFileMode specifies the mode of input file (jsonl, burp, openapi, swagger, etc)
 	InputFileMode string
-	// DialerTimeout sets the timeout for network requests.
-	DialerTimeout time.Duration
 	// DialerKeepAlive sets the keep alive duration for network requests.
 	DialerKeepAlive time.Duration
 	// Interface to use for network scan
@@ -291,8 +289,6 @@ type Options struct {
 	ResponseReadSize int
 	// ResponseSaveSize is the maximum size of response to save
 	ResponseSaveSize int
-	// ResponseReadTimeout is response read timeout in seconds
-	ResponseReadTimeout time.Duration
 	// Health Check
 	HealthCheck bool
 	// Time to wait between each input read operation before closing the stream
@@ -401,6 +397,36 @@ type Options struct {
 	ListTemplateProfiles bool
 }
 
+type TimeoutVariants struct {
+	MaxResponseHeaderTimeout   time.Duration
+	ResponseReadTimeout        time.Duration
+	JsCompilerExecutionTimeout time.Duration
+	HttpTimeout                time.Duration
+	DialTimeout                time.Duration
+}
+
+func (options *Options) BuildTimeoutVariants() TimeoutVariants {
+	timeoutVariants := TimeoutVariants{
+		// MaxResponseHeaderTimeout is the timeout for response headers
+		// to be read from the server (this prevents infinite hang started by server if any)
+		// Note: this will be overridden temporarily when using @timeout request annotation
+		MaxResponseHeaderTimeout: time.Second * 10,
+		//response read timeout in seconds
+		ResponseReadTimeout:        time.Second * 5,
+		JsCompilerExecutionTimeout: time.Second * time.Duration(int(float64(options.Timeout)*1.5)),
+		//http timeout for the client
+		HttpTimeout: time.Second * time.Duration(options.Timeout*3),
+		//timeout for network requests
+		DialTimeout: time.Second * time.Duration(options.Timeout),
+	}
+
+	if options.Timeout > 10 {
+		timeoutVariants.MaxResponseHeaderTimeout = time.Second * time.Duration(options.Timeout)
+	}
+
+	return timeoutVariants
+}
+
 // ShouldLoadResume resume file
 func (options *Options) ShouldLoadResume() bool {
 	return options.Resume != "" && fileutil.FileExists(options.Resume)
@@ -437,7 +463,6 @@ func DefaultOptions() *Options {
 		MaxHostError:            30,
 		ResponseReadSize:        10 * 1024 * 1024,
 		ResponseSaveSize:        1024 * 1024,
-		ResponseReadTimeout:     5 * time.Second,
 	}
 }
 

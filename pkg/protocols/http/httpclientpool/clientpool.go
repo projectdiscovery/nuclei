@@ -35,17 +35,11 @@ var (
 	forceMaxRedirects int
 	normalClient      *retryablehttp.Client
 	clientPool        *mapsutil.SyncLockMap[string, *retryablehttp.Client]
-	// MaxResponseHeaderTimeout is the timeout for response headers
-	// to be read from the server (this prevents infinite hang started by server if any)
-	// Note: this will be overridden temporarily when using @timeout request annotation
-	MaxResponseHeaderTimeout = time.Duration(10) * time.Second
-	// HttpTimeoutMultiplier is the multiplier for the http timeout
-	HttpTimeoutMultiplier = 3
 )
 
 // GetHttpTimeout returns the http timeout for the client
 func GetHttpTimeout(opts *types.Options) time.Duration {
-	return time.Duration(opts.Timeout*HttpTimeoutMultiplier) * time.Second
+	return opts.BuildTimeoutVariants().HttpTimeout
 }
 
 // Init initializes the clientpool implementation
@@ -53,9 +47,6 @@ func Init(options *types.Options) error {
 	// Don't create clients if already created in the past.
 	if normalClient != nil {
 		return nil
-	}
-	if options.Timeout > 10 {
-		MaxResponseHeaderTimeout = time.Duration(options.Timeout) * time.Second
 	}
 	if options.ShouldFollowHTTPRedirects() {
 		forceMaxRedirects = options.MaxRedirects
@@ -247,7 +238,8 @@ func wrappedGet(options *types.Options, configuration *Configuration) (*retryabl
 	}
 
 	// responseHeaderTimeout is max timeout for response headers to be read
-	responseHeaderTimeout := MaxResponseHeaderTimeout
+	timeoutVariants := options.BuildTimeoutVariants()
+	responseHeaderTimeout := timeoutVariants.MaxResponseHeaderTimeout
 	if configuration.ResponseHeaderTimeout != 0 {
 		responseHeaderTimeout = configuration.ResponseHeaderTimeout
 	}

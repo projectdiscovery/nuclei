@@ -112,6 +112,7 @@ func executeNucleiAsLibrary(templatePath, templateURL string) ([]string, error) 
 		Colorizer:       aurora.NewAurora(true),
 		ResumeCfg:       types.NewResumeCfg(),
 		Parser:          templates.NewParser(),
+		TimeoutVariants: defaultOpts.BuildTimeoutVariants(),
 	}
 	engine := core.New(defaultOpts)
 	engine.SetExecuterOptions(executerOpts)

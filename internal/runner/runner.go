@@ -466,6 +466,7 @@ func (r *Runner) RunEnumeration() error {
 		InputHelper:        input.NewHelper(),
 		TemporaryDirectory: r.tmpDir,
 		Parser:             r.parser,
+		TimeoutVariants:    r.options.BuildTimeoutVariants(),
 	}
 
 	if config.DefaultConfig.IsDebugArgEnabled(config.DebugExportURLPattern) {

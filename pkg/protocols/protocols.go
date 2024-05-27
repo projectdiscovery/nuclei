@@ -120,6 +120,7 @@ type ExecutorOptions struct {
 	// ExportReqURLPattern exports the request URL pattern
 	// in ResultEvent it contains the exact url pattern (ex: {{BaseURL}}/{{randstr}}/xyz) used in the request
 	ExportReqURLPattern bool
+	TimeoutVariants     types.TimeoutVariants
 }
 
 // todo: centralizing components is not feasible with current clogged architecture
