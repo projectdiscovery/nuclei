@@ -261,8 +261,8 @@ func (e *NucleiEngine) Engine() *core.Engine {
 	return e.engine
 }
 
-// NewNucleiEngine creates a new nuclei engine instance
-func NewNucleiEngine(options ...NucleiSDKOptions) (*NucleiEngine, error) {
+// NewNucleiEngineCtx creates a new nuclei engine instance with given context
+func NewNucleiEngineCtx(ctx context.Context, options ...NucleiSDKOptions) (*NucleiEngine, error) {
 	// default options
 	e := &NucleiEngine{
 		opts: types.DefaultOptions(),
@@ -273,8 +273,13 @@ func NewNucleiEngine(options ...NucleiSDKOptions) (*NucleiEngine, error) {
 			return nil, err
 		}
 	}
-	if err := e.init(); err != nil {
+	if err := e.init(ctx); err != nil {
 		return nil, err
 	}
 	return e, nil
+}
+
+// Deprecated: use NewNucleiEngineCtx instead
+func NewNucleiEngine(options ...NucleiSDKOptions) (*NucleiEngine, error) {
+	return NewNucleiEngineCtx(context.Background(), options...)
 }
