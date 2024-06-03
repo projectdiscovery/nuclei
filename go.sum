@@ -848,8 +848,8 @@ github.com/projectdiscovery/gostruct v0.0.2 h1:s8gP8ApugGM4go1pA+sVlPDXaWqNP5BBD
 github.com/projectdiscovery/gostruct v0.0.2/go.mod h1:H86peL4HKwMXcQQtEa6lmC8FuD9XFt6gkNR0B/Mu5PE=
 github.com/projectdiscovery/gozero v0.0.2 h1:8fJeaCjxL9tpm33uG/RsCQs6HGM/NE6eA3cjkilRQ+E=
 github.com/projectdiscovery/gozero v0.0.2/go.mod h1:d8bZvDWW07LWNYWrwjZ4OO1I0cpkfqaysyDfSs9ibK8=
-github.com/projectdiscovery/hmap v0.0.44 h1:bFUmPltPPZH+oGDnbYLEXNujZe+0j81c1E+gF1MMLXQ=
-github.com/projectdiscovery/hmap v0.0.44/go.mod h1:glLxv5kLMj/Rgn6iZ9JiSzs72t8FQ4hA34zVoFwFhuM=
+github.com/projectdiscovery/hmap v0.0.45 h1:D3PinywmpDtIX2lc9bnqaRJoFDPCCxUf4RvHA3Gdr6U=
+github.com/projectdiscovery/hmap v0.0.45/go.mod h1:vJ7HYzhDnOjsEc9d43Q2pIWRJ5QvFXdObTTQvaUZaPk=
 github.com/projectdiscovery/httpx v1.6.3 h1:TSu3zEKOHGFfMsGeB0lZEFRl6Tq4nPuIgKDXi9NnYpg=
 github.com/projectdiscovery/httpx v1.6.3/go.mod h1:9FmsmkT71aTa4WnOyBIPzB8I9c0QAJ9PSVUqs2NkHRQ=
 github.com/projectdiscovery/interactsh v1.1.9 h1:b77SaSGrO+DtivmWwqGGY2dmNlQC3Zgmwlaj9L4Oqvc=
