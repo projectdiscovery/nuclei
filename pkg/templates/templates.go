@@ -326,6 +326,10 @@ func (template *Template) UnmarshalYAML(unmarshal func(interface{}) error) error
 	}
 	*template = Template(*alias)
 
+	if !ReTemplateID.MatchString(template.ID) {
+		return errorutil.New("template id must match expression %v", ReTemplateID).WithTag("invalid template")
+	}
+
 	if len(template.RequestsHTTP) > 0 || len(template.RequestsNetwork) > 0 {
 		_ = deprecatedProtocolNameTemplates.Set(template.ID, true)
 	}
