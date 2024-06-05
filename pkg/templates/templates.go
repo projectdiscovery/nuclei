@@ -23,6 +23,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/websocket"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/whois"
 	"github.com/projectdiscovery/nuclei/v3/pkg/templates/types"
+	"github.com/projectdiscovery/nuclei/v3/pkg/utils"
 	"github.com/projectdiscovery/nuclei/v3/pkg/workflows"
 	errorutil "github.com/projectdiscovery/utils/errors"
 	fileutil "github.com/projectdiscovery/utils/file"
@@ -328,6 +329,13 @@ func (template *Template) UnmarshalYAML(unmarshal func(interface{}) error) error
 
 	if !ReTemplateID.MatchString(template.ID) {
 		return errorutil.New("template id must match expression %v", ReTemplateID).WithTag("invalid template")
+	}
+	info := template.Info
+	if utils.IsBlank(info.Name) {
+		return errorutil.New("info.name is a mandatory field").WithTag("invalid template")
+	}
+	if info.Authors.IsEmpty() {
+		return errorutil.New("info.author is a mandatory field").WithTag("invalid template")
 	}
 
 	if len(template.RequestsHTTP) > 0 || len(template.RequestsNetwork) > 0 {
