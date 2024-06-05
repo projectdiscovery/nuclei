@@ -332,10 +332,10 @@ func (template *Template) UnmarshalYAML(unmarshal func(interface{}) error) error
 	}
 	info := template.Info
 	if utils.IsBlank(info.Name) {
-		return errorutil.New("info.name is a mandatory field").WithTag("invalid template")
+		return errorutil.New("no template name field provided").WithTag("invalid template")
 	}
 	if info.Authors.IsEmpty() {
-		return errorutil.New("info.author is a mandatory field").WithTag("invalid template")
+		return errorutil.New("no template author field provided").WithTag("invalid template")
 	}
 
 	if len(template.RequestsHTTP) > 0 || len(template.RequestsNetwork) > 0 {
