@@ -1,7 +1,6 @@
 package types
 
 import (
-	"encoding/json"
 	"io"
 	"net/http"
 	"net/http/httputil"
@@ -78,7 +77,7 @@ func TestUnmarshalJSON(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			var rr RequestResponse
-			err := json.Unmarshal([]byte(tc.rawJSONStr), &rr)
+			err := rr.UnmarshalJSON([]byte(tc.rawJSONStr))
 			if err != nil {
 				t.Fatal(err)
 			}
