@@ -1,6 +1,7 @@
 package types
 
 import (
+	"encoding/json"
 	"io"
 	"net/http"
 	"net/http/httputil"
@@ -62,6 +63,26 @@ func TestParseHttpRequest(t *testing.T) {
 			}
 
 			t.Log(*rr.Request)
+		})
+	}
+}
+
+func TestUnmarshalJSON(t *testing.T) {
+	tests := []struct {
+		name       string
+		rawJSONStr string
+	}{
+		{"basic url", `{"url": "example.com"}`},
+		{"basic url with scheme", `{"url": "http://example.com"}`},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			var rr RequestResponse
+			err := json.Unmarshal([]byte(tc.rawJSONStr), &rr)
+			if err != nil {
+				t.Fatal(err)
+			}
+			t.Logf("url: %+v", rr.URL)
 		})
 	}
 }
