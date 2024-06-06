@@ -5,10 +5,12 @@ import (
 	"fmt"
 	"net"
 	"net/url"
+	"syscall"
 
 	"github.com/go-sql-driver/mysql"
 	"github.com/pkg/errors"
 	"golang.org/x/net/proxy"
+	"golang.org/x/sys/unix"
 
 	"github.com/projectdiscovery/fastdialer/fastdialer"
 	"github.com/projectdiscovery/mapcidr/asn"
@@ -135,6 +137,31 @@ func Init(options *types.Options) error {
 	// this instance is used in javascript protocol libraries and
 	// dial history is required to get dialed ip of a host
 	opts.WithDialerHistory = true
+	opts.Dialer = &net.Dialer{
+		Timeout:   opts.DialerTimeout,
+		KeepAlive: opts.DialerKeepAlive,
+		DualStack: true,
+		ControlContext: func(ctx context.Context, network, address string, c syscall.RawConn) error {
+			return c.Control(func(fd uintptr) {
+				err := syscall.SetsockoptInt(int(fd), unix.SOL_SOCKET, unix.SO_KEEPALIVE, 1)
+				if err != nil {
+					fmt.Printf("error setting SO_KEEPALIVE: %v\n", err)
+				}
+				tv := syscall.Timeval{
+					Sec: 5,
+				}
+				if err := syscall.SetsockoptTimeval(int(fd), unix.SOL_SOCKET, unix.SO_RCVTIMEO, &tv); err != nil {
+					fmt.Printf("error setting SO_RCVTIMEO: %v tv: %v\n", err, tv)
+				}
+				tv2 := syscall.Timeval{
+					Sec: 5,
+				}
+				if err := syscall.SetsockoptTimeval(int(fd), unix.SOL_SOCKET, unix.SO_SNDTIMEO, &tv2); err != nil {
+					fmt.Printf("error setting SO_SNDTIMEO: %v tv: %v\n", err, tv2)
+				}
+			})
+		},
+	}
 
 	// fastdialer now by default fallbacks to ztls when there are tls related errors
 	dialer, err := fastdialer.NewDialer(opts)
