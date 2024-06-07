@@ -68,11 +68,12 @@ func TestParseHttpRequest(t *testing.T) {
 
 func TestUnmarshalJSON(t *testing.T) {
 	tests := []struct {
-		name       string
-		rawJSONStr string
+		name           string
+		rawJSONStr     string
+		expectedURLStr string
 	}{
-		{"basic url", `{"url": "example.com"}`},
-		{"basic url with scheme", `{"url": "http://example.com"}`},
+		{"basic url", `{"url": "example.com"}`, "example.com"},
+		{"basic url with scheme", `{"url": "http://example.com"}`, "http://example.com"},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
@@ -81,7 +82,9 @@ func TestUnmarshalJSON(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			t.Logf("url: %+v", rr.URL)
+			if tc.expectedURLStr != "" {
+				require.Equal(t, rr.URL.String(), tc.expectedURLStr)
+			}
 		})
 	}
 }
