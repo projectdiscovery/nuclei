@@ -4,11 +4,11 @@ package compiler
 import (
 	"context"
 	"fmt"
-	"time"
 
 	"github.com/dop251/goja"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/generators"
+	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	contextutil "github.com/projectdiscovery/utils/context"
 	"github.com/projectdiscovery/utils/errkit"
 	stringsutil "github.com/projectdiscovery/utils/strings"
@@ -44,6 +44,8 @@ type ExecuteOptions struct {
 	Source *string
 
 	Context context.Context
+
+	TimeoutVariants types.TimeoutVariants
 
 	// Manually exported objects
 	exports map[string]interface{}
@@ -113,7 +115,8 @@ func (c *Compiler) ExecuteWithOptions(program *goja.Program, args *ExecuteArgs, 
 	}
 
 	// execute with context and timeout
-	ctx, cancel := context.WithTimeoutCause(opts.Context, time.Duration(opts.Timeout)*time.Second, ErrJSExecDeadline)
+
+	ctx, cancel := context.WithTimeoutCause(opts.Context, opts.TimeoutVariants.JsCompilerExecutionTimeout, ErrJSExecDeadline)
 	defer cancel()
 	// execute the script
 	results, err := contextutil.ExecFuncWithTwoReturns(ctx, func() (val goja.Value, err error) {

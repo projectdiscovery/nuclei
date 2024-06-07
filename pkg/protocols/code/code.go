@@ -199,11 +199,12 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 
 		result, err := request.options.JsCompiler.ExecuteWithOptions(request.preConditionCompiled, args,
 			&compiler.ExecuteOptions{
-				Timeout:  timeout,
-				Source:   &request.PreCondition,
-				Callback: registerPreConditionFunctions,
-				Cleanup:  cleanUpPreConditionFunctions,
-				Context:  input.Context(),
+				Timeout:         timeout,
+				TimeoutVariants: request.options.TimeoutVariants,
+				Source:          &request.PreCondition,
+				Callback:        registerPreConditionFunctions,
+				Cleanup:         cleanUpPreConditionFunctions,
+				Context:         input.Context(),
 			})
 		if err != nil {
 			return errorutil.NewWithTag(request.TemplateID, "could not execute pre-condition: %s", err)
@@ -218,7 +219,7 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 		}
 	}
 
-	ctx, cancel := context.WithTimeoutCause(input.Context(), time.Duration(timeout)*time.Second, ErrCodeExecutionDeadline)
+	ctx, cancel := context.WithTimeoutCause(input.Context(), request.options.TimeoutVariants.CodeExecutionTimeout, ErrCodeExecutionDeadline)
 	defer cancel()
 	// Note: we use contextutil despite the fact that gozero accepts context as argument
 	gOutput, err := contextutil.ExecFuncWithTwoReturns(ctx, func() (*gozerotypes.Result, error) {

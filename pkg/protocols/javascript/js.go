@@ -153,9 +153,10 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 		}
 
 		opts := &compiler.ExecuteOptions{
-			Timeout: request.Timeout,
-			Source:  &request.Init,
-			Context: context.Background(),
+			Timeout:         request.Timeout,
+			TimeoutVariants: request.options.TimeoutVariants,
+			Source:          &request.Init,
+			Context:         context.Background(),
 		}
 		// register 'export' function to export variables from init code
 		// these are saved in args and are available in pre-condition and request code
@@ -345,7 +346,11 @@ func (request *Request) ExecuteWithResults(target *contextargs.Context, dynamicV
 		argsCopy.TemplateCtx = templateCtx.GetAll()
 
 		result, err := request.options.JsCompiler.ExecuteWithOptions(request.preConditionCompiled, argsCopy,
-			&compiler.ExecuteOptions{Timeout: request.Timeout, Source: &request.PreCondition, Context: target.Context()})
+			&compiler.ExecuteOptions{
+				Timeout:         request.Timeout,
+				TimeoutVariants: requestOptions.TimeoutVariants,
+				Source:          &request.PreCondition, Context: target.Context(),
+			})
 		if err != nil {
 			return errorutil.NewWithTag(request.TemplateID, "could not execute pre-condition: %s", err)
 		}
@@ -500,7 +505,12 @@ func (request *Request) executeRequestWithPayloads(hostPort string, input *conte
 	}
 
 	results, err := request.options.JsCompiler.ExecuteWithOptions(request.scriptCompiled, argsCopy,
-		&compiler.ExecuteOptions{Timeout: request.Timeout, Source: &request.Code, Context: input.Context()})
+		&compiler.ExecuteOptions{
+			Timeout:         request.Timeout,
+			TimeoutVariants: requestOptions.TimeoutVariants,
+			Source:          &request.Code,
+			Context:         input.Context(),
+		})
 	if err != nil {
 		// shouldn't fail even if it returned error instead create a failure event
 		results = compiler.ExecuteResult{"success": false, "error": err.Error()}

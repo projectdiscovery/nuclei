@@ -401,6 +401,7 @@ type TimeoutVariants struct {
 	MaxResponseHeaderTimeout   time.Duration
 	ResponseReadTimeout        time.Duration
 	JsCompilerExecutionTimeout time.Duration
+	CodeExecutionTimeout       time.Duration
 	HttpTimeout                time.Duration
 	DialTimeout                time.Duration
 }
@@ -414,6 +415,7 @@ func (options *Options) BuildTimeoutVariants() TimeoutVariants {
 		//response read timeout in seconds
 		ResponseReadTimeout:        time.Second * 5,
 		JsCompilerExecutionTimeout: time.Second * time.Duration(int(float64(options.Timeout)*1.5)),
+		CodeExecutionTimeout:       time.Second * 3,
 		//http timeout for the client
 		HttpTimeout: time.Second * time.Duration(options.Timeout*3),
 		//timeout for network requests
