@@ -457,6 +457,22 @@
           "title": "part of rule",
           "description": "Part of request rule to fuzz"
         },
+        "parts": {
+          "items": {
+            "type": "string",
+            "enum": [
+              "query",
+              "header",
+              "path",
+              "body",
+              "cookie",
+              "request"
+            ]
+          },
+          "type": "array",
+          "title": "parts of rule",
+          "description": "Part of request rule to fuzz"
+        },
         "mode": {
           "type": "string",
           "enum": [
