@@ -185,6 +185,12 @@ func (c *Cache) checkError(err error) bool {
 	if err == nil {
 		return false
 	}
+
+	// we do not consider timeouts as temporary
+	if strings.Contains(errkit.FromError(err).Cause().Error(), "i/o timeout") {
+		return true
+	}
+
 	kind := errkit.GetErrorKind(err, nucleierr.ErrTemplateLogic)
 	switch kind {
 	case nucleierr.ErrTemplateLogic:
