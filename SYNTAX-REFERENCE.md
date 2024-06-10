@@ -1800,13 +1800,50 @@ Valid values:
 
 Part is the part of request to fuzz.
 
-query fuzzes the query part of url. More parts will be added later.
+
+Valid values:
+
+
+  - <code>query</code>
+
+  - <code>header</code>
+
+  - <code>path</code>
+
+  - <code>body</code>
+
+  - <code>cookie</code>
+
+  - <code>request</code>
+</div>
+
+<hr />
+
+<div class="dd">
+
+<code>parts</code>  <i>[]string</i>
+
+</div>
+<div class="dt">
+
+Parts is the list of parts to fuzz. If multiple parts need to be
+defined while excluding some, this should be used instead of singular part.
 
 
 Valid values:
 
 
   - <code>query</code>
+
+  - <code>header</code>
+
+  - <code>path</code>
+
+  - <code>body</code>
+
+  - <code>cookie</code>
+
+  - <code>request</code>
 </div>
 
 <hr />
