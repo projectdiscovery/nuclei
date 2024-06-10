@@ -832,8 +832,8 @@ github.com/projectdiscovery/clistats v0.0.20 h1:5jO5SLiRJ7f0nDV0ndBNmBeesbROouPo
 github.com/projectdiscovery/clistats v0.0.20/go.mod h1:GJ2av0KnOvK0AISQnP8hyDclYIji1LVkx2l0pwnzAu4=
 github.com/projectdiscovery/dsl v0.1.2 h1:RdWCEsUqyWsLIQ1k16NX5FiIVbPFvzx9BOlvzK7eeGw=
 github.com/projectdiscovery/dsl v0.1.2/go.mod h1:3zwogxGPnPkVUk5OfZQ9Y51sAWdazfQoVZFSPqeEUYA=
-github.com/projectdiscovery/fastdialer v0.1.0 h1:NiId7eXvYZjiBo83AnIZ6K8ZjzLJU8wGXdRLzuKcRrg=
-github.com/projectdiscovery/fastdialer v0.1.0/go.mod h1:jKOWzyHx+Q2sMiYst5HP6tWLQLDFPVgWBR72szn2h8w=
+github.com/projectdiscovery/fastdialer v0.1.1 h1:51IovI02Ime7fVCWFxMpg1akCcaRHpVQnjpTQT0+0G0=
+github.com/projectdiscovery/fastdialer v0.1.1/go.mod h1:tIMAT93FmV90EoVfM1lfaTrkNEbqT+G4jLyyoOO5McY=
 github.com/projectdiscovery/fasttemplate v0.0.2 h1:h2cISk5xDhlJEinlBQS6RRx0vOlOirB2y3Yu4PJzpiA=
 github.com/projectdiscovery/fasttemplate v0.0.2/go.mod h1:XYWWVMxnItd+r0GbjA1GCsUopMw1/XusuQxdyAIHMCw=
 github.com/projectdiscovery/freeport v0.0.5 h1:jnd3Oqsl4S8n0KuFkE5Hm8WGDP24ITBvmyw5pFTHS8Q=
@@ -852,8 +852,8 @@ github.com/projectdiscovery/hmap v0.0.45 h1:D3PinywmpDtIX2lc9bnqaRJoFDPCCxUf4RvH
 github.com/projectdiscovery/hmap v0.0.45/go.mod h1:vJ7HYzhDnOjsEc9d43Q2pIWRJ5QvFXdObTTQvaUZaPk=
 github.com/projectdiscovery/httpx v1.6.3 h1:TSu3zEKOHGFfMsGeB0lZEFRl6Tq4nPuIgKDXi9NnYpg=
 github.com/projectdiscovery/httpx v1.6.3/go.mod h1:9FmsmkT71aTa4WnOyBIPzB8I9c0QAJ9PSVUqs2NkHRQ=
-github.com/projectdiscovery/interactsh v1.1.9 h1:b77SaSGrO+DtivmWwqGGY2dmNlQC3Zgmwlaj9L4Oqvc=
-github.com/projectdiscovery/interactsh v1.1.9/go.mod h1:0FRQXCildcTLq7Tsa4BVZAsFCXhpWs4C4quKWigXb5I=
+github.com/projectdiscovery/interactsh v1.2.0 h1:Al6jHiR+Usl9egYJDLJaWNHOcH8Rugk8gWMasc8Cmw8=
+github.com/projectdiscovery/interactsh v1.2.0/go.mod h1:Wxt0fnzxsfrAZQQlpVrf3xMatP4OXZaZbjuDkIQKdYY=
 github.com/projectdiscovery/ldapserver v1.0.2-0.20240219154113-dcc758ebc0cb h1:MGtI4oE12ruWv11ZlPXXd7hl/uAaQZrFvrIDYDeVMd8=
 github.com/projectdiscovery/ldapserver v1.0.2-0.20240219154113-dcc758ebc0cb/go.mod h1:vmgC0DTFCfoCLp0RAfsfYTZZan0QMVs+cmTbH6blfjk=
 github.com/projectdiscovery/machineid v0.0.0-20240226150047-2e2c51e35983 h1:ZScLodGSezQVwsQDtBSMFp72WDq0nNN+KE/5DHKY5QE=
@@ -872,8 +872,8 @@ github.com/projectdiscovery/rdap v0.9.1-0.20221108103045-9865884d1917 h1:m03X4gB
 github.com/projectdiscovery/rdap v0.9.1-0.20221108103045-9865884d1917/go.mod h1:JxXtZC9e195awe7EynrcnBJmFoad/BNDzW9mzFkK8Sg=
 github.com/projectdiscovery/retryabledns v1.0.63 h1:Ijt47ybwf+iIwul606NlPKPN+ouhOYPeA9sLHVgqLG4=
 github.com/projectdiscovery/retryabledns v1.0.63/go.mod h1:lTs48OYJnMFuuBzT+3z3PrZ58K0OUBgP7Y4o3ttBwb0=
-github.com/projectdiscovery/retryablehttp-go v1.0.62 h1:ZY09NYRatoELHaPUcdRdWzHIJExjEqceHAfe7u/e9ZY=
-github.com/projectdiscovery/retryablehttp-go v1.0.62/go.mod h1:yhRy9Q3z0CuNUHIIPrveaubjVEwF4arKWT/5SQurQEE=
+github.com/projectdiscovery/retryablehttp-go v1.0.63 h1:y/MpWrAO7702ybOLo/OuyAx6bZ6NJVEf85mGMAU51l8=
+github.com/projectdiscovery/retryablehttp-go v1.0.63/go.mod h1:ytE1KGi63NFAyLzWqTwZJXwjAg7apgqTnJtaZeZ4qtM=
 github.com/projectdiscovery/sarif v0.0.1 h1:C2Tyj0SGOKbCLgHrx83vaE6YkzXEVrMXYRGLkKCr/us=
 github.com/projectdiscovery/sarif v0.0.1/go.mod h1:cEYlDu8amcPf6b9dSakcz2nNnJsoz4aR6peERwV+wuQ=
 github.com/projectdiscovery/stringsutil v0.0.2 h1:uzmw3IVLJSMW1kEg8eCStG/cGbYYZAja8BH3LqqJXMA=
