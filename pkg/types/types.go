@@ -363,6 +363,12 @@ type Options struct {
 	FuzzingMode string
 	// TlsImpersonate enables TLS impersonation
 	TlsImpersonate bool
+	// DisplayFuzzPoints enables display of fuzz points for fuzzing
+	DisplayFuzzPoints bool
+	// FuzzAggressionLevel is the level of fuzzing aggression (low, medium, high.)
+	FuzzAggressionLevel string
+	// FuzzParamFrequency is the frequency of fuzzing parameters
+	FuzzParamFrequency int
 	// CodeTemplateSignaturePublicKey is the custom public key used to verify the template signature (algorithm is automatically inferred from the length)
 	CodeTemplateSignaturePublicKey string
 	// CodeTemplateSignatureAlgorithm specifies the sign algorithm (rsa, ecdsa)
