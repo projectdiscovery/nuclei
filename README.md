@@ -182,6 +182,8 @@ OUTPUT:
 
 CONFIGURATIONS:
    -config string                        path to the nuclei configuration file
+   -tp, -profile string                  template profile config file to run
+   -tpl, -profile-list                   list community template profiles
    -fr, -follow-redirects                enable following redirects for http templates
    -fhr, -follow-host-redirects          follow redirects on the same host
    -mr, -max-redirects int               max number of redirects to follow for http templates (default 10)
@@ -208,10 +210,12 @@ CONFIGURATIONS:
    -i, -interface string                 network interface to use for network scan
    -at, -attack-type string              type of payload combinations to perform (batteringram,pitchfork,clusterbomb)
    -sip, -source-ip string               source ip address to use for network scan
-   -rsr, -response-size-read int         max response size to read in bytes (default 10485760)
+   -rsr, -response-size-read int         max response size to read in bytes
    -rss, -response-size-save int         max response size to read in bytes (default 1048576)
+   -rrt, -response-read-timeout value    response read timeout in seconds (default 5s)
    -reset                                reset removes all nuclei configuration and data files (including nuclei-templates)
    -tlsi, -tls-impersonate               enable experimental client hello (ja3) tls randomization
+   -hae, -http-api-endpoint string       experimental http api endpoint
 
 INTERACTSH:
    -iserver, -interactsh-server string  interactsh server url for self-hosted instance (default: oast.pro,oast.live,oast.site,oast.online,oast.fun,oast.me)
@@ -223,10 +227,13 @@ INTERACTSH:
    -ni, -no-interactsh                  disable interactsh server for OAST testing, exclude OAST based templates
 
 FUZZING:
-   -ft, -fuzzing-type string  overrides fuzzing type set in template (replace, prefix, postfix, infix)
-   -fm, -fuzzing-mode string  overrides fuzzing mode set in template (multiple, single)
-   -fuzz                      enable loading fuzzing templates (Deprecated: use -dast instead)
-   -dast                      only run DAST templates
+   -ft, -fuzzing-type string     overrides fuzzing type set in template (replace, prefix, postfix, infix)
+   -fm, -fuzzing-mode string     overrides fuzzing mode set in template (multiple, single)
+   -fuzz                         enable loading fuzzing templates (Deprecated: use -dast instead)
+   -dast                         enable / run dast (fuzz) nuclei templates
+   -dfp, -display-fuzz-points    display fuzz points in the output for debugging
+   -fuzz-param-frequency int     frequency of uninteresting parameters for fuzzing before skipping (default 10)
+   -fa, -fuzz-aggression string  fuzzing aggression level controls payload count for fuzz (low, medium, high) (default "low")
 
 UNCOVER:
    -uc, -uncover                  enable uncover engine
@@ -238,13 +245,15 @@ UNCOVER:
 
 RATE-LIMIT:
    -rl, -rate-limit int               maximum number of requests to send per second (default 150)
-   -rlm, -rate-limit-minute int       maximum number of requests to send per minute
+   -rld, -rate-limit-duration value   maximum number of requests to send per second (default 1s)
+   -rlm, -rate-limit-minute int       maximum number of requests to send per minute (DEPRECATED)
    -bs, -bulk-size int                maximum number of hosts to be analyzed in parallel per template (default 25)
    -c, -concurrency int               maximum number of templates to be executed in parallel (default 25)
    -hbs, -headless-bulk-size int      maximum number of headless hosts to be analyzed in parallel per template (default 10)
    -headc, -headless-concurrency int  maximum number of headless templates to be executed in parallel (default 10)
    -jsc, -js-concurrency int          maximum number of javascript runtimes to be executed in parallel (default 120)
    -pc, -payload-concurrency int      max payload concurrency for each template (default 25)
+   -prc, -probe-concurrency int       http probe concurrency with httpx (default 50)
 
 OPTIMIZATIONS:
    -timeout int                     time to wait in seconds before timeout (default 10)
