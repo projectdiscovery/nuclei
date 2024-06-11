@@ -2,6 +2,8 @@ module github.com/projectdiscovery/nuclei/v3
 
 go 1.21
 
+replace github.com/projectdiscovery/fastdialer => C:\\Users\\marco\\go\\src\\github.com\\projectdiscovery\\fastdialer
+
 require (
 	github.com/Knetic/govaluate v3.0.1-0.20171022003610-9aa49832a739+incompatible
 	github.com/andygrunwald/go-jira v1.16.0
@@ -20,12 +22,12 @@ require (
 	github.com/olekukonko/tablewriter v0.0.5
 	github.com/pkg/errors v0.9.1
 	github.com/projectdiscovery/clistats v0.0.20
-	github.com/projectdiscovery/fastdialer v0.1.4-0.20240611102108-26fe40135e03
+	github.com/projectdiscovery/fastdialer v0.1.4-0.20240611113719-19b2fb64716e
 	github.com/projectdiscovery/hmap v0.0.46
 	github.com/projectdiscovery/interactsh v1.2.0
 	github.com/projectdiscovery/rawhttp v0.1.51
 	github.com/projectdiscovery/retryabledns v1.0.63
-	github.com/projectdiscovery/retryablehttp-go v1.0.63
+	github.com/projectdiscovery/retryablehttp-go v1.0.64
 	github.com/projectdiscovery/yamldoc-go v1.0.4
 	github.com/remeh/sizedwaitgroup v1.0.0
 	github.com/rs/xid v1.5.0
@@ -94,7 +96,7 @@ require (
 	github.com/projectdiscovery/tlsx v1.1.6
 	github.com/projectdiscovery/uncover v1.0.8
 	github.com/projectdiscovery/useragent v0.0.54
-	github.com/projectdiscovery/utils v0.1.3
+	github.com/projectdiscovery/utils v0.1.4-0.20240611113448-0e2f2d33fe1c
 	github.com/projectdiscovery/wappalyzergo v0.1.4
 	github.com/redis/go-redis/v9 v9.1.0
 	github.com/seh-msft/burpxml v1.0.1
