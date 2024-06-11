@@ -2,8 +2,6 @@ module github.com/projectdiscovery/nuclei/v3
 
 go 1.21
 
-replace github.com/projectdiscovery/fastdialer => C:\\Users\\marco\\go\\src\\github.com\\projectdiscovery\\fastdialer
-
 require (
 	github.com/Knetic/govaluate v3.0.1-0.20171022003610-9aa49832a739+incompatible
 	github.com/andygrunwald/go-jira v1.16.0
