@@ -747,7 +747,7 @@ func init() {
 			FieldName: "fuzzing",
 		},
 	}
-	FUZZRuleDoc.Fields = make([]encoder.Doc, 8)
+	FUZZRuleDoc.Fields = make([]encoder.Doc, 9)
 	FUZZRuleDoc.Fields[0].Name = "type"
 	FUZZRuleDoc.Fields[0].Type = "string"
 	FUZZRuleDoc.Fields[0].Note = ""
@@ -762,51 +762,69 @@ func init() {
 	FUZZRuleDoc.Fields[1].Name = "part"
 	FUZZRuleDoc.Fields[1].Type = "string"
 	FUZZRuleDoc.Fields[1].Note = ""
-	FUZZRuleDoc.Fields[1].Description = "Part is the part of request to fuzz.\n\nquery fuzzes the query part of url. More parts will be added later."
+	FUZZRuleDoc.Fields[1].Description = "Part is the part of request to fuzz."
 	FUZZRuleDoc.Fields[1].Comments[encoder.LineComment] = "Part is the part of request to fuzz."
 	FUZZRuleDoc.Fields[1].Values = []string{
 		"query",
+		"header",
+		"path",
+		"body",
+		"cookie",
+		"request",
 	}
-	FUZZRuleDoc.Fields[2].Name = "mode"
-	FUZZRuleDoc.Fields[2].Type = "string"
+	FUZZRuleDoc.Fields[2].Name = "parts"
+	FUZZRuleDoc.Fields[2].Type = "[]string"
 	FUZZRuleDoc.Fields[2].Note = ""
-	FUZZRuleDoc.Fields[2].Description = "Mode is the mode of fuzzing to perform.\n\nsingle fuzzes one value at a time. multiple fuzzes all values at same time."
-	FUZZRuleDoc.Fields[2].Comments[encoder.LineComment] = "Mode is the mode of fuzzing to perform."
+	FUZZRuleDoc.Fields[2].Description = "Parts is the list of parts to fuzz. If multiple parts need to be\ndefined while excluding some, this should be used instead of singular part."
+	FUZZRuleDoc.Fields[2].Comments[encoder.LineComment] = "Parts is the list of parts to fuzz. If multiple parts need to be"
 	FUZZRuleDoc.Fields[2].Values = []string{
+		"query",
+		"header",
+		"path",
+		"body",
+		"cookie",
+		"request",
+	}
+	FUZZRuleDoc.Fields[3].Name = "mode"
+	FUZZRuleDoc.Fields[3].Type = "string"
+	FUZZRuleDoc.Fields[3].Note = ""
+	FUZZRuleDoc.Fields[3].Description = "Mode is the mode of fuzzing to perform.\n\nsingle fuzzes one value at a time. multiple fuzzes all values at same time."
+	FUZZRuleDoc.Fields[3].Comments[encoder.LineComment] = "Mode is the mode of fuzzing to perform."
+	FUZZRuleDoc.Fields[3].Values = []string{
 		"single",
 		"multiple",
 	}
-	FUZZRuleDoc.Fields[3].Name = "keys"
-	FUZZRuleDoc.Fields[3].Type = "[]string"
-	FUZZRuleDoc.Fields[3].Note = ""
-	FUZZRuleDoc.Fields[3].Description = "Keys is the optional list of key named parameters to fuzz."
-	FUZZRuleDoc.Fields[3].Comments[encoder.LineComment] = "Keys is the optional list of key named parameters to fuzz."
-
-	FUZZRuleDoc.Fields[3].AddExample("Examples of keys", []string{"url", "file", "host"})
-	FUZZRuleDoc.Fields[4].Name = "keys-regex"
+	FUZZRuleDoc.Fields[4].Name = "keys"
 	FUZZRuleDoc.Fields[4].Type = "[]string"
 	FUZZRuleDoc.Fields[4].Note = ""
-	FUZZRuleDoc.Fields[4].Description = "KeysRegex is the optional list of regex key parameters to fuzz."
-	FUZZRuleDoc.Fields[4].Comments[encoder.LineComment] = "KeysRegex is the optional list of regex key parameters to fuzz."
+	FUZZRuleDoc.Fields[4].Description = "Keys is the optional list of key named parameters to fuzz."
+	FUZZRuleDoc.Fields[4].Comments[encoder.LineComment] = "Keys is the optional list of key named parameters to fuzz."
 
-	FUZZRuleDoc.Fields[4].AddExample("Examples of key regex", []string{"url.*"})
-	FUZZRuleDoc.Fields[5].Name = "values"
+	FUZZRuleDoc.Fields[4].AddExample("Examples of keys", []string{"url", "file", "host"})
+	FUZZRuleDoc.Fields[5].Name = "keys-regex"
 	FUZZRuleDoc.Fields[5].Type = "[]string"
 	FUZZRuleDoc.Fields[5].Note = ""
-	FUZZRuleDoc.Fields[5].Description = "Values is the optional list of regex value parameters to fuzz."
-	FUZZRuleDoc.Fields[5].Comments[encoder.LineComment] = "Values is the optional list of regex value parameters to fuzz."
+	FUZZRuleDoc.Fields[5].Description = "KeysRegex is the optional list of regex key parameters to fuzz."
+	FUZZRuleDoc.Fields[5].Comments[encoder.LineComment] = "KeysRegex is the optional list of regex key parameters to fuzz."
 
-	FUZZRuleDoc.Fields[5].AddExample("Examples of value regex", []string{"https?://.*"})
-	FUZZRuleDoc.Fields[6].Name = "fuzz"
-	FUZZRuleDoc.Fields[6].Type = "SliceOrMapSlice"
+	FUZZRuleDoc.Fields[5].AddExample("Examples of key regex", []string{"url.*"})
+	FUZZRuleDoc.Fields[6].Name = "values"
+	FUZZRuleDoc.Fields[6].Type = "[]string"
 	FUZZRuleDoc.Fields[6].Note = ""
-	FUZZRuleDoc.Fields[6].Description = "description: |\n   Fuzz is the list of payloads to perform substitutions with.\n examples:\n   - name: Examples of fuzz\n     value: >\n       []string{\"{{ssrf}}\", \"{{interactsh-url}}\", \"example-value\"}\n      or\n       x-header: 1\n       x-header: 2"
-	FUZZRuleDoc.Fields[6].Comments[encoder.LineComment] = " description: |"
-	FUZZRuleDoc.Fields[7].Name = "replace-regex"
-	FUZZRuleDoc.Fields[7].Type = "string"
+	FUZZRuleDoc.Fields[6].Description = "Values is the optional list of regex value parameters to fuzz."
+	FUZZRuleDoc.Fields[6].Comments[encoder.LineComment] = "Values is the optional list of regex value parameters to fuzz."
+
+	FUZZRuleDoc.Fields[6].AddExample("Examples of value regex", []string{"https?://.*"})
+	FUZZRuleDoc.Fields[7].Name = "fuzz"
+	FUZZRuleDoc.Fields[7].Type = "SliceOrMapSlice"
 	FUZZRuleDoc.Fields[7].Note = ""
-	FUZZRuleDoc.Fields[7].Description = "replace-regex is regex for regex-replace rule type\nit is only required for replace-regex rule type"
-	FUZZRuleDoc.Fields[7].Comments[encoder.LineComment] = "replace-regex is regex for regex-replace rule type"
+	FUZZRuleDoc.Fields[7].Description = "description: |\n   Fuzz is the list of payloads to perform substitutions with.\n examples:\n   - name: Examples of fuzz\n     value: >\n       []string{\"{{ssrf}}\", \"{{interactsh-url}}\", \"example-value\"}\n      or\n       x-header: 1\n       x-header: 2"
+	FUZZRuleDoc.Fields[7].Comments[encoder.LineComment] = " description: |"
+	FUZZRuleDoc.Fields[8].Name = "replace-regex"
+	FUZZRuleDoc.Fields[8].Type = "string"
+	FUZZRuleDoc.Fields[8].Note = ""
+	FUZZRuleDoc.Fields[8].Description = "replace-regex is regex for regex-replace rule type\nit is only required for replace-regex rule type"
+	FUZZRuleDoc.Fields[8].Comments[encoder.LineComment] = "replace-regex is regex for regex-replace rule type"
 
 	SliceOrMapSliceDoc.Type = "SliceOrMapSlice"
 	SliceOrMapSliceDoc.Comments[encoder.LineComment] = ""
