@@ -180,12 +180,6 @@ func (c *Cache) checkError(err error) bool {
 		return false
 	}
 
-	// todo: fixed in fastdialer - ref: https://github.com/projectdiscovery/fastdialer/pull/301
-	// we do not consider timeouts as temporary
-	// if strings.Contains(errkit.FromError(err).Cause().Error(), "i/o timeout") {
-	// 	return true
-	// }
-
 	kind := errkit.GetErrorKind(err, nucleierr.ErrTemplateLogic)
 	switch kind {
 	case nucleierr.ErrTemplateLogic:
@@ -202,7 +196,7 @@ func (c *Cache) checkError(err error) bool {
 		// these should not be counted as host errors
 		return false
 	default:
-		// parse error for furthur processing
+		// parse error for further processing
 		errX := errkit.FromError(err)
 		tmp := errX.Cause()
 		cause := tmp.Error()
