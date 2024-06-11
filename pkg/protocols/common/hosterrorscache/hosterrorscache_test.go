@@ -91,9 +91,7 @@ func TestCacheMarkFailed(t *testing.T) {
 		require.Nil(t, err)
 		require.NotNil(t, failedTarget)
 
-		value, ok := failedTarget.(*cacheItem)
-		require.True(t, ok)
-		require.EqualValues(t, test.expected, value.errors.Load())
+		require.EqualValues(t, test.expected, failedTarget.errors.Load())
 	}
 }
 
@@ -138,9 +136,7 @@ func TestCacheMarkFailedConcurrent(t *testing.T) {
 		require.Nil(t, err)
 		require.NotNil(t, failedTarget)
 
-		value, ok := failedTarget.(*cacheItem)
-		require.True(t, ok)
-		require.EqualValues(t, test.expected, value.errors.Load())
+		require.EqualValues(t, test.expected, failedTarget.errors.Load())
 	}
 }
 
