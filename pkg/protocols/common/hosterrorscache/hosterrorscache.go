@@ -1,7 +1,6 @@
 package hosterrorscache
 
 import (
-	"log"
 	"net"
 	"net/url"
 	"regexp"
@@ -129,7 +128,6 @@ func (c *Cache) Check(ctx *contextargs.Context) bool {
 
 // MarkFailed marks a host as failed previously
 func (c *Cache) MarkFailed(ctx *contextargs.Context, err error) {
-	log.Printf("%#+v", err)
 	if !c.checkError(err) {
 		return
 	}

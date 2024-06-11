@@ -84,7 +84,7 @@ func (e *Engine) ExecuteScanWithOpts(ctx context.Context, templatesList []*templ
 	}
 
 	// Execute All SelfContained in parallel
-	e.executeAllSelfContained(ctx, selfContained, results, selfcontainedWg)
+	// e.executeAllSelfContained(ctx, selfContained, results, selfcontainedWg)
 
 	strategyResult := &atomic.Bool{}
 	switch e.options.ScanStrategy {
