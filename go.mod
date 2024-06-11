@@ -22,7 +22,7 @@ require (
 	github.com/projectdiscovery/clistats v0.0.20
 	github.com/projectdiscovery/fastdialer v0.1.4-0.20240611102108-26fe40135e03
 	github.com/projectdiscovery/hmap v0.0.46
-	github.com/projectdiscovery/interactsh v1.1.9
+	github.com/projectdiscovery/interactsh v1.2.0
 	github.com/projectdiscovery/rawhttp v0.1.51
 	github.com/projectdiscovery/retryabledns v1.0.63
 	github.com/projectdiscovery/retryablehttp-go v1.0.63
@@ -78,7 +78,7 @@ require (
 	github.com/mholt/archiver v3.1.1+incompatible
 	github.com/ory/dockertest/v3 v3.10.0
 	github.com/praetorian-inc/fingerprintx v1.1.9
-	github.com/projectdiscovery/dsl v0.1.0
+	github.com/projectdiscovery/dsl v0.1.2
 	github.com/projectdiscovery/fasttemplate v0.0.2
 	github.com/projectdiscovery/go-smb2 v0.0.0-20240129202741-052cc450c6cb
 	github.com/projectdiscovery/goflags v0.1.54
@@ -95,7 +95,7 @@ require (
 	github.com/projectdiscovery/uncover v1.0.8
 	github.com/projectdiscovery/useragent v0.0.54
 	github.com/projectdiscovery/utils v0.1.3
-	github.com/projectdiscovery/wappalyzergo v0.1.1
+	github.com/projectdiscovery/wappalyzergo v0.1.4
 	github.com/redis/go-redis/v9 v9.1.0
 	github.com/seh-msft/burpxml v1.0.1
 	github.com/stretchr/testify v1.9.0

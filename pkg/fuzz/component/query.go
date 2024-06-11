@@ -61,6 +61,7 @@ func (q *Query) Iterate(callback func(key string, value interface{}) error) (err
 // SetValue sets a value in the component
 // for a key
 func (q *Query) SetValue(key string, value string) error {
+	// Is this safe?
 	if !q.value.SetParsedValue(key, value) {
 		return ErrSetValue
 	}
