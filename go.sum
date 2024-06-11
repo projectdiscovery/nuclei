@@ -832,8 +832,6 @@ github.com/projectdiscovery/clistats v0.0.20 h1:5jO5SLiRJ7f0nDV0ndBNmBeesbROouPo
 github.com/projectdiscovery/clistats v0.0.20/go.mod h1:GJ2av0KnOvK0AISQnP8hyDclYIji1LVkx2l0pwnzAu4=
 github.com/projectdiscovery/dsl v0.1.2 h1:RdWCEsUqyWsLIQ1k16NX5FiIVbPFvzx9BOlvzK7eeGw=
 github.com/projectdiscovery/dsl v0.1.2/go.mod h1:3zwogxGPnPkVUk5OfZQ9Y51sAWdazfQoVZFSPqeEUYA=
-github.com/projectdiscovery/fastdialer v0.1.4-0.20240611113719-19b2fb64716e h1:wqcy/9pcENeE7bp97gXzq4hfx+lQuWbl68/U28IR70A=
-github.com/projectdiscovery/fastdialer v0.1.4-0.20240611113719-19b2fb64716e/go.mod h1:PcNscfCNrCnrkmvob90yfd+rNDMh6ZOIvRIl6HFPPXE=
 github.com/projectdiscovery/fastdialer v0.1.4-0.20240611222741-427bffb2ea13 h1:mAehxpgxmvFrKcQ8taA3xQskp3gg6GayAgatTAn37bg=
 github.com/projectdiscovery/fastdialer v0.1.4-0.20240611222741-427bffb2ea13/go.mod h1:PcNscfCNrCnrkmvob90yfd+rNDMh6ZOIvRIl6HFPPXE=
 github.com/projectdiscovery/fasttemplate v0.0.2 h1:h2cISk5xDhlJEinlBQS6RRx0vOlOirB2y3Yu4PJzpiA=
@@ -866,8 +864,8 @@ github.com/projectdiscovery/n3iwf v0.0.0-20230523120440-b8cd232ff1f5 h1:L/e8z8yw
 github.com/projectdiscovery/n3iwf v0.0.0-20230523120440-b8cd232ff1f5/go.mod h1:pGW2ncnTxTxHtP9wzcIJAB+3/NMp6IiuQWd2NK7K+oc=
 github.com/projectdiscovery/networkpolicy v0.0.8 h1:XvfBaBwSDNTesSfNQP9VLk3HX9I7x7gHm028TJ5XwI8=
 github.com/projectdiscovery/networkpolicy v0.0.8/go.mod h1:xnjNqhemxUPxU+UD5Jgsc3+K8IVmcqT1SJeo6UzMtkI=
-github.com/projectdiscovery/ratelimit v0.0.43 h1:9yYCnF+NW/vIRVmyvmyCsIph9Z3nsCDka2BrRciDg4c=
-github.com/projectdiscovery/ratelimit v0.0.43/go.mod h1:pWKRf/OY4uKtjelBLS5G3mclgvlwpBtbjcYpxdLQsL0=
+github.com/projectdiscovery/ratelimit v0.0.45 h1:h28oF+hJ0CHcdBZozT1Go7ppWmzTxSXDKNNh2G1Ot9Q=
+github.com/projectdiscovery/ratelimit v0.0.45/go.mod h1:1vSJUseDS7SjNwIBi9wNRcgsMKNTLxy/GfdlLFVbgI4=
 github.com/projectdiscovery/rawhttp v0.1.51 h1:T4sskU2fsX9zNR7nyae0tD/0fliIs73KwBzyoJwBs10=
 github.com/projectdiscovery/rawhttp v0.1.51/go.mod h1:ejBaw3dCfJSfbtFv0ib6YfFSjQzt7ZdRVpQWJASxIUs=
 github.com/projectdiscovery/rdap v0.9.1-0.20221108103045-9865884d1917 h1:m03X4gBVSorSzvmm0bFa7gDV4QNSOWPL/fgZ4kTXBxk=
