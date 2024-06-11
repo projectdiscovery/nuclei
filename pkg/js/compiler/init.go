@@ -1,6 +1,7 @@
 package compiler
 
 import (
+	"log"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 )
 
@@ -16,18 +17,31 @@ var (
 
 // Init initializes the javascript protocol
 func Init(opts *types.Options) error {
+	// Validate the provided timeout
 	if opts.Timeout < 10 {
-		// keep existing 10s timeout
-		return nil
+		log.Println("Provided timeout too low, using default 10s timeout")
+		opts.Timeout = 10
 	}
+	
+	// Validate the provided concurrency
 	if opts.JsConcurrency < 100 {
-		// 100 is reasonable default
+		log.Println("Provided JS concurrency too low, setting to default 100")
 		opts.JsConcurrency = 100
 	}
-	// we have dialer timeout set to 10s so js needs to be at least
-	// 15s to return the actual error if not it will be a dialer timeout
+	
+	// Calculate and set the JsProtocolTimeout
 	JsProtocolTimeout = int(float64(opts.Timeout) * JsTimeoutMultiplier)
-	PoolingJsVmConcurrency = opts.JsConcurrency
-	PoolingJsVmConcurrency -= NonPoolingVMConcurrency
+	
+	// Adjust PoolingJsVmConcurrency based on NonPoolingVMConcurrency
+	PoolingJsVmConcurrency = opts.JsConcurrency - NonPoolingVMConcurrency
+	if PoolingJsVmConcurrency < 0 {
+		log.Println("Adjusted PoolingJsVmConcurrency to minimum value 0")
+		PoolingJsVmConcurrency = 0
+	}
+
+	log.Printf("JS Protocol Timeout set to %d seconds\n", JsProtocolTimeout)
+	log.Printf("Pooling JS VM Concurrency set to %d\n", PoolingJsVmConcurrency)
+	log.Printf("Non-Pooling JS VM Concurrency set to %d\n", NonPoolingVMConcurrency)
+
 	return nil
 }
