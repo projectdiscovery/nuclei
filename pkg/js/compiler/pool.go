@@ -122,124 +122,93 @@ func ExecuteProgram(p *goja.Program, args *ExecuteArgs, opts *ExecuteOptions) (r
 
 // executes the actual js program
 func executeWithPoolingProgram(p *goja.Program, args *ExecuteArgs, opts *ExecuteOptions) (result goja.Value, err error) {
-	// its unknown (most likely cannot be done) to limit max js runtimes at a moment without making it static
-	// unlike sync.Pool which reacts to GC and its purposes is to reuse objects rather than creating new ones
-	lazySgInit()
-	sgResizeCheck(opts.Context)
+    // Initialize pool if not already done
+    lazySgInit()
+    sgResizeCheck(opts.Context)
 
-	pooljsc.Add()
-	defer pooljsc.Done()
-	runtime := gojapool.Get().(*goja.Runtime)
-	defer gojapool.Put(runtime)
-	var buff bytes.Buffer
-	opts.exports = make(map[string]interface{})
+    // Acquire a slot in the work group and ensure it's released
+    pooljsc.Add()
+    defer pooljsc.Done()
 
-	defer func() {
-		// remove below functions from runtime
-		_ = runtime.GlobalObject().Delete(exportAsToken)
-		_ = runtime.GlobalObject().Delete(exportToken)
-	}()
-	// register export functions
-	_ = gojs.RegisterFuncWithSignature(runtime, gojs.FuncOpts{
-		Name:        "Export", // we use string instead of const for documentation generation
-		Signatures:  []string{"Export(value any)"},
-		Description: "Converts a given value to a string and is appended to output of script",
-		FuncDecl: func(call goja.FunctionCall, runtime *goja.Runtime) goja.Value {
-			if len(call.Arguments) == 0 {
-				return goja.Null()
-			}
-			for _, arg := range call.Arguments {
-				if out := stringify(arg, runtime); out != "" {
-					buff.WriteString(out)
-				}
-			}
-			return goja.Null()
-		},
-	})
-	// register exportAs function
-	_ = gojs.RegisterFuncWithSignature(runtime, gojs.FuncOpts{
-		Name:        "ExportAs", // Export
-		Signatures:  []string{"ExportAs(key string,value any)"},
-		Description: "Exports given value with specified key and makes it available in DSL and response",
-		FuncDecl: func(call goja.FunctionCall, runtime *goja.Runtime) goja.Value {
-			if len(call.Arguments) != 2 {
-				// this is how goja expects errors to be returned
-				// and internally it is done same way for all errors
-				panic(runtime.ToValue("ExportAs expects 2 arguments"))
-			}
-			key := call.Argument(0).String()
-			value := call.Argument(1)
-			opts.exports[key] = stringify(value, runtime)
-			return goja.Null()
-		},
-	})
-	val, err := executeWithRuntime(runtime, p, args, opts)
-	if err != nil {
-		return nil, err
-	}
-	if val.Export() != nil {
-		// append last value to output
-		buff.WriteString(stringify(val, runtime))
-	}
-	// and return it as result
-	return runtime.ToValue(buff.String()), nil
-}
+    // Get a runtime from the pool and ensure it's put back
+    runtime := gojapool.Get().(*goja.Runtime)
+    defer gojapool.Put(runtime)
 
-// Internal purposes i.e generating bindings
-func InternalGetGeneratorRuntime() *goja.Runtime {
-	runtime := gojapool.Get().(*goja.Runtime)
-	return runtime
-}
+    // Prepare for cleanup
+    defer func() {
+        _ = runtime.GlobalObject().Delete("template") // template ctx
+        for k := range args.Args {
+            _ = runtime.GlobalObject().Delete(k)
+        }
+        if opts != nil && opts.Cleanup != nil {
+            opts.Cleanup(runtime)
+        }
+    }()
+    defer func() {
+        if r := recover(); r != nil {
+            err = fmt.Errorf("panic: %s", r)
+        }
+    }()
 
-func getRegistry() *require.Registry {
-	lazyRegistryInit()
-	return r
-}
+    // Set template context and arguments
+    _ = runtime.Set("template", args.TemplateCtx)
+    for k, v := range args.Args {
+        _ = runtime.Set(k, v)
+    }
 
-func createNewRuntime() *goja.Runtime {
-	runtime := protocolstate.NewJSRuntime()
-	_ = getRegistry().Enable(runtime)
-	// by default import below modules every time
-	_ = runtime.Set("console", require.Require(runtime, console.ModuleName))
+    // Register extra callbacks if any
+    if opts != nil && opts.Callback != nil {
+        if err := opts.Callback(runtime); err != nil {
+            return nil, err
+        }
+    }
 
-	// Register embedded javacript helpers
-	if err := global.RegisterNativeScripts(runtime); err != nil {
-		gologger.Error().Msgf("Could not register scripts: %s\n", err)
-	}
-	return runtime
-}
+    // Prepare for exports
+    var buff bytes.Buffer
+    opts.exports = make(map[string]interface{})
+    defer func() {
+        _ = runtime.GlobalObject().Delete(exportAsToken)
+        _ = runtime.GlobalObject().Delete(exportToken)
+    }()
 
-// stringify converts a given value to string
-// if its a struct it will be marshalled to json
-func stringify(gojaValue goja.Value, runtime *goja.Runtime) string {
-	value := gojaValue.Export()
-	if value == nil {
-		return ""
-	}
-	kind := reflect.TypeOf(value).Kind()
-	if kind == reflect.Struct || kind == reflect.Ptr && reflect.ValueOf(value).Elem().Kind() == reflect.Struct {
-		// in this case we must use JSON.stringify to convert to string
-		// because json.Marshal() utilizes json tags when marshalling
-		// but goja has custom implementation of json.Marshal() which does not
-		// since we have been using `to_json` in all our examples we must stick to it
-		// marshal structs or struct pointers to json automatically
-		jsonStringify, ok := goja.AssertFunction(runtime.Get("to_json"))
-		if ok {
-			result, err := jsonStringify(goja.Undefined(), gojaValue)
-			if err == nil {
-				return result.String()
-			}
-		}
-		// unlikely but if to_json throwed some error use native json.Marshal
-		val := value
-		if kind == reflect.Ptr {
-			val = reflect.ValueOf(value).Elem().Interface()
-		}
-		bin, err := json.Marshal(val)
-		if err == nil {
-			return string(bin)
-		}
-	}
-	// for everything else stringify
-	return fmt.Sprintf("%v", value)
+    // Register export functions
+    _ = gojs.RegisterFuncWithSignature(runtime, gojs.FuncOpts{
+        Name:        "Export",
+        Signatures:  []string{"Export(value any)"},
+        Description: "Converts a given value to a string and is appended to output of script",
+        FuncDecl: func(call goja.FunctionCall, runtime *goja.Runtime) goja.Value {
+            if len(call.Arguments) == 0 {
+                return goja.Null()
+            }
+            for _, arg := range call.Arguments {
+                if out := stringify(arg, runtime); out != "" {
+                    buff.WriteString(out)
+                }
+            }
+            return goja.Null()
+        },
+    })
+    _ = gojs.RegisterFuncWithSignature(runtime, gojs.FuncOpts{
+        Name:        "ExportAs",
+        Signatures:  []string{"ExportAs(key string, value any)"},
+        Description: "Exports given value with specified key and makes it available in DSL and response",
+        FuncDecl: func(call goja.FunctionCall, runtime *goja.Runtime) goja.Value {
+            if len(call.Arguments) != 2 {
+                panic(runtime.ToValue("ExportAs expects 2 arguments"))
+            }
+            key := call.Argument(0).String()
+            value := call.Argument(1)
+            opts.exports[key] = stringify(value, runtime)
+            return goja.Null()
+        },
+    })
+
+    val, err := executeWithRuntime(runtime, p, args, opts)
+    if err != nil {
+        return nil, err
+    }
+    if val.Export() != nil {
+        buff.WriteString(stringify(val, runtime))
+    }
+    return runtime.ToValue(buff.String()), nil
 }
