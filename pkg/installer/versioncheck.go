@@ -68,6 +68,7 @@ func getpdtmParams(isSDK bool) string {
 
 // UpdateIgnoreFile updates default ignore file by downloading latest ignore file
 func UpdateIgnoreFile() error {
+	return nil
 	resp, err := retryableHttpClient.Get(pdtmNucleiIgnoreFileEndpoint + "?" + getpdtmParams(false))
 	if err != nil {
 		return err
@@ -83,6 +84,7 @@ func UpdateIgnoreFile() error {
 }
 
 func doVersionCheck(isSDK bool) error {
+	return nil
 	// we use global retryablehttp client so its not immeditely gc'd if any references are held
 	// and according our config we have idle connections which are shown as leaked by goleak in tests
 	// i.e we close all idle connections after our use and it doesn't affect any other part of the code
