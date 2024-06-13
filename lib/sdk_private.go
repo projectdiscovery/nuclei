@@ -38,7 +38,7 @@ import (
 var sharedInit *sync.Once
 
 // applyRequiredDefaults to options
-func (e *NucleiEngine) applyRequiredDefaults() {
+func (e *NucleiEngine) applyRequiredDefaults(ctx context.Context) {
 	mockoutput := testutils.NewMockOutputWriter(e.opts.OmitTemplate)
 	mockoutput.WriteCallback = func(event *output.ResultEvent) {
 		if len(e.resultCallbacks) > 0 {
@@ -82,7 +82,7 @@ func (e *NucleiEngine) applyRequiredDefaults() {
 		e.interactshOpts = interactsh.DefaultOptions(e.customWriter, e.rc, e.customProgress)
 	}
 	if e.rateLimiter == nil {
-		e.rateLimiter = ratelimit.New(context.Background(), 150, time.Second)
+		e.rateLimiter = ratelimit.New(ctx, 150, time.Second)
 	}
 	if e.opts.ExcludeTags == nil {
 		e.opts.ExcludeTags = []string{}
@@ -95,7 +95,7 @@ func (e *NucleiEngine) applyRequiredDefaults() {
 }
 
 // init
-func (e *NucleiEngine) init() error {
+func (e *NucleiEngine) init(ctx context.Context) error {
 	if e.opts.Verbose {
 		gologger.DefaultLogger.SetMaxLevel(levels.LevelVerbose)
 	} else if e.opts.Debug {
@@ -126,7 +126,7 @@ func (e *NucleiEngine) init() error {
 		_ = protocolinit.Init(e.opts)
 	})
 
-	e.applyRequiredDefaults()
+	e.applyRequiredDefaults(ctx)
 	var err error
 
 	// setup progressbar
@@ -209,9 +209,9 @@ func (e *NucleiEngine) init() error {
 			e.opts.RateLimitDuration = time.Second
 		}
 		if e.opts.RateLimit == 0 && e.opts.RateLimitDuration == 0 {
-			e.executerOpts.RateLimiter = ratelimit.NewUnlimited(context.Background())
+			e.executerOpts.RateLimiter = ratelimit.NewUnlimited(ctx)
 		} else {
-			e.executerOpts.RateLimiter = ratelimit.New(context.Background(), uint(e.opts.RateLimit), e.opts.RateLimitDuration)
+			e.executerOpts.RateLimiter = ratelimit.New(ctx, uint(e.opts.RateLimit), e.opts.RateLimitDuration)
 		}
 	}
 
