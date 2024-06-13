@@ -15,6 +15,7 @@ import (
 
 	"github.com/projectdiscovery/nuclei/v3/internal/pdcp"
 	"github.com/projectdiscovery/nuclei/v3/pkg/authprovider"
+	"github.com/projectdiscovery/nuclei/v3/pkg/fuzz/frequency"
 	"github.com/projectdiscovery/nuclei/v3/pkg/input/provider"
 	"github.com/projectdiscovery/nuclei/v3/pkg/installer"
 	"github.com/projectdiscovery/nuclei/v3/pkg/loader/parser"
@@ -74,21 +75,22 @@ var (
 
 // Runner is a client for running the enumeration process.
 type Runner struct {
-	output           output.Writer
-	interactsh       *interactsh.Client
-	options          *types.Options
-	projectFile      *projectfile.ProjectFile
-	catalog          catalog.Catalog
-	progress         progress.Progress
-	colorizer        aurora.Aurora
-	issuesClient     reporting.Client
-	browser          *engine.Browser
-	rateLimiter      *ratelimit.Limiter
-	hostErrors       hosterrorscache.CacheInterface
-	resumeCfg        *types.ResumeCfg
-	pprofServer      *http.Server
-	pdcpUploadErrMsg string
-	inputProvider    provider.InputProvider
+	output             output.Writer
+	interactsh         *interactsh.Client
+	options            *types.Options
+	projectFile        *projectfile.ProjectFile
+	catalog            catalog.Catalog
+	progress           progress.Progress
+	colorizer          aurora.Aurora
+	issuesClient       reporting.Client
+	browser            *engine.Browser
+	rateLimiter        *ratelimit.Limiter
+	hostErrors         hosterrorscache.CacheInterface
+	resumeCfg          *types.ResumeCfg
+	pprofServer        *http.Server
+	pdcpUploadErrMsg   string
+	inputProvider      provider.InputProvider
+	fuzzFrequencyCache *frequency.Tracker
 	//general purpose temporary directory
 	tmpDir          string
 	parser          parser.Parser
@@ -448,24 +450,28 @@ func (r *Runner) RunEnumeration() error {
 		r.options.ExcludedTemplates = append(r.options.ExcludedTemplates, ignoreFile.Files...)
 	}
 
+	fuzzFreqCache := frequency.New(frequency.DefaultMaxTrackCount, r.options.FuzzParamFrequency)
+	r.fuzzFrequencyCache = fuzzFreqCache
+
 	// Create the executor options which will be used throughout the execution
 	// stage by the nuclei engine modules.
 	executorOpts := protocols.ExecutorOptions{
-		Output:             r.output,
-		Options:            r.options,
-		Progress:           r.progress,
-		Catalog:            r.catalog,
-		IssuesClient:       r.issuesClient,
-		RateLimiter:        r.rateLimiter,
-		Interactsh:         r.interactsh,
-		ProjectFile:        r.projectFile,
-		Browser:            r.browser,
-		Colorizer:          r.colorizer,
-		ResumeCfg:          r.resumeCfg,
-		ExcludeMatchers:    excludematchers.New(r.options.ExcludeMatchers),
-		InputHelper:        input.NewHelper(),
-		TemporaryDirectory: r.tmpDir,
-		Parser:             r.parser,
+		Output:              r.output,
+		Options:             r.options,
+		Progress:            r.progress,
+		Catalog:             r.catalog,
+		IssuesClient:        r.issuesClient,
+		RateLimiter:         r.rateLimiter,
+		Interactsh:          r.interactsh,
+		ProjectFile:         r.projectFile,
+		Browser:             r.browser,
+		Colorizer:           r.colorizer,
+		ResumeCfg:           r.resumeCfg,
+		ExcludeMatchers:     excludematchers.New(r.options.ExcludeMatchers),
+		InputHelper:         input.NewHelper(),
+		TemporaryDirectory:  r.tmpDir,
+		Parser:              r.parser,
+		FuzzParamsFrequency: fuzzFreqCache,
 	}
 
 	if config.DefaultConfig.IsDebugArgEnabled(config.DebugExportURLPattern) {
@@ -619,6 +625,7 @@ func (r *Runner) RunEnumeration() error {
 	if executorOpts.InputHelper != nil {
 		_ = executorOpts.InputHelper.Close()
 	}
+	r.fuzzFrequencyCache.Close()
 
 	// todo: error propagation without canonical straight error check is required by cloud?
 	// use safe dereferencing to avoid potential panics in case of previous unchecked errors
