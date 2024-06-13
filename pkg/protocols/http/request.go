@@ -44,6 +44,7 @@ import (
 	"github.com/projectdiscovery/utils/reader"
 	sliceutil "github.com/projectdiscovery/utils/slice"
 	stringsutil "github.com/projectdiscovery/utils/strings"
+	unitutils "github.com/projectdiscovery/utils/unit"
 	urlutil "github.com/projectdiscovery/utils/url"
 )
 
@@ -55,7 +56,7 @@ const (
 )
 
 var (
-	MaxBodyRead = int64(10 * 1024 * 1024) // 10MB
+	MaxBodyRead = 10 * unitutils.Mega
 	// ErrMissingVars is error occured when variables are missing
 	ErrMissingVars = errkit.New("stop execution due to unresolved variables").SetKind(nucleierr.ErrTemplateLogic).Build()
 	// ErrHttpEngineRequestDeadline is error occured when request deadline set by http request engine is exceeded
@@ -597,7 +598,7 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 	return requestErr
 }
 
-const drainReqSize = int64(8 * 1024)
+const drainReqSize = int64(8 * unitutils.Kilo)
 
 // executeRequest executes the actual generated request and returns error if occurred
 func (request *Request) executeRequest(input *contextargs.Context, generatedRequest *generatedRequest, previousEvent output.InternalEvent, hasInteractMatchers bool, processEvent protocols.OutputEventCallback, requestCount int) (err error) {
@@ -842,7 +843,7 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 		if input.MetaInput.CustomIP != "" {
 			outputEvent["ip"] = input.MetaInput.CustomIP
 		} else {
-			outputEvent["ip"] = httpclientpool.Dialer.GetDialedIP(hostname)
+			outputEvent["ip"] = protocolstate.Dialer.GetDialedIP(hostname)
 		}
 
 		if len(generatedRequest.interactshURLs) > 0 {
@@ -875,15 +876,15 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 	// define max body read limit
 	maxBodylimit := MaxBodyRead // 10MB
 	if request.MaxSize > 0 {
-		maxBodylimit = int64(request.MaxSize)
+		maxBodylimit = request.MaxSize
 	}
 	if request.options.Options.ResponseReadSize != 0 {
-		maxBodylimit = int64(request.options.Options.ResponseReadSize)
+		maxBodylimit = request.options.Options.ResponseReadSize
 	}
 
 	// respChain is http response chain that reads response body
 	// efficiently by reusing buffers and does all decoding and optimizations
-	respChain := httpUtils.NewResponseChain(resp, maxBodylimit)
+	respChain := httpUtils.NewResponseChain(resp, int64(maxBodylimit))
 	defer respChain.Close() // reuse buffers
 
 	// we only intend to log/save the final redirected response
@@ -938,7 +939,7 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 		if input.MetaInput.CustomIP != "" {
 			outputEvent["ip"] = input.MetaInput.CustomIP
 		} else {
-			outputEvent["ip"] = httpclientpool.Dialer.GetDialedIP(hostname)
+			outputEvent["ip"] = protocolstate.Dialer.GetDialedIP(hostname)
 		}
 		if request.options.Interactsh != nil {
 			request.options.Interactsh.MakePlaceholders(generatedRequest.interactshURLs, outputEvent)
