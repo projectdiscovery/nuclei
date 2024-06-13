@@ -17,11 +17,12 @@ import (
 	templateTypes "github.com/projectdiscovery/nuclei/v3/pkg/templates/types"
 	"github.com/projectdiscovery/utils/conversion"
 	syncutil "github.com/projectdiscovery/utils/sync"
+	unitutils "github.com/projectdiscovery/utils/unit"
 )
 
 var _ protocols.Request = &Request{}
 
-const maxSize = 5 * 1024 * 1024
+const maxSize = 5 * unitutils.Mega
 
 // Type returns the type of the protocol request
 func (request *Request) Type() templateTypes.ProtocolType {

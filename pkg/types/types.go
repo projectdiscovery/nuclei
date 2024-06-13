@@ -15,6 +15,7 @@ import (
 	errorutil "github.com/projectdiscovery/utils/errors"
 	fileutil "github.com/projectdiscovery/utils/file"
 	folderutil "github.com/projectdiscovery/utils/folder"
+	unitutils "github.com/projectdiscovery/utils/unit"
 )
 
 var (
@@ -441,8 +442,8 @@ func DefaultOptions() *Options {
 		Timeout:                 5,
 		Retries:                 1,
 		MaxHostError:            30,
-		ResponseReadSize:        10 * 1024 * 1024,
-		ResponseSaveSize:        1024 * 1024,
+		ResponseReadSize:        10 * unitutils.Mega,
+		ResponseSaveSize:        unitutils.Mega,
 		ResponseReadTimeout:     5 * time.Second,
 	}
 }

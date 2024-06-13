@@ -12,6 +12,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/reporting/exporters/markdown/util"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	"github.com/projectdiscovery/nuclei/v3/pkg/utils"
+	unitutils "github.com/projectdiscovery/utils/unit"
 )
 
 // Summary returns a formatted built one line summary of the event
@@ -71,7 +72,7 @@ func CreateReportDescription(event *output.ResultEvent, formatter ResultFormatte
 		if event.Response != "" {
 			var responseString string
 			// If the response is larger than 5 kb, truncate it before writing.
-			maxKbSize := 5 * 1024
+			maxKbSize := 5 * unitutils.Kilo
 			if len(event.Response) > maxKbSize {
 				responseString = event.Response[:maxKbSize]
 				responseString += ".... Truncated ...."

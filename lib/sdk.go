@@ -18,7 +18,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/hosterrorscache"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/interactsh"
-	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolinit"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/headless/engine"
 	"github.com/projectdiscovery/nuclei/v3/pkg/reporting"
 	"github.com/projectdiscovery/nuclei/v3/pkg/templates"
@@ -183,8 +183,7 @@ func (e *NucleiEngine) SignTemplate(tmplSigner *signer.TemplateSigner, data []by
 	return buff.Bytes(), err
 }
 
-// Close all resources used by nuclei engine
-func (e *NucleiEngine) Close() {
+func (e *NucleiEngine) closeInternal() {
 	if e.interactshClient != nil {
 		e.interactshClient.Close()
 	}
@@ -206,8 +205,6 @@ func (e *NucleiEngine) Close() {
 	if e.rateLimiter != nil {
 		e.rateLimiter.Stop()
 	}
-	// close global shared resources
-	protocolstate.Close()
 	if e.inputProvider != nil {
 		e.inputProvider.Close()
 	}
@@ -217,6 +214,12 @@ func (e *NucleiEngine) Close() {
 	if e.httpxClient != nil {
 		_ = e.httpxClient.Close()
 	}
+}
+
+// Close all resources used by nuclei engine
+func (e *NucleiEngine) Close() {
+	e.closeInternal()
+	protocolinit.Close()
 }
 
 // ExecuteCallbackWithCtx executes templates on targets and calls callback on each result(only if results are found)
