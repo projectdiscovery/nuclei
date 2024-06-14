@@ -304,13 +304,14 @@ func (w *StandardWriter) Write(event *ResultEvent) error {
 
 // JSONLogRequest is a trace/error log request written to file
 type JSONLogRequest struct {
-	Template string      `json:"template"`
-	Type     string      `json:"type"`
-	Input    string      `json:"input"`
-	Address  string      `json:"address"`
-	Error    string      `json:"error"`
-	Kind     string      `json:"kind,omitempty"`
-	Attrs    interface{} `json:"attrs,omitempty"`
+	Template  string      `json:"template"`
+	Type      string      `json:"type"`
+	Input     string      `json:"input"`
+	Timestamp *time.Time  `json:"timestamp,omitempty"`
+	Address   string      `json:"address"`
+	Error     string      `json:"error"`
+	Kind      string      `json:"kind,omitempty"`
+	Attrs     interface{} `json:"attrs,omitempty"`
 }
 
 // Request writes a log the requests trace log
@@ -322,6 +323,10 @@ func (w *StandardWriter) Request(templatePath, input, requestType string, reques
 		Template: templatePath,
 		Input:    input,
 		Type:     requestType,
+	}
+	if w.timestamp {
+		ts := time.Now()
+		request.Timestamp = &ts
 	}
 	parsed, _ := urlutil.ParseAbsoluteURL(input, false)
 	if parsed != nil {
