@@ -187,6 +187,15 @@ func (c *MySQLClient) ExecuteQueryWithOpts(opts MySQLOptions, query string) (*ut
 		return nil, err
 	}
 
+	// executing queries implies the remote mysql service
+	ok, err := c.IsMySQL(opts.Host, opts.Port)
+	if err != nil {
+		return nil, err
+	}
+	if !ok {
+		return nil, fmt.Errorf("not a mysql service")
+	}
+
 	db, err := sql.Open("mysql", dsn)
 	if err != nil {
 		return nil, err
@@ -220,6 +229,15 @@ func (c *MySQLClient) ExecuteQueryWithOpts(opts MySQLOptions, query string) (*ut
 // log(to_json(result));
 // ```
 func (c *MySQLClient) ExecuteQuery(host string, port int, username, password, query string) (*utils.SQLResult, error) {
+	// executing queries implies the remote mysql service
+	ok, err := c.IsMySQL(host, port)
+	if err != nil {
+		return nil, err
+	}
+	if !ok {
+		return nil, fmt.Errorf("not a mysql service")
+	}
+
 	return c.ExecuteQueryWithOpts(MySQLOptions{
 		Host:     host,
 		Port:     port,

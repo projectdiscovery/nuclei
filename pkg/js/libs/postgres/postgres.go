@@ -88,6 +88,15 @@ func (c *PGClient) Connect(host string, port int, username, password string) (bo
 // log(to_json(result));
 // ```
 func (c *PGClient) ExecuteQuery(host string, port int, username, password, dbName, query string) (*utils.SQLResult, error) {
+	// executing queries implies the remote postgres service
+	ok, err := c.IsPostgres(host, port)
+	if err != nil {
+		return nil, err
+	}
+	if !ok {
+		return nil, fmt.Errorf("not a postgres service")
+	}
+
 	return memoizedexecuteQuery(host, port, username, password, dbName, query)
 }
 
@@ -149,10 +158,10 @@ func connect(host string, port int, username string, password string, dbName str
 	defer cancel()
 
 	db := pg.Connect(&pg.Options{
-		Addr:               target,
-		User:               username,
-		Password:           password,
-		Database:           dbName,
+		Addr:     target,
+		User:     username,
+		Password: password,
+		Database: dbName,
 		Dialer: func(network, addr string) (net.Conn, error) {
 			return protocolstate.Dialer.Dial(context.Background(), network, addr)
 		},
