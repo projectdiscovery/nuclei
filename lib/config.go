@@ -164,11 +164,17 @@ func WithConcurrency(opts Concurrency) NucleiSDKOptions {
 }
 
 // WithGlobalRateLimit sets global rate (i.e all hosts combined) limit options
+// Deprecated: will be removed in favour of WithGlobalRateLimitCtx in next release
 func WithGlobalRateLimit(maxTokens int, duration time.Duration) NucleiSDKOptions {
+	return WithGlobalRateLimitCtx(context.Background(), maxTokens, duration)
+}
+
+// WithGlobalRateLimitCtx allows setting a global rate limit for the entire engine
+func WithGlobalRateLimitCtx(ctx context.Context, maxTokens int, duration time.Duration) NucleiSDKOptions {
 	return func(e *NucleiEngine) error {
 		e.opts.RateLimit = maxTokens
 		e.opts.RateLimitDuration = duration
-		e.rateLimiter = ratelimit.New(context.Background(), uint(e.opts.RateLimit), e.opts.RateLimitDuration)
+		e.rateLimiter = ratelimit.New(ctx, uint(e.opts.RateLimit), e.opts.RateLimitDuration)
 		return nil
 	}
 }

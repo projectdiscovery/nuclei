@@ -16,7 +16,6 @@ import (
 	"golang.org/x/net/proxy"
 	"golang.org/x/net/publicsuffix"
 
-	"github.com/projectdiscovery/fastdialer/fastdialer"
 	"github.com/projectdiscovery/fastdialer/fastdialer/ja3/impersonate"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/utils"
@@ -28,9 +27,6 @@ import (
 )
 
 var (
-	// Dialer is a copy of the fastdialer from protocolstate
-	Dialer *fastdialer.Dialer
-
 	rawHttpClient     *rawhttp.Client
 	forceMaxRedirects int
 	normalClient      *retryablehttp.Client
@@ -154,8 +150,8 @@ func GetRawHTTP(options *types.Options) *rawhttp.Client {
 			rawHttpOptions.Proxy = types.ProxyURL
 		} else if types.ProxySocksURL != "" {
 			rawHttpOptions.Proxy = types.ProxySocksURL
-		} else if Dialer != nil {
-			rawHttpOptions.FastDialer = Dialer
+		} else if protocolstate.Dialer != nil {
+			rawHttpOptions.FastDialer = protocolstate.Dialer
 		}
 		rawHttpOptions.Timeout = GetHttpTimeout(options)
 		rawHttpClient = rawhttp.NewClient(rawHttpOptions)
@@ -174,10 +170,6 @@ func Get(options *types.Options, configuration *Configuration) (*retryablehttp.C
 // wrappedGet wraps a get operation without normal client check
 func wrappedGet(options *types.Options, configuration *Configuration) (*retryablehttp.Client, error) {
 	var err error
-
-	if Dialer == nil {
-		Dialer = protocolstate.Dialer
-	}
 
 	hash := configuration.Hash()
 	if client, ok := clientPool.Get(hash); ok {
@@ -254,15 +246,15 @@ func wrappedGet(options *types.Options, configuration *Configuration) (*retryabl
 
 	transport := &http.Transport{
 		ForceAttemptHTTP2: options.ForceAttemptHTTP2,
-		DialContext:       Dialer.Dial,
+		DialContext:       protocolstate.Dialer.Dial,
 		DialTLSContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
 			if options.TlsImpersonate {
-				return Dialer.DialTLSWithConfigImpersonate(ctx, network, addr, tlsConfig, impersonate.Random, nil)
+				return protocolstate.Dialer.DialTLSWithConfigImpersonate(ctx, network, addr, tlsConfig, impersonate.Random, nil)
 			}
 			if options.HasClientCertificates() || options.ForceAttemptHTTP2 {
-				return Dialer.DialTLSWithConfig(ctx, network, addr, tlsConfig)
+				return protocolstate.Dialer.DialTLSWithConfig(ctx, network, addr, tlsConfig)
 			}
-			return Dialer.DialTLS(ctx, network, addr)
+			return protocolstate.Dialer.DialTLS(ctx, network, addr)
 		},
 		MaxIdleConns:          maxIdleConns,
 		MaxIdleConnsPerHost:   maxIdleConnsPerHost,

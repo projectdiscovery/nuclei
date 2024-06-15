@@ -13,6 +13,7 @@ import (
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/authprovider"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog"
+	"github.com/projectdiscovery/nuclei/v3/pkg/fuzz/frequency"
 	"github.com/projectdiscovery/nuclei/v3/pkg/input"
 	"github.com/projectdiscovery/nuclei/v3/pkg/js/compiler"
 	"github.com/projectdiscovery/nuclei/v3/pkg/loader/parser"
@@ -33,10 +34,11 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/scan"
 	templateTypes "github.com/projectdiscovery/nuclei/v3/pkg/templates/types"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
+	unitutils "github.com/projectdiscovery/utils/unit"
 )
 
 var (
-	MaxTemplateFileSizeForEncoding = 1024 * 1024
+	MaxTemplateFileSizeForEncoding = unitutils.Mega
 )
 
 // Executer is an interface implemented any protocol based request executer.
@@ -92,6 +94,8 @@ type ExecutorOptions struct {
 	ExcludeMatchers *excludematchers.ExcludeMatchers
 	// InputHelper is a helper for input normalization
 	InputHelper *input.Helper
+	// FuzzParamsFrequency is a cache for parameter frequency
+	FuzzParamsFrequency *frequency.Tracker
 
 	Operators []*operators.Operators // only used by offlinehttp module
 

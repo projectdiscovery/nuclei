@@ -7,7 +7,9 @@ import (
 )
 
 func TestRuleMatchKeyOrValue(t *testing.T) {
-	rule := &Rule{}
+	rule := &Rule{
+		Part: "query",
+	}
 	err := rule.Compile(nil, nil)
 	require.NoError(t, err, "could not compile rule")
 
@@ -15,7 +17,7 @@ func TestRuleMatchKeyOrValue(t *testing.T) {
 	require.True(t, result, "could not get correct result")
 
 	t.Run("key", func(t *testing.T) {
-		rule := &Rule{Keys: []string{"url"}}
+		rule := &Rule{Keys: []string{"url"}, Part: "query"}
 		err := rule.Compile(nil, nil)
 		require.NoError(t, err, "could not compile rule")
 
@@ -25,7 +27,7 @@ func TestRuleMatchKeyOrValue(t *testing.T) {
 		require.False(t, result, "could not get correct result")
 	})
 	t.Run("value", func(t *testing.T) {
-		rule := &Rule{ValuesRegex: []string{`https?:\/\/?([-a-zA-Z0-9@:%._\+~#=]{2,256}\.[a-z]{2,6}\b)*(\/[\/\d\w\.-]*)*(?:[\?])*(.+)*`}}
+		rule := &Rule{ValuesRegex: []string{`https?:\/\/?([-a-zA-Z0-9@:%._\+~#=]{2,256}\.[a-z]{2,6}\b)*(\/[\/\d\w\.-]*)*(?:[\?])*(.+)*`}, Part: "query"}
 		err := rule.Compile(nil, nil)
 		require.NoError(t, err, "could not compile rule")
 

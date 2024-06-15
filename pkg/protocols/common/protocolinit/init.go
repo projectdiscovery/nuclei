@@ -38,6 +38,5 @@ func Init(options *types.Options) error {
 }
 
 func Close() {
-	protocolstate.Dialer.Close()
-	protocolstate.Dialer = nil
+	protocolstate.Close()
 }
