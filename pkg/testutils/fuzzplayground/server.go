@@ -27,6 +27,7 @@ func GetPlaygroundServer() *echo.Echo {
 	e.GET("/request", requestHandler)
 	e.GET("/email", emailHandler)
 	e.GET("/permissions", permissionsHandler)
+
 	e.GET("/blog/post", numIdorHandler) // for num based idors like ?id=44
 	e.POST("/reset-password", resetPasswordHandler)
 	e.GET("/host-header-lab", hostHeaderLabHandler)
@@ -47,13 +48,20 @@ var bodyTemplate = `<html>
 
 func indexHandler(ctx echo.Context) error {
 	return ctx.HTML(200, fmt.Sprintf(bodyTemplate, `<h1>Fuzzing Playground</h1><hr>
-<ul>
-<li><a href="/info?name=test&another=value&random=data">Info Page XSS</a></li>
-<li><a href="/redirect?redirect_url=/info?name=redirected_from_url">Redirect Page OpenRedirect</a></li>
-<li><a href="/request?url=https://example.com">Request Page SSRF</a></li>
-<li><a href="/email?text=important_user">Email Page SSTI</a></li>
-<li><a href="/permissions?cmd=whoami">Permissions Page CMDI</a></li>
-</ul>
+	<ul>
+		
+	<li><a href="/info?name=test&another=value&random=data">Info Page XSS</a></li>
+	<li><a href="/redirect?redirect_url=/info?name=redirected_from_url">Redirect Page OpenRedirect</a></li>
+	<li><a href="/request?url=https://example.com">Request Page SSRF</a></li>
+	<li><a href="/email?text=important_user">Email Page SSTI</a></li>
+	<li><a href="/permissions?cmd=whoami">Permissions Page CMDI</a></li>
+	
+	<li><a href="/host-header-lab">Host Header Lab (X-Forwarded-Host Trusted)</a></li>
+	<li><a href="/user/75/profile">User Profile Page SQLI (path parameter)</a></li>
+	<li><a href="/user">POST on /user SQLI (body parameter)</a></li>
+	<li><a href="/blog/posts">SQLI in cookie lang parameter value (eg. lang=en)</a></li>
+	
+	</ul>
 `))
 }
 

@@ -2,23 +2,22 @@ package stats
 
 import (
 	"fmt"
-	"sync"
 	"sync/atomic"
 
 	"github.com/logrusorgru/aurora"
 	"github.com/projectdiscovery/gologger"
+	mapsutil "github.com/projectdiscovery/utils/maps"
 )
 
 // Storage is a storage for storing statistics information
 // about the nuclei engine displaying it at user-defined intervals.
 type Storage struct {
-	data  map[string]*storageDataItem
-	mutex *sync.RWMutex
+	data *mapsutil.SyncLockMap[string, *storageDataItem]
 }
 
 type storageDataItem struct {
 	description string
-	value       int64
+	value       atomic.Int64
 }
 
 var Default *Storage
@@ -59,38 +58,32 @@ func GetValue(name string) int64 {
 
 // New creates a new storage object
 func New() *Storage {
-	return &Storage{data: make(map[string]*storageDataItem), mutex: &sync.RWMutex{}}
+	data := mapsutil.NewSyncLockMap[string, *storageDataItem]()
+	return &Storage{data: data}
 }
 
 // NewEntry creates a new entry in the storage object
 func (s *Storage) NewEntry(name, description string) {
-	s.mutex.Lock()
-	s.data[name] = &storageDataItem{description: description, value: 0}
-	s.mutex.Unlock()
+	_ = s.data.Set(name, &storageDataItem{description: description, value: atomic.Int64{}})
 }
 
 // Increment increments the value for a name string
 func (s *Storage) Increment(name string) {
-	s.mutex.RLock()
-	data, ok := s.data[name]
-	s.mutex.RUnlock()
+	data, ok := s.data.Get(name)
 	if !ok {
 		return
 	}
-
-	atomic.AddInt64(&data.value, 1)
+	data.value.Add(1)
 }
 
 // Display displays the stats for a name
 func (s *Storage) Display(name string) {
-	s.mutex.RLock()
-	data, ok := s.data[name]
-	s.mutex.RUnlock()
+	data, ok := s.data.Get(name)
 	if !ok {
 		return
 	}
 
-	dataValue := atomic.LoadInt64(&data.value)
+	dataValue := data.value.Load()
 	if dataValue == 0 {
 		return // don't show for nil stats
 	}
@@ -98,14 +91,12 @@ func (s *Storage) Display(name string) {
 }
 
 func (s *Storage) DisplayAsWarning(name string) {
-	s.mutex.RLock()
-	data, ok := s.data[name]
-	s.mutex.RUnlock()
+	data, ok := s.data.Get(name)
 	if !ok {
 		return
 	}
 
-	dataValue := atomic.LoadInt64(&data.value)
+	dataValue := data.value.Load()
 	if dataValue == 0 {
 		return // don't show for nil stats
 	}
@@ -115,14 +106,12 @@ func (s *Storage) DisplayAsWarning(name string) {
 // ForceDisplayWarning forces the display of a warning
 // regardless of current verbosity level
 func (s *Storage) ForceDisplayWarning(name string) {
-	s.mutex.RLock()
-	data, ok := s.data[name]
-	s.mutex.RUnlock()
+	data, ok := s.data.Get(name)
 	if !ok {
 		return
 	}
 
-	dataValue := atomic.LoadInt64(&data.value)
+	dataValue := data.value.Load()
 	if dataValue == 0 {
 		return // don't show for nil stats
 	}
@@ -131,13 +120,10 @@ func (s *Storage) ForceDisplayWarning(name string) {
 
 // GetValue returns the value for a set variable
 func (s *Storage) GetValue(name string) int64 {
-	s.mutex.RLock()
-	data, ok := s.data[name]
-	s.mutex.RUnlock()
+	data, ok := s.data.Get(name)
 	if !ok {
 		return 0
 	}
 
-	dataValue := atomic.LoadInt64(&data.value)
-	return dataValue
+	return data.value.Load()
 }

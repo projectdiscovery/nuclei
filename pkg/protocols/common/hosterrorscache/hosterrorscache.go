@@ -8,7 +8,7 @@ import (
 	"sync"
 	"sync/atomic"
 
-	"github.com/bluele/gcache"
+	"github.com/Mzack9999/gcache"
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/config"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
@@ -37,7 +37,7 @@ var (
 type Cache struct {
 	MaxHostError  int
 	verbose       bool
-	failedTargets gcache.Cache
+	failedTargets gcache.Cache[string, *cacheItem]
 	TrackError    []string
 }
 
@@ -52,7 +52,7 @@ const DefaultMaxHostsCount = 10000
 
 // New returns a new host max errors cache
 func New(maxHostError, maxHostsCount int, trackError []string) *Cache {
-	gc := gcache.New(maxHostsCount).
+	gc := gcache.New[string, *cacheItem](maxHostsCount).
 		ARC().
 		Build()
 	return &Cache{failedTargets: gc, MaxHostError: maxHostError, TrackError: trackError}
@@ -67,11 +67,7 @@ func (c *Cache) SetVerbose(verbose bool) {
 func (c *Cache) Close() {
 	if config.DefaultConfig.IsDebugArgEnabled(config.DebugArgHostErrorStats) {
 		items := c.failedTargets.GetALL(false)
-		for k, v := range items {
-			val, ok := v.(*cacheItem)
-			if !ok {
-				continue
-			}
+		for k, val := range items {
 			gologger.Info().Label("MaxHostErrorStats").Msgf("Host: %s, Errors: %d", k, val.errors.Load())
 		}
 	}
@@ -115,16 +111,15 @@ func (c *Cache) Check(ctx *contextargs.Context) bool {
 	if err != nil {
 		return false
 	}
-	existingCacheItemValue := existingCacheItem.(*cacheItem)
-	if existingCacheItemValue.isPermanentErr {
+	if existingCacheItem.isPermanentErr {
 		// skipping permanent errors is expected so verbose instead of info
-		gologger.Verbose().Msgf("Skipped %s from target list as found unresponsive permanently: %s", finalValue, existingCacheItemValue.cause)
+		gologger.Verbose().Msgf("Skipped %s from target list as found unresponsive permanently: %s", finalValue, existingCacheItem.cause)
 		return true
 	}
 
-	if existingCacheItemValue.errors.Load() >= int32(c.MaxHostError) {
-		existingCacheItemValue.Do(func() {
-			gologger.Info().Msgf("Skipped %s from target list as found unresponsive %d times", finalValue, existingCacheItemValue.errors.Load())
+	if existingCacheItem.errors.Load() >= int32(c.MaxHostError) {
+		existingCacheItem.Do(func() {
+			gologger.Info().Msgf("Skipped %s from target list as found unresponsive %d times", finalValue, existingCacheItem.errors.Load())
 		})
 		return true
 	}
@@ -151,9 +146,8 @@ func (c *Cache) MarkFailed(ctx *contextargs.Context, err error) {
 		_ = c.failedTargets.Set(finalValue, newItem)
 		return
 	}
-	existingCacheItemValue := existingCacheItem.(*cacheItem)
-	existingCacheItemValue.errors.Add(1)
-	_ = c.failedTargets.Set(finalValue, existingCacheItemValue)
+	existingCacheItem.errors.Add(1)
+	_ = c.failedTargets.Set(finalValue, existingCacheItem)
 }
 
 // GetKeyFromContext returns the key for the cache from the context
@@ -185,6 +179,7 @@ func (c *Cache) checkError(err error) bool {
 	if err == nil {
 		return false
 	}
+
 	kind := errkit.GetErrorKind(err, nucleierr.ErrTemplateLogic)
 	switch kind {
 	case nucleierr.ErrTemplateLogic:
@@ -201,7 +196,7 @@ func (c *Cache) checkError(err error) bool {
 		// these should not be counted as host errors
 		return false
 	default:
-		// parse error for furthur processing
+		// parse error for further processing
 		errX := errkit.FromError(err)
 		tmp := errX.Cause()
 		cause := tmp.Error()
