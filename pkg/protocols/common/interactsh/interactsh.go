@@ -21,6 +21,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/helpers/responsehighlighter"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/helpers/writer"
+	"github.com/projectdiscovery/retryablehttp-go"
 	errorutil "github.com/projectdiscovery/utils/errors"
 	stringsutil "github.com/projectdiscovery/utils/strings"
 )
@@ -180,6 +181,14 @@ func (c *Client) processInteractionForRequest(interaction *server.Interaction, d
 		gologger.DefaultLogger.Print().Msgf("[Interactsh]: got result %v and status %v after processing interaction", result, matched)
 	}
 
+	if c.options.FuzzParamsFrequency != nil {
+		if !matched {
+			c.options.FuzzParamsFrequency.MarkParameter(data.Parameter, data.Request.URL.String(), data.Operators.TemplateID)
+		} else {
+			c.options.FuzzParamsFrequency.UnmarkParameter(data.Parameter, data.Request.URL.String(), data.Operators.TemplateID)
+		}
+	}
+
 	// if we don't match, return
 	if !matched || result == nil {
 		return false
@@ -320,6 +329,9 @@ type RequestData struct {
 	Operators      *operators.Operators
 	MatchFunc      operators.MatchFunc
 	ExtractFunc    operators.ExtractFunc
+
+	Parameter string
+	Request   *retryablehttp.Request
 }
 
 // RequestEvent is the event for a network request sent by nuclei.

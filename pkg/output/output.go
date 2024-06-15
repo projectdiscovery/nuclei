@@ -33,6 +33,7 @@ import (
 	"github.com/projectdiscovery/utils/errkit"
 	fileutil "github.com/projectdiscovery/utils/file"
 	osutils "github.com/projectdiscovery/utils/os"
+	unitutils "github.com/projectdiscovery/utils/unit"
 	urlutil "github.com/projectdiscovery/utils/url"
 )
 
@@ -303,13 +304,14 @@ func (w *StandardWriter) Write(event *ResultEvent) error {
 
 // JSONLogRequest is a trace/error log request written to file
 type JSONLogRequest struct {
-	Template string      `json:"template"`
-	Type     string      `json:"type"`
-	Input    string      `json:"input"`
-	Address  string      `json:"address"`
-	Error    string      `json:"error"`
-	Kind     string      `json:"kind,omitempty"`
-	Attrs    interface{} `json:"attrs,omitempty"`
+	Template  string      `json:"template"`
+	Type      string      `json:"type"`
+	Input     string      `json:"input"`
+	Timestamp *time.Time  `json:"timestamp,omitempty"`
+	Address   string      `json:"address"`
+	Error     string      `json:"error"`
+	Kind      string      `json:"kind,omitempty"`
+	Attrs     interface{} `json:"attrs,omitempty"`
 }
 
 // Request writes a log the requests trace log
@@ -321,6 +323,10 @@ func (w *StandardWriter) Request(templatePath, input, requestType string, reques
 		Template: templatePath,
 		Input:    input,
 		Type:     requestType,
+	}
+	if w.timestamp {
+		ts := time.Now()
+		request.Timestamp = &ts
 	}
 	parsed, _ := urlutil.ParseAbsoluteURL(input, false)
 	if parsed != nil {
@@ -449,7 +455,7 @@ func (w *StandardWriter) WriteFailure(wrappedEvent *InternalWrappedEvent) error 
 	return w.Write(data)
 }
 
-var maxTemplateFileSizeForEncoding = 1024 * 1024
+var maxTemplateFileSizeForEncoding = unitutils.Mega
 
 func (w *StandardWriter) encodeTemplate(templatePath string) string {
 	data, err := os.ReadFile(templatePath)
