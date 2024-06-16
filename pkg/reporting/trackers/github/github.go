@@ -175,15 +175,15 @@ func (i *Integration) Name() string {
 
 // ShouldFilter determines if an issue should be logged to this tracker
 func (i *Integration) ShouldFilter(event *output.ResultEvent) bool {
-	if i.options.AllowList != nil && i.options.AllowList.GetMatch(event) {
+	if i.options.AllowList != nil && !i.options.AllowList.GetMatch(event) {
 		return false
 	}
 
 	if i.options.DenyList != nil && i.options.DenyList.GetMatch(event) {
-		return true
+		return false
 	}
 
-	return false
+	return true
 }
 
 func (i *Integration) findIssueByTitle(ctx context.Context, title string) (*github.Issue, error) {
