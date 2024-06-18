@@ -143,12 +143,22 @@ func (c *DiskCatalog) findGlobPathMatches(absPath string, processed map[string]s
 		if c.templatesDirectory == "" {
 			templateDir = "./"
 		}
-		matches, _ := fs.Glob(os.DirFS(filepath.Join(templateDir, "http")), inputGlob)
+
+		sub, err := fs.Sub(c.templatesFS, filepath.Join(templateDir, "http"))
+		if err != nil {
+			return nil
+		}
+		matches, _ := fs.Glob(sub, inputGlob)
 		if len(matches) != 0 {
 			return matches
 		}
+
 		// condition to support network cve related globs
-		matches, _ = fs.Glob(os.DirFS(filepath.Join(templateDir, "network")), inputGlob)
+		sub, err = fs.Sub(c.templatesFS, filepath.Join(templateDir, "network"))
+		if err != nil {
+			return nil
+		}
+		matches, _ = fs.Glob(sub, inputGlob)
 		return matches
 	}
 
@@ -175,11 +185,15 @@ func (c *DiskCatalog) findGlobPathMatches(absPath string, processed map[string]s
 // findFileMatches finds if a path is an absolute file. If the path
 // is a file, it returns true otherwise false with no errors.
 func (c *DiskCatalog) findFileMatches(absPath string, processed map[string]struct{}) (match string, matched bool, err error) {
-	info, err := os.Stat(absPath)
+	info, err := c.templatesFS.Open(absPath)
 	if err != nil {
 		return "", false, err
 	}
-	if !info.Mode().IsRegular() {
+	stat, err := info.Stat()
+	if err != nil {
+		return "", false, err
+	}
+	if !stat.Mode().IsRegular() {
 		return "", false, nil
 	}
 	if _, ok := processed[absPath]; !ok {
