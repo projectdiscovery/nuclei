@@ -29,11 +29,15 @@ func NewCatalog(directory string) *DiskCatalog {
 // OpenFile opens a file and returns an io.ReadCloser to the file.
 // It is used to read template and payload files based on catalog responses.
 func (d *DiskCatalog) OpenFile(filename string) (io.ReadCloser, error) {
-	file, err := os.Open(filename)
-	if err != nil {
-		if file, errx := os.Open(BackwardsCompatiblePaths(d.templatesDirectory, filename)); errx == nil {
-			return file, nil
+	if d.templatesFS == nil {
+		file, err := os.Open(filename)
+		if err != nil {
+			if file, errx := os.Open(BackwardsCompatiblePaths(d.templatesDirectory, filename)); errx == nil {
+				return file, nil
+			}
 		}
+		return file, err
 	}
-	return file, err
+
+	return d.templatesFS.Open(filename)
 }
