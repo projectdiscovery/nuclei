@@ -26,6 +26,16 @@ func NewCatalog(directory string) *DiskCatalog {
 	return catalog
 }
 
+// NewFSCatalog creates a new Catalog structure using provided input items
+// using the fs.FS as its filesystem.
+func NewFSCatalog(fs fs.FS, directory string) *DiskCatalog {
+	catalog := &DiskCatalog{
+		templatesDirectory: directory,
+		templatesFS:        fs,
+	}
+	return catalog
+}
+
 // OpenFile opens a file and returns an io.ReadCloser to the file.
 // It is used to read template and payload files based on catalog responses.
 func (d *DiskCatalog) OpenFile(filename string) (io.ReadCloser, error) {
