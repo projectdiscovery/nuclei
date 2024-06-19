@@ -64,8 +64,7 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 
 	request.options = options
 
-	hasDebug := options.Options.Verbose || options.Options.Debug || options.Options.DebugRequests || options.Options.DebugResponse
-	request.client = options.Dialers.Rdap(hasDebug)
+	request.client = options.Dialers.Rdap()
 
 	if len(request.Matchers) > 0 || len(request.Extractors) > 0 {
 		compiled := &request.Operators

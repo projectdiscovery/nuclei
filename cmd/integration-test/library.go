@@ -100,6 +100,12 @@ func executeNucleiAsLibrary(templatePath, templateURL string) ([]string, error) 
 	ratelimiter := ratelimit.New(context.Background(), 150, time.Second)
 	defer ratelimiter.Stop()
 
+	dialers, err := protocols.NewDealers(defaultOpts)
+	if err != nil {
+		return nil, errors.Wrap(err, "could not create dialers")
+	}
+	defer dialers.Close()
+
 	executerOpts := protocols.ExecutorOptions{
 		Output:          outputWriter,
 		Options:         defaultOpts,
@@ -112,6 +118,7 @@ func executeNucleiAsLibrary(templatePath, templateURL string) ([]string, error) 
 		Colorizer:       aurora.NewAurora(true),
 		ResumeCfg:       types.NewResumeCfg(),
 		Parser:          templates.NewParser(),
+		Dialers:         dialers,
 	}
 	engine := core.New(defaultOpts)
 	engine.SetExecuterOptions(executerOpts)

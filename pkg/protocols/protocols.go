@@ -3,7 +3,6 @@ package protocols
 import (
 	"context"
 	"encoding/base64"
-	"sync"
 	"sync/atomic"
 
 	"github.com/projectdiscovery/fastdialer/fastdialer"
@@ -31,6 +30,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/hosterrorscache"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/interactsh"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/utils/excludematchers"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/variables"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/headless/engine"
@@ -134,28 +134,33 @@ type ExecutorOptions struct {
 
 type Dialers struct {
 	fastDialer *fastdialer.Dialer
-
 	rdapClient *rdap.Client
-	rdapOnce   sync.Once
 }
 
-func (d *Dialers) SetDefault(fastDialer *fastdialer.Dialer) {
-	d.fastDialer = fastDialer
+func NewDealers(options *types.Options) (*Dialers, error) {
+	var dialers = &Dialers{}
+	var err error
+
+	dialers.fastDialer, err = protocolstate.GetDialerFromOptions(options)
+	if err != nil {
+		return nil, err
+	}
+
+	dialers.rdapClient = &rdap.Client{}
+	if options.HasDebug() {
+		dialers.rdapClient.Verbose = func(text string) {
+			gologger.Debug().Msgf("rdap: %s", text)
+		}
+	}
+
+	return dialers, nil
 }
 
 func (d *Dialers) Default() *fastdialer.Dialer {
 	return d.fastDialer
 }
 
-func (d *Dialers) Rdap(withDebug bool) *rdap.Client {
-	d.rdapOnce.Do(func() {
-		d.rdapClient = &rdap.Client{}
-		if withDebug {
-			d.rdapClient.Verbose = func(text string) {
-				gologger.Debug().Msgf("rdap: %s", text)
-			}
-		}
-	})
+func (d *Dialers) Rdap() *rdap.Client {
 	return d.rdapClient
 }
 
@@ -163,7 +168,7 @@ func (d *Dialers) Close() {
 	if d.fastDialer != nil {
 		d.fastDialer.Close()
 	}
-	if d.rdapClient != nil {
+	if d.rdapClient.HTTP != nil {
 		d.rdapClient.HTTP.CloseIdleConnections()
 	}
 }

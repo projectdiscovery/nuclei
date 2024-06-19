@@ -428,6 +428,10 @@ func (options *Options) HasClientCertificates() bool {
 	return options.ClientCertFile != "" || options.ClientCAFile != "" || options.ClientKeyFile != ""
 }
 
+func (options *Options) HasDebug() bool {
+	return options.Verbose || options.Debug || options.DebugRequests || options.DebugResponse
+}
+
 // DefaultOptions returns default options for nuclei
 func DefaultOptions() *Options {
 	return &Options{

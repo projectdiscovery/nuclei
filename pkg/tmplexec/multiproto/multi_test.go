@@ -2,7 +2,6 @@ package multiproto_test
 
 import (
 	"context"
-	"log"
 	"testing"
 	"time"
 
@@ -21,10 +20,13 @@ import (
 
 var executerOpts protocols.ExecutorOptions
 
-func setup() {
+func setup(t *testing.T) {
 	options := testutils.DefaultOptions
 	testutils.Init(options)
 	progressImpl, _ := progress.NewStatsTicker(0, false, false, false, 0)
+
+	dialers, err := protocols.NewDealers(options)
+	require.Nil(t, err, "could not create dialers")
 
 	executerOpts = protocols.ExecutorOptions{
 		Output:       testutils.NewMockOutputWriter(options.OmitTemplate),
@@ -36,16 +38,16 @@ func setup() {
 		Catalog:      disk.NewCatalog(config.DefaultConfig.TemplatesDirectory),
 		RateLimiter:  ratelimit.New(context.Background(), uint(options.RateLimit), time.Second),
 		Parser:       templates.NewParser(),
+		Dialers:      dialers,
 	}
 	workflowLoader, err := workflow.NewLoader(&executerOpts)
-	if err != nil {
-		log.Fatalf("Could not create workflow loader: %s\n", err)
-	}
+	require.Nil(t, err, "could not create workflow loader")
 	executerOpts.WorkflowLoader = workflowLoader
 }
 
 func TestMultiProtoWithDynamicExtractor(t *testing.T) {
-	setup()
+	setup(t)
+
 	Template, err := templates.Parse("testcases/multiprotodynamic.yaml", nil, executerOpts)
 	require.Nil(t, err, "could not parse template")
 
@@ -62,7 +64,8 @@ func TestMultiProtoWithDynamicExtractor(t *testing.T) {
 }
 
 func TestMultiProtoWithProtoPrefix(t *testing.T) {
-	setup()
+	setup(t)
+
 	Template, err := templates.Parse("testcases/multiprotowithprefix.yaml", nil, executerOpts)
 	require.Nil(t, err, "could not parse template")
 

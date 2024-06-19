@@ -108,6 +108,11 @@ func (e *NucleiEngine) init(ctx context.Context) error {
 		return err
 	}
 
+	dialers, err := protocols.NewDealers(e.opts)
+	if err != nil {
+		return errors.Wrap(err, "could not create dialers")
+	}
+
 	if e.opts.ProxyInternal && types.ProxyURL != "" || types.ProxySocksURL != "" {
 		httpclient, err := httpclientpool.Get(e.opts, &httpclientpool.Configuration{})
 		if err != nil {
@@ -127,7 +132,6 @@ func (e *NucleiEngine) init(ctx context.Context) error {
 	})
 
 	e.applyRequiredDefaults(ctx)
-	var err error
 
 	// setup progressbar
 	if e.enableStats {
@@ -157,14 +161,6 @@ func (e *NucleiEngine) init(ctx context.Context) error {
 	if e.catalog == nil {
 		e.catalog = disk.NewCatalog(config.DefaultConfig.TemplatesDirectory)
 	}
-
-	dialer, err := protocolstate.GetDialerFromOptions(e.opts)
-	if err != nil {
-		return errors.Wrap(err, "could not create dialer")
-	}
-
-	dialers := &protocols.Dialers{}
-	dialers.SetDefault(dialer)
 
 	e.executerOpts = protocols.ExecutorOptions{
 		Output:          e.customWriter,
