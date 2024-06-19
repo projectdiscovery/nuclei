@@ -76,6 +76,7 @@ type NucleiEngine struct {
 	httpClient       *retryablehttp.Client
 	parser           *templates.Parser
 	authprovider     authprovider.AuthProvider
+	dialers          *protocols.Dialers
 
 	// unexported meta options
 	opts           *types.Options
@@ -213,6 +214,9 @@ func (e *NucleiEngine) closeInternal() {
 	}
 	if e.httpxClient != nil {
 		_ = e.httpxClient.Close()
+	}
+	if e.dialers != nil {
+		e.executerOpts.Dialers.Close()
 	}
 	if e.executerOpts.Dialers != nil {
 		e.executerOpts.Dialers.Close()

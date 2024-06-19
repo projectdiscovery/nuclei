@@ -108,7 +108,8 @@ func (e *NucleiEngine) init(ctx context.Context) error {
 		return err
 	}
 
-	dialers, err := protocols.NewDealers(e.opts)
+	var err error
+	e.dialers, err = protocols.NewDealers(e.opts)
 	if err != nil {
 		return errors.Wrap(err, "could not create dialers")
 	}
@@ -175,7 +176,7 @@ func (e *NucleiEngine) init(ctx context.Context) error {
 		ResumeCfg:       types.NewResumeCfg(),
 		Browser:         e.browserInstance,
 		Parser:          e.parser,
-		Dialers:         dialers,
+		Dialers:         e.dialers,
 	}
 	if len(e.opts.SecretsFile) > 0 {
 		authTmplStore, err := runner.GetAuthTmplStore(*e.opts, e.catalog, e.executerOpts)
