@@ -12,20 +12,15 @@ import (
 // DiskCatalog is a template catalog helper implementation based on disk
 type DiskCatalog struct {
 	templatesDirectory string
-	templatesFS        fs.FS
-	customTemplatesFS  bool // This will be true if the user gave us a templatesFS
+	templatesFS        fs.FS // Due to issues with how Go has implemented fs.FS, we'll have to also implement normal os operations, as well.  See: https://github.com/golang/go/issues/44279
 }
 
 // NewCatalog creates a new Catalog structure using provided input items
 // using disk based items
 func NewCatalog(directory string) *DiskCatalog {
 	catalog := &DiskCatalog{templatesDirectory: directory}
-	if directory != "" {
-		wd, _ := os.Getwd()
-		catalog.templatesFS = os.DirFS(wd)
-		catalog.templatesDirectory = ""
-	} else {
-		catalog.templatesFS = os.DirFS(config.DefaultConfig.GetTemplateDir())
+	if directory == "" {
+		catalog.templatesDirectory = config.DefaultConfig.GetTemplateDir()
 	}
 	return catalog
 }
@@ -36,7 +31,6 @@ func NewFSCatalog(fs fs.FS, directory string) *DiskCatalog {
 	catalog := &DiskCatalog{
 		templatesDirectory: directory,
 		templatesFS:        fs,
-		customTemplatesFS:  true,
 	}
 	return catalog
 }
@@ -45,6 +39,16 @@ func NewFSCatalog(fs fs.FS, directory string) *DiskCatalog {
 // It is used to read template and payload files based on catalog responses.
 func (d *DiskCatalog) OpenFile(filename string) (io.ReadCloser, error) {
 	gologger.Debug().Msgf("DiskCatalog: OpenFile: %s", filename)
+
+	if d.templatesFS == nil {
+		file, err := os.Open(filename)
+		if err != nil {
+			if file, errx := os.Open(BackwardsCompatiblePaths(d.templatesDirectory, filename)); errx == nil {
+				return file, nil
+			}
+		}
+		return file, err
+	}
 
 	return d.templatesFS.Open(filename)
 }
