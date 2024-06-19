@@ -19,8 +19,6 @@ var deprecatedPathsCounter int
 
 // GetTemplatesPath returns a list of absolute paths for the provided template list.
 func (c *DiskCatalog) GetTemplatesPath(definitions []string) ([]string, map[string]error) {
-	gologger.Debug().Msgf("DiskCatalog: GetTemplatesPath: %q", definitions)
-
 	// keeps track of processed dirs and files
 	processed := make(map[string]bool)
 	allTemplates := []string{}
@@ -67,8 +65,6 @@ func (c *DiskCatalog) GetTemplatesPath(definitions []string) ([]string, map[stri
 // list of finished absolute paths to the templates evaluating any glob patterns
 // or folders provided as in.
 func (c *DiskCatalog) GetTemplatePath(target string) ([]string, error) {
-	gologger.Debug().Msgf("DiskCatalog: GetTemplatePath: %q", target)
-
 	processed := make(map[string]struct{})
 	// Template input includes a wildcard
 	if strings.Contains(target, "*") {
@@ -140,8 +136,6 @@ func (c *DiskCatalog) convertPathToAbsolute(t string) (string, error) {
 
 // findGlobPathMatches returns the matched files from a glob path
 func (c *DiskCatalog) findGlobPathMatches(absPath string, processed map[string]struct{}) ([]string, error) {
-	gologger.Debug().Msgf("DiskCatalog: findGlobPathMatches: %q", absPath)
-
 	// to support globbing on old paths we use brute force to find matches with exit on first match
 	// trim templateDir if any
 	relPath := strings.TrimPrefix(absPath, c.templatesDirectory)
@@ -224,8 +218,6 @@ func (c *DiskCatalog) findFileMatches(absPath string, processed map[string]struc
 	if c.templatesFS != nil {
 		absPath = strings.TrimPrefix(absPath, "/")
 	}
-	gologger.Debug().Msgf("DiskCatalog: findFileMatches: %q (valid: %t)", absPath, fs.ValidPath(absPath))
-
 	var info fs.File
 	if c.templatesFS == nil {
 		info, err = os.Open(absPath)
@@ -251,8 +243,6 @@ func (c *DiskCatalog) findFileMatches(absPath string, processed map[string]struc
 
 // findDirectoryMatches finds matches for templates from a directory
 func (c *DiskCatalog) findDirectoryMatches(absPath string, processed map[string]struct{}) ([]string, error) {
-	gologger.Debug().Msgf("DiskCatalog: findDirectoryMatches: %q", absPath)
-
 	var results []string
 	var err error
 	if c.templatesFS == nil {

@@ -5,7 +5,6 @@ import (
 	"io/fs"
 	"os"
 
-	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/config"
 )
 
@@ -38,8 +37,6 @@ func NewFSCatalog(fs fs.FS, directory string) *DiskCatalog {
 // OpenFile opens a file and returns an io.ReadCloser to the file.
 // It is used to read template and payload files based on catalog responses.
 func (d *DiskCatalog) OpenFile(filename string) (io.ReadCloser, error) {
-	gologger.Debug().Msgf("DiskCatalog: OpenFile: %s", filename)
-
 	if d.templatesFS == nil {
 		file, err := os.Open(filename)
 		if err != nil {
