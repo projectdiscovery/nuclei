@@ -26,12 +26,7 @@ func ShouldInit() bool {
 	return Dialer == nil
 }
 
-// Init creates the Dialer instance based on user configuration
-func Init(options *types.Options) error {
-	if Dialer != nil {
-		return nil
-	}
-
+func GetDialerFromOptions(options *types.Options) (*fastdialer.Dialer, error) {
 	lfaAllowed = options.AllowLocalFileAccess
 	opts := fastdialer.DefaultOptions
 	if options.DialerTimeout > 0 {
@@ -66,7 +61,7 @@ func Init(options *types.Options) error {
 	case options.SourceIP != "" && options.Interface != "":
 		isAssociated, err := isIpAssociatedWithInterface(options.SourceIP, options.Interface)
 		if err != nil {
-			return err
+			return nil, err
 		}
 		if isAssociated {
 			opts.Dialer = &net.Dialer{
@@ -75,12 +70,12 @@ func Init(options *types.Options) error {
 				},
 			}
 		} else {
-			return fmt.Errorf("source ip (%s) is not associated with the interface (%s)", options.SourceIP, options.Interface)
+			return nil, fmt.Errorf("source ip (%s) is not associated with the interface (%s)", options.SourceIP, options.Interface)
 		}
 	case options.SourceIP != "":
 		isAssociated, err := isIpAssociatedWithInterface(options.SourceIP, "any")
 		if err != nil {
-			return err
+			return nil, err
 		}
 		if isAssociated {
 			opts.Dialer = &net.Dialer{
@@ -89,12 +84,12 @@ func Init(options *types.Options) error {
 				},
 			}
 		} else {
-			return fmt.Errorf("source ip (%s) is not associated with any network interface", options.SourceIP)
+			return nil, fmt.Errorf("source ip (%s) is not associated with any network interface", options.SourceIP)
 		}
 	case options.Interface != "":
 		ifadrr, err := interfaceAddress(options.Interface)
 		if err != nil {
-			return err
+			return nil, err
 		}
 		opts.Dialer = &net.Dialer{
 			LocalAddr: &net.TCPAddr{
@@ -105,7 +100,7 @@ func Init(options *types.Options) error {
 	if types.ProxySocksURL != "" {
 		proxyURL, err := url.Parse(types.ProxySocksURL)
 		if err != nil {
-			return err
+			return nil, err
 		}
 		var forward *net.Dialer
 		if opts.Dialer != nil {
@@ -119,7 +114,7 @@ func Init(options *types.Options) error {
 		}
 		dialer, err := proxy.FromURL(proxyURL, forward)
 		if err != nil {
-			return err
+			return nil, err
 		}
 		opts.ProxyDialer = &dialer
 	}
@@ -143,9 +138,26 @@ func Init(options *types.Options) error {
 	// fastdialer now by default fallbacks to ztls when there are tls related errors
 	dialer, err := fastdialer.NewDialer(opts)
 	if err != nil {
-		return errors.Wrap(err, "could not create dialer")
+		return nil, errors.Wrap(err, "could not create dialer")
+	}
+
+	return dialer, nil
+}
+
+// Init creates the Dialer instance based on user configuration
+func Init(options *types.Options) error {
+	// ***************************
+	// todo: remove this part
+	if Dialer != nil {
+		return nil
+	}
+
+	dialer, err := GetDialerFromOptions(options)
+	if err != nil {
+		return err
 	}
 	Dialer = dialer
+	// ********************+*****
 
 	// override dialer in mysql
 	mysql.RegisterDialContext("tcp", func(ctx context.Context, addr string) (net.Conn, error) {

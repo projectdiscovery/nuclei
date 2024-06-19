@@ -3,9 +3,13 @@ package protocols
 import (
 	"context"
 	"encoding/base64"
+	"sync"
 	"sync/atomic"
 
+	"github.com/projectdiscovery/fastdialer/fastdialer"
+	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/ratelimit"
+	"github.com/projectdiscovery/rdap"
 	mapsutil "github.com/projectdiscovery/utils/maps"
 	stringsutil "github.com/projectdiscovery/utils/strings"
 
@@ -124,6 +128,44 @@ type ExecutorOptions struct {
 	// ExportReqURLPattern exports the request URL pattern
 	// in ResultEvent it contains the exact url pattern (ex: {{BaseURL}}/{{randstr}}/xyz) used in the request
 	ExportReqURLPattern bool
+	// shared dialers
+	Dialers *Dialers
+}
+
+type Dialers struct {
+	fastDialer *fastdialer.Dialer
+
+	rdapClient *rdap.Client
+	rdapOnce   sync.Once
+}
+
+func (d *Dialers) SetDefault(fastDialer *fastdialer.Dialer) {
+	d.fastDialer = fastDialer
+}
+
+func (d *Dialers) Default() *fastdialer.Dialer {
+	return d.fastDialer
+}
+
+func (d *Dialers) Rdap(withDebug bool) *rdap.Client {
+	d.rdapOnce.Do(func() {
+		d.rdapClient = &rdap.Client{}
+		if withDebug {
+			d.rdapClient.Verbose = func(text string) {
+				gologger.Debug().Msgf("rdap: %s", text)
+			}
+		}
+	})
+	return d.rdapClient
+}
+
+func (d *Dialers) Close() {
+	if d.fastDialer != nil {
+		d.fastDialer.Close()
+	}
+	if d.rdapClient != nil {
+		d.rdapClient.HTTP.CloseIdleConnections()
+	}
 }
 
 // todo: centralizing components is not feasible with current clogged architecture

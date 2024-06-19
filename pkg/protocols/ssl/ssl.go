@@ -23,7 +23,6 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/helpers/eventcreator"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/helpers/responsehighlighter"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/utils/vardump"
-	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/network/networkclientpool"
 	protocolutils "github.com/projectdiscovery/nuclei/v3/pkg/protocols/utils"
 	templateTypes "github.com/projectdiscovery/nuclei/v3/pkg/templates/types"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
@@ -113,12 +112,8 @@ func (request *Request) CanCluster(other *Request) bool {
 // Compile compiles the request generators preparing any requests possible.
 func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 	request.options = options
+	request.dialer = options.Dialers.Default()
 
-	client, err := networkclientpool.Get(options.Options, &networkclientpool.Configuration{})
-	if err != nil {
-		return errorutil.NewWithTag("ssl", "could not get network client").Wrap(err)
-	}
-	request.dialer = client
 	switch {
 	//validate scanmode
 	case request.ScanMode == "":
@@ -153,7 +148,7 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 		WildcardCertCheck: true,
 		Retries:           request.options.Options.Retries,
 		Timeout:           request.options.Options.Timeout,
-		Fastdialer:        client,
+		Fastdialer:        options.Dialers.Default(),
 		ClientHello:       true,
 		ServerHello:       true,
 		DisplayDns:        true,

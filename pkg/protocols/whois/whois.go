@@ -22,7 +22,6 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/replacer"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/utils/vardump"
 	protocolutils "github.com/projectdiscovery/nuclei/v3/pkg/protocols/utils"
-	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/whois/rdapclientpool"
 	templateTypes "github.com/projectdiscovery/nuclei/v3/pkg/templates/types"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
@@ -64,7 +63,9 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 	}
 
 	request.options = options
-	request.client, _ = rdapclientpool.Get(options.Options, nil)
+
+	hasDebug := options.Options.Verbose || options.Options.Debug || options.Options.DebugRequests || options.Options.DebugResponse
+	request.client = options.Dialers.Rdap(hasDebug)
 
 	if len(request.Matchers) > 0 || len(request.Extractors) > 0 {
 		compiled := &request.Operators

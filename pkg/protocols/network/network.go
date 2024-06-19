@@ -11,7 +11,6 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/expressions"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/generators"
-	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/network/networkclientpool"
 	errorutil "github.com/projectdiscovery/utils/errors"
 	fileutil "github.com/projectdiscovery/utils/file"
 )
@@ -232,12 +231,7 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 		request.Threads = options.GetThreadsForNPayloadRequests(request.Requests(), request.Threads)
 	}
 
-	// Create a client for the class
-	client, err := networkclientpool.Get(options.Options, &networkclientpool.Configuration{})
-	if err != nil {
-		return errors.Wrap(err, "could not get network client")
-	}
-	request.dialer = client
+	request.dialer = options.Dialers.Default()
 
 	if len(request.Matchers) > 0 || len(request.Extractors) > 0 {
 		compiled := &request.Operators

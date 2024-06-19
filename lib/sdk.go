@@ -214,6 +214,9 @@ func (e *NucleiEngine) closeInternal() {
 	if e.httpxClient != nil {
 		_ = e.httpxClient.Close()
 	}
+	if e.executerOpts.Dialers != nil {
+		e.executerOpts.Dialers.Close()
+	}
 }
 
 // Close all resources used by nuclei engine

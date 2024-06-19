@@ -28,7 +28,6 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/helpers/eventcreator"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/helpers/responsehighlighter"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/utils/vardump"
-	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/network/networkclientpool"
 	protocolutils "github.com/projectdiscovery/nuclei/v3/pkg/protocols/utils"
 	templateTypes "github.com/projectdiscovery/nuclei/v3/pkg/templates/types"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
@@ -100,13 +99,10 @@ const (
 func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 	request.options = options
 
-	client, err := networkclientpool.Get(options.Options, &networkclientpool.Configuration{})
-	if err != nil {
-		return errors.Wrap(err, "could not get network client")
-	}
-	request.dialer = client
+	request.dialer = options.Dialers.Default()
 
 	if len(request.Payloads) > 0 {
+		var err error
 		request.generator, err = generators.New(request.Payloads, request.AttackType.Value, request.options.TemplatePath, options.Catalog, options.Options.AttackType, types.DefaultOptions())
 		if err != nil {
 			return errors.Wrap(err, "could not parse payloads")

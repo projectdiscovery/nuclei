@@ -6,8 +6,6 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/dns/dnsclientpool"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http/httpclientpool"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http/signerpool"
-	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/network/networkclientpool"
-	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/whois/rdapclientpool"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 )
 
@@ -23,12 +21,6 @@ func Init(options *types.Options) error {
 		return err
 	}
 	if err := signerpool.Init(options); err != nil {
-		return err
-	}
-	if err := networkclientpool.Init(options); err != nil {
-		return err
-	}
-	if err := rdapclientpool.Init(options); err != nil {
 		return err
 	}
 	if err := compiler.Init(options); err != nil {

@@ -158,6 +158,14 @@ func (e *NucleiEngine) init(ctx context.Context) error {
 		e.catalog = disk.NewCatalog(config.DefaultConfig.TemplatesDirectory)
 	}
 
+	dialer, err := protocolstate.GetDialerFromOptions(e.opts)
+	if err != nil {
+		return errors.Wrap(err, "could not create dialer")
+	}
+
+	dialers := &protocols.Dialers{}
+	dialers.SetDefault(dialer)
+
 	e.executerOpts = protocols.ExecutorOptions{
 		Output:          e.customWriter,
 		Options:         e.opts,
@@ -171,6 +179,7 @@ func (e *NucleiEngine) init(ctx context.Context) error {
 		ResumeCfg:       types.NewResumeCfg(),
 		Browser:         e.browserInstance,
 		Parser:          e.parser,
+		Dialers:         dialers,
 	}
 	if len(e.opts.SecretsFile) > 0 {
 		authTmplStore, err := runner.GetAuthTmplStore(*e.opts, e.catalog, e.executerOpts)
