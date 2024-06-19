@@ -5,13 +5,15 @@ import (
 	"io/fs"
 	"os"
 
+	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/config"
 )
 
 // DiskCatalog is a template catalog helper implementation based on disk
 type DiskCatalog struct {
 	templatesDirectory string
-	templatesFS        fs.FS // TODO: Refactor to use this
+	templatesFS        fs.FS
+	customTemplatesFS  bool // This will be true if the user gave us a templatesFS
 }
 
 // NewCatalog creates a new Catalog structure using provided input items
@@ -19,7 +21,9 @@ type DiskCatalog struct {
 func NewCatalog(directory string) *DiskCatalog {
 	catalog := &DiskCatalog{templatesDirectory: directory}
 	if directory != "" {
-		catalog.templatesFS = os.DirFS(directory)
+		wd, _ := os.Getwd()
+		catalog.templatesFS = os.DirFS(wd)
+		catalog.templatesDirectory = ""
 	} else {
 		catalog.templatesFS = os.DirFS(config.DefaultConfig.GetTemplateDir())
 	}
@@ -32,6 +36,7 @@ func NewFSCatalog(fs fs.FS, directory string) *DiskCatalog {
 	catalog := &DiskCatalog{
 		templatesDirectory: directory,
 		templatesFS:        fs,
+		customTemplatesFS:  true,
 	}
 	return catalog
 }
@@ -39,15 +44,7 @@ func NewFSCatalog(fs fs.FS, directory string) *DiskCatalog {
 // OpenFile opens a file and returns an io.ReadCloser to the file.
 // It is used to read template and payload files based on catalog responses.
 func (d *DiskCatalog) OpenFile(filename string) (io.ReadCloser, error) {
-	if d.templatesFS == nil {
-		file, err := os.Open(filename)
-		if err != nil {
-			if file, errx := os.Open(BackwardsCompatiblePaths(d.templatesDirectory, filename)); errx == nil {
-				return file, nil
-			}
-		}
-		return file, err
-	}
+	gologger.Debug().Msgf("DiskCatalog: OpenFile: %s", filename)
 
 	return d.templatesFS.Open(filename)
 }

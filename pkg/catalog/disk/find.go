@@ -19,6 +19,8 @@ var deprecatedPathsCounter int
 
 // GetTemplatesPath returns a list of absolute paths for the provided template list.
 func (c *DiskCatalog) GetTemplatesPath(definitions []string) ([]string, map[string]error) {
+	gologger.Debug().Msgf("DiskCatalog: GetTemplatesPath: %q", definitions)
+
 	// keeps track of processed dirs and files
 	processed := make(map[string]bool)
 	allTemplates := []string{}
@@ -65,6 +67,8 @@ func (c *DiskCatalog) GetTemplatesPath(definitions []string) ([]string, map[stri
 // list of finished absolute paths to the templates evaluating any glob patterns
 // or folders provided as in.
 func (c *DiskCatalog) GetTemplatePath(target string) ([]string, error) {
+	gologger.Debug().Msgf("DiskCatalog: GetTemplatePath: %q", target)
+
 	processed := make(map[string]struct{})
 	// Template input includes a wildcard
 	if strings.Contains(target, "*") {
@@ -79,17 +83,25 @@ func (c *DiskCatalog) GetTemplatePath(target string) ([]string, error) {
 	}
 
 	// try to handle deprecated template paths
-	absPath := BackwardsCompatiblePaths(c.templatesDirectory, target)
-	if absPath != target && strings.TrimPrefix(absPath, c.templatesDirectory+string(filepath.Separator)) != target {
-		if config.DefaultConfig.LogAllEvents {
-			gologger.DefaultLogger.Print().Msgf("[%v] requested Template path %s is deprecated, please update to %s\n", aurora.Yellow("WRN").String(), target, absPath)
+	absPath := target
+	/*
+		absPath := BackwardsCompatiblePaths(c.templatesDirectory, target)
+		if absPath != target && strings.TrimPrefix(absPath, c.templatesDirectory+string(filepath.Separator)) != target {
+			if config.DefaultConfig.LogAllEvents {
+				gologger.DefaultLogger.Print().Msgf("[%v] requested Template path %s is deprecated, please update to %s\n", aurora.Yellow("WRN").String(), target, absPath)
+			}
+			deprecatedPathsCounter++
 		}
-		deprecatedPathsCounter++
-	}
+	*/
 
-	absPath, err := c.convertPathToAbsolute(absPath)
-	if err != nil {
-		return nil, errors.Wrapf(err, "could not find template file")
+	// If we're not using a custom FS, then attempt to conver the path to an absolute path.
+	// When using a custom FS, do not attempt to alter the path at all.
+	if false && !c.customTemplatesFS {
+		var err error
+		absPath, err = c.convertPathToAbsolute(absPath)
+		if err != nil {
+			return nil, errors.Wrapf(err, "could not find template file")
+		}
 	}
 
 	// Template input is either a file or a directory
@@ -132,6 +144,8 @@ func (c *DiskCatalog) convertPathToAbsolute(t string) (string, error) {
 
 // findGlobPathMatches returns the matched files from a glob path
 func (c *DiskCatalog) findGlobPathMatches(absPath string, processed map[string]struct{}) ([]string, error) {
+	gologger.Debug().Msgf("DiskCatalog: findGlobPathMatches: %q", absPath)
+
 	// to support globbing on old paths we use brute force to find matches with exit on first match
 	// trim templateDir if any
 	relPath := strings.TrimPrefix(absPath, c.templatesDirectory)
@@ -185,6 +199,8 @@ func (c *DiskCatalog) findGlobPathMatches(absPath string, processed map[string]s
 // findFileMatches finds if a path is an absolute file. If the path
 // is a file, it returns true otherwise false with no errors.
 func (c *DiskCatalog) findFileMatches(absPath string, processed map[string]struct{}) (match string, matched bool, err error) {
+	gologger.Debug().Msgf("DiskCatalog: findFileMatches: %q (valid: %t)", absPath, fs.ValidPath(absPath))
+
 	info, err := c.templatesFS.Open(absPath)
 	if err != nil {
 		return "", false, err
@@ -205,8 +221,11 @@ func (c *DiskCatalog) findFileMatches(absPath string, processed map[string]struc
 
 // findDirectoryMatches finds matches for templates from a directory
 func (c *DiskCatalog) findDirectoryMatches(absPath string, processed map[string]struct{}) ([]string, error) {
+	gologger.Debug().Msgf("DiskCatalog: findDirectoryMatches: %q", absPath)
+
 	var results []string
-	err := filepath.WalkDir(
+	err := fs.WalkDir(
+		c.templatesFS,
 		absPath,
 		func(path string, d fs.DirEntry, err error) error {
 			// continue on errors

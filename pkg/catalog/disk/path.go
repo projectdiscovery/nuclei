@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
+	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/config"
 	fileutil "github.com/projectdiscovery/utils/file"
 	urlutil "github.com/projectdiscovery/utils/url"
@@ -18,6 +19,8 @@ import (
 // or checking the nuclei templates directory. If a second path is given,
 // it also tries to find paths relative to that second path.
 func (c *DiskCatalog) ResolvePath(templateName, second string) (string, error) {
+	gologger.Debug().Msgf("DiskCatalog: ResolvePath: %q, %q", templateName, second)
+
 	if filepath.IsAbs(templateName) {
 		return templateName, nil
 	}
