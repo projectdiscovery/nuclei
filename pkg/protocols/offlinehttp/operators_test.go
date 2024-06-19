@@ -55,6 +55,8 @@ func TestHTTPOperatorMatch(t *testing.T) {
 		Info: model.Info{SeverityHolder: severity.Holder{Severity: severity.Low}, Name: "test"},
 	}
 	executerOpts, err := testutils.NewMockExecuterOptions(options, templateInfo)
+	require.Nil(t, err, "could not create executer options")
+
 	executerOpts.Operators = []*operators.Operators{{}}
 	err = request.Compile(executerOpts)
 	require.Nil(t, err, "could not compile file request")
@@ -125,6 +127,8 @@ func TestHTTPOperatorExtract(t *testing.T) {
 		Info: model.Info{SeverityHolder: severity.Holder{Severity: severity.Low}, Name: "test"},
 	}
 	executerOpts, err := testutils.NewMockExecuterOptions(options, templateInfo)
+	require.Nil(t, err, "could not create executer options")
+
 	executerOpts.Operators = []*operators.Operators{{}}
 	err = request.Compile(executerOpts)
 	require.Nil(t, err, "could not compile file request")
