@@ -71,12 +71,13 @@ Disallow: /c`))
 	}))
 	defer ts.Close()
 
-	executerOpts := testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{
+	templateInfo := &testutils.TemplateInfo{
 		ID:   templateID,
 		Info: model.Info{SeverityHolder: severity.Holder{Severity: severity.Low}, Name: "test"},
-	})
-
-	err := request.Compile(executerOpts)
+	}
+	executerOpts, err := testutils.NewMockExecuterOptions(options, templateInfo)
+	require.Nil(t, err, "could not create executer options")
+	err = request.Compile(executerOpts)
 	require.Nil(t, err, "could not compile network request")
 
 	var finalEvent *output.InternalWrappedEvent
@@ -144,12 +145,13 @@ func TestDisableTE(t *testing.T) {
 	}))
 	defer ts.Close()
 
-	executerOpts := testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{
+	templateInfo := &testutils.TemplateInfo{
 		ID:   templateID,
 		Info: model.Info{SeverityHolder: severity.Holder{Severity: severity.Low}, Name: "test"},
-	})
-
-	err := request.Compile(executerOpts)
+	}
+	executerOpts, err := testutils.NewMockExecuterOptions(options, templateInfo)
+	require.Nil(t, err, "could not create executer options")
+	err = request.Compile(executerOpts)
 	require.Nil(t, err, "could not compile http raw request")
 
 	err = request2.Compile(executerOpts)
@@ -220,10 +222,12 @@ func TestReqURLPattern(t *testing.T) {
 	}))
 	defer ts.Close()
 
-	executerOpts := testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{
+	templateInfo := &testutils.TemplateInfo{
 		ID:   templateID,
 		Info: model.Info{SeverityHolder: severity.Holder{Severity: severity.Low}, Name: "test"},
-	})
+	}
+	executerOpts, err := testutils.NewMockExecuterOptions(options, templateInfo)
+	require.Nil(t, err, "could not create executer options")
 	client, _ := interactsh.New(interactsh.DefaultOptions(executerOpts.Output, nil, executerOpts.Progress))
 	executerOpts.Interactsh = client
 	defer client.Close()
@@ -235,7 +239,7 @@ func TestReqURLPattern(t *testing.T) {
 		"{{randstr}}": "2eNU2kbrOcUDzhnUL1RGvSo1it7",
 	}
 
-	err := request.Compile(executerOpts)
+	err = request.Compile(executerOpts)
 	require.Nil(t, err, "could not compile network request")
 
 	var finalEvent *output.InternalWrappedEvent

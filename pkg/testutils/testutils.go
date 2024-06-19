@@ -87,8 +87,12 @@ type TemplateInfo struct {
 }
 
 // NewMockExecuterOptions creates a new mock executeroptions struct
-func NewMockExecuterOptions(options *types.Options, info *TemplateInfo) *protocols.ExecutorOptions {
+func NewMockExecuterOptions(options *types.Options, info *TemplateInfo) (*protocols.ExecutorOptions, error) {
 	progressImpl, _ := progress.NewStatsTicker(0, false, false, false, 0)
+	dialers, err := protocols.NewDealers(options)
+	if err != nil {
+		return nil, err
+	}
 	executerOpts := &protocols.ExecutorOptions{
 		TemplateID:   info.ID,
 		TemplateInfo: info.Info,
@@ -101,9 +105,10 @@ func NewMockExecuterOptions(options *types.Options, info *TemplateInfo) *protoco
 		Browser:      nil,
 		Catalog:      disk.NewCatalog(config.DefaultConfig.TemplatesDirectory),
 		RateLimiter:  ratelimit.New(context.Background(), uint(options.RateLimit), time.Second),
+		Dialers:      dialers,
 	}
 	executerOpts.CreateTemplateCtxStore()
-	return executerOpts
+	return executerOpts, nil
 }
 
 // NoopWriter is a NooP gologger writer.

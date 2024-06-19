@@ -201,11 +201,6 @@ func (f *FlowExecutor) ExecuteWithResults(ctx *scan.ScanContext) error {
 		}
 
 	}()
-	defer func() {
-		if r := recover(); r != nil {
-			f.ctx.LogError(fmt.Errorf("panic occurred while executing flow: %v", r))
-		}
-	}()
 
 	if ctx.OnResult == nil {
 		return fmt.Errorf("output callback cannot be nil")

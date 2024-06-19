@@ -20,12 +20,14 @@ func TestFindResponses(t *testing.T) {
 	testutils.Init(options)
 	templateID := "testing-offline"
 	request := &Request{}
-	executerOpts := testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{
+	templateInfo := &testutils.TemplateInfo{
 		ID:   templateID,
 		Info: model.Info{SeverityHolder: severity.Holder{Severity: severity.Low}, Name: "test"},
-	})
+	}
+	executerOpts, err := testutils.NewMockExecuterOptions(options, templateInfo)
+	require.Nil(t, err, "could not create executer options")
 	executerOpts.Operators = []*operators.Operators{{}}
-	err := request.Compile(executerOpts)
+	err = request.Compile(executerOpts)
 	require.Nil(t, err, "could not compile file request")
 
 	tempDir, err := os.MkdirTemp("", "test-*")

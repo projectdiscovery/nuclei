@@ -27,11 +27,13 @@ func TestResponseToDSLMap(t *testing.T) {
 		Path:   []string{"{{BaseURL}}?test=1"},
 		Method: HTTPMethodTypeHolder{MethodType: HTTPGet},
 	}
-	executerOpts := testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{
+	templateInfo := &testutils.TemplateInfo{
 		ID:   templateID,
 		Info: model.Info{SeverityHolder: severity.Holder{Severity: severity.Low}, Name: "test"},
-	})
-	err := request.Compile(executerOpts)
+	}
+	executerOpts, err := testutils.NewMockExecuterOptions(options, templateInfo)
+	require.Nil(t, err, "could not create executer options")
+	err = request.Compile(executerOpts)
 	require.Nil(t, err, "could not compile file request")
 
 	resp := &http.Response{}
@@ -57,11 +59,13 @@ func TestHTTPOperatorMatch(t *testing.T) {
 		Path:   []string{"{{BaseURL}}?test=1"},
 		Method: HTTPMethodTypeHolder{MethodType: HTTPGet},
 	}
-	executerOpts := testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{
+	templateInfo := &testutils.TemplateInfo{
 		ID:   templateID,
 		Info: model.Info{SeverityHolder: severity.Holder{Severity: severity.Low}, Name: "test"},
-	})
-	err := request.Compile(executerOpts)
+	}
+	executerOpts, err := testutils.NewMockExecuterOptions(options, templateInfo)
+	require.Nil(t, err, "could not create executer options")
+	err = request.Compile(executerOpts)
 	require.Nil(t, err, "could not compile file request")
 
 	resp := &http.Response{}
@@ -145,11 +149,13 @@ func TestHTTPOperatorExtract(t *testing.T) {
 		Path:   []string{"{{BaseURL}}?test=1"},
 		Method: HTTPMethodTypeHolder{MethodType: HTTPGet},
 	}
-	executerOpts := testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{
+	templateInfo := &testutils.TemplateInfo{
 		ID:   templateID,
 		Info: model.Info{SeverityHolder: severity.Holder{Severity: severity.Low}, Name: "test"},
-	})
-	err := request.Compile(executerOpts)
+	}
+	executerOpts, err := testutils.NewMockExecuterOptions(options, templateInfo)
+	require.Nil(t, err, "could not create executer options")
+	err = request.Compile(executerOpts)
 	require.Nil(t, err, "could not compile file request")
 
 	resp := &http.Response{}
@@ -272,11 +278,13 @@ func TestHTTPMakeResult(t *testing.T) {
 			}},
 		},
 	}
-	executerOpts := testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{
+	templateInfo := &testutils.TemplateInfo{
 		ID:   templateID,
 		Info: model.Info{SeverityHolder: severity.Holder{Severity: severity.Low}, Name: "test"},
-	})
-	err := request.Compile(executerOpts)
+	}
+	executerOpts, err := testutils.NewMockExecuterOptions(options, templateInfo)
+	require.Nil(t, err, "could not create executer options")
+	err = request.Compile(executerOpts)
 	require.Nil(t, err, "could not compile file request")
 
 	resp := &http.Response{}

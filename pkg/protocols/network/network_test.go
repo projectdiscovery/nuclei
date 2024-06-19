@@ -21,11 +21,14 @@ func TestNetworkCompileMake(t *testing.T) {
 		ReadSize: 1024,
 		Inputs:   []*Input{{Data: "test-data"}},
 	}
-	executerOpts := testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{
+	templateInfo := &testutils.TemplateInfo{
 		ID:   templateID,
 		Info: model.Info{SeverityHolder: severity.Holder{Severity: severity.Low}, Name: "test"},
-	})
-	err := request.Compile(executerOpts)
+	}
+	executerOpts, err := testutils.NewMockExecuterOptions(options, templateInfo)
+	require.Nil(t, err, "could not create executer options")
+
+	err = request.Compile(executerOpts)
 	require.Nil(t, err, "could not compile network request")
 
 	require.Equal(t, 1, len(request.addresses), "could not get correct number of input address")

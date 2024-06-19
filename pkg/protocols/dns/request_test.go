@@ -22,10 +22,12 @@ func TestDNSExecuteWithResults(t *testing.T) {
 	recursion := false
 	testutils.Init(options)
 	templateID := "testing-dns"
-	executerOpts := testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{
+	templateInfo := &testutils.TemplateInfo{
 		ID:   templateID,
 		Info: model.Info{SeverityHolder: severity.Holder{Severity: severity.Low}, Name: "test"},
-	})
+	}
+	executerOpts, err := testutils.NewMockExecuterOptions(options, templateInfo)
+	require.Nil(t, err, "could not create executer options")
 	request := &Request{
 		RequestType: DNSRequestTypeHolder{DNSRequestType: A},
 		Class:       "INET",
@@ -48,7 +50,7 @@ func TestDNSExecuteWithResults(t *testing.T) {
 		},
 		options: executerOpts,
 	}
-	err := request.Compile(executerOpts)
+	err = request.Compile(executerOpts)
 	require.Nil(t, err, "could not compile dns request")
 
 	var finalEvent *output.InternalWrappedEvent

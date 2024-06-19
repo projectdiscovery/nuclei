@@ -55,10 +55,13 @@ func TestNetworkExecuteWithResults(t *testing.T) {
 	request.Address[0] = "{{Hostname}}"
 
 	request.Inputs = append(request.Inputs, &Input{Data: fmt.Sprintf("GET / HTTP/1.1\r\nHost: %s\r\n\r\n", parsed.Host)})
-	executerOpts := testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{
+	templateInfo := &testutils.TemplateInfo{
 		ID:   templateID,
 		Info: model.Info{SeverityHolder: severity.Holder{Severity: severity.Low}, Name: "test"},
-	})
+	}
+	executerOpts, err := testutils.NewMockExecuterOptions(options, templateInfo)
+	require.Nil(t, err, "could not create executer options")
+
 	err = request.Compile(executerOpts)
 	require.Nil(t, err, "could not compile network request")
 

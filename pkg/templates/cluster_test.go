@@ -13,10 +13,12 @@ import (
 
 func TestClusterTemplates(t *testing.T) {
 	// state of whether template is flow or multiprotocol is stored in executerOptions i.e why we need to pass it
-	execOptions := testutils.NewMockExecuterOptions(testutils.DefaultOptions, &testutils.TemplateInfo{
+	templateInfo := &testutils.TemplateInfo{
 		ID:   "templateID",
 		Info: model.Info{SeverityHolder: severity.Holder{Severity: severity.Low}, Name: "test"},
-	})
+	}
+	execOptions, err := testutils.NewMockExecuterOptions(testutils.DefaultOptions, templateInfo)
+	require.Nil(t, err, "could not create executer options")
 	t.Run("http-cluster-get", func(t *testing.T) {
 		tp1 := &Template{Path: "first.yaml", RequestsHTTP: []*http.Request{{Path: []string{"{{BaseURL}}"}}}}
 		tp2 := &Template{Path: "second.yaml", RequestsHTTP: []*http.Request{{Path: []string{"{{BaseURL}}"}}}}

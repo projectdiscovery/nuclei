@@ -84,11 +84,6 @@ func executeWithRuntime(runtime *goja.Runtime, p *goja.Program, args *ExecuteArg
 			opts.Cleanup(runtime)
 		}
 	}()
-	defer func() {
-		if r := recover(); r != nil {
-			err = fmt.Errorf("panic: %s", r)
-		}
-	}()
 	// set template ctx
 	_ = runtime.Set("template", args.TemplateCtx)
 	// set args

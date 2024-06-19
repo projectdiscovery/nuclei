@@ -53,13 +53,6 @@ func (p *Page) ExecuteActions(input *contextargs.Context, actions []*Action, var
 	// typically used for waitEvent
 	waitFuncs := make([]func() error, 0)
 
-	// avoid any future panics caused due to go-rod library
-	defer func() {
-		if r := recover(); r != nil {
-			err = errorutil.New("panic on headless action: %v", r)
-		}
-	}()
-
 	for _, act := range actions {
 		switch act.ActionType.ActionType {
 		case ActionNavigate:

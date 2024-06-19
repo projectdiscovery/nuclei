@@ -40,11 +40,13 @@ func TestResponseToDSLMap(t *testing.T) {
 		DenyList:    []string{".go"},
 		Operators:   newMockOperator(),
 	}
-	executerOpts := testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{
+	templateInfo := &testutils.TemplateInfo{
 		ID:   templateID,
 		Info: model.Info{SeverityHolder: severity.Holder{Severity: severity.Low}, Name: "test"},
-	})
-	err := request.Compile(executerOpts)
+	}
+	executerOpts, err := testutils.NewMockExecuterOptions(options, templateInfo)
+	require.Nil(t, err, "could not create executer options")
+	err = request.Compile(executerOpts)
 	require.Nil(t, err, "could not compile file request")
 
 	resp := "test-data\r\n"
@@ -66,11 +68,13 @@ func TestFileOperatorMatch(t *testing.T) {
 		DenyList:    []string{".go"},
 		Operators:   newMockOperator(),
 	}
-	executerOpts := testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{
+	templateInfo := &testutils.TemplateInfo{
 		ID:   templateID,
 		Info: model.Info{SeverityHolder: severity.Holder{Severity: severity.Low}, Name: "test"},
-	})
-	err := request.Compile(executerOpts)
+	}
+	executerOpts, err := testutils.NewMockExecuterOptions(options, templateInfo)
+	require.Nil(t, err, "could not create executer options")
+	err = request.Compile(executerOpts)
 	require.Nil(t, err, "could not compile file request")
 
 	resp := "test-data\r\n1.1.1.1\r\n"
@@ -155,11 +159,13 @@ func TestFileOperatorExtract(t *testing.T) {
 		DenyList:    []string{".go"},
 		Operators:   newMockOperator(),
 	}
-	executerOpts := testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{
+	templateInfo := &testutils.TemplateInfo{
 		ID:   templateID,
 		Info: model.Info{SeverityHolder: severity.Holder{Severity: severity.Low}, Name: "test"},
-	})
-	err := request.Compile(executerOpts)
+	}
+	executerOpts, err := testutils.NewMockExecuterOptions(options, templateInfo)
+	require.Nil(t, err, "could not create executer options")
+	err = request.Compile(executerOpts)
 	require.Nil(t, err, "could not compile file request")
 
 	resp := "test-data\r\n1.1.1.1\r\n"
@@ -255,10 +261,13 @@ func testFileMakeResult(t *testing.T, matchers []*matchers.Matcher, matcherCondi
 
 	testutils.Init(options)
 	templateID := "testing-file"
-	executerOpts := testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{
+	templateInfo := &testutils.TemplateInfo{
 		ID:   templateID,
 		Info: model.Info{SeverityHolder: severity.Holder{Severity: severity.Low}, Name: "test"},
-	})
+	}
+	executerOpts, err := testutils.NewMockExecuterOptions(options, templateInfo)
+	require.Nil(t, err, "could not create executer options")
+
 	request := &Request{
 		ID:          templateID,
 		MaxSize:     "1Gb",
@@ -276,7 +285,7 @@ func testFileMakeResult(t *testing.T, matchers []*matchers.Matcher, matcherCondi
 		},
 		options: executerOpts,
 	}
-	err := request.Compile(executerOpts)
+	err = request.Compile(executerOpts)
 	require.Nil(t, err, "could not compile file request")
 
 	matchedFileName := "test.txt"

@@ -31,11 +31,13 @@ func TestResponseToDSLMap(t *testing.T) {
 		Recursion:   &recursion,
 		Name:        "{{FQDN}}",
 	}
-	executerOpts := testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{
+	templateInfo := &testutils.TemplateInfo{
 		ID:   templateID,
 		Info: model.Info{SeverityHolder: severity.Holder{Severity: severity.Low}, Name: "test"},
-	})
-	err := request.Compile(executerOpts)
+	}
+	executerOpts, err := testutils.NewMockExecuterOptions(options, templateInfo)
+	require.Nil(t, err, "could not create executer options")
+	err = request.Compile(executerOpts)
 	require.Nil(t, err, "could not compile dns request")
 
 	req := new(dns.Msg)
@@ -65,11 +67,13 @@ func TestDNSOperatorMatch(t *testing.T) {
 		Recursion:   &recursion,
 		Name:        "{{FQDN}}",
 	}
-	executerOpts := testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{
+	templateInfo := &testutils.TemplateInfo{
 		ID:   templateID,
 		Info: model.Info{SeverityHolder: severity.Holder{Severity: severity.Low}, Name: "test"},
-	})
-	err := request.Compile(executerOpts)
+	}
+	executerOpts, err := testutils.NewMockExecuterOptions(options, templateInfo)
+	require.Nil(t, err, "could not create executer options")
+	err = request.Compile(executerOpts)
 	require.Nil(t, err, "could not compile dns request")
 
 	req := new(dns.Msg)
@@ -177,11 +181,14 @@ func TestDNSOperatorExtract(t *testing.T) {
 		Recursion:   &recursion,
 		Name:        "{{FQDN}}",
 	}
-	executerOpts := testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{
+	templateInfo := &testutils.TemplateInfo{
 		ID:   templateID,
 		Info: model.Info{SeverityHolder: severity.Holder{Severity: severity.Low}, Name: "test"},
-	})
-	err := request.Compile(executerOpts)
+	}
+	executerOpts, err := testutils.NewMockExecuterOptions(options, templateInfo)
+	require.Nil(t, err, "could not create executer options")
+
+	err = request.Compile(executerOpts)
 	require.Nil(t, err, "could not compile dns request")
 
 	req := new(dns.Msg)
@@ -227,10 +234,12 @@ func TestDNSMakeResult(t *testing.T) {
 	recursion := false
 	testutils.Init(options)
 	templateID := "testing-dns"
-	executerOpts := testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{
+	templateInfo := &testutils.TemplateInfo{
 		ID:   templateID,
 		Info: model.Info{SeverityHolder: severity.Holder{Severity: severity.Low}, Name: "test"},
-	})
+	}
+	executerOpts, err := testutils.NewMockExecuterOptions(options, templateInfo)
+	require.Nil(t, err, "could not create executer options")
 	request := &Request{
 		RequestType: DNSRequestTypeHolder{DNSRequestType: A},
 		Class:       "INET",
@@ -253,7 +262,7 @@ func TestDNSMakeResult(t *testing.T) {
 		},
 		options: executerOpts,
 	}
-	err := request.Compile(executerOpts)
+	err = request.Compile(executerOpts)
 	require.Nil(t, err, "could not compile dns request")
 
 	req := new(dns.Msg)

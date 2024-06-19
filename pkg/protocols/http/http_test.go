@@ -31,11 +31,13 @@ Connection: close
 Authorization: Basic {{username + ':' + password}}
 Accept-Encoding: gzip`},
 	}
-	executerOpts := testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{
+	templateInfo := &testutils.TemplateInfo{
 		ID:   templateID,
 		Info: model.Info{SeverityHolder: severity.Holder{Severity: severity.Low}, Name: "test"},
-	})
-	err := request.Compile(executerOpts)
+	}
+	executerOpts, err := testutils.NewMockExecuterOptions(options, templateInfo)
+	require.Nil(t, err, "could not create executer options")
+	err = request.Compile(executerOpts)
 	require.Nil(t, err, "could not compile http request")
 	require.Equal(t, 6, request.Requests(), "could not get correct number of requests")
 	require.Equal(t, map[string]string{"User-Agent": "test", "Hello": "World"}, request.customHeaders, "could not get correct custom headers")
