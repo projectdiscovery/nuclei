@@ -189,25 +189,26 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 }
 
 func (request *Request) getDnsClient(options *protocols.ExecutorOptions, metadata map[string]interface{}) (*retryabledns.Client, error) {
-	dnsClientOptions := &dnsclientpool.Configuration{
-		Retries: request.Retries,
-	}
-	if len(request.Resolvers) > 0 {
-		if len(request.Resolvers) > 0 {
-			for _, resolver := range request.Resolvers {
-				if expressions.ContainsUnresolvedVariables(resolver) != nil {
-					var err error
-					resolver, err = expressions.Evaluate(resolver, metadata)
-					if err != nil {
-						return nil, errors.Wrap(err, "could not resolve resolvers expressions")
-					}
-					dnsClientOptions.Resolvers = append(dnsClientOptions.Resolvers, resolver)
+	// if retries are set or resolvers are set, we need to create a new client
+	if request.Retries > 0 || len(request.Resolvers) > 0 {
+		dnsClientOptions := &dnsclientpool.Configuration{
+			Retries: request.Retries,
+		}
+		for _, resolver := range request.Resolvers {
+			if expressions.ContainsUnresolvedVariables(resolver) != nil {
+				var err error
+				resolver, err = expressions.Evaluate(resolver, metadata)
+				if err != nil {
+					return nil, errors.Wrap(err, "could not resolve resolvers expressions")
 				}
+				dnsClientOptions.Resolvers = append(dnsClientOptions.Resolvers, resolver)
 			}
 		}
 		dnsClientOptions.Resolvers = request.Resolvers
+		return dnsclientpool.Get(options.Options, dnsClientOptions)
 	}
-	return dnsclientpool.Get(options.Options, dnsClientOptions)
+	// otherwise we return the default dns client
+	return options.Dialers.Dns(), nil
 }
 
 // Requests returns the total number of requests the YAML rule will perform

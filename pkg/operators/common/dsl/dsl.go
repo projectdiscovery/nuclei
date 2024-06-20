@@ -61,11 +61,7 @@ func init() {
 			return nil, fmt.Errorf("invalid dns type")
 		}
 
-		err := dnsclientpool.Init(&types.Options{})
-		if err != nil {
-			return nil, err
-		}
-		dnsClient, err := dnsclientpool.Get(nil, &dnsclientpool.Configuration{})
+		dnsClient, err := dnsclientpool.Get(&types.Options{}, &dnsclientpool.Configuration{Retries: 11})
 		if err != nil {
 			return nil, err
 		}

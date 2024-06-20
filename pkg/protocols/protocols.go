@@ -9,6 +9,7 @@ import (
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/ratelimit"
 	"github.com/projectdiscovery/rdap"
+	"github.com/projectdiscovery/retryabledns"
 	mapsutil "github.com/projectdiscovery/utils/maps"
 	stringsutil "github.com/projectdiscovery/utils/strings"
 
@@ -33,6 +34,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/utils/excludematchers"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/variables"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/dns/dnsclientpool"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/headless/engine"
 	"github.com/projectdiscovery/nuclei/v3/pkg/reporting"
 	"github.com/projectdiscovery/nuclei/v3/pkg/scan"
@@ -135,22 +137,33 @@ type ExecutorOptions struct {
 type Dialers struct {
 	fastDialer *fastdialer.Dialer
 	rdapClient *rdap.Client
+	dnsClient  *retryabledns.Client
 }
 
 func NewDealers(options *types.Options) (*Dialers, error) {
 	var dialers = &Dialers{}
 	var err error
 
+	// allocate once various standard clients
+	// - fastdialer
 	dialers.fastDialer, err = protocolstate.GetDialerFromOptions(options)
 	if err != nil {
 		return nil, err
 	}
 
+	// - rdap
 	dialers.rdapClient = &rdap.Client{}
 	if options.HasDebug() {
 		dialers.rdapClient.Verbose = func(text string) {
 			gologger.Debug().Msgf("rdap: %s", text)
 		}
+	}
+
+	// - dns
+	resolvers := dnsclientpool.GetResolversOrDefault(options)
+	dialers.dnsClient, err = retryabledns.New(resolvers, 1)
+	if err != nil {
+		return nil, err
 	}
 
 	return dialers, nil
@@ -162,6 +175,10 @@ func (d *Dialers) Default() *fastdialer.Dialer {
 
 func (d *Dialers) Rdap() *rdap.Client {
 	return d.rdapClient
+}
+
+func (d *Dialers) Dns() *retryabledns.Client {
+	return d.dnsClient
 }
 
 func (d *Dialers) Close() {
