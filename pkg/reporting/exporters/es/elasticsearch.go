@@ -2,7 +2,6 @@ package es
 
 import (
 	"bytes"
-	"crypto/tls"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
@@ -13,7 +12,6 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
-	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
 	"github.com/projectdiscovery/retryablehttp-go"
 	"github.com/projectdiscovery/useragent"
 )
@@ -56,20 +54,9 @@ type Exporter struct {
 func New(option *Options) (*Exporter, error) {
 	var ei *Exporter
 
-	var client *http.Client
-	if option.HttpClient != nil {
-		client = option.HttpClient.HTTPClient
-	} else {
-		client = &http.Client{
-			Timeout: 5 * time.Second,
-			Transport: &http.Transport{
-				MaxIdleConns:        10,
-				MaxIdleConnsPerHost: 10,
-				DialContext:         protocolstate.Dialer.Dial,
-				DialTLSContext:      protocolstate.Dialer.DialTLS,
-				TLSClientConfig:     &tls.Config{InsecureSkipVerify: option.SSLVerification},
-			},
-		}
+	// we do not allow nil http client
+	if option.HttpClient == nil {
+		return nil, errors.New("http client is nil")
 	}
 
 	// preparing url for elasticsearch
@@ -98,7 +85,7 @@ func New(option *Options) (*Exporter, error) {
 	ei = &Exporter{
 		url:            url,
 		authentication: authentication,
-		elasticsearch:  client,
+		elasticsearch:  option.HttpClient.HTTPClient,
 	}
 	return ei, nil
 }
@@ -131,8 +118,8 @@ func (exporter *Exporter) Export(event *output.ResultEvent) error {
 	if err != nil {
 		return err
 	}
-	defer res.Body.Close() 
-	
+	defer res.Body.Close()
+
 	b, err = io.ReadAll(res.Body)
 	if err != nil {
 		return errors.New(err.Error() + "error thrown by elasticsearch " + string(b))

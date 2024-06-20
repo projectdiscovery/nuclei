@@ -171,7 +171,7 @@ func NewDealers(options *types.Options) (*Dialers, error) {
 		return nil, err
 	}
 
-	// - http
+	// - standard http + raw http
 	dialers.httpClient, err = httpclientpool.Get(options, &httpclientpool.Configuration{})
 	if err != nil {
 		return nil, err
