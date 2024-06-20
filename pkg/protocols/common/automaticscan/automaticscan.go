@@ -95,14 +95,21 @@ func New(opts Options) (*Service, error) {
 		return nil, err
 	}
 
-	httpclient, err := httpclientpool.Get(opts.ExecuterOpts.Options, &httpclientpool.Configuration{
+	httpConnectionOptions := &httpclientpool.Configuration{
 		Connection: &httpclientpool.ConnectionConfiguration{
 			DisableKeepAlive: httputil.ShouldDisableKeepAlive(opts.ExecuterOpts.Options),
 		},
-	})
-	if err != nil {
-		return nil, errors.Wrap(err, "could not get http client")
 	}
+	var httpClient *retryablehttp.Client
+	if httpConnectionOptions.HasStandardOptions() {
+		httpClient = opts.ExecuterOpts.Dialers.Http()
+	} else {
+		httpClient, err = httpclientpool.Get(opts.ExecuterOpts.Options, httpConnectionOptions)
+		if err != nil {
+			return nil, errors.Wrap(err, "could not get http client")
+		}
+	}
+
 	return &Service{
 		opts:               opts.ExecuterOpts,
 		store:              opts.Store,
@@ -110,7 +117,7 @@ func New(opts Options) (*Service, error) {
 		target:             opts.Target,
 		wappalyzer:         wappalyzer,
 		templateDirs:       templateDirs, // fix this
-		httpclient:         httpclient,
+		httpclient:         httpClient,
 		technologyMappings: mappingData,
 		techTemplates:      techDetectTemplates,
 		ServiceOpts:        opts,

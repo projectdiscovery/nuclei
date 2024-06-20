@@ -783,7 +783,7 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 				modifiedConfig.ResponseHeaderTimeout = updatedTimeout.Timeout
 			}
 
-			if modifiedConfig != nil {
+			if modifiedConfig != nil && !modifiedConfig.HasStandardOptions() {
 				client, err := httpclientpool.Get(request.options.Options, modifiedConfig)
 				if err != nil {
 					return errors.Wrap(err, "could not get http client")

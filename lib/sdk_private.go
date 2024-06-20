@@ -115,6 +115,7 @@ func (e *NucleiEngine) init(ctx context.Context) error {
 	}
 
 	if e.opts.ProxyInternal && types.ProxyURL != "" || types.ProxySocksURL != "" {
+		// we use an independent instance of retryablehttp for internal operations
 		httpclient, err := httpclientpool.Get(e.opts, &httpclientpool.Configuration{})
 		if err != nil {
 			return err

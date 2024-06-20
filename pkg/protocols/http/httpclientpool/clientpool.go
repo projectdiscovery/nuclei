@@ -7,8 +7,6 @@ import (
 	"net/http"
 	"net/http/cookiejar"
 	"net/url"
-	"strconv"
-	"strings"
 	"sync"
 	"time"
 
@@ -23,14 +21,10 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/types/scanstrategy"
 	"github.com/projectdiscovery/rawhttp"
 	"github.com/projectdiscovery/retryablehttp-go"
-	mapsutil "github.com/projectdiscovery/utils/maps"
 )
 
 var (
-	rawHttpClient     *rawhttp.Client
 	forceMaxRedirects int
-	normalClient      *retryablehttp.Client
-	clientPool        *mapsutil.SyncLockMap[string, *retryablehttp.Client]
 	// MaxResponseHeaderTimeout is the timeout for response headers
 	// to be read from the server (this prevents infinite hang started by server if any)
 	// Note: this will be overridden temporarily when using @timeout request annotation
@@ -46,25 +40,12 @@ func GetHttpTimeout(opts *types.Options) time.Duration {
 
 // Init initializes the clientpool implementation
 func Init(options *types.Options) error {
-	// Don't create clients if already created in the past.
-	if normalClient != nil {
-		return nil
-	}
 	if options.Timeout > 10 {
 		MaxResponseHeaderTimeout = time.Duration(options.Timeout) * time.Second
 	}
 	if options.ShouldFollowHTTPRedirects() {
 		forceMaxRedirects = options.MaxRedirects
 	}
-	clientPool = &mapsutil.SyncLockMap[string, *retryablehttp.Client]{
-		Map: make(mapsutil.Map[string, *retryablehttp.Client]),
-	}
-
-	client, err := wrappedGet(options, &Configuration{})
-	if err != nil {
-		return err
-	}
-	normalClient = client
 	return nil
 }
 
@@ -115,66 +96,28 @@ type Configuration struct {
 	ResponseHeaderTimeout time.Duration
 }
 
-// Hash returns the hash of the configuration to allow client pooling
-func (c *Configuration) Hash() string {
-	builder := &strings.Builder{}
-	builder.Grow(16)
-	builder.WriteString("t")
-	builder.WriteString(strconv.Itoa(c.Threads))
-	builder.WriteString("m")
-	builder.WriteString(strconv.Itoa(c.MaxRedirects))
-	builder.WriteString("n")
-	builder.WriteString(strconv.FormatBool(c.NoTimeout))
-	builder.WriteString("f")
-	builder.WriteString(strconv.Itoa(int(c.RedirectFlow)))
-	builder.WriteString("r")
-	builder.WriteString(strconv.FormatBool(c.DisableCookie))
-	builder.WriteString("c")
-	builder.WriteString(strconv.FormatBool(c.Connection != nil))
-	builder.WriteString("r")
-	builder.WriteString(strconv.FormatInt(int64(c.ResponseHeaderTimeout.Seconds()), 10))
-	hash := builder.String()
-	return hash
-}
-
 // HasStandardOptions checks whether the configuration requires custom settings
 func (c *Configuration) HasStandardOptions() bool {
 	return c.Threads == 0 && c.MaxRedirects == 0 && c.RedirectFlow == DontFollowRedirect && c.DisableCookie && c.Connection == nil && !c.NoTimeout && c.ResponseHeaderTimeout == 0
 }
 
-// GetRawHTTP returns the rawhttp request client
-func GetRawHTTP(options *types.Options) *rawhttp.Client {
-	if rawHttpClient == nil {
-		rawHttpOptions := rawhttp.DefaultOptions
-		if types.ProxyURL != "" {
-			rawHttpOptions.Proxy = types.ProxyURL
-		} else if types.ProxySocksURL != "" {
-			rawHttpOptions.Proxy = types.ProxySocksURL
-		} else if protocolstate.Dialer != nil {
-			rawHttpOptions.FastDialer = protocolstate.Dialer
-		}
-		rawHttpOptions.Timeout = GetHttpTimeout(options)
-		rawHttpClient = rawhttp.NewClient(rawHttpOptions)
+// GetRawH returns the rawhttp request client
+func GetRaw(options *types.Options) *rawhttp.Client {
+	rawHttpOptions := rawhttp.DefaultOptions
+	if types.ProxyURL != "" {
+		rawHttpOptions.Proxy = types.ProxyURL
+	} else if types.ProxySocksURL != "" {
+		rawHttpOptions.Proxy = types.ProxySocksURL
+	} else if protocolstate.Dialer != nil {
+		rawHttpOptions.FastDialer = protocolstate.Dialer
 	}
-	return rawHttpClient
-}
-
-// Get creates or gets a client for the protocol based on custom configuration
-func Get(options *types.Options, configuration *Configuration) (*retryablehttp.Client, error) {
-	if configuration.HasStandardOptions() {
-		return normalClient, nil
-	}
-	return wrappedGet(options, configuration)
+	rawHttpOptions.Timeout = GetHttpTimeout(options)
+	return rawhttp.NewClient(rawHttpOptions)
 }
 
 // wrappedGet wraps a get operation without normal client check
-func wrappedGet(options *types.Options, configuration *Configuration) (*retryablehttp.Client, error) {
+func Get(options *types.Options, configuration *Configuration) (*retryablehttp.Client, error) {
 	var err error
-
-	hash := configuration.Hash()
-	if client, ok := clientPool.Get(hash); ok {
-		return client, nil
-	}
 
 	// Multiple Host
 	retryableHttpOptions := retryablehttp.DefaultOptionsSpraying
@@ -316,12 +259,6 @@ func wrappedGet(options *types.Options, configuration *Configuration) (*retryabl
 	}
 	client.CheckRetry = retryablehttp.HostSprayRetryPolicy()
 
-	// Only add to client pool if we don't have a cookie jar in place.
-	if jar == nil {
-		if err := clientPool.Set(hash, client); err != nil {
-			return nil, err
-		}
-	}
 	return client, nil
 }
 

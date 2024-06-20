@@ -8,8 +8,10 @@ import (
 	"github.com/projectdiscovery/fastdialer/fastdialer"
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/ratelimit"
+	"github.com/projectdiscovery/rawhttp"
 	"github.com/projectdiscovery/rdap"
 	"github.com/projectdiscovery/retryabledns"
+	"github.com/projectdiscovery/retryablehttp-go"
 	mapsutil "github.com/projectdiscovery/utils/maps"
 	stringsutil "github.com/projectdiscovery/utils/strings"
 
@@ -36,6 +38,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/variables"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/dns/dnsclientpool"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/headless/engine"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http/httpclientpool"
 	"github.com/projectdiscovery/nuclei/v3/pkg/reporting"
 	"github.com/projectdiscovery/nuclei/v3/pkg/scan"
 	templateTypes "github.com/projectdiscovery/nuclei/v3/pkg/templates/types"
@@ -135,9 +138,11 @@ type ExecutorOptions struct {
 }
 
 type Dialers struct {
-	fastDialer *fastdialer.Dialer
-	rdapClient *rdap.Client
-	dnsClient  *retryabledns.Client
+	fastDialer    *fastdialer.Dialer
+	rdapClient    *rdap.Client
+	dnsClient     *retryabledns.Client
+	httpClient    *retryablehttp.Client
+	rawHttpClient *rawhttp.Client
 }
 
 func NewDealers(options *types.Options) (*Dialers, error) {
@@ -166,6 +171,13 @@ func NewDealers(options *types.Options) (*Dialers, error) {
 		return nil, err
 	}
 
+	// - http
+	dialers.httpClient, err = httpclientpool.Get(options, &httpclientpool.Configuration{})
+	if err != nil {
+		return nil, err
+	}
+	dialers.rawHttpClient = httpclientpool.GetRaw(options)
+
 	return dialers, nil
 }
 
@@ -179,6 +191,14 @@ func (d *Dialers) Rdap() *rdap.Client {
 
 func (d *Dialers) Dns() *retryabledns.Client {
 	return d.dnsClient
+}
+
+func (d *Dialers) Http() *retryablehttp.Client {
+	return d.httpClient
+}
+
+func (d *Dialers) RawHttp() *rawhttp.Client {
+	return d.rawHttpClient
 }
 
 func (d *Dialers) Close() {

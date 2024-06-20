@@ -312,12 +312,18 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 	}
 	request.connConfiguration = connectionConfiguration
 
-	client, err := httpclientpool.Get(options.Options, connectionConfiguration)
-	if err != nil {
-		return errors.Wrap(err, "could not get dns client")
+	var httpClient *retryablehttp.Client
+	if connectionConfiguration.HasStandardOptions() {
+		httpClient = options.Dialers.Http()
+	} else {
+		var err error
+		httpClient, err = httpclientpool.Get(options.Options, connectionConfiguration)
+		if err != nil {
+			return errors.Wrap(err, "could not get dns client")
+		}
 	}
 	request.customHeaders = make(map[string]string)
-	request.httpClient = client
+	request.httpClient = httpClient
 	request.options = options
 	for _, option := range request.options.Options.CustomHeaders {
 		parts := strings.SplitN(option, ":", 2)
@@ -336,7 +342,7 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 				request.Raw[i] = strings.ReplaceAll(raw, "\n", "\r\n")
 			}
 		}
-		request.rawhttpClient = httpclientpool.GetRawHTTP(options.Options)
+		request.rawhttpClient = options.Dialers.RawHttp()
 	}
 	if len(request.Matchers) > 0 || len(request.Extractors) > 0 {
 		compiled := &request.Operators
@@ -411,6 +417,7 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 	}
 
 	if len(request.Payloads) > 0 {
+		var err error
 		request.generator, err = generators.New(request.Payloads, request.AttackType.Value, request.options.TemplatePath, request.options.Catalog, request.options.Options.AttackType, request.options.Options)
 		if err != nil {
 			return errors.Wrap(err, "could not parse payloads")
