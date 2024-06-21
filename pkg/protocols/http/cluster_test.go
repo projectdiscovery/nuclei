@@ -8,8 +8,7 @@ import (
 
 func TestCanCluster(t *testing.T) {
 	req := &Request{Unsafe: true}
-	req2 := &Request{}
-	require.False(t, req2.IsClusterable() && req.CanCluster(req2), "could cluster unsafe request")
+	require.False(t, req.IsClusterable(), "could cluster unsafe request")
 
 	req = &Request{Path: []string{"{{BaseURL}}"}, Method: HTTPMethodTypeHolder{MethodType: HTTPGet}}
 

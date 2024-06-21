@@ -41,16 +41,14 @@ import (
 // Finally, the engine creates a single executer with a clusteredexecuter for all templates
 // in a cluster.
 func Cluster(list []*Template) [][]*Template {
-	http := make(map[string]*Template)
-	dns := make(map[string]*Template)
-	ssl := make(map[string]*Template)
+	http := make(map[int]*Template)
+	dns := make(map[int]*Template)
+	ssl := make(map[int]*Template)
 
 	final := [][]*Template{}
 
 	// Split up templates that might be clusterable
-	for _, template := range list {
-		key := template.Path
-
+	for key, template := range list {
 		// it is not possible to cluster flow and multiprotocol due to dependent execution
 		if template.Flow != "" || template.Options.IsMultiProtocol {
 			final = append(final, []*Template{template})

@@ -24,5 +24,5 @@ func (request *Request) CanCluster(other *Request) bool {
 }
 
 func (request *Request) IsClusterable() bool {
-	return (len(request.Resolvers) > 0 || request.Trace || request.ID != "")
+	return !(len(request.Resolvers) > 0 || request.Trace || request.ID != "")
 }
