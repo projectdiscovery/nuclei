@@ -14,7 +14,6 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/scan"
 	"github.com/projectdiscovery/nuclei/v3/pkg/templates/types"
 	cryptoutil "github.com/projectdiscovery/utils/crypto"
-	mapsutil "github.com/projectdiscovery/utils/maps"
 )
 
 // Cluster clusters a list of templates into a lesser number if possible based
@@ -42,90 +41,82 @@ import (
 // Finally, the engine creates a single executer with a clusteredexecuter for all templates
 // in a cluster.
 func Cluster(list []*Template) [][]*Template {
-	final := [][]*Template{}
-	skip := mapsutil.NewSyncLockMap[string, struct{}]()
+	http := make(map[string]*Template)
+	dns := make(map[string]*Template)
+	ssl := make(map[string]*Template)
 
+	final := [][]*Template{}
+
+	// Split up templates that might be clusterable
 	for _, template := range list {
 		key := template.Path
 
-		if skip.Has(key) {
-			continue
-		}
-
-		// We only cluster http, dns and ssl requests as of now.
-		// Take care of requests that can't be clustered first.
-		if len(template.RequestsHTTP) == 0 && len(template.RequestsDNS) == 0 && len(template.RequestsSSL) == 0 {
-			_ = skip.Set(key, struct{}{})
-			final = append(final, []*Template{template})
-			continue
-		}
-
 		// it is not possible to cluster flow and multiprotocol due to dependent execution
 		if template.Flow != "" || template.Options.IsMultiProtocol {
-			_ = skip.Set(key, struct{}{})
 			final = append(final, []*Template{template})
 			continue
 		}
 
-		_ = skip.Set(key, struct{}{})
-
-		var templateType types.ProtocolType
 		switch {
 		case len(template.RequestsDNS) == 1:
-			templateType = types.DNSProtocol
+			if template.RequestsDNS[0].IsClusterable() {
+				dns[key] = template
+			} else {
+				final = append(final, []*Template{template})
+			}
 		case len(template.RequestsHTTP) == 1:
-			templateType = types.HTTPProtocol
+			if template.RequestsHTTP[0].IsClusterable() {
+				http[key] = template
+			} else {
+				final = append(final, []*Template{template})
+			}
 		case len(template.RequestsSSL) == 1:
-			templateType = types.SSLProtocol
-		}
-
-		// Find any/all similar matching request that is identical to
-		// this one and cluster them together for http protocol only.
-		cluster := []*Template{}
-		for _, other := range list {
-			otherKey := other.Path
-
-			if skip.Has(otherKey) {
-				continue
+			if template.RequestsSSL[0].IsClusterable() {
+				ssl[key] = template
+			} else {
+				final = append(final, []*Template{template})
 			}
-
-			// it is not possible to cluster flow and multiprotocol due to dependent execution
-			if other.Flow != "" || other.Options.IsMultiProtocol {
-				_ = skip.Set(otherKey, struct{}{})
-				final = append(final, []*Template{other})
-				continue
-			}
-
-			switch templateType {
-			case types.DNSProtocol:
-				if len(other.RequestsDNS) != 1 {
-					continue
-				} else if template.RequestsDNS[0].CanCluster(other.RequestsDNS[0]) {
-					_ = skip.Set(otherKey, struct{}{})
-					cluster = append(cluster, other)
-				}
-			case types.HTTPProtocol:
-				if len(other.RequestsHTTP) != 1 {
-					continue
-				} else if template.RequestsHTTP[0].CanCluster(other.RequestsHTTP[0]) {
-					_ = skip.Set(otherKey, struct{}{})
-					cluster = append(cluster, other)
-				}
-			case types.SSLProtocol:
-				if len(other.RequestsSSL) != 1 {
-					continue
-				} else if template.RequestsSSL[0].CanCluster(other.RequestsSSL[0]) {
-					_ = skip.Set(otherKey, struct{}{})
-					cluster = append(cluster, other)
-				}
-			}
-		}
-		if len(cluster) > 0 {
-			cluster = append(cluster, template)
-			final = append(final, cluster)
-		} else {
+		default:
 			final = append(final, []*Template{template})
 		}
+	}
+
+	// Cluster together dns, http and ssl individually
+
+	for key, template := range dns {
+		cluster := []*Template{template}
+		delete(dns, key)
+		for otherKey, other := range dns {
+			if template.RequestsDNS[0].CanCluster(other.RequestsDNS[0]) {
+				delete(dns, otherKey)
+				cluster = append(cluster, other)
+			}
+		}
+		final = append(final, cluster)
+	}
+
+	for key, template := range http {
+		cluster := []*Template{template}
+		delete(http, key)
+		for otherKey, other := range http {
+			if template.RequestsHTTP[0].CanCluster(other.RequestsHTTP[0]) {
+				delete(http, otherKey)
+				cluster = append(cluster, other)
+			}
+		}
+		final = append(final, cluster)
+	}
+
+	for key, template := range ssl {
+		cluster := []*Template{template}
+		delete(ssl, key)
+		for otherKey, other := range ssl {
+			if template.RequestsSSL[0].CanCluster(other.RequestsSSL[0]) {
+				delete(ssl, otherKey)
+				cluster = append(cluster, other)
+			}
+		}
+		final = append(final, cluster)
 	}
 	return final
 }

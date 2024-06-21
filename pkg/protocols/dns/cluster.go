@@ -6,9 +6,6 @@ package dns
 // are similar enough to be considered one and can be checked by
 // just adding the matcher/extractors for the request and the correct IDs.
 func (request *Request) CanCluster(other *Request) bool {
-	if len(request.Resolvers) > 0 || request.Trace || request.ID != "" {
-		return false
-	}
 	if request.Name != other.Name ||
 		request.class != other.class ||
 		request.Retries != other.Retries ||
@@ -24,4 +21,8 @@ func (request *Request) CanCluster(other *Request) bool {
 		}
 	}
 	return true
+}
+
+func (request *Request) IsClusterable() bool {
+	return (len(request.Resolvers) > 0 || request.Trace || request.ID != "")
 }

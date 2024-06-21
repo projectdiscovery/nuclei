@@ -99,15 +99,17 @@ type Request struct {
 	options *protocols.ExecutorOptions
 }
 
+
 // CanCluster returns true if the request can be clustered.
 func (request *Request) CanCluster(other *Request) bool {
-	if len(request.CipherSuites) > 0 || request.MinVersion != "" || request.MaxVersion != "" {
-		return false
-	}
 	if request.Address != other.Address || request.ScanMode != other.ScanMode {
 		return false
 	}
 	return true
+}
+
+func (request *Request) IsClusterable() bool {
+	return (len(request.CipherSuites) > 0 || request.MinVersion != "" || request.MaxVersion != "")
 }
 
 // Compile compiles the request generators preparing any requests possible.
