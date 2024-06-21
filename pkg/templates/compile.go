@@ -119,7 +119,6 @@ func (template *Template) parseSelfContainedRequests() {
 }
 
 // Requests returns the total request count for the template
-// this does not include workflows
 func (template *Template) Requests() int {
 	return len(template.RequestsDNS) +
 		len(template.RequestsHTTP) +
@@ -343,7 +342,8 @@ func parseTemplate(data []byte, options protocols.ExecutorOptions) (*Template, e
 		return nil, errors.New("no template author field provided")
 	}
 
-	if len(template.Workflows) > 0 && template.Requests() > 0 {
+	numberOfWorkflows := len(template.Workflows)
+	if numberOfWorkflows > 0 && numberOfWorkflows != template.Requests() {
 		return nil, errors.New("workflows cannot have other protocols")
 	}
 
