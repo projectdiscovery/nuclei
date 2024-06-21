@@ -197,3 +197,12 @@ func Test_WrongTemplate(t *testing.T) {
 	require.Nil(t, got, "could not parse template")
 	require.ErrorContains(t, err, "no requests defined ")
 }
+
+func TestWrongWorkflow(t *testing.T) {
+	setup()
+
+	filePath := "tests/workflow-invalid.yaml"
+	got, err := templates.Parse(filePath, nil, executerOpts)
+	require.Nil(t, got, "could not parse template")
+	require.ErrorContains(t, err, "workflows cannot have other protocols")
+}
