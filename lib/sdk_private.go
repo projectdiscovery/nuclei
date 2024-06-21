@@ -109,7 +109,7 @@ func (e *NucleiEngine) init(ctx context.Context) error {
 	}
 
 	var err error
-	e.dialers, err = protocols.NewDealers(e.opts)
+	e.dialers, err = protocols.NewDialers(e.opts)
 	if err != nil {
 		return errors.Wrap(err, "could not create dialers")
 	}

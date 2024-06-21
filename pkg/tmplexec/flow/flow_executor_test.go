@@ -26,6 +26,11 @@ func setup() {
 	testutils.Init(options)
 	progressImpl, _ := progress.NewStatsTicker(0, false, false, false, 0)
 
+	dialers, err := protocols.NewDialers(options)
+	if err != nil {
+		log.Fatalf("Could not create dialers: %s\n", err)
+	}
+
 	executerOpts = protocols.ExecutorOptions{
 		Output:       testutils.NewMockOutputWriter(options.OmitTemplate),
 		Options:      options,
@@ -36,6 +41,7 @@ func setup() {
 		Catalog:      disk.NewCatalog(config.DefaultConfig.TemplatesDirectory),
 		RateLimiter:  ratelimit.New(context.Background(), uint(options.RateLimit), time.Second),
 		Parser:       templates.NewParser(),
+		Dialers:      dialers,
 	}
 	workflowLoader, err := workflow.NewLoader(&executerOpts)
 	if err != nil {

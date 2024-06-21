@@ -2,17 +2,14 @@ package splunk
 
 import (
 	"bytes"
-	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"io"
 	"net"
 	"net/http"
-	"time"
 
 	"github.com/pkg/errors"
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
-	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
 	"github.com/projectdiscovery/retryablehttp-go"
 	"github.com/projectdiscovery/useragent"
 )
@@ -48,20 +45,9 @@ type Exporter struct {
 func New(option *Options) (*Exporter, error) {
 	var ei *Exporter
 
-	var client *http.Client
-	if option.HttpClient != nil {
-		client = option.HttpClient.HTTPClient
-	} else {
-		client = &http.Client{
-			Timeout: 5 * time.Second,
-			Transport: &http.Transport{
-				MaxIdleConns:        10,
-				MaxIdleConnsPerHost: 10,
-				DialContext:         protocolstate.Dialer.Dial,
-				DialTLSContext:      protocolstate.Dialer.DialTLS,
-				TLSClientConfig:     &tls.Config{InsecureSkipVerify: option.SSLVerification},
-			},
-		}
+	// we do not allow nil http client
+	if option.HttpClient == nil {
+		return nil, errors.New("http client is nil")
 	}
 
 	// preparing url for splunk
@@ -85,7 +71,7 @@ func New(option *Options) (*Exporter, error) {
 	ei = &Exporter{
 		url:            url,
 		authentication: authentication,
-		splunk:         client,
+		splunk:         option.HttpClient.HTTPClient,
 	}
 	return ei, nil
 }

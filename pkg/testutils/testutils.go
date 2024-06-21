@@ -89,7 +89,7 @@ type TemplateInfo struct {
 // NewMockExecuterOptions creates a new mock executeroptions struct
 func NewMockExecuterOptions(options *types.Options, info *TemplateInfo) (*protocols.ExecutorOptions, error) {
 	progressImpl, _ := progress.NewStatsTicker(0, false, false, false, 0)
-	dialers, err := protocols.NewDealers(options)
+	dialers, err := protocols.NewDialers(options)
 	if err != nil {
 		return nil, err
 	}

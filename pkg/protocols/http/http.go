@@ -319,9 +319,10 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 		var err error
 		httpClient, err = httpclientpool.Get(options.Options, connectionConfiguration)
 		if err != nil {
-			return errors.Wrap(err, "could not get dns client")
+			return errors.Wrap(err, "could not get http client")
 		}
 	}
+
 	request.customHeaders = make(map[string]string)
 	request.httpClient = httpClient
 	request.options = options

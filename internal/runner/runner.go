@@ -454,7 +454,7 @@ func (r *Runner) RunEnumeration() error {
 	fuzzFreqCache := frequency.New(frequency.DefaultMaxTrackCount, r.options.FuzzParamFrequency)
 	r.fuzzFrequencyCache = fuzzFreqCache
 
-	dialers, err := protocols.NewDealers(r.options)
+	dialers, err := protocols.NewDialers(r.options)
 	if err != nil {
 		return errors.Wrap(err, "could not create dialers")
 	}

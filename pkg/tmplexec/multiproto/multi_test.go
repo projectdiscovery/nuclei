@@ -25,7 +25,7 @@ func setup(t *testing.T) {
 	testutils.Init(options)
 	progressImpl, _ := progress.NewStatsTicker(0, false, false, false, 0)
 
-	dialers, err := protocols.NewDealers(options)
+	dialers, err := protocols.NewDialers(options)
 	require.Nil(t, err, "could not create dialers")
 
 	executerOpts = protocols.ExecutorOptions{

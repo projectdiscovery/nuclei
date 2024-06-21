@@ -100,7 +100,7 @@ func executeNucleiAsLibrary(templatePath, templateURL string) ([]string, error) 
 	ratelimiter := ratelimit.New(context.Background(), 150, time.Second)
 	defer ratelimiter.Stop()
 
-	dialers, err := protocols.NewDealers(defaultOpts)
+	dialers, err := protocols.NewDialers(defaultOpts)
 	if err != nil {
 		return nil, errors.Wrap(err, "could not create dialers")
 	}

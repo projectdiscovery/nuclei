@@ -145,7 +145,7 @@ type Dialers struct {
 	rawHttpClient *rawhttp.Client
 }
 
-func NewDealers(options *types.Options) (*Dialers, error) {
+func NewDialers(options *types.Options) (*Dialers, error) {
 	var dialers = &Dialers{}
 	var err error
 
