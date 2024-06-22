@@ -342,6 +342,11 @@ func parseTemplate(data []byte, options protocols.ExecutorOptions) (*Template, e
 		return nil, errors.New("no template author field provided")
 	}
 
+	numberOfWorkflows := len(template.Workflows)
+	if numberOfWorkflows > 0 && numberOfWorkflows != template.Requests() {
+		return nil, errors.New("workflows cannot have other protocols")
+	}
+
 	// use default unknown severity
 	if len(template.Workflows) == 0 {
 		if template.Info.SeverityHolder.Severity == severity.Undefined {
