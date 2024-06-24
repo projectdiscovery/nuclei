@@ -41,14 +41,14 @@ import (
 // Finally, the engine creates a single executer with a clusteredexecuter for all templates
 // in a cluster.
 func Cluster(list []*Template) [][]*Template {
-	http := make(map[uint64]map[int]*Template)
-	dns := make(map[uint64]map[int]*Template)
-	ssl := make(map[uint64]map[int]*Template)
+	http := make(map[uint64][]*Template)
+	dns := make(map[uint64][]*Template)
+	ssl := make(map[uint64][]*Template)
 
 	final := [][]*Template{}
 
 	// Split up templates that might be clusterable
-	for key, template := range list {
+	for _, template := range list {
 		// it is not possible to cluster flow and multiprotocol due to dependent execution
 		if template.Flow != "" || template.Options.IsMultiProtocol {
 			final = append(final, []*Template{template})
@@ -58,31 +58,32 @@ func Cluster(list []*Template) [][]*Template {
 		switch {
 		case len(template.RequestsDNS) == 1:
 			if template.RequestsDNS[0].IsClusterable() {
-				hash := template.RequestsDNS[0].ClusterHash()
+				hash := template.RequestsDNS[0].TmplClusterKey()
 				if dns[hash] == nil {
-					dns[hash] = map[int]*Template{}
+					dns[hash] = []*Template{}
 				}
-				dns[hash][key] = template
+				dns[hash] = append(dns[hash], template)
 			} else {
 				final = append(final, []*Template{template})
 			}
+
 		case len(template.RequestsHTTP) == 1:
 			if template.RequestsHTTP[0].IsClusterable() {
-				hash := template.RequestsHTTP[0].ClusterHash()
+				hash := template.RequestsHTTP[0].TmplClusterKey()
 				if http[hash] == nil {
-					http[hash] = map[int]*Template{}
+					http[hash] = []*Template{}
 				}
-				http[hash][key] = template
+				http[hash] = append(http[hash], template)
 			} else {
 				final = append(final, []*Template{template})
 			}
 		case len(template.RequestsSSL) == 1:
 			if template.RequestsSSL[0].IsClusterable() {
-				hash := template.RequestsSSL[0].ClusterHash()
+				hash := template.RequestsSSL[0].TmplClusterKey()
 				if ssl[hash] == nil {
-					ssl[hash] = map[int]*Template{}
+					ssl[hash] = []*Template{}
 				}
-				ssl[hash][key] = template
+				ssl[hash] = append(ssl[hash], template)
 			} else {
 				final = append(final, []*Template{template})
 			}
@@ -91,46 +92,15 @@ func Cluster(list []*Template) [][]*Template {
 		}
 	}
 
-	for _, templates := range dns {
-		for key, template := range templates {
-			cluster := []*Template{template}
-			delete(templates, key)
-			for otherKey, other := range templates {
-				if template.RequestsDNS[0].CanCluster(other.RequestsDNS[0]) {
-					cluster = append(cluster, other)
-					delete(templates, otherKey)
-				}
-			}
-			final = append(final, cluster)
-		}
-	}
-
+	// add all clusterd templates
 	for _, templates := range http {
-		for key, template := range templates {
-			cluster := []*Template{template}
-			delete(templates, key)
-			for otherKey, other := range templates {
-				if template.RequestsHTTP[0].CanCluster(other.RequestsHTTP[0]) {
-					cluster = append(cluster, other)
-					delete(templates, otherKey)
-				}
-			}
-			final = append(final, cluster)
-		}
+		final = append(final, templates)
 	}
-
+	for _, templates := range dns {
+		final = append(final, templates)
+	}
 	for _, templates := range ssl {
-		for key, template := range templates {
-			delete(templates, key)
-			cluster := []*Template{template}
-			for otherKey, other := range templates {
-				if template.RequestsSSL[0].CanCluster(other.RequestsSSL[0]) {
-					cluster = append(cluster, other)
-					delete(templates, otherKey)
-				}
-			}
-			final = append(final, cluster)
-		}
+		final = append(final, templates)
 	}
 
 	return final

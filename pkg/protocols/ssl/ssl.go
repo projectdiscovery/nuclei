@@ -3,6 +3,7 @@ package ssl
 import (
 	"fmt"
 	"net"
+	"strings"
 	"time"
 
 	"github.com/cespare/xxhash"
@@ -100,14 +101,10 @@ type Request struct {
 	options *protocols.ExecutorOptions
 }
 
-
-// CanCluster returns true if the request can be clustered.
-func (request *Request) CanCluster(other *Request) bool {
-	return true
-}
-
-func (request *Request) ClusterHash() uint64 {
-	inp := fmt.Sprintf("%s-%s", request.Address, request.ScanMode)
+// TmplClusterKey generates a unique key for the request
+// to be used in the clustering process.
+func (request *Request) TmplClusterKey() uint64 {
+	inp := fmt.Sprintf("%s-%s-%t-%t-%s", request.Address, request.ScanMode, request.TLSCiphersEnum, request.TLSVersionsEnum, strings.Join(request.TLSCipherTypes, ","))
 	return xxhash.Sum64String(inp)
 }
 
