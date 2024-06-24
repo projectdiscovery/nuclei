@@ -1,7 +1,10 @@
 package http
 
 import (
-	sliceutil "github.com/projectdiscovery/utils/slice"
+	"fmt"
+	"strings"
+
+	"github.com/cespare/xxhash"
 	"golang.org/x/exp/maps"
 )
 
@@ -11,21 +14,13 @@ import (
 // are similar enough to be considered one and can be checked by
 // just adding the matcher/extractors for the request and the correct IDs.
 func (request *Request) CanCluster(other *Request) bool {
-	if request.Method != other.Method ||
-		request.MaxRedirects != other.MaxRedirects ||
-		request.DisableCookie != other.DisableCookie ||
-		request.Redirects != other.Redirects {
-		return false
-	}
-	if !sliceutil.Equal(request.Path, other.Path) {
-		return false
-	}
-	if !maps.Equal(request.Headers, other.Headers) {
-		return false
-	}
-	return true
+	return maps.Equal(request.Headers, other.Headers)
 }
 
+func (request *Request) ClusterHash() uint64 {
+	inp := fmt.Sprintf("%s-%d-%t-%t-%s", request.Method.String(), request.MaxRedirects, request.DisableCookie, request.Redirects, strings.Join(request.Path, "-"))
+	return xxhash.Sum64String(inp)
+}
 
 func (request *Request) IsClusterable() bool {
 	return !(len(request.Payloads) > 0 || len(request.Fuzzing) > 0 || len(request.Raw) > 0 || len(request.Body) > 0 || request.Unsafe || request.NeedsRequestCondition() || request.Name != "")

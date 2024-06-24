@@ -5,6 +5,7 @@ import (
 	"net"
 	"time"
 
+	"github.com/cespare/xxhash"
 	"github.com/fatih/structs"
 	jsoniter "github.com/json-iterator/go"
 	"github.com/pkg/errors"
@@ -102,10 +103,12 @@ type Request struct {
 
 // CanCluster returns true if the request can be clustered.
 func (request *Request) CanCluster(other *Request) bool {
-	if request.Address != other.Address || request.ScanMode != other.ScanMode {
-		return false
-	}
 	return true
+}
+
+func (request *Request) ClusterHash() uint64 {
+	inp := fmt.Sprintf("%s-%s", request.Address, request.ScanMode)
+	return xxhash.Sum64String(inp)
 }
 
 func (request *Request) IsClusterable() bool {
