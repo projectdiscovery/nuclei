@@ -215,6 +215,10 @@ func (request *Request) executeRequestWithPayloads(input *contextargs.Context, p
 	}
 
 	dumpResponse(event, request.options, responseBody, input.MetaInput.Input)
+	shouldStopAtFirstMatch := request.StopAtFirstMatch || request.options.StopAtFirstMatch || request.options.Options.StopAtFirstMatch
+	if shouldStopAtFirstMatch && event.HasOperatorResult() {
+		return types.ErrNoMoreRequests
+	}
 	return nil
 }
 
