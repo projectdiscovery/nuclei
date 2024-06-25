@@ -14,6 +14,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types/nucleierr"
 	"github.com/projectdiscovery/utils/errkit"
+	stringsutil "github.com/projectdiscovery/utils/strings"
 )
 
 // CacheInterface defines the signature of the hosterrorscache so that
@@ -200,7 +201,7 @@ func (c *Cache) checkError(err error) bool {
 		errX := errkit.FromError(err)
 		tmp := errX.Cause()
 		cause := tmp.Error()
-		if strings.Contains(cause, "ReadStatusLine:") && strings.Contains(cause, "read: connection reset by peer") {
+		if stringsutil.ContainsAll(cause, "ReadStatusLine:", "read: connection reset by peer") {
 			// this is a FP and should not be counted as a host error
 			// because server closes connection when it reads corrupted bytes which we send via rawhttp
 			return false
