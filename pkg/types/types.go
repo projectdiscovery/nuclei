@@ -414,6 +414,10 @@ type TimeoutVariants struct {
 }
 
 func (options *Options) BuildTimeoutVariants() TimeoutVariants {
+	if options.Timeout == 0 {
+		options.Timeout = 10
+	}
+
 	timeoutVariants := TimeoutVariants{
 		// MaxResponseHeaderTimeout is the timeout for response headers
 		// to be read from the server (this prevents infinite hang started by server if any)
