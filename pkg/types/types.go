@@ -15,6 +15,7 @@ import (
 	errorutil "github.com/projectdiscovery/utils/errors"
 	fileutil "github.com/projectdiscovery/utils/file"
 	folderutil "github.com/projectdiscovery/utils/folder"
+	unitutils "github.com/projectdiscovery/utils/unit"
 )
 
 var (
@@ -359,6 +360,12 @@ type Options struct {
 	FuzzingMode string
 	// TlsImpersonate enables TLS impersonation
 	TlsImpersonate bool
+	// DisplayFuzzPoints enables display of fuzz points for fuzzing
+	DisplayFuzzPoints bool
+	// FuzzAggressionLevel is the level of fuzzing aggression (low, medium, high.)
+	FuzzAggressionLevel string
+	// FuzzParamFrequency is the frequency of fuzzing parameters
+	FuzzParamFrequency int
 	// CodeTemplateSignaturePublicKey is the custom public key used to verify the template signature (algorithm is automatically inferred from the length)
 	CodeTemplateSignaturePublicKey string
 	// CodeTemplateSignatureAlgorithm specifies the sign algorithm (rsa, ecdsa)
@@ -463,8 +470,8 @@ func DefaultOptions() *Options {
 		Timeout:                 5,
 		Retries:                 1,
 		MaxHostError:            30,
-		ResponseReadSize:        10 * 1024 * 1024,
-		ResponseSaveSize:        1024 * 1024,
+		ResponseReadSize:        10 * unitutils.Mega,
+		ResponseSaveSize:        unitutils.Mega,
 	}
 }
 

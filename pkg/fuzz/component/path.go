@@ -2,10 +2,12 @@ package component
 
 import (
 	"context"
+	"strconv"
+	"strings"
 
-	"github.com/pkg/errors"
 	"github.com/projectdiscovery/nuclei/v3/pkg/fuzz/dataformat"
 	"github.com/projectdiscovery/retryablehttp-go"
+	urlutil "github.com/projectdiscovery/utils/url"
 )
 
 // Path is a component for a request Path
@@ -31,13 +33,18 @@ func (q *Path) Name() string {
 // parsed component
 func (q *Path) Parse(req *retryablehttp.Request) (bool, error) {
 	q.req = req
-	q.value = NewValue(req.URL.Path)
+	q.value = NewValue("")
 
-	parsed, err := dataformat.Get(dataformat.RawDataFormat).Decode(q.value.String())
-	if err != nil {
-		return false, err
+	splitted := strings.Split(req.URL.Path, "/")
+	values := make(map[string]interface{})
+	for i := range splitted {
+		pathTillNow := strings.Join(splitted[:i+1], "/")
+		if pathTillNow == "" {
+			continue
+		}
+		values[strconv.Itoa(i)] = pathTillNow
 	}
-	q.value.SetParsed(parsed, dataformat.RawDataFormat)
+	q.value.SetParsed(dataformat.KVMap(values), "")
 	return true, nil
 }
 
@@ -56,7 +63,8 @@ func (q *Path) Iterate(callback func(key string, value interface{}) error) (err 
 // SetValue sets a value in the component
 // for a key
 func (q *Path) SetValue(key string, value string) error {
-	if !q.value.SetParsedValue(key, value) {
+	escaped := urlutil.ParamEncode(value)
+	if !q.value.SetParsedValue(key, escaped) {
 		return ErrSetValue
 	}
 	return nil
@@ -73,13 +81,31 @@ func (q *Path) Delete(key string) error {
 // Rebuild returns a new request with the
 // component rebuilt
 func (q *Path) Rebuild() (*retryablehttp.Request, error) {
-	encoded, err := q.value.Encode()
-	if err != nil {
-		return nil, errors.Wrap(err, "could not encode query")
+	originalValues := make(map[string]interface{})
+	splitted := strings.Split(q.req.URL.Path, "/")
+	for i := range splitted {
+		pathTillNow := strings.Join(splitted[:i+1], "/")
+		if pathTillNow == "" {
+			continue
+		}
+		originalValues[strconv.Itoa(i)] = pathTillNow
 	}
+
+	originalPath := q.req.URL.Path
+	lengthSplitted := len(q.value.parsed.Map)
+	for i := lengthSplitted; i > 0; i-- {
+		key := strconv.Itoa(i)
+		original := originalValues[key].(string)
+		new := q.value.parsed.Map[key].(string)
+		originalPath = strings.Replace(originalPath, original, new, 1)
+	}
+
+	rebuiltPath := originalPath
+
+	// Clone the request and update the path
 	cloned := q.req.Clone(context.Background())
-	if err := cloned.UpdateRelPath(encoded, true); err != nil {
-		cloned.URL.RawPath = encoded
+	if err := cloned.UpdateRelPath(rebuiltPath, true); err != nil {
+		cloned.URL.RawPath = rebuiltPath
 	}
 	return cloned, nil
 }

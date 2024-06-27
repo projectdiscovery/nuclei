@@ -1,9 +1,11 @@
 package generators
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
+	"gopkg.in/yaml.v2"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/disk"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
@@ -89,4 +91,50 @@ func getOptions(allowLocalFileAccess bool) *types.Options {
 	opts := types.DefaultOptions()
 	opts.AllowLocalFileAccess = allowLocalFileAccess
 	return opts
+}
+
+func TestParsePayloadsWithAggression(t *testing.T) {
+	testPayload := `linux_path:
+  low:
+    - /etc/passwd
+  medium:
+    - ../etc/passwd
+    - ../../etc/passwd
+  high:
+    - ../../../etc/passwd
+    - ../../../../etc/passwd
+    - ../../../../../etc/passwd`
+
+	var payloads map[string]interface{}
+	err := yaml.NewDecoder(strings.NewReader(testPayload)).Decode(&payloads)
+	require.Nil(t, err, "could not unmarshal yaml")
+
+	aggressionsToValues := map[string][]string{
+		"low": {
+			"/etc/passwd",
+		},
+		"medium": {
+			"/etc/passwd",
+			"../etc/passwd",
+			"../../etc/passwd",
+		},
+		"high": {
+			"/etc/passwd",
+			"../etc/passwd",
+			"../../etc/passwd",
+			"../../../etc/passwd",
+			"../../../../etc/passwd",
+			"../../../../../etc/passwd",
+		},
+	}
+
+	for k, v := range payloads {
+		for aggression, values := range aggressionsToValues {
+			parsed, err := parsePayloadsWithAggression(k, v.(map[interface{}]interface{}), aggression)
+			require.Nil(t, err, "could not parse payloads with aggression")
+
+			gotValues := parsed[k].([]interface{})
+			require.Equal(t, len(values), len(gotValues), "could not get correct number of values")
+		}
+	}
 }

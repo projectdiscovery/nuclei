@@ -32,13 +32,14 @@ import (
 	sliceutil "github.com/projectdiscovery/utils/slice"
 	stringsutil "github.com/projectdiscovery/utils/strings"
 	syncutil "github.com/projectdiscovery/utils/sync"
+	unitutils "github.com/projectdiscovery/utils/unit"
 	wappalyzer "github.com/projectdiscovery/wappalyzergo"
 	"gopkg.in/yaml.v2"
 )
 
 const (
 	mappingFilename = "wappalyzer-mapping.yml"
-	maxDefaultBody  = 4 * 1024 * 1024 // 4MB
+	maxDefaultBody  = 4 * unitutils.Mega
 )
 
 // Options contains configuration options for automatic scan service

@@ -2,6 +2,7 @@ package fuzz
 
 import (
 	"io"
+	"strconv"
 	"strings"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/fuzz/component"
@@ -9,6 +10,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/generators"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	"github.com/projectdiscovery/retryablehttp-go"
+	sliceutil "github.com/projectdiscovery/utils/slice"
 )
 
 // executePartRule executes part rules based on type
@@ -18,7 +20,7 @@ func (rule *Rule) executePartRule(input *ExecuteRuleInput, payload ValueOrKeyVal
 
 // checkRuleApplicableOnComponent checks if a rule is applicable on given component
 func (rule *Rule) checkRuleApplicableOnComponent(component component.Component) bool {
-	if rule.Part != component.Name() {
+	if rule.Part != component.Name() && !sliceutil.Contains(rule.Parts, component.Name()) && rule.partType != requestPartType {
 		return false
 	}
 	foundAny := false
@@ -68,7 +70,7 @@ func (rule *Rule) executePartComponentOnValues(input *ExecuteRuleInput, payloadS
 				return err
 			}
 
-			if qerr := rule.execWithInput(input, req, input.InteractURLs, ruleComponent, key); qerr != nil {
+			if qerr := rule.execWithInput(input, req, input.InteractURLs, ruleComponent, key, valueStr); qerr != nil {
 				return qerr
 			}
 			// fmt.Printf("executed with value: %s\n", evaluated)
@@ -90,7 +92,7 @@ func (rule *Rule) executePartComponentOnValues(input *ExecuteRuleInput, payloadS
 		if err != nil {
 			return err
 		}
-		if qerr := rule.execWithInput(input, req, input.InteractURLs, ruleComponent, ""); qerr != nil {
+		if qerr := rule.execWithInput(input, req, input.InteractURLs, ruleComponent, "", ""); qerr != nil {
 			err = qerr
 			return err
 		}
@@ -125,7 +127,7 @@ func (rule *Rule) executePartComponentOnKV(input *ExecuteRuleInput, payload Valu
 				return err
 			}
 
-			if qerr := rule.execWithInput(input, req, input.InteractURLs, ruleComponent, key); qerr != nil {
+			if qerr := rule.execWithInput(input, req, input.InteractURLs, ruleComponent, key, value); qerr != nil {
 				return err
 			}
 
@@ -144,7 +146,23 @@ func (rule *Rule) executePartComponentOnKV(input *ExecuteRuleInput, payload Valu
 }
 
 // execWithInput executes a rule with input via callback
-func (rule *Rule) execWithInput(input *ExecuteRuleInput, httpReq *retryablehttp.Request, interactURLs []string, component component.Component, parameter string) error {
+func (rule *Rule) execWithInput(input *ExecuteRuleInput, httpReq *retryablehttp.Request, interactURLs []string, component component.Component, parameter, parameterValue string) error {
+	// If the parameter is a number, replace it with the parameter value
+	// or if the parameter is empty and the parameter value is not empty
+	// replace it with the parameter value
+	if _, err := strconv.Atoi(parameter); err == nil || (parameter == "" && parameterValue != "") {
+		parameter = parameterValue
+	}
+	// If the parameter is frequent, skip it if the option is enabled
+	if rule.options.FuzzParamsFrequency != nil {
+		if rule.options.FuzzParamsFrequency.IsParameterFrequent(
+			parameter,
+			httpReq.URL.String(),
+			rule.options.TemplateID,
+		) {
+			return nil
+		}
+	}
 	request := GeneratedRequest{
 		Request:       httpReq,
 		InteractURLs:  interactURLs,

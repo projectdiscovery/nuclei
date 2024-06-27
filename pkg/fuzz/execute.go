@@ -1,6 +1,7 @@
 package fuzz
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 	"regexp"
@@ -15,6 +16,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/generators"
 	"github.com/projectdiscovery/retryablehttp-go"
 	errorutil "github.com/projectdiscovery/utils/errors"
+	sliceutil "github.com/projectdiscovery/utils/slice"
 	urlutil "github.com/projectdiscovery/utils/url"
 )
 
@@ -45,6 +47,8 @@ type ExecuteRuleInput struct {
 	Values map[string]interface{}
 	// BaseRequest is the base http request for fuzzing rule
 	BaseRequest *retryablehttp.Request
+	// DisplayFuzzPoints is a flag to display fuzz points
+	DisplayFuzzPoints bool
 }
 
 // GeneratedRequest is a single generated request for rule
@@ -76,8 +80,9 @@ func (rule *Rule) Execute(input *ExecuteRuleInput) (err error) {
 
 	var finalComponentList []component.Component
 	// match rule part with component name
+	displayDebugFuzzPoints := make(map[string]map[string]string)
 	for _, componentName := range component.Components {
-		if rule.partType != requestPartType && rule.Part != componentName {
+		if !(rule.Part == componentName || sliceutil.Contains(rule.Parts, componentName) || rule.partType == requestPartType) {
 			continue
 		}
 		component := component.New(componentName)
@@ -89,11 +94,24 @@ func (rule *Rule) Execute(input *ExecuteRuleInput) (err error) {
 		if !discovered {
 			continue
 		}
+
 		// check rule applicable on this component
 		if !rule.checkRuleApplicableOnComponent(component) {
 			continue
 		}
+		// Debugging display for fuzz points
+		if input.DisplayFuzzPoints {
+			displayDebugFuzzPoints[componentName] = make(map[string]string)
+			_ = component.Iterate(func(key string, value interface{}) error {
+				displayDebugFuzzPoints[componentName][key] = fmt.Sprintf("%v", value)
+				return nil
+			})
+		}
 		finalComponentList = append(finalComponentList, component)
+	}
+	if len(displayDebugFuzzPoints) > 0 {
+		marshalled, _ := json.MarshalIndent(displayDebugFuzzPoints, "", "  ")
+		gologger.Info().Msgf("[%s] Fuzz points for %s [%s]\n%s\n", rule.options.TemplateID, input.Input.MetaInput.Input, input.BaseRequest.Method, string(marshalled))
 	}
 
 	if len(finalComponentList) == 0 {
@@ -225,7 +243,7 @@ func (rule *Rule) executeRuleValues(input *ExecuteRuleInput, ruleComponent compo
 			if err != nil {
 				return err
 			}
-			if gotErr := rule.execWithInput(input, req, input.InteractURLs, ruleComponent, ""); gotErr != nil {
+			if gotErr := rule.execWithInput(input, req, input.InteractURLs, ruleComponent, "", ""); gotErr != nil {
 				return gotErr
 			}
 		}
@@ -261,8 +279,9 @@ func (rule *Rule) Compile(generator *generators.PayloadGenerator, options *proto
 		} else {
 			rule.partType = valueType
 		}
-	} else {
-		rule.partType = queryPartType
+	}
+	if rule.Part == "" && len(rule.Parts) == 0 {
+		return errors.Errorf("no part specified for rule")
 	}
 
 	if rule.Type != "" {

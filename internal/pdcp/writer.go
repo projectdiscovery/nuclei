@@ -18,7 +18,9 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
 	"github.com/projectdiscovery/retryablehttp-go"
 	pdcpauth "github.com/projectdiscovery/utils/auth/pdcp"
+	"github.com/projectdiscovery/utils/env"
 	errorutil "github.com/projectdiscovery/utils/errors"
+	unitutils "github.com/projectdiscovery/utils/unit"
 	updateutils "github.com/projectdiscovery/utils/update"
 	urlutil "github.com/projectdiscovery/utils/url"
 )
@@ -26,14 +28,17 @@ import (
 const (
 	uploadEndpoint = "/v1/scans/import"
 	appendEndpoint = "/v1/scans/%s/import"
-	flushTimer     = time.Duration(1) * time.Minute
-	MaxChunkSize   = 1024 * 1024 * 4 // 4 MB
+	flushTimer     = time.Minute
+	MaxChunkSize   = 4 * unitutils.Mega // 4 MB
 	xidRe          = `^[a-z0-9]{20}$`
+	teamIDHeader   = "X-Team-Id"
 )
 
 var (
 	xidRegex               = regexp.MustCompile(xidRe)
 	_        output.Writer = &UploadWriter{}
+	// teamID if given
+	teamID = env.GetEnvOrDefault("PDCP_TEAM_ID", "")
 )
 
 // UploadWriter is a writer that uploads its output to pdcp
@@ -243,6 +248,9 @@ func (u *UploadWriter) getRequest(bin []byte) (*retryablehttp.Request, error) {
 	req.URL.Update()
 
 	req.Header.Set(pdcpauth.ApiKeyHeaderName, u.creds.APIKey)
+	if teamID != "" {
+		req.Header.Set(teamIDHeader, teamID)
+	}
 	req.Header.Set("Content-Type", "application/octet-stream")
 	req.Header.Set("Accept", "application/json")
 	return req, nil
