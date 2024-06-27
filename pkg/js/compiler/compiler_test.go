@@ -1,11 +1,14 @@
 package compiler
 
 import (
+	"context"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/gologger/levels"
+	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 )
 
 func TestNewCompilerConsoleDebug(t *testing.T) {
@@ -18,7 +21,15 @@ func TestNewCompilerConsoleDebug(t *testing.T) {
 	})
 
 	compiler := New()
-	_, err := compiler.Execute("console.log('hello world');", NewExecuteArgs())
+	p, err := WrapScriptNCompile("console.log('hello world');", false)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	_, err = compiler.ExecuteWithOptions(p, NewExecuteArgs(), &ExecuteOptions{Context: context.Background(),
+		Timeout:         10,
+		TimeoutVariants: types.TimeoutVariants{JsCompilerExecutionTimeout: time.Duration(10) * time.Second}},
+	)
 	if err != nil {
 		t.Fatal(err)
 	}
