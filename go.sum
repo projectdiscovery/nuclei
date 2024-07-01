@@ -834,8 +834,8 @@ github.com/projectdiscovery/cdncheck v1.0.9 h1:BS15gzj9gb5AVSKqTDzPamfSgStu7nJQO
 github.com/projectdiscovery/cdncheck v1.0.9/go.mod h1:18SSl1w7rMj53CGeRIZTbDoa286a6xZIxGbaiEo4Fxs=
 github.com/projectdiscovery/clistats v0.0.20 h1:5jO5SLiRJ7f0nDV0ndBNmBeesbROouPooH+DGMgoWq4=
 github.com/projectdiscovery/clistats v0.0.20/go.mod h1:GJ2av0KnOvK0AISQnP8hyDclYIji1LVkx2l0pwnzAu4=
-github.com/projectdiscovery/dsl v0.1.3 h1:Lxlgpx8lwq/CaBjVUmwF6KmkMDnYf9IVKlMsWCF72OE=
-github.com/projectdiscovery/dsl v0.1.3/go.mod h1:WAuQLD4KQ/94RASotE7cvk7X6kY7JQG9Fcqc3lRQfpI=
+github.com/projectdiscovery/dsl v0.1.4 h1:tWF2xWmfwrO/UhalruDflQEBr19WBwU9My4Uke4jndQ=
+github.com/projectdiscovery/dsl v0.1.4/go.mod h1:jYwRd4bRhCtWAOEsG347W4pCi9c/fKfm7vtmuFhwYtA=
 github.com/projectdiscovery/fastdialer v0.1.5 h1:5rNJ8I+GVzDsUqRSVLUqGTm7LsshfNYmCh20lLn1aaI=
 github.com/projectdiscovery/fastdialer v0.1.5/go.mod h1:oVoMl9Y6da2timhszy0okyBvhbKDSk+zqFazGV4y6pU=
 github.com/projectdiscovery/fasttemplate v0.0.2 h1:h2cISk5xDhlJEinlBQS6RRx0vOlOirB2y3Yu4PJzpiA=
