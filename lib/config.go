@@ -440,3 +440,11 @@ func WithCatalog(cat catalog.Catalog) NucleiSDKOptions {
 		return nil
 	}
 }
+
+// DisableUpdateCheck disables nuclei update check
+func DisableUpdateCheck() NucleiSDKOptions {
+	return func(e *NucleiEngine) error {
+		DefaultConfig.DisableUpdateCheck()
+		return nil
+	}
+}
