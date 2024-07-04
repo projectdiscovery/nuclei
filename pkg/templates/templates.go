@@ -227,6 +227,11 @@ func (template *Template) HasCodeProtocol() bool {
 	return len(template.RequestsCode) > 0
 }
 
+// HasFileProtocol returns true if the template has a file protocol section
+func (template *Template) HasFileProtocol() bool {
+	return len(template.RequestsFile) > 0
+}
+
 // validateAllRequestIDs check if that protocol already has given id if not
 // then is is manually set to proto_index
 func (template *Template) validateAllRequestIDs() {

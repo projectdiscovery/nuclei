@@ -60,8 +60,10 @@ type Config struct {
 	ExcludeIds        []string
 	IncludeConditions []string
 
-	Catalog         catalog.Catalog
-	ExecutorOptions protocols.ExecutorOptions
+	Catalog              catalog.Catalog
+	ExecutorOptions      protocols.ExecutorOptions
+	ExcludeSelfContained bool
+	ExcludeFileProtocol  bool
 }
 
 // Store is a storage for loaded nuclei templates
@@ -465,6 +467,17 @@ func (store *Store) LoadTemplatesWithTags(templatesList, tags []string) []*templ
 						stats.Increment(templates.SkippedUnsignedStats)
 						return
 					}
+
+					if parsed.SelfContained && store.config.ExcludeSelfContained {
+						stats.Increment(templates.SkippedSelfContainedStats)
+						return
+					}
+
+					if parsed.HasFileProtocol() && store.config.ExcludeFileProtocol {
+						stats.Increment(templates.SkippedFileStats)
+						return
+					}
+
 					// if template has request signature like aws then only signed and verified templates are allowed
 					if parsed.UsesRequestSignature() && !parsed.Verified {
 						stats.Increment(templates.SkippedRequestSignatureStats)

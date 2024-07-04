@@ -13,4 +13,6 @@ func init() {
 	stats.NewEntry(ExludedDastTmplStats, "Excluded %d dast template[s] (disabled as default), use -dast option to run dast templates.")
 	stats.NewEntry(SkippedUnsignedStats, "Skipping %d unsigned template[s]")
 	stats.NewEntry(SkippedRequestSignatureStats, "Skipping %d templates, HTTP Request signatures can only be used in Signed & Verified templates.")
+	stats.NewEntry(SkippedSelfContainedStats, "Skipping %d self-contained template[s], use  -var or -env-vars flag to run them")
+	stats.NewEntry(SkippedFileStats, "Skipping %d file template[s], use file or directory as an input to run file templates")
 }

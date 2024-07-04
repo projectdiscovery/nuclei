@@ -26,6 +26,7 @@ import (
 	fileutil "github.com/projectdiscovery/utils/file"
 	permissionutil "github.com/projectdiscovery/utils/permission"
 	updateutils "github.com/projectdiscovery/utils/update"
+	"github.com/samber/lo"
 
 	"github.com/logrusorgru/aurora"
 	"github.com/pkg/errors"
@@ -519,6 +520,15 @@ func (r *Runner) RunEnumeration() error {
 		// if input type is not list (implicitly enable fuzzing)
 		r.options.DAST = true
 	}
+
+	if lo.NoneBy(r.options.Targets, func(target string) bool { return fileutil.FileOrFolderExists(target) }) {
+		loaderConfig.ExcludeFileProtocol = true
+	}
+
+	if r.options.Vars.IsEmpty() && !r.options.EnvironmentVariables {
+		loaderConfig.ExcludeSelfContained = true
+	}
+
 	store, err := loader.New(loaderConfig)
 	if err != nil {
 		return errors.Wrap(err, "Could not create loader.")
@@ -727,6 +737,8 @@ func (r *Runner) displayExecutionInfo(store *loader.Store) {
 	stats.DisplayAsWarning(httpProtocol.SetThreadToCountZero)
 	stats.ForceDisplayWarning(templates.SkippedUnsignedStats)
 	stats.ForceDisplayWarning(templates.SkippedRequestSignatureStats)
+	stats.ForceDisplayWarning(templates.SkippedSelfContainedStats)
+	stats.ForceDisplayWarning(templates.SkippedFileStats)
 
 	cfg := config.DefaultConfig
 
