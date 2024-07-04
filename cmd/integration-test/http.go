@@ -952,7 +952,7 @@ func (h *httpRequestSelfContained) Execute(filePath string) error {
 	}()
 	defer server.Close()
 
-	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, "", debug)
+	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, "", debug, "-var foo=bar")
 	if err != nil {
 		return err
 	}
