@@ -27,9 +27,11 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/workflows"
 	"github.com/projectdiscovery/retryablehttp-go"
 	errorutil "github.com/projectdiscovery/utils/errors"
+	fileutil "github.com/projectdiscovery/utils/file"
 	sliceutil "github.com/projectdiscovery/utils/slice"
 	stringsutil "github.com/projectdiscovery/utils/strings"
 	urlutil "github.com/projectdiscovery/utils/url"
+	"github.com/samber/lo"
 )
 
 const (
@@ -63,10 +65,8 @@ type Config struct {
 	ExcludeIds        []string
 	IncludeConditions []string
 
-	Catalog              catalog.Catalog
-	ExecutorOptions      protocols.ExecutorOptions
-	ExcludeSelfContained bool
-	ExcludeFileProtocol  bool
+	Catalog         catalog.Catalog
+	ExecutorOptions protocols.ExecutorOptions
 }
 
 // Store is a storage for loaded nuclei templates
@@ -471,12 +471,17 @@ func (store *Store) LoadTemplatesWithTags(templatesList, tags []string) []*templ
 						return
 					}
 
-					if parsed.SelfContained && store.config.ExcludeSelfContained && templateContainsUnresolvedVariables(templatePath) {
+					if parsed.SelfContained &&
+						store.config.ExecutorOptions.Options.Vars.IsEmpty() && !store.config.ExecutorOptions.Options.EnvironmentVariables &&
+						templateContainsUnresolvedVariables(templatePath) {
 						stats.Increment(templates.SkippedSelfContainedStats)
 						return
 					}
 
-					if parsed.HasFileProtocol() && store.config.ExcludeFileProtocol {
+					if parsed.HasFileProtocol() &&
+						lo.NoneBy(store.config.ExecutorOptions.Options.Targets, func(target string) bool {
+							return fileutil.FileOrFolderExists(target)
+						}) {
 						stats.Increment(templates.SkippedFileStats)
 						return
 					}

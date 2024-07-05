@@ -26,7 +26,6 @@ import (
 	fileutil "github.com/projectdiscovery/utils/file"
 	permissionutil "github.com/projectdiscovery/utils/permission"
 	updateutils "github.com/projectdiscovery/utils/update"
-	"github.com/samber/lo"
 
 	"github.com/logrusorgru/aurora"
 	"github.com/pkg/errors"
@@ -519,14 +518,6 @@ func (r *Runner) RunEnumeration() error {
 	if !strings.EqualFold(r.options.InputFileMode, "list") || r.options.DAST {
 		// if input type is not list (implicitly enable fuzzing)
 		r.options.DAST = true
-	}
-
-	if lo.NoneBy(r.options.Targets, func(target string) bool { return fileutil.FileOrFolderExists(target) }) {
-		loaderConfig.ExcludeFileProtocol = true
-	}
-
-	if r.options.Vars.IsEmpty() && !r.options.EnvironmentVariables {
-		loaderConfig.ExcludeSelfContained = true
 	}
 
 	store, err := loader.New(loaderConfig)
