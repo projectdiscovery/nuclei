@@ -5,10 +5,12 @@ import (
 	"io"
 	"net/url"
 	"os"
+	"regexp"
 	"sort"
 	"strings"
 	"sync"
 
+	"github.com/Knetic/govaluate"
 	"github.com/logrusorgru/aurora"
 	"github.com/pkg/errors"
 	"github.com/projectdiscovery/gologger"
@@ -16,6 +18,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/config"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/loader/filter"
 	"github.com/projectdiscovery/nuclei/v3/pkg/model/types/severity"
+	"github.com/projectdiscovery/nuclei/v3/pkg/operators/common/dsl"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v3/pkg/templates"
 	templateTypes "github.com/projectdiscovery/nuclei/v3/pkg/templates/types"
@@ -468,7 +471,7 @@ func (store *Store) LoadTemplatesWithTags(templatesList, tags []string) []*templ
 						return
 					}
 
-					if parsed.SelfContained && store.config.ExcludeSelfContained {
+					if parsed.SelfContained && store.config.ExcludeSelfContained && templateContainsUnresolvedVariables(templatePath) {
 						stats.Increment(templates.SkippedSelfContainedStats)
 						return
 					}
@@ -539,6 +542,55 @@ func (store *Store) LoadTemplatesWithTags(templatesList, tags []string) []*templ
 	})
 
 	return loadedTemplates.Slice
+}
+
+var (
+	numericalExpressionRegex = regexp.MustCompile(`^[0-9+\-/\W]+$`)
+	unresolvedVariablesRegex = regexp.MustCompile(`(?:%7[B|b]|\{){2}([^}]+)(?:%7[D|d]|\}){2}["'\)\}]*`)
+)
+
+// copy of the original function from pkg/protocols/common/expressions/variables.go:ContainsUnresolvedVariables
+func templateContainsUnresolvedVariables(templatePath string) bool {
+	data, err := os.ReadFile(templatePath)
+	if err != nil {
+		return false
+	}
+
+	matches := unresolvedVariablesRegex.FindAllStringSubmatch(string(data), -1)
+	if len(matches) == 0 {
+		return false
+	}
+
+	var unresolvedVariables []string
+	for _, match := range matches {
+		if len(match) < 2 {
+			continue
+		}
+
+		// Skip if the match is an expression
+		if numericalExpressionRegex.MatchString(match[1]) {
+			continue
+		}
+		// or if it contains only literals (can be solved from expression engine)
+		if hasLiteralsOnly(match[1]) {
+			continue
+		}
+		unresolvedVariables = append(unresolvedVariables, match[1])
+	}
+
+	return len(unresolvedVariables) > 0
+}
+
+func hasLiteralsOnly(data string) bool {
+	expr, err := govaluate.NewEvaluableExpressionWithFunctions(data, dsl.HelperFunctions)
+	if err != nil {
+		return false
+	}
+	if expr != nil {
+		_, err = expr.Evaluate(nil)
+		return err == nil
+	}
+	return true
 }
 
 // IsHTTPBasedProtocolUsed returns true if http/headless protocol is being used for
