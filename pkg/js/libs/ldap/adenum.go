@@ -251,7 +251,7 @@ func (c *Client) GetADDomainSID() string {
 			if sid, ok := sid.([]string); ok {
 				return DecodeSID(sid[0])
 			} else {
-				c.nj.HandleError(fmt.Errorf("invalid objectSid type: %T", sid), "invalid objectSid type")
+				c.nj.HandleError(fmt.Errorf("invalid objectSid type: %T", entry.Attributes.Extra["objectSid"]), "invalid objectSid type")
 			}
 		}
 	}
