@@ -37,17 +37,6 @@ func TestNewCompilerConsoleDebug(t *testing.T) {
 	}
 }
 
-func TestExecuteResultGetSuccess(t *testing.T) {
-	compiler := New()
-	result, err := compiler.Execute("1+1 == 2", NewExecuteArgs())
-	if err != nil {
-		t.Fatal(err)
-	}
-	if result.GetSuccess() != true {
-		t.Fatalf("expected true, got=%v", result.GetSuccess())
-	}
-}
-
 type noopWriter struct {
 	Callback func(data []byte, level levels.Level)
 }

@@ -79,15 +79,6 @@ func (e ExecuteResult) GetSuccess() bool {
 	return val
 }
 
-// Execute executes a script with the default options.
-func (c *Compiler) Execute(code string, args *ExecuteArgs) (ExecuteResult, error) {
-	p, err := WrapScriptNCompile(code, false)
-	if err != nil {
-		return nil, err
-	}
-	return c.ExecuteWithOptions(p, args, &ExecuteOptions{Context: context.Background()})
-}
-
 // ExecuteWithOptions executes a script with the provided options.
 func (c *Compiler) ExecuteWithOptions(program *goja.Program, args *ExecuteArgs, opts *ExecuteOptions) (ExecuteResult, error) {
 	if opts == nil {
