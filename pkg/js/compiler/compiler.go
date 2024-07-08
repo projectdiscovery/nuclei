@@ -38,14 +38,12 @@ type ExecuteOptions struct {
 	// Cleanup is extra cleanup function to be called after execution
 	Cleanup func(runtime *goja.Runtime)
 
-	/// Timeout for this script execution
-	Timeout int
 	// Source is original source of the script
 	Source *string
 
 	Context context.Context
 
-	TimeoutVariants types.TimeoutVariants
+	TimeoutVariants *types.Timeouts
 
 	// Manually exported objects
 	exports map[string]interface{}
@@ -107,12 +105,6 @@ func (c *Compiler) ExecuteWithOptions(program *goja.Program, args *ExecuteArgs, 
 	}
 	// merge all args into templatectx
 	args.TemplateCtx = generators.MergeMaps(args.TemplateCtx, args.Args)
-
-	if opts.Timeout <= 0 || opts.Timeout > 180 {
-		// some js scripts can take longer time so allow configuring timeout
-		// from template but keep it within sane limits (180s)
-		opts.Timeout = JsProtocolTimeout
-	}
 
 	// execute with context and timeout
 

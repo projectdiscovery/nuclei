@@ -34,10 +34,7 @@ func Init(options *types.Options) error {
 
 	lfaAllowed = options.AllowLocalFileAccess
 	opts := fastdialer.DefaultOptions
-	timeoutVariants := options.BuildTimeoutVariants()
-	if timeoutVariants.DialTimeout > 0 {
-		opts.DialerTimeout = timeoutVariants.DialTimeout
-	}
+	opts.DialerTimeout = options.GetTimeouts().DialTimeout
 	if options.DialerKeepAlive > 0 {
 		opts.DialerKeepAlive = options.DialerKeepAlive
 	}

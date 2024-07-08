@@ -36,7 +36,6 @@ func setup() {
 		Catalog:         disk.NewCatalog(config.DefaultConfig.TemplatesDirectory),
 		RateLimiter:     ratelimit.New(context.Background(), uint(options.RateLimit), time.Second),
 		Parser:          templates.NewParser(),
-		TimeoutVariants: options.BuildTimeoutVariants(),
 	}
 	workflowLoader, err := workflow.NewLoader(&executerOpts)
 	if err != nil {

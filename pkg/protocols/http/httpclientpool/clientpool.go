@@ -17,6 +17,7 @@ import (
 	"golang.org/x/net/publicsuffix"
 
 	"github.com/projectdiscovery/fastdialer/fastdialer/ja3/impersonate"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/utils"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
@@ -32,11 +33,6 @@ var (
 	normalClient      *retryablehttp.Client
 	clientPool        *mapsutil.SyncLockMap[string, *retryablehttp.Client]
 )
-
-// GetHttpTimeout returns the http timeout for the client
-func GetHttpTimeout(opts *types.Options) time.Duration {
-	return opts.BuildTimeoutVariants().HttpTimeout
-}
 
 // Init initializes the clientpool implementation
 func Init(options *types.Options) error {
@@ -134,7 +130,7 @@ func (c *Configuration) HasStandardOptions() bool {
 }
 
 // GetRawHTTP returns the rawhttp request client
-func GetRawHTTP(options *types.Options) *rawhttp.Client {
+func GetRawHTTP(options *protocols.ExecutorOptions) *rawhttp.Client {
 	if rawHttpClient == nil {
 		rawHttpOptions := rawhttp.DefaultOptions
 		if types.ProxyURL != "" {
@@ -144,7 +140,7 @@ func GetRawHTTP(options *types.Options) *rawhttp.Client {
 		} else if protocolstate.Dialer != nil {
 			rawHttpOptions.FastDialer = protocolstate.Dialer
 		}
-		rawHttpOptions.Timeout = GetHttpTimeout(options)
+		rawHttpOptions.Timeout = options.Options.GetTimeouts().HttpTimeout
 		rawHttpClient = rawhttp.NewClient(rawHttpOptions)
 	}
 	return rawHttpClient
@@ -230,8 +226,7 @@ func wrappedGet(options *types.Options, configuration *Configuration) (*retryabl
 	}
 
 	// responseHeaderTimeout is max timeout for response headers to be read
-	timeoutVariants := options.BuildTimeoutVariants()
-	responseHeaderTimeout := timeoutVariants.MaxResponseHeaderTimeout
+	responseHeaderTimeout := options.GetTimeouts().HttpResponseHeaderTimeout
 	if configuration.ResponseHeaderTimeout != 0 {
 		responseHeaderTimeout = configuration.ResponseHeaderTimeout
 	}
@@ -300,7 +295,7 @@ func wrappedGet(options *types.Options, configuration *Configuration) (*retryabl
 		CheckRedirect: makeCheckRedirectFunc(redirectFlow, maxRedirects),
 	}
 	if !configuration.NoTimeout {
-		httpclient.Timeout = GetHttpTimeout(options)
+		httpclient.Timeout = options.GetTimeouts().HttpTimeout
 	}
 	client := retryablehttp.NewWithHTTPClient(httpclient, retryableHttpOptions)
 	if jar != nil {

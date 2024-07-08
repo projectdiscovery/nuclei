@@ -100,7 +100,6 @@ func NewMockExecuterOptions(options *types.Options, info *TemplateInfo) *protoco
 		Browser:         nil,
 		Catalog:         disk.NewCatalog(config.DefaultConfig.TemplatesDirectory),
 		RateLimiter:     ratelimit.New(context.Background(), uint(options.RateLimit), time.Second),
-		TimeoutVariants: options.BuildTimeoutVariants(),
 	}
 	executerOpts.CreateTemplateCtxStore()
 	return executerOpts

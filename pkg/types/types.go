@@ -402,42 +402,79 @@ type Options struct {
 	HttpApiEndpoint string
 	// ListTemplateProfiles lists all available template profiles
 	ListTemplateProfiles bool
+	// timeouts contains various types of timeouts used in nuclei
+	// these timeouts are derived from dial-timeout (-timeout) with known multipliers
+	// This is internally managed and does not need to be set by user by explicitly setting
+	// this overrides the default/derived one
+	timeouts *Timeouts
 }
 
-type TimeoutVariants struct {
-	MaxResponseHeaderTimeout   time.Duration
-	ResponseReadTimeout        time.Duration
+// SetTimeouts sets the timeout variants to use for the executor
+func (opts *Options) SetTimeouts(t *Timeouts) {
+	opts.timeouts = t
+}
+
+// GetTimeouts returns the timeout variants to use for the executor
+func (eo *Options) GetTimeouts() *Timeouts {
+	if eo.timeouts != nil {
+		// redundant but apply to avoid any potential issues
+		eo.timeouts.ApplyDefaults()
+		return eo.timeouts
+	}
+	// set timeout variant value
+	eo.timeouts = NewTimeoutVariant(eo.Timeout)
+	eo.timeouts.ApplyDefaults()
+	return eo.timeouts
+}
+
+// Timeouts is a struct that contains all the timeout variants for nuclei
+// dialer timeout is used to derive other timeouts
+type Timeouts struct {
+	// DialTimeout for fastdialer (default 10s)
+	DialTimeout time.Duration
+	// Tcp(Network Protocol) Read From Connection Timeout (default 5s)
+	TcpReadTimeout time.Duration
+	// Http Response Header Timeout (default 10s)
+	// this timeout prevents infinite hangs started by server if any
+	// this is temporarily overridden when using @timeout request annotation
+	HttpResponseHeaderTimeout time.Duration
+	// HttpTimeout for http client (default -> 3 x dial-timeout = 30s)
+	HttpTimeout time.Duration
+	// JsCompilerExec timeout/deadline (default -> 2 x dial-timeout = 20s)
 	JsCompilerExecutionTimeout time.Duration
-	CodeExecutionTimeout       time.Duration
-	HttpTimeout                time.Duration
-	DialTimeout                time.Duration
+	// CodeExecutionTimeout for code execution (default -> 3 x dial-timeout = 30s)
+	CodeExecutionTimeout time.Duration
 }
 
-func (options *Options) BuildTimeoutVariants() TimeoutVariants {
-	if options.Timeout == 0 {
-		options.Timeout = 10
+// NewTimeoutVariant creates a new timeout variant with the given dial timeout in seconds
+func NewTimeoutVariant(dialTimeoutSec int) *Timeouts {
+	tv := &Timeouts{
+		DialTimeout: time.Duration(dialTimeoutSec) * time.Second,
 	}
+	tv.ApplyDefaults()
+	return tv
+}
 
-	timeoutVariants := TimeoutVariants{
-		// MaxResponseHeaderTimeout is the timeout for response headers
-		// to be read from the server (this prevents infinite hang started by server if any)
-		// Note: this will be overridden temporarily when using @timeout request annotation
-		MaxResponseHeaderTimeout: time.Second * 10,
-		//response read timeout in seconds
-		ResponseReadTimeout:        time.Second * 5,
-		JsCompilerExecutionTimeout: time.Second * time.Duration(int(float64(options.Timeout)*1.5)),
-		CodeExecutionTimeout:       time.Second * 3,
-		//http timeout for the client
-		HttpTimeout: time.Second * time.Duration(options.Timeout*3),
-		//timeout for network requests
-		DialTimeout: time.Second * time.Duration(options.Timeout),
+// ApplyDefaults applies default values to timeout variants when missing
+func (tv *Timeouts) ApplyDefaults() {
+	if tv.DialTimeout == 0 {
+		tv.DialTimeout = 10 * time.Second
 	}
-
-	if options.Timeout > 10 {
-		timeoutVariants.MaxResponseHeaderTimeout = time.Second * time.Duration(options.Timeout)
+	if tv.TcpReadTimeout == 0 {
+		tv.TcpReadTimeout = 5 * time.Second
 	}
-
-	return timeoutVariants
+	if tv.HttpResponseHeaderTimeout == 0 {
+		tv.HttpResponseHeaderTimeout = 10 * time.Second
+	}
+	if tv.HttpTimeout == 0 {
+		tv.HttpTimeout = 3 * tv.DialTimeout
+	}
+	if tv.JsCompilerExecutionTimeout == 0 {
+		tv.JsCompilerExecutionTimeout = 2 * tv.DialTimeout
+	}
+	if tv.CodeExecutionTimeout == 0 {
+		tv.CodeExecutionTimeout = 3 * tv.DialTimeout
+	}
 }
 
 // ShouldLoadResume resume file

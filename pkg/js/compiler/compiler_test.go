@@ -27,8 +27,7 @@ func TestNewCompilerConsoleDebug(t *testing.T) {
 	}
 
 	_, err = compiler.ExecuteWithOptions(p, NewExecuteArgs(), &ExecuteOptions{Context: context.Background(),
-		Timeout:         20,
-		TimeoutVariants: types.TimeoutVariants{JsCompilerExecutionTimeout: time.Duration(20) * time.Second}},
+		TimeoutVariants: &types.Timeouts{JsCompilerExecutionTimeout: time.Duration(20) * time.Second}},
 	)
 	if err != nil {
 		t.Fatal(err)
