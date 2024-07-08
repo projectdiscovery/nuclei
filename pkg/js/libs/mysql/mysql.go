@@ -36,6 +36,7 @@ type (
 // const isMySQL = mysql.IsMySQL('acme.com', 3306);
 // ```
 func (c *MySQLClient) IsMySQL(host string, port int) (bool, error) {
+	// todo: why this is exposed? Service fingerprint should be automatic
 	return memoizedisMySQL(host, port)
 }
 
@@ -77,6 +78,16 @@ func (c *MySQLClient) Connect(host string, port int, username, password string) 
 		// host is not valid according to network policy
 		return false, protocolstate.ErrHostDenied.Msgf(host)
 	}
+
+	// executing queries implies the remote mysql service
+	ok, err := c.IsMySQL(host, port)
+	if err != nil {
+		return false, err
+	}
+	if !ok {
+		return false, fmt.Errorf("not a mysql service")
+	}
+
 	dsn, err := BuildDSN(MySQLOptions{
 		Host:     host,
 		Port:     port,
@@ -182,6 +193,16 @@ func (c *MySQLClient) ExecuteQueryWithOpts(opts MySQLOptions, query string) (*ut
 		// host is not valid according to network policy
 		return nil, protocolstate.ErrHostDenied.Msgf(opts.Host)
 	}
+
+	// executing queries implies the remote mysql service
+	ok, err := c.IsMySQL(opts.Host, opts.Port)
+	if err != nil {
+		return nil, err
+	}
+	if !ok {
+		return nil, fmt.Errorf("not a mysql service")
+	}
+
 	dsn, err := BuildDSN(opts)
 	if err != nil {
 		return nil, err
@@ -220,6 +241,15 @@ func (c *MySQLClient) ExecuteQueryWithOpts(opts MySQLOptions, query string) (*ut
 // log(to_json(result));
 // ```
 func (c *MySQLClient) ExecuteQuery(host string, port int, username, password, query string) (*utils.SQLResult, error) {
+	// executing queries implies the remote mysql service
+	ok, err := c.IsMySQL(host, port)
+	if err != nil {
+		return nil, err
+	}
+	if !ok {
+		return nil, fmt.Errorf("not a mysql service")
+	}
+
 	return c.ExecuteQueryWithOpts(MySQLOptions{
 		Host:     host,
 		Port:     port,
