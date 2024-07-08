@@ -68,6 +68,7 @@ func (i *HttpInputProvider) Iterate(callback func(value *contextargs.MetaInput) 
 	err := i.format.Parse(i.inputFile, func(request *types.RequestResponse) bool {
 		return callback(&contextargs.MetaInput{
 			ReqResp: request,
+			Input:   request.URL.String(),
 		})
 	})
 	if err != nil {
