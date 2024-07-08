@@ -245,7 +245,16 @@ func (c *Client) GetADUserAsRepRoastable() SearchResult {
 // ```
 func (c *Client) GetADDomainSID() string {
 	r := c.Search(FilterServerTrustAccount, "objectSid")
-	c.nj.Require(len(r) > 0, "no result from GetADDomainSID query")
-	c.nj.Require(len(r[0]["objectSid"]) > 0, "could not grab DomainSID")
-	return DecodeSID(r[0]["objectSid"][0])
+	c.nj.Require(len(r.Entries) > 0, "no result from GetADDomainSID query")
+	for _, entry := range r.Entries {
+		if sid, ok := entry.Attributes.Extra["objectSid"]; ok {
+			if sid, ok := sid.([]string); ok {
+				return DecodeSID(sid[0])
+			} else {
+				c.nj.HandleError(fmt.Errorf("invalid objectSid type: %T", sid), "invalid objectSid type")
+			}
+		}
+	}
+	c.nj.HandleError(fmt.Errorf("no objectSid found"), "no objectSid found")
+	return ""
 }

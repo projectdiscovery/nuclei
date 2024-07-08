@@ -113,12 +113,6 @@ export interface HeaderLog {
  */
 export interface NegotiationLog {
     
-    SystemTime?: number,
-    
-    ServerStartTime?: number,
-    
-    AuthenticationTypes?: string[],
-    
     SecurityMode?: number,
     
     DialectRevision?: number,
@@ -126,6 +120,12 @@ export interface NegotiationLog {
     ServerGuid?: Uint8Array,
     
     Capabilities?: number,
+    
+    SystemTime?: number,
+    
+    ServerStartTime?: number,
+    
+    AuthenticationTypes?: string[],
     
     HeaderLog?: HeaderLog,
 }
@@ -137,12 +137,6 @@ export interface NegotiationLog {
  */
 export interface SMBCapabilities {
     
-    Persist?: boolean,
-    
-    DirLeasing?: boolean,
-    
-    Encryption?: boolean,
-    
     DFSSupport?: boolean,
     
     Leasing?: boolean,
@@ -150,6 +144,12 @@ export interface SMBCapabilities {
     LargeMTU?: boolean,
     
     MultiChan?: boolean,
+    
+    Persist?: boolean,
+    
+    DirLeasing?: boolean,
+    
+    Encryption?: boolean,
 }
 
 
@@ -159,23 +159,23 @@ export interface SMBCapabilities {
  */
 export interface SMBLog {
     
-    SupportV1?: boolean,
-    
-    NativeOs?: string,
-    
     NTLM?: string,
     
     GroupName?: string,
     
     HasNTLM?: boolean,
     
-    NegotiationLog?: NegotiationLog,
+    SupportV1?: boolean,
     
-    SessionSetupLog?: SessionSetupLog,
+    NativeOs?: string,
     
     Version?: SMBVersions,
     
     Capabilities?: SMBCapabilities,
+    
+    NegotiationLog?: NegotiationLog,
+    
+    SessionSetupLog?: SessionSetupLog,
 }
 
 
@@ -185,13 +185,13 @@ export interface SMBLog {
  */
 export interface SMBVersions {
     
-    VerString?: string,
-    
     Major?: number,
     
     Minor?: number,
     
     Revision?: number,
+    
+    VerString?: string,
 }
 
 
@@ -200,12 +200,6 @@ export interface SMBVersions {
  * ServiceSMB Interface
  */
 export interface ServiceSMB {
-    
-    ForestName?: string,
-    
-    SigningEnabled?: boolean,
-    
-    SigningRequired?: boolean,
     
     OSVersion?: string,
     
@@ -216,6 +210,12 @@ export interface ServiceSMB {
     DNSComputerName?: string,
     
     DNSDomainName?: string,
+    
+    ForestName?: string,
+    
+    SigningEnabled?: boolean,
+    
+    SigningRequired?: boolean,
 }
 
 

@@ -428,8 +428,8 @@ export class Client {
     * const results = client.Search('(objectClass=*)', 'cn', 'mail');
     * ```
     */
-    public Search(filter: string, attributes: any): Record<string, string[]>[] {
-        return [];
+    public Search(filter: string, attributes: any): SearchResult | null {
+        return null;
     }
     
 
@@ -503,32 +503,6 @@ export interface Config {
     ServerName?: string,
     
     Upgrade?: boolean,
-}
-
-
-
-/**
- * Entry Interface
- */
-export interface Entry {
-    
-    DN?: string,
-    
-    Attributes?: EntryAttribute,
-}
-
-
-
-/**
- * EntryAttribute Interface
- */
-export interface EntryAttribute {
-    
-    Name?: string,
-    
-    Values?: string[],
-    
-    ByteValues?: Uint8Array,
 }
 
 
@@ -737,18 +711,6 @@ export interface Metadata {
     DomainControllerFunctionality?: string,
     
     DnsHostName?: string,
-}
-
-
-
-/**
- * SearchResult Interface
- */
-export interface SearchResult {
-    
-    Referrals?: string[],
-    
-    Entries?: Entry,
 }
 
 

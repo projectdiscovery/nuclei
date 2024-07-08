@@ -188,9 +188,9 @@ export class Config {
  */
 export interface AuthorizationDataEntry {
     
-    ADType?: number,
-    
     ADData?: Uint8Array,
+    
+    ADType?: number,
 }
 
 
@@ -200,9 +200,9 @@ export interface AuthorizationDataEntry {
  */
 export interface BitString {
     
-    BitLength?: number,
-    
     Bytes?: Uint8Array,
+    
+    BitLength?: number,
 }
 
 
@@ -236,17 +236,15 @@ export interface Config {
  */
 export interface EncTicketPart {
     
-    AuthTime?: Date,
-    
-    StartTime?: Date,
-    
     EndTime?: Date,
     
     RenewTill?: Date,
     
     CRealm?: string,
     
-    AuthorizationData?: AuthorizationDataEntry,
+    AuthTime?: Date,
+    
+    StartTime?: Date,
     
     Flags?: BitString,
     
@@ -257,6 +255,8 @@ export interface EncTicketPart {
     Transited?: TransitedEncoding,
     
     CAddr?: HostAddress,
+    
+    AuthorizationData?: AuthorizationDataEntry,
 }
 
 
@@ -266,11 +266,11 @@ export interface EncTicketPart {
  */
 export interface EncryptedData {
     
-    Cipher?: Uint8Array,
-    
     EType?: number,
     
     KVNO?: number,
+    
+    Cipher?: Uint8Array,
 }
 
 
@@ -318,59 +318,27 @@ export interface HostAddress {
  */
 export interface LibDefaults {
     
-    DefaultTGSEnctypes?: string[],
+    CCacheType?: number,
     
     K5LoginAuthoritative?: boolean,
     
-    K5LoginDirectory?: string,
-    
-    /**
-    * time in nanoseconds
-    */
-    
-    Clockskew?: number,
-    
-    DefaultTGSEnctypeIDs?: number[],
-    
-    DNSLookupRealm?: boolean,
-    
-    Forwardable?: boolean,
-    
-    DefaultTktEnctypes?: string[],
-    
     Proxiable?: boolean,
-    
-    DefaultRealm?: string,
-    
-    DefaultKeytabName?: string,
-    
-    NoAddresses?: boolean,
-    
-    RealmTryDomains?: number,
-    
-    PermittedEnctypeIDs?: number[],
     
     RDNS?: boolean,
     
-    SafeChecksumType?: number,
-    
-    Canonicalize?: boolean,
-    
-    DefaultTktEnctypeIDs?: number[],
-    
-    DNSCanonicalizeHostname?: boolean,
+    K5LoginDirectory?: string,
     
     KDCTimeSync?: number,
     
-    PermittedEnctypes?: string[],
-    
     VerifyAPReqNofail?: boolean,
     
-    CCacheType?: number,
+    DefaultTGSEnctypes?: string[],
     
-    DNSLookupKDC?: boolean,
+    DefaultTGSEnctypeIDs?: number[],
     
-    ExtraAddresses?: Uint8Array,
+    DNSCanonicalizeHostname?: boolean,
+    
+    Forwardable?: boolean,
     
     /**
     * time in nanoseconds
@@ -378,21 +346,53 @@ export interface LibDefaults {
     
     RenewLifetime?: number,
     
-    UDPPreferenceLimit?: number,
-    
-    AllowWeakCrypto?: boolean,
-    
-    DefaultClientKeytabName?: string,
-    
-    IgnoreAcceptorHostname?: boolean,
-    
-    PreferredPreauthTypes?: number[],
-    
     /**
     * time in nanoseconds
     */
     
     TicketLifetime?: number,
+    
+    DefaultClientKeytabName?: string,
+    
+    DefaultTktEnctypeIDs?: number[],
+    
+    DNSLookupRealm?: boolean,
+    
+    ExtraAddresses?: Uint8Array,
+    
+    DefaultRealm?: string,
+    
+    NoAddresses?: boolean,
+    
+    PreferredPreauthTypes?: number[],
+    
+    PermittedEnctypeIDs?: number[],
+    
+    RealmTryDomains?: number,
+    
+    DefaultKeytabName?: string,
+    
+    DefaultTktEnctypes?: string[],
+    
+    DNSLookupKDC?: boolean,
+    
+    IgnoreAcceptorHostname?: boolean,
+    
+    AllowWeakCrypto?: boolean,
+    
+    Canonicalize?: boolean,
+    
+    SafeChecksumType?: number,
+    
+    UDPPreferenceLimit?: number,
+    
+    /**
+    * time in nanoseconds
+    */
+    
+    Clockskew?: number,
+    
+    PermittedEnctypes?: string[],
     
     KDCDefaultOptions?: BitString,
 }
@@ -416,10 +416,6 @@ export interface PrincipalName {
  */
 export interface Realm {
     
-    KPasswdServer?: string[],
-    
-    MasterKDC?: string[],
-    
     Realm?: string,
     
     AdminServer?: string[],
@@ -427,6 +423,10 @@ export interface Realm {
     DefaultDomain?: string,
     
     KDC?: string[],
+    
+    KPasswdServer?: string[],
+    
+    MasterKDC?: string[],
 }
 
 
