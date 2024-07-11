@@ -12,10 +12,10 @@ import (
 	"github.com/aws/aws-sdk-go-v2/feature/s3/manager"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/projectdiscovery/gologger"
-	nucleiConfig "github.com/projectdiscovery/nuclei/v3/pkg/catalog/config"
-	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	errorutil "github.com/projectdiscovery/utils/errors"
 	stringsutil "github.com/projectdiscovery/utils/strings"
+	nucleiConfig "github.com/secoba/nuclei/v3/pkg/catalog/config"
+	"github.com/secoba/nuclei/v3/pkg/types"
 )
 
 var _ Provider = &customTemplateS3Bucket{}

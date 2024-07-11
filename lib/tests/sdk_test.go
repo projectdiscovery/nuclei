@@ -7,8 +7,8 @@ import (
 	"testing"
 	"time"
 
-	nuclei "github.com/projectdiscovery/nuclei/v3/lib"
 	"github.com/projectdiscovery/utils/env"
+	nuclei "github.com/secoba/nuclei/v3/lib"
 	"github.com/stretchr/testify/require"
 	"github.com/tarunKoyalwar/goleak"
 )

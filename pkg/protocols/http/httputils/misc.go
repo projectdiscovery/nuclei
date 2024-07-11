@@ -3,8 +3,8 @@ package httputils
 import (
 	"strings"
 
-	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	mapsutil "github.com/projectdiscovery/utils/maps"
+	"github.com/secoba/nuclei/v3/pkg/types"
 )
 
 // if template contains more than 1 request and matchers require requestcondition from

@@ -3,12 +3,12 @@ package templates
 import (
 	"testing"
 
-	"github.com/projectdiscovery/nuclei/v3/pkg/model"
-	"github.com/projectdiscovery/nuclei/v3/pkg/model/types/severity"
-	"github.com/projectdiscovery/nuclei/v3/pkg/model/types/stringslice"
-	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/dns"
-	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http"
-	"github.com/projectdiscovery/nuclei/v3/pkg/templates/types"
+	"github.com/secoba/nuclei/v3/pkg/model"
+	"github.com/secoba/nuclei/v3/pkg/model/types/severity"
+	"github.com/secoba/nuclei/v3/pkg/model/types/stringslice"
+	"github.com/secoba/nuclei/v3/pkg/protocols/dns"
+	"github.com/secoba/nuclei/v3/pkg/protocols/http"
+	"github.com/secoba/nuclei/v3/pkg/templates/types"
 	"github.com/stretchr/testify/require"
 )
 

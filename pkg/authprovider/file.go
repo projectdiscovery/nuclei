@@ -6,9 +6,9 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/projectdiscovery/nuclei/v3/pkg/authprovider/authx"
 	errorutil "github.com/projectdiscovery/utils/errors"
 	urlutil "github.com/projectdiscovery/utils/url"
+	"github.com/secoba/nuclei/v3/pkg/authprovider/authx"
 )
 
 // FileAuthProvider is an auth provider for file based auth

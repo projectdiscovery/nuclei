@@ -5,7 +5,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
+	"github.com/secoba/nuclei/v3/pkg/protocols/common/protocolstate"
 )
 
 func memoizedisRDP(host string, port int) (IsRDPResponse, error) {

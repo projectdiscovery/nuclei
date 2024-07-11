@@ -8,15 +8,15 @@ import (
 	"sync/atomic"
 
 	"github.com/dop251/goja"
-	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
-	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/generators"
-	"github.com/projectdiscovery/nuclei/v3/pkg/scan"
-	templateTypes "github.com/projectdiscovery/nuclei/v3/pkg/templates/types"
+	"github.com/secoba/nuclei/v3/pkg/protocols"
+	"github.com/secoba/nuclei/v3/pkg/protocols/common/generators"
+	"github.com/secoba/nuclei/v3/pkg/scan"
+	templateTypes "github.com/secoba/nuclei/v3/pkg/templates/types"
 
-	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	errorutil "github.com/projectdiscovery/utils/errors"
 	fileutil "github.com/projectdiscovery/utils/file"
 	mapsutil "github.com/projectdiscovery/utils/maps"
+	"github.com/secoba/nuclei/v3/pkg/types"
 	"go.uber.org/multierr"
 )
 

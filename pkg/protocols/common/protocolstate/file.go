@@ -3,9 +3,9 @@ package protocolstate
 import (
 	"strings"
 
-	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/config"
 	errorutil "github.com/projectdiscovery/utils/errors"
 	fileutil "github.com/projectdiscovery/utils/file"
+	"github.com/secoba/nuclei/v3/pkg/catalog/config"
 )
 
 var (

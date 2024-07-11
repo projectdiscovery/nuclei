@@ -11,7 +11,7 @@ import (
 
 	"github.com/invopop/jsonschema"
 
-	"github.com/projectdiscovery/nuclei/v3/pkg/templates"
+	"github.com/secoba/nuclei/v3/pkg/templates"
 )
 
 var pathRegex = regexp.MustCompile(`github\.com/projectdiscovery/nuclei/v3/(?:internal|pkg)/(?:.*/)?([A-Za-z.]+)`)

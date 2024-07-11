@@ -3,10 +3,10 @@ package nuclei
 import (
 	"context"
 
-	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/config"
-	uncoverNuclei "github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/uncover"
-	"github.com/projectdiscovery/nuclei/v3/pkg/templates"
 	"github.com/projectdiscovery/uncover"
+	"github.com/secoba/nuclei/v3/pkg/catalog/config"
+	uncoverNuclei "github.com/secoba/nuclei/v3/pkg/protocols/common/uncover"
+	"github.com/secoba/nuclei/v3/pkg/templates"
 )
 
 // helper.go file proxy execution of all nuclei functions that are nested deep inside multiple packages

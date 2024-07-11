@@ -8,7 +8,7 @@ import (
 
 	"github.com/praetorian-inc/fingerprintx/pkg/plugins"
 	"github.com/praetorian-inc/fingerprintx/pkg/plugins/services/pop3"
-	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
+	"github.com/secoba/nuclei/v3/pkg/protocols/common/protocolstate"
 )
 
 type (

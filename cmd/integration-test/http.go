@@ -17,13 +17,13 @@ import (
 	"github.com/julienschmidt/httprouter"
 	"gopkg.in/yaml.v2"
 
-	"github.com/projectdiscovery/nuclei/v3/pkg/testutils"
 	"github.com/projectdiscovery/retryablehttp-go"
 	errorutil "github.com/projectdiscovery/utils/errors"
 	logutil "github.com/projectdiscovery/utils/log"
 	sliceutil "github.com/projectdiscovery/utils/slice"
 	stringsutil "github.com/projectdiscovery/utils/strings"
 	unitutils "github.com/projectdiscovery/utils/unit"
+	"github.com/secoba/nuclei/v3/pkg/testutils"
 )
 
 var httpTestcases = []TestCaseInfo{

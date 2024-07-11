@@ -7,9 +7,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/projectdiscovery/nuclei/v3/pkg/testutils"
 	osutils "github.com/projectdiscovery/utils/os"
 	"github.com/projectdiscovery/utils/reader"
+	"github.com/secoba/nuclei/v3/pkg/testutils"
 )
 
 var networkTestcases = []TestCaseInfo{

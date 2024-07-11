@@ -4,9 +4,9 @@ import (
 	"io"
 	"strings"
 
-	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/generators"
 	"github.com/projectdiscovery/rawhttp"
 	errorutil "github.com/projectdiscovery/utils/errors"
+	"github.com/secoba/nuclei/v3/pkg/protocols/common/generators"
 )
 
 // dump creates a dump of the http request in form of a byte slice

@@ -8,7 +8,7 @@ import (
 	"github.com/invopop/jsonschema"
 	"github.com/pkg/errors"
 	"github.com/projectdiscovery/goflags"
-	"github.com/projectdiscovery/nuclei/v3/pkg/model/types/stringslice"
+	"github.com/secoba/nuclei/v3/pkg/model/types/stringslice"
 )
 
 // ProtocolType is the type of the request protocol specified

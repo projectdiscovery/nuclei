@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/projectdiscovery/nuclei/v3/pkg/testutils"
+	"github.com/secoba/nuclei/v3/pkg/testutils"
 )
 
 var multiProtoTestcases = []TestCaseInfo{

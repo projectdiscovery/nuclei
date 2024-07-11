@@ -5,8 +5,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	mapsutil "github.com/projectdiscovery/utils/maps"
+	"github.com/secoba/nuclei/v3/pkg/types"
 )
 
 // formatScreen formats the output for showing on screen.

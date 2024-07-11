@@ -8,10 +8,10 @@ import (
 	"net"
 	"time"
 
-	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
-	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	errorutil "github.com/projectdiscovery/utils/errors"
 	"github.com/projectdiscovery/utils/reader"
+	"github.com/secoba/nuclei/v3/pkg/protocols/common/protocolstate"
+	"github.com/secoba/nuclei/v3/pkg/types"
 )
 
 var (

@@ -1,7 +1,7 @@
 package compiler
 
 import (
-	"github.com/projectdiscovery/nuclei/v3/pkg/types"
+	"github.com/secoba/nuclei/v3/pkg/types"
 )
 
 // jsprotocolInit

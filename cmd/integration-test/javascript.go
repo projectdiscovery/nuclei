@@ -5,8 +5,8 @@ import (
 	"time"
 
 	"github.com/ory/dockertest/v3"
-	"github.com/projectdiscovery/nuclei/v3/pkg/testutils"
 	osutils "github.com/projectdiscovery/utils/os"
+	"github.com/secoba/nuclei/v3/pkg/testutils"
 	"go.uber.org/multierr"
 )
 

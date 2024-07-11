@@ -5,8 +5,8 @@ import (
 	"os"
 	"strings"
 
-	"github.com/projectdiscovery/nuclei/v3/pkg/input/types"
 	fileutil "github.com/projectdiscovery/utils/file"
+	"github.com/secoba/nuclei/v3/pkg/input/types"
 	"gopkg.in/yaml.v3"
 )
 

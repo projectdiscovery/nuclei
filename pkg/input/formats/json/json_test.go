@@ -3,7 +3,7 @@ package json
 import (
 	"testing"
 
-	"github.com/projectdiscovery/nuclei/v3/pkg/input/types"
+	"github.com/secoba/nuclei/v3/pkg/input/types"
 	"github.com/stretchr/testify/require"
 )
 

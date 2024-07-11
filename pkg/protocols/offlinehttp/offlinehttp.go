@@ -3,8 +3,8 @@ package offlinehttp
 import (
 	"github.com/pkg/errors"
 
-	"github.com/projectdiscovery/nuclei/v3/pkg/operators"
-	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
+	"github.com/secoba/nuclei/v3/pkg/operators"
+	"github.com/secoba/nuclei/v3/pkg/protocols"
 )
 
 // Request is a offline http response processing request

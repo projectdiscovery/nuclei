@@ -3,7 +3,7 @@ package openapi
 import (
 	"github.com/getkin/kin-openapi/openapi3"
 	"github.com/pkg/errors"
-	"github.com/projectdiscovery/nuclei/v3/pkg/input/formats"
+	"github.com/secoba/nuclei/v3/pkg/input/formats"
 )
 
 // OpenAPIFormat is a OpenAPI Schema File parser

@@ -4,10 +4,10 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/projectdiscovery/gologger"
-	"github.com/projectdiscovery/nuclei/v3/pkg/model"
-	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
-	"github.com/projectdiscovery/nuclei/v3/pkg/utils/stats"
-	"github.com/projectdiscovery/nuclei/v3/pkg/workflows"
+	"github.com/secoba/nuclei/v3/pkg/model"
+	"github.com/secoba/nuclei/v3/pkg/protocols"
+	"github.com/secoba/nuclei/v3/pkg/utils/stats"
+	"github.com/secoba/nuclei/v3/pkg/workflows"
 )
 
 // compileWorkflow compiles the workflow for execution

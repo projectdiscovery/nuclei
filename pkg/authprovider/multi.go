@@ -3,8 +3,8 @@ package authprovider
 import (
 	"net/url"
 
-	"github.com/projectdiscovery/nuclei/v3/pkg/authprovider/authx"
 	urlutil "github.com/projectdiscovery/utils/url"
+	"github.com/secoba/nuclei/v3/pkg/authprovider/authx"
 )
 
 // MultiAuthProvider is a convenience wrapper for multiple auth providers

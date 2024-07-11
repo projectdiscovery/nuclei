@@ -4,8 +4,8 @@ import (
 	goruntime "runtime"
 
 	"github.com/dop251/goja"
-	"github.com/projectdiscovery/nuclei/v3/pkg/js/gojs"
 	osutils "github.com/projectdiscovery/utils/os"
+	"github.com/secoba/nuclei/v3/pkg/js/gojs"
 )
 
 // registerPreConditionFunctions registers the pre-condition functions

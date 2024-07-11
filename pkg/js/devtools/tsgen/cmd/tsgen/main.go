@@ -12,8 +12,8 @@ import (
 	"text/template"
 
 	"github.com/projectdiscovery/gologger"
-	"github.com/projectdiscovery/nuclei/v3/pkg/js/devtools/tsgen"
 	fileutil "github.com/projectdiscovery/utils/file"
+	"github.com/secoba/nuclei/v3/pkg/js/devtools/tsgen"
 )
 
 // Define your template

@@ -14,7 +14,7 @@ import (
 	_ "embed"
 
 	"github.com/pkg/errors"
-	"github.com/projectdiscovery/nuclei/v3/pkg/js/compiler"
+	"github.com/secoba/nuclei/v3/pkg/js/compiler"
 )
 
 var (

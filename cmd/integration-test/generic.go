@@ -10,8 +10,8 @@ import (
 
 	"github.com/julienschmidt/httprouter"
 
-	"github.com/projectdiscovery/nuclei/v3/pkg/testutils"
 	permissionutil "github.com/projectdiscovery/utils/permission"
+	"github.com/secoba/nuclei/v3/pkg/testutils"
 )
 
 var genericTestcases = []TestCaseInfo{

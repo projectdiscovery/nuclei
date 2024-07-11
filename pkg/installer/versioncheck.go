@@ -8,9 +8,9 @@ import (
 	"sync"
 
 	"github.com/projectdiscovery/gologger"
-	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/config"
 	"github.com/projectdiscovery/retryablehttp-go"
 	updateutils "github.com/projectdiscovery/utils/update"
+	"github.com/secoba/nuclei/v3/pkg/catalog/config"
 )
 
 const (

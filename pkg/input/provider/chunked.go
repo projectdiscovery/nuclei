@@ -1,8 +1,8 @@
 package provider
 
 import (
-	"github.com/projectdiscovery/nuclei/v3/pkg/input/types"
-	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
+	"github.com/secoba/nuclei/v3/pkg/input/types"
+	"github.com/secoba/nuclei/v3/pkg/protocols/common/contextargs"
 )
 
 // TODO: Implement ChunkedInputProvider

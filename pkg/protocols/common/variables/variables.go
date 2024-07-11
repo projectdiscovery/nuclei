@@ -5,13 +5,13 @@ import (
 	"strings"
 
 	"github.com/invopop/jsonschema"
-	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/expressions"
-	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/generators"
-	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/interactsh"
-	protocolutils "github.com/projectdiscovery/nuclei/v3/pkg/protocols/utils"
-	"github.com/projectdiscovery/nuclei/v3/pkg/types"
-	"github.com/projectdiscovery/nuclei/v3/pkg/utils"
 	stringsutil "github.com/projectdiscovery/utils/strings"
+	"github.com/secoba/nuclei/v3/pkg/protocols/common/expressions"
+	"github.com/secoba/nuclei/v3/pkg/protocols/common/generators"
+	"github.com/secoba/nuclei/v3/pkg/protocols/common/interactsh"
+	protocolutils "github.com/secoba/nuclei/v3/pkg/protocols/utils"
+	"github.com/secoba/nuclei/v3/pkg/types"
+	"github.com/secoba/nuclei/v3/pkg/utils"
 )
 
 // Variable is a key-value pair of strings that can be used
@@ -136,7 +136,7 @@ func (variables *Variable) checkForLazyEval() bool {
 			}
 		}
 		// this is a hotfix and not the best way to do it
-		// will be refactored once we move scan state to scanContext (see: https://github.com/projectdiscovery/nuclei/issues/4631)
+		// will be refactored once we move scan state to scanContext (see: https://github.com/secoba/nuclei/issues/4631)
 		if strings.Contains(types.ToString(value), "interactsh-url") {
 			variables.LazyEval = true
 			return

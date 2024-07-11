@@ -11,10 +11,10 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
-	"github.com/projectdiscovery/nuclei/v3/pkg/output"
-	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
 	"github.com/projectdiscovery/retryablehttp-go"
 	"github.com/projectdiscovery/useragent"
+	"github.com/secoba/nuclei/v3/pkg/output"
+	"github.com/secoba/nuclei/v3/pkg/protocols/common/protocolstate"
 )
 
 // Options contains necessary options required for splunk communication

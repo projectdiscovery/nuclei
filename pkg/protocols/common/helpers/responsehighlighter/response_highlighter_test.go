@@ -4,7 +4,7 @@ import (
 	"encoding/hex"
 	"testing"
 
-	"github.com/projectdiscovery/nuclei/v3/pkg/operators"
+	"github.com/secoba/nuclei/v3/pkg/operators"
 	"github.com/stretchr/testify/require"
 )
 

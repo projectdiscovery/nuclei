@@ -11,12 +11,12 @@ import (
 
 	"github.com/google/go-github/github"
 	"github.com/pkg/errors"
-	"github.com/projectdiscovery/nuclei/v3/pkg/output"
-	"github.com/projectdiscovery/nuclei/v3/pkg/reporting/exporters/markdown/util"
-	"github.com/projectdiscovery/nuclei/v3/pkg/reporting/format"
-	"github.com/projectdiscovery/nuclei/v3/pkg/reporting/trackers/filters"
-	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	"github.com/projectdiscovery/retryablehttp-go"
+	"github.com/secoba/nuclei/v3/pkg/output"
+	"github.com/secoba/nuclei/v3/pkg/reporting/exporters/markdown/util"
+	"github.com/secoba/nuclei/v3/pkg/reporting/format"
+	"github.com/secoba/nuclei/v3/pkg/reporting/trackers/filters"
+	"github.com/secoba/nuclei/v3/pkg/types"
 	"golang.org/x/oauth2"
 )
 

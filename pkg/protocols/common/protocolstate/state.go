@@ -13,8 +13,8 @@ import (
 	"github.com/projectdiscovery/fastdialer/fastdialer"
 	"github.com/projectdiscovery/mapcidr/asn"
 	"github.com/projectdiscovery/networkpolicy"
-	"github.com/projectdiscovery/nuclei/v3/pkg/types"
-	"github.com/projectdiscovery/nuclei/v3/pkg/utils/expand"
+	"github.com/secoba/nuclei/v3/pkg/types"
+	"github.com/secoba/nuclei/v3/pkg/utils/expand"
 )
 
 // Dialer is a shared fastdialer instance for host DNS resolution

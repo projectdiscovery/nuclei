@@ -11,9 +11,9 @@ import (
 
 	"github.com/go-rod/rod"
 	"github.com/go-rod/rod/lib/proto"
-	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
-	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/utils"
-	"github.com/projectdiscovery/nuclei/v3/pkg/types"
+	"github.com/secoba/nuclei/v3/pkg/protocols/common/contextargs"
+	"github.com/secoba/nuclei/v3/pkg/protocols/utils"
+	"github.com/secoba/nuclei/v3/pkg/types"
 )
 
 // Page is a single page in an isolated browser instance

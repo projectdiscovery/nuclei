@@ -11,10 +11,10 @@ import (
 	"github.com/google/go-github/github"
 	"github.com/pkg/errors"
 	"github.com/projectdiscovery/gologger"
-	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/config"
-	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	fileutil "github.com/projectdiscovery/utils/file"
 	folderutil "github.com/projectdiscovery/utils/folder"
+	"github.com/secoba/nuclei/v3/pkg/catalog/config"
+	"github.com/secoba/nuclei/v3/pkg/types"
 	"golang.org/x/oauth2"
 )
 

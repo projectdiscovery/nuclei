@@ -8,10 +8,10 @@ import (
 	"github.com/miekg/dns"
 	"github.com/projectdiscovery/dsl"
 	"github.com/projectdiscovery/gologger"
-	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/dns/dnsclientpool"
-	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	sliceutil "github.com/projectdiscovery/utils/slice"
 	stringsutil "github.com/projectdiscovery/utils/strings"
+	"github.com/secoba/nuclei/v3/pkg/protocols/dns/dnsclientpool"
+	"github.com/secoba/nuclei/v3/pkg/types"
 )
 
 var (

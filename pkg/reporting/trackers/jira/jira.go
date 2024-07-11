@@ -11,12 +11,12 @@ import (
 	"github.com/trivago/tgo/tcontainer"
 
 	"github.com/projectdiscovery/gologger"
-	"github.com/projectdiscovery/nuclei/v3/pkg/output"
-	"github.com/projectdiscovery/nuclei/v3/pkg/reporting/exporters/markdown/util"
-	"github.com/projectdiscovery/nuclei/v3/pkg/reporting/format"
-	"github.com/projectdiscovery/nuclei/v3/pkg/reporting/trackers/filters"
 	"github.com/projectdiscovery/retryablehttp-go"
 	"github.com/projectdiscovery/utils/ptr"
+	"github.com/secoba/nuclei/v3/pkg/output"
+	"github.com/secoba/nuclei/v3/pkg/reporting/exporters/markdown/util"
+	"github.com/secoba/nuclei/v3/pkg/reporting/format"
+	"github.com/secoba/nuclei/v3/pkg/reporting/trackers/filters"
 )
 
 type Formatter struct {

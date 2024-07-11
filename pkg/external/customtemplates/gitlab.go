@@ -7,9 +7,9 @@ import (
 	"path/filepath"
 
 	"github.com/projectdiscovery/gologger"
-	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/config"
-	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	errorutil "github.com/projectdiscovery/utils/errors"
+	"github.com/secoba/nuclei/v3/pkg/catalog/config"
+	"github.com/secoba/nuclei/v3/pkg/types"
 	"github.com/xanzy/go-gitlab"
 )
 

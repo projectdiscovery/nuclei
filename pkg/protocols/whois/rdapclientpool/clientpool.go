@@ -2,8 +2,8 @@ package rdapclientpool
 
 import (
 	"github.com/projectdiscovery/gologger"
-	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	"github.com/projectdiscovery/rdap"
+	"github.com/secoba/nuclei/v3/pkg/types"
 )
 
 var normalClient *rdap.Client

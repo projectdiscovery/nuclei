@@ -8,10 +8,10 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/projectdiscovery/nuclei/v3/pkg/templates/extensions"
-	"github.com/projectdiscovery/nuclei/v3/pkg/utils"
 	"github.com/projectdiscovery/retryablehttp-go"
 	stringsutil "github.com/projectdiscovery/utils/strings"
+	"github.com/secoba/nuclei/v3/pkg/templates/extensions"
+	"github.com/secoba/nuclei/v3/pkg/utils"
 )
 
 type ContentType string

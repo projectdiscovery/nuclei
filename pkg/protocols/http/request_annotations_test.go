@@ -5,8 +5,8 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http/httpclientpool"
 	"github.com/projectdiscovery/retryablehttp-go"
+	"github.com/secoba/nuclei/v3/pkg/protocols/http/httpclientpool"
 	"github.com/stretchr/testify/require"
 )
 

@@ -16,13 +16,13 @@ import (
 	"github.com/getkin/kin-openapi/openapi3"
 	"github.com/pkg/errors"
 	"github.com/projectdiscovery/gologger"
-	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/config"
-	"github.com/projectdiscovery/nuclei/v3/pkg/input/formats"
-	httpTypes "github.com/projectdiscovery/nuclei/v3/pkg/input/types"
-	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	errorutil "github.com/projectdiscovery/utils/errors"
 	"github.com/projectdiscovery/utils/generic"
 	mapsutil "github.com/projectdiscovery/utils/maps"
+	"github.com/secoba/nuclei/v3/pkg/catalog/config"
+	"github.com/secoba/nuclei/v3/pkg/input/formats"
+	httpTypes "github.com/secoba/nuclei/v3/pkg/input/types"
+	"github.com/secoba/nuclei/v3/pkg/types"
 	"github.com/valyala/fasttemplate"
 )
 

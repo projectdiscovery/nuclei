@@ -7,14 +7,14 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/disk"
-	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
-	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolinit"
-	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
-	"github.com/projectdiscovery/nuclei/v3/pkg/templates/extensions"
-	"github.com/projectdiscovery/nuclei/v3/pkg/templates/signer"
-	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	errorutil "github.com/projectdiscovery/utils/errors"
+	"github.com/secoba/nuclei/v3/pkg/catalog/disk"
+	"github.com/secoba/nuclei/v3/pkg/protocols"
+	"github.com/secoba/nuclei/v3/pkg/protocols/common/protocolinit"
+	"github.com/secoba/nuclei/v3/pkg/protocols/common/protocolstate"
+	"github.com/secoba/nuclei/v3/pkg/templates/extensions"
+	"github.com/secoba/nuclei/v3/pkg/templates/signer"
+	"github.com/secoba/nuclei/v3/pkg/types"
 )
 
 // Due to file references in sensitive fields of template

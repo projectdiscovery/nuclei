@@ -17,13 +17,13 @@ import (
 	"golang.org/x/net/publicsuffix"
 
 	"github.com/projectdiscovery/fastdialer/fastdialer/ja3/impersonate"
-	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
-	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/utils"
-	"github.com/projectdiscovery/nuclei/v3/pkg/types"
-	"github.com/projectdiscovery/nuclei/v3/pkg/types/scanstrategy"
 	"github.com/projectdiscovery/rawhttp"
 	"github.com/projectdiscovery/retryablehttp-go"
 	mapsutil "github.com/projectdiscovery/utils/maps"
+	"github.com/secoba/nuclei/v3/pkg/protocols/common/protocolstate"
+	"github.com/secoba/nuclei/v3/pkg/protocols/utils"
+	"github.com/secoba/nuclei/v3/pkg/types"
+	"github.com/secoba/nuclei/v3/pkg/types/scanstrategy"
 )
 
 var (

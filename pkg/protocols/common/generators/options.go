@@ -1,7 +1,7 @@
 package generators
 
 import (
-	"github.com/projectdiscovery/nuclei/v3/pkg/types"
+	"github.com/secoba/nuclei/v3/pkg/types"
 )
 
 // BuildPayloadFromOptions returns a map with the payloads provided via CLI

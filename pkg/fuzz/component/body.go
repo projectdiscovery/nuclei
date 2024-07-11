@@ -9,9 +9,9 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/projectdiscovery/gologger"
-	"github.com/projectdiscovery/nuclei/v3/pkg/fuzz/dataformat"
 	"github.com/projectdiscovery/retryablehttp-go"
 	readerutil "github.com/projectdiscovery/utils/reader"
+	"github.com/secoba/nuclei/v3/pkg/fuzz/dataformat"
 )
 
 // Body is a component for a request body

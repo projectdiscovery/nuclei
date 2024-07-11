@@ -8,10 +8,10 @@ import (
 
 	"github.com/dop251/goja"
 
-	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/generators"
 	contextutil "github.com/projectdiscovery/utils/context"
 	"github.com/projectdiscovery/utils/errkit"
 	stringsutil "github.com/projectdiscovery/utils/strings"
+	"github.com/secoba/nuclei/v3/pkg/protocols/common/generators"
 )
 
 var (

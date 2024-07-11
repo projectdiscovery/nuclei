@@ -6,11 +6,11 @@ import (
 	"strings"
 
 	"github.com/projectdiscovery/hmap/store/hybrid"
-	templateTypes "github.com/projectdiscovery/nuclei/v3/pkg/templates/types"
 	fileutil "github.com/projectdiscovery/utils/file"
 	"github.com/projectdiscovery/utils/ports"
 	stringsutil "github.com/projectdiscovery/utils/strings"
 	urlutil "github.com/projectdiscovery/utils/url"
+	templateTypes "github.com/secoba/nuclei/v3/pkg/templates/types"
 )
 
 // Helper is a structure for helping with input transformation

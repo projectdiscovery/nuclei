@@ -1,14 +1,14 @@
 package protocolinit
 
 import (
-	"github.com/projectdiscovery/nuclei/v3/pkg/js/compiler"
-	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
-	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/dns/dnsclientpool"
-	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http/httpclientpool"
-	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http/signerpool"
-	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/network/networkclientpool"
-	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/whois/rdapclientpool"
-	"github.com/projectdiscovery/nuclei/v3/pkg/types"
+	"github.com/secoba/nuclei/v3/pkg/js/compiler"
+	"github.com/secoba/nuclei/v3/pkg/protocols/common/protocolstate"
+	"github.com/secoba/nuclei/v3/pkg/protocols/dns/dnsclientpool"
+	"github.com/secoba/nuclei/v3/pkg/protocols/http/httpclientpool"
+	"github.com/secoba/nuclei/v3/pkg/protocols/http/signerpool"
+	"github.com/secoba/nuclei/v3/pkg/protocols/network/networkclientpool"
+	"github.com/secoba/nuclei/v3/pkg/protocols/whois/rdapclientpool"
+	"github.com/secoba/nuclei/v3/pkg/types"
 )
 
 // Init initializes the client pools for the protocols

@@ -10,10 +10,10 @@ import (
 
 	"github.com/Mzack9999/gcache"
 	"github.com/projectdiscovery/gologger"
-	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/config"
-	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
-	"github.com/projectdiscovery/nuclei/v3/pkg/types/nucleierr"
 	"github.com/projectdiscovery/utils/errkit"
+	"github.com/secoba/nuclei/v3/pkg/catalog/config"
+	"github.com/secoba/nuclei/v3/pkg/protocols/common/contextargs"
+	"github.com/secoba/nuclei/v3/pkg/types/nucleierr"
 )
 
 // CacheInterface defines the signature of the hosterrorscache so that

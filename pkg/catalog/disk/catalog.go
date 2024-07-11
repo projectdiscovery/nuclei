@@ -5,7 +5,7 @@ import (
 	"io/fs"
 	"os"
 
-	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/config"
+	"github.com/secoba/nuclei/v3/pkg/catalog/config"
 )
 
 // DiskCatalog is a template catalog helper implementation based on disk

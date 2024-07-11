@@ -11,7 +11,7 @@ import (
 
 	_ "github.com/denisenkom/go-mssqldb"
 	"github.com/praetorian-inc/fingerprintx/pkg/plugins/services/mssql"
-	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
+	"github.com/secoba/nuclei/v3/pkg/protocols/common/protocolstate"
 )
 
 type (

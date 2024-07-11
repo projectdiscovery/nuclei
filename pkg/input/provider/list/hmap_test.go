@@ -9,11 +9,11 @@ import (
 
 	"github.com/miekg/dns"
 	"github.com/projectdiscovery/hmap/store/hybrid"
-	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
-	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
-	"github.com/projectdiscovery/nuclei/v3/pkg/types"
-	"github.com/projectdiscovery/nuclei/v3/pkg/utils/expand"
 	"github.com/projectdiscovery/utils/auth/pdcp"
+	"github.com/secoba/nuclei/v3/pkg/protocols/common/contextargs"
+	"github.com/secoba/nuclei/v3/pkg/protocols/common/protocolstate"
+	"github.com/secoba/nuclei/v3/pkg/types"
+	"github.com/secoba/nuclei/v3/pkg/utils/expand"
 	"github.com/stretchr/testify/require"
 )
 

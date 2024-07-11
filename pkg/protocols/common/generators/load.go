@@ -6,7 +6,7 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
-	pkgTypes "github.com/projectdiscovery/nuclei/v3/pkg/types"
+	pkgTypes "github.com/secoba/nuclei/v3/pkg/types"
 	"github.com/spf13/cast"
 )
 

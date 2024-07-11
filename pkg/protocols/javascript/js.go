@@ -14,29 +14,29 @@ import (
 	"github.com/dop251/goja"
 	"github.com/pkg/errors"
 	"github.com/projectdiscovery/gologger"
-	"github.com/projectdiscovery/nuclei/v3/pkg/js/compiler"
-	"github.com/projectdiscovery/nuclei/v3/pkg/js/gojs"
-	"github.com/projectdiscovery/nuclei/v3/pkg/model"
-	"github.com/projectdiscovery/nuclei/v3/pkg/operators"
-	"github.com/projectdiscovery/nuclei/v3/pkg/operators/extractors"
-	"github.com/projectdiscovery/nuclei/v3/pkg/operators/matchers"
-	"github.com/projectdiscovery/nuclei/v3/pkg/output"
-	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
-	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
-	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/expressions"
-	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/generators"
-	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/helpers/eventcreator"
-	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/interactsh"
-	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
-	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/utils/vardump"
-	protocolutils "github.com/projectdiscovery/nuclei/v3/pkg/protocols/utils"
-	templateTypes "github.com/projectdiscovery/nuclei/v3/pkg/templates/types"
-	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	"github.com/projectdiscovery/utils/errkit"
 	errorutil "github.com/projectdiscovery/utils/errors"
 	iputil "github.com/projectdiscovery/utils/ip"
 	syncutil "github.com/projectdiscovery/utils/sync"
 	urlutil "github.com/projectdiscovery/utils/url"
+	"github.com/secoba/nuclei/v3/pkg/js/compiler"
+	"github.com/secoba/nuclei/v3/pkg/js/gojs"
+	"github.com/secoba/nuclei/v3/pkg/model"
+	"github.com/secoba/nuclei/v3/pkg/operators"
+	"github.com/secoba/nuclei/v3/pkg/operators/extractors"
+	"github.com/secoba/nuclei/v3/pkg/operators/matchers"
+	"github.com/secoba/nuclei/v3/pkg/output"
+	"github.com/secoba/nuclei/v3/pkg/protocols"
+	"github.com/secoba/nuclei/v3/pkg/protocols/common/contextargs"
+	"github.com/secoba/nuclei/v3/pkg/protocols/common/expressions"
+	"github.com/secoba/nuclei/v3/pkg/protocols/common/generators"
+	"github.com/secoba/nuclei/v3/pkg/protocols/common/helpers/eventcreator"
+	"github.com/secoba/nuclei/v3/pkg/protocols/common/interactsh"
+	"github.com/secoba/nuclei/v3/pkg/protocols/common/protocolstate"
+	"github.com/secoba/nuclei/v3/pkg/protocols/common/utils/vardump"
+	protocolutils "github.com/secoba/nuclei/v3/pkg/protocols/utils"
+	templateTypes "github.com/secoba/nuclei/v3/pkg/templates/types"
+	"github.com/secoba/nuclei/v3/pkg/types"
 )
 
 // Request is a request for the javascript protocol
@@ -549,7 +549,7 @@ func (request *Request) executeRequestWithPayloads(hostPort string, input *conte
 	if input.MetaInput.CustomIP != "" {
 		data["ip"] = input.MetaInput.CustomIP
 	} else {
-		// context: https://github.com/projectdiscovery/nuclei/issues/5021
+		// context: https://github.com/secoba/nuclei/issues/5021
 		hostname := input.MetaInput.Input
 		if strings.Contains(hostname, ":") {
 			host, _, err := net.SplitHostPort(hostname)

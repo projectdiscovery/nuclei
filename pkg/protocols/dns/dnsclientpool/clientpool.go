@@ -6,8 +6,8 @@ import (
 	"sync"
 
 	"github.com/pkg/errors"
-	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	"github.com/projectdiscovery/retryabledns"
+	"github.com/secoba/nuclei/v3/pkg/types"
 )
 
 var (

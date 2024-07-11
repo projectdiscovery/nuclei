@@ -10,9 +10,9 @@ import (
 	"github.com/logrusorgru/aurora"
 
 	"github.com/projectdiscovery/gologger"
-	"github.com/projectdiscovery/nuclei/v3/pkg/testutils"
-	"github.com/projectdiscovery/nuclei/v3/pkg/testutils/fuzzplayground"
 	sliceutil "github.com/projectdiscovery/utils/slice"
+	"github.com/secoba/nuclei/v3/pkg/testutils"
+	"github.com/secoba/nuclei/v3/pkg/testutils/fuzzplayground"
 )
 
 type TestCaseInfo struct {

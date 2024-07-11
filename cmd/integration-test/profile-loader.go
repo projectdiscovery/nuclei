@@ -3,8 +3,8 @@ package main
 import (
 	"fmt"
 
-	"github.com/projectdiscovery/nuclei/v3/pkg/testutils"
 	errorutil "github.com/projectdiscovery/utils/errors"
+	"github.com/secoba/nuclei/v3/pkg/testutils"
 )
 
 var profileLoaderTestcases = []TestCaseInfo{

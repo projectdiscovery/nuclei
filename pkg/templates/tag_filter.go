@@ -10,12 +10,12 @@ import (
 
 	"github.com/Knetic/govaluate"
 	"github.com/projectdiscovery/gologger"
-	"github.com/projectdiscovery/nuclei/v3/pkg/model/types/severity"
-	"github.com/projectdiscovery/nuclei/v3/pkg/operators/common/dsl"
-	"github.com/projectdiscovery/nuclei/v3/pkg/operators/extractors"
-	"github.com/projectdiscovery/nuclei/v3/pkg/operators/matchers"
-	"github.com/projectdiscovery/nuclei/v3/pkg/templates/types"
 	sliceutil "github.com/projectdiscovery/utils/slice"
+	"github.com/secoba/nuclei/v3/pkg/model/types/severity"
+	"github.com/secoba/nuclei/v3/pkg/operators/common/dsl"
+	"github.com/secoba/nuclei/v3/pkg/operators/extractors"
+	"github.com/secoba/nuclei/v3/pkg/operators/matchers"
+	"github.com/secoba/nuclei/v3/pkg/templates/types"
 )
 
 // TagFilter is used to filter nuclei templates for tag based execution

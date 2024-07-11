@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"github.com/projectdiscovery/goflags"
-	"github.com/projectdiscovery/nuclei/v3/pkg/types"
+	"github.com/secoba/nuclei/v3/pkg/types"
 	"github.com/stretchr/testify/require"
 )
 

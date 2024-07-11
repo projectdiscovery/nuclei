@@ -1,10 +1,10 @@
 package ldap
 
 import (
-	lib_ldap "github.com/projectdiscovery/nuclei/v3/pkg/js/libs/ldap"
+	lib_ldap "github.com/secoba/nuclei/v3/pkg/js/libs/ldap"
 
 	"github.com/dop251/goja"
-	"github.com/projectdiscovery/nuclei/v3/pkg/js/gojs"
+	"github.com/secoba/nuclei/v3/pkg/js/gojs"
 )
 
 var (

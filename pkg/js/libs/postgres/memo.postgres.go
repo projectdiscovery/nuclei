@@ -5,11 +5,11 @@ import (
 	"errors"
 	"fmt"
 
-	_ "github.com/projectdiscovery/nuclei/v3/pkg/js/utils/pgwrap"
+	_ "github.com/secoba/nuclei/v3/pkg/js/utils/pgwrap"
 
-	utils "github.com/projectdiscovery/nuclei/v3/pkg/js/utils"
+	utils "github.com/secoba/nuclei/v3/pkg/js/utils"
 
-	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
+	"github.com/secoba/nuclei/v3/pkg/protocols/common/protocolstate"
 )
 
 func memoizedisPostgres(host string, port int) (bool, error) {

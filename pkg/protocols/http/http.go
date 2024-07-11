@@ -9,19 +9,19 @@ import (
 	json "github.com/json-iterator/go"
 	"github.com/pkg/errors"
 
-	"github.com/projectdiscovery/nuclei/v3/pkg/fuzz"
-	"github.com/projectdiscovery/nuclei/v3/pkg/operators"
-	"github.com/projectdiscovery/nuclei/v3/pkg/operators/matchers"
-	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
-	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/expressions"
-	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/generators"
-	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
-	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http/httpclientpool"
-	httputil "github.com/projectdiscovery/nuclei/v3/pkg/protocols/utils/http"
-	"github.com/projectdiscovery/nuclei/v3/pkg/utils/stats"
 	"github.com/projectdiscovery/rawhttp"
 	"github.com/projectdiscovery/retryablehttp-go"
 	fileutil "github.com/projectdiscovery/utils/file"
+	"github.com/secoba/nuclei/v3/pkg/fuzz"
+	"github.com/secoba/nuclei/v3/pkg/operators"
+	"github.com/secoba/nuclei/v3/pkg/operators/matchers"
+	"github.com/secoba/nuclei/v3/pkg/protocols"
+	"github.com/secoba/nuclei/v3/pkg/protocols/common/expressions"
+	"github.com/secoba/nuclei/v3/pkg/protocols/common/generators"
+	"github.com/secoba/nuclei/v3/pkg/protocols/common/protocolstate"
+	"github.com/secoba/nuclei/v3/pkg/protocols/http/httpclientpool"
+	httputil "github.com/secoba/nuclei/v3/pkg/protocols/utils/http"
+	"github.com/secoba/nuclei/v3/pkg/utils/stats"
 )
 
 // Request contains a http request to be made from a template
@@ -191,7 +191,7 @@ type Request struct {
 	//   ReqCondition automatically assigns numbers to requests and preserves their history.
 	//
 	//   This allows matching on them later for multi-request conditions.
-	// Deprecated: request condition will be detected automatically (https://github.com/projectdiscovery/nuclei/issues/2393)
+	// Deprecated: request condition will be detected automatically (https://github.com/secoba/nuclei/issues/2393)
 	ReqCondition bool `yaml:"req-condition,omitempty" json:"req-condition,omitempty" jsonschema:"title=preserve request history,description=Automatically assigns numbers to requests and preserves their history"`
 	// description: |
 	//   StopAtFirstMatch stops the execution of the requests and template as soon as a match is found.
@@ -436,7 +436,7 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 		}
 	}
 	if len(request.Payloads) > 0 {
-		// Due to a known issue (https://github.com/projectdiscovery/nuclei/issues/5015),
+		// Due to a known issue (https://github.com/secoba/nuclei/issues/5015),
 		// dynamic extractors cannot be used with payloads. To address this,
 		// execution is handled by the standard engine without concurrency,
 		// achieved by setting the thread count to 0.

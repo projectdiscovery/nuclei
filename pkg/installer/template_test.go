@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/config"
+	"github.com/secoba/nuclei/v3/pkg/catalog/config"
 	"github.com/stretchr/testify/require"
 )
 

@@ -8,8 +8,8 @@ import (
 	"strings"
 
 	jsoniter "github.com/json-iterator/go"
-	"github.com/projectdiscovery/nuclei/v3/pkg/input/types"
 	urlutil "github.com/projectdiscovery/utils/url"
+	"github.com/secoba/nuclei/v3/pkg/input/types"
 	"github.com/segmentio/ksuid"
 )
 

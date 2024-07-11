@@ -1,9 +1,9 @@
 package utils
 
 import (
-	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
 	iputil "github.com/projectdiscovery/utils/ip"
 	urlutil "github.com/projectdiscovery/utils/url"
+	"github.com/secoba/nuclei/v3/pkg/protocols/common/contextargs"
 )
 
 // JsonFields contains additional metadata fields for JSON output

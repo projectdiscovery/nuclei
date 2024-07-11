@@ -3,8 +3,8 @@ package installer
 import (
 	"testing"
 
-	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/config"
 	"github.com/projectdiscovery/utils/generic"
+	"github.com/secoba/nuclei/v3/pkg/catalog/config"
 	"github.com/stretchr/testify/require"
 )
 

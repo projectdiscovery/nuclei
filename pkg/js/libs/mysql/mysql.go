@@ -12,8 +12,8 @@ import (
 	"github.com/go-sql-driver/mysql"
 	"github.com/praetorian-inc/fingerprintx/pkg/plugins"
 	mysqlplugin "github.com/praetorian-inc/fingerprintx/pkg/plugins/services/mysql"
-	"github.com/projectdiscovery/nuclei/v3/pkg/js/utils"
-	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
+	"github.com/secoba/nuclei/v3/pkg/js/utils"
+	"github.com/secoba/nuclei/v3/pkg/protocols/common/protocolstate"
 )
 
 type (

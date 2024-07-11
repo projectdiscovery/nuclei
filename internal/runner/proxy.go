@@ -8,10 +8,10 @@ import (
 	"strings"
 
 	"github.com/projectdiscovery/gologger"
-	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	errorutil "github.com/projectdiscovery/utils/errors"
 	fileutil "github.com/projectdiscovery/utils/file"
 	proxyutils "github.com/projectdiscovery/utils/proxy"
+	"github.com/secoba/nuclei/v3/pkg/types"
 )
 
 // loadProxyServers load list of proxy servers from file or comma separated

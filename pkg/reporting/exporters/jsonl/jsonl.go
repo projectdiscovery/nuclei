@@ -6,7 +6,7 @@ import (
 	"sync"
 
 	"github.com/pkg/errors"
-	"github.com/projectdiscovery/nuclei/v3/pkg/output"
+	"github.com/secoba/nuclei/v3/pkg/output"
 )
 
 type Exporter struct {

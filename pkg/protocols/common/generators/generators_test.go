@@ -7,8 +7,8 @@ import (
 	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v2"
 
-	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/disk"
-	"github.com/projectdiscovery/nuclei/v3/pkg/types"
+	"github.com/secoba/nuclei/v3/pkg/catalog/disk"
+	"github.com/secoba/nuclei/v3/pkg/types"
 )
 
 func TestBatteringRamGenerator(t *testing.T) {

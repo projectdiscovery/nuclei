@@ -8,8 +8,8 @@ import (
 	"github.com/getkin/kin-openapi/openapi2"
 	"github.com/getkin/kin-openapi/openapi3"
 	"github.com/pkg/errors"
-	"github.com/projectdiscovery/nuclei/v3/pkg/input/formats"
-	"github.com/projectdiscovery/nuclei/v3/pkg/input/formats/openapi"
+	"github.com/secoba/nuclei/v3/pkg/input/formats"
+	"github.com/secoba/nuclei/v3/pkg/input/formats/openapi"
 	"gopkg.in/yaml.v2"
 
 	"github.com/getkin/kin-openapi/openapi2conv"

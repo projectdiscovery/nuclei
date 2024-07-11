@@ -10,8 +10,8 @@ import (
 	"github.com/go-echarts/go-echarts/v2/components"
 	"github.com/go-echarts/go-echarts/v2/opts"
 	"github.com/labstack/echo/v4"
-	"github.com/projectdiscovery/nuclei/v3/pkg/scan/events"
 	sliceutil "github.com/projectdiscovery/utils/slice"
+	"github.com/secoba/nuclei/v3/pkg/scan/events"
 )
 
 const (
