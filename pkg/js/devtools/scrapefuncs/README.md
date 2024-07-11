@@ -44,6 +44,10 @@ Name: isPortOpen
 Signatures: "isPortOpen(host string, port string, [timeout int]) bool"
 Description: isPortOpen checks if given port is open on host. timeout is optional and defaults to 5 seconds
 
+Name: isPortOpenWithNetwork
+Signatures: "isPortOpenWithNetwork(host string, port string, network string, [timeout int]) bool"
+Description: isPortOpenWithNetwork checks if given port is open on host using the specified network protocol (tcp/udp). Timeout is optional and defaults to 5 seconds.
+
 Name: ToBytes
 Signatures: "ToBytes(...interface{}) []byte"
 Description: ToBytes converts given input to byte slice

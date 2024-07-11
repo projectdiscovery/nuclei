@@ -125,6 +125,30 @@ func initBuiltInFunc(runtime *goja.Runtime) {
 	})
 
 	_ = gojs.RegisterFuncWithSignature(runtime, gojs.FuncOpts{
+		Name: "isPortOpenWithNetwork",
+		Signatures: []string{
+			"isPortOpenWithNetwork(host string, port string, network string, [timeout int]) bool",
+		},
+		Description: "isPortOpenWithNetwork checks if given port is open on host using the specified network protocol (tcp/udp). Timeout is optional and defaults to 5 seconds.",
+		FuncDecl: func(host string, port string, network string, timeout ...int) (bool, error) {
+			timeoutInSec := 5
+			if len(timeout) > 0 {
+				timeoutInSec = timeout[0]
+			}
+			if network != "tcp" && network != "udp" {
+				return false, errorutil.New("unsupported network protocol: %s", network)
+			}
+			conn, err := net.DialTimeout(network, net.JoinHostPort(host, port), time.Duration(timeoutInSec)*time.Second)
+			if err != nil {
+				return false, err
+			}
+			_ = conn.Close()
+
+			return true, nil
+		},
+	})
+
+	_ = gojs.RegisterFuncWithSignature(runtime, gojs.FuncOpts{
 		Name: "ToBytes",
 		Signatures: []string{
 			"ToBytes(...interface{}) []byte",
