@@ -14,6 +14,7 @@ import (
 
 	"github.com/gobwas/ws"
 	"github.com/julienschmidt/httprouter"
+	"github.com/projectdiscovery/utils/conversion"
 )
 
 // ExtraArgs
@@ -74,9 +75,7 @@ func RunNucleiBareArgsAndGetResults(debug bool, env []string, extra ...string) (
 	if debug {
 		fmt.Println(string(data))
 	}
-	if len(data) < 1 && err != nil {
-		return nil, fmt.Errorf("%v: %v", err.Error(), string(data))
-	}
+	dataStr := conversion.String(data)
 	var parts []string
 	items := strings.Split(string(data), "\n")
 	for _, i := range items {
@@ -84,6 +83,11 @@ func RunNucleiBareArgsAndGetResults(debug bool, env []string, extra ...string) (
 			parts = append(parts, i)
 		}
 	}
+
+	if (dataStr == "" || len(parts) == 0) && err != nil {
+		return nil, fmt.Errorf("%v: %v", err.Error(), dataStr)
+	}
+
 	return parts, nil
 }
 
