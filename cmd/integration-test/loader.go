@@ -172,7 +172,14 @@ func (h *nonExistentTemplateList) Execute(nonExistingTemplateList string) error 
 	ts := httptest.NewServer(router)
 	defer ts.Close()
 
-	_, err := testutils.RunNucleiBareArgsAndGetResults(debug, nil, "-target", ts.URL, "-template-url", ts.URL+"/404")
+	configFileData := `remote-template-domain: [ "` + ts.Listener.Addr().String() + `" ]`
+	err := os.WriteFile("test-config.yaml", []byte(configFileData), permissionutil.ConfigFilePermission)
+	if err != nil {
+		return err
+	}
+	defer os.Remove("test-config.yaml")
+
+	_, err = testutils.RunNucleiBareArgsAndGetResults(debug, nil, "-target", ts.URL, "-template-url", ts.URL+"/404", "-config", "test-config.yaml")
 	if err == nil {
 		return fmt.Errorf("expected error for nonexisting workflow url")
 	}
@@ -188,7 +195,14 @@ func (h *nonExistentWorkflowList) Execute(nonExistingWorkflowList string) error 
 	ts := httptest.NewServer(router)
 	defer ts.Close()
 
-	_, err := testutils.RunNucleiBareArgsAndGetResults(debug, nil, "-target", ts.URL, "-workflow-url", ts.URL+"/404")
+	configFileData := `remote-template-domain: [ "` + ts.Listener.Addr().String() + `" ]`
+	err := os.WriteFile("test-config.yaml", []byte(configFileData), permissionutil.ConfigFilePermission)
+	if err != nil {
+		return err
+	}
+	defer os.Remove("test-config.yaml")
+
+	_, err = testutils.RunNucleiBareArgsAndGetResults(debug, nil, "-target", ts.URL, "-workflow-url", ts.URL+"/404", "-config", "test-config.yaml")
 	if err == nil {
 		return fmt.Errorf("expected error for nonexisting workflow url")
 	}
