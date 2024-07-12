@@ -37,6 +37,7 @@ type (
 // const isPostgres = postgres.IsPostgres('acme.com', 5432);
 // ```
 func (c *PGClient) IsPostgres(host string, port int) (bool, error) {
+	// todo: why this is exposed? Service fingerprint should be automatic
 	return memoizedisPostgres(host, port)
 }
 
@@ -74,6 +75,13 @@ func isPostgres(host string, port int) (bool, error) {
 // const connected = client.Connect('acme.com', 5432, 'username', 'password');
 // ```
 func (c *PGClient) Connect(host string, port int, username, password string) (bool, error) {
+	ok, err := c.IsPostgres(host, port)
+	if err != nil {
+		return false, err
+	}
+	if !ok {
+		return false, fmt.Errorf("not a postgres service")
+	}
 	return memoizedconnect(host, port, username, password, "postgres")
 }
 
@@ -88,6 +96,14 @@ func (c *PGClient) Connect(host string, port int, username, password string) (bo
 // log(to_json(result));
 // ```
 func (c *PGClient) ExecuteQuery(host string, port int, username, password, dbName, query string) (*utils.SQLResult, error) {
+	ok, err := c.IsPostgres(host, port)
+	if err != nil {
+		return nil, err
+	}
+	if !ok {
+		return nil, fmt.Errorf("not a postgres service")
+	}
+
 	return memoizedexecuteQuery(host, port, username, password, dbName, query)
 }
 
@@ -129,6 +145,14 @@ func executeQuery(host string, port int, username string, password string, dbNam
 // const connected = client.ConnectWithDB('acme.com', 5432, 'username', 'password', 'dbname');
 // ```
 func (c *PGClient) ConnectWithDB(host string, port int, username, password, dbName string) (bool, error) {
+	ok, err := c.IsPostgres(host, port)
+	if err != nil {
+		return false, err
+	}
+	if !ok {
+		return false, fmt.Errorf("not a postgres service")
+	}
+
 	return memoizedconnect(host, port, username, password, dbName)
 }
 
@@ -149,10 +173,10 @@ func connect(host string, port int, username string, password string, dbName str
 	defer cancel()
 
 	db := pg.Connect(&pg.Options{
-		Addr:               target,
-		User:               username,
-		Password:           password,
-		Database:           dbName,
+		Addr:     target,
+		User:     username,
+		Password: password,
+		Database: dbName,
 		Dialer: func(network, addr string) (net.Conn, error) {
 			return protocolstate.Dialer.Dial(context.Background(), network, addr)
 		},

@@ -1,30 +1,21 @@
 package http
 
 import (
-	sliceutil "github.com/projectdiscovery/utils/slice"
-	"golang.org/x/exp/maps"
+	"fmt"
+	"strings"
+
+	"github.com/cespare/xxhash"
+	"github.com/projectdiscovery/nuclei/v3/pkg/utils"
 )
 
-// CanCluster returns true if the request can be clustered.
-//
-// This used by the clustering engine to decide whether two requests
-// are similar enough to be considered one and can be checked by
-// just adding the matcher/extractors for the request and the correct IDs.
-func (request *Request) CanCluster(other *Request) bool {
-	if len(request.Payloads) > 0 || len(request.Fuzzing) > 0 || len(request.Raw) > 0 || len(request.Body) > 0 || request.Unsafe || request.NeedsRequestCondition() || request.Name != "" {
-		return false
-	}
-	if request.Method != other.Method ||
-		request.MaxRedirects != other.MaxRedirects ||
-		request.DisableCookie != other.DisableCookie ||
-		request.Redirects != other.Redirects {
-		return false
-	}
-	if !sliceutil.Equal(request.Path, other.Path) {
-		return false
-	}
-	if !maps.Equal(request.Headers, other.Headers) {
-		return false
-	}
-	return true
+// TmplClusterKey generates a unique key for the request
+// to be used in the clustering process.
+func (request *Request) TmplClusterKey() uint64 {
+	inp := fmt.Sprintf("%s-%d-%t-%t-%s-%d", request.Method.String(), request.MaxRedirects, request.DisableCookie, request.Redirects, strings.Join(request.Path, "-"), utils.MapHash(request.Headers))
+	return xxhash.Sum64String(inp)
+}
+
+// IsClusterable returns true if the request is eligible to be clustered.
+func (request *Request) IsClusterable() bool {
+	return !(len(request.Payloads) > 0 || len(request.Fuzzing) > 0 || len(request.Raw) > 0 || len(request.Body) > 0 || request.Unsafe || request.NeedsRequestCondition() || request.Name != "")
 }
