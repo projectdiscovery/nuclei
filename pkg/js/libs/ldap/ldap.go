@@ -205,11 +205,18 @@ func (c *Client) AuthenticateWithNTLMHash(username, hash string) {
 // ```
 func (c *Client) Search(filter string, attributes ...string) []map[string][]string {
 	c.nj.Require(c.conn != nil, "no existing connection")
+	c.nj.Require(c.BaseDN != "", "base dn cannot be empty")
+	c.nj.Require(len(attributes) > 0, "attributes cannot be empty")
 
 	res, err := c.conn.Search(
 		ldap.NewSearchRequest(
-			c.BaseDN, ldap.ScopeWholeSubtree, ldap.NeverDerefAliases,
-			0, 0, false, filter, attributes, nil,
+			"",
+			ldap.ScopeBaseObject,
+			ldap.NeverDerefAliases,
+			0, 0, false,
+			filter,
+			attributes,
+			nil,
 		),
 	)
 	c.nj.HandleError(err, "ldap search request failed")

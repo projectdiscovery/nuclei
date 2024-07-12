@@ -25,7 +25,7 @@ require (
 	github.com/projectdiscovery/interactsh v1.2.0
 	github.com/projectdiscovery/rawhttp v0.1.51
 	github.com/projectdiscovery/retryabledns v1.0.65
-	github.com/projectdiscovery/retryablehttp-go v1.0.66
+	github.com/projectdiscovery/retryablehttp-go v1.0.67
 	github.com/projectdiscovery/yamldoc-go v1.0.4
 	github.com/remeh/sizedwaitgroup v1.0.0
 	github.com/rs/xid v1.5.0
@@ -58,6 +58,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/credentials v1.13.27
 	github.com/aws/aws-sdk-go-v2/feature/s3/manager v1.11.72
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.37.0
+	github.com/cespare/xxhash v1.1.0
 	github.com/charmbracelet/glamour v0.6.0
 	github.com/clbanning/mxj/v2 v2.7.0
 	github.com/denisenkom/go-mssqldb v0.12.3
@@ -93,7 +94,7 @@ require (
 	github.com/projectdiscovery/sarif v0.0.1
 	github.com/projectdiscovery/tlsx v1.1.6
 	github.com/projectdiscovery/uncover v1.0.8
-	github.com/projectdiscovery/useragent v0.0.56
+	github.com/projectdiscovery/useragent v0.0.57
 	github.com/projectdiscovery/utils v0.1.6
 	github.com/projectdiscovery/wappalyzergo v0.1.6
 	github.com/redis/go-redis/v9 v9.1.0
@@ -129,7 +130,6 @@ require (
 	github.com/buger/jsonparser v1.1.1 // indirect
 	github.com/bytedance/sonic v1.9.1 // indirect
 	github.com/cenkalti/backoff/v4 v4.2.1 // indirect
-	github.com/cespare/xxhash v1.1.0 // indirect
 	github.com/cespare/xxhash/v2 v2.2.0 // indirect
 	github.com/cheggaaa/pb/v3 v3.1.4 // indirect
 	github.com/chenzhuoyu/base64x v0.0.0-20221115062448-fe3a3abad311 // indirect
@@ -200,7 +200,7 @@ require (
 	github.com/pierrec/lz4/v4 v4.1.21 // indirect
 	github.com/pjbgf/sha1cd v0.3.0 // indirect
 	github.com/pkg/browser v0.0.0-20240102092130-5ac0b6a4141c // indirect
-	github.com/projectdiscovery/asnmap v1.1.0 // indirect
+	github.com/projectdiscovery/asnmap v1.1.1 // indirect
 	github.com/projectdiscovery/cdncheck v1.0.9 // indirect
 	github.com/projectdiscovery/freeport v0.0.5 // indirect
 	github.com/projectdiscovery/ldapserver v1.0.2-0.20240219154113-dcc758ebc0cb // indirect
