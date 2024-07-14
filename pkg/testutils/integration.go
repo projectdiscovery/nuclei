@@ -80,7 +80,7 @@ func RunNucleiBareArgsAndGetResults(debug bool, env []string, extra ...string) (
 		fmt.Println(data)
 	}
 	var parts []string
-	items := strings.Split(string(data), "\n")
+	items := strings.Split(data, "\n")
 	for _, i := range items {
 		if i != "" {
 			parts = append(parts, i)
