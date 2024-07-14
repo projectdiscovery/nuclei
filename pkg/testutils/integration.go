@@ -74,7 +74,7 @@ func RunNucleiBareArgsAndGetResults(debug bool, env []string, extra ...string) (
 	output, err := cmd.Output()
 	var data string
 	if len(output) > 0 {
-		data = conversion.String(output)
+		data = strings.TrimSpace(conversion.String(output))
 	}
 	if debug {
 		fmt.Println(data)
@@ -108,7 +108,7 @@ func RunNucleiWithArgsAndGetResults(debug bool, args ...string) ([]string, error
 	output, err := cmd.Output()
 	var data string
 	if len(output) > 0 {
-		data = conversion.String(output)
+		data = strings.TrimSpace(conversion.String(output))
 	}
 	if debug {
 		fmt.Println(data)
@@ -139,12 +139,16 @@ func RunNucleiArgsAndGetErrors(debug bool, env []string, extra ...string) ([]str
 	cmd.Args = append(cmd.Args, "-allow-local-file-access")
 	cmd.Args = append(cmd.Args, "-nc") // disable color
 	cmd.Env = append(cmd.Env, ExtraEnvVars...)
-	data, err := cmd.CombinedOutput()
+	dataOutput, err := cmd.CombinedOutput()
 	if debug {
-		fmt.Println(string(data))
+		fmt.Println(string(dataOutput))
+	}
+	var data string
+	if len(dataOutput) > 0 {
+		data = strings.TrimSpace(conversion.String(dataOutput))
 	}
 	results := []string{}
-	for _, v := range strings.Split(string(data), "\n") {
+	for _, v := range strings.Split(data, "\n") {
 		line := strings.TrimSpace(v)
 		switch {
 		case strings.HasPrefix(line, "[ERR]"):
@@ -179,7 +183,7 @@ func RunNucleiArgsWithEnvAndGetResults(debug bool, env []string, extra ...string
 	dataOutput, err := cmd.Output()
 	var data string
 	if len(dataOutput) > 0 {
-		data = conversion.String(dataOutput)
+		data = strings.TrimSpace(conversion.String(dataOutput))
 	}
 	if debug {
 		fmt.Println(data)
