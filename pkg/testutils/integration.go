@@ -71,11 +71,14 @@ func RunNucleiBareArgsAndGetResults(debug bool, env []string, extra ...string) (
 	} else {
 		cmd.Args = append(cmd.Args, "-silent")
 	}
-	data, err := cmd.Output()
-	if debug {
-		fmt.Println(string(data))
+	output, err := cmd.Output()
+	var data string
+	if len(output) > 0 {
+		data = conversion.String(output)
 	}
-	dataStr := conversion.String(data)
+	if debug {
+		fmt.Println(data)
+	}
 	var parts []string
 	items := strings.Split(string(data), "\n")
 	for _, i := range items {
@@ -84,8 +87,8 @@ func RunNucleiBareArgsAndGetResults(debug bool, env []string, extra ...string) (
 		}
 	}
 
-	if (dataStr == "" || len(parts) == 0) && err != nil {
-		return nil, fmt.Errorf("%v: %v", err.Error(), dataStr)
+	if (data == "" || len(parts) == 0) && err != nil {
+		return nil, fmt.Errorf("%v: %v", err.Error(), data)
 	}
 
 	return parts, nil
@@ -102,19 +105,24 @@ func RunNucleiWithArgsAndGetResults(debug bool, args ...string) ([]string, error
 	} else {
 		cmd.Args = append(cmd.Args, "-silent")
 	}
-	data, err := cmd.Output()
-	if debug {
-		fmt.Println(string(data))
+	output, err := cmd.Output()
+	var data string
+	if len(output) > 0 {
+		data = conversion.String(output)
 	}
-	if len(data) < 1 && err != nil {
-		return nil, fmt.Errorf("%v: %v", err.Error(), string(data))
+	if debug {
+		fmt.Println(data)
 	}
 	var parts []string
-	items := strings.Split(string(data), "\n")
+	items := strings.Split(data, "\n")
 	for _, i := range items {
 		if i != "" {
 			parts = append(parts, i)
 		}
+	}
+
+	if (data == "" || len(parts) == 0) && err != nil {
+		return nil, fmt.Errorf("%v: %v", err.Error(), data)
 	}
 	return parts, nil
 }
@@ -168,19 +176,23 @@ func RunNucleiArgsWithEnvAndGetResults(debug bool, env []string, extra ...string
 	} else {
 		cmd.Args = append(cmd.Args, "-silent")
 	}
-	data, err := cmd.Output()
-	if debug {
-		fmt.Println(string(data))
+	dataOutput, err := cmd.Output()
+	var data string
+	if len(dataOutput) > 0 {
+		data = conversion.String(dataOutput)
 	}
-	if len(data) < 1 && err != nil {
-		return nil, fmt.Errorf("%v: %v", err.Error(), string(data))
+	if debug {
+		fmt.Println(data)
 	}
 	var parts []string
-	items := strings.Split(string(data), "\n")
+	items := strings.Split(data, "\n")
 	for _, i := range items {
 		if i != "" {
 			parts = append(parts, i)
 		}
+	}
+	if (data == "" || len(parts) == 0) && err != nil {
+		return nil, fmt.Errorf("%v: %v", err.Error(), data)
 	}
 	return parts, nil
 }
