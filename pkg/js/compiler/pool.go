@@ -241,5 +241,5 @@ func stringify(gojaValue goja.Value, runtime *goja.Runtime) string {
 		}
 	}
 	// for everything else stringify
-	return fmt.Sprintf("%v", value)
+	return fmt.Sprintf("%+v", value)
 }
