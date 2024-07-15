@@ -243,7 +243,15 @@ func (e *NucleiEngine) ExecuteCallbackWithCtx(ctx context.Context, callback ...f
 	}
 	e.resultCallbacks = append(e.resultCallbacks, filtered...)
 
-	_ = e.engine.ExecuteScanWithOpts(ctx, e.store.Templates(), e.inputProvider, false)
+	finalTemplates := []*templates.Template{}
+	finalTemplates = append(finalTemplates, e.store.Templates()...)
+	finalTemplates = append(finalTemplates, e.store.Workflows()...)
+
+	if len(finalTemplates) == 0 {
+		return ErrNoTemplatesAvailable
+	}
+
+	_ = e.engine.ExecuteScanWithOpts(ctx, finalTemplates, e.inputProvider, false)
 	defer e.engine.WorkPool().Wait()
 	return nil
 }
