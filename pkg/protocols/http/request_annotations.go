@@ -130,6 +130,10 @@ func (r *Request) parseAnnotations(rawRequest string, request *retryablehttp.Req
 		if duration := reTimeoutAnnotation.FindStringSubmatch(rawRequest); len(duration) > 0 {
 			value := strings.TrimSpace(duration[1])
 			if parsed, err := time.ParseDuration(value); err == nil {
+				// to avoid dos via timeout request annotation in http template we set it to maximum of 2 minutes
+				if parsed > 2*time.Minute {
+					parsed = 2 * time.Minute
+				}
 				//nolint:govet // cancelled automatically by withTimeout
 				// global timeout is overridden by annotation by replacing context
 				ctx, overrides.cancelFunc = context.WithTimeoutCause(context.TODO(), parsed, ErrTimeoutAnnotationDeadline)
@@ -140,7 +144,7 @@ func (r *Request) parseAnnotations(rawRequest string, request *retryablehttp.Req
 		} else {
 			//nolint:govet // cancelled automatically by withTimeout
 			// global timeout is overridden by annotation by replacing context
-			ctx, overrides.cancelFunc = context.WithTimeoutCause(context.TODO(), httpclientpool.GetHttpTimeout(r.options.Options), ErrRequestTimeoutDeadline)
+			ctx, overrides.cancelFunc = context.WithTimeoutCause(context.TODO(), r.options.Options.GetTimeouts().HttpTimeout, ErrRequestTimeoutDeadline)
 			request = request.Clone(ctx)
 		}
 	}
