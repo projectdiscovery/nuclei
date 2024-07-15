@@ -941,11 +941,6 @@
           "title": "code to execute in javascript",
           "description": "Executes inline javascript code for the request"
         },
-        "timeout": {
-          "type": "integer",
-          "title": "timeout for javascript execution",
-          "description": "Timeout in seconds is optional timeout for entire javascript script execution"
-        },
         "stop-at-first-match": {
           "type": "boolean",
           "title": "stop at first match",
