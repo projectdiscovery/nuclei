@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/projectdiscovery/rawhttp"
+	stringsutil "github.com/projectdiscovery/utils/strings"
 	urlutil "github.com/projectdiscovery/utils/url"
 )
 
@@ -36,7 +37,7 @@ func SendRawRequest(client *rawhttp.Client, opts *RawHttpRequestOpts) (*http.Res
 	resp, err := client.DoRawWithOptions(opts.Method, opts.URL, opts.Path, opts.Headers, opts.Body, opts.Options)
 	if err != nil {
 		cause := err.Error()
-		if strings.Contains(cause, "ReadStatusLine: ") && strings.Contains(cause, "read: connection reset by peer") {
+		if stringsutil.ContainsAll(cause, "ReadStatusLine: ", "read: connection reset by peer") {
 			// this error is caused when rawhttp client sends a corrupted or malformed request packet to server
 			// some servers may attempt gracefully shutdown but most will just abruptly close the connection which results
 			// in a connection reset by peer error and this can be safely assumed as 400 Bad Request in terms of normal http flow

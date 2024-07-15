@@ -77,6 +77,9 @@ func (s *ScanContext) LogEvent(e *output.InternalWrappedEvent) {
 		s.events = append(s.events, e)
 	}
 
+	e.RLock()
+	defer e.RUnlock()
+
 	s.results = append(s.results, e.Results...)
 }
 
