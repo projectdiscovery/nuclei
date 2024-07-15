@@ -483,7 +483,7 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 			request.options.RateLimitTake()
 
 			ctx := request.newContext(input)
-			ctxWithTimeout, cancel := context.WithTimeoutCause(ctx, httpclientpool.GetHttpTimeout(request.options.Options), ErrHttpEngineRequestDeadline)
+			ctxWithTimeout, cancel := context.WithTimeoutCause(ctx, request.options.Options.GetTimeouts().HttpTimeout, ErrHttpEngineRequestDeadline)
 			defer cancel()
 
 			generatedHttpRequest, err := generator.Make(ctxWithTimeout, input, data, payloads, dynamicValue)

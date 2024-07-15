@@ -65,9 +65,6 @@ type Request struct {
 	//   Code contains code to execute for the javascript request.
 	Code string `yaml:"code,omitempty" json:"code,omitempty" jsonschema:"title=code to execute in javascript,description=Executes inline javascript code for the request"`
 	// description: |
-	//   Timeout in seconds is optional timeout for each  javascript script execution (i.e init, pre-condition, code)
-	Timeout int `yaml:"timeout,omitempty" json:"timeout,omitempty" jsonschema:"title=timeout for javascript execution,description=Timeout in seconds is optional timeout for entire javascript script execution"`
-	// description: |
 	//   StopAtFirstMatch stops processing the request at first match.
 	StopAtFirstMatch bool `yaml:"stop-at-first-match,omitempty" json:"stop-at-first-match,omitempty" jsonschema:"title=stop at first match,description=Stop the execution after a match is found"`
 	// description: |
@@ -153,9 +150,9 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 		}
 
 		opts := &compiler.ExecuteOptions{
-			Timeout: request.Timeout,
-			Source:  &request.Init,
-			Context: context.Background(),
+			TimeoutVariants: request.options.Options.GetTimeouts(),
+			Source:          &request.Init,
+			Context:         context.Background(),
 		}
 		// register 'export' function to export variables from init code
 		// these are saved in args and are available in pre-condition and request code
@@ -345,7 +342,10 @@ func (request *Request) ExecuteWithResults(target *contextargs.Context, dynamicV
 		argsCopy.TemplateCtx = templateCtx.GetAll()
 
 		result, err := request.options.JsCompiler.ExecuteWithOptions(request.preConditionCompiled, argsCopy,
-			&compiler.ExecuteOptions{Timeout: request.Timeout, Source: &request.PreCondition, Context: target.Context()})
+			&compiler.ExecuteOptions{
+				TimeoutVariants: requestOptions.Options.GetTimeouts(),
+				Source:          &request.PreCondition, Context: target.Context(),
+			})
 		if err != nil {
 			return errorutil.NewWithTag(request.TemplateID, "could not execute pre-condition: %s", err)
 		}
@@ -500,7 +500,11 @@ func (request *Request) executeRequestWithPayloads(hostPort string, input *conte
 	}
 
 	results, err := request.options.JsCompiler.ExecuteWithOptions(request.scriptCompiled, argsCopy,
-		&compiler.ExecuteOptions{Timeout: request.Timeout, Source: &request.Code, Context: input.Context()})
+		&compiler.ExecuteOptions{
+			TimeoutVariants: requestOptions.Options.GetTimeouts(),
+			Source:          &request.Code,
+			Context:         input.Context(),
+		})
 	if err != nil {
 		// shouldn't fail even if it returned error instead create a failure event
 		results = compiler.ExecuteResult{"success": false, "error": err.Error()}

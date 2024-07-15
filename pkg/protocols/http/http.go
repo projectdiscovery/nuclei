@@ -336,7 +336,7 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 				request.Raw[i] = strings.ReplaceAll(raw, "\n", "\r\n")
 			}
 		}
-		request.rawhttpClient = httpclientpool.GetRawHTTP(options.Options)
+		request.rawhttpClient = httpclientpool.GetRawHTTP(options)
 	}
 	if len(request.Matchers) > 0 || len(request.Extractors) > 0 {
 		compiled := &request.Operators

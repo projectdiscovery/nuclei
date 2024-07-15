@@ -4,11 +4,11 @@ package compiler
 import (
 	"context"
 	"fmt"
-	"time"
 
 	"github.com/dop251/goja"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/generators"
+	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	contextutil "github.com/projectdiscovery/utils/context"
 	"github.com/projectdiscovery/utils/errkit"
 	stringsutil "github.com/projectdiscovery/utils/strings"
@@ -38,12 +38,12 @@ type ExecuteOptions struct {
 	// Cleanup is extra cleanup function to be called after execution
 	Cleanup func(runtime *goja.Runtime)
 
-	/// Timeout for this script execution
-	Timeout int
 	// Source is original source of the script
 	Source *string
 
 	Context context.Context
+
+	TimeoutVariants *types.Timeouts
 
 	// Manually exported objects
 	exports map[string]interface{}
@@ -79,15 +79,6 @@ func (e ExecuteResult) GetSuccess() bool {
 	return val
 }
 
-// Execute executes a script with the default options.
-func (c *Compiler) Execute(code string, args *ExecuteArgs) (ExecuteResult, error) {
-	p, err := WrapScriptNCompile(code, false)
-	if err != nil {
-		return nil, err
-	}
-	return c.ExecuteWithOptions(p, args, &ExecuteOptions{Context: context.Background()})
-}
-
 // ExecuteWithOptions executes a script with the provided options.
 func (c *Compiler) ExecuteWithOptions(program *goja.Program, args *ExecuteArgs, opts *ExecuteOptions) (ExecuteResult, error) {
 	if opts == nil {
@@ -106,14 +97,9 @@ func (c *Compiler) ExecuteWithOptions(program *goja.Program, args *ExecuteArgs, 
 	// merge all args into templatectx
 	args.TemplateCtx = generators.MergeMaps(args.TemplateCtx, args.Args)
 
-	if opts.Timeout <= 0 || opts.Timeout > 180 {
-		// some js scripts can take longer time so allow configuring timeout
-		// from template but keep it within sane limits (180s)
-		opts.Timeout = JsProtocolTimeout
-	}
-
 	// execute with context and timeout
-	ctx, cancel := context.WithTimeoutCause(opts.Context, time.Duration(opts.Timeout)*time.Second, ErrJSExecDeadline)
+
+	ctx, cancel := context.WithTimeoutCause(opts.Context, opts.TimeoutVariants.JsCompilerExecutionTimeout, ErrJSExecDeadline)
 	defer cancel()
 	// execute the script
 	results, err := contextutil.ExecFuncWithTwoReturns(ctx, func() (val goja.Value, err error) {
