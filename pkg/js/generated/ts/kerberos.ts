@@ -188,9 +188,9 @@ export class Config {
  */
 export interface AuthorizationDataEntry {
     
-    ADType?: number,
-    
     ADData?: Uint8Array,
+    
+    ADType?: number,
 }
 
 
@@ -200,9 +200,9 @@ export interface AuthorizationDataEntry {
  */
 export interface BitString {
     
-    BitLength?: number,
-    
     Bytes?: Uint8Array,
+    
+    BitLength?: number,
 }
 
 
@@ -212,9 +212,9 @@ export interface BitString {
  */
 export interface BitString {
     
-    BitLength?: number,
-    
     Bytes?: Uint8Array,
+    
+    BitLength?: number,
 }
 
 
@@ -236,19 +236,15 @@ export interface Config {
  */
 export interface EncTicketPart {
     
-    AuthTime?: Date,
-    
-    StartTime?: Date,
-    
     EndTime?: Date,
     
     RenewTill?: Date,
     
     CRealm?: string,
     
-    CAddr?: HostAddress,
+    AuthTime?: Date,
     
-    AuthorizationData?: AuthorizationDataEntry,
+    StartTime?: Date,
     
     Flags?: BitString,
     
@@ -257,6 +253,10 @@ export interface EncTicketPart {
     CName?: PrincipalName,
     
     Transited?: TransitedEncoding,
+    
+    CAddr?: HostAddress,
+    
+    AuthorizationData?: AuthorizationDataEntry,
 }
 
 
@@ -266,11 +266,11 @@ export interface EncTicketPart {
  */
 export interface EncryptedData {
     
+    EType?: number,
+    
     KVNO?: number,
     
     Cipher?: Uint8Array,
-    
-    EType?: number,
 }
 
 
@@ -318,41 +318,33 @@ export interface HostAddress {
  */
 export interface LibDefaults {
     
-    NoAddresses?: boolean,
-    
-    RealmTryDomains?: number,
-    
-    DNSLookupKDC?: boolean,
-    
-    DefaultRealm?: string,
-    
-    SafeChecksumType?: number,
-    
-    VerifyAPReqNofail?: boolean,
-    
-    AllowWeakCrypto?: boolean,
-    
-    DefaultTGSEnctypes?: string[],
-    
-    DefaultTktEnctypeIDs?: number[],
-    
-    IgnoreAcceptorHostname?: boolean,
+    CCacheType?: number,
     
     K5LoginAuthoritative?: boolean,
     
-    PermittedEnctypes?: string[],
+    Proxiable?: boolean,
+    
+    RDNS?: boolean,
+    
+    K5LoginDirectory?: string,
+    
+    KDCTimeSync?: number,
+    
+    VerifyAPReqNofail?: boolean,
+    
+    DefaultTGSEnctypes?: string[],
+    
+    DefaultTGSEnctypeIDs?: number[],
+    
+    DNSCanonicalizeHostname?: boolean,
+    
+    Forwardable?: boolean,
     
     /**
     * time in nanoseconds
     */
     
-    Clockskew?: number,
-    
-    DNSCanonicalizeHostname?: boolean,
-    
-    Proxiable?: boolean,
-    
-    RDNS?: boolean,
+    RenewLifetime?: number,
     
     /**
     * time in nanoseconds
@@ -362,37 +354,45 @@ export interface LibDefaults {
     
     DefaultClientKeytabName?: string,
     
-    PermittedEnctypeIDs?: number[],
-    
-    UDPPreferenceLimit?: number,
-    
-    DefaultTGSEnctypeIDs?: number[],
-    
-    DefaultTktEnctypes?: string[],
-    
-    CCacheType?: number,
+    DefaultTktEnctypeIDs?: number[],
     
     DNSLookupRealm?: boolean,
     
     ExtraAddresses?: Uint8Array,
     
+    DefaultRealm?: string,
+    
+    NoAddresses?: boolean,
+    
     PreferredPreauthTypes?: number[],
+    
+    PermittedEnctypeIDs?: number[],
+    
+    RealmTryDomains?: number,
+    
+    DefaultKeytabName?: string,
+    
+    DefaultTktEnctypes?: string[],
+    
+    DNSLookupKDC?: boolean,
+    
+    IgnoreAcceptorHostname?: boolean,
+    
+    AllowWeakCrypto?: boolean,
     
     Canonicalize?: boolean,
     
-    Forwardable?: boolean,
+    SafeChecksumType?: number,
     
-    K5LoginDirectory?: string,
-    
-    KDCTimeSync?: number,
+    UDPPreferenceLimit?: number,
     
     /**
     * time in nanoseconds
     */
     
-    RenewLifetime?: number,
+    Clockskew?: number,
     
-    DefaultKeytabName?: string,
+    PermittedEnctypes?: string[],
     
     KDCDefaultOptions?: BitString,
 }
@@ -416,6 +416,8 @@ export interface PrincipalName {
  */
 export interface Realm {
     
+    Realm?: string,
+    
     AdminServer?: string[],
     
     DefaultDomain?: string,
@@ -425,8 +427,6 @@ export interface Realm {
     KPasswdServer?: string[],
     
     MasterKDC?: string[],
-    
-    Realm?: string,
 }
 
 

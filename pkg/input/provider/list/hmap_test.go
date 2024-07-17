@@ -40,7 +40,7 @@ func Test_expandCIDR(t *testing.T) {
 		// scan
 		got := []string{}
 		input.hostMap.Scan(func(k, _ []byte) error {
-			var metainput contextargs.MetaInput
+			metainput := contextargs.NewMetaInput()
 			if err := metainput.Unmarshal(string(k)); err != nil {
 				return err
 			}
@@ -141,7 +141,7 @@ func Test_scanallips_normalizeStoreInputValue(t *testing.T) {
 		// scan
 		got := []string{}
 		input.hostMap.Scan(func(k, v []byte) error {
-			var metainput contextargs.MetaInput
+			metainput := contextargs.NewMetaInput()
 			if err := metainput.Unmarshal(string(k)); err != nil {
 				return err
 			}
@@ -184,7 +184,7 @@ func Test_expandASNInputValue(t *testing.T) {
 		// scan the hmap
 		got := []string{}
 		input.hostMap.Scan(func(k, v []byte) error {
-			var metainput contextargs.MetaInput
+			metainput := contextargs.NewMetaInput()
 			if err := metainput.Unmarshal(string(k)); err != nil {
 				return err
 			}

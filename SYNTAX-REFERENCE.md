@@ -4339,19 +4339,6 @@ Code contains code to execute for the javascript request.
 
 <div class="dd">
 
-<code>timeout</code>  <i>int</i>
-
-</div>
-<div class="dt">
-
-Timeout in seconds is optional timeout for each  javascript script execution (i.e init, pre-condition, code)
-
-</div>
-
-<hr />
-
-<div class="dd">
-
 <code>stop-at-first-match</code>  <i>bool</i>
 
 </div>
