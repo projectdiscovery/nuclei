@@ -231,7 +231,10 @@ func (e *NucleiEngine) init(ctx context.Context) error {
 	// and also upgrade templates to latest version if available
 	installer.NucleiSDKVersionCheck()
 
-	return e.processUpdateCheckResults()
+	if DefaultConfig.CanCheckForUpdates() {
+		return e.processUpdateCheckResults()
+	}
+	return nil
 }
 
 type syncOnce struct {

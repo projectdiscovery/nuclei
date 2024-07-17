@@ -20,12 +20,12 @@ require (
 	github.com/olekukonko/tablewriter v0.0.5
 	github.com/pkg/errors v0.9.1
 	github.com/projectdiscovery/clistats v0.0.20
-	github.com/projectdiscovery/fastdialer v0.1.4-0.20240611222741-427bffb2ea13
-	github.com/projectdiscovery/hmap v0.0.46
+	github.com/projectdiscovery/fastdialer v0.1.6
+	github.com/projectdiscovery/hmap v0.0.49
 	github.com/projectdiscovery/interactsh v1.2.0
-	github.com/projectdiscovery/rawhttp v0.1.51
-	github.com/projectdiscovery/retryabledns v1.0.63
-	github.com/projectdiscovery/retryablehttp-go v1.0.64
+	github.com/projectdiscovery/rawhttp v0.1.57
+	github.com/projectdiscovery/retryabledns v1.0.66
+	github.com/projectdiscovery/retryablehttp-go v1.0.68
 	github.com/projectdiscovery/yamldoc-go v1.0.4
 	github.com/remeh/sizedwaitgroup v1.0.0
 	github.com/rs/xid v1.5.0
@@ -58,6 +58,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/credentials v1.13.27
 	github.com/aws/aws-sdk-go-v2/feature/s3/manager v1.11.72
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.37.0
+	github.com/cespare/xxhash v1.1.0
 	github.com/charmbracelet/glamour v0.6.0
 	github.com/clbanning/mxj/v2 v2.7.0
 	github.com/denisenkom/go-mssqldb v0.12.3
@@ -78,11 +79,11 @@ require (
 	github.com/mholt/archiver v3.1.1+incompatible
 	github.com/ory/dockertest/v3 v3.10.0
 	github.com/praetorian-inc/fingerprintx v1.1.9
-	github.com/projectdiscovery/dsl v0.1.2
+	github.com/projectdiscovery/dsl v0.1.6
 	github.com/projectdiscovery/fasttemplate v0.0.2
 	github.com/projectdiscovery/go-smb2 v0.0.0-20240129202741-052cc450c6cb
-	github.com/projectdiscovery/goflags v0.1.54
-	github.com/projectdiscovery/gologger v1.1.12
+	github.com/projectdiscovery/goflags v0.1.59
+	github.com/projectdiscovery/gologger v1.1.14
 	github.com/projectdiscovery/gostruct v0.0.2
 	github.com/projectdiscovery/gozero v0.0.2
 	github.com/projectdiscovery/httpx v1.6.3
@@ -93,9 +94,9 @@ require (
 	github.com/projectdiscovery/sarif v0.0.1
 	github.com/projectdiscovery/tlsx v1.1.6
 	github.com/projectdiscovery/uncover v1.0.8
-	github.com/projectdiscovery/useragent v0.0.54
-	github.com/projectdiscovery/utils v0.1.4-0.20240611113448-0e2f2d33fe1c
-	github.com/projectdiscovery/wappalyzergo v0.1.4
+	github.com/projectdiscovery/useragent v0.0.60
+	github.com/projectdiscovery/utils v0.2.1
+	github.com/projectdiscovery/wappalyzergo v0.1.10
 	github.com/redis/go-redis/v9 v9.1.0
 	github.com/seh-msft/burpxml v1.0.1
 	github.com/stretchr/testify v1.9.0
@@ -124,12 +125,11 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/internal/s3shared v1.14.4 // indirect
 	github.com/aymanbagabas/go-osc52/v2 v2.0.1 // indirect
 	github.com/bahlo/generic-list-go v0.2.0 // indirect
-	github.com/bits-and-blooms/bitset v1.8.0 // indirect
+	github.com/bits-and-blooms/bitset v1.13.0 // indirect
 	github.com/bits-and-blooms/bloom/v3 v3.5.0 // indirect
 	github.com/buger/jsonparser v1.1.1 // indirect
 	github.com/bytedance/sonic v1.9.1 // indirect
 	github.com/cenkalti/backoff/v4 v4.2.1 // indirect
-	github.com/cespare/xxhash v1.1.0 // indirect
 	github.com/cespare/xxhash/v2 v2.2.0 // indirect
 	github.com/cheggaaa/pb/v3 v3.1.4 // indirect
 	github.com/chenzhuoyu/base64x v0.0.0-20221115062448-fe3a3abad311 // indirect
@@ -143,9 +143,10 @@ require (
 	github.com/docker/cli v24.0.5+incompatible // indirect
 	github.com/docker/docker v24.0.9+incompatible // indirect
 	github.com/docker/go-connections v0.4.0 // indirect
-	github.com/fatih/color v1.15.0 // indirect
+	github.com/fatih/color v1.16.0 // indirect
 	github.com/free5gc/util v1.0.5-0.20230511064842-2e120956883b // indirect
 	github.com/gabriel-vasile/mimetype v1.4.2 // indirect
+	github.com/gaissmai/bart v0.9.5 // indirect
 	github.com/geoffgarside/ber v1.1.0 // indirect
 	github.com/gin-contrib/sse v0.1.0 // indirect
 	github.com/gin-gonic/gin v1.9.1 // indirect
@@ -199,8 +200,8 @@ require (
 	github.com/pierrec/lz4/v4 v4.1.21 // indirect
 	github.com/pjbgf/sha1cd v0.3.0 // indirect
 	github.com/pkg/browser v0.0.0-20240102092130-5ac0b6a4141c // indirect
-	github.com/projectdiscovery/asnmap v1.1.0 // indirect
-	github.com/projectdiscovery/cdncheck v1.0.9 // indirect
+	github.com/projectdiscovery/asnmap v1.1.1 // indirect
+	github.com/projectdiscovery/cdncheck v1.1.0 // indirect
 	github.com/projectdiscovery/freeport v0.0.5 // indirect
 	github.com/projectdiscovery/ldapserver v1.0.2-0.20240219154113-dcc758ebc0cb // indirect
 	github.com/projectdiscovery/machineid v0.0.0-20240226150047-2e2c51e35983 // indirect
@@ -267,7 +268,7 @@ require (
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/gorilla/css v1.0.1 // indirect
 	github.com/hashicorp/go-cleanhttp v0.5.2 // indirect
-	github.com/hashicorp/go-retryablehttp v0.7.2 // indirect
+	github.com/hashicorp/go-retryablehttp v0.7.7 // indirect
 	github.com/hdm/jarm-go v0.0.7 // indirect
 	github.com/itchyny/timefmt-go v0.1.5 // indirect
 	github.com/klauspost/cpuid/v2 v2.2.5 // indirect
@@ -284,7 +285,7 @@ require (
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/power-devops/perfstat v0.0.0-20210106213030-5aafc221ea8c // indirect
 	github.com/projectdiscovery/blackrock v0.0.1 // indirect
-	github.com/projectdiscovery/networkpolicy v0.0.8
+	github.com/projectdiscovery/networkpolicy v0.0.9
 	github.com/rivo/uniseg v0.4.6 // indirect
 	github.com/saintfish/chardet v0.0.0-20230101081208-5e3ef4b5456d // indirect
 	github.com/tklauser/go-sysconf v0.3.12 // indirect
@@ -292,7 +293,6 @@ require (
 	github.com/trivago/tgo v1.0.7
 	github.com/ulikunitz/xz v0.5.12 // indirect
 	github.com/valyala/bytebufferpool v1.0.0 // indirect
-	github.com/yl2chen/cidranger v1.0.2 // indirect
 	github.com/ysmood/goob v0.4.0 // indirect
 	github.com/ysmood/gson v0.7.3 // indirect
 	github.com/ysmood/leakless v0.8.0 // indirect

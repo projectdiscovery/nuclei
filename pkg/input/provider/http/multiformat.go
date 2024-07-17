@@ -66,9 +66,10 @@ func (i *HttpInputProvider) Count() int64 {
 // Iterate over all inputs in order
 func (i *HttpInputProvider) Iterate(callback func(value *contextargs.MetaInput) bool) {
 	err := i.format.Parse(i.inputFile, func(request *types.RequestResponse) bool {
-		return callback(&contextargs.MetaInput{
-			ReqResp: request,
-		})
+		metaInput := contextargs.NewMetaInput()
+		metaInput.ReqResp = request
+		metaInput.Input = request.URL.String()
+		return callback(metaInput)
 	})
 	if err != nil {
 		gologger.Warning().Msgf("Could not parse input file while iterating: %s\n", err)

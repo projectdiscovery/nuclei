@@ -5,6 +5,7 @@ import (
 	"regexp"
 	"strings"
 
+	stringsutil "github.com/projectdiscovery/utils/strings"
 	"github.com/segmentio/ksuid"
 )
 
@@ -48,7 +49,7 @@ func (r *randStrPreprocessor) ProcessNReturnData(data []byte) ([]byte, map[strin
 			continue
 		}
 		value := expression[1]
-		if strings.Contains(value, "(") || strings.Contains(value, ")") {
+		if stringsutil.ContainsAny(value, "(", ")") {
 			continue
 		}
 

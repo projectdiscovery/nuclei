@@ -177,8 +177,6 @@ func (template *Template) Type() types.ProtocolType {
 		return types.HeadlessProtocol
 	case len(template.RequestsNetwork) > 0:
 		return types.NetworkProtocol
-	case len(template.Workflow.Workflows) > 0:
-		return types.WorkflowProtocol
 	case len(template.RequestsSSL) > 0:
 		return types.SSLProtocol
 	case len(template.RequestsWebsocket) > 0:
@@ -189,6 +187,8 @@ func (template *Template) Type() types.ProtocolType {
 		return types.CodeProtocol
 	case len(template.RequestsJavascript) > 0:
 		return types.JavascriptProtocol
+	case len(template.Workflow.Workflows) > 0:
+		return types.WorkflowProtocol
 	default:
 		return types.InvalidProtocol
 	}
