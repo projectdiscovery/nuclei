@@ -483,7 +483,7 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 			request.options.RateLimitTake()
 
 			ctx := request.newContext(input)
-			ctxWithTimeout, cancel := context.WithTimeoutCause(ctx, httpclientpool.GetHttpTimeout(request.options.Options), ErrHttpEngineRequestDeadline)
+			ctxWithTimeout, cancel := context.WithTimeoutCause(ctx, request.options.Options.GetTimeouts().HttpTimeout, ErrHttpEngineRequestDeadline)
 			defer cancel()
 
 			generatedHttpRequest, err := generator.Make(ctxWithTimeout, input, data, payloads, dynamicValue)
@@ -844,6 +844,8 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 			outputEvent["ip"] = input.MetaInput.CustomIP
 		} else {
 			outputEvent["ip"] = protocolstate.Dialer.GetDialedIP(hostname)
+			// try getting cname
+			request.addCNameIfAvailable(hostname, outputEvent)
 		}
 
 		if len(generatedRequest.interactshURLs) > 0 {
@@ -940,6 +942,8 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 			outputEvent["ip"] = input.MetaInput.CustomIP
 		} else {
 			outputEvent["ip"] = protocolstate.Dialer.GetDialedIP(hostname)
+			// try getting cname
+			request.addCNameIfAvailable(hostname, outputEvent)
 		}
 		if request.options.Interactsh != nil {
 			request.options.Interactsh.MakePlaceholders(generatedRequest.interactshURLs, outputEvent)
@@ -1027,6 +1031,23 @@ func (request *Request) validateNFixEvent(input *contextargs.Context, gr *genera
 		}
 		if err != nil {
 			event.InternalEvent["error"] = err.Error()
+		}
+	}
+}
+
+// addCNameIfAvailable adds the cname to the event if available
+func (request *Request) addCNameIfAvailable(hostname string, outputEvent map[string]interface{}) {
+	data, err := protocolstate.Dialer.GetDNSData(hostname)
+	if err == nil {
+		switch len(data.CNAME) {
+		case 0:
+			return
+		case 1:
+			outputEvent["cname"] = data.CNAME[0]
+		default:
+			// add 1st and put others in cname_all
+			outputEvent["cname"] = data.CNAME[0]
+			outputEvent["cname_all"] = data.CNAME
 		}
 	}
 }

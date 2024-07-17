@@ -209,8 +209,8 @@ export class Client {
     * log(to_json(users));
     * ```
     */
-    public FindADObjects(filter: string): ADObject[] {
-        return [];
+    public FindADObjects(filter: string): SearchResult | null {
+        return null;
     }
     
 
@@ -225,8 +225,8 @@ export class Client {
     * log(to_json(users));
     * ```
     */
-    public GetADUsers(): ADObject[] {
-        return [];
+    public GetADUsers(): SearchResult | null {
+        return null;
     }
     
 
@@ -241,8 +241,8 @@ export class Client {
     * log(to_json(users));
     * ```
     */
-    public GetADActiveUsers(): ADObject[] {
-        return [];
+    public GetADActiveUsers(): SearchResult | null {
+        return null;
     }
     
 
@@ -257,8 +257,8 @@ export class Client {
     * log(to_json(users));
     * ```
     */
-    public GetADUserWithNeverExpiringPasswords(): ADObject[] {
-        return [];
+    public GetADUserWithNeverExpiringPasswords(): SearchResult | null {
+        return null;
     }
     
 
@@ -273,8 +273,8 @@ export class Client {
     * log(to_json(users));
     * ```
     */
-    public GetADUserTrustedForDelegation(): ADObject[] {
-        return [];
+    public GetADUserTrustedForDelegation(): SearchResult | null {
+        return null;
     }
     
 
@@ -289,8 +289,8 @@ export class Client {
     * log(to_json(users));
     * ```
     */
-    public GetADUserWithPasswordNotRequired(): ADObject[] {
-        return [];
+    public GetADUserWithPasswordNotRequired(): SearchResult | null {
+        return null;
     }
     
 
@@ -305,8 +305,8 @@ export class Client {
     * log(to_json(groups));
     * ```
     */
-    public GetADGroups(): ADObject[] {
-        return [];
+    public GetADGroups(): SearchResult | null {
+        return null;
     }
     
 
@@ -321,8 +321,8 @@ export class Client {
     * log(to_json(dcs));
     * ```
     */
-    public GetADDCList(): ADObject[] {
-        return [];
+    public GetADDCList(): SearchResult | null {
+        return null;
     }
     
 
@@ -337,8 +337,8 @@ export class Client {
     * log(to_json(admins));
     * ```
     */
-    public GetADAdmins(): ADObject[] {
-        return [];
+    public GetADAdmins(): SearchResult | null {
+        return null;
     }
     
 
@@ -353,8 +353,8 @@ export class Client {
     * log(to_json(kerberoastable));
     * ```
     */
-    public GetADUserKerberoastable(): ADObject[] {
-        return [];
+    public GetADUserKerberoastable(): SearchResult | null {
+        return null;
     }
     
 
@@ -369,8 +369,8 @@ export class Client {
     * log(to_json(AsRepRoastable));
     * ```
     */
-    public GetADUserAsRepRoastable(): ADObject[] {
-        return [];
+    public GetADUserAsRepRoastable(): SearchResult | null {
+        return null;
     }
     
 
@@ -428,8 +428,8 @@ export class Client {
     * const results = client.Search('(objectClass=*)', 'cn', 'mail');
     * ```
     */
-    public Search(filter: string, attributes: any): Record<string, string[]>[] {
-        return [];
+    public Search(filter: string, attributes: any): SearchResult | null {
+        return null;
     }
     
 
@@ -482,33 +482,6 @@ export class Client {
 
 
 /**
- * ADObject represents an Active Directory object
- * @example
- * ```javascript
- * const ldap = require('nuclei/ldap');
- * const client = new ldap.Client('ldap://ldap.example.com', 'acme.com');
- * const users = client.GetADUsers();
- * log(to_json(users));
- * ```
- */
-export interface ADObject {
-    
-    DistinguishedName?: string,
-    
-    SAMAccountName?: string,
-    
-    PWDLastSet?: string,
-    
-    LastLogon?: string,
-    
-    MemberOf?: string[],
-    
-    ServicePrincipalName?: string[],
-}
-
-
-
-/**
  * Config is extra configuration for the ldap client
  * @example
  * ```javascript
@@ -535,27 +508,186 @@ export interface Config {
 
 
 /**
- * Entry Interface
+ * LdapAttributes represents all LDAP attributes of a particular
+ * ldap entry
  */
-export interface Entry {
+export interface LdapAttributes {
     
-    DN?: string,
+    /**
+    * CurrentTime contains current time
+    */
     
-    Attributes?: EntryAttribute,
+    CurrentTime?: string[],
+    
+    /**
+    * SubschemaSubentry contains subschema subentry
+    */
+    
+    SubschemaSubentry?: string[],
+    
+    /**
+    * DsServiceName contains ds service name
+    */
+    
+    DsServiceName?: string[],
+    
+    /**
+    * NamingContexts contains naming contexts
+    */
+    
+    NamingContexts?: string[],
+    
+    /**
+    * DefaultNamingContext contains default naming context
+    */
+    
+    DefaultNamingContext?: string[],
+    
+    /**
+    * SchemaNamingContext contains schema naming context
+    */
+    
+    SchemaNamingContext?: string[],
+    
+    /**
+    * ConfigurationNamingContext contains configuration naming context
+    */
+    
+    ConfigurationNamingContext?: string[],
+    
+    /**
+    * RootDomainNamingContext contains root domain naming context
+    */
+    
+    RootDomainNamingContext?: string[],
+    
+    /**
+    * SupportedLDAPVersion contains supported LDAP version
+    */
+    
+    SupportedLDAPVersion?: string[],
+    
+    /**
+    * HighestCommittedUSN contains highest committed USN
+    */
+    
+    HighestCommittedUSN?: string[],
+    
+    /**
+    * SupportedSASLMechanisms contains supported SASL mechanisms
+    */
+    
+    SupportedSASLMechanisms?: string[],
+    
+    /**
+    * DnsHostName contains DNS host name
+    */
+    
+    DnsHostName?: string[],
+    
+    /**
+    * LdapServiceName contains LDAP service name
+    */
+    
+    LdapServiceName?: string[],
+    
+    /**
+    * ServerName contains server name
+    */
+    
+    ServerName?: string[],
+    
+    /**
+    * IsSynchronized contains is synchronized
+    */
+    
+    IsSynchronized?: string[],
+    
+    /**
+    * IsGlobalCatalogReady contains is global catalog ready
+    */
+    
+    IsGlobalCatalogReady?: string[],
+    
+    /**
+    * DomainFunctionality contains domain functionality
+    */
+    
+    DomainFunctionality?: string[],
+    
+    /**
+    * ForestFunctionality contains forest functionality
+    */
+    
+    ForestFunctionality?: string[],
+    
+    /**
+    * DomainControllerFunctionality contains domain controller functionality
+    */
+    
+    DomainControllerFunctionality?: string[],
+    
+    /**
+    * DistinguishedName contains the distinguished name
+    */
+    
+    DistinguishedName?: string[],
+    
+    /**
+    * SAMAccountName contains the SAM account name
+    */
+    
+    SAMAccountName?: string[],
+    
+    /**
+    * PWDLastSet contains the password last set time
+    */
+    
+    PWDLastSet?: string[],
+    
+    /**
+    * LastLogon contains the last logon time
+    */
+    
+    LastLogon?: string[],
+    
+    /**
+    * MemberOf contains the groups the entry is a member of
+    */
+    
+    MemberOf?: string[],
+    
+    /**
+    * ServicePrincipalName contains the service principal names
+    */
+    
+    ServicePrincipalName?: string[],
+    
+    /**
+    * Extra contains other extra fields which might be present
+    */
+    
+    Extra?: Record<string, any>,
 }
 
 
 
 /**
- * EntryAttribute Interface
+ * LdapEntry represents a single LDAP entry
  */
-export interface EntryAttribute {
+export interface LdapEntry {
     
-    Name?: string,
+    /**
+    * DN contains distinguished name
+    */
     
-    Values?: string[],
+    DN?: string,
     
-    ByteValues?: Uint8Array,
+    /**
+    * Attributes contains list of attributes
+    */
+    
+    Attributes?: LdapAttributes,
 }
 
 
@@ -584,12 +716,32 @@ export interface Metadata {
 
 
 /**
- * SearchResult Interface
+ * SearchResult contains search result of any / all ldap search request
+ * @example
+ * ```javascript
+ * const ldap = require('nuclei/ldap');
+ * const client = new ldap.Client('ldap://ldap.example.com', 'acme.com');
+ * const results = client.Search('(objectinterface=*)', 'cn', 'mail');
+ * ```
  */
 export interface SearchResult {
     
+    /**
+    * Referrals contains list of referrals
+    */
+    
     Referrals?: string[],
     
-    Entries?: Entry,
+    /**
+    * Controls contains list of controls
+    */
+    
+    Controls?: string[],
+    
+    /**
+    * Entries contains list of entries
+    */
+    
+    Entries?: LdapEntry[],
 }
 

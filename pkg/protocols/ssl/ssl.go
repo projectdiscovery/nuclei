@@ -3,8 +3,10 @@ package ssl
 import (
 	"fmt"
 	"net"
+	"strings"
 	"time"
 
+	"github.com/cespare/xxhash"
 	"github.com/fatih/structs"
 	jsoniter "github.com/json-iterator/go"
 	"github.com/pkg/errors"
@@ -99,15 +101,15 @@ type Request struct {
 	options *protocols.ExecutorOptions
 }
 
-// CanCluster returns true if the request can be clustered.
-func (request *Request) CanCluster(other *Request) bool {
-	if len(request.CipherSuites) > 0 || request.MinVersion != "" || request.MaxVersion != "" {
-		return false
-	}
-	if request.Address != other.Address || request.ScanMode != other.ScanMode {
-		return false
-	}
-	return true
+// TmplClusterKey generates a unique key for the request
+// to be used in the clustering process.
+func (request *Request) TmplClusterKey() uint64 {
+	inp := fmt.Sprintf("%s-%s-%t-%t-%s", request.Address, request.ScanMode, request.TLSCiphersEnum, request.TLSVersionsEnum, strings.Join(request.TLSCipherTypes, ","))
+	return xxhash.Sum64String(inp)
+}
+
+func (request *Request) IsClusterable() bool {
+	return !(len(request.CipherSuites) > 0 || request.MinVersion != "" || request.MaxVersion != "")
 }
 
 // Compile compiles the request generators preparing any requests possible.
