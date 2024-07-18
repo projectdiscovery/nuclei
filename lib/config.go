@@ -396,6 +396,7 @@ func WithHeaders(headers []string) NucleiSDKOptions {
 func EnablePassiveMode() NucleiSDKOptions {
 	return func(e *NucleiEngine) error {
 		e.opts.OfflineHTTP = true
+		e.opts.DisableHTTPProbe = true
 		return nil
 	}
 }
