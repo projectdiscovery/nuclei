@@ -2,7 +2,6 @@ package types
 
 import (
 	"io"
-	"os"
 	"path/filepath"
 	"strings"
 	"time"
@@ -540,13 +539,13 @@ func (options *Options) ParseHeadlessOptionalArguments() map[string]string {
 func (options *Options) LoadHelperFile(helperFile, templatePath string, catalog catalog.Catalog) (io.ReadCloser, error) {
 	if !options.AllowLocalFileAccess {
 		// if global file access is disabled try loading with restrictions
-		absPath, err := options.GetValidAbsPath(helperFile, templatePath)
+		absPath, err := catalog.ResolvePath(helperFile, templatePath)
 		if err != nil {
 			return nil, err
 		}
 		helperFile = absPath
 	}
-	f, err := os.Open(helperFile)
+	f, err := catalog.OpenFile(helperFile)
 	if err != nil {
 		return nil, errorutil.NewWithErr(err).Msgf("could not open file %v", helperFile)
 	}

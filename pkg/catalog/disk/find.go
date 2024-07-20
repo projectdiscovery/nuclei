@@ -218,10 +218,16 @@ func (c *DiskCatalog) findFileMatches(absPath string, processed map[string]struc
 	if c.templatesFS != nil {
 		absPath = strings.TrimPrefix(absPath, "/")
 	}
+
 	var info fs.File
 	if c.templatesFS == nil {
 		info, err = os.Open(absPath)
 	} else {
+		// If we were given no path, then it's not a file, it's the root, and we can quietly return.
+		if absPath == "" {
+			return "", false, nil
+		}
+
 		info, err = c.templatesFS.Open(absPath)
 	}
 	if err != nil {
@@ -263,6 +269,11 @@ func (c *DiskCatalog) findDirectoryMatches(absPath string, processed map[string]
 			},
 		)
 	} else {
+		// For the special case of the root directory, we need to pass "." to `fs.WalkDir`.
+		if absPath == "" {
+			absPath = "."
+		}
+
 		err = fs.WalkDir(
 			c.templatesFS,
 			absPath,
