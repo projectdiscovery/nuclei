@@ -218,7 +218,6 @@ func (c *DiskCatalog) findFileMatches(absPath string, processed map[string]struc
 	if c.templatesFS != nil {
 		absPath = strings.TrimPrefix(absPath, "/")
 	}
-
 	var info fs.File
 	if c.templatesFS == nil {
 		info, err = os.Open(absPath)

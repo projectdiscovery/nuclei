@@ -67,11 +67,6 @@ func (c *DiskCatalog) tryResolve(fullPath string) (string, error) {
 		if err == nil {
 			return fullPath, nil
 		}
-		/*
-			if _, err := c.OpenFile(fullPath); err == nil {
-				return fullPath, nil
-			}
-		*/
 	}
 	return "", errNoValidCombination
 }
