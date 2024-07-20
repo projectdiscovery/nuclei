@@ -539,7 +539,8 @@ func (options *Options) ParseHeadlessOptionalArguments() map[string]string {
 func (options *Options) LoadHelperFile(helperFile, templatePath string, catalog catalog.Catalog) (io.ReadCloser, error) {
 	if !options.AllowLocalFileAccess {
 		// if global file access is disabled try loading with restrictions
-		absPath, err := catalog.ResolvePath(helperFile, templatePath)
+		//absPath, err := options.GetValidAbsPath(helperFile, templatePath) // ORIGINAL
+		absPath, err := catalog.ResolvePath(helperFile, templatePath) // PROPOSED CHANGE (USE THE CATALOG)
 		if err != nil {
 			return nil, err
 		}

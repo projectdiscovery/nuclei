@@ -63,8 +63,7 @@ func (c *DiskCatalog) tryResolve(fullPath string) (string, error) {
 			return fullPath, nil
 		}
 	} else {
-		_, err := fs.Stat(c.templatesFS, fullPath)
-		if err == nil {
+		if _, err := fs.Stat(c.templatesFS, fullPath); err == nil {
 			return fullPath, nil
 		}
 	}
