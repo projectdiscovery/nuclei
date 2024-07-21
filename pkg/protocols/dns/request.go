@@ -3,7 +3,6 @@ package dns
 import (
 	"encoding/hex"
 	"fmt"
-	"net/url"
 	"strings"
 	"sync"
 
@@ -251,13 +250,4 @@ func dumpTraceData(event *output.InternalWrappedEvent, requestOptions *protocols
 		highlightedResponse := responsehighlighter.Highlight(event.OperatorsResult, traceData, cliOptions.NoColor, hexDump)
 		gologger.Debug().Msgf("[%s] Dumped DNS Trace data for %s\n\n%s", requestOptions.TemplateID, domain, highlightedResponse)
 	}
-}
-
-// extractDomain extracts the domain name of a URL
-func extractDomain(theURL string) string {
-	u, err := url.Parse(theURL)
-	if err != nil {
-		return ""
-	}
-	return u.Hostname()
 }
