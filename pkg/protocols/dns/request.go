@@ -23,7 +23,6 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/utils/vardump"
 	protocolutils "github.com/projectdiscovery/nuclei/v3/pkg/protocols/utils"
 	templateTypes "github.com/projectdiscovery/nuclei/v3/pkg/templates/types"
-	"github.com/projectdiscovery/nuclei/v3/pkg/utils"
 	"github.com/projectdiscovery/retryabledns"
 	iputil "github.com/projectdiscovery/utils/ip"
 	syncutil "github.com/projectdiscovery/utils/sync"
@@ -38,16 +37,8 @@ func (request *Request) Type() templateTypes.ProtocolType {
 
 // ExecuteWithResults executes the protocol requests and returns results instead of writing them.
 func (request *Request) ExecuteWithResults(input *contextargs.Context, metadata, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
-	// Parse the URL and return domain if URL.
-	var domain string
-	if utils.IsURL(input.MetaInput.Input) {
-		domain = extractDomain(input.MetaInput.Input)
-	} else {
-		domain = input.MetaInput.Input
-	}
-
 	var err error
-	domain, err = request.parseDNSInput(domain)
+	domain, err := request.parseDNSInput(input.MetaInput.Input)
 	if err != nil {
 		return errors.Wrap(err, "could not build request")
 	}
