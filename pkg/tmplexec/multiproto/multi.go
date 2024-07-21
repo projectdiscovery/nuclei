@@ -109,9 +109,14 @@ func (m *MultiProtocol) ExecuteWithResults(ctx *scan.ScanContext) error {
 			return ctx.Context().Err()
 		default:
 		}
-
-		values := m.options.GetTemplateCtx(ctx.Input.MetaInput).GetAll()
-		err := req.ExecuteWithResults(ctx.Input, output.InternalEvent(values), nil, multiProtoCallback)
+		inputItem := ctx.Input.Clone()
+		if m.options.InputHelper != nil && ctx.Input.MetaInput.Input != "" {
+			if inputItem.MetaInput.Input = m.options.InputHelper.Transform(inputItem.MetaInput.Input, req.Type()); inputItem.MetaInput.Input == "" {
+				return nil
+			}
+		}
+		values := m.options.GetTemplateCtx(inputItem.MetaInput).GetAll()
+		err := req.ExecuteWithResults(inputItem, output.InternalEvent(values), nil, multiProtoCallback)
 		// in case of fatal error skip execution of next protocols
 		if err != nil {
 			// always log errors
