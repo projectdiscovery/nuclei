@@ -162,7 +162,7 @@ func RunNucleiArgsAndGetErrors(debug bool, env []string, extra ...string) ([]str
 	return results, err
 }
 
-// RunNucleiArgsWithEnvAndGetErrors returns a list of errors in nuclei output (ERR,WRN,FTL)
+// RunNucleiArgsWithEnvAndGetResults returns a list of results in nuclei output (ERR,WRN,FTL)
 func RunNucleiArgsWithEnvAndGetResults(debug bool, env []string, extra ...string) ([]string, error) {
 	cmd := exec.Command("./nuclei")
 	extra = append(extra, ExtraDebugArgs...)

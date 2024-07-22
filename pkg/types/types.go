@@ -592,7 +592,7 @@ func (o *Options) GetValidAbsPath(helperFilePath, templatePath string) (string, 
 	return "", errorutil.New("access to helper file %v denied", helperFilePath)
 }
 
-// isRootDir checks if given is root directory
+// isHomeDir checks if given is home directory
 func isHomeDir(path string) bool {
 	homeDir := folderutil.HomeDirOrDefault("")
 	return strings.HasPrefix(path, homeDir)
