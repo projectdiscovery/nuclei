@@ -56,6 +56,7 @@ func (s *ScanStatsWorker) initEventsFile() error {
 	if err != nil {
 		return err
 	}
+	defer f.Close()
 	s.enc = json.NewEncoder(f)
 	return nil
 }
