@@ -9,14 +9,14 @@ import (
 	"strings"
 	"time"
 
-	_ "github.com/denisenkom/go-mssqldb"
+	_ "github.com/microsoft/go-mssqldb"
 	"github.com/praetorian-inc/fingerprintx/pkg/plugins/services/mssql"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
 )
 
 type (
 	// Client is a client for MS SQL database.
-	// Internally client uses denisenkom/go-mssqldb driver.
+	// Internally client uses microsoft/go-mssqldb driver.
 	// @example
 	// ```javascript
 	// const mssql = require('nuclei/mssql');
