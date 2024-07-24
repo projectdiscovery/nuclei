@@ -142,7 +142,7 @@ func (u *UploadWriter) autoCommit(ctx context.Context, r *io.PipeReader) {
 	// temporary buffer to store the results
 	buff := &bytes.Buffer{}
 	ticker := time.NewTicker(flushTimer)
-
+	defer ticker.Stop()
 	for {
 		select {
 		case <-ctx.Done():
