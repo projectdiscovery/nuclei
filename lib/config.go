@@ -396,6 +396,7 @@ func WithHeaders(headers []string) NucleiSDKOptions {
 func EnablePassiveMode() NucleiSDKOptions {
 	return func(e *NucleiEngine) error {
 		e.opts.OfflineHTTP = true
+		e.opts.DisableHTTPProbe = true
 		return nil
 	}
 }
@@ -437,6 +438,14 @@ func SignedTemplatesOnly() NucleiSDKOptions {
 func WithCatalog(cat catalog.Catalog) NucleiSDKOptions {
 	return func(e *NucleiEngine) error {
 		e.catalog = cat
+		return nil
+	}
+}
+
+// DisableUpdateCheck disables nuclei update check
+func DisableUpdateCheck() NucleiSDKOptions {
+	return func(e *NucleiEngine) error {
+		DefaultConfig.DisableUpdateCheck()
 		return nil
 	}
 }

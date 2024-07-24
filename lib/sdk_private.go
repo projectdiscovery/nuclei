@@ -25,6 +25,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/hosterrorscache"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/interactsh"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolinit"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http/httpclientpool"
 	"github.com/projectdiscovery/nuclei/v3/pkg/reporting"
 	"github.com/projectdiscovery/nuclei/v3/pkg/templates"
@@ -34,7 +35,7 @@ import (
 	"github.com/projectdiscovery/ratelimit"
 )
 
-var sharedInit sync.Once = sync.Once{}
+var sharedInit *sync.Once
 
 // applyRequiredDefaults to options
 func (e *NucleiEngine) applyRequiredDefaults(ctx context.Context) {
@@ -116,6 +117,10 @@ func (e *NucleiEngine) init(ctx context.Context) error {
 	}
 
 	e.parser = templates.NewParser()
+
+	if sharedInit == nil || protocolstate.ShouldInit() {
+		sharedInit = &sync.Once{}
+	}
 
 	sharedInit.Do(func() {
 		_ = protocolinit.Init(e.opts)
@@ -226,7 +231,10 @@ func (e *NucleiEngine) init(ctx context.Context) error {
 	// and also upgrade templates to latest version if available
 	installer.NucleiSDKVersionCheck()
 
-	return e.processUpdateCheckResults()
+	if DefaultConfig.CanCheckForUpdates() {
+		return e.processUpdateCheckResults()
+	}
+	return nil
 }
 
 type syncOnce struct {

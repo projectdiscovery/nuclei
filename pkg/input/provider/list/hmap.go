@@ -122,7 +122,7 @@ func (i *ListInputProvider) Iterate(callback func(value *contextargs.MetaInput) 
 		})
 	}
 	callbackFunc := func(k, _ []byte) error {
-		metaInput := &contextargs.MetaInput{}
+		metaInput := contextargs.NewMetaInput()
 		if err := metaInput.Unmarshal(string(k)); err != nil {
 			return err
 		}
@@ -153,14 +153,16 @@ func (i *ListInputProvider) Set(value string) {
 			}
 			return fmt.Sprintf("got empty hostname for %v skipping ip selection", URL)
 		})
-		metaInput := &contextargs.MetaInput{Input: URL}
+		metaInput := contextargs.NewMetaInput()
+		metaInput.Input = URL
 		i.setItem(metaInput)
 		return
 	}
 
 	// Check if input is ip or hostname
 	if iputil.IsIP(urlx.Hostname()) {
-		metaInput := &contextargs.MetaInput{Input: URL}
+		metaInput := contextargs.NewMetaInput()
+		metaInput.Input = URL
 		i.setItem(metaInput)
 		return
 	}
@@ -181,7 +183,9 @@ func (i *ListInputProvider) Set(value string) {
 					if ip == "" {
 						continue
 					}
-					metaInput := &contextargs.MetaInput{Input: value, CustomIP: ip}
+					metaInput := contextargs.NewMetaInput()
+					metaInput.Input = value
+					metaInput.CustomIP = ip
 					i.setItem(metaInput)
 				}
 				return
@@ -211,11 +215,13 @@ func (i *ListInputProvider) Set(value string) {
 	}
 
 	for _, ip := range ips {
+		metaInput := contextargs.NewMetaInput()
 		if ip != "" {
-			metaInput := &contextargs.MetaInput{Input: URL, CustomIP: ip}
+			metaInput.Input = URL
+			metaInput.CustomIP = ip
 			i.setItem(metaInput)
 		} else {
-			metaInput := &contextargs.MetaInput{Input: URL}
+			metaInput.Input = URL
 			i.setItem(metaInput)
 		}
 	}
@@ -353,7 +359,8 @@ func (i *ListInputProvider) scanInputFromReader(reader io.Reader) {
 
 // isExcluded checks if a URL is in the exclusion list
 func (i *ListInputProvider) isExcluded(URL string) bool {
-	metaInput := &contextargs.MetaInput{Input: URL}
+	metaInput := contextargs.NewMetaInput()
+	metaInput.Input = URL
 	key, err := metaInput.MarshalString()
 	if err != nil {
 		gologger.Warning().Msgf("%s\n", err)
@@ -378,14 +385,16 @@ func (i *ListInputProvider) Del(value string) {
 			}
 			return fmt.Sprintf("got empty hostname for %v skipping ip selection", URL)
 		})
-		metaInput := &contextargs.MetaInput{Input: URL}
+		metaInput := contextargs.NewMetaInput()
+		metaInput.Input = URL
 		i.delItem(metaInput)
 		return
 	}
 
 	// Check if input is ip or hostname
 	if iputil.IsIP(urlx.Hostname()) {
-		metaInput := &contextargs.MetaInput{Input: URL}
+		metaInput := contextargs.NewMetaInput()
+		metaInput.Input = URL
 		i.delItem(metaInput)
 		return
 	}
@@ -406,7 +415,9 @@ func (i *ListInputProvider) Del(value string) {
 					if ip == "" {
 						continue
 					}
-					metaInput := &contextargs.MetaInput{Input: value, CustomIP: ip}
+					metaInput := contextargs.NewMetaInput()
+					metaInput.Input = value
+					metaInput.CustomIP = ip
 					i.delItem(metaInput)
 				}
 				return
@@ -436,11 +447,13 @@ func (i *ListInputProvider) Del(value string) {
 	}
 
 	for _, ip := range ips {
+		metaInput := contextargs.NewMetaInput()
 		if ip != "" {
-			metaInput := &contextargs.MetaInput{Input: URL, CustomIP: ip}
+			metaInput.Input = URL
+			metaInput.CustomIP = ip
 			i.delItem(metaInput)
 		} else {
-			metaInput := &contextargs.MetaInput{Input: URL}
+			metaInput.Input = URL
 			i.delItem(metaInput)
 		}
 	}
@@ -514,7 +527,8 @@ func (i *ListInputProvider) addTargets(targets []string) {
 
 func (i *ListInputProvider) removeTargets(targets []string) {
 	for _, target := range targets {
-		metaInput := &contextargs.MetaInput{Input: target}
+		metaInput := contextargs.NewMetaInput()
+		metaInput.Input = target
 		i.delItem(metaInput)
 	}
 }

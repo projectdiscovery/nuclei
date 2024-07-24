@@ -74,25 +74,6 @@ func NegativeFilter(filter string) string {
 	return fmt.Sprintf("(!%s)", filter)
 }
 
-type (
-	// ADObject represents an Active Directory object
-	// @example
-	// ```javascript
-	// const ldap = require('nuclei/ldap');
-	// const client = new ldap.Client('ldap://ldap.example.com', 'acme.com');
-	// const users = client.GetADUsers();
-	// log(to_json(users));
-	// ```
-	ADObject struct {
-		DistinguishedName    string
-		SAMAccountName       string
-		PWDLastSet           string
-		LastLogon            string
-		MemberOf             []string
-		ServicePrincipalName []string
-	}
-)
-
 // FindADObjects finds AD objects based on a filter
 // and returns them as a list of ADObject
 // @example
@@ -102,7 +83,7 @@ type (
 // const users = client.FindADObjects(ldap.FilterIsPerson);
 // log(to_json(users));
 // ```
-func (c *Client) FindADObjects(filter string) []ADObject {
+func (c *Client) FindADObjects(filter string) SearchResult {
 	c.nj.Require(c.conn != nil, "no existing connection")
 	sr := ldap.NewSearchRequest(
 		c.BaseDN, ldap.ScopeWholeSubtree,
@@ -121,19 +102,7 @@ func (c *Client) FindADObjects(filter string) []ADObject {
 
 	res, err := c.conn.Search(sr)
 	c.nj.HandleError(err, "ldap search request failed")
-
-	var objects []ADObject
-	for _, obj := range res.Entries {
-		objects = append(objects, ADObject{
-			DistinguishedName:    obj.GetAttributeValue("distinguishedName"),
-			SAMAccountName:       obj.GetAttributeValue("sAMAccountName"),
-			PWDLastSet:           DecodeADTimestamp(obj.GetAttributeValue("pwdLastSet")),
-			LastLogon:            DecodeADTimestamp(obj.GetAttributeValue("lastLogon")),
-			MemberOf:             obj.GetAttributeValues("memberOf"),
-			ServicePrincipalName: obj.GetAttributeValues("servicePrincipalName"),
-		})
-	}
-	return objects
+	return *getSearchResult(res)
 }
 
 // GetADUsers returns all AD users
@@ -145,7 +114,7 @@ func (c *Client) FindADObjects(filter string) []ADObject {
 // const users = client.GetADUsers();
 // log(to_json(users));
 // ```
-func (c *Client) GetADUsers() []ADObject {
+func (c *Client) GetADUsers() SearchResult {
 	return c.FindADObjects(FilterIsPerson)
 }
 
@@ -158,7 +127,7 @@ func (c *Client) GetADUsers() []ADObject {
 // const users = client.GetADActiveUsers();
 // log(to_json(users));
 // ```
-func (c *Client) GetADActiveUsers() []ADObject {
+func (c *Client) GetADActiveUsers() SearchResult {
 	return c.FindADObjects(JoinFilters(FilterIsPerson, FilterAccountEnabled))
 }
 
@@ -171,7 +140,7 @@ func (c *Client) GetADActiveUsers() []ADObject {
 // const users = client.GetADUserWithNeverExpiringPasswords();
 // log(to_json(users));
 // ```
-func (c *Client) GetADUserWithNeverExpiringPasswords() []ADObject {
+func (c *Client) GetADUserWithNeverExpiringPasswords() SearchResult {
 	return c.FindADObjects(JoinFilters(FilterIsPerson, FilterDontExpirePassword))
 }
 
@@ -184,7 +153,7 @@ func (c *Client) GetADUserWithNeverExpiringPasswords() []ADObject {
 // const users = client.GetADUserTrustedForDelegation();
 // log(to_json(users));
 // ```
-func (c *Client) GetADUserTrustedForDelegation() []ADObject {
+func (c *Client) GetADUserTrustedForDelegation() SearchResult {
 	return c.FindADObjects(JoinFilters(FilterIsPerson, FilterTrustedForDelegation))
 }
 
@@ -197,7 +166,7 @@ func (c *Client) GetADUserTrustedForDelegation() []ADObject {
 // const users = client.GetADUserWithPasswordNotRequired();
 // log(to_json(users));
 // ```
-func (c *Client) GetADUserWithPasswordNotRequired() []ADObject {
+func (c *Client) GetADUserWithPasswordNotRequired() SearchResult {
 	return c.FindADObjects(JoinFilters(FilterIsPerson, FilterPasswordNotRequired))
 }
 
@@ -210,7 +179,7 @@ func (c *Client) GetADUserWithPasswordNotRequired() []ADObject {
 // const groups = client.GetADGroups();
 // log(to_json(groups));
 // ```
-func (c *Client) GetADGroups() []ADObject {
+func (c *Client) GetADGroups() SearchResult {
 	return c.FindADObjects(FilterIsGroup)
 }
 
@@ -223,7 +192,7 @@ func (c *Client) GetADGroups() []ADObject {
 // const dcs = client.GetADDCList();
 // log(to_json(dcs));
 // ```
-func (c *Client) GetADDCList() []ADObject {
+func (c *Client) GetADDCList() SearchResult {
 	return c.FindADObjects(JoinFilters(FilterIsComputer, FilterAccountEnabled, FilterServerTrustAccount))
 }
 
@@ -236,7 +205,7 @@ func (c *Client) GetADDCList() []ADObject {
 // const admins = client.GetADAdmins();
 // log(to_json(admins));
 // ```
-func (c *Client) GetADAdmins() []ADObject {
+func (c *Client) GetADAdmins() SearchResult {
 	return c.FindADObjects(JoinFilters(FilterIsPerson, FilterAccountEnabled, FilterIsAdmin))
 }
 
@@ -249,7 +218,7 @@ func (c *Client) GetADAdmins() []ADObject {
 // const kerberoastable = client.GetADUserKerberoastable();
 // log(to_json(kerberoastable));
 // ```
-func (c *Client) GetADUserKerberoastable() []ADObject {
+func (c *Client) GetADUserKerberoastable() SearchResult {
 	return c.FindADObjects(JoinFilters(FilterIsPerson, FilterAccountEnabled, FilterHasServicePrincipalName))
 }
 
@@ -262,7 +231,7 @@ func (c *Client) GetADUserKerberoastable() []ADObject {
 // const AsRepRoastable = client.GetADUserAsRepRoastable();
 // log(to_json(AsRepRoastable));
 // ```
-func (c *Client) GetADUserAsRepRoastable() []ADObject {
+func (c *Client) GetADUserAsRepRoastable() SearchResult {
 	return c.FindADObjects(JoinFilters(FilterIsPerson, FilterDontRequirePreauth))
 }
 
@@ -276,7 +245,16 @@ func (c *Client) GetADUserAsRepRoastable() []ADObject {
 // ```
 func (c *Client) GetADDomainSID() string {
 	r := c.Search(FilterServerTrustAccount, "objectSid")
-	c.nj.Require(len(r) > 0, "no result from GetADDomainSID query")
-	c.nj.Require(len(r[0]["objectSid"]) > 0, "could not grab DomainSID")
-	return DecodeSID(r[0]["objectSid"][0])
+	c.nj.Require(len(r.Entries) > 0, "no result from GetADDomainSID query")
+	for _, entry := range r.Entries {
+		if sid, ok := entry.Attributes.Extra["objectSid"]; ok {
+			if sid, ok := sid.([]string); ok {
+				return DecodeSID(sid[0])
+			} else {
+				c.nj.HandleError(fmt.Errorf("invalid objectSid type: %T", entry.Attributes.Extra["objectSid"]), "invalid objectSid type")
+			}
+		}
+	}
+	c.nj.HandleError(fmt.Errorf("no objectSid found"), "no objectSid found")
+	return ""
 }

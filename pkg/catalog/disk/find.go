@@ -79,17 +79,21 @@ func (c *DiskCatalog) GetTemplatePath(target string) ([]string, error) {
 	}
 
 	// try to handle deprecated template paths
-	absPath := BackwardsCompatiblePaths(c.templatesDirectory, target)
-	if absPath != target && strings.TrimPrefix(absPath, c.templatesDirectory+string(filepath.Separator)) != target {
-		if config.DefaultConfig.LogAllEvents {
-			gologger.DefaultLogger.Print().Msgf("[%v] requested Template path %s is deprecated, please update to %s\n", aurora.Yellow("WRN").String(), target, absPath)
+	absPath := target
+	if c.templatesFS == nil {
+		absPath = BackwardsCompatiblePaths(c.templatesDirectory, target)
+		if absPath != target && strings.TrimPrefix(absPath, c.templatesDirectory+string(filepath.Separator)) != target {
+			if config.DefaultConfig.LogAllEvents {
+				gologger.DefaultLogger.Print().Msgf("[%v] requested Template path %s is deprecated, please update to %s\n", aurora.Yellow("WRN").String(), target, absPath)
+			}
+			deprecatedPathsCounter++
 		}
-		deprecatedPathsCounter++
-	}
 
-	absPath, err := c.convertPathToAbsolute(absPath)
-	if err != nil {
-		return nil, errors.Wrapf(err, "could not find template file")
+		var err error
+		absPath, err = c.convertPathToAbsolute(absPath)
+		if err != nil {
+			return nil, errors.Wrapf(err, "could not find template file")
+		}
 	}
 
 	// Template input is either a file or a directory
@@ -143,24 +147,60 @@ func (c *DiskCatalog) findGlobPathMatches(absPath string, processed map[string]s
 		if c.templatesDirectory == "" {
 			templateDir = "./"
 		}
-		matches, _ := fs.Glob(os.DirFS(filepath.Join(templateDir, "http")), inputGlob)
-		if len(matches) != 0 {
+
+		if c.templatesFS == nil {
+			matches, _ := fs.Glob(os.DirFS(filepath.Join(templateDir, "http")), inputGlob)
+			if len(matches) != 0 {
+				return matches
+			}
+
+			// condition to support network cve related globs
+			matches, _ = fs.Glob(os.DirFS(filepath.Join(templateDir, "network")), inputGlob)
+			return matches
+		} else {
+			sub, err := fs.Sub(c.templatesFS, filepath.Join(templateDir, "http"))
+			if err != nil {
+				return nil
+			}
+			matches, _ := fs.Glob(sub, inputGlob)
+			if len(matches) != 0 {
+				return matches
+			}
+
+			// condition to support network cve related globs
+			sub, err = fs.Sub(c.templatesFS, filepath.Join(templateDir, "network"))
+			if err != nil {
+				return nil
+			}
+			matches, _ = fs.Glob(sub, inputGlob)
 			return matches
 		}
-		// condition to support network cve related globs
-		matches, _ = fs.Glob(os.DirFS(filepath.Join(templateDir, "network")), inputGlob)
-		return matches
 	}
 
 	var matched []string
-	matches, err := fs.Glob(c.templatesFS, relPath)
-	if len(matches) != 0 {
-		matched = append(matched, matches...)
+	var matches []string
+	if c.templatesFS == nil {
+		var err error
+		matches, err = filepath.Glob(relPath)
+		if len(matches) != 0 {
+			matched = append(matched, matches...)
+		} else {
+			matched = append(matched, OldPathsResolver(relPath)...)
+		}
+		if err != nil && len(matched) == 0 {
+			return nil, errors.Errorf("wildcard found, but unable to glob: %s\n", err)
+		}
 	} else {
-		matched = append(matched, OldPathsResolver(relPath)...)
-	}
-	if err != nil && len(matched) == 0 {
-		return nil, errors.Errorf("wildcard found, but unable to glob: %s\n", err)
+		var err error
+		matches, err = fs.Glob(c.templatesFS, relPath)
+		if len(matches) != 0 {
+			matched = append(matched, matches...)
+		} else {
+			matched = append(matched, OldPathsResolver(relPath)...)
+		}
+		if err != nil && len(matched) == 0 {
+			return nil, errors.Errorf("wildcard found, but unable to glob: %s\n", err)
+		}
 	}
 	results := make([]string, 0, len(matches))
 	for _, match := range matches {
@@ -175,11 +215,23 @@ func (c *DiskCatalog) findGlobPathMatches(absPath string, processed map[string]s
 // findFileMatches finds if a path is an absolute file. If the path
 // is a file, it returns true otherwise false with no errors.
 func (c *DiskCatalog) findFileMatches(absPath string, processed map[string]struct{}) (match string, matched bool, err error) {
-	info, err := os.Stat(absPath)
+	if c.templatesFS != nil {
+		absPath = strings.TrimPrefix(absPath, "/")
+	}
+	var info fs.File
+	if c.templatesFS == nil {
+		info, err = os.Open(absPath)
+	} else {
+		info, err = c.templatesFS.Open(absPath)
+	}
 	if err != nil {
 		return "", false, err
 	}
-	if !info.Mode().IsRegular() {
+	stat, err := info.Stat()
+	if err != nil {
+		return "", false, err
+	}
+	if !stat.Mode().IsRegular() {
 		return "", false, nil
 	}
 	if _, ok := processed[absPath]; !ok {
@@ -192,22 +244,43 @@ func (c *DiskCatalog) findFileMatches(absPath string, processed map[string]struc
 // findDirectoryMatches finds matches for templates from a directory
 func (c *DiskCatalog) findDirectoryMatches(absPath string, processed map[string]struct{}) ([]string, error) {
 	var results []string
-	err := filepath.WalkDir(
-		absPath,
-		func(path string, d fs.DirEntry, err error) error {
-			// continue on errors
-			if err != nil {
-				return nil
-			}
-			if !d.IsDir() && config.GetTemplateFormatFromExt(path) != config.Unknown {
-				if _, ok := processed[path]; !ok {
-					results = append(results, path)
-					processed[path] = struct{}{}
+	var err error
+	if c.templatesFS == nil {
+		err = filepath.WalkDir(
+			absPath,
+			func(path string, d fs.DirEntry, err error) error {
+				// continue on errors
+				if err != nil {
+					return nil
 				}
-			}
-			return nil
-		},
-	)
+				if !d.IsDir() && config.GetTemplateFormatFromExt(path) != config.Unknown {
+					if _, ok := processed[path]; !ok {
+						results = append(results, path)
+						processed[path] = struct{}{}
+					}
+				}
+				return nil
+			},
+		)
+	} else {
+		err = fs.WalkDir(
+			c.templatesFS,
+			absPath,
+			func(path string, d fs.DirEntry, err error) error {
+				// continue on errors
+				if err != nil {
+					return nil
+				}
+				if !d.IsDir() && config.GetTemplateFormatFromExt(path) != config.Unknown {
+					if _, ok := processed[path]; !ok {
+						results = append(results, path)
+						processed[path] = struct{}{}
+					}
+				}
+				return nil
+			},
+		)
+	}
 	return results, err
 }
 

@@ -2,12 +2,16 @@ package utils
 
 import (
 	"errors"
+	"fmt"
 	"io"
 	"net/url"
 	"strings"
 
+	"github.com/cespare/xxhash"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog"
 	"github.com/projectdiscovery/retryablehttp-go"
+	mapsutil "github.com/projectdiscovery/utils/maps"
+	"golang.org/x/exp/constraints"
 )
 
 func IsBlank(value string) bool {
@@ -31,7 +35,7 @@ func IsURL(input string) bool {
 	return err == nil && u.Scheme != "" && u.Host != ""
 }
 
-// ReadFromPathOrURL reads and returns the contents of a file or url.
+// ReaderFromPathOrURL reads and returns the contents of a file or url.
 func ReaderFromPathOrURL(templatePath string, catalog catalog.Catalog) (io.ReadCloser, error) {
 	if IsURL(templatePath) {
 		resp, err := retryablehttp.DefaultClient().Get(templatePath)
@@ -56,4 +60,14 @@ func StringSliceContains(slice []string, item string) bool {
 		}
 	}
 	return false
+}
+
+// MapHash generates a hash for any give map
+func MapHash[K constraints.Ordered, V any](m map[K]V) uint64 {
+	keys := mapsutil.GetSortedKeys(m)
+	var sb strings.Builder
+	for _, k := range keys {
+		sb.WriteString(fmt.Sprintf("%v:%v\n", k, m[k]))
+	}
+	return xxhash.Sum64([]byte(sb.String()))
 }

@@ -22,6 +22,10 @@ var (
 	Dialer *fastdialer.Dialer
 )
 
+func ShouldInit() bool {
+	return Dialer == nil
+}
+
 // Init creates the Dialer instance based on user configuration
 func Init(options *types.Options) error {
 	if Dialer != nil {
@@ -30,9 +34,7 @@ func Init(options *types.Options) error {
 
 	lfaAllowed = options.AllowLocalFileAccess
 	opts := fastdialer.DefaultOptions
-	if options.DialerTimeout > 0 {
-		opts.DialerTimeout = options.DialerTimeout
-	}
+	opts.DialerTimeout = options.GetTimeouts().DialTimeout
 	if options.DialerKeepAlive > 0 {
 		opts.DialerKeepAlive = options.DialerKeepAlive
 	}
@@ -212,5 +214,6 @@ func Close() {
 		Dialer.Close()
 		Dialer = nil
 	}
+	Dialer = nil
 	StopActiveMemGuardian()
 }

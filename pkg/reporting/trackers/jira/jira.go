@@ -16,6 +16,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/reporting/format"
 	"github.com/projectdiscovery/nuclei/v3/pkg/reporting/trackers/filters"
 	"github.com/projectdiscovery/retryablehttp-go"
+	"github.com/projectdiscovery/utils/ptr"
 )
 
 type Formatter struct {
@@ -147,13 +148,13 @@ func (i *Integration) CreateNewIssue(event *output.ResultEvent) (*filters.Create
 					nestedValue = strings.TrimPrefix(fmtNestedValue, "$")
 					switch nestedValue {
 					case "CVSSMetrics":
-						nestedValue = event.Info.Classification.CVSSMetrics
+						nestedValue = ptr.Safe(event.Info.Classification).CVSSMetrics
 					case "CVEID":
-						nestedValue = event.Info.Classification.CVEID
+						nestedValue = ptr.Safe(event.Info.Classification).CVEID
 					case "CWEID":
-						nestedValue = event.Info.Classification.CWEID
+						nestedValue = ptr.Safe(event.Info.Classification).CWEID
 					case "CVSSScore":
-						nestedValue = event.Info.Classification.CVSSScore
+						nestedValue = ptr.Safe(event.Info.Classification).CVSSScore
 					case "Host":
 						nestedValue = event.Host
 					case "Severity":
@@ -314,13 +315,13 @@ func (i *Integration) FindExistingIssue(event *output.ResultEvent) (jira.Issue, 
 
 // ShouldFilter determines if an issue should be logged to this tracker
 func (i *Integration) ShouldFilter(event *output.ResultEvent) bool {
-	if i.options.AllowList != nil && i.options.AllowList.GetMatch(event) {
+	if i.options.AllowList != nil && !i.options.AllowList.GetMatch(event) {
 		return false
 	}
 
 	if i.options.DenyList != nil && i.options.DenyList.GetMatch(event) {
-		return true
+		return false
 	}
 
-	return false
+	return true
 }
