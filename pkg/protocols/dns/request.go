@@ -220,7 +220,7 @@ func (request *Request) parseDNSInput(host string) (string, error) {
 	return host, nil
 }
 
-func dumpResponse(event *output.InternalWrappedEvent, request *Request, requestOptions *protocols.ExecutorOptions, response, domain string) {
+func dumpResponse(event *output.InternalWrappedEvent, request *Request, _ *protocols.ExecutorOptions, response, domain string) {
 	cliOptions := request.options.Options
 	if cliOptions.Debug || cliOptions.DebugResponse || cliOptions.StoreResponse {
 		hexDump := false

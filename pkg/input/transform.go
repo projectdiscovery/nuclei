@@ -48,7 +48,7 @@ func (h *Helper) Transform(input string, protocol templateTypes.ProtocolType) st
 	case templateTypes.WebsocketProtocol:
 		return h.convertInputToType(input, typeWebsocket, "")
 	case templateTypes.SSLProtocol:
-		return h.convertInputToType(input, typeHostWithOptionalPort, "443")
+		return h.convertInputToType(input, typeHostWithPort, "443")
 	}
 	return input
 }

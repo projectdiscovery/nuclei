@@ -8,6 +8,7 @@ import (
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/config"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/disk"
+	"github.com/projectdiscovery/nuclei/v3/pkg/input"
 	"github.com/projectdiscovery/nuclei/v3/pkg/loader/workflow"
 	"github.com/projectdiscovery/nuclei/v3/pkg/progress"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
@@ -36,6 +37,7 @@ func setup() {
 		Catalog:      disk.NewCatalog(config.DefaultConfig.TemplatesDirectory),
 		RateLimiter:  ratelimit.New(context.Background(), uint(options.RateLimit), time.Second),
 		Parser:       templates.NewParser(),
+		InputHelper:  input.NewHelper(),
 	}
 	workflowLoader, err := workflow.NewLoader(&executerOpts)
 	if err != nil {
