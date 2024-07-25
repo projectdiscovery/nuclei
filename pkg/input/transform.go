@@ -96,6 +96,8 @@ func (h *Helper) convertInputToType(input string, inputType inputType, defaultPo
 		if _, err := filepath.Match(input, ""); err != filepath.ErrBadPattern && !isURL {
 			return input
 		}
+		// if none of these satisfy the condition return empty
+		return ""
 	case typeHostOnly:
 		if hasHost {
 			return host
@@ -112,6 +114,10 @@ func (h *Helper) convertInputToType(input string, inputType inputType, defaultPo
 			if probed, ok := h.InputsHTTP.Get(input); ok {
 				return string(probed)
 			}
+		}
+		// try to parse it as absolute url and return
+		if absUrl, err := urlutil.ParseAbsoluteURL(input, false); err == nil {
+			return absUrl.String()
 		}
 	case typeHostWithPort, typeHostWithOptionalPort:
 		if hasHost && hasPort {
@@ -130,6 +136,8 @@ func (h *Helper) convertInputToType(input string, inputType inputType, defaultPo
 		if uri != nil && stringsutil.EqualFoldAny(uri.Scheme, "ws", "wss") {
 			return input
 		}
+		// empty if prefix is not given
+		return ""
 	}
 	// do not return empty
 	return input
