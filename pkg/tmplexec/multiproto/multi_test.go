@@ -3,6 +3,7 @@ package multiproto_test
 import (
 	"context"
 	"log"
+	"os"
 	"testing"
 	"time"
 
@@ -47,7 +48,6 @@ func setup() {
 }
 
 func TestMultiProtoWithDynamicExtractor(t *testing.T) {
-	setup()
 	Template, err := templates.Parse("testcases/multiprotodynamic.yaml", nil, executerOpts)
 	require.Nil(t, err, "could not parse template")
 
@@ -64,7 +64,6 @@ func TestMultiProtoWithDynamicExtractor(t *testing.T) {
 }
 
 func TestMultiProtoWithProtoPrefix(t *testing.T) {
-	setup()
 	Template, err := templates.Parse("testcases/multiprotowithprefix.yaml", nil, executerOpts)
 	require.Nil(t, err, "could not parse template")
 
@@ -78,4 +77,9 @@ func TestMultiProtoWithProtoPrefix(t *testing.T) {
 	gotresults, err := Template.Executer.Execute(ctx)
 	require.Nil(t, err, "could not execute template")
 	require.True(t, gotresults)
+}
+
+func TestMain(m *testing.M) {
+	setup()
+	os.Exit(m.Run())
 }

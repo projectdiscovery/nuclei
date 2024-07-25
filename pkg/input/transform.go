@@ -131,5 +131,6 @@ func (h *Helper) convertInputToType(input string, inputType inputType, defaultPo
 			return input
 		}
 	}
-	return ""
+	// do not return empty
+	return input
 }
