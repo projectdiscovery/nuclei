@@ -55,6 +55,10 @@ type ExecuteArgs struct {
 	TemplateCtx map[string]interface{} // templateCtx contains template scoped variables
 }
 
+func (e *ExecuteArgs) Map() map[string]interface{} {
+	return generators.MergeMaps(e.TemplateCtx, e.Args)
+}
+
 // NewExecuteArgs returns a new execute arguments.
 func NewExecuteArgs() *ExecuteArgs {
 	return &ExecuteArgs{
@@ -66,12 +70,22 @@ func NewExecuteArgs() *ExecuteArgs {
 // ExecuteResult is the result of executing a script.
 type ExecuteResult map[string]interface{}
 
+func (e ExecuteResult) Map() map[string]interface{} {
+	if e == nil {
+		return make(map[string]interface{})
+	}
+	return e
+}
+
 func NewExecuteResult() ExecuteResult {
 	return make(map[string]interface{})
 }
 
 // GetSuccess returns whether the script was successful or not.
 func (e ExecuteResult) GetSuccess() bool {
+	if e == nil {
+		return false
+	}
 	val, ok := e["success"].(bool)
 	if !ok {
 		return false
@@ -114,7 +128,9 @@ func (c *Compiler) ExecuteWithOptions(program *goja.Program, args *ExecuteArgs, 
 		if val, ok := err.(*goja.Exception); ok {
 			err = val.Unwrap()
 		}
-		return nil, err
+		e := NewExecuteResult()
+		e["error"] = err.Error()
+		return e, err
 	}
 	var res ExecuteResult
 	if opts.exports != nil {
