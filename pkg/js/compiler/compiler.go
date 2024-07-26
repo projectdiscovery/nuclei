@@ -55,6 +55,7 @@ type ExecuteArgs struct {
 	TemplateCtx map[string]interface{} // templateCtx contains template scoped variables
 }
 
+// Map returns a merged map of the TemplateCtx and Args fields.
 func (e *ExecuteArgs) Map() map[string]interface{} {
 	return generators.MergeMaps(e.TemplateCtx, e.Args)
 }
@@ -70,6 +71,7 @@ func NewExecuteArgs() *ExecuteArgs {
 // ExecuteResult is the result of executing a script.
 type ExecuteResult map[string]interface{}
 
+// Map returns the map representation of the ExecuteResult
 func (e ExecuteResult) Map() map[string]interface{} {
 	if e == nil {
 		return make(map[string]interface{})
@@ -77,6 +79,7 @@ func (e ExecuteResult) Map() map[string]interface{} {
 	return e
 }
 
+// NewExecuteResult returns a new execute result instance
 func NewExecuteResult() ExecuteResult {
 	return make(map[string]interface{})
 }
