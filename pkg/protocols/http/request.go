@@ -1083,10 +1083,15 @@ func (request *Request) setCustomHeaders(req *generatedRequest) {
 			req.rawRequest.Headers[k] = v
 		} else {
 			kk, vv := strings.TrimSpace(k), strings.TrimSpace(v)
-			req.request.Header.Set(kk, vv)
+			// NOTE(dwisiswant0): Do we really not need to convert it first into
+			// lowercase?
 			if kk == "Host" {
 				req.request.Host = vv
+
+				continue
 			}
+
+			req.request.Header[kk] = []string{vv}
 		}
 	}
 }
