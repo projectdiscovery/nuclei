@@ -172,9 +172,12 @@ func (rule *Rule) evaluateVarsWithInteractsh(data map[string]interface{}, intera
 	if rule.options.Interactsh != nil {
 		// Iterate through the data to replace and evaluate variables with Interactsh URLs
 		for k, v := range data {
+			value := fmt.Sprint(v)
 			// Replace variables with Interactsh URLs and collect new URLs
-			got, oastUrls := rule.options.Interactsh.Replace(fmt.Sprint(v), interactshUrls)
-
+			got, oastUrls := rule.options.Interactsh.Replace(value, interactshUrls)
+			if got != value {
+				data[k] = got
+			}
 			// Append new OAST URLs if any
 			if len(oastUrls) > 0 {
 				for _, url := range oastUrls {
