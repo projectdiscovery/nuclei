@@ -22,6 +22,13 @@ func (g *PayloadGenerator) validate(payloads map[string]interface{}, templatePat
 				return errors.New("invalid number of lines in payload")
 			}
 
+			// For historical reasons, "validate" checks to see if the payload file exist.
+			// If we're using a custom helper function, then we need to skip any validation beyond just checking the string syntax.
+			// Actually attempting to load the file will determine whether or not it exists.
+			if g.options.LoadHelperFileFunction != nil {
+				return nil
+			}
+
 			// check if it's a file and try to load it
 			if fileutil.FileExists(payloadType) {
 				continue
