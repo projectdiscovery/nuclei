@@ -216,8 +216,7 @@ func (c *DiskCatalog) findGlobPathMatches(absPath string, processed map[string]s
 // is a file, it returns true otherwise false with no errors.
 func (c *DiskCatalog) findFileMatches(absPath string, processed map[string]struct{}) (match string, matched bool, err error) {
 	if c.templatesFS != nil {
-		absPath = strings.TrimPrefix(absPath, "/")
-		absPath = strings.TrimSuffix(absPath, "/")
+		absPath = strings.Trim(absPath, "/")
 	}
 	var info fs.File
 	if c.templatesFS == nil {

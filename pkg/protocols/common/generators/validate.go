@@ -8,6 +8,7 @@ import (
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/config"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
+	fileutil "github.com/projectdiscovery/utils/file"
 	folderutil "github.com/projectdiscovery/utils/folder"
 )
 
@@ -22,11 +23,11 @@ func (g *PayloadGenerator) validate(payloads map[string]interface{}, templatePat
 			}
 
 			// check if it's a file and try to load it
-			if _, err := g.catalog.OpenFile(payloadType); err == nil {
+			if fileutil.FileExists(payloadType) {
 				continue
 			}
 			// if file already exists in nuclei-templates directory, skip any further checks
-			if _, err := g.catalog.OpenFile(filepath.Join(config.DefaultConfig.GetTemplateDir(), payloadType)); err == nil {
+			if fileutil.FileExists(filepath.Join(config.DefaultConfig.GetTemplateDir(), payloadType)) {
 				continue
 			}
 
@@ -46,7 +47,7 @@ func (g *PayloadGenerator) validate(payloads map[string]interface{}, templatePat
 			payloadPathsToProbe, _ := templatePathInfo.MeshWith(payloadType)
 
 			for _, payloadPath := range payloadPathsToProbe {
-				if _, err := g.catalog.OpenFile(payloadPath); err == nil {
+				if fileutil.FileExists(payloadPath) {
 					payloads[name] = payloadPath
 					changed = true
 					break
