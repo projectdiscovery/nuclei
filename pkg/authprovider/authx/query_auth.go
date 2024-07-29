@@ -26,7 +26,9 @@ func (s *QueryAuthStrategy) Apply(req *http.Request) {
 	q := urlutil.NewOrderedParams()
 	q.Decode(req.URL.RawQuery)
 	for _, p := range s.Data.Params {
-		q.Add(p.Key, p.Value)
+		if q.Get(p.Key) == "" {
+			q.Add(p.Key, p.Value)
+		}
 	}
 	req.URL.RawQuery = q.Encode()
 }
@@ -36,7 +38,9 @@ func (s *QueryAuthStrategy) ApplyOnRR(req *retryablehttp.Request) {
 	q := urlutil.NewOrderedParams()
 	q.Decode(req.Request.URL.RawQuery)
 	for _, p := range s.Data.Params {
-		q.Add(p.Key, p.Value)
+		if q.Get(p.Key) == "" {
+			q.Add(p.Key, p.Value)
+		}
 	}
 	req.Request.URL.RawQuery = q.Encode()
 }
