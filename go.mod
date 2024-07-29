@@ -93,7 +93,7 @@ require (
 	github.com/projectdiscovery/rdap v0.9.1-0.20221108103045-9865884d1917
 	github.com/projectdiscovery/sarif v0.0.1
 	github.com/projectdiscovery/tlsx v1.1.6
-	github.com/projectdiscovery/uncover v1.0.8
+	github.com/projectdiscovery/uncover v1.0.9
 	github.com/projectdiscovery/useragent v0.0.60
 	github.com/projectdiscovery/utils v0.2.3
 	github.com/projectdiscovery/wappalyzergo v0.1.11
