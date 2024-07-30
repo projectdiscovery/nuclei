@@ -25,7 +25,7 @@ func NewBearerTokenAuthStrategy(data *Secret) *BearerTokenAuthStrategy {
 // Apply applies the bearer token auth strategy to the request
 func (s *BearerTokenAuthStrategy) Apply(req *http.Request) {
 	authHeader := req.Header.Get("Authorization")
-	if authHeader == "" || !strings.HasPrefix(authHeader, "Bearer") {
+	if authHeader == "" || !strings.HasPrefix(authHeader, "Bearer") || s.Data.Overwrite {
 		req.Header.Set("Authorization", "Bearer "+s.Data.Token)
 	}
 }
@@ -33,7 +33,7 @@ func (s *BearerTokenAuthStrategy) Apply(req *http.Request) {
 // ApplyOnRR applies the bearer token auth strategy to the retryable request
 func (s *BearerTokenAuthStrategy) ApplyOnRR(req *retryablehttp.Request) {
 	authHeader := req.Header.Get("Authorization")
-	if authHeader == "" || !strings.HasPrefix(authHeader, "Bearer") {
+	if authHeader == "" || !strings.HasPrefix(authHeader, "Bearer") || s.Data.Overwrite {
 		req.Header.Set("Authorization", "Bearer "+s.Data.Token)
 	}
 }

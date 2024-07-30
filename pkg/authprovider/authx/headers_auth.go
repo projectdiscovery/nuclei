@@ -23,7 +23,7 @@ func NewHeadersAuthStrategy(data *Secret) *HeadersAuthStrategy {
 // Apply applies the headers auth strategy to the request
 func (s *HeadersAuthStrategy) Apply(req *http.Request) {
 	for _, header := range s.Data.Headers {
-		if len(req.Header[header.Key]) < 1 {
+		if len(req.Header[header.Key]) < 1 || s.Data.Overwrite {
 			req.Header[header.Key] = []string{header.Value}
 		}
 	}
@@ -32,7 +32,7 @@ func (s *HeadersAuthStrategy) Apply(req *http.Request) {
 // ApplyOnRR applies the headers auth strategy to the retryable request
 func (s *HeadersAuthStrategy) ApplyOnRR(req *retryablehttp.Request) {
 	for _, header := range s.Data.Headers {
-		if len(req.Header[header.Key]) < 1 {
+		if len(req.Header[header.Key]) < 1 || s.Data.Overwrite {
 			req.Header[header.Key] = []string{header.Value}
 		}
 	}
