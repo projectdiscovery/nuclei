@@ -22,54 +22,76 @@ func NewCookiesAuthStrategy(data *Secret) *CookiesAuthStrategy {
 
 // Apply applies the cookies auth strategy to the request
 func (s *CookiesAuthStrategy) Apply(req *http.Request) {
-	for _, cookie := range s.Data.Cookies {
-		exists := func() bool {
-			if s.Data.Overwrite {
-				return false
-			}
+	cookies := req.Cookies()
 
+	for _, cookie := range s.Data.Cookies {
+		exists := func() (bool, int) {
 			// check for existing cookies
-			for _, c := range req.Cookies() {
+			for i, c := range cookies {
 				if c.Name == cookie.Key {
-					return true
+					return true, i
 				}
 			}
 
-			return false
+			return false, -1
 		}
 
-		if !exists() {
-			req.AddCookie(&http.Cookie{
-				Name:  cookie.Key,
-				Value: cookie.Value,
-			})
+		if _, pos := exists(); pos >= 0 {
+			if !s.Data.Overwrite {
+				continue
+			}
+
+			// rm existing cookie from `cookies`
+			cookies = append(cookies[:pos], cookies[pos+1:]...)
+
+			// rebuild cookie header
+			req.Header.Del("Cookie")
+			for _, c := range cookies {
+				req.AddCookie(c)
+			}
 		}
+
+		req.AddCookie(&http.Cookie{
+			Name:  cookie.Key,
+			Value: cookie.Value,
+		})
 	}
 }
 
 // ApplyOnRR applies the cookies auth strategy to the retryable request
 func (s *CookiesAuthStrategy) ApplyOnRR(req *retryablehttp.Request) {
-	for _, cookie := range s.Data.Cookies {
-		exists := func() bool {
-			if s.Data.Overwrite {
-				return false
-			}
+	cookies := req.Cookies()
 
+	for _, cookie := range s.Data.Cookies {
+		exists := func() (bool, int) {
 			// check for existing cookies
-			for _, c := range req.Cookies() {
+			for i, c := range cookies {
 				if c.Name == cookie.Key {
-					return true
+					return true, i
 				}
 			}
 
-			return false
+			return false, -1
 		}
 
-		if !exists() {
-			req.AddCookie(&http.Cookie{
-				Name:  cookie.Key,
-				Value: cookie.Value,
-			})
+		if _, pos := exists(); pos >= 0 {
+			if !s.Data.Overwrite {
+				continue
+			}
+
+			// rm existing cookie from `cookies`
+			cookies = append(cookies[:pos], cookies[pos+1:]...)
+
+			// rebuild cookie header
+			req.Header.Del("Cookie")
+			for _, c := range cookies {
+				req.AddCookie(c)
+			}
 		}
+
+		req.AddCookie(&http.Cookie{
+			Name:  cookie.Key,
+			Value: cookie.Value,
+		})
 	}
 }
