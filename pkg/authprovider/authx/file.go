@@ -61,7 +61,8 @@ type Secret struct {
 	Username        string   `json:"username" yaml:"username"` // can be either email or username
 	Password        string   `json:"password" yaml:"password"`
 	Token           string   `json:"token" yaml:"token"` // Bearer Auth token
-	skipCookieParse bool     `json:"-" yaml:"-"`         // temporary flag to skip cookie parsing (used in dynamic secrets)
+	Overwrite       bool     `json:"overwrite" yaml:"overwrite"`
+	skipCookieParse bool     `json:"-" yaml:"-"` // temporary flag to skip cookie parsing (used in dynamic secrets)
 }
 
 // GetStrategy returns the auth strategy for the secret
