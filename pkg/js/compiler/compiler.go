@@ -129,7 +129,9 @@ func (c *Compiler) ExecuteWithOptions(program *goja.Program, args *ExecuteArgs, 
 	})
 	if err != nil {
 		if val, ok := err.(*goja.Exception); ok {
-			err = val.Unwrap()
+			if x := val.Unwrap(); x != nil {
+				err = x
+			}
 		}
 		e := NewExecuteResult()
 		e["error"] = err.Error()
