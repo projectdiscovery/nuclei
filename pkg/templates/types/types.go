@@ -73,6 +73,9 @@ func GetSupportedProtocolTypes() ProtocolTypes {
 func SupportedProtocolsStrings() []string {
 	var result []string
 	for _, protocol := range GetSupportedProtocolTypes() {
+		if protocol.String() == "" {
+			continue
+		}
 		result = append(result, protocol.String())
 	}
 	return result
