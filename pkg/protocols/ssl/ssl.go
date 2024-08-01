@@ -34,7 +34,6 @@ import (
 	"github.com/projectdiscovery/tlsx/pkg/tlsx/openssl"
 	errorutil "github.com/projectdiscovery/utils/errors"
 	stringsutil "github.com/projectdiscovery/utils/strings"
-	urlutil "github.com/projectdiscovery/utils/url"
 )
 
 // Request is a request for the SSL protocol
@@ -199,10 +198,7 @@ func (request *Request) GetID() string {
 
 // ExecuteWithResults executes the protocol requests and returns results instead of writing them.
 func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicValues, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
-	hostPort, err := getAddress(input.MetaInput.Input)
-	if err != nil {
-		return err
-	}
+	hostPort := input.MetaInput.Input
 	hostname, port, _ := net.SplitHostPort(hostPort)
 
 	requestOptions := request.options
@@ -356,19 +352,6 @@ var RequestPartDefinitions = map[string]string{
 	"not_after": "Timestamp after which the remote cert expires",
 	"host":      "Host is the input to the template",
 	"matched":   "Matched is the input which was matched upon",
-}
-
-// getAddress returns the address of the host to make request to
-func getAddress(toTest string) (string, error) {
-	urlx, err := urlutil.Parse(toTest)
-	if err != nil {
-		// use given input instead of url parsing failure
-		return toTest, nil
-	}
-	if urlx.Port() == "" {
-		urlx.UpdatePort("443")
-	}
-	return urlx.Host, nil
 }
 
 // Match performs matching operation for a matcher on model and returns:
