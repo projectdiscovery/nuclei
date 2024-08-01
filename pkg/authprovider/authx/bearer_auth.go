@@ -1,12 +1,6 @@
 package authx
 
-import (
-	"strings"
-
-	"net/http"
-
-	"github.com/projectdiscovery/retryablehttp-go"
-)
+import "strings"
 
 var (
 	_ AuthStrategy = &BearerTokenAuthStrategy{}
@@ -23,16 +17,10 @@ func NewBearerTokenAuthStrategy(data *Secret) *BearerTokenAuthStrategy {
 }
 
 // Apply applies the bearer token auth strategy to the request
-func (s *BearerTokenAuthStrategy) Apply(req *http.Request) {
+func (s *BearerTokenAuthStrategy) Apply(rt any) {
+	req := unwrapRequest(rt)
 	authHeader := req.Header.Get("Authorization")
-	if authHeader == "" || !strings.HasPrefix(authHeader, "Bearer") || s.Data.Overwrite {
-		req.Header.Set("Authorization", "Bearer "+s.Data.Token)
-	}
-}
 
-// ApplyOnRR applies the bearer token auth strategy to the retryable request
-func (s *BearerTokenAuthStrategy) ApplyOnRR(req *retryablehttp.Request) {
-	authHeader := req.Header.Get("Authorization")
 	if authHeader == "" || !strings.HasPrefix(authHeader, "Bearer") || s.Data.Overwrite {
 		req.Header.Set("Authorization", "Bearer "+s.Data.Token)
 	}

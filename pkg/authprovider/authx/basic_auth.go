@@ -1,11 +1,5 @@
 package authx
 
-import (
-	"net/http"
-
-	"github.com/projectdiscovery/retryablehttp-go"
-)
-
 var (
 	_ AuthStrategy = &BasicAuthStrategy{}
 )
@@ -21,19 +15,12 @@ func NewBasicAuthStrategy(data *Secret) *BasicAuthStrategy {
 }
 
 // Apply applies the basic auth strategy to the request
-func (s *BasicAuthStrategy) Apply(req *http.Request) {
+func (s *BasicAuthStrategy) Apply(rt any) {
+	req := unwrapRequest(rt)
 	if _, _, exists := req.BasicAuth(); !exists || s.Data.Overwrite {
 		// NOTE(dwisiswant0): if the Basic auth is invalid, e.g. "Basic xyz",
 		// `exists` will be `false`. I'm not sure if we should check it through
 		// the presence of an "Authorization" header.
-		req.SetBasicAuth(s.Data.Username, s.Data.Password)
-	}
-}
-
-// ApplyOnRR applies the basic auth strategy to the retryable request
-func (s *BasicAuthStrategy) ApplyOnRR(req *retryablehttp.Request) {
-	if _, _, exists := req.BasicAuth(); !exists || s.Data.Overwrite {
-		// NOTE(dwisiswant0): See line 26-28.
 		req.SetBasicAuth(s.Data.Username, s.Data.Password)
 	}
 }

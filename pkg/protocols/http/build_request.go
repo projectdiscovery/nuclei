@@ -92,7 +92,7 @@ func (g *generatedRequest) ApplyAuth(provider authprovider.AuthProvider) {
 	if g.request != nil {
 		auth := provider.LookupURLX(g.request.URL)
 		if auth != nil {
-			auth.ApplyOnRR(g.request)
+			auth.Apply(g.request)
 		}
 	}
 	if g.rawRequest != nil {

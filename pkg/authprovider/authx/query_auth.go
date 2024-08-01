@@ -1,9 +1,6 @@
 package authx
 
 import (
-	"net/http"
-
-	"github.com/projectdiscovery/retryablehttp-go"
 	urlutil "github.com/projectdiscovery/utils/url"
 )
 
@@ -22,25 +19,16 @@ func NewQueryAuthStrategy(data *Secret) *QueryAuthStrategy {
 }
 
 // Apply applies the query auth strategy to the request
-func (s *QueryAuthStrategy) Apply(req *http.Request) {
+func (s *QueryAuthStrategy) Apply(rt any) {
+	req := unwrapRequest(rt)
 	q := urlutil.NewOrderedParams()
 	q.Decode(req.URL.RawQuery)
-	for _, p := range s.Data.Params {
-		if q.Get(p.Key) == "" || s.Data.Overwrite {
-			q.Add(p.Key, p.Value)
-		}
-	}
-	req.URL.RawQuery = q.Encode()
-}
 
-// ApplyOnRR applies the query auth strategy to the retryable request
-func (s *QueryAuthStrategy) ApplyOnRR(req *retryablehttp.Request) {
-	q := urlutil.NewOrderedParams()
-	q.Decode(req.Request.URL.RawQuery)
 	for _, p := range s.Data.Params {
 		if q.Get(p.Key) == "" || s.Data.Overwrite {
 			q.Add(p.Key, p.Value)
 		}
 	}
-	req.Request.URL.RawQuery = q.Encode()
+
+	req.URL.RawQuery = q.Encode()
 }
