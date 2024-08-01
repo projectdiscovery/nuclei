@@ -18,6 +18,11 @@ labels: 'Type: Bug'
 <!-- We only accept issues that are reproducible on the latest version of nuclei. -->
 <!-- You can find the latest version of project at https://github.com/projectdiscovery/nuclei/releases/ -->
 
+## Nuclei command:
+
+<!-- Provide the exact command you used to run Nuclei. -->
+<!-- Please redact any literal target hosts/URLs or other sensitive information. -->
+
 ### Current Behavior:
 <!-- A concise description of what you're experiencing. -->
 
