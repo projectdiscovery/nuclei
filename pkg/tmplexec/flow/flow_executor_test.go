@@ -27,15 +27,15 @@ func setup() {
 	progressImpl, _ := progress.NewStatsTicker(0, false, false, false, 0)
 
 	executerOpts = protocols.ExecutorOptions{
-		Output:          testutils.NewMockOutputWriter(options.OmitTemplate),
-		Options:         options,
-		Progress:        progressImpl,
-		ProjectFile:     nil,
-		IssuesClient:    nil,
-		Browser:         nil,
-		Catalog:         disk.NewCatalog(config.DefaultConfig.TemplatesDirectory),
-		RateLimiter:     ratelimit.New(context.Background(), uint(options.RateLimit), time.Second),
-		Parser:          templates.NewParser(),
+		Output:       testutils.NewMockOutputWriter(options.OmitTemplate),
+		Options:      options,
+		Progress:     progressImpl,
+		ProjectFile:  nil,
+		IssuesClient: nil,
+		Browser:      nil,
+		Catalog:      disk.NewCatalog(config.DefaultConfig.TemplatesDirectory),
+		RateLimiter:  ratelimit.New(context.Background(), uint(options.RateLimit), time.Second),
+		Parser:       templates.NewParser(),
 	}
 	workflowLoader, err := workflow.NewLoader(&executerOpts)
 	if err != nil {
@@ -146,6 +146,7 @@ func TestFlowWithConditionPositive(t *testing.T) {
 }
 
 func TestFlowWithNoMatchers(t *testing.T) {
+	setup()
 	// when using conditional flow with no matchers at all
 	// we implicitly assume that request was successful and internally changed the result to true (for scope of condition only)
 
