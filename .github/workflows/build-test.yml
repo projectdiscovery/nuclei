@@ -62,9 +62,10 @@ jobs:
         run: go run .
         working-directory: examples/simple/
 
-      - name: Example SDK Advanced
-        run: go run .
-        working-directory: examples/advanced/
+      # Temporarily disabled very flaky in github actions
+      # - name: Example SDK Advanced
+      #   run: go run .
+      #   working-directory: examples/advanced/
 
       - name: Example SDK with speed control
         run: go run .

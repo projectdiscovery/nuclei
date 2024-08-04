@@ -51,6 +51,9 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, metadata,
 	if err != nil {
 		return err
 	}
+	if input.MetaInput.Input == "" {
+		return errors.New("input cannot be empty file or folder expected")
+	}
 	err = request.getInputPaths(input.MetaInput.Input, func(filePath string) {
 		wg.Add()
 		func(filePath string) {
@@ -250,6 +253,8 @@ func (request *Request) findMatchesWithReader(reader io.Reader, input *contextar
 		for k, v := range previous {
 			dslMap[k] = v
 		}
+		// add vars to template context
+		request.options.AddTemplateVars(input.MetaInput, request.Type(), request.ID, dslMap)
 		// add template context variables to DSL map
 		if request.options.HasTemplateCtx(input.MetaInput) {
 			dslMap = generators.MergeMaps(dslMap, request.options.GetTemplateCtx(input.MetaInput).GetAll())
@@ -323,7 +328,6 @@ func (request *Request) buildEvent(input, filePath string, fileMatches []FileMat
 		exprLines[fileMatch.Expr] = append(exprLines[fileMatch.Expr], fileMatch.Line)
 		exprBytes[fileMatch.Expr] = append(exprBytes[fileMatch.Expr], fileMatch.ByteIndex)
 	}
-
 	event := eventcreator.CreateEventWithOperatorResults(request, internalEvent, operatorResult)
 	// Annotate with line numbers if asked by the user
 	if request.options.Options.ShowMatchLine {
