@@ -834,8 +834,8 @@ github.com/projectdiscovery/clistats v0.0.20 h1:5jO5SLiRJ7f0nDV0ndBNmBeesbROouPo
 github.com/projectdiscovery/clistats v0.0.20/go.mod h1:GJ2av0KnOvK0AISQnP8hyDclYIji1LVkx2l0pwnzAu4=
 github.com/projectdiscovery/dsl v0.1.8 h1:ulz+o097XsYgqP4QXaAQhVSkoeD2ZPWd29wX3CTodUA=
 github.com/projectdiscovery/dsl v0.1.8/go.mod h1:AYJS2WQ/q0smr2v4pEJTg4DPe6k56KFKR7UFXvzNz/4=
-github.com/projectdiscovery/fastdialer v0.2.2 h1:AiUT4jIbS6JyM2QBQH9f+ZFBgvOVHzQG5K+M2FCA5jA=
-github.com/projectdiscovery/fastdialer v0.2.2/go.mod h1:QKrkTQiUhedqxqR65hLeN+FTbkul50TzMxgkk5Va+Uk=
+github.com/projectdiscovery/fastdialer v0.2.3 h1:K03x5XEXGyVWxS2rtSR104E9kHF0aphN7kOCzbh8zv0=
+github.com/projectdiscovery/fastdialer v0.2.3/go.mod h1:a0BKvETrO1EAohUYp9gwtbbce0hKD1qGrTegyAUqyRo=
 github.com/projectdiscovery/fasttemplate v0.0.2 h1:h2cISk5xDhlJEinlBQS6RRx0vOlOirB2y3Yu4PJzpiA=
 github.com/projectdiscovery/fasttemplate v0.0.2/go.mod h1:XYWWVMxnItd+r0GbjA1GCsUopMw1/XusuQxdyAIHMCw=
 github.com/projectdiscovery/freeport v0.0.5 h1:jnd3Oqsl4S8n0KuFkE5Hm8WGDP24ITBvmyw5pFTHS8Q=
@@ -850,8 +850,8 @@ github.com/projectdiscovery/gostruct v0.0.2 h1:s8gP8ApugGM4go1pA+sVlPDXaWqNP5BBD
 github.com/projectdiscovery/gostruct v0.0.2/go.mod h1:H86peL4HKwMXcQQtEa6lmC8FuD9XFt6gkNR0B/Mu5PE=
 github.com/projectdiscovery/gozero v0.0.2 h1:8fJeaCjxL9tpm33uG/RsCQs6HGM/NE6eA3cjkilRQ+E=
 github.com/projectdiscovery/gozero v0.0.2/go.mod h1:d8bZvDWW07LWNYWrwjZ4OO1I0cpkfqaysyDfSs9ibK8=
-github.com/projectdiscovery/hmap v0.0.51 h1:xqbpRAJRHPMoS2uERkbWGObIO4bv+whe3PEk3h4lDEg=
-github.com/projectdiscovery/hmap v0.0.51/go.mod h1:vqdeWnNVMJYyIDytu+IdJDFg3wZdRVN83AKHR40RP6c=
+github.com/projectdiscovery/hmap v0.0.52 h1:Gm0aI0HDgsPW1+pq3PflO7PJ5cbOXUKt0DorlVsN3pI=
+github.com/projectdiscovery/hmap v0.0.52/go.mod h1:1YAS+8xYRIm+M8Qnlim8vw+U4rOPGLw5CqlirAVIPQ4=
 github.com/projectdiscovery/httpx v1.6.6 h1:e9deBDrW2ILhuHjPYBAskIgEaLTJYbiBjC5FAHKuV4A=
 github.com/projectdiscovery/httpx v1.6.6/go.mod h1:7kLxlw3gW6IJYwRbThI3rFkaQxJ/Z4zNeJtk408RnW0=
 github.com/projectdiscovery/interactsh v1.2.0 h1:Al6jHiR+Usl9egYJDLJaWNHOcH8Rugk8gWMasc8Cmw8=
