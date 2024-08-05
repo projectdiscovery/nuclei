@@ -312,7 +312,7 @@ func (w *StandardWriter) Write(event *ResultEvent) error {
 
 func redactKeys(data string, keysToRedact []string) string {
 	for _, key := range keysToRedact {
-		keyPattern := regexp.MustCompile(`(?i)(` + regexp.QuoteMeta(key) + `\s*[:=]\s*["']?)[^"'\r\n\s&]+(["']?)`)
+		keyPattern := regexp.MustCompile(fmt.Sprintf(`(?i)(%s\s*[:=]\s*["']?)[^"'\r\n&]+(["'\r\n]?)`, regexp.QuoteMeta(key)))
 		data = keyPattern.ReplaceAllString(data, `$1***$2`)
 	}
 	return data
