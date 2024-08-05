@@ -51,7 +51,8 @@ func NewFileAuthProvider(path string, callback authx.LazyFetchSecret) (AuthProvi
 
 // init initializes the file auth provider
 func (f *FileAuthProvider) init() {
-	for _, secret := range f.store.Secrets {
+	for _, _secret := range f.store.Secrets {
+		secret := _secret // allocate copy of pointer
 		if len(secret.DomainsRegex) > 0 {
 			for _, domain := range secret.DomainsRegex {
 				if f.compiled == nil {
