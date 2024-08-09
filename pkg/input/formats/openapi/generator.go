@@ -251,7 +251,6 @@ func generateRequestsFromOp(opts *generateReqOptions) error {
 		}
 	}
 	req.URL.RawQuery = query.Encode()
-	req.URL.Path = opts.requestPath
 
 	if opts.op.RequestBody != nil {
 		for content, value := range opts.op.RequestBody.Value.Content {
