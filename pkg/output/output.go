@@ -270,6 +270,7 @@ func (w *StandardWriter) Write(event *ResultEvent) error {
 		event.Request = redactKeys(event.Request, w.KeysToRedact)
 		event.Response = redactKeys(event.Response, w.KeysToRedact)
 		event.CURLCommand = redactKeys(event.CURLCommand, w.KeysToRedact)
+		event.Matched = redactKeys(event.Matched, w.KeysToRedact)
 	}
 
 	event.Timestamp = time.Now()
