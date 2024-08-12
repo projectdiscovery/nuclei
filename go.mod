@@ -21,7 +21,7 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/projectdiscovery/clistats v0.0.20
 	github.com/projectdiscovery/fastdialer v0.2.3
-	github.com/projectdiscovery/hmap v0.0.52
+	github.com/projectdiscovery/hmap v0.0.54
 	github.com/projectdiscovery/interactsh v1.2.0
 	github.com/projectdiscovery/rawhttp v0.1.60
 	github.com/projectdiscovery/retryabledns v1.0.69
