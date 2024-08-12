@@ -54,6 +54,11 @@ func (s *Agent) Start(interval time.Duration) context.CancelFunc {
 	ticker := time.NewTicker(interval)
 
 	go func() {
+		defer func() {
+			if r := recover(); r != nil {
+				gologger.Error().Msgf("Recovered in Start: %v", r)
+			}
+		}()
 		for {
 			select {
 			case <-ctx.Done():
@@ -70,6 +75,12 @@ func (s *Agent) Start(interval time.Duration) context.CancelFunc {
 
 // monitorWorker is a worker for monitoring running goroutines
 func (s *Agent) monitorWorker(cancel context.CancelFunc) {
+	defer func() {
+		if r := recover(); r != nil {
+			gologger.Error().Msgf("Recovered in monitorWorker: %v", r)
+		}
+	}()
+
 	current := runtime.NumGoroutine()
 	if current != s.goroutineCount {
 		s.goroutineCount = current
