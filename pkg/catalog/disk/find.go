@@ -137,16 +137,24 @@ func (c *DiskCatalog) convertPathToAbsolute(t string) (string, error) {
 // findGlobPathMatches returns the matched files from a glob path
 func (c *DiskCatalog) findGlobPathMatches(absPath string, processed map[string]struct{}) ([]string, error) {
 	// to support globbing on old paths we use brute force to find matches with exit on first match
-	// trim templateDir if any
-	relPath := strings.TrimPrefix(absPath, c.templatesDirectory)
-	// trim leading slash if any
-	relPath = strings.TrimPrefix(relPath, string(os.PathSeparator))
+	var relPath string
+	if strings.HasPrefix(absPath, c.templatesDirectory) {
+		// trim templateDir if any
+		relPath = strings.TrimPrefix(absPath, c.templatesDirectory)
+		// trim leading slash if any
+		relPath = strings.TrimPrefix(relPath, string(os.PathSeparator))
+	} else {
+		relPath = absPath
+	}
 
 	OldPathsResolver := func(inputGlob string) []string {
 		templateDir := c.templatesDirectory
 		if c.templatesDirectory == "" {
 			templateDir = "./"
 		}
+
+		inputGlob = strings.TrimPrefix(inputGlob, "http/")
+		inputGlob = strings.TrimPrefix(inputGlob, "network/")
 
 		if c.templatesFS == nil {
 			matches, _ := fs.Glob(os.DirFS(filepath.Join(templateDir, "http")), inputGlob)
@@ -202,8 +210,8 @@ func (c *DiskCatalog) findGlobPathMatches(absPath string, processed map[string]s
 			return nil, errors.Errorf("wildcard found, but unable to glob: %s\n", err)
 		}
 	}
-	results := make([]string, 0, len(matches))
-	for _, match := range matches {
+	results := make([]string, 0, len(matched))
+	for _, match := range matched {
 		if _, ok := processed[match]; !ok {
 			processed[match] = struct{}{}
 			results = append(results, match)
