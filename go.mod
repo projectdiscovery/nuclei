@@ -94,8 +94,8 @@ require (
 	github.com/projectdiscovery/sarif v0.0.1
 	github.com/projectdiscovery/tlsx v1.1.6
 	github.com/projectdiscovery/uncover v1.0.9
-	github.com/projectdiscovery/useragent v0.0.60
-	github.com/projectdiscovery/utils v0.2.3
+	github.com/projectdiscovery/useragent v0.0.65
+	github.com/projectdiscovery/utils v0.2.4
 	github.com/projectdiscovery/wappalyzergo v0.1.14
 	github.com/redis/go-redis/v9 v9.1.0
 	github.com/seh-msft/burpxml v1.0.1
