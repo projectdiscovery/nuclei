@@ -38,13 +38,7 @@ func NewFSCatalog(fs fs.FS, directory string) *DiskCatalog {
 // It is used to read template and payload files based on catalog responses.
 func (d *DiskCatalog) OpenFile(filename string) (io.ReadCloser, error) {
 	if d.templatesFS == nil {
-		file, err := os.Open(filename)
-		if err != nil {
-			if file, errx := os.Open(BackwardsCompatiblePaths(d.templatesDirectory, filename)); errx == nil {
-				return file, nil
-			}
-		}
-		return file, err
+		return os.Open(filename)
 	}
 
 	return d.templatesFS.Open(filename)

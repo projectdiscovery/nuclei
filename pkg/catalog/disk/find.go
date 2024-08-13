@@ -54,7 +54,7 @@ func (c *DiskCatalog) GetTemplatesPath(definitions []string) ([]string, map[stri
 		// TODO: this is a temporary fix to avoid treating these files as templates
 		// this should be replaced with more appropriate and robust logic
 		if !stringsutil.ContainsAny(v, knownConfigFiles...) {
-			filteredTemplates = append(filteredTemplates, v)
+			filteredTemplates = append(filteredTemplates, BackwardsCompatiblePaths(c.templatesDirectory, v))
 		}
 	}
 
