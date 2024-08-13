@@ -63,7 +63,7 @@ func Cluster(list []*Template) [][]*Template {
 					dns[hash] = []*Template{}
 				}
 				dns[hash] = append(dns[hash], template)
-				gologger.Debug().Msgf("Clustered DNS template: %s with hash: %d", template.ID, hash)
+				gologger.Error().Msgf("Clustered DNS template: %s with hash: %d", template.ID, hash)
 			} else {
 				final = append(final, []*Template{template})
 			}
@@ -75,7 +75,7 @@ func Cluster(list []*Template) [][]*Template {
 					http[hash] = []*Template{}
 				}
 				http[hash] = append(http[hash], template)
-				gologger.Debug().Msgf("Clustered HTTP template: %s with hash: %d", template.ID, hash)
+				gologger.Error().Msgf("Clustered HTTP template: %s with hash: %d", template.ID, hash)
 			} else {
 				final = append(final, []*Template{template})
 			}
@@ -86,7 +86,7 @@ func Cluster(list []*Template) [][]*Template {
 					ssl[hash] = []*Template{}
 				}
 				ssl[hash] = append(ssl[hash], template)
-				gologger.Debug().Msgf("Clustered SSL template: %s with hash: %d", template.ID, hash)
+				gologger.Error().Msgf("Clustered SSL template: %s with hash: %d", template.ID, hash)
 			} else {
 				final = append(final, []*Template{template})
 			}
@@ -106,7 +106,7 @@ func Cluster(list []*Template) [][]*Template {
 		final = append(final, templates)
 	}
 
-	gologger.Debug().Msgf("Total clusters formed: %d", len(final))
+	gologger.Error().Msgf("Total clusters formed: %d", len(final))
 	return final
 }
 
@@ -154,12 +154,12 @@ func ClusterTemplates(templatesList []*Template, options protocols.ExecutorOptio
 				TotalRequests: len(cluster[0].RequestsHTTP) + len(cluster[0].RequestsDNS),
 			})
 			clusterCount += len(cluster)
-			gologger.Debug().Msgf("Created cluster with ID: %s containing %d templates", clusterID, len(cluster))
+			gologger.Error().Msgf("Created cluster with ID: %s containing %d templates", clusterID, len(cluster))
 		} else {
 			finalTemplatesList = append(finalTemplatesList, cluster...)
 		}
 	}
-	gologger.Debug().Msgf("Total templates after clustering: %d", len(finalTemplatesList))
+	gologger.Error().Msgf("Total templates after clustering: %d", len(finalTemplatesList))
 	return finalTemplatesList, clusterCount
 }
 
