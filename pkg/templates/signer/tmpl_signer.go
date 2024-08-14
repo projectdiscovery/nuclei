@@ -11,28 +11,34 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"regexp"
 	"strings"
 	"sync"
 
+	errorutil "github.com/projectdiscovery/utils/errors"
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/config"
-	errorutil "github.com/projectdiscovery/utils/errors"
 )
 
 var (
-	ReDigest            = regexp.MustCompile(`(?m)^#\sdigest:\s.+$`)
 	ErrUnknownAlgorithm = errors.New("unknown algorithm")
 	SignaturePattern    = "# digest: "
 	SignatureFmt        = SignaturePattern + "%x" + ":%v" // `#digest: <signature>:<fragment>`
 )
 
 func RemoveSignatureFromData(data []byte) []byte {
-	return bytes.Trim(ReDigest.ReplaceAll(data, []byte("")), "\n")
+	dataStr := string(data)
+	if idx := strings.LastIndex(dataStr, SignaturePattern); idx != -1 {
+		return []byte(strings.TrimSpace(dataStr[:idx]))
+	}
+	return data
 }
 
 func GetSignatureFromData(data []byte) []byte {
-	return ReDigest.Find(data)
+	dataStr := string(data)
+	if idx := strings.LastIndex(dataStr, SignaturePattern); idx != -1 {
+		return []byte(dataStr[idx:])
+	}
+	return nil
 }
 
 // SignableTemplate is a template that can be signed
@@ -123,7 +129,16 @@ func (t *TemplateSigner) sign(data []byte) (string, error) {
 
 // Verify verifies the given template with the template signer
 func (t *TemplateSigner) Verify(data []byte, tmpl SignableTemplate) (bool, error) {
-	digestData := ReDigest.Find(data)
+	dataStr := string(data)
+	if strings.Count(dataStr, SignaturePattern) != 1 {
+		return false, errors.New("invalid number of signatures found")
+	}
+
+	if !strings.HasSuffix(dataStr, "\n"+SignaturePattern) {
+		return false, errors.New("signature must be at the end of the template")
+	}
+
+	digestData := GetSignatureFromData(data)
 	if len(digestData) == 0 {
 		return false, errors.New("digest not found")
 	}
