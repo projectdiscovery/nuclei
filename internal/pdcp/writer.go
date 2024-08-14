@@ -38,7 +38,7 @@ var (
 	xidRegex               = regexp.MustCompile(xidRe)
 	_        output.Writer = &UploadWriter{}
 	// teamID if given
-	teamID = env.GetEnvOrDefault("PDCP_TEAM_ID", "")
+	TeamID = env.GetEnvOrDefault("PDCP_TEAM_ID", "")
 )
 
 // UploadWriter is a writer that uploads its output to pdcp
@@ -248,8 +248,8 @@ func (u *UploadWriter) getRequest(bin []byte) (*retryablehttp.Request, error) {
 	req.URL.Update()
 
 	req.Header.Set(pdcpauth.ApiKeyHeaderName, u.creds.APIKey)
-	if teamID != "" {
-		req.Header.Set(teamIDHeader, teamID)
+	if TeamID != "" {
+		req.Header.Set(teamIDHeader, TeamID)
 	}
 	req.Header.Set("Content-Type", "application/octet-stream")
 	req.Header.Set("Accept", "application/json")
