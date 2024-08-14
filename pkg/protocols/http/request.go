@@ -689,7 +689,7 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 	}
 
 	// === apply auth strategies ===
-	if generatedRequest.request != nil {
+	if generatedRequest.request != nil && !request.BypassSecretFile {
 		generatedRequest.ApplyAuth(request.options.AuthProvider)
 	}
 
