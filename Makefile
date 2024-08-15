@@ -11,7 +11,7 @@ ifneq ($(shell go env GOOS),darwin)
 LDFLAGS := -extldflags "-static"
 endif
     
-.PHONY: all build build-stats scan-charts docs test integration functional tidy devtools jsupdate ts fuzzplayground memogen dsl-docs
+.PHONY: all build build-stats scan-charts docs test integration functional tidy verify devtools jsupdate ts fuzzplayground memogen dsl-docs
 
 all: build
 build:
@@ -39,6 +39,8 @@ functional:
 	cd cmd/functional-test; bash run.sh
 tidy:
 	$(GOMOD) tidy
+verify: tidy
+	$(GOMOD) verify
 devtools:
 	$(GOBUILD) $(GOFLAGS) -ldflags '$(LDFLAGS)' -o "bindgen" pkg/js/devtools/bindgen/cmd/bindgen/main.go
 	$(GOBUILD) $(GOFLAGS) -ldflags '$(LDFLAGS)' -o "tsgen" pkg/js/devtools/tsgen/cmd/tsgen/main.go
