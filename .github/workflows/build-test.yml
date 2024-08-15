@@ -27,10 +27,8 @@ jobs:
         with:
           python-version: '3.10'
 
-      - name: Go Mod hygiene
-        run: |
-          go clean -modcache
-          go mod tidy
+      - name: Verify Go modules
+        run: make verify
 
       - name: Build
         run: go build .
