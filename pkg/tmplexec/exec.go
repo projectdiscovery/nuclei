@@ -68,8 +68,10 @@ func (e *TemplateExecuter) Compile() error {
 				if cliOptions.Verbose {
 					rawErrorMessage := dslCompilationError.Error()
 					formattedErrorMessage := strings.ToUpper(rawErrorMessage[:1]) + rawErrorMessage[1:] + "."
-					gologger.Warning().Msgf(formattedErrorMessage)
+
+					gologger.Warning().Msg(formattedErrorMessage)
 					gologger.Info().Msgf("The available custom DSL functions are:")
+
 					fmt.Println(dsl.GetPrintableDslFunctionSignatures(cliOptions.NoColor))
 				}
 			}

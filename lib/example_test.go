@@ -82,5 +82,5 @@ func TestMain(m *testing.M) {
 		// no need to run this test on github actions
 		return
 	}
-	m.Run()
+	os.Exit(m.Run())
 }

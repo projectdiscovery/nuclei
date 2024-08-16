@@ -525,12 +525,12 @@ func tryParseCause(err error) error {
 	if strings.HasPrefix(msg, "ReadStatusLine:") {
 		// last index is actual error (from rawhttp)
 		parts := strings.Split(msg, ":")
-		return errkit.New(strings.TrimSpace(parts[len(parts)-1]))
+		return errkit.New("%s", strings.TrimSpace(parts[len(parts)-1]))
 	}
 	if strings.Contains(msg, "read ") {
 		// same here
 		parts := strings.Split(msg, ":")
-		return errkit.New(strings.TrimSpace(parts[len(parts)-1]))
+		return errkit.New("%s", strings.TrimSpace(parts[len(parts)-1]))
 	}
 	return err
 }
