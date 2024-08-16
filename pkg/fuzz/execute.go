@@ -16,6 +16,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/generators"
 	"github.com/projectdiscovery/retryablehttp-go"
 	errorutil "github.com/projectdiscovery/utils/errors"
+	mapsutil "github.com/projectdiscovery/utils/maps"
 	sliceutil "github.com/projectdiscovery/utils/slice"
 	urlutil "github.com/projectdiscovery/utils/url"
 )
@@ -165,6 +166,11 @@ mainLoop:
 func (rule *Rule) evaluateVarsWithInteractsh(data map[string]interface{}, interactshUrls []string) (map[string]interface{}, []string) {
 	// Check if Interactsh options are configured
 	if rule.options.Interactsh != nil {
+		interactshUrlsMap := make(map[string]struct{})
+		for _, url := range interactshUrls {
+			interactshUrlsMap[url] = struct{}{}
+		}
+		interactshUrls = mapsutil.GetKeys(interactshUrlsMap)
 		// Iterate through the data to replace and evaluate variables with Interactsh URLs
 		for k, v := range data {
 			value := fmt.Sprint(v)
@@ -175,7 +181,12 @@ func (rule *Rule) evaluateVarsWithInteractsh(data map[string]interface{}, intera
 			}
 			// Append new OAST URLs if any
 			if len(oastUrls) > 0 {
-				interactshUrls = append(interactshUrls, oastUrls...)
+				for _, url := range oastUrls {
+					if _, ok := interactshUrlsMap[url]; !ok {
+						interactshUrlsMap[url] = struct{}{}
+						interactshUrls = append(interactshUrls, url)
+					}
+				}
 			}
 			// Evaluate the replaced data
 			evaluatedData, err := expressions.Evaluate(got, data)
