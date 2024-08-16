@@ -100,6 +100,8 @@ func (p *Page) ExecuteActions(input *contextargs.Context, actions []*Action, var
 			if waitFunc != nil {
 				waitFuncs = append(waitFuncs, waitFunc)
 			}
+		case ActionDialog:
+			err = p.HandleDialog(act, outData)
 		case ActionFilesInput:
 			if p.options.Options.AllowLocalFileAccess {
 				err = p.FilesInput(act, outData)
@@ -628,6 +630,45 @@ func (p *Page) WaitEvent(act *Action, out map[string]string) (func() error, erro
 		return
 	}
 	return waitFunc, nil
+}
+
+// HandleDialog handles JavaScript dialog (alert, confirm, prompt, or onbeforeunload).
+func (p *Page) HandleDialog(act *Action, out map[string]string) error {
+	value := p.getActionArgWithDefaultValues(act, "value")
+	maxDuration := 10 * time.Second
+
+	if dur := p.getActionArgWithDefaultValues(act, "max-duration"); dur != "" {
+		var err error
+
+		maxDuration, err = time.ParseDuration(dur)
+		if err != nil {
+			return errorutil.NewWithErr(err).Msgf("could not parse max-duration")
+		}
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), maxDuration)
+	defer cancel()
+
+	wait, handle := p.page.HandleDialog()
+	fn := func() (*proto.PageJavascriptDialogOpening, error) {
+		dialog := wait()
+		handle(&proto.PageHandleJavaScriptDialog{
+			Accept:     true,
+			PromptText: value,
+		})
+
+		return dialog, nil
+	}
+
+	dialog, err := contextutil.ExecFuncWithTwoReturns(ctx, fn)
+	if err == nil {
+		out["dialog_type"] = string(dialog.Type)
+		out["dialog_message"] = dialog.Message
+	}
+
+	out["has_dialog"] = strconv.FormatBool(err == nil)
+
+	return nil
 }
 
 // pageElementBy returns a page element from a variety of inputs.
