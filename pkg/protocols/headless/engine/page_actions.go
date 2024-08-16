@@ -634,7 +634,6 @@ func (p *Page) WaitEvent(act *Action, out ActionData) (func() error, error) {
 
 // HandleDialog handles JavaScript dialog (alert, confirm, prompt, or onbeforeunload).
 func (p *Page) HandleDialog(act *Action, out ActionData) error {
-	value := p.getActionArgWithDefaultValues(act, "value")
 	maxDuration := 10 * time.Second
 
 	if dur := p.getActionArgWithDefaultValues(act, "max-duration"); dur != "" {
@@ -652,21 +651,20 @@ func (p *Page) HandleDialog(act *Action, out ActionData) error {
 	wait, handle := p.page.HandleDialog()
 	fn := func() (*proto.PageJavascriptDialogOpening, error) {
 		dialog := wait()
-		handle(&proto.PageHandleJavaScriptDialog{
+		err := handle(&proto.PageHandleJavaScriptDialog{
 			Accept:     true,
-			PromptText: value,
+			PromptText: "",
 		})
 
-		return dialog, nil
+		return dialog, err
 	}
 
 	dialog, err := contextutil.ExecFuncWithTwoReturns(ctx, fn)
-	if err == nil {
-		out["dialog_type"] = string(dialog.Type)
-		out["dialog_message"] = dialog.Message
+	if err == nil && act.Name != "" {
+		out[act.Name] = true
+		out[act.Name+"_type"] = string(dialog.Type)
+		out[act.Name+"_message"] = dialog.Message
 	}
-
-	out["has_dialog"] = strconv.FormatBool(err == nil)
 
 	return nil
 }
