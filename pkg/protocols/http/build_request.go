@@ -90,9 +90,9 @@ func (g *generatedRequest) ApplyAuth(provider authprovider.AuthProvider) {
 		return
 	}
 	if g.request != nil {
-		auth := provider.LookupURLX(g.request.URL)
-		if auth != nil {
-			auth.ApplyOnRR(g.request)
+		authStrategies := provider.LookupURLX(g.request.URL)
+		for _, strategy := range authStrategies {
+			strategy.ApplyOnRR(g.request)
 		}
 	}
 	if g.rawRequest != nil {
@@ -101,11 +101,11 @@ func (g *generatedRequest) ApplyAuth(provider authprovider.AuthProvider) {
 			gologger.Warning().Msgf("[authprovider] Could not parse URL %s: %s\n", g.rawRequest.FullURL, err)
 			return
 		}
-		auth := provider.LookupURLX(parsed)
-		if auth != nil {
-			// here we need to apply it custom because we don't have a standard/official
-			// rawhttp request format ( which we probably should have )
-			g.rawRequest.ApplyAuthStrategy(auth)
+		authStrategies := provider.LookupURLX(parsed)
+		// here we need to apply it custom because we don't have a standard/official
+		// rawhttp request format ( which we probably should have )
+		for _, strategy := range authStrategies {
+			g.rawRequest.ApplyAuthStrategy(strategy)
 		}
 	}
 }
