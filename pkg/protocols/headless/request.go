@@ -183,7 +183,7 @@ func (request *Request) executeRequestWithPayloads(input *contextargs.Context, p
 		responseBody, _ = html.HTML()
 	}
 
-	outputEvent := request.responseToDSLMap(responseBody, out["header"], out["status_code"], reqBuilder.String(), input.MetaInput.Input, navigatedURL, page.DumpHistory())
+	outputEvent := request.responseToDSLMap(responseBody, out["header"].(string), out["status_code"].(string), reqBuilder.String(), input.MetaInput.Input, navigatedURL, page.DumpHistory())
 	// add response fields to template context and merge templatectx variables to output event
 	request.options.AddTemplateVars(input.MetaInput, request.Type(), request.ID, outputEvent)
 	if request.options.HasTemplateCtx(input.MetaInput) {
