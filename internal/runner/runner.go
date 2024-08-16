@@ -426,6 +426,9 @@ func (r *Runner) setupPDCPUpload(writer output.Writer) output.Writer {
 	if r.options.ScanName != "" {
 		uploadWriter.SetScanName(r.options.ScanName)
 	}
+	if r.options.TeamID != "" {
+		uploadWriter.SetTeamID(r.options.TeamID)
+	}
 	return output.NewMultiWriter(writer, uploadWriter)
 }
 
