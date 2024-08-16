@@ -142,7 +142,7 @@ func (request *Request) execute(input *contextargs.Context, domain string, metad
 	if request.options.Options.Debug || request.options.Options.DebugRequests || request.options.Options.StoreResponse {
 		msg := fmt.Sprintf("[%s] Dumped DNS request for %s", request.options.TemplateID, question)
 		if request.options.Options.Debug || request.options.Options.DebugRequests {
-			gologger.Info().Str("domain", domain).Msgf(msg)
+			gologger.Info().Str("domain", domain).Msg(msg)
 			gologger.Print().Msgf("%s", requestString)
 		}
 		if request.options.Options.StoreResponse {

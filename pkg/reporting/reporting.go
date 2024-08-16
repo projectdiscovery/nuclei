@@ -240,7 +240,7 @@ func (c *ReportingClient) Close() {
 				if failed > 0 {
 					msgBuilder.WriteString(fmt.Sprintf(", %d failed", failed))
 				}
-				gologger.Info().Msgf(msgBuilder.String())
+				gologger.Info().Msgf("%v", msgBuilder.String())
 			}
 		}
 	}
