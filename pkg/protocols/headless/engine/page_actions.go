@@ -100,7 +100,7 @@ func (p *Page) ExecuteActions(input *contextargs.Context, actions []*Action, var
 			if waitFunc != nil {
 				waitFuncs = append(waitFuncs, waitFunc)
 			}
-		case ActionDialog:
+		case ActionWaitDialog:
 			err = p.HandleDialog(act, outData)
 		case ActionFilesInput:
 			if p.options.Options.AllowLocalFileAccess {

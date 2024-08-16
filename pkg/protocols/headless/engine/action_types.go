@@ -71,9 +71,9 @@ const (
 	// ActionWaitEvent waits for a specific event.
 	// name:waitevent
 	ActionWaitEvent
-	// ActionDialog handles JavaScript dialog (alert, confirm, prompt, or onbeforeunload).
+	// ActionWaitDialog waits for JavaScript dialog (alert, confirm, prompt, or onbeforeunload).
 	// name:dialog
-	ActionDialog
+	ActionWaitDialog
 	// ActionKeyboard performs a keyboard action event on a page.
 	// name:keyboard
 	ActionKeyboard
@@ -110,7 +110,7 @@ var ActionStringToAction = map[string]ActionType{
 	"deleteheader": ActionDeleteHeader,
 	"setbody":      ActionSetBody,
 	"waitevent":    ActionWaitEvent,
-	"dialog":       ActionDialog,
+	"waitdialog":   ActionWaitDialog,
 	"keyboard":     ActionKeyboard,
 	"debug":        ActionDebug,
 	"sleep":        ActionSleep,
@@ -137,7 +137,7 @@ var ActionToActionString = map[ActionType]string{
 	ActionDeleteHeader: "deleteheader",
 	ActionSetBody:      "setbody",
 	ActionWaitEvent:    "waitevent",
-	ActionDialog:       "dialog",
+	ActionWaitDialog:   "waitdialog",
 	ActionKeyboard:     "keyboard",
 	ActionDebug:        "debug",
 	ActionSleep:        "sleep",
