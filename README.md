@@ -311,6 +311,7 @@ STATISTICS:
 
 CLOUD:
    -auth                      configure projectdiscovery cloud (pdcp) api key (default true)
+   -tid, -team-id string      upload scan results to given team id (optional) (default "none")
    -cup, -cloud-upload        upload scan results to pdcp dashboard
    -sid, -scan-id string      upload scan results to existing scan id (optional)
    -sname, -scan-name string  scan name to set (optional)
