@@ -787,6 +787,11 @@
           "title": "signature is the http request signature method",
           "description": "Signature is the HTTP Request signature Method"
         },
+        "skip-secret-file": {
+          "type": "boolean",
+          "title": "bypass secret file",
+          "description": "Skips the authentication or authorization configured in the secret file"
+        },
         "cookie-reuse": {
           "type": "boolean",
           "title": "optional cookie reuse enable",
