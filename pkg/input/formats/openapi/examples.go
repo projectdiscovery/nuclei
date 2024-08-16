@@ -18,7 +18,7 @@ func getSchemaExample(schema *openapi3.Schema) (interface{}, bool) {
 		return schema.Default, true
 	}
 
-	if schema.Enum != nil && len(schema.Enum) > 0 {
+	if len(schema.Enum) > 0 {
 		return schema.Enum[0], true
 	}
 	return nil, false
@@ -175,9 +175,9 @@ func openAPIExample(schema *openapi3.Schema, cache map[*openapi3.Schema]*cachedS
 	}
 
 	switch {
-	case schema.Type == "boolean":
+	case schema.Type.Is("boolean"):
 		return true, nil
-	case schema.Type == "number", schema.Type == "integer":
+	case schema.Type.Is("number"), schema.Type.Is("integer"):
 		value := 0.0
 
 		if schema.Min != nil && *schema.Min > value {
@@ -208,11 +208,11 @@ func openAPIExample(schema *openapi3.Schema, cache map[*openapi3.Schema]*cachedS
 			value += float64(int(*schema.MultipleOf) - (int(value) % int(*schema.MultipleOf)))
 		}
 
-		if schema.Type == "integer" {
+		if schema.Type.Is("integer") {
 			return int(value), nil
 		}
 		return value, nil
-	case schema.Type == "string":
+	case schema.Type.Is("string"):
 		if ex := stringFormatExample(schema.Format); ex != "" {
 			return ex, nil
 		}
@@ -226,7 +226,7 @@ func openAPIExample(schema *openapi3.Schema, cache map[*openapi3.Schema]*cachedS
 			example = example[:*schema.MaxLength]
 		}
 		return example, nil
-	case schema.Type == "array", schema.Items != nil:
+	case schema.Type.Is("array"), schema.Items != nil:
 		example := []interface{}{}
 
 		if schema.Items != nil && schema.Items.Value != nil {
@@ -242,7 +242,7 @@ func openAPIExample(schema *openapi3.Schema, cache map[*openapi3.Schema]*cachedS
 			}
 		}
 		return example, nil
-	case schema.Type == "object", len(schema.Properties) > 0:
+	case schema.Type.Is("object"), len(schema.Properties) > 0:
 		example := map[string]interface{}{}
 
 		for k, v := range schema.Properties {

@@ -67,19 +67,5 @@ func TestDNSExecuteWithResults(t *testing.T) {
 	require.Equal(t, 1, len(finalEvent.Results[0].ExtractedResults), "could not get correct number of extracted results")
 	require.Equal(t, "93.184.215.14", finalEvent.Results[0].ExtractedResults[0], "could not get correct extracted results")
 	finalEvent = nil
-
-	t.Run("url-to-domain", func(t *testing.T) {
-		metadata := make(output.InternalEvent)
-		previous := make(output.InternalEvent)
-		err := request.ExecuteWithResults(contextargs.NewWithInput(context.Background(), "https://example.com"), metadata, previous, func(event *output.InternalWrappedEvent) {
-			finalEvent = event
-		})
-		require.Nil(t, err, "could not execute dns request")
-	})
-	require.NotNil(t, finalEvent, "could not get event output from request")
-	require.Equal(t, 1, len(finalEvent.Results), "could not get correct number of results")
-	require.Equal(t, "test", finalEvent.Results[0].MatcherName, "could not get correct matcher name of results")
-	require.Equal(t, 1, len(finalEvent.Results[0].ExtractedResults), "could not get correct number of extracted results")
-	require.Equal(t, "93.184.215.14", finalEvent.Results[0].ExtractedResults[0], "could not get correct extracted results")
-	finalEvent = nil
+	// Note: changing url to domain is responsible at tmplexec package and is implemented there
 }
