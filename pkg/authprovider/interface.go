@@ -22,13 +22,13 @@ var (
 type AuthProvider interface {
 	// LookupAddr looks up a given domain/address and returns appropriate auth strategy
 	// for it (accepted inputs are scanme.sh or scanme.sh:443)
-	LookupAddr(string) authx.AuthStrategy
+	LookupAddr(string) []authx.AuthStrategy
 	// LookupURL looks up a given URL and returns appropriate auth strategy
 	// it accepts a valid url struct and returns the auth strategy
-	LookupURL(*url.URL) authx.AuthStrategy
+	LookupURL(*url.URL) []authx.AuthStrategy
 	// LookupURLX looks up a given URL and returns appropriate auth strategy
 	// it accepts pd url struct (i.e urlutil.URL) and returns the auth strategy
-	LookupURLX(*urlutil.URL) authx.AuthStrategy
+	LookupURLX(*urlutil.URL) []authx.AuthStrategy
 	// GetTemplatePaths returns the template path for the auth provider
 	// that will be used for dynamic secret fetching
 	GetTemplatePaths() []string

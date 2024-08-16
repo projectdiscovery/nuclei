@@ -689,7 +689,7 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 	}
 
 	// === apply auth strategies ===
-	if generatedRequest.request != nil {
+	if generatedRequest.request != nil && !request.SkipSecretFile {
 		generatedRequest.ApplyAuth(request.options.AuthProvider)
 	}
 
@@ -1083,10 +1083,15 @@ func (request *Request) setCustomHeaders(req *generatedRequest) {
 			req.rawRequest.Headers[k] = v
 		} else {
 			kk, vv := strings.TrimSpace(k), strings.TrimSpace(v)
-			req.request.Header.Set(kk, vv)
+			// NOTE(dwisiswant0): Do we really not need to convert it first into
+			// lowercase?
 			if kk == "Host" {
 				req.request.Host = vv
+
+				continue
 			}
+
+			req.request.Header[kk] = []string{vv}
 		}
 	}
 }

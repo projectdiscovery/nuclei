@@ -36,8 +36,3 @@ func TestSSLProtocol(t *testing.T) {
 	require.Nil(t, err, "could not run ssl request")
 	require.NotEmpty(t, gotEvent, "could not get event items")
 }
-
-func TestGetAddress(t *testing.T) {
-	address, _ := getAddress("https://scanme.sh")
-	require.Equal(t, "scanme.sh:443", address, "could not get correct address")
-}

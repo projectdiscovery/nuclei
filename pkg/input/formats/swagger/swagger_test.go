@@ -27,8 +27,8 @@ func TestSwaggerAPIParser(t *testing.T) {
 	}
 
 	expectedURLs := []string{
-		"https://localhost/users",
-		"https://localhost/users/1?test=asc",
+		"https://localhost/v1/users",
+		"https://localhost/v1/users/1?test=asc",
 	}
 	require.ElementsMatch(t, gotMethodsToURLs, expectedURLs, "could not get swagger urls")
 }

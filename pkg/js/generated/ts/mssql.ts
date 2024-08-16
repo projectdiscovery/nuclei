@@ -2,7 +2,7 @@
 
 /**
  * Client is a client for MS SQL database.
- * Internally client uses denisenkom/go-mssqldb driver.
+ * Internally client uses microsoft/go-mssqldb driver.
  * @example
  * ```javascript
  * const mssql = require('nuclei/mssql');
