@@ -32,13 +32,14 @@ const (
 	MaxChunkSize   = 4 * unitutils.Mega // 4 MB
 	xidRe          = `^[a-z0-9]{20}$`
 	teamIDHeader   = "X-Team-Id"
+	NoneTeamID     = "none"
 )
 
 var (
 	xidRegex               = regexp.MustCompile(xidRe)
 	_        output.Writer = &UploadWriter{}
 	// teamID if given
-	teamID = env.GetEnvOrDefault("PDCP_TEAM_ID", "")
+	TeamIDEnv = env.GetEnvOrDefault("PDCP_TEAM_ID", NoneTeamID)
 )
 
 // UploadWriter is a writer that uploads its output to pdcp
@@ -53,6 +54,7 @@ type UploadWriter struct {
 	scanID    string
 	scanName  string
 	counter   atomic.Int32
+	TeamID    string
 }
 
 // NewUploadWriter creates a new upload writer
@@ -61,8 +63,9 @@ func NewUploadWriter(ctx context.Context, creds *pdcpauth.PDCPCredentials) (*Upl
 		return nil, fmt.Errorf("no credentials provided")
 	}
 	u := &UploadWriter{
-		creds: creds,
-		done:  make(chan struct{}, 1),
+		creds:  creds,
+		done:   make(chan struct{}, 1),
+		TeamID: NoneTeamID,
 	}
 	var err error
 	reader, writer := io.Pipe()
@@ -110,6 +113,14 @@ func (u *UploadWriter) SetScanName(name string) {
 	u.scanName = name
 }
 
+func (u *UploadWriter) SetTeamID(id string) {
+	if id == "" {
+		u.TeamID = NoneTeamID
+	} else {
+		u.TeamID = id
+	}
+}
+
 func (u *UploadWriter) autoCommit(ctx context.Context, r *io.PipeReader) {
 	reader := bufio.NewReader(r)
 	ch := make(chan string, 4)
@@ -136,7 +147,7 @@ func (u *UploadWriter) autoCommit(ctx context.Context, r *io.PipeReader) {
 		if u.scanID == "" {
 			gologger.Verbose().Msgf("Scan results upload to cloud skipped, no results found to upload")
 		} else {
-			gologger.Info().Msgf("%v Scan results uploaded to cloud, you can view scan results at %v", u.counter.Load(), getScanDashBoardURL(u.scanID))
+			gologger.Info().Msgf("%v Scan results uploaded to cloud, you can view scan results at %v", u.counter.Load(), getScanDashBoardURL(u.scanID, u.TeamID))
 		}
 	}()
 	// temporary buffer to store the results
@@ -189,7 +200,7 @@ func (u *UploadWriter) uploadChunk(buff *bytes.Buffer) error {
 	// if successful, reset the buffer
 	buff.Reset()
 	// log in verbose mode
-	gologger.Warning().Msgf("Uploaded results chunk, you can view scan results at %v", getScanDashBoardURL(u.scanID))
+	gologger.Warning().Msgf("Uploaded results chunk, you can view scan results at %v", getScanDashBoardURL(u.scanID, u.TeamID))
 	return nil
 }
 
@@ -248,8 +259,8 @@ func (u *UploadWriter) getRequest(bin []byte) (*retryablehttp.Request, error) {
 	req.URL.Update()
 
 	req.Header.Set(pdcpauth.ApiKeyHeaderName, u.creds.APIKey)
-	if teamID != "" {
-		req.Header.Set(teamIDHeader, teamID)
+	if u.TeamID != NoneTeamID && u.TeamID != "" {
+		req.Header.Set(teamIDHeader, u.TeamID)
 	}
 	req.Header.Set("Content-Type", "application/octet-stream")
 	req.Header.Set("Accept", "application/json")

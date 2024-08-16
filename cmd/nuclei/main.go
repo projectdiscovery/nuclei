@@ -12,6 +12,7 @@ import (
 	"strings"
 	"time"
 
+	_pdcp "github.com/projectdiscovery/nuclei/v3/internal/pdcp"
 	"github.com/projectdiscovery/utils/auth/pdcp"
 	"github.com/projectdiscovery/utils/env"
 	_ "github.com/projectdiscovery/utils/pprof"
@@ -418,6 +419,7 @@ on extensive configurability, massive extensibility and ease of use.`)
 
 	flagSet.CreateGroup("cloud", "Cloud",
 		flagSet.DynamicVar(&pdcpauth, "auth", "true", "configure projectdiscovery cloud (pdcp) api key"),
+		flagSet.StringVarP(&options.TeamID, "team-id", "tid", _pdcp.TeamIDEnv, "upload scan results to given team id (optional)"),
 		flagSet.BoolVarP(&options.EnableCloudUpload, "cloud-upload", "cup", false, "upload scan results to pdcp dashboard"),
 		flagSet.StringVarP(&options.ScanID, "scan-id", "sid", "", "upload scan results to existing scan id (optional)"),
 		flagSet.StringVarP(&options.ScanName, "scan-name", "sname", "", "scan name to set (optional)"),
