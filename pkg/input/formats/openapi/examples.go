@@ -18,7 +18,7 @@ func getSchemaExample(schema *openapi3.Schema) (interface{}, bool) {
 		return schema.Default, true
 	}
 
-	if schema.Enum != nil && len(schema.Enum) > 0 {
+	if len(schema.Enum) > 0 {
 		return schema.Enum[0], true
 	}
 	return nil, false

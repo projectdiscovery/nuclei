@@ -60,7 +60,7 @@ func (j *NucleiJS) HandleError(err error, msg ...string) {
 	if len(msg) == 0 {
 		j.ThrowError(err)
 	}
-	j.Throw(fmt.Sprintf("%s: %s", strings.Join(msg, ":"), err.Error()))
+	j.Throw("%s: %s", strings.Join(msg, ":"), err.Error())
 }
 
 // Throw throws an error in goja runtime

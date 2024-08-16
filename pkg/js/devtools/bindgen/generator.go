@@ -249,7 +249,7 @@ func identifyGenDecl(pkg *ast.Package, decl *ast.GenDecl, data *TemplateData) {
 			if !spec.Names[0].IsExported() {
 				continue
 			}
-			if spec.Values == nil || len(spec.Values) == 0 {
+			if len(spec.Values) == 0 {
 				continue
 			}
 			data.PackageVars[spec.Names[0].Name] = spec.Names[0].Name

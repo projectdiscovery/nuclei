@@ -72,7 +72,7 @@ func GenerateRequestsFromSchema(schema *openapi3.T, opts formats.InputFormatOpti
 		}
 		missingVarMap[param.Name] = struct{}{}
 	}
-	
+
 	for _, serverURL := range schema.Servers {
 		pathURL := serverURL.URL
 		// Split the server URL into baseURL and serverPath
@@ -203,7 +203,7 @@ func generateRequestsFromOp(opts *generateReqOptions) error {
 			paramValue = value.Schema.Value.Default
 		} else if value.Schema.Value.Example != nil {
 			paramValue = value.Schema.Value.Example
-		} else if value.Schema.Value.Enum != nil && len(value.Schema.Value.Enum) > 0 {
+		} else if len(value.Schema.Value.Enum) > 0 {
 			paramValue = value.Schema.Value.Enum[0]
 		} else {
 			if !opts.opts.SkipFormatValidation {
