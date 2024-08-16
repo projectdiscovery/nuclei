@@ -148,8 +148,8 @@ type Request struct {
 	Signature SignatureTypeHolder `yaml:"signature,omitempty" json:"signature,omitempty" jsonschema:"title=signature is the http request signature method,description=Signature is the HTTP Request signature Method,enum=AWS"`
 
 	// description: |
-	//   BypassSecretFile bypasses the authentication or authorization configured in the secret file.
-	BypassSecretFile bool `yaml:"bypass-secret-file,omitempty" json:"bypass-secret-file,omitempty" jsonschema:"title=bypass secret file,description=Bypasses the authentication or authorization configured in the secret file"`
+	//   SkipSecretFile skips the authentication or authorization configured in the secret file.
+	SkipSecretFile bool `yaml:"skip-secret-file,omitempty" json:"skip-secret-file,omitempty" jsonschema:"title=bypass secret file,description=Skips the authentication or authorization configured in the secret file"`
 
 	// description: |
 	//   CookieReuse is an optional setting that enables cookie reuse for
