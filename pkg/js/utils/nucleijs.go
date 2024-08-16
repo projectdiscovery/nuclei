@@ -65,7 +65,11 @@ func (j *NucleiJS) HandleError(err error, msg ...string) {
 
 // Throw throws an error in goja runtime
 func (j *NucleiJS) Throw(format string, args ...interface{}) {
-	panic(j.runtime().ToValue(fmt.Sprintf(format, args...)))
+	if len(args) > 0 {
+		panic(j.runtime().ToValue(fmt.Sprintf(format, args...)))
+	}
+
+	panic(j.runtime().ToValue(format))
 }
 
 // GetArg returns argument at index from goja runtime if not found throws error
@@ -95,7 +99,7 @@ func (j *NucleiJS) GetArgSafe(args []goja.Value, index int, defaultValue any) an
 // Require throws an error if expression is false
 func (j *NucleiJS) Require(expr bool, msg string) {
 	if !expr {
-		j.Throw(msg)
+		j.Throw("%s", msg)
 	}
 }
 
