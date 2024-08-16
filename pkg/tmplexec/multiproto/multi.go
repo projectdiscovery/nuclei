@@ -109,14 +109,19 @@ func (m *MultiProtocol) ExecuteWithResults(ctx *scan.ScanContext) error {
 			return ctx.Context().Err()
 		default:
 		}
-
-		values := m.options.GetTemplateCtx(ctx.Input.MetaInput).GetAll()
-		err := req.ExecuteWithResults(ctx.Input, output.InternalEvent(values), nil, multiProtoCallback)
+		inputItem := ctx.Input.Clone()
+		if m.options.InputHelper != nil && ctx.Input.MetaInput.Input != "" {
+			if inputItem.MetaInput.Input = m.options.InputHelper.Transform(inputItem.MetaInput.Input, req.Type()); inputItem.MetaInput.Input == "" {
+				return nil
+			}
+		}
+		// FIXME: this hack of using hash to get templateCtx has known issues scan context based approach should be adopted ASAP
+		values := m.options.GetTemplateCtx(inputItem.MetaInput).GetAll()
+		err := req.ExecuteWithResults(inputItem, output.InternalEvent(values), nil, multiProtoCallback)
 		// in case of fatal error skip execution of next protocols
 		if err != nil {
 			// always log errors
 			ctx.LogError(err)
-
 			// for some classes of protocols (i.e ssl) errors like tls handshake are a legitimate behavior so we don't stop execution
 			// connection failures are already tracked by the internal host error cache
 			// we use strings comparison as the error is not formalized into instance within the standard library
@@ -124,7 +129,6 @@ func (m *MultiProtocol) ExecuteWithResults(ctx *scan.ScanContext) error {
 			if req.Type() == types.SSLProtocol && stringsutil.ContainsAnyI(err.Error(), "protocol version not supported", "could not do tls handshake") {
 				continue
 			}
-
 			return err
 		}
 	}

@@ -174,7 +174,7 @@ func (request *Request) executeRequestWithPayloads(input *contextargs.Context, p
 				reqBuilder.WriteString("\t" + actStepStr + "\n")
 			}
 		}
-		gologger.Debug().Msgf(reqBuilder.String())
+		gologger.Debug().Msg(reqBuilder.String())
 	}
 
 	var responseBody string
