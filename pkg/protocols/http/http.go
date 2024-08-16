@@ -148,6 +148,10 @@ type Request struct {
 	Signature SignatureTypeHolder `yaml:"signature,omitempty" json:"signature,omitempty" jsonschema:"title=signature is the http request signature method,description=Signature is the HTTP Request signature Method,enum=AWS"`
 
 	// description: |
+	//   SkipSecretFile skips the authentication or authorization configured in the secret file.
+	SkipSecretFile bool `yaml:"skip-secret-file,omitempty" json:"skip-secret-file,omitempty" jsonschema:"title=bypass secret file,description=Skips the authentication or authorization configured in the secret file"`
+
+	// description: |
 	//   CookieReuse is an optional setting that enables cookie reuse for
 	//   all requests defined in raw section.
 	// Deprecated: This is default now. Use disable-cookie to disable cookie reuse. cookie-reuse will be removed in future releases.
