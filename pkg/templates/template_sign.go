@@ -75,11 +75,12 @@ func SignTemplate(templateSigner *signer.TemplateSigner, templatePath string) er
 		return ErrNotATemplate
 	}
 	if !template.Verified {
+		_, content := signer.ExtractSignatureAndContent(bin)
 		signatureData, err := templateSigner.Sign(bin, template)
 		if err != nil {
 			return err
 		}
-		buff := bytes.NewBuffer(signer.RemoveSignatureFromData(bin))
+		buff := bytes.NewBuffer(content)
 		buff.WriteString("\n" + signatureData)
 		return os.WriteFile(templatePath, buff.Bytes(), 0644)
 	}
