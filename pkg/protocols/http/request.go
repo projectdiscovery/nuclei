@@ -770,7 +770,7 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 
 			// check for cookie related configuration
 			if input.CookieJar != nil {
-				connConfiguration := request.connConfiguration
+				connConfiguration := request.connConfiguration.Clone()
 				connConfiguration.Connection.SetCookieJar(input.CookieJar)
 				modifiedConfig = connConfiguration
 			}
@@ -778,7 +778,8 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 			updatedTimeout, ok := generatedRequest.request.Context().Value(httpclientpool.WithCustomTimeout{}).(httpclientpool.WithCustomTimeout)
 			if ok {
 				if modifiedConfig == nil {
-					modifiedConfig = request.connConfiguration
+					connConfiguration := request.connConfiguration.Clone()
+					modifiedConfig = connConfiguration
 				}
 				modifiedConfig.ResponseHeaderTimeout = updatedTimeout.Timeout
 			}
