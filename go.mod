@@ -19,7 +19,7 @@ require (
 	github.com/miekg/dns v1.1.59
 	github.com/olekukonko/tablewriter v0.0.5
 	github.com/pkg/errors v0.9.1
-	github.com/projectdiscovery/clistats v0.0.20
+	github.com/projectdiscovery/clistats v0.1.0
 	github.com/projectdiscovery/fastdialer v0.2.3
 	github.com/projectdiscovery/hmap v0.0.54
 	github.com/projectdiscovery/interactsh v1.2.0
