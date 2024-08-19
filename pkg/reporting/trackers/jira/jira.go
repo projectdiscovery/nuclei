@@ -70,7 +70,7 @@ type Options struct {
 	// Token is the token for jira instance.
 	Token string `yaml:"token" json:"token" validate:"required"`
 	// ProjectName is the name of the project.
-	ProjectName string `yaml:"project-name" json:"project_name" validate:"required"`
+	ProjectName string `yaml:"project-name" json:"project_name"`
 	// ProjectID is the ID of the project (optional)
 	ProjectID string `yaml:"project-id" json:"project_id"`
 	// IssueType (optional) is the name of the created issue type
