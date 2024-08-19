@@ -387,8 +387,8 @@ func TestActionGetResource(t *testing.T) {
 	testHeadlessSimpleResponse(t, response, actions, 20*time.Second, func(page *Page, err error, out ActionData) {
 		require.Nil(t, err, "could not run page actions")
 
-		src, ok := out["src"].([]string)
-		require.True(t, ok, "could not assert src to int")
+		src, ok := out["src"].(string)
+		require.True(t, ok, "could not assert src to string")
 		require.Equal(t, len(src), 121808, "could not find resource")
 	})
 }
