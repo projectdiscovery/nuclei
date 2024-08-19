@@ -32,6 +32,7 @@ var (
 	forceMaxRedirects int
 	normalClient      *retryablehttp.Client
 	clientPool        *mapsutil.SyncLockMap[string, *retryablehttp.Client]
+	rawHttpClientMu   sync.Mutex
 )
 
 // Init initializes the clientpool implementation
@@ -102,6 +103,22 @@ type Configuration struct {
 	ResponseHeaderTimeout time.Duration
 }
 
+func (c *Configuration) Clone() *Configuration {
+	clone := *c
+	if c.Connection != nil {
+		cloneConnection := &ConnectionConfiguration{
+			DisableKeepAlive: c.Connection.DisableKeepAlive,
+		}
+		if c.Connection.HasCookieJar() {
+			cookiejar := *c.Connection.GetCookieJar()
+			cloneConnection.SetCookieJar(&cookiejar)
+		}
+		clone.Connection = cloneConnection
+	}
+
+	return &clone
+}
+
 // Hash returns the hash of the configuration to allow client pooling
 func (c *Configuration) Hash() string {
 	builder := &strings.Builder{}
@@ -131,6 +148,9 @@ func (c *Configuration) HasStandardOptions() bool {
 
 // GetRawHTTP returns the rawhttp request client
 func GetRawHTTP(options *protocols.ExecutorOptions) *rawhttp.Client {
+	rawHttpClientMu.Lock()
+	defer rawHttpClientMu.Unlock()
+
 	if rawHttpClient == nil {
 		rawHttpOptions := rawhttp.DefaultOptions
 		if types.ProxyURL != "" {
