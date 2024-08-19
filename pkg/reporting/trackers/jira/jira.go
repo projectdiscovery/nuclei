@@ -70,9 +70,13 @@ type Options struct {
 	// Token is the token for jira instance.
 	Token string `yaml:"token" json:"token" validate:"required"`
 	// ProjectName is the name of the project.
-	ProjectName string `yaml:"project-name" json:"project_name" validate:"required"`
+	ProjectName string `yaml:"project-name" json:"project_name"`
+	// ProjectID is the ID of the project (optional)
+	ProjectID string `yaml:"project-id" json:"project_id"`
 	// IssueType (optional) is the name of the created issue type
 	IssueType string `yaml:"issue-type" json:"issue_type"`
+	// IssueTypeID (optional) is the ID of the created issue type
+	IssueTypeID string `yaml:"issue-type-id" json:"issue_type_id"`
 	// SeverityAsLabel (optional) sends the severity as the label of the created
 	// issue.
 	SeverityAsLabel bool `yaml:"severity-as-label" json:"severity_as_label"`
@@ -183,6 +187,7 @@ func (i *Integration) CreateNewIssue(event *output.ResultEvent) (*filters.Create
 		Project:     jira.Project{Key: i.options.ProjectName},
 		Summary:     summary,
 	}
+
 	// On-prem version of Jira server does not use AccountID
 	if !i.options.Cloud {
 		fields = &jira.IssueFields{
@@ -194,6 +199,12 @@ func (i *Integration) CreateNewIssue(event *output.ResultEvent) (*filters.Create
 			Labels:      labels,
 			Unknowns:    customFields,
 		}
+	}
+	if i.options.IssueTypeID != "" {
+		fields.Type = jira.IssueType{ID: i.options.IssueTypeID}
+	}
+	if i.options.ProjectID != "" {
+		fields.Project = jira.Project{ID: i.options.ProjectID}
 	}
 
 	issueData := &jira.Issue{
