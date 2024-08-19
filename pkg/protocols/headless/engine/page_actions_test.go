@@ -572,6 +572,67 @@ func TestActionWaitVisible(t *testing.T) {
 	})
 }
 
+func TestActionWaitDialog(t *testing.T) {
+	response := `<html>
+		<head>
+			<title>Nuclei Test Page</title>
+		</head>
+		<body>
+		<script type="text/javascript">
+		const urlParams = new URLSearchParams(window.location.search);
+		const scriptContent = urlParams.get('script');
+		if (scriptContent) {
+		  const scriptElement = document.createElement('script');
+		  scriptElement.textContent = scriptContent;
+
+		  document.body.appendChild(scriptElement);
+		}
+		</script>
+		</body>
+	</html>`
+
+	t.Run("Triggered", func(t *testing.T) {
+		actions := []*Action{
+			{
+				ActionType: ActionTypeHolder{ActionType: ActionNavigate},
+				Data:       map[string]string{"url": "{{BaseURL}}/?script=alert%281%29"},
+			},
+			{
+				ActionType: ActionTypeHolder{ActionType: ActionWaitDialog},
+				Name:       "test",
+			},
+		}
+
+		testHeadlessSimpleResponse(t, response, actions, 1*time.Second, func(page *Page, err error, out ActionData) {
+			require.Nil(t, err, "could not run page actions")
+
+			test, ok := out["test"].(bool)
+			require.True(t, ok, "could not assert test to bool")
+			require.True(t, test, "could not find test")
+		})
+	})
+
+	t.Run("Invalid", func(t *testing.T) {
+		actions := []*Action{
+			{
+				ActionType: ActionTypeHolder{ActionType: ActionNavigate},
+				Data:       map[string]string{"url": "{{BaseURL}}/?script=foo"},
+			},
+			{
+				ActionType: ActionTypeHolder{ActionType: ActionWaitDialog},
+				Name:       "test",
+			},
+		}
+
+		testHeadlessSimpleResponse(t, response, actions, 1*time.Second, func(page *Page, err error, out ActionData) {
+			require.Nil(t, err, "could not run page actions")
+
+			_, ok := out["test"].(bool)
+			require.False(t, ok, "output assertion is success")
+		})
+	})
+}
+
 func testHeadlessSimpleResponse(t *testing.T, response string, actions []*Action, timeout time.Duration, assert func(page *Page, pageErr error, out ActionData)) {
 	t.Helper()
 	testHeadless(t, actions, timeout, func(w http.ResponseWriter, r *http.Request) {
