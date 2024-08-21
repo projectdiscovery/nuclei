@@ -29,10 +29,10 @@ import (
 
 var (
 	rawHttpClient     *rawhttp.Client
+	rawHttpClientOnce sync.Once
 	forceMaxRedirects int
 	normalClient      *retryablehttp.Client
 	clientPool        *mapsutil.SyncLockMap[string, *retryablehttp.Client]
-	rawHttpClientMu   sync.Mutex
 )
 
 // Init initializes the clientpool implementation
@@ -148,10 +148,7 @@ func (c *Configuration) HasStandardOptions() bool {
 
 // GetRawHTTP returns the rawhttp request client
 func GetRawHTTP(options *protocols.ExecutorOptions) *rawhttp.Client {
-	rawHttpClientMu.Lock()
-	defer rawHttpClientMu.Unlock()
-
-	if rawHttpClient == nil {
+	rawHttpClientOnce.Do(func() {
 		rawHttpOptions := rawhttp.DefaultOptions
 		if types.ProxyURL != "" {
 			rawHttpOptions.Proxy = types.ProxyURL
@@ -162,7 +159,7 @@ func GetRawHTTP(options *protocols.ExecutorOptions) *rawhttp.Client {
 		}
 		rawHttpOptions.Timeout = options.Options.GetTimeouts().HttpTimeout
 		rawHttpClient = rawhttp.NewClient(rawHttpOptions)
-	}
+	})
 	return rawHttpClient
 }
 
