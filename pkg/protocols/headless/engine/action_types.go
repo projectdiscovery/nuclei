@@ -227,3 +227,15 @@ func (holder *ActionTypeHolder) MarshalJSON() ([]byte, error) {
 func (holder ActionTypeHolder) MarshalYAML() (interface{}, error) {
 	return holder.ActionType.String(), nil
 }
+
+// GetActionDataWithDefault gets the value associated with the given key from
+// the [ActionData]. If the value cannot be asserted to the specified type T or
+// the key does NOT exist, returns the provided default (def) value.
+func GetActionDataWithDefault[T any](data ActionData, key string, def T) T {
+	v, ok := data[key].(T)
+	if !ok {
+		v = def
+	}
+
+	return v
+}
