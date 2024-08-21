@@ -78,7 +78,7 @@ func (i *Integration) CreateIssue(event *output.ResultEvent) (*filters.CreateIss
 	if label := i.options.IssueLabel; label != "" {
 		labels = append(labels, label)
 	}
-	customLabels := gitlab.Labels(labels)
+	customLabels := gitlab.LabelOptions(labels)
 	assigneeIDs := []int{i.userID}
 	if i.options.DuplicateIssueCheck {
 		searchIn := "title"
