@@ -29,6 +29,7 @@ import (
 
 var (
 	rawHttpClient     *rawhttp.Client
+	rawHttpClientOnce sync.Once
 	forceMaxRedirects int
 	normalClient      *retryablehttp.Client
 	clientPool        *mapsutil.SyncLockMap[string, *retryablehttp.Client]
@@ -102,6 +103,22 @@ type Configuration struct {
 	ResponseHeaderTimeout time.Duration
 }
 
+func (c *Configuration) Clone() *Configuration {
+	clone := *c
+	if c.Connection != nil {
+		cloneConnection := &ConnectionConfiguration{
+			DisableKeepAlive: c.Connection.DisableKeepAlive,
+		}
+		if c.Connection.HasCookieJar() {
+			cookiejar := *c.Connection.GetCookieJar()
+			cloneConnection.SetCookieJar(&cookiejar)
+		}
+		clone.Connection = cloneConnection
+	}
+
+	return &clone
+}
+
 // Hash returns the hash of the configuration to allow client pooling
 func (c *Configuration) Hash() string {
 	builder := &strings.Builder{}
@@ -131,7 +148,7 @@ func (c *Configuration) HasStandardOptions() bool {
 
 // GetRawHTTP returns the rawhttp request client
 func GetRawHTTP(options *protocols.ExecutorOptions) *rawhttp.Client {
-	if rawHttpClient == nil {
+	rawHttpClientOnce.Do(func() {
 		rawHttpOptions := rawhttp.DefaultOptions
 		if types.ProxyURL != "" {
 			rawHttpOptions.Proxy = types.ProxyURL
@@ -142,7 +159,7 @@ func GetRawHTTP(options *protocols.ExecutorOptions) *rawhttp.Client {
 		}
 		rawHttpOptions.Timeout = options.Options.GetTimeouts().HttpTimeout
 		rawHttpClient = rawhttp.NewClient(rawHttpOptions)
-	}
+	})
 	return rawHttpClient
 }
 
@@ -233,7 +250,7 @@ func wrappedGet(options *types.Options, configuration *Configuration) (*retryabl
 
 	transport := &http.Transport{
 		ForceAttemptHTTP2: options.ForceAttemptHTTP2,
-		DialContext:       protocolstate.Dialer.Dial,
+		DialContext:       protocolstate.GetDialer().Dial,
 		DialTLSContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
 			if options.TlsImpersonate {
 				return protocolstate.Dialer.DialTLSWithConfigImpersonate(ctx, network, addr, tlsConfig, impersonate.Random, nil)
@@ -241,7 +258,7 @@ func wrappedGet(options *types.Options, configuration *Configuration) (*retryabl
 			if options.HasClientCertificates() || options.ForceAttemptHTTP2 {
 				return protocolstate.Dialer.DialTLSWithConfig(ctx, network, addr, tlsConfig)
 			}
-			return protocolstate.Dialer.DialTLS(ctx, network, addr)
+			return protocolstate.GetDialer().DialTLS(ctx, network, addr)
 		},
 		MaxIdleConns:          maxIdleConns,
 		MaxIdleConnsPerHost:   maxIdleConnsPerHost,

@@ -178,7 +178,8 @@ func (e *NucleiEngine) SignTemplate(tmplSigner *signer.TemplateSigner, data []by
 	if err != nil {
 		return data, err
 	}
-	buff := bytes.NewBuffer(signer.RemoveSignatureFromData(data))
+	_, content := signer.ExtractSignatureAndContent(data)
+	buff := bytes.NewBuffer(content)
 	buff.WriteString("\n" + signatureData)
 	return buff.Bytes(), err
 }
