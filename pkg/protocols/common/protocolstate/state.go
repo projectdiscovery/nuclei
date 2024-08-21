@@ -214,5 +214,6 @@ func Close() {
 		Dialer.Close()
 		Dialer = nil
 	}
+	Dialer = nil
 	StopActiveMemGuardian()
 }
