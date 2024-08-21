@@ -250,7 +250,7 @@ func wrappedGet(options *types.Options, configuration *Configuration) (*retryabl
 
 	transport := &http.Transport{
 		ForceAttemptHTTP2: options.ForceAttemptHTTP2,
-		DialContext:       protocolstate.Dialer.Dial,
+		DialContext:       protocolstate.GetDialer().Dial,
 		DialTLSContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
 			if options.TlsImpersonate {
 				return protocolstate.Dialer.DialTLSWithConfigImpersonate(ctx, network, addr, tlsConfig, impersonate.Random, nil)
@@ -258,7 +258,7 @@ func wrappedGet(options *types.Options, configuration *Configuration) (*retryabl
 			if options.HasClientCertificates() || options.ForceAttemptHTTP2 {
 				return protocolstate.Dialer.DialTLSWithConfig(ctx, network, addr, tlsConfig)
 			}
-			return protocolstate.Dialer.DialTLS(ctx, network, addr)
+			return protocolstate.GetDialer().DialTLS(ctx, network, addr)
 		},
 		MaxIdleConns:          maxIdleConns,
 		MaxIdleConnsPerHost:   maxIdleConnsPerHost,
