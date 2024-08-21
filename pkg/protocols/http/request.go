@@ -770,7 +770,7 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 
 			// check for cookie related configuration
 			if input.CookieJar != nil {
-				connConfiguration := request.connConfiguration
+				connConfiguration := request.connConfiguration.Clone()
 				connConfiguration.Connection.SetCookieJar(input.CookieJar)
 				modifiedConfig = connConfiguration
 			}
@@ -778,7 +778,8 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 			updatedTimeout, ok := generatedRequest.request.Context().Value(httpclientpool.WithCustomTimeout{}).(httpclientpool.WithCustomTimeout)
 			if ok {
 				if modifiedConfig == nil {
-					modifiedConfig = request.connConfiguration
+					connConfiguration := request.connConfiguration.Clone()
+					modifiedConfig = connConfiguration
 				}
 				modifiedConfig.ResponseHeaderTimeout = updatedTimeout.Timeout
 			}
@@ -941,7 +942,11 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 		if input.MetaInput.CustomIP != "" {
 			outputEvent["ip"] = input.MetaInput.CustomIP
 		} else {
-			outputEvent["ip"] = protocolstate.Dialer.GetDialedIP(hostname)
+			dialer := protocolstate.GetDialer()
+			if dialer != nil {
+				outputEvent["ip"] = dialer.GetDialedIP(hostname)
+			}
+
 			// try getting cname
 			request.addCNameIfAvailable(hostname, outputEvent)
 		}
