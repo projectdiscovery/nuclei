@@ -1,4 +1,4 @@
-addReviewers: false
+addReviewers: true
 reviewers:
   - dogancanbakir
 
