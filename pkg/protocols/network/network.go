@@ -86,6 +86,10 @@ type Request struct {
 	SelfContained bool `yaml:"-" json:"-"`
 
 	// description: |
+	//   StopAtFirstMatch stops the execution of the requests and template as soon as a match is found.
+	StopAtFirstMatch bool `yaml:"stop-at-first-match,omitempty" json:"stop-at-first-match,omitempty" jsonschema:"title=stop at first match,description=Stop the execution after a match is found"`
+
+	// description: |
 	// ports is post processed list of ports to scan (obtained from Port)
 	ports []string `yaml:"-" json:"-"`
 
