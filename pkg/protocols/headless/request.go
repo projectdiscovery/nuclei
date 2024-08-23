@@ -183,11 +183,11 @@ func (request *Request) executeRequestWithPayloads(input *contextargs.Context, p
 		responseBody, _ = html.HTML()
 	}
 
-	header := engine.GetActionDataWithDefault(out, "header", "")
+	header := out.GetOrDefault("header", "").(string)
 
 	// NOTE(dwisiswant0): `status_code` key should be an integer type.
 	// Ref: https://github.com/projectdiscovery/nuclei/pull/5545#discussion_r1721291013
-	statusCode := engine.GetActionDataWithDefault(out, "status_code", "")
+	statusCode := out.GetOrDefault("status_code", "").(string)
 
 	outputEvent := request.responseToDSLMap(responseBody, header, statusCode, reqBuilder.String(), input.MetaInput.Input, navigatedURL, page.DumpHistory())
 	// add response fields to template context and merge templatectx variables to output event

@@ -6,13 +6,14 @@ import (
 	"strings"
 
 	"github.com/invopop/jsonschema"
+	mapsutil "github.com/projectdiscovery/utils/maps"
 )
 
 // ActionType defines the action type for a browser action
 type ActionType int8
 
 // ActionData stores the action output data
-type ActionData map[string]any
+type ActionData = mapsutil.Map[string, any]
 
 // Types to be executed by the user.
 // name:ActionType
