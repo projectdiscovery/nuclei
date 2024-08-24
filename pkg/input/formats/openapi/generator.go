@@ -20,6 +20,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/input/formats"
 	httpTypes "github.com/projectdiscovery/nuclei/v3/pkg/input/types"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
+	"github.com/projectdiscovery/utils/errkit"
 	errorutil "github.com/projectdiscovery/utils/errors"
 	"github.com/projectdiscovery/utils/generic"
 	mapsutil "github.com/projectdiscovery/utils/maps"
@@ -35,7 +36,6 @@ func GenerateRequestsFromSchema(schema *openapi3.T, opts formats.InputFormatOpti
 	if len(schema.Servers) == 0 {
 		return errors.New("no servers found in openapi schema")
 	}
-
 	// new set of globalParams obtained from security schemes
 	globalParams := openapi3.NewParameters()
 
@@ -392,31 +392,25 @@ func GetGlobalParamsForSecurityRequirement(schema *openapi3.T, requirement *open
 	if len(schema.Components.SecuritySchemes) == 0 {
 		return nil, errorutil.NewWithTag("openapi", "security requirements (%+v) without any security schemes found in openapi file", schema.Security)
 	}
-	found := false
+	missing := []string{}
 	// this api is protected for each security scheme pull its corresponding scheme
-schemaLabel:
 	for _, security := range *requirement {
 		for name := range security {
 			if scheme, ok := schema.Components.SecuritySchemes[name]; ok {
-				found = true
 				param, err := GenerateParameterFromSecurityScheme(scheme)
 				if err != nil {
 					return nil, err
 
 				}
 				globalParams = append(globalParams, &openapi3.ParameterRef{Value: param})
-				continue schemaLabel
+			} else {
+				missing = append(missing, name)
 			}
 		}
-		if !found && len(security) > 1 {
-			// if this is case then both security schemes are required
-			return nil, errorutil.NewWithTag("openapi", "security requirement (%+v) not found in openapi file", security)
-		}
 	}
-	if !found {
-		return nil, errorutil.NewWithTag("openapi", "security requirement (%+v) not found in openapi file", requirement)
+	if len(missing) > 0 {
+		return nil, errkit.New("missing schema of following security requirements (%+v)", missing)
 	}
-
 	return globalParams, nil
 }
 
