@@ -2,12 +2,13 @@ package formats
 
 import (
 	"errors"
+	"fmt"
 	"os"
 	"strings"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/input/types"
 	fileutil "github.com/projectdiscovery/utils/file"
-	"gopkg.in/yaml.v3"
+	mapsutil "github.com/projectdiscovery/utils/maps"
 )
 
 // ParseReqRespCallback is a callback function for discovered raw requests
@@ -41,8 +42,7 @@ type Format interface {
 }
 
 var (
-	DefaultVarDumpFileName = "required_openapi_params.yaml"
-	ErrNoVarsDumpFile      = errors.New("no required params file found")
+	ErrNoVarsDumpFile = errors.New("no required params file found")
 )
 
 // == OpenAPIParamsCfgFile ==
@@ -52,52 +52,51 @@ var (
 
 // OpenAPIParamsCfgFile is the structure of the required vars dump file
 type OpenAPIParamsCfgFile struct {
+	FileName     string   `yaml:"-"`
 	Var          []string `yaml:"var"`
 	OptionalVars []string `yaml:"-"` // this will be written to the file as comments
 }
 
-// ReadOpenAPIVarDumpFile reads the required vars dump file
-func ReadOpenAPIVarDumpFile() (*OpenAPIParamsCfgFile, error) {
-	var vars OpenAPIParamsCfgFile
-	if !fileutil.FileExists(DefaultVarDumpFileName) {
-		return nil, ErrNoVarsDumpFile
-	}
-	bin, err := os.ReadFile(DefaultVarDumpFileName)
-	if err != nil {
-		return nil, err
-	}
-	err = yaml.Unmarshal(bin, &vars)
-	if err != nil {
-		return nil, err
-	}
-	filtered := []string{}
-	for _, v := range vars.Var {
-		v = strings.TrimSpace(v)
-		if !strings.HasSuffix(v, "=") {
-			filtered = append(filtered, v)
+// UpdateMissingVarsFile writes the required vars dump file
+func UpdateMissingVarsFile(vars *OpenAPIParamsCfgFile) error {
+	existing := make(map[string]string)
+	if fileutil.FileExists(vars.FileName) {
+		bin, err := os.ReadFile(vars.FileName)
+		if err != nil {
+			return err
+		}
+		for _, v := range strings.Split(string(bin), "\n") {
+			v = strings.TrimSpace(v)
+			parts := strings.Split(v, "=")
+			if len(parts) == 1 {
+				existing[parts[0]] = ""
+			} else if len(parts) == 2 {
+				existing[parts[0]] = parts[1]
+			}
 		}
 	}
-	vars.Var = filtered
-	return &vars, nil
-}
-
-// WriteOpenAPIVarDumpFile writes the required vars dump file
-func WriteOpenAPIVarDumpFile(vars *OpenAPIParamsCfgFile) error {
-	f, err := os.OpenFile(DefaultVarDumpFileName, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0644)
+	// add missing vars to existing
+	for _, v := range vars.Var {
+		if _, ok := existing[v]; !ok {
+			existing[v] = ""
+		}
+	}
+	// add optional vars to existing
+	for _, v := range vars.OptionalVars {
+		if _, ok := existing[v]; !ok {
+			existing[v] = ""
+		}
+	}
+	f, err := os.OpenFile(vars.FileName, os.O_WRONLY|os.O_CREATE, 0644)
 	if err != nil {
 		return err
 	}
 	defer f.Close()
-	bin, err := yaml.Marshal(vars)
-	if err != nil {
-		return err
-	}
-	_, _ = f.Write(bin)
-	if len(vars.OptionalVars) > 0 {
-		_, _ = f.WriteString("\n    # Optional parameters\n")
-		for _, v := range vars.OptionalVars {
-			_, _ = f.WriteString("    # - " + v + "=\n")
+	for _, v := range mapsutil.GetSortedKeys(existing) {
+		if strings.TrimSpace(v) == "" {
+			continue
 		}
+		f.WriteString(fmt.Sprintf("%s=%s\n", v, existing[v]))
 	}
-	return f.Sync()
+	return nil
 }

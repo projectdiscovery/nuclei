@@ -1,17 +1,14 @@
 package provider
 
 import (
-	"errors"
 	"fmt"
 	"strings"
 
-	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/input/formats"
 	"github.com/projectdiscovery/nuclei/v3/pkg/input/provider/http"
 	"github.com/projectdiscovery/nuclei/v3/pkg/input/provider/list"
 	"github.com/projectdiscovery/nuclei/v3/pkg/input/types"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
-	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/generators"
 	configTypes "github.com/projectdiscovery/nuclei/v3/pkg/types"
 	errorutil "github.com/projectdiscovery/utils/errors"
 	stringsutil "github.com/projectdiscovery/utils/strings"
@@ -82,23 +79,6 @@ type InputOptions struct {
 // NewInputProvider creates a new input provider based on the options
 // and returns it
 func NewInputProvider(opts InputOptions) (InputProvider, error) {
-	// optionally load generated vars values if available
-	val, err := formats.ReadOpenAPIVarDumpFile()
-	if err != nil && !errors.Is(err, formats.ErrNoVarsDumpFile) {
-		// log error and continue
-		gologger.Error().Msgf("Could not read vars dump file: %s\n", err)
-	}
-	extraVars := make(map[string]interface{})
-	if val != nil {
-		for _, v := range val.Var {
-			v = strings.TrimSpace(v)
-			// split into key value
-			parts := strings.SplitN(v, "=", 2)
-			if len(parts) == 2 {
-				extraVars[parts[0]] = parts[1]
-			}
-		}
-	}
 
 	// check if input provider is supported
 	if strings.EqualFold(opts.Options.InputFileMode, "list") {
@@ -113,7 +93,7 @@ func NewInputProvider(opts InputOptions) (InputProvider, error) {
 			InputFile: opts.Options.TargetsFilePath,
 			InputMode: opts.Options.InputFileMode,
 			Options: formats.InputFormatOptions{
-				Variables:            generators.MergeMaps(extraVars, opts.Options.Vars.AsMap()),
+				Variables:            opts.Options.Vars.AsMap(),
 				SkipFormatValidation: opts.Options.SkipFormatValidation,
 				RequiredOnly:         opts.Options.FormatUseRequiredOnly,
 			},

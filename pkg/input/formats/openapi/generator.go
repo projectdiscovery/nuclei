@@ -59,8 +59,9 @@ func GenerateRequestsFromSchema(schema *openapi3.T, opts formats.InputFormatOpti
 
 	// validate global param requirements
 	for _, param := range globalParams {
-		if val, ok := opts.Variables[param.Value.Name]; ok {
+		if val, ok := opts.Variables[param.Value.Name]; ok && val != "" {
 			param.Value.Example = val
+			delete(missingVarMap, param.Value.Name)
 		} else {
 			// if missing check for validation
 			if opts.SkipFormatValidation {
@@ -109,18 +110,20 @@ func GenerateRequestsFromSchema(schema *openapi3.T, opts formats.InputFormatOpti
 			}
 		}
 	}
-
 	if len(missingVarMap) > 0 && !opts.SkipFormatValidation {
-		gologger.Error().Msgf("openapi: Found %d missing parameters, use -skip-format-validation flag to skip requests or update missing parameters generated in %s file,you can also specify these vars using -var flag in (key=value) format\n", len(missingVarMap), formats.DefaultVarDumpFileName)
+		filename := fileNameFromTitle(schema.Info.Title)
+		gologger.Error().Msgf("openapi: Found %d missing/empty parameters, use -skip-format-validation flag to skip requests or update missing parameters generated in %s file, add pass it to nuclei using '-var %s'\n", len(missingVarMap), filename, filename)
 		gologger.Verbose().Msgf("openapi: missing params: %+v", mapsutil.GetSortedKeys(missingVarMap))
 		if config.CurrentAppMode == config.AppModeCLI {
 			// generate var dump file
-			vars := &formats.OpenAPIParamsCfgFile{}
+			vars := &formats.OpenAPIParamsCfgFile{
+				FileName: filename,
+			}
 			for k := range missingVarMap {
-				vars.Var = append(vars.Var, k+"=")
+				vars.Var = append(vars.Var, k)
 			}
 			vars.OptionalVars = mapsutil.GetSortedKeys(optionalVarMap)
-			if err := formats.WriteOpenAPIVarDumpFile(vars); err != nil {
+			if err := formats.UpdateMissingVarsFile(vars); err != nil {
 				gologger.Error().Msgf("openapi: could not write params file: %s\n", err)
 			}
 			// exit with status code 1
@@ -470,4 +473,16 @@ func GenerateParameterFromSecurityScheme(scheme *openapi3.SecuritySchemeRef) (*o
 		}
 	}
 	return nil, errorutil.NewWithTag("openapi", "unsupported security scheme type (%s) found in openapi file", scheme.Value.Type)
+}
+
+func fileNameFromTitle(title string) string {
+	parts := strings.Fields(title)
+	if len(parts) == 0 {
+		return "openapi_vars.txt"
+	}
+	if len(parts) > 2 {
+		parts = parts[:2]
+	}
+	fileName := strings.ToLower(strings.Join(parts, "_"))
+	return fileName + "_vars.txt"
 }
