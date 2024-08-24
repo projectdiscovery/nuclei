@@ -47,6 +47,16 @@ func GenerateRequestsFromSchema(schema *openapi3.T, opts formats.InputFormatOpti
 		globalParams = append(globalParams, params...)
 	}
 
+	missingVarMap := make(map[string]struct{})
+	optionalVarMap := make(map[string]struct{})
+	missingParamValueCallback := func(param *openapi3.Parameter, opts *generateReqOptions) {
+		if !param.Required {
+			optionalVarMap[param.Name] = struct{}{}
+			return
+		}
+		missingVarMap[param.Name] = struct{}{}
+	}
+
 	// validate global param requirements
 	for _, param := range globalParams {
 		if val, ok := opts.Variables[param.Value.Name]; ok {
@@ -57,20 +67,10 @@ func GenerateRequestsFromSchema(schema *openapi3.T, opts formats.InputFormatOpti
 				gologger.Verbose().Msgf("openapi: skipping all requests due to missing global auth parameter: %s\n", param.Value.Name)
 				return nil
 			} else {
-				// fatal error
-				gologger.Fatal().Msgf("openapi: missing global auth parameter: %s\n", param.Value.Name)
+				// put them in missingVarMap
+				missingVarMap[param.Value.Name] = struct{}{}
 			}
 		}
-	}
-
-	missingVarMap := make(map[string]struct{})
-	optionalVarMap := make(map[string]struct{})
-	missingParamValueCallback := func(param *openapi3.Parameter, opts *generateReqOptions) {
-		if !param.Required {
-			optionalVarMap[param.Name] = struct{}{}
-			return
-		}
-		missingVarMap[param.Name] = struct{}{}
 	}
 
 	for _, serverURL := range schema.Servers {
@@ -267,6 +267,10 @@ func generateRequestsFromOp(opts *generateReqOptions) error {
 		for content, value := range opts.op.RequestBody.Value.Content {
 			cloned := req.Clone(req.Context())
 
+			if value.Schema == nil {
+				// skip if schema is not present this is most likely a invalid content-type not recognized by openapi
+				continue
+			}
 			example, err := generateExampleFromSchema(value.Schema.Value)
 			if err != nil {
 				continue
