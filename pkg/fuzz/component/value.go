@@ -73,7 +73,11 @@ func (v *Value) SetParsed(data dataformat.KV, dataFormat string) {
 
 // SetParsedValue sets the parsed value for a key
 // in the parsed map
-func (v *Value) SetParsedValue(key string, value string) bool {
+func (v *Value) SetParsedValue(key, value string) bool {
+	if key == "" {
+		return false
+	}
+
 	origValue := v.parsed.Get(key)
 	if origValue == nil {
 		v.parsed.Set(key, value)
