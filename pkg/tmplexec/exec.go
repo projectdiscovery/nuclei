@@ -218,12 +218,7 @@ func (e *TemplateExecuter) Execute(ctx *scan.ScanContext) (bool, error) {
 					Info:       e.options.TemplateInfo,
 					Type:       e.getTemplateType(),
 					Host:       ctx.Input.MetaInput.Input,
-					Error: func(err error) string {
-						if err == nil {
-							return ""
-						}
-						return err.Error()
-					}(errx),
+					Error:      ctx.GenerateErrorMessage(),
 				},
 			},
 			OperatorsResult: &operators.Result{

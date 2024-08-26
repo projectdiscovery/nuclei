@@ -52,6 +52,13 @@ func (s *ScanContext) Context() context.Context {
 	return s.ctx
 }
 
+func (s *ScanContext) GenerateErrorMessage() string {
+	s.m.Lock()
+	defer s.m.Unlock()
+
+	return joinErrors(s.errors)
+}
+
 // GenerateResult returns final results slice from all events
 func (s *ScanContext) GenerateResult() []*output.ResultEvent {
 	s.m.Lock()
@@ -96,7 +103,7 @@ func (s *ScanContext) LogError(err error) {
 	}
 	s.errors = append(s.errors, err)
 
-	errorMessage := joinErrors(s.errors)
+	errorMessage := s.GenerateErrorMessage()
 
 	for _, result := range s.results {
 		result.Error = errorMessage
