@@ -10,6 +10,7 @@ import (
 	"github.com/dop251/goja"
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/js/compiler"
+	"github.com/projectdiscovery/nuclei/v3/pkg/operators"
 	"github.com/projectdiscovery/nuclei/v3/pkg/operators/common/dsl"
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
@@ -126,6 +127,8 @@ func (e *TemplateExecuter) Execute(ctx *scan.ScanContext) (bool, error) {
 	executed := &atomic.Bool{}
 	// matched in this case means something was exported / written to output
 	matched := &atomic.Bool{}
+	// callbackCalled tracks if the callback was called or not
+	callbackCalled := &atomic.Bool{}
 	defer func() {
 		// it is essential to remove template context of `Scan i.e template x input pair`
 		// since it is of no use after scan is completed (regardless of success or failure)
@@ -143,6 +146,7 @@ func (e *TemplateExecuter) Execute(ctx *scan.ScanContext) (bool, error) {
 	}
 
 	ctx.OnResult = func(event *output.InternalWrappedEvent) {
+		callbackCalled.Store(true)
 		if event == nil {
 			// something went wrong
 			return
@@ -202,6 +206,35 @@ func (e *TemplateExecuter) Execute(ctx *scan.ScanContext) (bool, error) {
 	if lastMatcherEvent != nil {
 		writeFailureCallback(lastMatcherEvent, e.options.Options.MatcherStatus)
 	}
+
+	//TODO: this is a hacky way to handle the case where the callback is not called and matcher-status is true.
+	// This is a workaround and needs to be refactored.
+	// Check if callback was never called and matcher-status is true
+	if !callbackCalled.Load() && e.options.Options.MatcherStatus {
+		fakeEvent := &output.InternalWrappedEvent{
+			Results: []*output.ResultEvent{
+				{
+					TemplateID: e.options.TemplateID,
+					Info:       e.options.TemplateInfo,
+					Type:       e.getTemplateType(),
+					Host:       ctx.Input.MetaInput.Input,
+					Error: func(err error) string {
+						if err == nil {
+							return ""
+						}
+						return err.Error()
+					}(errx),
+				},
+			},
+			OperatorsResult: &operators.Result{
+				Matched: false,
+			},
+		}
+		if err := e.options.Output.WriteFailure(fakeEvent); err != nil {
+			gologger.Warning().Msgf("Could not write failure event to output: %s\n", err)
+		}
+	}
+
 	return executed.Load() || matched.Load(), errx
 }
 
