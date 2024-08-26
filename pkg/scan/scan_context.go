@@ -53,9 +53,6 @@ func (s *ScanContext) Context() context.Context {
 }
 
 func (s *ScanContext) GenerateErrorMessage() string {
-	s.m.Lock()
-	defer s.m.Unlock()
-
 	return joinErrors(s.errors)
 }
 

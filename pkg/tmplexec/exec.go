@@ -20,6 +20,8 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/tmplexec/flow"
 	"github.com/projectdiscovery/nuclei/v3/pkg/tmplexec/generic"
 	"github.com/projectdiscovery/nuclei/v3/pkg/tmplexec/multiproto"
+	"github.com/projectdiscovery/nuclei/v3/pkg/types/nucleierr"
+	"github.com/projectdiscovery/utils/errkit"
 )
 
 // TemplateExecutor is an executor for a template
@@ -218,7 +220,7 @@ func (e *TemplateExecuter) Execute(ctx *scan.ScanContext) (bool, error) {
 					Info:       e.options.TemplateInfo,
 					Type:       e.getTemplateType(),
 					Host:       ctx.Input.MetaInput.Input,
-					Error:      ctx.GenerateErrorMessage(),
+					Error:      tryParseCause(fmt.Errorf(ctx.GenerateErrorMessage())),
 				},
 			},
 			OperatorsResult: &operators.Result{
@@ -231,6 +233,36 @@ func (e *TemplateExecuter) Execute(ctx *scan.ScanContext) (bool, error) {
 	}
 
 	return executed.Load() || matched.Load(), errx
+}
+
+// tryParseCause tries to parse the cause of given error
+// this is legacy support due to use of errorutil in existing libraries
+// but this should not be required once all libraries are updated
+func tryParseCause(err error) string {
+	errStr := ""
+	errX := errkit.FromError(err)
+	if errX != nil {
+		var errCause error
+
+		if len(errX.Errors()) > 1 {
+			errCause = errX.Errors()[0]
+		}
+		if errCause == nil {
+			errCause = errX
+		}
+
+		msg := errCause.Error()
+		parts := strings.Split(msg, ":")
+		if len(parts) == 1 {
+			return ""
+		}
+		errCause = errkit.New("%s", strings.TrimSpace(parts[len(parts)-1]))
+		errKind := errkit.GetErrorKind(err, nucleierr.ErrTemplateLogic).String()
+		errStr = errCause.Error()
+		errStr = strings.TrimSpace(strings.Replace(errStr, "errKind="+errKind, "", -1))
+	}
+
+	return errStr
 }
 
 // ExecuteWithResults executes the protocol requests and returns results instead of writing them.
