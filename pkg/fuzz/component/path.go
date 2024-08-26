@@ -97,8 +97,16 @@ func (q *Path) Rebuild() (*retryablehttp.Request, error) {
 	for i := lengthSplitted; i > 0; i-- {
 		key := strconv.Itoa(i)
 
-		original := originalValues.GetOrDefault(key, "").(string)
-		new := q.value.parsed.Map.GetOrDefault(key, "").(string)
+		original, ok := originalValues.GetOrDefault(key, "").(string)
+		if !ok {
+			continue
+		}
+
+		new, ok := q.value.parsed.Map.GetOrDefault(key, "").(string)
+		if !ok {
+			continue
+		}
+
 		if new == original {
 			// no need to replace
 			continue
