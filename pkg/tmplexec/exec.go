@@ -220,7 +220,7 @@ func (e *TemplateExecuter) Execute(ctx *scan.ScanContext) (bool, error) {
 					Info:       e.options.TemplateInfo,
 					Type:       e.getTemplateType(),
 					Host:       ctx.Input.MetaInput.Input,
-					Error:      tryParseCause(fmt.Errorf(ctx.GenerateErrorMessage())),
+					Error:      tryParseCause(fmt.Errorf("%s", ctx.GenerateErrorMessage())),
 				},
 			},
 			OperatorsResult: &operators.Result{
