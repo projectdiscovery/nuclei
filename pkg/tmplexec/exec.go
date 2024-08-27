@@ -206,6 +206,7 @@ func (e *TemplateExecuter) Execute(ctx *scan.ScanContext) (bool, error) {
 	}
 
 	if lastMatcherEvent != nil {
+		lastMatcherEvent.InternalEvent["error"] = tryParseCause(fmt.Errorf("%s", ctx.GenerateErrorMessage()))
 		writeFailureCallback(lastMatcherEvent, e.options.Options.MatcherStatus)
 	}
 
@@ -227,9 +228,7 @@ func (e *TemplateExecuter) Execute(ctx *scan.ScanContext) (bool, error) {
 				Matched: false,
 			},
 		}
-		if err := e.options.Output.WriteFailure(fakeEvent); err != nil {
-			gologger.Warning().Msgf("Could not write failure event to output: %s\n", err)
-		}
+		writeFailureCallback(fakeEvent, e.options.Options.MatcherStatus)
 	}
 
 	return executed.Load() || matched.Load(), errx
