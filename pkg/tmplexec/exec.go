@@ -252,9 +252,10 @@ func tryParseCause(err error) string {
 		}
 
 		msg := errCause.Error()
+		msg = strings.Trim(msg, "{} ")
 		parts := strings.Split(msg, ":")
 		if len(parts) == 1 {
-			return ""
+			return msg
 		}
 		errCause = errkit.New("%s", strings.TrimSpace(parts[len(parts)-1]))
 		errKind := errkit.GetErrorKind(err, nucleierr.ErrTemplateLogic).String()
