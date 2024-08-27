@@ -251,13 +251,9 @@ func tryParseCause(err error) string {
 			errCause = errX
 		}
 
-		msg := errCause.Error()
-		msg = strings.Trim(msg, "{} ")
+		msg := strings.Trim(errCause.Error(), "{} ")
 		parts := strings.Split(msg, ":")
-		if len(parts) == 1 {
-			return msg
-		}
-		errCause = errkit.New("%s", strings.TrimSpace(parts[len(parts)-1]))
+		errCause = errkit.New("%s", parts[len(parts)-1])
 		errKind := errkit.GetErrorKind(err, nucleierr.ErrTemplateLogic).String()
 		errStr = errCause.Error()
 		errStr = strings.TrimSpace(strings.Replace(errStr, "errKind="+errKind, "", -1))
