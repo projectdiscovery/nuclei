@@ -24,7 +24,7 @@ func (h *httpNoAccess) Execute(filePath string) error {
 		return err
 	}
 	event := &output.ResultEvent{}
-	json.Unmarshal([]byte(results[0]), event)
+	_ = json.Unmarshal([]byte(results[0]), event)
 
 	if event.Error != "no address found for host" {
 		return fmt.Errorf("unexpected result: expecting \"no address found for host\" error but got none")
@@ -41,7 +41,7 @@ func (h *networkNoAccess) Execute(filePath string) error {
 		return err
 	}
 	event := &output.ResultEvent{}
-	json.Unmarshal([]byte(results[0]), event)
+	_ = json.Unmarshal([]byte(results[0]), event)
 
 	if event.Error != "no address found for host" {
 		return fmt.Errorf("unexpected result: expecting \"no address found for host\" error but got \"%s\"", event.Error)
@@ -58,7 +58,7 @@ func (h *headlessNoAccess) Execute(filePath string) error {
 		return err
 	}
 	event := &output.ResultEvent{}
-	json.Unmarshal([]byte(results[0]), event)
+	_ = json.Unmarshal([]byte(results[0]), event)
 
 	if event.Error == "" {
 		return fmt.Errorf("unexpected result: expecting an error but got \"%s\"", event.Error)
@@ -75,7 +75,7 @@ func (h *javascriptNoAccess) Execute(filePath string) error {
 		return err
 	}
 	event := &output.ResultEvent{}
-	json.Unmarshal([]byte(results[0]), event)
+	_ = json.Unmarshal([]byte(results[0]), event)
 
 	if event.Error == "" {
 		return fmt.Errorf("unexpected result: expecting an error but got \"%s\"", event.Error)
@@ -92,7 +92,7 @@ func (h *websocketNoAccess) Execute(filePath string) error {
 		return err
 	}
 	event := &output.ResultEvent{}
-	json.Unmarshal([]byte(results[0]), event)
+	_ = json.Unmarshal([]byte(results[0]), event)
 
 	if event.Error == "" {
 		return fmt.Errorf("unexpected result: expecting an error but got \"%s\"", event.Error)
