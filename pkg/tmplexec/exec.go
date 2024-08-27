@@ -204,6 +204,7 @@ func (e *TemplateExecuter) Execute(ctx *scan.ScanContext) (bool, error) {
 	} else {
 		errx = e.engine.ExecuteWithResults(ctx)
 	}
+	ctx.LogError(errx)
 
 	if lastMatcherEvent != nil {
 		lastMatcherEvent.InternalEvent["error"] = tryParseCause(fmt.Errorf("%s", ctx.GenerateErrorMessage()))
