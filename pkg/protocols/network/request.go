@@ -158,6 +158,7 @@ func (request *Request) executeOnTarget(input *contextargs.Context, visited maps
 		if err = request.executeAddress(variables, actualAddress, address, input, kv.tls, previous, callback); err != nil {
 			outputEvent := request.responseToDSLMap("", "", "", address, "")
 			callback(&output.InternalWrappedEvent{InternalEvent: outputEvent})
+			gologger.Warning().Msgf("[%v] Could not make network request for (%s) : %s\n", request.options.TemplateID, actualAddress, err)
 			continue
 		}
 	}
