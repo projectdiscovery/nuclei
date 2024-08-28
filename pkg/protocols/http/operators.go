@@ -1,6 +1,7 @@
 package http
 
 import (
+	"fmt"
 	"net/http"
 	"strings"
 	"time"
@@ -166,6 +167,24 @@ func (request *Request) MakeResultEventItem(wrapped *output.InternalWrappedEvent
 	if types.ToString(wrapped.InternalEvent["path"]) != "" {
 		fields.Path = types.ToString(wrapped.InternalEvent["path"])
 	}
+	Packet := make(map[int]output.RequestResponsePair)
+	index := 1
+	for true{
+		d := output.RequestResponsePair{}
+		reqT,reqOK := wrapped.InternalEvent[fmt.Sprintf("request_%v",index)]
+		rspT,rspOK := wrapped.InternalEvent[fmt.Sprintf("response_%v",index)]
+		if !reqOK && !rspOK{
+			break
+		}
+		if reqOK{
+			d.Request = types.ToString(reqT)
+		}
+		if rspOK{
+			d.Response = types.ToString(rspT)
+		}
+		Packet[index] = d
+		index++
+	}
 	data := &output.ResultEvent{
 		TemplateID:       types.ToString(wrapped.InternalEvent["template-id"]),
 		TemplatePath:     types.ToString(wrapped.InternalEvent["template-path"]),
@@ -187,6 +206,7 @@ func (request *Request) MakeResultEventItem(wrapped *output.InternalWrappedEvent
 		CURLCommand:      types.ToString(wrapped.InternalEvent["curl-command"]),
 		TemplateEncoded:  request.options.EncodeTemplate(),
 		Error:            types.ToString(wrapped.InternalEvent["error"]),
+		Packet: 		  Packet,
 	}
 	return data
 }
