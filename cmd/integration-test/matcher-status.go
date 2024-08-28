@@ -14,6 +14,7 @@ var matcherStatusTestcases = []TestCaseInfo{
 	{Path: "protocols/headless/headless-basic.yaml", TestCase: &headlessNoAccess{}},
 	{Path: "protocols/javascript/net-https.yaml", TestCase: &javascriptNoAccess{}},
 	{Path: "protocols/websocket/basic.yaml", TestCase: &websocketNoAccess{}},
+	{Path: "protocols/dns/a.yaml", TestCase: &dnsNoAccess{}},
 }
 
 type httpNoAccess struct{}
@@ -88,6 +89,23 @@ type websocketNoAccess struct{}
 // Execute executes a test case and returns an error if occurred
 func (h *websocketNoAccess) Execute(filePath string) error {
 	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, "ws://trust_me_bro.real", debug, "-ms", "-j")
+	if err != nil {
+		return err
+	}
+	event := &output.ResultEvent{}
+	_ = json.Unmarshal([]byte(results[0]), event)
+
+	if event.Error == "" {
+		return fmt.Errorf("unexpected result: expecting an error but got \"%s\"", event.Error)
+	}
+	return nil
+}
+
+type dnsNoAccess struct{}
+
+// Execute executes a test case and returns an error if occurred
+func (h *dnsNoAccess) Execute(filePath string) error {
+	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, "trust_me_bro.real", debug, "-ms", "-j")
 	if err != nil {
 		return err
 	}
