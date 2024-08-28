@@ -625,6 +625,10 @@ github.com/kevinburke/ssh_config v1.2.0/go.mod h1:CT57kijsi8u/K/BOFA39wgDQJ9CxiF
 github.com/kisielk/errcheck v1.1.0/go.mod h1:EZBBE59ingxPouuu3KfxchcWSUPOHkagtvWXihfKN4Q=
 github.com/kisielk/errcheck v1.5.0/go.mod h1:pFxgyoBC7bSaBwPgfKdkLd5X25qrDl4LWUI2bnpBCr8=
 github.com/kisielk/gotool v1.0.0/go.mod h1:XhKaO+MFFWcvkIS/tQcRk01m1F5IRFswLeQ+oQHNcck=
+github.com/kitabisa/go-ci v1.0.1 h1://FHQzlDqYW+3qr0judsOE9X2ZrdRlRc66sCaVrLFGc=
+github.com/kitabisa/go-ci v1.0.1/go.mod h1:4MWu+kf/+tvd0vLWSJA689Kn+hrYkZiymmZYT5BGT4g=
+github.com/kitabisa/go-ci v1.0.2 h1:rqHf8KEbQOxVb998TbqGRo70Z7ol44io7/jLYJUvKp8=
+github.com/kitabisa/go-ci v1.0.2/go.mod h1:e3wBSzaJbcifXrr/Gw2ZBLn44MmeqP5WySwXyHlCK/U=
 github.com/klauspost/compress v1.4.1/go.mod h1:RyIbtBH6LamlWaDj8nUwkbUhJ87Yi3uG0guNDohfE1A=
 github.com/klauspost/compress v1.11.4/go.mod h1:aoV0uJVorq1K+umq18yTdKaF57EivdYsUV+/s2qKfXs=
 github.com/klauspost/compress v1.17.8 h1:YcnTYrq7MikUT7k0Yb5eceMmALQPYBW/Xltxn0NAMnU=
