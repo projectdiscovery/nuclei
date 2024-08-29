@@ -83,8 +83,8 @@ require (
 	github.com/projectdiscovery/dsl v0.1.8
 	github.com/projectdiscovery/fasttemplate v0.0.2
 	github.com/projectdiscovery/go-smb2 v0.0.0-20240129202741-052cc450c6cb
-	github.com/projectdiscovery/goflags v0.1.63
-	github.com/projectdiscovery/gologger v1.1.19
+	github.com/projectdiscovery/goflags v0.1.64
+	github.com/projectdiscovery/gologger v1.1.21
 	github.com/projectdiscovery/gostruct v0.0.2
 	github.com/projectdiscovery/gozero v0.0.2
 	github.com/projectdiscovery/httpx v1.6.7
@@ -93,10 +93,10 @@ require (
 	github.com/projectdiscovery/ratelimit v0.0.49
 	github.com/projectdiscovery/rdap v0.9.1-0.20221108103045-9865884d1917
 	github.com/projectdiscovery/sarif v0.0.1
-	github.com/projectdiscovery/tlsx v1.1.6
+	github.com/projectdiscovery/tlsx v1.1.7
 	github.com/projectdiscovery/uncover v1.0.9
 	github.com/projectdiscovery/useragent v0.0.65
-	github.com/projectdiscovery/utils v0.2.5
+	github.com/projectdiscovery/utils v0.2.7
 	github.com/projectdiscovery/wappalyzergo v0.1.14
 	github.com/redis/go-redis/v9 v9.1.0
 	github.com/seh-msft/burpxml v1.0.1
@@ -177,6 +177,7 @@ require (
 	github.com/jmespath/go-jmespath v0.4.0 // indirect
 	github.com/josharian/intern v1.0.0 // indirect
 	github.com/kataras/jwt v0.1.10 // indirect
+	github.com/kitabisa/go-ci v1.0.2 // indirect
 	github.com/klauspost/compress v1.17.8 // indirect
 	github.com/klauspost/pgzip v1.2.6 // indirect
 	github.com/kylelemons/godebug v1.1.0 // indirect

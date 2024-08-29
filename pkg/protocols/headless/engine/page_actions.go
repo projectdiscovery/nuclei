@@ -14,6 +14,7 @@ import (
 	"github.com/go-rod/rod/lib/input"
 	"github.com/go-rod/rod/lib/proto"
 	"github.com/go-rod/rod/lib/utils"
+	"github.com/kitabisa/go-ci"
 	"github.com/pkg/errors"
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
@@ -54,7 +55,12 @@ func (p *Page) ExecuteActions(input *contextargs.Context, actions []*Action, var
 	waitFuncs := make([]func() error, 0)
 
 	// avoid any future panics caused due to go-rod library
+	// TODO(dwisiswant0): remove this once we get the RCA.
 	defer func() {
+		if ci.IsCI() {
+			return
+		}
+
 		if r := recover(); r != nil {
 			err = errorutil.New("panic on headless action: %v", r)
 		}

@@ -65,6 +65,7 @@ docs:
 
 	git reset --hard # line 59
 
+test: GOFLAGS = -race -v
 test:
 	$(GOTEST) $(GOFLAGS) ./...
 
