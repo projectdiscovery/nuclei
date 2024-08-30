@@ -14,6 +14,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/fuzz"
+	"github.com/projectdiscovery/nuclei/v3/pkg/fuzz/analyzers"
 	"github.com/projectdiscovery/nuclei/v3/pkg/operators"
 	"github.com/projectdiscovery/nuclei/v3/pkg/operators/matchers"
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
@@ -120,7 +121,7 @@ func (request *Request) executeAllFuzzingRules(input *contextargs.Context, value
 		default:
 		}
 
-		err := rule.Execute(&fuzz.ExecuteRuleInput{
+		input := &fuzz.ExecuteRuleInput{
 			Input:             input,
 			DisplayFuzzPoints: request.options.Options.DisplayFuzzPoints,
 			Callback: func(gr fuzz.GeneratedRequest) bool {
@@ -135,7 +136,13 @@ func (request *Request) executeAllFuzzingRules(input *contextargs.Context, value
 			},
 			Values:      values,
 			BaseRequest: baseRequest.Clone(context.TODO()),
-		})
+		}
+		if request.Analyzer != nil {
+			analyzer := analyzers.GetAnalyzer(request.Analyzer.Name)
+			input.ApplyPayloadInitialTransformation = analyzer.ApplyInitialTransformation
+			input.AnalyzerParams = request.Analyzer.Parameters
+		}
+		err := rule.Execute(input)
 		if err == nil {
 			applicable = true
 			continue
@@ -165,10 +172,11 @@ func (request *Request) executeGeneratedFuzzingRequest(gr fuzz.GeneratedRequest,
 	}
 	request.options.RateLimitTake()
 	req := &generatedRequest{
-		request:        gr.Request,
-		dynamicValues:  gr.DynamicValues,
-		interactshURLs: gr.InteractURLs,
-		original:       request,
+		request:              gr.Request,
+		dynamicValues:        gr.DynamicValues,
+		interactshURLs:       gr.InteractURLs,
+		original:             request,
+		fuzzGeneratedRequest: gr,
 	}
 	var gotMatches bool
 	requestErr := request.executeRequest(input, req, gr.DynamicValues, hasInteractMatchers, func(event *output.InternalWrappedEvent) {

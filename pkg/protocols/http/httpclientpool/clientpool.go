@@ -72,6 +72,9 @@ func Init(options *types.Options) error {
 type ConnectionConfiguration struct {
 	// DisableKeepAlive of the connection
 	DisableKeepAlive bool
+	// CustomMaxTimeout is the custom timeout for the connection
+	// This overrides all other timeouts and is used for accurate time based fuzzing.
+	CustomMaxTimeout time.Duration
 	cookiejar        *cookiejar.Jar
 	mu               sync.RWMutex
 }
@@ -129,6 +132,10 @@ func (c *Configuration) Hash() string {
 	builder.WriteString(strconv.FormatBool(c.DisableCookie))
 	builder.WriteString("c")
 	builder.WriteString(strconv.FormatBool(c.Connection != nil))
+	if c.Connection != nil && c.Connection.CustomMaxTimeout > 0 {
+		builder.WriteString("k")
+		builder.WriteString(c.Connection.CustomMaxTimeout.String())
+	}
 	hash := builder.String()
 	return hash
 }
@@ -235,6 +242,10 @@ func wrappedGet(options *types.Options, configuration *Configuration) (*retryabl
 		return nil, errors.Wrap(err, "could not create client certificate")
 	}
 
+	responseHeaderTimeout := ResponseHeaderTimeout
+	if configuration.Connection != nil && configuration.Connection.CustomMaxTimeout > 0 {
+		responseHeaderTimeout = configuration.Connection.CustomMaxTimeout
+	}
 	transport := &http.Transport{
 		ForceAttemptHTTP2: options.ForceAttemptHTTP2,
 		DialContext:       Dialer.Dial,
@@ -252,7 +263,7 @@ func wrappedGet(options *types.Options, configuration *Configuration) (*retryabl
 		MaxConnsPerHost:       maxConnsPerHost,
 		TLSClientConfig:       tlsConfig,
 		DisableKeepAlives:     disableKeepAlives,
-		ResponseHeaderTimeout: ResponseHeaderTimeout,
+		ResponseHeaderTimeout: responseHeaderTimeout,
 	}
 
 	if types.ProxyURL != "" {
@@ -300,6 +311,9 @@ func wrappedGet(options *types.Options, configuration *Configuration) (*retryabl
 	}
 	if !configuration.NoTimeout {
 		httpclient.Timeout = GetHttpTimeout(options)
+		if configuration.Connection != nil && configuration.Connection.CustomMaxTimeout > 0 {
+			httpclient.Timeout = configuration.Connection.CustomMaxTimeout
+		}
 	}
 	client := retryablehttp.NewWithHTTPClient(httpclient, retryableHttpOptions)
 	if jar != nil {

@@ -19,6 +19,8 @@ var (
 type ValueOrKeyValue struct {
 	Key   string
 	Value string
+
+	OriginalPayload string
 }
 
 func (v *ValueOrKeyValue) IsKV() bool {
