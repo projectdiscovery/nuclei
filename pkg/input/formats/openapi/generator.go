@@ -416,7 +416,7 @@ schemaLabel:
 	return globalParams, nil
 }
 
-// generateExampleFromSchema generates an example from a schema object
+// GenerateParameterFromSecurityScheme generates an example from a schema object
 func GenerateParameterFromSecurityScheme(scheme *openapi3.SecuritySchemeRef) (*openapi3.Parameter, error) {
 	if !generic.EqualsAny(scheme.Value.Type, "http", "apiKey") {
 		return nil, errorutil.NewWithTag("openapi", "unsupported security scheme type (%s) found in openapi file", scheme.Value.Type)
