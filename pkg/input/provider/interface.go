@@ -121,7 +121,7 @@ func NewInputProvider(opts InputOptions) (InputProvider, error) {
 	}
 }
 
-// SupportedFormats returns all supported input formats of nuclei
+// SupportedInputFormats returns all supported input formats of nuclei
 func SupportedInputFormats() string {
 	return "list, " + http.SupportedFormats()
 }
