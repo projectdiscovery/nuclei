@@ -20,11 +20,11 @@ require (
 	github.com/olekukonko/tablewriter v0.0.5
 	github.com/pkg/errors v0.9.1
 	github.com/projectdiscovery/clistats v0.1.0
-	github.com/projectdiscovery/fastdialer v0.2.5
-	github.com/projectdiscovery/hmap v0.0.55
+	github.com/projectdiscovery/fastdialer v0.2.7
+	github.com/projectdiscovery/hmap v0.0.56
 	github.com/projectdiscovery/interactsh v1.2.0
 	github.com/projectdiscovery/rawhttp v0.1.60
-	github.com/projectdiscovery/retryabledns v1.0.72
+	github.com/projectdiscovery/retryabledns v1.0.73
 	github.com/projectdiscovery/retryablehttp-go v1.0.74
 	github.com/projectdiscovery/yamldoc-go v1.0.4
 	github.com/remeh/sizedwaitgroup v1.0.0
@@ -72,6 +72,7 @@ require (
 	github.com/go-sql-driver/mysql v1.7.1
 	github.com/h2non/filetype v1.1.3
 	github.com/invopop/yaml v0.3.1
+	github.com/kitabisa/go-ci v1.0.2
 	github.com/labstack/echo/v4 v4.10.2
 	github.com/leslie-qiwa/flat v0.0.0-20230424180412-f9d1cf014baa
 	github.com/lib/pq v1.10.9
@@ -177,7 +178,6 @@ require (
 	github.com/jmespath/go-jmespath v0.4.0 // indirect
 	github.com/josharian/intern v1.0.0 // indirect
 	github.com/kataras/jwt v0.1.10 // indirect
-	github.com/kitabisa/go-ci v1.0.2 // indirect
 	github.com/klauspost/compress v1.17.8 // indirect
 	github.com/klauspost/pgzip v1.2.6 // indirect
 	github.com/kylelemons/godebug v1.1.0 // indirect
