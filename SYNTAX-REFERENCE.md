@@ -3682,6 +3682,8 @@ Enum Values:
 
   - <code>waitevent</code>
 
+  - <code>dialog</code>
+
   - <code>keyboard</code>
 
   - <code>debug</code>
