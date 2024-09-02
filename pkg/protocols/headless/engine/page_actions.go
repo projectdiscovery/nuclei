@@ -48,8 +48,8 @@ const (
 )
 
 // ExecuteActions executes a list of actions on a page.
-func (p *Page) ExecuteActions(input *contextargs.Context, actions []*Action, variables map[string]interface{}) (outData map[string]string, err error) {
-	outData = make(map[string]string)
+func (p *Page) ExecuteActions(input *contextargs.Context, actions []*Action, variables map[string]interface{}) (outData ActionData, err error) {
+	outData = make(ActionData)
 	// waitFuncs are function that needs to be executed after navigation
 	// typically used for waitEvent
 	waitFuncs := make([]func() error, 0)
@@ -106,6 +106,8 @@ func (p *Page) ExecuteActions(input *contextargs.Context, actions []*Action, var
 			if waitFunc != nil {
 				waitFuncs = append(waitFuncs, waitFunc)
 			}
+		case ActionWaitDialog:
+			err = p.HandleDialog(act, outData)
 		case ActionFilesInput:
 			if p.options.Options.AllowLocalFileAccess {
 				err = p.FilesInput(act, outData)
@@ -148,7 +150,7 @@ type rule struct {
 }
 
 // WaitVisible waits until an element appears.
-func (p *Page) WaitVisible(act *Action, out map[string]string) error {
+func (p *Page) WaitVisible(act *Action, out ActionData) error {
 	timeout, err := getTimeout(p, act)
 	if err != nil {
 		return errors.Wrap(err, "Wrong timeout given")
@@ -223,7 +225,7 @@ func geTimeParameter(p *Page, act *Action, parameterName string, defaultValue ti
 }
 
 // ActionAddHeader executes a AddHeader action.
-func (p *Page) ActionAddHeader(act *Action, out map[string]string) error {
+func (p *Page) ActionAddHeader(act *Action, out ActionData) error {
 	in := p.getActionArgWithDefaultValues(act, "part")
 
 	args := make(map[string]string)
@@ -234,7 +236,7 @@ func (p *Page) ActionAddHeader(act *Action, out map[string]string) error {
 }
 
 // ActionSetHeader executes a SetHeader action.
-func (p *Page) ActionSetHeader(act *Action, out map[string]string) error {
+func (p *Page) ActionSetHeader(act *Action, out ActionData) error {
 	in := p.getActionArgWithDefaultValues(act, "part")
 
 	args := make(map[string]string)
@@ -245,7 +247,7 @@ func (p *Page) ActionSetHeader(act *Action, out map[string]string) error {
 }
 
 // ActionDeleteHeader executes a DeleteHeader action.
-func (p *Page) ActionDeleteHeader(act *Action, out map[string]string) error {
+func (p *Page) ActionDeleteHeader(act *Action, out ActionData) error {
 	in := p.getActionArgWithDefaultValues(act, "part")
 
 	args := make(map[string]string)
@@ -255,7 +257,7 @@ func (p *Page) ActionDeleteHeader(act *Action, out map[string]string) error {
 }
 
 // ActionSetBody executes a SetBody action.
-func (p *Page) ActionSetBody(act *Action, out map[string]string) error {
+func (p *Page) ActionSetBody(act *Action, out ActionData) error {
 	in := p.getActionArgWithDefaultValues(act, "part")
 
 	args := make(map[string]string)
@@ -265,7 +267,7 @@ func (p *Page) ActionSetBody(act *Action, out map[string]string) error {
 }
 
 // ActionSetMethod executes an SetMethod action.
-func (p *Page) ActionSetMethod(act *Action, out map[string]string) error {
+func (p *Page) ActionSetMethod(act *Action, out ActionData) error {
 	in := p.getActionArgWithDefaultValues(act, "part")
 
 	args := make(map[string]string)
@@ -275,7 +277,7 @@ func (p *Page) ActionSetMethod(act *Action, out map[string]string) error {
 }
 
 // NavigateURL executes an ActionLoadURL actions loading a URL for the page.
-func (p *Page) NavigateURL(action *Action, out map[string]string, allvars map[string]interface{}) error {
+func (p *Page) NavigateURL(action *Action, out ActionData, allvars map[string]interface{}) error {
 	// input <- is input url from cli
 	// target <- is the url from template (ex: {{BaseURL}}/test)
 	input, err := urlutil.Parse(p.input.MetaInput.Input)
@@ -331,7 +333,7 @@ func (p *Page) NavigateURL(action *Action, out map[string]string, allvars map[st
 }
 
 // RunScript runs a script on the loaded page
-func (p *Page) RunScript(action *Action, out map[string]string) error {
+func (p *Page) RunScript(action *Action, out ActionData) error {
 	code := p.getActionArgWithDefaultValues(action, "code")
 	if code == "" {
 		return errinvalidArguments
@@ -352,7 +354,7 @@ func (p *Page) RunScript(action *Action, out map[string]string) error {
 }
 
 // ClickElement executes click actions for an element.
-func (p *Page) ClickElement(act *Action, out map[string]string) error {
+func (p *Page) ClickElement(act *Action, out ActionData) error {
 	element, err := p.pageElementBy(act.Data)
 	if err != nil {
 		return errors.Wrap(err, errCouldNotGetElement)
@@ -367,12 +369,12 @@ func (p *Page) ClickElement(act *Action, out map[string]string) error {
 }
 
 // KeyboardAction executes a keyboard action on the page.
-func (p *Page) KeyboardAction(act *Action, out map[string]string) error {
+func (p *Page) KeyboardAction(act *Action, out ActionData) error {
 	return p.page.Keyboard.Type([]input.Key(p.getActionArgWithDefaultValues(act, "keys"))...)
 }
 
 // RightClickElement executes right click actions for an element.
-func (p *Page) RightClickElement(act *Action, out map[string]string) error {
+func (p *Page) RightClickElement(act *Action, out ActionData) error {
 	element, err := p.pageElementBy(act.Data)
 	if err != nil {
 		return errors.Wrap(err, errCouldNotGetElement)
@@ -387,7 +389,7 @@ func (p *Page) RightClickElement(act *Action, out map[string]string) error {
 }
 
 // Screenshot executes screenshot action on a page
-func (p *Page) Screenshot(act *Action, out map[string]string) error {
+func (p *Page) Screenshot(act *Action, out ActionData) error {
 	to := p.getActionArgWithDefaultValues(act, "to")
 	if to == "" {
 		to = ksuid.New().String()
@@ -450,7 +452,7 @@ func (p *Page) Screenshot(act *Action, out map[string]string) error {
 }
 
 // InputElement executes input element actions for an element.
-func (p *Page) InputElement(act *Action, out map[string]string) error {
+func (p *Page) InputElement(act *Action, out ActionData) error {
 	value := p.getActionArgWithDefaultValues(act, "value")
 	if value == "" {
 		return errinvalidArguments
@@ -469,7 +471,7 @@ func (p *Page) InputElement(act *Action, out map[string]string) error {
 }
 
 // TimeInputElement executes time input on an element
-func (p *Page) TimeInputElement(act *Action, out map[string]string) error {
+func (p *Page) TimeInputElement(act *Action, out ActionData) error {
 	value := p.getActionArgWithDefaultValues(act, "value")
 	if value == "" {
 		return errinvalidArguments
@@ -492,7 +494,7 @@ func (p *Page) TimeInputElement(act *Action, out map[string]string) error {
 }
 
 // SelectInputElement executes select input statement action on a element
-func (p *Page) SelectInputElement(act *Action, out map[string]string) error {
+func (p *Page) SelectInputElement(act *Action, out ActionData) error {
 	value := p.getActionArgWithDefaultValues(act, "value")
 	if value == "" {
 		return errinvalidArguments
@@ -517,7 +519,7 @@ func (p *Page) SelectInputElement(act *Action, out map[string]string) error {
 }
 
 // WaitLoad waits for the page to load
-func (p *Page) WaitLoad(act *Action, out map[string]string) error {
+func (p *Page) WaitLoad(act *Action, out ActionData) error {
 	p.page.Timeout(2 * time.Second).WaitNavigation(proto.PageLifecycleEventNameFirstMeaningfulPaint)()
 
 	// Wait for the window.onload event and also wait for the network requests
@@ -531,7 +533,7 @@ func (p *Page) WaitLoad(act *Action, out map[string]string) error {
 }
 
 // GetResource gets a resource from an element from page.
-func (p *Page) GetResource(act *Action, out map[string]string) error {
+func (p *Page) GetResource(act *Action, out ActionData) error {
 	element, err := p.pageElementBy(act.Data)
 	if err != nil {
 		return errors.Wrap(err, errCouldNotGetElement)
@@ -547,7 +549,7 @@ func (p *Page) GetResource(act *Action, out map[string]string) error {
 }
 
 // FilesInput acts with a file input element on page
-func (p *Page) FilesInput(act *Action, out map[string]string) error {
+func (p *Page) FilesInput(act *Action, out ActionData) error {
 	element, err := p.pageElementBy(act.Data)
 	if err != nil {
 		return errors.Wrap(err, errCouldNotGetElement)
@@ -564,7 +566,7 @@ func (p *Page) FilesInput(act *Action, out map[string]string) error {
 }
 
 // ExtractElement extracts from an element on the page.
-func (p *Page) ExtractElement(act *Action, out map[string]string) error {
+func (p *Page) ExtractElement(act *Action, out ActionData) error {
 	element, err := p.pageElementBy(act.Data)
 	if err != nil {
 		return errors.Wrap(err, errCouldNotGetElement)
@@ -598,7 +600,7 @@ func (p *Page) ExtractElement(act *Action, out map[string]string) error {
 }
 
 // WaitEvent waits for an event to happen on the page.
-func (p *Page) WaitEvent(act *Action, out map[string]string) (func() error, error) {
+func (p *Page) WaitEvent(act *Action, out ActionData) (func() error, error) {
 	event := p.getActionArgWithDefaultValues(act, "event")
 	if event == "" {
 		return nil, errors.New("event not recognized")
@@ -636,6 +638,43 @@ func (p *Page) WaitEvent(act *Action, out map[string]string) (func() error, erro
 	return waitFunc, nil
 }
 
+// HandleDialog handles JavaScript dialog (alert, confirm, prompt, or onbeforeunload).
+func (p *Page) HandleDialog(act *Action, out ActionData) error {
+	maxDuration := 10 * time.Second
+
+	if dur := p.getActionArgWithDefaultValues(act, "max-duration"); dur != "" {
+		var err error
+
+		maxDuration, err = time.ParseDuration(dur)
+		if err != nil {
+			return errorutil.NewWithErr(err).Msgf("could not parse max-duration")
+		}
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), maxDuration)
+	defer cancel()
+
+	wait, handle := p.page.HandleDialog()
+	fn := func() (*proto.PageJavascriptDialogOpening, error) {
+		dialog := wait()
+		err := handle(&proto.PageHandleJavaScriptDialog{
+			Accept:     true,
+			PromptText: "",
+		})
+
+		return dialog, err
+	}
+
+	dialog, err := contextutil.ExecFuncWithTwoReturns(ctx, fn)
+	if err == nil && act.Name != "" {
+		out[act.Name] = true
+		out[act.Name+"_type"] = string(dialog.Type)
+		out[act.Name+"_message"] = dialog.Message
+	}
+
+	return nil
+}
+
 // pageElementBy returns a page element from a variety of inputs.
 //
 // Supported values for by: r -> selector & regex, x -> xpath, js -> eval js,
@@ -670,14 +709,14 @@ func (p *Page) pageElementBy(data map[string]string) (*rod.Element, error) {
 }
 
 // DebugAction enables debug action on a page.
-func (p *Page) DebugAction(act *Action, out map[string]string) error {
+func (p *Page) DebugAction(act *Action, out ActionData) error {
 	p.instance.browser.engine.SlowMotion(5 * time.Second)
 	p.instance.browser.engine.Trace(true)
 	return nil
 }
 
 // SleepAction sleeps on the page for a specified duration
-func (p *Page) SleepAction(act *Action, out map[string]string) error {
+func (p *Page) SleepAction(act *Action, out ActionData) error {
 	seconds := act.Data["duration"]
 	if seconds == "" {
 		seconds = "5"
