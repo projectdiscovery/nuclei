@@ -6,10 +6,14 @@ import (
 	"strings"
 
 	"github.com/invopop/jsonschema"
+	mapsutil "github.com/projectdiscovery/utils/maps"
 )
 
 // ActionType defines the action type for a browser action
 type ActionType int8
+
+// ActionData stores the action output data
+type ActionData = mapsutil.Map[string, any]
 
 // Types to be executed by the user.
 // name:ActionType
@@ -68,6 +72,9 @@ const (
 	// ActionWaitEvent waits for a specific event.
 	// name:waitevent
 	ActionWaitEvent
+	// ActionWaitDialog waits for JavaScript dialog (alert, confirm, prompt, or onbeforeunload).
+	// name:dialog
+	ActionWaitDialog
 	// ActionKeyboard performs a keyboard action event on a page.
 	// name:keyboard
 	ActionKeyboard
@@ -104,6 +111,7 @@ var ActionStringToAction = map[string]ActionType{
 	"deleteheader": ActionDeleteHeader,
 	"setbody":      ActionSetBody,
 	"waitevent":    ActionWaitEvent,
+	"waitdialog":   ActionWaitDialog,
 	"keyboard":     ActionKeyboard,
 	"debug":        ActionDebug,
 	"sleep":        ActionSleep,
@@ -130,6 +138,7 @@ var ActionToActionString = map[ActionType]string{
 	ActionDeleteHeader: "deleteheader",
 	ActionSetBody:      "setbody",
 	ActionWaitEvent:    "waitevent",
+	ActionWaitDialog:   "waitdialog",
 	ActionKeyboard:     "keyboard",
 	ActionDebug:        "debug",
 	ActionSleep:        "sleep",
