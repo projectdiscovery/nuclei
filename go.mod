@@ -72,6 +72,7 @@ require (
 	github.com/go-sql-driver/mysql v1.7.1
 	github.com/h2non/filetype v1.1.3
 	github.com/invopop/yaml v0.3.1
+	github.com/kitabisa/go-ci v1.0.2
 	github.com/labstack/echo/v4 v4.10.2
 	github.com/leslie-qiwa/flat v0.0.0-20230424180412-f9d1cf014baa
 	github.com/lib/pq v1.10.9
@@ -90,7 +91,7 @@ require (
 	github.com/projectdiscovery/httpx v1.6.7
 	github.com/projectdiscovery/mapcidr v1.1.34
 	github.com/projectdiscovery/n3iwf v0.0.0-20230523120440-b8cd232ff1f5
-	github.com/projectdiscovery/ratelimit v0.0.49
+	github.com/projectdiscovery/ratelimit v0.0.53
 	github.com/projectdiscovery/rdap v0.9.1-0.20221108103045-9865884d1917
 	github.com/projectdiscovery/sarif v0.0.1
 	github.com/projectdiscovery/tlsx v1.1.7
@@ -177,7 +178,6 @@ require (
 	github.com/jmespath/go-jmespath v0.4.0 // indirect
 	github.com/josharian/intern v1.0.0 // indirect
 	github.com/kataras/jwt v0.1.10 // indirect
-	github.com/kitabisa/go-ci v1.0.2 // indirect
 	github.com/klauspost/compress v1.17.8 // indirect
 	github.com/klauspost/pgzip v1.2.6 // indirect
 	github.com/kylelemons/godebug v1.1.0 // indirect
