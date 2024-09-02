@@ -852,8 +852,8 @@ github.com/projectdiscovery/gozero v0.0.2 h1:8fJeaCjxL9tpm33uG/RsCQs6HGM/NE6eA3c
 github.com/projectdiscovery/gozero v0.0.2/go.mod h1:d8bZvDWW07LWNYWrwjZ4OO1I0cpkfqaysyDfSs9ibK8=
 github.com/projectdiscovery/hmap v0.0.56 h1:QLIuFhCc7jrBH9WYpxNBDooSoH+/S8cCm7VO5rMt3lU=
 github.com/projectdiscovery/hmap v0.0.56/go.mod h1:XyGKMO93nLOzpaTTCDBSKEGx/XWXjSpoyZJxT92Qd/Q=
-github.com/projectdiscovery/httpx v1.6.7 h1:luJAtQ+iKpiyKKDpcWw1/fF1MaRX6JZ4R3P+ol5Uikk=
-github.com/projectdiscovery/httpx v1.6.7/go.mod h1:rqcuexBrb4v36ZyX0BHcHaovTurOJn2P65Tdt9cYdfE=
+github.com/projectdiscovery/httpx v1.6.8 h1:k0Y5g3ue/7QbDP0+LykIxp/VhPDLfau3UEUyuxtP7qE=
+github.com/projectdiscovery/httpx v1.6.8/go.mod h1:7BIsDxyRwkBjthqFmEajXrA5f3yb4tlVfLmpNdf0ZXA=
 github.com/projectdiscovery/interactsh v1.2.0 h1:Al6jHiR+Usl9egYJDLJaWNHOcH8Rugk8gWMasc8Cmw8=
 github.com/projectdiscovery/interactsh v1.2.0/go.mod h1:Wxt0fnzxsfrAZQQlpVrf3xMatP4OXZaZbjuDkIQKdYY=
 github.com/projectdiscovery/ldapserver v1.0.2-0.20240219154113-dcc758ebc0cb h1:MGtI4oE12ruWv11ZlPXXd7hl/uAaQZrFvrIDYDeVMd8=
@@ -868,8 +868,8 @@ github.com/projectdiscovery/networkpolicy v0.0.9 h1:IrlDoYZagNNO8y+7iZeHT8k5izE+
 github.com/projectdiscovery/networkpolicy v0.0.9/go.mod h1:XFJ2Lnv8BE/ziQCFjBHMsH1w6VmkPiQtk+NlBpdMU7M=
 github.com/projectdiscovery/ratelimit v0.0.53 h1:1ci2zaVCtJ9daDi9IXjNwpDxl2InYq375role/xqUR4=
 github.com/projectdiscovery/ratelimit v0.0.53/go.mod h1:4kNYTL7xKLo1qMYHTREUCBqHyvykFF+XBWutTh9fkwg=
-github.com/projectdiscovery/rawhttp v0.1.60 h1:L57kAATGRuCfOp8Fs0ly3j2wlip7R5pco2RVfwqh/II=
-github.com/projectdiscovery/rawhttp v0.1.60/go.mod h1:M97w6lsphTHKeqLSio4Lw9K4KLO2riJMYAOqVMIZ3ck=
+github.com/projectdiscovery/rawhttp v0.1.61 h1:EbskCj6kkDSG31sO5zEUFTqHp9ltccG1DdcI+MCdahQ=
+github.com/projectdiscovery/rawhttp v0.1.61/go.mod h1:5XmDAKph9pLVnh87zjL+vXDpfG5W8Gz5N2BAtYTkuVU=
 github.com/projectdiscovery/rdap v0.9.1-0.20221108103045-9865884d1917 h1:m03X4gBVSorSzvmm0bFa7gDV4QNSOWPL/fgZ4kTXBxk=
 github.com/projectdiscovery/rdap v0.9.1-0.20221108103045-9865884d1917/go.mod h1:JxXtZC9e195awe7EynrcnBJmFoad/BNDzW9mzFkK8Sg=
 github.com/projectdiscovery/retryabledns v1.0.73 h1:CLqtgoI6+YVcUE2jnZPFVvwj59CHDE4HNImLf62sSuw=
