@@ -256,6 +256,7 @@
         "deleteheader",
         "setbody",
         "waitevent",
+        "waitdialog",
         "keyboard",
         "debug",
         "sleep",
