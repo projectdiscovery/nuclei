@@ -45,7 +45,7 @@ type Options struct {
 }
 
 // Run runs a list of actions by creating a new page in the browser.
-func (i *Instance) Run(input *contextargs.Context, actions []*Action, payloads map[string]interface{}, options *Options) (map[string]string, *Page, error) {
+func (i *Instance) Run(input *contextargs.Context, actions []*Action, payloads map[string]interface{}, options *Options) (ActionData, *Page, error) {
 	page, err := i.engine.Page(proto.TargetCreateTarget{})
 	if err != nil {
 		return nil, nil, err
