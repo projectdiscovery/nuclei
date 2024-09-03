@@ -276,6 +276,8 @@ type Options struct {
 	StoreResponseDir string
 	// DisableRedirects disables following redirects for http request module
 	DisableRedirects bool
+	// FuzzingDedupe enables deduplication of input URLs for fuzzing
+	FuzzingDedupe bool
 	// SNI custom hostname
 	SNI string
 	// InputFileMode specifies the mode of input file (jsonl, burp, openapi, swagger, etc)
