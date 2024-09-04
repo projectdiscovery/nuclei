@@ -300,7 +300,7 @@ func formatTemplate(data string) (string, bool, error) {
 	return data, false, errorutil.New("template format failed")
 }
 
-// lintTemplateData lints template data using templateman lint api
+// lintTemplate lints template data using templateman lint api
 func lintTemplate(data string) (bool, error) {
 	resp, err := retryablehttp.DefaultClient().Post(fmt.Sprintf("%s/lint", tmBaseUrl), "application/x-yaml", strings.NewReader(data))
 	if err != nil {

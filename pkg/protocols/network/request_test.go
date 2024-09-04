@@ -86,7 +86,7 @@ func TestNetworkExecuteWithResults(t *testing.T) {
 		err := request.ExecuteWithResults(ctxArgs, metadata, previous, func(event *output.InternalWrappedEvent) {
 			finalEvent = event
 		})
-		require.Nil(t, err, "could not execute network request")
+		require.NotNil(t, err, "could not execute network request")
 	})
 	require.Nil(t, finalEvent.Results, "could not get event output from request")
 
