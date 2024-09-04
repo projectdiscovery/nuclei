@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	"github.com/dop251/goja"
+	"github.com/kitabisa/go-ci"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/generators"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
@@ -120,11 +121,17 @@ func (c *Compiler) ExecuteWithOptions(program *goja.Program, args *ExecuteArgs, 
 	defer cancel()
 	// execute the script
 	results, err := contextutil.ExecFuncWithTwoReturns(ctx, func() (val goja.Value, err error) {
+		// TODO(dwisiswant0): remove this once we get the RCA.
 		defer func() {
+			if ci.IsCI() {
+				return
+			}
+
 			if r := recover(); r != nil {
 				err = fmt.Errorf("panic: %v", r)
 			}
 		}()
+
 		return ExecuteProgram(program, args, opts)
 	})
 	if err != nil {

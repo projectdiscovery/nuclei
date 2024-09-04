@@ -1612,6 +1612,7 @@ func init() {
 		"deleteheader",
 		"setbody",
 		"waitevent",
+		"dialog",
 		"keyboard",
 		"debug",
 		"sleep",
