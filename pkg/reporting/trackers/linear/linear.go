@@ -93,7 +93,6 @@ func (i *Integration) CreateIssue(event *output.ResultEvent) (*filters.CreateIss
 		if err != nil {
 			return nil, err
 		}
-		fmt.Printf("Created new issue: %s => %+v\n", summary, createdIssue)
 		return &filters.CreateIssueResponse{
 			IssueID:  types.ToString(createdIssue.ID),
 			IssueURL: types.ToString(createdIssue.URL),
