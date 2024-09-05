@@ -220,6 +220,8 @@ type Options struct {
 	JSONExport string
 	// JSONLExport is the file to export JSONL output format to
 	JSONLExport string
+	// Redact redacts given keys in
+	Redact goflags.StringSlice
 	// EnableProgressBar enables progress bar
 	EnableProgressBar bool
 	// TemplateDisplay displays the template contents
@@ -382,6 +384,8 @@ type Options struct {
 	ScanID string
 	// ScanName is the name of the scan to be uploaded
 	ScanName string
+	// TeamID is the team ID to use for cloud upload
+	TeamID string
 	// JsConcurrency is the number of concurrent js routines to run
 	JsConcurrency int
 	// SecretsFile is file containing secrets for nuclei
@@ -606,7 +610,7 @@ func (o *Options) GetValidAbsPath(helperFilePath, templatePath string) (string, 
 	return "", errorutil.New("access to helper file %v denied", helperFilePath)
 }
 
-// isRootDir checks if given is root directory
+// isHomeDir checks if given is home directory
 func isHomeDir(path string) bool {
 	homeDir := folderutil.HomeDirOrDefault("")
 	return strings.HasPrefix(path, homeDir)

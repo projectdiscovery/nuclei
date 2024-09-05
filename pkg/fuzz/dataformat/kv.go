@@ -13,7 +13,7 @@ import (
 // if it's not important/significant (ex: json,xml) we use map
 // this also allows us to iteratively implement ordered map
 type KV struct {
-	Map        map[string]interface{}
+	Map        mapsutil.Map[string, any]
 	OrderedMap *mapsutil.OrderedMap[string, any]
 }
 

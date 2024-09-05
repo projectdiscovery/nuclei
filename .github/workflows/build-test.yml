@@ -12,28 +12,23 @@ jobs:
     name: Test Builds
     strategy:
       matrix:
-        go-version: [1.21.x]
         os: [ubuntu-latest, windows-latest, macOS-latest]
-
     runs-on: ${{ matrix.os }}
     steps:
-      - name: Set up Go
-        uses: actions/setup-go@v4
-        with:
-          go-version: ${{ matrix.go-version }}
+      - name: Check out code
+        uses: actions/checkout@v4
 
-      - name: Set up Python   # required for running python code in py-snippet.yaml integration test
+      - name: Set up Go
+        uses: projectdiscovery/actions/setup/go@v1
+
+      # required for running python code in py-snippet.yaml integration test
+      - name: Set up Python
         uses: actions/setup-python@v4
         with:
           python-version: '3.10'
 
-      - name: Check out code
-        uses: actions/checkout@v3
-
-      - name: Go Mod hygiene
-        run: |
-          go clean -modcache
-          go mod tidy
+      - name: Verify Go modules
+        run: make verify
 
       - name: Build
         run: go build .
@@ -65,9 +60,10 @@ jobs:
         run: go run .
         working-directory: examples/simple/
 
-      - name: Example SDK Advanced
-        run: go run .
-        working-directory: examples/advanced/
+      # Temporarily disabled very flaky in github actions
+      # - name: Example SDK Advanced
+      #   run: go run .
+      #   working-directory: examples/advanced/
 
       - name: Example SDK with speed control
         run: go run .

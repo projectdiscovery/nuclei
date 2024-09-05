@@ -71,6 +71,7 @@ type StandardWriter struct {
 	omitTemplate          bool
 	DisableStdout         bool
 	AddNewLinesOutputFile bool // by default this is only done for stdout
+	KeysToRedact          []string
 }
 
 var decolorizerRegex = regexp.MustCompile(`\x1B\[[0-9;]*[a-zA-Z]`)
@@ -253,6 +254,7 @@ func NewStandardWriter(options *types.Options) (*StandardWriter, error) {
 		storeResponse:    options.StoreResponse,
 		storeResponseDir: options.StoreResponseDir,
 		omitTemplate:     options.OmitTemplate,
+		KeysToRedact:     options.Redact,
 	}
 	return writer, nil
 }
@@ -262,6 +264,13 @@ func (w *StandardWriter) Write(event *ResultEvent) error {
 	// Enrich the result event with extra metadata on the template-path and url.
 	if event.TemplatePath != "" {
 		event.Template, event.TemplateURL = utils.TemplatePathURL(types.ToString(event.TemplatePath), types.ToString(event.TemplateID))
+	}
+
+	if len(w.KeysToRedact) > 0 {
+		event.Request = redactKeys(event.Request, w.KeysToRedact)
+		event.Response = redactKeys(event.Response, w.KeysToRedact)
+		event.CURLCommand = redactKeys(event.CURLCommand, w.KeysToRedact)
+		event.Matched = redactKeys(event.Matched, w.KeysToRedact)
 	}
 
 	event.Timestamp = time.Now()
@@ -300,6 +309,14 @@ func (w *StandardWriter) Write(event *ResultEvent) error {
 		}
 	}
 	return nil
+}
+
+func redactKeys(data string, keysToRedact []string) string {
+	for _, key := range keysToRedact {
+		keyPattern := regexp.MustCompile(fmt.Sprintf(`(?i)(%s\s*[:=]\s*["']?)[^"'\r\n&]+(["'\r\n]?)`, regexp.QuoteMeta(key)))
+		data = keyPattern.ReplaceAllString(data, `$1***$2`)
+	}
+	return data
 }
 
 // JSONLogRequest is a trace/error log request written to file
@@ -508,12 +525,12 @@ func tryParseCause(err error) error {
 	if strings.HasPrefix(msg, "ReadStatusLine:") {
 		// last index is actual error (from rawhttp)
 		parts := strings.Split(msg, ":")
-		return errkit.New(strings.TrimSpace(parts[len(parts)-1]))
+		return errkit.New("%s", strings.TrimSpace(parts[len(parts)-1]))
 	}
 	if strings.Contains(msg, "read ") {
 		// same here
 		parts := strings.Split(msg, ":")
-		return errkit.New(strings.TrimSpace(parts[len(parts)-1]))
+		return errkit.New("%s", strings.TrimSpace(parts[len(parts)-1]))
 	}
 	return err
 }

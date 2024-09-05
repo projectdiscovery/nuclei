@@ -178,7 +178,8 @@ func (e *NucleiEngine) SignTemplate(tmplSigner *signer.TemplateSigner, data []by
 	if err != nil {
 		return data, err
 	}
-	buff := bytes.NewBuffer(signer.RemoveSignatureFromData(data))
+	_, content := signer.ExtractSignatureAndContent(data)
+	buff := bytes.NewBuffer(content)
 	buff.WriteString("\n" + signatureData)
 	return buff.Bytes(), err
 }
@@ -243,7 +244,12 @@ func (e *NucleiEngine) ExecuteCallbackWithCtx(ctx context.Context, callback ...f
 	}
 	e.resultCallbacks = append(e.resultCallbacks, filtered...)
 
-	_ = e.engine.ExecuteScanWithOpts(ctx, e.store.Templates(), e.inputProvider, false)
+	templatesAndWorkflows := append(e.store.Templates(), e.store.Workflows()...)
+	if len(templatesAndWorkflows) == 0 {
+		return ErrNoTemplatesAvailable
+	}
+
+	_ = e.engine.ExecuteScanWithOpts(ctx, templatesAndWorkflows, e.inputProvider, false)
 	defer e.engine.WorkPool().Wait()
 	return nil
 }

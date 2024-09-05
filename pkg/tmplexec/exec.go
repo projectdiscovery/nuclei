@@ -10,6 +10,7 @@ import (
 	"github.com/dop251/goja"
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/js/compiler"
+	"github.com/projectdiscovery/nuclei/v3/pkg/operators"
 	"github.com/projectdiscovery/nuclei/v3/pkg/operators/common/dsl"
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
@@ -19,6 +20,8 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/tmplexec/flow"
 	"github.com/projectdiscovery/nuclei/v3/pkg/tmplexec/generic"
 	"github.com/projectdiscovery/nuclei/v3/pkg/tmplexec/multiproto"
+	"github.com/projectdiscovery/nuclei/v3/pkg/types/nucleierr"
+	"github.com/projectdiscovery/utils/errkit"
 )
 
 // TemplateExecutor is an executor for a template
@@ -68,8 +71,10 @@ func (e *TemplateExecuter) Compile() error {
 				if cliOptions.Verbose {
 					rawErrorMessage := dslCompilationError.Error()
 					formattedErrorMessage := strings.ToUpper(rawErrorMessage[:1]) + rawErrorMessage[1:] + "."
-					gologger.Warning().Msgf(formattedErrorMessage)
+
+					gologger.Warning().Msg(formattedErrorMessage)
 					gologger.Info().Msgf("The available custom DSL functions are:")
+
 					fmt.Println(dsl.GetPrintableDslFunctionSignatures(cliOptions.NoColor))
 				}
 			}
@@ -124,6 +129,8 @@ func (e *TemplateExecuter) Execute(ctx *scan.ScanContext) (bool, error) {
 	executed := &atomic.Bool{}
 	// matched in this case means something was exported / written to output
 	matched := &atomic.Bool{}
+	// callbackCalled tracks if the callback was called or not
+	callbackCalled := &atomic.Bool{}
 	defer func() {
 		// it is essential to remove template context of `Scan i.e template x input pair`
 		// since it is of no use after scan is completed (regardless of success or failure)
@@ -141,6 +148,7 @@ func (e *TemplateExecuter) Execute(ctx *scan.ScanContext) (bool, error) {
 	}
 
 	ctx.OnResult = func(event *output.InternalWrappedEvent) {
+		callbackCalled.Store(true)
 		if event == nil {
 			// something went wrong
 			return
@@ -196,11 +204,62 @@ func (e *TemplateExecuter) Execute(ctx *scan.ScanContext) (bool, error) {
 	} else {
 		errx = e.engine.ExecuteWithResults(ctx)
 	}
+	ctx.LogError(errx)
 
 	if lastMatcherEvent != nil {
+		lastMatcherEvent.InternalEvent["error"] = tryParseCause(fmt.Errorf("%s", ctx.GenerateErrorMessage()))
 		writeFailureCallback(lastMatcherEvent, e.options.Options.MatcherStatus)
 	}
+
+	//TODO: this is a hacky way to handle the case where the callback is not called and matcher-status is true.
+	// This is a workaround and needs to be refactored.
+	// Check if callback was never called and matcher-status is true
+	if !callbackCalled.Load() && e.options.Options.MatcherStatus {
+		fakeEvent := &output.InternalWrappedEvent{
+			Results: []*output.ResultEvent{
+				{
+					TemplateID: e.options.TemplateID,
+					Info:       e.options.TemplateInfo,
+					Type:       e.getTemplateType(),
+					Host:       ctx.Input.MetaInput.Input,
+					Error:      tryParseCause(fmt.Errorf("%s", ctx.GenerateErrorMessage())),
+				},
+			},
+			OperatorsResult: &operators.Result{
+				Matched: false,
+			},
+		}
+		writeFailureCallback(fakeEvent, e.options.Options.MatcherStatus)
+	}
+
 	return executed.Load() || matched.Load(), errx
+}
+
+// tryParseCause tries to parse the cause of given error
+// this is legacy support due to use of errorutil in existing libraries
+// but this should not be required once all libraries are updated
+func tryParseCause(err error) string {
+	errStr := ""
+	errX := errkit.FromError(err)
+	if errX != nil {
+		var errCause error
+
+		if len(errX.Errors()) > 1 {
+			errCause = errX.Errors()[0]
+		}
+		if errCause == nil {
+			errCause = errX
+		}
+
+		msg := strings.Trim(errCause.Error(), "{} ")
+		parts := strings.Split(msg, ":")
+		errCause = errkit.New("%s", parts[len(parts)-1])
+		errKind := errkit.GetErrorKind(err, nucleierr.ErrTemplateLogic).String()
+		errStr = errCause.Error()
+		errStr = strings.TrimSpace(strings.Replace(errStr, "errKind="+errKind, "", -1))
+	}
+
+	return errStr
 }
 
 // ExecuteWithResults executes the protocol requests and returns results instead of writing them.

@@ -1404,6 +1404,19 @@ Valid values:
 
 <div class="dd">
 
+<code>skip-secret-file</code>  <i>bool</i>
+
+</div>
+<div class="dt">
+
+SkipSecretFile skips the authentication or authorization configured in the secret file.
+
+</div>
+
+<hr />
+
+<div class="dd">
+
 <code>cookie-reuse</code>  <i>bool</i>
 
 </div>
@@ -3668,6 +3681,8 @@ Enum Values:
   - <code>setbody</code>
 
   - <code>waitevent</code>
+
+  - <code>dialog</code>
 
   - <code>keyboard</code>
 

@@ -35,7 +35,7 @@ func IsURL(input string) bool {
 	return err == nil && u.Scheme != "" && u.Host != ""
 }
 
-// ReadFromPathOrURL reads and returns the contents of a file or url.
+// ReaderFromPathOrURL reads and returns the contents of a file or url.
 func ReaderFromPathOrURL(templatePath string, catalog catalog.Catalog) (io.ReadCloser, error) {
 	if IsURL(templatePath) {
 		resp, err := retryablehttp.DefaultClient().Get(templatePath)
