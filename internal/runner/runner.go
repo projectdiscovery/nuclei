@@ -822,7 +822,9 @@ func UploadResultsToCloud(options *types.Options) error {
 			gologger.Warning().Msgf("Could not decode jsonl: %s\n", err)
 			continue
 		}
-		uploadWriter.Write(&r)
+		if err = uploadWriter.Write(&r); err != nil {
+			gologger.Warning().Msgf("[%s] failed to upload: %s\n", r.TemplateID, err)
+		}
 	}
 	uploadWriter.Close()
 	return nil
