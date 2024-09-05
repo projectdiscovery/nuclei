@@ -108,7 +108,10 @@ func (i *Integration) CreateIssue(event *output.ResultEvent) (*filters.CreateIss
 				"issueUpdateInput": issueUpdateInput,
 				"issueID":          types.ToString(existingIssue.ID),
 			}
-			err := i.doGraphqlRequest(ctx, existingIssueUpdateStateMutation, nil, variables, "IssueUpdate")
+			var resp struct {
+				LastSyncID string `json:"lastSyncId"`
+			}
+			err := i.doGraphqlRequest(ctx, existingIssueUpdateStateMutation, &resp, variables, "IssueUpdate")
 			if err != nil {
 				return nil, fmt.Errorf("error reopening issue %s: %s", existingIssue.ID, err)
 			}
@@ -121,7 +124,10 @@ func (i *Integration) CreateIssue(event *output.ResultEvent) (*filters.CreateIss
 		variables := map[string]interface{}{
 			"commentCreateInput": commentInput,
 		}
-		err := i.doGraphqlRequest(ctx, commentCreateExistingTicketMutation, nil, variables, "CommentCreate")
+		var resp struct {
+			LastSyncID string `json:"lastSyncId"`
+		}
+		err := i.doGraphqlRequest(ctx, commentCreateExistingTicketMutation, &resp, variables, "CommentCreate")
 		if err != nil {
 			return nil, fmt.Errorf("error commenting on issue %s: %s", existingIssue.ID, err)
 		}
