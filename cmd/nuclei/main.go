@@ -123,6 +123,13 @@ func main() {
 
 	runner.ParseOptions(options)
 
+	if options.ScanUploadFile != "" {
+		if err := runner.UploadResultsToCloud(options); err != nil {
+			gologger.Fatal().Msgf("could not upload scan results to cloud dashboard: %s\n", err)
+		}
+		return
+	}
+
 	nucleiRunner, err := runner.New(options)
 	if err != nil {
 		gologger.Fatal().Msgf("Could not create runner: %s\n", err)
@@ -423,6 +430,7 @@ on extensive configurability, massive extensibility and ease of use.`)
 		flagSet.BoolVarP(&options.EnableCloudUpload, "cloud-upload", "cup", false, "upload scan results to pdcp dashboard"),
 		flagSet.StringVarP(&options.ScanID, "scan-id", "sid", "", "upload scan results to existing scan id (optional)"),
 		flagSet.StringVarP(&options.ScanName, "scan-name", "sname", "", "scan name to set (optional)"),
+		flagSet.StringVarP(&options.ScanUploadFile, "pdu", "dashboard-upload", "", "upload nuclei output file (jsonl) in projectdiscovery cloud (pdcp) UI dashboard"),
 	)
 
 	flagSet.CreateGroup("Authentication", "Authentication",
