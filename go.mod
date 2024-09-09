@@ -72,7 +72,7 @@ require (
 	github.com/go-sql-driver/mysql v1.7.1
 	github.com/h2non/filetype v1.1.3
 	github.com/invopop/yaml v0.3.1
-	github.com/kitabisa/go-ci v1.0.2
+	github.com/kitabisa/go-ci v1.0.3
 	github.com/labstack/echo/v4 v4.10.2
 	github.com/leslie-qiwa/flat v0.0.0-20230424180412-f9d1cf014baa
 	github.com/lib/pq v1.10.9
