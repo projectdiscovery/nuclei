@@ -428,11 +428,9 @@ func GenerateParameterFromSecurityScheme(scheme *openapi3.SecuritySchemeRef) (*o
 			return nil, errorutil.NewWithTag("openapi", "unsupported security scheme (%s) found in openapi file", scheme.Value.Scheme)
 		}
 		// HTTP authentication schemes basic or bearer use the Authorization header
-		var headerName string
-		if scheme.Value.Name == "" {
+		headerName := scheme.Value.Name
+		if headerName == "" {
 			headerName = DEFAULT_HTTP_SCHEME_HEADER
-		} else {
-			headerName = scheme.Value.Name
 		}
 		// create parameters using the scheme
 		switch scheme.Value.Scheme {
