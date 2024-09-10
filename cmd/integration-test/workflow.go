@@ -13,6 +13,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/templates"
 	"github.com/projectdiscovery/nuclei/v3/pkg/templates/signer"
 	"github.com/projectdiscovery/nuclei/v3/pkg/testutils"
+	sliceutil "github.com/projectdiscovery/utils/slice"
 )
 
 var workflowTestcases = []TestCaseInfo{
@@ -25,6 +26,7 @@ var workflowTestcases = []TestCaseInfo{
 	{Path: "workflow/dns-value-share-workflow.yaml", TestCase: &workflowDnsKeyValueShare{}},
 	{Path: "workflow/code-value-share-workflow.yaml", TestCase: &workflowCodeKeyValueShare{}, DisableOn: isCodeDisabled}, // isCodeDisabled declared in code.go
 	{Path: "workflow/multiprotocol-value-share-workflow.yaml", TestCase: &workflowMultiProtocolKeyValueShare{}},
+	{Path: "workflow/multimatch-value-share-workflow.yaml", TestCase: &workflowMultiMatchKeyValueShare{}},
 	{Path: "workflow/shared-cookie.yaml", TestCase: &workflowSharedCookies{}},
 }
 
@@ -227,6 +229,44 @@ func (h *workflowMultiProtocolKeyValueShare) Execute(filePath string) error {
 	}
 
 	return expectResultsCount(results, 2)
+}
+
+type workflowMultiMatchKeyValueShare struct{}
+
+// Execute executes a test case and returns an error if occurred
+func (h *workflowMultiMatchKeyValueShare) Execute(filePath string) error {
+	var receivedData []string
+	router := httprouter.New()
+	router.GET("/", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+		fmt.Fprintf(w, "This is test matcher text")
+	})
+	router.GET("/path1", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+		fmt.Fprintf(w, "href=\"test-value-%s\"", r.URL.Query().Get("v"))
+	})
+	router.GET("/path2", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+		body, _ := io.ReadAll(r.Body)
+		receivedData = append(receivedData, string(body))
+		fmt.Fprintf(w, "test-value")
+	})
+	ts := httptest.NewServer(router)
+	defer ts.Close()
+
+	results, err := testutils.RunNucleiWorkflowAndGetResults(filePath, ts.URL, debug)
+	if err != nil {
+		return err
+	}
+
+	// Check if we received the data from both request to /path1 and it is not overwritten by the later one.
+	// They will appear in brackets because of another bug: https://github.com/orgs/projectdiscovery/discussions/3766
+	if !sliceutil.Contains(receivedData, "[test-value-1]") || !sliceutil.Contains(receivedData, "[test-value-2]") {
+		return fmt.Errorf(
+			"incorrect data: did not receive both extracted data from the first request!\nReceived Data:\n\t%s\nResults:\n\t%s",
+			strings.Join(receivedData, "\n\t"),
+			strings.Join(results, "\n\t"),
+		)
+	}
+	// The number of expected results is 3: the workflow's Matcher Name based condition check forwards both match, and the other branch with simple subtemplates goes with one
+	return expectResultsCount(results, 3)
 }
 
 type workflowSharedCookies struct{}
