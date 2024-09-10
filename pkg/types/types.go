@@ -298,6 +298,8 @@ type Options struct {
 	InputReadTimeout time.Duration
 	// Disable stdin for input processing
 	DisableStdin bool
+	// MaxOSThreads is the maximum number of OS threads to use
+	MaxOSThreads int
 	// IncludeConditions is the list of conditions templates should match
 	IncludeConditions goflags.StringSlice
 	// Enable uncover engine

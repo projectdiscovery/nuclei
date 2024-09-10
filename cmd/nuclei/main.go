@@ -17,6 +17,7 @@ import (
 	"github.com/projectdiscovery/utils/env"
 	_ "github.com/projectdiscovery/utils/pprof"
 	stringsutil "github.com/projectdiscovery/utils/strings"
+	"github.com/projectdiscovery/utils/sysutil"
 
 	"github.com/projectdiscovery/goflags"
 	"github.com/projectdiscovery/gologger"
@@ -372,6 +373,7 @@ on extensive configurability, massive extensibility and ease of use.`)
 		flagSet.DurationVarP(&options.InputReadTimeout, "input-read-timeout", "irt", time.Duration(3*time.Minute), "timeout on input read"),
 		flagSet.BoolVarP(&options.DisableHTTPProbe, "no-httpx", "nh", false, "disable httpx probing for non-url input"),
 		flagSet.BoolVar(&options.DisableStdin, "no-stdin", false, "disable stdin processing"),
+		flagSet.IntVarP(&options.MaxOSThreads, "max-os-threads", "most", 10000, "set the maximum number of operating system threads to use"),
 	)
 
 	flagSet.CreateGroup("headless", "Headless",
@@ -455,6 +457,8 @@ Additional documentation is available at: https://docs.nuclei.sh/getting-started
 	// and hence it will be attempted in config package during init
 	goflags.DisableAutoConfigMigration = true
 	_ = flagSet.Parse()
+
+	_ = sysutil.SetMaxThreads(options.MaxOSThreads)
 
 	// when fuzz flag is enabled, set the dast flag to true
 	if fuzzFlag {
