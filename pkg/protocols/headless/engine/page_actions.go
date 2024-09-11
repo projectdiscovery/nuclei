@@ -520,16 +520,7 @@ func (p *Page) SelectInputElement(act *Action, out ActionData) error {
 
 // WaitLoad waits for the page to load
 func (p *Page) WaitLoad(act *Action, out ActionData) error {
-	p.page.Timeout(2 * time.Second).WaitNavigation(proto.PageLifecycleEventNameFirstMeaningfulPaint)()
-
-	// Wait for the window.onload event and also wait for the network requests
-	// to become idle for a maximum duration of 3 seconds. If the requests
-	// do not finish,
-	if err := p.page.WaitLoad(); err != nil {
-		return errors.Wrap(err, "could not wait load event")
-	}
-	_ = p.page.WaitIdle(1 * time.Second)
-	return nil
+	return p.page.WaitStable(1)
 }
 
 // GetResource gets a resource from an element from page.
