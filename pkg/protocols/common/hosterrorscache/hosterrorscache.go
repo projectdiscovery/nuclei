@@ -75,24 +75,35 @@ func (c *Cache) Close() {
 	c.failedTargets.Purge()
 }
 
-func (c *Cache) normalizeCacheValue(value string) string {
-	finalValue := value
-	if strings.HasPrefix(value, "http") {
-		if parsed, err := url.Parse(value); err == nil {
-			hostname := parsed.Host
-			finalPort := parsed.Port()
-			if finalPort == "" {
-				if parsed.Scheme == "https" {
-					finalPort = "443"
-				} else {
-					finalPort = "80"
-				}
-				hostname = net.JoinHostPort(parsed.Host, finalPort)
+// NormalizeCacheValue processes the input value and returns a normalized cache
+// value.
+func (c *Cache) NormalizeCacheValue(value string) string {
+	var normalizedValue string = value
+
+	u, err := url.ParseRequestURI(value)
+	if err != nil || u.Host == "" {
+		u, err2 := url.ParseRequestURI("https://" + value)
+		if err2 != nil {
+			return normalizedValue
+		}
+
+		normalizedValue = u.Host
+		err = nil
+	} else {
+		port := u.Port()
+		if port == "" {
+			switch u.Scheme {
+			case "https":
+				normalizedValue = net.JoinHostPort(u.Host, "443")
+			case "http":
+				normalizedValue = net.JoinHostPort(u.Host, "80")
 			}
-			finalValue = hostname
+		} else {
+			normalizedValue = u.Host
 		}
 	}
-	return finalValue
+
+	return normalizedValue
 }
 
 // ErrUnresponsiveHost is returned when a host is unresponsive
@@ -166,7 +177,7 @@ func (c *Cache) GetKeyFromContext(ctx *contextargs.Context, err error) string {
 			address = tmp.String()
 		}
 	}
-	finalValue := c.normalizeCacheValue(address)
+	finalValue := c.NormalizeCacheValue(address)
 	return finalValue
 }
 

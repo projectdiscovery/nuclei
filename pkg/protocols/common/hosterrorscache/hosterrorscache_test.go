@@ -109,7 +109,7 @@ func TestCacheMarkFailedConcurrent(t *testing.T) {
 
 	// the cache is not atomic during items creation, so we pre-create them with counter to zero
 	for _, test := range tests {
-		normalizedValue := cache.normalizeCacheValue(test.host)
+		normalizedValue := cache.NormalizeCacheValue(test.host)
 		newItem := &cacheItem{errors: atomic.Int32{}}
 		newItem.errors.Store(0)
 		_ = cache.failedTargets.Set(normalizedValue, newItem)
@@ -131,7 +131,7 @@ func TestCacheMarkFailedConcurrent(t *testing.T) {
 	for _, test := range tests {
 		require.True(t, cache.Check(newCtxArgs(test.host)))
 
-		normalizedCacheValue := cache.normalizeCacheValue(test.host)
+		normalizedCacheValue := cache.NormalizeCacheValue(test.host)
 		failedTarget, err := cache.failedTargets.Get(normalizedCacheValue)
 		require.Nil(t, err)
 		require.NotNil(t, failedTarget)
