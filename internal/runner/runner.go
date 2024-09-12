@@ -784,6 +784,52 @@ func (r *Runner) SaveResumeConfig(path string) error {
 	return os.WriteFile(path, data, permissionutil.ConfigFilePermission)
 }
 
+// upload existing scan results to cloud with progress
+func UploadResultsToCloud(options *types.Options) error {
+	h := &pdcpauth.PDCPCredHandler{}
+	creds, err := h.GetCreds()
+	if err != nil {
+		return errors.Wrap(err, "could not get credentials for cloud upload")
+	}
+	ctx := context.TODO()
+	uploadWriter, err := pdcp.NewUploadWriter(ctx, creds)
+	if err != nil {
+		return errors.Wrap(err, "could not create upload writer")
+	}
+	if options.ScanID != "" {
+		_ = uploadWriter.SetScanID(options.ScanID)
+	}
+	if options.ScanName != "" {
+		uploadWriter.SetScanName(options.ScanName)
+	}
+	if options.TeamID != "" {
+		uploadWriter.SetTeamID(options.TeamID)
+	}
+
+	// Open file to count the number of results first
+	file, err := os.Open(options.ScanUploadFile)
+	if err != nil {
+		return errors.Wrap(err, "could not open scan upload file")
+	}
+	defer file.Close()
+
+	gologger.Info().Msgf("Uploading scan results to cloud dashboard from %s", options.ScanUploadFile)
+	dec := json.NewDecoder(file)
+	for dec.More() {
+		var r output.ResultEvent
+		err := dec.Decode(&r)
+		if err != nil {
+			gologger.Warning().Msgf("Could not decode jsonl: %s\n", err)
+			continue
+		}
+		if err = uploadWriter.Write(&r); err != nil {
+			gologger.Warning().Msgf("[%s] failed to upload: %s\n", r.TemplateID, err)
+		}
+	}
+	uploadWriter.Close()
+	return nil
+}
+
 type WalkFunc func(reflect.Value, reflect.StructField)
 
 // Walk traverses a struct and executes a callback function on each value in the struct.
