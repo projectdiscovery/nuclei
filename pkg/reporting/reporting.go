@@ -28,6 +28,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/reporting/trackers/github"
 	"github.com/projectdiscovery/nuclei/v3/pkg/reporting/trackers/gitlab"
 	"github.com/projectdiscovery/nuclei/v3/pkg/reporting/trackers/jira"
+	"github.com/projectdiscovery/nuclei/v3/pkg/reporting/trackers/linear"
 	errorutil "github.com/projectdiscovery/utils/errors"
 	fileutil "github.com/projectdiscovery/utils/file"
 )
@@ -107,6 +108,15 @@ func New(options *Options, db string, doNotDedupe bool) (Client, error) {
 		options.Jira.HttpClient = options.HttpClient
 		options.Jira.OmitRaw = options.OmitRaw
 		tracker, err := jira.New(options.Jira)
+		if err != nil {
+			return nil, errorutil.NewWithErr(err).Wrap(ErrReportingClientCreation)
+		}
+		client.trackers = append(client.trackers, tracker)
+	}
+	if options.Linear != nil {
+		options.Linear.HttpClient = options.HttpClient
+		options.Linear.OmitRaw = options.OmitRaw
+		tracker, err := linear.New(options.Linear)
 		if err != nil {
 			return nil, errorutil.NewWithErr(err).Wrap(ErrReportingClientCreation)
 		}
@@ -195,6 +205,7 @@ func CreateConfigIfNotExists() error {
 		GitLab:                &gitlab.Options{},
 		Gitea:                 &gitea.Options{},
 		Jira:                  &jira.Options{},
+		Linear:                &linear.Options{},
 		MarkdownExporter:      &markdown.Options{},
 		SarifExporter:         &sarif.Options{},
 		ElasticsearchExporter: &es.Options{},
