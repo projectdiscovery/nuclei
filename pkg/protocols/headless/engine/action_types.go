@@ -60,6 +60,9 @@ const (
 	// ActionWaitLoad waits for the page and all its resources (like stylesheets and images) have finished loading.
 	// name:waitload
 	ActionWaitLoad
+	// ActionWaitStable waits until the page is stable.
+	// name:waitstable
+	ActionWaitStable
 	// ActionGetResource performs a get resource action on an element
 	// name:getresource
 	ActionGetResource
@@ -119,6 +122,7 @@ var ActionStringToAction = map[string]ActionType{
 	"waitfmp":      ActionWaitFMP,
 	"waitidle":     ActionWaitIdle,
 	"waitload":     ActionWaitLoad,
+	"waitstable":   ActionWaitStable,
 	"getresource":  ActionGetResource,
 	"extract":      ActionExtract,
 	"setmethod":    ActionSetMethod,
@@ -150,6 +154,7 @@ var ActionToActionString = map[ActionType]string{
 	ActionWaitFMP:      "waitfmp",
 	ActionWaitIdle:     "waitidle",
 	ActionWaitLoad:     "waitload",
+	ActionWaitStable:   "waitstable",
 	ActionGetResource:  "getresource",
 	ActionExtract:      "extract",
 	ActionSetMethod:    "setmethod",

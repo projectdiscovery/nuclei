@@ -109,6 +109,13 @@ func (p *Page) ExecuteActions(input *contextargs.Context, actions []*Action, var
 		case ActionWaitLoad:
 			event := proto.PageLifecycleEventNameLoad
 			err = p.WaitPageLifecycleEvent(act, outData, event)
+		case ActionWaitStable:
+			err = p.WaitStable(act, outData)
+		// NOTE(dwisiswant0): Mapping `ActionWaitLoad` to `Page.WaitStable`,
+		// just in case waiting for the `proto.PageLifecycleEventNameLoad` event
+		// doesn't meet expectations.
+		// case ActionWaitLoad, ActionWaitStable:
+		// 	err = p.WaitStable(act, outData)
 		case ActionGetResource:
 			err = p.GetResource(act, outData)
 		case ActionExtract:
