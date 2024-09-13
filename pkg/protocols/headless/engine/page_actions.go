@@ -97,6 +97,9 @@ func (p *Page) ExecuteActions(input *contextargs.Context, actions []*Action, var
 		case ActionWaitDOM:
 			event := proto.PageLifecycleEventNameDOMContentLoaded
 			err = p.WaitPageLifecycleEvent(act, outData, event)
+		case ActionWaitFMP:
+			event := proto.PageLifecycleEventNameFirstMeaningfulPaint
+			err = p.WaitPageLifecycleEvent(act, outData, event)
 		case ActionWaitLoad:
 			err = p.WaitLoad(act, outData)
 		case ActionGetResource:

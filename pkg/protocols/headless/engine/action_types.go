@@ -48,6 +48,9 @@ const (
 	// ActionWaitDOM waits for the HTML document has been completely loaded & parsed.
 	// name:waitdom
 	ActionWaitDOM
+	// ActionWaitFMP waits for page has rendered enough meaningful content to be useful to the user.
+	// name:waitfmp
+	ActionWaitFMP
 	// ActionWaitLoad waits for the page to stop loading.
 	// name:waitload
 	ActionWaitLoad
@@ -106,6 +109,7 @@ var ActionStringToAction = map[string]ActionType{
 	"select":       ActionSelectInput,
 	"files":        ActionFilesInput,
 	"waitdom":      ActionWaitDOM,
+	"waitfmp":      ActionWaitFMP,
 	"waitload":     ActionWaitLoad,
 	"getresource":  ActionGetResource,
 	"extract":      ActionExtract,
@@ -134,6 +138,7 @@ var ActionToActionString = map[ActionType]string{
 	ActionSelectInput:  "select",
 	ActionFilesInput:   "files",
 	ActionWaitDOM:      "waitdom",
+	ActionWaitFMP:      "waitfmp",
 	ActionWaitLoad:     "waitload",
 	ActionGetResource:  "getresource",
 	ActionExtract:      "extract",
