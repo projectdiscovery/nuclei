@@ -107,7 +107,8 @@ func (p *Page) ExecuteActions(input *contextargs.Context, actions []*Action, var
 			event := proto.PageLifecycleEventNameNetworkIdle
 			err = p.WaitPageLifecycleEvent(act, outData, event)
 		case ActionWaitLoad:
-			err = p.WaitLoad(act, outData)
+			event := proto.PageLifecycleEventNameLoad
+			err = p.WaitPageLifecycleEvent(act, outData, event)
 		case ActionGetResource:
 			err = p.GetResource(act, outData)
 		case ActionExtract:
@@ -553,9 +554,9 @@ func (p *Page) WaitPageLifecycleEvent(act *Action, out ActionData, event proto.P
 	return nil
 }
 
-// WaitLoad waits for the page to load
-func (p *Page) WaitLoad(act *Action, out ActionData) error {
-	return p.page.WaitStable(1)
+// WaitStable waits until the page is stable
+func (p *Page) WaitStable(act *Action, out ActionData) error {
+	return p.page.WaitStable(1) // 1ns
 }
 
 // GetResource gets a resource from an element from page.

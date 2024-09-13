@@ -57,7 +57,7 @@ const (
 	// ActionWaitIdle waits for the network is completely idle (no ongoing network requests).
 	// name:waitidle
 	ActionWaitIdle
-	// ActionWaitLoad waits for the page to stop loading.
+	// ActionWaitLoad waits for the page and all its resources (like stylesheets and images) have finished loading.
 	// name:waitload
 	ActionWaitLoad
 	// ActionGetResource performs a get resource action on an element
