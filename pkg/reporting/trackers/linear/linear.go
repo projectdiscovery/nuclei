@@ -109,7 +109,9 @@ func (i *Integration) CreateIssue(event *output.ResultEvent) (*filters.CreateIss
 				"issueID":          types.ToString(existingIssue.ID),
 			}
 			var resp struct {
-				LastSyncID string `json:"lastSyncId"`
+				IssueUpdate struct {
+					LastSyncID int `json:"lastSyncId"`
+				}
 			}
 			err := i.doGraphqlRequest(ctx, existingIssueUpdateStateMutation, &resp, variables, "IssueUpdate")
 			if err != nil {
@@ -125,7 +127,9 @@ func (i *Integration) CreateIssue(event *output.ResultEvent) (*filters.CreateIss
 			"commentCreateInput": commentInput,
 		}
 		var resp struct {
-			LastSyncID string `json:"lastSyncId"`
+			CommentCreate struct {
+				LastSyncID int `json:"lastSyncId"`
+			}
 		}
 		err := i.doGraphqlRequest(ctx, commentCreateExistingTicketMutation, &resp, variables, "CommentCreate")
 		if err != nil {
@@ -387,6 +391,7 @@ func (i *Integration) doGraphqlRequest(ctx context.Context, query string, v any,
 		Errors errorsGraphql
 		//Extensions any // Unused.
 	}
+
 	err = json.NewDecoder(resp.Body).Decode(&out)
 	if err != nil {
 		return err
