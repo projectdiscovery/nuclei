@@ -54,6 +54,9 @@ const (
 	// ActionWaitFMP waits for page has rendered enough meaningful content to be useful to the user.
 	// name:waitfmp
 	ActionWaitFMP
+	// ActionWaitIdle waits for the network is completely idle (no ongoing network requests).
+	// name:waitidle
+	ActionWaitIdle
 	// ActionWaitLoad waits for the page to stop loading.
 	// name:waitload
 	ActionWaitLoad
@@ -114,6 +117,7 @@ var ActionStringToAction = map[string]ActionType{
 	"waitdom":      ActionWaitDOM,
 	"waitfcp":      ActionWaitFCP,
 	"waitfmp":      ActionWaitFMP,
+	"waitidle":     ActionWaitIdle,
 	"waitload":     ActionWaitLoad,
 	"getresource":  ActionGetResource,
 	"extract":      ActionExtract,
@@ -144,6 +148,7 @@ var ActionToActionString = map[ActionType]string{
 	ActionWaitDOM:      "waitdom",
 	ActionWaitFCP:      "waitfcp",
 	ActionWaitFMP:      "waitfmp",
+	ActionWaitIdle:     "waitidle",
 	ActionWaitLoad:     "waitload",
 	ActionGetResource:  "getresource",
 	ActionExtract:      "extract",
