@@ -204,6 +204,17 @@ func createBackOffSleeper(pollTimeout, timeout time.Duration) utils.Sleeper {
 	}
 }
 
+func getNavigationFunc(p *Page, act *Action, event proto.PageLifecycleEventName) (func(), error) {
+	dur, err := getTimeout(p, act)
+	if err != nil {
+		return nil, errors.Wrap(err, "Wrong timeout given")
+	}
+
+	fn := p.page.Timeout(dur).WaitNavigation(event)
+
+	return fn, nil
+}
+
 func getTimeout(p *Page, act *Action) (time.Duration, error) {
 	return geTimeParameter(p, act, "timeout", 3, time.Second)
 }
