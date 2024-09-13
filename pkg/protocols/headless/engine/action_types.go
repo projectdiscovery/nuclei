@@ -48,6 +48,9 @@ const (
 	// ActionWaitDOM waits for the HTML document has been completely loaded & parsed.
 	// name:waitdom
 	ActionWaitDOM
+	// ActionWaitFCP waits for the first piece of content (text, image, etc.) is painted on the screen.
+	// name:waitfcp
+	ActionWaitFCP
 	// ActionWaitFMP waits for page has rendered enough meaningful content to be useful to the user.
 	// name:waitfmp
 	ActionWaitFMP
@@ -109,6 +112,7 @@ var ActionStringToAction = map[string]ActionType{
 	"select":       ActionSelectInput,
 	"files":        ActionFilesInput,
 	"waitdom":      ActionWaitDOM,
+	"waitfcp":      ActionWaitFCP,
 	"waitfmp":      ActionWaitFMP,
 	"waitload":     ActionWaitLoad,
 	"getresource":  ActionGetResource,
@@ -138,6 +142,7 @@ var ActionToActionString = map[ActionType]string{
 	ActionSelectInput:  "select",
 	ActionFilesInput:   "files",
 	ActionWaitDOM:      "waitdom",
+	ActionWaitFCP:      "waitfcp",
 	ActionWaitFMP:      "waitfmp",
 	ActionWaitLoad:     "waitload",
 	ActionGetResource:  "getresource",
