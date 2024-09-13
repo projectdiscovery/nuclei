@@ -1,10 +1,15 @@
 package tmplexec
 
 import (
+	"errors"
+	"regexp"
+	"strings"
+
 	"github.com/projectdiscovery/nuclei/v3/pkg/scan"
 	"github.com/projectdiscovery/nuclei/v3/pkg/tmplexec/flow"
 	"github.com/projectdiscovery/nuclei/v3/pkg/tmplexec/generic"
 	"github.com/projectdiscovery/nuclei/v3/pkg/tmplexec/multiproto"
+	"github.com/projectdiscovery/utils/errkit"
 )
 
 var (
@@ -29,4 +34,38 @@ type TemplateEngine interface {
 
 	// Name returns name of template engine
 	Name() string
+}
+
+var (
+	// A temporary fix to remove errKind from error message
+	// this is because errkit is not used everywhere yet
+	reNoKind = regexp.MustCompile(`([\[][^][]+[\]]|errKind=[^ ]+) `)
+)
+
+// parseScanError parses given scan error and only returning the cause
+// instead of inefficient one
+func parseScanError(msg string) string {
+	if msg == "" {
+		return ""
+	}
+	if strings.HasPrefix(msg, "ReadStatusLine:") {
+		// last index is actual error (from rawhttp)
+		parts := strings.Split(msg, ":")
+		msg = strings.TrimSpace(parts[len(parts)-1])
+	}
+	if strings.Contains(msg, "read ") {
+		// same here
+		parts := strings.Split(msg, ":")
+		msg = strings.TrimSpace(parts[len(parts)-1])
+	}
+	e := errkit.FromError(errors.New(msg))
+	for _, err := range e.Errors() {
+		if err != nil && strings.Contains(err.Error(), "context deadline exceeded") {
+			continue
+		}
+		msg = reNoKind.ReplaceAllString(err.Error(), "")
+		return msg
+	}
+	wrapped := errkit.Append(errkit.New("failed to get error cause"), e).Error()
+	return reNoKind.ReplaceAllString(wrapped, "")
 }
