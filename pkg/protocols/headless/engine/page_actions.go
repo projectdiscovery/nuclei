@@ -563,7 +563,18 @@ func (p *Page) WaitPageLifecycleEvent(act *Action, out ActionData, event proto.P
 
 // WaitStable waits until the page is stable
 func (p *Page) WaitStable(act *Action, out ActionData) error {
-	return p.page.WaitStable(1) // 1ns
+	var err error
+	var dur time.Duration = time.Second // default 1s
+
+	argDur := act.Data["duration"]
+	if argDur != "" {
+		dur, err = time.ParseDuration(argDur)
+		if err != nil {
+			dur = time.Second
+		}
+	}
+
+	return p.page.WaitStable(dur)
 }
 
 // GetResource gets a resource from an element from page.
