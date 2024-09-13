@@ -94,6 +94,9 @@ func (p *Page) ExecuteActions(input *contextargs.Context, actions []*Action, var
 			err = p.TimeInputElement(act, outData)
 		case ActionSelectInput:
 			err = p.SelectInputElement(act, outData)
+		case ActionWaitDOM:
+			event := proto.PageLifecycleEventNameDOMContentLoaded
+			err = p.WaitPageLifecycleEvent(act, outData, event)
 		case ActionWaitLoad:
 			err = p.WaitLoad(act, outData)
 		case ActionGetResource:
@@ -526,6 +529,18 @@ func (p *Page) SelectInputElement(act *Action, out ActionData) error {
 	if err := element.Select([]string{value}, selectedBool, selectorBy(by)); err != nil {
 		return errors.Wrap(err, "could not select input")
 	}
+	return nil
+}
+
+// WaitPageLifecycleEvent waits for specified page lifecycle event name
+func (p *Page) WaitPageLifecycleEvent(act *Action, out ActionData, event proto.PageLifecycleEventName) error {
+	fn, err := getNavigationFunc(p, act, event)
+	if err != nil {
+		return err
+	}
+
+	fn()
+
 	return nil
 }
 

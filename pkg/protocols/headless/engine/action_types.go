@@ -45,6 +45,9 @@ const (
 	// ActionFilesInput performs an action on a file input.
 	// name:files
 	ActionFilesInput
+	// ActionWaitDOM waits for the HTML document has been completely loaded & parsed.
+	// name:waitdom
+	ActionWaitDOM
 	// ActionWaitLoad waits for the page to stop loading.
 	// name:waitload
 	ActionWaitLoad
@@ -102,6 +105,7 @@ var ActionStringToAction = map[string]ActionType{
 	"time":         ActionTimeInput,
 	"select":       ActionSelectInput,
 	"files":        ActionFilesInput,
+	"waitdom":      ActionWaitDOM,
 	"waitload":     ActionWaitLoad,
 	"getresource":  ActionGetResource,
 	"extract":      ActionExtract,
@@ -129,6 +133,7 @@ var ActionToActionString = map[ActionType]string{
 	ActionTimeInput:    "time",
 	ActionSelectInput:  "select",
 	ActionFilesInput:   "files",
+	ActionWaitDOM:      "waitdom",
 	ActionWaitLoad:     "waitload",
 	ActionGetResource:  "getresource",
 	ActionExtract:      "extract",
