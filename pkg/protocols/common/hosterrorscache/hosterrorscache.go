@@ -88,7 +88,6 @@ func (c *Cache) NormalizeCacheValue(value string) string {
 		}
 
 		normalizedValue = u.Host
-		err = nil
 	} else {
 		port := u.Port()
 		if port == "" {
