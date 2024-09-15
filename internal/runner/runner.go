@@ -504,7 +504,7 @@ func (r *Runner) RunEnumeration() error {
 		maxHostError := r.options.MaxHostError
 		if r.options.TemplateThreads > maxHostError {
 			gologger.Print().Msgf("[%v] The concurrency value is higher than max-host-error", r.colorizer.BrightYellow("WRN"))
-			gologger.Info().Msg("Adjusting max-host-error to the concurrency value")
+			gologger.Info().Msgf("Adjusting max-host-error to the concurrency value: %d", r.options.TemplateThreads)
 
 			maxHostError = r.options.TemplateThreads
 		}
