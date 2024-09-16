@@ -850,8 +850,8 @@ github.com/projectdiscovery/gostruct v0.0.2 h1:s8gP8ApugGM4go1pA+sVlPDXaWqNP5BBD
 github.com/projectdiscovery/gostruct v0.0.2/go.mod h1:H86peL4HKwMXcQQtEa6lmC8FuD9XFt6gkNR0B/Mu5PE=
 github.com/projectdiscovery/gozero v0.0.2 h1:8fJeaCjxL9tpm33uG/RsCQs6HGM/NE6eA3cjkilRQ+E=
 github.com/projectdiscovery/gozero v0.0.2/go.mod h1:d8bZvDWW07LWNYWrwjZ4OO1I0cpkfqaysyDfSs9ibK8=
-github.com/projectdiscovery/hmap v0.0.58 h1:SoXmnmYS2egPSRgFKgUhHozu8QvPIUKAuoDpuii9jkw=
-github.com/projectdiscovery/hmap v0.0.58/go.mod h1:nQTelqkgxU6vuuU+qmQloMrDBxYZMt2TTO0fV86yXN4=
+github.com/projectdiscovery/hmap v0.0.59 h1:xWCr/GY2QJanFzwKydh/EkGdOKM4iAcN9hQvvCMgO6A=
+github.com/projectdiscovery/hmap v0.0.59/go.mod h1:uHhhnPmvq9qXvCjBSQXCBAlmA1r8JGufP775IkBSbgs=
 github.com/projectdiscovery/httpx v1.6.8 h1:k0Y5g3ue/7QbDP0+LykIxp/VhPDLfau3UEUyuxtP7qE=
 github.com/projectdiscovery/httpx v1.6.8/go.mod h1:7BIsDxyRwkBjthqFmEajXrA5f3yb4tlVfLmpNdf0ZXA=
 github.com/projectdiscovery/interactsh v1.2.0 h1:Al6jHiR+Usl9egYJDLJaWNHOcH8Rugk8gWMasc8Cmw8=
@@ -886,8 +886,8 @@ github.com/projectdiscovery/uncover v1.0.9 h1:s5RbkD/V4r8QcPkys4gTTqMuRSgXq0Jpre
 github.com/projectdiscovery/uncover v1.0.9/go.mod h1:2PUF3SpB5QNIJ8epaB2xbRzkPaxEAWRDm3Ir2ijt81U=
 github.com/projectdiscovery/useragent v0.0.65 h1:x78ZwWdqpzokOHxLITUXvq+ljkTKc19z3ILGtoV1N70=
 github.com/projectdiscovery/useragent v0.0.65/go.mod h1:deOP8YLJU6SCzM8k+K8PjkcOF4Ux0spqyO4ODZGIT4A=
-github.com/projectdiscovery/utils v0.2.8 h1:++NcCJ+lXEfNBHKBs6q+cWa8JrVS8cYdGcW9jOgZebI=
-github.com/projectdiscovery/utils v0.2.8/go.mod h1:UYJ8GKbZaezPFRT/cOk01LreQZ1QK0fko1EUnSUiSGU=
+github.com/projectdiscovery/utils v0.2.9 h1:QDhKUC7nX6O6IRoaSWpQ+bzVn9Pq346386zVbOQrXlM=
+github.com/projectdiscovery/utils v0.2.9/go.mod h1:nVnY7qVu5tkN95BBm0rUkzPsfiiRozI7aJ2Gszu+WFM=
 github.com/projectdiscovery/wappalyzergo v0.1.18 h1:fFgETis0HcsNE7wREaUPYP45JqIyHgGorJaVp1RH7g4=
 github.com/projectdiscovery/wappalyzergo v0.1.18/go.mod h1:/hzgxkBFTMe2wDbA93nFfoMjULw7/vIZ9QPSAnCgUa8=
 github.com/projectdiscovery/yamldoc-go v1.0.4 h1:eZoESapnMw6WAHiVgRwNqvbJEfNHEH148uthhFbG5jE=
