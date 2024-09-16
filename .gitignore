@@ -10,23 +10,14 @@
 .vscode
 
 # Binaries
-**/bindgen
-**/debug-*
-**/docgen
-**/functional-test
-**/fuzzplayground
-**/integration-test
-**/jsdocgen
+/bin
+/dist
+/integration_tests/integration-test
+/integration_tests/nuclei
+/nuclei
 **/main
-**/memogen
-**/nuclei
 **/nuclei-stats*
-**/nuclei_dev
-**/nuclei_main
-**/scan-charts
-**/scrapefunc
-**/scrapefuncs
-**/tsgen
+**/nuclei_*
 
 # Templates
 /*.yaml
@@ -35,7 +26,7 @@
 /dsl.md
 
 # Junk
-dist
+**/debug-*
 pkg/protocols/common/helpers/deserialization/testdata/Deserialize.class
 pkg/protocols/common/helpers/deserialization/testdata/ValueObject.class
 pkg/protocols/common/helpers/deserialization/testdata/ValueObject2.ser
