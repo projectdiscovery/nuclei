@@ -85,7 +85,7 @@ require (
 	github.com/projectdiscovery/fasttemplate v0.0.2
 	github.com/projectdiscovery/go-smb2 v0.0.0-20240129202741-052cc450c6cb
 	github.com/projectdiscovery/goflags v0.1.64
-	github.com/projectdiscovery/gologger v1.1.23
+	github.com/projectdiscovery/gologger v1.1.24
 	github.com/projectdiscovery/gostruct v0.0.2
 	github.com/projectdiscovery/gozero v0.0.2
 	github.com/projectdiscovery/httpx v1.6.8
@@ -97,7 +97,7 @@ require (
 	github.com/projectdiscovery/tlsx v1.1.7
 	github.com/projectdiscovery/uncover v1.0.9
 	github.com/projectdiscovery/useragent v0.0.65
-	github.com/projectdiscovery/utils v0.2.8
+	github.com/projectdiscovery/utils v0.2.9
 	github.com/projectdiscovery/wappalyzergo v0.1.18
 	github.com/redis/go-redis/v9 v9.1.0
 	github.com/seh-msft/burpxml v1.0.1

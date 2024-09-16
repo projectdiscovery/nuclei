@@ -844,8 +844,8 @@ github.com/projectdiscovery/go-smb2 v0.0.0-20240129202741-052cc450c6cb h1:rutG90
 github.com/projectdiscovery/go-smb2 v0.0.0-20240129202741-052cc450c6cb/go.mod h1:FLjF1DmZ+POoGEiIQdWuYVwS++C/GwpX8YaCsTSm1RY=
 github.com/projectdiscovery/goflags v0.1.64 h1:FDfwdt9N97Hi8OuhbkDlKtVttpc/CRMIWQVa08VsHsI=
 github.com/projectdiscovery/goflags v0.1.64/go.mod h1:3FyHIVQtnycNOc1LE3O1jj/XR5XuMdF9QfHd0ujhnX4=
-github.com/projectdiscovery/gologger v1.1.23 h1:u9ksRgkWuUoaOqkk0Z1FngWriXH0Bnt73yYwFGmZo8E=
-github.com/projectdiscovery/gologger v1.1.23/go.mod h1:zcFt3u4U0kmhXou7cTXWwwu+yqVPX3GSABD1hqU0Ur8=
+github.com/projectdiscovery/gologger v1.1.24 h1:TmA4k9sA6ZvfyRnprZKQ0Uq34g//u5R9yTDPL9IzTOQ=
+github.com/projectdiscovery/gologger v1.1.24/go.mod h1:JA0JMJ+ply+J2wD062TN4h85thm6/28jAlrntwccKVU=
 github.com/projectdiscovery/gostruct v0.0.2 h1:s8gP8ApugGM4go1pA+sVlPDXaWqNP5BBDDSv7VEdG1M=
 github.com/projectdiscovery/gostruct v0.0.2/go.mod h1:H86peL4HKwMXcQQtEa6lmC8FuD9XFt6gkNR0B/Mu5PE=
 github.com/projectdiscovery/gozero v0.0.2 h1:8fJeaCjxL9tpm33uG/RsCQs6HGM/NE6eA3cjkilRQ+E=
@@ -886,8 +886,8 @@ github.com/projectdiscovery/uncover v1.0.9 h1:s5RbkD/V4r8QcPkys4gTTqMuRSgXq0Jpre
 github.com/projectdiscovery/uncover v1.0.9/go.mod h1:2PUF3SpB5QNIJ8epaB2xbRzkPaxEAWRDm3Ir2ijt81U=
 github.com/projectdiscovery/useragent v0.0.65 h1:x78ZwWdqpzokOHxLITUXvq+ljkTKc19z3ILGtoV1N70=
 github.com/projectdiscovery/useragent v0.0.65/go.mod h1:deOP8YLJU6SCzM8k+K8PjkcOF4Ux0spqyO4ODZGIT4A=
-github.com/projectdiscovery/utils v0.2.8 h1:++NcCJ+lXEfNBHKBs6q+cWa8JrVS8cYdGcW9jOgZebI=
-github.com/projectdiscovery/utils v0.2.8/go.mod h1:UYJ8GKbZaezPFRT/cOk01LreQZ1QK0fko1EUnSUiSGU=
+github.com/projectdiscovery/utils v0.2.9 h1:QDhKUC7nX6O6IRoaSWpQ+bzVn9Pq346386zVbOQrXlM=
+github.com/projectdiscovery/utils v0.2.9/go.mod h1:nVnY7qVu5tkN95BBm0rUkzPsfiiRozI7aJ2Gszu+WFM=
 github.com/projectdiscovery/wappalyzergo v0.1.18 h1:fFgETis0HcsNE7wREaUPYP45JqIyHgGorJaVp1RH7g4=
 github.com/projectdiscovery/wappalyzergo v0.1.18/go.mod h1:/hzgxkBFTMe2wDbA93nFfoMjULw7/vIZ9QPSAnCgUa8=
 github.com/projectdiscovery/yamldoc-go v1.0.4 h1:eZoESapnMw6WAHiVgRwNqvbJEfNHEH148uthhFbG5jE=
