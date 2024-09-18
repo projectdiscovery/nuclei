@@ -15,6 +15,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/config"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/loader/filter"
+	"github.com/projectdiscovery/nuclei/v3/pkg/keys"
 	"github.com/projectdiscovery/nuclei/v3/pkg/model/types/severity"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v3/pkg/templates"
@@ -434,7 +435,7 @@ func (store *Store) LoadTemplatesWithTags(templatesList, tags []string) []*templ
 		// increment signed/unsigned counters
 		if tmpl.Verified {
 			if tmpl.TemplateVerifier == "" {
-				templates.SignatureStats[templates.PDVerifier].Add(1)
+				templates.SignatureStats[keys.PDVerifier].Add(1)
 			} else {
 				templates.SignatureStats[tmpl.TemplateVerifier].Add(1)
 			}

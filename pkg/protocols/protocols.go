@@ -61,6 +61,8 @@ type ExecutorOptions struct {
 	TemplatePath string
 	// TemplateInfo contains information block of the template request
 	TemplateInfo model.Info
+	// TemplateVerifier is the verifier for the template
+	TemplateVerifier string
 	// RawTemplate is the raw template for the request
 	RawTemplate []byte
 	// Output is a writer interface for writing output events from executer.
