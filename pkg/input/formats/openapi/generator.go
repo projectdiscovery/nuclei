@@ -27,7 +27,8 @@ import (
 )
 
 const (
-	globalAuth = "globalAuth"
+	globalAuth                 = "globalAuth"
+	DEFAULT_HTTP_SCHEME_HEADER = "Authorization"
 )
 
 // GenerateRequestsFromSchema generates http requests from an OpenAPI 3.0 document object
@@ -426,18 +427,20 @@ func GenerateParameterFromSecurityScheme(scheme *openapi3.SecuritySchemeRef) (*o
 		if !generic.EqualsAny(scheme.Value.Scheme, "basic", "bearer") {
 			return nil, errorutil.NewWithTag("openapi", "unsupported security scheme (%s) found in openapi file", scheme.Value.Scheme)
 		}
-		if scheme.Value.Name == "" {
-			return nil, errorutil.NewWithTag("openapi", "security scheme (%s) name is empty", scheme.Value.Scheme)
+		// HTTP authentication schemes basic or bearer use the Authorization header
+		headerName := scheme.Value.Name
+		if headerName == "" {
+			headerName = DEFAULT_HTTP_SCHEME_HEADER
 		}
 		// create parameters using the scheme
 		switch scheme.Value.Scheme {
 		case "basic":
-			h := openapi3.NewHeaderParameter(scheme.Value.Name)
+			h := openapi3.NewHeaderParameter(headerName)
 			h.Required = true
 			h.Description = globalAuth // differentiator for normal variables and global auth
 			return h, nil
 		case "bearer":
-			h := openapi3.NewHeaderParameter(scheme.Value.Name)
+			h := openapi3.NewHeaderParameter(headerName)
 			h.Required = true
 			h.Description = globalAuth // differentiator for normal variables and global auth
 			return h, nil
