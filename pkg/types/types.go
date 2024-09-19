@@ -23,6 +23,9 @@ var (
 	ErrNoMoreRequests = io.EOF
 )
 
+// LoadHelperFileFunction can be used to load a helper file.
+type LoadHelperFileFunction func(helperFile, templatePath string, catalog catalog.Catalog) (io.ReadCloser, error)
+
 // Options contains the configuration options for nuclei scanner.
 type Options struct {
 	// Tags contains a list of tags to execute templates for. Multiple paths
@@ -410,7 +413,7 @@ type Options struct {
 	ListTemplateProfiles bool
 	// LoadHelperFileFunction is a function that will be used to execute LoadHelperFile.
 	// If none is provided, then the default implementation will be used.
-	LoadHelperFileFunction func(helperFile, templatePath string, catalog catalog.Catalog) (io.ReadCloser, error)
+	LoadHelperFileFunction LoadHelperFileFunction
 	// timeouts contains various types of timeouts used in nuclei
 	// these timeouts are derived from dial-timeout (-timeout) with known multipliers
 	// This is internally managed and does not need to be set by user by explicitly setting
