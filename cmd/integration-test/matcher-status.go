@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"strings"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
 	"github.com/projectdiscovery/nuclei/v3/pkg/testutils"
@@ -26,9 +27,9 @@ func (h *httpNoAccess) Execute(filePath string) error {
 	}
 	event := &output.ResultEvent{}
 	_ = json.Unmarshal([]byte(results[0]), event)
-
-	if event.Error != "no address found for host" {
-		return fmt.Errorf("unexpected result: expecting \"no address found for host\" error but got none")
+	expectedError := "no address found for host"
+	if !strings.Contains(event.Error, expectedError) {
+		return fmt.Errorf("unexpected result: expecting \"%s\" error but got \"%s\"", expectedError, event.Error)
 	}
 	return nil
 }
