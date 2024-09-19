@@ -94,8 +94,28 @@ func (p *Page) ExecuteActions(input *contextargs.Context, actions []*Action, var
 			err = p.TimeInputElement(act, outData)
 		case ActionSelectInput:
 			err = p.SelectInputElement(act, outData)
+		case ActionWaitDOM:
+			event := proto.PageLifecycleEventNameDOMContentLoaded
+			err = p.WaitPageLifecycleEvent(act, outData, event)
+		case ActionWaitFCP:
+			event := proto.PageLifecycleEventNameFirstContentfulPaint
+			err = p.WaitPageLifecycleEvent(act, outData, event)
+		case ActionWaitFMP:
+			event := proto.PageLifecycleEventNameFirstMeaningfulPaint
+			err = p.WaitPageLifecycleEvent(act, outData, event)
+		case ActionWaitIdle:
+			event := proto.PageLifecycleEventNameNetworkIdle
+			err = p.WaitPageLifecycleEvent(act, outData, event)
 		case ActionWaitLoad:
-			err = p.WaitLoad(act, outData)
+			event := proto.PageLifecycleEventNameLoad
+			err = p.WaitPageLifecycleEvent(act, outData, event)
+		case ActionWaitStable:
+			err = p.WaitStable(act, outData)
+		// NOTE(dwisiswant0): Mapping `ActionWaitLoad` to `Page.WaitStable`,
+		// just in case waiting for the `proto.PageLifecycleEventNameLoad` event
+		// doesn't meet expectations.
+		// case ActionWaitLoad, ActionWaitStable:
+		// 	err = p.WaitStable(act, outData)
 		case ActionGetResource:
 			err = p.GetResource(act, outData)
 		case ActionExtract:
@@ -202,6 +222,17 @@ func createBackOffSleeper(pollTimeout, timeout time.Duration) utils.Sleeper {
 
 		return backoffSleeper(ctx)
 	}
+}
+
+func getNavigationFunc(p *Page, act *Action, event proto.PageLifecycleEventName) (func(), error) {
+	dur, err := getTimeout(p, act)
+	if err != nil {
+		return nil, errors.Wrap(err, "Wrong timeout given")
+	}
+
+	fn := p.page.Timeout(dur).WaitNavigation(event)
+
+	return fn, nil
 }
 
 func getTimeout(p *Page, act *Action) (time.Duration, error) {
@@ -518,18 +549,36 @@ func (p *Page) SelectInputElement(act *Action, out ActionData) error {
 	return nil
 }
 
-// WaitLoad waits for the page to load
-func (p *Page) WaitLoad(act *Action, out ActionData) error {
-	p.page.Timeout(2 * time.Second).WaitNavigation(proto.PageLifecycleEventNameFirstMeaningfulPaint)()
-
-	// Wait for the window.onload event and also wait for the network requests
-	// to become idle for a maximum duration of 3 seconds. If the requests
-	// do not finish,
-	if err := p.page.WaitLoad(); err != nil {
-		return errors.Wrap(err, "could not wait load event")
+// WaitPageLifecycleEvent waits for specified page lifecycle event name
+func (p *Page) WaitPageLifecycleEvent(act *Action, out ActionData, event proto.PageLifecycleEventName) error {
+	fn, err := getNavigationFunc(p, act, event)
+	if err != nil {
+		return err
 	}
-	_ = p.page.WaitIdle(1 * time.Second)
+
+	fn()
+
 	return nil
+}
+
+// WaitStable waits until the page is stable
+func (p *Page) WaitStable(act *Action, out ActionData) error {
+	var dur time.Duration = time.Second // default stable page duration: 1s
+
+	timeout, err := getTimeout(p, act)
+	if err != nil {
+		return errors.Wrap(err, "Wrong timeout given")
+	}
+
+	argDur := act.Data["duration"]
+	if argDur != "" {
+		dur, err = time.ParseDuration(argDur)
+		if err != nil {
+			dur = time.Second
+		}
+	}
+
+	return p.page.Timeout(timeout).WaitStable(dur)
 }
 
 // GetResource gets a resource from an element from page.
