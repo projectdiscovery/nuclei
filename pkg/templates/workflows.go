@@ -4,6 +4,7 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/projectdiscovery/gologger"
+	"github.com/projectdiscovery/nuclei/v3/pkg/keys"
 	"github.com/projectdiscovery/nuclei/v3/pkg/model"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v3/pkg/utils/stats"
@@ -105,7 +106,7 @@ func parseWorkflowTemplate(workflow *workflows.WorkflowTemplate, preprocessor Pr
 		// increment signed/unsigned counters
 		if template.Verified {
 			if template.TemplateVerifier == "" {
-				SignatureStats[PDVerifier].Add(1)
+				SignatureStats[keys.PDVerifier].Add(1)
 			} else {
 				SignatureStats[template.TemplateVerifier].Add(1)
 			}

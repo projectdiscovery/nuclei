@@ -190,6 +190,7 @@ type ResultEvent struct {
 	FuzzingPosition  string `json:"fuzzing_position,omitempty"`
 
 	FileToIndexPosition map[string]int `json:"-"`
+	TemplateVerifier    string         `json:"-"`
 	Error               string         `json:"error,omitempty"`
 }
 
@@ -263,7 +264,7 @@ func NewStandardWriter(options *types.Options) (*StandardWriter, error) {
 func (w *StandardWriter) Write(event *ResultEvent) error {
 	// Enrich the result event with extra metadata on the template-path and url.
 	if event.TemplatePath != "" {
-		event.Template, event.TemplateURL = utils.TemplatePathURL(types.ToString(event.TemplatePath), types.ToString(event.TemplateID))
+		event.Template, event.TemplateURL = utils.TemplatePathURL(types.ToString(event.TemplatePath), types.ToString(event.TemplateID), event.TemplateVerifier)
 	}
 
 	if len(w.KeysToRedact) > 0 {
@@ -435,7 +436,7 @@ func (w *StandardWriter) WriteFailure(wrappedEvent *InternalWrappedEvent) error 
 	// if no results were found, manually create a failure event
 	event := wrappedEvent.InternalEvent
 
-	templatePath, templateURL := utils.TemplatePathURL(types.ToString(event["template-path"]), types.ToString(event["template-id"]))
+	templatePath, templateURL := utils.TemplatePathURL(types.ToString(event["template-path"]), types.ToString(event["template-id"]), types.ToString(event["template-verifier"]))
 	var templateInfo model.Info
 	if event["template-info"] != nil {
 		templateInfo = event["template-info"].(model.Info)

@@ -4,6 +4,7 @@ import (
 	"strings"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/config"
+	"github.com/projectdiscovery/nuclei/v3/pkg/keys"
 )
 
 const (
@@ -12,16 +13,13 @@ const (
 )
 
 // TemplatePathURL returns the Path and URL for the provided template
-func TemplatePathURL(fullPath, templateId string) (string, string) {
-	var templateDirectory string
+func TemplatePathURL(fullPath, templateId, templateVerifier string) (path string, url string) {
 	configData := config.DefaultConfig
 	if configData.TemplatesDirectory != "" && strings.HasPrefix(fullPath, configData.TemplatesDirectory) {
-		templateDirectory = configData.TemplatesDirectory
-	} else {
-		return "", ""
+		path = strings.TrimPrefix(strings.TrimPrefix(fullPath, configData.TemplatesDirectory), "/")
 	}
-
-	finalPath := strings.TrimPrefix(strings.TrimPrefix(fullPath, templateDirectory), "/")
-	templateURL := TemplatesRepoURL + templateId
-	return finalPath, templateURL
+	if templateVerifier == keys.PDVerifier {
+		url = TemplatesRepoURL + templateId
+	}
+	return
 }
