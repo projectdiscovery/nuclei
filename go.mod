@@ -19,12 +19,12 @@ require (
 	github.com/miekg/dns v1.1.59
 	github.com/olekukonko/tablewriter v0.0.5
 	github.com/pkg/errors v0.9.1
-	github.com/projectdiscovery/clistats v0.1.0
+	github.com/projectdiscovery/clistats v0.1.1
 	github.com/projectdiscovery/fastdialer v0.2.7
-	github.com/projectdiscovery/hmap v0.0.56
+	github.com/projectdiscovery/hmap v0.0.58
 	github.com/projectdiscovery/interactsh v1.2.0
-	github.com/projectdiscovery/rawhttp v0.1.61
-	github.com/projectdiscovery/retryabledns v1.0.73
+	github.com/projectdiscovery/rawhttp v0.1.65
+	github.com/projectdiscovery/retryabledns v1.0.74
 	github.com/projectdiscovery/retryablehttp-go v1.0.76
 	github.com/projectdiscovery/yamldoc-go v1.0.4
 	github.com/remeh/sizedwaitgroup v1.0.0
@@ -72,7 +72,7 @@ require (
 	github.com/go-sql-driver/mysql v1.7.1
 	github.com/h2non/filetype v1.1.3
 	github.com/invopop/yaml v0.3.1
-	github.com/kitabisa/go-ci v1.0.2
+	github.com/kitabisa/go-ci v1.0.3
 	github.com/labstack/echo/v4 v4.10.2
 	github.com/leslie-qiwa/flat v0.0.0-20230424180412-f9d1cf014baa
 	github.com/lib/pq v1.10.9
@@ -85,7 +85,7 @@ require (
 	github.com/projectdiscovery/fasttemplate v0.0.2
 	github.com/projectdiscovery/go-smb2 v0.0.0-20240129202741-052cc450c6cb
 	github.com/projectdiscovery/goflags v0.1.64
-	github.com/projectdiscovery/gologger v1.1.21
+	github.com/projectdiscovery/gologger v1.1.23
 	github.com/projectdiscovery/gostruct v0.0.2
 	github.com/projectdiscovery/gozero v0.0.2
 	github.com/projectdiscovery/httpx v1.6.8
@@ -97,10 +97,11 @@ require (
 	github.com/projectdiscovery/tlsx v1.1.7
 	github.com/projectdiscovery/uncover v1.0.9
 	github.com/projectdiscovery/useragent v0.0.65
-	github.com/projectdiscovery/utils v0.2.7
-	github.com/projectdiscovery/wappalyzergo v0.1.14
+	github.com/projectdiscovery/utils v0.2.8
+	github.com/projectdiscovery/wappalyzergo v0.1.18
 	github.com/redis/go-redis/v9 v9.1.0
 	github.com/seh-msft/burpxml v1.0.1
+	github.com/shurcooL/graphql v0.0.0-20230722043721-ed46e5a46466
 	github.com/stretchr/testify v1.9.0
 	github.com/tarunKoyalwar/goleak v0.0.0-20240429141123-0efa90dbdcf9
 	github.com/zmap/zgrab2 v0.1.8-0.20230806160807-97ba87c0e706
@@ -195,7 +196,7 @@ require (
 	github.com/muesli/termenv v0.15.1 // indirect
 	github.com/opencontainers/go-digest v1.0.0 // indirect
 	github.com/opencontainers/image-spec v1.0.2 // indirect
-	github.com/opencontainers/runc v1.1.12 // indirect
+	github.com/opencontainers/runc v1.1.14 // indirect
 	github.com/pelletier/go-toml/v2 v2.0.8 // indirect
 	github.com/perimeterx/marshmallow v1.1.5 // indirect
 	github.com/pierrec/lz4/v4 v4.1.21 // indirect
@@ -203,7 +204,7 @@ require (
 	github.com/pkg/browser v0.0.0-20240102092130-5ac0b6a4141c // indirect
 	github.com/projectdiscovery/asnmap v1.1.1 // indirect
 	github.com/projectdiscovery/cdncheck v1.1.0 // indirect
-	github.com/projectdiscovery/freeport v0.0.5 // indirect
+	github.com/projectdiscovery/freeport v0.0.6 // indirect
 	github.com/projectdiscovery/ldapserver v1.0.2-0.20240219154113-dcc758ebc0cb // indirect
 	github.com/projectdiscovery/machineid v0.0.0-20240226150047-2e2c51e35983 // indirect
 	github.com/refraction-networking/utls v1.6.7 // indirect

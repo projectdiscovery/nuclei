@@ -108,14 +108,6 @@ func (e *NucleiEngine) init(ctx context.Context) error {
 		return err
 	}
 
-	if e.opts.ProxyInternal && types.ProxyURL != "" || types.ProxySocksURL != "" {
-		httpclient, err := httpclientpool.Get(e.opts, &httpclientpool.Configuration{})
-		if err != nil {
-			return err
-		}
-		e.httpClient = httpclient
-	}
-
 	e.parser = templates.NewParser()
 
 	if sharedInit == nil || protocolstate.ShouldInit() {
@@ -125,6 +117,14 @@ func (e *NucleiEngine) init(ctx context.Context) error {
 	sharedInit.Do(func() {
 		_ = protocolinit.Init(e.opts)
 	})
+
+	if e.opts.ProxyInternal && types.ProxyURL != "" || types.ProxySocksURL != "" {
+		httpclient, err := httpclientpool.Get(e.opts, &httpclientpool.Configuration{})
+		if err != nil {
+			return err
+		}
+		e.httpClient = httpclient
+	}
 
 	e.applyRequiredDefaults(ctx)
 	var err error

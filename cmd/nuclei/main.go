@@ -123,6 +123,13 @@ func main() {
 
 	runner.ParseOptions(options)
 
+	if options.ScanUploadFile != "" {
+		if err := runner.UploadResultsToCloud(options); err != nil {
+			gologger.Fatal().Msgf("could not upload scan results to cloud dashboard: %s\n", err)
+		}
+		return
+	}
+
 	nucleiRunner, err := runner.New(options)
 	if err != nil {
 		gologger.Fatal().Msgf("Could not create runner: %s\n", err)
@@ -420,9 +427,11 @@ on extensive configurability, massive extensibility and ease of use.`)
 	flagSet.CreateGroup("cloud", "Cloud",
 		flagSet.DynamicVar(&pdcpauth, "auth", "true", "configure projectdiscovery cloud (pdcp) api key"),
 		flagSet.StringVarP(&options.TeamID, "team-id", "tid", _pdcp.TeamIDEnv, "upload scan results to given team id (optional)"),
-		flagSet.BoolVarP(&options.EnableCloudUpload, "cloud-upload", "cup", false, "upload scan results to pdcp dashboard"),
+		flagSet.BoolVarP(&options.EnableCloudUpload, "cloud-upload", "cup", false, "upload scan results to pdcp dashboard [DEPRECATED use -dashboard]"),
 		flagSet.StringVarP(&options.ScanID, "scan-id", "sid", "", "upload scan results to existing scan id (optional)"),
 		flagSet.StringVarP(&options.ScanName, "scan-name", "sname", "", "scan name to set (optional)"),
+		flagSet.BoolVarP(&options.EnableCloudUpload, "dashboard", "pd", false, "upload / view nuclei results in projectdiscovery cloud (pdcp) UI dashboard"),
+		flagSet.StringVarP(&options.ScanUploadFile, "dashboard-upload", "pdu", "", "upload / view nuclei results file (jsonl) in projectdiscovery cloud (pdcp) UI dashboard"),
 	)
 
 	flagSet.CreateGroup("Authentication", "Authentication",
