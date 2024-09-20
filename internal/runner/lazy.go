@@ -51,6 +51,7 @@ func GetAuthTmplStore(opts types.Options, catalog catalog.Catalog, execOpts prot
 	opts.ExcludeProtocols = nil
 	opts.IncludeConditions = nil
 	cfg := loader.NewConfig(&opts, catalog, execOpts)
+	cfg.StoreId = loader.AuthStoreId
 	store, err := loader.New(cfg)
 	if err != nil {
 		return nil, errorutil.NewWithErr(err).Msgf("failed to initialize dynamic auth templates store")
