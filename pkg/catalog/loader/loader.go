@@ -33,6 +33,7 @@ import (
 const (
 	httpPrefix  = "http://"
 	httpsPrefix = "https://"
+	AuthStoreId = "auth_store"
 )
 
 var (
@@ -41,6 +42,7 @@ var (
 
 // Config contains the configuration options for the loader
 type Config struct {
+	StoreId                  string // used to set store id (optional)
 	Templates                []string
 	TemplateURLs             []string
 	Workflows                []string
@@ -67,6 +69,7 @@ type Config struct {
 
 // Store is a storage for loaded nuclei templates
 type Store struct {
+	id             string // id of the store (optional)
 	tagFilter      *templates.TagFilter
 	pathFilter     *filter.PathFilter
 	config         *Config
@@ -132,6 +135,7 @@ func New(cfg *Config) (*Store, error) {
 
 	// Create a tag filter based on provided configuration
 	store := &Store{
+		id:        cfg.StoreId,
 		config:    cfg,
 		tagFilter: tagFilter,
 		pathFilter: filter.NewPathFilter(&filter.PathFilterConfig{
@@ -228,6 +232,10 @@ func (store *Store) ReadTemplateFromURI(uri string, remote bool) ([]byte, error)
 	} else {
 		return os.ReadFile(uri)
 	}
+}
+
+func (store *Store) ID() string {
+	return store.id
 }
 
 // Templates returns all the templates in the store
@@ -472,7 +480,8 @@ func (store *Store) LoadTemplatesWithTags(templatesList, tags []string) []*templ
 						return
 					}
 					// DAST only templates
-					if store.config.ExecutorOptions.Options.DAST {
+					// Skip DAST filter when loading auth templates
+					if store.ID() != AuthStoreId && store.config.ExecutorOptions.Options.DAST {
 						// check if the template is a DAST template
 						if parsed.IsFuzzing() {
 							loadTemplate(parsed)
