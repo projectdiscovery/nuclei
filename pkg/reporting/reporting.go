@@ -220,6 +220,7 @@ func CreateConfigIfNotExists() error {
 		SplunkExporter:        &splunk.Options{},
 		JSONExporter:          &json_exporter.Options{},
 		JSONLExporter:         &jsonl.Options{},
+		MongoDBExporter:       &mongo.Options{},
 	}
 	reportingFile, err := os.Create(reportingConfig)
 	if err != nil {

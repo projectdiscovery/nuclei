@@ -102,7 +102,7 @@ func (exporter *Exporter) WriteRows() error {
 		}
 
 		// Remove the item from the list
-		exporter.rows = exporter.rows[:1]
+		exporter.rows = exporter.rows[1:]
 	}
 
 	return nil
