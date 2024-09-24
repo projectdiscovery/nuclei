@@ -3,6 +3,7 @@ package runner
 import (
 	"bufio"
 	"fmt"
+	"github.com/projectdiscovery/nuclei/v3/pkg/reporting/exporters/mongo"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -313,6 +314,25 @@ func createReportingOptions(options *types.Options) (*reporting.Options, error) 
 		reportingOptions.JSONLExporter = &jsonl.Options{
 			File:    options.JSONLExport,
 			OmitRaw: options.OmitRawRequests,
+		}
+	}
+
+	if options.MongoDBExport != "" {
+		// Get environment variables for connection string
+		connectionString := os.Getenv("MONGO_CONNECTION_STRING")
+		databaseName := os.Getenv("MONGO_DATABASE")
+		if connectionString == "" || databaseName == "" {
+			gologger.Error().Msg("Cannot export to MongoDB, missing required environment variable: MONGO_CONNECTION_STRING")
+		} else {
+			// Optionally, get the additional environment variables for configuration options
+			// MONGO_BATCH_SIZE
+
+			reportingOptions.MongoDBExporter = &mongo.Options{
+				ConnectionString: connectionString,
+				OmitRaw:          options.OmitRawRequests,
+				DatabaseName:     databaseName,
+				CollectionName:   options.MongoDBExport,
+			}
 		}
 	}
 

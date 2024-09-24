@@ -220,6 +220,8 @@ type Options struct {
 	JSONExport string
 	// JSONLExport is the file to export JSONL output format to
 	JSONLExport string
+	// MongoDBExport the collection into which to export the results
+	MongoDBExport string
 	// EnableProgressBar enables progress bar
 	EnableProgressBar bool
 	// TemplateDisplay displays the template contents

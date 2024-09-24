@@ -179,6 +179,7 @@ OUTPUT:
    -se, -sarif-export string     file to export results in SARIF format
    -je, -json-export string      file to export results in JSON format
    -jle, -jsonl-export string    file to export results in JSONL(ine) format
+   -mg, -mongo-export string     the collection into which export the results to MongoDB (requires `MONGO_CONNECTION_STRING` env variable)
 
 CONFIGURATIONS:
    -config string                        path to the nuclei configuration file

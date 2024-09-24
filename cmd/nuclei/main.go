@@ -272,6 +272,7 @@ on extensive configurability, massive extensibility and ease of use.`)
 		flagSet.StringVarP(&options.SarifExport, "sarif-export", "se", "", "file to export results in SARIF format"),
 		flagSet.StringVarP(&options.JSONExport, "json-export", "je", "", "file to export results in JSON format"),
 		flagSet.StringVarP(&options.JSONLExport, "jsonl-export", "jle", "", "file to export results in JSONL(ine) format"),
+		flagSet.StringVarP(&options.MongoDBExport, "mongo-export", "mg", "", "the collection into which export the results to MongoDB (requires `MONGO_CONNECTION_STRING` env variable)"),
 	)
 
 	flagSet.CreateGroup("configs", "Configurations",
