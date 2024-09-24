@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	"maps"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -97,6 +98,15 @@ type InternalWrappedEvent struct {
 	// Only applicable if interactsh is used
 	// This is used to avoid duplicate successful interactsh events
 	InteractshMatched atomic.Bool
+}
+
+func (iwe *InternalWrappedEvent) CloneShallow() *InternalWrappedEvent {
+	return &InternalWrappedEvent{
+		InternalEvent:   maps.Clone(iwe.InternalEvent),
+		Results:         nil,
+		OperatorsResult: nil,
+		UsesInteractsh:  iwe.UsesInteractsh,
+	}
 }
 
 func (iwe *InternalWrappedEvent) HasOperatorResult() bool {
