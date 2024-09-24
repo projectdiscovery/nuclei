@@ -2,6 +2,7 @@ package global
 
 import (
 	"bytes"
+	"context"
 	"embed"
 	"math/rand"
 	"net"
@@ -12,8 +13,10 @@ import (
 	"github.com/logrusorgru/aurora"
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/js/gojs"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/utils/vardump"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
+	"github.com/projectdiscovery/utils/errkit"
 	errorutil "github.com/projectdiscovery/utils/errors"
 	stringsutil "github.com/projectdiscovery/utils/strings"
 )
@@ -111,11 +114,16 @@ func initBuiltInFunc(runtime *goja.Runtime) {
 		},
 		Description: "isPortOpen checks if given TCP port is open on host. timeout is optional and defaults to 5 seconds",
 		FuncDecl: func(host string, port string, timeout ...int) (bool, error) {
-			timeoutInSec := 5
+			ctx := context.Background()
 			if len(timeout) > 0 {
-				timeoutInSec = timeout[0]
+				var cancel context.CancelFunc
+				ctx, cancel = context.WithTimeout(ctx, time.Duration(timeout[0])*time.Second)
+				defer cancel()
 			}
-			conn, err := net.DialTimeout("tcp", net.JoinHostPort(host, port), time.Duration(timeoutInSec)*time.Second)
+			if host == "" || port == "" {
+				return false, errkit.New("isPortOpen: host or port is empty")
+			}
+			conn, err := protocolstate.Dialer.Dial(ctx, "tcp", net.JoinHostPort(host, port))
 			if err != nil {
 				return false, err
 			}
@@ -131,16 +139,20 @@ func initBuiltInFunc(runtime *goja.Runtime) {
 		},
 		Description: "isUDPPortOpen checks if the given UDP port is open on the host. Timeout is optional and defaults to 5 seconds.",
 		FuncDecl: func(host string, port string, timeout ...int) (bool, error) {
-			timeoutInSec := 5
+			ctx := context.Background()
 			if len(timeout) > 0 {
-				timeoutInSec = timeout[0]
+				var cancel context.CancelFunc
+				ctx, cancel = context.WithTimeout(ctx, time.Duration(timeout[0])*time.Second)
+				defer cancel()
 			}
-			conn, err := net.DialTimeout("udp", net.JoinHostPort(host, port), time.Duration(timeoutInSec)*time.Second)
+			if host == "" || port == "" {
+				return false, errkit.New("isPortOpen: host or port is empty")
+			}
+			conn, err := protocolstate.Dialer.Dial(ctx, "udp", net.JoinHostPort(host, port))
 			if err != nil {
 				return false, err
 			}
 			_ = conn.Close()
-
 			return true, nil
 		},
 	})

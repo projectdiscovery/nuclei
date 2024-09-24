@@ -83,8 +83,8 @@ func (bk *customTemplateGitLabRepo) Download(_ context.Context) {
 
 		// Get the directory listing for the files in the project
 		tree, _, err := bk.gitLabClient.Repositories.ListTree(projectID, &gitlab.ListTreeOptions{
-			Ref:       gitlab.String(project.DefaultBranch),
-			Recursive: gitlab.Bool(true),
+			Ref:       gitlab.Ptr(project.DefaultBranch),
+			Recursive: gitlab.Ptr(true),
 		})
 		if err != nil {
 			gologger.Error().Msgf("error retrieving files from GitLab project: %s (%d) %s", project.Name, projectID, err)
@@ -95,7 +95,7 @@ func (bk *customTemplateGitLabRepo) Download(_ context.Context) {
 			// If the object is not a file or file extension is not .yaml, skip it
 			if file.Type == "blob" && filepath.Ext(file.Path) == ".yaml" {
 				gf := &gitlab.GetFileOptions{
-					Ref: gitlab.String(project.DefaultBranch),
+					Ref: gitlab.Ptr(project.DefaultBranch),
 				}
 				f, _, err := bk.gitLabClient.RepositoryFiles.GetFile(projectID, file.Path, gf)
 				if err != nil {

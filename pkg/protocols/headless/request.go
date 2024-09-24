@@ -174,7 +174,7 @@ func (request *Request) executeRequestWithPayloads(input *contextargs.Context, p
 				reqBuilder.WriteString("\t" + actStepStr + "\n")
 			}
 		}
-		gologger.Debug().Msgf(reqBuilder.String())
+		gologger.Debug().Msg(reqBuilder.String())
 	}
 
 	var responseBody string
@@ -183,7 +183,13 @@ func (request *Request) executeRequestWithPayloads(input *contextargs.Context, p
 		responseBody, _ = html.HTML()
 	}
 
-	outputEvent := request.responseToDSLMap(responseBody, out["header"], out["status_code"], reqBuilder.String(), input.MetaInput.Input, navigatedURL, page.DumpHistory())
+	header := out.GetOrDefault("header", "").(string)
+
+	// NOTE(dwisiswant0): `status_code` key should be an integer type.
+	// Ref: https://github.com/projectdiscovery/nuclei/pull/5545#discussion_r1721291013
+	statusCode := out.GetOrDefault("status_code", "").(string)
+
+	outputEvent := request.responseToDSLMap(responseBody, header, statusCode, reqBuilder.String(), input.MetaInput.Input, navigatedURL, page.DumpHistory())
 	// add response fields to template context and merge templatectx variables to output event
 	request.options.AddTemplateVars(input.MetaInput, request.Type(), request.ID, outputEvent)
 	if request.options.HasTemplateCtx(input.MetaInput) {

@@ -12,6 +12,7 @@ import (
 	"strings"
 	"time"
 
+	_pdcp "github.com/projectdiscovery/nuclei/v3/internal/pdcp"
 	"github.com/projectdiscovery/utils/auth/pdcp"
 	"github.com/projectdiscovery/utils/env"
 	_ "github.com/projectdiscovery/utils/pprof"
@@ -121,6 +122,13 @@ func main() {
 	}
 
 	runner.ParseOptions(options)
+
+	if options.ScanUploadFile != "" {
+		if err := runner.UploadResultsToCloud(options); err != nil {
+			gologger.Fatal().Msgf("could not upload scan results to cloud dashboard: %s\n", err)
+		}
+		return
+	}
 
 	nucleiRunner, err := runner.New(options)
 	if err != nil {
@@ -272,6 +280,7 @@ on extensive configurability, massive extensibility and ease of use.`)
 		flagSet.StringVarP(&options.SarifExport, "sarif-export", "se", "", "file to export results in SARIF format"),
 		flagSet.StringVarP(&options.JSONExport, "json-export", "je", "", "file to export results in JSON format"),
 		flagSet.StringVarP(&options.JSONLExport, "jsonl-export", "jle", "", "file to export results in JSONL(ine) format"),
+		flagSet.StringSliceVarP(&options.Redact, "redact", "rd", nil, "redact given list of keys from query parameter, request header and body", goflags.CommaSeparatedStringSliceOptions),
 		flagSet.StringVarP(&options.MongoDBExport, "mongo-export", "mg", "", "the collection into which export the results to MongoDB (requires `MONGO_CONNECTION_STRING` env variable)"),
 	)
 
@@ -418,9 +427,12 @@ on extensive configurability, massive extensibility and ease of use.`)
 
 	flagSet.CreateGroup("cloud", "Cloud",
 		flagSet.DynamicVar(&pdcpauth, "auth", "true", "configure projectdiscovery cloud (pdcp) api key"),
-		flagSet.BoolVarP(&options.EnableCloudUpload, "cloud-upload", "cup", false, "upload scan results to pdcp dashboard"),
+		flagSet.StringVarP(&options.TeamID, "team-id", "tid", _pdcp.TeamIDEnv, "upload scan results to given team id (optional)"),
+		flagSet.BoolVarP(&options.EnableCloudUpload, "cloud-upload", "cup", false, "upload scan results to pdcp dashboard [DEPRECATED use -dashboard]"),
 		flagSet.StringVarP(&options.ScanID, "scan-id", "sid", "", "upload scan results to existing scan id (optional)"),
 		flagSet.StringVarP(&options.ScanName, "scan-name", "sname", "", "scan name to set (optional)"),
+		flagSet.BoolVarP(&options.EnableCloudUpload, "dashboard", "pd", false, "upload / view nuclei results in projectdiscovery cloud (pdcp) UI dashboard"),
+		flagSet.StringVarP(&options.ScanUploadFile, "dashboard-upload", "pdu", "", "upload / view nuclei results file (jsonl) in projectdiscovery cloud (pdcp) UI dashboard"),
 	)
 
 	flagSet.CreateGroup("Authentication", "Authentication",

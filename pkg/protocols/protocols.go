@@ -61,6 +61,8 @@ type ExecutorOptions struct {
 	TemplatePath string
 	// TemplateInfo contains information block of the template request
 	TemplateInfo model.Info
+	// TemplateVerifier is the verifier for the template
+	TemplateVerifier string
 	// RawTemplate is the raw template for the request
 	RawTemplate []byte
 	// Output is a writer interface for writing output events from executer.
@@ -197,6 +199,11 @@ func (e *ExecutorOptions) AddTemplateVars(input *contextargs.MetaInput, reqType 
 	}
 	templateCtx := e.GetTemplateCtx(input)
 	for k, v := range vars {
+		if stringsutil.HasPrefixAny(k, templateTypes.SupportedProtocolsStrings()...) {
+			// this was inherited from previous protocols no need to modify it we can directly set it or omit
+			templateCtx.Set(k, v)
+			continue
+		}
 		if !stringsutil.EqualFoldAny(k, "template-id", "template-info", "template-path") {
 			if reqID != "" {
 				k = reqID + "_" + k
@@ -216,6 +223,11 @@ func (e *ExecutorOptions) AddTemplateVar(input *contextargs.MetaInput, templateT
 		return
 	}
 	templateCtx := e.GetTemplateCtx(input)
+	if stringsutil.HasPrefixAny(key, templateTypes.SupportedProtocolsStrings()...) {
+		// this was inherited from previous protocols no need to modify it we can directly set it or omit
+		templateCtx.Set(key, value)
+		return
+	}
 	if reqID != "" {
 		key = reqID + "_" + key
 	} else if templateType < templateTypes.InvalidProtocol {

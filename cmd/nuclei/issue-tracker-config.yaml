@@ -143,3 +143,22 @@
 #  username: test
 #  # Password is the password for elasticsearch instance
 #  password: test
+#linear:
+#  # api-key is the API key for the linear account
+#  api-key: ""
+#  # allow-list sets a tracker level filter to only create issues for templates with
+#  # these severity labels or tags (does not affect exporters. set those globally)
+#  deny-list:
+#    severity: critical
+#  # deny-list sets a tracker level filter to never create issues for templates with
+#  # these severity labels or tags (does not affect exporters. set those globally)
+#  deny-list:
+#    severity: low
+#  # team-id is the ID of the team in Linear
+#  team-id: ""
+#  # project-id is the ID of the project in Linear
+#  project-id: ""
+#  # duplicate-issue-check flag to enable duplicate tracking issue check
+#  duplicate-issue-check: false
+#  # open-state-id is the ID of the open state in Linear
+#  open-state-id: ""

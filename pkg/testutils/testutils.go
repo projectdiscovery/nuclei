@@ -167,7 +167,7 @@ func (m *MockOutputWriter) WriteFailure(wrappedEvent *output.InternalWrappedEven
 
 	// create event
 	event := wrappedEvent.InternalEvent
-	templatePath, templateURL := utils.TemplatePathURL(types.ToString(event["template-path"]), types.ToString(event["template-id"]))
+	templatePath, templateURL := utils.TemplatePathURL(types.ToString(event["template-path"]), types.ToString(event["template-id"]), types.ToString(event["template-verifier"]))
 	var templateInfo model.Info
 	if ti, ok := event["template-info"].(model.Info); ok {
 		templateInfo = ti

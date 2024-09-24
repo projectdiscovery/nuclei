@@ -18,6 +18,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/generators"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/interactsh"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/utils/vardump"
 	protocolutils "github.com/projectdiscovery/nuclei/v3/pkg/protocols/utils"
@@ -112,6 +113,7 @@ func (request *Request) executeFuzzingRule(input *contextargs.Context, previous 
 // executeAllFuzzingRules executes all fuzzing rules defined in template for a given base request
 func (request *Request) executeAllFuzzingRules(input *contextargs.Context, values map[string]interface{}, baseRequest *retryablehttp.Request, callback protocols.OutputEventCallback) error {
 	applicable := false
+	values = generators.MergeMaps(request.filterDataMap(input), values)
 	for _, rule := range request.Fuzzing {
 		select {
 		case <-input.Context().Done():
@@ -234,7 +236,12 @@ func (request *Request) ShouldFuzzTarget(input *contextargs.Context) bool {
 	}
 	status := []bool{}
 	for index, filter := range request.FuzzPreCondition {
-		isMatch, _ := request.Match(request.filterDataMap(input), filter)
+		dataMap := request.filterDataMap(input)
+		// dump if svd is enabled
+		if request.options.Options.ShowVarDump {
+			gologger.Debug().Msgf("Fuzz Filter Variables: \n%s\n", vardump.DumpVariables(dataMap))
+		}
+		isMatch, _ := request.Match(dataMap, filter)
 		status = append(status, isMatch)
 		if request.options.Options.MatcherStatus {
 			gologger.Debug().Msgf("[%s] [%s] Filter => %s : %v", input.MetaInput.Target(), request.options.TemplateID, operators.GetMatcherName(filter, index), isMatch)
@@ -294,11 +301,6 @@ func (request *Request) filterDataMap(input *contextargs.Context) map[string]int
 	} else {
 		// add default method value
 		m["method"] = http.MethodGet
-	}
-
-	// dump if svd is enabled
-	if request.options.Options.ShowVarDump {
-		gologger.Debug().Msgf("Fuzz Filter Variables: \n%s\n", vardump.DumpVariables(m))
 	}
 	return m
 }

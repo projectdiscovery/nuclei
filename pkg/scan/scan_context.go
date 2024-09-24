@@ -8,6 +8,7 @@ import (
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
+	"github.com/projectdiscovery/utils/errkit"
 )
 
 type ScanContextOption func(*ScanContext)
@@ -30,7 +31,7 @@ type ScanContext struct {
 	OnWarning func(string)
 
 	// unexported state fields
-	errors   []error
+	error    error
 	warnings []string
 	events   []*output.InternalWrappedEvent
 	results  []*output.ResultEvent
@@ -50,6 +51,10 @@ func NewScanContext(ctx context.Context, input *contextargs.Context) *ScanContex
 // Context returns the context of the scan
 func (s *ScanContext) Context() context.Context {
 	return s.ctx
+}
+
+func (s *ScanContext) GenerateErrorMessage() error {
+	return s.error
 }
 
 // GenerateResult returns final results slice from all events
@@ -90,13 +95,16 @@ func (s *ScanContext) LogError(err error) {
 	if err == nil {
 		return
 	}
-
 	if s.OnError != nil {
 		s.OnError(err)
 	}
-	s.errors = append(s.errors, err)
+	if s.error == nil {
+		s.error = err
+	} else {
+		s.error = errkit.Append(s.error, err)
+	}
 
-	errorMessage := joinErrors(s.errors)
+	errorMessage := s.GenerateErrorMessage().Error()
 
 	for _, result := range s.results {
 		result.Error = errorMessage
@@ -124,15 +132,4 @@ func (s *ScanContext) LogWarning(format string, args ...any) {
 			e.InternalEvent["warning"] = strings.Join(s.warnings, "; ")
 		}
 	}
-}
-
-// joinErrors joins multiple errors and returns a single error string
-func joinErrors(errors []error) string {
-	var errorMessages []string
-	for _, e := range errors {
-		if e != nil {
-			errorMessages = append(errorMessages, e.Error())
-		}
-	}
-	return strings.Join(errorMessages, "; ")
 }

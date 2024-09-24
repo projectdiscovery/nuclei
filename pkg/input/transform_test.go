@@ -30,7 +30,7 @@ func TestConvertInputToType(t *testing.T) {
 		{"https://google.com:443", typeHostOnly, "google.com", ""},
 
 		// url
-		{"test.com", typeURL, "", ""},
+		{"test.com", typeURL, "test.com", ""},
 		{"google.com", typeURL, "https://google.com", ""},
 		{"https://google.com", typeURL, "https://google.com", ""},
 
@@ -43,7 +43,7 @@ func TestConvertInputToType(t *testing.T) {
 		{"input_test.*", typeFilepath, "input_test.*", ""},
 
 		// host-port
-		{"google.com", typeHostWithPort, "", ""},
+		{"google.com", typeHostWithPort, "google.com", ""},
 		{"google.com:443", typeHostWithPort, "google.com:443", ""},
 		{"https://google.com", typeHostWithPort, "google.com:443", ""},
 		{"https://google.com:443", typeHostWithPort, "google.com:443", ""},

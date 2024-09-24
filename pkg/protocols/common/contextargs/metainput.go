@@ -145,6 +145,7 @@ func (metaInput *MetaInput) Clone() *MetaInput {
 	input := NewMetaInput()
 	input.Input = metaInput.Input
 	input.CustomIP = metaInput.CustomIP
+	input.hash = metaInput.hash
 	if metaInput.ReqResp != nil {
 		input.ReqResp = metaInput.ReqResp.Clone()
 	}

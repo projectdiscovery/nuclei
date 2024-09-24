@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	"github.com/dop251/goja"
+	"github.com/kitabisa/go-ci"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/generators"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
@@ -55,6 +56,11 @@ type ExecuteArgs struct {
 	TemplateCtx map[string]interface{} // templateCtx contains template scoped variables
 }
 
+// Map returns a merged map of the TemplateCtx and Args fields.
+func (e *ExecuteArgs) Map() map[string]interface{} {
+	return generators.MergeMaps(e.TemplateCtx, e.Args)
+}
+
 // NewExecuteArgs returns a new execute arguments.
 func NewExecuteArgs() *ExecuteArgs {
 	return &ExecuteArgs{
@@ -66,12 +72,24 @@ func NewExecuteArgs() *ExecuteArgs {
 // ExecuteResult is the result of executing a script.
 type ExecuteResult map[string]interface{}
 
+// Map returns the map representation of the ExecuteResult
+func (e ExecuteResult) Map() map[string]interface{} {
+	if e == nil {
+		return make(map[string]interface{})
+	}
+	return e
+}
+
+// NewExecuteResult returns a new execute result instance
 func NewExecuteResult() ExecuteResult {
 	return make(map[string]interface{})
 }
 
 // GetSuccess returns whether the script was successful or not.
 func (e ExecuteResult) GetSuccess() bool {
+	if e == nil {
+		return false
+	}
 	val, ok := e["success"].(bool)
 	if !ok {
 		return false
@@ -103,18 +121,28 @@ func (c *Compiler) ExecuteWithOptions(program *goja.Program, args *ExecuteArgs, 
 	defer cancel()
 	// execute the script
 	results, err := contextutil.ExecFuncWithTwoReturns(ctx, func() (val goja.Value, err error) {
+		// TODO(dwisiswant0): remove this once we get the RCA.
 		defer func() {
+			if ci.IsCI() {
+				return
+			}
+
 			if r := recover(); r != nil {
 				err = fmt.Errorf("panic: %v", r)
 			}
 		}()
+
 		return ExecuteProgram(program, args, opts)
 	})
 	if err != nil {
 		if val, ok := err.(*goja.Exception); ok {
-			err = val.Unwrap()
+			if x := val.Unwrap(); x != nil {
+				err = x
+			}
 		}
-		return nil, err
+		e := NewExecuteResult()
+		e["error"] = err.Error()
+		return e, err
 	}
 	var res ExecuteResult
 	if opts.exports != nil {

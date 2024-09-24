@@ -179,6 +179,7 @@ OUTPUT:
    -se, -sarif-export string     file to export results in SARIF format
    -je, -json-export string      file to export results in JSON format
    -jle, -jsonl-export string    file to export results in JSONL(ine) format
+   -rd, -redact string[]         redact given list of keys from query parameter, request header and body
    -mg, -mongo-export string     the collection into which export the results to MongoDB (requires `MONGO_CONNECTION_STRING` env variable)
 
 CONFIGURATIONS:
@@ -311,6 +312,7 @@ STATISTICS:
 
 CLOUD:
    -auth                      configure projectdiscovery cloud (pdcp) api key (default true)
+   -tid, -team-id string      upload scan results to given team id (optional) (default "none")
    -cup, -cloud-upload        upload scan results to pdcp dashboard
    -sid, -scan-id string      upload scan results to existing scan id (optional)
    -sname, -scan-name string  scan name to set (optional)

@@ -20,7 +20,6 @@ import (
 	"github.com/projectdiscovery/gologger/levels"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/config"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolinit"
-	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/utils/vardump"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/headless/engine"
 	"github.com/projectdiscovery/nuclei/v3/pkg/reporting"
@@ -116,12 +115,7 @@ func ParseOptions(options *types.Options) {
 	// Load the resolvers if user asked for them
 	loadResolvers(options)
 
-	err := protocolstate.Init(options)
-	if err != nil {
-		gologger.Fatal().Msgf("Could not initialize protocol state: %s\n", err)
-	}
-
-	err = protocolinit.Init(options)
+	err := protocolinit.Init(options)
 	if err != nil {
 		gologger.Fatal().Msgf("Could not initialize protocols: %s\n", err)
 	}

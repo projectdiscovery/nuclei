@@ -3,11 +3,13 @@ package multiproto_test
 import (
 	"context"
 	"log"
+	"os"
 	"testing"
 	"time"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/config"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/disk"
+	"github.com/projectdiscovery/nuclei/v3/pkg/input"
 	"github.com/projectdiscovery/nuclei/v3/pkg/loader/workflow"
 	"github.com/projectdiscovery/nuclei/v3/pkg/progress"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
@@ -36,6 +38,7 @@ func setup() {
 		Catalog:      disk.NewCatalog(config.DefaultConfig.TemplatesDirectory),
 		RateLimiter:  ratelimit.New(context.Background(), uint(options.RateLimit), time.Second),
 		Parser:       templates.NewParser(),
+		InputHelper:  input.NewHelper(),
 	}
 	workflowLoader, err := workflow.NewLoader(&executerOpts)
 	if err != nil {
@@ -45,7 +48,6 @@ func setup() {
 }
 
 func TestMultiProtoWithDynamicExtractor(t *testing.T) {
-	setup()
 	Template, err := templates.Parse("testcases/multiprotodynamic.yaml", nil, executerOpts)
 	require.Nil(t, err, "could not parse template")
 
@@ -62,7 +64,6 @@ func TestMultiProtoWithDynamicExtractor(t *testing.T) {
 }
 
 func TestMultiProtoWithProtoPrefix(t *testing.T) {
-	setup()
 	Template, err := templates.Parse("testcases/multiprotowithprefix.yaml", nil, executerOpts)
 	require.Nil(t, err, "could not parse template")
 
@@ -76,4 +77,9 @@ func TestMultiProtoWithProtoPrefix(t *testing.T) {
 	gotresults, err := Template.Executer.Execute(ctx)
 	require.Nil(t, err, "could not execute template")
 	require.True(t, gotresults)
+}
+
+func TestMain(m *testing.M) {
+	setup()
+	os.Exit(m.Run())
 }

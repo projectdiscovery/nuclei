@@ -1,43 +1,45 @@
+# Misc
+**/*-cache
+**/*-config
+**/.cache
+*.DS_Store
+*.exe
+.devcontainer
+.gitignore
 .idea
 .vscode
-.devcontainer
-vendor
+
+# Binaries
+**/bindgen
+**/debug-*
+**/docgen
+**/functional-test
+**/fuzzplayground
+**/integration-test
+**/jsdocgen
+**/main
+**/memogen
+**/nuclei
+**/nuclei-stats*
+**/nuclei_dev
+**/nuclei_main
+**/scan-charts
+**/scrapefunc
+**/scrapefuncs
+**/tsgen
+
+# Templates
+/*.yaml
+
+# Generated docs
+/dsl.md
+
+# Junk
 dist
-integration_tests/nuclei
-integration_tests/.cache
-integration_tests/integration-test
-cmd/nuclei/main
-cmd/nuclei/nuclei
-cmd/integration-test/nuclei
-cmd/functional-test/nuclei_dev
-cmd/functional-test/nuclei_main
-cmd/functional-test/functional-test
-cmd/docgen/docgen
 pkg/protocols/common/helpers/deserialization/testdata/Deserialize.class
 pkg/protocols/common/helpers/deserialization/testdata/ValueObject.class
 pkg/protocols/common/helpers/deserialization/testdata/ValueObject2.ser
-*.exe
-.gitignore
-pkg/js/devtools/bindgen/cmd/bindgen/bindgen
-pkg/js/devtools/jsdocgen/jsdocgen
-pkg/js/devtools/tsgen/tsgen
-pkg/js/devtools/tsgen/cmd/tsgen/tsgen
-*.DS_Store
-pkg/protocols/headless/engine/.cache
-/nuclei
-/bindgen
-/jsdocgen
-/tsgen
-/scrapefuncs
-/integration_tests/.cache/
-/*.yaml
-**/*-config
-**/*-cache
-/fuzzplayground
-integration_tests/fuzzplayground
-/dsl.md
-/nuclei-stats
-/nuclei-stats-*
-/scan-charts
-/**/debug-*
+vendor
 
+# Headless `screenshot` action
+*.png

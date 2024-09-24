@@ -35,6 +35,7 @@ import (
 	"github.com/projectdiscovery/utils/errkit"
 	errorutil "github.com/projectdiscovery/utils/errors"
 	iputil "github.com/projectdiscovery/utils/ip"
+	mapsutil "github.com/projectdiscovery/utils/maps"
 	syncutil "github.com/projectdiscovery/utils/sync"
 	urlutil "github.com/projectdiscovery/utils/url"
 )
@@ -346,17 +347,33 @@ func (request *Request) ExecuteWithResults(target *contextargs.Context, dynamicV
 				TimeoutVariants: requestOptions.Options.GetTimeouts(),
 				Source:          &request.PreCondition, Context: target.Context(),
 			})
-		if err != nil {
-			return errorutil.NewWithTag(request.TemplateID, "could not execute pre-condition: %s", err)
-		}
-		if !result.GetSuccess() || types.ToString(result["error"]) != "" {
-			gologger.Warning().Msgf("[%s] Precondition for request %s was not satisfied\n", request.TemplateID, request.PreCondition)
-			request.options.Progress.IncrementFailedRequestsBy(1)
-			return nil
-		}
-		if request.options.Options.Debug || request.options.Options.DebugRequests {
-			request.options.Progress.IncrementRequests()
-			gologger.Debug().Msgf("[%s] Precondition for request was satisfied\n", request.TemplateID)
+		// if precondition was successful
+		if err == nil && result.GetSuccess() {
+			if request.options.Options.Debug || request.options.Options.DebugRequests {
+				request.options.Progress.IncrementRequests()
+				gologger.Debug().Msgf("[%s] Precondition for request was satisfied\n", request.TemplateID)
+			}
+		} else {
+			var outError error
+			// if js code failed to execute
+			if err != nil {
+				outError = errkit.Append(errkit.New("pre-condition not satisfied skipping template execution"), err)
+			} else {
+				// execution successful but pre-condition returned false
+				outError = errkit.New("pre-condition not satisfied skipping template execution")
+			}
+			results := map[string]interface{}(result)
+			results["error"] = outError.Error()
+			// generate and return failed event
+			data := request.generateEventData(input, results, hostPort)
+			data = generators.MergeMaps(data, payloadValues)
+			event := eventcreator.CreateEventWithAdditionalOptions(request, data, request.options.Options.Debug || request.options.Options.DebugResponse, func(wrappedEvent *output.InternalWrappedEvent) {
+				allVars := argsCopy.Map()
+				allVars = generators.MergeMaps(allVars, data)
+				wrappedEvent.OperatorsResult.PayloadValues = allVars
+			})
+			callback(event)
+			return err
 		}
 	}
 
@@ -531,63 +548,9 @@ func (request *Request) executeRequestWithPayloads(hostPort string, input *conte
 		}
 	}
 
-	data := make(map[string]interface{})
-	for k, v := range payloadValues {
-		data[k] = v
-	}
-	data["type"] = request.Type().String()
-	for k, v := range results {
-		data[k] = v
-	}
-	data["request"] = beautifyJavascript(request.Code)
-	data["host"] = input.MetaInput.Input
-	data["matched"] = hostPort
-	data["template-path"] = requestOptions.TemplatePath
-	data["template-id"] = requestOptions.TemplateID
-	data["template-info"] = requestOptions.TemplateInfo
-	if request.StopAtFirstMatch || request.options.StopAtFirstMatch {
-		data["stop-at-first-match"] = true
-	}
-
-	// add ip address to data
-	if input.MetaInput.CustomIP != "" {
-		data["ip"] = input.MetaInput.CustomIP
-	} else {
-		// context: https://github.com/projectdiscovery/nuclei/issues/5021
-		hostname := input.MetaInput.Input
-		if strings.Contains(hostname, ":") {
-			host, _, err := net.SplitHostPort(hostname)
-			if err == nil {
-				hostname = host
-			} else {
-				// naive way
-				if !strings.Contains(hostname, "]") {
-					hostname = hostname[:strings.LastIndex(hostname, ":")]
-				}
-			}
-		}
-		data["ip"] = protocolstate.Dialer.GetDialedIP(hostname)
-		// if input itself was an ip, use it
-		if iputil.IsIP(hostname) {
-			data["ip"] = hostname
-		}
-
-		// if ip is not found,this is because ssh and other protocols do not use fastdialer
-		// although its not perfect due to its use case dial and get ip
-		dnsData, err := protocolstate.Dialer.GetDNSData(hostname)
-		if err == nil {
-			for _, v := range dnsData.A {
-				data["ip"] = v
-				break
-			}
-			if data["ip"] == "" {
-				for _, v := range dnsData.AAAA {
-					data["ip"] = v
-					break
-				}
-			}
-		}
-	}
+	values := mapsutil.Merge(payloadValues, results)
+	// generate event data
+	data := request.generateEventData(input, values, hostPort)
 
 	// add and get values from templatectx
 	request.options.AddTemplateVars(input.MetaInput, request.Type(), request.GetID(), data)
@@ -632,6 +595,65 @@ func (request *Request) executeRequestWithPayloads(hostPort string, input *conte
 		})
 	}
 	return nil
+}
+
+// generateEventData generates event data for the request
+func (request *Request) generateEventData(input *contextargs.Context, values map[string]interface{}, matched string) map[string]interface{} {
+	data := make(map[string]interface{})
+	for k, v := range values {
+		data[k] = v
+	}
+	data["type"] = request.Type().String()
+	data["request-pre-condition"] = beautifyJavascript(request.PreCondition)
+	data["request"] = beautifyJavascript(request.Code)
+	data["host"] = input.MetaInput.Input
+	data["matched"] = matched
+	data["template-path"] = request.options.TemplatePath
+	data["template-id"] = request.options.TemplateID
+	data["template-info"] = request.options.TemplateInfo
+	if request.StopAtFirstMatch || request.options.StopAtFirstMatch {
+		data["stop-at-first-match"] = true
+	}
+	// add ip address to data
+	if input.MetaInput.CustomIP != "" {
+		data["ip"] = input.MetaInput.CustomIP
+	} else {
+		// context: https://github.com/projectdiscovery/nuclei/issues/5021
+		hostname := input.MetaInput.Input
+		if strings.Contains(hostname, ":") {
+			host, _, err := net.SplitHostPort(hostname)
+			if err == nil {
+				hostname = host
+			} else {
+				// naive way
+				if !strings.Contains(hostname, "]") {
+					hostname = hostname[:strings.LastIndex(hostname, ":")]
+				}
+			}
+		}
+		data["ip"] = protocolstate.Dialer.GetDialedIP(hostname)
+		// if input itself was an ip, use it
+		if iputil.IsIP(hostname) {
+			data["ip"] = hostname
+		}
+
+		// if ip is not found,this is because ssh and other protocols do not use fastdialer
+		// although its not perfect due to its use case dial and get ip
+		dnsData, err := protocolstate.Dialer.GetDNSData(hostname)
+		if err == nil {
+			for _, v := range dnsData.A {
+				data["ip"] = v
+				break
+			}
+			if data["ip"] == "" {
+				for _, v := range dnsData.AAAA {
+					data["ip"] = v
+					break
+				}
+			}
+		}
+	}
+	return data
 }
 
 func (request *Request) getArgsCopy(input *contextargs.Context, payloadValues map[string]interface{}, requestOptions *protocols.ExecutorOptions, ignoreErrors bool) (*compiler.ExecuteArgs, error) {
@@ -744,6 +766,7 @@ func (request *Request) MakeResultEventItem(wrapped *output.InternalWrappedEvent
 		TemplateID:       types.ToString(wrapped.InternalEvent["template-id"]),
 		TemplatePath:     types.ToString(wrapped.InternalEvent["template-path"]),
 		Info:             wrapped.InternalEvent["template-info"].(model.Info),
+		TemplateVerifier: request.options.TemplateVerifier,
 		Type:             types.ToString(wrapped.InternalEvent["type"]),
 		Host:             fields.Host,
 		Port:             fields.Port,

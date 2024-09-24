@@ -155,14 +155,14 @@ func (request *Request) executeOnTarget(input *contextargs.Context, visited maps
 		}
 		visited.Set(actualAddress, struct{}{})
 
-		if err := request.executeAddress(variables, actualAddress, address, input, kv.tls, previous, callback); err != nil {
+		if err = request.executeAddress(variables, actualAddress, address, input, kv.tls, previous, callback); err != nil {
 			outputEvent := request.responseToDSLMap("", "", "", address, "")
 			callback(&output.InternalWrappedEvent{InternalEvent: outputEvent})
 			gologger.Warning().Msgf("[%v] Could not make network request for (%s) : %s\n", request.options.TemplateID, actualAddress, err)
 			continue
 		}
 	}
-	return nil
+	return err
 }
 
 // executeAddress executes the request for an address
