@@ -1042,6 +1042,10 @@ func (request *Request) validateNFixEvent(input *contextargs.Context, gr *genera
 
 // addCNameIfAvailable adds the cname to the event if available
 func (request *Request) addCNameIfAvailable(hostname string, outputEvent map[string]interface{}) {
+	if protocolstate.Dialer == nil {
+		return
+	}
+
 	data, err := protocolstate.Dialer.GetDNSData(hostname)
 	if err == nil {
 		switch len(data.CNAME) {
