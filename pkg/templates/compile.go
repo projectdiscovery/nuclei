@@ -36,8 +36,7 @@ var (
 )
 
 const (
-	Unsigned   = "unsigned"
-	PDVerifier = "projectdiscovery/nuclei-templates"
+	Unsigned = "unsigned"
 )
 
 func init() {
@@ -420,7 +419,7 @@ func parseTemplate(data []byte, options protocols.ExecutorOptions) (*Template, e
 			break
 		}
 	}
-
+	options.TemplateVerifier = template.TemplateVerifier
 	if !(template.Verified && verifier.Identifier() == "projectdiscovery/nuclei-templates") {
 		template.Options.RawTemplate = data
 	}

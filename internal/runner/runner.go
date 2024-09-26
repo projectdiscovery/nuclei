@@ -501,8 +501,17 @@ func (r *Runner) RunEnumeration() error {
 	}
 
 	if r.options.ShouldUseHostError() {
-		cache := hosterrorscache.New(r.options.MaxHostError, hosterrorscache.DefaultMaxHostsCount, r.options.TrackError)
+		maxHostError := r.options.MaxHostError
+		if r.options.TemplateThreads > maxHostError {
+			gologger.Print().Msgf("[%v] The concurrency value is higher than max-host-error", r.colorizer.BrightYellow("WRN"))
+			gologger.Info().Msgf("Adjusting max-host-error to the concurrency value: %d", r.options.TemplateThreads)
+
+			maxHostError = r.options.TemplateThreads
+		}
+
+		cache := hosterrorscache.New(maxHostError, hosterrorscache.DefaultMaxHostsCount, r.options.TrackError)
 		cache.SetVerbose(r.options.Verbose)
+
 		r.hostErrors = cache
 		executorOpts.HostErrorsCache = cache
 	}
@@ -782,6 +791,52 @@ func (r *Runner) SaveResumeConfig(path string) error {
 	data, _ := json.MarshalIndent(resumeCfgClone, "", "\t")
 
 	return os.WriteFile(path, data, permissionutil.ConfigFilePermission)
+}
+
+// upload existing scan results to cloud with progress
+func UploadResultsToCloud(options *types.Options) error {
+	h := &pdcpauth.PDCPCredHandler{}
+	creds, err := h.GetCreds()
+	if err != nil {
+		return errors.Wrap(err, "could not get credentials for cloud upload")
+	}
+	ctx := context.TODO()
+	uploadWriter, err := pdcp.NewUploadWriter(ctx, creds)
+	if err != nil {
+		return errors.Wrap(err, "could not create upload writer")
+	}
+	if options.ScanID != "" {
+		_ = uploadWriter.SetScanID(options.ScanID)
+	}
+	if options.ScanName != "" {
+		uploadWriter.SetScanName(options.ScanName)
+	}
+	if options.TeamID != "" {
+		uploadWriter.SetTeamID(options.TeamID)
+	}
+
+	// Open file to count the number of results first
+	file, err := os.Open(options.ScanUploadFile)
+	if err != nil {
+		return errors.Wrap(err, "could not open scan upload file")
+	}
+	defer file.Close()
+
+	gologger.Info().Msgf("Uploading scan results to cloud dashboard from %s", options.ScanUploadFile)
+	dec := json.NewDecoder(file)
+	for dec.More() {
+		var r output.ResultEvent
+		err := dec.Decode(&r)
+		if err != nil {
+			gologger.Warning().Msgf("Could not decode jsonl: %s\n", err)
+			continue
+		}
+		if err = uploadWriter.Write(&r); err != nil {
+			gologger.Warning().Msgf("[%s] failed to upload: %s\n", r.TemplateID, err)
+		}
+	}
+	uploadWriter.Close()
+	return nil
 }
 
 type WalkFunc func(reflect.Value, reflect.StructField)
