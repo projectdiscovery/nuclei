@@ -208,7 +208,7 @@ func (e *NucleiEngine) init(ctx context.Context) error {
 		if e.opts.RateLimit > 0 && e.opts.RateLimitDuration == 0 {
 			e.opts.RateLimitDuration = time.Second
 		}
-		if e.opts.RateLimit == 0 && e.opts.RateLimitDuration == 0 {
+		if e.opts.RateLimit == 0 {
 			e.executerOpts.RateLimiter = ratelimit.NewUnlimited(ctx)
 		} else {
 			e.executerOpts.RateLimiter = ratelimit.New(ctx, uint(e.opts.RateLimit), e.opts.RateLimitDuration)

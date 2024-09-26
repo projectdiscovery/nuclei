@@ -174,7 +174,11 @@ func WithGlobalRateLimitCtx(ctx context.Context, maxTokens int, duration time.Du
 	return func(e *NucleiEngine) error {
 		e.opts.RateLimit = maxTokens
 		e.opts.RateLimitDuration = duration
-		e.rateLimiter = ratelimit.New(ctx, uint(e.opts.RateLimit), e.opts.RateLimitDuration)
+		if e.opts.RateLimit == 0 {
+			e.rateLimiter = ratelimit.NewUnlimited(ctx)
+		} else {
+			e.rateLimiter = ratelimit.New(ctx, uint(e.opts.RateLimit), e.opts.RateLimitDuration)
+		}
 		return nil
 	}
 }
