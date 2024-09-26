@@ -3664,7 +3664,17 @@ Enum Values:
 
   - <code>files</code>
 
+  - <code>waitdom</code>
+
+  - <code>waitfcp</code>
+
+  - <code>waitfmp</code>
+
+  - <code>waitidle</code>
+
   - <code>waitload</code>
+
+  - <code>waitstable</code>
 
   - <code>getresource</code>
 
