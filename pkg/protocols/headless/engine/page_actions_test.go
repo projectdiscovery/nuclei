@@ -201,7 +201,7 @@ func TestActionScreenshot(t *testing.T) {
 	filePath := filepath.Join(os.TempDir(), "test.png")
 	actions := []*Action{
 		{ActionType: ActionTypeHolder{ActionType: ActionNavigate}, Data: map[string]string{"url": "{{BaseURL}}"}},
-		{ActionType: ActionTypeHolder{ActionType: ActionWaitLoad}},
+		{ActionType: ActionTypeHolder{ActionType: ActionWaitFMP}},
 		{ActionType: ActionTypeHolder{ActionType: ActionScreenshot}, Data: map[string]string{"to": filePath}},
 	}
 
@@ -229,7 +229,7 @@ func TestActionScreenshotToDir(t *testing.T) {
 
 	actions := []*Action{
 		{ActionType: ActionTypeHolder{ActionType: ActionNavigate}, Data: map[string]string{"url": "{{BaseURL}}"}},
-		{ActionType: ActionTypeHolder{ActionType: ActionWaitLoad}},
+		{ActionType: ActionTypeHolder{ActionType: ActionWaitFMP}},
 		{ActionType: ActionTypeHolder{ActionType: ActionScreenshot}, Data: map[string]string{"to": filePath, "mkdir": "true"}},
 	}
 

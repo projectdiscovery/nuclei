@@ -23,6 +23,9 @@ var (
 	ErrNoMoreRequests = io.EOF
 )
 
+// LoadHelperFileFunction can be used to load a helper file.
+type LoadHelperFileFunction func(helperFile, templatePath string, catalog catalog.Catalog) (io.ReadCloser, error)
+
 // Options contains the configuration options for nuclei scanner.
 type Options struct {
 	// Tags contains a list of tags to execute templates for. Multiple paths
@@ -384,6 +387,8 @@ type Options struct {
 	ScanID string
 	// ScanName is the name of the scan to be uploaded
 	ScanName string
+	// ScanUploadFile is the jsonl file to upload scan results to cloud
+	ScanUploadFile string
 	// TeamID is the team ID to use for cloud upload
 	TeamID string
 	// JsConcurrency is the number of concurrent js routines to run
@@ -406,6 +411,9 @@ type Options struct {
 	HttpApiEndpoint string
 	// ListTemplateProfiles lists all available template profiles
 	ListTemplateProfiles bool
+	// LoadHelperFileFunction is a function that will be used to execute LoadHelperFile.
+	// If none is provided, then the default implementation will be used.
+	LoadHelperFileFunction LoadHelperFileFunction
 	// timeouts contains various types of timeouts used in nuclei
 	// these timeouts are derived from dial-timeout (-timeout) with known multipliers
 	// This is internally managed and does not need to be set by user by explicitly setting
@@ -538,10 +546,21 @@ func (options *Options) ParseHeadlessOptionalArguments() map[string]string {
 	return optionalArguments
 }
 
-// LoadHelperFile loads a helper file needed for the template
+// LoadHelperFile loads a helper file needed for the template.
+//
+// If LoadHelperFileFunction is set, then that function will be used.
+// Otherwise, the default implementation will be used, which respects the sandbox rules and only loads files from allowed directories.
+func (options *Options) LoadHelperFile(helperFile, templatePath string, catalog catalog.Catalog) (io.ReadCloser, error) {
+	if options.LoadHelperFileFunction != nil {
+		return options.LoadHelperFileFunction(helperFile, templatePath, catalog)
+	}
+	return options.defaultLoadHelperFile(helperFile, templatePath, catalog)
+}
+
+// defaultLoadHelperFile loads a helper file needed for the template
 // this respects the sandbox rules and only loads files from
 // allowed directories
-func (options *Options) LoadHelperFile(helperFile, templatePath string, catalog catalog.Catalog) (io.ReadCloser, error) {
+func (options *Options) defaultLoadHelperFile(helperFile, templatePath string, catalog catalog.Catalog) (io.ReadCloser, error) {
 	if !options.AllowLocalFileAccess {
 		// if global file access is disabled try loading with restrictions
 		absPath, err := options.GetValidAbsPath(helperFile, templatePath)

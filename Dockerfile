@@ -3,7 +3,6 @@ FROM golang:1.21-alpine AS build-env
 RUN apk add build-base
 WORKDIR /app
 COPY . /app
-WORKDIR /app
 RUN go mod download
 RUN go build ./cmd/nuclei
 
