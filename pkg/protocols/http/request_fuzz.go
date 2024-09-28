@@ -161,7 +161,7 @@ func (request *Request) executeAllFuzzingRules(input *contextargs.Context, value
 func (request *Request) executeGeneratedFuzzingRequest(gr fuzz.GeneratedRequest, input *contextargs.Context, callback protocols.OutputEventCallback) bool {
 	hasInteractMatchers := interactsh.HasMatchers(request.CompiledOperators)
 	hasInteractMarkers := len(gr.InteractURLs) > 0
-	if request.options.HostErrorsCache != nil && request.options.HostErrorsCache.Check(input) {
+	if request.options.HostErrorsCache != nil && request.options.HostErrorsCache.Check(request.options.ProtocolType.String(), input) {
 		return false
 	}
 	request.options.RateLimitTake()
@@ -215,7 +215,7 @@ func (request *Request) executeGeneratedFuzzingRequest(gr fuzz.GeneratedRequest,
 	}
 	if requestErr != nil {
 		if request.options.HostErrorsCache != nil {
-			request.options.HostErrorsCache.MarkFailed(input, requestErr)
+			request.options.HostErrorsCache.MarkFailed(request.options.ProtocolType.String(), input, requestErr)
 		}
 		gologger.Verbose().Msgf("[%s] Error occurred in request: %s\n", request.options.TemplateID, requestErr)
 	}
