@@ -96,7 +96,7 @@ require (
 	github.com/projectdiscovery/sarif v0.0.1
 	github.com/projectdiscovery/tlsx v1.1.7
 	github.com/projectdiscovery/uncover v1.0.9
-	github.com/projectdiscovery/useragent v0.0.71
+	github.com/projectdiscovery/useragent v0.0.72
 	github.com/projectdiscovery/utils v0.2.11
 	github.com/projectdiscovery/wappalyzergo v0.1.18
 	github.com/redis/go-redis/v9 v9.1.0
