@@ -849,8 +849,8 @@ github.com/projectdiscovery/fastdialer v0.2.9 h1:vDCqxVMCyUu3oVEizEK1K8K+CCcLkVD
 github.com/projectdiscovery/fastdialer v0.2.9/go.mod h1:mYv5QaNBDDSHlZO9DI0niRMw+G5hUzwIhs8QixSElUI=
 github.com/projectdiscovery/fasttemplate v0.0.2 h1:h2cISk5xDhlJEinlBQS6RRx0vOlOirB2y3Yu4PJzpiA=
 github.com/projectdiscovery/fasttemplate v0.0.2/go.mod h1:XYWWVMxnItd+r0GbjA1GCsUopMw1/XusuQxdyAIHMCw=
-github.com/projectdiscovery/freeport v0.0.6 h1:ROqzuXN8JPqkGdBueb3ah691nS2g2p7r3/3x2E33GbI=
-github.com/projectdiscovery/freeport v0.0.6/go.mod h1:T2kIy+WrbyxBIhI8V3Y9aeNGnuhnM8tEUSK/cm9GjAg=
+github.com/projectdiscovery/freeport v0.0.7 h1:Q6uXo/j8SaV/GlAHkEYQi8WQoPXyJWxyspx+aFmz9Qk=
+github.com/projectdiscovery/freeport v0.0.7/go.mod h1:cOhWKvNBe9xM6dFJ3RrrLvJ5vXx2NQ36SecuwjenV2k=
 github.com/projectdiscovery/go-smb2 v0.0.0-20240129202741-052cc450c6cb h1:rutG906Drtbpz4DwU5mhGIeOhRcktDH4cGQitGUMAsg=
 github.com/projectdiscovery/go-smb2 v0.0.0-20240129202741-052cc450c6cb/go.mod h1:FLjF1DmZ+POoGEiIQdWuYVwS++C/GwpX8YaCsTSm1RY=
 github.com/projectdiscovery/goflags v0.1.64 h1:FDfwdt9N97Hi8OuhbkDlKtVttpc/CRMIWQVa08VsHsI=

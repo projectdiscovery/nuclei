@@ -207,7 +207,7 @@ require (
 	github.com/pkg/browser v0.0.0-20240102092130-5ac0b6a4141c // indirect
 	github.com/projectdiscovery/asnmap v1.1.1 // indirect
 	github.com/projectdiscovery/cdncheck v1.1.0 // indirect
-	github.com/projectdiscovery/freeport v0.0.6 // indirect
+	github.com/projectdiscovery/freeport v0.0.7 // indirect
 	github.com/projectdiscovery/ldapserver v1.0.2-0.20240219154113-dcc758ebc0cb // indirect
 	github.com/projectdiscovery/machineid v0.0.0-20240226150047-2e2c51e35983 // indirect
 	github.com/refraction-networking/utls v1.6.7 // indirect
