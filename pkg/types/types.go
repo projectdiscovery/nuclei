@@ -206,6 +206,8 @@ type Options struct {
 	VerboseVerbose bool
 	// ShowVarDump displays variable dump
 	ShowVarDump bool
+	// VarDumpLimit limits the number of characters displayed in var dump
+	VarDumpLimit int
 	// No-Color disables the colored output.
 	NoColor bool
 	// UpdateTemplates updates the templates installed at startup (also used by cloud to update datasources)
