@@ -8,9 +8,6 @@ import (
 	"github.com/yassinebenaid/godump"
 )
 
-// EnableVarDump enables var dump for debugging optionally
-var EnableVarDump bool
-
 // variables is a map of variables
 type variables = map[string]any
 
@@ -42,7 +39,7 @@ func DumpVariables(data variables) string {
 		Braces:        godump.RGB{R: 185, G: 86, B: 86},
 	}
 
-	return d.Sprint(process(data, 255))
+	return d.Sprint(process(data, Limit))
 }
 
 // process is a helper function that processes the variables
