@@ -397,7 +397,12 @@ func WithVars(vars []string) NucleiSDKOptions {
 	// Create a goflags.RuntimeMap
 	runtimeVars := goflags.RuntimeMap{}
 	for _, v := range vars {
-		runtimeVars.Set(v)
+		err := runtimeVars.Set(v)
+		if err != nil {
+			return func(e *NucleiEngine) error {
+				return err
+			}
+		}
 	}
 
 	return func(e *NucleiEngine) error {
