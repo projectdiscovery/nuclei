@@ -1042,6 +1042,10 @@ func (request *Request) validateNFixEvent(input *contextargs.Context, gr *genera
 
 // addCNameIfAvailable adds the cname to the event if available
 func (request *Request) addCNameIfAvailable(hostname string, outputEvent map[string]interface{}) {
+	if protocolstate.Dialer == nil {
+		return
+	}
+
 	data, err := protocolstate.Dialer.GetDNSData(hostname)
 	if err == nil {
 		switch len(data.CNAME) {
@@ -1173,14 +1177,14 @@ func (request *Request) markUnresponsiveAddress(input *contextargs.Context, err 
 		return
 	}
 	if request.options.HostErrorsCache != nil {
-		request.options.HostErrorsCache.MarkFailed(input, err)
+		request.options.HostErrorsCache.MarkFailed(request.options.ProtocolType.String(), input, err)
 	}
 }
 
 // isUnresponsiveAddress checks if the error is a unreponsive based on its execution history
 func (request *Request) isUnresponsiveAddress(input *contextargs.Context) bool {
 	if request.options.HostErrorsCache != nil {
-		return request.options.HostErrorsCache.Check(input)
+		return request.options.HostErrorsCache.Check(request.options.ProtocolType.String(), input)
 	}
 	return false
 }
