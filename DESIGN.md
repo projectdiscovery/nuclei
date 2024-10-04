@@ -481,7 +481,7 @@ go tool pprof nuclei.prof
 2. Display top memory consumers:
 
 ```bash
-go tool pprof -top nuclei.prof | grep github.com/projectdiscovery/nuclei | head -10
+go tool pprof -top nuclei.prof | grep "$(go list -m)" | head -10
 ```
 
 3. Visualize the profile in a web browser:
