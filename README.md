@@ -180,7 +180,6 @@ OUTPUT:
    -je, -json-export string      file to export results in JSON format
    -jle, -jsonl-export string    file to export results in JSONL(ine) format
    -rd, -redact string[]         redact given list of keys from query parameter, request header and body
-   -mg, -mongo-export string     the collection into which export the results to MongoDB (requires `MONGO_CONNECTION_STRING` env variable)
 
 CONFIGURATIONS:
    -config string                        path to the nuclei configuration file

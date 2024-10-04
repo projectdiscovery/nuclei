@@ -5,6 +5,7 @@ import (
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
 	"go.mongodb.org/mongo-driver/mongo"
+	"os"
 	"sync"
 
 	mongooptions "go.mongodb.org/mongo-driver/mongo/options"
@@ -39,6 +40,14 @@ func New(options *Options) (*Exporter, error) {
 		mutex:   &sync.Mutex{},
 		options: options,
 		rows:    []output.ResultEvent{},
+	}
+
+	// If the environment variable for the connection string is set, then use that instead. This allows for easier
+	// management of sensitive items such as credentials
+	envConnectionString := os.Getenv("MONGO_CONNECTION_STRING")
+	if envConnectionString != "" {
+		options.ConnectionString = envConnectionString
+		gologger.Info().Msgf("Using connection string from environment variable MONGO_CONNECTION_STRING")
 	}
 
 	// Create the connection to the database

@@ -225,8 +225,6 @@ type Options struct {
 	JSONLExport string
 	// Redact redacts given keys in
 	Redact goflags.StringSlice
-	// MongoDBExport the collection into which to export the results
-	MongoDBExport string
 	// EnableProgressBar enables progress bar
 	EnableProgressBar bool
 	// TemplateDisplay displays the template contents
