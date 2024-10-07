@@ -6,12 +6,20 @@ import (
 	"io"
 	"mime"
 	"mime/multipart"
+	"net/textproto"
+	"strings"
 
 	mapsutil "github.com/projectdiscovery/utils/maps"
 )
 
 type MultiPartForm struct {
-	boundary string
+	boundary      string
+	filesMetadata map[string]FileMetadata
+}
+
+type FileMetadata struct {
+	ContentType string
+	Filename    string
 }
 
 var (
@@ -41,11 +49,40 @@ func (m *MultiPartForm) Encode(data KV) (string, error) {
 	data.Iterate(func(key string, value any) bool {
 		var fw io.Writer
 		var err error
+
+		if filesArray, ok := value.([]interface{}); ok {
+			fileMetadata, ok := m.filesMetadata[key]
+			if !ok {
+				Itererr = fmt.Errorf("file metadata not found for key %s", key)
+				return false
+			}
+
+			for _, file := range filesArray {
+				h := make(textproto.MIMEHeader)
+				h.Set("Content-Disposition",
+					fmt.Sprintf(`form-data; name="%s"; filename="%s"`,
+						escapeQuotes(key), escapeQuotes(fileMetadata.Filename)))
+				h.Set("Content-Type", fileMetadata.ContentType)
+
+				if fw, err = w.CreatePart(h); err != nil {
+					Itererr = err
+					return false
+				}
+
+				if _, err = fw.Write([]byte(file.(string))); err != nil {
+					Itererr = err
+					return false
+				}
+			}
+			return true
+		}
+
 		// Add field
 		if fw, err = w.CreateFormField(key); err != nil {
 			Itererr = err
 			return false
 		}
+
 		if _, err = fw.Write([]byte(value.(string))); err != nil {
 			Itererr = err
 			return false
@@ -58,6 +95,12 @@ func (m *MultiPartForm) Encode(data KV) (string, error) {
 
 	w.Close()
 	return b.String(), nil
+}
+
+var quoteEscaper = strings.NewReplacer("\\", "\\\\", `"`, "\\\"")
+
+func escapeQuotes(s string) string {
+	return quoteEscaper.Replace(s)
 }
 
 // ParseBoundary parses the boundary from the content type
@@ -98,6 +141,7 @@ func (m *MultiPartForm) Decode(data string) (KV, error) {
 			result.Set(key, values[0])
 		}
 	}
+	m.filesMetadata = make(map[string]FileMetadata)
 	for key, files := range form.File {
 		fileContents := []interface{}{}
 		for _, fileHeader := range files {
@@ -112,6 +156,11 @@ func (m *MultiPartForm) Decode(data string) (KV, error) {
 				return KV{}, err
 			}
 			fileContents = append(fileContents, buffer.String())
+
+			m.filesMetadata[key] = FileMetadata{
+				ContentType: fileHeader.Header.Get("Content-Type"),
+				Filename:    fileHeader.Filename,
+			}
 		}
 		result.Set(key, fileContents)
 	}
