@@ -223,6 +223,9 @@ type Request struct {
 	//  FuzzPreConditionOperator is the operator between multiple PreConditions for fuzzing Default is OR
 	FuzzPreConditionOperator string                 `yaml:"pre-condition-operator,omitempty" json:"pre-condition-operator,omitempty" jsonschema:"title=condition between the filters,description=Operator to use between multiple per-conditions,enum=and,enum=or"`
 	fuzzPreConditionOperator matchers.ConditionType `yaml:"-" json:"-"`
+	// description: |
+	//   Passive specifies whether the request should be made in passive mode
+	Passive bool `yaml:"passive,omitempty" json:"passive,omitempty" jsonschema:"title=passive mode,description=Passive mode for the request"`
 }
 
 func (e Request) JSONSchemaExtend(schema *jsonschema.Schema) {

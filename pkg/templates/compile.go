@@ -20,6 +20,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/operators"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/generators"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/globalmatchers"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/offlinehttp"
 	"github.com/projectdiscovery/nuclei/v3/pkg/templates/signer"
 	"github.com/projectdiscovery/nuclei/v3/pkg/tmplexec"
@@ -81,6 +82,18 @@ func Parse(filePath string, preprocessor Preprocessor, options protocols.Executo
 	if err != nil {
 		return nil, err
 	}
+	if template.checkHTTPContainsGlobalMatchers() {
+		item := &globalmatchers.Item{
+			TemplateID:   template.ID,
+			TemplatePath: filePath,
+			TemplateInfo: template.Info,
+		}
+		for _, request := range template.RequestsHTTP {
+			item.Operators = append(item.Operators, request.CompiledOperators)
+		}
+		options.GlobalMatchers.AddOperator(item)
+		return nil, nil
+	}
 	// Compile the workflow request
 	if len(template.Workflows) > 0 {
 		compiled := &template.Workflow
@@ -94,6 +107,15 @@ func Parse(filePath string, preprocessor Preprocessor, options protocols.Executo
 		parser.compiledTemplatesCache.Store(filePath, template, nil, err)
 	}
 	return template, nil
+}
+
+func (template *Template) checkHTTPContainsGlobalMatchers() bool {
+	for _, request := range template.RequestsHTTP {
+		if request.Passive {
+			return true
+		}
+	}
+	return false
 }
 
 // parseSelfContainedRequests parses the self contained template requests.
