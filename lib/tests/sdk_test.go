@@ -133,3 +133,36 @@ func TestThreadSafeNuclei(t *testing.T) {
 		fn()
 	}
 }
+
+func TestWithVarsNuclei(t *testing.T) {
+	fn := func() {
+		defer func() {
+			// resources like leveldb have a delay to commit in-memory resources
+			// to disk, typically 1-2 seconds, so we wait for 2 seconds
+			time.Sleep(2 * time.Second)
+			goleak.VerifyNone(t, knownLeaks...)
+		}()
+		ne, err := nuclei.NewNucleiEngineCtx(
+			context.TODO(),
+			nuclei.WithTemplatesOrWorkflows(nuclei.TemplateSources{Templates: []string{"http/token-spray/api-1forge.yaml"}}),
+			nuclei.WithVars([]string{"token=foobar"}),
+			nuclei.WithVerbosity(nuclei.VerbosityOptions{Debug: true}),
+		)
+		require.Nil(t, err)
+		ne.LoadTargets([]string{"scanme.sh"}, true) // probe http/https target is set to true here
+		err = ne.ExecuteWithCallback(nil)
+		require.Nil(t, err)
+		defer ne.Close()
+	}
+	// this is shared test so needs to be run as seperate process
+	if env.GetEnvOrDefault("TestWithVarsNuclei", false) {
+		cmd := exec.Command(os.Args[0], "-test.run=TestWithVarsNuclei")
+		cmd.Env = append(os.Environ(), "TestWithVarsNuclei=true")
+		out, err := cmd.CombinedOutput()
+		if err != nil {
+			t.Fatalf("process ran with error %s, output: %s", err, out)
+		}
+	} else {
+		fn()
+	}
+}
