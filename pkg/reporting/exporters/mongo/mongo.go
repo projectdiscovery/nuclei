@@ -2,10 +2,12 @@ package mongo
 
 import (
 	"context"
+	"github.com/pkg/errors"
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
 	"go.mongodb.org/mongo-driver/mongo"
 	"os"
+	"strings"
 	"sync"
 
 	mongooptions "go.mongodb.org/mongo-driver/mongo/options"
@@ -23,8 +25,6 @@ type Exporter struct {
 type Options struct {
 	// ConnectionString is the connection string to the MongoDB database
 	ConnectionString string `yaml:"connection-string"`
-	// DatabaseName is the name of the MongoDB database in whcih to store the results
-	DatabaseName string `yaml:"database-name"`
 	// CollectionName is the name of the MongoDB collection in which to store the results
 	CollectionName string `yaml:"collection-name"`
 	// OmitRaw excludes the Request and Response from the results (helps with filesize)
@@ -65,8 +65,16 @@ func New(options *Options) (*Exporter, error) {
 		gologger.Error().Msgf("Error connecting to MongoDB: %s", err)
 	}
 
+	// Get the database from the connection string to set the database and collection by getting the string after the
+	// last / and before the ? options
+	databaseName := strings.Split(options.ConnectionString[strings.LastIndex(options.ConnectionString, "/")+1:], "?")[0]
+	if databaseName == "" {
+		gologger.Error().Msgf("Error getting database name from connection string: %s", options.ConnectionString)
+		return nil, errors.New("error getting database name from connection string")
+	}
+
 	exporter.connection = client
-	exporter.collection = client.Database(options.DatabaseName).Collection(options.CollectionName)
+	exporter.collection = client.Database(databaseName).Collection(options.CollectionName)
 
 	return exporter, nil
 }

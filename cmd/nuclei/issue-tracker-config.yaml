@@ -166,8 +166,6 @@
 #  # the connection string to the MongoDB database
 #  # (e.g., mongodb://root:example@localhost:27017/nuclei?ssl=false&authSource=admin)
 #  connection-string: ""
-#  # the name of the database to store the issues
-#  database-name: ""
 #  # the name of the collection to store the issues
 #  collection-name: ""
 #  # excludes the Request and Response from the results (helps with filesize)
