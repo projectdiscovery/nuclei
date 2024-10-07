@@ -6,6 +6,7 @@ import (
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
 	"go.mongodb.org/mongo-driver/mongo"
+	"net/url"
 	"os"
 	"strings"
 	"sync"
@@ -65,9 +66,15 @@ func New(options *Options) (*Exporter, error) {
 		gologger.Error().Msgf("Error connecting to MongoDB: %s", err)
 	}
 
-	// Get the database from the connection string to set the database and collection by getting the string after the
-	// last / and before the ? options
-	databaseName := strings.Split(options.ConnectionString[strings.LastIndex(options.ConnectionString, "/")+1:], "?")[0]
+	// Get the database from the connection string to set the database and collection
+	parsed, err := url.Parse(options.ConnectionString)
+	if err != nil {
+		gologger.Error().Msgf("Error parsing connection string: %s", options.ConnectionString)
+		return nil, err
+	}
+
+	databaseName := strings.TrimPrefix(parsed.Path, "/")
+
 	if databaseName == "" {
 		gologger.Error().Msgf("Error getting database name from connection string: %s", options.ConnectionString)
 		return nil, errors.New("error getting database name from connection string")
