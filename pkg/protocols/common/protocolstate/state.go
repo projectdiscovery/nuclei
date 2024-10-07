@@ -154,8 +154,16 @@ func Init(options *types.Options) error {
 	}
 	Dialer = dialer
 
-	// override dialer in mysql
-	mysql.RegisterDialContext("tcp", func(ctx context.Context, addr string) (net.Conn, error) {
+	// Set a custom dialer for the "nucleitcp" protocol.  This is just plain TCP, but it's registered
+	// with a different name so that we do not clobber the "tcp" dialer in the event that nuclei is
+	// being included as a package in another application.
+	mysql.RegisterDialContext("nucleitcp", func(ctx context.Context, addr string) (net.Conn, error) {
+		// Because we're not using the default TCP workflow, quietly add the default port
+		// number if no port number was specified.
+		if _, _, err := net.SplitHostPort(addr); err != nil {
+			addr += ":3306"
+		}
+
 		return Dialer.Dial(ctx, "tcp", addr)
 	})
 
