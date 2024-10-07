@@ -283,9 +283,10 @@ func (c *Client) CollectMetadata() Metadata {
 	}
 	metadata.BaseDN = c.BaseDN
 
+	// Use scope as Base since Root DSE doesn't have subentries
 	srMetadata := ldap.NewSearchRequest(
 		"",
-		ldap.ScopeWholeSubtree,
+		ldap.ScopeBaseObject,
 		ldap.NeverDerefAliases,
 		0, 0, false,
 		"(objectClass=*)",
