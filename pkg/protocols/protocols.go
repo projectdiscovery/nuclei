@@ -127,7 +127,7 @@ type ExecutorOptions struct {
 	// ExportReqURLPattern exports the request URL pattern
 	// in ResultEvent it contains the exact url pattern (ex: {{BaseURL}}/{{randstr}}/xyz) used in the request
 	ExportReqURLPattern bool
-	// GlobalMatchers is the storage for global matchers with http passive templates
+	// GlobalMatchers is the storage for (static) global matchers
 	GlobalMatchers *globalmatchers.Storage
 }
 

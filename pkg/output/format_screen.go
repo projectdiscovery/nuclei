@@ -39,9 +39,9 @@ func (w *StandardWriter) formatScreen(output *ResultEvent) []byte {
 			}
 		}
 
-		if output.Passive {
+		if output.MatchersStatic {
 			builder.WriteString("] [")
-			builder.WriteString(w.aurora.BrightMagenta("passive").String())
+			builder.WriteString(w.aurora.BrightMagenta("static").String())
 		}
 
 		builder.WriteString("] [")

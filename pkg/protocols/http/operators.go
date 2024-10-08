@@ -166,9 +166,9 @@ func (request *Request) MakeResultEventItem(wrapped *output.InternalWrappedEvent
 	if types.ToString(wrapped.InternalEvent["path"]) != "" {
 		fields.Path = types.ToString(wrapped.InternalEvent["path"])
 	}
-	var isPassive bool
-	if value, ok := wrapped.InternalEvent["passive"]; ok {
-		isPassive = value.(bool)
+	var isMatchersStatic bool
+	if value, ok := wrapped.InternalEvent["matchers-static"]; ok {
+		isMatchersStatic = value.(bool)
 	}
 	data := &output.ResultEvent{
 		TemplateID:       types.ToString(wrapped.InternalEvent["template-id"]),
@@ -186,8 +186,8 @@ func (request *Request) MakeResultEventItem(wrapped *output.InternalWrappedEvent
 		ExtractedResults: wrapped.OperatorsResult.OutputExtracts,
 		Timestamp:        time.Now(),
 		MatcherStatus:    true,
+		MatchersStatic:   isMatchersStatic,
 		IP:               fields.Ip,
-		Passive:          isPassive,
 		Request:          types.ToString(wrapped.InternalEvent["request"]),
 		Response:         request.truncateResponse(wrapped.InternalEvent["response"]),
 		CURLCommand:      types.ToString(wrapped.InternalEvent["curl-command"]),

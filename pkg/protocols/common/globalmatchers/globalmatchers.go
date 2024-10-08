@@ -59,7 +59,7 @@ func (s *Storage) Match(
 			eventCopy["template-id"] = item.TemplateID
 			eventCopy["template-info"] = item.TemplateInfo
 			eventCopy["template-path"] = item.TemplatePath
-			eventCopy["passive"] = true
+			eventCopy["matcher-static"] = true
 			callback(eventCopy, result)
 		}
 	}

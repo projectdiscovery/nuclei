@@ -184,8 +184,9 @@ type ResultEvent struct {
 	MatcherStatus bool `json:"matcher-status"`
 	// Lines is the line count for the specified match
 	Lines []int `json:"matched-line,omitempty"`
-	// Passive specifies whether the match was discovered passively in the response
-	Passive bool `json:"passive,omitempty"`
+	// MatchersStatic identifies whether the matches was detected statically in the response
+	// of another template's result event
+	MatchersStatic bool `json:"matcher-static,omitempty"`
 
 	// IssueTrackers is the metadata for issue trackers
 	IssueTrackers map[string]IssueTrackerMetadata `json:"issue_trackers,omitempty"`
