@@ -12,6 +12,10 @@ type Storage struct {
 	requests []*Item
 }
 
+// Callback is called when a global matcher is matched.
+// It receives internal event & result of the operator execution.
+type Callback func(event output.InternalEvent, result *operators.Result)
+
 // Item is a struct that holds the global matchers
 // details for a template
 type Item struct {
@@ -42,7 +46,7 @@ func (s *Storage) Match(
 	matchFunc operators.MatchFunc,
 	extractFunc operators.ExtractFunc,
 	isDebug bool,
-	callback func(event output.InternalEvent, result *operators.Result),
+	callback Callback,
 ) {
 	for _, item := range s.requests {
 		for _, operator := range item.Operators {
