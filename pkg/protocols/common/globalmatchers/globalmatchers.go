@@ -4,7 +4,6 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/model"
 	"github.com/projectdiscovery/nuclei/v3/pkg/operators"
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
-	"golang.org/x/exp/maps"
 )
 
 // Storage is a struct that holds the global matchers
@@ -50,17 +49,20 @@ func (s *Storage) Match(
 ) {
 	for _, item := range s.requests {
 		for _, operator := range item.Operators {
+			event.Set("origin-template-id", event["template-id"])
+			event.Set("origin-template-info", event["template-info"])
+			event.Set("origin-template-path", event["template-path"])
+			event.Set("template-id", item.TemplateID)
+			event.Set("template-info", item.TemplateInfo)
+			event.Set("template-path", item.TemplatePath)
+			event.Set("matchers-static", true)
+
 			result, matched := operator.Execute(event, matchFunc, extractFunc, isDebug)
 			if !matched {
 				continue
 			}
 
-			eventCopy := maps.Clone(event)
-			eventCopy["template-id"] = item.TemplateID
-			eventCopy["template-info"] = item.TemplateInfo
-			eventCopy["template-path"] = item.TemplatePath
-			eventCopy["matcher-static"] = true
-			callback(eventCopy, result)
+			callback(event, result)
 		}
 	}
 }
