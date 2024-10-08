@@ -58,12 +58,14 @@ func New(options *Options) (*Exporter, error) {
 	client, err := mongo.Connect(context.TODO(), clientOptions)
 	if err != nil {
 		gologger.Error().Msgf("Error creating MongoDB client: %s", err)
+		return nil, err
 	}
 
 	// Ensure the connection is valid
 	err = client.Ping(context.Background(), nil)
 	if err != nil {
 		gologger.Error().Msgf("Error connecting to MongoDB: %s", err)
+		return nil, err
 	}
 
 	// Get the database from the connection string to set the database and collection
@@ -76,7 +78,6 @@ func New(options *Options) (*Exporter, error) {
 	databaseName := strings.TrimPrefix(parsed.Path, "/")
 
 	if databaseName == "" {
-		gologger.Error().Msgf("Error getting database name from connection string: %s", options.ConnectionString)
 		return nil, errors.New("error getting database name from connection string")
 	}
 
