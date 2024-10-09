@@ -26,7 +26,14 @@ func NewJSON() *JSON {
 
 // IsType returns true if the data is JSON encoded
 func (j *JSON) IsType(data string) bool {
-	return strings.HasPrefix(data, "{") && strings.HasSuffix(data, "}")
+	isJSON := strings.HasPrefix(data, "{") && strings.HasSuffix(data, "}")
+	if isJSON {
+		// Check if its GraphQL
+		if Get(GraphqlDataFormat).IsType(data) {
+			return false
+		}
+	}
+	return isJSON
 }
 
 // Encode encodes the data into JSON format
