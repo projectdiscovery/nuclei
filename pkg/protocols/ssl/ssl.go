@@ -347,11 +347,33 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 // description. Multiple definitions are separated by commas.
 // Definitions not having a name (generated on runtime) are prefixed & suffixed by <>.
 var RequestPartDefinitions = map[string]string{
-	"type":      "Type is the type of request made",
-	"response":  "JSON SSL protocol handshake details",
-	"not_after": "Timestamp after which the remote cert expires",
-	"host":      "Host is the input to the template",
-	"matched":   "Matched is the input which was matched upon",
+	"template-id":      "ID of the template executed",
+	"template-info":    "Info Block of the template executed",
+	"template-path":    "Path of the template executed",
+	"host":             "Host is the input to the template",
+	"port":             "Port is the port of the host",
+	"matched":          "Matched is the input which was matched upon",
+	"type":             "Type is the type of request made",
+	"timestamp":        "Timestamp is the time when the request was made",
+	"response":         "JSON SSL protocol handshake details",
+	"cipher":           "Cipher is the encryption algorithm used",
+	"domains":          "Domains are the list of domain names in the certificate",
+	"fingerprint_hash": "Fingerprint hash is the unique identifier of the certificate",
+	"ip":               "IP is the IP address of the server",
+	"issuer_cn":        "Issuer CN is the common name of the certificate issuer",
+	"issuer_dn":        "Issuer DN is the distinguished name of the certificate issuer",
+	"issuer_org":       "Issuer organization is the organization of the certificate issuer",
+	"not_after":        "Timestamp after which the remote cert expires",
+	"not_before":       "Timestamp before which the certificate is not valid",
+	"probe_status":     "Probe status indicates if the probe was successful",
+	"serial":           "Serial is the serial number of the certificate",
+	"sni":              "SNI is the server name indication used in the handshake",
+	"subject_an":       "Subject AN is the list of subject alternative names",
+	"subject_cn":       "Subject CN is the common name of the certificate subject",
+	"subject_dn":       "Subject DN is the distinguished name of the certificate subject",
+	"subject_org":      "Subject organization is the organization of the certificate subject",
+	"tls_connection":   "TLS connection is the type of TLS connection used",
+	"tls_version":      "TLS version is the version of the TLS protocol used",
 }
 
 // Match performs matching operation for a matcher on model and returns:
