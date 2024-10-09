@@ -1657,24 +1657,112 @@ func init() {
 	}
 	SSLRequestDoc.PartDefinitions = []encoder.KeyValue{
 		{
-			Key:   "type",
-			Value: "Type is the type of request made",
+			Key:   "template-id",
+			Value: "ID of the template executed",
 		},
 		{
-			Key:   "response",
-			Value: "JSON SSL protocol handshake details",
+			Key:   "template-info",
+			Value: "Info Block of the template executed",
 		},
 		{
-			Key:   "not_after",
-			Value: "Timestamp after which the remote cert expires",
+			Key:   "template-path",
+			Value: "Path of the template executed",
 		},
 		{
 			Key:   "host",
 			Value: "Host is the input to the template",
 		},
 		{
+			Key:   "port",
+			Value: "Port is the port of the host",
+		},
+		{
 			Key:   "matched",
 			Value: "Matched is the input which was matched upon",
+		},
+		{
+			Key:   "type",
+			Value: "Type is the type of request made",
+		},
+		{
+			Key:   "timestamp",
+			Value: "Timestamp is the time when the request was made",
+		},
+		{
+			Key:   "response",
+			Value: "JSON SSL protocol handshake details",
+		},
+		{
+			Key:   "cipher",
+			Value: "Cipher is the encryption algorithm used",
+		},
+		{
+			Key:   "domains",
+			Value: "Domains are the list of domain names in the certificate",
+		},
+		{
+			Key:   "fingerprint_hash",
+			Value: "Fingerprint hash is the unique identifier of the certificate",
+		},
+		{
+			Key:   "ip",
+			Value: "IP is the IP address of the server",
+		},
+		{
+			Key:   "issuer_cn",
+			Value: "Issuer CN is the common name of the certificate issuer",
+		},
+		{
+			Key:   "issuer_dn",
+			Value: "Issuer DN is the distinguished name of the certificate issuer",
+		},
+		{
+			Key:   "issuer_org",
+			Value: "Issuer organization is the organization of the certificate issuer",
+		},
+		{
+			Key:   "not_after",
+			Value: "Timestamp after which the remote cert expires",
+		},
+		{
+			Key:   "not_before",
+			Value: "Timestamp before which the certificate is not valid",
+		},
+		{
+			Key:   "probe_status",
+			Value: "Probe status indicates if the probe was successful",
+		},
+		{
+			Key:   "serial",
+			Value: "Serial is the serial number of the certificate",
+		},
+		{
+			Key:   "sni",
+			Value: "SNI is the server name indication used in the handshake",
+		},
+		{
+			Key:   "subject_an",
+			Value: "Subject AN is the list of subject alternative names",
+		},
+		{
+			Key:   "subject_cn",
+			Value: "Subject CN is the common name of the certificate subject",
+		},
+		{
+			Key:   "subject_dn",
+			Value: "Subject DN is the distinguished name of the certificate subject",
+		},
+		{
+			Key:   "subject_org",
+			Value: "Subject organization is the organization of the certificate subject",
+		},
+		{
+			Key:   "tls_connection",
+			Value: "TLS connection is the type of TLS connection used",
+		},
+		{
+			Key:   "tls_version",
+			Value: "TLS version is the version of the TLS protocol used",
 		},
 	}
 	SSLRequestDoc.Fields = make([]encoder.Doc, 9)
