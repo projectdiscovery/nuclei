@@ -11,6 +11,7 @@ import (
 	"github.com/graphql-go/graphql/language/printer"
 	"github.com/graphql-go/graphql/language/source"
 	jsoniter "github.com/json-iterator/go"
+	"github.com/pkg/errors"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 
 	"github.com/graphql-go/graphql/language/ast"
@@ -30,7 +31,7 @@ func NewGraphql() *Graphql {
 
 // IsType returns true if the data is Graqhql encoded
 func (m *Graphql) IsType(data string) bool {
-	_, isGraphql, _ := isGraphQLOperation([]byte(data))
+	_, isGraphql, _ := isGraphQLOperation([]byte(data), true)
 	return isGraphql
 }
 
@@ -41,7 +42,7 @@ type graphQLRequest struct {
 	Variables     map[string]interface{} `json:"variables,omitempty"`
 }
 
-func isGraphQLOperation(jsonData []byte) (graphQLRequest, bool, error) {
+func isGraphQLOperation(jsonData []byte, validate bool) (graphQLRequest, bool, error) {
 	jsonStr := string(jsonData)
 	if !strings.HasPrefix(jsonStr, "{") && !strings.HasSuffix(jsonStr, "}") {
 		return graphQLRequest{}, false, nil
@@ -49,12 +50,31 @@ func isGraphQLOperation(jsonData []byte) (graphQLRequest, bool, error) {
 
 	var request graphQLRequest
 	if err := json.Unmarshal(jsonData, &request); err != nil {
-		return graphQLRequest{}, false, nil
+		return graphQLRequest{}, false, errors.Wrap(err, "could not unmarshal json")
 	}
 
 	if request.Query == "" && request.OperationName == "" && len(request.Variables) == 0 {
 		return graphQLRequest{}, false, nil
 	}
+
+	// Validate if query actually is a graphql
+	// query and not just some random json
+	if !validate {
+		return request, true, nil
+	}
+
+	doc, err := parser.Parse(parser.ParseParams{
+		Source: &source.Source{
+			Body: []byte(request.Query),
+		},
+	})
+	if err != nil {
+		return graphQLRequest{}, false, err
+	}
+	if len(doc.Definitions) == 0 {
+		return graphQLRequest{}, false, nil
+	}
+
 	return request, true, nil
 }
 
@@ -141,7 +161,7 @@ func (m *Graphql) Decode(data string) (KV, error) {
 	for k, v := range parsedReq.Variables {
 		kv.Set(k, v)
 	}
-	if len(kv.Map) > 0 {
+	if len(parsedReq.Variables) > 0 {
 		kv.Set("#_hasVariables", true)
 	}
 	if err := m.populateGraphQLKV(astDoc, kv); err != nil {
@@ -175,7 +195,7 @@ func (m *Graphql) parseGraphQLRequest(query string, unmarshal bool) (graphQLRequ
 	var err error
 
 	if unmarshal {
-		parsedReq, _, err = isGraphQLOperation([]byte(query))
+		parsedReq, _, err = isGraphQLOperation([]byte(query), false)
 		if err != nil {
 			return graphQLRequest{}, nil, fmt.Errorf("error parsing query: %v", err)
 		}
@@ -189,7 +209,7 @@ func (m *Graphql) parseGraphQLRequest(query string, unmarshal bool) (graphQLRequ
 		},
 	})
 	if err != nil {
-		return graphQLRequest{}, nil, fmt.Errorf("error parsing query: %v", err)
+		return graphQLRequest{}, nil, fmt.Errorf("error parsing ast: %v", err)
 	}
 	return parsedReq, astDoc, nil
 }
