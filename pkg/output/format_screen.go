@@ -39,9 +39,9 @@ func (w *StandardWriter) formatScreen(output *ResultEvent) []byte {
 			}
 		}
 
-		if output.MatchersStatic {
+		if output.GlobalMatchers {
 			builder.WriteString("] [")
-			builder.WriteString(w.aurora.BrightMagenta("static").String())
+			builder.WriteString(w.aurora.BrightMagenta("global").String())
 		}
 
 		builder.WriteString("] [")

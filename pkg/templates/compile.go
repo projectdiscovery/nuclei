@@ -111,7 +111,7 @@ func Parse(filePath string, preprocessor Preprocessor, options protocols.Executo
 
 func (template *Template) checkHTTPContainsGlobalMatchers() bool {
 	for _, request := range template.RequestsHTTP {
-		if request.MatchersStatic {
+		if request.GlobalMatchers {
 			return true
 		}
 	}

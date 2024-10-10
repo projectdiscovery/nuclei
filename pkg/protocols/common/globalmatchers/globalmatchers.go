@@ -55,7 +55,7 @@ func (s *Storage) Match(
 			event.Set("template-id", item.TemplateID)
 			event.Set("template-info", item.TemplateInfo)
 			event.Set("template-path", item.TemplatePath)
-			event.Set("matchers-static", true)
+			event.Set("global-matchers", true)
 
 			result, matched := operator.Execute(event, matchFunc, extractFunc, isDebug)
 			if !matched {

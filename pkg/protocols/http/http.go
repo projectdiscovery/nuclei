@@ -224,10 +224,8 @@ type Request struct {
 	FuzzPreConditionOperator string                 `yaml:"pre-condition-operator,omitempty" json:"pre-condition-operator,omitempty" jsonschema:"title=condition between the filters,description=Operator to use between multiple per-conditions,enum=and,enum=or"`
 	fuzzPreConditionOperator matchers.ConditionType `yaml:"-" json:"-"`
 	// description: |
-	//   MatchersStatic marks matchers as static and applies globally to all events (request and response) from other templates.
-	//
-	//   Note that if this is enabled, no requests will be sent from this template.
-	MatchersStatic bool `yaml:"matchers-static,omitempty" json:"matchers-static,omitempty" jsonschema:"title=static matchers option,description=marks matchers as static and applies them globally to all events from other templates"`
+	//   GlobalMatchers marks matchers as static and applies globally to all result events from other templates
+	GlobalMatchers bool `yaml:"global-matchers,omitempty" json:"global-matchers,omitempty" jsonschema:"title=global matchers,description=marks matchers as static and applies globally to all result events from other templates"`
 }
 
 func (e Request) JSONSchemaExtend(schema *jsonschema.Schema) {
