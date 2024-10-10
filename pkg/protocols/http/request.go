@@ -973,11 +973,20 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 		// prune signature internal values if any
 		request.pruneSignatureInternalValues(generatedRequest.meta)
 
-		event := eventcreator.CreateEventWithAdditionalOptions(request, generators.MergeMaps(generatedRequest.dynamicValues, finalEvent), request.options.Options.Debug || request.options.Options.DebugResponse, func(internalWrappedEvent *output.InternalWrappedEvent) {
+		interimEvent := generators.MergeMaps(generatedRequest.dynamicValues, finalEvent)
+		isDebug := request.options.Options.Debug || request.options.Options.DebugResponse
+		event := eventcreator.CreateEventWithAdditionalOptions(request, interimEvent, isDebug, func(internalWrappedEvent *output.InternalWrappedEvent) {
 			internalWrappedEvent.OperatorsResult.PayloadValues = generatedRequest.meta
 		})
+
 		if hasInteractMatchers {
 			event.UsesInteractsh = true
+		}
+
+		if request.options.GlobalMatchers.HasMatchers() {
+			request.options.GlobalMatchers.Match(interimEvent, request.Match, request.Extract, isDebug, func(event output.InternalEvent, result *operators.Result) {
+				callback(eventcreator.CreateEventWithOperatorResults(request, event, result))
+			})
 		}
 
 		// if requrlpattern is enabled, only then it is reflected in result event else it is empty string

@@ -166,6 +166,10 @@ func (request *Request) MakeResultEventItem(wrapped *output.InternalWrappedEvent
 	if types.ToString(wrapped.InternalEvent["path"]) != "" {
 		fields.Path = types.ToString(wrapped.InternalEvent["path"])
 	}
+	var isGlobalMatchers bool
+	if value, ok := wrapped.InternalEvent["global-matchers"]; ok {
+		isGlobalMatchers = value.(bool)
+	}
 	data := &output.ResultEvent{
 		TemplateID:       types.ToString(wrapped.InternalEvent["template-id"]),
 		TemplatePath:     types.ToString(wrapped.InternalEvent["template-path"]),
@@ -183,6 +187,7 @@ func (request *Request) MakeResultEventItem(wrapped *output.InternalWrappedEvent
 		Timestamp:        time.Now(),
 		MatcherStatus:    true,
 		IP:               fields.Ip,
+		GlobalMatchers:   isGlobalMatchers,
 		Request:          types.ToString(wrapped.InternalEvent["request"]),
 		Response:         request.truncateResponse(wrapped.InternalEvent["response"]),
 		CURLCommand:      types.ToString(wrapped.InternalEvent["curl-command"]),
