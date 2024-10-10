@@ -189,7 +189,7 @@ func New(options *Options, db string, doNotDedupe bool) (Client, error) {
 	return client, nil
 }
 
-// CreateConfigIfNotExists creates report-config if it doesn't exists
+// CreateConfigIfNotExists creates report-config if it doesn't exist
 func CreateConfigIfNotExists() error {
 	reportingConfig := config.DefaultConfig.GetReportingConfigFilePath()
 
