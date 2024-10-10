@@ -1,6 +1,8 @@
 package globalmatchers
 
 import (
+	"maps"
+
 	"github.com/projectdiscovery/nuclei/v3/pkg/model"
 	"github.com/projectdiscovery/nuclei/v3/pkg/operators"
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
@@ -49,20 +51,21 @@ func (s *Storage) Match(
 ) {
 	for _, item := range s.requests {
 		for _, operator := range item.Operators {
-			event.Set("origin-template-id", event["template-id"])
-			event.Set("origin-template-info", event["template-info"])
-			event.Set("origin-template-path", event["template-path"])
-			event.Set("template-id", item.TemplateID)
-			event.Set("template-info", item.TemplateInfo)
-			event.Set("template-path", item.TemplatePath)
-			event.Set("global-matchers", true)
+			newEvent := maps.Clone(event)
+			newEvent.Set("origin-template-id", event["template-id"])
+			newEvent.Set("origin-template-info", event["template-info"])
+			newEvent.Set("origin-template-path", event["template-path"])
+			newEvent.Set("template-id", item.TemplateID)
+			newEvent.Set("template-info", item.TemplateInfo)
+			newEvent.Set("template-path", item.TemplatePath)
+			newEvent.Set("global-matchers", true)
 
-			result, matched := operator.Execute(event, matchFunc, extractFunc, isDebug)
+			result, matched := operator.Execute(newEvent, matchFunc, extractFunc, isDebug)
 			if !matched {
 				continue
 			}
 
-			callback(event, result)
+			callback(newEvent, result)
 		}
 	}
 }
