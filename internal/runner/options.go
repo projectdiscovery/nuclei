@@ -152,6 +152,9 @@ func ValidateOptions(options *types.Options) error {
 	if options.Verbose && options.Silent {
 		return errors.New("both verbose and silent mode specified")
 	}
+	if options.FuzzingDedupe && options.Stream {
+		return errors.New("both fuzzing dedupe and stream mode specified")
+	}
 
 	if (options.HeadlessOptionalArguments != nil || options.ShowBrowser || options.UseInstalledChrome) && !options.Headless {
 		return errors.New("headless mode (-headless) is required if -ho, -sb, -sc or -lha are set")
