@@ -7,7 +7,6 @@ import (
 	"mime"
 	"mime/multipart"
 	"net/textproto"
-	"strings"
 
 	mapsutil "github.com/projectdiscovery/utils/maps"
 )
@@ -60,8 +59,8 @@ func (m *MultiPartForm) Encode(data KV) (string, error) {
 			for _, file := range filesArray {
 				h := make(textproto.MIMEHeader)
 				h.Set("Content-Disposition",
-					fmt.Sprintf(`form-data; name="%s"; filename="%s"`,
-						escapeQuotes(key), escapeQuotes(fileMetadata.Filename)))
+					fmt.Sprintf(`form-data; name=%q; filename=%q`,
+						key, fileMetadata.Filename))
 				h.Set("Content-Type", fileMetadata.ContentType)
 
 				if fw, err = w.CreatePart(h); err != nil {
@@ -95,12 +94,6 @@ func (m *MultiPartForm) Encode(data KV) (string, error) {
 
 	w.Close()
 	return b.String(), nil
-}
-
-var quoteEscaper = strings.NewReplacer("\\", "\\\\", `"`, "\\\"")
-
-func escapeQuotes(s string) string {
-	return quoteEscaper.Replace(s)
 }
 
 // ParseBoundary parses the boundary from the content type
