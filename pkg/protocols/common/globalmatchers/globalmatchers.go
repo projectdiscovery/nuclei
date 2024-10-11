@@ -28,7 +28,7 @@ type Item struct {
 
 // New creates a new storage for global matchers
 func New() *Storage {
-	return &Storage{}
+	return &Storage{requests: make([]*Item, 0)}
 }
 
 // AddOperator adds a new operator to the global matchers
