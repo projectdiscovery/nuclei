@@ -31,13 +31,26 @@ func New() *Storage {
 	return &Storage{requests: make([]*Item, 0)}
 }
 
+// hasStorage checks if the Storage is initialized
+func (s *Storage) hasStorage() bool {
+	return s != nil
+}
+
 // AddOperator adds a new operator to the global matchers
 func (s *Storage) AddOperator(item *Item) {
+	if !s.hasStorage() {
+		return
+	}
+
 	s.requests = append(s.requests, item)
 }
 
 // HasMatchers returns true if we have global matchers
 func (s *Storage) HasMatchers() bool {
+	if !s.hasStorage() {
+		return false
+	}
+
 	return len(s.requests) > 0
 }
 
