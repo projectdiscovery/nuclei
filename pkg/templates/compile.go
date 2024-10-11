@@ -82,7 +82,7 @@ func Parse(filePath string, preprocessor Preprocessor, options protocols.Executo
 	if err != nil {
 		return nil, err
 	}
-	if template.checkHTTPContainsGlobalMatchers() {
+	if template.isGlobalMatchersEnabled() {
 		item := &globalmatchers.Item{
 			TemplateID:   template.ID,
 			TemplatePath: filePath,
@@ -109,7 +109,17 @@ func Parse(filePath string, preprocessor Preprocessor, options protocols.Executo
 	return template, nil
 }
 
-func (template *Template) checkHTTPContainsGlobalMatchers() bool {
+// isGlobalMatchersEnabled checks if any of requests in the template
+// have global matchers enabled. It iterates through all requests and
+// returns true if at least one request has global matchers enabled;
+// otherwise, it returns false.
+//
+// Note: This method only checks the `RequestsHTTP`
+// field of the template, which is specific to http-protocol-based
+// templates.
+//
+// TODO: support all protocols.
+func (template *Template) isGlobalMatchersEnabled() bool {
 	for _, request := range template.RequestsHTTP {
 		if request.GlobalMatchers {
 			return true
