@@ -17,8 +17,7 @@ import (
 	"github.com/graphql-go/graphql/language/ast"
 )
 
-type Graphql struct {
-}
+type Graphql struct{}
 
 var (
 	_ DataFormat = &Graphql{}
