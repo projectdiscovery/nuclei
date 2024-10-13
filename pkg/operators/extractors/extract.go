@@ -3,20 +3,36 @@ package extractors
 import (
 	"encoding/json"
 	"fmt"
+	"regexp"
 	"strings"
 
 	"github.com/antchfx/htmlquery"
 	"github.com/antchfx/xmlquery"
 
+	"github.com/projectdiscovery/gologger"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/expressions"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 )
 
 // ExtractRegex extracts text from a corpus and returns it
-func (e *Extractor) ExtractRegex(corpus string) map[string]struct{} {
+func (e *Extractor) ExtractRegex(corpus string, data map[string]interface{}) map[string]struct{} {
 	results := make(map[string]struct{})
 
 	groupPlusOne := e.RegexGroup + 1
-	for _, regex := range e.regexCompiled {
+	for i, regex := range e.regexCompiled {
+		if varErr := expressions.ContainsUnresolvedVariables(e.Regex[i]); varErr != nil {
+			regexStr, err := expressions.Evaluate(e.Regex[i], data)
+			if err != nil {
+				gologger.Warning().Msgf("Could not evaluate expression: %s, error: %s", e.Regex[i], err.Error())
+				continue
+			}
+			regex, err = regexp.Compile(regexStr)
+			if err != nil {
+				gologger.Warning().Msgf("Could not compile regex: %s, error: %s", regexStr, err.Error())
+				continue
+			}
+		}
+
 		matches := regex.FindAllStringSubmatch(corpus, -1)
 
 		for _, match := range matches {

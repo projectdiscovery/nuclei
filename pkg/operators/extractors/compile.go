@@ -8,6 +8,7 @@ import (
 	"github.com/Knetic/govaluate"
 	"github.com/itchyny/gojq"
 	"github.com/projectdiscovery/nuclei/v3/pkg/operators/common/dsl"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/expressions"
 )
 
 // CompileExtractors performs the initial setup operation on an extractor
@@ -20,6 +21,10 @@ func (e *Extractor) CompileExtractors() error {
 	e.extractorType = computedType
 	// Compile the regexes
 	for _, regex := range e.Regex {
+		if varErr := expressions.ContainsUnresolvedVariables(regex); varErr != nil {
+			e.regexCompiled = append(e.regexCompiled, nil)
+			continue
+		}
 		compiled, err := regexp.Compile(regex)
 		if err != nil {
 			return fmt.Errorf("could not compile regex: %s", regex)

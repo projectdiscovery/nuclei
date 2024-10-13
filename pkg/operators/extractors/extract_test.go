@@ -11,10 +11,10 @@ func TestExtractor_ExtractRegex(t *testing.T) {
 	err := e.CompileExtractors()
 	require.Nil(t, err)
 
-	got := e.ExtractRegex("RegEx")
+	got := e.ExtractRegex("RegEx", nil)
 	require.Equal(t, map[string]struct{}{"RegEx": {}}, got)
 
-	got = e.ExtractRegex("regex")
+	got = e.ExtractRegex("regex", nil)
 	require.Equal(t, map[string]struct{}{}, got)
 }
 

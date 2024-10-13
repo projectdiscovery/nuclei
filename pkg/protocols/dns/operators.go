@@ -57,7 +57,7 @@ func (request *Request) Extract(data map[string]interface{}, extractor *extracto
 
 	switch extractor.GetType() {
 	case extractors.RegexExtractor:
-		return extractor.ExtractRegex(types.ToString(item))
+		return extractor.ExtractRegex(types.ToString(item), data)
 	case extractors.KValExtractor:
 		return extractor.ExtractKval(data)
 	case extractors.DSLExtractor:

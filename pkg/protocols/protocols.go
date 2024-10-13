@@ -327,7 +327,7 @@ func MakeDefaultExtractFunc(data map[string]interface{}, extractor *extractors.E
 
 	switch extractor.GetType() {
 	case extractors.RegexExtractor:
-		return extractor.ExtractRegex(itemStr)
+		return extractor.ExtractRegex(itemStr, data)
 	case extractors.KValExtractor:
 		return extractor.ExtractKval(data)
 	case extractors.JSONExtractor:
