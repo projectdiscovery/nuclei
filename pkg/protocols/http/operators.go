@@ -73,7 +73,7 @@ func (request *Request) Extract(data map[string]interface{}, extractor *extracto
 	case extractors.XPathExtractor:
 		return extractor.ExtractXPath(item)
 	case extractors.JSONExtractor:
-		return extractor.ExtractJSON(item)
+		return extractor.ExtractJSON(item, data)
 	case extractors.DSLExtractor:
 		return extractor.ExtractDSL(data)
 	}

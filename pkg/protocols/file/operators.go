@@ -49,7 +49,7 @@ func (request *Request) Extract(data map[string]interface{}, extractor *extracto
 	case extractors.KValExtractor:
 		return extractor.ExtractKval(data)
 	case extractors.JSONExtractor:
-		return extractor.ExtractJSON(itemStr)
+		return extractor.ExtractJSON(itemStr, data)
 	case extractors.XPathExtractor:
 		return extractor.ExtractXPath(itemStr)
 	case extractors.DSLExtractor:

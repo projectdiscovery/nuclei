@@ -36,6 +36,10 @@ func (e *Extractor) CompileExtractors() error {
 	}
 
 	for _, query := range e.JSON {
+		if varErr := expressions.ContainsUnresolvedVariables(query); varErr != nil {
+			e.jsonCompiled = append(e.jsonCompiled, nil)
+			continue
+		}
 		query, err := gojq.Parse(query)
 		if err != nil {
 			return fmt.Errorf("could not parse json: %s", query)

@@ -8,6 +8,7 @@ import (
 
 	"github.com/antchfx/htmlquery"
 	"github.com/antchfx/xmlquery"
+	"github.com/itchyny/gojq"
 
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/expressions"
@@ -144,7 +145,7 @@ func (e *Extractor) ExtractXML(corpus string) map[string]struct{} {
 }
 
 // ExtractJSON extracts text from a corpus using JQ queries and returns it
-func (e *Extractor) ExtractJSON(corpus string) map[string]struct{} {
+func (e *Extractor) ExtractJSON(corpus string, data map[string]interface{}) map[string]struct{} {
 	results := make(map[string]struct{})
 
 	var jsonObj interface{}
@@ -153,7 +154,24 @@ func (e *Extractor) ExtractJSON(corpus string) map[string]struct{} {
 		return results
 	}
 
-	for _, k := range e.jsonCompiled {
+	for i, k := range e.jsonCompiled {
+		if varErr := expressions.ContainsUnresolvedVariables(e.JSON[i]); varErr != nil {
+			jsonStr, err := expressions.Evaluate(e.JSON[i], data)
+			if err != nil {
+				gologger.Warning().Msgf("Could not evaluate expression: %s, error: %s", e.JSON[i], err.Error())
+				continue
+			}
+			query, err := gojq.Parse(jsonStr)
+			if err != nil {
+				gologger.Warning().Msgf("Could not parse json: %s, error: %s", jsonStr, err.Error())
+				continue
+			}
+			k, err = gojq.Compile(query)
+			if err != nil {
+				gologger.Warning().Msgf("Could not compile json: %s, error: %s", jsonStr, err.Error())
+				continue
+			}
+		}
 		iter := k.Run(jsonObj)
 		for {
 			v, ok := iter.Next()
