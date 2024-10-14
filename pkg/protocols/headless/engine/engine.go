@@ -119,9 +119,8 @@ func New(options *types.Options) (*Browser, error) {
 
 // MustDisableSandbox determines if the current os and user needs sandbox mode disabled
 func MustDisableSandbox() bool {
-	// linux with root user needs "--no-sandbox" option
-	// https://github.com/chromium/chromium/blob/c4d3c31083a2e1481253ff2d24298a1dfe19c754/chrome/test/chromedriver/client/chromedriver.py#L209
-	return osutils.IsLinux() && os.Geteuid() == 0
+	// (suid helper is deprecated on linux) - see https://issues.chromium.org/issues/40338793
+	return osutils.IsLinux()
 }
 
 // SetUserAgent sets custom user agent to the browser
