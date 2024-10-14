@@ -8,6 +8,7 @@ import (
 	"os"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/pkg/errors"
@@ -99,6 +100,16 @@ func (request *Request) ExecuteWithResults(target *contextargs.Context, metadata
 		gologger.Verbose().Msgf("[%v] got errors while checking open ports: %s\n", request.options.TemplateID, err)
 	}
 
+	// stop at first match if requested
+	atomicBool := &atomic.Bool{}
+	shouldStopAtFirstMatch := request.StopAtFirstMatch || request.options.StopAtFirstMatch || request.options.Options.StopAtFirstMatch
+	wrappedCallback := func(event *output.InternalWrappedEvent) {
+		if event != nil && event.HasOperatorResult() {
+			atomicBool.Store(true)
+		}
+		callback(event)
+	}
+
 	for _, port := range ports {
 		input := target.Clone()
 		// use network port updates input with new port requested in template file
@@ -107,8 +118,11 @@ func (request *Request) ExecuteWithResults(target *contextargs.Context, metadata
 		if err := input.UseNetworkPort(port, request.ExcludePorts); err != nil {
 			gologger.Debug().Msgf("Could not network port from constants: %s\n", err)
 		}
-		if err := request.executeOnTarget(input, visitedAddresses, metadata, previous, callback); err != nil {
+		if err := request.executeOnTarget(input, visitedAddresses, metadata, previous, wrappedCallback); err != nil {
 			return err
+		}
+		if shouldStopAtFirstMatch && atomicBool.Load() {
+			break
 		}
 	}
 
@@ -141,6 +155,16 @@ func (request *Request) executeOnTarget(input *contextargs.Context, visited maps
 	variablesMap := request.options.Variables.Evaluate(variables)
 	variables = generators.MergeMaps(variablesMap, variables, request.options.Constants)
 
+	// stop at first match if requested
+	atomicBool := &atomic.Bool{}
+	shouldStopAtFirstMatch := request.StopAtFirstMatch || request.options.StopAtFirstMatch || request.options.Options.StopAtFirstMatch
+	wrappedCallback := func(event *output.InternalWrappedEvent) {
+		if event != nil && event.HasOperatorResult() {
+			atomicBool.Store(true)
+		}
+		callback(event)
+	}
+
 	for _, kv := range request.addresses {
 		select {
 		case <-input.Context().Done():
@@ -154,12 +178,13 @@ func (request *Request) executeOnTarget(input *contextargs.Context, visited maps
 			continue
 		}
 		visited.Set(actualAddress, struct{}{})
-
-		if err = request.executeAddress(variables, actualAddress, address, input, kv.tls, previous, callback); err != nil {
+		if err = request.executeAddress(variables, actualAddress, address, input, kv.tls, previous, wrappedCallback); err != nil {
 			outputEvent := request.responseToDSLMap("", "", "", address, "")
 			callback(&output.InternalWrappedEvent{InternalEvent: outputEvent})
 			gologger.Warning().Msgf("[%v] Could not make network request for (%s) : %s\n", request.options.TemplateID, actualAddress, err)
-			continue
+		}
+		if shouldStopAtFirstMatch && atomicBool.Load() {
+			break
 		}
 	}
 	return err
