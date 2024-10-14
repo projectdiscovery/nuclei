@@ -99,7 +99,7 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 	variables := generators.MergeMaps(vars, defaultVars, optionVars, dynamicValues, request.options.Constants)
 
 	if vardump.EnableVarDump {
-		gologger.Debug().Msgf("Whois Protocol request variables: \n%s\n", vardump.DumpVariables(variables))
+		gologger.Debug().Msgf("Whois Protocol request variables: %s\n", vardump.DumpVariables(variables))
 	}
 
 	// and replace placeholders
