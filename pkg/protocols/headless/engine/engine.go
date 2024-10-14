@@ -9,6 +9,7 @@ import (
 	"github.com/go-rod/rod"
 	"github.com/go-rod/rod/lib/launcher"
 	"github.com/go-rod/rod/lib/launcher/flags"
+	"github.com/kitabisa/go-ci"
 	"github.com/pkg/errors"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
@@ -121,7 +122,7 @@ func New(options *types.Options) (*Browser, error) {
 func MustDisableSandbox() bool {
 	// linux with root user needs "--no-sandbox" option
 	// https://github.com/chromium/chromium/blob/c4d3c31083a2e1481253ff2d24298a1dfe19c754/chrome/test/chromedriver/client/chromedriver.py#L209
-	return osutils.IsLinux() && os.Geteuid() == 0
+	return (osutils.IsLinux() && os.Geteuid() == 0) || ci.IsCI()
 }
 
 // SetUserAgent sets custom user agent to the browser
