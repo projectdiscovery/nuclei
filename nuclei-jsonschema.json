@@ -1370,6 +1370,11 @@
           "title": "read all response stream",
           "description": "Read all response stream till the server stops sending"
         },
+        "stop-at-first-match": {
+          "type": "boolean",
+          "title": "stop at first match",
+          "description": "Stop the execution after a match is found"
+        },
         "matchers": {
           "items": {
             "$ref": "#/$defs/matchers.Matcher"
