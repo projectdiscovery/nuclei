@@ -901,8 +901,8 @@ github.com/projectdiscovery/useragent v0.0.71 h1:Q02L3LV15ztOQ6FfmVSqVmOd5QhvzI+
 github.com/projectdiscovery/useragent v0.0.71/go.mod h1:DHPruFLCvCvkd2qqPwwQZrP9sziv0lxQJ0R1rE1fa8E=
 github.com/projectdiscovery/utils v0.2.11 h1:TO7fBG5QI256sn1YuTD87yn4+4OjGJ2wT1772uEnp4Q=
 github.com/projectdiscovery/utils v0.2.11/go.mod h1:W0E74DWkKxlcyKS5XwcAwiob7+smoszPPi1NgX3vZyk=
-github.com/projectdiscovery/wappalyzergo v0.1.18 h1:fFgETis0HcsNE7wREaUPYP45JqIyHgGorJaVp1RH7g4=
-github.com/projectdiscovery/wappalyzergo v0.1.18/go.mod h1:/hzgxkBFTMe2wDbA93nFfoMjULw7/vIZ9QPSAnCgUa8=
+github.com/projectdiscovery/wappalyzergo v0.1.23 h1:YqZPKTD/NC9xb/lByfMDPWwBNl/5/CevjP5elRAzi5k=
+github.com/projectdiscovery/wappalyzergo v0.1.23/go.mod h1:wnvmbC10pQTOoCKnCTmWKP20rpEtqrMJZvzuTuleeyw=
 github.com/projectdiscovery/yamldoc-go v1.0.4 h1:eZoESapnMw6WAHiVgRwNqvbJEfNHEH148uthhFbG5jE=
 github.com/projectdiscovery/yamldoc-go v1.0.4/go.mod h1:8PIPRcUD55UbtQdcfFR1hpIGRWG0P7alClXNGt1TBik=
 github.com/prometheus/client_golang v0.9.1/go.mod h1:7SWBe2y4D6OKWSNQJUaRYU/AaXPKyh/dDVn+NZz0KFw=
