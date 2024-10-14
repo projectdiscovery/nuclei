@@ -300,6 +300,7 @@ func (w *StandardWriter) Write(event *ResultEvent) error {
 	}
 
 	if len(w.keysToRedact) > 0 {
+		event.URL = w.redactKeys(event.URL)
 		event.Request = w.redactKeys(event.Request)
 		event.Response = w.redactKeys(event.Response)
 		event.CURLCommand = w.redactKeys(event.CURLCommand)
