@@ -72,7 +72,10 @@ type StandardWriter struct {
 	omitTemplate          bool
 	DisableStdout         bool
 	AddNewLinesOutputFile bool // by default this is only done for stdout
-	KeysToRedact          []string
+	keysToRedact          []*regexp.Regexp
+
+	RequestCallback func(templateID, url, requestType string, err error)
+	WriteCallback   func(o *ResultEvent)
 }
 
 var decolorizerRegex = regexp.MustCompile(`\x1B\[[0-9;]*[a-zA-Z]`)
@@ -265,8 +268,27 @@ func NewStandardWriter(options *types.Options) (*StandardWriter, error) {
 		storeResponse:    options.StoreResponse,
 		storeResponseDir: options.StoreResponseDir,
 		omitTemplate:     options.OmitTemplate,
-		KeysToRedact:     options.Redact,
 	}
+	for _, key := range options.Redact {
+		keyPattern := regexp.MustCompile(fmt.Sprintf(`(?i)(%s\s*[:=]\s*["']?)[^"'\r\n&]+(["'\r\n]?)`, regexp.QuoteMeta(key)))
+		writer.keysToRedact = append(writer.keysToRedact, keyPattern)
+	}
+
+	return writer, nil
+}
+
+func NewStandardWriterWithHooks(
+	options *types.Options,
+	requestCallback func(templateID, url, requestType string, err error),
+	writeCallback func(o *ResultEvent),
+) (*StandardWriter, error) {
+	writer, err := NewStandardWriter(options)
+	if err != nil {
+		return nil, err
+	}
+	writer.RequestCallback = requestCallback
+	writer.WriteCallback = writeCallback
+
 	return writer, nil
 }
 
@@ -277,11 +299,11 @@ func (w *StandardWriter) Write(event *ResultEvent) error {
 		event.Template, event.TemplateURL = utils.TemplatePathURL(types.ToString(event.TemplatePath), types.ToString(event.TemplateID), event.TemplateVerifier)
 	}
 
-	if len(w.KeysToRedact) > 0 {
-		event.Request = redactKeys(event.Request, w.KeysToRedact)
-		event.Response = redactKeys(event.Response, w.KeysToRedact)
-		event.CURLCommand = redactKeys(event.CURLCommand, w.KeysToRedact)
-		event.Matched = redactKeys(event.Matched, w.KeysToRedact)
+	if len(w.keysToRedact) > 0 {
+		event.Request = w.redactKeys(event.Request)
+		event.Response = w.redactKeys(event.Response)
+		event.CURLCommand = w.redactKeys(event.CURLCommand)
+		event.Matched = w.redactKeys(event.Matched)
 	}
 
 	event.Timestamp = time.Now()
@@ -319,12 +341,15 @@ func (w *StandardWriter) Write(event *ResultEvent) error {
 			_, _ = w.outputFile.Write([]byte("\n"))
 		}
 	}
+
+	if w.WriteCallback != nil {
+		w.WriteCallback(event)
+	}
 	return nil
 }
 
-func redactKeys(data string, keysToRedact []string) string {
-	for _, key := range keysToRedact {
-		keyPattern := regexp.MustCompile(fmt.Sprintf(`(?i)(%s\s*[:=]\s*["']?)[^"'\r\n&]+(["'\r\n]?)`, regexp.QuoteMeta(key)))
+func (w *StandardWriter) redactKeys(data string) string {
+	for _, keyPattern := range w.keysToRedact {
 		data = keyPattern.ReplaceAllString(data, `$1***$2`)
 	}
 	return data
@@ -344,7 +369,11 @@ type JSONLogRequest struct {
 
 // Request writes a log the requests trace log
 func (w *StandardWriter) Request(templatePath, input, requestType string, requestErr error) {
-	if w.traceFile == nil && w.errorFile == nil {
+	if w.traceFile == nil && w.errorFile == nil && w.RequestCallback == nil {
+		return
+	}
+	if w.RequestCallback != nil {
+		w.RequestCallback(templatePath, input, requestType, requestErr)
 		return
 	}
 	request := &JSONLogRequest{
@@ -393,6 +422,7 @@ func (w *StandardWriter) Request(templatePath, input, requestType string, reques
 	if val := errkit.GetAttrValue(requestErr, "address"); val.Any() != nil {
 		request.Address = val.String()
 	}
+
 	data, err := jsoniter.Marshal(request)
 	if err != nil {
 		return
@@ -405,6 +435,7 @@ func (w *StandardWriter) Request(templatePath, input, requestType string, reques
 	if requestErr != nil && w.errorFile != nil {
 		_, _ = w.errorFile.Write(data)
 	}
+
 }
 
 // Colorizer returns the colorizer instance for writer
