@@ -77,9 +77,8 @@ var muGlobalChange sync.Mutex
 
 // Global setting
 func GlobalGuardBytesBufferAlloc() error {
-	if muGlobalChange.TryLock() {
+	if !muGlobalChange.TryLock() {
 		return nil
-
 	}
 	defer muGlobalChange.Unlock()
 
@@ -95,9 +94,8 @@ func GlobalGuardBytesBufferAlloc() error {
 
 // Global setting
 func GlobalRestoreBytesBufferAlloc() {
-	if muGlobalChange.TryLock() {
+	if !muGlobalChange.TryLock() {
 		return
-
 	}
 	defer muGlobalChange.Unlock()
 
