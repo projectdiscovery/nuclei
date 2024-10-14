@@ -21,11 +21,11 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/projectdiscovery/clistats v0.1.1
 	github.com/projectdiscovery/fastdialer v0.2.9
-	github.com/projectdiscovery/hmap v0.0.59
-	github.com/projectdiscovery/interactsh v1.2.0
+	github.com/projectdiscovery/hmap v0.0.60
+	github.com/projectdiscovery/interactsh v1.2.2
 	github.com/projectdiscovery/rawhttp v0.1.67
 	github.com/projectdiscovery/retryabledns v1.0.77
-	github.com/projectdiscovery/retryablehttp-go v1.0.78
+	github.com/projectdiscovery/retryablehttp-go v1.0.79
 	github.com/projectdiscovery/yamldoc-go v1.0.4
 	github.com/remeh/sizedwaitgroup v1.0.0
 	github.com/rs/xid v1.5.0
@@ -85,7 +85,7 @@ require (
 	github.com/projectdiscovery/fasttemplate v0.0.2
 	github.com/projectdiscovery/go-smb2 v0.0.0-20240129202741-052cc450c6cb
 	github.com/projectdiscovery/goflags v0.1.64
-	github.com/projectdiscovery/gologger v1.1.24
+	github.com/projectdiscovery/gologger v1.1.25
 	github.com/projectdiscovery/gostruct v0.0.2
 	github.com/projectdiscovery/gozero v0.0.2
 	github.com/projectdiscovery/httpx v1.6.8
