@@ -889,6 +889,11 @@
           ],
           "title": "condition between the filters",
           "description": "Operator to use between multiple per-conditions"
+        },
+        "global-matchers": {
+          "type": "boolean",
+          "title": "global matchers",
+          "description": "marks matchers as static and applies globally to all result events from other templates"
         }
       },
       "additionalProperties": false,
