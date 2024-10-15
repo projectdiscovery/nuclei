@@ -179,6 +179,8 @@ type Options struct {
 	UseInstalledChrome bool
 	// SystemResolvers enables override of nuclei's DNS client opting to use system resolver stack.
 	SystemResolvers bool
+	// DisableDNSResolvers disables default DNS resolvers for nuclei
+	DisableDefaultResolvers bool
 	// ShowActions displays a list of all headless actions
 	ShowActions bool
 	// Deprecated: Enabled by default through clistats . Metrics enables display of metrics via an http endpoint

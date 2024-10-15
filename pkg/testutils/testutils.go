@@ -89,17 +89,17 @@ type TemplateInfo struct {
 func NewMockExecuterOptions(options *types.Options, info *TemplateInfo) *protocols.ExecutorOptions {
 	progressImpl, _ := progress.NewStatsTicker(0, false, false, false, 0)
 	executerOpts := &protocols.ExecutorOptions{
-		TemplateID:      info.ID,
-		TemplateInfo:    info.Info,
-		TemplatePath:    info.Path,
-		Output:          NewMockOutputWriter(options.OmitTemplate),
-		Options:         options,
-		Progress:        progressImpl,
-		ProjectFile:     nil,
-		IssuesClient:    nil,
-		Browser:         nil,
-		Catalog:         disk.NewCatalog(config.DefaultConfig.TemplatesDirectory),
-		RateLimiter:     ratelimit.New(context.Background(), uint(options.RateLimit), time.Second),
+		TemplateID:   info.ID,
+		TemplateInfo: info.Info,
+		TemplatePath: info.Path,
+		Output:       NewMockOutputWriter(options.OmitTemplate),
+		Options:      options,
+		Progress:     progressImpl,
+		ProjectFile:  nil,
+		IssuesClient: nil,
+		Browser:      nil,
+		Catalog:      disk.NewCatalog(config.DefaultConfig.TemplatesDirectory),
+		RateLimiter:  ratelimit.New(context.Background(), uint(options.RateLimit), time.Second),
 	}
 	executerOpts.CreateTemplateCtxStore()
 	return executerOpts
@@ -116,7 +116,6 @@ type MockOutputWriter struct {
 	aurora          aurora.Aurora
 	omitTemplate    bool
 	RequestCallback func(templateID, url, requestType string, err error)
-	FailureCallback func(result *output.InternalEvent)
 	WriteCallback   func(o *output.ResultEvent)
 }
 
