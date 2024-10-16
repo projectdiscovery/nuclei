@@ -45,7 +45,6 @@ Nuclei is a modern, high-performance vulnerability scanner that leverages simple
 - [Contributors ❤️](#contributors-heart)
 - [License](#license)
 
----
 
 ## Get Started
 
@@ -69,7 +68,14 @@ Upgrade to [ProjectDiscovery Pro](https://projectdiscovery.io/pricing) for the f
 - Plus: Real-time scanning, SAML SSO, SOC 2 compliance, shared team workspaces, and more
 - **Ideal for:** Pentesters, security teams, and enterprises
 
-## Learn more
+## Learn
+
+<p align="left">
+
+<img src="/static/nuclei-getting-started.png" width="300px">
+&nbsp;&nbsp;
+<img src="/static/nuclei-write-your-first-template.png" width="300px">
+
 
 Here are a few common ways to use Nuclei for scanning:
 
@@ -120,14 +126,14 @@ nuclei -target https://example.com -cloud-upload
 
 ### Command-Line Reference
 
-To display help for the tool:
+To display all the flags for the tool:
 
 ```sh
 nuclei -h
 ```
 
 <details>
-  <summary>Expand full help output</summary>
+  <summary>Expand full help flags</summary>
 
 ```console
 Nuclei is a fast, template based vulnerability scanner focusing
