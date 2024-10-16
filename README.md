@@ -30,31 +30,47 @@ Nuclei is a modern, high-performance vulnerability scanner that leverages simple
 - Supports multiple protocols like TCP, DNS, HTTP, SSL, WHOIS JavaScript, Code and more.
 - Integrate with Jira, Splunk, GitHub, Elastic, GitLab.
 
+
+## Table of Contents
+
+- [Get Started](#get-started)
+  - [1. Nuclei CLI (Free)](#1-nuclei-cli-free)
+  - [2. ProjectDiscovery Pro and Enterprise](#2-projectdiscovery-pro-and-enterprise)
+- [Learn more](#learn-more)
+  - [Single target scan](#single-target-scan)
+  - [Scanning multiple targets](#scanning-multiple-targets)
+  - [Network scan](#network-scan)
+  - [Scanning with your custom template](#scanning-with-your-custom-template)
+  - [Connect with ProjectDiscovery Cloud Platform](#connect-with-projectdiscovery-cloud-platform)
+- [Our Mission](#our-mission)
+- [Contributors ❤️](#contributors-heart)
+- [License](#license)
+
+---
+
+
 ## Get Started
 
-Nuclei offers two ways to begin your vulnerability scanning journey:
-
-### **1. Nuclei CLI - Free**
+#### **1. Nuclei CLI (Free)**
 
 Install Nuclei on your Command Line Interface (CLI) for free. Get started by following the installation guide [here](https://docs.projectdiscovery.io/tools/nuclei/install). Enhance your experience by connecting to our cloud platform to:
 
-- Ideal for: Bug bounty hunters, researchers, and individuals
 - Visualize your vulnerability findings
 - Write and manage your detections templates
 - Browse the latest trending vulnerabilities
+- **Ideal for:** Bug bounty hunters, researchers, and individuals
 
-### **2. ProjectDiscovery Pro and Enterprise**
+
+#### **2. ProjectDiscovery Pro and Enterprise**
 
 Upgrade to [ProjectDiscovery Pro](https://projectdiscovery.io/pricing) for the fastest and most reliable scanning:
 
+- 50x Faster Scans
+- Large-scale Scanning
+- Ticketing and Notification Integrations
+- Comprehensive Reporting & Analytics
+- Plus: Real-time scanning, SAML SSO, SOC 2 compliance, shared team workspaces, and more
 - **Ideal for:** Pentesters, security teams, and enterprises
-- **50x Faster Scans**
-- **Large-scale Scanning**
-- **Ticketing and Notification Integrations**
-- **Comprehensive Reporting & Analytics**
-- **Plus:** Real-time scanning, SAML SSO, SOC 2 compliance, shared team workspaces, and more
-
-👉 [**Sign Up Now**](https://projectdiscovery.io/pricing) to unlock the full potential of Nuclei with our Pro and Enterprise editions.
 
 ## Learn more
 
