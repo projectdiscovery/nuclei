@@ -111,9 +111,9 @@ To write and use your own template, create a `.yaml` file with specific rules, t
 nuclei -u https://example.com -t /path/to/your-template.yaml
 ```
 
-### Connect with ProjectDiscovery Cloud Platform
+### Remediate vulnerabilities with ProjectDiscovery Cloud Platform
 
-You can run the scans on your machine and upload the results to the cloud platform for further analysis.
+You can run the scans on your machine and upload the results to the cloud platform for further analysis and remediation.
 
 ```sh
 nuclei -target https://example.com -cloud-upload
