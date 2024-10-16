@@ -48,7 +48,7 @@ Nuclei is a modern, high-performance vulnerability scanner that leverages simple
 
 ## Get Started
 
-#### **1. Nuclei CLI (Free)**
+### **1. Nuclei CLI (Free)**
 
 Install Nuclei on your Command Line Interface (CLI) for free. Get started by following the installation guide [here](https://docs.projectdiscovery.io/tools/nuclei/install). Enhance your experience by connecting to our cloud platform to:
 
@@ -57,7 +57,7 @@ Install Nuclei on your Command Line Interface (CLI) for free. Get started by fol
 - Browse the latest trending vulnerabilities
 - **Ideal for:** Bug bounty hunters, researchers, and individuals
 
-#### **2. ProjectDiscovery Pro and Enterprise**
+### **2. ProjectDiscovery Pro and Enterprise**
 
 Upgrade to [ProjectDiscovery Pro](https://projectdiscovery.io/pricing) for the fastest and most reliable scanning:
 
@@ -68,7 +68,7 @@ Upgrade to [ProjectDiscovery Pro](https://projectdiscovery.io/pricing) for the f
 - Plus: Real-time scanning, SAML SSO, SOC 2 compliance, shared team workspaces, and more
 - **Ideal for:** Pentesters, security teams, and enterprises
 
-## Learn
+## Learn more
 
 <p align="left">
 
@@ -76,8 +76,6 @@ Upgrade to [ProjectDiscovery Pro](https://projectdiscovery.io/pricing) for the f
 &nbsp;&nbsp;
 <img src="/static/nuclei-write-your-first-template.png" width="300px">
 
-
-Here are a few common ways to use Nuclei for scanning:
 
 ### Single target scan
 
@@ -124,7 +122,7 @@ nuclei -target https://example.com -cloud-upload
 
 <br />
 
-### Command-Line Reference
+## Command Line Flags
 
 To display all the flags for the tool:
 
@@ -372,7 +370,7 @@ Additional documentation is available at: https://docs.nuclei.sh/getting-started
 
 <br />
 
-### Our Mission
+## Our Mission
 
 Traditional vulnerability scanners were built decades ago. They are closed-source, incredibly slow, and vendor-driven. Today's attackers are mass exploiting newly released CVEs across the internet within days, unlike the years it used to take. This shift requires a completely different approach to tackling trending exploits on the internet.
 
