@@ -1,10 +1,11 @@
-![nuclei](/static/nuclei-cover.png)
+![nuclei](/static/nuclei-cover-image.png)
 
 <p align="center">
-	<h1 align="center"><b>Nuclei</b></h1>
+  <strong>Nuclei</strong> by ProjectDiscovery
 </p>
 
-<p align="center" >
+<p align="center">
+
 <img src="https://img.shields.io/badge/go-1.21-%2300ADD8.svg?style=for-the-badge&logo=go&logoColor=white">
 &nbsp;&nbsp;
 <a href="https://docs.projectdiscovery.io/tools/nuclei/overview"><img src="https://img.shields.io/badge/Documentation-%23000000.svg?style=for-the-badge&logo=data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IiNmZmZmZmYiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIiBjbGFzcz0ibHVjaWRlIGx1Y2lkZS1ib29rLW9wZW4iPjxwYXRoIGQ9Ik0xMiA3djE0Ii8+PHBhdGggZD0iTTMgMThhMSAxIDAgMCAxLTEtMVY0YTEgMSAwIDAgMSAxLTFoNWE0IDQgMCAwIDEgNCA0IDQgNCAwIDAgMSA0LTRoNWExIDEgMCAwIDEgMSAxdjEzYTEgMSAwIDAgMS0xIDFoLTZhMyAzIDAgMCAwLTMgMyAzIDMgMCAwIDAtMy0zeiIvPjwvc3ZnPg==&logoColor=white"></a>
@@ -13,6 +14,7 @@
 &nbsp;&nbsp;
 <a href="https://discord.gg/projectdiscovery"><img src="https://img.shields.io/badge/Discord-%235865F2.svg?style=for-the-badge&logo=discord&logoColor=white"></a>
 
+----
 
 
 </p>
@@ -31,14 +33,29 @@ Nuclei is a modern, high-performance vulnerability scanner that leverages simple
 
 ## Get Started
 
-**There are two ways to start using Nuclei:**
+Nuclei offers two ways to begin your vulnerability scanning journey:
 
-1. Install Nuclei on your machine or within your CI/CD pipeline. You can find more details [here](https://docs.projectdiscovery.io/tools/nuclei/install).
+### **1. Nuclei CLI - Free**
 
+Install Nuclei on your Command Line Interface (CLI) for free. Get started by following the installation guide [here](https://docs.projectdiscovery.io/tools/nuclei/install). Enhance your experience by connecting to our cloud platform to:
 
-2. [Enterprise Edition](https://projectdiscovery.io/request-demo) includes extra features that are more useful for organizations with large infrastructure and teams.
+- Ideal for: Bug bounty hunters, researchers, and individuals
+- Visualize your vulnerability findings
+- Write and manage your detections templates
+- Browse the latest trending vulnerabilities
 
-<br /> 
+### **2. ProjectDiscovery Pro and Enterprise**
+
+Upgrade to [ProjectDiscovery Pro](https://projectdiscovery.io/pricing) for the fastest and most reliable scanning:
+
+- **Ideal for:** Pentesters, security teams, and enterprises
+- **50x Faster Scans**
+- **Large-scale Scanning**
+- **Ticketing and Notification Integrations**
+- **Comprehensive Reporting & Analytics**
+- **Plus:** Real-time scanning, SAML SSO, SOC 2 compliance, shared team workspaces, and more
+
+👉 [**Sign Up Now**](https://projectdiscovery.io/pricing) to unlock the full potential of Nuclei with our Pro and Enterprise editions.
 
 
 ## Learn more
