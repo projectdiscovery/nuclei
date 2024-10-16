@@ -119,10 +119,13 @@ You can run the scans on your machine and upload the results to the cloud platfo
 nuclei -target https://example.com -cloud-upload
 ```
 
+<p align="center">
+    <img src="/static/projectdiscovery-browse-results.gif" width="1200px">
+<br />
+
 > [!NOTE]
 > This feature is absolutely free and does not require any subscription. For a detailed guide, refer to the [documentation](https://docs.projectdiscovery.io/cloud/scanning/nuclei-scan?utm_source=github&utm_medium=web&utm_campaign=nuclei_readme).
 
-<br />
 
 ## Command Line Flags
 
