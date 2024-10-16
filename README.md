@@ -127,7 +127,6 @@ nuclei -target https://example.com -cloud-upload
 
 <p align="center">
 	<a href="[https://www.youtube.com/watch?v=b5qMyQvL1ZA](https://cloud.projectdiscovery.io/sign-up)&utm_source=github&utm_medium=web&utm_campaign=nuclei_readme" target="_blank">
-
     <img src="/static/projectdiscovery-browse-results.gif" width="1200px">
 <br />
 
