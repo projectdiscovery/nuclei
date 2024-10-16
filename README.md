@@ -8,11 +8,11 @@
 
 <img src="https://img.shields.io/badge/go-1.21-%2300ADD8.svg?style=for-the-badge&logo=go&logoColor=white">
 &nbsp;&nbsp;
-<a href="https://docs.projectdiscovery.io/tools/nuclei/overview"><img src="https://img.shields.io/badge/Documentation-%23000000.svg?style=for-the-badge&logo=data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IiNmZmZmZmYiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIiBjbGFzcz0ibHVjaWRlIGx1Y2lkZS1ib29rLW9wZW4iPjxwYXRoIGQ9Ik0xMiA3djE0Ii8+PHBhdGggZD0iTTMgMThhMSAxIDAgMCAxLTEtMVY0YTEgMSAwIDAgMSAxLTFoNWE0IDQgMCAwIDEgNCA0IDQgNCAwIDAgMSA0LTRoNWExIDEgMCAwIDEgMSAxdjEzYTEgMSAwIDAgMS0xIDFoLTZhMyAzIDAgMCAwLTMgMyAzIDMgMCAwIDAtMy0zeiIvPjwvc3ZnPg==&logoColor=white"></a>
+<a href="https://docs.projectdiscovery.io/tools/nuclei/overview?utm_source=github&utm_medium=web&utm_campaign=nuclei_readme"><img src="https://img.shields.io/badge/Documentation-%23000000.svg?style=for-the-badge&logo=data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IiNmZmZmZmYiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIiBjbGFzcz0ibHVjaWRlIGx1Y2lkZS1ib29rLW9wZW4iPjxwYXRoIGQ9Ik0xMiA3djE0Ii8+PHBhdGggZD0iTTMgMThhMSAxIDAgMCAxLTEtMVY0YTEgMSAwIDAgMSAxLTFoNWE0IDQgMCAwIDEgNCA0IDQgNCAwIDAgMSA0LTRoNWExIDEgMCAwIDEgMSAxdjEzYTEgMSAwIDAgMS0xIDFoLTZhMyAzIDAgMCAwLTMgMyAzIDMgMCAwIDAtMy0zeiIvPjwvc3ZnPg==&logoColor=white"></a>
 &nbsp;&nbsp;
-<a href="https://docs.projectdiscovery.io/tools/nuclei/overview"><img src="https://img.shields.io/badge/Templates Library-%23000000.svg?style=for-the-badge&logo=data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxNiIgaGVpZ2h0PSIxNiIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IiNmZmZmZmYiIHN0cm9rZS13aWR0aD0iMS41IiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiIGNsYXNzPSJsdWNpZGUgbHVjaWRlLXNoaWVsZCI+PHBhdGggZD0iTTIwIDEzYzAgNS0zLjUgNy41LTcuNjYgOC45NWExIDEgMCAwIDEtLjY3LS4wMUM3LjUgMjAuNSA0IDE4IDQgMTNWNmExIDEgMCAwIDEgMS0xYzIgMCA0LjUtMS4yIDYuMjQtMi43MmExLjE3IDEuMTcgMCAwIDEgMS41MiAwQzE0LjUxIDMuODEgMTcgNSAxOSA1YTEgMSAwIDAgMSAxIDF6Ii8+PC9zdmc+&logoColor=white"></a>
+<a href="https://docs.projectdiscovery.io/tools/nuclei/overview?utm_source=github&utm_medium=web&utm_campaign=nuclei_readme"><img src="https://img.shields.io/badge/Templates Library-%23000000.svg?style=for-the-badge&logo=data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxNiIgaGVpZ2h0PSIxNiIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IiNmZmZmZmYiIHN0cm9rZS13aWR0aD0iMS41IiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiIGNsYXNzPSJsdWNpZGUgbHVjaWRlLXNoaWVsZCI+PHBhdGggZD0iTTIwIDEzYzAgNS0zLjUgNy41LTcuNjYgOC45NWExIDEgMCAwIDEtLjY3LS4wMUM3LjUgMjAuNSA0IDE4IDQgMTNWNmExIDEgMCAwIDEgMS0xYzIgMCA0LjUtMS4yIDYuMjQtMi43MmExLjE3IDEuMTcgMCAwIDEgMS41MiAwQzE0LjUxIDMuODEgMTcgNSAxOSA1YTEgMSAwIDAgMSAxIDF6Ii8+PC9zdmc+&logoColor=white"></a>
 &nbsp;&nbsp;
-<a href="https://discord.gg/projectdiscovery"><img src="https://img.shields.io/badge/Discord-%235865F2.svg?style=for-the-badge&logo=discord&logoColor=white"></a>
+<a href="https://discord.gg/projectdiscovery?utm_source=github&utm_medium=web&utm_campaign=nuclei_readme"><img src="https://img.shields.io/badge/Discord-%235865F2.svg?style=for-the-badge&logo=discord&logoColor=white"></a>
 
 ---
 
@@ -45,12 +45,11 @@ Nuclei is a modern, high-performance vulnerability scanner that leverages simple
 - [Contributors ❤️](#contributors-heart)
 - [License](#license)
 
-
 ## Get Started
 
 ### **1. Nuclei CLI (Free)**
 
-Install Nuclei on your Command Line Interface (CLI) for free. Get started by following the installation guide [here](https://docs.projectdiscovery.io/tools/nuclei/install). Enhance your experience by connecting to our cloud platform to:
+Install Nuclei on your Command Line Interface (CLI) for free. Get started by following the installation guide [here](https://docs.projectdiscovery.io/tools/nuclei/install?utm_source=github&utm_medium=web&utm_campaign=nuclei_readme). Enhance your experience by connecting to our cloud platform to:
 
 - Visualize your vulnerability findings
 - Write and manage your detections templates
@@ -59,7 +58,7 @@ Install Nuclei on your Command Line Interface (CLI) for free. Get started by fol
 
 ### **2. ProjectDiscovery Pro and Enterprise**
 
-Upgrade to [ProjectDiscovery Pro](https://projectdiscovery.io/pricing) for the fastest and most reliable scanning:
+Upgrade to [ProjectDiscovery Pro](https://projectdiscovery.io/pricing?utm_source=github&utm_medium=web&utm_campaign=nuclei_readme) for the fastest and most reliable scanning:
 
 - 50x Faster Scans
 - Large-scale Scanning
@@ -71,11 +70,14 @@ Upgrade to [ProjectDiscovery Pro](https://projectdiscovery.io/pricing) for the f
 ## Learn more
 
 <p align="left">
-
-<img src="/static/nuclei-getting-started.png" width="300px">
-&nbsp;&nbsp;
-<img src="/static/nuclei-write-your-first-template.png" width="300px">
-
+  <a href="https://www.youtube.com/watch?v=b5qMyQvL1ZA&utm_source=github&utm_medium=web&utm_campaign=nuclei_readme" target="_blank">
+    <img src="/static/nuclei-getting-started.png" width="300px">
+  </a>
+  &nbsp;&nbsp;
+  <a href="https://www.youtube.com/watch?v=nFXygQdtjyw&utm_source=github&utm_medium=web&utm_campaign=nuclei_readme" target="_blank">
+    <img src="/static/nuclei-write-your-first-template.png" width="300px">
+  </a>
+</p>
 
 ### Single target scan
 
@@ -118,7 +120,7 @@ nuclei -target https://example.com -cloud-upload
 ```
 
 > [!NOTE]
-> This feature is absolutely free and does not require any subscription. For a detailed guide, refer to the [documentation](https://docs.projectdiscovery.io/cloud/scanning/nuclei-scan).
+> This feature is absolutely free and does not require any subscription. For a detailed guide, refer to the [documentation](https://docs.projectdiscovery.io/cloud/scanning/nuclei-scan?utm_source=github&utm_medium=web&utm_campaign=nuclei_readme).
 
 <br />
 
@@ -363,8 +365,9 @@ Run nuclei with a JSON output:
 Run nuclei with sorted Markdown outputs (with environment variables):
  $ MARKDOWN_EXPORT_SORT_MODE=template nuclei -target example.com -markdown-export nuclei_report/
 
-Additional documentation is available at: https://docs.nuclei.sh/getting-started/running
 ```
+
+Additional documentation is available at: [https://docs.nuclei.sh/getting-started/running](https://docs.nuclei.sh/getting-started/running?utm_source=github&utm_medium=web&utm_campaign=nuclei_readme)
 
 </details>
 
