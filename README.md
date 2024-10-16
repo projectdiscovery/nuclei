@@ -111,7 +111,7 @@ To write and use your own template, create a `.yaml` file with specific rules, t
 nuclei -u https://example.com -t /path/to/your-template.yaml
 ```
 
-### Remediate vulnerabilities with ProjectDiscovery Cloud Platform
+### Connect Nuclei to ProjectDiscovery
 
 You can run the scans on your machine and upload the results to the cloud platform for further analysis and remediation.
 
@@ -119,12 +119,17 @@ You can run the scans on your machine and upload the results to the cloud platfo
 nuclei -target https://example.com -cloud-upload
 ```
 
-<p align="center">
-    <img src="/static/projectdiscovery-browse-results.gif" width="1200px">
-<br />
 
 > [!NOTE]
 > This feature is absolutely free and does not require any subscription. For a detailed guide, refer to the [documentation](https://docs.projectdiscovery.io/cloud/scanning/nuclei-scan?utm_source=github&utm_medium=web&utm_campaign=nuclei_readme).
+
+### Browse and remediate vulnerabilities in ProjectDiscovery
+
+<p align="center">
+	<a href="[https://www.youtube.com/watch?v=b5qMyQvL1ZA](https://cloud.projectdiscovery.io/sign-up)&utm_source=github&utm_medium=web&utm_campaign=nuclei_readme" target="_blank">
+
+    <img src="/static/projectdiscovery-browse-results.gif" width="1200px">
+<br />
 
 
 ## Command Line Flags
