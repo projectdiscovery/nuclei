@@ -65,14 +65,14 @@ Install Nuclei on your machine. Get started by following the installation guide 
 
 ### **2. Pro and Enterprise Editions**
 
-For security teams and enterprises we provide a cloud hosted service on top of Nuclei to help you continuously scan for trending vulnerabilities at scale across your inftrastructure:
+For security teams and enterprises we provide a cloud hosted service on top of Nuclei OSS fine tuned to help you continuously run vulnerability scans at scale:
 
 - 50x faster scans
 - Large scale scanning with high accuracy
 - Integrations with cloud services (AWS, GCP, Azure, CloudFlare, Fastly)
 - Jira, Slack, APIs and Webhooks
 - Executive and compliance reporting
-- Plus: Real-time scanning, SAML SSO, SOC 2 compliance, shared team workspaces, and more
+- Plus: Real-time scanning, SAML SSO, SOC 2 compliant platform (with EU and US hosting options), shared team workspaces, and more
 - **Ideal for:** Pentesters, security teams, and enterprises
 
 ## Learn more
