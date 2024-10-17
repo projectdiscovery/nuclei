@@ -74,6 +74,7 @@ For security teams and enterprises, we provide a cloud-hosted service built on t
 - Jira, Slack, APIs and Webhooks
 - Executive and compliance reporting
 - Plus: Real-time scanning, SAML SSO, SOC 2 compliant platform (with EU and US hosting options), shared team workspaces, and more
+- We're constantly [adding new features](https://feedback.projectdiscovery.io/changelog)!
 - **Ideal for:** Pentesters, security teams, and enterprises
 
 ## Learn more
