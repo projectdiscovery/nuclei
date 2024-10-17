@@ -319,7 +319,7 @@ func (request *Request) ExecuteWithResults(target *contextargs.Context, dynamicV
 	templateCtx.Merge(payloadValues)
 
 	if vardump.EnableVarDump {
-		gologger.Debug().Msgf("Javascript Protocol request variables: \n%s\n", vardump.DumpVariables(payloadValues))
+		gologger.Debug().Msgf("JavaScript Protocol request variables: %s\n", vardump.DumpVariables(payloadValues))
 	}
 
 	if request.PreCondition != "" {

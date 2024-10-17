@@ -43,3 +43,8 @@ vendor
 
 # Headless `screenshot` action
 *.png
+
+# Profiling & tracing
+*.prof
+*.pprof
+*.trace

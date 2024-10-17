@@ -68,6 +68,7 @@ func ParseOptions(options *types.Options) {
 
 	if options.ShowVarDump {
 		vardump.EnableVarDump = true
+		vardump.Limit = options.VarDumpLimit
 	}
 	if options.ShowActions {
 		gologger.Info().Msgf("Showing available headless actions: ")

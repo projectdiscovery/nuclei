@@ -353,6 +353,20 @@ func (store *Store) areWorkflowOrTemplatesValid(filteredTemplatePaths map[string
 			if isParsingError("Error occurred parsing template %s: %s\n", templatePath, err) {
 				areTemplatesValid = false
 			}
+		} else if template == nil {
+			// NOTE(dwisiswant0): possibly global matchers template.
+			// This could definitely be handled better, for example by returning an
+			// `ErrGlobalMatchersTemplate` during `templates.Parse` and checking it
+			// with `errors.Is`.
+			//
+			// However, I’m not sure if every reference to it should be handled
+			// that way. Returning a `templates.Template` pointer would mean it’s
+			// an active template (sending requests), and adding a specific field
+			// like `isGlobalMatchers` in `templates.Template` (then checking it
+			// with a `*templates.Template.IsGlobalMatchersEnabled` method) would
+			// just introduce more unknown issues - like during template
+			// clustering, AFAIK.
+			continue
 		} else {
 			if existingTemplatePath, found := templateIDPathMap[template.ID]; !found {
 				templateIDPathMap[template.ID] = templatePath
