@@ -385,6 +385,42 @@ nuclei -target https://example.com -cloud-upload
 </p>
 <br />
 
+## Nuclei Templates, Community and Rewards 💎
+Nuclei templates are based on the concepts of YAML based template files that define how the requests will be sent and processed. This allows easy extensibility capabilities to nuclei. The templates are written in YAML which specifies a simple human-readable format to quickly define the execution process.
+
+Try it online with our AI powered Nuclei Templates Editor by clicking here.
+
+Nuclei Templates offer a streamlined way to identify and communicate vulnerabilities, combining essential details like severity ratings and detection methods. This open-source, community-developed tool accelerates threat response and is widely recognized in the cybersecurity world. Nuclei templates are actively contributed by thousands of security researchers globally. We run two programs for our contributors: [Pioneers](https://projectdiscovery.io/pioneers) and [💎 bounties](https://github.com/projectdiscovery/nuclei-templates/issues?q=is%3Aissue%20state%3Aopen%20label%3A%22%F0%9F%92%8E%20Bounty%22).
+
+
+<p align="center">
+    <a href="/static/nuclei-template-example.png"  target="_blank"><img src="/static/nuclei-template-example.png" width="1200px" alt="Semgrep rule example for finding Python print() statements" /></a>
+</p>
+
+#### Examples
+
+Visit [Docs > Template examples](#) for use cases and ideas.
+
+| Use case                             | Nuclei template                                    |
+| :----------------------------------- | :------------------------------------------------- |
+| Detect known CVEs                    | **CVE-2021-44228 (Log4Shell)**                     |
+| Identify Out-of-Band vulnerabilities | **Blind SQL Injection via OOB**                    |
+| SQL Injection detection              | **Generic SQL Injection**                          |
+| Cross-Site Scripting (XSS)           | **Reflected XSS Detection**                        |
+| Default or weak passwords            | **Default Credentials Check**                      |
+| Secret files or data exposure        | **Sensitive File Disclosure**                      |
+| Identify open redirects              | **Open Redirect Detection**                        |
+| Detect subdomain takeovers           | **Subdomain Takeover Templates**                   |
+| Security misconfigurations           | **Unprotected Jenkins Console**                    |
+| Weak SSL/TLS configurations          | **SSL Certificate Expiry**                         |
+| Exposed administrative interfaces    | **Publicly Accessible Admin Panels**               |
+| Misconfigured cloud services         | **Open S3 Bucket Detection**                       |
+| Remote code execution vulnerabilities| **RCE Detection Templates**                        |
+| Directory traversal attacks          | **Path Traversal Detection**                       |
+| File inclusion vulnerabilities       | **Local/Remote File Inclusion**                    |
+
+Visit [Docs > Template examples](#) for more use cases and ideas.
+
 ## Our Mission
 
 Traditional vulnerability scanners were built decades ago. They are closed-source, incredibly slow, and vendor-driven. Today's attackers are mass exploiting newly released CVEs across the internet within days, unlike the years it used to take. This shift requires a completely different approach to tackling trending exploits on the internet.
