@@ -1,5 +1,15 @@
 ![nuclei](/static/nuclei-cover-image.png)
 
+<p align="center">
+  <a href="https://github.com/projectdiscovery/nuclei/blob/main/README.md">English</a> •
+  <a href="https://github.com/projectdiscovery/nuclei/blob/main/README_CN.md">中文</a> •
+  <a href="https://github.com/projectdiscovery/nuclei/blob/main/README_KR.md">Korean</a> •
+  <a href="https://github.com/projectdiscovery/nuclei/blob/main/README_ID.md">Indonesia</a> •
+  <a href="https://github.com/projectdiscovery/nuclei/blob/main/README_ES.md">Spanish</a> •
+  <a href="https://github.com/projectdiscovery/nuclei/blob/main/README_JP.md">日本語</a>
+</p>
+
+</p>
 
 <p align="center">
 
@@ -44,23 +54,24 @@ Nuclei is a modern, high-performance vulnerability scanner that leverages simple
 
 ## Get Started
 
-### **1. Nuclei CLI (Free)**
+### **1. Nuclei CLI**
 
-Install Nuclei on your Command Line Interface (CLI) for free. Get started by following the installation guide [here](https://docs.projectdiscovery.io/tools/nuclei/install?utm_source=github&utm_medium=web&utm_campaign=nuclei_readme). Enhance your experience by connecting to our cloud platform to:
+Install Nuclei on your machine. Get started by following the installation guide [here](https://docs.projectdiscovery.io/tools/nuclei/install?utm_source=github&utm_medium=web&utm_campaign=nuclei_readme). It's free to get started with its cloud platform, where you can:
 
-- Visualize your vulnerability findings
-- Write and manage your detections templates
-- Browse the latest trending vulnerabilities
+- Store and visualize your vulnerability findings
+- Write and manage your nuclei templates
+- Access latest nuclei templates
 - **Ideal for:** Bug bounty hunters, researchers, and individuals
 
-### **2. ProjectDiscovery Pro and Enterprise**
+### **2. Pro and Enterprise Editions**
 
-Upgrade to [ProjectDiscovery Pro](https://projectdiscovery.io/pricing?utm_source=github&utm_medium=web&utm_campaign=nuclei_readme) for the fastest and most reliable scanning:
+For security teams and enterprises we provide a cloud hosted service on top of Nuclei to help you continuously scan for trending vulnerabilities at scale across your inftrastructure:
 
-- 50x Faster Scans
-- Large-scale Scanning
-- Ticketing and Notification Integrations
-- Comprehensive Reporting & Analytics
+- 50x faster scans
+- Large scale scanning with high accuracy
+- Integrations with cloud services (AWS, GCP, Azure, CloudFlare, Fastly)
+- Jira, Slack, APIs and Webhooks
+- Executive and compliance reporting
 - Plus: Real-time scanning, SAML SSO, SOC 2 compliance, shared team workspaces, and more
 - **Ideal for:** Pentesters, security teams, and enterprises
 
