@@ -87,58 +87,7 @@ Browse the full Nuclei [documentation here](https://docs.projectdiscovery.io/too
 
 </p>
 
-### Single target scan
-
-To perform a quick scan on web-application:
-
-```sh
-nuclei -target https://example.com
-```
-
-### Scanning multiple targets
-
-Nuclei can handle bulk scanning by providing a list of targets. You can use a file containing multiple URLs.
-
-```sh
-nuclei -targets urls.txt
-```
-
-### Network scan
-
-If you need to scan an IP range for network vulnerabilities, you can run. This will scan the entire subnet for network-related issues, such as open ports or misconfigured services.
-
-```sh
-nuclei -target 192.168.1.0/24 -t network/
-```
-
-### Scanning with your custom template
-
-To write and use your own template, create a `.yaml` file with specific rules, then use it as follows.
-
-```sh
-nuclei -u https://example.com -t /path/to/your-template.yaml
-```
-
-### Connect Nuclei to ProjectDiscovery
-
-You can run the scans on your machine and upload the results to the cloud platform for further analysis and remediation.
-
-```sh
-nuclei -target https://example.com -cloud-upload
-```
-
-> [!NOTE]
-> This feature is absolutely free and does not require any subscription. For a detailed guide, refer to the [documentation](https://docs.projectdiscovery.io/cloud/scanning/nuclei-scan?utm_source=github&utm_medium=web&utm_campaign=nuclei_readme).
-
-### Browse and remediate vulnerabilities in ProjectDiscovery
-<br />
-
-<p align="center">
-	<a href="https://cloud.projectdiscovery.io/sign-up?utm_source=github&utm_medium=web&utm_campaign=nuclei_readme" target="_blank"><img src="/static/projectdiscovery-browse-results.gif" width="1200px"></a>
-</p>
-<br />
-
-## Command Line Flags
+### Command Line Flags
 
 To display all the flags for the tool:
 
@@ -385,6 +334,55 @@ Additional documentation is available at: [https://docs.nuclei.sh/getting-starte
 
 </details>
 
+### Single target scan
+
+To perform a quick scan on web-application:
+
+```sh
+nuclei -target https://example.com
+```
+
+### Scanning multiple targets
+
+Nuclei can handle bulk scanning by providing a list of targets. You can use a file containing multiple URLs.
+
+```sh
+nuclei -targets urls.txt
+```
+
+### Network scan
+
+If you need to scan an IP range for network vulnerabilities, you can run. This will scan the entire subnet for network-related issues, such as open ports or misconfigured services.
+
+```sh
+nuclei -target 192.168.1.0/24 -t network/
+```
+
+### Scanning with your custom template
+
+To write and use your own template, create a `.yaml` file with specific rules, then use it as follows.
+
+```sh
+nuclei -u https://example.com -t /path/to/your-template.yaml
+```
+
+### Connect Nuclei to ProjectDiscovery
+
+You can run the scans on your machine and upload the results to the cloud platform for further analysis and remediation.
+
+```sh
+nuclei -target https://example.com -cloud-upload
+```
+
+> [!NOTE]
+> This feature is absolutely free and does not require any subscription. For a detailed guide, refer to the [documentation](https://docs.projectdiscovery.io/cloud/scanning/nuclei-scan?utm_source=github&utm_medium=web&utm_campaign=nuclei_readme).
+
+### Browse and remediate vulnerabilities in ProjectDiscovery
+<br />
+
+<p align="center">
+	<a href="https://cloud.projectdiscovery.io/sign-up?utm_source=github&utm_medium=web&utm_campaign=nuclei_readme" target="_blank"><img src="/static/projectdiscovery-browse-results.gif" width="1200px"></a>
+</p>
 <br />
 
 ## Our Mission
