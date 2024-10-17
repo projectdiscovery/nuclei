@@ -19,6 +19,7 @@ import (
 	"github.com/projectdiscovery/hmap/filekv"
 	"github.com/projectdiscovery/hmap/store/hybrid"
 	"github.com/projectdiscovery/mapcidr/asn"
+	"github.com/projectdiscovery/nuclei/v3/pkg/input/provider/dedupe"
 	providerTypes "github.com/projectdiscovery/nuclei/v3/pkg/input/types"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
@@ -48,6 +49,8 @@ type ListInputProvider struct {
 	hostMapStream     *filekv.FileDB
 	hostMapStreamOnce sync.Once
 	sync.Once
+
+	fuzzDeduper *dedupe.FuzzingDeduper
 }
 
 // Options is a wrapper around types.Options structure
@@ -77,6 +80,9 @@ func New(opts *Options) (*ListInputProvider, error) {
 			IPV6:       sliceutil.Contains(options.IPVersion, "6"),
 		},
 		excludedHosts: make(map[string]struct{}),
+	}
+	if options.FuzzingDedupe {
+		input.fuzzDeduper = dedupe.NewFuzzingDeduper()
 	}
 	if options.Stream {
 		fkvOptions := filekv.DefaultOptions
@@ -472,6 +478,12 @@ func (i *ListInputProvider) setItem(metaInput *contextargs.MetaInput) {
 	}
 
 	i.inputCount++ // tracks target count
+	if i.fuzzDeduper != nil {
+		if !i.fuzzDeduper.Add(metaInput.Target()) {
+			gologger.Verbose().Msgf("Ignoring duplicate fuzzing target: %s\n", metaInput.Target())
+			return
+		}
+	}
 	_ = i.hostMap.Set(key, nil)
 	if i.hostMapStream != nil {
 		i.setHostMapStream(key)
