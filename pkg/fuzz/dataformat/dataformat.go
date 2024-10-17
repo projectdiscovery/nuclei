@@ -21,6 +21,7 @@ func init() {
 	RegisterDataFormat(NewJSON())
 	RegisterDataFormat(NewXML())
 	RegisterDataFormat(NewRaw())
+	RegisterDataFormat(NewGraphql())
 	RegisterDataFormat(NewForm())
 	RegisterDataFormat(NewMultiPartForm())
 }
@@ -36,6 +37,8 @@ const (
 	FormDataFormat = "form"
 	// MultiPartFormDataFormat is the name of the MultiPartForm data format
 	MultiPartFormDataFormat = "multipart/form-data"
+	// GraphqlDataFormat is the name of the Graphql data format
+	GraphqlDataFormat = "graphql"
 )
 
 // Get returns the dataformat by name
