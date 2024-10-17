@@ -1,8 +1,5 @@
 ![nuclei](/static/nuclei-cover-image.png)
 
-<p align="center">
-  <strong>Nuclei</strong> by ProjectDiscovery
-</p>
 
 <p align="center">
 
