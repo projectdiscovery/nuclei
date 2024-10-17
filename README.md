@@ -69,7 +69,11 @@ Upgrade to [ProjectDiscovery Pro](https://projectdiscovery.io/pricing?utm_source
 
 ## Learn more
 
-<a href="https://www.youtube.com/watch?v=b5qMyQvL1ZA&utm_source=github&utm_medium=web&utm_campaign=nuclei_readme" target="_blank"><img src="/static/nuclei-getting-started.png" width="300px"></a><a href="https://www.youtube.com/watch?v=nFXygQdtjyw&utm_source=github&utm_medium=web&utm_campaign=nuclei_readme" target="_blank"><img src="/static/nuclei-write-your-first-template.png" width="300px"></a>
+<p align="center">
+
+<a href="https://www.youtube.com/watch?v=b5qMyQvL1ZA&utm_source=github&utm_medium=web&utm_campaign=nuclei_readme" target="_blank"><img src="/static/nuclei-getting-started.png" width="350px"></a> <a href="https://www.youtube.com/watch?v=nFXygQdtjyw&utm_source=github&utm_medium=web&utm_campaign=nuclei_readme" target="_blank"><img src="/static/nuclei-write-your-first-template.png" width="350px"></a>
+
+</p>
 
 ### Single target scan
 
@@ -115,6 +119,7 @@ nuclei -target https://example.com -cloud-upload
 > This feature is absolutely free and does not require any subscription. For a detailed guide, refer to the [documentation](https://docs.projectdiscovery.io/cloud/scanning/nuclei-scan?utm_source=github&utm_medium=web&utm_campaign=nuclei_readme).
 
 ### Browse and remediate vulnerabilities in ProjectDiscovery
+<br />
 
 <p align="center">
 	<a href="https://cloud.projectdiscovery.io/sign-up?utm_source=github&utm_medium=web&utm_campaign=nuclei_readme" target="_blank"><img src="/static/projectdiscovery-browse-results.gif" width="1200px"></a>
