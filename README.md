@@ -42,7 +42,7 @@ Nuclei is a modern, high-performance vulnerability scanner that leverages simple
 - [Get Started](#get-started)
   - [1. Nuclei CLI (Free)](#1-nuclei-cli-free)
   - [2. ProjectDiscovery Pro and Enterprise](#2-projectdiscovery-pro-and-enterprise)
-- [Learn more](#learn-more)
+- [Documentation](#documentation)
   - [Single target scan](#single-target-scan)
   - [Scanning multiple targets](#scanning-multiple-targets)
   - [Network scan](#network-scan)
@@ -77,7 +77,9 @@ For security teams and enterprises, we provide a cloud-hosted service built on t
 - We're constantly [adding new features](https://feedback.projectdiscovery.io/changelog)!
 - **Ideal for:** Pentesters, security teams, and enterprises
 
-## Learn more
+## Documentation
+
+Browse the full Nuclei [documentation here](https://docs.projectdiscovery.io/tools/nuclei/running). If you’re new to Nuclei, check out our [foundational Youtube series.](https://www.youtube.com/playlist?list=PLZRbR9aMzTTpItEdeNSulo8bYsvil80Rl)
 
 <p align="center">
 
