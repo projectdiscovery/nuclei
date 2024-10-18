@@ -396,7 +396,7 @@ Nuclei Templates offer a streamlined way to identify and communicate vulnerabili
 
 
 <p align="left">
-    <a href="/static/nuclei-templates-teamcity-example.png"  target="_blank"><img src="/static/nuclei-templates-teamcity-example.png" height="750px" alt="Nuclei template example for detecting TeamCity misconfiguration" /></a>
+    <a href="/static/nuclei-templates-teamcity.png"  target="_blank"><img src="/static/nuclei-templates-teamcity.png" width="1200px" alt="Nuclei template example for detecting TeamCity misconfiguration" /></a>
 </p>
 
 #### Examples
@@ -428,8 +428,6 @@ Traditional vulnerability scanners were built decades ago. They are closed-sourc
 We built Nuclei to solve this challenge. We made the entire scanning engine framework open and customizable—allowing the global security community to collaborate and tackle the trending attack vectors and vulnerabilities on the internet. Nuclei is now used and contributed by Fortune 500 enterprises, government agencies, universities.
 
 You can participate by contributing to our code, templates library, or joining our team.
-
-<br />
 
 ## Contributors :heart:
 
