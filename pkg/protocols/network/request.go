@@ -314,30 +314,31 @@ func (request *Request) executeRequestWithPayloads(variables map[string]interfac
 	inputEvents := make(map[string]interface{})
 
 	for _, input := range request.Inputs {
-		data := []byte(input.Data)
+		dataInBytes := []byte(input.Data)
+		var err error
 
-		if request.options.Interactsh != nil {
-			var transformedData string
-			transformedData, interactshURLs = request.options.Interactsh.Replace(string(data), []string{})
-			data = []byte(transformedData)
-		}
-
-		finalData, err := expressions.EvaluateByte(data, interimValues)
+		dataInBytes, err = expressions.EvaluateByte(dataInBytes, interimValues)
 		if err != nil {
 			request.options.Output.Request(request.options.TemplatePath, address, request.Type().String(), err)
 			request.options.Progress.IncrementFailedRequestsBy(1)
 			return errors.Wrap(err, "could not evaluate template expressions")
 		}
 
-		reqBuilder.Write(finalData)
+		data := string(dataInBytes)
+		if request.options.Interactsh != nil {
+			data, interactshURLs = request.options.Interactsh.Replace(data, []string{})
+			dataInBytes = []byte(data)
+		}
 
-		if err := expressions.ContainsUnresolvedVariables(string(finalData)); err != nil {
+		reqBuilder.Write(dataInBytes)
+
+		if err := expressions.ContainsUnresolvedVariables(data); err != nil {
 			gologger.Warning().Msgf("[%s] Could not make network request for %s: %v\n", request.options.TemplateID, actualAddress, err)
 			return nil
 		}
 
 		if input.Type.GetType() == hexType {
-			finalData, err = hex.DecodeString(string(finalData))
+			dataInBytes, err = hex.DecodeString(data)
 			if err != nil {
 				request.options.Output.Request(request.options.TemplatePath, address, request.Type().String(), err)
 				request.options.Progress.IncrementFailedRequestsBy(1)
@@ -345,7 +346,7 @@ func (request *Request) executeRequestWithPayloads(variables map[string]interfac
 			}
 		}
 
-		if _, err := conn.Write(finalData); err != nil {
+		if _, err := conn.Write(dataInBytes); err != nil {
 			request.options.Output.Request(request.options.TemplatePath, address, request.Type().String(), err)
 			request.options.Progress.IncrementFailedRequestsBy(1)
 			return errors.Wrap(err, "could not write request to server")
