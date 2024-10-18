@@ -386,9 +386,9 @@ nuclei -target https://example.com -cloud-upload
 <br />
 
 ## Nuclei Templates, Community and Rewards 💎
-Nuclei templates are based on the concepts of YAML based template files that define how the requests will be sent and processed. This allows easy extensibility capabilities to nuclei. The templates are written in YAML which specifies a simple human-readable format to quickly define the execution process.
+[Nuclei templates](https://github.com/projectdiscovery/nuclei-templates) are based on the concepts of YAML based template files that define how the requests will be sent and processed. This allows easy extensibility capabilities to nuclei. The templates are written in YAML which specifies a simple human-readable format to quickly define the execution process.
 
-Try it online with our AI powered Nuclei Templates Editor by clicking here.
+Try it online with our AI powered Nuclei Templates Editor by [clicking here.](https://cloud.projectdiscovery.io/templates)
 
 Nuclei Templates offer a streamlined way to identify and communicate vulnerabilities, combining essential details like severity ratings and detection methods. This open-source, community-developed tool accelerates threat response and is widely recognized in the cybersecurity world. Nuclei templates are actively contributed by thousands of security researchers globally. We run two programs for our contributors: [Pioneers](https://projectdiscovery.io/pioneers) and [💎 bounties](https://github.com/projectdiscovery/nuclei-templates/issues?q=is%3Aissue%20state%3Aopen%20label%3A%22%F0%9F%92%8E%20Bounty%22).
 
@@ -399,27 +399,25 @@ Nuclei Templates offer a streamlined way to identify and communicate vulnerabili
 
 #### Examples
 
-Visit [Docs > Template examples](#) for use cases and ideas.
+Visit [our documentation](https://docs.projectdiscovery.io/templates/introduction) for use cases and ideas.
 
 | Use case                             | Nuclei template                                    |
 | :----------------------------------- | :------------------------------------------------- |
-| Detect known CVEs                    | **CVE-2021-44228 (Log4Shell)**                     |
-| Identify Out-of-Band vulnerabilities | **Blind SQL Injection via OOB**                    |
-| SQL Injection detection              | **Generic SQL Injection**                          |
-| Cross-Site Scripting (XSS)           | **Reflected XSS Detection**                        |
-| Default or weak passwords            | **Default Credentials Check**                      |
-| Secret files or data exposure        | **Sensitive File Disclosure**                      |
-| Identify open redirects              | **Open Redirect Detection**                        |
-| Detect subdomain takeovers           | **Subdomain Takeover Templates**                   |
-| Security misconfigurations           | **Unprotected Jenkins Console**                    |
-| Weak SSL/TLS configurations          | **SSL Certificate Expiry**                         |
-| Exposed administrative interfaces    | **Publicly Accessible Admin Panels**               |
-| Misconfigured cloud services         | **Open S3 Bucket Detection**                       |
-| Remote code execution vulnerabilities| **RCE Detection Templates**                        |
-| Directory traversal attacks          | **Path Traversal Detection**                       |
-| File inclusion vulnerabilities       | **Local/Remote File Inclusion**                    |
+| Detect known CVEs                    | **[CVE-2021-44228 (Log4Shell)](https://cloud.projectdiscovery.io/public/CVE-2021-45046)**                     |
+| Identify Out-of-Band vulnerabilities | **[Blind SQL Injection via OOB](https://cloud.projectdiscovery.io/public/CVE-2024-22120)**                    |
+| SQL Injection detection              | **[Generic SQL Injection](https://cloud.projectdiscovery.io/public/CVE-2022-34265)**                          |
+| Cross-Site Scripting (XSS)           | **[Reflected XSS Detection](https://cloud.projectdiscovery.io/public/CVE-2023-4173)**                        |
+| Default or weak passwords            | **[Default Credentials Check](https://cloud.projectdiscovery.io/public/airflow-default-login)**                      |
+| Secret files or data exposure        | **[Sensitive File Disclosure](https://cloud.projectdiscovery.io/public/airflow-configuration-exposure)**                      |
+| Identify open redirects              | **[Open Redirect Detection](https://cloud.projectdiscovery.io/public/open-redirect)**                        |
+| Detect subdomain takeovers           | **[Subdomain Takeover Templates](https://cloud.projectdiscovery.io/public/azure-takeover-detection)**                   |
+| Security misconfigurations           | **[Unprotected Jenkins Console](https://cloud.projectdiscovery.io/public/unauthenticated-jenkins)**                    |
+| Weak SSL/TLS configurations          | **[SSL Certificate Expiry](https://cloud.projectdiscovery.io/public/expired-ssl)**                         |
+| Misconfigured cloud services         | **[Open S3 Bucket Detection](https://cloud.projectdiscovery.io/public/s3-public-read-acp)**                       |
+| Remote code execution vulnerabilities| **[RCE Detection Templates](https://cloud.projectdiscovery.io/public/CVE-2024-29824)**                        |
+| Directory traversal attacks          | **[Path Traversal Detection](https://cloud.projectdiscovery.io/public/oracle-fatwire-lfi)**                       |
+| File inclusion vulnerabilities       | **[Local/Remote File Inclusion](https://cloud.projectdiscovery.io/public/CVE-2023-6977)**                    |
 
-Visit [Docs > Template examples](#) for more use cases and ideas.
 
 ## Our Mission
 
