@@ -396,7 +396,7 @@ Nuclei Templates offer a streamlined way to identify and communicate vulnerabili
 
 
 <p align="center">
-    <a href="/static/teamcity-example.png"  target="_blank"><img src="/static/teamcity-example.png" width="1200px" alt="Nuclei template example for detecting TeamCity misconfiguration" /></a>
+    <a href="/static/teamcity-example.png"  target="_blank"><img src="/static/teamcity-example.png" width="800px" alt="Nuclei template example for detecting TeamCity misconfiguration" /></a>
 </p>
 
 #### Examples
