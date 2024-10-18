@@ -59,12 +59,12 @@ Nuclei is a modern, high-performance vulnerability scanner that leverages simple
 
 ### **1. Nuclei CLI**
 
-Install Nuclei on your machine. Get started by following the installation guide [here](https://docs.projectdiscovery.io/tools/nuclei/install?utm_source=github&utm_medium=web&utm_campaign=nuclei_readme). Additionally, We provide a free cloud tier and comes with a generous monthly free limits:
+Install Nuclei on your machine. Get started by following the installation guide [here](https://docs.projectdiscovery.io/tools/nuclei/install?utm_source=github&utm_medium=web&utm_campaign=nuclei_readme). Additionally, We provide [a free cloud tier](https://cloud.projectdiscovery.io/sign-up) and comes with a generous monthly free limits:
 
 - Store and visualize your vulnerability findings
 - Write and manage your nuclei templates
 - Access latest nuclei templates
-- Discovery and manage up to 10 domains per month.
+- Discover and store your targets
 
 ### **2. Pro and Enterprise Editions**
 
