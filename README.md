@@ -394,7 +394,7 @@ Nuclei Templates offer a streamlined way to identify and communicate vulnerabili
 
 
 <p align="center">
-    <a href="/static/nuclei-template-example.png"  target="_blank"><img src="/static/nuclei-template-example.png" width="1200px" alt="Semgrep rule example for finding Python print() statements" /></a>
+    <a href="/static/teamcity-example.png"  target="_blank"><img src="/static/teamcity-example.png" width="1200px" alt="Nuclei template example for detecting TeamCity misconfiguration" /></a>
 </p>
 
 #### Examples
