@@ -2,6 +2,7 @@ package reporting
 
 import (
 	"fmt"
+	"github.com/projectdiscovery/nuclei/v3/pkg/reporting/exporters/mongo"
 	"os"
 	"strings"
 	"sync/atomic"
@@ -166,6 +167,13 @@ func New(options *Options, db string, doNotDedupe bool) (Client, error) {
 		}
 		client.exporters = append(client.exporters, exporter)
 	}
+	if options.MongoDBExporter != nil {
+		exporter, err := mongo.New(options.MongoDBExporter)
+		if err != nil {
+			return nil, errorutil.NewWithErr(err).Wrap(ErrExportClientCreation)
+		}
+		client.exporters = append(client.exporters, exporter)
+	}
 
 	if doNotDedupe {
 		return client, nil
@@ -212,6 +220,7 @@ func CreateConfigIfNotExists() error {
 		SplunkExporter:        &splunk.Options{},
 		JSONExporter:          &json_exporter.Options{},
 		JSONLExporter:         &jsonl.Options{},
+		MongoDBExporter:       &mongo.Options{},
 	}
 	reportingFile, err := os.Create(reportingConfig)
 	if err != nil {

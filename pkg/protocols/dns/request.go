@@ -108,7 +108,7 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, metadata,
 func (request *Request) execute(input *contextargs.Context, domain string, metadata, previous output.InternalEvent, vars map[string]interface{}, callback protocols.OutputEventCallback) error {
 	var err error
 	if vardump.EnableVarDump {
-		gologger.Debug().Msgf("DNS Protocol request variables: \n%s\n", vardump.DumpVariables(vars))
+		gologger.Debug().Msgf("DNS Protocol request variables: %s\n", vardump.DumpVariables(vars))
 	}
 
 	// Compile each request for the template based on the URL

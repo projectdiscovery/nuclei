@@ -457,25 +457,48 @@ func (template *Template) compileProtocolRequests(options protocols.ExecuterOpti
 That's it, you've added a new protocol to Nuclei. The next good step would be to write integration tests which are described in `integration-tests` and `cmd/integration-tests` directories.
 
 
-## Profiling Instructions
+## Profiling and Tracing
 
-To enable dumping of Memory profiling data, `-profile-mem` flag can be used along with path to a file. This writes a pprof formatted file which can be used for investigate resource usage with `pprof` tool.
+To analyze Nuclei's performance and resource usage, you can generate memory profiles and trace files using the `-profile-mem` flag:
 
-```console
-$ nuclei -t nuclei-templates/ -u https://example.com -profile-mem mem.pprof
+```bash
+nuclei -t nuclei-templates/ -u https://example.com -profile-mem=nuclei-$(git describe --tags)
 ```
 
-To view profile data in pprof, first install pprof. Then run the below command -
+This command creates two files:
 
-```console
-$ go tool pprof mem.pprof
+* `nuclei.prof`: Memory (heap) profile
+* `nuclei.trace`: Execution trace
+
+### Analyzing the Memory Profile
+
+1. View the profile in the terminal:
+
+```bash
+go tool pprof nuclei.prof
 ```
 
-To open a web UI on a port to visualize debug data, the below command can be used.
+2. Display top memory consumers:
 
-```console
-$ go tool pprof -http=:8081 mem.pprof
+```bash
+go tool pprof -top nuclei.prof | grep "$(go list -m)" | head -10
 ```
+
+3. Visualize the profile in a web browser:
+
+```bash
+go tool pprof -http=:$(shuf -i 1000-99999 -n 1) nuclei.prof
+```
+
+### Analyzing the Trace File
+
+To examine the execution trace:
+
+```bash
+go tool trace nuclei.trace
+```
+
+These tools help identify performance bottlenecks and memory leaks, allowing for targeted optimizations of Nuclei's codebase.
 
 ## Project Structure
 

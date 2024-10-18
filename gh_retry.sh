@@ -21,9 +21,9 @@ WORKFLOW="Build Test"
 GREP_ERROR_PATTERN='Test "http/interactsh.yaml" failed'
 
 #Set fonts for Help.
-NORM=`tput sgr0`
-BOLD=`tput bold`
-REV=`tput smso`
+NORM=$(tput sgr0)
+BOLD=$(tput bold)
+REV=$(tput smso)
 
 HELP()
 {
@@ -73,7 +73,7 @@ function print_bold() {
 function retry_failed_jobs() {
     print_bold "Checking failed workflows for branch $BRANCH before $BEFORE"
 
-    date=`date +%Y-%m-%d'T'%H:%M'Z' -d "$BEFORE"`
+    date=$(date +%Y-%m-%d'T'%H:%M'Z' -d "$BEFORE")
 
     workflowIds=$(gh run list --limit "$LIMIT"  --json headBranch,status,name,conclusion,databaseId,updatedAt | jq -c '.[] |
     select ( .headBranch==$branch ) |

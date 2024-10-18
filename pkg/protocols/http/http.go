@@ -223,6 +223,9 @@ type Request struct {
 	//  FuzzPreConditionOperator is the operator between multiple PreConditions for fuzzing Default is OR
 	FuzzPreConditionOperator string                 `yaml:"pre-condition-operator,omitempty" json:"pre-condition-operator,omitempty" jsonschema:"title=condition between the filters,description=Operator to use between multiple per-conditions,enum=and,enum=or"`
 	fuzzPreConditionOperator matchers.ConditionType `yaml:"-" json:"-"`
+	// description: |
+	//   GlobalMatchers marks matchers as static and applies globally to all result events from other templates
+	GlobalMatchers bool `yaml:"global-matchers,omitempty" json:"global-matchers,omitempty" jsonschema:"title=global matchers,description=marks matchers as static and applies globally to all result events from other templates"`
 }
 
 func (e Request) JSONSchemaExtend(schema *jsonschema.Schema) {
