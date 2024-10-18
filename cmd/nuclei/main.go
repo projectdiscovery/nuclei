@@ -236,7 +236,7 @@ on extensive configurability, massive extensibility and ease of use.`)
 
 	flagSet.CreateGroup("output", "Output",
 		flagSet.StringVarP(&options.Output, "output", "o", "", "output file to write found issues/vulnerabilities"),
-		flagSet.BoolVarP(&options.StoreProcess, "store-process", "sp", false, "store all request/response passed through nuclei to output result"),
+		flagSet.BoolVarP(&options.IncludeChain, "include-chain", "irc", false, "include all http request, response chain in json|l output"),
 		flagSet.BoolVarP(&options.StoreResponse, "store-resp", "sresp", false, "store all request/response passed through nuclei to output directory"),
 		flagSet.StringVarP(&options.StoreResponseDir, "store-resp-dir", "srd", runner.DefaultDumpTrafficOutputFolder, "store all request/response passed through nuclei to custom directory"),
 		flagSet.BoolVar(&options.Silent, "silent", false, "display findings only"),

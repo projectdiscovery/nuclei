@@ -262,8 +262,8 @@ type Options struct {
 	ShowMatchLine bool
 	// EnablePprof enables exposing pprof runtime information with a webserver.
 	EnablePprof bool
-	// StoreProcess stores received response to output result
-	StoreProcess bool
+	// Include all http request, response chain in json|l output
+	IncludeChain bool
 	// StoreResponse stores received response to output directory
 	StoreResponse bool
 	// StoreResponseDir stores received response to custom directory

@@ -61,7 +61,7 @@ type StandardWriter struct {
 	traceFile             io.WriteCloser
 	errorFile             io.WriteCloser
 	severityColors        func(severity.Severity) string
-	storeProcess          bool
+	includeChain          bool
 	storeResponse         bool
 	storeResponseDir      string
 	omitTemplate          bool
@@ -230,7 +230,7 @@ func NewStandardWriter(options *types.Options) (*StandardWriter, error) {
 		traceFile:        traceOutput,
 		errorFile:        errorOutput,
 		severityColors:   colorizer.New(auroraColorizer),
-		storeProcess:     options.StoreProcess,
+		includeChain:     options.IncludeChain,
 		storeResponse:    options.StoreResponse,
 		storeResponseDir: options.StoreResponseDir,
 		omitTemplate:     options.OmitTemplate,
@@ -244,7 +244,7 @@ func (w *StandardWriter) Write(event *ResultEvent) error {
 	if event.TemplatePath != "" {
 		event.Template, event.TemplateURL = utils.TemplatePathURL(types.ToString(event.TemplatePath), types.ToString(event.TemplateID))
 	}
-	if !w.storeProcess {
+	if !w.includeChain {
 		event.RequestResponse = make([]RequestResponse, 0)
 	}
 	event.Timestamp = time.Now()
