@@ -48,6 +48,11 @@ func WriteResult(data *output.InternalWrappedEvent, outputs output.Writer, progr
 	}
 	for _, result := range data.Results {
 		result.RequestResponse = request_response
+		if issuesClient != nil {
+			if err := issuesClient.CreateIssue(result); err != nil {
+				gologger.Warning().Msgf("Could not create issue on tracker: %s", err)
+			}
+		}
 		if err := outputs.Write(result); err != nil {
 			gologger.Warning().Msgf("Could not write output event: %s\n", err)
 		}
@@ -55,12 +60,6 @@ func WriteResult(data *output.InternalWrappedEvent, outputs output.Writer, progr
 			matched = true
 		}
 		progress.IncrementMatched()
-
-		if issuesClient != nil {
-			if err := issuesClient.CreateIssue(result); err != nil {
-				gologger.Warning().Msgf("Could not create issue on tracker: %s", err)
-			}
-		}
 	}
 	return matched
 }
