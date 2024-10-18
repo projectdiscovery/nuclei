@@ -395,8 +395,8 @@ Try it online with our AI powered Nuclei Templates Editor by [clicking here.](ht
 Nuclei Templates offer a streamlined way to identify and communicate vulnerabilities, combining essential details like severity ratings and detection methods. This open-source, community-developed tool accelerates threat response and is widely recognized in the cybersecurity world. Nuclei templates are actively contributed by thousands of security researchers globally. We run two programs for our contributors: [Pioneers](https://projectdiscovery.io/pioneers) and [💎 bounties](https://github.com/projectdiscovery/nuclei-templates/issues?q=is%3Aissue%20state%3Aopen%20label%3A%22%F0%9F%92%8E%20Bounty%22).
 
 
-<p align="center">
-    <a href="/static/nuclei-templates-teamcity-example.png"  target="_blank"><img src="/static/nuclei-templates-teamcity-example.png" height="800px" alt="Nuclei template example for detecting TeamCity misconfiguration" /></a>
+<p align="left">
+    <a href="/static/nuclei-templates-teamcity-example.png"  target="_blank"><img src="/static/nuclei-templates-teamcity-example.png" height="750px" alt="Nuclei template example for detecting TeamCity misconfiguration" /></a>
 </p>
 
 #### Examples
