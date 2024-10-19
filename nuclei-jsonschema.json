@@ -889,6 +889,11 @@
           ],
           "title": "condition between the filters",
           "description": "Operator to use between multiple per-conditions"
+        },
+        "global-matchers": {
+          "type": "boolean",
+          "title": "global matchers",
+          "description": "marks matchers as static and applies globally to all result events from other templates"
         }
       },
       "additionalProperties": false,
@@ -1364,6 +1369,11 @@
           "type": "boolean",
           "title": "read all response stream",
           "description": "Read all response stream till the server stops sending"
+        },
+        "stop-at-first-match": {
+          "type": "boolean",
+          "title": "stop at first match",
+          "description": "Stop the execution after a match is found"
         },
         "matchers": {
           "items": {

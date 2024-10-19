@@ -204,7 +204,7 @@ func (r *requestGenerator) Make(ctx context.Context, input *contextargs.Context,
 	finalVars := generators.MergeMaps(allVars, payloads)
 
 	if vardump.EnableVarDump {
-		gologger.Debug().Msgf("HTTP Protocol request variables: \n%s\n", vardump.DumpVariables(finalVars))
+		gologger.Debug().Msgf("HTTP Protocol request variables: %s\n", vardump.DumpVariables(finalVars))
 	}
 
 	// Note: If possible any changes to current logic (i.e evaluate -> then parse URL)

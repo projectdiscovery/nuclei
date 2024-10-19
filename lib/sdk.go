@@ -100,6 +100,7 @@ func (e *NucleiEngine) LoadAllTemplates() error {
 		return errorutil.New("Could not create loader client: %s\n", err)
 	}
 	e.store.Load()
+	e.templatesLoaded = true
 	return nil
 }
 

@@ -459,7 +459,7 @@ func init() {
 			Value: "HTTP response headers in name:value format",
 		},
 	}
-	HTTPRequestDoc.Fields = make([]encoder.Doc, 36)
+	HTTPRequestDoc.Fields = make([]encoder.Doc, 37)
 	HTTPRequestDoc.Fields[0].Name = "path"
 	HTTPRequestDoc.Fields[0].Type = "[]string"
 	HTTPRequestDoc.Fields[0].Note = ""
@@ -668,6 +668,11 @@ func init() {
 	HTTPRequestDoc.Fields[35].Note = ""
 	HTTPRequestDoc.Fields[35].Description = "FuzzPreConditionOperator is the operator between multiple PreConditions for fuzzing Default is OR"
 	HTTPRequestDoc.Fields[35].Comments[encoder.LineComment] = "FuzzPreConditionOperator is the operator between multiple PreConditions for fuzzing Default is OR"
+	HTTPRequestDoc.Fields[36].Name = "global-matchers"
+	HTTPRequestDoc.Fields[36].Type = "bool"
+	HTTPRequestDoc.Fields[36].Note = ""
+	HTTPRequestDoc.Fields[36].Description = "GlobalMatchers marks matchers as static and applies globally to all result events from other templates"
+	HTTPRequestDoc.Fields[36].Comments[encoder.LineComment] = "GlobalMatchers marks matchers as static and applies globally to all result events from other templates"
 
 	GENERATORSAttackTypeHolderDoc.Type = "generators.AttackTypeHolder"
 	GENERATORSAttackTypeHolderDoc.Comments[encoder.LineComment] = " AttackTypeHolder is used to hold internal type of the protocol"
@@ -1329,7 +1334,7 @@ func init() {
 			Value: "Full Network protocol data",
 		},
 	}
-	NETWORKRequestDoc.Fields = make([]encoder.Doc, 10)
+	NETWORKRequestDoc.Fields = make([]encoder.Doc, 11)
 	NETWORKRequestDoc.Fields[0].Name = "id"
 	NETWORKRequestDoc.Fields[0].Type = "string"
 	NETWORKRequestDoc.Fields[0].Note = ""
@@ -1388,6 +1393,11 @@ func init() {
 	NETWORKRequestDoc.Fields[9].Comments[encoder.LineComment] = "ReadAll determines if the data stream should be read till the end regardless of the size"
 
 	NETWORKRequestDoc.Fields[9].AddExample("", false)
+	NETWORKRequestDoc.Fields[10].Name = "stop-at-first-match"
+	NETWORKRequestDoc.Fields[10].Type = "bool"
+	NETWORKRequestDoc.Fields[10].Note = ""
+	NETWORKRequestDoc.Fields[10].Description = "StopAtFirstMatch stops the execution of the requests and template as soon as a match is found."
+	NETWORKRequestDoc.Fields[10].Comments[encoder.LineComment] = "StopAtFirstMatch stops the execution of the requests and template as soon as a match is found."
 
 	NETWORKInputDoc.Type = "network.Input"
 	NETWORKInputDoc.Comments[encoder.LineComment] = ""
@@ -1657,24 +1667,112 @@ func init() {
 	}
 	SSLRequestDoc.PartDefinitions = []encoder.KeyValue{
 		{
-			Key:   "type",
-			Value: "Type is the type of request made",
+			Key:   "template-id",
+			Value: "ID of the template executed",
 		},
 		{
-			Key:   "response",
-			Value: "JSON SSL protocol handshake details",
+			Key:   "template-info",
+			Value: "Info Block of the template executed",
 		},
 		{
-			Key:   "not_after",
-			Value: "Timestamp after which the remote cert expires",
+			Key:   "template-path",
+			Value: "Path of the template executed",
 		},
 		{
 			Key:   "host",
 			Value: "Host is the input to the template",
 		},
 		{
+			Key:   "port",
+			Value: "Port is the port of the host",
+		},
+		{
 			Key:   "matched",
 			Value: "Matched is the input which was matched upon",
+		},
+		{
+			Key:   "type",
+			Value: "Type is the type of request made",
+		},
+		{
+			Key:   "timestamp",
+			Value: "Timestamp is the time when the request was made",
+		},
+		{
+			Key:   "response",
+			Value: "JSON SSL protocol handshake details",
+		},
+		{
+			Key:   "cipher",
+			Value: "Cipher is the encryption algorithm used",
+		},
+		{
+			Key:   "domains",
+			Value: "Domains are the list of domain names in the certificate",
+		},
+		{
+			Key:   "fingerprint_hash",
+			Value: "Fingerprint hash is the unique identifier of the certificate",
+		},
+		{
+			Key:   "ip",
+			Value: "IP is the IP address of the server",
+		},
+		{
+			Key:   "issuer_cn",
+			Value: "Issuer CN is the common name of the certificate issuer",
+		},
+		{
+			Key:   "issuer_dn",
+			Value: "Issuer DN is the distinguished name of the certificate issuer",
+		},
+		{
+			Key:   "issuer_org",
+			Value: "Issuer organization is the organization of the certificate issuer",
+		},
+		{
+			Key:   "not_after",
+			Value: "Timestamp after which the remote cert expires",
+		},
+		{
+			Key:   "not_before",
+			Value: "Timestamp before which the certificate is not valid",
+		},
+		{
+			Key:   "probe_status",
+			Value: "Probe status indicates if the probe was successful",
+		},
+		{
+			Key:   "serial",
+			Value: "Serial is the serial number of the certificate",
+		},
+		{
+			Key:   "sni",
+			Value: "SNI is the server name indication used in the handshake",
+		},
+		{
+			Key:   "subject_an",
+			Value: "Subject AN is the list of subject alternative names",
+		},
+		{
+			Key:   "subject_cn",
+			Value: "Subject CN is the common name of the certificate subject",
+		},
+		{
+			Key:   "subject_dn",
+			Value: "Subject DN is the distinguished name of the certificate subject",
+		},
+		{
+			Key:   "subject_org",
+			Value: "Subject organization is the organization of the certificate subject",
+		},
+		{
+			Key:   "tls_connection",
+			Value: "TLS connection is the type of TLS connection used",
+		},
+		{
+			Key:   "tls_version",
+			Value: "TLS version is the version of the TLS protocol used",
 		},
 	}
 	SSLRequestDoc.Fields = make([]encoder.Doc, 9)
