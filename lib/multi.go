@@ -48,7 +48,7 @@ func createEphemeralObjects(ctx context.Context, base *NucleiEngine, opts *types
 	if opts.RateLimit > 0 && opts.RateLimitDuration == 0 {
 		opts.RateLimitDuration = time.Second
 	}
-	if opts.RateLimit == 0 && opts.RateLimitDuration == 0 {
+	if opts.RateLimit == 0 {
 		u.executerOpts.RateLimiter = ratelimit.NewUnlimited(ctx)
 	} else {
 		u.executerOpts.RateLimiter = ratelimit.New(ctx, uint(opts.RateLimit), opts.RateLimitDuration)
