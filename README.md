@@ -49,7 +49,6 @@ Nuclei is a modern, high-performance vulnerability scanner that leverages simple
   - [Network scan](#network-scan)
   - [Scanning with your custom template](#scanning-with-your-custom-template)
   - [Connect Nuclei to ProjectDiscovery](#connect-nuclei-to-projectdiscovery)
-  - [Browse and remediate vulnerabilities in ProjectDiscovery](#browse-and-remediate-vulnerabilities-in-projectdiscovery)
 - [Nuclei Templates, Community and Rewards 💎](#nuclei-templates-community-and-rewards-)
 - [Our Mission](#our-mission)
 - [Contributors ❤️](#contributors-️)
