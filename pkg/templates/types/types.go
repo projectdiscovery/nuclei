@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/alecthomas/jsonschema"
+	"github.com/invopop/jsonschema"
 	"github.com/pkg/errors"
 	"github.com/projectdiscovery/goflags"
 	"github.com/projectdiscovery/nuclei/v3/pkg/model/types/stringslice"
@@ -69,6 +69,18 @@ func GetSupportedProtocolTypes() ProtocolTypes {
 	return result
 }
 
+// SupportedProtocolsStrings returns a slice of strings of supported protocols
+func SupportedProtocolsStrings() []string {
+	var result []string
+	for _, protocol := range GetSupportedProtocolTypes() {
+		if protocol.String() == "" {
+			continue
+		}
+		result = append(result, protocol.String())
+	}
+	return result
+}
+
 func toProtocolType(valueToMap string) (ProtocolType, error) {
 	normalizedValue := normalizeValue(valueToMap)
 	for key, currentValue := range protocolMappings {
@@ -92,8 +104,8 @@ type TypeHolder struct {
 	ProtocolType ProtocolType `mapping:"true"`
 }
 
-func (holder TypeHolder) JSONSchemaType() *jsonschema.Type {
-	gotType := &jsonschema.Type{
+func (holder TypeHolder) JSONSchema() *jsonschema.Schema {
+	gotType := &jsonschema.Schema{
 		Type:        "string",
 		Title:       "type of the protocol",
 		Description: "Type of the protocol",

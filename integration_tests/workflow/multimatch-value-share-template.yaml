@@ -1,0 +1,23 @@
+id: multimatch-value-share-template
+
+info:
+  name: MultiMatch Value Share Template
+  author: tovask
+  severity: info
+
+http:
+  - path:
+      - "{{BaseURL}}/path1?v=1"
+      - "{{BaseURL}}/path1?v=2"
+    matchers:
+      - type: word
+        name: test-matcher
+        words:
+          - "href"
+    extractors:
+      - type: regex
+        part: body
+        name: extracted
+        regex:
+          - 'href="(.*)"'
+        group: 1

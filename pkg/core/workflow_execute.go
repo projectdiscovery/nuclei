@@ -5,13 +5,12 @@ import (
 	"net/http/cookiejar"
 	"sync/atomic"
 
-	"github.com/remeh/sizedwaitgroup"
-
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
 	"github.com/projectdiscovery/nuclei/v3/pkg/scan"
 	"github.com/projectdiscovery/nuclei/v3/pkg/workflows"
+	syncutil "github.com/projectdiscovery/utils/sync"
 )
 
 const workflowStepExecutionError = "[%s] Could not execute workflow step: %s\n"
@@ -22,7 +21,7 @@ func (e *Engine) executeWorkflow(ctx *scan.ScanContext, w *workflows.Workflow) b
 
 	// at this point we should be at the start root execution of a workflow tree, hence we create global shared instances
 	workflowCookieJar, _ := cookiejar.New(nil)
-	ctxArgs := contextargs.New()
+	ctxArgs := contextargs.New(ctx.Context())
 	ctxArgs.MetaInput = ctx.Input.MetaInput
 	ctxArgs.CookieJar = workflowCookieJar
 
@@ -32,7 +31,7 @@ func (e *Engine) executeWorkflow(ctx *scan.ScanContext, w *workflows.Workflow) b
 	if templateThreads == 1 {
 		templateThreads++
 	}
-	swg := sizedwaitgroup.New(templateThreads)
+	swg, _ := syncutil.New(syncutil.WithSize(templateThreads))
 
 	for _, template := range w.Workflows {
 		swg.Add()
@@ -40,7 +39,7 @@ func (e *Engine) executeWorkflow(ctx *scan.ScanContext, w *workflows.Workflow) b
 		func(template *workflows.WorkflowTemplate) {
 			defer swg.Done()
 
-			if err := e.runWorkflowStep(template, ctx, results, &swg, w); err != nil {
+			if err := e.runWorkflowStep(template, ctx, results, swg, w); err != nil {
 				gologger.Warning().Msgf(workflowStepExecutionError, template.Template, err)
 			}
 		}(template)
@@ -51,7 +50,7 @@ func (e *Engine) executeWorkflow(ctx *scan.ScanContext, w *workflows.Workflow) b
 
 // runWorkflowStep runs a workflow step for the workflow. It executes the workflow
 // in a recursive manner running all subtemplates and matchers.
-func (e *Engine) runWorkflowStep(template *workflows.WorkflowTemplate, ctx *scan.ScanContext, results *atomic.Bool, swg *sizedwaitgroup.SizedWaitGroup, w *workflows.Workflow) error {
+func (e *Engine) runWorkflowStep(template *workflows.WorkflowTemplate, ctx *scan.ScanContext, results *atomic.Bool, swg *syncutil.AdaptiveWaitGroup, w *workflows.Workflow) error {
 	var firstMatched bool
 	var err error
 	var mainErr error
@@ -99,7 +98,7 @@ func (e *Engine) runWorkflowStep(template *workflows.WorkflowTemplate, ctx *scan
 			}
 			if err != nil {
 				if w.Options.HostErrorsCache != nil {
-					w.Options.HostErrorsCache.MarkFailed(ctx.Input.MetaInput.ID(), err)
+					w.Options.HostErrorsCache.MarkFailed(w.Options.ProtocolType.String(), ctx.Input, err)
 				}
 				if len(template.Executers) == 1 {
 					mainErr = err
@@ -139,7 +138,10 @@ func (e *Engine) runWorkflowStep(template *workflows.WorkflowTemplate, ctx *scan
 						go func(subtemplate *workflows.WorkflowTemplate) {
 							defer swg.Done()
 
-							if err := e.runWorkflowStep(subtemplate, ctx, results, swg, w); err != nil {
+							// create a new context with the same input but with unset callbacks
+							// clone the Input so that other parallel executions won't overwrite the shared variables when subsequent templates are running
+							subCtx := scan.NewScanContext(ctx.Context(), ctx.Input.Clone())
+							if err := e.runWorkflowStep(subtemplate, subCtx, results, swg, w); err != nil {
 								gologger.Warning().Msgf(workflowStepExecutionError, subtemplate.Template, err)
 							}
 						}(subtemplate)
@@ -163,7 +165,9 @@ func (e *Engine) runWorkflowStep(template *workflows.WorkflowTemplate, ctx *scan
 			swg.Add()
 
 			go func(template *workflows.WorkflowTemplate) {
-				if err := e.runWorkflowStep(template, ctx, results, swg, w); err != nil {
+				// create a new context with the same input but with unset callbacks
+				subCtx := scan.NewScanContext(ctx.Context(), ctx.Input)
+				if err := e.runWorkflowStep(template, subCtx, results, swg, w); err != nil {
 					gologger.Warning().Msgf(workflowStepExecutionError, template.Template, err)
 				}
 				swg.Done()

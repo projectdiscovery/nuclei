@@ -23,8 +23,8 @@
   <a href="#对于安全工程师">对于安全工程师</a> •
   <a href="#对于开发和组织">对于开发者</a> •
   <a href="https://nuclei.projectdiscovery.io/nuclei/get-started/">文档</a> •
-  <a href="#c致谢">致谢</a> •
-  <a href="https://nuclei.projectdiscovery.io/faq/nuclei/">常见问题</a> •
+  <a href="#致谢">致谢</a> •
+  <a href="https://docs.projectdiscovery.io/tools/nuclei/faq">常见问题</a> •
   <a href="https://discord.gg/projectdiscovery">加入Discord</a>
 </p>
 
@@ -32,14 +32,15 @@
   <a href="https://github.com/projectdiscovery/nuclei/blob/main/README.md">English</a> •
   <a href="https://github.com/projectdiscovery/nuclei/blob/main/README_CN.md">中文</a> •
   <a href="https://github.com/projectdiscovery/nuclei/blob/main/README_KR.md">Korean</a> •
-  <a href="https://github.com/projectdiscovery/nuclei/blob/main/README_ID.md">Indonesia</a>
+  <a href="https://github.com/projectdiscovery/nuclei/blob/main/README_ID.md">Indonesia</a> •
+  <a href="https://github.com/projectdiscovery/nuclei/blob/main/README_ES.md">Spanish</a>
 </p>
 
 ---
 
 Nuclei使用零误报的定制模板向目标发送请求，同时可以对主机进行批量快速扫描。Nuclei提供TCP、DNS、HTTP、FILE等各类协议的扫描，通过强大且灵活的模板，可以使用Nuclei模拟各种安全检查。
 
-我们的[模板仓库](https://github.com/projectdiscovery/nuclei-templates)包含**超过300**安全研究员和工程师提供的模板。
+我们的[模板仓库](https://github.com/projectdiscovery/nuclei-templates)包含**超过300名**安全研究员和工程师提供的模板。
 
 
 
@@ -57,7 +58,7 @@ Nuclei使用零误报的定制模板向目标发送请求，同时可以对主�
 
 # 安装Nuclei
 
-Nuclei需要**go1**才能安装成功。执行下列命令安装最新版本的Nuclei
+Nuclei需要 **go1.21** 才能安装成功。执行下列命令安装最新版本的Nuclei
 
 ```sh
 go install -v github.com/projectdiscovery/nuclei/v3/cmd/nuclei@latest
@@ -396,8 +397,8 @@ Nuclei通过增加手动、自动的过程，极大地改变了安全评估的�
 
 Nuclei构建很简单，通过数百名安全研究员的社区模板，Nuclei可以随时扫描来了解安全威胁。Nuclei通常用来用于复测，以确定漏洞是否被修复。
 
-- **CI/CD：**工程师已经支持了CI/CD，可以通过Nuclei使用定制模板来监控模拟环境和生产环境
-- **周期性扫描：**使用Nuclei创建新发现的漏洞模板，通过Nuclei可以周期性扫描消除漏洞
+- **CI/CD：** 工程师已经支持了CI/CD，可以通过Nuclei使用定制模板来监控模拟环境和生产环境
+- **周期性扫描：** 使用Nuclei创建新发现的漏洞模板，通过Nuclei可以周期性扫描消除漏洞
 
 我们有个[讨论组](https://github.com/projectdiscovery/nuclei-templates/discussions/693)，黑客提交自己的模板后可以获得赏金，这可以减少资产的漏洞，并且减少重复。如果你想实行该计划，可以[联系我](mailto:contact@projectdiscovery.io)。我们非常乐意提供帮助，或者在[讨论组](https://github.com/projectdiscovery/nuclei-templates/discussions/693)中发布相关信息。
 
@@ -439,7 +440,7 @@ Nuclei构建很简单，通过数百名安全研究员的社区模板，Nuclei�
 </a>
 </p>
 
-另外您可以其他类似的开源项目：
+另外您可以了解其他类似的开源项目：
 
 [FFuF](https://github.com/ffuf/ffuf), [Qsfuzz](https://github.com/ameenmaali/qsfuzz), [Inception](https://github.com/proabiral/inception), [Snallygaster](https://github.com/hannob/snallygaster), [Gofingerprint](https://github.com/Static-Flow/gofingerprint), [Sn1per](https://github.com/1N3/Sn1per/tree/master/templates), [Google tsunami](https://github.com/google/tsunami-security-scanner), [Jaeles](https://github.com/jaeles-project/jaeles), [ChopChop](https://github.com/michelin/ChopChop)
 

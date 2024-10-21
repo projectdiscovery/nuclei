@@ -1,0 +1,40 @@
+id: json-body-error-sqli
+
+info:
+  name: fuzzing error sqli payloads in json body
+  author: pdteam
+  severity: info
+  description: |
+    This template attempts to find SQL injection vulnerabilities by fuzzing http body of json type.
+    This is achieved by performing [ruleType](example: postfix) on value of json key
+    Note: this is example template, and payloads/matchers need to be modified appropriately.
+
+http:
+  - pre-condition:
+      - type: dsl
+        dsl:
+          - method != "GET"
+          - method != "HEAD"
+          - contains(content_type, "application/json")
+          - contains(path, "/user") # for scope of integration test
+        condition: and
+    
+    payloads:
+      injection:
+        - "'"
+        - "\""
+        - ";"
+    
+    fuzzing:
+      - part: body
+        type: postfix
+        mode: single
+        fuzz:
+          - '{{injection}}'
+  
+    stop-at-first-match: true
+    matchers:
+      - type: word
+        words:
+          - "unrecognized token:"
+          - "null"

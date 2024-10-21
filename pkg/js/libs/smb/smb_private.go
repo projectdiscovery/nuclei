@@ -15,6 +15,7 @@ import (
 // ==== private helper functions/methods ====
 
 // collectSMBv2Metadata collects metadata for SMBv2 services.
+// @memo
 func collectSMBv2Metadata(host string, port int, timeout time.Duration) (*plugins.ServiceSMB, error) {
 	if timeout == 0 {
 		timeout = 5 * time.Second
@@ -33,7 +34,7 @@ func collectSMBv2Metadata(host string, port int, timeout time.Duration) (*plugin
 }
 
 // getSMBInfo
-func (c *SMBClient) getSMBInfo(conn net.Conn, setupSession, v1 bool) (*zgrabsmb.SMBLog, error) {
+func getSMBInfo(conn net.Conn, setupSession, v1 bool) (*zgrabsmb.SMBLog, error) {
 	_ = conn.SetDeadline(time.Now().Add(10 * time.Second))
 	defer func() {
 		_ = conn.SetDeadline(time.Time{})

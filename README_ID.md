@@ -24,7 +24,7 @@
   <a href="#untuk-pengembang-dan-organisasi">Untuk Pengembang</a> •
   <a href="https://nuclei.projectdiscovery.io/nuclei/get-started/">Dokumentasi</a> •
   <a href="#kredit">Kredit</a> •
-  <a href="https://nuclei.projectdiscovery.io/faq/nuclei/">Tanya Jawab</a> •
+  <a href="https://docs.projectdiscovery.io/tools/nuclei/faq">Tanya Jawab</a> •
   <a href="https://discord.gg/projectdiscovery">Gabung Discord</a>
 </p>
 
@@ -32,7 +32,8 @@
   <a href="https://github.com/projectdiscovery/nuclei/blob/main/README.md">English</a> •
   <a href="https://github.com/projectdiscovery/nuclei/blob/main/README_CN.md">中文</a> •
   <a href="https://github.com/projectdiscovery/nuclei/blob/main/README_KR.md">Korean</a> •
-  <a href="https://github.com/projectdiscovery/nuclei/blob/main/README_ID.md">Indonesia</a>
+  <a href="https://github.com/projectdiscovery/nuclei/blob/main/README_ID.md">Indonesia</a> •
+  <a href="https://github.com/projectdiscovery/nuclei/blob/main/README_ES.md">Spanish</a>
 </p>
 
 ---

@@ -12,10 +12,10 @@ import (
 	"golang.org/x/exp/maps"
 
 	"github.com/projectdiscovery/gologger"
+	"github.com/projectdiscovery/nuclei/v3/pkg/fuzz"
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
-	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/fuzz"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/generators"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/helpers/eventcreator"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/helpers/responsehighlighter"
@@ -44,7 +44,7 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, metadata,
 		if err != nil {
 			return err
 		}
-		input = contextargs.NewWithInput(url)
+		input = contextargs.NewWithInput(input.Context(), url)
 	}
 
 	if request.options.Browser.UserAgent() == "" {
@@ -122,7 +122,7 @@ func (request *Request) executeRequestWithPayloads(input *contextargs.Context, p
 	defer instance.Close()
 
 	if vardump.EnableVarDump {
-		gologger.Debug().Msgf("Headless Protocol request variables: \n%s\n", vardump.DumpVariables(payloads))
+		gologger.Debug().Msgf("Headless Protocol request variables: %s\n", vardump.DumpVariables(payloads))
 	}
 
 	instance.SetInteractsh(request.options.Interactsh)
@@ -174,7 +174,7 @@ func (request *Request) executeRequestWithPayloads(input *contextargs.Context, p
 				reqBuilder.WriteString("\t" + actStepStr + "\n")
 			}
 		}
-		gologger.Debug().Msgf(reqBuilder.String())
+		gologger.Debug().Msg(reqBuilder.String())
 	}
 
 	var responseBody string
@@ -183,7 +183,13 @@ func (request *Request) executeRequestWithPayloads(input *contextargs.Context, p
 		responseBody, _ = html.HTML()
 	}
 
-	outputEvent := request.responseToDSLMap(responseBody, out["header"], out["status_code"], reqBuilder.String(), input.MetaInput.Input, navigatedURL, page.DumpHistory())
+	header := out.GetOrDefault("header", "").(string)
+
+	// NOTE(dwisiswant0): `status_code` key should be an integer type.
+	// Ref: https://github.com/projectdiscovery/nuclei/pull/5545#discussion_r1721291013
+	statusCode := out.GetOrDefault("status_code", "").(string)
+
+	outputEvent := request.responseToDSLMap(responseBody, header, statusCode, reqBuilder.String(), input.MetaInput.Input, navigatedURL, page.DumpHistory())
 	// add response fields to template context and merge templatectx variables to output event
 	request.options.AddTemplateVars(input.MetaInput, request.Type(), request.ID, outputEvent)
 	if request.options.HasTemplateCtx(input.MetaInput) {
@@ -215,6 +221,10 @@ func (request *Request) executeRequestWithPayloads(input *contextargs.Context, p
 	}
 
 	dumpResponse(event, request.options, responseBody, input.MetaInput.Input)
+	shouldStopAtFirstMatch := request.StopAtFirstMatch || request.options.StopAtFirstMatch || request.options.Options.StopAtFirstMatch
+	if shouldStopAtFirstMatch && event.HasOperatorResult() {
+		return types.ErrNoMoreRequests
+	}
 	return nil
 }
 

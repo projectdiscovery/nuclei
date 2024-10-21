@@ -3,6 +3,7 @@ package runner
 import (
 	"bufio"
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -25,6 +26,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/reporting/exporters/jsonl"
 	"github.com/projectdiscovery/nuclei/v3/pkg/reporting/exporters/markdown"
 	"github.com/projectdiscovery/nuclei/v3/pkg/reporting/exporters/sarif"
+	"github.com/projectdiscovery/nuclei/v3/pkg/templates/extensions"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	"github.com/projectdiscovery/nuclei/v3/pkg/utils/yaml"
 	fileutil "github.com/projectdiscovery/utils/file"
@@ -66,11 +68,37 @@ func ParseOptions(options *types.Options) {
 
 	if options.ShowVarDump {
 		vardump.EnableVarDump = true
+		vardump.Limit = options.VarDumpLimit
 	}
 	if options.ShowActions {
 		gologger.Info().Msgf("Showing available headless actions: ")
 		for action := range engine.ActionStringToAction {
 			gologger.Print().Msgf("\t%s", action)
+		}
+		os.Exit(0)
+	}
+
+	defaultProfilesPath := filepath.Join(config.DefaultConfig.GetTemplateDir(), "profiles")
+	if options.ListTemplateProfiles {
+		gologger.Print().Msgf(
+			"\nListing available %v nuclei template profiles for %v",
+			config.DefaultConfig.TemplateVersion,
+			config.DefaultConfig.TemplatesDirectory,
+		)
+		templatesRootDir := config.DefaultConfig.GetTemplateDir()
+		err := filepath.WalkDir(defaultProfilesPath, func(iterItem string, d fs.DirEntry, err error) error {
+			ext := filepath.Ext(iterItem)
+			isYaml := ext == extensions.YAML || ext == extensions.YML
+			if err != nil || d.IsDir() || !isYaml {
+				return nil
+			}
+			if profileRelPath, err := filepath.Rel(templatesRootDir, iterItem); err == nil {
+				gologger.Print().Msgf("%s (%s)\n", profileRelPath, strings.TrimSuffix(filepath.Base(iterItem), ext))
+			}
+			return nil
+		})
+		if err != nil {
+			gologger.Error().Msgf("%s\n", err)
 		}
 		os.Exit(0)
 	}
@@ -289,12 +317,17 @@ func createReportingOptions(options *types.Options) (*reporting.Options, error) 
 
 // configureOutput configures the output logging levels to be displayed on the screen
 func configureOutput(options *types.Options) {
-	// If the user desires verbose output, show verbose output
-	if options.Verbose || options.Validate {
-		gologger.DefaultLogger.SetMaxLevel(levels.LevelVerbose)
+	if options.NoColor {
+		gologger.DefaultLogger.SetFormatter(formatter.NewCLI(true))
 	}
+	// If the user desires verbose output, show verbose output
 	if options.Debug || options.DebugRequests || options.DebugResponse {
 		gologger.DefaultLogger.SetMaxLevel(levels.LevelDebug)
+	}
+	// Debug takes precedence before verbose
+	// because debug is a lower logging level.
+	if options.Verbose || options.Validate {
+		gologger.DefaultLogger.SetMaxLevel(levels.LevelVerbose)
 	}
 	if options.NoColor {
 		gologger.DefaultLogger.SetFormatter(formatter.NewCLI(true))

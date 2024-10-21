@@ -1,6 +1,7 @@
 package dns
 
 import (
+	"context"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -37,7 +38,7 @@ func TestDNSExecuteWithResults(t *testing.T) {
 				Name:  "test",
 				Part:  "raw",
 				Type:  matchers.MatcherTypeHolder{MatcherType: matchers.WordsMatcher},
-				Words: []string{"93.184.216.34"},
+				Words: []string{"93.184.215.14"},
 			}},
 			Extractors: []*extractors.Extractor{{
 				Part:  "raw",
@@ -54,7 +55,7 @@ func TestDNSExecuteWithResults(t *testing.T) {
 	t.Run("domain-valid", func(t *testing.T) {
 		metadata := make(output.InternalEvent)
 		previous := make(output.InternalEvent)
-		ctxArgs := contextargs.NewWithInput("example.com")
+		ctxArgs := contextargs.NewWithInput(context.Background(), "example.com")
 		err := request.ExecuteWithResults(ctxArgs, metadata, previous, func(event *output.InternalWrappedEvent) {
 			finalEvent = event
 		})
@@ -64,21 +65,7 @@ func TestDNSExecuteWithResults(t *testing.T) {
 	require.Equal(t, 1, len(finalEvent.Results), "could not get correct number of results")
 	require.Equal(t, "test", finalEvent.Results[0].MatcherName, "could not get correct matcher name of results")
 	require.Equal(t, 1, len(finalEvent.Results[0].ExtractedResults), "could not get correct number of extracted results")
-	require.Equal(t, "93.184.216.34", finalEvent.Results[0].ExtractedResults[0], "could not get correct extracted results")
+	require.Equal(t, "93.184.215.14", finalEvent.Results[0].ExtractedResults[0], "could not get correct extracted results")
 	finalEvent = nil
-
-	t.Run("url-to-domain", func(t *testing.T) {
-		metadata := make(output.InternalEvent)
-		previous := make(output.InternalEvent)
-		err := request.ExecuteWithResults(contextargs.NewWithInput("https://example.com"), metadata, previous, func(event *output.InternalWrappedEvent) {
-			finalEvent = event
-		})
-		require.Nil(t, err, "could not execute dns request")
-	})
-	require.NotNil(t, finalEvent, "could not get event output from request")
-	require.Equal(t, 1, len(finalEvent.Results), "could not get correct number of results")
-	require.Equal(t, "test", finalEvent.Results[0].MatcherName, "could not get correct matcher name of results")
-	require.Equal(t, 1, len(finalEvent.Results[0].ExtractedResults), "could not get correct number of extracted results")
-	require.Equal(t, "93.184.216.34", finalEvent.Results[0].ExtractedResults[0], "could not get correct extracted results")
-	finalEvent = nil
+	// Note: changing url to domain is responsible at tmplexec package and is implemented there
 }

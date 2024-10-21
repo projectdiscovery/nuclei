@@ -5,7 +5,6 @@ import (
 	"testing"
 
 	"github.com/Knetic/govaluate"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -41,7 +40,7 @@ func testDslExpressionScenarios(t *testing.T, dslExpressions map[string]interfac
 			actualResult := evaluateExpression(t, dslExpression)
 
 			if expectedResult != nil {
-				assert.Equal(t, expectedResult, actualResult)
+				require.Equal(t, expectedResult, actualResult)
 			}
 
 			fmt.Printf("%s: \t %v\n", dslExpression, actualResult)

@@ -7,6 +7,7 @@ import (
 
 var (
 	ErrInvalidFuncOpts = errorutil.NewWithFmt("invalid function options: %v")
+	ErrNilRuntime      = errorutil.New("runtime is nil")
 )
 
 type FuncOpts struct {
@@ -23,6 +24,9 @@ func (f *FuncOpts) valid() bool {
 
 // RegisterFunc registers a function with given name, signatures and description
 func RegisterFuncWithSignature(runtime *goja.Runtime, opts FuncOpts) error {
+	if runtime == nil {
+		return ErrNilRuntime
+	}
 	if !opts.valid() {
 		return ErrInvalidFuncOpts.Msgf("name: %s, signatures: %v, description: %s", opts.Name, opts.Signatures, opts.Description)
 	}

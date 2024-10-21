@@ -6,7 +6,7 @@ info:
   severity: info
 
 self-contained: true
-requests:
+http:
   - method: GET
     path:
       - "http://127.0.0.1:5431/{{test}}"

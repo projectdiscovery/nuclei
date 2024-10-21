@@ -18,11 +18,8 @@ func init() {
 
 			// Var and consts
 
-			// Types (value type)
-			"SSHClient": func() lib_ssh.SSHClient { return lib_ssh.SSHClient{} },
-
-			// Types (pointer type)
-			"NewSSHClient": func() *lib_ssh.SSHClient { return &lib_ssh.SSHClient{} },
+			// Objects / Classes
+			"SSHClient": gojs.GetClassConstructor[lib_ssh.SSHClient](&lib_ssh.SSHClient{}),
 		},
 	).Register()
 }

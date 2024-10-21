@@ -101,7 +101,7 @@ type Matcher struct {
 	//       []string{"/html/head/title[contains(text(), 'How to Find XPath')]"}
 	//   - name: XPath Matcher for finding links with target="_blank"
 	//     value: >
-	//       []string{"//a[@target="_blank"]"}
+	//       []string{"//a[@target=\"_blank\"]"}
 	XPath []string `yaml:"xpath,omitempty" json:"xpath,omitempty" jsonschema:"title=xpath queries to match in response,description=xpath are the XPath queries that will be evaluated against the response part of nuclei matching rules"`
 	// description: |
 	//   Encoding specifies the encoding for the words field if any.

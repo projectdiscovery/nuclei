@@ -5,7 +5,6 @@ import (
 
 	"gopkg.in/yaml.v2"
 
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -17,8 +16,8 @@ func TestYamlMarshal(t *testing.T) {
 	severity := Holder{Severity: High}
 
 	marshalled, err := severity.MarshalYAML()
-	assert.Nil(t, err, "could not marshal yaml")
-	assert.Equal(t, "high", marshalled, "could not marshal severity correctly")
+	require.Nil(t, err, "could not marshal yaml")
+	require.Equal(t, "high", marshalled, "could not marshal severity correctly")
 }
 
 func TestYamlUnmarshalFail(t *testing.T) {
@@ -27,7 +26,7 @@ func TestYamlUnmarshalFail(t *testing.T) {
 
 func TestGetSupportedSeverities(t *testing.T) {
 	severities := GetSupportedSeverities()
-	assert.Equal(t, severities, Severities{Info, Low, Medium, High, Critical, Unknown})
+	require.Equal(t, severities, Severities{Info, Low, Medium, High, Critical, Unknown})
 }
 
 func testUnmarshal(t *testing.T, unmarshaller func(data []byte, v interface{}) error, payloadCreator func(value string) string) {
@@ -43,15 +42,15 @@ func testUnmarshal(t *testing.T, unmarshaller func(data []byte, v interface{}) e
 	for _, payload := range payloads { // nolint:scopelint // false-positive
 		t.Run(payload, func(t *testing.T) {
 			result := unmarshal(payload, unmarshaller)
-			assert.Equal(t, result.Severity, Info)
-			assert.Equal(t, result.Severity.String(), "info")
+			require.Equal(t, result.Severity, Info)
+			require.Equal(t, result.Severity.String(), "info")
 		})
 	}
 }
 
 func testUnmarshalFail(t *testing.T, unmarshaller func(data []byte, v interface{}) error, payloadCreator func(value string) string) {
 	t.Helper()
-	assert.Panics(t, func() { unmarshal(payloadCreator("invalid"), unmarshaller) })
+	require.Panics(t, func() { unmarshal(payloadCreator("invalid"), unmarshaller) })
 }
 
 func unmarshal(value string, unmarshaller func(data []byte, v interface{}) error) Holder {
@@ -74,4 +73,13 @@ func TestMarshalJSON(t *testing.T) {
 		panic(err)
 	}
 	require.Equal(t, "[\"low\",\"medium\"]", string(data), "could not marshal json")
+}
+
+func TestSeveritiesMarshalYaml(t *testing.T) {
+	unmarshalled := Severities{Low, Medium}
+	marshalled, err := yaml.Marshal(unmarshalled)
+	if err != nil {
+		panic(err)
+	}
+	require.Equal(t, "- low\n- medium\n", string(marshalled), "could not marshal yaml")
 }

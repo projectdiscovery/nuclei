@@ -45,6 +45,12 @@ func (g *Generic) ExecuteWithResults(ctx *scan.ScanContext) error {
 	previous := mapsutil.NewSyncLockMap[string, any]()
 
 	for _, req := range g.requests {
+		select {
+		case <-ctx.Context().Done():
+			return ctx.Context().Err()
+		default:
+		}
+
 		inputItem := ctx.Input.Clone()
 		if g.options.InputHelper != nil && ctx.Input.MetaInput.Input != "" {
 			if inputItem.MetaInput.Input = g.options.InputHelper.Transform(inputItem.MetaInput.Input, req.Type()); inputItem.MetaInput.Input == "" {
@@ -79,7 +85,7 @@ func (g *Generic) ExecuteWithResults(ctx *scan.ScanContext) error {
 		if err != nil {
 			ctx.LogError(err)
 			if g.options.HostErrorsCache != nil {
-				g.options.HostErrorsCache.MarkFailed(ctx.Input.MetaInput.ID(), err)
+				g.options.HostErrorsCache.MarkFailed(g.options.ProtocolType.String(), ctx.Input, err)
 			}
 			gologger.Warning().Msgf("[%s] Could not execute request for %s: %s\n", g.options.TemplateID, ctx.Input.MetaInput.PrettyPrint(), err)
 		}

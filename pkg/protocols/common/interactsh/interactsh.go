@@ -21,6 +21,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/helpers/responsehighlighter"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/helpers/writer"
+	"github.com/projectdiscovery/retryablehttp-go"
 	errorutil "github.com/projectdiscovery/utils/errors"
 	stringsutil "github.com/projectdiscovery/utils/strings"
 )
@@ -153,11 +154,6 @@ func requestShouldStopAtFirstMatch(request *RequestData) bool {
 func (c *Client) processInteractionForRequest(interaction *server.Interaction, data *RequestData) bool {
 	var result *operators.Result
 	var matched bool
-	defer func() {
-		if r := recover(); r != nil {
-			gologger.Error().Msgf("panic occurred while processing interaction with result=%v matched=%v err=%v", result, matched, r)
-		}
-	}()
 	data.Event.Lock()
 	data.Event.InternalEvent["interactsh_protocol"] = interaction.Protocol
 	if strings.EqualFold(interaction.Protocol, "dns") {
@@ -183,6 +179,14 @@ func (c *Client) processInteractionForRequest(interaction *server.Interaction, d
 	// for more context in github actions
 	if strings.EqualFold(os.Getenv("GITHUB_ACTIONS"), "true") && c.options.Debug {
 		gologger.DefaultLogger.Print().Msgf("[Interactsh]: got result %v and status %v after processing interaction", result, matched)
+	}
+
+	if c.options.FuzzParamsFrequency != nil {
+		if !matched {
+			c.options.FuzzParamsFrequency.MarkParameter(data.Parameter, data.Request.URL.String(), data.Operators.TemplateID)
+		} else {
+			c.options.FuzzParamsFrequency.UnmarkParameter(data.Parameter, data.Request.URL.String(), data.Operators.TemplateID)
+		}
 	}
 
 	// if we don't match, return
@@ -325,6 +329,9 @@ type RequestData struct {
 	Operators      *operators.Operators
 	MatchFunc      operators.MatchFunc
 	ExtractFunc    operators.ExtractFunc
+
+	Parameter string
+	Request   *retryablehttp.Request
 }
 
 // RequestEvent is the event for a network request sent by nuclei.

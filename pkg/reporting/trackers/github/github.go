@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
 
 	"github.com/google/go-github/github"
@@ -13,6 +14,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
 	"github.com/projectdiscovery/nuclei/v3/pkg/reporting/exporters/markdown/util"
 	"github.com/projectdiscovery/nuclei/v3/pkg/reporting/format"
+	"github.com/projectdiscovery/nuclei/v3/pkg/reporting/trackers/filters"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	"github.com/projectdiscovery/retryablehttp-go"
 	"golang.org/x/oauth2"
@@ -41,6 +43,10 @@ type Options struct {
 	// SeverityAsLabel (optional) sends the severity as the label of the created
 	// issue.
 	SeverityAsLabel bool `yaml:"severity-as-label"`
+	// AllowList contains a list of allowed events for this tracker
+	AllowList *filters.Filter `yaml:"allow-list"`
+	// DenyList contains a list of denied events for this tracker
+	DenyList *filters.Filter `yaml:"deny-list"`
 	// DuplicateIssueCheck (optional) comments under existing finding issue
 	// instead of creating duplicates for subsequent runs.
 	DuplicateIssueCheck bool `yaml:"duplicate-issue-check"`
@@ -80,7 +86,7 @@ func New(options *Options) (*Integration, error) {
 }
 
 // CreateIssue creates an issue in the tracker
-func (i *Integration) CreateIssue(event *output.ResultEvent) (err error) {
+func (i *Integration) CreateIssue(event *output.ResultEvent) (*filters.CreateIssueResponse, error) {
 	summary := format.Summary(event)
 	description := format.CreateReportDescription(event, util.MarkdownFormatter{}, i.options.OmitRaw)
 	labels := []string{}
@@ -94,11 +100,12 @@ func (i *Integration) CreateIssue(event *output.ResultEvent) (err error) {
 
 	ctx := context.Background()
 
+	var err error
 	var existingIssue *github.Issue
 	if i.options.DuplicateIssueCheck {
 		existingIssue, err = i.findIssueByTitle(ctx, summary)
 		if err != nil && !errors.Is(err, io.EOF) {
-			return err
+			return nil, err
 		}
 	}
 
@@ -109,15 +116,21 @@ func (i *Integration) CreateIssue(event *output.ResultEvent) (err error) {
 			Labels:    &labels,
 			Assignees: &[]string{i.options.Username},
 		}
-		_, _, err = i.client.Issues.Create(ctx, i.options.Owner, i.options.ProjectName, req)
-		return err
+		createdIssue, _, err := i.client.Issues.Create(ctx, i.options.Owner, i.options.ProjectName, req)
+		if err != nil {
+			return nil, err
+		}
+		return &filters.CreateIssueResponse{
+			IssueID:  strconv.FormatInt(createdIssue.GetID(), 10),
+			IssueURL: createdIssue.GetHTMLURL(),
+		}, nil
 	} else {
 		if existingIssue.GetState() == "closed" {
 			stateOpen := "open"
 			if _, _, err := i.client.Issues.Edit(ctx, i.options.Owner, i.options.ProjectName, *existingIssue.Number, &github.IssueRequest{
 				State: &stateOpen,
 			}); err != nil {
-				return fmt.Errorf("error reopening issue %d: %s", *existingIssue.Number, err)
+				return nil, fmt.Errorf("error reopening issue %d: %s", *existingIssue.Number, err)
 			}
 		}
 
@@ -125,8 +138,52 @@ func (i *Integration) CreateIssue(event *output.ResultEvent) (err error) {
 			Body: &description,
 		}
 		_, _, err = i.client.Issues.CreateComment(ctx, i.options.Owner, i.options.ProjectName, *existingIssue.Number, req)
+		if err != nil {
+			return nil, err
+		}
+		return &filters.CreateIssueResponse{
+			IssueID:  strconv.FormatInt(existingIssue.GetID(), 10),
+			IssueURL: existingIssue.GetHTMLURL(),
+		}, nil
+	}
+}
+
+func (i *Integration) CloseIssue(event *output.ResultEvent) error {
+	ctx := context.Background()
+	summary := format.Summary(event)
+
+	existingIssue, err := i.findIssueByTitle(ctx, summary)
+	if err != nil && !errors.Is(err, io.EOF) {
 		return err
 	}
+	if existingIssue == nil {
+		return nil
+	}
+
+	stateClosed := "closed"
+	if _, _, err := i.client.Issues.Edit(ctx, i.options.Owner, i.options.ProjectName, *existingIssue.Number, &github.IssueRequest{
+		State: &stateClosed,
+	}); err != nil {
+		return fmt.Errorf("error closing issue %d: %s", *existingIssue.Number, err)
+	}
+	return nil
+}
+
+func (i *Integration) Name() string {
+	return "github"
+}
+
+// ShouldFilter determines if an issue should be logged to this tracker
+func (i *Integration) ShouldFilter(event *output.ResultEvent) bool {
+	if i.options.AllowList != nil && !i.options.AllowList.GetMatch(event) {
+		return false
+	}
+
+	if i.options.DenyList != nil && i.options.DenyList.GetMatch(event) {
+		return false
+	}
+
+	return true
 }
 
 func (i *Integration) findIssueByTitle(ctx context.Context, title string) (*github.Issue, error) {

@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"strings"
 
-	"github.com/alecthomas/jsonschema"
+	"github.com/invopop/jsonschema"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/expressions"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/generators"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/interactsh"
@@ -21,12 +21,12 @@ type Variable struct {
 	utils.InsertionOrderedStringMap `yaml:"-" json:"-"`
 }
 
-func (variables Variable) JSONSchemaType() *jsonschema.Type {
-	gotType := &jsonschema.Type{
+func (variables Variable) JSONSchema() *jsonschema.Schema {
+	gotType := &jsonschema.Schema{
 		Type:                 "object",
 		Title:                "variables for the request",
 		Description:          "Additional variables for the request",
-		AdditionalProperties: []byte("true"),
+		AdditionalProperties: &jsonschema.Schema{},
 	}
 	return gotType
 }
@@ -134,6 +134,12 @@ func (variables *Variable) checkForLazyEval() bool {
 				variables.LazyEval = true
 				return
 			}
+		}
+		// this is a hotfix and not the best way to do it
+		// will be refactored once we move scan state to scanContext (see: https://github.com/projectdiscovery/nuclei/issues/4631)
+		if strings.Contains(types.ToString(value), "interactsh-url") {
+			variables.LazyEval = true
+			return
 		}
 	})
 	return variables.LazyEval

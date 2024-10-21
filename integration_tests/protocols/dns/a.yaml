@@ -1,0 +1,17 @@
+id: dns-a-query-example
+
+info:
+  name: Test DNS A Query Template
+  author: pdteam
+  severity: info
+
+dns:
+  - name: "{{FQDN}}"
+    type: A
+    class: inet
+    recursion: true
+    retries: 3
+    matchers:
+      - type: word
+        words:
+          - "1.1.1.1"

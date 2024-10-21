@@ -17,7 +17,7 @@ func hash(v interface{}) (string, error) {
 
 	sh := sha256.New()
 
-	if _, err = io.WriteString(sh, string(data)); err != nil {
+	if _, err = sh.Write(data); err != nil {
 		return "", err
 	}
 	return hex.EncodeToString(sh.Sum(nil)), nil

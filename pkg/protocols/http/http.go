@@ -5,16 +5,20 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/invopop/jsonschema"
 	json "github.com/json-iterator/go"
 	"github.com/pkg/errors"
 
+	"github.com/projectdiscovery/nuclei/v3/pkg/fuzz"
 	"github.com/projectdiscovery/nuclei/v3/pkg/operators"
+	"github.com/projectdiscovery/nuclei/v3/pkg/operators/matchers"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/expressions"
-	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/fuzz"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/generators"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http/httpclientpool"
 	httputil "github.com/projectdiscovery/nuclei/v3/pkg/protocols/utils/http"
+	"github.com/projectdiscovery/nuclei/v3/pkg/utils/stats"
 	"github.com/projectdiscovery/rawhttp"
 	"github.com/projectdiscovery/retryablehttp-go"
 	fileutil "github.com/projectdiscovery/utils/file"
@@ -135,13 +139,17 @@ type Request struct {
 
 	// description: |
 	//   SelfContained specifies if the request is self-contained.
-	SelfContained bool `yaml:"-" json:"-"`
+	SelfContained bool `yaml:"self-contained,omitempty" json:"self-contained,omitempty"`
 
 	// description: |
 	//   Signature is the request signature method
 	// values:
 	//   - "AWS"
 	Signature SignatureTypeHolder `yaml:"signature,omitempty" json:"signature,omitempty" jsonschema:"title=signature is the http request signature method,description=Signature is the HTTP Request signature Method,enum=AWS"`
+
+	// description: |
+	//   SkipSecretFile skips the authentication or authorization configured in the secret file.
+	SkipSecretFile bool `yaml:"skip-secret-file,omitempty" json:"skip-secret-file,omitempty" jsonschema:"title=bypass secret file,description=Skips the authentication or authorization configured in the secret file"`
 
 	// description: |
 	//   CookieReuse is an optional setting that enables cookie reuse for
@@ -208,6 +216,39 @@ type Request struct {
 	// description: |
 	//  DisablePathAutomerge disables merging target url path with raw request path
 	DisablePathAutomerge bool `yaml:"disable-path-automerge,omitempty" json:"disable-path-automerge,omitempty" jsonschema:"title=disable auto merging of path,description=Disable merging target url path with raw request path"`
+	// description: |
+	//   Fuzz PreCondition is matcher-like field to check if fuzzing should be performed on this request or not
+	FuzzPreCondition []*matchers.Matcher `yaml:"pre-condition,omitempty" json:"pre-condition,omitempty" jsonschema:"title=pre-condition for fuzzing/dast,description=PreCondition is matcher-like field to check if fuzzing should be performed on this request or not"`
+	// description: |
+	//  FuzzPreConditionOperator is the operator between multiple PreConditions for fuzzing Default is OR
+	FuzzPreConditionOperator string                 `yaml:"pre-condition-operator,omitempty" json:"pre-condition-operator,omitempty" jsonschema:"title=condition between the filters,description=Operator to use between multiple per-conditions,enum=and,enum=or"`
+	fuzzPreConditionOperator matchers.ConditionType `yaml:"-" json:"-"`
+	// description: |
+	//   GlobalMatchers marks matchers as static and applies globally to all result events from other templates
+	GlobalMatchers bool `yaml:"global-matchers,omitempty" json:"global-matchers,omitempty" jsonschema:"title=global matchers,description=marks matchers as static and applies globally to all result events from other templates"`
+}
+
+func (e Request) JSONSchemaExtend(schema *jsonschema.Schema) {
+	headersSchema, ok := schema.Properties.Get("headers")
+	if !ok {
+		return
+	}
+	headersSchema.PatternProperties = map[string]*jsonschema.Schema{
+		".*": {
+			OneOf: []*jsonschema.Schema{
+				{
+					Type: "string",
+				},
+				{
+					Type: "integer",
+				},
+				{
+					Type: "boolean",
+				},
+			},
+		},
+	}
+	headersSchema.Ref = ""
 }
 
 // Options returns executer options for http request
@@ -302,7 +343,7 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 				request.Raw[i] = strings.ReplaceAll(raw, "\n", "\r\n")
 			}
 		}
-		request.rawhttpClient = httpclientpool.GetRawHTTP(options.Options)
+		request.rawhttpClient = httpclientpool.GetRawHTTP(options)
 	}
 	if len(request.Matchers) > 0 || len(request.Extractors) > 0 {
 		compiled := &request.Operators
@@ -312,6 +353,20 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 			return errors.Wrap(compileErr, "could not compile operators")
 		}
 		request.CompiledOperators = compiled
+	}
+
+	// === fuzzing filters ===== //
+
+	if request.FuzzPreConditionOperator != "" {
+		request.fuzzPreConditionOperator = matchers.ConditionTypes[request.FuzzPreConditionOperator]
+	} else {
+		request.fuzzPreConditionOperator = matchers.ORCondition
+	}
+
+	for _, filter := range request.FuzzPreCondition {
+		if err := filter.CompileMatchers(); err != nil {
+			return errors.Wrap(err, "could not compile matcher")
+		}
 	}
 
 	// Resolve payload paths from vars if they exists
@@ -388,8 +443,34 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 		}
 	}
 	if len(request.Payloads) > 0 {
-		// if we have payloads, adjust threads if none specified
-		request.Threads = options.GetThreadsForNPayloadRequests(request.Requests(), request.Threads)
+		// Due to a known issue (https://github.com/projectdiscovery/nuclei/issues/5015),
+		// dynamic extractors cannot be used with payloads. To address this,
+		// execution is handled by the standard engine without concurrency,
+		// achieved by setting the thread count to 0.
+
+		// this limitation will be removed once we have a better way to handle dynamic extractors with payloads
+		hasMultipleRequests := false
+		if len(request.Raw)+len(request.Path) > 1 {
+			hasMultipleRequests = true
+		}
+		// look for dynamic extractor ( internal: true with named extractor)
+		hasNamedInternalExtractor := false
+		for _, extractor := range request.Extractors {
+			if extractor.Internal && extractor.Name != "" {
+				hasNamedInternalExtractor = true
+				break
+			}
+		}
+		if hasNamedInternalExtractor && hasMultipleRequests {
+			stats.Increment(SetThreadToCountZero)
+			request.Threads = 0
+		} else {
+			// specifically for http requests high concurrency and and threads will lead to memory exausthion, hence reduce the maximum parallelism
+			if protocolstate.IsLowOnMemory() {
+				request.Threads = protocolstate.GuardThreadsOrDefault(request.Threads)
+			}
+			request.Threads = options.GetThreadsForNPayloadRequests(request.Requests(), request.Threads)
+		}
 	}
 
 	return nil
@@ -415,4 +496,12 @@ func (request *Request) Requests() int {
 		return requests
 	}
 	return len(request.Path)
+}
+
+const (
+	SetThreadToCountZero = "set-thread-count-to-zero"
+)
+
+func init() {
+	stats.NewEntry(SetThreadToCountZero, "Setting thread count to 0 for %d templates, dynamic extractors are not supported with payloads yet")
 }

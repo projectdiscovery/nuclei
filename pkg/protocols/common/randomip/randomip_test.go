@@ -4,7 +4,7 @@ import (
 	"net"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestGetRandomIp(t *testing.T) {
@@ -110,15 +110,15 @@ func TestGetRandomIp(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			ip, err := GetRandomIPWithCidr(test.cidr...)
 			if test.valid {
-				assert.NoError(t, err)
+				require.NoError(t, err)
 				anyInRange := false
 				for _, cidr := range test.cidr {
 					_, network, _ := net.ParseCIDR(cidr)
 					anyInRange = anyInRange || network.Contains(ip)
 				}
-				assert.Truef(t, anyInRange, "the IP address returned %v is not in range of the provided CIDRs", ip)
+				require.Truef(t, anyInRange, "the IP address returned %v is not in range of the provided CIDRs", ip)
 			} else {
-				assert.Error(t, err, test.errorMsg)
+				require.Error(t, err, test.errorMsg)
 			}
 		})
 	}

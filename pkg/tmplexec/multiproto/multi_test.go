@@ -3,12 +3,14 @@ package multiproto_test
 import (
 	"context"
 	"log"
+	"os"
 	"testing"
 	"time"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/config"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/disk"
-	"github.com/projectdiscovery/nuclei/v3/pkg/parsers"
+	"github.com/projectdiscovery/nuclei/v3/pkg/input"
+	"github.com/projectdiscovery/nuclei/v3/pkg/loader/workflow"
 	"github.com/projectdiscovery/nuclei/v3/pkg/progress"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
@@ -35,8 +37,10 @@ func setup() {
 		Browser:      nil,
 		Catalog:      disk.NewCatalog(config.DefaultConfig.TemplatesDirectory),
 		RateLimiter:  ratelimit.New(context.Background(), uint(options.RateLimit), time.Second),
+		Parser:       templates.NewParser(),
+		InputHelper:  input.NewHelper(),
 	}
-	workflowLoader, err := parsers.NewLoader(&executerOpts)
+	workflowLoader, err := workflow.NewLoader(&executerOpts)
 	if err != nil {
 		log.Fatalf("Could not create workflow loader: %s\n", err)
 	}
@@ -44,7 +48,6 @@ func setup() {
 }
 
 func TestMultiProtoWithDynamicExtractor(t *testing.T) {
-	setup()
 	Template, err := templates.Parse("testcases/multiprotodynamic.yaml", nil, executerOpts)
 	require.Nil(t, err, "could not parse template")
 
@@ -53,15 +56,14 @@ func TestMultiProtoWithDynamicExtractor(t *testing.T) {
 	err = Template.Executer.Compile()
 	require.Nil(t, err, "could not compile template")
 
-	input := contextargs.NewWithInput("blog.projectdiscovery.io")
-	ctx := scan.NewScanContext(input)
+	input := contextargs.NewWithInput(context.Background(), "blog.projectdiscovery.io")
+	ctx := scan.NewScanContext(context.Background(), input)
 	gotresults, err := Template.Executer.Execute(ctx)
 	require.Nil(t, err, "could not execute template")
 	require.True(t, gotresults)
 }
 
 func TestMultiProtoWithProtoPrefix(t *testing.T) {
-	setup()
 	Template, err := templates.Parse("testcases/multiprotowithprefix.yaml", nil, executerOpts)
 	require.Nil(t, err, "could not parse template")
 
@@ -70,9 +72,14 @@ func TestMultiProtoWithProtoPrefix(t *testing.T) {
 	err = Template.Executer.Compile()
 	require.Nil(t, err, "could not compile template")
 
-	input := contextargs.NewWithInput("blog.projectdiscovery.io")
-	ctx := scan.NewScanContext(input)
+	input := contextargs.NewWithInput(context.Background(), "blog.projectdiscovery.io")
+	ctx := scan.NewScanContext(context.Background(), input)
 	gotresults, err := Template.Executer.Execute(ctx)
 	require.Nil(t, err, "could not execute template")
 	require.True(t, gotresults)
+}
+
+func TestMain(m *testing.M) {
+	setup()
+	os.Exit(m.Run())
 }

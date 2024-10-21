@@ -2,133 +2,288 @@ package ldap
 
 import (
 	"context"
+	"crypto/tls"
 	"fmt"
+	"net"
+	"net/url"
 	"strings"
-	"time"
 
+	"github.com/dop251/goja"
 	"github.com/go-ldap/ldap/v3"
-	"github.com/praetorian-inc/fingerprintx/pkg/plugins"
+	"github.com/projectdiscovery/nuclei/v3/pkg/js/utils"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
-
-	pluginldap "github.com/praetorian-inc/fingerprintx/pkg/plugins/services/ldap"
 )
 
-// Client is a client for ldap protocol in golang.
-//
-// It is a wrapper around the standard library ldap package.
-type LdapClient struct{}
+type (
+	// Client is a client for ldap protocol in nuclei
+	// @example
+	// ```javascript
+	// const ldap = require('nuclei/ldap');
+	// // here ldap.example.com is the ldap server and acme.com is the realm
+	// const client = new ldap.Client('ldap://ldap.example.com', 'acme.com');
+	// ```
+	// @example
+	// ```javascript
+	// const ldap = require('nuclei/ldap');
+	// const cfg = new ldap.Config();
+	// cfg.Timeout = 10;
+	// cfg.ServerName = 'ldap.internal.acme.com';
+	// // optional config can be passed as third argument
+	// const client = new ldap.Client('ldap://ldap.example.com', 'acme.com', cfg);
+	// ```
+	Client struct {
+		Host   string // Hostname
+		Port   int    // Port
+		Realm  string // Realm
+		BaseDN string // BaseDN (generated from Realm)
 
-// IsLdap checks if the given host and port are running ldap server.
-func (c *LdapClient) IsLdap(host string, port int) (bool, error) {
+		// unexported
+		nj   *utils.NucleiJS // nuclei js utils
+		conn *ldap.Conn
+		cfg  Config
+	}
+)
 
-	if !protocolstate.IsHostAllowed(host) {
-		// host is not valid according to network policy
-		return false, protocolstate.ErrHostDenied.Msgf(host)
+type (
+	// Config is extra configuration for the ldap client
+	// @example
+	// ```javascript
+	// const ldap = require('nuclei/ldap');
+	// const cfg = new ldap.Config();
+	// cfg.Timeout = 10;
+	// cfg.ServerName = 'ldap.internal.acme.com';
+	// cfg.Upgrade = true; // upgrade to tls
+	// ```
+	Config struct {
+		// Timeout is the timeout for the ldap client in seconds
+		Timeout    int
+		ServerName string // default to host (when using tls)
+		Upgrade    bool   // when true first connects to non-tls and then upgrades to tls
+	}
+)
+
+// Constructor for creating a new ldap client
+// The following schemas are supported for url: ldap://, ldaps://, ldapi://,
+// and cldap:// (RFC1798, deprecated but used by Active Directory).
+// ldaps uses TLS/SSL, ldapi uses a Unix domain socket, and cldap uses connectionless LDAP.
+// Constructor: constructor(public ldapUrl: string, public realm: string, public config?: Config)
+func NewClient(call goja.ConstructorCall, runtime *goja.Runtime) *goja.Object {
+	// setup nucleijs utils
+	c := &Client{nj: utils.NewNucleiJS(runtime)}
+	c.nj.ObjectSig = "Client(ldapUrl,Realm,{Config})" // will be included in error messages
+
+	// get arguments (type assertion is efficient than reflection)
+	ldapUrl, _ := c.nj.GetArg(call.Arguments, 0).(string)
+	realm, _ := c.nj.GetArg(call.Arguments, 1).(string)
+	c.cfg = utils.GetStructTypeSafe[Config](c.nj, call.Arguments, 2, Config{})
+	c.Realm = realm
+	c.BaseDN = fmt.Sprintf("dc=%s", strings.Join(strings.Split(realm, "."), ",dc="))
+
+	// validate arguments
+	c.nj.Require(ldapUrl != "", "ldap url cannot be empty")
+	c.nj.Require(realm != "", "realm cannot be empty")
+
+	u, err := url.Parse(ldapUrl)
+	c.nj.HandleError(err, "invalid ldap url supported schemas are ldap://, ldaps://, ldapi://, and cldap://")
+
+	var conn net.Conn
+	if u.Scheme == "ldapi" {
+		if u.Path == "" || u.Path == "/" {
+			u.Path = "/var/run/slapd/ldapi"
+		}
+		conn, err = protocolstate.Dialer.Dial(context.TODO(), "unix", u.Path)
+		c.nj.HandleError(err, "failed to connect to ldap server")
+	} else {
+		host, port, err := net.SplitHostPort(u.Host)
+		if err != nil {
+			// we assume that error is due to missing port
+			host = u.Host
+			port = ""
+		}
+		if u.Scheme == "" {
+			// default to ldap
+			u.Scheme = "ldap"
+		}
+
+		switch u.Scheme {
+		case "cldap":
+			if port == "" {
+				port = ldap.DefaultLdapPort
+			}
+			conn, err = protocolstate.Dialer.Dial(context.TODO(), "udp", net.JoinHostPort(host, port))
+		case "ldap":
+			if port == "" {
+				port = ldap.DefaultLdapPort
+			}
+			conn, err = protocolstate.Dialer.Dial(context.TODO(), "tcp", net.JoinHostPort(host, port))
+		case "ldaps":
+			if port == "" {
+				port = ldap.DefaultLdapsPort
+			}
+			serverName := host
+			if c.cfg.ServerName != "" {
+				serverName = c.cfg.ServerName
+			}
+			conn, err = protocolstate.Dialer.DialTLSWithConfig(context.TODO(), "tcp", net.JoinHostPort(host, port),
+				&tls.Config{InsecureSkipVerify: true, MinVersion: tls.VersionTLS10, ServerName: serverName})
+		default:
+			err = fmt.Errorf("unsupported ldap url schema %v", u.Scheme)
+		}
+		c.nj.HandleError(err, "failed to connect to ldap server")
+	}
+	c.conn = ldap.NewConn(conn, u.Scheme == "ldaps")
+	if u.Scheme != "ldaps" && c.cfg.Upgrade {
+		serverName := u.Hostname()
+		if c.cfg.ServerName != "" {
+			serverName = c.cfg.ServerName
+		}
+		if err := c.conn.StartTLS(&tls.Config{InsecureSkipVerify: true, ServerName: serverName}); err != nil {
+			c.nj.HandleError(err, "failed to upgrade to tls")
+		}
+	} else {
+		c.conn.Start()
 	}
 
-	timeout := 10 * time.Second
-
-	conn, err := protocolstate.Dialer.Dial(context.TODO(), "tcp", fmt.Sprintf("%s:%d", host, port))
-
-	if err != nil {
-		return false, err
-	}
-	defer conn.Close()
-
-	_ = conn.SetDeadline(time.Now().Add(timeout))
-
-	plugin := &pluginldap.LDAPPlugin{}
-	service, err := plugin.Run(conn, timeout, plugins.Target{Host: host})
-	if err != nil {
-		return false, err
-	}
-	if service == nil {
-		return false, nil
-	}
-	return true, nil
+	return utils.LinkConstructor(call, runtime, c)
 }
 
-// CollectLdapMetadata collects metadata from ldap server.
-func (c *LdapClient) CollectLdapMetadata(domain string, controller string) (LDAPMetadata, error) {
-	opts := &ldapSessionOptions{
-		domain:           domain,
-		domainController: controller,
+// Authenticate authenticates with the ldap server using the given username and password
+// performs NTLMBind first and then Bind/UnauthenticatedBind if NTLMBind fails
+// @example
+// ```javascript
+// const ldap = require('nuclei/ldap');
+// const client = new ldap.Client('ldap://ldap.example.com', 'acme.com');
+// client.Authenticate('user', 'password');
+// ```
+func (c *Client) Authenticate(username, password string) bool {
+	c.nj.Require(c.conn != nil, "no existing connection")
+	if c.BaseDN == "" {
+		c.BaseDN = fmt.Sprintf("dc=%s", strings.Join(strings.Split(c.Realm, "."), ",dc="))
 	}
-
-	if !protocolstate.IsHostAllowed(domain) {
-		// host is not valid according to network policy
-		return LDAPMetadata{}, protocolstate.ErrHostDenied.Msgf(domain)
+	if err := c.conn.NTLMBind(c.Realm, username, password); err == nil {
+		// if bind with NTLMBind(), there is nothing
+		// else to do, you are authenticated
+		return true
 	}
-
-	conn, err := c.newLdapSession(opts)
-	if err != nil {
-		return LDAPMetadata{}, err
-	}
-	defer c.close(conn)
-
-	return c.collectLdapMetadata(conn, opts)
-}
-
-type ldapSessionOptions struct {
-	domain           string
-	domainController string
-	port             int
-	username         string
-	password         string
-	baseDN           string
-}
-
-func (c *LdapClient) newLdapSession(opts *ldapSessionOptions) (*ldap.Conn, error) {
-	port := opts.port
-	dc := opts.domainController
-	if port == 0 {
-		port = 389
-	}
-
-	conn, err := protocolstate.Dialer.Dial(context.TODO(), "tcp", fmt.Sprintf("%s:%d", dc, port))
-	if err != nil {
-		return nil, err
-	}
-
-	lConn := ldap.NewConn(conn, false)
-	lConn.Start()
-
-	return lConn, nil
-}
-
-func (c *LdapClient) close(conn *ldap.Conn) {
-	conn.Close()
-}
-
-// LDAPMetadata is the metadata for ldap server.
-type LDAPMetadata struct {
-	BaseDN                        string
-	Domain                        string
-	DefaultNamingContext          string
-	DomainFunctionality           string
-	ForestFunctionality           string
-	DomainControllerFunctionality string
-	DnsHostName                   string
-}
-
-func (c *LdapClient) collectLdapMetadata(lConn *ldap.Conn, opts *ldapSessionOptions) (LDAPMetadata, error) {
-	metadata := LDAPMetadata{}
 
 	var err error
-	if opts.username == "" {
-		err = lConn.UnauthenticatedBind("")
-	} else {
-		err = lConn.Bind(opts.username, opts.password)
+	switch password {
+	case "":
+		if err = c.conn.UnauthenticatedBind(username); err != nil {
+			c.nj.ThrowError(err)
+		}
+	default:
+		if err = c.conn.Bind(username, password); err != nil {
+			c.nj.ThrowError(err)
+		}
 	}
-	if err != nil {
-		return metadata, err
+	return err == nil
+}
+
+// AuthenticateWithNTLMHash authenticates with the ldap server using the given username and NTLM hash
+// @example
+// ```javascript
+// const ldap = require('nuclei/ldap');
+// const client = new ldap.Client('ldap://ldap.example.com', 'acme.com');
+// client.AuthenticateWithNTLMHash('pdtm', 'hash');
+// ```
+func (c *Client) AuthenticateWithNTLMHash(username, hash string) bool {
+	c.nj.Require(c.conn != nil, "no existing connection")
+	if c.BaseDN == "" {
+		c.BaseDN = fmt.Sprintf("dc=%s", strings.Join(strings.Split(c.Realm, "."), ",dc="))
 	}
+	var err error
+	if err = c.conn.NTLMBindWithHash(c.Realm, username, hash); err != nil {
+		c.nj.ThrowError(err)
+	}
+	return err == nil
+}
 
-	baseDN, _ := getBaseNamingContext(opts, lConn)
+// Search accepts whatever filter and returns a list of maps having provided attributes
+// as keys and associated values mirroring the ones returned by ldap
+// @example
+// ```javascript
+// const ldap = require('nuclei/ldap');
+// const client = new ldap.Client('ldap://ldap.example.com', 'acme.com');
+// const results = client.Search('(objectClass=*)', 'cn', 'mail');
+// ```
+func (c *Client) Search(filter string, attributes ...string) SearchResult {
+	c.nj.Require(c.conn != nil, "no existing connection")
+	c.nj.Require(c.BaseDN != "", "base dn cannot be empty")
+	c.nj.Require(len(attributes) > 0, "attributes cannot be empty")
 
-	metadata.BaseDN = baseDN
-	metadata.Domain = parseDC(baseDN)
+	res, err := c.conn.Search(
+		ldap.NewSearchRequest(
+			"",
+			ldap.ScopeWholeSubtree,
+			ldap.NeverDerefAliases,
+			0, 0, false,
+			filter,
+			attributes,
+			nil,
+		),
+	)
+	c.nj.HandleError(err, "ldap search request failed")
+	return *getSearchResult(res)
+}
 
+// AdvancedSearch accepts all values of search request type and return Ldap Entry
+// its up to user to handle the response
+// @example
+// ```javascript
+// const ldap = require('nuclei/ldap');
+// const client = new ldap.Client('ldap://ldap.example.com', 'acme.com');
+// const results = client.AdvancedSearch(ldap.ScopeWholeSubtree, ldap.NeverDerefAliases, 0, 0, false, '(objectClass=*)', ['cn', 'mail'], []);
+// ```
+func (c *Client) AdvancedSearch(
+	Scope, DerefAliases, SizeLimit, TimeLimit int,
+	TypesOnly bool,
+	Filter string,
+	Attributes []string,
+	Controls []ldap.Control) SearchResult {
+	c.nj.Require(c.conn != nil, "no existing connection")
+	if c.BaseDN == "" {
+		c.BaseDN = fmt.Sprintf("dc=%s", strings.Join(strings.Split(c.Realm, "."), ",dc="))
+	}
+	req := ldap.NewSearchRequest(c.BaseDN, Scope, DerefAliases, SizeLimit, TimeLimit, TypesOnly, Filter, Attributes, Controls)
+	res, err := c.conn.Search(req)
+	c.nj.HandleError(err, "ldap search request failed")
+	c.nj.Require(res != nil, "ldap search request failed got nil response")
+	return *getSearchResult(res)
+}
+
+type (
+	// Metadata is the metadata for ldap server.
+	// this is returned by CollectMetadata method
+	Metadata struct {
+		BaseDN                        string
+		Domain                        string
+		DefaultNamingContext          string
+		DomainFunctionality           string
+		ForestFunctionality           string
+		DomainControllerFunctionality string
+		DnsHostName                   string
+	}
+)
+
+// CollectLdapMetadata collects metadata from ldap server.
+// @example
+// ```javascript
+// const ldap = require('nuclei/ldap');
+// const client = new ldap.Client('ldap://ldap.example.com', 'acme.com');
+// const metadata = client.CollectMetadata();
+// log(to_json(metadata));
+// ```
+func (c *Client) CollectMetadata() Metadata {
+	c.nj.Require(c.conn != nil, "no existing connection")
+	var metadata Metadata
+	metadata.Domain = c.Realm
+	if c.BaseDN == "" {
+		c.BaseDN = fmt.Sprintf("dc=%s", strings.Join(strings.Split(c.Realm, "."), ",dc="))
+	}
+	metadata.BaseDN = c.BaseDN
+
+	// Use scope as Base since Root DSE doesn't have subentries
 	srMetadata := ldap.NewSearchRequest(
 		"",
 		ldap.ScopeBaseObject,
@@ -143,10 +298,9 @@ func (c *LdapClient) collectLdapMetadata(lConn *ldap.Conn, opts *ldapSessionOpti
 			"dnsHostName",
 		},
 		nil)
-	resMetadata, err := lConn.Search(srMetadata)
-	if err != nil {
-		return metadata, err
-	}
+	resMetadata, err := c.conn.Search(srMetadata)
+	c.nj.HandleError(err, "ldap search request failed")
+
 	for _, entry := range resMetadata.Entries {
 		for _, attr := range entry.Attributes {
 			value := entry.GetAttributeValue(attr.Name)
@@ -164,142 +318,16 @@ func (c *LdapClient) collectLdapMetadata(lConn *ldap.Conn, opts *ldapSessionOpti
 			}
 		}
 	}
-	return metadata, nil
+	return metadata
 }
 
-func parseDC(input string) string {
-	parts := strings.Split(strings.ToLower(input), ",")
-
-	for i, part := range parts {
-		parts[i] = strings.TrimPrefix(part, "dc=")
-	}
-
-	return strings.Join(parts, ".")
-}
-
-func getBaseNamingContext(opts *ldapSessionOptions, conn *ldap.Conn) (string, error) {
-	if opts.baseDN != "" {
-		return opts.baseDN, nil
-	}
-	sr := ldap.NewSearchRequest(
-		"",
-		ldap.ScopeBaseObject,
-		ldap.NeverDerefAliases,
-		0, 0, false,
-		"(objectClass=*)",
-		[]string{"defaultNamingContext"},
-		nil)
-	res, err := conn.Search(sr)
-	if err != nil {
-		return "", err
-	}
-	if len(res.Entries) == 0 {
-		return "", fmt.Errorf("error getting metadata: No LDAP responses from server")
-	}
-	defaultNamingContext := res.Entries[0].GetAttributeValue("defaultNamingContext")
-	if defaultNamingContext == "" {
-		return "", fmt.Errorf("error getting metadata: attribute defaultNamingContext missing")
-	}
-	opts.baseDN = defaultNamingContext
-	return opts.baseDN, nil
-}
-
-// KerberoastableUser contains the important fields of the Active Directory
-// kerberoastable user
-type KerberoastableUser struct {
-	SAMAccountName       string
-	ServicePrincipalName string
-	PWDLastSet           string
-	MemberOf             string
-	UserAccountControl   string
-	LastLogon            string
-}
-
-// GetKerberoastableUsers collects all "person" users that have an SPN
-// associated with them. The LDAP filter is built with the same logic as
-// "GetUserSPNs.py", the well-known impacket example by Forta.
-// https://github.com/fortra/impacket/blob/master/examples/GetUserSPNs.py#L297
-//
-// Returns a list of KerberoastableUser, if an error occurs, returns an empty
-// slice and the raised error
-func (c *LdapClient) GetKerberoastableUsers(domain, controller string, username, password string) ([]KerberoastableUser, error) {
-	opts := &ldapSessionOptions{
-		domain:           domain,
-		domainController: controller,
-		username:         username,
-		password:         password,
-	}
-
-	if !protocolstate.IsHostAllowed(domain) {
-		// host is not valid according to network policy
-		return nil, protocolstate.ErrHostDenied.Msgf(domain)
-	}
-
-	conn, err := c.newLdapSession(opts)
-	if err != nil {
-		return nil, err
-	}
-	defer c.close(conn)
-
-	domainParts := strings.Split(domain, ".")
-	if username == "" {
-		err = conn.UnauthenticatedBind("")
-	} else {
-		err = conn.Bind(
-			fmt.Sprintf("%v\\%v", domainParts[0], username),
-			password,
-		)
-	}
-	if err != nil {
-		return nil, err
-	}
-
-	var baseDN strings.Builder
-	for i, part := range domainParts {
-		baseDN.WriteString("DC=")
-		baseDN.WriteString(part)
-		if i != len(domainParts)-1 {
-			baseDN.WriteString(",")
-		}
-	}
-
-	sr := ldap.NewSearchRequest(
-		baseDN.String(),
-		ldap.ScopeWholeSubtree,
-		ldap.NeverDerefAliases,
-		0, 0, false,
-		// (&(is_user)         (!(account_is_disabled))                         (has_SPN))
-		"(&(objectCategory=person)(!(userAccountControl:1.2.840.113556.1.4.803:=2))(servicePrincipalName=*))",
-		[]string{
-			"SAMAccountName",
-			"ServicePrincipalName",
-			"pwdLastSet",
-			"MemberOf",
-			"userAccountControl",
-			"lastLogon",
-		},
-		nil,
-	)
-
-	res, err := conn.Search(sr)
-	if err != nil {
-		return nil, err
-	}
-
-	if len(res.Entries) == 0 {
-		return nil, fmt.Errorf("no kerberoastable user found")
-	}
-
-	var ku []KerberoastableUser
-	for _, usr := range res.Entries {
-		ku = append(ku, KerberoastableUser{
-			SAMAccountName:       usr.GetAttributeValue("sAMAccountName"),
-			ServicePrincipalName: usr.GetAttributeValue("servicePrincipalName"),
-			PWDLastSet:           usr.GetAttributeValue("pwdLastSet"),
-			MemberOf:             usr.GetAttributeValue("MemberOf"),
-			UserAccountControl:   usr.GetAttributeValue("userAccountControl"),
-			LastLogon:            usr.GetAttributeValue("lastLogon"),
-		})
-	}
-	return ku, nil
+// close the ldap connection
+// @example
+// ```javascript
+// const ldap = require('nuclei/ldap');
+// const client = new ldap.Client('ldap://ldap.example.com', 'acme.com');
+// client.Close();
+// ```
+func (c *Client) Close() {
+	c.conn.Close()
 }

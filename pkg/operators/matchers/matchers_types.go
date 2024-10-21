@@ -5,7 +5,7 @@ import (
 	"errors"
 	"strings"
 
-	"github.com/alecthomas/jsonschema"
+	"github.com/invopop/jsonschema"
 )
 
 // MatcherType is the type of the matcher specified
@@ -82,8 +82,8 @@ func (t MatcherTypeHolder) String() string {
 	return t.MatcherType.String()
 }
 
-func (holder MatcherTypeHolder) JSONSchemaType() *jsonschema.Type {
-	gotType := &jsonschema.Type{
+func (holder MatcherTypeHolder) JSONSchema() *jsonschema.Schema {
+	gotType := &jsonschema.Schema{
 		Type:        "string",
 		Title:       "type of the matcher",
 		Description: "Type of the matcher",

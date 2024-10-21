@@ -11,17 +11,33 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
 )
 
-// OracleClient is a minimal Oracle client for nuclei scripts.
-type OracleClient struct{}
+type (
+	// IsOracleResponse is the response from the IsOracle function.
+	// this is returned by IsOracle function.
+	// @example
+	// ```javascript
+	// const oracle = require('nuclei/oracle');
+	// const isOracle = oracle.IsOracle('acme.com', 1521);
+	// ```
+	IsOracleResponse struct {
+		IsOracle bool
+		Banner   string
+	}
+)
 
-// IsOracleResponse is the response from the IsOracle function.
-type IsOracleResponse struct {
-	IsOracle bool
-	Banner   string
+// IsOracle checks if a host is running an Oracle server
+// @example
+// ```javascript
+// const oracle = require('nuclei/oracle');
+// const isOracle = oracle.IsOracle('acme.com', 1521);
+// log(toJSON(isOracle));
+// ```
+func IsOracle(host string, port int) (IsOracleResponse, error) {
+	return memoizedisOracle(host, port)
 }
 
-// IsOracle checks if a host is running an Oracle server.
-func (c *OracleClient) IsOracle(host string, port int) (IsOracleResponse, error) {
+// @memo
+func isOracle(host string, port int) (IsOracleResponse, error) {
 	resp := IsOracleResponse{}
 
 	timeout := 5 * time.Second

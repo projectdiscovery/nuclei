@@ -1,6 +1,7 @@
 package protocols
 
 import (
+	"context"
 	"encoding/base64"
 	"sync/atomic"
 
@@ -10,9 +11,12 @@ import (
 
 	"github.com/logrusorgru/aurora"
 
+	"github.com/projectdiscovery/nuclei/v3/pkg/authprovider"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog"
+	"github.com/projectdiscovery/nuclei/v3/pkg/fuzz/frequency"
 	"github.com/projectdiscovery/nuclei/v3/pkg/input"
 	"github.com/projectdiscovery/nuclei/v3/pkg/js/compiler"
+	"github.com/projectdiscovery/nuclei/v3/pkg/loader/parser"
 	"github.com/projectdiscovery/nuclei/v3/pkg/model"
 	"github.com/projectdiscovery/nuclei/v3/pkg/operators"
 	"github.com/projectdiscovery/nuclei/v3/pkg/operators/extractors"
@@ -21,6 +25,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/progress"
 	"github.com/projectdiscovery/nuclei/v3/pkg/projectfile"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/globalmatchers"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/hosterrorscache"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/interactsh"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/utils/excludematchers"
@@ -30,13 +35,11 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/scan"
 	templateTypes "github.com/projectdiscovery/nuclei/v3/pkg/templates/types"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
+	unitutils "github.com/projectdiscovery/utils/unit"
 )
 
-// Optional Callback to update Thread count in payloads across all requests
-type PayloadThreadSetterCallback func(opts *ExecutorOptions, totalRequests, currentThreads int) int
-
 var (
-	MaxTemplateFileSizeForEncoding = 1024 * 1024
+	MaxTemplateFileSizeForEncoding = unitutils.Mega
 )
 
 // Executer is an interface implemented any protocol based request executer.
@@ -59,6 +62,8 @@ type ExecutorOptions struct {
 	TemplatePath string
 	// TemplateInfo contains information block of the template request
 	TemplateInfo model.Info
+	// TemplateVerifier is the verifier for the template
+	TemplateVerifier string
 	// RawTemplate is the raw template for the request
 	RawTemplate []byte
 	// Output is a writer interface for writing output events from executer.
@@ -92,6 +97,8 @@ type ExecutorOptions struct {
 	ExcludeMatchers *excludematchers.ExcludeMatchers
 	// InputHelper is a helper for input normalization
 	InputHelper *input.Helper
+	// FuzzParamsFrequency is a cache for parameter frequency
+	FuzzParamsFrequency *frequency.Tracker
 
 	Operators []*operators.Operators // only used by offlinehttp module
 
@@ -112,25 +119,37 @@ type ExecutorOptions struct {
 	// JsCompiler is abstracted javascript compiler which adds node modules and provides execution
 	// environment for javascript templates
 	JsCompiler *compiler.Compiler
-	// Optional Callback function to update Thread count in payloads across all protocols
-	// based on given logic. by default nuclei reverts to using value of `-c` when threads count
-	// is not specified or is 0 in template
-	OverrideThreadsCount PayloadThreadSetterCallback
+	// AuthProvider is a provider for auth strategies
+	AuthProvider authprovider.AuthProvider
+	//TemporaryDirectory is the directory to store temporary files
+	TemporaryDirectory string
+	Parser             parser.Parser
+	// ExportReqURLPattern exports the request URL pattern
+	// in ResultEvent it contains the exact url pattern (ex: {{BaseURL}}/{{randstr}}/xyz) used in the request
+	ExportReqURLPattern bool
+	// GlobalMatchers is the storage for global matchers with http passive templates
+	GlobalMatchers *globalmatchers.Storage
+}
+
+// todo: centralizing components is not feasible with current clogged architecture
+// a possible approach could be an internal event bus with pub-subs? This would be less invasive than
+// reworking dep injection from scratch
+func (eo *ExecutorOptions) RateLimitTake() {
+	if eo.RateLimiter.GetLimit() != uint(eo.Options.RateLimit) {
+		eo.RateLimiter.SetLimit(uint(eo.Options.RateLimit))
+		eo.RateLimiter.SetDuration(eo.Options.RateLimitDuration)
+	}
+	eo.RateLimiter.Take()
 }
 
 // GetThreadsForPayloadRequests returns the number of threads to use as default for
 // given max-request of payloads
 func (e *ExecutorOptions) GetThreadsForNPayloadRequests(totalRequests int, currentThreads int) int {
-	if e.OverrideThreadsCount != nil {
-		return e.OverrideThreadsCount(e, totalRequests, currentThreads)
-	}
-	if currentThreads != 0 {
+	if currentThreads > 0 {
 		return currentThreads
 	}
-	if totalRequests <= 0 {
-		return e.Options.TemplateThreads
-	}
-	return totalRequests
+
+	return e.Options.PayloadConcurrency
 }
 
 // CreateTemplateCtxStore creates template context store (which contains templateCtx for every scan)
@@ -164,7 +183,7 @@ func (e *ExecutorOptions) GetTemplateCtx(input *contextargs.MetaInput) *contexta
 	templateCtx, ok := e.templateCtxStore.Get(scanId)
 	if !ok {
 		// if template context does not exist create new and add it to store and return it
-		templateCtx = contextargs.New()
+		templateCtx = contextargs.New(context.Background())
 		templateCtx.MetaInput = input
 		_ = e.templateCtxStore.Set(scanId, templateCtx)
 	}
@@ -183,6 +202,11 @@ func (e *ExecutorOptions) AddTemplateVars(input *contextargs.MetaInput, reqType 
 	}
 	templateCtx := e.GetTemplateCtx(input)
 	for k, v := range vars {
+		if stringsutil.HasPrefixAny(k, templateTypes.SupportedProtocolsStrings()...) {
+			// this was inherited from previous protocols no need to modify it we can directly set it or omit
+			templateCtx.Set(k, v)
+			continue
+		}
 		if !stringsutil.EqualFoldAny(k, "template-id", "template-info", "template-path") {
 			if reqID != "" {
 				k = reqID + "_" + k
@@ -202,6 +226,11 @@ func (e *ExecutorOptions) AddTemplateVar(input *contextargs.MetaInput, templateT
 		return
 	}
 	templateCtx := e.GetTemplateCtx(input)
+	if stringsutil.HasPrefixAny(key, templateTypes.SupportedProtocolsStrings()...) {
+		// this was inherited from previous protocols no need to modify it we can directly set it or omit
+		templateCtx.Set(key, value)
+		return
+	}
 	if reqID != "" {
 		key = reqID + "_" + key
 	} else if templateType < templateTypes.InvalidProtocol {

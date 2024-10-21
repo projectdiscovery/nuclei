@@ -162,7 +162,7 @@ func process(opts options) error {
 			var updated bool // if max-requests is updated
 			dataString, updated, err = parseAndAddMaxRequests(templateCatalog, path, dataString)
 			if err != nil {
-				gologger.Info().Label("max-request").Msgf(logErrMsg(path, err, opts.debug, errFile))
+				gologger.Info().Label("max-request").Msg(logErrMsg(path, err, opts.debug, errFile))
 			} else {
 				if updated {
 					gologger.Info().Label("max-request").Msgf("✅ updated template: %s\n", path)
@@ -231,7 +231,7 @@ func logErrMsg(path string, err error, debug bool, errFile *os.File) string {
 	return msg
 }
 
-// enhanceTemplateData enhances template data using templateman
+// enhanceTemplate enhances template data using templateman
 // ref: https://github.com/projectdiscovery/templateman/blob/main/templateman-rest-api/README.md#enhance-api
 func enhanceTemplate(data string) (string, bool, error) {
 	resp, err := retryablehttp.DefaultClient().Post(fmt.Sprintf("%s/enhance", tmBaseUrl), "application/x-yaml", strings.NewReader(data))
@@ -255,7 +255,7 @@ func enhanceTemplate(data string) (string, bool, error) {
 		return data, false, errorutil.New("validation failed").WithTag("validate")
 	}
 	if templateResp.Error.Name != "" {
-		return data, false, errorutil.New(templateResp.Error.Name)
+		return data, false, errorutil.New("%s", templateResp.Error.Name)
 	}
 	if strings.TrimSpace(templateResp.Enhanced) == "" && !templateResp.Lint {
 		if templateResp.LintError.Reason != "" {
@@ -266,7 +266,7 @@ func enhanceTemplate(data string) (string, bool, error) {
 	return data, false, errorutil.New("template enhance failed")
 }
 
-// formatTemplateData formats template data using templateman format api
+// formatTemplate formats template data using templateman format api
 func formatTemplate(data string) (string, bool, error) {
 	resp, err := retryablehttp.DefaultClient().Post(fmt.Sprintf("%s/format", tmBaseUrl), "application/x-yaml", strings.NewReader(data))
 	if err != nil {
@@ -289,7 +289,7 @@ func formatTemplate(data string) (string, bool, error) {
 		return data, false, errorutil.New("validation failed").WithTag("validate")
 	}
 	if templateResp.Error.Name != "" {
-		return data, false, errorutil.New(templateResp.Error.Name)
+		return data, false, errorutil.New("%s", templateResp.Error.Name)
 	}
 	if strings.TrimSpace(templateResp.Updated) == "" && !templateResp.Lint {
 		if templateResp.LintError.Reason != "" {
@@ -300,7 +300,7 @@ func formatTemplate(data string) (string, bool, error) {
 	return data, false, errorutil.New("template format failed")
 }
 
-// lintTemplateData lints template data using templateman lint api
+// lintTemplate lints template data using templateman lint api
 func lintTemplate(data string) (bool, error) {
 	resp, err := retryablehttp.DefaultClient().Post(fmt.Sprintf("%s/lint", tmBaseUrl), "application/x-yaml", strings.NewReader(data))
 	if err != nil {
@@ -345,7 +345,7 @@ func validateTemplate(data string) (bool, error) {
 		return false, errorutil.New("validation failed").WithTag("validate")
 	}
 	if validateResp.Error.Name != "" {
-		return false, errorutil.New(validateResp.Error.Name)
+		return false, errorutil.New("%s", validateResp.Error.Name)
 	}
 	return false, errorutil.New("template validation failed")
 }

@@ -1,6 +1,7 @@
 package ssl
 
 import (
+	"context"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -28,15 +29,10 @@ func TestSSLProtocol(t *testing.T) {
 	require.Nil(t, err, "could not compile ssl request")
 
 	var gotEvent output.InternalEvent
-	ctxArgs := contextargs.NewWithInput("scanme.sh:443")
+	ctxArgs := contextargs.NewWithInput(context.Background(), "scanme.sh:443")
 	err = request.ExecuteWithResults(ctxArgs, nil, nil, func(event *output.InternalWrappedEvent) {
 		gotEvent = event.InternalEvent
 	})
 	require.Nil(t, err, "could not run ssl request")
 	require.NotEmpty(t, gotEvent, "could not get event items")
-}
-
-func TestGetAddress(t *testing.T) {
-	address, _ := getAddress("https://scanme.sh")
-	require.Equal(t, "scanme.sh:443", address, "could not get correct address")
 }

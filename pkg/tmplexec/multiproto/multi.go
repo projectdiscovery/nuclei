@@ -8,6 +8,8 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/generators"
 	"github.com/projectdiscovery/nuclei/v3/pkg/scan"
+	"github.com/projectdiscovery/nuclei/v3/pkg/templates/types"
+	stringsutil "github.com/projectdiscovery/utils/strings"
 )
 
 // Mutliprotocol is a template executer engine that executes multiple protocols
@@ -44,14 +46,27 @@ func (m *MultiProtocol) Compile() error {
 
 // ExecuteWithResults executes the template and returns results
 func (m *MultiProtocol) ExecuteWithResults(ctx *scan.ScanContext) error {
+	select {
+	case <-ctx.Context().Done():
+		return ctx.Context().Err()
+	default:
+	}
+
 	// put all readonly args into template context
 	m.options.GetTemplateCtx(ctx.Input.MetaInput).Merge(m.readOnlyArgs)
-	var finalProtoEvent *output.InternalWrappedEvent
+
+	// add all input args to template context
+	ctx.Input.ForEach(func(key string, value interface{}) {
+		m.options.GetTemplateCtx(ctx.Input.MetaInput).Set(key, value)
+	})
+
 	// callback to process results from all protocols
 	multiProtoCallback := func(event *output.InternalWrappedEvent) {
-		if event != nil {
-			finalProtoEvent = event
+		if event == nil {
+			return
 		}
+		// log event and generate result for the event
+		ctx.LogEvent(event)
 		// export dynamic values from operators (i.e internal:true)
 		if event.OperatorsResult != nil && len(event.OperatorsResult.DynamicValues) > 0 {
 			for k, v := range event.OperatorsResult.DynamicValues {
@@ -89,20 +104,34 @@ func (m *MultiProtocol) ExecuteWithResults(ctx *scan.ScanContext) error {
 
 	// execute all protocols in the queue
 	for _, req := range m.requests {
-		values := m.options.GetTemplateCtx(ctx.Input.MetaInput).GetAll()
-		err := req.ExecuteWithResults(ctx.Input, output.InternalEvent(values), nil, multiProtoCallback)
-		// if error skip execution of next protocols
+		select {
+		case <-ctx.Context().Done():
+			return ctx.Context().Err()
+		default:
+		}
+		inputItem := ctx.Input.Clone()
+		if m.options.InputHelper != nil && ctx.Input.MetaInput.Input != "" {
+			if inputItem.MetaInput.Input = m.options.InputHelper.Transform(inputItem.MetaInput.Input, req.Type()); inputItem.MetaInput.Input == "" {
+				return nil
+			}
+		}
+		// FIXME: this hack of using hash to get templateCtx has known issues scan context based approach should be adopted ASAP
+		values := m.options.GetTemplateCtx(inputItem.MetaInput).GetAll()
+		err := req.ExecuteWithResults(inputItem, output.InternalEvent(values), nil, multiProtoCallback)
+		// in case of fatal error skip execution of next protocols
 		if err != nil {
+			// always log errors
 			ctx.LogError(err)
+			// for some classes of protocols (i.e ssl) errors like tls handshake are a legitimate behavior so we don't stop execution
+			// connection failures are already tracked by the internal host error cache
+			// we use strings comparison as the error is not formalized into instance within the standard library
+			// within a flow instead we consider ssl errors as fatal, since a specific logic was requested
+			if req.Type() == types.SSLProtocol && stringsutil.ContainsAnyI(err.Error(), "protocol version not supported", "could not do tls handshake") {
+				continue
+			}
 			return err
 		}
 	}
-	// Review: how to handle events of multiple protocols in a single template
-	// currently the outer callback is only executed once (for the last protocol in queue)
-	// due to workflow logic at https://github.com/projectdiscovery/nuclei/blob/main/pkg/protocols/common/executer/executem.go#L150
-	// this causes addition of duplicated / unncessary variables with prefix template_id_all_variables
-	ctx.LogEvent(finalProtoEvent)
-
 	return nil
 }
 

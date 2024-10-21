@@ -12,6 +12,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/reporting/exporters/markdown/util"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	"github.com/projectdiscovery/nuclei/v3/pkg/utils"
+	unitutils "github.com/projectdiscovery/utils/unit"
 )
 
 // Summary returns a formatted built one line summary of the event
@@ -34,6 +35,13 @@ func GetMatchedTemplateName(event *output.ResultEvent) string {
 	return matchedTemplateName
 }
 
+type reportMetadataEditorHook func(event *output.ResultEvent, formatter ResultFormatter) string
+
+var (
+	// ReportGenerationMetadataHooks are the hooks for adding metadata to the report
+	ReportGenerationMetadataHooks []reportMetadataEditorHook
+)
+
 func CreateReportDescription(event *output.ResultEvent, formatter ResultFormatter, omitRaw bool) string {
 	template := GetMatchedTemplateName(event)
 	builder := &bytes.Buffer{}
@@ -47,6 +55,12 @@ func CreateReportDescription(event *output.ResultEvent, formatter ResultFormatte
 		builder.WriteString(fmt.Sprintf("%s: %s\n\n", formatter.MakeBold(key), types.ToString(data)))
 	})
 
+	if len(ReportGenerationMetadataHooks) > 0 {
+		for _, hook := range ReportGenerationMetadataHooks {
+			builder.WriteString(hook(event, formatter))
+		}
+	}
+
 	builder.WriteString(formatter.MakeBold("Template Information"))
 	builder.WriteString("\n\n")
 	builder.WriteString(CreateTemplateInfoTable(&event.Info, formatter))
@@ -58,7 +72,7 @@ func CreateReportDescription(event *output.ResultEvent, formatter ResultFormatte
 		if event.Response != "" {
 			var responseString string
 			// If the response is larger than 5 kb, truncate it before writing.
-			maxKbSize := 5 * 1024
+			maxKbSize := 5 * unitutils.Kilo
 			if len(event.Response) > maxKbSize {
 				responseString = event.Response[:maxKbSize]
 				responseString += ".... Truncated ...."

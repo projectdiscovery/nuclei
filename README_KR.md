@@ -23,14 +23,15 @@
   <a href="#개발자를-위한">개발자를 위한</a> •
   <a href="https://nuclei.projectdiscovery.io/nuclei/get-started/">문서</a> •
   <a href="#credits">Credits</a> •
-  <a href="https://nuclei.projectdiscovery.io/faq/nuclei/">FAQs</a> •
+  <a href="https://docs.projectdiscovery.io/tools/nuclei/faq">FAQs</a> •
   <a href="https://discord.gg/projectdiscovery"> Discord 참가</a>
 </p>
 
 <p align="center">
   <a href="https://github.com/projectdiscovery/nuclei/blob/main/README.md">English</a> •
   <a href="https://github.com/projectdiscovery/nuclei/blob/main/README_CN.md">中文</a> •
-  <a href="https://github.com/projectdiscovery/nuclei/blob/main/README_KR.md">한국어</a>
+  <a href="https://github.com/projectdiscovery/nuclei/blob/main/README_KR.md">한국어</a> •
+  <a href="https://github.com/projectdiscovery/nuclei/blob/main/README_ES.md">스페인어</a>
 </p>
 
 ---

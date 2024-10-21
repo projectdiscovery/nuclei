@@ -10,24 +10,41 @@ import (
 	"github.com/zmap/zgrab2/lib/ssh"
 )
 
-// SSHClient is a client for SSH servers.
-//
-// Internally client uses github.com/zmap/zgrab2/lib/ssh driver.
-type SSHClient struct {
-	Connection *ssh.Client
-	timeout    time.Duration
-}
+type (
+	// SSHClient is a client for SSH servers.
+	// Internally client uses github.com/zmap/zgrab2/lib/ssh driver.
+	// @example
+	// ```javascript
+	// const ssh = require('nuclei/ssh');
+	// const client = new ssh.SSHClient();
+	// ```
+	SSHClient struct {
+		connection *ssh.Client
+		timeout    time.Duration
+	}
+)
 
 // SetTimeout sets the timeout for the SSH connection in seconds
+// @example
+// ```javascript
+// const ssh = require('nuclei/ssh');
+// const client = new ssh.SSHClient();
+// client.SetTimeout(10);
+// ```
 func (c *SSHClient) SetTimeout(sec int) {
 	c.timeout = time.Duration(sec) * time.Second
 }
 
 // Connect tries to connect to provided host and port
 // with provided username and password with ssh.
-//
 // Returns state of connection and error. If error is not nil,
 // state will be false
+// @example
+// ```javascript
+// const ssh = require('nuclei/ssh');
+// const client = new ssh.SSHClient();
+// const connected = client.Connect('acme.com', 22, 'username', 'password');
+// ```
 func (c *SSHClient) Connect(host string, port int, username, password string) (bool, error) {
 	conn, err := connect(&connectOptions{
 		Host:     host,
@@ -38,16 +55,22 @@ func (c *SSHClient) Connect(host string, port int, username, password string) (b
 	if err != nil {
 		return false, err
 	}
-	c.Connection = conn
+	c.connection = conn
 
 	return true, nil
 }
 
 // ConnectWithKey tries to connect to provided host and port
 // with provided username and private_key.
-//
 // Returns state of connection and error. If error is not nil,
 // state will be false
+// @example
+// ```javascript
+// const ssh = require('nuclei/ssh');
+// const client = new ssh.SSHClient();
+// const privateKey = `-----BEGIN RSA PRIVATE KEY----- ...`;
+// const connected = client.ConnectWithKey('acme.com', 22, 'username', privateKey);
+// ```
 func (c *SSHClient) ConnectWithKey(host string, port int, username, key string) (bool, error) {
 	conn, err := connect(&connectOptions{
 		Host:       host,
@@ -59,21 +82,26 @@ func (c *SSHClient) ConnectWithKey(host string, port int, username, key string) 
 	if err != nil {
 		return false, err
 	}
-	c.Connection = conn
+	c.connection = conn
 
 	return true, nil
 }
 
 // ConnectSSHInfoMode tries to connect to provided host and port
 // with provided host and port
-//
 // Returns HandshakeLog and error. If error is not nil,
 // state will be false
-//
 // HandshakeLog is a struct that contains information about the
 // ssh connection
+// @example
+// ```javascript
+// const ssh = require('nuclei/ssh');
+// const client = new ssh.SSHClient();
+// const info = client.ConnectSSHInfoMode('acme.com', 22);
+// log(to_json(info));
+// ```
 func (c *SSHClient) ConnectSSHInfoMode(host string, port int) (*ssh.HandshakeLog, error) {
-	return connectSSHInfoMode(&connectOptions{
+	return memoizedconnectSSHInfoMode(&connectOptions{
 		Host: host,
 		Port: port,
 	})
@@ -81,16 +109,22 @@ func (c *SSHClient) ConnectSSHInfoMode(host string, port int) (*ssh.HandshakeLog
 
 // Run tries to open a new SSH session, then tries to execute
 // the provided command in said session
-//
 // Returns string and error. If error is not nil,
 // state will be false
-//
 // The string contains the command output
+// @example
+// ```javascript
+// const ssh = require('nuclei/ssh');
+// const client = new ssh.SSHClient();
+// client.Connect('acme.com', 22, 'username', 'password');
+// const output = client.Run('id');
+// log(output);
+// ```
 func (c *SSHClient) Run(cmd string) (string, error) {
-	if c.Connection == nil {
+	if c.connection == nil {
 		return "", errorutil.New("no connection")
 	}
-	session, err := c.Connection.NewSession()
+	session, err := c.connection.NewSession()
 	if err != nil {
 		return "", err
 	}
@@ -105,11 +139,17 @@ func (c *SSHClient) Run(cmd string) (string, error) {
 }
 
 // Close closes the SSH connection and destroys the client
-//
 // Returns the success state and error. If error is not nil,
 // state will be false
+// @example
+// ```javascript
+// const ssh = require('nuclei/ssh');
+// const client = new ssh.SSHClient();
+// client.Connect('acme.com', 22, 'username', 'password');
+// const closed = client.Close();
+// ```
 func (c *SSHClient) Close() (bool, error) {
-	if err := c.Connection.Close(); err != nil {
+	if err := c.connection.Close(); err != nil {
 		return false, err
 	}
 	return true, nil
@@ -142,6 +182,7 @@ func (c *connectOptions) validate() error {
 	return nil
 }
 
+// @memo
 func connectSSHInfoMode(opts *connectOptions) (*ssh.HandshakeLog, error) {
 	if err := opts.validate(); err != nil {
 		return nil, err

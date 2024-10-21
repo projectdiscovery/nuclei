@@ -23,6 +23,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/websocket"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/whois"
 	"github.com/projectdiscovery/nuclei/v3/pkg/templates/types"
+	"github.com/projectdiscovery/nuclei/v3/pkg/utils"
 	"github.com/projectdiscovery/nuclei/v3/pkg/workflows"
 	errorutil "github.com/projectdiscovery/utils/errors"
 	fileutil "github.com/projectdiscovery/utils/file"
@@ -45,12 +46,12 @@ type Template struct {
 	// examples:
 	//   - name: ID Example
 	//     value: "\"CVE-2021-19520\""
-	ID string `yaml:"id" json:"id" jsonschema:"title=id of the template,description=The Unique ID for the template,example=cve-2021-19520,pattern=^([a-zA-Z0-9]+[-_])*[a-zA-Z0-9]+$"`
+	ID string `yaml:"id" json:"id" jsonschema:"title=id of the template,description=The Unique ID for the template,required,example=cve-2021-19520,pattern=^([a-zA-Z0-9]+[-_])*[a-zA-Z0-9]+$"`
 	// description: |
 	//   Info contains metadata information about the template.
 	// examples:
 	//   - value: exampleInfoStructure
-	Info model.Info `yaml:"info" json:"info" jsonschema:"title=info for the template,description=Info contains metadata for the template"`
+	Info model.Info `yaml:"info" json:"info" jsonschema:"title=info for the template,description=Info contains metadata for the template,required,type=object"`
 	// description: |
 	//   Flow contains the execution flow for the template.
 	// examples:
@@ -62,13 +63,13 @@ type Template struct {
 	//		    http(1)
 	//		 }
 	//
-	Flow string `yaml:"flow,omitempty" json:"flow,omitempty" jsonschema:"title=template execution flow in js,description=Flow contains js code which defines how the template should be executed"`
+	Flow string `yaml:"flow,omitempty" json:"flow,omitempty" jsonschema:"title=template execution flow in js,description=Flow contains js code which defines how the template should be executed,type=string,example='flow: http(0) && http(1)'"`
 	// description: |
 	//   Requests contains the http request to make in the template.
 	//   WARNING: 'requests' will be deprecated and will be removed in a future release. Please use 'http' instead.
 	// examples:
 	//   - value: exampleNormalHTTPRequest
-	RequestsHTTP []*http.Request `yaml:"requests,omitempty" json:"requests,omitempty" jsonschema:"title=http requests to make,description=HTTP requests to make for the template"`
+	RequestsHTTP []*http.Request `yaml:"requests,omitempty" json:"requests,omitempty" jsonschema:"title=http requests to make,description=HTTP requests to make for the template,deprecated=true"`
 	// description: |
 	//   HTTP contains the http request to make in the template.
 	// examples:
@@ -91,7 +92,7 @@ type Template struct {
 	//   WARNING: 'network' will be deprecated and will be removed in a future release. Please use 'tcp' instead.
 	// examples:
 	//   - value: exampleNormalNetworkRequest
-	RequestsNetwork []*network.Request `yaml:"network,omitempty" json:"network,omitempty" jsonschema:"title=network requests to make,description=Network requests to make for the template"`
+	RequestsNetwork []*network.Request `yaml:"network,omitempty" json:"network,omitempty" jsonschema:"title=network requests to make,description=Network requests to make for the template,deprecated=true"`
 	// description: |
 	//   TCP contains the network request to make in the template
 	// examples:
@@ -132,17 +133,18 @@ type Template struct {
 
 	// description: |
 	//   Signature is the request signature method
+	//   WARNING: 'signature' will be deprecated and will be removed in a future release. Prefer using 'code' protocol for writing cloud checks
 	// values:
 	//   - "AWS"
-	Signature http.SignatureTypeHolder `yaml:"signature,omitempty" json:"signature,omitempty" jsonschema:"title=signature is the http request signature method,description=Signature is the HTTP Request signature Method,enum=AWS"`
+	Signature http.SignatureTypeHolder `yaml:"signature,omitempty" json:"signature,omitempty" jsonschema:"title=signature is the http request signature method,description=Signature is the HTTP Request signature Method,enum=AWS,deprecated=true"`
 
 	// description: |
 	//   Variables contains any variables for the current request.
-	Variables variables.Variable `yaml:"variables,omitempty" json:"variables,omitempty" jsonschema:"title=variables for the http request,description=Variables contains any variables for the current request"`
+	Variables variables.Variable `yaml:"variables,omitempty" json:"variables,omitempty" jsonschema:"title=variables for the http request,description=Variables contains any variables for the current request,type=object"`
 
 	// description: |
 	//   Constants contains any scalar constant for the current template
-	Constants map[string]interface{} `yaml:"constants,omitempty" json:"constants,omitempty" jsonschema:"title=constant for the template,description=constants contains any constant for the template"`
+	Constants map[string]interface{} `yaml:"constants,omitempty" json:"constants,omitempty" jsonschema:"title=constant for the template,description=constants contains any constant for the template,type=object"`
 
 	// TotalRequests is the total number of requests for the template.
 	TotalRequests int `yaml:"-" json:"-"`
@@ -153,7 +155,8 @@ type Template struct {
 
 	// Verified defines if the template signature is digitally verified
 	Verified bool `yaml:"-" json:"-"`
-
+	// TemplateVerifier is identifier verifier used to verify the template (default nuclei-templates have projectdiscovery/nuclei-templates)
+	TemplateVerifier string `yaml:"-" json:"-"`
 	// RequestsQueue contains all template requests in order (both protocol & request order)
 	RequestsQueue []protocols.Request `yaml:"-" json:"-"`
 
@@ -174,8 +177,6 @@ func (template *Template) Type() types.ProtocolType {
 		return types.HeadlessProtocol
 	case len(template.RequestsNetwork) > 0:
 		return types.NetworkProtocol
-	case len(template.Workflow.Workflows) > 0:
-		return types.WorkflowProtocol
 	case len(template.RequestsSSL) > 0:
 		return types.SSLProtocol
 	case len(template.RequestsWebsocket) > 0:
@@ -186,9 +187,39 @@ func (template *Template) Type() types.ProtocolType {
 		return types.CodeProtocol
 	case len(template.RequestsJavascript) > 0:
 		return types.JavascriptProtocol
+	case len(template.Workflow.Workflows) > 0:
+		return types.WorkflowProtocol
 	default:
 		return types.InvalidProtocol
 	}
+}
+
+// IsFuzzing returns true if the template is a fuzzing template
+func (template *Template) IsFuzzing() bool {
+	if len(template.RequestsHTTP) == 0 && len(template.RequestsHeadless) == 0 {
+		// fuzzing is only supported for http and headless protocols
+		return false
+	}
+	if len(template.RequestsHTTP) > 0 {
+		for _, request := range template.RequestsHTTP {
+			if len(request.Fuzzing) > 0 {
+				return true
+			}
+		}
+	}
+	if len(template.RequestsHeadless) > 0 {
+		for _, request := range template.RequestsHeadless {
+			if len(request.Fuzzing) > 0 {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// UsesRequestSignature returns true if the template uses a request signature like AWS
+func (template *Template) UsesRequestSignature() bool {
+	return template.Signature.Value.String() != ""
 }
 
 // HasCodeProtocol returns true if the template has a code protocol section
@@ -296,6 +327,17 @@ func (template *Template) UnmarshalYAML(unmarshal func(interface{}) error) error
 	}
 	*template = Template(*alias)
 
+	if !ReTemplateID.MatchString(template.ID) {
+		return errorutil.New("template id must match expression %v", ReTemplateID).WithTag("invalid template")
+	}
+	info := template.Info
+	if utils.IsBlank(info.Name) {
+		return errorutil.New("no template name field provided").WithTag("invalid template")
+	}
+	if info.Authors.IsEmpty() {
+		return errorutil.New("no template author field provided").WithTag("invalid template")
+	}
+
 	if len(template.RequestsHTTP) > 0 || len(template.RequestsNetwork) > 0 {
 		_ = deprecatedProtocolNameTemplates.Set(template.ID, true)
 	}
@@ -371,6 +413,17 @@ func (template *Template) ImportFileRefs(options *protocols.ExecutorOptions) err
 		}
 	}
 
+	// for javascript protocol code references
+	for _, request := range template.RequestsJavascript {
+		// simple test to check if source is a file or a snippet
+		if len(strings.Split(request.Code, "\n")) == 1 && fileutil.FileExists(request.Code) {
+			if val, ok := loadFile(request.Code); ok {
+				template.ImportedFiles = append(template.ImportedFiles, request.Code)
+				request.Code = val
+			}
+		}
+	}
+
 	// flow code references
 	if template.Flow != "" {
 		if len(template.Flow) > 0 && filepath.Ext(template.Flow) == ".js" && fileutil.FileExists(template.Flow) {
@@ -394,6 +447,20 @@ func (template *Template) ImportFileRefs(options *protocols.ExecutorOptions) err
 					if val, ok := loadFile(request.Source); ok {
 						template.ImportedFiles = append(template.ImportedFiles, request.Source)
 						request.Source = val
+					}
+				}
+			}
+		}
+
+		// for javascript protocol code references
+		for _, req := range template.RequestsQueue {
+			if req.Type() == types.JavascriptProtocol {
+				request := req.(*javascript.Request)
+				// simple test to check if source is a file or a snippet
+				if len(strings.Split(request.Code, "\n")) == 1 && fileutil.FileExists(request.Code) {
+					if val, ok := loadFile(request.Code); ok {
+						template.ImportedFiles = append(template.ImportedFiles, request.Code)
+						request.Code = val
 					}
 				}
 			}

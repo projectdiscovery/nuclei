@@ -13,12 +13,12 @@ import (
 	"github.com/julienschmidt/httprouter"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/config"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/disk"
+	"github.com/projectdiscovery/nuclei/v3/pkg/loader/workflow"
 	"github.com/projectdiscovery/nuclei/v3/pkg/model"
 	"github.com/projectdiscovery/nuclei/v3/pkg/model/types/severity"
 	"github.com/projectdiscovery/nuclei/v3/pkg/model/types/stringslice"
 	"github.com/projectdiscovery/nuclei/v3/pkg/operators"
 	"github.com/projectdiscovery/nuclei/v3/pkg/operators/matchers"
-	"github.com/projectdiscovery/nuclei/v3/pkg/parsers"
 	"github.com/projectdiscovery/nuclei/v3/pkg/progress"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/generators"
@@ -39,16 +39,17 @@ func setup() {
 	progressImpl, _ := progress.NewStatsTicker(0, false, false, false, 0)
 
 	executerOpts = protocols.ExecutorOptions{
-		Output:       testutils.NewMockOutputWriter(options.OmitTemplate),
-		Options:      options,
-		Progress:     progressImpl,
-		ProjectFile:  nil,
-		IssuesClient: nil,
-		Browser:      nil,
-		Catalog:      disk.NewCatalog(config.DefaultConfig.TemplatesDirectory),
-		RateLimiter:  ratelimit.New(context.Background(), uint(options.RateLimit), time.Second),
+		Output:          testutils.NewMockOutputWriter(options.OmitTemplate),
+		Options:         options,
+		Progress:        progressImpl,
+		ProjectFile:     nil,
+		IssuesClient:    nil,
+		Browser:         nil,
+		Catalog:         disk.NewCatalog(config.DefaultConfig.TemplatesDirectory),
+		RateLimiter:     ratelimit.New(context.Background(), uint(options.RateLimit), time.Second),
+		Parser:          templates.NewParser(),
 	}
-	workflowLoader, err := parsers.NewLoader(&executerOpts)
+	workflowLoader, err := workflow.NewLoader(&executerOpts)
 	if err != nil {
 		log.Fatalf("Could not create workflow loader: %s\n", err)
 	}
@@ -195,4 +196,13 @@ func Test_WrongTemplate(t *testing.T) {
 	got, err = templates.Parse(filePath, nil, executerOpts)
 	require.Nil(t, got, "could not parse template")
 	require.ErrorContains(t, err, "no requests defined ")
+}
+
+func TestWrongWorkflow(t *testing.T) {
+	setup()
+
+	filePath := "tests/workflow-invalid.yaml"
+	got, err := templates.Parse(filePath, nil, executerOpts)
+	require.Nil(t, got, "could not parse template")
+	require.ErrorContains(t, err, "workflows cannot have other protocols")
 }

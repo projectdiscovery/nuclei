@@ -3,7 +3,6 @@ package core
 import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
-	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 )
 
@@ -22,21 +21,6 @@ type Engine struct {
 	Callback     func(*output.ResultEvent) // Executed on results
 }
 
-// InputProvider is an input providing interface for the nuclei execution
-// engine.
-//
-// An example InputProvider implementation is provided in form of hybrid
-// input provider in pkg/core/inputs/hybrid/hmap.go
-type InputProvider interface {
-	// Count returns the number of items for input provider
-	Count() int64
-	// Scan iterates the input and each found item is passed to the
-	// callback consumer.
-	Scan(callback func(value *contextargs.MetaInput) bool)
-	// Set adds item to input provider
-	Set(value string)
-}
-
 // New returns a new Engine instance
 func New(options *types.Options) *Engine {
 	engine := &Engine{
@@ -46,14 +30,19 @@ func New(options *types.Options) *Engine {
 	return engine
 }
 
-// GetWorkPool returns a workpool from options
-func (e *Engine) GetWorkPool() *WorkPool {
-	return NewWorkPool(WorkPoolConfig{
+func (e *Engine) GetWorkPoolConfig() WorkPoolConfig {
+	config := WorkPoolConfig{
 		InputConcurrency:         e.options.BulkSize,
 		TypeConcurrency:          e.options.TemplateThreads,
 		HeadlessInputConcurrency: e.options.HeadlessBulkSize,
 		HeadlessTypeConcurrency:  e.options.HeadlessTemplateThreads,
-	})
+	}
+	return config
+}
+
+// GetWorkPool returns a workpool from options
+func (e *Engine) GetWorkPool() *WorkPool {
+	return NewWorkPool(e.GetWorkPoolConfig())
 }
 
 // SetExecuterOptions sets the executer options for the engine. This is required
@@ -69,5 +58,7 @@ func (e *Engine) ExecuterOptions() protocols.ExecutorOptions {
 
 // WorkPool returns the worker pool for the engine
 func (e *Engine) WorkPool() *WorkPool {
+	// resize check point - nop if there are no changes
+	e.workPool.RefreshWithConfig(e.GetWorkPoolConfig())
 	return e.workPool
 }

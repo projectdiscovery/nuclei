@@ -5,10 +5,11 @@ import (
 	"encoding/json"
 	"log"
 	"os"
+	"reflect"
 	"regexp"
 	"strings"
 
-	"github.com/alecthomas/jsonschema"
+	"github.com/invopop/jsonschema"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/templates"
 )
@@ -32,10 +33,12 @@ func main() {
 	}
 
 	// Generate jsonschema
-	r := &jsonschema.Reflector{
-		PreferYAMLSchema:      true,
-		YAMLEmbeddedStructs:   true,
-		FullyQualifyTypeNames: true,
+	r := &jsonschema.Reflector{}
+	r.Namer = func(r reflect.Type) string {
+		if r.Kind() == reflect.Slice {
+			return ""
+		}
+		return r.String()
 	}
 	jsonschemaData := r.Reflect(&templates.Template{})
 

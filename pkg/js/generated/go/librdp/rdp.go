@@ -15,18 +15,14 @@ func init() {
 	module.Set(
 		gojs.Objects{
 			// Functions
+			"CheckRDPAuth": lib_rdp.CheckRDPAuth,
+			"IsRDP":        lib_rdp.IsRDP,
 
 			// Var and consts
 
-			// Types (value type)
-			"CheckRDPAuthResponse": func() lib_rdp.CheckRDPAuthResponse { return lib_rdp.CheckRDPAuthResponse{} },
-			"IsRDPResponse":        func() lib_rdp.IsRDPResponse { return lib_rdp.IsRDPResponse{} },
-			"RDPClient":            func() lib_rdp.RDPClient { return lib_rdp.RDPClient{} },
-
-			// Types (pointer type)
-			"NewCheckRDPAuthResponse": func() *lib_rdp.CheckRDPAuthResponse { return &lib_rdp.CheckRDPAuthResponse{} },
-			"NewIsRDPResponse":        func() *lib_rdp.IsRDPResponse { return &lib_rdp.IsRDPResponse{} },
-			"NewRDPClient":            func() *lib_rdp.RDPClient { return &lib_rdp.RDPClient{} },
+			// Objects / Classes
+			"CheckRDPAuthResponse": gojs.GetClassConstructor[lib_rdp.CheckRDPAuthResponse](&lib_rdp.CheckRDPAuthResponse{}),
+			"IsRDPResponse":        gojs.GetClassConstructor[lib_rdp.IsRDPResponse](&lib_rdp.IsRDPResponse{}),
 		},
 	).Register()
 }

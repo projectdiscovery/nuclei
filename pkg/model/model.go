@@ -1,9 +1,21 @@
 package model
 
 import (
+	"github.com/invopop/jsonschema"
 	"github.com/projectdiscovery/nuclei/v3/pkg/model/types/severity"
 	"github.com/projectdiscovery/nuclei/v3/pkg/model/types/stringslice"
 )
+
+type schemaMetadata struct {
+	PropName string
+	PropType string
+	Example  []interface{}
+	OneOf    []*schemaMetadata
+}
+
+var infoSchemaMetadata = []schemaMetadata{
+	{PropName: "author", OneOf: []*schemaMetadata{{PropType: "string", Example: []interface{}{`pdteam`}}, {PropType: "array", Example: []interface{}{`pdteam,mr.robot`}}}},
+}
 
 // Info contains metadata information about a template
 type Info struct {
@@ -13,14 +25,14 @@ type Info struct {
 	// examples:
 	//   - value: "\"bower.json file disclosure\""
 	//   - value: "\"Nagios Default Credentials Check\""
-	Name string `json:"name,omitempty" yaml:"name,omitempty" jsonschema:"title=name of the template,description=Name is a short summary of what the template does,example=Nagios Default Credentials Check"`
+	Name string `json:"name,omitempty" yaml:"name,omitempty" jsonschema:"title=name of the template,description=Name is a short summary of what the template does,type=string,required,example=Nagios Default Credentials Check"`
 	// description: |
 	//   Author of the template.
 	//
 	//   Multiple values can also be specified separated by commas.
 	// examples:
 	//   - value: "\"<username>\""
-	Authors stringslice.StringSlice `json:"author,omitempty" yaml:"author,omitempty" jsonschema:"title=author of the template,description=Author is the author of the template,example=username"`
+	Authors stringslice.StringSlice `json:"author,omitempty" yaml:"author,omitempty" jsonschema:"title=author of the template,description=Author is the author of the template,required,example=username"`
 	// description: |
 	//   Any tags for the template.
 	//
@@ -38,7 +50,7 @@ type Info struct {
 	// examples:
 	//   - value: "\"Bower is a package manager which stores package information in the bower.json file\""
 	//   - value: "\"Subversion ALM for the enterprise before 8.8.2 allows reflected XSS at multiple locations\""
-	Description string `json:"description,omitempty" yaml:"description,omitempty" jsonschema:"title=description of the template,description=In-depth explanation on what the template does,example=Bower is a package manager which stores package information in the bower.json file"`
+	Description string `json:"description,omitempty" yaml:"description,omitempty" jsonschema:"title=description of the template,description=In-depth explanation on what the template does,type=string,example=Bower is a package manager which stores package information in the bower.json file"`
 	// description: |
 	//   Impact of the template.
 	//
@@ -47,7 +59,7 @@ type Info struct {
 	// examples:
 	//   - value: "\"Successful exploitation of this vulnerability could allow an attacker to execute arbitrary SQL queries, potentially leading to unauthorized access, data leakage, or data manipulation.\""
 	//   - value: "\"Successful exploitation of this vulnerability could allow an attacker to execute arbitrary script code in the context of the victim's browser, potentially leading to session hijacking, defacement, or theft of sensitive information.\""
-	Impact string `json:"impact,omitempty" yaml:"impact,omitempty" jsonschema:"title=impact of the template,description=In-depth explanation on the impact of the issue found by the template,example=Successful exploitation of this vulnerability could allow an attacker to execute arbitrary SQL queries, potentially leading to unauthorized access, data leakage, or data manipulation."`
+	Impact string `json:"impact,omitempty" yaml:"impact,omitempty" jsonschema:"title=impact of the template,description=In-depth explanation on the impact of the issue found by the template,example=Successful exploitation of this vulnerability could allow an attacker to execute arbitrary SQL queries, potentially leading to unauthorized access, data leakage, or data manipulation.,type=string"`
 	// description: |
 	//   References for the template.
 	//
@@ -66,11 +78,11 @@ type Info struct {
 	// examples:
 	//   - value: >
 	//       map[string]string{"customField1":"customValue1"}
-	Metadata map[string]interface{} `json:"metadata,omitempty" yaml:"metadata,omitempty" jsonschema:"title=additional metadata for the template,description=Additional metadata fields for the template"`
+	Metadata map[string]interface{} `json:"metadata,omitempty" yaml:"metadata,omitempty" jsonschema:"title=additional metadata for the template,description=Additional metadata fields for the template,type=object"`
 
 	// description: |
 	//   Classification contains classification information about the template.
-	Classification *Classification `json:"classification,omitempty" yaml:"classification,omitempty" jsonschema:"title=classification info for the template,description=Classification information for the template"`
+	Classification *Classification `json:"classification,omitempty" yaml:"classification,omitempty" jsonschema:"title=classification info for the template,description=Classification information for the template,type=object"`
 
 	// description: |
 	//   Remediation steps for the template.
@@ -79,7 +91,30 @@ type Info struct {
 	//
 	// examples:
 	//   - value: "\"Change the default administrative username and password of Apache ActiveMQ by editing the file jetty-realm.properties\""
-	Remediation string `json:"remediation,omitempty" yaml:"remediation,omitempty" jsonschema:"title=remediation steps for the template,description=In-depth explanation on how to fix the issues found by the template,example=Change the default administrative username and password of Apache ActiveMQ by editing the file jetty-realm.properties"`
+	Remediation string `json:"remediation,omitempty" yaml:"remediation,omitempty" jsonschema:"title=remediation steps for the template,description=In-depth explanation on how to fix the issues found by the template,example=Change the default administrative username and password of Apache ActiveMQ by editing the file jetty-realm.properties,type=string"`
+}
+
+// JSONSchemaProperty returns the JSON schema property for the Info object.
+func (i Info) JSONSchemaExtend(base *jsonschema.Schema) {
+	// since we are re-using a stringslice and rawStringSlice everywhere, we can extend/edit the schema here
+	// thus allowing us to add examples, descriptions, etc. to the properties
+	for _, metadata := range infoSchemaMetadata {
+		if prop, ok := base.Properties.Get(metadata.PropName); ok {
+			if len(metadata.OneOf) > 0 {
+				for _, oneOf := range metadata.OneOf {
+					prop.OneOf = append(prop.OneOf, &jsonschema.Schema{
+						Type:     oneOf.PropType,
+						Examples: oneOf.Example,
+					})
+				}
+			} else {
+				if metadata.PropType != "" {
+					prop.Type = metadata.PropType
+				}
+				prop.Examples = []interface{}{metadata.Example}
+			}
+		}
+	}
 }
 
 // Classification contains the vulnerability classification data for a template.

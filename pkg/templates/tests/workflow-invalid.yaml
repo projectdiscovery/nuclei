@@ -1,0 +1,18 @@
+id: workflow-example
+
+info:
+  name: Test Invalid Workflow Template
+  author: pdteam
+  severity: info
+
+http:
+  - raw:
+      - |
+        POST /re HTTP/1.1
+        Host: {{Hostname}}
+
+        {{code_response}}
+
+workflows:
+  - template: tests/match-1.yaml
+  - template: tests/match-1.yaml

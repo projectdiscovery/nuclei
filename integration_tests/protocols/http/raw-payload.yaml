@@ -4,7 +4,7 @@ info:
   author: pdteam
   severity: info
 
-requests:
+http:
   - payloads:
       username:
         - test

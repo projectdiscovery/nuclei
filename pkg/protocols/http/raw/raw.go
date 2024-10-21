@@ -3,11 +3,14 @@ package raw
 import (
 	"bufio"
 	"bytes"
+	"encoding/base64"
 	"errors"
 	"fmt"
 	"io"
 	"strings"
 
+	"github.com/projectdiscovery/gologger"
+	"github.com/projectdiscovery/nuclei/v3/pkg/authprovider/authx"
 	"github.com/projectdiscovery/rawhttp/client"
 	errorutil "github.com/projectdiscovery/utils/errors"
 	stringsutil "github.com/projectdiscovery/utils/strings"
@@ -79,6 +82,13 @@ func Parse(request string, inputURL *urlutil.URL, unsafe, disablePathAutomerge b
 				}
 			}
 		} else {
+			// Edgecase if raw request is
+			// GET / HTTP/1.1
+			//use case: https://github.com/projectdiscovery/nuclei/issues/4921
+			if rawrequest.Path == "/" && cloned.Path != "" {
+				rawrequest.Path = ""
+			}
+
 			if disablePathAutomerge {
 				cloned.Path = ""
 			}
@@ -94,6 +104,13 @@ func Parse(request string, inputURL *urlutil.URL, unsafe, disablePathAutomerge b
 	default:
 		cloned := inputURL.Clone()
 		cloned.Params.IncludeEquals = true
+		// Edgecase if raw request is
+		// GET / HTTP/1.1
+		//use case: https://github.com/projectdiscovery/nuclei/issues/4921
+		if rawrequest.Path == "/" {
+			rawrequest.Path = ""
+		}
+
 		if disablePathAutomerge {
 			cloned.Path = ""
 		}
@@ -266,4 +283,44 @@ func (r *Request) TryFillCustomHeaders(headers []string) error {
 	}
 
 	return errors.New("no host header found")
+}
+
+// ApplyAuthStrategy applies the auth strategy to the request
+func (r *Request) ApplyAuthStrategy(strategy authx.AuthStrategy) {
+	if strategy == nil {
+		return
+	}
+	switch s := strategy.(type) {
+	case *authx.QueryAuthStrategy:
+		parsed, err := urlutil.Parse(r.FullURL)
+		if err != nil {
+			gologger.Error().Msgf("auth strategy failed to parse url: %s got %v", r.FullURL, err)
+			return
+		}
+		for _, p := range s.Data.Params {
+			parsed.Params.Add(p.Key, p.Value)
+		}
+	case *authx.CookiesAuthStrategy:
+		var buff bytes.Buffer
+		for _, cookie := range s.Data.Cookies {
+			buff.WriteString(fmt.Sprintf("%s=%s; ", cookie.Key, cookie.Value))
+		}
+		if buff.Len() > 0 {
+			if val, ok := r.Headers["Cookie"]; ok {
+				r.Headers["Cookie"] = strings.TrimSuffix(strings.TrimSpace(val), ";") + "; " + buff.String()
+			} else {
+				r.Headers["Cookie"] = buff.String()
+			}
+		}
+	case *authx.HeadersAuthStrategy:
+		for _, header := range s.Data.Headers {
+			r.Headers[header.Key] = header.Value
+		}
+	case *authx.BearerTokenAuthStrategy:
+		r.Headers["Authorization"] = "Bearer " + s.Data.Token
+	case *authx.BasicAuthStrategy:
+		r.Headers["Authorization"] = "Basic " + base64.StdEncoding.EncodeToString([]byte(s.Data.Username+":"+s.Data.Password))
+	default:
+		gologger.Warning().Msgf("[raw-request] unknown auth strategy: %T", s)
+	}
 }

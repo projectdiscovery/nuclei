@@ -1,6 +1,7 @@
 package network
 
 import (
+	"context"
 	"encoding/hex"
 	"fmt"
 	"net/http"
@@ -65,7 +66,7 @@ func TestNetworkExecuteWithResults(t *testing.T) {
 	t.Run("domain-valid", func(t *testing.T) {
 		metadata := make(output.InternalEvent)
 		previous := make(output.InternalEvent)
-		ctxArgs := contextargs.NewWithInput(parsed.Host)
+		ctxArgs := contextargs.NewWithInput(context.Background(), parsed.Host)
 		err := request.ExecuteWithResults(ctxArgs, metadata, previous, func(event *output.InternalWrappedEvent) {
 			finalEvent = event
 		})
@@ -81,11 +82,11 @@ func TestNetworkExecuteWithResults(t *testing.T) {
 	t.Run("invalid-port-override", func(t *testing.T) {
 		metadata := make(output.InternalEvent)
 		previous := make(output.InternalEvent)
-		ctxArgs := contextargs.NewWithInput("127.0.0.1:11211")
+		ctxArgs := contextargs.NewWithInput(context.Background(), "127.0.0.1:11211")
 		err := request.ExecuteWithResults(ctxArgs, metadata, previous, func(event *output.InternalWrappedEvent) {
 			finalEvent = event
 		})
-		require.Nil(t, err, "could not execute network request")
+		require.NotNil(t, err, "could not execute network request")
 	})
 	require.Nil(t, finalEvent.Results, "could not get event output from request")
 
@@ -95,7 +96,7 @@ func TestNetworkExecuteWithResults(t *testing.T) {
 	t.Run("hex-to-string", func(t *testing.T) {
 		metadata := make(output.InternalEvent)
 		previous := make(output.InternalEvent)
-		ctxArgs := contextargs.NewWithInput(parsed.Host)
+		ctxArgs := contextargs.NewWithInput(context.Background(), parsed.Host)
 		err := request.ExecuteWithResults(ctxArgs, metadata, previous, func(event *output.InternalWrappedEvent) {
 			finalEvent = event
 		})

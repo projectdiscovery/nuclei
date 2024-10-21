@@ -8,34 +8,92 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/dop251/goja"
 	"github.com/praetorian-inc/fingerprintx/pkg/plugins"
+	"github.com/projectdiscovery/nuclei/v3/pkg/js/utils"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
 
 	pluginsmtp "github.com/praetorian-inc/fingerprintx/pkg/plugins/services/smtp"
 )
 
-// SMTPClient is a minimal SMTP client for nuclei scripts.
-type SMTPClient struct{}
+type (
+	// SMTPResponse is the response from the IsSMTP function.
+	// @example
+	// ```javascript
+	// const smtp = require('nuclei/smtp');
+	// const client = new smtp.Client('acme.com', 25);
+	// const isSMTP = client.IsSMTP();
+	// log(isSMTP)
+	// ```
+	SMTPResponse struct {
+		IsSMTP bool
+		Banner string
+	}
+)
 
-// IsSMTPResponse is the response from the IsSMTP function.
-type IsSMTPResponse struct {
-	IsSMTP bool
-	Banner string
+type (
+	// Client is a minimal SMTP client for nuclei scripts.
+	// @example
+	// ```javascript
+	// const smtp = require('nuclei/smtp');
+	// const client = new smtp.Client('acme.com', 25);
+	// ```
+	Client struct {
+		nj   *utils.NucleiJS
+		host string
+		port string
+	}
+)
+
+// Constructor for SMTP Client
+// Constructor: constructor(public host: string, public port: string)
+func NewSMTPClient(call goja.ConstructorCall, runtime *goja.Runtime) *goja.Object {
+	// setup nucleijs utils
+	c := &Client{nj: utils.NewNucleiJS(runtime)}
+	c.nj.ObjectSig = "Client(host, port)" // will be included in error messages
+
+	host, _ := c.nj.GetArg(call.Arguments, 0).(string) // host
+	port, _ := c.nj.GetArg(call.Arguments, 1).(string) // port
+
+	// validate arguments
+	c.nj.Require(host != "", "host cannot be empty")
+	c.nj.Require(port != "", "port cannot be empty")
+
+	// validate port
+	portInt, err := strconv.Atoi(port)
+	c.nj.Require(err == nil && portInt > 0 && portInt < 65536, "port must be a valid number")
+	c.host = host
+	c.port = port
+
+	// check if this is allowed address
+	c.nj.Require(protocolstate.IsHostAllowed(host+":"+port), protocolstate.ErrHostDenied.Msgf(host+":"+port).Error())
+
+	// Link Constructor to Client and return
+	return utils.LinkConstructor(call, runtime, c)
 }
 
 // IsSMTP checks if a host is running a SMTP server.
-func (c *SMTPClient) IsSMTP(host string, port int) (IsSMTPResponse, error) {
-	resp := IsSMTPResponse{}
+// @example
+// ```javascript
+// const smtp = require('nuclei/smtp');
+// const client = new smtp.Client('acme.com', 25);
+// const isSMTP = client.IsSMTP();
+// log(isSMTP)
+// ```
+func (c *Client) IsSMTP() (SMTPResponse, error) {
+	resp := SMTPResponse{}
+	c.nj.Require(c.host != "", "host cannot be empty")
+	c.nj.Require(c.port != "", "port cannot be empty")
 
 	timeout := 5 * time.Second
-	conn, err := protocolstate.Dialer.Dial(context.TODO(), "tcp", net.JoinHostPort(host, strconv.Itoa(port)))
+	conn, err := protocolstate.Dialer.Dial(context.TODO(), "tcp", net.JoinHostPort(c.host, c.port))
 	if err != nil {
 		return resp, err
 	}
 	defer conn.Close()
 
 	smtpPlugin := pluginsmtp.SMTPPlugin{}
-	service, err := smtpPlugin.Run(conn, timeout, plugins.Target{Host: host})
+	service, err := smtpPlugin.Run(conn, timeout, plugins.Target{Host: c.host})
 	if err != nil {
 		return resp, err
 	}
@@ -47,18 +105,29 @@ func (c *SMTPClient) IsSMTP(host string, port int) (IsSMTPResponse, error) {
 	return resp, nil
 }
 
-func (c *SMTPClient) IsOpenRelay(host string, port int, msg *SMTPMessage) (bool, error) {
-	if !protocolstate.IsHostAllowed(host) {
-		return false, protocolstate.ErrHostDenied.Msgf(host)
-	}
+// IsOpenRelay checks if a host is an open relay.
+// @example
+// ```javascript
+// const smtp = require('nuclei/smtp');
+// const message = new smtp.SMTPMessage();
+// message.From('xyz@projectdiscovery.io');
+// message.To('xyz2@projectdiscoveyr.io');
+// message.Subject('hello');
+// message.Body('hello');
+// const client = new smtp.Client('acme.com', 25);
+// const isRelay = client.IsOpenRelay(message);
+// ```
+func (c *Client) IsOpenRelay(msg *SMTPMessage) (bool, error) {
+	c.nj.Require(c.host != "", "host cannot be empty")
+	c.nj.Require(c.port != "", "port cannot be empty")
 
-	addr := net.JoinHostPort(host, strconv.Itoa(port))
+	addr := net.JoinHostPort(c.host, c.port)
 	conn, err := protocolstate.Dialer.Dial(context.TODO(), "tcp", addr)
 	if err != nil {
 		return false, err
 	}
 	defer conn.Close()
-	client, err := smtp.NewClient(conn, host)
+	client, err := smtp.NewClient(conn, c.host)
 	if err != nil {
 		return false, err
 	}
@@ -95,20 +164,31 @@ func (c *SMTPClient) IsOpenRelay(host string, port int, msg *SMTPMessage) (bool,
 }
 
 // SendMail sends an email using the SMTP protocol.
-func (c *SMTPClient) SendMail(host string, port string, msg *SMTPMessage) (bool, error) {
-	if !protocolstate.IsHostAllowed(host) {
-		return false, protocolstate.ErrHostDenied.Msgf(host)
-	}
+// @example
+// ```javascript
+// const smtp = require('nuclei/smtp');
+// const message = new smtp.SMTPMessage();
+// message.From('xyz@projectdiscovery.io');
+// message.To('xyz2@projectdiscoveyr.io');
+// message.Subject('hello');
+// message.Body('hello');
+// const client = new smtp.Client('acme.com', 25);
+// const isSent = client.SendMail(message);
+// log(isSent)
+// ```
+func (c *Client) SendMail(msg *SMTPMessage) (bool, error) {
+	c.nj.Require(c.host != "", "host cannot be empty")
+	c.nj.Require(c.port != "", "port cannot be empty")
 
 	var auth smtp.Auth
 	if msg.user != "" && msg.pass != "" {
-		auth = smtp.PlainAuth("", msg.user, msg.pass, host)
+		auth = smtp.PlainAuth("", msg.user, msg.pass, c.host)
 	}
 
 	// send mail
-	addr := net.JoinHostPort(host, port)
+	addr := net.JoinHostPort(c.host, c.port)
 	if err := smtp.SendMail(addr, auth, msg.from, msg.to, []byte(msg.String())); err != nil {
-		return false, err
+		c.nj.Throw("failed to send mail with message(%s) got %v", msg.String(), err)
 	}
 	return true, nil
 }

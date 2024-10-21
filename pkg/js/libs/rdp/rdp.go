@@ -10,21 +10,37 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
 )
 
-// RDPClient is a client for rdp servers
-type RDPClient struct{}
-
-type IsRDPResponse struct {
-	IsRDP bool
-	OS    string
-}
+type (
+	// IsRDPResponse is the response from the IsRDP function.
+	// this is returned by IsRDP function.
+	// @example
+	// ```javascript
+	// const rdp = require('nuclei/rdp');
+	// const isRDP = rdp.IsRDP('acme.com', 3389);
+	// log(toJSON(isRDP));
+	// ```
+	IsRDPResponse struct {
+		IsRDP bool
+		OS    string
+	}
+)
 
 // IsRDP checks if the given host and port are running rdp server.
-//
 // If connection is successful, it returns true.
 // If connection is unsuccessful, it returns false and error.
-//
 // The Name of the OS is also returned if the connection is successful.
-func (c *RDPClient) IsRDP(host string, port int) (IsRDPResponse, error) {
+// @example
+// ```javascript
+// const rdp = require('nuclei/rdp');
+// const isRDP = rdp.IsRDP('acme.com', 3389);
+// log(toJSON(isRDP));
+// ```
+func IsRDP(host string, port int) (IsRDPResponse, error) {
+	return memoizedisRDP(host, port)
+}
+
+// @memo
+func isRDP(host string, port int) (IsRDPResponse, error) {
 	resp := IsRDPResponse{}
 
 	timeout := 5 * time.Second
@@ -46,14 +62,36 @@ func (c *RDPClient) IsRDP(host string, port int) (IsRDPResponse, error) {
 	return resp, nil
 }
 
-type CheckRDPAuthResponse struct {
-	PluginInfo *plugins.ServiceRDP
-	Auth       bool
-}
+type (
+	// CheckRDPAuthResponse is the response from the CheckRDPAuth function.
+	// this is returned by CheckRDPAuth function.
+	// @example
+	// ```javascript
+	// const rdp = require('nuclei/rdp');
+	// const checkRDPAuth = rdp.CheckRDPAuth('acme.com', 3389);
+	// log(toJSON(checkRDPAuth));
+	// ```
+	CheckRDPAuthResponse struct {
+		PluginInfo *plugins.ServiceRDP
+		Auth       bool
+	}
+)
 
 // CheckRDPAuth checks if the given host and port are running rdp server
 // with authentication and returns their metadata.
-func (c *RDPClient) CheckRDPAuth(host string, port int) (CheckRDPAuthResponse, error) {
+// If connection is successful, it returns true.
+// @example
+// ```javascript
+// const rdp = require('nuclei/rdp');
+// const checkRDPAuth = rdp.CheckRDPAuth('acme.com', 3389);
+// log(toJSON(checkRDPAuth));
+// ```
+func CheckRDPAuth(host string, port int) (CheckRDPAuthResponse, error) {
+	return memoizedcheckRDPAuth(host, port)
+}
+
+// @memo
+func checkRDPAuth(host string, port int) (CheckRDPAuthResponse, error) {
 	resp := CheckRDPAuthResponse{}
 
 	timeout := 5 * time.Second

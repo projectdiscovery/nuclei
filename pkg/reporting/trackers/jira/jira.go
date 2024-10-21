@@ -3,7 +3,9 @@ package jira
 import (
 	"fmt"
 	"io"
+	"net/url"
 	"strings"
+	"sync"
 
 	"github.com/andygrunwald/go-jira"
 	"github.com/trivago/tgo/tcontainer"
@@ -12,7 +14,9 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
 	"github.com/projectdiscovery/nuclei/v3/pkg/reporting/exporters/markdown/util"
 	"github.com/projectdiscovery/nuclei/v3/pkg/reporting/format"
+	"github.com/projectdiscovery/nuclei/v3/pkg/reporting/trackers/filters"
 	"github.com/projectdiscovery/retryablehttp-go"
+	"github.com/projectdiscovery/utils/ptr"
 )
 
 type Formatter struct {
@@ -46,6 +50,9 @@ type Integration struct {
 	Formatter
 	jira    *jira.Client
 	options *Options
+
+	once         *sync.Once
+	transitionID string
 }
 
 // Options contains the configuration options for jira client
@@ -63,12 +70,20 @@ type Options struct {
 	// Token is the token for jira instance.
 	Token string `yaml:"token" json:"token" validate:"required"`
 	// ProjectName is the name of the project.
-	ProjectName string `yaml:"project-name" json:"project_name" validate:"required"`
+	ProjectName string `yaml:"project-name" json:"project_name"`
+	// ProjectID is the ID of the project (optional)
+	ProjectID string `yaml:"project-id" json:"project_id"`
 	// IssueType (optional) is the name of the created issue type
 	IssueType string `yaml:"issue-type" json:"issue_type"`
+	// IssueTypeID (optional) is the ID of the created issue type
+	IssueTypeID string `yaml:"issue-type-id" json:"issue_type_id"`
 	// SeverityAsLabel (optional) sends the severity as the label of the created
 	// issue.
 	SeverityAsLabel bool `yaml:"severity-as-label" json:"severity_as_label"`
+	// AllowList contains a list of allowed events for this tracker
+	AllowList *filters.Filter `yaml:"allow-list"`
+	// DenyList contains a list of denied events for this tracker
+	DenyList *filters.Filter `yaml:"deny-list"`
 	// Severity (optional) is the severity of the issue.
 	Severity   []string              `yaml:"severity" json:"severity"`
 	HttpClient *retryablehttp.Client `yaml:"-" json:"-"`
@@ -97,11 +112,20 @@ func New(options *Options) (*Integration, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &Integration{jira: jiraClient, options: options}, nil
+	integration := &Integration{
+		jira:    jiraClient,
+		options: options,
+		once:    &sync.Once{},
+	}
+	return integration, nil
+}
+
+func (i *Integration) Name() string {
+	return "jira"
 }
 
 // CreateNewIssue creates a new issue in the tracker
-func (i *Integration) CreateNewIssue(event *output.ResultEvent) error {
+func (i *Integration) CreateNewIssue(event *output.ResultEvent) (*filters.CreateIssueResponse, error) {
 	summary := format.Summary(event)
 	labels := []string{}
 	severityLabel := fmt.Sprintf("Severity:%s", event.Info.SeverityHolder.Severity.String())
@@ -122,19 +146,19 @@ func (i *Integration) CreateNewIssue(event *output.ResultEvent) error {
 			for nestedName, nestedValue := range valueMap {
 				fmtNestedValue, ok := nestedValue.(string)
 				if !ok {
-					return fmt.Errorf(`couldn't iterate on nested item "%s": %s`, nestedName, nestedValue)
+					return nil, fmt.Errorf(`couldn't iterate on nested item "%s": %s`, nestedName, nestedValue)
 				}
 				if strings.HasPrefix(fmtNestedValue, "$") {
 					nestedValue = strings.TrimPrefix(fmtNestedValue, "$")
 					switch nestedValue {
 					case "CVSSMetrics":
-						nestedValue = event.Info.Classification.CVSSMetrics
+						nestedValue = ptr.Safe(event.Info.Classification).CVSSMetrics
 					case "CVEID":
-						nestedValue = event.Info.Classification.CVEID
+						nestedValue = ptr.Safe(event.Info.Classification).CVEID
 					case "CWEID":
-						nestedValue = event.Info.Classification.CWEID
+						nestedValue = ptr.Safe(event.Info.Classification).CWEID
 					case "CVSSScore":
-						nestedValue = event.Info.Classification.CVSSScore
+						nestedValue = ptr.Safe(event.Info.Classification).CVSSScore
 					case "Host":
 						nestedValue = event.Host
 					case "Severity":
@@ -155,12 +179,15 @@ func (i *Integration) CreateNewIssue(event *output.ResultEvent) error {
 		}
 	}
 	fields := &jira.IssueFields{
+		Assignee:    &jira.User{Name: i.options.AccountID},
 		Description: format.CreateReportDescription(event, i, i.options.OmitRaw),
 		Unknowns:    customFields,
+		Labels:      labels,
 		Type:        jira.IssueType{Name: i.options.IssueType},
 		Project:     jira.Project{Key: i.options.ProjectName},
 		Summary:     summary,
 	}
+
 	// On-prem version of Jira server does not use AccountID
 	if !i.options.Cloud {
 		fields = &jira.IssueFields{
@@ -173,40 +200,102 @@ func (i *Integration) CreateNewIssue(event *output.ResultEvent) error {
 			Unknowns:    customFields,
 		}
 	}
+	if i.options.IssueTypeID != "" {
+		fields.Type = jira.IssueType{ID: i.options.IssueTypeID}
+	}
+	if i.options.ProjectID != "" {
+		fields.Project = jira.Project{ID: i.options.ProjectID}
+	}
 
 	issueData := &jira.Issue{
 		Fields: fields,
 	}
-	_, resp, err := i.jira.Issue.Create(issueData)
+	createdIssue, resp, err := i.jira.Issue.Create(issueData)
 	if err != nil {
 		var data string
 		if resp != nil && resp.Body != nil {
 			d, _ := io.ReadAll(resp.Body)
 			data = string(d)
 		}
-		return fmt.Errorf("%w => %s", err, data)
+		return nil, fmt.Errorf("%w => %s", err, data)
 	}
-	return nil
+	return getIssueResponseFromJira(createdIssue)
+}
+
+func getIssueResponseFromJira(issue *jira.Issue) (*filters.CreateIssueResponse, error) {
+	parsed, err := url.Parse(issue.Self)
+	if err != nil {
+		return nil, err
+	}
+	parsed.Path = fmt.Sprintf("/browse/%s", issue.Key)
+	issueURL := parsed.String()
+
+	return &filters.CreateIssueResponse{
+		IssueID:  issue.ID,
+		IssueURL: issueURL,
+	}, nil
 }
 
 // CreateIssue creates an issue in the tracker or updates the existing one
-func (i *Integration) CreateIssue(event *output.ResultEvent) error {
+func (i *Integration) CreateIssue(event *output.ResultEvent) (*filters.CreateIssueResponse, error) {
 	if i.options.UpdateExisting {
-		issueID, err := i.FindExistingIssue(event)
+		issue, err := i.FindExistingIssue(event)
 		if err != nil {
-			return err
-		} else if issueID != "" {
-			_, _, err = i.jira.Issue.AddComment(issueID, &jira.Comment{
+			return nil, err
+		} else if issue.ID != "" {
+			_, _, err = i.jira.Issue.AddComment(issue.ID, &jira.Comment{
 				Body: format.CreateReportDescription(event, i, i.options.OmitRaw),
 			})
-			return err
+			if err != nil {
+				return nil, err
+			}
+			return getIssueResponseFromJira(&issue)
 		}
 	}
 	return i.CreateNewIssue(event)
 }
 
+func (i *Integration) CloseIssue(event *output.ResultEvent) error {
+	if i.options.StatusNot == "" {
+		return nil
+	}
+
+	issue, err := i.FindExistingIssue(event)
+	if err != nil {
+		return err
+	} else if issue.ID != "" {
+		// Lazy load the transitions ID in case it's not set
+		i.once.Do(func() {
+			transitions, _, err := i.jira.Issue.GetTransitions(issue.ID)
+			if err != nil {
+				return
+			}
+			for _, transition := range transitions {
+				if transition.Name == i.options.StatusNot {
+					i.transitionID = transition.ID
+					break
+				}
+			}
+		})
+		if i.transitionID == "" {
+			return nil
+		}
+		transition := jira.CreateTransitionPayload{
+			Transition: jira.TransitionPayload{
+				ID: i.transitionID,
+			},
+		}
+
+		_, err = i.jira.Issue.DoTransitionWithPayload(issue.ID, transition)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 // FindExistingIssue checks if the issue already exists and returns its ID
-func (i *Integration) FindExistingIssue(event *output.ResultEvent) (string, error) {
+func (i *Integration) FindExistingIssue(event *output.ResultEvent) (jira.Issue, error) {
 	template := format.GetMatchedTemplateName(event)
 	jql := fmt.Sprintf("summary ~ \"%s\" AND summary ~ \"%s\" AND status != \"%s\" AND project = \"%s\"", template, event.Host, i.options.StatusNot, i.options.ProjectName)
 
@@ -221,16 +310,29 @@ func (i *Integration) FindExistingIssue(event *output.ResultEvent) (string, erro
 			d, _ := io.ReadAll(resp.Body)
 			data = string(d)
 		}
-		return "", fmt.Errorf("%w => %s", err, data)
+		return jira.Issue{}, fmt.Errorf("%w => %s", err, data)
 	}
 
 	switch resp.Total {
 	case 0:
-		return "", nil
+		return jira.Issue{}, nil
 	case 1:
-		return chunk[0].ID, nil
+		return chunk[0], nil
 	default:
 		gologger.Warning().Msgf("Discovered multiple opened issues %s for the host %s: The issue [%s] will be updated.", template, event.Host, chunk[0].ID)
-		return chunk[0].ID, nil
+		return chunk[0], nil
 	}
+}
+
+// ShouldFilter determines if an issue should be logged to this tracker
+func (i *Integration) ShouldFilter(event *output.ResultEvent) bool {
+	if i.options.AllowList != nil && !i.options.AllowList.GetMatch(event) {
+		return false
+	}
+
+	if i.options.DenyList != nil && i.options.DenyList.GetMatch(event) {
+		return false
+	}
+
+	return true
 }

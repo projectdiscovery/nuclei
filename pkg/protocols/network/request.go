@@ -1,7 +1,6 @@
 package network
 
 import (
-	"context"
 	"encoding/hex"
 	"fmt"
 	"net"
@@ -9,10 +8,10 @@ import (
 	"os"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/pkg/errors"
-	"github.com/remeh/sizedwaitgroup"
 	"go.uber.org/multierr"
 	"golang.org/x/exp/maps"
 
@@ -34,12 +33,7 @@ import (
 	errorutil "github.com/projectdiscovery/utils/errors"
 	mapsutil "github.com/projectdiscovery/utils/maps"
 	"github.com/projectdiscovery/utils/reader"
-)
-
-var (
-	// TODO: make this configurable
-	// DefaultReadTimeout is the default read timeout for network requests
-	DefaultReadTimeout = time.Duration(5) * time.Second
+	syncutil "github.com/projectdiscovery/utils/sync"
 )
 
 var _ protocols.Request = &Request{}
@@ -70,7 +64,7 @@ func (request *Request) getOpenPorts(target *contextargs.Context) ([]string, err
 			errs = append(errs, err)
 			continue
 		}
-		conn, err := protocolstate.Dialer.Dial(context.TODO(), "tcp", addr)
+		conn, err := protocolstate.Dialer.Dial(target.Context(), "tcp", addr)
 		if err != nil {
 			errs = append(errs, err)
 			continue
@@ -106,6 +100,16 @@ func (request *Request) ExecuteWithResults(target *contextargs.Context, metadata
 		gologger.Verbose().Msgf("[%v] got errors while checking open ports: %s\n", request.options.TemplateID, err)
 	}
 
+	// stop at first match if requested
+	atomicBool := &atomic.Bool{}
+	shouldStopAtFirstMatch := request.StopAtFirstMatch || request.options.StopAtFirstMatch || request.options.Options.StopAtFirstMatch
+	wrappedCallback := func(event *output.InternalWrappedEvent) {
+		if event != nil && event.HasOperatorResult() {
+			atomicBool.Store(true)
+		}
+		callback(event)
+	}
+
 	for _, port := range ports {
 		input := target.Clone()
 		// use network port updates input with new port requested in template file
@@ -114,8 +118,11 @@ func (request *Request) ExecuteWithResults(target *contextargs.Context, metadata
 		if err := input.UseNetworkPort(port, request.ExcludePorts); err != nil {
 			gologger.Debug().Msgf("Could not network port from constants: %s\n", err)
 		}
-		if err := request.executeOnTarget(input, visitedAddresses, metadata, previous, callback); err != nil {
+		if err := request.executeOnTarget(input, visitedAddresses, metadata, previous, wrappedCallback); err != nil {
 			return err
+		}
+		if shouldStopAtFirstMatch && atomicBool.Load() {
+			break
 		}
 	}
 
@@ -125,6 +132,10 @@ func (request *Request) ExecuteWithResults(target *contextargs.Context, metadata
 func (request *Request) executeOnTarget(input *contextargs.Context, visited mapsutil.Map[string, struct{}], metadata, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
 	var address string
 	var err error
+	if request.isUnresponsiveAddress(input) {
+		// skip on unresponsive address no need to continue
+		return nil
+	}
 
 	if request.SelfContained {
 		address = ""
@@ -144,22 +155,39 @@ func (request *Request) executeOnTarget(input *contextargs.Context, visited maps
 	variablesMap := request.options.Variables.Evaluate(variables)
 	variables = generators.MergeMaps(variablesMap, variables, request.options.Constants)
 
+	// stop at first match if requested
+	atomicBool := &atomic.Bool{}
+	shouldStopAtFirstMatch := request.StopAtFirstMatch || request.options.StopAtFirstMatch || request.options.Options.StopAtFirstMatch
+	wrappedCallback := func(event *output.InternalWrappedEvent) {
+		if event != nil && event.HasOperatorResult() {
+			atomicBool.Store(true)
+		}
+		callback(event)
+	}
+
 	for _, kv := range request.addresses {
+		select {
+		case <-input.Context().Done():
+			return input.Context().Err()
+		default:
+		}
+
 		actualAddress := replacer.Replace(kv.address, variables)
 
 		if visited.Has(actualAddress) && !request.options.Options.DisableClustering {
 			continue
 		}
 		visited.Set(actualAddress, struct{}{})
-
-		if err := request.executeAddress(variables, actualAddress, address, input, kv.tls, previous, callback); err != nil {
+		if err = request.executeAddress(variables, actualAddress, address, input, kv.tls, previous, wrappedCallback); err != nil {
 			outputEvent := request.responseToDSLMap("", "", "", address, "")
 			callback(&output.InternalWrappedEvent{InternalEvent: outputEvent})
 			gologger.Warning().Msgf("[%v] Could not make network request for (%s) : %s\n", request.options.TemplateID, actualAddress, err)
-			continue
+		}
+		if shouldStopAtFirstMatch && atomicBool.Load() {
+			break
 		}
 	}
-	return nil
+	return err
 }
 
 // executeAddress executes the request for an address
@@ -173,22 +201,54 @@ func (request *Request) executeAddress(variables map[string]interface{}, actualA
 		request.options.Progress.IncrementFailedRequestsBy(1)
 		return err
 	}
+	updatedTarget := input.Clone()
+	updatedTarget.MetaInput.Input = actualAddress
+
+	// if request threads matches global payload concurrency we follow it
+	shouldFollowGlobal := request.Threads == request.options.Options.PayloadConcurrency
 
 	if request.generator != nil {
 		iterator := request.generator.NewIterator()
 		var multiErr error
 		m := &sync.Mutex{}
-		swg := sizedwaitgroup.New(request.Threads)
+		swg, err := syncutil.New(syncutil.WithSize(request.Threads))
+		if err != nil {
+			return err
+		}
 
 		for {
 			value, ok := iterator.Value()
 			if !ok {
 				break
 			}
+
+			select {
+			case <-input.Context().Done():
+				return input.Context().Err()
+			default:
+			}
+
+			// resize check point - nop if there are no changes
+			if shouldFollowGlobal && swg.Size != request.options.Options.PayloadConcurrency {
+				if err := swg.Resize(input.Context(), request.options.Options.PayloadConcurrency); err != nil {
+					m.Lock()
+					multiErr = multierr.Append(multiErr, err)
+					m.Unlock()
+				}
+			}
+			if request.isUnresponsiveAddress(updatedTarget) {
+				// skip on unresponsive address no need to continue
+				return nil
+			}
+
 			value = generators.MergeMaps(value, payloads)
 			swg.Add()
 			go func(vars map[string]interface{}) {
 				defer swg.Done()
+				if request.isUnresponsiveAddress(updatedTarget) {
+					// skip on unresponsive address no need to continue
+					return
+				}
 				if err := request.executeRequestWithPayloads(variables, actualAddress, address, input, shouldUseTLS, vars, previous, callback); err != nil {
 					m.Lock()
 					multiErr = multierr.Append(multiErr, err)
@@ -218,13 +278,22 @@ func (request *Request) executeRequestWithPayloads(variables map[string]interfac
 	if host, _, err := net.SplitHostPort(actualAddress); err == nil {
 		hostname = host
 	}
+	updatedTarget := input.Clone()
+	updatedTarget.MetaInput.Input = actualAddress
+
+	if request.isUnresponsiveAddress(updatedTarget) {
+		// skip on unresponsive address no need to continue
+		return nil
+	}
 
 	if shouldUseTLS {
-		conn, err = request.dialer.DialTLS(context.Background(), "tcp", actualAddress)
+		conn, err = request.dialer.DialTLS(input.Context(), "tcp", actualAddress)
 	} else {
-		conn, err = request.dialer.Dial(context.Background(), "tcp", actualAddress)
+		conn, err = request.dialer.Dial(input.Context(), "tcp", actualAddress)
 	}
 	if err != nil {
+		// adds it to unresponsive address list if applicable
+		request.markUnresponsiveAddress(updatedTarget, err)
 		request.options.Output.Request(request.options.TemplatePath, address, request.Type().String(), err)
 		request.options.Progress.IncrementFailedRequestsBy(1)
 		return errors.Wrap(err, "could not connect to server")
@@ -239,36 +308,37 @@ func (request *Request) executeRequestWithPayloads(variables map[string]interfac
 	interimValues := generators.MergeMaps(variables, payloads)
 
 	if vardump.EnableVarDump {
-		gologger.Debug().Msgf("Network Protocol request variables: \n%s\n", vardump.DumpVariables(interimValues))
+		gologger.Debug().Msgf("Network Protocol request variables: %s\n", vardump.DumpVariables(interimValues))
 	}
 
 	inputEvents := make(map[string]interface{})
 
 	for _, input := range request.Inputs {
-		data := []byte(input.Data)
+		dataInBytes := []byte(input.Data)
+		var err error
 
-		if request.options.Interactsh != nil {
-			var transformedData string
-			transformedData, interactshURLs = request.options.Interactsh.Replace(string(data), []string{})
-			data = []byte(transformedData)
-		}
-
-		finalData, err := expressions.EvaluateByte(data, interimValues)
+		dataInBytes, err = expressions.EvaluateByte(dataInBytes, interimValues)
 		if err != nil {
 			request.options.Output.Request(request.options.TemplatePath, address, request.Type().String(), err)
 			request.options.Progress.IncrementFailedRequestsBy(1)
 			return errors.Wrap(err, "could not evaluate template expressions")
 		}
 
-		reqBuilder.Write(finalData)
+		data := string(dataInBytes)
+		if request.options.Interactsh != nil {
+			data, interactshURLs = request.options.Interactsh.Replace(data, []string{})
+			dataInBytes = []byte(data)
+		}
 
-		if err := expressions.ContainsUnresolvedVariables(string(finalData)); err != nil {
+		reqBuilder.Write(dataInBytes)
+
+		if err := expressions.ContainsUnresolvedVariables(data); err != nil {
 			gologger.Warning().Msgf("[%s] Could not make network request for %s: %v\n", request.options.TemplateID, actualAddress, err)
 			return nil
 		}
 
 		if input.Type.GetType() == hexType {
-			finalData, err = hex.DecodeString(string(finalData))
+			dataInBytes, err = hex.DecodeString(data)
 			if err != nil {
 				request.options.Output.Request(request.options.TemplatePath, address, request.Type().String(), err)
 				request.options.Progress.IncrementFailedRequestsBy(1)
@@ -276,14 +346,14 @@ func (request *Request) executeRequestWithPayloads(variables map[string]interfac
 			}
 		}
 
-		if _, err := conn.Write(finalData); err != nil {
+		if _, err := conn.Write(dataInBytes); err != nil {
 			request.options.Output.Request(request.options.TemplatePath, address, request.Type().String(), err)
 			request.options.Progress.IncrementFailedRequestsBy(1)
 			return errors.Wrap(err, "could not write request to server")
 		}
 
 		if input.Read > 0 {
-			buffer, err := ConnReadNWithTimeout(conn, int64(input.Read), DefaultReadTimeout)
+			buffer, err := ConnReadNWithTimeout(conn, int64(input.Read), request.options.Options.GetTimeouts().TcpReadTimeout)
 			if err != nil {
 				return errorutil.NewWithErr(err).Msgf("could not read response from connection")
 			}
@@ -333,10 +403,10 @@ func (request *Request) executeRequestWithPayloads(variables map[string]interfac
 		bufferSize = -1
 	}
 
-	final, err := ConnReadNWithTimeout(conn, int64(bufferSize), DefaultReadTimeout)
+	final, err := ConnReadNWithTimeout(conn, int64(bufferSize), request.options.Options.GetTimeouts().TcpReadTimeout)
 	if err != nil {
 		request.options.Output.Request(request.options.TemplatePath, address, request.Type().String(), err)
-		return errors.Wrap(err, "could not read from server")
+		gologger.Verbose().Msgf("could not read more data from %s: %s", actualAddress, err)
 	}
 	responseBuilder.Write(final)
 
@@ -434,9 +504,6 @@ func getAddress(toTest string) (string, error) {
 }
 
 func ConnReadNWithTimeout(conn net.Conn, n int64, timeout time.Duration) ([]byte, error) {
-	if timeout == 0 {
-		timeout = DefaultReadTimeout
-	}
 	if n == -1 {
 		// if n is -1 then read all available data from connection
 		return reader.ConnReadNWithTimeout(conn, -1, timeout)
@@ -455,4 +522,22 @@ func ConnReadNWithTimeout(conn net.Conn, n int64, timeout time.Duration) ([]byte
 		return nil, err
 	}
 	return b[:count], nil
+}
+
+// markUnresponsiveAddress checks if the error is a unreponsive host error and marks it
+func (request *Request) markUnresponsiveAddress(input *contextargs.Context, err error) {
+	if err == nil {
+		return
+	}
+	if request.options.HostErrorsCache != nil {
+		request.options.HostErrorsCache.MarkFailed(request.options.ProtocolType.String(), input, err)
+	}
+}
+
+// isUnresponsiveAddress checks if the error is a unreponsive based on its execution history
+func (request *Request) isUnresponsiveAddress(input *contextargs.Context) bool {
+	if request.options.HostErrorsCache != nil {
+		return request.options.HostErrorsCache.Check(request.options.ProtocolType.String(), input)
+	}
+	return false
 }

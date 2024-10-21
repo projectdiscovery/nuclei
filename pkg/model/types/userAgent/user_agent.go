@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"strings"
 
-	"github.com/alecthomas/jsonschema"
+	"github.com/invopop/jsonschema"
 	"github.com/pkg/errors"
 )
 
@@ -61,8 +61,8 @@ type UserAgentHolder struct {
 	Value UserAgent `mapping:"true"`
 }
 
-func (userAgentHolder UserAgentHolder) JSONSchemaType() *jsonschema.Type {
-	gotType := &jsonschema.Type{
+func (userAgentHolder UserAgentHolder) JSONSchema() *jsonschema.Schema {
+	gotType := &jsonschema.Schema{
 		Type:        "string",
 		Title:       "userAgent for the headless",
 		Description: "userAgent for the headless http request",

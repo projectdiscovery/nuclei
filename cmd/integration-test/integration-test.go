@@ -9,7 +9,9 @@ import (
 
 	"github.com/logrusorgru/aurora"
 
+	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/testutils"
+	"github.com/projectdiscovery/nuclei/v3/pkg/testutils/fuzzplayground"
 	sliceutil "github.com/projectdiscovery/utils/slice"
 )
 
@@ -35,6 +37,7 @@ var (
 		"dns":             dnsTestCases,
 		"workflow":        workflowTestcases,
 		"loader":          loaderTestcases,
+		"profile-loader":  profileLoaderTestcases,
 		"websocket":       websocketTestCases,
 		"headless":        headlessTestcases,
 		"whois":           whoisTestCases,
@@ -52,6 +55,11 @@ var (
 		"dsl":             dslTestcases,
 		"flow":            flowTestcases,
 		"javascript":      jsTestcases,
+		"matcher-status":  matcherStatusTestcases,
+	}
+	// flakyTests are run with a retry count of 3
+	flakyTests = map[string]bool{
+		"protocols/http/self-contained-file-input.yaml": true,
 	}
 
 	// For debug purposes
@@ -77,6 +85,18 @@ func main() {
 		debugTests()
 		os.Exit(1)
 	}
+
+	// start fuzz playground server
+	defer fuzzplayground.Cleanup()
+	server := fuzzplayground.GetPlaygroundServer()
+	defer server.Close()
+	go func() {
+		if err := server.Start("localhost:8082"); err != nil {
+			if !strings.Contains(err.Error(), "Server closed") {
+				gologger.Fatal().Msgf("Could not start server: %s\n", err)
+			}
+		}
+	}()
 
 	customTestsList := normalizeSplit(customTests)
 
@@ -149,6 +169,8 @@ func runTests(customTemplatePaths []string) []string {
 				var failedTemplatePath string
 				var err error
 				if proto == "interactsh" || strings.Contains(testCaseInfo.Path, "interactsh") {
+					failedTemplatePath, err = executeWithRetry(testCaseInfo.TestCase, testCaseInfo.Path, interactshRetryCount)
+				} else if flakyTests[testCaseInfo.Path] {
 					failedTemplatePath, err = executeWithRetry(testCaseInfo.TestCase, testCaseInfo.Path, interactshRetryCount)
 				} else {
 					failedTemplatePath, err = execute(testCaseInfo.TestCase, testCaseInfo.Path)

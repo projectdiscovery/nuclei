@@ -64,6 +64,22 @@ func (operators *Operators) Compile() error {
 	return nil
 }
 
+func (operators *Operators) HasDSL() bool {
+	for _, matcher := range operators.Matchers {
+		if len(matcher.DSL) > 0 {
+			return true
+		}
+	}
+
+	for _, extractor := range operators.Extractors {
+		if len(extractor.DSL) > 0 {
+			return true
+		}
+	}
+
+	return false
+}
+
 // GetMatchersCondition returns the condition for the matchers
 func (operators *Operators) GetMatchersCondition() matchers.ConditionType {
 	return operators.matchersCondition
@@ -287,7 +303,7 @@ func (operators *Operators) Execute(data map[string]interface{}, match MatchFunc
 		}
 		if isMatch, matched := match(data, matcher); isMatch {
 			if isDebug { // matchers without an explicit name or with AND condition should only be made visible if debug is enabled
-				matcherName := getMatcherName(matcher, matcherIndex)
+				matcherName := GetMatcherName(matcher, matcherIndex)
 				result.Matches[matcherName] = matched
 			} else { // if it's a "named" matcher with OR condition, then display it
 				if matcherCondition == matchers.ORCondition && matcher.Name != "" {
@@ -299,7 +315,7 @@ func (operators *Operators) Execute(data map[string]interface{}, match MatchFunc
 			if len(result.DynamicValues) > 0 {
 				return result, true
 			}
-			return nil, false
+			return result, false
 		}
 	}
 
@@ -313,6 +329,10 @@ func (operators *Operators) Execute(data map[string]interface{}, match MatchFunc
 
 	// Don't print if we have matchers, and they have not matched, regardless of extractor
 	if len(operators.Matchers) > 0 && !matches {
+		// if dynamic values are present then it is not a failure
+		if len(result.DynamicValues) > 0 {
+			return result, true
+		}
 		return nil, false
 	}
 	// Write a final string of output if matcher type is
@@ -320,10 +340,15 @@ func (operators *Operators) Execute(data map[string]interface{}, match MatchFunc
 	if len(result.Extracts) > 0 || len(result.OutputExtracts) > 0 || matches {
 		return result, true
 	}
+	// if dynamic values are present then it is not a failure
+	if len(result.DynamicValues) > 0 {
+		return result, true
+	}
 	return nil, false
 }
 
-func getMatcherName(matcher *matchers.Matcher, matcherIndex int) string {
+// GetMatcherName returns matchername of given matcher
+func GetMatcherName(matcher *matchers.Matcher, matcherIndex int) string {
 	if matcher.Name != "" {
 		return matcher.Name
 	} else {
@@ -367,4 +392,21 @@ func getExtractedValue(values []string) any {
 	} else {
 		return values
 	}
+}
+
+// EvalBoolSlice evaluates a slice of bools using a logical AND
+func EvalBoolSlice(slice []bool, isAnd bool) bool {
+	if len(slice) == 0 {
+		return false
+	}
+
+	result := slice[0]
+	for _, b := range slice[1:] {
+		if isAnd {
+			result = result && b
+		} else {
+			result = result || b
+		}
+	}
+	return result
 }

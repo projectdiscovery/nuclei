@@ -5,11 +5,15 @@ import (
 	"errors"
 	"strings"
 
-	"github.com/alecthomas/jsonschema"
+	"github.com/invopop/jsonschema"
+	mapsutil "github.com/projectdiscovery/utils/maps"
 )
 
 // ActionType defines the action type for a browser action
 type ActionType int8
+
+// ActionData stores the action output data
+type ActionData = mapsutil.Map[string, any]
 
 // Types to be executed by the user.
 // name:ActionType
@@ -41,9 +45,24 @@ const (
 	// ActionFilesInput performs an action on a file input.
 	// name:files
 	ActionFilesInput
-	// ActionWaitLoad waits for the page to stop loading.
+	// ActionWaitDOM waits for the HTML document has been completely loaded & parsed.
+	// name:waitdom
+	ActionWaitDOM
+	// ActionWaitFCP waits for the first piece of content (text, image, etc.) is painted on the screen.
+	// name:waitfcp
+	ActionWaitFCP
+	// ActionWaitFMP waits for page has rendered enough meaningful content to be useful to the user.
+	// name:waitfmp
+	ActionWaitFMP
+	// ActionWaitIdle waits for the network is completely idle (no ongoing network requests).
+	// name:waitidle
+	ActionWaitIdle
+	// ActionWaitLoad waits for the page and all its resources (like stylesheets and images) have finished loading.
 	// name:waitload
 	ActionWaitLoad
+	// ActionWaitStable waits until the page is stable.
+	// name:waitstable
+	ActionWaitStable
 	// ActionGetResource performs a get resource action on an element
 	// name:getresource
 	ActionGetResource
@@ -68,6 +87,9 @@ const (
 	// ActionWaitEvent waits for a specific event.
 	// name:waitevent
 	ActionWaitEvent
+	// ActionWaitDialog waits for JavaScript dialog (alert, confirm, prompt, or onbeforeunload).
+	// name:dialog
+	ActionWaitDialog
 	// ActionKeyboard performs a keyboard action event on a page.
 	// name:keyboard
 	ActionKeyboard
@@ -95,7 +117,12 @@ var ActionStringToAction = map[string]ActionType{
 	"time":         ActionTimeInput,
 	"select":       ActionSelectInput,
 	"files":        ActionFilesInput,
+	"waitdom":      ActionWaitDOM,
+	"waitfcp":      ActionWaitFCP,
+	"waitfmp":      ActionWaitFMP,
+	"waitidle":     ActionWaitIdle,
 	"waitload":     ActionWaitLoad,
+	"waitstable":   ActionWaitStable,
 	"getresource":  ActionGetResource,
 	"extract":      ActionExtract,
 	"setmethod":    ActionSetMethod,
@@ -104,6 +131,7 @@ var ActionStringToAction = map[string]ActionType{
 	"deleteheader": ActionDeleteHeader,
 	"setbody":      ActionSetBody,
 	"waitevent":    ActionWaitEvent,
+	"waitdialog":   ActionWaitDialog,
 	"keyboard":     ActionKeyboard,
 	"debug":        ActionDebug,
 	"sleep":        ActionSleep,
@@ -121,7 +149,12 @@ var ActionToActionString = map[ActionType]string{
 	ActionTimeInput:    "time",
 	ActionSelectInput:  "select",
 	ActionFilesInput:   "files",
+	ActionWaitDOM:      "waitdom",
+	ActionWaitFCP:      "waitfcp",
+	ActionWaitFMP:      "waitfmp",
+	ActionWaitIdle:     "waitidle",
 	ActionWaitLoad:     "waitload",
+	ActionWaitStable:   "waitstable",
 	ActionGetResource:  "getresource",
 	ActionExtract:      "extract",
 	ActionSetMethod:    "setmethod",
@@ -130,6 +163,7 @@ var ActionToActionString = map[ActionType]string{
 	ActionDeleteHeader: "deleteheader",
 	ActionSetBody:      "setbody",
 	ActionWaitEvent:    "waitevent",
+	ActionWaitDialog:   "waitdialog",
 	ActionKeyboard:     "keyboard",
 	ActionDebug:        "debug",
 	ActionSleep:        "sleep",
@@ -171,8 +205,8 @@ type ActionTypeHolder struct {
 func (holder ActionTypeHolder) String() string {
 	return holder.ActionType.String()
 }
-func (holder ActionTypeHolder) JSONSchemaType() *jsonschema.Type {
-	gotType := &jsonschema.Type{
+func (holder ActionTypeHolder) JSONSchema() *jsonschema.Schema {
+	gotType := &jsonschema.Schema{
 		Type:        "string",
 		Title:       "action to perform",
 		Description: "Type of actions to perform",

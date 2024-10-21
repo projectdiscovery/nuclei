@@ -27,18 +27,15 @@ func init() {
 			"{{$objName}}": {{$pkgName}}.{{$objDefine}},
 			{{- end}}
 
-			// Types (value type)
+			// Objects / Classes
 			{{- range $objName, $objDefine := .PackageTypes}}
-			"{{$objName}}": {{printf "func() %s.%s { return %s.%s{} }" $pkgName $objDefine $pkgName $objDefine}},
+			{{- if $objDefine}}
+			"{{$objName}}": {{$pkgName}}.{{$objDefine}},
+			{{- else}}
+			"{{$objName}}": gojs.GetClassConstructor[{{$pkgName}}.{{$objName}}](&{{$pkgName}}.{{$objName}}{}),
+			{{- end}}
 			{{- end}}
 
-			// Types (pointer type)
-			{{range $objName, $objDefine := .PackageTypes}}
-			{{- $newObjName := printf "%s%s" "New" $objName -}}
-			{{- if not (exist $pkgFuncs $newObjName) -}}
-			"{{$newObjName}}": {{printf "func() *%s.%s { return &%s.%s{} }" $pkgName $objDefine $pkgName $objDefine}},
-			{{end -}}
-			{{- end -}}
 			},
 		).Register()
 }

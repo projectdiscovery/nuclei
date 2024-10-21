@@ -34,7 +34,7 @@ func Init(options *types.Options) error {
 	clientPool = make(map[string]*retryabledns.Client)
 
 	resolvers := defaultResolvers
-	if options.ResolversFile != "" {
+	if len(options.InternalResolversList) > 0 {
 		resolvers = options.InternalResolversList
 	}
 	var err error
@@ -78,7 +78,7 @@ func Get(options *types.Options, configuration *Configuration) (*retryabledns.Cl
 	poolMutex.RUnlock()
 
 	resolvers := defaultResolvers
-	if options.ResolversFile != "" {
+	if len(options.InternalResolversList) > 0 {
 		resolvers = options.InternalResolversList
 	} else if len(configuration.Resolvers) > 0 {
 		resolvers = configuration.Resolvers

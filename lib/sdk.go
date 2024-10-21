@@ -3,19 +3,22 @@ package nuclei
 import (
 	"bufio"
 	"bytes"
+	"context"
 	"io"
 
-	"github.com/projectdiscovery/httpx/common/httpx"
-	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/disk"
+	"github.com/projectdiscovery/nuclei/v3/pkg/authprovider"
+	"github.com/projectdiscovery/nuclei/v3/pkg/catalog"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/loader"
 	"github.com/projectdiscovery/nuclei/v3/pkg/core"
-	"github.com/projectdiscovery/nuclei/v3/pkg/core/inputs"
+	"github.com/projectdiscovery/nuclei/v3/pkg/input/provider"
+	providerTypes "github.com/projectdiscovery/nuclei/v3/pkg/input/types"
+	"github.com/projectdiscovery/nuclei/v3/pkg/loader/workflow"
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
-	"github.com/projectdiscovery/nuclei/v3/pkg/parsers"
 	"github.com/projectdiscovery/nuclei/v3/pkg/progress"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/hosterrorscache"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/interactsh"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolinit"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/headless/engine"
 	"github.com/projectdiscovery/nuclei/v3/pkg/reporting"
 	"github.com/projectdiscovery/nuclei/v3/pkg/templates"
@@ -62,15 +65,17 @@ type NucleiEngine struct {
 
 	// unexported core fields
 	interactshClient *interactsh.Client
-	catalog          *disk.DiskCatalog
+	catalog          catalog.Catalog
 	rateLimiter      *ratelimit.Limiter
 	store            *loader.Store
-	httpxClient      *httpx.HTTPX
-	inputProvider    *inputs.SimpleInputProvider
+	httpxClient      providerTypes.InputLivenessProbe
+	inputProvider    provider.InputProvider
 	engine           *core.Engine
 	mode             engineMode
 	browserInstance  *engine.Browser
 	httpClient       *retryablehttp.Client
+	parser           *templates.Parser
+	authprovider     authprovider.AuthProvider
 
 	// unexported meta options
 	opts           *types.Options
@@ -84,7 +89,7 @@ type NucleiEngine struct {
 
 // LoadAllTemplates loads all nuclei template based on given options
 func (e *NucleiEngine) LoadAllTemplates() error {
-	workflowLoader, err := parsers.NewLoader(&e.executerOpts)
+	workflowLoader, err := workflow.NewLoader(&e.executerOpts)
 	if err != nil {
 		return errorutil.New("Could not create workflow loader: %s\n", err)
 	}
@@ -95,6 +100,7 @@ func (e *NucleiEngine) LoadAllTemplates() error {
 		return errorutil.New("Could not create loader client: %s\n", err)
 	}
 	e.store.Load()
+	e.templatesLoaded = true
 	return nil
 }
 
@@ -110,7 +116,7 @@ func (e *NucleiEngine) GetTemplates() []*templates.Template {
 func (e *NucleiEngine) LoadTargets(targets []string, probeNonHttp bool) {
 	for _, target := range targets {
 		if probeNonHttp {
-			e.inputProvider.SetWithProbe(target, e.httpxClient)
+			_ = e.inputProvider.SetWithProbe(target, e.httpxClient)
 		} else {
 			e.inputProvider.Set(target)
 		}
@@ -122,11 +128,27 @@ func (e *NucleiEngine) LoadTargetsFromReader(reader io.Reader, probeNonHttp bool
 	buff := bufio.NewScanner(reader)
 	for buff.Scan() {
 		if probeNonHttp {
-			e.inputProvider.SetWithProbe(buff.Text(), e.httpxClient)
+			_ = e.inputProvider.SetWithProbe(buff.Text(), e.httpxClient)
 		} else {
 			e.inputProvider.Set(buff.Text())
 		}
 	}
+}
+
+// LoadTargetsWithHttpData loads targets that contain http data from file it currently supports
+// multiple formats like burp xml,openapi,swagger,proxify json
+// Note: this is mutually exclusive with LoadTargets and LoadTargetsFromReader
+func (e *NucleiEngine) LoadTargetsWithHttpData(filePath string, filemode string) error {
+	e.opts.TargetsFilePath = filePath
+	e.opts.InputFileMode = filemode
+	httpProvider, err := provider.NewInputProvider(provider.InputOptions{Options: e.opts})
+	if err != nil {
+		e.opts.TargetsFilePath = ""
+		e.opts.InputFileMode = ""
+		return err
+	}
+	e.inputProvider = httpProvider
+	return nil
 }
 
 // GetExecuterOptions returns the nuclei executor options
@@ -157,22 +179,54 @@ func (e *NucleiEngine) SignTemplate(tmplSigner *signer.TemplateSigner, data []by
 	if err != nil {
 		return data, err
 	}
-	buff := bytes.NewBuffer(signer.RemoveSignatureFromData(data))
+	_, content := signer.ExtractSignatureAndContent(data)
+	buff := bytes.NewBuffer(content)
 	buff.WriteString("\n" + signatureData)
 	return buff.Bytes(), err
 }
 
-// Close all resources used by nuclei engine
-func (e *NucleiEngine) Close() {
-	e.interactshClient.Close()
-	e.rc.Close()
-	e.customWriter.Close()
-	e.hostErrCache.Close()
-	e.executerOpts.RateLimiter.Stop()
+func (e *NucleiEngine) closeInternal() {
+	if e.interactshClient != nil {
+		e.interactshClient.Close()
+	}
+	if e.rc != nil {
+		e.rc.Close()
+	}
+	if e.customWriter != nil {
+		e.customWriter.Close()
+	}
+	if e.customProgress != nil {
+		e.customProgress.Stop()
+	}
+	if e.hostErrCache != nil {
+		e.hostErrCache.Close()
+	}
+	if e.executerOpts.RateLimiter != nil {
+		e.executerOpts.RateLimiter.Stop()
+	}
+	if e.rateLimiter != nil {
+		e.rateLimiter.Stop()
+	}
+	if e.inputProvider != nil {
+		e.inputProvider.Close()
+	}
+	if e.browserInstance != nil {
+		e.browserInstance.Close()
+	}
+	if e.httpxClient != nil {
+		_ = e.httpxClient.Close()
+	}
 }
 
-// ExecuteWithCallback executes templates on targets and calls callback on each result(only if results are found)
-func (e *NucleiEngine) ExecuteWithCallback(callback ...func(event *output.ResultEvent)) error {
+// Close all resources used by nuclei engine
+func (e *NucleiEngine) Close() {
+	e.closeInternal()
+	protocolinit.Close()
+}
+
+// ExecuteCallbackWithCtx executes templates on targets and calls callback on each result(only if results are found)
+// enable matcher-status option if you expect this callback to be called for all results regardless if it matched or not
+func (e *NucleiEngine) ExecuteCallbackWithCtx(ctx context.Context, callback ...func(event *output.ResultEvent)) error {
 	if !e.templatesLoaded {
 		_ = e.LoadAllTemplates()
 	}
@@ -191,13 +245,34 @@ func (e *NucleiEngine) ExecuteWithCallback(callback ...func(event *output.Result
 	}
 	e.resultCallbacks = append(e.resultCallbacks, filtered...)
 
-	_ = e.engine.ExecuteScanWithOpts(e.store.Templates(), e.inputProvider, false)
+	templatesAndWorkflows := append(e.store.Templates(), e.store.Workflows()...)
+	if len(templatesAndWorkflows) == 0 {
+		return ErrNoTemplatesAvailable
+	}
+
+	_ = e.engine.ExecuteScanWithOpts(ctx, templatesAndWorkflows, e.inputProvider, false)
 	defer e.engine.WorkPool().Wait()
 	return nil
 }
 
-// NewNucleiEngine creates a new nuclei engine instance
-func NewNucleiEngine(options ...NucleiSDKOptions) (*NucleiEngine, error) {
+// ExecuteWithCallback is same as ExecuteCallbackWithCtx but with default context
+// Note this is deprecated and will be removed in future major release
+func (e *NucleiEngine) ExecuteWithCallback(callback ...func(event *output.ResultEvent)) error {
+	return e.ExecuteCallbackWithCtx(context.Background(), callback...)
+}
+
+// Options return nuclei Type Options
+func (e *NucleiEngine) Options() *types.Options {
+	return e.opts
+}
+
+// Engine returns core Executer of nuclei
+func (e *NucleiEngine) Engine() *core.Engine {
+	return e.engine
+}
+
+// NewNucleiEngineCtx creates a new nuclei engine instance with given context
+func NewNucleiEngineCtx(ctx context.Context, options ...NucleiSDKOptions) (*NucleiEngine, error) {
 	// default options
 	e := &NucleiEngine{
 		opts: types.DefaultOptions(),
@@ -208,8 +283,13 @@ func NewNucleiEngine(options ...NucleiSDKOptions) (*NucleiEngine, error) {
 			return nil, err
 		}
 	}
-	if err := e.init(); err != nil {
+	if err := e.init(ctx); err != nil {
 		return nil, err
 	}
 	return e, nil
+}
+
+// Deprecated: use NewNucleiEngineCtx instead
+func NewNucleiEngine(options ...NucleiSDKOptions) (*NucleiEngine, error) {
+	return NewNucleiEngineCtx(context.Background(), options...)
 }

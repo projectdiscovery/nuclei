@@ -2,6 +2,7 @@ package compiler
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"reflect"
@@ -10,6 +11,7 @@ import (
 	"github.com/dop251/goja"
 	"github.com/dop251/goja_nodejs/console"
 	"github.com/dop251/goja_nodejs/require"
+	"github.com/kitabisa/go-ci"
 	"github.com/projectdiscovery/gologger"
 	_ "github.com/projectdiscovery/nuclei/v3/pkg/js/generated/go/libbytes"
 	_ "github.com/projectdiscovery/nuclei/v3/pkg/js/generated/go/libfs"
@@ -36,7 +38,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/js/libs/goconsole"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
 	stringsutil "github.com/projectdiscovery/utils/strings"
-	"github.com/remeh/sizedwaitgroup"
+	syncutil "github.com/projectdiscovery/utils/sync"
 )
 
 const (
@@ -51,10 +53,18 @@ var (
 		// autoregister console node module with default printer it uses gologger backend
 		require.RegisterNativeModule(console.ModuleName, console.RequireWithPrinter(goconsole.NewGoConsolePrinter()))
 	})
-	pooljsc    sizedwaitgroup.SizedWaitGroup
+	pooljsc    *syncutil.AdaptiveWaitGroup
 	lazySgInit = sync.OnceFunc(func() {
-		pooljsc = sizedwaitgroup.New(PoolingJsVmConcurrency)
+		pooljsc, _ = syncutil.New(syncutil.WithSize(PoolingJsVmConcurrency))
 	})
+	sgResizeCheck = func(ctx context.Context) {
+		// resize check point
+		if pooljsc.Size != PoolingJsVmConcurrency {
+			if err := pooljsc.Resize(ctx, PoolingJsVmConcurrency); err != nil {
+				gologger.Warning().Msgf("Could not resize workpool: %s\n", err)
+			}
+		}
+	}
 )
 
 var gojapool = &sync.Pool{
@@ -75,11 +85,18 @@ func executeWithRuntime(runtime *goja.Runtime, p *goja.Program, args *ExecuteArg
 			opts.Cleanup(runtime)
 		}
 	}()
+
+	// TODO(dwisiswant0): remove this once we get the RCA.
 	defer func() {
+		if ci.IsCI() {
+			return
+		}
+
 		if r := recover(); r != nil {
 			err = fmt.Errorf("panic: %s", r)
 		}
 	}()
+
 	// set template ctx
 	_ = runtime.Set("template", args.TemplateCtx)
 	// set args
@@ -116,6 +133,8 @@ func executeWithPoolingProgram(p *goja.Program, args *ExecuteArgs, opts *Execute
 	// its unknown (most likely cannot be done) to limit max js runtimes at a moment without making it static
 	// unlike sync.Pool which reacts to GC and its purposes is to reuse objects rather than creating new ones
 	lazySgInit()
+	sgResizeCheck(opts.Context)
+
 	pooljsc.Add()
 	defer pooljsc.Done()
 	runtime := gojapool.Get().(*goja.Runtime)
@@ -138,8 +157,7 @@ func executeWithPoolingProgram(p *goja.Program, args *ExecuteArgs, opts *Execute
 				return goja.Null()
 			}
 			for _, arg := range call.Arguments {
-				value := arg.Export()
-				if out := stringify(value); out != "" {
+				if out := stringify(arg, runtime); out != "" {
 					buff.WriteString(out)
 				}
 			}
@@ -158,8 +176,8 @@ func executeWithPoolingProgram(p *goja.Program, args *ExecuteArgs, opts *Execute
 				panic(runtime.ToValue("ExportAs expects 2 arguments"))
 			}
 			key := call.Argument(0).String()
-			value := call.Argument(1).Export()
-			opts.exports[key] = stringify(value)
+			value := call.Argument(1)
+			opts.exports[key] = stringify(value, runtime)
 			return goja.Null()
 		},
 	})
@@ -169,7 +187,7 @@ func executeWithPoolingProgram(p *goja.Program, args *ExecuteArgs, opts *Execute
 	}
 	if val.Export() != nil {
 		// append last value to output
-		buff.WriteString(stringify(val.Export()))
+		buff.WriteString(stringify(val, runtime))
 	}
 	// and return it as result
 	return runtime.ToValue(buff.String()), nil
@@ -201,13 +219,26 @@ func createNewRuntime() *goja.Runtime {
 
 // stringify converts a given value to string
 // if its a struct it will be marshalled to json
-func stringify(value interface{}) string {
+func stringify(gojaValue goja.Value, runtime *goja.Runtime) string {
+	value := gojaValue.Export()
 	if value == nil {
 		return ""
 	}
 	kind := reflect.TypeOf(value).Kind()
 	if kind == reflect.Struct || kind == reflect.Ptr && reflect.ValueOf(value).Elem().Kind() == reflect.Struct {
+		// in this case we must use JSON.stringify to convert to string
+		// because json.Marshal() utilizes json tags when marshalling
+		// but goja has custom implementation of json.Marshal() which does not
+		// since we have been using `to_json` in all our examples we must stick to it
 		// marshal structs or struct pointers to json automatically
+		jsonStringify, ok := goja.AssertFunction(runtime.Get("to_json"))
+		if ok {
+			result, err := jsonStringify(goja.Undefined(), gojaValue)
+			if err == nil {
+				return result.String()
+			}
+		}
+		// unlikely but if to_json throwed some error use native json.Marshal
 		val := value
 		if kind == reflect.Ptr {
 			val = reflect.ValueOf(value).Elem().Interface()
@@ -218,5 +249,5 @@ func stringify(value interface{}) string {
 		}
 	}
 	// for everything else stringify
-	return fmt.Sprintf("%v", value)
+	return fmt.Sprintf("%+v", value)
 }

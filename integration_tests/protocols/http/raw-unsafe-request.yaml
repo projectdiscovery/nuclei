@@ -5,7 +5,7 @@ info:
   author: pd-team
   severity: info
 
-requests:
+http:
   - raw:
       - |+
         GET / HTTP/1.1

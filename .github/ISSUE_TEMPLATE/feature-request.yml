@@ -1,0 +1,37 @@
+name: Feature Request
+description: Request feature to implement in the Nuclei.
+title: "[FEATURE] ..."
+labels: ["Type: Enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to fill out this feature request!
+
+        Please make sure to provide a detailed description with all the relevant information that might be required to start working on this feature. In case you are not sure about your request or whether the particular feature is already supported or not, please [start a discussion](https://github.com/projectdiscovery/nuclei/discussions/categories/ideas) instead.
+
+        Join our [Discord server](https://discord.gg/projectdiscovery) to discuss the idea on the **#nuclei** channel.
+  - type: textarea
+    attributes:
+      label: Describe your feature request
+      description: A clear and concise description of feature to implement.
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: Describe the use case of the feature
+      description: A clear and concise description of the feature request's motivation and the use-cases in which it could be useful.
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: Describe alternatives you've considered
+      description: A clear and concise description of any alternative solutions or features you've considered.
+    validations:
+      required: false
+  - type: textarea
+    attributes:
+      label: Additional context
+      description: Add any other context about the feature request here.
+    validations:
+      required: false

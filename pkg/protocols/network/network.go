@@ -61,7 +61,7 @@ type Request struct {
 	// description: |
 	//   Port is the port to send network requests to. this acts as default port but is overriden if target/input contains
 	// non-http(s) ports like 80,8080,8081 etc
-	Port string `yaml:"port,omitempty" json:"port,omitempty" jsonschema:"title=port to send requests to,description=Port to send network requests to"`
+	Port string `yaml:"port,omitempty" json:"port,omitempty" jsonschema:"title=port to send requests to,description=Port to send network requests to,oneof_type=string;integer"`
 
 	// description:	|
 	//	ExcludePorts is the list of ports to exclude from being scanned . It is intended to be used with `Port` field and contains a list of ports which are ignored/skipped
@@ -86,12 +86,16 @@ type Request struct {
 	SelfContained bool `yaml:"-" json:"-"`
 
 	// description: |
+	//   StopAtFirstMatch stops the execution of the requests and template as soon as a match is found.
+	StopAtFirstMatch bool `yaml:"stop-at-first-match,omitempty" json:"stop-at-first-match,omitempty" jsonschema:"title=stop at first match,description=Stop the execution after a match is found"`
+
+	// description: |
 	// ports is post processed list of ports to scan (obtained from Port)
 	ports []string `yaml:"-" json:"-"`
 
 	// Operators for the current request go here.
 	operators.Operators `yaml:",inline,omitempty"`
-	CompiledOperators   *operators.Operators `yaml:"-"`
+	CompiledOperators   *operators.Operators `yaml:"-" json:"-"`
 
 	generator *generators.PayloadGenerator
 	// cache any variables that may be needed for operation.
@@ -128,7 +132,7 @@ type Input struct {
 	// examples:
 	//   - value: "\"TEST\""
 	//   - value: "\"hex_decode('50494e47')\""
-	Data string `yaml:"data,omitempty" json:"data,omitempty" jsonschema:"title=data to send as input,description=Data is the data to send as the input"`
+	Data string `yaml:"data,omitempty" json:"data,omitempty" jsonschema:"title=data to send as input,description=Data is the data to send as the input,oneof_type=string;integer"`
 	// description: |
 	//   Type is the type of input specified in `data` field.
 	//

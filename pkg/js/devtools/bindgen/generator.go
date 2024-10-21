@@ -28,16 +28,18 @@ var (
 
 // TemplateData contains the parameters for the JS code generator
 type TemplateData struct {
-	PackageName             string
-	PackagePath             string
-	PackageFuncs            map[string]string
-	PackageInterfaces       map[string]string
-	PackageFuncsExtraNoType map[string]PackageFunctionExtra
-	PackageFuncsExtra       map[string]PackageFuncExtra
-	PackageVars             map[string]string
-	PackageVarsValues       map[string]string
-	PackageTypes            map[string]string
-	PackageTypesExtra       map[string]PackageTypeExtra
+	PackageName               string
+	PackagePath               string
+	HasObjects                bool
+	PackageFuncs              map[string]string
+	PackageInterfaces         map[string]string
+	PackageFuncsExtraNoType   map[string]PackageFunctionExtra
+	PackageFuncsExtra         map[string]PackageFuncExtra
+	PackageVars               map[string]string
+	PackageVarsValues         map[string]string
+	PackageTypes              map[string]string
+	PackageTypesExtra         map[string]PackageTypeExtra
+	PackageDefinedConstructor map[string]struct{}
 
 	typesPackage *types.Package
 
@@ -68,16 +70,17 @@ type PackageFunctionExtra struct {
 // newTemplateData creates a new template data structure
 func newTemplateData(packagePrefix, pkgName string) *TemplateData {
 	return &TemplateData{
-		PackageName:             pkgName,
-		PackagePath:             packagePrefix + pkgName,
-		PackageFuncs:            make(map[string]string),
-		PackageFuncsExtraNoType: make(map[string]PackageFunctionExtra),
-		PackageFuncsExtra:       make(map[string]PackageFuncExtra),
-		PackageVars:             make(map[string]string),
-		PackageVarsValues:       make(map[string]string),
-		PackageTypes:            make(map[string]string),
-		PackageInterfaces:       make(map[string]string),
-		PackageTypesExtra:       make(map[string]PackageTypeExtra),
+		PackageName:               pkgName,
+		PackagePath:               packagePrefix + pkgName,
+		PackageFuncs:              make(map[string]string),
+		PackageFuncsExtraNoType:   make(map[string]PackageFunctionExtra),
+		PackageFuncsExtra:         make(map[string]PackageFuncExtra),
+		PackageVars:               make(map[string]string),
+		PackageVarsValues:         make(map[string]string),
+		PackageTypes:              make(map[string]string),
+		PackageInterfaces:         make(map[string]string),
+		PackageTypesExtra:         make(map[string]PackageTypeExtra),
+		PackageDefinedConstructor: make(map[string]struct{}),
 	}
 }
 
@@ -144,6 +147,24 @@ func CreateTemplateData(directory string, packagePrefix string) (*TemplateData, 
 			delete(data.PackageFuncsExtra, item)
 		}
 	}
+
+	// map types with corresponding constructors
+	for constructor := range data.PackageDefinedConstructor {
+	object:
+		for k := range data.PackageTypes {
+			if strings.Contains(constructor, k) {
+				data.PackageTypes[k] = constructor
+				break object
+			}
+		}
+	}
+	for k, v := range data.PackageTypes {
+		if k == v || v == "" {
+			data.HasObjects = true
+			data.PackageTypes[k] = ""
+		}
+	}
+
 	return data, nil
 }
 
@@ -228,7 +249,7 @@ func identifyGenDecl(pkg *ast.Package, decl *ast.GenDecl, data *TemplateData) {
 			if !spec.Names[0].IsExported() {
 				continue
 			}
-			if spec.Values == nil || len(spec.Values) == 0 {
+			if len(spec.Values) == 0 {
 				continue
 			}
 			data.PackageVars[spec.Names[0].Name] = spec.Names[0].Name
@@ -345,6 +366,10 @@ func (d *TemplateData) handleStarExpr(v *ast.StarExpr) string {
 }
 
 func (d *TemplateData) collectTypeFromExternal(pkg *types.Package, pkgName, name string) {
+	if pkgName == "goja" {
+		// no need to attempt to collect types from goja ( this is metadata )
+		return
+	}
 	extra := PackageTypeExtra{
 		Fields: make(map[string]string),
 	}
@@ -395,11 +420,21 @@ func (d *TemplateData) collectFuncDecl(decl *ast.FuncDecl) (extra PackageFunctio
 	extra.Name = decl.Name.Name
 	extra.Doc = convertCommentsToJavascript(decl.Doc.Text())
 
+	isConstructor := false
+
 	for _, arg := range decl.Type.Params.List {
+		p := exprToString(arg.Type)
+		if strings.Contains(p, "goja.ConstructorCall") {
+			isConstructor = true
+		}
 		for _, name := range arg.Names {
 			extra.Args = append(extra.Args, name.Name)
 		}
 	}
+	if isConstructor {
+		d.PackageDefinedConstructor[decl.Name.Name] = struct{}{}
+	}
+
 	extra.Returns = d.extractReturns(decl)
 	return extra
 }
@@ -408,4 +443,23 @@ func (d *TemplateData) collectFuncDecl(decl *ast.FuncDecl) (extra PackageFunctio
 func convertCommentsToJavascript(comments string) string {
 	suffix := strings.Trim(strings.TrimSuffix(strings.ReplaceAll(comments, "\n", "\n// "), "// "), "\n")
 	return fmt.Sprintf("// %s", suffix)
+}
+
+// exprToString converts an expression to a string
+func exprToString(expr ast.Expr) string {
+	switch t := expr.(type) {
+	case *ast.Ident:
+		return t.Name
+	case *ast.SelectorExpr:
+		return exprToString(t.X) + "." + t.Sel.Name
+	case *ast.StarExpr:
+		return exprToString(t.X)
+	case *ast.ArrayType:
+		return "[]" + exprToString(t.Elt)
+	case *ast.InterfaceType:
+		return "interface{}"
+	// Add more cases to handle other types
+	default:
+		return fmt.Sprintf("%T", expr)
+	}
 }

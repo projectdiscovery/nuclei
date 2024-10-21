@@ -2,15 +2,16 @@ package utils
 
 import (
 	"errors"
+	"fmt"
 	"io"
 	"net/url"
 	"strings"
 
+	"github.com/cespare/xxhash"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog"
-	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/config"
-	"github.com/projectdiscovery/nuclei/v3/pkg/utils/yaml"
 	"github.com/projectdiscovery/retryablehttp-go"
-	fileutil "github.com/projectdiscovery/utils/file"
+	mapsutil "github.com/projectdiscovery/utils/maps"
+	"golang.org/x/exp/constraints"
 )
 
 func IsBlank(value string) bool {
@@ -34,39 +35,21 @@ func IsURL(input string) bool {
 	return err == nil && u.Scheme != "" && u.Host != ""
 }
 
-// ReadFromPathOrURL reads and returns the contents of a file or url.
-func ReadFromPathOrURL(templatePath string, catalog catalog.Catalog) (data []byte, err error) {
-	var reader io.Reader
+// ReaderFromPathOrURL reads and returns the contents of a file or url.
+func ReaderFromPathOrURL(templatePath string, catalog catalog.Catalog) (io.ReadCloser, error) {
 	if IsURL(templatePath) {
 		resp, err := retryablehttp.DefaultClient().Get(templatePath)
 		if err != nil {
 			return nil, err
 		}
-		defer resp.Body.Close()
-		reader = resp.Body
+		return resp.Body, nil
 	} else {
 		f, err := catalog.OpenFile(templatePath)
 		if err != nil {
 			return nil, err
 		}
-		defer f.Close()
-		reader = f
+		return f, nil
 	}
-
-	data, err = io.ReadAll(reader)
-	if err != nil {
-		return nil, err
-	}
-
-	// pre-process directives only for local files
-	if fileutil.FileExists(templatePath) && config.GetTemplateFormatFromExt(templatePath) == config.YAML {
-		data, err = yaml.PreProcess(data)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	return
 }
 
 // StringSliceContains checks if a string slice contains a string.
@@ -77,4 +60,14 @@ func StringSliceContains(slice []string, item string) bool {
 		}
 	}
 	return false
+}
+
+// MapHash generates a hash for any give map
+func MapHash[K constraints.Ordered, V any](m map[K]V) uint64 {
+	keys := mapsutil.GetSortedKeys(m)
+	var sb strings.Builder
+	for _, k := range keys {
+		sb.WriteString(fmt.Sprintf("%v:%v\n", k, m[k]))
+	}
+	return xxhash.Sum64([]byte(sb.String()))
 }

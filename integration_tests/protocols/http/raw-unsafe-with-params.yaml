@@ -7,7 +7,7 @@ info:
 # this test is used to check automerge of params in both unsafe & safe requests
 # key1=value1 is added from inputURL
 
-requests:
+http:
   - raw:
       - |+
         GET /?key2=value2 HTTP/1.1

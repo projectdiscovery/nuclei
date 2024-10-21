@@ -6,7 +6,7 @@ info:
   severity: info
 
 self-contained: true
-requests:
+http:
   - raw:
       - |
         GET http://127.0.0.1:5431/ HTTP/1.1

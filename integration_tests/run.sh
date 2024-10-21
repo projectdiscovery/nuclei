@@ -1,7 +1,7 @@
 #!/bin/bash
 
 echo "::group::Build nuclei"
-rm integration-test nuclei 2>/dev/null
+rm integration-test fuzzplayground nuclei 2>/dev/null
 cd ../cmd/nuclei
 go build -race .
 mv nuclei ../../integration_tests/nuclei 
