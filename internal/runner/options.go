@@ -304,10 +304,17 @@ func createReportingOptions(options *types.Options) (*reporting.Options, error) 
 			OmitRaw: options.OmitRawRequests,
 		}
 	}
+	// Combine options.
 	if options.JSONLExport != "" {
-		reportingOptions.JSONLExporter = &jsonl.Options{
-			File:    options.JSONLExport,
-			OmitRaw: options.OmitRawRequests,
+		// Combine the CLI options with the config file options with the CLI options taking precedence
+		if reportingOptions.JSONLExporter != nil {
+			reportingOptions.JSONLExporter.File = options.JSONLExport
+			reportingOptions.JSONLExporter.OmitRaw = options.OmitRawRequests
+		} else {
+			reportingOptions.JSONLExporter = &jsonl.Options{
+				File:    options.JSONLExport,
+				OmitRaw: options.OmitRawRequests,
+			}
 		}
 	}
 
