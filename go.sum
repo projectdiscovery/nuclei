@@ -845,8 +845,8 @@ github.com/projectdiscovery/cdncheck v1.1.0 h1:qDITidmJsejzpk3rMkauCh6sjI2GH9hW/
 github.com/projectdiscovery/cdncheck v1.1.0/go.mod h1:sZ8U4MjHSsyaTVjBbYWHT1cwUVvUYwDX1W+WvWRicIc=
 github.com/projectdiscovery/clistats v0.1.1 h1:8mwbdbwTU4aT88TJvwIzTpiNeow3XnAB72JIg66c8wE=
 github.com/projectdiscovery/clistats v0.1.1/go.mod h1:4LtTC9Oy//RiuT1+76MfTg8Hqs7FQp1JIGBM3nHK6a0=
-github.com/projectdiscovery/dsl v0.2.5 h1:SJzIPGryApvNuAMa/VCe2yPzIDbkoz/pyH8Zt3Wlk+0=
-github.com/projectdiscovery/dsl v0.2.5/go.mod h1:aLyfr+br+cgwhHUWdQkIYJz+riWABaJ76jKcPYkcWYE=
+github.com/projectdiscovery/dsl v0.3.0 h1:NzU6WcJ8GFQ676IVefrxC5nk/bvb7FCuhmp8tbNC9dQ=
+github.com/projectdiscovery/dsl v0.3.0/go.mod h1:GMVxLtQuQUc/RmSn3jQxGCI4yit3iyf2AoZxUoXbsb0=
 github.com/projectdiscovery/fastdialer v0.2.9 h1:vDCqxVMCyUu3oVEizEK1K8K+CCcLkVDW3X2HfiWaVFA=
 github.com/projectdiscovery/fastdialer v0.2.9/go.mod h1:mYv5QaNBDDSHlZO9DI0niRMw+G5hUzwIhs8QixSElUI=
 github.com/projectdiscovery/fasttemplate v0.0.2 h1:h2cISk5xDhlJEinlBQS6RRx0vOlOirB2y3Yu4PJzpiA=
@@ -899,8 +899,8 @@ github.com/projectdiscovery/uncover v1.0.9 h1:s5RbkD/V4r8QcPkys4gTTqMuRSgXq0Jpre
 github.com/projectdiscovery/uncover v1.0.9/go.mod h1:2PUF3SpB5QNIJ8epaB2xbRzkPaxEAWRDm3Ir2ijt81U=
 github.com/projectdiscovery/useragent v0.0.71 h1:Q02L3LV15ztOQ6FfmVSqVmOd5QhvzI+yAgYOc/32Nvg=
 github.com/projectdiscovery/useragent v0.0.71/go.mod h1:DHPruFLCvCvkd2qqPwwQZrP9sziv0lxQJ0R1rE1fa8E=
-github.com/projectdiscovery/utils v0.2.14 h1:n4zc6n1Z9EPZWu1T2CbhBwib81pShvTcCXtcBrmSny0=
-github.com/projectdiscovery/utils v0.2.14/go.mod h1:V8t4qhy4MBOvNwZv7WNWT8P3WaU+ahprtGCMnHboLtI=
+github.com/projectdiscovery/utils v0.2.15 h1:FO3n7uhLazHtat3qBxWIq0JCfLoR/IvP5JXAOSKaQ5w=
+github.com/projectdiscovery/utils v0.2.15/go.mod h1:2NAFRu8j/82bkVqx2TcsZFdgtUOnHEUi7u6s3lv79Lo=
 github.com/projectdiscovery/wappalyzergo v0.1.22 h1:7QnpeZy/txsvVcQNlL1n4xIu8IXgMxEsda3w6k6bShY=
 github.com/projectdiscovery/wappalyzergo v0.1.22/go.mod h1:wnvmbC10pQTOoCKnCTmWKP20rpEtqrMJZvzuTuleeyw=
 github.com/projectdiscovery/yamldoc-go v1.0.4 h1:eZoESapnMw6WAHiVgRwNqvbJEfNHEH148uthhFbG5jE=
