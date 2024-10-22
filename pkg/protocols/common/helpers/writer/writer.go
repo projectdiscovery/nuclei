@@ -18,14 +18,14 @@ func WriteResult(data *output.InternalWrappedEvent, outputs output.Writer, progr
 		return false
 	}
 	var matched bool
-	request_response := make([]output.RequestResponse, 0)
+	steps := make([]output.Steps, 0)
 	if types, ok := data.InternalEvent["type"]; ok {
 		switch types.(string) {
 		case "dns":
 			request, request_ok := data.InternalEvent["request"]
 			response, response_ok := data.InternalEvent["raw"]
 			if request_ok && response_ok {
-				request_response = append(request_response, output.RequestResponse{Request: fmt.Sprintf("%v", request), Response: fmt.Sprintf("%v", response)})
+				steps = append(steps, output.Steps{Request: fmt.Sprintf("%v", request), Response: fmt.Sprintf("%v", response)})
 			}
 		case "http":
 			index := 0
@@ -37,7 +37,7 @@ func WriteResult(data *output.InternalWrappedEvent, outputs output.Writer, progr
 				if !request_ok || !response_ok {
 					break
 				}
-				request_response = append(request_response, output.RequestResponse{Request: request.(string), Response: response.(string)})
+				steps = append(steps, output.Steps{Request: request.(string), Response: response.(string)})
 				if index > 10 {
 					break
 				}
@@ -47,7 +47,7 @@ func WriteResult(data *output.InternalWrappedEvent, outputs output.Writer, progr
 		}
 	}
 	for _, result := range data.Results {
-		result.RequestResponse = request_response
+		result.Steps = steps
 		if issuesClient != nil {
 			if err := issuesClient.CreateIssue(result); err != nil {
 				gologger.Warning().Msgf("Could not create issue on tracker: %s", err)

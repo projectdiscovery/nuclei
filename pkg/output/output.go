@@ -131,7 +131,7 @@ func (iwe *InternalWrappedEvent) SetOperatorResult(operatorResult *operators.Res
 	iwe.OperatorsResult = operatorResult
 }
 
-type RequestResponse struct {
+type Steps struct {
 	// Request is the optional, dumped request for the match.
 	Request string `json:"request,omitempty"`
 	// Response is the optional, dumped response for the match.
@@ -178,7 +178,7 @@ type ResultEvent struct {
 	// Response is the optional, dumped response for the match.
 	Response string `json:"response,omitempty"`
 	// Storage request and response list.
-	RequestResponse []RequestResponse `json:"request_response,omitempty"`
+	Steps []Steps `json:"steps,omitempty"`
 	// Metadata contains any optional metadata for the event
 	Metadata map[string]interface{} `json:"meta,omitempty"`
 	// IP is the IP address for the found result event.
@@ -298,7 +298,7 @@ func (w *StandardWriter) Write(event *ResultEvent) error {
 		event.Matched = redactKeys(event.Matched, w.KeysToRedact)
 	}
 	if !w.includeChain {
-		event.RequestResponse = make([]RequestResponse, 0)
+		event.Steps = make([]Steps, 0)
 	}
 	event.Timestamp = time.Now()
 
