@@ -528,24 +528,14 @@ func (template *Template) hasMultipleProtocols() bool {
 		len(template.RequestsWHOIS),
 	}
 
-	var hasSingleProtocolRequests bool
-	for i, count := range protocolRequests {
+	var protocolCount int
+	for _, count := range protocolRequests {
 		if count > 0 {
-			hasSingleProtocolRequests = true
-			// NOTE(dwisiswant0): Take out the current index from the slice.
-			// This is just to check the counter below (other protocols) to
-			// mark that the template has multiple protocols.
-			protocolRequests = append(protocolRequests[:i], protocolRequests[i+1:]...)
-			break
+			protocolCount++
 		}
-	}
 
-	// check for other protocols
-	if hasSingleProtocolRequests {
-		for _, count := range protocolRequests {
-			if count > 0 && hasSingleProtocolRequests {
-				return true
-			}
+		if protocolCount > 1 {
+			return true
 		}
 	}
 
