@@ -39,3 +39,34 @@ func TestCodeProtocol(t *testing.T) {
 	require.Nil(t, err, "could not run code request")
 	require.NotEmpty(t, gotEvent, "could not get event items")
 }
+
+func TestCodeProtocolForGO(t *testing.T) {
+	options := testutils.DefaultOptions
+
+	testutils.Init(options)
+	templateID := "testing-code"
+	request := &Request{
+		Engine: []string{"go"},
+		Source: `package main
+
+      import "fmt"
+
+      func main() {
+          fmt.Println("hello world")
+      }`,
+	}
+	executerOpts := testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{
+		ID:   templateID,
+		Info: model.Info{SeverityHolder: severity.Holder{Severity: severity.Low}, Name: "hello-world"},
+	})
+	err := request.Compile(executerOpts)
+	require.Nil(t, err, "could not compile code request")
+
+	var gotEvent output.InternalEvent
+	ctxArgs := contextargs.NewWithInput(context.Background(), "")
+	err = request.ExecuteWithResults(ctxArgs, nil, nil, func(event *output.InternalWrappedEvent) {
+		gotEvent = event.InternalEvent
+	})
+	require.Nil(t, err, "could not run code request")
+	require.NotEmpty(t, gotEvent, "could not get event items")
+}
