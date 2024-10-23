@@ -54,12 +54,6 @@ Nuclei is a modern, high-performance vulnerability scanner that leverages simple
 - [Contributors ❤️](#contributors-️)
 - [License](#license)
 
----
-
-| :exclamation:  **Disclaimer**  |
-|---------------------------------|
-| **This project is in active development**. Expect breaking changes with releases. Review the release changelog before updating. |
-| This project is primarily built to be used as a standalone CLI tool. **Running nuclei as a service may pose security risks.** It's recommended to use with caution and additional security measures. |
 
 ## Get Started
 
@@ -71,6 +65,11 @@ Install Nuclei on your machine. Get started by following the installation guide 
 - Write and manage your nuclei templates
 - Access latest nuclei templates
 - Discover and store your targets
+
+| :exclamation:  **Disclaimer**  |
+|:--------------------------------|
+| **This project is in active development**. Expect breaking changes with releases. Review the release changelog before updating. |
+| This project is primarily built to be used as a standalone CLI tool. **Running nuclei as a service may pose security risks.** It's recommended to use with caution and additional security measures. |
 
 ### **2. Pro and Enterprise Editions**
 
