@@ -87,7 +87,7 @@ require (
 	github.com/projectdiscovery/goflags v0.1.64
 	github.com/projectdiscovery/gologger v1.1.28
 	github.com/projectdiscovery/gostruct v0.0.2
-	github.com/projectdiscovery/gozero v0.0.2
+	github.com/projectdiscovery/gozero v0.0.3-0.20241023095525-626f55f7bb32
 	github.com/projectdiscovery/httpx v1.6.9
 	github.com/projectdiscovery/mapcidr v1.1.34
 	github.com/projectdiscovery/n3iwf v0.0.0-20230523120440-b8cd232ff1f5
