@@ -73,7 +73,7 @@ Install Nuclei on your machine. Get started by following the installation guide 
 
 ### **2. Pro and Enterprise Editions**
 
-For security teams and enterprises, we provide a [cloud-hosted service built on top of Nuclei OSS](https://projectdiscovery.io/pricing?utm_source=github&utm_medium=web&utm_campaign=nuclei_readme), fine-tuned to help you continuously run vulnerability scans at scale with your team and existing workflows:
+For security teams and enterprises, we provide a cloud-hosted service built on top of Nuclei OSS, fine-tuned to help you continuously run vulnerability scans at scale with your team and existing workflows:
 
 - 50x faster scans
 - Large scale scanning with high accuracy
