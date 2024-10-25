@@ -30,7 +30,7 @@ import (
 
 var _ protocols.Request = &Request{}
 
-const errCouldGetHtmlElement = "could get html element"
+const errCouldNotGetHtmlElement = "could not get html element"
 
 // Type returns the type of the protocol request
 func (request *Request) Type() templateTypes.ProtocolType {
@@ -117,7 +117,7 @@ func (request *Request) executeRequestWithPayloads(input *contextargs.Context, p
 	if err != nil {
 		request.options.Output.Request(request.options.TemplatePath, input.MetaInput.Input, request.Type().String(), err)
 		request.options.Progress.IncrementFailedRequestsBy(1)
-		return errors.Wrap(err, errCouldGetHtmlElement)
+		return errors.Wrap(err, errCouldNotGetHtmlElement)
 	}
 	defer instance.Close()
 
@@ -130,7 +130,7 @@ func (request *Request) executeRequestWithPayloads(input *contextargs.Context, p
 	if _, err := url.Parse(input.MetaInput.Input); err != nil {
 		request.options.Output.Request(request.options.TemplatePath, input.MetaInput.Input, request.Type().String(), err)
 		request.options.Progress.IncrementFailedRequestsBy(1)
-		return errors.Wrap(err, errCouldGetHtmlElement)
+		return errors.Wrap(err, errCouldNotGetHtmlElement)
 	}
 	options := &engine.Options{
 		Timeout:       time.Duration(request.options.Options.PageTimeout) * time.Second,
@@ -146,7 +146,7 @@ func (request *Request) executeRequestWithPayloads(input *contextargs.Context, p
 	if err != nil {
 		request.options.Output.Request(request.options.TemplatePath, input.MetaInput.Input, request.Type().String(), err)
 		request.options.Progress.IncrementFailedRequestsBy(1)
-		return errors.Wrap(err, errCouldGetHtmlElement)
+		return errors.Wrap(err, errCouldNotGetHtmlElement)
 	}
 	defer page.Close()
 
