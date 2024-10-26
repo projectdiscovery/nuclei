@@ -409,6 +409,16 @@ type Options struct {
 	ProbeConcurrency int
 	// Dast only runs DAST templates
 	DAST bool
+	// DASTServer is the flag to start nuclei as a DAST server
+	DASTServer bool
+	// DASTServerToken is the token optional for the dast server
+	DASTServerToken string
+	// DASTServerAddress is the address for the dast server
+	DASTServerAddress string
+	// Scope contains a list of regexes for in-scope URLS
+	Scope goflags.StringSlice
+	// OutOfScope contains a list of regexes for out-scope URLS
+	OutOfScope goflags.StringSlice
 	// HttpApiEndpoint is the experimental http api endpoint
 	HttpApiEndpoint string
 	// ListTemplateProfiles lists all available template profiles

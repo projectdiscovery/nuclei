@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/projectdiscovery/nuclei/v3/internal/pdcp"
+	"github.com/projectdiscovery/nuclei/v3/internal/server"
 	"github.com/projectdiscovery/nuclei/v3/pkg/authprovider"
 	"github.com/projectdiscovery/nuclei/v3/pkg/fuzz/frequency"
 	"github.com/projectdiscovery/nuclei/v3/pkg/input/provider"
@@ -436,6 +437,25 @@ func (r *Runner) setupPDCPUpload(writer output.Writer) output.Writer {
 // RunEnumeration sets up the input layer for giving input nuclei.
 // binary and runs the actual enumeration
 func (r *Runner) RunEnumeration() error {
+	// If the user has asked for DAST server mode, run the live
+	// DAST fuzzing server.
+	if r.options.DASTServer {
+		dastServer, err := server.New(&server.Options{
+			Address:      r.options.DASTServerAddress,
+			Concurrency:  r.options.BulkSize,
+			Templates:    r.options.Templates,
+			OutputWriter: r.output,
+			Verbose:      r.options.Verbose,
+			Token:        r.options.DASTServerToken,
+			InScope:      r.options.Scope,
+			OutScope:     r.options.OutOfScope,
+		})
+		if err != nil {
+			return err
+		}
+		return dastServer.Start()
+	}
+
 	// If user asked for new templates to be executed, collect the list from the templates' directory.
 	if r.options.NewTemplates {
 		if arr := config.DefaultConfig.GetNewAdditions(); len(arr) > 0 {
