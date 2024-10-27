@@ -8,6 +8,7 @@ info:
   description: |
     py-file
 
+self-contained: true
 code:
   - engine:
       - py
