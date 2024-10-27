@@ -112,6 +112,14 @@ func (e *NucleiEngine) GetTemplates() []*templates.Template {
 	return e.store.Templates()
 }
 
+// GetWorkflows returns all nuclei workflows that are loaded
+func (e *NucleiEngine) GetWorkflows() []*templates.Template {
+	if !e.templatesLoaded {
+		_ = e.LoadAllTemplates()
+	}
+	return e.store.Workflows()
+}
+
 // LoadTargets(urls/domains/ips only) adds targets to the nuclei engine
 func (e *NucleiEngine) LoadTargets(targets []string, probeNonHttp bool) {
 	for _, target := range targets {
@@ -269,6 +277,11 @@ func (e *NucleiEngine) Options() *types.Options {
 // Engine returns core Executer of nuclei
 func (e *NucleiEngine) Engine() *core.Engine {
 	return e.engine
+}
+
+// Store returns store of nuclei
+func (e *NucleiEngine) Store() *loader.Store {
+	return e.store
 }
 
 // NewNucleiEngineCtx creates a new nuclei engine instance with given context
