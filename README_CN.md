@@ -32,7 +32,8 @@
   <a href="https://github.com/projectdiscovery/nuclei/blob/main/README.md">English</a> •
   <a href="https://github.com/projectdiscovery/nuclei/blob/main/README_CN.md">中文</a> •
   <a href="https://github.com/projectdiscovery/nuclei/blob/main/README_KR.md">Korean</a> •
-  <a href="https://github.com/projectdiscovery/nuclei/blob/main/README_ID.md">Indonesia</a>
+  <a href="https://github.com/projectdiscovery/nuclei/blob/main/README_ID.md">Indonesia</a> •
+  <a href="https://github.com/projectdiscovery/nuclei/blob/main/README_ES.md">Spanish</a>
 </p>
 
 ---

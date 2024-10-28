@@ -1404,6 +1404,19 @@ Valid values:
 
 <div class="dd">
 
+<code>skip-secret-file</code>  <i>bool</i>
+
+</div>
+<div class="dt">
+
+SkipSecretFile skips the authentication or authorization configured in the secret file.
+
+</div>
+
+<hr />
+
+<div class="dd">
+
 <code>cookie-reuse</code>  <i>bool</i>
 
 </div>
@@ -1638,6 +1651,19 @@ FuzzPreConditionOperator is the operator between multiple PreConditions for fuzz
 
 <hr />
 
+<div class="dd">
+
+<code>global-matchers</code>  <i>bool</i>
+
+</div>
+<div class="dt">
+
+GlobalMatchers marks matchers as static and applies globally to all result events from other templates
+
+</div>
+
+<hr />
+
 
 
 
@@ -1800,13 +1826,50 @@ Valid values:
 
 Part is the part of request to fuzz.
 
-query fuzzes the query part of url. More parts will be added later.
+
+Valid values:
+
+
+  - <code>query</code>
+
+  - <code>header</code>
+
+  - <code>path</code>
+
+  - <code>body</code>
+
+  - <code>cookie</code>
+
+  - <code>request</code>
+</div>
+
+<hr />
+
+<div class="dd">
+
+<code>parts</code>  <i>[]string</i>
+
+</div>
+<div class="dt">
+
+Parts is the list of parts to fuzz. If multiple parts need to be
+defined while excluding some, this should be used instead of singular part.
 
 
 Valid values:
 
 
   - <code>query</code>
+
+  - <code>header</code>
+
+  - <code>path</code>
+
+  - <code>body</code>
+
+  - <code>cookie</code>
+
+  - <code>request</code>
 </div>
 
 <hr />
@@ -3160,6 +3223,19 @@ read-all: false
 
 <hr />
 
+<div class="dd">
+
+<code>stop-at-first-match</code>  <i>bool</i>
+
+</div>
+<div class="dt">
+
+StopAtFirstMatch stops the execution of the requests and template as soon as a match is found.
+
+</div>
+
+<hr />
+
 
 
 
@@ -3614,7 +3690,17 @@ Enum Values:
 
   - <code>files</code>
 
+  - <code>waitdom</code>
+
+  - <code>waitfcp</code>
+
+  - <code>waitfmp</code>
+
+  - <code>waitidle</code>
+
   - <code>waitload</code>
+
+  - <code>waitstable</code>
 
   - <code>getresource</code>
 
@@ -3631,6 +3717,8 @@ Enum Values:
   - <code>setbody</code>
 
   - <code>waitevent</code>
+
+  - <code>dialog</code>
 
   - <code>keyboard</code>
 
@@ -3702,11 +3790,33 @@ Appears in:
 Part Definitions: 
 
 
-- <code>type</code> - Type is the type of request made
-- <code>response</code> - JSON SSL protocol handshake details
-- <code>not_after</code> - Timestamp after which the remote cert expires
+- <code>template-id</code> - ID of the template executed
+- <code>template-info</code> - Info Block of the template executed
+- <code>template-path</code> - Path of the template executed
 - <code>host</code> - Host is the input to the template
+- <code>port</code> - Port is the port of the host
 - <code>matched</code> - Matched is the input which was matched upon
+- <code>type</code> - Type is the type of request made
+- <code>timestamp</code> - Timestamp is the time when the request was made
+- <code>response</code> - JSON SSL protocol handshake details
+- <code>cipher</code> - Cipher is the encryption algorithm used
+- <code>domains</code> - Domains are the list of domain names in the certificate
+- <code>fingerprint_hash</code> - Fingerprint hash is the unique identifier of the certificate
+- <code>ip</code> - IP is the IP address of the server
+- <code>issuer_cn</code> - Issuer CN is the common name of the certificate issuer
+- <code>issuer_dn</code> - Issuer DN is the distinguished name of the certificate issuer
+- <code>issuer_org</code> - Issuer organization is the organization of the certificate issuer
+- <code>not_after</code> - Timestamp after which the remote cert expires
+- <code>not_before</code> - Timestamp before which the certificate is not valid
+- <code>probe_status</code> - Probe status indicates if the probe was successful
+- <code>serial</code> - Serial is the serial number of the certificate
+- <code>sni</code> - SNI is the server name indication used in the handshake
+- <code>subject_an</code> - Subject AN is the list of subject alternative names
+- <code>subject_cn</code> - Subject CN is the common name of the certificate subject
+- <code>subject_dn</code> - Subject DN is the distinguished name of the certificate subject
+- <code>subject_org</code> - Subject organization is the organization of the certificate subject
+- <code>tls_connection</code> - TLS connection is the type of TLS connection used
+- <code>tls_version</code> - TLS version is the version of the TLS protocol used
 
 <hr />
 
@@ -4295,19 +4405,6 @@ Args contains the arguments to pass to the javascript code.
 <div class="dt">
 
 Code contains code to execute for the javascript request.
-
-</div>
-
-<hr />
-
-<div class="dd">
-
-<code>timeout</code>  <i>int</i>
-
-</div>
-<div class="dt">
-
-Timeout in seconds is optional timeout for each  javascript script execution (i.e init, pre-condition, code)
 
 </div>
 

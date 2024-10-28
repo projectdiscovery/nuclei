@@ -87,6 +87,7 @@ func doVersionCheck(isSDK bool) error {
 	// and according our config we have idle connections which are shown as leaked by goleak in tests
 	// i.e we close all idle connections after our use and it doesn't affect any other part of the code
 	defer retryableHttpClient.HTTPClient.CloseIdleConnections()
+
 	resp, err := retryableHttpClient.Get(pdtmNucleiVersionEndpoint + "?" + getpdtmParams(isSDK))
 	if err != nil {
 		return err

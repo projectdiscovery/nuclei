@@ -30,7 +30,7 @@ import (
 
 var _ protocols.Request = &Request{}
 
-const errCouldGetHtmlElement = "could get html element"
+const errCouldNotGetHtmlElement = "could not get html element"
 
 // Type returns the type of the protocol request
 func (request *Request) Type() templateTypes.ProtocolType {
@@ -117,12 +117,12 @@ func (request *Request) executeRequestWithPayloads(input *contextargs.Context, p
 	if err != nil {
 		request.options.Output.Request(request.options.TemplatePath, input.MetaInput.Input, request.Type().String(), err)
 		request.options.Progress.IncrementFailedRequestsBy(1)
-		return errors.Wrap(err, errCouldGetHtmlElement)
+		return errors.Wrap(err, errCouldNotGetHtmlElement)
 	}
 	defer instance.Close()
 
 	if vardump.EnableVarDump {
-		gologger.Debug().Msgf("Headless Protocol request variables: \n%s\n", vardump.DumpVariables(payloads))
+		gologger.Debug().Msgf("Headless Protocol request variables: %s\n", vardump.DumpVariables(payloads))
 	}
 
 	instance.SetInteractsh(request.options.Interactsh)
@@ -130,7 +130,7 @@ func (request *Request) executeRequestWithPayloads(input *contextargs.Context, p
 	if _, err := url.Parse(input.MetaInput.Input); err != nil {
 		request.options.Output.Request(request.options.TemplatePath, input.MetaInput.Input, request.Type().String(), err)
 		request.options.Progress.IncrementFailedRequestsBy(1)
-		return errors.Wrap(err, errCouldGetHtmlElement)
+		return errors.Wrap(err, errCouldNotGetHtmlElement)
 	}
 	options := &engine.Options{
 		Timeout:       time.Duration(request.options.Options.PageTimeout) * time.Second,
@@ -146,7 +146,7 @@ func (request *Request) executeRequestWithPayloads(input *contextargs.Context, p
 	if err != nil {
 		request.options.Output.Request(request.options.TemplatePath, input.MetaInput.Input, request.Type().String(), err)
 		request.options.Progress.IncrementFailedRequestsBy(1)
-		return errors.Wrap(err, errCouldGetHtmlElement)
+		return errors.Wrap(err, errCouldNotGetHtmlElement)
 	}
 	defer page.Close()
 
@@ -174,7 +174,7 @@ func (request *Request) executeRequestWithPayloads(input *contextargs.Context, p
 				reqBuilder.WriteString("\t" + actStepStr + "\n")
 			}
 		}
-		gologger.Debug().Msgf(reqBuilder.String())
+		gologger.Debug().Msg(reqBuilder.String())
 	}
 
 	var responseBody string
@@ -183,7 +183,13 @@ func (request *Request) executeRequestWithPayloads(input *contextargs.Context, p
 		responseBody, _ = html.HTML()
 	}
 
-	outputEvent := request.responseToDSLMap(responseBody, out["header"], out["status_code"], reqBuilder.String(), input.MetaInput.Input, navigatedURL, page.DumpHistory())
+	header := out.GetOrDefault("header", "").(string)
+
+	// NOTE(dwisiswant0): `status_code` key should be an integer type.
+	// Ref: https://github.com/projectdiscovery/nuclei/pull/5545#discussion_r1721291013
+	statusCode := out.GetOrDefault("status_code", "").(string)
+
+	outputEvent := request.responseToDSLMap(responseBody, header, statusCode, reqBuilder.String(), input.MetaInput.Input, navigatedURL, page.DumpHistory())
 	// add response fields to template context and merge templatectx variables to output event
 	request.options.AddTemplateVars(input.MetaInput, request.Type(), request.ID, outputEvent)
 	if request.options.HasTemplateCtx(input.MetaInput) {
@@ -215,6 +221,10 @@ func (request *Request) executeRequestWithPayloads(input *contextargs.Context, p
 	}
 
 	dumpResponse(event, request.options, responseBody, input.MetaInput.Input)
+	shouldStopAtFirstMatch := request.StopAtFirstMatch || request.options.StopAtFirstMatch || request.options.Options.StopAtFirstMatch
+	if shouldStopAtFirstMatch && event.HasOperatorResult() {
+		return types.ErrNoMoreRequests
+	}
 	return nil
 }
 

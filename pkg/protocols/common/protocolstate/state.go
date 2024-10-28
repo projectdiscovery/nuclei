@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net"
 	"net/url"
+	"sync"
 
 	"github.com/go-sql-driver/mysql"
 	"github.com/pkg/errors"
@@ -19,8 +20,20 @@ import (
 
 // Dialer is a shared fastdialer instance for host DNS resolution
 var (
-	Dialer *fastdialer.Dialer
+	muDialer sync.RWMutex
+	Dialer   *fastdialer.Dialer
 )
+
+func GetDialer() *fastdialer.Dialer {
+	muDialer.RLock()
+	defer muDialer.RUnlock()
+
+	return Dialer
+}
+
+func ShouldInit() bool {
+	return Dialer == nil
+}
 
 // Init creates the Dialer instance based on user configuration
 func Init(options *types.Options) error {
@@ -30,9 +43,7 @@ func Init(options *types.Options) error {
 
 	lfaAllowed = options.AllowLocalFileAccess
 	opts := fastdialer.DefaultOptions
-	if options.DialerTimeout > 0 {
-		opts.DialerTimeout = options.DialerTimeout
-	}
+	opts.DialerTimeout = options.GetTimeouts().DialTimeout
 	if options.DialerKeepAlive > 0 {
 		opts.DialerKeepAlive = options.DialerKeepAlive
 	}
@@ -180,6 +191,7 @@ func interfaceAddress(interfaceName string) (net.IP, error) {
 		if ipnet, ok := addr.(*net.IPNet); ok && !ipnet.IP.IsLoopback() {
 			if ipnet.IP.To4() != nil {
 				address = ipnet.IP
+				break
 			}
 		}
 	}
@@ -207,8 +219,12 @@ func interfaceAddresses(interfaceName string) ([]net.Addr, error) {
 
 // Close closes the global shared fastdialer
 func Close() {
+	muDialer.Lock()
+	defer muDialer.Unlock()
+
 	if Dialer != nil {
 		Dialer.Close()
+		Dialer = nil
 	}
 	StopActiveMemGuardian()
 }

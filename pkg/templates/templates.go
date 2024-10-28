@@ -23,6 +23,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/websocket"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/whois"
 	"github.com/projectdiscovery/nuclei/v3/pkg/templates/types"
+	"github.com/projectdiscovery/nuclei/v3/pkg/utils"
 	"github.com/projectdiscovery/nuclei/v3/pkg/workflows"
 	errorutil "github.com/projectdiscovery/utils/errors"
 	fileutil "github.com/projectdiscovery/utils/file"
@@ -176,8 +177,6 @@ func (template *Template) Type() types.ProtocolType {
 		return types.HeadlessProtocol
 	case len(template.RequestsNetwork) > 0:
 		return types.NetworkProtocol
-	case len(template.Workflow.Workflows) > 0:
-		return types.WorkflowProtocol
 	case len(template.RequestsSSL) > 0:
 		return types.SSLProtocol
 	case len(template.RequestsWebsocket) > 0:
@@ -188,6 +187,8 @@ func (template *Template) Type() types.ProtocolType {
 		return types.CodeProtocol
 	case len(template.RequestsJavascript) > 0:
 		return types.JavascriptProtocol
+	case len(template.Workflow.Workflows) > 0:
+		return types.WorkflowProtocol
 	default:
 		return types.InvalidProtocol
 	}
@@ -325,6 +326,17 @@ func (template *Template) UnmarshalYAML(unmarshal func(interface{}) error) error
 		return err
 	}
 	*template = Template(*alias)
+
+	if !ReTemplateID.MatchString(template.ID) {
+		return errorutil.New("template id must match expression %v", ReTemplateID).WithTag("invalid template")
+	}
+	info := template.Info
+	if utils.IsBlank(info.Name) {
+		return errorutil.New("no template name field provided").WithTag("invalid template")
+	}
+	if info.Authors.IsEmpty() {
+		return errorutil.New("no template author field provided").WithTag("invalid template")
+	}
 
 	if len(template.RequestsHTTP) > 0 || len(template.RequestsNetwork) > 0 {
 		_ = deprecatedProtocolNameTemplates.Set(template.ID, true)

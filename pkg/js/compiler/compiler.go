@@ -4,13 +4,20 @@ package compiler
 import (
 	"context"
 	"fmt"
-	"time"
 
 	"github.com/dop251/goja"
+	"github.com/kitabisa/go-ci"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/generators"
+	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	contextutil "github.com/projectdiscovery/utils/context"
+	"github.com/projectdiscovery/utils/errkit"
 	stringsutil "github.com/projectdiscovery/utils/strings"
+)
+
+var (
+	// ErrJSExecDeadline is the error returned when alloted time for script execution exceeds
+	ErrJSExecDeadline = errkit.New("js engine execution deadline exceeded").SetKind(errkit.ErrKindDeadline).Build()
 )
 
 // Compiler provides a runtime to execute goja runtime
@@ -32,12 +39,12 @@ type ExecuteOptions struct {
 	// Cleanup is extra cleanup function to be called after execution
 	Cleanup func(runtime *goja.Runtime)
 
-	/// Timeout for this script execution
-	Timeout int
 	// Source is original source of the script
 	Source *string
 
 	Context context.Context
+
+	TimeoutVariants *types.Timeouts
 
 	// Manually exported objects
 	exports map[string]interface{}
@@ -47,6 +54,11 @@ type ExecuteOptions struct {
 type ExecuteArgs struct {
 	Args        map[string]interface{} //these are protocol variables
 	TemplateCtx map[string]interface{} // templateCtx contains template scoped variables
+}
+
+// Map returns a merged map of the TemplateCtx and Args fields.
+func (e *ExecuteArgs) Map() map[string]interface{} {
+	return generators.MergeMaps(e.TemplateCtx, e.Args)
 }
 
 // NewExecuteArgs returns a new execute arguments.
@@ -60,26 +72,29 @@ func NewExecuteArgs() *ExecuteArgs {
 // ExecuteResult is the result of executing a script.
 type ExecuteResult map[string]interface{}
 
+// Map returns the map representation of the ExecuteResult
+func (e ExecuteResult) Map() map[string]interface{} {
+	if e == nil {
+		return make(map[string]interface{})
+	}
+	return e
+}
+
+// NewExecuteResult returns a new execute result instance
 func NewExecuteResult() ExecuteResult {
 	return make(map[string]interface{})
 }
 
 // GetSuccess returns whether the script was successful or not.
 func (e ExecuteResult) GetSuccess() bool {
+	if e == nil {
+		return false
+	}
 	val, ok := e["success"].(bool)
 	if !ok {
 		return false
 	}
 	return val
-}
-
-// Execute executes a script with the default options.
-func (c *Compiler) Execute(code string, args *ExecuteArgs) (ExecuteResult, error) {
-	p, err := WrapScriptNCompile(code, false)
-	if err != nil {
-		return nil, err
-	}
-	return c.ExecuteWithOptions(p, args, &ExecuteOptions{Context: context.Background()})
 }
 
 // ExecuteWithOptions executes a script with the provided options.
@@ -100,26 +115,34 @@ func (c *Compiler) ExecuteWithOptions(program *goja.Program, args *ExecuteArgs, 
 	// merge all args into templatectx
 	args.TemplateCtx = generators.MergeMaps(args.TemplateCtx, args.Args)
 
-	if opts.Timeout <= 0 || opts.Timeout > 180 {
-		// some js scripts can take longer time so allow configuring timeout
-		// from template but keep it within sane limits (180s)
-		opts.Timeout = JsProtocolTimeout
-	}
-
 	// execute with context and timeout
-	ctx, cancel := context.WithTimeout(opts.Context, time.Duration(opts.Timeout)*time.Second)
+
+	ctx, cancel := context.WithTimeoutCause(opts.Context, opts.TimeoutVariants.JsCompilerExecutionTimeout, ErrJSExecDeadline)
 	defer cancel()
 	// execute the script
 	results, err := contextutil.ExecFuncWithTwoReturns(ctx, func() (val goja.Value, err error) {
+		// TODO(dwisiswant0): remove this once we get the RCA.
 		defer func() {
+			if ci.IsCI() {
+				return
+			}
+
 			if r := recover(); r != nil {
 				err = fmt.Errorf("panic: %v", r)
 			}
 		}()
+
 		return ExecuteProgram(program, args, opts)
 	})
 	if err != nil {
-		return nil, err
+		if val, ok := err.(*goja.Exception); ok {
+			if x := val.Unwrap(); x != nil {
+				err = x
+			}
+		}
+		e := NewExecuteResult()
+		e["error"] = err.Error()
+		return e, err
 	}
 	var res ExecuteResult
 	if opts.exports != nil {

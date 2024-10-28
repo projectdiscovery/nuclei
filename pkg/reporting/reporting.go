@@ -2,6 +2,7 @@ package reporting
 
 import (
 	"fmt"
+	"github.com/projectdiscovery/nuclei/v3/pkg/reporting/exporters/mongo"
 	"os"
 	"strings"
 	"sync/atomic"
@@ -28,6 +29,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/reporting/trackers/github"
 	"github.com/projectdiscovery/nuclei/v3/pkg/reporting/trackers/gitlab"
 	"github.com/projectdiscovery/nuclei/v3/pkg/reporting/trackers/jira"
+	"github.com/projectdiscovery/nuclei/v3/pkg/reporting/trackers/linear"
 	errorutil "github.com/projectdiscovery/utils/errors"
 	fileutil "github.com/projectdiscovery/utils/file"
 )
@@ -112,6 +114,15 @@ func New(options *Options, db string, doNotDedupe bool) (Client, error) {
 		}
 		client.trackers = append(client.trackers, tracker)
 	}
+	if options.Linear != nil {
+		options.Linear.HttpClient = options.HttpClient
+		options.Linear.OmitRaw = options.OmitRaw
+		tracker, err := linear.New(options.Linear)
+		if err != nil {
+			return nil, errorutil.NewWithErr(err).Wrap(ErrReportingClientCreation)
+		}
+		client.trackers = append(client.trackers, tracker)
+	}
 	if options.MarkdownExporter != nil {
 		exporter, err := markdown.New(options.MarkdownExporter)
 		if err != nil {
@@ -156,6 +167,13 @@ func New(options *Options, db string, doNotDedupe bool) (Client, error) {
 		}
 		client.exporters = append(client.exporters, exporter)
 	}
+	if options.MongoDBExporter != nil {
+		exporter, err := mongo.New(options.MongoDBExporter)
+		if err != nil {
+			return nil, errorutil.NewWithErr(err).Wrap(ErrExportClientCreation)
+		}
+		client.exporters = append(client.exporters, exporter)
+	}
 
 	if doNotDedupe {
 		return client, nil
@@ -195,12 +213,14 @@ func CreateConfigIfNotExists() error {
 		GitLab:                &gitlab.Options{},
 		Gitea:                 &gitea.Options{},
 		Jira:                  &jira.Options{},
+		Linear:                &linear.Options{},
 		MarkdownExporter:      &markdown.Options{},
 		SarifExporter:         &sarif.Options{},
 		ElasticsearchExporter: &es.Options{},
 		SplunkExporter:        &splunk.Options{},
 		JSONExporter:          &json_exporter.Options{},
 		JSONLExporter:         &jsonl.Options{},
+		MongoDBExporter:       &mongo.Options{},
 	}
 	reportingFile, err := os.Create(reportingConfig)
 	if err != nil {
@@ -240,7 +260,7 @@ func (c *ReportingClient) Close() {
 				if failed > 0 {
 					msgBuilder.WriteString(fmt.Sprintf(", %d failed", failed))
 				}
-				gologger.Info().Msgf(msgBuilder.String())
+				gologger.Info().Msgf("%v", msgBuilder.String())
 			}
 		}
 	}
@@ -273,9 +293,10 @@ func (c *ReportingClient) CreateIssue(event *output.ResultEvent) error {
 
 		for _, tracker := range c.trackers {
 			// process tracker specific allow/deny list
-			if tracker.ShouldFilter(event) {
+			if !tracker.ShouldFilter(event) {
 				continue
 			}
+
 			trackerName := tracker.Name()
 			stats, statsOk := c.stats[trackerName]
 

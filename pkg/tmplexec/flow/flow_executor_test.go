@@ -146,6 +146,7 @@ func TestFlowWithConditionPositive(t *testing.T) {
 }
 
 func TestFlowWithNoMatchers(t *testing.T) {
+	setup()
 	// when using conditional flow with no matchers at all
 	// we implicitly assume that request was successful and internally changed the result to true (for scope of condition only)
 

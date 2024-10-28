@@ -1,0 +1,34 @@
+id: multi-req
+
+info:
+  name: Multi-Request
+  author: pdteam
+  severity: info
+
+ssl:
+  - address: "{{Host}}:{{Port}}"
+    min_version: ssl30
+    max_version: ssl30
+
+    extractors:
+      - type: json
+        json:
+          - " .tls_version"
+
+  - address: "{{Host}}:{{Port}}"
+    min_version: tls10
+    max_version: tls10
+
+    extractors:
+      - type: json
+        json:
+          - " .tls_version"
+
+  - address: "{{Host}}:{{Port}}"
+    min_version: tls11
+    max_version: tls11
+
+    extractors:
+      - type: json
+        json:
+          - " .tls_version"

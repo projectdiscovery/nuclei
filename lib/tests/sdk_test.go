@@ -1,6 +1,7 @@
 package sdk_test
 
 import (
+	"context"
 	"os"
 	"os/exec"
 	"testing"
@@ -28,8 +29,9 @@ func TestSimpleNuclei(t *testing.T) {
 			time.Sleep(2 * time.Second)
 			goleak.VerifyNone(t, knownLeaks...)
 		}()
-		ne, err := nuclei.NewNucleiEngine(
-			nuclei.WithTemplateFilters(nuclei.TemplateFilters{ProtocolTypes: "dns"}),
+		ne, err := nuclei.NewNucleiEngineCtx(
+			context.TODO(),
+			nuclei.WithTemplateFilters(nuclei.TemplateFilters{ProtocolTypes: "dns"}), // filter dns templates
 			nuclei.EnableStatsWithOpts(nuclei.StatsOptions{JSON: true}),
 		)
 		require.Nil(t, err)
@@ -62,7 +64,8 @@ func TestSimpleNucleiRemote(t *testing.T) {
 			time.Sleep(2 * time.Second)
 			goleak.VerifyNone(t, knownLeaks...)
 		}()
-		ne, err := nuclei.NewNucleiEngine(
+		ne, err := nuclei.NewNucleiEngineCtx(
+			context.TODO(),
 			nuclei.WithTemplatesOrWorkflows(
 				nuclei.TemplateSources{
 					RemoteTemplates: []string{"https://cloud.projectdiscovery.io/public/nameserver-fingerprint.yaml"},
@@ -100,7 +103,7 @@ func TestThreadSafeNuclei(t *testing.T) {
 			goleak.VerifyNone(t, knownLeaks...)
 		}()
 		// create nuclei engine with options
-		ne, err := nuclei.NewThreadSafeNucleiEngine()
+		ne, err := nuclei.NewThreadSafeNucleiEngineCtx(context.TODO())
 		require.Nil(t, err)
 
 		// scan 1 = run dns templates on scanme.sh

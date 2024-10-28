@@ -18,7 +18,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/hosterrorscache"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/interactsh"
-	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolinit"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/headless/engine"
 	"github.com/projectdiscovery/nuclei/v3/pkg/reporting"
 	"github.com/projectdiscovery/nuclei/v3/pkg/templates"
@@ -100,6 +100,7 @@ func (e *NucleiEngine) LoadAllTemplates() error {
 		return errorutil.New("Could not create loader client: %s\n", err)
 	}
 	e.store.Load()
+	e.templatesLoaded = true
 	return nil
 }
 
@@ -109,6 +110,14 @@ func (e *NucleiEngine) GetTemplates() []*templates.Template {
 		_ = e.LoadAllTemplates()
 	}
 	return e.store.Templates()
+}
+
+// GetWorkflows returns all nuclei workflows that are loaded
+func (e *NucleiEngine) GetWorkflows() []*templates.Template {
+	if !e.templatesLoaded {
+		_ = e.LoadAllTemplates()
+	}
+	return e.store.Workflows()
 }
 
 // LoadTargets(urls/domains/ips only) adds targets to the nuclei engine
@@ -178,13 +187,13 @@ func (e *NucleiEngine) SignTemplate(tmplSigner *signer.TemplateSigner, data []by
 	if err != nil {
 		return data, err
 	}
-	buff := bytes.NewBuffer(signer.RemoveSignatureFromData(data))
+	_, content := signer.ExtractSignatureAndContent(data)
+	buff := bytes.NewBuffer(content)
 	buff.WriteString("\n" + signatureData)
 	return buff.Bytes(), err
 }
 
-// Close all resources used by nuclei engine
-func (e *NucleiEngine) Close() {
+func (e *NucleiEngine) closeInternal() {
 	if e.interactshClient != nil {
 		e.interactshClient.Close()
 	}
@@ -206,8 +215,6 @@ func (e *NucleiEngine) Close() {
 	if e.rateLimiter != nil {
 		e.rateLimiter.Stop()
 	}
-	// close global shared resources
-	protocolstate.Close()
 	if e.inputProvider != nil {
 		e.inputProvider.Close()
 	}
@@ -217,6 +224,12 @@ func (e *NucleiEngine) Close() {
 	if e.httpxClient != nil {
 		_ = e.httpxClient.Close()
 	}
+}
+
+// Close all resources used by nuclei engine
+func (e *NucleiEngine) Close() {
+	e.closeInternal()
+	protocolinit.Close()
 }
 
 // ExecuteCallbackWithCtx executes templates on targets and calls callback on each result(only if results are found)
@@ -240,7 +253,12 @@ func (e *NucleiEngine) ExecuteCallbackWithCtx(ctx context.Context, callback ...f
 	}
 	e.resultCallbacks = append(e.resultCallbacks, filtered...)
 
-	_ = e.engine.ExecuteScanWithOpts(context.Background(), e.store.Templates(), e.inputProvider, false)
+	templatesAndWorkflows := append(e.store.Templates(), e.store.Workflows()...)
+	if len(templatesAndWorkflows) == 0 {
+		return ErrNoTemplatesAvailable
+	}
+
+	_ = e.engine.ExecuteScanWithOpts(ctx, templatesAndWorkflows, e.inputProvider, false)
 	defer e.engine.WorkPool().Wait()
 	return nil
 }
@@ -261,8 +279,13 @@ func (e *NucleiEngine) Engine() *core.Engine {
 	return e.engine
 }
 
-// NewNucleiEngine creates a new nuclei engine instance
-func NewNucleiEngine(options ...NucleiSDKOptions) (*NucleiEngine, error) {
+// Store returns store of nuclei
+func (e *NucleiEngine) Store() *loader.Store {
+	return e.store
+}
+
+// NewNucleiEngineCtx creates a new nuclei engine instance with given context
+func NewNucleiEngineCtx(ctx context.Context, options ...NucleiSDKOptions) (*NucleiEngine, error) {
 	// default options
 	e := &NucleiEngine{
 		opts: types.DefaultOptions(),
@@ -273,8 +296,13 @@ func NewNucleiEngine(options ...NucleiSDKOptions) (*NucleiEngine, error) {
 			return nil, err
 		}
 	}
-	if err := e.init(); err != nil {
+	if err := e.init(ctx); err != nil {
 		return nil, err
 	}
 	return e, nil
+}
+
+// Deprecated: use NewNucleiEngineCtx instead
+func NewNucleiEngine(options ...NucleiSDKOptions) (*NucleiEngine, error) {
+	return NewNucleiEngineCtx(context.Background(), options...)
 }

@@ -11,24 +11,19 @@ jobs:
     name: Test Performance
     strategy:
       matrix:
-        go-version: [1.21.x]
         os: [ubuntu-latest, macOS-latest]
 
     runs-on: ${{ matrix.os }}
     if: github.repository == 'projectdiscovery/nuclei'
     steps:
-      - name: Set up Go
-        uses: actions/setup-go@v4
-        with:
-          go-version: ${{ matrix.go-version }}
-
       - name: Check out code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
-      - name: Go Mod hygine
-        run: |
-          go clean -modcache
-          go mod tidy
+      - name: Set up Go
+        uses: projectdiscovery/actions/setup/go@v1
+
+      - name: Verify Go modules
+        run: make verify
 
       # Max GH exection time 6H => timeout after that
       - name: Running performance with big list

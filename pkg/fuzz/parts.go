@@ -189,9 +189,9 @@ func (rule *Rule) execWithInput(input *ExecuteRuleInput, httpReq *retryablehttp.
 // for fuzzing.
 func (rule *Rule) executeEvaluate(input *ExecuteRuleInput, _, value, payload string, interactshURLs []string) (string, []string) {
 	// TODO: Handle errors
-	values := generators.MergeMaps(input.Values, map[string]interface{}{
+	values := generators.MergeMaps(rule.options.Variables.GetAll(), map[string]interface{}{
 		"value": value,
-	}, rule.options.Options.Vars.AsMap(), rule.options.Variables.GetAll())
+	}, rule.options.Options.Vars.AsMap(), input.Values)
 	firstpass, _ := expressions.Evaluate(payload, values)
 	interactData, interactshURLs := rule.options.Interactsh.Replace(firstpass, interactshURLs)
 	evaluated, _ := expressions.Evaluate(interactData, values)

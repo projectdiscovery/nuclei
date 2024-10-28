@@ -31,7 +31,7 @@ const (
 	CLIConfigFileName               = "config.yaml"
 	ReportingConfigFilename         = "reporting-config.yaml"
 	// Version is the current version of nuclei
-	Version = `v3.2.6`
+	Version = `v3.3.5`
 	// Directory Names of custom templates
 	CustomS3TemplatesDirName     = "s3"
 	CustomGitHubTemplatesDirName = "github"
@@ -68,3 +68,13 @@ func trimDevIfExists(version string) string {
 	}
 	return version
 }
+
+// similar to go pattern of enabling debug related features
+// we add custom/extra switches for debugging purposes
+const (
+	// DebugArgHostErrorStats is used to print host error stats
+	// when it is closed
+	DebugArgHostErrorStats = "host-error-stats"
+	// DebugExportReqURLPattern is used to export request URL pattern
+	DebugExportURLPattern = "req-url-pattern"
+)

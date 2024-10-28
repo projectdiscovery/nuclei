@@ -123,11 +123,15 @@ func (rr *RequestResponse) UnmarshalJSON(data []byte) error {
 	if err := json.Unmarshal(data, &m); err != nil {
 		return err
 	}
-	urlStr, ok := m["url"]
+	urlStrRaw, ok := m["url"]
 	if !ok {
 		return fmt.Errorf("missing url in request response")
 	}
-	parsed, err := urlutil.ParseAbsoluteURL(string(urlStr), false)
+	var urlStr string
+	if err := json.Unmarshal(urlStrRaw, &urlStr); err != nil {
+		return err
+	}
+	parsed, err := urlutil.ParseAbsoluteURL(urlStr, false)
 	if err != nil {
 		return err
 	}

@@ -1,13 +1,24 @@
 package main
 
 import (
+	"context"
+
 	nuclei "github.com/projectdiscovery/nuclei/v3/lib"
+	"github.com/projectdiscovery/nuclei/v3/pkg/installer"
 	syncutil "github.com/projectdiscovery/utils/sync"
 )
 
 func main() {
+	ctx := context.Background()
+	// when running nuclei in parallel for first time it is a good practice to make sure
+	// templates exists first
+	tm := installer.TemplateManager{}
+	if err := tm.FreshInstallIfNotExists(); err != nil {
+		panic(err)
+	}
+
 	// create nuclei engine with options
-	ne, err := nuclei.NewThreadSafeNucleiEngine()
+	ne, err := nuclei.NewThreadSafeNucleiEngineCtx(ctx)
 	if err != nil {
 		panic(err)
 	}

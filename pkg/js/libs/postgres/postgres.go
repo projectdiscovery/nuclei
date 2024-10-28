@@ -9,10 +9,11 @@ import (
 	"time"
 
 	"github.com/go-pg/pg"
-	_ "github.com/lib/pq"
 	"github.com/praetorian-inc/fingerprintx/pkg/plugins"
 	postgres "github.com/praetorian-inc/fingerprintx/pkg/plugins/services/postgresql"
 	utils "github.com/projectdiscovery/nuclei/v3/pkg/js/utils"
+	"github.com/projectdiscovery/nuclei/v3/pkg/js/utils/pgwrap"
+	_ "github.com/projectdiscovery/nuclei/v3/pkg/js/utils/pgwrap"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
 )
 
@@ -36,6 +37,7 @@ type (
 // const isPostgres = postgres.IsPostgres('acme.com', 5432);
 // ```
 func (c *PGClient) IsPostgres(host string, port int) (bool, error) {
+	// todo: why this is exposed? Service fingerprint should be automatic
 	return memoizedisPostgres(host, port)
 }
 
@@ -73,6 +75,13 @@ func isPostgres(host string, port int) (bool, error) {
 // const connected = client.Connect('acme.com', 5432, 'username', 'password');
 // ```
 func (c *PGClient) Connect(host string, port int, username, password string) (bool, error) {
+	ok, err := c.IsPostgres(host, port)
+	if err != nil {
+		return false, err
+	}
+	if !ok {
+		return false, fmt.Errorf("not a postgres service")
+	}
 	return memoizedconnect(host, port, username, password, "postgres")
 }
 
@@ -87,6 +96,14 @@ func (c *PGClient) Connect(host string, port int, username, password string) (bo
 // log(to_json(result));
 // ```
 func (c *PGClient) ExecuteQuery(host string, port int, username, password, dbName, query string) (*utils.SQLResult, error) {
+	ok, err := c.IsPostgres(host, port)
+	if err != nil {
+		return nil, err
+	}
+	if !ok {
+		return nil, fmt.Errorf("not a postgres service")
+	}
+
 	return memoizedexecuteQuery(host, port, username, password, dbName, query)
 }
 
@@ -100,10 +117,11 @@ func executeQuery(host string, port int, username string, password string, dbNam
 	target := net.JoinHostPort(host, fmt.Sprintf("%d", port))
 
 	connStr := fmt.Sprintf("postgres://%s:%s@%s/%s?sslmode=disable", username, password, target, dbName)
-	db, err := sql.Open("postgres", connStr)
+	db, err := sql.Open(pgwrap.PGWrapDriver, connStr)
 	if err != nil {
 		return nil, err
 	}
+	defer db.Close()
 
 	rows, err := db.Query(query)
 	if err != nil {
@@ -127,6 +145,14 @@ func executeQuery(host string, port int, username string, password string, dbNam
 // const connected = client.ConnectWithDB('acme.com', 5432, 'username', 'password', 'dbname');
 // ```
 func (c *PGClient) ConnectWithDB(host string, port int, username, password, dbName string) (bool, error) {
+	ok, err := c.IsPostgres(host, port)
+	if err != nil {
+		return false, err
+	}
+	if !ok {
+		return false, fmt.Errorf("not a postgres service")
+	}
+
 	return memoizedconnect(host, port, username, password, dbName)
 }
 
@@ -143,12 +169,19 @@ func connect(host string, port int, username string, password string, dbName str
 
 	target := net.JoinHostPort(host, fmt.Sprintf("%d", port))
 
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	db := pg.Connect(&pg.Options{
 		Addr:     target,
 		User:     username,
 		Password: password,
 		Database: dbName,
-	})
+		Dialer: func(network, addr string) (net.Conn, error) {
+			return protocolstate.Dialer.Dial(context.Background(), network, addr)
+		},
+		IdleCheckFrequency: -1,
+	}).WithContext(ctx).WithTimeout(10 * time.Second)
 	defer db.Close()
 
 	_, err := db.Exec("select 1")

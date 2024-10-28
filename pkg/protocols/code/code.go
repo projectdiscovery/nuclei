@@ -32,16 +32,19 @@ import (
 	templateTypes "github.com/projectdiscovery/nuclei/v3/pkg/templates/types"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	contextutil "github.com/projectdiscovery/utils/context"
+	"github.com/projectdiscovery/utils/errkit"
 	errorutil "github.com/projectdiscovery/utils/errors"
 )
 
 const (
-	pythonEnvRegex    = `os\.getenv\(['"]([^'"]+)['"]\)`
-	TimeoutMultiplier = 6 // timeout multiplier for code protocol
+	pythonEnvRegex = `os\.getenv\(['"]([^'"]+)['"]\)`
 )
 
 var (
+	// pythonEnvRegexCompiled is the compiled regex for python environment variables
 	pythonEnvRegexCompiled = regexp.MustCompile(pythonEnvRegex)
+	// ErrCodeExecutionDeadline is the error returned when alloted time for script execution exceeds
+	ErrCodeExecutionDeadline = errkit.New("code execution deadline exceeded").SetKind(errkit.ErrKindDeadline).Build()
 )
 
 // Request is a request for the SSL protocol
@@ -83,6 +86,12 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 		Args:                     request.Args,
 		EarlyCloseFileDescriptor: true,
 	}
+
+	if options.Options.Debug || options.Options.DebugResponse {
+		// enable debug mode for gozero
+		gozeroOptions.DebugMode = true
+	}
+
 	engine, err := gozero.New(gozeroOptions)
 	if err != nil {
 		return errorutil.NewWithErr(err).Msgf("[%s] engines '%s' not available on host", options.TemplateID, strings.Join(request.Engine, ","))
@@ -175,9 +184,6 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 		metaSrc.AddVariable(gozerotypes.Variable{Name: name, Value: v})
 	}
 
-	// set timeout using multiplier
-	timeout := TimeoutMultiplier * request.options.Options.Timeout
-
 	if request.PreCondition != "" {
 		if request.options.Options.Debug || request.options.Options.DebugRequests {
 			gologger.Debug().Msgf("[%s] Executing Precondition for Code request\n", request.TemplateID)
@@ -195,11 +201,11 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 
 		result, err := request.options.JsCompiler.ExecuteWithOptions(request.preConditionCompiled, args,
 			&compiler.ExecuteOptions{
-				Timeout:  timeout,
-				Source:   &request.PreCondition,
-				Callback: registerPreConditionFunctions,
-				Cleanup:  cleanUpPreConditionFunctions,
-				Context:  input.Context(),
+				TimeoutVariants: request.options.Options.GetTimeouts(),
+				Source:          &request.PreCondition,
+				Callback:        registerPreConditionFunctions,
+				Cleanup:         cleanUpPreConditionFunctions,
+				Context:         input.Context(),
 			})
 		if err != nil {
 			return errorutil.NewWithTag(request.TemplateID, "could not execute pre-condition: %s", err)
@@ -214,7 +220,7 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 		}
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(timeout)*time.Second)
+	ctx, cancel := context.WithTimeoutCause(input.Context(), request.options.Options.GetTimeouts().CodeExecutionTimeout, ErrCodeExecutionDeadline)
 	defer cancel()
 	// Note: we use contextutil despite the fact that gozero accepts context as argument
 	gOutput, err := contextutil.ExecFuncWithTwoReturns(ctx, func() (*gozerotypes.Result, error) {
@@ -235,11 +241,26 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 	gologger.Verbose().Msgf("[%s] Executed code on local machine %v", request.options.TemplateID, input.MetaInput.Input)
 
 	if vardump.EnableVarDump {
-		gologger.Debug().Msgf("Code Protocol request variables: \n%s\n", vardump.DumpVariables(allvars))
+		gologger.Debug().Msgf("Code Protocol request variables: %s\n", vardump.DumpVariables(allvars))
 	}
 
 	if request.options.Options.Debug || request.options.Options.DebugRequests {
-		gologger.Debug().Msgf("[%s] Dumped Executed Source Code for %v\n\n%v\n", request.options.TemplateID, input.MetaInput.Input, interpretEnvVars(request.Source, allvars))
+		gologger.Debug().MsgFunc(func() string {
+			dashes := strings.Repeat("-", 15)
+			sb := &strings.Builder{}
+			sb.WriteString(fmt.Sprintf("[%s] Dumped Executed Source Code for input/stdin: '%v'", request.options.TemplateID, input.MetaInput.Input))
+			sb.WriteString(fmt.Sprintf("\n%v\n%v\n%v\n", dashes, "Source Code:", dashes))
+			sb.WriteString(interpretEnvVars(request.Source, allvars))
+			sb.WriteString("\n")
+			sb.WriteString(fmt.Sprintf("\n%v\n%v\n%v\n", dashes, "Command Executed:", dashes))
+			sb.WriteString(interpretEnvVars(gOutput.Command, allvars))
+			sb.WriteString("\n")
+			sb.WriteString(fmt.Sprintf("\n%v\n%v\n%v\n", dashes, "Command Output:", dashes))
+			sb.WriteString(gOutput.DebugData.String())
+			sb.WriteString("\n")
+			sb.WriteString("[WRN] Command Output here is stdout+sterr, in response variables they are seperate (use -v -svd flags for more details)")
+			return sb.String()
+		})
 	}
 
 	dataOutputString := fmtStdout(gOutput.Stdout.String())
@@ -348,6 +369,7 @@ func (request *Request) MakeResultEventItem(wrapped *output.InternalWrappedEvent
 		TemplateID:       types.ToString(request.options.TemplateID),
 		TemplatePath:     types.ToString(request.options.TemplatePath),
 		Info:             request.options.TemplateInfo,
+		TemplateVerifier: request.options.TemplateVerifier,
 		Type:             types.ToString(wrapped.InternalEvent["type"]),
 		Matched:          types.ToString(wrapped.InternalEvent["input"]),
 		Host:             fields.Host,

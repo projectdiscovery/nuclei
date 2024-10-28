@@ -7,6 +7,7 @@ import (
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/fuzz/dataformat"
 	"github.com/projectdiscovery/retryablehttp-go"
+	mapsutil "github.com/projectdiscovery/utils/maps"
 	urlutil "github.com/projectdiscovery/utils/url"
 )
 
@@ -81,7 +82,7 @@ func (q *Path) Delete(key string) error {
 // Rebuild returns a new request with the
 // component rebuilt
 func (q *Path) Rebuild() (*retryablehttp.Request, error) {
-	originalValues := make(map[string]interface{})
+	originalValues := mapsutil.Map[string, any]{}
 	splitted := strings.Split(q.req.URL.Path, "/")
 	for i := range splitted {
 		pathTillNow := strings.Join(splitted[:i+1], "/")
@@ -95,8 +96,22 @@ func (q *Path) Rebuild() (*retryablehttp.Request, error) {
 	lengthSplitted := len(q.value.parsed.Map)
 	for i := lengthSplitted; i > 0; i-- {
 		key := strconv.Itoa(i)
-		original := originalValues[key].(string)
-		new := q.value.parsed.Map[key].(string)
+
+		original, ok := originalValues.GetOrDefault(key, "").(string)
+		if !ok {
+			continue
+		}
+
+		new, ok := q.value.parsed.Map.GetOrDefault(key, "").(string)
+		if !ok {
+			continue
+		}
+
+		if new == original {
+			// no need to replace
+			continue
+		}
+
 		originalPath = strings.Replace(originalPath, original, new, 1)
 	}
 

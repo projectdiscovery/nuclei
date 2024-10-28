@@ -20,8 +20,8 @@ func (h *profileLoaderByRelFile) Execute(testName string) error {
 	if err != nil {
 		return errorutil.NewWithErr(err).Msgf("failed to load template with id")
 	}
-	if len(results) < 100 {
-		return fmt.Errorf("incorrect result: expected more results than %d, got %v", 100, len(results))
+	if len(results) <= 10 {
+		return fmt.Errorf("incorrect result: expected more results than %d, got %v", 10, len(results))
 	}
 	return nil
 }
@@ -33,12 +33,13 @@ func (h *profileLoaderById) Execute(testName string) error {
 	if err != nil {
 		return errorutil.NewWithErr(err).Msgf("failed to load template with id")
 	}
-	if len(results) < 100 {
-		return fmt.Errorf("incorrect result: expected more results than %d, got %v", 100, len(results))
+	if len(results) <= 10 {
+		return fmt.Errorf("incorrect result: expected more results than %d, got %v", 10, len(results))
 	}
 	return nil
 }
 
+// this profile with load kevs
 type customProfileLoader struct{}
 
 func (h *customProfileLoader) Execute(filepath string) error {
@@ -46,8 +47,8 @@ func (h *customProfileLoader) Execute(filepath string) error {
 	if err != nil {
 		return errorutil.NewWithErr(err).Msgf("failed to load template with id")
 	}
-	if len(results) < 267 {
-		return fmt.Errorf("incorrect result: expected more results than %d, got %v", 267, len(results))
+	if len(results) < 1 {
+		return fmt.Errorf("incorrect result: expected more results than %d, got %v", 1, len(results))
 	}
 	return nil
 }

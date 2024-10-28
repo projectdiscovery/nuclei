@@ -5,6 +5,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/reporting/exporters/jsonexporter"
 	"github.com/projectdiscovery/nuclei/v3/pkg/reporting/exporters/jsonl"
 	"github.com/projectdiscovery/nuclei/v3/pkg/reporting/exporters/markdown"
+	"github.com/projectdiscovery/nuclei/v3/pkg/reporting/exporters/mongo"
 	"github.com/projectdiscovery/nuclei/v3/pkg/reporting/exporters/sarif"
 	"github.com/projectdiscovery/nuclei/v3/pkg/reporting/exporters/splunk"
 	"github.com/projectdiscovery/nuclei/v3/pkg/reporting/trackers/filters"
@@ -12,6 +13,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/reporting/trackers/github"
 	"github.com/projectdiscovery/nuclei/v3/pkg/reporting/trackers/gitlab"
 	"github.com/projectdiscovery/nuclei/v3/pkg/reporting/trackers/jira"
+	"github.com/projectdiscovery/nuclei/v3/pkg/reporting/trackers/linear"
 	"github.com/projectdiscovery/retryablehttp-go"
 )
 
@@ -29,6 +31,8 @@ type Options struct {
 	Gitea *gitea.Options `yaml:"gitea"`
 	// Jira contains configuration options for Jira Issue Tracker
 	Jira *jira.Options `yaml:"jira"`
+	// Linear contains configuration options for Linear Issue Tracker
+	Linear *linear.Options `yaml:"linear"`
 	// MarkdownExporter contains configuration options for Markdown Exporter Module
 	MarkdownExporter *markdown.Options `yaml:"markdown"`
 	// SarifExporter contains configuration options for Sarif Exporter Module
@@ -41,6 +45,8 @@ type Options struct {
 	JSONExporter *jsonexporter.Options `yaml:"json"`
 	// JSONLExporter contains configuration options for JSONL Exporter Module
 	JSONLExporter *jsonl.Options `yaml:"jsonl"`
+	// MongoDBExporter containers the configuration options for the MongoDB Exporter Module
+	MongoDBExporter *mongo.Options `yaml:"mongodb"`
 
 	HttpClient *retryablehttp.Client `yaml:"-"`
 	OmitRaw    bool                  `yaml:"-"`

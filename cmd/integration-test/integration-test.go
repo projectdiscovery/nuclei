@@ -55,6 +55,7 @@ var (
 		"dsl":             dslTestcases,
 		"flow":            flowTestcases,
 		"javascript":      jsTestcases,
+		"matcher-status":  matcherStatusTestcases,
 	}
 	// flakyTests are run with a retry count of 3
 	flakyTests = map[string]bool{
@@ -103,10 +104,18 @@ func main() {
 
 	if len(failedTestTemplatePaths) > 0 {
 		if githubAction {
-			debug = true
-			fmt.Println("::group::Failed integration tests in debug mode")
-			_ = runTests(failedTestTemplatePaths)
+			// run failed tests again assuming they are flaky
+			// if they fail as well only then we assume that there is an actual issue
+			fmt.Println("::group::Running failed tests again")
+			failedTestTemplatePaths = runTests(failedTestTemplatePaths)
 			fmt.Println("::endgroup::")
+
+			if len(failedTestTemplatePaths) > 0 {
+				debug = true
+				fmt.Println("::group::Failed integration tests in debug mode")
+				_ = runTests(failedTestTemplatePaths)
+				fmt.Println("::endgroup::")
+			}
 		}
 
 		os.Exit(1)

@@ -15,12 +15,16 @@ import (
 	errorutil "github.com/projectdiscovery/utils/errors"
 	fileutil "github.com/projectdiscovery/utils/file"
 	folderutil "github.com/projectdiscovery/utils/folder"
+	unitutils "github.com/projectdiscovery/utils/unit"
 )
 
 var (
 	// ErrNoMoreRequests is internal error to indicate that generator has no more requests to generate
 	ErrNoMoreRequests = io.EOF
 )
+
+// LoadHelperFileFunction can be used to load a helper file.
+type LoadHelperFileFunction func(helperFile, templatePath string, catalog catalog.Catalog) (io.ReadCloser, error)
 
 // Options contains the configuration options for nuclei scanner.
 type Options struct {
@@ -202,6 +206,8 @@ type Options struct {
 	VerboseVerbose bool
 	// ShowVarDump displays variable dump
 	ShowVarDump bool
+	// VarDumpLimit limits the number of characters displayed in var dump
+	VarDumpLimit int
 	// No-Color disables the colored output.
 	NoColor bool
 	// UpdateTemplates updates the templates installed at startup (also used by cloud to update datasources)
@@ -219,6 +225,8 @@ type Options struct {
 	JSONExport string
 	// JSONLExport is the file to export JSONL output format to
 	JSONLExport string
+	// Redact redacts given keys in
+	Redact goflags.StringSlice
 	// EnableProgressBar enables progress bar
 	EnableProgressBar bool
 	// TemplateDisplay displays the template contents
@@ -277,8 +285,6 @@ type Options struct {
 	SNI string
 	// InputFileMode specifies the mode of input file (jsonl, burp, openapi, swagger, etc)
 	InputFileMode string
-	// DialerTimeout sets the timeout for network requests.
-	DialerTimeout time.Duration
 	// DialerKeepAlive sets the keep alive duration for network requests.
 	DialerKeepAlive time.Duration
 	// Interface to use for network scan
@@ -291,8 +297,6 @@ type Options struct {
 	ResponseReadSize int
 	// ResponseSaveSize is the maximum size of response to save
 	ResponseSaveSize int
-	// ResponseReadTimeout is response read timeout in seconds
-	ResponseReadTimeout time.Duration
 	// Health Check
 	HealthCheck bool
 	// Time to wait between each input read operation before closing the stream
@@ -383,6 +387,12 @@ type Options struct {
 	EnableCloudUpload bool
 	// ScanID is the scan ID to use for cloud upload
 	ScanID string
+	// ScanName is the name of the scan to be uploaded
+	ScanName string
+	// ScanUploadFile is the jsonl file to upload scan results to cloud
+	ScanUploadFile string
+	// TeamID is the team ID to use for cloud upload
+	TeamID string
 	// JsConcurrency is the number of concurrent js routines to run
 	JsConcurrency int
 	// SecretsFile is file containing secrets for nuclei
@@ -403,6 +413,82 @@ type Options struct {
 	HttpApiEndpoint string
 	// ListTemplateProfiles lists all available template profiles
 	ListTemplateProfiles bool
+	// LoadHelperFileFunction is a function that will be used to execute LoadHelperFile.
+	// If none is provided, then the default implementation will be used.
+	LoadHelperFileFunction LoadHelperFileFunction
+	// timeouts contains various types of timeouts used in nuclei
+	// these timeouts are derived from dial-timeout (-timeout) with known multipliers
+	// This is internally managed and does not need to be set by user by explicitly setting
+	// this overrides the default/derived one
+	timeouts *Timeouts
+}
+
+// SetTimeouts sets the timeout variants to use for the executor
+func (opts *Options) SetTimeouts(t *Timeouts) {
+	opts.timeouts = t
+}
+
+// GetTimeouts returns the timeout variants to use for the executor
+func (eo *Options) GetTimeouts() *Timeouts {
+	if eo.timeouts != nil {
+		// redundant but apply to avoid any potential issues
+		eo.timeouts.ApplyDefaults()
+		return eo.timeouts
+	}
+	// set timeout variant value
+	eo.timeouts = NewTimeoutVariant(eo.Timeout)
+	eo.timeouts.ApplyDefaults()
+	return eo.timeouts
+}
+
+// Timeouts is a struct that contains all the timeout variants for nuclei
+// dialer timeout is used to derive other timeouts
+type Timeouts struct {
+	// DialTimeout for fastdialer (default 10s)
+	DialTimeout time.Duration
+	// Tcp(Network Protocol) Read From Connection Timeout (default 5s)
+	TcpReadTimeout time.Duration
+	// Http Response Header Timeout (default 10s)
+	// this timeout prevents infinite hangs started by server if any
+	// this is temporarily overridden when using @timeout request annotation
+	HttpResponseHeaderTimeout time.Duration
+	// HttpTimeout for http client (default -> 3 x dial-timeout = 30s)
+	HttpTimeout time.Duration
+	// JsCompilerExec timeout/deadline (default -> 2 x dial-timeout = 20s)
+	JsCompilerExecutionTimeout time.Duration
+	// CodeExecutionTimeout for code execution (default -> 3 x dial-timeout = 30s)
+	CodeExecutionTimeout time.Duration
+}
+
+// NewTimeoutVariant creates a new timeout variant with the given dial timeout in seconds
+func NewTimeoutVariant(dialTimeoutSec int) *Timeouts {
+	tv := &Timeouts{
+		DialTimeout: time.Duration(dialTimeoutSec) * time.Second,
+	}
+	tv.ApplyDefaults()
+	return tv
+}
+
+// ApplyDefaults applies default values to timeout variants when missing
+func (tv *Timeouts) ApplyDefaults() {
+	if tv.DialTimeout == 0 {
+		tv.DialTimeout = 10 * time.Second
+	}
+	if tv.TcpReadTimeout == 0 {
+		tv.TcpReadTimeout = 5 * time.Second
+	}
+	if tv.HttpResponseHeaderTimeout == 0 {
+		tv.HttpResponseHeaderTimeout = 10 * time.Second
+	}
+	if tv.HttpTimeout == 0 {
+		tv.HttpTimeout = 3 * tv.DialTimeout
+	}
+	if tv.JsCompilerExecutionTimeout == 0 {
+		tv.JsCompilerExecutionTimeout = 2 * tv.DialTimeout
+	}
+	if tv.CodeExecutionTimeout == 0 {
+		tv.CodeExecutionTimeout = 3 * tv.DialTimeout
+	}
 }
 
 // ShouldLoadResume resume file
@@ -439,9 +525,8 @@ func DefaultOptions() *Options {
 		Timeout:                 5,
 		Retries:                 1,
 		MaxHostError:            30,
-		ResponseReadSize:        10 * 1024 * 1024,
-		ResponseSaveSize:        1024 * 1024,
-		ResponseReadTimeout:     5 * time.Second,
+		ResponseReadSize:        10 * unitutils.Mega,
+		ResponseSaveSize:        unitutils.Mega,
 	}
 }
 
@@ -463,10 +548,21 @@ func (options *Options) ParseHeadlessOptionalArguments() map[string]string {
 	return optionalArguments
 }
 
-// LoadHelperFile loads a helper file needed for the template
+// LoadHelperFile loads a helper file needed for the template.
+//
+// If LoadHelperFileFunction is set, then that function will be used.
+// Otherwise, the default implementation will be used, which respects the sandbox rules and only loads files from allowed directories.
+func (options *Options) LoadHelperFile(helperFile, templatePath string, catalog catalog.Catalog) (io.ReadCloser, error) {
+	if options.LoadHelperFileFunction != nil {
+		return options.LoadHelperFileFunction(helperFile, templatePath, catalog)
+	}
+	return options.defaultLoadHelperFile(helperFile, templatePath, catalog)
+}
+
+// defaultLoadHelperFile loads a helper file needed for the template
 // this respects the sandbox rules and only loads files from
 // allowed directories
-func (options *Options) LoadHelperFile(helperFile, templatePath string, catalog catalog.Catalog) (io.ReadCloser, error) {
+func (options *Options) defaultLoadHelperFile(helperFile, templatePath string, catalog catalog.Catalog) (io.ReadCloser, error) {
 	if !options.AllowLocalFileAccess {
 		// if global file access is disabled try loading with restrictions
 		absPath, err := options.GetValidAbsPath(helperFile, templatePath)
@@ -521,7 +617,7 @@ func (o *Options) GetValidAbsPath(helperFilePath, templatePath string) (string, 
 	return "", errorutil.New("access to helper file %v denied", helperFilePath)
 }
 
-// isRootDir checks if given is root directory
+// isHomeDir checks if given is home directory
 func isHomeDir(path string) bool {
 	homeDir := folderutil.HomeDirOrDefault("")
 	return strings.HasPrefix(path, homeDir)

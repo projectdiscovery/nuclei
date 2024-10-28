@@ -9,9 +9,11 @@ import (
 	"path/filepath"
 	"runtime"
 	"runtime/pprof"
+	"runtime/trace"
 	"strings"
 	"time"
 
+	_pdcp "github.com/projectdiscovery/nuclei/v3/internal/pdcp"
 	"github.com/projectdiscovery/utils/auth/pdcp"
 	"github.com/projectdiscovery/utils/env"
 	_ "github.com/projectdiscovery/utils/pprof"
@@ -38,6 +40,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/utils/monitor"
 	errorutil "github.com/projectdiscovery/utils/errors"
 	fileutil "github.com/projectdiscovery/utils/file"
+	unitutils "github.com/projectdiscovery/utils/unit"
 	updateutils "github.com/projectdiscovery/utils/update"
 )
 
@@ -101,25 +104,51 @@ func main() {
 		return
 	}
 
-	// Profiling related code
+	// Profiling & tracing related code
 	if memProfile != "" {
-		f, err := os.Create(memProfile)
+		memProfile = strings.TrimSuffix(memProfile, filepath.Ext(memProfile)) + ".prof"
+		memProfileFile, err := os.Create(memProfile)
 		if err != nil {
-			gologger.Fatal().Msgf("profile: could not create memory profile %q: %v", memProfile, err)
+			gologger.Fatal().Msgf("profile: could not create memory profile %q file: %v", memProfile, err)
 		}
-		old := runtime.MemProfileRate
+
+		traceFilepath := strings.TrimSuffix(memProfile, filepath.Ext(memProfile)) + ".trace"
+		traceFile, err := os.Create(traceFilepath)
+		if err != nil {
+			gologger.Fatal().Msgf("profile: could not create trace %q file: %v", traceFilepath, err)
+		}
+
+		oldMemProfileRate := runtime.MemProfileRate
 		runtime.MemProfileRate = 4096
-		gologger.Print().Msgf("profile: memory profiling enabled (rate %d), %s", runtime.MemProfileRate, memProfile)
+
+		// Start tracing
+		if err := trace.Start(traceFile); err != nil {
+			gologger.Fatal().Msgf("profile: could not start trace: %v", err)
+		}
 
 		defer func() {
-			_ = pprof.Lookup("heap").WriteTo(f, 0)
-			f.Close()
-			runtime.MemProfileRate = old
-			gologger.Print().Msgf("profile: memory profiling disabled, %s", memProfile)
+			// Start CPU profiling
+			if err := pprof.WriteHeapProfile(memProfileFile); err != nil {
+				gologger.Fatal().Msgf("profile: could not start CPU profile: %v", err)
+			}
+			memProfileFile.Close()
+			traceFile.Close()
+			trace.Stop()
+			runtime.MemProfileRate = oldMemProfileRate
+
+			gologger.Info().Msgf("Memory profile saved at %q", memProfile)
+			gologger.Info().Msgf("Traced at %q", traceFilepath)
 		}()
 	}
 
 	runner.ParseOptions(options)
+
+	if options.ScanUploadFile != "" {
+		if err := runner.UploadResultsToCloud(options); err != nil {
+			gologger.Fatal().Msgf("could not upload scan results to cloud dashboard: %s\n", err)
+		}
+		return
+	}
 
 	nucleiRunner, err := runner.New(options)
 	if err != nil {
@@ -141,7 +170,10 @@ func main() {
 			nucleiRunner.Close()
 			gologger.Info().Msgf("Creating resume file: %s\n", resumeFileName)
 			err := nucleiRunner.SaveResumeConfig(resumeFileName)
-			return errorutil.NewWithErr(err).Msgf("couldn't create crash resume file")
+			if err != nil {
+				return errorutil.NewWithErr(err).Msgf("couldn't create crash resume file")
+			}
+			return nil
 		})
 	}
 
@@ -268,6 +300,7 @@ on extensive configurability, massive extensibility and ease of use.`)
 		flagSet.StringVarP(&options.SarifExport, "sarif-export", "se", "", "file to export results in SARIF format"),
 		flagSet.StringVarP(&options.JSONExport, "json-export", "je", "", "file to export results in JSON format"),
 		flagSet.StringVarP(&options.JSONLExport, "jsonl-export", "jle", "", "file to export results in JSONL(ine) format"),
+		flagSet.StringSliceVarP(&options.Redact, "redact", "rd", nil, "redact given list of keys from query parameter, request header and body", goflags.CommaSeparatedStringSliceOptions),
 	)
 
 	flagSet.CreateGroup("configs", "Configurations",
@@ -293,7 +326,6 @@ on extensive configurability, massive extensibility and ease of use.`)
 		flagSet.BoolVarP(&options.ShowMatchLine, "show-match-line", "sml", false, "show match lines for file templates, works with extractors only"),
 		flagSet.BoolVar(&options.ZTLS, "ztls", false, "use ztls library with autofallback to standard one for tls13 [Deprecated] autofallback to ztls is enabled by default"), //nolint:all
 		flagSet.StringVar(&options.SNI, "sni", "", "tls sni hostname to use (default: input domain name)"),
-		flagSet.DurationVarP(&options.DialerTimeout, "dialer-timeout", "dt", 0, "timeout for network requests."),
 		flagSet.DurationVarP(&options.DialerKeepAlive, "dialer-keep-alive", "dka", 0, "keep-alive duration for network requests."),
 		flagSet.BoolVarP(&options.AllowLocalFileAccess, "allow-local-file-access", "lfa", false, "allows file (payload) access anywhere on the system"),
 		flagSet.BoolVarP(&options.RestrictLocalNetworkAccess, "restrict-local-network-access", "lna", false, "blocks connections to the local / private network"),
@@ -301,8 +333,7 @@ on extensive configurability, massive extensibility and ease of use.`)
 		flagSet.StringVarP(&options.AttackType, "attack-type", "at", "", "type of payload combinations to perform (batteringram,pitchfork,clusterbomb)"),
 		flagSet.StringVarP(&options.SourceIP, "source-ip", "sip", "", "source ip address to use for network scan"),
 		flagSet.IntVarP(&options.ResponseReadSize, "response-size-read", "rsr", 0, "max response size to read in bytes"),
-		flagSet.IntVarP(&options.ResponseSaveSize, "response-size-save", "rss", 1*1024*1024, "max response size to read in bytes"),
-		flagSet.DurationVarP(&options.ResponseReadTimeout, "response-read-timeout", "rrt", time.Duration(5*time.Second), "response read timeout in seconds"),
+		flagSet.IntVarP(&options.ResponseSaveSize, "response-size-save", "rss", unitutils.Mega, "max response size to read in bytes"),
 		flagSet.CallbackVar(resetCallback, "reset", "reset removes all nuclei configuration and data files (including nuclei-templates)"),
 		flagSet.BoolVarP(&options.TlsImpersonate, "tls-impersonate", "tlsi", false, "enable experimental client hello (ja3) tls randomization"),
 		flagSet.StringVarP(&options.HttpApiEndpoint, "http-api-endpoint", "hae", "", "experimental http api endpoint"),
@@ -391,9 +422,10 @@ on extensive configurability, massive extensibility and ease of use.`)
 		flagSet.CallbackVar(printVersion, "version", "show nuclei version"),
 		flagSet.BoolVarP(&options.HangMonitor, "hang-monitor", "hm", false, "enable nuclei hang monitoring"),
 		flagSet.BoolVarP(&options.Verbose, "verbose", "v", false, "show verbose output"),
-		flagSet.StringVar(&memProfile, "profile-mem", "", "optional nuclei memory profile dump file"),
+		flagSet.StringVar(&memProfile, "profile-mem", "", "generate memory (heap) profile & trace files"),
 		flagSet.BoolVar(&options.VerboseVerbose, "vv", false, "display templates loaded for scan"),
 		flagSet.BoolVarP(&options.ShowVarDump, "show-var-dump", "svd", false, "show variables dump for debugging"),
+		flagSet.IntVarP(&options.VarDumpLimit, "var-dump-limit", "vdl", 255, "limit the number of characters displayed in var dump"),
 		flagSet.BoolVarP(&options.EnablePprof, "enable-pprof", "ep", false, "enable pprof debugging server"),
 		flagSet.CallbackVarP(printTemplateVersion, "templates-version", "tv", "shows the version of the installed nuclei-templates"),
 		flagSet.BoolVarP(&options.HealthCheck, "health-check", "hc", false, "run diagnostic check up"),
@@ -415,8 +447,12 @@ on extensive configurability, massive extensibility and ease of use.`)
 
 	flagSet.CreateGroup("cloud", "Cloud",
 		flagSet.DynamicVar(&pdcpauth, "auth", "true", "configure projectdiscovery cloud (pdcp) api key"),
-		flagSet.BoolVarP(&options.EnableCloudUpload, "cloud-upload", "cup", false, "upload scan results to pdcp dashboard"),
-		flagSet.StringVarP(&options.ScanID, "scan-id", "sid", "", "upload scan results to given scan id"),
+		flagSet.StringVarP(&options.TeamID, "team-id", "tid", _pdcp.TeamIDEnv, "upload scan results to given team id (optional)"),
+		flagSet.BoolVarP(&options.EnableCloudUpload, "cloud-upload", "cup", false, "upload scan results to pdcp dashboard [DEPRECATED use -dashboard]"),
+		flagSet.StringVarP(&options.ScanID, "scan-id", "sid", "", "upload scan results to existing scan id (optional)"),
+		flagSet.StringVarP(&options.ScanName, "scan-name", "sname", "", "scan name to set (optional)"),
+		flagSet.BoolVarP(&options.EnableCloudUpload, "dashboard", "pd", false, "upload / view nuclei results in projectdiscovery cloud (pdcp) UI dashboard"),
+		flagSet.StringVarP(&options.ScanUploadFile, "dashboard-upload", "pdu", "", "upload / view nuclei results file (jsonl) in projectdiscovery cloud (pdcp) UI dashboard"),
 	)
 
 	flagSet.CreateGroup("Authentication", "Authentication",

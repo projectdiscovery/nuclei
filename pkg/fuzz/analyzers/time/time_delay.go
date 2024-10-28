@@ -47,7 +47,7 @@ func checkTimingDependency(
 	requestsLeft := requestsLimit
 
 	for {
-		if requestsLeft == 0 {
+		if requestsLeft <= 0 {
 			break
 		}
 
@@ -152,7 +152,7 @@ func (o *simpleLinearRegression) AddPoint(x, y float64) {
 	o.correlation = o.slope * math.Sqrt(o.independentVarianceN/o.dependentVarianceN)
 	o.correlation *= o.correlation
 
-	o.intercept = o.independentSum/o.count - (o.dependentSum/o.count)*o.slope
+	o.intercept = o.dependentSum/o.count - o.slope*(o.independentSum/o.count)
 	if math.IsNaN(o.correlation) {
 		o.correlation = 1
 	}

@@ -46,9 +46,10 @@ type Config struct {
 	LatestNucleiIgnoreHash       string `json:"nuclei-latest-ignore-hash,omitempty"`
 
 	// internal / unexported fields
-	disableUpdates bool   `json:"-"` // disable updates both version check and template updates
-	homeDir        string `json:"-"` //  User Home Directory
-	configDir      string `json:"-"` //  Nuclei Global Config Directory
+	disableUpdates bool     `json:"-"` // disable updates both version check and template updates
+	homeDir        string   `json:"-"` //  User Home Directory
+	configDir      string   `json:"-"` //  Nuclei Global Config Directory
+	debugArgs      []string `json:"-"` // debug args
 }
 
 // IsCustomTemplate determines whether a given template is custom-built or part of the official Nuclei templates.
@@ -329,6 +330,46 @@ func (c *Config) copyIgnoreFile() {
 	}
 }
 
+// IsDebugArgEnabled checks if debug arg is enabled
+// this could be a feature specific to debugging like PPROF or printing stats
+// of max host error etc
+func (c *Config) IsDebugArgEnabled(arg string) bool {
+	for _, v := range c.debugArgs {
+		if v == arg {
+			return true
+		}
+	}
+	return false
+}
+
+// parseDebugArgs from string
+func (c *Config) parseDebugArgs(data string) {
+	// use space as seperator instead of commas
+	tmp := strings.Fields(data)
+	for _, v := range tmp {
+		key := v
+		value := ""
+		// if it is key value pair then split it
+		if strings.Contains(v, "=") {
+			parts := strings.SplitN(v, "=", 2)
+			if len(parts) != 2 {
+				continue
+			}
+			key, value = strings.TrimSpace(parts[0]), strings.TrimSpace(parts[1])
+		}
+		if value == "false" || value == "0" {
+			// if false or disabled then skip
+			continue
+		}
+		switch key {
+		case DebugArgHostErrorStats:
+			c.debugArgs = append(c.debugArgs, DebugArgHostErrorStats)
+		case DebugExportURLPattern:
+			c.debugArgs = append(c.debugArgs, DebugExportURLPattern)
+		}
+	}
+}
+
 func init() {
 	// first attempt to migrate all files from old config directory to new config directory
 	goflags.AttemptConfigMigration() // regardless how many times this is called it will only migrate once based on condition
@@ -377,6 +418,7 @@ func init() {
 	// and even if it is changed we don't follow it since it is not expected behavior
 	// If custom templates are in default locations only then they are loaded while running nuclei
 	DefaultConfig.SetTemplatesDir(DefaultConfig.TemplatesDirectory)
+	DefaultConfig.parseDebugArgs(env.GetEnvOrDefault("NUCLEI_ARGS", ""))
 }
 
 // Add Default Config adds default when .templates-config.json file is not present

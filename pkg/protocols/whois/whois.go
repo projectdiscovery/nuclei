@@ -99,7 +99,7 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 	variables := generators.MergeMaps(vars, defaultVars, optionVars, dynamicValues, request.options.Constants)
 
 	if vardump.EnableVarDump {
-		gologger.Debug().Msgf("Whois Protocol request variables: \n%s\n", vardump.DumpVariables(variables))
+		gologger.Debug().Msgf("Whois Protocol request variables: %s\n", vardump.DumpVariables(variables))
 	}
 
 	// and replace placeholders
@@ -177,6 +177,7 @@ func (request *Request) MakeResultEventItem(wrapped *output.InternalWrappedEvent
 		TemplateID:       types.ToString(request.options.TemplateID),
 		TemplatePath:     types.ToString(request.options.TemplatePath),
 		Info:             request.options.TemplateInfo,
+		TemplateVerifier: request.options.TemplateVerifier,
 		Type:             types.ToString(wrapped.InternalEvent["type"]),
 		Host:             types.ToString(wrapped.InternalEvent["host"]),
 		Metadata:         wrapped.OperatorsResult.PayloadValues,

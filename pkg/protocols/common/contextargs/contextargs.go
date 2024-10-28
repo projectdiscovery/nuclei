@@ -37,15 +37,24 @@ func New(ctx context.Context) *Context {
 	return NewWithInput(ctx, "")
 }
 
+// NewWithMetaInput creates a new contextargs instance with meta input
+func NewWithMetaInput(ctx context.Context, input *MetaInput) *Context {
+	n := New(ctx)
+	n.MetaInput = input
+	return n
+}
+
 // Create a new contextargs instance with input string
 func NewWithInput(ctx context.Context, input string) *Context {
 	jar, err := cookiejar.New(nil)
 	if err != nil {
 		gologger.Error().Msgf("contextargs: could not create cookie jar: %s\n", err)
 	}
+	metaInput := NewMetaInput()
+	metaInput.Input = input
 	return &Context{
 		ctx:       ctx,
-		MetaInput: &MetaInput{Input: input},
+		MetaInput: metaInput,
 		CookieJar: jar,
 		args: &mapsutil.SyncLockMap[string, interface{}]{
 			Map:      make(map[string]interface{}),
@@ -173,4 +182,21 @@ func (ctx *Context) Clone() *Context {
 		CookieJar: ctx.CookieJar,
 	}
 	return newCtx
+}
+
+// GetCopyIfHostOutdated returns a new contextargs if the host is outdated
+func GetCopyIfHostOutdated(ctx *Context, url string) *Context {
+	if ctx.MetaInput.Input == "" {
+		newctx := ctx.Clone()
+		newctx.MetaInput.Input = url
+		return newctx
+	}
+	orig, _ := urlutil.Parse(ctx.MetaInput.Input)
+	newURL, _ := urlutil.Parse(url)
+	if orig != nil && newURL != nil && orig.Host != newURL.Host {
+		newCtx := ctx.Clone()
+		newCtx.MetaInput.Input = newURL.Host
+		return newCtx
+	}
+	return ctx
 }

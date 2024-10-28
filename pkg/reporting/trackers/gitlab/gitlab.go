@@ -78,7 +78,7 @@ func (i *Integration) CreateIssue(event *output.ResultEvent) (*filters.CreateIss
 	if label := i.options.IssueLabel; label != "" {
 		labels = append(labels, label)
 	}
-	customLabels := gitlab.Labels(labels)
+	customLabels := gitlab.LabelOptions(labels)
 	assigneeIDs := []int{i.userID}
 	if i.options.DuplicateIssueCheck {
 		searchIn := "title"
@@ -164,13 +164,13 @@ func (i *Integration) CloseIssue(event *output.ResultEvent) error {
 
 // ShouldFilter determines if an issue should be logged to this tracker
 func (i *Integration) ShouldFilter(event *output.ResultEvent) bool {
-	if i.options.AllowList != nil && i.options.AllowList.GetMatch(event) {
-		return true
+	if i.options.AllowList != nil && !i.options.AllowList.GetMatch(event) {
+		return false
 	}
 
 	if i.options.DenyList != nil && i.options.DenyList.GetMatch(event) {
-		return true
+		return false
 	}
 
-	return false
+	return true
 }

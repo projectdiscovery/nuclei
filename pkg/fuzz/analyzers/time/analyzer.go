@@ -19,7 +19,7 @@ type Analyzer struct{}
 
 const (
 	DefaultSleepDuration             = int(5)
-	DefaultRequestsLimit             = int(6)
+	DefaultRequestsLimit             = int(4)
 	DefaultTimeCorrelationErrorRange = float64(0.15)
 	DefaultTimeSlopeErrorRange       = float64(0.30)
 
@@ -40,7 +40,7 @@ func (a *Analyzer) Name() string {
 // ApplyInitialTransformation applies the transformation to the initial payload.
 //
 // It supports the below payloads -
-//   - [SLEEPTIME] => sleep_duration (15s)
+//   - [SLEEPTIME] => sleep_duration
 //   - [INFERENCE] => Inference payload for time delay analyzer
 //
 // It also applies the payload transformations to the payload

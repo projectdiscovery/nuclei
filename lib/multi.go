@@ -26,7 +26,7 @@ type unsafeOptions struct {
 }
 
 // createEphemeralObjects creates ephemeral nuclei objects/instances/types
-func createEphemeralObjects(base *NucleiEngine, opts *types.Options) (*unsafeOptions, error) {
+func createEphemeralObjects(ctx context.Context, base *NucleiEngine, opts *types.Options) (*unsafeOptions, error) {
 	u := &unsafeOptions{}
 	u.executerOpts = protocols.ExecutorOptions{
 		Output:          base.customWriter,
@@ -49,9 +49,9 @@ func createEphemeralObjects(base *NucleiEngine, opts *types.Options) (*unsafeOpt
 		opts.RateLimitDuration = time.Second
 	}
 	if opts.RateLimit == 0 && opts.RateLimitDuration == 0 {
-		u.executerOpts.RateLimiter = ratelimit.NewUnlimited(context.Background())
+		u.executerOpts.RateLimiter = ratelimit.NewUnlimited(ctx)
 	} else {
-		u.executerOpts.RateLimiter = ratelimit.New(context.Background(), uint(opts.RateLimit), opts.RateLimitDuration)
+		u.executerOpts.RateLimiter = ratelimit.New(ctx, uint(opts.RateLimit), opts.RateLimitDuration)
 	}
 	u.engine = core.New(opts)
 	u.engine.SetExecuterOptions(u.executerOpts)
@@ -83,7 +83,7 @@ type ThreadSafeNucleiEngine struct {
 // NewThreadSafeNucleiEngine creates a new nuclei engine with given options
 // whose methods are thread-safe and can be used concurrently
 // Note: Non-thread-safe methods start with Global prefix
-func NewThreadSafeNucleiEngine(opts ...NucleiSDKOptions) (*ThreadSafeNucleiEngine, error) {
+func NewThreadSafeNucleiEngineCtx(ctx context.Context, opts ...NucleiSDKOptions) (*ThreadSafeNucleiEngine, error) {
 	// default options
 	e := &NucleiEngine{
 		opts: types.DefaultOptions(),
@@ -94,10 +94,15 @@ func NewThreadSafeNucleiEngine(opts ...NucleiSDKOptions) (*ThreadSafeNucleiEngin
 			return nil, err
 		}
 	}
-	if err := e.init(); err != nil {
+	if err := e.init(ctx); err != nil {
 		return nil, err
 	}
 	return &ThreadSafeNucleiEngine{eng: e}, nil
+}
+
+// Deprecated: use NewThreadSafeNucleiEngineCtx instead
+func NewThreadSafeNucleiEngine(opts ...NucleiSDKOptions) (*ThreadSafeNucleiEngine, error) {
+	return NewThreadSafeNucleiEngineCtx(context.Background(), opts...)
 }
 
 // GlobalLoadAllTemplates loads all templates from nuclei-templates repo
@@ -123,9 +128,9 @@ func (e *ThreadSafeNucleiEngine) ExecuteNucleiWithOptsCtx(ctx context.Context, t
 			return err
 		}
 	}
-	defer tmpEngine.Close()
+
 	// create ephemeral nuclei objects/instances/types using base nuclei engine
-	unsafeOpts, err := createEphemeralObjects(e.eng, tmpEngine.opts)
+	unsafeOpts, err := createEphemeralObjects(ctx, e.eng, tmpEngine.opts)
 	if err != nil {
 		return err
 	}
@@ -157,7 +162,7 @@ func (e *ThreadSafeNucleiEngine) ExecuteNucleiWithOptsCtx(ctx context.Context, t
 	engine := core.New(tmpEngine.opts)
 	engine.SetExecuterOptions(unsafeOpts.executerOpts)
 
-	_ = engine.ExecuteScanWithOpts(context.Background(), store.Templates(), inputProvider, false)
+	_ = engine.ExecuteScanWithOpts(ctx, store.Templates(), inputProvider, false)
 
 	engine.WorkPool().Wait()
 	return nil

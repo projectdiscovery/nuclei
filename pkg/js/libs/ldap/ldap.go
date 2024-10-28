@@ -155,7 +155,7 @@ func NewClient(call goja.ConstructorCall, runtime *goja.Runtime) *goja.Object {
 // const client = new ldap.Client('ldap://ldap.example.com', 'acme.com');
 // client.Authenticate('user', 'password');
 // ```
-func (c *Client) Authenticate(username, password string) {
+func (c *Client) Authenticate(username, password string) bool {
 	c.nj.Require(c.conn != nil, "no existing connection")
 	if c.BaseDN == "" {
 		c.BaseDN = fmt.Sprintf("dc=%s", strings.Join(strings.Split(c.Realm, "."), ",dc="))
@@ -163,19 +163,21 @@ func (c *Client) Authenticate(username, password string) {
 	if err := c.conn.NTLMBind(c.Realm, username, password); err == nil {
 		// if bind with NTLMBind(), there is nothing
 		// else to do, you are authenticated
-		return
+		return true
 	}
 
+	var err error
 	switch password {
 	case "":
-		if err := c.conn.UnauthenticatedBind(username); err != nil {
+		if err = c.conn.UnauthenticatedBind(username); err != nil {
 			c.nj.ThrowError(err)
 		}
 	default:
-		if err := c.conn.Bind(username, password); err != nil {
+		if err = c.conn.Bind(username, password); err != nil {
 			c.nj.ThrowError(err)
 		}
 	}
+	return err == nil
 }
 
 // AuthenticateWithNTLMHash authenticates with the ldap server using the given username and NTLM hash
@@ -185,14 +187,16 @@ func (c *Client) Authenticate(username, password string) {
 // const client = new ldap.Client('ldap://ldap.example.com', 'acme.com');
 // client.AuthenticateWithNTLMHash('pdtm', 'hash');
 // ```
-func (c *Client) AuthenticateWithNTLMHash(username, hash string) {
+func (c *Client) AuthenticateWithNTLMHash(username, hash string) bool {
 	c.nj.Require(c.conn != nil, "no existing connection")
 	if c.BaseDN == "" {
 		c.BaseDN = fmt.Sprintf("dc=%s", strings.Join(strings.Split(c.Realm, "."), ",dc="))
 	}
-	if err := c.conn.NTLMBindWithHash(c.Realm, username, hash); err != nil {
+	var err error
+	if err = c.conn.NTLMBindWithHash(c.Realm, username, hash); err != nil {
 		c.nj.ThrowError(err)
 	}
+	return err == nil
 }
 
 // Search accepts whatever filter and returns a list of maps having provided attributes
@@ -203,38 +207,24 @@ func (c *Client) AuthenticateWithNTLMHash(username, hash string) {
 // const client = new ldap.Client('ldap://ldap.example.com', 'acme.com');
 // const results = client.Search('(objectClass=*)', 'cn', 'mail');
 // ```
-func (c *Client) Search(filter string, attributes ...string) []map[string][]string {
+func (c *Client) Search(filter string, attributes ...string) SearchResult {
 	c.nj.Require(c.conn != nil, "no existing connection")
+	c.nj.Require(c.BaseDN != "", "base dn cannot be empty")
+	c.nj.Require(len(attributes) > 0, "attributes cannot be empty")
 
 	res, err := c.conn.Search(
 		ldap.NewSearchRequest(
-			c.BaseDN, ldap.ScopeWholeSubtree, ldap.NeverDerefAliases,
-			0, 0, false, filter, attributes, nil,
+			"",
+			ldap.ScopeWholeSubtree,
+			ldap.NeverDerefAliases,
+			0, 0, false,
+			filter,
+			attributes,
+			nil,
 		),
 	)
 	c.nj.HandleError(err, "ldap search request failed")
-	if len(res.Entries) == 0 {
-		// return empty list
-		return nil
-	}
-
-	// convert ldap.Entry to []map[string][]string
-	var out []map[string][]string
-	for _, r := range res.Entries {
-		app := make(map[string][]string)
-		empty := true
-		for _, a := range attributes {
-			v := r.GetAttributeValues(a)
-			if len(v) > 0 {
-				app[a] = v
-				empty = false
-			}
-		}
-		if !empty {
-			out = append(out, app)
-		}
-	}
-	return out
+	return *getSearchResult(res)
 }
 
 // AdvancedSearch accepts all values of search request type and return Ldap Entry
@@ -250,7 +240,7 @@ func (c *Client) AdvancedSearch(
 	TypesOnly bool,
 	Filter string,
 	Attributes []string,
-	Controls []ldap.Control) ldap.SearchResult {
+	Controls []ldap.Control) SearchResult {
 	c.nj.Require(c.conn != nil, "no existing connection")
 	if c.BaseDN == "" {
 		c.BaseDN = fmt.Sprintf("dc=%s", strings.Join(strings.Split(c.Realm, "."), ",dc="))
@@ -259,7 +249,7 @@ func (c *Client) AdvancedSearch(
 	res, err := c.conn.Search(req)
 	c.nj.HandleError(err, "ldap search request failed")
 	c.nj.Require(res != nil, "ldap search request failed got nil response")
-	return *res
+	return *getSearchResult(res)
 }
 
 type (
@@ -293,6 +283,7 @@ func (c *Client) CollectMetadata() Metadata {
 	}
 	metadata.BaseDN = c.BaseDN
 
+	// Use scope as Base since Root DSE doesn't have subentries
 	srMetadata := ldap.NewSearchRequest(
 		"",
 		ldap.ScopeBaseObject,
