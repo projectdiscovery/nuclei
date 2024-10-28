@@ -879,8 +879,8 @@ github.com/projectdiscovery/n3iwf v0.0.0-20230523120440-b8cd232ff1f5 h1:L/e8z8yw
 github.com/projectdiscovery/n3iwf v0.0.0-20230523120440-b8cd232ff1f5/go.mod h1:pGW2ncnTxTxHtP9wzcIJAB+3/NMp6IiuQWd2NK7K+oc=
 github.com/projectdiscovery/networkpolicy v0.0.9 h1:IrlDoYZagNNO8y+7iZeHT8k5izE+nek7TdtvEBwCxqk=
 github.com/projectdiscovery/networkpolicy v0.0.9/go.mod h1:XFJ2Lnv8BE/ziQCFjBHMsH1w6VmkPiQtk+NlBpdMU7M=
-github.com/projectdiscovery/ratelimit v0.0.60 h1:8nz8gVPPIH7by8ZZKY4LnsjwrlKPkQzJiTACILIdqvo=
-github.com/projectdiscovery/ratelimit v0.0.60/go.mod h1:ld9toJ1gj8E92pJz5/WFClEaoa6ke5xS62JIYMbctGk=
+github.com/projectdiscovery/ratelimit v0.0.61 h1:n9PD4Z4Y6cLeT2rn9IiOAA0I/kIZE/D7z7z5X/WQds8=
+github.com/projectdiscovery/ratelimit v0.0.61/go.mod h1:u7DxBBcUzFg4Cb2s5yabmtCMJs+ojulNpNrSLtftoKg=
 github.com/projectdiscovery/rawhttp v0.1.71 h1:znAr2UdBlfz7pM3jCa5RPMNr7oMHWX1lOGJJZ/F31BI=
 github.com/projectdiscovery/rawhttp v0.1.71/go.mod h1:48XxcyPkyVdsfPEfSbICuywJYkVrrZ3a463QRenZAEw=
 github.com/projectdiscovery/rdap v0.9.1-0.20221108103045-9865884d1917 h1:m03X4gBVSorSzvmm0bFa7gDV4QNSOWPL/fgZ4kTXBxk=
