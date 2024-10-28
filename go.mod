@@ -25,7 +25,7 @@ require (
 	github.com/projectdiscovery/interactsh v1.2.0
 	github.com/projectdiscovery/rawhttp v0.1.71
 	github.com/projectdiscovery/retryabledns v1.0.81
-	github.com/projectdiscovery/retryablehttp-go v1.0.83
+	github.com/projectdiscovery/retryablehttp-go v1.0.84
 	github.com/projectdiscovery/yamldoc-go v1.0.4
 	github.com/remeh/sizedwaitgroup v1.0.0
 	github.com/rs/xid v1.5.0
