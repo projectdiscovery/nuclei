@@ -21,11 +21,11 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/projectdiscovery/clistats v0.1.1
 	github.com/projectdiscovery/fastdialer v0.2.9
-	github.com/projectdiscovery/hmap v0.0.62
+	github.com/projectdiscovery/hmap v0.0.63
 	github.com/projectdiscovery/interactsh v1.2.0
-	github.com/projectdiscovery/rawhttp v0.1.70
-	github.com/projectdiscovery/retryabledns v1.0.80
-	github.com/projectdiscovery/retryablehttp-go v1.0.82
+	github.com/projectdiscovery/rawhttp v0.1.71
+	github.com/projectdiscovery/retryabledns v1.0.81
+	github.com/projectdiscovery/retryablehttp-go v1.0.83
 	github.com/projectdiscovery/yamldoc-go v1.0.4
 	github.com/remeh/sizedwaitgroup v1.0.0
 	github.com/rs/xid v1.5.0
