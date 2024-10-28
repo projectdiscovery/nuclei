@@ -23,6 +23,7 @@ type ScanStatsWorker struct {
 	config    *ScanConfig
 	m         *sync.Mutex
 	directory string
+	file      *os.File
 	enc       *json.Encoder
 }
 
@@ -56,7 +57,7 @@ func (s *ScanStatsWorker) initEventsFile() error {
 	if err != nil {
 		return err
 	}
-	defer f.Close()
+	s.file = f
 	s.enc = json.NewEncoder(f)
 	return nil
 }
@@ -78,4 +79,23 @@ func AddScanEvent(event ScanEvent) {
 		return
 	}
 	defaultWorker.AddScanEvent(event)
+}
+
+// Close closes the file associated with the worker
+func (s *ScanStatsWorker) Close() {
+	s.m.Lock()
+	defer s.m.Unlock()
+
+	if s.file != nil {
+		_ = s.file.Close()
+		s.file = nil
+	}
+}
+
+// Close closes the file associated with the worker
+func Close() {
+	if defaultWorker == nil {
+		return
+	}
+	defaultWorker.Close()
 }
