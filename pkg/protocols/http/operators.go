@@ -193,6 +193,7 @@ func (request *Request) MakeResultEventItem(wrapped *output.InternalWrappedEvent
 		CURLCommand:      types.ToString(wrapped.InternalEvent["curl-command"]),
 		TemplateEncoded:  request.options.EncodeTemplate(),
 		Error:            types.ToString(wrapped.InternalEvent["error"]),
+		AnalyzerDetails:  types.ToString(wrapped.InternalEvent["analyzer_details"]),
 	}
 	return data
 }

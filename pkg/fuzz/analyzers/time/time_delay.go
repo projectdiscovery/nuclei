@@ -16,7 +16,7 @@
 // - https://groups.google.com/g/zaproxy-develop/c/KGSkNHlLtqk
 // - https://github.com/zaproxy/zap-extensions/pull/5053
 //
-// This file has been modified from its original version. It was originally licensed under the Apache License 2.0 (see LICENSE file for details).
+// This file has been implemented from its original version. It was originally licensed under the Apache License 2.0 (see LICENSE file for details).
 // The original algorithm is implemented in ZAP Active Scanner.
 package time
 
@@ -152,6 +152,8 @@ func (o *simpleLinearRegression) AddPoint(x, y float64) {
 	o.correlation = o.slope * math.Sqrt(o.independentVarianceN/o.dependentVarianceN)
 	o.correlation *= o.correlation
 
+	// NOTE: zap had the reverse formula, changed it to the correct one
+	// for intercept. Verify if this is correct.
 	o.intercept = o.dependentSum/o.count - o.slope*(o.independentSum/o.count)
 	if math.IsNaN(o.correlation) {
 		o.correlation = 1
