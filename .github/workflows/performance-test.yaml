@@ -3,16 +3,13 @@ name: 🔨 Performance Test
 on:
   workflow_dispatch:
   schedule:
-    # Weekly
-    - cron: '0 0 * * 0'
+    - cron: '0 0 * * 0' # Weekly
 
 jobs:
-  build:
-    name: Test Performance
+  perf-test:
     strategy:
       matrix:
         os: [ubuntu-latest, macOS-latest]
-
     runs-on: ${{ matrix.os }}
     if: github.repository == 'projectdiscovery/nuclei'
     steps:
