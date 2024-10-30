@@ -41,7 +41,7 @@ func (s *DASTServer) tasksConsumer() {
 }
 
 func (s *DASTServer) fuzzRequest(req PostReuestsHandlerRequest) {
-	results, err := runNucleiWithFuzzingInput(req, s.options.Templates)
+	results, err := s.runNucleiWithFuzzingInput(req, s.options.Templates)
 	if err != nil {
 		gologger.Warning().Msgf("Could not run nuclei: %s\n", err)
 		return

@@ -22,7 +22,7 @@ type proxifyRequest struct {
 	} `json:"request"`
 }
 
-func runNucleiWithFuzzingInput(target PostReuestsHandlerRequest, templates []string) ([]output.ResultEvent, error) {
+func (s *DASTServer) runNucleiWithFuzzingInput(target PostReuestsHandlerRequest, templates []string) ([]output.ResultEvent, error) {
 	cmd := exec.Command("nuclei")
 
 	tempFile, err := os.CreateTemp("", "nuclei-fuzz-*.yaml")
@@ -54,7 +54,6 @@ func runNucleiWithFuzzingInput(target PostReuestsHandlerRequest, templates []str
 	argsArray := []string{
 		"-duc",
 		"-dast",
-		"-silent",
 		"-no-color",
 		"-jsonl",
 	}
@@ -63,15 +62,34 @@ func runNucleiWithFuzzingInput(target PostReuestsHandlerRequest, templates []str
 	}
 	argsArray = append(argsArray, "-l", tempFile.Name())
 	argsArray = append(argsArray, "-im=yaml")
+
+	var stderrBuf bytes.Buffer
+	if s.options.Verbose {
+		cmd.Stderr = &stderrBuf
+		argsArray = append(argsArray, "-v")
+	} else {
+		argsArray = append(argsArray, "-silent")
+	}
 	cmd.Args = append(cmd.Args, argsArray...)
 
-	data, err := cmd.Output()
+	stdoutPipe, err := cmd.StdoutPipe()
 	if err != nil {
-		return nil, fmt.Errorf("error running nuclei: %w", err)
+		return nil, fmt.Errorf("error creating stdout pipe: %s", err)
+	}
+
+	errWithStderr := func(err error) error {
+		if s.options.Verbose {
+			return fmt.Errorf("error running nuclei: %s\n%s", err, stderrBuf.String())
+		}
+		return fmt.Errorf("error starting nuclei: %s", err)
+	}
+
+	if err := cmd.Start(); err != nil {
+		return nil, errWithStderr(err)
 	}
 
 	var nucleiResult []output.ResultEvent
-	decoder := json.NewDecoder(bytes.NewReader(data))
+	decoder := json.NewDecoder(stdoutPipe)
 	for {
 		var result output.ResultEvent
 		if err := decoder.Decode(&result); err != nil {
@@ -86,5 +104,8 @@ func runNucleiWithFuzzingInput(target PostReuestsHandlerRequest, templates []str
 		}
 	}
 
+	if err := cmd.Wait(); err != nil {
+		return nil, errWithStderr(err)
+	}
 	return nucleiResult, nil
 }

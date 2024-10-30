@@ -1,6 +1,7 @@
 package server
 
 import (
+	"encoding/json"
 	"fmt"
 	"strings"
 	"time"
@@ -48,6 +49,11 @@ type Options struct {
 func New(options *Options) (*DASTServer, error) {
 	bufferSize := options.Concurrency * 100
 
+	// If the user has specified no templates, use the default ones
+	// for DAST only.
+	if len(options.Templates) == 0 {
+		options.Templates = []string{"dast/"}
+	}
 	server := &DASTServer{
 		options:      options,
 		tasksPool:    pool.New().WithMaxGoroutines(options.Concurrency),
@@ -127,6 +133,11 @@ func (s *DASTServer) handleRequest(c echo.Context) error {
 	// Validate the request
 	if req.RawHTTP == "" || req.URL == "" {
 		return c.JSON(400, map[string]string{"error": "missing required fields"})
+	}
+
+	if s.options.Verbose {
+		marshalIndented, _ := json.MarshalIndent(req, "", "  ")
+		gologger.Verbose().Msgf("Received request: %s", marshalIndented)
 	}
 
 	select {
