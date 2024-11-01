@@ -381,7 +381,7 @@ func (r *Request) Type() templateTypes.ProtocolType {
 }
 ```
 
-Almost all of these protocols have boilerplate functions for which default implementations have been provided in the `providers` package. Examples are the implementation of `Match`, `Extract`, `MakeResultEvent`, GetCompiledOperators`, etc. which are almost same throughout Nuclei protocols code. It is enough to copy-paste them unless customization is required.
+Almost all of these protocols have boilerplate functions for which default implementations have been provided in the `providers` package. Examples are the implementation of `Match`, `Extract`, `MakeResultEvent`, `GetCompiledOperators`, etc. which are almost same throughout Nuclei protocols code. It is enough to copy-paste them unless customization is required.
 
 `eventcreator` package offers `CreateEventWithAdditionalOptions` function which can be used to create result events after doing request execution.
 
