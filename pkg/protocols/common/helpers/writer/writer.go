@@ -38,9 +38,6 @@ func WriteResult(data *output.InternalWrappedEvent, outputs output.Writer, progr
 					break
 				}
 				steps = append(steps, output.Steps{Request: request.(string), Response: response.(string)})
-				if index > 10 {
-					break
-				}
 			}
 		default:
 
