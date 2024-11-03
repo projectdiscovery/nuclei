@@ -8,12 +8,11 @@ on:
 
 jobs:
   build:
+    if: "! endsWith(github.actor, '[bot]')"
     runs-on: ubuntu-latest-16-cores
     steps:
       - uses: actions/checkout@v4
-
       - uses: projectdiscovery/actions/setup/go@v1
-
       - name: Template Validation
         run: |
           go run . -ut

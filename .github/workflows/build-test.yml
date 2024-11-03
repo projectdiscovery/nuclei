@@ -8,8 +8,8 @@ on:
   workflow_dispatch:
 
 jobs:
-  build:
-    name: Test Builds
+  build-test:
+    if: "! endsWith(github.actor, '[bot]')"
     strategy:
       matrix:
         os: [ubuntu-latest, windows-latest, macOS-latest]
