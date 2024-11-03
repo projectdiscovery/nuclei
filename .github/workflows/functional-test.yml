@@ -8,12 +8,12 @@ on:
 
 
 jobs:  
-  functional:
-    name: Functional Test
-    runs-on: ${{ matrix.os }}
+  functional-test:
+    if: "! endsWith(github.actor, '[bot]')"
     strategy:
       matrix:
         os: [ubuntu-latest, windows-latest, macOS-latest]
+    runs-on: ${{ matrix.os }}
     steps:
       - name: Check out code
         uses: actions/checkout@v4
