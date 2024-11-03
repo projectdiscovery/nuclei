@@ -51,15 +51,15 @@ func New(options *types.Options) (*Browser, error) {
 
 		chromeLauncher = chromeLauncher.
 			Leakless(false).
-			Set("disable-gpu", "true").
-			Set("ignore-certificate-errors", "true").
-			Set("ignore-certificate-errors", "1").
-			Set("disable-crash-reporter", "true").
-			Set("disable-notifications", "true").
-			Set("hide-scrollbars", "true").
+			Set("disable-crash-reporter").
+			Set("disable-gpu").
+			Set("disable-notifications").
+			Set("hide-scrollbars").
+			Set("ignore-certificate-errors").
+			Set("ignore-ssl-errors").
+			Set("incognito").
+			Set("mute-audio").
 			Set("window-size", fmt.Sprintf("%d,%d", 1080, 1920)).
-			Set("mute-audio", "true").
-			Set("incognito", "true").
 			Delete("use-mock-keychain").
 			UserDataDir(dataStore)
 
