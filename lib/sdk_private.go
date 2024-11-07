@@ -3,7 +3,6 @@ package nuclei
 import (
 	"context"
 	"fmt"
-	"github.com/projectdiscovery/nuclei/v3/pkg/input"
 	"strings"
 	"sync"
 	"time"
@@ -18,6 +17,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/config"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/disk"
 	"github.com/projectdiscovery/nuclei/v3/pkg/core"
+	"github.com/projectdiscovery/nuclei/v3/pkg/input"
 	"github.com/projectdiscovery/nuclei/v3/pkg/input/provider"
 	"github.com/projectdiscovery/nuclei/v3/pkg/installer"
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
@@ -29,6 +29,10 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http/httpclientpool"
 	"github.com/projectdiscovery/nuclei/v3/pkg/reporting"
+	"github.com/projectdiscovery/nuclei/v3/pkg/reporting/exporters/jsonexporter"
+	"github.com/projectdiscovery/nuclei/v3/pkg/reporting/exporters/jsonl"
+	"github.com/projectdiscovery/nuclei/v3/pkg/reporting/exporters/markdown"
+	"github.com/projectdiscovery/nuclei/v3/pkg/reporting/exporters/sarif"
 	"github.com/projectdiscovery/nuclei/v3/pkg/templates"
 	"github.com/projectdiscovery/nuclei/v3/pkg/testutils"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
@@ -37,6 +41,36 @@ import (
 )
 
 var sharedInit *sync.Once
+
+// test reporting options
+func createReportingOptions(options *types.Options) (*reporting.Options, error) {
+	var reportingOptions = &reporting.Options{}
+	if options.MarkdownExportDirectory != "" {
+		reportingOptions.MarkdownExporter = &markdown.Options{
+			Directory: options.MarkdownExportDirectory,
+			OmitRaw:   options.OmitRawRequests,
+			SortMode:  options.MarkdownExportSortMode,
+		}
+	}
+	if options.SarifExport != "" {
+		reportingOptions.SarifExporter = &sarif.Options{File: options.SarifExport}
+	}
+	if options.JSONExport != "" {
+		reportingOptions.JSONExporter = &jsonexporter.Options{
+			File:    options.JSONExport,
+			OmitRaw: options.OmitRawRequests,
+		}
+	}
+	if options.JSONLExport != "" {
+		reportingOptions.JSONLExporter = &jsonl.Options{
+			File:    options.JSONLExport,
+			OmitRaw: options.OmitRawRequests,
+		}
+	}
+
+	reportingOptions.OmitRaw = options.OmitRawRequests
+	return reportingOptions, nil
+}
 
 // applyRequiredDefaults to options
 func (e *NucleiEngine) applyRequiredDefaults(ctx context.Context) {
@@ -144,9 +178,23 @@ func (e *NucleiEngine) init(ctx context.Context) error {
 		return err
 	}
 	// we don't support reporting config in sdk mode
-	if e.rc, err = reporting.New(&reporting.Options{}, "", false); err != nil {
+
+	reportingOptions, err := createReportingOptions(e.opts)
+	if err != nil {
 		return err
 	}
+
+	if reportingOptions != nil && e.httpClient != nil {
+		reportingOptions.HttpClient = e.httpClient
+	}
+
+	if reportingOptions != nil {
+		e.rc, err = reporting.New(reportingOptions, "", false)
+		if err != nil {
+			return err
+		}
+	}
+
 	e.interactshOpts.IssuesClient = e.rc
 	if e.httpClient != nil {
 		e.interactshOpts.HTTPClient = e.httpClient

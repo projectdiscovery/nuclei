@@ -449,3 +449,19 @@ func DisableUpdateCheck() NucleiSDKOptions {
 		return nil
 	}
 }
+
+type ExporterOptions struct {
+	SarifExport string
+	JSONExport  string
+	JSONLExport string
+}
+
+// WithExportOptions allows setting export options (only Sarif, JSON, JSONL export)
+func WithExportOptions(opts ExporterOptions) NucleiSDKOptions {
+	return func(e *NucleiEngine) error {
+		e.opts.SarifExport = opts.SarifExport
+		e.opts.JSONExport = opts.JSONExport
+		e.opts.JSONLExport = opts.JSONLExport
+		return nil
+	}
+}
