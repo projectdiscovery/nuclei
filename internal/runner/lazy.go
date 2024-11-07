@@ -92,8 +92,13 @@ func GetLazyAuthFetchCallback(opts *AuthLazyFetchOptions) authx.LazyFetchSecret 
 			}
 			// dynamic values
 			for k, v := range e.OperatorsResult.DynamicValues {
-				if len(v) > 0 {
-					data[k] = v[0]
+				// Iterate through all the values and choose the
+				// largest value as the extracted value
+				for _, value := range v {
+					oldVal, ok := data[k]
+					if !ok || len(value) > len(oldVal.(string)) {
+						data[k] = value
+					}
 				}
 			}
 			// named extractors
