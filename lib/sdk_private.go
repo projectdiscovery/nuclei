@@ -153,7 +153,7 @@ func (e *NucleiEngine) init(ctx context.Context) error {
 	}
 
 	if reportingOptions != nil {
-		e.rc, err = reporting.New(reportingOptions, "", false)
+		e.rc, err = reporting.New(reportingOptions, e.opts.ReportingDB, false)
 		if err != nil {
 			return err
 		}
