@@ -352,6 +352,7 @@ func (store *Store) areWorkflowOrTemplatesValid(filteredTemplatePaths map[string
 		if err != nil {
 			if isParsingError("Error occurred parsing template %s: %s\n", templatePath, err) {
 				areTemplatesValid = false
+				continue
 			}
 		} else if template == nil {
 			// NOTE(dwisiswant0): possibly global matchers template.
