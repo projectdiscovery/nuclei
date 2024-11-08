@@ -13,14 +13,14 @@ import (
 func TestCreateReportingOptions(t *testing.T) {
 	var options types.Options
 	options.ReportingConfig = "../../integration_tests/test-issue-tracker-config1.yaml"
-	resultOptions, err := createReportingOptions(&options)
+	resultOptions, err := CreateReportingOptions(&options)
 
 	require.Nil(t, err)
 	require.Equal(t, resultOptions.AllowList.Severities, severity.Severities{severity.High, severity.Critical})
 	require.Equal(t, resultOptions.DenyList.Severities, severity.Severities{severity.Low})
 
 	options.ReportingConfig = "../../integration_tests/test-issue-tracker-config2.yaml"
-	resultOptions2, err := createReportingOptions(&options)
+	resultOptions2, err := CreateReportingOptions(&options)
 	require.Nil(t, err)
 	require.Equal(t, resultOptions2.AllowList.Severities, resultOptions.AllowList.Severities)
 	require.Equal(t, resultOptions2.DenyList.Severities, resultOptions.DenyList.Severities)

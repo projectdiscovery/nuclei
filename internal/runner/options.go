@@ -274,7 +274,7 @@ func validateMissingGitLabOptions(options *types.Options) []string {
 	return missing
 }
 
-func createReportingOptions(options *types.Options) (*reporting.Options, error) {
+func CreateReportingOptions(options *types.Options) (*reporting.Options, error) {
 	var reportingOptions = &reporting.Options{}
 	if options.ReportingConfig != "" {
 		file, err := os.Open(options.ReportingConfig)

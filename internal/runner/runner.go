@@ -193,7 +193,7 @@ func New(options *types.Options) (*Runner, error) {
 	if err := reporting.CreateConfigIfNotExists(); err != nil {
 		return nil, err
 	}
-	reportingOptions, err := createReportingOptions(options)
+	reportingOptions, err := CreateReportingOptions(options)
 	if err != nil {
 		return nil, err
 	}
