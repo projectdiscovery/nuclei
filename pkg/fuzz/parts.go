@@ -60,8 +60,10 @@ func (rule *Rule) executePartComponentOnValues(input *ExecuteRuleInput, payloadS
 		var evaluated, originalEvaluated string
 		evaluated, input.InteractURLs = rule.executeEvaluate(input, key, valueStr, payloadStr, input.InteractURLs)
 		if input.ApplyPayloadInitialTransformation != nil {
+			evaluated = input.ApplyPayloadInitialTransformation(evaluated, input.AnalyzerParams)
 			originalEvaluated, _ = rule.executeEvaluate(input, key, valueStr, originalPayload, input.InteractURLs)
 		}
+
 		if err := ruleComponent.SetValue(key, evaluated); err != nil {
 			// gologger.Warning().Msgf("could not set value due to format restriction original(%s, %s[%T]) , new(%s,%s[%T])", key, valueStr, value, key, evaluated, evaluated)
 			return nil

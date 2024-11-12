@@ -232,9 +232,6 @@ func (rule *Rule) executeRuleValues(input *ExecuteRuleInput, ruleComponent compo
 		for _, value := range rule.Fuzz.Value {
 			originalPayload := value
 
-			if input.ApplyPayloadInitialTransformation != nil {
-				value = input.ApplyPayloadInitialTransformation(value, input.AnalyzerParams)
-			}
 			if err := rule.executePartRule(input, ValueOrKeyValue{Value: value, OriginalPayload: originalPayload}, ruleComponent); err != nil {
 				if component.IsErrSetValue(err) {
 					// this are errors due to format restrictions

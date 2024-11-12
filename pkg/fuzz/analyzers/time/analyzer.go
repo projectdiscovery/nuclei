@@ -22,6 +22,7 @@ const (
 	DefaultRequestsLimit             = int(4)
 	DefaultTimeCorrelationErrorRange = float64(0.15)
 	DefaultTimeSlopeErrorRange       = float64(0.30)
+	DefaultTimeUnit                  = "seconds"
 
 	defaultSleepTimeDuration = 5 * time.Second
 )
@@ -55,28 +56,45 @@ func (a *Analyzer) ApplyInitialTransformation(data string, params map[string]int
 				gologger.Warning().Msgf("Invalid sleep_duration parameter type, using default value: %d", duration)
 			}
 		}
+		// Default unit is second. If we get passed milliseconds, multiply
+		if unit, ok := params["time_unit"]; ok {
+			duration = a.handleCustomTimeUnit(unit.(string), duration)
+		}
 	}
 	data = strings.ReplaceAll(data, "[SLEEPTIME]", strconv.Itoa(duration))
 	data = analyzers.ApplyPayloadTransformations(data)
 
 	// Also support [INFERENCE] for the time delay analyzer
-	randInt := analyzers.GetRandomInteger()
-	data = strings.ReplaceAll(data, "[INFERENCE]", fmt.Sprintf("%d=%d", randInt, randInt))
+	if strings.Contains(data, "[INFERENCE]") {
+		randInt := analyzers.GetRandomInteger()
+		data = strings.ReplaceAll(data, "[INFERENCE]", fmt.Sprintf("%d=%d", randInt, randInt))
+	}
 	return data
 }
 
-func (a *Analyzer) parseAnalyzerParameters(params map[string]interface{}) (int, int, float64, float64, error) {
+func (a *Analyzer) handleCustomTimeUnit(unit string, duration int) int {
+	switch unit {
+	case "milliseconds":
+		return duration * 1000
+	}
+	return duration
+}
+
+func (a *Analyzer) parseAnalyzerParameters(params map[string]interface{}) (int, int, float64, float64, string, error) {
 	requestsLimit := DefaultRequestsLimit
 	sleepDuration := DefaultSleepDuration
 	timeCorrelationErrorRange := DefaultTimeCorrelationErrorRange
 	timeSlopeErrorRange := DefaultTimeSlopeErrorRange
+	timeUnit := DefaultTimeUnit
 
 	if len(params) == 0 {
-		return requestsLimit, sleepDuration, timeCorrelationErrorRange, timeSlopeErrorRange, nil
+		return requestsLimit, sleepDuration, timeCorrelationErrorRange, timeSlopeErrorRange, timeUnit, nil
 	}
 	var ok bool
 	for k, v := range params {
 		switch k {
+		case "time_unit":
+			timeUnit, ok = v.(string)
 		case "sleep_duration":
 			sleepDuration, ok = v.(int)
 		case "requests_limit":
@@ -87,10 +105,10 @@ func (a *Analyzer) parseAnalyzerParameters(params map[string]interface{}) (int, 
 			timeSlopeErrorRange, ok = v.(float64)
 		}
 		if !ok {
-			return 0, 0, 0, 0, errors.Errorf("invalid parameter type for %s", k)
+			return 0, 0, 0, 0, "", errors.Errorf("invalid parameter type for %s", k)
 		}
 	}
-	return requestsLimit, sleepDuration, timeCorrelationErrorRange, timeSlopeErrorRange, nil
+	return requestsLimit, sleepDuration, timeCorrelationErrorRange, timeSlopeErrorRange, timeUnit, nil
 }
 
 // Analyze is the main function for the analyzer
@@ -100,13 +118,23 @@ func (a *Analyzer) Analyze(options *analyzers.Options) (bool, string, error) {
 	}
 
 	// Parse parameters for this analyzer if any or use default values
-	requestsLimit, sleepDuration, timeCorrelationErrorRange, timeSlopeErrorRange, err :=
+	requestsLimit, sleepDuration, timeCorrelationErrorRange, timeSlopeErrorRange, customUnit, err :=
 		a.parseAnalyzerParameters(options.AnalyzerParameters)
 	if err != nil {
 		return false, "", err
 	}
 
+	// If custom unit is passed, handle it
+	if customUnit != DefaultTimeUnit {
+		sleepDuration = a.handleCustomTimeUnit(customUnit, sleepDuration)
+	}
+
 	reqSender := func(delay int) (float64, error) {
+		// If custom unit is passed, handle it
+		if customUnit != DefaultTimeUnit {
+			delay = a.handleCustomTimeUnit(customUnit, delay)
+		}
+
 		gr := options.FuzzGenerated
 		replaced := strings.ReplaceAll(gr.OriginalPayload, "[SLEEPTIME]", strconv.Itoa(delay))
 		replaced = a.ApplyInitialTransformation(replaced, options.AnalyzerParameters)

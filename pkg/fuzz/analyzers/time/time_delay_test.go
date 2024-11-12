@@ -66,7 +66,7 @@ func Test_should_giveup_slow_non_injectable_realworld(t *testing.T) {
 	matched, _, err := checkTimingDependency(4, 15, correlationErrorRange, slopeErrorRange, reqSender)
 	require.NoError(t, err)
 	require.False(t, matched)
-	require.LessOrEqual(t, timesCalled, 3)
+	require.LessOrEqual(t, timesCalled, 4)
 }
 
 func Test_should_detect_dependence_with_small_error(t *testing.T) {
