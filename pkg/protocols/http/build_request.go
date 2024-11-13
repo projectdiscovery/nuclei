@@ -57,8 +57,7 @@ type generatedRequest struct {
 	// ex: {{BaseURL}}/api/exp?param={{randstr}}
 	requestURLPattern string
 
-	fuzzGeneratedRequest   fuzz.GeneratedRequest
-	analyzerPreReqResponse map[string]interface{}
+	fuzzGeneratedRequest fuzz.GeneratedRequest
 }
 
 // setReqURLPattern sets the url request pattern for the generated request

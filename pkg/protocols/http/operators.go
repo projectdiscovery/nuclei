@@ -170,6 +170,10 @@ func (request *Request) MakeResultEventItem(wrapped *output.InternalWrappedEvent
 	if value, ok := wrapped.InternalEvent["global-matchers"]; ok {
 		isGlobalMatchers = value.(bool)
 	}
+	var analyzerDetails string
+	if value, ok := wrapped.InternalEvent["analyzer_details"]; ok {
+		analyzerDetails = value.(string)
+	}
 	data := &output.ResultEvent{
 		TemplateID:       types.ToString(wrapped.InternalEvent["template-id"]),
 		TemplatePath:     types.ToString(wrapped.InternalEvent["template-path"]),
@@ -193,7 +197,7 @@ func (request *Request) MakeResultEventItem(wrapped *output.InternalWrappedEvent
 		CURLCommand:      types.ToString(wrapped.InternalEvent["curl-command"]),
 		TemplateEncoded:  request.options.EncodeTemplate(),
 		Error:            types.ToString(wrapped.InternalEvent["error"]),
-		AnalyzerDetails:  types.ToString(wrapped.InternalEvent["analyzer_details"]),
+		AnalyzerDetails:  analyzerDetails,
 	}
 	return data
 }

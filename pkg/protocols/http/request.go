@@ -944,7 +944,7 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 			}
 			if analysisMatched {
 				finalEvent["analyzer_details"] = analysisDetails
-				finalEvent["analyzer_matched"] = true
+				finalEvent["analyzer"] = true
 			}
 		}
 
