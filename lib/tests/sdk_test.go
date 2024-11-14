@@ -7,10 +7,11 @@ import (
 	"testing"
 	"time"
 
-	nuclei "github.com/projectdiscovery/nuclei/v3/lib"
 	"github.com/projectdiscovery/utils/env"
 	"github.com/stretchr/testify/require"
 	"github.com/tarunKoyalwar/goleak"
+
+	nuclei "github.com/projectdiscovery/nuclei/v3/lib"
 )
 
 var knownLeaks = []goleak.Option{
@@ -19,6 +20,56 @@ var knownLeaks = []goleak.Option{
 	// net/http transport maintains idle connections which are closed with cooldown
 	// hence they don't count as leaks
 	goleak.IgnoreAnyFunction("net/http.(*http2ClientConn).readLoop"),
+}
+
+func TestMultipleNucleiEngines(t *testing.T) {
+	fn := func() {
+		defer func() {
+			// resources like leveldb have a delay to commit in-memory resources
+			// to disk, typically 1-2 seconds, so we wait for 2 seconds
+			time.Sleep(2 * time.Second)
+			goleak.VerifyNone(t, knownLeaks...)
+		}()
+		firstEngine, firstEngineCreationErr := nuclei.NewNucleiEngineCtx(
+			context.TODO(),
+			nuclei.WithTemplateFilters(nuclei.TemplateFilters{ProtocolTypes: "dns"}), // filter dns templates
+			nuclei.EnableStatsWithOpts(nuclei.StatsOptions{JSON: true}),
+		)
+		secondEngine, secondEngineCreationErr := nuclei.NewNucleiEngineCtx(
+			context.TODO(),
+			nuclei.WithTemplateFilters(nuclei.TemplateFilters{ProtocolTypes: "dns"}), // filter dns templates
+			nuclei.EnableStatsWithOpts(nuclei.StatsOptions{JSON: true}),
+		)
+		require.Nil(t, firstEngineCreationErr)
+		require.Nil(t, secondEngineCreationErr)
+
+		firstEngine.LoadTargets([]string{"scanme.sh"}, false) // probe non http/https target is set to false here
+
+		// when callback is nil it nuclei will print JSON output to stdout
+		executionErr := firstEngine.ExecuteWithCallback(nil)
+		require.Nil(t, executionErr)
+		firstEngine.Close()
+
+		secondEngine.LoadTargets([]string{"scanme.sh"}, false) // probe non http/https target is set to false here
+		executionErr = secondEngine.ExecuteWithCallback(nil)
+		require.Nil(t, executionErr)
+
+		defer firstEngine.Close()
+		defer secondEngine.Close()
+	}
+
+	// this is shared test so needs to be run as seperate process
+	if env.GetEnvOrDefault("TestMultipleNucleiEngines", false) {
+		// run as new process
+		cmd := exec.Command(os.Args[0], "-test.run=TestMultipleNucleiEngines")
+		cmd.Env = append(os.Environ(), "TestMultipleNucleiEngines=true")
+		out, err := cmd.CombinedOutput()
+		if err != nil {
+			t.Fatalf("process ran with error %s, output: %s", err, out)
+		}
+	} else {
+		fn()
+	}
 }
 
 func TestSimpleNuclei(t *testing.T) {
