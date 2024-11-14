@@ -48,7 +48,7 @@ func TestMultipleNucleiEngines(t *testing.T) {
 		// when callback is nil it nuclei will print JSON output to stdout
 		executionErr := firstEngine.ExecuteWithCallback(nil)
 		require.Nil(t, executionErr)
-		firstEngine.Close()
+		firstEngine.CloseInstance()
 
 		secondEngine.LoadTargets([]string{"scanme.sh"}, false) // probe non http/https target is set to false here
 		executionErr = secondEngine.ExecuteWithCallback(nil)
