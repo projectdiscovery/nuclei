@@ -7,6 +7,7 @@ import (
 	"runtime"
 	"strings"
 
+	"github.com/kitabisa/go-ci"
 	"github.com/logrusorgru/aurora"
 
 	"github.com/projectdiscovery/gologger"
@@ -22,10 +23,9 @@ type TestCaseInfo struct {
 }
 
 var (
-	debug        = os.Getenv("DEBUG") == "true"
-	githubAction = os.Getenv("GH_ACTION") == "true"
-	customTests  = os.Getenv("TESTS")
-	protocol     = os.Getenv("PROTO")
+	debug       = os.Getenv("DEBUG") == "true"
+	customTests = os.Getenv("TESTS")
+	protocol    = os.Getenv("PROTO")
 
 	success = aurora.Green("[✓]").String()
 	failed  = aurora.Red("[✘]").String()
@@ -103,7 +103,7 @@ func main() {
 	failedTestTemplatePaths := runTests(customTestsList)
 
 	if len(failedTestTemplatePaths) > 0 {
-		if githubAction {
+		if ci.IsCI() {
 			// run failed tests again assuming they are flaky
 			// if they fail as well only then we assume that there is an actual issue
 			fmt.Println("::group::Running failed tests again")
