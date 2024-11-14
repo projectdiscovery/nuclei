@@ -82,7 +82,7 @@ verify: download
 	$(GOMOD) verify
 
 vet: verify
-	$(GOMOD) vet ./...
+	$(GOCMD) vet ./...
 
 devtools-bindgen: GOBUILD_OUTPUT = ./bin/bindgen
 devtools-bindgen: GOBUILD_PACKAGES = pkg/js/devtools/bindgen/cmd/bindgen/main.go
