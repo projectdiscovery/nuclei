@@ -6,6 +6,10 @@ import (
 	"context"
 	"io"
 
+	"github.com/projectdiscovery/ratelimit"
+	"github.com/projectdiscovery/retryablehttp-go"
+	errorutil "github.com/projectdiscovery/utils/errors"
+
 	"github.com/projectdiscovery/nuclei/v3/pkg/authprovider"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/loader"
@@ -24,9 +28,6 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/templates"
 	"github.com/projectdiscovery/nuclei/v3/pkg/templates/signer"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
-	"github.com/projectdiscovery/ratelimit"
-	"github.com/projectdiscovery/retryablehttp-go"
-	errorutil "github.com/projectdiscovery/utils/errors"
 )
 
 // NucleiSDKOptions contains options for nuclei SDK
@@ -226,9 +227,14 @@ func (e *NucleiEngine) closeInternal() {
 	}
 }
 
+// Close resources of this specific engine
+func (e *NucleiEngine) CloseInstance() {
+	e.closeInternal()
+}
+
 // Close all resources used by nuclei engine
 func (e *NucleiEngine) Close() {
-	e.closeInternal()
+	e.CloseInstance()
 	protocolinit.Close()
 }
 
