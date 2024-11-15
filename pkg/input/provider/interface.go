@@ -14,6 +14,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/generators"
 	configTypes "github.com/projectdiscovery/nuclei/v3/pkg/types"
 	errorutil "github.com/projectdiscovery/utils/errors"
+	stringsutil "github.com/projectdiscovery/utils/strings"
 )
 
 var (
@@ -32,7 +33,7 @@ func IsErrNotImplemented(err error) bool {
 	if err == nil {
 		return false
 	}
-	if strings.Contains(err.Error(), "provider") && strings.Contains(err.Error(), "does not implement") {
+	if stringsutil.ContainsAll(err.Error(), "provider", "does not implement") {
 		return true
 	}
 	return false
@@ -120,7 +121,7 @@ func NewInputProvider(opts InputOptions) (InputProvider, error) {
 	}
 }
 
-// SupportedFormats returns all supported input formats of nuclei
+// SupportedInputFormats returns all supported input formats of nuclei
 func SupportedInputFormats() string {
 	return "list, " + http.SupportedFormats()
 }

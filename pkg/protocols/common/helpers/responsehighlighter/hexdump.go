@@ -44,7 +44,8 @@ func toHighLightedHexDump(hexDump, snippetToHighlight string) (HighlightableHexD
 	hexDumpRowValues := hexDumpParsePattern.FindAllStringSubmatch(hexDump, -1)
 	if hexDumpRowValues == nil || len(hexDumpRowValues) != strings.Count(hexDump, "\n") {
 		message := "could not parse hexdump"
-		gologger.Warning().Msgf(message)
+		gologger.Warning().Msg(message)
+
 		return HighlightableHexDump{}, errors.New(message)
 	}
 

@@ -392,10 +392,30 @@ func WithHeaders(headers []string) NucleiSDKOptions {
 	}
 }
 
+// WithVars allows setting custom variables to use in templates/workflows context
+func WithVars(vars []string) NucleiSDKOptions {
+	// Create a goflags.RuntimeMap
+	runtimeVars := goflags.RuntimeMap{}
+	for _, v := range vars {
+		err := runtimeVars.Set(v)
+		if err != nil {
+			return func(e *NucleiEngine) error {
+				return err
+			}
+		}
+	}
+
+	return func(e *NucleiEngine) error {
+		e.opts.Vars = runtimeVars
+		return nil
+	}
+}
+
 // EnablePassiveMode allows enabling passive HTTP response processing mode
 func EnablePassiveMode() NucleiSDKOptions {
 	return func(e *NucleiEngine) error {
 		e.opts.OfflineHTTP = true
+		e.opts.DisableHTTPProbe = true
 		return nil
 	}
 }
@@ -437,6 +457,14 @@ func SignedTemplatesOnly() NucleiSDKOptions {
 func WithCatalog(cat catalog.Catalog) NucleiSDKOptions {
 	return func(e *NucleiEngine) error {
 		e.catalog = cat
+		return nil
+	}
+}
+
+// DisableUpdateCheck disables nuclei update check
+func DisableUpdateCheck() NucleiSDKOptions {
+	return func(e *NucleiEngine) error {
+		DefaultConfig.DisableUpdateCheck()
 		return nil
 	}
 }

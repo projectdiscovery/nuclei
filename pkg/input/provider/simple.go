@@ -43,7 +43,9 @@ func (s *SimpleInputProvider) Iterate(callback func(value *contextargs.MetaInput
 
 // Set adds an item to the input provider
 func (s *SimpleInputProvider) Set(value string) {
-	s.Inputs = append(s.Inputs, &contextargs.MetaInput{Input: value})
+	metaInput := contextargs.NewMetaInput()
+	metaInput.Input = value
+	s.Inputs = append(s.Inputs, metaInput)
 }
 
 // SetWithProbe adds an item to the input provider with HTTP probing
@@ -52,13 +54,17 @@ func (s *SimpleInputProvider) SetWithProbe(value string, probe types.InputLivene
 	if err != nil {
 		return err
 	}
-	s.Inputs = append(s.Inputs, &contextargs.MetaInput{Input: probedValue})
+	metaInput := contextargs.NewMetaInput()
+	metaInput.Input = probedValue
+	s.Inputs = append(s.Inputs, metaInput)
 	return nil
 }
 
 // SetWithExclusions adds an item to the input provider if it doesn't match any of the exclusions
 func (s *SimpleInputProvider) SetWithExclusions(value string) error {
-	s.Inputs = append(s.Inputs, &contextargs.MetaInput{Input: value})
+	metaInput := contextargs.NewMetaInput()
+	metaInput.Input = value
+	s.Inputs = append(s.Inputs, metaInput)
 	return nil
 }
 

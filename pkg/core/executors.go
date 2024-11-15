@@ -27,7 +27,7 @@ func (e *Engine) executeAllSelfContained(ctx context.Context, alltemplates []*te
 			var match bool
 			ctx := scan.NewScanContext(ctx, contextargs.New(ctx))
 			if e.Callback != nil {
-				if results, err := template.Executer.ExecuteWithResults(ctx); err != nil {
+				if results, err := template.Executer.ExecuteWithResults(ctx); err == nil {
 					for _, result := range results {
 						e.Callback(result)
 					}
@@ -107,7 +107,7 @@ func (e *Engine) executeTemplateWithTargets(ctx context.Context, template *templ
 		currentInfo.Unlock()
 
 		// Skip if the host has had errors
-		if e.executerOpts.HostErrorsCache != nil && e.executerOpts.HostErrorsCache.Check(contextargs.NewWithMetaInput(ctx, scannedValue)) {
+		if e.executerOpts.HostErrorsCache != nil && e.executerOpts.HostErrorsCache.Check(e.executerOpts.ProtocolType.String(), contextargs.NewWithMetaInput(ctx, scannedValue)) {
 			return true
 		}
 
@@ -129,7 +129,7 @@ func (e *Engine) executeTemplateWithTargets(ctx context.Context, template *templ
 				match = e.executeWorkflow(ctx, template.CompiledWorkflow)
 			default:
 				if e.Callback != nil {
-					if results, err := template.Executer.ExecuteWithResults(ctx); err != nil {
+					if results, err := template.Executer.ExecuteWithResults(ctx); err == nil {
 						for _, result := range results {
 							e.Callback(result)
 						}
@@ -194,7 +194,7 @@ func (e *Engine) executeTemplatesOnTarget(ctx context.Context, alltemplates []*t
 				match = e.executeWorkflow(ctx, template.CompiledWorkflow)
 			default:
 				if e.Callback != nil {
-					if results, err := template.Executer.ExecuteWithResults(ctx); err != nil {
+					if results, err := template.Executer.ExecuteWithResults(ctx); err == nil {
 						for _, result := range results {
 							e.Callback(result)
 						}

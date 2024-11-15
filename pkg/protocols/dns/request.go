@@ -3,7 +3,6 @@ package dns
 import (
 	"encoding/hex"
 	"fmt"
-	"net/url"
 	"strings"
 	"sync"
 
@@ -23,7 +22,6 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/utils/vardump"
 	protocolutils "github.com/projectdiscovery/nuclei/v3/pkg/protocols/utils"
 	templateTypes "github.com/projectdiscovery/nuclei/v3/pkg/templates/types"
-	"github.com/projectdiscovery/nuclei/v3/pkg/utils"
 	"github.com/projectdiscovery/retryabledns"
 	iputil "github.com/projectdiscovery/utils/ip"
 	syncutil "github.com/projectdiscovery/utils/sync"
@@ -38,16 +36,8 @@ func (request *Request) Type() templateTypes.ProtocolType {
 
 // ExecuteWithResults executes the protocol requests and returns results instead of writing them.
 func (request *Request) ExecuteWithResults(input *contextargs.Context, metadata, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
-	// Parse the URL and return domain if URL.
-	var domain string
-	if utils.IsURL(input.MetaInput.Input) {
-		domain = extractDomain(input.MetaInput.Input)
-	} else {
-		domain = input.MetaInput.Input
-	}
-
 	var err error
-	domain, err = request.parseDNSInput(domain)
+	domain, err := request.parseDNSInput(input.MetaInput.Input)
 	if err != nil {
 		return errors.Wrap(err, "could not build request")
 	}
@@ -116,9 +106,9 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, metadata,
 }
 
 func (request *Request) execute(input *contextargs.Context, domain string, metadata, previous output.InternalEvent, vars map[string]interface{}, callback protocols.OutputEventCallback) error {
-
+	var err error
 	if vardump.EnableVarDump {
-		gologger.Debug().Msgf("DNS Protocol request variables: \n%s\n", vardump.DumpVariables(vars))
+		gologger.Debug().Msgf("DNS Protocol request variables: %s\n", vardump.DumpVariables(vars))
 	}
 
 	// Compile each request for the template based on the URL
@@ -152,7 +142,7 @@ func (request *Request) execute(input *contextargs.Context, domain string, metad
 	if request.options.Options.Debug || request.options.Options.DebugRequests || request.options.Options.StoreResponse {
 		msg := fmt.Sprintf("[%s] Dumped DNS request for %s", request.options.TemplateID, question)
 		if request.options.Options.Debug || request.options.Options.DebugRequests {
-			gologger.Info().Str("domain", domain).Msgf(msg)
+			gologger.Info().Str("domain", domain).Msg(msg)
 			gologger.Print().Msgf("%s", requestString)
 		}
 		if request.options.Options.StoreResponse {
@@ -209,7 +199,7 @@ func (request *Request) execute(input *contextargs.Context, domain string, metad
 	}
 
 	callback(event)
-	return nil
+	return err
 }
 
 func (request *Request) parseDNSInput(host string) (string, error) {
@@ -230,7 +220,7 @@ func (request *Request) parseDNSInput(host string) (string, error) {
 	return host, nil
 }
 
-func dumpResponse(event *output.InternalWrappedEvent, request *Request, requestOptions *protocols.ExecutorOptions, response, domain string) {
+func dumpResponse(event *output.InternalWrappedEvent, request *Request, _ *protocols.ExecutorOptions, response, domain string) {
 	cliOptions := request.options.Options
 	if cliOptions.Debug || cliOptions.DebugResponse || cliOptions.StoreResponse {
 		hexDump := false
@@ -260,13 +250,4 @@ func dumpTraceData(event *output.InternalWrappedEvent, requestOptions *protocols
 		highlightedResponse := responsehighlighter.Highlight(event.OperatorsResult, traceData, cliOptions.NoColor, hexDump)
 		gologger.Debug().Msgf("[%s] Dumped DNS Trace data for %s\n\n%s", requestOptions.TemplateID, domain, highlightedResponse)
 	}
-}
-
-// extractDomain extracts the domain name of a URL
-func extractDomain(theURL string) string {
-	u, err := url.Parse(theURL)
-	if err != nil {
-		return ""
-	}
-	return u.Hostname()
 }

@@ -10,6 +10,7 @@ import (
 	"github.com/dop251/goja"
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/js/compiler"
+	"github.com/projectdiscovery/nuclei/v3/pkg/operators"
 	"github.com/projectdiscovery/nuclei/v3/pkg/operators/common/dsl"
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
@@ -19,6 +20,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/tmplexec/flow"
 	"github.com/projectdiscovery/nuclei/v3/pkg/tmplexec/generic"
 	"github.com/projectdiscovery/nuclei/v3/pkg/tmplexec/multiproto"
+	"github.com/projectdiscovery/utils/errkit"
 )
 
 // TemplateExecutor is an executor for a template
@@ -68,8 +70,10 @@ func (e *TemplateExecuter) Compile() error {
 				if cliOptions.Verbose {
 					rawErrorMessage := dslCompilationError.Error()
 					formattedErrorMessage := strings.ToUpper(rawErrorMessage[:1]) + rawErrorMessage[1:] + "."
-					gologger.Warning().Msgf(formattedErrorMessage)
+
+					gologger.Warning().Msg(formattedErrorMessage)
 					gologger.Info().Msgf("The available custom DSL functions are:")
+
 					fmt.Println(dsl.GetPrintableDslFunctionSignatures(cliOptions.NoColor))
 				}
 			}
@@ -124,6 +128,8 @@ func (e *TemplateExecuter) Execute(ctx *scan.ScanContext) (bool, error) {
 	executed := &atomic.Bool{}
 	// matched in this case means something was exported / written to output
 	matched := &atomic.Bool{}
+	// callbackCalled tracks if the callback was called or not
+	callbackCalled := &atomic.Bool{}
 	defer func() {
 		// it is essential to remove template context of `Scan i.e template x input pair`
 		// since it is of no use after scan is completed (regardless of success or failure)
@@ -141,6 +147,7 @@ func (e *TemplateExecuter) Execute(ctx *scan.ScanContext) (bool, error) {
 	}
 
 	ctx.OnResult = func(event *output.InternalWrappedEvent) {
+		callbackCalled.Store(true)
 		if event == nil {
 			// something went wrong
 			return
@@ -167,7 +174,15 @@ func (e *TemplateExecuter) Execute(ctx *scan.ScanContext) (bool, error) {
 		if !event.HasOperatorResult() && event.InternalEvent != nil {
 			lastMatcherEvent = event
 		} else {
-			if writer.WriteResult(event, e.options.Output, e.options.Progress, e.options.IssuesClient) {
+			var isGlobalMatchers bool
+			isGlobalMatchers, _ = event.InternalEvent["global-matchers"].(bool)
+			// NOTE(dwisiswant0): Don't store `matched` on a `global-matchers` template.
+			// This will end up generating 2 events from the same `scan.ScanContext` if
+			// one of the templates has `global-matchers` enabled. This way,
+			// non-`global-matchers` templates can enter the `writeFailureCallback`
+			// func to log failure output.
+			wr := writer.WriteResult(event, e.options.Output, e.options.Progress, e.options.IssuesClient)
+			if wr && !isGlobalMatchers {
 				matched.Store(true)
 			} else {
 				lastMatcherEvent = event
@@ -196,11 +211,60 @@ func (e *TemplateExecuter) Execute(ctx *scan.ScanContext) (bool, error) {
 	} else {
 		errx = e.engine.ExecuteWithResults(ctx)
 	}
+	ctx.LogError(errx)
 
 	if lastMatcherEvent != nil {
+		lastMatcherEvent.Lock()
+		lastMatcherEvent.InternalEvent["error"] = getErrorCause(ctx.GenerateErrorMessage())
+		lastMatcherEvent.Unlock()
 		writeFailureCallback(lastMatcherEvent, e.options.Options.MatcherStatus)
 	}
+
+	//TODO: this is a hacky way to handle the case where the callback is not called and matcher-status is true.
+	// This is a workaround and needs to be refactored.
+	// Check if callback was never called and matcher-status is true
+	if !callbackCalled.Load() && e.options.Options.MatcherStatus {
+		fakeEvent := &output.InternalWrappedEvent{
+			Results: []*output.ResultEvent{
+				{
+					TemplateID: e.options.TemplateID,
+					Info:       e.options.TemplateInfo,
+					Type:       e.getTemplateType(),
+					Host:       ctx.Input.MetaInput.Input,
+					Error:      getErrorCause(ctx.GenerateErrorMessage()),
+				},
+			},
+			OperatorsResult: &operators.Result{
+				Matched: false,
+			},
+		}
+		writeFailureCallback(fakeEvent, e.options.Options.MatcherStatus)
+	}
+
 	return executed.Load() || matched.Load(), errx
+}
+
+// getErrorCause tries to parse the cause of given error
+// this is legacy support due to use of errorutil in existing libraries
+// but this should not be required once all libraries are updated
+func getErrorCause(err error) string {
+	if err == nil {
+		return ""
+	}
+	errx := errkit.FromError(err)
+	var cause error
+	for _, e := range errx.Errors() {
+		if e != nil && strings.Contains(e.Error(), "context deadline exceeded") {
+			continue
+		}
+		cause = e
+		break
+	}
+	if cause == nil {
+		cause = errkit.Append(errkit.New("could not get error cause"), errx)
+	}
+	// parseScanError prettifies the error message and removes everything except the cause
+	return parseScanError(cause.Error())
 }
 
 // ExecuteWithResults executes the protocol requests and returns results instead of writing them.

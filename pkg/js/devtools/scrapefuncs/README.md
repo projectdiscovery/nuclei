@@ -42,7 +42,11 @@ Description: getNetworkPort registers defaultPort and returns defaultPort if it 
 
 Name: isPortOpen
 Signatures: "isPortOpen(host string, port string, [timeout int]) bool"
-Description: isPortOpen checks if given port is open on host. timeout is optional and defaults to 5 seconds
+Description: isPortOpen checks if given TCP port is open on host. timeout is optional and defaults to 5 seconds
+
+Name: isUDPPortOpen
+Signatures: "isUDPPortOpen(host string, port string, [timeout int]) bool"
+Description: isUDPPortOpen checks if the given UDP port is open on the host. Timeout is optional and defaults to 5 seconds.
 
 Name: ToBytes
 Signatures: "ToBytes(...interface{}) []byte"

@@ -90,9 +90,9 @@ func (g *generatedRequest) ApplyAuth(provider authprovider.AuthProvider) {
 		return
 	}
 	if g.request != nil {
-		auth := provider.LookupURLX(g.request.URL)
-		if auth != nil {
-			auth.ApplyOnRR(g.request)
+		authStrategies := provider.LookupURLX(g.request.URL)
+		for _, strategy := range authStrategies {
+			strategy.ApplyOnRR(g.request)
 		}
 	}
 	if g.rawRequest != nil {
@@ -101,11 +101,11 @@ func (g *generatedRequest) ApplyAuth(provider authprovider.AuthProvider) {
 			gologger.Warning().Msgf("[authprovider] Could not parse URL %s: %s\n", g.rawRequest.FullURL, err)
 			return
 		}
-		auth := provider.LookupURLX(parsed)
-		if auth != nil {
-			// here we need to apply it custom because we don't have a standard/official
-			// rawhttp request format ( which we probably should have )
-			g.rawRequest.ApplyAuthStrategy(auth)
+		authStrategies := provider.LookupURLX(parsed)
+		// here we need to apply it custom because we don't have a standard/official
+		// rawhttp request format ( which we probably should have )
+		for _, strategy := range authStrategies {
+			g.rawRequest.ApplyAuthStrategy(strategy)
 		}
 	}
 }
@@ -204,7 +204,7 @@ func (r *requestGenerator) Make(ctx context.Context, input *contextargs.Context,
 	finalVars := generators.MergeMaps(allVars, payloads)
 
 	if vardump.EnableVarDump {
-		gologger.Debug().Msgf("HTTP Protocol request variables: \n%s\n", vardump.DumpVariables(finalVars))
+		gologger.Debug().Msgf("HTTP Protocol request variables: %s\n", vardump.DumpVariables(finalVars))
 	}
 
 	// Note: If possible any changes to current logic (i.e evaluate -> then parse URL)

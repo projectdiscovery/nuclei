@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net"
 	"strings"
+	"sync"
 
 	jsoniter "github.com/json-iterator/go"
 	"github.com/projectdiscovery/nuclei/v3/pkg/input/types"
@@ -24,6 +25,12 @@ type MetaInput struct {
 
 	// ReqResp is the raw request for the input
 	ReqResp *types.RequestResponse `json:"raw-request,omitempty"`
+
+	mu *sync.Mutex
+}
+
+func NewMetaInput() *MetaInput {
+	return &MetaInput{mu: &sync.Mutex{}}
 }
 
 func (metaInput *MetaInput) marshalToBuffer() (bytes.Buffer, error) {
@@ -135,10 +142,10 @@ func (metaInput *MetaInput) Unmarshal(data string) error {
 }
 
 func (metaInput *MetaInput) Clone() *MetaInput {
-	input := &MetaInput{
-		Input:    metaInput.Input,
-		CustomIP: metaInput.CustomIP,
-	}
+	input := NewMetaInput()
+	input.Input = metaInput.Input
+	input.CustomIP = metaInput.CustomIP
+	input.hash = metaInput.hash
 	if metaInput.ReqResp != nil {
 		input.ReqResp = metaInput.ReqResp.Clone()
 	}
@@ -160,6 +167,9 @@ func (metaInput *MetaInput) GetScanHash(templateId string) string {
 	// there may be some cases where metainput is changed ex: while executing self-contained template etc
 	// but that totally changes the scanID/hash so to avoid that we compute hash only once
 	// and reuse it for all subsequent calls
+	metaInput.mu.Lock()
+	defer metaInput.mu.Unlock()
+
 	if metaInput.hash == "" {
 		var rawRequest string
 		if metaInput.ReqResp != nil {

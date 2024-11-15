@@ -247,7 +247,12 @@
         "time",
         "select",
         "files",
+        "waitdom",
+        "waitfcp",
+        "waitfmp",
+        "waitidle",
         "waitload",
+        "waitstable",
         "getresource",
         "extract",
         "setmethod",
@@ -256,6 +261,7 @@
         "deleteheader",
         "setbody",
         "waitevent",
+        "waitdialog",
         "keyboard",
         "debug",
         "sleep",
@@ -787,6 +793,11 @@
           "title": "signature is the http request signature method",
           "description": "Signature is the HTTP Request signature Method"
         },
+        "skip-secret-file": {
+          "type": "boolean",
+          "title": "bypass secret file",
+          "description": "Skips the authentication or authorization configured in the secret file"
+        },
         "cookie-reuse": {
           "type": "boolean",
           "title": "optional cookie reuse enable",
@@ -878,6 +889,11 @@
           ],
           "title": "condition between the filters",
           "description": "Operator to use between multiple per-conditions"
+        },
+        "global-matchers": {
+          "type": "boolean",
+          "title": "global matchers",
+          "description": "marks matchers as static and applies globally to all result events from other templates"
         }
       },
       "additionalProperties": false,
@@ -940,11 +956,6 @@
           "type": "string",
           "title": "code to execute in javascript",
           "description": "Executes inline javascript code for the request"
-        },
-        "timeout": {
-          "type": "integer",
-          "title": "timeout for javascript execution",
-          "description": "Timeout in seconds is optional timeout for entire javascript script execution"
         },
         "stop-at-first-match": {
           "type": "boolean",
@@ -1358,6 +1369,11 @@
           "type": "boolean",
           "title": "read all response stream",
           "description": "Read all response stream till the server stops sending"
+        },
+        "stop-at-first-match": {
+          "type": "boolean",
+          "title": "stop at first match",
+          "description": "Stop the execution after a match is found"
         },
         "matchers": {
           "items": {

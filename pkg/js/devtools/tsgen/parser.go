@@ -489,7 +489,7 @@ func (p *EntityParser) extractVarsNConstants() {
 					if !spec.Names[0].IsExported() {
 						continue
 					}
-					if spec.Values == nil || len(spec.Values) == 0 {
+					if len(spec.Values) == 0 {
 						continue
 					}
 					// get comments or description

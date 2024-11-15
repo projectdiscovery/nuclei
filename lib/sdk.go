@@ -100,6 +100,7 @@ func (e *NucleiEngine) LoadAllTemplates() error {
 		return errorutil.New("Could not create loader client: %s\n", err)
 	}
 	e.store.Load()
+	e.templatesLoaded = true
 	return nil
 }
 
@@ -109,6 +110,14 @@ func (e *NucleiEngine) GetTemplates() []*templates.Template {
 		_ = e.LoadAllTemplates()
 	}
 	return e.store.Templates()
+}
+
+// GetWorkflows returns all nuclei workflows that are loaded
+func (e *NucleiEngine) GetWorkflows() []*templates.Template {
+	if !e.templatesLoaded {
+		_ = e.LoadAllTemplates()
+	}
+	return e.store.Workflows()
 }
 
 // LoadTargets(urls/domains/ips only) adds targets to the nuclei engine
@@ -178,7 +187,8 @@ func (e *NucleiEngine) SignTemplate(tmplSigner *signer.TemplateSigner, data []by
 	if err != nil {
 		return data, err
 	}
-	buff := bytes.NewBuffer(signer.RemoveSignatureFromData(data))
+	_, content := signer.ExtractSignatureAndContent(data)
+	buff := bytes.NewBuffer(content)
 	buff.WriteString("\n" + signatureData)
 	return buff.Bytes(), err
 }
@@ -243,7 +253,12 @@ func (e *NucleiEngine) ExecuteCallbackWithCtx(ctx context.Context, callback ...f
 	}
 	e.resultCallbacks = append(e.resultCallbacks, filtered...)
 
-	_ = e.engine.ExecuteScanWithOpts(ctx, e.store.Templates(), e.inputProvider, false)
+	templatesAndWorkflows := append(e.store.Templates(), e.store.Workflows()...)
+	if len(templatesAndWorkflows) == 0 {
+		return ErrNoTemplatesAvailable
+	}
+
+	_ = e.engine.ExecuteScanWithOpts(ctx, templatesAndWorkflows, e.inputProvider, false)
 	defer e.engine.WorkPool().Wait()
 	return nil
 }
@@ -262,6 +277,11 @@ func (e *NucleiEngine) Options() *types.Options {
 // Engine returns core Executer of nuclei
 func (e *NucleiEngine) Engine() *core.Engine {
 	return e.engine
+}
+
+// Store returns store of nuclei
+func (e *NucleiEngine) Store() *loader.Store {
+	return e.store
 }
 
 // NewNucleiEngineCtx creates a new nuclei engine instance with given context
