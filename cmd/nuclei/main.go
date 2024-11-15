@@ -13,6 +13,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/logrusorgru/aurora"
 	_pdcp "github.com/projectdiscovery/nuclei/v3/internal/pdcp"
 	"github.com/projectdiscovery/utils/auth/pdcp"
 	"github.com/projectdiscovery/utils/env"
@@ -143,6 +144,13 @@ func main() {
 
 	runner.ParseOptions(options)
 
+	// Omit self-contained and file protocol templates since they are unnecessary for standard web scans.
+	if options.Templates == nil && options.TemplateURLs == nil && options.Workflows == nil && options.WorkflowURLs == nil {
+		options.DisableSelfContained = true
+		options.ExcludeProtocols = append(options.ExcludeProtocols, templateTypes.FileProtocol)
+		gologger.Print().Msgf("[%v] Excluded self-contained and file protocol templates (disabled as default), use -t, -turl, -w, -wurl options to run them.", aurora.BrightYellow("WRN"))
+	}
+
 	if options.ScanUploadFile != "" {
 		if err := runner.UploadResultsToCloud(options); err != nil {
 			gologger.Fatal().Msgf("could not upload scan results to cloud dashboard: %s\n", err)
@@ -263,6 +271,7 @@ on extensive configurability, massive extensibility and ease of use.`)
 		flagSet.BoolVar(&options.SignTemplates, "sign", false, "signs the templates with the private key defined in NUCLEI_SIGNATURE_PRIVATE_KEY env variable"),
 		flagSet.BoolVar(&options.EnableCodeTemplates, "code", false, "enable loading code protocol-based templates"),
 		flagSet.BoolVarP(&options.DisableUnsignedTemplates, "disable-unsigned-templates", "dut", false, "disable running unsigned templates or templates with mismatched signature"),
+		flagSet.BoolVarP(&options.DisableSelfContained, "disable-self-contained", "dsc", false, "disable loading self-contained templates"),
 	)
 
 	flagSet.CreateGroup("filters", "Filtering",

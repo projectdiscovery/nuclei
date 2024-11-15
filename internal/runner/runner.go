@@ -731,6 +731,8 @@ func (r *Runner) displayExecutionInfo(store *loader.Store) {
 		stats.ForceDisplayWarning(templates.ExludedDastTmplStats)
 		stats.ForceDisplayWarning(templates.TemplatesExcludedStats)
 	}
+	stats.ForceDisplayWarning(templates.ExcludedFileStats)
+	stats.ForceDisplayWarning(templates.ExcludedSelfContainedStats)
 
 	if tmplCount == 0 && workflowCount == 0 {
 		// if dast flag is used print explicit warning

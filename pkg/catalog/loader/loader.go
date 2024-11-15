@@ -5,6 +5,7 @@ import (
 	"io"
 	"net/url"
 	"os"
+	"slices"
 	"sort"
 	"strings"
 	"sync"
@@ -489,6 +490,17 @@ func (store *Store) LoadTemplatesWithTags(templatesList, tags []string) []*templ
 						stats.Increment(templates.SkippedUnsignedStats)
 						return
 					}
+
+					if parsed.SelfContained && store.config.ExecutorOptions.Options.DisableSelfContained {
+						stats.Increment(templates.ExcludedSelfContainedStats)
+						return
+					}
+
+					if parsed.HasFileProtocol() && slices.Contains(store.config.ExecutorOptions.Options.ExcludeProtocols, templateTypes.FileProtocol) {
+						stats.Increment(templates.ExcludedFileStats)
+						return
+					}
+
 					// if template has request signature like aws then only signed and verified templates are allowed
 					if parsed.UsesRequestSignature() && !parsed.Verified {
 						stats.Increment(templates.SkippedRequestSignatureStats)
