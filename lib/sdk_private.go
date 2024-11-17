@@ -130,6 +130,14 @@ func (e *NucleiEngine) init(ctx context.Context) error {
 	e.applyRequiredDefaults(ctx)
 	var err error
 
+	if e.opts.ProxyInternal && types.ProxyURL != "" || types.ProxySocksURL != "" {
+		httpclient, err := httpclientpool.Get(e.opts, &httpclientpool.Configuration{})
+		if err != nil {
+			return err
+		}
+		e.httpClient = httpclient
+	}
+
 	// setup progressbar
 	if e.enableStats {
 		progressInstance, progressErr := progress.NewStatsTicker(e.opts.StatsInterval, e.enableStats, e.opts.StatsJSON, false, e.opts.MetricsPort)
