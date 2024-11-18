@@ -3,6 +3,8 @@ package runner
 import (
 	"context"
 	"fmt"
+	"os"
+	"strings"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/authprovider/authx"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog"
@@ -75,7 +77,16 @@ func GetLazyAuthFetchCallback(opts *AuthLazyFetchOptions) authx.LazyFetchSecret 
 		vars := map[string]interface{}{}
 		mainCtx := context.Background()
 		ctx := scan.NewScanContext(mainCtx, contextargs.NewWithInput(mainCtx, d.Input))
+
 		for _, v := range d.Variables {
+			//  Check if the template has any env variables and expand them
+			if strings.HasPrefix(v.Value, "$") {
+				env := strings.TrimPrefix(v.Value, "$")
+				retrievedEnv := os.Getenv(env)
+				if retrievedEnv != "" {
+					v.Value = os.Getenv(env)
+				}
+			}
 			vars[v.Key] = v.Value
 			ctx.Input.Add(v.Key, v.Value)
 		}
