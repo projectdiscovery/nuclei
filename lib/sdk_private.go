@@ -31,7 +31,6 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http/httpclientpool"
 	"github.com/projectdiscovery/nuclei/v3/pkg/reporting"
 	"github.com/projectdiscovery/nuclei/v3/pkg/templates"
-	templateTypes "github.com/projectdiscovery/nuclei/v3/pkg/templates/types"
 	"github.com/projectdiscovery/nuclei/v3/pkg/testutils"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	nucleiUtils "github.com/projectdiscovery/nuclei/v3/pkg/utils"
@@ -105,13 +104,6 @@ func (e *NucleiEngine) init(ctx context.Context) error {
 		gologger.DefaultLogger.SetMaxLevel(levels.LevelDebug)
 	} else if e.opts.Silent {
 		gologger.DefaultLogger.SetMaxLevel(levels.LevelSilent)
-	}
-
-	// Omit self-contained and file protocol templates since they are unnecessary for standard web scans.
-	if e.opts.Templates == nil && e.opts.TemplateURLs == nil && e.opts.Workflows == nil && e.opts.WorkflowURLs == nil {
-		e.opts.DisableSelfContained = true
-		e.opts.ExcludeProtocols = append(e.opts.ExcludeProtocols, templateTypes.FileProtocol)
-		gologger.Print().Msgf("[%v] Excluded self-contained and file protocol templates (disabled as default), use -t, -turl, -w, -wurl options to run them.", aurora.BrightYellow("WRN"))
 	}
 
 	if err := runner.ValidateOptions(e.opts); err != nil {

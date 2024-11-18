@@ -383,8 +383,10 @@ type Options struct {
 	EnableCodeTemplates bool
 	// DisableUnsignedTemplates disables processing of unsigned templates
 	DisableUnsignedTemplates bool
-	// DisableSelfContained disables processing of self-contained templates
-	DisableSelfContained bool
+	// EnableSelfContainedTemplates disables processing of self-contained templates
+	EnableSelfContainedTemplates bool
+	// EnableFileTemplates enables file templates
+	EnableFileTemplates bool
 	// Disables cloud upload
 	EnableCloudUpload bool
 	// ScanID is the scan ID to use for cloud upload

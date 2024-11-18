@@ -5,7 +5,6 @@ import (
 	"io"
 	"net/url"
 	"os"
-	"slices"
 	"sort"
 	"strings"
 	"sync"
@@ -491,12 +490,12 @@ func (store *Store) LoadTemplatesWithTags(templatesList, tags []string) []*templ
 						return
 					}
 
-					if parsed.SelfContained && store.config.ExecutorOptions.Options.DisableSelfContained {
+					if parsed.SelfContained && !store.config.ExecutorOptions.Options.EnableSelfContainedTemplates {
 						stats.Increment(templates.ExcludedSelfContainedStats)
 						return
 					}
 
-					if parsed.HasFileProtocol() && slices.Contains(store.config.ExecutorOptions.Options.ExcludeProtocols, templateTypes.FileProtocol) {
+					if parsed.HasFileProtocol() && !store.config.ExecutorOptions.Options.EnableFileTemplates {
 						stats.Increment(templates.ExcludedFileStats)
 						return
 					}
