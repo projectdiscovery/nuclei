@@ -137,7 +137,7 @@ func TestFlowWithConditionPositive(t *testing.T) {
 	err = Template.Executer.Compile()
 	require.Nil(t, err, "could not compile template")
 
-	input := contextargs.NewWithInput(context.Background(), "https://cloud.projectdiscovery.io")
+	input := contextargs.NewWithInput(context.Background(), "cloud.projectdiscovery.io")
 	ctx := scan.NewScanContext(context.Background(), input)
 	// positive match . expect results also verify that both dns() and http() were executed
 	gotresults, err := Template.Executer.Execute(ctx)
@@ -158,7 +158,7 @@ func TestFlowWithNoMatchers(t *testing.T) {
 	err = Template.Executer.Compile()
 	require.Nil(t, err, "could not compile template")
 
-	anotherInput := contextargs.NewWithInput(context.Background(), "http://scanme.sh")
+	anotherInput := contextargs.NewWithInput(context.Background(), "cloud.projectdiscovery.io")
 	anotherCtx := scan.NewScanContext(context.Background(), anotherInput)
 	// positive match . expect results also verify that both dns() and http() were executed
 	gotresults, err := Template.Executer.Execute(anotherCtx)
@@ -174,7 +174,7 @@ func TestFlowWithNoMatchers(t *testing.T) {
 		err = Template.Executer.Compile()
 		require.Nil(t, err, "could not compile template")
 
-		input := contextargs.NewWithInput(context.Background(), "http://scanme.sh")
+		input := contextargs.NewWithInput(context.Background(), "scanme.sh")
 		ctx := scan.NewScanContext(context.Background(), input)
 		// positive match . expect results also verify that both dns() and http() were executed
 		gotresults, err := Template.Executer.Execute(ctx)
