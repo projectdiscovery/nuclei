@@ -138,8 +138,10 @@ getRepo:
 // download the git repo to a given path
 func (ctr *customTemplateGitHubRepo) cloneRepo(clonePath, githubToken string) error {
 	r, err := git.PlainClone(clonePath, false, &git.CloneOptions{
-		URL:  ctr.gitCloneURL,
-		Auth: getAuth(ctr.owner, githubToken),
+		URL:          ctr.gitCloneURL,
+		Auth:         getAuth(ctr.owner, githubToken),
+		SingleBranch: true,
+		Depth:        1,
 	})
 	if err != nil {
 		return errors.Errorf("%s/%s: %s", ctr.owner, ctr.reponame, err.Error())
@@ -160,7 +162,12 @@ func (ctr *customTemplateGitHubRepo) pullChanges(repoPath, githubToken string) e
 	if err != nil {
 		return err
 	}
-	err = w.Pull(&git.PullOptions{RemoteName: "origin", Auth: getAuth(ctr.owner, githubToken)})
+	err = w.Pull(&git.PullOptions{
+		RemoteName:   "origin",
+		Auth:         getAuth(ctr.owner, githubToken),
+		SingleBranch: true,
+		Depth:        1,
+	})
 	if err != nil {
 		return errors.Errorf("%s/%s: %s", ctr.owner, ctr.reponame, err.Error())
 	}
