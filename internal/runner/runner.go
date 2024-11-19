@@ -393,6 +393,9 @@ func (r *Runner) Close() {
 	if r.tmpDir != "" {
 		_ = os.RemoveAll(r.tmpDir)
 	}
+
+	//this is no-op unless nuclei is built with stats build tag
+	events.Close()
 }
 
 // setupPDCPUpload sets up the PDCP upload writer

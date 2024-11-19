@@ -8,6 +8,7 @@ import (
 	"sync"
 
 	"github.com/andygrunwald/go-jira"
+	"github.com/pkg/errors"
 	"github.com/trivago/tgo/tcontainer"
 
 	"github.com/projectdiscovery/gologger"
@@ -241,18 +242,22 @@ func (i *Integration) CreateIssue(event *output.ResultEvent) (*filters.CreateIss
 	if i.options.UpdateExisting {
 		issue, err := i.FindExistingIssue(event)
 		if err != nil {
-			return nil, err
+			return nil, errors.Wrap(err, "could not find existing issue")
 		} else if issue.ID != "" {
 			_, _, err = i.jira.Issue.AddComment(issue.ID, &jira.Comment{
 				Body: format.CreateReportDescription(event, i, i.options.OmitRaw),
 			})
 			if err != nil {
-				return nil, err
+				return nil, errors.Wrap(err, "could not add comment to existing issue")
 			}
 			return getIssueResponseFromJira(&issue)
 		}
 	}
-	return i.CreateNewIssue(event)
+	resp, err := i.CreateNewIssue(event)
+	if err != nil {
+		return nil, errors.Wrap(err, "could not create new issue")
+	}
+	return resp, nil
 }
 
 func (i *Integration) CloseIssue(event *output.ResultEvent) error {
@@ -297,7 +302,11 @@ func (i *Integration) CloseIssue(event *output.ResultEvent) error {
 // FindExistingIssue checks if the issue already exists and returns its ID
 func (i *Integration) FindExistingIssue(event *output.ResultEvent) (jira.Issue, error) {
 	template := format.GetMatchedTemplateName(event)
-	jql := fmt.Sprintf("summary ~ \"%s\" AND summary ~ \"%s\" AND status != \"%s\" AND project = \"%s\"", template, event.Host, i.options.StatusNot, i.options.ProjectName)
+	project := i.options.ProjectName
+	if i.options.ProjectID != "" {
+		project = i.options.ProjectID
+	}
+	jql := fmt.Sprintf("summary ~ \"%s\" AND summary ~ \"%s\" AND status != \"%s\" AND project = \"%s\"", template, event.Host, i.options.StatusNot, project)
 
 	searchOptions := &jira.SearchOptions{
 		MaxResults: 1, // if any issue exists, then we won't create a new one
