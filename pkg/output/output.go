@@ -201,6 +201,7 @@ type ResultEvent struct {
 	FuzzingMethod    string `json:"fuzzing_method,omitempty"`
 	FuzzingParameter string `json:"fuzzing_parameter,omitempty"`
 	FuzzingPosition  string `json:"fuzzing_position,omitempty"`
+	AnalyzerDetails  string `json:"analyzer_details,omitempty"`
 
 	FileToIndexPosition map[string]int `json:"-"`
 	TemplateVerifier    string         `json:"-"`
