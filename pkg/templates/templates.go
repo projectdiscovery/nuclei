@@ -555,3 +555,8 @@ func (template *Template) UnmarshalJSON(data []byte) error {
 	}
 	return nil
 }
+
+// HasFileProtocol returns true if the template has a file protocol section
+func (template *Template) HasFileProtocol() bool {
+	return len(template.RequestsFile) > 0
+}

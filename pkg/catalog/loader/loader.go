@@ -489,6 +489,17 @@ func (store *Store) LoadTemplatesWithTags(templatesList, tags []string) []*templ
 						stats.Increment(templates.SkippedUnsignedStats)
 						return
 					}
+
+					if parsed.SelfContained && !store.config.ExecutorOptions.Options.EnableSelfContainedTemplates {
+						stats.Increment(templates.ExcludedSelfContainedStats)
+						return
+					}
+
+					if parsed.HasFileProtocol() && !store.config.ExecutorOptions.Options.EnableFileTemplates {
+						stats.Increment(templates.ExcludedFileStats)
+						return
+					}
+
 					// if template has request signature like aws then only signed and verified templates are allowed
 					if parsed.UsesRequestSignature() && !parsed.Verified {
 						stats.Increment(templates.SkippedRequestSignatureStats)
