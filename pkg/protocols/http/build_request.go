@@ -14,6 +14,7 @@ import (
 
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/authprovider"
+	"github.com/projectdiscovery/nuclei/v3/pkg/fuzz"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/expressions"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/generators"
@@ -55,6 +56,8 @@ type generatedRequest struct {
 	// requestURLPattern tracks unmodified request url pattern without values ( it is used for constant vuln_hash)
 	// ex: {{BaseURL}}/api/exp?param={{randstr}}
 	requestURLPattern string
+
+	fuzzGeneratedRequest fuzz.GeneratedRequest
 }
 
 // setReqURLPattern sets the url request pattern for the generated request
