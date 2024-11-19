@@ -13,7 +13,7 @@ dns:
       - type: dsl
         name: blogid
         dsl:
-          - trim_suffix(cname,'.ghost.io')
+          - trim_suffix(cname,'.vercel-dns.com')
         internal: true
 
 http:
@@ -24,6 +24,6 @@ http:
     matchers:
       - type: dsl
         dsl:
-          - contains(body,'ProjectDiscovery.io') # check for http string
-          - blogid == 'projectdiscovery' # check for cname (extracted information from dns response)
+          - contains(body,'introduction') # check for http string
+          - blogid == 'cname' # check for cname (extracted information from dns response)
         condition: and

@@ -142,6 +142,9 @@ func (metaInput *MetaInput) Unmarshal(data string) error {
 }
 
 func (metaInput *MetaInput) Clone() *MetaInput {
+	metaInput.mu.Lock()
+	defer metaInput.mu.Unlock()
+
 	input := NewMetaInput()
 	input.Input = metaInput.Input
 	input.CustomIP = metaInput.CustomIP
