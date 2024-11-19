@@ -69,6 +69,7 @@ func init() {
 	// need to set headless to true for headless templates
 	defaultOpts.Headless = true
 	defaultOpts.EnableCodeTemplates = true
+	defaultOpts.EnableSelfContainedTemplates = true
 	if err := protocolstate.Init(defaultOpts); err != nil {
 		gologger.Fatal().Msgf("Could not initialize protocol state: %s\n", err)
 	}

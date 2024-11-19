@@ -15,7 +15,7 @@ type fileWithOrMatcher struct{}
 
 // Execute executes a test case and returns an error if occurred
 func (h *fileWithOrMatcher) Execute(filePath string) error {
-	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, "protocols/file/data/", debug)
+	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, "protocols/file/data/", debug, "-file")
 	if err != nil {
 		return err
 	}
@@ -27,7 +27,7 @@ type fileWithAndMatcher struct{}
 
 // Execute executes a test case and returns an error if occurred
 func (h *fileWithAndMatcher) Execute(filePath string) error {
-	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, "protocols/file/data/", debug)
+	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, "protocols/file/data/", debug, "-file")
 	if err != nil {
 		return err
 	}
@@ -39,7 +39,7 @@ type fileWithExtractor struct{}
 
 // Execute executes a test case and returns an error if occurred
 func (h *fileWithExtractor) Execute(filePath string) error {
-	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, "protocols/file/data/", debug)
+	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, "protocols/file/data/", debug, "-file")
 	if err != nil {
 		return err
 	}
