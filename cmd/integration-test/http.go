@@ -155,7 +155,7 @@ func (h *httpInteractshRequest) Execute(filePath string) error {
 		return err
 	}
 
-	return expectResultsCount(results, 1)
+	return expectResultsCount(results, 1, 2)
 }
 
 type httpDefaultMatcherCondition struct{}
