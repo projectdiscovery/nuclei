@@ -384,6 +384,22 @@ func EnableCodeTemplates() NucleiSDKOptions {
 	}
 }
 
+// EnableSelfContainedTemplates allows loading/executing self-contained templates
+func EnableSelfContainedTemplates() NucleiSDKOptions {
+	return func(e *NucleiEngine) error {
+		e.opts.EnableSelfContainedTemplates = true
+		return nil
+	}
+}
+
+// EnableFileTemplates allows loading/executing file protocol templates
+func EnableFileTemplates() NucleiSDKOptions {
+	return func(e *NucleiEngine) error {
+		e.opts.EnableFileTemplates = true
+		return nil
+	}
+}
+
 // WithHeaders allows setting custom header/cookie to include in all http request in header:value format
 func WithHeaders(headers []string) NucleiSDKOptions {
 	return func(e *NucleiEngine) error {
