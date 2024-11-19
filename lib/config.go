@@ -380,6 +380,7 @@ func WithSandboxOptions(allowLocalFileAccess bool, restrictLocalNetworkAccess bo
 func EnableCodeTemplates() NucleiSDKOptions {
 	return func(e *NucleiEngine) error {
 		e.opts.EnableCodeTemplates = true
+		e.opts.EnableSelfContainedTemplates = true
 		return nil
 	}
 }

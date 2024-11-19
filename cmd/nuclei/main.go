@@ -494,6 +494,11 @@ Additional documentation is available at: https://docs.nuclei.sh/getting-started
 		options.DAST = true
 	}
 
+	// All cloud-based templates depend on both code and self-contained templates.
+	if options.EnableCodeTemplates {
+		options.EnableSelfContainedTemplates = true
+	}
+
 	// api key hierarchy: cli flag > env var > .pdcp/credential file
 	if pdcpauth == "true" {
 		runner.AuthWithPDCP()
