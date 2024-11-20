@@ -13,6 +13,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/copernicium-112/namegenerator"
 	_pdcp "github.com/projectdiscovery/nuclei/v3/internal/pdcp"
 	"github.com/projectdiscovery/utils/auth/pdcp"
 	"github.com/projectdiscovery/utils/env"
@@ -220,6 +221,10 @@ func main() {
 	}
 }
 
+var (
+	nameGenerator = namegenerator.NewNameGenerator(time.Now().UnixNano())
+)
+
 func readConfig() *goflags.FlagSet {
 
 	// when true updates nuclei binary to latest version
@@ -360,6 +365,7 @@ on extensive configurability, massive extensibility and ease of use.`)
 		flagSet.BoolVar(&fuzzFlag, "fuzz", false, "enable loading fuzzing templates (Deprecated: use -dast instead)"),
 		flagSet.BoolVar(&options.DAST, "dast", false, "enable / run dast (fuzz) nuclei templates"),
 		flagSet.BoolVarP(&options.DASTServer, "dast-server", "dts", false, "enable dast server mode (live fuzzing)"),
+		flagSet.StringVarP(&options.DASTScanName, "dast-scan-report", "dtr", "", "write dast scan report to file"),
 		flagSet.StringVarP(&options.DASTServerToken, "dast-server-token", "dtst", "", "dast server token (optional)"),
 		flagSet.StringVarP(&options.DASTServerAddress, "dast-server-address", "dtsa", "localhost:9055", "dast server address"),
 		flagSet.BoolVarP(&options.DisplayFuzzPoints, "display-fuzz-points", "dfp", false, "display fuzz points in the output for debugging"),

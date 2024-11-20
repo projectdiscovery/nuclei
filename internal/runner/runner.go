@@ -41,6 +41,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/loader"
 	"github.com/projectdiscovery/nuclei/v3/pkg/core"
 	"github.com/projectdiscovery/nuclei/v3/pkg/external/customtemplates"
+	fuzzStats "github.com/projectdiscovery/nuclei/v3/pkg/fuzz/stats"
 	"github.com/projectdiscovery/nuclei/v3/pkg/input"
 	parsers "github.com/projectdiscovery/nuclei/v3/pkg/loader/workflow"
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
@@ -443,15 +444,30 @@ func (r *Runner) RunEnumeration() error {
 	// If the user has asked for DAST server mode, run the live
 	// DAST fuzzing server.
 	if r.options.DASTServer {
+		execurOpts := &server.NucleiExecutorOptions{
+			Options:            r.options,
+			Output:             r.output,
+			Progress:           r.progress,
+			Catalog:            r.catalog,
+			IssuesClient:       r.issuesClient,
+			RateLimiter:        r.rateLimiter,
+			Interactsh:         r.interactsh,
+			ProjectFile:        r.projectFile,
+			Browser:            r.browser,
+			Colorizer:          r.colorizer,
+			Parser:             r.parser,
+			TemporaryDirectory: r.tmpDir,
+		}
 		dastServer, err := server.New(&server.Options{
-			Address:      r.options.DASTServerAddress,
-			Concurrency:  r.options.BulkSize,
-			Templates:    r.options.Templates,
-			OutputWriter: r.output,
-			Verbose:      r.options.Verbose,
-			Token:        r.options.DASTServerToken,
-			InScope:      r.options.Scope,
-			OutScope:     r.options.OutOfScope,
+			Address:               r.options.DASTServerAddress,
+			Concurrency:           r.options.BulkSize,
+			Templates:             r.options.Templates,
+			OutputWriter:          r.output,
+			Verbose:               r.options.Verbose,
+			Token:                 r.options.DASTServerToken,
+			InScope:               r.options.Scope,
+			OutScope:              r.options.OutOfScope,
+			NucleiExecutorOptions: execurOpts,
 		})
 		if err != nil {
 			return err
@@ -500,6 +516,13 @@ func (r *Runner) RunEnumeration() error {
 		Parser:              r.parser,
 		FuzzParamsFrequency: fuzzFreqCache,
 		GlobalMatchers:      globalmatchers.New(),
+	}
+	if r.options.DASTScanName != "" {
+		var err error
+		executorOpts.FuzzStatsDB, err = fuzzStats.NewTracker(r.options.DASTScanName)
+		if err != nil {
+			return errors.Wrap(err, "could not create fuzz stats db")
+		}
 	}
 
 	if config.DefaultConfig.IsDebugArgEnabled(config.DebugExportURLPattern) {
@@ -653,6 +676,14 @@ func (r *Runner) RunEnumeration() error {
 		return err
 	}
 
+	if executorOpts.FuzzStatsDB != nil {
+		err = executorOpts.FuzzStatsDB.GenerateReport("report.html")
+		if err != nil {
+			gologger.Error().Msgf("Failed to generate fuzzing report: %v", err)
+		}
+		executorOpts.FuzzStatsDB.Close()
+
+	}
 	if r.interactsh != nil {
 		matched := r.interactsh.Close()
 		if matched {

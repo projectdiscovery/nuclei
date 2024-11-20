@@ -34,24 +34,29 @@ func (s *DASTServer) tasksConsumer() {
 		}
 
 		gologger.Verbose().Msgf("Fuzzing request: %s %s\n", parsedReq.Request.Method, parsedReq.URL.String())
-		s.tasksPool.Go(func() {
+		s.tasksPool.Submit(func() {
 			s.fuzzRequest(req)
 		})
 	}
 }
 
 func (s *DASTServer) fuzzRequest(req PostReuestsHandlerRequest) {
-	results, err := s.runNucleiWithFuzzingInput(req, s.options.Templates)
+	err := s.nucleiExecutor.ExecuteScan(req)
 	if err != nil {
 		gologger.Warning().Msgf("Could not run nuclei: %s\n", err)
 		return
 	}
+	// results, err := s.runNucleiWithFuzzingInput(req, s.options.Templates)
+	// if err != nil {
+	// 	gologger.Warning().Msgf("Could not run nuclei: %s\n", err)
+	// 	return
+	// }
 
-	for _, result := range results {
-		if err := s.options.OutputWriter.Write(&result); err != nil {
-			gologger.Error().Msgf("Could not write result: %s\n", err)
-		}
-	}
+	// for _, result := range results {
+	// 	if err := s.options.OutputWriter.Write(&result); err != nil {
+	// 		gologger.Error().Msgf("Could not write result: %s\n", err)
+	// 	}
+	// }
 }
 
 func parseRawRequest(req PostReuestsHandlerRequest) (*types.RequestResponse, error) {

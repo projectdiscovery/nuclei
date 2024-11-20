@@ -6,12 +6,13 @@ import (
 	"strings"
 	"time"
 
+	"github.com/alitto/pond"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 	"github.com/projectdiscovery/gologger"
+	"github.com/projectdiscovery/gologger/levels"
 	"github.com/projectdiscovery/nuclei/v3/internal/server/scope"
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
-	"github.com/sourcegraph/conc/pool"
 )
 
 // DASTServer is a server that performs execution of fuzzing templates
@@ -19,10 +20,12 @@ import (
 type DASTServer struct {
 	echo         *echo.Echo
 	options      *Options
-	tasksPool    *pool.Pool
+	tasksPool    *pond.WorkerPool
 	deduplicator *requestDeduplicator
 	scopeManager *scope.Manager
 	fuzzRequests chan PostReuestsHandlerRequest
+
+	nucleiExecutor *nucleiExecutor
 }
 
 // Options contains the configuration options for the server.
@@ -43,10 +46,15 @@ type Options struct {
 	OutScope []string
 
 	OutputWriter output.Writer
+
+	NucleiExecutorOptions *NucleiExecutorOptions
 }
 
 // New creates a new instance of the DAST server.
 func New(options *Options) (*DASTServer, error) {
+	gologger.DefaultLogger.SetMaxLevel(levels.LevelVerbose)
+	options.NucleiExecutorOptions.Options.Verbose = true
+
 	bufferSize := options.Concurrency * 100
 
 	// If the user has specified no templates, use the default ones
@@ -56,12 +64,18 @@ func New(options *Options) (*DASTServer, error) {
 	}
 	server := &DASTServer{
 		options:      options,
-		tasksPool:    pool.New().WithMaxGoroutines(options.Concurrency),
+		tasksPool:    pond.New(10000, options.Concurrency),
 		deduplicator: newRequestDeduplicator(),
 		fuzzRequests: make(chan PostReuestsHandlerRequest, bufferSize),
 	}
 	server.setupHandlers()
 	server.setupWorkers()
+
+	executor, err := newNucleiExecutor(options.NucleiExecutorOptions)
+	if err != nil {
+		return nil, err
+	}
+	server.nucleiExecutor = executor
 
 	scopeManager, err := scope.NewManager(
 		options.InScope,
@@ -77,7 +91,7 @@ func New(options *Options) (*DASTServer, error) {
 	if options.Token != "" {
 		builder.WriteString(" (with token)")
 	}
-	gologger.Info().Msgf(builder.String())
+	gologger.Info().Msgf("%s", builder.String())
 	gologger.Info().Msgf("Connection URL: %s", server.buildConnectionURL())
 
 	return server, nil
@@ -105,13 +119,28 @@ func (s *DASTServer) setupHandlers() {
 			Validator: func(key string, c echo.Context) (bool, error) {
 				return key == s.options.Token, nil
 			},
+			Skipper: func(c echo.Context) bool {
+				return c.Path() == "/stats"
+			},
 		}))
 	}
 
 	e.HideBanner = true
 	// POST /requests - Queue a request for fuzzing
 	e.POST("/requests", s.handleRequest)
+	e.GET("/stats", s.handleStats)
+
+	// Serve a Web Server to visualize the stats in a live HTML report
+	e.GET("/ui", func(c echo.Context) error {
+		return c.File("internal/server/ui/index.html")
+	})
 	s.echo = e
+}
+
+func (s *DASTServer) handleStats(c echo.Context) error {
+	return c.JSON(200, map[string]interface{}{
+		"queued_requests": len(s.fuzzRequests),
+	})
 }
 
 func (s *DASTServer) Start() error {

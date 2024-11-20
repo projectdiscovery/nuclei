@@ -1,6 +1,7 @@
 package http
 
 import (
+	"bytes"
 	"io"
 	"os"
 	"strings"
@@ -33,10 +34,10 @@ type HttpMultiFormatOptions struct {
 // HttpInputProvider implements an input provider for nuclei that loads
 // inputs from multiple formats like burp, openapi, postman,proxify, etc.
 type HttpInputProvider struct {
-	format      formats.Format
-	inputReader io.Reader
-	inputFile   string
-	count       int64
+	format    formats.Format
+	inputData []byte
+	inputFile string
+	count     int64
 }
 
 // NewHttpInputProvider creates a new input provider for nuclei from a file
@@ -71,14 +72,20 @@ func NewHttpInputProvider(opts *HttpMultiFormatOptions) (*HttpInputProvider, err
 			inputFile.Close()
 		}
 	}()
-	parseErr := format.Parse(inputReader, func(request *types.RequestResponse) bool {
+
+	data, err := io.ReadAll(inputReader)
+	if err != nil {
+		return nil, errors.Wrap(err, "could not read input file")
+	}
+
+	parseErr := format.Parse(bytes.NewReader(data), func(request *types.RequestResponse) bool {
 		count++
 		return false
 	}, opts.InputFile)
 	if parseErr != nil {
 		return nil, errors.Wrap(parseErr, "could not parse input file")
 	}
-	return &HttpInputProvider{format: format, inputReader: inputReader, inputFile: opts.InputFile, count: count}, nil
+	return &HttpInputProvider{format: format, inputData: data, inputFile: opts.InputFile, count: count}, nil
 }
 
 // Count returns the number of items for input provider
@@ -88,7 +95,7 @@ func (i *HttpInputProvider) Count() int64 {
 
 // Iterate over all inputs in order
 func (i *HttpInputProvider) Iterate(callback func(value *contextargs.MetaInput) bool) {
-	err := i.format.Parse(i.inputReader, func(request *types.RequestResponse) bool {
+	err := i.format.Parse(bytes.NewReader(i.inputData), func(request *types.RequestResponse) bool {
 		metaInput := contextargs.NewMetaInput()
 		metaInput.ReqResp = request
 		metaInput.Input = request.URL.String()

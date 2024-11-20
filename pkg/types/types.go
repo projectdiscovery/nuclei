@@ -415,6 +415,8 @@ type Options struct {
 	DASTServerToken string
 	// DASTServerAddress is the address for the dast server
 	DASTServerAddress string
+	// DASTScanName is the name of the scan to use for the dast report
+	DASTScanName string
 	// Scope contains a list of regexes for in-scope URLS
 	Scope goflags.StringSlice
 	// OutOfScope contains a list of regexes for out-scope URLS
