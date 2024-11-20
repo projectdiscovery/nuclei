@@ -33,6 +33,7 @@
 
 # Templates
 /*.yaml
+!/.sops.yaml
 
 # Generated docs
 /dsl.md
