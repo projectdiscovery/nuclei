@@ -3,7 +3,6 @@ package runner
 import (
 	"context"
 	"fmt"
-	"os"
 	"strings"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/authprovider/authx"
@@ -16,6 +15,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/helpers/writer"
 	"github.com/projectdiscovery/nuclei/v3/pkg/scan"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
+	"github.com/projectdiscovery/utils/env"
 	errorutil "github.com/projectdiscovery/utils/errors"
 )
 
@@ -88,11 +88,7 @@ func GetLazyAuthFetchCallback(opts *AuthLazyFetchOptions) authx.LazyFetchSecret 
 		for _, v := range d.Variables {
 			//  Check if the template has any env variables and expand them
 			if strings.HasPrefix(v.Value, "$") {
-				env := strings.TrimPrefix(v.Value, "$")
-				retrievedEnv := os.Getenv(env)
-				if retrievedEnv != "" {
-					v.Value = os.Getenv(env)
-				}
+				env.ExpandWithEnv(&v.Value)
 			}
 			if val, ok := cliVars[v.Key]; ok && val != "" {
 				v.Value = types.ToString(val)
