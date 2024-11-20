@@ -12,6 +12,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/generators"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/helpers/writer"
 	"github.com/projectdiscovery/nuclei/v3/pkg/scan"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
@@ -78,6 +79,12 @@ func GetLazyAuthFetchCallback(opts *AuthLazyFetchOptions) authx.LazyFetchSecret 
 		mainCtx := context.Background()
 		ctx := scan.NewScanContext(mainCtx, contextargs.NewWithInput(mainCtx, d.Input))
 
+		cliVars := map[string]interface{}{}
+		if opts.ExecOpts.Options != nil {
+			// gets variables passed from cli -v and -env-vars
+			cliVars = generators.BuildPayloadFromOptions(opts.ExecOpts.Options)
+		}
+
 		for _, v := range d.Variables {
 			//  Check if the template has any env variables and expand them
 			if strings.HasPrefix(v.Value, "$") {
@@ -86,6 +93,9 @@ func GetLazyAuthFetchCallback(opts *AuthLazyFetchOptions) authx.LazyFetchSecret 
 				if retrievedEnv != "" {
 					v.Value = os.Getenv(env)
 				}
+			}
+			if val, ok := cliVars[v.Key]; ok && val != "" {
+				v.Value = types.ToString(val)
 			}
 			vars[v.Key] = v.Value
 			ctx.Input.Add(v.Key, v.Value)
