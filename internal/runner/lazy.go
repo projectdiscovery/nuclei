@@ -13,6 +13,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/generators"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/helpers/writer"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/replacer"
 	"github.com/projectdiscovery/nuclei/v3/pkg/scan"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	"github.com/projectdiscovery/utils/env"
@@ -90,8 +91,12 @@ func GetLazyAuthFetchCallback(opts *AuthLazyFetchOptions) authx.LazyFetchSecret 
 			if strings.HasPrefix(v.Value, "$") {
 				env.ExpandWithEnv(&v.Value)
 			}
-			if val, ok := cliVars[v.Key]; ok && val != "" {
-				v.Value = types.ToString(val)
+			if strings.Contains(v.Value, "{{") {
+				// if variables had value like {{username}}, then replace it with the value from cliVars
+				// variables:
+				//     - key: username
+				//       value: {{username}}
+				v.Value = replacer.Replace(v.Value, cliVars)
 			}
 			vars[v.Key] = v.Value
 			ctx.Input.Add(v.Key, v.Value)
