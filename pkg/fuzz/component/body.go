@@ -3,6 +3,7 @@ package component
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"io"
 	"strconv"
 	"strings"
@@ -62,6 +63,12 @@ func (b *Body) Parse(req *retryablehttp.Request) (bool, error) {
 
 	switch {
 	case strings.Contains(contentType, "application/json") && tmp.IsNIL():
+		// In case its a json body, check if the underlying data
+		// is graphql if so, parse it as graphql
+		if dataformat.Get(dataformat.GraphqlDataFormat).IsType(dataStr) {
+			fmt.Printf("dataStr: %s\n", dataStr)
+			return b.parseBody(dataformat.GraphqlDataFormat, req)
+		}
 		return b.parseBody(dataformat.JSONDataFormat, req)
 	case strings.Contains(contentType, "application/xml") && tmp.IsNIL():
 		return b.parseBody(dataformat.XMLDataFormat, req)
