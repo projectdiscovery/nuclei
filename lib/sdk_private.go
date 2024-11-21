@@ -3,10 +3,11 @@ package nuclei
 import (
 	"context"
 	"fmt"
-	"github.com/projectdiscovery/nuclei/v3/pkg/input"
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/projectdiscovery/nuclei/v3/pkg/input"
 
 	"github.com/logrusorgru/aurora"
 	"github.com/pkg/errors"

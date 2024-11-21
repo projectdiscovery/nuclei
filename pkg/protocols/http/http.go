@@ -3,13 +3,18 @@ package http
 import (
 	"bytes"
 	"fmt"
+	"math"
 	"strings"
+	"time"
 
 	"github.com/invopop/jsonschema"
 	json "github.com/json-iterator/go"
 	"github.com/pkg/errors"
 
+	_ "github.com/projectdiscovery/nuclei/v3/pkg/fuzz/analyzers/time"
+
 	"github.com/projectdiscovery/nuclei/v3/pkg/fuzz"
+	"github.com/projectdiscovery/nuclei/v3/pkg/fuzz/analyzers"
 	"github.com/projectdiscovery/nuclei/v3/pkg/operators"
 	"github.com/projectdiscovery/nuclei/v3/pkg/operators/matchers"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
@@ -126,6 +131,9 @@ type Request struct {
 
 	// Fuzzing describes schema to fuzz http requests
 	Fuzzing []*fuzz.Rule `yaml:"fuzzing,omitempty" json:"fuzzing,omitempty" jsonschema:"title=fuzzin rules for http fuzzing,description=Fuzzing describes rule schema to fuzz http requests"`
+	// description: |
+	//   Analyzer is an analyzer to use for matching the response.
+	Analyzer *analyzers.AnalyzerTemplate `yaml:"analyzer,omitempty" json:"analyzer,omitempty" jsonschema:"title=analyzer for http request,description=Analyzer for HTTP Request"`
 
 	CompiledOperators *operators.Operators `yaml:"-" json:"-"`
 
@@ -303,6 +311,21 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 		},
 		RedirectFlow: httpclientpool.DontFollowRedirect,
 	}
+	var customTimeout int
+	if request.Analyzer != nil && request.Analyzer.Name == "time_delay" {
+		var timeoutVal int
+		if timeout, ok := request.Analyzer.Parameters["sleep_duration"]; ok {
+			timeoutVal, _ = timeout.(int)
+		} else {
+			timeoutVal = 5
+		}
+
+		// Add 3x buffer to the timeout
+		customTimeout = int(math.Ceil(float64(timeoutVal) * 3))
+	}
+	if customTimeout > 0 {
+		connectionConfiguration.Connection.CustomMaxTimeout = time.Duration(customTimeout) * time.Second
+	}
 
 	if request.Redirects || options.Options.FollowRedirects {
 		connectionConfiguration.RedirectFlow = httpclientpool.FollowAllRedirect
@@ -366,6 +389,12 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 	for _, filter := range request.FuzzPreCondition {
 		if err := filter.CompileMatchers(); err != nil {
 			return errors.Wrap(err, "could not compile matcher")
+		}
+	}
+
+	if request.Analyzer != nil {
+		if analyzer := analyzers.GetAnalyzer(request.Analyzer.Name); analyzer == nil {
+			return errors.Errorf("analyzer %s not found", request.Analyzer.Name)
 		}
 	}
 
