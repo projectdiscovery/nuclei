@@ -24,5 +24,4 @@ jobs:
             SYNTAX-REFERENCE.md
             nuclei-jsonschema.json
           message: 'docs: update syntax & JSON schema 🤖'
-      - run: git pull origin $GITHUB_REF --rebase
       - run: git push origin $GITHUB_REF
