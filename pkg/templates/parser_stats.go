@@ -10,5 +10,7 @@ const (
 	ExcludedCodeTmplStats        = "code-flag-missing-warnings"
 	ExludedDastTmplStats         = "fuzz-flag-missing-warnings"
 	SkippedUnsignedStats         = "skipped-unsigned-stats" // tracks loading of unsigned templates
+	ExcludedSelfContainedStats   = "excluded-self-contained-stats"
+	ExcludedFileStats            = "excluded-file-stats"
 	SkippedRequestSignatureStats = "skipped-request-signature-stats"
 )

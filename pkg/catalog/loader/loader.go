@@ -352,6 +352,7 @@ func (store *Store) areWorkflowOrTemplatesValid(filteredTemplatePaths map[string
 		if err != nil {
 			if isParsingError("Error occurred parsing template %s: %s\n", templatePath, err) {
 				areTemplatesValid = false
+				continue
 			}
 		} else if template == nil {
 			// NOTE(dwisiswant0): possibly global matchers template.
@@ -488,6 +489,17 @@ func (store *Store) LoadTemplatesWithTags(templatesList, tags []string) []*templ
 						stats.Increment(templates.SkippedUnsignedStats)
 						return
 					}
+
+					if parsed.SelfContained && !store.config.ExecutorOptions.Options.EnableSelfContainedTemplates {
+						stats.Increment(templates.ExcludedSelfContainedStats)
+						return
+					}
+
+					if parsed.HasFileProtocol() && !store.config.ExecutorOptions.Options.EnableFileTemplates {
+						stats.Increment(templates.ExcludedFileStats)
+						return
+					}
+
 					// if template has request signature like aws then only signed and verified templates are allowed
 					if parsed.UsesRequestSignature() && !parsed.Verified {
 						stats.Increment(templates.SkippedRequestSignatureStats)

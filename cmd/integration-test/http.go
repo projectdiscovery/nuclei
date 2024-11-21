@@ -155,7 +155,7 @@ func (h *httpInteractshRequest) Execute(filePath string) error {
 		return err
 	}
 
-	return expectResultsCount(results, 1)
+	return expectResultsCount(results, 1, 2)
 }
 
 type httpDefaultMatcherCondition struct{}
@@ -952,7 +952,7 @@ func (h *httpRequestSelfContained) Execute(filePath string) error {
 	}()
 	defer server.Close()
 
-	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, "", debug)
+	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, "", debug, "-esc")
 	if err != nil {
 		return err
 	}
@@ -988,7 +988,7 @@ func (h *httpRequestSelfContainedWithParams) Execute(filePath string) error {
 	}()
 	defer server.Close()
 
-	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, "", debug)
+	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, "", debug, "-esc")
 	if err != nil {
 		return err
 	}
@@ -1031,7 +1031,7 @@ func (h *httpRequestSelfContainedFileInput) Execute(filePath string) error {
 	}
 	defer FileLoc.Close()
 
-	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, "", debug, "-V", "test="+FileLoc.Name())
+	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, "", debug, "-V", "test="+FileLoc.Name(), "-esc")
 	if err != nil {
 		return err
 	}

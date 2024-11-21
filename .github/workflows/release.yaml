@@ -1,4 +1,4 @@
-name: 🎉 Release Binary
+name: 🎉 Release
 
 on:
   push:
@@ -13,10 +13,7 @@ jobs:
       - uses: actions/checkout@v4
         with: 
           fetch-depth: 0
-
-      - name: Set up Go
-        uses: projectdiscovery/actions/setup/go@v1
-
+      - uses: projectdiscovery/actions/setup/go@v1
       - uses: projectdiscovery/actions/goreleaser@v1
         with: 
           release: true

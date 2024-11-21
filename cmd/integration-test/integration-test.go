@@ -7,6 +7,7 @@ import (
 	"runtime"
 	"strings"
 
+	"github.com/kitabisa/go-ci"
 	"github.com/logrusorgru/aurora"
 
 	"github.com/projectdiscovery/gologger"
@@ -22,10 +23,9 @@ type TestCaseInfo struct {
 }
 
 var (
-	debug        = os.Getenv("DEBUG") == "true"
-	githubAction = os.Getenv("GH_ACTION") == "true"
-	customTests  = os.Getenv("TESTS")
-	protocol     = os.Getenv("PROTO")
+	debug       = os.Getenv("DEBUG") == "true"
+	customTests = os.Getenv("TESTS")
+	protocol    = os.Getenv("PROTO")
 
 	success = aurora.Green("[✓]").String()
 	failed  = aurora.Red("[✘]").String()
@@ -103,11 +103,19 @@ func main() {
 	failedTestTemplatePaths := runTests(customTestsList)
 
 	if len(failedTestTemplatePaths) > 0 {
-		if githubAction {
-			debug = true
-			fmt.Println("::group::Failed integration tests in debug mode")
-			_ = runTests(failedTestTemplatePaths)
+		if ci.IsCI() {
+			// run failed tests again assuming they are flaky
+			// if they fail as well only then we assume that there is an actual issue
+			fmt.Println("::group::Running failed tests again")
+			failedTestTemplatePaths = runTests(failedTestTemplatePaths)
 			fmt.Println("::endgroup::")
+
+			if len(failedTestTemplatePaths) > 0 {
+				debug = true
+				fmt.Println("::group::Failed integration tests in debug mode")
+				_ = runTests(failedTestTemplatePaths)
+				fmt.Println("::endgroup::")
+			}
 		}
 
 		os.Exit(1)

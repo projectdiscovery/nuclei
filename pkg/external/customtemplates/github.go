@@ -137,33 +137,59 @@ getRepo:
 
 // download the git repo to a given path
 func (ctr *customTemplateGitHubRepo) cloneRepo(clonePath, githubToken string) error {
-	r, err := git.PlainClone(clonePath, false, &git.CloneOptions{
-		URL:  ctr.gitCloneURL,
-		Auth: getAuth(ctr.owner, githubToken),
-	})
+	cloneOpts := &git.CloneOptions{
+		URL:          ctr.gitCloneURL,
+		Auth:         getAuth(ctr.owner, githubToken),
+		SingleBranch: true,
+		Depth:        1,
+	}
+
+	err := cloneOpts.Validate()
+	if err != nil {
+		return err
+	}
+
+	r, err := git.PlainClone(clonePath, false, cloneOpts)
 	if err != nil {
 		return errors.Errorf("%s/%s: %s", ctr.owner, ctr.reponame, err.Error())
 	}
+
 	// Add the user as well in the config. By default, user is not set
 	config, _ := r.Storer.Config()
 	config.User.Name = ctr.owner
+
 	return r.SetConfig(config)
 }
 
 // performs the git pull on given repo
 func (ctr *customTemplateGitHubRepo) pullChanges(repoPath, githubToken string) error {
+	pullOpts := &git.PullOptions{
+		RemoteName:   "origin",
+		Auth:         getAuth(ctr.owner, githubToken),
+		SingleBranch: true,
+		Depth:        1,
+	}
+
+	err := pullOpts.Validate()
+	if err != nil {
+		return err
+	}
+
 	r, err := git.PlainOpen(repoPath)
 	if err != nil {
 		return err
 	}
+
 	w, err := r.Worktree()
 	if err != nil {
 		return err
 	}
-	err = w.Pull(&git.PullOptions{RemoteName: "origin", Auth: getAuth(ctr.owner, githubToken)})
+
+	err = w.Pull(pullOpts)
 	if err != nil {
 		return errors.Errorf("%s/%s: %s", ctr.owner, ctr.reponame, err.Error())
 	}
+
 	return nil
 }
 

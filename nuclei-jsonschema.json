@@ -3,6 +3,22 @@
   "$id": "https://templates.-template",
   "$ref": "#/$defs/templates.Template",
   "$defs": {
+    "analyzers.AnalyzerTemplate": {
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "parameters": {
+          "$ref": "#/$defs/map[string]interface {}"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "name",
+        "parameters"
+      ]
+    },
     "code.Request": {
       "properties": {
         "matchers": {
@@ -784,6 +800,11 @@
           "type": "array",
           "title": "fuzzin rules for http fuzzing",
           "description": "Fuzzing describes rule schema to fuzz http requests"
+        },
+        "analyzer": {
+          "$ref": "#/$defs/analyzers.AnalyzerTemplate",
+          "title": "analyzer for http request",
+          "description": "Analyzer for HTTP Request"
         },
         "self-contained": {
           "type": "boolean"

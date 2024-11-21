@@ -7,6 +7,7 @@ import (
 	"os"
 	"testing"
 
+	"github.com/kitabisa/go-ci"
 	nuclei "github.com/projectdiscovery/nuclei/v3/lib"
 	"github.com/remeh/sizedwaitgroup"
 )
@@ -78,9 +79,10 @@ func ExampleThreadSafeNucleiEngine() {
 func TestMain(m *testing.M) {
 	// this file only contains testtables examples https://go.dev/blog/examples
 	// and actual functionality test are in sdk_test.go
-	if os.Getenv("GH_ACTION") != "" || os.Getenv("CI") != "" {
+	if ci.IsCI() {
 		// no need to run this test on github actions
 		return
 	}
+
 	os.Exit(m.Run())
 }

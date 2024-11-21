@@ -7,7 +7,7 @@ import (
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/fuzz/dataformat"
 	"github.com/projectdiscovery/retryablehttp-go"
-	"github.com/projectdiscovery/utils/maps"
+	mapsutil "github.com/projectdiscovery/utils/maps"
 	urlutil "github.com/projectdiscovery/utils/url"
 )
 

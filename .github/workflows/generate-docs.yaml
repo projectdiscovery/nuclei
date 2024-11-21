@@ -1,0 +1,27 @@
+name: ⏰ Generate Docs
+
+on:
+  push:
+    branches:
+      - dev
+  workflow_dispatch:
+
+jobs:
+  publish-docs:
+    if: "${{ !endsWith(github.actor, '[bot]') }}"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: projectdiscovery/actions/setup/go@v1
+      - uses: projectdiscovery/actions/setup/git@v1
+      - run: make syntax-docs
+      - run: git status -s | wc -l | xargs -I {} echo CHANGES={} >> $GITHUB_OUTPUT
+        id: status
+      - uses: projectdiscovery/actions/commit@v1
+        if: steps.status.outputs.CHANGES > 0
+        with:
+          files: |
+            SYNTAX-REFERENCE.md
+            nuclei-jsonschema.json
+          message: 'docs: update syntax & JSON schema 🤖'
+      - run: git push origin $GITHUB_REF

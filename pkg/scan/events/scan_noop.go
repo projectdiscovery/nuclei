@@ -9,3 +9,6 @@ func AddScanEvent(event ScanEvent) {
 
 func InitWithConfig(config *ScanConfig, statsDirectory string) {
 }
+
+func Close() {
+}

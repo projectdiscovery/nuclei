@@ -1373,6 +1373,19 @@ Fuzzing describes schema to fuzz http requests
 
 <div class="dd">
 
+<code>analyzer</code>  <i><a href="#analyzersanalyzertemplate">analyzers.AnalyzerTemplate</a></i>
+
+</div>
+<div class="dt">
+
+Analyzer is an analyzer to use for matching the response.
+
+</div>
+
+<hr />
+
+<div class="dd">
+
 <code>self-contained</code>  <i>bool</i>
 
 </div>
@@ -2020,6 +2033,59 @@ Appears in:
 - <code><a href="#fuzzrule">fuzz.Rule</a>.fuzz</code>
 
 
+
+
+
+
+
+## analyzers.AnalyzerTemplate
+AnalyzerTemplate is the template for the analyzer
+
+Appears in:
+
+
+- <code><a href="#httprequest">http.Request</a>.analyzer</code>
+
+
+
+
+
+<hr />
+
+<div class="dd">
+
+<code>name</code>  <i>string</i>
+
+</div>
+<div class="dt">
+
+Name is the name of the analyzer to use
+
+
+Valid values:
+
+
+  - <code>time_delay</code>
+</div>
+
+<hr />
+
+<div class="dd">
+
+<code>parameters</code>  <i>map[string]interface{}</i>
+
+</div>
+<div class="dt">
+
+Parameters is the parameters for the analyzer
+
+Parameters are different for each analyzer. For example, you can customize
+time_delay analyzer with sleep_duration, time_slope_error_range, etc. Refer
+to the docs for each analyzer to get an idea about parameters.
+
+</div>
+
+<hr />
 
 
 
