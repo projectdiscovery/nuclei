@@ -14,7 +14,7 @@ type multiProtoDynamicExtractor struct{}
 
 // Execute executes a test case and returns an error if occurred
 func (h *multiProtoDynamicExtractor) Execute(templatePath string) error {
-	results, err := testutils.RunNucleiTemplateAndGetResults(templatePath, "blog.projectdiscovery.io", debug)
+	results, err := testutils.RunNucleiTemplateAndGetResults(templatePath, "docs.projectdiscovery.io", debug)
 	if err != nil {
 		return err
 	}

@@ -119,7 +119,7 @@ func (h *networkRequestSelContained) Execute(filePath string) error {
 		_, _ = conn.Write([]byte("Authentication successful"))
 	})
 	defer ts.Close()
-	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, "", debug)
+	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, "", debug, "-esc")
 	if err != nil {
 		return err
 	}

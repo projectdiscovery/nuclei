@@ -19,7 +19,7 @@ var (
 )
 
 func StartActiveMemGuardian(ctx context.Context) {
-	if memguardian.DefaultMemGuardian == nil {
+	if memguardian.DefaultMemGuardian == nil || memTimer != nil {
 		return
 	}
 

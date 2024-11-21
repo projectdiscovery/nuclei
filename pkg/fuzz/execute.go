@@ -50,6 +50,11 @@ type ExecuteRuleInput struct {
 	BaseRequest *retryablehttp.Request
 	// DisplayFuzzPoints is a flag to display fuzz points
 	DisplayFuzzPoints bool
+
+	// ApplyPayloadInitialTransformation is an optional function
+	// to transform the payload initially based on analyzer rules
+	ApplyPayloadInitialTransformation func(string, map[string]interface{}) string
+	AnalyzerParams                    map[string]interface{}
 }
 
 // GeneratedRequest is a single generated request for rule
@@ -64,6 +69,15 @@ type GeneratedRequest struct {
 	Component component.Component
 	// Parameter being fuzzed
 	Parameter string
+
+	// Key is the key for the request
+	Key string
+	// Value is the value for the request
+	Value string
+	// OriginalValue is the original value for the request
+	OriginalValue string
+	// OriginalPayload is the original payload for the request
+	OriginalPayload string
 }
 
 // Execute executes a fuzzing rule accepting a callback on which
@@ -216,7 +230,9 @@ func (rule *Rule) executeRuleValues(input *ExecuteRuleInput, ruleComponent compo
 	// if we are only fuzzing values
 	if len(rule.Fuzz.Value) > 0 {
 		for _, value := range rule.Fuzz.Value {
-			if err := rule.executePartRule(input, ValueOrKeyValue{Value: value}, ruleComponent); err != nil {
+			originalPayload := value
+
+			if err := rule.executePartRule(input, ValueOrKeyValue{Value: value, OriginalPayload: originalPayload}, ruleComponent); err != nil {
 				if component.IsErrSetValue(err) {
 					// this are errors due to format restrictions
 					// ex: fuzzing string value in a json int field
@@ -257,7 +273,7 @@ func (rule *Rule) executeRuleValues(input *ExecuteRuleInput, ruleComponent compo
 			if err != nil {
 				return err
 			}
-			if gotErr := rule.execWithInput(input, req, input.InteractURLs, ruleComponent, "", ""); gotErr != nil {
+			if gotErr := rule.execWithInput(input, req, input.InteractURLs, ruleComponent, "", "", "", "", "", ""); gotErr != nil {
 				return gotErr
 			}
 		}
