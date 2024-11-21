@@ -15,7 +15,7 @@ type Tracker struct {
 
 // NewTracker creates a new tracker instance
 func NewTracker(scanName string) (*Tracker, error) {
-	db, err := newSqliteStatsDatabase(scanName)
+	db, err := NewSqliteStatsDatabase(scanName)
 	if err != nil {
 		return nil, errors.Wrap(err, "could not create new tracker")
 	}
@@ -39,10 +39,11 @@ type FuzzingEvent struct {
 	TemplateID    string
 	PayloadSent   string
 	StatusCode    int
+	Matched       bool
 	SiteName      string
 }
 
-func (t *Tracker) RecordEvent(event FuzzingEvent) {
+func (t *Tracker) RecordResultEvent(event FuzzingEvent) {
 	parsed, err := url.Parse(event.URL)
 	if err != nil {
 		return
@@ -50,6 +51,16 @@ func (t *Tracker) RecordEvent(event FuzzingEvent) {
 
 	// Site is the host:port combo
 	event.SiteName = parsed.Host
+	t.database.InsertMatchedRecord(event)
+}
 
-	t.database.InsertRecord(event)
+func (t *Tracker) RecordComponentEvent(event FuzzingEvent) {
+	parsed, err := url.Parse(event.URL)
+	if err != nil {
+		return
+	}
+
+	// Site is the host:port combo
+	event.SiteName = parsed.Host
+	t.database.InsertComponent(event)
 }

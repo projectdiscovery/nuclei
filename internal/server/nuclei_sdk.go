@@ -138,6 +138,16 @@ func newNucleiExecutor(opts *NucleiExecutorOptions) (*nucleiExecutor, error) {
 	}, nil
 }
 
+// proxifyRequest is a request for proxify
+type proxifyRequest struct {
+	URL     string `json:"url"`
+	Request struct {
+		Header map[string]string `json:"header"`
+		Body   string            `json:"body"`
+		Raw    string            `json:"raw"`
+	} `json:"request"`
+}
+
 func (n *nucleiExecutor) ExecuteScan(target PostReuestsHandlerRequest) error {
 	finalTemplates := []*templates.Template{}
 	finalTemplates = append(finalTemplates, n.store.Templates()...)
@@ -178,14 +188,8 @@ func (n *nucleiExecutor) ExecuteScan(target PostReuestsHandlerRequest) error {
 }
 
 func (n *nucleiExecutor) Close() {
-	var err error
 	if n.executorOpts.FuzzStatsDB != nil {
-		err = n.executorOpts.FuzzStatsDB.GenerateReport("report.html")
-		if err != nil {
-			gologger.Error().Msgf("Failed to generate fuzzing report: %v", err)
-		}
 		n.executorOpts.FuzzStatsDB.Close()
-
 	}
 	if n.options.Interactsh != nil {
 		_ = n.options.Interactsh.Close()

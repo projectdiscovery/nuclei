@@ -460,7 +460,6 @@ func (r *Runner) RunEnumeration() error {
 		}
 		dastServer, err := server.New(&server.Options{
 			Address:               r.options.DASTServerAddress,
-			Concurrency:           r.options.BulkSize,
 			Templates:             r.options.Templates,
 			OutputWriter:          r.output,
 			Verbose:               r.options.Verbose,
@@ -677,12 +676,7 @@ func (r *Runner) RunEnumeration() error {
 	}
 
 	if executorOpts.FuzzStatsDB != nil {
-		err = executorOpts.FuzzStatsDB.GenerateReport("report.html")
-		if err != nil {
-			gologger.Error().Msgf("Failed to generate fuzzing report: %v", err)
-		}
 		executorOpts.FuzzStatsDB.Close()
-
 	}
 	if r.interactsh != nil {
 		matched := r.interactsh.Close()

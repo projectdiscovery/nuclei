@@ -1,17 +1,16 @@
 package stats
 
 import (
-	"os"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 )
 
 func Test_NewStatsDatabase(t *testing.T) {
-	db, err := newSqliteStatsDatabase("test")
+	db, err := NewSqliteStatsDatabase("test")
 	require.NoError(t, err)
 
-	err = db.InsertRecord(FuzzingEvent{
+	err = db.InsertComponent(FuzzingEvent{
 		URL:           "http://localhost:8080/login",
 		SiteName:      "localhost:8080",
 		TemplateID:    "apache-struts2-001",
@@ -27,7 +26,7 @@ func Test_NewStatsDatabase(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, "apache-struts2-001", siteName)
 
-	err = db.InsertRecord(FuzzingEvent{
+	err = db.InsertMatchedRecord(FuzzingEvent{
 		URL:           "http://localhost:8080/login",
 		SiteName:      "localhost:8080",
 		TemplateID:    "apache-struts2-001",
@@ -35,10 +34,11 @@ func Test_NewStatsDatabase(t *testing.T) {
 		ComponentName: "/login",
 		PayloadSent:   "/login'\"><",
 		StatusCode:    401,
+		Matched:       true,
 	})
 	require.NoError(t, err)
 
 	db.Close()
 
-	os.Remove("test.stats.db")
+	//os.Remove("test.stats.db")
 }

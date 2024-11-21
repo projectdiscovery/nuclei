@@ -10,11 +10,12 @@ CREATE TABLE IF NOT EXISTS components (
     component_type TEXT NOT NULL CHECK (component_type IN ('path', 'query', 'header', 'body', 'cookie')),
     component_name TEXT NOT NULL,
     last_fuzzed DATETIME,
+    url TEXT NOT NULL,
     total_fuzz_count INTEGER DEFAULT 0,
     FOREIGN KEY (site_id) REFERENCES sites(site_id),
-    UNIQUE (site_id, component_type, component_name)
+    UNIQUE (site_id, component_type, component_name, url)
 );
-CREATE INDEX IF NOT EXISTS idx_components_site_type_name ON components (site_id, component_type, component_name);
+CREATE INDEX IF NOT EXISTS idx_components_site_type_name ON components (site_id, component_type, component_name, url);
 
 
 CREATE TABLE IF NOT EXISTS templates (
@@ -38,6 +39,7 @@ CREATE TABLE IF NOT EXISTS fuzzing_results (
     template_id INTEGER NOT NULL,
     payload_sent TEXT NOT NULL,
     status_code_received INTEGER NOT NULL,
+    matched BOOLEAN DEFAULT FALSE NOT NULL,
     timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (component_id) REFERENCES components(component_id),
     FOREIGN KEY (template_id) REFERENCES templates(template_id)

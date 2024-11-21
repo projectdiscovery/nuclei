@@ -930,6 +930,18 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 			}
 		}
 
+		if request.options.FuzzStatsDB != nil && generatedRequest.fuzzGeneratedRequest.Request != nil {
+			request.options.FuzzStatsDB.RecordComponentEvent(fuzzStats.FuzzingEvent{
+				URL:           input.MetaInput.Target(),
+				SiteName:      hostname,
+				TemplateID:    request.options.TemplateID,
+				ComponentType: generatedRequest.fuzzGeneratedRequest.Component.Name(),
+				ComponentName: generatedRequest.fuzzGeneratedRequest.Parameter,
+				PayloadSent:   generatedRequest.fuzzGeneratedRequest.Value,
+				StatusCode:    respChain.Response().StatusCode,
+			})
+		}
+
 		finalEvent := make(output.InternalEvent)
 
 		if request.Analyzer != nil {
@@ -980,18 +992,6 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 			finalEvent[k] = v
 		}
 
-		if request.options.FuzzStatsDB != nil && generatedRequest.fuzzGeneratedRequest.Request != nil {
-			request.options.FuzzStatsDB.RecordEvent(fuzzStats.FuzzingEvent{
-				URL:           matchedURL,
-				SiteName:      hostname,
-				TemplateID:    request.options.TemplateID,
-				ComponentType: generatedRequest.fuzzGeneratedRequest.Component.Name(),
-				ComponentName: generatedRequest.fuzzGeneratedRequest.Key,
-				PayloadSent:   generatedRequest.fuzzGeneratedRequest.Value,
-				StatusCode:    respChain.Response().StatusCode,
-			})
-		}
-
 		// Add to history the current request number metadata if asked by the user.
 		if request.NeedsRequestCondition() {
 			for k, v := range outputEvent {
@@ -1034,6 +1034,19 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 		dumpResponse(event, request, respChain.FullResponse().Bytes(), formedURL, responseContentType, isResponseTruncated, input.MetaInput.Input)
 
 		callback(event)
+
+		if request.options.FuzzStatsDB != nil && generatedRequest.fuzzGeneratedRequest.Request != nil {
+			request.options.FuzzStatsDB.RecordResultEvent(fuzzStats.FuzzingEvent{
+				URL:           input.MetaInput.Target(),
+				SiteName:      hostname,
+				TemplateID:    request.options.TemplateID,
+				ComponentType: generatedRequest.fuzzGeneratedRequest.Component.Name(),
+				ComponentName: generatedRequest.fuzzGeneratedRequest.Parameter,
+				PayloadSent:   generatedRequest.fuzzGeneratedRequest.Value,
+				StatusCode:    respChain.Response().StatusCode,
+				Matched:       event.HasResults(),
+			})
+		}
 
 		// Skip further responses if we have stop-at-first-match and a match
 		if (request.options.Options.StopAtFirstMatch || request.options.StopAtFirstMatch || request.StopAtFirstMatch) && event.HasResults() {

@@ -1,18 +1,16 @@
 package server
 
 import (
-	"encoding/json"
 	"fmt"
 	"strings"
-	"time"
 
 	"github.com/alitto/pond"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 	"github.com/projectdiscovery/gologger"
-	"github.com/projectdiscovery/gologger/levels"
 	"github.com/projectdiscovery/nuclei/v3/internal/server/scope"
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
+	"github.com/projectdiscovery/utils/env"
 )
 
 // DASTServer is a server that performs execution of fuzzing templates
@@ -23,7 +21,6 @@ type DASTServer struct {
 	tasksPool    *pond.WorkerPool
 	deduplicator *requestDeduplicator
 	scopeManager *scope.Manager
-	fuzzRequests chan PostReuestsHandlerRequest
 
 	nucleiExecutor *nucleiExecutor
 }
@@ -34,8 +31,6 @@ type Options struct {
 	Address string
 	// Token is the token to use for authentication (optional)
 	Token string
-	// Concurrency is the concurrency level to use for the targets
-	Concurrency int
 	// Templates is the list of templates to use for fuzzing
 	Templates []string
 	// Verbose is a flag that controls verbose output
@@ -52,24 +47,26 @@ type Options struct {
 
 // New creates a new instance of the DAST server.
 func New(options *Options) (*DASTServer, error) {
-	gologger.DefaultLogger.SetMaxLevel(levels.LevelVerbose)
-	options.NucleiExecutorOptions.Options.Verbose = true
-
-	bufferSize := options.Concurrency * 100
-
 	// If the user has specified no templates, use the default ones
 	// for DAST only.
 	if len(options.Templates) == 0 {
 		options.Templates = []string{"dast/"}
 	}
+	// Disable bulk mode and single threaded execution
+	// by auto adjusting in case of default values
+	if options.NucleiExecutorOptions.Options.BulkSize == 25 && options.NucleiExecutorOptions.Options.TemplateThreads == 25 {
+		options.NucleiExecutorOptions.Options.BulkSize = 1
+		options.NucleiExecutorOptions.Options.TemplateThreads = 1
+	}
+	maxWorkers := env.GetEnvOrDefault[int]("FUZZ_MAX_WORKERS", 1)
+	bufferSize := env.GetEnvOrDefault[int]("FUZZ_BUFFER_SIZE", 10000)
+
 	server := &DASTServer{
 		options:      options,
-		tasksPool:    pond.New(10000, options.Concurrency),
+		tasksPool:    pond.New(maxWorkers, bufferSize),
 		deduplicator: newRequestDeduplicator(),
-		fuzzRequests: make(chan PostReuestsHandlerRequest, bufferSize),
 	}
 	server.setupHandlers()
-	server.setupWorkers()
 
 	executor, err := newNucleiExecutor(options.NucleiExecutorOptions)
 	if err != nil {
@@ -87,7 +84,7 @@ func New(options *Options) (*DASTServer, error) {
 	server.scopeManager = scopeManager
 
 	var builder strings.Builder
-	builder.WriteString(fmt.Sprintf("Using %d parallel tasks with %d buffer", options.Concurrency, bufferSize))
+	builder.WriteString(fmt.Sprintf("Using %d parallel tasks with %d buffer", maxWorkers, bufferSize))
 	if options.Token != "" {
 		builder.WriteString(" (with token)")
 	}
@@ -138,9 +135,7 @@ func (s *DASTServer) setupHandlers() {
 }
 
 func (s *DASTServer) handleStats(c echo.Context) error {
-	return c.JSON(200, map[string]interface{}{
-		"queued_requests": len(s.fuzzRequests),
-	})
+	return c.JSON(200, map[string]interface{}{})
 }
 
 func (s *DASTServer) Start() error {
@@ -164,15 +159,8 @@ func (s *DASTServer) handleRequest(c echo.Context) error {
 		return c.JSON(400, map[string]string{"error": "missing required fields"})
 	}
 
-	if s.options.Verbose {
-		marshalIndented, _ := json.MarshalIndent(req, "", "  ")
-		gologger.Verbose().Msgf("Received request: %s", marshalIndented)
-	}
-
-	select {
-	case s.fuzzRequests <- req:
-		return c.NoContent(200)
-	case timeout := <-time.After(5 * time.Second):
-		return c.JSON(429, map[string]string{"error": fmt.Sprintf("server busy, try again after %v", timeout)})
-	}
+	s.tasksPool.Submit(func() {
+		s.consumeTaskRequest(req)
+	})
+	return c.NoContent(200)
 }

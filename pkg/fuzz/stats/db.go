@@ -14,7 +14,8 @@ import (
 type StatsDatabase interface {
 	Close()
 
-	InsertRecord(event FuzzingEvent) error
+	InsertComponent(event FuzzingEvent) error
+	InsertMatchedRecord(event FuzzingEvent) error
 }
 
 var (
@@ -32,7 +33,7 @@ type sqliteStatsDatabase struct {
 	cacheMutex       *sync.Mutex
 }
 
-func newSqliteStatsDatabase(scanName string) (*sqliteStatsDatabase, error) {
+func NewSqliteStatsDatabase(scanName string) (*sqliteStatsDatabase, error) {
 	filename := fmt.Sprintf("%s.stats.db", scanName)
 
 	connectionString := fmt.Sprintf("./%s?_journal_mode=WAL&_synchronous=NORMAL", filename)
@@ -64,7 +65,45 @@ func (s *sqliteStatsDatabase) Close() {
 	os.Remove(fmt.Sprintf("%s.stats.db-shm", s.scanName))
 }
 
-func (s *sqliteStatsDatabase) InsertRecord(event FuzzingEvent) error {
+func (s *sqliteStatsDatabase) DB() *sql.DB {
+	return s.db
+}
+
+func (s *sqliteStatsDatabase) InsertComponent(event FuzzingEvent) error {
+	tx, err := s.db.Begin()
+	if err != nil {
+		return errors.Wrap(err, "could not begin transaction")
+	}
+
+	defer func() {
+		if err != nil {
+			tx.Rollback()
+		}
+	}()
+
+	siteID, err := s.getSiteID(tx, event.SiteName)
+	if err != nil {
+		return errors.Wrap(err, "could not get site_id")
+	}
+
+	_, err = s.getTemplateID(tx, event.TemplateID)
+	if err != nil {
+		return errors.Wrap(err, "could not get template_id")
+	}
+
+	_, err = s.getComponentID(tx, siteID, event.ComponentType, event.ComponentName, event.URL)
+	if err != nil {
+		return errors.Wrap(err, "could not get component_id")
+	}
+
+	if err := tx.Commit(); err != nil {
+		return errors.Wrap(err, "could not commit transaction")
+	}
+
+	return nil
+}
+
+func (s *sqliteStatsDatabase) InsertMatchedRecord(event FuzzingEvent) error {
 	tx, err := s.db.Begin()
 	if err != nil {
 		return errors.Wrap(err, "could not begin transaction")
@@ -86,12 +125,12 @@ func (s *sqliteStatsDatabase) InsertRecord(event FuzzingEvent) error {
 		return errors.Wrap(err, "could not get template_id")
 	}
 
-	componentID, err := s.getComponentID(tx, siteID, event.ComponentType, event.ComponentName)
+	componentID, err := s.getComponentID(tx, siteID, event.ComponentType, event.ComponentName, event.URL)
 	if err != nil {
 		return errors.Wrap(err, "could not get component_id")
 	}
 
-	err = s.insertFuzzingResult(tx, componentID, templateID, event.PayloadSent, event.StatusCode)
+	err = s.insertFuzzingResult(tx, componentID, templateID, event.PayloadSent, event.StatusCode, event.Matched)
 	if err != nil {
 		return errors.Wrap(err, "could not insert fuzzing result")
 	}
@@ -153,9 +192,8 @@ func (s *sqliteStatsDatabase) getTemplateID(tx *sql.Tx, templateName string) (in
 
 	return templateID, nil
 }
-
-func (s *sqliteStatsDatabase) getComponentID(tx *sql.Tx, siteID int, componentType, componentName string) (int, error) {
-	key := fmt.Sprintf("%d:%s:%s", siteID, componentType, componentName)
+func (s *sqliteStatsDatabase) getComponentID(tx *sql.Tx, siteID int, componentType, componentName, url string) (int, error) {
+	key := fmt.Sprintf("%d:%s:%s:%s", siteID, componentType, componentName, url)
 	var componentID int
 
 	s.cacheMutex.Lock()
@@ -166,9 +204,10 @@ func (s *sqliteStatsDatabase) getComponentID(tx *sql.Tx, siteID int, componentTy
 	s.cacheMutex.Unlock()
 
 	err := tx.QueryRow(`
-        INSERT OR IGNORE INTO components (site_id, component_type, component_name)
-        VALUES (?, ?, ?) RETURNING component_id
-    `, siteID, componentType, componentName).Scan(&componentID)
+        INSERT OR IGNORE INTO components (site_id, component_type, component_name, url)
+        VALUES (?, ?, ?, ?)
+        RETURNING component_id
+    `, siteID, componentType, componentName, url).Scan(&componentID)
 	if err != nil {
 		return 0, err
 	}
@@ -180,10 +219,10 @@ func (s *sqliteStatsDatabase) getComponentID(tx *sql.Tx, siteID int, componentTy
 	return componentID, nil
 }
 
-func (s *sqliteStatsDatabase) insertFuzzingResult(tx *sql.Tx, componentID, templateID int, payloadSent string, statusCode int) error {
+func (s *sqliteStatsDatabase) insertFuzzingResult(tx *sql.Tx, componentID, templateID int, payloadSent string, statusCode int, matched bool) error {
 	_, err := tx.Exec(`
-        INSERT INTO fuzzing_results (component_id, template_id, payload_sent, status_code_received)
-        VALUES (?, ?, ?, ?)
-    `, componentID, templateID, payloadSent, statusCode)
+        INSERT INTO fuzzing_results (component_id, template_id, payload_sent, status_code_received, matched)
+        VALUES (?, ?, ?, ?, ?)
+    `, componentID, templateID, payloadSent, statusCode, matched)
 	return err
 }
