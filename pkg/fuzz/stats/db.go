@@ -130,7 +130,13 @@ func (s *sqliteStatsDatabase) InsertMatchedRecord(event FuzzingEvent) error {
 		return errors.Wrap(err, "could not get component_id")
 	}
 
-	err = s.insertFuzzingResult(tx, componentID, templateID, event.PayloadSent, event.StatusCode, event.Matched)
+	requestID, err := s.insertFuzzingRequestResponse(tx, event.RawRequest, event.RawResponse)
+	if err != nil {
+		fmt.Printf("could not insert fuzzing request response: %s\n", err)
+		return errors.Wrap(err, "could not insert fuzzing request response")
+	}
+
+	err = s.insertFuzzingResult(tx, componentID, templateID, event.PayloadSent, event.StatusCode, event.Matched, requestID)
 	if err != nil {
 		return errors.Wrap(err, "could not insert fuzzing result")
 	}
@@ -219,10 +225,31 @@ func (s *sqliteStatsDatabase) getComponentID(tx *sql.Tx, siteID int, componentTy
 	return componentID, nil
 }
 
-func (s *sqliteStatsDatabase) insertFuzzingResult(tx *sql.Tx, componentID, templateID int, payloadSent string, statusCode int, matched bool) error {
+const responseSaveSize = 2 * 1024
+
+func (s *sqliteStatsDatabase) insertFuzzingRequestResponse(tx *sql.Tx, rawRequest, rawResponse string) (int, error) {
+	var requestID int
+
+	// Only ingest 2kb of response
+	if len(rawResponse) > responseSaveSize {
+		rawResponse = rawResponse[:responseSaveSize]
+	}
+
+	err := tx.QueryRow(`
+        INSERT INTO fuzzing_request_response (raw_request, raw_response)
+        VALUES (?, ?) RETURNING request_id
+    `, rawRequest, rawResponse).Scan(&requestID)
+	if err != nil {
+		return 0, err
+	}
+
+	return requestID, nil
+}
+
+func (s *sqliteStatsDatabase) insertFuzzingResult(tx *sql.Tx, componentID, templateID int, payloadSent string, statusCode int, matched bool, requestID int) error {
 	_, err := tx.Exec(`
-        INSERT INTO fuzzing_results (component_id, template_id, payload_sent, status_code_received, matched)
-        VALUES (?, ?, ?, ?, ?)
-    `, componentID, templateID, payloadSent, statusCode, matched)
+        INSERT INTO fuzzing_results (component_id, template_id, payload_sent, status_code_received, matched, request_id)
+        VALUES (?, ?, ?, ?, ?, ?)
+    `, componentID, templateID, payloadSent, statusCode, matched, requestID)
 	return err
 }

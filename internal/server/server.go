@@ -3,6 +3,7 @@ package server
 import (
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/alitto/pond"
 	"github.com/labstack/echo/v4"
@@ -92,6 +93,12 @@ func New(options *Options) (*DASTServer, error) {
 	gologger.Info().Msgf("Connection URL: %s", server.buildConnectionURL())
 
 	return server, nil
+}
+
+func (s *DASTServer) Close() {
+	s.nucleiExecutor.Close()
+	s.echo.Close()
+	s.tasksPool.StopAndWaitFor(1 * time.Minute)
 }
 
 func (s *DASTServer) buildConnectionURL() string {

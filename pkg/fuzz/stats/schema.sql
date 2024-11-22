@@ -40,9 +40,11 @@ CREATE TABLE IF NOT EXISTS fuzzing_results (
     payload_sent TEXT NOT NULL,
     status_code_received INTEGER NOT NULL,
     matched BOOLEAN DEFAULT FALSE NOT NULL,
+    request_id INTEGER NOT NULL,
     timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (component_id) REFERENCES components(component_id),
-    FOREIGN KEY (template_id) REFERENCES templates(template_id)
+    FOREIGN KEY (template_id) REFERENCES templates(template_id),
+    FOREIGN KEY (request_id) REFERENCES fuzzing_request_response(request_id)
 );
 CREATE INDEX IF NOT EXISTS idx_FuzzingResults_comp_temp_time ON fuzzing_results (component_id, template_id, timestamp);
 
@@ -60,3 +62,10 @@ BEGIN
     ON CONFLICT(component_id, template_id) DO UPDATE SET
         times_applied = times_applied + 1;
 END;
+
+-- 
+CREATE TABLE IF NOT EXISTS fuzzing_request_response (
+    request_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    raw_request TEXT NOT NULL,
+    raw_response TEXT NOT NULL
+);

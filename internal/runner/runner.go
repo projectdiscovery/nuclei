@@ -98,6 +98,7 @@ type Runner struct {
 	tmpDir          string
 	parser          parser.Parser
 	httpApiEndpoint *httpapi.Server
+	dastServer      *server.DASTServer
 }
 
 const pprofServerAddress = "127.0.0.1:8086"
@@ -364,6 +365,9 @@ func (r *Runner) runStandardEnumeration(executerOpts protocols.ExecutorOptions, 
 
 // Close releases all the resources and cleans up
 func (r *Runner) Close() {
+	if r.dastServer != nil {
+		r.dastServer.Close()
+	}
 	// dump hosterrors cache
 	if r.hostErrors != nil {
 		r.hostErrors.Close()
@@ -471,6 +475,7 @@ func (r *Runner) RunEnumeration() error {
 		if err != nil {
 			return err
 		}
+		r.dastServer = dastServer
 		return dastServer.Start()
 	}
 

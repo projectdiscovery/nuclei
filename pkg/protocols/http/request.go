@@ -1045,6 +1045,8 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 				PayloadSent:   generatedRequest.fuzzGeneratedRequest.Value,
 				StatusCode:    respChain.Response().StatusCode,
 				Matched:       event.HasResults(),
+				RawRequest:    string(dumpedRequest),
+				RawResponse:   respChain.FullResponse().String(),
 			})
 		}
 

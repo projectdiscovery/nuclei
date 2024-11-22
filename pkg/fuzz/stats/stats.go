@@ -3,9 +3,11 @@
 package stats
 
 import (
+	"fmt"
 	"net/url"
 
 	"github.com/pkg/errors"
+	"github.com/projectdiscovery/gologger"
 )
 
 // Tracker is a stats tracker module for fuzzing server
@@ -28,6 +30,11 @@ func NewTracker(scanName string) (*Tracker, error) {
 
 // Close closes the tracker
 func (t *Tracker) Close() {
+	_, err := t.database.(*sqliteStatsDatabase).db.Exec("VACUUM")
+	if err != nil {
+		gologger.Error().Msgf("could not truncate wal: %s", err)
+	}
+
 	t.database.Close()
 }
 
@@ -41,26 +48,34 @@ type FuzzingEvent struct {
 	StatusCode    int
 	Matched       bool
 	SiteName      string
+	RawRequest    string
+	RawResponse   string
 }
 
 func (t *Tracker) RecordResultEvent(event FuzzingEvent) {
-	parsed, err := url.Parse(event.URL)
-	if err != nil {
-		return
-	}
-
-	// Site is the host:port combo
-	event.SiteName = parsed.Host
+	event.SiteName = getCorrectSiteName(event.URL)
 	t.database.InsertMatchedRecord(event)
 }
 
 func (t *Tracker) RecordComponentEvent(event FuzzingEvent) {
-	parsed, err := url.Parse(event.URL)
+	event.SiteName = getCorrectSiteName(event.URL)
+	t.database.InsertComponent(event)
+}
+
+func getCorrectSiteName(originalURL string) string {
+	parsed, err := url.Parse(originalURL)
 	if err != nil {
-		return
+		return ""
 	}
 
 	// Site is the host:port combo
-	event.SiteName = parsed.Host
-	t.database.InsertComponent(event)
+	siteName := parsed.Host
+	if parsed.Port() == "" {
+		if parsed.Scheme == "https" {
+			siteName = fmt.Sprintf("%s:443", siteName)
+		} else if parsed.Scheme == "http" {
+			siteName = fmt.Sprintf("%s:80", siteName)
+		}
+	}
+	return siteName
 }
