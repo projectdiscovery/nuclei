@@ -298,6 +298,14 @@ func (store *Store) LoadTemplatesOnlyMetadata() error {
 
 	for templatePath := range validPaths {
 		template, _, _ := templatesCache.Has(templatePath)
+		if template.SelfContained && !store.config.ExecutorOptions.Options.EnableSelfContainedTemplates {
+			continue
+		}
+
+		if template.HasFileProtocol() && !store.config.ExecutorOptions.Options.EnableFileTemplates {
+			continue
+		}
+
 		if template != nil {
 			template.Path = templatePath
 			store.templates = append(store.templates, template)
