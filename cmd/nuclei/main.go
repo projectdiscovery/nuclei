@@ -273,6 +273,8 @@ on extensive configurability, massive extensibility and ease of use.`)
 		flagSet.BoolVar(&options.SignTemplates, "sign", false, "signs the templates with the private key defined in NUCLEI_SIGNATURE_PRIVATE_KEY env variable"),
 		flagSet.BoolVar(&options.EnableCodeTemplates, "code", false, "enable loading code protocol-based templates"),
 		flagSet.BoolVarP(&options.DisableUnsignedTemplates, "disable-unsigned-templates", "dut", false, "disable running unsigned templates or templates with mismatched signature"),
+		flagSet.BoolVarP(&options.EnableSelfContainedTemplates, "enable-self-contained", "esc", false, "enable loading self-contained templates"),
+		flagSet.BoolVar(&options.EnableFileTemplates, "file", false, "enable loading file templates"),
 	)
 
 	flagSet.CreateGroup("filters", "Filtering",
@@ -506,6 +508,11 @@ Additional documentation is available at: https://docs.nuclei.sh/getting-started
 	if fuzzFlag {
 		// backwards compatibility for fuzz flag
 		options.DAST = true
+	}
+
+	// All cloud-based templates depend on both code and self-contained templates.
+	if options.EnableCodeTemplates {
+		options.EnableSelfContainedTemplates = true
 	}
 
 	// api key hierarchy: cli flag > env var > .pdcp/credential file
