@@ -298,6 +298,19 @@ func (store *Store) LoadTemplatesOnlyMetadata() error {
 
 	for templatePath := range validPaths {
 		template, _, _ := templatesCache.Has(templatePath)
+
+		if len(template.RequestsHeadless) > 0 && !store.config.ExecutorOptions.Options.Headless {
+			continue
+		}
+
+		if len(template.RequestsCode) > 0 && !store.config.ExecutorOptions.Options.EnableCodeTemplates {
+			continue
+		}
+
+		if template.IsFuzzing() && !store.config.ExecutorOptions.Options.DAST {
+			continue
+		}
+
 		if template.SelfContained && !store.config.ExecutorOptions.Options.EnableSelfContainedTemplates {
 			continue
 		}
