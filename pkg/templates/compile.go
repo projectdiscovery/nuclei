@@ -82,7 +82,7 @@ func Parse(filePath string, preprocessor Preprocessor, options protocols.Executo
 	if err != nil {
 		return nil, err
 	}
-	if template.isGlobalMatchersEnabled() {
+	if template.isGlobalMatchersEnabled(options) {
 		item := &globalmatchers.Item{
 			TemplateID:   template.ID,
 			TemplatePath: filePath,
@@ -119,7 +119,11 @@ func Parse(filePath string, preprocessor Preprocessor, options protocols.Executo
 // templates.
 //
 // TODO: support all protocols.
-func (template *Template) isGlobalMatchersEnabled() bool {
+func (template *Template) isGlobalMatchersEnabled(executorOpts protocols.ExecutorOptions) bool {
+	if !executorOpts.Options.EnableGlobalMatchersTemplates {
+		return false
+	}
+
 	for _, request := range template.RequestsHTTP {
 		if request.GlobalMatchers {
 			return true
