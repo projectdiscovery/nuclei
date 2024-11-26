@@ -81,6 +81,7 @@ func (c *Cookie) Delete(key string) error {
 // Rebuild returns a new request with the
 // component rebuilt
 func (c *Cookie) Rebuild() (*retryablehttp.Request, error) {
+	// TODO: Fix cookie duplication with auth-file
 	cloned := c.req.Clone(context.Background())
 
 	cloned.Header.Del("Cookie")
