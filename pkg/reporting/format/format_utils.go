@@ -83,7 +83,7 @@ func CreateReportDescription(event *output.ResultEvent, formatter ResultFormatte
 		}
 	}
 
-	if len(event.ExtractedResults) > 0 || len(event.Metadata) > 0 {
+	if len(event.ExtractedResults) > 0 || len(event.Metadata) > 0 || event.AnalyzerDetails != "" {
 		builder.WriteString("\n")
 		builder.WriteString(formatter.MakeBold("Extra Information"))
 		builder.WriteString("\n\n")
@@ -97,6 +97,13 @@ func CreateReportDescription(event *output.ResultEvent, formatter ResultFormatte
 				builder.WriteString(v)
 				builder.WriteString("\n")
 			}
+			builder.WriteString("\n")
+		}
+		if event.AnalyzerDetails != "" {
+			builder.WriteString(formatter.MakeBold("Analyzer Details:"))
+			builder.WriteString("\n\n")
+
+			builder.WriteString(event.AnalyzerDetails)
 			builder.WriteString("\n")
 		}
 		if len(event.Metadata) > 0 {

@@ -1373,6 +1373,19 @@ Fuzzing describes schema to fuzz http requests
 
 <div class="dd">
 
+<code>analyzer</code>  <i><a href="#analyzersanalyzertemplate">analyzers.AnalyzerTemplate</a></i>
+
+</div>
+<div class="dt">
+
+Analyzer is an analyzer to use for matching the response.
+
+</div>
+
+<hr />
+
+<div class="dd">
+
 <code>self-contained</code>  <i>bool</i>
 
 </div>
@@ -1646,6 +1659,19 @@ Fuzz PreCondition is matcher-like field to check if fuzzing should be performed 
 <div class="dt">
 
 FuzzPreConditionOperator is the operator between multiple PreConditions for fuzzing Default is OR
+
+</div>
+
+<hr />
+
+<div class="dd">
+
+<code>global-matchers</code>  <i>bool</i>
+
+</div>
+<div class="dt">
+
+GlobalMatchers marks matchers as static and applies globally to all result events from other templates
 
 </div>
 
@@ -2007,6 +2033,59 @@ Appears in:
 - <code><a href="#fuzzrule">fuzz.Rule</a>.fuzz</code>
 
 
+
+
+
+
+
+## analyzers.AnalyzerTemplate
+AnalyzerTemplate is the template for the analyzer
+
+Appears in:
+
+
+- <code><a href="#httprequest">http.Request</a>.analyzer</code>
+
+
+
+
+
+<hr />
+
+<div class="dd">
+
+<code>name</code>  <i>string</i>
+
+</div>
+<div class="dt">
+
+Name is the name of the analyzer to use
+
+
+Valid values:
+
+
+  - <code>time_delay</code>
+</div>
+
+<hr />
+
+<div class="dd">
+
+<code>parameters</code>  <i>map[string]interface{}</i>
+
+</div>
+<div class="dt">
+
+Parameters is the parameters for the analyzer
+
+Parameters are different for each analyzer. For example, you can customize
+time_delay analyzer with sleep_duration, time_slope_error_range, etc. Refer
+to the docs for each analyzer to get an idea about parameters.
+
+</div>
+
+<hr />
 
 
 
@@ -3210,6 +3289,19 @@ read-all: false
 
 <hr />
 
+<div class="dd">
+
+<code>stop-at-first-match</code>  <i>bool</i>
+
+</div>
+<div class="dt">
+
+StopAtFirstMatch stops the execution of the requests and template as soon as a match is found.
+
+</div>
+
+<hr />
+
 
 
 
@@ -3664,7 +3756,17 @@ Enum Values:
 
   - <code>files</code>
 
+  - <code>waitdom</code>
+
+  - <code>waitfcp</code>
+
+  - <code>waitfmp</code>
+
+  - <code>waitidle</code>
+
   - <code>waitload</code>
+
+  - <code>waitstable</code>
 
   - <code>getresource</code>
 
@@ -3754,11 +3856,33 @@ Appears in:
 Part Definitions: 
 
 
-- <code>type</code> - Type is the type of request made
-- <code>response</code> - JSON SSL protocol handshake details
-- <code>not_after</code> - Timestamp after which the remote cert expires
+- <code>template-id</code> - ID of the template executed
+- <code>template-info</code> - Info Block of the template executed
+- <code>template-path</code> - Path of the template executed
 - <code>host</code> - Host is the input to the template
+- <code>port</code> - Port is the port of the host
 - <code>matched</code> - Matched is the input which was matched upon
+- <code>type</code> - Type is the type of request made
+- <code>timestamp</code> - Timestamp is the time when the request was made
+- <code>response</code> - JSON SSL protocol handshake details
+- <code>cipher</code> - Cipher is the encryption algorithm used
+- <code>domains</code> - Domains are the list of domain names in the certificate
+- <code>fingerprint_hash</code> - Fingerprint hash is the unique identifier of the certificate
+- <code>ip</code> - IP is the IP address of the server
+- <code>issuer_cn</code> - Issuer CN is the common name of the certificate issuer
+- <code>issuer_dn</code> - Issuer DN is the distinguished name of the certificate issuer
+- <code>issuer_org</code> - Issuer organization is the organization of the certificate issuer
+- <code>not_after</code> - Timestamp after which the remote cert expires
+- <code>not_before</code> - Timestamp before which the certificate is not valid
+- <code>probe_status</code> - Probe status indicates if the probe was successful
+- <code>serial</code> - Serial is the serial number of the certificate
+- <code>sni</code> - SNI is the server name indication used in the handshake
+- <code>subject_an</code> - Subject AN is the list of subject alternative names
+- <code>subject_cn</code> - Subject CN is the common name of the certificate subject
+- <code>subject_dn</code> - Subject DN is the distinguished name of the certificate subject
+- <code>subject_org</code> - Subject organization is the organization of the certificate subject
+- <code>tls_connection</code> - TLS connection is the type of TLS connection used
+- <code>tls_version</code> - TLS version is the version of the TLS protocol used
 
 <hr />
 

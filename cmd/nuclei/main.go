@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"runtime/pprof"
+	"runtime/trace"
 	"strings"
 	"time"
 
@@ -104,21 +105,40 @@ func main() {
 		return
 	}
 
-	// Profiling related code
+	// Profiling & tracing related code
 	if memProfile != "" {
-		f, err := os.Create(memProfile)
+		memProfile = strings.TrimSuffix(memProfile, filepath.Ext(memProfile)) + ".prof"
+		memProfileFile, err := os.Create(memProfile)
 		if err != nil {
-			gologger.Fatal().Msgf("profile: could not create memory profile %q: %v", memProfile, err)
+			gologger.Fatal().Msgf("profile: could not create memory profile %q file: %v", memProfile, err)
 		}
-		old := runtime.MemProfileRate
+
+		traceFilepath := strings.TrimSuffix(memProfile, filepath.Ext(memProfile)) + ".trace"
+		traceFile, err := os.Create(traceFilepath)
+		if err != nil {
+			gologger.Fatal().Msgf("profile: could not create trace %q file: %v", traceFilepath, err)
+		}
+
+		oldMemProfileRate := runtime.MemProfileRate
 		runtime.MemProfileRate = 4096
-		gologger.Print().Msgf("profile: memory profiling enabled (rate %d), %s", runtime.MemProfileRate, memProfile)
+
+		// Start tracing
+		if err := trace.Start(traceFile); err != nil {
+			gologger.Fatal().Msgf("profile: could not start trace: %v", err)
+		}
 
 		defer func() {
-			_ = pprof.Lookup("heap").WriteTo(f, 0)
-			f.Close()
-			runtime.MemProfileRate = old
-			gologger.Print().Msgf("profile: memory profiling disabled, %s", memProfile)
+			// Start CPU profiling
+			if err := pprof.WriteHeapProfile(memProfileFile); err != nil {
+				gologger.Fatal().Msgf("profile: could not start CPU profile: %v", err)
+			}
+			memProfileFile.Close()
+			traceFile.Close()
+			trace.Stop()
+			runtime.MemProfileRate = oldMemProfileRate
+
+			gologger.Info().Msgf("Memory profile saved at %q", memProfile)
+			gologger.Info().Msgf("Traced at %q", traceFilepath)
 		}()
 	}
 
@@ -244,6 +264,8 @@ on extensive configurability, massive extensibility and ease of use.`)
 		flagSet.BoolVar(&options.SignTemplates, "sign", false, "signs the templates with the private key defined in NUCLEI_SIGNATURE_PRIVATE_KEY env variable"),
 		flagSet.BoolVar(&options.EnableCodeTemplates, "code", false, "enable loading code protocol-based templates"),
 		flagSet.BoolVarP(&options.DisableUnsignedTemplates, "disable-unsigned-templates", "dut", false, "disable running unsigned templates or templates with mismatched signature"),
+		flagSet.BoolVarP(&options.EnableSelfContainedTemplates, "enable-self-contained", "esc", false, "enable loading self-contained templates"),
+		flagSet.BoolVar(&options.EnableFileTemplates, "file", false, "enable loading file templates"),
 	)
 
 	flagSet.CreateGroup("filters", "Filtering",
@@ -404,9 +426,10 @@ on extensive configurability, massive extensibility and ease of use.`)
 		flagSet.CallbackVar(printVersion, "version", "show nuclei version"),
 		flagSet.BoolVarP(&options.HangMonitor, "hang-monitor", "hm", false, "enable nuclei hang monitoring"),
 		flagSet.BoolVarP(&options.Verbose, "verbose", "v", false, "show verbose output"),
-		flagSet.StringVar(&memProfile, "profile-mem", "", "optional nuclei memory profile dump file"),
+		flagSet.StringVar(&memProfile, "profile-mem", "", "generate memory (heap) profile & trace files"),
 		flagSet.BoolVar(&options.VerboseVerbose, "vv", false, "display templates loaded for scan"),
 		flagSet.BoolVarP(&options.ShowVarDump, "show-var-dump", "svd", false, "show variables dump for debugging"),
+		flagSet.IntVarP(&options.VarDumpLimit, "var-dump-limit", "vdl", 255, "limit the number of characters displayed in var dump"),
 		flagSet.BoolVarP(&options.EnablePprof, "enable-pprof", "ep", false, "enable pprof debugging server"),
 		flagSet.CallbackVarP(printTemplateVersion, "templates-version", "tv", "shows the version of the installed nuclei-templates"),
 		flagSet.BoolVarP(&options.HealthCheck, "health-check", "hc", false, "run diagnostic check up"),
@@ -473,6 +496,11 @@ Additional documentation is available at: https://docs.nuclei.sh/getting-started
 	if fuzzFlag {
 		// backwards compatibility for fuzz flag
 		options.DAST = true
+	}
+
+	// All cloud-based templates depend on both code and self-contained templates.
+	if options.EnableCodeTemplates {
+		options.EnableSelfContainedTemplates = true
 	}
 
 	// api key hierarchy: cli flag > env var > .pdcp/credential file

@@ -174,7 +174,15 @@ func (e *TemplateExecuter) Execute(ctx *scan.ScanContext) (bool, error) {
 		if !event.HasOperatorResult() && event.InternalEvent != nil {
 			lastMatcherEvent = event
 		} else {
-			if writer.WriteResult(event, e.options.Output, e.options.Progress, e.options.IssuesClient) {
+			var isGlobalMatchers bool
+			isGlobalMatchers, _ = event.InternalEvent["global-matchers"].(bool)
+			// NOTE(dwisiswant0): Don't store `matched` on a `global-matchers` template.
+			// This will end up generating 2 events from the same `scan.ScanContext` if
+			// one of the templates has `global-matchers` enabled. This way,
+			// non-`global-matchers` templates can enter the `writeFailureCallback`
+			// func to log failure output.
+			wr := writer.WriteResult(event, e.options.Output, e.options.Progress, e.options.IssuesClient)
+			if wr && !isGlobalMatchers {
 				matched.Store(true)
 			} else {
 				lastMatcherEvent = event
@@ -206,7 +214,9 @@ func (e *TemplateExecuter) Execute(ctx *scan.ScanContext) (bool, error) {
 	ctx.LogError(errx)
 
 	if lastMatcherEvent != nil {
+		lastMatcherEvent.Lock()
 		lastMatcherEvent.InternalEvent["error"] = getErrorCause(ctx.GenerateErrorMessage())
+		lastMatcherEvent.Unlock()
 		writeFailureCallback(lastMatcherEvent, e.options.Options.MatcherStatus)
 	}
 

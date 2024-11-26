@@ -25,6 +25,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/progress"
 	"github.com/projectdiscovery/nuclei/v3/pkg/projectfile"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/globalmatchers"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/hosterrorscache"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/interactsh"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/utils/excludematchers"
@@ -61,6 +62,8 @@ type ExecutorOptions struct {
 	TemplatePath string
 	// TemplateInfo contains information block of the template request
 	TemplateInfo model.Info
+	// TemplateVerifier is the verifier for the template
+	TemplateVerifier string
 	// RawTemplate is the raw template for the request
 	RawTemplate []byte
 	// Output is a writer interface for writing output events from executer.
@@ -124,6 +127,8 @@ type ExecutorOptions struct {
 	// ExportReqURLPattern exports the request URL pattern
 	// in ResultEvent it contains the exact url pattern (ex: {{BaseURL}}/{{randstr}}/xyz) used in the request
 	ExportReqURLPattern bool
+	// GlobalMatchers is the storage for global matchers with http passive templates
+	GlobalMatchers *globalmatchers.Storage
 }
 
 // todo: centralizing components is not feasible with current clogged architecture

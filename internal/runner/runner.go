@@ -48,6 +48,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/automaticscan"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/globalmatchers"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/hosterrorscache"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/interactsh"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolinit"
@@ -391,6 +392,9 @@ func (r *Runner) Close() {
 	if r.tmpDir != "" {
 		_ = os.RemoveAll(r.tmpDir)
 	}
+
+	//this is no-op unless nuclei is built with stats build tag
+	events.Close()
 }
 
 // setupPDCPUpload sets up the PDCP upload writer
@@ -475,6 +479,7 @@ func (r *Runner) RunEnumeration() error {
 		TemporaryDirectory:  r.tmpDir,
 		Parser:              r.parser,
 		FuzzParamsFrequency: fuzzFreqCache,
+		GlobalMatchers:      globalmatchers.New(),
 	}
 
 	if config.DefaultConfig.IsDebugArgEnabled(config.DebugExportURLPattern) {
@@ -501,8 +506,17 @@ func (r *Runner) RunEnumeration() error {
 	}
 
 	if r.options.ShouldUseHostError() {
-		cache := hosterrorscache.New(r.options.MaxHostError, hosterrorscache.DefaultMaxHostsCount, r.options.TrackError)
+		maxHostError := r.options.MaxHostError
+		if r.options.TemplateThreads > maxHostError {
+			gologger.Print().Msgf("[%v] The concurrency value is higher than max-host-error", r.colorizer.BrightYellow("WRN"))
+			gologger.Info().Msgf("Adjusting max-host-error to the concurrency value: %d", r.options.TemplateThreads)
+
+			maxHostError = r.options.TemplateThreads
+		}
+
+		cache := hosterrorscache.New(maxHostError, hosterrorscache.DefaultMaxHostsCount, r.options.TrackError)
 		cache.SetVerbose(r.options.Verbose)
+
 		r.hostErrors = cache
 		executorOpts.HostErrorsCache = cache
 	}
@@ -716,6 +730,8 @@ func (r *Runner) displayExecutionInfo(store *loader.Store) {
 		stats.ForceDisplayWarning(templates.ExcludedCodeTmplStats)
 		stats.ForceDisplayWarning(templates.ExludedDastTmplStats)
 		stats.ForceDisplayWarning(templates.TemplatesExcludedStats)
+		stats.ForceDisplayWarning(templates.ExcludedFileStats)
+		stats.ForceDisplayWarning(templates.ExcludedSelfContainedStats)
 	}
 
 	if tmplCount == 0 && workflowCount == 0 {

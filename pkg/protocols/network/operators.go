@@ -100,13 +100,14 @@ func (request *Request) MakeResultEventItem(wrapped *output.InternalWrappedEvent
 		fields.Ip = types.ToString(wrapped.InternalEvent["ip"])
 	}
 	data := &output.ResultEvent{
-		TemplateID:   types.ToString(wrapped.InternalEvent["template-id"]),
-		TemplatePath: types.ToString(wrapped.InternalEvent["template-path"]),
-		Info:         wrapped.InternalEvent["template-info"].(model.Info),
-		Type:         types.ToString(wrapped.InternalEvent["type"]),
-		Host:         fields.Host,
-		Port:         fields.Port,
-		URL:          fields.URL,
+		TemplateID:       types.ToString(wrapped.InternalEvent["template-id"]),
+		TemplatePath:     types.ToString(wrapped.InternalEvent["template-path"]),
+		Info:             wrapped.InternalEvent["template-info"].(model.Info),
+		TemplateVerifier: request.options.TemplateVerifier,
+		Type:             types.ToString(wrapped.InternalEvent["type"]),
+		Host:             fields.Host,
+		Port:             fields.Port,
+		URL:              fields.URL,
 		Matched:          types.ToString(wrapped.InternalEvent["matched"]),
 		ExtractedResults: wrapped.OperatorsResult.OutputExtracts,
 		Metadata:         wrapped.OperatorsResult.PayloadValues,

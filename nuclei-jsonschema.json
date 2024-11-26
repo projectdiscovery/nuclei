@@ -3,6 +3,22 @@
   "$id": "https://templates.-template",
   "$ref": "#/$defs/templates.Template",
   "$defs": {
+    "analyzers.AnalyzerTemplate": {
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "parameters": {
+          "$ref": "#/$defs/map[string]interface {}"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "name",
+        "parameters"
+      ]
+    },
     "code.Request": {
       "properties": {
         "matchers": {
@@ -247,7 +263,12 @@
         "time",
         "select",
         "files",
+        "waitdom",
+        "waitfcp",
+        "waitfmp",
+        "waitidle",
         "waitload",
+        "waitstable",
         "getresource",
         "extract",
         "setmethod",
@@ -780,6 +801,11 @@
           "title": "fuzzin rules for http fuzzing",
           "description": "Fuzzing describes rule schema to fuzz http requests"
         },
+        "analyzer": {
+          "$ref": "#/$defs/analyzers.AnalyzerTemplate",
+          "title": "analyzer for http request",
+          "description": "Analyzer for HTTP Request"
+        },
         "self-contained": {
           "type": "boolean"
         },
@@ -884,6 +910,11 @@
           ],
           "title": "condition between the filters",
           "description": "Operator to use between multiple per-conditions"
+        },
+        "global-matchers": {
+          "type": "boolean",
+          "title": "global matchers",
+          "description": "marks matchers as static and applies globally to all result events from other templates"
         }
       },
       "additionalProperties": false,
@@ -1359,6 +1390,11 @@
           "type": "boolean",
           "title": "read all response stream",
           "description": "Read all response stream till the server stops sending"
+        },
+        "stop-at-first-match": {
+          "type": "boolean",
+          "title": "stop at first match",
+          "description": "Stop the execution after a match is found"
         },
         "matchers": {
           "items": {

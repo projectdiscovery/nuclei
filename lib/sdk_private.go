@@ -7,6 +7,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/projectdiscovery/nuclei/v3/pkg/input"
+
 	"github.com/logrusorgru/aurora"
 	"github.com/pkg/errors"
 	"github.com/projectdiscovery/gologger"
@@ -171,6 +173,7 @@ func (e *NucleiEngine) init(ctx context.Context) error {
 		ResumeCfg:       types.NewResumeCfg(),
 		Browser:         e.browserInstance,
 		Parser:          e.parser,
+		InputHelper:     input.NewHelper(),
 	}
 	if len(e.opts.SecretsFile) > 0 {
 		authTmplStore, err := runner.GetAuthTmplStore(*e.opts, e.catalog, e.executerOpts)

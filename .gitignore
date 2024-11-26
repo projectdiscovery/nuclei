@@ -10,6 +10,7 @@
 .vscode
 
 # Binaries
+/bin/*
 **/bindgen
 **/debug-*
 **/docgen
@@ -40,3 +41,11 @@ pkg/protocols/common/helpers/deserialization/testdata/Deserialize.class
 pkg/protocols/common/helpers/deserialization/testdata/ValueObject.class
 pkg/protocols/common/helpers/deserialization/testdata/ValueObject2.ser
 vendor
+
+# Headless `screenshot` action
+*.png
+
+# Profiling & tracing
+*.prof
+*.pprof
+*.trace

@@ -45,9 +45,24 @@ const (
 	// ActionFilesInput performs an action on a file input.
 	// name:files
 	ActionFilesInput
-	// ActionWaitLoad waits for the page to stop loading.
+	// ActionWaitDOM waits for the HTML document has been completely loaded & parsed.
+	// name:waitdom
+	ActionWaitDOM
+	// ActionWaitFCP waits for the first piece of content (text, image, etc.) is painted on the screen.
+	// name:waitfcp
+	ActionWaitFCP
+	// ActionWaitFMP waits for page has rendered enough meaningful content to be useful to the user.
+	// name:waitfmp
+	ActionWaitFMP
+	// ActionWaitIdle waits for the network is completely idle (no ongoing network requests).
+	// name:waitidle
+	ActionWaitIdle
+	// ActionWaitLoad waits for the page and all its resources (like stylesheets and images) have finished loading.
 	// name:waitload
 	ActionWaitLoad
+	// ActionWaitStable waits until the page is stable.
+	// name:waitstable
+	ActionWaitStable
 	// ActionGetResource performs a get resource action on an element
 	// name:getresource
 	ActionGetResource
@@ -102,7 +117,12 @@ var ActionStringToAction = map[string]ActionType{
 	"time":         ActionTimeInput,
 	"select":       ActionSelectInput,
 	"files":        ActionFilesInput,
+	"waitdom":      ActionWaitDOM,
+	"waitfcp":      ActionWaitFCP,
+	"waitfmp":      ActionWaitFMP,
+	"waitidle":     ActionWaitIdle,
 	"waitload":     ActionWaitLoad,
+	"waitstable":   ActionWaitStable,
 	"getresource":  ActionGetResource,
 	"extract":      ActionExtract,
 	"setmethod":    ActionSetMethod,
@@ -129,7 +149,12 @@ var ActionToActionString = map[ActionType]string{
 	ActionTimeInput:    "time",
 	ActionSelectInput:  "select",
 	ActionFilesInput:   "files",
+	ActionWaitDOM:      "waitdom",
+	ActionWaitFCP:      "waitfcp",
+	ActionWaitFMP:      "waitfmp",
+	ActionWaitIdle:     "waitidle",
 	ActionWaitLoad:     "waitload",
+	ActionWaitStable:   "waitstable",
 	ActionGetResource:  "getresource",
 	ActionExtract:      "extract",
 	ActionSetMethod:    "setmethod",
