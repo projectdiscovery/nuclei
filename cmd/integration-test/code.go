@@ -99,7 +99,7 @@ type codePreCondition struct{}
 
 // Execute executes a test case and returns an error if occurred
 func (h *codePreCondition) Execute(filePath string) error {
-	results, err := testutils.RunNucleiArgsWithEnvAndGetResults(debug, getEnvValues(), "-t", filePath, "-u", "input", "-code")
+	results, err := testutils.RunNucleiArgsWithEnvAndGetResults(debug, getEnvValues(), "-t", filePath, "-u", "input", "-code", "-esc")
 	if err != nil {
 		return err
 	}
