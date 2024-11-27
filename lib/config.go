@@ -393,6 +393,14 @@ func EnableSelfContainedTemplates() NucleiSDKOptions {
 	}
 }
 
+// EnableGlobalMatchersTemplates allows loading/executing global-matchers templates
+func EnableGlobalMatchersTemplates() NucleiSDKOptions {
+	return func(e *NucleiEngine) error {
+		e.opts.EnableGlobalMatchersTemplates = true
+		return nil
+	}
+}
+
 // EnableFileTemplates allows loading/executing file protocol templates
 func EnableFileTemplates() NucleiSDKOptions {
 	return func(e *NucleiEngine) error {
