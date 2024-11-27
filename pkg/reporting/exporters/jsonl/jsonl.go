@@ -70,7 +70,7 @@ func (exporter *Exporter) WriteRows() error {
 	var err error
 	if exporter.outputFile == nil {
 		// Open the JSONL file for writing and create it if it doesn't exist
-		exporter.outputFile, err = os.OpenFile(exporter.options.File, os.O_WRONLY|os.O_CREATE, 0644)
+		exporter.outputFile, err = os.OpenFile(exporter.options.File, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0644)
 		if err != nil {
 			return errors.Wrap(err, "failed to create JSONL file")
 		}
