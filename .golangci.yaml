@@ -1,0 +1,4 @@
+issues:
+  exclude-rules:
+    - path: pkg/js/devtools/(bindgen/generator|scrapefuncs/main)\.go
+      text: "SA1019:"
