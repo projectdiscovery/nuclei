@@ -34,6 +34,7 @@
 # Templates
 /*.yaml
 !/.sops.yaml
+!/.golangci.yaml
 
 # Generated docs
 /dsl.md
