@@ -51,6 +51,9 @@ func main() {
 	}); err != nil {
 		panic(err)
 	}
+
+	// TODO: ast.Package has been deprecated since Go 1.22 and an alternative
+	// has been available since Go 1.0: use the type checker [go/types] instead.
 	pkgs := map[string]*ast.Package{}
 
 	for _, dir := range dirList {

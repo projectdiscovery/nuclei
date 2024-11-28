@@ -131,6 +131,8 @@ func CreateTemplateData(directory string, packagePrefix string) (*TemplateData, 
 		return nil, errors.Wrap(err, "could not check package")
 	}
 
+	// TODO: ast.Package has been deprecated since Go 1.22 and an alternative
+	// has been available since Go 1.0: use the type checker [go/types] instead.
 	var pkgMain *ast.Package
 	for _, p := range pkgs {
 		pkgMain = p
@@ -187,6 +189,9 @@ func (d *TemplateData) InitNativeScripts() {
 }
 
 // gatherPackageData gathers data about the package
+//
+// TODO: ast.Package has been deprecated since Go 1.22 and an alternative has
+// been available since Go 1.0: use the type checker [go/types] instead.
 func (d *TemplateData) gatherPackageData(pkg *ast.Package, data *TemplateData) {
 	ast.Inspect(pkg, func(node ast.Node) bool {
 		switch node := node.(type) {
@@ -242,6 +247,11 @@ func (d *TemplateData) gatherPackageData(pkg *ast.Package, data *TemplateData) {
 	})
 }
 
+// identifyGenDecl identifies and processes general declarations in the AST,
+// handling exported variables, interfaces and structs.
+//
+// TODO: ast.Package has been deprecated since Go 1.22 and an alternative has
+// been available since Go 1.0: use the type checker [go/types] instead.
 func identifyGenDecl(pkg *ast.Package, decl *ast.GenDecl, data *TemplateData) {
 	for _, spec := range decl.Specs {
 		switch spec := spec.(type) {
