@@ -87,7 +87,7 @@ func (exporter *Exporter) WriteRows() error {
 		}
 
 		// Add a trailing newline to the JSON byte array to confirm with the JSONL format
-		obj = append(obj, ',', '\n')
+		obj = append(obj, '\n')
 
 		// Attempt to append the JSON line to file specified in options.JSONLExport
 		if _, err = exporter.outputFile.Write(obj); err != nil {
