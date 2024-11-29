@@ -4,8 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"net/http"
-	_ "net/http/pprof"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -26,6 +24,7 @@ import (
 	"github.com/projectdiscovery/utils/env"
 	fileutil "github.com/projectdiscovery/utils/file"
 	permissionutil "github.com/projectdiscovery/utils/permission"
+	pprofutil "github.com/projectdiscovery/utils/pprof"
 	updateutils "github.com/projectdiscovery/utils/update"
 
 	"github.com/logrusorgru/aurora"
@@ -90,7 +89,7 @@ type Runner struct {
 	rateLimiter        *ratelimit.Limiter
 	hostErrors         hosterrorscache.CacheInterface
 	resumeCfg          *types.ResumeCfg
-	pprofServer        *http.Server
+	pprofServer        *pprofutil.PprofServer
 	pdcpUploadErrMsg   string
 	inputProvider      provider.InputProvider
 	fuzzFrequencyCache *frequency.Tracker
@@ -219,15 +218,8 @@ func New(options *types.Options) (*Runner, error) {
 	templates.SeverityColorizer = colorizer.New(runner.colorizer)
 
 	if options.EnablePprof {
-		server := &http.Server{
-			Addr:    pprofServerAddress,
-			Handler: http.DefaultServeMux,
-		}
-		gologger.Info().Msgf("Listening pprof debug server on: %s", pprofServerAddress)
-		runner.pprofServer = server
-		go func() {
-			_ = server.ListenAndServe()
-		}()
+		runner.pprofServer = pprofutil.NewPprofServer()
+		runner.pprofServer.Start()
 	}
 
 	if options.HttpApiEndpoint != "" {
@@ -386,7 +378,7 @@ func (r *Runner) Close() {
 	}
 	protocolinit.Close()
 	if r.pprofServer != nil {
-		_ = r.pprofServer.Shutdown(context.Background())
+		r.pprofServer.Stop()
 	}
 	if r.rateLimiter != nil {
 		r.rateLimiter.Stop()
