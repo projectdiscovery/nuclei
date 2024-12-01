@@ -9,6 +9,8 @@ import (
 )
 
 func (s *DASTServer) consumeTaskRequest(req PostReuestsHandlerRequest) {
+	defer s.endpointsInQueue.Add(-1)
+
 	parsedReq, err := types.ParseRawRequestWithURL(req.RawHTTP, req.URL)
 	if err != nil {
 		gologger.Warning().Msgf("Could not parse raw request: %s\n", err)
@@ -16,6 +18,7 @@ func (s *DASTServer) consumeTaskRequest(req PostReuestsHandlerRequest) {
 	}
 
 	if parsedReq.URL.Scheme != "http" && parsedReq.URL.Scheme != "https" {
+		gologger.Warning().Msgf("Invalid scheme: %s\n", parsedReq.URL.Scheme)
 		return
 	}
 
@@ -43,12 +46,11 @@ func (s *DASTServer) consumeTaskRequest(req PostReuestsHandlerRequest) {
 
 	gologger.Verbose().Msgf("Fuzzing request: %s %s\n", parsedReq.Request.Method, parsedReq.URL.String())
 
-	// Fuzz the request finally
-	s.fuzzRequest(req)
-}
+	s.endpointsBeingTested.Add(1)
+	defer s.endpointsBeingTested.Add(-1)
 
-func (s *DASTServer) fuzzRequest(req PostReuestsHandlerRequest) {
-	err := s.nucleiExecutor.ExecuteScan(req)
+	// Fuzz the request finally
+	err = s.nucleiExecutor.ExecuteScan(req)
 	if err != nil {
 		gologger.Warning().Msgf("Could not run nuclei: %s\n", err)
 		return

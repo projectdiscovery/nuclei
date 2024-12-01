@@ -7,17 +7,16 @@ import (
 	"net/url"
 
 	"github.com/pkg/errors"
-	"github.com/projectdiscovery/gologger"
 )
 
 // Tracker is a stats tracker module for fuzzing server
 type Tracker struct {
-	database StatsDatabase
+	database *simpleStats
 }
 
 // NewTracker creates a new tracker instance
-func NewTracker(scanName string) (*Tracker, error) {
-	db, err := NewSqliteStatsDatabase(scanName)
+func NewTracker() (*Tracker, error) {
+	db, err := NewSimpleStats()
 	if err != nil {
 		return nil, errors.Wrap(err, "could not create new tracker")
 	}
@@ -28,13 +27,12 @@ func NewTracker(scanName string) (*Tracker, error) {
 	return tracker, nil
 }
 
+func (t *Tracker) GetStats() SimpleStatsResponse {
+	return t.database.GetStatistics()
+}
+
 // Close closes the tracker
 func (t *Tracker) Close() {
-	_, err := t.database.(*sqliteStatsDatabase).db.Exec("VACUUM")
-	if err != nil {
-		gologger.Error().Msgf("could not truncate wal: %s", err)
-	}
-
 	t.database.Close()
 }
 
@@ -47,19 +45,39 @@ type FuzzingEvent struct {
 	PayloadSent   string
 	StatusCode    int
 	Matched       bool
-	SiteName      string
 	RawRequest    string
 	RawResponse   string
+	Severity      string
+
+	siteName string
 }
 
 func (t *Tracker) RecordResultEvent(event FuzzingEvent) {
-	event.SiteName = getCorrectSiteName(event.URL)
+	event.siteName = getCorrectSiteName(event.URL)
 	t.database.InsertMatchedRecord(event)
 }
 
-func (t *Tracker) RecordComponentEvent(event FuzzingEvent) {
-	event.SiteName = getCorrectSiteName(event.URL)
+type ComponentEvent struct {
+	URL           string
+	ComponentType string
+	ComponentName string
+
+	siteName string
+}
+
+func (t *Tracker) RecordComponentEvent(event ComponentEvent) {
+	event.siteName = getCorrectSiteName(event.URL)
 	t.database.InsertComponent(event)
+}
+
+type ErrorEvent struct {
+	TemplateID string
+	URL        string
+	Error      string
+}
+
+func (t *Tracker) RecordErrorEvent(event ErrorEvent) {
+	t.database.InsertError(event)
 }
 
 func getCorrectSiteName(originalURL string) string {

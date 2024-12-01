@@ -930,18 +930,6 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 			}
 		}
 
-		if request.options.FuzzStatsDB != nil && generatedRequest.fuzzGeneratedRequest.Request != nil {
-			request.options.FuzzStatsDB.RecordComponentEvent(fuzzStats.FuzzingEvent{
-				URL:           input.MetaInput.Target(),
-				SiteName:      hostname,
-				TemplateID:    request.options.TemplateID,
-				ComponentType: generatedRequest.fuzzGeneratedRequest.Component.Name(),
-				ComponentName: generatedRequest.fuzzGeneratedRequest.Parameter,
-				PayloadSent:   generatedRequest.fuzzGeneratedRequest.Value,
-				StatusCode:    respChain.Response().StatusCode,
-			})
-		}
-
 		finalEvent := make(output.InternalEvent)
 
 		if request.Analyzer != nil {
@@ -1038,7 +1026,6 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 		if request.options.FuzzStatsDB != nil && generatedRequest.fuzzGeneratedRequest.Request != nil {
 			request.options.FuzzStatsDB.RecordResultEvent(fuzzStats.FuzzingEvent{
 				URL:           input.MetaInput.Target(),
-				SiteName:      hostname,
 				TemplateID:    request.options.TemplateID,
 				ComponentType: generatedRequest.fuzzGeneratedRequest.Component.Name(),
 				ComponentName: generatedRequest.fuzzGeneratedRequest.Parameter,
@@ -1047,6 +1034,7 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 				Matched:       event.HasResults(),
 				RawRequest:    string(dumpedRequest),
 				RawResponse:   respChain.FullResponse().String(),
+				Severity:      request.options.TemplateInfo.SeverityHolder.Severity.String(),
 			})
 		}
 

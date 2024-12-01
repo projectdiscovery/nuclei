@@ -9,6 +9,7 @@ import (
 	"github.com/logrusorgru/aurora"
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/fuzz/frequency"
+	"github.com/projectdiscovery/nuclei/v3/pkg/fuzz/stats"
 	"github.com/projectdiscovery/nuclei/v3/pkg/input/formats"
 	"github.com/projectdiscovery/nuclei/v3/pkg/input/provider/http"
 	"github.com/projectdiscovery/nuclei/v3/pkg/projectfile"
@@ -20,7 +21,6 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/loader"
 	"github.com/projectdiscovery/nuclei/v3/pkg/core"
-	fuzzStats "github.com/projectdiscovery/nuclei/v3/pkg/fuzz/stats"
 	"github.com/projectdiscovery/nuclei/v3/pkg/input"
 	"github.com/projectdiscovery/nuclei/v3/pkg/loader/parser"
 	parsers "github.com/projectdiscovery/nuclei/v3/pkg/loader/workflow"
@@ -54,6 +54,7 @@ type NucleiExecutorOptions struct {
 	Interactsh         *interactsh.Client
 	ProjectFile        *projectfile.ProjectFile
 	Browser            *browserEngine.Browser
+	FuzzStatsDB        *stats.Tracker
 	Colorizer          aurora.Aurora
 	Parser             parser.Parser
 	TemporaryDirectory string
@@ -83,13 +84,7 @@ func newNucleiExecutor(opts *NucleiExecutorOptions) (*nucleiExecutor, error) {
 		Parser:              opts.Parser,
 		FuzzParamsFrequency: fuzzFreqCache,
 		GlobalMatchers:      globalmatchers.New(),
-	}
-	if opts.Options.DASTScanName != "" {
-		var err error
-		executorOpts.FuzzStatsDB, err = fuzzStats.NewTracker(opts.Options.DASTScanName)
-		if err != nil {
-			return nil, errors.Wrap(err, "could not create fuzz stats db")
-		}
+		FuzzStatsDB:         opts.FuzzStatsDB,
 	}
 
 	if opts.Options.ShouldUseHostError() {

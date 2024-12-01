@@ -97,6 +97,7 @@ type Runner struct {
 	tmpDir          string
 	parser          parser.Parser
 	httpApiEndpoint *httpapi.Server
+	fuzzStats       *fuzzStats.Tracker
 	dastServer      *server.DASTServer
 }
 
@@ -244,14 +245,6 @@ func New(options *types.Options) (*Runner, error) {
 	}
 	runner.inputProvider = inputProvider
 
-	// Create the output file if asked
-	outputWriter, err := output.NewStandardWriter(options)
-	if err != nil {
-		return nil, errors.Wrap(err, "could not create output file")
-	}
-	// setup a proxy writer to automatically upload results to PDCP
-	runner.output = runner.setupPDCPUpload(outputWriter)
-
 	if options.JSONL && options.EnableProgressBar {
 		options.StatsJSON = true
 	}
@@ -343,6 +336,42 @@ func New(options *types.Options) (*Runner, error) {
 	if tmpDir, err := os.MkdirTemp("", "nuclei-tmp-*"); err == nil {
 		runner.tmpDir = tmpDir
 	}
+
+	if options.DASTReport || options.DASTServer {
+		var err error
+		runner.fuzzStats, err = fuzzStats.NewTracker()
+		if err != nil {
+			return nil, errors.Wrap(err, "could not create fuzz stats db")
+		}
+		if !options.DASTServer {
+			dastServer, err := server.NewStatsServer(runner.fuzzStats)
+			if err != nil {
+				return nil, errors.Wrap(err, "could not create dast server")
+			}
+			runner.dastServer = dastServer
+		}
+	}
+
+	// Create the output file if asked
+	outputWriter, err := output.NewStandardWriter(options)
+	if err != nil {
+		return nil, errors.Wrap(err, "could not create output file")
+	}
+	if runner.fuzzStats != nil {
+		outputWriter.RequestHook = func(request *output.JSONLogRequest) {
+			if request.Error == "none" || request.Error == "" {
+				return
+			}
+			runner.fuzzStats.RecordErrorEvent(fuzzStats.ErrorEvent{
+				TemplateID: request.Template,
+				URL:        request.Input,
+				Error:      request.Error,
+			})
+		}
+	}
+
+	// setup a proxy writer to automatically upload results to PDCP
+	runner.output = runner.setupPDCPUpload(outputWriter)
 
 	return runner, nil
 }
@@ -453,6 +482,7 @@ func (r *Runner) RunEnumeration() error {
 			Colorizer:          r.colorizer,
 			Parser:             r.parser,
 			TemporaryDirectory: r.tmpDir,
+			FuzzStatsDB:        r.fuzzStats,
 		}
 		dastServer, err := server.New(&server.Options{
 			Address:               r.options.DASTServerAddress,
@@ -512,13 +542,6 @@ func (r *Runner) RunEnumeration() error {
 		Parser:              r.parser,
 		FuzzParamsFrequency: fuzzFreqCache,
 		GlobalMatchers:      globalmatchers.New(),
-	}
-	if r.options.DASTScanName != "" {
-		var err error
-		executorOpts.FuzzStatsDB, err = fuzzStats.NewTracker(r.options.DASTScanName)
-		if err != nil {
-			return errors.Wrap(err, "could not create fuzz stats db")
-		}
 	}
 
 	if config.DefaultConfig.IsDebugArgEnabled(config.DebugExportURLPattern) {
@@ -662,6 +685,12 @@ func (r *Runner) RunEnumeration() error {
 		JsConcurrency:       r.options.JsConcurrency,
 		Retries:             r.options.Retries,
 	}, "")
+
+	if r.dastServer != nil {
+		if err := r.dastServer.Start(); err != nil {
+			r.dastServer.Start()
+		}
+	}
 
 	enumeration := false
 	var results *atomic.Bool
