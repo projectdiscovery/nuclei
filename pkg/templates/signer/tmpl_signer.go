@@ -17,6 +17,7 @@ import (
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/config"
 	errorutil "github.com/projectdiscovery/utils/errors"
+	"gopkg.in/yaml.v2"
 )
 
 var (
@@ -34,7 +35,17 @@ func ExtractSignatureAndContent(data []byte) (signature, content []byte) {
 	} else {
 		content = data
 	}
-	return
+	// use yaml unmarshalling and marshalling as standard to normalization
+	// if we use strings.ReplaceAll(content,"\r\n","\n"), it most likely will break some payload in logic
+	var normalized interface{}
+	if err := yaml.Unmarshal(content, &normalized); err != nil {
+		return signature, content
+	}
+	normalizedBytes, err := yaml.Marshal(normalized)
+	if err != nil {
+		return signature, content
+	}
+	return signature, normalizedBytes
 }
 
 // SignableTemplate is a template that can be signed
