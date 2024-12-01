@@ -70,7 +70,7 @@ func (exporter *Exporter) WriteRows() error {
 	var err error
 	if exporter.outputFile == nil {
 		// Open the JSONL file for writing and create it if it doesn't exist
-		exporter.outputFile, err = os.OpenFile(exporter.options.File, os.O_WRONLY|os.O_CREATE, 0644)
+		exporter.outputFile, err = os.OpenFile(exporter.options.File, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0644)
 		if err != nil {
 			return errors.Wrap(err, "failed to create JSONL file")
 		}
@@ -86,8 +86,7 @@ func (exporter *Exporter) WriteRows() error {
 			return errors.Wrap(err, "failed to generate row for JSONL report")
 		}
 
-		// Add a trailing newline to the JSON byte array to confirm with the JSONL format
-		obj = append(obj, ',', '\n')
+		obj = append(obj, '\n')
 
 		// Attempt to append the JSON line to file specified in options.JSONLExport
 		if _, err = exporter.outputFile.Write(obj); err != nil {
