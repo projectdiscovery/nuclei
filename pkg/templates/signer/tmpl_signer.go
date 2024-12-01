@@ -17,7 +17,6 @@ import (
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/config"
 	errorutil "github.com/projectdiscovery/utils/errors"
-	"gopkg.in/yaml.v2"
 )
 
 var (
@@ -31,21 +30,12 @@ func ExtractSignatureAndContent(data []byte) (signature, content []byte) {
 	dataStr := string(data)
 	if idx := strings.LastIndex(dataStr, SignaturePattern); idx != -1 {
 		signature = []byte(strings.TrimSpace(dataStr[idx:]))
-		content = []byte(strings.TrimSpace(dataStr[:idx]))
+		content = bytes.TrimSpace(data[:idx])
 	} else {
 		content = data
 	}
-	// use yaml unmarshalling and marshalling as standard to normalization
-	// if we use strings.ReplaceAll(content,"\r\n","\n"), it most likely will break some payload in logic
-	var normalized interface{}
-	if err := yaml.Unmarshal(content, &normalized); err != nil {
-		return signature, content
-	}
-	normalizedBytes, err := yaml.Marshal(normalized)
-	if err != nil {
-		return signature, content
-	}
-	return signature, normalizedBytes
+	content = bytes.TrimSpace(content)
+	return signature, content
 }
 
 // SignableTemplate is a template that can be signed
@@ -155,6 +145,10 @@ func (t *TemplateSigner) Verify(data []byte, tmpl SignableTemplate) (bool, error
 	if err != nil {
 		return false, err
 	}
+
+	// normalize content by removing \r\n everywhere since this only done for verification
+	// it does not affect the actual template
+	content = bytes.ReplaceAll(content, []byte("\r\n"), []byte("\n"))
 
 	buff := bytes.NewBuffer(content)
 	// if file has any imports process them
