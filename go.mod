@@ -97,7 +97,7 @@ require (
 	github.com/projectdiscovery/tlsx v1.1.8
 	github.com/projectdiscovery/uncover v1.0.9
 	github.com/projectdiscovery/useragent v0.0.78
-	github.com/projectdiscovery/utils v0.2.21
+	github.com/projectdiscovery/utils v0.3.0
 	github.com/projectdiscovery/wappalyzergo v0.2.4
 	github.com/redis/go-redis/v9 v9.1.0
 	github.com/seh-msft/burpxml v1.0.1
@@ -152,6 +152,7 @@ require (
 	github.com/docker/docker v24.0.9+incompatible // indirect
 	github.com/docker/go-connections v0.4.0 // indirect
 	github.com/fatih/color v1.16.0 // indirect
+	github.com/felixge/fgprof v0.9.5 // indirect
 	github.com/free5gc/util v1.0.5-0.20230511064842-2e120956883b // indirect
 	github.com/gabriel-vasile/mimetype v1.4.2 // indirect
 	github.com/gaissmai/bart v0.9.5 // indirect
