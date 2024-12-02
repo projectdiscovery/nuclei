@@ -98,11 +98,11 @@ require (
 	github.com/projectdiscovery/uncover v1.0.9
 	github.com/projectdiscovery/useragent v0.0.78
 	github.com/projectdiscovery/utils v0.3.0
-	github.com/projectdiscovery/wappalyzergo v0.2.4
+	github.com/projectdiscovery/wappalyzergo v0.2.5
 	github.com/redis/go-redis/v9 v9.1.0
 	github.com/seh-msft/burpxml v1.0.1
 	github.com/shurcooL/graphql v0.0.0-20230722043721-ed46e5a46466
-	github.com/stretchr/testify v1.9.0
+	github.com/stretchr/testify v1.10.0
 	github.com/tarunKoyalwar/goleak v0.0.0-20240429141123-0efa90dbdcf9
 	github.com/yassinebenaid/godump v0.10.0
 	github.com/zmap/zgrab2 v0.1.8-0.20230806160807-97ba87c0e706
