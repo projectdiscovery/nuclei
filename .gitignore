@@ -2,8 +2,8 @@
 **/*-cache
 **/*-config
 **/.cache
-*.DS_Store
-*.exe
+**/*.DS_Store
+**/*.exe
 .devcontainer
 .gitignore
 .idea
@@ -11,23 +11,23 @@
 
 # Binaries
 /bin/*
-**/bindgen
-**/debug-*
-**/docgen
-**/functional-test
-**/fuzzplayground
-**/integration-test
-**/jsdocgen
-**/main
-**/memogen
-**/nuclei
-**/nuclei-stats*
-**/nuclei_dev
-**/nuclei_main
-**/scan-charts
-**/scrapefunc
-**/scrapefuncs
-**/tsgen
+/bindgen
+/debug-*
+/docgen
+/functional-test
+/fuzzplayground
+/integration-test
+/jsdocgen
+/main
+/memogen
+/nuclei
+/nuclei-stats*
+/nuclei_dev
+/nuclei_main
+/scan-charts
+/scrapefunc
+/scrapefuncs
+/tsgen
 
 # Templates
 /*.yaml
