@@ -284,6 +284,42 @@ func New(options *types.Options) (*Runner, error) {
 	}
 	runner.resumeCfg = resumeCfg
 
+	if options.DASTReport || options.DASTServer {
+		var err error
+		runner.fuzzStats, err = fuzzStats.NewTracker()
+		if err != nil {
+			return nil, errors.Wrap(err, "could not create fuzz stats db")
+		}
+		if !options.DASTServer {
+			dastServer, err := server.NewStatsServer(runner.fuzzStats)
+			if err != nil {
+				return nil, errors.Wrap(err, "could not create dast server")
+			}
+			runner.dastServer = dastServer
+		}
+	}
+
+	// Create the output file if asked
+	outputWriter, err := output.NewStandardWriter(options)
+	if err != nil {
+		return nil, errors.Wrap(err, "could not create output file")
+	}
+	if runner.fuzzStats != nil {
+		outputWriter.RequestHook = func(request *output.JSONLogRequest) {
+			if request.Error == "none" || request.Error == "" {
+				return
+			}
+			runner.fuzzStats.RecordErrorEvent(fuzzStats.ErrorEvent{
+				TemplateID: request.Template,
+				URL:        request.Input,
+				Error:      request.Error,
+			})
+		}
+	}
+
+	// setup a proxy writer to automatically upload results to PDCP
+	runner.output = runner.setupPDCPUpload(outputWriter)
+
 	opts := interactsh.DefaultOptions(runner.output, runner.issuesClient, runner.progress)
 	opts.Debug = runner.options.Debug
 	opts.NoColor = runner.options.NoColor
@@ -336,42 +372,6 @@ func New(options *types.Options) (*Runner, error) {
 	if tmpDir, err := os.MkdirTemp("", "nuclei-tmp-*"); err == nil {
 		runner.tmpDir = tmpDir
 	}
-
-	if options.DASTReport || options.DASTServer {
-		var err error
-		runner.fuzzStats, err = fuzzStats.NewTracker()
-		if err != nil {
-			return nil, errors.Wrap(err, "could not create fuzz stats db")
-		}
-		if !options.DASTServer {
-			dastServer, err := server.NewStatsServer(runner.fuzzStats)
-			if err != nil {
-				return nil, errors.Wrap(err, "could not create dast server")
-			}
-			runner.dastServer = dastServer
-		}
-	}
-
-	// Create the output file if asked
-	outputWriter, err := output.NewStandardWriter(options)
-	if err != nil {
-		return nil, errors.Wrap(err, "could not create output file")
-	}
-	if runner.fuzzStats != nil {
-		outputWriter.RequestHook = func(request *output.JSONLogRequest) {
-			if request.Error == "none" || request.Error == "" {
-				return
-			}
-			runner.fuzzStats.RecordErrorEvent(fuzzStats.ErrorEvent{
-				TemplateID: request.Template,
-				URL:        request.Input,
-				Error:      request.Error,
-			})
-		}
-	}
-
-	// setup a proxy writer to automatically upload results to PDCP
-	runner.output = runner.setupPDCPUpload(outputWriter)
 
 	return runner, nil
 }
