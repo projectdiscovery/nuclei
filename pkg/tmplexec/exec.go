@@ -214,10 +214,12 @@ func (e *TemplateExecuter) Execute(ctx *scan.ScanContext) (bool, error) {
 	ctx.LogError(errx)
 
 	if lastMatcherEvent != nil {
-		lastMatcherEvent.Lock()
-		lastMatcherEvent.InternalEvent["error"] = getErrorCause(ctx.GenerateErrorMessage())
-		lastMatcherEvent.Unlock()
-		writeFailureCallback(lastMatcherEvent, e.options.Options.MatcherStatus)
+		// copy lastMatcherEvent pointer to avoid race condition where lastMatcherEvent is changed after the lock.
+		event := lastMatcherEvent
+		event.Lock()
+		event.InternalEvent["error"] = getErrorCause(ctx.GenerateErrorMessage())
+		event.Unlock()
+		writeFailureCallback(event, e.options.Options.MatcherStatus)
 	}
 
 	//TODO: this is a hacky way to handle the case where the callback is not called and matcher-status is true.
