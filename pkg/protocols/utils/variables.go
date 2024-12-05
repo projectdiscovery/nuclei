@@ -56,7 +56,7 @@ const (
 	Sd
 )
 
-// GenerateVariables will create default variables with context args
+// GenerateVariablesWithContextArgs will create default variables with context args
 func GenerateVariablesWithContextArgs(input *contextargs.Context, trailingSlash bool) map[string]interface{} {
 	parsed, err := urlutil.Parse(input.MetaInput.Input)
 	if err != nil {
