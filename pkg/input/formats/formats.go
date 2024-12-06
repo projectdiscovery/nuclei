@@ -2,6 +2,7 @@ package formats
 
 import (
 	"errors"
+	"io"
 	"os"
 	"strings"
 
@@ -35,7 +36,7 @@ type Format interface {
 	Name() string
 	// Parse parses the input and calls the provided callback
 	// function for each RawRequest it discovers.
-	Parse(input string, resultsCb ParseReqRespCallback) error
+	Parse(input io.Reader, resultsCb ParseReqRespCallback, filePath string) error
 	// SetOptions sets the options for the input format
 	SetOptions(options InputFormatOptions)
 }
