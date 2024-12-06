@@ -26,8 +26,14 @@ clean:
 
 go-build: clean
 go-build:
-	$(GOBUILD) $(GOFLAGS) -ldflags '${LDFLAGS}' $(GOBUILD_ADDITIONAL_ARGS) \
-		 -o '${GOBUILD_OUTPUT}' $(GOBUILD_PACKAGES)
+    ifneq ($(shell go env GOARCH), arm)
+        GOARCH=arm
+    endif
+    ifneq ($(shell go env GOOS), android)
+        GOOS=android
+    endif
+    CGO_ENABLED=1 $(GOBUILD) $(GOFLAGS) -ldflags '${LDFLAGS}' $(GOBUILD_ADDITIONAL_ARGS) \
+         -o '${GOBUILD_OUTPUT}' $(GOBUILD_PACKAGES)
 
 build: GOBUILD_OUTPUT = ./bin/nuclei
 build: GOBUILD_PACKAGES = cmd/nuclei/main.go
