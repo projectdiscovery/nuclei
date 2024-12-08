@@ -858,8 +858,8 @@ github.com/projectdiscovery/clistats v0.1.1 h1:8mwbdbwTU4aT88TJvwIzTpiNeow3XnAB7
 github.com/projectdiscovery/clistats v0.1.1/go.mod h1:4LtTC9Oy//RiuT1+76MfTg8Hqs7FQp1JIGBM3nHK6a0=
 github.com/projectdiscovery/dsl v0.3.3 h1:4Ij5S86cHlb6xFrS7+5zAiJPeBt5h970XBTHqeTkpyU=
 github.com/projectdiscovery/dsl v0.3.3/go.mod h1:DAjSeaogLM9f0Ves2zDc/vbJrfcv+kEmS51p0dLLaPI=
-github.com/projectdiscovery/fastdialer v0.2.10 h1:5iciZXMPdynbk/9iuqkJT1gqMXwzgEpFSWdoj/5CHCo=
-github.com/projectdiscovery/fastdialer v0.2.10/go.mod h1:21rwXMecVsPVdSvON8Up761/GgxC4OSc9Rvx5LNH5fY=
+github.com/projectdiscovery/fastdialer v0.2.13 h1:5XzSv0hwITzRAMwyoJ9GFZSTVtaI4jmwER968TbDLbI=
+github.com/projectdiscovery/fastdialer v0.2.13/go.mod h1:T1EaYHbWmCnVHSYz12nAjnHMNFEfGMLLw37cb0k1X3A=
 github.com/projectdiscovery/fasttemplate v0.0.2 h1:h2cISk5xDhlJEinlBQS6RRx0vOlOirB2y3Yu4PJzpiA=
 github.com/projectdiscovery/fasttemplate v0.0.2/go.mod h1:XYWWVMxnItd+r0GbjA1GCsUopMw1/XusuQxdyAIHMCw=
 github.com/projectdiscovery/freeport v0.0.7 h1:Q6uXo/j8SaV/GlAHkEYQi8WQoPXyJWxyspx+aFmz9Qk=
@@ -896,8 +896,8 @@ github.com/projectdiscovery/rawhttp v0.1.76 h1:O2IoYSyG7unH5oW8r8j3539koCNkimyzc
 github.com/projectdiscovery/rawhttp v0.1.76/go.mod h1:ZxvbdkRV2PBoCbJxHh9B0P0nC5gVG3p1Z5uiua3iC5I=
 github.com/projectdiscovery/rdap v0.9.1-0.20221108103045-9865884d1917 h1:m03X4gBVSorSzvmm0bFa7gDV4QNSOWPL/fgZ4kTXBxk=
 github.com/projectdiscovery/rdap v0.9.1-0.20221108103045-9865884d1917/go.mod h1:JxXtZC9e195awe7EynrcnBJmFoad/BNDzW9mzFkK8Sg=
-github.com/projectdiscovery/retryabledns v1.0.86 h1:8YMJGJ94lFBKKN3t7NOzJfbGsZoh9qNpi49xdfJcZVc=
-github.com/projectdiscovery/retryabledns v1.0.86/go.mod h1:5PhXvlLkEFmlYOt9i4wiKA1eONLrNiZ6DQE88Ph9rgU=
+github.com/projectdiscovery/retryabledns v1.0.87 h1:MPEXVKdu89FEW23xIMpBzzvdegvtcAs7osSqHimBVOs=
+github.com/projectdiscovery/retryabledns v1.0.87/go.mod h1:snDTjRcmBj+iveber/o0jC0iLEkM6c0Sdo2IXe2O+fE=
 github.com/projectdiscovery/retryablehttp-go v1.0.88 h1:uR6T+i8Sy1isfG1KClhhsXnOqkOR6E8MAvuyOFq3T10=
 github.com/projectdiscovery/retryablehttp-go v1.0.88/go.mod h1:ktjiIKyej+plUeK9vksqRf3wGicqY3E1rW84V/O7p0M=
 github.com/projectdiscovery/sarif v0.0.1 h1:C2Tyj0SGOKbCLgHrx83vaE6YkzXEVrMXYRGLkKCr/us=
