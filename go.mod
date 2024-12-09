@@ -98,7 +98,7 @@ require (
 	github.com/projectdiscovery/uncover v1.0.9
 	github.com/projectdiscovery/useragent v0.0.78
 	github.com/projectdiscovery/utils v0.3.0
-	github.com/projectdiscovery/wappalyzergo v0.2.5
+	github.com/projectdiscovery/wappalyzergo v0.2.6
 	github.com/redis/go-redis/v9 v9.1.0
 	github.com/seh-msft/burpxml v1.0.1
 	github.com/shurcooL/graphql v0.0.0-20230722043721-ed46e5a46466
