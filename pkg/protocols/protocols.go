@@ -14,6 +14,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/authprovider"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog"
 	"github.com/projectdiscovery/nuclei/v3/pkg/fuzz/frequency"
+	"github.com/projectdiscovery/nuclei/v3/pkg/fuzz/stats"
 	"github.com/projectdiscovery/nuclei/v3/pkg/input"
 	"github.com/projectdiscovery/nuclei/v3/pkg/js/compiler"
 	"github.com/projectdiscovery/nuclei/v3/pkg/loader/parser"
@@ -99,6 +100,8 @@ type ExecutorOptions struct {
 	InputHelper *input.Helper
 	// FuzzParamsFrequency is a cache for parameter frequency
 	FuzzParamsFrequency *frequency.Tracker
+	// FuzzStatsDB is a database for fuzzing stats
+	FuzzStatsDB *stats.Tracker
 
 	Operators []*operators.Operators // only used by offlinehttp module
 

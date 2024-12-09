@@ -33,6 +33,9 @@ func (s *CookiesAuthStrategy) Apply(req *http.Request) {
 
 // ApplyOnRR applies the cookies auth strategy to the retryable request
 func (s *CookiesAuthStrategy) ApplyOnRR(req *retryablehttp.Request) {
+	// Before adding new cookies, remove existing cookies
+	req.Header.Del("Cookie")
+
 	for _, cookie := range s.Data.Cookies {
 		c := &http.Cookie{
 			Name:  cookie.Key,
