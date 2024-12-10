@@ -8,6 +8,7 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/getsops/sops/v3/decrypt"
 	errorutil "github.com/projectdiscovery/utils/errors"
 	"github.com/projectdiscovery/utils/generic"
 	stringsutil "github.com/projectdiscovery/utils/strings"
@@ -205,18 +206,30 @@ func (c *Cookie) Parse() error {
 
 // GetAuthDataFromFile reads the auth data from file
 func GetAuthDataFromFile(file string) (*Authx, error) {
-	ext := filepath.Ext(file)
-	if !generic.EqualsAny(ext, ".yml", ".yaml", ".json") {
-		return nil, fmt.Errorf("invalid file extension: supported extensions are .yml,.yaml and .json got %s", ext)
+	var data []byte
+
+	ext := strings.TrimPrefix(filepath.Ext(file), ".")
+	if !generic.EqualsAny(ext, "yml", "yaml", "json") {
+		return nil, fmt.Errorf(`unsupported extensions: valid extensions are "yml", "yaml", and "json"; got %q`, ext)
 	}
-	bin, err := os.ReadFile(file)
+
+	data, err := decrypt.File(file, ext)
 	if err != nil {
-		return nil, err
+		if err.Error() == "sops metadata not found" { // regular file (prolly not encrypted)
+			data, err = os.ReadFile(file)
+			if err != nil {
+				return nil, fmt.Errorf("could not read secret file: %w", err)
+			}
+		} else {
+			return nil, fmt.Errorf("could not decrypt file: %w", err)
+		}
 	}
-	if ext == ".yml" || ext == ".yaml" {
-		return GetAuthDataFromYAML(bin)
+
+	if ext == "yml" || ext == "yaml" {
+		return GetAuthDataFromYAML(data)
 	}
-	return GetAuthDataFromJSON(bin)
+
+	return GetAuthDataFromJSON(data)
 }
 
 // GetTemplatePathsFromSecretFile reads the template IDs from the secret file
