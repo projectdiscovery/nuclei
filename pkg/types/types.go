@@ -317,6 +317,8 @@ type Options struct {
 	UncoverLimit int
 	// Uncover search delay
 	UncoverRateLimit int
+	// Provide IP address with the URL, as IP,URL
+	SpecifyIP bool
 	// ScanAllIPs associated to a dns record
 	ScanAllIPs bool
 	// IPVersion to scan (4,6)
