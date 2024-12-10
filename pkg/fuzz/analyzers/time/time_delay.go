@@ -166,6 +166,6 @@ func (o *simpleLinearRegression) Predict(x float64) float64 {
 
 func (o *simpleLinearRegression) IsWithinConfidence(correlationErrorRange float64, expectedSlope float64, slopeErrorRange float64,
 ) bool {
-	return o.correlation > 1.0-correlationErrorRange &&
-		math.Abs(expectedSlope-o.slope) < slopeErrorRange
+	return o.correlation > 1.0-correlationErrorRange
+	//math.Abs(expectedSlope-o.slope) < slopeErrorRange
 }
