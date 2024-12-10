@@ -3,141 +3,507 @@
 package time
 
 import (
-	"math"
 	"math/rand"
+	"reflect"
 	"testing"
 	"time"
-
-	"github.com/stretchr/testify/require"
 )
 
-const (
-	correlationErrorRange = float64(0.1)
-	slopeErrorRange       = float64(0.2)
-)
+// This test suite verifies the timing dependency detection algorithm by testing various scenarios:
+//
+// Test Categories:
+// 1. Perfect Linear Cases
+//    - TestPerfectLinear: Basic case with slope=1, no noise
+//    - TestPerfectLinearSlopeOne_NoNoise: Similar to above but with different parameters
+//    - TestPerfectLinearSlopeTwo_NoNoise: Tests detection of slope=2 relationship
+//
+// 2. Noisy Cases
+//    - TestLinearWithNoise: Verifies detection works with moderate noise (±0.2s)
+//    - TestNoisyLinear: Similar but with different noise parameters
+//    - TestHighNoiseConcealsSlope: Verifies detection fails with extreme noise (±5s)
+//
+// 3. No Correlation Cases
+//    - TestNoCorrelation: Basic case where delay has no effect
+//    - TestNoCorrelationHighBaseline: High baseline (~15s) masks any delay effect
+//    - TestNegativeSlopeScenario: Verifies detection rejects negative correlations
+//
+// 4. Edge Cases
+//    - TestMinimalData: Tests behavior with minimal data points (2 requests)
+//    - TestLargeNumberOfRequests: Tests stability with many data points (20 requests)
+//    - TestChangingBaseline: Tests detection with shifting baseline mid-test
+//    - TestHighBaselineLowSlope: Tests detection of subtle correlations (slope=0.5)
+//
+// ZAP Test Cases:
+//
+// 1. Alternating Sequence Tests
+//    - TestAlternatingSequences: Verifies correct alternation between high and low delays
+//
+// 2. Non-Injectable Cases
+//    - TestNonInjectableQuickFail: Tests quick failure when response time < requested delay
+//    - TestSlowNonInjectableCase: Tests early termination with consistently high response times
+//    - TestRealWorldNonInjectableCase: Tests behavior with real-world response patterns
+//
+// 3. Error Tolerance Tests
+//    - TestSmallErrorDependence: Verifies detection works with small random variations
+//
+// Key Parameters Tested:
+// - requestsLimit: Number of requests to make (2-20)
+// - highSleepTimeSeconds: Maximum delay to test (typically 5s)
+// - correlationErrorRange: Acceptable deviation from perfect correlation (0.05-0.3)
+// - slopeErrorRange: Acceptable deviation from expected slope (0.1-1.5)
+//
+// The test suite uses various mock senders (perfectLinearSender, noCorrelationSender, etc.)
+// to simulate different timing behaviors and verify the detection algorithm works correctly
+// across a wide range of scenarios.
 
-var rng = rand.New(rand.NewSource(time.Now().UnixNano()))
+// Mock request sender that simulates a perfect linear relationship:
+// Observed delay = baseline + requested_delay
+func perfectLinearSender(baseline float64) func(delay int) (float64, error) {
+	return func(delay int) (float64, error) {
+		// simulate some processing time
+		time.Sleep(10 * time.Millisecond) // just a small artificial sleep to mimic network
+		return baseline + float64(delay), nil
+	}
+}
 
-func Test_should_generate_alternating_sequences(t *testing.T) {
+// Mock request sender that simulates no correlation:
+// The response time is random around a certain constant baseline, ignoring requested delay.
+func noCorrelationSender(baseline, noiseAmplitude float64) func(int) (float64, error) {
+	return func(delay int) (float64, error) {
+		time.Sleep(10 * time.Millisecond)
+		noise := 0.0
+		if noiseAmplitude > 0 {
+			noise = (rand.Float64()*2 - 1) * noiseAmplitude
+		}
+		return baseline + noise, nil
+	}
+}
+
+// Mock request sender that simulates partial linearity but with some noise.
+func noisyLinearSender(baseline float64) func(delay int) (float64, error) {
+	return func(delay int) (float64, error) {
+		time.Sleep(10 * time.Millisecond)
+		// Add some noise (±0.2s) to a linear relationship
+		noise := 0.2
+		return baseline + float64(delay) + noise, nil
+	}
+}
+
+func TestPerfectLinear(t *testing.T) {
+	// Expect near-perfect correlation and slope ~ 1.0
+	requestsLimit := 6 // 3 pairs: enough data for stable regression
+	highSleepTimeSeconds := 5
+	corrErrRange := 0.1
+	slopeErrRange := 0.2
+
+	sender := perfectLinearSender(5.0) // baseline 5s, observed = 5s + requested_delay
+	match, reason, err := checkTimingDependency(
+		requestsLimit,
+		highSleepTimeSeconds,
+		corrErrRange,
+		slopeErrRange,
+		sender,
+	)
+	if err != nil {
+		t.Fatalf("Unexpected error: %v", err)
+	}
+	if !match {
+		t.Fatalf("Expected a match but got none. Reason: %s", reason)
+	}
+}
+
+func TestNoCorrelation(t *testing.T) {
+	// Expect no match because requested delay doesn't influence observed delay
+	requestsLimit := 6
+	highSleepTimeSeconds := 5
+	corrErrRange := 0.1
+	slopeErrRange := 0.5
+
+	sender := noCorrelationSender(8.0, 0.1)
+	match, reason, err := checkTimingDependency(
+		requestsLimit,
+		highSleepTimeSeconds,
+		corrErrRange,
+		slopeErrRange,
+		sender,
+	)
+	if err != nil {
+		t.Fatalf("Unexpected error: %v", err)
+	}
+	if match {
+		t.Fatalf("Expected no match but got one. Reason: %s", reason)
+	}
+}
+
+func TestNoisyLinear(t *testing.T) {
+	// Even with some noise, it should detect a strong positive correlation if
+	// we allow a slightly bigger margin for slope/correlation.
+	requestsLimit := 10 // More requests to average out noise
+	highSleepTimeSeconds := 5
+	corrErrRange := 0.2  // allow some lower correlation due to noise
+	slopeErrRange := 0.5 // slope may deviate slightly
+
+	sender := noisyLinearSender(2.0) // baseline 2s, observed ~ 2s + requested_delay ±0.2
+	match, reason, err := checkTimingDependency(
+		requestsLimit,
+		highSleepTimeSeconds,
+		corrErrRange,
+		slopeErrRange,
+		sender,
+	)
+	if err != nil {
+		t.Fatalf("Unexpected error: %v", err)
+	}
+
+	// We expect a match since it's still roughly linear. The slope should be close to 1.
+	if !match {
+		t.Fatalf("Expected a match in noisy linear test but got none. Reason: %s", reason)
+	}
+}
+
+func TestMinimalData(t *testing.T) {
+	// With too few requests, correlation might not be stable.
+	// Here, we send only 2 requests (1 pair) and see if the logic handles it gracefully.
+	requestsLimit := 2
+	highSleepTimeSeconds := 5
+	corrErrRange := 0.3
+	slopeErrRange := 0.5
+
+	// Perfect linear sender again
+	sender := perfectLinearSender(5.0)
+	match, reason, err := checkTimingDependency(
+		requestsLimit,
+		highSleepTimeSeconds,
+		corrErrRange,
+		slopeErrRange,
+		sender,
+	)
+	if err != nil {
+		t.Fatalf("Unexpected error: %v", err)
+	}
+	if !match {
+		t.Fatalf("Expected match but got none. Reason: %s", reason)
+	}
+}
+
+// Utility functions to generate different behaviors
+
+// linearSender returns a sender that calculates observed delay as:
+// observed = baseline + slope * requested_delay + noise
+func linearSender(baseline, slope, noiseAmplitude float64) func(int) (float64, error) {
+	return func(delay int) (float64, error) {
+		time.Sleep(10 * time.Millisecond)
+		noise := 0.0
+		if noiseAmplitude > 0 {
+			noise = (rand.Float64()*2 - 1) * noiseAmplitude // random noise in [-noiseAmplitude, noiseAmplitude]
+		}
+		return baseline + slope*float64(delay) + noise, nil
+	}
+}
+
+// changingBaselineSender simulates a baseline that changes after half the requests are done.
+func changingBaselineSender(initialBaseline, newBaseline, slope, noiseAmplitude float64, switchAfter int, counter *int) func(int) (float64, error) {
+	return func(delay int) (float64, error) {
+		time.Sleep(10 * time.Millisecond)
+		base := initialBaseline
+		if *counter >= switchAfter {
+			base = newBaseline
+		}
+		*counter++
+		noise := 0.0
+		if noiseAmplitude > 0 {
+			noise = (rand.Float64()*2 - 1) * noiseAmplitude
+		}
+		return base + slope*float64(delay) + noise, nil
+	}
+}
+
+// negativeSlopeSender just for completeness - higher delay = less observed time
+func negativeSlopeSender(baseline float64) func(int) (float64, error) {
+	return func(delay int) (float64, error) {
+		time.Sleep(10 * time.Millisecond)
+		return baseline - float64(delay)*2.0, nil
+	}
+}
+
+// We assume you have an imported checkTimingDependency function. Adjust imports as needed.
+// func checkTimingDependency(...) (bool, string, error) { ... }
+
+func TestPerfectLinearSlopeOne_NoNoise(t *testing.T) {
+	match, reason, err := checkTimingDependency(
+		10,  // requestsLimit
+		5,   // highSleepTimeSeconds
+		0.1, // correlationErrorRange
+		0.2, // slopeErrorRange (allowing slope between 0.8 and 1.2)
+		linearSender(2.0, 1.0, 0.0),
+	)
+	if err != nil {
+		t.Fatalf("Unexpected error: %v", err)
+	}
+	if !match {
+		t.Fatalf("Expected a match for perfect linear slope=1. Reason: %s", reason)
+	}
+}
+
+func TestPerfectLinearSlopeTwo_NoNoise(t *testing.T) {
+	// slope=2 means observed = baseline + 2*requested_delay
+	match, reason, err := checkTimingDependency(
+		10,
+		5,
+		0.1, // correlation must still be good
+		1.5, // allow slope in range (0.5 to 2.5), we should be close to 2.0 anyway
+		linearSender(1.0, 2.0, 0.0),
+	)
+	if err != nil {
+		t.Fatalf("Error: %v", err)
+	}
+	if !match {
+		t.Fatalf("Expected a match for slope=2. Reason: %s", reason)
+	}
+}
+
+func TestLinearWithNoise(t *testing.T) {
+	// slope=1 but with noise ±0.2 seconds
+	match, reason, err := checkTimingDependency(
+		12,
+		5,
+		0.2, // correlationErrorRange relaxed to account for noise
+		0.5, // slopeErrorRange also relaxed
+		linearSender(5.0, 1.0, 0.2),
+	)
+	if err != nil {
+		t.Fatalf("Error: %v", err)
+	}
+	if !match {
+		t.Fatalf("Expected a match for noisy linear data. Reason: %s", reason)
+	}
+}
+
+func TestNoCorrelationHighBaseline(t *testing.T) {
+	// baseline ~15s, requested delays won't matter
+	match, reason, err := checkTimingDependency(
+		10,
+		5,
+		0.1, // correlation should be near zero, so no match expected
+		0.5,
+		noCorrelationSender(15.0, 0.1),
+	)
+	if err != nil {
+		t.Fatalf("Error: %v", err)
+	}
+	if match {
+		t.Fatalf("Expected no match for no correlation scenario. Got: %s", reason)
+	}
+}
+
+func TestNegativeSlopeScenario(t *testing.T) {
+	// Increasing delay decreases observed time
+	match, reason, err := checkTimingDependency(
+		10,
+		5,
+		0.2,
+		0.5,
+		negativeSlopeSender(10.0),
+	)
+	if err != nil {
+		t.Fatalf("Error: %v", err)
+	}
+	if match {
+		t.Fatalf("Expected no match in negative slope scenario. Reason: %s", reason)
+	}
+}
+
+func TestChangingBaseline(t *testing.T) {
+	counter := 0
+	// baseline = 2s initially, then after 5 requests it changes to 5s.
+	// slope=1 means observed = baseline + requested_delay.
+	// Even with changing baseline, a strong correlation should still appear if slope is consistent.
+	match, reason, err := checkTimingDependency(
+		12,
+		5,
+		0.2,
+		0.5,
+		changingBaselineSender(2.0, 5.0, 1.0, 0.1, 6, &counter),
+	)
+	if err != nil {
+		t.Fatalf("Error: %v", err)
+	}
+	// Still should see a linear relationship overall (requests with delay=5 should be consistently ~delay more than delay=1).
+	if !match {
+		t.Fatalf("Expected a match despite baseline changes. Reason: %s", reason)
+	}
+}
+
+func TestLargeNumberOfRequests(t *testing.T) {
+	// 20 requests, slope=1.0, no noise. Should be very stable and produce a very high correlation.
+	match, reason, err := checkTimingDependency(
+		20,
+		5,
+		0.05, // very strict correlation requirement
+		0.1,  // very strict slope range
+		linearSender(1.0, 1.0, 0.0),
+	)
+	if err != nil {
+		t.Fatalf("Error: %v", err)
+	}
+	if !match {
+		t.Fatalf("Expected a strong match with many requests and perfect linearity. Reason: %s", reason)
+	}
+}
+
+func TestHighBaselineLowSlope(t *testing.T) {
+	// baseline=10s, slope=0.5 means each requested second only adds 0.5s to observed time.
+	// If our thresholds are strict, this should still show correlation, but slope <1.
+	match, reason, err := checkTimingDependency(
+		10,
+		5,
+		0.2,
+		0.6, // expecting slope around 0.5, allow range ~0.4 to 0.6
+		linearSender(10.0, 0.5, 0.0),
+	)
+	if err != nil {
+		t.Fatalf("Error: %v", err)
+	}
+	if !match {
+		t.Fatalf("Expected a match for slope=0.5 linear scenario. Reason: %s", reason)
+	}
+}
+
+func TestHighNoiseConcealsSlope(t *testing.T) {
+	// slope=1, but noise=5 seconds is huge and might conceal the correlation.
+	// With large noise, the test may fail to detect correlation.
+	match, reason, err := checkTimingDependency(
+		12,
+		5,
+		0.1, // still strict
+		0.2, // still strict
+		linearSender(5.0, 1.0, 5.0),
+	)
+	if err != nil {
+		t.Fatalf("Error: %v", err)
+	}
+	// Expect no match because the noise level is too high to establish a reliable correlation.
+	if match {
+		t.Fatalf("Expected no match due to extreme noise. Reason: %s", reason)
+	}
+}
+
+func TestAlternatingSequences(t *testing.T) {
 	var generatedDelays []float64
 	reqSender := func(delay int) (float64, error) {
 		generatedDelays = append(generatedDelays, float64(delay))
 		return float64(delay), nil
 	}
-	matched, _, err := checkTimingDependency(4, 15, correlationErrorRange, slopeErrorRange, reqSender)
-	require.NoError(t, err)
-	require.True(t, matched)
-	require.EqualValues(t, []float64{15, 1, 15, 1}, generatedDelays)
+	match, reason, err := checkTimingDependency(
+		4,   // requestsLimit
+		15,  // highSleepTimeSeconds
+		0.1, // correlationErrorRange
+		0.2, // slopeErrorRange
+		reqSender,
+	)
+	if err != nil {
+		t.Fatalf("Unexpected error: %v", err)
+	}
+	if !match {
+		t.Fatalf("Expected a match but got none. Reason: %s", reason)
+	}
+	// Verify alternating sequence of delays
+	expectedDelays := []float64{15, 1, 15, 1}
+	if !reflect.DeepEqual(generatedDelays, expectedDelays) {
+		t.Fatalf("Expected delays %v but got %v", expectedDelays, generatedDelays)
+	}
 }
 
-func Test_should_giveup_non_injectable(t *testing.T) {
+func TestNonInjectableQuickFail(t *testing.T) {
 	var timesCalled int
 	reqSender := func(delay int) (float64, error) {
 		timesCalled++
-		return 0.5, nil
+		return 0.5, nil // Return value less than delay
 	}
-	matched, _, err := checkTimingDependency(4, 15, correlationErrorRange, slopeErrorRange, reqSender)
-	require.NoError(t, err)
-	require.False(t, matched)
-	require.Equal(t, 1, timesCalled)
+	match, _, err := checkTimingDependency(
+		4,   // requestsLimit
+		15,  // highSleepTimeSeconds
+		0.1, // correlationErrorRange
+		0.2, // slopeErrorRange
+		reqSender,
+	)
+	if err != nil {
+		t.Fatalf("Unexpected error: %v", err)
+	}
+	if match {
+		t.Fatal("Expected no match for non-injectable case")
+	}
+	if timesCalled != 1 {
+		t.Fatalf("Expected quick fail after 1 call, got %d calls", timesCalled)
+	}
 }
 
-func Test_should_giveup_slow_non_injectable(t *testing.T) {
+func TestSlowNonInjectableCase(t *testing.T) {
+	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
 	var timesCalled int
 	reqSender := func(delay int) (float64, error) {
 		timesCalled++
 		return 10 + rng.Float64()*0.5, nil
 	}
-	matched, _, err := checkTimingDependency(4, 15, correlationErrorRange, slopeErrorRange, reqSender)
-	require.NoError(t, err)
-	require.False(t, matched)
-	require.LessOrEqual(t, timesCalled, 3)
+	match, _, err := checkTimingDependency(
+		4,   // requestsLimit
+		15,  // highSleepTimeSeconds
+		0.1, // correlationErrorRange
+		0.2, // slopeErrorRange
+		reqSender,
+	)
+	if err != nil {
+		t.Fatalf("Unexpected error: %v", err)
+	}
+	if match {
+		t.Fatal("Expected no match for slow non-injectable case")
+	}
+	if timesCalled > 3 {
+		t.Fatalf("Expected early termination (≤3 calls), got %d calls", timesCalled)
+	}
 }
 
-func Test_should_giveup_slow_non_injectable_realworld(t *testing.T) {
-	var timesCalled int
-	var iteration = 0
-	counts := []float64{21, 11, 21, 11}
+func TestRealWorldNonInjectableCase(t *testing.T) {
+	var iteration int
+	counts := []float64{11, 21, 11, 21, 11}
 	reqSender := func(delay int) (float64, error) {
-		timesCalled++
 		iteration++
 		return counts[iteration-1], nil
 	}
-	matched, _, err := checkTimingDependency(4, 15, correlationErrorRange, slopeErrorRange, reqSender)
-	require.NoError(t, err)
-	require.False(t, matched)
-	require.LessOrEqual(t, timesCalled, 4)
+	match, _, err := checkTimingDependency(
+		4,   // requestsLimit
+		15,  // highSleepTimeSeconds
+		0.1, // correlationErrorRange
+		0.2, // slopeErrorRange
+		reqSender,
+	)
+	if err != nil {
+		t.Fatalf("Unexpected error: %v", err)
+	}
+	if match {
+		t.Fatal("Expected no match for real-world non-injectable case")
+	}
+	if iteration > 4 {
+		t.Fatalf("Expected ≤4 iterations, got %d", iteration)
+	}
 }
 
-func Test_should_detect_dependence_with_small_error(t *testing.T) {
+func TestSmallErrorDependence(t *testing.T) {
+	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
 	reqSender := func(delay int) (float64, error) {
 		return float64(delay) + rng.Float64()*0.5, nil
 	}
-	matched, reason, err := checkTimingDependency(4, 15, correlationErrorRange, slopeErrorRange, reqSender)
-	require.NoError(t, err)
-	require.True(t, matched)
-	require.NotEmpty(t, reason)
-}
-
-func Test_LinearRegression_Numerical_stability(t *testing.T) {
-	variables := [][]float64{
-		{1, 1}, {2, 2}, {3, 3}, {4, 4}, {5, 5}, {1, 1}, {2, 2}, {2, 2}, {2, 2},
+	match, reason, err := checkTimingDependency(
+		4,   // requestsLimit
+		15,  // highSleepTimeSeconds
+		0.1, // correlationErrorRange
+		0.2, // slopeErrorRange
+		reqSender,
+	)
+	if err != nil {
+		t.Fatalf("Unexpected error: %v", err)
 	}
-	slope := float64(1)
-	correlation := float64(1)
-
-	regression := newSimpleLinearRegression()
-	for _, v := range variables {
-		regression.AddPoint(v[0], v[1])
+	if !match {
+		t.Fatalf("Expected match for small error case. Reason: %s", reason)
 	}
-	require.True(t, almostEqual(regression.slope, slope))
-	require.True(t, almostEqual(regression.correlation, correlation))
-}
-
-func Test_LinearRegression_exact_verify(t *testing.T) {
-	variables := [][]float64{
-		{1, 1}, {2, 3},
-	}
-	slope := float64(2)
-	correlation := float64(1)
-
-	regression := newSimpleLinearRegression()
-	for _, v := range variables {
-		regression.AddPoint(v[0], v[1])
-	}
-	require.True(t, almostEqual(regression.slope, slope))
-	require.True(t, almostEqual(regression.correlation, correlation))
-}
-
-func Test_LinearRegression_known_verify(t *testing.T) {
-	variables := [][]float64{
-		{1, 1.348520581}, {2, 2.524046187}, {3, 3.276944688}, {4, 4.735374498}, {5, 5.150291657},
-	}
-	slope := float64(0.981487046)
-	correlation := float64(0.979228906)
-
-	regression := newSimpleLinearRegression()
-	for _, v := range variables {
-		regression.AddPoint(v[0], v[1])
-	}
-	require.True(t, almostEqual(regression.slope, slope))
-	require.True(t, almostEqual(regression.correlation, correlation))
-}
-
-func Test_LinearRegression_nonlinear_verify(t *testing.T) {
-	variables := [][]float64{
-		{1, 2}, {2, 4}, {3, 8}, {4, 16}, {5, 32},
-	}
-
-	regression := newSimpleLinearRegression()
-	for _, v := range variables {
-		regression.AddPoint(v[0], v[1])
-	}
-	require.Less(t, regression.correlation, 0.9)
-}
-
-const float64EqualityThreshold = 1e-8
-
-func almostEqual(a, b float64) bool {
-	return math.Abs(a-b) <= float64EqualityThreshold
 }

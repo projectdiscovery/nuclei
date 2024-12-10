@@ -18,12 +18,12 @@ import (
 type Analyzer struct{}
 
 const (
-	DefaultSleepDuration             = int(5)
-	DefaultRequestsLimit             = int(4)
+	DefaultSleepDuration             = int(7)
+	DefaultRequestsLimit             = int(3)
 	DefaultTimeCorrelationErrorRange = float64(0.15)
 	DefaultTimeSlopeErrorRange       = float64(0.30)
 
-	defaultSleepTimeDuration = 5 * time.Second
+	defaultSleepTimeDuration = 7 * time.Second
 )
 
 var _ analyzers.Analyzer = &Analyzer{}
@@ -129,6 +129,7 @@ func (a *Analyzer) Analyze(options *analyzers.Options) (bool, string, error) {
 		}
 		return timeTaken, nil
 	}
+
 	matched, matchReason, err := checkTimingDependency(
 		requestsLimit,
 		sleepDuration,
@@ -147,14 +148,18 @@ func (a *Analyzer) Analyze(options *analyzers.Options) (bool, string, error) {
 
 // doHTTPRequestWithTimeTracing does a http request with time tracing
 func doHTTPRequestWithTimeTracing(req *retryablehttp.Request, httpclient *retryablehttp.Client) (float64, error) {
-	var ttfb time.Duration
-	var start time.Time
+	var serverTime time.Duration
+	var wroteRequest time.Time
 
 	trace := &httptrace.ClientTrace{
-		GotFirstResponseByte: func() { ttfb = time.Since(start) },
+		WroteHeaders: func() {
+			wroteRequest = time.Now()
+		},
+		GotFirstResponseByte: func() {
+			serverTime = time.Since(wroteRequest)
+		},
 	}
 	req = req.WithContext(httptrace.WithClientTrace(req.Context(), trace))
-	start = time.Now()
 	resp, err := httpclient.Do(req)
 	if err != nil {
 		return 0, errors.Wrap(err, "could not do request")
@@ -164,5 +169,5 @@ func doHTTPRequestWithTimeTracing(req *retryablehttp.Request, httpclient *retrya
 	if err != nil {
 		return 0, errors.Wrap(err, "could not read response body")
 	}
-	return ttfb.Seconds(), nil
+	return serverTime.Seconds(), nil
 }

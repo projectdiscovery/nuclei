@@ -6,6 +6,10 @@
 // Advantages of this approach are many compared to the old approach of
 // heuristics of sleep time.
 //
+// NOTE: This algorithm has been heavily modified after being introduced
+// in nuclei. Now the logic has sever bug fixes and improvements and
+// has been evolving to be more stable.
+//
 // As we are building a statistical model, we can predict if the delay
 // is random or not very quickly. Also, the payloads are alternated to send
 // a very high sleep and a very low sleep. This way the comparison is
@@ -59,7 +63,7 @@ func checkTimingDependency(
 			return false, "", nil
 		}
 
-		isCorrelationPossible, err = sendRequestAndTestConfidence(regression, 1, requestSender)
+		isCorrelationPossible, err = sendRequestAndTestConfidence(regression, 4, requestSender)
 		if err != nil {
 			return false, "", err
 		}
@@ -105,17 +109,14 @@ func sendRequestAndTestConfidence(
 	return true, nil
 }
 
-// simpleLinearRegression is a simple linear regression model that can be updated at runtime.
-// It is based on the same algorithm in ZAP for doing timing checks.
 type simpleLinearRegression struct {
-	count          float64
-	independentSum float64
-	dependentSum   float64
+	count float64
 
-	// Variances
-	independentVarianceN float64
-	dependentVarianceN   float64
-	sampleCovarianceN    float64
+	sumX  float64
+	sumY  float64
+	sumXX float64
+	sumYY float64
+	sumXY float64
 
 	slope       float64
 	intercept   float64
@@ -124,39 +125,52 @@ type simpleLinearRegression struct {
 
 func newSimpleLinearRegression() *simpleLinearRegression {
 	return &simpleLinearRegression{
-		slope:       1,
-		correlation: 1,
+		// Start everything at zero until we have data
+		slope:       0.0,
+		intercept:   0.0,
+		correlation: 0.0,
 	}
 }
 
 func (o *simpleLinearRegression) AddPoint(x, y float64) {
-	independentResidualAdjustment := x - o.independentSum/o.count
-	dependentResidualAdjustment := y - o.dependentSum/o.count
-
 	o.count += 1
-	o.independentSum += x
-	o.dependentSum += y
+	o.sumX += x
+	o.sumY += y
+	o.sumXX += x * x
+	o.sumYY += y * y
+	o.sumXY += x * y
 
-	if math.IsNaN(independentResidualAdjustment) {
+	// Need at least two points for meaningful calculation
+	if o.count < 2 {
 		return
 	}
 
-	independentResidual := x - o.independentSum/o.count
-	dependentResidual := y - o.dependentSum/o.count
+	n := o.count
+	meanX := o.sumX / n
+	meanY := o.sumY / n
 
-	o.independentVarianceN += independentResidual * independentResidualAdjustment
-	o.dependentVarianceN += dependentResidual * dependentResidualAdjustment
-	o.sampleCovarianceN += independentResidual * dependentResidualAdjustment
+	// Compute sample variances and covariance
+	varX := (o.sumXX - n*meanX*meanX) / (n - 1)
+	varY := (o.sumYY - n*meanY*meanY) / (n - 1)
+	covXY := (o.sumXY - n*meanX*meanY) / (n - 1)
 
-	o.slope = o.sampleCovarianceN / o.independentVarianceN
-	o.correlation = o.slope * math.Sqrt(o.independentVarianceN/o.dependentVarianceN)
-	o.correlation *= o.correlation
+	// If varX is zero, slope cannot be computed meaningfully.
+	// This would mean all X are the same, so handle that edge case.
+	if varX == 0 {
+		o.slope = 0.0
+		o.intercept = meanY // Just the mean
+		o.correlation = 0.0 // No correlation since all X are identical
+		return
+	}
 
-	// NOTE: zap had the reverse formula, changed it to the correct one
-	// for intercept. Verify if this is correct.
-	o.intercept = o.dependentSum/o.count - o.slope*(o.independentSum/o.count)
-	if math.IsNaN(o.correlation) {
-		o.correlation = 1
+	o.slope = covXY / varX
+	o.intercept = meanY - o.slope*meanX
+
+	// If varX or varY are zero, we cannot compute correlation properly.
+	if varX > 0 && varY > 0 {
+		o.correlation = covXY / (math.Sqrt(varX) * math.Sqrt(varY))
+	} else {
+		o.correlation = 0.0
 	}
 }
 
@@ -164,8 +178,12 @@ func (o *simpleLinearRegression) Predict(x float64) float64 {
 	return o.slope*x + o.intercept
 }
 
-func (o *simpleLinearRegression) IsWithinConfidence(correlationErrorRange float64, expectedSlope float64, slopeErrorRange float64,
-) bool {
+func (o *simpleLinearRegression) IsWithinConfidence(correlationErrorRange float64, expectedSlope float64, slopeErrorRange float64) bool {
+	// For now, just check correlation as originally done:
+	// You might later reintroduce slope checks:
+	// return math.Abs(expectedSlope-o.slope) < slopeErrorRange && o.correlation > 1.0 - correlationErrorRange
+	if o.count < 2 {
+		return true
+	}
 	return o.correlation > 1.0-correlationErrorRange
-	//math.Abs(expectedSlope-o.slope) < slopeErrorRange
 }
