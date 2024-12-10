@@ -1,0 +1,89 @@
+id: pd-nuclei-auth-test
+info:
+    name: ProjectDiscovery Test Dev Servers
+    author: pdteam
+    description: |
+        This is a auth file for ProjectDiscovery dev servers.
+        It contains auth data of all projectdiscovery dev servers.
+# Note: this is a dummy example file. none of the secrets here are real.
+# static secrets
+static:
+    # for header based auth session
+    - type: header
+      domains:
+        - api.projectdiscovery.io
+        - cve.projectdiscovery.io
+        - chaos.projectdiscovery.io
+      headers:
+        - key: ENC[AES256_GCM,data:w4et2u5QOC2a+A==,iv:RkrhnsvyxheCyBDxf+QuwCkfjflji4+V/78pHYVRp54=,tag:KS8oezRo5kiiGSH9DS3P/A==,type:str]
+          value: ENC[AES256_GCM,data:Xfsp/ysTMGA19Avj5KQ=,iv:idqGuAg0TiS1BCLmKFn6V6dh8KuFdkycO1rs9J0khJs=,tag:zipBSCO5IpQ3G27fAT4Hxw==,type:str]
+    # for query based auth session
+    - type: Query
+      domains:
+        - scanme.sh
+      params:
+        - key: ENC[AES256_GCM,data:e7gyzSU=,iv:2n+zAGA3+ZfSKZW6zQeqkJP61M2x2NucA4BuPM30NKA=,tag:h1yJEMXpuNLTdCQUTfPyPg==,type:str]
+          value: ENC[AES256_GCM,data:Q+xtw2sqcD6/dh2LLr1DB/9cO3I=,iv:AcEg/ZuNNG6iUaVx6nOVgLgy9GmM94F3RCcZOxTycvE=,tag:EvCmBDkYCvMi+++eqkDbcw==,type:str]
+    # for cookie based auth session
+    - type: Cookie
+      domains:
+        - scanme.sh
+      cookies:
+        - key: ENC[AES256_GCM,data:yc1FH70NQvSd,iv:jXqCn7QMTLPYTwPNFobLYSLdOp+GDG024RSI9DJ9CfY=,tag:+3rBAaRgSj03q53I+9+wjA==,type:str]
+          value: ENC[AES256_GCM,data:01Iq1e144BrHmU0cY/ZzbNKpo/Q=,iv:uwoPqkmL7oNkhOKqbZ9AUEDvcJkvqCvcSzdVeJvrrmE=,tag:9Xw7ACU6gEVUoRxe60CajA==,type:str]
+    # for basic auth session
+    - type: BasicAuth
+      domains:
+        - scanme.sh
+      username: ENC[AES256_GCM,data:FoJCow==,iv:xxQIa91fH2tKJw0aoWUxt8iqBeHswxjxJ8kgwtx8q5w=,tag:nkn/9DhZ8cwJXg1EPX17JQ==,type:str]
+      password: ENC[AES256_GCM,data:oldoEw==,iv:63lG+60DLtiwD5SSg2POnsYVb4v04/XBGYbXkxl8ImM=,tag:2NL5HCBzZ4aW5/0DVkKeqQ==,type:str]
+    # for authorization bearer token
+    - type: BearerToken
+      domains-regex:
+        - .*scanme.sh
+        - .*pdtm.sh
+      token: ENC[AES256_GCM,data:X7qf4A==,iv:UzXvYgxOJYRk+SRVqExF5qRVTmMsv4k6IBnm+nBAcK0=,tag:fe3J5vH6AuTCZY+QGZ0ntA==,type:str]
+# dynamic secrets (powered by nuclei-templates)
+dynamic:
+    - template: /path/to/wordpress-login.yaml
+      variables:
+        - name: username
+          value: ENC[AES256_GCM,data:WFGVf0SB,iv:/Tt247XYHPwATL19euhGrXy46tUwtQgqOh18Ikc3CVc=,tag:cAVTwY0ztL6CgwRCWtTy5Q==,type:str]
+        - name: password
+          value: ENC[AES256_GCM,data:DUA8UHq+oOQUHaU3Ww==,iv:S8GO5uznYOsHfZJh5z0ZYQnau2/Fyb9bRGXyPEet4Pw=,tag:wc8KT2ZDuUkpdtoxCKPFSQ==,type:str]
+      type: Cookie
+      domains:
+        - localhost:8080
+      cookies:
+        - raw: ENC[AES256_GCM,data:mJ8SkxcWptbAxEqURSIR7oQZNcA=,iv:fzn4S+GvzrA1Wf+kkUL4ulatHI0xFeeHMeTuyTAYJNM=,tag:ebbE+mIDLA4QLcWfcPudwA==,type:str]
+        - raw: ENC[AES256_GCM,data:H+b2Gc8GEGum60iCJJQ2vT0Y3Q==,iv:1JQl1Y6buUSmNMMpUQDvSGIeMLe8LyBqR9JHqynW7DA=,tag:hZvg5hz0PKjV1vf4UGjuYw==,type:str]
+        - raw: ENC[AES256_GCM,data:9i6umUdwloIrKphZN8MdxVHPL90=,iv:pDVsiPh95Ay9BZ/cURjtXfr0087LU+mKUoXtm+bFuMU=,tag:Z1v+R8ZCTolBD69GsQgQpQ==,type:str]
+sops:
+    kms: []
+    gcp_kms: []
+    azure_kv: []
+    hc_vault: []
+    age: []
+    lastmodified: "2024-11-20T20:39:28Z"
+    mac: ENC[AES256_GCM,data:rm/izVgX2WDD2c0+1K2cLH/aX9dTOZCHrSqupsxzWNmf0IqWc+mucypJXOSwQX+0gd0IWpyCScYPWIxWAblgTNcPk6YTmVCRmCCU1JBc8kVYYp3f1hihkJmuAbRY0D2DosIEs/bNXwc6kdJjIgO2vueFtMpmafRKDaIjwdgPiz8=,iv:EPleIjkkHLgppaCDewgqwySzw9FRIlFHllh3C9Ltn1c=,tag:rqcYGavBJW+m5Qbxy6dMPg==,type:str]
+    pgp:
+        - created_at: "2024-11-20T20:39:28Z"
+          enc: |-
+            -----BEGIN PGP MESSAGE-----
+
+            hQGMAxla1kdz48mxAQwAlDKiY30YWv2WDKWIUQ1eteVmKsc1oppjTogUlAM13Z5u
+            TA/bSFGOP5Ol5bhKdQsxNBgcCXo/vRDIks9TqfEUJGBOyPseDih0jxgO2mLWAWUj
+            IvOd0wRhpwJlMgrPgObomHQJ1obwYfS9r4AeQuzFJKOjMpsfgOihCnbQ646Ng1zH
+            maGgjPu8hlrdS5mAUp77ihORb0ALfS293JRaLJi+V9yERtVh6hkM/0gxexxSjUx5
+            cixmk997cakhJVevjlE2tmdt93WUR8Z4TY+xFMgQf5bz9v8vJG3fpgGxoqZ3pIsW
+            LjMLaoTVO9gammmml15gaJdV9PolpbwSHMgFvoVv4eSADsCO1Cs1zFrFbTbmHq2L
+            4wUa6f9Df6jS4M4radl5mh+AQI2JCvwTia1eVduDZxTiKxXDGTwYIDDsLd8GZrf/
+            Vfy/bwhmNtSCFx9raavSjCURpfNSqhkQnMnrsTpIVe8bl+YQNkmJY4+ZUGFeVXYH
+            GzQm7AIxTsUe5dYO3T1W0lwBfxopAXTorhFy9VsMY7ZjaOUPnOrFyCLD8+WXUERU
+            B/ixpZ2X+0Qeax5vnAaykJKr9UNVW5oxS4mfPvQ8+AUUsjJdC3RZHOKIlHTbvT0v
+            aXOSeHkaNJ+TWnRBow==
+            =tiYG
+            -----END PGP MESSAGE-----
+          fp: C6C11FC4DA74DC979109CBD48EB7405A1F8D1930
+    encrypted_regex: ^(password|username|token|value|key|raw)$
+    version: 3.9.1
