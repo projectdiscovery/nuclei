@@ -19,6 +19,9 @@ var knownLeaks = []goleak.Option{
 	// net/http transport maintains idle connections which are closed with cooldown
 	// hence they don't count as leaks
 	goleak.IgnoreAnyFunction("net/http.(*http2ClientConn).readLoop"),
+	// NOTE(dwisiswant0): This is an indirect call and not used anywhere, not
+	// even within SOPS (#5841). See `go mod why go.opencensus.io/stats/view`.
+	goleak.IgnoreAnyContainingPkg("go.opencensus.io/stats/view"),
 }
 
 func TestSimpleNuclei(t *testing.T) {
