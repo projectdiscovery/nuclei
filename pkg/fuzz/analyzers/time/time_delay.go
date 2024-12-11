@@ -28,9 +28,15 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"strings"
 )
 
 type timeDelayRequestSender func(delay int) (float64, error)
+
+type requstsSentMetadata struct {
+	delay         int
+	delayReceived float64
+}
 
 // checkTimingDependency checks the timing dependency for a given request
 //
@@ -50,38 +56,52 @@ func checkTimingDependency(
 	regression := newSimpleLinearRegression()
 	requestsLeft := requestsLimit
 
+	var requestsSent []requstsSentMetadata
 	for {
 		if requestsLeft <= 0 {
 			break
 		}
 
-		isCorrelationPossible, err := sendRequestAndTestConfidence(regression, highSleepTimeSeconds, requestSender)
+		isCorrelationPossible, delayRecieved, err := sendRequestAndTestConfidence(regression, highSleepTimeSeconds, requestSender)
 		if err != nil {
 			return false, "", err
 		}
 		if !isCorrelationPossible {
 			return false, "", nil
 		}
+		requestsSent = append(requestsSent, requstsSentMetadata{
+			delay:         highSleepTimeSeconds,
+			delayReceived: delayRecieved,
+		})
 
-		isCorrelationPossible, err = sendRequestAndTestConfidence(regression, 4, requestSender)
+		isCorrelationPossibleSecond, delayRecievedSecond, err := sendRequestAndTestConfidence(regression, int(DefaultLowSleepTimeSeconds), requestSender)
 		if err != nil {
 			return false, "", err
 		}
-		if !isCorrelationPossible {
+		if !isCorrelationPossibleSecond {
 			return false, "", nil
 		}
 		requestsLeft = requestsLeft - 2
+
+		requestsSent = append(requestsSent, requstsSentMetadata{
+			delay:         int(DefaultLowSleepTimeSeconds),
+			delayReceived: delayRecievedSecond,
+		})
 	}
 
 	result := regression.IsWithinConfidence(correlationErrorRange, 1.0, slopeErrorRange)
 	if result {
-		resultReason := fmt.Sprintf(
+		var resultReason strings.Builder
+		resultReason.WriteString(fmt.Sprintf(
 			"[time_delay] made %d requests successfully, with a regression slope of %.2f and correlation %.2f",
 			requestsLimit,
 			regression.slope,
 			regression.correlation,
-		)
-		return result, resultReason, nil
+		))
+		for _, request := range requestsSent {
+			resultReason.WriteString(fmt.Sprintf("\n - delay: %ds, delayReceived: %fs", request.delay, request.delayReceived))
+		}
+		return result, resultReason.String(), nil
 	}
 	return result, "", nil
 }
@@ -91,22 +111,22 @@ func sendRequestAndTestConfidence(
 	regression *simpleLinearRegression,
 	delay int,
 	requestSender timeDelayRequestSender,
-) (bool, error) {
+) (bool, float64, error) {
 	delayReceived, err := requestSender(delay)
 	if err != nil {
-		return false, err
+		return false, 0, err
 	}
 
 	if delayReceived < float64(delay) {
-		return false, nil
+		return false, 0, nil
 	}
 
 	regression.AddPoint(float64(delay), delayReceived)
 
 	if !regression.IsWithinConfidence(0.3, 1.0, 0.5) {
-		return false, nil
+		return false, delayReceived, nil
 	}
-	return true, nil
+	return true, delayReceived, nil
 }
 
 type simpleLinearRegression struct {
@@ -180,7 +200,6 @@ func (o *simpleLinearRegression) Predict(x float64) float64 {
 
 func (o *simpleLinearRegression) IsWithinConfidence(correlationErrorRange float64, expectedSlope float64, slopeErrorRange float64) bool {
 	// For now, just check correlation as originally done:
-	// You might later reintroduce slope checks:
 	// return math.Abs(expectedSlope-o.slope) < slopeErrorRange && o.correlation > 1.0 - correlationErrorRange
 	if o.count < 2 {
 		return true

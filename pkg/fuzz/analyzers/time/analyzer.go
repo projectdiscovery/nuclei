@@ -19,9 +19,10 @@ type Analyzer struct{}
 
 const (
 	DefaultSleepDuration             = int(7)
-	DefaultRequestsLimit             = int(3)
+	DefaultRequestsLimit             = int(4)
 	DefaultTimeCorrelationErrorRange = float64(0.15)
 	DefaultTimeSlopeErrorRange       = float64(0.30)
+	DefaultLowSleepTimeSeconds       = float64(3)
 
 	defaultSleepTimeDuration = 7 * time.Second
 )

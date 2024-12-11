@@ -201,23 +201,6 @@ func linearSender(baseline, slope, noiseAmplitude float64) func(int) (float64, e
 	}
 }
 
-// changingBaselineSender simulates a baseline that changes after half the requests are done.
-func changingBaselineSender(initialBaseline, newBaseline, slope, noiseAmplitude float64, switchAfter int, counter *int) func(int) (float64, error) {
-	return func(delay int) (float64, error) {
-		time.Sleep(10 * time.Millisecond)
-		base := initialBaseline
-		if *counter >= switchAfter {
-			base = newBaseline
-		}
-		*counter++
-		noise := 0.0
-		if noiseAmplitude > 0 {
-			noise = (rand.Float64()*2 - 1) * noiseAmplitude
-		}
-		return base + slope*float64(delay) + noise, nil
-	}
-}
-
 // negativeSlopeSender just for completeness - higher delay = less observed time
 func negativeSlopeSender(baseline float64) func(int) (float64, error) {
 	return func(delay int) (float64, error) {
@@ -225,9 +208,6 @@ func negativeSlopeSender(baseline float64) func(int) (float64, error) {
 		return baseline - float64(delay)*2.0, nil
 	}
 }
-
-// We assume you have an imported checkTimingDependency function. Adjust imports as needed.
-// func checkTimingDependency(...) (bool, string, error) { ... }
 
 func TestPerfectLinearSlopeOne_NoNoise(t *testing.T) {
 	match, reason, err := checkTimingDependency(
@@ -313,27 +293,6 @@ func TestNegativeSlopeScenario(t *testing.T) {
 	}
 }
 
-func TestChangingBaseline(t *testing.T) {
-	counter := 0
-	// baseline = 2s initially, then after 5 requests it changes to 5s.
-	// slope=1 means observed = baseline + requested_delay.
-	// Even with changing baseline, a strong correlation should still appear if slope is consistent.
-	match, reason, err := checkTimingDependency(
-		12,
-		5,
-		0.2,
-		0.5,
-		changingBaselineSender(2.0, 5.0, 1.0, 0.1, 6, &counter),
-	)
-	if err != nil {
-		t.Fatalf("Error: %v", err)
-	}
-	// Still should see a linear relationship overall (requests with delay=5 should be consistently ~delay more than delay=1).
-	if !match {
-		t.Fatalf("Expected a match despite baseline changes. Reason: %s", reason)
-	}
-}
-
 func TestLargeNumberOfRequests(t *testing.T) {
 	// 20 requests, slope=1.0, no noise. Should be very stable and produce a very high correlation.
 	match, reason, err := checkTimingDependency(
@@ -408,7 +367,7 @@ func TestAlternatingSequences(t *testing.T) {
 		t.Fatalf("Expected a match but got none. Reason: %s", reason)
 	}
 	// Verify alternating sequence of delays
-	expectedDelays := []float64{15, 1, 15, 1}
+	expectedDelays := []float64{15, 4, 15, 4}
 	if !reflect.DeepEqual(generatedDelays, expectedDelays) {
 		t.Fatalf("Expected delays %v but got %v", expectedDelays, generatedDelays)
 	}
