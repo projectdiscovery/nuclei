@@ -451,6 +451,9 @@ func parseTemplate(data []byte, options protocols.ExecutorOptions) (*Template, e
 	var verifier *signer.TemplateSigner
 	for _, verifier = range signer.DefaultTemplateVerifiers {
 		template.Verified, _ = verifier.Verify(data, template)
+		if config.DefaultConfig.LogAllEvents {
+			gologger.Verbose().Msgf("template %v verified by %s : %v", template.ID, verifier.Identifier(), template.Verified)
+		}
 		if template.Verified {
 			template.TemplateVerifier = verifier.Identifier()
 			break

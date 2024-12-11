@@ -42,6 +42,10 @@ scan-charts: GOBUILD_OUTPUT = ./bin/scan-charts
 scan-charts: GOBUILD_PACKAGES = cmd/scan-charts/main.go
 scan-charts: go-build
 
+template-signer: GOBUILD_OUTPUT = ./bin/template-signer
+template-signer: GOBUILD_PACKAGES = cmd/tools/signer/main.go
+template-signer: go-build
+
 docgen: GOBUILD_OUTPUT = ./bin/docgen
 docgen: GOBUILD_PACKAGES = cmd/docgen/docgen.go
 docgen: bin = dstdocgen

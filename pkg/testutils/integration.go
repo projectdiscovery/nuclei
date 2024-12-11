@@ -94,7 +94,7 @@ func RunNucleiBareArgsAndGetResults(debug bool, env []string, extra ...string) (
 	return parts, nil
 }
 
-// RunNucleiArgsAndGetResults returns result,and runtime errors
+// RunNucleiWithArgsAndGetResults returns result,and runtime errors
 func RunNucleiWithArgsAndGetResults(debug bool, args ...string) ([]string, error) {
 	cmd := exec.Command("./nuclei", args...)
 	cmd.Env = append(cmd.Env, ExtraEnvVars...)
