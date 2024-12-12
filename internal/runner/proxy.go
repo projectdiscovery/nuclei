@@ -14,6 +14,10 @@ import (
 	proxyutils "github.com/projectdiscovery/utils/proxy"
 )
 
+const (
+	HTTP_PROXY_ENV = "HTTP_PROXY"
+)
+
 // loadProxyServers load list of proxy servers from file or comma separated
 func loadProxyServers(options *types.Options) error {
 	if len(options.Proxy) == 0 {
@@ -48,15 +52,13 @@ func loadProxyServers(options *types.Options) error {
 		return errorutil.WrapfWithNil(err, "failed to parse proxy got %v", err)
 	}
 	if options.ProxyInternal {
-		os.Setenv(types.HTTP_PROXY_ENV, proxyURL.String())
+		os.Setenv(HTTP_PROXY_ENV, proxyURL.String())
 	}
 	if proxyURL.Scheme == proxyutils.HTTP || proxyURL.Scheme == proxyutils.HTTPS {
-		types.ProxyURL = proxyURL.String()
-		types.ProxySocksURL = ""
 		gologger.Verbose().Msgf("Using %s as proxy server", proxyURL.String())
+		options.AliveHttpProxy = proxyURL.String()
 	} else if proxyURL.Scheme == proxyutils.SOCKS5 {
-		types.ProxyURL = ""
-		types.ProxySocksURL = proxyURL.String()
+		options.AliveSocksProxy = proxyURL.String()
 		gologger.Verbose().Msgf("Using %s as socket proxy server", proxyURL.String())
 	}
 	return nil
