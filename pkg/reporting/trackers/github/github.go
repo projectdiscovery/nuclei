@@ -63,7 +63,9 @@ func New(options *Options) (*Integration, error) {
 	tc := oauth2.NewClient(ctx, ts)
 
 	if options.HttpClient != nil && options.HttpClient.HTTPClient != nil {
-		tc.Transport.(*http.Transport).Proxy = options.HttpClient.HTTPClient.Transport.(*http.Transport).Proxy
+		if tcTransport, ok := tc.Transport.(*http.Transport); ok {
+			tcTransport.Proxy = options.HttpClient.HTTPClient.Transport.(*http.Transport).Proxy
+		}
 	}
 
 	client := github.NewClient(tc)
