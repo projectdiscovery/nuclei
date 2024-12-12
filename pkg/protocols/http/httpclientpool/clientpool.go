@@ -157,10 +157,10 @@ func (c *Configuration) HasStandardOptions() bool {
 func GetRawHTTP(options *protocols.ExecutorOptions) *rawhttp.Client {
 	rawHttpClientOnce.Do(func() {
 		rawHttpOptions := rawhttp.DefaultOptions
-		if types.ProxyURL != "" {
-			rawHttpOptions.Proxy = types.ProxyURL
-		} else if types.ProxySocksURL != "" {
-			rawHttpOptions.Proxy = types.ProxySocksURL
+		if options.Options.AliveHttpProxy != "" {
+			rawHttpOptions.Proxy = options.Options.AliveHttpProxy
+		} else if options.Options.AliveSocksProxy != "" {
+			rawHttpOptions.Proxy = options.Options.AliveSocksProxy
 		} else if protocolstate.Dialer != nil {
 			rawHttpOptions.FastDialer = protocolstate.Dialer
 		}
@@ -278,12 +278,12 @@ func wrappedGet(options *types.Options, configuration *Configuration) (*retryabl
 		ResponseHeaderTimeout: responseHeaderTimeout,
 	}
 
-	if types.ProxyURL != "" {
-		if proxyURL, err := url.Parse(types.ProxyURL); err == nil {
+	if options.AliveHttpProxy != "" {
+		if proxyURL, err := url.Parse(options.AliveHttpProxy); err == nil {
 			transport.Proxy = http.ProxyURL(proxyURL)
 		}
-	} else if types.ProxySocksURL != "" {
-		socksURL, proxyErr := url.Parse(types.ProxySocksURL)
+	} else if options.AliveSocksProxy != "" {
+		socksURL, proxyErr := url.Parse(options.AliveSocksProxy)
 		if proxyErr != nil {
 			return nil, proxyErr
 		}
