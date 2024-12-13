@@ -333,7 +333,9 @@ Dynamic Application Security Testing (DAST) Server Stats
         });
 
         function toggleJSON() {
-            window.location.href = window.location.href + '.json';
+            const url = new URL(window.location.href);
+            url.pathname = url.pathname + '.json';
+            window.location.href = url.toString();
         }
     </script>
 </body>
