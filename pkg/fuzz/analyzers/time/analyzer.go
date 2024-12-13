@@ -15,7 +15,8 @@ import (
 )
 
 // Analyzer is a time delay analyzer for the fuzzer
-type Analyzer struct{}
+type Analyzer struct {
+}
 
 const (
 	DefaultSleepDuration             = int(7)
@@ -131,11 +132,18 @@ func (a *Analyzer) Analyze(options *analyzers.Options) (bool, string, error) {
 		return timeTaken, nil
 	}
 
+	// Check the baseline delay of the request by doing two requests
+	baselineDelay, err := getBaselineDelay(reqSender)
+	if err != nil {
+		return false, "", err
+	}
+
 	matched, matchReason, err := checkTimingDependency(
 		requestsLimit,
 		sleepDuration,
 		timeCorrelationErrorRange,
 		timeSlopeErrorRange,
+		baselineDelay,
 		reqSender,
 	)
 	if err != nil {
@@ -145,6 +153,25 @@ func (a *Analyzer) Analyze(options *analyzers.Options) (bool, string, error) {
 		return true, matchReason, nil
 	}
 	return false, "", nil
+}
+
+func getBaselineDelay(reqSender timeDelayRequestSender) (float64, error) {
+	var delays []float64
+	// Use zero or a very small delay to measure baseline
+	for i := 0; i < 3; i++ {
+		delay, err := reqSender(0)
+		if err != nil {
+			return 0, errors.Wrap(err, "could not get baseline delay")
+		}
+		delays = append(delays, delay)
+	}
+
+	var total float64
+	for _, d := range delays {
+		total += d
+	}
+	avg := total / float64(len(delays))
+	return avg, nil
 }
 
 // doHTTPRequestWithTimeTracing does a http request with time tracing

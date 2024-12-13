@@ -95,6 +95,7 @@ func TestPerfectLinear(t *testing.T) {
 	highSleepTimeSeconds := 5
 	corrErrRange := 0.1
 	slopeErrRange := 0.2
+	baseline := 5.0
 
 	sender := perfectLinearSender(5.0) // baseline 5s, observed = 5s + requested_delay
 	match, reason, err := checkTimingDependency(
@@ -102,6 +103,7 @@ func TestPerfectLinear(t *testing.T) {
 		highSleepTimeSeconds,
 		corrErrRange,
 		slopeErrRange,
+		baseline,
 		sender,
 	)
 	if err != nil {
@@ -118,6 +120,7 @@ func TestNoCorrelation(t *testing.T) {
 	highSleepTimeSeconds := 5
 	corrErrRange := 0.1
 	slopeErrRange := 0.5
+	baseline := 8.0
 
 	sender := noCorrelationSender(8.0, 0.1)
 	match, reason, err := checkTimingDependency(
@@ -125,6 +128,7 @@ func TestNoCorrelation(t *testing.T) {
 		highSleepTimeSeconds,
 		corrErrRange,
 		slopeErrRange,
+		baseline,
 		sender,
 	)
 	if err != nil {
@@ -142,6 +146,7 @@ func TestNoisyLinear(t *testing.T) {
 	highSleepTimeSeconds := 5
 	corrErrRange := 0.2  // allow some lower correlation due to noise
 	slopeErrRange := 0.5 // slope may deviate slightly
+	baseline := 2.0
 
 	sender := noisyLinearSender(2.0) // baseline 2s, observed ~ 2s + requested_delay ±0.2
 	match, reason, err := checkTimingDependency(
@@ -149,6 +154,7 @@ func TestNoisyLinear(t *testing.T) {
 		highSleepTimeSeconds,
 		corrErrRange,
 		slopeErrRange,
+		baseline,
 		sender,
 	)
 	if err != nil {
@@ -168,6 +174,7 @@ func TestMinimalData(t *testing.T) {
 	highSleepTimeSeconds := 5
 	corrErrRange := 0.3
 	slopeErrRange := 0.5
+	baseline := 5.0
 
 	// Perfect linear sender again
 	sender := perfectLinearSender(5.0)
@@ -176,6 +183,7 @@ func TestMinimalData(t *testing.T) {
 		highSleepTimeSeconds,
 		corrErrRange,
 		slopeErrRange,
+		baseline,
 		sender,
 	)
 	if err != nil {
@@ -210,12 +218,14 @@ func negativeSlopeSender(baseline float64) func(int) (float64, error) {
 }
 
 func TestPerfectLinearSlopeOne_NoNoise(t *testing.T) {
+	baseline := 2.0
 	match, reason, err := checkTimingDependency(
 		10,  // requestsLimit
 		5,   // highSleepTimeSeconds
 		0.1, // correlationErrorRange
 		0.2, // slopeErrorRange (allowing slope between 0.8 and 1.2)
-		linearSender(2.0, 1.0, 0.0),
+		baseline,
+		linearSender(baseline, 1.0, 0.0),
 	)
 	if err != nil {
 		t.Fatalf("Unexpected error: %v", err)
@@ -226,13 +236,15 @@ func TestPerfectLinearSlopeOne_NoNoise(t *testing.T) {
 }
 
 func TestPerfectLinearSlopeTwo_NoNoise(t *testing.T) {
+	baseline := 2.0
 	// slope=2 means observed = baseline + 2*requested_delay
 	match, reason, err := checkTimingDependency(
 		10,
 		5,
 		0.1, // correlation must still be good
 		1.5, // allow slope in range (0.5 to 2.5), we should be close to 2.0 anyway
-		linearSender(1.0, 2.0, 0.0),
+		baseline,
+		linearSender(baseline, 2.0, 0.0),
 	)
 	if err != nil {
 		t.Fatalf("Error: %v", err)
@@ -243,13 +255,15 @@ func TestPerfectLinearSlopeTwo_NoNoise(t *testing.T) {
 }
 
 func TestLinearWithNoise(t *testing.T) {
+	baseline := 5.0
 	// slope=1 but with noise ±0.2 seconds
 	match, reason, err := checkTimingDependency(
 		12,
 		5,
 		0.2, // correlationErrorRange relaxed to account for noise
 		0.5, // slopeErrorRange also relaxed
-		linearSender(5.0, 1.0, 0.2),
+		baseline,
+		linearSender(baseline, 1.0, 0.2),
 	)
 	if err != nil {
 		t.Fatalf("Error: %v", err)
@@ -260,13 +274,15 @@ func TestLinearWithNoise(t *testing.T) {
 }
 
 func TestNoCorrelationHighBaseline(t *testing.T) {
+	baseline := 15.0
 	// baseline ~15s, requested delays won't matter
 	match, reason, err := checkTimingDependency(
 		10,
 		5,
 		0.1, // correlation should be near zero, so no match expected
 		0.5,
-		noCorrelationSender(15.0, 0.1),
+		baseline,
+		noCorrelationSender(baseline, 0.1),
 	)
 	if err != nil {
 		t.Fatalf("Error: %v", err)
@@ -277,13 +293,15 @@ func TestNoCorrelationHighBaseline(t *testing.T) {
 }
 
 func TestNegativeSlopeScenario(t *testing.T) {
+	baseline := 10.0
 	// Increasing delay decreases observed time
 	match, reason, err := checkTimingDependency(
 		10,
 		5,
 		0.2,
 		0.5,
-		negativeSlopeSender(10.0),
+		baseline,
+		negativeSlopeSender(baseline),
 	)
 	if err != nil {
 		t.Fatalf("Error: %v", err)
@@ -294,13 +312,15 @@ func TestNegativeSlopeScenario(t *testing.T) {
 }
 
 func TestLargeNumberOfRequests(t *testing.T) {
+	baseline := 1.0
 	// 20 requests, slope=1.0, no noise. Should be very stable and produce a very high correlation.
 	match, reason, err := checkTimingDependency(
 		20,
 		5,
 		0.05, // very strict correlation requirement
 		0.1,  // very strict slope range
-		linearSender(1.0, 1.0, 0.0),
+		baseline,
+		linearSender(baseline, 1.0, 0.0),
 	)
 	if err != nil {
 		t.Fatalf("Error: %v", err)
@@ -311,12 +331,14 @@ func TestLargeNumberOfRequests(t *testing.T) {
 }
 
 func TestHighBaselineLowSlope(t *testing.T) {
+	baseline := 15.0
 	match, reason, err := checkTimingDependency(
 		10,
 		5,
 		0.2,
 		0.2, // expecting slope around 0.5, allow range ~0.4 to 0.6
-		linearSender(10.0, 0.85, 0.0),
+		baseline,
+		linearSender(baseline, 0.85, 0.0),
 	)
 	if err != nil {
 		t.Fatalf("Error: %v", err)
@@ -327,6 +349,7 @@ func TestHighBaselineLowSlope(t *testing.T) {
 }
 
 func TestHighNoiseConcealsSlope(t *testing.T) {
+	baseline := 5.0
 	// slope=1, but noise=5 seconds is huge and might conceal the correlation.
 	// With large noise, the test may fail to detect correlation.
 	match, reason, err := checkTimingDependency(
@@ -334,7 +357,8 @@ func TestHighNoiseConcealsSlope(t *testing.T) {
 		5,
 		0.1, // still strict
 		0.2, // still strict
-		linearSender(5.0, 1.0, 5.0),
+		baseline,
+		linearSender(baseline, 1.0, 5.0),
 	)
 	if err != nil {
 		t.Fatalf("Error: %v", err)
@@ -346,6 +370,7 @@ func TestHighNoiseConcealsSlope(t *testing.T) {
 }
 
 func TestAlternatingSequences(t *testing.T) {
+	baseline := 0.0
 	var generatedDelays []float64
 	reqSender := func(delay int) (float64, error) {
 		generatedDelays = append(generatedDelays, float64(delay))
@@ -356,6 +381,7 @@ func TestAlternatingSequences(t *testing.T) {
 		15,  // highSleepTimeSeconds
 		0.1, // correlationErrorRange
 		0.2, // slopeErrorRange
+		baseline,
 		reqSender,
 	)
 	if err != nil {
@@ -372,6 +398,7 @@ func TestAlternatingSequences(t *testing.T) {
 }
 
 func TestNonInjectableQuickFail(t *testing.T) {
+	baseline := 0.5
 	var timesCalled int
 	reqSender := func(delay int) (float64, error) {
 		timesCalled++
@@ -382,6 +409,7 @@ func TestNonInjectableQuickFail(t *testing.T) {
 		15,  // highSleepTimeSeconds
 		0.1, // correlationErrorRange
 		0.2, // slopeErrorRange
+		baseline,
 		reqSender,
 	)
 	if err != nil {
@@ -396,6 +424,7 @@ func TestNonInjectableQuickFail(t *testing.T) {
 }
 
 func TestSlowNonInjectableCase(t *testing.T) {
+	baseline := 10.0
 	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
 	var timesCalled int
 	reqSender := func(delay int) (float64, error) {
@@ -407,6 +436,7 @@ func TestSlowNonInjectableCase(t *testing.T) {
 		15,  // highSleepTimeSeconds
 		0.1, // correlationErrorRange
 		0.2, // slopeErrorRange
+		baseline,
 		reqSender,
 	)
 	if err != nil {
@@ -421,6 +451,7 @@ func TestSlowNonInjectableCase(t *testing.T) {
 }
 
 func TestRealWorldNonInjectableCase(t *testing.T) {
+	baseline := 0.0
 	var iteration int
 	counts := []float64{11, 21, 11, 21, 11}
 	reqSender := func(delay int) (float64, error) {
@@ -432,6 +463,7 @@ func TestRealWorldNonInjectableCase(t *testing.T) {
 		15,  // highSleepTimeSeconds
 		0.1, // correlationErrorRange
 		0.2, // slopeErrorRange
+		baseline,
 		reqSender,
 	)
 	if err != nil {
@@ -446,6 +478,7 @@ func TestRealWorldNonInjectableCase(t *testing.T) {
 }
 
 func TestSmallErrorDependence(t *testing.T) {
+	baseline := 0.0
 	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
 	reqSender := func(delay int) (float64, error) {
 		return float64(delay) + rng.Float64()*0.5, nil
@@ -455,6 +488,7 @@ func TestSmallErrorDependence(t *testing.T) {
 		15,  // highSleepTimeSeconds
 		0.1, // correlationErrorRange
 		0.2, // slopeErrorRange
+		baseline,
 		reqSender,
 	)
 	if err != nil {

@@ -47,6 +47,7 @@ func checkTimingDependency(
 	highSleepTimeSeconds int,
 	correlationErrorRange float64,
 	slopeErrorRange float64,
+	baselineDelay float64,
 	requestSender timeDelayRequestSender,
 ) (bool, string, error) {
 	if requestsLimit < 2 {
@@ -62,11 +63,15 @@ func checkTimingDependency(
 			break
 		}
 
-		isCorrelationPossible, delayRecieved, err := sendRequestAndTestConfidence(regression, highSleepTimeSeconds, requestSender)
+		isCorrelationPossible, delayRecieved, err := sendRequestAndTestConfidence(regression, highSleepTimeSeconds, requestSender, baselineDelay)
 		if err != nil {
 			return false, "", err
 		}
 		if !isCorrelationPossible {
+			return false, "", nil
+		}
+		// Check the delay is greater than baseline by seconds requested
+		if delayRecieved < baselineDelay+float64(highSleepTimeSeconds)*0.8 {
 			return false, "", nil
 		}
 		requestsSent = append(requestsSent, requstsSentMetadata{
@@ -74,11 +79,14 @@ func checkTimingDependency(
 			delayReceived: delayRecieved,
 		})
 
-		isCorrelationPossibleSecond, delayRecievedSecond, err := sendRequestAndTestConfidence(regression, int(DefaultLowSleepTimeSeconds), requestSender)
+		isCorrelationPossibleSecond, delayRecievedSecond, err := sendRequestAndTestConfidence(regression, int(DefaultLowSleepTimeSeconds), requestSender, baselineDelay)
 		if err != nil {
 			return false, "", err
 		}
 		if !isCorrelationPossibleSecond {
+			return false, "", nil
+		}
+		if delayRecievedSecond < baselineDelay+float64(DefaultLowSleepTimeSeconds)*0.8 {
 			return false, "", nil
 		}
 		requestsLeft = requestsLeft - 2
@@ -111,6 +119,7 @@ func sendRequestAndTestConfidence(
 	regression *simpleLinearRegression,
 	delay int,
 	requestSender timeDelayRequestSender,
+	baselineDelay float64,
 ) (bool, float64, error) {
 	delayReceived, err := requestSender(delay)
 	if err != nil {
@@ -121,7 +130,7 @@ func sendRequestAndTestConfidence(
 		return false, 0, nil
 	}
 
-	regression.AddPoint(float64(delay), delayReceived)
+	regression.AddPoint(float64(delay), delayReceived-baselineDelay)
 
 	if !regression.IsWithinConfidence(0.3, 1.0, 0.5) {
 		return false, delayReceived, nil
