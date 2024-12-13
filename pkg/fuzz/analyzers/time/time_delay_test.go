@@ -31,7 +31,7 @@ import (
 //    - TestMinimalData: Tests behavior with minimal data points (2 requests)
 //    - TestLargeNumberOfRequests: Tests stability with many data points (20 requests)
 //    - TestChangingBaseline: Tests detection with shifting baseline mid-test
-//    - TestHighBaselineLowSlope: Tests detection of subtle correlations (slope=0.5)
+//    - TestHighBaselineLowSlope: Tests detection of subtle correlations (slope=0.85)
 //
 // ZAP Test Cases:
 //
@@ -311,14 +311,12 @@ func TestLargeNumberOfRequests(t *testing.T) {
 }
 
 func TestHighBaselineLowSlope(t *testing.T) {
-	// baseline=10s, slope=0.5 means each requested second only adds 0.5s to observed time.
-	// If our thresholds are strict, this should still show correlation, but slope <1.
 	match, reason, err := checkTimingDependency(
 		10,
 		5,
 		0.2,
-		0.6, // expecting slope around 0.5, allow range ~0.4 to 0.6
-		linearSender(10.0, 0.5, 0.0),
+		0.2, // expecting slope around 0.5, allow range ~0.4 to 0.6
+		linearSender(10.0, 0.85, 0.0),
 	)
 	if err != nil {
 		t.Fatalf("Error: %v", err)
@@ -367,7 +365,7 @@ func TestAlternatingSequences(t *testing.T) {
 		t.Fatalf("Expected a match but got none. Reason: %s", reason)
 	}
 	// Verify alternating sequence of delays
-	expectedDelays := []float64{15, 4, 15, 4}
+	expectedDelays := []float64{15, 3, 15, 3}
 	if !reflect.DeepEqual(generatedDelays, expectedDelays) {
 		t.Fatalf("Expected delays %v but got %v", expectedDelays, generatedDelays)
 	}

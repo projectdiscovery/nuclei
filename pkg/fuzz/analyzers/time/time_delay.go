@@ -199,10 +199,16 @@ func (o *simpleLinearRegression) Predict(x float64) float64 {
 }
 
 func (o *simpleLinearRegression) IsWithinConfidence(correlationErrorRange float64, expectedSlope float64, slopeErrorRange float64) bool {
-	// For now, just check correlation as originally done:
-	// return math.Abs(expectedSlope-o.slope) < slopeErrorRange && o.correlation > 1.0 - correlationErrorRange
 	if o.count < 2 {
 		return true
+	}
+	// Check if slope is within error range of expected slope
+	// Also consider cases where slope is approximately 2x of expected slope
+	// as this can happen with time-based responses
+	slopeDiff := math.Abs(expectedSlope - o.slope)
+	slope2xDiff := math.Abs(expectedSlope*2 - o.slope)
+	if slopeDiff > slopeErrorRange && slope2xDiff > slopeErrorRange {
+		return false
 	}
 	return o.correlation > 1.0-correlationErrorRange
 }
