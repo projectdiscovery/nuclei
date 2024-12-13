@@ -109,7 +109,7 @@ func newNucleiExecutor(opts *NucleiExecutorOptions) (*nucleiExecutor, error) {
 
 	workflowLoader, err := parsers.NewLoader(&executorOpts)
 	if err != nil {
-		return nil, errors.Wrap(err, "Could not create loadeopts.")
+		return nil, errors.Wrap(err, "Could not create loader options.")
 	}
 	executorOpts.WorkflowLoader = workflowLoader
 
