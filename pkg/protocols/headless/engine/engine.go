@@ -76,8 +76,8 @@ func New(options *types.Options) (*Browser, error) {
 	} else {
 		chromeLauncher = chromeLauncher.Headless(true)
 	}
-	if types.ProxyURL != "" {
-		chromeLauncher = chromeLauncher.Proxy(types.ProxyURL)
+	if options.AliveHttpProxy != "" {
+		chromeLauncher = chromeLauncher.Proxy(options.AliveHttpProxy)
 	}
 
 	for k, v := range options.ParseHeadlessOptionalArguments() {
