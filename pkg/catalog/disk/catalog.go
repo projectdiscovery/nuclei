@@ -40,7 +40,7 @@ func (d *DiskCatalog) OpenFile(filename string) (io.ReadCloser, error) {
 	if d.templatesFS == nil {
 		file, err := os.Open(filename)
 		if err != nil {
-			if file, errx := os.Open(BackwardsCompatiblePaths(d.templatesDirectory, filename)); errx == nil {
+			if file, errx := os.Open(filename); errx == nil {
 				return file, nil
 			}
 		}
