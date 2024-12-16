@@ -1,6 +1,7 @@
 package disk
 
 import (
+	"fmt"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -82,6 +83,8 @@ func (c *DiskCatalog) GetTemplatePath(target string) ([]string, error) {
 
 		if len(globMatches) > 0 {
 			return globMatches, nil
+		} else {
+			return globMatches, fmt.Errorf("%w in path %q", ErrNoTemplatesFound, target)
 		}
 	}
 
@@ -106,7 +109,7 @@ func (c *DiskCatalog) GetTemplatePath(target string) ([]string, error) {
 	}
 
 	if len(matches) == 0 {
-		return nil, errors.Errorf("no templates found in path %s", target)
+		return nil, fmt.Errorf("%w in path %q", ErrNoTemplatesFound, target)
 	}
 
 	return matches, nil
