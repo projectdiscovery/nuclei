@@ -121,7 +121,7 @@ func newNucleiExecutor(opts *NucleiExecutorOptions) (*nucleiExecutor, error) {
 	}
 	store, err := loader.New(loaderConfig)
 	if err != nil {
-		return nil, errors.Wrap(err, "Could not create loadeopts.")
+		return nil, errors.Wrap(err, "Could not create loader options.")
 	}
 	store.Load()
 
@@ -143,7 +143,7 @@ type proxifyRequest struct {
 	} `json:"request"`
 }
 
-func (n *nucleiExecutor) ExecuteScan(target PostReuestsHandlerRequest) error {
+func (n *nucleiExecutor) ExecuteScan(target PostRequestsHandlerRequest) error {
 	finalTemplates := []*templates.Template{}
 	finalTemplates = append(finalTemplates, n.store.Templates()...)
 	finalTemplates = append(finalTemplates, n.store.Workflows()...)
@@ -178,6 +178,9 @@ func (n *nucleiExecutor) ExecuteScan(target PostReuestsHandlerRequest) error {
 	if err != nil {
 		return errors.Wrap(err, "could not create input provider")
 	}
+
+	// We don't care about the result as its a boolean
+	// stating whether we got matches or not
 	_ = n.engine.ExecuteScanWithOpts(context.Background(), finalTemplates, inputProvider, true)
 	return nil
 }

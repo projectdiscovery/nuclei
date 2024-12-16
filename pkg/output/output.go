@@ -74,7 +74,9 @@ type StandardWriter struct {
 	AddNewLinesOutputFile bool // by default this is only done for stdout
 	KeysToRedact          []string
 
-	RequestHook func(*JSONLogRequest)
+	// JSONLogRequestHook is a hook that can be used to log request/response
+	// when using custom server code with output
+	JSONLogRequestHook func(*JSONLogRequest)
 }
 
 var decolorizerRegex = regexp.MustCompile(`\x1B\[[0-9;]*[a-zA-Z]`)
@@ -350,7 +352,7 @@ type JSONLogRequest struct {
 
 // Request writes a log the requests trace log
 func (w *StandardWriter) Request(templatePath, input, requestType string, requestErr error) {
-	if w.traceFile == nil && w.errorFile == nil && w.RequestHook == nil {
+	if w.traceFile == nil && w.errorFile == nil && w.JSONLogRequestHook == nil {
 		return
 	}
 	request := &JSONLogRequest{
@@ -400,8 +402,8 @@ func (w *StandardWriter) Request(templatePath, input, requestType string, reques
 		request.Address = val.String()
 	}
 
-	if w.RequestHook != nil {
-		w.RequestHook(request)
+	if w.JSONLogRequestHook != nil {
+		w.JSONLogRequestHook(request)
 	}
 
 	data, err := jsoniter.Marshal(request)

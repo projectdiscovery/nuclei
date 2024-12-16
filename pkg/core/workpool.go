@@ -62,17 +62,23 @@ func (w *WorkPool) InputPool(templateType types.ProtocolType) *syncutil.Adaptive
 }
 
 func (w *WorkPool) RefreshWithConfig(config WorkPoolConfig) {
+	changedValues := make(map[string]int)
 	if w.config.TypeConcurrency != config.TypeConcurrency {
 		w.config.TypeConcurrency = config.TypeConcurrency
+		changedValues["TypeConcurrency"] = config.TypeConcurrency
 	}
 	if w.config.HeadlessTypeConcurrency != config.HeadlessTypeConcurrency {
 		w.config.HeadlessTypeConcurrency = config.HeadlessTypeConcurrency
 	}
 	if w.config.InputConcurrency != config.InputConcurrency {
 		w.config.InputConcurrency = config.InputConcurrency
+		changedValues["InputConcurrency"] = config.InputConcurrency
 	}
 	if w.config.HeadlessInputConcurrency != config.HeadlessInputConcurrency {
 		w.config.HeadlessInputConcurrency = config.HeadlessInputConcurrency
+	}
+	if len(changedValues) > 0 {
+		gologger.Info().Msgf("Workpool configuration changed: %v", changedValues)
 	}
 	w.Refresh(context.Background())
 }

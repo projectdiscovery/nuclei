@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"html/template"
 	"net/http"
+	"net/url"
 	"strings"
 	"sync/atomic"
 	"time"
@@ -103,8 +104,8 @@ func New(options *Options) (*DASTServer, error) {
 		builder.WriteString(" (with token)")
 	}
 	gologger.Info().Msgf("%s", builder.String())
-	gologger.Info().Msgf("Connection URL: %s", server.buildConnectionURL())
-	gologger.Info().Msgf("Stats UI URL: %s", server.buildStatsURL())
+	gologger.Info().Msgf("Connection URL: %s", server.buildURL("/requests"))
+	gologger.Info().Msgf("Stats UI URL: %s", server.buildURL("/stats"))
 
 	return server, nil
 }
@@ -118,7 +119,7 @@ func NewStatsServer(fuzzStatsDB *stats.Tracker) (*DASTServer, error) {
 		},
 	}
 	server.setupHandlers(true)
-	gologger.Info().Msgf("Stats UI URL: %s", server.buildStatsURL())
+	gologger.Info().Msgf("Stats UI URL: %s", server.buildURL("/stats"))
 
 	return server, nil
 }
@@ -129,20 +130,20 @@ func (s *DASTServer) Close() {
 	s.tasksPool.StopAndWaitFor(1 * time.Minute)
 }
 
-func (s *DASTServer) buildConnectionURL() string {
-	url := fmt.Sprintf("http://%s/requests", s.options.Address)
+func (s *DASTServer) buildURL(endpoint string) string {
+	values := make(url.Values)
 	if s.options.Token != "" {
-		url += "?token=" + s.options.Token
+		values.Set("token", s.options.Token)
 	}
-	return url
-}
 
-func (s *DASTServer) buildStatsURL() string {
-	url := fmt.Sprintf("http://%s/stats", s.options.Address)
-	if s.options.Token != "" {
-		url += "?token=" + s.options.Token
+	// Use url.URL struct to safely construct the URL
+	u := &url.URL{
+		Scheme:   "http",
+		Host:     s.options.Address,
+		Path:     endpoint,
+		RawQuery: values.Encode(),
 	}
-	return url
+	return u.String()
 }
 
 func (s *DASTServer) setupHandlers(onlyStats bool) {
@@ -186,13 +187,13 @@ func (s *DASTServer) Start() error {
 }
 
 // PostReuestsHandlerRequest is the request body for the /requests POST handler.
-type PostReuestsHandlerRequest struct {
+type PostRequestsHandlerRequest struct {
 	RawHTTP string `json:"raw_http"`
 	URL     string `json:"url"`
 }
 
 func (s *DASTServer) handleRequest(c echo.Context) error {
-	var req PostReuestsHandlerRequest
+	var req PostRequestsHandlerRequest
 	if err := c.Bind(&req); err != nil {
 		fmt.Printf("Error binding request: %s\n", err)
 		return err
@@ -246,7 +247,7 @@ func (s *DASTServer) getStats() (StatsResponse, error) {
 		DASTServerInfo: DASTServerInfo{
 			NucleiVersion:         config.Version,
 			NucleiTemplateVersion: cfg.TemplateVersion,
-			NucleiDastServerAPI:   s.buildConnectionURL(),
+			NucleiDastServerAPI:   s.buildURL("/requests"),
 			ServerAuthEnabled:     s.options.Token != "",
 		},
 		DASTScanStartTime: s.startTime,

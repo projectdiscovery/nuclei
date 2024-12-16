@@ -305,7 +305,7 @@ func New(options *types.Options) (*Runner, error) {
 		return nil, errors.Wrap(err, "could not create output file")
 	}
 	if runner.fuzzStats != nil {
-		outputWriter.RequestHook = func(request *output.JSONLogRequest) {
+		outputWriter.JSONLogRequestHook = func(request *output.JSONLogRequest) {
 			if request.Error == "none" || request.Error == "" {
 				return
 			}
@@ -687,9 +687,11 @@ func (r *Runner) RunEnumeration() error {
 	}, "")
 
 	if r.dastServer != nil {
-		if err := r.dastServer.Start(); err != nil {
-			r.dastServer.Start()
-		}
+		go func() {
+			if err := r.dastServer.Start(); err != nil {
+				gologger.Error().Msgf("could not start dast server: %v", err)
+			}
+		}()
 	}
 
 	enumeration := false

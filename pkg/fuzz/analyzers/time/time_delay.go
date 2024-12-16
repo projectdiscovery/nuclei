@@ -33,7 +33,9 @@ import (
 
 type timeDelayRequestSender func(delay int) (float64, error)
 
-type requstsSentMetadata struct {
+// requestsSentMetadata is used to store the delay requested
+// and delay received for each request
+type requestsSentMetadata struct {
 	delay         int
 	delayReceived float64
 }
@@ -57,7 +59,7 @@ func checkTimingDependency(
 	regression := newSimpleLinearRegression()
 	requestsLeft := requestsLimit
 
-	var requestsSent []requstsSentMetadata
+	var requestsSent []requestsSentMetadata
 	for {
 		if requestsLeft <= 0 {
 			break
@@ -74,7 +76,7 @@ func checkTimingDependency(
 		if delayRecieved < baselineDelay+float64(highSleepTimeSeconds)*0.8 {
 			return false, "", nil
 		}
-		requestsSent = append(requestsSent, requstsSentMetadata{
+		requestsSent = append(requestsSent, requestsSentMetadata{
 			delay:         highSleepTimeSeconds,
 			delayReceived: delayRecieved,
 		})
@@ -91,7 +93,7 @@ func checkTimingDependency(
 		}
 		requestsLeft = requestsLeft - 2
 
-		requestsSent = append(requestsSent, requstsSentMetadata{
+		requestsSent = append(requestsSent, requestsSentMetadata{
 			delay:         int(DefaultLowSleepTimeSeconds),
 			delayReceived: delayRecievedSecond,
 		})
@@ -101,8 +103,9 @@ func checkTimingDependency(
 	if result {
 		var resultReason strings.Builder
 		resultReason.WriteString(fmt.Sprintf(
-			"[time_delay] made %d requests successfully, with a regression slope of %.2f and correlation %.2f",
+			"[time_delay] made %d requests (baseline: %.2fs) successfully, with a regression slope of %.2f and correlation %.2f",
 			requestsLimit,
+			baselineDelay,
 			regression.slope,
 			regression.correlation,
 		))

@@ -8,7 +8,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/input/types"
 )
 
-func (s *DASTServer) consumeTaskRequest(req PostReuestsHandlerRequest) {
+func (s *DASTServer) consumeTaskRequest(req PostRequestsHandlerRequest) {
 	defer s.endpointsInQueue.Add(-1)
 
 	parsedReq, err := types.ParseRawRequestWithURL(req.RawHTTP, req.URL)
@@ -29,7 +29,7 @@ func (s *DASTServer) consumeTaskRequest(req PostReuestsHandlerRequest) {
 		return
 	}
 
-	inScope, err := s.scopeManager.Validate(parsedReq.URL.URL, "")
+	inScope, err := s.scopeManager.Validate(parsedReq.URL.URL)
 	if err != nil {
 		gologger.Warning().Msgf("Could not validate scope: %s\n", err)
 		return

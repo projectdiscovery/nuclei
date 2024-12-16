@@ -39,7 +39,7 @@ func NewManager(inScope, outOfScope []string) (*Manager, error) {
 }
 
 // Validate returns true if the URL matches scope rules
-func (m *Manager) Validate(URL *url.URL, rootHostname string) (bool, error) {
+func (m *Manager) Validate(URL *url.URL) (bool, error) {
 	if m.noScope {
 		return true, nil
 	}

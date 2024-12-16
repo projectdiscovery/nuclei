@@ -41,6 +41,10 @@ type HttpInputProvider struct {
 }
 
 // NewHttpInputProvider creates a new input provider for nuclei from a file
+// or an input string
+//
+// The first preference is given to input file if provided
+// otherwise it will use the input string
 func NewHttpInputProvider(opts *HttpMultiFormatOptions) (*HttpInputProvider, error) {
 	var format formats.Format
 	for _, provider := range providersList {
@@ -76,6 +80,9 @@ func NewHttpInputProvider(opts *HttpMultiFormatOptions) (*HttpInputProvider, err
 	data, err := io.ReadAll(inputReader)
 	if err != nil {
 		return nil, errors.Wrap(err, "could not read input file")
+	}
+	if len(data) == 0 {
+		return nil, errors.New("input file is empty")
 	}
 
 	parseErr := format.Parse(bytes.NewReader(data), func(request *types.RequestResponse) bool {
