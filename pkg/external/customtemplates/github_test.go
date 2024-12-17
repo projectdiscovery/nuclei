@@ -2,7 +2,6 @@ package customtemplates
 
 import (
 	"context"
-	"os"
 	"path/filepath"
 	"testing"
 
@@ -15,10 +14,7 @@ import (
 func TestDownloadCustomTemplatesFromGitHub(t *testing.T) {
 	gologger.DefaultLogger.SetWriter(&testutils.NoopWriter{})
 
-	templatesDirectory, err := os.MkdirTemp("", "template-custom-*")
-	require.Nil(t, err, "could not create temp directory")
-	defer os.RemoveAll(templatesDirectory)
-
+	templatesDirectory := t.TempDir()
 	config.DefaultConfig.SetTemplatesDir(templatesDirectory)
 
 	options := testutils.DefaultOptions
@@ -28,6 +24,5 @@ func TestDownloadCustomTemplatesFromGitHub(t *testing.T) {
 	require.Nil(t, err, "could not create custom templates manager")
 
 	ctm.Download(context.Background())
-
 	require.DirExists(t, filepath.Join(templatesDirectory, "github", "projectdiscovery", "nuclei-templates-test"), "cloned directory does not exists")
 }
