@@ -6,14 +6,16 @@ GOBUILD_PACKAGES :=
 GOBUILD_ADDITIONAL_ARGS := 
 GOMOD := $(GOCMD) mod
 GOTEST := $(GOCMD) test
+GOOS := $(shell ${GOCMD} env GOOS)
+GOARCH := $(shell ${GOCMD} env GOARCH)
 GOFLAGS := -v
 # This should be disabled if the binary uses pprof
 LDFLAGS := -s -w
 
-ifneq ($(shell go env GOOS),darwin)
-	LDFLAGS = -extldflags "-static"
+ifneq ($(GOOS),darwin)
+	LDFLAGS += -extldflags "-static"
 endif
-    
+
 .PHONY: all build build-stats clean devtools-all devtools-bindgen devtools-scrapefuncs
 .PHONY: devtools-tsgen docs docgen dsl-docs functional fuzzplayground go-build syntax-docs
 .PHONY: integration jsupdate-all jsupdate-bindgen jsupdate-tsgen memogen scan-charts test 
@@ -22,12 +24,17 @@ endif
 all: build
 
 clean:
-	rm -f '${GOBUILD_OUTPUT}' 2>/dev/null
+	@echo "Removing ${FILE}"
+	@if [ ! -z "${FILE}" ]; then \
+		rm -f '${FILE}' 2>/dev/null; \
+	fi
 
-go-build: clean
 go-build:
-	$(GOBUILD) $(GOFLAGS) -ldflags '${LDFLAGS}' $(GOBUILD_ADDITIONAL_ARGS) \
-		 -o '${GOBUILD_OUTPUT}' $(GOBUILD_PACKAGES)
+	@$(eval OUTPUT := ${GOBUILD_OUTPUT}$(if $(filter windows,${GOOS}),.exe,))
+	@$(MAKE) clean FILE="${OUTPUT}"
+	@echo "Building ${OUTPUT} for ${GOOS}/${GOARCH}"
+	@$(GOBUILD) $(GOFLAGS) -ldflags '${LDFLAGS}' $(GOBUILD_ADDITIONAL_ARGS) \
+		-o '${OUTPUT}' $(GOBUILD_PACKAGES)
 
 build: GOBUILD_OUTPUT = ./bin/nuclei
 build: GOBUILD_PACKAGES = cmd/nuclei/main.go
