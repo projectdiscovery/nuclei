@@ -67,8 +67,8 @@ const (
 var Components = []string{
 	RequestBodyComponent,
 	RequestQueryComponent,
-	RequestPathComponent,
 	RequestHeaderComponent,
+	RequestPathComponent,
 	RequestCookieComponent,
 }
 

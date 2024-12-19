@@ -4,8 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"net/http"
-	_ "net/http/pprof"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -14,6 +12,7 @@ import (
 	"time"
 
 	"github.com/projectdiscovery/nuclei/v3/internal/pdcp"
+	"github.com/projectdiscovery/nuclei/v3/internal/server"
 	"github.com/projectdiscovery/nuclei/v3/pkg/authprovider"
 	"github.com/projectdiscovery/nuclei/v3/pkg/fuzz/frequency"
 	"github.com/projectdiscovery/nuclei/v3/pkg/input/provider"
@@ -25,6 +24,7 @@ import (
 	"github.com/projectdiscovery/utils/env"
 	fileutil "github.com/projectdiscovery/utils/file"
 	permissionutil "github.com/projectdiscovery/utils/permission"
+	pprofutil "github.com/projectdiscovery/utils/pprof"
 	updateutils "github.com/projectdiscovery/utils/update"
 
 	"github.com/logrusorgru/aurora"
@@ -40,6 +40,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/loader"
 	"github.com/projectdiscovery/nuclei/v3/pkg/core"
 	"github.com/projectdiscovery/nuclei/v3/pkg/external/customtemplates"
+	fuzzStats "github.com/projectdiscovery/nuclei/v3/pkg/fuzz/stats"
 	"github.com/projectdiscovery/nuclei/v3/pkg/input"
 	parsers "github.com/projectdiscovery/nuclei/v3/pkg/loader/workflow"
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
@@ -88,7 +89,7 @@ type Runner struct {
 	rateLimiter        *ratelimit.Limiter
 	hostErrors         hosterrorscache.CacheInterface
 	resumeCfg          *types.ResumeCfg
-	pprofServer        *http.Server
+	pprofServer        *pprofutil.PprofServer
 	pdcpUploadErrMsg   string
 	inputProvider      provider.InputProvider
 	fuzzFrequencyCache *frequency.Tracker
@@ -96,9 +97,9 @@ type Runner struct {
 	tmpDir          string
 	parser          parser.Parser
 	httpApiEndpoint *httpapi.Server
+	fuzzStats       *fuzzStats.Tracker
+	dastServer      *server.DASTServer
 }
-
-const pprofServerAddress = "127.0.0.1:8086"
 
 // New creates a new client for running the enumeration process.
 func New(options *types.Options) (*Runner, error) {
@@ -216,15 +217,8 @@ func New(options *types.Options) (*Runner, error) {
 	templates.SeverityColorizer = colorizer.New(runner.colorizer)
 
 	if options.EnablePprof {
-		server := &http.Server{
-			Addr:    pprofServerAddress,
-			Handler: http.DefaultServeMux,
-		}
-		gologger.Info().Msgf("Listening pprof debug server on: %s", pprofServerAddress)
-		runner.pprofServer = server
-		go func() {
-			_ = server.ListenAndServe()
-		}()
+		runner.pprofServer = pprofutil.NewPprofServer()
+		runner.pprofServer.Start()
 	}
 
 	if options.HttpApiEndpoint != "" {
@@ -248,14 +242,6 @@ func New(options *types.Options) (*Runner, error) {
 		return nil, errors.Wrap(err, "could not create input provider")
 	}
 	runner.inputProvider = inputProvider
-
-	// Create the output file if asked
-	outputWriter, err := output.NewStandardWriter(options)
-	if err != nil {
-		return nil, errors.Wrap(err, "could not create output file")
-	}
-	// setup a proxy writer to automatically upload results to PDCP
-	runner.output = runner.setupPDCPUpload(outputWriter)
 
 	if options.JSONL && options.EnableProgressBar {
 		options.StatsJSON = true
@@ -295,6 +281,42 @@ func New(options *types.Options) (*Runner, error) {
 		resumeCfg.Compile()
 	}
 	runner.resumeCfg = resumeCfg
+
+	if options.DASTReport || options.DASTServer {
+		var err error
+		runner.fuzzStats, err = fuzzStats.NewTracker()
+		if err != nil {
+			return nil, errors.Wrap(err, "could not create fuzz stats db")
+		}
+		if !options.DASTServer {
+			dastServer, err := server.NewStatsServer(runner.fuzzStats)
+			if err != nil {
+				return nil, errors.Wrap(err, "could not create dast server")
+			}
+			runner.dastServer = dastServer
+		}
+	}
+
+	// Create the output file if asked
+	outputWriter, err := output.NewStandardWriter(options)
+	if err != nil {
+		return nil, errors.Wrap(err, "could not create output file")
+	}
+	if runner.fuzzStats != nil {
+		outputWriter.JSONLogRequestHook = func(request *output.JSONLogRequest) {
+			if request.Error == "none" || request.Error == "" {
+				return
+			}
+			runner.fuzzStats.RecordErrorEvent(fuzzStats.ErrorEvent{
+				TemplateID: request.Template,
+				URL:        request.Input,
+				Error:      request.Error,
+			})
+		}
+	}
+
+	// setup a proxy writer to automatically upload results to PDCP
+	runner.output = runner.setupPDCPUpload(outputWriter)
 
 	opts := interactsh.DefaultOptions(runner.output, runner.issuesClient, runner.progress)
 	opts.Debug = runner.options.Debug
@@ -362,6 +384,9 @@ func (r *Runner) runStandardEnumeration(executerOpts protocols.ExecutorOptions, 
 
 // Close releases all the resources and cleans up
 func (r *Runner) Close() {
+	if r.dastServer != nil {
+		r.dastServer.Close()
+	}
 	// dump hosterrors cache
 	if r.hostErrors != nil {
 		r.hostErrors.Close()
@@ -380,7 +405,7 @@ func (r *Runner) Close() {
 	}
 	protocolinit.Close()
 	if r.pprofServer != nil {
-		_ = r.pprofServer.Shutdown(context.Background())
+		r.pprofServer.Stop()
 	}
 	if r.rateLimiter != nil {
 		r.rateLimiter.Stop()
@@ -439,6 +464,41 @@ func (r *Runner) setupPDCPUpload(writer output.Writer) output.Writer {
 // RunEnumeration sets up the input layer for giving input nuclei.
 // binary and runs the actual enumeration
 func (r *Runner) RunEnumeration() error {
+	// If the user has asked for DAST server mode, run the live
+	// DAST fuzzing server.
+	if r.options.DASTServer {
+		execurOpts := &server.NucleiExecutorOptions{
+			Options:            r.options,
+			Output:             r.output,
+			Progress:           r.progress,
+			Catalog:            r.catalog,
+			IssuesClient:       r.issuesClient,
+			RateLimiter:        r.rateLimiter,
+			Interactsh:         r.interactsh,
+			ProjectFile:        r.projectFile,
+			Browser:            r.browser,
+			Colorizer:          r.colorizer,
+			Parser:             r.parser,
+			TemporaryDirectory: r.tmpDir,
+			FuzzStatsDB:        r.fuzzStats,
+		}
+		dastServer, err := server.New(&server.Options{
+			Address:               r.options.DASTServerAddress,
+			Templates:             r.options.Templates,
+			OutputWriter:          r.output,
+			Verbose:               r.options.Verbose,
+			Token:                 r.options.DASTServerToken,
+			InScope:               r.options.Scope,
+			OutScope:              r.options.OutOfScope,
+			NucleiExecutorOptions: execurOpts,
+		})
+		if err != nil {
+			return err
+		}
+		r.dastServer = dastServer
+		return dastServer.Start()
+	}
+
 	// If user asked for new templates to be executed, collect the list from the templates' directory.
 	if r.options.NewTemplates {
 		if arr := config.DefaultConfig.GetNewAdditions(); len(arr) > 0 {
@@ -624,6 +684,14 @@ func (r *Runner) RunEnumeration() error {
 		Retries:             r.options.Retries,
 	}, "")
 
+	if r.dastServer != nil {
+		go func() {
+			if err := r.dastServer.Start(); err != nil {
+				gologger.Error().Msgf("could not start dast server: %v", err)
+			}
+		}()
+	}
+
 	enumeration := false
 	var results *atomic.Bool
 	results, err = r.runStandardEnumeration(executorOpts, store, executorEngine)
@@ -633,6 +701,9 @@ func (r *Runner) RunEnumeration() error {
 		return err
 	}
 
+	if executorOpts.FuzzStatsDB != nil {
+		executorOpts.FuzzStatsDB.Close()
+	}
 	if r.interactsh != nil {
 		matched := r.interactsh.Close()
 		if matched {

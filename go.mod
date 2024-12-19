@@ -51,6 +51,7 @@ require (
 	github.com/DataDog/gostackparse v0.6.0
 	github.com/Masterminds/semver/v3 v3.2.1
 	github.com/Mzack9999/gcache v0.0.0-20230410081825-519e28eab057
+	github.com/alitto/pond v1.9.2
 	github.com/antchfx/xmlquery v1.3.17
 	github.com/asaskevich/govalidator v0.0.0-20230301143203-a9d515a09cc2
 	github.com/aws/aws-sdk-go-v2 v1.19.0
@@ -58,6 +59,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/credentials v1.13.27
 	github.com/aws/aws-sdk-go-v2/feature/s3/manager v1.11.72
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.37.0
+	github.com/ccojocar/randdetect v0.0.0-20241118085251-1581dcdbf207
 	github.com/cespare/xxhash v1.1.0
 	github.com/charmbracelet/glamour v0.8.0
 	github.com/clbanning/mxj/v2 v2.7.0
@@ -70,13 +72,14 @@ require (
 	github.com/go-ldap/ldap/v3 v3.4.5
 	github.com/go-pg/pg v8.0.7+incompatible
 	github.com/go-sql-driver/mysql v1.7.1
+	github.com/gorilla/mux v1.8.1
 	github.com/h2non/filetype v1.1.3
 	github.com/invopop/yaml v0.3.1
 	github.com/kitabisa/go-ci v1.0.3
-	github.com/labstack/echo/v4 v4.10.2
+	github.com/labstack/echo/v4 v4.12.0
 	github.com/leslie-qiwa/flat v0.0.0-20230424180412-f9d1cf014baa
 	github.com/lib/pq v1.10.9
-	github.com/mattn/go-sqlite3 v1.14.22
+	github.com/mattn/go-sqlite3 v1.14.24
 	github.com/mholt/archiver v3.1.1+incompatible
 	github.com/microsoft/go-mssqldb v1.6.0
 	github.com/ory/dockertest/v3 v3.10.0
@@ -348,7 +351,7 @@ require (
 	github.com/jbenet/go-context v0.0.0-20150711004518-d14ea06fba99 // indirect
 	github.com/jcmturner/gokrb5/v8 v8.4.4
 	github.com/kevinburke/ssh_config v1.2.0 // indirect
-	github.com/labstack/gommon v0.4.0 // indirect
+	github.com/labstack/gommon v0.4.2 // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect
 	github.com/nwaples/rardecode v1.1.3 // indirect
 	github.com/pierrec/lz4 v2.6.1+incompatible // indirect
