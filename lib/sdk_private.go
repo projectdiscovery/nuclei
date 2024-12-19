@@ -120,7 +120,7 @@ func (e *NucleiEngine) init(ctx context.Context) error {
 		_ = protocolinit.Init(e.opts)
 	})
 
-	if e.opts.ProxyInternal && types.ProxyURL != "" || types.ProxySocksURL != "" {
+	if e.opts.ProxyInternal && e.opts.AliveHttpProxy != "" || e.opts.AliveSocksProxy != "" {
 		httpclient, err := httpclientpool.Get(e.opts, &httpclientpool.Configuration{})
 		if err != nil {
 			return err

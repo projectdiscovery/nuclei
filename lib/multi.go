@@ -29,16 +29,18 @@ type unsafeOptions struct {
 func createEphemeralObjects(ctx context.Context, base *NucleiEngine, opts *types.Options) (*unsafeOptions, error) {
 	u := &unsafeOptions{}
 	u.executerOpts = protocols.ExecutorOptions{
-		Output:       base.customWriter,
-		Options:      opts,
-		Progress:     base.customProgress,
-		Catalog:      base.catalog,
-		IssuesClient: base.rc,
-		RateLimiter:  base.rateLimiter,
-		Interactsh:   base.interactshClient,
-		Colorizer:    aurora.NewAurora(true),
-		ResumeCfg:    types.NewResumeCfg(),
-		Parser:       base.parser,
+		Output:          base.customWriter,
+		Options:         opts,
+		Progress:        base.customProgress,
+		Catalog:         base.catalog,
+		IssuesClient:    base.rc,
+		RateLimiter:     base.rateLimiter,
+		Interactsh:      base.interactshClient,
+		HostErrorsCache: base.hostErrCache,
+		Colorizer:       aurora.NewAurora(true),
+		ResumeCfg:       types.NewResumeCfg(),
+		Parser:          base.parser,
+		Browser:         base.browserInstance,
 	}
 	if opts.ShouldUseHostError() && base.hostErrCache != nil {
 		u.executerOpts.HostErrorsCache = base.hostErrCache
