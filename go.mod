@@ -63,7 +63,6 @@ require (
 	github.com/cespare/xxhash v1.1.0
 	github.com/charmbracelet/glamour v0.8.0
 	github.com/clbanning/mxj/v2 v2.7.0
-	github.com/copernicium-112/namegenerator v0.0.0-20230403095523-b8a39e9024ce
 	github.com/ditashi/jsbeautifier-go v0.0.0-20141206144643-2520a8026a9c
 	github.com/docker/go-units v0.5.0
 	github.com/dop251/goja v0.0.0-20240220182346-e401ed450204
@@ -281,7 +280,7 @@ require (
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
 	github.com/golang/snappy v0.0.4 // indirect
 	github.com/google/go-querystring v1.1.0 // indirect
-	github.com/google/uuid v1.6.0 // indirect
+	github.com/google/uuid v1.6.0
 	github.com/gorilla/css v1.0.1 // indirect
 	github.com/hashicorp/go-cleanhttp v0.5.2 // indirect
 	github.com/hashicorp/go-retryablehttp v0.7.7 // indirect

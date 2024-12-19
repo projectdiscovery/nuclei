@@ -13,7 +13,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/copernicium-112/namegenerator"
 	_pdcp "github.com/projectdiscovery/nuclei/v3/internal/pdcp"
 	"github.com/projectdiscovery/utils/auth/pdcp"
 	"github.com/projectdiscovery/utils/env"
@@ -220,10 +219,6 @@ func main() {
 		os.Remove(resumeFileName)
 	}
 }
-
-var (
-	nameGenerator = namegenerator.NewNameGenerator(time.Now().UnixNano())
-)
 
 func readConfig() *goflags.FlagSet {
 
