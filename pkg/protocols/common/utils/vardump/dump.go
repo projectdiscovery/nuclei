@@ -13,10 +13,6 @@ type variables = map[string]any
 
 // DumpVariables dumps the variables in a pretty format
 func DumpVariables(data variables) string {
-	if !EnableVarDump {
-		return ""
-	}
-
 	d := godump.Dumper{
 		Indentation:             "  ",
 		HidePrivateFields:       false,
