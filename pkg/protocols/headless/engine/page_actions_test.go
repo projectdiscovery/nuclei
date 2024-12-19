@@ -649,7 +649,10 @@ func testHeadless(t *testing.T, actions []*Action, timeout time.Duration, handle
 
 	_ = protocolstate.Init(opts)
 
-	browser, err := New(&types.Options{ShowBrowser: false, UseInstalledChrome: testheadless.HeadlessLocal})
+	browser, err := New(&types.Options{
+		ShowBrowser:        false,
+		UseInstalledChrome: testheadless.HeadlessLocal,
+	})
 	require.Nil(t, err, "could not create browser")
 	defer browser.Close()
 
