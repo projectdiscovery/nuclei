@@ -1,6 +1,6 @@
-id: ghost-blog-detection
+id: vercel-hosted-detection
 info:
-  name: Ghost blog detection
+  name: Vercel-hosted detection
   author: pdteam
   severity: info
 
@@ -14,14 +14,14 @@ dns:
     matchers:
       - type: word
         words:
-          - "ghost.io"
+          - "vercel-dns"
 
 http:
   - method: GET
     path:
-      - "{{BaseURL}}"
+      - "{{dns_cname}}"
 
     matchers:
       - type: word
         words:
-          - "ghost.io"
+          - "DEPLOYMENT_NOT_FOUND"

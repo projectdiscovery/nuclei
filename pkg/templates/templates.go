@@ -521,7 +521,8 @@ func (template *Template) hasMultipleRequests() bool {
 
 // MarshalJSON forces recursive struct validation during marshal operation
 func (template *Template) MarshalJSON() ([]byte, error) {
-	out, marshalErr := json.Marshal(template)
+	type TemplateAlias Template //avoid recursion
+	out, marshalErr := json.Marshal((*TemplateAlias)(template))
 	errValidate := validate.New().Struct(template)
 	return out, multierr.Append(marshalErr, errValidate)
 }
@@ -554,4 +555,9 @@ func (template *Template) UnmarshalJSON(data []byte) error {
 		template.addRequestsToQueue(arr...)
 	}
 	return nil
+}
+
+// HasFileProtocol returns true if the template has a file protocol section
+func (template *Template) HasFileProtocol() bool {
+	return len(template.RequestsFile) > 0
 }

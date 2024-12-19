@@ -380,6 +380,31 @@ func WithSandboxOptions(allowLocalFileAccess bool, restrictLocalNetworkAccess bo
 func EnableCodeTemplates() NucleiSDKOptions {
 	return func(e *NucleiEngine) error {
 		e.opts.EnableCodeTemplates = true
+		e.opts.EnableSelfContainedTemplates = true
+		return nil
+	}
+}
+
+// EnableSelfContainedTemplates allows loading/executing self-contained templates
+func EnableSelfContainedTemplates() NucleiSDKOptions {
+	return func(e *NucleiEngine) error {
+		e.opts.EnableSelfContainedTemplates = true
+		return nil
+	}
+}
+
+// EnableGlobalMatchersTemplates allows loading/executing global-matchers templates
+func EnableGlobalMatchersTemplates() NucleiSDKOptions {
+	return func(e *NucleiEngine) error {
+		e.opts.EnableGlobalMatchersTemplates = true
+		return nil
+	}
+}
+
+// EnableFileTemplates allows loading/executing file protocol templates
+func EnableFileTemplates() NucleiSDKOptions {
+	return func(e *NucleiEngine) error {
+		e.opts.EnableFileTemplates = true
 		return nil
 	}
 }

@@ -182,7 +182,7 @@ func New(options *types.Options) (*Runner, error) {
 	runner.catalog = disk.NewCatalog(config.DefaultConfig.TemplatesDirectory)
 
 	var httpclient *retryablehttp.Client
-	if options.ProxyInternal && types.ProxyURL != "" || types.ProxySocksURL != "" {
+	if options.ProxyInternal && options.AliveHttpProxy != "" || options.AliveSocksProxy != "" {
 		var err error
 		httpclient, err = httpclientpool.Get(options, &httpclientpool.Configuration{})
 		if err != nil {
@@ -730,6 +730,8 @@ func (r *Runner) displayExecutionInfo(store *loader.Store) {
 		stats.ForceDisplayWarning(templates.ExcludedCodeTmplStats)
 		stats.ForceDisplayWarning(templates.ExludedDastTmplStats)
 		stats.ForceDisplayWarning(templates.TemplatesExcludedStats)
+		stats.ForceDisplayWarning(templates.ExcludedFileStats)
+		stats.ForceDisplayWarning(templates.ExcludedSelfContainedStats)
 	}
 
 	if tmplCount == 0 && workflowCount == 0 {

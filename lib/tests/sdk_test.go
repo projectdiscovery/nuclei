@@ -144,6 +144,7 @@ func TestWithVarsNuclei(t *testing.T) {
 		}()
 		ne, err := nuclei.NewNucleiEngineCtx(
 			context.TODO(),
+			nuclei.EnableSelfContainedTemplates(),
 			nuclei.WithTemplatesOrWorkflows(nuclei.TemplateSources{Templates: []string{"http/token-spray/api-1forge.yaml"}}),
 			nuclei.WithVars([]string{"token=foobar"}),
 			nuclei.WithVerbosity(nuclei.VerbosityOptions{Debug: true}),

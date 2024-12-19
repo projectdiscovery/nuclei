@@ -3,6 +3,7 @@ package httpclientpool
 import (
 	"context"
 	"crypto/tls"
+	"fmt"
 	"net"
 	"net/http"
 	"net/http/cookiejar"
@@ -25,6 +26,7 @@ import (
 	"github.com/projectdiscovery/rawhttp"
 	"github.com/projectdiscovery/retryablehttp-go"
 	mapsutil "github.com/projectdiscovery/utils/maps"
+	urlutil "github.com/projectdiscovery/utils/url"
 )
 
 var (
@@ -60,6 +62,9 @@ func Init(options *types.Options) error {
 type ConnectionConfiguration struct {
 	// DisableKeepAlive of the connection
 	DisableKeepAlive bool
+	// CustomMaxTimeout is the custom timeout for the connection
+	// This overrides all other timeouts and is used for accurate time based fuzzing.
+	CustomMaxTimeout time.Duration
 	cookiejar        *cookiejar.Jar
 	mu               sync.RWMutex
 }
@@ -135,6 +140,10 @@ func (c *Configuration) Hash() string {
 	builder.WriteString(strconv.FormatBool(c.DisableCookie))
 	builder.WriteString("c")
 	builder.WriteString(strconv.FormatBool(c.Connection != nil))
+	if c.Connection != nil && c.Connection.CustomMaxTimeout > 0 {
+		builder.WriteString("k")
+		builder.WriteString(c.Connection.CustomMaxTimeout.String())
+	}
 	builder.WriteString("r")
 	builder.WriteString(strconv.FormatInt(int64(c.ResponseHeaderTimeout.Seconds()), 10))
 	hash := builder.String()
@@ -150,10 +159,10 @@ func (c *Configuration) HasStandardOptions() bool {
 func GetRawHTTP(options *protocols.ExecutorOptions) *rawhttp.Client {
 	rawHttpClientOnce.Do(func() {
 		rawHttpOptions := rawhttp.DefaultOptions
-		if types.ProxyURL != "" {
-			rawHttpOptions.Proxy = types.ProxyURL
-		} else if types.ProxySocksURL != "" {
-			rawHttpOptions.Proxy = types.ProxySocksURL
+		if options.Options.AliveHttpProxy != "" {
+			rawHttpOptions.Proxy = options.Options.AliveHttpProxy
+		} else if options.Options.AliveSocksProxy != "" {
+			rawHttpOptions.Proxy = options.Options.AliveSocksProxy
 		} else if protocolstate.Dialer != nil {
 			rawHttpOptions.FastDialer = protocolstate.Dialer
 		}
@@ -247,6 +256,9 @@ func wrappedGet(options *types.Options, configuration *Configuration) (*retryabl
 	if configuration.ResponseHeaderTimeout != 0 {
 		responseHeaderTimeout = configuration.ResponseHeaderTimeout
 	}
+	if configuration.Connection != nil && configuration.Connection.CustomMaxTimeout > 0 {
+		responseHeaderTimeout = configuration.Connection.CustomMaxTimeout
+	}
 
 	transport := &http.Transport{
 		ForceAttemptHTTP2: options.ForceAttemptHTTP2,
@@ -268,12 +280,12 @@ func wrappedGet(options *types.Options, configuration *Configuration) (*retryabl
 		ResponseHeaderTimeout: responseHeaderTimeout,
 	}
 
-	if types.ProxyURL != "" {
-		if proxyURL, err := url.Parse(types.ProxyURL); err == nil {
+	if options.AliveHttpProxy != "" {
+		if proxyURL, err := url.Parse(options.AliveHttpProxy); err == nil {
 			transport.Proxy = http.ProxyURL(proxyURL)
 		}
-	} else if types.ProxySocksURL != "" {
-		socksURL, proxyErr := url.Parse(types.ProxySocksURL)
+	} else if options.AliveSocksProxy != "" {
+		socksURL, proxyErr := url.Parse(options.AliveSocksProxy)
 		if proxyErr != nil {
 			return nil, proxyErr
 		}
@@ -313,6 +325,9 @@ func wrappedGet(options *types.Options, configuration *Configuration) (*retryabl
 	}
 	if !configuration.NoTimeout {
 		httpclient.Timeout = options.GetTimeouts().HttpTimeout
+		if configuration.Connection != nil && configuration.Connection.CustomMaxTimeout > 0 {
+			httpclient.Timeout = configuration.Connection.CustomMaxTimeout
+		}
 	}
 	client := retryablehttp.NewWithHTTPClient(httpclient, retryableHttpOptions)
 	if jar != nil {
@@ -364,7 +379,7 @@ func makeCheckRedirectFunc(redirectType RedirectFlow, maxRedirects int) checkRed
 	}
 }
 
-func checkMaxRedirects(_ *http.Request, via []*http.Request, maxRedirects int) error {
+func checkMaxRedirects(req *http.Request, via []*http.Request, maxRedirects int) error {
 	if maxRedirects == 0 {
 		if len(via) > defaultMaxRedirects {
 			return http.ErrUseLastResponse
@@ -375,5 +390,29 @@ func checkMaxRedirects(_ *http.Request, via []*http.Request, maxRedirects int) e
 	if len(via) > maxRedirects {
 		return http.ErrUseLastResponse
 	}
+
+	// NOTE(dwisiswant0): rebuild request URL. See #5900.
+	if u := req.URL.String(); !isURLEncoded(u) {
+		parsed, err := urlutil.Parse(u)
+		if err != nil {
+			return fmt.Errorf("%w: %w", ErrRebuildURL, err)
+		}
+
+		req.URL = parsed.URL
+	}
+
 	return nil
+}
+
+// isURLEncoded is an helper function to check if the URL is already encoded
+//
+// NOTE(dwisiswant0): shall we move this under `projectdiscovery/utils/urlutil`?
+func isURLEncoded(s string) bool {
+	decoded, err := url.QueryUnescape(s)
+	if err != nil {
+		// If decoding fails, it may indicate a malformed URL/invalid encoding.
+		return false
+	}
+
+	return decoded != s
 }

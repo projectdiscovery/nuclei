@@ -112,7 +112,8 @@ func Parse(filePath string, preprocessor Preprocessor, options protocols.Executo
 // isGlobalMatchersEnabled checks if any of requests in the template
 // have global matchers enabled. It iterates through all requests and
 // returns true if at least one request has global matchers enabled;
-// otherwise, it returns false.
+// otherwise, it returns false. If global matchers templates are not
+// enabled in the options, the method will immediately return false.
 //
 // Note: This method only checks the `RequestsHTTP`
 // field of the template, which is specific to http-protocol-based
@@ -120,6 +121,10 @@ func Parse(filePath string, preprocessor Preprocessor, options protocols.Executo
 //
 // TODO: support all protocols.
 func (template *Template) isGlobalMatchersEnabled() bool {
+	if !template.Options.Options.EnableGlobalMatchersTemplates {
+		return false
+	}
+
 	for _, request := range template.RequestsHTTP {
 		if request.GlobalMatchers {
 			return true
@@ -446,6 +451,9 @@ func parseTemplate(data []byte, options protocols.ExecutorOptions) (*Template, e
 	var verifier *signer.TemplateSigner
 	for _, verifier = range signer.DefaultTemplateVerifiers {
 		template.Verified, _ = verifier.Verify(data, template)
+		if config.DefaultConfig.LogAllEvents {
+			gologger.Verbose().Msgf("template %v verified by %s : %v", template.ID, verifier.Identifier(), template.Verified)
+		}
 		if template.Verified {
 			template.TemplateVerifier = verifier.Identifier()
 			break

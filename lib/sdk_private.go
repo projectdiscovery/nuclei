@@ -3,10 +3,11 @@ package nuclei
 import (
 	"context"
 	"fmt"
-	"github.com/projectdiscovery/nuclei/v3/pkg/input"
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/projectdiscovery/nuclei/v3/pkg/input"
 
 	"github.com/logrusorgru/aurora"
 	"github.com/pkg/errors"
@@ -119,7 +120,7 @@ func (e *NucleiEngine) init(ctx context.Context) error {
 		_ = protocolinit.Init(e.opts)
 	})
 
-	if e.opts.ProxyInternal && types.ProxyURL != "" || types.ProxySocksURL != "" {
+	if e.opts.ProxyInternal && e.opts.AliveHttpProxy != "" || e.opts.AliveSocksProxy != "" {
 		httpclient, err := httpclientpool.Get(e.opts, &httpclientpool.Configuration{})
 		if err != nil {
 			return err
