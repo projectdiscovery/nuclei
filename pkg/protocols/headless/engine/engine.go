@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"sync"
 
 	"github.com/go-rod/rod"
 	"github.com/go-rod/rod/lib/launcher"
@@ -23,8 +24,10 @@ type Browser struct {
 	tempDir      string
 	previousPIDs map[int32]struct{} // track already running PIDs
 	engine       *rod.Browser
-	httpclient   *http.Client
 	options      *types.Options
+	// use getHTTPClient to get the http client
+	httpClient     *http.Client
+	httpClientOnce *sync.Once
 }
 
 // New creates a new nuclei headless browser module
@@ -73,8 +76,8 @@ func New(options *types.Options) (*Browser, error) {
 	} else {
 		chromeLauncher = chromeLauncher.Headless(true)
 	}
-	if types.ProxyURL != "" {
-		chromeLauncher = chromeLauncher.Proxy(types.ProxyURL)
+	if options.AliveHttpProxy != "" {
+		chromeLauncher = chromeLauncher.Proxy(options.AliveHttpProxy)
 	}
 
 	for k, v := range options.ParseHeadlessOptionalArguments() {
@@ -101,17 +104,12 @@ func New(options *types.Options) (*Browser, error) {
 		}
 	}
 
-	httpclient, err := newHttpClient(options)
-	if err != nil {
-		return nil, err
-	}
-
 	engine := &Browser{
-		tempDir:     dataStore,
-		customAgent: customAgent,
-		engine:      browser,
-		httpclient:  httpclient,
-		options:     options,
+		tempDir:        dataStore,
+		customAgent:    customAgent,
+		engine:         browser,
+		options:        options,
+		httpClientOnce: &sync.Once{},
 	}
 	engine.previousPIDs = previousPIDs
 	return engine, nil
@@ -121,7 +119,7 @@ func New(options *types.Options) (*Browser, error) {
 func MustDisableSandbox() bool {
 	// linux with root user needs "--no-sandbox" option
 	// https://github.com/chromium/chromium/blob/c4d3c31083a2e1481253ff2d24298a1dfe19c754/chrome/test/chromedriver/client/chromedriver.py#L209
-	return osutils.IsLinux() && os.Geteuid() == 0
+	return osutils.IsLinux()
 }
 
 // SetUserAgent sets custom user agent to the browser
@@ -132,6 +130,14 @@ func (b *Browser) SetUserAgent(customUserAgent string) {
 // UserAgent fetch the currently set custom user agent
 func (b *Browser) UserAgent() string {
 	return b.customAgent
+}
+
+func (b *Browser) getHTTPClient() (*http.Client, error) {
+	var err error
+	b.httpClientOnce.Do(func() {
+		b.httpClient, err = newHttpClient(b.options)
+	})
+	return b.httpClient, err
 }
 
 // Close closes the browser engine
