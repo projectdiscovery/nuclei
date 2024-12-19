@@ -43,7 +43,8 @@ func (j *SwaggerFormat) Parse(input io.Reader, resultsCb formats.ParseReqRespCal
 	ext := path.Ext(filePath)
 	var err error
 	if ext == ".yaml" || ext == ".yml" {
-		data, err := io.ReadAll(input)
+		var data []byte
+		data, err = io.ReadAll(input)
 		if err != nil {
 			return errors.Wrap(err, "could not read data file")
 		}

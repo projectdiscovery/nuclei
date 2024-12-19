@@ -101,8 +101,6 @@ type Runner struct {
 	dastServer      *server.DASTServer
 }
 
-const pprofServerAddress = "127.0.0.1:8086"
-
 // New creates a new client for running the enumeration process.
 func New(options *types.Options) (*Runner, error) {
 	runner := &Runner{

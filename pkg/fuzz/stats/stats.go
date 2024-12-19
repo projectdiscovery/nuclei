@@ -4,6 +4,7 @@ package stats
 
 import (
 	"fmt"
+	"log"
 	"net/url"
 
 	"github.com/pkg/errors"
@@ -54,7 +55,9 @@ type FuzzingEvent struct {
 
 func (t *Tracker) RecordResultEvent(event FuzzingEvent) {
 	event.siteName = getCorrectSiteName(event.URL)
-	t.database.InsertMatchedRecord(event)
+	if err := t.database.InsertMatchedRecord(event); err != nil {
+		log.Printf("could not insert matched record: %s", err)
+	}
 }
 
 type ComponentEvent struct {
@@ -67,7 +70,9 @@ type ComponentEvent struct {
 
 func (t *Tracker) RecordComponentEvent(event ComponentEvent) {
 	event.siteName = getCorrectSiteName(event.URL)
-	t.database.InsertComponent(event)
+	if err := t.database.InsertComponent(event); err != nil {
+		log.Printf("could not insert component record: %s", err)
+	}
 }
 
 type ErrorEvent struct {
@@ -77,7 +82,9 @@ type ErrorEvent struct {
 }
 
 func (t *Tracker) RecordErrorEvent(event ErrorEvent) {
-	t.database.InsertError(event)
+	if err := t.database.InsertError(event); err != nil {
+		log.Printf("could not insert error record: %s", err)
+	}
 }
 
 func getCorrectSiteName(originalURL string) string {

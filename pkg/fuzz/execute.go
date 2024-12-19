@@ -125,7 +125,7 @@ func (rule *Rule) Execute(input *ExecuteRuleInput) (err error) {
 		}
 
 		if rule.options.FuzzStatsDB != nil {
-			component.Iterate(func(key string, value interface{}) error {
+			_ = component.Iterate(func(key string, value interface{}) error {
 				rule.options.FuzzStatsDB.RecordComponentEvent(fuzzStats.ComponentEvent{
 					URL:           input.Input.MetaInput.Target(),
 					ComponentType: componentName,
