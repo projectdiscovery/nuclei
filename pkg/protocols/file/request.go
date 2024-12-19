@@ -9,7 +9,7 @@ import (
 	"strings"
 
 	"github.com/docker/go-units"
-	"github.com/mholt/archiver"
+	"github.com/mholt/archiver/v3"
 	"github.com/pkg/errors"
 
 	"github.com/projectdiscovery/gologger"
