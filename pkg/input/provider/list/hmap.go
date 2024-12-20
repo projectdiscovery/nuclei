@@ -184,7 +184,7 @@ func (i *ListInputProvider) Set(value string) {
 						continue
 					}
 					metaInput := contextargs.NewMetaInput()
-					metaInput.Input = value
+					metaInput.Input = URL
 					metaInput.CustomIP = ip
 					i.setItem(metaInput)
 				}
