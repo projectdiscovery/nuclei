@@ -150,9 +150,7 @@ func (r *requestGenerator) Make(ctx context.Context, input *contextargs.Context,
 		// skip creating template context if not available
 		dynamicValues = generators.MergeMaps(dynamicValues, r.request.options.GetTemplateCtx(input.MetaInput).GetAll())
 	}
-	if r.request.SelfContained {
-		return r.makeSelfContainedRequest(ctx, reqData, payloads, dynamicValues)
-	}
+
 	isRawRequest := len(r.request.Raw) > 0
 	// replace interactsh variables with actual interactsh urls
 	if r.options.Interactsh != nil {
@@ -164,6 +162,10 @@ func (r *requestGenerator) Make(ctx context.Context, input *contextargs.Context,
 		for payloadName, payloadValue := range payloads {
 			payloads[payloadName] = types.ToStringNSlice(payloadValue)
 		}
+	}
+
+	if r.request.SelfContained {
+		return r.makeSelfContainedRequest(ctx, reqData, payloads, dynamicValues)
 	}
 
 	// Parse target url
