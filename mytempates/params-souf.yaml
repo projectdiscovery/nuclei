@@ -1,0 +1,32 @@
+id: extract-response-parameters
+
+info:
+  name: Extract All Parameters from HTTP Response
+  author: security-team
+  severity: informational
+  description: Extracts all parameters from HTTP responses, including query parameters, headers, and potential hidden inputs, for advanced analysis and reconnaissance.
+  reference:
+    - https://owasp.org/www-project-web-security-testing-guide/latest/4-Web_Application_Security_Testing/05-Input_Validation_Testing
+  tags: parameters, enumeration, reconnaissance, analysis
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}"
+
+    extractors:
+      - type: regex
+        name: query_parameters
+        part: body
+        regex:
+          - "[?&]([a-zA-Z0-9_]+)="
+      - type: regex
+        name: headers
+        part: header
+        regex:
+          - "^([a-zA-Z0-9-]+):"
+      - type: regex
+        name: hidden_inputs
+        part: body
+        regex:
+          - "<input[^>]*name=['\"]([a-zA-Z0-9_]+)['\"]"
