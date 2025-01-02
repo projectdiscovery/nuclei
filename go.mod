@@ -21,11 +21,11 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/projectdiscovery/clistats v0.1.1
 	github.com/projectdiscovery/fastdialer v0.2.14
-	github.com/projectdiscovery/hmap v0.0.72
+	github.com/projectdiscovery/hmap v0.0.73
 	github.com/projectdiscovery/interactsh v1.2.2
-	github.com/projectdiscovery/rawhttp v0.1.79
-	github.com/projectdiscovery/retryabledns v1.0.90
-	github.com/projectdiscovery/retryablehttp-go v1.0.92
+	github.com/projectdiscovery/rawhttp v0.1.80
+	github.com/projectdiscovery/retryabledns v1.0.91
+	github.com/projectdiscovery/retryablehttp-go v1.0.93
 	github.com/projectdiscovery/yamldoc-go v1.0.4
 	github.com/remeh/sizedwaitgroup v1.0.0
 	github.com/rs/xid v1.5.0
@@ -38,7 +38,7 @@ require (
 	github.com/weppos/publicsuffix-go v0.30.2
 	github.com/xanzy/go-gitlab v0.107.0
 	go.uber.org/multierr v1.11.0
-	golang.org/x/net v0.32.0
+	golang.org/x/net v0.33.0
 	golang.org/x/oauth2 v0.22.0
 	golang.org/x/text v0.21.0
 	gopkg.in/yaml.v2 v2.4.0
@@ -81,24 +81,24 @@ require (
 	github.com/microsoft/go-mssqldb v1.6.0
 	github.com/ory/dockertest/v3 v3.10.0
 	github.com/praetorian-inc/fingerprintx v1.1.9
-	github.com/projectdiscovery/dsl v0.3.8
+	github.com/projectdiscovery/dsl v0.3.9
 	github.com/projectdiscovery/fasttemplate v0.0.2
 	github.com/projectdiscovery/go-smb2 v0.0.0-20240129202741-052cc450c6cb
 	github.com/projectdiscovery/goflags v0.1.65
-	github.com/projectdiscovery/gologger v1.1.37
+	github.com/projectdiscovery/gologger v1.1.38
 	github.com/projectdiscovery/gostruct v0.0.2
 	github.com/projectdiscovery/gozero v0.0.3
 	github.com/projectdiscovery/httpx v1.6.9
 	github.com/projectdiscovery/mapcidr v1.1.34
 	github.com/projectdiscovery/n3iwf v0.0.0-20230523120440-b8cd232ff1f5
-	github.com/projectdiscovery/ratelimit v0.0.66
+	github.com/projectdiscovery/ratelimit v0.0.67
 	github.com/projectdiscovery/rdap v0.9.1-0.20221108103045-9865884d1917
 	github.com/projectdiscovery/sarif v0.0.1
 	github.com/projectdiscovery/tlsx v1.1.8
 	github.com/projectdiscovery/uncover v1.0.9
-	github.com/projectdiscovery/useragent v0.0.84
-	github.com/projectdiscovery/utils v0.4.3
-	github.com/projectdiscovery/wappalyzergo v0.2.8
+	github.com/projectdiscovery/useragent v0.0.85
+	github.com/projectdiscovery/utils v0.4.4
+	github.com/projectdiscovery/wappalyzergo v0.2.9
 	github.com/redis/go-redis/v9 v9.1.0
 	github.com/seh-msft/burpxml v1.0.1
 	github.com/shurcooL/graphql v0.0.0-20230722043721-ed46e5a46466
