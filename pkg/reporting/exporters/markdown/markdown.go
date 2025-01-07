@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/google/uuid"
 	"github.com/projectdiscovery/gologger"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
@@ -115,7 +116,9 @@ func createFileName(event *output.ResultEvent) string {
 	filenameBuilder := &strings.Builder{}
 	filenameBuilder.WriteString(event.TemplateID)
 	filenameBuilder.WriteString("-")
-	filenameBuilder.WriteString(stringsutil.ReplaceAll(event.Matched, "_", "/", ":"))
+	filenameBuilder.WriteString(event.Host)
+	filenameBuilder.WriteString("-")
+	filenameBuilder.WriteString(uuid.NewString())
 
 	var suffix string
 	if event.MatcherName != "" {

@@ -13,7 +13,7 @@ var (
 	HttpSchemes = []string{"https", "http"}
 )
 
-// probeURL probes the scheme for a URL. first HTTPS is tried
+// ProbeURL probes the scheme for a URL. first HTTPS is tried
 // and if any errors occur http is tried. If none succeeds, probing
 // is abandoned for such URLs.
 func ProbeURL(input string, httpxclient *httpx.HTTPX) string {

@@ -60,6 +60,9 @@ func New(options *Options) (*Integration, error) {
 			Key: options.APIKey,
 		},
 	}
+	if options.HttpClient != nil {
+		httpClient.Transport = options.HttpClient.HTTPClient.Transport
+	}
 
 	integration := &Integration{
 		url:        "https://api.linear.app/graphql",
