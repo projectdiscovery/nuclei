@@ -167,8 +167,6 @@ func WithResponseReadSize(responseReadSize int) NucleiSDKOptions {
 		return nil
 	}
 }
-	}
-}
 
 // WithGlobalRateLimit sets global rate (i.e all hosts combined) limit options
 // Deprecated: will be removed in favour of WithGlobalRateLimitCtx in next release
