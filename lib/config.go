@@ -156,11 +156,17 @@ func WithConcurrency(opts Concurrency) NucleiSDKOptions {
 	}
 }
 
-// WithResponseReadSize sets the maximum size of response to read
-func WithResponseReadSize(ResponseReadSize int) NucleiSDKOptions {
+// WithResponseReadSize sets the maximum size of response to read in bytes.
+// A value of 0 means no limit. Recommended values: 1MB (1048576) to 10MB (10485760).
+func WithResponseReadSize(responseReadSize int) NucleiSDKOptions {
 	return func(e *NucleiEngine) error {
-		e.opts.ResponseReadSize = ResponseReadSize
+		if responseReadSize < 0 {
+			return errors.New("response read size must be non-negative")
+		}
+		e.opts.ResponseReadSize = responseReadSize
 		return nil
+	}
+}
 	}
 }
 
