@@ -126,39 +126,40 @@ func WithConcurrency(opts Concurrency) NucleiSDKOptions {
 		// minimum required is 1
 		if opts.TemplateConcurrency <= 0 {
 			return errors.New("template threads must be at least 1")
-		} else {
-			e.opts.TemplateThreads = opts.TemplateConcurrency
 		}
 		if opts.HostConcurrency <= 0 {
 			return errors.New("host concurrency must be at least 1")
-		} else {
-			e.opts.BulkSize = opts.HostConcurrency
 		}
 		if opts.HeadlessHostConcurrency <= 0 {
 			return errors.New("headless host concurrency must be at least 1")
-		} else {
-			e.opts.HeadlessBulkSize = opts.HeadlessHostConcurrency
 		}
 		if opts.HeadlessTemplateConcurrency <= 0 {
 			return errors.New("headless template threads must be at least 1")
-		} else {
-			e.opts.HeadlessTemplateThreads = opts.HeadlessTemplateConcurrency
 		}
 		if opts.JavascriptTemplateConcurrency <= 0 {
 			return errors.New("js must be at least 1")
-		} else {
-			e.opts.JsConcurrency = opts.JavascriptTemplateConcurrency
 		}
 		if opts.TemplatePayloadConcurrency <= 0 {
 			return errors.New("payload concurrency must be at least 1")
-		} else {
-			e.opts.PayloadConcurrency = opts.TemplatePayloadConcurrency
 		}
 		if opts.ProbeConcurrency <= 0 {
 			return errors.New("probe concurrency must be at least 1")
-		} else {
-			e.opts.ProbeConcurrency = opts.ProbeConcurrency
 		}
+		e.opts.TemplateThreads = opts.TemplateConcurrency
+		e.opts.BulkSize = opts.HostConcurrency
+		e.opts.HeadlessBulkSize = opts.HeadlessHostConcurrency
+		e.opts.HeadlessTemplateThreads = opts.HeadlessTemplateConcurrency
+		e.opts.JsConcurrency = opts.JavascriptTemplateConcurrency
+		e.opts.PayloadConcurrency = opts.TemplatePayloadConcurrency
+		e.opts.ProbeConcurrency = opts.ProbeConcurrency
+		return nil
+	}
+}
+
+// WithResponseReadSize sets the maximum size of response to read
+func WithResponseReadSize(ResponseReadSize int) NucleiSDKOptions {
+	return func(e *NucleiEngine) error {
+		e.opts.ResponseReadSize = ResponseReadSize
 		return nil
 	}
 }
