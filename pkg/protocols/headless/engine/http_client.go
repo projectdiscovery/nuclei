@@ -56,12 +56,12 @@ func newHttpClient(options *types.Options) (*http.Client, error) {
 		MaxConnsPerHost:     500,
 		TLSClientConfig:     tlsConfig,
 	}
-	if types.ProxyURL != "" {
-		if proxyURL, err := url.Parse(types.ProxyURL); err == nil {
+	if options.AliveHttpProxy != "" {
+		if proxyURL, err := url.Parse(options.AliveHttpProxy); err == nil {
 			transport.Proxy = http.ProxyURL(proxyURL)
 		}
-	} else if types.ProxySocksURL != "" {
-		socksURL, proxyErr := url.Parse(types.ProxySocksURL)
+	} else if options.AliveSocksProxy != "" {
+		socksURL, proxyErr := url.Parse(options.AliveSocksProxy)
 		if proxyErr != nil {
 			return nil, err
 		}

@@ -109,8 +109,8 @@ func Init(options *types.Options) error {
 			},
 		}
 	}
-	if types.ProxySocksURL != "" {
-		proxyURL, err := url.Parse(types.ProxySocksURL)
+	if options.AliveSocksProxy != "" {
+		proxyURL, err := url.Parse(options.AliveSocksProxy)
 		if err != nil {
 			return err
 		}
