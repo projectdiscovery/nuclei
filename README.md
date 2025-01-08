@@ -1,12 +1,14 @@
 ![nuclei](/static/nuclei-cover-image.png)
 
 <p align="center">
-  <a href="https://github.com/projectdiscovery/nuclei/blob/main/README.md">English</a> •
-  <a href="https://github.com/projectdiscovery/nuclei/blob/main/README_CN.md">中文</a> •
-  <a href="https://github.com/projectdiscovery/nuclei/blob/main/README_KR.md">Korean</a> •
-  <a href="https://github.com/projectdiscovery/nuclei/blob/main/README_ID.md">Indonesia</a> •
-  <a href="https://github.com/projectdiscovery/nuclei/blob/main/README_ES.md">Spanish</a> •
-  <a href="https://github.com/projectdiscovery/nuclei/blob/main/README_JP.md">日本語</a>
+  <a href="https://github.com/projectdiscovery/nuclei/blob/main/README.md">
+    
+    `English`</a> •
+  <a href="https://github.com/projectdiscovery/nuclei/blob/main/README_CN.md">`中文`</a> •
+  <a href="https://github.com/projectdiscovery/nuclei/blob/main/README_KR.md">`Korean`</a> •
+  <a href="https://github.com/projectdiscovery/nuclei/blob/main/README_ID.md">`Indonesia`</a> •
+  <a href="https://github.com/projectdiscovery/nuclei/blob/main/README_ES.md">`Spanish`</a> •
+  <a href="https://github.com/projectdiscovery/nuclei/blob/main/README_JP.md">`日本語`</a>
 </p>
 
 </p>
@@ -27,7 +29,7 @@
 
 <br />
 
-Nuclei is a modern, high-performance vulnerability scanner that leverages simple YAML-based templates. It empowers you to design custom vulnerability detection scenarios that mimic real-world conditions, leading to zero false positives.
+**Nuclei is a modern, high-performance vulnerability scanner that leverages simple YAML-based templates. It empowers you to design custom vulnerability detection scenarios that mimic real-world conditions, leading to zero false positives.**
 
 - Simple YAML format for creating and customizing vulnerability templates.
 - Contributed by thousands of security professionals to tackle trending vulnerabilities.
