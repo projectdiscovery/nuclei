@@ -11,7 +11,7 @@ require (
 	github.com/go-rod/rod v0.114.0
 	github.com/gobwas/ws v1.2.1
 	github.com/google/go-github v17.0.0+incompatible
-	github.com/invopop/jsonschema v0.12.0
+	github.com/invopop/jsonschema v0.13.0
 	github.com/itchyny/gojq v0.12.13
 	github.com/json-iterator/go v1.1.12
 	github.com/julienschmidt/httprouter v1.3.0
