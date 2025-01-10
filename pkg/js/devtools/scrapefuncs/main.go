@@ -43,6 +43,10 @@ func main() {
 	dirList := []string{}
 
 	if err := filepath.WalkDir(dir, func(path string, d os.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+
 		if d.IsDir() {
 			dirList = append(dirList, path)
 		}
@@ -70,7 +74,7 @@ func main() {
 				continue
 			}
 
-			astFile, err := parser.ParseFile(fset, dir, nil, parser.AllErrors|parser.SkipObjectResolution)
+			astFile, err := parser.ParseFile(fset, filepath.Join(dir, f.Name()), nil, parser.AllErrors|parser.SkipObjectResolution)
 			if err != nil {
 				fmt.Println(err)
 				return
