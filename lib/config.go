@@ -286,10 +286,23 @@ func WithNetworkConfig(opts NetworkConfig) NucleiSDKOptions {
 		if e.mode == threadSafe {
 			return ErrOptionsNotSupported.Msgf("WithNetworkConfig")
 		}
+		e.opts.NoHostErrors = opts.DisableMaxHostErr
+		e.opts.MaxHostError = opts.MaxHostError
+		if e.opts.ShouldUseHostError() {
+			maxHostError := opts.MaxHostError
+			if e.opts.TemplateThreads > maxHostError {
+				gologger.Print().Msgf("[%v] The concurrency value is higher than max-host-error", e.executerOpts.Colorizer.BrightYellow("WRN"))
+				gologger.Info().Msgf("Adjusting max-host-error to the concurrency value: %d", e.opts.TemplateThreads)
+				maxHostError = e.opts.TemplateThreads
+				e.opts.MaxHostError = maxHostError
+			}
+			cache := hosterrorscache.New(maxHostError, hosterrorscache.DefaultMaxHostsCount, e.opts.TrackError)
+			cache.SetVerbose(e.opts.Verbose)
+			e.hostErrCache = cache
+		}
 		e.opts.Timeout = opts.Timeout
 		e.opts.Retries = opts.Retries
 		e.opts.LeaveDefaultPorts = opts.LeaveDefaultPorts
-		e.hostErrCache = hosterrorscache.New(opts.MaxHostError, hosterrorscache.DefaultMaxHostsCount, opts.TrackError)
 		e.opts.Interface = opts.Interface
 		e.opts.SourceIP = opts.SourceIP
 		e.opts.SystemResolvers = opts.SystemResolvers
