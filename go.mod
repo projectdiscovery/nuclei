@@ -8,7 +8,7 @@ require (
 	github.com/antchfx/htmlquery v1.3.0
 	github.com/bluele/gcache v0.0.2
 	github.com/go-playground/validator/v10 v10.14.1
-	github.com/go-rod/rod v0.114.0
+	github.com/go-rod/rod v0.116.2
 	github.com/gobwas/ws v1.2.1
 	github.com/google/go-github v17.0.0+incompatible
 	github.com/invopop/jsonschema v0.12.0
@@ -240,7 +240,7 @@ require (
 	github.com/xeipuuv/gojsonschema v1.2.0 // indirect
 	github.com/youmark/pkcs8 v0.0.0-20240726163527-a2c0da244d78 // indirect
 	github.com/ysmood/fetchup v0.2.3 // indirect
-	github.com/ysmood/got v0.34.1 // indirect
+	github.com/ysmood/got v0.40.0 // indirect
 	github.com/yuin/goldmark v1.7.4 // indirect
 	github.com/yuin/goldmark-emoji v1.0.3 // indirect
 	github.com/zcalusic/sysinfo v1.0.2 // indirect
@@ -307,7 +307,7 @@ require (
 	github.com/valyala/bytebufferpool v1.0.0 // indirect
 	github.com/ysmood/goob v0.4.0 // indirect
 	github.com/ysmood/gson v0.7.3 // indirect
-	github.com/ysmood/leakless v0.8.0 // indirect
+	github.com/ysmood/leakless v0.9.0 // indirect
 	github.com/yusufpapurcu/wmi v1.2.4 // indirect
 	github.com/zmap/rc2 v0.0.0-20190804163417-abaa70531248 // indirect
 	github.com/zmap/zcrypto v0.0.0-20240512203510-0fef58d9a9db // indirect
