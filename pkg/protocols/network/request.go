@@ -8,6 +8,7 @@ import (
 	"os"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/pkg/errors"
@@ -99,6 +100,16 @@ func (request *Request) ExecuteWithResults(target *contextargs.Context, metadata
 		gologger.Verbose().Msgf("[%v] got errors while checking open ports: %s\n", request.options.TemplateID, err)
 	}
 
+	// stop at first match if requested
+	atomicBool := &atomic.Bool{}
+	shouldStopAtFirstMatch := request.StopAtFirstMatch || request.options.StopAtFirstMatch || request.options.Options.StopAtFirstMatch
+	wrappedCallback := func(event *output.InternalWrappedEvent) {
+		if event != nil && event.HasOperatorResult() {
+			atomicBool.Store(true)
+		}
+		callback(event)
+	}
+
 	for _, port := range ports {
 		input := target.Clone()
 		// use network port updates input with new port requested in template file
@@ -107,8 +118,11 @@ func (request *Request) ExecuteWithResults(target *contextargs.Context, metadata
 		if err := input.UseNetworkPort(port, request.ExcludePorts); err != nil {
 			gologger.Debug().Msgf("Could not network port from constants: %s\n", err)
 		}
-		if err := request.executeOnTarget(input, visitedAddresses, metadata, previous, callback); err != nil {
+		if err := request.executeOnTarget(input, visitedAddresses, metadata, previous, wrappedCallback); err != nil {
 			return err
+		}
+		if shouldStopAtFirstMatch && atomicBool.Load() {
+			break
 		}
 	}
 
@@ -141,6 +155,16 @@ func (request *Request) executeOnTarget(input *contextargs.Context, visited maps
 	variablesMap := request.options.Variables.Evaluate(variables)
 	variables = generators.MergeMaps(variablesMap, variables, request.options.Constants)
 
+	// stop at first match if requested
+	atomicBool := &atomic.Bool{}
+	shouldStopAtFirstMatch := request.StopAtFirstMatch || request.options.StopAtFirstMatch || request.options.Options.StopAtFirstMatch
+	wrappedCallback := func(event *output.InternalWrappedEvent) {
+		if event != nil && event.HasOperatorResult() {
+			atomicBool.Store(true)
+		}
+		callback(event)
+	}
+
 	for _, kv := range request.addresses {
 		select {
 		case <-input.Context().Done():
@@ -154,12 +178,13 @@ func (request *Request) executeOnTarget(input *contextargs.Context, visited maps
 			continue
 		}
 		visited.Set(actualAddress, struct{}{})
-
-		if err = request.executeAddress(variables, actualAddress, address, input, kv.tls, previous, callback); err != nil {
+		if err = request.executeAddress(variables, actualAddress, address, input, kv.tls, previous, wrappedCallback); err != nil {
 			outputEvent := request.responseToDSLMap("", "", "", address, "")
 			callback(&output.InternalWrappedEvent{InternalEvent: outputEvent})
 			gologger.Warning().Msgf("[%v] Could not make network request for (%s) : %s\n", request.options.TemplateID, actualAddress, err)
-			continue
+		}
+		if shouldStopAtFirstMatch && atomicBool.Load() {
+			break
 		}
 	}
 	return err
@@ -283,36 +308,37 @@ func (request *Request) executeRequestWithPayloads(variables map[string]interfac
 	interimValues := generators.MergeMaps(variables, payloads)
 
 	if vardump.EnableVarDump {
-		gologger.Debug().Msgf("Network Protocol request variables: \n%s\n", vardump.DumpVariables(interimValues))
+		gologger.Debug().Msgf("Network Protocol request variables: %s\n", vardump.DumpVariables(interimValues))
 	}
 
 	inputEvents := make(map[string]interface{})
 
 	for _, input := range request.Inputs {
-		data := []byte(input.Data)
+		dataInBytes := []byte(input.Data)
+		var err error
 
-		if request.options.Interactsh != nil {
-			var transformedData string
-			transformedData, interactshURLs = request.options.Interactsh.Replace(string(data), []string{})
-			data = []byte(transformedData)
-		}
-
-		finalData, err := expressions.EvaluateByte(data, interimValues)
+		dataInBytes, err = expressions.EvaluateByte(dataInBytes, interimValues)
 		if err != nil {
 			request.options.Output.Request(request.options.TemplatePath, address, request.Type().String(), err)
 			request.options.Progress.IncrementFailedRequestsBy(1)
 			return errors.Wrap(err, "could not evaluate template expressions")
 		}
 
-		reqBuilder.Write(finalData)
+		data := string(dataInBytes)
+		if request.options.Interactsh != nil {
+			data, interactshURLs = request.options.Interactsh.Replace(data, []string{})
+			dataInBytes = []byte(data)
+		}
 
-		if err := expressions.ContainsUnresolvedVariables(string(finalData)); err != nil {
+		reqBuilder.Write(dataInBytes)
+
+		if err := expressions.ContainsUnresolvedVariables(data); err != nil {
 			gologger.Warning().Msgf("[%s] Could not make network request for %s: %v\n", request.options.TemplateID, actualAddress, err)
 			return nil
 		}
 
 		if input.Type.GetType() == hexType {
-			finalData, err = hex.DecodeString(string(finalData))
+			dataInBytes, err = hex.DecodeString(data)
 			if err != nil {
 				request.options.Output.Request(request.options.TemplatePath, address, request.Type().String(), err)
 				request.options.Progress.IncrementFailedRequestsBy(1)
@@ -320,7 +346,7 @@ func (request *Request) executeRequestWithPayloads(variables map[string]interfac
 			}
 		}
 
-		if _, err := conn.Write(finalData); err != nil {
+		if _, err := conn.Write(dataInBytes); err != nil {
 			request.options.Output.Request(request.options.TemplatePath, address, request.Type().String(), err)
 			request.options.Progress.IncrementFailedRequestsBy(1)
 			return errors.Wrap(err, "could not write request to server")
@@ -504,14 +530,14 @@ func (request *Request) markUnresponsiveAddress(input *contextargs.Context, err 
 		return
 	}
 	if request.options.HostErrorsCache != nil {
-		request.options.HostErrorsCache.MarkFailed(input, err)
+		request.options.HostErrorsCache.MarkFailed(request.options.ProtocolType.String(), input, err)
 	}
 }
 
 // isUnresponsiveAddress checks if the error is a unreponsive based on its execution history
 func (request *Request) isUnresponsiveAddress(input *contextargs.Context) bool {
 	if request.options.HostErrorsCache != nil {
-		return request.options.HostErrorsCache.Check(input)
+		return request.options.HostErrorsCache.Check(request.options.ProtocolType.String(), input)
 	}
 	return false
 }

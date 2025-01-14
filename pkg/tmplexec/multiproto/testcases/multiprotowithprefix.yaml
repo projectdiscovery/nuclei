@@ -20,7 +20,7 @@ http:
     matchers:
       - type: dsl
         dsl:
-          - contains(http_body,'ProjectDiscovery.io') # check for http string
-          - trim_suffix(dns_cname,'.ghost.io') == 'projectdiscovery' # check for cname (extracted information from dns response)
-          - ssl_subject_cn == 'blog.projectdiscovery.io'
+          - contains(http_body, 'ProjectDiscovery') # check for http string
+          - dns_cname == 'cname.vercel-dns.com' # check for cname (extracted information from dns response)
+          - ssl_subject_cn == 'cloud.projectdiscovery.io'
         condition: and

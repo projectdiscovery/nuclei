@@ -20,6 +20,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/operators"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/generators"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/globalmatchers"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/offlinehttp"
 	"github.com/projectdiscovery/nuclei/v3/pkg/templates/signer"
 	"github.com/projectdiscovery/nuclei/v3/pkg/tmplexec"
@@ -81,6 +82,18 @@ func Parse(filePath string, preprocessor Preprocessor, options protocols.Executo
 	if err != nil {
 		return nil, err
 	}
+	if template.isGlobalMatchersEnabled() {
+		item := &globalmatchers.Item{
+			TemplateID:   template.ID,
+			TemplatePath: filePath,
+			TemplateInfo: template.Info,
+		}
+		for _, request := range template.RequestsHTTP {
+			item.Operators = append(item.Operators, request.CompiledOperators)
+		}
+		options.GlobalMatchers.AddOperator(item)
+		return nil, nil
+	}
 	// Compile the workflow request
 	if len(template.Workflows) > 0 {
 		compiled := &template.Workflow
@@ -94,6 +107,30 @@ func Parse(filePath string, preprocessor Preprocessor, options protocols.Executo
 		parser.compiledTemplatesCache.Store(filePath, template, nil, err)
 	}
 	return template, nil
+}
+
+// isGlobalMatchersEnabled checks if any of requests in the template
+// have global matchers enabled. It iterates through all requests and
+// returns true if at least one request has global matchers enabled;
+// otherwise, it returns false. If global matchers templates are not
+// enabled in the options, the method will immediately return false.
+//
+// Note: This method only checks the `RequestsHTTP`
+// field of the template, which is specific to http-protocol-based
+// templates.
+//
+// TODO: support all protocols.
+func (template *Template) isGlobalMatchersEnabled() bool {
+	if !template.Options.Options.EnableGlobalMatchersTemplates {
+		return false
+	}
+
+	for _, request := range template.RequestsHTTP {
+		if request.GlobalMatchers {
+			return true
+		}
+	}
+	return false
 }
 
 // parseSelfContainedRequests parses the self contained template requests.
@@ -414,6 +451,9 @@ func parseTemplate(data []byte, options protocols.ExecutorOptions) (*Template, e
 	var verifier *signer.TemplateSigner
 	for _, verifier = range signer.DefaultTemplateVerifiers {
 		template.Verified, _ = verifier.Verify(data, template)
+		if config.DefaultConfig.LogAllEvents {
+			gologger.Verbose().Msgf("template %v verified by %s : %v", template.ID, verifier.Identifier(), template.Verified)
+		}
 		if template.Verified {
 			template.TemplateVerifier = verifier.Identifier()
 			break

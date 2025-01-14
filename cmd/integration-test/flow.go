@@ -22,7 +22,7 @@ var flowTestcases = []TestCaseInfo{
 type conditionalFlow struct{}
 
 func (t *conditionalFlow) Execute(filePath string) error {
-	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, "blog.projectdiscovery.io", debug)
+	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, "cloud.projectdiscovery.io", debug)
 	if err != nil {
 		return err
 	}

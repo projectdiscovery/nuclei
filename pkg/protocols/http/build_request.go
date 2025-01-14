@@ -14,6 +14,7 @@ import (
 
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/authprovider"
+	"github.com/projectdiscovery/nuclei/v3/pkg/fuzz"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/expressions"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/generators"
@@ -55,6 +56,8 @@ type generatedRequest struct {
 	// requestURLPattern tracks unmodified request url pattern without values ( it is used for constant vuln_hash)
 	// ex: {{BaseURL}}/api/exp?param={{randstr}}
 	requestURLPattern string
+
+	fuzzGeneratedRequest fuzz.GeneratedRequest
 }
 
 // setReqURLPattern sets the url request pattern for the generated request
@@ -147,9 +150,7 @@ func (r *requestGenerator) Make(ctx context.Context, input *contextargs.Context,
 		// skip creating template context if not available
 		dynamicValues = generators.MergeMaps(dynamicValues, r.request.options.GetTemplateCtx(input.MetaInput).GetAll())
 	}
-	if r.request.SelfContained {
-		return r.makeSelfContainedRequest(ctx, reqData, payloads, dynamicValues)
-	}
+
 	isRawRequest := len(r.request.Raw) > 0
 	// replace interactsh variables with actual interactsh urls
 	if r.options.Interactsh != nil {
@@ -161,6 +162,10 @@ func (r *requestGenerator) Make(ctx context.Context, input *contextargs.Context,
 		for payloadName, payloadValue := range payloads {
 			payloads[payloadName] = types.ToStringNSlice(payloadValue)
 		}
+	}
+
+	if r.request.SelfContained {
+		return r.makeSelfContainedRequest(ctx, reqData, payloads, dynamicValues)
 	}
 
 	// Parse target url
@@ -204,7 +209,7 @@ func (r *requestGenerator) Make(ctx context.Context, input *contextargs.Context,
 	finalVars := generators.MergeMaps(allVars, payloads)
 
 	if vardump.EnableVarDump {
-		gologger.Debug().Msgf("HTTP Protocol request variables: \n%s\n", vardump.DumpVariables(finalVars))
+		gologger.Debug().Msgf("HTTP Protocol request variables: %s\n", vardump.DumpVariables(finalVars))
 	}
 
 	// Note: If possible any changes to current logic (i.e evaluate -> then parse URL)

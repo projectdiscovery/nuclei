@@ -1,0 +1,26 @@
+name: 🐛 govulncheck
+
+on:
+  schedule:
+    - cron: '0 0 * * 0' # Weekly
+  workflow_dispatch:
+
+jobs:
+  govulncheck:
+    runs-on: ubuntu-latest
+    if: github.repository == 'projectdiscovery/nuclei'
+    permissions:
+      actions: read
+      contents: read
+      security-events: write
+    env:
+      OUTPUT: "/tmp/results.sarif"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: projectdiscovery/actions/setup/go@v1
+      - run: go install golang.org/x/vuln/cmd/govulncheck@latest
+      - run: govulncheck -scan package -format sarif ./... > $OUTPUT
+      - uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: "${{ env.OUTPUT }}"
+          category: "govulncheck"
