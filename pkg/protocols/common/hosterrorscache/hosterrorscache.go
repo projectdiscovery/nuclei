@@ -1,6 +1,7 @@
 package hosterrorscache
 
 import (
+	"errors"
 	"net"
 	"net/url"
 	"regexp"
@@ -20,10 +21,12 @@ import (
 // CacheInterface defines the signature of the hosterrorscache so that
 // users of Nuclei as embedded lib may implement their own cache
 type CacheInterface interface {
-	SetVerbose(verbose bool)                                          // log verbosely
-	Close()                                                           // close the cache
-	Check(protoType string, ctx *contextargs.Context) bool            // return true if the host should be skipped
-	MarkFailed(protoType string, ctx *contextargs.Context, err error) // record a failure (and cause) for the host
+	SetVerbose(verbose bool)                                                  // log verbosely
+	Close()                                                                   // close the cache
+	Check(protoType string, ctx *contextargs.Context) bool                    // return true if the host should be skipped
+	Remove(ctx *contextargs.Context)                                          // remove a host from the cache
+	MarkFailed(protoType string, ctx *contextargs.Context, err error)         // record a failure (and cause) for the host
+	MarkFailedOrRemove(protoType string, ctx *contextargs.Context, err error) // record a failure (and cause) for the host or remove it
 }
 
 var (
@@ -47,16 +50,20 @@ type cacheItem struct {
 	errors         atomic.Int32
 	isPermanentErr bool
 	cause          error // optional cause
+	mu             sync.Mutex
 }
 
 const DefaultMaxHostsCount = 10000
 
 // New returns a new host max errors cache
 func New(maxHostError, maxHostsCount int, trackError []string) *Cache {
-	gc := gcache.New[string, *cacheItem](maxHostsCount).
-		ARC().
-		Build()
-	return &Cache{failedTargets: gc, MaxHostError: maxHostError, TrackError: trackError}
+	gc := gcache.New[string, *cacheItem](maxHostsCount).ARC().Build()
+
+	return &Cache{
+		failedTargets: gc,
+		MaxHostError:  maxHostError,
+		TrackError:    trackError,
+	}
 }
 
 // SetVerbose sets the cache to log at verbose level
@@ -137,28 +144,83 @@ func (c *Cache) Check(protoType string, ctx *contextargs.Context) bool {
 	return false
 }
 
+// Remove removes a host from the cache
+func (c *Cache) Remove(ctx *contextargs.Context) {
+	key := c.GetKeyFromContext(ctx, nil)
+	_ = c.failedTargets.Remove(key) // remove even the cache is not present
+}
+
 // MarkFailed marks a host as failed previously
+//
+// Deprecated: Use MarkFailedOrRemove instead.
 func (c *Cache) MarkFailed(protoType string, ctx *contextargs.Context, err error) {
-	if !c.checkError(protoType, err) {
+	c.MarkFailedOrRemove(protoType, ctx, err)
+}
+
+// MarkFailedOrRemove marks a host as failed previously or removes it
+func (c *Cache) MarkFailedOrRemove(protoType string, ctx *contextargs.Context, err error) {
+	var cache *cacheItem
+
+	if err != nil && !c.checkError(protoType, err) {
 		return
 	}
-	finalValue := c.GetKeyFromContext(ctx, err)
-	existingCacheItem, err := c.failedTargets.GetIFPresent(finalValue)
-	if err != nil || existingCacheItem == nil {
-		newItem := &cacheItem{errors: atomic.Int32{}}
-		newItem.errors.Store(1)
-		if errkit.IsKind(err, errkit.ErrKindNetworkPermanent) {
-			// skip this address altogether
-			// permanent errors are always permanent hence this is created once
-			// and never updated so no need to synchronize
-			newItem.isPermanentErr = true
-			newItem.cause = err
-		}
-		_ = c.failedTargets.Set(finalValue, newItem)
+
+	if err == nil {
+		// Remove the host from cache
+		//
+		// NOTE(dwisiswant0): The decision was made to completely remove the
+		// cached entry for the host instead of simply decrementing the error
+		// count (using `(atomic.Int32).Swap` to update the value to `N-1`).
+		// This approach was chosen because the error handling logic operates
+		// concurrently, and decrementing the count could lead to UB (unexpected
+		// behavior) even when the error is `nil`.
+		//
+		// To clarify, consider the following scenario where the error
+		// encountered does NOT belong to the permanent network error category
+		// (`errkit.ErrKindNetworkPermanent`):
+		//
+		// 1. Iteration 1: A timeout error occurs, and the error count for the
+		//    host is incremented.
+		// 2. Iteration 2: Another timeout error is encountered, leading to
+		//    another increment in the host's error count.
+		// 3. Iteration 3: A third timeout error happens, which increments the
+		//    error count further. At this point, the host is flagged as
+		//    unresponsive.
+		// 4. Iteration 4: The host becomes reachable (no error or a transient
+		//    issue resolved). Instead of performing a no-op and leaving the
+		//    host in the cache, the host entry is removed entirely to reset its
+		//    state.
+		// 5. Iteration 5: A subsequent timeout error occurs after the host was
+		//    removed and re-added to the cache. The error count is reset and
+		//    starts from 1 again.
+		//
+		// This removal strategy ensures the cache is updated dynamically to
+		// reflect the current state of the host without persisting stale or
+		// irrelevant error counts that could interfere with future error
+		// handling and tracking logic.
+		c.Remove(ctx)
+
 		return
 	}
-	existingCacheItem.errors.Add(1)
-	_ = c.failedTargets.Set(finalValue, existingCacheItem)
+
+	cacheKey := c.GetKeyFromContext(ctx, err)
+	cache, cacheErr := c.failedTargets.GetIFPresent(cacheKey)
+	if errors.Is(cacheErr, gcache.KeyNotFoundError) {
+		cache = &cacheItem{errors: atomic.Int32{}}
+	}
+
+	cache.mu.Lock()
+	if errkit.IsKind(err, errkit.ErrKindNetworkPermanent) {
+		// skip this address altogether
+		// permanent errors are always permanent hence this is created once
+		// and never updated so no need to synchronize
+		cache.isPermanentErr = true
+	}
+
+	cache.cause = err
+	cache.errors.Add(1)
+	cache.mu.Unlock()
+	_ = c.failedTargets.Set(cacheKey, cache)
 }
 
 // GetKeyFromContext returns the key for the cache from the context
