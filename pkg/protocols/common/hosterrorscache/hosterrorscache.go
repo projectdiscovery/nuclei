@@ -125,22 +125,27 @@ func (c *Cache) NormalizeCacheValue(value string) string {
 func (c *Cache) Check(protoType string, ctx *contextargs.Context) bool {
 	finalValue := c.GetKeyFromContext(ctx, nil)
 
-	existingCacheItem, err := c.failedTargets.GetIFPresent(finalValue)
+	cache, err := c.failedTargets.GetIFPresent(finalValue)
 	if err != nil {
 		return false
 	}
-	if existingCacheItem.isPermanentErr {
+
+	cache.mu.Lock()
+	defer cache.mu.Unlock()
+
+	if cache.isPermanentErr {
 		// skipping permanent errors is expected so verbose instead of info
-		gologger.Verbose().Msgf("Skipped %s from target list as found unresponsive permanently: %s", finalValue, existingCacheItem.cause)
+		gologger.Verbose().Msgf("Skipped %s from target list as found unresponsive permanently: %s", finalValue, cache.cause)
 		return true
 	}
 
-	if existingCacheItem.errors.Load() >= int32(c.MaxHostError) {
-		existingCacheItem.Do(func() {
-			gologger.Info().Msgf("Skipped %s from target list as found unresponsive %d times", finalValue, existingCacheItem.errors.Load())
+	if cache.errors.Load() >= int32(c.MaxHostError) {
+		cache.Do(func() {
+			gologger.Info().Msgf("Skipped %s from target list as found unresponsive %d times", finalValue, cache.errors.Load())
 		})
 		return true
 	}
+
 	return false
 }
 
@@ -159,8 +164,6 @@ func (c *Cache) MarkFailed(protoType string, ctx *contextargs.Context, err error
 
 // MarkFailedOrRemove marks a host as failed previously or removes it
 func (c *Cache) MarkFailedOrRemove(protoType string, ctx *contextargs.Context, err error) {
-	var cache *cacheItem
-
 	if err != nil && !c.checkError(protoType, err) {
 		return
 	}
@@ -210,16 +213,15 @@ func (c *Cache) MarkFailedOrRemove(protoType string, ctx *contextargs.Context, e
 	}
 
 	cache.mu.Lock()
+	defer cache.mu.Unlock()
+
 	if errkit.IsKind(err, errkit.ErrKindNetworkPermanent) {
-		// skip this address altogether
-		// permanent errors are always permanent hence this is created once
-		// and never updated so no need to synchronize
 		cache.isPermanentErr = true
 	}
 
 	cache.cause = err
 	cache.errors.Add(1)
-	cache.mu.Unlock()
+
 	_ = c.failedTargets.Set(cacheKey, cache)
 }
 
