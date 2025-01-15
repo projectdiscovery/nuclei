@@ -10,6 +10,7 @@ jobs:
     strategy:
       matrix:
         count: [50, 100, 150]
+        flags: ['', '-race']
     runs-on: ubuntu-latest-16-cores
     if: github.repository == 'projectdiscovery/nuclei'
     env:
@@ -20,6 +21,6 @@ jobs:
       - run: make verify
       - name: Generate list
         run: for i in {1..${{ matrix.count }}}; do echo "https://scanme.sh/?_=${i}" >> "${LIST_FILE}"; done
-      - run: go run -race . -l "${LIST_FILE}"
+      - run: go run ${{ matrix.flags }} . -l "${LIST_FILE}"
         working-directory: cmd/nuclei/
 
