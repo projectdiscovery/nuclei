@@ -10,7 +10,7 @@ jobs:
     strategy:
       matrix:
         count: [50, 100, 150]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-latest-16-cores
     if: github.repository == 'projectdiscovery/nuclei'
     env:
       LIST_FILE: "/tmp/targets-${{ matrix.count }}.txt"
