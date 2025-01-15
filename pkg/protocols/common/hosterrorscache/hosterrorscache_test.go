@@ -170,6 +170,26 @@ func TestCacheMarkFailedConcurrent(t *testing.T) {
 	}
 }
 
+func TestCacheCheckConcurrent(t *testing.T) {
+	cache := New(3, DefaultMaxHostsCount, nil)
+	ctx := newCtxArgs(t.Name())
+
+	wg := sync.WaitGroup{}
+	for i := 1; i <= 100; i++ {
+		wg.Add(1)
+		i := i
+		go func() {
+			defer wg.Done()
+			cache.MarkFailed(protoType, ctx, errors.New("no address found for host"))
+			if i >= 3 {
+				got := cache.Check(protoType, ctx)
+				require.True(t, got)
+			}
+		}()
+	}
+	wg.Wait()
+}
+
 func newCtxArgs(value string) *contextargs.Context {
 	ctx := contextargs.NewWithInput(context.TODO(), value)
 	return ctx
