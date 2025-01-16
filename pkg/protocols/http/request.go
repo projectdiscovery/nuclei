@@ -1193,7 +1193,7 @@ func (request *Request) newContext(input *contextargs.Context) context.Context {
 // markHostError checks if the error is a unreponsive host error and marks it
 func (request *Request) markHostError(input *contextargs.Context, err error) {
 	if request.options.HostErrorsCache != nil {
-		request.options.HostErrorsCache.MarkFailed(request.options.ProtocolType.String(), input, err)
+		request.options.HostErrorsCache.MarkFailedOrRemove(request.options.ProtocolType.String(), input, err)
 	}
 }
 
