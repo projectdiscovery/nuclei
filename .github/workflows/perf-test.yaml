@@ -24,7 +24,6 @@ jobs:
         run: for i in {1..${{ matrix.count }}}; do echo "https://scanme.sh/?_=${i}" >> "${LIST_FILE}"; done
       - run: go run ${{ matrix.flags }} . -l "${LIST_FILE}" -profile-mem="${PROFILE_MEM}"
         working-directory: cmd/nuclei/
-      - run: ls -la /tmp | grep nuclei
       - uses: projectdiscovery/actions/flamegraph@v1
         id: flamegraph
         with:
