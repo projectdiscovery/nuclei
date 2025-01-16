@@ -94,6 +94,10 @@ type Options struct {
 	ListDslSignatures bool
 	// List of HTTP(s)/SOCKS5 proxy to use (comma separated or file input)
 	Proxy goflags.StringSlice
+	// AliveProxy is the alive proxy to use
+	AliveHttpProxy string
+	// AliveSocksProxy is the alive socks proxy to use
+	AliveSocksProxy string
 	// TemplatesDirectory is the directory to use for storing templates
 	NewTemplatesDirectory string
 	// TraceLogFile specifies a file to write with the trace of all requests
@@ -206,6 +210,8 @@ type Options struct {
 	VerboseVerbose bool
 	// ShowVarDump displays variable dump
 	ShowVarDump bool
+	// VarDumpLimit limits the number of characters displayed in var dump
+	VarDumpLimit int
 	// No-Color disables the colored output.
 	NoColor bool
 	// UpdateTemplates updates the templates installed at startup (also used by cloud to update datasources)
@@ -381,6 +387,12 @@ type Options struct {
 	EnableCodeTemplates bool
 	// DisableUnsignedTemplates disables processing of unsigned templates
 	DisableUnsignedTemplates bool
+	// EnableSelfContainedTemplates enables processing of self-contained templates
+	EnableSelfContainedTemplates bool
+	// EnableGlobalMatchersTemplates enables processing of global-matchers templates
+	EnableGlobalMatchersTemplates bool
+	// EnableFileTemplates enables file templates
+	EnableFileTemplates bool
 	// Disables cloud upload
 	EnableCloudUpload bool
 	// ScanID is the scan ID to use for cloud upload

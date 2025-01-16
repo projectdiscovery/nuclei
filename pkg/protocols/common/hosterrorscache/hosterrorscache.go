@@ -20,10 +20,10 @@ import (
 // CacheInterface defines the signature of the hosterrorscache so that
 // users of Nuclei as embedded lib may implement their own cache
 type CacheInterface interface {
-	SetVerbose(verbose bool)                        // log verbosely
-	Close()                                         // close the cache
-	Check(ctx *contextargs.Context) bool            // return true if the host should be skipped
-	MarkFailed(ctx *contextargs.Context, err error) // record a failure (and cause) for the host
+	SetVerbose(verbose bool)                                          // log verbosely
+	Close()                                                           // close the cache
+	Check(protoType string, ctx *contextargs.Context) bool            // return true if the host should be skipped
+	MarkFailed(protoType string, ctx *contextargs.Context, err error) // record a failure (and cause) for the host
 }
 
 var (
@@ -115,7 +115,7 @@ func (c *Cache) NormalizeCacheValue(value string) string {
 //   - URL: https?:// type
 //   - Host:port type
 //   - host type
-func (c *Cache) Check(ctx *contextargs.Context) bool {
+func (c *Cache) Check(protoType string, ctx *contextargs.Context) bool {
 	finalValue := c.GetKeyFromContext(ctx, nil)
 
 	existingCacheItem, err := c.failedTargets.GetIFPresent(finalValue)
@@ -138,8 +138,8 @@ func (c *Cache) Check(ctx *contextargs.Context) bool {
 }
 
 // MarkFailed marks a host as failed previously
-func (c *Cache) MarkFailed(ctx *contextargs.Context, err error) {
-	if !c.checkError(err) {
+func (c *Cache) MarkFailed(protoType string, ctx *contextargs.Context, err error) {
+	if !c.checkError(protoType, err) {
 		return
 	}
 	finalValue := c.GetKeyFromContext(ctx, err)
@@ -186,11 +186,13 @@ var reCheckError = regexp.MustCompile(`(no address found for host|could not reso
 // added to the host skipping table.
 // it first parses error and extracts the cause and checks for blacklisted
 // or common errors that should be skipped
-func (c *Cache) checkError(err error) bool {
+func (c *Cache) checkError(protoType string, err error) bool {
 	if err == nil {
 		return false
 	}
-
+	if protoType != "http" {
+		return false
+	}
 	kind := errkit.GetErrorKind(err, nucleierr.ErrTemplateLogic)
 	switch kind {
 	case nucleierr.ErrTemplateLogic:

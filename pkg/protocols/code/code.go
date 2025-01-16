@@ -86,6 +86,12 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 		Args:                     request.Args,
 		EarlyCloseFileDescriptor: true,
 	}
+
+	if options.Options.Debug || options.Options.DebugResponse {
+		// enable debug mode for gozero
+		gozeroOptions.DebugMode = true
+	}
+
 	engine, err := gozero.New(gozeroOptions)
 	if err != nil {
 		return errorutil.NewWithErr(err).Msgf("[%s] engines '%s' not available on host", options.TemplateID, strings.Join(request.Engine, ","))
@@ -235,11 +241,26 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 	gologger.Verbose().Msgf("[%s] Executed code on local machine %v", request.options.TemplateID, input.MetaInput.Input)
 
 	if vardump.EnableVarDump {
-		gologger.Debug().Msgf("Code Protocol request variables: \n%s\n", vardump.DumpVariables(allvars))
+		gologger.Debug().Msgf("Code Protocol request variables: %s\n", vardump.DumpVariables(allvars))
 	}
 
 	if request.options.Options.Debug || request.options.Options.DebugRequests {
-		gologger.Debug().Msgf("[%s] Dumped Executed Source Code for %v\n\n%v\n", request.options.TemplateID, input.MetaInput.Input, interpretEnvVars(request.Source, allvars))
+		gologger.Debug().MsgFunc(func() string {
+			dashes := strings.Repeat("-", 15)
+			sb := &strings.Builder{}
+			sb.WriteString(fmt.Sprintf("[%s] Dumped Executed Source Code for input/stdin: '%v'", request.options.TemplateID, input.MetaInput.Input))
+			sb.WriteString(fmt.Sprintf("\n%v\n%v\n%v\n", dashes, "Source Code:", dashes))
+			sb.WriteString(interpretEnvVars(request.Source, allvars))
+			sb.WriteString("\n")
+			sb.WriteString(fmt.Sprintf("\n%v\n%v\n%v\n", dashes, "Command Executed:", dashes))
+			sb.WriteString(interpretEnvVars(gOutput.Command, allvars))
+			sb.WriteString("\n")
+			sb.WriteString(fmt.Sprintf("\n%v\n%v\n%v\n", dashes, "Command Output:", dashes))
+			sb.WriteString(gOutput.DebugData.String())
+			sb.WriteString("\n")
+			sb.WriteString("[WRN] Command Output here is stdout+sterr, in response variables they are seperate (use -v -svd flags for more details)")
+			return sb.String()
+		})
 	}
 
 	dataOutputString := fmtStdout(gOutput.Stdout.String())

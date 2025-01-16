@@ -25,6 +25,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/progress"
 	"github.com/projectdiscovery/nuclei/v3/pkg/projectfile"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/globalmatchers"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/hosterrorscache"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/interactsh"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/utils/excludematchers"
@@ -126,6 +127,8 @@ type ExecutorOptions struct {
 	// ExportReqURLPattern exports the request URL pattern
 	// in ResultEvent it contains the exact url pattern (ex: {{BaseURL}}/{{randstr}}/xyz) used in the request
 	ExportReqURLPattern bool
+	// GlobalMatchers is the storage for global matchers with http passive templates
+	GlobalMatchers *globalmatchers.Storage
 }
 
 // todo: centralizing components is not feasible with current clogged architecture
