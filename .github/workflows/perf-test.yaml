@@ -10,7 +10,6 @@ jobs:
     strategy:
       matrix:
         count: [50, 100, 150]
-        flags: ['', '-race']
     runs-on: ubuntu-latest-16-cores
     if: github.repository == 'projectdiscovery/nuclei'
     env:
@@ -22,7 +21,7 @@ jobs:
       - run: make verify
       - name: Generate list
         run: for i in {1..${{ matrix.count }}}; do echo "https://scanme.sh/?_=${i}" >> "${LIST_FILE}"; done
-      - run: go run ${{ matrix.flags }} . -l "${LIST_FILE}" -profile-mem="${PROFILE_MEM}"
+      - run: go run . -l "${LIST_FILE}" -profile-mem="${PROFILE_MEM}"
         working-directory: cmd/nuclei/
       - uses: projectdiscovery/actions/flamegraph@v1
         id: flamegraph
