@@ -15,7 +15,7 @@ jobs:
     if: github.repository == 'projectdiscovery/nuclei'
     env:
       LIST_FILE: "/tmp/targets-${{ matrix.count }}.txt"
-      PROFILE_MEM: "nuclei-perf-test-${{ matrix.count }}"
+      PROFILE_MEM: "/tmp/nuclei-perf-test-${{ matrix.count }}"
     steps:
       - uses: actions/checkout@v4
       - uses: projectdiscovery/actions/setup/go@v1
@@ -24,10 +24,12 @@ jobs:
         run: for i in {1..${{ matrix.count }}}; do echo "https://scanme.sh/?_=${i}" >> "${LIST_FILE}"; done
       - run: go run ${{ matrix.flags }} . -l "${LIST_FILE}" -profile-mem="${PROFILE_MEM}"
         working-directory: cmd/nuclei/
+      - run: ls -la /tmp | grep nuclei
       - uses: projectdiscovery/actions/flamegraph@v1
         id: flamegraph
         with:
           profile: "${{ env.PROFILE_MEM }}.prof"
+          name: "nuclei-perf-test-${{ matrix.count }}"
         continue-on-error: true
       - if: ${{ steps.flamegraph.outputs.message == '' }}
         run: echo "::notice::${FLAMEGRAPH_URL}"
