@@ -159,6 +159,10 @@ func (c *Cache) Remove(ctx *contextargs.Context) {
 //
 // Deprecated: Use MarkFailedOrRemove instead.
 func (c *Cache) MarkFailed(protoType string, ctx *contextargs.Context, err error) {
+	if err == nil {
+		return
+	}
+
 	c.MarkFailedOrRemove(protoType, ctx, err)
 }
 
