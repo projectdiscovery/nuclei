@@ -21,7 +21,7 @@ jobs:
       - run: make verify
       - name: Generate list
         run: for i in {1..${{ matrix.count }}}; do echo "https://scanme.sh/?_=${i}" >> "${LIST_FILE}"; done
-      - run: go run . -l "${LIST_FILE}" -profile-mem="${PROFILE_MEM}"
+      - run: NUCLEI_ARGS=host-error-stats go run . -l "${LIST_FILE}" -profile-mem="${PROFILE_MEM}"
         working-directory: cmd/nuclei/
       - uses: projectdiscovery/actions/flamegraph@v1
         id: flamegraph
