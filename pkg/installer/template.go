@@ -153,7 +153,7 @@ func (t *TemplateManager) updateTemplatesAt(dir string) error {
 
 	// remove deleted templates
 	for _, deletion := range results.deletions {
-		if err := os.Remove(deletion); err != nil {
+		if err := os.Remove(deletion); err != nil && !os.IsNotExist(err) {
 			gologger.Warning().Msgf("failed to remove deleted template %s: %s", deletion, err)
 		}
 	}
