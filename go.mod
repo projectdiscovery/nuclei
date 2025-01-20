@@ -53,11 +53,11 @@ require (
 	github.com/Mzack9999/gcache v0.0.0-20230410081825-519e28eab057
 	github.com/antchfx/xmlquery v1.3.17
 	github.com/asaskevich/govalidator v0.0.0-20230301143203-a9d515a09cc2
-	github.com/aws/aws-sdk-go-v2 v1.19.0
+	github.com/aws/aws-sdk-go-v2 v1.33.0
 	github.com/aws/aws-sdk-go-v2/config v1.18.28
 	github.com/aws/aws-sdk-go-v2/credentials v1.13.27
 	github.com/aws/aws-sdk-go-v2/feature/s3/manager v1.11.72
-	github.com/aws/aws-sdk-go-v2/service/s3 v1.37.0
+	github.com/aws/aws-sdk-go-v2/service/s3 v1.73.2
 	github.com/cespare/xxhash v1.1.0
 	github.com/charmbracelet/glamour v0.8.0
 	github.com/clbanning/mxj/v2 v2.7.0
@@ -124,11 +124,11 @@ require (
 	github.com/VividCortex/ewma v1.2.0 // indirect
 	github.com/alecthomas/chroma/v2 v2.14.0 // indirect
 	github.com/andybalholm/brotli v1.1.0 // indirect
-	github.com/aws/aws-sdk-go-v2/aws/protocol/eventstream v1.4.10 // indirect
-	github.com/aws/aws-sdk-go-v2/internal/v4a v1.0.27 // indirect
-	github.com/aws/aws-sdk-go-v2/service/internal/accept-encoding v1.9.11 // indirect
-	github.com/aws/aws-sdk-go-v2/service/internal/checksum v1.1.30 // indirect
-	github.com/aws/aws-sdk-go-v2/service/internal/s3shared v1.14.4 // indirect
+	github.com/aws/aws-sdk-go-v2/aws/protocol/eventstream v1.6.7 // indirect
+	github.com/aws/aws-sdk-go-v2/internal/v4a v1.3.28 // indirect
+	github.com/aws/aws-sdk-go-v2/service/internal/accept-encoding v1.12.1 // indirect
+	github.com/aws/aws-sdk-go-v2/service/internal/checksum v1.5.2 // indirect
+	github.com/aws/aws-sdk-go-v2/service/internal/s3shared v1.18.9 // indirect
 	github.com/aymanbagabas/go-osc52/v2 v2.0.1 // indirect
 	github.com/bahlo/generic-list-go v0.2.0 // indirect
 	github.com/bits-and-blooms/bitset v1.13.0 // indirect
@@ -330,14 +330,14 @@ require (
 	github.com/ProtonMail/go-crypto v1.1.3 // indirect
 	github.com/alecthomas/chroma v0.10.0
 	github.com/aws/aws-sdk-go-v2/feature/ec2/imds v1.13.5 // indirect
-	github.com/aws/aws-sdk-go-v2/internal/configsources v1.1.35 // indirect
-	github.com/aws/aws-sdk-go-v2/internal/endpoints/v2 v2.4.29 // indirect
+	github.com/aws/aws-sdk-go-v2/internal/configsources v1.3.28 // indirect
+	github.com/aws/aws-sdk-go-v2/internal/endpoints/v2 v2.6.28 // indirect
 	github.com/aws/aws-sdk-go-v2/internal/ini v1.3.36 // indirect
-	github.com/aws/aws-sdk-go-v2/service/internal/presigned-url v1.9.29 // indirect
+	github.com/aws/aws-sdk-go-v2/service/internal/presigned-url v1.12.9 // indirect
 	github.com/aws/aws-sdk-go-v2/service/sso v1.12.13 // indirect
 	github.com/aws/aws-sdk-go-v2/service/ssooidc v1.14.13 // indirect
 	github.com/aws/aws-sdk-go-v2/service/sts v1.19.3 // indirect
-	github.com/aws/smithy-go v1.13.5 // indirect
+	github.com/aws/smithy-go v1.22.1 // indirect
 	github.com/dop251/goja_nodejs v0.0.0-20230821135201-94e508132562
 	github.com/emirpasic/gods v1.18.1 // indirect
 	github.com/go-echarts/go-echarts/v2 v2.3.3
