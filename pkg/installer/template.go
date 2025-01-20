@@ -151,6 +151,13 @@ func (t *TemplateManager) updateTemplatesAt(dir string) error {
 	// summarize all changes
 	results := t.summarizeChanges(oldchecksums, newchecksums)
 
+	// remove deleted templates
+	for _, deletion := range results.deletions {
+		if err := os.Remove(deletion); err != nil {
+			gologger.Warning().Msgf("failed to remove deleted template %s: %s", deletion, err)
+		}
+	}
+
 	// print summary
 	if results.totalCount > 0 {
 		gologger.Info().Msgf("Successfully updated nuclei-templates (%v) to %s. GoodLuck!", ghrd.Latest.GetTagName(), dir)
