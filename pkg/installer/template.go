@@ -155,6 +155,8 @@ func (t *TemplateManager) updateTemplatesAt(dir string) error {
 	for _, deletion := range results.deletions {
 		if err := os.Remove(deletion); err != nil && !os.IsNotExist(err) {
 			gologger.Warning().Msgf("failed to remove deleted template %s: %s", deletion, err)
+		} else {
+			PurgeEmptyDirectories(filepath.Dir(deletion))
 		}
 	}
 
