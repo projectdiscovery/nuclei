@@ -45,10 +45,15 @@ type templateUpdateResults struct {
 func (t *templateUpdateResults) String() string {
 	var buff bytes.Buffer
 	data := [][]string{
-		{strconv.Itoa(t.totalCount), strconv.Itoa(len(t.additions)), strconv.Itoa(len(t.deletions))},
+		{
+			strconv.Itoa(t.totalCount),
+			strconv.Itoa(len(t.additions)),
+			strconv.Itoa(len(t.modifications)),
+			strconv.Itoa(len(t.deletions)),
+		},
 	}
 	table := tablewriter.NewWriter(&buff)
-	table.SetHeader([]string{"Total", "Added", "Removed"})
+	table.SetHeader([]string{"Total", "Added", "Modified", "Removed"})
 	for _, v := range data {
 		table.Append(v)
 	}
