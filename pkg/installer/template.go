@@ -350,7 +350,7 @@ func (t *TemplateManager) getChecksumFromDir(dir string) (map[string]string, err
 		checksums, err := os.ReadFile(checksumFilePath)
 		if err == nil {
 			allChecksums := make(map[string]string)
-			for _, v := range strings.Split(string(checksums), "\n") {
+			for _, v := range strings.Split(string(checksums), ";") {
 				v = strings.TrimSpace(v)
 				tmparr := strings.Split(v, ",")
 				if len(tmparr) != 2 {
@@ -373,7 +373,10 @@ func (t *TemplateManager) writeChecksumFileInDir(dir string) error {
 	}
 	var buff bytes.Buffer
 	for k, v := range checksumMap {
-		buff.WriteString(k + "," + v)
+		buff.WriteString(k)
+		buff.WriteString(",")
+		buff.WriteString(v)
+		buff.WriteString(";")
 	}
 	return os.WriteFile(config.DefaultConfig.GetChecksumFilePath(), buff.Bytes(), checkSumFilePerm)
 }
