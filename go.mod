@@ -1,6 +1,7 @@
 module github.com/projectdiscovery/nuclei/v3
 
 go 1.21.0
+toolchain go1.22.5
 
 require (
 	github.com/Knetic/govaluate v3.0.1-0.20171022003610-9aa49832a739+incompatible
@@ -16,16 +17,16 @@ require (
 	github.com/json-iterator/go v1.1.12
 	github.com/julienschmidt/httprouter v1.3.0
 	github.com/logrusorgru/aurora v2.0.3+incompatible
-	github.com/miekg/dns v1.1.59
+	github.com/miekg/dns v1.1.62
 	github.com/olekukonko/tablewriter v0.0.5
 	github.com/pkg/errors v0.9.1
 	github.com/projectdiscovery/clistats v0.1.1
-	github.com/projectdiscovery/fastdialer v0.2.15
-	github.com/projectdiscovery/hmap v0.0.76
+	github.com/projectdiscovery/fastdialer v0.3.0
+	github.com/projectdiscovery/hmap v0.0.77
 	github.com/projectdiscovery/interactsh v1.2.3
-	github.com/projectdiscovery/rawhttp v0.1.83
+	github.com/projectdiscovery/rawhttp v0.1.84
 	github.com/projectdiscovery/retryabledns v1.0.94
-	github.com/projectdiscovery/retryablehttp-go v1.0.96
+	github.com/projectdiscovery/retryablehttp-go v1.0.97
 	github.com/projectdiscovery/yamldoc-go v1.0.4
 	github.com/remeh/sizedwaitgroup v1.0.0
 	github.com/rs/xid v1.5.0
@@ -81,24 +82,24 @@ require (
 	github.com/microsoft/go-mssqldb v1.6.0
 	github.com/ory/dockertest/v3 v3.10.0
 	github.com/praetorian-inc/fingerprintx v1.1.9
-	github.com/projectdiscovery/dsl v0.3.12
+	github.com/projectdiscovery/dsl v0.3.13
 	github.com/projectdiscovery/fasttemplate v0.0.2
 	github.com/projectdiscovery/go-smb2 v0.0.0-20240129202741-052cc450c6cb
-	github.com/projectdiscovery/goflags v0.1.68
-	github.com/projectdiscovery/gologger v1.1.41
+	github.com/projectdiscovery/goflags v0.1.69
+	github.com/projectdiscovery/gologger v1.1.42
 	github.com/projectdiscovery/gostruct v0.0.2
 	github.com/projectdiscovery/gozero v0.0.3
 	github.com/projectdiscovery/httpx v1.6.9
 	github.com/projectdiscovery/mapcidr v1.1.34
 	github.com/projectdiscovery/n3iwf v0.0.0-20230523120440-b8cd232ff1f5
-	github.com/projectdiscovery/ratelimit v0.0.69
+	github.com/projectdiscovery/ratelimit v0.0.70
 	github.com/projectdiscovery/rdap v0.9.1-0.20221108103045-9865884d1917
 	github.com/projectdiscovery/sarif v0.0.1
-	github.com/projectdiscovery/tlsx v1.1.8
+	github.com/projectdiscovery/tlsx v1.1.9
 	github.com/projectdiscovery/uncover v1.0.9
-	github.com/projectdiscovery/useragent v0.0.88
-	github.com/projectdiscovery/utils v0.4.7
-	github.com/projectdiscovery/wappalyzergo v0.2.12
+	github.com/projectdiscovery/useragent v0.0.89
+	github.com/projectdiscovery/utils v0.4.8
+	github.com/projectdiscovery/wappalyzergo v0.2.13
 	github.com/redis/go-redis/v9 v9.1.0
 	github.com/seh-msft/burpxml v1.0.1
 	github.com/shurcooL/graphql v0.0.0-20230722043721-ed46e5a46466
@@ -155,7 +156,7 @@ require (
 	github.com/felixge/fgprof v0.9.5 // indirect
 	github.com/free5gc/util v1.0.5-0.20230511064842-2e120956883b // indirect
 	github.com/gabriel-vasile/mimetype v1.4.2 // indirect
-	github.com/gaissmai/bart v0.9.5 // indirect
+	github.com/gaissmai/bart v0.17.8 // indirect
 	github.com/geoffgarside/ber v1.1.0 // indirect
 	github.com/gin-contrib/sse v0.1.0 // indirect
 	github.com/gin-gonic/gin v1.9.1 // indirect
@@ -222,7 +223,7 @@ require (
 	github.com/skeema/knownhosts v1.3.0 // indirect
 	github.com/tidwall/btree v1.7.0 // indirect
 	github.com/tidwall/buntdb v1.3.1 // indirect
-	github.com/tidwall/gjson v1.17.1 // indirect
+	github.com/tidwall/gjson v1.18.0 // indirect
 	github.com/tidwall/grect v0.1.4 // indirect
 	github.com/tidwall/match v1.1.1 // indirect
 	github.com/tidwall/pretty v1.2.1 // indirect
@@ -297,7 +298,7 @@ require (
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/power-devops/perfstat v0.0.0-20210106213030-5aafc221ea8c // indirect
 	github.com/projectdiscovery/blackrock v0.0.1 // indirect
-	github.com/projectdiscovery/networkpolicy v0.1.1
+	github.com/projectdiscovery/networkpolicy v0.1.2
 	github.com/rivo/uniseg v0.4.7 // indirect
 	github.com/saintfish/chardet v0.0.0-20230101081208-5e3ef4b5456d // indirect
 	github.com/tklauser/go-sysconf v0.3.12 // indirect
@@ -315,11 +316,11 @@ require (
 	go.uber.org/zap v1.25.0 // indirect
 	goftp.io/server/v2 v2.0.1 // indirect
 	golang.org/x/crypto v0.32.0 // indirect
-	golang.org/x/exp v0.0.0-20240719175910-8a7402abbf56
-	golang.org/x/mod v0.19.0 // indirect
+	golang.org/x/exp v0.0.0-20250106191152-7588d65b2ba8
+	golang.org/x/mod v0.22.0 // indirect
 	golang.org/x/sys v0.29.0 // indirect
 	golang.org/x/time v0.6.0 // indirect
-	golang.org/x/tools v0.23.0
+	golang.org/x/tools v0.29.0
 	google.golang.org/protobuf v1.34.2 // indirect
 	gopkg.in/alecthomas/kingpin.v2 v2.2.6 // indirect
 	gopkg.in/corvus-ch/zbase32.v1 v1.0.0 // indirect
