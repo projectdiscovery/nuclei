@@ -45,10 +45,15 @@ type templateUpdateResults struct {
 func (t *templateUpdateResults) String() string {
 	var buff bytes.Buffer
 	data := [][]string{
-		{strconv.Itoa(t.totalCount), strconv.Itoa(len(t.additions)), strconv.Itoa(len(t.deletions))},
+		{
+			strconv.Itoa(t.totalCount),
+			strconv.Itoa(len(t.additions)),
+			strconv.Itoa(len(t.modifications)),
+			strconv.Itoa(len(t.deletions)),
+		},
 	}
 	table := tablewriter.NewWriter(&buff)
-	table.SetHeader([]string{"Total", "Added", "Removed"})
+	table.SetHeader([]string{"Total", "Added", "Modified", "Removed"})
 	for _, v := range data {
 		table.Append(v)
 	}
@@ -150,6 +155,13 @@ func (t *TemplateManager) updateTemplatesAt(dir string) error {
 
 	// summarize all changes
 	results := t.summarizeChanges(oldchecksums, newchecksums)
+
+	// remove deleted templates
+	for _, deletion := range results.deletions {
+		if err := os.Remove(deletion); err != nil && !os.IsNotExist(err) {
+			gologger.Warning().Msgf("failed to remove deleted template %s: %s", deletion, err)
+		}
+	}
 
 	// print summary
 	if results.totalCount > 0 {
@@ -343,7 +355,7 @@ func (t *TemplateManager) getChecksumFromDir(dir string) (map[string]string, err
 		checksums, err := os.ReadFile(checksumFilePath)
 		if err == nil {
 			allChecksums := make(map[string]string)
-			for _, v := range strings.Split(string(checksums), "\n") {
+			for _, v := range strings.Split(string(checksums), ";") {
 				v = strings.TrimSpace(v)
 				tmparr := strings.Split(v, ",")
 				if len(tmparr) != 2 {
@@ -366,7 +378,10 @@ func (t *TemplateManager) writeChecksumFileInDir(dir string) error {
 	}
 	var buff bytes.Buffer
 	for k, v := range checksumMap {
-		buff.WriteString(k + "," + v)
+		buff.WriteString(k)
+		buff.WriteString(",")
+		buff.WriteString(v)
+		buff.WriteString(";")
 	}
 	return os.WriteFile(config.DefaultConfig.GetChecksumFilePath(), buff.Bytes(), checkSumFilePerm)
 }
