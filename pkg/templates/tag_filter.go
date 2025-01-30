@@ -196,9 +196,9 @@ func tryCollectConditionsMatchinfo(template *Template) map[string]interface{} {
 	// attempts to unwrap fields to their basic types
 	// mapping must be manual because of various abstraction layers, custom marshaling and forceful validation
 	parameters := map[string]interface{}{
-		"id":          strings.ToLower(template.ID),
-		"name":        strings.ToLower(template.Info.Name),
-		"description": strings.ToLower(template.Info.Description),
+		"id":          template.ID,
+		"name":        template.Info.Name,
+		"description": template.Info.Description,
 		"tags":        template.Info.Tags.ToSlice(),
 		"authors":     template.Info.Authors.ToSlice(),
 		"severity":    template.Info.SeverityHolder.Severity.String(),
