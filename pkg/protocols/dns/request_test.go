@@ -19,7 +19,7 @@ import (
 func TestDNSExecuteWithResults(t *testing.T) {
 	options := testutils.DefaultOptions
 
-	recursion := false
+	recursion := true
 	testutils.Init(options)
 	templateID := "testing-dns"
 	executerOpts := testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{
@@ -38,7 +38,7 @@ func TestDNSExecuteWithResults(t *testing.T) {
 				Name:  "test",
 				Part:  "raw",
 				Type:  matchers.MatcherTypeHolder{MatcherType: matchers.WordsMatcher},
-				Words: []string{"93.184.215.14"},
+				Words: []string{"8.8.8.8"},
 			}},
 			Extractors: []*extractors.Extractor{{
 				Part:  "raw",
@@ -55,7 +55,7 @@ func TestDNSExecuteWithResults(t *testing.T) {
 	t.Run("domain-valid", func(t *testing.T) {
 		metadata := make(output.InternalEvent)
 		previous := make(output.InternalEvent)
-		ctxArgs := contextargs.NewWithInput(context.Background(), "example.com")
+		ctxArgs := contextargs.NewWithInput(context.Background(), "dns.google")
 		err := request.ExecuteWithResults(ctxArgs, metadata, previous, func(event *output.InternalWrappedEvent) {
 			finalEvent = event
 		})
@@ -64,8 +64,9 @@ func TestDNSExecuteWithResults(t *testing.T) {
 	require.NotNil(t, finalEvent, "could not get event output from request")
 	require.Equal(t, 1, len(finalEvent.Results), "could not get correct number of results")
 	require.Equal(t, "test", finalEvent.Results[0].MatcherName, "could not get correct matcher name of results")
-	require.Equal(t, 1, len(finalEvent.Results[0].ExtractedResults), "could not get correct number of extracted results")
-	require.Equal(t, "93.184.215.14", finalEvent.Results[0].ExtractedResults[0], "could not get correct extracted results")
+	require.GreaterOrEqual(t, 2, len(finalEvent.Results[0].ExtractedResults), "could not get correct number of extracted results")
+	require.Contains(t, finalEvent.Results[0].ExtractedResults, "8.8.8.8", "could not get correct extracted results")
+	require.Contains(t, finalEvent.Results[0].ExtractedResults, "8.8.4.4", "could not get correct extracted results")
 	finalEvent = nil
 	// Note: changing url to domain is responsible at tmplexec package and is implemented there
 }
