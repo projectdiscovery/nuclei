@@ -311,9 +311,9 @@ func (p *Page) ActionSetMethod(act *Action, out ActionData) error {
 func (p *Page) NavigateURL(action *Action, out ActionData, allvars map[string]interface{}) error {
 	// input <- is input url from cli
 	// target <- is the url from template (ex: {{BaseURL}}/test)
-	input, err := urlutil.Parse(p.input.MetaInput.Input)
+	input, err := urlutil.Parse(p.ctx.MetaInput.Input)
 	if err != nil {
-		return errorutil.NewWithErr(err).Msgf("could not parse url %s", p.input.MetaInput.Input)
+		return errorutil.NewWithErr(err).Msgf("could not parse url %s", p.ctx.MetaInput.Input)
 	}
 	target := p.getActionArgWithDefaultValues(action, "url")
 	if target == "" {
@@ -325,7 +325,7 @@ func (p *Page) NavigateURL(action *Action, out ActionData, allvars map[string]in
 	hasTrailingSlash := httputil.HasTrailingSlash(target)
 
 	// create vars from input url
-	defaultReqVars := protocolutils.GenerateVariables(input, hasTrailingSlash, contextargs.GenerateVariables(p.input))
+	defaultReqVars := protocolutils.GenerateVariables(input, hasTrailingSlash, contextargs.GenerateVariables(p.ctx))
 	// merge all variables
 	// Note: ideally we should evaluate all available variables with reqvars
 	// but due to cyclic dependency between packages `engine` and `protocols`
@@ -800,12 +800,21 @@ func (p *Page) getActionArgWithDefaultValues(action *Action, arg string) string 
 }
 
 func (p *Page) getActionArgWithValues(action *Action, arg string, values map[string]interface{}) string {
+	var err error
+
 	argValue := action.GetArg(arg)
 	argValue = replaceWithValues(argValue, values)
+
 	if p.instance.interactsh != nil {
 		var interactshURLs []string
 		argValue, interactshURLs = p.instance.interactsh.Replace(argValue, p.InteractshURLs)
 		p.addInteractshURL(interactshURLs...)
 	}
+
+	argValue, err = expressions.Evaluate(argValue, p.payloads)
+	if err != nil {
+		gologger.Warning().Msgf("Could not evaluate expression %s: %s\n", argValue, err)
+	}
+
 	return argValue
 }
