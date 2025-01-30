@@ -11,9 +11,16 @@ import (
 
 	"github.com/go-rod/rod"
 	"github.com/go-rod/rod/lib/proto"
+	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/generators"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/utils/vardump"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/utils"
+	protocolutils "github.com/projectdiscovery/nuclei/v3/pkg/protocols/utils"
+	httputil "github.com/projectdiscovery/nuclei/v3/pkg/protocols/utils/http"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
+	errorutil "github.com/projectdiscovery/utils/errors"
+	urlutil "github.com/projectdiscovery/utils/url"
 )
 
 // Page is a single page in an isolated browser instance
@@ -29,6 +36,7 @@ type Page struct {
 	History        []HistoryData
 	InteractshURLs []string
 	payloads       map[string]interface{}
+	variables      map[string]interface{}
 }
 
 // HistoryData contains the page request/response pairs
@@ -58,13 +66,32 @@ func (i *Instance) Run(ctx *contextargs.Context, actions []*Action, payloads map
 		}
 	}
 
+	payloads = generators.MergeMaps(payloads,
+		generators.BuildPayloadFromOptions(i.browser.options),
+	)
+
+	target := ctx.MetaInput.Input
+	input, err := urlutil.Parse(target)
+	if err != nil {
+		return nil, nil, errorutil.NewWithErr(err).Msgf("could not parse URL %s", target)
+	}
+
+	hasTrailingSlash := httputil.HasTrailingSlash(target)
+	variables := protocolutils.GenerateVariables(input, hasTrailingSlash, contextargs.GenerateVariables(ctx))
+	variables = generators.MergeMaps(variables, payloads)
+
+	if vardump.EnableVarDump {
+		gologger.Debug().Msgf("Headless Protocol request variables: %s\n", vardump.DumpVariables(variables))
+	}
+
 	createdPage := &Page{
-		options:  options,
-		page:     page,
-		ctx:      ctx,
-		instance: i,
-		mutex:    &sync.RWMutex{},
-		payloads: payloads,
+		options:   options,
+		page:      page,
+		ctx:       ctx,
+		instance:  i,
+		mutex:     &sync.RWMutex{},
+		payloads:  payloads,
+		variables: variables,
 	}
 
 	httpclient, err := i.browser.getHTTPClient()
@@ -141,7 +168,7 @@ func (i *Instance) Run(ctx *contextargs.Context, actions []*Action, payloads map
 		}
 	}
 
-	data, err := createdPage.ExecuteActions(ctx, actions, payloads)
+	data, err := createdPage.ExecuteActions(ctx, actions)
 	if err != nil {
 		return nil, nil, err
 	}
