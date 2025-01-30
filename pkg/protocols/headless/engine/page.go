@@ -16,7 +16,6 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/generators"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/utils/vardump"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/utils"
-	protocolutils "github.com/projectdiscovery/nuclei/v3/pkg/protocols/utils"
 	httputil "github.com/projectdiscovery/nuclei/v3/pkg/protocols/utils/http"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	errorutil "github.com/projectdiscovery/utils/errors"
@@ -77,7 +76,7 @@ func (i *Instance) Run(ctx *contextargs.Context, actions []*Action, payloads map
 	}
 
 	hasTrailingSlash := httputil.HasTrailingSlash(target)
-	variables := protocolutils.GenerateVariables(input, hasTrailingSlash, contextargs.GenerateVariables(ctx))
+	variables := utils.GenerateVariables(input, hasTrailingSlash, contextargs.GenerateVariables(ctx))
 	variables = generators.MergeMaps(variables, payloads)
 
 	if vardump.EnableVarDump {
