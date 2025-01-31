@@ -96,10 +96,10 @@ func (e *Engine) runWorkflowStep(template *workflows.WorkflowTemplate, ctx *scan
 					firstMatched = true
 				}
 			}
+			if w.Options.HostErrorsCache != nil {
+				w.Options.HostErrorsCache.MarkFailedOrRemove(w.Options.ProtocolType.String(), ctx.Input, err)
+			}
 			if err != nil {
-				if w.Options.HostErrorsCache != nil {
-					w.Options.HostErrorsCache.MarkFailed(w.Options.ProtocolType.String(), ctx.Input, err)
-				}
 				if len(template.Executers) == 1 {
 					mainErr = err
 				} else {

@@ -143,7 +143,6 @@ func (m *MultiProtocol) ExecuteWithResults(ctx *scan.ScanContext) error {
 			if req.Type() == types.SSLProtocol && stringsutil.ContainsAnyI(err.Error(), "protocol version not supported", "could not do tls handshake") {
 				continue
 			}
-			return err
 		}
 	}
 	return nil

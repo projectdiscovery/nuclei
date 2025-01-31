@@ -273,8 +273,8 @@ func (e *ClusterExecuter) Execute(ctx *scan.ScanContext) (bool, error) {
 			}
 		}
 	})
-	if err != nil && e.options.HostErrorsCache != nil {
-		e.options.HostErrorsCache.MarkFailed(e.options.ProtocolType.String(), ctx.Input, err)
+	if e.options.HostErrorsCache != nil {
+		e.options.HostErrorsCache.MarkFailedOrRemove(e.options.ProtocolType.String(), ctx.Input, err)
 	}
 	return results, err
 }
@@ -309,8 +309,8 @@ func (e *ClusterExecuter) ExecuteWithResults(ctx *scan.ScanContext) ([]*output.R
 		ctx.LogError(err)
 	}
 
-	if err != nil && e.options.HostErrorsCache != nil {
-		e.options.HostErrorsCache.MarkFailed(e.options.ProtocolType.String(), ctx.Input, err)
+	if e.options.HostErrorsCache != nil {
+		e.options.HostErrorsCache.MarkFailedOrRemove(e.options.ProtocolType.String(), ctx.Input, err)
 	}
 	return scanCtx.GenerateResult(), err
 }
