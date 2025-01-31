@@ -137,5 +137,5 @@ dsl-docs:
 template-validate: build
 template-validate:
 	./bin/nuclei -ut
-	./bin/nuclei -validate
-	./bin/nuclei -validate -w workflows
+	./bin/nuclei -validate -et http/technologies
+	./bin/nuclei -validate -w workflows -et http/technologies

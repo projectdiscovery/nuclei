@@ -927,8 +927,8 @@ github.com/projectdiscovery/utils v0.4.8 h1:/Xd38fP8xc6kifZayjrhcYALenJrjO3sHO7l
 github.com/projectdiscovery/utils v0.4.8/go.mod h1:S314NzLcXVCbLbwYCoorAJYcnZEwv7Uhw2d3aF5fJ4s=
 github.com/projectdiscovery/wappalyzergo v0.2.13 h1:yrzmcT/Zq+H+qpbAjHKKFVVQA7uei+sAYlmS2HLpkGI=
 github.com/projectdiscovery/wappalyzergo v0.2.13/go.mod h1:3vtvQCSYpU+Ilk0qy09WYT9BH0Stut5Qon7KJJ78GKw=
-github.com/projectdiscovery/yamldoc-go v1.0.4 h1:eZoESapnMw6WAHiVgRwNqvbJEfNHEH148uthhFbG5jE=
-github.com/projectdiscovery/yamldoc-go v1.0.4/go.mod h1:8PIPRcUD55UbtQdcfFR1hpIGRWG0P7alClXNGt1TBik=
+github.com/projectdiscovery/yamldoc-go v1.0.5 h1:On5D9F5Qe59Tek9SX05uSbjahiRTvDqUSIoG/gDuRd4=
+github.com/projectdiscovery/yamldoc-go v1.0.5/go.mod h1:R5lWrNzP+7Oyn77NDVPnBsxx2/FyQZBBkIAaSaCQFxw=
 github.com/prometheus/client_golang v0.9.1/go.mod h1:7SWBe2y4D6OKWSNQJUaRYU/AaXPKyh/dDVn+NZz0KFw=
 github.com/prometheus/client_golang v0.9.3-0.20190127221311-3c4408c8b829/go.mod h1:p2iRAGwDERtqlqzRXnrOVns+ignqQo//hLXqYxZYVNs=
 github.com/prometheus/client_golang v1.0.0/go.mod h1:db9x61etRT2tGnBNRi70OPL5FsnadC4Ky3P0J6CfImo=

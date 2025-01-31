@@ -1,7 +1,9 @@
 package offlinehttp
 
 import (
+	"fmt"
 	"io"
+	"net/http"
 	"net/http/httputil"
 	"os"
 
@@ -36,7 +38,7 @@ var RawInputMode = false
 // ExecuteWithResults executes the protocol requests and returns results instead of writing them.
 func (request *Request) ExecuteWithResults(input *contextargs.Context, metadata, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
 	if RawInputMode {
-		return request.executeRawInput(input.MetaInput.Input, input, callback)
+		return request.executeRawInput(input.MetaInput.Input, "", input, callback)
 	}
 
 	wg, err := syncutil.New(syncutil.WithSize(request.options.Options.BulkSize))
@@ -74,7 +76,7 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, metadata,
 			}
 			dataStr := conversion.String(buffer)
 
-			if err := request.executeRawInput(dataStr, input, callback); err != nil {
+			if err := request.executeRawInput(dataStr, data, input, callback); err != nil {
 				gologger.Error().Msgf("Could not execute raw input %s: %s\n", data, err)
 				return
 			}
@@ -90,7 +92,7 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, metadata,
 	return nil
 }
 
-func (request *Request) executeRawInput(data string, input *contextargs.Context, callback protocols.OutputEventCallback) error {
+func (request *Request) executeRawInput(data, inputString string, input *contextargs.Context, callback protocols.OutputEventCallback) error {
 	resp, err := readResponseFromString(data)
 	if err != nil {
 		return errors.Wrap(err, "could not read raw response")
@@ -111,8 +113,12 @@ func (request *Request) executeRawInput(data string, input *contextargs.Context,
 	if err != nil {
 		return errors.Wrap(err, "could not read raw http response body")
 	}
+	reqURL := inputString
+	if inputString == "" {
+		reqURL = getURLFromRequest(resp.Request)
+	}
 
-	outputEvent := request.responseToDSLMap(resp, data, data, data, conversion.String(dumpedResponse), conversion.String(body), utils.HeadersToString(resp.Header), 0, nil)
+	outputEvent := request.responseToDSLMap(resp, data, reqURL, data, conversion.String(dumpedResponse), conversion.String(body), utils.HeadersToString(resp.Header), 0, nil)
 	// add response fields to template context and merge templatectx variables to output event
 	request.options.AddTemplateVars(input.MetaInput, request.Type(), request.GetID(), outputEvent)
 	if request.options.HasTemplateCtx(input.MetaInput) {
@@ -123,4 +129,11 @@ func (request *Request) executeRawInput(data string, input *contextargs.Context,
 	event := eventcreator.CreateEvent(request, outputEvent, request.options.Options.Debug || request.options.Options.DebugResponse)
 	callback(event)
 	return nil
+}
+
+func getURLFromRequest(req *http.Request) string {
+	if req.URL.Scheme == "" {
+		req.URL.Scheme = "https"
+	}
+	return fmt.Sprintf("%s://%s%s", req.URL.Scheme, req.Host, req.URL.Path)
 }
