@@ -802,27 +802,21 @@ func (p *Page) WaitEvent(act *Action, out ActionData) (func() error, error) {
 	}
 
 	waitEvent = tmp
-	parsedMaxDuration := 10 * time.Second // 10 sec is default max wait duration for any event
 
 	// allow user to specify max-duration for wait-event
-	maxDuration, err := p.getActionArg(act, "max-duration")
+	maxDuration, err := getTimeParameter(p, act, "max-duration", 5, time.Second)
 	if err != nil {
 		return nil, err
-	}
-
-	if maxDuration != "" {
-		parsedMaxDuration, err = time.ParseDuration(maxDuration)
-		if err != nil {
-			return nil, errorutil.NewWithErr(err).Msgf("could not parse max-duration")
-		}
 	}
 
 	// Just wait the event to happen
 	waitFunc := func() (err error) {
 		// execute actual wait event
-		ctx, cancel := context.WithTimeoutCause(context.Background(), parsedMaxDuration, ErrActionExecDealine)
+		ctx, cancel := context.WithTimeoutCause(context.Background(), maxDuration, ErrActionExecDealine)
 		defer cancel()
+
 		err = contextutil.ExecFunc(ctx, p.page.WaitEvent(waitEvent))
+
 		return
 	}
 
@@ -831,21 +825,12 @@ func (p *Page) WaitEvent(act *Action, out ActionData) (func() error, error) {
 
 // HandleDialog handles JavaScript dialog (alert, confirm, prompt, or onbeforeunload).
 func (p *Page) HandleDialog(act *Action, out ActionData) error {
-	parsedMaxDuration := 10 * time.Second // default max wait duration for dialog
-
-	maxDuration, err := p.getActionArg(act, "max-duration")
+	maxDuration, err := getTimeParameter(p, act, "max-duration", 10, time.Second)
 	if err != nil {
 		return err
 	}
 
-	if maxDuration != "" {
-		parsedMaxDuration, err = time.ParseDuration(maxDuration)
-		if err != nil {
-			return errorutil.NewWithErr(err).Msgf("could not parse max-duration")
-		}
-	}
-
-	ctx, cancel := context.WithTimeout(context.Background(), parsedMaxDuration)
+	ctx, cancel := context.WithTimeout(context.Background(), maxDuration)
 	defer cancel()
 
 	wait, handle := p.page.HandleDialog()
