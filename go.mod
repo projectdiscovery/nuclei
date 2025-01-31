@@ -26,7 +26,7 @@ require (
 	github.com/projectdiscovery/rawhttp v0.1.84
 	github.com/projectdiscovery/retryabledns v1.0.94
 	github.com/projectdiscovery/retryablehttp-go v1.0.97
-	github.com/projectdiscovery/yamldoc-go v1.0.4
+	github.com/projectdiscovery/yamldoc-go v1.0.5
 	github.com/remeh/sizedwaitgroup v1.0.0
 	github.com/rs/xid v1.5.0
 	github.com/segmentio/ksuid v1.0.4

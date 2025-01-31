@@ -33,6 +33,13 @@ func NewParser() *Parser {
 	return p
 }
 
+func NewParserWithParsedCache(cache *Cache) *Parser {
+	return &Parser{
+		parsedTemplatesCache:   cache,
+		compiledTemplatesCache: NewCache(),
+	}
+}
+
 // Cache returns the parsed templates cache
 func (p *Parser) Cache() *Cache {
 	return p.parsedTemplatesCache
