@@ -123,7 +123,10 @@ func (h *sslWithVars) Execute(filePath string) error {
 type sslMultiReq struct{}
 
 func (h *sslMultiReq) Execute(filePath string) error {
-	ts := testutils.NewTCPServer(&tls.Config{}, defaultStaticPort, func(conn net.Conn) {
+	ts := testutils.NewTCPServer(&tls.Config{
+		MinVersion: tls.VersionSSL30,
+		MaxVersion: tls.VersionTLS11,
+	}, defaultStaticPort, func(conn net.Conn) {
 		defer conn.Close()
 		data := make([]byte, 4)
 		if _, err := conn.Read(data); err != nil {
