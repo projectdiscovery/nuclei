@@ -99,7 +99,7 @@ require (
 	github.com/projectdiscovery/useragent v0.0.89
 	github.com/projectdiscovery/utils v0.4.8
 	github.com/projectdiscovery/wappalyzergo v0.2.13
-	github.com/redis/go-redis/v9 v9.1.0
+	github.com/redis/go-redis/v9 v9.7.0
 	github.com/seh-msft/burpxml v1.0.1
 	github.com/shurcooL/graphql v0.0.0-20230722043721-ed46e5a46466
 	github.com/stretchr/testify v1.10.0
