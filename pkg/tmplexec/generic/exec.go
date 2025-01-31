@@ -84,10 +84,10 @@ func (g *Generic) ExecuteWithResults(ctx *scan.ScanContext) error {
 		})
 		if err != nil {
 			ctx.LogError(err)
-			if g.options.HostErrorsCache != nil {
-				g.options.HostErrorsCache.MarkFailed(g.options.ProtocolType.String(), ctx.Input, err)
-			}
 			gologger.Warning().Msgf("[%s] Could not execute request for %s: %s\n", g.options.TemplateID, ctx.Input.MetaInput.PrettyPrint(), err)
+		}
+		if g.options.HostErrorsCache != nil {
+			g.options.HostErrorsCache.MarkFailedOrRemove(g.options.ProtocolType.String(), ctx.Input, err)
 		}
 		// If a match was found and stop at first match is set, break out of the loop and return
 		if g.results.Load() && (g.options.StopAtFirstMatch || g.options.Options.StopAtFirstMatch) {
