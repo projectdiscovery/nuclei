@@ -123,6 +123,7 @@ func (h *sslWithVars) Execute(filePath string) error {
 type sslMultiReq struct{}
 
 func (h *sslMultiReq) Execute(filePath string) error {
+	//nolint:staticcheck // SSLv3 is intentionally used for testing purposes
 	ts := testutils.NewTCPServer(&tls.Config{
 		MinVersion: tls.VersionSSL30,
 		MaxVersion: tls.VersionTLS11,
