@@ -131,11 +131,17 @@ func CreateTemplateData(directory string, packagePrefix string) (*TemplateData, 
 		return nil, errors.Wrap(err, "could not check package")
 	}
 
-	var pkgMain *ast.Package
-	for _, p := range pkgs {
-		pkgMain = p
+	if len(pkgs) == 0 {
+		return nil, errors.New("no packages found")
+	}
+
+	var pkgName string
+	for k := range pkgs {
+		pkgName = k
 		break
 	}
+
+	pkgMain := pkgs[pkgName]
 
 	log.Printf("[create] [discover] Package: %s\n", pkgMain.Name)
 	data := newTemplateData(packagePrefix, pkgMain.Name)
@@ -187,8 +193,8 @@ func (d *TemplateData) InitNativeScripts() {
 }
 
 // gatherPackageData gathers data about the package
-func (d *TemplateData) gatherPackageData(pkg *ast.Package, data *TemplateData) {
-	ast.Inspect(pkg, func(node ast.Node) bool {
+func (d *TemplateData) gatherPackageData(astNode ast.Node, data *TemplateData) {
+	ast.Inspect(astNode, func(node ast.Node) bool {
 		switch node := node.(type) {
 		case *ast.FuncDecl:
 			extra := d.collectFuncDecl(node)
@@ -236,13 +242,13 @@ func (d *TemplateData) gatherPackageData(pkg *ast.Package, data *TemplateData) {
 			}
 			data.PackageTypesExtra[node.Name.Name] = packageTypes
 		case *ast.GenDecl:
-			identifyGenDecl(pkg, node, data)
+			identifyGenDecl(astNode, node, data)
 		}
 		return true
 	})
 }
 
-func identifyGenDecl(pkg *ast.Package, decl *ast.GenDecl, data *TemplateData) {
+func identifyGenDecl(node ast.Node, decl *ast.GenDecl, data *TemplateData) {
 	for _, spec := range decl.Specs {
 		switch spec := spec.(type) {
 		case *ast.ValueSpec:
@@ -273,15 +279,15 @@ func identifyGenDecl(pkg *ast.Package, decl *ast.GenDecl, data *TemplateData) {
 				}
 
 				// Traverse the AST.
-				collectStructFuncsFromAST(pkg, spec, data)
+				collectStructFuncsFromAST(node, spec, data)
 				data.PackageTypes[spec.Name.Name] = spec.Name.Name
 			}
 		}
 	}
 }
 
-func collectStructFuncsFromAST(pkg *ast.Package, spec *ast.TypeSpec, data *TemplateData) {
-	ast.Inspect(pkg, func(n ast.Node) bool {
+func collectStructFuncsFromAST(node ast.Node, spec *ast.TypeSpec, data *TemplateData) {
+	ast.Inspect(node, func(n ast.Node) bool {
 		if fn, isFunc := n.(*ast.FuncDecl); isFunc && fn.Name.IsExported() {
 			processFunc(fn, spec, data)
 		}
