@@ -233,7 +233,7 @@ func getNavigationFunc(p *Page, act *Action, event proto.PageLifecycleEventName)
 }
 
 func getTimeout(p *Page, act *Action) (time.Duration, error) {
-	return getTimeParameter(p, act, "timeout", 3, time.Second)
+	return getTimeParameter(p, act, "timeout", 5, time.Second)
 }
 
 // getTimeParameter returns a time parameter from an action. It first tries to
