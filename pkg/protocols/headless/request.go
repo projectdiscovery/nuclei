@@ -20,7 +20,6 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/helpers/eventcreator"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/helpers/responsehighlighter"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/interactsh"
-	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/utils/vardump"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/headless/engine"
 	protocolutils "github.com/projectdiscovery/nuclei/v3/pkg/protocols/utils"
 	templateTypes "github.com/projectdiscovery/nuclei/v3/pkg/templates/types"
@@ -119,10 +118,6 @@ func (request *Request) executeRequestWithPayloads(input *contextargs.Context, p
 		return errors.Wrap(err, errCouldNotGetHtmlElement)
 	}
 	defer instance.Close()
-
-	if vardump.EnableVarDump {
-		gologger.Debug().Msgf("Headless Protocol request variables: %s\n", vardump.DumpVariables(payloads))
-	}
 
 	instance.SetInteractsh(request.options.Interactsh)
 
