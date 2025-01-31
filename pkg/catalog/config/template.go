@@ -37,12 +37,12 @@ func GetTemplateFormatFromExt(filePath string) TemplateFormat {
 	}
 }
 
-// GetSupportedTemplateFileExtensions returns all supported template file extensions
+// GetSupportTemplateFileExtensions returns all supported template file extensions
 func GetSupportTemplateFileExtensions() []string {
 	return []string{extensions.YAML, extensions.JSON}
 }
 
-// isTemplate is a callback function used by goflags to decide if given file should be read
+// IsTemplate is a callback function used by goflags to decide if given file should be read
 // if it is not a nuclei-template file only then file is read
 func IsTemplate(filename string) bool {
 	if stringsutil.ContainsAny(filename, knownConfigFiles...) {
