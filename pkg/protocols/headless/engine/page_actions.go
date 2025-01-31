@@ -173,7 +173,7 @@ func (p *Page) WaitVisible(act *Action, out ActionData) error {
 		return errors.Wrap(err, "Wrong timeout given")
 	}
 
-	pollTime, err := getPollTime(p, act)
+	pollTime, err := getTimeParameter(p, act, "pollTime", 100, time.Millisecond)
 	if err != nil {
 		return errors.Wrap(err, "Wrong polling time given")
 	}
@@ -233,29 +233,30 @@ func getNavigationFunc(p *Page, act *Action, event proto.PageLifecycleEventName)
 }
 
 func getTimeout(p *Page, act *Action) (time.Duration, error) {
-	return geTimeParameter(p, act, "timeout", 3, time.Second)
+	return getTimeParameter(p, act, "timeout", 3, time.Second)
 }
 
-func getPollTime(p *Page, act *Action) (time.Duration, error) {
-	return geTimeParameter(p, act, "pollTime", 100, time.Millisecond)
-}
-
-func geTimeParameter(p *Page, act *Action, parameterName string, defaultValue time.Duration, duration time.Duration) (time.Duration, error) {
-	pollTimeString, err := p.getActionArg(act, parameterName)
+// getTimeParameter returns a time parameter from an action. It first tries to
+// get the parameter as an integer, then as a time.Duration, and finally falls
+// back to the default value (multiplied by the unit).
+func getTimeParameter(p *Page, act *Action, argName string, defaultValue, unit time.Duration) (time.Duration, error) {
+	argValue, err := p.getActionArg(act, argName)
 	if err != nil {
 		return time.Duration(0), err
 	}
 
-	if pollTimeString == "" {
-		return defaultValue * duration, nil
+	convertedValue, err := strconv.Atoi(argValue)
+	if err == nil {
+		return time.Duration(convertedValue) * unit, nil
 	}
 
-	timeout, err := strconv.Atoi(pollTimeString)
-	if err != nil {
-		return time.Duration(0), err
+	// fallback to time.ParseDuration
+	parsedTimeValue, err := time.ParseDuration(argValue)
+	if err == nil {
+		return parsedTimeValue, nil
 	}
 
-	return time.Duration(timeout) * duration, nil
+	return defaultValue * unit, nil
 }
 
 // ActionAddHeader executes a AddHeader action.
@@ -910,15 +911,13 @@ func (p *Page) DebugAction(act *Action, out ActionData) error {
 
 // SleepAction sleeps on the page for a specified duration
 func (p *Page) SleepAction(act *Action, out ActionData) error {
-	seconds := act.Data["duration"]
-	if seconds == "" {
-		seconds = "5"
-	}
-	parsed, err := strconv.Atoi(seconds)
+	duration, err := getTimeParameter(p, act, "duration", 5, time.Second)
 	if err != nil {
 		return err
 	}
-	time.Sleep(time.Duration(parsed) * time.Second)
+
+	time.Sleep(duration)
+
 	return nil
 }
 
