@@ -1,10 +1,10 @@
 package http
 
 import (
-	"encoding/json"
 	"errors"
 	"strings"
 
+	"github.com/bytedance/sonic"
 	"github.com/invopop/jsonschema"
 )
 
@@ -131,7 +131,7 @@ func (holder *HTTPMethodTypeHolder) UnmarshalJSON(data []byte) error {
 }
 
 func (holder *HTTPMethodTypeHolder) MarshalJSON() ([]byte, error) {
-	return json.Marshal(holder.MethodType.String())
+	return sonic.Marshal(holder.MethodType.String())
 }
 
 func (holder HTTPMethodTypeHolder) MarshalYAML() (interface{}, error) {

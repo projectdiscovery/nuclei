@@ -1,9 +1,9 @@
 package variables
 
 import (
-	"encoding/json"
 	"strings"
 
+	"github.com/bytedance/sonic"
 	"github.com/invopop/jsonschema"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/expressions"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/generators"
@@ -51,7 +51,7 @@ func (variables *Variable) UnmarshalYAML(unmarshal func(interface{}) error) erro
 
 func (variables *Variable) UnmarshalJSON(data []byte) error {
 	variables.InsertionOrderedStringMap = utils.InsertionOrderedStringMap{}
-	if err := json.Unmarshal(data, &variables.InsertionOrderedStringMap); err != nil {
+	if err := sonic.Unmarshal(data, &variables.InsertionOrderedStringMap); err != nil {
 		return err
 	}
 	evaluated := variables.Evaluate(map[string]interface{}{})

@@ -2,13 +2,13 @@ package templates
 
 import (
 	"bytes"
-	"encoding/json"
 	"fmt"
 	"io"
 	"reflect"
 	"sync"
 	"sync/atomic"
 
+	"github.com/bytedance/sonic"
 	"github.com/logrusorgru/aurora"
 	"github.com/pkg/errors"
 	"gopkg.in/yaml.v2"
@@ -358,7 +358,7 @@ func parseTemplate(data []byte, options protocols.ExecutorOptions) (*Template, e
 	var err error
 	switch config.GetTemplateFormatFromExt(template.Path) {
 	case config.JSON:
-		err = json.Unmarshal(data, template)
+		err = sonic.Unmarshal(data, template)
 	case config.YAML:
 		err = yaml.Unmarshal(data, template)
 	default:

@@ -1,10 +1,10 @@
 package jsonl
 
 import (
-	"encoding/json"
 	"os"
 	"sync"
 
+	"github.com/bytedance/sonic"
 	"github.com/pkg/errors"
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
 )
@@ -81,7 +81,7 @@ func (exporter *Exporter) WriteRows() error {
 		row := exporter.rows[0]
 
 		// Convert the row to JSON byte array and append a trailing newline. This is treated as a single line in JSONL
-		obj, err := json.Marshal(row)
+		obj, err := sonic.Marshal(row)
 		if err != nil {
 			return errors.Wrap(err, "failed to generate row for JSONL report")
 		}

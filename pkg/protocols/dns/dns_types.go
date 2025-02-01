@@ -1,10 +1,10 @@
 package dns
 
 import (
-	"encoding/json"
 	"errors"
 	"strings"
 
+	"github.com/bytedance/sonic"
 	"github.com/invopop/jsonschema"
 )
 
@@ -137,7 +137,7 @@ func (holder *DNSRequestTypeHolder) UnmarshalJSON(data []byte) error {
 }
 
 func (holder *DNSRequestTypeHolder) MarshalJSON() ([]byte, error) {
-	return json.Marshal(holder.DNSRequestType.String())
+	return sonic.Marshal(holder.DNSRequestType.String())
 }
 
 func (holder DNSRequestTypeHolder) MarshalYAML() (interface{}, error) {

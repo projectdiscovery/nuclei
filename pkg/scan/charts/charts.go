@@ -1,11 +1,11 @@
 package charts
 
 import (
-	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
 
+	"github.com/bytedance/sonic"
 	"github.com/labstack/echo/v4"
 	"github.com/projectdiscovery/nuclei/v3/pkg/scan/events"
 	fileutil "github.com/projectdiscovery/utils/file"
@@ -43,7 +43,7 @@ func NewScanEventsCharts(eventsDir string) (*ScanEventsCharts, error) {
 		return nil, err
 	}
 	var config events.ScanConfig
-	err = json.Unmarshal(bin, &config)
+	err = sonic.Unmarshal(bin, &config)
 	if err != nil {
 		return nil, err
 	}
@@ -57,7 +57,7 @@ func NewScanEventsCharts(eventsDir string) (*ScanEventsCharts, error) {
 	defer f.Close()
 
 	data := []events.ScanEvent{}
-	dec := json.NewDecoder(f)
+	dec := sonic.ConfigStd.NewDecoder(f)
 	for {
 		var event events.ScanEvent
 		if err := dec.Decode(&event); err != nil {

@@ -2,7 +2,6 @@ package runner
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"net/http"
 	_ "net/http/pprof"
@@ -13,6 +12,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/bytedance/sonic"
 	"github.com/projectdiscovery/nuclei/v3/internal/pdcp"
 	"github.com/projectdiscovery/nuclei/v3/pkg/authprovider"
 	"github.com/projectdiscovery/nuclei/v3/pkg/fuzz/frequency"
@@ -288,7 +288,7 @@ func New(options *types.Options) (*Runner, error) {
 		if err != nil {
 			return nil, err
 		}
-		err = json.Unmarshal(file, &resumeCfg)
+		err = sonic.Unmarshal(file, &resumeCfg)
 		if err != nil {
 			return nil, err
 		}
@@ -795,7 +795,7 @@ func (r *Runner) SaveResumeConfig(path string) error {
 	}
 	resumeCfgClone := r.resumeCfg.Clone()
 	resumeCfgClone.ResumeFrom = resumeCfgClone.Current
-	data, _ := json.MarshalIndent(resumeCfgClone, "", "\t")
+	data, _ := sonic.MarshalIndent(resumeCfgClone, "", "\t")
 
 	return os.WriteFile(path, data, permissionutil.ConfigFilePermission)
 }
@@ -830,7 +830,7 @@ func UploadResultsToCloud(options *types.Options) error {
 	defer file.Close()
 
 	gologger.Info().Msgf("Uploading scan results to cloud dashboard from %s", options.ScanUploadFile)
-	dec := json.NewDecoder(file)
+	dec := sonic.ConfigStd.NewDecoder(file)
 	for dec.More() {
 		var r output.ResultEvent
 		err := dec.Decode(&r)

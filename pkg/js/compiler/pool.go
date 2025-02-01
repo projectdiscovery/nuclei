@@ -3,11 +3,11 @@ package compiler
 import (
 	"bytes"
 	"context"
-	"encoding/json"
 	"fmt"
 	"reflect"
 	"sync"
 
+	"github.com/bytedance/sonic"
 	"github.com/dop251/goja"
 	"github.com/dop251/goja_nodejs/console"
 	"github.com/dop251/goja_nodejs/require"
@@ -243,7 +243,7 @@ func stringify(gojaValue goja.Value, runtime *goja.Runtime) string {
 		if kind == reflect.Ptr {
 			val = reflect.ValueOf(value).Elem().Interface()
 		}
-		bin, err := json.Marshal(val)
+		bin, err := sonic.Marshal(val)
 		if err == nil {
 			return string(bin)
 		}

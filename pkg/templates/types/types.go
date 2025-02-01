@@ -1,10 +1,10 @@
 package types
 
 import (
-	"encoding/json"
 	"fmt"
 	"strings"
 
+	"github.com/bytedance/sonic"
 	"github.com/invopop/jsonschema"
 	"github.com/pkg/errors"
 	"github.com/projectdiscovery/goflags"
@@ -132,7 +132,7 @@ func (holder *TypeHolder) UnmarshalYAML(unmarshal func(interface{}) error) error
 }
 
 func (holder *TypeHolder) MarshalJSON() ([]byte, error) {
-	return json.Marshal(holder.ProtocolType.String())
+	return sonic.Marshal(holder.ProtocolType.String())
 }
 
 func (holder TypeHolder) MarshalYAML() (interface{}, error) {
@@ -177,7 +177,7 @@ func (protocolTypes ProtocolTypes) MarshalJSON() ([]byte, error) {
 	for _, protocol := range protocolTypes {
 		stringProtocols = append(stringProtocols, protocol.String())
 	}
-	return json.Marshal(stringProtocols)
+	return sonic.Marshal(stringProtocols)
 }
 
 func (protocolTypes ProtocolTypes) String() string {

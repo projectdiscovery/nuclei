@@ -1,9 +1,9 @@
 package http
 
 import (
-	"encoding/json"
 	"strings"
 
+	"github.com/bytedance/sonic"
 	"github.com/invopop/jsonschema"
 	"github.com/pkg/errors"
 
@@ -93,7 +93,7 @@ func (holder *SignatureTypeHolder) UnmarshalJSON(data []byte) error {
 }
 
 func (holder SignatureTypeHolder) MarshalJSON() ([]byte, error) {
-	return json.Marshal(holder.Value.String())
+	return sonic.Marshal(holder.Value.String())
 }
 
 func (holder SignatureTypeHolder) MarshalYAML() (interface{}, error) {

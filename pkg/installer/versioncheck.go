@@ -1,12 +1,12 @@
 package installer
 
 import (
-	"encoding/json"
 	"io"
 	"net/url"
 	"os"
 	"sync"
 
+	"github.com/bytedance/sonic"
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/config"
 	"github.com/projectdiscovery/retryablehttp-go"
@@ -98,7 +98,7 @@ func doVersionCheck(isSDK bool) error {
 		return err
 	}
 	var pdtmResp PdtmAPIResponse
-	if err := json.Unmarshal(bin, &pdtmResp); err != nil {
+	if err := sonic.Unmarshal(bin, &pdtmResp); err != nil {
 		return err
 	}
 	var nucleiversion, templateversion string

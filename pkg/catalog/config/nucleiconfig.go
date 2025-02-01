@@ -3,13 +3,13 @@ package config
 import (
 	"bytes"
 	"crypto/md5"
-	"encoding/json"
 	"fmt"
 	"log"
 	"os"
 	"path/filepath"
 	"strings"
 
+	"github.com/bytedance/sonic"
 	"github.com/projectdiscovery/goflags"
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/utils/env"
@@ -261,7 +261,7 @@ func (c *Config) ReadTemplatesConfig() error {
 	if err != nil {
 		return errorutil.NewWithErr(err).Msgf("could not read nuclei config file at %s", c.getTemplatesConfigFilePath())
 	}
-	if err := json.Unmarshal(bin, &cfg); err != nil {
+	if err := sonic.Unmarshal(bin, &cfg); err != nil {
 		return errorutil.NewWithErr(err).Msgf("could not unmarshal nuclei config file at %s", c.getTemplatesConfigFilePath())
 	}
 	// apply config
@@ -279,7 +279,7 @@ func (c *Config) WriteTemplatesConfig() error {
 	if err := c.createConfigDirIfNotExists(); err != nil {
 		return err
 	}
-	bin, err := json.Marshal(c)
+	bin, err := sonic.Marshal(c)
 	if err != nil {
 		return errorutil.NewWithErr(err).Msgf("failed to marshal nuclei config")
 	}

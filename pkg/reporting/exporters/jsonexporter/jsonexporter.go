@@ -1,10 +1,10 @@
 package jsonexporter
 
 import (
-	"encoding/json"
 	"os"
 	"sync"
 
+	"github.com/bytedance/sonic"
 	"github.com/pkg/errors"
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
 )
@@ -56,7 +56,7 @@ func (exporter *Exporter) Close() error {
 	defer exporter.mutex.Unlock()
 
 	// Convert the rows to JSON byte array
-	obj, err := json.Marshal(exporter.rows)
+	obj, err := sonic.Marshal(exporter.rows)
 	if err != nil {
 		return errors.Wrap(err, "failed to generate JSON report")
 	}

@@ -1,7 +1,6 @@
 package main
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
@@ -14,6 +13,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/bytedance/sonic"
 	"github.com/julienschmidt/httprouter"
 	"gopkg.in/yaml.v2"
 
@@ -480,7 +480,7 @@ func (h *httpPostJSONBody) Execute(filePath string) error {
 			Password string `json:"password"`
 		}
 		obj := &doc{}
-		if err := json.NewDecoder(r.Body).Decode(obj); err != nil {
+		if err := sonic.ConfigStd.NewDecoder(r.Body).Decode(obj); err != nil {
 			routerErr = err
 			return
 		}

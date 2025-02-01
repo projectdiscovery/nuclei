@@ -3,13 +3,13 @@ package splunk
 import (
 	"bytes"
 	"crypto/tls"
-	"encoding/json"
 	"fmt"
 	"io"
 	"net"
 	"net/http"
 	"time"
 
+	"github.com/bytedance/sonic"
 	"github.com/pkg/errors"
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
@@ -105,7 +105,7 @@ func (exporter *Exporter) Export(event *output.ResultEvent) error {
 	req.Header.Add("Content-Type", "application/json")
 
 	d := data{Event: event}
-	b, err := json.Marshal(&d)
+	b, err := sonic.Marshal(&d)
 	if err != nil {
 		return err
 	}

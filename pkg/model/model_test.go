@@ -1,10 +1,10 @@
 package model
 
 import (
-	"encoding/json"
 	"strings"
 	"testing"
 
+	"github.com/bytedance/sonic"
 	"github.com/projectdiscovery/nuclei/v3/pkg/model/types/severity"
 	"github.com/projectdiscovery/nuclei/v3/pkg/model/types/stringslice"
 	"github.com/stretchr/testify/require"
@@ -28,10 +28,10 @@ func TestInfoJsonMarshal(t *testing.T) {
 		},
 	}
 
-	result, err := json.Marshal(&info)
+	result, err := sonic.Marshal(&info)
 	require.Nil(t, err)
 
-	expected := `{"name":"Test Template Name","author":["forgedhallpass","ice3man"],"tags":["cve","misc"],"description":"Test description","reference":"Reference1","severity":"high","metadata":{"array_key":["array_value1","array_value2"],"map_key":{"key1":"val1"},"string_key":"string_value"}}`
+	expected := `{"name":"Test Template Name","author":["forgedhallpass","ice3man"],"tags":["cve","misc"],"description":"Test description","reference":"Reference1","severity":"high","metadata":{"string_key":"string_value","array_key":["array_value1","array_value2"],"map_key":{"key1":"val1"}}}`
 	require.Equal(t, expected, string(result))
 }
 

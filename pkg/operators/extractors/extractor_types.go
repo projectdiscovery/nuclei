@@ -1,10 +1,10 @@
 package extractors
 
 import (
-	"encoding/json"
 	"errors"
 	"strings"
 
+	"github.com/bytedance/sonic"
 	"github.com/invopop/jsonschema"
 )
 
@@ -114,7 +114,7 @@ func (holder *ExtractorTypeHolder) UnmarshalJSON(data []byte) error {
 }
 
 func (holder *ExtractorTypeHolder) MarshalJSON() ([]byte, error) {
-	return json.Marshal(holder.ExtractorType.String())
+	return sonic.Marshal(holder.ExtractorType.String())
 }
 
 func (holder ExtractorTypeHolder) MarshalYAML() (interface{}, error) {

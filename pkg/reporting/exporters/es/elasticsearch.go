@@ -4,12 +4,12 @@ import (
 	"bytes"
 	"crypto/tls"
 	"encoding/base64"
-	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
 	"time"
 
+	"github.com/bytedance/sonic"
 	"github.com/pkg/errors"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
@@ -121,7 +121,7 @@ func (exporter *Exporter) Export(event *output.ResultEvent) error {
 		Event:     event,
 		Timestamp: time.Now().Format(time.RFC3339),
 	}
-	b, err := json.Marshal(&d)
+	b, err := sonic.Marshal(&d)
 	if err != nil {
 		return err
 	}
@@ -131,8 +131,8 @@ func (exporter *Exporter) Export(event *output.ResultEvent) error {
 	if err != nil {
 		return err
 	}
-	defer res.Body.Close() 
-	
+	defer res.Body.Close()
+
 	b, err = io.ReadAll(res.Body)
 	if err != nil {
 		return errors.New(err.Error() + "error thrown by elasticsearch " + string(b))

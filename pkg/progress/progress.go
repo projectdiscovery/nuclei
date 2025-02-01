@@ -2,12 +2,12 @@ package progress
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"os"
 	"strings"
 	"time"
 
+	"github.com/bytedance/sonic"
 	"github.com/projectdiscovery/clistats"
 	"github.com/projectdiscovery/gologger"
 )
@@ -212,7 +212,7 @@ func (p *StatsTicker) makePrintCallback() func(stats clistats.StatisticsClient) 
 
 func printCallbackJSON(stats clistats.StatisticsClient) interface{} {
 	builder := &strings.Builder{}
-	if err := json.NewEncoder(builder).Encode(metricsMap(stats)); err == nil {
+	if err := sonic.ConfigStd.NewEncoder(builder).Encode(metricsMap(stats)); err == nil {
 		fmt.Fprintf(os.Stderr, "%s", builder.String())
 	}
 	return builder.String()

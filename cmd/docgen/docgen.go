@@ -2,13 +2,13 @@ package main
 
 import (
 	"bytes"
-	"encoding/json"
 	"log"
 	"os"
 	"reflect"
 	"regexp"
 	"strings"
 
+	"github.com/bytedance/sonic"
 	"github.com/invopop/jsonschema"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/templates"
@@ -43,7 +43,7 @@ func main() {
 	jsonschemaData := r.Reflect(&templates.Template{})
 
 	var buf bytes.Buffer
-	encoder := json.NewEncoder(&buf)
+	encoder := sonic.ConfigStd.NewEncoder(&buf)
 	encoder.SetIndent("", "  ")
 	_ = encoder.Encode(jsonschemaData)
 

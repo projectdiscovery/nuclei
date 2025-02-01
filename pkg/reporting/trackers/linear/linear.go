@@ -3,12 +3,12 @@ package linear
 import (
 	"bytes"
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"net/http"
 
+	"github.com/bytedance/sonic"
 	"github.com/shurcooL/graphql"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/model/types/severity"
@@ -371,7 +371,7 @@ func (i *Integration) doGraphqlRequest(ctx context.Context, query string, v any,
 	}
 
 	var buf bytes.Buffer
-	err := json.NewEncoder(&buf).Encode(in)
+	err := sonic.ConfigStd.NewEncoder(&buf).Encode(in)
 	if err != nil {
 		return err
 	}
@@ -390,12 +390,12 @@ func (i *Integration) doGraphqlRequest(ctx context.Context, query string, v any,
 		return fmt.Errorf("non-200 OK status code: %v body: %q", resp.Status, body)
 	}
 	var out struct {
-		Data   *json.RawMessage
+		Data   *sonic.NoCopyRawMessage
 		Errors errorsGraphql
 		//Extensions any // Unused.
 	}
 
-	err = json.NewDecoder(resp.Body).Decode(&out)
+	err = sonic.ConfigStd.NewDecoder(resp.Body).Decode(&out)
 	if err != nil {
 		return err
 	}

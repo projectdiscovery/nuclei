@@ -1,12 +1,12 @@
 package extractors
 
 import (
-	"encoding/json"
 	"fmt"
 	"strings"
 
 	"github.com/antchfx/htmlquery"
 	"github.com/antchfx/xmlquery"
+	"github.com/bytedance/sonic"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 )
@@ -133,7 +133,7 @@ func (e *Extractor) ExtractJSON(corpus string) map[string]struct{} {
 
 	var jsonObj interface{}
 
-	if err := json.Unmarshal([]byte(corpus), &jsonObj); err != nil {
+	if err := sonic.Unmarshal([]byte(corpus), &jsonObj); err != nil {
 		return results
 	}
 
@@ -150,7 +150,7 @@ func (e *Extractor) ExtractJSON(corpus string) map[string]struct{} {
 			var result string
 			if res, err := types.JSONScalarToString(v); err == nil {
 				result = res
-			} else if res, err := json.Marshal(v); err == nil {
+			} else if res, err := sonic.Marshal(v); err == nil {
 				result = string(res)
 			} else {
 				result = types.ToString(v)

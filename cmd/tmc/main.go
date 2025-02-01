@@ -2,7 +2,6 @@ package main
 
 import (
 	"bytes"
-	"encoding/json"
 	"fmt"
 	"log"
 	"os"
@@ -12,6 +11,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/bytedance/sonic"
 	"github.com/projectdiscovery/goflags"
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/gologger/levels"
@@ -243,7 +243,7 @@ func enhanceTemplate(data string) (string, bool, error) {
 		return data, false, errorutil.New("unexpected status code: %v", resp.Status)
 	}
 	var templateResp TemplateResp
-	if err := json.NewDecoder(resp.Body).Decode(&templateResp); err != nil {
+	if err := sonic.ConfigStd.NewDecoder(resp.Body).Decode(&templateResp); err != nil {
 		return data, false, err
 	}
 	if strings.TrimSpace(templateResp.Enhanced) != "" {
@@ -277,7 +277,7 @@ func formatTemplate(data string) (string, bool, error) {
 		return data, false, errorutil.New("unexpected status code: %v", resp.Status)
 	}
 	var templateResp TemplateResp
-	if err := json.NewDecoder(resp.Body).Decode(&templateResp); err != nil {
+	if err := sonic.ConfigStd.NewDecoder(resp.Body).Decode(&templateResp); err != nil {
 		return data, false, err
 	}
 	if strings.TrimSpace(templateResp.Updated) != "" {
@@ -311,7 +311,7 @@ func lintTemplate(data string) (bool, error) {
 		return false, errorutil.New("unexpected status code: %v", resp.Status)
 	}
 	var lintResp TemplateLintResp
-	if err := json.NewDecoder(resp.Body).Decode(&lintResp); err != nil {
+	if err := sonic.ConfigStd.NewDecoder(resp.Body).Decode(&lintResp); err != nil {
 		return false, err
 	}
 	if lintResp.Lint {
@@ -333,7 +333,7 @@ func validateTemplate(data string) (bool, error) {
 		return false, errorutil.New("unexpected status code: %v", resp.Status)
 	}
 	var validateResp TemplateResp
-	if err := json.NewDecoder(resp.Body).Decode(&validateResp); err != nil {
+	if err := sonic.ConfigStd.NewDecoder(resp.Body).Decode(&validateResp); err != nil {
 		return false, err
 	}
 	if validateResp.Validate {

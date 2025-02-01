@@ -1,10 +1,10 @@
 package variables
 
 import (
-	"encoding/json"
 	"testing"
 	"time"
 
+	"github.com/bytedance/sonic"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v2"
 )
@@ -33,7 +33,7 @@ a6: "123456"`
   "a6": "123456"
 }`
 	variables = Variable{}
-	err = json.Unmarshal([]byte(data), &variables)
+	err = sonic.Unmarshal([]byte(data), &variables)
 	require.NoError(t, err, "could not unmarshal json variables")
 
 	result = variables.Evaluate(map[string]interface{}{"hostname": "google.com"})

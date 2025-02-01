@@ -1,17 +1,17 @@
 package swagger
 
 import (
-	"encoding/json"
 	"io"
 	"os"
 	"path"
 
+	"github.com/bytedance/sonic"
 	"github.com/getkin/kin-openapi/openapi2"
 	"github.com/getkin/kin-openapi/openapi3"
+	"github.com/invopop/yaml"
 	"github.com/pkg/errors"
 	"github.com/projectdiscovery/nuclei/v3/pkg/input/formats"
 	"github.com/projectdiscovery/nuclei/v3/pkg/input/formats/openapi"
-	"github.com/invopop/yaml"
 
 	"github.com/getkin/kin-openapi/openapi2conv"
 )
@@ -56,7 +56,7 @@ func (j *SwaggerFormat) Parse(input string, resultsCb formats.ParseReqRespCallba
 		}
 		err = yaml.Unmarshal(data, schemav2)
 	} else {
-		err = json.NewDecoder(file).Decode(schemav2)
+		err = sonic.ConfigStd.NewDecoder(file).Decode(schemav2)
 	}
 	if err != nil {
 		return errors.Wrap(err, "could not decode openapi 2.0 schema")

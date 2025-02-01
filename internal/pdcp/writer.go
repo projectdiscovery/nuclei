@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"bytes"
 	"context"
-	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -13,6 +12,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/bytedance/sonic"
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/config"
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
@@ -222,7 +222,7 @@ func (u *UploadWriter) upload(data []byte) error {
 		return fmt.Errorf("could not upload results got status code %v on %v", resp.StatusCode, resp.Request.URL.String())
 	}
 	var uploadResp uploadResponse
-	if err := json.Unmarshal(bin, &uploadResp); err != nil {
+	if err := sonic.Unmarshal(bin, &uploadResp); err != nil {
 		return errorutil.NewWithErr(err).Msgf("could not unmarshal response got %v", string(bin))
 	}
 	if uploadResp.ID != "" && u.scanID == "" {

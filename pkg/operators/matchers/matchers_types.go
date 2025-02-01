@@ -1,10 +1,10 @@
 package matchers
 
 import (
-	"encoding/json"
 	"errors"
 	"strings"
 
+	"github.com/bytedance/sonic"
 	"github.com/invopop/jsonschema"
 )
 
@@ -124,7 +124,7 @@ func (holder *MatcherTypeHolder) UnmarshalJSON(data []byte) error {
 }
 
 func (holder MatcherTypeHolder) MarshalJSON() ([]byte, error) {
-	return json.Marshal(holder.MatcherType.String())
+	return sonic.Marshal(holder.MatcherType.String())
 }
 
 func (holder MatcherTypeHolder) MarshalYAML() (interface{}, error) {

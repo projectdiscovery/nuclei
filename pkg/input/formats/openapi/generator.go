@@ -2,7 +2,6 @@ package openapi
 
 import (
 	"bytes"
-	"encoding/json"
 	"fmt"
 	"io"
 	"mime/multipart"
@@ -12,6 +11,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/bytedance/sonic"
 	"github.com/clbanning/mxj/v2"
 	"github.com/getkin/kin-openapi/openapi3"
 	"github.com/pkg/errors"
@@ -276,7 +276,7 @@ func generateRequestsFromOp(opts *generateReqOptions) error {
 			// var body string
 			switch content {
 			case "application/json":
-				if marshalled, err := json.Marshal(example); err == nil {
+				if marshalled, err := sonic.Marshal(example); err == nil {
 					// body = string(marshalled)
 					cloned.Body = io.NopCloser(bytes.NewReader(marshalled))
 					cloned.ContentLength = int64(len(marshalled))

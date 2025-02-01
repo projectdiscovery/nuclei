@@ -1,10 +1,10 @@
 package engine
 
 import (
-	"encoding/json"
 	"errors"
 	"strings"
 
+	"github.com/bytedance/sonic"
 	"github.com/invopop/jsonschema"
 	mapsutil "github.com/projectdiscovery/utils/maps"
 )
@@ -247,7 +247,7 @@ func (holder *ActionTypeHolder) UnmarshalJSON(data []byte) error {
 }
 
 func (holder *ActionTypeHolder) MarshalJSON() ([]byte, error) {
-	return json.Marshal(holder.ActionType.String())
+	return sonic.Marshal(holder.ActionType.String())
 }
 
 func (holder ActionTypeHolder) MarshalYAML() (interface{}, error) {

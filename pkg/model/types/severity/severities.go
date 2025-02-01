@@ -1,10 +1,10 @@
 package severity
 
 import (
-	"encoding/json"
 	"fmt"
 	"strings"
 
+	"github.com/bytedance/sonic"
 	"github.com/projectdiscovery/goflags"
 	"github.com/projectdiscovery/nuclei/v3/pkg/model/types/stringslice"
 )
@@ -53,7 +53,7 @@ func (severities *Severities) UnmarshalYAML(unmarshal func(interface{}) error) e
 
 func (severities *Severities) UnmarshalJSON(data []byte) error {
 	var stringSliceValue stringslice.StringSlice
-	if err := json.Unmarshal(data, &stringSliceValue); err != nil {
+	if err := sonic.Unmarshal(data, &stringSliceValue); err != nil {
 		return err
 	}
 
@@ -81,7 +81,7 @@ func (severities Severities) MarshalJSON() ([]byte, error) {
 	for _, severity := range severities {
 		stringSeverities = append(stringSeverities, severity.String())
 	}
-	return json.Marshal(stringSeverities)
+	return sonic.Marshal(stringSeverities)
 }
 
 func setSeverity(severities *Severities, value string) error {

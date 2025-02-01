@@ -1,12 +1,12 @@
 package fuzz
 
 import (
-	"encoding/json"
 	"fmt"
 	"io"
 	"regexp"
 	"strings"
 
+	"github.com/bytedance/sonic"
 	"github.com/pkg/errors"
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/fuzz/component"
@@ -125,7 +125,7 @@ func (rule *Rule) Execute(input *ExecuteRuleInput) (err error) {
 		finalComponentList = append(finalComponentList, component)
 	}
 	if len(displayDebugFuzzPoints) > 0 {
-		marshalled, _ := json.MarshalIndent(displayDebugFuzzPoints, "", "  ")
+		marshalled, _ := sonic.MarshalIndent(displayDebugFuzzPoints, "", "  ")
 		gologger.Info().Msgf("[%s] Fuzz points for %s [%s]\n%s\n", rule.options.TemplateID, input.Input.MetaInput.Input, input.BaseRequest.Method, string(marshalled))
 	}
 

@@ -1,10 +1,10 @@
 package templates
 
 import (
-	"encoding/json"
 	"fmt"
 	"io"
 
+	"github.com/bytedance/sonic"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/config"
 	"github.com/projectdiscovery/nuclei/v3/pkg/utils"
@@ -115,7 +115,7 @@ func (p *Parser) ParseTemplate(templatePath string, catalog catalog.Catalog) (an
 
 	switch config.GetTemplateFormatFromExt(templatePath) {
 	case config.JSON:
-		err = json.Unmarshal(data, template)
+		err = sonic.Unmarshal(data, template)
 	case config.YAML:
 		if p.NoStrictSyntax {
 			err = yaml.Unmarshal(data, template)

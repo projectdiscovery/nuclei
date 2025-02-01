@@ -1,10 +1,10 @@
 package network
 
 import (
-	"encoding/json"
 	"errors"
 	"strings"
 
+	"github.com/bytedance/sonic"
 	"github.com/invopop/jsonschema"
 )
 
@@ -108,7 +108,7 @@ func (holder *NetworkInputTypeHolder) UnmarshalJSON(data []byte) error {
 }
 
 func (holder *NetworkInputTypeHolder) MarshalJSON() ([]byte, error) {
-	return json.Marshal(holder.NetworkInputType.String())
+	return sonic.Marshal(holder.NetworkInputType.String())
 }
 
 func (holder NetworkInputTypeHolder) MarshalYAML() (interface{}, error) {

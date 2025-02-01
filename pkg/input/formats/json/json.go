@@ -1,10 +1,10 @@
 package json
 
 import (
-	"encoding/json"
 	"io"
 	"os"
 
+	"github.com/bytedance/sonic"
 	"github.com/pkg/errors"
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/input/formats"
@@ -53,7 +53,7 @@ func (j *JSONFormat) Parse(input string, resultsCb formats.ParseReqRespCallback)
 	}
 	defer file.Close()
 
-	decoder := json.NewDecoder(file)
+	decoder := sonic.ConfigStd.NewDecoder(file)
 	for {
 		var request proxifyRequest
 		err := decoder.Decode(&request)

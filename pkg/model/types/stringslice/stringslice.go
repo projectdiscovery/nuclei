@@ -1,10 +1,10 @@
 package stringslice
 
 import (
-	"encoding/json"
 	"fmt"
 	"strings"
 
+	"github.com/bytedance/sonic"
 	"github.com/invopop/jsonschema"
 	"github.com/projectdiscovery/nuclei/v3/pkg/utils"
 )
@@ -83,16 +83,16 @@ func (stringSlice StringSlice) MarshalYAML() (interface{}, error) {
 }
 
 func (stringSlice StringSlice) MarshalJSON() ([]byte, error) {
-	return json.Marshal(stringSlice.Value)
+	return sonic.Marshal(stringSlice.Value)
 }
 
 func (stringSlice *StringSlice) UnmarshalJSON(data []byte) error {
 	var marshalledValueAsString string
 	var marshalledValuesAsSlice []string
 
-	sliceMarshalError := json.Unmarshal(data, &marshalledValuesAsSlice)
+	sliceMarshalError := sonic.Unmarshal(data, &marshalledValuesAsSlice)
 	if sliceMarshalError != nil {
-		stringMarshalError := json.Unmarshal(data, &marshalledValueAsString)
+		stringMarshalError := sonic.Unmarshal(data, &marshalledValueAsString)
 		if stringMarshalError != nil {
 			return stringMarshalError
 		}

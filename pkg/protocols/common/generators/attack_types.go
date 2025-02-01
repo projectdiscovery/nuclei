@@ -1,9 +1,9 @@
 package generators
 
 import (
-	"encoding/json"
 	"strings"
 
+	"github.com/bytedance/sonic"
 	"github.com/invopop/jsonschema"
 	"github.com/pkg/errors"
 )
@@ -103,7 +103,7 @@ func (holder *AttackTypeHolder) UnmarshalJSON(data []byte) error {
 }
 
 func (holder *AttackTypeHolder) MarshalJSON() ([]byte, error) {
-	return json.Marshal(holder.Value.String())
+	return sonic.Marshal(holder.Value.String())
 }
 
 func (holder AttackTypeHolder) MarshalYAML() (interface{}, error) {

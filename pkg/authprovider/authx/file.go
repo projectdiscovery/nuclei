@@ -1,13 +1,13 @@
 package authx
 
 import (
-	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
 	"regexp"
 	"strings"
 
+	"github.com/bytedance/sonic"
 	errorutil "github.com/projectdiscovery/utils/errors"
 	"github.com/projectdiscovery/utils/generic"
 	stringsutil "github.com/projectdiscovery/utils/strings"
@@ -245,7 +245,7 @@ func GetAuthDataFromYAML(data []byte) (*Authx, error) {
 // GetAuthDataFromJSON reads the auth data from json
 func GetAuthDataFromJSON(data []byte) (*Authx, error) {
 	var auth Authx
-	err := json.Unmarshal(data, &auth)
+	err := sonic.Unmarshal(data, &auth)
 	if err != nil {
 		return nil, errorutil.NewWithErr(err).Msgf("could not unmarshal json")
 	}
