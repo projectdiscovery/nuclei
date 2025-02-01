@@ -401,11 +401,11 @@ func (p *Page) NavigateURL(action *Action, out ActionData) error {
 		return errorutil.NewWithTag("headless", "failed to parse url %v while creating http request", url)
 	}
 
-	// // ===== parameter automerge =====
-	// // while merging parameters first preference is given to target params
-	// finalparams := input.Params.Clone()
-	// finalparams.Merge(parsedURL.Params.Encode())
-	// parsedURL.Params = finalparams
+	// ===== parameter automerge =====
+	// while merging parameters first preference is given to target params
+	finalparams := parsedURL.Params.Clone()
+	finalparams.Merge(p.inputURL.Params.Encode())
+	parsedURL.Params = finalparams
 
 	// log all navigated requests
 	p.instance.requestLog[action.GetArg("url")] = parsedURL.String()

@@ -25,6 +25,7 @@ import (
 // Page is a single page in an isolated browser instance
 type Page struct {
 	ctx            *contextargs.Context
+	inputURL       *urlutil.URL
 	options        *Options
 	page           *rod.Page
 	rules          []rule
@@ -91,6 +92,7 @@ func (i *Instance) Run(ctx *contextargs.Context, actions []*Action, payloads map
 		mutex:     &sync.RWMutex{},
 		payloads:  payloads,
 		variables: variables,
+		inputURL:  input,
 	}
 
 	httpclient, err := i.browser.getHTTPClient()
