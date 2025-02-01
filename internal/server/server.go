@@ -104,7 +104,7 @@ func New(options *Options) (*DASTServer, error) {
 		builder.WriteString(" (with token)")
 	}
 	gologger.Info().Msgf("%s", builder.String())
-	gologger.Info().Msgf("Connection URL: %s", server.buildURL("/requests"))
+	gologger.Info().Msgf("Connection URL: %s", server.buildURL("/fuzz"))
 	gologger.Info().Msgf("Stats UI URL: %s", server.buildURL("/stats"))
 
 	return server, nil
@@ -169,9 +169,9 @@ func (s *DASTServer) setupHandlers(onlyStats bool) {
 	}
 
 	e.HideBanner = true
-	// POST /requests - Queue a request for fuzzing
+	// POST /fuzz - Queue a request for fuzzing
 	if !onlyStats {
-		e.POST("/requests", s.handleRequest)
+		e.POST("/fuzz", s.handleRequest)
 	}
 	e.GET("/stats", s.handleStats)
 	e.GET("/stats.json", s.handleStatsJSON)
@@ -186,7 +186,7 @@ func (s *DASTServer) Start() error {
 	return nil
 }
 
-// PostReuestsHandlerRequest is the request body for the /requests POST handler.
+// PostReuestsHandlerRequest is the request body for the /fuzz POST handler.
 type PostRequestsHandlerRequest struct {
 	RawHTTP string `json:"raw_http"`
 	URL     string `json:"url"`
@@ -247,7 +247,7 @@ func (s *DASTServer) getStats() (StatsResponse, error) {
 		DASTServerInfo: DASTServerInfo{
 			NucleiVersion:         config.Version,
 			NucleiTemplateVersion: cfg.TemplateVersion,
-			NucleiDastServerAPI:   s.buildURL("/requests"),
+			NucleiDastServerAPI:   s.buildURL("/fuzz"),
 			ServerAuthEnabled:     s.options.Token != "",
 		},
 		DASTScanStartTime: s.startTime,
