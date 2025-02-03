@@ -39,7 +39,7 @@ require (
 	github.com/xanzy/go-gitlab v0.107.0
 	go.uber.org/multierr v1.11.0
 	golang.org/x/net v0.34.0
-	golang.org/x/oauth2 v0.22.0
+	golang.org/x/oauth2 v0.25.0
 	golang.org/x/text v0.21.0
 	gopkg.in/yaml.v2 v2.4.0
 )
