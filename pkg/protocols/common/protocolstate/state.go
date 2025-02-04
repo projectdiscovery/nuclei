@@ -43,6 +43,10 @@ func Init(options *types.Options) error {
 
 	lfaAllowed = options.AllowLocalFileAccess
 	opts := fastdialer.DefaultOptions
+	if options.DisableDefaultResolvers {
+		opts.HostsFile = false
+		opts.ResolversFile = false
+	}
 	opts.DialerTimeout = options.GetTimeouts().DialTimeout
 	if options.DialerKeepAlive > 0 {
 		opts.DialerKeepAlive = options.DialerKeepAlive
@@ -134,6 +138,7 @@ func Init(options *types.Options) error {
 	if options.SystemResolvers {
 		opts.ResolversFile = true
 		opts.EnableFallback = true
+		opts.HostsFile = true
 	}
 	if len(options.InternalResolversList) > 0 {
 		opts.BaseResolvers = options.InternalResolversList
