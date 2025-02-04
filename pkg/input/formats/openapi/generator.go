@@ -235,7 +235,7 @@ func generateRequestsFromOp(opts *generateReqOptions) error {
 					// if it is in path then remove it from path
 					opts.requestPath = strings.Replace(opts.requestPath, fmt.Sprintf("{%s}", value.Name), "", -1)
 					if !opts.opts.RequiredOnly {
-						gologger.Verbose().Msgf("openapi: skipping optinal param (%s) in (%v) in request [%s] %s due to missing value (%v)\n", value.Name, value.In, opts.method, opts.requestPath, value.Name)
+						gologger.Verbose().Msgf("openapi: skipping optional param (%s) in (%v) in request [%s] %s due to missing value (%v)\n", value.Name, value.In, opts.method, opts.requestPath, value.Name)
 					}
 					continue
 				}
