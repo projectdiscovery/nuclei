@@ -1,6 +1,7 @@
 package loader
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 	"net/url"
@@ -9,6 +10,7 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/alecthomas/chroma/quick"
 	"github.com/logrusorgru/aurora"
 	"github.com/pkg/errors"
 	"github.com/projectdiscovery/gologger"
@@ -50,6 +52,7 @@ type Config struct {
 	ExcludeTemplates         []string
 	IncludeTemplates         []string
 	RemoteTemplateDomainList []string
+	AITemplatePrompt         string
 
 	Tags              []string
 	ExcludeTags       []string
@@ -84,6 +87,9 @@ type Store struct {
 	// NotFoundCallback is called for each not found template
 	// This overrides error handling for not found templates
 	NotFoundCallback func(template string) bool
+
+	// tempDir is the temporary directory used for AI templates
+	tempDir string
 }
 
 // NewConfig returns a new loader config
@@ -109,6 +115,7 @@ func NewConfig(options *types.Options, catalog catalog.Catalog, executerOpts pro
 		IncludeConditions:        options.IncludeConditions,
 		Catalog:                  catalog,
 		ExecutorOptions:          executerOpts,
+		AITemplatePrompt:         options.AITemplatePrompt,
 	}
 	loaderConfig.RemoteTemplateDomainList = append(loaderConfig.RemoteTemplateDomainList, TrustedTemplateDomains...)
 	return &loaderConfig
@@ -133,7 +140,6 @@ func New(cfg *Config) (*Store, error) {
 		return nil, err
 	}
 
-	// Create a tag filter based on provided configuration
 	store := &Store{
 		id:        cfg.StoreId,
 		config:    cfg,
@@ -142,15 +148,17 @@ func New(cfg *Config) (*Store, error) {
 			IncludedTemplates: cfg.IncludeTemplates,
 			ExcludedTemplates: cfg.ExcludeTemplates,
 		}, cfg.Catalog),
-		finalTemplates: cfg.Templates,
-		finalWorkflows: cfg.Workflows,
+		finalTemplates: []string{},
+		finalWorkflows: []string{},
 	}
 
-	// Do a check to see if we have URLs in templates flag, if so
-	// we need to processs them separately and remove them from the initial list
+	// Process template flags first
+	store.finalTemplates = cfg.Templates
+	store.finalWorkflows = cfg.Workflows
+
+	// Do a check to see if we have URLs in templates flag
 	var templatesFinal []string
 	for _, template := range cfg.Templates {
-		// TODO: Add and replace this with urlutil.IsURL() helper
 		if stringsutil.HasPrefixAny(template, httpPrefix, httpsPrefix) {
 			cfg.TemplateURLs = append(cfg.TemplateURLs, template)
 		} else {
@@ -164,7 +172,6 @@ func New(cfg *Config) (*Store, error) {
 		if _, err := urlutil.Parse(v); err == nil {
 			remoteTemplates = append(remoteTemplates, handleTemplatesEditorURLs(v))
 		} else {
-
 			templatesFinal = append(templatesFinal, v) // something went wrong, treat it as a file
 		}
 	}
@@ -181,6 +188,41 @@ func New(cfg *Config) (*Store, error) {
 		store.finalWorkflows = append(store.finalWorkflows, remoteWorkflows...)
 	}
 
+	// Handle AI template generation if prompt is provided
+	if len(cfg.AITemplatePrompt) > 0 {
+		aiTemplates, tempDir, err := getAIGeneratedTemplates(cfg.AITemplatePrompt)
+		if err != nil {
+			return nil, err
+		}
+		store.tempDir = tempDir
+		store.finalTemplates = append(store.finalTemplates, aiTemplates...)
+
+		// If no target is provided and only AI template is requested, display the template content
+		if len(cfg.ExecutorOptions.Options.Targets) == 0 && len(cfg.ExecutorOptions.Options.TargetsFilePath) == 0 {
+			// Read the generated template
+			templateContent, err := os.ReadFile(aiTemplates[0])
+			if err != nil {
+				return nil, err
+			}
+			// Display the template content with syntax highlighting
+			if !cfg.ExecutorOptions.Options.NoColor {
+				var buf bytes.Buffer
+				err = quick.Highlight(&buf, string(templateContent), "yaml", "terminal16m", "monokai")
+				if err == nil {
+					templateContent = buf.Bytes()
+				}
+			}
+			gologger.Silent().Msgf("Template: %s\n\n%s", aiTemplates[0], string(templateContent))
+			os.Exit(0)
+		}
+		
+		// If no other template flags are provided, return early to only run AI template
+		if len(cfg.Templates) == 0 && len(cfg.Workflows) == 0 && len(cfg.Tags) == 0 && 
+		   len(cfg.Authors) == 0 && len(cfg.IncludeIds) == 0 && len(cfg.TemplateURLs) == 0 {
+			return store, nil
+		}
+	}
+
 	// Handle a dot as the current working directory
 	if len(store.finalTemplates) == 1 && store.finalTemplates[0] == "." {
 		currentDirectory, err := os.Getwd()
@@ -189,8 +231,9 @@ func New(cfg *Config) (*Store, error) {
 		}
 		store.finalTemplates = []string{currentDirectory}
 	}
+
 	// Handle a case with no templates or workflows, where we use base directory
-	if len(store.finalTemplates) == 0 && len(store.finalWorkflows) == 0 && !urlBasedTemplatesProvided {
+	if len(store.finalTemplates) == 0 && len(store.finalWorkflows) == 0 && !urlBasedTemplatesProvided && len(cfg.AITemplatePrompt) == 0 {
 		store.finalTemplates = []string{config.DefaultConfig.TemplatesDirectory}
 	}
 
@@ -381,8 +424,8 @@ func (store *Store) areWorkflowOrTemplatesValid(filteredTemplatePaths map[string
 			// `ErrGlobalMatchersTemplate` during `templates.Parse` and checking it
 			// with `errors.Is`.
 			//
-			// However, I’m not sure if every reference to it should be handled
-			// that way. Returning a `templates.Template` pointer would mean it’s
+			// However, I'm not sure if every reference to it should be handled
+			// that way. Returning a `templates.Template` pointer would mean it's
 			// an active template (sending requests), and adding a specific field
 			// like `isGlobalMatchers` in `templates.Template` (then checking it
 			// with a `*templates.Template.IsGlobalMatchersEnabled` method) would
@@ -631,5 +674,13 @@ func (s *Store) logErroredTemplates(erred map[string]error) {
 		if s.NotFoundCallback == nil || !s.NotFoundCallback(template) {
 			gologger.Error().Msgf("Could not find template '%s': %s", template, err)
 		}
+	}
+}
+
+// Cleanup cleans up any temporary files created by the store
+func (store *Store) Cleanup() {
+	if store.tempDir != "" {
+		os.RemoveAll(store.tempDir)
+		store.tempDir = ""
 	}
 }
