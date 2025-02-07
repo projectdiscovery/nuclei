@@ -24,6 +24,6 @@ type Encoder = sonic.Encoder
 type Decoder = sonic.Decoder
 
 // SetConfig sets the configuration for the JSON package.
-func SetConfig(config *Config) {
+func SetConfig(config *sonic.Config) {
 	api = config.Froze()
 }
