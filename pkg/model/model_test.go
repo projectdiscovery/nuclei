@@ -31,7 +31,7 @@ func TestInfoJsonMarshal(t *testing.T) {
 	result, err := json.Marshal(&info)
 	require.Nil(t, err)
 
-	expected := `{"name":"Test Template Name","author":["forgedhallpass","ice3man"],"tags":["cve","misc"],"description":"Test description","reference":"Reference1","severity":"high","metadata":{"string_key":"string_value","array_key":["array_value1","array_value2"],"map_key":{"key1":"val1"}}}`
+	expected := `{"name":"Test Template Name","author":["forgedhallpass","ice3man"],"tags":["cve","misc"],"description":"Test description","reference":"Reference1","severity":"high","metadata":{"array_key":["array_value1","array_value2"],"map_key":{"key1":"val1"},"string_key":"string_value"}}`
 	require.Equal(t, expected, string(result))
 }
 
