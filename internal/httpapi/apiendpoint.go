@@ -4,9 +4,9 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/bytedance/sonic"
 	"github.com/projectdiscovery/nuclei/v3/pkg/js/compiler"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
+	"github.com/projectdiscovery/nuclei/v3/pkg/utils/json"
 )
 
 type Concurrency struct {
@@ -66,7 +66,7 @@ func (s *Server) getSettings(w http.ResponseWriter, _ *http.Request) {
 		JavascriptConcurrency: compiler.PoolingJsVmConcurrency,
 	}
 	w.Header().Set("Content-Type", "application/json")
-	if err := sonic.ConfigStd.NewEncoder(w).Encode(concurrencySettings); err != nil {
+	if err := json.NewEncoder(w).Encode(concurrencySettings); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -75,7 +75,7 @@ func (s *Server) getSettings(w http.ResponseWriter, _ *http.Request) {
 // UpdateSettings handles PUT requests to update the concurrency settings
 func (s *Server) updateSettings(w http.ResponseWriter, r *http.Request) {
 	var newSettings Concurrency
-	if err := sonic.ConfigStd.NewDecoder(r.Body).Decode(&newSettings); err != nil {
+	if err := json.NewDecoder(r.Body).Decode(&newSettings); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}

@@ -13,11 +13,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/bytedance/sonic"
 	"github.com/julienschmidt/httprouter"
 	"gopkg.in/yaml.v2"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/testutils"
+	"github.com/projectdiscovery/nuclei/v3/pkg/utils/json"
 	"github.com/projectdiscovery/retryablehttp-go"
 	errorutil "github.com/projectdiscovery/utils/errors"
 	logutil "github.com/projectdiscovery/utils/log"
@@ -480,7 +480,7 @@ func (h *httpPostJSONBody) Execute(filePath string) error {
 			Password string `json:"password"`
 		}
 		obj := &doc{}
-		if err := sonic.ConfigStd.NewDecoder(r.Body).Decode(obj); err != nil {
+		if err := json.NewDecoder(r.Body).Decode(obj); err != nil {
 			routerErr = err
 			return
 		}

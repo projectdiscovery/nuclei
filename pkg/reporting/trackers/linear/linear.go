@@ -8,7 +8,6 @@ import (
 	"io"
 	"net/http"
 
-	"github.com/bytedance/sonic"
 	"github.com/shurcooL/graphql"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/model/types/severity"
@@ -18,6 +17,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/reporting/trackers/filters"
 	"github.com/projectdiscovery/nuclei/v3/pkg/reporting/trackers/linear/jsonutil"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
+	"github.com/projectdiscovery/nuclei/v3/pkg/utils/json"
 	"github.com/projectdiscovery/retryablehttp-go"
 )
 
@@ -371,7 +371,7 @@ func (i *Integration) doGraphqlRequest(ctx context.Context, query string, v any,
 	}
 
 	var buf bytes.Buffer
-	err := sonic.ConfigStd.NewEncoder(&buf).Encode(in)
+	err := json.NewEncoder(&buf).Encode(in)
 	if err != nil {
 		return err
 	}
@@ -390,12 +390,12 @@ func (i *Integration) doGraphqlRequest(ctx context.Context, query string, v any,
 		return fmt.Errorf("non-200 OK status code: %v body: %q", resp.Status, body)
 	}
 	var out struct {
-		Data   *sonic.NoCopyRawMessage
+		Data   *json.Message
 		Errors errorsGraphql
 		//Extensions any // Unused.
 	}
 
-	err = sonic.ConfigStd.NewDecoder(resp.Body).Decode(&out)
+	err = json.NewDecoder(resp.Body).Decode(&out)
 	if err != nil {
 		return err
 	}

@@ -4,11 +4,11 @@ import (
 	"io"
 	"os"
 
-	"github.com/bytedance/sonic"
 	"github.com/pkg/errors"
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/input/formats"
 	"github.com/projectdiscovery/nuclei/v3/pkg/input/types"
+	"github.com/projectdiscovery/nuclei/v3/pkg/utils/json"
 )
 
 // JSONFormat is a JSON format parser for nuclei
@@ -53,7 +53,7 @@ func (j *JSONFormat) Parse(input string, resultsCb formats.ParseReqRespCallback)
 	}
 	defer file.Close()
 
-	decoder := sonic.ConfigStd.NewDecoder(file)
+	decoder := json.NewDecoder(file)
 	for {
 		var request proxifyRequest
 		err := decoder.Decode(&request)

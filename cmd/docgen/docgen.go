@@ -8,10 +8,10 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/bytedance/sonic"
 	"github.com/invopop/jsonschema"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/templates"
+	"github.com/projectdiscovery/nuclei/v3/pkg/utils/json"
 )
 
 var pathRegex = regexp.MustCompile(`github\.com/projectdiscovery/nuclei/v3/(?:internal|pkg)/(?:.*/)?([A-Za-z.]+)`)
@@ -43,7 +43,7 @@ func main() {
 	jsonschemaData := r.Reflect(&templates.Template{})
 
 	var buf bytes.Buffer
-	encoder := sonic.ConfigStd.NewEncoder(&buf)
+	encoder := json.NewEncoder(&buf)
 	encoder.SetIndent("", "  ")
 	_ = encoder.Encode(jsonschemaData)
 

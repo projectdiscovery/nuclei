@@ -7,9 +7,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/bytedance/sonic"
 	"github.com/projectdiscovery/clistats"
 	"github.com/projectdiscovery/gologger"
+	"github.com/projectdiscovery/nuclei/v3/pkg/utils/json"
 )
 
 // Progress is an interface implemented by nuclei progress display
@@ -212,7 +212,7 @@ func (p *StatsTicker) makePrintCallback() func(stats clistats.StatisticsClient) 
 
 func printCallbackJSON(stats clistats.StatisticsClient) interface{} {
 	builder := &strings.Builder{}
-	if err := sonic.ConfigStd.NewEncoder(builder).Encode(metricsMap(stats)); err == nil {
+	if err := json.NewEncoder(builder).Encode(metricsMap(stats)); err == nil {
 		fmt.Fprintf(os.Stderr, "%s", builder.String())
 	}
 	return builder.String()
