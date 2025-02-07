@@ -4,9 +4,9 @@ import (
 	"os"
 	"sync"
 
-	"github.com/bytedance/sonic"
 	"github.com/pkg/errors"
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
+	"github.com/projectdiscovery/nuclei/v3/pkg/utils/json"
 )
 
 type Exporter struct {
@@ -56,7 +56,7 @@ func (exporter *Exporter) Close() error {
 	defer exporter.mutex.Unlock()
 
 	// Convert the rows to JSON byte array
-	obj, err := sonic.Marshal(exporter.rows)
+	obj, err := json.Marshal(exporter.rows)
 	if err != nil {
 		return errors.Wrap(err, "failed to generate JSON report")
 	}

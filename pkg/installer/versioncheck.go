@@ -6,9 +6,9 @@ import (
 	"os"
 	"sync"
 
-	"github.com/bytedance/sonic"
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/config"
+	"github.com/projectdiscovery/nuclei/v3/pkg/utils/json"
 	"github.com/projectdiscovery/retryablehttp-go"
 	updateutils "github.com/projectdiscovery/utils/update"
 )
@@ -98,7 +98,7 @@ func doVersionCheck(isSDK bool) error {
 		return err
 	}
 	var pdtmResp PdtmAPIResponse
-	if err := sonic.Unmarshal(bin, &pdtmResp); err != nil {
+	if err := json.Unmarshal(bin, &pdtmResp); err != nil {
 		return err
 	}
 	var nucleiversion, templateversion string

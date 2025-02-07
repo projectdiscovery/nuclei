@@ -4,11 +4,11 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/bytedance/sonic"
 	"github.com/invopop/jsonschema"
 	"github.com/pkg/errors"
 	"github.com/projectdiscovery/goflags"
 	"github.com/projectdiscovery/nuclei/v3/pkg/model/types/stringslice"
+	"github.com/projectdiscovery/nuclei/v3/pkg/utils/json"
 )
 
 // ProtocolType is the type of the request protocol specified
@@ -132,7 +132,7 @@ func (holder *TypeHolder) UnmarshalYAML(unmarshal func(interface{}) error) error
 }
 
 func (holder *TypeHolder) MarshalJSON() ([]byte, error) {
-	return sonic.Marshal(holder.ProtocolType.String())
+	return json.Marshal(holder.ProtocolType.String())
 }
 
 func (holder TypeHolder) MarshalYAML() (interface{}, error) {
@@ -177,7 +177,7 @@ func (protocolTypes ProtocolTypes) MarshalJSON() ([]byte, error) {
 	for _, protocol := range protocolTypes {
 		stringProtocols = append(stringProtocols, protocol.String())
 	}
-	return sonic.Marshal(stringProtocols)
+	return json.Marshal(stringProtocols)
 }
 
 func (protocolTypes ProtocolTypes) String() string {

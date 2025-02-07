@@ -11,7 +11,6 @@ import (
 	"os"
 	"strings"
 
-	"github.com/bytedance/sonic"
 	"github.com/clbanning/mxj/v2"
 	"github.com/getkin/kin-openapi/openapi3"
 	"github.com/pkg/errors"
@@ -20,6 +19,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/input/formats"
 	httpTypes "github.com/projectdiscovery/nuclei/v3/pkg/input/types"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
+	"github.com/projectdiscovery/nuclei/v3/pkg/utils/json"
 	errorutil "github.com/projectdiscovery/utils/errors"
 	"github.com/projectdiscovery/utils/generic"
 	mapsutil "github.com/projectdiscovery/utils/maps"
@@ -276,7 +276,7 @@ func generateRequestsFromOp(opts *generateReqOptions) error {
 			// var body string
 			switch content {
 			case "application/json":
-				if marshalled, err := sonic.Marshal(example); err == nil {
+				if marshalled, err := json.Marshal(example); err == nil {
 					// body = string(marshalled)
 					cloned.Body = io.NopCloser(bytes.NewReader(marshalled))
 					cloned.ContentLength = int64(len(marshalled))

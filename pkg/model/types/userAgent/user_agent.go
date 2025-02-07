@@ -3,9 +3,9 @@ package userAgent
 import (
 	"strings"
 
-	"github.com/bytedance/sonic"
 	"github.com/invopop/jsonschema"
 	"github.com/pkg/errors"
+	"github.com/projectdiscovery/nuclei/v3/pkg/utils/json"
 )
 
 type UserAgent int
@@ -101,7 +101,7 @@ func (userAgentHolder *UserAgentHolder) UnmarshalJSON(data []byte) error {
 }
 
 func (userAgentHolder *UserAgentHolder) MarshalJSON() ([]byte, error) {
-	return sonic.Marshal(userAgentHolder.Value.String())
+	return json.Marshal(userAgentHolder.Value.String())
 }
 
 func (userAgentHolder UserAgentHolder) MarshalYAML() (interface{}, error) {

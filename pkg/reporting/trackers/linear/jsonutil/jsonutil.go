@@ -13,7 +13,7 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/bytedance/sonic"
+	sonic "github.com/projectdiscovery/nuclei/v3/pkg/utils/json"
 )
 
 // UnmarshalGraphQL parses the JSON-encoded GraphQL response data and stores

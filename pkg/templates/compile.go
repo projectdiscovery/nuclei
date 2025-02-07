@@ -8,7 +8,6 @@ import (
 	"sync"
 	"sync/atomic"
 
-	"github.com/bytedance/sonic"
 	"github.com/logrusorgru/aurora"
 	"github.com/pkg/errors"
 	"gopkg.in/yaml.v2"
@@ -25,6 +24,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/templates/signer"
 	"github.com/projectdiscovery/nuclei/v3/pkg/tmplexec"
 	"github.com/projectdiscovery/nuclei/v3/pkg/utils"
+	"github.com/projectdiscovery/nuclei/v3/pkg/utils/json"
 	errorutil "github.com/projectdiscovery/utils/errors"
 	stringsutil "github.com/projectdiscovery/utils/strings"
 )
@@ -358,7 +358,7 @@ func parseTemplate(data []byte, options protocols.ExecutorOptions) (*Template, e
 	var err error
 	switch config.GetTemplateFormatFromExt(template.Path) {
 	case config.JSON:
-		err = sonic.Unmarshal(data, template)
+		err = json.Unmarshal(data, template)
 	case config.YAML:
 		err = yaml.Unmarshal(data, template)
 	default:

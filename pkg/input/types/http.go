@@ -4,14 +4,13 @@ import (
 	"bufio"
 	"bytes"
 	"crypto/sha256"
-	"encoding/json"
 	"fmt"
 	"io"
 	"net/textproto"
 	"strings"
 	"sync"
 
-	"github.com/bytedance/sonic"
+	"github.com/projectdiscovery/nuclei/v3/pkg/utils/json"
 	"github.com/projectdiscovery/retryablehttp-go"
 	"github.com/projectdiscovery/useragent"
 	"github.com/projectdiscovery/utils/conversion"
@@ -20,8 +19,7 @@ import (
 )
 
 var (
-	_ json.Marshaler   = &RequestResponse{}
-	_ json.Unmarshaler = &RequestResponse{}
+	_ json.JSONCodec = &RequestResponse{}
 )
 
 // RequestResponse is a struct containing request and response
@@ -105,23 +103,23 @@ func (rr *RequestResponse) ID() string {
 func (rr *RequestResponse) MarshalJSON() ([]byte, error) {
 	m := make(map[string]interface{})
 	m["url"] = rr.URL.String()
-	reqBin, err := sonic.Marshal(rr.Request)
+	reqBin, err := json.Marshal(rr.Request)
 	if err != nil {
 		return nil, err
 	}
 	m["request"] = reqBin
-	respBin, err := sonic.Marshal(rr.Response)
+	respBin, err := json.Marshal(rr.Response)
 	if err != nil {
 		return nil, err
 	}
 	m["response"] = respBin
-	return sonic.Marshal(m)
+	return json.Marshal(m)
 }
 
 // UnmarshalJSON unmarshals the request response from json
 func (rr *RequestResponse) UnmarshalJSON(data []byte) error {
-	var m map[string]sonic.NoCopyRawMessage
-	if err := sonic.Unmarshal(data, &m); err != nil {
+	var m map[string]json.Message
+	if err := json.Unmarshal(data, &m); err != nil {
 		return err
 	}
 	urlStrRaw, ok := m["url"]
@@ -129,7 +127,7 @@ func (rr *RequestResponse) UnmarshalJSON(data []byte) error {
 		return fmt.Errorf("missing url in request response")
 	}
 	var urlStr string
-	if err := sonic.Unmarshal(urlStrRaw, &urlStr); err != nil {
+	if err := json.Unmarshal(urlStrRaw, &urlStr); err != nil {
 		return err
 	}
 	parsed, err := urlutil.ParseAbsoluteURL(urlStr, false)
@@ -141,7 +139,7 @@ func (rr *RequestResponse) UnmarshalJSON(data []byte) error {
 	reqBin, ok := m["request"]
 	if ok {
 		var req HttpRequest
-		if err := sonic.Unmarshal(reqBin, &req); err != nil {
+		if err := json.Unmarshal(reqBin, &req); err != nil {
 			return err
 		}
 		rr.Request = &req
@@ -150,7 +148,7 @@ func (rr *RequestResponse) UnmarshalJSON(data []byte) error {
 	respBin, ok := m["response"]
 	if ok {
 		var resp HttpResponse
-		if err := sonic.Unmarshal(respBin, &resp); err != nil {
+		if err := json.Unmarshal(respBin, &resp); err != nil {
 			return err
 		}
 		rr.Response = &resp

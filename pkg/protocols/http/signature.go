@@ -3,11 +3,11 @@ package http
 import (
 	"strings"
 
-	"github.com/bytedance/sonic"
 	"github.com/invopop/jsonschema"
 	"github.com/pkg/errors"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http/signer"
+	"github.com/projectdiscovery/nuclei/v3/pkg/utils/json"
 )
 
 // SignatureType is the type of signature
@@ -93,7 +93,7 @@ func (holder *SignatureTypeHolder) UnmarshalJSON(data []byte) error {
 }
 
 func (holder SignatureTypeHolder) MarshalJSON() ([]byte, error) {
-	return sonic.Marshal(holder.Value.String())
+	return json.Marshal(holder.Value.String())
 }
 
 func (holder SignatureTypeHolder) MarshalYAML() (interface{}, error) {

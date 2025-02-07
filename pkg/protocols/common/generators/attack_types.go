@@ -3,9 +3,9 @@ package generators
 import (
 	"strings"
 
-	"github.com/bytedance/sonic"
 	"github.com/invopop/jsonschema"
 	"github.com/pkg/errors"
+	"github.com/projectdiscovery/nuclei/v3/pkg/utils/json"
 )
 
 // AttackType is the type of attack for payloads
@@ -103,7 +103,7 @@ func (holder *AttackTypeHolder) UnmarshalJSON(data []byte) error {
 }
 
 func (holder *AttackTypeHolder) MarshalJSON() ([]byte, error) {
-	return sonic.Marshal(holder.Value.String())
+	return json.Marshal(holder.Value.String())
 }
 
 func (holder AttackTypeHolder) MarshalYAML() (interface{}, error) {

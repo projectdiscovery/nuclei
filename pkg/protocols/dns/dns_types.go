@@ -4,8 +4,8 @@ import (
 	"errors"
 	"strings"
 
-	"github.com/bytedance/sonic"
 	"github.com/invopop/jsonschema"
+	"github.com/projectdiscovery/nuclei/v3/pkg/utils/json"
 )
 
 // DNSRequestType is the type of the method specified
@@ -137,7 +137,7 @@ func (holder *DNSRequestTypeHolder) UnmarshalJSON(data []byte) error {
 }
 
 func (holder *DNSRequestTypeHolder) MarshalJSON() ([]byte, error) {
-	return sonic.Marshal(holder.DNSRequestType.String())
+	return json.Marshal(holder.DNSRequestType.String())
 }
 
 func (holder DNSRequestTypeHolder) MarshalYAML() (interface{}, error) {

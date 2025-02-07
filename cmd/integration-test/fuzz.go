@@ -6,10 +6,10 @@ import (
 	"net/http/httptest"
 	"net/url"
 
-	"github.com/bytedance/sonic"
 	"github.com/julienschmidt/httprouter"
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
 	"github.com/projectdiscovery/nuclei/v3/pkg/testutils"
+	"github.com/projectdiscovery/nuclei/v3/pkg/utils/json"
 )
 
 const (
@@ -87,7 +87,7 @@ func (h *fuzzModeOverride) Execute(filePath string) error {
 		return err
 	}
 	var event output.ResultEvent
-	err = sonic.Unmarshal([]byte(results[0]), &event)
+	err = json.Unmarshal([]byte(results[0]), &event)
 	if err != nil {
 		return fmt.Errorf("could not unmarshal event: %s", err)
 	}
@@ -132,7 +132,7 @@ func (h *fuzzTypeOverride) Execute(filePath string) error {
 		return err
 	}
 	var event output.ResultEvent
-	err = sonic.Unmarshal([]byte(results[0]), &event)
+	err = json.Unmarshal([]byte(results[0]), &event)
 	if err != nil {
 		return fmt.Errorf("could not unmarshal event: %s", err)
 	}

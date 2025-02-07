@@ -4,9 +4,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/bytedance/sonic"
 	"github.com/projectdiscovery/nuclei/v3/pkg/model/types/severity"
 	"github.com/projectdiscovery/nuclei/v3/pkg/model/types/stringslice"
+	"github.com/projectdiscovery/nuclei/v3/pkg/utils/json"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v2"
 )
@@ -28,7 +28,7 @@ func TestInfoJsonMarshal(t *testing.T) {
 		},
 	}
 
-	result, err := sonic.Marshal(&info)
+	result, err := json.Marshal(&info)
 	require.Nil(t, err)
 
 	expected := `{"name":"Test Template Name","author":["forgedhallpass","ice3man"],"tags":["cve","misc"],"description":"Test description","reference":"Reference1","severity":"high","metadata":{"string_key":"string_value","array_key":["array_value1","array_value2"],"map_key":{"key1":"val1"}}}`

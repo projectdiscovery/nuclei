@@ -4,8 +4,8 @@ import (
 	"errors"
 	"strings"
 
-	"github.com/bytedance/sonic"
 	"github.com/invopop/jsonschema"
+	"github.com/projectdiscovery/nuclei/v3/pkg/utils/json"
 )
 
 // MatcherType is the type of the matcher specified
@@ -124,7 +124,7 @@ func (holder *MatcherTypeHolder) UnmarshalJSON(data []byte) error {
 }
 
 func (holder MatcherTypeHolder) MarshalJSON() ([]byte, error) {
-	return sonic.Marshal(holder.MatcherType.String())
+	return json.Marshal(holder.MatcherType.String())
 }
 
 func (holder MatcherTypeHolder) MarshalYAML() (interface{}, error) {

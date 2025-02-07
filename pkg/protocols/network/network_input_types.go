@@ -4,8 +4,8 @@ import (
 	"errors"
 	"strings"
 
-	"github.com/bytedance/sonic"
 	"github.com/invopop/jsonschema"
+	"github.com/projectdiscovery/nuclei/v3/pkg/utils/json"
 )
 
 // NetworkInputType is the type of the network input specified
@@ -108,7 +108,7 @@ func (holder *NetworkInputTypeHolder) UnmarshalJSON(data []byte) error {
 }
 
 func (holder *NetworkInputTypeHolder) MarshalJSON() ([]byte, error) {
-	return sonic.Marshal(holder.NetworkInputType.String())
+	return json.Marshal(holder.NetworkInputType.String())
 }
 
 func (holder NetworkInputTypeHolder) MarshalYAML() (interface{}, error) {

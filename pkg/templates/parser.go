@@ -4,10 +4,10 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/bytedance/sonic"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/config"
 	"github.com/projectdiscovery/nuclei/v3/pkg/utils"
+	"github.com/projectdiscovery/nuclei/v3/pkg/utils/json"
 	"github.com/projectdiscovery/nuclei/v3/pkg/utils/stats"
 	yamlutil "github.com/projectdiscovery/nuclei/v3/pkg/utils/yaml"
 	fileutil "github.com/projectdiscovery/utils/file"
@@ -115,7 +115,7 @@ func (p *Parser) ParseTemplate(templatePath string, catalog catalog.Catalog) (an
 
 	switch config.GetTemplateFormatFromExt(templatePath) {
 	case config.JSON:
-		err = sonic.Unmarshal(data, template)
+		err = json.Unmarshal(data, template)
 	case config.YAML:
 		if p.NoStrictSyntax {
 			err = yaml.Unmarshal(data, template)

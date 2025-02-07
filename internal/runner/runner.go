@@ -12,7 +12,6 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/bytedance/sonic"
 	"github.com/projectdiscovery/nuclei/v3/internal/pdcp"
 	"github.com/projectdiscovery/nuclei/v3/pkg/authprovider"
 	"github.com/projectdiscovery/nuclei/v3/pkg/fuzz/frequency"
@@ -20,6 +19,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/installer"
 	"github.com/projectdiscovery/nuclei/v3/pkg/loader/parser"
 	"github.com/projectdiscovery/nuclei/v3/pkg/scan/events"
+	"github.com/projectdiscovery/nuclei/v3/pkg/utils/json"
 	uncoverlib "github.com/projectdiscovery/uncover"
 	pdcpauth "github.com/projectdiscovery/utils/auth/pdcp"
 	"github.com/projectdiscovery/utils/env"
@@ -288,7 +288,7 @@ func New(options *types.Options) (*Runner, error) {
 		if err != nil {
 			return nil, err
 		}
-		err = sonic.Unmarshal(file, &resumeCfg)
+		err = json.Unmarshal(file, &resumeCfg)
 		if err != nil {
 			return nil, err
 		}
@@ -795,7 +795,7 @@ func (r *Runner) SaveResumeConfig(path string) error {
 	}
 	resumeCfgClone := r.resumeCfg.Clone()
 	resumeCfgClone.ResumeFrom = resumeCfgClone.Current
-	data, _ := sonic.MarshalIndent(resumeCfgClone, "", "\t")
+	data, _ := json.MarshalIndent(resumeCfgClone, "", "\t")
 
 	return os.WriteFile(path, data, permissionutil.ConfigFilePermission)
 }
@@ -830,7 +830,7 @@ func UploadResultsToCloud(options *types.Options) error {
 	defer file.Close()
 
 	gologger.Info().Msgf("Uploading scan results to cloud dashboard from %s", options.ScanUploadFile)
-	dec := sonic.ConfigStd.NewDecoder(file)
+	dec := json.NewDecoder(file)
 	for dec.More() {
 		var r output.ResultEvent
 		err := dec.Decode(&r)

@@ -1,18 +1,16 @@
 package fuzz
 
 import (
-	"encoding/json"
 	"fmt"
 
-	"github.com/bytedance/sonic"
 	"github.com/invopop/jsonschema"
+	"github.com/projectdiscovery/nuclei/v3/pkg/utils/json"
 	mapsutil "github.com/projectdiscovery/utils/maps"
 	"gopkg.in/yaml.v2"
 )
 
 var (
-	_ json.Marshaler   = &SliceOrMapSlice{}
-	_ json.Unmarshaler = &SliceOrMapSlice{}
+	_ json.JSONCodec   = &SliceOrMapSlice{}
 	_ yaml.Marshaler   = &SliceOrMapSlice{}
 	_ yaml.Unmarshaler = &SliceOrMapSlice{}
 )
@@ -71,25 +69,25 @@ func (v SliceOrMapSlice) JSONSchema() *jsonschema.Schema {
 	return gotType
 }
 
-// UnmarshalJSON implements sonic.Unmarshaler interface.
+// UnmarshalJSON implements json.Unmarshaler interface.
 func (v *SliceOrMapSlice) UnmarshalJSON(data []byte) error {
 	// try to unmashal as a string and fallback to map
-	if err := sonic.Unmarshal(data, &v.Value); err == nil {
+	if err := json.Unmarshal(data, &v.Value); err == nil {
 		return nil
 	}
-	err := sonic.Unmarshal(data, &v.KV)
+	err := json.Unmarshal(data, &v.KV)
 	if err != nil {
 		return fmt.Errorf("object can be a key:value or a string")
 	}
 	return nil
 }
 
-// MarshalJSON implements sonic.Marshaler interface.
+// MarshalJSON implements json.Marshaler interface.
 func (v SliceOrMapSlice) MarshalJSON() ([]byte, error) {
 	if v.KV != nil {
-		return sonic.Marshal(v.KV)
+		return json.Marshal(v.KV)
 	}
-	return sonic.Marshal(v.Value)
+	return json.Marshal(v.Value)
 }
 
 // UnmarshalYAML implements yaml.Unmarshaler interface.

@@ -3,9 +3,9 @@ package severity
 import (
 	"strings"
 
-	"github.com/bytedance/sonic"
 	"github.com/invopop/jsonschema"
 	"github.com/pkg/errors"
+	"github.com/projectdiscovery/nuclei/v3/pkg/utils/json"
 )
 
 type Severity int
@@ -102,7 +102,7 @@ func (severityHolder *Holder) UnmarshalYAML(unmarshal func(interface{}) error) e
 
 func (severityHolder *Holder) UnmarshalJSON(data []byte) error {
 	var marshalledSeverity string
-	if err := sonic.Unmarshal(data, &marshalledSeverity); err != nil {
+	if err := json.Unmarshal(data, &marshalledSeverity); err != nil {
 		return err
 	}
 
@@ -116,7 +116,7 @@ func (severityHolder *Holder) UnmarshalJSON(data []byte) error {
 }
 
 func (severityHolder Holder) MarshalJSON() ([]byte, error) {
-	return sonic.Marshal(severityHolder.Severity.String())
+	return json.Marshal(severityHolder.Severity.String())
 }
 
 func (severityHolder Holder) MarshalYAML() (interface{}, error) {

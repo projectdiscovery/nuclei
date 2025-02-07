@@ -7,7 +7,6 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/bytedance/sonic"
 	validate "github.com/go-playground/validator/v10"
 	"github.com/projectdiscovery/nuclei/v3/pkg/model"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
@@ -24,6 +23,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/whois"
 	"github.com/projectdiscovery/nuclei/v3/pkg/templates/types"
 	"github.com/projectdiscovery/nuclei/v3/pkg/utils"
+	"github.com/projectdiscovery/nuclei/v3/pkg/utils/json"
 	"github.com/projectdiscovery/nuclei/v3/pkg/workflows"
 	errorutil "github.com/projectdiscovery/utils/errors"
 	fileutil "github.com/projectdiscovery/utils/file"
@@ -522,7 +522,7 @@ func (template *Template) hasMultipleRequests() bool {
 // MarshalJSON forces recursive struct validation during marshal operation
 func (template *Template) MarshalJSON() ([]byte, error) {
 	type TemplateAlias Template //avoid recursion
-	out, marshalErr := sonic.Marshal((*TemplateAlias)(template))
+	out, marshalErr := json.Marshal((*TemplateAlias)(template))
 	errValidate := validate.New().Struct(template)
 	return out, multierr.Append(marshalErr, errValidate)
 }
@@ -531,7 +531,7 @@ func (template *Template) MarshalJSON() ([]byte, error) {
 func (template *Template) UnmarshalJSON(data []byte) error {
 	type Alias Template
 	alias := &Alias{}
-	err := sonic.Unmarshal(data, alias)
+	err := json.Unmarshal(data, alias)
 	if err != nil {
 		return err
 	}
@@ -544,7 +544,7 @@ func (template *Template) UnmarshalJSON(data []byte) error {
 	// if so  preserve the order of the protocols and requests
 	if template.hasMultipleRequests() {
 		var tempMap map[string]interface{}
-		err = sonic.Unmarshal(data, &tempMap)
+		err = json.Unmarshal(data, &tempMap)
 		if err != nil {
 			return errorutil.NewWithErr(err).Msgf("failed to unmarshal multi protocol template %s", template.ID)
 		}

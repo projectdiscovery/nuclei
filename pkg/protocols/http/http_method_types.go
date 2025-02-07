@@ -4,8 +4,8 @@ import (
 	"errors"
 	"strings"
 
-	"github.com/bytedance/sonic"
 	"github.com/invopop/jsonschema"
+	"github.com/projectdiscovery/nuclei/v3/pkg/utils/json"
 )
 
 // HTTPMethodType is the type of the method specified
@@ -131,7 +131,7 @@ func (holder *HTTPMethodTypeHolder) UnmarshalJSON(data []byte) error {
 }
 
 func (holder *HTTPMethodTypeHolder) MarshalJSON() ([]byte, error) {
-	return sonic.Marshal(holder.MethodType.String())
+	return json.Marshal(holder.MethodType.String())
 }
 
 func (holder HTTPMethodTypeHolder) MarshalYAML() (interface{}, error) {

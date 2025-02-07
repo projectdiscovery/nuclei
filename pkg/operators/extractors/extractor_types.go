@@ -4,8 +4,8 @@ import (
 	"errors"
 	"strings"
 
-	"github.com/bytedance/sonic"
 	"github.com/invopop/jsonschema"
+	"github.com/projectdiscovery/nuclei/v3/pkg/utils/json"
 )
 
 // ExtractorType is the type of the extractor specified
@@ -114,7 +114,7 @@ func (holder *ExtractorTypeHolder) UnmarshalJSON(data []byte) error {
 }
 
 func (holder *ExtractorTypeHolder) MarshalJSON() ([]byte, error) {
-	return sonic.Marshal(holder.ExtractorType.String())
+	return json.Marshal(holder.ExtractorType.String())
 }
 
 func (holder ExtractorTypeHolder) MarshalYAML() (interface{}, error) {

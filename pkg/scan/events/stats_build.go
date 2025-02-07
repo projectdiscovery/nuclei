@@ -10,7 +10,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/bytedance/sonic"
+	"github.com/projectdiscovery/nuclei/v3/pkg/utils/json"
 )
 
 var _ ScanEventWorker = &ScanStatsWorker{}
@@ -25,7 +25,7 @@ type ScanStatsWorker struct {
 	m         *sync.Mutex
 	directory string
 	file      *os.File
-	enc       *sonic.Encoder
+	enc       *json.Encoder
 }
 
 // Init initializes the scan stats worker
@@ -37,7 +37,7 @@ func InitWithConfig(config *ScanConfig, statsDirectory string) {
 		panic(err)
 	}
 	// save the config to the directory
-	bin, err := sonic.MarshalIndent(config, "", "  ")
+	bin, err := json.MarshalIndent(config, "", "  ")
 	if err != nil {
 		panic(err)
 	}
@@ -59,7 +59,7 @@ func (s *ScanStatsWorker) initEventsFile() error {
 		return err
 	}
 	s.file = f
-	s.enc = sonic.ConfigStd.NewEncoder(f)
+	s.enc = json.NewEncoder(f)
 	return nil
 }
 

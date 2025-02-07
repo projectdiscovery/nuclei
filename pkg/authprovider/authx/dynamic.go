@@ -1,14 +1,13 @@
 package authx
 
 import (
-	"encoding/json"
 	"fmt"
 	"strings"
 	"sync"
 
-	"github.com/bytedance/sonic"
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/replacer"
+	"github.com/projectdiscovery/nuclei/v3/pkg/utils/json"
 	errorutil "github.com/projectdiscovery/utils/errors"
 )
 
@@ -35,11 +34,11 @@ type Dynamic struct {
 }
 
 func (d *Dynamic) UnmarshalJSON(data []byte) error {
-	if err := sonic.Unmarshal(data, &d); err != nil {
+	if err := json.Unmarshal(data, &d); err != nil {
 		return err
 	}
 	var s Secret
-	if err := sonic.Unmarshal(data, &s); err != nil {
+	if err := json.Unmarshal(data, &s); err != nil {
 		return err
 	}
 	d.Secret = s

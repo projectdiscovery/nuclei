@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/bytedance/sonic"
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
 	"github.com/projectdiscovery/nuclei/v3/pkg/testutils"
+	"github.com/projectdiscovery/nuclei/v3/pkg/utils/json"
 )
 
 var matcherStatusTestcases = []TestCaseInfo{
@@ -26,7 +26,7 @@ func (h *httpNoAccess) Execute(filePath string) error {
 		return err
 	}
 	event := &output.ResultEvent{}
-	_ = sonic.Unmarshal([]byte(results[0]), event)
+	_ = json.Unmarshal([]byte(results[0]), event)
 	expectedError := "no address found for host"
 	if !strings.Contains(event.Error, expectedError) {
 		return fmt.Errorf("unexpected result: expecting \"%s\" error but got \"%s\"", expectedError, event.Error)
@@ -43,7 +43,7 @@ func (h *networkNoAccess) Execute(filePath string) error {
 		return err
 	}
 	event := &output.ResultEvent{}
-	_ = sonic.Unmarshal([]byte(results[0]), event)
+	_ = json.Unmarshal([]byte(results[0]), event)
 
 	if event.Error != "no address found for host" {
 		return fmt.Errorf("unexpected result: expecting \"no address found for host\" error but got \"%s\"", event.Error)
@@ -60,7 +60,7 @@ func (h *headlessNoAccess) Execute(filePath string) error {
 		return err
 	}
 	event := &output.ResultEvent{}
-	_ = sonic.Unmarshal([]byte(results[0]), event)
+	_ = json.Unmarshal([]byte(results[0]), event)
 
 	if event.Error == "" {
 		return fmt.Errorf("unexpected result: expecting an error but got \"%s\"", event.Error)
@@ -77,7 +77,7 @@ func (h *javascriptNoAccess) Execute(filePath string) error {
 		return err
 	}
 	event := &output.ResultEvent{}
-	_ = sonic.Unmarshal([]byte(results[0]), event)
+	_ = json.Unmarshal([]byte(results[0]), event)
 
 	if event.Error == "" {
 		return fmt.Errorf("unexpected result: expecting an error but got \"%s\"", event.Error)
@@ -94,7 +94,7 @@ func (h *websocketNoAccess) Execute(filePath string) error {
 		return err
 	}
 	event := &output.ResultEvent{}
-	_ = sonic.Unmarshal([]byte(results[0]), event)
+	_ = json.Unmarshal([]byte(results[0]), event)
 
 	if event.Error == "" {
 		return fmt.Errorf("unexpected result: expecting an error but got \"%s\"", event.Error)
@@ -111,7 +111,7 @@ func (h *dnsNoAccess) Execute(filePath string) error {
 		return err
 	}
 	event := &output.ResultEvent{}
-	_ = sonic.Unmarshal([]byte(results[0]), event)
+	_ = json.Unmarshal([]byte(results[0]), event)
 
 	if event.Error == "" {
 		return fmt.Errorf("unexpected result: expecting an error but got \"%s\"", event.Error)

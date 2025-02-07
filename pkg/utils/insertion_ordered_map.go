@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/bytedance/sonic"
+	"github.com/projectdiscovery/nuclei/v3/pkg/utils/json"
 	"gopkg.in/yaml.v2"
 )
 
@@ -50,7 +50,7 @@ func (insertionOrderedStringMap *InsertionOrderedStringMap) UnmarshalYAML(unmars
 
 func (insertionOrderedStringMap *InsertionOrderedStringMap) UnmarshalJSON(data []byte) error {
 	var dataMap map[string]interface{}
-	if err := sonic.Unmarshal(data, &dataMap); err != nil {
+	if err := json.Unmarshal(data, &dataMap); err != nil {
 		return err
 	}
 	insertionOrderedStringMap.values = make(map[string]interface{})

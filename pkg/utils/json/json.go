@@ -9,7 +9,7 @@
 // JSON encoding and decoding implementations.
 //
 // TODO(dwisiswant0): This package should be moved to the
-// [github.com/projectdiscovery/utils/json].
+// [github.com/projectdiscovery/utils/json], but let see how it goes first.
 package json
 
 import (

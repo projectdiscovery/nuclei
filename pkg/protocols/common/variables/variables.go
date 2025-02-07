@@ -3,7 +3,6 @@ package variables
 import (
 	"strings"
 
-	"github.com/bytedance/sonic"
 	"github.com/invopop/jsonschema"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/expressions"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/generators"
@@ -11,6 +10,7 @@ import (
 	protocolutils "github.com/projectdiscovery/nuclei/v3/pkg/protocols/utils"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	"github.com/projectdiscovery/nuclei/v3/pkg/utils"
+	"github.com/projectdiscovery/nuclei/v3/pkg/utils/json"
 	stringsutil "github.com/projectdiscovery/utils/strings"
 )
 
@@ -51,7 +51,7 @@ func (variables *Variable) UnmarshalYAML(unmarshal func(interface{}) error) erro
 
 func (variables *Variable) UnmarshalJSON(data []byte) error {
 	variables.InsertionOrderedStringMap = utils.InsertionOrderedStringMap{}
-	if err := sonic.Unmarshal(data, &variables.InsertionOrderedStringMap); err != nil {
+	if err := json.Unmarshal(data, &variables.InsertionOrderedStringMap); err != nil {
 		return err
 	}
 	evaluated := variables.Evaluate(map[string]interface{}{})

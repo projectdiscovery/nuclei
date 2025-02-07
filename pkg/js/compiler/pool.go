@@ -7,7 +7,6 @@ import (
 	"reflect"
 	"sync"
 
-	"github.com/bytedance/sonic"
 	"github.com/dop251/goja"
 	"github.com/dop251/goja_nodejs/console"
 	"github.com/dop251/goja_nodejs/require"
@@ -37,6 +36,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/js/gojs"
 	"github.com/projectdiscovery/nuclei/v3/pkg/js/libs/goconsole"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
+	"github.com/projectdiscovery/nuclei/v3/pkg/utils/json"
 	stringsutil "github.com/projectdiscovery/utils/strings"
 	syncutil "github.com/projectdiscovery/utils/sync"
 )
@@ -243,7 +243,7 @@ func stringify(gojaValue goja.Value, runtime *goja.Runtime) string {
 		if kind == reflect.Ptr {
 			val = reflect.ValueOf(value).Elem().Interface()
 		}
-		bin, err := sonic.Marshal(val)
+		bin, err := json.Marshal(val)
 		if err == nil {
 			return string(bin)
 		}

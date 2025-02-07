@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/bytedance/sonic"
 	"github.com/projectdiscovery/goflags"
 	"github.com/projectdiscovery/nuclei/v3/pkg/model/types/stringslice"
+	"github.com/projectdiscovery/nuclei/v3/pkg/utils/json"
 )
 
 // Severities used by the goflags library for parsing an array of Severity types, passed as CLI arguments from the user
@@ -53,7 +53,7 @@ func (severities *Severities) UnmarshalYAML(unmarshal func(interface{}) error) e
 
 func (severities *Severities) UnmarshalJSON(data []byte) error {
 	var stringSliceValue stringslice.StringSlice
-	if err := sonic.Unmarshal(data, &stringSliceValue); err != nil {
+	if err := json.Unmarshal(data, &stringSliceValue); err != nil {
 		return err
 	}
 
@@ -81,7 +81,7 @@ func (severities Severities) MarshalJSON() ([]byte, error) {
 	for _, severity := range severities {
 		stringSeverities = append(stringSeverities, severity.String())
 	}
-	return sonic.Marshal(stringSeverities)
+	return json.Marshal(stringSeverities)
 }
 
 func setSeverity(severities *Severities, value string) error {

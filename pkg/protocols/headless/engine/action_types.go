@@ -4,8 +4,8 @@ import (
 	"errors"
 	"strings"
 
-	"github.com/bytedance/sonic"
 	"github.com/invopop/jsonschema"
+	"github.com/projectdiscovery/nuclei/v3/pkg/utils/json"
 	mapsutil "github.com/projectdiscovery/utils/maps"
 )
 
@@ -247,7 +247,7 @@ func (holder *ActionTypeHolder) UnmarshalJSON(data []byte) error {
 }
 
 func (holder *ActionTypeHolder) MarshalJSON() ([]byte, error) {
-	return sonic.Marshal(holder.ActionType.String())
+	return json.Marshal(holder.ActionType.String())
 }
 
 func (holder ActionTypeHolder) MarshalYAML() (interface{}, error) {

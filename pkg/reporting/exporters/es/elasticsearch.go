@@ -9,11 +9,11 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/bytedance/sonic"
 	"github.com/pkg/errors"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
+	"github.com/projectdiscovery/nuclei/v3/pkg/utils/json"
 	"github.com/projectdiscovery/retryablehttp-go"
 	"github.com/projectdiscovery/useragent"
 )
@@ -121,7 +121,7 @@ func (exporter *Exporter) Export(event *output.ResultEvent) error {
 		Event:     event,
 		Timestamp: time.Now().Format(time.RFC3339),
 	}
-	b, err := sonic.Marshal(&d)
+	b, err := json.Marshal(&d)
 	if err != nil {
 		return err
 	}
