@@ -31,6 +31,7 @@
   <a href="https://github.com/projectdiscovery/nuclei/blob/main/README_KR.md">韓国語</a> •
   <a href="https://github.com/projectdiscovery/nuclei/blob/main/README_ID.md">インドネシア語</a> •
   <a href="https://github.com/projectdiscovery/nuclei/blob/main/README_ES.md">スペイン語</a>
+  <a href="https://github.com/projectdiscovery/nuclei/blob/main/README_PT-BR.md">ポルトガル語</a>
 </p>
 
 ---
