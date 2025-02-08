@@ -21,12 +21,12 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/projectdiscovery/clistats v0.1.1
 	github.com/projectdiscovery/fastdialer v0.3.0
-	github.com/projectdiscovery/hmap v0.0.77
+	github.com/projectdiscovery/hmap v0.0.78
 	github.com/projectdiscovery/interactsh v1.2.3
-	github.com/projectdiscovery/rawhttp v0.1.84
+	github.com/projectdiscovery/rawhttp v0.1.85
 	github.com/projectdiscovery/retryabledns v1.0.94
-	github.com/projectdiscovery/retryablehttp-go v1.0.97
-	github.com/projectdiscovery/yamldoc-go v1.0.5
+	github.com/projectdiscovery/retryablehttp-go v1.0.98
+	github.com/projectdiscovery/yamldoc-go v1.0.6
 	github.com/remeh/sizedwaitgroup v1.0.0
 	github.com/rs/xid v1.5.0
 	github.com/segmentio/ksuid v1.0.4
@@ -81,24 +81,24 @@ require (
 	github.com/microsoft/go-mssqldb v1.6.0
 	github.com/ory/dockertest/v3 v3.10.0
 	github.com/praetorian-inc/fingerprintx v1.1.9
-	github.com/projectdiscovery/dsl v0.3.13
+	github.com/projectdiscovery/dsl v0.3.14
 	github.com/projectdiscovery/fasttemplate v0.0.2
 	github.com/projectdiscovery/go-smb2 v0.0.0-20240129202741-052cc450c6cb
-	github.com/projectdiscovery/goflags v0.1.69
-	github.com/projectdiscovery/gologger v1.1.42
+	github.com/projectdiscovery/goflags v0.1.70
+	github.com/projectdiscovery/gologger v1.1.43
 	github.com/projectdiscovery/gostruct v0.0.2
 	github.com/projectdiscovery/gozero v0.0.3
-	github.com/projectdiscovery/httpx v1.6.9
+	github.com/projectdiscovery/httpx v1.6.10
 	github.com/projectdiscovery/mapcidr v1.1.34
 	github.com/projectdiscovery/n3iwf v0.0.0-20230523120440-b8cd232ff1f5
-	github.com/projectdiscovery/ratelimit v0.0.70
+	github.com/projectdiscovery/ratelimit v0.0.71
 	github.com/projectdiscovery/rdap v0.9.1-0.20221108103045-9865884d1917
 	github.com/projectdiscovery/sarif v0.0.1
 	github.com/projectdiscovery/tlsx v1.1.9
-	github.com/projectdiscovery/uncover v1.0.9
-	github.com/projectdiscovery/useragent v0.0.89
-	github.com/projectdiscovery/utils v0.4.8
-	github.com/projectdiscovery/wappalyzergo v0.2.13
+	github.com/projectdiscovery/uncover v1.0.10
+	github.com/projectdiscovery/useragent v0.0.90
+	github.com/projectdiscovery/utils v0.4.9
+	github.com/projectdiscovery/wappalyzergo v0.2.14
 	github.com/redis/go-redis/v9 v9.1.0
 	github.com/seh-msft/burpxml v1.0.1
 	github.com/shurcooL/graphql v0.0.0-20230722043721-ed46e5a46466
@@ -307,7 +307,7 @@ require (
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/power-devops/perfstat v0.0.0-20210106213030-5aafc221ea8c // indirect
 	github.com/projectdiscovery/blackrock v0.0.1 // indirect
-	github.com/projectdiscovery/networkpolicy v0.1.2
+	github.com/projectdiscovery/networkpolicy v0.1.3
 	github.com/rivo/uniseg v0.4.7 // indirect
 	github.com/saintfish/chardet v0.0.0-20230101081208-5e3ef4b5456d // indirect
 	github.com/tklauser/go-sysconf v0.3.12 // indirect
