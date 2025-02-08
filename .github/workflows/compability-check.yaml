@@ -9,12 +9,9 @@ on:
 jobs:
   check:
     if: github.actor == 'dependabot[bot]'
-    strategy:
-      matrix:
-        os: [ubuntu-latest, windows-latest, macOS-latest]
+    runs-on: ubuntu-latest
     permissions:
       contents: write
-    runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
       - uses: projectdiscovery/actions/setup/git@v1
@@ -28,3 +25,4 @@ jobs:
             git commit -m "chore(deps): go mod tidy"
             git push origin $GITHUB_REF
           }
+      - uses: projectdiscovery/actions/goreleaser@v1
