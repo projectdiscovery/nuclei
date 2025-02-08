@@ -505,6 +505,16 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 	return nil
 }
 
+// RebuildGenerator rebuilds the generator for the request
+func (request *Request) RebuildGenerator() error {
+	generator, err := generators.New(request.Payloads, request.AttackType.Value, request.options.TemplatePath, request.options.Catalog, request.options.Options.AttackType, request.options.Options)
+	if err != nil {
+		return errors.Wrap(err, "could not parse payloads")
+	}
+	request.generator = generator
+	return nil
+}
+
 // Requests returns the total number of requests the YAML rule will perform
 func (request *Request) Requests() int {
 	if request.generator != nil {
