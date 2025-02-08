@@ -13,20 +13,6 @@ updates:
     groups:
       modules:
         patterns: ["github.com/projectdiscovery/*"]
-    labels:
-      - "Type: Maintenance"
-
-  - package-ecosystem: "gomod"
-    directory: "/"
-    schedule:
-      interval: "weekly"
-    target-branch: "dev"
-    commit-message:
-      prefix: "chore"
-      include: "scope"
-    ignore:
-      - dependency-name: "github.com/projectdiscovery/*"
-    groups:
       security:
         applies-to: "security-updates"
         patterns: ["*"]
