@@ -67,7 +67,7 @@ func (t *Tracker) incrementCounter(m *mapsutil.SyncLockMap[string, *atomic.Int32
 	} else {
 		newCounter := new(atomic.Int32)
 		newCounter.Store(1)
-		m.Set(key, newCounter)
+		_ = m.Set(key, newCounter)
 	}
 }
 
@@ -83,15 +83,15 @@ func (t *Tracker) GetStats() *StatsOutput {
 		ErrorStats:      make(map[string]int),
 		WAFStats:        make(map[string]int),
 	}
-	t.errorCodes.Iterate(func(k string, v *atomic.Int32) error {
+	_ = t.errorCodes.Iterate(func(k string, v *atomic.Int32) error {
 		stats.ErrorStats[k] = int(v.Load())
 		return nil
 	})
-	t.statusCodes.Iterate(func(k string, v *atomic.Int32) error {
+	_ = t.statusCodes.Iterate(func(k string, v *atomic.Int32) error {
 		stats.StatusCodeStats[k] = int(v.Load())
 		return nil
 	})
-	t.wafDetected.Iterate(func(k string, v *atomic.Int32) error {
+	_ = t.wafDetected.Iterate(func(k string, v *atomic.Int32) error {
 		waf, ok := t.wafDetector.wafs[k]
 		if !ok {
 			return nil
