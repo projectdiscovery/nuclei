@@ -12,6 +12,8 @@ import (
 	"io"
 	"reflect"
 	"strings"
+
+	sonic "github.com/projectdiscovery/nuclei/v3/pkg/utils/json"
 )
 
 // UnmarshalGraphQL parses the JSON-encoded GraphQL response data and stores
@@ -304,9 +306,9 @@ func isGraphQLFragment(f reflect.StructField) bool {
 // v must be addressable and not obtained by the use of unexported
 // struct fields, otherwise unmarshalValue will panic.
 func unmarshalValue(value json.Token, v reflect.Value) error {
-	b, err := json.Marshal(value) // TODO: Short-circuit (if profiling says it's worth it).
+	b, err := sonic.Marshal(value) // TODO: Short-circuit (if profiling says it's worth it).
 	if err != nil {
 		return err
 	}
-	return json.Unmarshal(b, v.Addr().Interface())
+	return sonic.Unmarshal(b, v.Addr().Interface())
 }

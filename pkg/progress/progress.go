@@ -2,7 +2,6 @@ package progress
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"os"
 	"strings"
@@ -10,6 +9,7 @@ import (
 
 	"github.com/projectdiscovery/clistats"
 	"github.com/projectdiscovery/gologger"
+	"github.com/projectdiscovery/nuclei/v3/pkg/utils/json"
 )
 
 // Progress is an interface implemented by nuclei progress display

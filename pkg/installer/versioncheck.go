@@ -1,7 +1,6 @@
 package installer
 
 import (
-	"encoding/json"
 	"io"
 	"net/url"
 	"os"
@@ -9,6 +8,7 @@ import (
 
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/config"
+	"github.com/projectdiscovery/nuclei/v3/pkg/utils/json"
 	"github.com/projectdiscovery/retryablehttp-go"
 	updateutils "github.com/projectdiscovery/utils/update"
 )
