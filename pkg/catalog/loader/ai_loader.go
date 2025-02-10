@@ -12,6 +12,7 @@ import (
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/config"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
+	"github.com/projectdiscovery/retryablehttp-go"
 	pdcpauth "github.com/projectdiscovery/utils/auth/pdcp"
 	errorutil "github.com/projectdiscovery/utils/errors"
 )
@@ -106,7 +107,7 @@ func generateAITemplate(prompt string) (string, string, error) {
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set(pdcpauth.ApiKeyHeaderName, creds.APIKey)
 
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := retryablehttp.DefaultClient().Do(req)
 	if err != nil {
 		return "", "", errorutil.New("Failed to generate template")
 	}
