@@ -48,7 +48,6 @@ func getAIGeneratedTemplates(prompt string, options *types.Options) ([]string, e
 	templateFile := filepath.Join(pdcpTemplateDir, templateID+".yaml")
 	err = os.WriteFile(templateFile, []byte(template), 0600)
 	if err != nil {
-		os.RemoveAll(pdcpTemplateDir)
 		return nil, errorutil.New("Failed to generate template: %v", err)
 	}
 
@@ -72,7 +71,7 @@ func getAIGeneratedTemplates(prompt string, options *types.Options) ([]string, e
 			}
 		}
 		gologger.Silent().Msgf("\n%s", template)
-		// FIXME: 
+		// FIXME:
 		// we should not be exiting the program here
 		// but we need to find a better way to handle this
 		os.Exit(0)
