@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/alecthomas/chroma/quick"
 	"github.com/projectdiscovery/gologger"
@@ -15,7 +16,7 @@ import (
 )
 
 const (
-	aiTemplateAPIEndpoint = "https://api.projectdiscovery.io/v1/template/ai"
+	aiTemplateGeneratorAPIEndpoint = "https://api.projectdiscovery.io/v1/template/ai"
 )
 
 type AITemplateResponse struct {
@@ -28,28 +29,26 @@ type AITemplateResponse struct {
 }
 
 func getAIGeneratedTemplates(prompt string, options *types.Options) ([]string, string, error) {
+	prompt = strings.TrimSpace(prompt)
 	if prompt == "" {
-		return nil, "", nil
+		return nil, "", errorutil.New("No prompt provided")
 	}
 
 	template, templateID, err := generateAITemplate(prompt)
 	if err != nil {
-		gologger.Info().Msg("Failed to generate template")
-		os.Exit(1)
+		return nil, "", errorutil.New("Failed to generate template: %v", err)
 	}
 
 	tempDir, err := os.MkdirTemp("", "nuclei-ai-templates-*")
 	if err != nil {
-		gologger.Info().Msg("Failed to generate template")
-		os.Exit(1)
+		return nil, "", errorutil.New("Failed to generate template: %v", err)
 	}
 
 	tempFile := filepath.Join(tempDir, templateID+".yaml")
 	err = os.WriteFile(tempFile, []byte(template), 0644)
 	if err != nil {
-		os.RemoveAll(tempDir) 
-		gologger.Info().Msg("Failed to generate template")
-		os.Exit(1)
+		os.RemoveAll(tempDir)
+		return nil, "", errorutil.New("Failed to generate template: %v", err)
 	}
 
 	// Check if we should display the template
@@ -58,7 +57,7 @@ func getAIGeneratedTemplates(prompt string, options *types.Options) ([]string, s
 	// 2. No stdin input is being used
 	hasNoTargets := len(options.Targets) == 0 && options.TargetsFilePath == ""
 	hasNoStdin := !options.Stdin
-	
+
 	if hasNoTargets && hasNoStdin {
 		gologger.Info().Msgf("Generated template available at: https://cloud.projectdiscovery.io/templates/%s", templateID)
 		gologger.Info().Msgf("Template: %s", tempFile)
@@ -87,7 +86,7 @@ func generateAITemplate(prompt string) (string, string, error) {
 		return "", "", errorutil.New("Failed to generate template")
 	}
 
-	req, err := http.NewRequest(http.MethodPost, aiTemplateAPIEndpoint, bytes.NewBuffer(jsonBody))
+	req, err := http.NewRequest(http.MethodPost, aiTemplateGeneratorAPIEndpoint, bytes.NewBuffer(jsonBody))
 	if err != nil {
 		return "", "", errorutil.New("Failed to generate template")
 	}
@@ -95,8 +94,7 @@ func generateAITemplate(prompt string) (string, string, error) {
 	ph := pdcpauth.PDCPCredHandler{}
 	creds, err := ph.GetCreds()
 	if creds == nil {
-		gologger.Info().Msg("PDCP API Key not configured, Create one for free at https://cloud.projectdiscovery.io/")
-		os.Exit(1)
+		return "", "", errorutil.New("PDCP API Key not configured, Create one for free at https://cloud.projectdiscovery.io/")
 	}
 	if err != nil {
 		return "", "", errorutil.New("Failed to get PDCP credentials")
@@ -112,8 +110,7 @@ func generateAITemplate(prompt string) (string, string, error) {
 	defer resp.Body.Close()
 
 	if resp.StatusCode == http.StatusUnauthorized {
-		gologger.Info().Msg("Invalid API Key or API Key not configured, Create one for free at https://cloud.projectdiscovery.io/")
-		os.Exit(1)
+		return "", "", errorutil.New("Invalid API Key or API Key not configured, Create one for free at https://cloud.projectdiscovery.io/")
 	}
 
 	if resp.StatusCode != http.StatusOK {
@@ -130,4 +127,4 @@ func generateAITemplate(prompt string) (string, string, error) {
 	}
 
 	return result.Completion, result.TemplateID, nil
-} 
+}

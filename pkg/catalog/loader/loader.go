@@ -86,8 +86,8 @@ type Store struct {
 	// This overrides error handling for not found templates
 	NotFoundCallback func(template string) bool
 
-	// tempDir is the temporary directory used for AI templates
-	tempDir string
+	// aiTemplatesTempDirectory is the temporary directory used for AI templates
+	aiTemplatesTempDirectory string
 }
 
 // NewConfig returns a new loader config
@@ -146,17 +146,15 @@ func New(cfg *Config) (*Store, error) {
 			IncludedTemplates: cfg.IncludeTemplates,
 			ExcludedTemplates: cfg.ExcludeTemplates,
 		}, cfg.Catalog),
-		finalTemplates: []string{},
-		finalWorkflows: []string{},
+		finalTemplates: cfg.Templates,
+		finalWorkflows: cfg.Workflows,
 	}
 
-	// Process template flags first
-	store.finalTemplates = cfg.Templates
-	store.finalWorkflows = cfg.Workflows
-
-	// Do a check to see if we have URLs in templates flag
+	// Do a check to see if we have URLs in templates flag, if so
+	// we need to processs them separately and remove them from the initial list
 	var templatesFinal []string
 	for _, template := range cfg.Templates {
+		// TODO: Add and replace this with urlutil.IsURL() helper
 		if stringsutil.HasPrefixAny(template, httpPrefix, httpsPrefix) {
 			cfg.TemplateURLs = append(cfg.TemplateURLs, template)
 		} else {
@@ -188,11 +186,11 @@ func New(cfg *Config) (*Store, error) {
 
 	// Handle AI template generation if prompt is provided
 	if len(cfg.AITemplatePrompt) > 0 {
-		aiTemplates, tempDir, err := getAIGeneratedTemplates(cfg.AITemplatePrompt, cfg.ExecutorOptions.Options)
+		aiTemplates, aiTemplatesTempDirectory, err := getAIGeneratedTemplates(cfg.AITemplatePrompt, cfg.ExecutorOptions.Options)
 		if err != nil {
 			return nil, err
 		}
-		store.tempDir = tempDir
+		store.aiTemplatesTempDirectory = aiTemplatesTempDirectory
 		store.finalTemplates = append(store.finalTemplates, aiTemplates...)
 	}
 
@@ -206,7 +204,7 @@ func New(cfg *Config) (*Store, error) {
 	}
 
 	// Handle a case with no templates or workflows, where we use base directory
-	if len(store.finalTemplates) == 0 && len(store.finalWorkflows) == 0 && !urlBasedTemplatesProvided && len(cfg.AITemplatePrompt) == 0 {
+	if len(store.finalTemplates) == 0 && len(store.finalWorkflows) == 0 && !urlBasedTemplatesProvided {
 		store.finalTemplates = []string{config.DefaultConfig.TemplatesDirectory}
 	}
 
@@ -652,8 +650,8 @@ func (s *Store) logErroredTemplates(erred map[string]error) {
 
 // Cleanup cleans up any temporary files created by the store
 func (store *Store) Cleanup() {
-	if store.tempDir != "" {
-		os.RemoveAll(store.tempDir)
-		store.tempDir = ""
+	if store.aiTemplatesTempDirectory != "" {
+		os.RemoveAll(store.aiTemplatesTempDirectory)
+		store.aiTemplatesTempDirectory = ""
 	}
 }
