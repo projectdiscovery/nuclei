@@ -7,7 +7,9 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/alecthomas/chroma/quick"
 	"github.com/projectdiscovery/gologger"
+	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	pdcpauth "github.com/projectdiscovery/utils/auth/pdcp"
 	errorutil "github.com/projectdiscovery/utils/errors"
 )
@@ -25,7 +27,7 @@ type AITemplateResponse struct {
 	TemplateID string `json:"template_id"`
 }
 
-func getAIGeneratedTemplates(prompt string) ([]string, string, error) {
+func getAIGeneratedTemplates(prompt string, options *types.Options) ([]string, string, error) {
 	if prompt == "" {
 		return nil, "", nil
 	}
@@ -48,6 +50,27 @@ func getAIGeneratedTemplates(prompt string) ([]string, string, error) {
 		os.RemoveAll(tempDir) 
 		gologger.Info().Msg("Failed to generate template")
 		os.Exit(1)
+	}
+
+	// Check if we should display the template
+	// This happens when:
+	// 1. No targets are provided (-target/-list)
+	// 2. No stdin input is being used
+	hasNoTargets := len(options.Targets) == 0 && options.TargetsFilePath == ""
+	hasNoStdin := !options.Stdin && options.DisableStdin
+	
+	if hasNoTargets && hasNoStdin {
+		// Display the template content with syntax highlighting
+		if !options.NoColor {
+			var buf bytes.Buffer
+			err = quick.Highlight(&buf, template, "yaml", "terminal16m", "monokai")
+			if err == nil {
+				template = buf.String()
+			}
+		}
+		gologger.Silent().Msgf("Template: %s\n\n%s", tempFile, template)
+		gologger.Info().Msgf("Generated template available at: https://cloud.projectdiscovery.io/templates/%s", templateID)
+		os.Exit(0)
 	}
 
 	gologger.Info().Msgf("Generated template path: %s", tempFile)

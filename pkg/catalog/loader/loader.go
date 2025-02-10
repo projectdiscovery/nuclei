@@ -1,7 +1,6 @@
 package loader
 
 import (
-	"bytes"
 	"fmt"
 	"io"
 	"net/url"
@@ -10,7 +9,6 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/alecthomas/chroma/quick"
 	"github.com/logrusorgru/aurora"
 	"github.com/pkg/errors"
 	"github.com/projectdiscovery/gologger"
@@ -190,37 +188,12 @@ func New(cfg *Config) (*Store, error) {
 
 	// Handle AI template generation if prompt is provided
 	if len(cfg.AITemplatePrompt) > 0 {
-		aiTemplates, tempDir, err := getAIGeneratedTemplates(cfg.AITemplatePrompt)
+		aiTemplates, tempDir, err := getAIGeneratedTemplates(cfg.AITemplatePrompt, cfg.ExecutorOptions.Options)
 		if err != nil {
 			return nil, err
 		}
 		store.tempDir = tempDir
 		store.finalTemplates = append(store.finalTemplates, aiTemplates...)
-
-		// If no target is provided and only AI template is requested, display the template content
-		if len(cfg.ExecutorOptions.Options.Targets) == 0 && len(cfg.ExecutorOptions.Options.TargetsFilePath) == 0 {
-			// Read the generated template
-			templateContent, err := os.ReadFile(aiTemplates[0])
-			if err != nil {
-				return nil, err
-			}
-			// Display the template content with syntax highlighting
-			if !cfg.ExecutorOptions.Options.NoColor {
-				var buf bytes.Buffer
-				err = quick.Highlight(&buf, string(templateContent), "yaml", "terminal16m", "monokai")
-				if err == nil {
-					templateContent = buf.Bytes()
-				}
-			}
-			gologger.Silent().Msgf("Template: %s\n\n%s", aiTemplates[0], string(templateContent))
-			os.Exit(0)
-		}
-		
-		// If no other template flags are provided, return early to only run AI template
-		if len(cfg.Templates) == 0 && len(cfg.Workflows) == 0 && len(cfg.Tags) == 0 && 
-		   len(cfg.Authors) == 0 && len(cfg.IncludeIds) == 0 && len(cfg.TemplateURLs) == 0 {
-			return store, nil
-		}
 	}
 
 	// Handle a dot as the current working directory
