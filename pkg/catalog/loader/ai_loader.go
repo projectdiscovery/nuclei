@@ -51,6 +51,9 @@ func getAIGeneratedTemplates(prompt string, options *types.Options) ([]string, s
 		return nil, "", errorutil.New("Failed to generate template: %v", err)
 	}
 
+	gologger.Info().Msgf("Generated template available at: https://cloud.projectdiscovery.io/templates/%s", templateID)
+	gologger.Info().Msgf("Generated template path: %s", tempFile)
+	
 	// Check if we should display the template
 	// This happens when:
 	// 1. No targets are provided (-target/-list)
@@ -59,8 +62,6 @@ func getAIGeneratedTemplates(prompt string, options *types.Options) ([]string, s
 	hasNoStdin := !options.Stdin
 
 	if hasNoTargets && hasNoStdin {
-		gologger.Info().Msgf("Generated template available at: https://cloud.projectdiscovery.io/templates/%s", templateID)
-		gologger.Info().Msgf("Template: %s", tempFile)
 		// Display the template content with syntax highlighting
 		if !options.NoColor {
 			var buf bytes.Buffer
@@ -73,7 +74,6 @@ func getAIGeneratedTemplates(prompt string, options *types.Options) ([]string, s
 		os.Exit(0)
 	}
 
-	gologger.Info().Msgf("Generated template path: %s", tempFile)
 	return []string{tempFile}, tempDir, nil
 }
 
