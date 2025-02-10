@@ -1,11 +1,11 @@
 package extractors
 
 import (
-	"encoding/json"
 	"errors"
 	"strings"
 
 	"github.com/invopop/jsonschema"
+	"github.com/projectdiscovery/nuclei/v3/pkg/utils/json"
 )
 
 // ExtractorType is the type of the extractor specified
