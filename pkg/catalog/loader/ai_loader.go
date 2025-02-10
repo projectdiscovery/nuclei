@@ -46,7 +46,7 @@ func getAIGeneratedTemplates(prompt string, options *types.Options) ([]string, e
 	}
 
 	templateFile := filepath.Join(pdcpTemplateDir, templateID+".yaml")
-	err = os.WriteFile(templateFile, []byte(template), 0600)
+	err = os.WriteFile(templateFile, []byte(template), 0644)
 	if err != nil {
 		return nil, errorutil.New("Failed to generate template: %v", err)
 	}
