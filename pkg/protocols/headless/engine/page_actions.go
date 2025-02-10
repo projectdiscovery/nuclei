@@ -2,6 +2,7 @@ package engine
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -19,11 +20,7 @@ import (
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/expressions"
-	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/generators"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
-	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/utils/vardump"
-	protocolutils "github.com/projectdiscovery/nuclei/v3/pkg/protocols/utils"
-	httputil "github.com/projectdiscovery/nuclei/v3/pkg/protocols/utils/http"
 	contextutil "github.com/projectdiscovery/utils/context"
 	"github.com/projectdiscovery/utils/errkit"
 	errorutil "github.com/projectdiscovery/utils/errors"
@@ -48,7 +45,7 @@ const (
 )
 
 // ExecuteActions executes a list of actions on a page.
-func (p *Page) ExecuteActions(input *contextargs.Context, actions []*Action, variables map[string]interface{}) (outData ActionData, err error) {
+func (p *Page) ExecuteActions(input *contextargs.Context, actions []*Action) (outData ActionData, err error) {
 	outData = make(ActionData)
 	// waitFuncs are function that needs to be executed after navigation
 	// typically used for waitEvent
@@ -69,7 +66,7 @@ func (p *Page) ExecuteActions(input *contextargs.Context, actions []*Action, var
 	for _, act := range actions {
 		switch act.ActionType.ActionType {
 		case ActionNavigate:
-			err = p.NavigateURL(act, outData, variables)
+			err = p.NavigateURL(act, outData)
 			if err == nil {
 				// if navigation successful trigger all waitFuncs (if any)
 				for _, waitFunc := range waitFuncs {
@@ -176,7 +173,7 @@ func (p *Page) WaitVisible(act *Action, out ActionData) error {
 		return errors.Wrap(err, "Wrong timeout given")
 	}
 
-	pollTime, err := getPollTime(p, act)
+	pollTime, err := getTimeParameter(p, act, "pollTime", 100, time.Millisecond)
 	if err != nil {
 		return errors.Wrap(err, "Wrong polling time given")
 	}
@@ -236,151 +233,220 @@ func getNavigationFunc(p *Page, act *Action, event proto.PageLifecycleEventName)
 }
 
 func getTimeout(p *Page, act *Action) (time.Duration, error) {
-	return geTimeParameter(p, act, "timeout", 3, time.Second)
+	return getTimeParameter(p, act, "timeout", 5, time.Second)
 }
 
-func getPollTime(p *Page, act *Action) (time.Duration, error) {
-	return geTimeParameter(p, act, "pollTime", 100, time.Millisecond)
-}
-
-func geTimeParameter(p *Page, act *Action, parameterName string, defaultValue time.Duration, duration time.Duration) (time.Duration, error) {
-	pollTimeString := p.getActionArgWithDefaultValues(act, parameterName)
-	if pollTimeString == "" {
-		return defaultValue * duration, nil
-	}
-	timeout, err := strconv.Atoi(pollTimeString)
+// getTimeParameter returns a time parameter from an action. It first tries to
+// get the parameter as an integer, then as a time.Duration, and finally falls
+// back to the default value (multiplied by the unit).
+func getTimeParameter(p *Page, act *Action, argName string, defaultValue, unit time.Duration) (time.Duration, error) {
+	argValue, err := p.getActionArg(act, argName)
 	if err != nil {
 		return time.Duration(0), err
 	}
-	return time.Duration(timeout) * duration, nil
+
+	convertedValue, err := strconv.Atoi(argValue)
+	if err == nil {
+		return time.Duration(convertedValue) * unit, nil
+	}
+
+	// fallback to time.ParseDuration
+	parsedTimeValue, err := time.ParseDuration(argValue)
+	if err == nil {
+		return parsedTimeValue, nil
+	}
+
+	return defaultValue * unit, nil
 }
 
 // ActionAddHeader executes a AddHeader action.
 func (p *Page) ActionAddHeader(act *Action, out ActionData) error {
-	in := p.getActionArgWithDefaultValues(act, "part")
-
 	args := make(map[string]string)
-	args["key"] = p.getActionArgWithDefaultValues(act, "key")
-	args["value"] = p.getActionArgWithDefaultValues(act, "value")
-	p.rules = append(p.rules, rule{Action: ActionAddHeader, Part: in, Args: args})
+
+	part, err := p.getActionArg(act, "part")
+	if err != nil {
+		return err
+	}
+
+	args["key"], err = p.getActionArg(act, "key")
+	if err != nil {
+		return err
+	}
+
+	args["value"], err = p.getActionArg(act, "value")
+	if err != nil {
+		return err
+	}
+
+	p.rules = append(p.rules, rule{
+		Action: ActionAddHeader,
+		Part:   part,
+		Args:   args,
+	})
+
 	return nil
 }
 
 // ActionSetHeader executes a SetHeader action.
 func (p *Page) ActionSetHeader(act *Action, out ActionData) error {
-	in := p.getActionArgWithDefaultValues(act, "part")
-
 	args := make(map[string]string)
-	args["key"] = p.getActionArgWithDefaultValues(act, "key")
-	args["value"] = p.getActionArgWithDefaultValues(act, "value")
-	p.rules = append(p.rules, rule{Action: ActionSetHeader, Part: in, Args: args})
+
+	part, err := p.getActionArg(act, "part")
+	if err != nil {
+		return err
+	}
+
+	args["key"], err = p.getActionArg(act, "key")
+	if err != nil {
+		return err
+	}
+
+	args["value"], err = p.getActionArg(act, "value")
+	if err != nil {
+		return err
+	}
+
+	p.rules = append(p.rules, rule{
+		Action: ActionSetHeader,
+		Part:   part,
+		Args:   args,
+	})
+
 	return nil
 }
 
 // ActionDeleteHeader executes a DeleteHeader action.
 func (p *Page) ActionDeleteHeader(act *Action, out ActionData) error {
-	in := p.getActionArgWithDefaultValues(act, "part")
-
 	args := make(map[string]string)
-	args["key"] = p.getActionArgWithDefaultValues(act, "key")
-	p.rules = append(p.rules, rule{Action: ActionDeleteHeader, Part: in, Args: args})
+
+	part, err := p.getActionArg(act, "part")
+	if err != nil {
+		return err
+	}
+
+	args["key"], err = p.getActionArg(act, "key")
+	if err != nil {
+		return err
+	}
+
+	p.rules = append(p.rules, rule{
+		Action: ActionDeleteHeader,
+		Part:   part,
+		Args:   args,
+	})
+
 	return nil
 }
 
 // ActionSetBody executes a SetBody action.
 func (p *Page) ActionSetBody(act *Action, out ActionData) error {
-	in := p.getActionArgWithDefaultValues(act, "part")
-
 	args := make(map[string]string)
-	args["body"] = p.getActionArgWithDefaultValues(act, "body")
-	p.rules = append(p.rules, rule{Action: ActionSetBody, Part: in, Args: args})
+
+	part, err := p.getActionArg(act, "part")
+	if err != nil {
+		return err
+	}
+
+	args["body"], err = p.getActionArg(act, "body")
+	if err != nil {
+		return err
+	}
+
+	p.rules = append(p.rules, rule{
+		Action: ActionSetBody,
+		Part:   part,
+		Args:   args,
+	})
+
 	return nil
 }
 
 // ActionSetMethod executes an SetMethod action.
 func (p *Page) ActionSetMethod(act *Action, out ActionData) error {
-	in := p.getActionArgWithDefaultValues(act, "part")
-
 	args := make(map[string]string)
-	args["method"] = p.getActionArgWithDefaultValues(act, "method")
-	p.rules = append(p.rules, rule{Action: ActionSetMethod, Part: in, Args: args, Once: &sync.Once{}})
+
+	part, err := p.getActionArg(act, "part")
+	if err != nil {
+		return err
+	}
+
+	args["method"], err = p.getActionArg(act, "method")
+	if err != nil {
+		return err
+	}
+
+	p.rules = append(p.rules, rule{
+		Action: ActionSetMethod,
+		Part:   part,
+		Args:   args,
+		Once:   &sync.Once{},
+	})
+
 	return nil
 }
 
 // NavigateURL executes an ActionLoadURL actions loading a URL for the page.
-func (p *Page) NavigateURL(action *Action, out ActionData, allvars map[string]interface{}) error {
-	// input <- is input url from cli
-	// target <- is the url from template (ex: {{BaseURL}}/test)
-	input, err := urlutil.Parse(p.input.MetaInput.Input)
+func (p *Page) NavigateURL(action *Action, out ActionData) error {
+	url, err := p.getActionArg(action, "url")
 	if err != nil {
-		return errorutil.NewWithErr(err).Msgf("could not parse url %s", p.input.MetaInput.Input)
+		return err
 	}
-	target := p.getActionArgWithDefaultValues(action, "url")
-	if target == "" {
+
+	if url == "" {
 		return errinvalidArguments
 	}
 
-	// if target contains port ex: {{BaseURL}}:8080 use port specified in input
-	input, target = httputil.UpdateURLPortFromPayload(input, target)
-	hasTrailingSlash := httputil.HasTrailingSlash(target)
-
-	// create vars from input url
-	defaultReqVars := protocolutils.GenerateVariables(input, hasTrailingSlash, contextargs.GenerateVariables(p.input))
-	// merge all variables
-	// Note: ideally we should evaluate all available variables with reqvars
-	// but due to cyclic dependency between packages `engine` and `protocols`
-	// allvars are evaluated,merged and passed from headless package itself
-	// TODO: remove cyclic dependency between packages `engine` and `protocols`
-	allvars = generators.MergeMaps(allvars, defaultReqVars)
-
-	if vardump.EnableVarDump {
-		gologger.Debug().Msgf("Headless Protocol request variables: %s\n", vardump.DumpVariables(allvars))
-	}
-
-	// Evaluate the target url with all variables
-	target, err = expressions.Evaluate(target, allvars)
+	parsedURL, err := urlutil.ParseURL(url, true)
 	if err != nil {
-		return errorutil.NewWithErr(err).Msgf("could not evaluate url %s", target)
-	}
-
-	reqURL, err := urlutil.ParseURL(target, true)
-	if err != nil {
-		return errorutil.NewWithTag("http", "failed to parse url %v while creating http request", target)
+		return errorutil.NewWithTag("headless", "failed to parse url %v while creating http request", url)
 	}
 
 	// ===== parameter automerge =====
 	// while merging parameters first preference is given to target params
-	finalparams := input.Params.Clone()
-	finalparams.Merge(reqURL.Params.Encode())
-	reqURL.Params = finalparams
+	finalparams := parsedURL.Params.Clone()
+	finalparams.Merge(p.inputURL.Params.Encode())
+	parsedURL.Params = finalparams
 
 	// log all navigated requests
-	p.instance.requestLog[action.GetArg("url")] = reqURL.String()
+	p.instance.requestLog[action.GetArg("url")] = parsedURL.String()
 
-	if err := p.page.Navigate(reqURL.String()); err != nil {
-		return errorutil.NewWithErr(err).Msgf("could not navigate to url %s", reqURL.String())
+	if err := p.page.Navigate(parsedURL.String()); err != nil {
+		return errorutil.NewWithErr(err).Msgf("could not navigate to url %s", parsedURL.String())
 	}
 	return nil
 }
 
 // RunScript runs a script on the loaded page
-func (p *Page) RunScript(action *Action, out ActionData) error {
-	code := p.getActionArgWithDefaultValues(action, "code")
+func (p *Page) RunScript(act *Action, out ActionData) error {
+	code, err := p.getActionArg(act, "code")
+	if err != nil {
+		return err
+	}
+
 	if code == "" {
 		return errinvalidArguments
 	}
-	if p.getActionArgWithDefaultValues(action, "hook") == "true" {
+
+	hook, err := p.getActionArg(act, "hook")
+	if err != nil {
+		return err
+	}
+
+	if hook == "true" {
 		if _, err := p.page.EvalOnNewDocument(code); err != nil {
 			return err
 		}
 	}
+
 	data, err := p.page.Eval(code)
 	if err != nil {
 		return err
 	}
-	if data != nil && action.Name != "" {
-		out[action.Name] = data.Value.String()
+
+	if data != nil && act.Name != "" {
+		out[act.Name] = data.Value.String()
 	}
+
 	return nil
 }
 
@@ -401,7 +467,12 @@ func (p *Page) ClickElement(act *Action, out ActionData) error {
 
 // KeyboardAction executes a keyboard action on the page.
 func (p *Page) KeyboardAction(act *Action, out ActionData) error {
-	return p.page.Keyboard.Type([]input.Key(p.getActionArgWithDefaultValues(act, "keys"))...)
+	keys, err := p.getActionArg(act, "keys")
+	if err != nil {
+		return err
+	}
+
+	return p.page.Keyboard.Type([]input.Key(keys)...)
 }
 
 // RightClickElement executes right click actions for an element.
@@ -421,16 +492,26 @@ func (p *Page) RightClickElement(act *Action, out ActionData) error {
 
 // Screenshot executes screenshot action on a page
 func (p *Page) Screenshot(act *Action, out ActionData) error {
-	to := p.getActionArgWithDefaultValues(act, "to")
+	to, err := p.getActionArg(act, "to")
+	if err != nil {
+		return err
+	}
+
 	if to == "" {
 		to = ksuid.New().String()
 		if act.Name != "" {
 			out[act.Name] = to
 		}
 	}
+
 	var data []byte
-	var err error
-	if p.getActionArgWithDefaultValues(act, "fullpage") == "true" {
+
+	fullpage, err := p.getActionArg(act, "fullpage")
+	if err != nil {
+		return err
+	}
+
+	if fullpage == "true" {
 		data, err = p.page.Screenshot(true, &proto.PageCaptureScreenshot{})
 	} else {
 		data, err = p.page.Screenshot(false, &proto.PageCaptureScreenshot{})
@@ -438,25 +519,32 @@ func (p *Page) Screenshot(act *Action, out ActionData) error {
 	if err != nil {
 		return errors.Wrap(err, "could not take screenshot")
 	}
-	targetPath := p.getActionArgWithDefaultValues(act, "to")
-	targetPath, err = fileutil.CleanPath(targetPath)
+
+	to, err = fileutil.CleanPath(to)
 	if err != nil {
-		return errorutil.New("could not clean output screenshot path %s", targetPath)
+		return errorutil.New("could not clean output screenshot path %s", to)
 	}
+
 	// allow if targetPath is child of current working directory
 	if !protocolstate.IsLFAAllowed() {
 		cwd, err := os.Getwd()
 		if err != nil {
 			return errorutil.NewWithErr(err).Msgf("could not get current working directory")
 		}
-		if !strings.HasPrefix(targetPath, cwd) {
+
+		if !strings.HasPrefix(to, cwd) {
 			// writing outside of cwd requires -lfa flag
 			return ErrLFAccessDenied
 		}
 	}
 
+	mkdir, err := p.getActionArg(act, "mkdir")
+	if err != nil {
+		return err
+	}
+
 	// edgecase create directory if mkdir=true and path contains directory
-	if p.getActionArgWithDefaultValues(act, "mkdir") == "true" && stringsutil.ContainsAny(to, folderutil.UnixPathSeparator, folderutil.WindowsPathSeparator) {
+	if mkdir == "true" && stringsutil.ContainsAny(to, folderutil.UnixPathSeparator, folderutil.WindowsPathSeparator) {
 		// creates new directory if needed based on path `to`
 		// TODO: replace all permission bits with fileutil constants (https://github.com/projectdiscovery/utils/issues/113)
 		if err := os.MkdirAll(filepath.Dir(to), 0700); err != nil {
@@ -465,7 +553,7 @@ func (p *Page) Screenshot(act *Action, out ActionData) error {
 	}
 
 	// actual file path to write
-	filePath := targetPath
+	filePath := to
 	if !strings.HasSuffix(filePath, ".png") {
 		filePath += ".png"
 	}
@@ -484,7 +572,10 @@ func (p *Page) Screenshot(act *Action, out ActionData) error {
 
 // InputElement executes input element actions for an element.
 func (p *Page) InputElement(act *Action, out ActionData) error {
-	value := p.getActionArgWithDefaultValues(act, "value")
+	value, err := p.getActionArg(act, "value")
+	if err != nil {
+		return err
+	}
 	if value == "" {
 		return errinvalidArguments
 	}
@@ -503,7 +594,10 @@ func (p *Page) InputElement(act *Action, out ActionData) error {
 
 // TimeInputElement executes time input on an element
 func (p *Page) TimeInputElement(act *Action, out ActionData) error {
-	value := p.getActionArgWithDefaultValues(act, "value")
+	value, err := p.getActionArg(act, "value")
+	if err != nil {
+		return err
+	}
 	if value == "" {
 		return errinvalidArguments
 	}
@@ -526,7 +620,10 @@ func (p *Page) TimeInputElement(act *Action, out ActionData) error {
 
 // SelectInputElement executes select input statement action on a element
 func (p *Page) SelectInputElement(act *Action, out ActionData) error {
-	value := p.getActionArgWithDefaultValues(act, "value")
+	value, err := p.getActionArg(act, "value")
+	if err != nil {
+		return err
+	}
 	if value == "" {
 		return errinvalidArguments
 	}
@@ -538,14 +635,26 @@ func (p *Page) SelectInputElement(act *Action, out ActionData) error {
 		return errors.Wrap(err, errCouldNotScroll)
 	}
 
-	selectedBool := false
-	if p.getActionArgWithDefaultValues(act, "selected") == "true" {
+	var selectedBool bool
+
+	selected, err := p.getActionArg(act, "selected")
+	if err != nil {
+		return err
+	}
+
+	if selected == "true" {
 		selectedBool = true
 	}
-	by := p.getActionArgWithDefaultValues(act, "selector")
-	if err := element.Select([]string{value}, selectedBool, selectorBy(by)); err != nil {
+
+	selector, err := p.getActionArg(act, "selector")
+	if err != nil {
+		return err
+	}
+
+	if err := element.Select([]string{value}, selectedBool, selectorBy(selector)); err != nil {
 		return errors.Wrap(err, "could not select input")
 	}
+
 	return nil
 }
 
@@ -603,14 +712,21 @@ func (p *Page) FilesInput(act *Action, out ActionData) error {
 	if err != nil {
 		return errors.Wrap(err, errCouldNotGetElement)
 	}
+
 	if err = element.ScrollIntoView(); err != nil {
 		return errors.Wrap(err, errCouldNotScroll)
 	}
-	value := p.getActionArgWithDefaultValues(act, "value")
+
+	value, err := p.getActionArg(act, "value")
+	if err != nil {
+		return err
+	}
 	filesPaths := strings.Split(value, ",")
+
 	if err := element.SetFiles(filesPaths); err != nil {
 		return errors.Wrap(err, "could not set files")
 	}
+
 	return nil
 }
 
@@ -620,19 +736,32 @@ func (p *Page) ExtractElement(act *Action, out ActionData) error {
 	if err != nil {
 		return errors.Wrap(err, errCouldNotGetElement)
 	}
+
 	if err = element.ScrollIntoView(); err != nil {
 		return errors.Wrap(err, errCouldNotScroll)
 	}
-	switch p.getActionArgWithDefaultValues(act, "target") {
+
+	target, err := p.getActionArg(act, "target")
+	if err != nil {
+		return err
+	}
+
+	switch target {
 	case "attribute":
-		attrName := p.getActionArgWithDefaultValues(act, "attribute")
-		if attrName == "" {
+		attribute, err := p.getActionArg(act, "attribute")
+		if err != nil {
+			return err
+		}
+
+		if attribute == "" {
 			return errors.New("attribute can't be empty")
 		}
-		attrValue, err := element.Attribute(attrName)
+
+		attrValue, err := element.Attribute(attribute)
 		if err != nil {
 			return errors.Wrap(err, "could not get attribute")
 		}
+
 		if act.Name != "" {
 			out[act.Name] = *attrValue
 		}
@@ -641,6 +770,7 @@ func (p *Page) ExtractElement(act *Action, out ActionData) error {
 		if err != nil {
 			return errors.Wrap(err, "could not get element text node")
 		}
+
 		if act.Name != "" {
 			out[act.Name] = text
 		}
@@ -650,30 +780,33 @@ func (p *Page) ExtractElement(act *Action, out ActionData) error {
 
 // WaitEvent waits for an event to happen on the page.
 func (p *Page) WaitEvent(act *Action, out ActionData) (func() error, error) {
-	event := p.getActionArgWithDefaultValues(act, "event")
+	event, err := p.getActionArg(act, "event")
+	if err != nil {
+		return nil, err
+	}
+
 	if event == "" {
 		return nil, errors.New("event not recognized")
 	}
 
 	var waitEvent proto.Event
+
 	gotType := proto.GetType(event)
 	if gotType == nil {
-		return nil, errorutil.New("event %v does not exist", event)
+		return nil, errorutil.New("event %q does not exist", event)
 	}
+
 	tmp, ok := reflect.New(gotType).Interface().(proto.Event)
 	if !ok {
-		return nil, errorutil.New("event %v is not a page event", event)
+		return nil, errorutil.New("event %q is not a page event", event)
 	}
+
 	waitEvent = tmp
-	maxDuration := 10 * time.Second // 10 sec is max wait duration for any event
 
 	// allow user to specify max-duration for wait-event
-	if value := p.getActionArgWithDefaultValues(act, "max-duration"); value != "" {
-		var err error
-		maxDuration, err = time.ParseDuration(value)
-		if err != nil {
-			return nil, errorutil.NewWithErr(err).Msgf("could not parse max-duration")
-		}
+	maxDuration, err := getTimeParameter(p, act, "max-duration", 5, time.Second)
+	if err != nil {
+		return nil, err
 	}
 
 	// Just wait the event to happen
@@ -681,23 +814,20 @@ func (p *Page) WaitEvent(act *Action, out ActionData) (func() error, error) {
 		// execute actual wait event
 		ctx, cancel := context.WithTimeoutCause(context.Background(), maxDuration, ErrActionExecDealine)
 		defer cancel()
+
 		err = contextutil.ExecFunc(ctx, p.page.WaitEvent(waitEvent))
+
 		return
 	}
+
 	return waitFunc, nil
 }
 
 // HandleDialog handles JavaScript dialog (alert, confirm, prompt, or onbeforeunload).
 func (p *Page) HandleDialog(act *Action, out ActionData) error {
-	maxDuration := 10 * time.Second
-
-	if dur := p.getActionArgWithDefaultValues(act, "max-duration"); dur != "" {
-		var err error
-
-		maxDuration, err = time.ParseDuration(dur)
-		if err != nil {
-			return errorutil.NewWithErr(err).Msgf("could not parse max-duration")
-		}
+	maxDuration, err := getTimeParameter(p, act, "max-duration", 10, time.Second)
+	if err != nil {
+		return err
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), maxDuration)
@@ -766,15 +896,13 @@ func (p *Page) DebugAction(act *Action, out ActionData) error {
 
 // SleepAction sleeps on the page for a specified duration
 func (p *Page) SleepAction(act *Action, out ActionData) error {
-	seconds := act.Data["duration"]
-	if seconds == "" {
-		seconds = "5"
-	}
-	parsed, err := strconv.Atoi(seconds)
+	duration, err := getTimeParameter(p, act, "duration", 5, time.Second)
 	if err != nil {
 		return err
 	}
-	time.Sleep(time.Duration(parsed) * time.Second)
+
+	time.Sleep(duration)
+
 	return nil
 }
 
@@ -792,20 +920,28 @@ func selectorBy(selector string) rod.SelectorType {
 	}
 }
 
-func (p *Page) getActionArgWithDefaultValues(action *Action, arg string) string {
-	return p.getActionArgWithValues(action, arg, generators.MergeMaps(
-		generators.BuildPayloadFromOptions(p.instance.browser.options),
-		p.payloads,
-	))
-}
+func (p *Page) getActionArg(action *Action, arg string) (string, error) {
+	var err error
 
-func (p *Page) getActionArgWithValues(action *Action, arg string, values map[string]interface{}) string {
 	argValue := action.GetArg(arg)
-	argValue = replaceWithValues(argValue, values)
+
 	if p.instance.interactsh != nil {
 		var interactshURLs []string
 		argValue, interactshURLs = p.instance.interactsh.Replace(argValue, p.InteractshURLs)
 		p.addInteractshURL(interactshURLs...)
 	}
-	return argValue
+
+	exprs := getExpressions(argValue, p.variables)
+
+	err = expressions.ContainsUnresolvedVariables(exprs...)
+	if err != nil {
+		return "", errorutil.NewWithErr(err).Msgf("argument %q, value: %q", arg, argValue)
+	}
+
+	argValue, err = expressions.Evaluate(argValue, p.variables)
+	if err != nil {
+		return "", fmt.Errorf("could not get value for argument %q: %s", arg, err)
+	}
+
+	return argValue, nil
 }
