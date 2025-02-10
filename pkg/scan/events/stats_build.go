@@ -4,12 +4,13 @@
 package events
 
 import (
-	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
 	"sync"
 	"time"
+
+	"github.com/projectdiscovery/nuclei/v3/pkg/utils/json"
 )
 
 var _ ScanEventWorker = &ScanStatsWorker{}

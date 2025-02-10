@@ -1,7 +1,6 @@
 package json
 
 import (
-	"encoding/json"
 	"io"
 	"os"
 
@@ -9,6 +8,7 @@ import (
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/input/formats"
 	"github.com/projectdiscovery/nuclei/v3/pkg/input/types"
+	"github.com/projectdiscovery/nuclei/v3/pkg/utils/json"
 )
 
 // JSONFormat is a JSON format parser for nuclei

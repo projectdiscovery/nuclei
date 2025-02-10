@@ -1,10 +1,10 @@
 package variables
 
 import (
-	"encoding/json"
 	"testing"
 	"time"
 
+	"github.com/projectdiscovery/nuclei/v3/pkg/utils/json"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v2"
 )
