@@ -85,9 +85,6 @@ type Store struct {
 	// NotFoundCallback is called for each not found template
 	// This overrides error handling for not found templates
 	NotFoundCallback func(template string) bool
-
-	// aiTemplatesTempDirectory is the temporary directory used for AI templates
-	aiTemplatesTempDirectory string
 }
 
 // NewConfig returns a new loader config
@@ -186,11 +183,10 @@ func New(cfg *Config) (*Store, error) {
 
 	// Handle AI template generation if prompt is provided
 	if len(cfg.AITemplatePrompt) > 0 {
-		aiTemplates, aiTemplatesTempDirectory, err := getAIGeneratedTemplates(cfg.AITemplatePrompt, cfg.ExecutorOptions.Options)
+		aiTemplates, err := getAIGeneratedTemplates(cfg.AITemplatePrompt, cfg.ExecutorOptions.Options)
 		if err != nil {
 			return nil, err
 		}
-		store.aiTemplatesTempDirectory = aiTemplatesTempDirectory
 		store.finalTemplates = append(store.finalTemplates, aiTemplates...)
 	}
 
@@ -645,13 +641,5 @@ func (s *Store) logErroredTemplates(erred map[string]error) {
 		if s.NotFoundCallback == nil || !s.NotFoundCallback(template) {
 			gologger.Error().Msgf("Could not find template '%s': %s", template, err)
 		}
-	}
-}
-
-// Cleanup cleans up any temporary files created by the store
-func (store *Store) Cleanup() {
-	if store.aiTemplatesTempDirectory != "" {
-		os.RemoveAll(store.aiTemplatesTempDirectory)
-		store.aiTemplatesTempDirectory = ""
 	}
 }

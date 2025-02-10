@@ -10,6 +10,7 @@ import (
 
 	"github.com/alecthomas/chroma/quick"
 	"github.com/projectdiscovery/gologger"
+	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/config"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	pdcpauth "github.com/projectdiscovery/utils/auth/pdcp"
 	errorutil "github.com/projectdiscovery/utils/errors"
@@ -28,32 +29,32 @@ type AITemplateResponse struct {
 	TemplateID string `json:"template_id"`
 }
 
-func getAIGeneratedTemplates(prompt string, options *types.Options) ([]string, string, error) {
+func getAIGeneratedTemplates(prompt string, options *types.Options) ([]string, error) {
 	prompt = strings.TrimSpace(prompt)
 	if prompt == "" {
-		return nil, "", errorutil.New("No prompt provided")
+		return nil, errorutil.New("No prompt provided")
 	}
 
 	template, templateID, err := generateAITemplate(prompt)
 	if err != nil {
-		return nil, "", errorutil.New("Failed to generate template: %v", err)
+		return nil, errorutil.New("Failed to generate template: %v", err)
 	}
 
-	tempDir, err := os.MkdirTemp("", "nuclei-ai-templates-*")
-	if err != nil {
-		return nil, "", errorutil.New("Failed to generate template: %v", err)
+	pdcpTemplateDir := filepath.Join(config.DefaultConfig.GetTemplateDir(), "pdcp")
+	if err := os.MkdirAll(pdcpTemplateDir, 0755); err != nil {
+		return nil, errorutil.New("Failed to create pdcp template directory: %v", err)
 	}
 
-	tempFile := filepath.Join(tempDir, templateID+".yaml")
-	err = os.WriteFile(tempFile, []byte(template), 0644)
+	templateFile := filepath.Join(pdcpTemplateDir, templateID+".yaml")
+	err = os.WriteFile(templateFile, []byte(template), 0600)
 	if err != nil {
-		os.RemoveAll(tempDir)
-		return nil, "", errorutil.New("Failed to generate template: %v", err)
+		os.RemoveAll(pdcpTemplateDir)
+		return nil, errorutil.New("Failed to generate template: %v", err)
 	}
 
 	gologger.Info().Msgf("Generated template available at: https://cloud.projectdiscovery.io/templates/%s", templateID)
-	gologger.Info().Msgf("Generated template path: %s", tempFile)
-	
+	gologger.Info().Msgf("Generated template path: %s", templateFile)
+
 	// Check if we should display the template
 	// This happens when:
 	// 1. No targets are provided (-target/-list)
@@ -74,7 +75,7 @@ func getAIGeneratedTemplates(prompt string, options *types.Options) ([]string, s
 		os.Exit(0)
 	}
 
-	return []string{tempFile}, tempDir, nil
+	return []string{templateFile}, nil
 }
 
 func generateAITemplate(prompt string) (string, string, error) {
