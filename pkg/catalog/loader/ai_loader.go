@@ -72,6 +72,9 @@ func getAIGeneratedTemplates(prompt string, options *types.Options) ([]string, e
 			}
 		}
 		gologger.Silent().Msgf("\n%s", template)
+		// FIXME: 
+		// we should not be exiting the program here
+		// but we need to find a better way to handle this
 		os.Exit(0)
 	}
 
