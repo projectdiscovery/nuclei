@@ -3,6 +3,7 @@ package loader
 import (
 	"bytes"
 	"encoding/json"
+	"io"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -119,7 +120,8 @@ func generateAITemplate(prompt string) (string, string, error) {
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		return "", "", errorutil.New("API returned non-OK status code: %d", resp.StatusCode)
+		body, _ := io.ReadAll(resp.Body)
+		return "", "", errorutil.New("API returned status code %d: %s", resp.StatusCode, string(body))
 	}
 
 	var result AITemplateResponse
