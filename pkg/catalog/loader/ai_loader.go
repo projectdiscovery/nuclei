@@ -97,11 +97,12 @@ func generateAITemplate(prompt string) (string, string, error) {
 
 	ph := pdcpauth.PDCPCredHandler{}
 	creds, err := ph.GetCreds()
-	if creds == nil {
-		return "", "", errorutil.New("PDCP API Key not configured, Create one for free at https://cloud.projectdiscovery.io/")
-	}
 	if err != nil {
 		return "", "", errorutil.New("Failed to get PDCP credentials")
+	}
+
+	if creds == nil {
+		return "", "", errorutil.New("PDCP API Key not configured, Create one for free at https://cloud.projectdiscovery.io/")
 	}
 
 	req.Header.Set("Content-Type", "application/json")
