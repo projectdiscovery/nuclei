@@ -33,8 +33,12 @@ type AITemplateResponse struct {
 
 func getAIGeneratedTemplates(prompt string, options *types.Options) ([]string, error) {
 	prompt = strings.TrimSpace(prompt)
-	if prompt == "" {
-		return nil, errorutil.New("No prompt provided")
+	if len(prompt) < 5 {
+		return nil, errorutil.New("Prompt is too short. Please provide a more descriptive prompt")
+	}
+
+	if len(prompt) > 3000 {
+		return nil, errorutil.New("Prompt is too long. Please limit to 3000 characters")
 	}
 
 	template, templateID, err := generateAITemplate(prompt)
