@@ -24,7 +24,7 @@ http:
     matchers:
       - type: dsl
         dsl:
-          - contains(http_body,'introduction') # check for http string
+          - contains(http_body,'home') # check for http string
           - cname_filtered == 'cname' # check for cname (extracted information from dns response)
           - ssl_subject_cn == 'docs.projectdiscovery.io'
         condition: and
