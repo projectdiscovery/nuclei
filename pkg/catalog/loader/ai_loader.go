@@ -87,18 +87,18 @@ func generateAITemplate(prompt string) (string, string, error) {
 	}
 	jsonBody, err := json.Marshal(reqBody)
 	if err != nil {
-		return "", "", errorutil.New("Failed to generate template")
+		return "", "", errorutil.New("Failed to marshal request body: %v", err)
 	}
 
 	req, err := http.NewRequest(http.MethodPost, aiTemplateGeneratorAPIEndpoint, bytes.NewBuffer(jsonBody))
 	if err != nil {
-		return "", "", errorutil.New("Failed to generate template")
+		return "", "", errorutil.New("Failed to create HTTP request: %v", err)
 	}
 
 	ph := pdcpauth.PDCPCredHandler{}
 	creds, err := ph.GetCreds()
 	if err != nil {
-		return "", "", errorutil.New("Failed to get PDCP credentials")
+		return "", "", errorutil.New("Failed to get PDCP credentials: %v", err)
 	}
 
 	if creds == nil {
@@ -110,7 +110,7 @@ func generateAITemplate(prompt string) (string, string, error) {
 
 	resp, err := retryablehttp.DefaultClient().Do(req)
 	if err != nil {
-		return "", "", errorutil.New("Failed to generate template")
+		return "", "", errorutil.New("Failed to send HTTP request: %v", err)
 	}
 	defer resp.Body.Close()
 
@@ -119,12 +119,12 @@ func generateAITemplate(prompt string) (string, string, error) {
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		return "", "", errorutil.New("Failed to generate template")
+		return "", "", errorutil.New("API returned non-OK status code: %d", resp.StatusCode)
 	}
 
 	var result AITemplateResponse
 	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
-		return "", "", errorutil.New("Failed to generate template")
+		return "", "", errorutil.New("Failed to decode API response: %v", err)
 	}
 
 	if result.TemplateID == "" || result.Completion == "" {
