@@ -6,14 +6,13 @@ package stats
 
 import (
 	_ "embed"
-	"encoding/json"
 	"fmt"
-	"regexp"
 	"sort"
 	"strconv"
 	"sync/atomic"
 
 	"github.com/logrusorgru/aurora"
+	"github.com/projectdiscovery/nuclei/v3/pkg/output/stats/waf"
 	mapsutil "github.com/projectdiscovery/utils/maps"
 )
 
@@ -25,7 +24,7 @@ type Tracker struct {
 	wafDetected *mapsutil.SyncLockMap[string, *atomic.Int32]
 
 	// internal stuff
-	wafDetector *wafDetector
+	wafDetector *waf.WafDetector
 }
 
 // NewTracker creates a new Tracker instance.
@@ -34,7 +33,7 @@ func NewTracker() *Tracker {
 		statusCodes: mapsutil.NewSyncLockMap[string, *atomic.Int32](),
 		errorCodes:  mapsutil.NewSyncLockMap[string, *atomic.Int32](),
 		wafDetected: mapsutil.NewSyncLockMap[string, *atomic.Int32](),
-		wafDetector: newWafDetector(),
+		wafDetector: waf.NewWafDetector(),
 	}
 }
 
@@ -92,7 +91,7 @@ func (t *Tracker) GetStats() *StatsOutput {
 		return nil
 	})
 	_ = t.wafDetected.Iterate(func(k string, v *atomic.Int32) error {
-		waf, ok := t.wafDetector.wafs[k]
+		waf, ok := t.wafDetector.GetWAF(k)
 		if !ok {
 			return nil
 		}
@@ -100,55 +99,6 @@ func (t *Tracker) GetStats() *StatsOutput {
 		return nil
 	})
 	return stats
-}
-
-type wafDetector struct {
-	wafs       map[string]waf
-	regexCache map[string]*regexp.Regexp
-}
-
-// waf represents a web application firewall definition
-type waf struct {
-	Company string `json:"company"`
-	Name    string `json:"name"`
-	Regex   string `json:"regex"`
-}
-
-// wafData represents the root JSON structure
-type wafData struct {
-	WAFs map[string]waf `json:"wafs"`
-}
-
-//go:embed regexes.json
-var wafContentRegexes string
-
-func newWafDetector() *wafDetector {
-	var data wafData
-	if err := json.Unmarshal([]byte(wafContentRegexes), &data); err != nil {
-		panic("could not unmarshal waf content regexes: " + err.Error())
-	}
-
-	store := &wafDetector{
-		wafs:       data.WAFs,
-		regexCache: make(map[string]*regexp.Regexp),
-	}
-
-	for id, waf := range store.wafs {
-		if waf.Regex == "" {
-			continue
-		}
-		store.regexCache[id] = regexp.MustCompile(waf.Regex)
-	}
-	return store
-}
-
-func (d *wafDetector) DetectWAF(content string) (string, bool) {
-	for id, regex := range d.regexCache {
-		if regex.MatchString(content) {
-			return id, true
-		}
-	}
-	return "", false
 }
 
 // DisplayTopStats prints the most relevant statistics for CLI
