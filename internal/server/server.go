@@ -99,13 +99,12 @@ func New(options *Options) (*DASTServer, error) {
 	server.scopeManager = scopeManager
 
 	var builder strings.Builder
-	builder.WriteString(fmt.Sprintf("Using %d parallel tasks with %d buffer", maxWorkers, bufferSize))
+	gologger.Debug().Msgf("Using %d parallel tasks with %d buffer", maxWorkers, bufferSize)
 	if options.Token != "" {
 		builder.WriteString(" (with token)")
 	}
-	gologger.Info().Msgf("%s", builder.String())
-	gologger.Info().Msgf("Connection URL: %s", server.buildURL("/fuzz"))
-	gologger.Info().Msgf("Stats UI URL: %s", server.buildURL("/stats"))
+	gologger.Info().Msgf("DAST Server API: %s", server.buildURL("/fuzz"))
+	gologger.Info().Msgf("DAST Server Stats URL: %s", server.buildURL("/stats"))
 
 	return server, nil
 }
