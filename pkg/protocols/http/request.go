@@ -20,6 +20,7 @@ import (
 	"github.com/projectdiscovery/fastdialer/fastdialer"
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/fuzz/analyzers"
+	fuzzStats "github.com/projectdiscovery/nuclei/v3/pkg/fuzz/stats"
 	"github.com/projectdiscovery/nuclei/v3/pkg/operators"
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
@@ -1016,6 +1017,21 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 		dumpResponse(event, request, respChain.FullResponse().Bytes(), formedURL, responseContentType, isResponseTruncated, input.MetaInput.Input)
 
 		callback(event)
+
+		if request.options.FuzzStatsDB != nil && generatedRequest.fuzzGeneratedRequest.Request != nil {
+			request.options.FuzzStatsDB.RecordResultEvent(fuzzStats.FuzzingEvent{
+				URL:           input.MetaInput.Target(),
+				TemplateID:    request.options.TemplateID,
+				ComponentType: generatedRequest.fuzzGeneratedRequest.Component.Name(),
+				ComponentName: generatedRequest.fuzzGeneratedRequest.Parameter,
+				PayloadSent:   generatedRequest.fuzzGeneratedRequest.Value,
+				StatusCode:    respChain.Response().StatusCode,
+				Matched:       event.HasResults(),
+				RawRequest:    string(dumpedRequest),
+				RawResponse:   respChain.FullResponse().String(),
+				Severity:      request.options.TemplateInfo.SeverityHolder.Severity.String(),
+			})
+		}
 
 		// Skip further responses if we have stop-at-first-match and a match
 		if (request.options.Options.StopAtFirstMatch || request.options.StopAtFirstMatch || request.StopAtFirstMatch) && event.HasResults() {

@@ -1,6 +1,7 @@
 package swagger
 
 import (
+	"os"
 	"testing"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/input/types"
@@ -14,10 +15,14 @@ func TestSwaggerAPIParser(t *testing.T) {
 
 	var gotMethodsToURLs []string
 
-	err := format.Parse(proxifyInputFile, func(request *types.RequestResponse) bool {
+	file, err := os.Open(proxifyInputFile)
+	require.Nilf(t, err, "error opening proxify input file: %v", err)
+	defer file.Close()
+
+	err = format.Parse(file, func(request *types.RequestResponse) bool {
 		gotMethodsToURLs = append(gotMethodsToURLs, request.URL.String())
 		return false
-	})
+	}, proxifyInputFile)
 	if err != nil {
 		t.Fatal(err)
 	}

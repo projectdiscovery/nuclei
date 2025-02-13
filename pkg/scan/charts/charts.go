@@ -79,7 +79,7 @@ func (sc *ScanEventsCharts) Start(addr string) {
 	e := echo.New()
 	e.HideBanner = true
 	e.GET("/concurrency", sc.ConcurrencyVsTime)
-	e.GET("/requests", sc.TotalRequestsOverTime)
+	e.GET("/fuzz", sc.TotalRequestsOverTime)
 	e.GET("/slow", sc.TopSlowTemplates)
 	e.GET("/rps", sc.RequestsVSInterval)
 	e.GET("/", sc.AllCharts)
