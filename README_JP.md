@@ -31,6 +31,7 @@
   <a href="https://github.com/projectdiscovery/nuclei/blob/main/README_KR.md">韓国語</a> •
   <a href="https://github.com/projectdiscovery/nuclei/blob/main/README_ID.md">インドネシア語</a> •
   <a href="https://github.com/projectdiscovery/nuclei/blob/main/README_ES.md">スペイン語</a>
+  <a href="https://github.com/projectdiscovery/nuclei/blob/main/README_PT-BR.md">ポルトガル語</a>
 </p>
 
 ---
@@ -52,7 +53,7 @@ Nucleiは、テンプレートに基づいてターゲット間でリクエス�
 
 # Nucleiのインストール
 
-Nucleiを正常にインストールするには、**go1.21**が必要です。以下のコマンドを実行して最新バージョンをインストールしてください -
+Nucleiを正常にインストールするには、**go1.22**が必要です。以下のコマンドを実行して最新バージョンをインストールしてください -
 
 ```sh
 go install -v github.com/projectdiscovery/nuclei/v3/cmd/nuclei@latest

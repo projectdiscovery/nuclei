@@ -1,7 +1,9 @@
 package offlinehttp
 
 import (
+	"fmt"
 	"io"
+	"net/http"
 	"net/http/httputil"
 	"os"
 
@@ -29,8 +31,16 @@ func (request *Request) Type() templateTypes.ProtocolType {
 	return templateTypes.OfflineHTTPProtocol
 }
 
+// RawInputMode is a flag to indicate if the input is raw input
+// rather than a file path
+var RawInputMode = false
+
 // ExecuteWithResults executes the protocol requests and returns results instead of writing them.
 func (request *Request) ExecuteWithResults(input *contextargs.Context, metadata, previous output.InternalEvent, callback protocols.OutputEventCallback) error {
+	if RawInputMode {
+		return request.executeRawInput(input.MetaInput.Input, "", input, callback)
+	}
+
 	wg, err := syncutil.New(syncutil.WithSize(request.options.Options.BulkSize))
 	if err != nil {
 		return err
@@ -66,43 +76,10 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, metadata,
 			}
 			dataStr := conversion.String(buffer)
 
-			resp, err := readResponseFromString(dataStr)
-			if err != nil {
-				gologger.Error().Msgf("Could not read raw response %s: %s\n", data, err)
+			if err := request.executeRawInput(dataStr, data, input, callback); err != nil {
+				gologger.Error().Msgf("Could not execute raw input %s: %s\n", data, err)
 				return
 			}
-
-			if request.options.Options.Debug || request.options.Options.DebugRequests {
-				gologger.Info().Msgf("[%s] Dumped offline-http request for %s", request.options.TemplateID, data)
-				gologger.Print().Msgf("%s", dataStr)
-			}
-			gologger.Verbose().Msgf("[%s] Sent OFFLINE-HTTP request to %s", request.options.TemplateID, data)
-
-			dumpedResponse, err := httputil.DumpResponse(resp, true)
-			if err != nil {
-				gologger.Error().Msgf("Could not dump raw http response %s: %s\n", data, err)
-				return
-			}
-
-			body, err := io.ReadAll(resp.Body)
-			if err != nil {
-				gologger.Error().Msgf("Could not read raw http response body %s: %s\n", data, err)
-				return
-			}
-
-			outputEvent := request.responseToDSLMap(resp, data, data, data, conversion.String(dumpedResponse), conversion.String(body), utils.HeadersToString(resp.Header), 0, nil)
-			// add response fields to template context and merge templatectx variables to output event
-			request.options.AddTemplateVars(input.MetaInput, request.Type(), request.GetID(), outputEvent)
-			if request.options.HasTemplateCtx(input.MetaInput) {
-				outputEvent = generators.MergeMaps(outputEvent, request.options.GetTemplateCtx(input.MetaInput).GetAll())
-			}
-			outputEvent["ip"] = ""
-			for k, v := range previous {
-				outputEvent[k] = v
-			}
-
-			event := eventcreator.CreateEvent(request, outputEvent, request.options.Options.Debug || request.options.Options.DebugResponse)
-			callback(event)
 		}(data)
 	})
 	wg.Wait()
@@ -113,4 +90,50 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, metadata,
 	}
 	request.options.Progress.IncrementRequests()
 	return nil
+}
+
+func (request *Request) executeRawInput(data, inputString string, input *contextargs.Context, callback protocols.OutputEventCallback) error {
+	resp, err := readResponseFromString(data)
+	if err != nil {
+		return errors.Wrap(err, "could not read raw response")
+	}
+
+	if request.options.Options.Debug || request.options.Options.DebugRequests {
+		gologger.Info().Msgf("[%s] Dumped offline-http request for %s", request.options.TemplateID, data)
+		gologger.Print().Msgf("%s", data)
+	}
+	gologger.Verbose().Msgf("[%s] Sent OFFLINE-HTTP request to %s", request.options.TemplateID, data)
+
+	dumpedResponse, err := httputil.DumpResponse(resp, true)
+	if err != nil {
+		return errors.Wrap(err, "could not dump raw http response")
+	}
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return errors.Wrap(err, "could not read raw http response body")
+	}
+	reqURL := inputString
+	if inputString == "" {
+		reqURL = getURLFromRequest(resp.Request)
+	}
+
+	outputEvent := request.responseToDSLMap(resp, data, reqURL, data, conversion.String(dumpedResponse), conversion.String(body), utils.HeadersToString(resp.Header), 0, nil)
+	// add response fields to template context and merge templatectx variables to output event
+	request.options.AddTemplateVars(input.MetaInput, request.Type(), request.GetID(), outputEvent)
+	if request.options.HasTemplateCtx(input.MetaInput) {
+		outputEvent = generators.MergeMaps(outputEvent, request.options.GetTemplateCtx(input.MetaInput).GetAll())
+	}
+	outputEvent["ip"] = ""
+
+	event := eventcreator.CreateEvent(request, outputEvent, request.options.Options.Debug || request.options.Options.DebugResponse)
+	callback(event)
+	return nil
+}
+
+func getURLFromRequest(req *http.Request) string {
+	if req.URL.Scheme == "" {
+		req.URL.Scheme = "https"
+	}
+	return fmt.Sprintf("%s://%s%s", req.URL.Scheme, req.Host, req.URL.Path)
 }

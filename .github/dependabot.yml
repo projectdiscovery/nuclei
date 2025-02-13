@@ -13,6 +13,10 @@ updates:
     groups:
       modules:
         patterns: ["github.com/projectdiscovery/*"]
+      security:
+        applies-to: "security-updates"
+        patterns: ["*"]
+        exclude-patterns: ["github.com/projectdiscovery/*"]
     labels:
       - "Type: Maintenance"
 

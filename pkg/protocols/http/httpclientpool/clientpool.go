@@ -113,6 +113,7 @@ func (c *Configuration) Clone() *Configuration {
 	if c.Connection != nil {
 		cloneConnection := &ConnectionConfiguration{
 			DisableKeepAlive: c.Connection.DisableKeepAlive,
+			CustomMaxTimeout: c.Connection.CustomMaxTimeout,
 		}
 		if c.Connection.HasCookieJar() {
 			cookiejar := *c.Connection.GetCookieJar()

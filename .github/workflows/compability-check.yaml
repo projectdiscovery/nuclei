@@ -9,11 +9,20 @@ on:
 jobs:
   check:
     if: github.actor == 'dependabot[bot]'
-    strategy:
-      matrix:
-        os: [ubuntu-latest, windows-latest, macOS-latest]
-    runs-on: ${{ matrix.os }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v4
+      - uses: projectdiscovery/actions/setup/git@v1
       - uses: projectdiscovery/actions/setup/go@v1
       - run: go mod download && go mod verify && go vet ./...
+      - name: Checks go.mod Integrity
+        run: |
+          git diff --exit-code go.mod >/dev/null || {
+            echo "::warning::go.mod is out of sync. Pushing changes to the branch."
+            git add go.{mod,sum}
+            git commit -m "chore(deps): go mod tidy"
+            git push origin $GITHUB_REF
+          }
+      - uses: projectdiscovery/actions/goreleaser@v1

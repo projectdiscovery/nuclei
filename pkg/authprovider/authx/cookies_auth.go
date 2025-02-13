@@ -2,6 +2,7 @@ package authx
 
 import (
 	"net/http"
+	"slices"
 
 	"github.com/projectdiscovery/retryablehttp-go"
 )
@@ -33,11 +34,27 @@ func (s *CookiesAuthStrategy) Apply(req *http.Request) {
 
 // ApplyOnRR applies the cookies auth strategy to the retryable request
 func (s *CookiesAuthStrategy) ApplyOnRR(req *retryablehttp.Request) {
+	existingCookies := req.Cookies()
+
+	for _, newCookie := range s.Data.Cookies {
+		for i, existing := range existingCookies {
+			if existing.Name == newCookie.Key {
+				existingCookies = slices.Delete(existingCookies, i, i+1)
+				break
+			}
+		}
+	}
+
+	// Clear and reset remaining cookies
+	req.Header.Del("Cookie")
+	for _, cookie := range existingCookies {
+		req.AddCookie(cookie)
+	}
+	// Add new cookies
 	for _, cookie := range s.Data.Cookies {
-		c := &http.Cookie{
+		req.AddCookie(&http.Cookie{
 			Name:  cookie.Key,
 			Value: cookie.Value,
-		}
-		req.AddCookie(c)
+		})
 	}
 }

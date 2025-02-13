@@ -45,7 +45,7 @@ func (e *Engine) executeAllSelfContained(ctx context.Context, alltemplates []*te
 	}
 }
 
-// executeTemplateWithTarget executes a given template on x targets (with a internal targetpool(i.e concurrency))
+// executeTemplateWithTargets executes a given template on x targets (with a internal targetpool(i.e concurrency))
 func (e *Engine) executeTemplateWithTargets(ctx context.Context, template *templates.Template, target provider.InputProvider, results *atomic.Bool) {
 	// this is target pool i.e max target to execute
 	wg := e.workPool.InputPool(template.Type())
