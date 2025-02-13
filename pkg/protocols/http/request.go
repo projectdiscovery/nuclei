@@ -900,6 +900,10 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 		if err := respChain.Fill(); err != nil {
 			return errors.Wrap(err, "could not generate response chain")
 		}
+
+		// log request stats
+		request.options.Output.RequestStatsLog(strconv.Itoa(respChain.Response().StatusCode), respChain.FullResponse().String())
+
 		// save response to projectfile
 		onceFunc()
 		matchedURL := input.MetaInput.Input
