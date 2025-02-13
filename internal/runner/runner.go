@@ -18,6 +18,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/input/provider"
 	"github.com/projectdiscovery/nuclei/v3/pkg/installer"
 	"github.com/projectdiscovery/nuclei/v3/pkg/loader/parser"
+	outputstats "github.com/projectdiscovery/nuclei/v3/pkg/output/stats"
 	"github.com/projectdiscovery/nuclei/v3/pkg/scan/events"
 	"github.com/projectdiscovery/nuclei/v3/pkg/utils/json"
 	uncoverlib "github.com/projectdiscovery/uncover"
@@ -92,6 +93,8 @@ type Runner struct {
 	pdcpUploadErrMsg   string
 	inputProvider      provider.InputProvider
 	fuzzFrequencyCache *frequency.Tracker
+	httpStats          *outputstats.Tracker
+
 	//general purpose temporary directory
 	tmpDir          string
 	parser          parser.Parser
@@ -256,6 +259,10 @@ func New(options *types.Options) (*Runner, error) {
 	}
 	// setup a proxy writer to automatically upload results to PDCP
 	runner.output = runner.setupPDCPUpload(outputWriter)
+	if options.HTTPStats {
+		runner.httpStats = outputstats.NewTracker()
+		runner.output = output.NewMultiWriter(runner.output, output.NewTrackerWriter(runner.httpStats))
+	}
 
 	if options.JSONL && options.EnableProgressBar {
 		options.StatsJSON = true
@@ -362,6 +369,9 @@ func (r *Runner) runStandardEnumeration(executerOpts protocols.ExecutorOptions, 
 
 // Close releases all the resources and cleans up
 func (r *Runner) Close() {
+	if r.httpStats != nil {
+		r.httpStats.DisplayTopStats(r.options.NoColor)
+	}
 	// dump hosterrors cache
 	if r.hostErrors != nil {
 		r.hostErrors.Close()
