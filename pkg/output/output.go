@@ -523,6 +523,13 @@ func sanitizeFileName(fileName string) string {
 }
 func (w *StandardWriter) WriteStoreDebugData(host, templateID, eventType string, data string) {
 	if w.storeResponse {
+		if len(host) > 60 {
+			host = host[:57] + "..."
+		}
+		if len(templateID) > 100 {
+			templateID = templateID[:97] + "..."
+		}
+
 		filename := sanitizeFileName(fmt.Sprintf("%s_%s", host, templateID))
 		subFolder := filepath.Join(w.storeResponseDir, sanitizeFileName(eventType))
 		if !fileutil.FolderExists(subFolder) {
@@ -537,7 +544,6 @@ func (w *StandardWriter) WriteStoreDebugData(host, templateID, eventType string,
 		_, _ = f.WriteString(fmt.Sprintln(data))
 		f.Close()
 	}
-
 }
 
 // tryParseCause tries to parse the cause of given error
