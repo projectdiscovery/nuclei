@@ -320,8 +320,8 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 			timeoutVal = 5
 		}
 
-		// Add 3x buffer to the timeout
-		customTimeout = int(math.Ceil(float64(timeoutVal) * 3))
+		// Add 5x buffer to the timeout
+		customTimeout = int(math.Ceil(float64(timeoutVal) * 5))
 	}
 	if customTimeout > 0 {
 		connectionConfiguration.Connection.CustomMaxTimeout = time.Duration(customTimeout) * time.Second

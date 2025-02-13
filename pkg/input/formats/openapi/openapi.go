@@ -1,6 +1,8 @@
 package openapi
 
 import (
+	"io"
+
 	"github.com/getkin/kin-openapi/openapi3"
 	"github.com/pkg/errors"
 	"github.com/projectdiscovery/nuclei/v3/pkg/input/formats"
@@ -29,9 +31,9 @@ func (j *OpenAPIFormat) SetOptions(options formats.InputFormatOptions) {
 
 // Parse parses the input and calls the provided callback
 // function for each RawRequest it discovers.
-func (j *OpenAPIFormat) Parse(input string, resultsCb formats.ParseReqRespCallback) error {
+func (j *OpenAPIFormat) Parse(input io.Reader, resultsCb formats.ParseReqRespCallback, filePath string) error {
 	loader := openapi3.NewLoader()
-	schema, err := loader.LoadFromFile(input)
+	schema, err := loader.LoadFromIoReader(input)
 	if err != nil {
 		return errors.Wrap(err, "could not decode openapi 3.0 schema")
 	}

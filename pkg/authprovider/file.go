@@ -85,8 +85,10 @@ func (f *FileAuthProvider) init() {
 		}
 	}
 	for _, dynamic := range f.store.Dynamic {
-		if len(dynamic.DomainsRegex) > 0 {
-			for _, domain := range dynamic.DomainsRegex {
+		domain, domainsRegex := dynamic.GetDomainAndDomainRegex()
+
+		if len(domainsRegex) > 0 {
+			for _, domain := range domainsRegex {
 				if f.compiled == nil {
 					f.compiled = make(map[*regexp.Regexp][]authx.AuthStrategy)
 				}
@@ -101,7 +103,7 @@ func (f *FileAuthProvider) init() {
 				}
 			}
 		}
-		for _, domain := range dynamic.Domains {
+		for _, domain := range domain {
 			if f.domains == nil {
 				f.domains = make(map[string][]authx.AuthStrategy)
 			}

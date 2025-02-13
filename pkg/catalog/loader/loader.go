@@ -542,7 +542,8 @@ func (store *Store) LoadTemplatesWithTags(templatesList, tags []string) []*templ
 					// Skip DAST filter when loading auth templates
 					if store.ID() != AuthStoreId && store.config.ExecutorOptions.Options.DAST {
 						// check if the template is a DAST template
-						if parsed.IsFuzzing() {
+						// also allow global matchers template to be loaded
+						if parsed.IsFuzzing() || parsed.Options.GlobalMatchers != nil && parsed.Options.GlobalMatchers.HasMatchers() {
 							loadTemplate(parsed)
 						}
 					} else if len(parsed.RequestsHeadless) > 0 && !store.config.ExecutorOptions.Options.Headless {

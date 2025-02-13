@@ -75,6 +75,10 @@ type StandardWriter struct {
 	DisableStdout         bool
 	AddNewLinesOutputFile bool // by default this is only done for stdout
 	KeysToRedact          []string
+
+	// JSONLogRequestHook is a hook that can be used to log request/response
+	// when using custom server code with output
+	JSONLogRequestHook func(*JSONLogRequest)
 }
 
 var _ Writer = &StandardWriter{}
@@ -352,7 +356,7 @@ type JSONLogRequest struct {
 
 // Request writes a log the requests trace log
 func (w *StandardWriter) Request(templatePath, input, requestType string, requestErr error) {
-	if w.traceFile == nil && w.errorFile == nil {
+	if w.traceFile == nil && w.errorFile == nil && w.JSONLogRequestHook == nil {
 		return
 	}
 
@@ -364,6 +368,10 @@ func (w *StandardWriter) Request(templatePath, input, requestType string, reques
 	data, err := jsoniter.Marshal(request)
 	if err != nil {
 		return
+	}
+
+	if w.JSONLogRequestHook != nil {
+		w.JSONLogRequestHook(request)
 	}
 
 	if w.traceFile != nil {

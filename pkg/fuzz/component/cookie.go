@@ -52,10 +52,6 @@ func (c *Cookie) Parse(req *retryablehttp.Request) (bool, error) {
 // Iterate iterates through the component
 func (c *Cookie) Iterate(callback func(key string, value interface{}) error) (err error) {
 	c.value.parsed.Iterate(func(key string, value any) bool {
-		// Skip ignored cookies
-		if _, ok := defaultIgnoredCookieKeys[key]; ok {
-			return ok
-		}
 		if errx := callback(key, value); errx != nil {
 			err = errx
 			return false
@@ -85,6 +81,7 @@ func (c *Cookie) Delete(key string) error {
 // Rebuild returns a new request with the
 // component rebuilt
 func (c *Cookie) Rebuild() (*retryablehttp.Request, error) {
+	// TODO: Fix cookie duplication with auth-file
 	cloned := c.req.Clone(context.Background())
 
 	cloned.Header.Del("Cookie")
@@ -105,48 +102,4 @@ func (c *Cookie) Clone() Component {
 		value: c.value.Clone(),
 		req:   c.req.Clone(context.Background()),
 	}
-}
-
-// A list of cookies that are essential to the request and
-// must not be fuzzed.
-var defaultIgnoredCookieKeys = map[string]struct{}{
-	"awsELB":                     {},
-	"AWSALB":                     {},
-	"AWSALBCORS":                 {},
-	"__utma":                     {},
-	"__utmb":                     {},
-	"__utmc":                     {},
-	"__utmt":                     {},
-	"__utmz":                     {},
-	"_ga":                        {},
-	"_gat":                       {},
-	"_gid":                       {},
-	"_gcl_au":                    {},
-	"_fbp":                       {},
-	"fr":                         {},
-	"__hstc":                     {},
-	"hubspotutk":                 {},
-	"__hssc":                     {},
-	"__hssrc":                    {},
-	"mp_mixpanel__c":             {},
-	"JSESSIONID":                 {},
-	"NREUM":                      {},
-	"_pk_id":                     {},
-	"_pk_ref":                    {},
-	"_pk_ses":                    {},
-	"_pk_cvar":                   {},
-	"_pk_hsr":                    {},
-	"_hjIncludedInSample":        {},
-	"__cfduid":                   {},
-	"cf_use_ob":                  {},
-	"cf_ob_info":                 {},
-	"intercom-session":           {},
-	"optimizelyEndUserId":        {},
-	"optimizelySegments":         {},
-	"optimizelyBuckets":          {},
-	"optimizelyPendingLogEvents": {},
-	"YSC":                        {},
-	"VISITOR_INFO1_LIVE":         {},
-	"PREF":                       {},
-	"GPS":                        {},
 }
