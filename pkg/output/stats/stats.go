@@ -105,14 +105,16 @@ func (t *Tracker) GetStats() *StatsOutput {
 func (t *Tracker) DisplayTopStats(noColor bool) {
 	stats := t.GetStats()
 
-	fmt.Printf("\n%s\n", aurora.Bold(aurora.Blue("Top Status Codes:")))
-	topStatusCodes := getTopN(stats.StatusCodeStats, 6)
-	for _, item := range topStatusCodes {
-		if noColor {
-			fmt.Printf("  %s: %d\n", item.Key, item.Value)
-		} else {
-			color := getStatusCodeColor(item.Key)
-			fmt.Printf("  %s: %d\n", aurora.Colorize(item.Key, color), item.Value)
+	if len(stats.StatusCodeStats) > 0 {
+		fmt.Printf("\n%s\n", aurora.Bold(aurora.Blue("Top Status Codes:")))
+		topStatusCodes := getTopN(stats.StatusCodeStats, 6)
+		for _, item := range topStatusCodes {
+			if noColor {
+				fmt.Printf("  %s: %d\n", item.Key, item.Value)
+			} else {
+				color := getStatusCodeColor(item.Key)
+				fmt.Printf("  %s: %d\n", aurora.Colorize(item.Key, color), item.Value)
+			}
 		}
 	}
 
