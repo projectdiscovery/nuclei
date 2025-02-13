@@ -50,6 +50,8 @@ type Writer interface {
 	WriteFailure(*InternalWrappedEvent) error
 	// Request logs a request in the trace log
 	Request(templateID, url, requestType string, err error)
+	// RequestStatsLog logs a request stats log
+	RequestStatsLog(statusCode, response string)
 	//  WriteStoreDebugData writes the request/response debug data to file
 	WriteStoreDebugData(host, templateID, eventType string, data string)
 }
@@ -74,6 +76,8 @@ type StandardWriter struct {
 	AddNewLinesOutputFile bool // by default this is only done for stdout
 	KeysToRedact          []string
 }
+
+var _ Writer = &StandardWriter{}
 
 var decolorizerRegex = regexp.MustCompile(`\x1B\[[0-9;]*[a-zA-Z]`)
 
@@ -351,15 +355,33 @@ func (w *StandardWriter) Request(templatePath, input, requestType string, reques
 	if w.traceFile == nil && w.errorFile == nil {
 		return
 	}
+
+	request := getJSONLogRequestFromError(templatePath, input, requestType, requestErr)
+	if w.timestamp {
+		ts := time.Now()
+		request.Timestamp = &ts
+	}
+	data, err := jsoniter.Marshal(request)
+	if err != nil {
+		return
+	}
+
+	if w.traceFile != nil {
+		_, _ = w.traceFile.Write(data)
+	}
+
+	if requestErr != nil && w.errorFile != nil {
+		_, _ = w.errorFile.Write(data)
+	}
+}
+
+func getJSONLogRequestFromError(templatePath, input, requestType string, requestErr error) *JSONLogRequest {
 	request := &JSONLogRequest{
 		Template: templatePath,
 		Input:    input,
 		Type:     requestType,
 	}
-	if w.timestamp {
-		ts := time.Now()
-		request.Timestamp = &ts
-	}
+
 	parsed, _ := urlutil.ParseAbsoluteURL(input, false)
 	if parsed != nil {
 		request.Address = parsed.Hostname()
@@ -397,18 +419,7 @@ func (w *StandardWriter) Request(templatePath, input, requestType string, reques
 	if val := errkit.GetAttrValue(requestErr, "address"); val.Any() != nil {
 		request.Address = val.String()
 	}
-	data, err := jsoniter.Marshal(request)
-	if err != nil {
-		return
-	}
-
-	if w.traceFile != nil {
-		_, _ = w.traceFile.Write(data)
-	}
-
-	if requestErr != nil && w.errorFile != nil {
-		_, _ = w.errorFile.Write(data)
-	}
+	return request
 }
 
 // Colorizer returns the colorizer instance for writer
@@ -540,12 +551,14 @@ func tryParseCause(err error) error {
 	if strings.HasPrefix(msg, "ReadStatusLine:") {
 		// last index is actual error (from rawhttp)
 		parts := strings.Split(msg, ":")
-		return errkit.New("%s", strings.TrimSpace(parts[len(parts)-1]))
+		return errkit.New(strings.TrimSpace(parts[len(parts)-1]))
 	}
 	if strings.Contains(msg, "read ") {
 		// same here
 		parts := strings.Split(msg, ":")
-		return errkit.New("%s", strings.TrimSpace(parts[len(parts)-1]))
+		return errkit.New(strings.TrimSpace(parts[len(parts)-1]))
 	}
 	return err
 }
+
+func (w *StandardWriter) RequestStatsLog(statusCode, response string) {}
