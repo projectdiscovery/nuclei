@@ -8,6 +8,8 @@ type MultiWriter struct {
 	writers []Writer
 }
 
+var _ Writer = &MultiWriter{}
+
 // NewMultiWriter creates a new MultiWriter instance
 func NewMultiWriter(writers ...Writer) *MultiWriter {
 	return &MultiWriter{writers: writers}
@@ -55,5 +57,11 @@ func (mw *MultiWriter) Request(templateID, url, requestType string, err error) {
 func (mw *MultiWriter) WriteStoreDebugData(host, templateID, eventType string, data string) {
 	for _, writer := range mw.writers {
 		writer.WriteStoreDebugData(host, templateID, eventType, data)
+	}
+}
+
+func (mw *MultiWriter) RequestStatsLog(statusCode, response string) {
+	for _, writer := range mw.writers {
+		writer.RequestStatsLog(statusCode, response)
 	}
 }
