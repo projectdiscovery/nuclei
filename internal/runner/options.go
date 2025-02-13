@@ -235,15 +235,21 @@ func validateMissingS3Options(options *types.Options) []string {
 	if options.AwsBucketName == "" {
 		missing = append(missing, "AWS_TEMPLATE_BUCKET")
 	}
-	if options.AwsAccessKey == "" {
-		missing = append(missing, "AWS_ACCESS_KEY")
+	if options.AwsProfile == "" {
+		if options.AwsAccessKey == "" {
+			missing = append(missing, "AWS_ACCESS_KEY")
+		}
+		if options.AwsSecretKey == "" {
+			missing = append(missing, "AWS_SECRET_KEY")
+		}
+		if options.AwsRegion == "" {
+			missing = append(missing, "AWS_REGION")
+		}
 	}
-	if options.AwsSecretKey == "" {
-		missing = append(missing, "AWS_SECRET_KEY")
+	if (options.AwsAccessKey == "" || options.AwsSecretKey == "" || options.AwsRegion == "") && options.AwsProfile == "" {
+		missing = append(missing, "AWS_PROFILE")
 	}
-	if options.AwsRegion == "" {
-		missing = append(missing, "AWS_REGION")
-	}
+
 	return missing
 }
 
@@ -449,6 +455,7 @@ func readEnvInputVars(options *types.Options) {
 	options.AwsSecretKey = os.Getenv("AWS_SECRET_KEY")
 	options.AwsBucketName = os.Getenv("AWS_TEMPLATE_BUCKET")
 	options.AwsRegion = os.Getenv("AWS_REGION")
+	options.AwsProfile = os.Getenv("AWS_PROFILE")
 
 	// Azure options for downloading templates from an Azure Blob Storage container
 	options.AzureContainerName = os.Getenv("AZURE_CONTAINER_NAME")
