@@ -1,18 +1,18 @@
 package swagger
 
 import (
-	"encoding/json"
 	"io"
 	"path"
 
 	"github.com/getkin/kin-openapi/openapi2"
+	"github.com/getkin/kin-openapi/openapi2conv"
 	"github.com/getkin/kin-openapi/openapi3"
 	"github.com/invopop/yaml"
 	"github.com/pkg/errors"
 	"github.com/projectdiscovery/nuclei/v3/pkg/input/formats"
 	"github.com/projectdiscovery/nuclei/v3/pkg/input/formats/openapi"
 
-	"github.com/getkin/kin-openapi/openapi2conv"
+	"github.com/projectdiscovery/nuclei/v3/pkg/utils/json"
 )
 
 // SwaggerFormat is a Swagger Schema File parser

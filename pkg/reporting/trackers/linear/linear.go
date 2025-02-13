@@ -3,7 +3,6 @@ package linear
 import (
 	"bytes"
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -18,6 +17,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/reporting/trackers/filters"
 	"github.com/projectdiscovery/nuclei/v3/pkg/reporting/trackers/linear/jsonutil"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
+	"github.com/projectdiscovery/nuclei/v3/pkg/utils/json"
 	"github.com/projectdiscovery/retryablehttp-go"
 )
 
@@ -390,7 +390,7 @@ func (i *Integration) doGraphqlRequest(ctx context.Context, query string, v any,
 		return fmt.Errorf("non-200 OK status code: %v body: %q", resp.Status, body)
 	}
 	var out struct {
-		Data   *json.RawMessage
+		Data   *json.Message
 		Errors errorsGraphql
 		//Extensions any // Unused.
 	}

@@ -24,6 +24,6 @@ http:
     matchers:
       - type: dsl
         dsl:
-          - contains(body,'introduction') # check for http string
+          - contains(body,'home') # check for http string
           - blogid == 'cname' # check for cname (extracted information from dns response)
         condition: and

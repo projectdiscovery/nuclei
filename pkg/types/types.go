@@ -42,6 +42,8 @@ type Options struct {
 	Templates goflags.StringSlice
 	// TemplateURLs specifies URLs to a list of templates to use
 	TemplateURLs goflags.StringSlice
+	// AITemplatePrompt specifies prompt to generate template using AI
+	AITemplatePrompt string
 	// RemoteTemplates specifies list of allowed URLs to load remote templates from
 	RemoteTemplateDomainList goflags.StringSlice
 	// 	ExcludedTemplates  specifies the template/templates to exclude
@@ -223,6 +225,8 @@ type Options struct {
 	JSONRequests bool
 	// OmitRawRequests omits requests/responses for matches in JSON output
 	OmitRawRequests bool
+	// HTTPStats enables http statistics tracking and display.
+	HTTPStats bool
 	// OmitTemplate omits encoded template from JSON output
 	OmitTemplate bool
 	// JSONExport is the file to export JSON output format to

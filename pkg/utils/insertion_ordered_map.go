@@ -1,10 +1,10 @@
 package utils
 
 import (
-	"encoding/json"
 	"fmt"
 	"strconv"
 
+	"github.com/projectdiscovery/nuclei/v3/pkg/utils/json"
 	"gopkg.in/yaml.v2"
 )
 

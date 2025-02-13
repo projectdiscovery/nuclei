@@ -1,12 +1,12 @@
 package stringslice
 
 import (
-	"encoding/json"
 	"fmt"
 	"strings"
 
 	"github.com/invopop/jsonschema"
 	"github.com/projectdiscovery/nuclei/v3/pkg/utils"
+	"github.com/projectdiscovery/nuclei/v3/pkg/utils/json"
 )
 
 type StringOrSlice string

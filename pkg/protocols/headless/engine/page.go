@@ -11,14 +11,21 @@ import (
 
 	"github.com/go-rod/rod"
 	"github.com/go-rod/rod/lib/proto"
+	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/generators"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/utils/vardump"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/utils"
+	httputil "github.com/projectdiscovery/nuclei/v3/pkg/protocols/utils/http"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
+	errorutil "github.com/projectdiscovery/utils/errors"
+	urlutil "github.com/projectdiscovery/utils/url"
 )
 
 // Page is a single page in an isolated browser instance
 type Page struct {
-	input          *contextargs.Context
+	ctx            *contextargs.Context
+	inputURL       *urlutil.URL
 	options        *Options
 	page           *rod.Page
 	rules          []rule
@@ -29,6 +36,7 @@ type Page struct {
 	History        []HistoryData
 	InteractshURLs []string
 	payloads       map[string]interface{}
+	variables      map[string]interface{}
 }
 
 // HistoryData contains the page request/response pairs
@@ -45,7 +53,7 @@ type Options struct {
 }
 
 // Run runs a list of actions by creating a new page in the browser.
-func (i *Instance) Run(input *contextargs.Context, actions []*Action, payloads map[string]interface{}, options *Options) (ActionData, *Page, error) {
+func (i *Instance) Run(ctx *contextargs.Context, actions []*Action, payloads map[string]interface{}, options *Options) (ActionData, *Page, error) {
 	page, err := i.engine.Page(proto.TargetCreateTarget{})
 	if err != nil {
 		return nil, nil, err
@@ -58,19 +66,44 @@ func (i *Instance) Run(input *contextargs.Context, actions []*Action, payloads m
 		}
 	}
 
+	payloads = generators.MergeMaps(payloads,
+		generators.BuildPayloadFromOptions(i.browser.options),
+	)
+
+	target := ctx.MetaInput.Input
+	input, err := urlutil.Parse(target)
+	if err != nil {
+		return nil, nil, errorutil.NewWithErr(err).Msgf("could not parse URL %s", target)
+	}
+
+	hasTrailingSlash := httputil.HasTrailingSlash(target)
+	variables := utils.GenerateVariables(input, hasTrailingSlash, contextargs.GenerateVariables(ctx))
+	variables = generators.MergeMaps(variables, payloads)
+
+	if vardump.EnableVarDump {
+		gologger.Debug().Msgf("Headless Protocol request variables: %s\n", vardump.DumpVariables(variables))
+	}
+
 	createdPage := &Page{
-		options:  options,
-		page:     page,
-		input:    input,
-		instance: i,
-		mutex:    &sync.RWMutex{},
-		payloads: payloads,
+		options:   options,
+		page:      page,
+		ctx:       ctx,
+		instance:  i,
+		mutex:     &sync.RWMutex{},
+		payloads:  payloads,
+		variables: variables,
+		inputURL:  input,
+	}
+
+	httpclient, err := i.browser.getHTTPClient()
+	if err != nil {
+		return nil, nil, err
 	}
 
 	// in case the page has request/response modification rules - enable global hijacking
 	if createdPage.hasModificationRules() || containsModificationActions(actions...) {
 		hijackRouter := page.HijackRequests()
-		if err := hijackRouter.Add("*", "", createdPage.routingRuleHandler); err != nil {
+		if err := hijackRouter.Add("*", "", createdPage.routingRuleHandler(httpclient)); err != nil {
 			return nil, nil, err
 		}
 		createdPage.hijackRouter = hijackRouter
@@ -103,13 +136,13 @@ func (i *Instance) Run(input *contextargs.Context, actions []*Action, payloads m
 	// inject cookies
 	// each http request is performed via the native go http client
 	// we first inject the shared cookies
-	URL, err := url.Parse(input.MetaInput.Input)
+	URL, err := url.Parse(ctx.MetaInput.Input)
 	if err != nil {
 		return nil, nil, err
 	}
 
 	if !options.DisableCookie {
-		if cookies := input.CookieJar.Cookies(URL); len(cookies) > 0 {
+		if cookies := ctx.CookieJar.Cookies(URL); len(cookies) > 0 {
 			var NetworkCookies []*proto.NetworkCookie
 			for _, cookie := range cookies {
 				networkCookie := &proto.NetworkCookie{
@@ -127,7 +160,7 @@ func (i *Instance) Run(input *contextargs.Context, actions []*Action, payloads m
 			}
 			params := proto.CookiesToParams(NetworkCookies)
 			for _, param := range params {
-				param.URL = input.MetaInput.Input
+				param.URL = ctx.MetaInput.Input
 			}
 			err := page.SetCookies(params)
 			if err != nil {
@@ -136,7 +169,7 @@ func (i *Instance) Run(input *contextargs.Context, actions []*Action, payloads m
 		}
 	}
 
-	data, err := createdPage.ExecuteActions(input, actions, payloads)
+	data, err := createdPage.ExecuteActions(ctx, actions)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -156,7 +189,7 @@ func (i *Instance) Run(input *contextargs.Context, actions []*Action, payloads m
 				}
 				httpCookies = append(httpCookies, httpCookie)
 			}
-			input.CookieJar.SetCookies(URL, httpCookies)
+			ctx.CookieJar.SetCookies(URL, httpCookies)
 		}
 	}
 
