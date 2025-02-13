@@ -115,6 +115,10 @@ func main() {
 				fmt.Println("::group::Failed integration tests in debug mode")
 				_ = runTests(failedTestTemplatePaths)
 				fmt.Println("::endgroup::")
+			} else {
+				fmt.Println("::group::All tests passed")
+				fmt.Println("::endgroup::")
+				os.Exit(0)
 			}
 		}
 

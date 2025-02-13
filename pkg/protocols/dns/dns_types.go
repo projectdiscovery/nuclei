@@ -1,11 +1,11 @@
 package dns
 
 import (
-	"encoding/json"
 	"errors"
 	"strings"
 
 	"github.com/invopop/jsonschema"
+	"github.com/projectdiscovery/nuclei/v3/pkg/utils/json"
 )
 
 // DNSRequestType is the type of the method specified

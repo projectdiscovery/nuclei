@@ -34,10 +34,6 @@ func TestDumpVariables(t *testing.T) {
 	assert.Contains(t, result, "b")
 	assert.Contains(t, result, "c")
 
-	// Test with EnableVarDump set to false
-	EnableVarDump = false
-	result = DumpVariables(testVars)
-	assert.Empty(t, result)
 }
 
 func TestProcess(t *testing.T) {

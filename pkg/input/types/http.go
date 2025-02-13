@@ -4,13 +4,13 @@ import (
 	"bufio"
 	"bytes"
 	"crypto/sha256"
-	"encoding/json"
 	"fmt"
 	"io"
 	"net/textproto"
 	"strings"
 	"sync"
 
+	"github.com/projectdiscovery/nuclei/v3/pkg/utils/json"
 	"github.com/projectdiscovery/retryablehttp-go"
 	"github.com/projectdiscovery/useragent"
 	"github.com/projectdiscovery/utils/conversion"
@@ -19,8 +19,7 @@ import (
 )
 
 var (
-	_ json.Marshaler   = &RequestResponse{}
-	_ json.Unmarshaler = &RequestResponse{}
+	_ json.JSONCodec = &RequestResponse{}
 )
 
 // RequestResponse is a struct containing request and response
@@ -119,7 +118,7 @@ func (rr *RequestResponse) MarshalJSON() ([]byte, error) {
 
 // UnmarshalJSON unmarshals the request response from json
 func (rr *RequestResponse) UnmarshalJSON(data []byte) error {
-	var m map[string]json.RawMessage
+	var m map[string]json.Message
 	if err := json.Unmarshal(data, &m); err != nil {
 		return err
 	}
