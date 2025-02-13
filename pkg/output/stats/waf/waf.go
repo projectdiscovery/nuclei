@@ -42,7 +42,12 @@ func NewWafDetector() *WafDetector {
 		if waf.Regex == "" {
 			continue
 		}
-		store.regexCache[id] = regexp.MustCompile(waf.Regex)
+		compiled, err := regexp.Compile(waf.Regex)
+		if err != nil {
+			log.Printf("invalid WAF regex for %s: %v", id, err)
+			continue
+		}
+		store.regexCache[id] = compiled
 	}
 	return store
 }
