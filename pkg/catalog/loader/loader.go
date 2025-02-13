@@ -50,6 +50,7 @@ type Config struct {
 	ExcludeTemplates         []string
 	IncludeTemplates         []string
 	RemoteTemplateDomainList []string
+	AITemplatePrompt         string
 
 	Tags              []string
 	ExcludeTags       []string
@@ -109,6 +110,7 @@ func NewConfig(options *types.Options, catalog catalog.Catalog, executerOpts pro
 		IncludeConditions:        options.IncludeConditions,
 		Catalog:                  catalog,
 		ExecutorOptions:          executerOpts,
+		AITemplatePrompt:         options.AITemplatePrompt,
 	}
 	loaderConfig.RemoteTemplateDomainList = append(loaderConfig.RemoteTemplateDomainList, TrustedTemplateDomains...)
 	return &loaderConfig
@@ -133,7 +135,6 @@ func New(cfg *Config) (*Store, error) {
 		return nil, err
 	}
 
-	// Create a tag filter based on provided configuration
 	store := &Store{
 		id:        cfg.StoreId,
 		config:    cfg,
@@ -164,7 +165,6 @@ func New(cfg *Config) (*Store, error) {
 		if _, err := urlutil.Parse(v); err == nil {
 			remoteTemplates = append(remoteTemplates, handleTemplatesEditorURLs(v))
 		} else {
-
 			templatesFinal = append(templatesFinal, v) // something went wrong, treat it as a file
 		}
 	}
@@ -181,6 +181,15 @@ func New(cfg *Config) (*Store, error) {
 		store.finalWorkflows = append(store.finalWorkflows, remoteWorkflows...)
 	}
 
+	// Handle AI template generation if prompt is provided
+	if len(cfg.AITemplatePrompt) > 0 {
+		aiTemplates, err := getAIGeneratedTemplates(cfg.AITemplatePrompt, cfg.ExecutorOptions.Options)
+		if err != nil {
+			return nil, err
+		}
+		store.finalTemplates = append(store.finalTemplates, aiTemplates...)
+	}
+
 	// Handle a dot as the current working directory
 	if len(store.finalTemplates) == 1 && store.finalTemplates[0] == "." {
 		currentDirectory, err := os.Getwd()
@@ -189,6 +198,7 @@ func New(cfg *Config) (*Store, error) {
 		}
 		store.finalTemplates = []string{currentDirectory}
 	}
+
 	// Handle a case with no templates or workflows, where we use base directory
 	if len(store.finalTemplates) == 0 && len(store.finalWorkflows) == 0 && !urlBasedTemplatesProvided {
 		store.finalTemplates = []string{config.DefaultConfig.TemplatesDirectory}
@@ -381,8 +391,8 @@ func (store *Store) areWorkflowOrTemplatesValid(filteredTemplatePaths map[string
 			// `ErrGlobalMatchersTemplate` during `templates.Parse` and checking it
 			// with `errors.Is`.
 			//
-			// However, I’m not sure if every reference to it should be handled
-			// that way. Returning a `templates.Template` pointer would mean it’s
+			// However, I'm not sure if every reference to it should be handled
+			// that way. Returning a `templates.Template` pointer would mean it's
 			// an active template (sending requests), and adding a specific field
 			// like `isGlobalMatchers` in `templates.Template` (then checking it
 			// with a `*templates.Template.IsGlobalMatchersEnabled` method) would

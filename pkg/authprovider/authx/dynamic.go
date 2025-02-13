@@ -1,13 +1,13 @@
 package authx
 
 import (
-	"encoding/json"
 	"fmt"
 	"strings"
 	"sync"
 
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/replacer"
+	"github.com/projectdiscovery/nuclei/v3/pkg/utils/json"
 	errorutil "github.com/projectdiscovery/utils/errors"
 )
 

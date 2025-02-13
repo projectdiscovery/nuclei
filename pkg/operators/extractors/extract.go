@@ -1,7 +1,6 @@
 package extractors
 
 import (
-	"encoding/json"
 	"fmt"
 	"strings"
 
@@ -9,6 +8,7 @@ import (
 	"github.com/antchfx/xmlquery"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
+	"github.com/projectdiscovery/nuclei/v3/pkg/utils/json"
 )
 
 // ExtractRegex extracts text from a corpus and returns it

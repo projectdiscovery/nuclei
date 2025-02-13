@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -13,6 +14,7 @@ import (
 var headlessTestcases = []TestCaseInfo{
 	{Path: "protocols/headless/headless-basic.yaml", TestCase: &headlessBasic{}},
 	{Path: "protocols/headless/headless-waitevent.yaml", TestCase: &headlessBasic{}},
+	{Path: "protocols/headless/headless-dsl.yaml", TestCase: &headlessBasic{}},
 	{Path: "protocols/headless/headless-self-contained.yaml", TestCase: &headlessSelfContained{}},
 	{Path: "protocols/headless/headless-header-action.yaml", TestCase: &headlessHeaderActions{}},
 	{Path: "protocols/headless/headless-extract-values.yaml", TestCase: &headlessExtractValues{}},
@@ -30,7 +32,7 @@ type headlessBasic struct{}
 func (h *headlessBasic) Execute(filePath string) error {
 	router := httprouter.New()
 	router.GET("/", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-		_, _ = w.Write([]byte("<html><body></body></html>"))
+		_, _ = fmt.Fprintf(w, "<html><body>%s</body></html>", r.URL.Query().Get("_"))
 	})
 	ts := httptest.NewServer(router)
 	defer ts.Close()
