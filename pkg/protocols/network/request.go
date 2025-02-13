@@ -291,9 +291,9 @@ func (request *Request) executeRequestWithPayloads(variables map[string]interfac
 	} else {
 		conn, err = request.dialer.Dial(input.Context(), "tcp", actualAddress)
 	}
+	// adds it to unresponsive address list if applicable
+	request.markHostError(updatedTarget, err)
 	if err != nil {
-		// adds it to unresponsive address list if applicable
-		request.markUnresponsiveAddress(updatedTarget, err)
 		request.options.Output.Request(request.options.TemplatePath, address, request.Type().String(), err)
 		request.options.Progress.IncrementFailedRequestsBy(1)
 		return errors.Wrap(err, "could not connect to server")
@@ -524,13 +524,10 @@ func ConnReadNWithTimeout(conn net.Conn, n int64, timeout time.Duration) ([]byte
 	return b[:count], nil
 }
 
-// markUnresponsiveAddress checks if the error is a unreponsive host error and marks it
-func (request *Request) markUnresponsiveAddress(input *contextargs.Context, err error) {
-	if err == nil {
-		return
-	}
+// markHostError checks if the error is a unreponsive host error and marks it
+func (request *Request) markHostError(input *contextargs.Context, err error) {
 	if request.options.HostErrorsCache != nil {
-		request.options.HostErrorsCache.MarkFailed(request.options.ProtocolType.String(), input, err)
+		request.options.HostErrorsCache.MarkFailedOrRemove(request.options.ProtocolType.String(), input, err)
 	}
 }
 

@@ -2,7 +2,6 @@
 package templates
 
 import (
-	"encoding/json"
 	"io"
 	"path/filepath"
 	"strconv"
@@ -24,6 +23,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/whois"
 	"github.com/projectdiscovery/nuclei/v3/pkg/templates/types"
 	"github.com/projectdiscovery/nuclei/v3/pkg/utils"
+	"github.com/projectdiscovery/nuclei/v3/pkg/utils/json"
 	"github.com/projectdiscovery/nuclei/v3/pkg/workflows"
 	errorutil "github.com/projectdiscovery/utils/errors"
 	fileutil "github.com/projectdiscovery/utils/file"
@@ -521,7 +521,8 @@ func (template *Template) hasMultipleRequests() bool {
 
 // MarshalJSON forces recursive struct validation during marshal operation
 func (template *Template) MarshalJSON() ([]byte, error) {
-	out, marshalErr := json.Marshal(template)
+	type TemplateAlias Template //avoid recursion
+	out, marshalErr := json.Marshal((*TemplateAlias)(template))
 	errValidate := validate.New().Struct(template)
 	return out, multierr.Append(marshalErr, errValidate)
 }

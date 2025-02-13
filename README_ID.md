@@ -34,6 +34,7 @@
   <a href="https://github.com/projectdiscovery/nuclei/blob/main/README_KR.md">Korean</a> •
   <a href="https://github.com/projectdiscovery/nuclei/blob/main/README_ID.md">Indonesia</a> •
   <a href="https://github.com/projectdiscovery/nuclei/blob/main/README_ES.md">Spanish</a>
+  <a href="https://github.com/projectdiscovery/nuclei/blob/main/README_PT-BR.md">Portuguese</a>
 </p>
 
 ---
@@ -53,7 +54,7 @@ Kami memiliki [repositori khusus](https://github.com/projectdiscovery/nuclei-tem
 
 # Instalasi Nuclei
 
-Nuclei membutuhkan **go1.21** agar dapat diinstall. Jalankan perintah berikut untuk menginstal versi terbaru -
+Nuclei membutuhkan **go1.22** agar dapat diinstall. Jalankan perintah berikut untuk menginstal versi terbaru -
 
 ```sh
 go install -v github.com/projectdiscovery/nuclei/v3/cmd/nuclei@latest

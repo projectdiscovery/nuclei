@@ -1,12 +1,12 @@
 package model
 
 import (
-	"encoding/json"
 	"strings"
 	"testing"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/model/types/severity"
 	"github.com/projectdiscovery/nuclei/v3/pkg/model/types/stringslice"
+	"github.com/projectdiscovery/nuclei/v3/pkg/utils/json"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v2"
 )

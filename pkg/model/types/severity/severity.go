@@ -1,11 +1,11 @@
 package severity
 
 import (
-	"encoding/json"
 	"strings"
 
 	"github.com/invopop/jsonschema"
 	"github.com/pkg/errors"
+	"github.com/projectdiscovery/nuclei/v3/pkg/utils/json"
 )
 
 type Severity int
