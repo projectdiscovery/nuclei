@@ -1,12 +1,12 @@
 package jsonexporter
 
 import (
-	"encoding/json"
 	"os"
 	"sync"
 
 	"github.com/pkg/errors"
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
+	"github.com/projectdiscovery/nuclei/v3/pkg/utils/json"
 )
 
 type Exporter struct {

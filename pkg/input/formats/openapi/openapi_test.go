@@ -1,6 +1,7 @@
 package openapi
 
 import (
+	"os"
 	"strings"
 	"testing"
 
@@ -41,11 +42,15 @@ func TestOpenAPIParser(t *testing.T) {
 
 	gotMethodsToURLs := make(map[string][]string)
 
-	err := format.Parse(proxifyInputFile, func(rr *types.RequestResponse) bool {
+	file, err := os.Open(proxifyInputFile)
+	require.Nilf(t, err, "error opening proxify input file: %v", err)
+	defer file.Close()
+
+	err = format.Parse(file, func(rr *types.RequestResponse) bool {
 		gotMethodsToURLs[rr.Request.Method] = append(gotMethodsToURLs[rr.Request.Method],
 			strings.Replace(rr.URL.String(), baseURL, "{{baseUrl}}", 1))
 		return false
-	})
+	}, proxifyInputFile)
 	if err != nil {
 		t.Fatal(err)
 	}

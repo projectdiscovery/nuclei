@@ -1,7 +1,6 @@
 package fuzz
 
 import (
-	"encoding/json"
 	"fmt"
 	"io"
 	"regexp"
@@ -10,10 +9,12 @@ import (
 	"github.com/pkg/errors"
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/fuzz/component"
+	fuzzStats "github.com/projectdiscovery/nuclei/v3/pkg/fuzz/stats"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/expressions"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/generators"
+	"github.com/projectdiscovery/nuclei/v3/pkg/utils/json"
 	"github.com/projectdiscovery/retryablehttp-go"
 	errorutil "github.com/projectdiscovery/utils/errors"
 	mapsutil "github.com/projectdiscovery/utils/maps"
@@ -122,6 +123,18 @@ func (rule *Rule) Execute(input *ExecuteRuleInput) (err error) {
 				return nil
 			})
 		}
+
+		if rule.options.FuzzStatsDB != nil {
+			_ = component.Iterate(func(key string, value interface{}) error {
+				rule.options.FuzzStatsDB.RecordComponentEvent(fuzzStats.ComponentEvent{
+					URL:           input.Input.MetaInput.Target(),
+					ComponentType: componentName,
+					ComponentName: fmt.Sprintf("%v", value),
+				})
+				return nil
+			})
+		}
+
 		finalComponentList = append(finalComponentList, component)
 	}
 	if len(displayDebugFuzzPoints) > 0 {

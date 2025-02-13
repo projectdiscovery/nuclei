@@ -1,19 +1,20 @@
 ![nuclei](/static/nuclei-cover-image.png)
 
+<div align="center">
+  
+  <a href="https://github.com/projectdiscovery/nuclei/blob/main/README.md">`English`</a> •
+  <a href="https://github.com/projectdiscovery/nuclei/blob/main/README_CN.md">`中文`</a> •
+  <a href="https://github.com/projectdiscovery/nuclei/blob/main/README_KR.md">`Korean`</a> •
+  <a href="https://github.com/projectdiscovery/nuclei/blob/main/README_ID.md">`Indonesia`</a> •
+  <a href="https://github.com/projectdiscovery/nuclei/blob/main/README_ES.md">`Spanish`</a> •
+  <a href="https://github.com/projectdiscovery/nuclei/blob/main/README_JP.md">`日本語`</a>
+  <a href="https://github.com/projectdiscovery/nuclei/blob/main/README_PT-BR.md">`Portuguese`</a>
+  
+</div>
+
 <p align="center">
-  <a href="https://github.com/projectdiscovery/nuclei/blob/main/README.md">English</a> •
-  <a href="https://github.com/projectdiscovery/nuclei/blob/main/README_CN.md">中文</a> •
-  <a href="https://github.com/projectdiscovery/nuclei/blob/main/README_KR.md">Korean</a> •
-  <a href="https://github.com/projectdiscovery/nuclei/blob/main/README_ID.md">Indonesia</a> •
-  <a href="https://github.com/projectdiscovery/nuclei/blob/main/README_ES.md">Spanish</a> •
-  <a href="https://github.com/projectdiscovery/nuclei/blob/main/README_JP.md">日本語</a>
-</p>
 
-</p>
-
-<p align="center">
-
-<img src="https://img.shields.io/badge/go-1.21-%2300ADD8.svg?style=for-the-badge&logo=go&logoColor=white">
+<img src="https://img.shields.io/badge/go-1.22-%2300ADD8.svg?style=for-the-badge&logo=go&logoColor=white">
 &nbsp;&nbsp;
 <a href="https://docs.projectdiscovery.io/tools/nuclei/overview?utm_source=github&utm_medium=web&utm_campaign=nuclei_readme"><img src="https://img.shields.io/badge/Documentation-%23000000.svg?style=for-the-badge&logo=data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IiNmZmZmZmYiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIiBjbGFzcz0ibHVjaWRlIGx1Y2lkZS1ib29rLW9wZW4iPjxwYXRoIGQ9Ik0xMiA3djE0Ii8+PHBhdGggZD0iTTMgMThhMSAxIDAgMCAxLTEtMVY0YTEgMSAwIDAgMSAxLTFoNWE0IDQgMCAwIDEgNCA0IDQgNCAwIDAgMSA0LTRoNWExIDEgMCAwIDEgMSAxdjEzYTEgMSAwIDAgMS0xIDFoLTZhMyAzIDAgMCAwLTMgMyAzIDMgMCAwIDAtMy0zeiIvPjwvc3ZnPg==&logoColor=white"></a>
 &nbsp;&nbsp;
@@ -21,13 +22,13 @@
 &nbsp;&nbsp;
 <a href="https://discord.gg/projectdiscovery?utm_source=github&utm_medium=web&utm_campaign=nuclei_readme"><img src="https://img.shields.io/badge/Discord-%235865F2.svg?style=for-the-badge&logo=discord&logoColor=white"></a>
 
----
+<hr>
 
 </p>
 
-<br />
+<br>
 
-Nuclei is a modern, high-performance vulnerability scanner that leverages simple YAML-based templates. It empowers you to design custom vulnerability detection scenarios that mimic real-world conditions, leading to zero false positives.
+**Nuclei is a modern, high-performance vulnerability scanner that leverages simple YAML-based templates. It empowers you to design custom vulnerability detection scenarios that mimic real-world conditions, leading to zero false positives.**
 
 - Simple YAML format for creating and customizing vulnerability templates.
 - Contributed by thousands of security professionals to tackle trending vulnerabilities.
@@ -37,43 +38,50 @@ Nuclei is a modern, high-performance vulnerability scanner that leverages simple
 - Supports multiple protocols like TCP, DNS, HTTP, SSL, WHOIS JavaScript, Code and more.
 - Integrate with Jira, Splunk, GitHub, Elastic, GitLab.
 
+<br>
+<br>
+
 ## Table of Contents
 
-- [Get Started](#get-started)
-  - [1. Nuclei CLI](#1-nuclei-cli)
-  - [2. Pro and Enterprise Editions](#2-pro-and-enterprise-editions)
-- [Documentation](#documentation)
-  - [Command Line Flags](#command-line-flags)
-  - [Single target scan](#single-target-scan)
-  - [Scanning multiple targets](#scanning-multiple-targets)
-  - [Network scan](#network-scan)
-  - [Scanning with your custom template](#scanning-with-your-custom-template)
-  - [Connect Nuclei to ProjectDiscovery](#connect-nuclei-to-projectdiscovery)
-- [Nuclei Templates, Community and Rewards 💎](#nuclei-templates-community-and-rewards-)
-- [Our Mission](#our-mission)
-- [Contributors ❤️](#contributors-️)
-- [License](#license)
+- [**`Get Started`**](#get-started)
+  - [_`1. Nuclei CLI`_](#1-nuclei-cli)
+  - [_`2. Pro and Enterprise Editions`_](#2-pro-and-enterprise-editions)
+- [**`Documentation`**](#documentation)
+  - [_`Command Line Flags`_](#command-line-flags)
+  - [_`Single target scan`_](#single-target-scan)
+  - [_`Scanning multiple targets`_](#scanning-multiple-targets)
+  - [_`Network scan`_](#network-scan)
+  - [_`Scanning with your custom template`_](#scanning-with-your-custom-template)
+  - [_`Connect Nuclei to ProjectDiscovery_`_](#connect-nuclei-to-projectdiscovery)
+- [**`Nuclei Templates, Community and Rewards`**](#nuclei-templates-community-and-rewards-) 💎
+- [**`Our Mission`**](#our-mission)
+- [**`Contributors`**](#contributors-heart) ❤
+- [**`License`**](#license)
 
+<br>
+<br>
 
 ## Get Started
 
 ### **1. Nuclei CLI**
 
-Install Nuclei on your machine. Get started by following the installation guide [here](https://docs.projectdiscovery.io/tools/nuclei/install?utm_source=github&utm_medium=web&utm_campaign=nuclei_readme). Additionally, We provide [a free cloud tier](https://cloud.projectdiscovery.io/sign-up) and comes with a generous monthly free limits:
+_Install Nuclei on your machine. Get started by following the installation guide [**`here`**](https://docs.projectdiscovery.io/tools/nuclei/install?utm_source=github&utm_medium=web&utm_campaign=nuclei_readme). Additionally, We provide [**`a free cloud tier`**](https://cloud.projectdiscovery.io/sign-up) and comes with a generous monthly free limits:_
 
 - Store and visualize your vulnerability findings
 - Write and manage your nuclei templates
 - Access latest nuclei templates
 - Discover and store your targets
 
-| :exclamation:  **Disclaimer**  |
-|:--------------------------------|
-| **This project is in active development**. Expect breaking changes with releases. Review the release changelog before updating. |
-| This project is primarily built to be used as a standalone CLI tool. **Running nuclei as a service may pose security risks.** It's recommended to use with caution and additional security measures. |
+> [!Important]
+> |**This project is in active development**. Expect breaking changes with releases. Review the release changelog before updating.|
+> |:--------------------------------|
+> | This project is primarily built to be used as a standalone CLI tool. **Running nuclei as a service may pose security risks.** It's recommended to use with caution and additional security measures. |
+
+<br>
 
 ### **2. Pro and Enterprise Editions**
 
-For security teams and enterprises, we provide a cloud-hosted service built on top of Nuclei OSS, fine-tuned to help you continuously run vulnerability scans at scale with your team and existing workflows:
+_For security teams and enterprises, we provide a cloud-hosted service built on top of Nuclei OSS, fine-tuned to help you continuously run vulnerability scans at scale with your team and existing workflows:_
 
 - 50x faster scans
 - Large scale scanning with high accuracy
@@ -81,30 +89,35 @@ For security teams and enterprises, we provide a cloud-hosted service built on t
 - Jira, Slack, Linear, APIs and Webhooks
 - Executive and compliance reporting
 - Plus: Real-time scanning, SAML SSO, SOC 2 compliant platform (with EU and US hosting options), shared team workspaces, and more
-- We're constantly [adding new features](https://feedback.projectdiscovery.io/changelog)!
+- We're constantly [**`adding new features`**](https://feedback.projectdiscovery.io/changelog)!
 - **Ideal for:** Pentesters, security teams, and enterprises
 
-[Sign up to Pro](https://projectdiscovery.io/pricing?utm_source=github&utm_medium=web&utm_campaign=nuclei_readme) or [Talk to our team](https://projectdiscovery.io/request-demo?utm_source=github&utm_medium=web&utm_campaign=nuclei_readme) if you have large organization and complex requirements.
+[**`Sign up to Pro`**](https://projectdiscovery.io/pricing?utm_source=github&utm_medium=web&utm_campaign=nuclei_readme) or [**`Talk to our team`**](https://projectdiscovery.io/request-demo?utm_source=github&utm_medium=web&utm_campaign=nuclei_readme) if you have large organization and complex requirements.
+
+<br>
+<br>
 
 ## Documentation
 
-Browse the full Nuclei [documentation here](https://docs.projectdiscovery.io/tools/nuclei/running). If you’re new to Nuclei, check out our [foundational Youtube series.](https://www.youtube.com/playlist?list=PLZRbR9aMzTTpItEdeNSulo8bYsvil80Rl)
+Browse the full Nuclei [**`documentation here`**](https://docs.projectdiscovery.io/tools/nuclei/running). If you’re new to Nuclei, check out our [**`foundational Youtube series`**](https://www.youtube.com/playlist?list=PLZRbR9aMzTTpItEdeNSulo8bYsvil80Rl).
 
-<p align="center">
+<div align="center">
 
 <a href="https://www.youtube.com/watch?v=b5qMyQvL1ZA&list=PLZRbR9aMzTTpItEdeNSulo8bYsvil80Rl&utm_source=github&utm_medium=web&utm_campaign=nuclei_readme" target="_blank"><img src="/static/nuclei-getting-started.png" width="350px"></a> <a href="https://www.youtube.com/watch?v=nFXygQdtjyw&utm_source=github&utm_medium=web&utm_campaign=nuclei_readme" target="_blank"><img src="/static/nuclei-write-your-first-template.png" width="350px"></a>
 
-</p>
+</div>
+
+<br>
 
 ### Installation
 
-`nuclei` requires **go1.21** to install successfully. Run the following command to get the repo:
+`nuclei` requires **go1.22** to install successfully. Run the following command to get the repo:
 
 ```sh
 go install -v github.com/projectdiscovery/nuclei/v3/cmd/nuclei@latest
 ```
 
-To learn more about installing nuclei, see https://docs.projectdiscovery.io/tools/nuclei/install.
+To learn more about installing nuclei, see `https://docs.projectdiscovery.io/tools/nuclei/install`.
 
 ### Command Line Flags
 
@@ -117,7 +130,7 @@ nuclei -h
 <details>
   <summary>Expand full help flags</summary>
 
-```console
+```yaml
 Nuclei is a fast, template based vulnerability scanner focusing
 on extensive configurability, massive extensibility and ease of use.
 
@@ -144,6 +157,7 @@ TEMPLATES:
    -as, -automatic-scan                   automatic web scan using wappalyzer technology detection to tags mapping
    -t, -templates string[]                list of template or template directory to run (comma-separated, file)
    -turl, -template-url string[]          template url or list containing template urls to run (comma-separated, file)
+   -ai, -prompt string                    generate and run template using ai prompt
    -w, -workflows string[]                list of workflow or workflow directory to run (comma-separated, file)
    -wurl, -workflow-url string[]          workflow url or list containing workflow urls to run (comma-separated, file)
    -validate                              validate the passed templates to nuclei
@@ -154,6 +168,9 @@ TEMPLATES:
    -sign                                  signs the templates with the private key defined in NUCLEI_SIGNATURE_PRIVATE_KEY env variable
    -code                                  enable loading code protocol-based templates
    -dut, -disable-unsigned-templates      disable running unsigned templates or templates with mismatched signature
+   -esc, -enable-self-contained           enable loading self-contained templates
+   -egm, -enable-global-matchers          enable loading global matchers templates
+   -file                                  enable loading file templates
 
 FILTERING:
    -a, -author string[]               templates to run based on authors (comma-separated, file)
@@ -236,13 +253,19 @@ INTERACTSH:
    -ni, -no-interactsh                  disable interactsh server for OAST testing, exclude OAST based templates
 
 FUZZING:
-   -ft, -fuzzing-type string     overrides fuzzing type set in template (replace, prefix, postfix, infix)
-   -fm, -fuzzing-mode string     overrides fuzzing mode set in template (multiple, single)
-   -fuzz                         enable loading fuzzing templates (Deprecated: use -dast instead)
-   -dast                         enable / run dast (fuzz) nuclei templates
-   -dfp, -display-fuzz-points    display fuzz points in the output for debugging
-   -fuzz-param-frequency int     frequency of uninteresting parameters for fuzzing before skipping (default 10)
-   -fa, -fuzz-aggression string  fuzzing aggression level controls payload count for fuzz (low, medium, high) (default "low")
+   -ft, -fuzzing-type string           overrides fuzzing type set in template (replace, prefix, postfix, infix)
+   -fm, -fuzzing-mode string           overrides fuzzing mode set in template (multiple, single)
+   -fuzz                               enable loading fuzzing templates (Deprecated: use -dast instead)
+   -dast                               enable / run dast (fuzz) nuclei templates
+   -dts, -dast-server                  enable dast server mode (live fuzzing)
+   -dtr, -dast-report                  write dast scan report to file
+   -dtst, -dast-server-token string    dast server token (optional)
+   -dtsa, -dast-server-address string  dast server address (default "localhost:9055")
+   -dfp, -display-fuzz-points          display fuzz points in the output for debugging
+   -fuzz-param-frequency int           frequency of uninteresting parameters for fuzzing before skipping (default 10)
+   -fa, -fuzz-aggression string        fuzzing aggression level controls payload count for fuzz (low, medium, high) (default "low")
+   -cs, -fuzz-scope string[]           in scope url regex to be followed by fuzzer
+   -cos, -fuzz-out-scope string[]      out of scope url regex to be excluded by fuzzer
 
 UNCOVER:
    -uc, -uncover                  enable uncover engine
@@ -289,23 +312,24 @@ HEADLESS:
    -lha, -list-headless-action      list available headless actions
 
 DEBUG:
-   -debug                    show all requests and responses
-   -dreq, -debug-req         show all sent requests
-   -dresp, -debug-resp       show all received responses
-   -p, -proxy string[]       list of http/socks5 proxy to use (comma separated or file input)
-   -pi, -proxy-internal      proxy all internal requests
-   -ldf, -list-dsl-function  list all supported DSL function signatures
-   -tlog, -trace-log string  file to write sent requests trace log
-   -elog, -error-log string  file to write sent requests error log
-   -version                  show nuclei version
-   -hm, -hang-monitor        enable nuclei hang monitoring
-   -v, -verbose              show verbose output
-   -profile-mem string       optional nuclei memory profile dump file
-   -vv                       display templates loaded for scan
-   -svd, -show-var-dump      show variables dump for debugging
-   -ep, -enable-pprof        enable pprof debugging server
-   -tv, -templates-version   shows the version of the installed nuclei-templates
-   -hc, -health-check        run diagnostic check up
+   -debug                     show all requests and responses
+   -dreq, -debug-req          show all sent requests
+   -dresp, -debug-resp        show all received responses
+   -p, -proxy string[]        list of http/socks5 proxy to use (comma separated or file input)
+   -pi, -proxy-internal       proxy all internal requests
+   -ldf, -list-dsl-function   list all supported DSL function signatures
+   -tlog, -trace-log string   file to write sent requests trace log
+   -elog, -error-log string   file to write sent requests error log
+   -version                   show nuclei version
+   -hm, -hang-monitor         enable nuclei hang monitoring
+   -v, -verbose               show verbose output
+   -profile-mem string        generate memory (heap) profile & trace files
+   -vv                        display templates loaded for scan
+   -svd, -show-var-dump       show variables dump for debugging
+   -vdl, -var-dump-limit int  limit the number of characters displayed in var dump (default 255)
+   -ep, -enable-pprof         enable pprof debugging server
+   -tv, -templates-version    shows the version of the installed nuclei-templates
+   -hc, -health-check         run diagnostic check up
 
 UPDATE:
    -up, -update                      update nuclei engine to the latest released version
@@ -318,6 +342,7 @@ STATISTICS:
    -sj, -stats-json          display statistics in JSONL(ines) format
    -si, -stats-interval int  number of seconds to wait between showing a statistics update (default 5)
    -mp, -metrics-port int    port to expose nuclei metrics on (default 9092)
+   -hps, -http-stats         enable http status capturing (experimental)
 
 CLOUD:
    -auth                           configure projectdiscovery cloud (pdcp) api key (default true)
@@ -335,25 +360,25 @@ AUTHENTICATION:
 
 EXAMPLES:
 Run nuclei on single host:
-  $ nuclei -target example.com
+	$ nuclei -target example.com
 
 Run nuclei with specific template directories:
-  $ nuclei -target example.com -t http/cves/ -t ssl
+	$ nuclei -target example.com -t http/cves/ -t ssl
 
 Run nuclei against a list of hosts:
-  $ nuclei -list hosts.txt
+	$ nuclei -list hosts.txt
 
 Run nuclei with a JSON output:
-  $ nuclei -target example.com -json-export output.json
+	$ nuclei -target example.com -json-export output.json
 
 Run nuclei with sorted Markdown outputs (with environment variables):
-  $ MARKDOWN_EXPORT_SORT_MODE=template nuclei -target example.com -markdown-export nuclei_report/
+	$ MARKDOWN_EXPORT_SORT_MODE=template nuclei -target example.com -markdown-export nuclei_report/
 
 Additional documentation is available at: https://docs.nuclei.sh/getting-started/running
 
 ```
 
-Additional documentation is available at: [https://docs.nuclei.sh/getting-started/running](https://docs.nuclei.sh/getting-started/running?utm_source=github&utm_medium=web&utm_campaign=nuclei_readme)
+Additional documentation is available at: [**`docs.nuclei.sh/getting-started/running`**](https://docs.nuclei.sh/getting-started/running?utm_source=github&utm_medium=web&utm_campaign=nuclei_readme)
 
 </details>
 
@@ -398,14 +423,17 @@ nuclei -target https://example.com -dashboard
 ```
 
 > [!NOTE]
-> This feature is absolutely free and does not require any subscription. For a detailed guide, refer to the [documentation](https://docs.projectdiscovery.io/cloud/scanning/nuclei-scan?utm_source=github&utm_medium=web&utm_campaign=nuclei_readme).
+> This feature is absolutely free and does not require any subscription. For a detailed guide, refer to the [**`documentation`**](https://docs.projectdiscovery.io/cloud/scanning/nuclei-scan?utm_source=github&utm_medium=web&utm_campaign=nuclei_readme).
+
+<br>
+<br>
 
 ## Nuclei Templates, Community and Rewards 💎
-[Nuclei templates](https://github.com/projectdiscovery/nuclei-templates) are based on the concepts of YAML based template files that define how the requests will be sent and processed. This allows easy extensibility capabilities to nuclei. The templates are written in YAML which specifies a simple human-readable format to quickly define the execution process.
+[**Nuclei templates**](https://github.com/projectdiscovery/nuclei-templates) are based on the concepts of YAML based template files that define how the requests will be sent and processed. This allows easy extensibility capabilities to nuclei. The templates are written in YAML which specifies a simple human-readable format to quickly define the execution process.
 
-Try it online with our free AI powered Nuclei Templates Editor by [clicking here.](https://cloud.projectdiscovery.io/templates)
+**Try it online with our free AI powered Nuclei Templates Editor by** [**`clicking here`**](https://cloud.projectdiscovery.io/templates).
 
-Nuclei Templates offer a streamlined way to identify and communicate vulnerabilities, combining essential details like severity ratings and detection methods. This open-source, community-developed tool accelerates threat response and is widely recognized in the cybersecurity world. Nuclei templates are actively contributed by thousands of security researchers globally. We run two programs for our contributors: [Pioneers](https://projectdiscovery.io/pioneers) and [💎 bounties](https://github.com/projectdiscovery/nuclei-templates/issues?q=is%3Aissue%20state%3Aopen%20label%3A%22%F0%9F%92%8E%20Bounty%22).
+Nuclei Templates offer a streamlined way to identify and communicate vulnerabilities, combining essential details like severity ratings and detection methods. This open-source, community-developed tool accelerates threat response and is widely recognized in the cybersecurity world. Nuclei templates are actively contributed by thousands of security researchers globally. We run two programs for our contributors: [**`Pioneers`**](https://projectdiscovery.io/pioneers) and [**`💎 bounties`**](https://github.com/projectdiscovery/nuclei-templates/issues?q=is%3Aissue%20state%3Aopen%20label%3A%22%F0%9F%92%8E%20Bounty%22).
 
 
 <p align="left">
@@ -414,7 +442,7 @@ Nuclei Templates offer a streamlined way to identify and communicate vulnerabili
 
 #### Examples
 
-Visit [our documentation](https://docs.projectdiscovery.io/templates/introduction) for use cases and ideas.
+Visit [**our documentation**](https://docs.projectdiscovery.io/templates/introduction) for use cases and ideas.
 
 | Use case                             | Nuclei template                                    |
 | :----------------------------------- | :------------------------------------------------- |
@@ -434,17 +462,23 @@ Visit [our documentation](https://docs.projectdiscovery.io/templates/introductio
 | File inclusion vulnerabilities       | **[Local/Remote File Inclusion](https://cloud.projectdiscovery.io/public/CVE-2023-6977)**                    |
 
 
+<br>
+<br>
+
 ## Our Mission
 
 Traditional vulnerability scanners were built decades ago. They are closed-source, incredibly slow, and vendor-driven. Today's attackers are mass exploiting newly released CVEs across the internet within days, unlike the years it used to take. This shift requires a completely different approach to tackling trending exploits on the internet.
 
 We built Nuclei to solve this challenge. We made the entire scanning engine framework open and customizable—allowing the global security community to collaborate and tackle the trending attack vectors and vulnerabilities on the internet. Nuclei is now used and contributed by Fortune 500 enterprises, government agencies, universities.
 
-You can participate by contributing to our code, [templates library](https://github.com/projectdiscovery/nuclei-templates), or [joining our team.](https://projectdiscovery.io/)
+You can participate by contributing to our code, [**`templates library`**](https://github.com/projectdiscovery/nuclei-templates), or [**`joining our team`**](https://projectdiscovery.io/).
+
+<br>
+<br>
 
 ## Contributors :heart:
 
-Thanks to all the amazing [community contributors for sending PRs](https://github.com/projectdiscovery/nuclei/graphs/contributors) and keeping this project updated. :heart:
+Thanks to all the amazing [**`community contributors for sending PRs`**](https://github.com/projectdiscovery/nuclei/graphs/contributors) and keeping this project updated. :heart:
 
 <p align="left">
 <a href="https://github.com/Ice3man543"><img src="https://avatars.githubusercontent.com/u/22318055?v=4" width="50" height="50" alt="" style="max-width: 100%;"></a>
@@ -609,10 +643,15 @@ Thanks to all the amazing [community contributors for sending PRs](https://githu
 <a href="https://github.com/KristinnVikar"><img src="https://avatars.githubusercontent.com/u/93918469?v=4" width="50" height="50" alt="" style="max-width: 100%;"></a>
 <a href="https://github.com/kant01ne"><img src="https://avatars.githubusercontent.com/u/5072452?v=4" width="50" height="50" alt="" style="max-width: 100%;"></a>
 <a href="https://github.com/KeisukeYamashita"><img src="https://avatars.githubusercontent.com/u/23056537?v=4" width="50" height="50" alt="" style="max-width: 100%;"></a>
+<a href="https://github.com/1hehaq"><img src="https://avatars.githubusercontent.com/u/162917546?v=4" width="50" height="50" alt="" style="max-width: 100%;"></a>
 </p>
 
-## License
+<br>
+<br>
+<br>
 
-Nuclei is distributed under [MIT License](https://github.com/projectdiscovery/nuclei/blob/main/LICENSE.md).
+<div align="center">
+  
+  <sub>**`nuclei`** is distributed under [**MIT License**](https://github.com/projectdiscovery/nuclei/blob/main/LICENSE.md)</sub>
 
-<img src="https://img.shields.io/badge/license-MIT-000000.svg?style=for-the-badge">
+</div>

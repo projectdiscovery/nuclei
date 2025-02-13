@@ -1,11 +1,11 @@
 package matchers
 
 import (
-	"encoding/json"
 	"errors"
 	"strings"
 
 	"github.com/invopop/jsonschema"
+	"github.com/projectdiscovery/nuclei/v3/pkg/utils/json"
 )
 
 // MatcherType is the type of the matcher specified
