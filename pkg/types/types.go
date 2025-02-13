@@ -225,6 +225,8 @@ type Options struct {
 	JSONRequests bool
 	// OmitRawRequests omits requests/responses for matches in JSON output
 	OmitRawRequests bool
+	// HTTPStats enables http statistics tracking and display.
+	HTTPStats bool
 	// OmitTemplate omits encoded template from JSON output
 	OmitTemplate bool
 	// JSONExport is the file to export JSON output format to
