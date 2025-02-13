@@ -2,7 +2,7 @@ package burp
 
 import (
 	"encoding/base64"
-	"os"
+	"io"
 	"strings"
 
 	"github.com/pkg/errors"
@@ -35,14 +35,8 @@ func (j *BurpFormat) SetOptions(options formats.InputFormatOptions) {
 
 // Parse parses the input and calls the provided callback
 // function for each RawRequest it discovers.
-func (j *BurpFormat) Parse(input string, resultsCb formats.ParseReqRespCallback) error {
-	file, err := os.Open(input)
-	if err != nil {
-		return errors.Wrap(err, "could not open data file")
-	}
-	defer file.Close()
-
-	items, err := burpxml.Parse(file, true)
+func (j *BurpFormat) Parse(input io.Reader, resultsCb formats.ParseReqRespCallback, filePath string) error {
+	items, err := burpxml.Parse(input, true)
 	if err != nil {
 		return errors.Wrap(err, "could not decode burp xml schema")
 	}
