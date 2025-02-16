@@ -13,6 +13,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/logrusorgru/aurora"
 	_pdcp "github.com/projectdiscovery/nuclei/v3/internal/pdcp"
 	"github.com/projectdiscovery/utils/auth/pdcp"
 	"github.com/projectdiscovery/utils/env"
@@ -523,6 +524,16 @@ Additional documentation is available at: https://docs.nuclei.sh/getting-started
 			if validatedCreds, err := ph.ValidateAPIKey(pdcpauth, apiServer, config.BinaryName); err == nil {
 				_ = ph.SaveCreds(validatedCreds)
 			}
+		}
+	}
+
+	// guard cloud services with credentials
+	if options.AITemplatePrompt != "" {
+		h := &pdcp.PDCPCredHandler{}
+		_, err := h.GetCreds()
+		if err != nil {
+			gologger.Print().Msgf("%s", fmt.Sprintf("[%v] To utilize the `-ai` flag, please configure your API key at %v", aurora.NewAurora(!options.NoColor).BrightYellow("WRN"), pdcp.DashBoardURL))
+			os.Exit(0)
 		}
 	}
 
