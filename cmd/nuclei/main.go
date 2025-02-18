@@ -13,7 +13,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/logrusorgru/aurora"
 	_pdcp "github.com/projectdiscovery/nuclei/v3/internal/pdcp"
 	"github.com/projectdiscovery/utils/auth/pdcp"
 	"github.com/projectdiscovery/utils/env"
@@ -532,8 +531,7 @@ Additional documentation is available at: https://docs.nuclei.sh/getting-started
 		h := &pdcp.PDCPCredHandler{}
 		_, err := h.GetCreds()
 		if err != nil {
-			gologger.Print().Msgf("%s", fmt.Sprintf("[%v] To utilize the `-ai` flag, please configure your API key with the `-auth` flag or set the `PDCP_API_KEY` environment variable", aurora.NewAurora(!options.NoColor).BrightYellow("WRN")))
-			os.Exit(0)
+			gologger.Fatal().Msg("To utilize the `-ai` flag, please configure your API key with the `-auth` flag or set the `PDCP_API_KEY` environment variable")
 		}
 	}
 
