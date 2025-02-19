@@ -11,7 +11,7 @@ GOFLAGS := -v
 LDFLAGS := -s -w
 
 ifneq ($(shell go env GOOS),darwin)
-	LDFLAGS = -extldflags "-static"
+	LDFLAGS += -extldflags "-static"
 endif
     
 .PHONY: all build build-stats clean devtools-all devtools-bindgen devtools-scrapefuncs
@@ -26,9 +26,13 @@ clean:
 
 go-build: clean
 go-build:
-	$(GOBUILD) $(GOFLAGS) -ldflags '${LDFLAGS}' $(GOBUILD_ADDITIONAL_ARGS) \
+	@if [ "$$(go env CGO_ENABLED)" = "1" ]; then \
+		go env -w CGO_ENABLED=0; \
+	fi
+	$(GOBUILD) -trimpath $(GOFLAGS) -ldflags '${LDFLAGS}' $(GOBUILD_ADDITIONAL_ARGS) \
 		 -o '${GOBUILD_OUTPUT}' $(GOBUILD_PACKAGES)
 
+build: GOFLAGS = -v -pgo=auto
 build: GOBUILD_OUTPUT = ./bin/nuclei
 build: GOBUILD_PACKAGES = cmd/nuclei/main.go
 build: go-build
