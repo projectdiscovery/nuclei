@@ -1,27 +1,29 @@
 before:
   hooks:
-    - go mod tidy
+    - go mod download
+    - go mod verify
 
 builds:
-- main: cmd/nuclei/main.go
-  binary: nuclei
-  id: nuclei-cli
-
-  env:
-  - CGO_ENABLED=0
-
-  goos: [windows,linux,darwin]
-  goarch: [amd64,386,arm,arm64]
-  ignore:
-    - goos: darwin
-      goarch: 386
-    - goos: windows
-      goarch: arm
-    - goos: windows
-      goarch: arm64
-
-  flags:
-    - -trimpath
+  - main: cmd/nuclei/main.go
+    binary: nuclei
+    id: nuclei-cli
+    env:
+      - CGO_ENABLED=0
+    goos: [windows,linux,darwin]
+    goarch: [amd64,'386',arm,arm64]
+    ignore:
+      - goos: darwin
+        goarch: '386'
+      - goos: windows
+        goarch: arm
+      - goos: windows
+        goarch: arm64
+    flags:
+      - -trimpath
+      - -pgo=auto
+    ldflags:
+      - -s
+      - -w
 
 #- main: cmd/tmc/main.go
 #  binary: tmc
@@ -34,10 +36,10 @@ builds:
 #  goarch: [amd64]
 
 archives:
-- format: zip
-  id: nuclei
-  builds: [nuclei-cli]
-  name_template: '{{ .ProjectName }}_{{ .Version }}_{{ if eq .Os "darwin" }}macOS{{ else }}{{ .Os }}{{ end }}_{{ .Arch }}'
+  - format: zip
+    id: nuclei
+    builds: [nuclei-cli]
+    name_template: '{{ .ProjectName }}_{{ .Version }}_{{ if eq .Os "darwin" }}macOS{{ else }}{{ .Os }}{{ end }}_{{ .Arch }}'
 
 checksum:
   algorithm: sha256
