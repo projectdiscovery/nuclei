@@ -526,6 +526,15 @@ Additional documentation is available at: https://docs.nuclei.sh/getting-started
 		}
 	}
 
+	// guard cloud services with credentials
+	if options.AITemplatePrompt != "" {
+		h := &pdcp.PDCPCredHandler{}
+		_, err := h.GetCreds()
+		if err != nil {
+			gologger.Fatal().Msg("To utilize the `-ai` flag, please configure your API key with the `-auth` flag or set the `PDCP_API_KEY` environment variable")
+		}
+	}
+
 	gologger.DefaultLogger.SetTimestamp(options.Timestamp, levels.LevelDebug)
 
 	if options.VerboseVerbose {
