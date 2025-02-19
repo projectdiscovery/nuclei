@@ -49,3 +49,5 @@ vendor
 *.prof
 *.pprof
 *.trace
+*.mem
+*.cpu

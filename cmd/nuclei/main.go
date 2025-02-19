@@ -106,16 +106,21 @@ func main() {
 
 	// Profiling & tracing related code
 	if memProfile != "" {
-		memProfile = strings.TrimSuffix(memProfile, filepath.Ext(memProfile)) + ".prof"
-		memProfileFile, err := os.Create(memProfile)
+		memProfile = strings.TrimSuffix(memProfile, filepath.Ext(memProfile))
+
+		memProfileFile, err := os.Create(memProfile + ".mem")
 		if err != nil {
-			gologger.Fatal().Msgf("profile: could not create memory profile %q file: %v", memProfile, err)
+			gologger.Fatal().Msgf("profile: could not create memory profile %q file: %v", memProfileFile.Name(), err)
 		}
 
-		traceFilepath := strings.TrimSuffix(memProfile, filepath.Ext(memProfile)) + ".trace"
-		traceFile, err := os.Create(traceFilepath)
+		cpuProfileFile, err := os.Create(memProfile + ".cpu")
 		if err != nil {
-			gologger.Fatal().Msgf("profile: could not create trace %q file: %v", traceFilepath, err)
+			gologger.Fatal().Msgf("profile: could not create CPU profile %q file: %v", cpuProfileFile.Name(), err)
+		}
+
+		traceFile, err := os.Create(memProfile + ".trace")
+		if err != nil {
+			gologger.Fatal().Msgf("profile: could not create trace %q file: %v", traceFile.Name(), err)
 		}
 
 		oldMemProfileRate := runtime.MemProfileRate
@@ -126,18 +131,27 @@ func main() {
 			gologger.Fatal().Msgf("profile: could not start trace: %v", err)
 		}
 
+		// Start CPU profiling
+		if err := pprof.StartCPUProfile(cpuProfileFile); err != nil {
+			gologger.Fatal().Msgf("profile: could not start CPU profile: %v", err)
+		}
+
 		defer func() {
-			// Start CPU profiling
+			// Start heap memory snapshot
 			if err := pprof.WriteHeapProfile(memProfileFile); err != nil {
-				gologger.Fatal().Msgf("profile: could not start CPU profile: %v", err)
+				gologger.Fatal().Msgf("profile: could not write memory profile: %v", err)
 			}
+
+			pprof.StopCPUProfile()
 			memProfileFile.Close()
 			traceFile.Close()
 			trace.Stop()
+
 			runtime.MemProfileRate = oldMemProfileRate
 
-			gologger.Info().Msgf("Memory profile saved at %q", memProfile)
-			gologger.Info().Msgf("Traced at %q", traceFilepath)
+			gologger.Info().Msgf("CPU profile saved at %q", cpuProfileFile.Name())
+			gologger.Info().Msgf("Memory usage snapshot saved at %q", memProfileFile.Name())
+			gologger.Info().Msgf("Traced at %q", traceFile.Name())
 		}()
 	}
 
