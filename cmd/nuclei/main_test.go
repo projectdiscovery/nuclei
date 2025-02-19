@@ -24,6 +24,7 @@ func BenchmarkRunEnumeration(b *testing.B) {
 			"cloud.projectdiscovery.io",
 		},
 		ProjectPath:                "/tmp",
+		Output:                     "/dev/null",
 		Targets:                    goflags.StringSlice{dummyServer.URL},
 		StatsInterval:              5,
 		MetricsPort:                9092,
@@ -63,8 +64,8 @@ func BenchmarkRunEnumeration(b *testing.B) {
 		PayloadConcurrency:         25,
 		ProbeConcurrency:           50,
 		LoadHelperFileFunction:     types.DefaultOptions().LoadHelperFileFunction,
-		// DialerKeepAlive:            time.Duration,
-		// DASTServerAddress: "localhost:9055",
+		// DialerKeepAlive:            time.Duration(0),
+		// DASTServerAddress:          "localhost:9055",
 	}
 
 	runner.ParseOptions(options)
