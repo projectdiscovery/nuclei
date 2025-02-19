@@ -22,7 +22,7 @@ func NewMultiAuthProvider(providers ...AuthProvider) AuthProvider {
 func (m *MultiAuthProvider) LookupAddr(host string) []authx.AuthStrategy {
 	for _, provider := range m.Providers {
 		strategy := provider.LookupAddr(host)
-		if strategy != nil {
+		if len(strategy) > 0 {
 			return strategy
 		}
 	}
