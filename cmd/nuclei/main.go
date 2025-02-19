@@ -108,20 +108,17 @@ func main() {
 	if memProfile != "" {
 		memProfile = strings.TrimSuffix(memProfile, filepath.Ext(memProfile))
 
-		memProfileFile, err := os.Create(memProfile + ".mem")
-		if err != nil {
-			gologger.Fatal().Msgf("profile: could not create memory profile %q file: %v", memProfileFile.Name(), err)
+		createProfileFile := func(ext, profileType string) *os.File {
+			f, err := os.Create(memProfile + ext)
+			if err != nil {
+				gologger.Fatal().Msgf("profile: could not create %s profile %q file: %v", profileType, f.Name(), err)
+			}
+			return f
 		}
 
-		cpuProfileFile, err := os.Create(memProfile + ".cpu")
-		if err != nil {
-			gologger.Fatal().Msgf("profile: could not create CPU profile %q file: %v", cpuProfileFile.Name(), err)
-		}
-
-		traceFile, err := os.Create(memProfile + ".trace")
-		if err != nil {
-			gologger.Fatal().Msgf("profile: could not create trace %q file: %v", traceFile.Name(), err)
-		}
+		memProfileFile := createProfileFile(".mem", "memory")
+		cpuProfileFile := createProfileFile(".cpu", "CPU")
+		traceFile := createProfileFile(".trace", "trace")
 
 		oldMemProfileRate := runtime.MemProfileRate
 		runtime.MemProfileRate = 4096
