@@ -471,21 +471,27 @@ This command creates three files:
 * `nuclei.mem`: Memory (heap) profile
 * `nuclei.trace`: Execution trace
 
-### Analyzing the Memory Profile
+### Analyzing the CPU/Memory Profiles
 
-1. View the profile in the terminal:
+* View the profile in the terminal:
 
 ```bash
 go tool pprof nuclei.{cpu,mem}
 ```
 
-2. Display top memory consumers:
+* Display overall CPU time for processing $$N$$ targets:
+
+```
+go tool pprof -top nuclei.cpu | grep "Total samples"
+```
+
+* Display top memory consumers:
 
 ```bash
 go tool pprof -top nuclei.mem | grep "$(go list -m)" | head -10
 ```
 
-3. Visualize the profile in a web browser:
+* Visualize the profile in a web browser:
 
 ```bash
 go tool pprof -http=:$(shuf -i 1000-99999 -n 1) nuclei.{cpu,mem}
