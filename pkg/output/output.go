@@ -279,6 +279,11 @@ func NewStandardWriter(options *types.Options) (*StandardWriter, error) {
 		omitTemplate:     options.OmitTemplate,
 		KeysToRedact:     options.Redact,
 	}
+
+	if v := os.Getenv("DISABLE_STDOUT"); v == "true" || v == "1" {
+		writer.DisableStdout = true
+	}
+
 	return writer, nil
 }
 
