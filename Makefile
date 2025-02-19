@@ -26,10 +26,7 @@ clean:
 
 go-build: clean
 go-build:
-	@if [ "$$(go env CGO_ENABLED)" = "1" ]; then \
-		go env -w CGO_ENABLED=0; \
-	fi
-	$(GOBUILD) -trimpath $(GOFLAGS) -ldflags '${LDFLAGS}' $(GOBUILD_ADDITIONAL_ARGS) \
+	CGO_ENABLED=0 $(GOBUILD) -trimpath $(GOFLAGS) -ldflags '${LDFLAGS}' $(GOBUILD_ADDITIONAL_ARGS) \
 		 -o '${GOBUILD_OUTPUT}' $(GOBUILD_PACKAGES)
 
 build: GOFLAGS = -v -pgo=auto
