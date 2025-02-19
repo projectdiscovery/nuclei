@@ -34,6 +34,14 @@ build: GOBUILD_OUTPUT = ./bin/nuclei
 build: GOBUILD_PACKAGES = cmd/nuclei/main.go
 build: go-build
 
+build-test: GOFLAGS = -v -pgo=auto
+build-test: GOBUILD_OUTPUT = ./bin/nuclei.test
+build-test: GOBUILD_PACKAGES = ./cmd/nuclei/
+build-test: clean
+build-test:
+	CGO_ENABLED=0 $(GOCMD) test -c -trimpath $(GOFLAGS) -ldflags '${LDFLAGS}' $(GOBUILD_ADDITIONAL_ARGS) \
+		 -o '${GOBUILD_OUTPUT}' ${GOBUILD_PACKAGES}
+
 build-stats: GOBUILD_OUTPUT = ./bin/nuclei-stats
 build-stats: GOBUILD_PACKAGES = cmd/nuclei/main.go
 build-stats: GOBUILD_ADDITIONAL_ARGS = -tags=stats
