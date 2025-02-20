@@ -122,6 +122,8 @@ func (f *FileAuthProvider) init() {
 
 // LookupAddr looks up a given domain/address and returns appropriate auth strategy
 func (f *FileAuthProvider) LookupAddr(addr string) []authx.AuthStrategy {
+	var strategies []authx.AuthStrategy
+
 	if strings.Contains(addr, ":") {
 		// default normalization for host:port
 		host, port, err := net.SplitHostPort(addr)
@@ -131,15 +133,16 @@ func (f *FileAuthProvider) LookupAddr(addr string) []authx.AuthStrategy {
 	}
 	for domain, strategy := range f.domains {
 		if strings.EqualFold(domain, addr) {
-			return strategy
+			strategies = append(strategies, strategy...)
 		}
 	}
 	for compiled, strategy := range f.compiled {
 		if compiled.MatchString(addr) {
-			return strategy
+			strategies = append(strategies, strategy...)
 		}
 	}
-	return nil
+
+	return strategies
 }
 
 // LookupURL looks up a given URL and returns appropriate auth strategy
