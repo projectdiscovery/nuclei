@@ -24,7 +24,6 @@ func BenchmarkRunEnumeration(b *testing.B) {
 			"cloud.projectdiscovery.io",
 		},
 		ProjectPath:                "/tmp",
-		Output:                     "/dev/null",
 		Targets:                    goflags.StringSlice{dummyServer.URL},
 		StatsInterval:              5,
 		MetricsPort:                9092,
