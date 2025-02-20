@@ -172,3 +172,7 @@ jobs:
         run: |
           echo "::notice::CPU flamegraph: ${{ steps.flamegraph-cpu.outputs.url }}"
           echo "::notice::Memory (heap) flamegraph: ${{ steps.flamegraph-mem.outputs.url }}"
+
+  perf-regression:
+    needs: ["tests"]
+    uses: ./.github/workflows/perf-regression.yaml
