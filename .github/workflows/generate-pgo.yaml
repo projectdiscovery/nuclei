@@ -12,6 +12,8 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+# TODO(dwisiswant0): https://go.dev/doc/pgo#merging-profiles
+
 jobs:
   pgo:
     strategy:
