@@ -1,0 +1,38 @@
+name: 🔨 Performance Regression
+
+on:
+  workflow_call:
+  workflow_dispatch:
+
+jobs:
+  perf-regression:
+    runs-on: ubuntu-latest-16-cores
+    if: github.repository == 'projectdiscovery/nuclei'
+    env:
+      BENCH_OUT: "/tmp/bench.out"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: projectdiscovery/actions/setup/go@v1
+      - run: make build-test
+      - run: ./bin/nuclei.test -test.run - -test.bench=. -test.benchmem ./cmd/nuclei/ | tee $BENCH_OUT
+        env:
+          DISABLE_STDOUT: "1"
+      - uses: actions/cache/restore@v4
+        with:
+          path: ./cache
+          key: ${{ runner.os }}-benchmark
+      - uses: benchmark-action/github-action-benchmark@v1
+        with:
+          name: 'RunEnumeration Benchmark'
+          tool: 'go'
+          output-file-path: ${{ env.BENCH_OUT }}
+          external-data-json-path: ./cache/benchmark-data.json
+          fail-on-alert: false
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          comment-on-alert: true
+          summary-always: true
+      - uses: actions/cache/save@v4
+        if: github.event_name == 'push'
+        with:
+          path: ./cache
+          key: ${{ runner.os }}-benchmark
