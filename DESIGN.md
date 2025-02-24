@@ -459,35 +459,42 @@ That's it, you've added a new protocol to Nuclei. The next good step would be to
 
 ## Profiling and Tracing
 
-To analyze Nuclei's performance and resource usage, you can generate memory profiles and trace files using the `-profile-mem` flag:
+To analyze Nuclei's performance and resource usage, you can generate CPU & memory profiles and trace files using the `-profile-mem` flag:
 
 ```bash
 nuclei -t nuclei-templates/ -u https://example.com -profile-mem=nuclei-$(git describe --tags)
 ```
 
-This command creates two files:
+This command creates three files:
 
-* `nuclei.prof`: Memory (heap) profile
+* `nuclei.cpu`: CPU profile
+* `nuclei.mem`: Memory (heap) profile
 * `nuclei.trace`: Execution trace
 
-### Analyzing the Memory Profile
+### Analyzing the CPU/Memory Profiles
 
-1. View the profile in the terminal:
+* View the profile in the terminal:
 
 ```bash
-go tool pprof nuclei.prof
+go tool pprof nuclei.{cpu,mem}
 ```
 
-2. Display top memory consumers:
+* Display overall CPU time for processing $$N$$ targets:
 
-```bash
-go tool pprof -top nuclei.prof | grep "$(go list -m)" | head -10
+```
+go tool pprof -top nuclei.cpu | grep "Total samples"
 ```
 
-3. Visualize the profile in a web browser:
+* Display top memory consumers:
 
 ```bash
-go tool pprof -http=:$(shuf -i 1000-99999 -n 1) nuclei.prof
+go tool pprof -top nuclei.mem | grep "$(go list -m)" | head -10
+```
+
+* Visualize the profile in a web browser:
+
+```bash
+go tool pprof -http=:$(shuf -i 1000-99999 -n 1) nuclei.{cpu,mem}
 ```
 
 ### Analyzing the Trace File
