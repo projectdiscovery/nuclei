@@ -133,7 +133,7 @@ func (rule *Rule) executePartComponentOnKV(input *ExecuteRuleInput, payload Valu
 			}
 
 			if qerr := rule.execWithInput(input, req, input.InteractURLs, ruleComponent, key, value, "", "", "", ""); qerr != nil {
-				return err
+				return qerr
 			}
 
 			// after building change back to original value to avoid repeating it in furthur requests
