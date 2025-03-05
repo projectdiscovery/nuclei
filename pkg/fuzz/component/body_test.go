@@ -1,7 +1,6 @@
 package component
 
 import (
-	"bytes"
 	"io"
 	"mime/multipart"
 	"strings"
@@ -10,6 +9,7 @@ import (
 	"github.com/projectdiscovery/retryablehttp-go"
 	urlutil "github.com/projectdiscovery/utils/url"
 	"github.com/stretchr/testify/require"
+	"github.com/valyala/bytebufferpool"
 )
 
 func TestBodyComponent(t *testing.T) {
@@ -122,7 +122,8 @@ func TestBodyFormComponent(t *testing.T) {
 }
 
 func TestMultiPartFormComponent(t *testing.T) {
-	formData := &bytes.Buffer{}
+	formData := bytebufferpool.Get()
+	defer bytebufferpool.Put(formData)
 	writer := multipart.NewWriter(formData)
 
 	// Hypothetical form fields

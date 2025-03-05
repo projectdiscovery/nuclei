@@ -3,10 +3,10 @@ package headless
 import (
 	"fmt"
 	"net/url"
-	"strings"
 	"time"
 
 	"github.com/projectdiscovery/retryablehttp-go"
+	"github.com/valyala/bytebufferpool"
 
 	"github.com/pkg/errors"
 	"golang.org/x/exp/maps"
@@ -151,7 +151,8 @@ func (request *Request) executeRequestWithPayloads(input *contextargs.Context, p
 	request.options.Progress.IncrementRequests()
 	gologger.Verbose().Msgf("Sent Headless request to %s", navigatedURL)
 
-	reqBuilder := &strings.Builder{}
+	reqBuilder := bytebufferpool.Get()
+	defer bytebufferpool.Put(reqBuilder)
 	if request.options.Options.Debug || request.options.Options.DebugRequests || request.options.Options.DebugResponse {
 		gologger.Info().Msgf("[%s] Dumped Headless request for %s", request.options.TemplateID, navigatedURL)
 

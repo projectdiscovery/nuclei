@@ -1,7 +1,6 @@
 package customtemplates
 
 import (
-	"bytes"
 	"context"
 	"os"
 	"path/filepath"
@@ -13,6 +12,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/config"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	errorutil "github.com/projectdiscovery/utils/errors"
+	"github.com/valyala/bytebufferpool"
 )
 
 var _ Provider = &customTemplateAzureBlob{}
@@ -121,7 +121,8 @@ func downloadTemplate(client *azblob.Client, containerName string, path string, 
 		return err
 	}
 
-	downloadedData := bytes.Buffer{}
+	downloadedData := bytebufferpool.Get()
+	defer bytebufferpool.Put(downloadedData)
 	retryReader := get.NewRetryReader(ctx, &azblob.RetryReaderOptions{})
 	_, err = downloadedData.ReadFrom(retryReader)
 	if err != nil {

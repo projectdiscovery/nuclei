@@ -2,7 +2,6 @@ package multiproto
 
 import (
 	"strconv"
-	"strings"
 	"sync/atomic"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
@@ -12,6 +11,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/templates/types"
 	mapsutil "github.com/projectdiscovery/utils/maps"
 	stringsutil "github.com/projectdiscovery/utils/strings"
+	"github.com/valyala/bytebufferpool"
 )
 
 // Mutliprotocol is a template executer engine that executes multiple protocols
@@ -92,7 +92,8 @@ func (m *MultiProtocol) ExecuteWithResults(ctx *scan.ScanContext) error {
 
 			ID := req.GetID()
 			if ID != "" {
-				builder := &strings.Builder{}
+				builder := bytebufferpool.Get()
+				defer bytebufferpool.Put(builder)
 				for k, v := range event.InternalEvent {
 					builder.WriteString(ID)
 					builder.WriteString("_")

@@ -3,10 +3,10 @@ package ldap
 import (
 	"fmt"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/go-ldap/ldap/v3"
+	"github.com/valyala/bytebufferpool"
 )
 
 type (
@@ -217,7 +217,8 @@ func DecodeSID(s string) string {
 		offset += size
 	}
 
-	var builder strings.Builder
+	builder := bytebufferpool.Get()
+	defer bytebufferpool.Put(builder)
 	builder.WriteString("S-")
 	builder.WriteString(fmt.Sprintf("%d-", revisionLvl))
 	builder.WriteString(fmt.Sprintf("%d", authority))

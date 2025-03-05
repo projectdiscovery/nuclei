@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
+	"github.com/valyala/bytebufferpool"
 	"go.uber.org/multierr"
 	"golang.org/x/exp/maps"
 
@@ -303,7 +304,10 @@ func (request *Request) executeRequestWithPayloads(variables map[string]interfac
 
 	var interactshURLs []string
 
-	var responseBuilder, reqBuilder strings.Builder
+	responseBuilder := bytebufferpool.Get()
+	reqBuilder := bytebufferpool.Get()
+	defer bytebufferpool.Put(responseBuilder)
+	defer bytebufferpool.Put(reqBuilder)
 
 	interimValues := generators.MergeMaps(variables, payloads)
 

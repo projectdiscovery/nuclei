@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bytes"
 	"fmt"
 	"log"
 	"os"
@@ -24,6 +23,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/utils/json"
 	"github.com/projectdiscovery/retryablehttp-go"
 	errorutil "github.com/projectdiscovery/utils/errors"
+	"github.com/valyala/bytebufferpool"
 	"gopkg.in/yaml.v3"
 )
 
@@ -379,8 +379,9 @@ func parseAndAddMaxRequests(catalog catalog.Catalog, path, data string) (string,
 	}
 	infoBlock.Info.Metadata["max-request"] = template.TotalRequests
 
-	var newInfoBlock bytes.Buffer
-	yamlEncoder := yaml.NewEncoder(&newInfoBlock)
+	newInfoBlock := bytebufferpool.Get()
+	defer bytebufferpool.Put(newInfoBlock)
+	yamlEncoder := yaml.NewEncoder(newInfoBlock)
 	yamlEncoder.SetIndent(yamlIndentSpaces)
 	err = yamlEncoder.Encode(infoBlock)
 	if err != nil {

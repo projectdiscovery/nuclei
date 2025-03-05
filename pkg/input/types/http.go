@@ -2,7 +2,6 @@ package types
 
 import (
 	"bufio"
-	"bytes"
 	"crypto/sha256"
 	"fmt"
 	"io"
@@ -16,6 +15,7 @@ import (
 	"github.com/projectdiscovery/utils/conversion"
 	mapsutil "github.com/projectdiscovery/utils/maps"
 	urlutil "github.com/projectdiscovery/utils/url"
+	"github.com/valyala/bytebufferpool"
 )
 
 var (
@@ -87,7 +87,8 @@ func (rr *RequestResponse) BuildRequest() (*retryablehttp.Request, error) {
 
 // ID returns a unique id/hash for request response
 func (rr *RequestResponse) ID() string {
-	var buff bytes.Buffer
+	buff := bytebufferpool.Get()
+	defer bytebufferpool.Put(buff)
 	buff.WriteString(rr.URL.String())
 	if rr.Request != nil {
 		buff.WriteString(rr.Request.ID())
@@ -270,7 +271,8 @@ func ParseRawRequest(raw string) (rr *RequestResponse, err error) {
 
 	// parse body
 	rr.Request.Body = ""
-	var buff bytes.Buffer
+	buff := bytebufferpool.Get()
+	defer bytebufferpool.Put(buff)
 	_, err = buff.ReadFrom(protoReader.R)
 	if err != nil && err != io.EOF {
 		return nil, fmt.Errorf("failed to read body: %s", err)

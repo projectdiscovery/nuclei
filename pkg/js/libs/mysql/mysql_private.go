@@ -5,7 +5,8 @@ import (
 	"fmt"
 	"net"
 	"net/url"
-	"strings"
+
+	"github.com/valyala/bytebufferpool"
 )
 
 type (
@@ -58,7 +59,8 @@ func BuildDSN(opts MySQLOptions) (string, error) {
 		opts.DbName = "/" + opts.DbName
 	}
 	target := net.JoinHostPort(opts.Host, fmt.Sprintf("%d", opts.Port))
-	var dsn strings.Builder
+	dsn := bytebufferpool.Get()
+	defer bytebufferpool.Put(dsn)
 	dsn.WriteString(fmt.Sprintf("%v:%v", url.QueryEscape(opts.Username), opts.Password))
 	dsn.WriteString("@")
 	dsn.WriteString(fmt.Sprintf("%v(%v)", opts.Protocol, target))

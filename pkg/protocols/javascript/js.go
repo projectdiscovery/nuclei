@@ -1,7 +1,6 @@
 package javascript
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 	"net"
@@ -38,6 +37,7 @@ import (
 	mapsutil "github.com/projectdiscovery/utils/maps"
 	syncutil "github.com/projectdiscovery/utils/sync"
 	urlutil "github.com/projectdiscovery/utils/url"
+	"github.com/valyala/bytebufferpool"
 )
 
 // Request is a request for the javascript protocol
@@ -145,8 +145,9 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 			if request.options.Options.NoColor {
 				highlightFormatter = "text"
 			}
-			var buff bytes.Buffer
-			_ = quick.Highlight(&buff, beautifyJavascript(request.Init), "javascript", highlightFormatter, "monokai")
+			buff := bytebufferpool.Get()
+			defer bytebufferpool.Put(buff)
+			_ = quick.Highlight(buff, beautifyJavascript(request.Init), "javascript", highlightFormatter, "monokai")
 			prettyPrint(request.TemplateID, buff.String())
 		}
 
@@ -331,8 +332,9 @@ func (request *Request) ExecuteWithResults(target *contextargs.Context, dynamicV
 			if requestOptions.Options.NoColor {
 				highlightFormatter = "text"
 			}
-			var buff bytes.Buffer
-			_ = quick.Highlight(&buff, beautifyJavascript(request.PreCondition), "javascript", highlightFormatter, "monokai")
+			buff := bytebufferpool.Get()
+			defer bytebufferpool.Put(buff)
+			_ = quick.Highlight(buff, beautifyJavascript(request.PreCondition), "javascript", highlightFormatter, "monokai")
 			prettyPrint(request.TemplateID, buff.String())
 		}
 
@@ -539,8 +541,9 @@ func (request *Request) executeRequestWithPayloads(hostPort string, input *conte
 			if requestOptions.Options.NoColor {
 				highlightFormatter = "text"
 			}
-			var buff bytes.Buffer
-			_ = quick.Highlight(&buff, beautifyJavascript(request.Code), "javascript", highlightFormatter, "monokai")
+			buff := bytebufferpool.Get()
+			defer bytebufferpool.Put(buff)
+			_ = quick.Highlight(buff, beautifyJavascript(request.Code), "javascript", highlightFormatter, "monokai")
 			prettyPrint(request.TemplateID, buff.String())
 		}
 		if requestOptions.Options.StoreResponse {

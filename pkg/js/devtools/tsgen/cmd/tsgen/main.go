@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bytes"
 	_ "embed"
 	"flag"
 	"fmt"
@@ -14,6 +13,7 @@ import (
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/js/devtools/tsgen"
 	fileutil "github.com/projectdiscovery/utils/file"
+	"github.com/valyala/bytebufferpool"
 )
 
 // Define your template
@@ -84,8 +84,9 @@ func main() {
 		}
 		entityList = append(entityList, ep.GetEntities()...)
 		entityList = sortEntities(entityList)
-		var buff bytes.Buffer
-		err = tmpl.Execute(&buff, entityList)
+		buff := bytebufferpool.Get()
+		defer bytebufferpool.Put(buff)
+		err = tmpl.Execute(buff, entityList)
 		if err != nil {
 			panic(err)
 		}
@@ -97,7 +98,8 @@ func main() {
 	}
 
 	// generating index.ts file
-	var buff bytes.Buffer
+	buff := bytebufferpool.Get()
+	defer bytebufferpool.Put(buff)
 	for _, dir := range dirs {
 		buff.WriteString(fmt.Sprintf("export * as %s from './%s';\n", filepath.Base(dir), filepath.Base(dir)))
 	}

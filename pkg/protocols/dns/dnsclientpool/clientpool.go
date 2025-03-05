@@ -8,6 +8,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	"github.com/projectdiscovery/retryabledns"
+	"github.com/valyala/bytebufferpool"
 )
 
 var (
@@ -55,7 +56,8 @@ type Configuration struct {
 
 // Hash returns the hash of the configuration to allow client pooling
 func (c *Configuration) Hash() string {
-	builder := &strings.Builder{}
+	builder := bytebufferpool.Get()
+	defer bytebufferpool.Put(builder)
 	builder.WriteString("r")
 	builder.WriteString(strconv.Itoa(c.Retries))
 	builder.WriteString("l")

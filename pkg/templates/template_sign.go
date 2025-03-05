@@ -15,6 +15,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/templates/signer"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	errorutil "github.com/projectdiscovery/utils/errors"
+	"github.com/valyala/bytebufferpool"
 )
 
 // Due to file references in sensitive fields of template
@@ -80,7 +81,9 @@ func SignTemplate(templateSigner *signer.TemplateSigner, templatePath string) er
 		if err != nil {
 			return err
 		}
-		buff := bytes.NewBuffer(content)
+		buff := bytebufferpool.Get()
+		defer bytebufferpool.Put(buff)
+		buff.Write(content)
 		buff.WriteString("\n" + signatureData)
 		return os.WriteFile(templatePath, buff.Bytes(), 0644)
 	}

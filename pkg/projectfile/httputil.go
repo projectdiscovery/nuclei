@@ -7,6 +7,8 @@ import (
 	"encoding/hex"
 	"io"
 	"net/http"
+
+	"github.com/valyala/bytebufferpool"
 )
 
 func hash(v interface{}) (string, error) {
@@ -24,8 +26,9 @@ func hash(v interface{}) (string, error) {
 }
 
 func marshal(data interface{}) ([]byte, error) {
-	var b bytes.Buffer
-	enc := gob.NewEncoder(&b)
+	b := bytebufferpool.Get()
+	defer bytebufferpool.Put(b)
+	enc := gob.NewEncoder(b)
 	if err := enc.Encode(data); err != nil {
 		return nil, err
 	}

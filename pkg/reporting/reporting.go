@@ -2,10 +2,11 @@ package reporting
 
 import (
 	"fmt"
-	"github.com/projectdiscovery/nuclei/v3/pkg/reporting/exporters/mongo"
 	"os"
-	"strings"
 	"sync/atomic"
+
+	"github.com/projectdiscovery/nuclei/v3/pkg/reporting/exporters/mongo"
+	"github.com/valyala/bytebufferpool"
 
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/config"
@@ -254,7 +255,8 @@ func (c *ReportingClient) Close() {
 				if created == 0 {
 					continue
 				}
-				var msgBuilder strings.Builder
+				msgBuilder := bytebufferpool.Get()
+				defer bytebufferpool.Put(msgBuilder)
 				msgBuilder.WriteString(fmt.Sprintf("%d %s tickets created successfully", created, trackerName))
 				failed := stats.Failed.Load()
 				if failed > 0 {

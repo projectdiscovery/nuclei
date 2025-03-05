@@ -10,6 +10,7 @@ import (
 
 	"github.com/bluele/gcache"
 	"github.com/projectdiscovery/gologger"
+	"github.com/valyala/bytebufferpool"
 )
 
 // Tracker implements a frequency tracker for a given input
@@ -121,7 +122,8 @@ func (t *Tracker) UnmarkParameter(parameter, target, template string) {
 }
 
 func getFrequencyKey(parameter, target, template string) string {
-	var sb strings.Builder
+	sb := bytebufferpool.Get()
+	defer bytebufferpool.Put(sb)
 	sb.WriteString(target)
 	sb.WriteString(":")
 	sb.WriteString(template)

@@ -14,6 +14,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/helpers/responsehighlighter"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/utils"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
+	"github.com/valyala/bytebufferpool"
 )
 
 // Match matches a generic data response again a given matcher
@@ -83,7 +84,8 @@ func getMatchPart(part string, data output.InternalEvent) (string, bool) {
 	var itemStr string
 
 	if part == "all" {
-		builder := &strings.Builder{}
+		builder := bytebufferpool.Get()
+		defer bytebufferpool.Put(builder)
 		builder.WriteString(types.ToString(data["body"]))
 		builder.WriteString(types.ToString(data["all_headers"]))
 		itemStr = builder.String()

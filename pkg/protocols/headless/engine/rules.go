@@ -4,11 +4,11 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httputil"
-	"strings"
 
 	"github.com/go-rod/rod"
 	"github.com/go-rod/rod/lib/proto"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
+	"github.com/valyala/bytebufferpool"
 )
 
 // routingRuleHandler handles proxy rule for actions related to request/response modification
@@ -85,7 +85,8 @@ func (p *Page) routingRuleHandler(httpClient *http.Client) func(ctx *rod.Hijack)
 		}
 
 		// attempts to rebuild the response
-		var rawResp strings.Builder
+		rawResp := bytebufferpool.Get()
+		defer bytebufferpool.Put(rawResp)
 		respPayloads := ctx.Response.Payload()
 		if respPayloads != nil {
 			rawResp.WriteString(fmt.Sprintf("HTTP/1.1 %d %s\n", respPayloads.ResponseCode, respPayloads.ResponsePhrase))
@@ -125,7 +126,8 @@ func (p *Page) routingRuleHandlerNative(e *proto.FetchRequestPaused) error {
 	}
 
 	// attempts to rebuild request
-	var rawReq strings.Builder
+	rawReq := bytebufferpool.Get()
+	defer bytebufferpool.Put(rawReq)
 	rawReq.WriteString(fmt.Sprintf("%s %s %s\n", e.Request.Method, e.Request.URL, "HTTP/1.1"))
 	for _, header := range e.Request.Headers {
 		rawReq.WriteString(fmt.Sprintf("%s\n", header.String()))
@@ -135,7 +137,8 @@ func (p *Page) routingRuleHandlerNative(e *proto.FetchRequestPaused) error {
 	}
 
 	// attempts to rebuild the response
-	var rawResp strings.Builder
+	rawResp := bytebufferpool.Get()
+	defer bytebufferpool.Put(rawResp)
 	rawResp.WriteString(fmt.Sprintf("HTTP/1.1 %d %s\n", statusCode, e.ResponseStatusText))
 	for _, header := range e.ResponseHeaders {
 		rawResp.WriteString(header.Name + ": " + header.Value + "\n")

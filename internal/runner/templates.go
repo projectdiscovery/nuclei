@@ -1,7 +1,6 @@
 package runner
 
 import (
-	"bytes"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -11,6 +10,7 @@ import (
 	"github.com/logrusorgru/aurora"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/config"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/loader"
+	"github.com/valyala/bytebufferpool"
 
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/templates"
@@ -108,9 +108,10 @@ func (r *Runner) listAvailableStoreTags(store *loader.Store) {
 }
 
 func (r *Runner) highlightTemplate(body *[]byte) ([]byte, error) {
-	var buf bytes.Buffer
+	buf := bytebufferpool.Get()
+	defer bytebufferpool.Put(buf)
 	// YAML lexer, true color terminal formatter and monokai style
-	err := quick.Highlight(&buf, string(*body), "yaml", "terminal16m", "monokai")
+	err := quick.Highlight(buf, string(*body), "yaml", "terminal16m", "monokai")
 	if err != nil {
 		return nil, err
 	}

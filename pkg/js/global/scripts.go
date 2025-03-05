@@ -1,7 +1,6 @@
 package global
 
 import (
-	"bytes"
 	"context"
 	"embed"
 	"math/rand"
@@ -19,6 +18,7 @@ import (
 	"github.com/projectdiscovery/utils/errkit"
 	errorutil "github.com/projectdiscovery/utils/errors"
 	stringsutil "github.com/projectdiscovery/utils/strings"
+	"github.com/valyala/bytebufferpool"
 )
 
 var (
@@ -164,7 +164,8 @@ func initBuiltInFunc(runtime *goja.Runtime) {
 		},
 		Description: "ToBytes converts given input to byte slice",
 		FuncDecl: func(call goja.FunctionCall) goja.Value {
-			var buff bytes.Buffer
+			buff := bytebufferpool.Get()
+			defer bytebufferpool.Put(buff)
 			allVars := []any{}
 			for _, v := range call.Arguments {
 				if v.Export() == nil {
@@ -195,7 +196,8 @@ func initBuiltInFunc(runtime *goja.Runtime) {
 		},
 		Description: "ToString converts given input to string",
 		FuncDecl: func(call goja.FunctionCall) goja.Value {
-			var buff bytes.Buffer
+			buff := bytebufferpool.Get()
+			defer bytebufferpool.Put(buff)
 			for _, v := range call.Arguments {
 				exported := v.Export()
 				if exported != nil {

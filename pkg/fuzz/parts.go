@@ -3,7 +3,6 @@ package fuzz
 import (
 	"io"
 	"strconv"
-	"strings"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/fuzz/component"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/expressions"
@@ -11,6 +10,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	"github.com/projectdiscovery/retryablehttp-go"
 	sliceutil "github.com/projectdiscovery/utils/slice"
+	"github.com/valyala/bytebufferpool"
 )
 
 // executePartRule executes part rules based on type
@@ -204,10 +204,11 @@ func (rule *Rule) executeEvaluate(input *ExecuteRuleInput, _, value, payload str
 // executeRuleTypes executes replacement for a key and value
 // ex: prefix, postfix, infix, replace , replace-regex
 func (rule *Rule) executeRuleTypes(_ *ExecuteRuleInput, value, replacement string) string {
-	var builder strings.Builder
-	if rule.ruleType == prefixRuleType || rule.ruleType == postfixRuleType {
-		builder.Grow(len(value) + len(replacement))
-	}
+	builder := bytebufferpool.Get()
+	defer bytebufferpool.Put(builder)
+	// if rule.ruleType == prefixRuleType || rule.ruleType == postfixRuleType {
+	// 	builder.Grow(len(value) + len(replacement))
+	// }
 	var returnValue string
 
 	switch rule.ruleType {

@@ -15,6 +15,7 @@ import (
 	errorutil "github.com/projectdiscovery/utils/errors"
 	stringsutil "github.com/projectdiscovery/utils/strings"
 	urlutil "github.com/projectdiscovery/utils/url"
+	"github.com/valyala/bytebufferpool"
 )
 
 // Request defines a basic HTTP raw request
@@ -270,7 +271,8 @@ func (r *Request) TryFillCustomHeaders(headers []string) error {
 		if newLineIndex > 0 {
 			newLineIndex += hostHeaderIndex + 2
 			// insert custom headers
-			var buf bytes.Buffer
+			buf := bytebufferpool.Get()
+			defer bytebufferpool.Put(buf)
 			buf.Write(r.UnsafeRawBytes[:newLineIndex])
 			for _, header := range headers {
 				buf.WriteString(fmt.Sprintf("%s\r\n", header))
@@ -301,7 +303,8 @@ func (r *Request) ApplyAuthStrategy(strategy authx.AuthStrategy) {
 			parsed.Params.Add(p.Key, p.Value)
 		}
 	case *authx.CookiesAuthStrategy:
-		var buff bytes.Buffer
+		buff := bytebufferpool.Get()
+		defer bytebufferpool.Put(buff)
 		for _, cookie := range s.Data.Cookies {
 			buff.WriteString(fmt.Sprintf("%s=%s; ", cookie.Key, cookie.Value))
 		}

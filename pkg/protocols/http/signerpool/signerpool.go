@@ -2,10 +2,10 @@ package signerpool
 
 import (
 	"fmt"
-	"strings"
 	"sync"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http/signer"
+	"github.com/valyala/bytebufferpool"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 )
@@ -29,7 +29,8 @@ type Configuration struct {
 
 // Hash returns the hash of the configuration to allow client pooling
 func (c *Configuration) Hash() string {
-	builder := &strings.Builder{}
+	builder := bytebufferpool.Get()
+	defer bytebufferpool.Put(builder)
 	builder.WriteString(fmt.Sprintf("%v", c.SignerArgs))
 	hash := builder.String()
 	return hash

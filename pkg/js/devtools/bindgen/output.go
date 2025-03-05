@@ -1,7 +1,6 @@
 package generator
 
 import (
-	"bytes"
 	"fmt"
 	"os"
 	"os/exec"
@@ -10,6 +9,7 @@ import (
 	"text/template"
 
 	"github.com/pkg/errors"
+	"github.com/valyala/bytebufferpool"
 )
 
 // markdownIndexes is a map of markdown modules to their filename index
@@ -93,7 +93,8 @@ func (d *TemplateData) WriteMarkdownIndexTemplate(outputDirectory string) error 
 	}
 	defer output.Close()
 
-	buffer := &bytes.Buffer{}
+	buffer := bytebufferpool.Get()
+	defer bytebufferpool.Put(buffer)
 	_, _ = buffer.WriteString("# Index\n\n")
 	for _, v := range markdownIndexes {
 		_, _ = buffer.WriteString(fmt.Sprintf("* %s\n", v))

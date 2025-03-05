@@ -20,6 +20,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	errorutil "github.com/projectdiscovery/utils/errors"
 	urlutil "github.com/projectdiscovery/utils/url"
+	"github.com/valyala/bytebufferpool"
 )
 
 // Page is a single page in an isolated browser instance
@@ -242,7 +243,8 @@ func (p *Page) DumpHistory() string {
 	p.mutex.RLock()
 	defer p.mutex.RUnlock()
 
-	var historyDump strings.Builder
+	historyDump := bytebufferpool.Get()
+	defer bytebufferpool.Put(historyDump)
 	for _, historyData := range p.History {
 		historyDump.WriteString(historyData.RawRequest)
 		historyDump.WriteString(historyData.RawResponse)

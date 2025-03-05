@@ -1,7 +1,6 @@
 package interactsh
 
 import (
-	"bytes"
 	"fmt"
 	"os"
 	"regexp"
@@ -13,6 +12,7 @@ import (
 	"errors"
 
 	"github.com/Mzack9999/gcache"
+	"github.com/valyala/bytebufferpool"
 
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/interactsh/pkg/client"
@@ -394,8 +394,8 @@ func HasMarkers(data string) bool {
 }
 
 func (c *Client) debugPrintInteraction(interaction *server.Interaction, event *operators.Result) {
-	builder := &bytes.Buffer{}
-
+	builder := bytebufferpool.Get()
+	defer bytebufferpool.Put(builder)
 	switch interaction.Protocol {
 	case "dns":
 		builder.WriteString(formatInteractionHeader("DNS", interaction.FullId, interaction.RemoteAddress, interaction.Timestamp))

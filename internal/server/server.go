@@ -6,7 +6,6 @@ import (
 	"html/template"
 	"net/http"
 	"net/url"
-	"strings"
 	"sync/atomic"
 	"time"
 
@@ -20,6 +19,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
 	"github.com/projectdiscovery/utils/env"
+	"github.com/valyala/bytebufferpool"
 )
 
 // DASTServer is a server that performs execution of fuzzing templates
@@ -98,7 +98,8 @@ func New(options *Options) (*DASTServer, error) {
 	}
 	server.scopeManager = scopeManager
 
-	var builder strings.Builder
+	builder := bytebufferpool.Get()
+	defer bytebufferpool.Put(builder)
 	gologger.Debug().Msgf("Using %d parallel tasks with %d buffer", maxWorkers, bufferSize)
 	if options.Token != "" {
 		builder.WriteString(" (with token)")

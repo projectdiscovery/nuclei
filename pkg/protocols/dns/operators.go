@@ -1,12 +1,12 @@
 package dns
 
 import (
-	"bytes"
 	"fmt"
 	"strings"
 	"time"
 
 	"github.com/miekg/dns"
+	"github.com/valyala/bytebufferpool"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/model"
 	"github.com/projectdiscovery/nuclei/v3/pkg/operators/extractors"
@@ -130,7 +130,8 @@ func (request *Request) MakeResultEventItem(wrapped *output.InternalWrappedEvent
 }
 
 func rrToString(resourceRecords []dns.RR) string { // TODO rewrite with generics when available
-	buffer := &bytes.Buffer{}
+	buffer := bytebufferpool.Get()
+	defer bytebufferpool.Put(buffer)
 	for _, resourceRecord := range resourceRecords {
 		buffer.WriteString(resourceRecord.String())
 	}
@@ -138,7 +139,8 @@ func rrToString(resourceRecords []dns.RR) string { // TODO rewrite with generics
 }
 
 func questionToString(resourceRecords []dns.Question) string {
-	buffer := &bytes.Buffer{}
+	buffer := bytebufferpool.Get()
+	defer bytebufferpool.Put(buffer)
 	for _, resourceRecord := range resourceRecords {
 		buffer.WriteString(resourceRecord.String())
 	}
@@ -146,7 +148,8 @@ func questionToString(resourceRecords []dns.Question) string {
 }
 
 func traceToString(traceData *retryabledns.TraceData, withSteps bool) string {
-	buffer := &bytes.Buffer{}
+	buffer := bytebufferpool.Get()
+	defer bytebufferpool.Put(buffer)
 	if traceData != nil {
 		for i, dnsRecord := range traceData.DNSData {
 			if withSteps {

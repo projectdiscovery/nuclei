@@ -14,6 +14,7 @@ import (
 	"github.com/gobwas/ws"
 	"github.com/gobwas/ws/wsutil"
 	"github.com/pkg/errors"
+	"github.com/valyala/bytebufferpool"
 
 	"github.com/projectdiscovery/fastdialer/fastdialer"
 	"github.com/projectdiscovery/gologger"
@@ -235,7 +236,8 @@ func (request *Request) executeRequestWithPayloads(target *contextargs.Context, 
 	}
 	defer conn.Close()
 
-	responseBuilder := &strings.Builder{}
+	responseBuilder := bytebufferpool.Get()
+	defer bytebufferpool.Put(responseBuilder)
 	if readBuffer != nil {
 		_, _ = io.Copy(responseBuilder, readBuffer) // Copy initial response
 	}
@@ -290,14 +292,13 @@ func (request *Request) executeRequestWithPayloads(target *contextargs.Context, 
 	return nil
 }
 
-func (request *Request) readWriteInputWebsocket(conn net.Conn, payloadValues map[string]interface{}, input string, respBuilder *strings.Builder) (events map[string]interface{}, req string, err error) {
-	reqBuilder := &strings.Builder{}
+func (request *Request) readWriteInputWebsocket(conn net.Conn, payloadValues map[string]interface{}, input string, respBuilder *bytebufferpool.ByteBuffer) (events map[string]interface{}, req string, err error) {
+	reqBuilder := bytebufferpool.Get()
+	defer bytebufferpool.Put(reqBuilder)
 	inputEvents := make(map[string]interface{})
 
 	requestOptions := request.options
 	for _, req := range request.Inputs {
-		reqBuilder.Grow(len(req.Data))
-
 		finalData, dataErr := expressions.EvaluateByte([]byte(req.Data), payloadValues)
 		if dataErr != nil {
 			requestOptions.Output.Request(requestOptions.TemplateID, input, request.Type().String(), dataErr)

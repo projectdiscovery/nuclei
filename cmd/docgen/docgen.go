@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bytes"
 	"log"
 	"os"
 	"reflect"
@@ -9,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/invopop/jsonschema"
+	"github.com/valyala/bytebufferpool"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/templates"
 	"github.com/projectdiscovery/nuclei/v3/pkg/utils/json"
@@ -42,8 +42,9 @@ func main() {
 	}
 	jsonschemaData := r.Reflect(&templates.Template{})
 
-	var buf bytes.Buffer
-	encoder := json.NewEncoder(&buf)
+	buf := bytebufferpool.Get()
+	defer bytebufferpool.Put(buf)
+	encoder := json.NewEncoder(buf)
 	encoder.SetIndent("", "  ")
 	_ = encoder.Encode(jsonschemaData)
 

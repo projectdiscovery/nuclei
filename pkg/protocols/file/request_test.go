@@ -2,7 +2,6 @@ package file
 
 import (
 	"archive/zip"
-	"bytes"
 	"compress/gzip"
 	"context"
 	"os"
@@ -10,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
+	"github.com/valyala/bytebufferpool"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/model"
 	"github.com/projectdiscovery/nuclei/v3/pkg/model/types/severity"
@@ -23,8 +23,9 @@ import (
 )
 
 func zipFile(t *testing.T, fileName string, data []byte) []byte {
-	var b bytes.Buffer
-	w := zip.NewWriter(&b)
+	b := bytebufferpool.Get()
+	defer bytebufferpool.Put(b)
+	w := zip.NewWriter(b)
 	w1, err := w.Create(fileName)
 	require.NoError(t, err)
 	_, err = w1.Write(data)
@@ -35,8 +36,9 @@ func zipFile(t *testing.T, fileName string, data []byte) []byte {
 }
 
 func gzipFile(t *testing.T, data []byte) []byte {
-	var b bytes.Buffer
-	w := gzip.NewWriter(&b)
+	b := bytebufferpool.Get()
+	defer bytebufferpool.Put(b)
+	w := gzip.NewWriter(b)
 	_, err := w.Write(data)
 	require.NoError(t, err)
 	err = w.Close()

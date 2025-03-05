@@ -1,7 +1,6 @@
 package config
 
 import (
-	"bytes"
 	"crypto/md5"
 	"fmt"
 	"log"
@@ -16,6 +15,7 @@ import (
 	errorutil "github.com/projectdiscovery/utils/errors"
 	fileutil "github.com/projectdiscovery/utils/file"
 	folderutil "github.com/projectdiscovery/utils/folder"
+	"github.com/valyala/bytebufferpool"
 )
 
 // DefaultConfig is the default nuclei configuration
@@ -292,7 +292,8 @@ func (c *Config) WriteTemplatesConfig() error {
 // WriteTemplatesIndex writes the nuclei templates index file
 func (c *Config) WriteTemplatesIndex(index map[string]string) error {
 	indexFile := c.GetTemplateIndexFilePath()
-	var buff bytes.Buffer
+	buff := bytebufferpool.Get()
+	defer bytebufferpool.Put(buff)
 	for k, v := range index {
 		_, _ = buff.WriteString(k + "," + v + "\n")
 	}
