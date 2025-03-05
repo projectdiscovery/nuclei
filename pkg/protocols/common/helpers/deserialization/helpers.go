@@ -1,17 +1,20 @@
 package deserialization
 
-import "bytes"
+import (
+	"github.com/valyala/bytebufferpool"
+)
 
 func InsertInto(s string, interval int, sep rune) string {
-	var buffer bytes.Buffer
+	buffer := bytebufferpool.Get()
+	defer bytebufferpool.Put(buffer)
 	before := interval - 1
 	last := len(s) - 1
 	for i, char := range s {
-		buffer.WriteRune(char)
+		buffer.WriteString(string(char))
 		if i%interval == before && i != last {
-			buffer.WriteRune(sep)
+			buffer.WriteString(string(sep))
 		}
 	}
-	buffer.WriteRune(sep)
+	buffer.WriteString(string(sep))
 	return buffer.String()
 }

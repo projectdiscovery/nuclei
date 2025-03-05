@@ -2,9 +2,9 @@ package ldap
 
 import (
 	"fmt"
-	"strings"
 
 	"github.com/go-ldap/ldap/v3"
+	"github.com/valyala/bytebufferpool"
 )
 
 // LDAP makes you search using an OID
@@ -55,7 +55,8 @@ const (
 // const filter = ldap.JoinFilters(ldap.FilterIsPerson, ldap.FilterAccountEnabled);
 // ```
 func JoinFilters(filters ...string) string {
-	var builder strings.Builder
+	builder := bytebufferpool.Get()
+	defer bytebufferpool.Put(builder)
 	builder.WriteString("(&")
 	for _, s := range filters {
 		builder.WriteString(s)

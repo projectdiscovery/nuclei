@@ -27,6 +27,7 @@ import (
 	"github.com/projectdiscovery/ratelimit"
 	"github.com/projectdiscovery/retryablehttp-go"
 	errorutil "github.com/projectdiscovery/utils/errors"
+	"github.com/valyala/bytebufferpool"
 )
 
 // NucleiSDKOptions contains options for nuclei SDK
@@ -188,9 +189,11 @@ func (e *NucleiEngine) SignTemplate(tmplSigner *signer.TemplateSigner, data []by
 		return data, err
 	}
 	_, content := signer.ExtractSignatureAndContent(data)
-	buff := bytes.NewBuffer(content)
+	buff := bytebufferpool.Get()
+	defer bytebufferpool.Put(buff)
+	buff.Write(content)
 	buff.WriteString("\n" + signatureData)
-	return buff.Bytes(), err
+	return buff.Bytes(), nil
 }
 
 func (e *NucleiEngine) closeInternal() {

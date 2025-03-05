@@ -11,6 +11,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog"
 	"github.com/projectdiscovery/retryablehttp-go"
 	mapsutil "github.com/projectdiscovery/utils/maps"
+	"github.com/valyala/bytebufferpool"
 	"golang.org/x/exp/constraints"
 )
 
@@ -65,7 +66,8 @@ func StringSliceContains(slice []string, item string) bool {
 // MapHash generates a hash for any give map
 func MapHash[K constraints.Ordered, V any](m map[K]V) uint64 {
 	keys := mapsutil.GetSortedKeys(m)
-	var sb strings.Builder
+	sb := bytebufferpool.Get()
+	defer bytebufferpool.Put(sb)
 	for _, k := range keys {
 		sb.WriteString(fmt.Sprintf("%v:%v\n", k, m[k]))
 	}

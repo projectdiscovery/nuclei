@@ -9,11 +9,11 @@ import (
 	"net/http/cookiejar"
 	"net/url"
 	"strconv"
-	"strings"
 	"sync"
 	"time"
 
 	"github.com/pkg/errors"
+	"github.com/valyala/bytebufferpool"
 	"golang.org/x/net/proxy"
 	"golang.org/x/net/publicsuffix"
 
@@ -127,8 +127,8 @@ func (c *Configuration) Clone() *Configuration {
 
 // Hash returns the hash of the configuration to allow client pooling
 func (c *Configuration) Hash() string {
-	builder := &strings.Builder{}
-	builder.Grow(16)
+	builder := bytebufferpool.Get()
+	defer bytebufferpool.Put(builder)
 	builder.WriteString("t")
 	builder.WriteString(strconv.Itoa(c.Threads))
 	builder.WriteString("m")

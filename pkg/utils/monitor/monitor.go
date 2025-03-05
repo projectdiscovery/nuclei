@@ -9,7 +9,6 @@ import (
 	"fmt"
 	"os"
 	"runtime"
-	"strings"
 	"sync"
 	"time"
 
@@ -18,6 +17,7 @@ import (
 	permissionutil "github.com/projectdiscovery/utils/permission"
 	unitutils "github.com/projectdiscovery/utils/unit"
 	"github.com/rs/xid"
+	"github.com/valyala/bytebufferpool"
 )
 
 // Agent is an agent for monitoring hanging programs
@@ -130,8 +130,9 @@ var getStack = func(all bool) []byte {
 // generateStackTraceSlice returns a list of current stack in string slice format
 func generateStackTraceSlice(stack []byte) []string {
 	goroutines, _ := gostackparse.Parse(bytes.NewReader(stack))
+	builder := bytebufferpool.Get()
+	defer bytebufferpool.Put(builder)
 
-	var builder strings.Builder
 	var stackList []string
 	for _, goroutine := range goroutines {
 		builder.WriteString(goroutine.State)

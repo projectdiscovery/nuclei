@@ -10,6 +10,7 @@ import (
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/input/types"
 	mapsutil "github.com/projectdiscovery/utils/maps"
+	"github.com/valyala/bytebufferpool"
 )
 
 var dynamicHeaders = map[string]bool{
@@ -68,7 +69,9 @@ func hashRequest(req *types.RequestResponse) (string, error) {
 		return "", err
 	}
 
-	var hashContent strings.Builder
+	hashContent := bytebufferpool.Get()
+	defer bytebufferpool.Put(hashContent)
+
 	hashContent.WriteString(req.Request.Method)
 	hashContent.WriteString(normalizedURL)
 

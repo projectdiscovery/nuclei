@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/logrusorgru/aurora"
+	"github.com/valyala/bytebufferpool"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/operators"
 )
@@ -31,7 +32,8 @@ func Highlight(operatorResult *operators.Result, response string, noColor, hexDu
 }
 
 func highlightASCII(currentMatch string, result string) string {
-	var coloredMatchBuilder strings.Builder
+	coloredMatchBuilder := bytebufferpool.Get()
+	defer bytebufferpool.Put(coloredMatchBuilder)
 	for _, char := range currentMatch {
 		coloredMatchBuilder.WriteString(addColor(string(char)))
 	}

@@ -1,7 +1,6 @@
 package compiler
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 	"reflect"
@@ -39,6 +38,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/utils/json"
 	stringsutil "github.com/projectdiscovery/utils/strings"
 	syncutil "github.com/projectdiscovery/utils/sync"
+	"github.com/valyala/bytebufferpool"
 )
 
 const (
@@ -136,10 +136,11 @@ func executeWithPoolingProgram(p *goja.Program, args *ExecuteArgs, opts *Execute
 	sgResizeCheck(opts.Context)
 
 	pooljsc.Add()
-	defer pooljsc.Done()
 	runtime := gojapool.Get().(*goja.Runtime)
+	buff := bytebufferpool.Get()
+	defer pooljsc.Done()
 	defer gojapool.Put(runtime)
-	var buff bytes.Buffer
+	defer bytebufferpool.Put(buff)
 	opts.exports = make(map[string]interface{})
 
 	defer func() {

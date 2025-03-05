@@ -12,6 +12,7 @@ import (
 	"github.com/ditashi/jsbeautifier-go/jsbeautifier"
 	"github.com/dop251/goja"
 	"github.com/pkg/errors"
+	"github.com/valyala/bytebufferpool"
 
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/gozero"
@@ -191,8 +192,9 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 			if request.options.Options.NoColor {
 				highlightFormatter = "text"
 			}
-			var buff bytes.Buffer
-			_ = quick.Highlight(&buff, beautifyJavascript(request.PreCondition), "javascript", highlightFormatter, "monokai")
+			buff := bytebufferpool.Get()
+			defer bytebufferpool.Put(buff)
+			_ = quick.Highlight(buff, beautifyJavascript(request.PreCondition), "javascript", highlightFormatter, "monokai")
 			prettyPrint(request.TemplateID, buff.String())
 		}
 
@@ -247,7 +249,8 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 	if request.options.Options.Debug || request.options.Options.DebugRequests {
 		gologger.Debug().MsgFunc(func() string {
 			dashes := strings.Repeat("-", 15)
-			sb := &strings.Builder{}
+			sb := bytebufferpool.Get()
+			defer bytebufferpool.Put(sb)
 			sb.WriteString(fmt.Sprintf("[%s] Dumped Executed Source Code for input/stdin: '%v'", request.options.TemplateID, input.MetaInput.Input))
 			sb.WriteString(fmt.Sprintf("\n%v\n%v\n%v\n", dashes, "Source Code:", dashes))
 			sb.WriteString(interpretEnvVars(request.Source, allvars))

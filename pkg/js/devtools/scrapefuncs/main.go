@@ -11,6 +11,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/valyala/bytebufferpool"
 	"golang.org/x/exp/maps"
 )
 
@@ -133,7 +134,9 @@ func main() {
 
 	// Generate Markdown tables with ## as package name
 	if out != "" {
-		var sb strings.Builder
+		sb := bytebufferpool.Get()
+		defer bytebufferpool.Put(sb)
+
 		sb.WriteString(`---
 title: "Javascript Helper Functions"
 description: "Available JS Helper Functions that can be used in global js runtime & protocol specific helpers."

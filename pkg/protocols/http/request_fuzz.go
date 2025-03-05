@@ -28,6 +28,7 @@ import (
 	"github.com/projectdiscovery/retryablehttp-go"
 	"github.com/projectdiscovery/useragent"
 	urlutil "github.com/projectdiscovery/utils/url"
+	"github.com/valyala/bytebufferpool"
 )
 
 // executeFuzzingRule executes fuzzing request for a URL
@@ -291,7 +292,8 @@ func (request *Request) filterDataMap(input *contextargs.Context) map[string]int
 		m["method"] = req.Method
 		m["body"] = req.Body
 
-		sb := &strings.Builder{}
+		sb := bytebufferpool.Get()
+		defer bytebufferpool.Put(sb)
 		req.Headers.Iterate(func(k, v string) bool {
 			k = strings.ToLower(strings.ReplaceAll(strings.TrimSpace(k), "-", "_"))
 			if strings.EqualFold(k, "Cookie") {

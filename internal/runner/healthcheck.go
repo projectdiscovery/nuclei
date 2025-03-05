@@ -4,17 +4,18 @@ import (
 	"fmt"
 	"net"
 	"runtime"
-	"strings"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/config"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	fileutil "github.com/projectdiscovery/utils/file"
+	"github.com/valyala/bytebufferpool"
 )
 
 // DoHealthCheck performs self-diagnostic checks
 func DoHealthCheck(options *types.Options) string {
 	// RW permissions on config file
-	var test strings.Builder
+	test := bytebufferpool.Get()
+	defer bytebufferpool.Put(test)
 	test.WriteString(fmt.Sprintf("Version: %s\n", config.Version))
 	test.WriteString(fmt.Sprintf("Operating System: %s\n", runtime.GOOS))
 	test.WriteString(fmt.Sprintf("Architecture: %s\n", runtime.GOARCH))

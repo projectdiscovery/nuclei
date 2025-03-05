@@ -23,6 +23,7 @@ import (
 	unitutils "github.com/projectdiscovery/utils/unit"
 	updateutils "github.com/projectdiscovery/utils/update"
 	urlutil "github.com/projectdiscovery/utils/url"
+	"github.com/valyala/bytebufferpool"
 )
 
 const (
@@ -151,7 +152,8 @@ func (u *UploadWriter) autoCommit(ctx context.Context, r *io.PipeReader) {
 		}
 	}()
 	// temporary buffer to store the results
-	buff := &bytes.Buffer{}
+	buff := bytebufferpool.Get()
+	defer bytebufferpool.Put(buff)
 	ticker := time.NewTicker(flushTimer)
 	defer ticker.Stop()
 	for {
@@ -193,7 +195,7 @@ func (u *UploadWriter) autoCommit(ctx context.Context, r *io.PipeReader) {
 }
 
 // uploadChunk uploads a chunk of data to the server
-func (u *UploadWriter) uploadChunk(buff *bytes.Buffer) error {
+func (u *UploadWriter) uploadChunk(buff *bytebufferpool.ByteBuffer) error {
 	if err := u.upload(buff.Bytes()); err != nil {
 		return errorutil.NewWithErr(err).Msgf("could not upload chunk")
 	}

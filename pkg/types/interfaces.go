@@ -3,7 +3,6 @@
 package types
 
 import (
-	"bytes"
 	"encoding/hex"
 	"fmt"
 	"strconv"
@@ -11,6 +10,7 @@ import (
 
 	"github.com/asaskevich/govalidator"
 	"github.com/projectdiscovery/nuclei/v3/pkg/model/types/severity"
+	"github.com/valyala/bytebufferpool"
 )
 
 // JSONScalarToString converts an interface coming from json to string
@@ -136,7 +136,8 @@ func ToByteSlice(i interface{}) []byte {
 	case string:
 		return []byte(v)
 	case []interface{}:
-		var buff bytes.Buffer
+		buff := bytebufferpool.Get()
+		defer bytebufferpool.Put(buff)
 		for _, u := range v {
 			buff.WriteString(ToString(u))
 		}

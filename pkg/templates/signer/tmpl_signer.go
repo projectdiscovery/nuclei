@@ -17,6 +17,7 @@ import (
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/config"
 	errorutil "github.com/projectdiscovery/utils/errors"
+	"github.com/valyala/bytebufferpool"
 )
 
 var (
@@ -94,14 +95,16 @@ func (t *TemplateSigner) Sign(data []byte, tmpl SignableTemplate) (string, error
 		}
 	}
 
-	buff := bytes.NewBuffer(content)
+	buff := bytebufferpool.Get()
+	defer bytebufferpool.Put(buff)
+	buff.Write(content)
 	// if file has any imports process them
 	for _, file := range tmpl.GetFileImports() {
 		bin, err := os.ReadFile(file)
 		if err != nil {
 			return "", err
 		}
-		buff.WriteRune('\n')
+		buff.Write([]byte{'\n'})
 		buff.Write(bin)
 	}
 	signatureData, err := t.sign(buff.Bytes())
@@ -120,8 +123,9 @@ func (t *TemplateSigner) sign(data []byte) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	var signatureData bytes.Buffer
-	if err := gob.NewEncoder(&signatureData).Encode(ecdsaSignature); err != nil {
+	signatureData := bytebufferpool.Get()
+	defer bytebufferpool.Put(signatureData)
+	if err := gob.NewEncoder(signatureData).Encode(ecdsaSignature); err != nil {
 		return "", err
 	}
 	return fmt.Sprintf(SignatureFmt, signatureData.Bytes(), t.GetUserFragment()), nil
@@ -150,14 +154,16 @@ func (t *TemplateSigner) Verify(data []byte, tmpl SignableTemplate) (bool, error
 	// it does not affect the actual template
 	content = bytes.ReplaceAll(content, []byte("\r\n"), []byte("\n"))
 
-	buff := bytes.NewBuffer(content)
+	buff := bytebufferpool.Get()
+	defer bytebufferpool.Put(buff)
+	buff.Write(content)
 	// if file has any imports process them
 	for _, file := range tmpl.GetFileImports() {
 		bin, err := os.ReadFile(file)
 		if err != nil {
 			return false, err
 		}
-		buff.WriteRune('\n')
+		buff.Write([]byte{'\n'})
 		buff.Write(bin)
 	}
 

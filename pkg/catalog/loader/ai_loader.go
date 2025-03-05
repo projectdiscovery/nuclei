@@ -16,6 +16,7 @@ import (
 	"github.com/projectdiscovery/retryablehttp-go"
 	pdcpauth "github.com/projectdiscovery/utils/auth/pdcp"
 	errorutil "github.com/projectdiscovery/utils/errors"
+	"github.com/valyala/bytebufferpool"
 )
 
 const (
@@ -70,8 +71,9 @@ func getAIGeneratedTemplates(prompt string, options *types.Options) ([]string, e
 	if hasNoTargets && hasNoStdin {
 		// Display the template content with syntax highlighting
 		if !options.NoColor {
-			var buf bytes.Buffer
-			err = quick.Highlight(&buf, template, "yaml", "terminal16m", "monokai")
+			buf := bytebufferpool.Get()
+			defer bytebufferpool.Put(buf)
+			err = quick.Highlight(buf, template, "yaml", "terminal16m", "monokai")
 			if err == nil {
 				template = buf.String()
 			}

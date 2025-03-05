@@ -1,13 +1,12 @@
 package markdown
 
 import (
-	"bytes"
 	"os"
 	"path/filepath"
-	"strings"
 
 	"github.com/google/uuid"
 	"github.com/projectdiscovery/gologger"
+	"github.com/valyala/bytebufferpool"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
 	"github.com/projectdiscovery/nuclei/v3/pkg/reporting/exporters/markdown/util"
@@ -102,7 +101,8 @@ func (exporter *Exporter) Export(event *output.ResultEvent) error {
 		return err
 	}
 
-	dataBuilder := &bytes.Buffer{}
+	dataBuilder := bytebufferpool.Get()
+	defer bytebufferpool.Put(dataBuilder)
 	dataBuilder.WriteString(util.CreateHeading3(format.Summary(event)))
 	dataBuilder.WriteString("\n")
 	dataBuilder.WriteString(util.CreateHorizontalLine())
@@ -113,7 +113,8 @@ func (exporter *Exporter) Export(event *output.ResultEvent) error {
 }
 
 func createFileName(event *output.ResultEvent) string {
-	filenameBuilder := &strings.Builder{}
+	filenameBuilder := bytebufferpool.Get()
+	defer bytebufferpool.Put(filenameBuilder)
 	filenameBuilder.WriteString(event.TemplateID)
 	filenameBuilder.WriteString("-")
 	filenameBuilder.WriteString(event.Host)
@@ -127,7 +128,7 @@ func createFileName(event *output.ResultEvent) string {
 		suffix = event.ExtractorName
 	}
 	if suffix != "" {
-		filenameBuilder.WriteRune('-')
+		filenameBuilder.WriteString("-")
 		filenameBuilder.WriteString(event.MatcherName)
 	}
 	filenameBuilder.WriteString(extension)

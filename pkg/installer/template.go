@@ -21,6 +21,7 @@ import (
 	fileutil "github.com/projectdiscovery/utils/file"
 	stringsutil "github.com/projectdiscovery/utils/strings"
 	updateutils "github.com/projectdiscovery/utils/update"
+	"github.com/valyala/bytebufferpool"
 )
 
 const (
@@ -43,7 +44,8 @@ type templateUpdateResults struct {
 
 // String returns markdown table of template update results
 func (t *templateUpdateResults) String() string {
-	var buff bytes.Buffer
+	buff := bytebufferpool.Get()
+	defer bytebufferpool.Put(buff)
 	data := [][]string{
 		{
 			strconv.Itoa(t.totalCount),
@@ -52,7 +54,7 @@ func (t *templateUpdateResults) String() string {
 			strconv.Itoa(len(t.deletions)),
 		},
 	}
-	table := tablewriter.NewWriter(&buff)
+	table := tablewriter.NewWriter(buff)
 	table.SetHeader([]string{"Total", "Added", "Modified", "Removed"})
 	for _, v := range data {
 		table.Append(v)
@@ -376,7 +378,8 @@ func (t *TemplateManager) writeChecksumFileInDir(dir string) error {
 	if err != nil {
 		return err
 	}
-	var buff bytes.Buffer
+	buff := bytebufferpool.Get()
+	defer bytebufferpool.Put(buff)
 	for k, v := range checksumMap {
 		buff.WriteString(k)
 		buff.WriteString(",")

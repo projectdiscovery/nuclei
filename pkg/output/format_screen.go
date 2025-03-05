@@ -1,25 +1,25 @@
 package output
 
 import (
-	"bytes"
 	"strconv"
 	"strings"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	mapsutil "github.com/projectdiscovery/utils/maps"
+	"github.com/valyala/bytebufferpool"
 )
 
 // formatScreen formats the output for showing on screen.
 func (w *StandardWriter) formatScreen(output *ResultEvent) []byte {
-	builder := &bytes.Buffer{}
-
+	builder := bytebufferpool.Get()
+	defer bytebufferpool.Put(builder)
 	if !w.noMetadata {
 		if w.timestamp {
-			builder.WriteRune('[')
+			builder.WriteString("[")
 			builder.WriteString(w.aurora.Cyan(output.Timestamp.Format("2006-01-02 15:04:05")).String())
 			builder.WriteString("] ")
 		}
-		builder.WriteRune('[')
+		builder.WriteString("[")
 		builder.WriteString(w.aurora.BrightGreen(output.TemplateID).String())
 
 		if output.MatcherName != "" {
@@ -73,7 +73,7 @@ func (w *StandardWriter) formatScreen(output *ResultEvent) []byte {
 			builder.WriteString(w.aurora.BrightCyan(item).String())
 
 			if i != len(output.ExtractedResults)-1 {
-				builder.WriteRune(',')
+				builder.WriteString(",")
 			}
 		}
 		builder.WriteString("]")
@@ -101,12 +101,12 @@ func (w *StandardWriter) formatScreen(output *ResultEvent) []byte {
 		for _, name := range mapsutil.GetSortedKeys(output.Metadata) {
 			value := output.Metadata[name]
 			if !first {
-				builder.WriteRune(',')
+				builder.WriteString(",")
 			}
 			first = false
 
 			builder.WriteString(w.aurora.BrightYellow(name).String())
-			builder.WriteRune('=')
+			builder.WriteString("=")
 			builder.WriteString(w.aurora.BrightYellow(strconv.QuoteToASCII(types.ToString(value))).String())
 		}
 		builder.WriteString("]")
@@ -118,7 +118,7 @@ func (w *StandardWriter) formatScreen(output *ResultEvent) []byte {
 		if output.FuzzingParameter != "" {
 			builder.WriteString(" [")
 			builder.WriteString(output.FuzzingPosition)
-			builder.WriteRune(':')
+			builder.WriteString(":")
 			builder.WriteString(w.aurora.BrightMagenta(output.FuzzingParameter).String())
 			builder.WriteString("]")
 		}

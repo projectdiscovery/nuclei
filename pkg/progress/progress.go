@@ -4,12 +4,12 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"strings"
 	"time"
 
 	"github.com/projectdiscovery/clistats"
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/utils/json"
+	"github.com/valyala/bytebufferpool"
 )
 
 // Progress is an interface implemented by nuclei progress display
@@ -144,7 +144,8 @@ func (p *StatsTicker) IncrementFailedRequestsBy(count int64) {
 
 func (p *StatsTicker) makePrintCallback() func(stats clistats.StatisticsClient) interface{} {
 	return func(stats clistats.StatisticsClient) interface{} {
-		builder := &strings.Builder{}
+		builder := bytebufferpool.Get()
+		defer bytebufferpool.Put(builder)
 
 		var duration time.Duration
 		if startedAt, ok := stats.GetStatic("startedAt"); ok {
@@ -194,15 +195,15 @@ func (p *StatsTicker) makePrintCallback() func(stats clistats.StatisticsClient) 
 				builder.WriteString(" | Requests: ")
 			}
 			builder.WriteString(clistats.String(requests))
-			builder.WriteRune('/')
+			builder.WriteString("/")
 			builder.WriteString(clistats.String(total))
-			builder.WriteRune(' ')
-			builder.WriteRune('(')
+			builder.WriteString(" ")
+			builder.WriteString("(")
 			//nolint:gomnd // this is not a magic number
 			builder.WriteString(clistats.String(uint64(float64(requests) / float64(total) * 100.0)))
-			builder.WriteRune('%')
-			builder.WriteRune(')')
-			builder.WriteRune('\n')
+			builder.WriteString("%")
+			builder.WriteString(")")
+			builder.WriteString("\n")
 		}
 
 		fmt.Fprintf(os.Stderr, "%s", builder.String())
@@ -211,7 +212,8 @@ func (p *StatsTicker) makePrintCallback() func(stats clistats.StatisticsClient) 
 }
 
 func printCallbackJSON(stats clistats.StatisticsClient) interface{} {
-	builder := &strings.Builder{}
+	builder := bytebufferpool.Get()
+	defer bytebufferpool.Put(builder)
 	if err := json.NewEncoder(builder).Encode(metricsMap(stats)); err == nil {
 		fmt.Fprintf(os.Stderr, "%s", builder.String())
 	}

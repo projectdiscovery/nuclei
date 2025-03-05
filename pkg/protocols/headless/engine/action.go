@@ -4,6 +4,7 @@ import (
 	"strings"
 
 	"github.com/invopop/jsonschema"
+	"github.com/valyala/bytebufferpool"
 )
 
 // Action is an action taken by the browser to reach a navigation
@@ -58,7 +59,8 @@ func (a Action) JSONSchemaExtend(schema *jsonschema.Schema) {
 
 // String returns the string representation of an action
 func (a *Action) String() string {
-	builder := &strings.Builder{}
+	builder := bytebufferpool.Get()
+	defer bytebufferpool.Put(builder)
 	builder.WriteString(a.ActionType.String())
 	if a.Name != "" {
 		builder.WriteString(" Name:")

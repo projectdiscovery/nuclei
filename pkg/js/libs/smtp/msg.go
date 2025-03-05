@@ -2,9 +2,10 @@ package smtp
 
 import (
 	"bufio"
-	"bytes"
 	"net/textproto"
 	"strings"
+
+	"github.com/valyala/bytebufferpool"
 )
 
 type (
@@ -98,8 +99,9 @@ func (s *SMTPMessage) Auth(username, password string) *SMTPMessage {
 // log(message.String());
 // ```
 func (s *SMTPMessage) String() string {
-	var buff bytes.Buffer
-	tw := textproto.NewWriter(bufio.NewWriter(&buff))
+	buff := bytebufferpool.Get()
+	defer bytebufferpool.Put(buff)
+	tw := textproto.NewWriter(bufio.NewWriter(buff))
 	_ = tw.PrintfLine("To: %s", strings.Join(s.to, ","))
 	if s.sub != "" {
 		_ = tw.PrintfLine("Subject: %s", s.sub)

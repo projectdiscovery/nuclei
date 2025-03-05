@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
+	"github.com/valyala/bytebufferpool"
 )
 
 // CleanStructFieldJSONTag cleans struct json tag field
@@ -50,7 +51,8 @@ func CalculateContentLength(contentLength, bodyLength int64) int64 {
 
 // headersToString converts http headers to string
 func HeadersToString(headers http.Header) string {
-	builder := &strings.Builder{}
+	builder := bytebufferpool.Get()
+	defer bytebufferpool.Put(builder)
 
 	for header, values := range headers {
 		builder.WriteString(header)
@@ -60,12 +62,12 @@ func HeadersToString(headers http.Header) string {
 			builder.WriteString(value)
 
 			if i != len(values)-1 {
-				builder.WriteRune('\n')
+				builder.WriteByte('\n')
 				builder.WriteString(header)
 				builder.WriteString(": ")
 			}
 		}
-		builder.WriteRune('\n')
+		builder.WriteByte('\n')
 	}
 	return builder.String()
 }

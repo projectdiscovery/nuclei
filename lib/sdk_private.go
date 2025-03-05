@@ -3,11 +3,11 @@ package nuclei
 import (
 	"context"
 	"fmt"
-	"strings"
 	"sync"
 	"time"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/input"
+	"github.com/valyala/bytebufferpool"
 
 	"github.com/logrusorgru/aurora"
 	"github.com/pkg/errors"
@@ -51,7 +51,8 @@ func (e *NucleiEngine) applyRequiredDefaults(ctx context.Context) {
 			}
 			return
 		}
-		sb := strings.Builder{}
+		sb := bytebufferpool.Get()
+		defer bytebufferpool.Put(sb)
 		sb.WriteString(fmt.Sprintf("[%v] ", event.TemplateID))
 		if event.Matched != "" {
 			sb.WriteString(event.Matched)

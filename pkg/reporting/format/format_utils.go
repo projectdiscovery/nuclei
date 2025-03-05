@@ -1,7 +1,6 @@
 package format
 
 import (
-	"bytes"
 	"fmt"
 	"strconv"
 	"strings"
@@ -13,6 +12,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	"github.com/projectdiscovery/nuclei/v3/pkg/utils"
 	unitutils "github.com/projectdiscovery/utils/unit"
+	"github.com/valyala/bytebufferpool"
 )
 
 // Summary returns a formatted built one line summary of the event
@@ -44,7 +44,8 @@ var (
 
 func CreateReportDescription(event *output.ResultEvent, formatter ResultFormatter, omitRaw bool) string {
 	template := GetMatchedTemplateName(event)
-	builder := &bytes.Buffer{}
+	builder := bytebufferpool.Get()
+	defer bytebufferpool.Put(builder)
 	builder.WriteString(fmt.Sprintf("%s: %s matched at %s\n\n", formatter.MakeBold("Details"), formatter.MakeBold(template), event.Host))
 
 	attributes := utils.NewEmptyInsertionOrderedStringMap(3)

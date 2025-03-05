@@ -1,7 +1,6 @@
 package signer
 
 import (
-	"bytes"
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
@@ -17,6 +16,7 @@ import (
 	"github.com/projectdiscovery/gologger"
 	fileutil "github.com/projectdiscovery/utils/file"
 	"github.com/rs/xid"
+	"github.com/valyala/bytebufferpool"
 	"golang.org/x/term"
 )
 
@@ -228,8 +228,9 @@ func (k *KeyHandler) generateCertWithKey(identifier string, privateKey *ecdsa.Pr
 		return nil, err
 	}
 
-	var certOut bytes.Buffer
-	if err := pem.Encode(&certOut, &pem.Block{Type: CertType, Bytes: derBytes}); err != nil {
+	certOut := bytebufferpool.Get()
+	defer bytebufferpool.Put(certOut)
+	if err := pem.Encode(certOut, &pem.Block{Type: CertType, Bytes: derBytes}); err != nil {
 		return nil, err
 	}
 	return certOut.Bytes(), nil

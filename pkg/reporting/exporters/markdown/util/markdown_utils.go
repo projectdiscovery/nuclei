@@ -1,11 +1,11 @@
 package util
 
 import (
-	"bytes"
 	"fmt"
 	"strings"
 
 	errorutil "github.com/projectdiscovery/utils/errors"
+	"github.com/valyala/bytebufferpool"
 )
 
 func CreateLink(title string, url string) string {
@@ -17,7 +17,8 @@ func MakeBold(text string) string {
 }
 
 func CreateTable(headers []string, rows [][]string) (string, error) {
-	builder := &bytes.Buffer{}
+	builder := bytebufferpool.Get()
+	defer bytebufferpool.Put(builder)
 	headerSize := len(headers)
 	if headers == nil || headerSize == 0 {
 		return "", errorutil.New("No headers provided")

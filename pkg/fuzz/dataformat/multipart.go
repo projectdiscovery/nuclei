@@ -9,6 +9,7 @@ import (
 	"net/textproto"
 
 	mapsutil "github.com/projectdiscovery/utils/maps"
+	"github.com/valyala/bytebufferpool"
 )
 
 type MultiPartForm struct {
@@ -38,8 +39,9 @@ func (m *MultiPartForm) IsType(data string) bool {
 
 // Encode encodes the data into MultiPartForm format
 func (m *MultiPartForm) Encode(data KV) (string, error) {
-	var b bytes.Buffer
-	w := multipart.NewWriter(&b)
+	b := bytebufferpool.Get()
+	defer bytebufferpool.Put(b)
+	w := multipart.NewWriter(b)
 	if err := w.SetBoundary(m.boundary); err != nil {
 		return "", err
 	}
@@ -144,7 +146,8 @@ func (m *MultiPartForm) Decode(data string) (KV, error) {
 			}
 			defer file.Close()
 
-			buffer := new(bytes.Buffer)
+			buffer := bytebufferpool.Get()
+			defer bytebufferpool.Put(buffer)
 			if _, err := buffer.ReadFrom(file); err != nil {
 				return KV{}, err
 			}
