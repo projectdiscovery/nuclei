@@ -240,7 +240,7 @@ func getIssueResponseFromJira(issue *jira.Issue) (*filters.CreateIssueResponse, 
 // CreateIssue creates an issue in the tracker or updates the existing one
 func (i *Integration) CreateIssue(event *output.ResultEvent) (*filters.CreateIssueResponse, error) {
 	if i.options.UpdateExisting {
-		issue, err := i.FindExistingIssue(event)
+		issue, err := i.FindExistingIssue(event, true)
 		if err != nil {
 			return nil, errors.Wrap(err, "could not find existing issue")
 		} else if issue.ID != "" {
@@ -265,7 +265,7 @@ func (i *Integration) CloseIssue(event *output.ResultEvent) error {
 		return nil
 	}
 
-	issue, err := i.FindExistingIssue(event)
+	issue, err := i.FindExistingIssue(event, false)
 	if err != nil {
 		return err
 	} else if issue.ID != "" {
@@ -300,13 +300,16 @@ func (i *Integration) CloseIssue(event *output.ResultEvent) error {
 }
 
 // FindExistingIssue checks if the issue already exists and returns its ID
-func (i *Integration) FindExistingIssue(event *output.ResultEvent) (jira.Issue, error) {
+func (i *Integration) FindExistingIssue(event *output.ResultEvent, useStatus bool) (jira.Issue, error) {
 	template := format.GetMatchedTemplateName(event)
 	project := i.options.ProjectName
 	if i.options.ProjectID != "" {
 		project = i.options.ProjectID
 	}
-	jql := fmt.Sprintf("summary ~ \"%s\" AND summary ~ \"%s\" AND status != \"%s\" AND project = \"%s\"", template, event.Host, i.options.StatusNot, project)
+	jql := fmt.Sprintf("summary ~ \"%s\" AND summary ~ \"%s\" AND project = \"%s\"", template, event.Host, project)
+	if useStatus {
+		jql = fmt.Sprintf("%s AND status != \"%s\"", jql, i.options.StatusNot)
+	}
 
 	searchOptions := &jira.SearchOptions{
 		MaxResults: 1, // if any issue exists, then we won't create a new one
