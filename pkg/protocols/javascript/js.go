@@ -315,6 +315,19 @@ func (request *Request) ExecuteWithResults(target *contextargs.Context, dynamicV
 	values := generators.MergeMaps(payloadValues, hostnameVariables, request.options.Constants, templateCtx.GetAll())
 	variablesMap := request.options.Variables.Evaluate(values)
 	payloadValues = generators.MergeMaps(variablesMap, payloadValues, request.options.Constants, hostnameVariables)
+
+	var interactshURLs []string
+	if request.options.Interactsh != nil {
+		for payloadName, payloadValue := range payloadValues {
+			var urls []string
+			payloadValue, urls = request.options.Interactsh.Replace(types.ToString(payloadValue), interactshURLs)
+			if len(urls) > 0 {
+				interactshURLs = append(interactshURLs, urls...)
+				payloadValues[payloadName] = payloadValue
+			}
+		}
+	}
+
 	// export all variables to template context
 	templateCtx.Merge(payloadValues)
 
@@ -404,7 +417,7 @@ func (request *Request) ExecuteWithResults(target *contextargs.Context, dynamicV
 					request.options.Progress.IncrementMatched()
 				}
 				callback(result)
-			}, requestOptions); err != nil {
+			}, requestOptions, interactshURLs); err != nil {
 				if errkit.IsNetworkPermanentErr(err) {
 					// gologger.Verbose().Msgf("Could not execute request: %s\n", err)
 					return err
@@ -417,7 +430,7 @@ func (request *Request) ExecuteWithResults(target *contextargs.Context, dynamicV
 			}
 		}
 	}
-	return request.executeRequestWithPayloads(hostPort, input, hostname, nil, payloadValues, callback, requestOptions)
+	return request.executeRequestWithPayloads(hostPort, input, hostname, nil, payloadValues, callback, requestOptions, interactshURLs)
 }
 
 func (request *Request) executeRequestParallel(ctxParent context.Context, hostPort, hostname string, input *contextargs.Context, payloadValues map[string]interface{}, callback protocols.OutputEventCallback) {
@@ -469,7 +482,7 @@ func (request *Request) executeRequestParallel(ctxParent context.Context, hostPo
 						gotmatches.Store(true)
 					}
 					callback(result)
-				}, requestOptions); err != nil {
+				}, requestOptions, []string{}); err != nil {
 					if errkit.IsNetworkPermanentErr(err) {
 						cancel(err)
 						return
@@ -490,7 +503,7 @@ func (request *Request) executeRequestParallel(ctxParent context.Context, hostPo
 	}
 }
 
-func (request *Request) executeRequestWithPayloads(hostPort string, input *contextargs.Context, _ string, payload map[string]interface{}, previous output.InternalEvent, callback protocols.OutputEventCallback, requestOptions *protocols.ExecutorOptions) error {
+func (request *Request) executeRequestWithPayloads(hostPort string, input *contextargs.Context, _ string, payload map[string]interface{}, previous output.InternalEvent, callback protocols.OutputEventCallback, requestOptions *protocols.ExecutorOptions, interactshURLs []string) error {
 	payloadValues := generators.MergeMaps(payload, previous)
 	argsCopy, err := request.getArgsCopy(input, payloadValues, requestOptions, false)
 	if err != nil {
@@ -502,7 +515,6 @@ func (request *Request) executeRequestWithPayloads(hostPort string, input *conte
 		argsCopy.TemplateCtx = map[string]interface{}{}
 	}
 
-	var interactshURLs []string
 	if request.options.Interactsh != nil {
 		if argsCopy.Args != nil {
 			for k, v := range argsCopy.Args {
