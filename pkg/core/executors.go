@@ -163,6 +163,7 @@ func (e *Engine) executeTemplatesOnTarget(ctx context.Context, alltemplates []*t
 	// headless and non-headless templates
 	// global waitgroup should not be used here
 	wp := e.GetWorkPool()
+	defer wp.Wait()
 
 	for _, tpl := range alltemplates {
 		select {
@@ -210,5 +211,4 @@ func (e *Engine) executeTemplatesOnTarget(ctx context.Context, alltemplates []*t
 			results.CompareAndSwap(false, match)
 		}(tpl, target, sg)
 	}
-	wp.Wait()
 }
