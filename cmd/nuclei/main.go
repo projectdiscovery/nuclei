@@ -106,17 +106,19 @@ func main() {
 
 	// Profiling & tracing related code
 	if memProfile != "" {
-		memProfile = strings.TrimSuffix(memProfile, filepath.Ext(memProfile)) + ".prof"
-		memProfileFile, err := os.Create(memProfile)
-		if err != nil {
-			gologger.Fatal().Msgf("profile: could not create memory profile %q file: %v", memProfile, err)
+		memProfile = strings.TrimSuffix(memProfile, filepath.Ext(memProfile))
+
+		createProfileFile := func(ext, profileType string) *os.File {
+			f, err := os.Create(memProfile + ext)
+			if err != nil {
+				gologger.Fatal().Msgf("profile: could not create %s profile %q file: %v", profileType, f.Name(), err)
+			}
+			return f
 		}
 
-		traceFilepath := strings.TrimSuffix(memProfile, filepath.Ext(memProfile)) + ".trace"
-		traceFile, err := os.Create(traceFilepath)
-		if err != nil {
-			gologger.Fatal().Msgf("profile: could not create trace %q file: %v", traceFilepath, err)
-		}
+		memProfileFile := createProfileFile(".mem", "memory")
+		cpuProfileFile := createProfileFile(".cpu", "CPU")
+		traceFile := createProfileFile(".trace", "trace")
 
 		oldMemProfileRate := runtime.MemProfileRate
 		runtime.MemProfileRate = 4096
@@ -126,18 +128,27 @@ func main() {
 			gologger.Fatal().Msgf("profile: could not start trace: %v", err)
 		}
 
+		// Start CPU profiling
+		if err := pprof.StartCPUProfile(cpuProfileFile); err != nil {
+			gologger.Fatal().Msgf("profile: could not start CPU profile: %v", err)
+		}
+
 		defer func() {
-			// Start CPU profiling
+			// Start heap memory snapshot
 			if err := pprof.WriteHeapProfile(memProfileFile); err != nil {
-				gologger.Fatal().Msgf("profile: could not start CPU profile: %v", err)
+				gologger.Fatal().Msgf("profile: could not write memory profile: %v", err)
 			}
+
+			pprof.StopCPUProfile()
 			memProfileFile.Close()
 			traceFile.Close()
 			trace.Stop()
+
 			runtime.MemProfileRate = oldMemProfileRate
 
-			gologger.Info().Msgf("Memory profile saved at %q", memProfile)
-			gologger.Info().Msgf("Traced at %q", traceFilepath)
+			gologger.Info().Msgf("CPU profile saved at %q", cpuProfileFile.Name())
+			gologger.Info().Msgf("Memory usage snapshot saved at %q", memProfileFile.Name())
+			gologger.Info().Msgf("Traced at %q", traceFile.Name())
 		}()
 	}
 
@@ -523,6 +534,15 @@ Additional documentation is available at: https://docs.nuclei.sh/getting-started
 			if validatedCreds, err := ph.ValidateAPIKey(pdcpauth, apiServer, config.BinaryName); err == nil {
 				_ = ph.SaveCreds(validatedCreds)
 			}
+		}
+	}
+
+	// guard cloud services with credentials
+	if options.AITemplatePrompt != "" {
+		h := &pdcp.PDCPCredHandler{}
+		_, err := h.GetCreds()
+		if err != nil {
+			gologger.Fatal().Msg("To utilize the `-ai` flag, please configure your API key with the `-auth` flag or set the `PDCP_API_KEY` environment variable")
 		}
 	}
 

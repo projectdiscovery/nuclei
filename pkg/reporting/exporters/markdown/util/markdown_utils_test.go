@@ -89,3 +89,54 @@ func TestCreateTemplateInfoTable3Columns(t *testing.T) {
 	require.Nil(t, err)
 	require.Equal(t, expected, table)
 }
+
+func TestEscapeCodeBlockMarkdown(t *testing.T) {
+	testCases := []struct {
+		name     string
+		input    string
+		expected string
+	}{
+		{
+			name:     "no special characters",
+			input:    "normal text without special chars",
+			expected: "normal text without special chars",
+		},
+		{
+			name:     "with backticks",
+			input:    "text with `backticks` inside",
+			expected: "text with \\`backticks\\` inside",
+		},
+		{
+			name:     "with backslashes",
+			input:    "text with \\ backslash",
+			expected: "text with \\\\ backslash",
+		},
+		{
+			name:     "with both backticks and backslashes",
+			input:    "text with `backticks` and \\ backslash",
+			expected: "text with \\`backticks\\` and \\\\ backslash",
+		},
+		{
+			name:     "with code block",
+			input:    "```code block```",
+			expected: "\\`\\`\\`code block\\`\\`\\`",
+		},
+		{
+			name:     "with escaped backtick",
+			input:    "escaped \\` backtick",
+			expected: "escaped \\\\\\` backtick",
+		},
+		{
+			name:     "with multiple consecutive backticks",
+			input:    "``double backticks``",
+			expected: "\\`\\`double backticks\\`\\`",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			result := escapeCodeBlockMarkdown(tc.input)
+			require.Equal(t, tc.expected, result, "Failed to properly escape markdown for code blocks")
+		})
+	}
+}

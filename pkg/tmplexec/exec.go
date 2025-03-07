@@ -215,8 +215,10 @@ func (e *TemplateExecuter) Execute(ctx *scan.ScanContext) (bool, error) {
 
 	if lastMatcherEvent != nil {
 		lastMatcherEvent.Lock()
+		defer lastMatcherEvent.Unlock()
+
 		lastMatcherEvent.InternalEvent["error"] = getErrorCause(ctx.GenerateErrorMessage())
-		lastMatcherEvent.Unlock()
+
 		writeFailureCallback(lastMatcherEvent, e.options.Options.MatcherStatus)
 	}
 
