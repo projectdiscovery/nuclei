@@ -1,0 +1,55 @@
+name: 👤 Generate PGO
+
+on:
+  push:
+    branches: ["dev"]
+    paths:
+      - '**.go'
+      - '**.mod'
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+# TODO(dwisiswant0): https://go.dev/doc/pgo#merging-profiles
+
+jobs:
+  pgo:
+    strategy:
+      matrix:
+        targets: [150]
+    runs-on: ubuntu-latest-16-cores
+    if: github.repository == 'projectdiscovery/nuclei'
+    permissions:
+      contents: write
+    env:
+      PGO_FILE: "cmd/nuclei/default.pgo"
+      LIST_FILE: "/tmp/targets-${{ matrix.targets }}.txt"
+      PROFILE_MEM: "/tmp/nuclei-profile-${{ matrix.targets }}-targets"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: projectdiscovery/actions/setup/git@v1
+      - uses: projectdiscovery/actions/setup/go@v1
+      - name: Generate list
+        run: for i in {1..${{ matrix.targets }}}; do echo "https://honey.scanme.sh/?_=${i}" >> "${LIST_FILE}"; done
+      # NOTE(dwisiswant0): use `-no-mhe` flag to get better samples.
+      - run: go run . -l "${LIST_FILE}" -profile-mem="${PROFILE_MEM}" -no-mhe
+        working-directory: cmd/nuclei/
+      - run: mv "${PROFILE_MEM}.cpu" ${PGO_FILE}
+      # NOTE(dwisiswant0): shall we prune $PGO_FILE git history?
+      # if we prune it, this won't be linear since it requires a force-push.
+      # if we don't, the git objects will just keep growing bigger.
+      # 
+      # Ref:
+      # - https://go.dev/blog/pgo#:~:text=We%20recommend%20committing%20default.pgo%20files%20to%20your%20repository
+      # - https://gist.github.com/nottrobin/5758221
+      - uses: projectdiscovery/actions/commit@v1
+        with:
+          files: "${PGO_FILE}"
+          message: "build: update PGO profile :robot:"
+      - run: git push origin $GITHUB_REF
+      - uses: actions/upload-artifact@v4
+        with:
+          name: "pgo"
+          path: "${{ env.PGO_FILE }}"

@@ -325,9 +325,6 @@ func New(options *types.Options) (*Runner, error) {
 		}
 	}
 
-	// setup a proxy writer to automatically upload results to PDCP
-	runner.output = runner.setupPDCPUpload(outputWriter)
-
 	opts := interactsh.DefaultOptions(runner.output, runner.issuesClient, runner.progress)
 	opts.Debug = runner.options.Debug
 	opts.NoColor = runner.options.NoColor

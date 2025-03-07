@@ -511,3 +511,11 @@ func DisableUpdateCheck() NucleiSDKOptions {
 		return nil
 	}
 }
+
+// WithResumeFile allows setting a resume file
+func WithResumeFile(file string) NucleiSDKOptions {
+	return func(e *NucleiEngine) error {
+		e.opts.Resume = file
+		return nil
+	}
+}
