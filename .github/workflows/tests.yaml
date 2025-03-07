@@ -156,13 +156,23 @@ jobs:
           echo "FLAMEGRAPH_NAME=nuclei (PR #${{ github.event.number }})" >> $GITHUB_ENV
       - run: ./bin/nuclei -silent -update-templates
       - run: ./bin/nuclei -silent -u "${TARGET_URL}" -profile-mem="${PROFILE_MEM}"
-      - uses: projectdiscovery/actions/flamegraph@master
-        id: flamegraph
+      - uses: projectdiscovery/actions/flamegraph@v1
+        id: flamegraph-cpu
         with:
-          profile: "${{ env.PROFILE_MEM }}.prof"
-          name: "${{ env.FLAMEGRAPH_NAME }}"
+          profile: "${{ env.PROFILE_MEM }}.cpu"
+          name: "${{ env.FLAMEGRAPH_NAME }} CPU profiles"
         continue-on-error: true
-      - if: ${{ steps.flamegraph.outputs.message == '' }}
-        run: echo "::notice::${FLAMEGRAPH_URL}"
-        env:
-          FLAMEGRAPH_URL: ${{ steps.flamegraph.outputs.url }}
+      - uses: projectdiscovery/actions/flamegraph@v1
+        id: flamegraph-mem
+        with:
+          profile: "${{ env.PROFILE_MEM }}.mem"
+          name: "${{ env.FLAMEGRAPH_NAME }} memory profiles"
+        continue-on-error: true
+      - if: ${{ steps.flamegraph-mem.outputs.message == '' }}
+        run: |
+          echo "::notice::CPU flamegraph: ${{ steps.flamegraph-cpu.outputs.url }}"
+          echo "::notice::Memory (heap) flamegraph: ${{ steps.flamegraph-mem.outputs.url }}"
+
+  perf-regression:
+    needs: ["tests"]
+    uses: ./.github/workflows/perf-regression.yaml
