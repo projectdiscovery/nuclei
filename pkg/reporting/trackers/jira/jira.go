@@ -29,7 +29,8 @@ func (jiraFormatter *Formatter) MakeBold(text string) string {
 }
 
 func (jiraFormatter *Formatter) CreateCodeBlock(title string, content string, _ string) string {
-	return fmt.Sprintf("\n%s\n{code}\n%s\n{code}\n", jiraFormatter.MakeBold(title), content)
+	escapedContent := strings.ReplaceAll(content, "{code}", "")
+	return fmt.Sprintf("\n%s\n{code}\n%s\n{code}\n", jiraFormatter.MakeBold(title), escapedContent)
 }
 
 func (jiraFormatter *Formatter) CreateTable(headers []string, rows [][]string) (string, error) {
