@@ -231,10 +231,10 @@ func (request *Request) executeGeneratedFuzzingRequest(gr fuzz.GeneratedRequest,
 		return false
 	}
 	if requestErr != nil {
-		if request.options.HostErrorsCache != nil {
-			request.options.HostErrorsCache.MarkFailed(request.options.ProtocolType.String(), input, requestErr)
-		}
 		gologger.Verbose().Msgf("[%s] Error occurred in request: %s\n", request.options.TemplateID, requestErr)
+	}
+	if request.options.HostErrorsCache != nil {
+		request.options.HostErrorsCache.MarkFailedOrRemove(request.options.ProtocolType.String(), input, requestErr)
 	}
 	request.options.Progress.IncrementRequests()
 

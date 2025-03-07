@@ -34,6 +34,7 @@
   <a href="https://github.com/projectdiscovery/nuclei/blob/main/README_KR.md">Korean</a> •
   <a href="https://github.com/projectdiscovery/nuclei/blob/main/README_ID.md">Indonesia</a> •
   <a href="https://github.com/projectdiscovery/nuclei/blob/main/README_ES.md">Spanish</a>
+  <a href="https://github.com/projectdiscovery/nuclei/blob/main/README_PT-BR.md">Portuguese</a>
 </p>
 
 ---
@@ -58,7 +59,7 @@ Nuclei使用零误报的定制模板向目标发送请求，同时可以对主�
 
 # 安装Nuclei
 
-Nuclei需要 **go1.21** 才能安装成功。执行下列命令安装最新版本的Nuclei
+Nuclei需要 **go1.22** 才能安装成功。执行下列命令安装最新版本的Nuclei
 
 ```sh
 go install -v github.com/projectdiscovery/nuclei/v3/cmd/nuclei@latest

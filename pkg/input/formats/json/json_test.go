@@ -1,6 +1,7 @@
 package json
 
 import (
+	"os"
 	"testing"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/input/types"
@@ -41,11 +42,15 @@ func TestJSONFormatterParse(t *testing.T) {
 
 	proxifyInputFile := "../testdata/ginandjuice.proxify.json"
 
+	file, err := os.Open(proxifyInputFile)
+	require.Nilf(t, err, "error opening proxify input file: %v", err)
+	defer file.Close()
+
 	var urls []string
-	err := format.Parse(proxifyInputFile, func(request *types.RequestResponse) bool {
+	err = format.Parse(file, func(request *types.RequestResponse) bool {
 		urls = append(urls, request.URL.String())
 		return false
-	})
+	}, proxifyInputFile)
 	if err != nil {
 		t.Fatal(err)
 	}

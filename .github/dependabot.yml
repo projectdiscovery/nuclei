@@ -8,6 +8,8 @@ updates:
     commit-message:
       prefix: "chore"
       include: "scope"
+    allow:
+      - dependency-name: "github.com/projectdiscovery/*"
     groups:
       modules:
         patterns: ["github.com/projectdiscovery/*"]

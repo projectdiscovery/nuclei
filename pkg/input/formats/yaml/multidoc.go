@@ -2,7 +2,6 @@ package yaml
 
 import (
 	"io"
-	"os"
 	"strings"
 
 	"github.com/pkg/errors"
@@ -46,14 +45,8 @@ func (j *YamlMultiDocFormat) SetOptions(options formats.InputFormatOptions) {
 
 // Parse parses the input and calls the provided callback
 // function for each RawRequest it discovers.
-func (j *YamlMultiDocFormat) Parse(input string, resultsCb formats.ParseReqRespCallback) error {
-	file, err := os.Open(input)
-	if err != nil {
-		return errors.Wrap(err, "could not open json file")
-	}
-	defer file.Close()
-
-	decoder := YamlUtil.NewDecoder(file)
+func (j *YamlMultiDocFormat) Parse(input io.Reader, resultsCb formats.ParseReqRespCallback, filePath string) error {
+	decoder := YamlUtil.NewDecoder(input)
 	for {
 		var request proxifyRequest
 		err := decoder.Decode(&request)

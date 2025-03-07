@@ -85,8 +85,10 @@ func (f *FileAuthProvider) init() {
 		}
 	}
 	for _, dynamic := range f.store.Dynamic {
-		if len(dynamic.DomainsRegex) > 0 {
-			for _, domain := range dynamic.DomainsRegex {
+		domain, domainsRegex := dynamic.GetDomainAndDomainRegex()
+
+		if len(domainsRegex) > 0 {
+			for _, domain := range domainsRegex {
 				if f.compiled == nil {
 					f.compiled = make(map[*regexp.Regexp][]authx.AuthStrategy)
 				}
@@ -101,7 +103,7 @@ func (f *FileAuthProvider) init() {
 				}
 			}
 		}
-		for _, domain := range dynamic.Domains {
+		for _, domain := range domain {
 			if f.domains == nil {
 				f.domains = make(map[string][]authx.AuthStrategy)
 			}
@@ -120,6 +122,8 @@ func (f *FileAuthProvider) init() {
 
 // LookupAddr looks up a given domain/address and returns appropriate auth strategy
 func (f *FileAuthProvider) LookupAddr(addr string) []authx.AuthStrategy {
+	var strategies []authx.AuthStrategy
+
 	if strings.Contains(addr, ":") {
 		// default normalization for host:port
 		host, port, err := net.SplitHostPort(addr)
@@ -129,15 +133,16 @@ func (f *FileAuthProvider) LookupAddr(addr string) []authx.AuthStrategy {
 	}
 	for domain, strategy := range f.domains {
 		if strings.EqualFold(domain, addr) {
-			return strategy
+			strategies = append(strategies, strategy...)
 		}
 	}
 	for compiled, strategy := range f.compiled {
 		if compiled.MatchString(addr) {
-			return strategy
+			strategies = append(strategies, strategy...)
 		}
 	}
-	return nil
+
+	return strategies
 }
 
 // LookupURL looks up a given URL and returns appropriate auth strategy

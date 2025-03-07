@@ -8,12 +8,13 @@
   <a href="https://github.com/projectdiscovery/nuclei/blob/main/README_ID.md">`Indonesia`</a> •
   <a href="https://github.com/projectdiscovery/nuclei/blob/main/README_ES.md">`Spanish`</a> •
   <a href="https://github.com/projectdiscovery/nuclei/blob/main/README_JP.md">`日本語`</a>
+  <a href="https://github.com/projectdiscovery/nuclei/blob/main/README_PT-BR.md">`Portuguese`</a>
   
 </div>
 
 <p align="center">
 
-<img src="https://img.shields.io/badge/go-1.21-%2300ADD8.svg?style=for-the-badge&logo=go&logoColor=white">
+<img src="https://img.shields.io/badge/go-1.22-%2300ADD8.svg?style=for-the-badge&logo=go&logoColor=white">
 &nbsp;&nbsp;
 <a href="https://docs.projectdiscovery.io/tools/nuclei/overview?utm_source=github&utm_medium=web&utm_campaign=nuclei_readme"><img src="https://img.shields.io/badge/Documentation-%23000000.svg?style=for-the-badge&logo=data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IiNmZmZmZmYiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIiBjbGFzcz0ibHVjaWRlIGx1Y2lkZS1ib29rLW9wZW4iPjxwYXRoIGQ9Ik0xMiA3djE0Ii8+PHBhdGggZD0iTTMgMThhMSAxIDAgMCAxLTEtMVY0YTEgMSAwIDAgMSAxLTFoNWE0IDQgMCAwIDEgNCA0IDQgNCAwIDAgMSA0LTRoNWExIDEgMCAwIDEgMSAxdjEzYTEgMSAwIDAgMS0xIDFoLTZhMyAzIDAgMCAwLTMgMyAzIDMgMCAwIDAtMy0zeiIvPjwvc3ZnPg==&logoColor=white"></a>
 &nbsp;&nbsp;
@@ -110,7 +111,7 @@ Browse the full Nuclei [**`documentation here`**](https://docs.projectdiscovery.
 
 ### Installation
 
-`nuclei` requires **go1.21** to install successfully. Run the following command to get the repo:
+`nuclei` requires **go1.22** to install successfully. Run the following command to get the repo:
 
 ```sh
 go install -v github.com/projectdiscovery/nuclei/v3/cmd/nuclei@latest
@@ -156,6 +157,7 @@ TEMPLATES:
    -as, -automatic-scan                   automatic web scan using wappalyzer technology detection to tags mapping
    -t, -templates string[]                list of template or template directory to run (comma-separated, file)
    -turl, -template-url string[]          template url or list containing template urls to run (comma-separated, file)
+   -ai, -prompt string                    generate and run template using ai prompt
    -w, -workflows string[]                list of workflow or workflow directory to run (comma-separated, file)
    -wurl, -workflow-url string[]          workflow url or list containing workflow urls to run (comma-separated, file)
    -validate                              validate the passed templates to nuclei
@@ -166,6 +168,9 @@ TEMPLATES:
    -sign                                  signs the templates with the private key defined in NUCLEI_SIGNATURE_PRIVATE_KEY env variable
    -code                                  enable loading code protocol-based templates
    -dut, -disable-unsigned-templates      disable running unsigned templates or templates with mismatched signature
+   -esc, -enable-self-contained           enable loading self-contained templates
+   -egm, -enable-global-matchers          enable loading global matchers templates
+   -file                                  enable loading file templates
 
 FILTERING:
    -a, -author string[]               templates to run based on authors (comma-separated, file)
@@ -177,10 +182,10 @@ FILTERING:
    -it, -include-templates string[]   path to template file or directory to be executed even if they are excluded either by default or configuration
    -et, -exclude-templates string[]   path to template file or directory to exclude (comma-separated, file)
    -em, -exclude-matchers string[]    template matchers to exclude in result
-   -s, -severity value[]              templates to run based on severity. Possible values - info, low, medium, high, critical, unknown
-   -es, -exclude-severity value[]     templates to exclude based on severity. Possible values - info, low, medium, high, critical, unknown
-   -pt, -type value[]                 templates to run based on protocol type. Possible values - dns, file, http, headless, tcp, workflow, ssl, websocket, whois, code, javascript
-   -ept, -exclude-type value[]        templates to exclude based on protocol type. Possible values - dns, file, http, headless, tcp, workflow, ssl, websocket, whois, code, javascript
+   -s, -severity value[]              templates to run based on severity. Possible values: info, low, medium, high, critical, unknown
+   -es, -exclude-severity value[]     templates to exclude based on severity. Possible values: info, low, medium, high, critical, unknown
+   -pt, -type value[]                 templates to run based on protocol type. Possible values: dns, file, http, headless, tcp, workflow, ssl, websocket, whois, code, javascript
+   -ept, -exclude-type value[]        templates to exclude based on protocol type. Possible values: dns, file, http, headless, tcp, workflow, ssl, websocket, whois, code, javascript
    -tc, -template-condition string[]  templates to run based on expression condition
 
 OUTPUT:
@@ -225,7 +230,7 @@ CONFIGURATIONS:
    -ca, -client-ca string                client certificate authority file (PEM-encoded) used for authenticating against scanned hosts
    -sml, -show-match-line                show match lines for file templates, works with extractors only
    -ztls                                 use ztls library with autofallback to standard one for tls13 [Deprecated] autofallback to ztls is enabled by default
-   -sni string                           tls sni hostname to use (default - input domain name)
+   -sni string                           tls sni hostname to use (default: input domain name)
    -dka, -dialer-keep-alive value        keep-alive duration for network requests.
    -lfa, -allow-local-file-access        allows file (payload) access anywhere on the system
    -lna, -restrict-local-network-access  blocks connections to the local / private network
@@ -239,7 +244,7 @@ CONFIGURATIONS:
    -hae, -http-api-endpoint string       experimental http api endpoint
 
 INTERACTSH:
-   -iserver, -interactsh-server string  interactsh server url for self-hosted instance (default - oast.pro,oast.live,oast.site,oast.online,oast.fun,oast.me)
+   -iserver, -interactsh-server string  interactsh server url for self-hosted instance (default: oast.pro,oast.live,oast.site,oast.online,oast.fun,oast.me)
    -itoken, -interactsh-token string    authentication token for self-hosted interactsh server
    -interactions-cache-size int         number of requests to keep in the interactions cache (default 5000)
    -interactions-eviction int           number of seconds to wait before evicting requests from cache (default 60)
@@ -248,13 +253,19 @@ INTERACTSH:
    -ni, -no-interactsh                  disable interactsh server for OAST testing, exclude OAST based templates
 
 FUZZING:
-   -ft, -fuzzing-type string     overrides fuzzing type set in template (replace, prefix, postfix, infix)
-   -fm, -fuzzing-mode string     overrides fuzzing mode set in template (multiple, single)
-   -fuzz                         enable loading fuzzing templates (Deprecated; use -dast instead)
-   -dast                         enable / run dast (fuzz) nuclei templates
-   -dfp, -display-fuzz-points    display fuzz points in the output for debugging
-   -fuzz-param-frequency int     frequency of uninteresting parameters for fuzzing before skipping (default 10)
-   -fa, -fuzz-aggression string  fuzzing aggression level controls payload count for fuzz (low, medium, high) (default "low")
+   -ft, -fuzzing-type string           overrides fuzzing type set in template (replace, prefix, postfix, infix)
+   -fm, -fuzzing-mode string           overrides fuzzing mode set in template (multiple, single)
+   -fuzz                               enable loading fuzzing templates (Deprecated: use -dast instead)
+   -dast                               enable / run dast (fuzz) nuclei templates
+   -dts, -dast-server                  enable dast server mode (live fuzzing)
+   -dtr, -dast-report                  write dast scan report to file
+   -dtst, -dast-server-token string    dast server token (optional)
+   -dtsa, -dast-server-address string  dast server address (default "localhost:9055")
+   -dfp, -display-fuzz-points          display fuzz points in the output for debugging
+   -fuzz-param-frequency int           frequency of uninteresting parameters for fuzzing before skipping (default 10)
+   -fa, -fuzz-aggression string        fuzzing aggression level controls payload count for fuzz (low, medium, high) (default "low")
+   -cs, -fuzz-scope string[]           in scope url regex to be followed by fuzzer
+   -cos, -fuzz-out-scope string[]      out of scope url regex to be excluded by fuzzer
 
 UNCOVER:
    -uc, -uncover                  enable uncover engine
@@ -301,23 +312,24 @@ HEADLESS:
    -lha, -list-headless-action      list available headless actions
 
 DEBUG:
-   -debug                    show all requests and responses
-   -dreq, -debug-req         show all sent requests
-   -dresp, -debug-resp       show all received responses
-   -p, -proxy string[]       list of http/socks5 proxy to use (comma separated or file input)
-   -pi, -proxy-internal      proxy all internal requests
-   -ldf, -list-dsl-function  list all supported DSL function signatures
-   -tlog, -trace-log string  file to write sent requests trace log
-   -elog, -error-log string  file to write sent requests error log
-   -version                  show nuclei version
-   -hm, -hang-monitor        enable nuclei hang monitoring
-   -v, -verbose              show verbose output
-   -profile-mem string       optional nuclei memory profile dump file
-   -vv                       display templates loaded for scan
-   -svd, -show-var-dump      show variables dump for debugging
-   -ep, -enable-pprof        enable pprof debugging server
-   -tv, -templates-version   shows the version of the installed nuclei-templates
-   -hc, -health-check        run diagnostic check up
+   -debug                     show all requests and responses
+   -dreq, -debug-req          show all sent requests
+   -dresp, -debug-resp        show all received responses
+   -p, -proxy string[]        list of http/socks5 proxy to use (comma separated or file input)
+   -pi, -proxy-internal       proxy all internal requests
+   -ldf, -list-dsl-function   list all supported DSL function signatures
+   -tlog, -trace-log string   file to write sent requests trace log
+   -elog, -error-log string   file to write sent requests error log
+   -version                   show nuclei version
+   -hm, -hang-monitor         enable nuclei hang monitoring
+   -v, -verbose               show verbose output
+   -profile-mem string        generate memory (heap) profile & trace files
+   -vv                        display templates loaded for scan
+   -svd, -show-var-dump       show variables dump for debugging
+   -vdl, -var-dump-limit int  limit the number of characters displayed in var dump (default 255)
+   -ep, -enable-pprof         enable pprof debugging server
+   -tv, -templates-version    shows the version of the installed nuclei-templates
+   -hc, -health-check         run diagnostic check up
 
 UPDATE:
    -up, -update                      update nuclei engine to the latest released version
@@ -330,6 +342,7 @@ STATISTICS:
    -sj, -stats-json          display statistics in JSONL(ines) format
    -si, -stats-interval int  number of seconds to wait between showing a statistics update (default 5)
    -mp, -metrics-port int    port to expose nuclei metrics on (default 9092)
+   -hps, -http-stats         enable http status capturing (experimental)
 
 CLOUD:
    -auth                           configure projectdiscovery cloud (pdcp) api key (default true)
@@ -347,19 +360,19 @@ AUTHENTICATION:
 
 EXAMPLES:
 Run nuclei on single host:
-  $ nuclei -target example.com
+	$ nuclei -target example.com
 
 Run nuclei with specific template directories:
-  $ nuclei -target example.com -t http/cves/ -t ssl
+	$ nuclei -target example.com -t http/cves/ -t ssl
 
 Run nuclei against a list of hosts:
-  $ nuclei -list hosts.txt
+	$ nuclei -list hosts.txt
 
 Run nuclei with a JSON output:
-  $ nuclei -target example.com -json-export output.json
+	$ nuclei -target example.com -json-export output.json
 
 Run nuclei with sorted Markdown outputs (with environment variables):
-  $ MARKDOWN_EXPORT_SORT_MODE=template nuclei -target example.com -markdown-export nuclei_report/
+	$ MARKDOWN_EXPORT_SORT_MODE=template nuclei -target example.com -markdown-export nuclei_report/
 
 Additional documentation is available at: https://docs.nuclei.sh/getting-started/running
 

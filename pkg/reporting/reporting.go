@@ -2,10 +2,11 @@ package reporting
 
 import (
 	"fmt"
-	"github.com/projectdiscovery/nuclei/v3/pkg/reporting/exporters/mongo"
 	"os"
 	"strings"
 	"sync/atomic"
+
+	"github.com/projectdiscovery/nuclei/v3/pkg/reporting/exporters/mongo"
 
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/config"
@@ -329,7 +330,7 @@ func (c *ReportingClient) CreateIssue(event *output.ResultEvent) error {
 // CloseIssue closes an issue in the tracker
 func (c *ReportingClient) CloseIssue(event *output.ResultEvent) error {
 	for _, tracker := range c.trackers {
-		if tracker.ShouldFilter(event) {
+		if !tracker.ShouldFilter(event) {
 			continue
 		}
 		if err := tracker.CloseIssue(event); err != nil {
