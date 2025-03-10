@@ -19,7 +19,7 @@ jobs:
     strategy:
       matrix:
         targets: [150]
-    runs-on: ubuntu-latest-16-cores
+    runs-on: ubuntu-latest
     if: github.repository == 'projectdiscovery/nuclei'
     permissions:
       contents: write
