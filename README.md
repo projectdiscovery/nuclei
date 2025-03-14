@@ -395,7 +395,7 @@ nuclei -target https://example.com
 Nuclei can handle bulk scanning by providing a list of targets. You can use a file containing multiple URLs.
 
 ```sh
-nuclei -targets urls.txt
+nuclei -list urls.txt
 ```
 
 ### Network scan
