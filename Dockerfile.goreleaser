@@ -1,0 +1,6 @@
+FROM alpine:latest
+
+RUN apk add --no-cache bind-tools chromium ca-certificates
+COPY nuclei /usr/local/bin/
+
+ENTRYPOINT ["nuclei"]
