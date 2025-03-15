@@ -1,3 +1,5 @@
+version: 2
+
 before:
   hooks:
     - go mod download
@@ -43,6 +45,26 @@ archives:
 
 checksum:
   algorithm: sha256
+
+dockers:
+  - image_templates:
+      - "{{ .ProjectName }}:{{ .Tag }}"
+      - "{{ .ProjectName }}:v{{ .Major }}.{{ .Minor }}"
+      - "{{ .ProjectName }}:v{{ .Major }}"
+      - "{{ .ProjectName }}:latest"
+    dockerfile: Dockerfile.goreleaser
+    use: buildx
+    build_flag_templates:
+      - "--pull"
+      - "--label=org.opencontainers.image.authors=ProjectDiscovery"
+      - "--label=org.opencontainers.image.created={{ .Date }}"
+      - "--label=org.opencontainers.image.description=\"Nuclei is a fast, customizable vulnerability scanner powered by the global security community and built on a simple YAML-based DSL, enabling collaboration to tackle trending vulnerabilities on the internet. It helps you find vulnerabilities in your applications, APIs, networks, DNS, and cloud configurations.\""
+      - "--label=org.opencontainers.image.licenses=MIT"
+      - "--label=org.opencontainers.image.ref.name={{ .Tag }}"
+      - "--label=org.opencontainers.image.revision={{ .FullCommit }}"
+      - "--label=org.opencontainers.image.title={{ .ProjectName }}"
+      - "--label=org.opencontainers.image.url=https://github.com/projectdiscovery/{{ .ProjectName }}"
+      - "--label=org.opencontainers.image.version={{ .Version }}"
 
 announce:
   slack:
