@@ -6,6 +6,7 @@ import (
 	"net/url"
 	"os"
 	"strings"
+	"sync/atomic"
 
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
@@ -61,5 +62,13 @@ func loadProxyServers(options *types.Options) error {
 		options.AliveSocksProxy = proxyURL.String()
 		gologger.Verbose().Msgf("Using %s as socket proxy server", proxyURL.String())
 	}
+
+	// Ensure proxy settings respect concurrency values
+	if options.Concurrency > 0 {
+		var count atomic.Int32
+		count.Store(int32(options.Concurrency))
+		options.Concurrency = int(count.Load())
+	}
+
 	return nil
 }
