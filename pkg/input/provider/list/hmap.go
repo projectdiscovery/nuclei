@@ -72,6 +72,7 @@ func New(opts *Options) (*ListInputProvider, error) {
 	input := &ListInputProvider{
 		hostMap: hm,
 		ipOptions: &ipOptions{
+			SpecifyIP:  options.SpecifyIP,
 			ScanAllIPs: options.ScanAllIPs,
 			IPV4:       sliceutil.Contains(options.IPVersion, "4"),
 			IPV6:       sliceutil.Contains(options.IPVersion, "6"),
@@ -140,6 +141,18 @@ func (i *ListInputProvider) Iterate(callback func(value *contextargs.MetaInput) 
 
 // Set normalizes and stores passed input values
 func (i *ListInputProvider) Set(value string) {
+	if i.ipOptions.SpecifyIP {
+		valueParsed := strings.SplitN(value, ",", 2)
+		if len(valueParsed) == 2 {
+			metaInput := contextargs.NewMetaInput()
+			metaInput.Input = strings.TrimSpace(valueParsed[1])
+			metaInput.CustomIP = strings.TrimSpace(valueParsed[0])
+			i.setItem(metaInput)
+			return
+		}
+		// if no comma, let's process the URL normally
+	}
+
 	URL := strings.TrimSpace(value)
 	if URL == "" {
 		return
@@ -372,6 +385,18 @@ func (i *ListInputProvider) isExcluded(URL string) bool {
 }
 
 func (i *ListInputProvider) Del(value string) {
+	if i.ipOptions.SpecifyIP {
+		valueParsed := strings.SplitN(value, ",", 2)
+		if len(valueParsed) == 2 {
+			metaInput := contextargs.NewMetaInput()
+			metaInput.Input = strings.TrimSpace(valueParsed[1])
+			metaInput.CustomIP = strings.TrimSpace(valueParsed[0])
+			i.delItem(metaInput)
+			return
+		}
+		// if no comma, let's process the URL normally
+	}
+
 	URL := strings.TrimSpace(value)
 	if URL == "" {
 		return
