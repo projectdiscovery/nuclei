@@ -876,7 +876,7 @@ func (r *Runner) SaveResumeConfig(path string) error {
 	}
 	resumeCfgClone := r.resumeCfg.Clone()
 	resumeCfgClone.ResumeFrom = resumeCfgClone.Current
-	data, _ := json.MarshalIndent(resumeCfgClone, "", "\t")
+	data, _ = json.MarshalIndent(resumeCfgClone, "", "\t")
 
 	return os.WriteFile(path, data, permissionutil.ConfigFilePermission)
 }
