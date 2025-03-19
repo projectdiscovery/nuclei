@@ -345,6 +345,8 @@ type Options struct {
 	GitLabTemplateRepositoryIDs []int
 	// GitLabTemplateDisableDownload disables downloading templates from custom GitLab repositories
 	GitLabTemplateDisableDownload bool
+	// AWS access profile from ~/.aws/credentials file for downloading templates from S3 bucket
+	AwsProfile string
 	// AWS access key for downloading templates from S3 bucket
 	AwsAccessKey string
 	// AWS secret key for downloading templates from S3 bucket
