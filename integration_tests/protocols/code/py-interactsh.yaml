@@ -8,6 +8,7 @@ info:
   description: |
     testcode
 
+self-contained: true
 variables:
   i: "{{interactsh-url}}"
 
