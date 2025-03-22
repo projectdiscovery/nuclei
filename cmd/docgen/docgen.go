@@ -6,7 +6,6 @@ import (
 	"os"
 	"reflect"
 	"regexp"
-	"strings"
 
 	"github.com/invopop/jsonschema"
 	"github.com/projectdiscovery/nuclei/v3/pkg/templates"
