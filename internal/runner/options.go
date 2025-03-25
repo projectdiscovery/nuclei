@@ -236,18 +236,22 @@ func validateMissingS3Options(options *types.Options) []string {
 		missing = append(missing, "AWS_TEMPLATE_BUCKET")
 	}
 	if options.AwsProfile == "" {
+		var missingCreds []string
 		if options.AwsAccessKey == "" {
-			missing = append(missing, "AWS_ACCESS_KEY")
+			missingCreds = append(missingCreds, "AWS_ACCESS_KEY")
 		}
 		if options.AwsSecretKey == "" {
-			missing = append(missing, "AWS_SECRET_KEY")
+			missingCreds = append(missingCreds, "AWS_SECRET_KEY")
 		}
 		if options.AwsRegion == "" {
-			missing = append(missing, "AWS_REGION")
+			missingCreds = append(missingCreds, "AWS_REGION")
 		}
-	}
-	if (options.AwsAccessKey == "" || options.AwsSecretKey == "" || options.AwsRegion == "") && options.AwsProfile == "" {
-		missing = append(missing, "AWS_PROFILE")
+
+		missing = append(missing, missingCreds...)
+
+		if len(missingCreds) > 0 {
+			missing = append(missing, "AWS_PROFILE")
+		}
 	}
 
 	return missing
