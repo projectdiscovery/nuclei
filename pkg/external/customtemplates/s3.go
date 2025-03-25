@@ -62,7 +62,7 @@ func (bk *customTemplateS3Bucket) Update(ctx context.Context) {
 func NewS3Providers(options *types.Options) ([]*customTemplateS3Bucket, error) {
 	providers := []*customTemplateS3Bucket{}
 	if options.AwsBucketName != "" && !options.AwsTemplateDisableDownload {
-		s3c, err := getS3Client(context.TODO(), options.AwsAccessKey, options.AwsSecretKey, options.AwsRegion)
+		s3c, err := getS3Client(context.TODO(), options.AwsAccessKey, options.AwsSecretKey, options.AwsRegion, options.AwsProfile)
 		if err != nil {
 			return nil, errorutil.NewWithErr(err).Msgf("error downloading s3 bucket %s", options.AwsBucketName)
 		}
@@ -104,10 +104,24 @@ func downloadToFile(downloader *manager.Downloader, targetDirectory, bucket, key
 	return err
 }
 
-func getS3Client(ctx context.Context, accessKey string, secretKey string, region string) (*s3.Client, error) {
-	cfg, err := config.LoadDefaultConfig(ctx, config.WithCredentialsProvider(credentials.NewStaticCredentialsProvider(accessKey, secretKey, "")), config.WithRegion(region))
-	if err != nil {
-		return nil, err
+func getS3Client(ctx context.Context, accessKey string, secretKey string, region string, profile string) (*s3.Client, error) {
+	var cfg aws.Config
+	var err error
+	if profile != "" {
+		cfg, err = config.LoadDefaultConfig(ctx, config.WithSharedConfigProfile(profile))
+		if err != nil {
+			return nil, err
+		}
+	} else if accessKey != "" && secretKey != "" {
+		cfg, err = config.LoadDefaultConfig(ctx, config.WithCredentialsProvider(credentials.NewStaticCredentialsProvider(accessKey, secretKey, "")), config.WithRegion(region))
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		cfg, err = config.LoadDefaultConfig(ctx)
+		if err != nil {
+			return nil, err
+		}
 	}
 	return s3.NewFromConfig(cfg), nil
 }
