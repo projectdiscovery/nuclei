@@ -259,3 +259,7 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 func (request *Request) Requests() int {
 	return len(request.Address)
 }
+
+func (request *Request) SetDialer(dialer *fastdialer.Dialer) {
+	request.dialer = dialer
+}
