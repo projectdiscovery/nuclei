@@ -317,7 +317,7 @@ func (template *Template) MarshalYAML() ([]byte, error) {
 	return out, multierr.Append(marshalErr, errValidate)
 }
 
-// MarshalYAML forces recursive struct validation after unmarshal operation
+// UnmarshalYAML forces recursive struct validation after unmarshal operation
 func (template *Template) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	type Alias Template
 	alias := &Alias{}
@@ -475,7 +475,7 @@ func (template *Template) GetFileImports() []string {
 	return template.ImportedFiles
 }
 
-// addProtocolsToQueue adds protocol requests to the queue and preserves order of the protocols and requests
+// addRequestsToQueue adds protocol requests to the queue and preserves order of the protocols and requests
 func (template *Template) addRequestsToQueue(keys ...string) {
 	for _, key := range keys {
 		switch key {

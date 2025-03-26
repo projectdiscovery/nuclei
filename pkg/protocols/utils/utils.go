@@ -48,7 +48,7 @@ func CalculateContentLength(contentLength, bodyLength int64) int64 {
 	return bodyLength
 }
 
-// headersToString converts http headers to string
+// HeadersToString converts http headers to string
 func HeadersToString(headers http.Header) string {
 	builder := &strings.Builder{}
 
