@@ -48,10 +48,10 @@ checksum:
 
 dockers:
   - image_templates:
-      - "{{ .ProjectName }}:{{ .Tag }}"
-      - "{{ .ProjectName }}:v{{ .Major }}.{{ .Minor }}"
-      - "{{ .ProjectName }}:v{{ .Major }}"
-      - "{{ .ProjectName }}:latest"
+      - "projectdiscovery/{{ .ProjectName }}:{{ .Tag }}"
+      - "projectdiscovery/{{ .ProjectName }}:v{{ .Major }}.{{ .Minor }}"
+      - "projectdiscovery/{{ .ProjectName }}:v{{ .Major }}"
+      - "projectdiscovery/{{ .ProjectName }}:latest"
     dockerfile: Dockerfile.goreleaser
     use: buildx
     build_flag_templates:
