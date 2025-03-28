@@ -69,7 +69,7 @@ func walk(path string, info fs.FileInfo, err error) error {
 		return err
 	}
 
-	if err := os.WriteFile(outPath, out, os.ModePerm); err != nil {
+	if err := os.WriteFile(outPath, out, 0644); err != nil {
 		return err
 	}
 
