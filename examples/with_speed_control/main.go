@@ -21,16 +21,21 @@ func main() {
 	var wg sync.WaitGroup
 	wg.Add(3)
 
-	go testRateLimit(&wg, ne)
-	go testThreadsAndBulkSize(&wg, ne)
-	go testPayloadConcurrency(&wg, ne)
+	// Create a buffered channel to synchronize the state changes (with capacity 1)
+	stateUpdateChan := make(chan bool, 1)
 
+	go testRateLimit(&wg, ne, stateUpdateChan)
+	go testThreadsAndBulkSize(&wg, ne, stateUpdateChan)
+	go testPayloadConcurrency(&wg, ne, stateUpdateChan)
+
+	// Wait for all tasks to finish
+	wg.Wait()
+
+	// Execute the callback after all tests
 	err = ne.ExecuteWithCallback(nil)
 	if err != nil {
 		panic(err)
 	}
-
-	wg.Wait()
 }
 
 func initializeNucleiEngine() (*nuclei.NucleiEngine, error) {
@@ -50,54 +55,90 @@ func initializeNucleiEngine() (*nuclei.NucleiEngine, error) {
 	)
 }
 
-func testRateLimit(wg *sync.WaitGroup, ne *nuclei.NucleiEngine) {
+func testRateLimit(wg *sync.WaitGroup, ne *nuclei.NucleiEngine, stateUpdateChan chan bool) {
 	defer wg.Done()
-	verifyRateLimit(ne, 1, 5000)
+	verifyRateLimit(ne, 1, 5000, stateUpdateChan)
 }
 
-func testThreadsAndBulkSize(wg *sync.WaitGroup, ne *nuclei.NucleiEngine) {
+func testThreadsAndBulkSize(wg *sync.WaitGroup, ne *nuclei.NucleiEngine, stateUpdateChan chan bool) {
 	defer wg.Done()
 	initialTemplateThreads, initialBulkSize := 1, 1
-	verifyThreadsAndBulkSize(ne, initialTemplateThreads, initialBulkSize, 25, 25)
+	verifyThreadsAndBulkSize(ne, initialTemplateThreads, initialBulkSize, 25, 25, stateUpdateChan)
 }
 
-func testPayloadConcurrency(wg *sync.WaitGroup, ne *nuclei.NucleiEngine) {
+func testPayloadConcurrency(wg *sync.WaitGroup, ne *nuclei.NucleiEngine, stateUpdateChan chan bool) {
 	defer wg.Done()
-	verifyPayloadConcurrency(ne, 1, 500)
+	verifyPayloadConcurrency(ne, 1, 500, stateUpdateChan)
 }
 
-func verifyRateLimit(ne *nuclei.NucleiEngine, initialRate, finalRate int) {
+func verifyRateLimit(ne *nuclei.NucleiEngine, initialRate, finalRate int, stateUpdateChan chan bool) {
 	if ne.GetExecuterOptions().RateLimiter.GetLimit() != uint(initialRate) {
 		panic("wrong initial rate limit")
 	}
-	time.Sleep(5 * time.Second)
+
+	// Send a signal to update the state after the first check
+	stateUpdateChan <- true
+
+	// Wait until the update is processed
+	<-stateUpdateChan
+
 	ne.Options().RateLimit = finalRate
-	time.Sleep(20 * time.Second)
+
+	// Notify that the state update is complete
+	stateUpdateChan <- true
+
+	// Wait until the update is processed
+	<-stateUpdateChan
+
 	if ne.GetExecuterOptions().RateLimiter.GetLimit() != uint(finalRate) {
 		panic("wrong final rate limit")
 	}
 }
 
-func verifyThreadsAndBulkSize(ne *nuclei.NucleiEngine, initialThreads, initialBulk, finalThreads, finalBulk int) {
+func verifyThreadsAndBulkSize(ne *nuclei.NucleiEngine, initialThreads, initialBulk, finalThreads, finalBulk int, stateUpdateChan chan bool) {
 	if ne.Options().TemplateThreads != initialThreads || ne.Options().BulkSize != initialBulk {
 		panic("wrong initial standard concurrency")
 	}
-	time.Sleep(5 * time.Second)
+
+	// Send a signal to update the state after the first check
+	stateUpdateChan <- true
+
+	// Wait until the update is processed
+	<-stateUpdateChan
+
 	ne.Options().TemplateThreads = finalThreads
 	ne.Options().BulkSize = finalBulk
-	time.Sleep(20 * time.Second)
+
+	// Notify that the state update is complete
+	stateUpdateChan <- true
+
+	// Wait until the update is processed
+	<-stateUpdateChan
+
 	if ne.Engine().GetWorkPool().InputPool(types.HTTPProtocol).Size != finalBulk || ne.Engine().WorkPool().Default.Size != finalThreads {
 		log.Fatal("wrong final concurrency", ne.Engine().WorkPool().Default.Size, finalThreads, ne.Engine().GetWorkPool().InputPool(types.HTTPProtocol).Size, finalBulk)
 	}
 }
 
-func verifyPayloadConcurrency(ne *nuclei.NucleiEngine, initialPayloadConcurrency, finalPayloadConcurrency int) {
+func verifyPayloadConcurrency(ne *nuclei.NucleiEngine, initialPayloadConcurrency, finalPayloadConcurrency int, stateUpdateChan chan bool) {
 	if ne.Options().PayloadConcurrency != initialPayloadConcurrency {
 		panic("wrong initial payload concurrency")
 	}
-	time.Sleep(5 * time.Second)
+
+	// Send a signal to update the state after the first check
+	stateUpdateChan <- true
+
+	// Wait until the update is processed
+	<-stateUpdateChan
+
 	ne.Options().PayloadConcurrency = finalPayloadConcurrency
-	time.Sleep(20 * time.Second)
+
+	// Notify that the state update is complete
+	stateUpdateChan <- true
+
+	// Wait until the update is processed
+	<-stateUpdateChan
+
 	if ne.GetExecuterOptions().GetThreadsForNPayloadRequests(100, 0) != finalPayloadConcurrency {
 		panic("wrong final payload concurrency")
 	}
