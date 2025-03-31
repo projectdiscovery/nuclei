@@ -132,6 +132,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: projectdiscovery/actions/setup/go@v1
+      - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-buildx-action@v3
       - uses: projectdiscovery/actions/goreleaser@v1
 
   flamegraph:
