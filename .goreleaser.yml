@@ -48,23 +48,69 @@ checksum:
 
 dockers:
   - image_templates:
-      - "projectdiscovery/{{ .ProjectName }}:{{ .Tag }}"
-      - "projectdiscovery/{{ .ProjectName }}:v{{ .Major }}.{{ .Minor }}"
-      - "projectdiscovery/{{ .ProjectName }}:v{{ .Major }}"
-      - "projectdiscovery/{{ .ProjectName }}:latest"
+      - "projectdiscovery/{{ .ProjectName }}:{{ .Tag }}-amd64"
+      - "projectdiscovery/{{ .ProjectName }}:v{{ .Major }}.{{ .Minor }}-amd64"
+      - "projectdiscovery/{{ .ProjectName }}:v{{ .Major }}-amd64"
+      - "projectdiscovery/{{ .ProjectName }}:latest-amd64"
     dockerfile: Dockerfile.goreleaser
     use: buildx
     build_flag_templates:
       - "--pull"
-      - "--label=org.opencontainers.image.authors=ProjectDiscovery"
+      - "--platform=linux/amd64"
       - "--label=org.opencontainers.image.created={{ .Date }}"
-      - "--label=org.opencontainers.image.description=\"Nuclei is a fast, customizable vulnerability scanner powered by the global security community and built on a simple YAML-based DSL, enabling collaboration to tackle trending vulnerabilities on the internet. It helps you find vulnerabilities in your applications, APIs, networks, DNS, and cloud configurations.\""
-      - "--label=org.opencontainers.image.licenses=MIT"
       - "--label=org.opencontainers.image.ref.name={{ .Tag }}"
       - "--label=org.opencontainers.image.revision={{ .FullCommit }}"
-      - "--label=org.opencontainers.image.title={{ .ProjectName }}"
-      - "--label=org.opencontainers.image.url=https://github.com/projectdiscovery/{{ .ProjectName }}"
       - "--label=org.opencontainers.image.version={{ .Version }}"
+    goarch: amd64
+  - image_templates:
+      - "projectdiscovery/{{ .ProjectName }}:{{ .Tag }}-arm64"
+      - "projectdiscovery/{{ .ProjectName }}:v{{ .Major }}.{{ .Minor }}-arm64"
+      - "projectdiscovery/{{ .ProjectName }}:v{{ .Major }}-arm64"
+      - "projectdiscovery/{{ .ProjectName }}:latest-arm64"
+    dockerfile: Dockerfile.goreleaser
+    use: buildx
+    build_flag_templates:
+      - "--pull"
+      - "--platform=linux/arm64"
+      - "--label=org.opencontainers.image.created={{ .Date }}"
+      - "--label=org.opencontainers.image.ref.name={{ .Tag }}"
+      - "--label=org.opencontainers.image.revision={{ .FullCommit }}"
+      - "--label=org.opencontainers.image.version={{ .Version }}"
+    goarch: arm64
+  # # NOTE(dwisiswant0): chromium doesn't support 32-bit on alpine
+  # - image_templates:
+  #     - "projectdiscovery/{{ .ProjectName }}:{{ .Tag }}-386"
+  #     - "projectdiscovery/{{ .ProjectName }}:v{{ .Major }}.{{ .Minor }}-386"
+  #     - "projectdiscovery/{{ .ProjectName }}:v{{ .Major }}-386"
+  #     - "projectdiscovery/{{ .ProjectName }}:latest-386"
+  #   dockerfile: Dockerfile.goreleaser
+  #   use: buildx
+  #   build_flag_templates:
+  #     - "--pull"
+  #     - "--platform=linux/386"
+  #     - "--label=org.opencontainers.image.created={{ .Date }}"
+  #     - "--label=org.opencontainers.image.ref.name={{ .Tag }}"
+  #     - "--label=org.opencontainers.image.revision={{ .FullCommit }}"
+  #     - "--label=org.opencontainers.image.version={{ .Version }}"
+  #   goarch: "386"
+
+docker_manifests:
+  - name_template: "projectdiscovery/{{ .ProjectName }}:{{ .Tag }}"
+    image_templates:
+      - "projectdiscovery/{{ .ProjectName }}:{{ .Tag }}-amd64"
+      - "projectdiscovery/{{ .ProjectName }}:{{ .Tag }}-arm64"
+  - name_template: "projectdiscovery/{{ .ProjectName }}:v{{ .Major }}.{{ .Minor }}"
+    image_templates:
+      - "projectdiscovery/{{ .ProjectName }}:v{{ .Major }}.{{ .Minor }}-amd64"
+      - "projectdiscovery/{{ .ProjectName }}:v{{ .Major }}.{{ .Minor }}-arm64"
+  - name_template: "projectdiscovery/{{ .ProjectName }}:v{{ .Major }}"
+    image_templates:
+      - "projectdiscovery/{{ .ProjectName }}:v{{ .Major }}-amd64"
+      - "projectdiscovery/{{ .ProjectName }}:v{{ .Major }}-arm64"
+  - name_template: "projectdiscovery/{{ .ProjectName }}:latest"
+    image_templates:
+      - "projectdiscovery/{{ .ProjectName }}:latest-amd64"
+      - "projectdiscovery/{{ .ProjectName }}:latest-arm64"
 
 announce:
   slack:
