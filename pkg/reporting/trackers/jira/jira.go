@@ -3,6 +3,7 @@ package jira
 import (
 	"fmt"
 	"io"
+	"net/http"
 	"net/url"
 	"strings"
 	"sync"
@@ -68,9 +69,12 @@ type Options struct {
 	// AccountID is the accountID of the jira user.
 	AccountID string `yaml:"account-id" json:"account_id" validate:"required"`
 	// Email is the email of the user for jira instance
-	Email string `yaml:"email" json:"email" validate:"required,email"`
+	Email string `yaml:"email" json:"email"`
+	// PersonalAccessToken is the personal access token for jira instance.
+	// If this is set, Bearer Auth is used instead of Basic Auth.
+	PersonalAccessToken string `yaml:"personal-access-token" json:"personal_access_token"`
 	// Token is the token for jira instance.
-	Token string `yaml:"token" json:"token" validate:"required"`
+	Token string `yaml:"token" json:"token"`
 	// ProjectName is the name of the project.
 	ProjectName string `yaml:"project-name" json:"project_name"`
 	// ProjectID is the ID of the project (optional)
@@ -103,14 +107,28 @@ func New(options *Options) (*Integration, error) {
 	if !options.Cloud {
 		username = options.AccountID
 	}
-	tp := jira.BasicAuthTransport{
-		Username: username,
-		Password: options.Token,
+
+	var httpclient *http.Client
+	if options.PersonalAccessToken != "" {
+		bearerTp := jira.BearerAuthTransport{
+			Token: options.PersonalAccessToken,
+		}
+		if options.HttpClient != nil {
+			bearerTp.Transport = options.HttpClient.HTTPClient.Transport
+		}
+		httpclient = bearerTp.Client()
+	} else {
+		basicTp := jira.BasicAuthTransport{
+			Username: username,
+			Password: options.Token,
+		}
+		if options.HttpClient != nil {
+			basicTp.Transport = options.HttpClient.HTTPClient.Transport
+		}
+		httpclient = basicTp.Client()
 	}
-	if options.HttpClient != nil {
-		tp.Transport = options.HttpClient.HTTPClient.Transport
-	}
-	jiraClient, err := jira.NewClient(tp.Client(), options.URL)
+
+	jiraClient, err := jira.NewClient(httpclient, options.URL)
 	if err != nil {
 		return nil, err
 	}
