@@ -1,0 +1,19 @@
+name: ♾️ Compatibility Checks
+
+on:
+  pull_request:
+    types: [opened, synchronize]
+    branches:
+      - dev
+
+jobs:
+  check:
+    if: github.actor == 'dependabot[bot]'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: projectdiscovery/actions/setup/go/compat-checks@v1
+        with:
+          release-test: true
