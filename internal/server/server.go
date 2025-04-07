@@ -37,6 +37,7 @@ type DASTServer struct {
 	endpointsBeingTested atomic.Int64
 
 	nucleiExecutor *nucleiExecutor
+	passiveNuclei  *PassiveNucleiExecutor
 }
 
 // Options contains the configuration options for the server.
@@ -59,8 +60,7 @@ type Options struct {
 	NucleiExecutorOptions *NucleiExecutorOptions
 }
 
-// New creates a new instance of the DAST server.
-func New(options *Options) (*DASTServer, error) {
+func setupDastDefaults(options *Options) {
 	// If the user has specified no templates, use the default ones
 	// for DAST only.
 	if len(options.Templates) == 0 {
@@ -72,8 +72,19 @@ func New(options *Options) (*DASTServer, error) {
 		options.NucleiExecutorOptions.Options.BulkSize = 1
 		options.NucleiExecutorOptions.Options.TemplateThreads = 1
 	}
-	maxWorkers := env.GetEnvOrDefault[int]("FUZZ_MAX_WORKERS", 1)
-	bufferSize := env.GetEnvOrDefault[int]("FUZZ_BUFFER_SIZE", 10000)
+}
+
+// New creates a new instance of the DAST server.
+func New(options *Options) (*DASTServer, error) {
+	dastServerMode := options.NucleiExecutorOptions.Options.DASTServer
+	passiveServerMode := options.NucleiExecutorOptions.Options.PassiveServer
+
+	if dastServerMode {
+		setupDastDefaults(options)
+	}
+
+	maxWorkers := env.GetEnvOrDefault("FUZZ_MAX_WORKERS", 25)
+	bufferSize := env.GetEnvOrDefault("FUZZ_BUFFER_SIZE", 10000)
 
 	server := &DASTServer{
 		options:      options,
@@ -83,11 +94,19 @@ func New(options *Options) (*DASTServer, error) {
 	}
 	server.setupHandlers(false)
 
-	executor, err := newNucleiExecutor(options.NucleiExecutorOptions)
-	if err != nil {
-		return nil, err
+	if dastServerMode {
+		executor, err := newNucleiExecutor(options.NucleiExecutorOptions)
+		if err != nil {
+			return nil, err
+		}
+		server.nucleiExecutor = executor
+	} else if passiveServerMode {
+		executor, err := NewPassiveNucleiExecutor(config.DefaultConfig.TemplatesDirectory)
+		if err != nil {
+			return nil, err
+		}
+		server.passiveNuclei = executor
 	}
-	server.nucleiExecutor = executor
 
 	scopeManager, err := scope.NewManager(
 		options.InScope,
@@ -103,8 +122,8 @@ func New(options *Options) (*DASTServer, error) {
 	if options.Token != "" {
 		builder.WriteString(" (with token)")
 	}
-	gologger.Info().Msgf("DAST Server API: %s", server.buildURL("/fuzz"))
-	gologger.Info().Msgf("DAST Server Stats URL: %s", server.buildURL("/stats"))
+	gologger.Info().Msgf("Server API: %s", server.buildURL("/fuzz"))
+	gologger.Info().Msgf("Server Stats URL: %s", server.buildURL("/stats"))
 
 	return server, nil
 }
@@ -124,7 +143,9 @@ func NewStatsServer(fuzzStatsDB *stats.Tracker) (*DASTServer, error) {
 }
 
 func (s *DASTServer) Close() {
-	s.nucleiExecutor.Close()
+	if s.nucleiExecutor != nil {
+		s.nucleiExecutor.Close()
+	}
 	s.echo.Close()
 	s.tasksPool.StopAndWaitFor(1 * time.Minute)
 }
@@ -160,7 +181,7 @@ func (s *DASTServer) setupHandlers(onlyStats bool) {
 
 	if s.options.Token != "" {
 		e.Use(middleware.KeyAuthWithConfig(middleware.KeyAuthConfig{
-			KeyLookup: "query:token",
+			KeyLookup: "header:X-DAST-Server-Token",
 			Validator: func(key string, c echo.Context) (bool, error) {
 				return key == s.options.Token, nil
 			},
@@ -187,8 +208,9 @@ func (s *DASTServer) Start() error {
 
 // PostReuestsHandlerRequest is the request body for the /fuzz POST handler.
 type PostRequestsHandlerRequest struct {
-	RawHTTP string `json:"raw_http"`
-	URL     string `json:"url"`
+	RawRequest  string `json:"raw_request"`
+	RawResponse string `json:"raw_response"`
+	URL         string `json:"url"`
 }
 
 func (s *DASTServer) handleRequest(c echo.Context) error {
@@ -199,7 +221,7 @@ func (s *DASTServer) handleRequest(c echo.Context) error {
 	}
 
 	// Validate the request
-	if req.RawHTTP == "" || req.URL == "" {
+	if (req.RawRequest == "" || req.URL == "") && req.RawResponse == "" {
 		fmt.Printf("Missing required fields\n")
 		return c.JSON(400, map[string]string{"error": "missing required fields"})
 	}
@@ -253,10 +275,15 @@ func (s *DASTServer) getStats() (StatsResponse, error) {
 		DASTScanStatistics: DASTScanStatistics{
 			EndpointsInQueue:     s.endpointsInQueue.Load(),
 			EndpointsBeingTested: s.endpointsBeingTested.Load(),
-			TotalTemplatesLoaded: int64(len(s.nucleiExecutor.store.Templates())),
 		},
 	}
-	if s.nucleiExecutor.executorOpts.FuzzStatsDB != nil {
+	totalTemplatesLoaded := 0
+	if s.nucleiExecutor != nil {
+		totalTemplatesLoaded = len(s.nucleiExecutor.store.Templates())
+	}
+	resp.DASTScanStatistics.TotalTemplatesLoaded = int64(totalTemplatesLoaded)
+
+	if s.nucleiExecutor != nil && s.nucleiExecutor.executorOpts.FuzzStatsDB != nil {
 		fuzzStats := s.nucleiExecutor.executorOpts.FuzzStatsDB.GetStats()
 		resp.DASTScanSeverityBreakdown = fuzzStats.SeverityCounts
 		resp.DASTScanStatusStatistics = fuzzStats.StatusCodes

@@ -476,7 +476,7 @@ func (r *Runner) setupPDCPUpload(writer output.Writer) output.Writer {
 func (r *Runner) RunEnumeration() error {
 	// If the user has asked for DAST server mode, run the live
 	// DAST fuzzing server.
-	if r.options.DASTServer {
+	if r.options.DASTServer || r.options.PassiveServer {
 		execurOpts := &server.NucleiExecutorOptions{
 			Options:            r.options,
 			Output:             r.output,

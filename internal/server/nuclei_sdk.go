@@ -159,7 +159,7 @@ func (n *nucleiExecutor) ExecuteScan(target PostRequestsHandlerRequest) error {
 			Body   string            `json:"body"`
 			Raw    string            `json:"raw"`
 		}{
-			Raw: target.RawHTTP,
+			Raw: target.RawRequest,
 		},
 	}
 
@@ -195,5 +195,4 @@ func (n *nucleiExecutor) Close() {
 	if n.executorOpts.InputHelper != nil {
 		_ = n.executorOpts.InputHelper.Close()
 	}
-
 }

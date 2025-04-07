@@ -427,6 +427,8 @@ type Options struct {
 	DAST bool
 	// DASTServer is the flag to start nuclei as a DAST server
 	DASTServer bool
+	// PassiveServer is the flag to start nuclei as a passive server
+	PassiveServer bool
 	// DASTServerToken is the token optional for the dast server
 	DASTServerToken string
 	// DASTServerAddress is the address for the dast server

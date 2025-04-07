@@ -1,6 +1,9 @@
 package server
 
 import (
+	"context"
+	"fmt"
+	"net/url"
 	"path"
 
 	"github.com/projectdiscovery/gologger"
@@ -11,48 +14,68 @@ import (
 func (s *DASTServer) consumeTaskRequest(req PostRequestsHandlerRequest) {
 	defer s.endpointsInQueue.Add(-1)
 
-	parsedReq, err := types.ParseRawRequestWithURL(req.RawHTTP, req.URL)
+	parsedURL, err := url.Parse(req.URL)
 	if err != nil {
-		gologger.Warning().Msgf("Could not parse raw request: %s\n", err)
+		gologger.Warning().Msgf("Could not parse url: %s\n", err)
 		return
 	}
 
-	if parsedReq.URL.Scheme != "http" && parsedReq.URL.Scheme != "https" {
-		gologger.Warning().Msgf("Invalid scheme: %s\n", parsedReq.URL.Scheme)
+	if parsedURL.Scheme != "http" && parsedURL.Scheme != "https" {
+		gologger.Warning().Msgf("Invalid scheme: %s\n", parsedURL.Scheme)
 		return
 	}
 
 	// Check filenames and don't allow non-interesting files
-	extension := path.Base(parsedReq.URL.Path)
+	extension := path.Base(parsedURL.Path)
 	if extension != "/" && extension != "" && scope.IsUninterestingPath(extension) {
-		gologger.Warning().Msgf("Uninteresting path: %s\n", parsedReq.URL.Path)
+		gologger.Warning().Msgf("Uninteresting path: %s\n", parsedURL.Path)
 		return
 	}
 
-	inScope, err := s.scopeManager.Validate(parsedReq.URL.URL)
+	inScope, err := s.scopeManager.Validate(parsedURL)
 	if err != nil {
 		gologger.Warning().Msgf("Could not validate scope: %s\n", err)
 		return
 	}
 	if !inScope {
-		gologger.Warning().Msgf("Request is out of scope: %s %s\n", parsedReq.Request.Method, parsedReq.URL.String())
+		gologger.Warning().Msgf("Request is out of scope: %s\n", parsedURL.String())
 		return
 	}
 
-	if s.deduplicator.isDuplicate(parsedReq) {
-		gologger.Warning().Msgf("Duplicate request detected: %s %s\n", parsedReq.Request.Method, parsedReq.URL.String())
-		return
-	}
-
-	gologger.Verbose().Msgf("Fuzzing request: %s %s\n", parsedReq.Request.Method, parsedReq.URL.String())
+	gologger.Verbose().Msgf("Fuzzing request: %s\n", parsedURL.String())
 
 	s.endpointsBeingTested.Add(1)
 	defer s.endpointsBeingTested.Add(-1)
 
 	// Fuzz the request finally
-	err = s.nucleiExecutor.ExecuteScan(req)
-	if err != nil {
-		gologger.Warning().Msgf("Could not run nuclei: %s\n", err)
-		return
+	if s.nucleiExecutor != nil && req.RawRequest != "" {
+		parsedReq, err := types.ParseRawRequestWithURL(req.RawRequest, req.URL)
+		if err != nil {
+			gologger.Warning().Msgf("Could not parse raw request: %s\n", err)
+			return
+		}
+
+		if s.deduplicator.isDuplicate(parsedReq) {
+			gologger.Warning().Msgf("Duplicate request detected: %s %s\n", parsedReq.Request.Method, parsedReq.URL.String())
+			return
+		}
+
+		err = s.nucleiExecutor.ExecuteScan(req)
+		if err != nil {
+			gologger.Warning().Msgf("Could not run nuclei: %s\n", err)
+			return
+		}
+	} else if s.passiveNuclei != nil && req.RawResponse != "" {
+		fmt.Println(req.RawResponse)
+		results, err := s.passiveNuclei.Execute(context.Background(), req.RawResponse, req.URL)
+		if err != nil {
+			gologger.Warning().Msgf("Could not run nuclei: %s\n", err)
+			return
+		}
+		for _, result := range results {
+			if err := s.options.OutputWriter.Write(result); err != nil {
+				gologger.Warning().Msgf("Could not write result: %s\n", err)
+			}
+		}
 	}
 }
