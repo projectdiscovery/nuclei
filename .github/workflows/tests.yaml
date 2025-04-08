@@ -74,9 +74,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: projectdiscovery/actions/setup/go@v1
-      - uses: actions/setup-python@v5
-        with:
-          python-version: '3.10'
+      - uses: projectdiscovery/actions/setup/python@v1
       - run: bash run.sh "${{ matrix.os }}"
         env:
           GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
@@ -95,6 +93,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: projectdiscovery/actions/setup/go@v1
+      - uses: projectdiscovery/actions/setup/python@v1
       - run: bash run.sh "${{ matrix.os }}"
         env:
           GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
