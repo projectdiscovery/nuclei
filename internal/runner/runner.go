@@ -501,6 +501,8 @@ func (r *Runner) RunEnumeration() error {
 			InScope:               r.options.Scope,
 			OutScope:              r.options.OutOfScope,
 			NucleiExecutorOptions: execurOpts,
+			ProxyServerPort:       r.options.ProxyServerPort,
+			ProxyCacheDirectory:   r.options.ProxyCacheDirectory,
 		})
 		if err != nil {
 			return err

@@ -429,6 +429,10 @@ type Options struct {
 	DASTServer bool
 	// PassiveServer is the flag to start nuclei as a passive server
 	PassiveServer bool
+	// ProxyServerPort is the port to use for the proxy server
+	ProxyServerPort int
+	// ProxyCacheDirectory is the directory to use for the proxy server cache
+	ProxyCacheDirectory string
 	// DASTServerToken is the token optional for the dast server
 	DASTServerToken string
 	// DASTServerAddress is the address for the dast server

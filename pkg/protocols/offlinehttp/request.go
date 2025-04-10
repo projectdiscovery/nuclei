@@ -114,7 +114,7 @@ func (request *Request) executeRawInput(data, inputString string, input *context
 		return errors.Wrap(err, "could not read raw http response body")
 	}
 	reqURL := inputString
-	if inputString == "" {
+	if inputString == "" && resp.Request != nil {
 		reqURL = getURLFromRequest(resp.Request)
 	}
 

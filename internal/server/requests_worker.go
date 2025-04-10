@@ -2,9 +2,9 @@ package server
 
 import (
 	"context"
-	"fmt"
 	"net/url"
 	"path"
+	"strings"
 
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/internal/server/scope"
@@ -66,8 +66,12 @@ func (s *DASTServer) consumeTaskRequest(req PostRequestsHandlerRequest) {
 			return
 		}
 	} else if s.passiveNuclei != nil && req.RawResponse != "" {
-		fmt.Println(req.RawResponse)
-		results, err := s.passiveNuclei.Execute(context.Background(), req.RawResponse, req.URL)
+		var reqRespBuilder strings.Builder
+		reqRespBuilder.WriteString(req.RawRequest)
+		reqRespBuilder.WriteString("\n\n")
+		reqRespBuilder.WriteString(req.RawResponse)
+
+		results, err := s.passiveNuclei.Execute(context.Background(), reqRespBuilder.String(), req.URL)
 		if err != nil {
 			gologger.Warning().Msgf("Could not run nuclei: %s\n", err)
 			return

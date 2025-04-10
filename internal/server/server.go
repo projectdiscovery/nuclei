@@ -38,6 +38,8 @@ type DASTServer struct {
 
 	nucleiExecutor *nucleiExecutor
 	passiveNuclei  *PassiveNucleiExecutor
+
+	proxyServer *ProxyServer
 }
 
 // Options contains the configuration options for the server.
@@ -50,6 +52,11 @@ type Options struct {
 	Templates []string
 	// Verbose is a flag that controls verbose output
 	Verbose bool
+
+	// ProxyServerPort is the port to use for the proxy server
+	ProxyServerPort int
+	// ProxyCacheDirectory is the directory to use for the proxy server cache
+	ProxyCacheDirectory string
 
 	// Scope fields for fuzzer
 	InScope  []string
@@ -108,6 +115,27 @@ func New(options *Options) (*DASTServer, error) {
 		server.passiveNuclei = executor
 	}
 
+	if dastServerMode || passiveServerMode {
+		if options.ProxyCacheDirectory == "" {
+			options.ProxyCacheDirectory = "proxify-cache"
+		}
+		proxyServer, err := NewProxyServer(&ProxyOptions{
+			Port:           options.ProxyServerPort,
+			CacheDirectory: options.ProxyCacheDirectory,
+			OnIntercepted: func(pair RequestResponsePair) {
+				server.consumeTaskRequest(PostRequestsHandlerRequest{
+					RawRequest:  pair.Request,
+					RawResponse: pair.Response,
+					URL:         pair.URL,
+				})
+			},
+		})
+		if err != nil {
+			return nil, err
+		}
+		server.proxyServer = proxyServer
+	}
+
 	scopeManager, err := scope.NewManager(
 		options.InScope,
 		options.OutScope,
@@ -145,6 +173,9 @@ func NewStatsServer(fuzzStatsDB *stats.Tracker) (*DASTServer, error) {
 func (s *DASTServer) Close() {
 	if s.nucleiExecutor != nil {
 		s.nucleiExecutor.Close()
+	}
+	if s.proxyServer != nil {
+		s.proxyServer.Close()
 	}
 	s.echo.Close()
 	s.tasksPool.StopAndWaitFor(1 * time.Minute)
