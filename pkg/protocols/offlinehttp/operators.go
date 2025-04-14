@@ -77,6 +77,9 @@ func (request *Request) Extract(data map[string]interface{}, extractor *extracto
 
 // getMatchPart returns the match part honoring "all" matchers + others.
 func getMatchPart(part string, data output.InternalEvent) (string, bool) {
+	if part == "" {
+		part = "body"
+	}
 	if part == "header" {
 		part = "all_headers"
 	}
