@@ -25,6 +25,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/types/scanstrategy"
 	"github.com/projectdiscovery/rawhttp"
 	"github.com/projectdiscovery/retryablehttp-go"
+	"github.com/projectdiscovery/utils/env"
 	mapsutil "github.com/projectdiscovery/utils/maps"
 	urlutil "github.com/projectdiscovery/utils/url"
 )
@@ -193,7 +194,7 @@ func wrappedGet(options *types.Options, configuration *Configuration) (*retryabl
 	// Multiple Host
 	retryableHttpOptions := retryablehttp.DefaultOptionsSpraying
 	disableKeepAlives := true
-	maxIdleConns := 0
+	maxIdleConns := env.GetEnvOrDefault("MAX_IDLE_CONNS", 1000)
 	maxConnsPerHost := 0
 	maxIdleConnsPerHost := -1
 	// do not split given timeout into chunks for retry
