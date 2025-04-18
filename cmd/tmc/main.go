@@ -132,7 +132,7 @@ func main() {
 }
 
 func process(opts options) error {
-	tempDir, err := os.MkdirTemp("", "nuclei-nvd-%s")
+	tempDir, err := os.MkdirTemp("", "nuclei-nvd")
 	if err != nil {
 		return err
 	}
