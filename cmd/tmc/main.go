@@ -65,7 +65,6 @@ func init() {
 		allTagsRegex = append(allTagsRegex, re)
 	}
 
-	defaultOpts := types.DefaultOptions()
 	// need to set headless to true for headless templates
 	defaultOpts.Headless = true
 	defaultOpts.EnableCodeTemplates = true
