@@ -72,6 +72,9 @@ func (c *DiskCatalog) tryResolve(fullPath string) (string, error) {
 
 // BackwardsCompatiblePaths returns new paths for all old/legacy template paths
 // Note: this is a temporary function and will be removed in the future release
+//
+// Deprecated: No longer used since the official Nuclei Templates repository
+// have restructured this a long time ago.
 func BackwardsCompatiblePaths(templateDir string, oldPath string) string {
 	// TODO: remove this function in the future release
 	// 1. all http related paths are now moved at path /http
