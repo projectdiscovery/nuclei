@@ -17,7 +17,6 @@ import (
 	"golang.org/x/net/proxy"
 	"golang.org/x/net/publicsuffix"
 
-	"github.com/projectdiscovery/fastdialer/fastdialer/ja3/impersonate"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/utils"
@@ -264,15 +263,18 @@ func wrappedGet(options *types.Options, configuration *Configuration) (*retryabl
 
 	transport := &http.Transport{
 		ForceAttemptHTTP2: options.ForceAttemptHTTP2,
-		DialContext:       protocolstate.GetDialer().Dial,
+		DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
+			return net.Dial(network, addr)
+		},
 		DialTLSContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
-			if options.TlsImpersonate {
-				return protocolstate.Dialer.DialTLSWithConfigImpersonate(ctx, network, addr, tlsConfig, impersonate.Random, nil)
-			}
-			if options.HasClientCertificates() || options.ForceAttemptHTTP2 {
-				return protocolstate.Dialer.DialTLSWithConfig(ctx, network, addr, tlsConfig)
-			}
-			return protocolstate.GetDialer().DialTLS(ctx, network, addr)
+			// if options.TlsImpersonate {
+			// 	return protocolstate.Dialer.DialTLSWithConfigImpersonate(ctx, network, addr, tlsConfig, impersonate.Random, nil)
+			// }
+			// if options.HasClientCertificates() || options.ForceAttemptHTTP2 {
+			// 	return protocolstate.Dialer.DialTLSWithConfig(ctx, network, addr, tlsConfig)
+			// }
+			// return protocolstate.GetDialer().DialTLS(ctx, network, addr)
+			return tls.Dial(network, addr, tlsConfig)
 		},
 		MaxIdleConns:          maxIdleConns,
 		MaxIdleConnsPerHost:   maxIdleConnsPerHost,
