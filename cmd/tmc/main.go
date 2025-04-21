@@ -65,7 +65,6 @@ func init() {
 		allTagsRegex = append(allTagsRegex, re)
 	}
 
-	defaultOpts := types.DefaultOptions()
 	// need to set headless to true for headless templates
 	defaultOpts.Headless = true
 	defaultOpts.EnableCodeTemplates = true
@@ -132,7 +131,7 @@ func main() {
 }
 
 func process(opts options) error {
-	tempDir, err := os.MkdirTemp("", "nuclei-nvd-%s")
+	tempDir, err := os.MkdirTemp("", "nuclei-nvd")
 	if err != nil {
 		return err
 	}
