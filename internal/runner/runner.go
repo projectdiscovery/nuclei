@@ -833,7 +833,7 @@ func (r *Runner) displayExecutionInfo(store *loader.Store) {
 	updateutils.Aurora = r.colorizer
 	versionInfo := func(version, latestVersion, versionType string) string {
 		if !cfg.CanCheckForUpdates() {
-			return fmt.Sprintf("Current %s version: %v (%s) - use '-duc' flag to enable update checks", versionType, version, r.colorizer.BrightYellow("unknown"))
+			return fmt.Sprintf("Current %s version: %v (%s) - remove '-duc' flag to enable update checks", versionType, version, r.colorizer.BrightYellow("unknown"))
 		}
 		return fmt.Sprintf("Current %s version: %v %v", versionType, version, updateutils.GetVersionDescription(version, latestVersion))
 	}
