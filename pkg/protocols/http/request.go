@@ -540,8 +540,9 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 				return true, nil
 			}
 
-			request.markHostError(updatedInput, execReqErr)
 			if execReqErr != nil {
+				request.markHostError(updatedInput, execReqErr)
+
 				// if applicable mark the host as unresponsive
 				reqKitErr := errkit.FromError(execReqErr)
 				reqKitErr.Msgf("got err while executing %v", generatedHttpRequest.URL())

@@ -731,10 +731,10 @@ func (r *Runner) RunEnumeration() error {
 	// todo: error propagation without canonical straight error check is required by cloud?
 	// use safe dereferencing to avoid potential panics in case of previous unchecked errors
 	if v := ptrutil.Safe(results); !v.Load() {
-		gologger.Info().Msgf("Scan completed in %d minutes. No results found.", int(timeTaken.Minutes()))
+		gologger.Info().Msgf("Scan completed in %s. No results found.", shortDur(timeTaken))
 	} else {
 		matchCount := r.output.ResultCount()
-		gologger.Info().Msgf("Scan completed in %d minutes. %d matches found.", int(timeTaken.Minutes()), matchCount)
+		gologger.Info().Msgf("Scan completed in %s. %d matches found.", shortDur(timeTaken), matchCount)
 	}
 
 	// check if a passive scan was requested but no target was provided
@@ -743,6 +743,24 @@ func (r *Runner) RunEnumeration() error {
 	}
 
 	return err
+}
+
+func shortDur(d time.Duration) string {
+	if d < time.Minute {
+		return d.String()
+	}
+
+	// Truncate to the nearest minute
+	d = d.Truncate(time.Minute)
+	s := d.String()
+
+	if strings.HasSuffix(s, "m0s") {
+		s = s[:len(s)-2]
+	}
+	if strings.HasSuffix(s, "h0m") {
+		s = s[:len(s)-2]
+	}
+	return s
 }
 
 func (r *Runner) isInputNonHTTP() bool {
