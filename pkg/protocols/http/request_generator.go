@@ -135,3 +135,67 @@ func (r *requestGenerator) hasMarker(request string, mark flowMark) bool {
 	fo, hasOverrides := parseFlowAnnotations(request)
 	return hasOverrides && fo == mark
 }
+
+// Remaining returns the number of requests that are still left to be
+// generated (and therefore to be sent) by this generator.
+func (r *requestGenerator) Remaining() int {
+	var sequence []string
+	switch {
+	case len(r.request.Path) > 0:
+		sequence = r.request.Path
+	case len(r.request.Raw) > 0:
+		sequence = r.request.Raw
+	default:
+		return 0
+	}
+
+	remainingInCurrentPass := 0
+	for i := r.currentIndex; i < len(sequence); i++ {
+		if !r.hasMarker(sequence[i], Once) {
+			remainingInCurrentPass++
+		}
+	}
+
+	if r.payloadIterator == nil {
+		return remainingInCurrentPass
+	}
+
+	numRemainingPayloadSets := r.payloadIterator.Remaining()
+	totalValidInSequence := 0
+	for _, req := range sequence {
+		if !r.hasMarker(req, Once) {
+			totalValidInSequence++
+		}
+	}
+
+	// Total remaining = remaining in current pass + (remaining payload sets * requests per full pass)
+	return remainingInCurrentPass + numRemainingPayloadSets*totalValidInSequence
+}
+
+func (r *requestGenerator) Total() int {
+	var sequence []string
+	switch {
+	case len(r.request.Path) > 0:
+		sequence = r.request.Path
+	case len(r.request.Raw) > 0:
+		sequence = r.request.Raw
+	default:
+		return 0
+	}
+
+	applicableRequests := 0
+	additionalRequests := 0
+	for _, request := range sequence {
+		if !r.hasMarker(request, Once) {
+			applicableRequests++
+		} else {
+			additionalRequests++
+		}
+	}
+
+	if r.payloadIterator == nil {
+		return applicableRequests + additionalRequests
+	}
+
+	return (applicableRequests * r.payloadIterator.Total()) + additionalRequests
+}
