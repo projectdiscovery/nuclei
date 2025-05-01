@@ -1,0 +1,26 @@
+id: rdp-enc-check
+
+info:
+  name: RDP Enc - Detection
+  author: pussycat0x
+  severity: info
+  metadata:
+    verified: true
+    max-request: 1
+    shodan-query: port:"3389"
+  tags: js,network,rdp,info,enum
+
+javascript:
+  - code: |
+      let m = require('nuclei/rdp');
+      let response = m.CheckRDPEncryption(Host,Port);
+      Export(response);
+
+    args:
+      Host: "{{Host}}"
+      Port: "3389"
+
+    extractors:
+      - type: dsl
+        dsl:
+          - response
