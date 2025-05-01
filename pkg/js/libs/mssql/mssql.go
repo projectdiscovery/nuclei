@@ -11,6 +11,7 @@ import (
 
 	_ "github.com/microsoft/go-mssqldb"
 	"github.com/praetorian-inc/fingerprintx/pkg/plugins/services/mssql"
+	"github.com/projectdiscovery/nuclei/v3/pkg/js/utils"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
 )
 
@@ -131,4 +132,62 @@ func isMssql(host string, port int) (bool, error) {
 		return true, nil
 	}
 	return false, nil
+}
+
+// ExecuteQuery connects to MS SQL database using given credentials and executes a query.
+// It returns the results of the query or an error if something goes wrong.
+// @example
+// ```javascript
+// const mssql = require('nuclei/mssql');
+// const client = new mssql.MSSQLClient;
+// const result = client.ExecuteQuery('acme.com', 1433, 'username', 'password', 'master', 'SELECT @@version');
+// log(to_json(result));
+// ```
+func (c *MSSQLClient) ExecuteQuery(host string, port int, username, password, dbName, query string) (*utils.SQLResult, error) {
+	if host == "" || port <= 0 {
+		return nil, fmt.Errorf("invalid host or port")
+	}
+	if !protocolstate.IsHostAllowed(host) {
+		// host is not valid according to network policy
+		return nil, protocolstate.ErrHostDenied.Msgf(host)
+	}
+
+	target := net.JoinHostPort(host, fmt.Sprintf("%d", port))
+
+	ok, err := c.IsMssql(host, port)
+	if err != nil {
+		return nil, err
+	}
+	if !ok {
+		return nil, fmt.Errorf("not a mssql service")
+	}
+
+	connString := fmt.Sprintf("sqlserver://%s:%s@%s?database=%s&connection+timeout=30",
+		url.PathEscape(username),
+		url.PathEscape(password),
+		target,
+		dbName)
+
+	db, err := sql.Open("sqlserver", connString)
+	if err != nil {
+		return nil, err
+	}
+	defer db.Close()
+
+	db.SetMaxOpenConns(1)
+	db.SetMaxIdleConns(0)
+
+	rows, err := db.Query(query)
+	if err != nil {
+		return nil, err
+	}
+
+	data, err := utils.UnmarshalSQLRows(rows)
+	if err != nil {
+		if data != nil && len(data.Rows) > 0 {
+			return data, nil
+		}
+		return nil, err
+	}
+	return data, nil
 }
