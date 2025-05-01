@@ -831,8 +831,15 @@ func (r *Runner) displayExecutionInfo(store *loader.Store) {
 	cfg := config.DefaultConfig
 
 	updateutils.Aurora = r.colorizer
-	gologger.Info().Msgf("Current nuclei version: %v %v", config.Version, updateutils.GetVersionDescription(config.Version, cfg.LatestNucleiVersion))
-	gologger.Info().Msgf("Current nuclei-templates version: %v %v", cfg.TemplateVersion, updateutils.GetVersionDescription(cfg.TemplateVersion, cfg.LatestNucleiTemplatesVersion))
+	versionInfo := func(version, latestVersion, versionType string) string {
+		if !cfg.CanCheckForUpdates() {
+			return fmt.Sprintf("Current %s version: %v (%s) - remove '-duc' flag to enable update checks", versionType, version, r.colorizer.BrightYellow("unknown"))
+		}
+		return fmt.Sprintf("Current %s version: %v %v", versionType, version, updateutils.GetVersionDescription(version, latestVersion))
+	}
+
+	gologger.Info().Msgf(versionInfo(config.Version, cfg.LatestNucleiVersion, "nuclei"))
+	gologger.Info().Msgf(versionInfo(cfg.TemplateVersion, cfg.LatestNucleiTemplatesVersion, "nuclei-templates"))
 	if !HideAutoSaveMsg {
 		if r.pdcpUploadErrMsg != "" {
 			gologger.Print().Msgf("%s", r.pdcpUploadErrMsg)
