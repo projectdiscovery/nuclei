@@ -154,6 +154,14 @@ func (c *MSSQLClient) ExecuteQuery(host string, port int, username, password, db
 
 	target := net.JoinHostPort(host, fmt.Sprintf("%d", port))
 
+	ok, err := c.IsMssql(host, port)
+	if err != nil {
+		return nil, err
+	}
+	if !ok {
+		return nil, fmt.Errorf("not a mssql service")
+	}
+
 	connString := fmt.Sprintf("sqlserver://%s:%s@%s?database=%s&connection+timeout=30",
 		url.PathEscape(username),
 		url.PathEscape(password),
