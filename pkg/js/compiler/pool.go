@@ -85,6 +85,7 @@ func executeWithRuntime(runtime *goja.Runtime, p *goja.Program, args *ExecuteArg
 			opts.Cleanup(runtime)
 		}
 		_ = runtime.GlobalObject().Delete("executionId")
+		_ = runtime.GlobalObject().Delete("context")
 	}()
 
 	// TODO(dwisiswant0): remove this once we get the RCA.
@@ -111,8 +112,11 @@ func executeWithRuntime(runtime *goja.Runtime, p *goja.Program, args *ExecuteArg
 		}
 	}
 
-	// inject execution id
+	// inject execution id and context
 	_ = runtime.Set("executionId", opts.ExecutionId)
+	if opts.Context != nil {
+		_ = runtime.Set("context", opts.Context)
+	}
 
 	// execute the script
 	return runtime.RunProgram(p)
