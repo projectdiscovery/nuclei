@@ -84,6 +84,7 @@ func executeWithRuntime(runtime *goja.Runtime, p *goja.Program, args *ExecuteArg
 		if opts != nil && opts.Cleanup != nil {
 			opts.Cleanup(runtime)
 		}
+		_ = runtime.GlobalObject().Delete("executionId")
 	}()
 
 	// TODO(dwisiswant0): remove this once we get the RCA.
@@ -108,8 +109,11 @@ func executeWithRuntime(runtime *goja.Runtime, p *goja.Program, args *ExecuteArg
 		if err := opts.Callback(runtime); err != nil {
 			return nil, err
 		}
-
 	}
+
+	// inject execution id
+	_ = runtime.Set("executionId", opts.ExecutionId)
+
 	// execute the script
 	return runtime.RunProgram(p)
 }

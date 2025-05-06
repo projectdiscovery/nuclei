@@ -611,6 +611,8 @@ func (request *Request) executeRequestWithPayloads(hostPort string, input *conte
 
 // generateEventData generates event data for the request
 func (request *Request) generateEventData(input *contextargs.Context, values map[string]interface{}, matched string) map[string]interface{} {
+	dialers := protocolstate.GetDialersWithId(request.options.Options.ExecutionId)
+
 	data := make(map[string]interface{})
 	for k, v := range values {
 		data[k] = v
@@ -643,7 +645,7 @@ func (request *Request) generateEventData(input *contextargs.Context, values map
 				}
 			}
 		}
-		data["ip"] = protocolstate.Dialer.GetDialedIP(hostname)
+		data["ip"] = dialers.Fastdialer.GetDialedIP(hostname)
 		// if input itself was an ip, use it
 		if iputil.IsIP(hostname) {
 			data["ip"] = hostname
@@ -651,7 +653,7 @@ func (request *Request) generateEventData(input *contextargs.Context, values map
 
 		// if ip is not found,this is because ssh and other protocols do not use fastdialer
 		// although its not perfect due to its use case dial and get ip
-		dnsData, err := protocolstate.Dialer.GetDNSData(hostname)
+		dnsData, err := dialers.Fastdialer.GetDNSData(hostname)
 		if err == nil {
 			for _, v := range dnsData.A {
 				data["ip"] = v

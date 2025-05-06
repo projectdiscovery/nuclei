@@ -154,7 +154,7 @@ func (e *ThreadSafeNucleiEngine) ExecuteNucleiWithOptsCtx(ctx context.Context, t
 	}
 	store.Load()
 
-	inputProvider := provider.NewSimpleInputProviderWithUrls(targets...)
+	inputProvider := provider.NewSimpleInputProviderWithUrls(e.eng.opts.ExecutionId, targets...)
 
 	if len(store.Templates()) == 0 && len(store.Workflows()) == 0 {
 		return ErrNoTemplatesAvailable

@@ -86,12 +86,15 @@ func NewClient(call goja.ConstructorCall, runtime *goja.Runtime) *goja.Object {
 	u, err := url.Parse(ldapUrl)
 	c.nj.HandleError(err, "invalid ldap url supported schemas are ldap://, ldaps://, ldapi://, and cldap://")
 
+	executionId := c.nj.ExecutionId()
+	dialers := protocolstate.GetDialersWithId(executionId)
+
 	var conn net.Conn
 	if u.Scheme == "ldapi" {
 		if u.Path == "" || u.Path == "/" {
 			u.Path = "/var/run/slapd/ldapi"
 		}
-		conn, err = protocolstate.Dialer.Dial(context.TODO(), "unix", u.Path)
+		conn, err = dialers.Fastdialer.Dial(context.TODO(), "unix", u.Path)
 		c.nj.HandleError(err, "failed to connect to ldap server")
 	} else {
 		host, port, err := net.SplitHostPort(u.Host)
@@ -110,12 +113,12 @@ func NewClient(call goja.ConstructorCall, runtime *goja.Runtime) *goja.Object {
 			if port == "" {
 				port = ldap.DefaultLdapPort
 			}
-			conn, err = protocolstate.Dialer.Dial(context.TODO(), "udp", net.JoinHostPort(host, port))
+			conn, err = dialers.Fastdialer.Dial(context.TODO(), "udp", net.JoinHostPort(host, port))
 		case "ldap":
 			if port == "" {
 				port = ldap.DefaultLdapPort
 			}
-			conn, err = protocolstate.Dialer.Dial(context.TODO(), "tcp", net.JoinHostPort(host, port))
+			conn, err = dialers.Fastdialer.Dial(context.TODO(), "tcp", net.JoinHostPort(host, port))
 		case "ldaps":
 			if port == "" {
 				port = ldap.DefaultLdapsPort
@@ -124,7 +127,7 @@ func NewClient(call goja.ConstructorCall, runtime *goja.Runtime) *goja.Object {
 			if c.cfg.ServerName != "" {
 				serverName = c.cfg.ServerName
 			}
-			conn, err = protocolstate.Dialer.DialTLSWithConfig(context.TODO(), "tcp", net.JoinHostPort(host, port),
+			conn, err = dialers.Fastdialer.DialTLSWithConfig(context.TODO(), "tcp", net.JoinHostPort(host, port),
 				&tls.Config{InsecureSkipVerify: true, MinVersion: tls.VersionTLS10, ServerName: serverName})
 		default:
 			err = fmt.Errorf("unsupported ldap url schema %v", u.Scheme)
@@ -331,7 +334,7 @@ func (c *Client) CollectMetadata() Metadata {
 // ```
 func (c *Client) GetVersion() []string {
 	c.nj.Require(c.conn != nil, "no existing connection")
-	
+
 	// Query root DSE for supported LDAP versions
 	sr := ldap.NewSearchRequest(
 		"",
@@ -341,17 +344,16 @@ func (c *Client) GetVersion() []string {
 		"(objectClass=*)",
 		[]string{"supportedLDAPVersion"},
 		nil)
-	
+
 	res, err := c.conn.Search(sr)
 	c.nj.HandleError(err, "failed to get LDAP version")
-	
+
 	if len(res.Entries) > 0 {
 		return res.Entries[0].GetAttributeValues("supportedLDAPVersion")
 	}
-	
+
 	return []string{"unknown"}
 }
-
 
 // close the ldap connection
 // @example

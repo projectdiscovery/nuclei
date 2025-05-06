@@ -20,31 +20,37 @@ import (
 
 // Dialer is a shared fastdialer instance for host DNS resolution
 var (
-	dialers *mapsutil.SyncLockMap[string, *fastdialer.Dialer]
+	dialers *mapsutil.SyncLockMap[string, *Dialers]
 )
 
-func GetDialer(ctx context.Context) *fastdialer.Dialer {
+func GetDialers(ctx context.Context) *Dialers {
 	executionContext := GetExecutionContext(ctx)
-	dialer, ok := dialers.Get(executionContext.ExecutionID)
+	dialers, ok := dialers.Get(executionContext.ExecutionID)
 	if !ok {
 		return nil
 	}
-	return dialer
+	return dialers
 }
 
-func ShouldInit(ctx context.Context) bool {
-	executionContext := GetExecutionContext(ctx)
-	dialer, ok := dialers.Get(executionContext.ExecutionID)
+func GetDialersWithId(id string) *Dialers {
+	dialers, ok := dialers.Get(id)
+	if !ok {
+		return nil
+	}
+	return dialers
+}
+
+func ShouldInit(id string) bool {
+	dialer, ok := dialers.Get(id)
 	if !ok {
 		return false
 	}
 	return dialer == nil
 }
 
-// Init creates the Dialer instance based on user configuration
-func Init(ctx context.Context, options *types.Options) error {
-	executionContext := GetExecutionContext(ctx)
-	if GetDialer(ctx) != nil {
+// Init creates the Dialers instance based on user configuration
+func Init(options *types.Options) error {
+	if GetDialersWithId(options.ExecutionId) != nil {
 		return nil
 	}
 
@@ -73,8 +79,7 @@ func Init(ctx context.Context, options *types.Options) error {
 		DenyList: expandedDenyList,
 	}
 	opts.WithNetworkPolicyOptions = npOptions
-	networkPolicy, _ := networkpolicy.New(*npOptions)
-	InitHeadless(ctx, options.AllowLocalFileAccess, networkPolicy)
+	InitHeadless(options.AllowLocalFileAccess)
 
 	switch {
 	case options.SourceIP != "" && options.Interface != "":
@@ -159,7 +164,15 @@ func Init(ctx context.Context, options *types.Options) error {
 	if err != nil {
 		return errors.Wrap(err, "could not create dialer")
 	}
-	dialers.Set(executionContext.ExecutionID, dialer)
+
+	networkPolicy, _ := networkpolicy.New(*npOptions)
+
+	dialersInstance := &Dialers{
+		Fastdialer:    dialer,
+		NetworkPolicy: networkPolicy,
+	}
+
+	dialers.Set(options.ExecutionId, dialersInstance)
 
 	// Set a custom dialer for the "nucleitcp" protocol.  This is just plain TCP, but it's registered
 	// with a different name so that we do not clobber the "tcp" dialer in the event that nuclei is
@@ -234,18 +247,17 @@ func interfaceAddresses(interfaceName string) ([]net.Addr, error) {
 }
 
 // Close closes the global shared fastdialer
-func Close(ctx context.Context) {
-	executionContext := GetExecutionContext(ctx)
-	dialer, ok := dialers.Get(executionContext.ExecutionID)
+func Close(executionId string) {
+	dialersInstance, ok := dialers.Get(executionId)
 	if !ok {
 		return
 	}
 
-	if dialer != nil {
-		dialer.Close()
+	if dialersInstance != nil {
+		dialersInstance.Fastdialer.Close()
 	}
 
-	dialers.Delete(executionContext.ExecutionID)
+	dialers.Delete(executionId)
 
 	StopActiveMemGuardian()
 }

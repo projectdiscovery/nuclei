@@ -413,7 +413,7 @@ func (r *Runner) Close() {
 	if r.inputProvider != nil {
 		r.inputProvider.Close()
 	}
-	protocolinit.Close()
+	protocolinit.Close(r.options.ExecutionId)
 	if r.pprofServer != nil {
 		r.pprofServer.Stop()
 	}
@@ -655,7 +655,7 @@ func (r *Runner) RunEnumeration() error {
 		}
 		ret := uncover.GetUncoverTargetsFromMetadata(context.TODO(), store.Templates(), r.options.UncoverField, uncoverOpts)
 		for host := range ret {
-			_ = r.inputProvider.SetWithExclusions(host)
+			_ = r.inputProvider.SetWithExclusions(r.options.ExecutionId, host)
 		}
 	}
 	// display execution info like version , templates used etc

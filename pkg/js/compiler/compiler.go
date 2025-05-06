@@ -32,6 +32,9 @@ func New() *Compiler {
 
 // ExecuteOptions provides options for executing a script.
 type ExecuteOptions struct {
+	// ExecutionId is the id of the execution
+	ExecutionId string
+
 	// Callback can be used to register new runtime helper functions
 	// ex: export etc
 	Callback func(runtime *goja.Runtime) error

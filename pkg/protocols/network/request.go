@@ -64,7 +64,8 @@ func (request *Request) getOpenPorts(target *contextargs.Context) ([]string, err
 			errs = append(errs, err)
 			continue
 		}
-		conn, err := protocolstate.Dialer.Dial(target.Context(), "tcp", addr)
+		dialers := protocolstate.GetDialersWithId(request.options.Options.ExecutionId)
+		conn, err := dialers.Fastdialer.Dial(target.Context(), "tcp", addr)
 		if err != nil {
 			errs = append(errs, err)
 			continue

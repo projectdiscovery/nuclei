@@ -1,8 +1,6 @@
 package protocolinit
 
 import (
-	"context"
-
 	"github.com/projectdiscovery/nuclei/v3/pkg/js/compiler"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/dns/dnsclientpool"
@@ -15,8 +13,8 @@ import (
 )
 
 // Init initializes the client pools for the protocols
-func Init(ctx context.Context, options *types.Options) error {
-	if err := protocolstate.Init(ctx, options); err != nil {
+func Init(options *types.Options) error {
+	if err := protocolstate.Init(options); err != nil {
 		return err
 	}
 	if err := dnsclientpool.Init(options); err != nil {
@@ -40,6 +38,6 @@ func Init(ctx context.Context, options *types.Options) error {
 	return nil
 }
 
-func Close(ctx context.Context) {
-	protocolstate.Close(ctx)
+func Close(executionId string) {
+	protocolstate.Close(executionId)
 }

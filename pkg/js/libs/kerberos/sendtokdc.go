@@ -68,6 +68,9 @@ func sendToKDCTcp(kclient *Client, msg string) ([]byte, error) {
 	kclient.nj.HandleError(err, "error getting KDCs")
 	kclient.nj.Require(len(kdcs) > 0, "no KDCs found")
 
+	executionId := kclient.nj.ExecutionId()
+	dialers := protocolstate.GetDialersWithId(executionId)
+
 	var errs []string
 	for i := 1; i <= len(kdcs); i++ {
 		host, port, err := net.SplitHostPort(kdcs[i])
@@ -75,7 +78,7 @@ func sendToKDCTcp(kclient *Client, msg string) ([]byte, error) {
 			// use that ip address instead of realm/domain for resolving
 			host = kclient.config.ip
 		}
-		tcpConn, err := protocolstate.Dialer.Dial(context.TODO(), "tcp", net.JoinHostPort(host, port))
+		tcpConn, err := dialers.Fastdialer.Dial(context.TODO(), "tcp", net.JoinHostPort(host, port))
 		if err != nil {
 			errs = append(errs, fmt.Sprintf("error establishing connection to %s: %v", kdcs[i], err))
 			continue
@@ -101,6 +104,9 @@ func sendToKDCUdp(kclient *Client, msg string) ([]byte, error) {
 	kclient.nj.HandleError(err, "error getting KDCs")
 	kclient.nj.Require(len(kdcs) > 0, "no KDCs found")
 
+	executionId := kclient.nj.ExecutionId()
+	dialers := protocolstate.GetDialersWithId(executionId)
+
 	var errs []string
 	for i := 1; i <= len(kdcs); i++ {
 		host, port, err := net.SplitHostPort(kdcs[i])
@@ -108,7 +114,7 @@ func sendToKDCUdp(kclient *Client, msg string) ([]byte, error) {
 			// use that ip address instead of realm/domain for resolving
 			host = kclient.config.ip
 		}
-		udpConn, err := protocolstate.Dialer.Dial(context.TODO(), "udp", net.JoinHostPort(host, port))
+		udpConn, err := dialers.Fastdialer.Dial(context.TODO(), "udp", net.JoinHostPort(host, port))
 		if err != nil {
 			errs = append(errs, fmt.Sprintf("error establishing connection to %s: %v", kdcs[i], err))
 			continue

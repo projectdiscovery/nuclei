@@ -112,7 +112,7 @@ func (e *NucleiEngine) init(ctx context.Context) error {
 
 	e.parser = templates.NewParser()
 
-	if sharedInit == nil || protocolstate.ShouldInit() {
+	if sharedInit == nil || protocolstate.ShouldInit(e.opts.ExecutionId) {
 		sharedInit = &sync.Once{}
 	}
 

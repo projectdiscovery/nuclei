@@ -449,6 +449,9 @@ type Options struct {
 	// This is internally managed and does not need to be set by user by explicitly setting
 	// this overrides the default/derived one
 	timeouts *Timeouts
+
+	// Unique identifier of the execution session
+	ExecutionId string
 }
 
 // SetTimeouts sets the timeout variants to use for the executor

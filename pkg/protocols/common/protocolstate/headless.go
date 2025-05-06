@@ -8,8 +8,8 @@ import (
 	"github.com/go-rod/rod"
 	"github.com/go-rod/rod/lib/proto"
 	"github.com/projectdiscovery/networkpolicy"
+	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	errorutil "github.com/projectdiscovery/utils/errors"
-	mapsutil "github.com/projectdiscovery/utils/maps"
 	stringsutil "github.com/projectdiscovery/utils/strings"
 	urlutil "github.com/projectdiscovery/utils/url"
 	"go.uber.org/multierr"
@@ -18,9 +18,9 @@ import (
 // initalize state of headless protocol
 
 var (
-	ErrURLDenied         = errorutil.NewWithFmt("headless: url %v dropped by rule: %v")
-	ErrHostDenied        = errorutil.NewWithFmt("host %v dropped by network policy")
-	networkPolicies      = mapsutil.NewSyncLockMap[string, *networkpolicy.NetworkPolicy]()
+	ErrURLDenied  = errorutil.NewWithFmt("headless: url %v dropped by rule: %v")
+	ErrHostDenied = errorutil.NewWithFmt("host %v dropped by network policy")
+
 	allowLocalFileAccess bool
 )
 
@@ -29,16 +29,16 @@ func GetNetworkPolicy(ctx context.Context) *networkpolicy.NetworkPolicy {
 	if execCtx == nil {
 		return nil
 	}
-	np, ok := networkPolicies.Get(execCtx.ExecutionID)
-	if !ok || np == nil {
+	dialers, ok := dialers.Get(execCtx.ExecutionID)
+	if !ok || dialers == nil {
 		return nil
 	}
-	return np
+	return dialers.NetworkPolicy
 }
 
 // ValidateNFailRequest validates and fails request
 // if the request does not respect the rules, it will be canceled with reason
-func ValidateNFailRequest(ctx context.Context, page *rod.Page, e *proto.FetchRequestPaused) error {
+func ValidateNFailRequest(options *types.Options, page *rod.Page, e *proto.FetchRequestPaused) error {
 	reqURL := e.Request.URL
 	normalized := strings.ToLower(reqURL)      // normalize url to lowercase
 	normalized = strings.TrimSpace(normalized) // trim leading & trailing whitespaces
@@ -50,7 +50,7 @@ func ValidateNFailRequest(ctx context.Context, page *rod.Page, e *proto.FetchReq
 	if stringsutil.HasPrefixAnyI(normalized, "ftp:", "externalfile:", "chrome:", "chrome-extension:") {
 		return multierr.Combine(FailWithReason(page, e), ErrURLDenied.Msgf(reqURL, "protocol blocked by network policy"))
 	}
-	if !isValidHost(ctx, reqURL) {
+	if !isValidHost(options, reqURL) {
 		return multierr.Combine(FailWithReason(page, e), ErrURLDenied.Msgf(reqURL, "address blocked by network policy"))
 	}
 	return nil
@@ -66,28 +66,22 @@ func FailWithReason(page *rod.Page, e *proto.FetchRequestPaused) error {
 }
 
 // InitHeadless initializes headless protocol state
-func InitHeadless(ctx context.Context, localFileAccess bool, np *networkpolicy.NetworkPolicy) {
+func InitHeadless(localFileAccess bool) {
 	allowLocalFileAccess = localFileAccess
-	if np != nil {
-		execCtx := GetExecutionContext(ctx)
-		if execCtx != nil {
-			networkPolicies.Set(execCtx.ExecutionID, np)
-		}
-	}
 }
 
 // isValidHost checks if the host is valid (only limited to http/https protocols)
-func isValidHost(ctx context.Context, targetUrl string) bool {
+func isValidHost(options *types.Options, targetUrl string) bool {
 	if !stringsutil.HasPrefixAny(targetUrl, "http:", "https:") {
 		return true
 	}
 
-	execCtx := GetExecutionContext(ctx)
-	if execCtx == nil {
+	dialers, ok := dialers.Get(options.ExecutionId)
+	if !ok {
 		return true
 	}
 
-	np, ok := networkPolicies.Get(execCtx.ExecutionID)
+	np := dialers.NetworkPolicy
 	if !ok || np == nil {
 		return true
 	}
@@ -103,13 +97,13 @@ func isValidHost(ctx context.Context, targetUrl string) bool {
 }
 
 // IsHostAllowed checks if the host is allowed by network policy
-func IsHostAllowed(ctx context.Context, targetUrl string) bool {
-	execCtx := GetExecutionContext(ctx)
-	if execCtx == nil {
+func IsHostAllowed(executionId string, targetUrl string) bool {
+	dialers, ok := dialers.Get(executionId)
+	if !ok {
 		return true
 	}
 
-	np, ok := networkPolicies.Get(execCtx.ExecutionID)
+	np := dialers.NetworkPolicy
 	if !ok || np == nil {
 		return true
 	}

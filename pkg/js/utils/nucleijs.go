@@ -42,6 +42,10 @@ func (j *NucleiJS) runtime() *goja.Runtime {
 	return j.vm
 }
 
+func (j *NucleiJS) ExecutionId() string {
+	return j.runtime().Get("executionId").String()
+}
+
 // see: https://arc.net/l/quote/wpenftpc for throwing docs
 
 // ThrowError throws an error in goja runtime if is not nil

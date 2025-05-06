@@ -109,7 +109,8 @@ func NewKerberosClient(call goja.ConstructorCall, runtime *goja.Runtime) *goja.O
 
 	if controller != "" {
 		// validate controller hostport
-		if !protocolstate.IsHostAllowed(controller) {
+		executionId := c.nj.ExecutionId()
+		if !protocolstate.IsHostAllowed(executionId, controller) {
 			c.nj.Throw("domain controller address blacklisted by network policy")
 		}
 
@@ -246,16 +247,18 @@ func (c *Client) GetServiceTicket(User, Pass, SPN string) (TGS, error) {
 	c.nj.Require(Pass != "", "Pass cannot be empty")
 	c.nj.Require(SPN != "", "SPN cannot be empty")
 
+	executionId := c.nj.ExecutionId()
+
 	if len(c.Krb5Config.Realms) > 0 {
 		// this means dc address was given
 		for _, r := range c.Krb5Config.Realms {
 			for _, kdc := range r.KDC {
-				if !protocolstate.IsHostAllowed(kdc) {
+				if !protocolstate.IsHostAllowed(executionId, kdc) {
 					c.nj.Throw("KDC address %v blacklisted by network policy", kdc)
 				}
 			}
 			for _, kpasswd := range r.KPasswdServer {
-				if !protocolstate.IsHostAllowed(kpasswd) {
+				if !protocolstate.IsHostAllowed(executionId, kpasswd) {
 					c.nj.Throw("Kpasswd address %v blacklisted by network policy", kpasswd)
 				}
 			}
@@ -265,7 +268,7 @@ func (c *Client) GetServiceTicket(User, Pass, SPN string) (TGS, error) {
 		// and check if they are allowed by network policy
 		_, kdcs, _ := c.Krb5Config.GetKDCs(c.Realm, true)
 		for _, v := range kdcs {
-			if !protocolstate.IsHostAllowed(v) {
+			if !protocolstate.IsHostAllowed(executionId, v) {
 				c.nj.Throw("KDC address %v blacklisted by network policy", v)
 			}
 		}
