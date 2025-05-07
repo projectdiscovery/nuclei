@@ -78,7 +78,9 @@ func connect(executionId string, host string, port int, username string, passwor
 	if err != nil {
 		return false, err
 	}
-	defer db.Close()
+	defer func() {
+		_ = db.Close()
+	}()
 
 	_, err = db.Exec("select 1")
 	if err != nil {
@@ -124,7 +126,9 @@ func isMssql(executionId string, host string, port int) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	defer conn.Close()
+	defer func() {
+		_ = conn.Close()
+	}()
 
 	data, check, err := mssql.DetectMSSQL(conn, 5*time.Second)
 	if check && err != nil {
@@ -177,7 +181,9 @@ func (c *MSSQLClient) ExecuteQuery(ctx context.Context, host string, port int, u
 	if err != nil {
 		return nil, err
 	}
-	defer db.Close()
+	defer func() {
+		_ = db.Close()
+	}()
 
 	db.SetMaxOpenConns(1)
 	db.SetMaxIdleConns(0)

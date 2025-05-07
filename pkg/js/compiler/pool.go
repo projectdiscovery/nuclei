@@ -89,7 +89,6 @@ func executeWithRuntime(runtime *goja.Runtime, p *goja.Program, args *ExecuteArg
 
 	// TODO(dwisiswant0): remove this once we get the RCA.
 	defer func() {
-		return
 		if ci.IsCI() {
 			return
 		}

@@ -82,13 +82,15 @@ func (h *clientCertificate) Execute(filePath string) error {
 			return
 		}
 
-		fmt.Fprintf(w, "Hello, %s!\n", r.TLS.PeerCertificates[0].Subject)
+		_, _ = fmt.Fprintf(w, "Hello, %s!\n", r.TLS.PeerCertificates[0].Subject)
 	})
 
 	_ = os.WriteFile("server.crt", []byte(serverCRT), permissionutil.ConfigFilePermission)
 	_ = os.WriteFile("server.key", []byte(serverKey), permissionutil.ConfigFilePermission)
-	defer os.Remove("server.crt")
-	defer os.Remove("server.key")
+	defer func() {
+		_ = os.Remove("server.crt")
+		_ = os.Remove("server.key")
+	}()
 
 	serverCert, _ := tls.LoadX509KeyPair("server.crt", "server.key")
 

@@ -108,6 +108,7 @@ func (request *Request) TmplClusterKey() uint64 {
 }
 
 func (request *Request) IsClusterable() bool {
+	// nolint
 	return !(len(request.CipherSuites) > 0 || request.MinVersion != "" || request.MaxVersion != "")
 }
 

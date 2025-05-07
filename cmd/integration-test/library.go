@@ -48,9 +48,9 @@ func (h *goIntegrationTest) Execute(templatePath string) error {
 	router := httprouter.New()
 
 	router.GET("/", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-		fmt.Fprintf(w, "This is test matcher text")
+		_, _ = fmt.Fprintf(w, "This is test matcher text")
 		if strings.EqualFold(r.Header.Get("test"), "nuclei") {
-			fmt.Fprintf(w, "This is test headers matcher text")
+			_, _ = fmt.Fprintf(w, "This is test headers matcher text")
 		}
 	})
 	ts := httptest.NewServer(router)

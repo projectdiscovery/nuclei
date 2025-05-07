@@ -229,7 +229,7 @@ type IssueTrackerMetadata struct {
 
 // NewStandardWriter creates a new output writer based on user configurations
 func NewStandardWriter(options *types.Options) (*StandardWriter, error) {
-	resumeBool := false
+	var resumeBool bool
 	if options.Resume != "" {
 		resumeBool = true
 	}
@@ -452,13 +452,13 @@ func (w *StandardWriter) Colorizer() aurora.Aurora {
 // Close closes the output writing interface
 func (w *StandardWriter) Close() {
 	if w.outputFile != nil {
-		w.outputFile.Close()
+		_ = w.outputFile.Close()
 	}
 	if w.traceFile != nil {
-		w.traceFile.Close()
+		_ = w.traceFile.Close()
 	}
 	if w.errorFile != nil {
-		w.errorFile.Close()
+		_ = w.errorFile.Close()
 	}
 }
 
@@ -563,8 +563,8 @@ func (w *StandardWriter) WriteStoreDebugData(host, templateID, eventType string,
 			fmt.Print(err)
 			return
 		}
-		_, _ = f.WriteString(fmt.Sprintln(data))
-		f.Close()
+		_, _ = fmt.Fprintln(f, data)
+		_ = f.Close()
 	}
 }
 

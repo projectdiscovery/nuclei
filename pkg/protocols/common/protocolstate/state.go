@@ -182,7 +182,7 @@ func initDialers(options *types.Options) error {
 		HTTPClientPool: mapsutil.NewSyncLockMap[string, *retryablehttp.Client](),
 	}
 
-	dialers.Set(options.ExecutionId, dialersInstance)
+	_ = dialers.Set(options.ExecutionId, dialersInstance)
 
 	// Set a custom dialer for the "nucleitcp" protocol.  This is just plain TCP, but it's registered
 	// with a different name so that we do not clobber the "tcp" dialer in the event that nuclei is

@@ -363,5 +363,5 @@ func (c *Client) GetVersion() []string {
 // client.Close();
 // ```
 func (c *Client) Close() {
-	c.conn.Close()
+	_ = c.conn.Close()
 }

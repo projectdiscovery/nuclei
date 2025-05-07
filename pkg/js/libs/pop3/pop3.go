@@ -49,7 +49,9 @@ func isPoP3(executionId string, host string, port int) (IsPOP3Response, error) {
 	if err != nil {
 		return resp, err
 	}
-	defer conn.Close()
+	defer func() {
+		_ = conn.Close()
+	}()
 
 	pop3Plugin := pop3.POP3Plugin{}
 	service, err := pop3Plugin.Run(conn, timeout, plugins.Target{Host: host})

@@ -51,7 +51,9 @@ func isRDP(executionId string, host string, port int) (IsRDPResponse, error) {
 	if err != nil {
 		return resp, err
 	}
-	defer conn.Close()
+	defer func() {
+		_ = conn.Close()
+	}()
 
 	server, isRDP, err := rdp.DetectRDP(conn, timeout)
 	if err != nil {
@@ -105,7 +107,9 @@ func checkRDPAuth(executionId string, host string, port int) (CheckRDPAuthRespon
 	if err != nil {
 		return resp, err
 	}
-	defer conn.Close()
+	defer func() {
+		_ = conn.Close()
+	}()
 
 	pluginInfo, auth, err := rdp.DetectRDPAuth(conn, timeout)
 	if err != nil {

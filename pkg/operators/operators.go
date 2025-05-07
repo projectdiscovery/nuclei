@@ -243,7 +243,7 @@ func (operators *Operators) Execute(data map[string]interface{}, match MatchFunc
 	}
 
 	// state variable to check if all extractors are internal
-	var allInternalExtractors bool = true
+	allInternalExtractors := true
 
 	// Start with the extractors first and evaluate them.
 	for _, extractor := range operators.Extractors {

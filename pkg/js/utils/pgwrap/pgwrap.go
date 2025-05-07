@@ -14,20 +14,24 @@ const (
 	PGWrapDriver = "pgwrap"
 )
 
+// nolint
 type pgDial struct {
 	fd *fastdialer.Dialer
 }
 
+// nolint
 func (p *pgDial) Dial(network, address string) (net.Conn, error) {
 	return p.fd.Dial(context.TODO(), network, address)
 }
 
+// nolint
 func (p *pgDial) DialTimeout(network, address string, timeout time.Duration) (net.Conn, error) {
 	ctx, cancel := context.WithTimeoutCause(context.Background(), timeout, fastdialer.ErrDialTimeout)
 	defer cancel()
 	return p.fd.Dial(ctx, network, address)
 }
 
+// nolint
 func (p *pgDial) DialContext(ctx context.Context, network, address string) (net.Conn, error) {
 	return p.fd.Dial(ctx, network, address)
 }
@@ -44,6 +48,7 @@ type PgDriver struct{}
 // library.
 func (d PgDriver) Open(name string) (driver.Conn, error) {
 	panic("todo")
+	// nolint
 	return nil, nil
 	//return pq.DialOpen(&pgDial{fd: dialer.Fastdialer}, name)
 }

@@ -26,6 +26,7 @@ func (f *FuncOpts) valid() bool {
 }
 
 // wrapWithContext wraps a Go function with context injection
+// nolint
 func wrapWithContext(runtime *goja.Runtime, fn interface{}) interface{} {
 	fnType := reflect.TypeOf(fn)
 	if fnType.Kind() != reflect.Func {

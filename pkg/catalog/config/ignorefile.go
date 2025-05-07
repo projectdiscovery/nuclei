@@ -20,7 +20,9 @@ func ReadIgnoreFile() IgnoreFile {
 		gologger.Error().Msgf("Could not read nuclei-ignore file: %s\n", err)
 		return IgnoreFile{}
 	}
-	defer file.Close()
+	defer func() {
+		_ = file.Close()
+	}()
 
 	ignore := IgnoreFile{}
 	if err := yaml.NewDecoder(file).Decode(&ignore); err != nil {

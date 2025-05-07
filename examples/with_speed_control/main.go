@@ -34,6 +34,7 @@ func main() {
 }
 
 func initializeNucleiEngine() (*nuclei.NucleiEngine, error) {
+	//nolint
 	return nuclei.NewNucleiEngine(
 		nuclei.WithTemplateFilters(nuclei.TemplateFilters{Tags: []string{"oast"}}),
 		nuclei.EnableStatsWithOpts(nuclei.StatsOptions{MetricServerPort: 6064}),

@@ -54,7 +54,6 @@ func (p *Page) ExecuteActions(input *contextargs.Context, actions []*Action) (ou
 	// avoid any future panics caused due to go-rod library
 	// TODO(dwisiswant0): remove this once we get the RCA.
 	defer func() {
-		return
 		if ci.IsCI() {
 			return
 		}
@@ -673,7 +672,7 @@ func (p *Page) WaitPageLifecycleEvent(act *Action, out ActionData, event proto.P
 
 // WaitStable waits until the page is stable
 func (p *Page) WaitStable(act *Action, out ActionData) error {
-	var dur time.Duration = time.Second // default stable page duration: 1s
+	dur := time.Second // default stable page duration: 1s
 
 	timeout, err := getTimeout(p, act)
 	if err != nil {

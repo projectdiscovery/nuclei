@@ -62,7 +62,9 @@ func connectSMBInfoMode(executionId string, host string, port int) (*smb.SMBLog,
 	if err != nil {
 		return nil, err
 	}
-	defer conn.Close()
+	defer func() {
+		_ = conn.Close()
+	}()
 	result, err = getSMBInfo(conn, true, true)
 	if err != nil {
 		return result, nil
@@ -121,7 +123,9 @@ func listShares(executionId string, host string, port int, user string, password
 	if err != nil {
 		return nil, err
 	}
-	defer conn.Close()
+	defer func() {
+		_ = conn.Close()
+	}()
 
 	d := &smb2.Dialer{
 		Initiator: &smb2.NTLMInitiator{

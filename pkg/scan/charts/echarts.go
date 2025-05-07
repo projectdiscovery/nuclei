@@ -30,7 +30,9 @@ func (s *ScanEventsCharts) GenerateHTML(filePath string) error {
 	if err != nil {
 		return err
 	}
-	defer output.Close()
+	defer func() {
+		_ = output.Close()
+	}()
 	return page.Render(output)
 }
 
@@ -69,7 +71,7 @@ func (s *ScanEventsCharts) totalRequestsOverTime(c echo.Context) *charts.Line {
 		}),
 	)
 
-	var startTime time.Time = time.Now()
+	startTime := time.Now()
 	var endTime time.Time
 
 	for _, event := range s.data {
@@ -135,7 +137,7 @@ func (s *ScanEventsCharts) topSlowTemplates(c echo.Context) *charts.Kline {
 		}),
 	)
 	ids := map[string][]int64{}
-	var startTime time.Time = time.Now()
+	startTime := time.Now()
 	for _, event := range s.data {
 		if event.Time.Before(startTime) {
 			startTime = event.Time

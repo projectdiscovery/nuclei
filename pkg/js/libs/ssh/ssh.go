@@ -135,7 +135,9 @@ func (c *SSHClient) Run(cmd string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	defer session.Close()
+	defer func() {
+		_ = session.Close()
+	}()
 
 	data, err := session.Output(cmd)
 	if err != nil {
@@ -211,7 +213,9 @@ func connectSSHInfoMode(opts *connectOptions) (*ssh.HandshakeLog, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer client.Close()
+	defer func() {
+		_ = client.Close()
+	}()
 
 	return data, nil
 }

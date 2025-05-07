@@ -75,7 +75,9 @@ func Parse(filePath string, preprocessor Preprocessor, options protocols.Executo
 		}
 	}
 
-	defer reader.Close()
+	defer func() {
+		_ = reader.Close()
+	}()
 
 	options.TemplatePath = filePath
 	template, err := ParseTemplateFromReader(reader, preprocessor, options.Copy())
@@ -460,6 +462,7 @@ func parseTemplate(data []byte, options protocols.ExecutorOptions) (*Template, e
 		}
 	}
 	options.TemplateVerifier = template.TemplateVerifier
+	//nolint
 	if !(template.Verified && verifier.Identifier() == "projectdiscovery/nuclei-templates") {
 		template.Options.RawTemplate = data
 	}

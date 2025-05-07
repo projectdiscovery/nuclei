@@ -50,6 +50,7 @@ func (p *GojaModule) Name() string {
 }
 
 // wrapModuleFunc wraps a Go function with context injection for modules
+// nolint
 func wrapModuleFunc(runtime *goja.Runtime, fn interface{}) interface{} {
 	fnType := reflect.TypeOf(fn)
 	if fnType.Kind() != reflect.Func {
@@ -87,6 +88,7 @@ func wrapModuleFunc(runtime *goja.Runtime, fn interface{}) interface{} {
 
 		// Add execution ID to context if available
 		if execID := runtime.Get("executionId"); execID != nil {
+			//nolint
 			ctx = context.WithValue(ctx, "executionId", execID.String())
 		}
 

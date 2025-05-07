@@ -76,11 +76,8 @@ func FindExpressions(data, OpenMarker, CloseMarker string, base map[string]inter
 		iterations int
 		exps       []string
 	)
-	for {
-		// check if we reached the maximum number of iterations
-		if iterations > maxIterations {
-			break
-		}
+	for iterations < maxIterations {
+		// attempt to find open markers
 		iterations++
 		// attempt to find open markers
 		indexOpenMarker := strings.Index(data, OpenMarker)

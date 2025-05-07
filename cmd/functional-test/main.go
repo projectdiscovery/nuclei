@@ -41,7 +41,9 @@ func runFunctionalTests(debug bool) (error, bool) {
 	if err != nil {
 		return errors.Wrap(err, "could not open test cases"), true
 	}
-	defer file.Close()
+	defer func() {
+		_ = file.Close()
+	}()
 
 	errored, failedTestCases := runTestCases(file, debug)
 

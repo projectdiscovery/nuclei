@@ -299,7 +299,9 @@ func (request *Request) executeRequestWithPayloads(variables map[string]interfac
 		request.options.Progress.IncrementFailedRequestsBy(1)
 		return errors.Wrap(err, "could not connect to server")
 	}
-	defer conn.Close()
+	defer func() {
+		_ = conn.Close()
+	}()
 	_ = conn.SetDeadline(time.Now().Add(time.Duration(request.options.Options.Timeout) * time.Second))
 
 	var interactshURLs []string
@@ -505,10 +507,11 @@ func getAddress(toTest string) (string, error) {
 }
 
 func ConnReadNWithTimeout(conn net.Conn, n int64, timeout time.Duration) ([]byte, error) {
-	if n == -1 {
+	switch n {
+	case -1:
 		// if n is -1 then read all available data from connection
 		return reader.ConnReadNWithTimeout(conn, -1, timeout)
-	} else if n == 0 {
+	case 0:
 		n = 4096 // default buffer size
 	}
 	b := make([]byte, n)

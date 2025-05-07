@@ -49,7 +49,9 @@ func isVNC(executionId string, host string, port int) (IsVNCResponse, error) {
 	if err != nil {
 		return resp, err
 	}
-	defer conn.Close()
+	defer func() {
+		_ = conn.Close()
+	}()
 
 	vncPlugin := vnc.VNCPlugin{}
 	service, err := vncPlugin.Run(conn, timeout, plugins.Target{Host: host})

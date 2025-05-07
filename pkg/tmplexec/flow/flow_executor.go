@@ -208,7 +208,6 @@ func (f *FlowExecutor) ExecuteWithResults(ctx *scan.ScanContext) error {
 
 	// TODO(dwisiswant0): remove this once we get the RCA.
 	defer func() {
-		return
 		if ci.IsCI() {
 			return
 		}
@@ -292,7 +291,9 @@ func (f *FlowExecutor) ReadDataFromFile(payload string) ([]string, error) {
 	if err != nil {
 		return values, err
 	}
-	defer reader.Close()
+	defer func() {
+		_ = reader.Close()
+	}()
 	bin, err := io.ReadAll(reader)
 	if err != nil {
 		return values, err

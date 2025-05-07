@@ -126,7 +126,6 @@ func (c *Compiler) ExecuteWithOptions(program *goja.Program, args *ExecuteArgs, 
 	results, err := contextutil.ExecFuncWithTwoReturns(ctx, func() (val goja.Value, err error) {
 		// TODO(dwisiswant0): remove this once we get the RCA.
 		defer func() {
-			return
 			if ci.IsCI() {
 				return
 			}

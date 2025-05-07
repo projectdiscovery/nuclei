@@ -92,7 +92,7 @@ func (m *MultiPartForm) Encode(data KV) (string, error) {
 		return "", Itererr
 	}
 
-	w.Close()
+	_ = w.Close()
 	return b.String(), nil
 }
 
@@ -142,7 +142,9 @@ func (m *MultiPartForm) Decode(data string) (KV, error) {
 			if err != nil {
 				return KV{}, err
 			}
-			defer file.Close()
+			defer func() {
+				_ = file.Close()
+			}()
 
 			buffer := new(bytes.Buffer)
 			if _, err := buffer.ReadFrom(file); err != nil {
