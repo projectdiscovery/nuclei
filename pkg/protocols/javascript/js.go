@@ -9,9 +9,9 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/Mzack9999/goja"
 	"github.com/alecthomas/chroma/quick"
 	"github.com/ditashi/jsbeautifier-go/jsbeautifier"
-	"github.com/dop251/goja"
 	"github.com/pkg/errors"
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/js/compiler"
@@ -151,6 +151,7 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 		}
 
 		opts := &compiler.ExecuteOptions{
+			ExecutionId:     request.options.Options.ExecutionId,
 			TimeoutVariants: request.options.Options.GetTimeouts(),
 			Source:          &request.Init,
 			Context:         context.Background(),
@@ -357,6 +358,7 @@ func (request *Request) ExecuteWithResults(target *contextargs.Context, dynamicV
 
 		result, err := request.options.JsCompiler.ExecuteWithOptions(request.preConditionCompiled, argsCopy,
 			&compiler.ExecuteOptions{
+				ExecutionId:     requestOptions.Options.ExecutionId,
 				TimeoutVariants: requestOptions.Options.GetTimeouts(),
 				Source:          &request.PreCondition, Context: target.Context(),
 			})
@@ -530,6 +532,7 @@ func (request *Request) executeRequestWithPayloads(hostPort string, input *conte
 
 	results, err := request.options.JsCompiler.ExecuteWithOptions(request.scriptCompiled, argsCopy,
 		&compiler.ExecuteOptions{
+			ExecutionId:     requestOptions.Options.ExecutionId,
 			TimeoutVariants: requestOptions.Options.GetTimeouts(),
 			Source:          &request.Code,
 			Context:         input.Context(),

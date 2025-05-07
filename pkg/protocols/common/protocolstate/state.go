@@ -15,13 +15,17 @@ import (
 	"github.com/projectdiscovery/networkpolicy"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	"github.com/projectdiscovery/nuclei/v3/pkg/utils/expand"
+	"github.com/projectdiscovery/retryablehttp-go"
 	mapsutil "github.com/projectdiscovery/utils/maps"
 )
 
-// Dialer is a shared fastdialer instance for host DNS resolution
 var (
 	dialers *mapsutil.SyncLockMap[string, *Dialers]
 )
+
+func init() {
+	dialers = mapsutil.NewSyncLockMap[string, *Dialers]()
+}
 
 func GetDialers(ctx context.Context) *Dialers {
 	executionContext := GetExecutionContext(ctx)
@@ -43,7 +47,7 @@ func GetDialersWithId(id string) *Dialers {
 func ShouldInit(id string) bool {
 	dialer, ok := dialers.Get(id)
 	if !ok {
-		return false
+		return true
 	}
 	return dialer == nil
 }
@@ -54,6 +58,11 @@ func Init(options *types.Options) error {
 		return nil
 	}
 
+	return initDialers(options)
+}
+
+// initDialers is the internal implementation of Init
+func initDialers(options *types.Options) error {
 	lfaAllowed = options.AllowLocalFileAccess
 	opts := fastdialer.DefaultOptions
 	opts.DialerTimeout = options.GetTimeouts().DialTimeout
@@ -168,8 +177,9 @@ func Init(options *types.Options) error {
 	networkPolicy, _ := networkpolicy.New(*npOptions)
 
 	dialersInstance := &Dialers{
-		Fastdialer:    dialer,
-		NetworkPolicy: networkPolicy,
+		Fastdialer:     dialer,
+		NetworkPolicy:  networkPolicy,
+		HTTPClientPool: mapsutil.NewSyncLockMap[string, *retryablehttp.Client](),
 	}
 
 	dialers.Set(options.ExecutionId, dialersInstance)
@@ -184,8 +194,9 @@ func Init(options *types.Options) error {
 			addr += ":3306"
 		}
 
-		// TODO: find a way to get dialer from context
-		return Dialer.Dial(ctx, "tcp", addr)
+		executionId := ctx.Value("executionId").(string)
+		dialer := GetDialersWithId(executionId)
+		return dialer.Fastdialer.Dial(ctx, "tcp", addr)
 	})
 
 	StartActiveMemGuardian(context.Background())

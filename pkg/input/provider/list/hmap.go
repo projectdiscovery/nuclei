@@ -170,6 +170,7 @@ func (i *ListInputProvider) Set(executionId string, value string) {
 	if i.ipOptions.ScanAllIPs {
 		// scan all ips
 		dialers := protocolstate.GetDialersWithId(executionId)
+
 		dnsData, err := dialers.Fastdialer.GetDNSData(urlx.Hostname())
 		if err == nil {
 			if (len(dnsData.A) + len(dnsData.AAAA)) > 0 {

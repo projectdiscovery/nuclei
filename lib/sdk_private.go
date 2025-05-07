@@ -37,8 +37,6 @@ import (
 	"github.com/projectdiscovery/ratelimit"
 )
 
-var sharedInit *sync.Once
-
 // applyRequiredDefaults to options
 func (e *NucleiEngine) applyRequiredDefaults(ctx context.Context) {
 	mockoutput := testutils.NewMockOutputWriter(e.opts.OmitTemplate)
@@ -112,13 +110,9 @@ func (e *NucleiEngine) init(ctx context.Context) error {
 
 	e.parser = templates.NewParser()
 
-	if sharedInit == nil || protocolstate.ShouldInit(e.opts.ExecutionId) {
-		sharedInit = &sync.Once{}
-	}
-
-	sharedInit.Do(func() {
+	if protocolstate.ShouldInit(e.opts.ExecutionId) {
 		_ = protocolinit.Init(e.opts)
-	})
+	}
 
 	if e.opts.ProxyInternal && e.opts.AliveHttpProxy != "" || e.opts.AliveSocksProxy != "" {
 		httpclient, err := httpclientpool.Get(e.opts, &httpclientpool.Configuration{})

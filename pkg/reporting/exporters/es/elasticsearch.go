@@ -37,7 +37,8 @@ type Options struct {
 	// IndexName is the name of the elasticsearch index
 	IndexName string `yaml:"index-name"  validate:"required"`
 
-	HttpClient *retryablehttp.Client `yaml:"-"`
+	HttpClient  *retryablehttp.Client `yaml:"-"`
+	ExecutionId string                `yaml:"-"`
 }
 
 type data struct {
@@ -56,6 +57,8 @@ type Exporter struct {
 func New(option *Options) (*Exporter, error) {
 	var ei *Exporter
 
+	dialer := protocolstate.GetDialersWithId(option.ExecutionId)
+
 	var client *http.Client
 	if option.HttpClient != nil {
 		client = option.HttpClient.HTTPClient
@@ -65,8 +68,8 @@ func New(option *Options) (*Exporter, error) {
 			Transport: &http.Transport{
 				MaxIdleConns:        10,
 				MaxIdleConnsPerHost: 10,
-				DialContext:         protocolstate.Dialer.Dial,
-				DialTLSContext:      protocolstate.Dialer.DialTLS,
+				DialContext:         dialer.Fastdialer.Dial,
+				DialTLSContext:      dialer.Fastdialer.DialTLS,
 				TLSClientConfig:     &tls.Config{InsecureSkipVerify: option.SSLVerification},
 			},
 		}

@@ -33,16 +33,18 @@ type (
 // const isRsync = rsync.IsRsync('acme.com', 873);
 // log(toJSON(isRsync));
 // ```
-func IsRsync(host string, port int) (IsRsyncResponse, error) {
-	return memoizedisRsync(host, port)
+func IsRsync(ctx context.Context, host string, port int) (IsRsyncResponse, error) {
+	executionId := ctx.Value("executionId").(string)
+	return memoizedisRsync(executionId, host, port)
 }
 
 // @memo
-func isRsync(host string, port int) (IsRsyncResponse, error) {
+func isRsync(executionId string, host string, port int) (IsRsyncResponse, error) {
 	resp := IsRsyncResponse{}
 
 	timeout := 5 * time.Second
-	conn, err := protocolstate.Dialer.Dial(context.TODO(), "tcp", net.JoinHostPort(host, strconv.Itoa(port)))
+	dialer := protocolstate.GetDialersWithId(executionId)
+	conn, err := dialer.Fastdialer.Dial(context.TODO(), "tcp", net.JoinHostPort(host, strconv.Itoa(port)))
 	if err != nil {
 		return resp, err
 	}

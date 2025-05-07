@@ -34,17 +34,19 @@ type (
 // const info = client.ConnectSMBInfoMode('acme.com', 445);
 // log(to_json(info));
 // ```
-func (c *SMBClient) ConnectSMBInfoMode(host string, port int) (*smb.SMBLog, error) {
-	return memoizedconnectSMBInfoMode(host, port)
+func (c *SMBClient) ConnectSMBInfoMode(ctx context.Context, host string, port int) (*smb.SMBLog, error) {
+	executionId := ctx.Value("executionId").(string)
+	return memoizedconnectSMBInfoMode(executionId, host, port)
 }
 
 // @memo
-func connectSMBInfoMode(host string, port int) (*smb.SMBLog, error) {
-	if !protocolstate.IsHostAllowed(host) {
+func connectSMBInfoMode(executionId string, host string, port int) (*smb.SMBLog, error) {
+	if !protocolstate.IsHostAllowed(executionId, host) {
 		// host is not valid according to network policy
 		return nil, protocolstate.ErrHostDenied.Msgf(host)
 	}
-	conn, err := protocolstate.Dialer.Dial(context.TODO(), "tcp", fmt.Sprintf("%s:%d", host, port))
+	dialer := protocolstate.GetDialersWithId(executionId)
+	conn, err := dialer.Fastdialer.Dial(context.TODO(), "tcp", fmt.Sprintf("%s:%d", host, port))
 	if err != nil {
 		return nil, err
 	}
@@ -56,7 +58,7 @@ func connectSMBInfoMode(host string, port int) (*smb.SMBLog, error) {
 	}
 
 	// try to negotiate SMBv1
-	conn, err = protocolstate.Dialer.Dial(context.TODO(), "tcp", fmt.Sprintf("%s:%d", host, port))
+	conn, err = dialer.Fastdialer.Dial(context.TODO(), "tcp", fmt.Sprintf("%s:%d", host, port))
 	if err != nil {
 		return nil, err
 	}
@@ -79,12 +81,13 @@ func connectSMBInfoMode(host string, port int) (*smb.SMBLog, error) {
 // const metadata = client.ListSMBv2Metadata('acme.com', 445);
 // log(to_json(metadata));
 // ```
-func (c *SMBClient) ListSMBv2Metadata(host string, port int) (*plugins.ServiceSMB, error) {
-	if !protocolstate.IsHostAllowed(host) {
+func (c *SMBClient) ListSMBv2Metadata(ctx context.Context, host string, port int) (*plugins.ServiceSMB, error) {
+	executionId := ctx.Value("executionId").(string)
+	if !protocolstate.IsHostAllowed(executionId, host) {
 		// host is not valid according to network policy
 		return nil, protocolstate.ErrHostDenied.Msgf(host)
 	}
-	return memoizedcollectSMBv2Metadata(host, port, 5*time.Second)
+	return memoizedcollectSMBv2Metadata(executionId, host, port, 5*time.Second)
 }
 
 // ListShares tries to connect to provided host and port
@@ -102,17 +105,19 @@ func (c *SMBClient) ListSMBv2Metadata(host string, port int) (*plugins.ServiceSM
 //	}
 //
 // ```
-func (c *SMBClient) ListShares(host string, port int, user, password string) ([]string, error) {
-	return memoizedlistShares(host, port, user, password)
+func (c *SMBClient) ListShares(ctx context.Context, host string, port int, user, password string) ([]string, error) {
+	executionId := ctx.Value("executionId").(string)
+	return memoizedlistShares(executionId, host, port, user, password)
 }
 
 // @memo
-func listShares(host string, port int, user string, password string) ([]string, error) {
-	if !protocolstate.IsHostAllowed(host) {
+func listShares(executionId string, host string, port int, user string, password string) ([]string, error) {
+	if !protocolstate.IsHostAllowed(executionId, host) {
 		// host is not valid according to network policy
 		return nil, protocolstate.ErrHostDenied.Msgf(host)
 	}
-	conn, err := protocolstate.Dialer.Dial(context.TODO(), "tcp", fmt.Sprintf("%s:%d", host, port))
+	dialer := protocolstate.GetDialersWithId(executionId)
+	conn, err := dialer.Fastdialer.Dial(context.TODO(), "tcp", fmt.Sprintf("%s:%d", host, port))
 	if err != nil {
 		return nil, err
 	}

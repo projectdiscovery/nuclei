@@ -188,7 +188,7 @@ func (s *Service) executeAutomaticScanOnTarget(input *contextargs.MetaInput) {
 	execOptions.Progress = &testutils.MockProgressClient{} // stats are not supported yet due to centralized logic and cannot be reinitialized
 	eng.SetExecuterOptions(execOptions)
 
-	tmp := eng.ExecuteScanWithOpts(context.Background(), finalTemplates, provider.NewSimpleInputProviderWithUrls(input.Input), true)
+	tmp := eng.ExecuteScanWithOpts(context.Background(), finalTemplates, provider.NewSimpleInputProviderWithUrls(s.opts.Options.ExecutionId, input.Input), true)
 	s.hasResults.Store(tmp.Load())
 }
 

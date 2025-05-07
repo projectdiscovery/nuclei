@@ -8,9 +8,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/Mzack9999/goja"
 	"github.com/alecthomas/chroma/quick"
 	"github.com/ditashi/jsbeautifier-go/jsbeautifier"
-	"github.com/dop251/goja"
 	"github.com/pkg/errors"
 
 	"github.com/projectdiscovery/gologger"

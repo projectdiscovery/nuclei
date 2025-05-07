@@ -54,6 +54,7 @@ func (p *Page) ExecuteActions(input *contextargs.Context, actions []*Action) (ou
 	// avoid any future panics caused due to go-rod library
 	// TODO(dwisiswant0): remove this once we get the RCA.
 	defer func() {
+		return
 		if ci.IsCI() {
 			return
 		}

@@ -14,6 +14,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	"github.com/projectdiscovery/ratelimit"
 	errorutil "github.com/projectdiscovery/utils/errors"
+	"github.com/rs/xid"
 )
 
 // unsafeOptions are those nuclei objects/instances/types
@@ -88,9 +89,11 @@ type ThreadSafeNucleiEngine struct {
 // whose methods are thread-safe and can be used concurrently
 // Note: Non-thread-safe methods start with Global prefix
 func NewThreadSafeNucleiEngineCtx(ctx context.Context, opts ...NucleiSDKOptions) (*ThreadSafeNucleiEngine, error) {
+	defaultOptions := types.DefaultOptions()
+	defaultOptions.ExecutionId = xid.New().String()
 	// default options
 	e := &NucleiEngine{
-		opts: types.DefaultOptions(),
+		opts: defaultOptions,
 		mode: threadSafe,
 	}
 	for _, option := range opts {

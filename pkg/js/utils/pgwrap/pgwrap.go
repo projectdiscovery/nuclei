@@ -7,9 +7,7 @@ import (
 	"net"
 	"time"
 
-	"github.com/lib/pq"
 	"github.com/projectdiscovery/fastdialer/fastdialer"
-	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
 )
 
 const (
@@ -45,7 +43,9 @@ type PgDriver struct{}
 // Most users should only use it through database/sql package from the standard
 // library.
 func (d PgDriver) Open(name string) (driver.Conn, error) {
-	return pq.DialOpen(&pgDial{fd: protocolstate.Dialer}, name)
+	panic("todo")
+	return nil, nil
+	//return pq.DialOpen(&pgDial{fd: dialer.Fastdialer}, name)
 }
 
 func init() {

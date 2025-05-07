@@ -5,7 +5,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/dop251/goja"
+	"github.com/Mzack9999/goja"
 	"github.com/kitabisa/go-ci"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/generators"
@@ -126,6 +126,7 @@ func (c *Compiler) ExecuteWithOptions(program *goja.Program, args *ExecuteArgs, 
 	results, err := contextutil.ExecFuncWithTwoReturns(ctx, func() (val goja.Value, err error) {
 		// TODO(dwisiswant0): remove this once we get the RCA.
 		defer func() {
+			return
 			if ci.IsCI() {
 				return
 			}

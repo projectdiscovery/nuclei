@@ -6,7 +6,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/dop251/goja"
+	"github.com/Mzack9999/goja"
 )
 
 // temporary on demand runtime to throw errors when vm is not available
@@ -43,7 +43,11 @@ func (j *NucleiJS) runtime() *goja.Runtime {
 }
 
 func (j *NucleiJS) ExecutionId() string {
-	return j.runtime().Get("executionId").String()
+	executionId, ok := j.vm.GetContextValue("executionId")
+	if !ok {
+		return ""
+	}
+	return executionId.(string)
 }
 
 // see: https://arc.net/l/quote/wpenftpc for throwing docs

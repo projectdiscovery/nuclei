@@ -31,7 +31,6 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/utils/yaml"
 	fileutil "github.com/projectdiscovery/utils/file"
 	"github.com/projectdiscovery/utils/generic"
-	logutil "github.com/projectdiscovery/utils/log"
 	stringsutil "github.com/projectdiscovery/utils/strings"
 )
 
@@ -342,6 +341,7 @@ func createReportingOptions(options *types.Options) (*reporting.Options, error) 
 	}
 
 	reportingOptions.OmitRaw = options.OmitRawRequests
+	reportingOptions.ExecutionId = options.ExecutionId
 	return reportingOptions, nil
 }
 
@@ -367,7 +367,7 @@ func configureOutput(options *types.Options) {
 	}
 
 	// disable standard logger (ref: https://github.com/golang/go/issues/19895)
-	logutil.DisableDefaultLogger()
+	// logutil.DisableDefaultLogger()
 }
 
 // loadResolvers loads resolvers from both user-provided flags and file

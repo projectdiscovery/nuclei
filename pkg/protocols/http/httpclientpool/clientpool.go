@@ -166,6 +166,7 @@ func Get(options *types.Options, configuration *Configuration) (*retryablehttp.C
 		dialers := protocolstate.GetDialersWithId(options.ExecutionId)
 		return dialers.DefaultHTTPClient, nil
 	}
+
 	return wrappedGet(options, configuration)
 }
 

@@ -4,7 +4,7 @@ import (
 	"context"
 	"reflect"
 
-	"github.com/dop251/goja"
+	"github.com/Mzack9999/goja"
 	errorutil "github.com/projectdiscovery/utils/errors"
 )
 
@@ -86,6 +86,6 @@ func RegisterFuncWithSignature(runtime *goja.Runtime, opts FuncOpts) error {
 	}
 
 	// Wrap the function with context injection
-	wrappedFn := wrapWithContext(runtime, opts.FuncDecl)
-	return runtime.Set(opts.Name, wrappedFn)
+	// wrappedFn := wrapWithContext(runtime, opts.FuncDecl)
+	return runtime.Set(opts.Name, opts.FuncDecl /* wrappedFn */)
 }

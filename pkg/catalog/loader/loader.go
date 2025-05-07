@@ -18,6 +18,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/keys"
 	"github.com/projectdiscovery/nuclei/v3/pkg/model/types/severity"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
 	"github.com/projectdiscovery/nuclei/v3/pkg/templates"
 	templateTypes "github.com/projectdiscovery/nuclei/v3/pkg/templates/types"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
@@ -28,6 +29,7 @@ import (
 	sliceutil "github.com/projectdiscovery/utils/slice"
 	stringsutil "github.com/projectdiscovery/utils/strings"
 	urlutil "github.com/projectdiscovery/utils/url"
+	"github.com/rs/xid"
 )
 
 const (
@@ -501,6 +503,15 @@ func (store *Store) LoadTemplatesWithTags(templatesList, tags []string) []*templ
 	}
 
 	var wgLoadTemplates sync.WaitGroup
+
+	if store.config.ExecutorOptions.Options.ExecutionId == "" {
+		store.config.ExecutorOptions.Options.ExecutionId = xid.New().String()
+	}
+
+	dialers := protocolstate.GetDialersWithId(store.config.ExecutorOptions.Options.ExecutionId)
+	if dialers == nil {
+		panic("dealers with executionId " + store.config.ExecutorOptions.Options.ExecutionId + " not found")
+	}
 
 	for templatePath := range templatePathMap {
 		wgLoadTemplates.Add(1)

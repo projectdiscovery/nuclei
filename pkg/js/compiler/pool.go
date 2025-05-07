@@ -7,9 +7,9 @@ import (
 	"reflect"
 	"sync"
 
-	"github.com/dop251/goja"
-	"github.com/dop251/goja_nodejs/console"
-	"github.com/dop251/goja_nodejs/require"
+	"github.com/Mzack9999/goja"
+	"github.com/Mzack9999/goja_nodejs/console"
+	"github.com/Mzack9999/goja_nodejs/require"
 	"github.com/kitabisa/go-ci"
 	"github.com/projectdiscovery/gologger"
 	_ "github.com/projectdiscovery/nuclei/v3/pkg/js/generated/go/libbytes"
@@ -84,12 +84,12 @@ func executeWithRuntime(runtime *goja.Runtime, p *goja.Program, args *ExecuteArg
 		if opts != nil && opts.Cleanup != nil {
 			opts.Cleanup(runtime)
 		}
-		_ = runtime.GlobalObject().Delete("executionId")
-		_ = runtime.GlobalObject().Delete("context")
+		runtime.RemoveContextValue("executionId")
 	}()
 
 	// TODO(dwisiswant0): remove this once we get the RCA.
 	defer func() {
+		return
 		if ci.IsCI() {
 			return
 		}
@@ -113,10 +113,7 @@ func executeWithRuntime(runtime *goja.Runtime, p *goja.Program, args *ExecuteArg
 	}
 
 	// inject execution id and context
-	_ = runtime.Set("executionId", opts.ExecutionId)
-	if opts.Context != nil {
-		_ = runtime.Set("context", opts.Context)
-	}
+	runtime.SetContextValue("executionId", opts.ExecutionId)
 
 	// execute the script
 	return runtime.RunProgram(p)

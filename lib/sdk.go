@@ -27,6 +27,7 @@ import (
 	"github.com/projectdiscovery/ratelimit"
 	"github.com/projectdiscovery/retryablehttp-go"
 	errorutil "github.com/projectdiscovery/utils/errors"
+	"github.com/rs/xid"
 )
 
 // NucleiSDKOptions contains options for nuclei SDK
@@ -287,8 +288,10 @@ func (e *NucleiEngine) Store() *loader.Store {
 // NewNucleiEngineCtx creates a new nuclei engine instance with given context
 func NewNucleiEngineCtx(ctx context.Context, options ...NucleiSDKOptions) (*NucleiEngine, error) {
 	// default options
+	defaultOptions := types.DefaultOptions()
+	defaultOptions.ExecutionId = xid.New().String()
 	e := &NucleiEngine{
-		opts: types.DefaultOptions(),
+		opts: defaultOptions,
 		mode: singleInstance,
 	}
 	for _, option := range options {
