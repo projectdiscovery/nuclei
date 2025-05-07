@@ -4,10 +4,13 @@ import (
 	"context"
 	"database/sql"
 	"database/sql/driver"
+	"fmt"
 	"net"
 	"time"
 
+	"github.com/lib/pq"
 	"github.com/projectdiscovery/fastdialer/fastdialer"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
 )
 
 const (
@@ -47,10 +50,13 @@ type PgDriver struct{}
 // Most users should only use it through database/sql package from the standard
 // library.
 func (d PgDriver) Open(name string) (driver.Conn, error) {
-	panic("todo")
-	// nolint
-	return nil, nil
-	//return pq.DialOpen(&pgDial{fd: dialer.Fastdialer}, name)
+	// Get the fastdialer instance from protocolstate
+	// TODO: find a way to obtain context from here
+	dialers := protocolstate.GetDialersWithId("")
+	if dialers == nil {
+		return nil, fmt.Errorf("fastdialer not initialized")
+	}
+	return pq.DialOpen(&pgDial{fd: dialers.Fastdialer}, name)
 }
 
 func init() {
