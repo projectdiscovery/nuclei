@@ -133,6 +133,10 @@ func (m *MockOutputWriter) Colorizer() aurora.Aurora {
 	return m.aurora
 }
 
+func (m *MockOutputWriter) ResultCount() int {
+	return 0
+}
+
 // Write writes the event to file and/or screen.
 func (m *MockOutputWriter) Write(result *output.ResultEvent) error {
 	if m.WriteCallback != nil {
