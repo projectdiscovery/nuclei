@@ -89,6 +89,9 @@ func (c *Cache) NormalizeCacheValue(value string) string {
 
 	u, err := url.ParseRequestURI(value)
 	if err != nil || u.Host == "" {
+		if strings.Contains(value, ":") {
+			return normalizedValue
+		}
 		u, err2 := url.ParseRequestURI("https://" + value)
 		if err2 != nil {
 			return normalizedValue
@@ -236,14 +239,19 @@ func (c *Cache) GetKeyFromContext(ctx *contextargs.Context, err error) string {
 	// should be reflected in contextargs but it is not yet reflected in some cases
 	// and needs refactor of ScanContext + ContextArgs to achieve that
 	// i.e why we use real address from error if present
-	address := ctx.MetaInput.Address()
-	// get address override from error
+	var address string
+
+	// 1. the address carried inside the error (if the transport sets it)
 	if err != nil {
-		tmp := errkit.GetAttrValue(err, "address")
-		if tmp.Any() != nil {
-			address = tmp.String()
+		if v := errkit.GetAttrValue(err, "address"); v.Any() != nil {
+			address = v.String()
 		}
 	}
+
+	if address == "" {
+		address = ctx.MetaInput.Address()
+	}
+
 	finalValue := c.NormalizeCacheValue(address)
 	return finalValue
 }
