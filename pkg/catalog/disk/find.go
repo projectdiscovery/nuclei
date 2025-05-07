@@ -141,14 +141,12 @@ func (c *DiskCatalog) findGlobPathMatches(absPath string, processed map[string]s
 
 	if c.templatesFS != nil {
 		matches, err = fs.Glob(c.templatesFS, relPath)
-		if err != nil {
-			return matches, err
-		}
 	} else {
 		matches, err = filepath.Glob(absPath)
-		if err != nil {
-			return matches, err
-		}
+	}
+
+	if err != nil {
+		return nil, err
 	}
 
 	results := make([]string, 0, len(matches))
