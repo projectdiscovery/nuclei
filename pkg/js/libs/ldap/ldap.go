@@ -321,6 +321,38 @@ func (c *Client) CollectMetadata() Metadata {
 	return metadata
 }
 
+// GetVersion returns the LDAP versions being used by the server
+// @example
+// ```javascript
+// const ldap = require('nuclei/ldap');
+// const client = new ldap.Client('ldap://ldap.example.com', 'acme.com');
+// const versions = client.GetVersion();
+// log(versions);
+// ```
+func (c *Client) GetVersion() []string {
+	c.nj.Require(c.conn != nil, "no existing connection")
+	
+	// Query root DSE for supported LDAP versions
+	sr := ldap.NewSearchRequest(
+		"",
+		ldap.ScopeBaseObject,
+		ldap.NeverDerefAliases,
+		0, 0, false,
+		"(objectClass=*)",
+		[]string{"supportedLDAPVersion"},
+		nil)
+	
+	res, err := c.conn.Search(sr)
+	c.nj.HandleError(err, "failed to get LDAP version")
+	
+	if len(res.Entries) > 0 {
+		return res.Entries[0].GetAttributeValues("supportedLDAPVersion")
+	}
+	
+	return []string{"unknown"}
+}
+
+
 // close the ldap connection
 // @example
 // ```javascript

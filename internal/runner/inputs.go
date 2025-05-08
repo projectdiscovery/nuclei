@@ -31,6 +31,11 @@ func (r *Runner) initializeTemplatesHTTPInput() (*hybrid.HybridMap, error) {
 	gologger.Info().Msgf("Running httpx on input host")
 
 	httpxOptions := httpx.DefaultOptions
+	if r.options.AliveHttpProxy != "" {
+		httpxOptions.Proxy = r.options.AliveHttpProxy
+	} else if r.options.AliveSocksProxy != "" {
+		httpxOptions.Proxy = r.options.AliveSocksProxy
+	}
 	httpxOptions.RetryMax = r.options.Retries
 	httpxOptions.Timeout = time.Duration(r.options.Timeout) * time.Second
 	httpxOptions.NetworkPolicy = protocolstate.NetworkPolicy
