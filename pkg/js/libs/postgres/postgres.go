@@ -123,7 +123,7 @@ func executeQuery(executionId string, host string, port int, username string, pa
 
 	target := net.JoinHostPort(host, fmt.Sprintf("%d", port))
 
-	connStr := fmt.Sprintf("postgres://%s:%s@%s/%s?sslmode=disable", username, password, target, dbName)
+	connStr := fmt.Sprintf("postgres://%s:%s@%s/%s?sslmode=disable&executionId=%s", username, password, target, dbName, executionId)
 	db, err := sql.Open(pgwrap.PGWrapDriver, connStr)
 	if err != nil {
 		return nil, err
