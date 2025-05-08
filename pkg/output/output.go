@@ -54,6 +54,8 @@ type Writer interface {
 	RequestStatsLog(statusCode, response string)
 	//  WriteStoreDebugData writes the request/response debug data to file
 	WriteStoreDebugData(host, templateID, eventType string, data string)
+	// ResultCount returns the total number of results written
+	ResultCount() int
 }
 
 // StandardWriter is a writer writing output to file and screen for results.
@@ -79,6 +81,8 @@ type StandardWriter struct {
 	// JSONLogRequestHook is a hook that can be used to log request/response
 	// when using custom server code with output
 	JSONLogRequestHook func(*JSONLogRequest)
+
+	resultCount atomic.Int32
 }
 
 var _ Writer = &StandardWriter{}
@@ -287,6 +291,10 @@ func NewStandardWriter(options *types.Options) (*StandardWriter, error) {
 	return writer, nil
 }
 
+func (w *StandardWriter) ResultCount() int {
+	return int(w.resultCount.Load())
+}
+
 // Write writes the event to file and/or screen.
 func (w *StandardWriter) Write(event *ResultEvent) error {
 	// Enrich the result event with extra metadata on the template-path and url.
@@ -336,6 +344,7 @@ func (w *StandardWriter) Write(event *ResultEvent) error {
 			_, _ = w.outputFile.Write([]byte("\n"))
 		}
 	}
+	w.resultCount.Add(1)
 	return nil
 }
 

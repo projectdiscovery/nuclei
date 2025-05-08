@@ -702,6 +702,7 @@ func (r *Runner) RunEnumeration() error {
 		}()
 	}
 
+	now := time.Now()
 	enumeration := false
 	var results *atomic.Bool
 	results, err = r.runStandardEnumeration(executorOpts, store, executorEngine)
@@ -725,17 +726,41 @@ func (r *Runner) RunEnumeration() error {
 	}
 	r.fuzzFrequencyCache.Close()
 
+	r.progress.Stop()
+	timeTaken := time.Since(now)
 	// todo: error propagation without canonical straight error check is required by cloud?
 	// use safe dereferencing to avoid potential panics in case of previous unchecked errors
 	if v := ptrutil.Safe(results); !v.Load() {
-		gologger.Info().Msgf("No results found. Better luck next time!")
+		gologger.Info().Msgf("Scan completed in %s. No results found.", shortDur(timeTaken))
+	} else {
+		matchCount := r.output.ResultCount()
+		gologger.Info().Msgf("Scan completed in %s. %d matches found.", shortDur(timeTaken), matchCount)
 	}
+
 	// check if a passive scan was requested but no target was provided
 	if r.options.OfflineHTTP && len(r.options.Targets) == 0 && r.options.TargetsFilePath == "" {
 		return errors.Wrap(err, "missing required input (http response) to run passive templates")
 	}
 
 	return err
+}
+
+func shortDur(d time.Duration) string {
+	if d < time.Minute {
+		return d.String()
+	}
+
+	// Truncate to the nearest minute
+	d = d.Truncate(time.Minute)
+	s := d.String()
+
+	if strings.HasSuffix(s, "m0s") {
+		s = s[:len(s)-2]
+	}
+	if strings.HasSuffix(s, "h0m") {
+		s = s[:len(s)-2]
+	}
+	return s
 }
 
 func (r *Runner) isInputNonHTTP() bool {
@@ -831,8 +856,15 @@ func (r *Runner) displayExecutionInfo(store *loader.Store) {
 	cfg := config.DefaultConfig
 
 	updateutils.Aurora = r.colorizer
-	gologger.Info().Msgf("Current nuclei version: %v %v", config.Version, updateutils.GetVersionDescription(config.Version, cfg.LatestNucleiVersion))
-	gologger.Info().Msgf("Current nuclei-templates version: %v %v", cfg.TemplateVersion, updateutils.GetVersionDescription(cfg.TemplateVersion, cfg.LatestNucleiTemplatesVersion))
+	versionInfo := func(version, latestVersion, versionType string) string {
+		if !cfg.CanCheckForUpdates() {
+			return fmt.Sprintf("Current %s version: %v (%s) - remove '-duc' flag to enable update checks", versionType, version, r.colorizer.BrightYellow("unknown"))
+		}
+		return fmt.Sprintf("Current %s version: %v %v", versionType, version, updateutils.GetVersionDescription(version, latestVersion))
+	}
+
+	gologger.Info().Msgf(versionInfo(config.Version, cfg.LatestNucleiVersion, "nuclei"))
+	gologger.Info().Msgf(versionInfo(cfg.TemplateVersion, cfg.LatestNucleiTemplatesVersion, "nuclei-templates"))
 	if !HideAutoSaveMsg {
 		if r.pdcpUploadErrMsg != "" {
 			gologger.Print().Msgf("%s", r.pdcpUploadErrMsg)

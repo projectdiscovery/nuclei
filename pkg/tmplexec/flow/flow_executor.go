@@ -51,6 +51,8 @@ type FlowExecutor struct {
 	// these are keys whose values are meant to be flatten before executing
 	// a request ex: if dynamic extractor returns ["value"] it will be converted to "value"
 	flattenKeys []string
+
+	executed *mapsutil.SyncLockMap[string, struct{}]
 }
 
 // NewFlowExecutor creates a new flow executor from a list of requests
@@ -98,6 +100,7 @@ func NewFlowExecutor(requests []protocols.Request, ctx *scan.ScanContext, option
 		results:        results,
 		ctx:            ctx,
 		program:        program,
+		executed:       mapsutil.NewSyncLockMap[string, struct{}](),
 	}
 	return f, nil
 }
@@ -243,6 +246,7 @@ func (f *FlowExecutor) ExecuteWithResults(ctx *scan.ScanContext) error {
 
 	// pass flow and execute the js vm and handle errors
 	_, err := runtime.RunProgram(f.program)
+	f.reconcileProgress()
 	if err != nil {
 		ctx.LogError(err)
 		return errorutil.NewWithErr(err).Msgf("failed to execute flow\n%v\n", f.options.Flow)
@@ -254,6 +258,18 @@ func (f *FlowExecutor) ExecuteWithResults(ctx *scan.ScanContext) error {
 	}
 
 	return nil
+}
+
+func (f *FlowExecutor) reconcileProgress() {
+	for proto, list := range f.allProtocols {
+		for idx, req := range list {
+			key := requestKey(proto, req, strconv.Itoa(idx+1))
+			if _, seen := f.executed.Get(key); !seen {
+				// never executed → pretend it finished so that stats match
+				f.options.Progress.SetRequests(uint64(req.Requests()))
+			}
+		}
+	}
 }
 
 // GetRuntimeErrors returns all runtime errors (i.e errors from all protocol combined)
