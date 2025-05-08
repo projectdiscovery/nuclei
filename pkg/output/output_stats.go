@@ -49,3 +49,6 @@ func (tw *StatsOutputWriter) RequestStatsLog(statusCode, response string) {
 	tw.Tracker.TrackStatusCode(statusCode)
 	tw.Tracker.TrackWAFDetected(response)
 }
+func (tw *StatsOutputWriter) ResultCount() int {
+	return 0
+}

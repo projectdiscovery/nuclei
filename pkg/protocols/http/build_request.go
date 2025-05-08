@@ -123,14 +123,6 @@ func (g *generatedRequest) URL() string {
 	return ""
 }
 
-// Total returns the total number of requests for the generator
-func (r *requestGenerator) Total() int {
-	if r.payloadIterator != nil {
-		return len(r.request.Raw) * r.payloadIterator.Remaining()
-	}
-	return len(r.request.Path)
-}
-
 // Make creates a http request for the provided input.
 // It returns ErrNoMoreRequests as error when all the requests have been exhausted.
 func (r *requestGenerator) Make(ctx context.Context, input *contextargs.Context, reqData string, payloads, dynamicValues map[string]interface{}) (gr *generatedRequest, err error) {
