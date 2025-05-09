@@ -81,6 +81,7 @@ require (
 	github.com/kitabisa/go-ci v1.0.3
 	github.com/labstack/echo/v4 v4.13.3
 	github.com/leslie-qiwa/flat v0.0.0-20230424180412-f9d1cf014baa
+	github.com/lib/pq v1.10.9
 	github.com/mattn/go-sqlite3 v1.14.22
 	github.com/mholt/archives v0.1.0
 	github.com/microsoft/go-mssqldb v1.6.0
@@ -198,7 +199,6 @@ require (
 	github.com/klauspost/compress v1.17.11 // indirect
 	github.com/klauspost/pgzip v1.2.6 // indirect
 	github.com/kylelemons/godebug v1.1.0 // indirect
-	github.com/lib/pq v1.10.9 // indirect
 	github.com/logrusorgru/aurora/v4 v4.0.0 // indirect
 	github.com/lucasb-eyer/go-colorful v1.2.0 // indirect
 	github.com/mackerelio/go-osstat v0.2.4 // indirect
