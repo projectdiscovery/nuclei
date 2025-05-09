@@ -7,7 +7,6 @@ import (
 	"os"
 	"sort"
 	"strings"
-	"sync"
 
 	"github.com/logrusorgru/aurora"
 	"github.com/pkg/errors"
@@ -28,6 +27,7 @@ import (
 	errorutil "github.com/projectdiscovery/utils/errors"
 	sliceutil "github.com/projectdiscovery/utils/slice"
 	stringsutil "github.com/projectdiscovery/utils/strings"
+	syncutil "github.com/projectdiscovery/utils/sync"
 	urlutil "github.com/projectdiscovery/utils/url"
 	"github.com/rs/xid"
 )
@@ -504,7 +504,10 @@ func (store *Store) LoadTemplatesWithTags(templatesList, tags []string) []*templ
 		}
 	}
 
-	var wgLoadTemplates sync.WaitGroup
+	wgLoadTemplates, errWg := syncutil.New(syncutil.WithSize(50))
+	if errWg != nil {
+		panic("could not create wait group")
+	}
 
 	if store.config.ExecutorOptions.Options.ExecutionId == "" {
 		store.config.ExecutorOptions.Options.ExecutionId = xid.New().String()
@@ -516,7 +519,7 @@ func (store *Store) LoadTemplatesWithTags(templatesList, tags []string) []*templ
 	}
 
 	for templatePath := range templatePathMap {
-		wgLoadTemplates.Add(1)
+		wgLoadTemplates.Add()
 		go func(templatePath string) {
 			defer wgLoadTemplates.Done()
 
