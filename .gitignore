@@ -41,7 +41,6 @@ pkg/protocols/common/helpers/deserialization/testdata/Deserialize.class
 pkg/protocols/common/helpers/deserialization/testdata/ValueObject.class
 pkg/protocols/common/helpers/deserialization/testdata/ValueObject2.ser
 vendor
-cmd/test/test-templates
 
 # Headless `screenshot` action
 *.png
