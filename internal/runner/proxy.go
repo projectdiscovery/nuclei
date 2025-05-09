@@ -30,7 +30,6 @@ func loadProxyServers(options *types.Options) error {
 			if err != nil {
 				return fmt.Errorf("could not open proxy file: %w", err)
 			}
-			defer file.Close()
 			scanner := bufio.NewScanner(file)
 			for scanner.Scan() {
 				proxy := scanner.Text()
@@ -39,6 +38,16 @@ func loadProxyServers(options *types.Options) error {
 				}
 				proxyList = append(proxyList, proxy)
 			}
+
+			if err := scanner.Err(); err != nil {
+				file.Close()
+				return fmt.Errorf("error reading proxy file: %w", err)
+			}
+
+			if err := file.Close(); err != nil {
+				return fmt.Errorf("error closing proxy file: %w", err)
+			}
+
 		} else {
 			proxyList = append(proxyList, p)
 		}
