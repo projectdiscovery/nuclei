@@ -187,7 +187,7 @@ func (template *Template) Type() types.ProtocolType {
 		return types.CodeProtocol
 	case len(template.RequestsJavascript) > 0:
 		return types.JavascriptProtocol
-	case len(template.Workflow.Workflows) > 0:
+	case len(template.Workflows) > 0:
 		return types.WorkflowProtocol
 	default:
 		return types.InvalidProtocol
@@ -389,7 +389,9 @@ func (template *Template) ImportFileRefs(options *protocols.ExecutorOptions) err
 		// load file respecting sandbox
 		data, err := options.Options.LoadHelperFile(source, options.TemplatePath, options.Catalog)
 		if err == nil {
-			defer data.Close()
+			defer func() {
+				_ = data.Close()
+			}()
 			bin, err := io.ReadAll(data)
 			if err == nil {
 				return string(bin), true

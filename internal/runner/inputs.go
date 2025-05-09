@@ -38,7 +38,10 @@ func (r *Runner) initializeTemplatesHTTPInput() (*hybrid.HybridMap, error) {
 	}
 	httpxOptions.RetryMax = r.options.Retries
 	httpxOptions.Timeout = time.Duration(r.options.Timeout) * time.Second
-	httpxOptions.NetworkPolicy = protocolstate.NetworkPolicy
+
+	dialers := protocolstate.GetDialersWithId(r.options.ExecutionId)
+
+	httpxOptions.NetworkPolicy = dialers.NetworkPolicy
 	httpxClient, err := httpx.New(&httpxOptions)
 	if err != nil {
 		return nil, errors.Wrap(err, "could not create httpx client")

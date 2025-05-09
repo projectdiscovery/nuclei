@@ -64,9 +64,9 @@ func (s *Storage) Clear() {
 
 // Close closes the storage for further operations
 func (s *Storage) Close() {
-	s.storage.Close()
+	_ = s.storage.Close()
 	if s.temporary != "" {
-		os.RemoveAll(s.temporary)
+		_ = os.RemoveAll(s.temporary)
 	}
 }
 

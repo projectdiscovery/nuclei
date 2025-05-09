@@ -23,7 +23,9 @@ func main() {
 	if err != nil {
 		log.Fatalf("Could not create file: %s\n", err)
 	}
-	defer file.Close()
+	defer func() {
+		_ = file.Close()
+	}()
 
 	err = filepath.WalkDir(templatesDirectory, func(path string, d fs.DirEntry, err error) error {
 		if err != nil || d.IsDir() {

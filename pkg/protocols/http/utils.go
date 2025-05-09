@@ -14,7 +14,7 @@ func dump(req *generatedRequest, reqURL string) ([]byte, error) {
 	if req.request != nil {
 		bin, err := req.request.Dump()
 		if err != nil {
-			return nil, errorutil.NewWithErr(err).WithTag("http").Msgf("could not dump request: %v", req.request.URL.String())
+			return nil, errorutil.NewWithErr(err).WithTag("http").Msgf("could not dump request: %v", req.request.String())
 		}
 		return bin, nil
 	}

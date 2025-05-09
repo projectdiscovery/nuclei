@@ -115,7 +115,7 @@ func (g *generatedRequest) ApplyAuth(provider authprovider.AuthProvider) {
 
 func (g *generatedRequest) URL() string {
 	if g.request != nil {
-		return g.request.URL.String()
+		return g.request.String()
 	}
 	if g.rawRequest != nil {
 		return g.rawRequest.FullURL
@@ -456,9 +456,9 @@ func (r *requestGenerator) fillRequest(req *retryablehttp.Request, values map[st
 
 	if !LeaveDefaultPorts {
 		switch {
-		case req.URL.Scheme == "http" && strings.HasSuffix(req.Host, ":80"):
+		case req.Scheme == "http" && strings.HasSuffix(req.Host, ":80"):
 			req.Host = strings.TrimSuffix(req.Host, ":80")
-		case req.URL.Scheme == "https" && strings.HasSuffix(req.Host, ":443"):
+		case req.Scheme == "https" && strings.HasSuffix(req.Host, ":443"):
 			req.Host = strings.TrimSuffix(req.Host, ":443")
 		}
 	}

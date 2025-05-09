@@ -6,7 +6,6 @@ import (
 	"github.com/cespare/xxhash"
 )
 
-
 // TmplClusterKey generates a unique key for the request
 // to be used in the clustering process.
 func (request *Request) TmplClusterKey() uint64 {
@@ -20,5 +19,6 @@ func (request *Request) TmplClusterKey() uint64 {
 
 // IsClusterable returns true if the request is eligible to be clustered.
 func (request *Request) IsClusterable() bool {
+	// nolint
 	return !(len(request.Resolvers) > 0 || request.Trace || request.ID != "")
 }

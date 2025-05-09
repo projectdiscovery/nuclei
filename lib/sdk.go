@@ -27,6 +27,7 @@ import (
 	"github.com/projectdiscovery/ratelimit"
 	"github.com/projectdiscovery/retryablehttp-go"
 	errorutil "github.com/projectdiscovery/utils/errors"
+	"github.com/rs/xid"
 )
 
 // NucleiSDKOptions contains options for nuclei SDK
@@ -124,9 +125,9 @@ func (e *NucleiEngine) GetWorkflows() []*templates.Template {
 func (e *NucleiEngine) LoadTargets(targets []string, probeNonHttp bool) {
 	for _, target := range targets {
 		if probeNonHttp {
-			_ = e.inputProvider.SetWithProbe(target, e.httpxClient)
+			_ = e.inputProvider.SetWithProbe(e.opts.ExecutionId, target, e.httpxClient)
 		} else {
-			e.inputProvider.Set(target)
+			e.inputProvider.Set(e.opts.ExecutionId, target)
 		}
 	}
 }
@@ -136,9 +137,9 @@ func (e *NucleiEngine) LoadTargetsFromReader(reader io.Reader, probeNonHttp bool
 	buff := bufio.NewScanner(reader)
 	for buff.Scan() {
 		if probeNonHttp {
-			_ = e.inputProvider.SetWithProbe(buff.Text(), e.httpxClient)
+			_ = e.inputProvider.SetWithProbe(e.opts.ExecutionId, buff.Text(), e.httpxClient)
 		} else {
-			e.inputProvider.Set(buff.Text())
+			e.inputProvider.Set(e.opts.ExecutionId, buff.Text())
 		}
 	}
 }
@@ -229,7 +230,7 @@ func (e *NucleiEngine) closeInternal() {
 // Close all resources used by nuclei engine
 func (e *NucleiEngine) Close() {
 	e.closeInternal()
-	protocolinit.Close()
+	protocolinit.Close(e.opts.ExecutionId)
 }
 
 // ExecuteCallbackWithCtx executes templates on targets and calls callback on each result(only if results are found)
@@ -287,8 +288,10 @@ func (e *NucleiEngine) Store() *loader.Store {
 // NewNucleiEngineCtx creates a new nuclei engine instance with given context
 func NewNucleiEngineCtx(ctx context.Context, options ...NucleiSDKOptions) (*NucleiEngine, error) {
 	// default options
+	defaultOptions := types.DefaultOptions()
+	defaultOptions.ExecutionId = xid.New().String()
 	e := &NucleiEngine{
-		opts: types.DefaultOptions(),
+		opts: defaultOptions,
 		mode: singleInstance,
 	}
 	for _, option := range options {

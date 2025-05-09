@@ -127,8 +127,10 @@ func (u *UploadWriter) autoCommit(ctx context.Context, r *io.PipeReader) {
 
 	// continuously read from the reader and send to channel
 	go func() {
-		defer r.Close()
-		defer close(ch)
+		defer func() {
+			_ = r.Close()
+			close(ch)
+		}()
 		for {
 			data, err := reader.ReadString('\n')
 			if err != nil {
@@ -213,7 +215,9 @@ func (u *UploadWriter) upload(data []byte) error {
 	if err != nil {
 		return errorutil.NewWithErr(err).Msgf("could not upload results")
 	}
-	defer resp.Body.Close()
+	defer func() {
+		_ = resp.Body.Close()
+	}()
 	bin, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return errorutil.NewWithErr(err).Msgf("could not get id from response")
@@ -251,12 +255,12 @@ func (u *UploadWriter) getRequest(bin []byte) (*retryablehttp.Request, error) {
 		return nil, errorutil.NewWithErr(err).Msgf("could not create cloud upload request")
 	}
 	// add pdtm meta params
-	req.URL.Params.Merge(updateutils.GetpdtmParams(config.Version))
+	req.Params.Merge(updateutils.GetpdtmParams(config.Version))
 	// if it is upload endpoint also include name if it exists
-	if u.scanName != "" && req.URL.Path == uploadEndpoint {
-		req.URL.Params.Add("name", u.scanName)
+	if u.scanName != "" && req.Path == uploadEndpoint {
+		req.Params.Add("name", u.scanName)
 	}
-	req.URL.Update()
+	req.Update()
 
 	req.Header.Set(pdcpauth.ApiKeyHeaderName, u.creds.APIKey)
 	if u.TeamID != NoneTeamID && u.TeamID != "" {

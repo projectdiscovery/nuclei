@@ -6,17 +6,8 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 )
 
-var (
-	normalClient *fastdialer.Dialer
-)
-
 // Init initializes the clientpool implementation
 func Init(options *types.Options) error {
-	// Don't create clients if already created in the past.
-	if normalClient != nil {
-		return nil
-	}
-	normalClient = protocolstate.Dialer
 	return nil
 }
 
@@ -29,6 +20,7 @@ func (c *Configuration) Hash() string {
 }
 
 // Get creates or gets a client for the protocol based on custom configuration
-func Get(options *types.Options, configuration *Configuration /*TODO review unused parameters*/) (*fastdialer.Dialer, error) {
-	return normalClient, nil
+func Get(options *types.Options, configuration *Configuration) (*fastdialer.Dialer, error) {
+	dialers := protocolstate.GetDialersWithId(options.ExecutionId)
+	return dialers.Fastdialer, nil
 }

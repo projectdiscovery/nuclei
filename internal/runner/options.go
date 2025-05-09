@@ -31,7 +31,6 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/utils/yaml"
 	fileutil "github.com/projectdiscovery/utils/file"
 	"github.com/projectdiscovery/utils/generic"
-	logutil "github.com/projectdiscovery/utils/log"
 	stringsutil "github.com/projectdiscovery/utils/strings"
 )
 
@@ -122,7 +121,7 @@ func ParseOptions(options *types.Options) {
 
 	// Set GitHub token in env variable. runner.getGHClientWithToken() reads token from env
 	if options.GitHubToken != "" && os.Getenv("GITHUB_TOKEN") != options.GitHubToken {
-		os.Setenv("GITHUB_TOKEN", options.GitHubToken)
+		_ = os.Setenv("GITHUB_TOKEN", options.GitHubToken)
 	}
 
 	if options.UncoverQuery != nil {
@@ -304,7 +303,9 @@ func createReportingOptions(options *types.Options) (*reporting.Options, error) 
 		if err != nil {
 			return nil, errors.Wrap(err, "could not open reporting config file")
 		}
-		defer file.Close()
+		defer func() {
+			_ = file.Close()
+		}()
 
 		if err := yaml.DecodeAndValidate(file, reportingOptions); err != nil {
 			return nil, errors.Wrap(err, "could not parse reporting config file")
@@ -342,6 +343,7 @@ func createReportingOptions(options *types.Options) (*reporting.Options, error) 
 	}
 
 	reportingOptions.OmitRaw = options.OmitRawRequests
+	reportingOptions.ExecutionId = options.ExecutionId
 	return reportingOptions, nil
 }
 
@@ -367,7 +369,7 @@ func configureOutput(options *types.Options) {
 	}
 
 	// disable standard logger (ref: https://github.com/golang/go/issues/19895)
-	logutil.DisableDefaultLogger()
+	// logutil.DisableDefaultLogger()
 }
 
 // loadResolvers loads resolvers from both user-provided flags and file
@@ -380,7 +382,9 @@ func loadResolvers(options *types.Options) {
 	if err != nil {
 		gologger.Fatal().Msgf("Could not open resolvers file: %s\n", err)
 	}
-	defer file.Close()
+	defer func() {
+		_ = file.Close()
+	}()
 
 	scanner := bufio.NewScanner(file)
 	for scanner.Scan() {

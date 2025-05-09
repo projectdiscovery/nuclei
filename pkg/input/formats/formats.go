@@ -88,7 +88,9 @@ func WriteOpenAPIVarDumpFile(vars *OpenAPIParamsCfgFile) error {
 	if err != nil {
 		return err
 	}
-	defer f.Close()
+	defer func() {
+		_ = f.Close()
+	}()
 	bin, err := yaml.Marshal(vars)
 	if err != nil {
 		return err

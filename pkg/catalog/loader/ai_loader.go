@@ -117,7 +117,9 @@ func generateAITemplate(prompt string) (string, string, error) {
 	if err != nil {
 		return "", "", errorutil.New("Failed to send HTTP request: %v", err)
 	}
-	defer resp.Body.Close()
+	defer func() {
+		_ = resp.Body.Close()
+	}()
 
 	if resp.StatusCode == http.StatusUnauthorized {
 		return "", "", errorutil.New("Invalid API Key or API Key not configured, Create one for free at https://cloud.projectdiscovery.io/")

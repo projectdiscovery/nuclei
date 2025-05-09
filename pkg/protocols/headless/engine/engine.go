@@ -142,7 +142,7 @@ func (b *Browser) getHTTPClient() (*http.Client, error) {
 
 // Close closes the browser engine
 func (b *Browser) Close() {
-	b.engine.Close()
-	os.RemoveAll(b.tempDir)
+	_ = b.engine.Close()
+	_ = os.RemoveAll(b.tempDir)
 	processutil.CloseProcesses(processutil.IsChromeProcess, b.previousPIDs)
 }

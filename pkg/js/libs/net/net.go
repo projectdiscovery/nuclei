@@ -25,8 +25,10 @@ var (
 // const net = require('nuclei/net');
 // const conn = net.Open('tcp', 'acme.com:80');
 // ```
-func Open(protocol, address string) (*NetConn, error) {
-	conn, err := protocolstate.Dialer.Dial(context.TODO(), protocol, address)
+func Open(ctx context.Context, protocol, address string) (*NetConn, error) {
+	executionId := ctx.Value("executionId").(string)
+	dialer := protocolstate.GetDialersWithId(executionId)
+	conn, err := dialer.Fastdialer.Dial(ctx, protocol, address)
 	if err != nil {
 		return nil, err
 	}
@@ -40,7 +42,7 @@ func Open(protocol, address string) (*NetConn, error) {
 // const net = require('nuclei/net');
 // const conn = net.OpenTLS('tcp', 'acme.com:443');
 // ```
-func OpenTLS(protocol, address string) (*NetConn, error) {
+func OpenTLS(ctx context.Context, protocol, address string) (*NetConn, error) {
 	config := &tls.Config{InsecureSkipVerify: true, MinVersion: tls.VersionTLS10}
 	host, _, _ := net.SplitHostPort(address)
 	if host != "" {
@@ -48,7 +50,9 @@ func OpenTLS(protocol, address string) (*NetConn, error) {
 		c.ServerName = host
 		config = c
 	}
-	conn, err := protocolstate.Dialer.DialTLSWithConfig(context.TODO(), protocol, address, config)
+	executionId := ctx.Value("executionId").(string)
+	dialer := protocolstate.GetDialersWithId(executionId)
+	conn, err := dialer.Fastdialer.DialTLSWithConfig(ctx, protocol, address, config)
 	if err != nil {
 		return nil, err
 	}

@@ -8,9 +8,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/Mzack9999/goja"
 	"github.com/alecthomas/chroma/quick"
 	"github.com/ditashi/jsbeautifier-go/jsbeautifier"
-	"github.com/dop251/goja"
 	"github.com/pkg/errors"
 
 	"github.com/projectdiscovery/gologger"
@@ -201,6 +201,7 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 
 		result, err := request.options.JsCompiler.ExecuteWithOptions(request.preConditionCompiled, args,
 			&compiler.ExecuteOptions{
+				ExecutionId:     request.options.Options.ExecutionId,
 				TimeoutVariants: request.options.Options.GetTimeouts(),
 				Source:          &request.PreCondition,
 				Callback:        registerPreConditionFunctions,
@@ -248,14 +249,14 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 		gologger.Debug().MsgFunc(func() string {
 			dashes := strings.Repeat("-", 15)
 			sb := &strings.Builder{}
-			sb.WriteString(fmt.Sprintf("[%s] Dumped Executed Source Code for input/stdin: '%v'", request.options.TemplateID, input.MetaInput.Input))
-			sb.WriteString(fmt.Sprintf("\n%v\n%v\n%v\n", dashes, "Source Code:", dashes))
+			_, _ = fmt.Fprintf(sb, "[%s] Dumped Executed Source Code for input/stdin: '%v'", request.options.TemplateID, input.MetaInput.Input)
+			_, _ = fmt.Fprintf(sb, "\n%v\n%v\n%v\n", dashes, "Source Code:", dashes)
 			sb.WriteString(interpretEnvVars(request.Source, allvars))
 			sb.WriteString("\n")
-			sb.WriteString(fmt.Sprintf("\n%v\n%v\n%v\n", dashes, "Command Executed:", dashes))
+			_, _ = fmt.Fprintf(sb, "\n%v\n%v\n%v\n", dashes, "Command Executed:", dashes)
 			sb.WriteString(interpretEnvVars(gOutput.Command, allvars))
 			sb.WriteString("\n")
-			sb.WriteString(fmt.Sprintf("\n%v\n%v\n%v\n", dashes, "Command Output:", dashes))
+			_, _ = fmt.Fprintf(sb, "\n%v\n%v\n%v\n", dashes, "Command Output:", dashes)
 			sb.WriteString(gOutput.DebugData.String())
 			sb.WriteString("\n")
 			sb.WriteString("[WRN] Command Output here is stdout+sterr, in response variables they are seperate (use -v -svd flags for more details)")
