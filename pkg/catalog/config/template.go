@@ -30,7 +30,7 @@ func GetTemplateFormatFromExt(filePath string) TemplateFormat {
 	switch fileExt {
 	case extensions.JSON:
 		return JSON
-	case extensions.YAML:
+	case extensions.YAML, extensions.YML:
 		return YAML
 	default:
 		return Unknown
@@ -39,7 +39,7 @@ func GetTemplateFormatFromExt(filePath string) TemplateFormat {
 
 // GetSupportTemplateFileExtensions returns all supported template file extensions
 func GetSupportTemplateFileExtensions() []string {
-	return []string{extensions.YAML, extensions.JSON}
+	return []string{extensions.YAML, extensions.YML, extensions.JSON}
 }
 
 // IsTemplate is a callback function used by goflags to decide if given file should be read
