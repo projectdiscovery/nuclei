@@ -463,6 +463,14 @@ func EnablePassiveMode() NucleiSDKOptions {
 	}
 }
 
+// EnableMatcherStatus allows enabling matcher status
+func EnableMatcherStatus() NucleiSDKOptions {
+	return func(e *NucleiEngine) error {
+		e.opts.MatcherStatus = true
+		return nil
+	}
+}
+
 // WithAuthProvider allows setting a custom authprovider implementation
 func WithAuthProvider(provider authprovider.AuthProvider) NucleiSDKOptions {
 	return func(e *NucleiEngine) error {
