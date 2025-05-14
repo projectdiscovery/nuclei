@@ -102,8 +102,8 @@ require (
 	github.com/projectdiscovery/tlsx v1.1.9
 	github.com/projectdiscovery/uncover v1.0.10
 	github.com/projectdiscovery/useragent v0.0.100
-	github.com/projectdiscovery/utils v0.4.18
-	github.com/projectdiscovery/wappalyzergo v0.2.27
+	github.com/projectdiscovery/utils v0.4.19
+	github.com/projectdiscovery/wappalyzergo v0.2.28
 	github.com/redis/go-redis/v9 v9.1.0
 	github.com/seh-msft/burpxml v1.0.1
 	github.com/shurcooL/graphql v0.0.0-20230722043721-ed46e5a46466
@@ -310,7 +310,7 @@ require (
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/power-devops/perfstat v0.0.0-20210106213030-5aafc221ea8c // indirect
 	github.com/projectdiscovery/blackrock v0.0.1 // indirect
-	github.com/projectdiscovery/networkpolicy v0.1.13
+	github.com/projectdiscovery/networkpolicy v0.1.14
 	github.com/rivo/uniseg v0.4.7 // indirect
 	github.com/saintfish/chardet v0.0.0-20230101081208-5e3ef4b5456d // indirect
 	github.com/tklauser/go-sysconf v0.3.12 // indirect
