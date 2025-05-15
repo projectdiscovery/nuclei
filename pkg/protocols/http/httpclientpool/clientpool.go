@@ -307,6 +307,14 @@ func wrappedGet(options *types.Options, configuration *Configuration) (*retryabl
 			if err != nil {
 				return nil, err
 			}
+			if tlsConfig.ServerName == "" {
+				// addr should be in form of host:port already set from canonicalAddr
+				host, _, err := net.SplitHostPort(addr)
+				if err != nil {
+					return nil, err
+				}
+				tlsConfig.ServerName = host
+			}
 			return tls.Client(conn, tlsConfig), nil
 		}
 	}
