@@ -3,7 +3,7 @@ package kerberos
 import (
 	lib_kerberos "github.com/projectdiscovery/nuclei/v3/pkg/js/libs/kerberos"
 
-	"github.com/dop251/goja"
+	"github.com/Mzack9999/goja"
 	"github.com/projectdiscovery/nuclei/v3/pkg/js/gojs"
 )
 

@@ -19,7 +19,7 @@ import (
 
 // newHttpClient creates a new http client for headless communication with a timeout
 func newHttpClient(options *types.Options) (*http.Client, error) {
-	dialer := protocolstate.Dialer
+	dialers := protocolstate.GetDialersWithId(options.ExecutionId)
 
 	// Set the base TLS configuration definition
 	tlsConfig := &tls.Config{
@@ -41,15 +41,15 @@ func newHttpClient(options *types.Options) (*http.Client, error) {
 
 	transport := &http.Transport{
 		ForceAttemptHTTP2: options.ForceAttemptHTTP2,
-		DialContext:       dialer.Dial,
+		DialContext:       dialers.Fastdialer.Dial,
 		DialTLSContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
 			if options.TlsImpersonate {
-				return dialer.DialTLSWithConfigImpersonate(ctx, network, addr, tlsConfig, impersonate.Random, nil)
+				return dialers.Fastdialer.DialTLSWithConfigImpersonate(ctx, network, addr, tlsConfig, impersonate.Random, nil)
 			}
 			if options.HasClientCertificates() || options.ForceAttemptHTTP2 {
-				return dialer.DialTLSWithConfig(ctx, network, addr, tlsConfig)
+				return dialers.Fastdialer.DialTLSWithConfig(ctx, network, addr, tlsConfig)
 			}
-			return dialer.DialTLS(ctx, network, addr)
+			return dialers.Fastdialer.DialTLS(ctx, network, addr)
 		},
 		MaxIdleConns:        500,
 		MaxIdleConnsPerHost: 500,

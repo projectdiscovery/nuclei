@@ -48,9 +48,9 @@ func (h *goIntegrationTest) Execute(templatePath string) error {
 	router := httprouter.New()
 
 	router.GET("/", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-		fmt.Fprintf(w, "This is test matcher text")
+		_, _ = fmt.Fprintf(w, "This is test matcher text")
 		if strings.EqualFold(r.Header.Get("test"), "nuclei") {
-			fmt.Fprintf(w, "This is test headers matcher text")
+			_, _ = fmt.Fprintf(w, "This is test headers matcher text")
 		}
 	})
 	ts := httptest.NewServer(router)
@@ -68,16 +68,20 @@ func executeNucleiAsLibrary(templatePath, templateURL string) ([]string, error) 
 	cache := hosterrorscache.New(30, hosterrorscache.DefaultMaxHostsCount, nil)
 	defer cache.Close()
 
+	defaultOpts := types.DefaultOptions()
+	defaultOpts.ExecutionId = "test"
+
 	mockProgress := &testutils.MockProgressClient{}
-	reportingClient, err := reporting.New(&reporting.Options{}, "", false)
+	reportingClient, err := reporting.New(&reporting.Options{ExecutionId: defaultOpts.ExecutionId}, "", false)
 	if err != nil {
 		return nil, err
 	}
 	defer reportingClient.Close()
 
-	defaultOpts := types.DefaultOptions()
 	_ = protocolstate.Init(defaultOpts)
 	_ = protocolinit.Init(defaultOpts)
+
+	defer protocolstate.Close(defaultOpts.ExecutionId)
 
 	defaultOpts.Templates = goflags.StringSlice{templatePath}
 	defaultOpts.ExcludeTags = config.ReadIgnoreFile().Tags
@@ -128,7 +132,7 @@ func executeNucleiAsLibrary(templatePath, templateURL string) ([]string, error) 
 	}
 	store.Load()
 
-	_ = engine.Execute(context.Background(), store.Templates(), provider.NewSimpleInputProviderWithUrls(templateURL))
+	_ = engine.Execute(context.Background(), store.Templates(), provider.NewSimpleInputProviderWithUrls(defaultOpts.ExecutionId, templateURL))
 	engine.WorkPool().Wait() // Wait for the scan to finish
 
 	return results, nil

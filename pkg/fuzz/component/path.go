@@ -36,7 +36,7 @@ func (q *Path) Parse(req *retryablehttp.Request) (bool, error) {
 	q.req = req
 	q.value = NewValue("")
 
-	splitted := strings.Split(req.URL.Path, "/")
+	splitted := strings.Split(req.Path, "/")
 	values := make(map[string]interface{})
 	for i := range splitted {
 		pathTillNow := strings.Join(splitted[:i+1], "/")
@@ -83,7 +83,7 @@ func (q *Path) Delete(key string) error {
 // component rebuilt
 func (q *Path) Rebuild() (*retryablehttp.Request, error) {
 	originalValues := mapsutil.Map[string, any]{}
-	splitted := strings.Split(q.req.URL.Path, "/")
+	splitted := strings.Split(q.req.Path, "/")
 	for i := range splitted {
 		pathTillNow := strings.Join(splitted[:i+1], "/")
 		if pathTillNow == "" {
@@ -92,7 +92,7 @@ func (q *Path) Rebuild() (*retryablehttp.Request, error) {
 		originalValues[strconv.Itoa(i)] = pathTillNow
 	}
 
-	originalPath := q.req.URL.Path
+	originalPath := q.req.Path
 	lengthSplitted := len(q.value.parsed.Map)
 	for i := lengthSplitted; i > 0; i-- {
 		key := strconv.Itoa(i)
@@ -120,7 +120,7 @@ func (q *Path) Rebuild() (*retryablehttp.Request, error) {
 	// Clone the request and update the path
 	cloned := q.req.Clone(context.Background())
 	if err := cloned.UpdateRelPath(rebuiltPath, true); err != nil {
-		cloned.URL.RawPath = rebuiltPath
+		cloned.RawPath = rebuiltPath
 	}
 	return cloned, nil
 }

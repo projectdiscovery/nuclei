@@ -413,7 +413,7 @@ func (r *Runner) Close() {
 	if r.inputProvider != nil {
 		r.inputProvider.Close()
 	}
-	protocolinit.Close()
+	protocolinit.Close(r.options.ExecutionId)
 	if r.pprofServer != nil {
 		r.pprofServer.Stop()
 	}
@@ -439,6 +439,7 @@ func (r *Runner) setupPDCPUpload(writer output.Writer) output.Writer {
 	if r.options.ScanID != "" {
 		r.options.EnableCloudUpload = true
 	}
+	//nolint
 	if !(r.options.EnableCloudUpload || EnableCloudUpload) {
 		r.pdcpUploadErrMsg = fmt.Sprintf("[%v] Scan results upload to cloud is disabled.", r.colorizer.BrightYellow("WRN"))
 		return writer
@@ -655,7 +656,7 @@ func (r *Runner) RunEnumeration() error {
 		}
 		ret := uncover.GetUncoverTargetsFromMetadata(context.TODO(), store.Templates(), r.options.UncoverField, uncoverOpts)
 		for host := range ret {
-			_ = r.inputProvider.SetWithExclusions(host)
+			_ = r.inputProvider.SetWithExclusions(r.options.ExecutionId, host)
 		}
 	}
 	// display execution info like version , templates used etc
@@ -940,7 +941,9 @@ func UploadResultsToCloud(options *types.Options) error {
 	if err != nil {
 		return errors.Wrap(err, "could not open scan upload file")
 	}
-	defer file.Close()
+	defer func() {
+		_ = file.Close()
+	}()
 
 	gologger.Info().Msgf("Uploading scan results to cloud dashboard from %s", options.ScanUploadFile)
 	dec := json.NewDecoder(file)

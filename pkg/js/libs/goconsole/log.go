@@ -1,7 +1,7 @@
 package goconsole
 
 import (
-	"github.com/dop251/goja_nodejs/console"
+	"github.com/Mzack9999/goja_nodejs/console"
 	"github.com/projectdiscovery/gologger"
 )
 

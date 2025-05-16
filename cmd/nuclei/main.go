@@ -18,6 +18,7 @@ import (
 	"github.com/projectdiscovery/utils/env"
 	_ "github.com/projectdiscovery/utils/pprof"
 	stringsutil "github.com/projectdiscovery/utils/strings"
+	"github.com/rs/xid"
 
 	"github.com/projectdiscovery/goflags"
 	"github.com/projectdiscovery/gologger"
@@ -140,8 +141,8 @@ func main() {
 			}
 
 			pprof.StopCPUProfile()
-			memProfileFile.Close()
-			traceFile.Close()
+			_ = memProfileFile.Close()
+			_ = traceFile.Close()
 			trace.Stop()
 
 			runtime.MemProfileRate = oldMemProfileRate
@@ -151,6 +152,8 @@ func main() {
 			gologger.Info().Msgf("Traced at %q", traceFile.Name())
 		}()
 	}
+
+	options.ExecutionId = xid.New().String()
 
 	runner.ParseOptions(options)
 
@@ -191,30 +194,28 @@ func main() {
 	// Setup graceful exits
 	resumeFileName := types.DefaultResumeFilePath()
 	c := make(chan os.Signal, 1)
-	defer close(c)
 	signal.Notify(c, os.Interrupt)
 	go func() {
-		for range c {
-			gologger.Info().Msgf("CTRL+C pressed: Exiting\n")
-			if options.DASTServer {
-				nucleiRunner.Close()
-				os.Exit(1)
-			}
-
-			gologger.Info().Msgf("Attempting graceful shutdown...")
-			if options.EnableCloudUpload {
-				gologger.Info().Msgf("Uploading scan results to cloud...")
-			}
+		<-c
+		gologger.Info().Msgf("CTRL+C pressed: Exiting\n")
+		if options.DASTServer {
 			nucleiRunner.Close()
-			if options.ShouldSaveResume() {
-				gologger.Info().Msgf("Creating resume file: %s\n", resumeFileName)
-				err := nucleiRunner.SaveResumeConfig(resumeFileName)
-				if err != nil {
-					gologger.Error().Msgf("Couldn't create resume file: %s\n", err)
-				}
-			}
 			os.Exit(1)
 		}
+
+		gologger.Info().Msgf("Attempting graceful shutdown...")
+		if options.EnableCloudUpload {
+			gologger.Info().Msgf("Uploading scan results to cloud...")
+		}
+		nucleiRunner.Close()
+		if options.ShouldSaveResume() {
+			gologger.Info().Msgf("Creating resume file: %s\n", resumeFileName)
+			err := nucleiRunner.SaveResumeConfig(resumeFileName)
+			if err != nil {
+				gologger.Error().Msgf("Couldn't create resume file: %s\n", err)
+			}
+		}
+		os.Exit(1)
 	}()
 
 	if err := nucleiRunner.RunEnumeration(); err != nil {
@@ -227,7 +228,7 @@ func main() {
 	nucleiRunner.Close()
 	// on successful execution remove the resume file in case it exists
 	if fileutil.FileExists(resumeFileName) {
-		os.Remove(resumeFileName)
+		_ = os.Remove(resumeFileName)
 	}
 }
 

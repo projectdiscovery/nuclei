@@ -201,15 +201,16 @@ func NewClusterExecuter(requests []*Template, options *protocols.ExecutorOptions
 		})
 	}
 	for _, req := range requests {
-		if executer.templateType == types.DNSProtocol {
+		switch executer.templateType {
+		case types.DNSProtocol:
 			if req.RequestsDNS[0].CompiledOperators != nil {
 				appendOperator(req, req.RequestsDNS[0].CompiledOperators)
 			}
-		} else if executer.templateType == types.HTTPProtocol {
+		case types.HTTPProtocol:
 			if req.RequestsHTTP[0].CompiledOperators != nil {
 				appendOperator(req, req.RequestsHTTP[0].CompiledOperators)
 			}
-		} else if executer.templateType == types.SSLProtocol {
+		case types.SSLProtocol:
 			if req.RequestsSSL[0].CompiledOperators != nil {
 				appendOperator(req, req.RequestsSSL[0].CompiledOperators)
 			}

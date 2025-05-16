@@ -84,5 +84,5 @@ func (pf *ProjectFile) Set(req []byte, resp *http.Response, data []byte) error {
 }
 
 func (pf *ProjectFile) Close() {
-	pf.hm.Close()
+	_ = pf.hm.Close()
 }

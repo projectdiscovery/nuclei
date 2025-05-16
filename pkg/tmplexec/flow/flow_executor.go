@@ -7,7 +7,7 @@ import (
 	"strings"
 	"sync/atomic"
 
-	"github.com/dop251/goja"
+	"github.com/Mzack9999/goja"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/generators"
 	"github.com/projectdiscovery/nuclei/v3/pkg/scan"
@@ -203,7 +203,7 @@ func (f *FlowExecutor) ExecuteWithResults(ctx *scan.ScanContext) error {
 		for proto := range f.protoFunctions {
 			_ = runtime.GlobalObject().Delete(proto)
 		}
-
+		runtime.RemoveContextValue("executionId")
 	}()
 
 	// TODO(dwisiswant0): remove this once we get the RCA.
@@ -243,6 +243,8 @@ func (f *FlowExecutor) ExecuteWithResults(ctx *scan.ScanContext) error {
 	if err := runtime.Set("template", tmplObj); err != nil {
 		return err
 	}
+
+	runtime.SetContextValue("executionId", f.options.Options.ExecutionId)
 
 	// pass flow and execute the js vm and handle errors
 	_, err := runtime.RunProgram(f.program)
@@ -289,7 +291,9 @@ func (f *FlowExecutor) ReadDataFromFile(payload string) ([]string, error) {
 	if err != nil {
 		return values, err
 	}
-	defer reader.Close()
+	defer func() {
+		_ = reader.Close()
+	}()
 	bin, err := io.ReadAll(reader)
 	if err != nil {
 		return values, err

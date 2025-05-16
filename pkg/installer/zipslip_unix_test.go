@@ -47,7 +47,9 @@ func TestZipSlip(t *testing.T) {
 	}
 
 	configuredTemplateDirectory := filepath.Join(os.TempDir(), "templates")
-	defer os.RemoveAll(configuredTemplateDirectory)
+	defer func() {
+		_ = os.RemoveAll(configuredTemplateDirectory)
+	}()
 
 	t.Run("negative scenarios", func(t *testing.T) {
 		filePathsFromZip := []string{

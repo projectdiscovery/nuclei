@@ -745,8 +745,8 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 		})
 	} else {
 		//** For Normal requests **//
-		hostname = generatedRequest.request.URL.Host
-		formedURL = generatedRequest.request.URL.String()
+		hostname = generatedRequest.request.Host
+		formedURL = generatedRequest.request.String()
 		// if nuclei-project is available check if the request was already sent previously
 		if request.options.ProjectFile != nil {
 			// if unavailable fail silently
@@ -821,11 +821,13 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 		}
 	}
 
+	dialers := protocolstate.GetDialersWithId(request.options.Options.ExecutionId)
+
 	if err != nil {
 		// rawhttp doesn't support draining response bodies.
 		if resp != nil && resp.Body != nil && generatedRequest.rawRequest == nil && !generatedRequest.original.Pipeline {
 			_, _ = io.CopyN(io.Discard, resp.Body, drainReqSize)
-			resp.Body.Close()
+			_ = resp.Body.Close()
 		}
 		request.options.Output.Request(request.options.TemplatePath, formedURL, request.Type().String(), err)
 		request.options.Progress.IncrementErrorsBy(1)
@@ -841,7 +843,7 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 		if input.MetaInput.CustomIP != "" {
 			outputEvent["ip"] = input.MetaInput.CustomIP
 		} else {
-			outputEvent["ip"] = protocolstate.Dialer.GetDialedIP(hostname)
+			outputEvent["ip"] = dialers.Fastdialer.GetDialedIP(hostname)
 			// try getting cname
 			request.addCNameIfAvailable(hostname, outputEvent)
 		}
@@ -920,7 +922,7 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 			}
 		}
 		if generatedRequest.request != nil {
-			matchedURL = generatedRequest.request.URL.String()
+			matchedURL = generatedRequest.request.String()
 		}
 		// Give precedence to the final URL from response
 		if respChain.Request() != nil {
@@ -961,7 +963,7 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 		if input.MetaInput.CustomIP != "" {
 			outputEvent["ip"] = input.MetaInput.CustomIP
 		} else {
-			dialer := protocolstate.GetDialer()
+			dialer := dialers.Fastdialer
 			if dialer != nil {
 				outputEvent["ip"] = dialer.GetDialedIP(hostname)
 			}
@@ -1085,11 +1087,13 @@ func (request *Request) validateNFixEvent(input *contextargs.Context, gr *genera
 
 // addCNameIfAvailable adds the cname to the event if available
 func (request *Request) addCNameIfAvailable(hostname string, outputEvent map[string]interface{}) {
-	if protocolstate.Dialer == nil {
+	dialers := protocolstate.GetDialersWithId(request.options.Options.ExecutionId)
+
+	if dialers.Fastdialer == nil {
 		return
 	}
 
-	data, err := protocolstate.Dialer.GetDNSData(hostname)
+	data, err := dialers.Fastdialer.GetDNSData(hostname)
 	if err == nil {
 		switch len(data.CNAME) {
 		case 0:

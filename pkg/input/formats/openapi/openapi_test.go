@@ -44,7 +44,9 @@ func TestOpenAPIParser(t *testing.T) {
 
 	file, err := os.Open(proxifyInputFile)
 	require.Nilf(t, err, "error opening proxify input file: %v", err)
-	defer file.Close()
+	defer func() {
+		_ = file.Close()
+	}()
 
 	err = format.Parse(file, func(rr *types.RequestResponse) bool {
 		gotMethodsToURLs[rr.Request.Method] = append(gotMethodsToURLs[rr.Request.Method],
