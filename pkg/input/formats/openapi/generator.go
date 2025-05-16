@@ -268,24 +268,32 @@ func generateRequestsFromOp(opts *generateReqOptions) error {
 		for content, value := range opts.op.RequestBody.Value.Content {
 			cloned := req.Clone(req.Context())
 
-			example, err := generateExampleFromSchema(value.Schema.Value)
-			if err != nil {
-				continue
+			var val interface{}
+
+			if value.Schema == nil || value.Schema.Value == nil {
+				val = generateEmptySchemaValue(content)
+			} else {
+				var err error
+
+				val, err = generateExampleFromSchema(value.Schema.Value)
+				if err != nil {
+					continue
+				}
 			}
 
 			// var body string
 			switch content {
 			case "application/json":
-				if marshalled, err := json.Marshal(example); err == nil {
+				if marshalled, err := json.Marshal(val); err == nil {
 					// body = string(marshalled)
 					cloned.Body = io.NopCloser(bytes.NewReader(marshalled))
 					cloned.ContentLength = int64(len(marshalled))
 					cloned.Header.Set("Content-Type", "application/json")
 				}
 			case "application/xml":
-				exampleVal := mxj.Map(example.(map[string]interface{}))
+				values := mxj.Map(val.(map[string]interface{}))
 
-				if marshalled, err := exampleVal.Xml(); err == nil {
+				if marshalled, err := values.Xml(); err == nil {
 					// body = string(marshalled)
 					cloned.Body = io.NopCloser(bytes.NewReader(marshalled))
 					cloned.ContentLength = int64(len(marshalled))
@@ -294,7 +302,7 @@ func generateRequestsFromOp(opts *generateReqOptions) error {
 					gologger.Warning().Msgf("openapi: could not encode xml")
 				}
 			case "application/x-www-form-urlencoded":
-				if values, ok := example.(map[string]interface{}); ok {
+				if values, ok := val.(map[string]interface{}); ok {
 					cloned.Form = url.Values{}
 					for k, v := range values {
 						cloned.Form.Set(k, types.ToString(v))
@@ -306,7 +314,7 @@ func generateRequestsFromOp(opts *generateReqOptions) error {
 					cloned.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 				}
 			case "multipart/form-data":
-				if values, ok := example.(map[string]interface{}); ok {
+				if values, ok := val.(map[string]interface{}); ok {
 					buffer := &bytes.Buffer{}
 					multipartWriter := multipart.NewWriter(buffer)
 					for k, v := range values {
@@ -326,13 +334,13 @@ func generateRequestsFromOp(opts *generateReqOptions) error {
 					cloned.Header.Set("Content-Type", multipartWriter.FormDataContentType())
 				}
 			case "text/plain":
-				str := types.ToString(example)
+				str := types.ToString(val)
 				// body = str
 				cloned.Body = io.NopCloser(strings.NewReader(str))
 				cloned.ContentLength = int64(len(str))
 				cloned.Header.Set("Content-Type", "text/plain")
 			case "application/octet-stream":
-				str := types.ToString(example)
+				str := types.ToString(val)
 				if str == "" {
 					// use two strings
 					str = "string1\nstring2"
