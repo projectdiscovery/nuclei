@@ -288,3 +288,33 @@ func openAPIExample(schema *openapi3.Schema, cache map[*openapi3.Schema]*cachedS
 func generateExampleFromSchema(schema *openapi3.Schema) (interface{}, error) {
 	return openAPIExample(schema, make(map[*openapi3.Schema]*cachedSchema)) // TODO: Use caching
 }
+
+func generateEmptySchemaValue(contentType string) *openapi3.Schema {
+	schema := &openapi3.Schema{}
+	objectType := &openapi3.Types{"object"}
+	stringType := &openapi3.Types{"string"}
+
+	switch contentType {
+	case "application/json":
+		schema.Type = objectType
+		schema.Properties = make(map[string]*openapi3.SchemaRef)
+	case "application/xml":
+		schema.Type = stringType
+		schema.Format = "xml"
+		schema.Example = "<?xml version=\"1.0\"?><root/>"
+	case "text/plain":
+		schema.Type = stringType
+	case "application/x-www-form-urlencoded":
+		schema.Type = objectType
+		schema.Properties = make(map[string]*openapi3.SchemaRef)
+	case "multipart/form-data":
+		schema.Type = objectType
+		schema.Properties = make(map[string]*openapi3.SchemaRef)
+	case "application/octet-stream":
+	default:
+		schema.Type = stringType
+		schema.Format = "binary"
+	}
+
+	return schema
+}
