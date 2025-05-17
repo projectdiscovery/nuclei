@@ -33,7 +33,7 @@ echo "::group::Validating templates"
 echo "::endgroup::"
 
 # For macOS, ensure we're not hitting file descriptor limits
-if [ "${CURRENT_OS}" == "macOS-latest" ]; then
+if [ "${CURRENT_OS}" == "macos-latest" ]; then
   ulimit -n 65536 || true
 fi
 
