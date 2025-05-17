@@ -7,6 +7,10 @@ if [ "${CURRENT_OS}" == "windows-latest" ];then
     extension=.exe
 fi
 
+# Create necessary config directories and files
+mkdir -p .nuclei-config/nuclei/
+touch .nuclei-config/nuclei/.nuclei-ignore
+
 echo "::group::Building functional-test binary"
 go build -o functional-test$extension
 echo "::endgroup::"
