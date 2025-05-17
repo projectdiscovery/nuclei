@@ -28,27 +28,13 @@ go build -o nuclei$extension -v github.com/projectdiscovery/nuclei/v3/cmd/nuclei
 echo "::endgroup::"
 
 echo "::group::Validating templates"
-# Basic template validation
 ./nuclei_dev$extension -ut
-
-# Check .nuclei-ignore file format
-echo "::debug::Content of .nuclei-ignore file:"
-cat .nuclei-config/nuclei/.nuclei-ignore
-
-# Validate templates with more verbose output
-./nuclei_dev$extension -validate -debug -v
-
-# List templates that will be used
-echo "::debug::Templates that will be loaded:"
-./nuclei_dev$extension -tl | head -20
+./nuclei_dev$extension -validate
 echo "::endgroup::"
 
 # For macOS, ensure we're not hitting file descriptor limits
 if [ "${CURRENT_OS}" == "macOS-latest" ]; then
-  echo "::group::Setting macOS specific configurations"
   ulimit -n 65536 || true
-  echo "Current file descriptor limit: $(ulimit -n)"
-  echo "::endgroup::"
 fi
 
 echo 'Starting Nuclei functional test'

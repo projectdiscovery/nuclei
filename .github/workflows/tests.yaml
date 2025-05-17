@@ -100,12 +100,8 @@ jobs:
         run: |
           sudo sysctl -w kern.maxfiles=524288
           sudo sysctl -w kern.maxfilesperproc=524288
-          ulimit -n 65536 || true
           sudo launchctl limit maxfiles 65536 524288
-          echo "File descriptor limits:"
-          ulimit -n
-          sysctl kern.maxfiles
-          sysctl kern.maxfilesperproc
+          ulimit -n 65536 || true
       - run: bash run.sh "${{ matrix.os }}"
         env:
           GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
