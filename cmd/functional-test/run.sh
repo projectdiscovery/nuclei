@@ -1,41 +1,43 @@
 #!/bin/bash
 
-# reading os type from arguments
-CURRENT_OS=$1
+if [ "${RUNNER_OS}" == "Windows" ]; then
+    EXT=".exe"
+elif [ "${RUNNER_OS}" == "macOS" ]; then
+    if [ "${CI}" == "true" ]; then
+        sudo sysctl -w kern.maxfiles{,perproc}=524288
+        sudo launchctl limit maxfiles 65536 524288
+    fi
 
-if [ "${CURRENT_OS}" == "windows-latest" ];then
-    extension=.exe
+    ORIGINAL_ULIMIT="$(ulimit -n)"
+    ulimit -n 65536 || true
 fi
 
-# Create necessary config directories and files
 mkdir -p .nuclei-config/nuclei/
 touch .nuclei-config/nuclei/.nuclei-ignore
 
 echo "::group::Building functional-test binary"
-go build -o functional-test$extension
+go build -o "functional-test${EXT}"
 echo "::endgroup::"
 
 echo "::group::Building Nuclei binary from current branch"
-go build -o nuclei_dev$extension ../nuclei
-echo "::endgroup::"
-
-echo "::group::Installing nuclei templates"
-./nuclei_dev$extension -update-templates
+go build -o "nuclei-dev${EXT}" ../nuclei
 echo "::endgroup::"
 
 echo "::group::Building latest release of nuclei"
-go build -o nuclei$extension -v github.com/projectdiscovery/nuclei/v3/cmd/nuclei
+go build -o "nuclei${EXT}" -v github.com/projectdiscovery/nuclei/v3/cmd/nuclei
+echo "::endgroup::"
+
+echo "::group::Installing nuclei templates"
+eval "./nuclei-dev${EXT} -update-templates"
 echo "::endgroup::"
 
 echo "::group::Validating templates"
-./nuclei_dev$extension -ut
-./nuclei_dev$extension -validate
+eval "./nuclei-dev${EXT} -validate"
 echo "::endgroup::"
 
-# For macOS, ensure we're not hitting file descriptor limits
-if [ "${CURRENT_OS}" == "macos-latest" ]; then
-  ulimit -n 65536 || true
-fi
+echo "Starting Nuclei functional test"
+eval "./functional-test${EXT} -main ./nuclei${EXT} -dev ./nuclei-dev${EXT} -testcases testcases.txt"
 
-echo 'Starting Nuclei functional test'
-./functional-test$extension -main ./nuclei$extension -dev ./nuclei_dev$extension -testcases testcases.txt
+if [ "${RUNNER_OS}" == "macOS" ]; then
+    ulimit -n "${ORIGINAL_ULIMIT}" || true
+fi

@@ -94,15 +94,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: projectdiscovery/actions/setup/go@v1
       - uses: projectdiscovery/actions/setup/python@v1
-      # Increase file descriptor limits on macOS
-      - name: Increase file descriptor limits
-        if: matrix.os == 'macOS-latest'
-        run: |
-          sudo sysctl -w kern.maxfiles=524288
-          sudo sysctl -w kern.maxfilesperproc=524288
-          sudo launchctl limit maxfiles 65536 524288
-          ulimit -n 65536 || true
-      - run: bash run.sh "${{ matrix.os }}"
+      - run: bash run.sh
         env:
           GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
         working-directory: cmd/functional-test/
