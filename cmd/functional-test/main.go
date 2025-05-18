@@ -27,7 +27,7 @@ var (
 func main() {
 	flag.Parse()
 
-	debug := os.Getenv("DEBUG") == "true"
+	debug := os.Getenv("DEBUG") == "true" || os.Getenv("RUNNER_DEBUG") == "1"
 
 	if err, errored := runFunctionalTests(debug); err != nil {
 		log.Fatalf("Could not run functional tests: %s\n", err)
