@@ -863,11 +863,11 @@ func (r *Runner) displayExecutionInfo(store *loader.Store) {
 		return fmt.Sprintf("Current %s version: %v %v", versionType, version, updateutils.GetVersionDescription(version, latestVersion))
 	}
 
-	gologger.Info().Msgf(versionInfo(config.Version, cfg.LatestNucleiVersion, "nuclei"))
-	gologger.Info().Msgf(versionInfo(cfg.TemplateVersion, cfg.LatestNucleiTemplatesVersion, "nuclei-templates"))
+	gologger.Info().Msg(versionInfo(config.Version, cfg.LatestNucleiVersion, "nuclei"))
+	gologger.Info().Msg(versionInfo(cfg.TemplateVersion, cfg.LatestNucleiTemplatesVersion, "nuclei-templates"))
 	if !HideAutoSaveMsg {
 		if r.pdcpUploadErrMsg != "" {
-			gologger.Print().Msgf("%s", r.pdcpUploadErrMsg)
+			gologger.Print().Msg(r.pdcpUploadErrMsg)
 		} else {
 			gologger.Info().Msgf("To view results on cloud dashboard, visit %v/scans upon scan completion.", pdcpauth.DashBoardURL)
 		}
