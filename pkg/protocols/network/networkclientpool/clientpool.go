@@ -2,6 +2,7 @@ package networkclientpool
 
 import (
 	"github.com/projectdiscovery/fastdialer/fastdialer"
+
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 )
@@ -31,4 +32,11 @@ func (c *Configuration) Hash() string {
 // Get creates or gets a client for the protocol based on custom configuration
 func Get(options *types.Options, configuration *Configuration /*TODO review unused parameters*/) (*fastdialer.Dialer, error) {
 	return normalClient, nil
+}
+
+// Clear clears cached client pool implementation
+func Clear() {
+	if normalClient != nil {
+		normalClient = nil
+	}
 }
