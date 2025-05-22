@@ -56,6 +56,7 @@ var (
 		"flow":            flowTestcases,
 		"javascript":      jsTestcases,
 		"matcher-status":  matcherStatusTestcases,
+		"exporters":       exportersTestCases,
 	}
 	// flakyTests are run with a retry count of 3
 	flakyTests = map[string]bool{
