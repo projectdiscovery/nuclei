@@ -7,6 +7,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 
 	"github.com/projectdiscovery/goflags"
@@ -334,12 +335,7 @@ func (c *Config) copyIgnoreFile() {
 // this could be a feature specific to debugging like PPROF or printing stats
 // of max host error etc
 func (c *Config) IsDebugArgEnabled(arg string) bool {
-	for _, v := range c.debugArgs {
-		if v == arg {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(c.debugArgs, arg)
 }
 
 // parseDebugArgs from string
