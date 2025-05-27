@@ -2,6 +2,7 @@ package openapi
 
 import (
 	"fmt"
+	"slices"
 
 	"github.com/getkin/kin-openapi/openapi3"
 	"github.com/pkg/errors"
@@ -84,13 +85,7 @@ func excludeFromMode(schema *openapi3.Schema) bool {
 
 // isRequired checks whether a key is actually required.
 func isRequired(schema *openapi3.Schema, key string) bool {
-	for _, req := range schema.Required {
-		if req == key {
-			return true
-		}
-	}
-
-	return false
+	return slices.Contains(schema.Required, key)
 }
 
 type cachedSchema struct {
