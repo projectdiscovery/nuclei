@@ -19,9 +19,9 @@ const { values: args } = util.parseArgs({
       "module": { type: 'string', short: 'm' },
       "import-name": { type: 'string', short: 'n' },
       "import-as": { type: 'string', short: 'a' },
-      "build-platform": { type: 'string' },
-      "build-target": { type: 'string' },
-      "build-format": { type: 'string' },
+      "build-platform": { type: 'string', short: 'platform' },
+      "build-target": { type: 'string', short: 'target' },
+      "build-format": { type: 'string', short: 'format' },
   },
   allowPositionals: true,
 });
