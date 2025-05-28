@@ -12,6 +12,7 @@ import (
 	"github.com/dop251/goja_nodejs/require"
 	"github.com/kitabisa/go-ci"
 	"github.com/projectdiscovery/gologger"
+	"github.com/projectdiscovery/nuclei/v3/pkg/js"
 	_ "github.com/projectdiscovery/nuclei/v3/pkg/js/generated/go/libbytes"
 	_ "github.com/projectdiscovery/nuclei/v3/pkg/js/generated/go/libfs"
 	_ "github.com/projectdiscovery/nuclei/v3/pkg/js/generated/go/libikev2"
@@ -214,6 +215,9 @@ func createNewRuntime() *goja.Runtime {
 	if err := global.RegisterNativeScripts(runtime); err != nil {
 		gologger.Error().Msgf("Could not register scripts: %s\n", err)
 	}
+
+	js.RegisterNodeModules(runtime)
+
 	return runtime
 }
 

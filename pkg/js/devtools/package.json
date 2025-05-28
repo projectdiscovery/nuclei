@@ -1,0 +1,7 @@
+{
+  "devDependencies": {
+    "esbuild": "^0.25.4",
+    "esbuild-plugin-babel": "^0.2.3",
+    "node-stdlib-browser": "^1.3.1"
+  }
+}

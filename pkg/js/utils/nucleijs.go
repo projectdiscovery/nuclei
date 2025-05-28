@@ -7,6 +7,7 @@ import (
 	"sync"
 
 	"github.com/dop251/goja"
+	"github.com/projectdiscovery/nuclei/v3/pkg/js"
 )
 
 // temporary on demand runtime to throw errors when vm is not available
@@ -14,6 +15,7 @@ var (
 	tmpRuntime  *goja.Runtime
 	runtimeInit func() = sync.OnceFunc(func() {
 		tmpRuntime = goja.New()
+		js.RegisterNodeModules(tmpRuntime)
 	})
 )
 
