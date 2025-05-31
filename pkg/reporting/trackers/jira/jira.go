@@ -35,17 +35,57 @@ func (jiraFormatter *Formatter) CreateCodeBlock(title string, content string, _ 
 }
 
 func (jiraFormatter *Formatter) CreateTable(headers []string, rows [][]string) (string, error) {
-	table, err := jiraFormatter.MarkdownFormatter.CreateTable(headers, rows)
-	if err != nil {
-		return "", err
+	if len(headers) == 0 {
+		return "", fmt.Errorf("no headers provided")
 	}
-	tableRows := strings.Split(table, "\n")
-	tableRowsWithoutHeaderSeparator := append(tableRows[:1], tableRows[2:]...)
-	return strings.Join(tableRowsWithoutHeaderSeparator, "\n"), nil
+
+	var builder strings.Builder
+
+	// Create header row with leading and trailing pipes
+	builder.WriteString("| ")
+	builder.WriteString(strings.Join(headers, " | "))
+	builder.WriteString(" |")
+	builder.WriteString("\n")
+
+	// Create separator row with leading and trailing pipes
+	separators := make([]string, len(headers))
+	for i := range separators {
+		separators[i] = "-----------"
+	}
+	builder.WriteString("|")
+	builder.WriteString(strings.Join(separators, "|"))
+	builder.WriteString("|")
+	builder.WriteString("\n")
+
+	// Create data rows with leading and trailing pipes
+	for _, row := range rows {
+		builder.WriteString("| ")
+		if len(row) < len(headers) {
+			extendedRow := make([]string, len(headers))
+			copy(extendedRow, row)
+			builder.WriteString(strings.Join(extendedRow, " | "))
+		} else if len(row) > len(headers) {
+			builder.WriteString(strings.Join(row[:len(headers)], " | "))
+		} else {
+			builder.WriteString(strings.Join(row, " | "))
+		}
+		builder.WriteString(" |")
+		builder.WriteString("\n")
+	}
+
+	return builder.String(), nil
+}
+
+func (jiraFormatter *Formatter) CreateHorizontalLine() string {
+	return "----\n"
+}
+
+func (jiraFormatter *Formatter) FormatLineBreaks(text string) string {
+	return strings.ReplaceAll(text, "\n", "\\\\")
 }
 
 func (jiraFormatter *Formatter) CreateLink(title string, url string) string {
-	return fmt.Sprintf("[%s|%s]", title, url)
+	return fmt.Sprintf("[%s](%s)", title, url)
 }
 
 // Integration is a client for an issue tracker integration

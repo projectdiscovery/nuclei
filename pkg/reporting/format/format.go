@@ -6,4 +6,5 @@ type ResultFormatter interface {
 	CreateTable(headers []string, rows [][]string) (string, error)
 	CreateLink(title string, url string) string
 	CreateHorizontalLine() string
+	FormatLineBreaks(text string) string
 }

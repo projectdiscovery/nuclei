@@ -9,7 +9,6 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/config"
 	"github.com/projectdiscovery/nuclei/v3/pkg/model"
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
-	"github.com/projectdiscovery/nuclei/v3/pkg/reporting/exporters/markdown/util"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	"github.com/projectdiscovery/nuclei/v3/pkg/utils"
 	unitutils "github.com/projectdiscovery/utils/unit"
@@ -171,20 +170,20 @@ func CreateTemplateInfoTable(templateInfo *model.Info, formatter ResultFormatter
 	}
 
 	if !utils.IsBlank(templateInfo.Description) {
-		rows = append(rows, []string{"Description", lineBreakToHTML(templateInfo.Description)})
+		rows = append(rows, []string{"Description", formatter.FormatLineBreaks(templateInfo.Description)})
 	}
 
 	if !utils.IsBlank(templateInfo.Remediation) {
-		rows = append(rows, []string{"Remediation", lineBreakToHTML(templateInfo.Remediation)})
+		rows = append(rows, []string{"Remediation", formatter.FormatLineBreaks(templateInfo.Remediation)})
 	}
 
 	classification := templateInfo.Classification
 	if classification != nil {
 		if classification.CVSSMetrics != "" {
-			rows = append(rows, []string{"CVSS-Metrics", generateCVSSMetricsFromClassification(classification)})
+			rows = append(rows, []string{"CVSS-Metrics", generateCVSSMetricsFromClassification(classification, formatter)})
 		}
 
-		rows = append(rows, generateCVECWEIDLinksFromClassification(classification)...)
+		rows = append(rows, generateCVECWEIDLinksFromClassification(classification, formatter)...)
 		rows = append(rows, []string{"CVSS-Score", strconv.FormatFloat(classification.CVSSScore, 'f', 2, 64)})
 	}
 
@@ -202,7 +201,7 @@ func CreateTemplateInfoTable(templateInfo *model.Info, formatter ResultFormatter
 	return table
 }
 
-func generateCVSSMetricsFromClassification(classification *model.Classification) string {
+func generateCVSSMetricsFromClassification(classification *model.Classification, formatter ResultFormatter) string {
 	var cvssLinkPrefix string
 	if strings.Contains(classification.CVSSMetrics, "CVSS:3.0") {
 		cvssLinkPrefix = "https://www.first.org/cvss/calculator/3.0#"
@@ -213,11 +212,11 @@ func generateCVSSMetricsFromClassification(classification *model.Classification)
 	if cvssLinkPrefix == "" {
 		return classification.CVSSMetrics
 	} else {
-		return util.CreateLink(classification.CVSSMetrics, cvssLinkPrefix+classification.CVSSMetrics)
+		return formatter.CreateLink(classification.CVSSMetrics, cvssLinkPrefix+classification.CVSSMetrics)
 	}
 }
 
-func generateCVECWEIDLinksFromClassification(classification *model.Classification) [][]string {
+func generateCVECWEIDLinksFromClassification(classification *model.Classification, formatter ResultFormatter) [][]string {
 	cwes := classification.CWEID.ToSlice()
 
 	cweIDs := make([]string, 0, len(cwes))
@@ -226,7 +225,7 @@ func generateCVECWEIDLinksFromClassification(classification *model.Classificatio
 		if len(parts) != 2 {
 			continue
 		}
-		cweIDs = append(cweIDs, util.CreateLink(strings.ToUpper(value), fmt.Sprintf("https://cwe.mitre.org/data/definitions/%s.html", parts[1])))
+		cweIDs = append(cweIDs, formatter.CreateLink(strings.ToUpper(value), fmt.Sprintf("https://cwe.mitre.org/data/definitions/%s.html", parts[1])))
 	}
 
 	var rows [][]string
@@ -238,7 +237,7 @@ func generateCVECWEIDLinksFromClassification(classification *model.Classificatio
 	cves := classification.CVEID.ToSlice()
 	cveIDs := make([]string, 0, len(cves))
 	for _, value := range cves {
-		cveIDs = append(cveIDs, util.CreateLink(strings.ToUpper(value), fmt.Sprintf("https://cve.mitre.org/cgi-bin/cvename.cgi?name=%s", value)))
+		cveIDs = append(cveIDs, formatter.CreateLink(strings.ToUpper(value), fmt.Sprintf("https://cve.mitre.org/cgi-bin/cvename.cgi?name=%s", value)))
 	}
 	if len(cveIDs) > 0 {
 		rows = append(rows, []string{"CVE-ID", strings.Join(cveIDs, ",")})

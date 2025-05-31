@@ -28,6 +28,10 @@ func (markdownFormatter MarkdownFormatter) CreateHorizontalLine() string {
 	return CreateHorizontalLine()
 }
 
+func (markdownFormatter MarkdownFormatter) FormatLineBreaks(text string) string {
+	return strings.ReplaceAll(text, "\n", "<br>")
+}
+
 // escapeCodeBlockMarkdown only escapes the bare minimum characters needed
 // for code blocks and other sections where readability is important
 //
