@@ -3,6 +3,7 @@ package multiproto
 import (
 	"strconv"
 	"strings"
+	"sync"
 	"sync/atomic"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
@@ -13,6 +14,12 @@ import (
 	mapsutil "github.com/projectdiscovery/utils/maps"
 	stringsutil "github.com/projectdiscovery/utils/strings"
 )
+
+var builderPool = sync.Pool{
+	New: func() any {
+		return &strings.Builder{}
+	},
+}
 
 // Mutliprotocol is a template executer engine that executes multiple protocols
 // with logic in between
@@ -64,6 +71,32 @@ func (m *MultiProtocol) ExecuteWithResults(ctx *scan.ScanContext) error {
 
 	previous := mapsutil.NewSyncLockMap[string, any]()
 
+	// This map contains a list of keys to explicitly include for storage in the `previous`
+	// event map. This is a security and performance measure to prevent memory exhaustion.
+	// Only small, scalar values should be included here. If a user needs a larger value
+	// from a previous request (like a body or header), they must use an `extractor` with `internal: true`.
+	var includeInPrevious = map[string]struct{}{
+		// Generic
+		"host":       {},
+		"port":       {},
+		"path":       {},
+		"scheme":     {},
+		"url":        {},
+		"ip":         {},
+		"type":       {},
+		"matched-at": {},
+
+		// HTTP
+		"status_code":    {},
+		"content_length": {},
+		"content_type":   {},
+
+		// DNS
+		"rcode":    {},
+		"question": {},
+		"qtype":    {},
+	}
+
 	// template context: contains values extracted using `internal` extractor from previous protocols
 	// these values are extracted from each protocol in queue and are passed to next protocol in queue
 	// instead of adding seperator field to handle such cases these values are appended to `dynamicValues` (which are meant to be used in workflows)
@@ -92,8 +125,17 @@ func (m *MultiProtocol) ExecuteWithResults(ctx *scan.ScanContext) error {
 
 			ID := req.GetID()
 			if ID != "" {
-				builder := &strings.Builder{}
+				builder := builderPool.Get().(*strings.Builder)
+				builder.Reset()
+				defer builderPool.Put(builder)
+
 				for k, v := range event.InternalEvent {
+					// Only store keys that are explicitly on the include list.
+					// This is a critical optimization to prevent memory exhaustion.
+					if _, included := includeInPrevious[k]; !included {
+						continue
+					}
+
 					builder.WriteString(ID)
 					builder.WriteString("_")
 					builder.WriteString(k)
