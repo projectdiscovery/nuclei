@@ -83,7 +83,11 @@ func Get(options *types.Options, configuration *Configuration) (*retryabledns.Cl
 	} else if len(configuration.Resolvers) > 0 {
 		resolvers = configuration.Resolvers
 	}
-	client, err := retryabledns.New(resolvers, configuration.Retries)
+	client, err := retryabledns.NewWithOptions(retryabledns.Options{
+		BaseResolvers: resolvers,
+		MaxRetries:    configuration.Retries,
+		Proxy:         options.AliveSocksProxy,
+	})
 	if err != nil {
 		return nil, errors.Wrap(err, "could not create dns client")
 	}

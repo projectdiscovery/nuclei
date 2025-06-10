@@ -237,7 +237,9 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 	}
 
 	// Create a client for the class
-	client, err := networkclientpool.Get(options.Options, &networkclientpool.Configuration{})
+	client, err := networkclientpool.Get(options.Options, &networkclientpool.Configuration{
+		OverrideDialer: options.OverrideFastdialer,
+	})
 	if err != nil {
 		return errors.Wrap(err, "could not get network client")
 	}
@@ -258,8 +260,4 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 // Requests returns the total number of requests the YAML rule will perform
 func (request *Request) Requests() int {
 	return len(request.Address)
-}
-
-func (request *Request) SetDialer(dialer *fastdialer.Dialer) {
-	request.dialer = dialer
 }

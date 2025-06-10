@@ -5,6 +5,7 @@ import (
 	"encoding/base64"
 	"sync/atomic"
 
+	"github.com/projectdiscovery/fastdialer/fastdialer"
 	"github.com/projectdiscovery/ratelimit"
 	mapsutil "github.com/projectdiscovery/utils/maps"
 	stringsutil "github.com/projectdiscovery/utils/strings"
@@ -132,6 +133,8 @@ type ExecutorOptions struct {
 	ExportReqURLPattern bool
 	// GlobalMatchers is the storage for global matchers with http passive templates
 	GlobalMatchers *globalmatchers.Storage
+	// OverrideFastdialer is a fastdialer dialer instance
+	OverrideFastdialer *fastdialer.Dialer
 }
 
 // todo: centralizing components is not feasible with current clogged architecture
