@@ -25,7 +25,6 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/helpers/eventcreator"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/helpers/responsehighlighter"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/interactsh"
-	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/replacer"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/utils/vardump"
 	protocolutils "github.com/projectdiscovery/nuclei/v3/pkg/protocols/utils"
@@ -64,7 +63,8 @@ func (request *Request) getOpenPorts(target *contextargs.Context) ([]string, err
 			errs = append(errs, err)
 			continue
 		}
-		conn, err := protocolstate.Dialer.Dial(target.Context(), "tcp", addr)
+
+		conn, err := request.dialer.Dial(target.Context(), "tcp", addr)
 		if err != nil {
 			errs = append(errs, err)
 			continue
