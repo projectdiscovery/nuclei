@@ -121,6 +121,12 @@ func (iwe *InternalWrappedEvent) CloneShallow() *InternalWrappedEvent {
 	}
 }
 
+// HasOperatorResult checks if the event has an operator result from template
+// execution.
+// It returns true if OperatorsResult is not nil, indicating that operators like
+// matchers or extractors have produced a result during template execution.
+// Operators are conditions specified in templates that determine if a target is
+// vulnerable or matches certain criteria.
 func (iwe *InternalWrappedEvent) HasOperatorResult() bool {
 	iwe.RLock()
 	defer iwe.RUnlock()
@@ -128,6 +134,11 @@ func (iwe *InternalWrappedEvent) HasOperatorResult() bool {
 	return iwe.OperatorsResult != nil
 }
 
+// HasResults checks if the event has any results from the scan execution.
+// It returns true if there are one or more items in the Results slice. Results
+// represent findings or matches from the template execution against a target.
+// Each result contains details like matched data, extracted information, and
+// metadata about the finding.
 func (iwe *InternalWrappedEvent) HasResults() bool {
 	iwe.RLock()
 	defer iwe.RUnlock()
