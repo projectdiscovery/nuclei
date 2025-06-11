@@ -91,7 +91,12 @@ func (m *MultiProtocol) ExecuteWithResults(ctx *scan.ScanContext) error {
 			}
 
 			ID := req.GetID()
-			if ID != "" {
+			// NOTE(dwisiswant0): For multi-protocol templates, we only want to
+			// set the internal event if the event has operator (matchers or
+			// extractors) results, this is to avoid setting empty internal
+			// events which can happen if the protocol does not have any
+			// operators or if the operators do not produce any results.
+			if ID != "" && event.HasOperatorResult() {
 				builder := &strings.Builder{}
 				for k, v := range event.InternalEvent {
 					builder.WriteString(ID)
