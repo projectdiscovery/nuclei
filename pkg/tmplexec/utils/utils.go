@@ -5,11 +5,12 @@ import (
 	"strings"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
+	"github.com/projectdiscovery/nuclei/v3/pkg/templates/types"
 	mapsutil "github.com/projectdiscovery/utils/maps"
 )
 
 var (
-	reqTypeWithIndexRegex = regexp.MustCompile(`^(?:dns|http|headless|tcp|ssl|websocket|whois|code|javascript)_\d+_`)
+	reqTypeWithIndexRegex = regexp.MustCompile(`^(` + strings.Join(types.SupportedProtocolsStrings(), "|") + `)_\d+_`)
 )
 
 // FillPreviousEvent is a helper function to get the previous event from the event
