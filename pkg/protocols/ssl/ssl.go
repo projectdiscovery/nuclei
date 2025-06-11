@@ -116,7 +116,7 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 	request.options = options
 
 	client, err := networkclientpool.Get(options.Options, &networkclientpool.Configuration{
-		OverrideDialer: options.OverrideFastdialer,
+		CustomDialer: options.OverrideFastdialer,
 	})
 	if err != nil {
 		return errorutil.NewWithTag("ssl", "could not get network client").Wrap(err)
@@ -436,8 +436,4 @@ func (request *Request) MakeResultEventItem(wrapped *output.InternalWrappedEvent
 		Error:            types.ToString(wrapped.InternalEvent["error"]),
 	}
 	return data
-}
-
-func (request *Request) SetDialer(dialer *fastdialer.Dialer) {
-	request.dialer = dialer
 }
