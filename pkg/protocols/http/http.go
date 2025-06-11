@@ -353,7 +353,7 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 	request.httpClient = client
 
 	dialer, err := networkclientpool.Get(options.Options, &networkclientpool.Configuration{
-		CustomDialer: protocolstate.Dialer,
+		CustomDialer: options.OverrideFastdialer,
 	})
 	if err != nil {
 		return errors.Wrap(err, "could not get dialer")

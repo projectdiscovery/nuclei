@@ -27,6 +27,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/interactsh"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/replacer"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/utils/vardump"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/network/networkclientpool"
 	protocolutils "github.com/projectdiscovery/nuclei/v3/pkg/protocols/utils"
 	templateTypes "github.com/projectdiscovery/nuclei/v3/pkg/templates/types"
 	errorutil "github.com/projectdiscovery/utils/errors"
@@ -62,6 +63,9 @@ func (request *Request) getOpenPorts(target *contextargs.Context) ([]string, err
 		if err != nil {
 			errs = append(errs, err)
 			continue
+		}
+		if request.dialer == nil {
+			request.dialer, _ = networkclientpool.Get(request.options.Options, &networkclientpool.Configuration{})
 		}
 
 		conn, err := request.dialer.Dial(target.Context(), "tcp", addr)
