@@ -20,8 +20,8 @@ func FillPreviousEvent(ID string, event *output.InternalWrappedEvent, previous *
 		return
 	}
 
-	builder := &strings.Builder{}
 	for k, v := range event.InternalEvent {
+		var builder strings.Builder
 		if reqTypeWithIndexRegex.MatchString(k) {
 			_ = previous.Set(k, v)
 			continue
@@ -30,6 +30,5 @@ func FillPreviousEvent(ID string, event *output.InternalWrappedEvent, previous *
 		builder.WriteString("_")
 		builder.WriteString(k)
 		_ = previous.Set(builder.String(), v)
-		builder.Reset()
 	}
 }
