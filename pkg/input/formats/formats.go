@@ -28,6 +28,10 @@ type InputFormatOptions struct {
 	// RequiredOnly only uses required fields when generating requests
 	// instead of all fields
 	RequiredOnly bool
+	// VarsTextTemplating uses Variables and inject it into the input
+	// this is used for text templating of variables based on carvel ytt
+	// Only available for Yaml formats
+	VarsTextTemplating bool
 }
 
 // Format is an interface implemented by all input formats
