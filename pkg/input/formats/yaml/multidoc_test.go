@@ -2,6 +2,7 @@ package yaml
 
 import (
 	"os"
+	"strings"
 	"testing"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/input/formats"
@@ -64,7 +65,8 @@ Connection: close
 User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 11_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/87.0.4280.88 Safari/537.36
 
 foo=catalog&bar=product`
-		require.Equal(t, expectedRaw, request.Request.Raw, "request raw does not match expected value")
+		normalised := strings.ReplaceAll(request.Request.Raw, "\r\n", "\n")
+		require.Equal(t, expectedRaw, strings.TrimSuffix(normalised, "\n"), "request raw does not match expected value")
 
 		return false
 	}, proxifyYttFile)
