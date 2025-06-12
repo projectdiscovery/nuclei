@@ -419,6 +419,8 @@ type Options struct {
 	FormatUseRequiredOnly bool
 	// SkipFormatValidation is used to skip format validation
 	SkipFormatValidation bool
+	// VarsTextTemplating is used to inject variables into yaml input files
+	VarsTextTemplating bool
 	// PayloadConcurrency is the number of concurrent payloads to run per template
 	PayloadConcurrency int
 	// ProbeConcurrency is the number of concurrent http probes to run with httpx
