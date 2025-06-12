@@ -116,6 +116,7 @@ func NewInputProvider(opts InputOptions) (InputProvider, error) {
 				Variables:            generators.MergeMaps(extraVars, opts.Options.Vars.AsMap()),
 				SkipFormatValidation: opts.Options.SkipFormatValidation,
 				RequiredOnly:         opts.Options.FormatUseRequiredOnly,
+				VarsTextTemplating:   opts.Options.VarsTextTemplating,
 			},
 		})
 	}
