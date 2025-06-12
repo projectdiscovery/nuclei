@@ -64,7 +64,6 @@ func (j *YamlMultiDocFormat) Parse(input io.Reader, resultsCb formats.ParseReqRe
 		if err != nil {
 			return errors.Wrap(err, "could not read templated input")
 		}
-		gologger.Debug().Msgf("Templated YAML content: %s", string(finalData))
 		finalInput = strings.NewReader(string(finalData))
 
 	}

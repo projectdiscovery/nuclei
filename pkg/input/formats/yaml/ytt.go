@@ -4,10 +4,12 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"strings"
 
 	yttcmd "carvel.dev/ytt/pkg/cmd/template"
 	yttui "carvel.dev/ytt/pkg/cmd/ui"
 	yttfiles "carvel.dev/ytt/pkg/files"
+	"gopkg.in/yaml.v2"
 )
 
 func ytt(tpl, dvs []string) (io.Reader, error) {
@@ -59,7 +61,8 @@ func templatesAsInput(tpl ...string) (yttcmd.Input, error) {
 func mapToKeyValueSlice(m map[string]interface{}) []string {
 	var result []string
 	for k, v := range m {
-		result = append(result, fmt.Sprintf("%s=%v", k, v))
+		y, _ := yaml.Marshal(v)
+		result = append(result, fmt.Sprintf("%s=%s", k, strings.TrimSpace(string(y))))
 	}
 	return result
 }

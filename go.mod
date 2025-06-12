@@ -47,6 +47,7 @@ require (
 )
 
 require (
+	carvel.dev/ytt v0.52.0
 	code.gitea.io/sdk/gitea v0.17.0
 	github.com/Azure/azure-sdk-for-go/sdk/azidentity v1.6.0
 	github.com/Azure/azure-sdk-for-go/sdk/storage/azblob v1.1.0
@@ -119,7 +120,6 @@ require (
 
 require (
 	aead.dev/minisign v0.2.0 // indirect
-	carvel.dev/ytt v0.52.0 // indirect
 	dario.cat/mergo v1.0.0 // indirect
 	github.com/Azure/azure-sdk-for-go/sdk/azcore v1.11.1 // indirect
 	github.com/Azure/azure-sdk-for-go/sdk/internal v1.8.0 // indirect
