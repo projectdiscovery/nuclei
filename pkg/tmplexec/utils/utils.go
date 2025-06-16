@@ -9,8 +9,8 @@ import (
 
 // FillPreviousEvent is a helper function to get the previous event from the event
 // without leading to duplicate prefixes
-func FillPreviousEvent(ID string, event *output.InternalWrappedEvent, previous *mapsutil.SyncLockMap[string, any]) {
-	if ID == "" {
+func FillPreviousEvent(protoID string, event *output.InternalWrappedEvent, previous *mapsutil.SyncLockMap[string, any]) {
+	if protoID == "" {
 		return
 	}
 
@@ -19,13 +19,13 @@ func FillPreviousEvent(ID string, event *output.InternalWrappedEvent, previous *
 			continue
 		}
 
-		if strings.HasPrefix(k, ID+"_") {
+		if strings.HasPrefix(k, protoID+"_") {
 			continue
 		}
 
 		var builder strings.Builder
 
-		builder.WriteString(ID)
+		builder.WriteString(protoID)
 		builder.WriteString("_")
 		builder.WriteString(k)
 
