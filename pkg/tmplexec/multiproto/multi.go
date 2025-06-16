@@ -2,7 +2,6 @@ package multiproto
 
 import (
 	"strconv"
-	"strings"
 	"sync/atomic"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
@@ -10,6 +9,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/generators"
 	"github.com/projectdiscovery/nuclei/v3/pkg/scan"
 	"github.com/projectdiscovery/nuclei/v3/pkg/templates/types"
+	"github.com/projectdiscovery/nuclei/v3/pkg/tmplexec/utils"
 	mapsutil "github.com/projectdiscovery/utils/maps"
 	stringsutil "github.com/projectdiscovery/utils/strings"
 )
@@ -90,17 +90,7 @@ func (m *MultiProtocol) ExecuteWithResults(ctx *scan.ScanContext) error {
 				return
 			}
 
-			ID := req.GetID()
-			if ID != "" {
-				builder := &strings.Builder{}
-				for k, v := range event.InternalEvent {
-					builder.WriteString(ID)
-					builder.WriteString("_")
-					builder.WriteString(k)
-					_ = previous.Set(builder.String(), v)
-					builder.Reset()
-				}
-			}
+			utils.FillPreviousEvent(req.GetID(), event, previous)
 
 			// log event and generate result for the event
 			ctx.LogEvent(event)
