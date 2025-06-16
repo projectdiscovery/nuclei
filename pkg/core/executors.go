@@ -38,7 +38,7 @@ func (e *Engine) executeAllSelfContained(ctx context.Context, alltemplates []*te
 				match, err = template.Executer.Execute(ctx)
 			}
 			if err != nil {
-				gologger.Warning().Msgf("[%s] Could not execute step: %s\n", e.executerOpts.Colorizer.BrightBlue(template.ID), err)
+				gologger.Warning().Msgf("[%s] Could not execute step (self-contained): %s\n", e.executerOpts.Colorizer.BrightBlue(template.ID), err)
 			}
 			results.CompareAndSwap(false, match)
 		}(v)
@@ -140,7 +140,7 @@ func (e *Engine) executeTemplateWithTargets(ctx context.Context, template *templ
 				}
 			}
 			if err != nil {
-				gologger.Warning().Msgf("[%s] Could not execute step: %s\n", e.executerOpts.Colorizer.BrightBlue(template.ID), err)
+				gologger.Warning().Msgf("[%s] Could not execute step on %s: %s\n", e.executerOpts.Colorizer.BrightBlue(template.ID), value.Input, err)
 			}
 			results.CompareAndSwap(false, match)
 		}(index, skip, scannedValue)
@@ -206,7 +206,7 @@ func (e *Engine) executeTemplatesOnTarget(ctx context.Context, alltemplates []*t
 				}
 			}
 			if err != nil {
-				gologger.Warning().Msgf("[%s] Could not execute step: %s\n", e.executerOpts.Colorizer.BrightBlue(template.ID), err)
+				gologger.Warning().Msgf("[%s] Could not execute step on %s: %s\n", e.executerOpts.Colorizer.BrightBlue(template.ID), value.Input, err)
 			}
 			results.CompareAndSwap(false, match)
 		}(tpl, target, sg)

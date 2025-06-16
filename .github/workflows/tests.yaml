@@ -94,7 +94,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: projectdiscovery/actions/setup/go@v1
       - uses: projectdiscovery/actions/setup/python@v1
-      - run: bash run.sh "${{ matrix.os }}"
+      - run: bash run.sh
         env:
           GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
         working-directory: cmd/functional-test/
