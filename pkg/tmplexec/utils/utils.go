@@ -1,16 +1,10 @@
 package utils
 
 import (
-	"regexp"
 	"strings"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
-	"github.com/projectdiscovery/nuclei/v3/pkg/templates/types"
 	mapsutil "github.com/projectdiscovery/utils/maps"
-)
-
-var (
-	reqTypeWithIndexRegex = regexp.MustCompile(`^(` + strings.Join(types.SupportedProtocolsStrings(), "|") + `)_\d+_`)
 )
 
 // FillPreviousEvent is a helper function to get the previous event from the event
@@ -21,14 +15,20 @@ func FillPreviousEvent(ID string, event *output.InternalWrappedEvent, previous *
 	}
 
 	for k, v := range event.InternalEvent {
-		var builder strings.Builder
-		if reqTypeWithIndexRegex.MatchString(k) {
-			_ = previous.Set(k, v)
+		if _, ok := previous.Get(k); ok {
 			continue
 		}
+
+		if strings.HasPrefix(k, ID+"_") {
+			continue
+		}
+
+		var builder strings.Builder
+
 		builder.WriteString(ID)
 		builder.WriteString("_")
 		builder.WriteString(k)
+
 		_ = previous.Set(builder.String(), v)
 	}
 }
