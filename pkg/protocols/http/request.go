@@ -841,7 +841,7 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 		if input.MetaInput.CustomIP != "" {
 			outputEvent["ip"] = input.MetaInput.CustomIP
 		} else {
-			outputEvent["ip"] = protocolstate.Dialer.GetDialedIP(hostname)
+			outputEvent["ip"] = request.dialer.GetDialedIP(hostname)
 			// try getting cname
 			request.addCNameIfAvailable(hostname, outputEvent)
 		}
@@ -1085,11 +1085,11 @@ func (request *Request) validateNFixEvent(input *contextargs.Context, gr *genera
 
 // addCNameIfAvailable adds the cname to the event if available
 func (request *Request) addCNameIfAvailable(hostname string, outputEvent map[string]interface{}) {
-	if protocolstate.Dialer == nil {
+	if request.dialer == nil {
 		return
 	}
 
-	data, err := protocolstate.Dialer.GetDNSData(hostname)
+	data, err := request.dialer.GetDNSData(hostname)
 	if err == nil {
 		switch len(data.CNAME) {
 		case 0:
