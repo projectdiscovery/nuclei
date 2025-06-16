@@ -11,6 +11,7 @@ import (
 	json "github.com/json-iterator/go"
 	"github.com/pkg/errors"
 
+	"github.com/projectdiscovery/fastdialer/fastdialer"
 	_ "github.com/projectdiscovery/nuclei/v3/pkg/fuzz/analyzers/time"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/fuzz"
@@ -22,6 +23,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/generators"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/http/httpclientpool"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/network/networkclientpool"
 	httputil "github.com/projectdiscovery/nuclei/v3/pkg/protocols/utils/http"
 	"github.com/projectdiscovery/nuclei/v3/pkg/utils/stats"
 	"github.com/projectdiscovery/rawhttp"
@@ -144,6 +146,7 @@ type Request struct {
 	generator         *generators.PayloadGenerator // optional, only enabled when using payloads
 	httpClient        *retryablehttp.Client
 	rawhttpClient     *rawhttp.Client
+	dialer            *fastdialer.Dialer
 
 	// description: |
 	//   SelfContained specifies if the request is self-contained.
@@ -348,6 +351,15 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 	}
 	request.customHeaders = make(map[string]string)
 	request.httpClient = client
+
+	dialer, err := networkclientpool.Get(options.Options, &networkclientpool.Configuration{
+		CustomDialer: options.CustomFastdialer,
+	})
+	if err != nil {
+		return errors.Wrap(err, "could not get dialer")
+	}
+	request.dialer = dialer
+
 	request.options = options
 	for _, option := range request.options.Options.CustomHeaders {
 		parts := strings.SplitN(option, ":", 2)
