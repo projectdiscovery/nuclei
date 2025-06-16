@@ -185,6 +185,7 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 func (request *Request) getDnsClient(options *protocols.ExecutorOptions, metadata map[string]interface{}) (*retryabledns.Client, error) {
 	dnsClientOptions := &dnsclientpool.Configuration{
 		Retries: request.Retries,
+		Proxy:   options.Options.AliveSocksProxy,
 	}
 	if len(request.Resolvers) > 0 {
 		if len(request.Resolvers) > 0 {

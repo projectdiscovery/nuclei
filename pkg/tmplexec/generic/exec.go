@@ -1,13 +1,13 @@
 package generic
 
 import (
-	"strings"
 	"sync/atomic"
 
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v3/pkg/scan"
+	"github.com/projectdiscovery/nuclei/v3/pkg/tmplexec/utils"
 	mapsutil "github.com/projectdiscovery/utils/maps"
 )
 
@@ -64,17 +64,9 @@ func (g *Generic) ExecuteWithResults(ctx *scan.ScanContext) error {
 				// ideally this should never happen since protocol exits on error and callback is not called
 				return
 			}
-			ID := req.GetID()
-			if ID != "" {
-				builder := &strings.Builder{}
-				for k, v := range event.InternalEvent {
-					builder.WriteString(ID)
-					builder.WriteString("_")
-					builder.WriteString(k)
-					_ = previous.Set(builder.String(), v)
-					builder.Reset()
-				}
-			}
+
+			utils.FillPreviousEvent(req.GetID(), event, previous)
+
 			if event.HasOperatorResult() {
 				g.results.CompareAndSwap(false, true)
 			}
