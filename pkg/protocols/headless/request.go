@@ -223,10 +223,15 @@ func (request *Request) executeRequestWithPayloads(input *contextargs.Context, p
 }
 
 func dumpResponse(event *output.InternalWrappedEvent, requestOptions *protocols.ExecutorOptions, responseBody string, input string) {
-	cliOptions := requestOptions.Options
-	if cliOptions.Debug || cliOptions.DebugResponse {
-		highlightedResponse := responsehighlighter.Highlight(event.OperatorsResult, responseBody, cliOptions.NoColor, false)
-		gologger.Debug().Msgf("[%s] Dumped Headless response for %s\n\n%s", requestOptions.TemplateID, input, highlightedResponse)
+	if requestOptions.Options.Debug || requestOptions.Options.DebugResponse || requestOptions.Options.StoreResponse {
+		msg := fmt.Sprintf("[%s] Dumped Headless response for %s\n\n", requestOptions.TemplateID, input)
+		if requestOptions.Options.Debug || requestOptions.Options.DebugResponse {
+			resp := responsehighlighter.Highlight(event.OperatorsResult, responseBody, requestOptions.Options.NoColor, false)
+			gologger.Debug().Msgf("%s%s", msg, resp)
+		}
+		if requestOptions.Options.StoreResponse {
+			requestOptions.Output.WriteStoreDebugData(input, requestOptions.TemplateID, "headless", fmt.Sprintf("%s%s", msg, responseBody))
+		}
 	}
 }
 
