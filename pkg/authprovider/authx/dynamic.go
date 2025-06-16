@@ -52,14 +52,15 @@ func (d *Dynamic) GetDomainAndDomainRegex() ([]string, []string) {
 }
 
 func (d *Dynamic) UnmarshalJSON(data []byte) error {
-	if err := json.Unmarshal(data, &d); err != nil {
+	// Use an alias type (auxiliary) to avoid a recursive call in this method.
+	type Alias Dynamic
+
+	// If d.Secret was nil, json.Unmarshal will allocate a new Secret object
+	// and populate it from the top level JSON fields.
+	if err := json.Unmarshal(data, (*Alias)(d)); err != nil {
 		return err
 	}
-	var s Secret
-	if err := json.Unmarshal(data, &s); err != nil {
-		return err
-	}
-	d.Secret = &s
+
 	return nil
 }
 
