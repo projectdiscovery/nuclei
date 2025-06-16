@@ -52,6 +52,10 @@ func (d *Dynamic) GetDomainAndDomainRegex() ([]string, []string) {
 }
 
 func (d *Dynamic) UnmarshalJSON(data []byte) error {
+	if d == nil {
+		return errorutil.New("cannot unmarshal into nil Dynamic struct")
+	}
+
 	// Use an alias type (auxiliary) to avoid a recursive call in this method.
 	type Alias Dynamic
 
