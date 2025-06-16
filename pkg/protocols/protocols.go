@@ -133,8 +133,8 @@ type ExecutorOptions struct {
 	ExportReqURLPattern bool
 	// GlobalMatchers is the storage for global matchers with http passive templates
 	GlobalMatchers *globalmatchers.Storage
-	// OverrideFastdialer is a fastdialer dialer instance
-	OverrideFastdialer *fastdialer.Dialer
+	// CustomFastdialer is a fastdialer dialer instance
+	CustomFastdialer *fastdialer.Dialer
 }
 
 // todo: centralizing components is not feasible with current clogged architecture
