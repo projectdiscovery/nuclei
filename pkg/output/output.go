@@ -560,7 +560,7 @@ func (w *StandardWriter) WriteStoreDebugData(host, templateID, eventType string,
 		filename = filepath.Join(subFolder, fmt.Sprintf("%s.txt", filename))
 		f, err := os.OpenFile(filename, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0644)
 		if err != nil {
-			fmt.Print(err)
+			gologger.Error().Msgf("Could not open debug output file: %s", err)
 			return
 		}
 		_, _ = f.WriteString(fmt.Sprintln(data))
