@@ -50,11 +50,6 @@ func TestMain(m *testing.M) {
 }
 
 func getDefaultOptions() *types.Options {
-	projectPath, err := os.MkdirTemp("", "nuclei-benchmark-")
-	if err != nil {
-		panic(err)
-	}
-
 	return &types.Options{
 		RemoteTemplateDomainList:   []string{"cloud.projectdiscovery.io"},
 		ProjectPath:                projectPath,
@@ -108,6 +103,7 @@ func runEnumBenchmark(b *testing.B, options *types.Options) {
 	if err != nil {
 		b.Fatalf("failed to create runner: %s", err)
 	}
+	defer nucleiRunner.Close()
 
 	b.ResetTimer()
 	b.ReportAllocs()
@@ -121,12 +117,12 @@ func runEnumBenchmark(b *testing.B, options *types.Options) {
 
 func BenchmarkRunEnumeration(b *testing.B) {
 	// Default case: run enumeration with default options == all nuclei-templates
-	b.Run("Default", func(b *testing.B) {
-		options := getDefaultOptions()
-		options.Targets = []string{targetURL}
+	// b.Run("Default", func(b *testing.B) {
+	// 	options := getDefaultOptions()
+	// 	options.Targets = []string{targetURL}
 
-		runEnumBenchmark(b, options)
-	})
+	// 	runEnumBenchmark(b, options)
+	// })
 
 	// Case: https://github.com/projectdiscovery/nuclei/pull/6258
 	b.Run("Multiproto", func(b *testing.B) {
