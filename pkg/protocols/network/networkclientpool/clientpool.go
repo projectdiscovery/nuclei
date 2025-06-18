@@ -12,7 +12,9 @@ func Init(options *types.Options) error {
 }
 
 // Configuration contains the custom configuration options for a client
-type Configuration struct{}
+type Configuration struct {
+	CustomDialer *fastdialer.Dialer
+}
 
 // Hash returns the hash of the configuration to allow client pooling
 func (c *Configuration) Hash() string {
@@ -21,6 +23,10 @@ func (c *Configuration) Hash() string {
 
 // Get creates or gets a client for the protocol based on custom configuration
 func Get(options *types.Options, configuration *Configuration) (*fastdialer.Dialer, error) {
+	if configuration != nil && configuration.CustomDialer != nil {
+		return configuration.CustomDialer, nil
+	}
+
 	dialers := protocolstate.GetDialersWithId(options.ExecutionId)
 	return dialers.Fastdialer, nil
 }

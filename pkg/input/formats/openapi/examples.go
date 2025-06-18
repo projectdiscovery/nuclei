@@ -2,6 +2,7 @@ package openapi
 
 import (
 	"fmt"
+	"slices"
 
 	"github.com/getkin/kin-openapi/openapi3"
 	"github.com/pkg/errors"
@@ -84,13 +85,7 @@ func excludeFromMode(schema *openapi3.Schema) bool {
 
 // isRequired checks whether a key is actually required.
 func isRequired(schema *openapi3.Schema, key string) bool {
-	for _, req := range schema.Required {
-		if req == key {
-			return true
-		}
-	}
-
-	return false
+	return slices.Contains(schema.Required, key)
 }
 
 type cachedSchema struct {
@@ -287,4 +282,34 @@ func openAPIExample(schema *openapi3.Schema, cache map[*openapi3.Schema]*cachedS
 // https://github.com/OAI/OpenAPI-Specification/blob/master/versions/3.0.1.md#schemaObject
 func generateExampleFromSchema(schema *openapi3.Schema) (interface{}, error) {
 	return openAPIExample(schema, make(map[*openapi3.Schema]*cachedSchema)) // TODO: Use caching
+}
+
+func generateEmptySchemaValue(contentType string) *openapi3.Schema {
+	schema := &openapi3.Schema{}
+	objectType := &openapi3.Types{"object"}
+	stringType := &openapi3.Types{"string"}
+
+	switch contentType {
+	case "application/json":
+		schema.Type = objectType
+		schema.Properties = make(map[string]*openapi3.SchemaRef)
+	case "application/xml":
+		schema.Type = stringType
+		schema.Format = "xml"
+		schema.Example = "<?xml version=\"1.0\"?><root/>"
+	case "text/plain":
+		schema.Type = stringType
+	case "application/x-www-form-urlencoded":
+		schema.Type = objectType
+		schema.Properties = make(map[string]*openapi3.SchemaRef)
+	case "multipart/form-data":
+		schema.Type = objectType
+		schema.Properties = make(map[string]*openapi3.SchemaRef)
+	case "application/octet-stream":
+	default:
+		schema.Type = stringType
+		schema.Format = "binary"
+	}
+
+	return schema
 }

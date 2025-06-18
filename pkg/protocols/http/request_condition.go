@@ -2,6 +2,7 @@ package http
 
 import (
 	"regexp"
+	"slices"
 )
 
 var (
@@ -32,10 +33,5 @@ func (request *Request) NeedsRequestCondition() bool {
 }
 
 func checkRequestConditionExpressions(expressions ...string) bool {
-	for _, expression := range expressions {
-		if reRequestCondition.MatchString(expression) {
-			return true
-		}
-	}
-	return false
+	return slices.ContainsFunc(expressions, reRequestCondition.MatchString)
 }

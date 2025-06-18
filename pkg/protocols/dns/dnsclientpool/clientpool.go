@@ -51,6 +51,8 @@ type Configuration struct {
 	Retries int
 	// Resolvers contains the specific per request resolvers
 	Resolvers []string
+	// Proxy contains the proxy to use for the dns client
+	Proxy string
 }
 
 // Hash returns the hash of the configuration to allow client pooling
@@ -60,6 +62,8 @@ func (c *Configuration) Hash() string {
 	builder.WriteString(strconv.Itoa(c.Retries))
 	builder.WriteString("l")
 	builder.WriteString(strings.Join(c.Resolvers, ""))
+	builder.WriteString("p")
+	builder.WriteString(c.Proxy)
 	hash := builder.String()
 	return hash
 }
@@ -84,7 +88,11 @@ func Get(options *types.Options, configuration *Configuration) (*retryabledns.Cl
 	} else if len(configuration.Resolvers) > 0 {
 		resolvers = configuration.Resolvers
 	}
-	client, err := retryabledns.New(resolvers, configuration.Retries)
+	client, err := retryabledns.NewWithOptions(retryabledns.Options{
+		BaseResolvers: resolvers,
+		MaxRetries:    configuration.Retries,
+		Proxy:         options.AliveSocksProxy,
+	})
 	if err != nil {
 		return nil, errors.Wrap(err, "could not create dns client")
 	}
