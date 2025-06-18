@@ -114,7 +114,7 @@ func init() {
 	}))
 
 	dsl.PrintDebugCallback = func(args ...interface{}) error {
-		gologger.Info().Msgf("print_debug value: %s", fmt.Sprint(args))
+		gologger.Debug().Msgf("print_debug value: %s", fmt.Sprint(args))
 		return nil
 	}
 
