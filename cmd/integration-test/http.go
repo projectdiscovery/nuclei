@@ -829,10 +829,7 @@ func (h *httpPaths) Execute(filepath string) error {
 	}
 
 	if len(expected) > len(actual) {
-		actualValuesIndex := len(actual) - 1
-		if actualValuesIndex < 0 {
-			actualValuesIndex = 0
-		}
+		actualValuesIndex := max(len(actual)-1, 0)
 		return fmt.Errorf("missing values : %v", expected[actualValuesIndex:])
 	} else if len(expected) < len(actual) {
 		return fmt.Errorf("unexpected values : %v", actual[len(expected)-1:])
