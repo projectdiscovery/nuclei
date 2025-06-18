@@ -143,5 +143,5 @@ func (b *Browser) Close() {
 	_ = b.engine.Close()
 	b.launcher.Kill()
 	_ = os.RemoveAll(b.tempDir)
-	processutil.CloseProcesses(processutil.IsChromeProcess, b.previousPIDs)
+	// processutil.CloseProcesses(processutil.IsChromeProcess, b.previousPIDs)
 }
