@@ -270,5 +270,8 @@ func Close(executionId string) {
 
 	dialers.Delete(executionId)
 
-	StopActiveMemGuardian()
+	if dialers.IsEmpty() {
+		StopActiveMemGuardian()
+	}
+
 }
