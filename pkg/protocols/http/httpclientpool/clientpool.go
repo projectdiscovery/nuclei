@@ -143,6 +143,10 @@ func (c *Configuration) HasStandardOptions() bool {
 func GetRawHTTP(options *protocols.ExecutorOptions) *rawhttp.Client {
 	dialers := protocolstate.GetDialersWithId(options.Options.ExecutionId)
 
+	// Lock the dialers to avoid a race when setting RawHTTPClient
+	dialers.Lock()
+	defer dialers.Unlock()
+
 	if dialers.RawHTTPClient != nil {
 		return dialers.RawHTTPClient
 	}

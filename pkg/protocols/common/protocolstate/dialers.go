@@ -1,6 +1,8 @@
 package protocolstate
 
 import (
+	"sync"
+
 	"github.com/projectdiscovery/fastdialer/fastdialer"
 	"github.com/projectdiscovery/networkpolicy"
 	"github.com/projectdiscovery/rawhttp"
@@ -13,6 +15,6 @@ type Dialers struct {
 	RawHTTPClient     *rawhttp.Client
 	DefaultHTTPClient *retryablehttp.Client
 	HTTPClientPool    *mapsutil.SyncLockMap[string, *retryablehttp.Client]
-
-	NetworkPolicy *networkpolicy.NetworkPolicy
+	NetworkPolicy     *networkpolicy.NetworkPolicy
+	sync.Mutex
 }
