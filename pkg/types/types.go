@@ -5,9 +5,11 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/projectdiscovery/goflags"
+	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/config"
 	"github.com/projectdiscovery/nuclei/v3/pkg/model/types/severity"
@@ -444,14 +446,21 @@ type Options struct {
 	// LoadHelperFileFunction is a function that will be used to execute LoadHelperFile.
 	// If none is provided, then the default implementation will be used.
 	LoadHelperFileFunction LoadHelperFileFunction
+	// Logger is the gologger instance for this optionset
+	Logger *gologger.Logger
+	// NoCacheTemplates disables caching of templates
+	DoNotCacheTemplates bool
+	// Unique identifier of the execution session
+	ExecutionId string
+	// Parser is a cached parser for the template store
+	Parser any
 	// timeouts contains various types of timeouts used in nuclei
 	// these timeouts are derived from dial-timeout (-timeout) with known multipliers
 	// This is internally managed and does not need to be set by user by explicitly setting
 	// this overrides the default/derived one
 	timeouts *Timeouts
-
-	// Unique identifier of the execution session
-	ExecutionId string
+	// m is a mutex to protect timeouts from concurrent access
+	m sync.Mutex
 }
 
 // SetTimeouts sets the timeout variants to use for the executor
@@ -461,6 +470,8 @@ func (opts *Options) SetTimeouts(t *Timeouts) {
 
 // GetTimeouts returns the timeout variants to use for the executor
 func (eo *Options) GetTimeouts() *Timeouts {
+	eo.m.Lock()
+	defer eo.m.Unlock()
 	if eo.timeouts != nil {
 		// redundant but apply to avoid any potential issues
 		eo.timeouts.ApplyDefaults()

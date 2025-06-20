@@ -170,6 +170,9 @@ func (i *ListInputProvider) Set(executionId string, value string) {
 	if i.ipOptions.ScanAllIPs {
 		// scan all ips
 		dialers := protocolstate.GetDialersWithId(executionId)
+		if dialers == nil {
+			panic("dialers with executionId " + executionId + " not found")
+		}
 
 		dnsData, err := dialers.Fastdialer.GetDNSData(urlx.Hostname())
 		if err == nil {
@@ -204,6 +207,10 @@ func (i *ListInputProvider) Set(executionId string, value string) {
 	// only scan the target but ipv6 if it has one
 	if i.ipOptions.IPV6 {
 		dialers := protocolstate.GetDialersWithId(executionId)
+		if dialers == nil {
+			panic("dialers with executionId " + executionId + " not found")
+		}
+
 		dnsData, err := dialers.Fastdialer.GetDNSData(urlx.Hostname())
 		if err == nil && len(dnsData.AAAA) > 0 {
 			// pick/ prefer 1st
@@ -407,6 +414,10 @@ func (i *ListInputProvider) Del(executionId string, value string) {
 	if i.ipOptions.ScanAllIPs {
 		// scan all ips
 		dialers := protocolstate.GetDialersWithId(executionId)
+		if dialers == nil {
+			panic("dialers with executionId " + executionId + " not found")
+		}
+
 		dnsData, err := dialers.Fastdialer.GetDNSData(urlx.Hostname())
 		if err == nil {
 			if (len(dnsData.A) + len(dnsData.AAAA)) > 0 {
@@ -440,6 +451,10 @@ func (i *ListInputProvider) Del(executionId string, value string) {
 	// only scan the target but ipv6 if it has one
 	if i.ipOptions.IPV6 {
 		dialers := protocolstate.GetDialersWithId(executionId)
+		if dialers == nil {
+			panic("dialers with executionId " + executionId + " not found")
+		}
+
 		dnsData, err := dialers.Fastdialer.GetDNSData(urlx.Hostname())
 		if err == nil && len(dnsData.AAAA) > 0 {
 			// pick/ prefer 1st

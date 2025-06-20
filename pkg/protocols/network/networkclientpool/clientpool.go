@@ -1,6 +1,8 @@
 package networkclientpool
 
 import (
+	"fmt"
+
 	"github.com/projectdiscovery/fastdialer/fastdialer"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
@@ -22,11 +24,13 @@ func (c *Configuration) Hash() string {
 }
 
 // Get creates or gets a client for the protocol based on custom configuration
-func Get(options *types.Options, configuration *Configuration) (*fastdialer.Dialer, error) {
+func Get(options *types.Options, configuration *Configuration /*TODO review unused parameters*/) (*fastdialer.Dialer, error) {
 	if configuration != nil && configuration.CustomDialer != nil {
 		return configuration.CustomDialer, nil
 	}
-
 	dialers := protocolstate.GetDialersWithId(options.ExecutionId)
+	if dialers == nil {
+		return nil, fmt.Errorf("dialers not initialized for %s", options.ExecutionId)
+	}
 	return dialers.Fastdialer, nil
 }

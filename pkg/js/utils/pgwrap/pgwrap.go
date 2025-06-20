@@ -25,7 +25,7 @@ type pgDial struct {
 func (p *pgDial) Dial(network, address string) (net.Conn, error) {
 	dialers := protocolstate.GetDialersWithId(p.executionId)
 	if dialers == nil {
-		return nil, fmt.Errorf("fastdialer not initialized")
+		return nil, fmt.Errorf("dialers not initialized for %s", p.executionId)
 	}
 	return dialers.Fastdialer.Dial(context.TODO(), network, address)
 }
@@ -33,7 +33,7 @@ func (p *pgDial) Dial(network, address string) (net.Conn, error) {
 func (p *pgDial) DialTimeout(network, address string, timeout time.Duration) (net.Conn, error) {
 	dialers := protocolstate.GetDialersWithId(p.executionId)
 	if dialers == nil {
-		return nil, fmt.Errorf("fastdialer not initialized")
+		return nil, fmt.Errorf("dialers not initialized for %s", p.executionId)
 	}
 	ctx, cancel := context.WithTimeoutCause(context.Background(), timeout, fastdialer.ErrDialTimeout)
 	defer cancel()
@@ -43,7 +43,7 @@ func (p *pgDial) DialTimeout(network, address string, timeout time.Duration) (ne
 func (p *pgDial) DialContext(ctx context.Context, network, address string) (net.Conn, error) {
 	dialers := protocolstate.GetDialersWithId(p.executionId)
 	if dialers == nil {
-		return nil, fmt.Errorf("fastdialer not initialized")
+		return nil, fmt.Errorf("dialers not initialized for %s", p.executionId)
 	}
 	return dialers.Fastdialer.Dial(ctx, network, address)
 }

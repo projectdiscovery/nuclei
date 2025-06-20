@@ -7,7 +7,6 @@ import (
 	"os"
 	"strings"
 
-	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	errorutil "github.com/projectdiscovery/utils/errors"
 	fileutil "github.com/projectdiscovery/utils/file"
@@ -58,11 +57,11 @@ func loadProxyServers(options *types.Options) error {
 	}
 	switch proxyURL.Scheme {
 	case proxyutils.HTTP, proxyutils.HTTPS:
-		gologger.Verbose().Msgf("Using %s as proxy server", proxyURL.String())
+		options.Logger.Verbose().Msgf("Using %s as proxy server", proxyURL.String())
 		options.AliveHttpProxy = proxyURL.String()
 	case proxyutils.SOCKS5:
 		options.AliveSocksProxy = proxyURL.String()
-		gologger.Verbose().Msgf("Using %s as socket proxy server", proxyURL.String())
+		options.Logger.Verbose().Msgf("Using %s as socket proxy server", proxyURL.String())
 	}
 	return nil
 }

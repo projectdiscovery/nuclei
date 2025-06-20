@@ -2,6 +2,7 @@ package rsync
 
 import (
 	"context"
+	"fmt"
 	"net"
 	"strconv"
 	"time"
@@ -44,6 +45,9 @@ func isRsync(executionId string, host string, port int) (IsRsyncResponse, error)
 
 	timeout := 5 * time.Second
 	dialer := protocolstate.GetDialersWithId(executionId)
+	if dialer == nil {
+		return IsRsyncResponse{}, fmt.Errorf("dialers not initialized for %s", executionId)
+	}
 	conn, err := dialer.Fastdialer.Dial(context.TODO(), "tcp", net.JoinHostPort(host, strconv.Itoa(port)))
 	if err != nil {
 		return resp, err

@@ -15,13 +15,11 @@ import (
 	"go.uber.org/multierr"
 )
 
-// initalize state of headless protocol
+// initialize state of headless protocol
 
 var (
 	ErrURLDenied  = errorutil.NewWithFmt("headless: url %v dropped by rule: %v")
 	ErrHostDenied = errorutil.NewWithFmt("host %v dropped by network policy")
-
-	allowLocalFileAccess bool
 )
 
 func GetNetworkPolicy(ctx context.Context) *networkpolicy.NetworkPolicy {
@@ -42,7 +40,7 @@ func ValidateNFailRequest(options *types.Options, page *rod.Page, e *proto.Fetch
 	reqURL := e.Request.URL
 	normalized := strings.ToLower(reqURL)      // normalize url to lowercase
 	normalized = strings.TrimSpace(normalized) // trim leading & trailing whitespaces
-	if !allowLocalFileAccess && stringsutil.HasPrefixI(normalized, "file:") {
+	if !AllowLocalFileAccess(options) && stringsutil.HasPrefixI(normalized, "file:") {
 		return multierr.Combine(FailWithReason(page, e), ErrURLDenied.Msgf(reqURL, "use of file:// protocol disabled use '-lfa' to enable"))
 	}
 	// validate potential invalid schemes
@@ -66,8 +64,24 @@ func FailWithReason(page *rod.Page, e *proto.FetchRequestPaused) error {
 }
 
 // InitHeadless initializes headless protocol state
-func InitHeadless(localFileAccess bool) {
-	allowLocalFileAccess = localFileAccess
+func InitHeadless(options *types.Options) {
+	dialers, ok := dialers.Get(options.ExecutionId)
+	if ok && dialers != nil {
+		dialers.Lock()
+		defer dialers.Unlock()
+		dialers.LocalFileAccessAllowed = options.AllowLocalFileAccess
+	}
+}
+
+// AllowLocalFileAccess returns whether local file access is allowed
+func AllowLocalFileAccess(options *types.Options) bool {
+	dialers, ok := dialers.Get(options.ExecutionId)
+	if ok && dialers != nil {
+		dialers.Lock()
+		defer dialers.Unlock()
+		return dialers.LocalFileAccessAllowed
+	}
+	return false
 }
 
 // isValidHost checks if the host is valid (only limited to http/https protocols)

@@ -117,7 +117,7 @@ func ClusterID(templates []*Template) string {
 	return cryptoutil.SHA256Sum(ids)
 }
 
-func ClusterTemplates(templatesList []*Template, options protocols.ExecutorOptions) ([]*Template, int) {
+func ClusterTemplates(templatesList []*Template, options *protocols.ExecutorOptions) ([]*Template, int) {
 	if options.Options.OfflineHTTP || options.Options.DisableClustering {
 		return templatesList, 0
 	}
@@ -146,7 +146,7 @@ func ClusterTemplates(templatesList []*Template, options protocols.ExecutorOptio
 				RequestsDNS:   cluster[0].RequestsDNS,
 				RequestsHTTP:  cluster[0].RequestsHTTP,
 				RequestsSSL:   cluster[0].RequestsSSL,
-				Executer:      NewClusterExecuter(cluster, &executerOpts),
+				Executer:      NewClusterExecuter(cluster, executerOpts),
 				TotalRequests: len(cluster[0].RequestsHTTP) + len(cluster[0].RequestsDNS),
 			})
 			clusterCount += len(cluster)

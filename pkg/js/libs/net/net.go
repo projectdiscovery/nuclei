@@ -28,6 +28,9 @@ var (
 func Open(ctx context.Context, protocol, address string) (*NetConn, error) {
 	executionId := ctx.Value("executionId").(string)
 	dialer := protocolstate.GetDialersWithId(executionId)
+	if dialer == nil {
+		return nil, fmt.Errorf("dialers not initialized for %s", executionId)
+	}
 	conn, err := dialer.Fastdialer.Dial(ctx, protocol, address)
 	if err != nil {
 		return nil, err
@@ -52,6 +55,10 @@ func OpenTLS(ctx context.Context, protocol, address string) (*NetConn, error) {
 	}
 	executionId := ctx.Value("executionId").(string)
 	dialer := protocolstate.GetDialersWithId(executionId)
+	if dialer == nil {
+		return nil, fmt.Errorf("dialers not initialized for %s", executionId)
+	}
+
 	conn, err := dialer.Fastdialer.DialTLSWithConfig(ctx, protocol, address, config)
 	if err != nil {
 		return nil, err

@@ -44,7 +44,7 @@ const (
 
 // Options contains configuration options for automatic scan service
 type Options struct {
-	ExecuterOpts protocols.ExecutorOptions
+	ExecuterOpts *protocols.ExecutorOptions
 	Store        *loader.Store
 	Engine       *core.Engine
 	Target       provider.InputProvider
@@ -52,7 +52,7 @@ type Options struct {
 
 // Service is a service for automatic scan execution
 type Service struct {
-	opts               protocols.ExecutorOptions
+	opts               *protocols.ExecutorOptions
 	store              *loader.Store
 	engine             *core.Engine
 	target             provider.InputProvider

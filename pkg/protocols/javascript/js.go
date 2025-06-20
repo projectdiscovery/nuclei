@@ -615,6 +615,9 @@ func (request *Request) executeRequestWithPayloads(hostPort string, input *conte
 // generateEventData generates event data for the request
 func (request *Request) generateEventData(input *contextargs.Context, values map[string]interface{}, matched string) map[string]interface{} {
 	dialers := protocolstate.GetDialersWithId(request.options.Options.ExecutionId)
+	if dialers == nil {
+		panic(fmt.Sprintf("dialers not initialized for %s", request.options.Options.ExecutionId))
+	}
 
 	data := make(map[string]interface{})
 	for k, v := range values {
@@ -820,4 +823,9 @@ func prettyPrint(templateId string, buff string) {
 		}
 	}
 	gologger.Debug().Msgf(" [%v] Javascript Code:\n\n%v\n\n", templateId, strings.Join(final, "\n"))
+}
+
+// UpdateOptions replaces this request's options with a new copy
+func (r *Request) UpdateOptions(opts *protocols.ExecutorOptions) {
+	r.options = opts
 }

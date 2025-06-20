@@ -401,7 +401,7 @@ func parseAndAddMaxRequests(catalog catalog.Catalog, path, data string) (string,
 
 // parseTemplate parses a template and returns the template object
 func parseTemplate(catalog catalog.Catalog, templatePath string) (*templates.Template, error) {
-	executorOpts := protocols.ExecutorOptions{
+	executorOpts := &protocols.ExecutorOptions{
 		Catalog: catalog,
 		Options: defaultOpts,
 	}

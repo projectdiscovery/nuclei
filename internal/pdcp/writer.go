@@ -55,10 +55,11 @@ type UploadWriter struct {
 	scanName  string
 	counter   atomic.Int32
 	TeamID    string
+	Logger    *gologger.Logger
 }
 
 // NewUploadWriter creates a new upload writer
-func NewUploadWriter(ctx context.Context, creds *pdcpauth.PDCPCredentials) (*UploadWriter, error) {
+func NewUploadWriter(ctx context.Context, logger *gologger.Logger, creds *pdcpauth.PDCPCredentials) (*UploadWriter, error) {
 	if creds == nil {
 		return nil, fmt.Errorf("no credentials provided")
 	}
@@ -66,6 +67,7 @@ func NewUploadWriter(ctx context.Context, creds *pdcpauth.PDCPCredentials) (*Upl
 		creds:  creds,
 		done:   make(chan struct{}, 1),
 		TeamID: NoneTeamID,
+		Logger: logger,
 	}
 	var err error
 	reader, writer := io.Pipe()
@@ -147,9 +149,9 @@ func (u *UploadWriter) autoCommit(ctx context.Context, r *io.PipeReader) {
 		close(u.done)
 		// if no scanid is generated no results were uploaded
 		if u.scanID == "" {
-			gologger.Verbose().Msgf("Scan results upload to cloud skipped, no results found to upload")
+			u.Logger.Verbose().Msgf("Scan results upload to cloud skipped, no results found to upload")
 		} else {
-			gologger.Info().Msgf("%v Scan results uploaded to cloud, you can view scan results at %v", u.counter.Load(), getScanDashBoardURL(u.scanID, u.TeamID))
+			u.Logger.Info().Msgf("%v Scan results uploaded to cloud, you can view scan results at %v", u.counter.Load(), getScanDashBoardURL(u.scanID, u.TeamID))
 		}
 	}()
 	// temporary buffer to store the results
@@ -162,7 +164,7 @@ func (u *UploadWriter) autoCommit(ctx context.Context, r *io.PipeReader) {
 			// flush before exit
 			if buff.Len() > 0 {
 				if err := u.uploadChunk(buff); err != nil {
-					gologger.Error().Msgf("Failed to upload scan results on cloud: %v", err)
+					u.Logger.Error().Msgf("Failed to upload scan results on cloud: %v", err)
 				}
 			}
 			return
@@ -170,14 +172,14 @@ func (u *UploadWriter) autoCommit(ctx context.Context, r *io.PipeReader) {
 			// flush the buffer
 			if buff.Len() > 0 {
 				if err := u.uploadChunk(buff); err != nil {
-					gologger.Error().Msgf("Failed to upload scan results on cloud: %v", err)
+					u.Logger.Error().Msgf("Failed to upload scan results on cloud: %v", err)
 				}
 			}
 		case line, ok := <-ch:
 			if !ok {
 				if buff.Len() > 0 {
 					if err := u.uploadChunk(buff); err != nil {
-						gologger.Error().Msgf("Failed to upload scan results on cloud: %v", err)
+						u.Logger.Error().Msgf("Failed to upload scan results on cloud: %v", err)
 					}
 				}
 				return
@@ -185,7 +187,7 @@ func (u *UploadWriter) autoCommit(ctx context.Context, r *io.PipeReader) {
 			if buff.Len()+len(line) > MaxChunkSize {
 				// flush existing buffer
 				if err := u.uploadChunk(buff); err != nil {
-					gologger.Error().Msgf("Failed to upload scan results on cloud: %v", err)
+					u.Logger.Error().Msgf("Failed to upload scan results on cloud: %v", err)
 				}
 			} else {
 				buff.WriteString(line)
@@ -202,7 +204,7 @@ func (u *UploadWriter) uploadChunk(buff *bytes.Buffer) error {
 	// if successful, reset the buffer
 	buff.Reset()
 	// log in verbose mode
-	gologger.Warning().Msgf("Uploaded results chunk, you can view scan results at %v", getScanDashBoardURL(u.scanID, u.TeamID))
+	u.Logger.Warning().Msgf("Uploaded results chunk, you can view scan results at %v", getScanDashBoardURL(u.scanID, u.TeamID))
 	return nil
 }
 

@@ -88,6 +88,9 @@ func NewClient(call goja.ConstructorCall, runtime *goja.Runtime) *goja.Object {
 
 	executionId := c.nj.ExecutionId()
 	dialers := protocolstate.GetDialersWithId(executionId)
+	if dialers == nil {
+		panic("dialers with executionId " + executionId + " not found")
+	}
 
 	var conn net.Conn
 	if u.Scheme == "ldapi" {

@@ -2,6 +2,7 @@ package oracle
 
 import (
 	"context"
+	"fmt"
 	"net"
 	"strconv"
 	"time"
@@ -42,6 +43,9 @@ func isOracle(executionId string, host string, port int) (IsOracleResponse, erro
 	resp := IsOracleResponse{}
 
 	dialer := protocolstate.GetDialersWithId(executionId)
+	if dialer == nil {
+		return IsOracleResponse{}, fmt.Errorf("dialers not initialized for %s", executionId)
+	}
 
 	timeout := 5 * time.Second
 	conn, err := dialer.Fastdialer.Dial(context.TODO(), "tcp", net.JoinHostPort(host, strconv.Itoa(port)))

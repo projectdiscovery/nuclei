@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"fmt"
 	"net"
 	"strconv"
 	"time"
@@ -38,6 +39,9 @@ func detectSMBGhost(executionId string, host string, port int) (bool, error) {
 	}
 	addr := net.JoinHostPort(host, strconv.Itoa(port))
 	dialer := protocolstate.GetDialersWithId(executionId)
+	if dialer == nil {
+		return false, fmt.Errorf("dialers not initialized for %s", executionId)
+	}
 	conn, err := dialer.Fastdialer.Dial(context.TODO(), "tcp", addr)
 	if err != nil {
 		return false, err

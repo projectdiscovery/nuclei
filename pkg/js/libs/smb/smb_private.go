@@ -21,6 +21,10 @@ func collectSMBv2Metadata(executionId string, host string, port int, timeout tim
 		timeout = 5 * time.Second
 	}
 	dialer := protocolstate.GetDialersWithId(executionId)
+	if dialer == nil {
+		return nil, fmt.Errorf("dialers not initialized for %s", executionId)
+	}
+
 	conn, err := dialer.Fastdialer.Dial(context.TODO(), "tcp", net.JoinHostPort(host, fmt.Sprintf("%d", port)))
 	if err != nil {
 		return nil, err

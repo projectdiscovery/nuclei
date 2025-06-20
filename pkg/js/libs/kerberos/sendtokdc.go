@@ -70,6 +70,9 @@ func sendToKDCTcp(kclient *Client, msg string) ([]byte, error) {
 
 	executionId := kclient.nj.ExecutionId()
 	dialers := protocolstate.GetDialersWithId(executionId)
+	if dialers == nil {
+		return nil, fmt.Errorf("dialers not initialized for %s", executionId)
+	}
 
 	var errs []string
 	for i := 1; i <= len(kdcs); i++ {
@@ -108,7 +111,9 @@ func sendToKDCUdp(kclient *Client, msg string) ([]byte, error) {
 
 	executionId := kclient.nj.ExecutionId()
 	dialers := protocolstate.GetDialersWithId(executionId)
-
+	if dialers == nil {
+		return nil, fmt.Errorf("dialers not initialized for %s", executionId)
+	}
 	var errs []string
 	for i := 1; i <= len(kdcs); i++ {
 		host, port, err := net.SplitHostPort(kdcs[i])

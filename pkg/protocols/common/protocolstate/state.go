@@ -63,7 +63,6 @@ func Init(options *types.Options) error {
 
 // initDialers is the internal implementation of Init
 func initDialers(options *types.Options) error {
-	lfaAllowed = options.AllowLocalFileAccess
 	opts := fastdialer.DefaultOptions
 	opts.DialerTimeout = options.GetTimeouts().DialTimeout
 	if options.DialerKeepAlive > 0 {
@@ -88,7 +87,6 @@ func initDialers(options *types.Options) error {
 		DenyList: expandedDenyList,
 	}
 	opts.WithNetworkPolicyOptions = npOptions
-	InitHeadless(options.AllowLocalFileAccess)
 
 	switch {
 	case options.SourceIP != "" && options.Interface != "":
@@ -177,9 +175,10 @@ func initDialers(options *types.Options) error {
 	networkPolicy, _ := networkpolicy.New(*npOptions)
 
 	dialersInstance := &Dialers{
-		Fastdialer:     dialer,
-		NetworkPolicy:  networkPolicy,
-		HTTPClientPool: mapsutil.NewSyncLockMap[string, *retryablehttp.Client](),
+		Fastdialer:             dialer,
+		NetworkPolicy:          networkPolicy,
+		HTTPClientPool:         mapsutil.NewSyncLockMap[string, *retryablehttp.Client](),
+		LocalFileAccessAllowed: options.AllowLocalFileAccess,
 	}
 
 	_ = dialers.Set(options.ExecutionId, dialersInstance)
@@ -273,5 +272,4 @@ func Close(executionId string) {
 	if dialers.IsEmpty() {
 		StopActiveMemGuardian()
 	}
-
 }

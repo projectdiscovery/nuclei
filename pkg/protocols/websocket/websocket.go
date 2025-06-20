@@ -428,3 +428,8 @@ func (request *Request) MakeResultEventItem(wrapped *output.InternalWrappedEvent
 func (request *Request) Type() templateTypes.ProtocolType {
 	return templateTypes.WebsocketProtocol
 }
+
+// UpdateOptions replaces this request's options with a new copy
+func (r *Request) UpdateOptions(opts *protocols.ExecutorOptions) {
+	r.options = opts
+}

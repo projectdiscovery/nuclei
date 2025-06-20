@@ -91,6 +91,9 @@ func (c *Client) IsSMTP() (SMTPResponse, error) {
 
 	executionId := c.nj.ExecutionId()
 	dialer := protocolstate.GetDialersWithId(executionId)
+	if dialer == nil {
+		return SMTPResponse{}, fmt.Errorf("dialers not initialized for %s", executionId)
+	}
 
 	conn, err := dialer.Fastdialer.Dial(context.TODO(), "tcp", net.JoinHostPort(c.host, c.port))
 	if err != nil {
@@ -131,6 +134,9 @@ func (c *Client) IsOpenRelay(msg *SMTPMessage) (bool, error) {
 
 	executionId := c.nj.ExecutionId()
 	dialer := protocolstate.GetDialersWithId(executionId)
+	if dialer == nil {
+		return false, fmt.Errorf("dialers not initialized for %s", executionId)
+	}
 
 	addr := net.JoinHostPort(c.host, c.port)
 	conn, err := dialer.Fastdialer.Dial(context.TODO(), "tcp", addr)

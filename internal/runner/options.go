@@ -70,17 +70,17 @@ func ParseOptions(options *types.Options) {
 		vardump.Limit = options.VarDumpLimit
 	}
 	if options.ShowActions {
-		gologger.Info().Msgf("Showing available headless actions: ")
+		options.Logger.Info().Msgf("Showing available headless actions: ")
 		for action := range engine.ActionStringToAction {
-			gologger.Print().Msgf("\t%s", action)
+			options.Logger.Print().Msgf("\t%s", action)
 		}
 		os.Exit(0)
 	}
 
 	defaultProfilesPath := filepath.Join(config.DefaultConfig.GetTemplateDir(), "profiles")
 	if options.ListTemplateProfiles {
-		gologger.Print().Msgf(
-			"\nListing available %v nuclei template profiles for %v",
+		options.Logger.Print().Msgf(
+			"Listing available %v nuclei template profiles for %v",
 			config.DefaultConfig.TemplateVersion,
 			config.DefaultConfig.TemplatesDirectory,
 		)
@@ -92,23 +92,23 @@ func ParseOptions(options *types.Options) {
 				return nil
 			}
 			if profileRelPath, err := filepath.Rel(templatesRootDir, iterItem); err == nil {
-				gologger.Print().Msgf("%s (%s)\n", profileRelPath, strings.TrimSuffix(filepath.Base(iterItem), ext))
+				options.Logger.Print().Msgf("%s (%s)\n", profileRelPath, strings.TrimSuffix(filepath.Base(iterItem), ext))
 			}
 			return nil
 		})
 		if err != nil {
-			gologger.Error().Msgf("%s\n", err)
+			options.Logger.Error().Msgf("%s\n", err)
 		}
 		os.Exit(0)
 	}
 	if options.StoreResponseDir != DefaultDumpTrafficOutputFolder && !options.StoreResponse {
-		gologger.Debug().Msgf("Store response directory specified, enabling \"store-resp\" flag automatically\n")
+		options.Logger.Debug().Msgf("Store response directory specified, enabling \"store-resp\" flag automatically\n")
 		options.StoreResponse = true
 	}
 	// Validate the options passed by the user and if any
 	// invalid options have been used, exit.
 	if err := ValidateOptions(options); err != nil {
-		gologger.Fatal().Msgf("Program exiting: %s\n", err)
+		options.Logger.Fatal().Msgf("Program exiting: %s\n", err)
 	}
 
 	// Load the resolvers if user asked for them
@@ -116,7 +116,7 @@ func ParseOptions(options *types.Options) {
 
 	err := protocolinit.Init(options)
 	if err != nil {
-		gologger.Fatal().Msgf("Could not initialize protocols: %s\n", err)
+		options.Logger.Fatal().Msgf("Could not initialize protocols: %s\n", err)
 	}
 
 	// Set GitHub token in env variable. runner.getGHClientWithToken() reads token from env
@@ -168,7 +168,7 @@ func ValidateOptions(options *types.Options) error {
 		return err
 	}
 	if options.Validate {
-		validateTemplatePaths(config.DefaultConfig.TemplatesDirectory, options.Templates, options.Workflows)
+		validateTemplatePaths(options.Logger, config.DefaultConfig.TemplatesDirectory, options.Templates, options.Workflows)
 	}
 	if options.DAST {
 		if err := validateDASTOptions(options); err != nil {
@@ -181,7 +181,7 @@ func ValidateOptions(options *types.Options) error {
 		if generic.EqualsAny("", options.ClientCertFile, options.ClientKeyFile, options.ClientCAFile) {
 			return errors.New("if a client certification option is provided, then all three must be provided")
 		}
-		validateCertificatePaths(options.ClientCertFile, options.ClientKeyFile, options.ClientCAFile)
+		validateCertificatePaths(options.Logger, options.ClientCertFile, options.ClientKeyFile, options.ClientCAFile)
 	}
 	// Verify AWS secrets are passed if a S3 template bucket is passed
 	if options.AwsBucketName != "" && options.UpdateTemplates && !options.AwsTemplateDisableDownload {
@@ -350,22 +350,22 @@ func createReportingOptions(options *types.Options) (*reporting.Options, error) 
 // configureOutput configures the output logging levels to be displayed on the screen
 func configureOutput(options *types.Options) {
 	if options.NoColor {
-		gologger.DefaultLogger.SetFormatter(formatter.NewCLI(true))
+		options.Logger.SetFormatter(formatter.NewCLI(true))
 	}
 	// If the user desires verbose output, show verbose output
 	if options.Debug || options.DebugRequests || options.DebugResponse {
-		gologger.DefaultLogger.SetMaxLevel(levels.LevelDebug)
+		options.Logger.SetMaxLevel(levels.LevelDebug)
 	}
 	// Debug takes precedence before verbose
 	// because debug is a lower logging level.
 	if options.Verbose || options.Validate {
-		gologger.DefaultLogger.SetMaxLevel(levels.LevelVerbose)
+		options.Logger.SetMaxLevel(levels.LevelVerbose)
 	}
 	if options.NoColor {
-		gologger.DefaultLogger.SetFormatter(formatter.NewCLI(true))
+		options.Logger.SetFormatter(formatter.NewCLI(true))
 	}
 	if options.Silent {
-		gologger.DefaultLogger.SetMaxLevel(levels.LevelSilent)
+		options.Logger.SetMaxLevel(levels.LevelSilent)
 	}
 
 	// disable standard logger (ref: https://github.com/golang/go/issues/19895)
@@ -380,7 +380,7 @@ func loadResolvers(options *types.Options) {
 
 	file, err := os.Open(options.ResolversFile)
 	if err != nil {
-		gologger.Fatal().Msgf("Could not open resolvers file: %s\n", err)
+		options.Logger.Fatal().Msgf("Could not open resolvers file: %s\n", err)
 	}
 	defer func() {
 		_ = file.Close()
@@ -400,7 +400,7 @@ func loadResolvers(options *types.Options) {
 	}
 }
 
-func validateTemplatePaths(templatesDirectory string, templatePaths, workflowPaths []string) {
+func validateTemplatePaths(logger *gologger.Logger, templatesDirectory string, templatePaths, workflowPaths []string) {
 	allGivenTemplatePaths := append(templatePaths, workflowPaths...)
 	for _, templatePath := range allGivenTemplatePaths {
 		if templatesDirectory != templatePath && filepath.IsAbs(templatePath) {
@@ -408,7 +408,7 @@ func validateTemplatePaths(templatesDirectory string, templatePaths, workflowPat
 			if err == nil && fileInfo.IsDir() {
 				relativizedPath, err2 := filepath.Rel(templatesDirectory, templatePath)
 				if err2 != nil || (len(relativizedPath) >= 2 && relativizedPath[:2] == "..") {
-					gologger.Warning().Msgf("The given path (%s) is outside the default template directory path (%s)! "+
+					logger.Warning().Msgf("The given path (%s) is outside the default template directory path (%s)! "+
 						"Referenced sub-templates with relative paths in workflows will be resolved against the default template directory.", templatePath, templatesDirectory)
 					break
 				}
@@ -417,12 +417,12 @@ func validateTemplatePaths(templatesDirectory string, templatePaths, workflowPat
 	}
 }
 
-func validateCertificatePaths(certificatePaths ...string) {
+func validateCertificatePaths(logger *gologger.Logger, certificatePaths ...string) {
 	for _, certificatePath := range certificatePaths {
 		if !fileutil.FileExists(certificatePath) {
 			// The provided path to the PEM certificate does not exist for the client authentication. As this is
 			// required for successful authentication, log and return an error
-			gologger.Fatal().Msgf("The given path (%s) to the certificate does not exist!", certificatePath)
+			logger.Fatal().Msgf("The given path (%s) to the certificate does not exist!", certificatePath)
 			break
 		}
 	}
@@ -449,7 +449,7 @@ func readEnvInputVars(options *types.Options) {
 			// Attempt to convert the repo ID to an integer
 			repoIDInt, err := strconv.Atoi(repoID)
 			if err != nil {
-				gologger.Warning().Msgf("Invalid GitLab template repository ID: %s", repoID)
+				options.Logger.Warning().Msgf("Invalid GitLab template repository ID: %s", repoID)
 				continue
 			}
 

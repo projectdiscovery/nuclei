@@ -142,6 +142,9 @@ func (c *Configuration) HasStandardOptions() bool {
 // GetRawHTTP returns the rawhttp request client
 func GetRawHTTP(options *protocols.ExecutorOptions) *rawhttp.Client {
 	dialers := protocolstate.GetDialersWithId(options.Options.ExecutionId)
+	if dialers == nil {
+		panic("dialers not initialized for execution id: " + options.Options.ExecutionId)
+	}
 
 	// Lock the dialers to avoid a race when setting RawHTTPClient
 	dialers.Lock()
@@ -168,6 +171,9 @@ func GetRawHTTP(options *protocols.ExecutorOptions) *rawhttp.Client {
 func Get(options *types.Options, configuration *Configuration) (*retryablehttp.Client, error) {
 	if configuration.HasStandardOptions() {
 		dialers := protocolstate.GetDialersWithId(options.ExecutionId)
+		if dialers == nil {
+			return nil, fmt.Errorf("dialers not initialized for %s", options.ExecutionId)
+		}
 		return dialers.DefaultHTTPClient, nil
 	}
 
@@ -179,6 +185,9 @@ func wrappedGet(options *types.Options, configuration *Configuration) (*retryabl
 	var err error
 
 	dialers := protocolstate.GetDialersWithId(options.ExecutionId)
+	if dialers == nil {
+		return nil, fmt.Errorf("dialers not initialized for %s", options.ExecutionId)
+	}
 
 	hash := configuration.Hash()
 	if client, ok := dialers.HTTPClientPool.Get(hash); ok {

@@ -152,6 +152,10 @@ func isAuthenticated(executionId string, host string, port int) (bool, error) {
 	plugin := pluginsredis.REDISPlugin{}
 	timeout := 5 * time.Second
 	dialer := protocolstate.GetDialersWithId(executionId)
+	if dialer == nil {
+		return false, fmt.Errorf("dialers not initialized for %s", executionId)
+	}
+
 	conn, err := dialer.Fastdialer.Dial(context.TODO(), "tcp", fmt.Sprintf("%s:%d", host, port))
 	if err != nil {
 		return false, err

@@ -46,6 +46,9 @@ func connectSMBInfoMode(executionId string, host string, port int) (*smb.SMBLog,
 		return nil, protocolstate.ErrHostDenied.Msgf(host)
 	}
 	dialer := protocolstate.GetDialersWithId(executionId)
+	if dialer == nil {
+		return nil, fmt.Errorf("dialers not initialized for %s", executionId)
+	}
 	conn, err := dialer.Fastdialer.Dial(context.TODO(), "tcp", fmt.Sprintf("%s:%d", host, port))
 	if err != nil {
 		return nil, err
@@ -119,6 +122,10 @@ func listShares(executionId string, host string, port int, user string, password
 		return nil, protocolstate.ErrHostDenied.Msgf(host)
 	}
 	dialer := protocolstate.GetDialersWithId(executionId)
+	if dialer == nil {
+		return nil, fmt.Errorf("dialers not initialized for %s", executionId)
+	}
+
 	conn, err := dialer.Fastdialer.Dial(context.TODO(), "tcp", fmt.Sprintf("%s:%d", host, port))
 	if err != nil {
 		return nil, err

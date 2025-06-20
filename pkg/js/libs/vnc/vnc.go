@@ -2,6 +2,7 @@ package vnc
 
 import (
 	"context"
+	"fmt"
 	"net"
 	"strconv"
 	"time"
@@ -45,6 +46,9 @@ func isVNC(executionId string, host string, port int) (IsVNCResponse, error) {
 
 	timeout := 5 * time.Second
 	dialer := protocolstate.GetDialersWithId(executionId)
+	if dialer == nil {
+		return IsVNCResponse{}, fmt.Errorf("dialers not initialized for %s", executionId)
+	}
 	conn, err := dialer.Fastdialer.Dial(context.TODO(), "tcp", net.JoinHostPort(host, strconv.Itoa(port)))
 	if err != nil {
 		return resp, err

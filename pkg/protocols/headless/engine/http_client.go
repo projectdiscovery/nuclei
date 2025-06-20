@@ -3,6 +3,7 @@ package engine
 import (
 	"context"
 	"crypto/tls"
+	"fmt"
 	"net"
 	"net/http"
 	"net/http/cookiejar"
@@ -20,7 +21,9 @@ import (
 // newHttpClient creates a new http client for headless communication with a timeout
 func newHttpClient(options *types.Options) (*http.Client, error) {
 	dialers := protocolstate.GetDialersWithId(options.ExecutionId)
-
+	if dialers == nil {
+		return nil, fmt.Errorf("dialers not initialized for %s", options.ExecutionId)
+	}
 	// Set the base TLS configuration definition
 	tlsConfig := &tls.Config{
 		Renegotiation:      tls.RenegotiateOnceAsClient,

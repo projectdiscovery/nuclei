@@ -2,6 +2,7 @@ package pop3
 
 import (
 	"context"
+	"fmt"
 	"net"
 	"strconv"
 	"time"
@@ -43,6 +44,9 @@ func isPoP3(executionId string, host string, port int) (IsPOP3Response, error) {
 	resp := IsPOP3Response{}
 
 	dialer := protocolstate.GetDialersWithId(executionId)
+	if dialer == nil {
+		return IsPOP3Response{}, fmt.Errorf("dialers not initialized for %s", executionId)
+	}
 
 	timeout := 5 * time.Second
 	conn, err := dialer.Fastdialer.Dial(context.TODO(), "tcp", net.JoinHostPort(host, strconv.Itoa(port)))

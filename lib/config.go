@@ -19,6 +19,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/utils/vardump"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/headless/engine"
 	"github.com/projectdiscovery/nuclei/v3/pkg/templates/types"
+	pkgtypes "github.com/projectdiscovery/nuclei/v3/pkg/types"
 )
 
 // TemplateSources contains template sources
@@ -205,7 +206,7 @@ func EnableHeadlessWithOpts(hopts *HeadlessOpts) NucleiSDKOptions {
 			e.opts.UseInstalledChrome = hopts.UseChrome
 		}
 		if engine.MustDisableSandbox() {
-			gologger.Warning().Msgf("The current platform and privileged user will run the browser without sandbox\n")
+			e.Logger.Warning().Msgf("The current platform and privileged user will run the browser without sandbox")
 		}
 		browser, err := engine.New(e.opts)
 		if err != nil {
@@ -296,8 +297,8 @@ func WithNetworkConfig(opts NetworkConfig) NucleiSDKOptions {
 		if e.opts.ShouldUseHostError() {
 			maxHostError := opts.MaxHostError
 			if e.opts.TemplateThreads > maxHostError {
-				gologger.Print().Msgf("[%v] The concurrency value is higher than max-host-error", e.executerOpts.Colorizer.BrightYellow("WRN"))
-				gologger.Info().Msgf("Adjusting max-host-error to the concurrency value: %d", e.opts.TemplateThreads)
+				e.Logger.Print().Msgf("[%v] The concurrency value is higher than max-host-error", e.executerOpts.Colorizer.BrightYellow("WRN"))
+				e.Logger.Info().Msgf("Adjusting max-host-error to the concurrency value: %d", e.opts.TemplateThreads)
 				maxHostError = e.opts.TemplateThreads
 				e.opts.MaxHostError = maxHostError
 			}
@@ -419,6 +420,14 @@ func EnableGlobalMatchersTemplates() NucleiSDKOptions {
 	}
 }
 
+// DisableTemplateCache disables template caching
+func DisableTemplateCache() NucleiSDKOptions {
+	return func(e *NucleiEngine) error {
+		e.opts.DoNotCacheTemplates = true
+		return nil
+	}
+}
+
 // EnableFileTemplates allows loading/executing file protocol templates
 func EnableFileTemplates() NucleiSDKOptions {
 	return func(e *NucleiEngine) error {
@@ -524,6 +533,28 @@ func DisableUpdateCheck() NucleiSDKOptions {
 func WithResumeFile(file string) NucleiSDKOptions {
 	return func(e *NucleiEngine) error {
 		e.opts.Resume = file
+		return nil
+	}
+}
+
+// WithLogger allows setting gologger instance
+func WithLogger(logger *gologger.Logger) NucleiSDKOptions {
+	return func(e *NucleiEngine) error {
+		e.Logger = logger
+		if e.opts != nil {
+			e.opts.Logger = logger
+		}
+		if e.executerOpts != nil {
+			e.executerOpts.Logger = logger
+		}
+		return nil
+	}
+}
+
+// WithOptions sets all options at once
+func WithOptions(opts *pkgtypes.Options) NucleiSDKOptions {
+	return func(e *NucleiEngine) error {
+		e.opts = opts
 		return nil
 	}
 }

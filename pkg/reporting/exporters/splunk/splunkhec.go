@@ -49,7 +49,10 @@ type Exporter struct {
 func New(option *Options) (*Exporter, error) {
 	var ei *Exporter
 
-	dialer := protocolstate.GetDialersWithId(option.ExecutionId)
+	dialers := protocolstate.GetDialersWithId(option.ExecutionId)
+	if dialers == nil {
+		return nil, fmt.Errorf("dialers not initialized for %s", option.ExecutionId)
+	}
 
 	var client *http.Client
 	if option.HttpClient != nil {
@@ -60,8 +63,8 @@ func New(option *Options) (*Exporter, error) {
 			Transport: &http.Transport{
 				MaxIdleConns:        10,
 				MaxIdleConnsPerHost: 10,
-				DialContext:         dialer.Fastdialer.Dial,
-				DialTLSContext:      dialer.Fastdialer.DialTLS,
+				DialContext:         dialers.Fastdialer.Dial,
+				DialTLSContext:      dialers.Fastdialer.DialTLS,
 				TLSClientConfig:     &tls.Config{InsecureSkipVerify: option.SSLVerification},
 			},
 		}

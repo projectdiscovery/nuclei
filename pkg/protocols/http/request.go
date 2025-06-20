@@ -822,6 +822,9 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 	}
 
 	dialers := protocolstate.GetDialersWithId(request.options.Options.ExecutionId)
+	if dialers == nil {
+		return fmt.Errorf("dialers not found for execution id %s", request.options.Options.ExecutionId)
+	}
 
 	if err != nil {
 		// rawhttp doesn't support draining response bodies.
@@ -844,7 +847,6 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 			outputEvent["ip"] = input.MetaInput.CustomIP
 		} else {
 			outputEvent["ip"] = dialers.Fastdialer.GetDialedIP(hostname)
-
 			// try getting cname
 			request.addCNameIfAvailable(hostname, outputEvent)
 		}
@@ -1088,14 +1090,11 @@ func (request *Request) validateNFixEvent(input *contextargs.Context, gr *genera
 
 // addCNameIfAvailable adds the cname to the event if available
 func (request *Request) addCNameIfAvailable(hostname string, outputEvent map[string]interface{}) {
-	dialers := protocolstate.GetDialersWithId(request.options.Options.ExecutionId)
-
-	if dialers.Fastdialer == nil {
+	if request.dialer == nil {
 		return
 	}
 
-	data, err := dialers.Fastdialer.GetDNSData(hostname)
-
+	data, err := request.dialer.GetDNSData(hostname)
 	if err == nil {
 		switch len(data.CNAME) {
 		case 0:

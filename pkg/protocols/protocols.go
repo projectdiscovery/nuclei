@@ -6,6 +6,7 @@ import (
 	"sync/atomic"
 
 	"github.com/projectdiscovery/fastdialer/fastdialer"
+	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/ratelimit"
 	mapsutil "github.com/projectdiscovery/utils/maps"
 	stringsutil "github.com/projectdiscovery/utils/strings"
@@ -133,6 +134,8 @@ type ExecutorOptions struct {
 	ExportReqURLPattern bool
 	// GlobalMatchers is the storage for global matchers with http passive templates
 	GlobalMatchers *globalmatchers.Storage
+	// Logger is the shared logging instance
+	Logger *gologger.Logger
 	// CustomFastdialer is a fastdialer dialer instance
 	CustomFastdialer *fastdialer.Dialer
 }
@@ -141,6 +144,7 @@ type ExecutorOptions struct {
 // a possible approach could be an internal event bus with pub-subs? This would be less invasive than
 // reworking dep injection from scratch
 func (eo *ExecutorOptions) RateLimitTake() {
+	// TODO: Revisit since this may still trigger race conditions
 	if eo.RateLimiter.GetLimit() != uint(eo.Options.RateLimit) {
 		eo.RateLimiter.SetLimit(uint(eo.Options.RateLimit))
 		eo.RateLimiter.SetDuration(eo.Options.RateLimitDuration)
@@ -246,8 +250,46 @@ func (e *ExecutorOptions) AddTemplateVar(input *contextargs.MetaInput, templateT
 }
 
 // Copy returns a copy of the executeroptions structure
-func (e ExecutorOptions) Copy() ExecutorOptions {
-	copy := e
+func (e *ExecutorOptions) Copy() *ExecutorOptions {
+	copy := &ExecutorOptions{
+		TemplateID:          e.TemplateID,
+		TemplatePath:        e.TemplatePath,
+		TemplateInfo:        e.TemplateInfo,
+		TemplateVerifier:    e.TemplateVerifier,
+		RawTemplate:         e.RawTemplate,
+		Output:              e.Output,
+		Options:             e.Options,
+		IssuesClient:        e.IssuesClient,
+		Progress:            e.Progress,
+		RateLimiter:         e.RateLimiter,
+		Catalog:             e.Catalog,
+		ProjectFile:         e.ProjectFile,
+		Browser:             e.Browser,
+		Interactsh:          e.Interactsh,
+		HostErrorsCache:     e.HostErrorsCache,
+		StopAtFirstMatch:    e.StopAtFirstMatch,
+		Variables:           e.Variables,
+		Constants:           e.Constants,
+		ExcludeMatchers:     e.ExcludeMatchers,
+		InputHelper:         e.InputHelper,
+		FuzzParamsFrequency: e.FuzzParamsFrequency,
+		FuzzStatsDB:         e.FuzzStatsDB,
+		Operators:           e.Operators,
+		DoNotCache:          e.DoNotCache,
+		Colorizer:           e.Colorizer,
+		WorkflowLoader:      e.WorkflowLoader,
+		ResumeCfg:           e.ResumeCfg,
+		ProtocolType:        e.ProtocolType,
+		Flow:                e.Flow,
+		IsMultiProtocol:     e.IsMultiProtocol,
+		JsCompiler:          e.JsCompiler,
+		AuthProvider:        e.AuthProvider,
+		TemporaryDirectory:  e.TemporaryDirectory,
+		Parser:              e.Parser,
+		ExportReqURLPattern: e.ExportReqURLPattern,
+		GlobalMatchers:      e.GlobalMatchers,
+		Logger:              e.Logger,
+	}
 	copy.CreateTemplateCtxStore()
 	return copy
 }

@@ -22,14 +22,14 @@ import (
 // hence they are ephemeral and are created on every ExecuteNucleiWithOpts invocation
 // in ThreadSafeNucleiEngine
 type unsafeOptions struct {
-	executerOpts protocols.ExecutorOptions
+	executerOpts *protocols.ExecutorOptions
 	engine       *core.Engine
 }
 
 // createEphemeralObjects creates ephemeral nuclei objects/instances/types
 func createEphemeralObjects(ctx context.Context, base *NucleiEngine, opts *types.Options) (*unsafeOptions, error) {
 	u := &unsafeOptions{}
-	u.executerOpts = protocols.ExecutorOptions{
+	u.executerOpts = &protocols.ExecutorOptions{
 		Output:          base.customWriter,
 		Options:         opts,
 		Progress:        base.customProgress,
@@ -145,7 +145,7 @@ func (e *ThreadSafeNucleiEngine) ExecuteNucleiWithOptsCtx(ctx context.Context, t
 	defer closeEphemeralObjects(unsafeOpts)
 
 	// load templates
-	workflowLoader, err := workflow.NewLoader(&unsafeOpts.executerOpts)
+	workflowLoader, err := workflow.NewLoader(unsafeOpts.executerOpts)
 	if err != nil {
 		return errorutil.New("Could not create workflow loader: %s\n", err)
 	}

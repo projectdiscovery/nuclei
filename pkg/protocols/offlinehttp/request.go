@@ -139,3 +139,8 @@ func getURLFromRequest(req *http.Request) string {
 	}
 	return fmt.Sprintf("%s://%s%s", req.URL.Scheme, req.Host, req.URL.Path)
 }
+
+// UpdateOptions replaces this request's options with a new copy
+func (r *Request) UpdateOptions(opts *protocols.ExecutorOptions) {
+	r.options = opts
+}
