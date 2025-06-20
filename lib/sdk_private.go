@@ -101,7 +101,6 @@ func (e *NucleiEngine) init(ctx context.Context) error {
 		e.Logger = e.opts.Logger
 	} else {
 		e.opts.Logger = &gologger.Logger{}
-		e.opts.Logger.SetFormatter(&config.RunZeroFormatter{})
 	}
 	e.Logger = e.opts.Logger
 

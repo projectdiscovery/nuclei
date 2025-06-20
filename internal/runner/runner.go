@@ -875,8 +875,8 @@ func (r *Runner) displayExecutionInfo(store *loader.Store) {
 		return fmt.Sprintf("Current %s version: %v %v", versionType, version, updateutils.GetVersionDescription(version, latestVersion))
 	}
 
-	r.Logger.Info().Msgf(versionInfo(config.Version, cfg.LatestNucleiVersion, "nuclei"))
-	r.Logger.Info().Msgf(versionInfo(cfg.TemplateVersion, cfg.LatestNucleiTemplatesVersion, "nuclei-templates"))
+	r.Logger.Info().Msgf("%s", versionInfo(config.Version, cfg.LatestNucleiVersion, "nuclei"))
+	r.Logger.Info().Msgf("%s", versionInfo(cfg.TemplateVersion, cfg.LatestNucleiTemplatesVersion, "nuclei-templates"))
 	if !HideAutoSaveMsg {
 		if r.pdcpUploadErrMsg != "" {
 			r.Logger.Print().Msgf("%s", r.pdcpUploadErrMsg)

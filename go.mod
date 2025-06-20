@@ -108,7 +108,6 @@ require (
 	github.com/redis/go-redis/v9 v9.1.0
 	github.com/seh-msft/burpxml v1.0.1
 	github.com/shurcooL/graphql v0.0.0-20230722043721-ed46e5a46466
-	github.com/sirupsen/logrus v1.9.3
 	github.com/stretchr/testify v1.10.0
 	github.com/tarunKoyalwar/goleak v0.0.0-20240429141123-0efa90dbdcf9
 	github.com/yassinebenaid/godump v0.10.0
@@ -232,6 +231,7 @@ require (
 	github.com/sashabaranov/go-openai v1.37.0 // indirect
 	github.com/shirou/gopsutil v3.21.11+incompatible // indirect
 	github.com/shoenig/go-m1cpu v0.1.6 // indirect
+	github.com/sirupsen/logrus v1.9.3 // indirect
 	github.com/skeema/knownhosts v1.3.0 // indirect
 	github.com/sorairolake/lzip-go v0.3.5 // indirect
 	github.com/therootcompany/xz v1.0.1 // indirect
@@ -260,7 +260,6 @@ require (
 	github.com/yuin/goldmark-emoji v1.0.3 // indirect
 	github.com/zcalusic/sysinfo v1.0.2 // indirect
 	github.com/zeebo/blake3 v0.2.3 // indirect
-	go.uber.org/goleak v1.3.0 // indirect
 	go4.org v0.0.0-20230225012048-214862532bf5 // indirect
 	golang.org/x/arch v0.3.0 // indirect
 	golang.org/x/sync v0.15.0 // indirect

@@ -849,8 +849,6 @@ github.com/projectdiscovery/cdncheck v1.1.17 h1:YSqKk05+UGSxmPIp7tlCvRegF63FUqO+
 github.com/projectdiscovery/cdncheck v1.1.17/go.mod h1:dFEGsG0qAJY0AaRr2N1BY0OtZiTxS4kYeT5+OkF8t1U=
 github.com/projectdiscovery/clistats v0.1.1 h1:8mwbdbwTU4aT88TJvwIzTpiNeow3XnAB72JIg66c8wE=
 github.com/projectdiscovery/clistats v0.1.1/go.mod h1:4LtTC9Oy//RiuT1+76MfTg8Hqs7FQp1JIGBM3nHK6a0=
-github.com/projectdiscovery/dsl v0.4.2 h1:9PnD6EyDAZFvpQmJ0700gkQ96Fqlzl+lnTdcVHAagXI=
-github.com/projectdiscovery/dsl v0.4.2/go.mod h1:J1RizRF6O3lvk2v8p/tLAYqaxWg6N52OWc+uS5ZmO2U=
 github.com/projectdiscovery/dsl v0.4.3 h1:ZrbRkyK38hRiYMX7s6ohaTorDpq321ErqJuBUDmh49g=
 github.com/projectdiscovery/dsl v0.4.3/go.mod h1:cyt2IaYhS5SlyZ1D2BdK0QwIBXQW/u9zaBmRAKYKAmk=
 github.com/projectdiscovery/fastdialer v0.4.0 h1:licZKyq+Shd5lLDb8uPd60Jp43K4NFE8cr67XD2eg7w=
@@ -1668,8 +1666,6 @@ honnef.co/go/tools v0.0.1-2020.1.3/go.mod h1:X/FiERA/W4tHapMX5mGpAtMSVEeEUOyHaw9
 honnef.co/go/tools v0.0.1-2020.1.4/go.mod h1:X/FiERA/W4tHapMX5mGpAtMSVEeEUOyHaw9vFzvIQ3k=
 mellium.im/sasl v0.3.1 h1:wE0LW6g7U83vhvxjC1IY8DnXM+EU095yeo8XClvCdfo=
 mellium.im/sasl v0.3.1/go.mod h1:xm59PUYpZHhgQ9ZqoJ5QaCqzWMi8IeS49dhp6plPCzw=
-mellium.im/sasl v0.3.2 h1:PT6Xp7ccn9XaXAnJ03FcEjmAn7kK1x7aoXV6F+Vmrl0=
-mellium.im/sasl v0.3.2/go.mod h1:NKXDi1zkr+BlMHLQjY3ofYuU4KSPFxknb8mfEu6SveY=
 moul.io/http2curl v1.0.0 h1:6XwpyZOYsgZJrU8exnG87ncVkU1FVCcTRpwzOkTDUi8=
 moul.io/http2curl v1.0.0/go.mod h1:f6cULg+e4Md/oW1cYmwW4IWQOVl2lGbmCNGOHvzX2kE=
 nullprogram.com/x/optparse v1.0.0/go.mod h1:KdyPE+Igbe0jQUrVfMqDMeJQIJZEuyV7pjYmp6pbG50=
