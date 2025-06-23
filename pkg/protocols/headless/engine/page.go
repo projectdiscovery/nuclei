@@ -198,7 +198,6 @@ func (i *Instance) Run(ctx *contextargs.Context, actions []*Action, payloads map
 	// we assume it's the one matching the initial URL
 	if len(createdPage.History) > 0 {
 		firstItem := createdPage.History[0]
-		// fmt.Printf("firstItem.RawResponse: %v\n", firstItem.RawResponse)
 		if resp, err := http.ReadResponse(bufio.NewReader(strings.NewReader(firstItem.RawResponse)), nil); err == nil {
 			data["header"] = utils.HeadersToString(resp.Header)
 			data["status_code"] = fmt.Sprint(resp.StatusCode)
