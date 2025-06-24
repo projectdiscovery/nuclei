@@ -18,6 +18,7 @@ import (
 	"github.com/projectdiscovery/utils/env"
 	_ "github.com/projectdiscovery/utils/pprof"
 	stringsutil "github.com/projectdiscovery/utils/strings"
+	"gopkg.in/yaml.v2"
 
 	"github.com/projectdiscovery/goflags"
 	"github.com/projectdiscovery/gologger"
@@ -261,6 +262,7 @@ on extensive configurability, massive extensibility and ease of use.`)
 		flagSet.BoolVarP(&options.FormatUseRequiredOnly, "required-only", "ro", false, "use only required fields in input format when generating requests"),
 		flagSet.BoolVarP(&options.SkipFormatValidation, "skip-format-validation", "sfv", false, "skip format validation (like missing vars) when parsing input file"),
 		flagSet.BoolVarP(&options.VarsTextTemplating, "vars-text-templating", "vtt", false, "enable text templating for vars in input file (only for yaml input mode)"),
+		flagSet.StringSliceVarP(&options.VarsFilePaths, "var-file-paths", "vfp", nil, "list of yaml file contained vars to inject into yaml input", goflags.CommaSeparatedStringSliceOptions),
 	)
 
 	flagSet.CreateGroup("templates", "Templates",
@@ -569,6 +571,7 @@ Additional documentation is available at: https://docs.nuclei.sh/getting-started
 		config.DefaultConfig.SetConfigDir(customConfigDir)
 		readFlagsConfig(flagSet)
 	}
+
 	if cfgFile != "" {
 		if !fileutil.FileExists(cfgFile) {
 			gologger.Fatal().Msgf("given config file '%s' does not exist", cfgFile)
@@ -576,6 +579,34 @@ Additional documentation is available at: https://docs.nuclei.sh/getting-started
 		// merge config file with flags
 		if err := flagSet.MergeConfigFile(cfgFile); err != nil {
 			gologger.Fatal().Msgf("Could not read config: %s\n", err)
+		}
+
+		if !options.Vars.IsEmpty() {
+			// Maybe we should add vars to the config file as well?
+			file, err := os.Open(cfgFile)
+			if err != nil {
+				gologger.Fatal().Msgf("Could not open config file: %s\n", err)
+			}
+			defer file.Close()
+			data := make(map[string]interface{})
+			err = yaml.NewDecoder(file).Decode(&data)
+			if err != nil {
+				gologger.Fatal().Msgf("Could not decode config file: %s\n", err)
+			}
+
+			variables := data["var"]
+			if variables != nil {
+				for _, value := range variables.([]interface{}) {
+					if strVal, ok := value.(string); ok {
+						options.Vars.Set(strVal)
+					} else {
+						gologger.Warning().Msgf("Skipping non-string variable in config: %#v", value)
+					}
+				}
+			} else {
+				gologger.Warning().Msgf("No 'var' section found in config file: %s", cfgFile)
+			}
+
 		}
 	}
 	if options.NewTemplatesDirectory != "" {
