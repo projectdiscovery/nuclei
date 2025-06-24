@@ -117,6 +117,7 @@ func NewInputProvider(opts InputOptions) (InputProvider, error) {
 				SkipFormatValidation: opts.Options.SkipFormatValidation,
 				RequiredOnly:         opts.Options.FormatUseRequiredOnly,
 				VarsTextTemplating:   opts.Options.VarsTextTemplating,
+				VarsFilePaths:        opts.Options.VarsFilePaths,
 			},
 		})
 	}

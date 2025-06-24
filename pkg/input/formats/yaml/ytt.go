@@ -12,13 +12,18 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
-func ytt(tpl, dvs []string) (io.Reader, error) {
+func ytt(tpl, dvs []string, varFiles []string) (io.Reader, error) {
 	// create and invoke ytt "template" command
 	templatingOptions := yttcmd.NewOptions()
 
 	input, err := templatesAsInput(tpl...)
 	if err != nil {
 		return nil, err
+	}
+
+	if len(varFiles) > 0 {
+		// Load vaarFiles into the templating options.
+		templatingOptions.DataValuesFlags.FromFiles = varFiles
 	}
 
 	// equivalent to `--data-value-yaml`

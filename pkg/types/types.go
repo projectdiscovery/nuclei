@@ -421,6 +421,8 @@ type Options struct {
 	SkipFormatValidation bool
 	// VarsTextTemplating is used to inject variables into yaml input files
 	VarsTextTemplating bool
+	// VarsFilePaths is  used to inject variables into yaml input files from a file
+	VarsFilePaths goflags.StringSlice
 	// PayloadConcurrency is the number of concurrent payloads to run per template
 	PayloadConcurrency int
 	// ProbeConcurrency is the number of concurrent http probes to run with httpx
