@@ -336,11 +336,8 @@ func (request *Request) executeTurboHTTP(input *contextargs.Context, dynamicValu
 	pipeClient := rawhttp.NewPipelineClient(pipeOptions)
 
 	// defaultMaxWorkers should be a sufficient value to keep queues always full
-	maxWorkers := defaultMaxWorkers
 	// in case the queue is bigger increase the workers
-	if pipeOptions.MaxPendingRequests > maxWorkers {
-		maxWorkers = pipeOptions.MaxPendingRequests
-	}
+	maxWorkers := max(pipeOptions.MaxPendingRequests, defaultMaxWorkers)
 
 	// Stop-at-first-match logic while executing requests
 	// parallely using threads
