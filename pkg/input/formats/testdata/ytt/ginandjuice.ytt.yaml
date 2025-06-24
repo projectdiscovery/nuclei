@@ -1,10 +1,9 @@
 #@ load("@ytt:data", "data")
-#@ load("@ytt:assert", "assert")
+#@ load("@ytt:json", "json")
 
 #@ def get_value(key, default=""):
 #@   if hasattr(data.values, key):
-#@     value = getattr(data.values, key)
-#@     return str(value)
+#@     return str(getattr(data.values, key))
 #@   else:
 #@     return default
 #@   end
@@ -17,10 +16,10 @@ request:
   raw: |+
     POST /users/3 HTTP/1.1
     Host: ginandjuice.shop
-    Authorization: Bearer 3x4mpl3t0k3n
+    Authorization: Bearer (@= get_value("token") @)
     Accept-Encoding: gzip
     Content-Type: application/x-www-form-urlencoded
     Connection: close
     User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 11_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/87.0.4280.88 Safari/537.36
 
-    foo=(@= get_value("foo") @)&bar=(@= get_value("bar") @)
+    foo=(@= get_value("foo") @)&bar=(@= get_value("bar") @)&debug=(@= get_value("debug", "false") @)

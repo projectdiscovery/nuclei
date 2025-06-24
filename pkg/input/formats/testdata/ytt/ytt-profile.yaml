@@ -1,0 +1,10 @@
+list: pkg/input/formats/testdata/ytt/ginandjuice.ytt.yaml
+input-mode: yaml
+templates: 
+  - integration_tests/fuzz/fuzz-body.yaml
+var:
+  - debug=true
+vars-text-templating: true
+var-file-paths:
+  - pkg/input/formats/testdata/ytt/ytt-vars.yaml
+dast: true 

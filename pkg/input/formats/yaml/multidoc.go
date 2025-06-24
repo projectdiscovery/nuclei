@@ -56,7 +56,7 @@ func (j *YamlMultiDocFormat) Parse(input io.Reader, resultsCb formats.ParseReqRe
 		}
 		tpl := []string{string(data)}
 		dvs := mapToKeyValueSlice(j.opts.Variables)
-		finalInput, err = ytt(tpl, dvs)
+		finalInput, err = ytt(tpl, dvs, j.opts.VarsFilePaths)
 		if err != nil {
 			return errors.Wrap(err, "could not apply ytt templating")
 		}

@@ -32,6 +32,8 @@ type InputFormatOptions struct {
 	// this is used for text templating of variables based on carvel ytt
 	// Only available for Yaml formats
 	VarsTextTemplating bool
+	// VarsFilePaths is the path to the file containing variables
+	VarsFilePaths []string
 }
 
 // Format is an interface implemented by all input formats
