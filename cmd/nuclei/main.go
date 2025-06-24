@@ -582,7 +582,7 @@ Additional documentation is available at: https://docs.nuclei.sh/getting-started
 		}
 
 		if !options.Vars.IsEmpty() {
-			// Maybe we should add vars to the config file as well?
+			// Maybe we should add vars to the config file as well even if they are set via flags?
 			file, err := os.Open(cfgFile)
 			if err != nil {
 				gologger.Fatal().Msgf("Could not open config file: %s\n", err)
@@ -596,15 +596,17 @@ Additional documentation is available at: https://docs.nuclei.sh/getting-started
 
 			variables := data["var"]
 			if variables != nil {
-				for _, value := range variables.([]interface{}) {
-					if strVal, ok := value.(string); ok {
-						options.Vars.Set(strVal)
-					} else {
-						gologger.Warning().Msgf("Skipping non-string variable in config: %#v", value)
+				if varSlice, ok := variables.([]interface{}); ok {
+					for _, value := range varSlice {
+						if strVal, ok := value.(string); ok {
+							options.Vars.Set(strVal)
+						} else {
+							gologger.Warning().Msgf("Skipping non-string variable in config: %#v", value)
+						}
 					}
+				} else {
+					gologger.Warning().Msgf("No 'var' section found in config file: %s", cfgFile)
 				}
-			} else {
-				gologger.Warning().Msgf("No 'var' section found in config file: %s", cfgFile)
 			}
 
 		}
