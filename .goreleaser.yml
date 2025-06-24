@@ -38,9 +38,9 @@ builds:
 #  goarch: [amd64]
 
 archives:
-  - format: zip
+  - formats: [zip]
     id: nuclei
-    builds: [nuclei-cli]
+    ids: [nuclei-cli]
     name_template: '{{ .ProjectName }}_{{ .Version }}_{{ if eq .Os "darwin" }}macOS{{ else }}{{ .Os }}{{ end }}_{{ .Arch }}'
 
 checksum:
