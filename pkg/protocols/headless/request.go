@@ -2,6 +2,7 @@ package headless
 
 import (
 	"fmt"
+	"maps"
 	"net/url"
 	"strings"
 	"time"
@@ -9,7 +10,6 @@ import (
 	"github.com/projectdiscovery/retryablehttp-go"
 
 	"github.com/pkg/errors"
-	"golang.org/x/exp/maps"
 
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/fuzz"
@@ -189,12 +189,9 @@ func (request *Request) executeRequestWithPayloads(input *contextargs.Context, p
 	if request.options.HasTemplateCtx(input.MetaInput) {
 		outputEvent = generators.MergeMaps(outputEvent, request.options.GetTemplateCtx(input.MetaInput).GetAll())
 	}
-	for k, v := range out {
-		outputEvent[k] = v
-	}
-	for k, v := range payloads {
-		outputEvent[k] = v
-	}
+
+	maps.Copy(outputEvent, out)
+	maps.Copy(outputEvent, payloads)
 
 	var event *output.InternalWrappedEvent
 	if len(page.InteractshURLs) == 0 {
