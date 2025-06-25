@@ -21,8 +21,9 @@ func TestCodeProtocol(t *testing.T) {
 	testutils.Init(options)
 	templateID := "testing-code"
 	request := &Request{
-		Engine: []string{"sh"},
-		Source: "echo test",
+		SelfContained: true,
+		Engine:        []string{"sh"},
+		Source:        "echo test",
 	}
 	executerOpts := testutils.NewMockExecuterOptions(options, &testutils.TemplateInfo{
 		ID:   templateID,
