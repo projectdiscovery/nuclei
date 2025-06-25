@@ -1,9 +1,7 @@
 package flow
 
 import (
-	"context"
 	"reflect"
-	"sync"
 
 	"github.com/dop251/goja"
 	"github.com/logrusorgru/aurora"
@@ -13,40 +11,23 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/utils/vardump"
 	"github.com/projectdiscovery/nuclei/v3/pkg/tmplexec/flow/builtin"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
-	"github.com/projectdiscovery/utils/sync/sizedpool"
 )
 
-var jsOnce sync.Once
-
-// js runtime pool using sync.Pool
-var gojapool = &sync.Pool{
-	New: func() interface{} {
-		runtime := protocolstate.NewJSRuntime()
-		registerBuiltins(runtime)
-		return runtime
-	},
-}
-
-var sizedgojapool *sizedpool.SizedPool[*goja.Runtime]
-
-// GetJSRuntime returns a new JS runtime from pool
+// GetJSRuntime returns a new JS runtime.
+//
+// A new runtime is created for each call to avoid state leakage between
+// executions.
 func GetJSRuntime(opts *types.Options) *goja.Runtime {
-	jsOnce.Do(func() {
-		if opts.JsConcurrency < 100 {
-			opts.JsConcurrency = 100
-		}
-		sizedgojapool, _ = sizedpool.New[*goja.Runtime](
-			sizedpool.WithPool[*goja.Runtime](gojapool),
-			sizedpool.WithSize[*goja.Runtime](int64(opts.JsConcurrency)),
-		)
-	})
-	runtime, _ := sizedgojapool.Get(context.TODO())
+	runtime := protocolstate.NewJSRuntime()
+	registerBuiltins(runtime)
 	return runtime
 }
 
 // PutJSRuntime returns a JS runtime to pool
+//
+// Deprecated: This function is a no-op and does not do anything.
 func PutJSRuntime(runtime *goja.Runtime) {
-	sizedgojapool.Put(runtime)
+	// Do nothing.
 }
 
 func registerBuiltins(runtime *goja.Runtime) {

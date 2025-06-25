@@ -170,7 +170,19 @@ func (f *FlowExecutor) Compile() error {
 					}
 				}
 			}
-			return runtime.ToValue(f.requestExecutor(runtime, reqMap, opts))
+
+			result := f.requestExecutor(runtime, reqMap, opts)
+			// NOTE(dwisiswant0): After exec of a proto, we need to update the
+			// template var in the JS runtime. This is because the template obj
+			// is a copy of the template context, and any changes made to the
+			// context during proto exec (ex. extractors) will not be reflected
+			// in the JS runtime otherwise.
+			tmplObj := f.options.GetTemplateCtx(f.ctx.Input.MetaInput).GetAll()
+			if tmplObj == nil {
+				tmplObj = make(map[string]any)
+			}
+			_ = runtime.Set("template", tmplObj)
+			return runtime.ToValue(result)
 		}
 	}
 	return nil
