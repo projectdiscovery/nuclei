@@ -1,0 +1,56 @@
+id: wordpress_readme-namespacing
+
+info:
+  name: WordPress readme detection
+  author: nisay759
+  severity: info
+  tags: readme,wordpress,themes,plugins
+
+flow: |
+  // get imports from website's root
+  http(1);
+
+  template["{{BaseURL}}_results"] = Dedupe();
+
+  // get unique webroot of each import
+  for (let path of iterate(template["imports"])) {
+    let pathArray = path.split("/");
+    let rootIdx = pathArray.indexOf("wp-content") + 3;
+    let finalUrl = pathArray.slice(0, rootIdx).join("/");
+    template["{{BaseURL}}_results"].Add(finalUrl);
+  }
+
+  // for each import, look for readme
+  for (let url of iterate(template["{{BaseURL}}_results"].Values())) {
+    set("target", url);
+    http(2);
+  }
+
+http:
+  # http(1) - Query web root and extract themes/plugins imports
+  - method: GET
+    redirects: true
+    path:
+      - "{{BaseURL}}"
+
+    extractors:
+      - type: xpath
+        name: "imports"
+        internal: true
+        xpath:
+          - "/html/*/script/@src[contains(.,'wp-content/plugins/')]"
+          - "/html/*/script/@src[contains(.,'wp-content/themes/')]"
+          - "/html/*/style/@src[contains(.,'wp-content/themes/')]"
+          - "/html/*/img/@src[contains(.,'wp-content/themes/')]"
+
+  # http(2) - Given a theme/plugin "target", look for Readme file
+  - method: GET
+    path:
+      - "{{target}}/README.md"
+      - "{{target}}/README.txt"
+
+    stop-at-first-match: true
+    matchers:
+      - type: status
+        status:
+          - 200

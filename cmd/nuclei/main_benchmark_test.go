@@ -117,12 +117,12 @@ func runEnumBenchmark(b *testing.B, options *types.Options) {
 
 func BenchmarkRunEnumeration(b *testing.B) {
 	// Default case: run enumeration with default options == all nuclei-templates
-	// b.Run("Default", func(b *testing.B) {
-	// 	options := getDefaultOptions()
-	// 	options.Targets = []string{targetURL}
+	b.Run("Default", func(b *testing.B) {
+		options := getDefaultOptions()
+		options.Targets = []string{targetURL}
 
-	// 	runEnumBenchmark(b, options)
-	// })
+		runEnumBenchmark(b, options)
+	})
 
 	// Case: https://github.com/projectdiscovery/nuclei/pull/6258
 	b.Run("Multiproto", func(b *testing.B) {
@@ -131,5 +131,54 @@ func BenchmarkRunEnumeration(b *testing.B) {
 		options.Templates = []string{"./cmd/nuclei/testdata/benchmark/multiproto/"}
 
 		runEnumBenchmark(b, options)
+	})
+
+	// Case: https://github.com/projectdiscovery/nuclei/issues/6263
+	b.Run("Flow", func(b *testing.B) {
+		options := getDefaultOptions()
+		options.Targets = []string{
+			"https://google.com",
+			"https://youtube.com",
+			"https://facebook.com",
+			"https://baidu.com",
+			"https://wikipedia.org",
+			"https://qq.com",
+			"https://taobao.com",
+			"https://yahoo.com",
+			"https://tmall.com",
+			"https://amazon.com",
+			"https://twitter.com",
+			"https://sohu.com",
+			"https://live.com",
+			"https://jd.com",
+			"https://vk.com",
+			"https://instagram.com",
+			"https://sina.com.cn",
+			"https://weibo.com",
+			"https://reddit.com",
+			"https://login.tmall.com",
+			"https://360.cn",
+			"https://yandex.ru",
+			"https://linkedin.com",
+			"https://blogspot.com",
+			"https://netflix.com",
+			"https://twitch.tv",
+			"https://whatsapp.com",
+			"https://yahoo.co.jp",
+			"https://csdn.net",
+			"https://wordcamp.org",
+		}
+
+		b.Run("Local-Scoping", func(b *testing.B) {
+			options.Templates = []string{"./cmd/nuclei/testdata/benchmark/flow/wordpress-readme-local-scoping.yaml"}
+
+			runEnumBenchmark(b, options)
+		})
+
+		b.Run("Namespacing", func(b *testing.B) {
+			options.Templates = []string{"./cmd/nuclei/testdata/benchmark/flow/wordpress-readme-namespacing.yaml"}
+
+			runEnumBenchmark(b, options)
+		})
 	})
 }
