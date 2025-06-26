@@ -199,9 +199,7 @@ func (f *FlowExecutor) ExecuteWithResults(ctx *scan.ScanContext) error {
 	defer func() {
 		// whether to reuse or not depends on the whether script modifies
 		// global scope or not,
-		if compiler.CanRunAsIIFE(f.options.Flow) {
-			PutJSRuntime(runtime)
-		}
+		PutJSRuntime(runtime, compiler.CanRunAsIIFE(f.options.Flow))
 	}()
 	defer func() {
 		// remove set builtin
