@@ -599,7 +599,10 @@ Additional documentation is available at: https://docs.nuclei.sh/getting-started
 				if varSlice, ok := variables.([]interface{}); ok {
 					for _, value := range varSlice {
 						if strVal, ok := value.(string); ok {
-							options.Vars.Set(strVal)
+							err = options.Vars.Set(strVal)
+							if err != nil {
+								gologger.Warning().Msgf("Could not set variable from config file: %s\n", err)
+							}
 						} else {
 							gologger.Warning().Msgf("Skipping non-string variable in config: %#v", value)
 						}
