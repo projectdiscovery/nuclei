@@ -8,6 +8,7 @@ import (
 	"sync/atomic"
 
 	"github.com/dop251/goja"
+	"github.com/projectdiscovery/nuclei/v3/pkg/js/compiler"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/generators"
 	"github.com/projectdiscovery/nuclei/v3/pkg/scan"
@@ -195,7 +196,13 @@ func (f *FlowExecutor) ExecuteWithResults(ctx *scan.ScanContext) error {
 
 	// get a new runtime from pool
 	runtime := GetJSRuntime(f.options.Options)
-	defer PutJSRuntime(runtime) // put runtime back to pool
+	defer func() {
+		// whether to reuse or not depends on the whether script modifies
+		// global scope or not,
+		if compiler.CanRunAsIIFE(f.options.Flow) {
+			PutJSRuntime(runtime)
+		}
+	}()
 	defer func() {
 		// remove set builtin
 		_ = runtime.GlobalObject().Delete("set")
