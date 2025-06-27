@@ -11,6 +11,8 @@ import (
 	"runtime/pprof"
 	"runtime/trace"
 	"strings"
+	"sync/atomic"
+	"syscall"
 	"time"
 
 	_pdcp "github.com/projectdiscovery/nuclei/v3/internal/pdcp"
@@ -47,12 +49,11 @@ import (
 var (
 	cfgFile         string
 	templateProfile string
-	memProfile      string // optional profile file path
+	memProfile      string
 	options         = &types.Options{}
 )
 
 func main() {
-	// enables CLI specific configs mostly interactive behavior
 	config.CurrentAppMode = config.AppModeCLI
 
 	if err := runner.ConfigureOptions(); err != nil {
@@ -66,90 +67,13 @@ func main() {
 		return
 	}
 
-	// sign the templates if requested - only glob syntax is supported
 	if options.SignTemplates {
-		// use parsed options when initializing signer instead of default options
-		templates.UseOptionsForSigner(options)
-		tsigner, err := signer.NewTemplateSigner(nil, nil) // will read from env , config or generate new keys
-		if err != nil {
-			gologger.Fatal().Msgf("couldn't initialize signer crypto engine: %s\n", err)
-		}
-
-		successCounter := 0
-		errorCounter := 0
-		for _, item := range options.Templates {
-			err := filepath.WalkDir(item, func(iterItem string, d fs.DirEntry, err error) error {
-				if err != nil || d.IsDir() || !strings.HasSuffix(iterItem, extensions.YAML) {
-					// skip non yaml files
-					return nil
-				}
-
-				if err := templates.SignTemplate(tsigner, iterItem); err != nil {
-					if err != templates.ErrNotATemplate {
-						// skip warnings and errors as given items are not templates
-						errorCounter++
-						gologger.Error().Msgf("could not sign '%s': %s\n", iterItem, err)
-					}
-				} else {
-					successCounter++
-				}
-
-				return nil
-			})
-			if err != nil {
-				gologger.Error().Msgf("%s\n", err)
-			}
-		}
-		gologger.Info().Msgf("All templates signatures were elaborated success=%d failed=%d\n", successCounter, errorCounter)
+		signTemplates()
 		return
 	}
 
-	// Profiling & tracing related code
 	if memProfile != "" {
-		memProfile = strings.TrimSuffix(memProfile, filepath.Ext(memProfile))
-
-		createProfileFile := func(ext, profileType string) *os.File {
-			f, err := os.Create(memProfile + ext)
-			if err != nil {
-				gologger.Fatal().Msgf("profile: could not create %s profile %q file: %v", profileType, f.Name(), err)
-			}
-			return f
-		}
-
-		memProfileFile := createProfileFile(".mem", "memory")
-		cpuProfileFile := createProfileFile(".cpu", "CPU")
-		traceFile := createProfileFile(".trace", "trace")
-
-		oldMemProfileRate := runtime.MemProfileRate
-		runtime.MemProfileRate = 4096
-
-		// Start tracing
-		if err := trace.Start(traceFile); err != nil {
-			gologger.Fatal().Msgf("profile: could not start trace: %v", err)
-		}
-
-		// Start CPU profiling
-		if err := pprof.StartCPUProfile(cpuProfileFile); err != nil {
-			gologger.Fatal().Msgf("profile: could not start CPU profile: %v", err)
-		}
-
-		defer func() {
-			// Start heap memory snapshot
-			if err := pprof.WriteHeapProfile(memProfileFile); err != nil {
-				gologger.Fatal().Msgf("profile: could not write memory profile: %v", err)
-			}
-
-			pprof.StopCPUProfile()
-			memProfileFile.Close()
-			traceFile.Close()
-			trace.Stop()
-
-			runtime.MemProfileRate = oldMemProfileRate
-
-			gologger.Info().Msgf("CPU profile saved at %q", cpuProfileFile.Name())
-			gologger.Info().Msgf("Memory usage snapshot saved at %q", memProfileFile.Name())
-			gologger.Info().Msgf("Traced at %q", traceFile.Name())
-		}()
+		setupProfiling()
 	}
 
 	runner.ParseOptions(options)
@@ -170,52 +94,10 @@ func main() {
 	}
 
 	if options.HangMonitor {
-		stackMonitor := monitor.NewStackMonitor()
-		cancel := stackMonitor.Start(10 * time.Second)
-		defer cancel()
-		stackMonitor.RegisterCallback(func(dumpID string) error {
-			resumeFileName := fmt.Sprintf("crash-resume-file-%s.dump", dumpID)
-			if options.EnableCloudUpload {
-				gologger.Info().Msgf("Uploading scan results to cloud...")
-			}
-			nucleiRunner.Close()
-			gologger.Info().Msgf("Creating resume file: %s\n", resumeFileName)
-			err := nucleiRunner.SaveResumeConfig(resumeFileName)
-			if err != nil {
-				return errorutil.NewWithErr(err).Msgf("couldn't create crash resume file")
-			}
-			return nil
-		})
+		setupHangMonitor(nucleiRunner)
 	}
 
-	// Setup graceful exits
-	resumeFileName := types.DefaultResumeFilePath()
-	c := make(chan os.Signal, 1)
-	defer close(c)
-	signal.Notify(c, os.Interrupt)
-	go func() {
-		for range c {
-			gologger.Info().Msgf("CTRL+C pressed: Exiting\n")
-			if options.DASTServer {
-				nucleiRunner.Close()
-				os.Exit(1)
-			}
-
-			gologger.Info().Msgf("Attempting graceful shutdown...")
-			if options.EnableCloudUpload {
-				gologger.Info().Msgf("Uploading scan results to cloud...")
-			}
-			nucleiRunner.Close()
-			if options.ShouldSaveResume() {
-				gologger.Info().Msgf("Creating resume file: %s\n", resumeFileName)
-				err := nucleiRunner.SaveResumeConfig(resumeFileName)
-				if err != nil {
-					gologger.Error().Msgf("Couldn't create resume file: %s\n", err)
-				}
-			}
-			os.Exit(1)
-		}
-	}()
+	setupGracefulShutdown(nucleiRunner)
 
 	if err := nucleiRunner.RunEnumeration(); err != nil {
 		if options.Validate {
@@ -225,15 +107,140 @@ func main() {
 		}
 	}
 	nucleiRunner.Close()
-	// on successful execution remove the resume file in case it exists
+
+	resumeFileName := types.DefaultResumeFilePath()
 	if fileutil.FileExists(resumeFileName) {
 		os.Remove(resumeFileName)
 	}
 }
 
-func readConfig() *goflags.FlagSet {
+func signTemplates() {
+	templates.UseOptionsForSigner(options)
+	tsigner, err := signer.NewTemplateSigner(nil, nil)
+	if err != nil {
+		gologger.Fatal().Msgf("couldn't initialize signer crypto engine: %s\n", err)
+	}
 
-	// when true updates nuclei binary to latest version
+	var successCounter, errorCounter atomic.Int32
+
+	for _, item := range options.Templates {
+		err := filepath.WalkDir(item, func(iterItem string, d fs.DirEntry, err error) error {
+			ext := filepath.Ext(iterItem)
+			if err != nil || d.IsDir() || (ext != extensions.YAML && ext != extensions.YML) {
+				return nil
+			}
+
+			if err := templates.SignTemplate(tsigner, iterItem); err != nil {
+				if err != templates.ErrNotATemplate {
+					errorCounter.Add(1)
+					gologger.Error().Msgf("could not sign '%s': %s\n", iterItem, err)
+				}
+			} else {
+				successCounter.Add(1)
+			}
+			return nil
+		})
+		if err != nil {
+			gologger.Error().Msgf("%s\n", err)
+		}
+	}
+	gologger.Info().Msgf("All templates signatures were elaborated success=%d failed=%d\n", 
+		successCounter.Load(), errorCounter.Load())
+}
+
+func setupProfiling() {
+	memProfile = strings.TrimSuffix(memProfile, filepath.Ext(memProfile))
+
+	createProfileFile := func(suffix, profileType string) *os.File {
+		f, err := os.Create(memProfile + suffix)
+		if err != nil {
+			gologger.Fatal().Msgf("profile: could not create %s profile %q file: %v", profileType, f.Name(), err)
+		}
+		return f
+	}
+
+	memFile := createProfileFile(".mem", "memory")
+	cpuFile := createProfileFile(".cpu", "CPU")
+	traceFile := createProfileFile(".trace", "trace")
+
+	oldMemProfileRate := runtime.MemProfileRate
+	runtime.MemProfileRate = 4096
+
+	if err := trace.Start(traceFile); err != nil {
+		gologger.Fatal().Msgf("profile: could not start trace: %v", err)
+	}
+
+	if err := pprof.StartCPUProfile(cpuFile); err != nil {
+		gologger.Fatal().Msgf("profile: could not start CPU profile: %v", err)
+	}
+
+	defer func() {
+		if err := pprof.WriteHeapProfile(memFile); err != nil {
+			gologger.Fatal().Msgf("profile: could not write memory profile: %v", err)
+		}
+		pprof.StopCPUProfile()
+		memFile.Close()
+		cpuFile.Close()
+		traceFile.Close()
+		trace.Stop()
+		runtime.MemProfileRate = oldMemProfileRate
+
+		gologger.Info().Msgf("CPU profile saved at %q", cpuFile.Name())
+		gologger.Info().Msgf("Memory usage snapshot saved at %q", memFile.Name())
+		gologger.Info().Msgf("Traced at %q", traceFile.Name())
+	}()
+}
+
+func setupHangMonitor(nucleiRunner *runner.Runner) {
+	stackMonitor := monitor.NewStackMonitor()
+	cancel := stackMonitor.Start(10 * time.Second)
+	defer cancel()
+	
+	stackMonitor.RegisterCallback(func(dumpID string) error {
+		resumeFileName := fmt.Sprintf("crash-resume-file-%s.dump", dumpID)
+		if options.EnableCloudUpload {
+			gologger.Info().Msgf("Uploading scan results to cloud...")
+		}
+		nucleiRunner.Close()
+		gologger.Info().Msgf("Creating resume file: %s\n", resumeFileName)
+		err := nucleiRunner.SaveResumeConfig(resumeFileName)
+		if err != nil {
+			return errorutil.NewWithErr(err).Msgf("couldn't create crash resume file")
+		}
+		return nil
+	})
+}
+
+func setupGracefulShutdown(nucleiRunner *runner.Runner) {
+	c := make(chan os.Signal, 1)
+	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
+	
+	go func() {
+		<-c
+		gologger.Info().Msgf("CTRL+C pressed: Exiting\n")
+		if options.DASTServer {
+			nucleiRunner.Close()
+			os.Exit(1)
+		}
+
+		gologger.Info().Msgf("Attempting graceful shutdown...")
+		if options.EnableCloudUpload {
+			gologger.Info().Msgf("Uploading scan results to cloud...")
+		}
+		nucleiRunner.Close()
+		
+		if options.ShouldSaveResume() {
+			resumeFileName := types.DefaultResumeFilePath()
+			gologger.Info().Msgf("Creating resume file: %s\n", resumeFileName)
+			if err := nucleiRunner.SaveResumeConfig(resumeFileName); err != nil {
+				gologger.Error().Msgf("Couldn't create resume file: %s\n", err)
+			}
+		}
+		os.Exit(1)
+	}()
+}
+
+func readConfig() *goflags.FlagSet {
 	var updateNucleiBinary bool
 	var pdcpauth string
 	var fuzzFlag bool
@@ -243,10 +250,164 @@ func readConfig() *goflags.FlagSet {
 	flagSet.SetDescription(`Nuclei is a fast, template based vulnerability scanner focusing
 on extensive configurability, massive extensibility and ease of use.`)
 
-	/* TODO Important: The defined default values, especially for slice/array types are NOT DEFAULT VALUES, but rather implicit values to which the user input is appended.
-	This can be very confusing and should be addressed
-	*/
+	createInputFlags(flagSet)
+	createTargetFormatFlags(flagSet)
+	createTemplateFlags(flagSet)
+	createFilteringFlags(flagSet)
+	createOutputFlags(flagSet)
+	createConfigurationFlags(flagSet)
+	createInteractshFlags(flagSet)
+	createFuzzingFlags(flagSet, &fuzzFlag)
+	createUncoverFlags(flagSet)
+	createRateLimitFlags(flagSet)
+	createOptimizationFlags(flagSet)
+	createHeadlessFlags(flagSet)
+	createDebugFlags(flagSet)
+	createUpdateFlags(flagSet, &updateNucleiBinary)
+	createStatisticsFlags(flagSet)
+	createCloudFlags(flagSet, &pdcpauth)
+	createAuthenticationFlags(flagSet)
 
+	flagSet.SetCustomHelpText(`EXAMPLES:
+Run nuclei on single host:
+	$ nuclei -target example.com
+
+Run nuclei with specific template directories:
+	$ nuclei -target example.com -t http/cves/ -t ssl
+
+Run nuclei against a list of hosts:
+	$ nuclei -list hosts.txt
+
+Run nuclei with a JSON output:
+	$ nuclei -target example.com -json-export output.json
+
+Run nuclei with sorted Markdown outputs (with environment variables):
+	$ MARKDOWN_EXPORT_SORT_MODE=template nuclei -target example.com -markdown-export nuclei_report/
+
+Additional documentation is available at: https://docs.nuclei.sh/getting-started/running
+	`)
+
+	goflags.DisableAutoConfigMigration = true
+	_ = flagSet.Parse()
+
+	if fuzzFlag {
+		options.DAST = true
+	}
+
+	if options.EnableCodeTemplates {
+		options.EnableSelfContainedTemplates = true
+	}
+
+	handlePDCPAuth(pdcpauth)
+
+	if options.AITemplatePrompt != "" {
+		h := &pdcp.PDCPCredHandler{}
+		_, err := h.GetCreds()
+		if err != nil {
+			gologger.Fatal().Msg("To utilize the `-ai` flag, please configure your API key with the `-auth` flag or set the `PDCP_API_KEY` environment variable")
+		}
+	}
+
+	gologger.DefaultLogger.SetTimestamp(options.Timestamp, levels.LevelDebug)
+
+	if options.VerboseVerbose {
+		installer.HideReleaseNotes = false
+	}
+
+	if options.Timeout > 30 {
+		updateutils.DownloadUpdateTimeout = time.Duration(options.Timeout) * time.Second
+	}
+	
+	if updateNucleiBinary {
+		runner.NucleiToolUpdateCallback()
+	}
+
+	if options.LeaveDefaultPorts {
+		http.LeaveDefaultPorts = true
+	}
+	
+	if customConfigDir := os.Getenv(config.NucleiConfigDirEnv); customConfigDir != "" {
+		config.DefaultConfig.SetConfigDir(customConfigDir)
+		readFlagsConfig(flagSet)
+	}
+	
+	if cfgFile != "" {
+		if !fileutil.FileExists(cfgFile) {
+			gologger.Fatal().Msgf("given config file '%s' does not exist", cfgFile)
+		}
+		if err := flagSet.MergeConfigFile(cfgFile); err != nil {
+			gologger.Fatal().Msgf("Could not read config: %s\n", err)
+		}
+	}
+	
+	if options.NewTemplatesDirectory != "" {
+		config.DefaultConfig.SetTemplatesDir(options.NewTemplatesDirectory)
+	}
+
+	if templateProfile != "" {
+		loadTemplateProfile(flagSet)
+	}
+
+	validateSecretsFiles()
+	cleanupOldResumeFiles()
+	
+	return flagSet
+}
+
+func handlePDCPAuth(pdcpauth string) {
+	if pdcpauth == "true" {
+		runner.AuthWithPDCP()
+	} else if len(pdcpauth) == 36 {
+		ph := pdcp.PDCPCredHandler{}
+		if _, err := ph.GetCreds(); err == pdcp.ErrNoCreds {
+			apiServer := env.GetEnvOrDefault("PDCP_API_SERVER", pdcp.DefaultApiServer)
+			if validatedCreds, err := ph.ValidateAPIKey(pdcpauth, apiServer, config.BinaryName); err == nil {
+				_ = ph.SaveCreds(validatedCreds)
+			}
+		}
+	}
+}
+
+func loadTemplateProfile(flagSet *goflags.FlagSet) {
+	defaultProfilesPath := filepath.Join(config.DefaultConfig.GetTemplateDir(), "profiles")
+	
+	if filepath.Ext(templateProfile) == "" {
+		if tp := findProfilePathById(templateProfile, defaultProfilesPath); tp != "" {
+			templateProfile = tp
+		} else {
+			gologger.Fatal().Msgf("'%s' is not a profile-id or profile path", templateProfile)
+		}
+	}
+	
+	if !filepath.IsAbs(templateProfile) {
+		if filepath.Dir(templateProfile) == "profiles" {
+			defaultProfilesPath = filepath.Join(config.DefaultConfig.GetTemplateDir())
+		}
+		currentDir, _ := os.Getwd()
+		if fileutil.FileExists(filepath.Join(currentDir, templateProfile)) {
+			templateProfile = filepath.Join(currentDir, templateProfile)
+		} else {
+			templateProfile = filepath.Join(defaultProfilesPath, templateProfile)
+		}
+	}
+	
+	if !fileutil.FileExists(templateProfile) {
+		gologger.Fatal().Msgf("given template profile file '%s' does not exist", templateProfile)
+	}
+	if err := flagSet.MergeConfigFile(templateProfile); err != nil {
+		gologger.Fatal().Msgf("Could not read template profile: %s\n", err)
+	}
+}
+
+func validateSecretsFiles() {
+	for _, secretFile := range options.SecretsFile {
+		if !fileutil.FileExists(secretFile) {
+			gologger.Fatal().Msgf("given secrets file '%s' does not exist", secretFile)
+		}
+	}
+}
+
+func createInputFlags(flagSet *goflags.FlagSet) {
 	flagSet.CreateGroup("input", "Target",
 		flagSet.StringSliceVarP(&options.Targets, "target", "u", nil, "target URLs/hosts to scan", goflags.CommaSeparatedStringSliceOptions),
 		flagSet.StringVarP(&options.TargetsFilePath, "list", "l", "", "path to file containing a list of target URLs/hosts to scan (one per line)"),
@@ -255,13 +416,17 @@ on extensive configurability, massive extensibility and ease of use.`)
 		flagSet.BoolVarP(&options.ScanAllIPs, "scan-all-ips", "sa", false, "scan all the IP's associated with dns record"),
 		flagSet.StringSliceVarP(&options.IPVersion, "ip-version", "iv", nil, "IP version to scan of hostname (4,6) - (default 4)", goflags.CommaSeparatedStringSliceOptions),
 	)
+}
 
+func createTargetFormatFlags(flagSet *goflags.FlagSet) {
 	flagSet.CreateGroup("target-format", "Target-Format",
 		flagSet.StringVarP(&options.InputFileMode, "input-mode", "im", "list", fmt.Sprintf("mode of input file (%v)", provider.SupportedInputFormats())),
 		flagSet.BoolVarP(&options.FormatUseRequiredOnly, "required-only", "ro", false, "use only required fields in input format when generating requests"),
 		flagSet.BoolVarP(&options.SkipFormatValidation, "skip-format-validation", "sfv", false, "skip format validation (like missing vars) when parsing input file"),
 	)
+}
 
+func createTemplateFlags(flagSet *goflags.FlagSet) {
 	flagSet.CreateGroup("templates", "Templates",
 		flagSet.BoolVarP(&options.NewTemplates, "new-templates", "nt", false, "run only new templates added in latest nuclei-templates release"),
 		flagSet.StringSliceVarP(&options.NewTemplatesWithVersion, "new-templates-version", "ntv", nil, "run new templates added in specific version", goflags.CommaSeparatedStringSliceOptions),
@@ -284,12 +449,14 @@ on extensive configurability, massive extensibility and ease of use.`)
 		flagSet.BoolVarP(&options.EnableGlobalMatchersTemplates, "enable-global-matchers", "egm", false, "enable loading global matchers templates"),
 		flagSet.BoolVar(&options.EnableFileTemplates, "file", false, "enable loading file templates"),
 	)
+}
 
+func createFilteringFlags(flagSet *goflags.FlagSet) {
 	flagSet.CreateGroup("filters", "Filtering",
 		flagSet.StringSliceVarP(&options.Authors, "author", "a", nil, "templates to run based on authors (comma-separated, file)", goflags.FileNormalizedStringSliceOptions),
 		flagSet.StringSliceVar(&options.Tags, "tags", nil, "templates to run based on tags (comma-separated, file)", goflags.FileNormalizedStringSliceOptions),
 		flagSet.StringSliceVarP(&options.ExcludeTags, "exclude-tags", "etags", nil, "templates to exclude based on tags (comma-separated, file)", goflags.FileNormalizedStringSliceOptions),
-		flagSet.StringSliceVarP(&options.IncludeTags, "include-tags", "itags", nil, "tags to be executed even if they are excluded either by default or configuration", goflags.FileNormalizedStringSliceOptions), // TODO show default deny list
+		flagSet.StringSliceVarP(&options.IncludeTags, "include-tags", "itags", nil, "tags to be executed even if they are excluded either by default or configuration", goflags.FileNormalizedStringSliceOptions),
 		flagSet.StringSliceVarP(&options.IncludeIds, "template-id", "id", nil, "templates to run based on template ids (comma-separated, file, allow-wildcard)", goflags.FileNormalizedStringSliceOptions),
 		flagSet.StringSliceVarP(&options.ExcludeIds, "exclude-id", "eid", nil, "templates to exclude based on template ids (comma-separated, file)", goflags.FileNormalizedStringSliceOptions),
 		flagSet.StringSliceVarP(&options.IncludeTemplates, "include-templates", "it", nil, "path to template file or directory to be executed even if they are excluded either by default or configuration", goflags.FileCommaSeparatedStringSliceOptions),
@@ -301,7 +468,9 @@ on extensive configurability, massive extensibility and ease of use.`)
 		flagSet.VarP(&options.ExcludeProtocols, "exclude-type", "ept", fmt.Sprintf("templates to exclude based on protocol type. Possible values: %s", templateTypes.GetSupportedProtocolTypes())),
 		flagSet.StringSliceVarP(&options.IncludeConditions, "template-condition", "tc", nil, "templates to run based on expression condition", goflags.StringSliceOptions),
 	)
+}
 
+func createOutputFlags(flagSet *goflags.FlagSet) {
 	flagSet.CreateGroup("output", "Output",
 		flagSet.StringVarP(&options.Output, "output", "o", "", "output file to write found issues/vulnerabilities"),
 		flagSet.BoolVarP(&options.StoreResponse, "store-resp", "sresp", false, "store all request/response passed through nuclei to output directory"),
@@ -322,7 +491,9 @@ on extensive configurability, massive extensibility and ease of use.`)
 		flagSet.StringVarP(&options.JSONLExport, "jsonl-export", "jle", "", "file to export results in JSONL(ine) format"),
 		flagSet.StringSliceVarP(&options.Redact, "redact", "rd", nil, "redact given list of keys from query parameter, request header and body", goflags.CommaSeparatedStringSliceOptions),
 	)
+}
 
+func createConfigurationFlags(flagSet *goflags.FlagSet) {
 	flagSet.CreateGroup("configs", "Configurations",
 		flagSet.StringVar(&cfgFile, "config", "", "path to the nuclei configuration file"),
 		flagSet.StringVarP(&templateProfile, "profile", "tp", "", "template profile config file to run"),
@@ -331,7 +502,7 @@ on extensive configurability, massive extensibility and ease of use.`)
 		flagSet.BoolVarP(&options.FollowHostRedirects, "follow-host-redirects", "fhr", false, "follow redirects on the same host"),
 		flagSet.IntVarP(&options.MaxRedirects, "max-redirects", "mr", 10, "max number of redirects to follow for http templates"),
 		flagSet.BoolVarP(&options.DisableRedirects, "disable-redirects", "dr", false, "disable redirects for http templates"),
-		flagSet.StringVarP(&options.ReportingConfig, "report-config", "rc", "", "nuclei reporting module configuration file"), // TODO merge into the config file or rename to issue-tracking
+		flagSet.StringVarP(&options.ReportingConfig, "report-config", "rc", "", "nuclei reporting module configuration file"),
 		flagSet.StringSliceVarP(&options.CustomHeaders, "header", "H", nil, "custom header/cookie to include in all http request in header:value format (cli, file)", goflags.FileStringSliceOptions),
 		flagSet.RuntimeMapVarP(&options.Vars, "var", "V", nil, "custom vars in key=value format"),
 		flagSet.StringVarP(&options.ResolversFile, "resolvers", "r", "", "file containing resolver list for nuclei"),
@@ -344,7 +515,7 @@ on extensive configurability, massive extensibility and ease of use.`)
 		flagSet.StringVarP(&options.ClientKeyFile, "client-key", "ck", "", "client key file (PEM-encoded) used for authenticating against scanned hosts"),
 		flagSet.StringVarP(&options.ClientCAFile, "client-ca", "ca", "", "client certificate authority file (PEM-encoded) used for authenticating against scanned hosts"),
 		flagSet.BoolVarP(&options.ShowMatchLine, "show-match-line", "sml", false, "show match lines for file templates, works with extractors only"),
-		flagSet.BoolVar(&options.ZTLS, "ztls", false, "use ztls library with autofallback to standard one for tls13 [Deprecated] autofallback to ztls is enabled by default"), //nolint:all
+		flagSet.BoolVar(&options.ZTLS, "ztls", false, "use ztls library with autofallback to standard one for tls13 [Deprecated] autofallback to ztls is enabled by default"), //nolint:staticcheck // kept for backward compatibility
 		flagSet.StringVar(&options.SNI, "sni", "", "tls sni hostname to use (default: input domain name)"),
 		flagSet.DurationVarP(&options.DialerKeepAlive, "dialer-keep-alive", "dka", 0, "keep-alive duration for network requests."),
 		flagSet.BoolVarP(&options.AllowLocalFileAccess, "allow-local-file-access", "lfa", false, "allows file (payload) access anywhere on the system"),
@@ -358,7 +529,9 @@ on extensive configurability, massive extensibility and ease of use.`)
 		flagSet.BoolVarP(&options.TlsImpersonate, "tls-impersonate", "tlsi", false, "enable experimental client hello (ja3) tls randomization"),
 		flagSet.StringVarP(&options.HttpApiEndpoint, "http-api-endpoint", "hae", "", "experimental http api endpoint"),
 	)
+}
 
+func createInteractshFlags(flagSet *goflags.FlagSet) {
 	flagSet.CreateGroup("interactsh", "interactsh",
 		flagSet.StringVarP(&options.InteractshURL, "interactsh-server", "iserver", "", fmt.Sprintf("interactsh server url for self-hosted instance (default: %s)", client.DefaultOptions.ServerURL)),
 		flagSet.StringVarP(&options.InteractshToken, "interactsh-token", "itoken", "", "authentication token for self-hosted interactsh server"),
@@ -368,11 +541,13 @@ on extensive configurability, massive extensibility and ease of use.`)
 		flagSet.IntVar(&options.InteractionsCoolDownPeriod, "interactions-cooldown-period", 5, "extra time for interaction polling before exiting"),
 		flagSet.BoolVarP(&options.NoInteractsh, "no-interactsh", "ni", false, "disable interactsh server for OAST testing, exclude OAST based templates"),
 	)
+}
 
+func createFuzzingFlags(flagSet *goflags.FlagSet, fuzzFlag *bool) {
 	flagSet.CreateGroup("fuzzing", "Fuzzing",
 		flagSet.StringVarP(&options.FuzzingType, "fuzzing-type", "ft", "", "overrides fuzzing type set in template (replace, prefix, postfix, infix)"),
 		flagSet.StringVarP(&options.FuzzingMode, "fuzzing-mode", "fm", "", "overrides fuzzing mode set in template (multiple, single)"),
-		flagSet.BoolVar(&fuzzFlag, "fuzz", false, "enable loading fuzzing templates (Deprecated: use -dast instead)"),
+		flagSet.BoolVar(fuzzFlag, "fuzz", false, "enable loading fuzzing templates (Deprecated: use -dast instead)"),
 		flagSet.BoolVar(&options.DAST, "dast", false, "enable / run dast (fuzz) nuclei templates"),
 		flagSet.BoolVarP(&options.DASTServer, "dast-server", "dts", false, "enable dast server mode (live fuzzing)"),
 		flagSet.BoolVarP(&options.DASTReport, "dast-report", "dtr", false, "write dast scan report to file"),
@@ -384,7 +559,9 @@ on extensive configurability, massive extensibility and ease of use.`)
 		flagSet.StringSliceVarP(&options.Scope, "fuzz-scope", "cs", nil, "in scope url regex to be followed by fuzzer", goflags.FileCommaSeparatedStringSliceOptions),
 		flagSet.StringSliceVarP(&options.OutOfScope, "fuzz-out-scope", "cos", nil, "out of scope url regex to be excluded by fuzzer", goflags.FileCommaSeparatedStringSliceOptions),
 	)
+}
 
+func createUncoverFlags(flagSet *goflags.FlagSet) {
 	flagSet.CreateGroup("uncover", "Uncover",
 		flagSet.BoolVarP(&options.Uncover, "uncover", "uc", false, "enable uncover engine"),
 		flagSet.StringSliceVarP(&options.UncoverQuery, "uncover-query", "uq", nil, "uncover search query", goflags.FileStringSliceOptions),
@@ -393,7 +570,9 @@ on extensive configurability, massive extensibility and ease of use.`)
 		flagSet.IntVarP(&options.UncoverLimit, "uncover-limit", "ul", 100, "uncover results to return"),
 		flagSet.IntVarP(&options.UncoverRateLimit, "uncover-ratelimit", "ur", 60, "override ratelimit of engines with unknown ratelimit (default 60 req/min)"),
 	)
+}
 
+func createRateLimitFlags(flagSet *goflags.FlagSet) {
 	flagSet.CreateGroup("rate-limit", "Rate-Limit",
 		flagSet.IntVarP(&options.RateLimit, "rate-limit", "rl", 150, "maximum number of requests to send per second"),
 		flagSet.DurationVarP(&options.RateLimitDuration, "rate-limit-duration", "rld", time.Second, "maximum number of requests to send per second"),
@@ -406,6 +585,9 @@ on extensive configurability, massive extensibility and ease of use.`)
 		flagSet.IntVarP(&options.PayloadConcurrency, "payload-concurrency", "pc", 25, "max payload concurrency for each template"),
 		flagSet.IntVarP(&options.ProbeConcurrency, "probe-concurrency", "prc", 50, "http probe concurrency with httpx"),
 	)
+}
+
+func createOptimizationFlags(flagSet *goflags.FlagSet) {
 	flagSet.CreateGroup("optimization", "Optimizations",
 		flagSet.IntVar(&options.Timeout, "timeout", 10, "time to wait in seconds before timeout"),
 		flagSet.IntVar(&options.Retries, "retries", 1, "number of times to retry a failed request"),
@@ -426,7 +608,9 @@ on extensive configurability, massive extensibility and ease of use.`)
 		flagSet.BoolVarP(&options.DisableHTTPProbe, "no-httpx", "nh", false, "disable httpx probing for non-url input"),
 		flagSet.BoolVar(&options.DisableStdin, "no-stdin", false, "disable stdin processing"),
 	)
+}
 
+func createHeadlessFlags(flagSet *goflags.FlagSet) {
 	flagSet.CreateGroup("headless", "Headless",
 		flagSet.BoolVar(&options.Headless, "headless", false, "enable templates that require headless browser support (root user on Linux will disable sandbox)"),
 		flagSet.IntVar(&options.PageTimeout, "page-timeout", 20, "seconds to wait for each page in headless mode"),
@@ -435,7 +619,9 @@ on extensive configurability, massive extensibility and ease of use.`)
 		flagSet.BoolVarP(&options.UseInstalledChrome, "system-chrome", "sc", false, "use local installed Chrome browser instead of nuclei installed"),
 		flagSet.BoolVarP(&options.ShowActions, "list-headless-action", "lha", false, "list available headless actions"),
 	)
+}
 
+func createDebugFlags(flagSet *goflags.FlagSet) {
 	flagSet.CreateGroup("debug", "Debug",
 		flagSet.BoolVar(&options.Debug, "debug", false, "show all requests and responses"),
 		flagSet.BoolVarP(&options.DebugRequests, "debug-req", "dreq", false, "show all sent requests"),
@@ -456,14 +642,18 @@ on extensive configurability, massive extensibility and ease of use.`)
 		flagSet.CallbackVarP(printTemplateVersion, "templates-version", "tv", "shows the version of the installed nuclei-templates"),
 		flagSet.BoolVarP(&options.HealthCheck, "health-check", "hc", false, "run diagnostic check up"),
 	)
+}
 
+func createUpdateFlags(flagSet *goflags.FlagSet, updateNucleiBinary *bool) {
 	flagSet.CreateGroup("update", "Update",
-		flagSet.BoolVarP(&updateNucleiBinary, "update", "up", false, "update nuclei engine to the latest released version"),
+		flagSet.BoolVarP(updateNucleiBinary, "update", "up", false, "update nuclei engine to the latest released version"),
 		flagSet.BoolVarP(&options.UpdateTemplates, "update-templates", "ut", false, "update nuclei-templates to latest released version"),
 		flagSet.StringVarP(&options.NewTemplatesDirectory, "update-template-dir", "ud", "", "custom directory to install / update nuclei-templates"),
 		flagSet.CallbackVarP(disableUpdatesCallback, "disable-update-check", "duc", "disable automatic nuclei/templates update check"),
 	)
+}
 
+func createStatisticsFlags(flagSet *goflags.FlagSet) {
 	flagSet.CreateGroup("stats", "Statistics",
 		flagSet.BoolVar(&options.EnableProgressBar, "stats", false, "display statistics about the running scan"),
 		flagSet.BoolVarP(&options.StatsJSON, "stats-json", "sj", false, "display statistics in JSONL(ines) format"),
@@ -471,9 +661,11 @@ on extensive configurability, massive extensibility and ease of use.`)
 		flagSet.IntVarP(&options.MetricsPort, "metrics-port", "mp", 9092, "port to expose nuclei metrics on"),
 		flagSet.BoolVarP(&options.HTTPStats, "http-stats", "hps", false, "enable http status capturing (experimental)"),
 	)
+}
 
+func createCloudFlags(flagSet *goflags.FlagSet, pdcpauth *string) {
 	flagSet.CreateGroup("cloud", "Cloud",
-		flagSet.DynamicVar(&pdcpauth, "auth", "true", "configure projectdiscovery cloud (pdcp) api key"),
+		flagSet.DynamicVar(pdcpauth, "auth", "true", "configure projectdiscovery cloud (pdcp) api key"),
 		flagSet.StringVarP(&options.TeamID, "team-id", "tid", _pdcp.TeamIDEnv, "upload scan results to given team id (optional)"),
 		flagSet.BoolVarP(&options.EnableCloudUpload, "cloud-upload", "cup", false, "upload scan results to pdcp dashboard [DEPRECATED use -dashboard]"),
 		flagSet.StringVarP(&options.ScanID, "scan-id", "sid", "", "upload scan results to existing scan id (optional)"),
@@ -481,200 +673,58 @@ on extensive configurability, massive extensibility and ease of use.`)
 		flagSet.BoolVarP(&options.EnableCloudUpload, "dashboard", "pd", false, "upload / view nuclei results in projectdiscovery cloud (pdcp) UI dashboard"),
 		flagSet.StringVarP(&options.ScanUploadFile, "dashboard-upload", "pdu", "", "upload / view nuclei results file (jsonl) in projectdiscovery cloud (pdcp) UI dashboard"),
 	)
+}
 
+func createAuthenticationFlags(flagSet *goflags.FlagSet) {
 	flagSet.CreateGroup("Authentication", "Authentication",
 		flagSet.StringSliceVarP(&options.SecretsFile, "secret-file", "sf", nil, "path to config file containing secrets for nuclei authenticated scan", goflags.CommaSeparatedStringSliceOptions),
 		flagSet.BoolVarP(&options.PreFetchSecrets, "prefetch-secrets", "ps", false, "prefetch secrets from the secrets file"),
 	)
-
-	flagSet.SetCustomHelpText(`EXAMPLES:
-Run nuclei on single host:
-	$ nuclei -target example.com
-
-Run nuclei with specific template directories:
-	$ nuclei -target example.com -t http/cves/ -t ssl
-
-Run nuclei against a list of hosts:
-	$ nuclei -list hosts.txt
-
-Run nuclei with a JSON output:
-	$ nuclei -target example.com -json-export output.json
-
-Run nuclei with sorted Markdown outputs (with environment variables):
-	$ MARKDOWN_EXPORT_SORT_MODE=template nuclei -target example.com -markdown-export nuclei_report/
-
-Additional documentation is available at: https://docs.nuclei.sh/getting-started/running
-	`)
-
-	// nuclei has multiple migrations
-	// ex: resume.cfg moved to platform standard cache dir from config dir
-	// ex: config.yaml moved to platform standard config dir from linux specific config dir
-	// and hence it will be attempted in config package during init
-	goflags.DisableAutoConfigMigration = true
-	_ = flagSet.Parse()
-
-	// when fuzz flag is enabled, set the dast flag to true
-	if fuzzFlag {
-		// backwards compatibility for fuzz flag
-		options.DAST = true
-	}
-
-	// All cloud-based templates depend on both code and self-contained templates.
-	if options.EnableCodeTemplates {
-		options.EnableSelfContainedTemplates = true
-	}
-
-	// api key hierarchy: cli flag > env var > .pdcp/credential file
-	if pdcpauth == "true" {
-		runner.AuthWithPDCP()
-	} else if len(pdcpauth) == 36 {
-		ph := pdcp.PDCPCredHandler{}
-		if _, err := ph.GetCreds(); err == pdcp.ErrNoCreds {
-			apiServer := env.GetEnvOrDefault("PDCP_API_SERVER", pdcp.DefaultApiServer)
-			if validatedCreds, err := ph.ValidateAPIKey(pdcpauth, apiServer, config.BinaryName); err == nil {
-				_ = ph.SaveCreds(validatedCreds)
-			}
-		}
-	}
-
-	// guard cloud services with credentials
-	if options.AITemplatePrompt != "" {
-		h := &pdcp.PDCPCredHandler{}
-		_, err := h.GetCreds()
-		if err != nil {
-			gologger.Fatal().Msg("To utilize the `-ai` flag, please configure your API key with the `-auth` flag or set the `PDCP_API_KEY` environment variable")
-		}
-	}
-
-	gologger.DefaultLogger.SetTimestamp(options.Timestamp, levels.LevelDebug)
-
-	if options.VerboseVerbose {
-		// hide release notes if silent mode is enabled
-		installer.HideReleaseNotes = false
-	}
-
-	if options.Timeout > 30 {
-		// default github binary/template download timeout is 30 sec
-		updateutils.DownloadUpdateTimeout = time.Duration(options.Timeout) * time.Second
-	}
-	if updateNucleiBinary {
-		runner.NucleiToolUpdateCallback()
-	}
-
-	if options.LeaveDefaultPorts {
-		http.LeaveDefaultPorts = true
-	}
-	if customConfigDir := os.Getenv(config.NucleiConfigDirEnv); customConfigDir != "" {
-		config.DefaultConfig.SetConfigDir(customConfigDir)
-		readFlagsConfig(flagSet)
-	}
-	if cfgFile != "" {
-		if !fileutil.FileExists(cfgFile) {
-			gologger.Fatal().Msgf("given config file '%s' does not exist", cfgFile)
-		}
-		// merge config file with flags
-		if err := flagSet.MergeConfigFile(cfgFile); err != nil {
-			gologger.Fatal().Msgf("Could not read config: %s\n", err)
-		}
-	}
-	if options.NewTemplatesDirectory != "" {
-		config.DefaultConfig.SetTemplatesDir(options.NewTemplatesDirectory)
-	}
-
-	defaultProfilesPath := filepath.Join(config.DefaultConfig.GetTemplateDir(), "profiles")
-	if templateProfile != "" {
-		if filepath.Ext(templateProfile) == "" {
-			if tp := findProfilePathById(templateProfile, defaultProfilesPath); tp != "" {
-				templateProfile = tp
-			} else {
-				gologger.Fatal().Msgf("'%s' is not a profile-id or profile path", templateProfile)
-			}
-		}
-		if !filepath.IsAbs(templateProfile) {
-			if filepath.Dir(templateProfile) == "profiles" {
-				defaultProfilesPath = filepath.Join(config.DefaultConfig.GetTemplateDir())
-			}
-			currentDir, err := os.Getwd()
-			if err == nil && fileutil.FileExists(filepath.Join(currentDir, templateProfile)) {
-				templateProfile = filepath.Join(currentDir, templateProfile)
-			} else {
-				templateProfile = filepath.Join(defaultProfilesPath, templateProfile)
-			}
-		}
-		if !fileutil.FileExists(templateProfile) {
-			gologger.Fatal().Msgf("given template profile file '%s' does not exist", templateProfile)
-		}
-		if err := flagSet.MergeConfigFile(templateProfile); err != nil {
-			gologger.Fatal().Msgf("Could not read template profile: %s\n", err)
-		}
-	}
-
-	if len(options.SecretsFile) > 0 {
-		for _, secretFile := range options.SecretsFile {
-			if !fileutil.FileExists(secretFile) {
-				gologger.Fatal().Msgf("given secrets file '%s' does not exist", options.SecretsFile)
-			}
-		}
-	}
-
-	cleanupOldResumeFiles()
-	return flagSet
 }
 
-// cleanupOldResumeFiles cleans up resume files older than 10 days.
 func cleanupOldResumeFiles() {
 	root := config.DefaultConfig.GetCacheDir()
 	filter := fileutil.FileFilters{
-		OlderThan: 24 * time.Hour * 10, // cleanup on the 10th day
+		OlderThan: 24 * time.Hour * 10,
 		Prefix:    "resume-",
 	}
 	_ = fileutil.DeleteFilesOlderThan(root, filter)
 }
 
-// readFlagsConfig reads the config file from the default config dir and copies it to the current config dir.
 func readFlagsConfig(flagset *goflags.FlagSet) {
-	// check if config.yaml file exists
 	defaultCfgFile, err := flagset.GetConfigFilePath()
 	if err != nil {
-		// something went wrong either dir is not readable or something else went wrong upstream in `goflags`
-		// warn and exit in this case
 		gologger.Warning().Msgf("Could not read config file: %s\n", err)
 		return
 	}
 	cfgFile := config.DefaultConfig.GetFlagsConfigFilePath()
 	if !fileutil.FileExists(cfgFile) {
 		if !fileutil.FileExists(defaultCfgFile) {
-			// if default config does not exist, warn and exit
 			gologger.Warning().Msgf("missing default config file : %s", defaultCfgFile)
 			return
 		}
-		// if does not exist copy it from the default config
 		if err = fileutil.CopyFile(defaultCfgFile, cfgFile); err != nil {
 			gologger.Warning().Msgf("Could not copy config file: %s\n", err)
 		}
 		return
 	}
-	// if config file exists, merge it with the default config
 	if err = flagset.MergeConfigFile(cfgFile); err != nil {
 		gologger.Warning().Msgf("failed to merge configfile with flags got: %s\n", err)
 	}
 }
 
-// disableUpdatesCallback disables the update check.
 func disableUpdatesCallback() {
 	config.DefaultConfig.DisableUpdateCheck()
 }
 
-// printVersion prints the nuclei version and exits.
 func printVersion() {
 	gologger.Info().Msgf("Nuclei Engine Version: %s", config.Version)
 	gologger.Info().Msgf("Nuclei Config Directory: %s", config.DefaultConfig.GetConfigDir())
-	gologger.Info().Msgf("Nuclei Cache Directory: %s", config.DefaultConfig.GetCacheDir()) // cache dir contains resume files
+	gologger.Info().Msgf("Nuclei Cache Directory: %s", config.DefaultConfig.GetCacheDir())
 	gologger.Info().Msgf("PDCP Directory: %s", pdcp.PDCPDir)
 	os.Exit(0)
 }
 
-// printTemplateVersion prints the nuclei template version and exits.
 func printTemplateVersion() {
 	cfg := config.DefaultConfig
 	gologger.Info().Msgf("Public nuclei-templates version: %s (%s)\n", cfg.TemplateVersion, cfg.TemplatesDirectory)
@@ -738,25 +788,22 @@ func findProfilePathById(profileId, templatesDir string) string {
 	var profilePath string
 	err := filepath.WalkDir(templatesDir, func(iterItem string, d fs.DirEntry, err error) error {
 		ext := filepath.Ext(iterItem)
-		isYaml := ext == extensions.YAML || ext == extensions.YML
-		if err != nil || d.IsDir() || !isYaml {
-			// skip non yaml files
+		if err != nil || d.IsDir() || (ext != extensions.YAML && ext != extensions.YML) {
 			return nil
 		}
 		if strings.TrimSuffix(filepath.Base(iterItem), ext) == profileId {
 			profilePath = iterItem
-			return fmt.Errorf("FOUND")
+			return filepath.SkipAll
 		}
 		return nil
 	})
-	if err != nil && err.Error() != "FOUND" {
+	if err != nil && err != filepath.SkipAll {
 		gologger.Error().Msgf("%s\n", err)
 	}
 	return profilePath
 }
 
 func init() {
-	// print stacktrace of errors in debug mode
 	if strings.EqualFold(os.Getenv("DEBUG"), "true") {
 		errorutil.ShowStackTrace = true
 	}
