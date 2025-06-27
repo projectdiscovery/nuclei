@@ -1,6 +1,7 @@
 package generators
 
 import (
+	maps0 "maps"
 	"reflect"
 )
 
@@ -47,9 +48,7 @@ func MergeMapsMany(maps ...interface{}) map[string][]string {
 func MergeMaps(maps ...map[string]interface{}) map[string]interface{} {
 	merged := make(map[string]interface{})
 	for _, m := range maps {
-		for k, v := range m {
-			merged[k] = v
-		}
+		maps0.Copy(merged, m)
 	}
 	return merged
 }

@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/hex"
 	"io"
+	"maps"
 	"os"
 	"path/filepath"
 	"strings"
@@ -262,9 +263,7 @@ func (request *Request) findMatchesWithReader(reader io.Reader, input *contextar
 
 		gologger.Verbose().Msgf("[%s] Processing file %s chunk %s/%s", request.options.TemplateID, filePath, processedBytes, totalBytesString)
 		dslMap := request.responseToDSLMap(lineContent, input.MetaInput.Input, filePath)
-		for k, v := range previous {
-			dslMap[k] = v
-		}
+		maps.Copy(dslMap, previous)
 		// add vars to template context
 		request.options.AddTemplateVars(input.MetaInput, request.Type(), request.ID, dslMap)
 		// add template context variables to DSL map
@@ -333,9 +332,7 @@ func (request *Request) buildEvent(input, filePath string, fileMatches []FileMat
 	exprLines := make(map[string][]int)
 	exprBytes := make(map[string][]int)
 	internalEvent := request.responseToDSLMap("", input, filePath)
-	for k, v := range previous {
-		internalEvent[k] = v
-	}
+	maps.Copy(internalEvent, previous)
 	for _, fileMatch := range fileMatches {
 		exprLines[fileMatch.Expr] = append(exprLines[fileMatch.Expr], fileMatch.Line)
 		exprBytes[fileMatch.Expr] = append(exprBytes[fileMatch.Expr], fileMatch.ByteIndex)
