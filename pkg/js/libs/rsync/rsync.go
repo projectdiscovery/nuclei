@@ -46,7 +46,9 @@ func isRsync(host string, port int) (IsRsyncResponse, error) {
 	if err != nil {
 		return resp, err
 	}
-	defer conn.Close()
+	defer func() {
+		_ = conn.Close()
+	}()
 
 	rsyncPlugin := rsync.RSYNCPlugin{}
 	service, err := rsyncPlugin.Run(conn, timeout, plugins.Target{Host: host})

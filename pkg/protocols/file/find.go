@@ -208,7 +208,9 @@ func readChunk(fileName string) ([]byte, error) {
 		return nil, err
 	}
 
-	defer r.Close()
+	defer func() {
+		_ = r.Close()
+	}()
 
 	var buff [1024]byte
 	if _, err = io.ReadFull(r, buff[:]); err != nil {

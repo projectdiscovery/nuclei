@@ -20,7 +20,7 @@ func (f *FlowExecutor) requestExecutor(runtime *goja.Runtime, reqMap mapsutil.Ma
 		f.options.GetTemplateCtx(f.ctx.Input.MetaInput).Merge(variableMap) // merge all variables into template context
 
 		// to avoid polling update template variables everytime we execute a protocol
-		var m map[string]interface{} = f.options.GetTemplateCtx(f.ctx.Input.MetaInput).GetAll()
+		var m = f.options.GetTemplateCtx(f.ctx.Input.MetaInput).GetAll()
 		_ = runtime.Set("template", m)
 	}()
 	matcherStatus := &atomic.Bool{} // due to interactsh matcher polling logic this needs to be atomic bool

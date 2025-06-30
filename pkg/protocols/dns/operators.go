@@ -150,7 +150,7 @@ func traceToString(traceData *retryabledns.TraceData, withSteps bool) string {
 	if traceData != nil {
 		for i, dnsRecord := range traceData.DNSData {
 			if withSteps {
-				buffer.WriteString(fmt.Sprintf("request %d to resolver %s:\n", i, strings.Join(dnsRecord.Resolver, ",")))
+				fmt.Fprintf(buffer, "request %d to resolver %s:\n", i, strings.Join(dnsRecord.Resolver, ","))
 			}
 			buffer.WriteString(dnsRecord.Raw)
 		}

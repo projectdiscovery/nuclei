@@ -98,7 +98,7 @@ func (rule *Rule) Execute(input *ExecuteRuleInput) (err error) {
 	// match rule part with component name
 	displayDebugFuzzPoints := make(map[string]map[string]string)
 	for _, componentName := range component.Components {
-		if !(rule.Part == componentName || sliceutil.Contains(rule.Parts, componentName) || rule.partType == requestPartType) {
+		if rule.Part != componentName && !sliceutil.Contains(rule.Parts, componentName) && rule.partType != requestPartType {
 			continue
 		}
 		component := component.New(componentName)

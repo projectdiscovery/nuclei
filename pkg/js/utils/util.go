@@ -21,7 +21,9 @@ type SQLResult struct {
 //
 // The function closes the sql.Rows when finished.
 func UnmarshalSQLRows(rows *sql.Rows) (*SQLResult, error) {
-	defer rows.Close()
+	defer func() {
+		_ = rows.Close()
+	}()
 	columnTypes, err := rows.ColumnTypes()
 	if err != nil {
 		return nil, err

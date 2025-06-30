@@ -18,7 +18,9 @@ func main() {
 
 	defer fuzzplayground.Cleanup()
 	server := fuzzplayground.GetPlaygroundServer()
-	defer server.Close()
+	defer func() {
+		_ = server.Close()
+	}()
 
 	// Start the server
 	if err := server.Start(addr); err != nil {
