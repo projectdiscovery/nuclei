@@ -743,7 +743,7 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 	} else {
 		//** For Normal requests **//
 		hostname = generatedRequest.request.URL.Host
-		formedURL = generatedRequest.request.URL.String()
+		formedURL = generatedRequest.request.String()
 		// if nuclei-project is available check if the request was already sent previously
 		if request.options.ProjectFile != nil {
 			// if unavailable fail silently
@@ -917,7 +917,7 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 			}
 		}
 		if generatedRequest.request != nil {
-			matchedURL = generatedRequest.request.URL.String()
+			matchedURL = generatedRequest.request.String()
 		}
 		// Give precedence to the final URL from response
 		if respChain.Request() != nil {

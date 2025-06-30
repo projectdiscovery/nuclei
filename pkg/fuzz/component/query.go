@@ -84,7 +84,7 @@ func (q *Query) Rebuild() (*retryablehttp.Request, error) {
 		return nil, errors.Wrap(err, "could not encode query")
 	}
 	cloned := q.req.Clone(context.Background())
-	cloned.URL.RawQuery = encoded
+	cloned.RawQuery = encoded
 
 	// Clear the query parameters and re-add them
 	cloned.Params = nil

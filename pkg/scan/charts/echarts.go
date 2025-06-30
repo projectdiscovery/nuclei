@@ -69,7 +69,7 @@ func (s *ScanEventsCharts) totalRequestsOverTime(c echo.Context) *charts.Line {
 		}),
 	)
 
-	var startTime time.Time = time.Now()
+	var startTime = time.Now()
 	var endTime time.Time
 
 	for _, event := range s.data {
@@ -135,7 +135,7 @@ func (s *ScanEventsCharts) topSlowTemplates(c echo.Context) *charts.Kline {
 		}),
 	)
 	ids := map[string][]int64{}
-	var startTime time.Time = time.Now()
+	var startTime = time.Now()
 	for _, event := range s.data {
 		if event.Time.Before(startTime) {
 			startTime = event.Time

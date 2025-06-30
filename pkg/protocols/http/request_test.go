@@ -66,7 +66,7 @@ Disallow: /a
 Disallow: /b
 Disallow: /c`))
 		default:
-			_, _ = w.Write([]byte(fmt.Sprintf(`match %v`, r.URL.Path)))
+			_, _ = fmt.Fprintf(w, `match %v`, r.URL.Path)
 		}
 	}))
 	defer ts.Close()

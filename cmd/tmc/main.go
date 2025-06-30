@@ -226,7 +226,7 @@ func logErrMsg(path string, err error, debug bool, errFile *os.File) string {
 		msg = fmt.Sprintf("❌ template: %s err: %s\n", path, err)
 	}
 	if errFile != nil {
-		_, _ = errFile.WriteString(fmt.Sprintf("❌ template: %s err: %s\n", path, err))
+		_, _ = fmt.Fprintf(errFile, "❌ template: %s err: %s\n", path, err)
 	}
 	return msg
 }

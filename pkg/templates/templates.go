@@ -187,7 +187,7 @@ func (template *Template) Type() types.ProtocolType {
 		return types.CodeProtocol
 	case len(template.RequestsJavascript) > 0:
 		return types.JavascriptProtocol
-	case len(template.Workflow.Workflows) > 0:
+	case len(template.Workflows) > 0:
 		return types.WorkflowProtocol
 	default:
 		return types.InvalidProtocol

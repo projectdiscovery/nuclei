@@ -70,7 +70,7 @@ func (c *Configuration) Hash() string {
 
 // Get creates or gets a client for the protocol based on custom configuration
 func Get(options *types.Options, configuration *Configuration) (*retryabledns.Client, error) {
-	if !(configuration.Retries > 1) && len(configuration.Resolvers) == 0 {
+	if (configuration.Retries <= 1) && len(configuration.Resolvers) == 0 {
 		return normalClient, nil
 	}
 	hash := configuration.Hash()

@@ -96,13 +96,13 @@ func (d *TemplateData) WriteMarkdownIndexTemplate(outputDirectory string) error 
 	buffer := &bytes.Buffer{}
 	_, _ = buffer.WriteString("# Index\n\n")
 	for _, v := range markdownIndexes {
-		_, _ = buffer.WriteString(fmt.Sprintf("* %s\n", v))
+		_, _ = fmt.Fprintf(buffer, "* %s\n", v)
 	}
 	_, _ = buffer.WriteString("\n\n")
 
 	_, _ = buffer.WriteString("# Scripts\n\n")
 	for _, v := range d.NativeScripts {
-		_, _ = buffer.WriteString(fmt.Sprintf("* `%s`\n", v))
+		_, _ = fmt.Fprintf(buffer, "* `%s`\n", v)
 	}
 	if _, err := output.Write(buffer.Bytes()); err != nil {
 		return errors.Wrap(err, "could not write markdown index template")

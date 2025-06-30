@@ -85,7 +85,7 @@ func (c *Cache) Close() {
 // NormalizeCacheValue processes the input value and returns a normalized cache
 // value.
 func (c *Cache) NormalizeCacheValue(value string) string {
-	var normalizedValue string = value
+	var normalizedValue = value
 
 	u, err := url.ParseRequestURI(value)
 	if err != nil || u.Host == "" {

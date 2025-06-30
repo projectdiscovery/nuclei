@@ -439,7 +439,7 @@ func (r *Runner) setupPDCPUpload(writer output.Writer) output.Writer {
 	if r.options.ScanID != "" {
 		r.options.EnableCloudUpload = true
 	}
-	if !(r.options.EnableCloudUpload || EnableCloudUpload) {
+	if !r.options.EnableCloudUpload && !EnableCloudUpload {
 		r.pdcpUploadErrMsg = fmt.Sprintf("[%v] Scan results upload to cloud is disabled.", r.colorizer.BrightYellow("WRN"))
 		return writer
 	}

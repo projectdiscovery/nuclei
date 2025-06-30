@@ -229,10 +229,8 @@ type IssueTrackerMetadata struct {
 
 // NewStandardWriter creates a new output writer based on user configurations
 func NewStandardWriter(options *types.Options) (*StandardWriter, error) {
-	resumeBool := false
-	if options.Resume != "" {
-		resumeBool = true
-	}
+	resumeBool := options.Resume != ""
+
 	auroraColorizer := aurora.NewAurora(!options.NoColor)
 
 	var outputFile io.WriteCloser
@@ -563,7 +561,7 @@ func (w *StandardWriter) WriteStoreDebugData(host, templateID, eventType string,
 			gologger.Error().Msgf("Could not open debug output file: %s", err)
 			return
 		}
-		_, _ = f.WriteString(fmt.Sprintln(data))
+		_, _ = fmt.Fprintln(f, data)
 		f.Close()
 	}
 }

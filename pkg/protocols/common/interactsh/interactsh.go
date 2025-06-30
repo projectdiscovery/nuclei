@@ -183,9 +183,9 @@ func (c *Client) processInteractionForRequest(interaction *server.Interaction, d
 
 	if c.options.FuzzParamsFrequency != nil {
 		if !matched {
-			c.options.FuzzParamsFrequency.MarkParameter(data.Parameter, data.Request.URL.String(), data.Operators.TemplateID)
+			c.options.FuzzParamsFrequency.MarkParameter(data.Parameter, data.Request.String(), data.Operators.TemplateID)
 		} else {
-			c.options.FuzzParamsFrequency.UnmarkParameter(data.Parameter, data.Request.URL.String(), data.Operators.TemplateID)
+			c.options.FuzzParamsFrequency.UnmarkParameter(data.Parameter, data.Request.String(), data.Operators.TemplateID)
 		}
 	}
 

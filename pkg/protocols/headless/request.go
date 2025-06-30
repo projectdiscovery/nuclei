@@ -159,9 +159,9 @@ func (request *Request) executeRequestWithPayloads(input *contextargs.Context, p
 			if act.ActionType.ActionType == engine.ActionNavigate {
 				value := act.GetArg("url")
 				if reqLog[value] != "" {
-					reqBuilder.WriteString(fmt.Sprintf("\tnavigate => %v\n", reqLog[value]))
+					fmt.Fprintf(reqBuilder, "\tnavigate => %v\n", reqLog[value])
 				} else {
-					reqBuilder.WriteString(fmt.Sprintf("%v not found in %v\n", value, reqLog))
+					fmt.Fprintf(reqBuilder, "%v not found in %v\n", value, reqLog)
 				}
 			} else {
 				actStepStr := act.String()
@@ -241,7 +241,7 @@ func (request *Request) executeFuzzingRule(input *contextargs.Context, payloads 
 			return true
 		}
 		newInput := input.Clone()
-		newInput.MetaInput.Input = gr.Request.URL.String()
+		newInput.MetaInput.Input = gr.Request.String()
 		if err := request.executeRequestWithPayloads(newInput, gr.DynamicValues, previous, callback); err != nil {
 			return false
 		}

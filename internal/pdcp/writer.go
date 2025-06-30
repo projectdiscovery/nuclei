@@ -251,10 +251,10 @@ func (u *UploadWriter) getRequest(bin []byte) (*retryablehttp.Request, error) {
 		return nil, errorutil.NewWithErr(err).Msgf("could not create cloud upload request")
 	}
 	// add pdtm meta params
-	req.URL.Params.Merge(updateutils.GetpdtmParams(config.Version))
+	req.Params.Merge(updateutils.GetpdtmParams(config.Version))
 	// if it is upload endpoint also include name if it exists
-	if u.scanName != "" && req.URL.Path == uploadEndpoint {
-		req.URL.Params.Add("name", u.scanName)
+	if u.scanName != "" && req.Path == uploadEndpoint {
+		req.Params.Add("name", u.scanName)
 	}
 	req.URL.Update()
 

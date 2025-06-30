@@ -148,7 +148,7 @@ func (p *StatsTicker) makePrintCallback() func(stats clistats.StatisticsClient) 
 		if startedAt, ok := stats.GetStatic("startedAt"); ok {
 			if startedAtTime, ok := startedAt.(time.Time); ok {
 				duration = time.Since(startedAtTime)
-				builder.WriteString(fmt.Sprintf("[%s]", fmtDuration(duration)))
+				fmt.Fprintf(builder, "[%s]", fmtDuration(duration))
 			}
 		}
 

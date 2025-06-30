@@ -63,7 +63,7 @@ func (request *Request) executeFuzzingRule(input *contextargs.Context, previous 
 			return errors.Wrap(err, "fuzz: could not build request obtained from target file")
 		}
 		request.addHeadersToRequest(baseRequest)
-		input.MetaInput.Input = baseRequest.URL.String()
+		input.MetaInput.Input = baseRequest.String()
 		// execute with one value first to checks its applicability
 		err = request.executeAllFuzzingRules(input, previous, baseRequest, callback)
 		if err != nil {
@@ -220,9 +220,9 @@ func (request *Request) executeGeneratedFuzzingRequest(gr fuzz.GeneratedRequest,
 		}
 		if request.options.FuzzParamsFrequency != nil && !setInteractshCallback {
 			if !gotMatches {
-				request.options.FuzzParamsFrequency.MarkParameter(gr.Parameter, gr.Request.URL.String(), request.options.TemplateID)
+				request.options.FuzzParamsFrequency.MarkParameter(gr.Parameter, gr.Request.String(), request.options.TemplateID)
 			} else {
-				request.options.FuzzParamsFrequency.UnmarkParameter(gr.Parameter, gr.Request.URL.String(), request.options.TemplateID)
+				request.options.FuzzParamsFrequency.UnmarkParameter(gr.Parameter, gr.Request.String(), request.options.TemplateID)
 			}
 		}
 	}, 0)
@@ -311,7 +311,7 @@ func (request *Request) filterDataMap(input *contextargs.Context) map[string]int
 			if strings.EqualFold(k, "content_type") {
 				m["content_type"] = v
 			}
-			sb.WriteString(fmt.Sprintf("%s: %s\n", k, v))
+			fmt.Fprintf(sb, "%s: %s\n", k, v)
 			return true
 		})
 		m["header"] = sb.String()
