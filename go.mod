@@ -116,7 +116,7 @@ require (
 	github.com/tarunKoyalwar/goleak v0.0.0-20240429141123-0efa90dbdcf9
 	github.com/trivago/tgo v1.0.7
 	github.com/yassinebenaid/godump v0.11.1
-	github.com/zmap/zgrab2 v0.2.0
+	github.com/zmap/zgrab2 v0.1.8
 	gitlab.com/gitlab-org/api/client-go v0.130.1
 	go.mongodb.org/mongo-driver v1.17.4
 	golang.org/x/exp v0.0.0-20250620022241-b7579e27df2b
@@ -353,7 +353,7 @@ require (
 	github.com/zcalusic/sysinfo v1.0.2 // indirect
 	github.com/zeebo/blake3 v0.2.3 // indirect
 	github.com/zmap/rc2 v0.0.0-20190804163417-abaa70531248 // indirect
-	github.com/zmap/zcrypto v0.0.0-20250324021606-4f0ea0eaccac // indirect
+	github.com/zmap/zcrypto v0.0.0-20240512203510-0fef58d9a9db // indirect
 	go.etcd.io/bbolt v1.3.10 // indirect
 	go.uber.org/zap v1.25.0 // indirect
 	go4.org v0.0.0-20230225012048-214862532bf5 // indirect
@@ -371,9 +371,6 @@ require (
 	gopkg.in/warnings.v0 v0.1.2 // indirect
 	mellium.im/sasl v0.3.2 // indirect
 )
-
-// experimental module replacements that subject to change
-replace github.com/zmap/zcrypto v0.0.0-20250324021606-4f0ea0eaccac => github.com/zmap/zcrypto v0.0.0-20240512203510-0fef58d9a9db
 
 // https://go.dev/ref/mod#go-mod-file-retract
 retract v3.2.0 // retract due to broken js protocol issue
