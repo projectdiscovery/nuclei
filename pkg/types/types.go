@@ -659,6 +659,20 @@ func (o *Options) GetValidAbsPath(helperFilePath, templatePath string) (string, 
 	return "", errorutil.New("access to helper file %v denied", helperFilePath)
 }
 
+// SetExecutionID sets the execution ID for the options
+func (options *Options) SetExecutionID(id string) {
+	options.m.Lock()
+	defer options.m.Unlock()
+	options.ExecutionId = id
+}
+
+// GetExecutionID gets the execution ID for the options
+func (options *Options) GetExecutionID() string {
+	options.m.Lock()
+	defer options.m.Unlock()
+	return options.ExecutionId
+}
+
 // isHomeDir checks if given is home directory
 func isHomeDir(path string) bool {
 	homeDir := folderutil.HomeDirOrDefault("")

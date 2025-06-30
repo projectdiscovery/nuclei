@@ -8,12 +8,12 @@ import (
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/config"
-	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v3/pkg/utils"
 	"github.com/projectdiscovery/nuclei/v3/pkg/utils/json"
 	"github.com/projectdiscovery/nuclei/v3/pkg/utils/stats"
 	yamlutil "github.com/projectdiscovery/nuclei/v3/pkg/utils/yaml"
 	fileutil "github.com/projectdiscovery/utils/file"
+
 	"gopkg.in/yaml.v2"
 )
 
@@ -178,9 +178,8 @@ func (p *Parser) CloneForExecutionId(xid string) *Parser {
 	defer p.Unlock()
 
 	newParser := &Parser{
-		ShouldValidate: p.ShouldValidate,
-		NoStrictSyntax: p.NoStrictSyntax,
-		//	parsedTemplatesCache:   p.parsedTemplatesCache, // Reuse the parsed template cache directly
+		ShouldValidate:         p.ShouldValidate,
+		NoStrictSyntax:         p.NoStrictSyntax,
 		parsedTemplatesCache:   NewCache(),
 		compiledTemplatesCache: NewCache(),
 	}
@@ -199,51 +198,57 @@ func (p *Parser) CloneForExecutionId(xid string) *Parser {
 }
 
 func templateUpdateExecutionId(tpl *Template, xid string) *Template {
-	templateBase := *tpl
-	var newOpts *protocols.ExecutorOptions
-	// Swap out the types.Options execution ID attached to the template
-	if templateBase.Options != nil {
-		optionsBase := *templateBase.Options
-		templateBase.Options = &optionsBase
-		if templateBase.Options.Options != nil {
-			optionsOptionsBase := *templateBase.Options.Options //nolint (copy, including the mutex)
-			templateBase.Options.Options = &optionsOptionsBase
-			templateBase.Options.Options.ExecutionId = xid
-			newOpts = templateBase.Options
+	// TODO: This is a no-op today since options are patched in elsewhere, but we're keeping this
+	// for future work where we may need additional tweaks per template instance.
+	return tpl
+
+	/*
+		templateBase := *tpl
+		var newOpts *protocols.ExecutorOptions
+		// Swap out the types.Options execution ID attached to the template
+		if templateBase.Options != nil {
+			optionsBase := *templateBase.Options //nolint
+			templateBase.Options = &optionsBase
+			if templateBase.Options.Options != nil {
+				optionsOptionsBase := *templateBase.Options.Options //nolint
+				templateBase.Options.Options = &optionsOptionsBase
+				templateBase.Options.Options.ExecutionId = xid
+				newOpts = templateBase.Options
+			}
 		}
-	}
-	if newOpts == nil {
+		if newOpts == nil {
+			return &templateBase
+		}
+		for _, r := range templateBase.RequestsDNS {
+			r.UpdateOptions(newOpts)
+		}
+		for _, r := range templateBase.RequestsHTTP {
+			r.UpdateOptions(newOpts)
+		}
+		for _, r := range templateBase.RequestsCode {
+			r.UpdateOptions(newOpts)
+		}
+		for _, r := range templateBase.RequestsFile {
+			r.UpdateOptions(newOpts)
+		}
+		for _, r := range templateBase.RequestsHeadless {
+			r.UpdateOptions(newOpts)
+		}
+		for _, r := range templateBase.RequestsNetwork {
+			r.UpdateOptions(newOpts)
+		}
+		for _, r := range templateBase.RequestsJavascript {
+			r.UpdateOptions(newOpts)
+		}
+		for _, r := range templateBase.RequestsSSL {
+			r.UpdateOptions(newOpts)
+		}
+		for _, r := range templateBase.RequestsWHOIS {
+			r.UpdateOptions(newOpts)
+		}
+		for _, r := range templateBase.RequestsWebsocket {
+			r.UpdateOptions(newOpts)
+		}
 		return &templateBase
-	}
-	for _, r := range templateBase.RequestsDNS {
-		r.UpdateOptions(newOpts)
-	}
-	for _, r := range templateBase.RequestsHTTP {
-		r.UpdateOptions(newOpts)
-	}
-	for _, r := range templateBase.RequestsCode {
-		r.UpdateOptions(newOpts)
-	}
-	for _, r := range templateBase.RequestsFile {
-		r.UpdateOptions(newOpts)
-	}
-	for _, r := range templateBase.RequestsHeadless {
-		r.UpdateOptions(newOpts)
-	}
-	for _, r := range templateBase.RequestsNetwork {
-		r.UpdateOptions(newOpts)
-	}
-	for _, r := range templateBase.RequestsJavascript {
-		r.UpdateOptions(newOpts)
-	}
-	for _, r := range templateBase.RequestsSSL {
-		r.UpdateOptions(newOpts)
-	}
-	for _, r := range templateBase.RequestsWHOIS {
-		r.UpdateOptions(newOpts)
-	}
-	for _, r := range templateBase.RequestsWebsocket {
-		r.UpdateOptions(newOpts)
-	}
-	return &templateBase
+	*/
 }

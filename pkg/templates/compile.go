@@ -55,8 +55,73 @@ func Parse(filePath string, preprocessor Preprocessor, options *protocols.Execut
 		panic("not a parser")
 	}
 	if !options.DoNotCache {
-		if value, _, err := parser.compiledTemplatesCache.Has(filePath); value != nil {
-			return value, err
+		if value, _, _ := parser.compiledTemplatesCache.Has(filePath); value != nil {
+			// Update the template to use the current options for the calling engine
+			t := *value
+			t.Options.ApplyNewEngineOptions(options)
+			// TODO: Compare the compiled template options with the current options to see if there are any significant changes
+
+			if t.CompiledWorkflow != nil {
+				t.CompiledWorkflow.Options.ApplyNewEngineOptions(options)
+				for _, w := range t.CompiledWorkflow.Workflows {
+					for _, ex := range w.Executers {
+						ex.Options.ApplyNewEngineOptions(options)
+					}
+				}
+			}
+			for _, r := range t.RequestsDNS {
+				r.UpdateOptions(t.Options)
+			}
+			for _, r := range t.RequestsHTTP {
+				r.UpdateOptions(t.Options)
+			}
+			for _, r := range t.RequestsCode {
+				r.UpdateOptions(t.Options)
+			}
+			for _, r := range t.RequestsFile {
+				r.UpdateOptions(t.Options)
+			}
+			for _, r := range t.RequestsHeadless {
+				r.UpdateOptions(t.Options)
+			}
+			for _, r := range t.RequestsNetwork {
+				r.UpdateOptions(t.Options)
+			}
+			for _, r := range t.RequestsJavascript {
+				r.UpdateOptions(t.Options)
+			}
+			for _, r := range t.RequestsSSL {
+				r.UpdateOptions(t.Options)
+			}
+			for _, r := range t.RequestsWHOIS {
+				r.UpdateOptions(t.Options)
+			}
+			for _, r := range t.RequestsWebsocket {
+				r.UpdateOptions(t.Options)
+			}
+			template := t
+
+			if template.isGlobalMatchersEnabled() {
+				item := &globalmatchers.Item{
+					TemplateID:   template.ID,
+					TemplatePath: filePath,
+					TemplateInfo: template.Info,
+				}
+				for _, request := range template.RequestsHTTP {
+					item.Operators = append(item.Operators, request.CompiledOperators)
+				}
+				options.GlobalMatchers.AddOperator(item)
+				return nil, nil
+			}
+			// Compile the workflow request
+			if len(template.Workflows) > 0 {
+				compiled := &template.Workflow
+				compileWorkflow(filePath, preprocessor, options, compiled, options.WorkflowLoader)
+				template.CompiledWorkflow = compiled
+				template.CompiledWorkflow.Options = options
+			}
+
+			return &template, nil
 		}
 	}
 

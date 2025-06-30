@@ -268,5 +268,5 @@ func (request *Request) SetDialer(dialer *fastdialer.Dialer) {
 
 // UpdateOptions replaces this request's options with a new copy
 func (r *Request) UpdateOptions(opts *protocols.ExecutorOptions) {
-	r.options = opts
+	r.options.ApplyNewEngineOptions(opts)
 }
