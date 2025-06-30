@@ -57,10 +57,9 @@ func Parse(filePath string, preprocessor Preprocessor, options *protocols.Execut
 	if !options.DoNotCache {
 		if value, _, _ := parser.compiledTemplatesCache.Has(filePath); value != nil {
 			// Update the template to use the current options for the calling engine
+			// TODO: This may be require additional work for robustness
 			t := *value
 			t.Options.ApplyNewEngineOptions(options)
-			// TODO: Compare the compiled template options with the current options to see if there are any significant changes
-
 			if t.CompiledWorkflow != nil {
 				t.CompiledWorkflow.Options.ApplyNewEngineOptions(options)
 				for _, w := range t.CompiledWorkflow.Workflows {
