@@ -130,7 +130,7 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 
 	// compile pre-condition if any
 	if request.PreCondition != "" {
-		preConditionCompiled, err := compiler.WrapScriptNCompile(request.PreCondition, false)
+		preConditionCompiled, err := compiler.SourceAutoMode(request.PreCondition, false)
 		if err != nil {
 			return errorutil.NewWithTag(request.TemplateID, "could not compile pre-condition: %s", err)
 		}
