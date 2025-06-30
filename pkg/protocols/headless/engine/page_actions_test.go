@@ -658,7 +658,9 @@ func testHeadless(t *testing.T, actions []*Action, timeout time.Duration, handle
 
 	instance, err := browser.NewInstance()
 	require.Nil(t, err, "could not create browser instance")
-	defer instance.Close()
+	defer func() {
+		_ = instance.Close()
+	}()
 
 	ts := httptest.NewServer(http.HandlerFunc(handler))
 	defer ts.Close()
@@ -717,7 +719,9 @@ func TestBlockedHeadlessURLS(t *testing.T) {
 
 	instance, err := browser.NewInstance()
 	require.Nil(t, err, "could not create browser instance")
-	defer instance.Close()
+	defer func() {
+		_ = instance.Close()
+	}()
 
 	ts := httptest.NewServer(nil)
 	defer ts.Close()

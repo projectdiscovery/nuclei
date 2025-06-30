@@ -439,7 +439,7 @@ func (r *Runner) setupPDCPUpload(writer output.Writer) output.Writer {
 	if r.options.ScanID != "" {
 		r.options.EnableCloudUpload = true
 	}
-	if !(r.options.EnableCloudUpload || EnableCloudUpload) {
+	if !r.options.EnableCloudUpload && !EnableCloudUpload {
 		r.pdcpUploadErrMsg = fmt.Sprintf("[%v] Scan results upload to cloud is disabled.", r.colorizer.BrightYellow("WRN"))
 		return writer
 	}
@@ -863,8 +863,8 @@ func (r *Runner) displayExecutionInfo(store *loader.Store) {
 		return fmt.Sprintf("Current %s version: %v %v", versionType, version, updateutils.GetVersionDescription(version, latestVersion))
 	}
 
-	gologger.Info().Msgf(versionInfo(config.Version, cfg.LatestNucleiVersion, "nuclei"))
-	gologger.Info().Msgf(versionInfo(cfg.TemplateVersion, cfg.LatestNucleiTemplatesVersion, "nuclei-templates"))
+	gologger.Info().Msg(versionInfo(config.Version, cfg.LatestNucleiVersion, "nuclei"))
+	gologger.Info().Msg(versionInfo(cfg.TemplateVersion, cfg.LatestNucleiTemplatesVersion, "nuclei-templates"))
 	if !HideAutoSaveMsg {
 		if r.pdcpUploadErrMsg != "" {
 			gologger.Print().Msgf("%s", r.pdcpUploadErrMsg)
@@ -940,7 +940,9 @@ func UploadResultsToCloud(options *types.Options) error {
 	if err != nil {
 		return errors.Wrap(err, "could not open scan upload file")
 	}
-	defer file.Close()
+	defer func() {
+         _ = file.Close()
+       }()
 
 	gologger.Info().Msgf("Uploading scan results to cloud dashboard from %s", options.ScanUploadFile)
 	dec := json.NewDecoder(file)

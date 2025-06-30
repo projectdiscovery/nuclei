@@ -47,6 +47,7 @@ const (
 // ExecuteActions executes a list of actions on a page.
 func (p *Page) ExecuteActions(input *contextargs.Context, actions []*Action) (outData ActionData, err error) {
 	outData = make(ActionData)
+
 	// waitFuncs are function that needs to be executed after navigation
 	// typically used for waitEvent
 	waitFuncs := make([]func() error, 0)
@@ -76,6 +77,8 @@ func (p *Page) ExecuteActions(input *contextargs.Context, actions []*Action) (ou
 						}
 					}
 				}
+
+				p.lastActionNavigate = act
 			}
 		case ActionScript:
 			err = p.RunScript(act, outData)
@@ -407,12 +410,12 @@ func (p *Page) NavigateURL(action *Action, out ActionData) error {
 	finalparams.Merge(p.inputURL.Params.Encode())
 	parsedURL.Params = finalparams
 
-	// log all navigated requests
-	p.instance.requestLog[action.GetArg("url")] = parsedURL.String()
-
 	if err := p.page.Navigate(parsedURL.String()); err != nil {
 		return errorutil.NewWithErr(err).Msgf("could not navigate to url %s", parsedURL.String())
 	}
+
+	p.updateLastNavigatedURL()
+
 	return nil
 }
 
@@ -667,12 +670,15 @@ func (p *Page) WaitPageLifecycleEvent(act *Action, out ActionData, event proto.P
 
 	fn()
 
+	// log the navigated request (even if it is a redirect)
+	p.updateLastNavigatedURL()
+
 	return nil
 }
 
 // WaitStable waits until the page is stable
 func (p *Page) WaitStable(act *Action, out ActionData) error {
-	var dur time.Duration = time.Second // default stable page duration: 1s
+	var dur = time.Second // default stable page duration: 1s
 
 	timeout, err := getTimeout(p, act)
 	if err != nil {
@@ -687,7 +693,14 @@ func (p *Page) WaitStable(act *Action, out ActionData) error {
 		}
 	}
 
-	return p.page.Timeout(timeout).WaitStable(dur)
+	if err := p.page.Timeout(timeout).WaitStable(dur); err != nil {
+		return err
+	}
+
+	// log the navigated request (even if it is a redirect)
+	p.updateLastNavigatedURL()
+
+	return nil
 }
 
 // GetResource gets a resource from an element from page.

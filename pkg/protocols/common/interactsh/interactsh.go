@@ -183,9 +183,9 @@ func (c *Client) processInteractionForRequest(interaction *server.Interaction, d
 
 	if c.options.FuzzParamsFrequency != nil {
 		if !matched {
-			c.options.FuzzParamsFrequency.MarkParameter(data.Parameter, data.Request.URL.String(), data.Operators.TemplateID)
+			c.options.FuzzParamsFrequency.MarkParameter(data.Parameter, data.Request.String(), data.Operators.TemplateID)
 		} else {
-			c.options.FuzzParamsFrequency.UnmarkParameter(data.Parameter, data.Request.URL.String(), data.Operators.TemplateID)
+			c.options.FuzzParamsFrequency.UnmarkParameter(data.Parameter, data.Request.String(), data.Operators.TemplateID)
 		}
 	}
 
@@ -257,7 +257,7 @@ func (c *Client) Close() bool {
 	}
 	if c.interactsh != nil {
 		_ = c.interactsh.StopPolling()
-		c.interactsh.Close()
+		_ = c.interactsh.Close()
 	}
 
 	c.requests.Purge()
@@ -424,7 +424,7 @@ func (c *Client) debugPrintInteraction(interaction *server.Interaction, event *o
 			builder.WriteString(formatInteractionMessage("LDAP Interaction", interaction.RawRequest, event, c.options.NoColor))
 		}
 	}
-	fmt.Fprint(os.Stderr, builder.String())
+	_, _ = fmt.Fprint(os.Stderr, builder.String())
 }
 
 func formatInteractionHeader(protocol, ID, address string, at time.Time) string {
