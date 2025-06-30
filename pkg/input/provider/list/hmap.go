@@ -258,7 +258,7 @@ func (i *ListInputProvider) InputType() string {
 
 // Close closes the input provider
 func (i *ListInputProvider) Close() {
-	i.hostMap.Close()
+	_ = i.hostMap.Close()
 	if i.hostMapStream != nil {
 		i.hostMapStream.Close()
 	}
@@ -298,7 +298,7 @@ func (i *ListInputProvider) initializeInputSources(opts *Options) error {
 		}
 		if input != nil {
 			i.scanInputFromReader(input)
-			input.Close()
+			_ = input.Close()
 		}
 	}
 	if options.Uncover && options.UncoverQuery != nil {

@@ -18,10 +18,12 @@ func TestTemplateInstallation(t *testing.T) {
 	tm := &TemplateManager{}
 	dir, err := os.MkdirTemp("", "nuclei-templates-*")
 	require.Nil(t, err)
-	defer os.RemoveAll(dir)
 	cfgdir, err := os.MkdirTemp("", "nuclei-config-*")
 	require.Nil(t, err)
-	defer os.RemoveAll(cfgdir)
+	defer func() {
+		_ = os.RemoveAll(dir)
+		_ = os.RemoveAll(cfgdir)
+	}()
 
 	// set the config directory to a temporary directory
 	config.DefaultConfig.SetConfigDir(cfgdir)

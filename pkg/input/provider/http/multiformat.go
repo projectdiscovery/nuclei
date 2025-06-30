@@ -73,7 +73,7 @@ func NewHttpInputProvider(opts *HttpMultiFormatOptions) (*HttpInputProvider, err
 	}
 	defer func() {
 		if inputFile != nil {
-			inputFile.Close()
+			_ = inputFile.Close()
 		}
 	}()
 

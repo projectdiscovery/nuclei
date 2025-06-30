@@ -45,7 +45,9 @@ func isOracle(host string, port int) (IsOracleResponse, error) {
 	if err != nil {
 		return resp, err
 	}
-	defer conn.Close()
+	defer func() {
+		_ = conn.Close()
+	}()
 
 	oracledbPlugin := oracledb.ORACLEPlugin{}
 	service, err := oracledbPlugin.Run(conn, timeout, plugins.Target{Host: host})
