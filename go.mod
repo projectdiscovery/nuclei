@@ -376,4 +376,4 @@ require (
 replace github.com/zmap/zcrypto v0.0.0-20250324021606-4f0ea0eaccac => github.com/zmap/zcrypto v0.0.0-20240512203510-0fef58d9a9db
 
 // https://go.dev/ref/mod#go-mod-file-retract
-retract v3.2.0 // retract due to broken js protocol issue
+
