@@ -22,7 +22,7 @@ func TestMain(m *testing.M) {
 	// Set up
 
 	gologger.DefaultLogger.SetMaxLevel(levels.LevelSilent)
-	os.Setenv("DISABLE_STDOUT", "true")
+	_ = os.Setenv("DISABLE_STDOUT", "true")
 
 	var err error
 
@@ -44,7 +44,7 @@ func TestMain(m *testing.M) {
 
 	dummyServer.Close()
 	_ = os.RemoveAll(projectPath)
-	os.Unsetenv("DISABLE_STDOUT")
+	_ = os.Unsetenv("DISABLE_STDOUT")
 
 	os.Exit(exitCode)
 }

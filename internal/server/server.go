@@ -125,7 +125,7 @@ func NewStatsServer(fuzzStatsDB *stats.Tracker) (*DASTServer, error) {
 
 func (s *DASTServer) Close() {
 	s.nucleiExecutor.Close()
-	s.echo.Close()
+	_ = s.echo.Close()
 	s.tasksPool.StopAndWaitFor(1 * time.Minute)
 }
 

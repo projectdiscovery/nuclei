@@ -217,7 +217,7 @@ func generateRequestsFromOp(opts *generateReqOptions) error {
 					return nil
 				} else {
 					// if it is in path then remove it from path
-					opts.requestPath = strings.Replace(opts.requestPath, fmt.Sprintf("{%s}", value.Name), "", -1)
+					opts.requestPath = strings.ReplaceAll(opts.requestPath, fmt.Sprintf("{%s}", value.Name), "")
 					if !opts.opts.RequiredOnly {
 						gologger.Verbose().Msgf("openapi: skipping optional param (%s) in (%v) in request [%s] %s due to missing value (%v)\n", value.Name, value.In, opts.method, opts.requestPath, value.Name)
 					}
@@ -233,7 +233,7 @@ func generateRequestsFromOp(opts *generateReqOptions) error {
 					return nil
 				} else {
 					// if it is in path then remove it from path
-					opts.requestPath = strings.Replace(opts.requestPath, fmt.Sprintf("{%s}", value.Name), "", -1)
+					opts.requestPath = strings.ReplaceAll(opts.requestPath, fmt.Sprintf("{%s}", value.Name), "")
 					if !opts.opts.RequiredOnly {
 						gologger.Verbose().Msgf("openapi: skipping optional param (%s) in (%v) in request [%s] %s due to missing value (%v)\n", value.Name, value.In, opts.method, opts.requestPath, value.Name)
 					}
@@ -244,7 +244,7 @@ func generateRequestsFromOp(opts *generateReqOptions) error {
 		}
 		if opts.requiredOnly && !value.Required {
 			// remove them from path if any
-			opts.requestPath = strings.Replace(opts.requestPath, fmt.Sprintf("{%s}", value.Name), "", -1)
+			opts.requestPath = strings.ReplaceAll(opts.requestPath, fmt.Sprintf("{%s}", value.Name), "")
 			continue // Skip this parameter if it is not required and we want only required ones
 		}
 
@@ -327,7 +327,7 @@ func generateRequestsFromOp(opts *generateReqOptions) error {
 							_ = multipartWriter.WriteField(k, types.ToString(v))
 						}
 					}
-					multipartWriter.Close()
+					_ = multipartWriter.Close()
 					// body = buffer.String()
 					cloned.Body = io.NopCloser(buffer)
 					cloned.ContentLength = int64(len(buffer.Bytes()))

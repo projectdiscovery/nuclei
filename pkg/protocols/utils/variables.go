@@ -120,9 +120,10 @@ func generateVariables(inputURL *urlutil.URL, removeTrailingSlash bool) map[stri
 	parsed.Params = urlutil.NewOrderedParams()
 	port := parsed.Port()
 	if port == "" {
-		if parsed.Scheme == "https" {
+		switch parsed.Scheme {
+		case "https":
 			port = "443"
-		} else if parsed.Scheme == "http" {
+		case "http":
 			port = "80"
 		}
 	}
