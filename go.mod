@@ -36,7 +36,6 @@ require (
 	github.com/syndtr/goleveldb v1.0.0
 	github.com/valyala/fasttemplate v1.2.2
 	github.com/weppos/publicsuffix-go v0.40.3-0.20250311103038-7794c8c0723b
-	github.com/xanzy/go-gitlab v0.115.0
 	go.uber.org/multierr v1.11.0
 	golang.org/x/net v0.41.0
 	golang.org/x/oauth2 v0.30.0
@@ -118,6 +117,7 @@ require (
 	github.com/trivago/tgo v1.0.7
 	github.com/yassinebenaid/godump v0.11.1
 	github.com/zmap/zgrab2 v0.2.0
+	gitlab.com/gitlab-org/api/client-go v0.130.1
 	go.mongodb.org/mongo-driver v1.17.4
 	golang.org/x/exp v0.0.0-20250620022241-b7579e27df2b
 	golang.org/x/term v0.32.0
