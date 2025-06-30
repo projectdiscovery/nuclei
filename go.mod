@@ -352,6 +352,7 @@ require (
 	github.com/yusufpapurcu/wmi v1.2.4 // indirect
 	github.com/zcalusic/sysinfo v1.0.2 // indirect
 	github.com/zeebo/blake3 v0.2.3 // indirect
+	github.com/zmap/rc2 v0.0.0-20190804163417-abaa70531248 // indirect
 	github.com/zmap/zcrypto v0.0.0-20250324021606-4f0ea0eaccac // indirect
 	go.etcd.io/bbolt v1.3.10 // indirect
 	go.uber.org/zap v1.25.0 // indirect
@@ -370,6 +371,9 @@ require (
 	gopkg.in/warnings.v0 v0.1.2 // indirect
 	mellium.im/sasl v0.3.2 // indirect
 )
+
+// experimental module replacements that subject to change
+replace github.com/zmap/zcrypto v0.0.0-20250324021606-4f0ea0eaccac => github.com/zmap/zcrypto v0.0.0-20240512203510-0fef58d9a9db
 
 // https://go.dev/ref/mod#go-mod-file-retract
 retract v3.2.0 // retract due to broken js protocol issue
