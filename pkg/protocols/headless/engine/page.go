@@ -201,7 +201,7 @@ func (i *Instance) Run(ctx *contextargs.Context, actions []*Action, payloads map
 		if resp, err := http.ReadResponse(bufio.NewReader(strings.NewReader(firstItem.RawResponse)), nil); err == nil {
 			data["header"] = utils.HeadersToString(resp.Header)
 			data["status_code"] = fmt.Sprint(resp.StatusCode)
-			resp.Body.Close()
+			_ = resp.Body.Close()
 		}
 	}
 
@@ -216,7 +216,7 @@ func (p *Page) Close() {
 	if p.hijackNative != nil {
 		_ = p.hijackNative.Stop()
 	}
-	p.page.Close()
+	_ = p.page.Close()
 }
 
 // Page returns the current page for the actions

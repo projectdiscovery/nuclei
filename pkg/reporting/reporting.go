@@ -227,7 +227,9 @@ func CreateConfigIfNotExists() error {
 	if err != nil {
 		return errorutil.NewWithErr(err).Msgf("could not create config file")
 	}
-	defer reportingFile.Close()
+	defer func() {
+         _ = reportingFile.Close()
+       }()
 
 	err = yaml.NewEncoder(reportingFile).Encode(options)
 	return err
@@ -270,7 +272,7 @@ func (c *ReportingClient) Close() {
 		c.dedupe.Close()
 	}
 	for _, exporter := range c.exporters {
-		exporter.Close()
+		_ = exporter.Close()
 	}
 }
 

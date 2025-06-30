@@ -43,8 +43,8 @@ func (d *Dynamic) GetDomainAndDomainRegex() ([]string, []string) {
 		domainRegex = append(domainRegex, secret.DomainsRegex...)
 	}
 	if d.Secret != nil {
-		domains = append(domains, d.Secret.Domains...)
-		domainRegex = append(domainRegex, d.Secret.DomainsRegex...)
+		domains = append(domains, d.Domains...)
+		domainRegex = append(domainRegex, d.DomainsRegex...)
 	}
 	uniqueDomains := sliceutil.Dedupe(domains)
 	uniqueDomainRegex := sliceutil.Dedupe(domainRegex)
@@ -79,7 +79,7 @@ func (d *Dynamic) Validate() error {
 	}
 
 	if d.Secret != nil {
-		d.Secret.skipCookieParse = true // skip cookie parsing in dynamic secrets during validation
+		d.skipCookieParse = true // skip cookie parsing in dynamic secrets during validation
 		if err := d.Secret.Validate(); err != nil {
 			return err
 		}
@@ -192,7 +192,7 @@ func (d *Dynamic) GetStrategies() []AuthStrategy {
 	}
 	var strategies []AuthStrategy
 	if d.Secret != nil {
-		strategies = append(strategies, d.Secret.GetStrategy())
+		strategies = append(strategies, d.GetStrategy())
 	}
 	for _, secret := range d.Secrets {
 		strategies = append(strategies, secret.GetStrategy())

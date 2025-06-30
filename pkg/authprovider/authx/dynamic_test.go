@@ -36,10 +36,10 @@ func TestDynamicUnmarshalJSON(t *testing.T) {
 
 		// Secret
 		require.NotNil(t, d.Secret)
-		require.Equal(t, "BasicAuth", d.Secret.Type)
-		require.Equal(t, []string{"test.com"}, d.Secret.Domains)
-		require.Equal(t, "testuser", d.Secret.Username)
-		require.Equal(t, "testpass", d.Secret.Password)
+		require.Equal(t, "BasicAuth", d.Type)
+		require.Equal(t, []string{"test.com"}, d.Domains)
+		require.Equal(t, "testuser", d.Username)
+		require.Equal(t, "testpass", d.Password)
 
 		// Dynamic fields
 		require.Equal(t, "test-template.yaml", d.TemplatePath)
@@ -90,9 +90,9 @@ func TestDynamicUnmarshalJSON(t *testing.T) {
 
 		// Secret
 		require.NotNil(t, d.Secret)
-		require.Equal(t, "HeadersAuth", d.Secret.Type)
-		require.Equal(t, []string{"api.test.com"}, d.Secret.Domains)
-		require.Len(t, d.Secret.Headers, 1)
+		require.Equal(t, "HeadersAuth", d.Type)
+		require.Equal(t, []string{"api.test.com"}, d.Domains)
+		require.Len(t, d.Headers, 1)
 		require.Equal(t, "X-API-Key", d.Secret.Headers[0].Key)
 		require.Equal(t, "secret-key", d.Secret.Headers[0].Value)
 
