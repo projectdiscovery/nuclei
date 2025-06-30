@@ -163,7 +163,7 @@ func (rule *Rule) execWithInput(input *ExecuteRuleInput, httpReq *retryablehttp.
 	if rule.options.FuzzParamsFrequency != nil {
 		if rule.options.FuzzParamsFrequency.IsParameterFrequent(
 			parameter,
-			httpReq.URL.String(),
+			httpReq.String(),
 			rule.options.TemplateID,
 		) {
 			return nil

@@ -49,9 +49,10 @@ func getRemoteTemplatesAndWorkflows(templateURLs, workflowURLs, remoteTemplateDo
 				err = remoteContent.Error
 			}
 		} else {
-			if remoteContent.Type == Template {
+			switch remoteContent.Type {
+			case Template:
 				remoteTemplateList = append(remoteTemplateList, remoteContent.Content...)
-			} else if remoteContent.Type == Workflow {
+			case Workflow:
 				remoteWorkFlowList = append(remoteWorkFlowList, remoteContent.Content...)
 			}
 		}
@@ -80,7 +81,9 @@ func getRemoteContent(URL string, remoteTemplateDomainList []string, remoteConte
 		}
 		return
 	}
-	defer response.Body.Close()
+	defer func() {
+         _ = response.Body.Close()
+       }()
 	if response.StatusCode < 200 || response.StatusCode > 299 {
 		remoteContentChannel <- RemoteContent{
 			Error: fmt.Errorf("get \"%s\": unexpect status %d", URL, response.StatusCode),

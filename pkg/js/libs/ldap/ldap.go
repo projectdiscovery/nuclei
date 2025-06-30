@@ -331,7 +331,7 @@ func (c *Client) CollectMetadata() Metadata {
 // ```
 func (c *Client) GetVersion() []string {
 	c.nj.Require(c.conn != nil, "no existing connection")
-	
+
 	// Query root DSE for supported LDAP versions
 	sr := ldap.NewSearchRequest(
 		"",
@@ -341,17 +341,16 @@ func (c *Client) GetVersion() []string {
 		"(objectClass=*)",
 		[]string{"supportedLDAPVersion"},
 		nil)
-	
+
 	res, err := c.conn.Search(sr)
 	c.nj.HandleError(err, "failed to get LDAP version")
-	
+
 	if len(res.Entries) > 0 {
 		return res.Entries[0].GetAttributeValues("supportedLDAPVersion")
 	}
-	
+
 	return []string{"unknown"}
 }
-
 
 // close the ldap connection
 // @example
@@ -361,5 +360,5 @@ func (c *Client) GetVersion() []string {
 // client.Close();
 // ```
 func (c *Client) Close() {
-	c.conn.Close()
+	_ = c.conn.Close()
 }

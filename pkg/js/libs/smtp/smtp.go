@@ -90,7 +90,9 @@ func (c *Client) IsSMTP() (SMTPResponse, error) {
 	if err != nil {
 		return resp, err
 	}
-	defer conn.Close()
+	defer func() {
+         _ = conn.Close()
+       }()
 
 	smtpPlugin := pluginsmtp.SMTPPlugin{}
 	service, err := smtpPlugin.Run(conn, timeout, plugins.Target{Host: c.host})
@@ -126,7 +128,9 @@ func (c *Client) IsOpenRelay(msg *SMTPMessage) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	defer conn.Close()
+	defer func() {
+         _ = conn.Close()
+       }()
 	client, err := smtp.NewClient(conn, c.host)
 	if err != nil {
 		return false, err

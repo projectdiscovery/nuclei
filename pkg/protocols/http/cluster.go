@@ -17,5 +17,5 @@ func (request *Request) TmplClusterKey() uint64 {
 
 // IsClusterable returns true if the request is eligible to be clustered.
 func (request *Request) IsClusterable() bool {
-	return !(len(request.Payloads) > 0 || len(request.Fuzzing) > 0 || len(request.Raw) > 0 || len(request.Body) > 0 || request.Unsafe || request.NeedsRequestCondition() || request.Name != "")
+	return len(request.Payloads) <= 0 && len(request.Fuzzing) <= 0 && len(request.Raw) <= 0 && len(request.Body) <= 0 && !request.Unsafe && !request.NeedsRequestCondition() && request.Name == ""
 }

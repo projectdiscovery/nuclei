@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"log"
 	"sync"
 	"time"
@@ -34,7 +35,7 @@ func main() {
 }
 
 func initializeNucleiEngine() (*nuclei.NucleiEngine, error) {
-	return nuclei.NewNucleiEngine(
+	return nuclei.NewNucleiEngineCtx(context.TODO(),
 		nuclei.WithTemplateFilters(nuclei.TemplateFilters{Tags: []string{"oast"}}),
 		nuclei.EnableStatsWithOpts(nuclei.StatsOptions{MetricServerPort: 6064}),
 		nuclei.WithGlobalRateLimit(1, time.Second),

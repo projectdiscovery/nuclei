@@ -40,8 +40,8 @@ func TestURLComponent(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	require.Equal(t, "/newpath", rebuilt.URL.Path, "unexpected URL path")
-	require.Equal(t, "https://example.com/newpath", rebuilt.URL.String(), "unexpected full URL")
+	require.Equal(t, "/newpath", rebuilt.Path, "unexpected URL path")
+	require.Equal(t, "https://example.com/newpath", rebuilt.String(), "unexpected full URL")
 }
 
 func TestURLComponent_NestedPaths(t *testing.T) {
@@ -74,7 +74,7 @@ func TestURLComponent_NestedPaths(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if newReq.URL.Path != "/user/753'/profile" {
+	if newReq.Path != "/user/753'/profile" {
 		t.Fatal("expected path to be modified")
 	}
 }

@@ -336,11 +336,8 @@ func (request *Request) executeTurboHTTP(input *contextargs.Context, dynamicValu
 	pipeClient := rawhttp.NewPipelineClient(pipeOptions)
 
 	// defaultMaxWorkers should be a sufficient value to keep queues always full
-	maxWorkers := defaultMaxWorkers
 	// in case the queue is bigger increase the workers
-	if pipeOptions.MaxPendingRequests > maxWorkers {
-		maxWorkers = pipeOptions.MaxPendingRequests
-	}
+	maxWorkers := max(pipeOptions.MaxPendingRequests, defaultMaxWorkers)
 
 	// Stop-at-first-match logic while executing requests
 	// parallely using threads
@@ -746,7 +743,7 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 	} else {
 		//** For Normal requests **//
 		hostname = generatedRequest.request.URL.Host
-		formedURL = generatedRequest.request.URL.String()
+		formedURL = generatedRequest.request.String()
 		// if nuclei-project is available check if the request was already sent previously
 		if request.options.ProjectFile != nil {
 			// if unavailable fail silently
@@ -825,7 +822,7 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 		// rawhttp doesn't support draining response bodies.
 		if resp != nil && resp.Body != nil && generatedRequest.rawRequest == nil && !generatedRequest.original.Pipeline {
 			_, _ = io.CopyN(io.Discard, resp.Body, drainReqSize)
-			resp.Body.Close()
+			_ = resp.Body.Close()
 		}
 		request.options.Output.Request(request.options.TemplatePath, formedURL, request.Type().String(), err)
 		request.options.Progress.IncrementErrorsBy(1)
@@ -920,7 +917,7 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 			}
 		}
 		if generatedRequest.request != nil {
-			matchedURL = generatedRequest.request.URL.String()
+			matchedURL = generatedRequest.request.String()
 		}
 		// Give precedence to the final URL from response
 		if respChain.Request() != nil {
@@ -1156,7 +1153,7 @@ func dumpResponse(event *output.InternalWrappedEvent, request *Request, redirect
 		response := string(redirectedResponse)
 
 		var highlightedResult string
-		if responseContentType == "application/octet-stream" || ((responseContentType == "" || responseContentType == "application/x-www-form-urlencoded") && responsehighlighter.HasBinaryContent(response)) {
+		if (responseContentType == "application/octet-stream" || responseContentType == "application/x-www-form-urlencoded") && responsehighlighter.HasBinaryContent(response) {
 			highlightedResult = createResponseHexDump(event, response, cliOptions.NoColor)
 		} else {
 			highlightedResult = responsehighlighter.Highlight(event.OperatorsResult, response, cliOptions.NoColor, false)
