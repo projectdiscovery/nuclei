@@ -77,9 +77,7 @@ func connect(host string, port int, username string, password string, dbName str
 		return false, err
 	}
 	defer func() {
-         if err := db.Close(); err != nil {
-           panic(fmt.Errorf("could not close: %+v", err))
-         }
+         _ = db.Close()
        }()
 
 	_, err = db.Exec("select 1")
@@ -125,9 +123,7 @@ func isMssql(host string, port int) (bool, error) {
 		return false, err
 	}
 	defer func() {
-         if err := conn.Close(); err != nil {
-           panic(fmt.Errorf("could not close: %+v", err))
-         }
+         _ = conn.Close()
        }()
 
 	data, check, err := mssql.DetectMSSQL(conn, 5*time.Second)
@@ -181,9 +177,7 @@ func (c *MSSQLClient) ExecuteQuery(host string, port int, username, password, db
 		return nil, err
 	}
 	defer func() {
-         if err := db.Close(); err != nil {
-           panic(fmt.Errorf("could not close: %+v", err))
-         }
+         _ = db.Close()
        }()
 
 	db.SetMaxOpenConns(1)

@@ -31,10 +31,8 @@ func loadProxyServers(options *types.Options) error {
 				return fmt.Errorf("could not open proxy file: %w", err)
 			}
 			defer func() {
-				if err := file.Close(); err != nil {
-					panic(fmt.Errorf("could not close: %+v", err))
-				}
-			}()
+           _ = file.Close()
+         }()
 			scanner := bufio.NewScanner(file)
 			for scanner.Scan() {
 				proxy := scanner.Text()

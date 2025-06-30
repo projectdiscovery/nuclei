@@ -2,7 +2,6 @@ package main
 
 import (
 	"crypto/tls"
-	"fmt"
 	"net"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/testutils"
@@ -23,9 +22,7 @@ type sslBasic struct{}
 func (h *sslBasic) Execute(filePath string) error {
 	ts := testutils.NewTCPServer(&tls.Config{}, defaultStaticPort, func(conn net.Conn) {
 		defer func() {
-			if err := conn.Close(); err != nil {
-				panic(fmt.Errorf("could not close: %+v", err))
-			}
+			_ = conn.Close()
 		}()
 		data := make([]byte, 4)
 		if _, err := conn.Read(data); err != nil {
@@ -48,9 +45,7 @@ type sslBasicZtls struct{}
 func (h *sslBasicZtls) Execute(filePath string) error {
 	ts := testutils.NewTCPServer(&tls.Config{}, defaultStaticPort, func(conn net.Conn) {
 		defer func() {
-			if err := conn.Close(); err != nil {
-				panic(fmt.Errorf("could not close: %+v", err))
-			}
+			_ = conn.Close()
 		}()
 		data := make([]byte, 4)
 		if _, err := conn.Read(data); err != nil {
@@ -73,9 +68,7 @@ type sslCustomCipher struct{}
 func (h *sslCustomCipher) Execute(filePath string) error {
 	ts := testutils.NewTCPServer(&tls.Config{CipherSuites: []uint16{tls.TLS_AES_128_GCM_SHA256}}, defaultStaticPort, func(conn net.Conn) {
 		defer func() {
-			if err := conn.Close(); err != nil {
-				panic(fmt.Errorf("could not close: %+v", err))
-			}
+			_ = conn.Close()
 		}()
 		data := make([]byte, 4)
 		if _, err := conn.Read(data); err != nil {
@@ -98,9 +91,7 @@ type sslCustomVersion struct{}
 func (h *sslCustomVersion) Execute(filePath string) error {
 	ts := testutils.NewTCPServer(&tls.Config{MinVersion: tls.VersionTLS12, MaxVersion: tls.VersionTLS12}, defaultStaticPort, func(conn net.Conn) {
 		defer func() {
-			if err := conn.Close(); err != nil {
-				panic(fmt.Errorf("could not close: %+v", err))
-			}
+			_ = conn.Close()
 		}()
 		data := make([]byte, 4)
 		if _, err := conn.Read(data); err != nil {
@@ -122,9 +113,7 @@ type sslWithVars struct{}
 func (h *sslWithVars) Execute(filePath string) error {
 	ts := testutils.NewTCPServer(&tls.Config{}, defaultStaticPort, func(conn net.Conn) {
 		defer func() {
-			if err := conn.Close(); err != nil {
-				panic(fmt.Errorf("could not close: %+v", err))
-			}
+			_ = conn.Close()
 		}()
 		data := make([]byte, 4)
 		if _, err := conn.Read(data); err != nil {
@@ -150,9 +139,7 @@ func (h *sslMultiReq) Execute(filePath string) error {
 		MaxVersion: tls.VersionTLS11,
 	}, defaultStaticPort, func(conn net.Conn) {
 		defer func() {
-			if err := conn.Close(); err != nil {
-				panic(fmt.Errorf("could not close: %+v", err))
-			}
+			_ = conn.Close()
 		}()
 		data := make([]byte, 4)
 		if _, err := conn.Read(data); err != nil {

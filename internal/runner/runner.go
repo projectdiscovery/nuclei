@@ -941,9 +941,7 @@ func UploadResultsToCloud(options *types.Options) error {
 		return errors.Wrap(err, "could not open scan upload file")
 	}
 	defer func() {
-         if err := file.Close(); err != nil {
-           panic(fmt.Errorf("could not close: %+v", err))
-         }
+         _ = file.Close()
        }()
 
 	gologger.Info().Msgf("Uploading scan results to cloud dashboard from %s", options.ScanUploadFile)

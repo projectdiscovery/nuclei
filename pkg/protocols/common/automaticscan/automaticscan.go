@@ -2,7 +2,6 @@ package automaticscan
 
 import (
 	"context"
-	"fmt"
 	"io"
 	"net/http"
 	"os"
@@ -208,9 +207,7 @@ func (s *Service) getTagsUsingWappalyzer(input *contextargs.MetaInput) []string 
 		return nil
 	}
 	defer func() {
-		if err := resp.Body.Close(); err != nil {
-			panic(fmt.Errorf("could not close: %+v", err))
-		}
+		_ = resp.Body.Close()
 	}()
 	data, err := io.ReadAll(io.LimitReader(resp.Body, maxDefaultBody))
 	if err != nil {

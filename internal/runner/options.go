@@ -305,10 +305,8 @@ func createReportingOptions(options *types.Options) (*reporting.Options, error) 
 			return nil, errors.Wrap(err, "could not open reporting config file")
 		}
 		defer func() {
-			if err := file.Close(); err != nil {
-				panic(fmt.Errorf("could not close: %+v", err))
-			}
-		}()
+          _ = file.Close()
+        }()
 
 		if err := yaml.DecodeAndValidate(file, reportingOptions); err != nil {
 			return nil, errors.Wrap(err, "could not parse reporting config file")
@@ -385,10 +383,8 @@ func loadResolvers(options *types.Options) {
 		gologger.Fatal().Msgf("Could not open resolvers file: %s\n", err)
 	}
 	defer func() {
-		if err := file.Close(); err != nil {
-			panic(fmt.Errorf("could not close: %+v", err))
-		}
-	}()
+         _ = file.Close()
+       }()
 
 	scanner := bufio.NewScanner(file)
 	for scanner.Scan() {

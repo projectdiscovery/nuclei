@@ -135,9 +135,7 @@ func getUnsanitizedPostsByLang(db *sql.DB, lang string) ([]Posts, error) {
 		return nil, err
 	}
 	defer func() {
-         if err := rows.Close(); err != nil {
-           panic(fmt.Errorf("could not close: %+v", err))
-         }
+         _ = rows.Close()
        }()
 
 	for rows.Next() {

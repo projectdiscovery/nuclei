@@ -2,7 +2,6 @@ package markdown
 
 import (
 	"bytes"
-	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -64,9 +63,7 @@ func (exporter *Exporter) Export(event *output.ResultEvent) error {
 		return err
 	}
 	defer func() {
-		if err := file.Close(); err != nil {
-			panic(fmt.Errorf("could not close: %+v", err))
-		}
+		_ = file.Close()
 	}()
 
 	filename := createFileName(event)

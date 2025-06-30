@@ -143,10 +143,8 @@ func (m *MultiPartForm) Decode(data string) (KV, error) {
 				return KV{}, err
 			}
 			defer func() {
-				if err := file.Close(); err != nil {
-					panic(fmt.Errorf("could not close: %+v", err))
-				}
-			}()
+           _ = file.Close()
+         }()
 
 			buffer := new(bytes.Buffer)
 			if _, err := buffer.ReadFrom(file); err != nil {

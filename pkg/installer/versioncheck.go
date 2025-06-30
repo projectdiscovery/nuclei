@@ -1,7 +1,6 @@
 package installer
 
 import (
-	"fmt"
 	"io"
 	"net/url"
 	"os"
@@ -94,9 +93,7 @@ func doVersionCheck(isSDK bool) error {
 		return err
 	}
 	defer func() {
-		if err := resp.Body.Close(); err != nil {
-			panic(fmt.Errorf("could not close: %+v", err))
-		}
+		_ = resp.Body.Close()
 	}()
 	bin, err := io.ReadAll(resp.Body)
 	if err != nil {

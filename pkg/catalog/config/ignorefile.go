@@ -1,7 +1,6 @@
 package config
 
 import (
-	"fmt"
 	"os"
 
 	"github.com/projectdiscovery/gologger"
@@ -22,9 +21,7 @@ func ReadIgnoreFile() IgnoreFile {
 		return IgnoreFile{}
 	}
 	defer func() {
-		if err := file.Close(); err != nil {
-			panic(fmt.Errorf("could not close: %+v", err))
-		}
+		_ = file.Close()
 	}()
 
 	ignore := IgnoreFile{}

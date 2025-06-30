@@ -118,10 +118,8 @@ func (request *Request) executeRequestWithPayloads(input *contextargs.Context, p
 		return errors.Wrap(err, errCouldNotGetHtmlElement)
 	}
 	defer func() {
-		if err := instance.Close(); err != nil {
-			panic(fmt.Errorf("could not close: %+v", err))
-		}
-	}()
+         _ = instance.Close()
+       }()
 
 	instance.SetInteractsh(request.options.Interactsh)
 

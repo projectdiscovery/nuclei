@@ -51,9 +51,7 @@ func isMySQL(host string, port int) (bool, error) {
 		return false, err
 	}
 	defer func() {
-         if err := conn.Close(); err != nil {
-           panic(fmt.Errorf("could not close: %+v", err))
-         }
+         _ = conn.Close()
        }()
 
 	plugin := &mysqlplugin.MYSQLPlugin{}
@@ -145,9 +143,7 @@ func fingerprintMySQL(host string, port int) (MySQLInfo, error) {
 		return info, err
 	}
 	defer func() {
-         if err := conn.Close(); err != nil {
-           panic(fmt.Errorf("could not close: %+v", err))
-         }
+         _ = conn.Close()
        }()
 
 	plugin := &mysqlplugin.MYSQLPlugin{}
@@ -221,9 +217,7 @@ func (c *MySQLClient) ExecuteQueryWithOpts(opts MySQLOptions, query string) (*ut
 		return nil, err
 	}
 	defer func() {
-         if err := db.Close(); err != nil {
-           panic(fmt.Errorf("could not close: %+v", err))
-         }
+         _ = db.Close()
        }()
 	db.SetMaxOpenConns(1)
 	db.SetMaxIdleConns(0)

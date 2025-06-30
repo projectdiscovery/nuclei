@@ -2,7 +2,6 @@ package main
 
 import (
 	"bytes"
-	"fmt"
 	"log"
 	"os"
 	"reflect"
@@ -21,9 +20,7 @@ func writeToFile(filename string, data []byte) {
 		log.Fatalf("Could not create file %s: %s\n", filename, err)
 	}
 	defer func() {
-		if err := file.Close(); err != nil {
-			panic(fmt.Errorf("could not close: %+v", err))
-		}
+		_ = file.Close()
 	}()
 
 	_, err = file.Write(data)

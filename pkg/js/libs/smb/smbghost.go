@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"errors"
-	"fmt"
 	"net"
 	"strconv"
 	"time"
@@ -43,9 +42,7 @@ func detectSMBGhost(host string, port int) (bool, error) {
 
 	}
 	defer func() {
-		if err := conn.Close(); err != nil {
-			panic(fmt.Errorf("could not close: %+v", err))
-		}
+		_ = conn.Close()
 	}()
 
 	_, err = conn.Write([]byte(pkt))

@@ -3,7 +3,6 @@ package loader
 import (
 	"bytes"
 	"encoding/json"
-	"fmt"
 	"io"
 	"net/http"
 	"os"
@@ -119,9 +118,7 @@ func generateAITemplate(prompt string) (string, string, error) {
 		return "", "", errorutil.New("Failed to send HTTP request: %v", err)
 	}
 	defer func() {
-		if err := resp.Body.Close(); err != nil {
-			panic(fmt.Errorf("could not close: %+v", err))
-		}
+		_ = resp.Body.Close()
 	}()
 
 	if resp.StatusCode == http.StatusUnauthorized {

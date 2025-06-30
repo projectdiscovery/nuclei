@@ -82,9 +82,7 @@ func getRemoteContent(URL string, remoteTemplateDomainList []string, remoteConte
 		return
 	}
 	defer func() {
-         if err := response.Body.Close(); err != nil {
-           panic(fmt.Errorf("could not close: %+v", err))
-         }
+         _ = response.Body.Close()
        }()
 	if response.StatusCode < 200 || response.StatusCode > 299 {
 		remoteContentChannel <- RemoteContent{

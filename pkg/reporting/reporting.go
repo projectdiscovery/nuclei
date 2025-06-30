@@ -228,10 +228,8 @@ func CreateConfigIfNotExists() error {
 		return errorutil.NewWithErr(err).Msgf("could not create config file")
 	}
 	defer func() {
-		if err := reportingFile.Close(); err != nil {
-			panic(fmt.Errorf("could not close: %+v", err))
-		}
-	}()
+         _ = reportingFile.Close()
+       }()
 
 	err = yaml.NewEncoder(reportingFile).Encode(options)
 	return err

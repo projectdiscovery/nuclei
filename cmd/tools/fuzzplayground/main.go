@@ -2,7 +2,6 @@ package main
 
 import (
 	"flag"
-	"fmt"
 
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/projectdiscovery/gologger"
@@ -20,9 +19,7 @@ func main() {
 	defer fuzzplayground.Cleanup()
 	server := fuzzplayground.GetPlaygroundServer()
 	defer func() {
-		if err := server.Close(); err != nil {
-			panic(fmt.Errorf("could not close: %+v", err))
-		}
+		_ = server.Close()
 	}()
 
 	// Start the server

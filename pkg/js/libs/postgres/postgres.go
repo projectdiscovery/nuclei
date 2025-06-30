@@ -50,10 +50,8 @@ func isPostgres(host string, port int) (bool, error) {
 		return false, err
 	}
 	defer func() {
-		if err := conn.Close(); err != nil {
-			panic(fmt.Errorf("could not close: %+v", err))
-		}
-	}()
+         _ = conn.Close()
+       }()
 
 	_ = conn.SetDeadline(time.Now().Add(timeout))
 
@@ -126,10 +124,8 @@ func executeQuery(host string, port int, username string, password string, dbNam
 		return nil, err
 	}
 	defer func() {
-		if err := db.Close(); err != nil {
-			panic(fmt.Errorf("could not close: %+v", err))
-		}
-	}()
+         _ = db.Close()
+       }()
 
 	rows, err := db.Query(query)
 	if err != nil {
@@ -191,10 +187,8 @@ func connect(host string, port int, username string, password string, dbName str
 		IdleCheckFrequency: -1,
 	}).WithContext(ctx).WithTimeout(10 * time.Second)
 	defer func() {
-		if err := db.Close(); err != nil {
-			panic(fmt.Errorf("could not close: %+v", err))
-		}
-	}()
+         _ = db.Close()
+       }()
 
 	_, err := db.Exec("select 1")
 	if err != nil {

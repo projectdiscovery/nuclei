@@ -339,10 +339,8 @@ func NewWebsocketServer(path string, handler func(conn net.Conn), originValidate
 		}
 		go func() {
 			defer func() {
-				if err := conn.Close(); err != nil {
-					panic(fmt.Errorf("could not close: %+v", err))
-				}
-			}()
+           _ = conn.Close()
+         }()
 
 			handler(conn)
 		}()

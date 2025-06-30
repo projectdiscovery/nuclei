@@ -78,9 +78,7 @@ func connectWithDSN(dsn string) (bool, error) {
 		return false, err
 	}
 	defer func() {
-         if err := db.Close(); err != nil {
-           panic(fmt.Errorf("could not close: %+v", err))
-         }
+         _ = db.Close()
        }()
 	db.SetMaxOpenConns(1)
 	db.SetMaxIdleConns(0)

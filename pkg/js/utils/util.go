@@ -2,7 +2,6 @@ package utils
 
 import (
 	"database/sql"
-	"fmt"
 )
 
 // SQLResult holds the result of a SQL query.
@@ -23,9 +22,7 @@ type SQLResult struct {
 // The function closes the sql.Rows when finished.
 func UnmarshalSQLRows(rows *sql.Rows) (*SQLResult, error) {
 	defer func() {
-		if err := rows.Close(); err != nil {
-			panic(fmt.Errorf("could not close: %+v", err))
-		}
+		_ = rows.Close()
 	}()
 	columnTypes, err := rows.ColumnTypes()
 	if err != nil {

@@ -90,9 +90,7 @@ func main() {
 	defer fuzzplayground.Cleanup()
 	server := fuzzplayground.GetPlaygroundServer()
 	defer func() {
-         if err := server.Close(); err != nil {
-           panic(fmt.Errorf("could not close: %+v", err))
-         }
+         _ = server.Close()
        }()
 	go func() {
 		if err := server.Start("localhost:8082"); err != nil {

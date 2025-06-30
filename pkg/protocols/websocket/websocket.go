@@ -236,9 +236,7 @@ func (request *Request) executeRequestWithPayloads(target *contextargs.Context, 
 		return errors.Wrap(err, "could not connect to server")
 	}
 	defer func() {
-         if err := conn.Close(); err != nil {
-           panic(fmt.Errorf("could not close: %+v", err))
-         }
+         _ = conn.Close()
        }()
 
 	responseBuilder := &strings.Builder{}

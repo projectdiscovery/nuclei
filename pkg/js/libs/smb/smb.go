@@ -61,9 +61,7 @@ func connectSMBInfoMode(host string, port int) (*smb.SMBLog, error) {
 		return nil, err
 	}
 	defer func() {
-         if err := conn.Close(); err != nil {
-           panic(fmt.Errorf("could not close: %+v", err))
-         }
+         _ = conn.Close()
        }()
 	result, err = getSMBInfo(conn, true, true)
 	if err != nil {
@@ -121,9 +119,7 @@ func listShares(host string, port int, user string, password string) ([]string, 
 		return nil, err
 	}
 	defer func() {
-         if err := conn.Close(); err != nil {
-           panic(fmt.Errorf("could not close: %+v", err))
-         }
+         _ = conn.Close()
        }()
 
 	d := &smb2.Dialer{

@@ -35,9 +35,7 @@ func getServerInfo(host string, port int) (string, error) {
 		DB:       0,  // use default DB
 	})
 	defer func() {
-         if err := client.Close(); err != nil {
-           panic(fmt.Errorf("could not close: %+v", err))
-         }
+         _ = client.Close()
        }()
 
 	// Ping the Redis server
@@ -78,9 +76,7 @@ func connect(host string, port int, password string) (bool, error) {
 		DB:       0,        // use default DB
 	})
 	defer func() {
-         if err := client.Close(); err != nil {
-           panic(fmt.Errorf("could not close: %+v", err))
-         }
+         _ = client.Close()
        }()
 
 	_, err := client.Ping(context.TODO()).Result()
@@ -119,9 +115,7 @@ func getServerInfoAuth(host string, port int, password string) (string, error) {
 		DB:       0,        // use default DB
 	})
 	defer func() {
-         if err := client.Close(); err != nil {
-           panic(fmt.Errorf("could not close: %+v", err))
-         }
+         _ = client.Close()
        }()
 
 	// Ping the Redis server
@@ -158,9 +152,7 @@ func isAuthenticated(host string, port int) (bool, error) {
 		return false, err
 	}
 	defer func() {
-         if err := conn.Close(); err != nil {
-           panic(fmt.Errorf("could not close: %+v", err))
-         }
+         _ = conn.Close()
        }()
 
 	_, err = plugin.Run(conn, timeout, plugins.Target{Host: host})
@@ -188,9 +180,7 @@ func RunLuaScript(host string, port int, password string, script string) (interf
 		DB:       0, // use default DB
 	})
 	defer func() {
-         if err := client.Close(); err != nil {
-           panic(fmt.Errorf("could not close: %+v", err))
-         }
+         _ = client.Close()
        }()
 
 	// Ping the Redis server

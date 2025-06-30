@@ -58,9 +58,7 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, metadata,
 				return
 			}
 			defer func() {
-           if err := file.Close(); err != nil {
-             panic(fmt.Errorf("could not close: %+v", err))
-           }
+           _ = file.Close()
          }()
 
 			stat, err := file.Stat()

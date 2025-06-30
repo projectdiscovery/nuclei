@@ -948,10 +948,8 @@ func (h *httpRequestSelfContained) Execute(filePath string) error {
 		_ = server.ListenAndServe()
 	}()
 	defer func() {
-		if err := server.Close(); err != nil {
-			panic(fmt.Errorf("could not close: %+v", err))
-		}
-	}()
+         _ = server.Close()
+       }()
 
 	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, "", debug, "-esc")
 	if err != nil {
@@ -988,10 +986,8 @@ func (h *httpRequestSelfContainedWithParams) Execute(filePath string) error {
 		_ = server.ListenAndServe()
 	}()
 	defer func() {
-		if err := server.Close(); err != nil {
-			panic(fmt.Errorf("could not close: %+v", err))
-		}
-	}()
+         _ = server.Close()
+       }()
 
 	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, "", debug, "-esc")
 	if err != nil {
@@ -1025,10 +1021,8 @@ func (h *httpRequestSelfContainedFileInput) Execute(filePath string) error {
 		_ = server.ListenAndServe()
 	}()
 	defer func() {
-		if err := server.Close(); err != nil {
-			panic(fmt.Errorf("could not close: %+v", err))
-		}
-	}()
+         _ = server.Close()
+       }()
 
 	// create temp file
 	FileLoc, err := os.CreateTemp("", "self-contained-payload-*.txt")
@@ -1039,10 +1033,8 @@ func (h *httpRequestSelfContainedFileInput) Execute(filePath string) error {
 		return errorutil.NewWithErr(err).Msgf("failed to write payload to temp file")
 	}
 	defer func() {
-		if err := FileLoc.Close(); err != nil {
-			panic(fmt.Errorf("could not close: %+v", err))
-		}
-	}()
+         _ = FileLoc.Close()
+       }()
 
 	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, "", debug, "-V", "test="+FileLoc.Name(), "-esc")
 	if err != nil {

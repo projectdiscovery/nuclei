@@ -295,9 +295,7 @@ func (f *FlowExecutor) ReadDataFromFile(payload string) ([]string, error) {
 		return values, err
 	}
 	defer func() {
-         if err := reader.Close(); err != nil {
-           panic(fmt.Errorf("could not close: %+v", err))
-         }
+         _ = reader.Close()
        }()
 	bin, err := io.ReadAll(reader)
 	if err != nil {

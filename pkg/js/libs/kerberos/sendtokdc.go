@@ -81,9 +81,7 @@ func sendToKDCTcp(kclient *Client, msg string) ([]byte, error) {
 			continue
 		}
 		defer func() {
-          if err := tcpConn.Close(); err != nil {
-            panic(fmt.Errorf("could not close: %+v", err))
-          }
+          _ = tcpConn.Close()
         }()
 		_ = tcpConn.SetDeadline(time.Now().Add(time.Duration(kclient.config.timeout) * time.Second)) //read and write deadline
 		rb, err := sendTCP(tcpConn.(*net.TCPConn), []byte(msg))
@@ -118,9 +116,7 @@ func sendToKDCUdp(kclient *Client, msg string) ([]byte, error) {
 			continue
 		}
 		defer func() {
-          if err := udpConn.Close(); err != nil {
-            panic(fmt.Errorf("could not close: %+v", err))
-          }
+          _ = udpConn.Close()
         }()
 		_ = udpConn.SetDeadline(time.Now().Add(time.Duration(kclient.config.timeout) * time.Second)) //read and write deadline
 		rb, err := sendUDP(udpConn.(*net.UDPConn), []byte(msg))
@@ -141,9 +137,7 @@ func sendToKDCUdp(kclient *Client, msg string) ([]byte, error) {
 func sendUDP(conn *net.UDPConn, b []byte) ([]byte, error) {
 	var r []byte
 	defer func() {
-         if err := conn.Close(); err != nil {
-           panic(fmt.Errorf("could not close: %+v", err))
-         }
+         _ = conn.Close()
        }()
 	_, err := conn.Write(b)
 	if err != nil {
@@ -164,9 +158,7 @@ func sendUDP(conn *net.UDPConn, b []byte) ([]byte, error) {
 // sendTCP sends bytes to connection over TCP.
 func sendTCP(conn *net.TCPConn, b []byte) ([]byte, error) {
 	defer func() {
-         if err := conn.Close(); err != nil {
-           panic(fmt.Errorf("could not close: %+v", err))
-         }
+         _ = conn.Close()
        }()
 	var r []byte
 	// RFC 4120 7.2.2 specifies the first 4 bytes indicate the length of the message in big endian order.

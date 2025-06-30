@@ -25,9 +25,7 @@ func collectSMBv2Metadata(host string, port int, timeout time.Duration) (*plugin
 		return nil, err
 	}
 	defer func() {
-         if err := conn.Close(); err != nil {
-           panic(fmt.Errorf("could not close: %+v", err))
-         }
+         _ = conn.Close()
        }()
 
 	metadata, err := smb.DetectSMBv2(conn, timeout)

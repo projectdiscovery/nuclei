@@ -146,10 +146,8 @@ func process(opts options) error {
 			gologger.Fatal().Msgf("could not open error log file: %s\n", err)
 		}
 		defer func() {
-			if err := errFile.Close(); err != nil {
-				panic(fmt.Errorf("could not close: %+v", err))
-			}
-		}()
+          _ = errFile.Close()
+        }()
 	}
 
 	templateCatalog := disk.NewCatalog(filepath.Dir(opts.input))
