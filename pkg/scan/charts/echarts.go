@@ -48,7 +48,7 @@ func (s *ScanEventsCharts) allCharts(c echo.Context) *components.Page {
 	// line3.SetSpacerHeight(SpacerHeight)
 	page.AddCharts(line1, kline, line2, line3)
 	page.SetLayout(components.PageCenterLayout)
-	page.Theme = "dark"
+	// page.Theme = "dark"
 	page.Validate()
 
 	return page
@@ -99,20 +99,20 @@ func (s *ScanEventsCharts) totalRequestsOverTime(c echo.Context) *charts.Line {
 				Name:  scanEvent.TemplateID,
 			})
 		}
-		line.AddSeries(k, lineData, charts.WithLineChartOpts(opts.LineChart{Smooth: false}), charts.WithLabelOpts(opts.Label{Show: true, Position: "top"}))
+		line.AddSeries(k, lineData, charts.WithLineChartOpts(opts.LineChart{Smooth: opts.Bool(false)}), charts.WithLabelOpts(opts.Label{Show: opts.Bool(true), Position: "top"}))
 	}
 
 	line.SetGlobalOptions(
 		charts.WithTitleOpts(opts.Title{Title: "Nuclei: total-req vs time"}),
-		charts.WithXAxisOpts(opts.XAxis{Name: "Time", Type: "time", AxisLabel: &opts.AxisLabel{Show: true, ShowMaxLabel: true, Formatter: opts.FuncOpts(`function (date) { return (date/1000)+'s'; }`)}}),
+		charts.WithXAxisOpts(opts.XAxis{Name: "Time", Type: "time", AxisLabel: &opts.AxisLabel{Show: opts.Bool(true), ShowMaxLabel: opts.Bool(true), Formatter: opts.FuncOpts(`function (date) { return (date/1000)+'s'; }`)}}),
 		charts.WithYAxisOpts(opts.YAxis{Name: "Requests Sent", Type: "value"}),
 		charts.WithInitializationOpts(opts.Initialization{Theme: "dark"}),
 		charts.WithDataZoomOpts(opts.DataZoom{Type: "slider", Start: 0, End: 100}),
 		charts.WithGridOpts(opts.Grid{Left: "10%", Right: "10%", Bottom: "15%", Top: "20%"}),
-		charts.WithToolboxOpts(opts.Toolbox{Show: true, Feature: &opts.ToolBoxFeature{
-			SaveAsImage: &opts.ToolBoxFeatureSaveAsImage{Show: true, Name: "save", Title: "save"},
-			DataZoom:    &opts.ToolBoxFeatureDataZoom{Show: true, Title: map[string]string{"zoom": "zoom", "back": "back"}},
-			DataView:    &opts.ToolBoxFeatureDataView{Show: true, Title: "raw", Lang: []string{"raw", "exit", "refresh"}},
+		charts.WithToolboxOpts(opts.Toolbox{Show: opts.Bool(true), Feature: &opts.ToolBoxFeature{
+			SaveAsImage: &opts.ToolBoxFeatureSaveAsImage{Show: opts.Bool(true), Name: "save", Title: "save"},
+			DataZoom:    &opts.ToolBoxFeatureDataZoom{Show: opts.Bool(true), Title: map[string]string{"zoom": "zoom", "back": "back"}},
+			DataView:    &opts.ToolBoxFeatureDataView{Show: opts.Bool(true), Title: "raw", Lang: []string{"raw", "exit", "refresh"}},
 		}}),
 	)
 
@@ -182,22 +182,22 @@ func (s *ScanEventsCharts) topSlowTemplates(c echo.Context) *charts.Kline {
 		charts.WithTitleOpts(opts.Title{Title: fmt.Sprintf("Nuclei: Top %v Slow Templates", TopK)}),
 		charts.WithXAxisOpts(opts.XAxis{
 			Type:      "category",
-			Show:      true,
-			AxisLabel: &opts.AxisLabel{Rotate: 90, Show: true, ShowMinLabel: true, ShowMaxLabel: true, Formatter: opts.FuncOpts(`function (value) { return value; }`)},
+			Show:      opts.Bool(true),
+			AxisLabel: &opts.AxisLabel{Rotate: 90, Show: opts.Bool(true), ShowMinLabel: opts.Bool(true), ShowMaxLabel: opts.Bool(true), Formatter: opts.FuncOpts(`function (value) { return value; }`)},
 		}),
 		charts.WithYAxisOpts(opts.YAxis{
-			Scale:     true,
+			Scale:     opts.Bool(true),
 			Type:      "value",
-			Show:      true,
-			AxisLabel: &opts.AxisLabel{Show: true, Formatter: opts.FuncOpts(`function (ms) {  return Math.floor(ms/60000) + 'm' + Math.floor((ms/60000 - Math.floor(ms/60000))*60) + 's'; }`)},
+			Show:      opts.Bool(true),
+			AxisLabel: &opts.AxisLabel{Show: opts.Bool(true), Formatter: opts.FuncOpts(`function (ms) {  return Math.floor(ms/60000) + 'm' + Math.floor((ms/60000 - Math.floor(ms/60000))*60) + 's'; }`)},
 		}),
 		charts.WithDataZoomOpts(opts.DataZoom{Type: "slider", Start: 0, End: 100}),
 		charts.WithGridOpts(opts.Grid{Left: "10%", Right: "10%", Bottom: "40%", Top: "10%"}),
-		charts.WithTooltipOpts(opts.Tooltip{Show: true, Trigger: "events.ScanEvent", TriggerOn: "mousemove|click", Enterable: true, Formatter: opts.FuncOpts(`function (params) { return params.name ; }`)}),
-		charts.WithToolboxOpts(opts.Toolbox{Show: true, Feature: &opts.ToolBoxFeature{
-			SaveAsImage: &opts.ToolBoxFeatureSaveAsImage{Show: true, Name: "save", Title: "save"},
-			DataZoom:    &opts.ToolBoxFeatureDataZoom{Show: true, Title: map[string]string{"zoom": "zoom", "back": "back"}},
-			DataView:    &opts.ToolBoxFeatureDataView{Show: true, Title: "raw", Lang: []string{"raw", "exit", "refresh"}},
+		charts.WithTooltipOpts(opts.Tooltip{Show: opts.Bool(true), Trigger: "item", TriggerOn: "mousemove|click", Enterable: opts.Bool(true), Formatter: opts.FuncOpts(`function (params) { return params.name ; }`)}),
+		charts.WithToolboxOpts(opts.Toolbox{Show: opts.Bool(true), Feature: &opts.ToolBoxFeature{
+			SaveAsImage: &opts.ToolBoxFeatureSaveAsImage{Show: opts.Bool(true), Name: "save", Title: "save"},
+			DataZoom:    &opts.ToolBoxFeatureDataZoom{Show: opts.Bool(true), Title: map[string]string{"zoom": "zoom", "back": "back"}},
+			DataView:    &opts.ToolBoxFeatureDataView{Show: opts.Bool(true), Title: "raw", Lang: []string{"raw", "exit", "refresh"}},
 		}}),
 	)
 
@@ -255,20 +255,20 @@ func (s *ScanEventsCharts) requestsVSInterval(c echo.Context) *charts.Line {
 			data = append(data, opts.LineData{Value: temp, Name: s.data[len(s.data)-1].Time.Sub(orig).String()})
 		}
 		line.SetXAxis(xaxisData)
-		line.AddSeries("RPS", data, charts.WithLineChartOpts(opts.LineChart{Smooth: false}), charts.WithLabelOpts(opts.Label{Show: true, Position: "top"}))
+		line.AddSeries("RPS", data, charts.WithLineChartOpts(opts.LineChart{Smooth: opts.Bool(false)}), charts.WithLabelOpts(opts.Label{Show: opts.Bool(true), Position: "top"}))
 	}
 
 	line.SetGlobalOptions(
 		charts.WithTitleOpts(opts.Title{Title: "Nuclei: Template Execution", Subtitle: "Time Interval: " + interval.String()}),
-		charts.WithXAxisOpts(opts.XAxis{Name: "Time Intervals", Type: "category", AxisLabel: &opts.AxisLabel{Show: true, ShowMaxLabel: true, Formatter: opts.FuncOpts(`function (date) { return (date/1000)+'s'; }`)}}),
-		charts.WithYAxisOpts(opts.YAxis{Name: "RPS Value", Type: "value", Show: true}),
+		charts.WithXAxisOpts(opts.XAxis{Name: "Time Intervals", Type: "category", AxisLabel: &opts.AxisLabel{Show: opts.Bool(true), ShowMaxLabel: opts.Bool(true), Formatter: opts.FuncOpts(`function (date) { return (date/1000)+'s'; }`)}}),
+		charts.WithYAxisOpts(opts.YAxis{Name: "RPS Value", Type: "value", Show: opts.Bool(true)}),
 		charts.WithInitializationOpts(opts.Initialization{Theme: "dark"}),
 		charts.WithDataZoomOpts(opts.DataZoom{Type: "slider", Start: 0, End: 100}),
 		charts.WithGridOpts(opts.Grid{Left: "10%", Right: "10%", Bottom: "15%", Top: "20%"}),
-		charts.WithToolboxOpts(opts.Toolbox{Show: true, Feature: &opts.ToolBoxFeature{
-			SaveAsImage: &opts.ToolBoxFeatureSaveAsImage{Show: true, Name: "save", Title: "save"},
-			DataZoom:    &opts.ToolBoxFeatureDataZoom{Show: true, Title: map[string]string{"zoom": "zoom", "back": "back"}},
-			DataView:    &opts.ToolBoxFeatureDataView{Show: true, Title: "raw", Lang: []string{"raw", "exit", "refresh"}},
+		charts.WithToolboxOpts(opts.Toolbox{Show: opts.Bool(true), Feature: &opts.ToolBoxFeature{
+			SaveAsImage: &opts.ToolBoxFeatureSaveAsImage{Show: opts.Bool(true), Name: "save", Title: "save"},
+			DataZoom:    &opts.ToolBoxFeatureDataZoom{Show: opts.Bool(true), Title: map[string]string{"zoom": "zoom", "back": "back"}},
+			DataView:    &opts.ToolBoxFeatureDataView{Show: opts.Bool(true), Title: "raw", Lang: []string{"raw", "exit", "refresh"}},
 		}}),
 	)
 
@@ -343,19 +343,19 @@ func (s *ScanEventsCharts) concurrencyVsTime(c echo.Context) *charts.Line {
 		xaxisData = append(xaxisData, tempTime.Milliseconds())
 	}
 	line.SetXAxis(xaxisData)
-	line.AddSeries("Concurrency", plotData, charts.WithLineChartOpts(opts.LineChart{Smooth: false}), charts.WithLabelOpts(opts.Label{Show: true, Position: "top"}))
+	line.AddSeries("Concurrency", plotData, charts.WithLineChartOpts(opts.LineChart{Smooth: opts.Bool(false)}), charts.WithLabelOpts(opts.Label{Show: opts.Bool(true), Position: "top"}))
 
 	line.SetGlobalOptions(
 		charts.WithTitleOpts(opts.Title{Title: "Nuclei: WorkerPool", Subtitle: "Time Interval: " + interval.String()}),
-		charts.WithXAxisOpts(opts.XAxis{Name: "Time Intervals", Type: "category", AxisLabel: &opts.AxisLabel{Show: true, ShowMaxLabel: true, Formatter: opts.FuncOpts(`function (date) { return (date/1000)+'s'; }`)}}),
-		charts.WithYAxisOpts(opts.YAxis{Name: "Total Workers", Type: "value", Show: true}),
+		charts.WithXAxisOpts(opts.XAxis{Name: "Time Intervals", Type: "category", AxisLabel: &opts.AxisLabel{Show: opts.Bool(true), ShowMaxLabel: opts.Bool(true), Formatter: opts.FuncOpts(`function (date) { return (date/1000)+'s'; }`)}}),
+		charts.WithYAxisOpts(opts.YAxis{Name: "Total Workers", Type: "value", Show: opts.Bool(true)}),
 		charts.WithInitializationOpts(opts.Initialization{Theme: "dark"}),
 		charts.WithDataZoomOpts(opts.DataZoom{Type: "slider", Start: 0, End: 100}),
 		charts.WithGridOpts(opts.Grid{Left: "10%", Right: "10%", Bottom: "15%", Top: "20%"}),
-		charts.WithToolboxOpts(opts.Toolbox{Show: true, Feature: &opts.ToolBoxFeature{
-			SaveAsImage: &opts.ToolBoxFeatureSaveAsImage{Show: true, Name: "save", Title: "save"},
-			DataZoom:    &opts.ToolBoxFeatureDataZoom{Show: true, Title: map[string]string{"zoom": "zoom", "back": "back"}},
-			DataView:    &opts.ToolBoxFeatureDataView{Show: true, Title: "raw", Lang: []string{"raw", "exit", "refresh"}},
+		charts.WithToolboxOpts(opts.Toolbox{Show: opts.Bool(true), Feature: &opts.ToolBoxFeature{
+			SaveAsImage: &opts.ToolBoxFeatureSaveAsImage{Show: opts.Bool(true), Name: "save", Title: "save"},
+			DataZoom:    &opts.ToolBoxFeatureDataZoom{Show: opts.Bool(true), Title: map[string]string{"zoom": "zoom", "back": "back"}},
+			DataView:    &opts.ToolBoxFeatureDataView{Show: opts.Bool(true), Title: "raw", Lang: []string{"raw", "exit", "refresh"}},
 		}}),
 	)
 
