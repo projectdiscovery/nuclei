@@ -30,7 +30,11 @@ func (s *ScanEventsCharts) GenerateHTML(filePath string) error {
 	if err != nil {
 		return err
 	}
-	defer output.Close()
+	defer func() {
+         if err := output.Close(); err != nil {
+           panic(fmt.Errorf("could not close: %+v", err))
+         }
+       }()
 	return page.Render(output)
 }
 

@@ -30,7 +30,11 @@ func loadProxyServers(options *types.Options) error {
 			if err != nil {
 				return fmt.Errorf("could not open proxy file: %w", err)
 			}
-			defer file.Close()
+			defer func() {
+				if err := file.Close(); err != nil {
+					panic(fmt.Errorf("could not close: %+v", err))
+				}
+			}()
 			scanner := bufio.NewScanner(file)
 			for scanner.Scan() {
 				proxy := scanner.Text()
@@ -52,7 +56,7 @@ func loadProxyServers(options *types.Options) error {
 		return errorutil.WrapfWithNil(err, "failed to parse proxy got %v", err)
 	}
 	if options.ProxyInternal {
-		os.Setenv(HTTP_PROXY_ENV, proxyURL.String())
+		_ = os.Setenv(HTTP_PROXY_ENV, proxyURL.String())
 	}
 	switch proxyURL.Scheme {
 	case proxyutils.HTTP, proxyutils.HTTPS:

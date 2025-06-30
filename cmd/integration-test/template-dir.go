@@ -19,7 +19,9 @@ func (h *templateDirWithTargetTest) Execute(filePath string) error {
 	if err != nil {
 		return errorutil.NewWithErr(err).Msgf("failed to create temp dir")
 	}
-	defer os.RemoveAll(tempdir)
+	defer func() {
+		_ = os.RemoveAll(tempdir)
+	}()
 
 	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, "8x8exch02.8x8.com", debug, "-ud", tempdir)
 	if err != nil {

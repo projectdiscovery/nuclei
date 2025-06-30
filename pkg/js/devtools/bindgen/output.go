@@ -36,10 +36,10 @@ func (d *TemplateData) WriteGoTemplate(outputDirectory string, pkgName string) e
 	}
 
 	if err := tmpl.Execute(output, d); err != nil {
-		output.Close()
+		_ = output.Close()
 		return errors.Wrap(err, "could not execute go class template")
 	}
-	output.Close()
+	_ = output.Close()
 
 	cmd := exec.Command("gofmt", "-w", filename)
 	cmd.Stderr = os.Stderr
@@ -68,10 +68,10 @@ func (d *TemplateData) WriteJSTemplate(outputDirectory string, pkgName string) e
 	}
 
 	if err := tmpl.Execute(output, d); err != nil {
-		output.Close()
+		_ = output.Close()
 		return errors.Wrap(err, "could not execute js class template")
 	}
-	output.Close()
+	_ = output.Close()
 
 	cmd := exec.Command("js-beautify", "-r", filename)
 	cmd.Stderr = os.Stderr
@@ -91,7 +91,11 @@ func (d *TemplateData) WriteMarkdownIndexTemplate(outputDirectory string) error 
 	if err != nil {
 		return errors.Wrap(err, "could not create markdown index template")
 	}
-	defer output.Close()
+	defer func() {
+		if err := output.Close(); err != nil {
+			panic(fmt.Errorf("could not close: %+v", err))
+		}
+	}()
 
 	buffer := &bytes.Buffer{}
 	_, _ = buffer.WriteString("# Index\n\n")
@@ -131,10 +135,10 @@ func (d *TemplateData) WriteMarkdownLibraryDocumentation(outputDirectory string,
 
 	markdownIndexes[pkgName] = fmt.Sprintf("[%s](%s.md)", pkgName, pkgName)
 	if err := tmpl.Execute(output, d); err != nil {
-		output.Close()
+		_ = output.Close()
 		return err
 	}
-	output.Close()
+	_ = output.Close()
 
 	return nil
 }

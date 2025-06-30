@@ -117,7 +117,11 @@ func (request *Request) executeRequestWithPayloads(input *contextargs.Context, p
 		request.options.Progress.IncrementFailedRequestsBy(1)
 		return errors.Wrap(err, errCouldNotGetHtmlElement)
 	}
-	defer instance.Close()
+	defer func() {
+		if err := instance.Close(); err != nil {
+			panic(fmt.Errorf("could not close: %+v", err))
+		}
+	}()
 
 	instance.SetInteractsh(request.options.Interactsh)
 
@@ -159,7 +163,7 @@ func (request *Request) executeRequestWithPayloads(input *contextargs.Context, p
 			if act.ActionType.ActionType == engine.ActionNavigate {
 				value := act.GetArg("url")
 				if reqLog[value] != "" {
-					fmt.Fprintf(reqBuilder, "\tnavigate => %v\n", reqLog[value])
+					_, _ = fmt.Fprintf(reqBuilder, "\tnavigate => %v\n", reqLog[value])
 				} else {
 					fmt.Fprintf(reqBuilder, "%v not found in %v\n", value, reqLog)
 				}

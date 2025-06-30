@@ -257,7 +257,7 @@ func (c *Client) Close() bool {
 	}
 	if c.interactsh != nil {
 		_ = c.interactsh.StopPolling()
-		c.interactsh.Close()
+		_ = c.interactsh.Close()
 	}
 
 	c.requests.Purge()
@@ -424,7 +424,7 @@ func (c *Client) debugPrintInteraction(interaction *server.Interaction, event *o
 			builder.WriteString(formatInteractionMessage("LDAP Interaction", interaction.RawRequest, event, c.options.NoColor))
 		}
 	}
-	fmt.Fprint(os.Stderr, builder.String())
+	_, _ = fmt.Fprint(os.Stderr, builder.String())
 }
 
 func formatInteractionHeader(protocol, ID, address string, at time.Time) string {

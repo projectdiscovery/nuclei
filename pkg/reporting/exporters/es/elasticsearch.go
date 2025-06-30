@@ -131,7 +131,11 @@ func (exporter *Exporter) Export(event *output.ResultEvent) error {
 	if err != nil {
 		return err
 	}
-	defer res.Body.Close()
+	defer func() {
+         if err := res.Body.Close(); err != nil {
+           panic(fmt.Errorf("could not close: %+v", err))
+         }
+       }()
 
 	b, err = io.ReadAll(res.Body)
 	if err != nil {

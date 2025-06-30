@@ -135,7 +135,9 @@ func process(opts options) error {
 	if err != nil {
 		return err
 	}
-	defer os.RemoveAll(tempDir)
+	defer func() {
+		_ = os.RemoveAll(tempDir)
+	}()
 
 	var errFile *os.File
 	if opts.errorLogFile != "" {
@@ -143,7 +145,11 @@ func process(opts options) error {
 		if err != nil {
 			gologger.Fatal().Msgf("could not open error log file: %s\n", err)
 		}
-		defer errFile.Close()
+		defer func() {
+			if err := errFile.Close(); err != nil {
+				panic(fmt.Errorf("could not close: %+v", err))
+			}
+		}()
 	}
 
 	templateCatalog := disk.NewCatalog(filepath.Dir(opts.input))

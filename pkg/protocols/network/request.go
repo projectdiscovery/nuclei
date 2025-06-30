@@ -302,7 +302,11 @@ func (request *Request) executeRequestWithPayloads(variables map[string]interfac
 		request.options.Progress.IncrementFailedRequestsBy(1)
 		return errors.Wrap(err, "could not connect to server")
 	}
-	defer conn.Close()
+	defer func() {
+         if err := conn.Close(); err != nil {
+           panic(fmt.Errorf("could not close: %+v", err))
+         }
+       }()
 	_ = conn.SetDeadline(time.Now().Add(time.Duration(request.options.Options.Timeout) * time.Second))
 
 	var interactshURLs []string

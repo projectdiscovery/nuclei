@@ -81,7 +81,11 @@ func getRemoteContent(URL string, remoteTemplateDomainList []string, remoteConte
 		}
 		return
 	}
-	defer response.Body.Close()
+	defer func() {
+         if err := response.Body.Close(); err != nil {
+           panic(fmt.Errorf("could not close: %+v", err))
+         }
+       }()
 	if response.StatusCode < 200 || response.StatusCode > 299 {
 		remoteContentChannel <- RemoteContent{
 			Error: fmt.Errorf("get \"%s\": unexpect status %d", URL, response.StatusCode),

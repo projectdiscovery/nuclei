@@ -57,7 +57,11 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, metadata,
 				gologger.Error().Msgf("Could not open file path %s: %s\n", data, err)
 				return
 			}
-			defer file.Close()
+			defer func() {
+           if err := file.Close(); err != nil {
+             panic(fmt.Errorf("could not close: %+v", err))
+           }
+         }()
 
 			stat, err := file.Stat()
 			if err != nil {

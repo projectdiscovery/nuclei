@@ -1,6 +1,7 @@
 package config
 
 import (
+	"fmt"
 	"os"
 
 	"github.com/projectdiscovery/gologger"
@@ -20,7 +21,11 @@ func ReadIgnoreFile() IgnoreFile {
 		gologger.Error().Msgf("Could not read nuclei-ignore file: %s\n", err)
 		return IgnoreFile{}
 	}
-	defer file.Close()
+	defer func() {
+		if err := file.Close(); err != nil {
+			panic(fmt.Errorf("could not close: %+v", err))
+		}
+	}()
 
 	ignore := IgnoreFile{}
 	if err := yaml.NewDecoder(file).Decode(&ignore); err != nil {

@@ -2,6 +2,7 @@ package oracle
 
 import (
 	"context"
+	"fmt"
 	"net"
 	"strconv"
 	"time"
@@ -45,7 +46,11 @@ func isOracle(host string, port int) (IsOracleResponse, error) {
 	if err != nil {
 		return resp, err
 	}
-	defer conn.Close()
+	defer func() {
+		if err := conn.Close(); err != nil {
+			panic(fmt.Errorf("could not close: %+v", err))
+		}
+	}()
 
 	oracledbPlugin := oracledb.ORACLEPlugin{}
 	service, err := oracledbPlugin.Run(conn, timeout, plugins.Target{Host: host})

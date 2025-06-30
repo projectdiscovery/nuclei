@@ -2,6 +2,7 @@ package formats
 
 import (
 	"errors"
+	"fmt"
 	"io"
 	"os"
 	"strings"
@@ -88,7 +89,11 @@ func WriteOpenAPIVarDumpFile(vars *OpenAPIParamsCfgFile) error {
 	if err != nil {
 		return err
 	}
-	defer f.Close()
+	defer func() {
+		if err := f.Close(); err != nil {
+			panic(fmt.Errorf("could not close: %+v", err))
+		}
+	}()
 	bin, err := yaml.Marshal(vars)
 	if err != nil {
 		return err

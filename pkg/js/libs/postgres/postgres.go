@@ -12,8 +12,8 @@ import (
 	"github.com/praetorian-inc/fingerprintx/pkg/plugins"
 	postgres "github.com/praetorian-inc/fingerprintx/pkg/plugins/services/postgresql"
 	utils "github.com/projectdiscovery/nuclei/v3/pkg/js/utils"
-	"github.com/projectdiscovery/nuclei/v3/pkg/js/utils/pgwrap"
-	_ "github.com/projectdiscovery/nuclei/v3/pkg/js/utils/pgwrap"
+	"github.com/projectdiscovery/nuclei/v3/pkg/js/utils/pgwrap"   //nolint:staticcheck // need to call init
+	_ "github.com/projectdiscovery/nuclei/v3/pkg/js/utils/pgwrap" //nolint:staticcheck
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
 )
 
@@ -49,7 +49,11 @@ func isPostgres(host string, port int) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	defer conn.Close()
+	defer func() {
+		if err := conn.Close(); err != nil {
+			panic(fmt.Errorf("could not close: %+v", err))
+		}
+	}()
 
 	_ = conn.SetDeadline(time.Now().Add(timeout))
 
@@ -121,7 +125,11 @@ func executeQuery(host string, port int, username string, password string, dbNam
 	if err != nil {
 		return nil, err
 	}
-	defer db.Close()
+	defer func() {
+		if err := db.Close(); err != nil {
+			panic(fmt.Errorf("could not close: %+v", err))
+		}
+	}()
 
 	rows, err := db.Query(query)
 	if err != nil {
@@ -182,7 +190,11 @@ func connect(host string, port int, username string, password string, dbName str
 		},
 		IdleCheckFrequency: -1,
 	}).WithContext(ctx).WithTimeout(10 * time.Second)
-	defer db.Close()
+	defer func() {
+		if err := db.Close(); err != nil {
+			panic(fmt.Errorf("could not close: %+v", err))
+		}
+	}()
 
 	_, err := db.Exec("select 1")
 	if err != nil {

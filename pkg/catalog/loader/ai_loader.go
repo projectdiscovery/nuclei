@@ -3,6 +3,7 @@ package loader
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"os"
@@ -117,7 +118,11 @@ func generateAITemplate(prompt string) (string, string, error) {
 	if err != nil {
 		return "", "", errorutil.New("Failed to send HTTP request: %v", err)
 	}
-	defer resp.Body.Close()
+	defer func() {
+		if err := resp.Body.Close(); err != nil {
+			panic(fmt.Errorf("could not close: %+v", err))
+		}
+	}()
 
 	if resp.StatusCode == http.StatusUnauthorized {
 		return "", "", errorutil.New("Invalid API Key or API Key not configured, Create one for free at https://cloud.projectdiscovery.io/")

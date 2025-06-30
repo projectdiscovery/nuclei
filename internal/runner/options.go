@@ -122,7 +122,7 @@ func ParseOptions(options *types.Options) {
 
 	// Set GitHub token in env variable. runner.getGHClientWithToken() reads token from env
 	if options.GitHubToken != "" && os.Getenv("GITHUB_TOKEN") != options.GitHubToken {
-		os.Setenv("GITHUB_TOKEN", options.GitHubToken)
+		_ = os.Setenv("GITHUB_TOKEN", options.GitHubToken)
 	}
 
 	if options.UncoverQuery != nil {
@@ -304,7 +304,11 @@ func createReportingOptions(options *types.Options) (*reporting.Options, error) 
 		if err != nil {
 			return nil, errors.Wrap(err, "could not open reporting config file")
 		}
-		defer file.Close()
+		defer func() {
+			if err := file.Close(); err != nil {
+				panic(fmt.Errorf("could not close: %+v", err))
+			}
+		}()
 
 		if err := yaml.DecodeAndValidate(file, reportingOptions); err != nil {
 			return nil, errors.Wrap(err, "could not parse reporting config file")
@@ -380,7 +384,11 @@ func loadResolvers(options *types.Options) {
 	if err != nil {
 		gologger.Fatal().Msgf("Could not open resolvers file: %s\n", err)
 	}
-	defer file.Close()
+	defer func() {
+		if err := file.Close(); err != nil {
+			panic(fmt.Errorf("could not close: %+v", err))
+		}
+	}()
 
 	scanner := bufio.NewScanner(file)
 	for scanner.Scan() {

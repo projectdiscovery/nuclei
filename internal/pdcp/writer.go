@@ -127,7 +127,11 @@ func (u *UploadWriter) autoCommit(ctx context.Context, r *io.PipeReader) {
 
 	// continuously read from the reader and send to channel
 	go func() {
-		defer r.Close()
+		defer func() {
+          if err := r.Close(); err != nil {
+            panic(fmt.Errorf("could not close: %+v", err))
+          }
+        }()
 		defer close(ch)
 		for {
 			data, err := reader.ReadString('\n')
@@ -213,7 +217,11 @@ func (u *UploadWriter) upload(data []byte) error {
 	if err != nil {
 		return errorutil.NewWithErr(err).Msgf("could not upload results")
 	}
-	defer resp.Body.Close()
+	defer func() {
+         if err := resp.Body.Close(); err != nil {
+           panic(fmt.Errorf("could not close: %+v", err))
+         }
+       }()
 	bin, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return errorutil.NewWithErr(err).Msgf("could not get id from response")

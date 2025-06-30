@@ -30,7 +30,7 @@ type Configuration struct {
 // Hash returns the hash of the configuration to allow client pooling
 func (c *Configuration) Hash() string {
 	builder := &strings.Builder{}
-	fmt.Fprintf(builder, "%v", c.SignerArgs)
+	_, _ = fmt.Fprintf(builder, "%v", c.SignerArgs)
 	hash := builder.String()
 	return hash
 }

@@ -48,7 +48,11 @@ func isRDP(host string, port int) (IsRDPResponse, error) {
 	if err != nil {
 		return resp, err
 	}
-	defer conn.Close()
+	defer func() {
+         if err := conn.Close(); err != nil {
+           panic(fmt.Errorf("could not close: %+v", err))
+         }
+       }()
 
 	server, isRDP, err := rdp.DetectRDP(conn, timeout)
 	if err != nil {
@@ -99,7 +103,11 @@ func checkRDPAuth(host string, port int) (CheckRDPAuthResponse, error) {
 	if err != nil {
 		return resp, err
 	}
-	defer conn.Close()
+	defer func() {
+         if err := conn.Close(); err != nil {
+           panic(fmt.Errorf("could not close: %+v", err))
+         }
+       }()
 
 	pluginInfo, auth, err := rdp.DetectRDPAuth(conn, timeout)
 	if err != nil {

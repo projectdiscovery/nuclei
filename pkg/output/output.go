@@ -450,13 +450,13 @@ func (w *StandardWriter) Colorizer() aurora.Aurora {
 // Close closes the output writing interface
 func (w *StandardWriter) Close() {
 	if w.outputFile != nil {
-		w.outputFile.Close()
+		_ = w.outputFile.Close()
 	}
 	if w.traceFile != nil {
-		w.traceFile.Close()
+		_ = w.traceFile.Close()
 	}
 	if w.errorFile != nil {
-		w.errorFile.Close()
+		_ = w.errorFile.Close()
 	}
 }
 
@@ -562,7 +562,7 @@ func (w *StandardWriter) WriteStoreDebugData(host, templateID, eventType string,
 			return
 		}
 		_, _ = fmt.Fprintln(f, data)
-		f.Close()
+		_ = f.Close()
 	}
 }
 

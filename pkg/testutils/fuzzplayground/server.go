@@ -80,7 +80,11 @@ func requestHandler(ctx echo.Context) error {
 	if err != nil {
 		return ctx.HTML(500, err.Error())
 	}
-	defer data.Body.Close()
+	defer func() {
+         if err := data.Body.Close(); err != nil {
+           panic(fmt.Errorf("could not close: %+v", err))
+         }
+       }()
 
 	body, _ := io.ReadAll(data.Body)
 	return ctx.HTML(200, fmt.Sprintf(bodyTemplate, string(body)))
@@ -172,7 +176,11 @@ func resetPasswordHandler(c echo.Context) error {
 	if err != nil {
 		return c.JSON(500, "Something went wrong")
 	}
-	defer resp.Body.Close()
+	defer func() {
+         if err := resp.Body.Close(); err != nil {
+           panic(fmt.Errorf("could not close: %+v", err))
+         }
+       }()
 	return c.JSON(200, "Password reset successfully")
 }
 
@@ -184,7 +192,11 @@ func hostHeaderLabHandler(c echo.Context) error {
 		if err != nil {
 			return c.JSON(500, "Something went wrong")
 		}
-		defer resp.Body.Close()
+		defer func() {
+          if err := resp.Body.Close(); err != nil {
+            panic(fmt.Errorf("could not close: %+v", err))
+          }
+        }()
 		c.Response().Header().Set("Content-Type", resp.Header.Get("Content-Type"))
 		c.Response().WriteHeader(resp.StatusCode)
 		_, err = io.Copy(c.Response().Writer, resp.Body)

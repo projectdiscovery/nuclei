@@ -237,7 +237,11 @@ func (store *Store) ReadTemplateFromURI(uri string, remote bool) ([]byte, error)
 		if err != nil {
 			return nil, err
 		}
-		defer resp.Body.Close()
+		defer func() {
+          if err := resp.Body.Close(); err != nil {
+            panic(fmt.Errorf("could not close: %+v", err))
+          }
+        }()
 		return io.ReadAll(resp.Body)
 	} else {
 		return os.ReadFile(uri)

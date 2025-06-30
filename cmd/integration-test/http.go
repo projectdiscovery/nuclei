@@ -108,7 +108,7 @@ func (h *httpMatcherExtractorDynamicExtractor) Execute(filePath string) error {
     <a href="/domains">Domains</a>
 </body>
 </html>`
-		fmt.Fprint(w, html)
+		_, _ = fmt.Fprint(w, html)
 	})
 	router.GET("/domains", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 		html := `<!DOCTYPE html>
@@ -121,7 +121,7 @@ func (h *httpMatcherExtractorDynamicExtractor) Execute(filePath string) error {
 		</body>
 		</html>
 		`
-		fmt.Fprint(w, html)
+		_, _ = fmt.Fprint(w, html)
 	})
 	ts := httptest.NewServer(router)
 	defer ts.Close()
@@ -143,7 +143,7 @@ func (h *httpInteractshRequest) Execute(filePath string) error {
 		value := r.Header.Get("url")
 		if value != "" {
 			if resp, _ := retryablehttp.DefaultClient().Get(value); resp != nil {
-				resp.Body.Close()
+				_ = resp.Body.Close()
 			}
 		}
 	})
@@ -213,7 +213,7 @@ func (h *httpInteractshStopAtFirstMatchRequest) Execute(filePath string) error {
 		value := r.Header.Get("url")
 		if value != "" {
 			if resp, _ := retryablehttp.DefaultClient().Get(value); resp != nil {
-				resp.Body.Close()
+				_ = resp.Body.Close()
 			}
 		}
 	})
@@ -235,7 +235,7 @@ func (h *httpGetHeaders) Execute(filePath string) error {
 	router := httprouter.New()
 	router.GET("/", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 		if strings.EqualFold(r.Header.Get("test"), "nuclei") {
-			fmt.Fprintf(w, "This is test headers matcher text")
+			_, _ = fmt.Fprintf(w, "This is test headers matcher text")
 		}
 	})
 	ts := httptest.NewServer(router)
@@ -256,7 +256,7 @@ func (h *httpGetQueryString) Execute(filePath string) error {
 	router := httprouter.New()
 	router.GET("/", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 		if strings.EqualFold(r.URL.Query().Get("test"), "nuclei") {
-			fmt.Fprintf(w, "This is test querystring matcher text")
+			_, _ = fmt.Fprintf(w, "This is test querystring matcher text")
 		}
 	})
 	ts := httptest.NewServer(router)
@@ -279,7 +279,7 @@ func (h *httpGetRedirects) Execute(filePath string) error {
 		http.Redirect(w, r, "/redirected", http.StatusFound)
 	})
 	router.GET("/redirected", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-		fmt.Fprintf(w, "This is test redirects matcher text")
+		_, _ = fmt.Fprintf(w, "This is test redirects matcher text")
 	})
 	ts := httptest.NewServer(router)
 	defer ts.Close()
@@ -329,7 +329,7 @@ func (h *httpDisableRedirects) Execute(filePath string) error {
 		http.Redirect(w, r, "/redirected", http.StatusMovedPermanently)
 	})
 	router.GET("/redirected", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-		fmt.Fprintf(w, "This is test redirects matcher text")
+		_, _ = fmt.Fprintf(w, "This is test redirects matcher text")
 	})
 	ts := httptest.NewServer(router)
 	defer ts.Close()
@@ -348,7 +348,7 @@ type httpGet struct{}
 func (h *httpGet) Execute(filePath string) error {
 	router := httprouter.New()
 	router.GET("/", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-		fmt.Fprintf(w, "This is test matcher text")
+		_, _ = fmt.Fprintf(w, "This is test matcher text")
 	})
 	ts := httptest.NewServer(router)
 	defer ts.Close()
@@ -367,7 +367,7 @@ type httpDSLVariable struct{}
 func (h *httpDSLVariable) Execute(filePath string) error {
 	router := httprouter.New()
 	router.GET("/", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-		fmt.Fprintf(w, "This is test matcher text")
+		_, _ = fmt.Fprintf(w, "This is test matcher text")
 	})
 	ts := httptest.NewServer(router)
 	defer ts.Close()
@@ -450,7 +450,7 @@ func (h *httpPostBody) Execute(filePath string) error {
 			return
 		}
 		if strings.EqualFold(r.Form.Get("username"), "test") && strings.EqualFold(r.Form.Get("password"), "nuclei") {
-			fmt.Fprintf(w, "This is test post-body matcher text")
+			_, _ = fmt.Fprintf(w, "This is test post-body matcher text")
 		}
 	})
 	ts := httptest.NewServer(router)
@@ -485,7 +485,7 @@ func (h *httpPostJSONBody) Execute(filePath string) error {
 			return
 		}
 		if strings.EqualFold(obj.Username, "test") && strings.EqualFold(obj.Password, "nuclei") {
-			fmt.Fprintf(w, "This is test post-json-body matcher text")
+			_, _ = fmt.Fprintf(w, "This is test post-json-body matcher text")
 		}
 	})
 	ts := httptest.NewServer(router)
@@ -525,7 +525,7 @@ func (h *httpPostMultipartBody) Execute(filePath string) error {
 			return
 		}
 		if strings.EqualFold(password[0], "nuclei") && strings.EqualFold(file[0].Filename, "username") {
-			fmt.Fprintf(w, "This is test post-multipart matcher text")
+			_, _ = fmt.Fprintf(w, "This is test post-multipart matcher text")
 		}
 	})
 	ts := httptest.NewServer(router)
@@ -555,12 +555,12 @@ func (h *httpRawDynamicExtractor) Execute(filePath string) error {
 			return
 		}
 		if strings.EqualFold(r.Form.Get("testing"), "parameter") {
-			fmt.Fprintf(w, "Token: 'nuclei'")
+			_, _ = fmt.Fprintf(w, "Token: 'nuclei'")
 		}
 	})
 	router.GET("/", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 		if strings.EqualFold(r.URL.Query().Get("username"), "nuclei") {
-			fmt.Fprintf(w, "Test is test-dynamic-extractor-raw matcher text")
+			_, _ = fmt.Fprintf(w, "Test is test-dynamic-extractor-raw matcher text")
 		}
 	})
 	ts := httptest.NewServer(router)
@@ -584,7 +584,7 @@ func (h *httpRawGetQuery) Execute(filePath string) error {
 	router := httprouter.New()
 	router.GET("/", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 		if strings.EqualFold(r.URL.Query().Get("test"), "nuclei") {
-			fmt.Fprintf(w, "Test is test raw-get-query-matcher text")
+			_, _ = fmt.Fprintf(w, "Test is test raw-get-query-matcher text")
 		}
 	})
 	ts := httptest.NewServer(router)
@@ -604,7 +604,7 @@ type httpRawGet struct{}
 func (h *httpRawGet) Execute(filePath string) error {
 	router := httprouter.New()
 	router.GET("/", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-		fmt.Fprintf(w, "Test is test raw-get-matcher text")
+		_, _ = fmt.Fprintf(w, "Test is test raw-get-matcher text")
 	})
 	ts := httptest.NewServer(router)
 	defer ts.Close()
@@ -633,7 +633,7 @@ func (h *httpRawWithParams) Execute(filePath string) error {
 		if !reflect.DeepEqual(params["key2"], []string{"value2"}) {
 			errx = errorutil.WrapfWithNil(errx, "expected %v, got %v", []string{"value2"}, params["key2"])
 		}
-		fmt.Fprintf(w, "Test is test raw-params-matcher text")
+		_, _ = fmt.Fprintf(w, "Test is test raw-params-matcher text")
 	})
 	ts := httptest.NewServer(router)
 	defer ts.Close()
@@ -689,7 +689,7 @@ func (h *httpRawPayload) Execute(filePath string) error {
 			return
 		}
 		if strings.EqualFold(r.Form.Get("username"), "test") && (strings.EqualFold(r.Form.Get("password"), "nuclei") || strings.EqualFold(r.Form.Get("password"), "guest")) {
-			fmt.Fprintf(w, "Test is raw-payload matcher text")
+			_, _ = fmt.Fprintf(w, "Test is raw-payload matcher text")
 		}
 	})
 	ts := httptest.NewServer(router)
@@ -719,7 +719,7 @@ func (h *httpRawPostBody) Execute(filePath string) error {
 			return
 		}
 		if strings.EqualFold(r.Form.Get("username"), "test") && strings.EqualFold(r.Form.Get("password"), "nuclei") {
-			fmt.Fprintf(w, "Test is test raw-post-body-matcher text")
+			_, _ = fmt.Fprintf(w, "Test is test raw-post-body-matcher text")
 		}
 	})
 	ts := httptest.NewServer(router)
@@ -869,7 +869,7 @@ func (h *httpRawCookieReuse) Execute(filePath string) error {
 		}
 
 		if strings.EqualFold(cookie.Value, "test") {
-			fmt.Fprintf(w, "Test is test-cookie-reuse matcher text")
+			_, _ = fmt.Fprintf(w, "Test is test-cookie-reuse matcher text")
 		}
 	})
 	ts := httptest.NewServer(router)
@@ -947,7 +947,11 @@ func (h *httpRequestSelfContained) Execute(filePath string) error {
 	go func() {
 		_ = server.ListenAndServe()
 	}()
-	defer server.Close()
+	defer func() {
+		if err := server.Close(); err != nil {
+			panic(fmt.Errorf("could not close: %+v", err))
+		}
+	}()
 
 	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, "", debug, "-esc")
 	if err != nil {
@@ -983,7 +987,11 @@ func (h *httpRequestSelfContainedWithParams) Execute(filePath string) error {
 	go func() {
 		_ = server.ListenAndServe()
 	}()
-	defer server.Close()
+	defer func() {
+		if err := server.Close(); err != nil {
+			panic(fmt.Errorf("could not close: %+v", err))
+		}
+	}()
 
 	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, "", debug, "-esc")
 	if err != nil {
@@ -1016,7 +1024,11 @@ func (h *httpRequestSelfContainedFileInput) Execute(filePath string) error {
 	go func() {
 		_ = server.ListenAndServe()
 	}()
-	defer server.Close()
+	defer func() {
+		if err := server.Close(); err != nil {
+			panic(fmt.Errorf("could not close: %+v", err))
+		}
+	}()
 
 	// create temp file
 	FileLoc, err := os.CreateTemp("", "self-contained-payload-*.txt")
@@ -1026,7 +1038,11 @@ func (h *httpRequestSelfContainedFileInput) Execute(filePath string) error {
 	if _, err := FileLoc.Write([]byte("one\ntwo\n")); err != nil {
 		return errorutil.NewWithErr(err).Msgf("failed to write payload to temp file")
 	}
-	defer FileLoc.Close()
+	defer func() {
+		if err := FileLoc.Close(); err != nil {
+			panic(fmt.Errorf("could not close: %+v", err))
+		}
+	}()
 
 	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, "", debug, "-V", "test="+FileLoc.Name(), "-esc")
 	if err != nil {
@@ -1049,7 +1065,7 @@ type httpGetCaseInsensitive struct{}
 func (h *httpGetCaseInsensitive) Execute(filePath string) error {
 	router := httprouter.New()
 	router.GET("/", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-		fmt.Fprintf(w, "THIS IS TEST MATCHER TEXT")
+		_, _ = fmt.Fprintf(w, "THIS IS TEST MATCHER TEXT")
 	})
 	ts := httptest.NewServer(router)
 	defer ts.Close()
@@ -1068,7 +1084,7 @@ type httpGetCaseInsensitiveCluster struct{}
 func (h *httpGetCaseInsensitiveCluster) Execute(filesPath string) error {
 	router := httprouter.New()
 	router.GET("/", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-		fmt.Fprintf(w, "This is test matcher text")
+		_, _ = fmt.Fprintf(w, "This is test matcher text")
 	})
 	ts := httptest.NewServer(router)
 	defer ts.Close()
@@ -1151,7 +1167,7 @@ type httpStopAtFirstMatch struct{}
 func (h *httpStopAtFirstMatch) Execute(filePath string) error {
 	router := httprouter.New()
 	router.GET("/", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-		fmt.Fprintf(w, "This is test")
+		_, _ = fmt.Fprintf(w, "This is test")
 	})
 	ts := httptest.NewServer(router)
 	defer ts.Close()
@@ -1170,7 +1186,7 @@ type httpStopAtFirstMatchWithExtractors struct{}
 func (h *httpStopAtFirstMatchWithExtractors) Execute(filePath string) error {
 	router := httprouter.New()
 	router.GET("/", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-		fmt.Fprintf(w, "This is test")
+		_, _ = fmt.Fprintf(w, "This is test")
 	})
 	ts := httptest.NewServer(router)
 	defer ts.Close()
@@ -1189,7 +1205,7 @@ type httpVariables struct{}
 func (h *httpVariables) Execute(filePath string) error {
 	router := httprouter.New()
 	router.GET("/", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-		fmt.Fprintf(w, "%s\n%s\n%s", r.Header.Get("Test"), r.Header.Get("Another"), r.Header.Get("Email"))
+		_, _ = fmt.Fprintf(w, "%s\n%s\n%s", r.Header.Get("Test"), r.Header.Get("Another"), r.Header.Get("Email"))
 	})
 	ts := httptest.NewServer(router)
 	defer ts.Close()
@@ -1291,7 +1307,7 @@ func (h *httpRedirectMatchURL) Execute(filePath string) error {
 		_, _ = w.Write([]byte("This is test redirects matcher text"))
 	})
 	router.GET("/redirected", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-		fmt.Fprintf(w, "This is test redirects matcher text")
+		_, _ = fmt.Fprintf(w, "This is test redirects matcher text")
 	})
 	ts := httptest.NewServer(router)
 	defer ts.Close()
@@ -1339,7 +1355,7 @@ func (h *annotationTimeout) Execute(filePath string) error {
 	router := httprouter.New()
 	router.GET("/", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 		time.Sleep(4 * time.Second)
-		fmt.Fprintf(w, "This is test matcher text")
+		_, _ = fmt.Fprintf(w, "This is test matcher text")
 	})
 	ts := httptest.NewTLSServer(router)
 	defer ts.Close()
@@ -1359,7 +1375,7 @@ func (h *customAttackType) Execute(filePath string) error {
 	got := []string{}
 	router.GET("/", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 		got = append(got, r.URL.RawQuery)
-		fmt.Fprintf(w, "This is test custom payload")
+		_, _ = fmt.Fprintf(w, "This is test custom payload")
 	})
 	ts := httptest.NewTLSServer(router)
 	defer ts.Close()
@@ -1407,7 +1423,7 @@ func (h *httpCLBodyWithoutHeader) Execute(filePath string) error {
 	router := httprouter.New()
 	router.GET("/", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 		w.Header()["Content-Length"] = []string{"-1"}
-		fmt.Fprintf(w, "this is a test")
+		_, _ = fmt.Fprintf(w, "this is a test")
 	})
 	ts := httptest.NewTLSServer(router)
 	defer ts.Close()
@@ -1427,7 +1443,7 @@ func (h *httpCLBodyWithHeader) Execute(filePath string) error {
 	router := httprouter.New()
 	router.GET("/", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 		w.Header()["Content-Length"] = []string{"50000"}
-		fmt.Fprintf(w, "this is a test")
+		_, _ = fmt.Fprintf(w, "this is a test")
 	})
 	ts := httptest.NewTLSServer(router)
 	defer ts.Close()
@@ -1446,7 +1462,7 @@ type ConstantWithCliVar struct{}
 func (h *ConstantWithCliVar) Execute(filePath string) error {
 	router := httprouter.New()
 	router.GET("/", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-		fmt.Fprint(w, r.URL.Query().Get("p"))
+		_, _ = fmt.Fprint(w, r.URL.Query().Get("p"))
 	})
 	ts := httptest.NewTLSServer(router)
 	defer ts.Close()
@@ -1483,10 +1499,10 @@ type httpDisablePathAutomerge struct{}
 func (h *httpDisablePathAutomerge) Execute(filePath string) error {
 	router := httprouter.New()
 	router.GET("/api/v1/test", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-		fmt.Fprint(w, r.URL.Query().Get("id"))
+		_, _ = fmt.Fprint(w, r.URL.Query().Get("id"))
 	})
 	router.GET("/", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-		fmt.Fprint(w, "empty path in raw request")
+		_, _ = fmt.Fprint(w, "empty path in raw request")
 	})
 
 	ts := httptest.NewServer(router)
@@ -1520,10 +1536,10 @@ func (h *httpPreprocessor) Execute(filePath string) error {
 		value := r.URL.RequestURI()
 		if re.MatchString(value) {
 			w.WriteHeader(http.StatusOK)
-			fmt.Fprint(w, "ok")
+			_, _ = fmt.Fprint(w, "ok")
 		} else {
 			w.WriteHeader(http.StatusBadRequest)
-			fmt.Fprint(w, "not ok")
+			_, _ = fmt.Fprint(w, "not ok")
 		}
 	})
 	ts := httptest.NewServer(router)
@@ -1544,11 +1560,11 @@ func (h *httpMultiRequest) Execute(filePath string) error {
 	router := httprouter.New()
 	router.GET("/ping", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 		w.WriteHeader(http.StatusOK)
-		fmt.Fprint(w, "ping")
+		_, _ = fmt.Fprint(w, "ping")
 	})
 	router.GET("/pong", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 		w.WriteHeader(http.StatusOK)
-		fmt.Fprint(w, "pong")
+		_, _ = fmt.Fprint(w, "pong")
 	})
 	ts := httptest.NewServer(router)
 	defer ts.Close()

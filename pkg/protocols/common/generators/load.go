@@ -2,6 +2,7 @@ package generators
 
 import (
 	"bufio"
+	"fmt"
 	"io"
 	"strings"
 
@@ -42,7 +43,11 @@ func (generator *PayloadGenerator) loadPayloads(payloads map[string]interface{},
 // loadPayloadsFromFile loads a file to a string slice
 func (generator *PayloadGenerator) loadPayloadsFromFile(file io.ReadCloser) ([]string, error) {
 	var lines []string
-	defer file.Close()
+	defer func() {
+		if err := file.Close(); err != nil {
+			panic(fmt.Errorf("could not close: %+v", err))
+		}
+	}()
 
 	scanner := bufio.NewScanner(file)
 	for scanner.Scan() {

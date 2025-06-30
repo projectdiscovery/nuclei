@@ -384,7 +384,11 @@ func (i *Integration) doGraphqlRequest(ctx context.Context, query string, v any,
 	if err != nil {
 		return err
 	}
-	defer resp.Body.Close()
+	defer func() {
+         if err := resp.Body.Close(); err != nil {
+           panic(fmt.Errorf("could not close: %+v", err))
+         }
+       }()
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)
 		return fmt.Errorf("non-200 OK status code: %v body: %q", resp.Status, body)

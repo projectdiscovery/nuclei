@@ -327,7 +327,7 @@ func generateRequestsFromOp(opts *generateReqOptions) error {
 							_ = multipartWriter.WriteField(k, types.ToString(v))
 						}
 					}
-					multipartWriter.Close()
+					_ = multipartWriter.Close()
 					// body = buffer.String()
 					cloned.Body = io.NopCloser(buffer)
 					cloned.ContentLength = int64(len(buffer.Bytes()))

@@ -2,6 +2,7 @@ package telnet
 
 import (
 	"context"
+	"fmt"
 	"net"
 	"strconv"
 	"time"
@@ -46,7 +47,11 @@ func isTelnet(host string, port int) (IsTelnetResponse, error) {
 	if err != nil {
 		return resp, err
 	}
-	defer conn.Close()
+	defer func() {
+		if err := conn.Close(); err != nil {
+			panic(fmt.Errorf("could not close: %+v", err))
+		}
+	}()
 
 	telnetPlugin := telnet.TELNETPlugin{}
 	service, err := telnetPlugin.Run(conn, timeout, plugins.Target{Host: host})

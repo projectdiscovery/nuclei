@@ -235,7 +235,11 @@ func (request *Request) executeRequestWithPayloads(target *contextargs.Context, 
 		requestOptions.Progress.IncrementFailedRequestsBy(1)
 		return errors.Wrap(err, "could not connect to server")
 	}
-	defer conn.Close()
+	defer func() {
+         if err := conn.Close(); err != nil {
+           panic(fmt.Errorf("could not close: %+v", err))
+         }
+       }()
 
 	responseBuilder := &strings.Builder{}
 	if readBuffer != nil {

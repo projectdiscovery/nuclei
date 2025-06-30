@@ -96,7 +96,11 @@ func (p *Parser) ParseTemplate(templatePath string, catalog catalog.Catalog) (an
 	if err != nil {
 		return nil, err
 	}
-	defer reader.Close()
+	defer func() {
+         if err := reader.Close(); err != nil {
+           panic(fmt.Errorf("could not close: %+v", err))
+         }
+       }()
 
 	data, err := io.ReadAll(reader)
 	if err != nil {

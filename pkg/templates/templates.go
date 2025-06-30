@@ -2,6 +2,7 @@
 package templates
 
 import (
+	"fmt"
 	"io"
 	"path/filepath"
 	"strconv"
@@ -389,7 +390,11 @@ func (template *Template) ImportFileRefs(options *protocols.ExecutorOptions) err
 		// load file respecting sandbox
 		data, err := options.Options.LoadHelperFile(source, options.TemplatePath, options.Catalog)
 		if err == nil {
-			defer data.Close()
+			defer func() {
+				if err := data.Close(); err != nil {
+					panic(fmt.Errorf("could not close: %+v", err))
+				}
+			}()
 			bin, err := io.ReadAll(data)
 			if err == nil {
 				return string(bin), true

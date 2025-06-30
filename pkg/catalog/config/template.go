@@ -2,6 +2,7 @@ package config
 
 import (
 	"encoding/csv"
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"
@@ -74,7 +75,11 @@ func getTemplateID(filePath string) (string, error) {
 		return "", err
 	}
 
-	defer file.Close()
+	defer func() {
+		if err := file.Close(); err != nil {
+			panic(fmt.Errorf("could not close: %+v", err))
+		}
+	}()
 	return GetTemplateIDFromReader(file, filePath)
 }
 

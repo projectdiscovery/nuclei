@@ -2,6 +2,7 @@ package rsync
 
 import (
 	"context"
+	"fmt"
 	"net"
 	"strconv"
 	"time"
@@ -46,7 +47,11 @@ func isRsync(host string, port int) (IsRsyncResponse, error) {
 	if err != nil {
 		return resp, err
 	}
-	defer conn.Close()
+	defer func() {
+		if err := conn.Close(); err != nil {
+			panic(fmt.Errorf("could not close: %+v", err))
+		}
+	}()
 
 	rsyncPlugin := rsync.RSYNCPlugin{}
 	service, err := rsyncPlugin.Run(conn, timeout, plugins.Target{Host: host})

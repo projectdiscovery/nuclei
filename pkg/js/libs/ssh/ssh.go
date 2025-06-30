@@ -128,7 +128,11 @@ func (c *SSHClient) Run(cmd string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	defer session.Close()
+	defer func() {
+         if err := session.Close(); err != nil {
+           panic(fmt.Errorf("could not close: %+v", err))
+         }
+       }()
 
 	data, err := session.Output(cmd)
 	if err != nil {
@@ -203,7 +207,11 @@ func connectSSHInfoMode(opts *connectOptions) (*ssh.HandshakeLog, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer client.Close()
+	defer func() {
+         if err := client.Close(); err != nil {
+           panic(fmt.Errorf("could not close: %+v", err))
+         }
+       }()
 
 	return data, nil
 }

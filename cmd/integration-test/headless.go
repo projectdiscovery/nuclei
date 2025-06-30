@@ -178,7 +178,11 @@ func (h *headlessFileUpload) Execute(filePath string) error {
 			return
 		}
 
-		defer file.Close()
+		defer func() {
+			if err := file.Close(); err != nil {
+				panic(fmt.Errorf("could not close: %+v", err))
+			}
+		}()
 
 		content, err := io.ReadAll(file)
 		if err != nil {
@@ -235,7 +239,11 @@ func (h *headlessFileUploadNegative) Execute(filePath string) error {
 			return
 		}
 
-		defer file.Close()
+		defer func() {
+			if err := file.Close(); err != nil {
+				panic(fmt.Errorf("could not close: %+v", err))
+			}
+		}()
 
 		content, err := io.ReadAll(file)
 		if err != nil {

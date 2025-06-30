@@ -2,6 +2,7 @@ package automaticscan
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"net/http"
 	"os"
@@ -77,7 +78,7 @@ func New(opts Options) (*Service, error) {
 	mappingFile := filepath.Join(config.DefaultConfig.GetTemplateDir(), mappingFilename)
 	if file, err := os.Open(mappingFile); err == nil {
 		_ = yaml.NewDecoder(file).Decode(&mappingData)
-		file.Close()
+		_ = file.Close()
 	}
 	if opts.ExecuterOpts.Options.Verbose {
 		gologger.Verbose().Msgf("Normalized mapping (%d): %v\n", len(mappingData), mappingData)
@@ -206,7 +207,11 @@ func (s *Service) getTagsUsingWappalyzer(input *contextargs.MetaInput) []string 
 	if err != nil {
 		return nil
 	}
-	defer resp.Body.Close()
+	defer func() {
+		if err := resp.Body.Close(); err != nil {
+			panic(fmt.Errorf("could not close: %+v", err))
+		}
+	}()
 	data, err := io.ReadAll(io.LimitReader(resp.Body, maxDefaultBody))
 	if err != nil {
 		return nil

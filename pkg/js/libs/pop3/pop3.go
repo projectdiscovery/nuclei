@@ -2,6 +2,7 @@ package pop3
 
 import (
 	"context"
+	"fmt"
 	"net"
 	"strconv"
 	"time"
@@ -46,7 +47,11 @@ func isPoP3(host string, port int) (IsPOP3Response, error) {
 	if err != nil {
 		return resp, err
 	}
-	defer conn.Close()
+	defer func() {
+		if err := conn.Close(); err != nil {
+			panic(fmt.Errorf("could not close: %+v", err))
+		}
+	}()
 
 	pop3Plugin := pop3.POP3Plugin{}
 	service, err := pop3Plugin.Run(conn, timeout, plugins.Target{Host: host})

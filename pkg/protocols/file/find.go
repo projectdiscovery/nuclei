@@ -1,6 +1,7 @@
 package file
 
 import (
+	"fmt"
 	"io"
 	"io/fs"
 	"os"
@@ -208,7 +209,11 @@ func readChunk(fileName string) ([]byte, error) {
 		return nil, err
 	}
 
-	defer r.Close()
+	defer func() {
+		if err := r.Close(); err != nil {
+			panic(fmt.Errorf("could not close: %+v", err))
+		}
+	}()
 
 	var buff [1024]byte
 	if _, err = io.ReadFull(r, buff[:]); err != nil {

@@ -75,7 +75,11 @@ func Parse(filePath string, preprocessor Preprocessor, options protocols.Executo
 		}
 	}
 
-	defer reader.Close()
+	defer func() {
+         if err := reader.Close(); err != nil {
+           panic(fmt.Errorf("could not close: %+v", err))
+         }
+       }()
 
 	options.TemplatePath = filePath
 	template, err := ParseTemplateFromReader(reader, preprocessor, options.Copy())

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"crypto/sha1"
 	"encoding/hex"
+	"fmt"
 	"io"
 	"io/fs"
 	"log"
@@ -23,7 +24,11 @@ func main() {
 	if err != nil {
 		log.Fatalf("Could not create file: %s\n", err)
 	}
-	defer file.Close()
+	defer func() {
+		if err := file.Close(); err != nil {
+			panic(fmt.Errorf("could not close: %+v", err))
+		}
+	}()
 
 	err = filepath.WalkDir(templatesDirectory, func(path string, d fs.DirEntry, err error) error {
 		if err != nil || d.IsDir() {

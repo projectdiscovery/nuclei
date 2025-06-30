@@ -2,6 +2,7 @@ package customtemplates
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -96,7 +97,11 @@ func downloadToFile(downloader *manager.Downloader, targetDirectory, bucket, key
 	if err != nil {
 		return err
 	}
-	defer fd.Close()
+	defer func() {
+		if err := fd.Close(); err != nil {
+			panic(fmt.Errorf("could not close: %+v", err))
+		}
+	}()
 
 	// Download the file using the AWS SDK for Go
 	_, err = downloader.Download(context.TODO(), fd, &s3.GetObjectInput{Bucket: &bucket, Key: &key})
