@@ -104,9 +104,7 @@ func (e *Engine) ExecuteScanWithOpts(ctx context.Context, templatesList []*templ
 func (e *Engine) executeTemplateSpray(ctx context.Context, templatesList []*templates.Template, target provider.InputProvider) *atomic.Bool {
 	results := &atomic.Bool{}
 
-	// wp is workpool that contains different waitgroups for
-	// headless and non-headless templates
-	wp := e.GetWorkPool()
+	wp := NewWorkPool(e.GetWorkPoolConfig())
 	defer wp.Wait()
 
 	for _, template := range templatesList {
