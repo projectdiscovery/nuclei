@@ -376,7 +376,7 @@ require (
 require (
 	github.com/alecthomas/chroma v0.10.0
 	github.com/emirpasic/gods v1.18.1 // indirect
-	github.com/go-echarts/go-echarts/v2 v2.3.3
+	github.com/go-echarts/go-echarts/v2 v2.6.0
 	gopkg.in/warnings.v0 v0.1.2 // indirect
 )
 
