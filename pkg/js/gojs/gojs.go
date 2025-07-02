@@ -1,6 +1,7 @@
 package gojs
 
 import (
+	"maps"
 	"sync"
 
 	"github.com/dop251/goja"
@@ -49,9 +50,7 @@ func (p *GojaModule) Name() string {
 
 func (p *GojaModule) Set(objects Objects) Module {
 
-	for k, v := range objects {
-		p.sets[k] = v
-	}
+	maps.Copy(p.sets, objects)
 
 	return p
 }

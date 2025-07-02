@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"maps"
 	"net"
 	"strings"
 	"sync/atomic"
@@ -303,9 +304,7 @@ func (request *Request) ExecuteWithResults(target *contextargs.Context, dynamicV
 	templateCtx := request.options.GetTemplateCtx(input.MetaInput)
 
 	payloadValues := generators.BuildPayloadFromOptions(request.options.Options)
-	for k, v := range dynamicValues {
-		payloadValues[k] = v
-	}
+	maps.Copy(payloadValues, dynamicValues)
 
 	payloadValues["Hostname"] = hostPort
 	payloadValues["Host"] = hostname
@@ -612,9 +611,7 @@ func (request *Request) executeRequestWithPayloads(hostPort string, input *conte
 // generateEventData generates event data for the request
 func (request *Request) generateEventData(input *contextargs.Context, values map[string]interface{}, matched string) map[string]interface{} {
 	data := make(map[string]interface{})
-	for k, v := range values {
-		data[k] = v
-	}
+	maps.Copy(data, values)
 	data["type"] = request.Type().String()
 	data["request-pre-condition"] = beautifyJavascript(request.PreCondition)
 	data["request"] = beautifyJavascript(request.Code)
