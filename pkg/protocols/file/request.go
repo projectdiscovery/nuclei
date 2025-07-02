@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"context"
 	"encoding/hex"
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"
@@ -128,8 +129,13 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, metadata,
 						return
 					}
 					defer func() {
-						_ = tmpFileOut.Close()
-						_ = os.RemoveAll(tmpFileOut.Name())
+						if err := tmpFileOut.Close(); err != nil {
+							panic(fmt.Errorf("could not close: %+v", err))
+						}
+
+						if err := os.Remove(tmpFileOut.Name()); err != nil {
+							panic(fmt.Errorf("could not remove: %+v", err))
+						}
 					}()
 					_, err = io.Copy(tmpFileOut, reader)
 					if err != nil {

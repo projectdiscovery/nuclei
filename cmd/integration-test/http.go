@@ -685,8 +685,7 @@ func (h *httpRawPayload) Execute(filePath string) error {
 			routerErr = err
 			return
 		}
-		// nolint
-		if !(strings.EqualFold(r.Header.Get("another_header"), "bnVjbGVp") || strings.EqualFold(r.Header.Get("another_header"), "Z3Vlc3Q=")) {
+		if !strings.EqualFold(r.Header.Get("another_header"), "bnVjbGVp") && !strings.EqualFold(r.Header.Get("another_header"), "Z3Vlc3Q=") {
 			return
 		}
 		if strings.EqualFold(r.Form.Get("username"), "test") && (strings.EqualFold(r.Form.Get("password"), "nuclei") || strings.EqualFold(r.Form.Get("password"), "guest")) {

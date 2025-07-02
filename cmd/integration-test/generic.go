@@ -91,7 +91,6 @@ func (h *clientCertificate) Execute(filePath string) error {
 		_ = os.Remove("server.crt")
 		_ = os.Remove("server.key")
 	}()
-
 	serverCert, _ := tls.LoadX509KeyPair("server.crt", "server.key")
 
 	certPool := x509.NewCertPool()

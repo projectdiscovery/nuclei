@@ -52,11 +52,11 @@ func (h *networkBasic) Execute(filePath string) error {
 
 	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, ts.URL, debug)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Could not run nuclei: %s\n", err)
+		_, _ = fmt.Fprintf(os.Stderr, "Could not run nuclei: %s\n", err)
 		return err
 	}
 	if routerErr != nil {
-		fmt.Fprintf(os.Stderr, "routerErr: %s\n", routerErr)
+		_, _ = fmt.Fprintf(os.Stderr, "routerErr: %s\n", routerErr)
 		return routerErr
 	}
 

@@ -12,7 +12,8 @@ import (
 	"github.com/praetorian-inc/fingerprintx/pkg/plugins"
 	postgres "github.com/praetorian-inc/fingerprintx/pkg/plugins/services/postgresql"
 	utils "github.com/projectdiscovery/nuclei/v3/pkg/js/utils"
-	"github.com/projectdiscovery/nuclei/v3/pkg/js/utils/pgwrap"
+	"github.com/projectdiscovery/nuclei/v3/pkg/js/utils/pgwrap"   //nolint:staticcheck // need to call init
+	_ "github.com/projectdiscovery/nuclei/v3/pkg/js/utils/pgwrap" //nolint:staticcheck
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
 )
 

@@ -229,10 +229,8 @@ type IssueTrackerMetadata struct {
 
 // NewStandardWriter creates a new output writer based on user configurations
 func NewStandardWriter(options *types.Options) (*StandardWriter, error) {
-	var resumeBool bool
-	if options.Resume != "" {
-		resumeBool = true
-	}
+	resumeBool := options.Resume != ""
+
 	auroraColorizer := aurora.NewAurora(!options.NoColor)
 
 	var outputFile io.WriteCloser

@@ -130,7 +130,7 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 
 	// compile pre-condition if any
 	if request.PreCondition != "" {
-		preConditionCompiled, err := compiler.WrapScriptNCompile(request.PreCondition, false)
+		preConditionCompiled, err := compiler.SourceAutoMode(request.PreCondition, false)
 		if err != nil {
 			return errorutil.NewWithTag(request.TemplateID, "could not compile pre-condition: %s", err)
 		}
@@ -249,14 +249,14 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 		gologger.Debug().MsgFunc(func() string {
 			dashes := strings.Repeat("-", 15)
 			sb := &strings.Builder{}
-			_, _ = fmt.Fprintf(sb, "[%s] Dumped Executed Source Code for input/stdin: '%v'", request.options.TemplateID, input.MetaInput.Input)
-			_, _ = fmt.Fprintf(sb, "\n%v\n%v\n%v\n", dashes, "Source Code:", dashes)
+			fmt.Fprintf(sb, "[%s] Dumped Executed Source Code for input/stdin: '%v'", request.options.TemplateID, input.MetaInput.Input)
+			fmt.Fprintf(sb, "\n%v\n%v\n%v\n", dashes, "Source Code:", dashes)
 			sb.WriteString(interpretEnvVars(request.Source, allvars))
 			sb.WriteString("\n")
-			_, _ = fmt.Fprintf(sb, "\n%v\n%v\n%v\n", dashes, "Command Executed:", dashes)
+			fmt.Fprintf(sb, "\n%v\n%v\n%v\n", dashes, "Command Executed:", dashes)
 			sb.WriteString(interpretEnvVars(gOutput.Command, allvars))
 			sb.WriteString("\n")
-			_, _ = fmt.Fprintf(sb, "\n%v\n%v\n%v\n", dashes, "Command Output:", dashes)
+			fmt.Fprintf(sb, "\n%v\n%v\n%v\n", dashes, "Command Output:", dashes)
 			sb.WriteString(gOutput.DebugData.String())
 			sb.WriteString("\n")
 			sb.WriteString("[WRN] Command Output here is stdout+sterr, in response variables they are seperate (use -v -svd flags for more details)")

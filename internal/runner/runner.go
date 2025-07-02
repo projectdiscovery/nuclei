@@ -447,8 +447,7 @@ func (r *Runner) setupPDCPUpload(writer output.Writer) output.Writer {
 	if r.options.ScanID != "" {
 		r.options.EnableCloudUpload = true
 	}
-	//nolint
-	if !(r.options.EnableCloudUpload || EnableCloudUpload) {
+	if !r.options.EnableCloudUpload && !EnableCloudUpload {
 		r.pdcpUploadErrMsg = fmt.Sprintf("[%v] Scan results upload to cloud is disabled.", r.colorizer.BrightYellow("WRN"))
 		return writer
 	}
@@ -875,8 +874,8 @@ func (r *Runner) displayExecutionInfo(store *loader.Store) {
 		return fmt.Sprintf("Current %s version: %v %v", versionType, version, updateutils.GetVersionDescription(version, latestVersion))
 	}
 
-	r.Logger.Info().Msgf("%s", versionInfo(config.Version, cfg.LatestNucleiVersion, "nuclei"))
-	r.Logger.Info().Msgf("%s", versionInfo(cfg.TemplateVersion, cfg.LatestNucleiTemplatesVersion, "nuclei-templates"))
+	gologger.Info().Msg(versionInfo(config.Version, cfg.LatestNucleiVersion, "nuclei"))
+	gologger.Info().Msg(versionInfo(cfg.TemplateVersion, cfg.LatestNucleiTemplatesVersion, "nuclei-templates"))
 	if !HideAutoSaveMsg {
 		if r.pdcpUploadErrMsg != "" {
 			r.Logger.Print().Msgf("%s", r.pdcpUploadErrMsg)

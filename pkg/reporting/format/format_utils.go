@@ -45,14 +45,14 @@ var (
 func CreateReportDescription(event *output.ResultEvent, formatter ResultFormatter, omitRaw bool) string {
 	template := GetMatchedTemplateName(event)
 	builder := &bytes.Buffer{}
-	_, _ = fmt.Fprintf(builder, "%s: %s matched at %s\n\n", formatter.MakeBold("Details"), formatter.MakeBold(template), event.Host)
+	fmt.Fprintf(builder, "%s: %s matched at %s\n\n", formatter.MakeBold("Details"), formatter.MakeBold(template), event.Host)
 
 	attributes := utils.NewEmptyInsertionOrderedStringMap(3)
 	attributes.Set("Protocol", strings.ToUpper(event.Type))
 	attributes.Set("Full URL", event.Matched)
 	attributes.Set("Timestamp", event.Timestamp.Format("Mon Jan 2 15:04:05 -0700 MST 2006"))
 	attributes.ForEach(func(key string, data interface{}) {
-		_, _ = fmt.Fprintf(builder, "%s: %s\n\n", formatter.MakeBold(key), types.ToString(data))
+		fmt.Fprintf(builder, "%s: %s\n\n", formatter.MakeBold(key), types.ToString(data))
 	})
 
 	if len(ReportGenerationMetadataHooks) > 0 {
@@ -120,12 +120,12 @@ func CreateReportDescription(event *output.ResultEvent, formatter ResultFormatte
 		}
 	}
 	if event.Interaction != nil {
-		_, _ = fmt.Fprintf(builder, "%s\n%s", formatter.MakeBold("Interaction Data"), formatter.CreateHorizontalLine())
+		fmt.Fprintf(builder, "%s\n%s", formatter.MakeBold("Interaction Data"), formatter.CreateHorizontalLine())
 		builder.WriteString(event.Interaction.Protocol)
 		if event.Interaction.QType != "" {
 			_, _ = fmt.Fprintf(builder, " (%s)", event.Interaction.QType)
 		}
-		_, _ = fmt.Fprintf(builder, " Interaction from %s at %s", event.Interaction.RemoteAddress, event.Interaction.UniqueID)
+		fmt.Fprintf(builder, " Interaction from %s at %s", event.Interaction.RemoteAddress, event.Interaction.UniqueID)
 
 		if event.Interaction.RawRequest != "" {
 			builder.WriteString(formatter.CreateCodeBlock("Interaction Request", event.Interaction.RawRequest, ""))

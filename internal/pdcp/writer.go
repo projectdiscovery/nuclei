@@ -131,8 +131,8 @@ func (u *UploadWriter) autoCommit(ctx context.Context, r *io.PipeReader) {
 	go func() {
 		defer func() {
 			_ = r.Close()
-			close(ch)
 		}()
+		defer close(ch)
 		for {
 			data, err := reader.ReadString('\n')
 			if err != nil {

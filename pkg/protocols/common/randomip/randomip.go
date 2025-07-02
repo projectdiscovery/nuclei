@@ -35,8 +35,7 @@ func GetRandomIPWithCidr(cidrs ...string) (net.IP, error) {
 	}
 
 	switch {
-	//nolint
-	case 255 == ipnet.Mask[len(ipnet.Mask)-1]:
+	case ipnet.Mask[len(ipnet.Mask)-1] == 255:
 		return baseIp, nil
 	case iputil.IsIPv4(baseIp.String()):
 		return getRandomIP(ipnet, 4), nil

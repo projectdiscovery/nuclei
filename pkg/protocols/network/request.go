@@ -510,10 +510,11 @@ func getAddress(toTest string) (string, error) {
 }
 
 func ConnReadNWithTimeout(conn net.Conn, n int64, timeout time.Duration) ([]byte, error) {
-	if n == -1 {
+	switch n {
+	case -1:
 		// if n is -1 then read all available data from connection
 		return reader.ConnReadNWithTimeout(conn, -1, timeout)
-	} else if n == 0 {
+	case 0:
 		n = 4096 // default buffer size
 	}
 	b := make([]byte, n)

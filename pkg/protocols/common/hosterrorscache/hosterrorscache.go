@@ -9,7 +9,7 @@ import (
 	"sync"
 	"sync/atomic"
 
-	"github.com/Mzack9999/gcache"
+	"github.com/projectdiscovery/gcache"
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/config"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
@@ -85,7 +85,7 @@ func (c *Cache) Close() {
 // NormalizeCacheValue processes the input value and returns a normalized cache
 // value.
 func (c *Cache) NormalizeCacheValue(value string) string {
-	normalizedValue := value
+	var normalizedValue = value
 
 	u, err := url.ParseRequestURI(value)
 	if err != nil || u.Host == "" {
