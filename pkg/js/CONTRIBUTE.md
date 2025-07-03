@@ -31,6 +31,14 @@ Libraries/node_modules represent adding new protocol or something similar and sh
 5. Import newly created library with '_' import in [compiler](./compiler/compiler.go)
 
 
+## Adding New Libraries (NPM)
+
+Uses [add-node-lib.js](./devtools/add-node-lib.js) script to adds new NPM module.
+
+```
+Usage: node add-node-lib.js --[m]odule=<module> [--[n]ame=<name>] --import-[a]s=<import-as> --build-[platform|target|format]=<value>
+```
+
 ## Adding Helper Objects/Types/Functions
 
 Helper objects/types/functions can simply be understood as javascript utils to simplify writing javscript and reduce code duplication in javascript templates. Helper functions/objects are divided into two categories
