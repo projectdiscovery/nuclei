@@ -38,7 +38,7 @@ func TestYamlFormatterParse(t *testing.T) {
 
 func TestYamlFormatterParseWithVariables(t *testing.T) {
 	format := New()
-	proxifyYttFile := "../testdata/ginandjuice.ytt.yaml"
+	proxifyYttFile := "../testdata/ytt/ginandjuice.ytt.yaml"
 
 	expectedUrls := []string{
 		"https://ginandjuice.shop/users/3",
