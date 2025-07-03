@@ -54,10 +54,11 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, metadata,
 	optionVars := generators.BuildPayloadFromOptions(request.options.Options)
 	// add templatecontext variables to varMap
 	if request.options.HasTemplateCtx(input.MetaInput) {
-		vars = generators.MergeMaps(vars, metadata, optionVars, request.options.GetTemplateCtx(input.MetaInput).GetAll())
+		vars = generators.MergeMaps(vars, request.options.GetTemplateCtx(input.MetaInput).GetAll())
 	}
+
 	variablesMap := request.options.Variables.Evaluate(vars)
-	vars = generators.MergeMaps(vars, variablesMap, request.options.Constants)
+	vars = generators.MergeMaps(vars, metadata, optionVars, variablesMap, request.options.Constants)
 
 	// check for operator matches by wrapping callback
 	gotmatches := false
@@ -188,12 +189,19 @@ func (request *Request) executeRequestWithPayloads(input *contextargs.Context, p
 	outputEvent := request.responseToDSLMap(responseBody, header, statusCode, reqBuilder.String(), input.MetaInput.Input, navigatedURL, page.DumpHistory())
 	// add response fields to template context and merge templatectx variables to output event
 	request.options.AddTemplateVars(input.MetaInput, request.Type(), request.ID, outputEvent)
+
+	gologger.Info().Msgf("foo1 : %s", outputEvent["foo"])
+
 	if request.options.HasTemplateCtx(input.MetaInput) {
 		outputEvent = generators.MergeMaps(outputEvent, request.options.GetTemplateCtx(input.MetaInput).GetAll())
+		gologger.Info().Msgf("foo2 : %s", outputEvent["foo"])
+
 	}
 
 	maps.Copy(outputEvent, out)
 	maps.Copy(outputEvent, payloads)
+
+	gologger.Info().Msgf("foo3 : %s", outputEvent["foo"])
 
 	var event *output.InternalWrappedEvent
 	if len(page.InteractshURLs) == 0 {
