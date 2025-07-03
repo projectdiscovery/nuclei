@@ -100,7 +100,9 @@ const (
 func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 	request.options = options
 
-	client, err := networkclientpool.Get(options.Options, &networkclientpool.Configuration{})
+	client, err := networkclientpool.Get(options.Options, &networkclientpool.Configuration{
+		CustomDialer: options.CustomFastdialer,
+	})
 	if err != nil {
 		return errors.Wrap(err, "could not get network client")
 	}
@@ -233,7 +235,9 @@ func (request *Request) executeRequestWithPayloads(target *contextargs.Context, 
 		requestOptions.Progress.IncrementFailedRequestsBy(1)
 		return errors.Wrap(err, "could not connect to server")
 	}
-	defer conn.Close()
+	defer func() {
+         _ = conn.Close()
+       }()
 
 	responseBuilder := &strings.Builder{}
 	if readBuffer != nil {

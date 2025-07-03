@@ -74,7 +74,9 @@ func getTemplateID(filePath string) (string, error) {
 		return "", err
 	}
 
-	defer file.Close()
+	defer func() {
+		_ = file.Close()
+	}()
 	return GetTemplateIDFromReader(file, filePath)
 }
 

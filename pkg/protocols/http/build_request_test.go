@@ -46,7 +46,7 @@ func TestMakeRequestFromModal(t *testing.T) {
 		t.Fatalf("url is nil in generator make")
 	}
 	bodyBytes, _ := req.request.BodyBytes()
-	require.Equal(t, "/login.php", req.request.URL.Path, "could not get correct request path")
+	require.Equal(t, "/login.php", req.request.Path, "could not get correct request path")
 	require.Equal(t, "username=test&password=pass", string(bodyBytes), "could not get correct request body")
 }
 
@@ -72,13 +72,13 @@ func TestMakeRequestFromModalTrimSuffixSlash(t *testing.T) {
 	inputData, payloads, _ := generator.nextValue()
 	req, err := generator.Make(context.Background(), contextargs.NewWithInput(context.Background(), "https://example.com/test.php"), inputData, payloads, map[string]interface{}{})
 	require.Nil(t, err, "could not make http request")
-	require.Equal(t, "https://example.com/test.php?query=example", req.request.URL.String(), "could not get correct request path")
+	require.Equal(t, "https://example.com/test.php?query=example", req.request.String(), "could not get correct request path")
 
 	generator = request.newGenerator(false)
 	inputData, payloads, _ = generator.nextValue()
 	req, err = generator.Make(context.Background(), contextargs.NewWithInput(context.Background(), "https://example.com/test/"), inputData, payloads, map[string]interface{}{})
 	require.Nil(t, err, "could not make http request")
-	require.Equal(t, "https://example.com/test/?query=example", req.request.URL.String(), "could not get correct request path")
+	require.Equal(t, "https://example.com/test/?query=example", req.request.String(), "could not get correct request path")
 }
 
 func TestMakeRequestFromRawWithPayloads(t *testing.T) {
@@ -199,7 +199,7 @@ func TestMakeRequestFromModelUniqueInteractsh(t *testing.T) {
 	require.Nil(t, err, "could not make http request")
 
 	// check if all the interactsh markers are replaced with unique urls
-	require.NotContains(t, got.request.URL.String(), "{{interactsh-url}}", "could not get correct interactsh url")
+	require.NotContains(t, got.request.String(), "{{interactsh-url}}", "could not get correct interactsh url")
 	// check the length of returned urls
 	require.Equal(t, len(got.interactshURLs), 4, "could not get correct interactsh url")
 	// check if the interactsh urls are unique

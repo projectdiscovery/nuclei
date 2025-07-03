@@ -1,5 +1,4 @@
-//go:build !go1.24 && (linux || darwin || windows) && (amd64 || arm64)
-// +build !go1.24
+//go:build (linux || darwin || windows) && (amd64 || arm64)
 // +build linux darwin windows
 // +build amd64 arm64
 

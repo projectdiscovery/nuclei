@@ -42,7 +42,9 @@ func (generator *PayloadGenerator) loadPayloads(payloads map[string]interface{},
 // loadPayloadsFromFile loads a file to a string slice
 func (generator *PayloadGenerator) loadPayloadsFromFile(file io.ReadCloser) ([]string, error) {
 	var lines []string
-	defer file.Close()
+	defer func() {
+		_ = file.Close()
+	}()
 
 	scanner := bufio.NewScanner(file)
 	for scanner.Scan() {

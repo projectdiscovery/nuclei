@@ -24,19 +24,20 @@ import (
 
 // Page is a single page in an isolated browser instance
 type Page struct {
-	ctx            *contextargs.Context
-	inputURL       *urlutil.URL
-	options        *Options
-	page           *rod.Page
-	rules          []rule
-	instance       *Instance
-	hijackRouter   *rod.HijackRouter
-	hijackNative   *Hijack
-	mutex          *sync.RWMutex
-	History        []HistoryData
-	InteractshURLs []string
-	payloads       map[string]interface{}
-	variables      map[string]interface{}
+	ctx                *contextargs.Context
+	inputURL           *urlutil.URL
+	options            *Options
+	page               *rod.Page
+	rules              []rule
+	instance           *Instance
+	hijackRouter       *rod.HijackRouter
+	hijackNative       *Hijack
+	mutex              *sync.RWMutex
+	History            []HistoryData
+	InteractshURLs     []string
+	payloads           map[string]interface{}
+	variables          map[string]interface{}
+	lastActionNavigate *Action
 }
 
 // HistoryData contains the page request/response pairs
@@ -200,7 +201,7 @@ func (i *Instance) Run(ctx *contextargs.Context, actions []*Action, payloads map
 		if resp, err := http.ReadResponse(bufio.NewReader(strings.NewReader(firstItem.RawResponse)), nil); err == nil {
 			data["header"] = utils.HeadersToString(resp.Header)
 			data["status_code"] = fmt.Sprint(resp.StatusCode)
-			resp.Body.Close()
+			_ = resp.Body.Close()
 		}
 	}
 
@@ -215,7 +216,7 @@ func (p *Page) Close() {
 	if p.hijackNative != nil {
 		_ = p.hijackNative.Stop()
 	}
-	p.page.Close()
+	_ = p.page.Close()
 }
 
 // Page returns the current page for the actions
@@ -272,6 +273,17 @@ func (p *Page) hasModificationRules() bool {
 		}
 	}
 	return false
+}
+
+// updateLastNavigatedURL updates the last navigated URL in the instance's
+// request log.
+func (p *Page) updateLastNavigatedURL() {
+	if p.lastActionNavigate == nil {
+		return
+	}
+
+	templateURL := p.lastActionNavigate.GetArg("url")
+	p.instance.requestLog[templateURL] = p.URL()
 }
 
 func containsModificationActions(actions ...*Action) bool {
