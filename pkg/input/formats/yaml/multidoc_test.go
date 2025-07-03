@@ -22,7 +22,9 @@ func TestYamlFormatterParse(t *testing.T) {
 
 	file, err := os.Open(proxifyInputFile)
 	require.Nilf(t, err, "error opening proxify input file: %v", err)
-	defer file.Close()
+	defer func() {
+		_ = file.Close()
+	}()
 
 	var urls []string
 	err = format.Parse(file, func(request *types.RequestResponse) bool {

@@ -19,7 +19,9 @@ func writeToFile(filename string, data []byte) {
 	if err != nil {
 		log.Fatalf("Could not create file %s: %s\n", filename, err)
 	}
-	defer file.Close()
+	defer func() {
+		_ = file.Close()
+	}()
 
 	_, err = file.Write(data)
 	if err != nil {

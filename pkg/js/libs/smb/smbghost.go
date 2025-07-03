@@ -41,7 +41,9 @@ func detectSMBGhost(host string, port int) (bool, error) {
 		return false, err
 
 	}
-	defer conn.Close()
+	defer func() {
+		_ = conn.Close()
+	}()
 
 	_, err = conn.Write([]byte(pkt))
 	if err != nil {

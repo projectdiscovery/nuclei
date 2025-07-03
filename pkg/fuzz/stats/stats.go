@@ -96,9 +96,10 @@ func getCorrectSiteName(originalURL string) string {
 	// Site is the host:port combo
 	siteName := parsed.Host
 	if parsed.Port() == "" {
-		if parsed.Scheme == "https" {
+		switch parsed.Scheme {
+		case "https":
 			siteName = fmt.Sprintf("%s:443", siteName)
-		} else if parsed.Scheme == "http" {
+		case "http":
 			siteName = fmt.Sprintf("%s:80", siteName)
 		}
 	}

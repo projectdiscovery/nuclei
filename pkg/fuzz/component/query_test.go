@@ -41,6 +41,6 @@ func TestQueryComponent(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	require.Equal(t, "foo=baz", rebuilt.URL.RawQuery, "unexpected query string")
-	require.Equal(t, "https://example.com?foo=baz", rebuilt.URL.String(), "unexpected url")
+	require.Equal(t, "foo=baz", rebuilt.RawQuery, "unexpected query string")
+	require.Equal(t, "https://example.com?foo=baz", rebuilt.String(), "unexpected url")
 }
