@@ -96,7 +96,9 @@ func downloadToFile(downloader *manager.Downloader, targetDirectory, bucket, key
 	if err != nil {
 		return err
 	}
-	defer fd.Close()
+	defer func() {
+		_ = fd.Close()
+	}()
 
 	// Download the file using the AWS SDK for Go
 	_, err = downloader.Download(context.TODO(), fd, &s3.GetObjectInput{Bucket: &bucket, Key: &key})

@@ -26,7 +26,7 @@ func NewSyncedReadCloser(r io.ReadCloser) *SyncedReadCloser {
 	if err != nil {
 		return nil
 	}
-	r.Close()
+	_ = r.Close()
 	s.length = int64(len(s.data))
 	s.openGate = make(chan struct{})
 	s.enableBlocking = true

@@ -60,7 +60,9 @@ func connectSMBInfoMode(host string, port int) (*smb.SMBLog, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer conn.Close()
+	defer func() {
+         _ = conn.Close()
+       }()
 	result, err = getSMBInfo(conn, true, true)
 	if err != nil {
 		return result, nil
@@ -116,7 +118,9 @@ func listShares(host string, port int, user string, password string) ([]string, 
 	if err != nil {
 		return nil, err
 	}
-	defer conn.Close()
+	defer func() {
+         _ = conn.Close()
+       }()
 
 	d := &smb2.Dialer{
 		Initiator: &smb2.NTLMInitiator{

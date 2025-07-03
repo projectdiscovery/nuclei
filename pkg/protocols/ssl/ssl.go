@@ -108,14 +108,16 @@ func (request *Request) TmplClusterKey() uint64 {
 }
 
 func (request *Request) IsClusterable() bool {
-	return !(len(request.CipherSuites) > 0 || request.MinVersion != "" || request.MaxVersion != "")
+	return len(request.CipherSuites) <= 0 && request.MinVersion == "" && request.MaxVersion == ""
 }
 
 // Compile compiles the request generators preparing any requests possible.
 func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 	request.options = options
 
-	client, err := networkclientpool.Get(options.Options, &networkclientpool.Configuration{})
+	client, err := networkclientpool.Get(options.Options, &networkclientpool.Configuration{
+		CustomDialer: options.CustomFastdialer,
+	})
 	if err != nil {
 		return errorutil.NewWithTag("ssl", "could not get network client").Wrap(err)
 	}

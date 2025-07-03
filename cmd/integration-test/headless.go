@@ -178,7 +178,9 @@ func (h *headlessFileUpload) Execute(filePath string) error {
 			return
 		}
 
-		defer file.Close()
+		defer func() {
+          _ = file.Close()
+        }()
 
 		content, err := io.ReadAll(file)
 		if err != nil {
@@ -235,7 +237,9 @@ func (h *headlessFileUploadNegative) Execute(filePath string) error {
 			return
 		}
 
-		defer file.Close()
+		defer func() {
+          _ = file.Close()
+        }()
 
 		content, err := io.ReadAll(file)
 		if err != nil {

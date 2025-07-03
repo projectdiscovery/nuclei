@@ -141,8 +141,8 @@ func main() {
 			}
 
 			pprof.StopCPUProfile()
-			memProfileFile.Close()
-			traceFile.Close()
+			_ = memProfileFile.Close()
+			_ = traceFile.Close()
 			trace.Stop()
 
 			runtime.MemProfileRate = oldMemProfileRate
@@ -228,7 +228,7 @@ func main() {
 	nucleiRunner.Close()
 	// on successful execution remove the resume file in case it exists
 	if fileutil.FileExists(resumeFileName) {
-		os.Remove(resumeFileName)
+		_ = os.Remove(resumeFileName)
 	}
 }
 

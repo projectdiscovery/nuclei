@@ -156,9 +156,27 @@ func (c *Compiler) ExecuteWithOptions(program *goja.Program, args *ExecuteArgs, 
 	return res, nil
 }
 
-// Wraps a script in a function and compiles it.
-func WrapScriptNCompile(script string, strict bool) (*goja.Program, error) {
-	if !stringsutil.ContainsAny(script, exportAsToken, exportToken) {
+// if the script uses export/ExportAS tokens then we can run it in IIFE mode
+// but if not we can't run it
+func CanRunAsIIFE(script string) bool {
+	return stringsutil.ContainsAny(script, exportAsToken, exportToken)
+}
+
+// SourceIIFEMode is a mode where the script is wrapped in a function and compiled.
+// This is used when the script is not exported or exported as a function.
+func SourceIIFEMode(script string, strict bool) (*goja.Program, error) {
+	val := fmt.Sprintf(`
+		(function() {
+			%s
+		})()
+	`, script)
+	return goja.Compile("", val, strict)
+}
+
+// SourceAutoMode is a mode where the script is wrapped in a function and compiled.
+// This is used when the script is exported or exported as a function.
+func SourceAutoMode(script string, strict bool) (*goja.Program, error) {
+	if !CanRunAsIIFE(script) {
 		// this will not be run in a pooled runtime
 		return goja.Compile("", script, strict)
 	}
