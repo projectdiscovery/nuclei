@@ -309,7 +309,7 @@ func (i *ListInputProvider) initializeInputSources(opts *Options) error {
 			}
 		}
 		if input != nil {
-			i.scanInputFromReader(input)
+			i.scanInputFromReader(options.ExecutionId, input)
 			_ = input.Close()
 		}
 	}

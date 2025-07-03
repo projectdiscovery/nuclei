@@ -58,9 +58,9 @@ func getRemoteTemplatesAndWorkflows(templateURLs, workflowURLs, remoteTemplateDo
 		} else {
 			switch remoteContent.Type {
 			case Template:
-				remoteTemplateList = append(remoteTemplateList, remoteContent.Content...)
+				remoteTemplateList.Append(remoteContent.Content...)
 			case Workflow:
-				remoteWorkFlowList = append(remoteWorkFlowList, remoteContent.Content...)
+				remoteWorkFlowList.Append(remoteContent.Content...)
 			}
 		}
 	}
