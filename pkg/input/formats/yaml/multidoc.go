@@ -78,7 +78,7 @@ func (j *YamlMultiDocFormat) Parse(input io.Reader, resultsCb formats.ParseReqRe
 			return errors.Wrap(err, "could not decode yaml file")
 		}
 
-		raw := strings.TrimSpace(request.Request.Raw)
+		raw := request.Request.Raw
 		if raw == "" {
 			continue
 		}
