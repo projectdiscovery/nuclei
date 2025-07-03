@@ -1,9 +1,7 @@
 package yaml
 
 import (
-	"bytes"
 	"fmt"
-	"io"
 	"strings"
 
 	yttcmd "carvel.dev/ytt/pkg/cmd/template"
@@ -12,7 +10,7 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
-func ytt(tpl, dvs []string, varFiles []string) (io.Reader, error) {
+func ytt(tpl, dvs []string, varFiles []string) ([]byte, error) {
 	// create and invoke ytt "template" command
 	templatingOptions := yttcmd.NewOptions()
 
@@ -38,12 +36,7 @@ func ytt(tpl, dvs []string, varFiles []string) (io.Reader, error) {
 		return nil, output.Err
 	}
 
-	// output.DocSet contains the full set of resulting YAML documents, in order.
-	bs, err := output.DocSet.AsBytes()
-	if err != nil {
-		return nil, err
-	}
-	return bytes.NewReader(bs), nil
+	return output.DocSet.AsBytes()
 }
 
 // templatesAsInput conveniently wraps one or more strings, each in a files.File, into a template.Input.
