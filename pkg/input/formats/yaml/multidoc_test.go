@@ -66,7 +66,7 @@ Content-Type: application/x-www-form-urlencoded
 Connection: close
 User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 11_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/87.0.4280.88 Safari/537.36
 
-foo=catalog&bar=product`
+foo="catalog"&bar=product&debug=false`
 		normalised := strings.ReplaceAll(request.Request.Raw, "\r\n", "\n")
 		require.Equal(t, expectedRaw, strings.TrimSuffix(normalised, "\n"), "request raw does not match expected value")
 

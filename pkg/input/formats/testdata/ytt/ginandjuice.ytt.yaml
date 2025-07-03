@@ -16,7 +16,7 @@ request:
   raw: |+
     POST /users/3 HTTP/1.1
     Host: ginandjuice.shop
-    Authorization: Bearer (@= get_value("token") @)
+    Authorization: Bearer (@= get_value("token", "3x4mpl3t0k3n") @)
     Accept-Encoding: gzip
     Content-Type: application/x-www-form-urlencoded
     Connection: close
