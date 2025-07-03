@@ -119,8 +119,8 @@ func (request *Request) executeRequestWithPayloads(input *contextargs.Context, p
 		return errors.Wrap(err, errCouldNotGetHtmlElement)
 	}
 	defer func() {
-         _ = instance.Close()
-       }()
+		_ = instance.Close()
+	}()
 
 	instance.SetInteractsh(request.options.Interactsh)
 
@@ -189,19 +189,12 @@ func (request *Request) executeRequestWithPayloads(input *contextargs.Context, p
 	outputEvent := request.responseToDSLMap(responseBody, header, statusCode, reqBuilder.String(), input.MetaInput.Input, navigatedURL, page.DumpHistory())
 	// add response fields to template context and merge templatectx variables to output event
 	request.options.AddTemplateVars(input.MetaInput, request.Type(), request.ID, outputEvent)
-
-	gologger.Info().Msgf("foo1 : %s", outputEvent["foo"])
-
 	if request.options.HasTemplateCtx(input.MetaInput) {
 		outputEvent = generators.MergeMaps(outputEvent, request.options.GetTemplateCtx(input.MetaInput).GetAll())
-		gologger.Info().Msgf("foo2 : %s", outputEvent["foo"])
-
 	}
 
 	maps.Copy(outputEvent, out)
 	maps.Copy(outputEvent, payloads)
-
-	gologger.Info().Msgf("foo3 : %s", outputEvent["foo"])
 
 	var event *output.InternalWrappedEvent
 	if len(page.InteractshURLs) == 0 {
