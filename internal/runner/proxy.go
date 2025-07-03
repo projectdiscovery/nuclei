@@ -57,7 +57,7 @@ func loadProxyServers(options *types.Options) error {
 	}
 	switch proxyURL.Scheme {
 	case proxyutils.HTTP, proxyutils.HTTPS:
-		gologger.Verbose().Msgf("Using %s as proxy server", proxyURL.String())
+		options.Logger.Verbose().Msgf("Using %s as proxy server", proxyURL.String())
 		options.AliveHttpProxy = proxyURL.String()
 	case proxyutils.SOCKS5:
 		options.AliveSocksProxy = proxyURL.String()
