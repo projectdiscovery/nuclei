@@ -1,8 +1,8 @@
 package yaml
 
 import (
+	"bytes"
 	"io"
-	"strings"
 
 	"github.com/pkg/errors"
 	"github.com/projectdiscovery/gologger"
@@ -56,16 +56,11 @@ func (j *YamlMultiDocFormat) Parse(input io.Reader, resultsCb formats.ParseReqRe
 		}
 		tpl := []string{string(data)}
 		dvs := mapToKeyValueSlice(j.opts.Variables)
-		finalInput, err = ytt(tpl, dvs, j.opts.VarsFilePaths)
+		finalData, err := ytt(tpl, dvs, j.opts.VarsFilePaths)
 		if err != nil {
 			return errors.Wrap(err, "could not apply ytt templating")
 		}
-		finalData, err := io.ReadAll(finalInput)
-		if err != nil {
-			return errors.Wrap(err, "could not read templated input")
-		}
-		finalInput = strings.NewReader(string(finalData))
-
+		finalInput = bytes.NewReader(finalData)
 	}
 
 	decoder := YamlUtil.NewDecoder(finalInput)
