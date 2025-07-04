@@ -440,7 +440,8 @@ func (e *ExecutorOptions) EncodeTemplate() string {
 // ApplyNewEngineOptions updates an existing ExecutorOptions with options from a new engine. This
 // handles things like the ExecutionID that need to be updated.
 func (e *ExecutorOptions) ApplyNewEngineOptions(n *ExecutorOptions) {
-	if n == nil || n.Options == nil {
+	// TODO: cached code|headless templates have nil ExecuterOptions if -code or -headless are not enabled
+	if e == nil || n == nil || n.Options == nil {
 		return
 	}
 	execID := n.Options.GetExecutionID()

@@ -365,15 +365,13 @@ func (store *Store) ValidateTemplates() error {
 
 func (store *Store) areWorkflowsValid(filteredWorkflowPaths map[string]struct{}) bool {
 	return store.areWorkflowOrTemplatesValid(filteredWorkflowPaths, true, func(templatePath string, tagFilter *templates.TagFilter) (bool, error) {
-		return false, nil
-		// return store.config.ExecutorOptions.Parser.LoadWorkflow(templatePath, store.config.Catalog)
+		return store.config.ExecutorOptions.Parser.LoadWorkflow(templatePath, store.config.Catalog)
 	})
 }
 
 func (store *Store) areTemplatesValid(filteredTemplatePaths map[string]struct{}) bool {
 	return store.areWorkflowOrTemplatesValid(filteredTemplatePaths, false, func(templatePath string, tagFilter *templates.TagFilter) (bool, error) {
-		return false, nil
-		// return store.config.ExecutorOptions.Parser.LoadTemplate(templatePath, store.tagFilter, nil, store.config.Catalog)
+		return store.config.ExecutorOptions.Parser.LoadTemplate(templatePath, store.tagFilter, nil, store.config.Catalog)
 	})
 }
 
