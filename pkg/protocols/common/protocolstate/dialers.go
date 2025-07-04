@@ -11,11 +11,13 @@ import (
 )
 
 type Dialers struct {
-	Fastdialer             *fastdialer.Dialer
-	RawHTTPClient          *rawhttp.Client
-	DefaultHTTPClient      *retryablehttp.Client
-	HTTPClientPool         *mapsutil.SyncLockMap[string, *retryablehttp.Client]
-	NetworkPolicy          *networkpolicy.NetworkPolicy
-	LocalFileAccessAllowed bool
+	Fastdialer                 *fastdialer.Dialer
+	RawHTTPClient              *rawhttp.Client
+	DefaultHTTPClient          *retryablehttp.Client
+	HTTPClientPool             *mapsutil.SyncLockMap[string, *retryablehttp.Client]
+	NetworkPolicy              *networkpolicy.NetworkPolicy
+	LocalFileAccessAllowed     bool
+	RestrictLocalNetworkAccess bool
+
 	sync.Mutex
 }

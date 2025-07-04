@@ -40,7 +40,7 @@ func ValidateNFailRequest(options *types.Options, page *rod.Page, e *proto.Fetch
 	reqURL := e.Request.URL
 	normalized := strings.ToLower(reqURL)      // normalize url to lowercase
 	normalized = strings.TrimSpace(normalized) // trim leading & trailing whitespaces
-	if !AllowLocalFileAccess(options) && stringsutil.HasPrefixI(normalized, "file:") {
+	if !IsLfaAllowed(options) && stringsutil.HasPrefixI(normalized, "file:") {
 		return multierr.Combine(FailWithReason(page, e), ErrURLDenied.Msgf(reqURL, "use of file:// protocol disabled use '-lfa' to enable"))
 	}
 	// validate potential invalid schemes
@@ -68,18 +68,31 @@ func InitHeadless(options *types.Options) {
 	dialers, ok := dialers.Get(options.ExecutionId)
 	if ok && dialers != nil {
 		dialers.Lock()
-		defer dialers.Unlock()
 		dialers.LocalFileAccessAllowed = options.AllowLocalFileAccess
+		dialers.RestrictLocalNetworkAccess = options.RestrictLocalNetworkAccess
+		dialers.Unlock()
 	}
 }
 
 // AllowLocalFileAccess returns whether local file access is allowed
-func AllowLocalFileAccess(options *types.Options) bool {
+func IsLfaAllowed(options *types.Options) bool {
 	dialers, ok := dialers.Get(options.ExecutionId)
 	if ok && dialers != nil {
 		dialers.Lock()
 		defer dialers.Unlock()
+
 		return dialers.LocalFileAccessAllowed
+	}
+	return false
+}
+
+func IsRestrictLocalNetworkAccess(options *types.Options) bool {
+	dialers, ok := dialers.Get(options.ExecutionId)
+	if ok && dialers != nil {
+		dialers.Lock()
+		defer dialers.Unlock()
+
+		return dialers.RestrictLocalNetworkAccess
 	}
 	return false
 }

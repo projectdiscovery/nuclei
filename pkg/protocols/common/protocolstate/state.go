@@ -200,6 +200,10 @@ func initDialers(options *types.Options) error {
 
 	StartActiveMemGuardian(context.Background())
 
+	// TODO: this should be tied to executionID
+	// overidde global settings with latest options
+	LfaAllowed = options.AllowLocalFileAccess
+
 	return nil
 }
 

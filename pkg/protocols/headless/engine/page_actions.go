@@ -529,7 +529,7 @@ func (p *Page) Screenshot(act *Action, out ActionData) error {
 	}
 
 	// allow if targetPath is child of current working directory
-	if !protocolstate.IsLFAAllowed() {
+	if !protocolstate.IsLfaAllowed(p.options.Options) {
 		cwd, err := os.Getwd()
 		if err != nil {
 			return errorutil.NewWithErr(err).Msgf("could not get current working directory")
