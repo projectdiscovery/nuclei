@@ -1,0 +1,1 @@
+Fix: Remove outdated retract directive from go.mod

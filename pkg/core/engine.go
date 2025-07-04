@@ -1,6 +1,8 @@
 package core
 
 import (
+	"sync"
+
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
@@ -19,6 +21,7 @@ type Engine struct {
 	options      *types.Options
 	executerOpts protocols.ExecutorOptions
 	Callback     func(*output.ResultEvent) // Executed on results
+	workPoolMutex sync.RWMutex
 }
 
 // New returns a new Engine instance
@@ -58,6 +61,8 @@ func (e *Engine) ExecuterOptions() protocols.ExecutorOptions {
 
 // WorkPool returns the worker pool for the engine
 func (e *Engine) WorkPool() *WorkPool {
+	e.workPoolMutex.Lock()
+	defer e.workPoolMutex.Unlock()
 	// resize check point - nop if there are no changes
 	e.workPool.RefreshWithConfig(e.GetWorkPoolConfig())
 	return e.workPool

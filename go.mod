@@ -373,4 +373,4 @@ require (
 )
 
 // https://go.dev/ref/mod#go-mod-file-retract
-retract v3.2.0 // retract due to broken js protocol issue
+
