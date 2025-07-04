@@ -54,10 +54,11 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, metadata,
 	optionVars := generators.BuildPayloadFromOptions(request.options.Options)
 	// add templatecontext variables to varMap
 	if request.options.HasTemplateCtx(input.MetaInput) {
-		vars = generators.MergeMaps(vars, metadata, optionVars, request.options.GetTemplateCtx(input.MetaInput).GetAll())
+		vars = generators.MergeMaps(vars, request.options.GetTemplateCtx(input.MetaInput).GetAll())
 	}
+
 	variablesMap := request.options.Variables.Evaluate(vars)
-	vars = generators.MergeMaps(vars, variablesMap, request.options.Constants)
+	vars = generators.MergeMaps(vars, metadata, optionVars, variablesMap, request.options.Constants)
 
 	// check for operator matches by wrapping callback
 	gotmatches := false
@@ -118,8 +119,8 @@ func (request *Request) executeRequestWithPayloads(input *contextargs.Context, p
 		return errors.Wrap(err, errCouldNotGetHtmlElement)
 	}
 	defer func() {
-         _ = instance.Close()
-       }()
+		_ = instance.Close()
+	}()
 
 	instance.SetInteractsh(request.options.Interactsh)
 
