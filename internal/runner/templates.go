@@ -62,9 +62,9 @@ func (r *Runner) listAvailableStoreTemplates(store *loader.Store) {
 						continue
 					}
 				}
-				r.Logger.Debug().Msgf("Template: %s\n\n%s", path, tplBody)
+				r.Logger.Print().Msgf("Template: %s\n\n%s", path, tplBody)
 			} else {
-				r.Logger.Debug().Msgf("%s\n", strings.TrimPrefix(tpl.Path, config.DefaultConfig.TemplatesDirectory+string(filepath.Separator)))
+				r.Logger.Print().Msgf("%s\n", strings.TrimPrefix(tpl.Path, config.DefaultConfig.TemplatesDirectory+string(filepath.Separator)))
 			}
 		} else {
 			r.verboseTemplate(tpl)
