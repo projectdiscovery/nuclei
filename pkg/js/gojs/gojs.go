@@ -104,12 +104,7 @@ func wrapModuleFunc(runtime *goja.Runtime, fn interface{}) interface{} {
 
 func (p *GojaModule) Set(objects Objects) Module {
 	for k, v := range objects {
-		// If the value is a function, wrap it with context injection
-		// if fnType := reflect.TypeOf(v); fnType != nil && fnType.Kind() == reflect.Func {
-		// 	p.sets[k] = wrapModuleFunc(nil, v) // We'll inject the runtime later in Require
-		// } else {
 		p.sets[k] = v
-		// }
 	}
 	return p
 }
@@ -118,12 +113,7 @@ func (p *GojaModule) Require(runtime *goja.Runtime, module *goja.Object) {
 	o := module.Get("exports").(*goja.Object)
 
 	for k, v := range p.sets {
-		// // If the value is a function, wrap it with context injection
-		// if fnType := reflect.TypeOf(v); fnType != nil && fnType.Kind() == reflect.Func {
-		// 	_ = o.Set(k, wrapModuleFunc(runtime, v))
-		// } else {
 		_ = o.Set(k, v)
-		//}
 	}
 }
 
