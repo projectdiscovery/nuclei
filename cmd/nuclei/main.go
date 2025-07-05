@@ -13,6 +13,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/projectdiscovery/gologger"
 	_pdcp "github.com/projectdiscovery/nuclei/v3/internal/pdcp"
 	"github.com/projectdiscovery/utils/auth/pdcp"
 	"github.com/projectdiscovery/utils/env"
@@ -52,6 +53,8 @@ var (
 )
 
 func main() {
+	options.Logger = gologger.DefaultLogger
+
 	// enables CLI specific configs mostly interactive behavior
 	config.CurrentAppMode = config.AppModeCLI
 
