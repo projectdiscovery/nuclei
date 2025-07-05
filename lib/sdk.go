@@ -6,6 +6,7 @@ import (
 	"context"
 	"io"
 
+	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/authprovider"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/loader"
@@ -27,6 +28,7 @@ import (
 	"github.com/projectdiscovery/ratelimit"
 	"github.com/projectdiscovery/retryablehttp-go"
 	errorutil "github.com/projectdiscovery/utils/errors"
+	"github.com/rs/xid"
 )
 
 // NucleiSDKOptions contains options for nuclei SDK
@@ -84,12 +86,15 @@ type NucleiEngine struct {
 	customWriter   output.Writer
 	customProgress progress.Progress
 	rc             reporting.Client
-	executerOpts   protocols.ExecutorOptions
+	executerOpts   *protocols.ExecutorOptions
+
+	// Logger instance for the engine
+	Logger *gologger.Logger
 }
 
 // LoadAllTemplates loads all nuclei template based on given options
 func (e *NucleiEngine) LoadAllTemplates() error {
-	workflowLoader, err := workflow.NewLoader(&e.executerOpts)
+	workflowLoader, err := workflow.NewLoader(e.executerOpts)
 	if err != nil {
 		return errorutil.New("Could not create workflow loader: %s\n", err)
 	}
@@ -124,9 +129,9 @@ func (e *NucleiEngine) GetWorkflows() []*templates.Template {
 func (e *NucleiEngine) LoadTargets(targets []string, probeNonHttp bool) {
 	for _, target := range targets {
 		if probeNonHttp {
-			_ = e.inputProvider.SetWithProbe(target, e.httpxClient)
+			_ = e.inputProvider.SetWithProbe(e.opts.ExecutionId, target, e.httpxClient)
 		} else {
-			e.inputProvider.Set(target)
+			e.inputProvider.Set(e.opts.ExecutionId, target)
 		}
 	}
 }
@@ -136,9 +141,9 @@ func (e *NucleiEngine) LoadTargetsFromReader(reader io.Reader, probeNonHttp bool
 	buff := bufio.NewScanner(reader)
 	for buff.Scan() {
 		if probeNonHttp {
-			_ = e.inputProvider.SetWithProbe(buff.Text(), e.httpxClient)
+			_ = e.inputProvider.SetWithProbe(e.opts.ExecutionId, buff.Text(), e.httpxClient)
 		} else {
-			e.inputProvider.Set(buff.Text())
+			e.inputProvider.Set(e.opts.ExecutionId, buff.Text())
 		}
 	}
 }
@@ -161,7 +166,7 @@ func (e *NucleiEngine) LoadTargetsWithHttpData(filePath string, filemode string)
 
 // GetExecuterOptions returns the nuclei executor options
 func (e *NucleiEngine) GetExecuterOptions() *protocols.ExecutorOptions {
-	return &e.executerOpts
+	return e.executerOpts
 }
 
 // ParseTemplate parses a template from given data
@@ -229,7 +234,7 @@ func (e *NucleiEngine) closeInternal() {
 // Close all resources used by nuclei engine
 func (e *NucleiEngine) Close() {
 	e.closeInternal()
-	protocolinit.Close()
+	protocolinit.Close(e.opts.ExecutionId)
 }
 
 // ExecuteCallbackWithCtx executes templates on targets and calls callback on each result(only if results are found)
@@ -287,8 +292,10 @@ func (e *NucleiEngine) Store() *loader.Store {
 // NewNucleiEngineCtx creates a new nuclei engine instance with given context
 func NewNucleiEngineCtx(ctx context.Context, options ...NucleiSDKOptions) (*NucleiEngine, error) {
 	// default options
+	defaultOptions := types.DefaultOptions()
+	defaultOptions.ExecutionId = xid.New().String()
 	e := &NucleiEngine{
-		opts: types.DefaultOptions(),
+		opts: defaultOptions,
 		mode: singleInstance,
 	}
 	for _, option := range options {
@@ -305,4 +312,9 @@ func NewNucleiEngineCtx(ctx context.Context, options ...NucleiSDKOptions) (*Nucl
 // Deprecated: use NewNucleiEngineCtx instead
 func NewNucleiEngine(options ...NucleiSDKOptions) (*NucleiEngine, error) {
 	return NewNucleiEngineCtx(context.Background(), options...)
+}
+
+// GetParser returns the template parser with cache
+func (e *NucleiEngine) GetParser() *templates.Parser {
+	return e.parser
 }

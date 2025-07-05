@@ -3,6 +3,8 @@ package templates
 import (
 	"fmt"
 	"io"
+	"strings"
+	"sync"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/config"
@@ -11,6 +13,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/utils/stats"
 	yamlutil "github.com/projectdiscovery/nuclei/v3/pkg/utils/yaml"
 	fileutil "github.com/projectdiscovery/utils/file"
+
 	"gopkg.in/yaml.v2"
 )
 
@@ -22,6 +25,7 @@ type Parser struct {
 	// this cache might potentially contain references to heap objects
 	// it's recommended to always empty it at the end of execution
 	compiledTemplatesCache *Cache
+	sync.Mutex
 }
 
 func NewParser() *Parser {
@@ -45,6 +49,13 @@ func (p *Parser) Cache() *Cache {
 	return p.parsedTemplatesCache
 }
 
+func checkOpenFileError(err error) bool {
+	if err != nil && strings.Contains(err.Error(), "too many open files") {
+		panic(err)
+	}
+	return false
+}
+
 // LoadTemplate returns true if the template is valid and matches the filtering criteria.
 func (p *Parser) LoadTemplate(templatePath string, t any, extraTags []string, catalog catalog.Catalog) (bool, error) {
 	tagFilter, ok := t.(*TagFilter)
@@ -53,6 +64,7 @@ func (p *Parser) LoadTemplate(templatePath string, t any, extraTags []string, ca
 	}
 	t, templateParseError := p.ParseTemplate(templatePath, catalog)
 	if templateParseError != nil {
+		checkOpenFileError(templateParseError)
 		return false, ErrCouldNotLoadTemplate.Msgf(templatePath, templateParseError)
 	}
 	template, ok := t.(*Template)
@@ -72,6 +84,7 @@ func (p *Parser) LoadTemplate(templatePath string, t any, extraTags []string, ca
 
 	ret, err := isTemplateInfoMetadataMatch(tagFilter, template, extraTags)
 	if err != nil {
+		checkOpenFileError(err)
 		return ret, ErrCouldNotLoadTemplate.Msgf(templatePath, err)
 	}
 	// if template loaded then check the template for optional fields to add warnings
@@ -79,6 +92,7 @@ func (p *Parser) LoadTemplate(templatePath string, t any, extraTags []string, ca
 		validationWarning := validateTemplateOptionalFields(template)
 		if validationWarning != nil {
 			stats.Increment(SyntaxWarningStats)
+			checkOpenFileError(validationWarning)
 			return ret, ErrCouldNotLoadTemplate.Msgf(templatePath, validationWarning)
 		}
 	}
@@ -97,8 +111,8 @@ func (p *Parser) ParseTemplate(templatePath string, catalog catalog.Catalog) (an
 		return nil, err
 	}
 	defer func() {
-         _ = reader.Close()
-       }()
+		_ = reader.Close()
+	}()
 
 	data, err := io.ReadAll(reader)
 	if err != nil {
@@ -156,4 +170,85 @@ func (p *Parser) LoadWorkflow(templatePath string, catalog catalog.Catalog) (boo
 	}
 
 	return false, nil
+}
+
+// CloneForExecutionId creates a clone with updated execution IDs
+func (p *Parser) CloneForExecutionId(xid string) *Parser {
+	p.Lock()
+	defer p.Unlock()
+
+	newParser := &Parser{
+		ShouldValidate:         p.ShouldValidate,
+		NoStrictSyntax:         p.NoStrictSyntax,
+		parsedTemplatesCache:   NewCache(),
+		compiledTemplatesCache: NewCache(),
+	}
+
+	for k, tpl := range p.parsedTemplatesCache.items.Map {
+		newTemplate := templateUpdateExecutionId(tpl.template, xid)
+		newParser.parsedTemplatesCache.Store(k, newTemplate, []byte(tpl.raw), tpl.err)
+	}
+
+	for k, tpl := range p.compiledTemplatesCache.items.Map {
+		newTemplate := templateUpdateExecutionId(tpl.template, xid)
+		newParser.compiledTemplatesCache.Store(k, newTemplate, []byte(tpl.raw), tpl.err)
+	}
+
+	return newParser
+}
+
+func templateUpdateExecutionId(tpl *Template, xid string) *Template {
+	// TODO: This is a no-op today since options are patched in elsewhere, but we're keeping this
+	// for future work where we may need additional tweaks per template instance.
+	return tpl
+
+	/*
+		templateBase := *tpl
+		var newOpts *protocols.ExecutorOptions
+		// Swap out the types.Options execution ID attached to the template
+		if templateBase.Options != nil {
+			optionsBase := *templateBase.Options //nolint
+			templateBase.Options = &optionsBase
+			if templateBase.Options.Options != nil {
+				optionsOptionsBase := *templateBase.Options.Options //nolint
+				templateBase.Options.Options = &optionsOptionsBase
+				templateBase.Options.Options.ExecutionId = xid
+				newOpts = templateBase.Options
+			}
+		}
+		if newOpts == nil {
+			return &templateBase
+		}
+		for _, r := range templateBase.RequestsDNS {
+			r.UpdateOptions(newOpts)
+		}
+		for _, r := range templateBase.RequestsHTTP {
+			r.UpdateOptions(newOpts)
+		}
+		for _, r := range templateBase.RequestsCode {
+			r.UpdateOptions(newOpts)
+		}
+		for _, r := range templateBase.RequestsFile {
+			r.UpdateOptions(newOpts)
+		}
+		for _, r := range templateBase.RequestsHeadless {
+			r.UpdateOptions(newOpts)
+		}
+		for _, r := range templateBase.RequestsNetwork {
+			r.UpdateOptions(newOpts)
+		}
+		for _, r := range templateBase.RequestsJavascript {
+			r.UpdateOptions(newOpts)
+		}
+		for _, r := range templateBase.RequestsSSL {
+			r.UpdateOptions(newOpts)
+		}
+		for _, r := range templateBase.RequestsWHOIS {
+			r.UpdateOptions(newOpts)
+		}
+		for _, r := range templateBase.RequestsWebsocket {
+			r.UpdateOptions(newOpts)
+		}
+		return &templateBase
+	*/
 }

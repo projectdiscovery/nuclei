@@ -99,12 +99,12 @@ func main() {
 	gologger.Info().Msgf("✓ Template signed & verified successfully")
 }
 
-func defaultExecutorOpts(templatePath string) protocols.ExecutorOptions {
+func defaultExecutorOpts(templatePath string) *protocols.ExecutorOptions {
 	// use parsed options when initializing signer instead of default options
 	options := types.DefaultOptions()
 	templates.UseOptionsForSigner(options)
 	catalog := disk.NewCatalog(filepath.Dir(templatePath))
-	executerOpts := protocols.ExecutorOptions{
+	executerOpts := &protocols.ExecutorOptions{
 		Catalog:      catalog,
 		Options:      options,
 		TemplatePath: templatePath,

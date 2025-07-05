@@ -5,7 +5,7 @@ import (
 	"reflect"
 	"sync"
 
-	"github.com/dop251/goja"
+	"github.com/Mzack9999/goja"
 	"github.com/logrusorgru/aurora"
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/js/gojs"

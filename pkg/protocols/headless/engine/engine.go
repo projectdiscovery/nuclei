@@ -15,15 +15,18 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	fileutil "github.com/projectdiscovery/utils/file"
 	osutils "github.com/projectdiscovery/utils/os"
+	processutil "github.com/projectdiscovery/utils/process"
 )
 
 // Browser is a browser structure for nuclei headless module
 type Browser struct {
-	customAgent string
-	tempDir     string
-	engine      *rod.Browser
-	options     *types.Options
-	launcher    *launcher.Launcher
+	customAgent  string
+	tempDir      string
+	previousPIDs map[int32]struct{} // track already running PIDs
+	engine       *rod.Browser
+	options      *types.Options
+	launcher     *launcher.Launcher
+
 	// use getHTTPClient to get the http client
 	httpClient     *http.Client
 	httpClientOnce *sync.Once
@@ -35,6 +38,7 @@ func New(options *types.Options) (*Browser, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "could not create temporary directory")
 	}
+	previousPIDs := processutil.FindProcesses(processutil.IsChromeProcess)
 
 	chromeLauncher := launcher.New().
 		Leakless(false).
@@ -110,6 +114,7 @@ func New(options *types.Options) (*Browser, error) {
 		httpClientOnce: &sync.Once{},
 		launcher:       chromeLauncher,
 	}
+	engine.previousPIDs = previousPIDs
 	return engine, nil
 }
 
@@ -142,5 +147,6 @@ func (b *Browser) getHTTPClient() (*http.Client, error) {
 func (b *Browser) Close() {
 	_ = b.engine.Close()
 	b.launcher.Kill()
-	_ = os.RemoveAll(b.tempDir)
+	os.RemoveAll(b.tempDir)
+	processutil.CloseProcesses(processutil.IsChromeProcess, b.previousPIDs)
 }

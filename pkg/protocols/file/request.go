@@ -66,8 +66,8 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, metadata,
 				return
 			}
 			defer func() {
-           _ = fi.Close()
-         }()
+				_ = fi.Close()
+			}()
 			format, stream, _ := archives.Identify(input.Context(), filePath, fi)
 			switch {
 			case format != nil:
@@ -86,8 +86,8 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, metadata,
 							return err
 						}
 						defer func() {
-              _ = reader.Close()
-            }()
+							_ = reader.Close()
+						}()
 						event, fileMatches, err := request.processReader(reader, archiveFileName, input, file.Size(), previous)
 						if err != nil {
 							if errors.Is(err, errEmptyResult) {
@@ -202,8 +202,8 @@ func (request *Request) processFile(filePath string, input *contextargs.Context,
 		return nil, nil, errors.Errorf("Could not open file path %s: %s\n", filePath, err)
 	}
 	defer func() {
-         _ = file.Close()
-       }()
+		_ = file.Close()
+	}()
 
 	stat, err := file.Stat()
 	if err != nil {

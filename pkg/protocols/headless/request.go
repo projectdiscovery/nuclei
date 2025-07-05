@@ -164,11 +164,11 @@ func (request *Request) executeRequestWithPayloads(input *contextargs.Context, p
 				if reqLog[value] != "" {
 					_, _ = fmt.Fprintf(reqBuilder, "\tnavigate => %v\n", reqLog[value])
 				} else {
-					fmt.Fprintf(reqBuilder, "%v not found in %v\n", value, reqLog)
+					_, _ = fmt.Fprintf(reqBuilder, "%v not found in %v\n", value, reqLog)
 				}
 			} else {
 				actStepStr := act.String()
-				reqBuilder.WriteString("\t" + actStepStr + "\n")
+				_, _ = fmt.Fprintf(reqBuilder, "\t%s\n", actStepStr)
 			}
 		}
 		gologger.Debug().Msg(reqBuilder.String())

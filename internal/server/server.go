@@ -112,7 +112,7 @@ func New(options *Options) (*DASTServer, error) {
 func NewStatsServer(fuzzStatsDB *stats.Tracker) (*DASTServer, error) {
 	server := &DASTServer{
 		nucleiExecutor: &nucleiExecutor{
-			executorOpts: protocols.ExecutorOptions{
+			executorOpts: &protocols.ExecutorOptions{
 				FuzzStatsDB: fuzzStatsDB,
 			},
 		},
