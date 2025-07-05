@@ -397,6 +397,7 @@ func init() {
 	DefaultConfig = &Config{
 		homeDir:   folderutil.HomeDirOrDefault(""),
 		configDir: ConfigDir,
+		Logger:    gologger.DefaultLogger,
 	}
 
 	// when enabled will log events in more verbosity than -v or -debug

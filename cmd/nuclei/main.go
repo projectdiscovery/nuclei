@@ -21,7 +21,6 @@ import (
 	"github.com/rs/xid"
 
 	"github.com/projectdiscovery/goflags"
-	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/gologger/levels"
 	"github.com/projectdiscovery/interactsh/pkg/client"
 	"github.com/projectdiscovery/nuclei/v3/internal/runner"
@@ -53,8 +52,6 @@ var (
 )
 
 func main() {
-	options.Logger = gologger.DefaultLogger
-
 	// enables CLI specific configs mostly interactive behavior
 	config.CurrentAppMode = config.AppModeCLI
 
