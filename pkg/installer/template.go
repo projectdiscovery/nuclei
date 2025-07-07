@@ -53,11 +53,14 @@ func (t *templateUpdateResults) String() string {
 		},
 	}
 	table := tablewriter.NewWriter(&buff)
-	table.SetHeader([]string{"Total", "Added", "Modified", "Removed"})
+	table.Header("Total", "Added", "Modified", "Removed")
 	for _, v := range data {
-		table.Append(v)
+		_ = table.Append(v)
 	}
-	table.Render()
+	_ = table.Render()
+	defer func() {
+		_ = table.Close()
+	}()
 	return buff.String()
 }
 
