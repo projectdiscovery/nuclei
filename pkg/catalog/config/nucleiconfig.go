@@ -4,13 +4,11 @@ import (
 	"bytes"
 	"crypto/md5"
 	"fmt"
-	"log"
 	"os"
 	"path/filepath"
 	"slices"
 	"strings"
 
-	"github.com/projectdiscovery/goflags"
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/utils/json"
 	"github.com/projectdiscovery/utils/env"
@@ -367,9 +365,6 @@ func (c *Config) parseDebugArgs(data string) {
 }
 
 func init() {
-	// first attempt to migrate all files from old config directory to new config directory
-	goflags.AttemptConfigMigration() // regardless how many times this is called it will only migrate once based on condition
-
 	ConfigDir := folderutil.AppConfigDirOrDefault(FallbackConfigFolderName, BinaryName)
 
 	if cfgDir := os.Getenv(NucleiConfigDirEnv); cfgDir != "" {
@@ -406,9 +401,7 @@ func init() {
 			gologger.Error().Msgf("failed to write config file at %s got: %s", DefaultConfig.getTemplatesConfigFilePath(), err)
 		}
 	}
-	// attempt to migrate resume files
-	// this also happens once regardless of how many times this is called
-	migrateResumeFiles()
+
 	// Loads/updates paths of custom templates
 	// Note: custom templates paths should not be updated in config file
 	// and even if it is changed we don't follow it since it is not expected behavior
@@ -422,62 +415,4 @@ func applyDefaultConfig() {
 	DefaultConfig.TemplatesDirectory = filepath.Join(DefaultConfig.homeDir, NucleiTemplatesDirName)
 	// updates all necessary paths
 	DefaultConfig.SetTemplatesDir(DefaultConfig.TemplatesDirectory)
-}
-
-func migrateResumeFiles() {
-	// attempt to migrate old resume files to new directory structure
-	// after migration has been done in goflags
-	oldResumeDir := DefaultConfig.GetConfigDir()
-	// migrate old resume file to new directory structure
-	if !fileutil.FileOrFolderExists(DefaultConfig.GetCacheDir()) && fileutil.FileOrFolderExists(oldResumeDir) {
-		// this means new cache dir doesn't exist, so we need to migrate
-		// first check if old resume file exists if not then no need to migrate
-		exists := false
-		files, err := os.ReadDir(oldResumeDir)
-		if err != nil {
-			// log silently
-			log.Printf("could not read old resume dir: %s\n", err)
-			return
-		}
-		for _, file := range files {
-			if strings.HasSuffix(file.Name(), ".cfg") {
-				exists = true
-				break
-			}
-		}
-		if !exists {
-			// no need to migrate
-			return
-		}
-
-		// create new cache dir
-		err = os.MkdirAll(DefaultConfig.GetCacheDir(), os.ModePerm)
-		if err != nil {
-			// log silently
-			log.Printf("could not create new cache dir: %s\n", err)
-			return
-		}
-		err = filepath.WalkDir(oldResumeDir, func(path string, d os.DirEntry, err error) error {
-			if err != nil {
-				return err
-			}
-			if d.IsDir() {
-				return nil
-			}
-			if !strings.HasSuffix(path, ".cfg") {
-				return nil
-			}
-			err = os.Rename(path, filepath.Join(DefaultConfig.GetCacheDir(), filepath.Base(path)))
-			if err != nil {
-				return err
-			}
-			return nil
-		})
-		if err != nil {
-			// log silently
-			log.Printf("could not migrate old resume files: %s\n", err)
-			return
-		}
-
-	}
 }
