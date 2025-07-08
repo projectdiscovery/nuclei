@@ -448,22 +448,21 @@ func (r *Runner) setupPDCPUpload(writer output.Writer) output.Writer {
 		r.options.EnableCloudUpload = true
 	}
 	if !r.options.EnableCloudUpload && !EnableCloudUpload {
-		r.pdcpUploadErrMsg = fmt.Sprintf("[%v] Scan results upload to cloud is disabled.", r.colorizer.BrightYellow("WRN"))
+		r.pdcpUploadErrMsg = "Scan results upload to cloud is disabled."
 		return writer
 	}
-	color := aurora.NewAurora(!r.options.NoColor)
 	h := &pdcpauth.PDCPCredHandler{}
 	creds, err := h.GetCreds()
 	if err != nil {
 		if err != pdcpauth.ErrNoCreds && !HideAutoSaveMsg {
 			r.Logger.Verbose().Msgf("Could not get credentials for cloud upload: %s\n", err)
 		}
-		r.pdcpUploadErrMsg = fmt.Sprintf("[%v] To view results on Cloud Dashboard, Configure API key from %v", color.BrightYellow("WRN"), pdcpauth.DashBoardURL)
+		r.pdcpUploadErrMsg = fmt.Sprintf("To view results on Cloud Dashboard, configure API key from %v", pdcpauth.DashBoardURL)
 		return writer
 	}
 	uploadWriter, err := pdcp.NewUploadWriter(context.Background(), r.Logger, creds)
 	if err != nil {
-		r.pdcpUploadErrMsg = fmt.Sprintf("[%v] PDCP (%v) Auto-Save Failed: %s\n", color.BrightYellow("WRN"), pdcpauth.DashBoardURL, err)
+		r.pdcpUploadErrMsg = fmt.Sprintf("PDCP (%v) Auto-Save Failed: %s\n", pdcpauth.DashBoardURL, err)
 		return writer
 	}
 	if r.options.ScanID != "" {
@@ -878,7 +877,7 @@ func (r *Runner) displayExecutionInfo(store *loader.Store) {
 	gologger.Info().Msg(versionInfo(cfg.TemplateVersion, cfg.LatestNucleiTemplatesVersion, "nuclei-templates"))
 	if !HideAutoSaveMsg {
 		if r.pdcpUploadErrMsg != "" {
-			r.Logger.Print().Msgf("%s", r.pdcpUploadErrMsg)
+			r.Logger.Warning().Msgf("%s", r.pdcpUploadErrMsg)
 		} else {
 			r.Logger.Info().Msgf("To view results on cloud dashboard, visit %v/scans upon scan completion.", pdcpauth.DashBoardURL)
 		}
