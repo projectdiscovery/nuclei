@@ -45,3 +45,7 @@ gojs contain minimalistic types and interfaces used to register packages written
 ## [libs](./libs/)
 
 libs contains all go native packages that contain **actual** implementation of all the functions and types that are exposed to javascript runtime.
+
+## [node_libraries](./node_libraries/)
+
+node_libraries contains NPM modules that are exposed to JavaScript runtime.
