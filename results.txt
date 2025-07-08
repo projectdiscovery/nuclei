@@ -1,0 +1,3 @@
+[dns-waf-detect:cloudflare] [dns] [info] billing.indeed.com
+[dns-waf-detect:cloudflare] [dns] [info] sso.indeed.com
+[dns-waf-detect:cloudflare] [dns] [info] paynow.indeed.com
