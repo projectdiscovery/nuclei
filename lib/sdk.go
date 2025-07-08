@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"context"
 	"io"
+	"sync"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/authprovider"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog"
@@ -64,6 +65,7 @@ type NucleiEngine struct {
 	templatesLoaded bool
 
 	// unexported core fields
+	ctx              context.Context
 	interactshClient *interactsh.Client
 	catalog          catalog.Catalog
 	rateLimiter      *ratelimit.Limiter
@@ -246,9 +248,9 @@ func (e *NucleiEngine) ExecuteCallbackWithCtx(ctx context.Context, callback ...f
 	}
 
 	filtered := []func(event *output.ResultEvent){}
-	for _, callback := range callback {
-		if callback != nil {
-			filtered = append(filtered, callback)
+	for _, cb := range callback {
+		if cb != nil {
+			filtered = append(filtered, cb)
 		}
 	}
 	e.resultCallbacks = append(e.resultCallbacks, filtered...)
@@ -258,15 +260,31 @@ func (e *NucleiEngine) ExecuteCallbackWithCtx(ctx context.Context, callback ...f
 		return ErrNoTemplatesAvailable
 	}
 
-	_ = e.engine.ExecuteScanWithOpts(ctx, templatesAndWorkflows, e.inputProvider, false)
-	defer e.engine.WorkPool().Wait()
+	var wg sync.WaitGroup
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		_ = e.engine.ExecuteScanWithOpts(ctx, templatesAndWorkflows, e.inputProvider, false)
+	}()
+
+	// wait for context to be cancelled
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	case <-wait(&wg):
+		// scan finished
+	}
 	return nil
 }
 
 // ExecuteWithCallback is same as ExecuteCallbackWithCtx but with default context
 // Note this is deprecated and will be removed in future major release
 func (e *NucleiEngine) ExecuteWithCallback(callback ...func(event *output.ResultEvent)) error {
-	return e.ExecuteCallbackWithCtx(context.Background(), callback...)
+	ctx := context.Background()
+	if e.ctx != nil {
+		ctx = e.ctx
+	}
+	return e.ExecuteCallbackWithCtx(ctx, callback...)
 }
 
 // Options return nuclei Type Options
@@ -290,6 +308,7 @@ func NewNucleiEngineCtx(ctx context.Context, options ...NucleiSDKOptions) (*Nucl
 	e := &NucleiEngine{
 		opts: types.DefaultOptions(),
 		mode: singleInstance,
+		ctx:  ctx,
 	}
 	for _, option := range options {
 		if err := option(e); err != nil {
@@ -305,4 +324,14 @@ func NewNucleiEngineCtx(ctx context.Context, options ...NucleiSDKOptions) (*Nucl
 // Deprecated: use NewNucleiEngineCtx instead
 func NewNucleiEngine(options ...NucleiSDKOptions) (*NucleiEngine, error) {
 	return NewNucleiEngineCtx(context.Background(), options...)
+}
+
+// wait for a waitgroup to finish
+func wait(wg *sync.WaitGroup) <-chan struct{} {
+	ch := make(chan struct{})
+	go func() {
+		defer close(ch)
+		wg.Wait()
+	}()
+	return ch
 }
