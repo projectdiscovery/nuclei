@@ -270,6 +270,7 @@ func (e *NucleiEngine) ExecuteCallbackWithCtx(ctx context.Context, callback ...f
 	// wait for context to be cancelled
 	select {
 	case <-ctx.Done():
+		<-wait(&wg) // wait for scan to finish
 		return ctx.Err()
 	case <-wait(&wg):
 		// scan finished
