@@ -15,7 +15,7 @@ func TestContextCancelNucleiEngine(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	ne, err := nuclei.NewNucleiEngineCtx(ctx,
 		nuclei.WithTemplateFilters(nuclei.TemplateFilters{Tags: []string{"oast"}}),
-		nuclei.EnableStatsWithOpts(nuclei.StatsOptions{MetricServerPort: 6064}),
+		nuclei.EnableStatsWithOpts(nuclei.StatsOptions{MetricServerPort: 0}),
 	)
 	require.NoError(t, err, "could not create nuclei engine")
 
