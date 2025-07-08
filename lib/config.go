@@ -297,7 +297,7 @@ func WithNetworkConfig(opts NetworkConfig) NucleiSDKOptions {
 		if e.opts.ShouldUseHostError() {
 			maxHostError := opts.MaxHostError
 			if e.opts.TemplateThreads > maxHostError {
-				e.Logger.Print().Msgf("[%v] The concurrency value is higher than max-host-error", e.executerOpts.Colorizer.BrightYellow("WRN"))
+				e.Logger.Warning().Msg("The concurrency value is higher than max-host-error")
 				e.Logger.Info().Msgf("Adjusting max-host-error to the concurrency value: %d", e.opts.TemplateThreads)
 				maxHostError = e.opts.TemplateThreads
 				e.opts.MaxHostError = maxHostError
