@@ -162,7 +162,7 @@ func (e *Engine) executeTemplatesOnTarget(ctx context.Context, alltemplates []*t
 	// wp is workpool that contains different waitgroups for
 	// headless and non-headless templates
 	// global waitgroup should not be used here
-	wp := e.GetWorkPool()
+	wp := NewWorkPool(e.GetWorkPoolConfig())
 	defer wp.Wait()
 
 	for _, tpl := range alltemplates {
@@ -206,9 +206,11 @@ func (e *Engine) executeTemplatesOnTarget(ctx context.Context, alltemplates []*t
 				}
 			}
 			if err != nil {
-				gologger.Warning().Msgf("[%s] Could not execute step on %s: %s\n", e.executerOpts.Colorizer.BrightBlue(template.ID), value.Input, err)
+				gologger.Warning().Msgf("[%s] Could not execute step on %s: %s
+", e.executerOpts.Colorizer.BrightBlue(template.ID), value.Input, err)
 			}
 			results.CompareAndSwap(false, match)
 		}(tpl, target, sg)
 	}
 }
+
