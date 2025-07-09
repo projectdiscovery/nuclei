@@ -108,7 +108,8 @@ func (request *Request) TmplClusterKey() uint64 {
 }
 
 func (request *Request) IsClusterable() bool {
-	return len(request.CipherSuites) <= 0 && request.MinVersion == "" && request.MaxVersion == ""
+	// nolint
+	return !(len(request.CipherSuites) > 0 || request.MinVersion != "" || request.MaxVersion != "")
 }
 
 // Compile compiles the request generators preparing any requests possible.
@@ -436,4 +437,9 @@ func (request *Request) MakeResultEventItem(wrapped *output.InternalWrappedEvent
 		Error:            types.ToString(wrapped.InternalEvent["error"]),
 	}
 	return data
+}
+
+// UpdateOptions replaces this request's options with a new copy
+func (r *Request) UpdateOptions(opts *protocols.ExecutorOptions) {
+	r.options.ApplyNewEngineOptions(opts)
 }

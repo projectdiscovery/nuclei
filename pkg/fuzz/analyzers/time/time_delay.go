@@ -61,7 +61,6 @@ func checkTimingDependency(
 
 	var requestsSent []requestsSentMetadata
 	for requestsLeft > 0 {
-
 		isCorrelationPossible, delayRecieved, err := sendRequestAndTestConfidence(regression, highSleepTimeSeconds, requestSender, baselineDelay)
 		if err != nil {
 			return false, "", err

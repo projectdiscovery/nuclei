@@ -10,7 +10,6 @@ import (
 	"strings"
 
 	"github.com/alecthomas/chroma/quick"
-	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/config"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	"github.com/projectdiscovery/retryablehttp-go"
@@ -57,8 +56,8 @@ func getAIGeneratedTemplates(prompt string, options *types.Options) ([]string, e
 		return nil, errorutil.New("Failed to generate template: %v", err)
 	}
 
-	gologger.Info().Msgf("Generated template available at: https://cloud.projectdiscovery.io/templates/%s", templateID)
-	gologger.Info().Msgf("Generated template path: %s", templateFile)
+	options.Logger.Info().Msgf("Generated template available at: https://cloud.projectdiscovery.io/templates/%s", templateID)
+	options.Logger.Info().Msgf("Generated template path: %s", templateFile)
 
 	// Check if we should display the template
 	// This happens when:
@@ -76,7 +75,7 @@ func getAIGeneratedTemplates(prompt string, options *types.Options) ([]string, e
 				template = buf.String()
 			}
 		}
-		gologger.Silent().Msgf("\n%s", template)
+		options.Logger.Debug().Msgf("\n%s", template)
 		// FIXME:
 		// we should not be exiting the program here
 		// but we need to find a better way to handle this
