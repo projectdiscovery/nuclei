@@ -8,11 +8,11 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
 )
 
-func memoizedisPoP3(host string, port int) (IsPOP3Response, error) {
+func memoizedisPoP3(executionId string, host string, port int) (IsPOP3Response, error) {
 	hash := "isPoP3" + ":" + fmt.Sprint(host) + ":" + fmt.Sprint(port)
 
 	v, err, _ := protocolstate.Memoizer.Do(hash, func() (interface{}, error) {
-		return isPoP3(host, port)
+		return isPoP3(executionId, host, port)
 	})
 	if err != nil {
 		return IsPOP3Response{}, err

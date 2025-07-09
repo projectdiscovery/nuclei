@@ -8,9 +8,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/Mzack9999/goja"
 	"github.com/alecthomas/chroma/quick"
 	"github.com/ditashi/jsbeautifier-go/jsbeautifier"
-	"github.com/dop251/goja"
 	"github.com/pkg/errors"
 
 	"github.com/projectdiscovery/gologger"
@@ -201,6 +201,7 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 
 		result, err := request.options.JsCompiler.ExecuteWithOptions(request.preConditionCompiled, args,
 			&compiler.ExecuteOptions{
+				ExecutionId:     request.options.Options.ExecutionId,
 				TimeoutVariants: request.options.Options.GetTimeouts(),
 				Source:          &request.PreCondition,
 				Callback:        registerPreConditionFunctions,
@@ -430,4 +431,9 @@ func prettyPrint(templateId string, buff string) {
 		}
 	}
 	gologger.Debug().Msgf(" [%v] Pre-condition Code:\n\n%v\n\n", templateId, strings.Join(final, "\n"))
+}
+
+// UpdateOptions replaces this request's options with a new copy
+func (r *Request) UpdateOptions(opts *protocols.ExecutorOptions) {
+	r.options.ApplyNewEngineOptions(opts)
 }

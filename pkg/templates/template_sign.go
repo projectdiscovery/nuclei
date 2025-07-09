@@ -89,7 +89,7 @@ func SignTemplate(templateSigner *signer.TemplateSigner, templatePath string) er
 
 func getTemplate(templatePath string) (*Template, []byte, error) {
 	catalog := disk.NewCatalog(filepath.Dir(templatePath))
-	executerOpts := protocols.ExecutorOptions{
+	executerOpts := &protocols.ExecutorOptions{
 		Catalog:      catalog,
 		Options:      defaultOpts,
 		TemplatePath: templatePath,

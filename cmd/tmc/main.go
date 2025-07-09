@@ -146,8 +146,8 @@ func process(opts options) error {
 			gologger.Fatal().Msgf("could not open error log file: %s\n", err)
 		}
 		defer func() {
-          _ = errFile.Close()
-        }()
+			_ = errFile.Close()
+		}()
 	}
 
 	templateCatalog := disk.NewCatalog(filepath.Dir(opts.input))
@@ -401,7 +401,7 @@ func parseAndAddMaxRequests(catalog catalog.Catalog, path, data string) (string,
 
 // parseTemplate parses a template and returns the template object
 func parseTemplate(catalog catalog.Catalog, templatePath string) (*templates.Template, error) {
-	executorOpts := protocols.ExecutorOptions{
+	executorOpts := &protocols.ExecutorOptions{
 		Catalog: catalog,
 		Options: defaultOpts,
 	}

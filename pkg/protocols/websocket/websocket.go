@@ -236,8 +236,8 @@ func (request *Request) executeRequestWithPayloads(target *contextargs.Context, 
 		return errors.Wrap(err, "could not connect to server")
 	}
 	defer func() {
-         _ = conn.Close()
-       }()
+		_ = conn.Close()
+	}()
 
 	responseBuilder := &strings.Builder{}
 	if readBuffer != nil {
@@ -427,4 +427,9 @@ func (request *Request) MakeResultEventItem(wrapped *output.InternalWrappedEvent
 // Type returns the type of the protocol request
 func (request *Request) Type() templateTypes.ProtocolType {
 	return templateTypes.WebsocketProtocol
+}
+
+// UpdateOptions replaces this request's options with a new copy
+func (r *Request) UpdateOptions(opts *protocols.ExecutorOptions) {
+	r.options.ApplyNewEngineOptions(opts)
 }
