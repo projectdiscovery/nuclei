@@ -154,6 +154,7 @@ func New(options *Options, db string, doNotDedupe bool) (Client, error) {
 	}
 	if options.ElasticsearchExporter != nil {
 		options.ElasticsearchExporter.HttpClient = options.HttpClient
+		options.ElasticsearchExporter.ExecutionId = options.ExecutionId
 		exporter, err := es.New(options.ElasticsearchExporter)
 		if err != nil {
 			return nil, errorutil.NewWithErr(err).Wrap(ErrExportClientCreation)
@@ -162,6 +163,7 @@ func New(options *Options, db string, doNotDedupe bool) (Client, error) {
 	}
 	if options.SplunkExporter != nil {
 		options.SplunkExporter.HttpClient = options.HttpClient
+		options.SplunkExporter.ExecutionId = options.ExecutionId
 		exporter, err := splunk.New(options.SplunkExporter)
 		if err != nil {
 			return nil, errorutil.NewWithErr(err).Wrap(ErrExportClientCreation)
@@ -228,8 +230,8 @@ func CreateConfigIfNotExists() error {
 		return errorutil.NewWithErr(err).Msgf("could not create config file")
 	}
 	defer func() {
-         _ = reportingFile.Close()
-       }()
+		_ = reportingFile.Close()
+	}()
 
 	err = yaml.NewEncoder(reportingFile).Encode(options)
 	return err

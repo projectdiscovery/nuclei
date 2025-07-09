@@ -61,10 +61,10 @@ func TestHTTPExtractMultipleReuse(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case "/robots.txt":
-			_, _ = w.Write([]byte(`User-agent: Googlebot
+			_, _ = fmt.Fprintf(w, `User-agent: Googlebot
 Disallow: /a
 Disallow: /b
-Disallow: /c`))
+Disallow: /c`)
 		default:
 			_, _ = fmt.Fprintf(w, `match %v`, r.URL.Path)
 		}

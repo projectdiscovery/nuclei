@@ -9,8 +9,8 @@ import (
 )
 
 var (
-	// lfaAllowed means local file access is allowed
-	lfaAllowed bool
+	// LfaAllowed means local file access is allowed
+	LfaAllowed bool
 )
 
 // Normalizepath normalizes path and returns absolute path
@@ -18,7 +18,8 @@ var (
 // this respects the sandbox rules and only loads files from
 // allowed directories
 func NormalizePath(filePath string) (string, error) {
-	if lfaAllowed {
+	// TODO: this should be tied to executionID
+	if LfaAllowed {
 		return filePath, nil
 	}
 	cleaned, err := fileutil.ResolveNClean(filePath, config.DefaultConfig.GetTemplateDir())
@@ -31,9 +32,4 @@ func NormalizePath(filePath string) (string, error) {
 		return cleaned, nil
 	}
 	return "", errorutil.New("path %v is outside nuclei-template directory and -lfa is not enabled", filePath)
-}
-
-// IsLFAAllowed returns true if local file access is allowed
-func IsLFAAllowed() bool {
-	return lfaAllowed
 }
