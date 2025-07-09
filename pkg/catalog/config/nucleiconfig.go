@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"slices"
 	"strings"
+	"sync"
 
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/utils/json"
@@ -40,15 +41,18 @@ type Config struct {
 	// local cache of nuclei version check endpoint
 	// these fields are only update during nuclei version check
 	// TODO: move these fields to a separate unexported struct as they are not meant to be used directly
-	LatestNucleiVersion          string `json:"nuclei-latest-version"`
-	LatestNucleiTemplatesVersion string `json:"nuclei-templates-latest-version"`
-	LatestNucleiIgnoreHash       string `json:"nuclei-latest-ignore-hash,omitempty"`
+	LatestNucleiVersion          string           `json:"nuclei-latest-version"`
+	LatestNucleiTemplatesVersion string           `json:"nuclei-templates-latest-version"`
+	LatestNucleiIgnoreHash       string           `json:"nuclei-latest-ignore-hash,omitempty"`
+	Logger                       *gologger.Logger `json:"-"` // logger
 
 	// internal / unexported fields
 	disableUpdates bool     `json:"-"` // disable updates both version check and template updates
 	homeDir        string   `json:"-"` //  User Home Directory
 	configDir      string   `json:"-"` //  Nuclei Global Config Directory
 	debugArgs      []string `json:"-"` // debug args
+
+	m sync.Mutex
 }
 
 // IsCustomTemplate determines whether a given template is custom-built or part of the official Nuclei templates.
@@ -103,21 +107,29 @@ func (c *Config) GetTemplateDir() string {
 
 // DisableUpdateCheck disables update check and template updates
 func (c *Config) DisableUpdateCheck() {
+	c.m.Lock()
+	defer c.m.Unlock()
 	c.disableUpdates = true
 }
 
 // CanCheckForUpdates returns true if update check is enabled
 func (c *Config) CanCheckForUpdates() bool {
+	c.m.Lock()
+	defer c.m.Unlock()
 	return !c.disableUpdates
 }
 
 // NeedsTemplateUpdate returns true if template installation/update is required
 func (c *Config) NeedsTemplateUpdate() bool {
+	c.m.Lock()
+	defer c.m.Unlock()
 	return !c.disableUpdates && (c.TemplateVersion == "" || IsOutdatedVersion(c.TemplateVersion, c.LatestNucleiTemplatesVersion) || !fileutil.FolderExists(c.TemplatesDirectory))
 }
 
 // NeedsIgnoreFileUpdate returns true if Ignore file hash is different (aka ignore file is outdated)
 func (c *Config) NeedsIgnoreFileUpdate() bool {
+	c.m.Lock()
+	defer c.m.Unlock()
 	return c.NucleiIgnoreHash == "" || c.NucleiIgnoreHash != c.LatestNucleiIgnoreHash
 }
 
@@ -209,7 +221,7 @@ func (c *Config) GetCacheDir() string {
 func (c *Config) SetConfigDir(dir string) {
 	c.configDir = dir
 	if err := c.createConfigDirIfNotExists(); err != nil {
-		gologger.Fatal().Msgf("Could not create nuclei config directory at %s: %s", c.configDir, err)
+		c.Logger.Fatal().Msgf("Could not create nuclei config directory at %s: %s", c.configDir, err)
 	}
 
 	// if folder already exists read config or create new
@@ -217,7 +229,7 @@ func (c *Config) SetConfigDir(dir string) {
 		// create new config
 		applyDefaultConfig()
 		if err2 := c.WriteTemplatesConfig(); err2 != nil {
-			gologger.Fatal().Msgf("Could not create nuclei config file at %s: %s", c.getTemplatesConfigFilePath(), err2)
+			c.Logger.Fatal().Msgf("Could not create nuclei config file at %s: %s", c.getTemplatesConfigFilePath(), err2)
 		}
 	}
 
@@ -317,14 +329,14 @@ func (c *Config) createConfigDirIfNotExists() error {
 // to the current config directory
 func (c *Config) copyIgnoreFile() {
 	if err := c.createConfigDirIfNotExists(); err != nil {
-		gologger.Error().Msgf("Could not create nuclei config directory at %s: %s", c.configDir, err)
+		c.Logger.Error().Msgf("Could not create nuclei config directory at %s: %s", c.configDir, err)
 		return
 	}
 	ignoreFilePath := c.GetIgnoreFilePath()
 	if !fileutil.FileExists(ignoreFilePath) {
 		// copy ignore file from default config directory
 		if err := fileutil.CopyFile(filepath.Join(folderutil.AppConfigDirOrDefault(FallbackConfigFolderName, BinaryName), NucleiIgnoreFileName), ignoreFilePath); err != nil {
-			gologger.Error().Msgf("Could not copy nuclei ignore file at %s: %s", ignoreFilePath, err)
+			c.Logger.Error().Msgf("Could not copy nuclei ignore file at %s: %s", ignoreFilePath, err)
 		}
 	}
 }
@@ -380,6 +392,7 @@ func init() {
 	DefaultConfig = &Config{
 		homeDir:   folderutil.HomeDirOrDefault(""),
 		configDir: ConfigDir,
+		Logger:    gologger.DefaultLogger,
 	}
 
 	// when enabled will log events in more verbosity than -v or -debug

@@ -16,17 +16,22 @@ import (
 
 // collectSMBv2Metadata collects metadata for SMBv2 services.
 // @memo
-func collectSMBv2Metadata(host string, port int, timeout time.Duration) (*plugins.ServiceSMB, error) {
+func collectSMBv2Metadata(executionId string, host string, port int, timeout time.Duration) (*plugins.ServiceSMB, error) {
 	if timeout == 0 {
 		timeout = 5 * time.Second
 	}
-	conn, err := protocolstate.Dialer.Dial(context.TODO(), "tcp", net.JoinHostPort(host, fmt.Sprintf("%d", port)))
+	dialer := protocolstate.GetDialersWithId(executionId)
+	if dialer == nil {
+		return nil, fmt.Errorf("dialers not initialized for %s", executionId)
+	}
+
+	conn, err := dialer.Fastdialer.Dial(context.TODO(), "tcp", net.JoinHostPort(host, fmt.Sprintf("%d", port)))
 	if err != nil {
 		return nil, err
 	}
 	defer func() {
-         _ = conn.Close()
-       }()
+		_ = conn.Close()
+	}()
 
 	metadata, err := smb.DetectSMBv2(conn, timeout)
 	if err != nil {

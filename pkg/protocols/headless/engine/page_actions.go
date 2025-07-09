@@ -529,7 +529,7 @@ func (p *Page) Screenshot(act *Action, out ActionData) error {
 	}
 
 	// allow if targetPath is child of current working directory
-	if !protocolstate.IsLFAAllowed() {
+	if !protocolstate.IsLfaAllowed(p.options.Options) {
 		cwd, err := os.Getwd()
 		if err != nil {
 			return errorutil.NewWithErr(err).Msgf("could not get current working directory")
@@ -678,7 +678,7 @@ func (p *Page) WaitPageLifecycleEvent(act *Action, out ActionData, event proto.P
 
 // WaitStable waits until the page is stable
 func (p *Page) WaitStable(act *Action, out ActionData) error {
-	var dur = time.Second // default stable page duration: 1s
+	dur := time.Second // default stable page duration: 1s
 
 	timeout, err := getTimeout(p, act)
 	if err != nil {

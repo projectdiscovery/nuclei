@@ -311,7 +311,7 @@ func (request *Request) filterDataMap(input *contextargs.Context) map[string]int
 			if strings.EqualFold(k, "content_type") {
 				m["content_type"] = v
 			}
-			fmt.Fprintf(sb, "%s: %s\n", k, v)
+			_, _ = fmt.Fprintf(sb, "%s: %s\n", k, v)
 			return true
 		})
 		m["header"] = sb.String()

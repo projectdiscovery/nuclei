@@ -3,7 +3,7 @@ package compiler
 import (
 	"sync"
 
-	"github.com/dop251/goja"
+	"github.com/Mzack9999/goja"
 	syncutil "github.com/projectdiscovery/utils/sync"
 )
 

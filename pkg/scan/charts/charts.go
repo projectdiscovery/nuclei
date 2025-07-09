@@ -55,8 +55,8 @@ func NewScanEventsCharts(eventsDir string) (*ScanEventsCharts, error) {
 		return nil, err
 	}
 	defer func() {
-         _ = f.Close()
-       }()
+		_ = f.Close()
+	}()
 
 	data := []events.ScanEvent{}
 	dec := json.NewDecoder(f)
