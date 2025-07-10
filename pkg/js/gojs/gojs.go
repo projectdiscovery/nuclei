@@ -2,6 +2,7 @@ package gojs
 
 import (
 	"context"
+	"maps"
 	"reflect"
 	"sync"
 
@@ -103,9 +104,7 @@ func wrapModuleFunc(runtime *goja.Runtime, fn interface{}) interface{} {
 }
 
 func (p *GojaModule) Set(objects Objects) Module {
-	for k, v := range objects {
-		p.sets[k] = v
-	}
+	maps.Copy(p.sets, objects)
 	return p
 }
 
