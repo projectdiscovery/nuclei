@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"io"
+	"maps"
 	"net/http"
 	"strconv"
 	"strings"
@@ -974,12 +975,8 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 		if request.options.Interactsh != nil {
 			request.options.Interactsh.MakePlaceholders(generatedRequest.interactshURLs, outputEvent)
 		}
-		for k, v := range previousEvent {
-			finalEvent[k] = v
-		}
-		for k, v := range outputEvent {
-			finalEvent[k] = v
-		}
+		maps.Copy(finalEvent, previousEvent)
+		maps.Copy(finalEvent, outputEvent)
 
 		// Add to history the current request number metadata if asked by the user.
 		if request.NeedsRequestCondition() {
