@@ -2,6 +2,7 @@ package httpapi
 
 import (
 	"net/http"
+	"sync/atomic"
 	"time"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/js/compiler"
@@ -21,23 +22,38 @@ type Concurrency struct {
 
 // Server represents the HTTP server that handles the concurrency settings endpoints.
 type Server struct {
-	addr   string
-	config *types.Options
+	addr        string
+	config      *types.Options
+	httpServer  *http.Server
+	jsConcStore atomic.Int32
 }
 
 // New creates a new instance of Server.
 func New(addr string, config *types.Options) *Server {
-	return &Server{
+	s := &Server{
 		addr:   addr,
 		config: config,
 	}
+	s.jsConcStore.Store(int32(compiler.PoolingJsVmConcurrency))
+	return s
 }
 
 // Start initializes the server and its routes, then starts listening on the specified address.
 func (s *Server) Start() error {
-	http.HandleFunc("/api/concurrency", s.handleConcurrency)
-	if err := http.ListenAndServe(s.addr, nil); err != nil {
-		return err
+	mux := http.NewServeMux()
+	mux.HandleFunc("/api/concurrency", s.handleConcurrency)
+
+	s.httpServer = &http.Server{
+		Addr:    s.addr,
+		Handler: mux,
+	}
+	return s.httpServer.ListenAndServe()
+}
+
+// Shutdown gracefully shuts down the HTTP server.
+func (s *Server) Shutdown() error {
+	if s.httpServer != nil {
+		return s.httpServer.Close()
 	}
 	return nil
 }
@@ -54,7 +70,7 @@ func (s *Server) handleConcurrency(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// GetSettings handles GET requests and returns the current concurrency settings
+// getSettings handles GET requests and returns the current concurrency settings.
 func (s *Server) getSettings(w http.ResponseWriter, _ *http.Request) {
 	concurrencySettings := Concurrency{
 		BulkSize:              s.config.BulkSize,
@@ -63,7 +79,7 @@ func (s *Server) getSettings(w http.ResponseWriter, _ *http.Request) {
 		RateLimitDuration:     s.config.RateLimitDuration.String(),
 		PayloadConcurrency:    s.config.PayloadConcurrency,
 		ProbeConcurrency:      s.config.ProbeConcurrency,
-		JavascriptConcurrency: compiler.PoolingJsVmConcurrency,
+		JavascriptConcurrency: int(s.jsConcStore.Load()),
 	}
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(concurrencySettings); err != nil {
@@ -72,7 +88,7 @@ func (s *Server) getSettings(w http.ResponseWriter, _ *http.Request) {
 	}
 }
 
-// UpdateSettings handles PUT requests to update the concurrency settings
+// updateSettings handles PUT requests to update the concurrency settings.
 func (s *Server) updateSettings(w http.ResponseWriter, r *http.Request) {
 	var newSettings Concurrency
 	if err := json.NewDecoder(r.Body).Decode(&newSettings); err != nil {
@@ -104,8 +120,9 @@ func (s *Server) updateSettings(w http.ResponseWriter, r *http.Request) {
 		s.config.ProbeConcurrency = newSettings.ProbeConcurrency
 	}
 	if newSettings.JavascriptConcurrency > 0 {
+		s.jsConcStore.Store(int32(newSettings.JavascriptConcurrency))
 		compiler.PoolingJsVmConcurrency = newSettings.JavascriptConcurrency
-		s.config.JsConcurrency = newSettings.JavascriptConcurrency // no-op on speed change
+		s.config.JsConcurrency = newSettings.JavascriptConcurrency
 	}
 
 	w.WriteHeader(http.StatusOK)
