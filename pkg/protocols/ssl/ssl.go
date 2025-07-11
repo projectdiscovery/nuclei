@@ -2,6 +2,7 @@ package ssl
 
 import (
 	"fmt"
+	"maps"
 	"net"
 	"strings"
 	"time"
@@ -206,9 +207,7 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 
 	requestOptions := request.options
 	payloadValues := generators.BuildPayloadFromOptions(request.options.Options)
-	for k, v := range dynamicValues {
-		payloadValues[k] = v
-	}
+	maps.Copy(payloadValues, dynamicValues)
 
 	payloadValues["Hostname"] = hostPort
 	payloadValues["Host"] = hostname
@@ -271,9 +270,7 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 	jsonDataString := string(jsonData)
 
 	data := make(map[string]interface{})
-	for k, v := range payloadValues {
-		data[k] = v
-	}
+	maps.Copy(data, payloadValues)
 	data["type"] = request.Type().String()
 	data["response"] = jsonDataString
 	data["host"] = input.MetaInput.Input
