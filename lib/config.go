@@ -537,7 +537,7 @@ func WithResumeFile(file string) NucleiSDKOptions {
 	}
 }
 
-// WithLogger allows setting gologger instance
+// WithLogger allows setting a shared gologger instance
 func WithLogger(logger *gologger.Logger) NucleiSDKOptions {
 	return func(e *NucleiEngine) error {
 		e.Logger = logger

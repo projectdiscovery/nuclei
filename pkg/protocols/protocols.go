@@ -198,6 +198,11 @@ func (e *ExecutorOptions) HasTemplateCtx(input *contextargs.MetaInput) bool {
 // GetTemplateCtx returns template context for given input
 func (e *ExecutorOptions) GetTemplateCtx(input *contextargs.MetaInput) *contextargs.Context {
 	scanId := input.GetScanHash(e.TemplateID)
+	if e.templateCtxStore == nil {
+		// if template context store is not initialized create it
+		e.CreateTemplateCtxStore()
+	}
+	// get template context from store
 	templateCtx, ok := e.templateCtxStore.Get(scanId)
 	if !ok {
 		// if template context does not exist create new and add it to store and return it
@@ -444,14 +449,49 @@ func (e *ExecutorOptions) ApplyNewEngineOptions(n *ExecutorOptions) {
 	if e == nil || n == nil || n.Options == nil {
 		return
 	}
-	execID := n.Options.GetExecutionID()
-	e.SetExecutionID(execID)
-}
 
-// ApplyNewEngineOptions updates an existing ExecutorOptions with options from a new engine. This
-// handles things like the ExecutionID that need to be updated.
-func (e *ExecutorOptions) SetExecutionID(executorId string) {
-	e.m.Lock()
-	defer e.m.Unlock()
-	e.Options.SetExecutionID(executorId)
+	// The types.Options include the ExecutionID among other things
+	e.Options = n.Options.Copy()
+
+	// Keep the template-specific fields, but replace the rest
+	/*
+		e.TemplateID = n.TemplateID
+		e.TemplatePath = n.TemplatePath
+		e.TemplateInfo = n.TemplateInfo
+		e.TemplateVerifier = n.TemplateVerifier
+		e.RawTemplate = n.RawTemplate
+		e.Variables = n.Variables
+		e.Constants = n.Constants
+	*/
+	e.Output = n.Output
+	e.Options = n.Options
+	e.IssuesClient = n.IssuesClient
+	e.Progress = n.Progress
+	e.RateLimiter = n.RateLimiter
+	e.Catalog = n.Catalog
+	e.ProjectFile = n.ProjectFile
+	e.Browser = n.Browser
+	e.Interactsh = n.Interactsh
+	e.HostErrorsCache = n.HostErrorsCache
+	e.StopAtFirstMatch = n.StopAtFirstMatch
+	e.ExcludeMatchers = n.ExcludeMatchers
+	e.InputHelper = n.InputHelper
+	e.FuzzParamsFrequency = n.FuzzParamsFrequency
+	e.FuzzStatsDB = n.FuzzStatsDB
+	e.DoNotCache = n.DoNotCache
+	e.Colorizer = n.Colorizer
+	e.WorkflowLoader = n.WorkflowLoader
+	e.ResumeCfg = n.ResumeCfg
+	e.ProtocolType = n.ProtocolType
+	e.Flow = n.Flow
+	e.IsMultiProtocol = n.IsMultiProtocol
+	e.templateCtxStore = n.templateCtxStore
+	e.JsCompiler = n.JsCompiler
+	e.AuthProvider = n.AuthProvider
+	e.TemporaryDirectory = n.TemporaryDirectory
+	e.Parser = n.Parser
+	e.ExportReqURLPattern = n.ExportReqURLPattern
+	e.GlobalMatchers = n.GlobalMatchers
+	e.Logger = n.Logger
+	e.CustomFastdialer = n.CustomFastdialer
 }
