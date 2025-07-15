@@ -200,9 +200,8 @@ func initDialers(options *types.Options) error {
 
 	StartActiveMemGuardian(context.Background())
 
-	// TODO: this should be tied to executionID
-	// override global settings with latest options
-	// LfaAllowed = options.AllowLocalFileAccess
+	// TODO: this is a race and should also be tied to executionID
+	LfaAllowed = options.AllowLocalFileAccess
 
 	return nil
 }
