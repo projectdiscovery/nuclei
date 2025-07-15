@@ -2,6 +2,7 @@ package core
 
 import (
 	"context"
+	"fmt"
 	"sync"
 	"sync/atomic"
 
@@ -78,6 +79,7 @@ func (e *Engine) executeTemplateWithTargets(ctx context.Context, template *templ
 	}
 
 	target.Iterate(func(scannedValue *contextargs.MetaInput) bool {
+		fmt.Printf("[iter] iterating target: %s %s\n", template.ID, scannedValue.Input)
 		select {
 		case <-ctx.Done():
 			return false // exit

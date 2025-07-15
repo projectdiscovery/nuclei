@@ -2,6 +2,7 @@ package core
 
 import (
 	"context"
+	"fmt"
 	"sync"
 	"sync/atomic"
 
@@ -132,6 +133,7 @@ func (e *Engine) executeTemplateSpray(ctx context.Context, templatesList []*temp
 		wg.Add()
 		go func(tpl *templates.Template) {
 			defer wg.Done()
+			fmt.Printf("[spray] executing template: %s\n", tpl.ID)
 			// All other request types are executed here
 			// Note: executeTemplateWithTargets creates goroutines and blocks
 			// given template is executed on all targets
