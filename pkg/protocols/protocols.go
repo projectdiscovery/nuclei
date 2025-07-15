@@ -3,7 +3,6 @@ package protocols
 import (
 	"context"
 	"encoding/base64"
-	"sync"
 	"sync/atomic"
 
 	"github.com/projectdiscovery/fastdialer/fastdialer"
@@ -139,8 +138,6 @@ type ExecutorOptions struct {
 	Logger *gologger.Logger
 	// CustomFastdialer is a fastdialer dialer instance
 	CustomFastdialer *fastdialer.Dialer
-
-	m sync.Mutex
 }
 
 // todo: centralizing components is not feasible with current clogged architecture
