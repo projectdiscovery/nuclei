@@ -110,7 +110,7 @@ func (e *Engine) executeTemplateWithTargets(ctx context.Context, template *templ
 
 		// Skip if the host has had errors
 		if e.executerOpts.HostErrorsCache != nil && e.executerOpts.HostErrorsCache.Check(e.executerOpts.ProtocolType.String(), contextargs.NewWithMetaInput(ctx, scannedValue)) {
-			e.Callback(&output.ResultEvent{
+			skipEvent := &output.ResultEvent{
 				TemplateID:    template.ID,
 				TemplatePath:  template.Path,
 				Info:          template.Info,
@@ -119,7 +119,13 @@ func (e *Engine) executeTemplateWithTargets(ctx context.Context, template *templ
 				MatcherStatus: false,
 				Error:         "host was skipped as it was found unresponsive",
 				Timestamp:     time.Now(),
-			})
+			}
+
+			if e.Callback != nil {
+				e.Callback(skipEvent)
+			} else if e.executerOpts.Output != nil {
+				_ = e.executerOpts.Output.Write(skipEvent)
+			}
 			return true
 		}
 
