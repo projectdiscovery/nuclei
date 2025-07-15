@@ -864,8 +864,10 @@ func (request *Request) executeRequest(input *contextargs.Context, generatedRequ
 	var curlCommand string
 	if !request.Unsafe && resp != nil && generatedRequest.request != nil && resp.Request != nil && !request.Race {
 		bodyBytes, _ := generatedRequest.request.BodyBytes()
-		resp.Request.Body = io.NopCloser(bytes.NewReader(bodyBytes))
-		command, err := http2curl.GetCurlCommand(generatedRequest.request.Request)
+		// Use a clone to avoid a race condition with the http transport
+		req := resp.Request.Clone(resp.Request.Context())
+		req.Body = io.NopCloser(bytes.NewReader(bodyBytes))
+		command, err := http2curl.GetCurlCommand(req)
 		if err == nil && command != nil {
 			curlCommand = command.String()
 		}
