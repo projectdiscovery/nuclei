@@ -12,7 +12,8 @@ import (
 // dump creates a dump of the http request in form of a byte slice
 func dump(req *generatedRequest, reqURL string) ([]byte, error) {
 	if req.request != nil {
-		bin, err := req.request.Dump()
+		// Use a clone to avoid a race condition with the http transport
+		bin, err := req.request.Clone(req.request.Context()).Dump()
 		if err != nil {
 			return nil, errorutil.NewWithErr(err).WithTag("http").Msgf("could not dump request: %v", req.request.String())
 		}
