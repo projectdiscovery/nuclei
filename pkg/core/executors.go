@@ -82,6 +82,7 @@ func (e *Engine) executeTemplateWithTargets(ctx context.Context, template *templ
 		fmt.Printf("[iter] iterating target: %s %s\n", template.ID, scannedValue.Input)
 		select {
 		case <-ctx.Done():
+			fmt.Printf("[iter] ctx done: %s %s\n", template.ID, scannedValue.Input)
 			return false // exit
 		default:
 		}
@@ -110,6 +111,7 @@ func (e *Engine) executeTemplateWithTargets(ctx context.Context, template *templ
 
 		// Skip if the host has had errors
 		if e.executerOpts.HostErrorsCache != nil && e.executerOpts.HostErrorsCache.Check(e.executerOpts.ProtocolType.String(), contextargs.NewWithMetaInput(ctx, scannedValue)) {
+			fmt.Printf("[iter] host error: %s %s\n", template.ID, scannedValue.Input)
 			return true
 		}
 
@@ -118,6 +120,7 @@ func (e *Engine) executeTemplateWithTargets(ctx context.Context, template *templ
 			defer wg.Done()
 			defer cleanupInFlight(index)
 			if skip {
+				fmt.Printf("[iter] skip: %s %s\n", template.ID, value.Input)
 				return
 			}
 
@@ -130,6 +133,7 @@ func (e *Engine) executeTemplateWithTargets(ctx context.Context, template *templ
 			case types.WorkflowProtocol:
 				match = e.executeWorkflow(ctx, template.CompiledWorkflow)
 			default:
+				fmt.Printf("[iter] executing template: %s %s\n", template.ID, value.Input)
 				if e.Callback != nil {
 					if results, err := template.Executer.ExecuteWithResults(ctx); err == nil {
 						for _, result := range results {
@@ -141,7 +145,9 @@ func (e *Engine) executeTemplateWithTargets(ctx context.Context, template *templ
 					match, err = template.Executer.Execute(ctx)
 				}
 			}
+			fmt.Printf("[iter] match: %s %s %v\n", template.ID, value.Input, match)
 			if err != nil {
+				fmt.Printf("[iter] error: %s %s\n", template.ID, value.Input)
 				gologger.Warning().Msgf("[%s] Could not execute step on %s: %s\n", e.executerOpts.Colorizer.BrightBlue(template.ID), value.Input, err)
 			}
 			results.CompareAndSwap(false, match)
