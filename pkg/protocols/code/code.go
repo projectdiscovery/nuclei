@@ -100,12 +100,12 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 		// allow template validation w/o requiring all engines to be installed
 		// on the host.
 		//
-		// TODO: Ideally, error checking should be done at the lowest level. For
-		// example, we can reuse errors[1][2] from the `projectdiscovery/gozero`
-		// package and wrap (yes, not string format[3][4]) em inside
-		// `projectdiscovery/utils/errors` package to preserve error semantics
-		// and enable runtime type assertion via builtin `errors.Is` function
-		// for granular err handling in the callstack.
+		// TODO: Ideally, error checking should be done at the highest level
+		// (e.g. runner, main function). For example, we can reuse errors[1][2]
+		// from the `projectdiscovery/gozero` package and wrap (yes, not string
+		// format[3][4]) em inside `projectdiscovery/utils/errors` package to
+		// preserve error semantics and enable runtime type assertion via
+		// builtin `errors.Is` func for granular err handling in the call stack.
 		//
 		// [1]: https://github.com/projectdiscovery/gozero/blob/v0.0.3/gozero.go#L20
 		// [2]: https://github.com/projectdiscovery/gozero/blob/v0.0.3/gozero.go#L35
