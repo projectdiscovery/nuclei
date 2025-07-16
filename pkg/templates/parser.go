@@ -49,7 +49,7 @@ func (p *Parser) Cache() *Cache {
 	return p.parsedTemplatesCache
 }
 
-// Cache returns the parsed templates cache
+// CompiledCache returns the compiled templates cache
 func (p *Parser) CompiledCache() *Cache {
 	return p.compiledTemplatesCache
 }
