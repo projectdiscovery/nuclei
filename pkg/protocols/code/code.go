@@ -94,9 +94,31 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 
 	engine, err := gozero.New(gozeroOptions)
 	if err != nil {
-		return errorutil.NewWithErr(err).Msgf("[%s] engines '%s' not available on host", options.TemplateID, strings.Join(request.Engine, ","))
+		errMsg := fmt.Sprintf("[%s] engines '%s' not available on host", options.TemplateID, strings.Join(request.Engine, ","))
+
+		// NOTE(dwisiswant0): In validation mode, skip engine avail check to
+		// allow template validation w/o requiring all engines to be installed
+		// on the host.
+		//
+		// TODO: Ideally, error checking should be done at the lowest level. For
+		// example, we can reuse errors[1][2] from the `projectdiscovery/gozero`
+		// package and wrap (yes, not string format[3][4]) em inside
+		// `projectdiscovery/utils/errors` package to preserve error semantics
+		// and enable runtime type assertion via builtin `errors.Is` function
+		// for granular err handling in the callstack.
+		//
+		// [1]: https://github.com/projectdiscovery/gozero/blob/v0.0.3/gozero.go#L20
+		// [2]: https://github.com/projectdiscovery/gozero/blob/v0.0.3/gozero.go#L35
+		// [3]: https://github.com/projectdiscovery/utils/blob/v0.4.21/errors/enriched.go#L85
+		// [4]: https://github.com/projectdiscovery/utils/blob/v0.4.21/errors/enriched.go#L137
+		if options.Options.Validate {
+			options.Logger.Error().Msgf("%s <- %s", errMsg, err)
+		} else {
+			return errorutil.NewWithErr(err).Msgf(errMsg)
+		}
+	} else {
+		request.gozero = engine
 	}
-	request.gozero = engine
 
 	var src *gozero.Source
 
