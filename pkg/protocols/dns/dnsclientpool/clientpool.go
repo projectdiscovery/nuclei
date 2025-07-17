@@ -8,11 +8,12 @@ import (
 	"github.com/pkg/errors"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	"github.com/projectdiscovery/retryabledns"
+	mapsutil "github.com/projectdiscovery/utils/maps"
 )
 
 var (
-	poolMutex  *sync.RWMutex
-	clientPool map[string]*retryabledns.Client
+	poolMutex  sync.RWMutex
+	clientPool *mapsutil.SyncLockMap[string, *retryabledns.Client]
 
 	normalClient *retryabledns.Client
 	m            sync.Mutex
@@ -35,8 +36,7 @@ func Init(options *types.Options) error {
 	if normalClient != nil {
 		return nil
 	}
-	poolMutex = &sync.RWMutex{}
-	clientPool = make(map[string]*retryabledns.Client)
+	clientPool = mapsutil.NewSyncLockMap[string, *retryabledns.Client]()
 
 	resolvers := defaultResolvers
 	if len(options.InternalResolversList) > 0 {
@@ -85,12 +85,9 @@ func Get(options *types.Options, configuration *Configuration) (*retryabledns.Cl
 		return getNormalClient(), nil
 	}
 	hash := configuration.Hash()
-	poolMutex.RLock()
-	if client, ok := clientPool[hash]; ok {
-		poolMutex.RUnlock()
+	if client, ok := clientPool.Get(hash); ok {
 		return client, nil
 	}
-	poolMutex.RUnlock()
 
 	resolvers := defaultResolvers
 	if len(options.InternalResolversList) > 0 {
@@ -106,9 +103,7 @@ func Get(options *types.Options, configuration *Configuration) (*retryabledns.Cl
 	if err != nil {
 		return nil, errors.Wrap(err, "could not create dns client")
 	}
+	_ = clientPool.Set(hash, client)
 
-	poolMutex.Lock()
-	clientPool[hash] = client
-	poolMutex.Unlock()
 	return client, nil
 }
