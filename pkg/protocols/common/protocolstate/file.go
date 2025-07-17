@@ -2,7 +2,7 @@ package protocolstate
 
 import (
 	"strings"
-	"sync"
+	"sync/atomic"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/config"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
@@ -12,17 +12,14 @@ import (
 
 var (
 	// LfaAllowed means local file access is allowed
-	LfaAllowed bool
-	lfaMutex   sync.Mutex
+	LfaAllowed atomic.Bool
 )
 
 // IsLfaAllowed returns whether local file access is allowed
 func IsLfaAllowed(options *types.Options) bool {
 	// Use the global when no options are provided
 	if options == nil {
-		lfaMutex.Lock()
-		defer lfaMutex.Unlock()
-		return LfaAllowed
+		return LfaAllowed.Load()
 	}
 	// Otherwise the specific options
 	dialers, ok := dialers.Get(options.ExecutionId)
@@ -37,11 +34,9 @@ func IsLfaAllowed(options *types.Options) bool {
 
 func SetLfaAllowed(options *types.Options) {
 	// TODO: Replace this global with per-options function calls. The big lift is handling the javascript fs module callbacks.
-	lfaMutex.Lock()
 	if options != nil {
-		LfaAllowed = options.AllowLocalFileAccess
+		LfaAllowed.Store(options.AllowLocalFileAccess)
 	}
-	lfaMutex.Unlock()
 }
 
 func GetLfaAllowed(options *types.Options) bool {
@@ -49,9 +44,7 @@ func GetLfaAllowed(options *types.Options) bool {
 		return options.AllowLocalFileAccess
 	}
 	// TODO: Replace this global with per-options function calls. The big lift is handling the javascript fs module callbacks.
-	lfaMutex.Lock()
-	defer lfaMutex.Unlock()
-	return LfaAllowed
+	return LfaAllowed.Load()
 }
 
 // Normalizepath normalizes path and returns absolute path
