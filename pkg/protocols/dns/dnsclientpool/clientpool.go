@@ -12,7 +12,6 @@ import (
 )
 
 var (
-	poolMutex  sync.RWMutex
 	clientPool *mapsutil.SyncLockMap[string, *retryabledns.Client]
 
 	normalClient *retryabledns.Client
