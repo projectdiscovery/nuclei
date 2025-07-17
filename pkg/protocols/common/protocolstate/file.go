@@ -2,26 +2,30 @@ package protocolstate
 
 import (
 	"strings"
-	"sync/atomic"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/config"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	errorutil "github.com/projectdiscovery/utils/errors"
 	fileutil "github.com/projectdiscovery/utils/file"
+	mapsutil "github.com/projectdiscovery/utils/maps"
 )
 
 var (
 	// LfaAllowed means local file access is allowed
-	LfaAllowed atomic.Bool
+	LfaAllowed *mapsutil.SyncLockMap[string, bool]
 )
+
+func init() {
+	LfaAllowed = mapsutil.NewSyncLockMap[string, bool]()
+}
 
 // IsLfaAllowed returns whether local file access is allowed
 func IsLfaAllowed(options *types.Options) bool {
-	// Use the global when no options are provided
-	if options == nil {
-		return LfaAllowed.Load()
+	if GetLfaAllowed(options) {
+		return true
 	}
-	// Otherwise the specific options
+
+	// Otherwise look into dialers
 	dialers, ok := dialers.Get(options.ExecutionId)
 	if ok && dialers != nil {
 		dialers.Lock()
@@ -29,31 +33,35 @@ func IsLfaAllowed(options *types.Options) bool {
 
 		return dialers.LocalFileAccessAllowed
 	}
-	return false
+
+	// otherwise just return option value
+	return options.AllowLocalFileAccess
 }
 
 func SetLfaAllowed(options *types.Options) {
-	// TODO: Replace this global with per-options function calls. The big lift is handling the javascript fs module callbacks.
-	if options != nil {
-		LfaAllowed.Store(options.AllowLocalFileAccess)
-	}
+	_ = LfaAllowed.Set(options.ExecutionId, options.AllowLocalFileAccess)
 }
 
 func GetLfaAllowed(options *types.Options) bool {
-	if options != nil {
-		return options.AllowLocalFileAccess
+	allowed, ok := LfaAllowed.Get(options.ExecutionId)
+
+	return ok && allowed
+}
+
+func NormalizePathWithExecutionId(executionId string, filePath string) (string, error) {
+	options := &types.Options{
+		ExecutionId: executionId,
 	}
-	// TODO: Replace this global with per-options function calls. The big lift is handling the javascript fs module callbacks.
-	return LfaAllowed.Load()
+	return NormalizePath(options, filePath)
 }
 
 // Normalizepath normalizes path and returns absolute path
 // it returns error if path is not allowed
 // this respects the sandbox rules and only loads files from
 // allowed directories
-func NormalizePath(filePath string) (string, error) {
+func NormalizePath(options *types.Options, filePath string) (string, error) {
 	// TODO: this should be tied to executionID using *types.Options
-	if IsLfaAllowed(nil) {
+	if IsLfaAllowed(options) {
 		// if local file access is allowed, we can return the absolute path
 		return filePath, nil
 	}
