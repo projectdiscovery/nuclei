@@ -77,7 +77,7 @@ syntax-docs:
 
 test: GOFLAGS = -race -v
 test:
-	$(GOTEST) $(GOFLAGS) ./...
+	$(GOTEST) $(GOFLAGS) -failfast -p 1 ./...
 
 integration:
 	cd integration_tests; bash run.sh
