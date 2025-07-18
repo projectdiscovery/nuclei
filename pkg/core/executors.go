@@ -4,9 +4,11 @@ import (
 	"context"
 	"sync"
 	"sync/atomic"
+	"time"
 
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/input/provider"
+	"github.com/projectdiscovery/nuclei/v3/pkg/output"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
 	"github.com/projectdiscovery/nuclei/v3/pkg/scan"
 	"github.com/projectdiscovery/nuclei/v3/pkg/templates"
@@ -108,6 +110,22 @@ func (e *Engine) executeTemplateWithTargets(ctx context.Context, template *templ
 
 		// Skip if the host has had errors
 		if e.executerOpts.HostErrorsCache != nil && e.executerOpts.HostErrorsCache.Check(e.executerOpts.ProtocolType.String(), contextargs.NewWithMetaInput(ctx, scannedValue)) {
+			skipEvent := &output.ResultEvent{
+				TemplateID:    template.ID,
+				TemplatePath:  template.Path,
+				Info:          template.Info,
+				Type:          e.executerOpts.ProtocolType.String(),
+				Host:          scannedValue.Input,
+				MatcherStatus: false,
+				Error:         "host was skipped as it was found unresponsive",
+				Timestamp:     time.Now(),
+			}
+
+			if e.Callback != nil {
+				e.Callback(skipEvent)
+			} else if e.executerOpts.Output != nil {
+				_ = e.executerOpts.Output.Write(skipEvent)
+			}
 			return true
 		}
 
