@@ -56,49 +56,90 @@ func Parse(filePath string, preprocessor Preprocessor, options *protocols.Execut
 	}
 	if !options.DoNotCache {
 		if value, _, _ := parser.compiledTemplatesCache.Has(filePath); value != nil {
-			// Update the template to use the current options for the calling engine
-			// TODO: This may be require additional work for robustness
-			t := *value
-			t.Options.ApplyNewEngineOptions(options)
-			if t.CompiledWorkflow != nil {
-				t.CompiledWorkflow.Options.ApplyNewEngineOptions(options)
-				for _, w := range t.CompiledWorkflow.Workflows {
+			// Copy the template, apply new options, and recompile requests
+			tplCopy := *value
+			newBase := options.Copy()
+			newBase.TemplateID = tplCopy.Options.TemplateID
+			newBase.TemplatePath = tplCopy.Options.TemplatePath
+			newBase.TemplateInfo = tplCopy.Options.TemplateInfo
+			newBase.TemplateVerifier = tplCopy.Options.TemplateVerifier
+			newBase.RawTemplate = tplCopy.Options.RawTemplate
+			tplCopy.Options = newBase
+
+			tplCopy.Options.ApplyNewEngineOptions(options)
+			if tplCopy.CompiledWorkflow != nil {
+				tplCopy.CompiledWorkflow.Options.ApplyNewEngineOptions(options)
+				for _, w := range tplCopy.CompiledWorkflow.Workflows {
 					for _, ex := range w.Executers {
 						ex.Options.ApplyNewEngineOptions(options)
 					}
 				}
 			}
-			for _, r := range t.RequestsDNS {
-				r.UpdateOptions(t.Options)
+
+			// TODO: Reconsider whether to recompile requests. Compiling these is just as slow
+			// as not using a cache at all, but may be necessary.
+
+			for i, r := range tplCopy.RequestsDNS {
+				rCopy := *r
+				rCopy.UpdateOptions(tplCopy.Options)
+				//	rCopy.Compile(tplCopy.Options)
+				tplCopy.RequestsDNS[i] = &rCopy
 			}
-			for _, r := range t.RequestsHTTP {
-				r.UpdateOptions(t.Options)
+			for i, r := range tplCopy.RequestsHTTP {
+				rCopy := *r
+				rCopy.UpdateOptions(tplCopy.Options)
+				//	rCopy.Compile(tplCopy.Options)
+				tplCopy.RequestsHTTP[i] = &rCopy
 			}
-			for _, r := range t.RequestsCode {
-				r.UpdateOptions(t.Options)
+			for i, r := range tplCopy.RequestsCode {
+				rCopy := *r
+				rCopy.UpdateOptions(tplCopy.Options)
+				//	rCopy.Compile(tplCopy.Options)
+				tplCopy.RequestsCode[i] = &rCopy
 			}
-			for _, r := range t.RequestsFile {
-				r.UpdateOptions(t.Options)
+			for i, r := range tplCopy.RequestsFile {
+				rCopy := *r
+				rCopy.UpdateOptions(tplCopy.Options)
+				//	rCopy.Compile(tplCopy.Options)
+				tplCopy.RequestsFile[i] = &rCopy
 			}
-			for _, r := range t.RequestsHeadless {
-				r.UpdateOptions(t.Options)
+			for i, r := range tplCopy.RequestsHeadless {
+				rCopy := *r
+				rCopy.UpdateOptions(tplCopy.Options)
+				//	rCopy.Compile(tplCopy.Options)
+				tplCopy.RequestsHeadless[i] = &rCopy
 			}
-			for _, r := range t.RequestsNetwork {
-				r.UpdateOptions(t.Options)
+			for i, r := range tplCopy.RequestsNetwork {
+				rCopy := *r
+				rCopy.UpdateOptions(tplCopy.Options)
+				//	rCopy.Compile(tplCopy.Options)
+				tplCopy.RequestsNetwork[i] = &rCopy
 			}
-			for _, r := range t.RequestsJavascript {
-				r.UpdateOptions(t.Options)
+			for i, r := range tplCopy.RequestsJavascript {
+				rCopy := *r
+				rCopy.UpdateOptions(tplCopy.Options)
+				//rCopy.Compile(tplCopy.Options)
+				tplCopy.RequestsJavascript[i] = &rCopy
 			}
-			for _, r := range t.RequestsSSL {
-				r.UpdateOptions(t.Options)
+			for i, r := range tplCopy.RequestsSSL {
+				rCopy := *r
+				rCopy.UpdateOptions(tplCopy.Options)
+				// rCopy.Compile(tplCopy.Options)
+				tplCopy.RequestsSSL[i] = &rCopy
 			}
-			for _, r := range t.RequestsWHOIS {
-				r.UpdateOptions(t.Options)
+			for i, r := range tplCopy.RequestsWHOIS {
+				rCopy := *r
+				rCopy.UpdateOptions(tplCopy.Options)
+				// rCopy.Compile(tplCopy.Options)
+				tplCopy.RequestsWHOIS[i] = &rCopy
 			}
-			for _, r := range t.RequestsWebsocket {
-				r.UpdateOptions(t.Options)
+			for i, r := range tplCopy.RequestsWebsocket {
+				rCopy := *r
+				rCopy.UpdateOptions(tplCopy.Options)
+				// rCopy.Compile(tplCopy.Options)
+				tplCopy.RequestsWebsocket[i] = &rCopy
 			}
-			template := t
+			template := &tplCopy
 
 			if template.isGlobalMatchersEnabled() {
 				item := &globalmatchers.Item{
@@ -119,8 +160,8 @@ func Parse(filePath string, preprocessor Preprocessor, options *protocols.Execut
 				template.CompiledWorkflow = compiled
 				template.CompiledWorkflow.Options = options
 			}
-
-			return &template, nil
+			// options.Logger.Error().Msgf("returning cached template %s after recompiling %d requests", tplCopy.Options.TemplateID, tplCopy.Requests())
+			return template, nil
 		}
 	}
 
