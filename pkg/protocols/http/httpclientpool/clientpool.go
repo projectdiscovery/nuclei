@@ -154,16 +154,16 @@ func GetRawHTTP(options *protocols.ExecutorOptions) *rawhttp.Client {
 		return dialers.RawHTTPClient
 	}
 
-	rawHttpOptions := rawhttp.DefaultOptions
+	rawHttpOptionsCopy := *rawhttp.DefaultOptions
 	if options.Options.AliveHttpProxy != "" {
-		rawHttpOptions.Proxy = options.Options.AliveHttpProxy
+		rawHttpOptionsCopy.Proxy = options.Options.AliveHttpProxy
 	} else if options.Options.AliveSocksProxy != "" {
-		rawHttpOptions.Proxy = options.Options.AliveSocksProxy
+		rawHttpOptionsCopy.Proxy = options.Options.AliveSocksProxy
 	} else if dialers.Fastdialer != nil {
-		rawHttpOptions.FastDialer = dialers.Fastdialer
+		rawHttpOptionsCopy.FastDialer = dialers.Fastdialer
 	}
-	rawHttpOptions.Timeout = options.Options.GetTimeouts().HttpTimeout
-	dialers.RawHTTPClient = rawhttp.NewClient(rawHttpOptions)
+	rawHttpOptionsCopy.Timeout = options.Options.GetTimeouts().HttpTimeout
+	dialers.RawHTTPClient = rawhttp.NewClient(&rawHttpOptionsCopy)
 	return dialers.RawHTTPClient
 }
 
