@@ -8,12 +8,14 @@ import (
 	"github.com/pkg/errors"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	"github.com/projectdiscovery/retryabledns"
+	mapsutil "github.com/projectdiscovery/utils/maps"
 )
 
 var (
-	poolMutex    *sync.RWMutex
+	clientPool *mapsutil.SyncLockMap[string, *retryabledns.Client]
+
 	normalClient *retryabledns.Client
-	clientPool   map[string]*retryabledns.Client
+	m            sync.Mutex
 )
 
 // defaultResolvers contains the list of resolvers known to be trusted.
@@ -26,12 +28,14 @@ var defaultResolvers = []string{
 
 // Init initializes the client pool implementation
 func Init(options *types.Options) error {
+	m.Lock()
+	defer m.Unlock()
+
 	// Don't create clients if already created in the past.
 	if normalClient != nil {
 		return nil
 	}
-	poolMutex = &sync.RWMutex{}
-	clientPool = make(map[string]*retryabledns.Client)
+	clientPool = mapsutil.NewSyncLockMap[string, *retryabledns.Client]()
 
 	resolvers := defaultResolvers
 	if len(options.InternalResolversList) > 0 {
@@ -43,6 +47,12 @@ func Init(options *types.Options) error {
 		return errors.Wrap(err, "could not create dns client")
 	}
 	return nil
+}
+
+func getNormalClient() *retryabledns.Client {
+	m.Lock()
+	defer m.Unlock()
+	return normalClient
 }
 
 // Configuration contains the custom configuration options for a client
@@ -71,15 +81,12 @@ func (c *Configuration) Hash() string {
 // Get creates or gets a client for the protocol based on custom configuration
 func Get(options *types.Options, configuration *Configuration) (*retryabledns.Client, error) {
 	if (configuration.Retries <= 1) && len(configuration.Resolvers) == 0 {
-		return normalClient, nil
+		return getNormalClient(), nil
 	}
 	hash := configuration.Hash()
-	poolMutex.RLock()
-	if client, ok := clientPool[hash]; ok {
-		poolMutex.RUnlock()
+	if client, ok := clientPool.Get(hash); ok {
 		return client, nil
 	}
-	poolMutex.RUnlock()
 
 	resolvers := defaultResolvers
 	if len(options.InternalResolversList) > 0 {
@@ -95,9 +102,7 @@ func Get(options *types.Options, configuration *Configuration) (*retryabledns.Cl
 	if err != nil {
 		return nil, errors.Wrap(err, "could not create dns client")
 	}
+	_ = clientPool.Set(hash, client)
 
-	poolMutex.Lock()
-	clientPool[hash] = client
-	poolMutex.Unlock()
 	return client, nil
 }
