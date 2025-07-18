@@ -6,6 +6,7 @@ import (
 	"net/url"
 	"os"
 	"strings"
+	"sync/atomic"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	errorutil "github.com/projectdiscovery/utils/errors"
@@ -63,5 +64,13 @@ func loadProxyServers(options *types.Options) error {
 		options.AliveSocksProxy = proxyURL.String()
 		options.Logger.Verbose().Msgf("Using %s as socket proxy server", proxyURL.String())
 	}
+
+	// Ensure proxy settings respect concurrency values
+	if options.Concurrency > 0 {
+		var count atomic.Int32
+		count.Store(int32(options.Concurrency))
+		options.Concurrency = int(count.Load())
+	}
+
 	return nil
 }
