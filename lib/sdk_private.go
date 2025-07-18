@@ -231,6 +231,25 @@ func (e *NucleiEngine) init(ctx context.Context) error {
 		}
 	}
 
+	// Handle the case where the user passed an existing parser that we can use as a cache
+	if e.opts.Parser != nil {
+		if cachedParser, ok := e.opts.Parser.(*templates.Parser); ok {
+			e.parser = cachedParser
+			e.opts.Parser = cachedParser
+			e.executerOpts.Parser = cachedParser
+			e.executerOpts.Options.Parser = cachedParser
+		}
+	}
+
+	// Create a new parser if necessary
+	if e.parser == nil {
+		op := templates.NewParser()
+		e.parser = op
+		e.opts.Parser = op
+		e.executerOpts.Parser = op
+		e.executerOpts.Options.Parser = op
+	}
+
 	e.engine = core.New(e.opts)
 	e.engine.SetExecuterOptions(e.executerOpts)
 

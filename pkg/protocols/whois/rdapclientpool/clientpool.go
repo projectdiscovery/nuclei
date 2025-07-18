@@ -30,6 +30,12 @@ func Init(options *types.Options) error {
 	return nil
 }
 
+func getNormalClient() *rdap.Client {
+	m.Lock()
+	defer m.Unlock()
+	return normalClient
+}
+
 // Configuration contains the custom configuration options for a client - placeholder
 type Configuration struct{}
 
@@ -40,7 +46,5 @@ func (c *Configuration) Hash() string {
 
 // Get creates or gets a client for the protocol based on custom configuration
 func Get(options *types.Options, configuration *Configuration) (*rdap.Client, error) {
-	m.Lock()
-	defer m.Unlock()
-	return normalClient, nil
+	return getNormalClient(), nil
 }

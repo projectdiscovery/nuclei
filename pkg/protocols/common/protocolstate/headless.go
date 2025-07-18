@@ -74,18 +74,6 @@ func InitHeadless(options *types.Options) {
 	}
 }
 
-// AllowLocalFileAccess returns whether local file access is allowed
-func IsLfaAllowed(options *types.Options) bool {
-	dialers, ok := dialers.Get(options.ExecutionId)
-	if ok && dialers != nil {
-		dialers.Lock()
-		defer dialers.Unlock()
-
-		return dialers.LocalFileAccessAllowed
-	}
-	return false
-}
-
 func IsRestrictLocalNetworkAccess(options *types.Options) bool {
 	dialers, ok := dialers.Get(options.ExecutionId)
 	if ok && dialers != nil {
