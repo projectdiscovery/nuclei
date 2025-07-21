@@ -157,7 +157,7 @@ func (e *ExecutorOptions) RateLimitTake() {
 	}
 }
 
-// GetThreadsForPayloadRequests returns the number of threads to use as default for
+// GetThreadsForNPayloadRequests returns the number of threads to use as default for
 // given max-request of payloads
 func (e *ExecutorOptions) GetThreadsForNPayloadRequests(totalRequests int, currentThreads int) int {
 	if currentThreads > 0 {
