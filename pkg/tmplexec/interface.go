@@ -42,9 +42,8 @@ var (
 	reNoKind = regexp.MustCompile(`([\[][^][]+[\]]|errKind=[^ ]+) `)
 )
 
-// parseScanError parses given scan error and only returning the cause
-// instead of inefficient one
-func parseScanError(msg string) string {
+// parseScanErrorWithDebug processes error messages with optional debug mode
+func parseScanErrorWithDebug(msg string, debugMode bool) string {
 	if msg == "" {
 		return ""
 	}
@@ -58,14 +57,19 @@ func parseScanError(msg string) string {
 		parts := strings.Split(msg, ":")
 		msg = strings.TrimSpace(parts[len(parts)-1])
 	}
-	e := errkit.FromError(errors.New(msg))
-	for _, err := range e.Errors() {
-		if err != nil && strings.Contains(err.Error(), "context deadline exceeded") {
-			continue
+
+	if debugMode {
+		e := errkit.FromError(errors.New(msg))
+		for _, err := range e.Errors() {
+			if err != nil && strings.Contains(err.Error(), "context deadline exceeded") {
+				continue
+			}
+			msg = reNoKind.ReplaceAllString(err.Error(), "")
+			return msg
 		}
-		msg = reNoKind.ReplaceAllString(err.Error(), "")
-		return msg
+		wrapped := errkit.Append(errkit.New("failed to get error cause"), e).Error()
+		return reNoKind.ReplaceAllString(wrapped, "")
 	}
-	wrapped := errkit.Append(errkit.New("failed to get error cause"), e).Error()
-	return reNoKind.ReplaceAllString(wrapped, "")
+
+	return reNoKind.ReplaceAllString(msg, "")
 }

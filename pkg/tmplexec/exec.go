@@ -217,7 +217,7 @@ func (e *TemplateExecuter) Execute(ctx *scan.ScanContext) (bool, error) {
 		lastMatcherEvent.Lock()
 		defer lastMatcherEvent.Unlock()
 
-		lastMatcherEvent.InternalEvent["error"] = getErrorCause(ctx.GenerateErrorMessage())
+		lastMatcherEvent.InternalEvent["error"] = getErrorCause(ctx.GenerateErrorMessage(), e.options.Options.Debug)
 
 		writeFailureCallback(lastMatcherEvent, e.options.Options.MatcherStatus)
 	}
@@ -233,7 +233,7 @@ func (e *TemplateExecuter) Execute(ctx *scan.ScanContext) (bool, error) {
 					Info:       e.options.TemplateInfo,
 					Type:       e.getTemplateType(),
 					Host:       ctx.Input.MetaInput.Input,
-					Error:      getErrorCause(ctx.GenerateErrorMessage()),
+					Error:      getErrorCause(ctx.GenerateErrorMessage(), e.options.Options.Debug),
 				},
 			},
 			OperatorsResult: &operators.Result{
@@ -249,24 +249,30 @@ func (e *TemplateExecuter) Execute(ctx *scan.ScanContext) (bool, error) {
 // getErrorCause tries to parse the cause of given error
 // this is legacy support due to use of errorutil in existing libraries
 // but this should not be required once all libraries are updated
-func getErrorCause(err error) string {
+// debugMode controls whether to enrich errors with stack traces
+func getErrorCause(err error, debugMode bool) string {
 	if err == nil {
 		return ""
 	}
-	errx := errkit.FromError(err)
-	var cause error
-	for _, e := range errx.Errors() {
-		if e != nil && strings.Contains(e.Error(), "context deadline exceeded") {
-			continue
+
+	if debugMode {
+		errx := errkit.FromError(err)
+		var cause error
+		for _, e := range errx.Errors() {
+			if e != nil && strings.Contains(e.Error(), "context deadline exceeded") {
+				continue
+			}
+			cause = e
+			break
 		}
-		cause = e
-		break
+		if cause == nil {
+			cause = errkit.Append(errkit.New("could not get error cause"), errx)
+		}
+		// parseScanErrorWithDebug prettifies the error message and removes everything except the cause
+		return parseScanErrorWithDebug(cause.Error(), debugMode)
 	}
-	if cause == nil {
-		cause = errkit.Append(errkit.New("could not get error cause"), errx)
-	}
-	// parseScanError prettifies the error message and removes everything except the cause
-	return parseScanError(cause.Error())
+
+	return parseScanErrorWithDebug(err.Error(), debugMode)
 }
 
 // ExecuteWithResults executes the protocol requests and returns results instead of writing them.
