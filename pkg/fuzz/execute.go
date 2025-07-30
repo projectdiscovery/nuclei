@@ -24,7 +24,7 @@ import (
 )
 
 var (
-	ErrRuleNotApplicable = errorutil.NewWithFmt("rule not applicable : %v")
+	ErrRuleNotApplicable = errorutil.NewWithFmt("rule not applicable: %v")
 )
 
 // IsErrRuleNotApplicable checks if an error is due to rule not applicable
