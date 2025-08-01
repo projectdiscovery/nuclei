@@ -109,7 +109,7 @@ func (request *Request) responseToDSLMap(resp *http.Response, host, matched, raw
 		data[strings.ToLower(cookie.Name)] = cookie.Value
 	}
 	for k, v := range resp.Header {
-		k = strings.ToLower(strings.TrimSpace(k))
+		k = strings.ToLower(strings.ReplaceAll(strings.TrimSpace(k), "-", "_"))
 		data[k] = strings.Join(v, " ")
 	}
 
