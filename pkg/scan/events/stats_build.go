@@ -25,7 +25,7 @@ type ScanStatsWorker struct {
 	m         *sync.Mutex
 	directory string
 	file      *os.File
-	enc       *json.Encoder
+	enc       json.Encoder
 }
 
 // Init initializes the scan stats worker
