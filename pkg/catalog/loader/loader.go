@@ -7,7 +7,8 @@ import (
 	"os"
 	"sort"
 	"strings"
-	"sync"
+
+	syncutil "github.com/projectdiscovery/utils/sync"
 
 	"github.com/logrusorgru/aurora"
 	"github.com/pkg/errors"
@@ -238,8 +239,8 @@ func (store *Store) ReadTemplateFromURI(uri string, remote bool) ([]byte, error)
 			return nil, err
 		}
 		defer func() {
-          _ = resp.Body.Close()
-        }()
+			_ = resp.Body.Close()
+		}()
 		return io.ReadAll(resp.Body)
 	} else {
 		return os.ReadFile(uri)
@@ -502,10 +503,15 @@ func (store *Store) LoadTemplatesWithTags(templatesList, tags []string) []*templ
 		}
 	}
 
-	var wgLoadTemplates sync.WaitGroup
+	// Use adaptive wait-group to cap concurrent loaders and auto-scale with demand.
+	maxConcurrency := store.config.ExecutorOptions.Options.TemplateThreads
+	if maxConcurrency <= 0 {
+		maxConcurrency = 25
+	}
+	wgLoadTemplates, _ := syncutil.New(syncutil.WithSize(maxConcurrency))
 
 	for templatePath := range templatePathMap {
-		wgLoadTemplates.Add(1)
+		wgLoadTemplates.Add()
 		go func(templatePath string) {
 			defer wgLoadTemplates.Done()
 
