@@ -54,14 +54,16 @@ type Options struct {
 
 // New creates a new issue tracker integration client based on options.
 func New(options *Options) (*Integration, error) {
+	var transport http.RoundTripper = http.DefaultTransport
+	if options.HttpClient != nil && options.HttpClient.HTTPClient.Transport != nil {
+		transport = options.HttpClient.HTTPClient.Transport
+	}
+
 	httpClient := &http.Client{
 		Transport: &addHeaderTransport{
-			T:   http.DefaultTransport,
+			T:   transport,
 			Key: options.APIKey,
 		},
-	}
-	if options.HttpClient != nil {
-		httpClient.Transport = options.HttpClient.HTTPClient.Transport
 	}
 
 	integration := &Integration{
