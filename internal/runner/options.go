@@ -40,6 +40,8 @@ const (
 	DefaultDumpTrafficOutputFolder = "output"
 )
 
+var validateOptions = validator.New()
+
 func ConfigureOptions() error {
 	// with FileStringSliceOptions, FileNormalizedStringSliceOptions, FileCommaSeparatedStringSliceOptions
 	// if file has the extension `.yaml` or `.json` we consider those as strings and not files to be read
@@ -139,8 +141,7 @@ func ParseOptions(options *types.Options) {
 
 // validateOptions validates the configuration options passed
 func ValidateOptions(options *types.Options) error {
-	validate := validator.New()
-	if err := validate.Struct(options); err != nil {
+	if err := validateOptions.Struct(options); err != nil {
 		if _, ok := err.(*validator.InvalidValidationError); ok {
 			return err
 		}

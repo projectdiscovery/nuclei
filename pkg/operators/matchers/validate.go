@@ -8,22 +8,29 @@ import (
 
 	"github.com/antchfx/xpath"
 	sliceutil "github.com/projectdiscovery/utils/slice"
-	"gopkg.in/yaml.v3"
 )
 
 var commonExpectedFields = []string{"Type", "Condition", "Name", "MatchAll", "Negative", "Internal"}
 
 // Validate perform initial validation on the matcher structure
 func (matcher *Matcher) Validate() error {
-	// uses yaml marshaling to convert the struct to map[string]interface to have same field names
+	// Build a map of YAML‐tag names that are actually set (non-zero) in the matcher.
 	matcherMap := make(map[string]interface{})
-	marshaledMatcher, err := yaml.Marshal(matcher)
-	if err != nil {
-		return err
+	val := reflect.ValueOf(*matcher)
+	typ := reflect.TypeOf(*matcher)
+	for i := 0; i < typ.NumField(); i++ {
+		field := typ.Field(i)
+		// skip internal / unexported or opt-out fields
+		yamlTag := strings.Split(field.Tag.Get("yaml"), ",")[0]
+		if yamlTag == "" || yamlTag == "-" {
+			continue
+		}
+		if val.Field(i).IsZero() {
+			continue
+		}
+		matcherMap[yamlTag] = struct{}{}
 	}
-	if err := yaml.Unmarshal(marshaledMatcher, &matcherMap); err != nil {
-		return err
-	}
+	var err error
 
 	var expectedFields []string
 	switch matcher.matcherType {
