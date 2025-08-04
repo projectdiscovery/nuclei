@@ -1,6 +1,9 @@
 package waf
 
-import "testing"
+import (
+	"regexp"
+	"testing"
+)
 
 func TestWAFDetection(t *testing.T) {
 	detector := NewWafDetector()
@@ -54,6 +57,64 @@ func TestWAFDetection(t *testing.T) {
 			}
 			if matched && waf != tt.expectedWAF {
 				t.Errorf("expected WAF=%s, got WAF=%s", tt.expectedWAF, waf)
+			}
+		})
+	}
+}
+
+func TestWAFDetectionNilPointerSafety(t *testing.T) {
+	tests := []struct {
+		name     string
+		detector *WafDetector
+		content  string
+	}{
+		{
+			name:     "nil detector",
+			detector: nil,
+			content:  "test content",
+		},
+		{
+			name: "nil regexCache",
+			detector: &WafDetector{
+				wafs:       make(map[string]waf),
+				regexCache: nil,
+			},
+			content: "test content",
+		},
+		{
+			name: "regexCache with nil regex",
+			detector: &WafDetector{
+				wafs: make(map[string]waf),
+				regexCache: map[string]*regexp.Regexp{
+					"test": nil,
+				},
+			},
+			content: "test content",
+		},
+		{
+			name: "empty regexCache",
+			detector: &WafDetector{
+				wafs:       make(map[string]waf),
+				regexCache: make(map[string]*regexp.Regexp),
+			},
+			content: "test content",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			defer func() {
+				if r := recover(); r != nil {
+					t.Errorf("DetectWAF panicked with nil pointer: %v", r)
+				}
+			}()
+
+			waf, matched := tt.detector.DetectWAF(tt.content)
+			if matched {
+				t.Errorf("expected no match for nil pointer case, got match=true, waf=%s", waf)
+			}
+			if waf != "" {
+				t.Errorf("expected empty WAF string for nil pointer case, got waf=%s", waf)
 			}
 		})
 	}
