@@ -131,13 +131,13 @@ func (p *Parser) ParseTemplate(templatePath string, catalog catalog.Catalog) (an
 		_ = reader.Close()
 	}()
 
-	data, err := io.ReadAll(reader)
-	if err != nil {
-		return nil, err
-	}
-
-	// pre-process directives only for local files
+	// For local YAML files, check if preprocessing is needed
+	var data []byte
 	if fileutil.FileExists(templatePath) && config.GetTemplateFormatFromExt(templatePath) == config.YAML {
+		data, err = io.ReadAll(reader)
+		if err != nil {
+			return nil, err
+		}
 		data, err = yamlutil.PreProcess(data)
 		if err != nil {
 			return nil, err
@@ -148,12 +148,28 @@ func (p *Parser) ParseTemplate(templatePath string, catalog catalog.Catalog) (an
 
 	switch config.GetTemplateFormatFromExt(templatePath) {
 	case config.JSON:
+		if data == nil {
+			data, err = io.ReadAll(reader)
+			if err != nil {
+				return nil, err
+			}
+		}
 		err = json.Unmarshal(data, template)
 	case config.YAML:
-		if p.NoStrictSyntax {
-			err = yaml.Unmarshal(data, template)
+		if data != nil {
+			// Already read and preprocessed
+			if p.NoStrictSyntax {
+				err = yaml.Unmarshal(data, template)
+			} else {
+				err = yaml.UnmarshalStrict(data, template)
+			}
 		} else {
-			err = yaml.UnmarshalStrict(data, template)
+			// Stream directly from reader
+			decoder := yaml.NewDecoder(reader)
+			if !p.NoStrictSyntax {
+				decoder.SetStrict(true)
+			}
+			err = decoder.Decode(template)
 		}
 	default:
 		err = fmt.Errorf("failed to identify template format expected JSON or YAML but got %v", templatePath)
@@ -162,7 +178,7 @@ func (p *Parser) ParseTemplate(templatePath string, catalog catalog.Catalog) (an
 		return nil, err
 	}
 
-	p.parsedTemplatesCache.Store(templatePath, template, data, nil)
+	p.parsedTemplatesCache.Store(templatePath, template, nil, nil) // don't keep raw bytes to save memory
 	return template, nil
 }
 
