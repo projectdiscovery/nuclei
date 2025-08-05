@@ -2,6 +2,7 @@ package oracle
 
 import (
 	"context"
+	"fmt"
 	"net"
 	"strconv"
 	"time"
@@ -32,16 +33,22 @@ type (
 // const isOracle = oracle.IsOracle('acme.com', 1521);
 // log(toJSON(isOracle));
 // ```
-func IsOracle(host string, port int) (IsOracleResponse, error) {
-	return memoizedisOracle(host, port)
+func IsOracle(ctx context.Context, host string, port int) (IsOracleResponse, error) {
+	executionId := ctx.Value("executionId").(string)
+	return memoizedisOracle(executionId, host, port)
 }
 
 // @memo
-func isOracle(host string, port int) (IsOracleResponse, error) {
+func isOracle(executionId string, host string, port int) (IsOracleResponse, error) {
 	resp := IsOracleResponse{}
 
+	dialer := protocolstate.GetDialersWithId(executionId)
+	if dialer == nil {
+		return IsOracleResponse{}, fmt.Errorf("dialers not initialized for %s", executionId)
+	}
+
 	timeout := 5 * time.Second
-	conn, err := protocolstate.Dialer.Dial(context.TODO(), "tcp", net.JoinHostPort(host, strconv.Itoa(port)))
+	conn, err := dialer.Fastdialer.Dial(context.TODO(), "tcp", net.JoinHostPort(host, strconv.Itoa(port)))
 	if err != nil {
 		return resp, err
 	}

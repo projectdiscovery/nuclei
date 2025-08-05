@@ -16,9 +16,12 @@ var (
 	MaxBytesBufferAllocOnLowMemory = env.GetEnvOrDefault("MEMGUARDIAN_ALLOC", 0)
 	memTimer                       *time.Ticker
 	cancelFunc                     context.CancelFunc
+	muGlobalChange                 sync.Mutex
 )
 
 func StartActiveMemGuardian(ctx context.Context) {
+	muGlobalChange.Lock()
+	defer muGlobalChange.Unlock()
 	if memguardian.DefaultMemGuardian == nil || memTimer != nil {
 		return
 	}
@@ -42,6 +45,9 @@ func StartActiveMemGuardian(ctx context.Context) {
 }
 
 func StopActiveMemGuardian() {
+	muGlobalChange.Lock()
+	defer muGlobalChange.Unlock()
+
 	if memguardian.DefaultMemGuardian == nil {
 		return
 	}
@@ -72,8 +78,6 @@ func GuardThreadsOrDefault(current int) int {
 
 	return 1
 }
-
-var muGlobalChange sync.Mutex
 
 // Global setting
 func GlobalGuardBytesBufferAlloc() error {

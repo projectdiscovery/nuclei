@@ -191,3 +191,8 @@ func extractMimeTypes(m []string) []string {
 func (request *Request) Requests() int {
 	return 0
 }
+
+// UpdateOptions replaces this request's options with a new copy
+func (r *Request) UpdateOptions(opts *protocols.ExecutorOptions) {
+	r.options.ApplyNewEngineOptions(opts)
+}
