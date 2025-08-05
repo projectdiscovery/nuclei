@@ -35,7 +35,7 @@ func UpdateURLPortFromPayload(parsed *urlutil.URL, data string) (*urlutil.URL, s
 	return parsed, data
 }
 
-// setHeader sets some headers only if the header wasn't supplied by the user
+// SetHeader sets some headers only if the header wasn't supplied by the user
 func SetHeader(req *retryablehttp.Request, name, value string) {
 	if _, ok := req.Header[name]; !ok {
 		req.Header.Set(name, value)

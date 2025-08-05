@@ -201,7 +201,9 @@ func (i *Instance) Run(ctx *contextargs.Context, actions []*Action, payloads map
 		if resp, err := http.ReadResponse(bufio.NewReader(strings.NewReader(firstItem.RawResponse)), nil); err == nil {
 			data["header"] = utils.HeadersToString(resp.Header)
 			data["status_code"] = fmt.Sprint(resp.StatusCode)
-			_ = resp.Body.Close()
+			defer func() {
+				_ = resp.Body.Close()
+			}()
 		}
 	}
 

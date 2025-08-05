@@ -3,6 +3,8 @@ package templates
 import (
 	"fmt"
 	"io"
+	"strings"
+	"sync"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/config"
@@ -11,6 +13,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/utils/stats"
 	yamlutil "github.com/projectdiscovery/nuclei/v3/pkg/utils/yaml"
 	fileutil "github.com/projectdiscovery/utils/file"
+
 	"gopkg.in/yaml.v2"
 )
 
@@ -22,6 +25,7 @@ type Parser struct {
 	// this cache might potentially contain references to heap objects
 	// it's recommended to always empty it at the end of execution
 	compiledTemplatesCache *Cache
+	sync.Mutex
 }
 
 func NewParser() *Parser {
@@ -45,6 +49,30 @@ func (p *Parser) Cache() *Cache {
 	return p.parsedTemplatesCache
 }
 
+// CompiledCache returns the compiled templates cache
+func (p *Parser) CompiledCache() *Cache {
+	return p.compiledTemplatesCache
+}
+
+func (p *Parser) ParsedCount() int {
+	p.Lock()
+	defer p.Unlock()
+	return len(p.parsedTemplatesCache.items.Map)
+}
+
+func (p *Parser) CompiledCount() int {
+	p.Lock()
+	defer p.Unlock()
+	return len(p.compiledTemplatesCache.items.Map)
+}
+
+func checkOpenFileError(err error) bool {
+	if err != nil && strings.Contains(err.Error(), "too many open files") {
+		panic(err)
+	}
+	return false
+}
+
 // LoadTemplate returns true if the template is valid and matches the filtering criteria.
 func (p *Parser) LoadTemplate(templatePath string, t any, extraTags []string, catalog catalog.Catalog) (bool, error) {
 	tagFilter, ok := t.(*TagFilter)
@@ -53,6 +81,7 @@ func (p *Parser) LoadTemplate(templatePath string, t any, extraTags []string, ca
 	}
 	t, templateParseError := p.ParseTemplate(templatePath, catalog)
 	if templateParseError != nil {
+		checkOpenFileError(templateParseError)
 		return false, ErrCouldNotLoadTemplate.Msgf(templatePath, templateParseError)
 	}
 	template, ok := t.(*Template)
@@ -72,6 +101,7 @@ func (p *Parser) LoadTemplate(templatePath string, t any, extraTags []string, ca
 
 	ret, err := isTemplateInfoMetadataMatch(tagFilter, template, extraTags)
 	if err != nil {
+		checkOpenFileError(err)
 		return ret, ErrCouldNotLoadTemplate.Msgf(templatePath, err)
 	}
 	// if template loaded then check the template for optional fields to add warnings
@@ -79,6 +109,7 @@ func (p *Parser) LoadTemplate(templatePath string, t any, extraTags []string, ca
 		validationWarning := validateTemplateOptionalFields(template)
 		if validationWarning != nil {
 			stats.Increment(SyntaxWarningStats)
+			checkOpenFileError(validationWarning)
 			return ret, ErrCouldNotLoadTemplate.Msgf(templatePath, validationWarning)
 		}
 	}
@@ -97,8 +128,8 @@ func (p *Parser) ParseTemplate(templatePath string, catalog catalog.Catalog) (an
 		return nil, err
 	}
 	defer func() {
-         _ = reader.Close()
-       }()
+		_ = reader.Close()
+	}()
 
 	// For local YAML files, check if preprocessing is needed
 	var data []byte
