@@ -37,7 +37,8 @@ type Options struct {
 	// IndexName is the name of the elasticsearch index
 	IndexName string `yaml:"index-name"  validate:"required"`
 
-	HttpClient *retryablehttp.Client `yaml:"-"`
+	HttpClient  *retryablehttp.Client `yaml:"-"`
+	ExecutionId string                `yaml:"-"`
 }
 
 type data struct {
@@ -56,6 +57,11 @@ type Exporter struct {
 func New(option *Options) (*Exporter, error) {
 	var ei *Exporter
 
+	dialers := protocolstate.GetDialersWithId(option.ExecutionId)
+	if dialers == nil {
+		return nil, fmt.Errorf("dialers not initialized for %s", option.ExecutionId)
+	}
+
 	var client *http.Client
 	if option.HttpClient != nil {
 		client = option.HttpClient.HTTPClient
@@ -65,8 +71,8 @@ func New(option *Options) (*Exporter, error) {
 			Transport: &http.Transport{
 				MaxIdleConns:        10,
 				MaxIdleConnsPerHost: 10,
-				DialContext:         protocolstate.Dialer.Dial,
-				DialTLSContext:      protocolstate.Dialer.DialTLS,
+				DialContext:         dialers.Fastdialer.Dial,
+				DialTLSContext:      dialers.Fastdialer.DialTLS,
 				TLSClientConfig:     &tls.Config{InsecureSkipVerify: option.SSLVerification},
 			},
 		}
@@ -132,8 +138,8 @@ func (exporter *Exporter) Export(event *output.ResultEvent) error {
 		return err
 	}
 	defer func() {
-         _ = res.Body.Close()
-       }()
+		_ = res.Body.Close()
+	}()
 
 	b, err = io.ReadAll(res.Body)
 	if err != nil {

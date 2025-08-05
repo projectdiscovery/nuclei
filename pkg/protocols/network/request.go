@@ -3,6 +3,7 @@ package network
 import (
 	"encoding/hex"
 	"fmt"
+	maps0 "maps"
 	"net"
 	"net/url"
 	"os"
@@ -303,8 +304,8 @@ func (request *Request) executeRequestWithPayloads(variables map[string]interfac
 		return errors.Wrap(err, "could not connect to server")
 	}
 	defer func() {
-         _ = conn.Close()
-       }()
+		_ = conn.Close()
+	}()
 	_ = conn.SetDeadline(time.Now().Add(time.Duration(request.options.Options.Timeout) * time.Second))
 
 	var interactshURLs []string
@@ -375,9 +376,7 @@ func (request *Request) executeRequestWithPayloads(variables map[string]interfac
 			// Run any internal extractors for the request here and add found values to map.
 			if request.CompiledOperators != nil {
 				values := request.CompiledOperators.ExecuteInternalExtractors(map[string]interface{}{input.Name: bufferStr}, request.Extract)
-				for k, v := range values {
-					payloads[k] = v
-				}
+				maps0.Copy(payloads, values)
 			}
 		}
 	}
@@ -427,15 +426,9 @@ func (request *Request) executeRequestWithPayloads(variables map[string]interfac
 	if request.options.StopAtFirstMatch {
 		outputEvent["stop-at-first-match"] = true
 	}
-	for k, v := range previous {
-		outputEvent[k] = v
-	}
-	for k, v := range interimValues {
-		outputEvent[k] = v
-	}
-	for k, v := range inputEvents {
-		outputEvent[k] = v
-	}
+	maps0.Copy(outputEvent, previous)
+	maps0.Copy(outputEvent, interimValues)
+	maps0.Copy(outputEvent, inputEvents)
 	if request.options.Interactsh != nil {
 		request.options.Interactsh.MakePlaceholders(interactshURLs, outputEvent)
 	}

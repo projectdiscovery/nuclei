@@ -4,6 +4,7 @@ import (
 	"crypto/tls"
 	"fmt"
 	"io"
+	"maps"
 	"net"
 	"net/http"
 	"net/url"
@@ -236,8 +237,8 @@ func (request *Request) executeRequestWithPayloads(target *contextargs.Context, 
 		return errors.Wrap(err, "could not connect to server")
 	}
 	defer func() {
-         _ = conn.Close()
-       }()
+		_ = conn.Close()
+	}()
 
 	responseBuilder := &strings.Builder{}
 	if readBuffer != nil {
@@ -274,12 +275,8 @@ func (request *Request) executeRequestWithPayloads(target *contextargs.Context, 
 	request.options.AddTemplateVars(target.MetaInput, request.Type(), request.ID, data)
 	data = generators.MergeMaps(data, request.options.GetTemplateCtx(target.MetaInput).GetAll())
 
-	for k, v := range previous {
-		data[k] = v
-	}
-	for k, v := range events {
-		data[k] = v
-	}
+	maps.Copy(data, previous)
+	maps.Copy(data, events)
 
 	event := eventcreator.CreateEventWithAdditionalOptions(request, data, requestOptions.Options.Debug || requestOptions.Options.DebugResponse, func(internalWrappedEvent *output.InternalWrappedEvent) {
 		internalWrappedEvent.OperatorsResult.PayloadValues = payloadValues
@@ -337,9 +334,7 @@ func (request *Request) readWriteInputWebsocket(conn net.Conn, payloadValues map
 			// Run any internal extractors for the request here and add found values to map.
 			if request.CompiledOperators != nil {
 				values := request.CompiledOperators.ExecuteInternalExtractors(map[string]interface{}{req.Name: bufferStr}, protocols.MakeDefaultExtractFunc)
-				for k, v := range values {
-					inputEvents[k] = v
-				}
+				maps.Copy(inputEvents, values)
 			}
 		}
 	}
@@ -427,4 +422,9 @@ func (request *Request) MakeResultEventItem(wrapped *output.InternalWrappedEvent
 // Type returns the type of the protocol request
 func (request *Request) Type() templateTypes.ProtocolType {
 	return templateTypes.WebsocketProtocol
+}
+
+// UpdateOptions replaces this request's options with a new copy
+func (r *Request) UpdateOptions(opts *protocols.ExecutorOptions) {
+	r.options.ApplyNewEngineOptions(opts)
 }

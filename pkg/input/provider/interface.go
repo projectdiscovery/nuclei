@@ -59,11 +59,11 @@ type InputProvider interface {
 	// Iterate over all inputs in order
 	Iterate(callback func(value *contextargs.MetaInput) bool)
 	// Set adds item to input provider
-	Set(value string)
+	Set(executionId string, value string)
 	// SetWithProbe adds item to input provider with http probing
-	SetWithProbe(value string, probe types.InputLivenessProbe) error
+	SetWithProbe(executionId string, value string, probe types.InputLivenessProbe) error
 	// SetWithExclusions adds item to input provider if it doesn't match any of the exclusions
-	SetWithExclusions(value string) error
+	SetWithExclusions(executionId string, value string) error
 	// InputType returns the type of input provider
 	InputType() string
 	// Close the input provider and cleanup any resources
