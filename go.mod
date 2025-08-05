@@ -17,7 +17,7 @@ require (
 	github.com/julienschmidt/httprouter v1.3.0
 	github.com/logrusorgru/aurora v2.0.3+incompatible
 	github.com/miekg/dns v1.1.66
-	github.com/olekukonko/tablewriter v1.0.8
+	github.com/olekukonko/tablewriter v1.0.9
 	github.com/pkg/errors v0.9.1
 	github.com/projectdiscovery/clistats v0.1.1
 	github.com/projectdiscovery/fastdialer v0.4.1
@@ -67,6 +67,8 @@ require (
 	github.com/clbanning/mxj/v2 v2.7.0
 	github.com/ditashi/jsbeautifier-go v0.0.0-20141206144643-2520a8026a9c
 	github.com/docker/go-units v0.5.0
+	github.com/dop251/goja v0.0.0-20250630131328-58d95d85e994
+	github.com/dop251/goja_nodejs v0.0.0-20250409162600-f7acab6894b0
 	github.com/fatih/structs v1.1.0
 	github.com/getkin/kin-openapi v0.132.0
 	github.com/go-git/go-git/v5 v5.16.2
