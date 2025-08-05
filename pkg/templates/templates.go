@@ -7,7 +7,6 @@ import (
 	"strconv"
 	"strings"
 
-	validate "github.com/go-playground/validator/v10"
 	"github.com/projectdiscovery/nuclei/v3/pkg/model"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/code"
@@ -310,10 +309,8 @@ func (template *Template) validateAllRequestIDs() {
 // MarshalYAML forces recursive struct validation during marshal operation
 func (template *Template) MarshalYAML() ([]byte, error) {
 	out, marshalErr := yaml.Marshal(template)
-	// Review: we are adding requestIDs for templateContext
-	// if we are using this method then we might need to purge manually added IDS that start with `templatetype_`
-	// this is only applicable if there are more than 1 request fields in protocol
-	errValidate := validate.New().Struct(template)
+	// Use shared validator to avoid rebuilding struct cache for every template marshal
+	errValidate := tplValidator.Struct(template)
 	return out, multierr.Append(marshalErr, errValidate)
 }
 
@@ -354,7 +351,7 @@ func (template *Template) UnmarshalYAML(unmarshal func(interface{}) error) error
 	if len(alias.RequestsWithTCP) > 0 {
 		template.RequestsNetwork = alias.RequestsWithTCP
 	}
-	err = validate.New().Struct(template)
+	err = tplValidator.Struct(template)
 	if err != nil {
 		return err
 	}
@@ -525,7 +522,7 @@ func (template *Template) hasMultipleRequests() bool {
 func (template *Template) MarshalJSON() ([]byte, error) {
 	type TemplateAlias Template //avoid recursion
 	out, marshalErr := json.Marshal((*TemplateAlias)(template))
-	errValidate := validate.New().Struct(template)
+	errValidate := tplValidator.Struct(template)
 	return out, multierr.Append(marshalErr, errValidate)
 }
 
@@ -538,7 +535,7 @@ func (template *Template) UnmarshalJSON(data []byte) error {
 		return err
 	}
 	*template = Template(*alias)
-	err = validate.New().Struct(template)
+	err = tplValidator.Struct(template)
 	if err != nil {
 		return err
 	}
