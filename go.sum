@@ -791,8 +791,8 @@ github.com/projectdiscovery/gozero v0.0.3 h1:tsYkrSvWw4WdIUJyisd4MB1vRiw1X57TuVV
 github.com/projectdiscovery/gozero v0.0.3/go.mod h1:MpJ37Dsh94gy2EKqaemdeh+CzduGVB2SDfhr6Upsjew=
 github.com/projectdiscovery/hmap v0.0.91 h1:8vSTU+3hmMfA5Qd14ceq4j7wnUVUJcXdqQgqbsFBea0=
 github.com/projectdiscovery/hmap v0.0.91/go.mod h1:BxEg8WXqxqaOADPZ+xp2X6BY+znfV8dusCSGSFnsU3c=
-github.com/projectdiscovery/httpx v1.7.1-0.20250806055036-9e0ce4ec2706 h1:0lOyY2QOBIGHxq3EkMgIjGVTyWCzcoGTC+1saeF6kR4=
-github.com/projectdiscovery/httpx v1.7.1-0.20250806055036-9e0ce4ec2706/go.mod h1:Xbqo7GXk6jq2Al49FmE+onmUIpcwEOePxv1uFos4/bA=
+github.com/projectdiscovery/httpx v1.7.1-0.20250806055928-39d76476fddf h1:4BSaCK8/h8XH2qZuxllh5WLULpY5c8/EmKCs6lR0V/k=
+github.com/projectdiscovery/httpx v1.7.1-0.20250806055928-39d76476fddf/go.mod h1:fSaOSbW/YyyCn9rBS3aP99C0KuCrD/O1/ITPjoaLBR8=
 github.com/projectdiscovery/interactsh v1.2.4 h1:WUSj+fxbcV53J64oIAhbYzCKD1w/IyenyRBhkI5jiqI=
 github.com/projectdiscovery/interactsh v1.2.4/go.mod h1:E/IVNZ80/WKz8zTwGJWQygxIbhlRmuzZFsZwcGSZTdc=
 github.com/projectdiscovery/ldapserver v1.0.2-0.20240219154113-dcc758ebc0cb h1:MGtI4oE12ruWv11ZlPXXd7hl/uAaQZrFvrIDYDeVMd8=
@@ -1032,8 +1032,8 @@ github.com/yuin/goldmark v1.1.32/go.mod h1:3hX8gzYuyVAZsxl0MRgGTJEmQBFcNTphYh9de
 github.com/yuin/goldmark v1.2.1/go.mod h1:3hX8gzYuyVAZsxl0MRgGTJEmQBFcNTphYh9decYSb74=
 github.com/yuin/goldmark v1.4.13/go.mod h1:6yULJ656Px+3vBD8DxQVa3kxgyrAnzto9xy5taEt/CY=
 github.com/yuin/goldmark v1.7.1/go.mod h1:uzxRWxtg69N339t3louHJ7+O03ezfj6PlliRlaOzY1E=
-github.com/yuin/goldmark v1.7.8 h1:iERMLn0/QJeHFhxSt3p6PeN9mGnvIKSpG9YYorDMnic=
-github.com/yuin/goldmark v1.7.8/go.mod h1:uzxRWxtg69N339t3louHJ7+O03ezfj6PlliRlaOzY1E=
+github.com/yuin/goldmark v1.7.11 h1:ZCxLyDMtz0nT2HFfsYG8WZ47Trip2+JyLysKcMYE5bo=
+github.com/yuin/goldmark v1.7.11/go.mod h1:ip/1k0VRfGynBgxOz0yCqHrbZXhcjxyuS66Brc7iBKg=
 github.com/yuin/goldmark-emoji v1.0.5 h1:EMVWyCGPlXJfUXBXpuMu+ii3TIaxbVBnEX9uaDC4cIk=
 github.com/yuin/goldmark-emoji v1.0.5/go.mod h1:tTkZEbwu5wkPmgTcitqddVxY9osFZiavD+r4AzQrh1U=
 github.com/yusufpapurcu/wmi v1.2.4 h1:zFUKzehAFReQwLys1b/iSMl+JQGSCSjtVqQn9bBrPo0=
