@@ -199,6 +199,12 @@ type ResultEvent struct {
 	// GlobalMatchers identifies whether the matches was detected in the response
 	// of another template's result event
 	GlobalMatchers bool `json:"global-matchers,omitempty"`
+	// GlobalTemplateID is the ID of the global template that matched (only set when GlobalMatchers is true)
+	GlobalTemplateID string `json:"global-template-id,omitempty"`
+	// GlobalTemplatePath is the path of the global template that matched (only set when GlobalMatchers is true)
+	GlobalTemplatePath string `json:"global-template-path,omitempty"`
+	// GlobalTemplateInfo contains information block of the global template (only set when GlobalMatchers is true)
+	GlobalTemplateInfo model.Info `json:"global-template-info,omitempty"`
 
 	// IssueTrackers is the metadata for issue trackers
 	IssueTrackers map[string]IssueTrackerMetadata `json:"issue_trackers,omitempty"`

@@ -19,38 +19,63 @@ func (w *StandardWriter) formatScreen(output *ResultEvent) []byte {
 			builder.WriteString(w.aurora.Cyan(output.Timestamp.Format("2006-01-02 15:04:05")).String())
 			builder.WriteString("] ")
 		}
-		builder.WriteRune('[')
-		builder.WriteString(w.aurora.BrightGreen(output.TemplateID).String())
-
-		if output.MatcherName != "" {
-			builder.WriteString(":")
-			builder.WriteString(w.aurora.BrightGreen(output.MatcherName).Bold().String())
-		} else if output.ExtractorName != "" {
-			builder.WriteString(":")
-			builder.WriteString(w.aurora.BrightGreen(output.ExtractorName).Bold().String())
-		}
-
-		if w.matcherStatus {
-			builder.WriteString("] [")
-			if !output.MatcherStatus {
-				builder.WriteString(w.aurora.Red("failed").String())
-			} else {
-				builder.WriteString(w.aurora.Green("matched").String())
-			}
-		}
-
 		if output.GlobalMatchers {
+			// For global matchers: [global-template-id:matcher-name] [global] [original-template-id] [http] [severity]
+			builder.WriteRune('[')
+			builder.WriteString(w.aurora.BrightGreen(output.GlobalTemplateID).String())
+			
+			if output.MatcherName != "" {
+				builder.WriteString(":")
+				builder.WriteString(w.aurora.BrightGreen(output.MatcherName).Bold().String())
+			} else if output.ExtractorName != "" {
+				builder.WriteString(":")
+				builder.WriteString(w.aurora.BrightGreen(output.ExtractorName).Bold().String())
+			}
+			
 			builder.WriteString("] [")
 			builder.WriteString(w.aurora.BrightMagenta("global").String())
+			
+			builder.WriteString("] [")
+			builder.WriteString(output.TemplateID) // Original template ID in white (no color)
+			
+			builder.WriteString("] [")
+			builder.WriteString(w.aurora.BrightBlue(output.Type).String())
+			builder.WriteString("] ")
+			
+			builder.WriteString("[")
+			// Use global template severity instead of original template severity
+			builder.WriteString(w.severityColors(output.GlobalTemplateInfo.SeverityHolder.Severity))
+			builder.WriteString("] ")
+		} else {
+			// For regular templates: [template-id:matcher-name] [http] [severity]
+			builder.WriteRune('[')
+			builder.WriteString(w.aurora.BrightGreen(output.TemplateID).String())
+
+			if output.MatcherName != "" {
+				builder.WriteString(":")
+				builder.WriteString(w.aurora.BrightGreen(output.MatcherName).Bold().String())
+			} else if output.ExtractorName != "" {
+				builder.WriteString(":")
+				builder.WriteString(w.aurora.BrightGreen(output.ExtractorName).Bold().String())
+			}
+
+			if w.matcherStatus {
+				builder.WriteString("] [")
+				if !output.MatcherStatus {
+					builder.WriteString(w.aurora.Red("failed").String())
+				} else {
+					builder.WriteString(w.aurora.Green("matched").String())
+				}
+			}
+
+			builder.WriteString("] [")
+			builder.WriteString(w.aurora.BrightBlue(output.Type).String())
+			builder.WriteString("] ")
+
+			builder.WriteString("[")
+			builder.WriteString(w.severityColors(output.Info.SeverityHolder.Severity))
+			builder.WriteString("] ")
 		}
-
-		builder.WriteString("] [")
-		builder.WriteString(w.aurora.BrightBlue(output.Type).String())
-		builder.WriteString("] ")
-
-		builder.WriteString("[")
-		builder.WriteString(w.severityColors(output.Info.SeverityHolder.Severity))
-		builder.WriteString("] ")
 	}
 	if output.Matched != "" {
 		builder.WriteString(output.Matched)

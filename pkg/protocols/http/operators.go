@@ -173,30 +173,60 @@ func (request *Request) MakeResultEventItem(wrapped *output.InternalWrappedEvent
 	if value, ok := wrapped.InternalEvent["analyzer_details"]; ok {
 		analyzerDetails = value.(string)
 	}
+	
+	// For global matchers, use original template info and store global template info separately
+	var templateID, templatePath string
+	var templateInfo model.Info
+	var globalTemplateID, globalTemplatePath string
+	var globalTemplateInfo model.Info
+	
+	if isGlobalMatchers {
+		// Use original template information
+		templateID = types.ToString(wrapped.InternalEvent["origin-template-id"])
+		templatePath = types.ToString(wrapped.InternalEvent["origin-template-path"])
+		if originInfo := wrapped.InternalEvent["origin-template-info"]; originInfo != nil {
+			templateInfo = originInfo.(model.Info)
+		}
+		// Store global template information
+		globalTemplateID = types.ToString(wrapped.InternalEvent["template-id"])
+		globalTemplatePath = types.ToString(wrapped.InternalEvent["template-path"])
+		if globalInfo := wrapped.InternalEvent["template-info"]; globalInfo != nil {
+			globalTemplateInfo = globalInfo.(model.Info)
+		}
+	} else {
+		// Use current template information for non-global matchers
+		templateID = types.ToString(wrapped.InternalEvent["template-id"])
+		templatePath = types.ToString(wrapped.InternalEvent["template-path"])
+		templateInfo = wrapped.InternalEvent["template-info"].(model.Info)
+	}
+	
 	data := &output.ResultEvent{
-		TemplateID:       types.ToString(wrapped.InternalEvent["template-id"]),
-		TemplatePath:     types.ToString(wrapped.InternalEvent["template-path"]),
-		Info:             wrapped.InternalEvent["template-info"].(model.Info),
-		TemplateVerifier: request.options.TemplateVerifier,
-		Type:             types.ToString(wrapped.InternalEvent["type"]),
-		Host:             fields.Host,
-		Port:             fields.Port,
-		Scheme:           fields.Scheme,
-		URL:              fields.URL,
-		Path:             fields.Path,
-		Matched:          types.ToString(wrapped.InternalEvent["matched"]),
-		Metadata:         wrapped.OperatorsResult.PayloadValues,
-		ExtractedResults: wrapped.OperatorsResult.OutputExtracts,
-		Timestamp:        time.Now(),
-		MatcherStatus:    true,
-		IP:               fields.Ip,
-		GlobalMatchers:   isGlobalMatchers,
-		Request:          types.ToString(wrapped.InternalEvent["request"]),
-		Response:         request.truncateResponse(wrapped.InternalEvent["response"]),
-		CURLCommand:      types.ToString(wrapped.InternalEvent["curl-command"]),
-		TemplateEncoded:  request.options.EncodeTemplate(),
-		Error:            types.ToString(wrapped.InternalEvent["error"]),
-		AnalyzerDetails:  analyzerDetails,
+		TemplateID:         templateID,
+		TemplatePath:       templatePath,
+		Info:               templateInfo,
+		TemplateVerifier:   request.options.TemplateVerifier,
+		Type:               types.ToString(wrapped.InternalEvent["type"]),
+		Host:               fields.Host,
+		Port:               fields.Port,
+		Scheme:             fields.Scheme,
+		URL:                fields.URL,
+		Path:               fields.Path,
+		Matched:            types.ToString(wrapped.InternalEvent["matched"]),
+		Metadata:           wrapped.OperatorsResult.PayloadValues,
+		ExtractedResults:   wrapped.OperatorsResult.OutputExtracts,
+		Timestamp:          time.Now(),
+		MatcherStatus:      true,
+		IP:                 fields.Ip,
+		GlobalMatchers:     isGlobalMatchers,
+		GlobalTemplateID:   globalTemplateID,
+		GlobalTemplatePath: globalTemplatePath,
+		GlobalTemplateInfo: globalTemplateInfo,
+		Request:            types.ToString(wrapped.InternalEvent["request"]),
+		Response:           request.truncateResponse(wrapped.InternalEvent["response"]),
+		CURLCommand:        types.ToString(wrapped.InternalEvent["curl-command"]),
+		TemplateEncoded:    request.options.EncodeTemplate(),
+		Error:              types.ToString(wrapped.InternalEvent["error"]),
+		AnalyzerDetails:    analyzerDetails,
 	}
 	return data
 }
