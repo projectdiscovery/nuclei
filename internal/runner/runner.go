@@ -125,6 +125,14 @@ func New(options *types.Options) (*Runner, error) {
 			}
 		}
 
+		// if template list or template display is enabled, enable all templates
+		if options.TemplateList || options.TemplateDisplay {
+			options.EnableCodeTemplates = true
+			options.EnableFileTemplates = true
+			options.EnableSelfContainedTemplates = true
+			options.EnableGlobalMatchersTemplates = true
+		}
+
 		// check for custom template updates and update if available
 		ctm, err := customtemplates.NewCustomTemplatesManager(options)
 		if err != nil {
