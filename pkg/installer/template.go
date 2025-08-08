@@ -235,7 +235,9 @@ func (t *TemplateManager) getAbsoluteFilePath(templateDir, uri string, f fs.File
 
 	newPath := filepath.Clean(filepath.Join(templateDir, relPath))
 
-	if !strings.HasPrefix(newPath, templateDir) {
+	// Use filepath.Rel for more robust path comparison
+	relPathToTemplateDir, err := filepath.Rel(templateDir, newPath)
+	if err != nil || strings.HasPrefix(relPathToTemplateDir, "..") {
 		// we don't allow LFI
 		return ""
 	}
@@ -277,6 +279,12 @@ func (t *TemplateManager) writeTemplatesToDisk(ghrd *updateutils.GHReleaseDownlo
 			// if error occurs, iteration also stops
 			return errorutil.NewWithErr(err).Msgf("failed to read file %s", uri)
 		}
+		
+		// Ensure the directory exists before writing the file
+		if err := fileutil.CreateFolder(filepath.Dir(writePath)); err != nil {
+			return errorutil.NewWithErr(err).Msgf("failed to create directory for %s", writePath)
+		}
+		
 		// TODO: It might be better to just download index file from nuclei templates repo
 		// instead of creating it from scratch
 		id, _ := config.GetTemplateIDFromReader(bytes.NewReader(bin), uri)
