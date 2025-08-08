@@ -507,7 +507,7 @@ func (store *Store) LoadTemplatesWithTags(templatesList, tags []string) []*templ
 		}
 	}
 
-	wgLoadTemplates, errWg := syncutil.New(syncutil.WithSize(50))
+	wgLoadTemplates, errWg := syncutil.New(syncutil.WithSize(store.config.ExecutorOptions.Options.TemplateLoadingConcurrency))
 	if errWg != nil {
 		panic("could not create wait group")
 	}
