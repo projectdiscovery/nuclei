@@ -145,14 +145,25 @@ func (b *Browser) UserAgent() string {
 	return b.customAgent
 }
 
+// applyDefaultHeaders setsheaders passed via cli -H flag
 func (b *Browser) applyDefaultHeaders(p *rod.Page) error {
-	if len(b.defaultHeaders) == 0 {
-		return nil
+	pairs := make([]string, 0, len(b.defaultHeaders)*2+2)
+
+	hasAcceptLanguage := false
+	for k := range b.defaultHeaders {
+		if strings.EqualFold(k, "Accept-Language") {
+			hasAcceptLanguage = true
+			break
+		}
 	}
-	pairs := make([]string, 0, len(b.defaultHeaders)*2)
-	pairs = append(pairs, "Accept-Language", "en, en-GB, en-us;")
+	if !hasAcceptLanguage {
+		pairs = append(pairs, "Accept-Language", "en, en-GB, en-us;")
+	}
 	for k, v := range b.defaultHeaders {
 		pairs = append(pairs, k, v)
+	}
+	if len(pairs) == 0 {
+		return nil
 	}
 	_, err := p.SetExtraHeaders(pairs)
 	return err
