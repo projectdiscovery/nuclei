@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"sync/atomic"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
 	"github.com/projectdiscovery/nuclei/v3/pkg/testutils"
@@ -126,10 +127,10 @@ type httpMultipleFailures struct{}
 
 // Execute tests that multiple failed requests all generate events with -ms flag
 func (h *httpMultipleFailures) Execute(filePath string) error {
-	var requestCount int
+	var requestCount int64
 
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		requestCount++
+		atomic.AddInt64(&requestCount, 1)
 		fmt.Fprintln(w, "test response")
 	}))
 	defer ts.Close()
@@ -139,8 +140,9 @@ func (h *httpMultipleFailures) Execute(filePath string) error {
 		return err
 	}
 
-	if len(results) != requestCount {
-		return fmt.Errorf("matcher-status regression: server received %d requests but only %d events were output", requestCount, len(results))
+	actualRequestCount := atomic.LoadInt64(&requestCount)
+	if len(results) != int(actualRequestCount) {
+		return fmt.Errorf("matcher-status regression: server received %d requests but only %d events were output", actualRequestCount, len(results))
 	}
 
 	return nil
