@@ -1,0 +1,19 @@
+id: matcher-status-multiple-failures
+
+info:
+  name: Test Matcher Status Multiple Failures
+  author: pdteam
+  severity: info
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/"
+      - "{{BaseURL}}/test"
+      - "{{BaseURL}}/admin"
+    
+    matchers:
+      - type: word
+        words:
+          - "THIS_STRING_WILL_NEVER_MATCH"
+        part: body

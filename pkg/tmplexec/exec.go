@@ -182,8 +182,10 @@ func (e *TemplateExecuter) Execute(ctx *scan.ScanContext) (bool, error) {
 			// non-`global-matchers` templates can enter the `writeFailureCallback`
 			// func to log failure output.
 			wr := writer.WriteResult(event, e.options.Output, e.options.Progress, e.options.IssuesClient)
-			if wr && !isGlobalMatchers {
-				matched.Store(true)
+			if wr {
+				if !isGlobalMatchers {
+					matched.Store(true)
+				}
 			} else {
 				lastMatcherEvent = event
 			}

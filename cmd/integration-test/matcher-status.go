@@ -2,6 +2,8 @@ package main
 
 import (
 	"fmt"
+	"net/http"
+	"net/http/httptest"
 	"strings"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
@@ -16,6 +18,7 @@ var matcherStatusTestcases = []TestCaseInfo{
 	{Path: "protocols/javascript/net-https.yaml", TestCase: &javascriptNoAccess{}},
 	{Path: "protocols/websocket/basic.yaml", TestCase: &websocketNoAccess{}},
 	{Path: "protocols/dns/a.yaml", TestCase: &dnsNoAccess{}},
+	{Path: "protocols/http/matcher-status-multiple-failures.yaml", TestCase: &httpMultipleFailures{}},
 }
 
 type httpNoAccess struct{}
@@ -116,5 +119,29 @@ func (h *dnsNoAccess) Execute(filePath string) error {
 	if event.Error == "" {
 		return fmt.Errorf("unexpected result: expecting an error but got \"%s\"", event.Error)
 	}
+	return nil
+}
+
+type httpMultipleFailures struct{}
+
+// Execute tests that multiple failed requests all generate events with -ms flag
+func (h *httpMultipleFailures) Execute(filePath string) error {
+	var requestCount int
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requestCount++
+		fmt.Fprintln(w, "test response")
+	}))
+	defer ts.Close()
+
+	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, ts.URL, debug, "-ms", "-j")
+	if err != nil {
+		return err
+	}
+
+	if len(results) != requestCount {
+		return fmt.Errorf("matcher-status regression: server received %d requests but only %d events were output", requestCount, len(results))
+	}
+
 	return nil
 }
