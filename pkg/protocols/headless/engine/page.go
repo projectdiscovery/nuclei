@@ -61,6 +61,10 @@ func (i *Instance) Run(ctx *contextargs.Context, actions []*Action, payloads map
 	}
 	page = page.Timeout(options.Timeout)
 
+	if err = i.browser.applyDefaultHeaders(page); err != nil {
+		return nil, nil, err
+	}
+
 	if i.browser.customAgent != "" {
 		if userAgentErr := page.SetUserAgent(&proto.NetworkSetUserAgentOverride{UserAgent: i.browser.customAgent}); userAgentErr != nil {
 			return nil, nil, userAgentErr
@@ -127,10 +131,6 @@ func (i *Instance) Run(ctx *contextargs.Context, actions []*Action, payloads map
 		Width:  float64(1920),
 		Height: float64(1080),
 	}}); err != nil {
-		return nil, nil, err
-	}
-
-	if _, err := page.SetExtraHeaders([]string{"Accept-Language", "en, en-GB, en-us;"}); err != nil {
 		return nil, nil, err
 	}
 
