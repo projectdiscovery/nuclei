@@ -757,10 +757,3 @@ func findProfilePathById(profileId, templatesDir string) string {
 	}
 	return profilePath
 }
-
-func init() {
-	// print stacktrace of errors in debug mode
-	if strings.EqualFold(os.Getenv("DEBUG"), "true") {
-		errorutil.ShowStackTrace = true
-	}
-}
