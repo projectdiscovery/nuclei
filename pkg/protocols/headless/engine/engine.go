@@ -181,6 +181,6 @@ func (b *Browser) getHTTPClient() (*http.Client, error) {
 func (b *Browser) Close() {
 	_ = b.engine.Close()
 	b.launcher.Kill()
-	os.RemoveAll(b.tempDir)
+	_ = os.RemoveAll(b.tempDir)
 	processutil.CloseProcesses(processutil.IsChromeProcess, b.previousPIDs)
 }
