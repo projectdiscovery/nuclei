@@ -14,6 +14,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/expressions"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/generators"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/marker"
 	"github.com/projectdiscovery/nuclei/v3/pkg/utils/json"
 	"github.com/projectdiscovery/retryablehttp-go"
 	errorutil "github.com/projectdiscovery/utils/errors"
@@ -23,7 +24,7 @@ import (
 )
 
 var (
-	ErrRuleNotApplicable = errorutil.NewWithFmt("rule not applicable : %v")
+	ErrRuleNotApplicable = errorutil.NewWithFmt("rule not applicable: %v")
 )
 
 // IsErrRuleNotApplicable checks if an error is due to rule not applicable
@@ -189,6 +190,33 @@ mainLoop:
 	return nil
 }
 
+// evaluateVars evaluates variables in a string using available executor options
+func (rule *Rule) evaluateVars(input string) (string, error) {
+	if rule.options == nil {
+		return input, nil
+	}
+
+	data := generators.MergeMaps(
+		rule.options.Variables.GetAll(),
+		rule.options.Constants,
+		rule.options.Options.Vars.AsMap(),
+	)
+
+	exprs := expressions.FindExpressions(input, marker.ParenthesisOpen, marker.ParenthesisClose, data)
+
+	err := expressions.ContainsUnresolvedVariables(exprs...)
+	if err != nil {
+		return input, err
+	}
+
+	eval, err := expressions.Evaluate(input, data)
+	if err != nil {
+		return input, err
+	}
+
+	return eval, nil
+}
+
 // evaluateVarsWithInteractsh evaluates the variables with Interactsh URLs and updates them accordingly.
 func (rule *Rule) evaluateVarsWithInteractsh(data map[string]interface{}, interactshUrls []string) (map[string]interface{}, []string) {
 	// Check if Interactsh options are configured
@@ -341,23 +369,47 @@ func (rule *Rule) Compile(generator *generators.PayloadGenerator, options *proto
 	if len(rule.Keys) > 0 {
 		rule.keysMap = make(map[string]struct{})
 	}
+
+	// eval vars in "keys"
 	for _, key := range rule.Keys {
-		rule.keysMap[strings.ToLower(key)] = struct{}{}
+		evaluatedKey, err := rule.evaluateVars(key)
+		if err != nil {
+			return errors.Wrap(err, "could not evaluate key")
+		}
+
+		rule.keysMap[strings.ToLower(evaluatedKey)] = struct{}{}
 	}
+
+	// eval vars in "values"
 	for _, value := range rule.ValuesRegex {
-		compiled, err := regexp.Compile(value)
+		evaluatedValue, err := rule.evaluateVars(value)
+		if err != nil {
+			return errors.Wrap(err, "could not evaluate value regex")
+		}
+
+		compiled, err := regexp.Compile(evaluatedValue)
 		if err != nil {
 			return errors.Wrap(err, "could not compile value regex")
 		}
+
 		rule.valuesRegex = append(rule.valuesRegex, compiled)
 	}
+
+	// eval vars in "keys-regex"
 	for _, value := range rule.KeysRegex {
-		compiled, err := regexp.Compile(value)
+		evaluatedValue, err := rule.evaluateVars(value)
+		if err != nil {
+			return errors.Wrap(err, "could not evaluate key regex")
+		}
+
+		compiled, err := regexp.Compile(evaluatedValue)
 		if err != nil {
 			return errors.Wrap(err, "could not compile key regex")
 		}
+
 		rule.keysRegex = append(rule.keysRegex, compiled)
 	}
+
 	if rule.ruleType != replaceRegexRuleType {
 		if rule.ReplaceRegex != "" {
 			return errors.Errorf("replace-regex is only applicable for replace and replace-regex rule types")
@@ -366,11 +418,19 @@ func (rule *Rule) Compile(generator *generators.PayloadGenerator, options *proto
 		if rule.ReplaceRegex == "" {
 			return errors.Errorf("replace-regex is required for replace-regex rule type")
 		}
-		compiled, err := regexp.Compile(rule.ReplaceRegex)
+
+		evalReplaceRegex, err := rule.evaluateVars(rule.ReplaceRegex)
+		if err != nil {
+			return errors.Wrap(err, "could not evaluate replace regex")
+		}
+
+		compiled, err := regexp.Compile(evalReplaceRegex)
 		if err != nil {
 			return errors.Wrap(err, "could not compile replace regex")
 		}
+
 		rule.replaceRegex = compiled
 	}
+
 	return nil
 }
