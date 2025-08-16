@@ -53,11 +53,14 @@ func (t *templateUpdateResults) String() string {
 		},
 	}
 	table := tablewriter.NewWriter(&buff)
-	table.SetHeader([]string{"Total", "Added", "Modified", "Removed"})
+	table.Header([]string{"Total", "Added", "Modified", "Removed"})
 	for _, v := range data {
-		table.Append(v)
+		_ = table.Append(v)
 	}
-	table.Render()
+	_ = table.Render()
+	defer func() {
+		_ = table.Close()
+	}()
 	return buff.String()
 }
 
@@ -91,7 +94,24 @@ func (t *TemplateManager) UpdateIfOutdated() error {
 	if !fileutil.FolderExists(config.DefaultConfig.TemplatesDirectory) {
 		return t.FreshInstallIfNotExists()
 	}
-	if config.DefaultConfig.NeedsTemplateUpdate() {
+
+	needsUpdate := config.DefaultConfig.NeedsTemplateUpdate()
+
+	// NOTE(dwisiswant0): if PDTM API data is not available
+	// (LatestNucleiTemplatesVersion is empty) but we have a current template
+	// version, so we MUST verify against GitHub directly.
+	if !needsUpdate && config.DefaultConfig.LatestNucleiTemplatesVersion == "" && config.DefaultConfig.TemplateVersion != "" {
+		ghrd, err := updateutils.NewghReleaseDownloader(config.OfficialNucleiTemplatesRepoName)
+		if err == nil {
+			latestVersion := ghrd.Latest.GetTagName()
+			if config.IsOutdatedVersion(config.DefaultConfig.TemplateVersion, latestVersion) {
+				needsUpdate = true
+				gologger.Debug().Msgf("PDTM API unavailable, verified update needed via GitHub API: %s -> %s", config.DefaultConfig.TemplateVersion, latestVersion)
+			}
+		}
+	}
+
+	if needsUpdate {
 		return t.updateTemplatesAt(config.DefaultConfig.TemplatesDirectory)
 	}
 	return nil
@@ -139,7 +159,14 @@ func (t *TemplateManager) updateTemplatesAt(dir string) error {
 		return errorutil.NewWithErr(err).Msgf("failed to install templates at %s", dir)
 	}
 
-	gologger.Info().Msgf("Your current nuclei-templates %s are outdated. Latest is %s\n", config.DefaultConfig.TemplateVersion, ghrd.Latest.GetTagName())
+	latestVersion := ghrd.Latest.GetTagName()
+	currentVersion := config.DefaultConfig.TemplateVersion
+
+	if config.IsOutdatedVersion(currentVersion, latestVersion) {
+		gologger.Info().Msgf("Your current nuclei-templates %s are outdated. Latest is %s\n", currentVersion, latestVersion)
+	} else {
+		gologger.Debug().Msgf("Updating nuclei-templates from %s to %s (forced update)\n", currentVersion, latestVersion)
+	}
 
 	// write templates to disk
 	if err := t.writeTemplatesToDisk(ghrd, dir); err != nil {

@@ -46,7 +46,7 @@ type KeyHandler struct {
 	ecdsaKey    *ecdsa.PrivateKey
 }
 
-// ReadUserCert reads the user certificate from environment variable or given directory
+// ReadCert reads the user certificate from environment variable or given directory
 func (k *KeyHandler) ReadCert(envName, dir string) error {
 	// read from env
 	if cert := k.getEnvContent(envName); cert != nil {

@@ -53,8 +53,12 @@ func NewWafDetector() *WafDetector {
 }
 
 func (d *WafDetector) DetectWAF(content string) (string, bool) {
+	if d == nil || d.regexCache == nil {
+		return "", false
+	}
+
 	for id, regex := range d.regexCache {
-		if regex.MatchString(content) {
+		if regex != nil && regex.MatchString(content) {
 			return id, true
 		}
 	}

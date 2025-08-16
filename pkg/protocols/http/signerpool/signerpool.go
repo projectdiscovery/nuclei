@@ -11,13 +11,17 @@ import (
 )
 
 var (
-	poolMutex  *sync.RWMutex
+	poolMutex  sync.RWMutex
 	clientPool map[string]signer.Signer
 )
 
 // Init initializes the clientpool implementation
 func Init(options *types.Options) error {
-	poolMutex = &sync.RWMutex{}
+	poolMutex.Lock()
+	defer poolMutex.Unlock()
+	if clientPool != nil {
+		return nil // already initialized
+	}
 	clientPool = make(map[string]signer.Signer)
 	return nil
 }

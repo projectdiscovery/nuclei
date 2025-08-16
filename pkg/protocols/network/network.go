@@ -261,3 +261,12 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 func (request *Request) Requests() int {
 	return len(request.Address)
 }
+
+func (request *Request) SetDialer(dialer *fastdialer.Dialer) {
+	request.dialer = dialer
+}
+
+// UpdateOptions replaces this request's options with a new copy
+func (r *Request) UpdateOptions(opts *protocols.ExecutorOptions) {
+	r.options.ApplyNewEngineOptions(opts)
+}

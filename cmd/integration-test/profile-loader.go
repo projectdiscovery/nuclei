@@ -16,7 +16,7 @@ var profileLoaderTestcases = []TestCaseInfo{
 type profileLoaderByRelFile struct{}
 
 func (h *profileLoaderByRelFile) Execute(testName string) error {
-	results, err := testutils.RunNucleiWithArgsAndGetResults(false, "-tl", "-tp", "cloud.yml")
+	results, err := testutils.RunNucleiWithArgsAndGetResults(debug, "-tl", "-tp", "cloud.yml")
 	if err != nil {
 		return errorutil.NewWithErr(err).Msgf("failed to load template with id")
 	}
@@ -29,7 +29,7 @@ func (h *profileLoaderByRelFile) Execute(testName string) error {
 type profileLoaderById struct{}
 
 func (h *profileLoaderById) Execute(testName string) error {
-	results, err := testutils.RunNucleiWithArgsAndGetResults(false, "-tl", "-tp", "cloud")
+	results, err := testutils.RunNucleiWithArgsAndGetResults(debug, "-tl", "-tp", "cloud")
 	if err != nil {
 		return errorutil.NewWithErr(err).Msgf("failed to load template with id")
 	}
@@ -43,7 +43,7 @@ func (h *profileLoaderById) Execute(testName string) error {
 type customProfileLoader struct{}
 
 func (h *customProfileLoader) Execute(filepath string) error {
-	results, err := testutils.RunNucleiWithArgsAndGetResults(false, "-tl", "-tp", filepath)
+	results, err := testutils.RunNucleiWithArgsAndGetResults(debug, "-tl", "-tp", filepath)
 	if err != nil {
 		return errorutil.NewWithErr(err).Msgf("failed to load template with id")
 	}

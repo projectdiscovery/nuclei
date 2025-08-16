@@ -1,6 +1,7 @@
 package core
 
 import (
+	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/output"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
@@ -17,14 +18,16 @@ import (
 type Engine struct {
 	workPool     *WorkPool
 	options      *types.Options
-	executerOpts protocols.ExecutorOptions
+	executerOpts *protocols.ExecutorOptions
 	Callback     func(*output.ResultEvent) // Executed on results
+	Logger       *gologger.Logger
 }
 
 // New returns a new Engine instance
 func New(options *types.Options) *Engine {
 	engine := &Engine{
 		options: options,
+		Logger:  options.Logger,
 	}
 	engine.workPool = engine.GetWorkPool()
 	return engine
@@ -47,12 +50,12 @@ func (e *Engine) GetWorkPool() *WorkPool {
 
 // SetExecuterOptions sets the executer options for the engine. This is required
 // before using the engine to perform any execution.
-func (e *Engine) SetExecuterOptions(options protocols.ExecutorOptions) {
+func (e *Engine) SetExecuterOptions(options *protocols.ExecutorOptions) {
 	e.executerOpts = options
 }
 
 // ExecuterOptions returns protocols.ExecutorOptions for nuclei engine.
-func (e *Engine) ExecuterOptions() protocols.ExecutorOptions {
+func (e *Engine) ExecuterOptions() *protocols.ExecutorOptions {
 	return e.executerOpts
 }
 

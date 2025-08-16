@@ -2,7 +2,6 @@ package automaticscan
 
 import (
 	"github.com/pkg/errors"
-	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/config"
 	"github.com/projectdiscovery/nuclei/v3/pkg/templates"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
@@ -46,14 +45,14 @@ func LoadTemplatesWithTags(opts Options, templateDirs []string, tags []string, l
 		finalTemplates, clusterCount := templates.ClusterTemplates(finalTemplates, opts.ExecuterOpts)
 		totalReqAfterClustering := getRequestCount(finalTemplates) * int(opts.Target.Count())
 		if totalReqAfterClustering < totalReqBeforeCluster && logInfo {
-			gologger.Info().Msgf("Automatic scan tech-detect: Templates clustered: %d (Reduced %d Requests)", clusterCount, totalReqBeforeCluster-totalReqAfterClustering)
+			opts.ExecuterOpts.Logger.Info().Msgf("Automatic scan tech-detect: Templates clustered: %d (Reduced %d Requests)", clusterCount, totalReqBeforeCluster-totalReqAfterClustering)
 		}
 	}
 
 	// log template loaded if VerboseVerbose flag is set
 	if opts.ExecuterOpts.Options.VerboseVerbose {
 		for _, tpl := range finalTemplates {
-			gologger.Print().Msgf("%s\n", templates.TemplateLogMessage(tpl.ID,
+			opts.ExecuterOpts.Logger.Print().Msgf("%s\n", templates.TemplateLogMessage(tpl.ID,
 				types.ToString(tpl.Info.Name),
 				tpl.Info.Authors.ToSlice(),
 				tpl.Info.SeverityHolder.Severity))

@@ -948,8 +948,8 @@ func (h *httpRequestSelfContained) Execute(filePath string) error {
 		_ = server.ListenAndServe()
 	}()
 	defer func() {
-         _ = server.Close()
-       }()
+		_ = server.Close()
+	}()
 
 	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, "", debug, "-esc")
 	if err != nil {
@@ -986,8 +986,8 @@ func (h *httpRequestSelfContainedWithParams) Execute(filePath string) error {
 		_ = server.ListenAndServe()
 	}()
 	defer func() {
-         _ = server.Close()
-       }()
+		_ = server.Close()
+	}()
 
 	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, "", debug, "-esc")
 	if err != nil {
@@ -1021,8 +1021,8 @@ func (h *httpRequestSelfContainedFileInput) Execute(filePath string) error {
 		_ = server.ListenAndServe()
 	}()
 	defer func() {
-         _ = server.Close()
-       }()
+		_ = server.Close()
+	}()
 
 	// create temp file
 	FileLoc, err := os.CreateTemp("", "self-contained-payload-*.txt")
@@ -1033,8 +1033,8 @@ func (h *httpRequestSelfContainedFileInput) Execute(filePath string) error {
 		return errorutil.NewWithErr(err).Msgf("failed to write payload to temp file")
 	}
 	defer func() {
-         _ = FileLoc.Close()
-       }()
+		_ = FileLoc.Close()
+	}()
 
 	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, "", debug, "-V", "test="+FileLoc.Name(), "-esc")
 	if err != nil {

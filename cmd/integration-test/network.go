@@ -34,8 +34,8 @@ func (h *networkBasic) Execute(filePath string) error {
 
 	ts := testutils.NewTCPServer(nil, defaultStaticPort, func(conn net.Conn) {
 		defer func() {
-          _ = conn.Close()
-        }()
+			_ = conn.Close()
+		}()
 
 		data, err := reader.ConnReadNWithTimeout(conn, 4, time.Duration(5)*time.Second)
 		if err != nil {
@@ -71,8 +71,8 @@ func (h *networkMultiStep) Execute(filePath string) error {
 
 	ts := testutils.NewTCPServer(nil, defaultStaticPort, func(conn net.Conn) {
 		defer func() {
-          _ = conn.Close()
-        }()
+			_ = conn.Close()
+		}()
 
 		data, err := reader.ConnReadNWithTimeout(conn, 5, time.Duration(5)*time.Second)
 		if err != nil {
@@ -119,8 +119,8 @@ type networkRequestSelContained struct{}
 func (h *networkRequestSelContained) Execute(filePath string) error {
 	ts := testutils.NewTCPServer(nil, defaultStaticPort, func(conn net.Conn) {
 		defer func() {
-          _ = conn.Close()
-        }()
+			_ = conn.Close()
+		}()
 
 		_, _ = conn.Write([]byte("Authentication successful"))
 	})
@@ -141,8 +141,8 @@ func (h *networkVariables) Execute(filePath string) error {
 
 	ts := testutils.NewTCPServer(nil, defaultStaticPort, func(conn net.Conn) {
 		defer func() {
-          _ = conn.Close()
-        }()
+			_ = conn.Close()
+		}()
 
 		data, err := reader.ConnReadNWithTimeout(conn, 4, time.Duration(5)*time.Second)
 		if err != nil {
@@ -171,8 +171,8 @@ type networkPort struct{}
 func (n *networkPort) Execute(filePath string) error {
 	ts := testutils.NewTCPServer(nil, 23846, func(conn net.Conn) {
 		defer func() {
-          _ = conn.Close()
-        }()
+			_ = conn.Close()
+		}()
 
 		data, err := reader.ConnReadNWithTimeout(conn, 4, time.Duration(5)*time.Second)
 		if err != nil {
@@ -206,8 +206,8 @@ func (n *networkPort) Execute(filePath string) error {
 	// this is positive test case where we expect port to be overridden and 34567 to be used
 	ts2 := testutils.NewTCPServer(nil, 34567, func(conn net.Conn) {
 		defer func() {
-          _ = conn.Close()
-        }()
+			_ = conn.Close()
+		}()
 
 		data, err := reader.ConnReadNWithTimeout(conn, 4, time.Duration(5)*time.Second)
 		if err != nil {

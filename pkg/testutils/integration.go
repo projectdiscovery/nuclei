@@ -339,8 +339,8 @@ func NewWebsocketServer(path string, handler func(conn net.Conn), originValidate
 		}
 		go func() {
 			defer func() {
-           _ = conn.Close()
-         }()
+				_ = conn.Close()
+			}()
 
 			handler(conn)
 		}()

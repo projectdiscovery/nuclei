@@ -8,11 +8,11 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
 )
 
-func memoizedisTelnet(host string, port int) (IsTelnetResponse, error) {
+func memoizedisTelnet(executionId string, host string, port int) (IsTelnetResponse, error) {
 	hash := "isTelnet" + ":" + fmt.Sprint(host) + ":" + fmt.Sprint(port)
 
 	v, err, _ := protocolstate.Memoizer.Do(hash, func() (interface{}, error) {
-		return isTelnet(host, port)
+		return isTelnet(executionId, host, port)
 	})
 	if err != nil {
 		return IsTelnetResponse{}, err

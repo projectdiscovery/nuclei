@@ -2,6 +2,7 @@ package ssl
 
 import (
 	"fmt"
+	"maps"
 	"net"
 	"strings"
 	"time"
@@ -108,7 +109,8 @@ func (request *Request) TmplClusterKey() uint64 {
 }
 
 func (request *Request) IsClusterable() bool {
-	return len(request.CipherSuites) <= 0 && request.MinVersion == "" && request.MaxVersion == ""
+	// nolint
+	return !(len(request.CipherSuites) > 0 || request.MinVersion != "" || request.MaxVersion != "")
 }
 
 // Compile compiles the request generators preparing any requests possible.
@@ -205,9 +207,7 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 
 	requestOptions := request.options
 	payloadValues := generators.BuildPayloadFromOptions(request.options.Options)
-	for k, v := range dynamicValues {
-		payloadValues[k] = v
-	}
+	maps.Copy(payloadValues, dynamicValues)
 
 	payloadValues["Hostname"] = hostPort
 	payloadValues["Host"] = hostname
@@ -270,9 +270,7 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 	jsonDataString := string(jsonData)
 
 	data := make(map[string]interface{})
-	for k, v := range payloadValues {
-		data[k] = v
-	}
+	maps.Copy(data, payloadValues)
 	data["type"] = request.Type().String()
 	data["response"] = jsonDataString
 	data["host"] = input.MetaInput.Input
@@ -436,4 +434,9 @@ func (request *Request) MakeResultEventItem(wrapped *output.InternalWrappedEvent
 		Error:            types.ToString(wrapped.InternalEvent["error"]),
 	}
 	return data
+}
+
+// UpdateOptions replaces this request's options with a new copy
+func (r *Request) UpdateOptions(opts *protocols.ExecutorOptions) {
+	r.options.ApplyNewEngineOptions(opts)
 }

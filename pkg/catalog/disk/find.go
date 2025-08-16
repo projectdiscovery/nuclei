@@ -8,7 +8,6 @@ import (
 
 	"github.com/logrusorgru/aurora"
 	"github.com/pkg/errors"
-	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/config"
 	stringsutil "github.com/projectdiscovery/utils/strings"
 	updateutils "github.com/projectdiscovery/utils/update"
@@ -84,7 +83,7 @@ func (c *DiskCatalog) GetTemplatePath(target string) ([]string, error) {
 		absPath = BackwardsCompatiblePaths(c.templatesDirectory, target)
 		if absPath != target && strings.TrimPrefix(absPath, c.templatesDirectory+string(filepath.Separator)) != target {
 			if config.DefaultConfig.LogAllEvents {
-				gologger.DefaultLogger.Print().Msgf("[%v] requested Template path %s is deprecated, please update to %s\n", aurora.Yellow("WRN").String(), target, absPath)
+				config.DefaultConfig.Logger.Print().Msgf("[%v] requested Template path %s is deprecated, please update to %s\n", aurora.Yellow("WRN").String(), target, absPath)
 			}
 			deprecatedPathsCounter++
 		}
@@ -302,6 +301,6 @@ func PrintDeprecatedPathsMsgIfApplicable(isSilent bool) {
 		return
 	}
 	if deprecatedPathsCounter > 0 && !isSilent {
-		gologger.Print().Msgf("[%v] Found %v template[s] loaded with deprecated paths, update before v3 for continued support.\n", aurora.Yellow("WRN").String(), deprecatedPathsCounter)
+		config.DefaultConfig.Logger.Print().Msgf("[%v] Found %v template[s] loaded with deprecated paths, update before v3 for continued support.\n", aurora.Yellow("WRN").String(), deprecatedPathsCounter)
 	}
 }

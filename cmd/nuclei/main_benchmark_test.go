@@ -20,7 +20,6 @@ var (
 
 func TestMain(m *testing.M) {
 	// Set up
-
 	gologger.DefaultLogger.SetMaxLevel(levels.LevelSilent)
 	_ = os.Setenv("DISABLE_STDOUT", "true")
 
@@ -93,6 +92,8 @@ func getDefaultOptions() *types.Options {
 		LoadHelperFileFunction:     types.DefaultOptions().LoadHelperFileFunction,
 		// DialerKeepAlive:            time.Duration(0),
 		// DASTServerAddress:          "localhost:9055",
+		ExecutionId: "test",
+		Logger:      gologger.DefaultLogger,
 	}
 }
 

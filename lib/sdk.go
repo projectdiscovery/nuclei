@@ -5,7 +5,9 @@ import (
 	"bytes"
 	"context"
 	"io"
+	"sync"
 
+	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/authprovider"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/loader"
@@ -27,6 +29,7 @@ import (
 	"github.com/projectdiscovery/ratelimit"
 	"github.com/projectdiscovery/retryablehttp-go"
 	errorutil "github.com/projectdiscovery/utils/errors"
+	"github.com/rs/xid"
 )
 
 // NucleiSDKOptions contains options for nuclei SDK
@@ -64,6 +67,7 @@ type NucleiEngine struct {
 	templatesLoaded bool
 
 	// unexported core fields
+	ctx              context.Context
 	interactshClient *interactsh.Client
 	catalog          catalog.Catalog
 	rateLimiter      *ratelimit.Limiter
@@ -84,12 +88,15 @@ type NucleiEngine struct {
 	customWriter   output.Writer
 	customProgress progress.Progress
 	rc             reporting.Client
-	executerOpts   protocols.ExecutorOptions
+	executerOpts   *protocols.ExecutorOptions
+
+	// Logger instance for the engine
+	Logger *gologger.Logger
 }
 
 // LoadAllTemplates loads all nuclei template based on given options
 func (e *NucleiEngine) LoadAllTemplates() error {
-	workflowLoader, err := workflow.NewLoader(&e.executerOpts)
+	workflowLoader, err := workflow.NewLoader(e.executerOpts)
 	if err != nil {
 		return errorutil.New("Could not create workflow loader: %s\n", err)
 	}
@@ -124,9 +131,9 @@ func (e *NucleiEngine) GetWorkflows() []*templates.Template {
 func (e *NucleiEngine) LoadTargets(targets []string, probeNonHttp bool) {
 	for _, target := range targets {
 		if probeNonHttp {
-			_ = e.inputProvider.SetWithProbe(target, e.httpxClient)
+			_ = e.inputProvider.SetWithProbe(e.opts.ExecutionId, target, e.httpxClient)
 		} else {
-			e.inputProvider.Set(target)
+			e.inputProvider.Set(e.opts.ExecutionId, target)
 		}
 	}
 }
@@ -136,9 +143,9 @@ func (e *NucleiEngine) LoadTargetsFromReader(reader io.Reader, probeNonHttp bool
 	buff := bufio.NewScanner(reader)
 	for buff.Scan() {
 		if probeNonHttp {
-			_ = e.inputProvider.SetWithProbe(buff.Text(), e.httpxClient)
+			_ = e.inputProvider.SetWithProbe(e.opts.ExecutionId, buff.Text(), e.httpxClient)
 		} else {
-			e.inputProvider.Set(buff.Text())
+			e.inputProvider.Set(e.opts.ExecutionId, buff.Text())
 		}
 	}
 }
@@ -161,7 +168,7 @@ func (e *NucleiEngine) LoadTargetsWithHttpData(filePath string, filemode string)
 
 // GetExecuterOptions returns the nuclei executor options
 func (e *NucleiEngine) GetExecuterOptions() *protocols.ExecutorOptions {
-	return &e.executerOpts
+	return e.executerOpts
 }
 
 // ParseTemplate parses a template from given data
@@ -229,7 +236,7 @@ func (e *NucleiEngine) closeInternal() {
 // Close all resources used by nuclei engine
 func (e *NucleiEngine) Close() {
 	e.closeInternal()
-	protocolinit.Close()
+	protocolinit.Close(e.opts.ExecutionId)
 }
 
 // ExecuteCallbackWithCtx executes templates on targets and calls callback on each result(only if results are found)
@@ -246,9 +253,9 @@ func (e *NucleiEngine) ExecuteCallbackWithCtx(ctx context.Context, callback ...f
 	}
 
 	filtered := []func(event *output.ResultEvent){}
-	for _, callback := range callback {
-		if callback != nil {
-			filtered = append(filtered, callback)
+	for _, cb := range callback {
+		if cb != nil {
+			filtered = append(filtered, cb)
 		}
 	}
 	e.resultCallbacks = append(e.resultCallbacks, filtered...)
@@ -258,15 +265,32 @@ func (e *NucleiEngine) ExecuteCallbackWithCtx(ctx context.Context, callback ...f
 		return ErrNoTemplatesAvailable
 	}
 
-	_ = e.engine.ExecuteScanWithOpts(ctx, templatesAndWorkflows, e.inputProvider, false)
-	defer e.engine.WorkPool().Wait()
+	var wg sync.WaitGroup
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		_ = e.engine.ExecuteScanWithOpts(ctx, templatesAndWorkflows, e.inputProvider, false)
+	}()
+
+	// wait for context to be cancelled
+	select {
+	case <-ctx.Done():
+		<-wait(&wg) // wait for scan to finish
+		return ctx.Err()
+	case <-wait(&wg):
+		// scan finished
+	}
 	return nil
 }
 
 // ExecuteWithCallback is same as ExecuteCallbackWithCtx but with default context
 // Note this is deprecated and will be removed in future major release
 func (e *NucleiEngine) ExecuteWithCallback(callback ...func(event *output.ResultEvent)) error {
-	return e.ExecuteCallbackWithCtx(context.Background(), callback...)
+	ctx := context.Background()
+	if e.ctx != nil {
+		ctx = e.ctx
+	}
+	return e.ExecuteCallbackWithCtx(ctx, callback...)
 }
 
 // Options return nuclei Type Options
@@ -287,9 +311,12 @@ func (e *NucleiEngine) Store() *loader.Store {
 // NewNucleiEngineCtx creates a new nuclei engine instance with given context
 func NewNucleiEngineCtx(ctx context.Context, options ...NucleiSDKOptions) (*NucleiEngine, error) {
 	// default options
+	defaultOptions := types.DefaultOptions()
+	defaultOptions.ExecutionId = xid.New().String()
 	e := &NucleiEngine{
-		opts: types.DefaultOptions(),
+		opts: defaultOptions,
 		mode: singleInstance,
+		ctx:  ctx,
 	}
 	for _, option := range options {
 		if err := option(e); err != nil {
@@ -305,4 +332,19 @@ func NewNucleiEngineCtx(ctx context.Context, options ...NucleiSDKOptions) (*Nucl
 // Deprecated: use NewNucleiEngineCtx instead
 func NewNucleiEngine(options ...NucleiSDKOptions) (*NucleiEngine, error) {
 	return NewNucleiEngineCtx(context.Background(), options...)
+}
+
+// GetParser returns the template parser with cache
+func (e *NucleiEngine) GetParser() *templates.Parser {
+	return e.parser
+}
+
+// wait for a waitgroup to finish
+func wait(wg *sync.WaitGroup) <-chan struct{} {
+	ch := make(chan struct{})
+	go func() {
+		defer close(ch)
+		wg.Wait()
+	}()
+	return ch
 }
