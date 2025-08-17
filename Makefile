@@ -15,8 +15,8 @@ ifneq ($(shell go env GOOS),darwin)
 endif
     
 .PHONY: all build build-stats clean devtools-all devtools-bindgen devtools-scrapefuncs
-.PHONY: devtools-tsgen docs docgen dsl-docs functional fuzzplayground go-build syntax-docs
-.PHONY: integration jsupdate-all jsupdate-bindgen jsupdate-tsgen memogen scan-charts test 
+.PHONY: devtools-tsgen docs docgen dsl-docs functional fuzzplayground go-build lint lint-strict syntax-docs
+.PHONY: integration jsupdate-all jsupdate-bindgen jsupdate-tsgen memogen scan-charts test test-with-lint
 .PHONY: tidy ts verify download vet template-validate
 
 all: build
@@ -78,6 +78,23 @@ syntax-docs:
 test: GOFLAGS = -race -v
 test:
 	$(GOTEST) $(GOFLAGS) ./...
+
+test-with-lint: lint
+	$(MAKE) test
+
+lint:
+	@if ! which golangci-lint >/dev/null 2>&1; then \
+		echo "golangci-lint not found. Installing..."; \
+		go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest; \
+	fi
+	golangci-lint run
+
+lint-strict:
+	@if ! which golangci-lint >/dev/null 2>&1; then \
+		echo "golangci-lint not found. Installing..."; \
+		go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest; \
+	fi
+	golangci-lint run
 
 integration:
 	cd integration_tests; bash run.sh
