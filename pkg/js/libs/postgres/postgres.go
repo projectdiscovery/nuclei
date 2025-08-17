@@ -122,7 +122,7 @@ func (c *PGClient) ExecuteQuery(ctx context.Context, host string, port int, user
 func executeQuery(executionId string, host string, port int, username string, password string, dbName string, query string) (*utils.SQLResult, error) {
 	if !protocolstate.IsHostAllowed(executionId, host) {
 		// host is not valid according to network policy
-		return nil, protocolstate.ErrHostDenied.Msgf(host)
+		return nil, protocolstate.ErrHostDenied(host)
 	}
 
 	target := net.JoinHostPort(host, fmt.Sprintf("%d", port))
@@ -179,7 +179,7 @@ func connect(executionId string, host string, port int, username string, passwor
 
 	if !protocolstate.IsHostAllowed(executionId, host) {
 		// host is not valid according to network policy
-		return false, protocolstate.ErrHostDenied.Msgf(host)
+		return false, protocolstate.ErrHostDenied(host)
 	}
 
 	target := net.JoinHostPort(host, fmt.Sprintf("%d", port))

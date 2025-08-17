@@ -3,6 +3,7 @@ package loader
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"os"
@@ -14,7 +15,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	"github.com/projectdiscovery/retryablehttp-go"
 	pdcpauth "github.com/projectdiscovery/utils/auth/pdcp"
-	errorutil "github.com/projectdiscovery/utils/errors"
+	"github.com/projectdiscovery/utils/errkit"
 )
 
 const (
@@ -33,27 +34,27 @@ type AITemplateResponse struct {
 func getAIGeneratedTemplates(prompt string, options *types.Options) ([]string, error) {
 	prompt = strings.TrimSpace(prompt)
 	if len(prompt) < 5 {
-		return nil, errorutil.New("Prompt is too short. Please provide a more descriptive prompt")
+		return nil, errkit.New("Prompt is too short. Please provide a more descriptive prompt").Build()
 	}
 
 	if len(prompt) > 3000 {
-		return nil, errorutil.New("Prompt is too long. Please limit to 3000 characters")
+		return nil, errkit.New("Prompt is too long. Please limit to 3000 characters").Build()
 	}
 
 	template, templateID, err := generateAITemplate(prompt)
 	if err != nil {
-		return nil, errorutil.New("Failed to generate template: %v", err)
+		return nil, errkit.New(fmt.Sprintf("Failed to generate template: %v", err)).Build()
 	}
 
 	pdcpTemplateDir := filepath.Join(config.DefaultConfig.GetTemplateDir(), "pdcp")
 	if err := os.MkdirAll(pdcpTemplateDir, 0755); err != nil {
-		return nil, errorutil.New("Failed to create pdcp template directory: %v", err)
+		return nil, errkit.New(fmt.Sprintf("Failed to create pdcp template directory: %v", err)).Build()
 	}
 
 	templateFile := filepath.Join(pdcpTemplateDir, templateID+".yaml")
 	err = os.WriteFile(templateFile, []byte(template), 0644)
 	if err != nil {
-		return nil, errorutil.New("Failed to generate template: %v", err)
+		return nil, errkit.New(fmt.Sprintf("Failed to generate template: %v", err)).Build()
 	}
 
 	options.Logger.Info().Msgf("Generated template available at: https://cloud.projectdiscovery.io/templates/%s", templateID)
@@ -91,22 +92,22 @@ func generateAITemplate(prompt string) (string, string, error) {
 	}
 	jsonBody, err := json.Marshal(reqBody)
 	if err != nil {
-		return "", "", errorutil.New("Failed to marshal request body: %v", err)
+		return "", "", errkit.New(fmt.Sprintf("Failed to marshal request body: %v", err)).Build()
 	}
 
 	req, err := http.NewRequest(http.MethodPost, aiTemplateGeneratorAPIEndpoint, bytes.NewBuffer(jsonBody))
 	if err != nil {
-		return "", "", errorutil.New("Failed to create HTTP request: %v", err)
+		return "", "", errkit.New(fmt.Sprintf("Failed to create HTTP request: %v", err)).Build()
 	}
 
 	ph := pdcpauth.PDCPCredHandler{}
 	creds, err := ph.GetCreds()
 	if err != nil {
-		return "", "", errorutil.New("Failed to get PDCP credentials: %v", err)
+		return "", "", errkit.New(fmt.Sprintf("Failed to get PDCP credentials: %v", err)).Build()
 	}
 
 	if creds == nil {
-		return "", "", errorutil.New("PDCP API Key not configured, Create one for free at https://cloud.projectdiscovery.io/")
+		return "", "", errkit.New("PDCP API Key not configured, Create one for free at https://cloud.projectdiscovery.io/").Build()
 	}
 
 	req.Header.Set("Content-Type", "application/json")
@@ -114,28 +115,28 @@ func generateAITemplate(prompt string) (string, string, error) {
 
 	resp, err := retryablehttp.DefaultClient().Do(req)
 	if err != nil {
-		return "", "", errorutil.New("Failed to send HTTP request: %v", err)
+		return "", "", errkit.New(fmt.Sprintf("Failed to send HTTP request: %v", err)).Build()
 	}
 	defer func() {
 		_ = resp.Body.Close()
 	}()
 
 	if resp.StatusCode == http.StatusUnauthorized {
-		return "", "", errorutil.New("Invalid API Key or API Key not configured, Create one for free at https://cloud.projectdiscovery.io/")
+		return "", "", errkit.New("Invalid API Key or API Key not configured, Create one for free at https://cloud.projectdiscovery.io/").Build()
 	}
 
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)
-		return "", "", errorutil.New("API returned status code %d: %s", resp.StatusCode, string(body))
+		return "", "", errkit.New(fmt.Sprintf("API returned status code %d: %s", resp.StatusCode, string(body))).Build()
 	}
 
 	var result AITemplateResponse
 	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
-		return "", "", errorutil.New("Failed to decode API response: %v", err)
+		return "", "", errkit.New(fmt.Sprintf("Failed to decode API response: %v", err)).Build()
 	}
 
 	if result.TemplateID == "" || result.Completion == "" {
-		return "", "", errorutil.New("Failed to generate template")
+		return "", "", errkit.New("Failed to generate template").Build()
 	}
 
 	return result.Completion, result.TemplateID, nil

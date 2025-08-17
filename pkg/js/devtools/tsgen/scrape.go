@@ -6,7 +6,7 @@ import (
 	"regexp"
 	"strings"
 
-	errorutil "github.com/projectdiscovery/utils/errors"
+	"github.com/projectdiscovery/utils/errkit"
 )
 
 // scrape.go scrapes all information of exported type from different package
@@ -21,17 +21,17 @@ func (p *EntityParser) scrapeAndCreate(typeName string) error {
 	// get package
 	pkg, ok := p.imports[pkgName]
 	if !ok {
-		return errorutil.New("package %v for type %v not found", pkgName, typeName)
+		return errkit.New(fmt.Sprintf("package %v for type %v not found", pkgName, typeName)).Build()
 	}
 	// get type
 	obj := pkg.Types.Scope().Lookup(baseTypeName)
 	if obj == nil {
-		return errorutil.New("type %v not found in package %+v", typeName, pkg)
+		return errkit.New(fmt.Sprintf("type %v not found in package %+v", typeName, pkg)).Build()
 	}
 	// Ensure the object is a type name
 	typeNameObj, ok := obj.(*types.TypeName)
 	if !ok {
-		return errorutil.New("%v is not a type name", typeName)
+		return errkit.New(fmt.Sprintf("%v is not a type name", typeName)).Build()
 	}
 	// Ensure the type is a named struct type
 	namedStruct, ok := typeNameObj.Type().Underlying().(*types.Struct)
