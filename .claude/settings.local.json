@@ -1,0 +1,31 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(find:*)",
+      "Bash(mkdir:*)",
+      "Bash(cp:*)",
+      "Bash(ls:*)",
+      "Bash(make:*)",
+      "Bash(go:*)",
+      "Bash(golangci-lint:*)",
+      "Bash(git merge:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "Bash(git pull:*)",
+      "Bash(git fetch:*)",
+      "Bash(git checkout:*)",
+      "WebFetch(*)",
+      "Write(*)",
+      "WebSearch(*)",
+      "MultiEdit(*)",
+      "Edit(*)",
+      "Bash(gh:*)"
+    ],
+    "deny": [
+      "Bash(make run:*)",
+      "Bash(./bin/nuclei:*)"
+    ],
+    "defaultMode": "acceptEdits"
+  }
+}
