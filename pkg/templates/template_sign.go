@@ -14,7 +14,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/templates/extensions"
 	"github.com/projectdiscovery/nuclei/v3/pkg/templates/signer"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
-	errorutil "github.com/projectdiscovery/utils/errors"
+	"github.com/projectdiscovery/utils/errkit"
 )
 
 // Due to file references in sensitive fields of template
@@ -28,7 +28,7 @@ var (
 		_ = protocolstate.Init(defaultOpts)
 		_ = protocolinit.Init(defaultOpts)
 	})
-	ErrNotATemplate = errorutil.NewWithTag("signer", "given filePath is not a template")
+	ErrNotATemplate = errkit.New("signer: given filePath is not a template").Build()
 )
 
 // UseOptionsForSigner sets the options to use for signing templates
@@ -68,7 +68,7 @@ func SignTemplate(templateSigner *signer.TemplateSigner, templatePath string) er
 
 	template, bin, err := getTemplate(templatePath)
 	if err != nil {
-		return errorutil.NewWithErr(err).Msgf("failed to get template from disk")
+		return errkit.Append(errkit.New("failed to get template from disk"), err)
 	}
 	if len(template.Workflows) > 0 {
 		// signing workflows is not supported at least yet
@@ -100,7 +100,7 @@ func getTemplate(templatePath string) (*Template, []byte, error) {
 	}
 	template, err := ParseTemplateFromReader(bytes.NewReader(bin), nil, executerOpts)
 	if err != nil {
-		return nil, bin, errorutil.NewWithErr(err).Msgf("failed to parse template")
+		return nil, bin, errkit.Append(errkit.New("failed to parse template"), err)
 	}
 	return template, bin, nil
 }

@@ -13,14 +13,18 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/generators"
 	configTypes "github.com/projectdiscovery/nuclei/v3/pkg/types"
-	errorutil "github.com/projectdiscovery/utils/errors"
+	"github.com/projectdiscovery/utils/errkit"
 	stringsutil "github.com/projectdiscovery/utils/strings"
 )
 
 var (
-	ErrNotImplemented = errorutil.NewWithFmt("provider %s does not implement %s")
-	ErrInactiveInput  = fmt.Errorf("input is inactive")
+	ErrInactiveInput = fmt.Errorf("input is inactive")
 )
+
+// ErrNotImplemented returns an error when a provider does not implement a method
+func ErrNotImplemented(provider, method string) error {
+	return errkit.New(fmt.Sprintf("provider %s does not implement %s", provider, method)).Build()
+}
 
 const (
 	MultiFormatInputProvider = "MultiFormatInputProvider"

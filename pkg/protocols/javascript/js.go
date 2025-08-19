@@ -34,7 +34,6 @@ import (
 	templateTypes "github.com/projectdiscovery/nuclei/v3/pkg/templates/types"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	"github.com/projectdiscovery/utils/errkit"
-	errorutil "github.com/projectdiscovery/utils/errors"
 	iputil "github.com/projectdiscovery/utils/ip"
 	mapsutil "github.com/projectdiscovery/utils/maps"
 	syncutil "github.com/projectdiscovery/utils/sync"
@@ -128,14 +127,14 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 			}
 		}
 		if err := compiled.Compile(); err != nil {
-			return errorutil.NewWithTag(request.TemplateID, "could not compile operators got %v", err)
+			return errkit.New(fmt.Sprintf("%s: could not compile operators got %v", request.TemplateID, err)).Build()
 		}
 		request.CompiledOperators = compiled
 	}
 
 	// "Port" is a special variable and it should not contains any dsl expressions
 	if strings.Contains(request.getPort(), "{{") {
-		return errorutil.NewWithTag(request.TemplateID, "'Port' variable cannot contain any dsl expressions")
+		return errkit.New(fmt.Sprintf("%s: 'Port' variable cannot contain any dsl expressions", request.TemplateID)).Build()
 	}
 
 	if request.Init != "" {
@@ -219,11 +218,11 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 
 		initCompiled, err := compiler.SourceAutoMode(request.Init, false)
 		if err != nil {
-			return errorutil.NewWithTag(request.TemplateID, "could not compile init code: %s", err)
+			return errkit.New(fmt.Sprintf("%s: could not compile init code: %s", request.TemplateID, err)).Build()
 		}
 		result, err := request.options.JsCompiler.ExecuteWithOptions(initCompiled, args, opts)
 		if err != nil {
-			return errorutil.NewWithTag(request.TemplateID, "could not execute pre-condition: %s", err)
+			return errkit.New(fmt.Sprintf("%s: could not execute pre-condition: %s", request.TemplateID, err)).Build()
 		}
 		if types.ToString(result["error"]) != "" {
 			gologger.Warning().Msgf("[%s] Init failed with error %v\n", request.TemplateID, result["error"])
@@ -240,7 +239,7 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 	if request.PreCondition != "" {
 		preConditionCompiled, err := compiler.SourceAutoMode(request.PreCondition, false)
 		if err != nil {
-			return errorutil.NewWithTag(request.TemplateID, "could not compile pre-condition: %s", err)
+			return errkit.New(fmt.Sprintf("%s: could not compile pre-condition: %s", request.TemplateID, err)).Build()
 		}
 		request.preConditionCompiled = preConditionCompiled
 	}
@@ -249,7 +248,7 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 	if request.Code != "" {
 		scriptCompiled, err := compiler.SourceAutoMode(request.Code, false)
 		if err != nil {
-			return errorutil.NewWithTag(request.TemplateID, "could not compile javascript code: %s", err)
+			return errkit.New(fmt.Sprintf("%s: could not compile javascript code: %s", request.TemplateID, err)).Build()
 		}
 		request.scriptCompiled = scriptCompiled
 	}

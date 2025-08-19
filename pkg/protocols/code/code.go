@@ -33,7 +33,6 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	contextutil "github.com/projectdiscovery/utils/context"
 	"github.com/projectdiscovery/utils/errkit"
-	errorutil "github.com/projectdiscovery/utils/errors"
 )
 
 const (
@@ -114,7 +113,7 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 		if options.Options.Validate {
 			options.Logger.Error().Msgf("%s <- %s", errMsg, err)
 		} else {
-			return errorutil.NewWithErr(err).Msgf(errMsg)
+			return errkit.Append(errkit.New(errMsg), err)
 		}
 	} else {
 		request.gozero = engine
@@ -154,7 +153,7 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 	if request.PreCondition != "" {
 		preConditionCompiled, err := compiler.SourceAutoMode(request.PreCondition, false)
 		if err != nil {
-			return errorutil.NewWithTag(request.TemplateID, "could not compile pre-condition: %s", err)
+			return errkit.New(fmt.Sprintf("%s: could not compile pre-condition: %s", request.TemplateID, err)).Build()
 		}
 		request.preConditionCompiled = preConditionCompiled
 	}
@@ -231,7 +230,7 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 				Context:         input.Context(),
 			})
 		if err != nil {
-			return errorutil.NewWithTag(request.TemplateID, "could not execute pre-condition: %s", err)
+			return errkit.New(fmt.Sprintf("%s: could not execute pre-condition: %s", request.TemplateID, err)).Build()
 		}
 		if !result.GetSuccess() || types.ToString(result["error"]) != "" {
 			gologger.Warning().Msgf("[%s] Precondition for request %s was not satisfied\n", request.TemplateID, request.PreCondition)

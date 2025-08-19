@@ -13,7 +13,7 @@ import (
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/utils/json"
 	"github.com/projectdiscovery/utils/env"
-	errorutil "github.com/projectdiscovery/utils/errors"
+	"github.com/projectdiscovery/utils/errkit"
 	fileutil "github.com/projectdiscovery/utils/file"
 	folderutil "github.com/projectdiscovery/utils/folder"
 )
@@ -140,13 +140,13 @@ func (c *Config) UpdateNucleiIgnoreHash() error {
 	if fileutil.FileExists(ignoreFilePath) {
 		bin, err := os.ReadFile(ignoreFilePath)
 		if err != nil {
-			return errorutil.NewWithErr(err).Msgf("could not read nuclei ignore file")
+			return errkit.Append(errkit.New("could not read nuclei ignore file"), err)
 		}
 		c.NucleiIgnoreHash = fmt.Sprintf("%x", md5.Sum(bin))
 		// write config to disk
 		return c.WriteTemplatesConfig()
 	}
-	return errorutil.NewWithTag("config", "ignore file not found: could not update nuclei ignore hash")
+	return errkit.New("config: ignore file not found: could not update nuclei ignore hash").Build()
 }
 
 // GetConfigDir returns the nuclei configuration directory
@@ -257,7 +257,7 @@ func (c *Config) SetTemplatesVersion(version string) error {
 	c.TemplateVersion = version
 	// write config to disk
 	if err := c.WriteTemplatesConfig(); err != nil {
-		return errorutil.NewWithErr(err).Msgf("could not write nuclei config file at %s", c.getTemplatesConfigFilePath())
+		return errkit.Append(errkit.New(fmt.Sprintf("could not write nuclei config file at %s", c.getTemplatesConfigFilePath())), err)
 	}
 	return nil
 }
@@ -265,15 +265,15 @@ func (c *Config) SetTemplatesVersion(version string) error {
 // ReadTemplatesConfig reads the nuclei templates config file
 func (c *Config) ReadTemplatesConfig() error {
 	if !fileutil.FileExists(c.getTemplatesConfigFilePath()) {
-		return errorutil.NewWithTag("config", "nuclei config file at %s does not exist", c.getTemplatesConfigFilePath())
+		return errkit.New(fmt.Sprintf("config: nuclei config file at %s does not exist", c.getTemplatesConfigFilePath())).Build()
 	}
 	var cfg *Config
 	bin, err := os.ReadFile(c.getTemplatesConfigFilePath())
 	if err != nil {
-		return errorutil.NewWithErr(err).Msgf("could not read nuclei config file at %s", c.getTemplatesConfigFilePath())
+		return errkit.Append(errkit.New(fmt.Sprintf("could not read nuclei config file at %s", c.getTemplatesConfigFilePath())), err)
 	}
 	if err := json.Unmarshal(bin, &cfg); err != nil {
-		return errorutil.NewWithErr(err).Msgf("could not unmarshal nuclei config file at %s", c.getTemplatesConfigFilePath())
+		return errkit.Append(errkit.New(fmt.Sprintf("could not unmarshal nuclei config file at %s", c.getTemplatesConfigFilePath())), err)
 	}
 	// apply config
 	c.TemplatesDirectory = cfg.TemplatesDirectory
@@ -292,10 +292,10 @@ func (c *Config) WriteTemplatesConfig() error {
 	}
 	bin, err := json.Marshal(c)
 	if err != nil {
-		return errorutil.NewWithErr(err).Msgf("failed to marshal nuclei config")
+		return errkit.Append(errkit.New("failed to marshal nuclei config"), err)
 	}
 	if err = os.WriteFile(c.getTemplatesConfigFilePath(), bin, 0600); err != nil {
-		return errorutil.NewWithErr(err).Msgf("failed to write nuclei config file at %s", c.getTemplatesConfigFilePath())
+		return errkit.Append(errkit.New(fmt.Sprintf("failed to write nuclei config file at %s", c.getTemplatesConfigFilePath())), err)
 	}
 	return nil
 }
@@ -319,7 +319,7 @@ func (c *Config) getTemplatesConfigFilePath() string {
 func (c *Config) createConfigDirIfNotExists() error {
 	if !fileutil.FolderExists(c.configDir) {
 		if err := fileutil.CreateFolder(c.configDir); err != nil {
-			return errorutil.NewWithErr(err).Msgf("could not create nuclei config directory at %s", c.configDir)
+			return errkit.Append(errkit.New(fmt.Sprintf("could not create nuclei config directory at %s", c.configDir)), err)
 		}
 	}
 	return nil

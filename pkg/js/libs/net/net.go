@@ -10,7 +10,7 @@ import (
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
-	errorutil "github.com/projectdiscovery/utils/errors"
+	"github.com/projectdiscovery/utils/errkit"
 	"github.com/projectdiscovery/utils/reader"
 )
 
@@ -201,7 +201,7 @@ func (c *NetConn) RecvFull(N int) ([]byte, error) {
 	}
 	bin, err := reader.ConnReadNWithTimeout(c.conn, int64(N), c.timeout)
 	if err != nil {
-		return []byte{}, errorutil.NewWithErr(err).Msgf("failed to read %d bytes", N)
+		return []byte{}, errkit.Append(errkit.New(fmt.Sprintf("failed to read %d bytes", N)), err)
 	}
 	return bin, nil
 }
@@ -226,7 +226,7 @@ func (c *NetConn) Recv(N int) ([]byte, error) {
 	b := make([]byte, N)
 	n, err := c.conn.Read(b)
 	if err != nil {
-		return []byte{}, errorutil.NewWithErr(err).Msgf("failed to read %d bytes", N)
+		return []byte{}, errkit.Append(errkit.New(fmt.Sprintf("failed to read %d bytes", N)), err)
 	}
 	return b[:n], nil
 }
