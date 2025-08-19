@@ -15,8 +15,8 @@ ifneq ($(shell go env GOOS),darwin)
 endif
     
 .PHONY: all build build-stats clean devtools-all devtools-bindgen devtools-scrapefuncs
-.PHONY: devtools-tsgen docs docgen dsl-docs functional fuzzplayground go-build syntax-docs
-.PHONY: integration jsupdate-all jsupdate-bindgen jsupdate-tsgen memogen scan-charts test 
+.PHONY: devtools-tsgen docs docgen dsl-docs functional fuzzplayground go-build lint lint-strict syntax-docs
+.PHONY: integration jsupdate-all jsupdate-bindgen jsupdate-tsgen memogen scan-charts test test-with-lint
 .PHONY: tidy ts verify download vet template-validate
 
 all: build

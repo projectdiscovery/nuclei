@@ -8,7 +8,7 @@ import (
 	"strings"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
-	errorutil "github.com/projectdiscovery/utils/errors"
+	"github.com/projectdiscovery/utils/errkit"
 	fileutil "github.com/projectdiscovery/utils/file"
 	proxyutils "github.com/projectdiscovery/utils/proxy"
 )
@@ -50,7 +50,7 @@ func loadProxyServers(options *types.Options) error {
 	}
 	proxyURL, err := url.Parse(aliveProxy)
 	if err != nil {
-		return errorutil.WrapfWithNil(err, "failed to parse proxy got %v", err)
+		return errkit.Append(errkit.New(fmt.Sprintf("failed to parse proxy got %v", err)), err)
 	}
 	if options.ProxyInternal {
 		_ = os.Setenv(HTTP_PROXY_ENV, proxyURL.String())

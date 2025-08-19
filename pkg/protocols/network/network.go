@@ -1,6 +1,7 @@
 package network
 
 import (
+	"fmt"
 	"strconv"
 	"strings"
 
@@ -12,7 +13,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/expressions"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/generators"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/network/networkclientpool"
-	errorutil "github.com/projectdiscovery/utils/errors"
+	"github.com/projectdiscovery/utils/errkit"
 	fileutil "github.com/projectdiscovery/utils/file"
 )
 
@@ -196,10 +197,10 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 			}
 			portInt, err := strconv.Atoi(port)
 			if err != nil {
-				return errorutil.NewWithErr(err).Msgf("could not parse port %v from '%s'", port, request.Port)
+				return errkit.Append(errkit.New(fmt.Sprintf("could not parse port %v from '%s'", port, request.Port)), err)
 			}
 			if portInt < 1 || portInt > 65535 {
-				return errorutil.NewWithTag(request.TemplateID, "port %v is not in valid range", portInt)
+				return errkit.New(fmt.Sprintf("%s: port %v is not in valid range", request.TemplateID, portInt)).Build()
 			}
 			request.ports = append(request.ports, port)
 		}

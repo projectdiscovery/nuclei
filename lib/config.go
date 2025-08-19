@@ -102,7 +102,7 @@ type InteractshOpts interactsh.Options
 func WithInteractshOptions(opts InteractshOpts) NucleiSDKOptions {
 	return func(e *NucleiEngine) error {
 		if e.mode == threadSafe {
-			return ErrOptionsNotSupported.Msgf("WithInteractshOptions")
+			return ErrOptionsNotSupported("WithInteractshOptions")
 		}
 		optsPtr := &opts
 		e.interactshOpts = (*interactsh.Options)(optsPtr)
@@ -229,7 +229,7 @@ type StatsOptions struct {
 func EnableStatsWithOpts(opts StatsOptions) NucleiSDKOptions {
 	return func(e *NucleiEngine) error {
 		if e.mode == threadSafe {
-			return ErrOptionsNotSupported.Msgf("EnableStatsWithOpts")
+			return ErrOptionsNotSupported("EnableStatsWithOpts")
 		}
 		if opts.Interval == 0 {
 			opts.Interval = 5 //sec
@@ -257,7 +257,7 @@ type VerbosityOptions struct {
 func WithVerbosity(opts VerbosityOptions) NucleiSDKOptions {
 	return func(e *NucleiEngine) error {
 		if e.mode == threadSafe {
-			return ErrOptionsNotSupported.Msgf("WithVerbosity")
+			return ErrOptionsNotSupported("WithVerbosity")
 		}
 		e.opts.Verbose = opts.Verbose
 		e.opts.Silent = opts.Silent
@@ -290,7 +290,7 @@ type NetworkConfig struct {
 func WithNetworkConfig(opts NetworkConfig) NucleiSDKOptions {
 	return func(e *NucleiEngine) error {
 		if e.mode == threadSafe {
-			return ErrOptionsNotSupported.Msgf("WithNetworkConfig")
+			return ErrOptionsNotSupported("WithNetworkConfig")
 		}
 		e.opts.NoHostErrors = opts.DisableMaxHostErr
 		e.opts.MaxHostError = opts.MaxHostError
@@ -321,7 +321,7 @@ func WithNetworkConfig(opts NetworkConfig) NucleiSDKOptions {
 func WithProxy(proxy []string, proxyInternalRequests bool) NucleiSDKOptions {
 	return func(e *NucleiEngine) error {
 		if e.mode == threadSafe {
-			return ErrOptionsNotSupported.Msgf("WithProxy")
+			return ErrOptionsNotSupported("WithProxy")
 		}
 		e.opts.Proxy = proxy
 		e.opts.ProxyInternal = proxyInternalRequests
@@ -346,7 +346,7 @@ type OutputWriter output.Writer
 func UseOutputWriter(writer OutputWriter) NucleiSDKOptions {
 	return func(e *NucleiEngine) error {
 		if e.mode == threadSafe {
-			return ErrOptionsNotSupported.Msgf("UseOutputWriter")
+			return ErrOptionsNotSupported("UseOutputWriter")
 		}
 		e.customWriter = writer
 		return nil
@@ -361,7 +361,7 @@ type StatsWriter progress.Progress
 func UseStatsWriter(writer StatsWriter) NucleiSDKOptions {
 	return func(e *NucleiEngine) error {
 		if e.mode == threadSafe {
-			return ErrOptionsNotSupported.Msgf("UseStatsWriter")
+			return ErrOptionsNotSupported("UseStatsWriter")
 		}
 		e.customProgress = writer
 		return nil
@@ -375,7 +375,7 @@ func UseStatsWriter(writer StatsWriter) NucleiSDKOptions {
 func WithTemplateUpdateCallback(disableTemplatesAutoUpgrade bool, callback func(newVersion string)) NucleiSDKOptions {
 	return func(e *NucleiEngine) error {
 		if e.mode == threadSafe {
-			return ErrOptionsNotSupported.Msgf("WithTemplateUpdateCallback")
+			return ErrOptionsNotSupported("WithTemplateUpdateCallback")
 		}
 		e.disableTemplatesAutoUpgrade = disableTemplatesAutoUpgrade
 		e.onUpdateAvailableCallback = callback
@@ -387,7 +387,7 @@ func WithTemplateUpdateCallback(disableTemplatesAutoUpgrade bool, callback func(
 func WithSandboxOptions(allowLocalFileAccess bool, restrictLocalNetworkAccess bool) NucleiSDKOptions {
 	return func(e *NucleiEngine) error {
 		if e.mode == threadSafe {
-			return ErrOptionsNotSupported.Msgf("WithSandboxOptions")
+			return ErrOptionsNotSupported("WithSandboxOptions")
 		}
 		e.opts.AllowLocalFileAccess = allowLocalFileAccess
 		e.opts.RestrictLocalNetworkAccess = restrictLocalNetworkAccess

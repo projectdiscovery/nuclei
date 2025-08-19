@@ -35,7 +35,7 @@ func (c *SMBClient) DetectSMBGhost(ctx context.Context, host string, port int) (
 func detectSMBGhost(executionId string, host string, port int) (bool, error) {
 	if !protocolstate.IsHostAllowed(executionId, host) {
 		// host is not valid according to network policy
-		return false, protocolstate.ErrHostDenied.Msgf(host)
+		return false, protocolstate.ErrHostDenied(host)
 	}
 	addr := net.JoinHostPort(host, strconv.Itoa(port))
 	dialer := protocolstate.GetDialersWithId(executionId)

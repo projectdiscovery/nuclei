@@ -3,13 +3,14 @@ package customtemplates
 import (
 	"context"
 	"encoding/base64"
+	"fmt"
 	"os"
 	"path/filepath"
 
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/config"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
-	errorutil "github.com/projectdiscovery/utils/errors"
+	"github.com/projectdiscovery/utils/errkit"
 	gitlab "gitlab.com/gitlab-org/api/client-go"
 )
 
@@ -28,7 +29,7 @@ func NewGitLabProviders(options *types.Options) ([]*customTemplateGitLabRepo, er
 		// Establish a connection to GitLab and build a client object with which to download templates from GitLab
 		gitLabClient, err := getGitLabClient(options.GitLabServerURL, options.GitLabToken)
 		if err != nil {
-			return nil, errorutil.NewWithErr(err).Msgf("Error establishing GitLab client for %s %s", options.GitLabServerURL, err)
+			return nil, errkit.Append(errkit.New(fmt.Sprintf("Error establishing GitLab client for %s %s", options.GitLabServerURL, err)), err)
 		}
 
 		// Create a new GitLab service client

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"embed"
+	"fmt"
 	"math/rand"
 	"net"
 	"reflect"
@@ -17,7 +18,6 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/utils/vardump"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	"github.com/projectdiscovery/utils/errkit"
-	errorutil "github.com/projectdiscovery/utils/errors"
 	stringsutil "github.com/projectdiscovery/utils/strings"
 )
 
@@ -257,7 +257,7 @@ func RegisterNativeScripts(runtime *goja.Runtime) error {
 	// import default modules
 	_, err = runtime.RunString(defaultImports)
 	if err != nil {
-		return errorutil.NewWithErr(err).Msgf("could not import default modules %v", defaultImports)
+		return errkit.Append(errkit.New(fmt.Sprintf("could not import default modules %v", defaultImports)), err)
 	}
 
 	return nil

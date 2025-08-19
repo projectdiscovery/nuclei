@@ -10,7 +10,7 @@ import (
 	"github.com/julienschmidt/httprouter"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/testutils"
-	errorutil "github.com/projectdiscovery/utils/errors"
+	"github.com/projectdiscovery/utils/errkit"
 	permissionutil "github.com/projectdiscovery/utils/permission"
 )
 
@@ -223,7 +223,7 @@ type loadTemplateWithID struct{}
 func (h *loadTemplateWithID) Execute(nooop string) error {
 	results, err := testutils.RunNucleiBareArgsAndGetResults(debug, nil, "-target", "scanme.sh", "-id", "self-signed-ssl")
 	if err != nil {
-		return errorutil.NewWithErr(err).Msgf("failed to load template with id")
+		return errkit.Append(errkit.New("failed to load template with id"), err)
 	}
 	return expectResultsCount(results, 1)
 }

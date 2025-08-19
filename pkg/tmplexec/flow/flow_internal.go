@@ -61,7 +61,7 @@ func (f *FlowExecutor) requestExecutor(runtime *goja.Runtime, reqMap mapsutil.Ma
 		if !ok {
 			f.ctx.LogError(fmt.Errorf("[%v] invalid request id '%s' provided", f.options.TemplateID, id))
 			// compile error
-			if err := f.allErrs.Set(opts.protoName+":"+id, ErrInvalidRequestID.Msgf(f.options.TemplateID, id)); err != nil {
+			if err := f.allErrs.Set(opts.protoName+":"+id, ErrInvalidRequestID(f.options.TemplateID, id)); err != nil {
 				f.ctx.LogError(fmt.Errorf("failed to store flow runtime errors got %v", err))
 			}
 			return matcherStatus.Load()

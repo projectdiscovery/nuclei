@@ -25,7 +25,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/tmplexec"
 	"github.com/projectdiscovery/nuclei/v3/pkg/utils"
 	"github.com/projectdiscovery/nuclei/v3/pkg/utils/json"
-	errorutil "github.com/projectdiscovery/utils/errors"
+	"github.com/projectdiscovery/utils/errkit"
 	stringsutil "github.com/projectdiscovery/utils/strings"
 )
 
@@ -480,7 +480,7 @@ func parseTemplate(data []byte, srcOptions *protocols.ExecutorOptions) (*Templat
 		}
 	}
 	if err != nil {
-		return nil, errorutil.NewWithErr(err).Msgf("failed to parse %s", template.Path)
+		return nil, errkit.Append(errkit.New(fmt.Sprintf("failed to parse %s", template.Path)), err)
 	}
 
 	if utils.IsBlank(template.Info.Name) {
@@ -540,7 +540,7 @@ func parseTemplate(data []byte, srcOptions *protocols.ExecutorOptions) (*Templat
 	// load `flow` and `source` in code protocol from file
 	// if file is referenced instead of actual source code
 	if err := template.ImportFileRefs(template.Options); err != nil {
-		return nil, errorutil.NewWithErr(err).Msgf("failed to load file refs for %s", template.ID)
+		return nil, errkit.Append(errkit.New(fmt.Sprintf("failed to load file refs for %s", template.ID)), err)
 	}
 
 	if err := template.compileProtocolRequests(template.Options); err != nil {

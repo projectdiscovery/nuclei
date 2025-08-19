@@ -63,7 +63,7 @@ func connect(executionId string, host string, port int, username string, passwor
 	}
 	if !protocolstate.IsHostAllowed(executionId, host) {
 		// host is not valid according to network policy
-		return false, protocolstate.ErrHostDenied.Msgf(host)
+		return false, protocolstate.ErrHostDenied(host)
 	}
 
 	target := net.JoinHostPort(host, fmt.Sprintf("%d", port))
@@ -118,7 +118,7 @@ func (c *MSSQLClient) IsMssql(ctx context.Context, host string, port int) (bool,
 func isMssql(executionId string, host string, port int) (bool, error) {
 	if !protocolstate.IsHostAllowed(executionId, host) {
 		// host is not valid according to network policy
-		return false, protocolstate.ErrHostDenied.Msgf(host)
+		return false, protocolstate.ErrHostDenied(host)
 	}
 
 	dialer := protocolstate.GetDialersWithId(executionId)
@@ -162,7 +162,7 @@ func (c *MSSQLClient) ExecuteQuery(ctx context.Context, host string, port int, u
 	}
 	if !protocolstate.IsHostAllowed(executionId, host) {
 		// host is not valid according to network policy
-		return nil, protocolstate.ErrHostDenied.Msgf(host)
+		return nil, protocolstate.ErrHostDenied(host)
 	}
 
 	target := net.JoinHostPort(host, fmt.Sprintf("%d", port))
