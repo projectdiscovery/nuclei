@@ -82,7 +82,7 @@ func (p *Parser) LoadTemplate(templatePath string, t any, extraTags []string, ca
 	t, templateParseError := p.ParseTemplate(templatePath, catalog)
 	if templateParseError != nil {
 		checkOpenFileError(templateParseError)
-		return false, ErrCouldNotLoadTemplate.Msgf(templatePath, templateParseError)
+		return false, ErrCouldNotLoadTemplate(templatePath, templateParseError.Error())
 	}
 	template, ok := t.(*Template)
 	if !ok {
@@ -96,13 +96,13 @@ func (p *Parser) LoadTemplate(templatePath string, t any, extraTags []string, ca
 	validationError := validateTemplateMandatoryFields(template)
 	if validationError != nil {
 		stats.Increment(SyntaxErrorStats)
-		return false, ErrCouldNotLoadTemplate.Msgf(templatePath, validationError)
+		return false, ErrCouldNotLoadTemplate(templatePath, validationError.Error())
 	}
 
 	ret, err := isTemplateInfoMetadataMatch(tagFilter, template, extraTags)
 	if err != nil {
 		checkOpenFileError(err)
-		return ret, ErrCouldNotLoadTemplate.Msgf(templatePath, err)
+		return ret, ErrCouldNotLoadTemplate(templatePath, err.Error())
 	}
 	// if template loaded then check the template for optional fields to add warnings
 	if ret {
@@ -110,7 +110,7 @@ func (p *Parser) LoadTemplate(templatePath string, t any, extraTags []string, ca
 		if validationWarning != nil {
 			stats.Increment(SyntaxWarningStats)
 			checkOpenFileError(validationWarning)
-			return ret, ErrCouldNotLoadTemplate.Msgf(templatePath, validationWarning)
+			return ret, ErrCouldNotLoadTemplate(templatePath, validationWarning.Error())
 		}
 	}
 	return ret, nil

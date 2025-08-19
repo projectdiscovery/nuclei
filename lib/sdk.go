@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"context"
+	"fmt"
 	"io"
 	"sync"
 
@@ -28,7 +29,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	"github.com/projectdiscovery/ratelimit"
 	"github.com/projectdiscovery/retryablehttp-go"
-	errorutil "github.com/projectdiscovery/utils/errors"
+	"github.com/projectdiscovery/utils/errkit"
 	"github.com/rs/xid"
 )
 
@@ -37,14 +38,17 @@ type NucleiSDKOptions func(e *NucleiEngine) error
 
 var (
 	// ErrNotImplemented is returned when a feature is not implemented
-	ErrNotImplemented = errorutil.New("Not implemented")
+	ErrNotImplemented = errkit.New("Not implemented").Build()
 	// ErrNoTemplatesAvailable is returned when no templates are available to execute
-	ErrNoTemplatesAvailable = errorutil.New("No templates available")
+	ErrNoTemplatesAvailable = errkit.New("No templates available").Build()
 	// ErrNoTargetsAvailable is returned when no targets are available to scan
-	ErrNoTargetsAvailable = errorutil.New("No targets available")
-	// ErrOptionsNotSupported is returned when an option is not supported in thread safe mode
-	ErrOptionsNotSupported = errorutil.NewWithFmt("Option %v not supported in thread safe mode")
+	ErrNoTargetsAvailable = errkit.New("No targets available").Build()
 )
+
+// ErrOptionsNotSupported returns an error when an option is not supported in thread safe mode
+func ErrOptionsNotSupported(option string) error {
+	return errkit.New(fmt.Sprintf("Option %v not supported in thread safe mode", option)).Build()
+}
 
 type engineMode uint
 
@@ -98,13 +102,13 @@ type NucleiEngine struct {
 func (e *NucleiEngine) LoadAllTemplates() error {
 	workflowLoader, err := workflow.NewLoader(e.executerOpts)
 	if err != nil {
-		return errorutil.New("Could not create workflow loader: %s\n", err)
+		return errkit.Append(errkit.New("Could not create workflow loader"), err)
 	}
 	e.executerOpts.WorkflowLoader = workflowLoader
 
 	e.store, err = loader.New(loader.NewConfig(e.opts, e.catalog, e.executerOpts))
 	if err != nil {
-		return errorutil.New("Could not create loader client: %s\n", err)
+		return errkit.Append(errkit.New("Could not create loader client"), err)
 	}
 	e.store.Load()
 	e.templatesLoaded = true

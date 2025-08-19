@@ -4,7 +4,7 @@ import (
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/config"
 	"github.com/projectdiscovery/nuclei/v3/pkg/keys"
-	errorutil "github.com/projectdiscovery/utils/errors"
+	"github.com/projectdiscovery/utils/errkit"
 )
 
 // DefaultTemplateVerifiers contains the default template verifiers
@@ -34,7 +34,7 @@ func init() {
 // AddSignerToDefault adds a signer to the default list of signers
 func AddSignerToDefault(s *TemplateSigner) error {
 	if s == nil {
-		return errorutil.New("signer is nil")
+		return errkit.New("signer is nil").Build()
 	}
 	DefaultTemplateVerifiers = append(DefaultTemplateVerifiers, s)
 	return nil
