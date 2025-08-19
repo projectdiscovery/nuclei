@@ -79,23 +79,6 @@ test: GOFLAGS = -race -v
 test:
 	$(GOTEST) $(GOFLAGS) ./...
 
-test-with-lint: lint
-	$(MAKE) test
-
-lint:
-	@if ! which golangci-lint >/dev/null 2>&1; then \
-		echo "golangci-lint not found. Installing..."; \
-		go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest; \
-	fi
-	golangci-lint run
-
-lint-strict:
-	@if ! which golangci-lint >/dev/null 2>&1; then \
-		echo "golangci-lint not found. Installing..."; \
-		go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest; \
-	fi
-	golangci-lint run
-
 integration:
 	cd integration_tests; bash run.sh
 
