@@ -87,7 +87,7 @@ type Runner struct {
 	colorizer          aurora.Aurora
 	issuesClient       reporting.Client
 	browser            *engine.Browser
-	rateLimiter        *ratelimit.Limiter
+	rateLimiter        *ratelimit.AutoLimiter
 	hostErrors         hosterrorscache.CacheInterface
 	resumeCfg          *types.ResumeCfg
 	pprofServer        *pprofutil.PprofServer
@@ -384,11 +384,17 @@ func New(options *types.Options) (*Runner, error) {
 	if options.RateLimit > 0 && options.RateLimitDuration == 0 {
 		options.RateLimitDuration = time.Second
 	}
+	var ratelimiter *ratelimit.AutoLimiter
 	if options.RateLimit == 0 && options.RateLimitDuration == 0 {
-		runner.rateLimiter = ratelimit.NewUnlimited(context.Background())
+		ratelimiter = ratelimit.NewAutoLimiter(context.Background(), ratelimit.WithUnlimited())
 	} else {
-		runner.rateLimiter = ratelimit.New(context.Background(), uint(options.RateLimit), options.RateLimitDuration)
+		ratelimiter = ratelimit.NewAutoLimiter(
+			context.Background(),
+			ratelimit.WithMaxCount(uint(options.RateLimit)),
+			ratelimit.WithDuration(options.RateLimitDuration),
+		)
 	}
+	runner.rateLimiter = ratelimiter
 
 	if tmpDir, err := os.MkdirTemp("", "nuclei-tmp-*"); err == nil {
 		runner.tmpDir = tmpDir

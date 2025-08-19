@@ -78,7 +78,7 @@ type ExecutorOptions struct {
 	// Progress is a progress client for scan reporting
 	Progress progress.Progress
 	// RateLimiter is a rate-limiter for limiting sent number of requests.
-	RateLimiter *ratelimit.Limiter
+	RateLimiter *ratelimit.AutoLimiter
 	// Catalog is a template catalog implementation for nuclei
 	Catalog catalog.Catalog
 	// ProjectFile is the project file for nuclei
@@ -143,7 +143,7 @@ type ExecutorOptions struct {
 // todo: centralizing components is not feasible with current clogged architecture
 // a possible approach could be an internal event bus with pub-subs? This would be less invasive than
 // reworking dep injection from scratch
-func (e *ExecutorOptions) RateLimitTake() {
+func (e *ExecutorOptions) RateLimitTake(ctx *contextargs.Context) {
 	// The code below can race and there isn't a great way to fix this without adding an idempotent
 	// function to the rate limiter implementation. For now, stick with whatever rate is already set.
 	/*
@@ -152,8 +152,11 @@ func (e *ExecutorOptions) RateLimitTake() {
 			e.RateLimiter.SetDuration(e.Options.RateLimitDuration)
 		}
 	*/
-	if e.RateLimiter != nil {
-		e.RateLimiter.Take()
+	if hostErrorCache, ok := e.HostErrorsCache.(*hosterrorscache.Cache); ok {
+		key := hostErrorCache.GetKeyFromContext(ctx, nil)
+		if e.RateLimiter != nil {
+			e.RateLimiter.Take(key)
+		}
 	}
 }
 

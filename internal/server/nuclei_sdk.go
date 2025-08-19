@@ -50,7 +50,7 @@ type NucleiExecutorOptions struct {
 	Progress           progress.Progress
 	Catalog            catalog.Catalog
 	IssuesClient       reporting.Client
-	RateLimiter        *ratelimit.Limiter
+	RateLimiter        *ratelimit.AutoLimiter
 	Interactsh         *interactsh.Client
 	ProjectFile        *projectfile.ProjectFile
 	Browser            *browserEngine.Browser

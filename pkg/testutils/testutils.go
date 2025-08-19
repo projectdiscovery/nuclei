@@ -88,6 +88,11 @@ type TemplateInfo struct {
 // NewMockExecuterOptions creates a new mock executeroptions struct
 func NewMockExecuterOptions(options *types.Options, info *TemplateInfo) *protocols.ExecutorOptions {
 	progressImpl, _ := progress.NewStatsTicker(0, false, false, false, 0)
+	rateLimiter := ratelimit.NewAutoLimiter(
+		context.Background(),
+		ratelimit.WithMaxCount(uint(options.RateLimit)),
+		ratelimit.WithDuration(time.Second),
+	)
 	executerOpts := &protocols.ExecutorOptions{
 		TemplateID:   info.ID,
 		TemplateInfo: info.Info,
@@ -99,7 +104,7 @@ func NewMockExecuterOptions(options *types.Options, info *TemplateInfo) *protoco
 		IssuesClient: nil,
 		Browser:      nil,
 		Catalog:      disk.NewCatalog(config.DefaultConfig.TemplatesDirectory),
-		RateLimiter:  ratelimit.New(context.Background(), uint(options.RateLimit), time.Second),
+		RateLimiter:  rateLimiter,
 	}
 	executerOpts.CreateTemplateCtxStore()
 	return executerOpts

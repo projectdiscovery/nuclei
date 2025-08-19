@@ -291,7 +291,7 @@ func (request *Request) executeParallelHTTP(input *contextargs.Context, dynamicV
 				return
 			}
 			// putting ratelimiter here prevents any unnecessary waiting if any
-			request.options.RateLimitTake()
+			request.options.RateLimitTake(input)
 
 			// after ratelimit take, check if we need to stop
 			if spmHandler.FoundFirstMatch() || request.isUnresponsiveAddress(updatedInput) || spmHandler.Cancelled() {
@@ -470,7 +470,7 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 		executeFunc := func(data string, payloads, dynamicValue map[string]interface{}) (bool, error) {
 			hasInteractMatchers := interactsh.HasMatchers(request.CompiledOperators)
 
-			request.options.RateLimitTake()
+			request.options.RateLimitTake(input)
 
 			ctx := request.newContext(input)
 			ctxWithTimeout, cancel := context.WithTimeoutCause(ctx, request.options.Options.GetTimeouts().HttpTimeout, ErrHttpEngineRequestDeadline)
