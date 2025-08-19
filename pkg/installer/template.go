@@ -448,5 +448,8 @@ func (t *TemplateManager) calculateChecksumMap(dir string) (map[string]string, e
 		}
 		return nil
 	})
-	return checksumMap, errkit.Append(errkit.New("failed to calculate checksums of templates"), err)
+	if err != nil {
+		return nil, errkit.Append(errkit.New("failed to calculate checksums of templates"), err)
+	}
+	return checksumMap, nil
 }
