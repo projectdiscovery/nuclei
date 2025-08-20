@@ -84,8 +84,9 @@ func (m *MultiPartForm) Encode(data KV) (string, error) {
 		case []string:
 			values = v
 		case []any:
-			for _, item := range v {
-				values = append(values, fmt.Sprintf("%v", item))
+			values = make([]string, len(v))
+			for i, item := range v {
+				values[i] = fmt.Sprint(item)
 			}
 		default:
 			values = []string{fmt.Sprintf("%v", v)}
