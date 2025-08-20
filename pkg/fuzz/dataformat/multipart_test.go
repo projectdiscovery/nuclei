@@ -114,6 +114,10 @@ func TestMultiPartFormEncode(t *testing.T) {
 					actual, ok := actualValue.([]string)
 					require.True(t, ok, "Expected []string for key %s, got %T", expectedKey, actualValue)
 					assert.ElementsMatch(t, expected, actual, "Values mismatch for key %s", expectedKey)
+				case []any:
+					actual, ok := actualValue.([]any)
+					require.True(t, ok, "Expected []any for key %s, got %T", expectedKey, actualValue)
+					assert.ElementsMatch(t, expected, actual, "Values mismatch for key %s", expectedKey)
 				case string:
 					actual, ok := actualValue.(string)
 					require.True(t, ok, "Expected string for key %s, got %T", expectedKey, actualValue)
@@ -159,4 +163,80 @@ func TestMultiPartFormRoundTrip(t *testing.T) {
 	assert.ElementsMatch(t, []string{"sports", "music", "reading"}, decoded.Get("interests"))
 
 	t.Logf("Encoded output:\n%s", encoded)
+}
+
+func TestMultiPartFormFileUpload(t *testing.T) {
+	defer func() {
+		if r := recover(); r != nil {
+			t.Errorf("Test panicked: %v", r)
+		}
+	}()
+
+	// Test decoding of a manually crafted multipart form with files
+	form := NewMultiPartForm()
+	form.boundary = "----WebKitFormBoundaryFileUploadTest"
+
+	// Manually craft a multipart form with file uploads
+	multipartData := `------WebKitFormBoundaryFileUploadTest
+Content-Disposition: form-data; name="name"
+
+John Doe
+------WebKitFormBoundaryFileUploadTest
+Content-Disposition: form-data; name="email"
+
+john@example.com
+------WebKitFormBoundaryFileUploadTest
+Content-Disposition: form-data; name="profile_picture"; filename="profile.jpg"
+Content-Type: image/jpeg
+
+fake_jpeg_binary_data_here
+------WebKitFormBoundaryFileUploadTest
+Content-Disposition: form-data; name="documents"; filename="resume.pdf"
+Content-Type: application/pdf
+
+fake_pdf_content_1
+------WebKitFormBoundaryFileUploadTest
+Content-Disposition: form-data; name="documents"; filename="cover_letter.pdf"
+Content-Type: application/pdf
+
+fake_pdf_content_2
+------WebKitFormBoundaryFileUploadTest
+Content-Disposition: form-data; name="skills"
+
+Go
+------WebKitFormBoundaryFileUploadTest
+Content-Disposition: form-data; name="skills"
+
+JavaScript
+------WebKitFormBoundaryFileUploadTest
+Content-Disposition: form-data; name="skills"
+
+Python
+------WebKitFormBoundaryFileUploadTest--
+`
+
+	// Test decoding
+	decoded, err := form.Decode(multipartData)
+	require.NoError(t, err)
+
+	// Verify regular fields
+	assert.Equal(t, "John Doe", decoded.Get("name"))
+	assert.Equal(t, "john@example.com", decoded.Get("email"))
+	assert.Equal(t, []string{"Go", "JavaScript", "Python"}, decoded.Get("skills"))
+
+	// Verify file fields
+	profilePicture := decoded.Get("profile_picture")
+	require.NotNil(t, profilePicture)
+	profileArray, ok := profilePicture.([]interface{})
+	require.True(t, ok, "Expected []interface{} for profile_picture")
+	require.Len(t, profileArray, 1)
+	assert.Equal(t, "fake_jpeg_binary_data_here", profileArray[0])
+
+	documents := decoded.Get("documents")
+	require.NotNil(t, documents)
+	documentsArray, ok := documents.([]interface{})
+	require.True(t, ok, "Expected []interface{} for documents")
+	require.Len(t, documentsArray, 2)
+	assert.Contains(t, documentsArray, "fake_pdf_content_1")
+	assert.Contains(t, documentsArray, "fake_pdf_content_2")
 }
