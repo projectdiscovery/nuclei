@@ -168,7 +168,7 @@ func (request *Request) executeAllFuzzingRules(input *contextargs.Context, value
 	}
 
 	if !applicable {
-		return fmt.Errorf("no rule was applicable for this request: %v", input.MetaInput.Input)
+		return fuzz.ErrRuleNotApplicable(fmt.Sprintf("no rule was applicable for this request: %v", input.MetaInput.Input))
 	}
 
 	return nil
