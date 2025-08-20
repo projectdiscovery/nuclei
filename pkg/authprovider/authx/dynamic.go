@@ -8,7 +8,7 @@ import (
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/replacer"
 	"github.com/projectdiscovery/nuclei/v3/pkg/utils/json"
-	errorutil "github.com/projectdiscovery/utils/errors"
+	"github.com/projectdiscovery/utils/errkit"
 	sliceutil "github.com/projectdiscovery/utils/slice"
 )
 
@@ -53,7 +53,7 @@ func (d *Dynamic) GetDomainAndDomainRegex() ([]string, []string) {
 
 func (d *Dynamic) UnmarshalJSON(data []byte) error {
 	if d == nil {
-		return errorutil.New("cannot unmarshal into nil Dynamic struct")
+		return errkit.New("cannot unmarshal into nil Dynamic struct")
 	}
 
 	// Use an alias type (auxiliary) to avoid a recursive call in this method.
@@ -72,10 +72,10 @@ func (d *Dynamic) UnmarshalJSON(data []byte) error {
 func (d *Dynamic) Validate() error {
 	d.m = &sync.Mutex{}
 	if d.TemplatePath == "" {
-		return errorutil.New(" template-path is required for dynamic secret")
+		return errkit.New(" template-path is required for dynamic secret")
 	}
 	if len(d.Variables) == 0 {
-		return errorutil.New("variables are required for dynamic secret")
+		return errkit.New("variables are required for dynamic secret")
 	}
 
 	if d.Secret != nil {

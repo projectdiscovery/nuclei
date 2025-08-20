@@ -18,7 +18,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/utils"
 	httputil "github.com/projectdiscovery/nuclei/v3/pkg/protocols/utils/http"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
-	errorutil "github.com/projectdiscovery/utils/errors"
+	"github.com/projectdiscovery/utils/errkit"
 	urlutil "github.com/projectdiscovery/utils/url"
 )
 
@@ -78,7 +78,7 @@ func (i *Instance) Run(ctx *contextargs.Context, actions []*Action, payloads map
 	target := ctx.MetaInput.Input
 	input, err := urlutil.Parse(target)
 	if err != nil {
-		return nil, nil, errorutil.NewWithErr(err).Msgf("could not parse URL %s", target)
+		return nil, nil, errkit.Wrapf(err, "could not parse URL %s", target)
 	}
 
 	hasTrailingSlash := httputil.HasTrailingSlash(target)

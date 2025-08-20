@@ -17,14 +17,14 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/marker"
 	"github.com/projectdiscovery/nuclei/v3/pkg/utils/json"
 	"github.com/projectdiscovery/retryablehttp-go"
-	errorutil "github.com/projectdiscovery/utils/errors"
+	"github.com/projectdiscovery/utils/errkit"
 	mapsutil "github.com/projectdiscovery/utils/maps"
 	sliceutil "github.com/projectdiscovery/utils/slice"
 	urlutil "github.com/projectdiscovery/utils/url"
 )
 
 var (
-	ErrRuleNotApplicable = errorutil.NewWithFmt("rule not applicable: %v")
+	ErrRuleNotApplicable = errkit.New("rule not applicable")
 )
 
 // IsErrRuleNotApplicable checks if an error is due to rule not applicable
@@ -89,10 +89,10 @@ type GeneratedRequest struct {
 // goroutines.
 func (rule *Rule) Execute(input *ExecuteRuleInput) (err error) {
 	if !rule.isInputURLValid(input.Input) {
-		return ErrRuleNotApplicable.Msgf("invalid input url: %v", input.Input.MetaInput.Input)
+		return errkit.Newf("rule not applicable: invalid input url: %v", input.Input.MetaInput.Input)
 	}
 	if input.BaseRequest == nil && input.Input.MetaInput.ReqResp == nil {
-		return ErrRuleNotApplicable.Msgf("both base request and reqresp are nil for %v", input.Input.MetaInput.Input)
+		return errkit.Newf("rule not applicable: both base request and reqresp are nil for %v", input.Input.MetaInput.Input)
 	}
 
 	var finalComponentList []component.Component
@@ -144,7 +144,7 @@ func (rule *Rule) Execute(input *ExecuteRuleInput) (err error) {
 	}
 
 	if len(finalComponentList) == 0 {
-		return ErrRuleNotApplicable.Msgf("no component matched on this rule")
+		return errkit.Newf("rule not applicable: no component matched on this rule")
 	}
 
 	baseValues := input.Values
