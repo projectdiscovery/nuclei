@@ -549,8 +549,8 @@ func (w *StandardWriter) WriteStoreDebugData(host, templateID, eventType string,
 		if len(templateID) > 100 {
 			templateID = templateID[:97] + "..."
 		}
-
-		filename := sanitizeFileName(fmt.Sprintf("%s_%s", host, templateID))
+		ts := time.Now().Format("20060102")
+		filename := sanitizeFileName(fmt.Sprintf("%s_%s_%s", ts, host, templateID))
 		subFolder := filepath.Join(w.storeResponseDir, sanitizeFileName(eventType))
 		if !fileutil.FolderExists(subFolder) {
 			_ = fileutil.CreateFolder(subFolder)
