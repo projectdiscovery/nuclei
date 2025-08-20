@@ -13,7 +13,7 @@ func TestMultiPartFormEncode(t *testing.T) {
 		name     string
 		fields   map[string]any
 		wantErr  bool
-		contains []string // strings that should appear in encoded output
+		expected map[string]any
 	}{
 		{
 			name: "duplicate fields ([]string) - checkbox scenario",
@@ -21,7 +21,10 @@ func TestMultiPartFormEncode(t *testing.T) {
 				"interests": []string{"sports", "music", "reading"},
 				"colors":    []string{"red", "blue"},
 			},
-			contains: []string{"interests", "sports", "music", "reading", "colors", "red", "blue"},
+			expected: map[string]any{
+				"interests": []string{"sports", "music", "reading"},
+				"colors":    []string{"red", "blue"},
+			},
 		},
 		{
 			name: "single string fields - backward compatibility",
@@ -29,16 +32,37 @@ func TestMultiPartFormEncode(t *testing.T) {
 				"username": "john",
 				"email":    "john@example.com",
 			},
-			contains: []string{"username", "john", "email", "john@example.com"},
+			expected: map[string]any{
+				"username": "john",
+				"email":    "john@example.com",
+			},
 		},
 		{
 			name: "mixed types",
 			fields: map[string]any{
-				"string": "text",
-				"array":  []string{"item1", "item2"},
-				"number": 42, // tests fmt.Sprint fallback
+				"string":     "text",
+				"array":      []string{"item1", "item2"},
+				"number":     42,                       // tests fmt.Sprint fallback
+				"float":      3.14,                     // tests float conversion
+				"boolean":    true,                     // tests boolean conversion
+				"zero":       0,                        // tests zero value
+				"emptyStr":   "",                       // tests empty string
+				"negative":   -123,                     // tests negative number
+				"nil":        nil,                      // tests nil value
+				"mixedArray": []any{"str", 123, false}, // tests mixed type array
 			},
-			contains: []string{"string", "text", "array", "item1", "item2", "number", "42"},
+			expected: map[string]any{
+				"string":     "text",
+				"array":      []string{"item1", "item2"},
+				"number":     "42",                            // numbers are converted to strings in multipart
+				"float":      "3.14",                          // floats are converted to strings
+				"boolean":    "true",                          // booleans are converted to strings
+				"zero":       "0",                             // zero value converted to string
+				"emptyStr":   "",                              // empty string remains empty
+				"negative":   "-123",                          // negative numbers converted to strings
+				"nil":        "<nil>",                         // nil values converted to "<nil>" string
+				"mixedArray": []string{"str", "123", "false"}, // mixed array converted to string array
+			},
 		},
 		{
 			name: "empty array - should not appear in output",
@@ -46,7 +70,10 @@ func TestMultiPartFormEncode(t *testing.T) {
 				"emptyArray":  []string{},
 				"normalField": "value",
 			},
-			contains: []string{"normalField", "value"},
+			expected: map[string]any{
+				"normalField": "value",
+				// emptyArray should not appear in decoded output
+			},
 		},
 	}
 
@@ -74,9 +101,34 @@ func TestMultiPartFormEncode(t *testing.T) {
 			}
 
 			require.NoError(t, err)
-			for _, expected := range tt.contains {
-				assert.Contains(t, encoded, expected)
+
+			// Decode the encoded multipart data
+			decoded, err := form.Decode(encoded)
+			require.NoError(t, err)
+
+			// Compare decoded values with expected values
+			for expectedKey, expectedValue := range tt.expected {
+				actualValue := decoded.Get(expectedKey)
+				switch expected := expectedValue.(type) {
+				case []string:
+					actual, ok := actualValue.([]string)
+					require.True(t, ok, "Expected []string for key %s, got %T", expectedKey, actualValue)
+					assert.ElementsMatch(t, expected, actual, "Values mismatch for key %s", expectedKey)
+				case string:
+					actual, ok := actualValue.(string)
+					require.True(t, ok, "Expected string for key %s, got %T", expectedKey, actualValue)
+					assert.Equal(t, expected, actual, "Values mismatch for key %s", expectedKey)
+				default:
+					assert.Equal(t, expected, actualValue, "Values mismatch for key %s", expectedKey)
+				}
 			}
+
+			// Ensure no unexpected keys are present in decoded output
+			decoded.Iterate(func(key string, value any) bool {
+				_, exists := tt.expected[key]
+				assert.True(t, exists, "Unexpected key %s found in decoded output", key)
+				return true
+			})
 
 			t.Logf("Encoded output:\n%s", encoded)
 		})
