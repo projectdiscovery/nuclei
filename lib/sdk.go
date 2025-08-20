@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"context"
+	"fmt"
 	"io"
 	"sync"
 
@@ -45,6 +46,11 @@ var (
 	// ErrOptionsNotSupported is returned when an option is not supported in thread safe mode
 	ErrOptionsNotSupported = errkit.New("Option not supported in thread safe mode")
 )
+
+// ErrOptionsNotSupported returns an error when an option is not supported in thread safe mode
+func ErrOptionsNotSupported(option string) error {
+	return errkit.New(fmt.Sprintf("Option %v not supported in thread safe mode", option)).Build()
+}
 
 type engineMode uint
 

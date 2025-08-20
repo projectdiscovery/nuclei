@@ -1,6 +1,7 @@
 package http
 
 import (
+	"fmt"
 	"io"
 	"strings"
 

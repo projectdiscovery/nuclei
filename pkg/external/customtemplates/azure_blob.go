@@ -3,6 +3,7 @@ package customtemplates
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"

@@ -3,6 +3,7 @@ package customtemplates
 import (
 	"context"
 	"encoding/base64"
+	"fmt"
 	"os"
 	"path/filepath"
 

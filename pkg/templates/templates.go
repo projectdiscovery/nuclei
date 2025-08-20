@@ -2,6 +2,7 @@
 package templates
 
 import (
+	"fmt"
 	"io"
 	"path/filepath"
 	"strconv"
