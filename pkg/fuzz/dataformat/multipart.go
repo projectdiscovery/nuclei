@@ -79,6 +79,8 @@ func (m *MultiPartForm) Encode(data KV) (string, error) {
 		// Add field
 		var values []string
 		switch v := value.(type) {
+		case nil:
+			values = []string{""}
 		case string:
 			values = []string{v}
 		case []string:
@@ -86,7 +88,11 @@ func (m *MultiPartForm) Encode(data KV) (string, error) {
 		case []any:
 			values = make([]string, len(v))
 			for i, item := range v {
-				values[i] = fmt.Sprint(item)
+				if item == nil {
+					values[i] = ""
+				} else {
+					values[i] = fmt.Sprint(item)
+				}
 			}
 		default:
 			values = []string{fmt.Sprintf("%v", v)}

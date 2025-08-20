@@ -42,26 +42,26 @@ func TestMultiPartFormEncode(t *testing.T) {
 			fields: map[string]any{
 				"string":     "text",
 				"array":      []string{"item1", "item2"},
-				"number":     42,                       // tests fmt.Sprint fallback
-				"float":      3.14,                     // tests float conversion
-				"boolean":    true,                     // tests boolean conversion
-				"zero":       0,                        // tests zero value
-				"emptyStr":   "",                       // tests empty string
-				"negative":   -123,                     // tests negative number
-				"nil":        nil,                      // tests nil value
-				"mixedArray": []any{"str", 123, false}, // tests mixed type array
+				"number":     42,                            // tests fmt.Sprint fallback
+				"float":      3.14,                          // tests float conversion
+				"boolean":    true,                          // tests boolean conversion
+				"zero":       0,                             // tests zero value
+				"emptyStr":   "",                            // tests empty string
+				"negative":   -123,                          // tests negative number
+				"nil":        nil,                           // tests nil value
+				"mixedArray": []any{"str", 123, false, nil}, // tests mixed type array
 			},
 			expected: map[string]any{
 				"string":     "text",
 				"array":      []string{"item1", "item2"},
-				"number":     "42",                            // numbers are converted to strings in multipart
-				"float":      "3.14",                          // floats are converted to strings
-				"boolean":    "true",                          // booleans are converted to strings
-				"zero":       "0",                             // zero value converted to string
-				"emptyStr":   "",                              // empty string remains empty
-				"negative":   "-123",                          // negative numbers converted to strings
-				"nil":        "<nil>",                         // nil values converted to "<nil>" string
-				"mixedArray": []string{"str", "123", "false"}, // mixed array converted to string array
+				"number":     "42",                                // numbers are converted to strings in multipart
+				"float":      "3.14",                              // floats are converted to strings
+				"boolean":    "true",                              // booleans are converted to strings
+				"zero":       "0",                                 // zero value converted to string
+				"emptyStr":   "",                                  // empty string remains empty
+				"negative":   "-123",                              // negative numbers converted to strings
+				"nil":        "",                                  // nil values converted to "" string
+				"mixedArray": []string{"str", "123", "false", ""}, // mixed array converted to string array
 			},
 		},
 		{
