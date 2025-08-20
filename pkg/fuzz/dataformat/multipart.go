@@ -49,10 +49,10 @@ func (m *MultiPartForm) Encode(data KV) (string, error) {
 		var fw io.Writer
 		var err error
 
-		if filesArray, ok := value.([]interface{}); ok {
-			fileMetadata, ok := m.filesMetadata[key]
-			if !ok {
-				Itererr = fmt.Errorf("file metadata not found for key %s", key)
+		if fileMetadata, ok := m.filesMetadata[key]; ok {
+			filesArray, isArray := value.([]any)
+			if !isArray {
+				Itererr = fmt.Errorf("field '%s' is marked as a file but its value is not an array", key)
 				return false
 			}
 
