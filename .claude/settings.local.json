@@ -22,20 +22,12 @@
       "Edit(*)",
       "Bash(gh:*)",
       "Bash(grep:*)",
-      "Bash(for file in pkg/js/libs/ssh/ssh.go pkg/js/libs/net/net.go pkg/js/gojs/set.go pkg/js/global/scripts.go pkg/js/devtools/tsgen/scrape.go)",
-      "Bash(do echo \"=== $file ===\")",
-      "Bash(done)",
-      "Bash(for file in pkg/installer/template.go pkg/input/provider/interface.go pkg/input/formats/openapi/generator.go pkg/fuzz/execute.go pkg/catalog/loader/loader.go pkg/catalog/loader/ai_loader.go pkg/catalog/config/nucleiconfig.go pkg/templates/signer/tmpl_signer.go pkg/templates/parser_error.go)",
-      "Bash(for file in pkg/installer/util.go pkg/templates/signer/default.go pkg/reporting/exporters/markdown/util/markdown_utils.go pkg/protocols/code/code.go)",
       "Bash(tree:*)"
     ],
     "deny": [
       "Bash(make run:*)",
       "Bash(./bin/nuclei:*)"
     ],
-    "defaultMode": "acceptEdits",
-    "additionalDirectories": [
-      "/Users/tarun/Codebase"
-    ]
+    "defaultMode": "acceptEdits"
   }
 }
