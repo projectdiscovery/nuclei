@@ -22,11 +22,6 @@ var (
 	ErrInactiveInput  = fmt.Errorf("input is inactive")
 )
 
-// ErrNotImplemented returns an error when a provider does not implement a method
-func ErrNotImplemented(provider, method string) error {
-	return errkit.New(fmt.Sprintf("provider %s does not implement %s", provider, method)).Build()
-}
-
 const (
 	MultiFormatInputProvider = "MultiFormatInputProvider"
 	ListInputProvider        = "ListInputProvider"

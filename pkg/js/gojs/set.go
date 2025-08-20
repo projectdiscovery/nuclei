@@ -2,7 +2,6 @@ package gojs
 
 import (
 	"context"
-	"fmt"
 	"reflect"
 
 	"github.com/Mzack9999/goja"

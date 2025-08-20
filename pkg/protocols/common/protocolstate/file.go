@@ -1,7 +1,6 @@
 package protocolstate
 
 import (
-	"fmt"
 	"strings"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/config"

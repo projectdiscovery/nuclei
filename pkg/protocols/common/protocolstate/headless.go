@@ -2,7 +2,6 @@ package protocolstate
 
 import (
 	"context"
-	"fmt"
 	"net"
 	"strings"
 

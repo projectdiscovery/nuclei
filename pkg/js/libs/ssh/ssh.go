@@ -184,7 +184,7 @@ func (c *connectOptions) validate() error {
 	}
 	if !protocolstate.IsHostAllowed(c.ExecutionId, c.Host) {
 		// host is not valid according to network policy
-		return protocolstate.ErrHostDenied(c.Host)
+		return protocolstate.ErrHostDenied.Msgf(c.Host)
 	}
 	if c.Timeout == 0 {
 		c.Timeout = 10 * time.Second
