@@ -50,30 +50,27 @@ func (m *MultiPartForm) Encode(data KV) (string, error) {
 		var err error
 
 		if fileMetadata, ok := m.filesMetadata[key]; ok {
-			filesArray, isArray := value.([]any)
-			if !isArray {
-				Itererr = fmt.Errorf("field '%s' is marked as a file but its value is not an array", key)
-				return false
-			}
+			if filesArray, isArray := value.([]any); isArray {
+				for _, file := range filesArray {
+					h := make(textproto.MIMEHeader)
+					h.Set("Content-Disposition",
+						fmt.Sprintf(`form-data; name=%q; filename=%q`,
+							key, fileMetadata.Filename))
+					h.Set("Content-Type", fileMetadata.ContentType)
 
-			for _, file := range filesArray {
-				h := make(textproto.MIMEHeader)
-				h.Set("Content-Disposition",
-					fmt.Sprintf(`form-data; name=%q; filename=%q`,
-						key, fileMetadata.Filename))
-				h.Set("Content-Type", fileMetadata.ContentType)
+					if fw, err = w.CreatePart(h); err != nil {
+						Itererr = err
+						return false
+					}
 
-				if fw, err = w.CreatePart(h); err != nil {
-					Itererr = err
-					return false
+					if _, err = fw.Write([]byte(file.(string))); err != nil {
+						Itererr = err
+						return false
+					}
 				}
 
-				if _, err = fw.Write([]byte(file.(string))); err != nil {
-					Itererr = err
-					return false
-				}
+				return true
 			}
-			return true
 		}
 
 		// Add field
