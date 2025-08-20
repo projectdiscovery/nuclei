@@ -83,6 +83,12 @@ func (m *MultiPartForm) Encode(data KV) (string, error) {
 			values = []string{v}
 		case []string:
 			values = v
+		case []any:
+			// Handle []any by converting each element to string
+			values = make([]string, len(v))
+			for i, elem := range v {
+				values[i] = fmt.Sprint(elem)
+			}
 		default:
 			// Fallback: attempt string conversion
 			values = []string{fmt.Sprint(v)}
