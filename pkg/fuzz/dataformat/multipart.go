@@ -76,15 +76,28 @@ func (m *MultiPartForm) Encode(data KV) (string, error) {
 			return true
 		}
 
-		// Add field
-		if fw, err = w.CreateFormField(key); err != nil {
-			Itererr = err
-			return false
+		// Handle form field values - can be string or []string for duplicate fields
+		var values []string
+		switch v := value.(type) {
+		case string:
+			values = []string{v}
+		case []string:
+			values = v
+		default:
+			// Fallback: attempt string conversion
+			values = []string{fmt.Sprint(v)}
 		}
 
-		if _, err = fw.Write([]byte(value.(string))); err != nil {
-			Itererr = err
-			return false
+		// Write all values for this field
+		for _, val := range values {
+			if fw, err = w.CreateFormField(key); err != nil {
+				Itererr = err
+				return false
+			}
+			if _, err = fw.Write([]byte(val)); err != nil {
+				Itererr = err
+				return false
+			}
 		}
 		return true
 	})
