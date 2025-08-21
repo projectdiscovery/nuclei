@@ -77,7 +77,7 @@ func connect(executionId string, host string, port int, password string) (bool, 
 	}()
 
 	// Set connection timeout
-	conn.SetDeadline(time.Now().Add(10 * time.Second))
+	_ = conn.SetDeadline(time.Now().Add(10 * time.Second))
 
 	// Create VNC client config with password
 	vncConfig := vnclib.NewClientConfig(password)
