@@ -92,8 +92,8 @@ func (d *TemplateData) WriteMarkdownIndexTemplate(outputDirectory string) error 
 		return errors.Wrap(err, "could not create markdown index template")
 	}
 	defer func() {
-         _ = output.Close()
-       }()
+		_ = output.Close()
+	}()
 
 	buffer := &bytes.Buffer{}
 	_, _ = buffer.WriteString("# Index\n\n")

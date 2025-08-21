@@ -2,6 +2,7 @@ package openapi
 
 import (
 	"fmt"
+	"maps"
 	"slices"
 
 	"github.com/getkin/kin-openapi/openapi3"
@@ -162,9 +163,7 @@ func openAPIExample(schema *openapi3.Schema, cache map[*openapi3.Schema]*cachedS
 				return nil, ErrNoExample
 			}
 
-			for k, v := range value {
-				example[k] = v
-			}
+			maps.Copy(example, value)
 		}
 		return example, nil
 	}

@@ -15,17 +15,17 @@ func validateTemplateMandatoryFields(template *Template) error {
 	var validateErrors []error
 
 	if utils.IsBlank(info.Name) {
-		validateErrors = append(validateErrors, ErrMandatoryFieldMissingFmt.Msgf("name"))
+		validateErrors = append(validateErrors, ErrMandatoryFieldMissingFmt("name"))
 	}
 
 	if info.Authors.IsEmpty() {
-		validateErrors = append(validateErrors, ErrMandatoryFieldMissingFmt.Msgf("author"))
+		validateErrors = append(validateErrors, ErrMandatoryFieldMissingFmt("author"))
 	}
 
 	if template.ID == "" {
-		validateErrors = append(validateErrors, ErrMandatoryFieldMissingFmt.Msgf("id"))
+		validateErrors = append(validateErrors, ErrMandatoryFieldMissingFmt("id"))
 	} else if !ReTemplateID.MatchString(template.ID) {
-		validateErrors = append(validateErrors, ErrInvalidField.Msgf("id", ReTemplateID.String()))
+		validateErrors = append(validateErrors, ErrInvalidField("id", ReTemplateID.String()))
 	}
 
 	if len(validateErrors) > 0 {
@@ -53,7 +53,7 @@ func validateTemplateOptionalFields(template *Template) error {
 	var warnings []error
 
 	if template.Type() != types.WorkflowProtocol && utils.IsBlank(info.SeverityHolder.Severity.String()) {
-		warnings = append(warnings, ErrWarningFieldMissing.Msgf("severity"))
+		warnings = append(warnings, ErrWarningFieldMissing("severity"))
 	}
 
 	if len(warnings) > 0 {

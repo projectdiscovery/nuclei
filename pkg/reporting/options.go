@@ -50,4 +50,6 @@ type Options struct {
 
 	HttpClient *retryablehttp.Client `yaml:"-"`
 	OmitRaw    bool                  `yaml:"-"`
+
+	ExecutionId string `yaml:"-"`
 }

@@ -8,7 +8,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/dop251/goja"
+	"github.com/Mzack9999/goja"
 	"github.com/praetorian-inc/fingerprintx/pkg/plugins"
 	"github.com/projectdiscovery/nuclei/v3/pkg/js/utils"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
@@ -65,8 +65,10 @@ func NewSMTPClient(call goja.ConstructorCall, runtime *goja.Runtime) *goja.Objec
 	c.host = host
 	c.port = port
 
+	executionId := c.nj.ExecutionId()
+
 	// check if this is allowed address
-	c.nj.Require(protocolstate.IsHostAllowed(host+":"+port), protocolstate.ErrHostDenied.Msgf(host+":"+port).Error())
+	c.nj.Require(protocolstate.IsHostAllowed(executionId, host+":"+port), protocolstate.ErrHostDenied(host+":"+port).Error())
 
 	// Link Constructor to Client and return
 	return utils.LinkConstructor(call, runtime, c)
@@ -86,13 +88,20 @@ func (c *Client) IsSMTP() (SMTPResponse, error) {
 	c.nj.Require(c.port != "", "port cannot be empty")
 
 	timeout := 5 * time.Second
-	conn, err := protocolstate.Dialer.Dial(context.TODO(), "tcp", net.JoinHostPort(c.host, c.port))
+
+	executionId := c.nj.ExecutionId()
+	dialer := protocolstate.GetDialersWithId(executionId)
+	if dialer == nil {
+		return SMTPResponse{}, fmt.Errorf("dialers not initialized for %s", executionId)
+	}
+
+	conn, err := dialer.Fastdialer.Dial(context.TODO(), "tcp", net.JoinHostPort(c.host, c.port))
 	if err != nil {
 		return resp, err
 	}
 	defer func() {
-         _ = conn.Close()
-       }()
+		_ = conn.Close()
+	}()
 
 	smtpPlugin := pluginsmtp.SMTPPlugin{}
 	service, err := smtpPlugin.Run(conn, timeout, plugins.Target{Host: c.host})
@@ -123,14 +132,20 @@ func (c *Client) IsOpenRelay(msg *SMTPMessage) (bool, error) {
 	c.nj.Require(c.host != "", "host cannot be empty")
 	c.nj.Require(c.port != "", "port cannot be empty")
 
+	executionId := c.nj.ExecutionId()
+	dialer := protocolstate.GetDialersWithId(executionId)
+	if dialer == nil {
+		return false, fmt.Errorf("dialers not initialized for %s", executionId)
+	}
+
 	addr := net.JoinHostPort(c.host, c.port)
-	conn, err := protocolstate.Dialer.Dial(context.TODO(), "tcp", addr)
+	conn, err := dialer.Fastdialer.Dial(context.TODO(), "tcp", addr)
 	if err != nil {
 		return false, err
 	}
 	defer func() {
-         _ = conn.Close()
-       }()
+		_ = conn.Close()
+	}()
 	client, err := smtp.NewClient(conn, c.host)
 	if err != nil {
 		return false, err

@@ -2,6 +2,7 @@ package customtemplates
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -14,7 +15,7 @@ import (
 	"github.com/projectdiscovery/gologger"
 	nucleiConfig "github.com/projectdiscovery/nuclei/v3/pkg/catalog/config"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
-	errorutil "github.com/projectdiscovery/utils/errors"
+	"github.com/projectdiscovery/utils/errkit"
 	stringsutil "github.com/projectdiscovery/utils/strings"
 )
 
@@ -64,7 +65,7 @@ func NewS3Providers(options *types.Options) ([]*customTemplateS3Bucket, error) {
 	if options.AwsBucketName != "" && !options.AwsTemplateDisableDownload {
 		s3c, err := getS3Client(context.TODO(), options.AwsAccessKey, options.AwsSecretKey, options.AwsRegion, options.AwsProfile)
 		if err != nil {
-			return nil, errorutil.NewWithErr(err).Msgf("error downloading s3 bucket %s", options.AwsBucketName)
+			return nil, errkit.Append(errkit.New(fmt.Sprintf("error downloading s3 bucket %s", options.AwsBucketName)), err)
 		}
 		ctBucket := &customTemplateS3Bucket{
 			bucketName: options.AwsBucketName,
