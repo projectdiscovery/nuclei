@@ -316,7 +316,7 @@ func (m *Matcher) ignoreErr(err error) bool {
 	if showDSLErr {
 		return false
 	}
-	if stringsutil.ContainsAny(err.Error(), "No parameter", dslRepo.ErrParsingArg.Error()) {
+	if stringsutil.ContainsAny(err.Error(), "No parameter") {
 		return true
 	}
 	return false
