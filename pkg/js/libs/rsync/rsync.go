@@ -1,19 +1,19 @@
 package rsync
 
 import (
+	"bytes"
 	"context"
 	"fmt"
+	"log/slog"
 	"net"
-	"os"
 	"strconv"
 	"time"
 
-	rsyncclient "github.com/gokrazy/rsync/rsyncclient"
+	rsynclib "github.com/Mzack9999/go-rsync/rsync"
+
 	"github.com/praetorian-inc/fingerprintx/pkg/plugins"
 	"github.com/praetorian-inc/fingerprintx/pkg/plugins/services/rsync"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
-	"github.com/projectdiscovery/utils/errkit"
-	fileutil "github.com/projectdiscovery/utils/file"
 )
 
 type (
@@ -24,16 +24,7 @@ type (
 	// const rsync = require('nuclei/rsync');
 	// const client = new rsync.RsyncClient();
 	// ```
-	RsyncClient struct {
-		connection   net.Conn
-		host         string
-		port         int
-		timeout      time.Duration
-		username     string
-		password     string
-		client       *rsyncclient.Client
-		passwordFile string
-	}
+	RsyncClient struct{}
 
 	// IsRsyncResponse is the response from the IsRsync function.
 	// this is returned by IsRsync function.
@@ -47,9 +38,23 @@ type (
 		IsRsync bool
 		Banner  string
 	}
+
+	// ListSharesResponse is the response from the ListShares function.
+	// this is returned by ListShares function.
+	// @example
+	// ```javascript
+	// const rsync = require('nuclei/rsync');
+	// const client = new rsync.RsyncClient();
+	// const listShares = client.ListShares('acme.com', 873);
+	// log(toJSON(listShares));
+	RsyncListResponse struct {
+		Modules []string
+		Files   []string
+		Output  string
+	}
 )
 
-func connect(executionId string, host string, port int) (net.Conn, error) {
+func connectWithFastDialer(executionId string, host string, port int) (net.Conn, error) {
 	dialer := protocolstate.GetDialersWithId(executionId)
 	if dialer == nil {
 		return nil, fmt.Errorf("dialers not initialized for %s", executionId)
@@ -74,7 +79,7 @@ func isRsync(executionId string, host string, port int) (IsRsyncResponse, error)
 	resp := IsRsyncResponse{}
 
 	timeout := 5 * time.Second
-	conn, err := connect(executionId, host, port)
+	conn, err := connectWithFastDialer(executionId, host, port)
 	if err != nil {
 		return resp, err
 	}
@@ -95,112 +100,114 @@ func isRsync(executionId string, host string, port int) (IsRsyncResponse, error)
 	return resp, nil
 }
 
-// Connect establishes a connection to the rsync server.
+// ListModules lists the modules of a Rsync server.
 // @example
 // ```javascript
 // const rsync = require('nuclei/rsync');
 // const client = new rsync.RsyncClient();
-// const connected = client.Connect('acme.com', 873, 'username', 'password');
+// const listModules = client.ListModules('acme.com', 873, 'username', 'password');
+// log(toJSON(listModules));
 // ```
-func (c *RsyncClient) Connect(ctx context.Context, host string, port int, username, password string) (bool, error) {
+func (c *RsyncClient) ListModules(ctx context.Context, host string, port int, username string, password string) (RsyncListResponse, error) {
 	executionId := ctx.Value("executionId").(string)
-	conn, err := connect(executionId, host, port)
-	if err != nil {
-		return false, err
-	}
-
-	// Create minimal rsync client with auth
-	args := []string{"--list-only"}
-	if username != "" {
-		args = append(args, "--user", username)
-	}
-	if password != "" {
-		// Create a temporary password file
-		tempFileName, err := fileutil.GetTempFileName()
-		if err != nil {
-			_ = conn.Close()
-			return false, fmt.Errorf("failed to get temporary filename: %v", err)
-		}
-
-		// Write password to the file
-		err = os.WriteFile(tempFileName, []byte(password), 0600)
-		if err != nil {
-			_ = os.Remove(tempFileName)
-			_ = conn.Close()
-			return false, fmt.Errorf("failed to write password to file: %v", err)
-		}
-
-		// Use the actual filename instead of stdin
-		args = append(args, "--password-file", tempFileName)
-		c.passwordFile = tempFileName
-	}
-
-	client, err := rsyncclient.New(args)
-	if err != nil {
-		_ = conn.Close()
-		return false, fmt.Errorf("failed to create rsync client: %v", err)
-	}
-
-	// Test authentication with minimal command
-	_, err = client.Run(ctx, conn, []string{"/"})
-	if err != nil {
-		_ = conn.Close()
-		if c.passwordFile != "" {
-			_ = os.Remove(c.passwordFile)
-		}
-		return false, fmt.Errorf("authentication failed: %v", err)
-	}
-
-	c.connection = conn
-	c.host = host
-	c.port = port
-	c.timeout = 30 * time.Second
-	c.username = username
-	c.password = password
-	c.client = client
-
-	return true, nil
+	return listModules(executionId, host, port, username, password)
 }
 
-// Close closes the rsync connection and cleans up temporary files.
+// ListShares lists the shares of a Rsync server.
 // @example
 // ```javascript
 // const rsync = require('nuclei/rsync');
 // const client = new rsync.RsyncClient();
-// client.Connect('acme.com', 873, 'username', 'password');
-// // ... use client ...
-// client.Close();
+// const listShares = client.ListFilesInModule('acme.com', 873, 'username', 'password', '/');
+// log(toJSON(listShares));
 // ```
-func (c *RsyncClient) Close() error {
-	var errs []error
+func (c *RsyncClient) ListFilesInModule(ctx context.Context, host string, port int, username string, password string, module string) (RsyncListResponse, error) {
+	executionId := ctx.Value("executionId").(string)
+	return listFilesInModule(executionId, host, port, username, password, module)
+}
 
-	// Close the connection
-	if c.connection != nil {
-		if err := c.connection.Close(); err != nil {
-			errs = append(errs, err)
-		}
-		c.connection = nil
+func listModules(executionId string, host string, port int, username string, password string) (RsyncListResponse, error) {
+	fastDialer := protocolstate.GetDialersWithId(executionId)
+	if fastDialer == nil {
+		return RsyncListResponse{}, fmt.Errorf("dialers not initialized for %s", executionId)
 	}
 
-	// Clean up temporary password file
-	if c.passwordFile != "" {
-		if err := os.Remove(c.passwordFile); err != nil {
-			errs = append(errs, err)
-		}
-		c.passwordFile = ""
+	address := net.JoinHostPort(host, strconv.Itoa(port))
+
+	// Create a bytes buffer for logging
+	var logBuffer bytes.Buffer
+
+	// Create a custom slog handler that writes to the buffer
+	logHandler := slog.NewTextHandler(&logBuffer, &slog.HandlerOptions{
+		Level: slog.LevelDebug,
+	})
+
+	// Create a logger that writes to our buffer
+	logger := slog.New(logHandler)
+
+	sr, err := rsynclib.ListModules(address,
+		rsynclib.WithClientAuth(username, password),
+		rsynclib.WithLogger(logger),
+		rsynclib.WithFastDialer(fastDialer.Fastdialer),
+	)
+	if err != nil {
+		return RsyncListResponse{}, fmt.Errorf("connect failed: %v", err)
 	}
 
-	// Reset other fields
-	c.host = ""
-	c.port = 0
-	c.timeout = 0
-	c.username = ""
-	c.password = ""
-	c.client = nil
-
-	// Return joined errors if any occurred
-	if len(errs) > 0 {
-		return errkit.Join(errs...)
+	result := RsyncListResponse{
+		Modules: make([]string, len(sr)),
+		Output:  logBuffer.String(),
 	}
-	return nil
+
+	for i, item := range sr {
+		result.Modules[i] = string(item.Name)
+	}
+
+	return result, nil
+}
+
+func listFilesInModule(executionId string, host string, port int, username string, password string, module string) (RsyncListResponse, error) {
+	fastDialer := protocolstate.GetDialersWithId(executionId)
+	if fastDialer == nil {
+		return RsyncListResponse{}, fmt.Errorf("dialers not initialized for %s", executionId)
+	}
+
+	address := net.JoinHostPort(host, strconv.Itoa(port))
+
+	// Create a bytes buffer for logging
+	var logBuffer bytes.Buffer
+
+	// Create a custom slog handler that writes to the buffer
+	logHandler := slog.NewTextHandler(&logBuffer, &slog.HandlerOptions{
+		Level: slog.LevelDebug,
+	})
+
+	// Create a logger that writes to our buffer
+	logger := slog.New(logHandler)
+
+	sr, err := rsynclib.SocketClient(nil, address, module, ".",
+		rsynclib.WithClientAuth(username, password),
+		rsynclib.WithLogger(logger),
+		rsynclib.WithFastDialer(fastDialer.Fastdialer),
+	)
+	if err != nil {
+		return RsyncListResponse{}, fmt.Errorf("connect failed: %v", err)
+	}
+
+	// Try to list files to test authentication
+	list, err := sr.List()
+	if err != nil {
+		return RsyncListResponse{}, fmt.Errorf("authentication failed: %v", err)
+	}
+
+	result := RsyncListResponse{
+		Files:  make([]string, len(list)),
+		Output: logBuffer.String(),
+	}
+
+	for i, item := range list {
+		result.Files[i] = string(item.Path)
+	}
+
+	return result, nil
 }
