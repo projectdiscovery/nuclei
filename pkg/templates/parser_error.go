@@ -1,13 +1,28 @@
 package templates
 
 import (
-	errorutil "github.com/projectdiscovery/utils/errors"
+	"fmt"
+
+	"github.com/projectdiscovery/utils/errkit"
 )
 
-var (
-	ErrMandatoryFieldMissingFmt = errorutil.NewWithFmt("mandatory '%s' field is missing")
-	ErrInvalidField             = errorutil.NewWithFmt("invalid field format for '%s' (allowed format is %s)")
-	ErrWarningFieldMissing      = errorutil.NewWithFmt("field '%s' is missing")
-	ErrCouldNotLoadTemplate     = errorutil.NewWithFmt("Could not load template %s: %s")
-	ErrLoadedWithWarnings       = errorutil.NewWithFmt("Loaded template %s: with syntax warning : %s")
-)
+// Helper functions for template errors with formatting
+func ErrMandatoryFieldMissingFmt(field string) error {
+	return errkit.New(fmt.Sprintf("mandatory '%s' field is missing", field)).Build()
+}
+
+func ErrInvalidField(field, format string) error {
+	return errkit.New(fmt.Sprintf("invalid field format for '%s' (allowed format is %s)", field, format)).Build()
+}
+
+func ErrWarningFieldMissing(field string) error {
+	return errkit.New(fmt.Sprintf("field '%s' is missing", field)).Build()
+}
+
+func ErrCouldNotLoadTemplate(path, reason string) error {
+	return errkit.New(fmt.Sprintf("Could not load template %s: %s", path, reason)).Build()
+}
+
+func ErrLoadedWithWarnings(path, warning string) error {
+	return errkit.New(fmt.Sprintf("Loaded template %s: with syntax warning : %s", path, warning)).Build()
+}

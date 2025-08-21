@@ -19,7 +19,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/testutils"
 	"github.com/projectdiscovery/nuclei/v3/pkg/utils/json"
 	"github.com/projectdiscovery/retryablehttp-go"
-	errorutil "github.com/projectdiscovery/utils/errors"
+	"github.com/projectdiscovery/utils/errkit"
 	logutil "github.com/projectdiscovery/utils/log"
 	sliceutil "github.com/projectdiscovery/utils/slice"
 	stringsutil "github.com/projectdiscovery/utils/strings"
@@ -196,7 +196,7 @@ func (d *httpDefaultMatcherCondition) Execute(filePath string) error {
 		return err
 	}
 	if routerErr != nil {
-		return errorutil.NewWithErr(routerErr).Msgf("failed to send http request to interactsh server")
+		return errkit.Append(errkit.New("failed to send http request to interactsh server"), routerErr)
 	}
 	if err := expectResultsCount(results, 1); err != nil {
 		return err
@@ -628,10 +628,10 @@ func (h *httpRawWithParams) Execute(filePath string) error {
 		// we intentionally use params["test"] instead of params.Get("test") to test the case where
 		// there are multiple parameters with the same name
 		if !reflect.DeepEqual(params["key1"], []string{"value1"}) {
-			errx = errorutil.WrapfWithNil(errx, "expected %v, got %v", []string{"value1"}, params["key1"])
+			errx = errkit.Append(errkit.New(fmt.Sprintf("expected %v, got %v", []string{"value1"}, params["key1"])), errx)
 		}
 		if !reflect.DeepEqual(params["key2"], []string{"value2"}) {
-			errx = errorutil.WrapfWithNil(errx, "expected %v, got %v", []string{"value2"}, params["key2"])
+			errx = errkit.Append(errkit.New(fmt.Sprintf("expected %v, got %v", []string{"value2"}, params["key2"])), errx)
 		}
 		_, _ = fmt.Fprintf(w, "Test is test raw-params-matcher text")
 	})
@@ -948,8 +948,8 @@ func (h *httpRequestSelfContained) Execute(filePath string) error {
 		_ = server.ListenAndServe()
 	}()
 	defer func() {
-         _ = server.Close()
-       }()
+		_ = server.Close()
+	}()
 
 	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, "", debug, "-esc")
 	if err != nil {
@@ -971,10 +971,10 @@ func (h *httpRequestSelfContainedWithParams) Execute(filePath string) error {
 		// we intentionally use params["test"] instead of params.Get("test") to test the case where
 		// there are multiple parameters with the same name
 		if !reflect.DeepEqual(params["something"], []string{"here"}) {
-			errx = errorutil.WrapfWithNil(errx, "expected %v, got %v", []string{"here"}, params["something"])
+			errx = errkit.Append(errkit.New(fmt.Sprintf("expected %v, got %v", []string{"here"}, params["something"])), errx)
 		}
 		if !reflect.DeepEqual(params["key"], []string{"value"}) {
-			errx = errorutil.WrapfWithNil(errx, "expected %v, got %v", []string{"value"}, params["key"])
+			errx = errkit.Append(errkit.New(fmt.Sprintf("expected %v, got %v", []string{"value"}, params["key"])), errx)
 		}
 		_, _ = w.Write([]byte("This is self-contained response"))
 	})
@@ -986,8 +986,8 @@ func (h *httpRequestSelfContainedWithParams) Execute(filePath string) error {
 		_ = server.ListenAndServe()
 	}()
 	defer func() {
-         _ = server.Close()
-       }()
+		_ = server.Close()
+	}()
 
 	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, "", debug, "-esc")
 	if err != nil {
@@ -1021,20 +1021,20 @@ func (h *httpRequestSelfContainedFileInput) Execute(filePath string) error {
 		_ = server.ListenAndServe()
 	}()
 	defer func() {
-         _ = server.Close()
-       }()
+		_ = server.Close()
+	}()
 
 	// create temp file
 	FileLoc, err := os.CreateTemp("", "self-contained-payload-*.txt")
 	if err != nil {
-		return errorutil.NewWithErr(err).Msgf("failed to create temp file")
+		return errkit.Append(errkit.New("failed to create temp file"), err)
 	}
 	if _, err := FileLoc.Write([]byte("one\ntwo\n")); err != nil {
-		return errorutil.NewWithErr(err).Msgf("failed to write payload to temp file")
+		return errkit.Append(errkit.New("failed to write payload to temp file"), err)
 	}
 	defer func() {
-         _ = FileLoc.Close()
-       }()
+		_ = FileLoc.Close()
+	}()
 
 	results, err := testutils.RunNucleiTemplateAndGetResults(filePath, "", debug, "-V", "test="+FileLoc.Name(), "-esc")
 	if err != nil {
@@ -1046,7 +1046,7 @@ func (h *httpRequestSelfContainedFileInput) Execute(filePath string) error {
 	}
 
 	if !sliceutil.ElementsMatch(gotReqToEndpoints, []string{"/one", "/two", "/one", "/two"}) {
-		return errorutil.NewWithTag(filePath, "expected requests to be sent to `/one` and `/two` endpoints but were sent to `%v`", gotReqToEndpoints)
+		return errkit.New(fmt.Sprintf("%s: expected requests to be sent to `/one` and `/two` endpoints but were sent to `%v`", filePath, gotReqToEndpoints)).Build()
 	}
 	return nil
 }

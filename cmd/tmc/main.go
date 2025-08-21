@@ -23,7 +23,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	"github.com/projectdiscovery/nuclei/v3/pkg/utils/json"
 	"github.com/projectdiscovery/retryablehttp-go"
-	errorutil "github.com/projectdiscovery/utils/errors"
+	"github.com/projectdiscovery/utils/errkit"
 	"gopkg.in/yaml.v3"
 )
 
@@ -146,8 +146,8 @@ func process(opts options) error {
 			gologger.Fatal().Msgf("could not open error log file: %s\n", err)
 		}
 		defer func() {
-          _ = errFile.Close()
-        }()
+			_ = errFile.Close()
+		}()
 	}
 
 	templateCatalog := disk.NewCatalog(filepath.Dir(opts.input))
@@ -243,7 +243,7 @@ func enhanceTemplate(data string) (string, bool, error) {
 		return data, false, err
 	}
 	if resp.StatusCode != 200 {
-		return data, false, errorutil.New("unexpected status code: %v", resp.Status)
+		return data, false, errkit.New(fmt.Sprintf("unexpected status code: %v", resp.Status)).Build()
 	}
 	var templateResp TemplateResp
 	if err := json.NewDecoder(resp.Body).Decode(&templateResp); err != nil {
@@ -254,20 +254,20 @@ func enhanceTemplate(data string) (string, bool, error) {
 	}
 	if templateResp.ValidateErrorCount > 0 {
 		if len(templateResp.ValidateError) > 0 {
-			return data, false, errorutil.NewWithTag("validate", templateResp.ValidateError[0].Message+": at line %v", templateResp.ValidateError[0].Mark.Line)
+			return data, false, errkit.New(fmt.Sprintf("validate: %s: at line %v", templateResp.ValidateError[0].Message, templateResp.ValidateError[0].Mark.Line)).Build()
 		}
-		return data, false, errorutil.New("validation failed").WithTag("validate")
+		return data, false, errkit.New("validate: validation failed").Build()
 	}
 	if templateResp.Error.Name != "" {
-		return data, false, errorutil.New("%s", templateResp.Error.Name)
+		return data, false, errkit.New(templateResp.Error.Name).Build()
 	}
 	if strings.TrimSpace(templateResp.Enhanced) == "" && !templateResp.Lint {
 		if templateResp.LintError.Reason != "" {
-			return data, false, errorutil.NewWithTag("lint", templateResp.LintError.Reason+" : at line %v", templateResp.LintError.Mark.Line)
+			return data, false, errkit.New(fmt.Sprintf("lint: %s : at line %v", templateResp.LintError.Reason, templateResp.LintError.Mark.Line)).Build()
 		}
-		return data, false, errorutil.NewWithTag("lint", "at line: %v", templateResp.LintError.Mark.Line)
+		return data, false, errkit.New(fmt.Sprintf("lint: at line: %v", templateResp.LintError.Mark.Line)).Build()
 	}
-	return data, false, errorutil.New("template enhance failed")
+	return data, false, errkit.New("template enhance failed").Build()
 }
 
 // formatTemplate formats template data using templateman format api
@@ -277,7 +277,7 @@ func formatTemplate(data string) (string, bool, error) {
 		return data, false, err
 	}
 	if resp.StatusCode != 200 {
-		return data, false, errorutil.New("unexpected status code: %v", resp.Status)
+		return data, false, errkit.New(fmt.Sprintf("unexpected status code: %v", resp.Status)).Build()
 	}
 	var templateResp TemplateResp
 	if err := json.NewDecoder(resp.Body).Decode(&templateResp); err != nil {
@@ -288,20 +288,20 @@ func formatTemplate(data string) (string, bool, error) {
 	}
 	if templateResp.ValidateErrorCount > 0 {
 		if len(templateResp.ValidateError) > 0 {
-			return data, false, errorutil.NewWithTag("validate", templateResp.ValidateError[0].Message+": at line %v", templateResp.ValidateError[0].Mark.Line)
+			return data, false, errkit.New(fmt.Sprintf("validate: %s: at line %v", templateResp.ValidateError[0].Message, templateResp.ValidateError[0].Mark.Line)).Build()
 		}
-		return data, false, errorutil.New("validation failed").WithTag("validate")
+		return data, false, errkit.New("validate: validation failed").Build()
 	}
 	if templateResp.Error.Name != "" {
-		return data, false, errorutil.New("%s", templateResp.Error.Name)
+		return data, false, errkit.New(templateResp.Error.Name).Build()
 	}
 	if strings.TrimSpace(templateResp.Updated) == "" && !templateResp.Lint {
 		if templateResp.LintError.Reason != "" {
-			return data, false, errorutil.NewWithTag("lint", templateResp.LintError.Reason+" : at line %v", templateResp.LintError.Mark.Line)
+			return data, false, errkit.New(fmt.Sprintf("lint: %s : at line %v", templateResp.LintError.Reason, templateResp.LintError.Mark.Line)).Build()
 		}
-		return data, false, errorutil.NewWithTag("lint", "at line: %v", templateResp.LintError.Mark.Line)
+		return data, false, errkit.New(fmt.Sprintf("lint: at line: %v", templateResp.LintError.Mark.Line)).Build()
 	}
-	return data, false, errorutil.New("template format failed")
+	return data, false, errkit.New("template format failed").Build()
 }
 
 // lintTemplate lints template data using templateman lint api
@@ -311,7 +311,7 @@ func lintTemplate(data string) (bool, error) {
 		return false, err
 	}
 	if resp.StatusCode != 200 {
-		return false, errorutil.New("unexpected status code: %v", resp.Status)
+		return false, errkit.New(fmt.Sprintf("unexpected status code: %v", resp.Status)).Build()
 	}
 	var lintResp TemplateLintResp
 	if err := json.NewDecoder(resp.Body).Decode(&lintResp); err != nil {
@@ -321,9 +321,9 @@ func lintTemplate(data string) (bool, error) {
 		return true, nil
 	}
 	if lintResp.LintError.Reason != "" {
-		return false, errorutil.NewWithTag("lint", lintResp.LintError.Reason+" : at line %v", lintResp.LintError.Mark.Line)
+		return false, errkit.New(fmt.Sprintf("lint: %s : at line %v", lintResp.LintError.Reason, lintResp.LintError.Mark.Line)).Build()
 	}
-	return false, errorutil.NewWithTag("lint", "at line: %v", lintResp.LintError.Mark.Line)
+	return false, errkit.New(fmt.Sprintf("lint: at line: %v", lintResp.LintError.Mark.Line)).Build()
 }
 
 // validateTemplate validates template data using templateman validate api
@@ -333,7 +333,7 @@ func validateTemplate(data string) (bool, error) {
 		return false, err
 	}
 	if resp.StatusCode != 200 {
-		return false, errorutil.New("unexpected status code: %v", resp.Status)
+		return false, errkit.New(fmt.Sprintf("unexpected status code: %v", resp.Status)).Build()
 	}
 	var validateResp TemplateResp
 	if err := json.NewDecoder(resp.Body).Decode(&validateResp); err != nil {
@@ -344,14 +344,14 @@ func validateTemplate(data string) (bool, error) {
 	}
 	if validateResp.ValidateErrorCount > 0 {
 		if len(validateResp.ValidateError) > 0 {
-			return false, errorutil.NewWithTag("validate", validateResp.ValidateError[0].Message+": at line %v", validateResp.ValidateError[0].Mark.Line)
+			return false, errkit.New(fmt.Sprintf("validate: %s: at line %v", validateResp.ValidateError[0].Message, validateResp.ValidateError[0].Mark.Line)).Build()
 		}
-		return false, errorutil.New("validation failed").WithTag("validate")
+		return false, errkit.New("validate: validation failed").Build()
 	}
 	if validateResp.Error.Name != "" {
-		return false, errorutil.New("%s", validateResp.Error.Name)
+		return false, errkit.New(validateResp.Error.Name).Build()
 	}
-	return false, errorutil.New("template validation failed")
+	return false, errkit.New("template validation failed").Build()
 }
 
 // parseAndAddMaxRequests parses and adds max requests to templates
@@ -401,7 +401,7 @@ func parseAndAddMaxRequests(catalog catalog.Catalog, path, data string) (string,
 
 // parseTemplate parses a template and returns the template object
 func parseTemplate(catalog catalog.Catalog, templatePath string) (*templates.Template, error) {
-	executorOpts := protocols.ExecutorOptions{
+	executorOpts := &protocols.ExecutorOptions{
 		Catalog: catalog,
 		Options: defaultOpts,
 	}
