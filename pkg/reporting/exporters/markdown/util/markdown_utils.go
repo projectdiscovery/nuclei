@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"strings"
 
-	errorutil "github.com/projectdiscovery/utils/errors"
+	"github.com/projectdiscovery/utils/errkit"
 )
 
 func CreateLink(title string, url string) string {
@@ -20,7 +20,7 @@ func CreateTable(headers []string, rows [][]string) (string, error) {
 	builder := &bytes.Buffer{}
 	headerSize := len(headers)
 	if headers == nil || headerSize == 0 {
-		return "", errorutil.New("No headers provided")
+		return "", errkit.New("No headers provided").Build()
 	}
 
 	builder.WriteString(CreateTableHeader(headers...))
@@ -34,7 +34,7 @@ func CreateTable(headers []string, rows [][]string) (string, error) {
 			copy(extendedRows, row)
 			builder.WriteString(CreateTableRow(extendedRows...))
 		} else {
-			return "", errorutil.New("Too many columns for the given headers")
+			return "", errkit.New("Too many columns for the given headers").Build()
 		}
 	}
 

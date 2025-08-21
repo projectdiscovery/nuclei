@@ -36,22 +36,28 @@ type (
 // const postgres = require('nuclei/postgres');
 // const isPostgres = postgres.IsPostgres('acme.com', 5432);
 // ```
-func (c *PGClient) IsPostgres(host string, port int) (bool, error) {
+func (c *PGClient) IsPostgres(ctx context.Context, host string, port int) (bool, error) {
+	executionId := ctx.Value("executionId").(string)
 	// todo: why this is exposed? Service fingerprint should be automatic
-	return memoizedisPostgres(host, port)
+	return memoizedisPostgres(executionId, host, port)
 }
 
 // @memo
-func isPostgres(host string, port int) (bool, error) {
+func isPostgres(executionId string, host string, port int) (bool, error) {
 	timeout := 10 * time.Second
 
-	conn, err := protocolstate.Dialer.Dial(context.TODO(), "tcp", fmt.Sprintf("%s:%d", host, port))
+	dialer := protocolstate.GetDialersWithId(executionId)
+	if dialer == nil {
+		return false, fmt.Errorf("dialers not initialized for %s", executionId)
+	}
+
+	conn, err := dialer.Fastdialer.Dial(context.TODO(), "tcp", fmt.Sprintf("%s:%d", host, port))
 	if err != nil {
 		return false, err
 	}
 	defer func() {
-         _ = conn.Close()
-       }()
+		_ = conn.Close()
+	}()
 
 	_ = conn.SetDeadline(time.Now().Add(timeout))
 
@@ -76,15 +82,16 @@ func isPostgres(host string, port int) (bool, error) {
 // const client = new postgres.PGClient;
 // const connected = client.Connect('acme.com', 5432, 'username', 'password');
 // ```
-func (c *PGClient) Connect(host string, port int, username, password string) (bool, error) {
-	ok, err := c.IsPostgres(host, port)
+func (c *PGClient) Connect(ctx context.Context, host string, port int, username, password string) (bool, error) {
+	ok, err := c.IsPostgres(ctx, host, port)
 	if err != nil {
 		return false, err
 	}
 	if !ok {
 		return false, fmt.Errorf("not a postgres service")
 	}
-	return memoizedconnect(host, port, username, password, "postgres")
+	executionId := ctx.Value("executionId").(string)
+	return memoizedconnect(executionId, host, port, username, password, "postgres")
 }
 
 // ExecuteQuery connects to Postgres database using given credentials and database name.
@@ -97,8 +104,8 @@ func (c *PGClient) Connect(host string, port int, username, password string) (bo
 // const result = client.ExecuteQuery('acme.com', 5432, 'username', 'password', 'dbname', 'select * from users');
 // log(to_json(result));
 // ```
-func (c *PGClient) ExecuteQuery(host string, port int, username, password, dbName, query string) (*utils.SQLResult, error) {
-	ok, err := c.IsPostgres(host, port)
+func (c *PGClient) ExecuteQuery(ctx context.Context, host string, port int, username, password, dbName, query string) (*utils.SQLResult, error) {
+	ok, err := c.IsPostgres(ctx, host, port)
 	if err != nil {
 		return nil, err
 	}
@@ -106,26 +113,28 @@ func (c *PGClient) ExecuteQuery(host string, port int, username, password, dbNam
 		return nil, fmt.Errorf("not a postgres service")
 	}
 
-	return memoizedexecuteQuery(host, port, username, password, dbName, query)
+	executionId := ctx.Value("executionId").(string)
+
+	return memoizedexecuteQuery(executionId, host, port, username, password, dbName, query)
 }
 
 // @memo
-func executeQuery(host string, port int, username string, password string, dbName string, query string) (*utils.SQLResult, error) {
-	if !protocolstate.IsHostAllowed(host) {
+func executeQuery(executionId string, host string, port int, username string, password string, dbName string, query string) (*utils.SQLResult, error) {
+	if !protocolstate.IsHostAllowed(executionId, host) {
 		// host is not valid according to network policy
-		return nil, protocolstate.ErrHostDenied.Msgf(host)
+		return nil, protocolstate.ErrHostDenied(host)
 	}
 
 	target := net.JoinHostPort(host, fmt.Sprintf("%d", port))
 
-	connStr := fmt.Sprintf("postgres://%s:%s@%s/%s?sslmode=disable", username, password, target, dbName)
+	connStr := fmt.Sprintf("postgres://%s:%s@%s/%s?sslmode=disable&executionId=%s", username, password, target, dbName, executionId)
 	db, err := sql.Open(pgwrap.PGWrapDriver, connStr)
 	if err != nil {
 		return nil, err
 	}
 	defer func() {
-         _ = db.Close()
-       }()
+		_ = db.Close()
+	}()
 
 	rows, err := db.Query(query)
 	if err != nil {
@@ -148,8 +157,8 @@ func executeQuery(host string, port int, username string, password string, dbNam
 // const client = new postgres.PGClient;
 // const connected = client.ConnectWithDB('acme.com', 5432, 'username', 'password', 'dbname');
 // ```
-func (c *PGClient) ConnectWithDB(host string, port int, username, password, dbName string) (bool, error) {
-	ok, err := c.IsPostgres(host, port)
+func (c *PGClient) ConnectWithDB(ctx context.Context, host string, port int, username, password, dbName string) (bool, error) {
+	ok, err := c.IsPostgres(ctx, host, port)
 	if err != nil {
 		return false, err
 	}
@@ -157,18 +166,20 @@ func (c *PGClient) ConnectWithDB(host string, port int, username, password, dbNa
 		return false, fmt.Errorf("not a postgres service")
 	}
 
-	return memoizedconnect(host, port, username, password, dbName)
+	executionId := ctx.Value("executionId").(string)
+
+	return memoizedconnect(executionId, host, port, username, password, dbName)
 }
 
 // @memo
-func connect(host string, port int, username string, password string, dbName string) (bool, error) {
+func connect(executionId string, host string, port int, username string, password string, dbName string) (bool, error) {
 	if host == "" || port <= 0 {
 		return false, fmt.Errorf("invalid host or port")
 	}
 
-	if !protocolstate.IsHostAllowed(host) {
+	if !protocolstate.IsHostAllowed(executionId, host) {
 		// host is not valid according to network policy
-		return false, protocolstate.ErrHostDenied.Msgf(host)
+		return false, protocolstate.ErrHostDenied(host)
 	}
 
 	target := net.JoinHostPort(host, fmt.Sprintf("%d", port))
@@ -176,19 +187,24 @@ func connect(host string, port int, username string, password string, dbName str
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
+	dialer := protocolstate.GetDialersWithId(executionId)
+	if dialer == nil {
+		return false, fmt.Errorf("dialers not initialized for %s", executionId)
+	}
+
 	db := pg.Connect(&pg.Options{
 		Addr:     target,
 		User:     username,
 		Password: password,
 		Database: dbName,
 		Dialer: func(network, addr string) (net.Conn, error) {
-			return protocolstate.Dialer.Dial(context.Background(), network, addr)
+			return dialer.Fastdialer.Dial(context.Background(), network, addr)
 		},
 		IdleCheckFrequency: -1,
 	}).WithContext(ctx).WithTimeout(10 * time.Second)
 	defer func() {
-         _ = db.Close()
-       }()
+		_ = db.Close()
+	}()
 
 	_, err := db.Exec("select 1")
 	if err != nil {

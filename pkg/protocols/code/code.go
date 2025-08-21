@@ -8,9 +8,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/Mzack9999/goja"
 	"github.com/alecthomas/chroma/quick"
 	"github.com/ditashi/jsbeautifier-go/jsbeautifier"
-	"github.com/dop251/goja"
 	"github.com/pkg/errors"
 
 	"github.com/projectdiscovery/gologger"
@@ -33,7 +33,6 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	contextutil "github.com/projectdiscovery/utils/context"
 	"github.com/projectdiscovery/utils/errkit"
-	errorutil "github.com/projectdiscovery/utils/errors"
 )
 
 const (
@@ -94,9 +93,31 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 
 	engine, err := gozero.New(gozeroOptions)
 	if err != nil {
-		return errorutil.NewWithErr(err).Msgf("[%s] engines '%s' not available on host", options.TemplateID, strings.Join(request.Engine, ","))
+		errMsg := fmt.Sprintf("[%s] engines '%s' not available on host", options.TemplateID, strings.Join(request.Engine, ","))
+
+		// NOTE(dwisiswant0): In validation mode, skip engine avail check to
+		// allow template validation w/o requiring all engines to be installed
+		// on the host.
+		//
+		// TODO: Ideally, error checking should be done at the highest level
+		// (e.g. runner, main function). For example, we can reuse errors[1][2]
+		// from the `projectdiscovery/gozero` package and wrap (yes, not string
+		// format[3][4]) em inside `projectdiscovery/utils/errors` package to
+		// preserve error semantics and enable runtime type assertion via
+		// builtin `errors.Is` func for granular err handling in the call stack.
+		//
+		// [1]: https://github.com/projectdiscovery/gozero/blob/v0.0.3/gozero.go#L20
+		// [2]: https://github.com/projectdiscovery/gozero/blob/v0.0.3/gozero.go#L35
+		// [3]: https://github.com/projectdiscovery/utils/blob/v0.4.21/errors/enriched.go#L85
+		// [4]: https://github.com/projectdiscovery/utils/blob/v0.4.21/errors/enriched.go#L137
+		if options.Options.Validate {
+			options.Logger.Error().Msgf("%s <- %s", errMsg, err)
+		} else {
+			return errkit.Append(errkit.New(errMsg), err)
+		}
+	} else {
+		request.gozero = engine
 	}
-	request.gozero = engine
 
 	var src *gozero.Source
 
@@ -132,7 +153,7 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 	if request.PreCondition != "" {
 		preConditionCompiled, err := compiler.SourceAutoMode(request.PreCondition, false)
 		if err != nil {
-			return errorutil.NewWithTag(request.TemplateID, "could not compile pre-condition: %s", err)
+			return errkit.New(fmt.Sprintf("%s: could not compile pre-condition: %s", request.TemplateID, err)).Build()
 		}
 		request.preConditionCompiled = preConditionCompiled
 	}
@@ -201,6 +222,7 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 
 		result, err := request.options.JsCompiler.ExecuteWithOptions(request.preConditionCompiled, args,
 			&compiler.ExecuteOptions{
+				ExecutionId:     request.options.Options.ExecutionId,
 				TimeoutVariants: request.options.Options.GetTimeouts(),
 				Source:          &request.PreCondition,
 				Callback:        registerPreConditionFunctions,
@@ -208,7 +230,7 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 				Context:         input.Context(),
 			})
 		if err != nil {
-			return errorutil.NewWithTag(request.TemplateID, "could not execute pre-condition: %s", err)
+			return errkit.New(fmt.Sprintf("%s: could not execute pre-condition: %s", request.TemplateID, err)).Build()
 		}
 		if !result.GetSuccess() || types.ToString(result["error"]) != "" {
 			gologger.Warning().Msgf("[%s] Precondition for request %s was not satisfied\n", request.TemplateID, request.PreCondition)
@@ -430,4 +452,9 @@ func prettyPrint(templateId string, buff string) {
 		}
 	}
 	gologger.Debug().Msgf(" [%v] Pre-condition Code:\n\n%v\n\n", templateId, strings.Join(final, "\n"))
+}
+
+// UpdateOptions replaces this request's options with a new copy
+func (r *Request) UpdateOptions(opts *protocols.ExecutorOptions) {
+	r.options.ApplyNewEngineOptions(opts)
 }

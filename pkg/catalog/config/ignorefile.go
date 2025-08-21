@@ -2,6 +2,7 @@ package config
 
 import (
 	"os"
+	"runtime/debug"
 
 	"github.com/projectdiscovery/gologger"
 	"gopkg.in/yaml.v2"
@@ -17,7 +18,7 @@ type IgnoreFile struct {
 func ReadIgnoreFile() IgnoreFile {
 	file, err := os.Open(DefaultConfig.GetIgnoreFilePath())
 	if err != nil {
-		gologger.Error().Msgf("Could not read nuclei-ignore file: %s\n", err)
+		gologger.Error().Msgf("Could not read nuclei-ignore file: %s\n%s\n", err, string(debug.Stack()))
 		return IgnoreFile{}
 	}
 	defer func() {

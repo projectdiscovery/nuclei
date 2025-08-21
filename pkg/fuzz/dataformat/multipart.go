@@ -143,8 +143,8 @@ func (m *MultiPartForm) Decode(data string) (KV, error) {
 				return KV{}, err
 			}
 			defer func() {
-           _ = file.Close()
-         }()
+				_ = file.Close()
+			}()
 
 			buffer := new(bytes.Buffer)
 			if _, err := buffer.ReadFrom(file); err != nil {

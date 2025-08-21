@@ -58,8 +58,8 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, metadata,
 				return
 			}
 			defer func() {
-           _ = file.Close()
-         }()
+				_ = file.Close()
+			}()
 
 			stat, err := file.Stat()
 			if err != nil {
@@ -138,4 +138,9 @@ func getURLFromRequest(req *http.Request) string {
 		req.URL.Scheme = "https"
 	}
 	return fmt.Sprintf("%s://%s%s", req.URL.Scheme, req.Host, req.URL.Path)
+}
+
+// UpdateOptions replaces this request's options with a new copy
+func (r *Request) UpdateOptions(opts *protocols.ExecutorOptions) {
+	r.options = opts
 }
