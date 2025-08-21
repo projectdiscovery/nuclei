@@ -2,6 +2,7 @@ package component
 
 import (
 	"context"
+	"net/url"
 	"strconv"
 	"strings"
 
@@ -116,6 +117,15 @@ func (q *Path) Rebuild() (*retryablehttp.Request, error) {
 	}
 
 	rebuiltPath := originalPath
+	if unescaped, err := url.PathUnescape(rebuiltPath); err == nil {
+		// this is handle the case where anyportion of path has url encoded data
+		// by default the http/request official library will escape/encode special characters in path
+		// to avoid double encoding we unescape/decode already encoded value
+		//
+		// if there is a invalid url encoded value like %99 then it will still be encoded as %2599 and not %99
+		// the only way to make sure it stays as %99 is to implement raw request and unsafe for fuzzing as well
+		rebuiltPath = unescaped
+	}
 
 	// Clone the request and update the path
 	cloned := q.req.Clone(context.Background())
