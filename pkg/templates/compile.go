@@ -80,64 +80,64 @@ func Parse(filePath string, preprocessor Preprocessor, options *protocols.Execut
 			// as not using a cache at all, but may be necessary.
 
 			for i, r := range tplCopy.RequestsDNS {
-				rCopy := *r
-				rCopy.UpdateOptions(tplCopy.Options)
-				//	rCopy.Compile(tplCopy.Options)
-				tplCopy.RequestsDNS[i] = &rCopy
+				if r != nil {
+					r.UpdateOptions(tplCopy.Options)
+					tplCopy.RequestsDNS[i] = r
+				}
 			}
 			for i, r := range tplCopy.RequestsHTTP {
-				rCopy := *r
-				rCopy.UpdateOptions(tplCopy.Options)
-				//	rCopy.Compile(tplCopy.Options)
-				tplCopy.RequestsHTTP[i] = &rCopy
+				if r != nil {
+					r.UpdateOptions(tplCopy.Options)
+					tplCopy.RequestsHTTP[i] = r
+				}
 			}
 			for i, r := range tplCopy.RequestsCode {
-				rCopy := *r
-				rCopy.UpdateOptions(tplCopy.Options)
-				//	rCopy.Compile(tplCopy.Options)
-				tplCopy.RequestsCode[i] = &rCopy
+				if r != nil {
+					r.UpdateOptions(tplCopy.Options)
+					tplCopy.RequestsCode[i] = r
+				}
 			}
 			for i, r := range tplCopy.RequestsFile {
-				rCopy := *r
-				rCopy.UpdateOptions(tplCopy.Options)
-				//	rCopy.Compile(tplCopy.Options)
-				tplCopy.RequestsFile[i] = &rCopy
+				if r != nil {
+					r.UpdateOptions(tplCopy.Options)
+					tplCopy.RequestsFile[i] = r
+				}
 			}
 			for i, r := range tplCopy.RequestsHeadless {
-				rCopy := *r
-				rCopy.UpdateOptions(tplCopy.Options)
-				//	rCopy.Compile(tplCopy.Options)
-				tplCopy.RequestsHeadless[i] = &rCopy
+				if r != nil {
+					r.UpdateOptions(tplCopy.Options)
+					tplCopy.RequestsHeadless[i] = r
+				}
 			}
 			for i, r := range tplCopy.RequestsNetwork {
-				rCopy := *r
-				rCopy.UpdateOptions(tplCopy.Options)
-				//	rCopy.Compile(tplCopy.Options)
-				tplCopy.RequestsNetwork[i] = &rCopy
+				if r != nil {
+					r.UpdateOptions(tplCopy.Options)
+					tplCopy.RequestsNetwork[i] = r
+				}
 			}
 			for i, r := range tplCopy.RequestsJavascript {
-				rCopy := *r
-				rCopy.UpdateOptions(tplCopy.Options)
-				//rCopy.Compile(tplCopy.Options)
-				tplCopy.RequestsJavascript[i] = &rCopy
+				if r != nil {
+					r.UpdateOptions(tplCopy.Options)
+					tplCopy.RequestsJavascript[i] = r
+				}
 			}
 			for i, r := range tplCopy.RequestsSSL {
-				rCopy := *r
-				rCopy.UpdateOptions(tplCopy.Options)
-				// rCopy.Compile(tplCopy.Options)
-				tplCopy.RequestsSSL[i] = &rCopy
+				if r != nil {
+					r.UpdateOptions(tplCopy.Options)
+					tplCopy.RequestsSSL[i] = r
+				}
 			}
 			for i, r := range tplCopy.RequestsWHOIS {
-				rCopy := *r
-				rCopy.UpdateOptions(tplCopy.Options)
-				// rCopy.Compile(tplCopy.Options)
-				tplCopy.RequestsWHOIS[i] = &rCopy
+				if r != nil {
+					r.UpdateOptions(tplCopy.Options)
+					tplCopy.RequestsWHOIS[i] = r
+				}
 			}
 			for i, r := range tplCopy.RequestsWebsocket {
-				rCopy := *r
-				rCopy.UpdateOptions(tplCopy.Options)
-				// rCopy.Compile(tplCopy.Options)
-				tplCopy.RequestsWebsocket[i] = &rCopy
+				if r != nil {
+					r.UpdateOptions(tplCopy.Options)
+					tplCopy.RequestsWebsocket[i] = r
+				}
 			}
 			template := &tplCopy
 

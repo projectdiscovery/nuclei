@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"strings"
+	"sync"
 
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/authprovider/authx"
@@ -16,6 +17,8 @@ import (
 	stringsutil "github.com/projectdiscovery/utils/strings"
 	urlutil "github.com/projectdiscovery/utils/url"
 )
+
+var bufferPool = sync.Pool{New: func() any { return new(bytes.Buffer) }}
 
 // Request defines a basic HTTP raw request
 type Request struct {
@@ -270,13 +273,15 @@ func (r *Request) TryFillCustomHeaders(headers []string) error {
 		if newLineIndex > 0 {
 			newLineIndex += hostHeaderIndex + 2
 			// insert custom headers
-			var buf bytes.Buffer
+			buf := bufferPool.Get().(*bytes.Buffer)
+			buf.Reset()
 			buf.Write(r.UnsafeRawBytes[:newLineIndex])
 			for _, header := range headers {
 				buf.WriteString(fmt.Sprintf("%s\r\n", header))
 			}
 			buf.Write(r.UnsafeRawBytes[newLineIndex:])
 			r.UnsafeRawBytes = buf.Bytes()
+			bufferPool.Put(buf)
 			return nil
 		}
 		return errors.New("no new line found at the end of host header")
@@ -301,7 +306,8 @@ func (r *Request) ApplyAuthStrategy(strategy authx.AuthStrategy) {
 			parsed.Params.Add(p.Key, p.Value)
 		}
 	case *authx.CookiesAuthStrategy:
-		var buff bytes.Buffer
+		buff := bufferPool.Get().(*bytes.Buffer)
+		buff.Reset()
 		for _, cookie := range s.Data.Cookies {
 			buff.WriteString(fmt.Sprintf("%s=%s; ", cookie.Key, cookie.Value))
 		}
@@ -312,6 +318,7 @@ func (r *Request) ApplyAuthStrategy(strategy authx.AuthStrategy) {
 				r.Headers["Cookie"] = buff.String()
 			}
 		}
+		bufferPool.Put(buff)
 	case *authx.HeadersAuthStrategy:
 		for _, header := range s.Data.Headers {
 			r.Headers[header.Key] = header.Value
