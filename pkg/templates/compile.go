@@ -574,7 +574,10 @@ func parseTemplate(data []byte, srcOptions *protocols.ExecutorOptions) (*Templat
 	options.TemplateVerifier = template.TemplateVerifier
 	//nolint
 	if !(template.Verified && verifier.Identifier() == "projectdiscovery/nuclei-templates") {
-		template.Options.RawTemplate = data
+		// Retain raw template only when allowed and reasonably small
+		if template.Options.Options != nil && !template.Options.Options.OmitTemplate && len(data) <= protocols.MaxTemplateFileSizeForEncoding {
+			template.Options.RawTemplate = data
+		}
 	}
 	return template, nil
 }

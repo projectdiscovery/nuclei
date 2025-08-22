@@ -405,7 +405,7 @@ func (template *Template) ImportFileRefs(options *protocols.ExecutorOptions) err
 	// for code protocol requests
 	for _, request := range template.RequestsCode {
 		// simple test to check if source is a file or a snippet
-		if len(strings.Split(request.Source, "\n")) == 1 && fileutil.FileExists(request.Source) {
+		if !strings.ContainsRune(request.Source, '\n') && fileutil.FileExists(request.Source) {
 			if val, ok := loadFile(request.Source); ok {
 				template.ImportedFiles = append(template.ImportedFiles, request.Source)
 				request.Source = val
@@ -416,7 +416,7 @@ func (template *Template) ImportFileRefs(options *protocols.ExecutorOptions) err
 	// for javascript protocol code references
 	for _, request := range template.RequestsJavascript {
 		// simple test to check if source is a file or a snippet
-		if len(strings.Split(request.Code, "\n")) == 1 && fileutil.FileExists(request.Code) {
+		if !strings.ContainsRune(request.Code, '\n') && fileutil.FileExists(request.Code) {
 			if val, ok := loadFile(request.Code); ok {
 				template.ImportedFiles = append(template.ImportedFiles, request.Code)
 				request.Code = val
@@ -443,7 +443,7 @@ func (template *Template) ImportFileRefs(options *protocols.ExecutorOptions) err
 			if req.Type() == types.CodeProtocol {
 				request := req.(*code.Request)
 				// simple test to check if source is a file or a snippet
-				if len(strings.Split(request.Source, "\n")) == 1 && fileutil.FileExists(request.Source) {
+				if !strings.ContainsRune(request.Source, '\n') && fileutil.FileExists(request.Source) {
 					if val, ok := loadFile(request.Source); ok {
 						template.ImportedFiles = append(template.ImportedFiles, request.Source)
 						request.Source = val
@@ -457,7 +457,7 @@ func (template *Template) ImportFileRefs(options *protocols.ExecutorOptions) err
 			if req.Type() == types.JavascriptProtocol {
 				request := req.(*javascript.Request)
 				// simple test to check if source is a file or a snippet
-				if len(strings.Split(request.Code, "\n")) == 1 && fileutil.FileExists(request.Code) {
+				if !strings.ContainsRune(request.Code, '\n') && fileutil.FileExists(request.Code) {
 					if val, ok := loadFile(request.Code); ok {
 						template.ImportedFiles = append(template.ImportedFiles, request.Code)
 						request.Code = val
