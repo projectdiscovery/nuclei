@@ -214,7 +214,7 @@ anchor: &test "value"
 reference: *test
 `
 				var doc yaml.Node
-				yaml.Unmarshal([]byte(yamlInput), &doc)
+				_ = yaml.Unmarshal([]byte(yamlInput), &doc)
 
 				// Extract the reference node from the document
 				mappingNode := doc.Content[0]
@@ -231,7 +231,7 @@ reference: *test
 			name: "comma in quotes",
 			setup: func() *yaml.Node {
 				var node yaml.Node
-				yaml.Unmarshal([]byte(`"value,with,commas"`), &node)
+				_ = yaml.Unmarshal([]byte(`"value,with,commas"`), &node)
 				return &node
 			},
 			expected: []string{"value", "with", "commas"},
@@ -240,7 +240,7 @@ reference: *test
 			name: "sequence with mixed types",
 			setup: func() *yaml.Node {
 				var node yaml.Node
-				yaml.Unmarshal([]byte(`[1, true, "string", 3.14]`), &node)
+				_ = yaml.Unmarshal([]byte(`[1, true, "string", 3.14]`), &node)
 				return &node
 			},
 			expected: []string{"1", "true", "string", "3.14"},

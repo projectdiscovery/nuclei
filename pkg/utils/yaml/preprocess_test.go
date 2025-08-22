@@ -14,7 +14,7 @@ import (
 func TestPreProcess(t *testing.T) {
 	tempDir, err := os.MkdirTemp("", "nuclei-preprocess-test")
 	require.NoError(t, err)
-	defer os.RemoveAll(tempDir)
+	defer func() { _ = os.RemoveAll(tempDir) }()
 
 	includeFile1 := filepath.Join(tempDir, "include1.yaml")
 	includeContent1 := `included_key1: included_value1
@@ -169,7 +169,7 @@ another_key: another_value`,
 func TestPreProcess_EdgeCases(t *testing.T) {
 	tempDir, err := os.MkdirTemp("", "nuclei-preprocess-edge-test")
 	require.NoError(t, err)
-	defer os.RemoveAll(tempDir)
+	defer func() { _ = os.RemoveAll(tempDir) }()
 
 	tests := []struct {
 		name        string
@@ -404,7 +404,7 @@ func BenchmarkPreProcess_WithIncludes(b *testing.B) {
 	if err != nil {
 		b.Fatal(err)
 	}
-	defer os.RemoveAll(tempDir)
+	defer func() { _ = os.RemoveAll(tempDir) }()
 
 	includeFile := filepath.Join(tempDir, "include.yaml")
 	includeContent := `included_key: included_value
@@ -434,7 +434,7 @@ func BenchmarkPreProcess_MultipleIncludes(b *testing.B) {
 	if err != nil {
 		b.Fatal(err)
 	}
-	defer os.RemoveAll(tempDir)
+	defer func() { _ = os.RemoveAll(tempDir) }()
 
 	var yamlBuilder strings.Builder
 	yamlBuilder.WriteString("template:\n  name: \"Test Template\"\n")
@@ -482,7 +482,7 @@ func BenchmarkPreProcess_NestedIncludes(b *testing.B) {
 	if err != nil {
 		b.Fatal(err)
 	}
-	defer os.RemoveAll(tempDir)
+	defer func() { _ = os.RemoveAll(tempDir) }()
 
 	files := make([]string, 5)
 	for i := 0; i < 5; i++ {

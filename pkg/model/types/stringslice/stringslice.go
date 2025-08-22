@@ -111,28 +111,3 @@ func (stringSlice *StringSlice) UnmarshalJSON(data []byte) error {
 	stringSlice.Value = values
 	return nil
 }
-
-func marshalStringToSlice(unmarshal func(interface{}) error) ([]string, error) {
-	var marshalledValueAsString string
-	var marshalledValuesAsSlice []string
-
-	sliceMarshalError := unmarshal(&marshalledValuesAsSlice)
-	if sliceMarshalError != nil {
-		stringMarshalError := unmarshal(&marshalledValueAsString)
-		if stringMarshalError != nil {
-			return nil, stringMarshalError
-		}
-	}
-
-	var result []string
-	switch {
-	case len(marshalledValuesAsSlice) > 0:
-		result = marshalledValuesAsSlice
-	case !utils.IsBlank(marshalledValueAsString):
-		result = strings.Split(marshalledValueAsString, ",")
-	default:
-		result = []string{}
-	}
-
-	return result, nil
-}
