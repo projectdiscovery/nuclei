@@ -20,7 +20,9 @@ func init() {
 			// Var and consts
 
 			// Objects / Classes
-			"IsTelnetResponse": gojs.GetClassConstructor[lib_telnet.IsTelnetResponse](&lib_telnet.IsTelnetResponse{}),
+			"TelnetClient":       gojs.GetClassConstructor[lib_telnet.TelnetClient](&lib_telnet.TelnetClient{}),
+			"IsTelnetResponse":   gojs.GetClassConstructor[lib_telnet.IsTelnetResponse](&lib_telnet.IsTelnetResponse{}),
+			"TelnetInfoResponse": gojs.GetClassConstructor[lib_telnet.TelnetInfoResponse](&lib_telnet.TelnetInfoResponse{}),
 		},
 	).Register()
 }
