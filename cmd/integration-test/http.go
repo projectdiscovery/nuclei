@@ -14,7 +14,7 @@ import (
 	"time"
 
 	"github.com/julienschmidt/httprouter"
-	"gopkg.in/yaml.v2"
+	"gopkg.in/yaml.v3"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/testutils"
 	"github.com/projectdiscovery/nuclei/v3/pkg/utils/json"

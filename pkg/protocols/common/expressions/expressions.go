@@ -3,17 +3,20 @@ package expressions
 import (
 	"strings"
 
-	"github.com/Knetic/govaluate"
-
 	"github.com/projectdiscovery/nuclei/v3/pkg/operators/common/dsl"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/exprcache"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/marker"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/replacer"
 	stringsutil "github.com/projectdiscovery/utils/strings"
 )
 
+// func GetCompiledDSLExpression(expression string) (*govaluate.EvaluableExpression, error) {
+// 	return exprcache.GetCompiledDSLExpression(expression)
+// }
+
 // Eval compiles the given expression and evaluate it with the given values preserving the return type
 func Eval(expression string, values map[string]interface{}) (interface{}, error) {
-	compiled, err := govaluate.NewEvaluableExpressionWithFunctions(expression, dsl.HelperFunctions)
+	compiled, err := exprcache.GetCompiledDSLExpression(expression)
 	if err != nil {
 		return nil, err
 	}
@@ -54,7 +57,7 @@ func evaluate(data string, base map[string]interface{}) (string, error) {
 		// replace variable placeholders with base values
 		expression = replacer.Replace(expression, base)
 		// turns expressions (either helper functions+base values or base values)
-		compiled, err := govaluate.NewEvaluableExpressionWithFunctions(expression, dsl.HelperFunctions)
+		compiled, err := exprcache.GetCompiledDSLExpression(expression)
 		if err != nil {
 			continue
 		}
@@ -127,7 +130,7 @@ func FindExpressions(data, OpenMarker, CloseMarker string, base map[string]inter
 }
 
 func isExpression(data string, base map[string]interface{}) bool {
-	if _, err := govaluate.NewEvaluableExpression(data); err == nil {
+	if _, err := exprcache.GetCompiledExpression(data); err == nil {
 		if stringsutil.ContainsAny(data, getFunctionsNames(base)...) {
 			return true
 		} else if stringsutil.ContainsAny(data, dsl.FunctionNames...) {
@@ -135,7 +138,7 @@ func isExpression(data string, base map[string]interface{}) bool {
 		}
 		return false
 	}
-	_, err := govaluate.NewEvaluableExpressionWithFunctions(data, dsl.HelperFunctions)
+	_, err := exprcache.GetCompiledDSLExpression(data)
 	return err == nil
 }
 

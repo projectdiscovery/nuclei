@@ -5,7 +5,7 @@ import (
 	"runtime/debug"
 
 	"github.com/projectdiscovery/gologger"
-	"gopkg.in/yaml.v2"
+	"gopkg.in/yaml.v3"
 )
 
 // IgnoreFile is an internal nuclei template blocking configuration file

@@ -4,13 +4,12 @@ import (
 	"os"
 	"strings"
 
-	"github.com/Knetic/govaluate"
 	"github.com/antchfx/htmlquery"
 	"github.com/antchfx/xmlquery"
 
 	dslRepo "github.com/projectdiscovery/dsl"
 	"github.com/projectdiscovery/gologger"
-	"github.com/projectdiscovery/nuclei/v3/pkg/operators/common/dsl"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/exprcache"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/expressions"
 	stringsutil "github.com/projectdiscovery/utils/strings"
 )
@@ -183,7 +182,7 @@ func (matcher *Matcher) MatchDSL(data map[string]interface{}) bool {
 				logExpressionEvaluationFailure(matcher.Name, err)
 				return false
 			}
-			expression, err = govaluate.NewEvaluableExpressionWithFunctions(resolvedExpression, dsl.HelperFunctions)
+			expression, err = exprcache.GetCompiledDSLExpression(resolvedExpression)
 			if err != nil {
 				logExpressionEvaluationFailure(matcher.Name, err)
 				return false

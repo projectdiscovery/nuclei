@@ -28,7 +28,7 @@ import (
 	"github.com/projectdiscovery/utils/errkit"
 	fileutil "github.com/projectdiscovery/utils/file"
 	"go.uber.org/multierr"
-	"gopkg.in/yaml.v2"
+	"gopkg.in/yaml.v3"
 )
 
 // Template is a YAML input file which defines all the requests and
@@ -359,17 +359,13 @@ func (template *Template) UnmarshalYAML(unmarshal func(interface{}) error) error
 	// check if the template contains more than 1 protocol request
 	// if so  preserve the order of the protocols and requests
 	if template.hasMultipleRequests() {
-		var tempmap yaml.MapSlice
+		var tempmap map[string]interface{}
 		err = unmarshal(&tempmap)
 		if err != nil {
 			return errkit.Append(errkit.New(fmt.Sprintf("failed to unmarshal multi protocol template %s", template.ID)), err)
 		}
 		arr := []string{}
-		for _, v := range tempmap {
-			key, ok := v.Key.(string)
-			if !ok {
-				continue
-			}
+		for key := range tempmap {
 			arr = append(arr, key)
 		}
 		// add protocols to the protocol stack (the idea is to preserve the order of the protocols)

@@ -1,5 +1,7 @@
 package stringslice
 
+import "gopkg.in/yaml.v3"
+
 type RawStringSlice struct {
 	StringSlice
 }
@@ -12,12 +14,12 @@ func (rawStringSlice *RawStringSlice) Normalize(value string) string {
 	return value
 }
 
-func (rawStringSlice *RawStringSlice) UnmarshalYAML(unmarshal func(interface{}) error) error {
-	marshalledSlice, err := marshalStringToSlice(unmarshal)
+func (rawStringSlice *RawStringSlice) UnmarshalYAML(node *yaml.Node) error {
+	result, err := UnmarshalYAMLNode(node, rawStringSlice)
 	if err != nil {
 		return err
 	}
-	rawStringSlice.Value = marshalledSlice
+	rawStringSlice.Value = result
 	return nil
 }
 

@@ -10,7 +10,7 @@ import (
 
 	"github.com/logrusorgru/aurora"
 	"github.com/pkg/errors"
-	"gopkg.in/yaml.v2"
+	"gopkg.in/yaml.v3"
 
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/catalog/config"
@@ -56,90 +56,33 @@ func Parse(filePath string, preprocessor Preprocessor, options *protocols.Execut
 	}
 	if !options.DoNotCache {
 		if value, _, _ := parser.compiledTemplatesCache.Has(filePath); value != nil {
-			// Copy the template, apply new options, and recompile requests
-			tplCopy := *value
-			newBase := options.Copy()
-			newBase.TemplateID = tplCopy.Options.TemplateID
-			newBase.TemplatePath = tplCopy.Options.TemplatePath
-			newBase.TemplateInfo = tplCopy.Options.TemplateInfo
-			newBase.TemplateVerifier = tplCopy.Options.TemplateVerifier
-			newBase.RawTemplate = tplCopy.Options.RawTemplate
-			tplCopy.Options = newBase
+			// Shallow copy the template for reuse, avoiding deep struct copies
+			template := &Template{}
+			*template = *value
 
-			tplCopy.Options.ApplyNewEngineOptions(options)
-			if tplCopy.CompiledWorkflow != nil {
-				tplCopy.CompiledWorkflow.Options.ApplyNewEngineOptions(options)
-				for _, w := range tplCopy.CompiledWorkflow.Workflows {
+			// Create lightweight options copy - reuse most fields
+			template.Options = &protocols.ExecutorOptions{}
+			*template.Options = *options
+			template.Options.TemplateID = value.Options.TemplateID
+			template.Options.TemplatePath = value.Options.TemplatePath
+			template.Options.TemplateInfo = value.Options.TemplateInfo
+			template.Options.TemplateVerifier = value.Options.TemplateVerifier
+			template.Options.RawTemplate = value.Options.RawTemplate
+
+			// Template context store will be created lazily when needed
+
+			template.Options.ApplyNewEngineOptions(options)
+			if template.CompiledWorkflow != nil {
+				template.CompiledWorkflow.Options.ApplyNewEngineOptions(options)
+				for _, w := range template.CompiledWorkflow.Workflows {
 					for _, ex := range w.Executers {
 						ex.Options.ApplyNewEngineOptions(options)
 					}
 				}
 			}
 
-			// TODO: Reconsider whether to recompile requests. Compiling these is just as slow
-			// as not using a cache at all, but may be necessary.
-
-			for i, r := range tplCopy.RequestsDNS {
-				rCopy := *r
-				rCopy.UpdateOptions(tplCopy.Options)
-				//	rCopy.Compile(tplCopy.Options)
-				tplCopy.RequestsDNS[i] = &rCopy
-			}
-			for i, r := range tplCopy.RequestsHTTP {
-				rCopy := *r
-				rCopy.UpdateOptions(tplCopy.Options)
-				//	rCopy.Compile(tplCopy.Options)
-				tplCopy.RequestsHTTP[i] = &rCopy
-			}
-			for i, r := range tplCopy.RequestsCode {
-				rCopy := *r
-				rCopy.UpdateOptions(tplCopy.Options)
-				//	rCopy.Compile(tplCopy.Options)
-				tplCopy.RequestsCode[i] = &rCopy
-			}
-			for i, r := range tplCopy.RequestsFile {
-				rCopy := *r
-				rCopy.UpdateOptions(tplCopy.Options)
-				//	rCopy.Compile(tplCopy.Options)
-				tplCopy.RequestsFile[i] = &rCopy
-			}
-			for i, r := range tplCopy.RequestsHeadless {
-				rCopy := *r
-				rCopy.UpdateOptions(tplCopy.Options)
-				//	rCopy.Compile(tplCopy.Options)
-				tplCopy.RequestsHeadless[i] = &rCopy
-			}
-			for i, r := range tplCopy.RequestsNetwork {
-				rCopy := *r
-				rCopy.UpdateOptions(tplCopy.Options)
-				//	rCopy.Compile(tplCopy.Options)
-				tplCopy.RequestsNetwork[i] = &rCopy
-			}
-			for i, r := range tplCopy.RequestsJavascript {
-				rCopy := *r
-				rCopy.UpdateOptions(tplCopy.Options)
-				//rCopy.Compile(tplCopy.Options)
-				tplCopy.RequestsJavascript[i] = &rCopy
-			}
-			for i, r := range tplCopy.RequestsSSL {
-				rCopy := *r
-				rCopy.UpdateOptions(tplCopy.Options)
-				// rCopy.Compile(tplCopy.Options)
-				tplCopy.RequestsSSL[i] = &rCopy
-			}
-			for i, r := range tplCopy.RequestsWHOIS {
-				rCopy := *r
-				rCopy.UpdateOptions(tplCopy.Options)
-				// rCopy.Compile(tplCopy.Options)
-				tplCopy.RequestsWHOIS[i] = &rCopy
-			}
-			for i, r := range tplCopy.RequestsWebsocket {
-				rCopy := *r
-				rCopy.UpdateOptions(tplCopy.Options)
-				// rCopy.Compile(tplCopy.Options)
-				tplCopy.RequestsWebsocket[i] = &rCopy
-			}
-			template := &tplCopy
+			// Reuse compiled requests without deep copying - just update options references
+			// This avoids the expensive deep copy operations that were consuming memory
 
 			if template.isGlobalMatchersEnabled() {
 				item := &globalmatchers.Item{

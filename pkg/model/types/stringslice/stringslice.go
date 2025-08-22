@@ -7,6 +7,7 @@ import (
 	"github.com/invopop/jsonschema"
 	"github.com/projectdiscovery/nuclei/v3/pkg/utils"
 	"github.com/projectdiscovery/nuclei/v3/pkg/utils/json"
+	"gopkg.in/yaml.v3"
 )
 
 type StringOrSlice string
@@ -60,15 +61,10 @@ func (stringSlice StringSlice) String() string {
 	return strings.Join(stringSlice.ToSlice(), ", ")
 }
 
-func (stringSlice *StringSlice) UnmarshalYAML(unmarshal func(interface{}) error) error {
-	marshalledSlice, err := marshalStringToSlice(unmarshal)
+func (stringSlice *StringSlice) UnmarshalYAML(node *yaml.Node) error {
+	result, err := UnmarshalYAMLNode(node, stringSlice)
 	if err != nil {
 		return err
-	}
-
-	result := make([]string, 0, len(marshalledSlice))
-	for _, value := range marshalledSlice {
-		result = append(result, stringSlice.Normalize(value))
 	}
 	stringSlice.Value = result
 	return nil

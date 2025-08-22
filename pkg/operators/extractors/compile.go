@@ -2,12 +2,12 @@ package extractors
 
 import (
 	"fmt"
-	"regexp"
 	"strings"
 
-	"github.com/Knetic/govaluate"
 	"github.com/itchyny/gojq"
 	"github.com/projectdiscovery/nuclei/v3/pkg/operators/common/dsl"
+	"github.com/projectdiscovery/nuclei/v3/pkg/operators/common/regexcache"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/exprcache"
 )
 
 // CompileExtractors performs the initial setup operation on an extractor
@@ -20,7 +20,7 @@ func (e *Extractor) CompileExtractors() error {
 	e.extractorType = computedType
 	// Compile the regexes
 	for _, regex := range e.Regex {
-		compiled, err := regexp.Compile(regex)
+		compiled, err := regexcache.GetCompiledRegex(regex)
 		if err != nil {
 			return fmt.Errorf("could not compile regex: %s", regex)
 		}
@@ -43,7 +43,7 @@ func (e *Extractor) CompileExtractors() error {
 	}
 
 	for _, dslExp := range e.DSL {
-		compiled, err := govaluate.NewEvaluableExpressionWithFunctions(dslExp, dsl.HelperFunctions)
+		compiled, err := exprcache.GetCompiledDSLExpression(dslExp)
 		if err != nil {
 			return &dsl.CompilationError{DslSignature: dslExp, WrappedError: err}
 		}

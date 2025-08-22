@@ -5,7 +5,7 @@ import (
 	"strconv"
 
 	"github.com/projectdiscovery/nuclei/v3/pkg/utils/json"
-	"gopkg.in/yaml.v2"
+	"gopkg.in/yaml.v3"
 )
 
 type InsertionOrderedStringMap struct {
@@ -33,17 +33,33 @@ func (insertionOrderedStringMap *InsertionOrderedStringMap) Len() int {
 	return len(insertionOrderedStringMap.values)
 }
 
-func (insertionOrderedStringMap *InsertionOrderedStringMap) UnmarshalYAML(unmarshal func(interface{}) error) error {
-	var data yaml.MapSlice
-	if err := unmarshal(&data); err != nil {
-		return err
+func (insertionOrderedStringMap *InsertionOrderedStringMap) UnmarshalYAML(node *yaml.Node) error {
+	if node.Kind != yaml.MappingNode {
+		return fmt.Errorf("insertion_ordered_map: expected mapping, got %v", node.Kind)
 	}
+
 	insertionOrderedStringMap.values = make(map[string]interface{})
-	for _, v := range data {
-		if v.Key == nil {
+
+	// Process key-value pairs in order
+	for i := 0; i < len(node.Content); i += 2 {
+		if i+1 >= len(node.Content) {
+			break
+		}
+
+		keyNode := node.Content[i]
+		valueNode := node.Content[i+1]
+
+		var key string
+		if err := keyNode.Decode(&key); err != nil {
 			continue
 		}
-		insertionOrderedStringMap.Set(v.Key.(string), toString(v.Value))
+
+		var value interface{}
+		if err := valueNode.Decode(&value); err != nil {
+			continue
+		}
+
+		insertionOrderedStringMap.Set(key, toString(value))
 	}
 	return nil
 }

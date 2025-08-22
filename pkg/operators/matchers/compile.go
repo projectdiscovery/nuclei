@@ -3,12 +3,11 @@ package matchers
 import (
 	"encoding/hex"
 	"fmt"
-	"regexp"
 	"strings"
 
-	"github.com/Knetic/govaluate"
-
 	"github.com/projectdiscovery/nuclei/v3/pkg/operators/common/dsl"
+	"github.com/projectdiscovery/nuclei/v3/pkg/operators/common/regexcache"
+	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/exprcache"
 )
 
 // CompileMatchers performs the initial setup operation on a matcher
@@ -44,7 +43,7 @@ func (matcher *Matcher) CompileMatchers() error {
 
 	// Compile the regexes
 	for _, regex := range matcher.Regex {
-		compiled, err := regexp.Compile(regex)
+		compiled, err := regexcache.GetCompiledRegex(regex)
 		if err != nil {
 			return fmt.Errorf("could not compile regex: %s", regex)
 		}
@@ -62,7 +61,7 @@ func (matcher *Matcher) CompileMatchers() error {
 
 	// Compile the dsl expressions
 	for _, dslExpression := range matcher.DSL {
-		compiledExpression, err := govaluate.NewEvaluableExpressionWithFunctions(dslExpression, dsl.HelperFunctions)
+		compiledExpression, err := exprcache.GetCompiledDSLExpression(dslExpression)
 		if err != nil {
 			return &dsl.CompilationError{DslSignature: dslExpression, WrappedError: err}
 		}

@@ -43,7 +43,12 @@ func PreProcess(data []byte) ([]byte, error) {
 		// gets the number of tabs/spaces between the last \n and the beginning of the match
 		matchIndex := bytes.Index(data, matchBytes)
 		lastNewLineIndex := bytes.LastIndex(data[:matchIndex], []byte("\n"))
-		padBytes := data[lastNewLineIndex:matchIndex]
+		var padBytes []byte
+		if lastNewLineIndex >= 0 {
+			padBytes = data[lastNewLineIndex:matchIndex]
+		} else {
+			padBytes = data[:matchIndex]
+		}
 
 		// check if the file exists
 		if fileutil.FileExists(includeFileName) {
@@ -62,7 +67,9 @@ func PreProcess(data []byte) ([]byte, error) {
 			}
 
 			// pad each line of file content with padBytes
-			includeFileContent = bytes.ReplaceAll(includeFileContent, []byte("\n"), padBytes)
+			if len(padBytes) > 0 && !bytes.Equal(padBytes, []byte("\n")) {
+				includeFileContent = bytes.ReplaceAll(includeFileContent, []byte("\n"), padBytes)
+			}
 
 			replaceItems = append(replaceItems, matchString)
 			replaceItems = append(replaceItems, string(includeFileContent))

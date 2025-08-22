@@ -6,7 +6,7 @@ import (
 	"github.com/invopop/jsonschema"
 	"github.com/projectdiscovery/nuclei/v3/pkg/utils/json"
 	mapsutil "github.com/projectdiscovery/utils/maps"
-	"gopkg.in/yaml.v2"
+	"gopkg.in/yaml.v3"
 )
 
 var (
@@ -91,24 +91,45 @@ func (v SliceOrMapSlice) MarshalJSON() ([]byte, error) {
 }
 
 // UnmarshalYAML implements yaml.Unmarshaler interface.
-func (v *SliceOrMapSlice) UnmarshalYAML(callback func(interface{}) error) error {
-	// try to unmarshal it as a string and fallback to map
-	if err := callback(&v.Value); err == nil {
-		return nil
-	}
+func (v *SliceOrMapSlice) UnmarshalYAML(node *yaml.Node) error {
+	switch node.Kind {
+	case yaml.ScalarNode, yaml.SequenceNode:
+		return node.Decode(&v.Value)
 
-	// try with a mapslice
-	var node yaml.MapSlice
-	if err := callback(&node); err == nil {
+	case yaml.MappingNode:
+		// Handle as ordered map to preserve order
 		tmpx := mapsutil.NewOrderedMap[string, string]()
-		// preserve order
-		for _, v := range node {
-			tmpx.Set(v.Key.(string), v.Value.(string))
+
+		// Process key-value pairs in order
+		for i := 0; i < len(node.Content); i += 2 {
+			if i+1 >= len(node.Content) {
+				break
+			}
+
+			keyNode := node.Content[i]
+			valueNode := node.Content[i+1]
+
+			var key string
+			if err := keyNode.Decode(&key); err != nil {
+				continue
+			}
+
+			var value string
+			if err := valueNode.Decode(&value); err != nil {
+				continue
+			}
+
+			tmpx.Set(key, value)
 		}
 		v.KV = &tmpx
 		return nil
+
+	case yaml.AliasNode:
+		return v.UnmarshalYAML(node.Alias)
+
+	default:
+		return fmt.Errorf("object can be a key:value or a string")
 	}
-	return fmt.Errorf("object can be a key:value or a string")
 }
 
 // MarshalYAML implements yaml.Marshaler interface.
