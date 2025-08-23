@@ -64,6 +64,13 @@ func Parse(filePath string, preprocessor Preprocessor, options *protocols.Execut
 			newBase.TemplateInfo = tplCopy.Options.TemplateInfo
 			newBase.TemplateVerifier = tplCopy.Options.TemplateVerifier
 			newBase.RawTemplate = tplCopy.Options.RawTemplate
+
+			if tplCopy.Options.Variables.Len() > 0 {
+				newBase.Variables = tplCopy.Options.Variables
+			}
+			if len(tplCopy.Options.Constants) > 0 {
+				newBase.Constants = tplCopy.Options.Constants
+			}
 			tplCopy.Options = newBase
 
 			tplCopy.Options.ApplyNewEngineOptions(options)
@@ -156,12 +163,16 @@ func Parse(filePath string, preprocessor Preprocessor, options *protocols.Execut
 			// Compile the workflow request
 			if len(template.Workflows) > 0 {
 				compiled := &template.Workflow
-				compileWorkflow(filePath, preprocessor, options, compiled, options.WorkflowLoader)
+				compileWorkflow(filePath, preprocessor, tplCopy.Options, compiled, tplCopy.Options.WorkflowLoader)
 				template.CompiledWorkflow = compiled
-				template.CompiledWorkflow.Options = options
+				template.CompiledWorkflow.Options = tplCopy.Options
 			}
-			// options.Logger.Error().Msgf("returning cached template %s after recompiling %d requests", tplCopy.Options.TemplateID, tplCopy.Requests())
-			return template, nil
+
+			if isCachedTemplateValid(template) {
+				// options.Logger.Error().Msgf("returning cached template %s after recompiling %d requests", tplCopy.Options.TemplateID, tplCopy.Requests())
+				return template, nil
+			}
+			// else: fallthrough to re-parse template from scratch
 		}
 	}
 
@@ -577,6 +588,50 @@ func parseTemplate(data []byte, srcOptions *protocols.ExecutorOptions) (*Templat
 		template.Options.RawTemplate = data
 	}
 	return template, nil
+}
+
+// isCachedTemplateValid validates that a cached template is still usable after
+// option updates
+func isCachedTemplateValid(template *Template) bool {
+	// no requests or workflows
+	if template.Requests() == 0 && len(template.Workflows) == 0 {
+		return false
+	}
+
+	// options not initialized
+	if template.Options == nil {
+		return false
+	}
+
+	// executer not available for non-workflow template
+	if len(template.Workflows) == 0 && template.Executer == nil {
+		return false
+	}
+
+	// compiled workflow not available
+	if len(template.Workflows) > 0 && template.CompiledWorkflow == nil {
+		return false
+	}
+
+	// template ID mismatch
+	if template.Options.TemplateID != template.ID {
+		return false
+	}
+
+	// executer exists but no requests or flow available
+	if template.Executer != nil {
+		// NOTE(dwisiswant0): This is a basic sanity check since we can't access
+		// private fields, but we can check requests tho
+		if template.Requests() == 0 && template.Options.Flow == "" {
+			return false
+		}
+	}
+
+	if template.Options.Options == nil {
+		return false
+	}
+
+	return true
 }
 
 var (
