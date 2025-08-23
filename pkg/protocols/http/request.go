@@ -240,6 +240,42 @@ func (request *Request) executeParallelHTTP(input *contextargs.Context, dynamicV
 		}
 	})
 
+	// bounded worker-pool to avoid spawning one goroutine per payload
+	type task struct {
+		req          *generatedRequest
+		updatedInput *contextargs.Context
+	}
+
+	var workersWg sync.WaitGroup
+	currentWorkers := maxWorkers
+	tasks := make(chan task, maxWorkers)
+	spawnWorker := func() {
+		workersWg.Add(1)
+		go func() {
+			defer workersWg.Done()
+			for t := range tasks {
+				spmHandler.Acquire()
+				// putting ratelimiter here prevents any unnecessary waiting if any
+				request.options.RateLimitTake()
+				// after ratelimit take, check if we need to stop
+				if spmHandler.FoundFirstMatch() || request.isUnresponsiveAddress(t.updatedInput) || spmHandler.Cancelled() {
+					spmHandler.Release()
+					continue
+				}
+				select {
+				case <-spmHandler.Done():
+					spmHandler.Release()
+					continue
+				case spmHandler.ResultChan <- request.executeRequest(input, t.req, make(map[string]interface{}), false, wrappedCallback, 0):
+					spmHandler.Release()
+				}
+			}
+		}()
+	}
+	for i := 0; i < currentWorkers; i++ {
+		spawnWorker()
+	}
+
 	// iterate payloads and make requests
 	generator := request.newGenerator(false)
 	for {
@@ -258,6 +294,13 @@ func (request *Request) executeParallelHTTP(input *contextargs.Context, dynamicV
 		if shouldFollowGlobal && spmHandler.Size() != request.options.Options.PayloadConcurrency {
 			if err := spmHandler.Resize(input.Context(), request.options.Options.PayloadConcurrency); err != nil {
 				return err
+			}
+			// if payload concurrency increased, add more workers
+			if spmHandler.Size() > currentWorkers {
+				for i := 0; i < spmHandler.Size()-currentWorkers; i++ {
+					spawnWorker()
+				}
+				currentWorkers = spmHandler.Size()
 			}
 		}
 
@@ -284,29 +327,11 @@ func (request *Request) executeParallelHTTP(input *contextargs.Context, dynamicV
 			spmHandler.Cancel()
 			return nil
 		}
-		spmHandler.Acquire()
-		go func(httpRequest *generatedRequest) {
-			defer spmHandler.Release()
-			if spmHandler.FoundFirstMatch() || request.isUnresponsiveAddress(updatedInput) || spmHandler.Cancelled() {
-				return
-			}
-			// putting ratelimiter here prevents any unnecessary waiting if any
-			request.options.RateLimitTake()
-
-			// after ratelimit take, check if we need to stop
-			if spmHandler.FoundFirstMatch() || request.isUnresponsiveAddress(updatedInput) || spmHandler.Cancelled() {
-				return
-			}
-
-			select {
-			case <-spmHandler.Done():
-				return
-			case spmHandler.ResultChan <- request.executeRequest(input, httpRequest, make(map[string]interface{}), false, wrappedCallback, 0):
-				return
-			}
-		}(generatedHttpRequest)
+		tasks <- task{req: generatedHttpRequest, updatedInput: updatedInput}
 		request.options.Progress.IncrementRequests()
 	}
+	close(tasks)
+	workersWg.Wait()
 	spmHandler.Wait()
 	if spmHandler.FoundFirstMatch() {
 		// ignore any context cancellation and in-transit execution errors
