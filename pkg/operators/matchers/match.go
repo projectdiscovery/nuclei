@@ -8,7 +8,6 @@ import (
 	"github.com/antchfx/htmlquery"
 	"github.com/antchfx/xmlquery"
 
-	dslRepo "github.com/projectdiscovery/dsl"
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/operators/common/dsl"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/expressions"
@@ -316,7 +315,7 @@ func (m *Matcher) ignoreErr(err error) bool {
 	if showDSLErr {
 		return false
 	}
-	if stringsutil.ContainsAny(err.Error(), "No parameter") {
+	if stringsutil.ContainsAny(err.Error(), "No parameter", "error parsing argument value") {
 		return true
 	}
 	return false
