@@ -22,7 +22,8 @@
       "Edit(*)",
       "Bash(gh:*)",
       "Bash(grep:*)",
-      "Bash(tree:*)"
+      "Bash(tree:*)",
+      "Bash(./nuclei:*)"
     ],
     "deny": [
       "Bash(make run:*)",
