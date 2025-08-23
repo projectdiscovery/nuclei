@@ -277,7 +277,7 @@ func (r *Request) TryFillCustomHeaders(headers []string) error {
 			buf.Reset()
 			buf.Write(r.UnsafeRawBytes[:newLineIndex])
 			for _, header := range headers {
-				buf.WriteString(fmt.Sprintf("%s\r\n", header))
+				fmt.Fprintf(buf, "%s\r\n", header)
 			}
 			buf.Write(r.UnsafeRawBytes[newLineIndex:])
 			r.UnsafeRawBytes = buf.Bytes()
@@ -309,7 +309,7 @@ func (r *Request) ApplyAuthStrategy(strategy authx.AuthStrategy) {
 		buff := bufferPool.Get().(*bytes.Buffer)
 		buff.Reset()
 		for _, cookie := range s.Data.Cookies {
-			buff.WriteString(fmt.Sprintf("%s=%s; ", cookie.Key, cookie.Value))
+			fmt.Fprintf(buff, "%s=%s; ", cookie.Key, cookie.Value)
 		}
 		if buff.Len() > 0 {
 			if val, ok := r.Headers["Cookie"]; ok {
