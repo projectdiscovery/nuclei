@@ -20,6 +20,9 @@ var (
 	showDSLErr = strings.EqualFold(os.Getenv("SHOW_DSL_ERRORS"), "true")
 )
 
+// maxRegexScanBytes limits the number of bytes scanned by regex to avoid excessive CPU on huge bodies.
+const maxRegexScanBytes = 4 << 20 // 4 MiB
+
 // MatchStatusCode matches a status code check against a corpus
 func (matcher *Matcher) MatchStatusCode(statusCode int) bool {
 	// Iterate over all the status codes accepted as valid
@@ -107,10 +110,30 @@ func (matcher *Matcher) MatchRegex(corpus string) (bool, []string) {
 	var matchedRegexes []string
 	// Iterate over all the regexes accepted as valid
 	for i, regex := range matcher.regexCompiled {
-		// Continue if the regex doesn't match
-		if !regex.MatchString(corpus) {
-			// If we are in an AND request and a match failed,
-			// return false as the AND condition fails on any single mismatch.
+		// Literal prefix short-circuit to avoid regex engine when clearly absent
+		if prefix, ok := regex.LiteralPrefix(); ok && prefix != "" {
+			if !strings.Contains(corpus, prefix) {
+				switch matcher.condition {
+				case ANDCondition:
+					return false, []string{}
+				case ORCondition:
+					continue
+				}
+			}
+		}
+
+		// Fast OR-path: return first match without full scan
+		if matcher.condition == ORCondition && !matcher.MatchAll {
+			m := regex.FindString(corpus)
+			if m == "" {
+				continue
+			}
+			return true, []string{m}
+		}
+
+		// Single scan: get all matches, and decide based on condition
+		currentMatches := regex.FindAllString(corpus, -1)
+		if len(currentMatches) == 0 {
 			switch matcher.condition {
 			case ANDCondition:
 				return false, []string{}
@@ -119,12 +142,7 @@ func (matcher *Matcher) MatchRegex(corpus string) (bool, []string) {
 			}
 		}
 
-		currentMatches := regex.FindAllString(corpus, -1)
-		// If the condition was an OR, return on the first match.
-		if matcher.condition == ORCondition && !matcher.MatchAll {
-			return true, currentMatches
-		}
-
+		// If the condition was an OR (and MatchAll true), we still need to gather all
 		matchedRegexes = append(matchedRegexes, currentMatches...)
 
 		// If we are at the end of the regex, return with true
