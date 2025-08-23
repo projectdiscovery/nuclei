@@ -163,9 +163,9 @@ func Parse(filePath string, preprocessor Preprocessor, options *protocols.Execut
 			// Compile the workflow request
 			if len(template.Workflows) > 0 {
 				compiled := &template.Workflow
-				compileWorkflow(filePath, preprocessor, options, compiled, options.WorkflowLoader)
+				compileWorkflow(filePath, preprocessor, tplCopy.Options, compiled, tplCopy.Options.WorkflowLoader)
 				template.CompiledWorkflow = compiled
-				template.CompiledWorkflow.Options = options
+				template.CompiledWorkflow.Options = tplCopy.Options
 			}
 
 			if template.Requests() == 0 && len(template.Workflows) == 0 {
