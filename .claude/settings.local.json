@@ -23,7 +23,8 @@
       "Bash(gh:*)",
       "Bash(grep:*)",
       "Bash(tree:*)",
-      "Bash(./nuclei:*)"
+      "Bash(./nuclei:*)",
+      "WebFetch(domain:github.com)"
     ],
     "deny": [
       "Bash(make run:*)",

@@ -68,7 +68,11 @@ func TestSQLInjectionBehavior(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			resp, err := http.Get(ts.URL + tt.path)
 			require.NoError(t, err)
-			defer resp.Body.Close()
+			defer func() {
+				if err := resp.Body.Close(); err != nil {
+					t.Logf("Failed to close response body: %v", err)
+				}
+			}()
 
 			require.Equal(t, tt.expectedStatus, resp.StatusCode)
 
