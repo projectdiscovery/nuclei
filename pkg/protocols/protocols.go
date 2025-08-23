@@ -447,18 +447,7 @@ func (e *ExecutorOptions) ApplyNewEngineOptions(n *ExecutorOptions) {
 		return
 	}
 
-	// Keep the template-specific fields, but replace the execution-specific fields
-	if e.Options != nil {
-		e.Options.SetExecutionID(n.Options.GetExecutionID())
-		e.Options.RateLimit = n.Options.RateLimit
-		e.Options.RateLimitDuration = n.Options.RateLimitDuration
-		e.Options.Timeout = n.Options.Timeout
-		e.Options.Retries = n.Options.Retries
-	} else {
-		// The types.Options include the ExecutionID among other things
-		e.Options = n.Options.Copy()
-	}
-
+	e.Options = n.Options.Copy()
 	e.Output = n.Output
 	e.IssuesClient = n.IssuesClient
 	e.Progress = n.Progress
