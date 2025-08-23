@@ -64,6 +64,13 @@ func Parse(filePath string, preprocessor Preprocessor, options *protocols.Execut
 			newBase.TemplateInfo = tplCopy.Options.TemplateInfo
 			newBase.TemplateVerifier = tplCopy.Options.TemplateVerifier
 			newBase.RawTemplate = tplCopy.Options.RawTemplate
+
+			if tplCopy.Options.Variables.Len() > 0 {
+				newBase.Variables = tplCopy.Options.Variables
+			}
+			if len(tplCopy.Options.Constants) > 0 {
+				newBase.Constants = tplCopy.Options.Constants
+			}
 			tplCopy.Options = newBase
 
 			tplCopy.Options.ApplyNewEngineOptions(options)
@@ -160,8 +167,13 @@ func Parse(filePath string, preprocessor Preprocessor, options *protocols.Execut
 				template.CompiledWorkflow = compiled
 				template.CompiledWorkflow.Options = options
 			}
-			// options.Logger.Error().Msgf("returning cached template %s after recompiling %d requests", tplCopy.Options.TemplateID, tplCopy.Requests())
-			return template, nil
+
+			if template.Requests() == 0 && len(template.Workflows) == 0 {
+				// fallthrough to re-parse template from scratch
+			} else {
+				// options.Logger.Error().Msgf("returning cached template %s after recompiling %d requests", tplCopy.Options.TemplateID, tplCopy.Requests())
+				return template, nil
+			}
 		}
 	}
 
