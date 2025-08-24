@@ -53,7 +53,11 @@ func (customTemplate *customTemplateGitHubRepo) Update(ctx context.Context) {
 	}
 	err := customTemplate.pullChanges(clonePath, customTemplate.githubToken)
 	if err != nil {
-		gologger.Error().Msgf("%s", err)
+		if strings.Contains(err.Error(), "already up-to-date") {
+			gologger.Info().Msgf("%s", err)
+		} else {
+			gologger.Error().Msgf("%s", err)
+		}
 	} else {
 		gologger.Info().Msgf("Repo %s/%s successfully pulled the changes.\n", customTemplate.owner, customTemplate.reponame)
 	}
