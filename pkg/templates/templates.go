@@ -507,6 +507,40 @@ func (template *Template) addRequestsToQueue(keys ...string) {
 	}
 }
 
+// hasMultipleProtocols checks if the template has multiple protocols
+func (template *Template) hasMultipleProtocols() bool {
+	// TODO(dwisiswant0): This should be done using something like
+	// `Template.GetAllProtocolRequests` method, which returns
+	// a slice of anything that starts off with "Requests" for
+	// currently supported protocols - to avoid redundancy and
+	// keeps it future-proof.
+	protocolRequests := []int{
+		len(template.RequestsCode),
+		len(template.RequestsDNS),
+		len(template.RequestsFile),
+		len(template.RequestsHeadless),
+		len(template.RequestsHTTP),
+		len(template.RequestsJavascript),
+		len(template.RequestsNetwork),
+		len(template.RequestsSSL),
+		len(template.RequestsWebsocket),
+		len(template.RequestsWHOIS),
+	}
+
+	var protocolCount int
+	for _, count := range protocolRequests {
+		if count > 0 {
+			protocolCount++
+		}
+
+		if protocolCount > 1 {
+			return true
+		}
+	}
+
+	return false
+}
+
 // hasMultipleRequests checks if the template has multiple requests
 // if so it preserves the order of the request during compile and execution
 func (template *Template) hasMultipleRequests() bool {
