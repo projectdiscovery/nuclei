@@ -13,12 +13,12 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/contextargs"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/generators"
 	configTypes "github.com/projectdiscovery/nuclei/v3/pkg/types"
-	errorutil "github.com/projectdiscovery/utils/errors"
+	"github.com/projectdiscovery/utils/errkit"
 	stringsutil "github.com/projectdiscovery/utils/strings"
 )
 
 var (
-	ErrNotImplemented = errorutil.NewWithFmt("provider %s does not implement %s")
+	ErrNotImplemented = errkit.New("provider does not implement method")
 	ErrInactiveInput  = fmt.Errorf("input is inactive")
 )
 

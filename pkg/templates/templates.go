@@ -24,7 +24,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/utils"
 	"github.com/projectdiscovery/nuclei/v3/pkg/utils/json"
 	"github.com/projectdiscovery/nuclei/v3/pkg/workflows"
-	errorutil "github.com/projectdiscovery/utils/errors"
+	"github.com/projectdiscovery/utils/errkit"
 	fileutil "github.com/projectdiscovery/utils/file"
 	"go.uber.org/multierr"
 	"gopkg.in/yaml.v2"
@@ -325,14 +325,14 @@ func (template *Template) UnmarshalYAML(unmarshal func(interface{}) error) error
 	*template = Template(*alias)
 
 	if !ReTemplateID.MatchString(template.ID) {
-		return errorutil.New("template id must match expression %v", ReTemplateID).WithTag("invalid template")
+		return errkit.New("template id must match expression %v", ReTemplateID, "tag", "invalid_template")
 	}
 	info := template.Info
 	if utils.IsBlank(info.Name) {
-		return errorutil.New("no template name field provided").WithTag("invalid template")
+		return errkit.New("no template name field provided", "tag", "invalid_template")
 	}
 	if info.Authors.IsEmpty() {
-		return errorutil.New("no template author field provided").WithTag("invalid template")
+		return errkit.New("no template author field provided", "tag", "invalid_template")
 	}
 
 	if len(template.RequestsHTTP) > 0 || len(template.RequestsNetwork) > 0 {
@@ -340,10 +340,10 @@ func (template *Template) UnmarshalYAML(unmarshal func(interface{}) error) error
 	}
 
 	if len(alias.RequestsHTTP) > 0 && len(alias.RequestsWithHTTP) > 0 {
-		return errorutil.New("use http or requests, both are not supported").WithTag("invalid template")
+		return errkit.New("use http or requests, both are not supported", "tag", "invalid_template")
 	}
 	if len(alias.RequestsNetwork) > 0 && len(alias.RequestsWithTCP) > 0 {
-		return errorutil.New("use tcp or network, both are not supported").WithTag("invalid template")
+		return errkit.New("use tcp or network, both are not supported", "tag", "invalid_template")
 	}
 	if len(alias.RequestsWithHTTP) > 0 {
 		template.RequestsHTTP = alias.RequestsWithHTTP
@@ -361,7 +361,7 @@ func (template *Template) UnmarshalYAML(unmarshal func(interface{}) error) error
 		var tempmap yaml.MapSlice
 		err = unmarshal(&tempmap)
 		if err != nil {
-			return errorutil.NewWithErr(err).Msgf("failed to unmarshal multi protocol template %s", template.ID)
+			return errkit.Wrapf(err, "failed to unmarshal multi protocol template %s", template.ID)
 		}
 		arr := []string{}
 		for _, v := range tempmap {
@@ -545,7 +545,7 @@ func (template *Template) UnmarshalJSON(data []byte) error {
 		var tempMap map[string]interface{}
 		err = json.Unmarshal(data, &tempMap)
 		if err != nil {
-			return errorutil.NewWithErr(err).Msgf("failed to unmarshal multi protocol template %s", template.ID)
+			return errkit.Wrapf(err, "failed to unmarshal multi protocol template %s", template.ID)
 		}
 		arr := []string{}
 		for k := range tempMap {

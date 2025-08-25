@@ -11,7 +11,6 @@ import (
 	"github.com/Mzack9999/goja"
 	"github.com/alecthomas/chroma/quick"
 	"github.com/ditashi/jsbeautifier-go/jsbeautifier"
-	"github.com/pkg/errors"
 
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/gozero"
@@ -33,7 +32,6 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	contextutil "github.com/projectdiscovery/utils/context"
 	"github.com/projectdiscovery/utils/errkit"
-	errorutil "github.com/projectdiscovery/utils/errors"
 )
 
 const (
@@ -114,7 +112,7 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 		if options.Options.Validate {
 			options.Logger.Error().Msgf("%s <- %s", errMsg, err)
 		} else {
-			return errorutil.NewWithErr(err).Msgf(errMsg)
+			return errkit.Wrap(err, errMsg)
 		}
 	} else {
 		request.gozero = engine
@@ -133,7 +131,7 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 		compiled.ExcludeMatchers = options.ExcludeMatchers
 		compiled.TemplateID = options.TemplateID
 		if err := compiled.Compile(); err != nil {
-			return errors.Wrap(err, "could not compile operators")
+			return errkit.Wrap(err, "could not compile operators")
 		}
 		for _, matcher := range compiled.Matchers {
 			// default matcher part for code protocol is response
@@ -154,7 +152,7 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 	if request.PreCondition != "" {
 		preConditionCompiled, err := compiler.SourceAutoMode(request.PreCondition, false)
 		if err != nil {
-			return errorutil.NewWithTag(request.TemplateID, "could not compile pre-condition: %s", err)
+			return errkit.Newf("could not compile pre-condition: %s", err)
 		}
 		request.preConditionCompiled = preConditionCompiled
 	}
@@ -231,7 +229,7 @@ func (request *Request) ExecuteWithResults(input *contextargs.Context, dynamicVa
 				Context:         input.Context(),
 			})
 		if err != nil {
-			return errorutil.NewWithTag(request.TemplateID, "could not execute pre-condition: %s", err)
+			return errkit.Newf("could not execute pre-condition: %s", err)
 		}
 		if !result.GetSuccess() || types.ToString(result["error"]) != "" {
 			gologger.Warning().Msgf("[%s] Precondition for request %s was not satisfied\n", request.TemplateID, request.PreCondition)

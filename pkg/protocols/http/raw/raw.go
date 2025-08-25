@@ -12,7 +12,7 @@ import (
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v3/pkg/authprovider/authx"
 	"github.com/projectdiscovery/rawhttp/client"
-	errorutil "github.com/projectdiscovery/utils/errors"
+	"github.com/projectdiscovery/utils/errkit"
 	stringsutil "github.com/projectdiscovery/utils/strings"
 	urlutil "github.com/projectdiscovery/utils/url"
 )
@@ -48,7 +48,7 @@ func Parse(request string, inputURL *urlutil.URL, unsafe, disablePathAutomerge b
 	case strings.HasPrefix(rawrequest.Path, "http") && !unsafe:
 		urlx, err := urlutil.ParseURL(rawrequest.Path, true)
 		if err != nil {
-			return nil, errorutil.NewWithErr(err).WithTag("raw").Msgf("failed to parse url %v from template", rawrequest.Path)
+			return nil, errkit.Wrapf(err, "failed to parse url %v from template", rawrequest.Path)
 		}
 		cloned := inputURL.Clone()
 		cloned.Params.IncludeEquals = true
@@ -57,7 +57,7 @@ func Parse(request string, inputURL *urlutil.URL, unsafe, disablePathAutomerge b
 		}
 		parseErr := cloned.MergePath(urlx.GetRelativePath(), true)
 		if parseErr != nil {
-			return nil, errorutil.NewWithTag("raw", "could not automergepath for template path %v", urlx.GetRelativePath()).Wrap(parseErr)
+			return nil, errkit.Wrapf(parseErr, "could not automergepath for template path %v", urlx.GetRelativePath())
 		}
 		rawrequest.Path = cloned.GetRelativePath()
 	// If unsafe changes must be made in raw request string itself
@@ -94,7 +94,7 @@ func Parse(request string, inputURL *urlutil.URL, unsafe, disablePathAutomerge b
 			}
 			err = cloned.MergePath(rawrequest.Path, true)
 			if err != nil {
-				return nil, errorutil.NewWithErr(err).WithTag("raw").Msgf("failed to automerge %v from unsafe template", rawrequest.Path)
+				return nil, errkit.Wrapf(err, "failed to automerge %v from unsafe template", rawrequest.Path)
 			}
 			unsafeRelativePath = cloned.GetRelativePath()
 		}
@@ -116,7 +116,7 @@ func Parse(request string, inputURL *urlutil.URL, unsafe, disablePathAutomerge b
 		}
 		parseErr := cloned.MergePath(rawrequest.Path, true)
 		if parseErr != nil {
-			return nil, errorutil.NewWithTag("raw", "could not automergepath for template path %v", rawrequest.Path).Wrap(parseErr)
+			return nil, errkit.Wrapf(parseErr, "could not automergepath for template path %v", rawrequest.Path)
 		}
 		rawrequest.Path = cloned.GetRelativePath()
 	}
@@ -145,18 +145,18 @@ func ParseRawRequest(request string, unsafe bool) (*Request, error) {
 	if strings.HasPrefix(req.Path, "http") {
 		urlx, err := urlutil.Parse(req.Path)
 		if err != nil {
-			return nil, errorutil.NewWithErr(err).Msgf("failed to parse url %v", req.Path)
+			return nil, errkit.Wrapf(err, "failed to parse url %v", req.Path)
 		}
 		req.Path = urlx.GetRelativePath()
 		req.FullURL = urlx.String()
 	} else {
 
 		if req.Path == "" {
-			return nil, errorutil.NewWithTag("self-contained-raw", "path cannot be empty in self contained request")
+			return nil, errkit.New("path cannot be empty in self contained request")
 		}
 		// given url is relative construct one using Host Header
 		if _, ok := req.Headers["Host"]; !ok {
-			return nil, errorutil.NewWithTag("self-contained-raw", "host header is required for relative path")
+			return nil, errkit.New("host header is required for relative path")
 		}
 		// Review: Current default scheme in self contained templates if relative path is provided is http
 		req.FullURL = fmt.Sprintf("%s://%s%s", urlutil.HTTP, strings.TrimSpace(req.Headers["Host"]), req.Path)

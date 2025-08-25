@@ -447,21 +447,8 @@ func (e *ExecutorOptions) ApplyNewEngineOptions(n *ExecutorOptions) {
 		return
 	}
 
-	// The types.Options include the ExecutionID among other things
 	e.Options = n.Options.Copy()
-
-	// Keep the template-specific fields, but replace the rest
-	/*
-		e.TemplateID = n.TemplateID
-		e.TemplatePath = n.TemplatePath
-		e.TemplateInfo = n.TemplateInfo
-		e.TemplateVerifier = n.TemplateVerifier
-		e.RawTemplate = n.RawTemplate
-		e.Variables = n.Variables
-		e.Constants = n.Constants
-	*/
 	e.Output = n.Output
-	e.Options = n.Options
 	e.IssuesClient = n.IssuesClient
 	e.Progress = n.Progress
 	e.RateLimiter = n.RateLimiter
@@ -470,8 +457,6 @@ func (e *ExecutorOptions) ApplyNewEngineOptions(n *ExecutorOptions) {
 	e.Browser = n.Browser
 	e.Interactsh = n.Interactsh
 	e.HostErrorsCache = n.HostErrorsCache
-	e.StopAtFirstMatch = n.StopAtFirstMatch
-	e.ExcludeMatchers = n.ExcludeMatchers
 	e.InputHelper = n.InputHelper
 	e.FuzzParamsFrequency = n.FuzzParamsFrequency
 	e.FuzzStatsDB = n.FuzzStatsDB
@@ -479,10 +464,6 @@ func (e *ExecutorOptions) ApplyNewEngineOptions(n *ExecutorOptions) {
 	e.Colorizer = n.Colorizer
 	e.WorkflowLoader = n.WorkflowLoader
 	e.ResumeCfg = n.ResumeCfg
-	e.ProtocolType = n.ProtocolType
-	e.Flow = n.Flow
-	e.IsMultiProtocol = n.IsMultiProtocol
-	e.templateCtxStore = n.templateCtxStore
 	e.JsCompiler = n.JsCompiler
 	e.AuthProvider = n.AuthProvider
 	e.TemporaryDirectory = n.TemporaryDirectory

@@ -13,7 +13,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols"
 	"github.com/projectdiscovery/nuclei/v3/pkg/types"
 	"github.com/projectdiscovery/ratelimit"
-	errorutil "github.com/projectdiscovery/utils/errors"
+	"github.com/projectdiscovery/utils/errkit"
 	"github.com/rs/xid"
 )
 
@@ -147,13 +147,13 @@ func (e *ThreadSafeNucleiEngine) ExecuteNucleiWithOptsCtx(ctx context.Context, t
 	// load templates
 	workflowLoader, err := workflow.NewLoader(unsafeOpts.executerOpts)
 	if err != nil {
-		return errorutil.New("Could not create workflow loader: %s\n", err)
+		return errkit.Wrapf(err, "Could not create workflow loader: %s", err)
 	}
 	unsafeOpts.executerOpts.WorkflowLoader = workflowLoader
 
 	store, err := loader.New(loader.NewConfig(tmpEngine.opts, e.eng.catalog, unsafeOpts.executerOpts))
 	if err != nil {
-		return errorutil.New("Could not create loader client: %s\n", err)
+		return errkit.Wrapf(err, "Could not create loader client: %s", err)
 	}
 	store.Load()
 
