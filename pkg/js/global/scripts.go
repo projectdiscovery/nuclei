@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"embed"
-	"fmt"
 	"math/rand"
 	"net"
 	"reflect"
@@ -257,7 +256,7 @@ func RegisterNativeScripts(runtime *goja.Runtime) error {
 	// import default modules
 	_, err = runtime.RunString(defaultImports)
 	if err != nil {
-		return errkit.Append(errkit.New(fmt.Sprintf("could not import default modules %v", defaultImports)), err)
+		return errkit.Wrapf(err, "could not import default modules %v", defaultImports)
 	}
 
 	return nil

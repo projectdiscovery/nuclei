@@ -1,7 +1,6 @@
 package types
 
 import (
-	"fmt"
 	"io"
 	"os"
 	"path/filepath"
@@ -831,7 +830,7 @@ func (options *Options) defaultLoadHelperFile(helperFile, templatePath string, c
 	}
 	f, err := os.Open(helperFile)
 	if err != nil {
-		return nil, errkit.Append(errkit.New(fmt.Sprintf("could not open file %v", helperFile)), err)
+		return nil, errkit.Wrapf(err, "could not open file %v", helperFile)
 	}
 	return f, nil
 }
@@ -856,12 +855,12 @@ func (o *Options) GetValidAbsPath(helperFilePath, templatePath string) (string, 
 	// CleanPath resolves using CWD and cleans the path
 	helperFilePath, err = fileutil.CleanPath(helperFilePath)
 	if err != nil {
-		return "", errkit.Append(errkit.New(fmt.Sprintf("could not clean helper file path %v", helperFilePath)), err)
+		return "", errkit.Wrapf(err, "could not clean helper file path %v", helperFilePath)
 	}
 
 	templatePath, err = fileutil.CleanPath(templatePath)
 	if err != nil {
-		return "", errkit.Append(errkit.New(fmt.Sprintf("could not clean template path %v", templatePath)), err)
+		return "", errkit.Wrapf(err, "could not clean template path %v", templatePath)
 	}
 
 	// As per rule 2, if template and helper file exist in same directory or helper file existed in any child dir of template dir
@@ -872,7 +871,7 @@ func (o *Options) GetValidAbsPath(helperFilePath, templatePath string) (string, 
 	}
 
 	// all other cases are denied
-	return "", errkit.New(fmt.Sprintf("access to helper file %v denied", helperFilePath)).Build()
+	return "", errkit.Newf("access to helper file %v denied", helperFilePath)
 }
 
 // SetExecutionID sets the execution ID for the options
