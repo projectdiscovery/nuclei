@@ -131,8 +131,8 @@ func (matcher *Matcher) MatchRegex(corpus string) (bool, []string) {
 			return true, []string{m}
 		}
 
-		// Single scan: get all matches, and decide based on condition
-		currentMatches := regex.FindAllString(corpus, -1)
+		// Single scan: get all matches with caching
+		currentMatches := cachedFindAllString(regex, corpus, -1)
 		if len(currentMatches) == 0 {
 			switch matcher.condition {
 			case ANDCondition:
