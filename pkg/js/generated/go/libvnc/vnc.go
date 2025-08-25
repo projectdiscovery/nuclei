@@ -21,6 +21,7 @@ func init() {
 
 			// Objects / Classes
 			"IsVNCResponse": gojs.GetClassConstructor[lib_vnc.IsVNCResponse](&lib_vnc.IsVNCResponse{}),
+			"VNCClient":     gojs.GetClassConstructor[lib_vnc.VNCClient](&lib_vnc.VNCClient{}),
 		},
 	).Register()
 }
