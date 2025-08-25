@@ -21,17 +21,17 @@ func (p *EntityParser) scrapeAndCreate(typeName string) error {
 	// get package
 	pkg, ok := p.imports[pkgName]
 	if !ok {
-		return errkit.New(fmt.Sprintf("package %v for type %v not found", pkgName, typeName)).Build()
+		return errkit.Newf("package %v for type %v not found", pkgName, typeName)
 	}
 	// get type
 	obj := pkg.Types.Scope().Lookup(baseTypeName)
 	if obj == nil {
-		return errkit.New(fmt.Sprintf("type %v not found in package %+v", typeName, pkg)).Build()
+		return errkit.Newf("type %v not found in package %+v", typeName, pkg)
 	}
 	// Ensure the object is a type name
 	typeNameObj, ok := obj.(*types.TypeName)
 	if !ok {
-		return errkit.New(fmt.Sprintf("%v is not a type name", typeName)).Build()
+		return errkit.Newf("%v is not a type name", typeName)
 	}
 	// Ensure the type is a named struct type
 	namedStruct, ok := typeNameObj.Type().Underlying().(*types.Struct)

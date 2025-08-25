@@ -20,12 +20,12 @@ require (
 	github.com/olekukonko/tablewriter v1.0.8
 	github.com/pkg/errors v0.9.1
 	github.com/projectdiscovery/clistats v0.1.1
-	github.com/projectdiscovery/fastdialer v0.4.4
+	github.com/projectdiscovery/fastdialer v0.4.6
 	github.com/projectdiscovery/hmap v0.0.92
 	github.com/projectdiscovery/interactsh v1.2.4
 	github.com/projectdiscovery/rawhttp v0.1.90
 	github.com/projectdiscovery/retryabledns v1.0.105
-	github.com/projectdiscovery/retryablehttp-go v1.0.119
+	github.com/projectdiscovery/retryablehttp-go v1.0.120
 	github.com/projectdiscovery/yamldoc-go v1.0.6
 	github.com/remeh/sizedwaitgroup v1.0.0
 	github.com/rs/xid v1.6.0
@@ -98,14 +98,14 @@ require (
 	github.com/projectdiscovery/httpx v1.7.0
 	github.com/projectdiscovery/mapcidr v1.1.34
 	github.com/projectdiscovery/n3iwf v0.0.0-20230523120440-b8cd232ff1f5
-	github.com/projectdiscovery/networkpolicy v0.1.18
+	github.com/projectdiscovery/networkpolicy v0.1.20
 	github.com/projectdiscovery/ratelimit v0.0.81
 	github.com/projectdiscovery/rdap v0.9.0
 	github.com/projectdiscovery/sarif v0.0.1
 	github.com/projectdiscovery/tlsx v1.1.9
 	github.com/projectdiscovery/uncover v1.1.0
 	github.com/projectdiscovery/useragent v0.0.101
-	github.com/projectdiscovery/utils v0.4.23
+	github.com/projectdiscovery/utils v0.4.24-0.20250823123502-bd7f2849ddb4
 	github.com/projectdiscovery/wappalyzergo v0.2.36
 	github.com/redis/go-redis/v9 v9.11.0
 	github.com/seh-msft/burpxml v1.0.1
@@ -200,7 +200,7 @@ require (
 	github.com/felixge/fgprof v0.9.5 // indirect
 	github.com/free5gc/util v1.0.5-0.20230511064842-2e120956883b // indirect
 	github.com/gabriel-vasile/mimetype v1.4.8 // indirect
-	github.com/gaissmai/bart v0.20.5 // indirect
+	github.com/gaissmai/bart v0.23.1 // indirect
 	github.com/geoffgarside/ber v1.1.0 // indirect
 	github.com/gin-contrib/sse v0.1.0 // indirect
 	github.com/gin-gonic/gin v1.9.1 // indirect

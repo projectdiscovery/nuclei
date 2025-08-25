@@ -129,7 +129,7 @@ func (c *SSHClient) ConnectSSHInfoMode(ctx context.Context, host string, port in
 // ```
 func (c *SSHClient) Run(cmd string) (string, error) {
 	if c.connection == nil {
-		return "", errkit.New("no connection").Build()
+		return "", errkit.New("no connection")
 	}
 	session, err := c.connection.NewSession()
 	if err != nil {
@@ -177,14 +177,14 @@ type connectOptions struct {
 
 func (c *connectOptions) validate() error {
 	if c.Host == "" {
-		return errkit.New("host is required").Build()
+		return errkit.New("host is required")
 	}
 	if c.Port <= 0 {
-		return errkit.New("port is required").Build()
+		return errkit.New("port is required")
 	}
 	if !protocolstate.IsHostAllowed(c.ExecutionId, c.Host) {
 		// host is not valid according to network policy
-		return protocolstate.ErrHostDenied(c.Host)
+		return protocolstate.ErrHostDenied.Msgf(c.Host)
 	}
 	if c.Timeout == 0 {
 		c.Timeout = 10 * time.Second

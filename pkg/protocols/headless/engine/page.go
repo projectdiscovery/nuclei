@@ -78,7 +78,7 @@ func (i *Instance) Run(ctx *contextargs.Context, actions []*Action, payloads map
 	target := ctx.MetaInput.Input
 	input, err := urlutil.Parse(target)
 	if err != nil {
-		return nil, nil, errkit.Append(errkit.New(fmt.Sprintf("could not parse URL %s", target)), err)
+		return nil, nil, errkit.Wrapf(err, "could not parse URL %s", target)
 	}
 
 	hasTrailingSlash := httputil.HasTrailingSlash(target)
