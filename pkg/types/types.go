@@ -425,6 +425,8 @@ type Options struct {
 	PayloadConcurrency int
 	// ProbeConcurrency is the number of concurrent http probes to run with httpx
 	ProbeConcurrency int
+	// TemplateLoadingConcurrency is the number of concurrent template loading operations
+	TemplateLoadingConcurrency int
 	// Dast only runs DAST templates
 	DAST bool
 	// DASTServer is the flag to start nuclei as a DAST server
@@ -771,19 +773,20 @@ func (options *Options) HasClientCertificates() bool {
 // DefaultOptions returns default options for nuclei
 func DefaultOptions() *Options {
 	return &Options{
-		RateLimit:               150,
-		RateLimitDuration:       time.Second,
-		BulkSize:                25,
-		TemplateThreads:         25,
-		HeadlessBulkSize:        10,
-		PayloadConcurrency:      25,
-		HeadlessTemplateThreads: 10,
-		ProbeConcurrency:        50,
-		Timeout:                 5,
-		Retries:                 1,
-		MaxHostError:            30,
-		ResponseReadSize:        10 * unitutils.Mega,
-		ResponseSaveSize:        unitutils.Mega,
+		RateLimit:                  150,
+		RateLimitDuration:          time.Second,
+		BulkSize:                   25,
+		TemplateThreads:            25,
+		HeadlessBulkSize:           10,
+		PayloadConcurrency:         25,
+		HeadlessTemplateThreads:    10,
+		ProbeConcurrency:           50,
+		TemplateLoadingConcurrency: 50,
+		Timeout:                    5,
+		Retries:                    1,
+		MaxHostError:               30,
+		ResponseReadSize:           10 * unitutils.Mega,
+		ResponseSaveSize:           unitutils.Mega,
 	}
 }
 
