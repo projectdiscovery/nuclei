@@ -201,7 +201,7 @@ func (c *NetConn) RecvFull(N int) ([]byte, error) {
 	}
 	bin, err := reader.ConnReadNWithTimeout(c.conn, int64(N), c.timeout)
 	if err != nil {
-		return []byte{}, errkit.Append(errkit.New(fmt.Sprintf("failed to read %d bytes", N)), err)
+		return []byte{}, errkit.Wrapf(err, "failed to read %d bytes", N)
 	}
 	return bin, nil
 }
@@ -226,7 +226,7 @@ func (c *NetConn) Recv(N int) ([]byte, error) {
 	b := make([]byte, N)
 	n, err := c.conn.Read(b)
 	if err != nil {
-		return []byte{}, errkit.Append(errkit.New(fmt.Sprintf("failed to read %d bytes", N)), err)
+		return []byte{}, errkit.Wrapf(err, "failed to read %d bytes", N)
 	}
 	return b[:n], nil
 }

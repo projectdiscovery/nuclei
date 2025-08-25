@@ -88,7 +88,7 @@ func (c *Client) poll() error {
 		KeepAliveInterval:   time.Minute,
 	})
 	if err != nil {
-		return errkit.Append(errkit.New("could not create client"), err)
+		return errkit.Wrap(err, "could not create client")
 	}
 
 	c.interactsh = interactsh
@@ -109,7 +109,7 @@ func (c *Client) poll() error {
 			// If we don't have any request for this ID, add it to temporary
 			// lru cache, so we can correlate when we get an add request.
 			items, err := c.interactions.Get(interaction.UniqueID)
-			if errors.Is(err, gcache.KeyNotFoundError) || items == nil {
+			if errkit.Is(err, gcache.KeyNotFoundError) || items == nil {
 				_ = c.interactions.SetWithExpire(interaction.UniqueID, []*server.Interaction{interaction}, defaultInteractionDuration)
 			} else {
 				items = append(items, interaction)
@@ -128,7 +128,7 @@ func (c *Client) poll() error {
 	})
 
 	if err != nil {
-		return errkit.Append(errkit.New("could not perform interactsh polling"), err)
+		return errkit.Wrap(err, "could not perform interactsh polling")
 	}
 	return nil
 }
@@ -239,7 +239,7 @@ func (c *Client) URL() (string, error) {
 		err = c.poll()
 	})
 	if err != nil {
-		return "", errkit.Append(ErrInteractshClientNotInitialized, err)
+		return "", errkit.Wrap(ErrInteractshClientNotInitialized, err.Error())
 	}
 
 	if c.interactsh == nil {

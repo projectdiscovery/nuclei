@@ -18,7 +18,7 @@ type profileLoaderByRelFile struct{}
 func (h *profileLoaderByRelFile) Execute(testName string) error {
 	results, err := testutils.RunNucleiWithArgsAndGetResults(debug, "-tl", "-tp", "cloud.yml")
 	if err != nil {
-		return errkit.Append(errkit.New("failed to load template with id"), err)
+		return errkit.Wrap(err, "failed to load template with id")
 	}
 	if len(results) <= 10 {
 		return fmt.Errorf("incorrect result: expected more results than %d, got %v", 10, len(results))
@@ -31,7 +31,7 @@ type profileLoaderById struct{}
 func (h *profileLoaderById) Execute(testName string) error {
 	results, err := testutils.RunNucleiWithArgsAndGetResults(debug, "-tl", "-tp", "cloud")
 	if err != nil {
-		return errkit.Append(errkit.New("failed to load template with id"), err)
+		return errkit.Wrap(err, "failed to load template with id")
 	}
 	if len(results) <= 10 {
 		return fmt.Errorf("incorrect result: expected more results than %d, got %v", 10, len(results))
@@ -45,7 +45,7 @@ type customProfileLoader struct{}
 func (h *customProfileLoader) Execute(filepath string) error {
 	results, err := testutils.RunNucleiWithArgsAndGetResults(debug, "-tl", "-tp", filepath)
 	if err != nil {
-		return errkit.Append(errkit.New("failed to load template with id"), err)
+		return errkit.Wrap(err, "failed to load template with id")
 	}
 	if len(results) < 1 {
 		return fmt.Errorf("incorrect result: expected more results than %d, got %v", 1, len(results))
