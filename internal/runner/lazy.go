@@ -32,7 +32,7 @@ func GetAuthTmplStore(opts *types.Options, catalog catalog.Catalog, execOpts *pr
 	for _, file := range opts.SecretsFile {
 		data, err := authx.GetTemplatePathsFromSecretFile(file)
 		if err != nil {
-			return nil, errkit.Append(errkit.New("failed to get template paths from secrets file"), err)
+			return nil, errkit.Wrap(err, "failed to get template paths from secrets file")
 		}
 		tmpls = append(tmpls, data...)
 	}
@@ -58,7 +58,7 @@ func GetAuthTmplStore(opts *types.Options, catalog catalog.Catalog, execOpts *pr
 	cfg.StoreId = loader.AuthStoreId
 	store, err := loader.New(cfg)
 	if err != nil {
-		return nil, errkit.Append(errkit.New("failed to initialize dynamic auth templates store"), err)
+		return nil, errkit.Wrap(err, "failed to initialize dynamic auth templates store")
 	}
 	return store, nil
 }

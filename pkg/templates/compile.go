@@ -491,7 +491,7 @@ func parseTemplate(data []byte, srcOptions *protocols.ExecutorOptions) (*Templat
 		}
 	}
 	if err != nil {
-		return nil, errkit.Append(errkit.New(fmt.Sprintf("failed to parse %s", template.Path)), err)
+		return nil, errkit.Wrapf(err, "failed to parse %s", template.Path)
 	}
 
 	if utils.IsBlank(template.Info.Name) {
@@ -551,7 +551,7 @@ func parseTemplate(data []byte, srcOptions *protocols.ExecutorOptions) (*Templat
 	// load `flow` and `source` in code protocol from file
 	// if file is referenced instead of actual source code
 	if err := template.ImportFileRefs(template.Options); err != nil {
-		return nil, errkit.Append(errkit.New(fmt.Sprintf("failed to load file refs for %s", template.ID)), err)
+		return nil, errkit.Wrapf(err, "failed to load file refs for %s", template.ID)
 	}
 
 	if err := template.compileProtocolRequests(template.Options); err != nil {

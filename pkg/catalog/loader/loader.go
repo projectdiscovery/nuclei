@@ -238,7 +238,7 @@ func (store *Store) ReadTemplateFromURI(uri string, remote bool) ([]byte, error)
 		uri = handleTemplatesEditorURLs(uri)
 		remoteTemplates, _, err := getRemoteTemplatesAndWorkflows([]string{uri}, nil, store.config.RemoteTemplateDomainList)
 		if err != nil || len(remoteTemplates) == 0 {
-			return nil, errkit.Append(errkit.New(fmt.Sprintf("Could not load template %s: got %v", uri, remoteTemplates)), err)
+			return nil, errkit.Wrapf(err, "Could not load template %s: got %v", uri, remoteTemplates)
 		}
 		resp, err := retryablehttp.Get(remoteTemplates[0])
 		if err != nil {
