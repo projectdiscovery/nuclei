@@ -18,7 +18,7 @@ func (g *PayloadGenerator) validate(payloads map[string]interface{}, templatePat
 		switch payloadType := payload.(type) {
 		case string:
 			// check if it's a multiline string list
-			if len(strings.Split(payloadType, "\n")) != 1 {
+			if strings.ContainsRune(payloadType, '\n') {
 				return errors.New("invalid number of lines in payload")
 			}
 
