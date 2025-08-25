@@ -8,7 +8,7 @@
 .gitignore
 .idea
 .vscode
-
+.claude/settings.local.json
 # Binaries
 /bin/*
 /bindgen
