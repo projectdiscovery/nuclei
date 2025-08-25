@@ -2,7 +2,6 @@ package gojs
 
 import (
 	"context"
-	"fmt"
 	"reflect"
 
 	"github.com/Mzack9999/goja"
@@ -10,8 +9,8 @@ import (
 )
 
 var (
-	ErrInvalidFuncOpts = errkit.New("invalid function options: %v").Build()
-	ErrNilRuntime      = errkit.New("runtime is nil").Build()
+	ErrInvalidFuncOpts = errkit.New("invalid function options")
+	ErrNilRuntime      = errkit.New("runtime is nil")
 )
 
 type FuncOpts struct {
@@ -84,7 +83,7 @@ func RegisterFuncWithSignature(runtime *goja.Runtime, opts FuncOpts) error {
 		return ErrNilRuntime
 	}
 	if !opts.valid() {
-		return errkit.New(fmt.Sprintf("invalid function options: name: %s, signatures: %v, description: %s", opts.Name, opts.Signatures, opts.Description)).Build()
+		return errkit.Newf("invalid function options: name: %s, signatures: %v, description: %s", opts.Name, opts.Signatures, opts.Description)
 	}
 
 	// Wrap the function with context injection

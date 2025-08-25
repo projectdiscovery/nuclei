@@ -223,7 +223,7 @@ type loadTemplateWithID struct{}
 func (h *loadTemplateWithID) Execute(nooop string) error {
 	results, err := testutils.RunNucleiBareArgsAndGetResults(debug, nil, "-target", "scanme.sh", "-id", "self-signed-ssl")
 	if err != nil {
-		return errkit.Append(errkit.New("failed to load template with id"), err)
+		return errkit.Wrap(err, "failed to load template with id")
 	}
 	return expectResultsCount(results, 1)
 }

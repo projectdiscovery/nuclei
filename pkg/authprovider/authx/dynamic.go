@@ -53,7 +53,7 @@ func (d *Dynamic) GetDomainAndDomainRegex() ([]string, []string) {
 
 func (d *Dynamic) UnmarshalJSON(data []byte) error {
 	if d == nil {
-		return errkit.New("cannot unmarshal into nil Dynamic struct").Build()
+		return errkit.New("cannot unmarshal into nil Dynamic struct")
 	}
 
 	// Use an alias type (auxiliary) to avoid a recursive call in this method.
@@ -72,10 +72,10 @@ func (d *Dynamic) UnmarshalJSON(data []byte) error {
 func (d *Dynamic) Validate() error {
 	d.m = &sync.Mutex{}
 	if d.TemplatePath == "" {
-		return errkit.New(" template-path is required for dynamic secret").Build()
+		return errkit.New(" template-path is required for dynamic secret")
 	}
 	if len(d.Variables) == 0 {
-		return errkit.New("variables are required for dynamic secret").Build()
+		return errkit.New("variables are required for dynamic secret")
 	}
 
 	if d.Secret != nil {

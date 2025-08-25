@@ -1,7 +1,6 @@
 package network
 
 import (
-	"fmt"
 	"strconv"
 	"strings"
 
@@ -197,10 +196,10 @@ func (request *Request) Compile(options *protocols.ExecutorOptions) error {
 			}
 			portInt, err := strconv.Atoi(port)
 			if err != nil {
-				return errkit.Append(errkit.New(fmt.Sprintf("could not parse port %v from '%s'", port, request.Port)), err)
+				return errkit.Wrapf(err, "could not parse port %v from '%s'", port, request.Port)
 			}
 			if portInt < 1 || portInt > 65535 {
-				return errkit.New(fmt.Sprintf("%s: port %v is not in valid range", request.TemplateID, portInt)).Build()
+				return errkit.Newf("port %v is not in valid range", portInt)
 			}
 			request.ports = append(request.ports, port)
 		}

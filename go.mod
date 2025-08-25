@@ -25,7 +25,7 @@ require (
 	github.com/projectdiscovery/interactsh v1.2.4
 	github.com/projectdiscovery/rawhttp v0.1.90
 	github.com/projectdiscovery/retryabledns v1.0.105
-	github.com/projectdiscovery/retryablehttp-go v1.0.119
+	github.com/projectdiscovery/retryablehttp-go v1.0.120
 	github.com/projectdiscovery/yamldoc-go v1.0.6
 	github.com/remeh/sizedwaitgroup v1.0.0
 	github.com/rs/xid v1.6.0
@@ -105,7 +105,7 @@ require (
 	github.com/projectdiscovery/tlsx v1.1.9
 	github.com/projectdiscovery/uncover v1.1.0
 	github.com/projectdiscovery/useragent v0.0.101
-	github.com/projectdiscovery/utils v0.4.23
+	github.com/projectdiscovery/utils v0.4.24-0.20250823123502-bd7f2849ddb4
 	github.com/projectdiscovery/wappalyzergo v0.2.36
 	github.com/redis/go-redis/v9 v9.11.0
 	github.com/seh-msft/burpxml v1.0.1

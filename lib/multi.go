@@ -147,13 +147,13 @@ func (e *ThreadSafeNucleiEngine) ExecuteNucleiWithOptsCtx(ctx context.Context, t
 	// load templates
 	workflowLoader, err := workflow.NewLoader(unsafeOpts.executerOpts)
 	if err != nil {
-		return errkit.Append(errkit.New("Could not create workflow loader"), err)
+		return errkit.Wrapf(err, "Could not create workflow loader: %s", err)
 	}
 	unsafeOpts.executerOpts.WorkflowLoader = workflowLoader
 
 	store, err := loader.New(loader.NewConfig(tmpEngine.opts, e.eng.catalog, unsafeOpts.executerOpts))
 	if err != nil {
-		return errkit.Append(errkit.New("Could not create loader client"), err)
+		return errkit.Wrapf(err, "Could not create loader client: %s", err)
 	}
 	store.Load()
 

@@ -362,7 +362,7 @@ func (request *Request) executeRequestWithPayloads(variables map[string]interfac
 		if input.Read > 0 {
 			buffer, err := ConnReadNWithTimeout(conn, int64(input.Read), request.options.Options.GetTimeouts().TcpReadTimeout)
 			if err != nil {
-				return errkit.Append(errkit.New("could not read response from connection"), err)
+				return errkit.Wrap(err, "could not read response from connection")
 			}
 
 			responseBuilder.Write(buffer)
