@@ -68,13 +68,13 @@ func (request *Request) Extract(data map[string]interface{}, extractor *extracto
 	}
 	switch extractor.GetType() {
 	case extractors.RegexExtractor:
-		return extractor.ExtractRegex(item)
+		return extractor.ExtractRegex(item, data)
 	case extractors.KValExtractor:
 		return extractor.ExtractKval(data)
 	case extractors.XPathExtractor:
 		return extractor.ExtractXPath(item)
 	case extractors.JSONExtractor:
-		return extractor.ExtractJSON(item)
+		return extractor.ExtractJSON(item, data)
 	case extractors.DSLExtractor:
 		return extractor.ExtractDSL(data)
 	}
