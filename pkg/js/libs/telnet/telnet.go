@@ -10,7 +10,7 @@ import (
 	"github.com/praetorian-inc/fingerprintx/pkg/plugins"
 	"github.com/praetorian-inc/fingerprintx/pkg/plugins/services/telnet"
 	"github.com/projectdiscovery/nuclei/v3/pkg/protocols/common/protocolstate"
-	telnetmini "github.com/projectdiscovery/nuclei/v3/pkg/utils/telnet"
+	"github.com/projectdiscovery/nuclei/v3/pkg/utils/telnetmini"
 )
 
 // Telnet protocol constants
@@ -128,7 +128,7 @@ func (c *TelnetClient) Connect(ctx context.Context, host string, port int, usern
 	}
 
 	if !protocolstate.IsHostAllowed(executionId, host) {
-		return false, protocolstate.ErrHostDenied(host)
+		return false, protocolstate.ErrHostDenied.Msgf(host)
 	}
 
 	// Create TCP connection
@@ -171,7 +171,7 @@ func (c *TelnetClient) Info(ctx context.Context, host string, port int) (TelnetI
 	executionId := ctx.Value("executionId").(string)
 
 	if !protocolstate.IsHostAllowed(executionId, host) {
-		return TelnetInfoResponse{}, protocolstate.ErrHostDenied(host)
+		return TelnetInfoResponse{}, protocolstate.ErrHostDenied.Msgf(host)
 	}
 
 	// Create TCP connection for encryption detection
@@ -184,7 +184,9 @@ func (c *TelnetClient) Info(ctx context.Context, host string, port int) (TelnetI
 	if err != nil {
 		return TelnetInfoResponse{}, err
 	}
-	defer conn.Close()
+	defer func() {
+		_ = conn.Close()
+	}()
 
 	// Use the telnetmini library's DetectEncryption helper function
 	// Note: The connection becomes unusable after this call
@@ -198,4 +200,79 @@ func (c *TelnetClient) Info(ctx context.Context, host string, port int) (TelnetI
 		Banner:             encryptionInfo.Banner,
 		Options:            encryptionInfo.Options,
 	}, nil
+}
+
+// GetTelnetNTLMInfo implements the Nmap telnet-ntlm-info.nse script functionality.
+// This function uses the telnetmini library and SMB packet crafting functions to send
+// MS-TNAP NTLM authentication requests with null credentials. It might work only on
+// Microsoft Telnet servers.
+// @example
+// ```javascript
+// const telnet = require('nuclei/telnet');
+// const client = new telnet.TelnetClient();
+// const ntlmInfo = client.GetTelnetNTLMInfo('acme.com', 23);
+// log(toJSON(ntlmInfo));
+// ```
+func (c *TelnetClient) GetTelnetNTLMInfo(ctx context.Context, host string, port int) (*telnetmini.NTLMInfoResponse, error) {
+	executionId := ctx.Value("executionId").(string)
+
+	if !protocolstate.IsHostAllowed(executionId, host) {
+		return nil, protocolstate.ErrHostDenied.Msgf(host)
+	}
+
+	dialer := protocolstate.GetDialersWithId(executionId)
+	if dialer == nil {
+		return nil, fmt.Errorf("dialers not initialized for %s", executionId)
+	}
+
+	// Create TCP connection
+	conn, err := dialer.Fastdialer.Dial(context.TODO(), "tcp", net.JoinHostPort(host, strconv.Itoa(port)))
+	if err != nil {
+		return nil, err
+	}
+	defer func() {
+		_ = conn.Close()
+	}()
+
+	// Create telnet client using the telnetmini library
+	client := telnetmini.New(conn)
+	defer func() {
+		_ = client.Close()
+	}()
+
+	// Set timeout
+	_ = conn.SetDeadline(time.Now().Add(10 * time.Second))
+
+	// Use the MS-TNAP packet crafting functions from our telnetmini library
+	// Create MS-TNAP Login Packet (Option Command IS) as per Nmap script
+	tnapLoginPacket := telnetmini.CreateTNAPLoginPacket()
+
+	// Send the MS-TNAP login packet
+	_, err = conn.Write(tnapLoginPacket)
+	if err != nil {
+		return nil, fmt.Errorf("failed to send MS-TNAP login packet: %w", err)
+	}
+
+	// Read response data
+	buffer := make([]byte, 4096)
+	n, err := conn.Read(buffer)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read response: %w", err)
+	}
+
+	if n == 0 {
+		return nil, fmt.Errorf("no response received")
+	}
+
+	// Parse NTLM response using our telnetmini library functions
+	response := buffer[:n]
+
+	// Use the parsing functions from our library instead of reimplementing
+	// This should use the NTLM parsing functions we added to telnetmini
+	ntlmInfo, err := telnetmini.ParseNTLMResponse(response)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse NTLM response: %w", err)
+	}
+
+	return ntlmInfo, nil
 }
