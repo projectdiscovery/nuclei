@@ -27,7 +27,7 @@ func GetServerInfo(ctx context.Context, host string, port int) (string, error) {
 func getServerInfo(executionId string, host string, port int) (string, error) {
 	if !protocolstate.IsHostAllowed(executionId, host) {
 		// host is not valid according to network policy
-		return "", protocolstate.ErrHostDenied(host)
+		return "", protocolstate.ErrHostDenied.Msgf(host)
 	}
 	// create a new client
 	client := redis.NewClient(&redis.Options{
@@ -69,7 +69,7 @@ func Connect(ctx context.Context, host string, port int, password string) (bool,
 func connect(executionId string, host string, port int, password string) (bool, error) {
 	if !protocolstate.IsHostAllowed(executionId, host) {
 		// host is not valid according to network policy
-		return false, protocolstate.ErrHostDenied(host)
+		return false, protocolstate.ErrHostDenied.Msgf(host)
 	}
 	// create a new client
 	client := redis.NewClient(&redis.Options{
@@ -109,7 +109,7 @@ func GetServerInfoAuth(ctx context.Context, host string, port int, password stri
 func getServerInfoAuth(executionId string, host string, port int, password string) (string, error) {
 	if !protocolstate.IsHostAllowed(executionId, host) {
 		// host is not valid according to network policy
-		return "", protocolstate.ErrHostDenied(host)
+		return "", protocolstate.ErrHostDenied.Msgf(host)
 	}
 	// create a new client
 	client := redis.NewClient(&redis.Options{
@@ -181,7 +181,7 @@ func RunLuaScript(ctx context.Context, host string, port int, password string, s
 	executionId := ctx.Value("executionId").(string)
 	if !protocolstate.IsHostAllowed(executionId, host) {
 		// host is not valid according to network policy
-		return false, protocolstate.ErrHostDenied(host)
+		return false, protocolstate.ErrHostDenied.Msgf(host)
 	}
 	// create a new client
 	client := redis.NewClient(&redis.Options{

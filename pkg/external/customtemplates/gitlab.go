@@ -3,7 +3,6 @@ package customtemplates
 import (
 	"context"
 	"encoding/base64"
-	"fmt"
 	"os"
 	"path/filepath"
 
@@ -29,7 +28,9 @@ func NewGitLabProviders(options *types.Options) ([]*customTemplateGitLabRepo, er
 		// Establish a connection to GitLab and build a client object with which to download templates from GitLab
 		gitLabClient, err := getGitLabClient(options.GitLabServerURL, options.GitLabToken)
 		if err != nil {
-			return nil, errkit.Append(errkit.New(fmt.Sprintf("Error establishing GitLab client for %s %s", options.GitLabServerURL, err)), err)
+			errx := errkit.FromError(err)
+			errx.Msgf("Error establishing GitLab client for %s %s", options.GitLabServerURL, err)
+			return nil, errx
 		}
 
 		// Create a new GitLab service client

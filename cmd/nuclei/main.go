@@ -187,7 +187,7 @@ func main() {
 			options.Logger.Info().Msgf("Creating resume file: %s\n", resumeFileName)
 			err := nucleiRunner.SaveResumeConfig(resumeFileName)
 			if err != nil {
-				return errkit.Append(errkit.New("couldn't create crash resume file"), err)
+				return errkit.Wrap(err, "couldn't create crash resume file")
 			}
 			return nil
 		})

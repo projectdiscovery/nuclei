@@ -12,6 +12,7 @@ import (
 	"github.com/projectdiscovery/nuclei/v3/pkg/utils/json"
 	"github.com/projectdiscovery/nuclei/v3/pkg/utils/stats"
 	yamlutil "github.com/projectdiscovery/nuclei/v3/pkg/utils/yaml"
+	"github.com/projectdiscovery/utils/errkit"
 	fileutil "github.com/projectdiscovery/utils/file"
 
 	"gopkg.in/yaml.v2"
@@ -82,7 +83,7 @@ func (p *Parser) LoadTemplate(templatePath string, t any, extraTags []string, ca
 	t, templateParseError := p.ParseTemplate(templatePath, catalog)
 	if templateParseError != nil {
 		checkOpenFileError(templateParseError)
-		return false, ErrCouldNotLoadTemplate(templatePath, templateParseError.Error())
+		return false, errkit.Newf("Could not load template %s: %s", templatePath, templateParseError)
 	}
 	template, ok := t.(*Template)
 	if !ok {
@@ -96,13 +97,13 @@ func (p *Parser) LoadTemplate(templatePath string, t any, extraTags []string, ca
 	validationError := validateTemplateMandatoryFields(template)
 	if validationError != nil {
 		stats.Increment(SyntaxErrorStats)
-		return false, ErrCouldNotLoadTemplate(templatePath, validationError.Error())
+		return false, errkit.Newf("Could not load template %s: %s", templatePath, validationError)
 	}
 
 	ret, err := isTemplateInfoMetadataMatch(tagFilter, template, extraTags)
 	if err != nil {
 		checkOpenFileError(err)
-		return ret, ErrCouldNotLoadTemplate(templatePath, err.Error())
+		return ret, errkit.Newf("Could not load template %s: %s", templatePath, err)
 	}
 	// if template loaded then check the template for optional fields to add warnings
 	if ret {
@@ -110,7 +111,7 @@ func (p *Parser) LoadTemplate(templatePath string, t any, extraTags []string, ca
 		if validationWarning != nil {
 			stats.Increment(SyntaxWarningStats)
 			checkOpenFileError(validationWarning)
-			return ret, ErrCouldNotLoadTemplate(templatePath, validationWarning.Error())
+			return ret, errkit.Newf("Could not load template %s: %s", templatePath, validationWarning)
 		}
 	}
 	return ret, nil
