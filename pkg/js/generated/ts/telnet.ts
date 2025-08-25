@@ -41,7 +41,8 @@ export class TelnetClient {
 
     /**
      * Info gathers information about the telnet server including encryption support.
-     * Based on Nmap's telnet-encryption.nse script functionality.
+     * Uses the telnetmini library's DetectEncryption helper function.
+     * WARNING: The connection used for detection becomes unusable after this call.
      * @example
      * ```javascript
      * const telnet = require('nuclei/telnet');
@@ -51,6 +52,23 @@ export class TelnetClient {
      * ```
      */
     public Info(host: string, port: number): TelnetInfoResponse | null {
+        return null;
+    }
+
+    /**
+     * GetTelnetNTLMInfo implements the Nmap telnet-ntlm-info.nse script functionality.
+     * This function uses the telnetmini library and SMB packet crafting functions to send
+     * MS-TNAP NTLM authentication requests with null credentials. It might work only on
+     * Microsoft Telnet servers.
+     * @example
+     * ```javascript
+     * const telnet = require('nuclei/telnet');
+     * const client = new telnet.TelnetClient();
+     * const ntlmInfo = client.GetTelnetNTLMInfo('acme.com', 23);
+     * log(toJSON(ntlmInfo));
+     * ```
+     */
+    public GetTelnetNTLMInfo(host: string, port: number): NTLMInfoResponse | null {
         return null;
     }
 }
@@ -89,5 +107,59 @@ export interface TelnetInfoResponse {
     Banner?: string,
     
     Options?: { [key: number]: number[] },
+}
+
+/**
+ * NTLMInfoResponse represents the response from NTLM information gathering.
+ * This matches exactly the output structure from the Nmap telnet-ntlm-info.nse script.
+ * @example
+ * ```javascript
+ * const telnet = require('nuclei/telnet');
+ * const client = new telnet.TelnetClient();
+ * const ntlmInfo = client.GetTelnetNTLMInfo('acme.com', 23);
+ * log(toJSON(ntlmInfo));
+ * ```
+ */
+export interface NTLMInfoResponse {
+    
+    /**
+     * Target_Name from script (target_realm in script)
+     */
+    TargetName?: string,
+    
+    /**
+     * NetBIOS_Domain_Name from script
+     */
+    NetBIOSDomainName?: string,
+    
+    /**
+     * NetBIOS_Computer_Name from script
+     */
+    NetBIOSComputerName?: string,
+    
+    /**
+     * DNS_Domain_Name from script
+     */
+    DNSDomainName?: string,
+    
+    /**
+     * DNS_Computer_Name from script (fqdn in script)
+     */
+    DNSComputerName?: string,
+    
+    /**
+     * DNS_Tree_Name from script (dns_forest_name in script)
+     */
+    DNSTreeName?: string,
+    
+    /**
+     * Product_Version from script
+     */
+    ProductVersion?: string,
+    
+    /**
+     * Raw timestamp for skew calculation
+     */
+    Timestamp?: number,
 }
 
