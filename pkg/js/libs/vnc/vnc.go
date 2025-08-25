@@ -83,13 +83,16 @@ func connect(executionId string, host string, port int, password string) (bool, 
 	vncConfig := vnclib.NewClientConfig(password)
 
 	// Attempt to connect and authenticate
-	_, err = vnclib.Connect(context.TODO(), conn, vncConfig)
+	c, err := vnclib.Connect(context.TODO(), conn, vncConfig)
 	if err != nil {
 		// Check for specific authentication errors
 		if isAuthError(err) {
 			return false, nil // Authentication failed, but connection succeeded
 		}
 		return false, err // Connection or other error
+	}
+	if c != nil {
+		_ = c.Close()
 	}
 
 	return true, nil
@@ -103,7 +106,7 @@ func isAuthError(err error) bool {
 
 	// Check for common VNC authentication error messages
 	errStr := err.Error()
-	return stringsutil.ContainsAny(errStr, "authentication", "auth", "password", "invalid", "failed")
+	return stringsutil.ContainsAnyI(errStr, "authentication", "auth", "password", "invalid", "failed")
 }
 
 // IsVNC checks if a host is running a VNC server.
