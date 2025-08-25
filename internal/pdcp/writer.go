@@ -77,11 +77,11 @@ func NewUploadWriter(ctx context.Context, logger *gologger.Logger, creds *pdcpau
 		output.WithJson(true, true),
 	)
 	if err != nil {
-		return nil, errkit.Append(errkit.New("could not create output writer"), err)
+		return nil, errkit.Wrap(err, "could not create output writer")
 	}
 	tmp, err := urlutil.Parse(creds.Server)
 	if err != nil {
-		return nil, errkit.Append(errkit.New("could not parse server url"), err)
+		return nil, errkit.Wrap(err, "could not parse server url")
 	}
 	tmp.Path = uploadEndpoint
 	tmp.Update()
@@ -199,7 +199,7 @@ func (u *UploadWriter) autoCommit(ctx context.Context, r *io.PipeReader) {
 // uploadChunk uploads a chunk of data to the server
 func (u *UploadWriter) uploadChunk(buff *bytes.Buffer) error {
 	if err := u.upload(buff.Bytes()); err != nil {
-		return errkit.Append(errkit.New("could not upload chunk"), err)
+		return errkit.Wrap(err, "could not upload chunk")
 	}
 	// if successful, reset the buffer
 	buff.Reset()
@@ -211,25 +211,25 @@ func (u *UploadWriter) uploadChunk(buff *bytes.Buffer) error {
 func (u *UploadWriter) upload(data []byte) error {
 	req, err := u.getRequest(data)
 	if err != nil {
-		return errkit.Append(errkit.New("could not create upload request"), err)
+		return errkit.Wrap(err, "could not create upload request")
 	}
 	resp, err := u.client.Do(req)
 	if err != nil {
-		return errkit.Append(errkit.New("could not upload results"), err)
+		return errkit.Wrap(err, "could not upload results")
 	}
 	defer func() {
 		_ = resp.Body.Close()
 	}()
 	bin, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return errkit.Append(errkit.New("could not get id from response"), err)
+		return errkit.Wrap(err, "could not get id from response")
 	}
 	if resp.StatusCode != http.StatusOK {
 		return fmt.Errorf("could not upload results got status code %v on %v", resp.StatusCode, resp.Request.URL.String())
 	}
 	var uploadResp uploadResponse
 	if err := json.Unmarshal(bin, &uploadResp); err != nil {
-		return errkit.Append(errkit.New(fmt.Sprintf("could not unmarshal response got %v", string(bin))), err)
+		return errkit.Wrap(err, fmt.Sprintf("could not unmarshal response got %v", string(bin)))
 	}
 	if uploadResp.ID != "" && u.scanID == "" {
 		u.scanID = uploadResp.ID
@@ -254,7 +254,7 @@ func (u *UploadWriter) getRequest(bin []byte) (*retryablehttp.Request, error) {
 	}
 	req, err := retryablehttp.NewRequest(method, url, bytes.NewReader(bin))
 	if err != nil {
-		return nil, errkit.Append(errkit.New("could not create cloud upload request"), err)
+		return nil, errkit.Wrap(err, "could not create cloud upload request")
 	}
 	// add pdtm meta params
 	req.Params.Merge(updateutils.GetpdtmParams(config.Version))

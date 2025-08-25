@@ -20,7 +20,7 @@ func CreateTable(headers []string, rows [][]string) (string, error) {
 	builder := &bytes.Buffer{}
 	headerSize := len(headers)
 	if headers == nil || headerSize == 0 {
-		return "", errkit.New("No headers provided").Build()
+		return "", errkit.New("No headers provided")
 	}
 
 	builder.WriteString(CreateTableHeader(headers...))
@@ -34,7 +34,7 @@ func CreateTable(headers []string, rows [][]string) (string, error) {
 			copy(extendedRows, row)
 			builder.WriteString(CreateTableRow(extendedRows...))
 		} else {
-			return "", errkit.New("Too many columns for the given headers").Build()
+			return "", errkit.New("Too many columns for the given headers")
 		}
 	}
 

@@ -34,7 +34,7 @@ func init() {
 // AddSignerToDefault adds a signer to the default list of signers
 func AddSignerToDefault(s *TemplateSigner) error {
 	if s == nil {
-		return errkit.New("signer is nil").Build()
+		return errkit.New("signer is nil")
 	}
 	DefaultTemplateVerifiers = append(DefaultTemplateVerifiers, s)
 	return nil
