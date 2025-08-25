@@ -60,7 +60,7 @@ func connect(executionId string, host string, port int, password string) (bool, 
 	}
 	if !protocolstate.IsHostAllowed(executionId, host) {
 		// host is not valid according to network policy
-		return false, protocolstate.ErrHostDenied(host)
+		return false, protocolstate.ErrHostDenied.Msgf(host)
 	}
 
 	dialer := protocolstate.GetDialersWithId(executionId)
