@@ -49,42 +49,61 @@ func (m *MultiPartForm) Encode(data KV) (string, error) {
 		var fw io.Writer
 		var err error
 
-		if filesArray, ok := value.([]interface{}); ok {
-			fileMetadata, ok := m.filesMetadata[key]
-			if !ok {
-				Itererr = fmt.Errorf("file metadata not found for key %s", key)
-				return false
-			}
+		if fileMetadata, ok := m.filesMetadata[key]; ok {
+			if filesArray, isArray := value.([]any); isArray {
+				for _, file := range filesArray {
+					h := make(textproto.MIMEHeader)
+					h.Set("Content-Disposition",
+						fmt.Sprintf(`form-data; name=%q; filename=%q`,
+							key, fileMetadata.Filename))
+					h.Set("Content-Type", fileMetadata.ContentType)
 
-			for _, file := range filesArray {
-				h := make(textproto.MIMEHeader)
-				h.Set("Content-Disposition",
-					fmt.Sprintf(`form-data; name=%q; filename=%q`,
-						key, fileMetadata.Filename))
-				h.Set("Content-Type", fileMetadata.ContentType)
+					if fw, err = w.CreatePart(h); err != nil {
+						Itererr = err
+						return false
+					}
 
-				if fw, err = w.CreatePart(h); err != nil {
-					Itererr = err
-					return false
+					if _, err = fw.Write([]byte(file.(string))); err != nil {
+						Itererr = err
+						return false
+					}
 				}
 
-				if _, err = fw.Write([]byte(file.(string))); err != nil {
-					Itererr = err
-					return false
-				}
+				return true
 			}
-			return true
 		}
 
 		// Add field
-		if fw, err = w.CreateFormField(key); err != nil {
-			Itererr = err
-			return false
+		var values []string
+		switch v := value.(type) {
+		case nil:
+			values = []string{""}
+		case string:
+			values = []string{v}
+		case []string:
+			values = v
+		case []any:
+			values = make([]string, len(v))
+			for i, item := range v {
+				if item == nil {
+					values[i] = ""
+				} else {
+					values[i] = fmt.Sprint(item)
+				}
+			}
+		default:
+			values = []string{fmt.Sprintf("%v", v)}
 		}
 
-		if _, err = fw.Write([]byte(value.(string))); err != nil {
-			Itererr = err
-			return false
+		for _, val := range values {
+			if fw, err = w.CreateFormField(key); err != nil {
+				Itererr = err
+				return false
+			}
+			if _, err = fw.Write([]byte(val)); err != nil {
+				Itererr = err
+				return false
+			}
 		}
 		return true
 	})
