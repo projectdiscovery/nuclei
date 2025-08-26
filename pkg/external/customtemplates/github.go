@@ -53,7 +53,7 @@ func (customTemplate *customTemplateGitHubRepo) Update(ctx context.Context) {
 	}
 	err := customTemplate.pullChanges(clonePath, customTemplate.githubToken)
 	if err != nil {
-		if strings.Contains(err.Error(), "already up-to-date") {
+		if errors.Is(err, git.NoErrAlreadyUpToDate) {
 			gologger.Info().Msgf("%s", err)
 		} else {
 			gologger.Error().Msgf("%s", err)
