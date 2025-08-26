@@ -71,6 +71,7 @@ type StandardWriter struct {
 	traceFile             io.WriteCloser
 	errorFile             io.WriteCloser
 	severityColors        func(severity.Severity) string
+	includeChain          bool
 	storeResponse         bool
 	storeResponseDir      string
 	omitTemplate          bool
@@ -142,6 +143,13 @@ func (iwe *InternalWrappedEvent) SetOperatorResult(operatorResult *operators.Res
 	iwe.OperatorsResult = operatorResult
 }
 
+type Steps struct {
+	// Request is the optional, dumped request for the match.
+	Request string `json:"request,omitempty"`
+	// Response is the optional, dumped response for the match.
+	Response string `json:"response,omitempty"`
+}
+
 // ResultEvent is a wrapped result event for a single nuclei output.
 type ResultEvent struct {
 	// Template is the relative filename for the template
@@ -181,6 +189,8 @@ type ResultEvent struct {
 	Request string `json:"request,omitempty"`
 	// Response is the optional, dumped response for the match.
 	Response string `json:"response,omitempty"`
+	// Storage request and response list.
+	Steps []Steps `json:"steps,omitempty"`
 	// Metadata contains any optional metadata for the event
 	Metadata map[string]interface{} `json:"meta,omitempty"`
 	// IP is the IP address for the found result event.
@@ -276,6 +286,7 @@ func NewStandardWriter(options *types.Options) (*StandardWriter, error) {
 		traceFile:        traceOutput,
 		errorFile:        errorOutput,
 		severityColors:   colorizer.New(auroraColorizer),
+		includeChain:     options.IncludeChain,
 		storeResponse:    options.StoreResponse,
 		storeResponseDir: options.StoreResponseDir,
 		omitTemplate:     options.OmitTemplate,
@@ -310,7 +321,9 @@ func (w *StandardWriter) Write(event *ResultEvent) error {
 		event.CURLCommand = redactKeys(event.CURLCommand, w.KeysToRedact)
 		event.Matched = redactKeys(event.Matched, w.KeysToRedact)
 	}
-
+	if !w.includeChain {
+		event.Steps = make([]Steps, 0)
+	}
 	event.Timestamp = time.Now()
 
 	var data []byte
